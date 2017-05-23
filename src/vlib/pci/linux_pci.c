@@ -95,24 +95,22 @@ clib_error_t *
 vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
 {
   clib_error_t *error = 0;
-  u8 *s = 0;
+  u8 *s = 0, *driver_name = 0;
   DIR *dir = 0;
   struct dirent *e;
-  int fd;
+  int fd, clear_driver_override = 0;
   u8 *dev_dir_name = format (0, "/sys/bus/pci/devices/%U",
 			     format_vlib_pci_addr, &d->bus_address);
 
-  /* if uio sub-directory exists, we are fine, device is
-     already bound to UIO driver */
-  s = format (s, "%v/uio%c", dev_dir_name, 0);
-  if (access ((char *) s, F_OK) == 0)
-    goto done;
+  s = format (s, "%v/driver%c", dev_dir_name, 0);
+  driver_name = vlib_sysfs_link_to_name ((char *) s);
   vec_reset_length (s);
 
-  s = format (s, "%v/iommu_group%c", dev_dir_name, 0);
-  if (access ((char *) s, F_OK) == 0)
+  if (driver_name &&
+      ((strcmp ("vfio-pci", (char *) driver_name) == 0) ||
+       (strcmp ("uio_pci_generic", (char *) driver_name) == 0) ||
+       (strcmp ("igb_uio", (char *) driver_name) == 0)))
     goto done;
-  vec_reset_length (s);
 
   /* walk trough all linux interfaces and if interface belonging to
      this device is founf check if interface is admin up  */
@@ -187,17 +185,37 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
   vlib_sysfs_write ((char *) s, "%U", format_vlib_pci_addr, &d->bus_address);
   vec_reset_length (s);
 
-  s = format (s, "/sys/bus/pci/drivers/%s/new_id%c", uio_driver_name, 0);
-  vlib_sysfs_write ((char *) s, "0x%04x 0x%04x", d->vendor_id, d->device_id);
+  s = format (s, "%v/driver_override%c", dev_dir_name, 0);
+  if (access ((char *) s, F_OK) == 0)
+    {
+      vlib_sysfs_write ((char *) s, "%s", uio_driver_name);
+      clear_driver_override = 1;
+    }
+  else
+    {
+      vec_reset_length (s);
+      s = format (s, "/sys/bus/pci/drivers/%s/new_id%c", uio_driver_name, 0);
+      vlib_sysfs_write ((char *) s, "0x%04x 0x%04x", d->vendor_id,
+			d->device_id);
+    }
   vec_reset_length (s);
 
   s = format (s, "/sys/bus/pci/drivers/%s/bind%c", uio_driver_name, 0);
   vlib_sysfs_write ((char *) s, "%U", format_vlib_pci_addr, &d->bus_address);
+  vec_reset_length (s);
+
+  if (clear_driver_override)
+    {
+      s = format (s, "%v/driver_override%c", dev_dir_name, 0);
+      vlib_sysfs_write ((char *) s, "%c", 0);
+      vec_reset_length (s);
+    }
 
 done:
   closedir (dir);
   vec_free (s);
   vec_free (dev_dir_name);
+  vec_free (driver_name);
   return error;
 }
 
