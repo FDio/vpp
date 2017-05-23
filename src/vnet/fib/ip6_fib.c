@@ -633,9 +633,10 @@ ip6_show_fib (vlib_main_t * vm,
 	if (fib_index != ~0 && fib_index != (int)fib->index)
 	    continue;
 
-	vlib_cli_output (vm, "%s, fib_index %d, flow hash: %U", 
+	vlib_cli_output (vm, "%s, fib_index:%d, flow hash:[%U] locks:%d", 
 			 fib_table->ft_desc, fib->index,
-			 format_ip_flow_hash_config, fib_table->ft_flow_hash_config);
+			 format_ip_flow_hash_config, fib_table->ft_flow_hash_config,
+                         fib_table->ft_locks);
 
 	/* Show summary? */
 	if (! verbose)

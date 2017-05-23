@@ -362,6 +362,34 @@ split_and_rehash_linear (vnet_classify_table_t * t,
   return new_values;
 }
 
+static void
+vnet_classify_entry_claim_resource (vnet_classify_entry_t *e)
+{
+    switch (e->action)
+    {
+    case CLASSIFY_ACTION_SET_IP4_FIB_INDEX:
+        fib_table_lock (e->metadata, FIB_PROTOCOL_IP4);
+        break;
+    case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
+        fib_table_lock (e->metadata, FIB_PROTOCOL_IP6);
+        break;
+    }
+}
+
+static void
+vnet_classify_entry_release_resource (vnet_classify_entry_t *e)
+{
+    switch (e->action)
+    {
+    case CLASSIFY_ACTION_SET_IP4_FIB_INDEX:
+        fib_table_unlock (e->metadata, FIB_PROTOCOL_IP4);
+        break;
+    case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
+        fib_table_unlock (e->metadata, FIB_PROTOCOL_IP6);
+        break;
+    }
+}
+
 int vnet_classify_add_del (vnet_classify_table_t * t, 
                            vnet_classify_entry_t * add_v,
                            int is_add)
@@ -408,6 +436,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
       clib_memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
               t->match_n_vectors * sizeof (u32x4));
       v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
+      vnet_classify_entry_claim_resource (v);
 
       tmp_b.as_u64 = 0;
       tmp_b.offset = vnet_classify_get_offset (t, v);
@@ -445,6 +474,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
               clib_memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
                       t->match_n_vectors * sizeof(u32x4));
               v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
+              vnet_classify_entry_claim_resource (v);
 
               CLIB_MEMORY_BARRIER();
               /* Restore the previous (k,v) pairs */
@@ -461,6 +491,8 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
               clib_memcpy (v, add_v, sizeof (vnet_classify_entry_t) +
                       t->match_n_vectors * sizeof(u32x4));
               v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
+              vnet_classify_entry_claim_resource (v);
+
               CLIB_MEMORY_BARRIER();
               b->as_u64 = t->saved_bucket.as_u64;
               t->active_elements ++;
@@ -477,9 +509,11 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
 
           if (!memcmp (v->key, add_v->key, t->match_n_vectors * sizeof (u32x4)))
             {
+              vnet_classify_entry_release_resource (v);
               memset (v, 0xff, sizeof (vnet_classify_entry_t) +
                       t->match_n_vectors * sizeof(u32x4));
               v->flags |= VNET_CLASSIFY_ENTRY_FREE;
+
               CLIB_MEMORY_BARRIER();
               b->as_u64 = t->saved_bucket.as_u64;
               t->active_elements --;
@@ -552,6 +586,8 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
           clib_memcpy (new_v, add_v, sizeof (vnet_classify_entry_t) +
                   t->match_n_vectors * sizeof(u32x4));
           new_v->flags &= ~(VNET_CLASSIFY_ENTRY_FREE);
+          vnet_classify_entry_claim_resource (new_v);
+
           goto expand_ok;
         }
     }
@@ -2075,6 +2111,9 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
     e->key[i] &= t->mask[i];
 
   rv = vnet_classify_add_del (t, e, is_add);
+
+  vnet_classify_entry_release_resource(e);
+
   if (rv)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
   return 0;

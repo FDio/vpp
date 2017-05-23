@@ -62,8 +62,11 @@ extern vlib_node_registration_t ip6_classify_node;
  *   - Classified IP packets will be looked up
  *     from the specified ipv6 fib table
  */
-#define CLASSIFY_ACTION_SET_IP4_FIB_INDEX       1
-#define CLASSIFY_ACTION_SET_IP6_FIB_INDEX       2
+typedef enum vnet_classify_action_t_
+{
+  CLASSIFY_ACTION_SET_IP4_FIB_INDEX = 1,
+  CLASSIFY_ACTION_SET_IP6_FIB_INDEX = 2,
+} __attribute__ ((packed)) vnet_classify_action_t;
 
 struct _vnet_classify_main;
 typedef struct _vnet_classify_main vnet_classify_main_t;
@@ -93,7 +96,7 @@ typedef CLIB_PACKED(struct _vnet_classify_entry {
   u8 flags;
 #define VNET_CLASSIFY_ENTRY_FREE	(1<<0)
 
-  u8 action;
+  vnet_classify_action_t action;
   u16 metadata;
 
   /* Hit counter, last heard time */
