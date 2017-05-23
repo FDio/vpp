@@ -30,6 +30,8 @@ libvlibmemory_la_SOURCES =			\
 	vlibmemory/vl_memory_api_h.h		\
 	vlibmemory/vl_memory_msg_enum.h
 
+pkgconfig_DATA += vlibmemory/libvlibmemory.pc
+
 nobase_include_HEADERS += vlibapi/api.h vlibapi/api_helper_macros.h vlibapi/vat_helper_macros.h
 
 libvlibmemoryclient_la_DEPENDENCIES = libvppinfra.la libsvm.la
@@ -63,6 +65,8 @@ libvlibsocket_la_SOURCES =			\
 	vlibsocket/socksvr_vlib.c		\
 	vlibsocket/vl_socket_api_h.h		\
 	vlibsocket/vl_socket_msg_enum.h
+
+pkgconfig_DATA += vlibsocket/libvlibsocket.pc
 
 nobase_include_HEADERS +=			\
 	vlibsocket/api.h			\

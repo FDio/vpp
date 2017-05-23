@@ -288,4 +288,6 @@ elftool_SOURCES = tools/elftool/elftool.c
 elftool_CPPFLAGS = $(AM_CPPFLAGS)
 elftool_LDADD = libvppinfra.la -lpthread -lrt -lm
 
+pkgconfig_DATA += vppinfra/libvppinfra.pc
+
 # vi:syntax=automake

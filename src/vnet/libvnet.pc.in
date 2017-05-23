@@ -1,0 +1,11 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib/x86_64-linux-gnu
+includedir=${prefix}/include
+
+Name: libvnet
+Description: Vpp Network Library
+Version: @VERSION@
+Libs: -L${libdir} -llibvnet
+Libs.private: @LIBS@
+Cflags: -I${includedir}/libvnet

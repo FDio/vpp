@@ -37,4 +37,6 @@ test_svm_fifo1_SOURCES = svm/test_svm_fifo1.c
 test_svm_fifo1_LDADD = libsvm.la libvppinfra.la -lpthread -lrt
 test_svm_fifo1_LDFLAGS = -static
 
+pkgconfig_DATA += svm/libsvm.pc
+
 # vi:syntax=automake

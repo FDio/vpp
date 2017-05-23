@@ -97,4 +97,6 @@ vlib_unix_SOURCES =				\
 vlib_unix_LDADD = libvlib.la \
 	          libvppinfra.la -lpthread -lm -ldl -lrt
 
+pkgconfig_DATA += vlib/libvlib.pc
+
 # vi:syntax=automake
