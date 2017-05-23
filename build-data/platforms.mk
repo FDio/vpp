@@ -39,6 +39,13 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	  | sed -e 's:.*:../& /usr/lib/x86_64-linux-gnu:'		\
 	    > deb/debian/vpp-lib.install ;				\
 									\
+	: add package config files ;					\
+        find $(INSTALL_PREFIX)$(ARCH)/*/lib* \( -type f -o  -type l \)  \
+          -print | egrep -e '*\.pc'					\
+          | grep -v plugins\/                                           \
+          | sed -e 's:.*:../& /usr/lib/x86_64-linux-gnu/pkgconfig/:'	\
+            >> deb/debian/vpp-lib.install ;				\
+									\
 	: vnet api definitions ;					\
 	./scripts/find-api-lib-contents $(INSTALL_PREFIX)$(ARCH)	\
 	 deb/debian/vpp-lib.install ;					\

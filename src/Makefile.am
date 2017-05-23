@@ -29,6 +29,10 @@ dist_bin_SCRIPTS =
 lib_LTLIBRARIES =
 BUILT_SOURCES =
 CLEANFILES =
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA =
+
 install-data-local:
 	@echo "Building vppctl command list..."
 	@DIR_SEARCH="$(srcdir)" ; \

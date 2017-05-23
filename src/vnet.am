@@ -1049,4 +1049,6 @@ pcap2pg_LDADD = libvnet.la libvppinfra.la -lpthread libvlibmemory.la -lm -ldl
 
 noinst_PROGRAMS += pcap2pg
 
+pkgconfig_DATA += vnet/libvnet.pc
+
 # vi:syntax=automake
