@@ -64,6 +64,7 @@ adj_alloc (fib_protocol_t proto)
     adj->ia_nh_proto = proto;
     adj->ia_flags = 0;
     adj->rewrite_header.sw_if_index = ~0;
+    adj->rewrite_header.flags = 0;
     adj->lookup_next_index = 0;
     adj->ia_delegates = NULL;
 

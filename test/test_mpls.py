@@ -203,7 +203,10 @@ class TestMPLS(VppTestCase):
         except:
             raise
 
-    def verify_capture_tunneled_ip4(self, src_if, capture, sent, mpls_labels):
+    def verify_capture_tunneled_ip4(self, src_if, capture, sent, mpls_labels,
+                                    ttl=255, top=None):
+        if top is None:
+            top = len(mpls_labels) - 1
         try:
             capture = self.verify_filter(capture, sent)
 
@@ -217,7 +220,7 @@ class TestMPLS(VppTestCase):
 
                 # the MPLS TTL is 255 since it enters a new tunnel
                 self.verify_mpls_stack(
-                    rx, mpls_labels, 255, len(mpls_labels) - 1)
+                    rx, mpls_labels, ttl, top)
 
                 self.assertEqual(rx_ip.src, tx_ip.src)
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
@@ -616,6 +619,26 @@ class TestMPLS(VppTestCase):
 
         rx = self.pg0.get_capture()
         self.verify_capture_tunneled_ip4(self.pg0, rx, tx, [44, 46])
+
+        #
+        # add a labelled route through the new tunnel
+        #
+        route_10_0_0_4 = VppIpRoute(self, "10.0.0.4", 32,
+                                    [VppRoutePath("0.0.0.0",
+                                                  mpls_tun._sw_if_index,
+                                                  labels=[33])])
+        route_10_0_0_4.add_vpp_config()
+
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "10.0.0.4")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture()
+        self.verify_capture_tunneled_ip4(self.pg0, rx, tx, [44, 46, 33],
+                                         ttl=63, top=2)
 
     def test_v4_exp_null(self):
         """ MPLS V4 Explicit NULL test """

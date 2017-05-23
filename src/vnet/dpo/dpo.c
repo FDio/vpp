@@ -189,6 +189,9 @@ dpo_set (dpo_id_t *dpo,
 	    break;
 	case IP_LOOKUP_NEXT_MCAST:
 	    dpo->dpoi_type = DPO_ADJACENCY_MCAST;
+            break;
+	case IP_LOOKUP_NEXT_GLEAN:
+	    dpo->dpoi_type = DPO_ADJACENCY_GLEAN;
 	    break;
 	default:
 	    break;

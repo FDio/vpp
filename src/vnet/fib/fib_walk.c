@@ -322,10 +322,10 @@ typedef enum fib_walk_advance_rc_t_
 static fib_walk_advance_rc_t
 fib_walk_advance (fib_node_index_t fwi)
 {
-    fib_node_back_walk_ctx_t *ctx, *old;
     fib_node_back_walk_rc_t wrc;
     fib_node_ptr_t sibling;
     fib_walk_t *fwalk;
+    uint n_ctxs, ii;
     int more_elts;
 
     /*
@@ -339,12 +339,20 @@ fib_walk_advance (fib_node_index_t fwi)
 
     if (more_elts)
     {
-        old = fwalk->fw_ctx;
 
-	vec_foreach(ctx, fwalk->fw_ctx)
-	{
-	    wrc = fib_node_back_walk_one(&sibling, ctx);
+        /*
+         * loop through the backwalk contexts. This can grow in length
+         * as walks on the same object meet each other. Order is preserved so the
+         * most recently started walk as at the back of the vector.
+         */
+        ii = 0;
+        n_ctxs = vec_len(fwalk->fw_ctx);
 
+        while (ii < n_ctxs)
+        {
+	    wrc = fib_node_back_walk_one(&sibling, &fwalk->fw_ctx[ii]);
+
+            ii++;
 	    fwalk = fib_walk_get(fwi);
 	    fwalk->fw_n_visits++;
 
@@ -356,14 +364,11 @@ fib_walk_advance (fib_node_index_t fwi)
 		 */
 		return (FIB_WALK_ADVANCE_MERGE);
 	    }
-            if (old != fwalk->fw_ctx)
-            {
-                /*
-                 * nasty re-entrant addition of a walk has realloc'd the vector
-                 * break out
-                 */
-		return (FIB_WALK_ADVANCE_MERGE);
-	    }
+
+            /*
+             * re-evaluate the number of backwalk contexts we need to process.
+             */
+            n_ctxs = vec_len(fwalk->fw_ctx);
 	}
 	/*
 	 * move foward to the next node to visit
