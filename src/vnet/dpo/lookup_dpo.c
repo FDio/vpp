@@ -1206,7 +1206,7 @@ lookup_dpo_ip_dst_mcast_inline (vlib_main_t * vm,
 
             vnet_buffer (b0)->ip.adj_index[VLIB_TX] = mfei0;
 
-           vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
+            vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
                                             n_left_to_next, bi0, next0);
         }
         vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -1235,6 +1235,28 @@ VLIB_REGISTER_NODE (lookup_ip4_dst_mcast_node) = {
 };
 VLIB_NODE_FUNCTION_MULTIARCH (lookup_ip4_dst_mcast_node,
                               lookup_ip4_dst_mcast)
+
+always_inline uword
+lookup_ip6_dst_mcast (vlib_main_t * vm,
+                      vlib_node_runtime_t * node,
+                      vlib_frame_t * from_frame)
+{
+    return (lookup_dpo_ip_dst_mcast_inline(vm, node, from_frame, 0));
+}
+
+VLIB_REGISTER_NODE (lookup_ip6_dst_mcast_node) = {
+    .function = lookup_ip6_dst_mcast,
+    .name = "lookup-ip6-dst-mcast",
+    .vector_size = sizeof (u32),
+
+    .format_trace = format_lookup_trace,
+    .n_next_nodes = LOOKUP_IP_DST_MCAST_N_NEXT,
+    .next_nodes = {
+        [LOOKUP_IP_DST_MCAST_NEXT_RPF] = "ip6-mfib-forward-rpf",
+    },
+};
+VLIB_NODE_FUNCTION_MULTIARCH (lookup_ip6_dst_mcast_node,
+                              lookup_ip6_dst_mcast)
 
 static void
 lookup_dpo_mem_show (void)
