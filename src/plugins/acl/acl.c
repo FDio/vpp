@@ -52,6 +52,7 @@
 #undef vl_api_version
 
 #include "fa_node.h"
+#include "hash_lookup.h"
 
 acl_main_t acl_main;
 
@@ -188,12 +189,14 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
   else
     {
       a = am->acls + *acl_list_index;
+      hash_acl_delete(am, *acl_list_index);
       /* Get rid of the old rules */
       clib_mem_free (a->rules);
     }
   a->rules = acl_new_rules;
   a->count = count;
   memcpy (a->tag, tag, sizeof (a->tag));
+  hash_acl_add(am, *acl_list_index);
 
   return 0;
 }
@@ -627,15 +630,37 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
   if (is_input)
     {
       vec_validate (am->input_acl_vec_by_sw_if_index, sw_if_index);
+
+      u32 index = vec_search(am->input_acl_vec_by_sw_if_index[sw_if_index], acl_list_index);
+      if (index < vec_len(am->input_acl_vec_by_sw_if_index[sw_if_index])) {
+        clib_warning("ACL %d is already applied inbound on sw_if_index %d (index %d)",
+                     acl_list_index, sw_if_index, index);
+        /* the entry is already there */
+        return -1;
+      }
       vec_add (am->input_acl_vec_by_sw_if_index[sw_if_index], &acl_list_index,
+	       1);
+      vec_validate (am->input_sw_if_index_vec_by_acl, acl_list_index);
+      vec_add (am->input_sw_if_index_vec_by_acl[acl_list_index], &sw_if_index,
 	       1);
       acl_interface_in_enable_disable (am, sw_if_index, 1);
     }
   else
     {
       vec_validate (am->output_acl_vec_by_sw_if_index, sw_if_index);
+
+      u32 index = vec_search(am->output_acl_vec_by_sw_if_index[sw_if_index], acl_list_index);
+      if (index < vec_len(am->output_acl_vec_by_sw_if_index[sw_if_index])) {
+        clib_warning("ACL %d is already applied outbound on sw_if_index %d (index %d)",
+                     acl_list_index, sw_if_index, index);
+        /* the entry is already there */
+        return -1;
+      }
       vec_add (am->output_acl_vec_by_sw_if_index[sw_if_index],
 	       &acl_list_index, 1);
+      vec_validate (am->output_sw_if_index_vec_by_acl, acl_list_index);
+      vec_add (am->output_sw_if_index_vec_by_acl[acl_list_index], &sw_if_index,
+	       1);
       acl_interface_out_enable_disable (am, sw_if_index, 1);
     }
   return 0;
@@ -661,6 +686,14 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
 	      break;
 	    }
 	}
+
+      if (acl_list_index < vec_len(am->input_sw_if_index_vec_by_acl)) {
+        u32 index = vec_search(am->input_sw_if_index_vec_by_acl[acl_list_index], sw_if_index);
+        if (index < vec_len(am->input_sw_if_index_vec_by_acl[acl_list_index])) {
+          vec_del1 (am->input_sw_if_index_vec_by_acl[acl_list_index], index);
+        }
+      }
+
       if (0 == vec_len (am->input_acl_vec_by_sw_if_index[sw_if_index]))
 	{
 	  acl_interface_in_enable_disable (am, sw_if_index, 0);
@@ -680,6 +713,14 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
 	      break;
 	    }
 	}
+
+      if (acl_list_index < vec_len(am->output_sw_if_index_vec_by_acl)) {
+        u32 index = vec_search(am->output_sw_if_index_vec_by_acl[acl_list_index], sw_if_index);
+        if (index < vec_len(am->output_sw_if_index_vec_by_acl[acl_list_index])) {
+          vec_del1 (am->output_sw_if_index_vec_by_acl[acl_list_index], index);
+        }
+      }
+
       if (0 == vec_len (am->output_acl_vec_by_sw_if_index[sw_if_index]))
 	{
 	  acl_interface_out_enable_disable (am, sw_if_index, 0);
@@ -692,16 +733,21 @@ static void
 acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input)
 {
   acl_main_t *am = &acl_main;
+  int i;
   if (is_input)
     {
       acl_interface_in_enable_disable (am, sw_if_index, 0);
       vec_validate (am->input_acl_vec_by_sw_if_index, sw_if_index);
+      for(i = vec_len(am->input_acl_vec_by_sw_if_index[sw_if_index])-1; i>=0; i--)
+        hash_acl_unapply(am, sw_if_index, 1, am->input_acl_vec_by_sw_if_index[sw_if_index][i]);
       vec_reset_length (am->input_acl_vec_by_sw_if_index[sw_if_index]);
     }
   else
     {
       acl_interface_out_enable_disable (am, sw_if_index, 0);
       vec_validate (am->output_acl_vec_by_sw_if_index, sw_if_index);
+      for(i = vec_len(am->output_acl_vec_by_sw_if_index[sw_if_index])-1; i>=0; i--)
+        hash_acl_unapply(am, sw_if_index, 0, am->output_acl_vec_by_sw_if_index[sw_if_index][i]);
       vec_reset_length (am->output_acl_vec_by_sw_if_index[sw_if_index]);
     }
 }
@@ -711,13 +757,19 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
 				 u32 acl_list_index)
 {
   int rv = -1;
+  acl_main_t *am = &acl_main;
   if (is_add)
     {
       rv =
 	acl_interface_add_inout_acl (sw_if_index, is_input, acl_list_index);
+      if (rv == 0)
+        {
+          hash_acl_apply(am, sw_if_index, is_input, acl_list_index);
+        }
     }
   else
     {
+      hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
       rv =
 	acl_interface_del_inout_acl (sw_if_index, is_input, acl_list_index);
     }
@@ -1706,6 +1758,11 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
     }
     goto done;
   }
+  if (unformat (input, "use-hash-acl-matching %u", &val))
+    {
+      am->use_hash_acl_matching = (val !=0);
+      goto done;
+    }
   if (unformat (input, "l4-match-nonfirst-fragment %u", &val))
     {
       am->l4_match_nonfirst_fragment = (val != 0);
@@ -1852,6 +1909,20 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
 
       vec_free(out0);
     }
+  else if (unformat (input, "tables"))
+    {
+      ace_mask_type_entry_t *mte;
+      vlib_cli_output(vm, "Mask-type entries:");
+      /* *INDENT-OFF* */
+      pool_foreach(mte, am->ace_mask_type_pool,
+      ({
+        vlib_cli_output(vm, "  %3d: %016llx %016llx %016llx %016llx %016llx %016llx\n       refcount %d",
+			mte - am->ace_mask_type_pool,
+                        mte->mask.kv.key[0], mte->mask.kv.key[1], mte->mask.kv.key[2],
+                        mte->mask.kv.key[3], mte->mask.kv.key[4], mte->mask.kv.value, mte->refcount);
+      }));
+      /* *INDENT-ON* */
+    }
   return error;
 }
 
@@ -1934,6 +2005,10 @@ acl_init (vlib_main_t * vm)
 #undef _
 
   am->l4_match_nonfirst_fragment = 1;
+
+  /* use the new fancy hash-based matching */
+  // NOT IMMEDIATELY
+  am->use_hash_acl_matching = 1;
 
   return error;
 }
