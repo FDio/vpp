@@ -26,6 +26,7 @@
 #include <vppinfra/bihash_template.c>
 
 #include "fa_node.h"
+#include "hash_lookup.h"
 
 typedef struct
 {
@@ -136,7 +137,7 @@ fa_acl_match_port (u16 port, u16 port_first, u16 port_last, int is_ip6)
 }
 
 int
-acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
+single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
 		  int is_ip6, u8 * r_action, u32 * r_acl_match_p,
 		  u32 * r_rule_match_p, u32 * trace_bitmap)
 {
@@ -259,7 +260,7 @@ acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
 }
 
 static u8
-full_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
+linear_multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
 		       int is_ip6, int is_input, u32 * acl_match_p,
 		       u32 * rule_match_p, u32 * trace_bitmap)
 {
@@ -284,7 +285,7 @@ full_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
       clib_warning ("ACL_FA_NODE_DBG: Trying to match ACL: %d",
 		    acl_vector[i]);
 #endif
-      if (acl_match_5tuple
+      if (single_acl_match_5tuple
 	  (am, acl_vector[i], pkt_5tuple, is_ip6, &action,
 	   acl_match_p, rule_match_p, trace_bitmap))
 	{
@@ -301,6 +302,21 @@ full_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
 #endif
   /* Deny by default. If there are no ACLs defined we should not be here. */
   return 0;
+}
+
+static u8
+multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
+                       int is_ip6, int is_input, u32 * acl_match_p,
+                       u32 * rule_match_p, u32 * trace_bitmap)
+{
+  acl_main_t *am = &acl_main;
+  if (am->use_hash_acl_matching) {
+    return hash_multi_acl_match_5tuple(sw_if_index, pkt_5tuple, is_l2, is_ip6,
+                                 is_input, acl_match_p, rule_match_p, trace_bitmap);
+  } else {
+    return linear_multi_acl_match_5tuple(sw_if_index, pkt_5tuple, is_l2, is_ip6,
+                                 is_input, acl_match_p, rule_match_p, trace_bitmap);
+  }
 }
 
 static int
@@ -973,6 +989,10 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
           fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
 	  acl_make_5tuple_session_key (is_input, &fa_5tuple, &kv_sess);
+	  fa_5tuple.pkt.sw_if_index = sw_if_index0;
+          fa_5tuple.pkt.is_ip6 = is_ip6;
+          fa_5tuple.pkt.is_input = is_input;
+          fa_5tuple.pkt.mask_type_index_lsb = ~0;
 #ifdef FA_NODE_VERBOSE_DEBUG
 	  clib_warning
 	    ("ACL_FA_NODE_DBG: session 5-tuple %016llx %016llx %016llx %016llx %016llx : %016llx",
@@ -1039,7 +1059,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  if (acl_check_needed)
 	    {
 	      action =
-		full_acl_match_5tuple (sw_if_index0, &fa_5tuple, is_l2_path,
+		multi_acl_match_5tuple (sw_if_index0, &fa_5tuple, is_l2_path,
 				       is_ip6, is_input, &match_acl_in_index,
 				       &match_rule_index, &trace_bitmap);
 	      error0 = action;
@@ -1590,6 +1610,17 @@ acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
     }
 }
 
+void
+show_fa_sessions_hash(vlib_main_t * vm, u32 verbose)
+{
+  acl_main_t *am = &acl_main;
+  if (am->fa_sessions_hash_is_initialized) {
+    vlib_cli_output(vm, "\nSession lookup hash table:\n%U\n\n",
+                  BV (format_bihash), &am->fa_sessions_hash, verbose);
+  } else {
+    vlib_cli_output(vm, "\nSession lookup hash table is not allocated.\n\n");
+  }
+}
 
 
 /* *INDENT-OFF* */

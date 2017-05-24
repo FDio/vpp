@@ -22,12 +22,15 @@
 typedef union {
   u64 as_u64;
   struct {
+    u32 sw_if_index;
+    u16 mask_type_index_lsb;
     u8 tcp_flags;
     u8 tcp_flags_valid:1;
     u8 is_input:1;
     u8 l4_valid:1;
     u8 is_nonfirst_fragment:1;
-    u8 flags_reserved:4;
+    u8 is_ip6:1;
+    u8 flags_reserved:3;
   };
 } fa_packet_info_t;
 
@@ -157,6 +160,8 @@ enum
 } acl_fa_cleaner_process_event_e;
 
 void acl_fa_enable_disable(u32 sw_if_index, int is_input, int enable_disable);
+
+void show_fa_sessions_hash(vlib_main_t * vm, u32 verbose);
 
 
 #endif
