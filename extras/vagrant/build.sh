@@ -26,6 +26,12 @@ elif [ -f /etc/redhat-release ];then
     DISTRIB_RELEASE=`lsb_release -sr`
     DISTRIB_CODENAME=`lsb_release -sc`
     DISTRIB_DESCRIPTION=`lsb_release -sd`
+elif [ -f /etc/os-release ];then
+   . /etc/os-release
+   DISTRIB_ID=$ID
+   DISTRIB_RELEASE=$VERSION_ID
+   DISTRIB_CODENAME=$VERSION
+   DISTRIB_DESCRIPTION=$PRETTY_NAME
 fi
 KERNEL_OS=`uname -o`
 KERNEL_MACHINE=`uname -m`
@@ -40,7 +46,7 @@ echo DISTRIB_ID: $DISTRIB_ID
 echo DISTRIB_RELEASE: $DISTRIB_RELEASE
 echo DISTRIB_CODENAME: $DISTRIB_CODENAME
 echo DISTRIB_DESCRIPTION: $DISTRIB_DESCRIPTION
-
+exit
 # Install dependencies
 cd $VPP_DIR
 make UNATTENDED=yes install-dep
@@ -65,7 +71,10 @@ fi
 
 # Build and install packaging
 $SUDOCMD make bootstrap
+
 if [ $DISTRIB_ID == "Ubuntu" ]; then
+    $SUDOCMD make pkg-deb
+elif [ $DISTRIB_ID == "debian" ]; then
     $SUDOCMD make pkg-deb
 elif [ $DISTRIB_ID == "CentOS" ]; then
     (cd $VPP_DIR/vnet ;$SUDOCMD aclocal;$SUDOCMD automake -a)
