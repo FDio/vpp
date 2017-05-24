@@ -206,6 +206,9 @@ mpls_output_inline (vlib_main_t * vm,
                                                         p0, sizeof (*tr));
               tr->adj_index = vnet_buffer(p0)->ip.adj_index[VLIB_TX];
               tr->flow_hash = vnet_buffer(p0)->ip.flow_hash;
+              clib_memcpy (tr->packet_data,
+                           vlib_buffer_get_current (p0),
+                           sizeof (tr->packet_data));
             }
           if (PREDICT_FALSE(p1->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -213,6 +216,9 @@ mpls_output_inline (vlib_main_t * vm,
                                                         p1, sizeof (*tr));
               tr->adj_index = vnet_buffer(p1)->ip.adj_index[VLIB_TX];
               tr->flow_hash = vnet_buffer(p1)->ip.flow_hash;
+              clib_memcpy (tr->packet_data,
+                           vlib_buffer_get_current (p1),
+                           sizeof (tr->packet_data));
             }
 
           vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
