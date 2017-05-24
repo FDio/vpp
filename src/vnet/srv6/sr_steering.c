@@ -310,7 +310,7 @@ update_fib:
 						 table_id : 0)),
 				&pfx, FIB_SOURCE_SR,
 				FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
-				FIB_PROTOCOL_IP6,
+				DPO_PROTO_IP6,
 				(ip46_address_t *) & sr_policy->bsid, ~0,
 				sm->fib_table_ip6, 1, NULL,
 				FIB_ROUTE_PATH_FLAG_NONE);
@@ -327,7 +327,7 @@ update_fib:
 						 table_id : 0)),
 				&pfx, FIB_SOURCE_SR,
 				FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT,
-				FIB_PROTOCOL_IP6,
+				DPO_PROTO_IP6,
 				(ip46_address_t *) & sr_policy->bsid, ~0,
 				sm->fib_table_ip4, 1, NULL,
 				FIB_ROUTE_PATH_FLAG_NONE);

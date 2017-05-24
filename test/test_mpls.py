@@ -6,7 +6,7 @@ import socket
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
-    MRouteItfFlags, MRouteEntryFlags
+    MRouteItfFlags, MRouteEntryFlags, DpoProto
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 from scapy.packet import Raw
@@ -14,6 +14,38 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6
 from scapy.contrib.mpls import MPLS
+
+
+def verify_filter(capture, sent):
+    if not len(capture) == len(sent):
+        # filter out any IPv6 RAs from the capture
+        for p in capture:
+            if p.haslayer(IPv6):
+                capture.remove(p)
+    return capture
+
+
+def verify_mpls_stack(tst, rx, mpls_labels, ttl=255, num=0):
+    # the rx'd packet has the MPLS label popped
+    eth = rx[Ether]
+    tst.assertEqual(eth.type, 0x8847)
+
+    rx_mpls = rx[MPLS]
+
+    for ii in range(len(mpls_labels)):
+        tst.assertEqual(rx_mpls.label, mpls_labels[ii])
+        tst.assertEqual(rx_mpls.cos, 0)
+        if ii == num:
+            tst.assertEqual(rx_mpls.ttl, ttl)
+        else:
+            tst.assertEqual(rx_mpls.ttl, 255)
+        if ii == len(mpls_labels) - 1:
+            tst.assertEqual(rx_mpls.s, 1)
+        else:
+            # not end of stack
+            tst.assertEqual(rx_mpls.s, 0)
+            # pop the label to expose the next
+            rx_mpls = rx_mpls[MPLS].payload
 
 
 class TestMPLS(VppTestCase):
@@ -120,18 +152,9 @@ class TestMPLS(VppTestCase):
             pkts.append(p)
         return pkts
 
-    @staticmethod
-    def verify_filter(capture, sent):
-        if not len(capture) == len(sent):
-            # filter out any IPv6 RAs from the capture
-            for p in capture:
-                if p.haslayer(IPv6):
-                    capture.remove(p)
-        return capture
-
     def verify_capture_ip4(self, src_if, capture, sent, ping_resp=0):
         try:
-            capture = self.verify_filter(capture, sent)
+            capture = verify_filter(capture, sent)
 
             self.assertEqual(len(capture), len(sent))
 
@@ -158,33 +181,10 @@ class TestMPLS(VppTestCase):
         except:
             raise
 
-    def verify_mpls_stack(self, rx, mpls_labels, ttl=255, num=0):
-        # the rx'd packet has the MPLS label popped
-        eth = rx[Ether]
-        self.assertEqual(eth.type, 0x8847)
-
-        rx_mpls = rx[MPLS]
-
-        for ii in range(len(mpls_labels)):
-            self.assertEqual(rx_mpls.label, mpls_labels[ii])
-            self.assertEqual(rx_mpls.cos, 0)
-            if ii == num:
-                self.assertEqual(rx_mpls.ttl, ttl)
-            else:
-                self.assertEqual(rx_mpls.ttl, 255)
-
-            if ii == len(mpls_labels) - 1:
-                self.assertEqual(rx_mpls.s, 1)
-            else:
-                # not end of stack
-                self.assertEqual(rx_mpls.s, 0)
-                # pop the label to expose the next
-                rx_mpls = rx_mpls[MPLS].payload
-
     def verify_capture_labelled_ip4(self, src_if, capture, sent,
                                     mpls_labels):
         try:
-            capture = self.verify_filter(capture, sent)
+            capture = verify_filter(capture, sent)
 
             self.assertEqual(len(capture), len(sent))
 
@@ -195,8 +195,8 @@ class TestMPLS(VppTestCase):
                 rx_ip = rx[IP]
 
                 # the MPLS TTL is copied from the IP
-                self.verify_mpls_stack(
-                    rx, mpls_labels, rx_ip.ttl, len(mpls_labels) - 1)
+                verify_mpls_stack(self, rx, mpls_labels, rx_ip.ttl,
+                                  len(mpls_labels) - 1)
 
                 self.assertEqual(rx_ip.src, tx_ip.src)
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
@@ -211,7 +211,7 @@ class TestMPLS(VppTestCase):
         if top is None:
             top = len(mpls_labels) - 1
         try:
-            capture = self.verify_filter(capture, sent)
+            capture = verify_filter(capture, sent)
 
             self.assertEqual(len(capture), len(sent))
 
@@ -222,8 +222,7 @@ class TestMPLS(VppTestCase):
                 rx_ip = rx[IP]
 
                 # the MPLS TTL is 255 since it enters a new tunnel
-                self.verify_mpls_stack(
-                    rx, mpls_labels, ttl, top)
+                verify_mpls_stack(self, rx, mpls_labels, ttl, top)
 
                 self.assertEqual(rx_ip.src, tx_ip.src)
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
@@ -236,13 +235,13 @@ class TestMPLS(VppTestCase):
     def verify_capture_labelled(self, src_if, capture, sent,
                                 mpls_labels, ttl=254, num=0):
         try:
-            capture = self.verify_filter(capture, sent)
+            capture = verify_filter(capture, sent)
 
             self.assertEqual(len(capture), len(sent))
 
             for i in range(len(capture)):
                 rx = capture[i]
-                self.verify_mpls_stack(rx, mpls_labels, ttl, num)
+                verify_mpls_stack(self, rx, mpls_labels, ttl, num)
         except:
             raise
 
@@ -1049,7 +1048,7 @@ class TestMPLS(VppTestCase):
                           self.pg1.sw_if_index,
                           nh_table_id=1,
                           rpf_id=55,
-                          is_ip6=1)],
+                          proto=DpoProto.DPO_PROTO_IP6)],
             is_multicast=1)
 
         route_34_eos.add_vpp_config()
@@ -1440,19 +1439,20 @@ class TestMPLSPIC(VppTestCase):
         for ii in range(64):
             dst = "3000::%d" % ii
             local_label = 1600 + ii
-            vpn_routes.append(VppIpRoute(self, dst, 128,
-                                         [VppRoutePath(self.pg2.remote_ip6,
-                                                       0xffffffff,
-                                                       nh_table_id=1,
-                                                       is_resolve_attached=1,
-                                                       is_ip6=1),
-                                          VppRoutePath(self.pg3.remote_ip6,
-                                                       0xffffffff,
-                                                       nh_table_id=1,
-                                                       is_ip6=1,
-                                                       is_resolve_attached=1)],
-                                         table_id=1,
-                                         is_ip6=1))
+            vpn_routes.append(VppIpRoute(
+                self, dst, 128,
+                [VppRoutePath(self.pg2.remote_ip6,
+                              0xffffffff,
+                              nh_table_id=1,
+                              is_resolve_attached=1,
+                              proto=DpoProto.DPO_PROTO_IP6),
+                 VppRoutePath(self.pg3.remote_ip6,
+                              0xffffffff,
+                              nh_table_id=1,
+                              proto=DpoProto.DPO_PROTO_IP6,
+                              is_resolve_attached=1)],
+                table_id=1,
+                is_ip6=1))
             vpn_routes[ii].add_vpp_config()
 
             vpn_bindings.append(VppMplsIpBind(self, local_label, dst, 128,
@@ -1524,6 +1524,212 @@ class TestMPLSPIC(VppTestCase):
         self.assertNotEqual(0, len(rx0))
         self.assertNotEqual(0, len(rx1))
 
+
+class TestMPLSL2(VppTestCase):
+    """ MPLS-L2 """
+
+    def setUp(self):
+        super(TestMPLSL2, self).setUp()
+
+        # create 2 pg interfaces
+        self.create_pg_interfaces(range(2))
+
+        # use pg0 as the core facing interface
+        self.pg0.admin_up()
+        self.pg0.config_ip4()
+        self.pg0.resolve_arp()
+        self.pg0.enable_mpls()
+
+        # use the other 2 for customer facg L2 links
+        for i in self.pg_interfaces[1:]:
+            i.admin_up()
+
+    def tearDown(self):
+        super(TestMPLSL2, self).tearDown()
+        for i in self.pg_interfaces[1:]:
+            i.admin_down()
+
+        self.pg0.disable_mpls()
+        self.pg0.unconfig_ip4()
+        self.pg0.admin_down()
+
+    def verify_capture_tunneled_ethernet(self, capture, sent, mpls_labels,
+                                         ttl=255, top=None):
+        if top is None:
+            top = len(mpls_labels) - 1
+
+        capture = verify_filter(capture, sent)
+
+        self.assertEqual(len(capture), len(sent))
+
+        for i in range(len(capture)):
+            tx = sent[i]
+            rx = capture[i]
+
+            # the MPLS TTL is 255 since it enters a new tunnel
+            verify_mpls_stack(self, rx, mpls_labels, ttl, top)
+
+            tx_eth = tx[Ether]
+            rx_eth = Ether(str(rx[MPLS].payload))
+
+            self.assertEqual(rx_eth.src, tx_eth.src)
+            self.assertEqual(rx_eth.dst, tx_eth.dst)
+
+    def test_vpws(self):
+        """ Virtual Private Wire Service """
+
+        #
+        # Create an MPLS tunnel that pushes 1 label
+        #
+        mpls_tun_1 = VppMPLSTunnelInterface(self,
+                                            [VppRoutePath(self.pg0.remote_ip4,
+                                                          self.pg0.sw_if_index,
+                                                          labels=[42])],
+                                            is_l2=1)
+        mpls_tun_1.add_vpp_config()
+        mpls_tun_1.admin_up()
+
+        #
+        # Create a label entry to for 55 that does L2 input to the tunnel
+        #
+        route_55_eos = VppMplsRoute(
+            self, 55, 1,
+            [VppRoutePath("0.0.0.0",
+                          mpls_tun_1.sw_if_index,
+                          is_interface_rx=1,
+                          proto=DpoProto.DPO_PROTO_ETHERNET)])
+        route_55_eos.add_vpp_config()
+
+        #
+        # Cross-connect the tunnel with one of the customers L2 interfaces
+        #
+        self.vapi.sw_interface_set_l2_xconnect(self.pg1.sw_if_index,
+                                               mpls_tun_1.sw_if_index,
+                                               enable=1)
+        self.vapi.sw_interface_set_l2_xconnect(mpls_tun_1.sw_if_index,
+                                               self.pg1.sw_if_index,
+                                               enable=1)
+
+        #
+        # inject a packet from the core
+        #
+        pcore = (Ether(dst=self.pg0.local_mac,
+                       src=self.pg0.remote_mac) /
+                 MPLS(label=55, ttl=64) /
+                 Ether(dst="00:00:de:ad:ba:be",
+                       src="00:00:de:ad:be:ef") /
+                 IP(src="10.10.10.10", dst="11.11.11.11") /
+                 UDP(sport=1234, dport=1234) /
+                 Raw('\xa5' * 100))
+
+        self.pg0.add_stream(pcore * 65)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx0 = self.pg1.get_capture(65)
+        tx = pcore[MPLS].payload
+
+        self.assertEqual(rx0[0][Ether].dst, tx[Ether].dst)
+        self.assertEqual(rx0[0][Ether].src, tx[Ether].src)
+
+        #
+        # Inject a packet from the custoer/L2 side
+        #
+        self.pg1.add_stream(tx * 65)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx0 = self.pg0.get_capture(65)
+
+        self.verify_capture_tunneled_ethernet(rx0, tx*65, [42])
+
+    def test_vpls(self):
+        """ Virtual Private LAN Service """
+        #
+        # Create an L2 MPLS tunnel
+        #
+        mpls_tun = VppMPLSTunnelInterface(self,
+                                          [VppRoutePath(self.pg0.remote_ip4,
+                                                        self.pg0.sw_if_index,
+                                                        labels=[42])],
+                                          is_l2=1)
+        mpls_tun.add_vpp_config()
+        mpls_tun.admin_up()
+
+        #
+        # Create a label entry to for 55 that does L2 input to the tunnel
+        #
+        route_55_eos = VppMplsRoute(
+            self, 55, 1,
+            [VppRoutePath("0.0.0.0",
+                          mpls_tun.sw_if_index,
+                          is_interface_rx=1,
+                          proto=DpoProto.DPO_PROTO_ETHERNET)])
+        route_55_eos.add_vpp_config()
+
+        #
+        # add to tunnel to the customers bridge-domain
+        #
+        self.vapi.sw_interface_set_l2_bridge(mpls_tun.sw_if_index,
+                                             bd_id=1)
+        self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index,
+                                             bd_id=1)
+
+        #
+        # Packet from the customer interface and from the core
+        #
+        p_cust = (Ether(dst="00:00:de:ad:ba:be",
+                        src="00:00:de:ad:be:ef") /
+                  IP(src="10.10.10.10", dst="11.11.11.11") /
+                  UDP(sport=1234, dport=1234) /
+                  Raw('\xa5' * 100))
+        p_core = (Ether(src="00:00:de:ad:ba:be",
+                        dst="00:00:de:ad:be:ef") /
+                  IP(dst="10.10.10.10", src="11.11.11.11") /
+                  UDP(sport=1234, dport=1234) /
+                  Raw('\xa5' * 100))
+
+        #
+        # The BD is learning, so send in one of each packet to learn
+        #
+        p_core_encap = (Ether(dst=self.pg0.local_mac,
+                              src=self.pg0.remote_mac) /
+                        MPLS(label=55, ttl=64) /
+                        p_core)
+
+        self.pg1.add_stream(p_cust)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg0.add_stream(p_core_encap)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # we've learnt this so expect it be be forwarded
+        rx0 = self.pg1.get_capture(1)
+
+        self.assertEqual(rx0[0][Ether].dst, p_core[Ether].dst)
+        self.assertEqual(rx0[0][Ether].src, p_core[Ether].src)
+
+        #
+        # now a stream in each direction
+        #
+        self.pg1.add_stream(p_cust * 65)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx0 = self.pg0.get_capture(65)
+
+        self.verify_capture_tunneled_ethernet(rx0, p_cust*65, [42])
+
+        #
+        # remove interfaces from customers bridge-domain
+        #
+        self.vapi.sw_interface_set_l2_bridge(mpls_tun.sw_if_index,
+                                             bd_id=1,
+                                             enable=0)
+        self.vapi.sw_interface_set_l2_bridge(self.pg1.sw_if_index,
+                                             bd_id=1,
+                                             enable=0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

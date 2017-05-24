@@ -98,7 +98,7 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
 
       vec_add2 (rpaths, rpath, 1);
 
-      rpath->frp_proto = FIB_PROTOCOL_IP4;
+      rpath->frp_proto = DPO_PROTO_IP4;
       rpath->frp_addr = next_hops[i];
       rpath->frp_sw_if_index = sw_if_index;
       rpath->frp_fib_index = ~0;

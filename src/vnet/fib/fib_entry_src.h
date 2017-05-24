@@ -73,7 +73,7 @@ typedef void (*fib_entry_src_deactivate_t)(fib_entry_src_t *src,
 typedef void (*fib_entry_src_add_t)(fib_entry_src_t *src,
 				    const fib_entry_t *entry,
 				    fib_entry_flag_t flags,
-				    fib_protocol_t proto,
+				    dpo_proto_t proto,
 				    const dpo_id_t *dpo);
 
 /**
@@ -277,6 +277,8 @@ extern void fib_entry_src_mk_lb (fib_entry_t *fib_entry,
 				 fib_forward_chain_type_t fct,
 				 dpo_id_t *dpo_lb);
 
+extern fib_protocol_t fib_entry_get_proto(const fib_entry_t * fib_entry);
+extern dpo_proto_t fib_entry_get_dpo_proto(const fib_entry_t * fib_entry);
 
 /*
  * Per-source registration. declared here so we save a separate .h file for each

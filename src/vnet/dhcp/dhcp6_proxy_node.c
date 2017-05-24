@@ -857,7 +857,7 @@ dhcp6_proxy_set_server (ip46_address_t *addr,
   else
     {
      const fib_route_path_t path_for_us = {
-          .frp_proto = FIB_PROTOCOL_IP6,
+          .frp_proto = DPO_PROTO_IP6,
           .frp_addr = zero_addr,
           .frp_sw_if_index = 0xffffffff,
           .frp_fib_index = ~0,

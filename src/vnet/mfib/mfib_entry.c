@@ -764,18 +764,16 @@ mfib_entry_update (fib_node_index_t mfib_entry_index,
          * entry
          */
         fib_node_index_t old_pl_index;
-        fib_protocol_t fp;
+        dpo_proto_t dp;
         dpo_id_t dpo = DPO_INVALID;
 
-        fp = mfib_entry_get_proto(mfib_entry);
+        dp = fib_proto_to_dpo(mfib_entry_get_proto(mfib_entry));
         old_pl_index = msrc->mfes_pl;
 
-        dpo_set(&dpo, DPO_REPLICATE,
-                fib_proto_to_dpo(fp),
-                repi);
+        dpo_set(&dpo, DPO_REPLICATE, dp, repi);
 
         msrc->mfes_pl =
-            fib_path_list_create_special(fp,
+            fib_path_list_create_special(dp,
                                          FIB_PATH_LIST_FLAG_EXCLUSIVE,
                                          &dpo);
 

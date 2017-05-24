@@ -4,7 +4,7 @@ import unittest
 import socket
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
 
 from scapy.layers.l2 import Ether, Raw
 from scapy.layers.inet import IP, UDP, ICMP
@@ -75,7 +75,7 @@ class TestMAP(VppTestCase):
                                map_br_pfx_len,
                                [VppRoutePath(self.pg1.remote_ip6,
                                              self.pg1.sw_if_index,
-                                             is_ip6=1)],
+                                             proto=DpoProto.DPO_PROTO_IP6)],
                                is_ip6=1)
         map_route.add_vpp_config()
 
@@ -138,13 +138,12 @@ class TestMAP(VppTestCase):
         # Add a route to 4001::1. Expect the encapped traffic to be
         # sent via that routes next-hop
         #
-        pre_res_route = VppIpRoute(self,
-                                   "4001::1",
-                                   128,
-                                   [VppRoutePath(self.pg1.remote_hosts[2].ip6,
-                                                 self.pg1.sw_if_index,
-                                                 is_ip6=1)],
-                                   is_ip6=1)
+        pre_res_route = VppIpRoute(
+            self, "4001::1", 128,
+            [VppRoutePath(self.pg1.remote_hosts[2].ip6,
+                          self.pg1.sw_if_index,
+                          proto=DpoProto.DPO_PROTO_IP6)],
+            is_ip6=1)
         pre_res_route.add_vpp_config()
 
         self.send_and_assert_encapped(v4, map_src,
@@ -156,7 +155,7 @@ class TestMAP(VppTestCase):
         #
         pre_res_route.modify([VppRoutePath(self.pg1.remote_hosts[3].ip6,
                                            self.pg1.sw_if_index,
-                                           is_ip6=1)])
+                                           proto=DpoProto.DPO_PROTO_IP6)])
         pre_res_route.add_vpp_config()
 
         self.send_and_assert_encapped(v4, map_src,
