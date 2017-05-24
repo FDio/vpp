@@ -14,11 +14,11 @@
  */
 #undef BIHASH_TYPE
 
-#define BIHASH_TYPE _40_8
+#define BIHASH_TYPE _48_8
 #define BIHASH_KVP_PER_PAGE 4
 
-#ifndef __included_bihash_40_8_h__
-#define __included_bihash_40_8_h__
+#ifndef __included_bihash_48_8_h__
+#define __included_bihash_48_8_h__
 
 #include <vppinfra/heap.h>
 #include <vppinfra/format.h>
@@ -28,12 +28,12 @@
 
 typedef struct
 {
-  u64 key[5];
+  u64 key[6];
   u64 value;
-} clib_bihash_kv_40_8_t;
+} clib_bihash_kv_48_8_t;
 
 static inline int
-clib_bihash_is_free_40_8 (const clib_bihash_kv_40_8_t * v)
+clib_bihash_is_free_48_8 (const clib_bihash_kv_48_8_t * v)
 {
   /* Free values are memset to 0xff, check a bit... */
   if (v->key[0] == ~0ULL && v->value == ~0ULL)
@@ -42,38 +42,39 @@ clib_bihash_is_free_40_8 (const clib_bihash_kv_40_8_t * v)
 }
 
 static inline u64
-clib_bihash_hash_40_8 (const clib_bihash_kv_40_8_t * v)
+clib_bihash_hash_48_8 (const clib_bihash_kv_48_8_t * v)
 {
-  return clib_crc32c ((u8 *) v->key, 40);
+  return clib_crc32c ((u8 *) v->key, 48);
 #if __SSE4_2__
-  return clib_crc32c ((u8 *) v->key, 40);
+  return clib_crc32c ((u8 *) v->key, 48);
 #else
-  u64 tmp = v->key[0] ^ v->key[1] ^ v->key[2] ^ v->key[3] ^ v->key[4];
+  u64 tmp = v->key[0] ^ v->key[1] ^ v->key[2] ^ v->key[3] ^ v->key[4] ^ v->key[5];
   return clib_xxhash (tmp);
 #endif
 }
 
 static inline u8 *
-format_bihash_kvp_40_8 (u8 * s, va_list * args)
+format_bihash_kvp_48_8 (u8 * s, va_list * args)
 {
-  clib_bihash_kv_40_8_t *v = va_arg (*args, clib_bihash_kv_40_8_t *);
-  s = format (s, "key %016llx %016llx %016llx %016llx %016llx value %016llx",
-	      v->key[0], v->key[1], v->key[2], v->key[3], v->key[4],
+  clib_bihash_kv_48_8_t *v = va_arg (*args, clib_bihash_kv_48_8_t *);
+
+  s = format (s, "key %016llx %016llx %016llx %016llx %016llx %016llx value %016llx",
+	      v->key[0], v->key[1], v->key[2], v->key[3], v->key[4], v->key[5],
 	      v->value);
   return s;
 }
 
 static inline int
-clib_bihash_key_compare_40_8 (const u64 * a, const u64 * b)
+clib_bihash_key_compare_48_8 (const u64 * a, const u64 * b)
 {
   return ((a[0] ^ b[0]) | (a[1] ^ b[1]) | (a[2] ^ b[2]) | (a[3] ^ b[3]) |
-	  (a[4] ^ b[4])) == 0;
+	  (a[4] ^ b[4]) | (a[5] ^ b[5])) == 0;
 }
 
 #undef __included_bihash_template_h__
 #include <vppinfra/bihash_template.h>
 
-#endif /* __included_bihash_40_8_h__ */
+#endif /* __included_bihash_48_8_h__ */
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -16,6 +16,7 @@ vppplugins_LTLIBRARIES += acl_plugin.la
 
 acl_plugin_la_SOURCES =				\
 	acl/acl.c				\
+	acl/hash_lookup.c			\
 	acl/fa_node.c			\
 	acl/l2sess.h				\
 	acl/manual_fns.h			\
