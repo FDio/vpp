@@ -66,10 +66,11 @@ class VppRoutePath(object):
         self.nh_labels = labels
         self.weight = 1
         self.rpf_id = rpf_id
-        if is_ip6:
-            self.nh_addr = inet_pton(AF_INET6, nh_addr)
-        else:
+        self.is_ip4 = 1 if is_ip6 == 0 else 0
+        if self.is_ip4:
             self.nh_addr = inet_pton(AF_INET, nh_addr)
+        else:
+            self.nh_addr = inet_pton(AF_INET6, nh_addr)
         self.is_resolve_host = is_resolve_host
         self.is_resolve_attached = is_resolve_attached
         self.is_interface_rx = is_interface_rx
@@ -400,7 +401,7 @@ class VppMplsRoute(VppObject):
             self._test.vapi.mpls_route_add_del(
                 self.local_label,
                 self.eos_bit,
-                1,
+                path.is_ip4,
                 path.nh_addr,
                 path.nh_itf,
                 is_multicast=self.is_multicast,
