@@ -350,17 +350,17 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
   if (a->address_length < 128)
     {
       fib_table_entry_update_one_path (fib_index,
-				       &pfx,
-				       FIB_SOURCE_INTERFACE,
-				       (FIB_ENTRY_FLAG_CONNECTED |
-					FIB_ENTRY_FLAG_ATTACHED),
-				       FIB_PROTOCOL_IP6,
-				       /* No next-hop address */
-				       NULL, sw_if_index,
-				       /* invalid FIB index */
-				       ~0, 1,
-				       /* no label stack */
-				       NULL, FIB_ROUTE_PATH_FLAG_NONE);
+                                       &pfx,
+                                       FIB_SOURCE_INTERFACE,
+                                       (FIB_ENTRY_FLAG_CONNECTED |
+                                        FIB_ENTRY_FLAG_ATTACHED),
+                                       DPO_PROTO_IP6,
+                                       /* No next-hop address */
+                                       NULL, sw_if_index,
+                                       /* invalid FIB index */
+                                       ~0, 1,
+                                       /* no label stack */
+                                       NULL, FIB_ROUTE_PATH_FLAG_NONE);
     }
 
   pfx.fp_len = 128;
@@ -389,7 +389,7 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 				   FIB_SOURCE_INTERFACE,
 				   (FIB_ENTRY_FLAG_CONNECTED |
 				    FIB_ENTRY_FLAG_LOCAL),
-				   FIB_PROTOCOL_IP6,
+				   DPO_PROTO_IP6,
 				   &pfx.fp_addr,
 				   sw_if_index, ~0,
 				   1, NULL, FIB_ROUTE_PATH_FLAG_NONE);

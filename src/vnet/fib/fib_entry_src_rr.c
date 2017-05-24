@@ -35,7 +35,7 @@ fib_entry_src_rr_resolve_via_connected (fib_entry_src_t *src,
 					const fib_entry_t *cover)
 {
     const fib_route_path_t path = {
-	.frp_proto = fib_entry->fe_prefix.fp_proto,
+	.frp_proto = fib_proto_to_dpo(fib_entry->fe_prefix.fp_proto),
 	.frp_addr = fib_entry->fe_prefix.fp_addr,
 	.frp_sw_if_index = fib_entry_get_resolving_interface(
 	                       fib_entry_get_index(cover)),
@@ -90,18 +90,17 @@ fib_entry_src_rr_use_covers_pl (fib_entry_src_t *src,
                                 const fib_entry_t *cover)
 {
     fib_node_index_t *entries = NULL;
-    fib_protocol_t proto;
+    dpo_proto_t proto;
 
-    proto = fib_entry->fe_prefix.fp_proto;
+    proto = fib_proto_to_dpo(fib_entry->fe_prefix.fp_proto);
     vec_add1(entries, fib_entry_get_index(fib_entry));
 
     if (fib_path_list_recursive_loop_detect(cover->fe_parent,
                                             &entries))
     {
-        src->fes_pl = fib_path_list_create_special(
-            proto,
-            FIB_PATH_LIST_FLAG_DROP,
-            drop_dpo_get(fib_proto_to_dpo(proto)));
+        src->fes_pl = fib_path_list_create_special(proto,
+                                                   FIB_PATH_LIST_FLAG_DROP,
+                                                   drop_dpo_get(proto));
     }
     else
     {
@@ -126,7 +125,7 @@ fib_entry_src_rr_activate (fib_entry_src_t *src,
      */
     if (FIB_PROTOCOL_MPLS == fib_entry->fe_prefix.fp_proto)
     {
-	src->fes_pl = fib_path_list_create_special(FIB_PROTOCOL_MPLS,
+	src->fes_pl = fib_path_list_create_special(DPO_PROTO_MPLS,
 						   FIB_PATH_LIST_FLAG_DROP,
 						   NULL);
 	fib_path_list_lock(src->fes_pl);
