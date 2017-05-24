@@ -195,11 +195,17 @@ const static char* const interface_dpo_ip6_nodes[] =
     "interface-dpo-ip4",
     NULL,
 };
+const static char* const interface_dpo_l2_nodes[] =
+{
+    "interface-dpo-l2",
+    NULL,
+};
 
 const static char* const * const interface_dpo_nodes[DPO_PROTO_NUM] =
 {
     [DPO_PROTO_IP4]  = interface_dpo_ip4_nodes,
     [DPO_PROTO_IP6]  = interface_dpo_ip6_nodes,
+    [DPO_PROTO_ETHERNET]  = interface_dpo_l2_nodes,
     [DPO_PROTO_MPLS] = NULL,
 };
 
@@ -382,6 +388,14 @@ interface_dpo_ip6 (vlib_main_t * vm,
     return (interface_dpo_inline(vm, node, from_frame));
 }
 
+static uword
+interface_dpo_l2 (vlib_main_t * vm,
+                   vlib_node_runtime_t * node,
+                   vlib_frame_t * from_frame)
+{
+    return (interface_dpo_inline(vm, node, from_frame));
+}
+
 VLIB_REGISTER_NODE (interface_dpo_ip4_node) = {
     .function = interface_dpo_ip4,
     .name = "interface-dpo-ip4",
@@ -413,4 +427,20 @@ VLIB_REGISTER_NODE (interface_dpo_ip6_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (interface_dpo_ip6_node,
                               interface_dpo_ip6)
+
+VLIB_REGISTER_NODE (interface_dpo_l2_node) = {
+    .function = interface_dpo_l2,
+    .name = "interface-dpo-l2",
+    .vector_size = sizeof (u32),
+    .format_trace = format_interface_dpo_trace,
+
+    .n_next_nodes = 2,
+    .next_nodes = {
+        [INTERFACE_DPO_DROP] = "error-drop",
+        [INTERFACE_DPO_INPUT] = "l2-input",
+    },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (interface_dpo_l2_node,
+                              interface_dpo_l2)
 
