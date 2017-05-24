@@ -26,6 +26,8 @@ elif [ -f /etc/redhat-release ];then
     DISTRIB_RELEASE=`lsb_release -sr`
     DISTRIB_CODENAME=`lsb_release -sc`
     DISTRIB_DESCRIPTION=`lsb_release -sd`
+elif [ -f /etc/os-release ];then
+	DISTRIB_ID=$(grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 fi
 KERNEL_OS=`uname -o`
 KERNEL_MACHINE=`uname -m`
@@ -43,7 +45,7 @@ echo DISTRIB_DESCRIPTION: $DISTRIB_DESCRIPTION
 
 # Install dependencies
 cd $VPP_DIR
-make UNATTENDED=yes install-dep
+$make UNATTENDED=yes install-dep
 
 # Really really clean things up so we can be sure
 # that the build works even when switching distros
@@ -65,7 +67,10 @@ fi
 
 # Build and install packaging
 $SUDOCMD make bootstrap
+
 if [ $DISTRIB_ID == "Ubuntu" ]; then
+    $SUDOCMD make pkg-deb
+elif [ $DISTRIB_ID == "debian" ]; then
     $SUDOCMD make pkg-deb
 elif [ $DISTRIB_ID == "CentOS" ]; then
     (cd $VPP_DIR/vnet ;$SUDOCMD aclocal;$SUDOCMD automake -a)
