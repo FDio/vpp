@@ -23,14 +23,19 @@ typedef enum mpls_tunnel_attribute_t_
 {
     MPLS_TUNNEL_ATTRIBUTE_FIRST = 0,
     /**
+     * @brief The tunnel is L2 only
+     */
+    MPLS_TUNNEL_ATTRIBUTE_L2 = MPLS_TUNNEL_ATTRIBUTE_FIRST,
+    /**
      * @brief The tunnel has an underlying multicast LSP
      */
-    MPLS_TUNNEL_ATTRIBUTE_MCAST = MPLS_TUNNEL_ATTRIBUTE_FIRST,
+    MPLS_TUNNEL_ATTRIBUTE_MCAST,
     MPLS_TUNNEL_ATTRIBUTE_LAST = MPLS_TUNNEL_ATTRIBUTE_MCAST,
 } mpls_tunnel_attribute_t;
 
 #define MPLS_TUNNEL_ATTRIBUTES {		  \
     [MPLS_TUNNEL_ATTRIBUTE_MCAST]  = "multicast", \
+    [MPLS_TUNNEL_ATTRIBUTE_L2]     = "L2",   \
 }
 #define FOR_EACH_MPLS_TUNNEL_ATTRIBUTE(_item)		\
     for (_item = MPLS_TUNNEL_ATTRIBUTE_FIRST;		\
@@ -39,6 +44,7 @@ typedef enum mpls_tunnel_attribute_t_
 
 typedef enum mpls_tunnel_flag_t_ {
     MPLS_TUNNEL_FLAG_NONE   = 0,
+    MPLS_TUNNEL_FLAG_L2     = (1 << MPLS_TUNNEL_ATTRIBUTE_L2),
     MPLS_TUNNEL_FLAG_MCAST  = (1 << MPLS_TUNNEL_ATTRIBUTE_MCAST),
 } __attribute__ ((packed)) mpls_tunnel_flags_t;
 
@@ -60,14 +66,19 @@ typedef struct mpls_tunnel_t_
 
     /**
      * @brief If the tunnel is an L2 tunnel, this is the link type ETHERNET
-     * adjacency
+     * load-balance
      */
-    adj_index_t mt_l2_adj;
+    dpo_id_t mt_l2_lb;
 
     /**
-     * @brief on a L2 tunnel this is the VLIB arc from the L2-tx to the l2-midchain
+     * @brief The HW interface index of the tunnel interfaces
      */
-    u32 mt_l2_tx_arc;
+    u32 mt_hw_if_index;
+
+    /**
+     * @brief The SW interface index of the tunnel interfaces
+     */
+    u32 mt_sw_if_index;
 
     /**
      * @brief The path-list over which the tunnel's destination is reachable
@@ -83,23 +94,6 @@ typedef struct mpls_tunnel_t_
      * A vector of path extensions o hold the label stack for each path
      */
     fib_path_ext_list_t mt_path_exts;
-
-    /**
-     * @brief Flag to indicate the tunnel is only for L2 traffic, that is
-     * this tunnel belongs in a bridge domain.
-     */
-    u8 mt_l2_only;
-
-    /**
-     * @brief The HW interface index of the tunnel interfaces
-     */
-    u32 mt_hw_if_index;
-
-    /**
-     * @brief The SW interface index of the tunnel interfaces
-     */
-    u32 mt_sw_if_index;
-
 } mpls_tunnel_t;
 
 /**

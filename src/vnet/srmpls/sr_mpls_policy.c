@@ -75,7 +75,7 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
   segment_list->segments = vec_dup (sl);
 
   fib_route_path_t path = {
-    .frp_proto = FIB_PROTOCOL_MPLS,
+    .frp_proto = DPO_PROTO_MPLS,
     .frp_sw_if_index = ~0,
     .frp_fib_index = 0,
     .frp_weight = segment_list->weight,
@@ -203,7 +203,7 @@ sr_mpls_policy_del (mpls_label_t bsid, u32 index)
     segment_list = pool_elt_at_index (sm->sid_lists, *sl_index);
 
     fib_route_path_t path = {
-      .frp_proto = FIB_PROTOCOL_MPLS,
+      .frp_proto = DPO_PROTO_MPLS,
       .frp_sw_if_index = ~0,
       .frp_fib_index = 0,
       .frp_weight = segment_list->weight,
@@ -308,7 +308,7 @@ sr_mpls_policy_mod (mpls_label_t bsid, u32 index, u8 operation,
 
       mpls_eos_bit_t eos;
       fib_route_path_t path = {
-	.frp_proto = FIB_PROTOCOL_MPLS,
+	.frp_proto = DPO_PROTO_MPLS,
 	.frp_sw_if_index = ~0,
 	.frp_fib_index = 0,
 	.frp_weight = segment_list->weight,

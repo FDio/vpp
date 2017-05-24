@@ -79,10 +79,10 @@ fib_entry_src_lisp_path_remove (fib_entry_src_t *src,
 
 static void
 fib_entry_src_lisp_add (fib_entry_src_t *src,
-		       const fib_entry_t *entry,
-		       fib_entry_flag_t flags,
-		       fib_protocol_t proto,
-		       const dpo_id_t *dpo)
+                        const fib_entry_t *entry,
+                        fib_entry_flag_t flags,
+                        dpo_proto_t proto,
+                        const dpo_id_t *dpo)
 {
     if (FIB_ENTRY_FLAG_NONE != flags)
     {

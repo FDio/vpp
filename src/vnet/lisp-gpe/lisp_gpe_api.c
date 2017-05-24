@@ -455,10 +455,10 @@ static void
     clib_memcpy (&a->rpath.frp_addr.ip6, mp->nh_addr, sizeof (ip6_address_t));
 
   a->is_add = mp->is_add;
-  a->rpath.frp_proto = mp->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
-  a->rpath.frp_fib_index = fib_table_find (a->rpath.frp_proto,
-					   clib_net_to_host_u32
-					   (mp->table_id));
+  a->rpath.frp_proto = mp->is_ip4 ? DPO_PROTO_IP4 : DPO_PROTO_IP6;
+  a->rpath.frp_fib_index =
+    fib_table_find (dpo_proto_to_fib (a->rpath.frp_proto),
+		    clib_net_to_host_u32 (mp->table_id));
   if (~0 == a->rpath.frp_fib_index)
     {
       rv = VNET_API_ERROR_INVALID_VALUE;
@@ -484,7 +484,7 @@ gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t * dst,
   vec_foreach (e, src)
   {
     memset (&dst[i], 0, sizeof (*dst));
-    table = fib_table_get (e->frp_fib_index, e->frp_proto);
+    table = fib_table_get (e->frp_fib_index, dpo_proto_to_fib (e->frp_proto));
     dst[i].fib_index = table->ft_table_id;
     dst[i].nh_sw_if_index = e->frp_sw_if_index;
     dst[i].is_ip4 = is_ip4;

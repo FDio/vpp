@@ -261,7 +261,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index,
 			 &rpath.frp_weight))
       {
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  rpath.frp_proto = DPO_PROTO_IP4;
 	  vec_add1(rpaths, rpath);
       }
 
@@ -272,7 +272,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index,
 			 &rpath.frp_weight))
       {
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  rpath.frp_proto = DPO_PROTO_IP6;
 	  vec_add1(rpaths, rpath);
       }
 
@@ -283,7 +283,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index))
       {
 	  rpath.frp_weight = 1;
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  rpath.frp_proto = DPO_PROTO_IP4;
 	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input, "rx-ip4 %U",
@@ -291,7 +291,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index))
       {
 	  rpath.frp_weight = 1;
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  rpath.frp_proto = DPO_PROTO_IP4;
           rpath.frp_flags = FIB_ROUTE_PATH_INTF_RX;
 	  vec_add1(rpaths, rpath);
       }
@@ -302,7 +302,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index))
       {
 	  rpath.frp_weight = 1;
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  rpath.frp_proto = DPO_PROTO_IP6;
 	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input, "via %U next-hop-table %d",
@@ -312,7 +312,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
       {
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  rpath.frp_proto = DPO_PROTO_IP4;
 	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input, "via %U next-hop-table %d",
@@ -322,7 +322,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
       {
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  rpath.frp_proto = DPO_PROTO_IP6;
 	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input, "via %U",
@@ -336,7 +336,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 	  rpath.frp_fib_index = table_id;
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  rpath.frp_proto = DPO_PROTO_IP4;
 	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input, "via %U",
@@ -346,7 +346,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 	  rpath.frp_fib_index = table_id;
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  rpath.frp_proto = DPO_PROTO_IP6;
 	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input, "%d", &local_label))
@@ -355,7 +355,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 			 "ip4-lookup-in-table %d",
 			 &rpath.frp_fib_index))
       {
-          rpath.frp_proto = FIB_PROTOCOL_IP4;
+          rpath.frp_proto = DPO_PROTO_IP4;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
 	  pfx.fp_payload_proto = DPO_PROTO_IP4;
 	  vec_add1(rpaths, rpath);
@@ -364,7 +364,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
 			 "ip6-lookup-in-table %d",
 			 &rpath.frp_fib_index))
       {
-          rpath.frp_proto = FIB_PROTOCOL_IP6;
+          rpath.frp_proto = DPO_PROTO_IP6;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
 	  vec_add1(rpaths, rpath);
 	  pfx.fp_payload_proto = DPO_PROTO_IP6;
@@ -373,9 +373,19 @@ vnet_mpls_local_label (vlib_main_t * vm,
 			 "mpls-lookup-in-table %d",
 			 &rpath.frp_fib_index))
       {
-          rpath.frp_proto = FIB_PROTOCOL_MPLS;
+          rpath.frp_proto = DPO_PROTO_MPLS;
           rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
 	  pfx.fp_payload_proto = DPO_PROTO_MPLS;
+	  vec_add1(rpaths, rpath);
+      }
+      else if (unformat (line_input,
+			 "l2-input-on %U",
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index))
+      {
+          rpath.frp_proto = DPO_PROTO_ETHERNET;
+	  pfx.fp_payload_proto = DPO_PROTO_ETHERNET;
+          rpath.frp_flags = FIB_ROUTE_PATH_INTF_RX;
 	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input, "out-label %U",
@@ -440,7 +450,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
       pfx.fp_proto = FIB_PROTOCOL_MPLS;
       pfx.fp_len = 21;
       pfx.fp_label = local_label;
-      pfx.fp_payload_proto = fib_proto_to_dpo(rpaths[0].frp_proto);
+      pfx.fp_payload_proto = rpaths[0].frp_proto;
 
       /*
        * the CLI parsing stored table Ids, swap to FIB indicies

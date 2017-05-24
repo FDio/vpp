@@ -109,6 +109,25 @@ vnet_link_to_dpo_proto (vnet_link_t linkt)
     return (0);
 }
 
+vnet_link_t
+dpo_proto_to_link (dpo_proto_t dp)
+{
+    switch (dp)
+    {
+    case DPO_PROTO_IP6:
+        return (VNET_LINK_IP6);
+    case DPO_PROTO_IP4:
+        return (VNET_LINK_IP4);
+    case DPO_PROTO_MPLS:
+        return (VNET_LINK_MPLS);
+    case DPO_PROTO_ETHERNET:
+        return (VNET_LINK_ETHERNET);
+    case DPO_PROTO_NSH:
+        return (VNET_LINK_NSH);
+    }
+    return (~0);
+}
+
 u8 *
 format_dpo_type (u8 * s, va_list * args)
 {

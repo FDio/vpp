@@ -59,14 +59,10 @@ typedef u32 index_t;
  */
 typedef enum dpo_proto_t_
 {
-#if CLIB_DEBUG > 0
-    DPO_PROTO_IP4 = 1,
-#else
     DPO_PROTO_IP4 = 0,
-#endif
     DPO_PROTO_IP6,
-    DPO_PROTO_ETHERNET,
     DPO_PROTO_MPLS,
+    DPO_PROTO_ETHERNET,
     DPO_PROTO_NSH,
 } __attribute__((packed)) dpo_proto_t;
 
@@ -271,6 +267,11 @@ extern u8 *format_dpo_type(u8 * s, va_list * args);
  * @brief format a DPO protocol
  */
 extern u8 *format_dpo_proto(u8 * s, va_list * args);
+
+/**
+ * @brief format a DPO protocol
+ */
+extern vnet_link_t dpo_proto_to_link(dpo_proto_t dp);
 
 /**
  * @brief

@@ -20,7 +20,7 @@ from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 from vpp_lo_interface import VppLoInterface
 from util import ppp
 from vpp_papi_provider import UnexpectedApiReturnValueError
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
 
 USEC_IN_SEC = 1000000
 
@@ -1678,12 +1678,12 @@ class BFDFIBTestCase(VppTestCase):
         ip_2001_s_64 = VppIpRoute(self, "2001::", 64,
                                   [VppRoutePath(self.pg0.remote_ip6,
                                                 self.pg0.sw_if_index,
-                                                is_ip6=1)],
+                                                proto=DPO_PROTO_IP6)],
                                   is_ip6=1)
         ip_2002_s_64 = VppIpRoute(self, "2002::", 64,
                                   [VppRoutePath(self.pg0.remote_ip6,
                                                 0xffffffff,
-                                                is_ip6=1)],
+                                                proto=DPO_PROTO_IP6)],
                                   is_ip6=1)
         ip_2001_s_64.add_vpp_config()
         ip_2002_s_64.add_vpp_config()

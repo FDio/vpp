@@ -191,6 +191,9 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
     case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
         parent_fct = child_fct;
 	break;
+    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+        parent_fct = FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS;
+	break;
     default:
         return (nhs);
 	break;
