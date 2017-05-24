@@ -88,6 +88,7 @@ VNET_HW_INTERFACE_CLASS (ipsec_hw_class) =
 {
   .name = "IPSec",
   .build_rewrite = default_build_rewrite,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 /* *INDENT-ON* */
 
