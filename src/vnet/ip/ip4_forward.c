@@ -728,7 +728,7 @@ ip4_add_interface_routes (u32 sw_if_index,
                                              FIB_SOURCE_INTERFACE,
                                              (FIB_ENTRY_FLAG_CONNECTED |
                                               FIB_ENTRY_FLAG_ATTACHED),
-                                             FIB_PROTOCOL_IP4,
+                                             DPO_PROTO_IP4,
                                              /* No next-hop address */
                                              NULL,
 					     sw_if_index,
@@ -772,7 +772,7 @@ ip4_add_interface_routes (u32 sw_if_index,
       fib_table_entry_update_one_path (fib_index, &net_pfx,
                                        FIB_SOURCE_INTERFACE,
                                        (FIB_ENTRY_FLAG_ATTACHED),
-                                       FIB_PROTOCOL_IP4,
+                                       DPO_PROTO_IP4,
                                        &net_pfx.fp_addr,
                                        sw_if_index,
                                        // invalid FIB index
@@ -808,7 +808,7 @@ ip4_add_interface_routes (u32 sw_if_index,
                                    FIB_SOURCE_INTERFACE,
                                    (FIB_ENTRY_FLAG_CONNECTED |
                                     FIB_ENTRY_FLAG_LOCAL),
-                                   FIB_PROTOCOL_IP4,
+                                   DPO_PROTO_IP4,
                                    &pfx.fp_addr,
                                    sw_if_index,
                                    // invalid FIB index
