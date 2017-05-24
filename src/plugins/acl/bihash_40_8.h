@@ -56,7 +56,6 @@ static inline u8 *
 format_bihash_kvp_40_8 (u8 * s, va_list * args)
 {
   clib_bihash_kv_40_8_t *v = va_arg (*args, clib_bihash_kv_40_8_t *);
-
   s = format (s, "key %llu %llu %llu %llu %llu value %llu",
 	      v->key[0], v->key[1], v->key[2], v->key[3], v->key[4],
 	      v->value);
