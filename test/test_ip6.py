@@ -8,7 +8,7 @@ from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_pg_interface import is_ipv6_misc
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsRoute
+    VppMplsRoute, DpoProto
 from vpp_neighbor import find_nbr, VppNeighbor
 
 from scapy.packet import Raw
@@ -490,7 +490,7 @@ class TestIPv6(TestIPv6ND):
                                     inet=AF_INET6))
 
     def test_ns_duplicates(self):
-        """ ARP Duplicates"""
+        """ ND Duplicates"""
 
         #
         # Generate some hosts on the LAN
@@ -537,7 +537,7 @@ class TestIPv6(TestIPv6ND):
 
         #
         # remove the duplicate on pg1
-        # packet stream shoud generate ARPs out of pg1
+        # packet stream shoud generate NSs out of pg1
         #
         ns_pg1.remove_vpp_config()
 
@@ -1347,10 +1347,10 @@ class TestIP6LoadBalance(VppTestCase):
         route_3000_1 = VppIpRoute(self, "3000::1", 128,
                                   [VppRoutePath(self.pg1.remote_ip6,
                                                 self.pg1.sw_if_index,
-                                                is_ip6=1),
+                                                proto=DpoProto.DPO_PROTO_IP6),
                                    VppRoutePath(self.pg2.remote_ip6,
                                                 self.pg2.sw_if_index,
-                                                is_ip6=1)],
+                                                proto=DpoProto.DPO_PROTO_IP6)],
                                   is_ip6=1)
         route_3000_1.add_vpp_config()
 
@@ -1367,11 +1367,11 @@ class TestIP6LoadBalance(VppTestCase):
                                 [VppRoutePath(self.pg1.remote_ip6,
                                               self.pg1.sw_if_index,
                                               labels=[67],
-                                              is_ip6=1),
+                                              proto=DpoProto.DPO_PROTO_IP6),
                                  VppRoutePath(self.pg2.remote_ip6,
                                               self.pg2.sw_if_index,
                                               labels=[67],
-                                              is_ip6=1)])
+                                              proto=DpoProto.DPO_PROTO_IP6)])
         route_67.add_vpp_config()
 
         #
@@ -1441,20 +1441,20 @@ class TestIP6LoadBalance(VppTestCase):
         route_3000_2 = VppIpRoute(self, "3000::2", 128,
                                   [VppRoutePath(self.pg3.remote_ip6,
                                                 self.pg3.sw_if_index,
-                                                is_ip6=1),
+                                                proto=DpoProto.DPO_PROTO_IP6),
                                    VppRoutePath(self.pg4.remote_ip6,
                                                 self.pg4.sw_if_index,
-                                                is_ip6=1)],
+                                                proto=DpoProto.DPO_PROTO_IP6)],
                                   is_ip6=1)
         route_3000_2.add_vpp_config()
 
         route_4000_1 = VppIpRoute(self, "4000::1", 128,
                                   [VppRoutePath("3000::1",
                                                 0xffffffff,
-                                                is_ip6=1),
+                                                proto=DpoProto.DPO_PROTO_IP6),
                                    VppRoutePath("3000::2",
                                                 0xffffffff,
-                                                is_ip6=1)],
+                                                proto=DpoProto.DPO_PROTO_IP6)],
                                   is_ip6=1)
         route_4000_1.add_vpp_config()
 
@@ -1485,14 +1485,14 @@ class TestIP6LoadBalance(VppTestCase):
         route_5000_2 = VppIpRoute(self, "5000::2", 128,
                                   [VppRoutePath(self.pg3.remote_ip6,
                                                 self.pg3.sw_if_index,
-                                                is_ip6=1)],
+                                                proto=DpoProto.DPO_PROTO_IP6)],
                                   is_ip6=1)
         route_5000_2.add_vpp_config()
 
         route_6000_1 = VppIpRoute(self, "6000::1", 128,
                                   [VppRoutePath("5000::2",
                                                 0xffffffff,
-                                                is_ip6=1)],
+                                                proto=DpoProto.DPO_PROTO_IP6)],
                                   is_ip6=1)
         route_6000_1.add_vpp_config()
 

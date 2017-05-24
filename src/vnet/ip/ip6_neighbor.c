@@ -284,7 +284,7 @@ ip6_neighbor_sw_interface_up_down (vnet_main_t * vnm,
 		(ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index),
 		 &pfx,
 		 FIB_SOURCE_ADJ,
-		 FIB_PROTOCOL_IP6,
+		 DPO_PROTO_IP6,
 		 &pfx.fp_addr,
 		 n->key.sw_if_index, ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
 	      pool_put (nm->neighbor_pool, n);
@@ -645,7 +645,7 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 	  n->fib_entry_index =
 	    fib_table_entry_path_add (fib_index, &pfx, FIB_SOURCE_ADJ,
 				      FIB_ENTRY_FLAG_ATTACHED,
-				      FIB_PROTOCOL_IP6, &pfx.fp_addr,
+				      DPO_PROTO_IP6, &pfx.fp_addr,
 				      n->key.sw_if_index, ~0, 1, NULL,
 				      FIB_ROUTE_PATH_FLAG_NONE);
 	}
@@ -776,7 +776,7 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
 	(ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index),
 	 &pfx,
 	 FIB_SOURCE_ADJ,
-	 FIB_PROTOCOL_IP6,
+	 DPO_PROTO_IP6,
 	 &pfx.fp_addr, n->key.sw_if_index, ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
     }
   pool_put (nm->neighbor_pool, n);
@@ -4110,7 +4110,7 @@ ip6_neighbor_proxy_add_del (u32 sw_if_index, ip6_address_t * addr, u8 is_del)
       fib_table_entry_path_remove (fib_index,
 				   &pfx,
 				   FIB_SOURCE_IP6_ND_PROXY,
-				   FIB_PROTOCOL_IP6,
+				   DPO_PROTO_IP6,
 				   &nh,
 				   sw_if_index,
 				   ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
@@ -4124,7 +4124,7 @@ ip6_neighbor_proxy_add_del (u32 sw_if_index, ip6_address_t * addr, u8 is_del)
 				&pfx,
 				FIB_SOURCE_IP6_ND_PROXY,
 				FIB_ENTRY_FLAG_NONE,
-				FIB_PROTOCOL_IP6,
+				DPO_PROTO_IP6,
 				&nh,
 				sw_if_index,
 				~0, 1, NULL, FIB_ROUTE_PATH_FLAG_NONE);

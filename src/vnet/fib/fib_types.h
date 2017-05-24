@@ -32,9 +32,9 @@ typedef u32 fib_node_index_t;
  * Protocol Type. packed so it consumes a u8 only
  */
 typedef enum fib_protocol_t_ {
-    FIB_PROTOCOL_IP4 = 0,
-    FIB_PROTOCOL_IP6,
-    FIB_PROTOCOL_MPLS,
+    FIB_PROTOCOL_IP4 = DPO_PROTO_IP4,
+    FIB_PROTOCOL_IP6 = DPO_PROTO_IP6,
+    FIB_PROTOCOL_MPLS = DPO_PROTO_MPLS,
 }  __attribute__ ((packed)) fib_protocol_t;
 
 #define FIB_PROTOCOLS {			\
@@ -338,7 +338,7 @@ typedef struct fib_route_path_t_ {
      * The protocol of the address below. We need this since the all
      * zeros address is ambiguous.
      */
-    fib_protocol_t frp_proto;
+    dpo_proto_t frp_proto;
 
     union {
 	/**

@@ -171,7 +171,7 @@ mpls_tunnel_mk_lb (mpls_tunnel_t *mt,
     vec_validate(ctx.next_hops, fib_path_list_get_n_paths(mt->mt_path_list));
     vec_reset_length(ctx.next_hops);
 
-    lb_proto = vnet_link_to_dpo_proto(linkt);
+    lb_proto = fib_forw_chain_type_to_dpo_proto(fct);
 
     fib_path_list_walk(mt->mt_path_list,
                        mpls_tunnel_collect_forwarding,
@@ -313,12 +313,34 @@ mpls_tunnel_restack (mpls_tunnel_t *mt)
     /*
      * walk all the adjacencies on the MPLS interface and restack them
      */
-    FOR_EACH_FIB_PROTOCOL(proto)
+    if (mt->mt_flags & MPLS_TUNNEL_FLAG_L2)
     {
-        adj_nbr_walk(mt->mt_sw_if_index,
-                     proto,
-                     mpls_adj_walk_cb,
-                     NULL);
+        /*
+         * Stack a load-balance that drops, whilst we have no paths
+         */
+        vnet_hw_interface_t * hi;
+        dpo_id_t dpo = DPO_INVALID;
+
+        mpls_tunnel_mk_lb(mt,
+                          VNET_LINK_MPLS,
+                          FIB_FORW_CHAIN_TYPE_ETHERNET,
+                          &dpo);
+
+        hi = vnet_get_hw_interface(vnet_get_main(), mt->mt_hw_if_index);
+        dpo_stack_from_node(hi->tx_node_index,
+                            &mt->mt_l2_lb,
+                            &dpo);
+        dpo_reset(&dpo);
+    }
+    else
+    {
+        FOR_EACH_FIB_PROTOCOL(proto)
+        {
+            adj_nbr_walk(mt->mt_sw_if_index,
+                         proto,
+                         mpls_adj_walk_cb,
+                         NULL);
+        }
     }
 }
 
@@ -495,7 +517,7 @@ mpls_tunnel_tx (vlib_main_t * vm,
 
           b0 = vlib_get_buffer(vm, bi0);
 
-          vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mt->mt_l2_adj;
+          vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mt->mt_l2_lb.dpoi_index;
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -506,7 +528,7 @@ mpls_tunnel_tx (vlib_main_t * vm,
 
           vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
                                            to_next, n_left_to_next,
-                                           bi0, mt->mt_l2_tx_arc);
+                                           bi0, mt->mt_l2_lb.dpoi_next_node);
         }
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
@@ -565,8 +587,7 @@ vnet_mpls_tunnel_del (u32 sw_if_index)
     if (FIB_NODE_INDEX_INVALID != mt->mt_path_list)
         fib_path_list_child_remove(mt->mt_path_list,
                                    mt->mt_sibling_index);
-    if (ADJ_INDEX_INVALID != mt->mt_l2_adj)
-        adj_unlock(mt->mt_l2_adj);
+    dpo_reset(&mt->mt_l2_lb);
 
     vec_add1 (mpls_tunnel_free_hw_if_indices, mt->mt_hw_if_index);
     pool_put(mpls_tunnel_pool, mt);
@@ -587,12 +608,13 @@ vnet_mpls_tunnel_create (u8 l2_only,
     memset (mt, 0, sizeof (*mt));
     mti = mt - mpls_tunnel_pool;
     fib_node_init(&mt->mt_node, FIB_NODE_TYPE_MPLS_TUNNEL);
-    mt->mt_l2_adj = ADJ_INDEX_INVALID;
     mt->mt_path_list = FIB_NODE_INDEX_INVALID;
     mt->mt_sibling_index = FIB_NODE_INDEX_INVALID;
 
     if (is_multicast)
         mt->mt_flags |= MPLS_TUNNEL_FLAG_MCAST;
+    if (l2_only)
+        mt->mt_flags |= MPLS_TUNNEL_FLAG_L2;
 
     /*
      * Create a new, or re=use and old, tunnel HW interface
@@ -614,7 +636,7 @@ vnet_mpls_tunnel_create (u8 l2_only,
                                  mti,
                                  mpls_tunnel_hw_interface_class.index,
                                  mti);
-        hi = vnet_get_hw_interface(vnm, mt->mt_hw_if_index);
+        hi = vnet_get_hw_interface (vnm, mt->mt_hw_if_index);
     }
 
     /*
@@ -623,19 +645,6 @@ vnet_mpls_tunnel_create (u8 l2_only,
     mt->mt_sw_if_index = hi->sw_if_index;
     vec_validate_init_empty(mpls_tunnel_db, mt->mt_sw_if_index, ~0);
     mpls_tunnel_db[mt->mt_sw_if_index] = mti;
-
-    if (l2_only)
-    {
-        mt->mt_l2_adj =
-            adj_nbr_add_or_lock(fib_path_list_get_proto(mt->mt_path_list),
-                                VNET_LINK_ETHERNET,
-                                &zero_addr,
-                                mt->mt_sw_if_index);
-
-        mt->mt_l2_tx_arc = vlib_node_add_named_next(vlib_get_main(),
-                                                    hi->tx_node_index,
-                                                    "adj-l2-midchain");
-    }
 
     return (mt->mt_sw_if_index);
 }
@@ -803,7 +812,7 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
                            &rpath.frp_sw_if_index))
         {
             rpath.frp_weight = 1;
-            rpath.frp_proto = FIB_PROTOCOL_IP4;
+            rpath.frp_proto = DPO_PROTO_IP4;
         }
 
         else if (unformat (line_input, "via %U %U",
@@ -813,7 +822,7 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
                            &rpath.frp_sw_if_index))
         {
             rpath.frp_weight = 1;
-            rpath.frp_proto = FIB_PROTOCOL_IP6;
+            rpath.frp_proto = DPO_PROTO_IP6;
         }
         else if (unformat (line_input, "via %U",
                            unformat_ip6_address,
@@ -822,7 +831,7 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
             rpath.frp_fib_index = 0;
             rpath.frp_weight = 1;
             rpath.frp_sw_if_index = ~0;
-            rpath.frp_proto = FIB_PROTOCOL_IP6;
+            rpath.frp_proto = DPO_PROTO_IP6;
         }
         else if (unformat (line_input, "via %U",
                            unformat_ip4_address,
@@ -831,7 +840,7 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
             rpath.frp_fib_index = 0;
             rpath.frp_weight = 1;
             rpath.frp_sw_if_index = ~0;
-            rpath.frp_proto = FIB_PROTOCOL_IP4;
+            rpath.frp_proto = DPO_PROTO_IP4;
         }
         else if (unformat (line_input, "l2-only"))
             l2_only = 1;
@@ -914,6 +923,14 @@ format_mpls_tunnel (u8 * s, va_list * args)
     s = fib_path_list_format(mt->mt_path_list, s);
     s = format(s, "%U", format_fib_path_ext_list, &mt->mt_path_exts);
     s = format(s, "\n");
+
+    if (mt->mt_flags & MPLS_TUNNEL_FLAG_L2)
+    {
+        s = format(s, " forwarding: %U\n",
+                   format_fib_forw_chain_type,
+                   FIB_FORW_CHAIN_TYPE_ETHERNET);
+        s = format(s, " %U\n", format_dpo_id, &mt->mt_l2_lb, 2);
+    }
 
     return (s);
 }

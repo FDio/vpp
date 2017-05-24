@@ -79,6 +79,11 @@ typedef enum fib_path_cfg_attribute_t_ {
      */
     FIB_PATH_CFG_ATTRIBUTE_LOCAL,
     /**
+     * The path is L2. i.e. the parameters therein are to be interpreted as
+     * pertaining to L2 config.
+     */
+    FIB_PATH_CFG_ATTRIBUTE_L2,
+    /**
      * Marker. Add new types before this one, then update it.
      */
     FIB_PATH_CFG_ATTRIBUTE_LAST = FIB_PATH_CFG_ATTRIBUTE_LOCAL,
@@ -98,6 +103,7 @@ typedef enum fib_path_cfg_attribute_t_ {
     [FIB_PATH_CFG_ATTRIBUTE_ATTACHED] = "attached",	\
     [FIB_PATH_CFG_ATTRIBUTE_INTF_RX] = "interface-rx",	\
     [FIB_PATH_CFG_ATTRIBUTE_RPF_ID] = "rpf-id",         \
+    [FIB_PATH_CFG_ATTRIBUTE_L2] = "l2",         \
 }
 
 #define FOR_EACH_FIB_PATH_CFG_ATTRIBUTE(_item) \
@@ -118,6 +124,7 @@ typedef enum fib_path_cfg_flags_t_ {
     FIB_PATH_CFG_FLAG_ATTACHED = (1 << FIB_PATH_CFG_ATTRIBUTE_ATTACHED),
     FIB_PATH_CFG_FLAG_INTF_RX = (1 << FIB_PATH_CFG_ATTRIBUTE_INTF_RX),
     FIB_PATH_CFG_FLAG_RPF_ID = (1 << FIB_PATH_CFG_ATTRIBUTE_RPF_ID),
+    FIB_PATH_CFG_FLAG_L2 = (1 << FIB_PATH_CFG_ATTRIBUTE_L2),
 } __attribute__ ((packed)) fib_path_cfg_flags_t;
 
 
@@ -131,7 +138,7 @@ extern u8 * format_fib_path(u8 * s, va_list * args);
 extern fib_node_index_t fib_path_create(fib_node_index_t pl_index,
 					const fib_route_path_t *path);
 extern fib_node_index_t fib_path_create_special(fib_node_index_t pl_index,
-						fib_protocol_t nh_proto,
+						dpo_proto_t nh_proto,
 						fib_path_cfg_flags_t flags,
 						const dpo_id_t *dpo);
 
@@ -148,7 +155,7 @@ extern int fib_path_is_recursive_constrained(fib_node_index_t path_index);
 extern int fib_path_is_exclusive(fib_node_index_t path_index);
 extern int fib_path_is_deag(fib_node_index_t path_index);
 extern int fib_path_is_looped(fib_node_index_t path_index);
-extern fib_protocol_t fib_path_get_proto(fib_node_index_t path_index);
+extern dpo_proto_t fib_path_get_proto(fib_node_index_t path_index);
 extern void fib_path_destroy(fib_node_index_t path_index);
 extern uword fib_path_hash(fib_node_index_t path_index);
 extern load_balance_path_t * fib_path_append_nh_for_multipath_hash(

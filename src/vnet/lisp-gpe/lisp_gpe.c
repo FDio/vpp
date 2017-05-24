@@ -454,7 +454,7 @@ vnet_gpe_add_del_native_fwd_rpath (vnet_gpe_native_fwd_rpath_args_t * a)
   fib_route_path_t *rpath;
   u8 ip_version;
 
-  ip_version = a->rpath.frp_proto == FIB_PROTOCOL_IP4 ? IP4 : IP6;
+  ip_version = a->rpath.frp_proto == DPO_PROTO_IP4 ? IP4 : IP6;
 
   if (a->is_add)
     {
@@ -511,7 +511,7 @@ gpe_native_forward_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 &rpath.frp_sw_if_index))
 	{
 	  rpath.frp_weight = 1;
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  rpath.frp_proto = DPO_PROTO_IP4;
 	}
       else if (unformat (line_input, "via %U %U",
 			 unformat_ip6_address,
@@ -520,21 +520,21 @@ gpe_native_forward_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 &rpath.frp_sw_if_index))
 	{
 	  rpath.frp_weight = 1;
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  rpath.frp_proto = DPO_PROTO_IP6;
 	}
       else if (unformat (line_input, "via %U",
 			 unformat_ip4_address, &rpath.frp_addr.ip4))
 	{
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  rpath.frp_proto = DPO_PROTO_IP4;
 	}
       else if (unformat (line_input, "via %U",
 			 unformat_ip6_address, &rpath.frp_addr.ip6))
 	{
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  rpath.frp_proto = DPO_PROTO_IP6;
 	}
       else
 	{
@@ -549,7 +549,8 @@ gpe_native_forward_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   else
     {
-      rpath.frp_fib_index = fib_table_find (rpath.frp_proto, table_id);
+      rpath.frp_fib_index =
+	fib_table_find (dpo_proto_to_fib (rpath.frp_proto), table_id);
       if ((u32) ~ 0 == rpath.frp_fib_index)
 	{
 	  error = clib_error_return (0, "Nonexistent table id %d", table_id);
