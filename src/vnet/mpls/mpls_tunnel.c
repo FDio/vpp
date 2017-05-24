@@ -290,7 +290,7 @@ mpls_tunnel_stack (adj_index_t ai)
                                                    FIB_NODE_TYPE_MPLS_TUNNEL,
                                                    mt - mpls_tunnel_pool);
 
-    fib_path_list_lock(mt->mt_path_list);
+    fib_path_list_unlock(mt->mt_path_list);
 }
 
 /**
@@ -526,8 +526,6 @@ VNET_DEVICE_CLASS (mpls_tunnel_class) = {
 
 VNET_HW_INTERFACE_CLASS (mpls_tunnel_hw_interface_class) = {
   .name = "MPLS-Tunnel",
-//  .format_header = format_mpls_eth_header_with_length,
-//  .unformat_header = unformat_mpls_eth_header,
   .update_adjacency = mpls_tunnel_update_adj,
   .build_rewrite = mpls_tunnel_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
@@ -772,7 +770,7 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
     u8 is_del = 0, l2_only = 0, is_multicast =0;
     fib_route_path_t rpath, *rpaths = NULL;
     mpls_label_t out_label = MPLS_LABEL_INVALID;
-    u32 sw_if_index;
+    u32 sw_if_index = ~0;
     clib_error_t *error = NULL;
 
     memset(&rpath, 0, sizeof(rpath));
@@ -787,6 +785,10 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
                       unformat_vnet_sw_interface, vnm,
                       &sw_if_index))
             is_del = 1;
+        else if (unformat (line_input, "add %U",
+                           unformat_vnet_sw_interface, vnm,
+                           &sw_if_index))
+            is_del = 0;
         else if (unformat (line_input, "add"))
             is_del = 0;
         else if (unformat (line_input, "out-label %U",
@@ -843,9 +845,14 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
         }
     }
 
+    vec_add1(rpaths, rpath);
+
     if (is_del)
     {
-        vnet_mpls_tunnel_del(sw_if_index);
+        if (!vnet_mpls_tunnel_path_remove(sw_if_index, rpaths))
+        {
+            vnet_mpls_tunnel_del(sw_if_index);
+        }
     }
     else
     {
@@ -856,8 +863,10 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
             goto done;
         }
 
-        vec_add1(rpaths, rpath);
-        sw_if_index = vnet_mpls_tunnel_create(l2_only, is_multicast);
+        if (~0 == sw_if_index)
+        {
+            sw_if_index = vnet_mpls_tunnel_create(l2_only, is_multicast);
+        }
         vnet_mpls_tunnel_path_add(sw_if_index, rpaths);
     }
 
