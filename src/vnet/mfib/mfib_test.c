@@ -387,7 +387,7 @@ mfib_test_i (fib_protocol_t PROTO,
 
 
     fib_route_path_t path_via_if0 = {
-        .frp_proto = PROTO,
+        .frp_proto = fib_proto_to_dpo(PROTO),
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[0]->sw_if_index,
         .frp_fib_index = ~0,
@@ -411,7 +411,7 @@ mfib_test_i (fib_protocol_t PROTO,
                                      MFIB_ITF_FLAG_ACCEPT));
 
     fib_route_path_t path_via_if1 = {
-        .frp_proto = PROTO,
+        .frp_proto = fib_proto_to_dpo(PROTO),
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[1]->sw_if_index,
         .frp_fib_index = ~0,
@@ -419,7 +419,7 @@ mfib_test_i (fib_protocol_t PROTO,
         .frp_flags = 0,
     };
     fib_route_path_t path_via_if2 = {
-        .frp_proto = PROTO,
+        .frp_proto = fib_proto_to_dpo(PROTO),
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[2]->sw_if_index,
         .frp_fib_index = ~0,
@@ -427,7 +427,7 @@ mfib_test_i (fib_protocol_t PROTO,
         .frp_flags = 0,
     };
     fib_route_path_t path_via_if3 = {
-        .frp_proto = PROTO,
+        .frp_proto = fib_proto_to_dpo(PROTO),
         .frp_addr = zero_addr,
         .frp_sw_if_index = tm->hw[3]->sw_if_index,
         .frp_fib_index = ~0,
@@ -435,7 +435,7 @@ mfib_test_i (fib_protocol_t PROTO,
         .frp_flags = 0,
     };
     fib_route_path_t path_for_us = {
-        .frp_proto = PROTO,
+        .frp_proto = fib_proto_to_dpo(PROTO),
         .frp_addr = zero_addr,
         .frp_sw_if_index = 0xffffffff,
         .frp_fib_index = ~0,
@@ -1121,7 +1121,7 @@ mfib_test_i (fib_protocol_t PROTO,
                                            &pfx_3500,
                                            FIB_SOURCE_API,
                                            FIB_ENTRY_FLAG_MULTICAST,
-                                           FIB_PROTOCOL_IP4,
+                                           DPO_PROTO_IP4,
                                            &nh_10_10_10_1,
                                            tm->hw[0]->sw_if_index,
                                            ~0, // invalid fib index
@@ -1138,7 +1138,7 @@ mfib_test_i (fib_protocol_t PROTO,
      * An (S,G) that resolves via the mLDP head-end
      */
     fib_route_path_t path_via_mldp = {
-        .frp_proto = FIB_PROTOCOL_MPLS,
+        .frp_proto = DPO_PROTO_MPLS,
         .frp_local_label = pfx_3500.fp_label,
         .frp_eos = MPLS_EOS,
         .frp_sw_if_index = 0xffffffff,

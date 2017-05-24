@@ -611,7 +611,7 @@ fib_path_list_get_resolving_interface (fib_node_index_t path_list_index)
     return (sw_if_index);
 }
 
-fib_protocol_t
+dpo_proto_t
 fib_path_list_get_proto (fib_node_index_t path_list_index)
 {
     fib_path_list_t *path_list;
@@ -753,7 +753,7 @@ fib_path_list_flags_2_path_flags (fib_path_list_flags_t plf)
 }
 
 fib_node_index_t
-fib_path_list_create_special (fib_protocol_t nh_proto,
+fib_path_list_create_special (dpo_proto_t nh_proto,
 			      fib_path_list_flags_t flags,
 			      const dpo_id_t *dpo)
 {

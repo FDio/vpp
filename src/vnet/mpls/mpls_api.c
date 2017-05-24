@@ -144,14 +144,7 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
   };
   if (pfx.fp_eos)
     {
-      if (mp->mr_next_hop_proto_is_ip4)
-	{
-	  pfx.fp_payload_proto = DPO_PROTO_IP4;
-	}
-      else
-	{
-	  pfx.fp_payload_proto = DPO_PROTO_IP6;
-	}
+      pfx.fp_payload_proto = mp->mr_next_hop_proto;
     }
   else
     {
@@ -161,7 +154,7 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
   rv = add_del_route_check (FIB_PROTOCOL_MPLS,
 			    mp->mr_table_id,
 			    mp->mr_next_hop_sw_if_index,
-			    dpo_proto_to_fib (pfx.fp_payload_proto),
+			    pfx.fp_payload_proto,
 			    mp->mr_next_hop_table_id,
 			    mp->mr_create_table_if_needed,
 			    mp->mr_is_rpf_id,
@@ -173,9 +166,9 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
   ip46_address_t nh;
   memset (&nh, 0, sizeof (nh));
 
-  if (mp->mr_next_hop_proto_is_ip4)
+  if (DPO_PROTO_IP4 == mp->mr_next_hop_proto)
     memcpy (&nh.ip4, mp->mr_next_hop, sizeof (nh.ip4));
-  else
+  else if (DPO_PROTO_IP6 == mp->mr_next_hop_proto)
     memcpy (&nh.ip6, mp->mr_next_hop, sizeof (nh.ip6));
 
   n_labels = mp->mr_next_hop_n_out_labels;
@@ -202,7 +195,7 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
 				   mp->mr_is_interface_rx,
 				   mp->mr_is_rpf_id,
 				   fib_index, &pfx,
-				   mp->mr_next_hop_proto_is_ip4,
+				   mp->mr_next_hop_proto,
 				   &nh, ntohl (mp->mr_next_hop_sw_if_index),
 				   next_hop_fib_index,
 				   mp->mr_next_hop_weight,
@@ -243,13 +236,13 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
 
   if (mp->mt_next_hop_proto_is_ip4)
     {
-      rpath.frp_proto = FIB_PROTOCOL_IP4;
+      rpath.frp_proto = DPO_PROTO_IP4;
       clib_memcpy (&rpath.frp_addr.ip4,
 		   mp->mt_next_hop, sizeof (rpath.frp_addr.ip4));
     }
   else
     {
-      rpath.frp_proto = FIB_PROTOCOL_IP6;
+      rpath.frp_proto = DPO_PROTO_IP6;
       clib_memcpy (&rpath.frp_addr.ip6,
 		   mp->mt_next_hop, sizeof (rpath.frp_addr.ip6));
     }

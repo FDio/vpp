@@ -423,7 +423,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	{
 	  rpath.frp_weight = 1;
 	  rpath.frp_eos = MPLS_NON_EOS;
-	  rpath.frp_proto = FIB_PROTOCOL_MPLS;
+	  rpath.frp_proto = DPO_PROTO_MPLS;
 	  rpath.frp_sw_if_index = ~0;
 	  vec_add1 (rpaths, rpath);
 	}
@@ -449,7 +449,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index))
 	{
 	  rpath.frp_weight = 1;
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  rpath.frp_proto = DPO_PROTO_IP4;
 	  vec_add1 (rpaths, rpath);
 	}
 
@@ -460,7 +460,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index))
 	{
 	  rpath.frp_weight = 1;
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  rpath.frp_proto = DPO_PROTO_IP6;
 	  vec_add1 (rpaths, rpath);
 	}
       else if (unformat (line_input, "weight %u", &weight))
@@ -479,7 +479,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	{
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  rpath.frp_proto = DPO_PROTO_IP4;
 	  vec_add1 (rpaths, rpath);
 	}
       else if (unformat (line_input, "via %U next-hop-table %d",
@@ -488,7 +488,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	{
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  rpath.frp_proto = DPO_PROTO_IP6;
 	  vec_add1 (rpaths, rpath);
 	}
       else if (unformat (line_input, "via %U",
@@ -501,7 +501,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  rpath.frp_fib_index = table_id;
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	  rpath.frp_proto = DPO_PROTO_IP4;
 	  vec_add1 (rpaths, rpath);
 	}
       else if (unformat (line_input, "via %U",
@@ -510,13 +510,13 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  rpath.frp_fib_index = table_id;
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	  rpath.frp_proto = DPO_PROTO_IP6;
 	  vec_add1 (rpaths, rpath);
 	}
       else if (unformat (line_input,
 			 "lookup in table %d", &rpath.frp_fib_index))
 	{
-	  rpath.frp_proto = pfx.fp_proto;
+	  rpath.frp_proto = fib_proto_to_dpo (pfx.fp_proto);
 	  rpath.frp_sw_if_index = ~0;
 	  vec_add1 (rpaths, rpath);
 	}
@@ -526,7 +526,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 &rpath.frp_sw_if_index))
 	{
 	  rpath.frp_weight = 1;
-	  rpath.frp_proto = prefixs[0].fp_proto;
+	  rpath.frp_proto = fib_proto_to_dpo (prefixs[0].fp_proto);
 	  vec_add1 (rpaths, rpath);
 	}
       else if (vec_len (prefixs) > 0 &&
