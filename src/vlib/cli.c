@@ -333,7 +333,8 @@ done:
   clib_bitmap_free (match_bitmap);
   unformat_free (&input);
 
-  vec_sort_with_function (result, vlib_cli_cmp_strings);
+  if (result)
+    vec_sort_with_function (result, vlib_cli_cmp_strings);
   return result;
 }
 
