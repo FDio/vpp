@@ -185,6 +185,18 @@ class ACLPluginConnTestCase(VppTestCase):
             i.resolve_arp()
             i.resolve_ndp()
 
+    def tearDown(self):
+        """Run standard test teardown and log various show commands
+        """
+        super(ACLPluginConnTestCase, self).tearDown()
+        if not self.vpp_dead:
+            self.logger.info(self.vapi.cli("show ip arp"))
+            self.logger.info(self.vapi.cli("show ip6 neighbors"))
+            self.logger.info(self.vapi.cli("show acl-plugin sessions"))
+            self.logger.info(self.vapi.cli("show acl-plugin acl"))
+            self.logger.info(self.vapi.cli("show acl-plugin interface"))
+            self.logger.info(self.vapi.cli("show acl-plugin tables"))
+
     def api_acl_add_replace(self, acl_index, r, count=-1, tag="",
                             expected_retval=0):
         """Add/replace an ACL

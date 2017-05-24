@@ -115,6 +115,9 @@ class TestIpIrb(VppTestCase):
             self.logger.info(self.vapi.cli("show ip arp"))
             self.logger.info(self.vapi.cli("show ip6 neighbors"))
             self.logger.info(self.vapi.cli("show acl-plugin sessions"))
+            self.logger.info(self.vapi.cli("show acl-plugin acl"))
+            self.logger.info(self.vapi.cli("show acl-plugin interface"))
+            self.logger.info(self.vapi.cli("show acl-plugin tables"))
 
     def api_acl_add_replace(self, acl_index, r, count, tag="",
                             expected_retval=0):
