@@ -355,7 +355,7 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 				       FIB_SOURCE_INTERFACE,
 				       (FIB_ENTRY_FLAG_CONNECTED |
 					FIB_ENTRY_FLAG_ATTACHED),
-				       FIB_PROTOCOL_IP6,
+				       DPO_PROTO_IP6,
 				       /* No next-hop address */
 				       NULL, sw_if_index,
 				       /* invalid FIB index */
@@ -390,7 +390,7 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
 				   FIB_SOURCE_INTERFACE,
 				   (FIB_ENTRY_FLAG_CONNECTED |
 				    FIB_ENTRY_FLAG_LOCAL),
-				   FIB_PROTOCOL_IP6,
+				   DPO_PROTO_IP6,
 				   &pfx.fp_addr,
 				   sw_if_index, ~0,
 				   1, NULL, FIB_ROUTE_PATH_FLAG_NONE);

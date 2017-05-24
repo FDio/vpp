@@ -7498,7 +7498,7 @@ api_mpls_route_add_del (vat_main_t * vam)
   mpls_label_t *next_hop_out_label_stack = NULL;
   mpls_label_t local_label = MPLS_LABEL_INVALID;
   u8 is_eos = 0;
-  u8 next_hop_proto_is_ip4 = 1;
+  dpo_proto_t next_hop_proto = DPO_PROTO_IP4;
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -7517,13 +7517,13 @@ api_mpls_route_add_del (vat_main_t * vam)
 			 &v4_next_hop_address))
 	{
 	  next_hop_set = 1;
-	  next_hop_proto_is_ip4 = 1;
+	  next_hop_proto = DPO_PROTO_IP4;
 	}
       else if (unformat (i, "via %U", unformat_ip6_address,
 			 &v6_next_hop_address))
 	{
 	  next_hop_set = 1;
-	  next_hop_proto_is_ip4 = 0;
+	  next_hop_proto = DPO_PROTO_IP6;
 	}
       else if (unformat (i, "weight %d", &next_hop_weight))
 	;
@@ -7548,12 +7548,12 @@ api_mpls_route_add_del (vat_main_t * vam)
       else if (unformat (i, "lookup-in-ip4-table %d", &next_hop_table_id))
 	{
 	  next_hop_set = 1;
-	  next_hop_proto_is_ip4 = 1;
+	  next_hop_proto = DPO_PROTO_IP4;
 	}
       else if (unformat (i, "lookup-in-ip6-table %d", &next_hop_table_id))
 	{
 	  next_hop_set = 1;
-	  next_hop_proto_is_ip4 = 0;
+	  next_hop_proto = DPO_PROTO_IP6;
 	}
       else if (unformat (i, "next-hop-table %d", &next_hop_table_id))
 	;
@@ -7599,7 +7599,7 @@ api_mpls_route_add_del (vat_main_t * vam)
       mp->mr_create_table_if_needed = create_table_if_needed;
 
       mp->mr_is_add = is_add;
-      mp->mr_next_hop_proto_is_ip4 = next_hop_proto_is_ip4;
+      mp->mr_next_hop_proto = next_hop_proto;
       mp->mr_is_classify = is_classify;
       mp->mr_is_multipath = is_multipath;
       mp->mr_is_resolve_host = resolve_host;
@@ -7622,13 +7622,14 @@ api_mpls_route_add_del (vat_main_t * vam)
 
       if (next_hop_set)
 	{
-	  if (next_hop_proto_is_ip4)
+	  if (DPO_PROTO_IP4 == next_hop_proto)
 	    {
 	      clib_memcpy (mp->mr_next_hop,
 			   &v4_next_hop_address,
 			   sizeof (v4_next_hop_address));
 	    }
-	  else
+	  else if (DPO_PROTO_IP6 == next_hop_proto)
+
 	    {
 	      clib_memcpy (mp->mr_next_hop,
 			   &v6_next_hop_address,

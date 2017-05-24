@@ -135,7 +135,7 @@ snat_add_del_addr_to_fib (ip4_address_t * addr, u8 p_len, u32 sw_if_index,
                                     (FIB_ENTRY_FLAG_CONNECTED |
                                      FIB_ENTRY_FLAG_LOCAL |
                                      FIB_ENTRY_FLAG_EXCLUSIVE),
-                                    FIB_PROTOCOL_IP4,
+                                    DPO_PROTO_IP4,
                                     NULL,
                                     sw_if_index,
                                     ~0,

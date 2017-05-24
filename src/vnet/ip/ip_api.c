@@ -156,9 +156,9 @@ copy_fib_next_hop (fib_route_path_encode_t * api_rpath, void *fp_arg)
   int is_ip4;
   vl_api_fib_path_t *fp = (vl_api_fib_path_t *) fp_arg;
 
-  if (api_rpath->rpath.frp_proto == FIB_PROTOCOL_IP4)
+  if (api_rpath->rpath.frp_proto == DPO_PROTO_IP4)
     fp->afi = IP46_TYPE_IP4;
-  else if (api_rpath->rpath.frp_proto == FIB_PROTOCOL_IP6)
+  else if (api_rpath->rpath.frp_proto == DPO_PROTO_IP6)
     fp->afi = IP46_TYPE_IP6;
   else
     {
@@ -714,7 +714,7 @@ add_del_route_t_handler (u8 is_multipath,
 			 u8 is_rpf_id,
 			 u32 fib_index,
 			 const fib_prefix_t * prefix,
-			 u8 next_hop_proto_is_ip4,
+			 dpo_proto_t next_hop_proto,
 			 const ip46_address_t * next_hop,
 			 u32 next_hop_sw_if_index,
 			 u8 next_hop_fib_index,
@@ -726,8 +726,7 @@ add_del_route_t_handler (u8 is_multipath,
   vnet_classify_main_t *cm = &vnet_classify_main;
   fib_route_path_flags_t path_flags = FIB_ROUTE_PATH_FLAG_NONE;
   fib_route_path_t path = {
-    .frp_proto = (next_hop_proto_is_ip4 ?
-		  FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6),
+    .frp_proto = next_hop_proto,
     .frp_addr = (NULL == next_hop ? zero_addr : *next_hop),
     .frp_sw_if_index = next_hop_sw_if_index,
     .frp_fib_index = next_hop_fib_index,
@@ -740,7 +739,7 @@ add_del_route_t_handler (u8 is_multipath,
 
   if (MPLS_LABEL_INVALID != next_hop_via_label)
     {
-      path.frp_proto = FIB_PROTOCOL_MPLS;
+      path.frp_proto = DPO_PROTO_MPLS;
       path.frp_local_label = next_hop_via_label;
       path.frp_eos = MPLS_NON_EOS;
     }
@@ -855,7 +854,7 @@ int
 add_del_route_check (fib_protocol_t table_proto,
 		     u32 table_id,
 		     u32 next_hop_sw_if_index,
-		     fib_protocol_t next_hop_table_proto,
+		     dpo_proto_t next_hop_table_proto,
 		     u32 next_hop_table_id,
 		     u8 create_missing_tables,
 		     u8 is_rpf_id, u32 * fib_index, u32 * next_hop_fib_index)
@@ -887,11 +886,18 @@ add_del_route_check (fib_protocol_t table_proto,
     }
   else
     {
+      fib_protocol_t fib_nh_proto;
+
+      if (next_hop_table_proto > DPO_PROTO_MPLS)
+	return (0);
+
+      fib_nh_proto = dpo_proto_to_fib (next_hop_table_proto);
+
       if (is_rpf_id)
-	*next_hop_fib_index = mfib_table_find (next_hop_table_proto,
+	*next_hop_fib_index = mfib_table_find (fib_nh_proto,
 					       ntohl (next_hop_table_id));
       else
-	*next_hop_fib_index = fib_table_find (next_hop_table_proto,
+	*next_hop_fib_index = fib_table_find (fib_nh_proto,
 					      ntohl (next_hop_table_id));
 
       if (~0 == *next_hop_fib_index)
@@ -900,12 +906,12 @@ add_del_route_check (fib_protocol_t table_proto,
 	    {
 	      if (is_rpf_id)
 		*next_hop_fib_index =
-		  mfib_table_find_or_create_and_lock (next_hop_table_proto,
+		  mfib_table_find_or_create_and_lock (fib_nh_proto,
 						      ntohl
 						      (next_hop_table_id));
 	      else
 		*next_hop_fib_index =
-		  fib_table_find_or_create_and_lock (next_hop_table_proto,
+		  fib_table_find_or_create_and_lock (fib_nh_proto,
 						     ntohl
 						     (next_hop_table_id));
 	    }
@@ -930,7 +936,7 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
   rv = add_del_route_check (FIB_PROTOCOL_IP4,
 			    mp->table_id,
 			    mp->next_hop_sw_if_index,
-			    FIB_PROTOCOL_IP4,
+			    DPO_PROTO_IP4,
 			    mp->next_hop_table_id,
 			    mp->create_vrf_if_needed, 0,
 			    &fib_index, &next_hop_fib_index);
@@ -970,7 +976,7 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   mp->classify_table_index,
 				   mp->is_resolve_host,
 				   mp->is_resolve_attached, 0, 0,
-				   fib_index, &pfx, 1,
+				   fib_index, &pfx, DPO_PROTO_IP4,
 				   &nh,
 				   ntohl (mp->next_hop_sw_if_index),
 				   next_hop_fib_index,
@@ -990,7 +996,7 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
   rv = add_del_route_check (FIB_PROTOCOL_IP6,
 			    mp->table_id,
 			    mp->next_hop_sw_if_index,
-			    FIB_PROTOCOL_IP6,
+			    DPO_PROTO_IP6,
 			    mp->next_hop_table_id,
 			    mp->create_vrf_if_needed, 0,
 			    &fib_index, &next_hop_fib_index);
@@ -1030,7 +1036,7 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   mp->classify_table_index,
 				   mp->is_resolve_host,
 				   mp->is_resolve_attached, 0, 0,
-				   fib_index, &pfx, 0,
+				   fib_index, &pfx, DPO_PROTO_IP6,
 				   &nh, ntohl (mp->next_hop_sw_if_index),
 				   next_hop_fib_index,
 				   mp->next_hop_weight,
@@ -1106,7 +1112,7 @@ mroute_add_del_handler (u8 is_add,
 
   fib_route_path_t path = {
     .frp_sw_if_index = next_hop_sw_if_index,
-    .frp_proto = prefix->fp_proto,
+    .frp_proto = fib_proto_to_dpo (prefix->fp_proto),
   };
 
   if (is_local)

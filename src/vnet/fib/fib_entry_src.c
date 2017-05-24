@@ -29,12 +29,6 @@
  */
 static fib_entry_src_vft_t fib_entry_src_vft[FIB_SOURCE_MAX];
 
-static fib_protocol_t
-fib_entry_get_proto (const fib_entry_t * fib_entry)
-{
-    return (fib_entry->fe_prefix.fp_proto);
-}
-
 void
 fib_entry_src_register (fib_source_t source,
 			const fib_entry_src_vft_t *vft)
@@ -861,7 +855,7 @@ fib_entry_src_action_add (fib_entry_t *fib_entry,
 	fib_entry_src_vft[source].fesv_add(esrc,
 					   fib_entry,
 					   flags,
-					   fib_entry_get_proto(fib_entry),
+                                           fib_entry_get_dpo_proto(fib_entry),
 					   dpo);
     }
 
@@ -914,7 +908,7 @@ fib_entry_src_action_update (fib_entry_t *fib_entry,
 	fib_entry_src_vft[source].fesv_add(esrc,
 					   fib_entry,
 					   flags,
-					   fib_entry_get_proto(fib_entry),
+					   fib_entry_get_dpo_proto(fib_entry),
 					   dpo);
     }
 
@@ -1106,8 +1100,7 @@ fib_entry_src_action_path_add (fib_entry_t *fib_entry,
                                      source,
                                      flags,
                                      drop_dpo_get(
-                                         fib_proto_to_dpo(
-                                             fib_entry_get_proto(fib_entry))));
+                                         fib_entry_get_dpo_proto(fib_entry)));
 	esrc = fib_entry_src_find(fib_entry, source, NULL);
     }
 
@@ -1166,8 +1159,7 @@ fib_entry_src_action_path_swap (fib_entry_t *fib_entry,
 					     source,
 					     flags,
                                              drop_dpo_get(
-                                                 fib_proto_to_dpo(
-                                                     fib_entry_get_proto(fib_entry))));
+                                                 fib_entry_get_dpo_proto(fib_entry)));
 	esrc = fib_entry_src_find(fib_entry, source, NULL);
     }
 

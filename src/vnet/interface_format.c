@@ -165,9 +165,15 @@ format_vnet_sw_if_index_name (u8 * s, va_list * args)
 {
   vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
   u32 sw_if_index = va_arg (*args, u32);
-  return format (s, "%U",
-		 format_vnet_sw_interface_name, vnm,
-		 vnet_get_sw_interface (vnm, sw_if_index));
+  vnet_sw_interface_t *si;
+
+  si = vnet_get_sw_interface_safe (vnm, sw_if_index);
+
+  if (NULL == si)
+    {
+      return format (s, "DELETED");
+    }
+  return format (s, "%U", format_vnet_sw_interface_name, vnm, si);
 }
 
 u8 *
