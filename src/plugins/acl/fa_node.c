@@ -26,6 +26,7 @@
 #include <vppinfra/bihash_template.c>
 
 #include "fa_node.h"
+#include "hash_lookup.h"
 
 typedef struct
 {
@@ -259,7 +260,7 @@ acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
 }
 
 static u8
-full_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
+linear_full_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
 		       int is_ip6, int is_input, u32 * acl_match_p,
 		       u32 * rule_match_p, u32 * trace_bitmap)
 {
@@ -301,6 +302,21 @@ full_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
 #endif
   /* Deny by default. If there are no ACLs defined we should not be here. */
   return 0;
+}
+
+static u8
+full_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
+                       int is_ip6, int is_input, u32 * acl_match_p,
+                       u32 * rule_match_p, u32 * trace_bitmap)
+{
+  acl_main_t *am = &acl_main;
+  if (am->use_hash_acl_matching) {
+    return hash_full_acl_match_5tuple(sw_if_index, pkt_5tuple, is_l2, is_ip6,
+                                 is_input, acl_match_p, rule_match_p, trace_bitmap);
+  } else {
+    return linear_full_acl_match_5tuple(sw_if_index, pkt_5tuple, is_l2, is_ip6,
+                                 is_input, acl_match_p, rule_match_p, trace_bitmap);
+  }
 }
 
 static int
@@ -978,6 +994,9 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 	  acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
 	  acl_make_5tuple_session_key (is_input, &fa_5tuple, &kv_sess);
+	  fa_5tuple.pkt.sw_if_index = sw_if_index0;
+          fa_5tuple.pkt.is_ip6 = is_ip6;
+          fa_5tuple.pkt.mask_type_index = ~0;
 #ifdef FA_NODE_VERBOSE_DEBUG
 	  clib_warning
 	    ("ACL_FA_NODE_DBG: session 5-tuple %016llx %016llx %016llx %016llx %016llx : %016llx",
