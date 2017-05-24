@@ -120,6 +120,9 @@ typedef struct {
   u32 **input_acl_vec_by_sw_if_index;
   u32 **output_acl_vec_by_sw_if_index;
 
+  /* Do we use hash-based ACL matching or linear */
+  int use_hash_acl_matching;
+
   /*
    * Classify tables used to grab the packets for the ACL check,
    * and serving as the 5-tuple session tables at the same time

@@ -52,6 +52,7 @@
 #undef vl_api_version
 
 #include "fa_node.h"
+#include "hash_lookup.h"
 
 acl_main_t acl_main;
 
@@ -173,12 +174,14 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
   else
     {
       a = am->acls + *acl_list_index;
+      hash_acl_delete(*acl_list_index);
       /* Get rid of the old rules */
       clib_mem_free (a->rules);
     }
   a->rules = acl_new_rules;
   a->count = count;
   memcpy (a->tag, tag, sizeof (a->tag));
+  hash_acl_add(*acl_list_index);
 
   return 0;
 }
@@ -700,9 +703,14 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
     {
       rv =
 	acl_interface_add_inout_acl (sw_if_index, is_input, acl_list_index);
+      if (rv == 0)
+        {
+          hash_acl_apply(sw_if_index, is_input, acl_list_index);
+        }
     }
   else
     {
+      hash_acl_unapply(sw_if_index, is_input, acl_list_index);
       rv =
 	acl_interface_del_inout_acl (sw_if_index, is_input, acl_list_index);
     }
@@ -1691,6 +1699,11 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
     }
     goto done;
   }
+  if (unformat (input, "use-hash-acl-matching %u", &val))
+    {
+      am->use_hash_acl_matching = (val !=0);
+      goto done;
+    }
   if (unformat (input, "l4-match-nonfirst-fragment %u", &val))
     {
       am->l4_match_nonfirst_fragment = (val != 0);
@@ -1893,6 +1906,9 @@ acl_init (vlib_main_t * vm)
 #undef _
 
   am->l4_match_nonfirst_fragment = 1;
+
+  /* use the new fancy hash-based matching */
+  am->use_hash_acl_matching = 1;
 
   return error;
 }
