@@ -121,6 +121,9 @@ class TestACLplugin(VppTestCase):
         super(TestACLplugin, self).tearDown()
         if not self.vpp_dead:
             self.logger.info(self.vapi.ppcli("show l2fib verbose"))
+            self.logger.info(self.vapi.ppcli("show acl-plugin acl"))
+            self.logger.info(self.vapi.ppcli("show acl-plugin interface"))
+            self.logger.info(self.vapi.ppcli("show acl-plugin tables"))
             self.logger.info(self.vapi.ppcli("show bridge-domain %s detail"
                                              % self.bd_id))
 
