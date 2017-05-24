@@ -123,12 +123,15 @@ class TestL2fib(VppTestCase):
 
             # Mapping between packet-generator index and lists of test hosts
             cls.hosts = dict()
+            cls.learned_hosts = dict()
             cls.fib_hosts = dict()
             cls.deleted_hosts = dict()
             for pg_if in cls.pg_interfaces:
-                cls.hosts[pg_if.sw_if_index] = []
-                cls.fib_hosts[pg_if.sw_if_index] = []
-                cls.deleted_hosts[pg_if.sw_if_index] = []
+                swif = pg_if.sw_if_index
+                cls.hosts[swif] = []
+                cls.learned_hosts[swif] = []
+                cls.fib_hosts[swif] = []
+                cls.deleted_hosts[swif] = []
 
         except Exception:
             super(TestL2fib, cls).tearDownClass()
@@ -167,6 +170,30 @@ class TestL2fib(VppTestCase):
 
             def h(j): return Host(mac(j), ip(j))
             self.hosts[swif] = [h(j) for j in range(n_hosts_per_if)]
+
+    def learn_hosts(self, bd_id, n_hosts_per_if):
+        """
+        Create L2 MAC packet stream with host MAC addresses per interface to
+        let the bridge domain learn these MAC addresses.
+
+        :param int bd_id: BD to teach
+        :param int n_hosts_per_if: number of hosts
+        """
+        self.vapi.bridge_flags(bd_id, 1, 1)
+        ifs = [self.pg_interfaces[i] for i in self.bd_ifs(bd_id)]
+        for pg_if in ifs:
+            swif = pg_if.sw_if_index
+            hosts = self.hosts[swif]
+            lhosts = self.learned_hosts[swif]
+            packets = []
+            for j in range(n_hosts_per_if):
+                host = hosts.pop()
+                lhosts.append(host)
+                packet = (Ether(dst="ff:ff:ff:ff:ff:ff", src=host.mac))
+                packets.append(packet)
+            pg_if.add_stream(packets)
+        self.logger.info("Sending broadcast eth frames for MAC learning")
+        self.pg_start()
 
     def config_l2_fib_entries(self, bd_id, n_hosts_per_if):
         """
@@ -215,11 +242,14 @@ class TestL2fib(VppTestCase):
 
         :param int swif: sw if index.
         """
+        flushed = dict()
         self.vapi.l2fib_flush_int(swif)
-        self.deleted_hosts[swif] = self.fib_hosts[swif] + \
+        self.deleted_hosts[swif] = self.learned_hosts[swif] + \
             self.deleted_hosts[swif]
-        self.fib_hosts[swif] = []
+        flushed[swif] = self.learned_hosts[swif]
+        self.learned_hosts[swif] = []
         self.logger.info(self.vapi.ppcli("show l2fib"))
+        return flushed
 
     def flush_bd(self, bd_id):
         """
@@ -228,27 +258,34 @@ class TestL2fib(VppTestCase):
         :param int bd_id: Bridge Domain id.
         """
         self.vapi.l2fib_flush_bd(bd_id)
+        flushed = dict()
         ifs = [self.pg_interfaces[i] for i in self.bd_ifs(bd_id)]
         for pg_if in ifs:
             swif = pg_if.sw_if_index
-            self.deleted_hosts[swif] = self.fib_hosts[swif] + \
+            self.deleted_hosts[swif] = self.learned_hosts[swif] + \
                 self.deleted_hosts[swif]
-            self.fib_hosts[swif] = []
+            flushed[swif] = self.learned_hosts[swif]
+            self.learned_hosts[swif] = []
         self.logger.info(self.vapi.ppcli("show l2fib"))
+        return flushed
 
     def flush_all(self):
         """
         Flush All L2 FIB entries.
         """
         self.vapi.l2fib_flush_all()
+        flushed = dict()
         for pg_if in self.pg_interfaces:
             swif = pg_if.sw_if_index
-            self.deleted_hosts[swif] = self.fib_hosts[swif] + \
+            self.deleted_hosts[swif] = self.learned_hosts[swif] + \
                 self.deleted_hosts[swif]
-            self.fib_hosts[swif] = []
+            flushed[swif] = self.learned_hosts[swif]
+            self.learned_hosts[swif] = []
         self.logger.info(self.vapi.ppcli("show l2fib"))
+        return flushed
 
-    def create_stream(self, src_if, packet_sizes, deleted=False):
+    def create_stream(self, src_if, packet_sizes, if_src_hosts=None,
+                      if_dst_hosts=None):
         """
         Create input packet stream for defined interface using hosts or
         deleted_hosts list.
@@ -258,13 +295,19 @@ class TestL2fib(VppTestCase):
         :param boolean deleted: Set to True if deleted_hosts list required.
         :return: Stream of packets.
         """
-        src_hosts = self.fib_hosts[src_if.sw_if_index]
+        if not if_src_hosts:
+            if_src_hosts = self.fib_hosts
+        if not if_dst_hosts:
+            if_dst_hosts = self.fib_hosts
+        src_hosts = if_src_hosts[src_if.sw_if_index]
         if not src_hosts:
             return []
         pkts = []
         for dst_if in self.flows[src_if]:
-            dst_hosts = self.deleted_hosts[dst_if.sw_if_index]\
-                if deleted else self.fib_hosts[dst_if.sw_if_index]
+            dst_swif = dst_if.sw_if_index
+            if dst_swif not in if_dst_hosts:
+                continue
+            dst_hosts = if_dst_hosts[dst_swif]
             for i in range(0, len(dst_hosts)):
                 dst_host = dst_hosts[i]
                 src_host = random.choice(src_hosts)
@@ -323,15 +366,19 @@ class TestL2fib(VppTestCase):
                 "Port %u: Packet expected from source %u didn't arrive" %
                 (dst_sw_if_index, i.sw_if_index))
 
-    def run_verify_test(self, bd_id):
+    def run_verify_test(self, bd_id, dst_hosts=None):
         # Test
         # Create incoming packet streams for packet-generator interfaces
+        if not dst_hosts:
+            dst_hosts = self.fib_hosts
         self.reset_packet_infos()
         ifs = [self.pg_interfaces[i] for i in self.bd_ifs(bd_id)]
         for i in ifs:
-            pkts = self.create_stream(i, self.pg_if_packet_sizes)
+            pkts = self.create_stream(
+                i, self.pg_if_packet_sizes, if_dst_hosts=dst_hosts)
             i.add_stream(pkts)
 
+        self.vapi.bridge_flags(bd_id, 0, 1)
         # Enable packet capture and start packet sending
         self.pg_enable_capture(ifs)
         self.pg_start()
@@ -339,21 +386,27 @@ class TestL2fib(VppTestCase):
         # Verify
         # Verify outgoing packet streams per packet-generator interface
         for i in ifs:
+            if not dst_hosts[i.sw_if_index]:
+                continue
             capture = i.get_capture()
             self.logger.info("Verifying capture on interface %s" % i.name)
             self.verify_capture(i, capture)
 
-    def run_verify_negat_test(self, bd_id):
+    def run_verify_negat_test(self, bd_id, dst_hosts=None):
         # Test
         # Create incoming packet streams for packet-generator interfaces for
         # deleted MAC addresses
+        if not dst_hosts:
+            dst_hosts = self.deleted_hosts
         self.reset_packet_infos()
         ifs = [self.pg_interfaces[i] for i in self.bd_ifs(bd_id)]
         for i in ifs:
-            pkts = self.create_stream(i, self.pg_if_packet_sizes, deleted=True)
+            pkts = self.create_stream(
+                i, self.pg_if_packet_sizes, if_dst_hosts=dst_hosts)
             if pkts:
                 i.add_stream(pkts)
 
+        self.vapi.bridge_flags(bd_id, 0, 1)
         # Enable packet capture and start packet sending
         self.pg_enable_capture(ifs)
         self.pg_start()
@@ -415,68 +468,56 @@ class TestL2fib(VppTestCase):
         # Test 4a
         self.run_verify_negat_test(bd_id=1)
 
-    @unittest.skip("can't flush static entries")
     def test_l2_fib_05(self):
-        """ L2 FIB test 5 - flush first interface
-        """
-        self.flush_int(self.pg_interfaces[0].sw_if_index)
-        self.sleep(3)
-        self.create_hosts(1, subnet=31)
-        self.config_l2_fib_entries(bd_id=1, n_hosts_per_if=1)
-        self.run_verify_test(bd_id=1)
-        self.run_verify_negat_test(bd_id=1)
-
-    @unittest.skip("can't flush static entries")
-    def test_l2_fib_06(self):
-        """ L2 FIB test 6 - Program 20 new MAC entries
-        """
-        self.create_hosts(20, subnet=33)
-
-        self.config_l2_fib_entries(bd_id=1, n_hosts_per_if=20)
-        self.config_l2_fib_entries(bd_id=2, n_hosts_per_if=20)
-        self.run_verify_test(bd_id=1)
-        self.run_verify_test(bd_id=2)
-
-    @unittest.skip("can't flush static entries")
-    def test_l2_fib_07(self):
-        """ L2 FIB test 7 - flush bd_id
-        """
-        self.flush_bd(bd_id=1)
-        self.run_verify_negat_test(bd_id=1)
-        self.run_verify_test(bd_id=2)
-
-    @unittest.skip("can't flush static entries")
-    def test_l2_fib_08(self):
-        """ L2 FIB test 8 - Program 20 new MAC entries
-        """
-        self.create_hosts(20, subnet=34)
-
-        self.config_l2_fib_entries(bd_id=1, n_hosts_per_if=20)
-        self.config_l2_fib_entries(bd_id=2, n_hosts_per_if=20)
-        self.run_verify_test(bd_id=1)
-        self.run_verify_test(bd_id=2)
-
-    @unittest.skip("can't flush static entries")
-    def test_l2_fib_09(self):
-        """ L2 FIB test 9 - flush all
-        """
-        self.flush_all()
-        self.sleep(3)
-        self.run_verify_negat_test(bd_id=1)
-        self.run_verify_negat_test(bd_id=2)
-
-    @unittest.skip("can't flush static entries")
-    def test_l2_fib_10(self):
-        """ L2 FIB test 10 - Program 20 new MAC entries
+        """ L2 FIB test 5 - Program 10 new MAC entries, learn 10
         """
         self.create_hosts(20, subnet=35)
 
-        self.config_l2_fib_entries(bd_id=1, n_hosts_per_if=20)
-        self.config_l2_fib_entries(bd_id=2, n_hosts_per_if=20)
-        self.run_verify_test(bd_id=1)
-        self.run_verify_test(bd_id=2)
-        self.run_verify_negat_test(bd_id=1)
-        self.run_verify_negat_test(bd_id=2)
+        self.learn_hosts(bd_id=1, n_hosts_per_if=10)
+        self.learn_hosts(bd_id=2, n_hosts_per_if=10)
+        self.config_l2_fib_entries(bd_id=1, n_hosts_per_if=10)
+        self.config_l2_fib_entries(bd_id=2, n_hosts_per_if=10)
+        self.run_verify_test(bd_id=1, dst_hosts=self.learned_hosts)
+        self.run_verify_test(bd_id=2, dst_hosts=self.learned_hosts)
+
+    def test_l2_fib_06(self):
+        """ L2 FIB test 6 - flush first interface
+        """
+        self.create_hosts(20, subnet=36)
+
+        self.learn_hosts(bd_id=1, n_hosts_per_if=10)
+        self.learn_hosts(bd_id=2, n_hosts_per_if=10)
+        self.config_l2_fib_entries(bd_id=1, n_hosts_per_if=10)
+        self.config_l2_fib_entries(bd_id=2, n_hosts_per_if=10)
+        flushed = self.flush_int(self.pg_interfaces[0].sw_if_index)
+        self.run_verify_test(bd_id=1, dst_hosts=self.learned_hosts)
+        self.run_verify_negat_test(bd_id=1, dst_hosts=flushed)
+
+    def test_l2_fib_07(self):
+        """ L2 FIB test 7 - flush bd_id
+        """
+        self.create_hosts(20, subnet=37)
+
+        self.learn_hosts(bd_id=1, n_hosts_per_if=10)
+        self.learn_hosts(bd_id=2, n_hosts_per_if=10)
+        self.config_l2_fib_entries(bd_id=1, n_hosts_per_if=10)
+        self.config_l2_fib_entries(bd_id=2, n_hosts_per_if=10)
+        flushed = self.flush_bd(bd_id=1)
+        self.run_verify_negat_test(bd_id=1, dst_hosts=flushed)
+        self.run_verify_test(bd_id=2, dst_hosts=self.learned_hosts)
+
+    def test_l2_fib_08(self):
+        """ L2 FIB test 8 - flush all
+        """
+        self.create_hosts(20, subnet=38)
+
+        self.learn_hosts(bd_id=1, n_hosts_per_if=10)
+        self.learn_hosts(bd_id=2, n_hosts_per_if=10)
+        self.config_l2_fib_entries(bd_id=1, n_hosts_per_if=10)
+        self.config_l2_fib_entries(bd_id=2, n_hosts_per_if=10)
+        flushed = self.flush_all()
+        self.run_verify_negat_test(bd_id=1, dst_hosts=flushed)
+        self.run_verify_negat_test(bd_id=2, dst_hosts=flushed)
 
 
 if __name__ == '__main__':
