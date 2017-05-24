@@ -47,7 +47,7 @@ format_mpls_lookup_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   mpls_lookup_trace_t * t = va_arg (*args, mpls_lookup_trace_t *);
 
-  s = format (s, "MPLS: next [%d], lookup fib index %d, LB index %d hash %#x "
+  s = format (s, "MPLS: next [%d], lookup fib index %d, LB index %d hash %x "
               "label %d eos %d", 
               t->next_index, t->lfib_index, t->lb_index, t->hash,
               vnet_mpls_uc_get_label(
