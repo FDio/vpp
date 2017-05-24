@@ -106,7 +106,7 @@ typedef enum fib_path_list_flags_t_ {
 
 extern fib_node_index_t fib_path_list_create(fib_path_list_flags_t flags,
 					     const fib_route_path_t *paths);
-extern fib_node_index_t fib_path_list_create_special(fib_protocol_t nh_proto,
+extern fib_node_index_t fib_path_list_create_special(dpo_proto_t nh_proto,
 						     fib_path_list_flags_t flags,
 						     const dpo_id_t *dpo);
 
@@ -150,7 +150,7 @@ extern int fib_path_list_recursive_loop_detect(fib_node_index_t path_list_index,
 extern u32 fib_path_list_get_resolving_interface(fib_node_index_t path_list_index);
 extern int fib_path_list_is_looped(fib_node_index_t path_list_index);
 extern int fib_path_list_is_popular(fib_node_index_t path_list_index);
-extern fib_protocol_t fib_path_list_get_proto(fib_node_index_t path_list_index);
+extern dpo_proto_t fib_path_list_get_proto(fib_node_index_t path_list_index);
 extern u8 * fib_path_list_format(fib_node_index_t pl_index,
 				 u8 * s);
 extern index_t fib_path_list_lb_map_add_or_lock(fib_node_index_t pl_index,

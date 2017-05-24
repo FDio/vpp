@@ -218,7 +218,7 @@ sr_mpls_steering_policy (int is_del, mpls_label_t bsid, u32 sr_policy_index,
 update_fib:;
 
   fib_route_path_t path = {
-    .frp_proto = FIB_PROTOCOL_MPLS,
+    .frp_proto = DPO_PROTO_MPLS,
     .frp_local_label = sr_policy->bsid,
     .frp_eos = MPLS_EOS,
     .frp_sw_if_index = ~0,

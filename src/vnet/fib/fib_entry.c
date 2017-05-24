@@ -58,10 +58,16 @@ fib_entry_get_index (const fib_entry_t * fib_entry)
     return (fib_entry - fib_entry_pool);
 }
 
-static fib_protocol_t
+fib_protocol_t
 fib_entry_get_proto (const fib_entry_t * fib_entry)
 {
     return (fib_entry->fe_prefix.fp_proto);
+}
+
+dpo_proto_t
+fib_entry_get_dpo_proto (const fib_entry_t * fib_entry)
+{
+    return (fib_proto_to_dpo(fib_entry->fe_prefix.fp_proto));
 }
 
 fib_forward_chain_type_t

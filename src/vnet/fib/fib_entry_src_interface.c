@@ -35,7 +35,7 @@ static void
 fib_entry_src_interface_add (fib_entry_src_t *src,
                              const fib_entry_t *entry,
                              fib_entry_flag_t flags,
-                             fib_protocol_t proto,
+                             dpo_proto_t proto,
                              const dpo_id_t *dpo)
 {
     src->fes_pl = fib_path_list_create_special(
