@@ -24,8 +24,10 @@
 #include <vppinfra/error.h>
 #include <vppinfra/bitmap.h>
 #include <vppinfra/elog.h>
+#include <vppinfra/bihash_48_8.h>
 #include "bihash_40_8.h"
 #include "fa_node.h"
+#include "hash_lookup_types.h"
 
 #define  ACL_PLUGIN_VERSION_MAJOR 1
 #define  ACL_PLUGIN_VERSION_MINOR 3
@@ -109,16 +111,44 @@ typedef struct
   u32 l2_table_index;
 } macip_acl_list_t;
 
+/*
+ * An element describing a particular configuration fo the mask,
+ * and how many times it has been used.
+ */
+typedef struct
+{
+  fa_5tuple_t mask;
+  u32 refcount;
+} ace_mask_type_entry_t;
+
 typedef struct {
   /* API message ID base */
   u16 msg_id_base;
 
   acl_list_t *acls;	/* Pool of ACLs */
+  hash_acl_info_t *hash_acl_infos; /* corresponding hash matching housekeeping info */
+  clib_bihash_48_8_t acl_lookup_hash; /* ACL lookup hash table. */
+  int acl_lookup_hash_initialized;
+  applied_hash_ace_entry_t **input_hash_entry_vec_by_sw_if_index;
+  applied_hash_ace_entry_t **output_hash_entry_vec_by_sw_if_index;
+  applied_hash_acl_info_t *input_applied_hash_acl_info_by_sw_if_index;
+  applied_hash_acl_info_t *output_applied_hash_acl_info_by_sw_if_index;
+
   macip_acl_list_t *macip_acls;	/* Pool of MAC-IP ACLs */
 
   /* ACLs associated with interfaces */
   u32 **input_acl_vec_by_sw_if_index;
   u32 **output_acl_vec_by_sw_if_index;
+
+  /* interfaces on which given ACLs are applied */
+  u32 **input_sw_if_index_vec_by_acl;
+  u32 **output_sw_if_index_vec_by_acl;
+
+  /* Do we use hash-based ACL matching or linear */
+  int use_hash_acl_matching;
+
+  /* a pool of all mask types present in all ACEs */
+  ace_mask_type_entry_t *ace_mask_type_pool;
 
   /*
    * Classify tables used to grab the packets for the ACL check,

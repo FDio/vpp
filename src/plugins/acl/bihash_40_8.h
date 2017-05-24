@@ -44,6 +44,7 @@ clib_bihash_is_free_40_8 (const clib_bihash_kv_40_8_t * v)
 static inline u64
 clib_bihash_hash_40_8 (const clib_bihash_kv_40_8_t * v)
 {
+  return clib_crc32c ((u8 *) v->key, 40);
 #if __SSE4_2__
   return clib_crc32c ((u8 *) v->key, 40);
 #else
@@ -56,8 +57,7 @@ static inline u8 *
 format_bihash_kvp_40_8 (u8 * s, va_list * args)
 {
   clib_bihash_kv_40_8_t *v = va_arg (*args, clib_bihash_kv_40_8_t *);
-
-  s = format (s, "key %llu %llu %llu %llu %llu value %llu",
+  s = format (s, "key %016llx %016llx %016llx %016llx %016llx value %016llx",
 	      v->key[0], v->key[1], v->key[2], v->key[3], v->key[4],
 	      v->value);
   return s;
