@@ -29,6 +29,14 @@ class MRouteEntryFlags:
     MFIB_ENTRY_FLAG_INHERIT_ACCEPT = 8
 
 
+class DpoProto:
+    DPO_PROTO_IP4 = 0
+    DPO_PROTO_IP6 = 1
+    DPO_PROTO_MPLS = 2
+    DPO_PROTO_ETHERNET = 3
+    DPO_PROTO_NSH = 4
+
+
 def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
     if inet == AF_INET:
         s = 4
@@ -55,22 +63,24 @@ class VppRoutePath(object):
             nh_table_id=0,
             labels=[],
             nh_via_label=MPLS_LABEL_INVALID,
-            is_ip6=0,
             rpf_id=0,
             is_interface_rx=0,
             is_resolve_host=0,
-            is_resolve_attached=0):
+            is_resolve_attached=0,
+            proto=DpoProto.DPO_PROTO_IP4):
         self.nh_itf = nh_sw_if_index
         self.nh_table_id = nh_table_id
         self.nh_via_label = nh_via_label
         self.nh_labels = labels
         self.weight = 1
         self.rpf_id = rpf_id
-        self.is_ip4 = 1 if is_ip6 == 0 else 0
-        if self.is_ip4:
+        self.proto = proto
+        if self.proto is DpoProto.DPO_PROTO_IP6:
+            self.nh_addr = inet_pton(AF_INET6, nh_addr)
+        elif self.proto is DpoProto.DPO_PROTO_IP4:
             self.nh_addr = inet_pton(AF_INET, nh_addr)
         else:
-            self.nh_addr = inet_pton(AF_INET6, nh_addr)
+            self.nh_addr = inet_pton(AF_INET6, "::")
         self.is_resolve_host = is_resolve_host
         self.is_resolve_attached = is_resolve_attached
         self.is_interface_rx = is_interface_rx
@@ -401,7 +411,7 @@ class VppMplsRoute(VppObject):
             self._test.vapi.mpls_route_add_del(
                 self.local_label,
                 self.eos_bit,
-                path.is_ip4,
+                path.proto,
                 path.nh_addr,
                 path.nh_itf,
                 is_multicast=self.is_multicast,
@@ -420,7 +430,7 @@ class VppMplsRoute(VppObject):
         for path in self.paths:
             self._test.vapi.mpls_route_add_del(self.local_label,
                                                self.eos_bit,
-                                               1,
+                                               path.proto,
                                                path.nh_addr,
                                                path.nh_itf,
                                                is_rpf_id=path.is_rpf_id,

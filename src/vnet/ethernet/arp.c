@@ -584,7 +584,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 	  e->fib_entry_index =
 	    fib_table_entry_path_add (fib_index, &pfx, FIB_SOURCE_ADJ,
 				      FIB_ENTRY_FLAG_ATTACHED,
-				      FIB_PROTOCOL_IP4, &pfx.fp_addr,
+				      DPO_PROTO_IP4, &pfx.fp_addr,
 				      e->sw_if_index, ~0, 1, NULL,
 				      FIB_ROUTE_PATH_FLAG_NONE);
 	}
