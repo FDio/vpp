@@ -193,7 +193,7 @@ typedef struct fib_path_t_ {
      * next-hop's address. We can't derive this from the address itself
      * since the address can be all zeros
      */
-    fib_protocol_t fp_nh_proto;
+    dpo_proto_t fp_nh_proto;
 
     /**
      * UCMP [unnormalised] weigt
@@ -374,7 +374,7 @@ format_fib_path (u8 * s, va_list * args)
 
     s = format (s, "      index:%d ", fib_path_get_index(path));
     s = format (s, "pl-index:%d ", path->fp_pl_index);
-    s = format (s, "%U ", format_fib_protocol, path->fp_nh_proto);
+    s = format (s, "%U ", format_dpo_proto, path->fp_nh_proto);
     s = format (s, "weight=%d ", path->fp_weight);
     s = format (s, "%s: ", fib_path_type_names[path->fp_type]);
     if (FIB_PATH_OPER_FLAG_NONE != path->fp_oper_flags) {
@@ -446,7 +446,7 @@ format_fib_path (u8 * s, va_list * args)
 	}
 	break;
     case FIB_PATH_TYPE_RECURSIVE:
-	if (FIB_PROTOCOL_MPLS == path->fp_nh_proto)
+	if (DPO_PROTO_MPLS == path->fp_nh_proto)
 	{
 	    s = format (s, "via %U %U",
 			format_mpls_unicast_label,
@@ -544,14 +544,14 @@ fib_path_attached_next_hop_get_adj (fib_path_t *path,
 	 * the subnet address (the attached route) links to the
 	 * auto-adj (see below), we want that adj here too.
 	 */
-	return (adj_nbr_add_or_lock(path->fp_nh_proto,
+	return (adj_nbr_add_or_lock(dpo_proto_to_fib(path->fp_nh_proto),
 				    link,
 				    &zero_addr,
 				    path->attached_next_hop.fp_interface));
     }
     else
     {
-	return (adj_nbr_add_or_lock(path->fp_nh_proto,
+	return (adj_nbr_add_or_lock(dpo_proto_to_fib(path->fp_nh_proto),
 				    link,
 				    &path->attached_next_hop.fp_nh,
 				    path->attached_next_hop.fp_interface));
@@ -567,10 +567,10 @@ fib_path_attached_next_hop_set (fib_path_t *path)
      */
     dpo_set(&path->fp_dpo,
 	    DPO_ADJACENCY,
-	    fib_proto_to_dpo(path->fp_nh_proto),
+	    path->fp_nh_proto,
 	    fib_path_attached_next_hop_get_adj(
 		 path,
-		 fib_proto_to_link(path->fp_nh_proto)));
+		 dpo_proto_to_link(path->fp_nh_proto)));
 
     /*
      * become a child of the adjacency so we receive updates
@@ -599,14 +599,14 @@ fib_path_attached_get_adj (fib_path_t *path,
          * point-2-point interfaces do not require a glean, since
          * there is nothing to ARP. Install a rewrite/nbr adj instead
          */
-        return (adj_nbr_add_or_lock(path->fp_nh_proto,
+        return (adj_nbr_add_or_lock(dpo_proto_to_fib(path->fp_nh_proto),
                                     link,
                                     &zero_addr,
                                     path->attached.fp_interface));
     }
     else
     {
-        return (adj_glean_add_or_lock(path->fp_nh_proto,
+        return (adj_glean_add_or_lock(dpo_proto_to_fib(path->fp_nh_proto),
                                       path->attached.fp_interface,
                                       NULL));
     }
@@ -642,7 +642,7 @@ fib_path_recursive_adj_update (fib_path_t *path,
     if (path->fp_oper_flags & FIB_PATH_OPER_FLAG_RECURSIVE_LOOP)
     {
 	path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
-	dpo_copy(&via_dpo, drop_dpo_get(fib_proto_to_dpo(path->fp_nh_proto)));
+	dpo_copy(&via_dpo, drop_dpo_get(path->fp_nh_proto));
     }
     else if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_RESOLVE_HOST)
     {
@@ -660,7 +660,7 @@ fib_path_recursive_adj_update (fib_path_t *path,
 	if (fib_entry_get_best_source(path->fp_via_fib) >= FIB_SOURCE_RR)
 	{
 	    path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
-            dpo_copy(&via_dpo, drop_dpo_get(fib_proto_to_dpo(path->fp_nh_proto)));
+            dpo_copy(&via_dpo, drop_dpo_get(path->fp_nh_proto));
 
             /*
              * PIC edge trigger. let the load-balance maps know
@@ -677,7 +677,7 @@ fib_path_recursive_adj_update (fib_path_t *path,
 	if (!(FIB_ENTRY_FLAG_ATTACHED & fib_entry_get_flags(path->fp_via_fib)))
 	{
 	    path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
-            dpo_copy(&via_dpo, drop_dpo_get(fib_proto_to_dpo(path->fp_nh_proto)));
+            dpo_copy(&via_dpo, drop_dpo_get(path->fp_nh_proto));
 
             /*
              * PIC edge trigger. let the load-balance maps know
@@ -691,7 +691,7 @@ fib_path_recursive_adj_update (fib_path_t *path,
     if (!fib_entry_is_resolved(path->fp_via_fib))
     {
         path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
-        dpo_copy(&via_dpo, drop_dpo_get(fib_proto_to_dpo(path->fp_nh_proto)));
+        dpo_copy(&via_dpo, drop_dpo_get(path->fp_nh_proto));
 
         /*
          * PIC edge trigger. let the load-balance maps know
@@ -704,9 +704,7 @@ fib_path_recursive_adj_update (fib_path_t *path,
      */
     dpo_copy(dpo, &via_dpo);
 
-    FIB_PATH_DBG(path, "recursive update: %U",
-		 fib_get_lookup_main(path->fp_nh_proto),
-		 &path->fp_dpo, 2);
+    FIB_PATH_DBG(path, "recursive update:");
 
     dpo_reset(&via_dpo);
 }
@@ -788,13 +786,8 @@ fib_path_unresolve (fib_path_t *path)
 static fib_forward_chain_type_t
 fib_path_to_chain_type (const fib_path_t *path)
 {
-    switch (path->fp_nh_proto)
+    if (DPO_PROTO_MPLS == path->fp_nh_proto)
     {
-    case FIB_PROTOCOL_IP4:
-	return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
-    case FIB_PROTOCOL_IP6:
-	return (FIB_FORW_CHAIN_TYPE_UNICAST_IP6);
-    case FIB_PROTOCOL_MPLS:
         if (FIB_PATH_TYPE_RECURSIVE == path->fp_type &&
             MPLS_EOS == path->recursive.fp_nh.fp_eos)
         {
@@ -805,7 +798,10 @@ fib_path_to_chain_type (const fib_path_t *path)
             return (FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS);
         }
     }
-    return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
+    else
+    {
+        return (fib_forw_chain_type_from_dpo_proto(path->fp_nh_proto));
+    }
 }
 
 /*
@@ -911,7 +907,7 @@ FIXME comment
 
             ai = fib_path_attached_next_hop_get_adj(
                      path,
-                     fib_proto_to_link(path->fp_nh_proto));
+                     dpo_proto_to_link(path->fp_nh_proto));
 
             path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
             if (if_is_up && adj_is_up(ai))
@@ -919,9 +915,7 @@ FIXME comment
                 path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RESOLVED;
             }
 
-            dpo_set(&path->fp_dpo, DPO_ADJACENCY,
-                    fib_proto_to_dpo(path->fp_nh_proto),
-                    ai);
+            dpo_set(&path->fp_dpo, DPO_ADJACENCY, path->fp_nh_proto, ai);
             adj_unlock(ai);
 
             if (!if_is_up)
@@ -1124,7 +1118,7 @@ fib_path_create (fib_node_index_t pl_index,
 	else
 	{
 	    path->fp_type = FIB_PATH_TYPE_RECURSIVE;
-	    if (FIB_PROTOCOL_MPLS == path->fp_nh_proto)
+	    if (DPO_PROTO_MPLS == path->fp_nh_proto)
 	    {
 		path->recursive.fp_nh.fp_local_label = rpath->frp_local_label;
                 path->recursive.fp_nh.fp_eos = rpath->frp_eos;
@@ -1150,7 +1144,7 @@ fib_path_create (fib_node_index_t pl_index,
  */
 fib_node_index_t
 fib_path_create_special (fib_node_index_t pl_index,
-			 fib_protocol_t nh_proto,
+			 dpo_proto_t nh_proto,
 			 fib_path_cfg_flags_t flags,
 			 const dpo_id_t *dpo)
 {
@@ -1406,7 +1400,7 @@ fib_path_cmp_w_route_path (fib_node_index_t path_index,
 	    res = (path->attached.fp_interface - rpath->frp_sw_if_index);
 	    break;
 	case FIB_PATH_TYPE_RECURSIVE:
-            if (FIB_PROTOCOL_MPLS == path->fp_nh_proto)
+            if (DPO_PROTO_MPLS == path->fp_nh_proto)
             {
                 res = path->recursive.fp_nh.fp_local_label - rpath->frp_local_label;
 
@@ -1508,8 +1502,7 @@ fib_path_recursive_loop_detect (fib_node_index_t path_index,
 	    FIB_PATH_DBG(path, "recursive loop formed");
 	    path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RECURSIVE_LOOP;
 
-	    dpo_copy(&path->fp_dpo,
-                    drop_dpo_get(fib_proto_to_dpo(path->fp_nh_proto)));
+	    dpo_copy(&path->fp_dpo, drop_dpo_get(path->fp_nh_proto));
 	}
 	else
 	{
@@ -1563,8 +1556,7 @@ fib_path_resolve (fib_node_index_t path_index)
      */
     if (fib_path_is_permanent_drop(path))
     {
-	dpo_copy(&path->fp_dpo,
-                 drop_dpo_get(fib_proto_to_dpo(path->fp_nh_proto)));
+	dpo_copy(&path->fp_dpo, drop_dpo_get(path->fp_nh_proto));
 	path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
 	return (fib_path_is_resolved(path_index));
     }
@@ -1585,9 +1577,9 @@ fib_path_resolve (fib_node_index_t path_index)
 	}
         dpo_set(&path->fp_dpo,
                 DPO_ADJACENCY,
-                fib_proto_to_dpo(path->fp_nh_proto),
+                path->fp_nh_proto,
                 fib_path_attached_get_adj(path,
-                                          fib_proto_to_link(path->fp_nh_proto)));
+                                          dpo_proto_to_link(path->fp_nh_proto)));
 
 	/*
 	 * become a child of the adjacency so we receive updates
@@ -1612,7 +1604,7 @@ fib_path_resolve (fib_node_index_t path_index)
 
 	ASSERT(FIB_NODE_INDEX_INVALID == path->fp_via_fib);
 
-	if (FIB_PROTOCOL_MPLS == path->fp_nh_proto)
+	if (DPO_PROTO_MPLS == path->fp_nh_proto)
 	{
 	    fib_prefix_from_mpls_label(path->recursive.fp_nh.fp_local_label,
                                        path->recursive.fp_nh.fp_eos,
@@ -1653,8 +1645,7 @@ fib_path_resolve (fib_node_index_t path_index)
 	/*
 	 * Resolve via the drop
 	 */
-	dpo_copy(&path->fp_dpo,
-                 drop_dpo_get(fib_proto_to_dpo(path->fp_nh_proto)));
+	dpo_copy(&path->fp_dpo, drop_dpo_get(path->fp_nh_proto));
 	break;
     case FIB_PATH_TYPE_DEAG:
     {
@@ -1669,7 +1660,7 @@ fib_path_resolve (fib_node_index_t path_index)
                 LOOKUP_UNICAST);
 
         lookup_dpo_add_or_lock_w_fib_index(path->deag.fp_tbl_id,
-                                           fib_proto_to_dpo(path->fp_nh_proto),
+                                           path->fp_nh_proto,
                                            cast,
                                            LOOKUP_INPUT_DST_ADDR,
                                            LOOKUP_TABLE_FROM_CONFIG,
@@ -1680,7 +1671,7 @@ fib_path_resolve (fib_node_index_t path_index)
 	/*
 	 * Resolve via a receive DPO.
 	 */
-	receive_dpo_add_or_lock(fib_proto_to_dpo(path->fp_nh_proto),
+	receive_dpo_add_or_lock(path->fp_nh_proto,
                                 path->receive.fp_interface,
                                 &path->receive.fp_addr,
                                 &path->fp_dpo);
@@ -1689,7 +1680,7 @@ fib_path_resolve (fib_node_index_t path_index)
 	/*
 	 * Resolve via a receive DPO.
 	 */
-	interface_dpo_add_or_lock(fib_proto_to_dpo(path->fp_nh_proto),
+	interface_dpo_add_or_lock(path->fp_nh_proto,
                                   path->intf_rx.fp_interface,
                                   &path->fp_dpo);
 	break;
@@ -1996,7 +1987,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
                     /*
                      * Create the adj needed for sending IP multicast traffic
                      */
-                    ai = adj_mcast_add_or_lock(path->fp_nh_proto,
+                    ai = adj_mcast_add_or_lock(dpo_proto_to_fib(path->fp_nh_proto),
                                                fib_forw_chain_type_to_link_type(fct),
                                                path->attached.fp_interface);
                     dpo_set(dpo, DPO_ADJACENCY,
@@ -2145,7 +2136,7 @@ fib_path_encode (fib_node_index_t path_list_index,
     return (FIB_PATH_LIST_WALK_CONTINUE);
 }
 
-fib_protocol_t
+dpo_proto_t
 fib_path_get_proto (fib_node_index_t path_index)
 {
     fib_path_t *path;

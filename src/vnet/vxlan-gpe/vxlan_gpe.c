@@ -638,7 +638,7 @@ int vnet_vxlan_gpe_add_del_tunnel
               fib_node_index_t mfei;
               adj_index_t ai;
               fib_route_path_t path = {
-                  .frp_proto = fp,
+                  .frp_proto = fib_proto_to_dpo(fp),
                   .frp_addr = zero_addr,
                   .frp_sw_if_index = 0xffffffff,
                   .frp_fib_index = ~0,

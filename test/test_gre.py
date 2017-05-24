@@ -6,7 +6,7 @@ from logging import *
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
-from vpp_ip_route import VppIpRoute, VppRoutePath
+from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
 from vpp_papi_provider import L2_VTR_OP
 
 from scapy.packet import Raw
@@ -516,11 +516,12 @@ class TestGRE(VppTestCase):
         gre_if.admin_up()
         gre_if.config_ip6()
 
-        route_via_tun = VppIpRoute(self, "4004::1", 128,
-                                   [VppRoutePath("0::0",
-                                                 gre_if.sw_if_index,
-                                                 is_ip6=1)],
-                                   is_ip6=1)
+        route_via_tun = VppIpRoute(
+            self, "4004::1", 128,
+            [VppRoutePath("0::0",
+                          gre_if.sw_if_index,
+                          proto=DpoProto.DPO_PROTO_IP6)],
+            is_ip6=1)
 
         route_via_tun.add_vpp_config()
 
@@ -542,11 +543,12 @@ class TestGRE(VppTestCase):
         #
         # Add a route that resolves the tunnel's destination
         #
-        route_tun_dst = VppIpRoute(self, "1002::1", 128,
-                                   [VppRoutePath(self.pg2.remote_ip6,
-                                                 self.pg2.sw_if_index,
-                                                 is_ip6=1)],
-                                   is_ip6=1)
+        route_tun_dst = VppIpRoute(
+            self, "1002::1", 128,
+            [VppRoutePath(self.pg2.remote_ip6,
+                          self.pg2.sw_if_index,
+                          proto=DpoProto.DPO_PROTO_IP6)],
+            is_ip6=1)
         route_tun_dst.add_vpp_config()
 
         #
