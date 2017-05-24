@@ -9,6 +9,7 @@ from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.l2 import Ether, ARP
 from scapy.data import IP_PROTOS
+from scapy.packet import bind_layers
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
@@ -312,6 +313,8 @@ class TestSNAT(MethodHolder):
             cls.icmp_id_in = 6305
             cls.icmp_id_out = 6305
             cls.snat_addr = '10.0.0.3'
+            cls.ipfix_src_port = 4739
+            cls.ipfix_domain_id = 1
 
             cls.create_pg_interfaces(range(9))
             cls.interfaces = list(cls.pg_interfaces[0:4])
@@ -381,7 +384,10 @@ class TestSNAT(MethodHolder):
         for intf in interfaces:
             self.vapi.snat_add_interface_addr(intf.sw_if_index, is_add=0)
 
-        self.vapi.snat_ipfix(enable=0)
+        self.vapi.snat_ipfix(enable=0, src_port=self.ipfix_src_port,
+                             domain_id=self.ipfix_domain_id)
+        self.ipfix_src_port = 4739
+        self.ipfix_domain_id = 1
 
         interfaces = self.vapi.snat_interface_dump()
         for intf in interfaces:
@@ -1141,6 +1147,10 @@ class TestSNAT(MethodHolder):
 
     def test_ipfix_nat44_sess(self):
         """ S-NAT IPFIX logging NAT44 session created/delted """
+        self.ipfix_domain_id = 10
+        self.ipfix_src_port = 20202
+        colector_port = 30303
+        bind_layers(UDP, IPFIX, dport=30303)
         self.snat_add_address(self.snat_addr)
         self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
@@ -1148,8 +1158,10 @@ class TestSNAT(MethodHolder):
         self.vapi.set_ipfix_exporter(collector_address=self.pg3.remote_ip4n,
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
-                                     template_interval=10)
-        self.vapi.snat_ipfix()
+                                     template_interval=10,
+                                     collector_port=colector_port)
+        self.vapi.snat_ipfix(domain_id=self.ipfix_domain_id,
+                             src_port=self.ipfix_src_port)
 
         pkts = self.create_stream_in(self.pg0, self.pg1)
         self.pg0.add_stream(pkts)
@@ -1164,6 +1176,12 @@ class TestSNAT(MethodHolder):
         # first load template
         for p in capture:
             self.assertTrue(p.haslayer(IPFIX))
+            self.assertEqual(p[IP].src, self.pg3.local_ip4)
+            self.assertEqual(p[IP].dst, self.pg3.remote_ip4)
+            self.assertEqual(p[UDP].sport, self.ipfix_src_port)
+            self.assertEqual(p[UDP].dport, colector_port)
+            self.assertEqual(p[IPFIX].observationDomainID,
+                             self.ipfix_domain_id)
             if p.haslayer(Template):
                 ipfix.add_template(p.getlayer(Template))
         # verify events in data set
@@ -1181,7 +1199,8 @@ class TestSNAT(MethodHolder):
                                      src_address=self.pg3.local_ip4n,
                                      path_mtu=512,
                                      template_interval=10)
-        self.vapi.snat_ipfix()
+        self.vapi.snat_ipfix(domain_id=self.ipfix_domain_id,
+                             src_port=self.ipfix_src_port)
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
              IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
@@ -1196,6 +1215,12 @@ class TestSNAT(MethodHolder):
         # first load template
         for p in capture:
             self.assertTrue(p.haslayer(IPFIX))
+            self.assertEqual(p[IP].src, self.pg3.local_ip4)
+            self.assertEqual(p[IP].dst, self.pg3.remote_ip4)
+            self.assertEqual(p[UDP].sport, self.ipfix_src_port)
+            self.assertEqual(p[UDP].dport, 4739)
+            self.assertEqual(p[IPFIX].observationDomainID,
+                             self.ipfix_domain_id)
             if p.haslayer(Template):
                 ipfix.add_template(p.getlayer(Template))
         # verify events in data set
