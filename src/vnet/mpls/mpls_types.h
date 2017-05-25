@@ -30,6 +30,7 @@
 #define MPLS_IETF_IMPLICIT_NULL_LABEL        0x00003
 #define MPLS_IETF_ELI_LABEL                  0x00007
 #define MPLS_IETF_GAL_LABEL                  0x0000D
+#define MPLS_IETF_ENTROPY_LABEL              0x0000E
 
 #define MPLS_IETF_IPV4_EXPLICIT_NULL_STRING          "ip4-explicit-null"
 #define MPLS_IETF_IPV4_EXPLICIT_NULL_BRIEF_STRING    "e-nul"

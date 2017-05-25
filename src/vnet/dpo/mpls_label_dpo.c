@@ -356,7 +356,7 @@ mpls_label_imposition_inline (vlib_main_t * vm,
                 }
                 if (PREDICT_TRUE(vnet_buffer(b2)->mpls.first))
                 {
-                    ASSERT(2 != vnet_buffer (b2)->mpls.ttl);
+                    ASSERT(1 != vnet_buffer (b2)->mpls.ttl);
 
                     ttl2 = vnet_buffer(b2)->mpls.ttl - 1;
                 }
