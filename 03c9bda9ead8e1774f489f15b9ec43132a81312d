@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_5e871562",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2017-05-25T17:35:54Z",
+      "side": 1,
+      "message": "per-ACL?",
+      "range": {
+        "startLine": 9,
+        "startChar": 16,
+        "endLine": 9,
+        "endChar": 19
+      },
+      "revId": "03c9bda9ead8e1774f489f15b9ec43132a81312d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_3e7c6172",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2017-05-25T17:35:54Z",
+      "side": 1,
+      "message": "\"Appears to be useful\" isn\u0027t really a good reason to have code.  We\u0027d like to believe that *all* code we write and have in a project is useful.\nThe real reason for the  CONTROL_PING is to synchronize multi-reply API responses.",
+      "range": {
+        "startLine": 13,
+        "startChar": 34,
+        "endLine": 13,
+        "endChar": 73
+      },
+      "revId": "03c9bda9ead8e1774f489f15b9ec43132a81312d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
