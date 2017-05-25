@@ -209,10 +209,10 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_bufs += vlib_buffer_alloc (vm,
 				       &smm->tx_buffers[thread_index][n_bufs],
 				       VLIB_FRAME_SIZE);
+	  _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
 
-	  /* buffer shortage
-	   * XXX 0.9 because when debugging we might not get a full frame */
-	  if (PREDICT_FALSE (n_bufs < 0.9 * VLIB_FRAME_SIZE))
+	  /* Buffer shortage */
+	  if (PREDICT_FALSE (n_bufs < VLIB_FRAME_SIZE))
 	    {
 	      if (svm_fifo_set_event (s0->server_tx_fifo))
 		{
@@ -220,8 +220,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 	      return -1;
 	    }
-
-	  _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
 	}
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);

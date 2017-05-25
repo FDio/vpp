@@ -15,6 +15,15 @@
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
 
+u8 *
+format_stream_session_fifos (u8 * s, va_list * args)
+{
+  stream_session_t *ss = va_arg (*args, stream_session_t *);
+  s = format (s, " Rx fifo: %U", format_svm_fifo, ss->server_rx_fifo, 1);
+  s = format (s, " Tx fifo: %U", format_svm_fifo, ss->server_tx_fifo, 1);
+  return s;
+}
+
 /**
  * Format stream session as per the following format
  *
@@ -44,6 +53,8 @@ format_stream_session (u8 * s, va_list * args)
 		  ss->thread_index, verbose);
       if (verbose == 1)
 	s = format (s, "%v", str);
+      if (verbose > 1)
+	s = format (s, "%U", format_stream_session_fifos, ss);
     }
   else if (ss->session_state == SESSION_STATE_LISTENING)
     {
@@ -57,8 +68,12 @@ format_stream_session (u8 * s, va_list * args)
     }
   else if (ss->session_state == SESSION_STATE_CLOSED)
     {
-      s = format (s, "[CL] %-40U%v", tp_vft->format_connection,
-		  ss->connection_index, ss->thread_index, verbose, str);
+      s = format (s, "[CL] %-40U", tp_vft->format_connection,
+		  ss->connection_index, ss->thread_index, verbose);
+      if (verbose == 1)
+	s = format (s, "%v", str);
+      if (verbose > 1)
+	s = format (s, "%U", format_stream_session_fifos, ss);
     }
   else
     {
@@ -124,13 +139,6 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
               ({
         	vec_reset_length (str);
                 str = format (str, "%U", format_stream_session, s, verbose);
-                if (verbose > 1)
-                  {
-                    str = format (str, " Rx fifo: %U", format_svm_fifo,
-				  s->server_rx_fifo, 1);
-                    str = format (str, " Tx fifo: %U", format_svm_fifo,
-				  s->server_tx_fifo, 1);
-                  }
                 vlib_cli_output (vm, "%v", str);
               }));
               /* *INDENT-ON* */
