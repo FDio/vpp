@@ -540,7 +540,7 @@ svm_fifo_peek (svm_fifo_t * f, u32 relative_offset, u32 max_bytes,
 
   /* read cursize, which can only increase while we're working */
   cursize = svm_fifo_max_dequeue (f);
-  if (PREDICT_FALSE (cursize == 0))
+  if (PREDICT_FALSE (cursize < relative_offset))
     return -2;			/* nothing in the fifo */
 
   nitems = f->nitems;
@@ -548,7 +548,8 @@ svm_fifo_peek (svm_fifo_t * f, u32 relative_offset, u32 max_bytes,
   real_head = real_head >= nitems ? real_head - nitems : real_head;
 
   /* Number of bytes we're going to copy */
-  total_copy_bytes = (cursize < max_bytes) ? cursize : max_bytes;
+  total_copy_bytes = (cursize - relative_offset < max_bytes) ?
+    cursize - relative_offset : max_bytes;
 
   if (PREDICT_TRUE (copy_here != 0))
     {

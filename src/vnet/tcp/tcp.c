@@ -195,8 +195,8 @@ tcp_connection_close (tcp_connection_t * tc)
   TCP_EVT_DBG (TCP_EVT_CLOSE, tc);
 
   /* Send FIN if needed */
-  if (tc->state == TCP_STATE_ESTABLISHED || tc->state == TCP_STATE_SYN_RCVD
-      || tc->state == TCP_STATE_CLOSE_WAIT)
+  if (tc->state == TCP_STATE_ESTABLISHED
+      || tc->state == TCP_STATE_SYN_RCVD || tc->state == TCP_STATE_CLOSE_WAIT)
     tcp_send_fin (tc);
 
   /* Switch state */
@@ -480,7 +480,7 @@ u8 *
 format_tcp_timers (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-  int i, last = 0;
+  int i, last = -1;
 
   for (i = 0; i < TCP_N_TIMERS; i++)
     if (tc->timers[i] != TCP_TIMER_HANDLE_INVALID)
@@ -493,7 +493,7 @@ format_tcp_timers (u8 * s, va_list * args)
 	s = format (s, "%s,", tcp_conn_timers[i]);
     }
 
-  if (last > 0)
+  if (last >= 0)
     s = format (s, "%s]", tcp_conn_timers[i]);
   else
     s = format (s, "]");
@@ -526,19 +526,19 @@ format_tcp_vars (u8 * s, va_list * args)
   s = format (s, " snd_wnd %u rcv_wnd %u snd_wl1 %u snd_wl2 %u\n",
 	      tc->snd_wnd, tc->rcv_wnd, tc->snd_wl1 - tc->irs,
 	      tc->snd_wl2 - tc->iss);
-  s = format (s, " flight size %u send space %u rcv_wnd available %d\n",
-	      tcp_flight_size (tc), tcp_snd_space (tc),
-	      tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las));
+  s = format (s, " flight size %u send space %u rcv_wnd_av %d\n",
+	      tcp_flight_size (tc), tcp_available_snd_space (tc),
+	      tcp_rcv_wnd_available (tc));
   s = format (s, " cong %U ", format_tcp_congestion_status, tc);
   s = format (s, "cwnd %u ssthresh %u rtx_bytes %u bytes_acked %u\n",
-	      tc->cwnd, tc->ssthresh, tc->rtx_bytes, tc->bytes_acked);
-  s = format (s, " prev_ssthresh %u snd_congestion %u\n", tc->prev_ssthresh,
-	      tc->snd_congestion - tc->iss);
+	      tc->cwnd, tc->ssthresh, tc->snd_rxt_bytes, tc->bytes_acked);
+  s = format (s, " prev_ssthresh %u snd_congestion %u dupack %u\n",
+	      tc->prev_ssthresh, tc->snd_congestion - tc->iss,
+	      tc->rcv_dupacks);
   s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %u ", tc->rto,
 	      tc->rto_boff, tc->srtt, tc->rttvar, tc->rtt_ts);
   s = format (s, "rtt_seq %u\n", tc->rtt_seq);
-  if (scoreboard_first_hole (&tc->sack_sb))
-    s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb);
+  s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb);
   if (vec_len (tc->snd_sacks))
     s = format (s, " sacks tx: %U\n", format_tcp_sacks, tc);
 
@@ -595,9 +595,10 @@ format_tcp_session (u8 * s, va_list * args)
 
   tc = tcp_connection_get (tci, thread_index);
   if (tc)
-    return format (s, "%U", format_tcp_connection, tc, verbose);
+    s = format (s, "%U", format_tcp_connection, tc, verbose);
   else
-    return format (s, "empty");
+    s = format (s, "empty");
+  return s;
 }
 
 u8 *
@@ -643,13 +644,17 @@ format_tcp_scoreboard (u8 * s, va_list * args)
 {
   sack_scoreboard_t *sb = va_arg (*args, sack_scoreboard_t *);
   sack_scoreboard_hole_t *hole;
-  s = format (s, "head %u tail %u snd_una_adv %u\n", sb->head, sb->tail,
-	      sb->snd_una_adv);
-  s = format (s, "sacked_bytes %u last_sacked_bytes %u", sb->sacked_bytes,
-	      sb->last_sacked_bytes);
-  s = format (s, " max_byte_sacked %u\n", sb->max_byte_sacked);
-  s = format (s, "holes:\n");
+  s = format (s, "sacked_bytes %u last_sacked_bytes %u lost_bytes %u\n",
+	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes);
+  s = format (s, " last_bytes_delivered %u high_sacked %u snd_una_adv %u\n",
+	      sb->last_bytes_delivered, sb->high_sacked, sb->snd_una_adv);
+  s = format (s, " cur_rxt_hole %u high_rxt %u rescue_rxt %u",
+	      sb->cur_rxt_hole, sb->high_rxt, sb->rescue_rxt);
+
   hole = scoreboard_first_hole (sb);
+  if (hole)
+    s = format (s, "\n head %u tail %u holes:\n", sb->head, sb->tail);
+
   while (hole)
     {
       s = format (s, "%U", format_tcp_sack_hole, hole);
@@ -736,7 +741,7 @@ tcp_snd_space (tcp_connection_t * tc)
   if (tcp_in_recovery (tc))
     {
       tc->snd_nxt = tc->snd_una_max;
-      snd_space = tcp_available_wnd (tc) - tc->rtx_bytes
+      snd_space = tcp_available_wnd (tc) - tc->snd_rxt_bytes
 	- (tc->snd_una_max - tc->snd_congestion);
       if (snd_space <= 0 || (tc->snd_una_max - tc->snd_una) >= tc->snd_wnd)
 	return 0;
@@ -744,8 +749,8 @@ tcp_snd_space (tcp_connection_t * tc)
     }
 
   /* If in fast recovery, send 1 SMSS if wnd allows */
-  if (tcp_in_fastrecovery (tc) && tcp_available_snd_space (tc)
-      && tcp_fastrecovery_sent_1_smss (tc))
+  if (tcp_in_fastrecovery (tc)
+      && tcp_available_snd_space (tc) && !tcp_fastrecovery_sent_1_smss (tc))
     {
       tcp_fastrecovery_1_smss_on (tc);
       return tc->snd_mss;
@@ -759,6 +764,12 @@ tcp_session_send_space (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
   return tcp_snd_space (tc);
+}
+
+i32
+tcp_rcv_wnd_available (tcp_connection_t * tc)
+{
+  return (i32) tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las);
 }
 
 u32
