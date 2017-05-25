@@ -165,6 +165,8 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   int i;
   int delete_session;
   u32 *connection_indices;
+  u32 tx_quota = 0;
+  u32 delta, prev_bytes_received_this_session;
 
   connection_indices = tm->connection_index_by_thread[my_thread_index];
 
@@ -177,14 +179,19 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       sp = pool_elt_at_index (tm->sessions, connection_indices[i]);
 
-      if (sp->bytes_to_send > 0)
+      if (tx_quota < 40 && sp->bytes_to_send > 0)
 	{
 	  send_test_chunk (tm, sp);
 	  delete_session = 0;
+	  tx_quota++;
 	}
       if (sp->bytes_to_receive > 0)
 	{
+	  prev_bytes_received_this_session = sp->bytes_received;
 	  receive_test_chunk (tm, sp);
+	  delta = sp->bytes_received - prev_bytes_received_this_session;
+	  if (delta > 0)
+	    tx_quota--;
 	  delete_session = 0;
 	}
       if (PREDICT_FALSE (delete_session == 1))
