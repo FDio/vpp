@@ -531,7 +531,7 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las));
   s = format (s, " cong %U ", format_tcp_congestion_status, tc);
   s = format (s, "cwnd %u ssthresh %u rtx_bytes %u bytes_acked %u\n",
-	      tc->cwnd, tc->ssthresh, tc->rtx_bytes, tc->bytes_acked);
+	      tc->cwnd, tc->ssthresh, tc->snd_rtx_bytes, tc->bytes_acked);
   s = format (s, " prev_ssthresh %u snd_congestion %u\n", tc->prev_ssthresh,
 	      tc->snd_congestion - tc->iss);
   s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %u ", tc->rto,
@@ -736,7 +736,7 @@ tcp_snd_space (tcp_connection_t * tc)
   if (tcp_in_recovery (tc))
     {
       tc->snd_nxt = tc->snd_una_max;
-      snd_space = tcp_available_wnd (tc) - tc->rtx_bytes
+      snd_space = tcp_available_wnd (tc) - tc->snd_rtx_bytes
 	- (tc->snd_una_max - tc->snd_congestion);
       if (snd_space <= 0 || (tc->snd_una_max - tc->snd_una) >= tc->snd_wnd)
 	return 0;
