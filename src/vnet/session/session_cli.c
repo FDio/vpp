@@ -58,7 +58,9 @@ format_stream_session (u8 * s, va_list * args)
   else if (ss->session_state == SESSION_STATE_CLOSED)
     {
       s = format (s, "[CL] %-40U%v", tp_vft->format_connection,
-		  ss->connection_index, ss->thread_index, verbose, str);
+		  ss->connection_index, ss->thread_index, verbose);
+      if (verbose == 1)
+	s = format (s, "%v", str);
     }
   else
     {
