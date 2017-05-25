@@ -54,7 +54,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_una = 0;
   tc->snd_una_max = 1000;
   tc->snd_nxt = 1000;
-  tc->opt.flags |= TCP_OPTS_FLAG_SACK;
+  tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
   scoreboard_init (&tc->sack_sb);
 
   for (i = 0; i < 1000 / 100; i++)
@@ -70,9 +70,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
 
   for (i = 0; i < 1000 / 200; i++)
     {
-      vec_add1 (tc->opt.sacks, sacks[i * 2]);
+      vec_add1 (tc->rcv_opts.sacks, sacks[i * 2]);
     }
-  tc->opt.n_sack_blocks = vec_len (tc->opt.sacks);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
   tcp_rcv_sacks (tc, 0);
 
   if (verbose)
@@ -99,12 +99,12 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * Inject odd blocks
    */
 
-  vec_reset_length (tc->opt.sacks);
+  vec_reset_length (tc->rcv_opts.sacks);
   for (i = 0; i < 1000 / 200; i++)
     {
-      vec_add1 (tc->opt.sacks, sacks[i * 2 + 1]);
+      vec_add1 (tc->rcv_opts.sacks, sacks[i * 2 + 1]);
     }
-  tc->opt.n_sack_blocks = vec_len (tc->opt.sacks);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
   tcp_rcv_sacks (tc, 0);
 
   if (verbose)
@@ -145,11 +145,11 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * Add new block
    */
 
-  vec_reset_length (tc->opt.sacks);
+  vec_reset_length (tc->rcv_opts.sacks);
 
   block.start = 1200;
   block.end = 1300;
-  vec_add1 (tc->opt.sacks, block);
+  vec_add1 (tc->rcv_opts.sacks, block);
 
   if (verbose)
     vlib_cli_output (vm, "add [1200, 1300]:\n%U", format_tcp_scoreboard, sb);
@@ -182,7 +182,7 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
    * Ack first hole
    */
 
-  vec_reset_length (tc->opt.sacks);
+  vec_reset_length (tc->rcv_opts.sacks);
   tcp_rcv_sacks (tc, 1200);
 
   if (verbose)
@@ -214,9 +214,9 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   tc->snd_nxt = 1000;
   for (i = 0; i < 5; i++)
     {
-      vec_add1 (tc->opt.sacks, sacks[i * 2 + 1]);
+      vec_add1 (tc->rcv_opts.sacks, sacks[i * 2 + 1]);
     }
-  tc->opt.n_sack_blocks = vec_len (tc->opt.sacks);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
   tcp_rcv_sacks (tc, 0);
   if (verbose)
     vlib_cli_output (vm, "sb added odd blocks and ack [0, 950]:\n%U",
@@ -1239,7 +1239,7 @@ tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
       tc0->c_thread_index = 0;
       tc0->c_lcl_ip4.as_u32 = local.as_u32;
       tc0->c_rmt_ip4.as_u32 = remote.as_u32;
-      tc0->opt.mss = 1450;
+      tc0->rcv_opts.mss = 1450;
       tcp_connection_init_vars (tc0);
 
       TCP_EVT_DBG (TCP_EVT_OPEN, tc0);
