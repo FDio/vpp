@@ -670,7 +670,7 @@ start_workers (vlib_main_t * vm)
 
 	      /* zap the (per worker) frame freelists, etc */
 	      nm_clone->frame_sizes = 0;
-	      nm_clone->frame_size_hash = 0;
+	      nm_clone->frame_size_hash = hash_create (0, sizeof (uword));
 
 	      /* Packet trace buffers are guaranteed to be empty, nothing to do here */
 

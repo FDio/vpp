@@ -393,7 +393,7 @@ typedef enum _tcp_dbg_evt
   DECLARE_ETD(_tc, _e, 4);						\
   ed->data[0] = _seq - _tc->irs;					\
   ed->data[1] = _end - _tc->irs;					\
-  ed->data[2] = _tc->opt.tsval;						\
+  ed->data[2] = _tc->rcv_opts.tsval;					\
   ed->data[3] = _tc->tsval_recent;					\
 }
 
@@ -427,27 +427,27 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "rtx: snd_nxt %u offset %u snd %u rtx %u",		\
+    .format = "rxt: snd_nxt %u offset %u snd %u rxt %u",		\
     .format_args = "i4i4i4i4",						\
   };									\
   DECLARE_ETD(_tc, _e, 4);						\
   ed->data[0] = _tc->snd_nxt - _tc->iss;				\
   ed->data[1] = offset;							\
   ed->data[2] = n_bytes;						\
-  ed->data[3] = _tc->rtx_bytes;						\
+  ed->data[3] = _tc->snd_rxt_bytes;					\
 }
 
 #define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)			\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "cc: %s wnd %u snd_cong %u rtx_bytes %u",			\
+    .format = "cc: %s wnd %u snd_cong %u rxt_bytes %u",			\
     .format_args = "t4i4i4i4",						\
     .n_enum_strings = 5,						\
     .enum_strings = {                                           	\
-      "fast-rtx",	                                             	\
-      "rtx-timeout",                                                 	\
-      "first-rtx",                                                 	\
+      "fast-rxt",	                                             	\
+      "rxt-timeout",                                                 	\
+      "first-rxt",                                                 	\
       "recovered",							\
       "congestion",							\
     },  								\
@@ -456,7 +456,7 @@ typedef enum _tcp_dbg_evt
   ed->data[0] = _sub_evt;						\
   ed->data[1] = tcp_available_snd_space (_tc);				\
   ed->data[2] = _tc->snd_congestion - _tc->iss;				\
-  ed->data[3] = _tc->rtx_bytes;						\
+  ed->data[3] = _tc->snd_rxt_bytes;					\
 }
 
 #define TCP_EVT_CC_PACK_HANDLER(_tc, ...)				\

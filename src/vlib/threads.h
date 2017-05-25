@@ -62,7 +62,7 @@ typedef struct vlib_thread_registration_
 #define VLIB_CPU_MASK (VLIB_MAX_CPUS - 1)	/* 0x3f, max */
 #define VLIB_OFFSET_MASK (~VLIB_CPU_MASK)
 
-#define VLIB_LOG2_THREAD_STACK_SIZE (20)
+#define VLIB_LOG2_THREAD_STACK_SIZE (21)
 #define VLIB_THREAD_STACK_SIZE (1<<VLIB_LOG2_THREAD_STACK_SIZE)
 
 typedef enum
