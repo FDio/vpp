@@ -34,6 +34,7 @@
 #define TCP_MAX_RX_FIFO_SIZE 	2 << 20
 #define TCP_IW_N_SEGMENTS 	10
 #define TCP_ALWAYS_ACK		0	/**< If on, we always ack */
+#define TCP_USE_SACKS		0	/**< Disable only for testing */
 
 /** TCP FSM state definitions as per RFC793. */
 #define foreach_tcp_fsm_state   \
@@ -166,6 +167,7 @@ typedef struct _sack_scoreboard
   u32 tail;				/**< Index of last entry */
   u32 sacked_bytes;			/**< Number of bytes sacked in sb */
   u32 last_sacked_bytes;		/**< Number of bytes last sacked */
+  u32 last_bytes_delivered;		/**< Number of sack bytes delivered */
   u32 snd_una_adv;			/**< Bytes to add to snd_una */
   u32 max_byte_sacked;			/**< Highest byte acked */
 } sack_scoreboard_t;
@@ -211,7 +213,7 @@ typedef struct _tcp_connection
   u32 irs;		/**< initial remote sequence */
 
   /* Options */
-  tcp_options_t opt;		/**< TCP connection options parsed */
+  tcp_options_t rcv_opts;	/**< Rx options for connection */
   tcp_options_t snd_opts;	/**< Tx options for connection */
   u8 snd_opts_len;		/**< Tx options len */
   u8 rcv_wscale;	/**< Window scale to advertise to peer */
@@ -229,8 +231,11 @@ typedef struct _tcp_connection
   u32 cwnd;		/**< Congestion window */
   u32 ssthresh;		/**< Slow-start threshold */
   u32 prev_ssthresh;	/**< ssthresh before congestion */
+  u32 prev_cwnd;	/**< ssthresh before congestion */
   u32 bytes_acked;	/**< Bytes acknowledged by current segment */
-  u32 rtx_bytes;	/**< Retransmitted bytes */
+  u32 snd_rtx_bytes;	/**< Retransmitted bytes */
+  u32 snd_rtx_seq;	/**< Highest retransmitted sequence number */
+  u32 snd_rtx_ts;	/**< Timestamp when first packet is retransmitted */
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
   u32 snd_congestion;	/**< snd_una_max when congestion is detected */
   tcp_cc_algorithm_t *cc_algo;	/**< Congestion control algorithm */
@@ -428,17 +433,38 @@ tcp_end_seq (tcp_header_t * th, u32 len)
 #define timestamp_lt(_t1, _t2) ((i32)((_t1)-(_t2)) < 0)
 #define timestamp_leq(_t1, _t2) ((i32)((_t1)-(_t2)) <= 0)
 
+/**
+ * Our estimate of the number of bytes that have left the network
+ */
+always_inline u32
+tcp_bytes_out (const tcp_connection_t *tc)
+{
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
+    return tc->sack_sb.sacked_bytes;
+  else
+    return tc->rcv_dupacks * tc->snd_mss;
+}
+
+/**
+ * Our estimate of the number of bytes in flight (pipe size)
+ */
 always_inline u32
 tcp_flight_size (const tcp_connection_t * tc)
 {
   int flight_size;
 
-  flight_size = (int) ((tc->snd_una_max - tc->snd_una) + tc->rtx_bytes)
-    - (tc->rcv_dupacks * tc->snd_mss) /* - tc->sack_sb.sacked_bytes */ ;
+  flight_size = (int) (tc->snd_una_max - tc->snd_una) - tcp_bytes_out (tc)
+      + tc->snd_rtx_bytes;
 
-  /* Happens if we don't clear sacked bytes */
   if (flight_size < 0)
-    return 0;
+    {
+      if (0)
+	clib_warning("Negative: %u %u %u dupacks %u sacked bytes %u flags %d",
+		     tc->snd_una_max - tc->snd_una, tcp_bytes_out (tc),
+		     tc->snd_rtx_bytes, tc->rcv_dupacks, tc->sack_sb.sacked_bytes,
+		     tc->rcv_opts.flags);
+      return 0;
+    }
 
   return flight_size;
 }
@@ -487,7 +513,7 @@ void tcp_update_rcv_wnd (tcp_connection_t * tc);
 
 void tcp_retransmit_first_unacked (tcp_connection_t * tc);
 void tcp_fast_retransmit (tcp_connection_t * tc);
-void tcp_cc_congestion (tcp_connection_t * tc);
+void tcp_cc_init_congestion (tcp_connection_t * tc);
 void tcp_cc_recover (tcp_connection_t * tc);
 
 /* Made public for unit testing only */
@@ -563,16 +589,19 @@ tcp_retransmit_timer_set (tcp_connection_t * tc)
 }
 
 always_inline void
-tcp_retransmit_timer_update (tcp_connection_t * tc)
-{
-  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT,
-		    clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
-}
-
-always_inline void
 tcp_retransmit_timer_reset (tcp_connection_t * tc)
 {
   tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT);
+}
+
+always_inline void
+tcp_retransmit_timer_update (tcp_connection_t * tc)
+{
+  if (tc->snd_una == tc->snd_una_max)
+    tcp_retransmit_timer_reset (tc);
+  else
+    tcp_timer_update (tc, TCP_TIMER_RETRANSMIT,
+		      clib_max(tc->rto * TCP_TO_TIMER_TICK, 1));
 }
 
 always_inline void
