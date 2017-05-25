@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_5e04b514",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-25T17:14:20Z",
+      "side": 1,
+      "message": "Do we really need to define this ourselves? Don\u0027t we get it with arp.h or maybe ethernet.h?",
+      "range": {
+        "startLine": 30,
+        "startChar": 0,
+        "endLine": 30,
+        "endChar": 28
+      },
+      "revId": "adabc4f6a4556c2db4dc8f8b42f84238c4663b9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_3e09012d",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2980,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-25T17:14:20Z",
+      "side": 1,
+      "message": "Maybe we should also consider using the queried for mac address here. However, if things works like this, we can postpone that to a later time.",
+      "range": {
+        "startLine": 2980,
+        "startChar": 36,
+        "endLine": 2980,
+        "endChar": 54
+      },
+      "revId": "adabc4f6a4556c2db4dc8f8b42f84238c4663b9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_1e0e3d35",
+        "filename": "src/vnet/lisp-cp/control.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 136,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-25T17:14:20Z",
+      "side": 1,
+      "message": "I\u0027m torn with this. In particular because we need to have gid dictionary lookups return u64 instead of u32s. \n\nI see the benefits of having this be thread safe but we\u0027re missing out on consistency (i.e., the gid dictionary returns to us a key for a mapping, it can be lisp mapping or arp mapping). Moreover, we typically expect to have only thread 0 as writer (save for when resolution is done via dp) so this is not that big of a deal. \n\nLet\u0027s take it offline.",
+      "range": {
+        "startLine": 136,
+        "startChar": 2,
+        "endLine": 136,
+        "endChar": 35
+      },
+      "revId": "adabc4f6a4556c2db4dc8f8b42f84238c4663b9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_beb8512b",
+        "filename": "src/vnet/lisp-cp/one_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 338,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-25T17:14:20Z",
+      "side": 1,
+      "message": "Maybe remove entry not to have to write too much :-)",
+      "range": {
+        "startLine": 338,
+        "startChar": 30,
+        "endLine": 338,
+        "endChar": 35
+      },
+      "revId": "adabc4f6a4556c2db4dc8f8b42f84238c4663b9d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
