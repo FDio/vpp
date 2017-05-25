@@ -65,14 +65,70 @@ mpls_compute_flow_hash (const mpls_unicast_header_t * hdr,
                         flow_hash_config_t flow_hash_config)
 {
     /*
-     * improve this to include:
-     *  - all labels in the stack.
-     *  - recognise entropy labels.
-     *
      * We need to byte swap so we use the numerical value. i.e. an odd label
-     * leads to an odd bucket. ass opposed to a label above and below value X.
+     * leads to an odd bucket. as opposed to a label above and below value X.
      */
-    return (vnet_mpls_uc_get_label(clib_net_to_host_u32(hdr->label_exp_s_ttl)));
+    u8 next_label_is_entropy;
+    mpls_label_t ho_label;
+    u32 hash, value;
+
+    ho_label = clib_net_to_host_u32(hdr->label_exp_s_ttl);
+    hash = vnet_mpls_uc_get_label(ho_label);
+    next_label_is_entropy = 0;
+
+    while (MPLS_EOS != vnet_mpls_uc_get_s(ho_label))
+    {
+        hdr++;
+        ho_label = clib_net_to_host_u32(hdr->label_exp_s_ttl);
+        value = vnet_mpls_uc_get_label(ho_label);
+
+        if (1 == next_label_is_entropy)
+        {
+            /*
+             * The label is an entropy value, use it alone as the hash
+             */
+            return (ho_label);
+        }
+        if (MPLS_IETF_ENTROPY_LABEL == value)
+        {
+            /*
+             * we've met a label in the stack indicating that tha next
+             * label is an entropy value
+             */
+            next_label_is_entropy = 1;
+        }
+        else
+        {
+            /*
+             * XOR the label values in the stack together to
+             * build up the hash value
+             */
+            hash ^= value;
+        }
+    }
+
+    /*
+     * check the top nibble for v4 and v6
+     */
+    hdr++;
+
+    switch (((u8*)hdr)[0] >> 4)
+    {
+    case 4:
+        /* incorporate the v4 flow-hash */
+        hash ^= ip4_compute_flow_hash ((const ip4_header_t *)hdr,
+                                       IP_FLOW_HASH_DEFAULT);
+        break;
+    case 6:
+        /* incorporate the v6 flow-hash */
+        hash ^= ip6_compute_flow_hash ((const ip6_header_t *)hdr,
+                                       IP_FLOW_HASH_DEFAULT);
+        break;
+    default:
+        break;
+    }
+
+    return (hash);
 }
 
 static inline uword

@@ -7,7 +7,8 @@ from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_pg_interface import is_ipv6_misc
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
-    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags
+    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
+    VppMplsRoute
 from vpp_neighbor import find_nbr, VppNeighbor
 
 from scapy.packet import Raw
@@ -21,6 +22,7 @@ from util import ppp
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid, in6_ismaddr
 from scapy.utils import inet_pton, inet_ntop
+from scapy.contrib.mpls import MPLS
 
 
 def mk_ll_addr(mac):
@@ -1145,12 +1147,14 @@ class TestIP6LoadBalance(VppTestCase):
             i.admin_up()
             i.config_ip6()
             i.resolve_ndp()
+            i.enable_mpls()
 
     def tearDown(self):
         super(TestIP6LoadBalance, self).tearDown()
         for i in self.pg_interfaces:
             i.unconfig_ip6()
             i.admin_down()
+            i.disable_mpls()
 
     def send_and_expect_load_balancing(self, input, pkts, outputs):
         input.add_stream(pkts)
@@ -1160,31 +1164,69 @@ class TestIP6LoadBalance(VppTestCase):
             rx = oo._get_capture(1)
             self.assertNotEqual(0, len(rx))
 
+    def send_and_expect_one_itf(self, input, pkts, itf):
+        input.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = itf.get_capture(len(pkts))
+
     def test_ip6_load_balance(self):
         """ IPv6 Load-Balancing """
 
         #
         # An array of packets that differ only in the destination port
+        #  - IP only
+        #  - MPLS EOS
+        #  - MPLS non-EOS
+        #  - MPLS non-EOS with an entropy label
         #
-        port_pkts = []
+        port_ip_pkts = []
+        port_mpls_pkts = []
+        port_mpls_neos_pkts = []
+        port_ent_pkts = []
 
         #
         # An array of packets that differ only in the source address
         #
-        src_pkts = []
+        src_ip_pkts = []
+        src_mpls_pkts = []
 
         for ii in range(65):
-            port_pkts.append((Ether(src=self.pg0.remote_mac,
-                                    dst=self.pg0.local_mac) /
-                              IPv6(dst="3000::1", src="3000:1::1") /
-                              UDP(sport=1234, dport=1234 + ii) /
-                              Raw('\xa5' * 100)))
-            src_pkts.append((Ether(src=self.pg0.remote_mac,
-                                   dst=self.pg0.local_mac) /
-                             IPv6(dst="3000::1", src="3000:1::%d" % ii) /
-                             UDP(sport=1234, dport=1234) /
-                             Raw('\xa5' * 100)))
+            port_ip_hdr = (IPv6(dst="3000::1", src="3000:1::1") /
+                           UDP(sport=1234, dport=1234 + ii) /
+                           Raw('\xa5' * 100))
+            port_ip_pkts.append((Ether(src=self.pg0.remote_mac,
+                                       dst=self.pg0.local_mac) /
+                                 port_ip_hdr))
+            port_mpls_pkts.append((Ether(src=self.pg0.remote_mac,
+                                         dst=self.pg0.local_mac) /
+                                   MPLS(label=66, ttl=2) /
+                                   port_ip_hdr))
+            port_mpls_neos_pkts.append((Ether(src=self.pg0.remote_mac,
+                                              dst=self.pg0.local_mac) /
+                                        MPLS(label=67, ttl=2) /
+                                        MPLS(label=77, ttl=2) /
+                                        port_ip_hdr))
+            port_ent_pkts.append((Ether(src=self.pg0.remote_mac,
+                                        dst=self.pg0.local_mac) /
+                                  MPLS(label=67, ttl=2) /
+                                  MPLS(label=14, ttl=2) /
+                                  MPLS(label=999, ttl=2) /
+                                  port_ip_hdr))
+            src_ip_hdr = (IPv6(dst="3000::1", src="3000:1::%d" % ii) /
+                          UDP(sport=1234, dport=1234) /
+                          Raw('\xa5' * 100))
+            src_ip_pkts.append((Ether(src=self.pg0.remote_mac,
+                                      dst=self.pg0.local_mac) /
+                                src_ip_hdr))
+            src_mpls_pkts.append((Ether(src=self.pg0.remote_mac,
+                                        dst=self.pg0.local_mac) /
+                                  MPLS(label=66, ttl=2) /
+                                  src_ip_hdr))
 
+        #
+        # A route for the IP pacekts
+        #
         route_3000_1 = VppIpRoute(self, "3000::1", 128,
                                   [VppRoutePath(self.pg1.remote_ip6,
                                                 self.pg1.sw_if_index,
@@ -1196,6 +1238,26 @@ class TestIP6LoadBalance(VppTestCase):
         route_3000_1.add_vpp_config()
 
         #
+        # a local-label for the EOS packets
+        #
+        binding = VppMplsIpBind(self, 66, "3000::1", 128, is_ip6=1)
+        binding.add_vpp_config()
+
+        #
+        # An MPLS route for the non-EOS packets
+        #
+        route_67 = VppMplsRoute(self, 67, 0,
+                                [VppRoutePath(self.pg1.remote_ip6,
+                                              self.pg1.sw_if_index,
+                                              labels=[67],
+                                              is_ip6=1),
+                                 VppRoutePath(self.pg2.remote_ip6,
+                                              self.pg2.sw_if_index,
+                                              labels=[67],
+                                              is_ip6=1)])
+        route_67.add_vpp_config()
+
+        #
         # inject the packet on pg0 - expect load-balancing across the 2 paths
         #  - since the default hash config is to use IP src,dst and port
         #    src,dst
@@ -1204,10 +1266,22 @@ class TestIP6LoadBalance(VppTestCase):
         # be guaranteed. But wuth 64 different packets we do expect some
         # balancing. So instead just ensure there is traffic on each link.
         #
-        self.send_and_expect_load_balancing(self.pg0, port_pkts,
+        self.send_and_expect_load_balancing(self.pg0, port_ip_pkts,
                                             [self.pg1, self.pg2])
-        self.send_and_expect_load_balancing(self.pg0, src_pkts,
+        self.send_and_expect_load_balancing(self.pg0, src_ip_pkts,
                                             [self.pg1, self.pg2])
+        self.send_and_expect_load_balancing(self.pg0, port_mpls_pkts,
+                                            [self.pg1, self.pg2])
+        self.send_and_expect_load_balancing(self.pg0, src_mpls_pkts,
+                                            [self.pg1, self.pg2])
+        self.send_and_expect_load_balancing(self.pg0, port_mpls_neos_pkts,
+                                            [self.pg1, self.pg2])
+
+        #
+        # The packets with Entropy label in should not load-balance,
+        # since the Entorpy value is fixed.
+        #
+        self.send_and_expect_one_itf(self.pg0, port_ent_pkts, self.pg1)
 
         #
         # change the flow hash config so it's only IP src,dst
@@ -1216,14 +1290,11 @@ class TestIP6LoadBalance(VppTestCase):
         #
         self.vapi.set_ip_flow_hash(0, is_ip6=1, src=1, dst=1, sport=0, dport=0)
 
-        self.send_and_expect_load_balancing(self.pg0, src_pkts,
+        self.send_and_expect_load_balancing(self.pg0, src_ip_pkts,
                                             [self.pg1, self.pg2])
-
-        self.pg0.add_stream(port_pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg2.get_capture(len(port_pkts))
+        self.send_and_expect_load_balancing(self.pg0, src_mpls_pkts,
+                                            [self.pg1, self.pg2])
+        self.send_and_expect_one_itf(self.pg0, port_ip_pkts, self.pg2)
 
         #
         # change the flow hash config back to defaults

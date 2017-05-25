@@ -11,3 +11,8 @@ index 640a0c5..6af1d4a 100644
             ip_version = (ord(payload[0]) >> 4) & 0xF
             if ip_version == 4:
                 return IP
+@@ -27,3 +29,4 @@ class MPLS(Packet):
+ 
+ bind_layers(Ether, MPLS, type=0x8847)
+ bind_layers(GRE, MPLS, proto=0x8847)
++bind_layers(MPLS, MPLS, s=0)
