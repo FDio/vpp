@@ -51,9 +51,23 @@ newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type)
     }
   else if (ack_type == TCP_CC_PARTIALACK)
     {
-      tc->cwnd -= tc->bytes_acked;
-      if (tc->bytes_acked > tc->snd_mss)
-	tc->bytes_acked += tc->snd_mss;
+      /* RFC 6582 Sec. 3.2 */
+      if (!tcp_opts_sack_permitted (&tc->rcv_opts))
+	{
+	  /* Deflate the congestion window by the amount of new data
+	   * acknowledged by the Cumulative Acknowledgment field.
+	   * If the partial ACK acknowledges at least one SMSS of new data,
+	   * then add back SMSS bytes to the congestion window. This
+	   * artificially inflates the congestion window in order to reflect
+	   * the additional segment that has left the network. This "partial
+	   * window deflation" attempts to ensure that, when fast recovery
+	   * eventually ends, approximately ssthresh amount of data will be
+	   * outstanding in the network.*/
+	  tc->cwnd = (tc->cwnd > tc->bytes_acked) ?
+	    tc->cwnd - tc->bytes_acked : 0;
+	  if (tc->bytes_acked > tc->snd_mss)
+	    tc->cwnd += tc->snd_mss;
+	}
     }
 }
 

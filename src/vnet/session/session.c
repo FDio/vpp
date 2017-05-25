@@ -562,7 +562,7 @@ stream_session_no_space (transport_connection_t * tc, u32 thread_index,
   return 0;
 }
 
-u32
+int
 stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			   u32 offset, u32 max_bytes)
 {

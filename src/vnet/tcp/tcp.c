@@ -195,8 +195,8 @@ tcp_connection_close (tcp_connection_t * tc)
   TCP_EVT_DBG (TCP_EVT_CLOSE, tc);
 
   /* Send FIN if needed */
-  if (tc->state == TCP_STATE_ESTABLISHED || tc->state == TCP_STATE_SYN_RCVD
-      || tc->state == TCP_STATE_CLOSE_WAIT)
+  if (tc->state == TCP_STATE_ESTABLISHED
+      || tc->state == TCP_STATE_SYN_RCVD || tc->state == TCP_STATE_CLOSE_WAIT)
     tcp_send_fin (tc);
 
   /* Switch state */
@@ -531,7 +531,7 @@ format_tcp_vars (u8 * s, va_list * args)
 	      tc->rcv_wnd - (tc->rcv_nxt - tc->rcv_las));
   s = format (s, " cong %U ", format_tcp_congestion_status, tc);
   s = format (s, "cwnd %u ssthresh %u rtx_bytes %u bytes_acked %u\n",
-	      tc->cwnd, tc->ssthresh, tc->rtx_bytes, tc->bytes_acked);
+	      tc->cwnd, tc->ssthresh, tc->snd_rxt_bytes, tc->bytes_acked);
   s = format (s, " prev_ssthresh %u snd_congestion %u\n", tc->prev_ssthresh,
 	      tc->snd_congestion - tc->iss);
   s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %u ", tc->rto,
@@ -595,9 +595,10 @@ format_tcp_session (u8 * s, va_list * args)
 
   tc = tcp_connection_get (tci, thread_index);
   if (tc)
-    return format (s, "%U", format_tcp_connection, tc, verbose);
+    s = format (s, "%U", format_tcp_connection, tc, verbose);
   else
-    return format (s, "empty");
+    s = format (s, "empty");
+  return s;
 }
 
 u8 *
@@ -647,7 +648,7 @@ format_tcp_scoreboard (u8 * s, va_list * args)
 	      sb->snd_una_adv);
   s = format (s, "sacked_bytes %u last_sacked_bytes %u", sb->sacked_bytes,
 	      sb->last_sacked_bytes);
-  s = format (s, " max_byte_sacked %u\n", sb->max_byte_sacked);
+  s = format (s, " high_sacked %u\n", sb->high_sacked);
   s = format (s, "holes:\n");
   hole = scoreboard_first_hole (sb);
   while (hole)
@@ -736,7 +737,7 @@ tcp_snd_space (tcp_connection_t * tc)
   if (tcp_in_recovery (tc))
     {
       tc->snd_nxt = tc->snd_una_max;
-      snd_space = tcp_available_wnd (tc) - tc->rtx_bytes
+      snd_space = tcp_available_wnd (tc) - tc->snd_rxt_bytes
 	- (tc->snd_una_max - tc->snd_congestion);
       if (snd_space <= 0 || (tc->snd_una_max - tc->snd_una) >= tc->snd_wnd)
 	return 0;
@@ -744,8 +745,8 @@ tcp_snd_space (tcp_connection_t * tc)
     }
 
   /* If in fast recovery, send 1 SMSS if wnd allows */
-  if (tcp_in_fastrecovery (tc) && tcp_available_snd_space (tc)
-      && tcp_fastrecovery_sent_1_smss (tc))
+  if (tcp_in_fastrecovery (tc)
+      && tcp_available_snd_space (tc) && !tcp_fastrecovery_sent_1_smss (tc))
     {
       tcp_fastrecovery_1_smss_on (tc);
       return tc->snd_mss;
