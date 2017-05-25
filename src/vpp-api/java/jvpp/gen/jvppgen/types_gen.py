@@ -91,9 +91,9 @@ object_array_dto_field_setter_template = Template("""
     {
         jclass ${field_reference_name}Class = (*env)->FindClass(env, "${class_FQN}");
         jobjectArray ${field_reference_name} = (*env)->NewObjectArray(env, ${field_length}, ${field_reference_name}Class, 0);
+        jmethodID ${field_reference_name}Constructor = (*env)->GetMethodID(env, ${field_reference_name}Class, "<init>", "()V");
         unsigned int _i;
         for (_i = 0; _i < ${field_length}; _i++) {
-            jmethodID ${field_reference_name}Constructor = (*env)->GetMethodID(env, ${field_reference_name}Class, "<init>", "()V");
             jobject ${field_reference_name}ArrayElement = (*env)->NewObject(env, ${field_reference_name}Class,  ${field_reference_name}Constructor);
             ${type_initialization}
             (*env)->SetObjectArrayElement(env, ${field_reference_name}, _i, ${field_reference_name}ArrayElement);
