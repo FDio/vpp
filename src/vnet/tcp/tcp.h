@@ -166,6 +166,7 @@ typedef struct _sack_scoreboard
   u32 tail;				/**< Index of last entry */
   u32 sacked_bytes;			/**< Number of bytes sacked in sb */
   u32 last_sacked_bytes;		/**< Number of bytes last sacked */
+  u32 last_bytes_delivered;		/**< Number of sack bytes delivered */
   u32 snd_una_adv;			/**< Bytes to add to snd_una */
   u32 max_byte_sacked;			/**< Highest byte acked */
 } sack_scoreboard_t;
@@ -211,7 +212,7 @@ typedef struct _tcp_connection
   u32 irs;		/**< initial remote sequence */
 
   /* Options */
-  tcp_options_t opt;		/**< TCP connection options parsed */
+  tcp_options_t rcv_opts;	/**< Rx options for connection */
   tcp_options_t snd_opts;	/**< Tx options for connection */
   u8 snd_opts_len;		/**< Tx options len */
   u8 rcv_wscale;	/**< Window scale to advertise to peer */
@@ -231,6 +232,7 @@ typedef struct _tcp_connection
   u32 prev_ssthresh;	/**< ssthresh before congestion */
   u32 bytes_acked;	/**< Bytes acknowledged by current segment */
   u32 rtx_bytes;	/**< Retransmitted bytes */
+  u32 snd_rtx;		/**< Highest retransmitted sequence number */
   u32 tsecr_last_ack;	/**< Timestamp echoed to us in last healthy ACK */
   u32 snd_congestion;	/**< snd_una_max when congestion is detected */
   tcp_cc_algorithm_t *cc_algo;	/**< Congestion control algorithm */
@@ -434,7 +436,7 @@ tcp_flight_size (const tcp_connection_t * tc)
   int flight_size;
 
   flight_size = (int) ((tc->snd_una_max - tc->snd_una) + tc->rtx_bytes)
-    - (tc->rcv_dupacks * tc->snd_mss) /* - tc->sack_sb.sacked_bytes */ ;
+    - (tc->rcv_dupacks * tc->snd_mss) - tc->sack_sb.sacked_bytes;
 
   /* Happens if we don't clear sacked bytes */
   if (flight_size < 0)
@@ -487,7 +489,7 @@ void tcp_update_rcv_wnd (tcp_connection_t * tc);
 
 void tcp_retransmit_first_unacked (tcp_connection_t * tc);
 void tcp_fast_retransmit (tcp_connection_t * tc);
-void tcp_cc_congestion (tcp_connection_t * tc);
+void tcp_cc_init_congestion (tcp_connection_t * tc);
 void tcp_cc_recover (tcp_connection_t * tc);
 
 /* Made public for unit testing only */

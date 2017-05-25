@@ -393,7 +393,7 @@ typedef enum _tcp_dbg_evt
   DECLARE_ETD(_tc, _e, 4);						\
   ed->data[0] = _seq - _tc->irs;					\
   ed->data[1] = _end - _tc->irs;					\
-  ed->data[2] = _tc->opt.tsval;						\
+  ed->data[2] = _tc->rcv_opts.tsval;						\
   ed->data[3] = _tc->tsval_recent;					\
 }
 

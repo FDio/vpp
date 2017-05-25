@@ -53,7 +53,7 @@ newreno_rcv_cong_ack (tcp_connection_t * tc, tcp_cc_ack_t ack_type)
     {
       tc->cwnd -= tc->bytes_acked;
       if (tc->bytes_acked > tc->snd_mss)
-	tc->bytes_acked += tc->snd_mss;
+	tc->cwnd += tc->snd_mss;
     }
 }
 
