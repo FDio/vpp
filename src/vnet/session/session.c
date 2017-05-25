@@ -551,7 +551,7 @@ u8
 stream_session_no_space (transport_connection_t * tc, u32 thread_index,
 			 u16 data_len)
 {
-  stream_session_t *s = stream_session_get (tc->c_index, thread_index);
+  stream_session_t *s = stream_session_get (tc->s_index, thread_index);
 
   if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY))
     return 1;
@@ -563,6 +563,15 @@ stream_session_no_space (transport_connection_t * tc, u32 thread_index,
 }
 
 u32
+stream_session_tx_fifo_max_dequeue (transport_connection_t * tc)
+{
+  stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
+  if (s->session_state != SESSION_STATE_READY)
+    return 0;
+  return svm_fifo_max_dequeue (s->server_tx_fifo);
+}
+
+int
 stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			   u32 offset, u32 max_bytes)
 {
