@@ -83,6 +83,7 @@ object_dto_field_setter_template = Template("""
         jobject ${field_reference_name} = (*env)->NewObject(env, ${field_reference_name}Class,  ${field_reference_name}Constructor);
         ${type_initialization}
         (*env)->SetObjectField(env, dto, ${field_reference_name}FieldId, ${field_reference_name});
+        (*env)->DeleteLocalRef(env, ${field_reference_name});
     }
 """)
 
@@ -96,8 +97,10 @@ object_array_dto_field_setter_template = Template("""
             jobject ${field_reference_name}ArrayElement = (*env)->NewObject(env, ${field_reference_name}Class,  ${field_reference_name}Constructor);
             ${type_initialization}
             (*env)->SetObjectArrayElement(env, ${field_reference_name}, _i, ${field_reference_name}ArrayElement);
+            (*env)->DeleteLocalRef(env, ${field_reference_name}ArrayElement);
         }
         (*env)->SetObjectField(env, dto, ${field_reference_name}FieldId, ${field_reference_name});
+        (*env)->DeleteLocalRef(env, ${field_reference_name});
     }
 """)
 
