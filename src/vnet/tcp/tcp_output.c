@@ -136,10 +136,10 @@ tcp_update_rcv_wnd (tcp_connection_t * tc)
    * Figure out how much space we have available
    */
   available_space = stream_session_max_rx_enqueue (&tc->connection);
-  max_fifo = stream_session_fifo_size (&tc->connection);
+  max_fifo = stream_session_rx_fifo_size (&tc->connection);
 
-  ASSERT (tc->opt.mss < max_fifo);
-  if (available_space < tc->opt.mss && available_space < max_fifo >> 3)
+  ASSERT (tc->rcv_opts.mss < max_fifo);
+  if (available_space < tc->rcv_opts.mss && available_space < max_fifo >> 3)
     available_space = 0;
 
   /*
@@ -276,8 +276,11 @@ tcp_make_syn_options (tcp_options_t * opts, u8 wnd_scale)
   opts->tsecr = 0;
   len += TCP_OPTION_LEN_TIMESTAMP;
 
-  opts->flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
-  len += TCP_OPTION_LEN_SACK_PERMITTED;
+  if (TCP_USE_SACKS)
+    {
+      opts->flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
+      len += TCP_OPTION_LEN_SACK_PERMITTED;
+    }
 
   /* Align to needed boundary */
   len += (TCP_OPTS_ALIGN - len % TCP_OPTS_ALIGN) % TCP_OPTS_ALIGN;
@@ -293,14 +296,14 @@ tcp_make_synack_options (tcp_connection_t * tc, tcp_options_t * opts)
   opts->mss = tc->mss;
   len += TCP_OPTION_LEN_MSS;
 
-  if (tcp_opts_wscale (&tc->opt))
+  if (tcp_opts_wscale (&tc->rcv_opts))
     {
       opts->flags |= TCP_OPTS_FLAG_WSCALE;
       opts->wscale = tc->rcv_wscale;
       len += TCP_OPTION_LEN_WINDOW_SCALE;
     }
 
-  if (tcp_opts_tstamp (&tc->opt))
+  if (tcp_opts_tstamp (&tc->rcv_opts))
     {
       opts->flags |= TCP_OPTS_FLAG_TSTAMP;
       opts->tsval = tcp_time_now ();
@@ -308,7 +311,7 @@ tcp_make_synack_options (tcp_connection_t * tc, tcp_options_t * opts)
       len += TCP_OPTION_LEN_TIMESTAMP;
     }
 
-  if (tcp_opts_sack_permitted (&tc->opt))
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
       opts->flags |= TCP_OPTS_FLAG_SACK_PERMITTED;
       len += TCP_OPTION_LEN_SACK_PERMITTED;
@@ -326,14 +329,14 @@ tcp_make_established_options (tcp_connection_t * tc, tcp_options_t * opts)
 
   opts->flags = 0;
 
-  if (tcp_opts_tstamp (&tc->opt))
+  if (tcp_opts_tstamp (&tc->rcv_opts))
     {
       opts->flags |= TCP_OPTS_FLAG_TSTAMP;
       opts->tsval = tcp_time_now ();
       opts->tsecr = tc->tsval_recent;
       len += TCP_OPTION_LEN_TIMESTAMP;
     }
-  if (tcp_opts_sack_permitted (&tc->opt))
+  if (tcp_opts_sack_permitted (&tc->rcv_opts))
     {
       if (vec_len (tc->snd_sacks))
 	{
@@ -395,7 +398,7 @@ tcp_update_snd_mss (tcp_connection_t * tc)
     tcp_make_options (tc, &tc->snd_opts, TCP_STATE_ESTABLISHED);
 
   /* XXX check if MTU has been updated */
-  tc->snd_mss = clib_min (tc->mss, tc->opt.mss) - tc->snd_opts_len;
+  tc->snd_mss = clib_min (tc->mss, tc->rcv_opts.mss) - tc->snd_opts_len;
   ASSERT (tc->snd_mss > 0);
 }
 
@@ -406,21 +409,21 @@ tcp_init_mss (tcp_connection_t * tc)
   tcp_update_rcv_mss (tc);
 
   /* TODO cache mss and consider PMTU discovery */
-  tc->snd_mss = clib_min (tc->opt.mss, tc->mss);
+  tc->snd_mss = clib_min (tc->rcv_opts.mss, tc->mss);
 
   if (tc->snd_mss < 45)
     {
       clib_warning ("snd mss is 0");
       /* Assume that at least the min default mss works */
       tc->snd_mss = default_min_mss;
-      tc->opt.mss = default_min_mss;
+      tc->rcv_opts.mss = default_min_mss;
     }
 
   /* We should have enough space for 40 bytes of options */
   ASSERT (tc->snd_mss > 45);
 
   /* If we use timestamp option, account for it */
-  if (tcp_opts_tstamp (&tc->opt))
+  if (tcp_opts_tstamp (&tc->rcv_opts))
     tc->snd_mss -= TCP_OPTION_LEN_TIMESTAMP;
 }
 
@@ -879,6 +882,7 @@ tcp_send_fin (tcp_connection_t * tc)
   tcp_make_fin (tc, b);
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
   tc->flags |= TCP_CONN_FINSNT;
+  tcp_retransmit_timer_force_update (tc);
   TCP_EVT_DBG (TCP_EVT_FIN_SENT, tc);
 }
 
@@ -919,10 +923,7 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
   if (compute_opts)
     tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
 
-  /* Write pre-computed options */
   tcp_hdr_opts_len = tc->snd_opts_len + sizeof (tcp_header_t);
-
-  /* Get rcv window to advertise */
   advertise_wnd = tcp_window_to_advertise (tc, next_state);
   flags = tcp_make_state_flags (next_state);
 
@@ -930,26 +931,25 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->snd_nxt,
 			     tc->rcv_nxt, tcp_hdr_opts_len, flags,
 			     advertise_wnd);
-
   opts_write_len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts);
 
   ASSERT (opts_write_len == tc->snd_opts_len);
-
-  /* Tag the buffer with the connection index  */
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
+
+  /*
+   * Update connection variables
+   */
 
   tc->snd_nxt += data_len;
   tc->rcv_las = tc->rcv_nxt;
 
   /* TODO this is updated in output as well ... */
-  if (tc->snd_nxt > tc->snd_una_max)
-    tc->snd_una_max = tc->snd_nxt;
-
-  if (tc->rtt_ts == 0)
+  if (seq_gt (tc->snd_nxt, tc->snd_una_max))
     {
-      tc->rtt_ts = tcp_time_now ();
-      tc->rtt_seq = tc->snd_nxt;
+      tc->snd_una_max = tc->snd_nxt;
+      tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
     }
+
   TCP_EVT_DBG (TCP_EVT_PKTIZE, tc);
 }
 
@@ -987,13 +987,14 @@ tcp_timer_delack_handler (u32 index)
  *
  * @return the number of bytes in the segment or 0 if there's nothing to
  *         retransmit
- * */
+ */
 u32
 tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
 				u32 offset, u32 max_bytes)
 {
   vlib_main_t *vm = vlib_get_main ();
-  u32 n_bytes = 0;
+  int n_bytes = 0;
+  u32 start;
 
   tcp_reuse_buffer (vm, b);
 
@@ -1001,15 +1002,16 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
   ASSERT (max_bytes != 0);
 
   max_bytes = clib_min (tc->snd_mss, max_bytes);
+  start = tc->snd_una + offset;
 
   /* Start is beyond snd_congestion */
-  if (seq_geq (tc->snd_una + offset, tc->snd_congestion))
+  if (seq_geq (start, tc->snd_congestion))
     goto done;
 
   /* Don't overshoot snd_congestion */
-  if (seq_gt (tc->snd_nxt + max_bytes, tc->snd_congestion))
+  if (seq_gt (start + max_bytes, tc->snd_congestion))
     {
-      max_bytes = tc->snd_congestion - tc->snd_nxt;
+      max_bytes = tc->snd_congestion - start;
       if (max_bytes == 0)
 	goto done;
     }
@@ -1021,15 +1023,12 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
   n_bytes = stream_session_peek_bytes (&tc->connection,
 				       vlib_buffer_get_current (b), offset,
 				       max_bytes);
-  ASSERT (n_bytes != 0);
+  ASSERT (n_bytes > 0);
   b->current_length = n_bytes;
   tcp_push_hdr_i (tc, b, tc->state, 0);
 
-  /* Don't count multiple retransmits of the same segment */
-  if (tc->rto_boff > 1)
-    goto done;
-
-  tc->rtx_bytes += n_bytes;
+  if (tcp_in_fastrecovery (tc))
+    tc->snd_rxt_bytes += n_bytes;
 
 done:
   TCP_EVT_DBG (TCP_EVT_CC_RTX, tc, offset, n_bytes);
@@ -1042,18 +1041,15 @@ done:
 static void
 tcp_rtx_timeout_cc (tcp_connection_t * tc)
 {
+  tc->prev_ssthresh = tc->ssthresh;
+  tc->prev_cwnd = tc->cwnd;
+
   /* Cleanly recover cc (also clears up fast retransmit) */
   if (tcp_in_fastrecovery (tc))
-    {
-      tcp_cc_recover (tc);
-    }
-  else
-    {
-      tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
-    }
+    tcp_cc_fastrecovery_exit (tc);
 
   /* Start again from the beginning */
-
+  tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
   tc->cwnd = tcp_loss_wnd (tc);
   tc->snd_congestion = tc->snd_una_max;
   tcp_recovery_on (tc);
@@ -1081,18 +1077,31 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   /* Make sure timer handle is set to invalid */
   tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
 
+  if (!tcp_in_recovery (tc) && tc->rto_boff > 0
+      && tc->state >= TCP_STATE_ESTABLISHED)
+    {
+      tc->rto_boff = 0;
+      tcp_update_rto (tc);
+    }
+
   /* Increment RTO backoff (also equal to number of retries) */
   tc->rto_boff += 1;
 
   /* Go back to first un-acked byte */
   tc->snd_nxt = tc->snd_una;
 
-  /* Get buffer */
   tcp_get_free_buffer_index (tm, &bi);
   b = vlib_get_buffer (vm, bi);
 
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
+      /* Lost FIN, retransmit and return */
+      if (tc->flags & TCP_CONN_FINSNT)
+	{
+	  tcp_send_fin (tc);
+	  return;
+	}
+
       /* First retransmit timeout */
       if (tc->rto_boff == 1)
 	tcp_rtx_timeout_cc (tc);
@@ -1102,24 +1111,30 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
 
-      /* Send one segment. No fancy recovery for now! */
+      /* Send one segment */
       n_bytes = tcp_prepare_retransmit_segment (tc, b, 0, tc->snd_mss);
+      /* TODO be less aggressive about this */
       scoreboard_clear (&tc->sack_sb);
 
       if (n_bytes == 0)
 	{
 	  clib_warning ("could not retransmit anything");
+	  clib_warning ("%U", format_tcp_connection, tc, 2);
+
 	  /* Try again eventually */
 	  tcp_retransmit_timer_set (tc);
+	  ASSERT (0 || (tc->rto_boff > 1
+			&& tc->snd_una == tc->snd_congestion));
 	  return;
 	}
-    }
-  else
-    {
-      /* Retransmit for SYN/SYNACK */
-      ASSERT (tc->state == TCP_STATE_SYN_RCVD
-	      || tc->state == TCP_STATE_SYN_SENT);
 
+      /* For first retransmit, record timestamp (Eifel detection RFC3522) */
+      if (tc->rto_boff == 1)
+	tc->snd_rxt_ts = tcp_time_now ();
+    }
+  /* Retransmit for SYN/SYNACK */
+  else if (tc->state == TCP_STATE_SYN_RCVD || tc->state == TCP_STATE_SYN_SENT)
+    {
       /* Try without increasing RTO a number of times. If this fails,
        * start growing RTO exponentially */
       if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
@@ -1131,6 +1146,12 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       /* Account for the SYN */
       tc->snd_nxt += 1;
+    }
+  else
+    {
+      ASSERT (tc->state == TCP_STATE_CLOSED);
+      clib_warning ("connection closed ...");
+      return;
     }
 
   if (!is_syn)
@@ -1180,7 +1201,8 @@ tcp_timer_persist_handler (u32 index)
   u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
   vlib_buffer_t *b;
-  u32 bi, n_bytes;
+  u32 bi, old_snd_nxt;
+  int n_bytes = 0;
 
   tc = tcp_connection_get_if_valid (index, thread_index);
 
@@ -1202,13 +1224,15 @@ tcp_timer_persist_handler (u32 index)
   /* Try to force the first unsent segment  */
   tcp_get_free_buffer_index (tm, &bi);
   b = vlib_get_buffer (vm, bi);
+
+  tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
   tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
   n_bytes = stream_session_peek_bytes (&tc->connection,
 				       vlib_buffer_get_current (b),
 				       tc->snd_una_max - tc->snd_una,
 				       tc->snd_mss);
   /* Nothing to send */
-  if (n_bytes == 0)
+  if (n_bytes <= 0)
     {
       clib_warning ("persist found nothing to send");
       tcp_return_buffer (tm);
@@ -1216,7 +1240,13 @@ tcp_timer_persist_handler (u32 index)
     }
 
   b->current_length = n_bytes;
+  ASSERT (tc->snd_nxt == tc->snd_una_max || tc->rto_boff > 1
+	  || tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT));
+
+  /* Allow updating of snd_una_max but don't update snd_nxt */
+  old_snd_nxt = tc->snd_nxt;
   tcp_push_hdr_i (tc, b, tc->state, 0);
+  tc->snd_nxt = old_snd_nxt;
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 
   /* Re-enable persist timer */
@@ -1232,8 +1262,9 @@ tcp_retransmit_first_unacked (tcp_connection_t * tc)
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = vlib_get_main ();
   vlib_buffer_t *b;
-  u32 bi, n_bytes;
+  u32 bi, n_bytes, old_snd_nxt;
 
+  old_snd_nxt = tc->snd_nxt;
   tc->snd_nxt = tc->snd_una;
 
   /* Get buffer */
@@ -1244,75 +1275,117 @@ tcp_retransmit_first_unacked (tcp_connection_t * tc)
 
   n_bytes = tcp_prepare_retransmit_segment (tc, b, 0, tc->snd_mss);
   if (n_bytes == 0)
-    goto done;
+    {
+      tcp_return_buffer (tm);
+      goto done;
+    }
 
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 
 done:
-  tc->snd_nxt = tc->snd_una_max;
-}
-
-sack_scoreboard_hole_t *
-scoreboard_first_rtx_hole (sack_scoreboard_t * sb)
-{
-  sack_scoreboard_hole_t *hole = 0;
-
-//  hole = scoreboard_first_hole (&tc->sack_sb);
-//  if (hole)
-//    {
-//
-//      offset = hole->start - tc->snd_una;
-//      hole_size = hole->end - hole->start;
-//
-//      ASSERT(hole_size);
-//
-//      if (hole_size < max_bytes)
-//      max_bytes = hole_size;
-//    }
-  return hole;
+  tc->snd_nxt = old_snd_nxt;
 }
 
 /**
- * Do fast retransmit.
+ * Do fast retransmit with SACKs
  */
 void
-tcp_fast_retransmit (tcp_connection_t * tc)
+tcp_fast_retransmit_sack (tcp_connection_t * tc)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = vlib_get_main ();
-  u32 bi;
-  int snd_space;
-  u32 n_written = 0, offset = 0;
+  u32 n_written = 0, offset = 0, max_bytes;
   vlib_buffer_t *b;
-  u8 use_sacks = 0;
+  sack_scoreboard_hole_t *hole;
+  sack_scoreboard_t *sb;
+  u32 bi, old_snd_nxt;
+  int snd_space;
+  u8 snd_limited = 0, can_rescue = 0;
 
   ASSERT (tcp_in_fastrecovery (tc));
-
-  /* Start resending from first un-acked segment */
-  tc->snd_nxt = tc->snd_una;
-
-  snd_space = tcp_available_snd_space (tc);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 0);
 
-  /* If we have SACKs use them */
-  if (tcp_opts_sack_permitted (&tc->opt)
-      && scoreboard_first_hole (&tc->sack_sb))
-    use_sacks = 0;
+  old_snd_nxt = tc->snd_nxt;
+  sb = &tc->sack_sb;
+  snd_space = tcp_available_snd_space (tc);
+
+  hole = scoreboard_get_hole (sb, sb->cur_rxt_hole);
+  while (hole && snd_space > 0)
+    {
+      tcp_get_free_buffer_index (tm, &bi);
+      b = vlib_get_buffer (vm, bi);
+
+      hole = scoreboard_next_rxt_hole (sb, hole,
+				       tcp_fastrecovery_sent_1_smss (tc),
+				       &can_rescue, &snd_limited);
+      if (!hole)
+	{
+	  if (!can_rescue || !(seq_lt (sb->rescue_rxt, tc->snd_una)
+			       || seq_gt (sb->rescue_rxt,
+					  tc->snd_congestion)))
+	    break;
+
+	  /* If rescue rxt undefined or less than snd_una then one segment of
+	   * up to SMSS octets that MUST include the highest outstanding
+	   * unSACKed sequence number SHOULD be returned, and RescueRxt set to
+	   * RecoveryPoint. HighRxt MUST NOT be updated.
+	   */
+	  max_bytes = clib_min (tc->snd_mss, snd_space);
+	  offset = tc->snd_congestion - tc->snd_una - max_bytes;
+	  sb->rescue_rxt = tc->snd_congestion;
+	  tc->snd_nxt = tc->snd_una + offset;
+	  tcp_prepare_retransmit_segment (tc, b, offset, max_bytes);
+	  tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
+	  break;
+	}
+
+      max_bytes = snd_limited ? tc->snd_mss : hole->end - sb->high_rxt;
+      offset = sb->high_rxt - tc->snd_una;
+      tc->snd_nxt = tc->snd_una + offset;
+      n_written = tcp_prepare_retransmit_segment (tc, b, offset, max_bytes);
+
+      /* Nothing left to retransmit */
+      if (n_written == 0)
+	{
+	  tcp_return_buffer (tm);
+	  break;
+	}
+
+      sb->high_rxt += n_written;
+      tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
+      snd_space -= n_written;
+    }
+
+  /* If window allows, send 1 SMSS of new data */
+  tc->snd_nxt = old_snd_nxt;
+}
+
+/**
+ * Fast retransmit without SACK info
+ */
+void
+tcp_fast_retransmit_no_sack (tcp_connection_t * tc)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  vlib_main_t *vm = vlib_get_main ();
+  u32 n_written = 0, offset = 0, bi, old_snd_nxt;
+  int snd_space;
+  vlib_buffer_t *b;
+
+  ASSERT (tcp_in_fastrecovery (tc));
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 0);
+
+  /* Start resending from first un-acked segment */
+  old_snd_nxt = tc->snd_nxt;
+  tc->snd_nxt = tc->snd_una;
+  snd_space = tcp_available_snd_space (tc);
 
   while (snd_space > 0)
     {
       tcp_get_free_buffer_index (tm, &bi);
       b = vlib_get_buffer (vm, bi);
 
-      if (use_sacks)
-	{
-	  scoreboard_first_rtx_hole (&tc->sack_sb);
-	}
-      else
-	{
-	  offset += n_written;
-	}
-
+      offset += n_written;
       n_written = tcp_prepare_retransmit_segment (tc, b, offset, snd_space);
 
       /* Nothing left to retransmit */
@@ -1326,9 +1399,21 @@ tcp_fast_retransmit (tcp_connection_t * tc)
       snd_space -= n_written;
     }
 
-  /* If window allows, send 1 SMSS of new data */
-  if (seq_lt (tc->snd_nxt, tc->snd_congestion))
-    tc->snd_nxt = tc->snd_congestion;
+  /* Restore snd_nxt. If window allows, send 1 SMSS of new data */
+  tc->snd_nxt = old_snd_nxt;
+}
+
+/**
+ * Do fast retransmit
+ */
+void
+tcp_fast_retransmit (tcp_connection_t * tc)
+{
+  if (tcp_opts_sack_permitted (&tc->rcv_opts)
+      && scoreboard_first_hole (&tc->sack_sb))
+    tcp_fast_retransmit_sack (tc);
+  else
+    tcp_fast_retransmit_no_sack (tc);
 }
 
 always_inline u32
@@ -1544,6 +1629,12 @@ tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
 
   tc = (tcp_connection_t *) tconn;
   tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED, 0);
+
+  if (tc->rtt_ts == 0)
+    {
+      tc->rtt_ts = tcp_time_now ();
+      tc->rtt_seq = tc->snd_nxt;
+    }
   return 0;
 }
 

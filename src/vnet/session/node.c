@@ -47,7 +47,8 @@ vlib_node_registration_t session_queue_node;
 
 #define foreach_session_queue_error		\
 _(TX, "Packets transmitted")                  	\
-_(TIMER, "Timer events")
+_(TIMER, "Timer events")			\
+_(NO_BUFFER, "Out of buffers")
 
 typedef enum
 {
@@ -141,6 +142,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   u8 *data0;
   int i, n_bytes_read;
   u32 n_bytes_per_buf, deq_per_buf;
+  u32 buffers_allocated, buffers_allocated_this_call;
 
   next_index = next0 = session_type_to_next[s0->session_type];
 
@@ -167,9 +169,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* Check how much we can pull. If buffering, subtract the offset */
   max_dequeue0 = svm_fifo_max_dequeue (s0->server_tx_fifo) - rx_offset;
 
-  /* Allow enqueuing of a new event */
-  svm_fifo_unset_event (s0->server_tx_fifo);
-
   /* Nothing to read return */
   if (max_dequeue0 == 0)
     return 0;
@@ -187,8 +186,8 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
       max_len_to_snd0 = snd_space0;
     }
 
-  n_bytes_per_buf = vlib_buffer_free_list_buffer_size (vm,
-						       VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  n_bytes_per_buf = vlib_buffer_free_list_buffer_size
+    (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
   n_bytes_per_seg = MAX_HDRS_LEN + snd_mss0;
   n_bufs_per_seg = ceil ((double) n_bytes_per_seg / n_bytes_per_buf);
   n_bufs_per_evt = (ceil ((double) max_len_to_snd0 / n_bytes_per_seg))
@@ -205,24 +204,33 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
       if (PREDICT_FALSE (n_bufs < VLIB_FRAME_SIZE))
 	{
 	  vec_validate (smm->tx_buffers[thread_index],
-			n_bufs + VLIB_FRAME_SIZE - 1);
-	  n_bufs += vlib_buffer_alloc (vm,
-				       &smm->tx_buffers[thread_index][n_bufs],
-				       VLIB_FRAME_SIZE);
+			n_bufs + 2 * VLIB_FRAME_SIZE - 1);
 
-	  /* buffer shortage
-	   * XXX 0.9 because when debugging we might not get a full frame */
-	  if (PREDICT_FALSE (n_bufs < 0.9 * VLIB_FRAME_SIZE))
+	  buffers_allocated = 0;
+	  do
 	    {
-	      if (svm_fifo_set_event (s0->server_tx_fifo))
-		{
-		  vec_add1 (smm->pending_event_vector[thread_index], *e0);
-		}
-	      return -1;
+	      buffers_allocated_this_call =
+		vlib_buffer_alloc
+		(vm,
+		 &smm->tx_buffers[thread_index][n_bufs + buffers_allocated],
+		 2 * VLIB_FRAME_SIZE - buffers_allocated);
+	      buffers_allocated += buffers_allocated_this_call;
 	    }
+	  while (buffers_allocated_this_call > 0
+		 && ((buffers_allocated + n_bufs < VLIB_FRAME_SIZE)));
+
+	  n_bufs += buffers_allocated;
 
 	  _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
+
+	  if (PREDICT_FALSE (n_bufs < VLIB_FRAME_SIZE))
+	    {
+	      vec_add1 (smm->pending_event_vector[thread_index], *e0);
+	      return -1;
+	    }
 	}
+      /* Allow enqueuing of a new event */
+      svm_fifo_unset_event (s0->server_tx_fifo);
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
       while (left_to_snd0 && n_left_to_next >= n_bufs_per_seg)
@@ -232,7 +240,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   */
 
 	  /* Get free buffer */
+	  ASSERT (n_bufs >= 1);
 	  bi0 = smm->tx_buffers[thread_index][--n_bufs];
+	  ASSERT (bi0);
 	  _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
 
 	  b0 = vlib_get_buffer (vm, bi0);
@@ -545,9 +555,10 @@ skip_dequeue:
 							my_thread_index,
 							&n_tx_packets);
 	  /* Out of buffers */
-	  if (rv < 0)
+	  if (PREDICT_FALSE (rv < 0))
 	    {
-	      vec_add1 (smm->pending_event_vector[my_thread_index], *e0);
+	      vlib_node_increment_counter (vm, node->node_index,
+					   SESSION_QUEUE_ERROR_NO_BUFFER, 1);
 	      continue;
 	    }
 	  break;

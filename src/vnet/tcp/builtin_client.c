@@ -115,8 +115,17 @@ receive_test_chunk (tclient_main_t * tm, session_t * s)
   /* Allow enqueuing of new event */
   // svm_fifo_unset_event (rx_fifo);
 
-  n_read = svm_fifo_dequeue_nowait (rx_fifo, vec_len (tm->rx_buf),
-				    tm->rx_buf);
+  if (test_bytes)
+    {
+      n_read = svm_fifo_dequeue_nowait (rx_fifo, vec_len (tm->rx_buf),
+					tm->rx_buf);
+    }
+  else
+    {
+      n_read = svm_fifo_max_dequeue (rx_fifo);
+      svm_fifo_dequeue_drop (rx_fifo, n_read);
+    }
+
   if (n_read > 0)
     {
       if (TCP_BUILTIN_CLIENT_DBG)
@@ -165,6 +174,8 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   int i;
   int delete_session;
   u32 *connection_indices;
+  u32 tx_quota = 0;
+  u32 delta, prev_bytes_received_this_session;
 
   connection_indices = tm->connection_index_by_thread[my_thread_index];
 
@@ -177,14 +188,19 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       sp = pool_elt_at_index (tm->sessions, connection_indices[i]);
 
-      if (sp->bytes_to_send > 0)
+      if (tx_quota < 60 && sp->bytes_to_send > 0)
 	{
 	  send_test_chunk (tm, sp);
 	  delete_session = 0;
+	  tx_quota++;
 	}
       if (sp->bytes_to_receive > 0)
 	{
+	  prev_bytes_received_this_session = sp->bytes_received;
 	  receive_test_chunk (tm, sp);
+	  delta = sp->bytes_received - prev_bytes_received_this_session;
+	  if (delta > 0)
+	    tx_quota--;
 	  delete_session = 0;
 	}
       if (PREDICT_FALSE (delete_session == 1))
@@ -195,11 +211,19 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
 	  dmp->client_index = tm->my_client_index;
 	  dmp->handle = sp->vpp_session_handle;
-	  vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & dmp);
-	  vec_delete (connection_indices, 1, i);
-	  tm->connection_index_by_thread[my_thread_index] =
-	    connection_indices;
-	  __sync_fetch_and_add (&tm->ready_connections, -1);
+//        vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & dmp);
+	  if (!unix_shared_memory_queue_add (tm->vl_input_queue, (u8 *) & dmp,
+					     1))
+	    {
+	      vec_delete (connection_indices, 1, i);
+	      tm->connection_index_by_thread[my_thread_index] =
+		connection_indices;
+	      __sync_fetch_and_add (&tm->ready_connections, -1);
+	    }
+	  else
+	    {
+	      vl_msg_api_free (dmp);
+	    }
 
 	  /* Kick the debug CLI process */
 	  if (tm->ready_connections == 0)
