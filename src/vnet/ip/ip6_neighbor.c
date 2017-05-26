@@ -274,10 +274,22 @@ ip6_neighbor_sw_interface_up_down (vnet_main_t * vnm,
 	  n = pool_elt_at_index (nm->neighbor_pool, to_delete[i]);
 	  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
 	  if (FIB_NODE_INDEX_INVALID != n->fib_entry_index)
-	    fib_table_entry_delete_index (n->fib_entry_index, FIB_SOURCE_ADJ);
-	  pool_put (nm->neighbor_pool, n);
+	    {
+	      fib_prefix_t pfx = {
+		.fp_len = 128,
+		.fp_proto = FIB_PROTOCOL_IP6,
+		.fp_addr.ip6 = n->key.ip6_address,
+	      };
+	      fib_table_entry_path_remove
+		(ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index),
+		 &pfx,
+		 FIB_SOURCE_ADJ,
+		 FIB_PROTOCOL_IP6,
+		 &pfx.fp_addr,
+		 n->key.sw_if_index, ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
+	      pool_put (nm->neighbor_pool, n);
+	    }
 	}
-
       vec_free (to_delete);
     }
 
@@ -628,10 +640,10 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 	  };
 	  u32 fib_index;
 
-	  fib_index = ip6_main.fib_index_by_sw_if_index[n->key.sw_if_index];
+	  fib_index =
+	    ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index);
 	  n->fib_entry_index =
-	    fib_table_entry_path_add (fib_index, &pfx,
-				      FIB_SOURCE_ADJ,
+	    fib_table_entry_path_add (fib_index, &pfx, FIB_SOURCE_ADJ,
 				      FIB_ENTRY_FLAG_ATTACHED,
 				      FIB_PROTOCOL_IP6, &pfx.fp_addr,
 				      n->key.sw_if_index, ~0, 1, NULL,
@@ -754,7 +766,19 @@ vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
 
 
   if (FIB_NODE_INDEX_INVALID != n->fib_entry_index)
-    fib_table_entry_delete_index (n->fib_entry_index, FIB_SOURCE_ADJ);
+    {
+      fib_prefix_t pfx = {
+	.fp_len = 128,
+	.fp_proto = FIB_PROTOCOL_IP6,
+	.fp_addr.ip6 = n->key.ip6_address,
+      };
+      fib_table_entry_path_remove
+	(ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index),
+	 &pfx,
+	 FIB_SOURCE_ADJ,
+	 FIB_PROTOCOL_IP6,
+	 &pfx.fp_addr, n->key.sw_if_index, ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
+    }
   pool_put (nm->neighbor_pool, n);
 
 out:

@@ -76,6 +76,31 @@ class TestIPv6ND(VppTestCase):
         dll = rx[ICMPv6NDOptDstLLAddr]
         self.assertEqual(dll.lladdr, intf.local_mac)
 
+    def validate_ns(self, intf, rx, tgt_ip):
+        nsma = in6_getnsma(inet_pton(AF_INET6, tgt_ip))
+        dst_ip = inet_ntop(AF_INET6, nsma)
+
+        # NS is broadcast
+        self.assertEqual(rx[Ether].dst, "ff:ff:ff:ff:ff:ff")
+
+        # and from the router's MAC
+        self.assertEqual(rx[Ether].src, intf.local_mac)
+
+        # the rx'd NS should be addressed to an mcast address
+        # derived from the target address
+        self.assertEqual(in6_ptop(rx[IPv6].dst), in6_ptop(dst_ip))
+
+        # expect the tgt IP in the NS header
+        ns = rx[ICMPv6ND_NS]
+        self.assertEqual(in6_ptop(ns.tgt), in6_ptop(tgt_ip))
+
+        # packet is from the router's local address
+        self.assertEqual(in6_ptop(rx[IPv6].src), intf.local_ip6)
+
+        # Src link-layer options should have the router's MAC
+        sll = rx[ICMPv6NDOptSrcLLAddr]
+        self.assertEqual(sll.lladdr, intf.local_mac)
+
     def send_and_expect_ra(self, intf, pkts, remark, dst_ip=None,
                            filter_out_fn=is_ipv6_misc):
         intf.add_stream(pkts)
@@ -99,6 +124,17 @@ class TestIPv6ND(VppTestCase):
         rx = rx[0]
         self.validate_na(intf, rx, dst_ip, tgt_ip)
 
+    def send_and_expect_ns(self, tx_intf, rx_intf, pkts, tgt_ip,
+                           filter_out_fn=is_ipv6_misc):
+        tx_intf.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = rx_intf.get_capture(1, filter_out_fn=filter_out_fn)
+
+        self.assertEqual(len(rx), 1)
+        rx = rx[0]
+        self.validate_ns(rx_intf, rx, tgt_ip)
+
     def send_and_assert_no_replies(self, intf, pkts, remark):
         intf.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
@@ -106,6 +142,15 @@ class TestIPv6ND(VppTestCase):
         for i in self.pg_interfaces:
             i.get_capture(0)
             i.assert_nothing_captured(remark=remark)
+
+    def verify_ip(self, rx, smac, dmac, sip, dip):
+        ether = rx[Ether]
+        self.assertEqual(ether.dst, dmac)
+        self.assertEqual(ether.src, smac)
+
+        ip = rx[IPv6]
+        self.assertEqual(ip.src, sip)
+        self.assertEqual(ip.dst, dip)
 
 
 class TestIPv6(TestIPv6ND):
@@ -443,6 +488,78 @@ class TestIPv6(TestIPv6ND):
                                     self.pg0._remote_hosts[3].ip6_ll,
                                     128,
                                     inet=AF_INET6))
+
+    def test_ns_duplicates(self):
+        """ ARP Duplicates"""
+
+        #
+        # Generate some hosts on the LAN
+        #
+        self.pg1.generate_remote_hosts(3)
+
+        #
+        # Add host 1 on pg1 and pg2
+        #
+        ns_pg1 = VppNeighbor(self,
+                             self.pg1.sw_if_index,
+                             self.pg1.remote_hosts[1].mac,
+                             self.pg1.remote_hosts[1].ip6,
+                             af=AF_INET6)
+        ns_pg1.add_vpp_config()
+        ns_pg2 = VppNeighbor(self,
+                             self.pg2.sw_if_index,
+                             self.pg2.remote_mac,
+                             self.pg1.remote_hosts[1].ip6,
+                             af=AF_INET6)
+        ns_pg2.add_vpp_config()
+
+        #
+        # IP packet destined for pg1 remote host arrives on pg1 again.
+        #
+        p = (Ether(dst=self.pg0.local_mac,
+                   src=self.pg0.remote_mac) /
+             IPv6(src=self.pg0.remote_ip6,
+                  dst=self.pg1.remote_hosts[1].ip6) /
+             UDP(sport=1234, dport=1234) /
+             Raw())
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx1 = self.pg1.get_capture(1)
+
+        self.verify_ip(rx1[0],
+                       self.pg1.local_mac,
+                       self.pg1.remote_hosts[1].mac,
+                       self.pg0.remote_ip6,
+                       self.pg1.remote_hosts[1].ip6)
+
+        #
+        # remove the duplicate on pg1
+        # packet stream shoud generate ARPs out of pg1
+        #
+        ns_pg1.remove_vpp_config()
+
+        self.send_and_expect_ns(self.pg0, self.pg1,
+                                p, self.pg1.remote_hosts[1].ip6)
+
+        #
+        # Add it back
+        #
+        ns_pg1.add_vpp_config()
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx1 = self.pg1.get_capture(1)
+
+        self.verify_ip(rx1[0],
+                       self.pg1.local_mac,
+                       self.pg1.remote_hosts[1].mac,
+                       self.pg0.remote_ip6,
+                       self.pg1.remote_hosts[1].ip6)
 
     def validate_ra(self, intf, rx, dst_ip=None, mtu=9000, pi_opt=None):
         if not dst_ip:

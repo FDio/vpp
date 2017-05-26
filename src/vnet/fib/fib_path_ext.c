@@ -105,7 +105,7 @@ fib_path_ext_resolve (fib_path_ext_t *path_ext,
 		       path_ext);
 }
 
-void
+static void
 fib_path_ext_init (fib_path_ext_t *path_ext,
 		   fib_node_index_t path_list_index,
                    fib_path_ext_type_t ext_type,
@@ -338,7 +338,18 @@ fib_path_ext_list_insert (fib_path_ext_list_t *list,
 
     vec_foreach(path_ext, list->fpel_exts)
     {
-        if (fib_path_ext_cmp(path_ext, rpath) < 0)
+        int res = fib_path_ext_cmp(path_ext, rpath);
+
+        if (0 == res)
+        {
+            /*
+             * don't add duplicate extensions. modify instead
+             */
+            vec_free(path_ext->fpe_label_stack);
+            *path_ext = new_path_ext;
+            goto done;
+        }
+        else if (res < 0)
         {
             i++;
         }
@@ -348,7 +359,7 @@ fib_path_ext_list_insert (fib_path_ext_list_t *list,
         }
     }
     vec_insert_elts(list->fpel_exts, &new_path_ext, 1, i);
-
+done:
     return (&(list->fpel_exts[i]));
 }
 
