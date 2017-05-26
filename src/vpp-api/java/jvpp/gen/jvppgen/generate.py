@@ -329,20 +329,24 @@ class Type(Struct):
 
 
 class ParserContext:
-    typedict = {x: x for x in ['u8', 'u16', 'u32', 'u64', 'f64', 'i32', ]}
+    typedict = {x: x for x in ['u8', 'u16', 'u32', 'u64', 'f64', 'i8', 'i16', 'i32', 'i64' ]}
 
     swap_to_be_dict = {
         'u16': 'htobe16',
+        'i16': 'htobe16',
         'u32': 'htobe32',
         'i32': 'htobe32',
         'u64': 'htobe64',
+        'i64': 'htobe64',
     }
 
     swap_to_host_dict = {
         'u16': 'be16toh',
+        'i16': 'be16toh',
         'u32': 'be32toh',
         'i32': 'be32toh',
         'u64': 'be64toh',
+        'i64': 'be64toh',
     }
 
     def __init__(self):
