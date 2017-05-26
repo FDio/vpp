@@ -510,10 +510,13 @@ del_ip_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
   lisp_fwd_path_t *path;
   fib_protocol_t fproto;
 
-  vec_foreach (path, lfe->paths)
-  {
-    lisp_gpe_adjacency_unlock (path->lisp_adj);
-  }
+  if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
+    {
+      vec_foreach (path, lfe->paths)
+      {
+	lisp_gpe_adjacency_unlock (path->lisp_adj);
+      }
+    }
 
   delete_fib_entries (lfe);
 
