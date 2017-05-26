@@ -85,8 +85,8 @@ memif_connect (vlib_main_t * vm, memif_if_t * mif)
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
 }
 
-void
-memif_disconnect (vlib_main_t * vm, memif_if_t * mif)
+static void
+memif_disconnect_do (vlib_main_t * vm, memif_if_t * mif)
 {
   vnet_main_t *vnm = vnet_get_main ();
 
@@ -94,13 +94,6 @@ memif_disconnect (vlib_main_t * vm, memif_if_t * mif)
   if (mif->hw_if_index != ~0)
     vnet_hw_interface_set_flags (vnm, mif->hw_if_index, 0);
 
-  if (mif->interrupt_line.index != ~0)
-    {
-      unix_file_del (&unix_main,
-		     unix_main.file_pool + mif->interrupt_line.index);
-      mif->interrupt_line.index = ~0;
-      mif->interrupt_line.fd = -1;	/* closed in unix_file_del */
-    }
   if (mif->connection.index != ~0)
     {
       unix_file_del (&unix_main, unix_main.file_pool + mif->connection.index);
@@ -110,6 +103,20 @@ memif_disconnect (vlib_main_t * vm, memif_if_t * mif)
 
   // TODO: properly munmap + close memif-owned shared memory segments
   vec_free (mif->regions);
+}
+
+void
+memif_disconnect (vlib_main_t * vm, memif_if_t * mif)
+{
+  if (mif->interrupt_line.index != ~0)
+    {
+      unix_file_del (&unix_main,
+		     unix_main.file_pool + mif->interrupt_line.index);
+      mif->interrupt_line.index = ~0;
+      mif->interrupt_line.fd = -1;	/* closed in unix_file_del */
+    }
+
+  memif_disconnect_do (vm, mif);
 }
 
 static clib_error_t *
@@ -329,13 +336,19 @@ memif_conn_fd_read_ready (unix_file_t * uf)
   size = recvmsg (uf->file_descriptor, &mh, 0);
   if (size != sizeof (memif_msg_t))
     {
-      if (size != 0)
+      if (size == 0)
 	{
-	  DEBUG_UNIX_LOG ("Malformed message received on fd %d",
-			  uf->file_descriptor);
-	  error = clib_error_return_unix (0, "recvmsg fd %d",
-					  uf->file_descriptor);
+	  if (pending_conn)
+	    memif_remove_pending_conn (pending_conn);
+	  else
+	    memif_disconnect_do (vm, mif);
+	  return error;
 	}
+
+      DEBUG_UNIX_LOG ("Malformed message received on fd %d",
+		      uf->file_descriptor);
+      error = clib_error_return_unix (0, "recvmsg fd %d",
+				      uf->file_descriptor);
       goto disconnect;
     }
 
@@ -420,7 +433,8 @@ memif_int_fd_read_ready (unix_file_t * uf)
       mif->interrupt_line.index = ~0;
       mif->interrupt_line.fd = -1;
     }
-  vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, 0);
+  else
+    vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, 0);
   return 0;
 }
 
