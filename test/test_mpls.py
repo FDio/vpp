@@ -771,6 +771,26 @@ class TestMPLS(VppTestCase):
         rx = self.pg1.get_capture(packet_count)
         self.verify_capture_ip4(self.pg1, rx, tx, ping_resp=1)
 
+        #
+        # Double pop
+        #
+        route_36_neos = VppMplsRoute(self, 36, 0,
+                                     [VppRoutePath("0.0.0.0",
+                                                   0xffffffff)])
+        route_36_neos.add_vpp_config()
+
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_labelled_ip4(self.pg0, [36, 35],
+                                             ping=1, ip_itf=self.pg1)
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture(len(tx))
+        self.verify_capture_ip4(self.pg1, rx, tx, ping_resp=1)
+
+        route_36_neos.remove_vpp_config()
         route_35_eos.remove_vpp_config()
         route_34_eos.remove_vpp_config()
 
