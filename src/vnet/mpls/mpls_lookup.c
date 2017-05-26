@@ -17,11 +17,19 @@
 
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
-#include <vnet/mpls/mpls.h>
+#include <vnet/mpls/mpls_lookup.h>
 #include <vnet/fib/mpls_fib.h>
 #include <vnet/dpo/load_balance.h>
 
+
+/**
+ * Static MPLS VLIB forwarding node
+ */
 vlib_node_registration_t mpls_lookup_node;
+
+/**
+ * The arc/edge from the MPLS lookup node to the MPLS replicate node
+ */
 
 typedef struct {
   u32 next_index;
@@ -45,18 +53,6 @@ format_mpls_lookup_trace (u8 * s, va_list * args)
                   clib_net_to_host_u32(t->label_net_byte_order)),
               vnet_mpls_uc_get_s(t->label_net_byte_order));
   return s;
-}
-
-/*
- * Compute flow hash. 
- * We'll use it to select which adjacency to use for this flow.  And other things.
- */
-always_inline u32
-mpls_compute_flow_hash (const mpls_unicast_header_t * hdr,
-                        flow_hash_config_t flow_hash_config)
-{
-    // FIXME
-    return (vnet_mpls_uc_get_label(hdr->label_exp_s_ttl));
 }
 
 static inline uword
