@@ -369,7 +369,7 @@ class ParserContext:
                     continue
                 self.types[type_.name] = type_
                 self.typedict[apply_magic(type_.name)] =\
-                    type_.get_struct_name()
+                    type_.name
             for m in j['messages']:
                 try:
                     msg = Message(m, self.typedict, self.swap_to_be_dict,
