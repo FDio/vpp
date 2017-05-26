@@ -1673,7 +1673,23 @@ arp_entry_free (ethernet_arp_interface_t * eai, ethernet_arp_ip4_entry_t * e)
   ethernet_arp_main_t *am = &ethernet_arp_main;
 
   if (FIB_NODE_INDEX_INVALID != e->fib_entry_index)
-    fib_table_entry_delete_index (e->fib_entry_index, FIB_SOURCE_ADJ);
+    {
+      fib_prefix_t pfx = {
+	.fp_len = 32,
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_addr.ip4 = e->ip4_address,
+      };
+      u32 fib_index;
+
+      fib_index = ip4_fib_table_get_index_for_sw_if_index (e->sw_if_index);
+
+      fib_table_entry_path_remove (fib_index, &pfx,
+				   FIB_SOURCE_ADJ,
+				   FIB_PROTOCOL_IP4,
+				   &pfx.fp_addr,
+				   e->sw_if_index, ~0, 1,
+				   FIB_ROUTE_PATH_FLAG_NONE);
+    }
   hash_unset (eai->arp_entries, e->ip4_address.as_u32);
   pool_put (am->ip4_entry_pool, e);
 }

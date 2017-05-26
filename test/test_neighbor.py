@@ -812,5 +812,84 @@ class ARPTestCase(VppTestCase):
         self.pg1.admin_down()
         self.pg1.admin_up()
 
+    def test_arp_duplicates(self):
+        """ ARP Duplicates"""
+
+        #
+        # Generate some hosts on the LAN
+        #
+        self.pg1.generate_remote_hosts(3)
+
+        #
+        # Add host 1 on pg1 and pg2
+        #
+        arp_pg1 = VppNeighbor(self,
+                              self.pg1.sw_if_index,
+                              self.pg1.remote_hosts[1].mac,
+                              self.pg1.remote_hosts[1].ip4)
+        arp_pg1.add_vpp_config()
+        arp_pg2 = VppNeighbor(self,
+                              self.pg2.sw_if_index,
+                              self.pg2.remote_mac,
+                              self.pg1.remote_hosts[1].ip4)
+        arp_pg2.add_vpp_config()
+
+        #
+        # IP packet destined for pg1 remote host arrives on pg1 again.
+        #
+        p = (Ether(dst=self.pg0.local_mac,
+                   src=self.pg0.remote_mac) /
+             IP(src=self.pg0.remote_ip4,
+                dst=self.pg1.remote_hosts[1].ip4) /
+             UDP(sport=1234, dport=1234) /
+             Raw())
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx1 = self.pg1.get_capture(1)
+
+        self.verify_ip(rx1[0],
+                       self.pg1.local_mac,
+                       self.pg1.remote_hosts[1].mac,
+                       self.pg0.remote_ip4,
+                       self.pg1.remote_hosts[1].ip4)
+
+        #
+        # remove the duplicate on pg1
+        # packet stream shoud generate ARPs out of pg1
+        #
+        arp_pg1.remove_vpp_config()
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx1 = self.pg1.get_capture(1)
+
+        self.verify_arp_req(rx1[0],
+                            self.pg1.local_mac,
+                            self.pg1.local_ip4,
+                            self.pg1.remote_hosts[1].ip4)
+
+        #
+        # Add it back
+        #
+        arp_pg1.add_vpp_config()
+
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx1 = self.pg1.get_capture(1)
+
+        self.verify_ip(rx1[0],
+                       self.pg1.local_mac,
+                       self.pg1.remote_hosts[1].mac,
+                       self.pg0.remote_ip4,
+                       self.pg1.remote_hosts[1].ip4)
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

@@ -72,11 +72,6 @@ typedef enum fib_path_ext_adj_flags_t_
 typedef struct fib_path_ext_t_
 {
     /**
-     * The type of path extension
-     */
-    fib_path_ext_type_t fpe_type;
-
-    /**
      * A description of the path that is being extended.
      * This description is used to match this extension with the [changing]
      * instance of a fib_path_t that is extended
@@ -92,6 +87,11 @@ typedef struct fib_path_ext_t_
          */
         fib_path_ext_adj_flags_t fpe_adj_flags;
     };
+
+    /**
+     * The type of path extension
+     */
+    fib_path_ext_type_t fpe_type;
 
     /**
      * The index of the path. This is the global index, not the path's
