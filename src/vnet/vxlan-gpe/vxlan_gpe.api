@@ -20,6 +20,7 @@ define vxlan_gpe_add_del_tunnel
   u8 is_ipv6;
   u8 local[16];
   u8 remote[16];
+  u32 mcast_sw_if_index;
   u32 encap_vrf_id;
   u32 decap_vrf_id;
   u8 protocol;
@@ -49,9 +50,27 @@ define vxlan_gpe_tunnel_details
   u8 remote[16];
   u32 vni;
   u8 protocol;
+  u32 mcast_sw_if_index;
   u32 encap_vrf_id;
   u32 decap_vrf_id;
+  
   u8 is_ipv6;
+};
+
+/** \brief Interface set vxlan-gpe-bypass request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface used to reach neighbor
+    @param is_ipv6 - if non-zero, enable ipv6-vxlan-bypass, else ipv4-vxlan-bypass
+    @param enable - if non-zero enable, else disable
+*/
+autoreply define sw_interface_set_vxlan_gpe_bypass
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_ipv6;
+  u8 enable;
 };
 
 /*
