@@ -1828,3 +1828,38 @@ class VppPapiProvider(object):
                          'encap_vrf_id': encap_vrf_id,
                          'decap_next_index': decap_next_index,
                          'teid': teid})
+
+    def vxlan_gpe_add_del_tunnel(
+            self,
+            src_addr,
+            dst_addr,
+            mcast_sw_if_index=0xFFFFFFFF,
+            is_add=1,
+            is_ipv6=0,
+            encap_vrf_id=0,
+            decap_vrf_id=0,
+            protocol=3,
+            vni=0):
+        """
+
+        :param local:
+        :param remote:
+        :param is_add:  (Default value = 1)
+        :param is_ipv6:  (Default value = 0)
+        :param encap_vrf_id:  (Default value = 0)
+        :param decap_vrf_id:  (Default value = 0)
+        :param mcast_sw_if_index:  (Default value = 0xFFFFFFFF)
+        :param protocol:  (Default value = 3)
+        :param vni:  (Default value = 0)
+
+        """
+        return self.api(self.papi.vxlan_gpe_add_del_tunnel,
+                        {'is_add': is_add,
+                         'is_ipv6': is_ipv6,
+                         'local': src_addr,
+                         'remote': dst_addr,
+                         'mcast_sw_if_index': mcast_sw_if_index,
+                         'encap_vrf_id': encap_vrf_id,
+                         'decap_vrf_id': decap_vrf_id,
+                         'protocol': protocol,
+                         'vni': vni})

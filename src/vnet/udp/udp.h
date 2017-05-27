@@ -89,7 +89,7 @@ _ (4342, lisp_cp)                          	\
 _ (4739, ipfix)                                 \
 _ (4789, vxlan)					\
 _ (4789, vxlan6)				\
-_ (4790, vxlan_gpe)				\
+_ (4790, VXLAN_GPE)				\
 _ (6633, vpath_3)
 
 
@@ -101,7 +101,7 @@ _ (3784, bfd6)                                  \
 _ (3785, bfd_echo6)                             \
 _ (4341, lisp_gpe6)                             \
 _ (4342, lisp_cp6)                          	\
-_ (4790, vxlan6_gpe)      \
+_ (4790, VXLAN6_GPE)                            \
 _ (6633, vpath6_3)
 
 typedef enum

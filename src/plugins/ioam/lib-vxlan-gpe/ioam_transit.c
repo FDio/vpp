@@ -107,7 +107,7 @@ vxlan_gpe_transit_ioam (vlib_main_t * vm,
 	      if (PREDICT_FALSE
 		  ((ip0->protocol == IP_PROTOCOL_UDP) &&
 		   (clib_net_to_host_u16 (udp_hdr0->dst_port) ==
-		    UDP_DST_PORT_vxlan_gpe)))
+		    UDP_DST_PORT_VXLAN_GPE)))
 		{
 
 		  /* Check the iOAM header */
