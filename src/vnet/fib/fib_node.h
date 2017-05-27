@@ -42,6 +42,7 @@ typedef enum fib_node_type_t_ {
     FIB_NODE_TYPE_GRE_TUNNEL,
     FIB_NODE_TYPE_VXLAN_TUNNEL,
     FIB_NODE_TYPE_MAP_E,
+    FIB_NODE_TYPE_VXLAN_GPE_TUNNEL,
     /**
      * Marker. New types before this one. leave the test last.
      */
@@ -65,6 +66,7 @@ typedef enum fib_node_type_t_ {
     [FIB_NODE_TYPE_GRE_TUNNEL] = "gre-tunnel", \
     [FIB_NODE_TYPE_VXLAN_TUNNEL] = "vxlan-tunnel", \
     [FIB_NODE_TYPE_MAP_E] = "map-e", \
+    [FIB_NODE_TYPE_VXLAN_GPE_TUNNEL] = "vxlan-gpe-tunnel", \
 }
 
 /**
@@ -272,7 +274,7 @@ typedef struct fib_node_vft_t_ {
 /**
  * An node in the FIB graph
  *
- * Objects in the FIB form a graph. 
+ * Objects in the FIB form a graph.
  */
 typedef struct fib_node_t_ {
 #if CLIB_DEBUG > 0
