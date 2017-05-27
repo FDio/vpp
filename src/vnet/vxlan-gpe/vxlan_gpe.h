@@ -25,11 +25,15 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_output.h>
+#include <vnet/l2/l2_bd.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/vxlan-gpe/vxlan_gpe_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/udp/udp.h>
+#include <vnet/dpo/dpo.h>
+#include <vnet/adj/adj_types.h>
 
 /**
  * @brief VXLAN GPE header struct
@@ -94,11 +98,16 @@ typedef struct {
   /** encapsulated protocol */
   u8 protocol;
 
+  /* FIB DPO for IP forwarding of VXLAN-GPE encap packet */
+  dpo_id_t next_dpo;  
   /** tunnel local address */
   ip46_address_t local;
   /** tunnel remote address */
   ip46_address_t remote;
 
+  /* mcast packet output intfc index (used only if dst is mcast) */
+  u32 mcast_sw_if_index;
+  
   /** FIB indices - tunnel partner lookup here */
   u32 encap_fib_index;
   /** FIB indices - inner IP packet lookup here */
@@ -120,6 +129,27 @@ typedef struct {
 
   /** Next node after VxLAN-GPE encap */
   uword encap_next_node;
+
+  /**
+   * Linkage into the FIB object graph
+   */
+  fib_node_t node;
+
+  /*
+   * The FIB entry for (depending on VXLAN-GPE tunnel is unicast or mcast)
+   * sending unicast VXLAN-GPE encap packets or receiving mcast VXLAN-GPE packets
+   */
+  fib_node_index_t fib_entry_index;
+  adj_index_t mcast_adj_index;
+
+  /**
+   * The tunnel is a child of the FIB entry for its desintion. This is
+   * so it receives updates when the forwarding information for that entry
+   * changes.
+   * The tunnels sibling index on the FIB entry's dependency list.
+   */
+  u32 sibling_index;
+
 } vxlan_gpe_tunnel_t;
 
 /** Flags for vxlan_gpe_tunnel_t */
@@ -158,6 +188,12 @@ typedef struct {
   /** lookup IPv6 VXLAN GPE tunnel by key */
   uword * vxlan6_gpe_tunnel_by_key;
 
+  /* local VTEP IPs ref count used by vxlan-bypass node to check if
+     received VXLAN packet DIP matches any local VTEP address */
+  uword * vtep4;  /* local ip4 VTEPs keyed on their ip4 addr */
+  uword * vtep6;  /* local ip6 VTEPs keyed on their ip6 addr */
+  /* mcast shared info */
+  uword * mcast_shared; /* keyed on mcast ip46 addr */
   /** Free vlib hw_if_indices */
   u32 * free_vxlan_gpe_tunnel_hw_if_indices;
 
@@ -187,6 +223,7 @@ typedef struct {
   u8 is_ip6;
   ip46_address_t local, remote;
   u8 protocol;
+  u32 mcast_sw_if_index;
   u32 encap_fib_index;
   u32 decap_fib_index;
   u32 vni;
@@ -217,5 +254,6 @@ void vxlan_gpe_unregister_decap_protocol (u8 protocol_id, uword next_node_index)
 
 void vxlan_gpe_register_decap_protocol (u8 protocol_id, uword next_node_index);
 
+void vnet_int_vxlan_gpe_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
 
 #endif /* included_vnet_vxlan_gpe_h */
