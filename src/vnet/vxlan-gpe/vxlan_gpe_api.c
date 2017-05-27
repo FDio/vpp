@@ -22,6 +22,7 @@
 
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
+#include <vnet/feature/feature.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/fib/fib_table.h>
 
@@ -44,8 +45,25 @@
 #include <vlibapi/api_helper_macros.h>
 
 #define foreach_vpe_api_msg                             \
+_(SW_INTERFACE_SET_VXLAN_GPE_BYPASS, sw_interface_set_vxlan_gpe_bypass)         \
 _(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)                   \
 _(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
+
+static void
+  vl_api_sw_interface_set_vxlan_gpe_bypass_t_handler
+  (vl_api_sw_interface_set_vxlan_gpe_bypass_t * mp)
+{
+  vl_api_sw_interface_set_vxlan_gpe_bypass_reply_t *rmp;
+  int rv = 0;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  vnet_int_vxlan_gpe_bypass_mode (sw_if_index, mp->is_ipv6, mp->enable);
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_VXLAN_GPE_BYPASS_REPLY);
+}
 
 static void
   vl_api_vxlan_gpe_add_del_tunnel_t_handler
@@ -109,6 +127,7 @@ static void
       clib_memcpy (&(a->local.ip4), mp->local, 4);
       clib_memcpy (&(a->remote.ip4), mp->remote, 4);
     }
+  a->mcast_sw_if_index = ntohl (mp->mcast_sw_if_index);
   a->encap_fib_index = encap_fib_index;
   a->decap_fib_index = decap_fib_index;
   a->protocol = protocol;
@@ -149,6 +168,7 @@ static void send_vxlan_gpe_tunnel_details
       rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
       rmp->decap_vrf_id = htonl (im4->fibs[t->decap_fib_index].ft_table_id);
     }
+  rmp->mcast_sw_if_index = htonl (t->mcast_sw_if_index);
   rmp->vni = htonl (t->vni);
   rmp->protocol = t->protocol;
   rmp->sw_if_index = htonl (t->sw_if_index);
