@@ -243,6 +243,21 @@ static void vl_api_macip_acl_interface_get_reply_t_handler
         vam->result_ready = 1;
     }
 
+static void vl_api_acl_control_ping_reply_t_handler
+    (vl_api_acl_control_ping_reply_t * mp)
+  {
+    vat_main_t *vam = acl_test_main.vat_main;
+    i32 retval = ntohl (mp->retval);
+    if (vam->async_mode)
+      {
+        vam->async_errors += (retval < 0);
+      }
+    else
+      {
+        vam->retval = retval;
+        vam->result_ready = 1;
+      }
+  }
 
 /*
  * Table of message reply handlers, must include boilerplate handlers
@@ -255,6 +270,7 @@ _(ACL_INTERFACE_ADD_DEL_REPLY, acl_interface_add_del_reply)  \
 _(ACL_INTERFACE_SET_ACL_LIST_REPLY, acl_interface_set_acl_list_reply) \
 _(ACL_INTERFACE_LIST_DETAILS, acl_interface_list_details)  \
 _(ACL_DETAILS, acl_details)  \
+_(ACL_CONTROL_PING_REPLY, acl_control_ping_reply)             \
 _(MACIP_ACL_ADD_REPLY, macip_acl_add_reply) \
 _(MACIP_ACL_DEL_REPLY, macip_acl_del_reply) \
 _(MACIP_ACL_DETAILS, macip_acl_details)  \
@@ -734,6 +750,7 @@ static int api_acl_interface_list_dump (vat_main_t * vam)
     unformat_input_t * i = vam->input;
     u32 sw_if_index = ~0;
     vl_api_acl_interface_list_dump_t * mp;
+    vl_api_acl_control_ping_t *mp_ping;
     int ret;
 
     /* Parse args required to build the message */
@@ -753,6 +770,9 @@ static int api_acl_interface_list_dump (vat_main_t * vam)
     /* send it... */
     S(mp);
 
+    M(ACL_CONTROL_PING, mp_ping);
+    S(mp_ping);
+
     /* Wait for a reply... */
     W (ret);
     return ret;
@@ -763,6 +783,7 @@ static int api_acl_dump (vat_main_t * vam)
     unformat_input_t * i = vam->input;
     u32 acl_index = ~0;
     vl_api_acl_dump_t * mp;
+    vl_api_acl_control_ping_t *mp_ping;
     int ret;
 
     /* Parse args required to build the message */
@@ -779,6 +800,9 @@ static int api_acl_dump (vat_main_t * vam)
 
     /* send it... */
     S(mp);
+
+    M(ACL_CONTROL_PING, mp_ping);
+    S(mp_ping);
 
     /* Wait for a reply... */
     W (ret);
