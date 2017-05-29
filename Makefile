@@ -40,10 +40,10 @@ DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf nasm
-DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6
+DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 python-setuptools
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
-else
+else ifneq ($(OS_ID),debian)
 	DEB_DEPENDS += default-jdk-headless
 endif
 
@@ -143,6 +143,14 @@ ifeq ($(OS_ID),ubuntu)
 	  exit 1 ; \
 	fi ; \
 	exit 0
+else ifeq ($(OS_ID),debian)
+	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
+	if [ -n "$$MISSING" ] ; then \
+	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
+	  echo "by executing \"make install-dep\"\n" ; \
+	  exit 1 ; \
+	fi ; \
+	exit 0
 endif
 	@echo "SOURCE_PATH = $(WS_ROOT)"                   > $(BR)/build-config.mk
 	@echo "#!/bin/bash\n"                              > $(BR)/path_setup
@@ -169,6 +177,9 @@ ifeq ($(OS_VERSION_ID),14.04)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install software-properties-common
 	@sudo -E add-apt-repository ppa:openjdk-r/ppa $(CONFIRM)
 endif
+	@sudo -E apt-get update
+	@sudo -E apt-get $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
+else ifeq ($(OS_ID),debian)
 	@sudo -E apt-get update
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
 else ifneq ("$(wildcard /etc/redhat-release)","")

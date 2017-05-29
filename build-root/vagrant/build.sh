@@ -20,6 +20,8 @@ echo SUDOCMD: $SUDOCMD
 # Figure out what system we are running on
 if [ -f /etc/lsb-release ];then
     . /etc/lsb-release
+elif [ -f /etc/os-release ];then
+	DISTRIB_ID=$(grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 elif [ -f /etc/redhat-release ];then
     sudo yum install -y redhat-lsb
     DISTRIB_ID=`lsb_release -si`
@@ -67,6 +69,8 @@ fi
 $SUDOCMD make bootstrap
 if [ $DISTRIB_ID == "Ubuntu" ]; then
     $SUDOCMD make pkg-deb
+elif [ $DISTRIB_ID == "debian" ]; then
+	$SUDOCMD make pkg-deb
 elif [ $DISTRIB_ID == "CentOS" ]; then
     (cd $VPP_DIR/vnet ;$SUDOCMD aclocal;$SUDOCMD automake -a)
     $SUDOCMD make pkg-rpm

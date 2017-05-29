@@ -119,6 +119,7 @@ bin_summary_stats_client_LDADD = \
   libvlibapi.la \
   libsvm.la \
   libvppinfra.la \
+  libvlib.la \
   -lpthread -lm -lrt
 
 bin_PROGRAMS += bin/vpp_get_metrics
