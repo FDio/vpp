@@ -68,6 +68,7 @@ _(ACL_INTERFACE_ADD_DEL, acl_interface_add_del)	\
 _(ACL_INTERFACE_SET_ACL_LIST, acl_interface_set_acl_list)	\
 _(ACL_DUMP, acl_dump)  \
 _(ACL_INTERFACE_LIST_DUMP, acl_interface_list_dump) \
+_(ACL_CONTROL_PING, acl_control_ping) \
 _(MACIP_ACL_ADD, macip_acl_add) \
 _(MACIP_ACL_DEL, macip_acl_del) \
 _(MACIP_ACL_INTERFACE_ADD_DEL, macip_acl_interface_add_del) \
@@ -80,6 +81,20 @@ VLIB_PLUGIN_REGISTER () = {
     .description = "Access Control Lists",
 };
 /* *INDENT-ON* */
+
+static void
+ vl_api_acl_control_ping_t_handler
+ (vl_api_acl_control_ping_t * mp)
+ {
+   vl_api_acl_control_ping_reply_t *rmp;
+   acl_main_t * am = &acl_main;
+   int rv = 0;
+
+   REPLY_MACRO2(VL_API_ACL_CONTROL_PING_REPLY,
+   ({
+     rmp->vpe_pid = ntohl (getpid());
+   }));
+ }
 
 static void
 vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
