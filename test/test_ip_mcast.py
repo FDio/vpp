@@ -409,6 +409,17 @@ class TestIPMcast(VppTestCase):
             remark="IP multicast packets forwarded on PG3")
 
         #
+        # Bounce the interface and it should still work
+        #
+        self.pg1.admin_down()
+        self.pg1.admin_up()
+
+        self.pg0.add_stream(tx)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.verify_capture_ip6(self.pg1, tx)
+
+        #
         # a stream that matches the route for (*,ff01::1)
         #
         self.vapi.cli("clear trace")
