@@ -91,16 +91,27 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   vlib_frame_t * frame, memif_if_t * mif,
 			   memif_ring_type_t type)
 {
-  u8 rid = 0;
-  memif_ring_t *ring = memif_get_ring (mif, type, rid);
+  u8 rid;
+  memif_ring_t *ring;
   u32 *buffers = vlib_frame_args (frame);
   u32 n_left = frame->n_vectors;
   u16 ring_size = 1 << mif->log2_ring_size;
   u16 mask = ring_size - 1;
   u16 head, tail;
   u16 free_slots;
+  u32 thread_index = vlib_get_thread_index ();
+  u8 tx_queues = memif_get_tx_queues (mif);
 
-  clib_spinlock_lock_if_init (&mif->lockp);
+  if (tx_queues < vec_len (vlib_mains))
+    {
+      rid = thread_index % tx_queues;
+      clib_spinlock_lock_if_init (&mif->lockp);
+    }
+  else
+    {
+      rid = thread_index;
+    }
+  ring = memif_get_ring (mif, type, rid);
 
   /* free consumed buffers */
 

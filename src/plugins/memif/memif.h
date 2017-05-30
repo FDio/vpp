@@ -33,7 +33,9 @@ typedef struct
   u8 log2_ring_size;
 #define MEMIF_DEFAULT_RING_SIZE 1024
   u16 num_s2m_rings;
+#define MEMIF_DEFAULT_RX_QUEUES 1
   u16 num_m2s_rings;
+#define MEMIF_DEFAULT_TX_QUEUES 1
   u16 buffer_size;
 #define MEMIF_DEFAULT_BUFFER_SIZE 2048
   u32 shared_mem_size;
@@ -126,6 +128,7 @@ typedef struct
   u8 num_s2m_rings;
   u8 num_m2s_rings;
   u16 buffer_size;
+  u32 shared_mem_size;
 
   memif_ring_data_t *ring_data;
 
@@ -189,6 +192,8 @@ typedef struct
   u16 buffer_size;
   u8 hw_addr_set;
   u8 hw_addr[6];
+  u8 rx_queues;
+  u8 tx_queues;
 
   /* return */
   u32 sw_if_index;
@@ -210,6 +215,32 @@ clib_error_t *memif_plugin_api_hookup (vlib_main_t * vm);
 #error "__NR_memfd_create unknown for this architecture"
 #endif
 #endif
+
+static_always_inline u8
+memif_get_rx_queues (memif_if_t * mif)
+{
+  u8 rx_queues;
+
+  if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
+    rx_queues = mif->num_m2s_rings;
+  else
+    rx_queues = mif->num_s2m_rings;
+
+  return (rx_queues);
+}
+
+static_always_inline u8
+memif_get_tx_queues (memif_if_t * mif)
+{
+  u8 tx_queues;
+
+  if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
+    tx_queues = mif->num_s2m_rings;
+  else
+    tx_queues = mif->num_m2s_rings;
+
+  return (tx_queues);
+}
 
 static inline int
 memfd_create (const char *name, unsigned int flags)
