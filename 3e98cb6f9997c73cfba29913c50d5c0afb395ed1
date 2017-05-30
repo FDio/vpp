@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_479f4104",
+        "filename": "src/svm/svm_fifo_segment.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-05-30T19:08:58Z",
+      "side": 1,
+      "message": "Recommend adding failure messages:\n\n      if (rx_fifo_space)\n\tclib_mem_free (rx_fifo_space);\n      else\n        clib_warning (\"Preallocate rx fifo failed.\");\n      if (tx_fifo_space)\n\tclib_mem_free (tx_fifo_space);\n      else\n        clib_warning (\"Preallocate tx fifo failed.\");",
+      "range": {
+        "startLine": 52,
+        "startChar": 0,
+        "endLine": 55,
+        "endChar": 31
+      },
+      "revId": "3e98cb6f9997c73cfba29913c50d5c0afb395ed1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
