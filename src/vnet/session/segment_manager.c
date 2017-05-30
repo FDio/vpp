@@ -58,6 +58,9 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
 
   ca->segment_name = (char *) segment_name;
   ca->segment_size = segment_size;
+  ca->rx_fifo_size = sm->properties->rx_fifo_size;
+  ca->tx_fifo_size = sm->properties->tx_fifo_size;
+  ca->preallocated_fifo_pairs = sm->properties->preallocated_fifo_pairs;
 
   rv = svm_fifo_segment_create (ca);
   if (rv)
@@ -281,20 +284,27 @@ again:
       *fifo_segment_index = sm->segment_indices[i];
       fifo_segment = svm_fifo_get_segment (*fifo_segment_index);
 
+      /* FC: cleanup, make sure sm->properties->xxx_fifo_size always set */
       fifo_size = sm->properties->rx_fifo_size;
       fifo_size = (fifo_size == 0) ? default_fifo_size : fifo_size;
-      *server_rx_fifo = svm_fifo_segment_alloc_fifo (fifo_segment, fifo_size);
+      *server_rx_fifo =
+	svm_fifo_segment_alloc_fifo (fifo_segment, fifo_size,
+				     FIFO_SEGMENT_RX_FREELIST);
 
+      /* FC: cleanup, make sure sm->properties->xxx_fifo_size always set */
       fifo_size = sm->properties->tx_fifo_size;
       fifo_size = (fifo_size == 0) ? default_fifo_size : fifo_size;
-      *server_tx_fifo = svm_fifo_segment_alloc_fifo (fifo_segment, fifo_size);
+      *server_tx_fifo =
+	svm_fifo_segment_alloc_fifo (fifo_segment, fifo_size,
+				     FIFO_SEGMENT_TX_FREELIST);
 
       if (*server_rx_fifo == 0)
 	{
 	  /* This would be very odd, but handle it... */
 	  if (*server_tx_fifo != 0)
 	    {
-	      svm_fifo_segment_free_fifo (fifo_segment, *server_tx_fifo);
+	      svm_fifo_segment_free_fifo (fifo_segment, *server_tx_fifo,
+					  FIFO_SEGMENT_TX_FREELIST);
 	      *server_tx_fifo = 0;
 	    }
 	  continue;
@@ -303,7 +313,8 @@ again:
 	{
 	  if (*server_rx_fifo != 0)
 	    {
-	      svm_fifo_segment_free_fifo (fifo_segment, *server_rx_fifo);
+	      svm_fifo_segment_free_fifo (fifo_segment, *server_rx_fifo,
+					  FIFO_SEGMENT_RX_FREELIST);
 	      *server_rx_fifo = 0;
 	    }
 	  continue;
@@ -365,8 +376,10 @@ segment_manager_dealloc_fifos (u32 svm_segment_index, svm_fifo_t * rx_fifo,
     return;
 
   fifo_segment = svm_fifo_get_segment (svm_segment_index);
-  svm_fifo_segment_free_fifo (fifo_segment, rx_fifo);
-  svm_fifo_segment_free_fifo (fifo_segment, tx_fifo);
+  svm_fifo_segment_free_fifo (fifo_segment, rx_fifo,
+			      FIFO_SEGMENT_RX_FREELIST);
+  svm_fifo_segment_free_fifo (fifo_segment, tx_fifo,
+			      FIFO_SEGMENT_TX_FREELIST);
 
   /* Remove segment only if it holds no fifos and not the first */
   if (sm->segment_indices[0] != svm_segment_index
