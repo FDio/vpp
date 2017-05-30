@@ -550,12 +550,12 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
    * fsh->fifos[0], and the master's idea of the tx fifo ends up in
    * fsh->fifos[1].
    */
-  session->server_rx_fifo = svm_fifo_segment_alloc_fifo (utm->seg,
-							 128 * 1024);
+  session->server_rx_fifo = svm_fifo_segment_alloc_fifo
+    (utm->seg, 128 * 1024, FIFO_SEGMENT_RX_FREELIST);
   ASSERT (session->server_rx_fifo);
 
-  session->server_tx_fifo = svm_fifo_segment_alloc_fifo (utm->seg,
-							 128 * 1024);
+  session->server_tx_fifo = svm_fifo_segment_alloc_fifo
+    (utm->seg, 128 * 1024, FIFO_SEGMENT_TX_FREELIST);
   ASSERT (session->server_tx_fifo);
 
   session->server_rx_fifo->master_session_index = session - utm->sessions;
