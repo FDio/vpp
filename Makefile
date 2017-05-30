@@ -43,6 +43,12 @@ DEB_DEPENDS += lcov chrpath autoconf nasm
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
+<<<<<<< Updated upstream
+=======
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
+	DEB_DEPENDS += openjdk-8-jdk-headless
+	APT_ARGS = -t jessie-backports
+>>>>>>> Stashed changes
 else
 	DEB_DEPENDS += default-jdk-headless
 endif
@@ -135,7 +141,7 @@ $(BR)/.bootstrap.ok:
 ifeq ($(findstring y,$(UNATTENDED)),y)
 	make install-dep
 endif
-ifeq ($(OS_ID),ubuntu)
+ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 	@MISSING=$$(apt-get install -y -qq -s $(DEB_DEPENDS) | grep "^Inst ") ; \
 	if [ -n "$$MISSING" ] ; then \
 	  echo "\nPlease install missing packages: \n$$MISSING\n" ; \
@@ -164,20 +170,28 @@ endif
 bootstrap: $(BR)/.bootstrap.ok
 
 install-dep:
-ifeq ($(OS_ID),ubuntu)
+ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 ifeq ($(OS_VERSION_ID),14.04)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install software-properties-common
 	@sudo -E add-apt-repository ppa:openjdk-r/ppa $(CONFIRM)
 endif
+ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
+	@grep -q jessie-backports /etc/apt/sources.list /etc/apt/sources.list.d/* 2> /dev/null \
+           || ( echo "Please install jessie-backports" ; exit 1 )
+endif
 	@sudo -E apt-get update
+<<<<<<< Updated upstream
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
+=======
+	@sudo -E apt-get $(APT_ARGS) $(CONFIRM) $(FORCE) install $(DEB_DEPENDS)
+>>>>>>> Stashed changes
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E yum install $(CONFIRM) --enablerepo=epel $(EPEL_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc-2.17-106.el7_2.4.x86_64 openssl-libs-1.0.1e-51.el7_2.4.x86_64 zlib-1.2.7-15.el7.x86_64
 else
-	$(error "This option currently works only on Ubuntu or Centos systems")
+	$(error "This option currently works only on Ubuntu, Debian or Centos systems")
 endif
 
 define make
