@@ -78,15 +78,12 @@ memif_prefetch (vlib_main_t * vm, u32 bi)
 static_always_inline uword
 memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   vlib_frame_t * frame, memif_if_t * mif,
-			   memif_ring_type_t type)
+			   memif_ring_type_t type, u16 rid)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  u8 rid = 0;			/* Ring id */
   memif_ring_t *ring = memif_get_ring (mif, type, rid);
-  memif_ring_data_t *rd =
-    vec_elt_at_index (mif->ring_data, rid + type * mif->num_s2m_rings);
+  memif_ring_data_t *rd;
   u16 head;
-
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   uword n_trace = vlib_get_trace_count (vm, node);
   memif_main_t *nm = &memif_main;
@@ -102,6 +99,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 num_slots;
   void *mb0, *mb1;
 
+  rd = vec_elt_at_index (mif->ring_data, rid + type * mif->num_s2m_rings);
   if (mif->per_interface_next_index != ~0)
     next_index = mif->per_interface_next_index;
 
@@ -328,7 +326,6 @@ memif_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		vlib_frame_t * frame)
 {
   u32 n_rx_packets = 0;
-  u32 thread_index = vlib_get_thread_index ();
   memif_main_t *nm = &memif_main;
   memif_if_t *mif;
   vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
@@ -338,17 +335,16 @@ memif_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   foreach_device_and_queue (dq, rt->devices_and_queues)
   {
     mif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
-    if (mif->flags & MEMIF_IF_FLAG_ADMIN_UP &&
-	mif->flags & MEMIF_IF_FLAG_CONNECTED &&
-	(mif->if_index % nm->input_cpu_count) ==
-	(thread_index - nm->input_cpu_first_index))
+    if ((mif->flags & MEMIF_IF_FLAG_ADMIN_UP) &&
+	(mif->flags & MEMIF_IF_FLAG_CONNECTED))
       {
 	if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
 	  type = MEMIF_RING_M2S;
 	else
 	  type = MEMIF_RING_S2M;
 	n_rx_packets +=
-	  memif_device_input_inline (vm, node, frame, mif, type);
+	  memif_device_input_inline (vm, node, frame, mif, type,
+				     dq->queue_id);
       }
   }
 
