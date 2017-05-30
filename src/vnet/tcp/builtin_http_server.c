@@ -513,6 +513,7 @@ server_attach ()
   a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = 8 << 10;
   a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+  a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 16;
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
