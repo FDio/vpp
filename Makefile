@@ -431,19 +431,18 @@ verify: install-dep $(BR)/.bootstrap.ok
 	make -C dpdk install-$(PKG) DPDK_CRYPTO_SW_PMD=y
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages \
-	      vpp_uses_dpdk_cryptodev_sw=yes
+	      vpp_uses_dpdk_cryptodev_sw=yes vpp_build_sample_plugin=yes
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
 	$(call banner,"Installing dependencies")
 	@sudo -E apt-get update
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install clang
 	$(call banner,"Building for PLATFORM=vpp using clang")
 	@make -C build-root CC=clang PLATFORM=vpp TAG=vpp_clang \
-	      wipe-all install-packages vpp_uses_dpdk_cryptodev_sw=yes
+	      wipe-all install-packages vpp_uses_dpdk_cryptodev_sw=yes \
+	      vpp_build_sample_plugin = yes
 endif
-	$(call banner,"Building sample-plugin")
-	@make -C build-root PLATFORM=vpp TAG=vpp sample-plugin-install
 	$(call banner,"Building $(PKG) packages")
-	@make pkg-$(PKG) vpp_uses_dpdk_cryptodev_sw=yes
+	@make pkg-$(PKG) vpp_uses_dpdk_cryptodev_sw=yes vpp_build_sample_plugin=yes
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
 	@make test
 endif
