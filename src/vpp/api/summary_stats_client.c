@@ -90,8 +90,8 @@ test_main_t test_main;
 /*
  * Satisfy external references when -lvlib is not available.
  */
-vlib_main_t vlib_global_main;
-vlib_main_t **vlib_mains;
+extern vlib_main_t vlib_global_main;
+extern vlib_main_t **vlib_mains;
 
 void
 vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
