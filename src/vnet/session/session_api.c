@@ -419,7 +419,7 @@ done:
   REPLY_MACRO (VL_API_UNBIND_URI_REPLY);
 }
 
-static void
+void
 vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
 {
   vl_api_connect_uri_reply_t *rmp;

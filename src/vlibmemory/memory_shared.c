@@ -104,8 +104,17 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
 	      if (now - rv->gc_mark_timestamp > 10)
 		{
 		  if (CLIB_DEBUG > 0)
-		    clib_warning ("garbage collect pool %d ring %d index %d",
-				  pool, i, q->head);
+		    {
+		      u16 *msg_idp, msg_id;
+		      clib_warning
+			("garbage collect pool %d ring %d index %d", pool, i,
+			 q->head);
+		      msg_idp = (u16 *) (rv->data);
+		      msg_id = clib_net_to_host_u16 (*msg_idp);
+		      if (msg_id < vec_len (api_main.msg_names))
+			clib_warning ("msg id %d name %s", (u32) msg_id,
+				      api_main.msg_names[msg_id]);
+		    }
 		  shmem_hdr->garbage_collects++;
 		  goto collected;
 		}

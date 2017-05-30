@@ -125,14 +125,11 @@ typedef struct _stream_session_t
 
   u8 thread_index;
 
-  /** used during unbind processing */
-  u8 is_deleted;
-
   /** To avoid n**2 "one event per frame" check */
   u8 enqueue_epoch;
 
   /** Pad to a multiple of 8 octets */
-  u8 align_pad[2];
+  u8 align_pad[4];
 
   /** svm segment index where fifos were allocated */
   u32 svm_segment_index;

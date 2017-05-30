@@ -28,6 +28,9 @@ typedef struct _segment_manager_properties
   u32 rx_fifo_size;
   u32 tx_fifo_size;
 
+  /** Preallocated pool sizes */
+  u32 preallocated_fifo_pairs;
+
   /** Configured additional segment size */
   u32 add_segment_size;
 
