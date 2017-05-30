@@ -230,9 +230,9 @@ VNET_SW_INTERFACE_ADMIN_UP_DOWN_FUNCTION(adj_mcast_interface_state_change);
  * HW interface state changes
  */
 static void
-adj_nbr_hw_sw_interface_state_change (vnet_main_t * vnm,
-                                      u32 sw_if_index,
-                                      void *arg)
+adj_mcast_hw_sw_interface_state_change (vnet_main_t * vnm,
+                                        u32 sw_if_index,
+                                        void *arg)
 {
     adj_mcast_interface_state_change(vnm, sw_if_index, (uword) arg);
 }
@@ -255,7 +255,7 @@ adj_mcast_hw_interface_state_change (vnet_main_t * vnm,
                 0);
 
     vnet_hw_interface_walk_sw(vnm, hw_if_index,
-                              adj_nbr_hw_sw_interface_state_change,
+                              adj_mcast_hw_sw_interface_state_change,
                               (void*) sw_flags);
 
     return (NULL);
