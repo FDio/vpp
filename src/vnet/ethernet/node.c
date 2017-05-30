@@ -142,6 +142,8 @@ parse_header (ethernet_input_variant_t variant,
       tag = clib_net_to_host_u16 (h0->priority_cfi_and_id);
 
       *outer_id = tag & 0xfff;
+      if (0 == *outer_id)
+	*match_flags &= ~SUBINT_CONFIG_MATCH_1_TAG;
 
       *type = clib_net_to_host_u16 (h0->type);
 
