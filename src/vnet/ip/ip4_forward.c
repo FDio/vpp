@@ -717,28 +717,23 @@ ip4_add_interface_routes (u32 sw_if_index,
     .fp_addr.ip4 = *address,
   };
 
-  a->neighbor_probe_adj_index = ~0;
-
   if (pfx.fp_len <= 30)
     {
       /* a /30 or shorter - add a glean for the network address */
-      fib_node_index_t fei;
-
-      fei = fib_table_entry_update_one_path (fib_index, &pfx,
-                                             FIB_SOURCE_INTERFACE,
-                                             (FIB_ENTRY_FLAG_CONNECTED |
-                                              FIB_ENTRY_FLAG_ATTACHED),
-                                             FIB_PROTOCOL_IP4,
-                                             /* No next-hop address */
-                                             NULL,
-					     sw_if_index,
-                                             // invalid FIB index
-                                             ~0,
-					     1,
-                                             // no out-label stack
-                                             NULL,
-					     FIB_ROUTE_PATH_FLAG_NONE);
-      a->neighbor_probe_adj_index = fib_entry_get_adj (fei);
+      fib_table_entry_update_one_path (fib_index, &pfx,
+                                       FIB_SOURCE_INTERFACE,
+                                       (FIB_ENTRY_FLAG_CONNECTED |
+                                        FIB_ENTRY_FLAG_ATTACHED),
+                                       FIB_PROTOCOL_IP4,
+                                       /* No next-hop address */
+                                       NULL,
+                                       sw_if_index,
+                                       // invalid FIB index
+                                       ~0,
+                                       1,
+                                       // no out-label stack
+                                       NULL,
+                                       FIB_ROUTE_PATH_FLAG_NONE);
 
       /* Add the two broadcast addresses as drop */
       fib_prefix_t net_pfx = {
@@ -2269,6 +2264,7 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
   vnet_hw_interface_t *hi;
   vnet_sw_interface_t *si;
   vlib_buffer_t *b;
+  adj_index_t ai;
   u32 bi = 0;
 
   si = vnet_get_sw_interface (vnm, sw_if_index);
@@ -2293,12 +2289,17 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
 	 sw_if_index);
     }
 
-  adj = adj_get (ia->neighbor_probe_adj_index);
+  ip46_address_t nh = {
+    .ip4 = *dst,
+  };
 
-  h =
-    vlib_packet_template_get_packet (vm,
-				     &im->ip4_arp_request_packet_template,
-				     &bi);
+  ai = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
+			    VNET_LINK_IP4, &nh, sw_if_index);
+  adj = adj_get (ai);
+
+  h = vlib_packet_template_get_packet (vm,
+				       &im->ip4_arp_request_packet_template,
+				       &bi);
 
   hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
 
@@ -2324,6 +2325,7 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
     vlib_put_frame_to_node (vm, hi->output_node_index, f);
   }
 
+  adj_unlock (ai);
   return /* no error */ 0;
 }
 

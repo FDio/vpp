@@ -347,24 +347,20 @@ ip6_add_interface_routes (vnet_main_t * vnm, u32 sw_if_index,
     .fp_addr.ip6 = *address,
   };
 
-  a->neighbor_probe_adj_index = ~0;
   if (a->address_length < 128)
     {
-      fib_node_index_t fei;
-
-      fei = fib_table_entry_update_one_path (fib_index,
-					     &pfx,
-					     FIB_SOURCE_INTERFACE,
-					     (FIB_ENTRY_FLAG_CONNECTED |
-					      FIB_ENTRY_FLAG_ATTACHED),
-					     FIB_PROTOCOL_IP6,
-					     /* No next-hop address */
-					     NULL, sw_if_index,
-					     /* invalid FIB index */
-					     ~0, 1,
-					     /* no label stack */
-					     NULL, FIB_ROUTE_PATH_FLAG_NONE);
-      a->neighbor_probe_adj_index = fib_entry_get_adj (fei);
+      fib_table_entry_update_one_path (fib_index,
+				       &pfx,
+				       FIB_SOURCE_INTERFACE,
+				       (FIB_ENTRY_FLAG_CONNECTED |
+					FIB_ENTRY_FLAG_ATTACHED),
+				       FIB_PROTOCOL_IP6,
+				       /* No next-hop address */
+				       NULL, sw_if_index,
+				       /* invalid FIB index */
+				       ~0, 1,
+				       /* no label stack */
+				       NULL, FIB_ROUTE_PATH_FLAG_NONE);
     }
 
   pfx.fp_len = 128;
@@ -1854,6 +1850,7 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)
   vnet_hw_interface_t *hi;
   vnet_sw_interface_t *si;
   vlib_buffer_t *b;
+  adj_index_t ai;
   u32 bi = 0;
   int bogus_length;
 
@@ -1906,7 +1903,14 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)
     vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index;
 
   /* Add encapsulation string for software interface (e.g. ethernet header). */
-  adj = adj_get (ia->neighbor_probe_adj_index);
+  ip46_address_t nh = {
+    .ip6 = *dst,
+  };
+
+  ai = adj_nbr_add_or_lock (FIB_PROTOCOL_IP6,
+			    VNET_LINK_IP6, &nh, sw_if_index);
+  adj = adj_get (ai);
+
   vnet_rewrite_one_header (adj[0], h, sizeof (ethernet_header_t));
   vlib_buffer_advance (b, -adj->rewrite_header.data_bytes);
 
@@ -1918,6 +1922,7 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)
     vlib_put_frame_to_node (vm, hi->output_node_index, f);
   }
 
+  adj_unlock (ai);
   return /* no error */ 0;
 }
 
