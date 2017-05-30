@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_11250bc2",
+        "filename": "build-data/platforms.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-05-30T09:29:20Z",
+      "side": 1,
+      "message": "This doesn\u0027t look like multi-architecture friendly",
+      "range": {
+        "startLine": 46,
+        "startChar": 39,
+        "endLine": 46,
+        "endChar": 55
+      },
+      "revId": "2612e911bde1d19c773acb00f68ce698f1616b6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_f12157b5",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-05-30T09:29:20Z",
+      "side": 1,
+      "message": "Do we really need to have PC file for each lib, or we can have just one .pc file?",
+      "revId": "2612e911bde1d19c773acb00f68ce698f1616b6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
