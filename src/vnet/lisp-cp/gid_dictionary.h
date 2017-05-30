@@ -40,6 +40,10 @@
 #define ARP_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define ARP_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
 
+/* Default size of the NSH hash table */
+#define NSH_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define NSH_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+
 typedef void (*foreach_subprefix_match_cb_t) (u32, void *);
 
 typedef struct
@@ -84,6 +88,16 @@ typedef struct gid_mac_table
   u64 count;
 } gid_mac_table_t;
 
+typedef struct gid_nsh_table
+{
+  BVT (clib_bihash) nsh_lookup_table;
+
+  /* nsh lookup table config parameters */
+  u32 nsh_lookup_table_nbuckets;
+  uword nsh_lookup_table_size;
+  u64 count;
+} gid_nsh_table_t;
+
 typedef struct
 {
   BVT (clib_bihash) arp_lookup_table;
@@ -96,6 +110,9 @@ typedef struct
 {
   /** L2 ARP table */
   gid_l2_arp_table_t arp_table;
+
+  /** NSH lookup table */
+  gid_nsh_table_t nsh_table;
 
   /** destination IP LPM ip4 lookup table */
   gid_ip4_table_t dst_ip4_table;

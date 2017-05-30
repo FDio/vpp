@@ -146,6 +146,20 @@ autoreply define one_enable_disable
   u8 is_en;
 };
 
+/** \brief configure or delete ONE NSH mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ls_name - locator set name
+    @param is_add - add locator set if non-zero; delete otherwise
+*/
+autoreply define one_nsh_set_locator_set
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 ls_name[64];
+};
+
 /** \brief configure or disable ONE PITR node
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -325,6 +339,12 @@ typeonly manual_endian manual_print define one_remote_locator
       0 : ipv4
       1 : ipv6
       2 : mac
+      3 : NSH : both information (service path ID and service index) are
+        encoded in 'eid' field in a following way:
+
+        |4 B |1 B |
+        -----------
+        |SPI | SI |
     @param deid - dst EID
     @param seid - src EID, valid only if is_src_dst is enabled
     @param rloc_num - number of remote locators
@@ -596,6 +616,12 @@ define one_eid_table_details
         0: EID is IPv4
         1: EID is IPv6
         2: EID is ethernet address
+        3 : NSH : both information (service path ID and service index) are
+          encoded in 'eid' field in a following way:
+
+          |4 B |1 B |
+          -----------
+          |SPI | SI |
     @param eid - endpoint identifier
     @param filter - filter type;
       Support values:
@@ -784,6 +810,29 @@ define one_get_map_request_itr_rlocs_reply
 {
   u32 context;
   i32 retval;
+  u8 locator_set_name[64];
+};
+
+/** \brief Request for ONE NSH mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_one_nsh_mapping
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for ONE NSH mapping
+    @param context - sender context, to match reply w/ request
+    @param is_set - is ONE NSH mapping set
+    @param locator_set_name - name of the locator_set if NSH mapping is set
+*/
+define show_one_nsh_mapping_reply
+{
+  u32 context;
+  i32 retval;
+  u8 is_set;
   u8 locator_set_name[64];
 };
 

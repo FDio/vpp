@@ -2583,6 +2583,26 @@ static void
   vec_free (ls_name);
 }
 
+typedef struct
+{
+  u32 spi;
+  u8 si;
+} __attribute__ ((__packed__)) lisp_nsh_api_t;
+
+uword
+unformat_nsh_address (unformat_input_t * input, va_list * args)
+{
+  lisp_nsh_api_t *nsh = va_arg (*args, lisp_nsh_api_t *);
+  return unformat (input, "SPI:%d SI:%d", &nsh->spi, &nsh->si);
+}
+
+u8 *
+format_nsh_address_vat (u8 * s, va_list * args)
+{
+  nsh_t *a = va_arg (*args, nsh_t *);
+  return format (s, "SPI:%d SI:%d", clib_net_to_host_u32 (a->spi), a->si);
+}
+
 static u8 *
 format_lisp_flat_eid (u8 * s, va_list * args)
 {
@@ -2598,6 +2618,8 @@ format_lisp_flat_eid (u8 * s, va_list * args)
       return format (s, "%U/%d", format_ip6_address, eid, eid_len);
     case 2:
       return format (s, "%U", format_ethernet_address, eid);
+    case 3:
+      return format (s, "%U", format_nsh_address_vat, eid);
     }
   return 0;
 }
@@ -2672,13 +2694,26 @@ vl_api_one_eid_table_details_t_handler_json (vl_api_one_eid_table_details_t
 			      clib_net_to_host_u32 (mp->locator_set_index));
 
   vat_json_object_add_uint (node, "is_local", mp->is_local ? 1 : 0);
-  eid = format (0, "%U", format_lisp_eid_vat,
-		mp->eid_type,
-		mp->eid,
-		mp->eid_prefix_len,
-		mp->seid, mp->seid_prefix_len, mp->is_src_dst);
-  vec_add1 (eid, 0);
-  vat_json_object_add_string_copy (node, "eid", eid);
+  if (mp->eid_type == 3)
+    {
+      vat_json_node_t *nsh_json = vat_json_object_add (node, "eid");
+      vat_json_init_object (nsh_json);
+      lisp_nsh_api_t *nsh = (lisp_nsh_api_t *) mp->eid;
+      vat_json_object_add_uint (nsh_json, "spi",
+				clib_net_to_host_u32 (nsh->spi));
+      vat_json_object_add_uint (nsh_json, "si", nsh->si);
+    }
+  else
+    {
+      eid = format (0, "%U", format_lisp_eid_vat,
+		    mp->eid_type,
+		    mp->eid,
+		    mp->eid_prefix_len,
+		    mp->seid, mp->seid_prefix_len, mp->is_src_dst);
+      vec_add1 (eid, 0);
+      vat_json_object_add_string_copy (node, "eid", eid);
+      vec_free (eid);
+    }
   vat_json_object_add_uint (node, "vni", clib_net_to_host_u32 (mp->vni));
   vat_json_object_add_uint (node, "ttl", clib_net_to_host_u32 (mp->ttl));
   vat_json_object_add_uint (node, "authoritative", (mp->authoritative));
@@ -2689,7 +2724,6 @@ vl_api_one_eid_table_details_t_handler_json (vl_api_one_eid_table_details_t
 				clib_net_to_host_u16 (mp->key_id));
       vat_json_object_add_string_copy (node, "key", mp->key);
     }
-  vec_free (eid);
 }
 
 static void
@@ -3654,6 +3688,52 @@ static void
 	  clib_memcpy (&ip4, mp->address, sizeof (ip4));
 	  vat_json_object_add_ip4 (&node, "address", ip4);
 	}
+    }
+
+  vec_free (status);
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_show_one_nsh_mapping_reply_t_handler
+  (vl_api_show_one_nsh_mapping_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (0 <= retval)
+    {
+      print (vam->ofp, "%-20s%-16s",
+	     mp->is_set ? "set" : "not-set",
+	     mp->is_set ? (char *) mp->locator_set_name : "");
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_show_one_nsh_mapping_reply_t_handler_json
+  (vl_api_show_one_nsh_mapping_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+  u8 *status = 0;
+
+  status = format (0, "%s", mp->is_set ? "yes" : "no");
+  vec_add1 (status, 0);
+
+  vat_json_init_object (&node);
+  vat_json_object_add_string_copy (&node, "is_set", status);
+  if (mp->is_set)
+    {
+      vat_json_object_add_string_copy (&node, "locator_set",
+				       mp->locator_set_name);
     }
 
   vec_free (status);
@@ -4672,6 +4752,7 @@ _(ONE_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY,                              \
   one_add_del_map_request_itr_rlocs_reply)                              \
 _(ONE_GET_MAP_REQUEST_ITR_RLOCS_REPLY,                                  \
   one_get_map_request_itr_rlocs_reply)                                  \
+_(SHOW_ONE_NSH_MAPPING_REPLY, show_one_nsh_mapping_reply)               \
 _(SHOW_ONE_PITR_REPLY, show_one_pitr_reply)                             \
 _(SHOW_ONE_USE_PETR_REPLY, show_one_use_petr_reply)                     \
 _(SHOW_ONE_MAP_REQUEST_MODE_REPLY, show_one_map_request_mode_reply)     \
@@ -14044,6 +14125,12 @@ unformat_lisp_eid_vat (unformat_input_t * input, va_list * args)
     {
       a->type = 2;		/* mac type */
     }
+  else if (unformat (input, "%U", unformat_nsh_address, a->addr))
+    {
+      a->type = 3;		/* NSH type */
+      lisp_nsh_api_t *nsh = (lisp_nsh_api_t *) a->addr;
+      nsh->spi = clib_host_to_net_u32 (nsh->spi);
+    }
   else
     {
       return 0;
@@ -14068,6 +14155,8 @@ lisp_eid_size_vat (u8 type)
       return 16;
     case 2:
       return 6;
+    case 3:
+      return 5;
     }
   return 0;
 }
@@ -15167,6 +15256,50 @@ api_one_pitr_set_locator_set (vat_main_t * vam)
 #define api_lisp_pitr_set_locator_set api_one_pitr_set_locator_set
 
 static int
+api_one_nsh_set_locator_set (vat_main_t * vam)
+{
+  u8 ls_name_set = 0;
+  unformat_input_t *input = vam->input;
+  vl_api_one_nsh_set_locator_set_t *mp;
+  u8 is_add = 1;
+  u8 *ls_name = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+	is_add = 0;
+      else if (unformat (input, "ls %s", &ls_name))
+	ls_name_set = 1;
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, input);
+	  return -99;
+	}
+    }
+
+  if (!ls_name_set && is_add)
+    {
+      errmsg ("locator-set name not set!");
+      return -99;
+    }
+
+  M (ONE_NSH_SET_LOCATOR_SET, mp);
+
+  mp->is_add = is_add;
+  clib_memcpy (mp->ls_name, ls_name, vec_len (ls_name));
+  vec_free (ls_name);
+
+  /* send */
+  S (mp);
+
+  /* wait for reply */
+  W (ret);
+  return ret;
+}
+
+static int
 api_show_one_pitr (vat_main_t * vam)
 {
   vl_api_show_one_pitr_t *mp;
@@ -15244,6 +15377,26 @@ api_one_use_petr (vat_main_t * vam)
 }
 
 #define api_lisp_use_petr api_one_use_petr
+
+static int
+api_show_one_nsh_mapping (vat_main_t * vam)
+{
+  vl_api_show_one_use_petr_t *mp;
+  int ret;
+
+  if (!vam->json_output)
+    {
+      print (vam->ofp, "%=20s", "local ONE NSH mapping:");
+    }
+
+  M (SHOW_ONE_NSH_MAPPING, mp);
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
 
 static int
 api_show_one_use_petr (vat_main_t * vam)
@@ -16031,6 +16184,7 @@ api_one_eid_table_dump (vat_main_t * vam)
   u32 prefix_length = ~0, t, vni = 0;
   u8 filter = 0;
   int ret;
+  lisp_nsh_api_t nsh;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -16050,6 +16204,11 @@ api_one_eid_table_dump (vat_main_t * vam)
 	{
 	  eid_set = 1;
 	  eid_type = 2;
+	}
+      else if (unformat (i, "eid %U", unformat_nsh_address, &nsh))
+	{
+	  eid_set = 1;
+	  eid_type = 3;
 	}
       else if (unformat (i, "vni %d", &t))
 	{
@@ -16096,6 +16255,9 @@ api_one_eid_table_dump (vat_main_t * vam)
 	  break;
 	case 2:
 	  clib_memcpy (mp->eid, mac, sizeof (mac));
+	  break;
+	case 3:
+	  clib_memcpy (mp->eid, &nsh, sizeof (nsh));
 	  break;
 	default:
 	  errmsg ("unknown EID type %d!", eid_type);
@@ -19423,12 +19585,14 @@ _(one_eid_table_map_dump, "l2|l3")                                      \
 _(one_map_resolver_dump, "")                                            \
 _(one_map_server_dump, "")                                              \
 _(one_adjacencies_get, "vni <vni>")                                     \
+_(one_nsh_set_locator_set, "[del] ls <locator-set-name>")               \
 _(show_one_rloc_probe_state, "")                                        \
 _(show_one_map_register_state, "")                                      \
 _(show_one_status, "")                                                  \
 _(one_stats_dump, "")                                                   \
 _(one_stats_flush, "")                                                  \
 _(one_get_map_request_itr_rlocs, "")                                    \
+_(show_one_nsh_mapping, "")                                             \
 _(show_one_pitr, "")                                                    \
 _(show_one_use_petr, "")                                                \
 _(show_one_map_request_mode, "")                                        \

@@ -345,6 +345,14 @@ make_arp_key (BVT (clib_bihash_kv) * kv, u32 bd, ip4_address_t * addr)
   kv->key[2] = (u64) 0;
 }
 
+static void
+make_nsh_key (BVT (clib_bihash_kv) * kv, u32 vni, u32 spi, u8 si)
+{
+  kv->key[0] = (u64) vni;
+  kv->key[1] = (u64) spi;
+  kv->key[2] = (u64) si;
+}
+
 static u64
 arp_lookup (gid_l2_arp_table_t * db, u32 bd, ip4_address_t * key)
 {
@@ -358,6 +366,21 @@ arp_lookup (gid_l2_arp_table_t * db, u32 bd, ip4_address_t * key)
     return value.value;
 
   return GID_LOOKUP_MISS_L2;
+}
+
+static u32
+nsh_lookup (gid_nsh_table_t * db, u32 vni, u32 spi, u8 si)
+{
+  int rv;
+  BVT (clib_bihash_kv) kv, value;
+
+  make_nsh_key (&kv, vni, spi, si);
+  rv = BV (clib_bihash_search_inline_2) (&db->nsh_lookup_table, &kv, &value);
+
+  if (rv == 0)
+    return value.value;
+
+  return GID_LOOKUP_MISS;
 }
 
 u64
@@ -393,6 +416,9 @@ gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key)
     case GID_ADDR_ARP:
       return arp_lookup (&db->arp_table, gid_address_arp_bd (key),
 			 &gid_address_arp_ip4 (key));
+    case GID_ADDR_NSH:
+      return nsh_lookup (&db->nsh_table, gid_address_vni (key),
+			 gid_address_nsh_spi (key), gid_address_nsh_si (key));
     default:
       clib_warning ("address type %d not supported!", gid_address_type (key));
       break;
@@ -431,6 +457,9 @@ gid_dictionary_sd_lookup (gid_dictionary_t * db, gid_address_t * dst,
 			gid_address_sd_dst_type (dst));
 	  break;
 	}
+      break;
+    case GID_ADDR_NSH:
+      return gid_dictionary_lookup (db, dst);
       break;
     default:
       clib_warning ("address type %d not supported!", gid_address_type (dst));
@@ -860,7 +889,7 @@ add_del_sd (gid_dictionary_t * db, u32 vni, source_dest_t * key, u32 value,
   return ~0;
 }
 
-static u32
+static u64
 add_del_arp (gid_l2_arp_table_t * db, u32 bd, ip4_address_t * key, u64 value,
 	     u8 is_add)
 {
@@ -885,6 +914,31 @@ add_del_arp (gid_l2_arp_table_t * db, u32 bd, ip4_address_t * key, u64 value,
   return old_val;
 }
 
+static u32
+add_del_nsh (gid_nsh_table_t * db, u32 vni, u32 spi, u8 si, u32 value,
+	     u8 is_add)
+{
+  BVT (clib_bihash_kv) kv, result;
+  u32 old_val = ~0;
+
+  make_nsh_key (&kv, vni, spi, si);
+  if (BV (clib_bihash_search) (&db->nsh_lookup_table, &kv, &result) == 0)
+    old_val = result.value;
+
+  if (is_add)
+    {
+      kv.value = value;
+      BV (clib_bihash_add_del) (&db->nsh_lookup_table, &kv, 1 /* is_add */ );
+      db->count++;
+    }
+  else
+    {
+      BV (clib_bihash_add_del) (&db->nsh_lookup_table, &kv, 0 /* is_add */ );
+      db->count--;
+    }
+  return old_val;
+}
+
 u32
 gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u64 value,
 			u8 is_add)
@@ -903,6 +957,11 @@ gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u64 value,
     case GID_ADDR_ARP:
       return add_del_arp (&db->arp_table, gid_address_arp_bd (key),
 			  &gid_address_arp_ip4 (key), value, is_add);
+    case GID_ADDR_NSH:
+      return add_del_nsh (&db->nsh_table, gid_address_vni (key),
+			  gid_address_nsh_spi (key), gid_address_nsh_si (key),
+			  value, is_add);
+
     default:
       clib_warning ("address type %d not supported!", gid_address_type (key));
       break;
@@ -944,6 +1003,23 @@ arp_lookup_init (gid_l2_arp_table_t * db)
 			 db->arp_lookup_table_size);
 }
 
+static void
+nsh_lookup_init (gid_nsh_table_t * db)
+{
+  if (db->nsh_lookup_table_nbuckets == 0)
+    db->nsh_lookup_table_nbuckets = MAC_LOOKUP_DEFAULT_HASH_NUM_BUCKETS;
+
+  db->nsh_lookup_table_nbuckets =
+    1 << max_log2 (db->nsh_lookup_table_nbuckets);
+
+  if (db->nsh_lookup_table_size == 0)
+    db->nsh_lookup_table_size = MAC_LOOKUP_DEFAULT_HASH_MEMORY_SIZE;
+
+  BV (clib_bihash_init) (&db->nsh_lookup_table, "nsh lookup table",
+			 db->nsh_lookup_table_nbuckets,
+			 db->nsh_lookup_table_size);
+}
+
 void
 gid_dictionary_init (gid_dictionary_t * db)
 {
@@ -951,6 +1027,7 @@ gid_dictionary_init (gid_dictionary_t * db)
   ip6_lookup_init (&db->dst_ip6_table);
   mac_lookup_init (&db->sd_mac_table);
   arp_lookup_init (&db->arp_table);
+  nsh_lookup_init (&db->nsh_table);
 }
 
 /*

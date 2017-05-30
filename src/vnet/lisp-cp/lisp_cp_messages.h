@@ -474,6 +474,22 @@ typedef struct _lcaf_src_dst_hdr_t
 #define LCAF_SD_DST_ML(_h) (_h)->dst_mask_len
 
 /*
+ * SPI LCAF
+ *
+ *    0                   1                   2                   3
+ *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   |              Service Path ID                  | Service index |
+ *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+typedef struct _lcaf_spi_hdr_t
+{
+  u32 spi_si;
+} __attribute__ ((__packed__)) lcaf_spi_hdr_t;
+
+#define LCAF_SPI_SI(_h) (_h)->spi_si
+
+/*
  * The Map-Register message format is:
  *
  *       0                   1                   2                   3
@@ -601,6 +617,21 @@ typedef struct
 #define MNOTIFY_KEY_ID(h_) (MREG_HDR_CAST(h_))->key_id
 #define MNOTIFY_AUTH_DATA_LEN(h_) (MREG_HDR_CAST(h_))->auth_data_len
 #define MNOTIFY_DATA(h_) (MREG_HDR_CAST(h_))->data
+
+/*
+ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |Ver|O|C|R|R|R|R|R|R|   Length  |  MD type=0x1  | Next Protocol |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |          Service Path Identifer               | Service Index |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+
+typedef struct
+{
+  u32 header;
+  u32 spi_si;
+} __attribute__ ((__packed__)) lisp_nsh_hdr_t;
 
 #endif /* VNET_LISP_GPE_LISP_CP_MESSAGES_H_ */
 

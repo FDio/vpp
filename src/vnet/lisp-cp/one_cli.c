@@ -721,6 +721,62 @@ VLIB_CLI_COMMAND (one_show_map_resolvers_command) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+lisp_nsh_set_locator_set_command_fn (vlib_main_t * vm,
+				     unformat_input_t * input,
+				     vlib_cli_command_t * cmd)
+{
+  u8 locator_name_set = 0;
+  u8 *locator_set_name = 0;
+  u8 is_add = 1;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  int rv = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "ls %_%v%_", &locator_set_name))
+	locator_name_set = 1;
+      else if (unformat (line_input, "disable"))
+	is_add = 0;
+      else
+	{
+	  error = clib_error_return (0, "parse error");
+	  goto done;
+	}
+    }
+
+  if (!locator_name_set)
+    {
+      clib_warning ("No locator set specified!");
+      goto done;
+    }
+
+  rv = vnet_lisp_nsh_set_locator_set (locator_set_name, is_add);
+  if (0 != rv)
+    {
+      error = clib_error_return (0, "failed to %s NSH mapping!",
+				 is_add ? "add" : "delete");
+    }
+
+done:
+  vec_free (locator_set_name);
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_nsh_set_locator_set_command) = {
+    .path = "one nsh-mapping",
+    .short_help = "one nsh-mapping [del] ls <locator-set-name>",
+    .function = lisp_nsh_set_locator_set_command_fn,
+};
+/* *INDENT-ON* */
+
 
 static clib_error_t *
 lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
@@ -923,7 +979,7 @@ lisp_show_eid_table_command_fn (vlib_main_t * vm,
       /* *INDENT-OFF* */
       pool_foreach (mapit, lcm->mapping_pool,
       ({
-        if (mapit->pitr_set)
+        if (mapit->pitr_set || mapit->nsh_set)
           continue;
 
         locator_set_t * ls = pool_elt_at_index (lcm->locator_set_pool,

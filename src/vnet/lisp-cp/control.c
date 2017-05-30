@@ -28,6 +28,8 @@
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 
+#define MAX_VALUE_U24 0xffffff
+
 lisp_cp_main_t lisp_control_main;
 
 u8 *format_lisp_cp_input_trace (u8 * s, va_list * args);
@@ -697,6 +699,20 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
   mapping_t *m, *old_map;
   u32 **eid_indexes;
 
+  if (gid_address_type (&a->eid) == GID_ADDR_NSH)
+    {
+      if (gid_address_vni (&a->eid) != 0)
+	{
+	  clib_warning ("Supported only default VNI for NSH!");
+	  return VNET_API_ERROR_INVALID_ARGUMENT;
+	}
+      if (gid_address_nsh_spi (&a->eid) > MAX_VALUE_U24)
+	{
+	  clib_warning ("SPI is greater than 24bit!");
+	  return VNET_API_ERROR_INVALID_ARGUMENT;
+	}
+    }
+
   mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->eid);
   old_map = mi != ~0 ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
   if (a->is_add)
@@ -812,7 +828,7 @@ vnet_lisp_add_del_local_mapping (vnet_lisp_add_del_mapping_args_t * a,
   else if (GID_ADDR_MAC == type)
     dp_table = hash_get (lcm->bd_id_by_vni, vni);
 
-  if (!dp_table)
+  if (!dp_table && GID_ADDR_NSH != type)
     {
       clib_warning ("vni %d not associated to a %s!", vni,
 		    GID_ADDR_IP_PREFIX == type ? "vrf" : "bd");
@@ -1329,8 +1345,23 @@ vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a)
     {
       /* check if source eid has an associated mapping. If pitr mode is on,
        * just use the pitr's mapping */
-      local_mi = lcm->lisp_pitr ? lcm->pitr_map_index :
-	gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->leid);
+      if (lcm->lisp_pitr)
+	local_mi = lcm->pitr_map_index;
+      else
+	{
+	  if (gid_address_type (&a->reid) == GID_ADDR_NSH)
+	    {
+	      if (lcm->nsh_map_index == ~0)
+		local_mi = GID_LOOKUP_MISS;
+	      else
+		local_mi = lcm->nsh_map_index;
+	    }
+	  else
+	    {
+	      local_mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid,
+						&a->leid);
+	    }
+	}
 
       if (GID_LOOKUP_MISS == local_mi)
 	{
@@ -1367,6 +1398,57 @@ vnet_lisp_set_map_request_mode (u8 mode)
     }
 
   lcm->map_request_mode = mode;
+  return 0;
+}
+
+int
+vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  u32 locator_set_index = ~0;
+  mapping_t *m;
+  uword *p;
+
+  if (vnet_lisp_enable_disable_status () == 0)
+    {
+      clib_warning ("LISP is disabled!");
+      return VNET_API_ERROR_LISP_DISABLED;
+    }
+
+  if (is_add)
+    {
+      if (lcm->nsh_map_index == (u32) ~ 0)
+	{
+	  p = hash_get_mem (lcm->locator_set_index_by_name, locator_set_name);
+	  if (!p)
+	    {
+	      clib_warning ("locator-set %v doesn't exist", locator_set_name);
+	      return -1;
+	    }
+	  locator_set_index = p[0];
+
+	  pool_get (lcm->mapping_pool, m);
+	  memset (m, 0, sizeof *m);
+	  m->locator_set_index = locator_set_index;
+	  m->local = 1;
+	  m->nsh_set = 1;
+	  lcm->nsh_map_index = m - lcm->mapping_pool;
+
+	  if (~0 == vnet_lisp_gpe_add_nsh_iface (lgm))
+	    return -1;
+	}
+    }
+  else
+    {
+      if (lcm->nsh_map_index != (u32) ~ 0)
+	{
+	  /* remove NSH mapping */
+	  pool_put_index (lcm->mapping_pool, lcm->nsh_map_index);
+	  lcm->nsh_map_index = ~0;
+	  vnet_lisp_gpe_del_nsh_iface (lgm);
+	}
+    }
   return 0;
 }
 
@@ -2667,7 +2749,7 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
     }
 
   /* get locator-set for seid */
-  if (!lcm->lisp_pitr)
+  if (!lcm->lisp_pitr && gid_address_type (deid) != GID_ADDR_NSH)
     {
       map_index = gid_dictionary_lookup (&lcm->mapping_index_by_gid, seid);
       if (map_index == ~0)
@@ -2690,9 +2772,24 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
     }
   else
     {
-      map_index = lcm->pitr_map_index;
-      map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
-      ls_index = map->locator_set_index;
+      if (lcm->lisp_pitr)
+	{
+	  map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+	  ls_index = map->locator_set_index;
+	}
+      else
+	{
+	  if (lcm->nsh_map_index == (u32) ~ 0)
+	    {
+	      clib_warning ("No locator-set defined for NSH!");
+	      return -1;
+	    }
+	  else
+	    {
+	      map = pool_elt_at_index (lcm->mapping_pool, lcm->nsh_map_index);
+	      ls_index = map->locator_set_index;
+	    }
+	}
     }
 
   /* overwrite locator set if map-request itr-rlocs configured */
@@ -2843,6 +2940,7 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 				  gid_address_t * src, gid_address_t * dst,
 				  u16 type)
 {
+  ethernet_header_t *eh;
   u32 vni = 0;
 
   memset (src, 0, sizeof (*src));
@@ -2873,7 +2971,6 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
     }
   else if (LISP_AFI_MAC == type)
     {
-      ethernet_header_t *eh;
       ethernet_arp_header_t *ah;
 
       eh = vlib_buffer_get_current (b);
@@ -2906,8 +3003,19 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
     }
   else if (LISP_AFI_LCAF == type)
     {
-      /* Eventually extend this to support NSH and other */
-      ASSERT (0);
+      lisp_nsh_hdr_t *nh;
+      eh = vlib_buffer_get_current (b);
+
+      if (clib_net_to_host_u16 (eh->type) == ETHERNET_TYPE_NSH)
+	{
+	  nh = (lisp_nsh_hdr_t *) (((u8 *) eh) + sizeof (*eh));
+	  u32 spi = clib_net_to_host_u32 (nh->spi_si << 8);
+	  u8 si = (u8) clib_net_to_host_u32 (nh->spi_si);
+	  gid_address_nsh_spi (dst) = spi;
+	  gid_address_nsh_si (dst) = si;
+
+	  gid_address_type (dst) = GID_ADDR_NSH;
+	}
     }
 }
 
@@ -3009,8 +3117,14 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 		}
 	      else
 		{
-		  si = gid_dictionary_lookup (&lcm->mapping_index_by_gid,
-					      &src);
+		  if (GID_ADDR_NSH != gid_address_type (&dst))
+		    {
+		      si = gid_dictionary_lookup (&lcm->mapping_index_by_gid,
+						  &src);
+		    }
+		  else
+		    si = lcm->nsh_map_index;
+
 		  if (~0 != si)
 		    {
 		      dp_add_fwd_entry_from_mt (si, di);
@@ -3862,6 +3976,7 @@ lisp_cp_init (vlib_main_t * vm)
 
   u64 now = clib_cpu_time_now ();
   timing_wheel_init (&lcm->wheel, now, vm->clib_time.clocks_per_second);
+  lcm->nsh_map_index = ~0;
   return 0;
 }
 

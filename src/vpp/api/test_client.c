@@ -245,6 +245,7 @@ static void vl_api_ip_neighbor_add_del_reply_t_handler
   fformat (stdout, "ip neighbor add del reply %d\n", ntohl (mp->retval));
 }
 
+#if 0
 static void
 vl_api_vnet_interface_counters_t_handler (vl_api_vnet_interface_counters_t *
 					  mp)
@@ -332,6 +333,7 @@ vl_api_vnet_interface_counters_t_handler (vl_api_vnet_interface_counters_t *
 	}
     }
 }
+#endif
 
 /* Format an IP4 address. */
 u8 *
@@ -578,7 +580,6 @@ _(WANT_STATS_REPLY, want_stats_reply)                                   \
 _(WANT_OAM_EVENTS_REPLY, want_oam_events_reply)                         \
 _(OAM_EVENT, oam_event)                                                 \
 _(OAM_ADD_DEL_REPLY, oam_add_del_reply)				        \
-_(VNET_INTERFACE_COUNTERS, vnet_interface_counters)                     \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
 _(IP_ADD_DEL_ROUTE_REPLY, ip_add_del_route_reply)                       \

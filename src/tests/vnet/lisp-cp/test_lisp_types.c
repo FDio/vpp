@@ -90,7 +90,7 @@ static clib_error_t * test_gid_parse_ip_pref ()
 {
   clib_error_t * error = 0;
   gid_address_t _gid_addr, * gid_addr = &_gid_addr;
-  gid_address_t _gid_addr_copy, * gid_addr_copy = &_gid_addr_copy;
+  gid_address_t _gid_addr_copy, * copy = &_gid_addr_copy;
   u8 data[] =
     {
       0x00, 0x01,             /* AFI = IPv4 */
@@ -99,8 +99,8 @@ static clib_error_t * test_gid_parse_ip_pref ()
 
   u32 len = gid_address_parse (data, gid_addr);
   _assert (6 == len);
-  gid_address_copy (gid_addr_copy, gid_addr);
-  _assert (0 == gid_address_cmp (gid_addr_copy, gid_addr));
+  gid_address_copy (copy, gid_addr);
+  _assert (0 == gid_address_cmp (copy, gid_addr));
 done:
   return error;
 }
@@ -124,6 +124,74 @@ static clib_error_t * test_gid_parse_mac ()
   gid_address_copy (gid_copy, gid);
   _assert (0 == gid_address_cmp (gid_copy, gid));
 done:
+  return error;
+}
+
+static clib_error_t *
+test_gid_write_nsh (void)
+{
+  clib_error_t * error = 0;
+
+  u8 * b = clib_mem_alloc(500);
+  memset(b, 0, 500);
+
+  gid_address_t g =
+    {
+      .vni = 0,
+      .nsh.spi = 0x112233,
+      .nsh.si = 0x42,
+      .type = GID_ADDR_NSH,
+    };
+
+  u16 len = gid_address_put (b, &g);
+
+  u8 expected[] =
+    {
+      0x40, 0x03, 0x00, 0x00, /* AFI = LCAF*/
+      0x11, 0x00, 0x00, 0x04, /* type = SPI LCAF, length = 4 */
+
+      /* Service Path ID, Service index */
+      0x11, 0x22, 0x33, 0x42, /* SPI, SI */
+    };
+
+  _assert (sizeof (expected) == len);
+  _assert (0 == memcmp (expected, b, len));
+done:
+  clib_mem_free (b);
+  return error;
+}
+
+static clib_error_t *
+test_gid_parse_nsh ()
+{
+  clib_error_t * error = 0;
+  gid_address_t _gid_addr, * gid_addr = &_gid_addr;
+  gid_address_t _gid_addr_copy, * copy = &_gid_addr_copy;
+
+  memset (gid_addr, 0, sizeof (gid_addr[0]));
+  memset (copy, 0, sizeof (copy[0]));
+
+  u8 data[] =
+    {
+      0x40, 0x03, 0x00, 0x00, /* AFI = LCAF*/
+      0x11, 0x00, 0x00, 0x04, /* type = SPI LCAF, length = 4 */
+
+      /* Service Path ID, Service index */
+      0x55, 0x99, 0x42, 0x09, /* SPI, SI */
+    };
+
+  u32 len = gid_address_parse (data, gid_addr);
+  _assert (sizeof (data) == len);
+  gid_address_copy (copy, gid_addr);
+  _assert (0 == gid_address_cmp (gid_addr, copy));
+  _assert (GID_ADDR_NSH == gid_address_type (copy));
+  _assert (0 == gid_address_vni (copy));
+  _assert (gid_address_nsh_spi (copy) == 0x559942);
+  _assert (gid_address_nsh_si (copy) == 0x09);
+
+done:
+  gid_address_free (copy);
+  gid_address_free (gid_addr);
   return error;
 }
 
@@ -555,6 +623,8 @@ done:
   _(gid_parse_ip_pref)                    \
   _(gid_parse_mac)                        \
   _(gid_parse_lcaf)                       \
+  _(gid_parse_nsh)                        \
+  _(gid_write_nsh)                        \
   _(mac_address_write)                    \
   _(gid_address_write)                    \
   _(src_dst_serdes)                       \
