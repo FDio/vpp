@@ -74,8 +74,7 @@ DOXY_INPUT := $(subst $(WS_ROOT)/,,$(DOXY_INPUT))
 # These must be left-anchored paths for the regexp below to work.
 DOXY_EXCLUDE ?= \
 	$(DOXY_SRC)/vlib/buffer.c \
-	$(DOXY_SRC)/vpp-api/lua \
-	$(DOXY_SRC)/examples/sample-plugin
+	$(DOXY_SRC)/vpp-api/lua
 
 # Generate a regexp for filenames to exclude
 DOXY_EXCLUDE_REGEXP = ($(subst .,\.,$(shell echo '$(strip $(DOXY_EXCLUDE))' | sed -e 's/ /|/g')))
