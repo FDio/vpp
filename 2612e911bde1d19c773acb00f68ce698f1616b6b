@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fa5d592f_5426d169",
+        "filename": "build-data/platforms.mk",
+        "patchSetId": 2
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-05-30T12:39:18Z",
+      "side": 1,
+      "message": "I agree with you Damjan!\n\nI went through from platform.mk file and thought that it only supports x86 architecture as above part of the code install libraries at path x86_64-linux-gnu (line 39).\n\nBy convention, Package config files are installed in pkgconfig folder which resides at the same path to the libraries.",
+      "parentUuid": "fa5d592f_11250bc2",
+      "range": {
+        "startLine": 46,
+        "startChar": 39,
+        "endLine": 46,
+        "endChar": 55
+      },
+      "revId": "2612e911bde1d19c773acb00f68ce698f1616b6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa5d592f_f12157b5",
         "filename": "src/configure.ac",
         "patchSetId": 2
@@ -36,6 +60,24 @@
       "writtenOn": "2017-05-30T09:29:20Z",
       "side": 1,
       "message": "Do we really need to have PC file for each lib, or we can have just one .pc file?",
+      "revId": "2612e911bde1d19c773acb00f68ce698f1616b6b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_d4fbe145",
+        "filename": "src/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-05-30T12:39:18Z",
+      "side": 1,
+      "message": "I don\u0027t clearly get from above comment. Do you mean to have single .pc corresponds to vpp package or single .pc which includes information about all the libs?\n\nApplications only include libraries which they need to add. Vpp also creates different libraries according to their functionality and use case.\n\nEach .pc file corresponds to respective library in vpp. It contains the metadata of the library which can be used to better integrate with application.",
+      "parentUuid": "fa5d592f_f12157b5",
       "revId": "2612e911bde1d19c773acb00f68ce698f1616b6b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
