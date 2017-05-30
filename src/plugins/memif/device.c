@@ -27,6 +27,15 @@
 
 #include <memif/memif.h>
 
+#define MEMIF_DEBUG 1
+
+#if MEMIF_DEBUG == 1
+#define DEBUG_LOG(...) clib_warning(__VA_ARGS__)
+#define DEBUG_UNIX_LOG(...) clib_unix_warning(__VA_ARGS__)
+#else
+#define DEBUG_LOG(...)
+#endif
+
 #define foreach_memif_tx_func_error	       \
 _(NO_FREE_SLOTS, "no free tx slots")           \
 _(PENDING_MSGS, "pending msgs in tx ring")
@@ -86,6 +95,24 @@ memif_prefetch_buffer_and_data (vlib_main_t * vm, u32 bi)
   CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, LOAD);
 }
 
+static clib_error_t *
+memif_int_fd_write_ready (unix_file_t * uf)
+{
+  u8 b;
+  ssize_t size = write (uf->file_descriptor, &b, sizeof (b));
+  if (size < 0)
+    {
+      if (errno != EWOULDBLOCK)
+	{
+	  DEBUG_LOG ("write interrupt ready fail!");
+	  unix_file_del (&unix_main, uf);
+	}
+      return 0;
+    }
+  unix_file_del (&unix_main, uf);
+  return 0;
+}
+
 static_always_inline uword
 memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   vlib_frame_t * frame, memif_if_t * mif,
@@ -99,6 +126,7 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 mask = ring_size - 1;
   u16 head, tail;
   u16 free_slots;
+  u32 tx = 0;
 
   clib_spinlock_lock_if_init (&mif->lockp);
 
@@ -164,7 +192,7 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       b1->current_length - CLIB_CACHE_LINE_BYTES);
 	}
 
-
+      tx += 2;
       buffers += 2;
       n_left -= 2;
       free_slots -= 2;
@@ -185,6 +213,7 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       ring->desc[head].length = b0->current_length;
       head = (head + 1) & mask;
 
+      tx++;
       buffers++;
       n_left--;
       free_slots--;
@@ -203,12 +232,25 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
-  if (mif->interrupt_line.fd > 0)
+  if ((mif->interrupt_line.fd > 0) && (tx != 0))
     {
       u8 b = rid;
-      CLIB_UNUSED (int r) = write (mif->interrupt_line.fd, &b, sizeof (b));
+      int res = write (mif->interrupt_line.fd, &b, sizeof (b));
+      if (res < 0)
+	{
+	  if (errno == EWOULDBLOCK)
+	    {
+	      /* if write would block add file descriptor to epoll_fd */
+	      unix_file_t template = { 0 };
+	      template.file_descriptor = mif->interrupt_line.fd;
+	      template.private_data = mif->if_index;
+	      template.write_function = memif_int_fd_write_ready;
+	      unix_file_add (&unix_main, &template);
+	    }
+	  else
+	    DEBUG_LOG ("write interrupt fail!");
+	}
     }
-
   return frame->n_vectors;
 }
 
