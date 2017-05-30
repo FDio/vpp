@@ -104,8 +104,17 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
 	      if (now - rv->gc_mark_timestamp > 10)
 		{
 		  if (CLIB_DEBUG > 0)
-		    clib_warning ("garbage collect pool %d ring %d index %d",
-				  pool, i, q->head);
+		    {
+		      u16 *msg_idp, msg_id;
+		      clib_warning
+			("garbage collect pool %d ring %d index %d", pool, i,
+			 q->head);
+		      msg_idp = (u16 *) (rv->data);
+		      msg_id = clib_net_to_host_u16 (*msg_idp);
+		      if (msg_id < vec_len (api_main.msg_names))
+			clib_warning ("msg id %d name %s", (u32) msg_id,
+				      api_main.msg_names[msg_id]);
+		    }
 		  shmem_hdr->garbage_collects++;
 		  goto collected;
 		}
@@ -330,6 +339,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
   api_main_t *am = &api_main;
   int i;
   struct timespec ts, tsrem;
+  u32 vlib_input_queue_length;
 
   if (is_vlib == 0)
     svm_region_init_chroot (am->root_path);
@@ -449,9 +459,13 @@ vl_map_shmem (const char *region_name, int is_vlib)
   shmem_hdr->version = VL_SHM_VERSION;
 
   /* vlib main input queue */
+  vlib_input_queue_length = 1024;
+  if (am->vlib_input_queue_length)
+    vlib_input_queue_length = am->vlib_input_queue_length;
+
   shmem_hdr->vl_input_queue =
-    unix_shared_memory_queue_init (1024, sizeof (uword), getpid (),
-				   am->vlib_signal);
+    unix_shared_memory_queue_init (vlib_input_queue_length, sizeof (uword),
+				   getpid (), am->vlib_signal);
 
   /* Set up the msg ring allocator */
 #define _(sz,n)                                                 \

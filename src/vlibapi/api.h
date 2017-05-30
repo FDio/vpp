@@ -193,6 +193,9 @@ typedef struct
 
   i32 vlib_signal;
 
+  /* vlib input queue length */
+  u32 vlib_input_queue_length;
+
   /* client side message index hash table */
   uword *msg_index_by_name_and_crc;
 

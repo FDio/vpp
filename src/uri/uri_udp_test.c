@@ -176,6 +176,7 @@ application_send_attach (uri_udp_test_main_t * utm)
   bmp->context = ntohl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] =
     APP_OPTIONS_FLAGS_USE_FIFO | APP_OPTIONS_FLAGS_ADD_SEGMENT;
+  bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 16;
   bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
@@ -522,7 +523,7 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   svm_fifo_segment_private_t *seg;
   unix_shared_memory_queue_t *client_q;
   vl_api_connect_uri_reply_t *rmp;
-  session_t *session;
+  session_t *session = 0;
   int rv = 0;
 
   /* Create the segment */
@@ -545,17 +546,12 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
 
   pool_get (utm->sessions, session);
 
-  /*
-   * By construction the master's idea of the rx fifo ends up in
-   * fsh->fifos[0], and the master's idea of the tx fifo ends up in
-   * fsh->fifos[1].
-   */
-  session->server_rx_fifo = svm_fifo_segment_alloc_fifo (utm->seg,
-							 128 * 1024);
+  session->server_rx_fifo = svm_fifo_segment_alloc_fifo
+    (utm->seg, 128 * 1024, FIFO_SEGMENT_RX_FREELIST);
   ASSERT (session->server_rx_fifo);
 
-  session->server_tx_fifo = svm_fifo_segment_alloc_fifo (utm->seg,
-							 128 * 1024);
+  session->server_tx_fifo = svm_fifo_segment_alloc_fifo
+    (utm->seg, 128 * 1024, FIFO_SEGMENT_TX_FREELIST);
   ASSERT (session->server_tx_fifo);
 
   session->server_rx_fifo->master_session_index = session - utm->sessions;
@@ -578,6 +574,12 @@ send_reply:
   rmp->context = mp->context;
   rmp->retval = ntohl (rv);
   rmp->segment_name_length = vec_len (a->segment_name);
+  if (session)
+    {
+      rmp->server_rx_fifo = pointer_to_uword (session->server_rx_fifo);
+      rmp->server_tx_fifo = pointer_to_uword (session->server_tx_fifo);
+    }
+
   memcpy (rmp->segment_name, a->segment_name, vec_len (a->segment_name));
 
   vec_free (a->segment_name);
@@ -689,9 +691,7 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
       svm_fifo_segment_create_args_t _a, *a = &_a;
       u32 segment_index;
       session_t *session;
-      ssvm_shared_header_t *sh;
       svm_fifo_segment_private_t *seg;
-      svm_fifo_segment_header_t *fsh;
       int rv;
 
       memset (a, 0, sizeof (*a));
@@ -707,22 +707,19 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
 	  return;
 	}
 
-      segment_index = vec_len (sm->segments) - 1;
+      segment_index = a->new_segment_index;
       vec_add2 (utm->seg, seg, 1);
-
       memcpy (seg, sm->segments + segment_index, sizeof (*seg));
-      sh = seg->ssvm.sh;
-      fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
-
-      while (vec_len (fsh->fifos) < 2)
-	sleep (1);
+      sleep (1);
 
       pool_get (utm->sessions, session);
       utm->cut_through_session_index = session - utm->sessions;
 
-      session->server_rx_fifo = (svm_fifo_t *) fsh->fifos[0];
+      session->server_rx_fifo = uword_to_pointer (mp->server_rx_fifo,
+						  svm_fifo_t *);
       ASSERT (session->server_rx_fifo);
-      session->server_tx_fifo = (svm_fifo_t *) fsh->fifos[1];
+      session->server_tx_fifo = uword_to_pointer (mp->server_tx_fifo,
+						  svm_fifo_t *);
       ASSERT (session->server_tx_fifo);
     }
 

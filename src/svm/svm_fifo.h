@@ -38,7 +38,7 @@ format_function_t format_ooo_list;
 
 #define OOO_SEGMENT_INVALID_INDEX ((u32)~0)
 
-typedef struct
+typedef struct _svm_fifo
 {
   volatile u32 cursize;		/**< current fifo size */
   u32 nitems;
@@ -62,7 +62,8 @@ typedef struct
   ooo_segment_t *ooo_segments;	/**< Pool of ooo segments */
   u32 ooos_list_head;		/**< Head of out-of-order linked-list */
   u32 ooos_newest;		/**< Last segment to have been updated */
-
+  struct _svm_fifo *next;	/**< next in freelist/active chain */
+  struct _svm_fifo *prev;	/**< prev in active chain */
     CLIB_CACHE_LINE_ALIGN_MARK (data);
 } svm_fifo_t;
 
