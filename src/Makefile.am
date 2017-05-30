@@ -71,6 +71,10 @@ include uri.am
 
 SUBDIRS += plugins
 
+if ENABLE_SAMPLE_PLUGIN
+SUBDIRS += examples/plugins
+endif
+
 if ENABLE_PAPI
 include vpp-api.am
 SUBDIRS += vpp-api/python

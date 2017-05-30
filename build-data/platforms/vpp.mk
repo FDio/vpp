@@ -46,6 +46,9 @@ vpp_root_packages = vpp gmod
 # vpp_dpdk_lib_dir = /usr/lib
 # vpp_dpdk_shared_lib = yes
 
+# Enable the sample plugin
+# vpp_build_sample_plugin = yes
+
 # load balancer plugin is not portable on 32 bit platform
 ifeq ($(MACHINE),i686)
 vpp_configure_args_vpp = --disable-lb-plugin
