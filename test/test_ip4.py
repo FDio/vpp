@@ -928,5 +928,51 @@ class TestIPLoadBalance(VppTestCase):
                                             [self.pg1, self.pg2,
                                              self.pg3, self.pg4])
 
+
+class TestIPVlan0(VppTestCase):
+    """ IPv4 VLAN-0 """
+
+    def setUp(self):
+        super(TestIPVlan0, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+            i.enable_mpls()
+
+    def tearDown(self):
+        super(TestIPVlan0, self).tearDown()
+        for i in self.pg_interfaces:
+            i.disable_mpls()
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def send_and_expect(self, input, pkts, output):
+        input.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = output.get_capture(len(pkts))
+
+    def test_ip_vlan_0(self):
+        """ IP VLAN-0 """
+
+        pkts = (Ether(src=self.pg0.remote_mac,
+                      dst=self.pg0.local_mac) /
+                Dot1Q(vlan=0) /
+                IP(dst=self.pg1.remote_ip4,
+                   src=self.pg0.remote_ip4) /
+                UDP(sport=1234, dport=1234) /
+                Raw('\xa5' * 100)) * 65
+
+        #
+        # Expect that packets sent on VLAN-0 are forwarded on the
+        # main interface.
+        #
+        self.send_and_expect(self.pg0, pkts, self.pg1)
+
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
