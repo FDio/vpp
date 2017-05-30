@@ -830,21 +830,11 @@ unset_random_arp_entry (void)
 
 static int
 arp_unnumbered (vlib_buffer_t * p0,
-		u32 pi0,
-		ethernet_header_t * eth0,
 		u32 input_sw_if_index, u32 conn_sw_if_index)
 {
-  vlib_main_t *vm = vlib_get_main ();
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *vim = &vnm->interface_main;
   vnet_sw_interface_t *si;
-  vnet_hw_interface_t *hi;
-  u32 *buffers = 0;
-  vlib_buffer_t *b0;
-  int i;
-  u8 dst_mac_address[6];
-  i16 header_size;
-  ethernet_arp_header_t *arp0;
 
   /* verify that the input interface is unnumbered to the connected.
    * the connected interface is the interface on which the subnet is
@@ -859,92 +849,6 @@ arp_unnumbered (vlib_buffer_t * p0,
        * So this is not the case for unnumbered.. */
       return 0;
     }
-
-  /* Save the dst mac address */
-  clib_memcpy (dst_mac_address, eth0->dst_address, sizeof (dst_mac_address));
-
-  vec_insert (buffers, 1, 0);
-  buffers[0] = pi0;
-
-  for (i = 0; i < vec_len (buffers); i++)
-    {
-      b0 = vlib_get_buffer (vm, buffers[i]);
-      arp0 = vlib_buffer_get_current (b0);
-
-      hi = vnet_get_sup_hw_interface (vnm, input_sw_if_index);
-      si = vnet_get_sw_interface (vnm, input_sw_if_index);
-
-      /* For decoration, most likely */
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = hi->sw_if_index;
-
-      /* Fix ARP pkt src address */
-      clib_memcpy (arp0->ip4_over_ethernet[0].ethernet, hi->hw_address, 6);
-
-      /* Build L2 encaps for this swif */
-      header_size = sizeof (ethernet_header_t);
-      if (si->sub.eth.flags.one_tag)
-	header_size += 4;
-      else if (si->sub.eth.flags.two_tags)
-	header_size += 8;
-
-      vlib_buffer_advance (b0, -header_size);
-      eth0 = vlib_buffer_get_current (b0);
-
-      if (si->sub.eth.flags.one_tag)
-	{
-	  ethernet_vlan_header_t *outer = (void *) (eth0 + 1);
-
-	  eth0->type = si->sub.eth.flags.dot1ad ?
-	    clib_host_to_net_u16 (ETHERNET_TYPE_DOT1AD) :
-	    clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
-	  outer->priority_cfi_and_id =
-	    clib_host_to_net_u16 (si->sub.eth.outer_vlan_id);
-	  outer->type = clib_host_to_net_u16 (ETHERNET_TYPE_ARP);
-
-	}
-      else if (si->sub.eth.flags.two_tags)
-	{
-	  ethernet_vlan_header_t *outer = (void *) (eth0 + 1);
-	  ethernet_vlan_header_t *inner = (void *) (outer + 1);
-
-	  eth0->type = si->sub.eth.flags.dot1ad ?
-	    clib_host_to_net_u16 (ETHERNET_TYPE_DOT1AD) :
-	    clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
-	  outer->priority_cfi_and_id =
-	    clib_host_to_net_u16 (si->sub.eth.outer_vlan_id);
-	  outer->type = clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
-	  inner->priority_cfi_and_id =
-	    clib_host_to_net_u16 (si->sub.eth.inner_vlan_id);
-	  inner->type = clib_host_to_net_u16 (ETHERNET_TYPE_ARP);
-
-	}
-      else
-	{
-	  eth0->type = clib_host_to_net_u16 (ETHERNET_TYPE_ARP);
-	}
-
-      /* Restore the original dst address, set src address */
-      clib_memcpy (eth0->dst_address, dst_mac_address,
-		   sizeof (eth0->dst_address));
-      clib_memcpy (eth0->src_address, hi->hw_address,
-		   sizeof (eth0->src_address));
-
-      /* Transmit replicas */
-      if (i > 0)
-	{
-	  vlib_frame_t *f =
-	    vlib_get_frame_to_node (vm, hi->output_node_index);
-	  u32 *to_next = vlib_frame_vector_args (f);
-	  to_next[0] = buffers[i];
-	  f->n_vectors = 1;
-	  vlib_put_frame_to_node (vm, hi->output_node_index, f);
-	}
-    }
-
-  /* The regular path outputs the original pkt.. */
-  vnet_buffer (p0)->sw_if_index[VLIB_TX] = input_sw_if_index;
-
-  vec_free (buffers);
 
   return !0;
 }
@@ -990,7 +894,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  vlib_buffer_t *p0;
 	  vnet_hw_interface_t *hw_if0;
 	  ethernet_arp_header_t *arp0;
-	  ethernet_header_t *eth0;
+	  ethernet_header_t *eth_rx, *eth_tx;
 	  ip4_address_t *if_addr0, proxy_src;
 	  u32 pi0, error0, next0, sw_if_index0, conn_sw_if_index0, fib_index0;
 	  u8 is_request0, dst_is_local0, is_unnum0, is_vrrp_reply0;
@@ -998,6 +902,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  fib_node_index_t dst_fei, src_fei;
 	  fib_prefix_t pfx0;
 	  fib_entry_flag_t src_flags, dst_flags;
+	  ip_adjacency_t *adj0 = NULL;
+	  adj_index_t ai;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -1009,6 +915,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  arp0 = vlib_buffer_get_current (p0);
+	  /* Fill in ethernet header. */
+	  eth_rx = ethernet_buffer_get_header (p0);
 
 	  is_request0 = arp0->opcode
 	    == clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request);
@@ -1075,6 +983,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      error0 = ETHERNET_ARP_ERROR_l3_src_address_not_local;
 	      goto drop2;
 	    }
+
 	  if (sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
 	    {
 	      /*
@@ -1096,9 +1005,6 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  fib_entry_get_prefix (dst_fei, &pfx0);
 	  if_addr0 = &pfx0.fp_addr.ip4;
 
-	  /* Fill in ethernet header. */
-	  eth0 = ethernet_buffer_get_header (p0);
-
 	  is_vrrp_reply0 =
 	    ((arp0->opcode ==
 	      clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply))
@@ -1110,8 +1016,9 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* Trash ARP packets whose ARP-level source addresses do not
 	     match their L2-frame-level source addresses, unless it's
 	     a reply from a VRRP virtual router */
-	  if (memcmp (eth0->src_address, arp0->ip4_over_ethernet[0].ethernet,
-		      sizeof (eth0->src_address)) && !is_vrrp_reply0)
+	  if (memcmp
+	      (eth_rx->src_address, arp0->ip4_over_ethernet[0].ethernet,
+	       sizeof (eth_rx->src_address)) && !is_vrrp_reply0)
 	    {
 	      error0 = ETHERNET_ARP_ERROR_l2_address_mismatch;
 	      goto drop2;
@@ -1130,6 +1037,20 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  /* Send a reply. */
 	send_reply:
+	  ai = fib_entry_get_adj (src_fei);
+	  if (ADJ_INDEX_INVALID != ai)
+	    {
+	      adj0 = adj_get (ai);
+	    }
+	  else
+	    {
+	      error0 = ETHERNET_ARP_ERROR_missing_interface_address;
+	      goto drop2;
+	    }
+	  /* Figure out how much to rewind current data from adjacency. */
+	  vlib_buffer_advance (p0, -adj0->rewrite_header.data_bytes);
+	  eth_tx = vlib_buffer_get_current (p0);
+
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
 	  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 
@@ -1149,67 +1070,18 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* Hardware must be ethernet-like. */
 	  ASSERT (vec_len (hw_if0->hw_address) == 6);
 
-	  clib_memcpy (eth0->dst_address, eth0->src_address, 6);
-	  clib_memcpy (eth0->src_address, hw_if0->hw_address, 6);
+	  /* the rx nd tx ethernet headers wil overlap in the case
+	   * when we received a tagged VLAN=0 packet, but we are sending
+	   * back untagged */
+	  memmove (eth_tx->dst_address, eth_rx->src_address, 6);
+	  clib_memcpy (eth_tx->src_address, hw_if0->hw_address, 6);
 
-	  /* Figure out how much to rewind current data from adjacency. */
-	  /* get the adj from the destination's covering connected */
 	  if (NULL == pa)
 	    {
 	      if (is_unnum0)
 		{
-		  if (!arp_unnumbered (p0, pi0, eth0,
-				       sw_if_index0, conn_sw_if_index0))
+		  if (!arp_unnumbered (p0, sw_if_index0, conn_sw_if_index0))
 		    goto drop2;
-		}
-	      else
-		{
-		  ip_adjacency_t *adj0 = NULL;
-		  adj_index_t ai;
-
-		  if (FIB_ENTRY_FLAG_ATTACHED & src_flags)
-		    {
-		      /*
-		       * If the source is attached use the adj from that source.
-		       */
-		      ai = fib_entry_get_adj (src_fei);
-		      if (ADJ_INDEX_INVALID != ai)
-			{
-			  adj0 = adj_get (ai);
-			}
-		    }
-		  else
-		    {
-		      /*
-		       * Get the glean adj from the cover. This is presumably interface
-		       * sourced, and therefre needs to be a glean adj.
-		       */
-		      ai = fib_entry_get_adj_for_source
-			(ip4_fib_table_lookup
-			 (ip4_fib_get (fib_index0),
-			  &arp0->ip4_over_ethernet[1].ip4, 31),
-			 FIB_SOURCE_INTERFACE);
-
-		      if (ADJ_INDEX_INVALID != ai)
-			{
-			  adj0 = adj_get (ai);
-
-			  if (adj0->lookup_next_index == IP_LOOKUP_NEXT_GLEAN)
-			    {
-			      adj0 = NULL;
-			    }
-			}
-		    }
-		  if (NULL != adj0)
-		    {
-		      vlib_buffer_advance (p0,
-					   -adj0->rewrite_header.data_bytes);
-		    }
-		  else
-		    {
-		      error0 = ETHERNET_ARP_ERROR_missing_interface_address;
-		      goto drop2;
-		    }
 		}
 	    }
 
@@ -1256,20 +1128,14 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		if ((this_addr >= lo_addr && this_addr <= hi_addr) &&
 		    (fib_index0 == pa->fib_index))
 		  {
-		    eth0 = ethernet_buffer_get_header (p0);
 		    proxy_src.as_u32 =
 		      arp0->ip4_over_ethernet[1].ip4.data_u32;
 
 		    /*
-		     * Rewind buffer, direct code above not to
-		     * think too hard about it.
+		     * change the interface address to the proxied
 		     */
 		    if_addr0 = &proxy_src;
 		    is_unnum0 = 0;
-		    i32 ethernet_start =
-		      vnet_buffer (p0)->ethernet.start_of_ethernet_header;
-		    i32 rewind = p0->current_data - ethernet_start;
-		    vlib_buffer_advance (p0, -rewind);
 		    n_proxy_arp_replies_sent++;
 		    goto send_reply;
 		  }

@@ -8,7 +8,7 @@ from vpp_neighbor import VppNeighbor, find_nbr
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route
 
 from scapy.packet import Raw
-from scapy.layers.l2 import Ether, ARP
+from scapy.layers.l2 import Ether, ARP, Dot1Q
 from scapy.layers.inet import IP, UDP
 from scapy.contrib.mpls import MPLS
 
@@ -142,7 +142,7 @@ class ARPTestCase(VppTestCase):
         #
         # Generate some hosts on the LAN
         #
-        self.pg1.generate_remote_hosts(9)
+        self.pg1.generate_remote_hosts(10)
 
         #
         # Send IP traffic to one of these unresolved hosts.
@@ -286,6 +286,12 @@ class ARPTestCase(VppTestCase):
                  hwsrc=self.pg2.remote_mac,
                  pdst=self.pg1.local_ip4,
                  psrc=self.pg2.remote_hosts[3].ip4))
+        pt = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg2.remote_mac) /
+              Dot1Q(vlan=0) /
+              ARP(op="who-has",
+                  hwsrc=self.pg2.remote_mac,
+                  pdst=self.pg1.local_ip4,
+                  psrc=self.pg2.remote_hosts[3].ip4))
         self.send_and_assert_no_replies(self.pg2, p,
                                         "interface not IP enabled")
 
@@ -308,6 +314,17 @@ class ARPTestCase(VppTestCase):
         attached_host.add_vpp_config()
 
         self.pg2.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(1)
+        self.verify_arp_resp(rx[0],
+                             self.pg2.local_mac,
+                             self.pg2.remote_mac,
+                             self.pg1.local_ip4,
+                             self.pg2.remote_hosts[3].ip4)
+
+        self.pg2.add_stream(pt)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -456,6 +473,29 @@ class ARPTestCase(VppTestCase):
                              self.pg1.remote_hosts[8].ip4)
 
         #
+        # Send an ARP request from one of the so-far unlearned remote hosts
+        # with a VLAN0 tag
+        #
+        p = (Ether(dst="ff:ff:ff:ff:ff:ff",
+                   src=self.pg1._remote_hosts[9].mac) /
+             Dot1Q(vlan=0) /
+             ARP(op="who-has",
+                 hwsrc=self.pg1._remote_hosts[9].mac,
+                 pdst=self.pg1.local_ip4,
+                 psrc=self.pg1._remote_hosts[9].ip4))
+
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture(1)
+        self.verify_arp_resp(rx[0],
+                             self.pg1.local_mac,
+                             self.pg1._remote_hosts[9].mac,
+                             self.pg1.local_ip4,
+                             self.pg1._remote_hosts[9].ip4)
+
+        #
         # ERROR Cases
         #  1 - don't respond to ARP request for address not within the
         #      interface's sub-net
@@ -563,6 +603,13 @@ class ARPTestCase(VppTestCase):
                            hwsrc=self.pg0.remote_mac,
                            pdst="10.10.10.3",
                            psrc=self.pg0.remote_ip4))
+        arp_req_pg0_tagged = (Ether(src=self.pg0.remote_mac,
+                                    dst="ff:ff:ff:ff:ff:ff") /
+                              Dot1Q(vlan=0) /
+                              ARP(op="who-has",
+                                  hwsrc=self.pg0.remote_mac,
+                                  pdst="10.10.10.3",
+                                  psrc=self.pg0.remote_ip4))
         arp_req_pg1 = (Ether(src=self.pg1.remote_mac,
                              dst="ff:ff:ff:ff:ff:ff") /
                        ARP(op="who-has",
@@ -617,6 +664,17 @@ class ARPTestCase(VppTestCase):
         # address
         #
         self.pg0.add_stream(arp_req_pg0)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture(1)
+        self.verify_arp_resp(rx[0],
+                             self.pg0.local_mac,
+                             self.pg0.remote_mac,
+                             "10.10.10.3",
+                             self.pg0.remote_ip4)
+
+        self.pg0.add_stream(arp_req_pg0_tagged)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
