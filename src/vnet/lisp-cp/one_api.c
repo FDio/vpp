@@ -90,6 +90,7 @@ _(ONE_MAP_REGISTER_ENABLE_DISABLE, one_map_register_enable_disable)     \
 _(ONE_ADD_DEL_REMOTE_MAPPING, one_add_del_remote_mapping)               \
 _(ONE_ADD_DEL_ADJACENCY, one_add_del_adjacency)                         \
 _(ONE_PITR_SET_LOCATOR_SET, one_pitr_set_locator_set)                   \
+_(ONE_NSH_SET_LOCATOR_SET, one_nsh_set_locator_set)                     \
 _(ONE_MAP_REQUEST_MODE, one_map_request_mode)                           \
 _(ONE_EID_TABLE_ADD_DEL_MAP, one_eid_table_add_del_map)                 \
 _(ONE_LOCATOR_SET_DUMP, one_locator_set_dump)                           \
@@ -100,6 +101,7 @@ _(ONE_MAP_SERVER_DUMP, one_map_server_dump)                             \
 _(ONE_EID_TABLE_MAP_DUMP, one_eid_table_map_dump)                       \
 _(ONE_EID_TABLE_VNI_DUMP, one_eid_table_vni_dump)                       \
 _(ONE_ADJACENCIES_GET, one_adjacencies_get)                             \
+_(SHOW_ONE_NSH_MAPPING, show_one_nsh_mapping)                           \
 _(SHOW_ONE_RLOC_PROBE_STATE, show_one_rloc_probe_state)                 \
 _(SHOW_ONE_MAP_REGISTER_STATE, show_one_map_register_state)             \
 _(SHOW_ONE_STATUS, show_one_status)                                     \
@@ -225,10 +227,18 @@ vl_api_one_add_del_locator_t_handler (vl_api_one_add_del_locator_t * mp)
   REPLY_MACRO (VL_API_ONE_ADD_DEL_LOCATOR_REPLY);
 }
 
+typedef struct
+{
+  u32 spi;
+  u8 si;
+} __attribute__ ((__packed__)) lisp_nsh_api_t;
+
 static int
 unformat_one_eid_api (gid_address_t * dst, u32 vni, u8 type, void *src,
 		      u8 len)
 {
+  lisp_nsh_api_t *nsh;
+
   switch (type)
     {
     case 0:			/* ipv4 */
@@ -246,6 +256,12 @@ unformat_one_eid_api (gid_address_t * dst, u32 vni, u8 type, void *src,
     case 2:			/* l2 mac */
       gid_address_type (dst) = GID_ADDR_MAC;
       clib_memcpy (&gid_address_mac (dst), src, 6);
+      break;
+    case 3:			/* NSH */
+      gid_address_type (dst) = GID_ADDR_NSH;
+      nsh = src;
+      gid_address_nsh_spi (dst) = clib_net_to_host_u32 (nsh->spi);
+      gid_address_nsh_si (dst) = nsh->si;
       break;
     default:
       /* unknown type */
@@ -275,6 +291,12 @@ vl_api_one_add_del_local_eid_t_handler (vl_api_one_add_del_local_eid_t * mp)
 			     mp->eid_type, mp->eid, mp->prefix_len);
   if (rv)
     goto out;
+
+  if (gid_address_type (eid) == GID_ADDR_NSH)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto out;
+    }
 
   name = format (0, "%s", mp->locator_set_name);
   p = hash_get_mem (lcm->locator_set_index_by_name, name);
@@ -406,6 +428,21 @@ vl_api_one_map_request_mode_t_handler (vl_api_one_map_request_mode_t * mp)
   rv = vnet_lisp_set_map_request_mode (mp->mode);
 
   REPLY_MACRO (VL_API_ONE_MAP_REQUEST_MODE_REPLY);
+}
+
+static void
+vl_api_one_nsh_set_locator_set_t_handler (vl_api_one_nsh_set_locator_set_t
+					  * mp)
+{
+  vl_api_one_nsh_set_locator_set_reply_t *rmp;
+  int rv = 0;
+  u8 *ls_name = 0;
+
+  ls_name = format (0, "%s", mp->ls_name);
+  rv = vnet_lisp_nsh_set_locator_set (ls_name, mp->is_add);
+  vec_free (ls_name);
+
+  REPLY_MACRO (VL_API_ONE_PITR_SET_LOCATOR_SET_REPLY);
 }
 
 static void
@@ -781,7 +818,7 @@ send_one_eid_table_details (mapping_t * mapit,
   u8 *mac = 0;
   ip_prefix_t *ip_prefix = NULL;
 
-  if (mapit->pitr_set)
+  if (mapit->pitr_set || mapit->nsh_set)
     return;
 
   switch (filter)
@@ -850,6 +887,13 @@ send_one_eid_table_details (mapping_t * mapit,
     case GID_ADDR_MAC:
       rmp->eid_type = 2;	/* l2 mac type */
       clib_memcpy (rmp->eid, mac, 6);
+      break;
+    case GID_ADDR_NSH:
+      rmp->eid_type = 3;	/* NSH type */
+      lisp_nsh_api_t nsh;
+      nsh.spi = clib_host_to_net_u32 (gid_address_nsh_spi (gid));
+      nsh.si = gid_address_nsh_si (gid);
+      clib_memcpy (rmp->eid, &nsh, sizeof (nsh));
       break;
     default:
       ASSERT (0);
@@ -1071,6 +1115,7 @@ one_adjacency_copy (vl_api_one_adjacency_t * dst, lisp_adjacency_t * adjs)
   lisp_adjacency_t *adj;
   vl_api_one_adjacency_t a;
   u32 i, n = vec_len (adjs);
+  lisp_nsh_api_t nsh;
 
   for (i = 0; i < n; i++)
     {
@@ -1100,6 +1145,15 @@ one_adjacency_copy (vl_api_one_adjacency_t * dst, lisp_adjacency_t * adjs)
 	  mac_copy (a.reid, gid_address_mac (&adj->reid));
 	  mac_copy (a.leid, gid_address_mac (&adj->leid));
 	  break;
+	case GID_ADDR_NSH:
+	  a.eid_type = 3;	/* NSH type */
+	  nsh.spi = clib_host_to_net_u32 (gid_address_nsh_spi (&adj->reid));
+	  nsh.si = gid_address_nsh_si (&adj->reid);
+	  clib_memcpy (a.reid, &nsh, sizeof (nsh));
+
+	  nsh.spi = clib_host_to_net_u32 (gid_address_nsh_spi (&adj->leid));
+	  nsh.si = gid_address_nsh_si (&adj->leid);
+	  clib_memcpy (a.leid, &nsh, sizeof (nsh));
 	default:
 	  ASSERT (0);
 	}
@@ -1253,6 +1307,55 @@ static void
   /* *INDENT-ON* */
 
   vec_free (tmp_str);
+}
+
+static void
+vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t * mp)
+{
+  unix_shared_memory_queue_t *q = NULL;
+  vl_api_show_one_nsh_mapping_reply_t *rmp = NULL;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  mapping_t *m;
+  locator_set_t *ls = 0;
+  u8 *tmp_str = 0;
+  u8 is_set = 0;
+  int rv = 0;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  if (lcm->nsh_map_index == (u32) ~ 0)
+    {
+      tmp_str = format (0, "N/A");
+    }
+  else
+    {
+      m = pool_elt_at_index (lcm->mapping_pool, lcm->nsh_map_index);
+      if (~0 != m->locator_set_index)
+	{
+	  ls =
+	    pool_elt_at_index (lcm->locator_set_pool, m->locator_set_index);
+	  tmp_str = format (0, "%s", ls->name);
+	  is_set = 1;
+	}
+      else
+	{
+	  tmp_str = format (0, "N/A");
+	}
+    }
+  vec_add1 (tmp_str, 0);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_SHOW_ONE_NSH_MAPPING_REPLY,
+  ({
+    rmp->is_set = is_set;
+    strncpy((char *) rmp->locator_set_name, (char *) tmp_str,
+            ARRAY_LEN(rmp->locator_set_name) - 1);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void

@@ -742,7 +742,7 @@ lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id)
  * @return sw_if_index.
  */
 u32
-lisp_gpe_add_nsh_iface (lisp_gpe_main_t * lgm)
+vnet_lisp_gpe_add_nsh_iface (lisp_gpe_main_t * lgm)
 {
   vnet_main_t *vnm = lgm->vnet_main;
   tunnel_lookup_t *nsh_ifaces = &lgm->nsh_ifaces;
@@ -782,7 +782,7 @@ lisp_gpe_add_nsh_iface (lisp_gpe_main_t * lgm)
  *
  */
 void
-lisp_gpe_del_nsh_iface (lisp_gpe_main_t * lgm)
+vnet_lisp_gpe_del_nsh_iface (lisp_gpe_main_t * lgm)
 {
   tunnel_lookup_t *nsh_ifaces = &lgm->nsh_ifaces;
   uword *hip;
@@ -851,7 +851,7 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (is_add)
 	{
-	  if (~0 == lisp_gpe_add_nsh_iface (&lisp_gpe_main))
+	  if (~0 == vnet_lisp_gpe_add_nsh_iface (&lisp_gpe_main))
 	    {
 	      error = clib_error_return (0, "NSH interface not created");
 	      goto done;
@@ -859,7 +859,7 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else
 	{
-	  lisp_gpe_del_nsh_iface (&lisp_gpe_main);
+	  vnet_lisp_gpe_del_nsh_iface (&lisp_gpe_main);
 	}
       goto done;
     }

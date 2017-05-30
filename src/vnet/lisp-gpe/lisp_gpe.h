@@ -313,6 +313,8 @@ u8 vnet_lisp_stats_enable_disable_state (void);
 vnet_api_error_t vnet_lisp_stats_enable_disable (u8 enable);
 lisp_api_stats_t *vnet_lisp_get_stats (void);
 int vnet_lisp_flush_stats (void);
+u32 vnet_lisp_gpe_add_nsh_iface (lisp_gpe_main_t * lgm);
+void vnet_lisp_gpe_del_nsh_iface (lisp_gpe_main_t * lgm);
 
 #endif /* included_vnet_lisp_gpe_h */
 
