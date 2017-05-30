@@ -49,6 +49,16 @@ typedef struct mfib_entry_t_ {
     struct mfib_entry_src_t_ *mfe_srcs;
 
     /**
+     * The path-list of which this entry is a child
+     */
+    fib_node_index_t mfe_pl;
+
+    /**
+     * The sibling index on the path-list
+     */
+    u32 mfe_sibling;
+
+    /**
      * 2nd cache line has the members used in the data plane
      */
     CLIB_CACHE_LINE_ALIGN_MARK(cacheline1);

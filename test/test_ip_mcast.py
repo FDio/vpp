@@ -89,8 +89,8 @@ class TestIPMcast(VppTestCase):
                     capture.remove(p)
         return capture
 
-    def verify_capture_ip4(self, src_if, sent):
-        rxd = self.pg1.get_capture(N_PKTS_IN_STREAM)
+    def verify_capture_ip4(self, rx_if, sent):
+        rxd = rx_if.get_capture(len(sent))
 
         try:
             capture = self.verify_filter(rxd, sent)
@@ -118,8 +118,8 @@ class TestIPMcast(VppTestCase):
         except:
             raise
 
-    def verify_capture_ip6(self, src_if, sent):
-        capture = self.pg1.get_capture(N_PKTS_IN_STREAM)
+    def verify_capture_ip6(self, rx_if, sent):
+        capture = rx_if.get_capture(len(sent))
 
         self.assertEqual(len(capture), len(sent))
 
@@ -232,11 +232,6 @@ class TestIPMcast(VppTestCase):
         # We expect replications on Pg1->7
         self.verify_capture_ip4(self.pg1, tx)
         self.verify_capture_ip4(self.pg2, tx)
-        self.verify_capture_ip4(self.pg3, tx)
-        self.verify_capture_ip4(self.pg4, tx)
-        self.verify_capture_ip4(self.pg5, tx)
-        self.verify_capture_ip4(self.pg6, tx)
-        self.verify_capture_ip4(self.pg7, tx)
 
         # no replications on Pg0
         self.pg0.assert_nothing_captured(
@@ -259,11 +254,6 @@ class TestIPMcast(VppTestCase):
         # We expect replications on Pg1->7
         self.verify_capture_ip4(self.pg1, tx)
         self.verify_capture_ip4(self.pg2, tx)
-        self.verify_capture_ip4(self.pg3, tx)
-        self.verify_capture_ip4(self.pg4, tx)
-        self.verify_capture_ip4(self.pg5, tx)
-        self.verify_capture_ip4(self.pg6, tx)
-        self.verify_capture_ip4(self.pg7, tx)
 
         # no replications on Pg0
         self.pg0.assert_nothing_captured(
@@ -308,10 +298,10 @@ class TestIPMcast(VppTestCase):
         self.verify_capture_ip4(self.pg1, tx)
         self.verify_capture_ip4(self.pg2, tx)
         self.verify_capture_ip4(self.pg3, tx)
-
-        # no replications on Pg0
-        self.pg0.assert_nothing_captured(
-            remark="IP multicast packets forwarded on PG0")
+        self.verify_capture_ip4(self.pg4, tx)
+        self.verify_capture_ip4(self.pg5, tx)
+        self.verify_capture_ip4(self.pg6, tx)
+        self.verify_capture_ip4(self.pg7, tx)
 
         route_232_1_1_1.remove_vpp_config()
         route_1_1_1_1_232_1_1_1.remove_vpp_config()
@@ -407,6 +397,22 @@ class TestIPMcast(VppTestCase):
             remark="IP multicast packets forwarded on PG2")
         self.pg3.assert_nothing_captured(
             remark="IP multicast packets forwarded on PG3")
+
+        #
+        # Bounce the interface and it should still work
+        #
+        self.pg1.admin_down()
+        self.pg0.add_stream(tx)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.pg1.assert_nothing_captured(
+            remark="IP multicast packets forwarded on down PG1")
+
+        self.pg1.admin_up()
+        self.pg0.add_stream(tx)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.verify_capture_ip6(self.pg1, tx)
 
         #
         # a stream that matches the route for (*,ff01::1)

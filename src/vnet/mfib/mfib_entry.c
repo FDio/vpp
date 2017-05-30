@@ -366,62 +366,6 @@ mfib_entry_src_remove (mfib_entry_t *mfib_entry,
     }
 }
 
-static void
-mfib_entry_last_lock_gone (fib_node_t *node)
-{
-    mfib_entry_t *mfib_entry;
-    mfib_entry_src_t *msrc;
-
-    mfib_entry = mfib_entry_from_fib_node(node);
-
-    dpo_reset(&mfib_entry->mfe_rep);
-
-    MFIB_ENTRY_DBG(mfib_entry, "last-lock");
-
-    vec_foreach(msrc, mfib_entry->mfe_srcs)
-    {
-        mfib_entry_src_flush(msrc);
-    }
-
-    vec_free(mfib_entry->mfe_srcs);
-
-    fib_node_deinit(&mfib_entry->mfe_node);
-    pool_put(mfib_entry_pool, mfib_entry);
-}
-
-/*
- * mfib_entry_back_walk_notify
- *
- * A back walk has reach this entry.
- */
-static fib_node_back_walk_rc_t
-mfib_entry_back_walk_notify (fib_node_t *node,
-                            fib_node_back_walk_ctx_t *ctx)
-{
-    // FIXME - re-evalute
-
-    return (FIB_NODE_BACK_WALK_CONTINUE);
-}
-
-static void
-mfib_entry_show_memory (void)
-{
-    fib_show_memory_usage("multicast-Entry",
-                          pool_elts(mfib_entry_pool),
-                          pool_len(mfib_entry_pool),
-                          sizeof(mfib_entry_t));
-}
-
-/*
- * The MFIB entry's graph node virtual function table
- */
-static const fib_node_vft_t mfib_entry_vft = {
-    .fnv_get = mfib_entry_get_node,
-    .fnv_last_lock = mfib_entry_last_lock_gone,
-    .fnv_back_walk = mfib_entry_back_walk_notify,
-    .fnv_mem_show = mfib_entry_show_memory,
-};
-
 u32
 mfib_entry_child_add (fib_node_index_t mfib_entry_index,
                       fib_node_type_t child_type,
@@ -464,6 +408,7 @@ mfib_entry_alloc (u32 fib_index,
     mfib_entry->mfe_srcs = NULL;
     mfib_entry->mfe_itfs = NULL;
     mfib_entry->mfe_rpf_id = MFIB_RPF_ID_NONE;
+    mfib_entry->mfe_pl = FIB_NODE_INDEX_INVALID;
 
     dpo_reset(&mfib_entry->mfe_rep);
 
@@ -594,6 +539,15 @@ mfib_entry_stack (mfib_entry_t *mfib_entry,
 
     dp = fib_proto_to_dpo(mfib_entry_get_proto(mfib_entry));
 
+    /*
+     * unlink the enty from the previous path list.
+     */
+    if (FIB_NODE_INDEX_INVALID != mfib_entry->mfe_pl)
+    {
+        fib_path_list_child_remove(mfib_entry->mfe_pl,
+                                   mfib_entry->mfe_sibling);
+    }
+
     if (NULL != msrc &&
         FIB_NODE_INDEX_INVALID != msrc->mfes_pl)
     {
@@ -658,6 +612,17 @@ mfib_entry_stack (mfib_entry_t *mfib_entry,
             dpo_reset(&ctx.next_hops[0].path_dpo);
             vec_free(ctx.next_hops);
         }
+
+        /*
+         * link the entry to the path-list.
+         * The entry needs to be a child so that we receive the back-walk
+         * updates to recalculate forwarding.
+         */
+        mfib_entry->mfe_pl = msrc->mfes_pl;
+        mfib_entry->mfe_sibling =
+            fib_path_list_child_add(mfib_entry->mfe_pl,
+                                    FIB_NODE_TYPE_MFIB_ENTRY,
+                                    mfib_entry_get_index(mfib_entry));
     }
     else
     {
@@ -1097,6 +1062,62 @@ mfib_entry_cmp_for_sort (void *i1, void *i2)
     return (mfib_entry_cmp(*mfib_entry_index1,
                            *mfib_entry_index2));
 }
+
+static void
+mfib_entry_last_lock_gone (fib_node_t *node)
+{
+    mfib_entry_t *mfib_entry;
+    mfib_entry_src_t *msrc;
+
+    mfib_entry = mfib_entry_from_fib_node(node);
+
+    dpo_reset(&mfib_entry->mfe_rep);
+
+    MFIB_ENTRY_DBG(mfib_entry, "last-lock");
+
+    vec_foreach(msrc, mfib_entry->mfe_srcs)
+    {
+        mfib_entry_src_flush(msrc);
+    }
+
+    vec_free(mfib_entry->mfe_srcs);
+
+    fib_node_deinit(&mfib_entry->mfe_node);
+    pool_put(mfib_entry_pool, mfib_entry);
+}
+
+/*
+ * mfib_entry_back_walk_notify
+ *
+ * A back walk has reach this entry.
+ */
+static fib_node_back_walk_rc_t
+mfib_entry_back_walk_notify (fib_node_t *node,
+                            fib_node_back_walk_ctx_t *ctx)
+{
+    mfib_entry_recalculate_forwarding(mfib_entry_from_fib_node(node));
+
+    return (FIB_NODE_BACK_WALK_CONTINUE);
+}
+
+static void
+mfib_entry_show_memory (void)
+{
+    fib_show_memory_usage("multicast-Entry",
+                          pool_elts(mfib_entry_pool),
+                          pool_len(mfib_entry_pool),
+                          sizeof(mfib_entry_t));
+}
+
+/*
+ * The MFIB entry's graph node virtual function table
+ */
+static const fib_node_vft_t mfib_entry_vft = {
+    .fnv_get = mfib_entry_get_node,
+    .fnv_last_lock = mfib_entry_last_lock_gone,
+    .fnv_back_walk = mfib_entry_back_walk_notify,
+    .fnv_mem_show = mfib_entry_show_memory,
+};
 
 void
 mfib_entry_lock (fib_node_index_t mfib_entry_index)
