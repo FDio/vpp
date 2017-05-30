@@ -25,6 +25,20 @@
 
 #include <memif/memif.h>
 
+static uword
+unformat_memif_queues (unformat_input_t * input, va_list * args)
+{
+  u32 *rx_queues = va_arg (*args, u32 *);
+  u32 *tx_queues = va_arg (*args, u32 *);
+
+  if (unformat (input, "rx-queues %u", rx_queues))
+    ;
+  if (unformat (input, "tx-queues %u", tx_queues))
+    ;
+
+  return 1;
+}
+
 static clib_error_t *
 memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
@@ -34,6 +48,8 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u32 ring_size = MEMIF_DEFAULT_RING_SIZE;
   memif_create_if_args_t args = { 0 };
   args.buffer_size = MEMIF_DEFAULT_BUFFER_SIZE;
+  u32 rx_queues = MEMIF_DEFAULT_RX_QUEUES;
+  u32 tx_queues = MEMIF_DEFAULT_TX_QUEUES;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -51,7 +67,8 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "master"))
 	args.is_master = 1;
-      else if (unformat (line_input, "slave"))
+      else if (unformat (line_input, "slave %U",
+			 unformat_memif_queues, &rx_queues, &tx_queues))
 	args.is_master = 0;
       else if (unformat (line_input, "hw-addr %U",
 			 unformat_ethernet_address, args.hw_addr))
@@ -66,6 +83,14 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0, "ring size must be power of 2");
 
   args.log2_ring_size = min_log2 (ring_size);
+
+  if (rx_queues > 255 || rx_queues < 1)
+    return clib_error_return (0, "rx queue must be between 1 - 255");
+  if (tx_queues > 255 || tx_queues < 1)
+    return clib_error_return (0, "tx queue must be between 1 - 255");
+
+  args.rx_queues = rx_queues;
+  args.tx_queues = tx_queues;
 
   r = memif_create_if (vm, &args);
 
@@ -87,7 +112,7 @@ VLIB_CLI_COMMAND (memif_create_command, static) = {
   .path = "create memif",
   .short_help = "create memif [key <key>] [socket <path>] "
                 "[ring-size <size>] [buffer-size <size>] [hw-addr <mac-address>] "
-		"<master|slave>",
+		"<master|slave [rx-queues <number>] [tx-queues <number>]>",
   .function = memif_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -148,7 +173,7 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			mif->socket_filename);
        vlib_cli_output (vm, "  listener %d conn-fd %d int-fd %d", mif->listener_index,
 			mif->connection.fd, mif->interrupt_line.fd);
-       vlib_cli_output (vm, "  ring-size %u num-c2s-rings %u num-s2c-rings %u buffer_size %u",
+       vlib_cli_output (vm, "  ring-size %u num-s2m-rings %u num-m2s-rings %u buffer_size %u",
 			(1 << mif->log2_ring_size),
 			mif->num_s2m_rings,
 			mif->num_m2s_rings,

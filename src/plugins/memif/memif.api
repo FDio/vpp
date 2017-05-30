@@ -17,6 +17,8 @@
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param role - role of the interface in the connection (master/slave)
+    @param rx_queues - number of rx queues (only valid for slave)
+    #param tx_queues - number of tx queues (only valid for slave)
     @param key - 64bit integer used to authenticate and match opposite sides
            of the connection
     @param socket_filename - filename of the socket to be used for connection
@@ -31,6 +33,8 @@ define memif_create
   u32 context;
 
   u8 role; /* 0 = master, 1 = slave */
+  u8 rx_queues; /* optional, default is 1 */
+  u8 tx_queues; /* optional, default is 1 */
   u64 key; /* optional, default is 0 */
   u8 socket_filename[128]; /* optional, default is "/var/vpp/memif.sock"
                               and can be changed in VPP startup config */

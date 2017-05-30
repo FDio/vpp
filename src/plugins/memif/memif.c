@@ -72,6 +72,9 @@ memif_connect (vlib_main_t * vm, memif_if_t * mif)
   vnet_main_t *vnm = vnet_get_main ();
   int num_rings = mif->num_s2m_rings + mif->num_m2s_rings;
   memif_ring_data_t *rd = NULL;
+  vnet_hw_interface_t *hw;
+  u8 rid, rx_queues;
+  int ret;
 
   vec_validate_aligned (mif->ring_data, num_rings - 1, CLIB_CACHE_LINE_BYTES);
   vec_foreach (rd, mif->ring_data)
@@ -83,12 +86,30 @@ memif_connect (vlib_main_t * vm, memif_if_t * mif)
   mif->flags |= MEMIF_IF_FLAG_CONNECTED;
   vnet_hw_interface_set_flags (vnm, mif->hw_if_index,
 			       VNET_HW_INTERFACE_FLAG_LINK_UP);
+
+  hw = vnet_get_hw_interface (vnm, mif->hw_if_index);
+  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
+  vnet_hw_interface_set_input_node (vnm, mif->hw_if_index,
+				    memif_input_node.index);
+  rx_queues = memif_get_rx_queues (mif);
+  for (rid = 0; rid < rx_queues; rid++)
+    {
+      vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, rid, ~0);
+      ret = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, rid,
+					   VNET_HW_INTERFACE_RX_MODE_INTERRUPT);
+      if (ret)
+	DEBUG_LOG ("Warning: unable to set rx mode for interface %d "
+		   "queue %d: rc=%d", mif->hw_if_index, rid, ret);
+    }
 }
 
 static void
 memif_disconnect_do (vlib_main_t * vm, memif_if_t * mif)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  u8 rid, rx_queues;
+  int rv;
+  memif_shm_t **shm;
 
   mif->flags &= ~(MEMIF_IF_FLAG_CONNECTED | MEMIF_IF_FLAG_CONNECTING);
   if (mif->hw_if_index != ~0)
@@ -101,7 +122,20 @@ memif_disconnect_do (vlib_main_t * vm, memif_if_t * mif)
       mif->connection.fd = -1;	/* closed in unix_file_del */
     }
 
-  // TODO: properly munmap + close memif-owned shared memory segments
+  rx_queues = memif_get_rx_queues (mif);
+  for (rid = 0; rid < rx_queues; rid++)
+    {
+      rv = vnet_hw_interface_unassign_rx_thread (vnm, mif->hw_if_index, rid);
+      if (rv)
+	DEBUG_LOG ("Warning: unable to unassign interface %d, "
+		   "queue %d: rc=%d", mif->hw_if_index, rid, rv);
+    }
+
+  shm = (memif_shm_t **) mif->regions;
+  rv = munmap ((void *) *shm, mif->shared_mem_size);
+  if (rv)
+    DEBUG_UNIX_LOG ("Error: failed munmap call");
+
   vec_free (mif->regions);
 }
 
@@ -228,6 +262,7 @@ memif_process_connect_req (memif_pending_conn_t * pending_conn,
       goto response;
     }
 
+  mif->shared_mem_size = req->shared_mem_size;
   mif->log2_ring_size = req->log2_ring_size;
   mif->num_s2m_rings = req->num_s2m_rings;
   mif->num_m2s_rings = req->num_m2s_rings;
@@ -332,6 +367,9 @@ memif_conn_fd_read_ready (unix_file_t * uf)
   else
     mif = vec_elt_at_index (mm->interfaces, uf->private_data >> 1);
 
+  /* Stop workers to avoid end of the world */
+  vlib_worker_thread_barrier_sync (vlib_get_main ());
+
   /* receive the incoming message */
   size = recvmsg (uf->file_descriptor, &mh, 0);
   if (size != sizeof (memif_msg_t))
@@ -342,7 +380,7 @@ memif_conn_fd_read_ready (unix_file_t * uf)
 	    memif_remove_pending_conn (pending_conn);
 	  else
 	    memif_disconnect_do (vm, mif);
-	  return error;
+	  goto return_ok;
 	}
 
       DEBUG_UNIX_LOG ("Malformed message received on fd %d",
@@ -364,38 +402,36 @@ memif_conn_fd_read_ready (unix_file_t * uf)
     {
     case MEMIF_MSG_TYPE_CONNECT_REQ:
       if (pending_conn == 0)
+	DEBUG_LOG ("Received unexpected connection request");
+      else
 	{
-	  DEBUG_LOG ("Received unexpected connection request");
-	  return 0;
-	}
-
-      /* Read anciliary data */
-      cmsg = CMSG_FIRSTHDR (&mh);
-      while (cmsg)
-	{
-	  if (cmsg->cmsg_level == SOL_SOCKET
-	      && cmsg->cmsg_type == SCM_CREDENTIALS)
+	  /* Read anciliary data */
+	  cmsg = CMSG_FIRSTHDR (&mh);
+	  while (cmsg)
 	    {
-	      cr = (struct ucred *) CMSG_DATA (cmsg);
+	      if (cmsg->cmsg_level == SOL_SOCKET
+		  && cmsg->cmsg_type == SCM_CREDENTIALS)
+		{
+		  cr = (struct ucred *) CMSG_DATA (cmsg);
+		}
+	      else if (cmsg->cmsg_level == SOL_SOCKET
+		       && cmsg->cmsg_type == SCM_RIGHTS)
+		{
+		  memcpy (fd_array, CMSG_DATA (cmsg), sizeof (fd_array));
+		}
+	      cmsg = CMSG_NXTHDR (&mh, cmsg);
 	    }
-	  else if (cmsg->cmsg_level == SOL_SOCKET
-		   && cmsg->cmsg_type == SCM_RIGHTS)
-	    {
-	      memcpy (fd_array, CMSG_DATA (cmsg), sizeof (fd_array));
-	    }
-	  cmsg = CMSG_NXTHDR (&mh, cmsg);
+	  error = memif_process_connect_req (pending_conn, &msg, cr,
+					     fd_array[0], fd_array[1]);
 	}
-
-      return memif_process_connect_req (pending_conn, &msg, cr,
-					fd_array[0], fd_array[1]);
+      break;
 
     case MEMIF_MSG_TYPE_CONNECT_RESP:
       if (mif == 0)
-	{
-	  DEBUG_LOG ("Received unexpected connection response");
-	  return 0;
-	}
-      return memif_process_connect_resp (mif, &msg);
+	DEBUG_LOG ("Received unexpected connection response");
+      else
+	error = memif_process_connect_resp (mif, &msg);
+      break;
 
     case MEMIF_MSG_TYPE_DISCONNECT:
       goto disconnect;
@@ -405,13 +441,16 @@ memif_conn_fd_read_ready (unix_file_t * uf)
       goto disconnect;
     }
 
-  return 0;
+return_ok:
+  vlib_worker_thread_barrier_release (vlib_get_main ());
+  return error;
 
 disconnect:
   if (pending_conn)
     memif_remove_pending_conn (pending_conn);
   else
     memif_disconnect (vm, mif);
+  vlib_worker_thread_barrier_release (vlib_get_main ());
   return error;
 }
 
@@ -434,7 +473,8 @@ memif_int_fd_read_ready (unix_file_t * uf)
       mif->interrupt_line.fd = -1;
     }
   else
-    vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, 0);
+    vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, b);
+
   return 0;
 }
 
@@ -530,6 +570,7 @@ memif_connect_master (vlib_main_t * vm, memif_if_t * mif)
       goto error;
     }
 
+  mif->shared_mem_size = msg.shared_mem_size;
   vec_add1 (mif->regions, shm);
   ((memif_shm_t *) mif->regions[0])->cookie = 0xdeadbeef;
 
@@ -803,7 +844,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   clib_error_t *error = 0;
   int ret = 0;
   uword *p;
-  vnet_hw_interface_t *hw;
 
   p = mhash_get (&mm->if_index_by_key, &args->key);
   if (p)
@@ -851,9 +891,8 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   mif->log2_ring_size = args->log2_ring_size;
   mif->buffer_size = args->buffer_size;
 
-  /* TODO: make configurable */
-  mif->num_s2m_rings = 1;
-  mif->num_m2s_rings = 1;
+  mif->num_s2m_rings = args->rx_queues;
+  mif->num_m2s_rings = args->tx_queues;
 
   mhash_set_mem (&mm->if_index_by_key, &args->key, &mif->if_index, 0);
 
@@ -952,17 +991,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
       mif->flags |= MEMIF_IF_FLAG_IS_SLAVE;
     }
 
-  hw = vnet_get_hw_interface (vnm, mif->hw_if_index);
-  hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
-  vnet_hw_interface_set_input_node (vnm, mif->hw_if_index,
-				    memif_input_node.index);
-  vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, 0, ~0);
-  ret = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, 0,
-				       VNET_HW_INTERFACE_RX_MODE_INTERRUPT);
-  if (ret)
-    clib_warning ("Warning: unable to set rx mode for interface %d: "
-		  "rc=%d", mif->hw_if_index, ret);
-
 #if 0
   /* use configured or generate random MAC address */
   if (!args->hw_addr_set &&
@@ -995,32 +1023,26 @@ memif_delete_if (vlib_main_t * vm, u64 key)
   memif_main_t *mm = &memif_main;
   memif_if_t *mif;
   uword *p;
-  int ret;
+  u32 hw_if_index;
 
   p = mhash_get (&mm->if_index_by_key, &key);
   if (p == NULL)
     {
-      clib_warning ("Memory interface with key 0x%" PRIx64 " does not exist",
-		    key);
+      DEBUG_LOG ("Memory interface with key 0x%" PRIx64 " does not exist",
+		 key);
       return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
   mif = pool_elt_at_index (mm->interfaces, p[0]);
   mif->flags |= MEMIF_IF_FLAG_DELETING;
 
-  ret = vnet_hw_interface_unassign_rx_thread (vnm, mif->hw_if_index, 0);
-  if (ret)
-    clib_warning ("Warning: unable to unassign interface %d: rc=%d",
-		  mif->hw_if_index, ret);
-
   /* bring down the interface */
-  vnet_hw_interface_set_flags (vnm, mif->hw_if_index, 0);
   vnet_sw_interface_set_flags (vnm, mif->sw_if_index, 0);
 
-  /* remove the interface */
-  ethernet_delete_interface (vnm, mif->hw_if_index);
-  mif->hw_if_index = ~0;
+  hw_if_index = mif->hw_if_index;
   memif_close_if (mm, mif);
 
+  /* remove the interface */
+  ethernet_delete_interface (vnm, hw_if_index);
   if (pool_elts (mm->interfaces) == 0)
     {
       vlib_process_signal_event (vm, memif_process_node.index,
