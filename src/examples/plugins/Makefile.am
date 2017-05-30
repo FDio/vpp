@@ -1,4 +1,5 @@
-# Copyright (c) 2015 Cisco and/or its affiliates.
+
+# Copyright (c) <current-year> <your-organization>
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -23,25 +24,27 @@ vppplugins_LTLIBRARIES =
 vppapitestplugins_LTLIBRARIES =
 noinst_HEADERS =
 nobase_apiinclude_HEADERS =
-ACLOCAL_AMFLAGS = -I m4
+nobase_include_HEADERS =
 
 vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
 vpppluginsdir = ${libdir}/vpp_plugins
 
+if ENABLE_SAMPLE_PLUGIN
 include sample.am
+endif
 
-%.api.h: %.api
-	mkdir -p `dirname $@` ; \
-	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
-	| vppapigen --input - --output $@ --show-name $@
+include ../../suffix-rules.mk
 
-%.api.json: %.api
-	@echo "  JSON APIGEN  " $@ ;				\
-	mkdir -p `dirname $@` ;					\
-	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
-	| vppapigen --input - --json $@
+# Remove *.la files
+install-data-hook:
+	@-(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
+	@-(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
 
-apidir = $(prefix)/api/plugins
+###############################################################################
+# API
+###############################################################################
+
+apidir = $(prefix)/share/vpp/api/plugins
 apiincludedir = ${includedir}/vpp_plugins
 
 api_DATA = \
@@ -50,10 +53,4 @@ api_DATA = \
 BUILT_SOURCES += \
 	$(patsubst %.api,%.api.h,$(API_FILES))
 
-
-# Remove *.la files
-install-data-hook:
-	@(cd $(vpppluginsdir) && $(RM) $(vppplugins_LTLIBRARIES))
-	@(cd $(vppapitestpluginsdir) && $(RM) $(vppapitestplugins_LTLIBRARIES))
-
-CLEANFILES = $(BUILT_SOURCES)
+CLEANFILES = $(BUILT_SOURCES) $(api_DATA)

@@ -3,7 +3,7 @@ LT_INIT
 AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE([subdir-objects])
 AM_SILENT_RULES([yes])
-AC_CONFIG_FILES([Makefile plugins/Makefile vpp-api/python/Makefile vpp-api/java/Makefile])
+AC_CONFIG_FILES([Makefile plugins/Makefile examples/plugins/Makefile vpp-api/python/Makefile vpp-api/java/Makefile])
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_PROG_CC
@@ -155,6 +155,7 @@ PLUGIN_ENABLED(lb)
 PLUGIN_ENABLED(memif)
 PLUGIN_ENABLED(sixrd)
 PLUGIN_ENABLED(snat)
+PLUGIN_ENABLED(sample)
 
 ###############################################################################
 # Dependency checks
