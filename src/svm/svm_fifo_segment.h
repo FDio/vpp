@@ -19,10 +19,19 @@
 #include <svm/ssvm.h>
 #include <vppinfra/lock.h>
 
+typedef enum
+{
+  FIFO_SEGMENT_FREELIST_NONE = -1,
+  FIFO_SEGMENT_RX_FREELIST = 0,
+  FIFO_SEGMENT_TX_FREELIST,
+  FIFO_SEGMENT_N_FREELISTS
+} svm_fifo_segment_freelist_t;
+
 typedef struct
 {
-  volatile svm_fifo_t **fifos;
-  u8 *segment_name;
+  svm_fifo_t *fifos;		/**< Linked list of active RX fifos */
+  u8 *segment_name;		/**< Segment name */
+  svm_fifo_t *free_fifos[FIFO_SEGMENT_N_FREELISTS];	/**< Free lists */
 } svm_fifo_segment_header_t;
 
 typedef struct
@@ -49,6 +58,9 @@ typedef struct
   char *segment_name;
   u32 segment_size;
   u32 new_segment_index;
+  u32 rx_fifo_size;
+  u32 tx_fifo_size;
+  u32 preallocated_fifo_pairs;
 } svm_fifo_segment_create_args_t;
 
 static inline svm_fifo_segment_private_t *
@@ -61,13 +73,13 @@ svm_fifo_get_segment (u32 segment_index)
 static inline u8
 svm_fifo_segment_has_fifos (svm_fifo_segment_private_t * fifo_segment)
 {
-  return vec_len ((svm_fifo_t **) fifo_segment->h->fifos) != 0;
+  return fifo_segment->h->fifos != 0;
 }
 
-static inline svm_fifo_t **
-svm_fifo_segment_get_fifos (svm_fifo_segment_private_t * fifo_segment)
+static inline svm_fifo_t *
+svm_fifo_segment_get_fifo_list (svm_fifo_segment_private_t * fifo_segment)
 {
-  return (svm_fifo_t **) fifo_segment->h->fifos;
+  return fifo_segment->h->fifos;
 }
 
 #define foreach_ssvm_fifo_segment_api_error             \
@@ -87,9 +99,11 @@ int svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a);
 void svm_fifo_segment_delete (svm_fifo_segment_private_t * s);
 
 svm_fifo_t *svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
-					 u32 data_size_in_bytes);
+					 u32 data_size_in_bytes,
+					 svm_fifo_segment_freelist_t index);
 void svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s,
-				 svm_fifo_t * f);
+				 svm_fifo_t * f,
+				 svm_fifo_segment_freelist_t index);
 void svm_fifo_segment_init (u64 baseva, u32 timeout_in_seconds);
 u32 svm_fifo_segment_index (svm_fifo_segment_private_t * s);
 
