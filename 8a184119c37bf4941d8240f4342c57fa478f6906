@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_f1fef737",
+        "filename": "src/plugins/memif/device.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 778
+      },
+      "writtenOn": "2017-05-30T09:13:52Z",
+      "side": 1,
+      "message": "If we do not send interrupt when the buffer is full and we fail to send even a single packet (free_slots\u003d0), then with the read buffer flushing in node.c it is guaranteed that the interrupt line buffer cannot infinitely grow (it is bounded by the ring size), and thus the delayed write on the interrupt line should not be needed (if I\u0027m not missing something).",
+      "revId": "8a184119c37bf4941d8240f4342c57fa478f6906",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_91c7bb12",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 425,
+      "author": {
+        "id": 778
+      },
+      "writtenOn": "2017-05-30T09:13:52Z",
+      "side": 1,
+      "message": "I would suggest to use a cache line sized static buffer to make the flushing of the read buffer even quicker.",
+      "revId": "8a184119c37bf4941d8240f4342c57fa478f6906",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
