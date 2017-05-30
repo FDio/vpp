@@ -1917,6 +1917,32 @@ api_config_fn (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (api_config_fn, "api-trace");
 
+static clib_error_t *
+api_queue_config_fn (vlib_main_t * vm, unformat_input_t * input)
+{
+  api_main_t *am = &api_main;
+  u32 nitems;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "length %d", &nitems) ||
+	  (unformat (input, "len %d", &nitems)))
+	{
+	  if (nitems >= 1024)
+	    am->vlib_input_queue_length = nitems;
+	  else
+	    clib_warning ("vlib input queue length %d too small, ignored",
+			  nitems);
+	}
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (api_queue_config_fn, "api-queue");
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

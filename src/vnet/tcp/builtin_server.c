@@ -62,7 +62,6 @@ int
 builtin_session_accept_callback (stream_session_t * s)
 {
   builtin_server_main_t *bsm = &builtin_server_main;
-  clib_warning ("called...");
 
   bsm->vpp_queue[s->thread_index] =
     session_manager_get_vpp_event_queue (s->thread_index);
@@ -76,7 +75,6 @@ builtin_session_disconnect_callback (stream_session_t * s)
 {
   builtin_server_main_t *bsm = &builtin_server_main;
   vnet_disconnect_args_t _a, *a = &_a;
-  clib_warning ("called...");
 
   a->handle = stream_session_handle (s);
   a->app_index = bsm->app_index;
@@ -280,10 +278,11 @@ server_attach ()
   a->api_client_index = bsm->my_client_index;
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;
-  a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 128 << 20;
-  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = 1 << 16;
-  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = 1 << 16;
+  a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 512 << 20;
+  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = 64 << 10;
+  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = 64 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+  a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 8192;
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
