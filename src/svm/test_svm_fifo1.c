@@ -30,6 +30,9 @@ hello_world (int verbose)
 
   a->segment_name = "fifo-test1";
   a->segment_size = 256 << 10;
+  a->rx_fifo_size = 4096;
+  a->tx_fifo_size = 4096;
+  a->preallocated_fifo_pairs = 4;
 
   rv = svm_fifo_segment_create (a);
 
@@ -38,7 +41,7 @@ hello_world (int verbose)
 
   sp = svm_fifo_get_segment (a->new_segment_index);
 
-  f = svm_fifo_segment_alloc_fifo (sp, 4096);
+  f = svm_fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FREELIST);
 
   if (f == 0)
     return clib_error_return (0, "svm_fifo_segment_alloc_fifo failed");
@@ -63,7 +66,7 @@ hello_world (int verbose)
   else
     error = clib_error_return (0, "data test FAIL!");
 
-  svm_fifo_segment_free_fifo (sp, f);
+  svm_fifo_segment_free_fifo (sp, f, FIFO_SEGMENT_RX_FREELIST);
 
   return error;
 }
@@ -91,7 +94,7 @@ master (int verbose)
 
   sp = svm_fifo_get_segment (a->new_segment_index);
 
-  f = svm_fifo_segment_alloc_fifo (sp, 4096);
+  f = svm_fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FREELIST);
 
   if (f == 0)
     return clib_error_return (0, "svm_fifo_segment_alloc_fifo failed");
@@ -129,7 +132,7 @@ mempig (int verbose)
 
   for (i = 0; i < 1000; i++)
     {
-      f = svm_fifo_segment_alloc_fifo (sp, 4096);
+      f = svm_fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FREELIST);
       if (f == 0)
 	break;
       vec_add1 (flist, f);
@@ -139,14 +142,14 @@ mempig (int verbose)
   for (i = 0; i < vec_len (flist); i++)
     {
       f = flist[i];
-      svm_fifo_segment_free_fifo (sp, f);
+      svm_fifo_segment_free_fifo (sp, f, FIFO_SEGMENT_RX_FREELIST);
     }
 
   _vec_len (flist) = 0;
 
   for (i = 0; i < 1000; i++)
     {
-      f = svm_fifo_segment_alloc_fifo (sp, 4096);
+      f = svm_fifo_segment_alloc_fifo (sp, 4096, FIFO_SEGMENT_RX_FREELIST);
       if (f == 0)
 	break;
       vec_add1 (flist, f);
@@ -156,7 +159,7 @@ mempig (int verbose)
   for (i = 0; i < vec_len (flist); i++)
     {
       f = flist[i];
-      svm_fifo_segment_free_fifo (sp, f);
+      svm_fifo_segment_free_fifo (sp, f, FIFO_SEGMENT_RX_FREELIST);
     }
 
   return 0;
@@ -185,7 +188,7 @@ offset (int verbose)
 
   sp = svm_fifo_get_segment (a->new_segment_index);
 
-  f = svm_fifo_segment_alloc_fifo (sp, 200 << 10);
+  f = svm_fifo_segment_alloc_fifo (sp, 200 << 10, FIFO_SEGMENT_RX_FREELIST);
 
   if (f == 0)
     return clib_error_return (0, "svm_fifo_segment_alloc_fifo failed");
@@ -226,9 +229,9 @@ slave (int verbose)
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
   svm_fifo_segment_private_t *sp;
-  svm_fifo_segment_header_t *fsh;
   svm_fifo_t *f;
   ssvm_shared_header_t *sh;
+  svm_fifo_segment_header_t *fsh;
   int rv;
   u8 *test_data;
   u8 *retrieved_data = 0;
@@ -248,7 +251,7 @@ slave (int verbose)
   fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
 
   /* might wanna wait.. */
-  f = (svm_fifo_t *) fsh->fifos[0];
+  f = fsh->fifos;
 
   /* Lazy bastards united */
   test_data = format (0, "Hello world%c", 0);

@@ -17,6 +17,71 @@
 
 svm_fifo_segment_main_t svm_fifo_segment_main;
 
+static void
+preallocate_fifo_pairs (svm_fifo_segment_header_t * fsh,
+			svm_fifo_segment_create_args_t * a)
+{
+  u32 rx_fifo_size, tx_fifo_size;
+  svm_fifo_t *f;
+  u8 *rx_fifo_space, *tx_fifo_space;
+  int i;
+
+  /* Parameter check */
+  if (a->rx_fifo_size == 0 || a->tx_fifo_size == 0
+      || a->preallocated_fifo_pairs == 0)
+    return;
+
+  /* Calculate space requirements */
+  rx_fifo_size = (sizeof (*f) + a->rx_fifo_size) * a->preallocated_fifo_pairs;
+  tx_fifo_size = (sizeof (*f) + a->tx_fifo_size) * a->preallocated_fifo_pairs;
+
+  /* Allocate rx fifo space. May fail. */
+  rx_fifo_space = clib_mem_alloc_aligned_at_offset
+    (rx_fifo_size, CLIB_CACHE_LINE_BYTES, 0 /* align_offset */ ,
+     0 /* os_out_of_memory */ );
+
+  /* Same for TX */
+  tx_fifo_space = clib_mem_alloc_aligned_at_offset
+    (tx_fifo_size, CLIB_CACHE_LINE_BYTES, 0 /* align_offset */ ,
+     0 /* os_out_of_memory */ );
+
+  /* Make sure it worked. Clean up if it didn't... */
+  if (rx_fifo_space == 0 || tx_fifo_space == 0)
+    {
+      if (rx_fifo_space)
+	clib_mem_free (rx_fifo_space);
+      else
+	clib_warning ("rx fifo preallocation failure: size %d npairs %d",
+		      a->rx_fifo_size, a->preallocated_fifo_pairs);
+
+      if (tx_fifo_space)
+	clib_mem_free (tx_fifo_space);
+      else
+	clib_warning ("tx fifo preallocation failure: size %d nfifos %d",
+		      a->tx_fifo_size, a->preallocated_fifo_pairs);
+      return;
+    }
+
+  /* Carve rx fifo space */
+  f = (svm_fifo_t *) rx_fifo_space;
+  for (i = 0; i < a->preallocated_fifo_pairs; i++)
+    {
+      f->next = fsh->free_fifos[FIFO_SEGMENT_RX_FREELIST];
+      fsh->free_fifos[FIFO_SEGMENT_RX_FREELIST] = f;
+      rx_fifo_space += sizeof (*f) + a->rx_fifo_size;
+      f = (svm_fifo_t *) rx_fifo_space;
+    }
+  /* Carve tx fifo space */
+  f = (svm_fifo_t *) tx_fifo_space;
+  for (i = 0; i < a->preallocated_fifo_pairs; i++)
+    {
+      f->next = fsh->free_fifos[FIFO_SEGMENT_TX_FREELIST];
+      fsh->free_fifos[FIFO_SEGMENT_TX_FREELIST] = f;
+      tx_fifo_space += sizeof (*f) + a->tx_fifo_size;
+      f = (svm_fifo_t *) tx_fifo_space;
+    }
+}
+
 /** (master) create an svm fifo segment */
 int
 svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
@@ -59,9 +124,7 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
   s->h = fsh;
   fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
 
-  /* Avoid vec_add1(...) failure when adding a fifo, etc. */
-  vec_validate (fsh->fifos, 64);
-  _vec_len (fsh->fifos) = 0;
+  preallocate_fifo_pairs (fsh, a);
 
   ssvm_pop_heap (oldheap);
 
@@ -102,6 +165,8 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
   sh->opaque[0] = fsh;
   s->h = fsh;
   fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
+
+  preallocate_fifo_pairs (fsh, a);
 
   sh->ready = 1;
   a->new_segment_index = s - sm->segments;
@@ -154,7 +219,8 @@ svm_fifo_segment_delete (svm_fifo_segment_private_t * s)
 
 svm_fifo_t *
 svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
-			     u32 data_size_in_bytes)
+			     u32 data_size_in_bytes,
+			     svm_fifo_segment_freelist_t list_index)
 {
   ssvm_shared_header_t *sh;
   svm_fifo_segment_header_t *fsh;
@@ -167,6 +233,29 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
   ssvm_lock (sh, 1, 0);
   oldheap = ssvm_push_heap (sh);
 
+  switch (list_index)
+    {
+    case FIFO_SEGMENT_RX_FREELIST:
+    case FIFO_SEGMENT_TX_FREELIST:
+      f = fsh->free_fifos[list_index];
+      if (f)
+	{
+	  fsh->free_fifos[list_index] = f->next;
+	  /* (re)initialize the fifo, as in svm_fifo_create */
+	  memset (f, 0, sizeof (*f));
+	  f->nitems = data_size_in_bytes;
+	  f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
+	  goto found;
+	}
+      /* FALLTHROUGH */
+    case FIFO_SEGMENT_FREELIST_NONE:
+      break;
+
+    default:
+      clib_warning ("ignore bogus freelist %d", list_index);
+      break;
+    }
+
   /* Note: this can fail, in which case: create another segment */
   f = svm_fifo_create (data_size_in_bytes);
   if (PREDICT_FALSE (f == 0))
@@ -176,37 +265,62 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
       return (0);
     }
 
-  vec_add1 (fsh->fifos, f);
+found:
+  /* If rx_freelist add to active fifos list. When cleaning up segment,
+   * we need a list of active sessions that should be disconnected. Since
+   * both rx and tx fifos keep pointers to the session, it's enough to track
+   * only one. */
+  if (list_index == FIFO_SEGMENT_RX_FREELIST)
+    {
+      if (fsh->fifos)
+	{
+	  fsh->fifos->prev = f;
+	  f->next = fsh->fifos;
+	}
+      fsh->fifos = f;
+    }
+
   ssvm_pop_heap (oldheap);
   ssvm_unlock (sh);
   return (f);
 }
 
 void
-svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f)
+svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
+			    svm_fifo_segment_freelist_t list_index)
 {
   ssvm_shared_header_t *sh;
   svm_fifo_segment_header_t *fsh;
   void *oldheap;
-  int i;
 
   sh = s->ssvm.sh;
   fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
 
   ssvm_lock (sh, 1, 0);
   oldheap = ssvm_push_heap (sh);
-  for (i = 0; i < vec_len (fsh->fifos); i++)
-    {
-      if (fsh->fifos[i] == f)
-	{
-	  vec_delete (fsh->fifos, 1, i);
-	  goto found;
-	}
-    }
-  clib_warning ("fifo 0x%llx not found in fifo table...", f);
 
-found:
-  clib_mem_free (f);
+  switch (list_index)
+    {
+    case FIFO_SEGMENT_RX_FREELIST:
+      /* Remove from active list */
+      if (f->prev)
+	f->prev->next = f->next;
+      if (f->next)
+	f->next->prev = f->prev;
+      /* FALLTHROUGH */
+    case FIFO_SEGMENT_TX_FREELIST:
+      /* Add to free list */
+      f->next = fsh->free_fifos[list_index];
+      fsh->free_fifos[list_index] = f;
+      /* FALLTHROUGH */
+    case FIFO_SEGMENT_FREELIST_NONE:
+      break;
+
+    default:
+      clib_warning ("ignore bogus freelist %d", list_index);
+      break;
+    }
+
   ssvm_pop_heap (oldheap);
   ssvm_unlock (sh);
 }

@@ -160,6 +160,7 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   props->rx_fifo_size = options[SESSION_OPTIONS_RX_FIFO_SIZE];
   props->tx_fifo_size = options[SESSION_OPTIONS_TX_FIFO_SIZE];
   props->add_segment = props->add_segment_size != 0;
+  props->preallocated_fifo_pairs = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
   props->use_private_segment = options[APP_OPTIONS_FLAGS]
     & APP_OPTIONS_FLAGS_BUILTIN_APP;
 
@@ -395,7 +396,7 @@ application_format_connects (application_t * app, int verbose)
   vlib_main_t *vm = vlib_get_main ();
   segment_manager_t *sm;
   u8 *app_name, *s = 0;
-  int i, j;
+  int j;
 
   /* Header */
   if (app == 0)
@@ -419,22 +420,16 @@ application_format_connects (application_t * app, int verbose)
   for (j = 0; j < vec_len (sm->segment_indices); j++)
     {
       svm_fifo_segment_private_t *fifo_segment;
-      svm_fifo_t **fifos;
+      svm_fifo_t *fifo;
       u8 *str;
 
       fifo_segment = svm_fifo_get_segment (sm->segment_indices[j]);
-      fifos = svm_fifo_segment_get_fifos (fifo_segment);
-      for (i = 0; i < vec_len (fifos); i++)
+      fifo = svm_fifo_segment_get_fifo_list (fifo_segment);
+      while (fifo)
 	{
-	  svm_fifo_t *fifo;
 	  u32 session_index, thread_index;
 	  stream_session_t *session;
 
-	  /* There are 2 fifos/session. Avoid printing twice. */
-	  if (i % 2)
-	    continue;
-
-	  fifo = fifos[i];
 	  session_index = fifo->master_session_index;
 	  thread_index = fifo->master_thread_index;
 
@@ -448,9 +443,10 @@ application_format_connects (application_t * app, int verbose)
 	    s = format (s, "%-40s%-20s", str, app_name);
 
 	  vlib_cli_output (vm, "%v", s);
-
 	  vec_reset_length (s);
 	  vec_free (str);
+
+	  fifo = fifo->next;
 	}
       vec_free (s);
     }

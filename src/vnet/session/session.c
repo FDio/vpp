@@ -1048,19 +1048,21 @@ session_vpp_event_queue_allocate (session_manager_main_t * smm,
 {
   api_main_t *am = &api_main;
   void *oldheap;
+  u32 event_queue_length = 2048;
 
   if (smm->vpp_event_queues[thread_index] == 0)
     {
       /* Allocate event fifo in the /vpe-api shared-memory segment */
       oldheap = svm_push_data_heap (am->vlib_rp);
 
+      if (smm->configured_event_queue_length)
+	event_queue_length = smm->configured_event_queue_length;
+
       smm->vpp_event_queues[thread_index] =
-	unix_shared_memory_queue_init (2048 /* nels $$$$ config */ ,
-				       sizeof (session_fifo_event_t),
-				       0 /* consumer pid */ ,
-				       0
-				       /* (do not) send signal when queue non-empty */
-	);
+	unix_shared_memory_queue_init
+	(event_queue_length,
+	 sizeof (session_fifo_event_t), 0 /* consumer pid */ ,
+	 0 /* (do not) send signal when queue non-empty */ );
 
       svm_pop_heap (oldheap);
     }
@@ -1187,6 +1189,30 @@ session_manager_main_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (session_manager_main_init)
+     static clib_error_t *session_config_fn (vlib_main_t * vm,
+					     unformat_input_t * input)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  u32 nitems;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "event-queue-length %d", &nitems))
+	{
+	  if (nitems >= 2048)
+	    smm->configured_event_queue_length = nitems;
+	  else
+	    clib_warning ("event queue length %d too small, ignored", nitems);
+	}
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (session_config_fn, "session");
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
