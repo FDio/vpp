@@ -422,6 +422,7 @@ memif_int_fd_read_ready (unix_file_t * uf)
   vnet_main_t *vnm = vnet_get_main ();
   memif_if_t *mif = vec_elt_at_index (mm->interfaces, uf->private_data);
   u8 b;
+  u16 c;
   ssize_t size;
 
   size = read (uf->file_descriptor, &b, sizeof (b));
@@ -432,9 +433,20 @@ memif_int_fd_read_ready (unix_file_t * uf)
 		     unix_main.file_pool + mif->interrupt_line.index);
       mif->interrupt_line.index = ~0;
       mif->interrupt_line.fd = -1;
+      return 0;
     }
-  else
-    vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, 0);
+  /* read all data from socket to prevent socket buffer overflow */
+  while (1)
+    {
+      size = read (uf->file_descriptor, &c, sizeof (c));
+      if (size < 0)
+        {
+          if (errno != EWOULDBLOCK)
+            DEBUG_LOG ("recv error!");
+          break;
+        }
+    }
+  vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, 0);
   return 0;
 }
 
@@ -572,6 +584,12 @@ memif_connect_master (vlib_main_t * vm, memif_if_t * mif)
       DEBUG_UNIX_LOG ("Failed to create a pair of connected sockets");
       goto error;
     }
+
+  /* make interrupt socket non-blocking */
+  if (fcntl (fd_array[0], F_SETFL, O_NONBLOCK) < 0)
+    DEBUG_UNIX_LOG ("set O_NONBLOCK on interrupt fd fail");
+  if (fcntl (fd_array[1], F_SETFL, O_NONBLOCK) < 0)
+    DEBUG_UNIX_LOG ("set O_NONBLOCK on interrupt fd fail");
 
   mif->interrupt_line.fd = fd_array[0];
   template.read_function = memif_int_fd_read_ready;
