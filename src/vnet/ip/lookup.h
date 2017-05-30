@@ -93,9 +93,6 @@ typedef struct
   /* Interface which has this address. */
   u32 sw_if_index;
 
-  /* Adjacency for neighbor probe (ARP) for this interface address. */
-  u32 neighbor_probe_adj_index;
-
   /* Address (prefix) length for this interface. */
   u16 address_length;
 
