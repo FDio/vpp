@@ -111,6 +111,7 @@ attach_builtin_uri_server ()
   options[SESSION_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
   options[SESSION_OPTIONS_SEGMENT_SIZE] = (2 << 30);	/*$$$$ config / arg */
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+  options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 1024;
 
   a->options = options;
 

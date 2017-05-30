@@ -83,14 +83,18 @@ typedef struct
 
   pid_t my_pid;
 
-  /* For deadman timers */
-  clib_time_t clib_time;
+  f64 test_start_time;
+  f64 test_end_time;
 
-  /* Connection counts */
   u32 expected_connections;
+  u32 **connection_index_by_thread;
   volatile u32 ready_connections;
+  volatile u32 finished_connections;
 
-  /* Signal variables */
+  volatile u64 rx_total;
+  u32 cli_node_index;
+
+  /* Signal variable */
   volatile int run_test;
 
   /* Bytes to send */
@@ -107,6 +111,7 @@ typedef struct
   u8 test_return_packets;
 
   u8 is_init;
+  u8 test_client_attached;
 
   u32 node_index;
 
