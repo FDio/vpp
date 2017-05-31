@@ -20,11 +20,11 @@
 #ifndef __included_bihash_24_8_h__
 #define __included_bihash_24_8_h__
 
+#include <vppinfra/crc32.h>
 #include <vppinfra/heap.h>
 #include <vppinfra/format.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/xxhash.h>
-#include <vppinfra/crc32.h>
 
 typedef struct
 {
@@ -44,7 +44,7 @@ clib_bihash_is_free_24_8 (const clib_bihash_kv_24_8_t * v)
 static inline u64
 clib_bihash_hash_24_8 (const clib_bihash_kv_24_8_t * v)
 {
-#if __SSE4_2__
+#ifdef clib_crc32c_uses_intrinsics
   return clib_crc32c ((u8 *) v->key, 24);
 #else
   u64 tmp = v->key[0] ^ v->key[1] ^ v->key[2];
