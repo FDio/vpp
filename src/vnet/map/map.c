@@ -19,28 +19,9 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
 #include <vnet/map/map_dpo.h>
+#include <vppinfra/crc32.h>
 
 #include "map.h"
-
-#ifdef __SSE4_2__
-static inline u32
-crc_u32 (u32 data, u32 value)
-{
-  __asm__ volatile ("crc32l %[data], %[value];":[value] "+r" (value):[data]
-		    "rm" (data));
-  return value;
-}
-#else
-#include <vppinfra/xxhash.h>
-
-static inline u32
-crc_u32 (u32 data, u32 value)
-{
-  u64 tmp = ((u64) data << 32) | (u64) value;
-  return (u32) clib_xxhash (tmp);
-}
-#endif
-
 
 /*
  * This code supports the following MAP modes:
@@ -1488,10 +1469,14 @@ map_ip4_reass_get (u32 src, u32 dst, u16 fragment_id,
   };
 
   u32 h = 0;
+#ifdef clib_crc32c_uses_intrinsics
+  h = clib_crc32c ((u8 *) k.as_u32, 16);
+#else
   h = crc_u32 (k.as_u32[0], h);
   h = crc_u32 (k.as_u32[1], h);
   h = crc_u32 (k.as_u32[2], h);
   h = crc_u32 (k.as_u32[3], h);
+#endif
   h = h >> (32 - mm->ip4_reass_ht_log2len);
 
   f64 now = vlib_time_now (mm->vlib_main);
