@@ -17,6 +17,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
+#include <vppinfra/crc32.h>
 #include <vppinfra/error.h>
 #include <flowprobe/flowprobe.h>
 #include <vnet/ip/ip6_packet.h>
@@ -258,10 +259,16 @@ static inline u32
 flowprobe_hash (flowprobe_key_t * k)
 {
   flowprobe_main_t *fm = &flowprobe_main;
-  int i;
   u32 h = 0;
-  for (i = 0; i < sizeof (k->as_u32) / sizeof (u32); i++)
-    h = crc_u32 (k->as_u32[i], h);
+
+#ifdef clib_crc32c_uses_intrinsics
+  h = clib_crc32c ((u8 *) k->as_u32, FLOWPROBE_KEY_IN_U32);
+#else
+  u64 tmp =
+    k->as_u32[0] ^ k->as_u32[1] ^ k->as_u32[2] ^ k->as_u32[3] ^ k->as_u32[4];
+  h = clib_xxhash (tmp);
+#endif
+
   return h >> (32 - fm->ht_log2len);
 }
 
