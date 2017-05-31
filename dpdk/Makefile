@@ -26,7 +26,7 @@ DPDK_MLX5_PMD         ?= n
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
 DPDK_VERSION ?= 17.05
-PKG_SUFFIX ?= vpp4
+PKG_SUFFIX ?= vpp5
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
@@ -41,7 +41,6 @@ AESNIMB_LIB_SOURCE := $(B)/intel-ipsec-mb-0.44-gcm.2
 ISA_L_CRYPTO_LIB_TARBALL := isa_l_crypto.tar.gz
 ISA_L_CRYPTO_LIB_TARBALL_URL := http://github.com/01org/isa-l_crypto/archive/master.tar.gz
 ISA_L_CRYPTO_LIB_SOURCE := $(B)/isa-l_crypto-master
-ISA_L_CRYPTO_INSTALL_DIR := $(ISA_L_CRYPTO_LIB_SOURCE)/install
 endif
 
 ifneq (,$(findstring clang,$(CC)))
@@ -91,8 +90,8 @@ DPDK_EXTRA_CFLAGS := -g -O0
 endif
 
 ifeq ($(DPDK_CRYPTO_SW_PMD),y)
-DPDK_EXTRA_CFLAGS += -I$(ISA_L_CRYPTO_INSTALL_DIR)/include
-DPDK_EXTRA_LDFLAGS += -L$(ISA_L_CRYPTO_INSTALL_DIR)/lib
+DPDK_EXTRA_CFLAGS += -I$(I)/include
+DPDK_EXTRA_LDFLAGS += -L$(I)/lib
 DPDK_MAKE_EXTRA_ARGS += AESNI_MULTI_BUFFER_LIB_PATH=$(AESNIMB_LIB_SOURCE)
 endif
 
@@ -168,14 +167,12 @@ $(CURDIR)/$(AESNIMB_LIB_TARBALL):
 		then cp $(DPDK_DOWNLOAD_DIR)/$(AESNIMB_LIB_TARBALL) $(CURDIR) ; \
 		else curl -o $@ -LO $(AESNIMB_LIB_TARBALL_URL) ; \
 	fi
-	@rm -f $(B)/.download.ok
 
 $(CURDIR)/$(ISA_L_CRYPTO_LIB_TARBALL):
 	@if [ -e $(DPDK_DOWNLOAD_DIR)/$(ISA_L_CRYPTO_LIB_TARBALL) ] ; \
 		then cp $(DPDK_DOWNLOAD_DIR)/$(ISA_L_CRYPTO_LIB_TARBALL) $(CURDIR) ; \
 		else curl -o $@ -LO $(ISA_L_CRYPTO_LIB_TARBALL_URL) ; \
 	fi
-	@rm -f $(B)/.download.ok
 
 DPDK_DOWNLOADS = $(CURDIR)/$(DPDK_TARBALL)
 ifeq ($(DPDK_CRYPTO_SW_PMD),y)
@@ -236,10 +233,8 @@ ifeq ($(DPDK_CRYPTO_SW_PMD),y)
 	make -C $(AESNIMB_LIB_SOURCE) -j NO_GCM=y
 	cp $(AESNIMB_LIB_SOURCE)/libIPSec_MB.a $(I)/lib/
 	# Build ISA-L Crypto library
-	cd $(ISA_L_CRYPTO_LIB_SOURCE) && ./autogen.sh && \
-	  ./configure --prefix=$(ISA_L_CRYPTO_INSTALL_DIR) CFLAGS='-fPIC -DPIC -O2'
+	cd $(ISA_L_CRYPTO_LIB_SOURCE) && ./autogen.sh && ./configure --prefix=$(I)
 	make -C $(ISA_L_CRYPTO_LIB_SOURCE) -j install
-	cp $(ISA_L_CRYPTO_INSTALL_DIR)/lib/libisal_crypto.* $(I)/lib/
 endif
 	@make $(DPDK_MAKE_ARGS) install
 	@touch $@
