@@ -52,7 +52,8 @@ format_mpls_lookup_trace (u8 * s, va_list * args)
               t->next_index, t->lfib_index, t->lb_index, t->hash,
               vnet_mpls_uc_get_label(
                   clib_net_to_host_u32(t->label_net_byte_order)),
-              vnet_mpls_uc_get_s(t->label_net_byte_order));
+              vnet_mpls_uc_get_s(
+                  clib_net_to_host_u32(t->label_net_byte_order)));
   return s;
 }
 
