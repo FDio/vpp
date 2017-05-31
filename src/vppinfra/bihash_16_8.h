@@ -24,6 +24,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/xxhash.h>
+#include <vppinfra/crc32.h>
 
 typedef struct
 {
@@ -40,39 +41,16 @@ clib_bihash_is_free_16_8 (clib_bihash_kv_16_8_t * v)
   return 0;
 }
 
-#if __SSE4_2__
-#ifndef __defined_crc_u32__
-#define __defined_crc_u32__
-static inline u32
-crc_u32 (u32 data, u32 value)
-{
-  __asm__ volatile ("crc32l %[data], %[value];":[value] "+r" (value):[data]
-		    "rm" (data));
-  return value;
-}
-#endif /* __defined_crc_u32__ */
-
 static inline u64
 clib_bihash_hash_16_8 (clib_bihash_kv_16_8_t * v)
 {
-  u32 *dp = (u32 *) & v->key[0];
-  u32 value = 0;
-
-  value = crc_u32 (dp[0], value);
-  value = crc_u32 (dp[1], value);
-  value = crc_u32 (dp[2], value);
-  value = crc_u32 (dp[3], value);
-
-  return value;
-}
+#ifdef clib_crc32c_uses_intrinsics
+  return clib_crc32c ((u8 *) v->key, 16);
 #else
-static inline u64
-clib_bihash_hash_16_8 (clib_bihash_kv_16_8_t * v)
-{
   u64 tmp = v->key[0] ^ v->key[1];
   return clib_xxhash (tmp);
-}
 #endif
+}
 
 static inline u8 *
 format_bihash_kvp_16_8 (u8 * s, va_list * args)
