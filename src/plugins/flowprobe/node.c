@@ -21,6 +21,19 @@
 #include <flowprobe/flowprobe.h>
 #include <vnet/ip/ip6_packet.h>
 
+#ifndef __defined_crc_u32__
+/* crc_u32 is defined in src/vppinfra/bihash_16_8.h
+ * only for SSE 4.2 amd armv8+crc */
+#include <vppinfra/xxhash.h>
+
+static inline u32
+crc_u32 (u32 data, u32 value)
+{
+  u64 tmp = ((u64) data << 32) | (u64) value;
+  return (u32) clib_xxhash (tmp);
+}
+#endif
+
 static void flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e);
 
 /**

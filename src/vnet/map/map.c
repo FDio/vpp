@@ -30,6 +30,13 @@ crc_u32 (u32 data, u32 value)
 		    "rm" (data));
   return value;
 }
+#elif __ARM_FEATURE_CRC32
+static inline u32
+crc_u32 (u32 data, u32 value)
+{
+  __asm__ volatile ("crc32cw %w[v], %w[c], %w[v]":[v]"+r"(value):[c]"r"(data));
+  return value;
+}
 #else
 #include <vppinfra/xxhash.h>
 

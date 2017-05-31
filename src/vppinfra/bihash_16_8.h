@@ -47,11 +47,23 @@ static inline u32
 crc_u32 (u32 data, u32 value)
 {
   __asm__ volatile ("crc32l %[data], %[value];":[value] "+r" (value):[data]
-		    "rm" (data));
+                    "rm" (data));
   return value;
 }
-#endif /* __defined_crc_u32__ */
+#endif
+#elif __ARM_FEATURE_CRC32
+#ifndef __defined_crc_u32__
+#define __defined_crc_u32__
+static inline u32
+crc_u32 (u32 data, u32 value)
+{
+  __asm__ volatile ("crc32cw %w[v], %w[c], %w[v]":[v]"+r"(value):[c]"r"(data));
+  return value;
+}
+#endif
+#endif /* __SSE4_2__ || __ARM_FEATURE_CRC32  */
 
+#ifdef __defined_crc_u32__
 static inline u64
 clib_bihash_hash_16_8 (clib_bihash_kv_16_8_t * v)
 {
