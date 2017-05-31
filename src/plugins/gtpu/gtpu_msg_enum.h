@@ -1,7 +1,7 @@
 /*
  * gtpu_msg_enum.h - vpp engine plug-in message enumeration
  *
- * Copyright (c) <current-year> <your-organization>
+ * Copyright (c) 2017 Intel and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
