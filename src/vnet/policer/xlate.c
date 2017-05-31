@@ -1316,7 +1316,7 @@ sse2_pol_convert_hw_to_cfg_params (sse2_qos_pol_hw_params_st * hw,
     }
 
   if ((hw->rfc == IPE_RFC_RFC4115) &&
-      !(hw->peak_rate_man << hw->rate_exp) && !(hw->extd_bkt_limit_man))
+      (hw->peak_rate_man << hw->rate_exp) == 0 && !(hw->extd_bkt_limit_man))
     {
       /*
        * For a 1R2C, we set EIR = 0, EB = 0
