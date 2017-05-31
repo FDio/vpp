@@ -16,6 +16,7 @@ export BR=$(WS_ROOT)/build-root
 CCACHE_DIR?=$(BR)/.ccache
 GDB?=gdb
 PLATFORM?=vpp
+SAMPLE_PLUGIN?=no
 
 MINIMAL_STARTUP_CONF="unix { interactive }"
 
@@ -82,6 +83,12 @@ CONFIRM=-y
 FORCE=--force-yes
 endif
 
+TARGETS = vpp
+
+ifneq ($(SAMPLE_PLUGIN),no)
+TARGETS += sample-plugin
+endif
+
 .PHONY: help bootstrap wipe wipe-release build build-release rebuild rebuild-release
 .PHONY: run run-release debug debug-release build-vat run-vat pkg-deb pkg-rpm
 .PHONY: ctags cscope
@@ -141,14 +148,16 @@ help:
 	@echo " GDB=<path>          - gdb binary to use for debugging"
 	@echo " PLATFORM=<name>     - target platform. default is vpp"
 	@echo " TEST=<filter>       - apply filter to test set, see test-help"
+	@echo " SAMPLE_PLUGIN=yes   - in addition build/run/debug sample plugin"
 	@echo ""
 	@echo "Current Argument Values:"
-	@echo " V            = $(V)"
-	@echo " STARTUP_CONF = $(STARTUP_CONF)"
-	@echo " STARTUP_DIR  = $(STARTUP_DIR)"
-	@echo " GDB          = $(GDB)"
-	@echo " PLATFORM     = $(PLATFORM)"
-	@echo " DPDK_VERSION = $(DPDK_VERSION)"
+	@echo " V                 = $(V)"
+	@echo " STARTUP_CONF      = $(STARTUP_CONF)"
+	@echo " STARTUP_DIR       = $(STARTUP_DIR)"
+	@echo " GDB               = $(GDB)"
+	@echo " PLATFORM          = $(PLATFORM)"
+	@echo " DPDK_VERSION      = $(DPDK_VERSION)"
+	@echo " SAMPLE_PLUGIN     = $(SAMPLE_PLUGIN)"
 
 $(BR)/.bootstrap.ok:
 ifeq ($(findstring y,$(UNATTENDED)),y)
@@ -251,21 +260,21 @@ dist:
 	@ln -rs $(DIST_FILE).xz $(BR)/vpp-latest.tar.xz
 
 build: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM)_debug,vpp-install)
+	$(call make,$(PLATFORM)_debug,$(addsuffix -install,$(TARGETS)))
 
 wipedist:
 	@$(RM) $(BR)/*.tar.xz
 
 wipe: wipedist $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM)_debug,vpp-wipe)
+	$(call make,$(PLATFORM)_debug,$(addsuffix -wipe,$(TARGETS)))
 
 rebuild: wipe build
 
 build-release: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM),vpp-install)
+	$(call make,$(PLATFORM),$(addsuffix -install,$(TARGETS)))
 
 wipe-release: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM),vpp-wipe)
+	$(call make,$(PLATFORM),$(addsuffix -wipe,$(TARGETS)))
 
 rebuild-release: wipe-release build-release
 
@@ -342,12 +351,14 @@ define run
 	@echo "WARNING: STARTUP_CONF not defined or file doesn't exist."
 	@echo "         Running with minimal startup config: $(MINIMAL_STARTUP_CONF)\n"
 	@cd $(STARTUP_DIR) && \
-	  sudo $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) plugin_path $(wildcard $(1)/vpp/lib*/vpp_plugins)
+	  sudo $(2) $(1)/vpp/bin/vpp $(MINIMAL_STARTUP_CONF) \
+	    plugin_path $(subst $(subst ,, ),:,$(wildcard $(1)/*/lib*/vpp_plugins))
 endef
 else
 define run
 	@cd $(STARTUP_DIR) && \
-	  sudo $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') plugin_path $(wildcard $(1)/vpp/lib*/vpp_plugins)
+	  sudo $(2) $(1)/vpp/bin/vpp $(shell cat $(STARTUP_CONF) | sed -e 's/#.*//') \
+	    plugin_path $(subst $(subst ,, ),:,$(wildcard $(1)/*/lib*/vpp_plugins))
 endef
 endif
 
