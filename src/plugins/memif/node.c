@@ -325,30 +325,28 @@ static uword
 memif_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		vlib_frame_t * frame)
 {
-  u32 n_rx_packets = 0;
+  u32 n_rx = 0;
   memif_main_t *nm = &memif_main;
-  memif_if_t *mif;
   vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
-  memif_ring_type_t type;
 
   foreach_device_and_queue (dq, rt->devices_and_queues)
   {
+    memif_if_t *mif;
     mif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
     if ((mif->flags & MEMIF_IF_FLAG_ADMIN_UP) &&
 	(mif->flags & MEMIF_IF_FLAG_CONNECTED))
       {
 	if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
-	  type = MEMIF_RING_M2S;
+	  n_rx += memif_device_input_inline (vm, node, frame, mif,
+					     MEMIF_RING_M2S, dq->queue_id);
 	else
-	  type = MEMIF_RING_S2M;
-	n_rx_packets +=
-	  memif_device_input_inline (vm, node, frame, mif, type,
-				     dq->queue_id);
+	  n_rx += memif_device_input_inline (vm, node, frame, mif,
+					     MEMIF_RING_S2M, dq->queue_id);
       }
   }
 
-  return n_rx_packets;
+  return n_rx;
 }
 
 /* *INDENT-OFF* */

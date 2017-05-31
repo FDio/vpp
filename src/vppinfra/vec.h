@@ -495,7 +495,7 @@ do {								\
     @param A alignment (may be zero)
     @return V (value-result macro parameter)
 */
-#define vec_validate_init_empty_aligned(V,I,A) \
+#define vec_validate_init_empty_aligned(V,I,INIT,A) \
   vec_validate_init_empty_ha(V,I,INIT,0,A)
 
 /** \brief Add 1 element to end of vector (general version).

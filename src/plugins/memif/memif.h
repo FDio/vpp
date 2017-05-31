@@ -17,6 +17,9 @@
 
 #include <vppinfra/lock.h>
 
+#define MEMIF_DEFAULT_SOCKET_DIR "/run/vpp"
+#define MEMIF_DEFAULT_SOCKET_FILENAME  "memif.sock"
+
 typedef struct
 {
   u16 version;
@@ -50,7 +53,7 @@ typedef struct __attribute__ ((packed))
 #define MEMIF_DESC_FLAG_NEXT (1 << 0)
   u16 region;
   u32 buffer_length;
-  u32 length;;
+  u32 length;
   u8 reserved[4];
   u64 offset;
   u64 metadata;
@@ -62,6 +65,8 @@ typedef struct
 {
   u16 head __attribute__ ((aligned (128)));
   u16 tail __attribute__ ((aligned (128)));
+  u16 flags;
+#define MEMIF_RING_FLAG_MASK_INT 1
   memif_desc_t desc[0] __attribute__ ((aligned (128)));
 } memif_ring_t;
 
@@ -79,25 +84,18 @@ typedef struct
 
 typedef struct
 {
+  u8 *filename;
   int fd;
-  u32 index;
-} memif_file_t;
+  uword unix_file_index;
+  uword *pending_file_indices;
+  int ref_cnt;
+  int is_listener;
 
-typedef struct
-{
-  uword index;
-  dev_t sock_dev;
-  ino_t sock_ino;
-  memif_file_t socket;
-  u16 usage_counter;
-} memif_listener_t;
+  /* hash of all registered keys */
+  mhash_t dev_instance_by_key;
 
-typedef struct
-{
-  uword index;
-  memif_file_t connection;
-  uword listener_index;
-} memif_pending_conn_t;
+  uword *dev_instance_by_fd;
+} memif_socket_file_t;
 
 typedef struct
 {
@@ -111,16 +109,22 @@ typedef struct
 #define MEMIF_IF_FLAG_DELETING   (1 << 4)
 
   u64 key;
-  uword if_index;
   u32 hw_if_index;
   u32 sw_if_index;
+  uword dev_instance;
 
   u32 per_interface_next_index;
 
-  uword listener_index;
-  memif_file_t connection;
-  memif_file_t interrupt_line;
-  u8 *socket_filename;
+  /* socket connection */
+  uword socket_file_index;
+  int conn_fd;
+  uword conn_unix_file_index;
+
+  /* interrupts */
+  int *tx_int_fd;
+  int *rx_int_fd;
+  uword *tx_int_unix_file_index;
+  uword *rx_int_unix_file_index;
 
   void **regions;
 
@@ -147,30 +151,13 @@ typedef struct
   /* pool of all memory interfaces */
   memif_if_t *interfaces;
 
-  /* pool of all listeners */
-  memif_listener_t *listeners;
-
-  /* pool of pending connections */
-  memif_pending_conn_t *pending_conns;
-
-  /* bitmap of pending rx interfaces */
-  uword *pending_input_bitmap;
+  /* pool of all unix socket files */
+  memif_socket_file_t *socket_files;
+  mhash_t socket_file_index_by_filename;
 
   /* rx buffer cache */
   u32 **rx_buffers;
 
-  /* hash of all registered keys */
-  mhash_t if_index_by_key;
-
-  /* first cpu index */
-  u32 input_cpu_first_index;
-
-  /* total cpu count */
-  u32 input_cpu_count;
-
-  /* configuration */
-  u8 *default_socket_filename;
-#define MEMIF_DEFAULT_SOCKET_FILENAME  "/var/vpp/memif.sock"
 } memif_main_t;
 
 extern memif_main_t memif_main;
@@ -200,8 +187,7 @@ typedef struct
 } memif_create_if_args_t;
 
 int memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args);
-int memif_delete_if (vlib_main_t * vm, u64 key);
-void memif_disconnect (vlib_main_t * vm, memif_if_t * mif);
+int memif_delete_if (vlib_main_t * vm, memif_if_t * mif);
 clib_error_t *memif_plugin_api_hookup (vlib_main_t * vm);
 
 #ifndef __NR_memfd_create

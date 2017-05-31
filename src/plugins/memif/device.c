@@ -214,10 +214,10 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
-  if (mif->interrupt_line.fd > 0)
+  if (mif->rx_int_fd[rid] > 0 && (ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0)
     {
-      u8 b = rid;
-      CLIB_UNUSED (int r) = write (mif->interrupt_line.fd, &b, sizeof (b));
+      u64 b = 1;
+      CLIB_UNUSED (int r) = write (mif->tx_int_fd[rid], &b, sizeof (b));
     }
 
   return frame->n_vectors;
@@ -266,8 +266,6 @@ static clib_error_t *
 memif_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
   memif_main_t *apm = &memif_main;
-  vlib_main_t *vm = vlib_get_main ();
-  memif_msg_t msg = { 0 };
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   memif_if_t *mif = pool_elt_at_index (apm->interfaces, hw->dev_instance);
   static clib_error_t *error = 0;
@@ -277,19 +275,6 @@ memif_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   else
     {
       mif->flags &= ~MEMIF_IF_FLAG_ADMIN_UP;
-      if (!(mif->flags & MEMIF_IF_FLAG_DELETING)
-	  && mif->connection.index != ~0)
-	{
-	  msg.version = MEMIF_VERSION;
-	  msg.type = MEMIF_MSG_TYPE_DISCONNECT;
-	  if (send (mif->connection.fd, &msg, sizeof (msg), 0) < 0)
-	    {
-	      clib_unix_warning ("Failed to send disconnect request");
-	      error = clib_error_return_unix (0, "send fd %d",
-					      mif->connection.fd);
-	      memif_disconnect (vm, mif);
-	    }
-	}
     }
 
   return error;
