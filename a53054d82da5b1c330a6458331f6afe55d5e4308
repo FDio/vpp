@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_25c44591",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 422,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-31T16:28:39Z",
+      "side": 1,
+      "message": "Do we really need this to be public?",
+      "range": {
+        "startLine": 422,
+        "startChar": 0,
+        "endLine": 422,
+        "endChar": 4
+      },
+      "revId": "a53054d82da5b1c330a6458331f6afe55d5e4308",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_45cf39b1",
+        "filename": "src/vnet/tcp/builtin_client.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-05-31T16:28:39Z",
+      "side": 1,
+      "message": "Since we don\u0027t have anything waiting for feedback over binary API, we just need s-\u003esession_state \u003d SESSION_STATE_READY, I think.",
+      "range": {
+        "startLine": 406,
+        "startChar": 0,
+        "endLine": 406,
+        "endChar": 34
+      },
+      "revId": "a53054d82da5b1c330a6458331f6afe55d5e4308",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
