@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2017 Intel and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -45,6 +45,10 @@ format_decap_next (u8 * s, va_list * args)
       return format (s, "drop");
     case GTPU_INPUT_NEXT_L2_INPUT:
       return format (s, "l2");
+    case GTPU_INPUT_NEXT_IP4_INPUT:
+      return format (s, "ip4");
+    case GTPU_INPUT_NEXT_IP6_INPUT:
+      return format (s, "ip6");
     default:
       return format (s, "index %d", next_index);
     }
@@ -649,12 +653,17 @@ unformat_decap_next (unformat_input_t * input, va_list * args)
 
   if (unformat (input, "l2"))
     *result = GTPU_INPUT_NEXT_L2_INPUT;
+  else if (unformat (input, "ip4"))
+    *result = GTPU_INPUT_NEXT_IP4_INPUT;
+  else if (unformat (input, "ip6"))
+    *result = GTPU_INPUT_NEXT_IP6_INPUT;
   else if (unformat (input, "node %U", unformat_vlib_node, vm, &node_index))
     *result = get_decap_next_for_node (node_index, ipv4_set);
   else if (unformat (input, "%d", &tmp))
     *result = tmp;
   else
     return 0;
+
   return 1;
 }
 
@@ -871,7 +880,7 @@ VLIB_CLI_COMMAND (create_gtpu_tunnel_command, static) = {
   .short_help =
   "create gtpu tunnel src <local-vtep-addr>"
   " {dst <remote-vtep-addr>|group <mcast-vtep-addr> <intf-name>} teid <nn>"
-  " [encap-vrf-id <nn>] [decap-next [l2|node <name>]] [del]",
+  " [encap-vrf-id <nn>] [decap-next [l2|ip4|ip6|node <name>]] [del]",
   .function = gtpu_add_del_tunnel_command_fn,
 };
 /* *INDENT-ON* */
