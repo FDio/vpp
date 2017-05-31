@@ -1678,6 +1678,47 @@ arp_table_bind (ip4_main_t * im,
 }
 
 static clib_error_t *
+arp_hw_interface_add_del (vnet_main_t * vnm, u32 hw_if_index, u32 is_create)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  ethernet_arp_ip4_entry_t *e;
+
+  if (!is_create)
+    {
+      ethernet_arp_interface_t *eai;
+      u32 i, *to_delete = 0;
+      hash_pair_t *pair;
+
+      eai = &am->ethernet_arp_by_sw_if_index[hw_if_index];
+
+      /* *INDENT-OFF* */
+      hash_foreach_pair (pair, eai->arp_entries,
+      ({
+	e = pool_elt_at_index(am->ip4_entry_pool, pair->value[0]);
+	vec_add1 (to_delete, e - am->ip4_entry_pool);
+      }));
+      /* *INDENT-ON* */
+
+      for (i = 0; i < vec_len (to_delete); i++)
+	{
+	  ethernet_arp_ip4_over_ethernet_address_t delme;
+	  e = pool_elt_at_index (am->ip4_entry_pool, to_delete[i]);
+
+	  clib_memcpy (&delme.ethernet, e->ethernet_address, 6);
+	  delme.ip4.as_u32 = e->ip4_address.as_u32;
+
+	  vnet_arp_unset_ip4_over_ethernet (vnet_get_main (),
+					    e->sw_if_index, &delme);
+	}
+
+      vec_free (to_delete);
+    }
+  return 0;
+}
+
+VNET_HW_INTERFACE_ADD_DEL_FUNCTION (arp_hw_interface_add_del);
+
+static clib_error_t *
 ethernet_arp_init (vlib_main_t * vm)
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
