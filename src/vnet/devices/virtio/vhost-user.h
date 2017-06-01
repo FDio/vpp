@@ -310,6 +310,9 @@ typedef struct
 
   /* The number of rx interface/queue pairs in interrupt mode */
   u32 ifq_count;
+
+  /* debug on or off */
+  u8 debug;
 } vhost_user_main_t;
 
 typedef struct
