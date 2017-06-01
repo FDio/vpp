@@ -82,9 +82,8 @@ class VppRoutePath(object):
 
 class VppMRoutePath(VppRoutePath):
 
-    def __init__(self, nh_sw_if_index, flags):
-        super(VppMRoutePath, self).__init__("0.0.0.0",
-                                            nh_sw_if_index)
+    def __init__(self, nh_sw_if_index, flags, nh="0.0.0.0"):
+        super(VppMRoutePath, self).__init__(nh, nh_sw_if_index)
         self.nh_i_flags = flags
 
 
@@ -221,6 +220,7 @@ class VppIpMRoute(VppObject):
                                               self.grp_addr_len,
                                               self.e_flags,
                                               path.nh_itf,
+                                              path.nh_addr,
                                               path.nh_i_flags,
                                               rpf_id=self.rpf_id,
                                               table_id=self.table_id,
@@ -234,6 +234,7 @@ class VppIpMRoute(VppObject):
                                               self.grp_addr_len,
                                               self.e_flags,
                                               path.nh_itf,
+                                              path.nh_addr,
                                               path.nh_i_flags,
                                               table_id=self.table_id,
                                               is_add=0,
@@ -246,6 +247,7 @@ class VppIpMRoute(VppObject):
                                           self.grp_addr_len,
                                           self.e_flags,
                                           0xffffffff,
+                                          "",
                                           0,
                                           table_id=self.table_id,
                                           is_ipv6=self.is_ip6)
@@ -257,6 +259,7 @@ class VppIpMRoute(VppObject):
                                           self.grp_addr_len,
                                           self.e_flags,
                                           0xffffffff,
+                                          "",
                                           0,
                                           rpf_id=self.rpf_id,
                                           table_id=self.table_id,
@@ -272,6 +275,7 @@ class VppIpMRoute(VppObject):
                                           self.grp_addr_len,
                                           self.e_flags,
                                           path.nh_itf,
+                                          path.nh_addr,
                                           path.nh_i_flags,
                                           table_id=self.table_id,
                                           is_ipv6=self.is_ip6)
