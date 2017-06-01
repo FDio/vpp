@@ -17,11 +17,12 @@
 
 #include <vnet/mfib/mfib_itf.h>
 #include <vnet/mfib/mfib_signal.h>
+#include <vnet/fib/fib_path.h>
 
 mfib_itf_t *mfib_itf_pool;
 
 index_t
-mfib_itf_create (u32 sw_if_index,
+mfib_itf_create (fib_node_index_t path_index,
                  mfib_itf_flags_t mfi_flags)
 {
     mfib_itf_t *mfib_itf;
@@ -29,16 +30,89 @@ mfib_itf_create (u32 sw_if_index,
     pool_get_aligned(mfib_itf_pool, mfib_itf,
                      CLIB_CACHE_LINE_BYTES);
 
-    mfib_itf->mfi_sw_if_index = sw_if_index;
-    mfib_itf->mfi_flags = mfi_flags;
+    mfib_itf->mfi_sw_if_index = fib_path_get_resolving_interface(path_index);
     mfib_itf->mfi_si = INDEX_INVALID;
 
+    /*
+     * add the path index to the per-path hash
+     */
+    mfib_itf->mfi_hash = hash_set(mfib_itf->mfi_hash, path_index, mfi_flags);
+
+    /*
+     * the combined flags from all the paths is from just the one contributor
+     */
+    mfib_itf->mfi_flags = mfi_flags;
+
     return (mfib_itf - mfib_itf_pool);
+}
+
+static mfib_itf_flags_t
+mfib_itf_mk_flags (const mfib_itf_t *mfib_itf)
+{
+    mfib_itf_flags_t combined_flags, flags;
+    fib_node_index_t *path_index;
+
+    combined_flags = MFIB_ITF_FLAG_NONE;
+
+    hash_foreach(path_index, flags, mfib_itf->mfi_hash,
+    {
+        combined_flags |= flags;
+    });
+
+    return (combined_flags);
+}
+
+int
+mfib_itf_update (mfib_itf_t *mfib_itf,
+                 fib_node_index_t path_index,
+                 mfib_itf_flags_t mfi_flags)
+{
+    /*
+     * add or remove the path index to the per-path hash
+     */
+    if (MFIB_ITF_FLAG_NONE == mfi_flags)
+    {
+        hash_unset(mfib_itf->mfi_hash, path_index);
+    }
+    else
+    {
+        mfib_itf->mfi_hash = hash_set(mfib_itf->mfi_hash,
+                                      path_index,
+                                      mfi_flags);
+    }
+
+    /*
+     * re-generate the combined flags from all the paths.
+     */
+    mfib_itf->mfi_flags = mfib_itf_mk_flags(mfib_itf);
+
+    /*
+     * The interface can be removed if there are no more flags
+     */
+    return (MFIB_ITF_FLAG_NONE == mfib_itf->mfi_flags);
+}
+
+static void
+mfib_itf_hash_flush (mfib_itf_t *mfi)
+{
+    fib_node_index_t path_index, *path_indexp, *all = NULL;
+    mfib_itf_flags_t flags;
+
+    hash_foreach(path_index, flags, mfi->mfi_hash,
+    {
+        vec_add1(all, path_index);
+    });
+
+    vec_foreach(path_indexp, all)
+    {
+        hash_unset(mfi->mfi_hash, *path_indexp);
+    };
 }
 
 void
 mfib_itf_delete (mfib_itf_t *mfi)
 {
+    mfib_itf_hash_flush(mfi);
     mfib_signal_remove_itf(mfi);
     pool_put(mfib_itf_pool, mfi);
 }

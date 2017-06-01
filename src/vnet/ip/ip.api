@@ -446,6 +446,7 @@ autoreply define ip_mroute_add_del
   u8 is_local;
   u8 grp_address[16];
   u8 src_address[16];
+  u8 nh_address[16];
 };
 
 /** \brief Dump IP multicast fib table
