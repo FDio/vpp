@@ -1534,7 +1534,7 @@ default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 	 vnet_build_rewrite_for_sw_interface (vnm,
 					      sw_if_index,
 					      adj_get_link_type (ai),
-					      NULL), 0, 0);
+					      NULL), 0);
       break;
     case IP_LOOKUP_NEXT_DROP:
     case IP_LOOKUP_NEXT_PUNT:

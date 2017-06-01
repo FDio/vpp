@@ -1940,6 +1940,16 @@ typedef enum
   IP4_REWRITE_NEXT_ICMP_ERROR,
 } ip4_rewrite_next_t;
 
+/**
+ * This bits of an IPv4 address to mask to construct a multicast
+ * MAC address
+ */
+#if CLIB_ARCH_IS_BIG_ENDIAN
+#define IP4_MCAST_ADDR_MASK 0x007fffff
+#else
+#define IP4_MCAST_ADDR_MASK 0xffff7f00
+#endif
+
 always_inline uword
 ip4_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
@@ -2197,8 +2207,16 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      /*
 	       * copy bytes from the IP address into the MAC rewrite
 	       */
-	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
-	      vnet_fixup_one_header (adj1[0], &ip1->dst_address, ip1);
+	      vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
+					  adj0->
+					  rewrite_header.dst_mcast_offset,
+					  &ip0->dst_address.as_u32,
+					  (u8 *) ip0);
+	      vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
+					  adj0->
+					  rewrite_header.dst_mcast_offset,
+					  &ip1->dst_address.as_u32,
+					  (u8 *) ip1);
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -2277,7 +2295,11 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      /*
 	       * copy bytes from the IP address into the MAC rewrite
 	       */
-	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
+	      vnet_ip_mcast_fixup_header (IP4_MCAST_ADDR_MASK,
+					  adj0->
+					  rewrite_header.dst_mcast_offset,
+					  &ip0->dst_address.as_u32,
+					  (u8 *) ip0);
 	    }
 
 	  /* Update packet buffer attributes/set output interface. */
