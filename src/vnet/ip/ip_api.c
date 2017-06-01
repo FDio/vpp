@@ -1094,13 +1094,15 @@ mroute_add_del_handler (u8 is_add,
 			const mfib_prefix_t * prefix,
 			u32 entry_flags,
 			fib_rpf_id_t rpf_id,
-			u32 next_hop_sw_if_index, u32 itf_flags)
+			u32 next_hop_sw_if_index,
+			ip46_address_t * nh, u32 itf_flags)
 {
   stats_dslock_with_hint (1 /* release hint */ , 2 /* tag */ );
 
   fib_route_path_t path = {
     .frp_sw_if_index = next_hop_sw_if_index,
     .frp_proto = prefix->fp_proto,
+    .frp_addr = *nh,
   };
 
   if (is_local)
@@ -1134,6 +1136,7 @@ static int
 api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 {
   fib_protocol_t fproto;
+  ip46_address_t nh;
   u32 fib_index;
   int rv;
 
@@ -1158,6 +1161,8 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 		   sizeof (pfx.fp_grp_addr.ip4));
       clib_memcpy (&pfx.fp_src_addr.ip4, mp->src_address,
 		   sizeof (pfx.fp_src_addr.ip4));
+      memset (&nh.ip6, 0, sizeof (nh.ip6));
+      clib_memcpy (&nh.ip4, mp->nh_address, sizeof (nh.ip4));
     }
   else
     {
@@ -1165,6 +1170,7 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 		   sizeof (pfx.fp_grp_addr.ip6));
       clib_memcpy (&pfx.fp_src_addr.ip6, mp->src_address,
 		   sizeof (pfx.fp_src_addr.ip6));
+      clib_memcpy (&nh.ip6, mp->nh_address, sizeof (nh.ip6));
     }
 
   return (mroute_add_del_handler (mp->is_add,
@@ -1173,7 +1179,7 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 				  ntohl (mp->entry_flags),
 				  ntohl (mp->rpf_id),
 				  ntohl (mp->next_hop_sw_if_index),
-				  ntohl (mp->itf_flags)));
+				  &nh, ntohl (mp->itf_flags)));
 }
 
 void
