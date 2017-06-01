@@ -472,6 +472,8 @@ memif_int_fd_read_ready (unix_file_t * uf)
       mif->interrupt_line.index = ~0;
       mif->interrupt_line.fd = -1;
     }
+  else if (size < 0)
+    DEBUG_UNIX_LOG ("Failed to read from socket");
   else
     vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, b);
 
