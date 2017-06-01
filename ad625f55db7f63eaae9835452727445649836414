@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_7841c30a",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-06-01T23:10:25Z",
+      "side": 0,
+      "message": "The munmap code didn\u0027t get transferred over to the new code. Is that intentional?",
+      "revId": "ad625f55db7f63eaae9835452727445649836414",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}

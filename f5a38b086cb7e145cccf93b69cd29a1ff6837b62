@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_983c7795",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-06-01T23:10:25Z",
+      "side": 1,
+      "message": "Very chatty. Lots of debug messages now come to the console by default.",
+      "revId": "f5a38b086cb7e145cccf93b69cd29a1ff6837b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_b8373bb0",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 461,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-06-01T23:10:25Z",
+      "side": 1,
+      "message": "In the old code, we write the queue number in the socket. Now the new code writes 0 to the socket all the times and have a separate int_fd for each queue. So we need to convert the int_fd to the queue number and trigger interrupt for the correct queue, not queue 0 all the times.",
+      "revId": "f5a38b086cb7e145cccf93b69cd29a1ff6837b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_d8baef09",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 993,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-06-01T23:10:25Z",
+      "side": 1,
+      "message": "should get the value from args-\u003etx_queues",
+      "revId": "f5a38b086cb7e145cccf93b69cd29a1ff6837b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_f8bdb303",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 994,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-06-01T23:10:25Z",
+      "side": 1,
+      "message": "should get the value from args-\u003etx_queues",
+      "revId": "f5a38b086cb7e145cccf93b69cd29a1ff6837b62",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
