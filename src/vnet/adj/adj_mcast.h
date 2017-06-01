@@ -60,14 +60,10 @@ extern adj_index_t adj_mcast_add_or_lock(fib_protocol_t proto,
  * @param
  *  The offset in the rewrite a which to write in packet's
  *  IP Address
- *
- * @param
- *  The mask to apply to the packet berfore the rewrite.
  */
 extern void adj_mcast_update_rewrite(adj_index_t adj_index,
                                      u8 *rewrite,
-                                     u8 offset,
-                                     u32 mask);
+                                     u8 offset);
 
 /**
  * @brief

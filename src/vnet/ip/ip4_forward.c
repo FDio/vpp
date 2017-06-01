@@ -2368,6 +2368,16 @@ typedef enum
   IP4_REWRITE_NEXT_ICMP_ERROR,
 } ip4_rewrite_next_t;
 
+/**
+ * This bits of an IPv4 address to mask to construct a multicast
+ * MAC address
+ */
+#if CLIB_ARCH_IS_BIG_ENDIAN
+#define IP4_MCAST_ADDR_MASK 0x007fffff
+#else
+#define IP4_MCAST_ADDR_MASK 0xffff7f00
+#endif
+
 always_inline uword
 ip4_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
@@ -2573,6 +2583,24 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  vnet_rewrite_two_headers (adj0[0], adj1[0],
 				    ip0, ip1, sizeof (ethernet_header_t));
 
+	  if (is_mcast)
+	    {
+	      /*
+	       * copy bytes from the IP address into the MAC rewrite
+	       */
+	      vnet_fixup_one_header (IP4_MCAST_ADDR_MASK,
+				     adj0->rewrite_header.dst_mcast_offset,
+				     &ip0->dst_address.as_u32, (u8 *) ip0);
+	      vnet_fixup_one_header (IP4_MCAST_ADDR_MASK,
+				     adj0->rewrite_header.dst_mcast_offset,
+				     &ip1->dst_address.as_u32, (u8 *) ip1);
+	    }
+	  if (is_midchain)
+	    {
+	      adj0->sub_type.midchain.fixup_func (vm, adj0, p0);
+	      adj1->sub_type.midchain.fixup_func (vm, adj1, p1);
+	    }
+
 	  /*
 	   * Bump the per-adjacency counters
 	   */
@@ -2589,20 +2617,6 @@ ip4_rewrite_inline (vlib_main_t * vm,
 		 thread_index,
 		 adj_index1, 1,
 		 vlib_buffer_length_in_chain (vm, p1) + rw_len1);
-	    }
-
-	  if (is_midchain)
-	    {
-	      adj0->sub_type.midchain.fixup_func (vm, adj0, p0);
-	      adj1->sub_type.midchain.fixup_func (vm, adj1, p1);
-	    }
-	  if (is_mcast)
-	    {
-	      /*
-	       * copy bytes from the IP address into the MAC rewrite
-	       */
-	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
-	      vnet_fixup_one_header (adj1[0], &ip1->dst_address, ip1);
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -2681,7 +2695,9 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	      /*
 	       * copy bytes from the IP address into the MAC rewrite
 	       */
-	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
+	      vnet_fixup_one_header (IP4_MCAST_ADDR_MASK,
+				     adj0->rewrite_header.dst_mcast_offset,
+				     &ip0->dst_address.as_u32, (u8 *) ip0);
 	    }
 
 	  /* Update packet buffer attributes/set output interface. */

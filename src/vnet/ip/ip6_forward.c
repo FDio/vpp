@@ -1974,6 +1974,12 @@ typedef enum
   IP6_REWRITE_NEXT_ICMP_ERROR,
 } ip6_rewrite_next_t;
 
+/**
+ * This bits of an IPv6 address to mask to construct a multicast
+ * MAC address
+ */
+#define IP6_MCAST_ADDR_MASK 0xffffffff
+
 always_inline uword
 ip6_rewrite_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
@@ -2175,8 +2181,12 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	      /*
 	       * copy bytes from the IP address into the MAC rewrite
 	       */
-	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
-	      vnet_fixup_one_header (adj1[0], &ip1->dst_address, ip1);
+	      vnet_fixup_one_header (IP6_MCAST_ADDR_MASK,
+				     adj0->rewrite_header.dst_mcast_offset,
+				     &ip0->dst_address.as_u32[3], (u8 *) ip0);
+	      vnet_fixup_one_header (IP6_MCAST_ADDR_MASK,
+				     adj1->rewrite_header.dst_mcast_offset,
+				     &ip1->dst_address.as_u32[3], (u8 *) ip1);
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -2282,7 +2292,9 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 	  if (is_mcast)
 	    {
-	      vnet_fixup_one_header (adj0[0], &ip0->dst_address, ip0);
+	      vnet_fixup_one_header (IP6_MCAST_ADDR_MASK,
+				     adj0->rewrite_header.dst_mcast_offset,
+				     &ip0->dst_address.as_u32[3], (u8 *) ip0);
 	    }
 
 	  p0->error = error_node->errors[error0];
