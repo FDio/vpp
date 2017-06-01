@@ -40,7 +40,7 @@ DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf nasm indent
-DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6
+DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 python-six
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
