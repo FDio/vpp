@@ -32,7 +32,7 @@ endif
 
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 PKG=deb
-else ifeq ($(filter rhel centos fedora,$(OS_ID)),$(OS_ID))
+else ifeq ($(filter rhel centos fedora opensuse,$(OS_ID)),$(OS_ID))
 PKG=rpm
 endif
 
@@ -68,6 +68,10 @@ ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
 else
 	RPM_DEPENDS += lcov
 endif
+
+RPM_SUSE_DEPENDS = autoconf automake bison ccache chrpath distribution-release gcc6 glibc-devel-static
+RPM_SUSE_DEPENDS += java-1_8_0-openjdk-devel libopenssl-devel libtool lsb-release make openssl-devel
+RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
@@ -210,6 +214,8 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E yum install $(CONFIRM) --enablerepo=epel $(EPEL_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
+else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
+	@sudo -E zypper -n install -y $(RPM_SUSE_DEPENDS)
 else
 	$(error "This option currently works only on Ubuntu, Debian or Centos systems")
 endif
