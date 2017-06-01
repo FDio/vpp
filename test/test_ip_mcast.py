@@ -111,7 +111,7 @@ class TestIPMcast(VppTestCase):
                     capture.remove(p)
         return capture
 
-    def verify_capture_ip4(self, rx_if, sent):
+    def verify_capture_ip4(self, rx_if, sent, dst_mac=None):
         rxd = rx_if.get_capture(len(sent))
 
         try:
@@ -129,8 +129,11 @@ class TestIPMcast(VppTestCase):
                 tx_ip = tx[IP]
                 rx_ip = rx[IP]
 
+                if dst_mac is None:
+                    dst_mac = getmacbyip(rx_ip.dst)
+
                 # check the MAC address on the RX'd packet is correctly formed
-                self.assertEqual(eth.dst, getmacbyip(rx_ip.dst))
+                self.assertEqual(eth.dst, dst_mac)
 
                 self.assertEqual(rx_ip.src, tx_ip.src)
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
@@ -226,6 +229,26 @@ class TestIPMcast(VppTestCase):
         route_1_1_1_1_232_1_1_1.add_vpp_config()
 
         #
+        # An (S,G).
+        # one accepting interface, pg0, 2 forwarding interfaces
+        # that use unicast next-hops
+        #
+        route_1_1_1_1_232_1_1_2 = VppIpMRoute(
+            self,
+            "1.1.1.1",
+            "232.1.1.2", 64,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                           nh=self.pg1.remote_ip4),
+             VppMRoutePath(self.pg2.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                           nh=self.pg2.remote_ip4)])
+        route_1_1_1_1_232_1_1_2.add_vpp_config()
+
+        #
         # An (*,G/m).
         # one accepting interface, pg0, 1 forwarding interfaces
         #
@@ -284,6 +307,26 @@ class TestIPMcast(VppTestCase):
             remark="IP multicast packets forwarded on PG3")
 
         #
+        # a stream to the unicast next-hops
+        #
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.2")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1->7
+        self.verify_capture_ip4(self.pg1, tx, dst_mac=self.pg1.remote_mac)
+        self.verify_capture_ip4(self.pg2, tx, dst_mac=self.pg2.remote_mac)
+
+        # no replications on Pg0 nor pg3
+        self.pg0.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG0")
+        self.pg3.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG3")
+
+        #
         # a stream that matches the route for (*,232.0.0.0/8)
         # Send packets with the 9th bit set so we test the correct clearing
         # of that bit in the mac rewrite
@@ -316,7 +359,7 @@ class TestIPMcast(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        # We expect replications on Pg1, 2, 3.
+        # We expect replications on Pg1->7
         self.verify_capture_ip4(self.pg1, tx)
         self.verify_capture_ip4(self.pg2, tx)
         self.verify_capture_ip4(self.pg3, tx)
@@ -324,6 +367,10 @@ class TestIPMcast(VppTestCase):
         self.verify_capture_ip4(self.pg5, tx)
         self.verify_capture_ip4(self.pg6, tx)
         self.verify_capture_ip4(self.pg7, tx)
+
+        # no replications on Pg0
+        self.pg0.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG0")
 
     def test_ip6_mcast(self):
         """ IPv6 Multicast Replication """

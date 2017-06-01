@@ -2300,6 +2300,7 @@ class VppPapiProvider(object):
                           e_flags,
                           next_hop_afi,
                           next_hop_sw_if_index,
+                          next_hop_address,
                           i_flags,
                           bier_imp=0,
                           rpf_id=0,
@@ -2324,7 +2325,8 @@ class VppPapiProvider(object):
              'next_hop_afi': next_hop_afi,
              'grp_address_length': grp_address_length,
              'grp_address': grp_address,
-             'src_address': src_address})
+             'src_address': src_address,
+             'nh_address': next_hop_address})
 
     def mfib_signal_dump(self):
         return self.api(self.papi.mfib_signal_dump, {})

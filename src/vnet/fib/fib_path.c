@@ -2323,6 +2323,8 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	    case FIB_FORW_CHAIN_TYPE_NSH:
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
 	    {
 		adj_index_t ai;
 
@@ -2338,8 +2340,6 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 
 		break;
 	    }
-	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
-	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
 	    case FIB_FORW_CHAIN_TYPE_BIER:
 		break;
 	    }

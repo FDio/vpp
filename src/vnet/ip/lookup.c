@@ -899,14 +899,30 @@ vnet_ip_mroute_cmd (vlib_main_t * vm,
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  pfx.fp_len = 128;
 	}
-      else if (unformat (line_input, "via %U",
+      else if (unformat (line_input, "via %U %U",
+			 unformat_ip4_address, &rpath.frp_addr.ip4,
 			 unformat_vnet_sw_interface, vnm,
 			 &rpath.frp_sw_if_index))
 	{
 	  rpath.frp_weight = 1;
 	}
+      else if (unformat (line_input, "via %U %U",
+			 unformat_ip6_address, &rpath.frp_addr.ip6,
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index))
+	{
+	  rpath.frp_weight = 1;
+	}
+      else if (unformat (line_input, "via %U",
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index))
+	{
+	  memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
+	  rpath.frp_weight = 1;
+	}
       else if (unformat (line_input, "via local"))
 	{
+	  memset (&rpath.frp_addr, 0, sizeof (rpath.frp_addr));
 	  rpath.frp_sw_if_index = ~0;
 	  rpath.frp_weight = 1;
 	  rpath.frp_flags |= FIB_ROUTE_PATH_LOCAL;

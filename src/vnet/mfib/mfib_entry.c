@@ -217,7 +217,10 @@ format_mfib_entry (u8 * s, va_list * args)
     ({
         s = format(s, "\n  %U", format_mfib_itf, mfi);
     }));
-    s = format(s, "\n  RPF-ID:%d", mfib_entry->mfe_rpf_id);
+    if (MFIB_RPF_ID_NONE != mfib_entry->mfe_rpf_id)
+    {
+        s = format(s, "\n  RPF-ID:%d", mfib_entry->mfe_rpf_id);
+    }
     s = format(s, "\n  %U-chain\n  %U",
                format_fib_forw_chain_type,
                mfib_entry_get_default_chain_type(mfib_entry),
@@ -835,9 +838,9 @@ mfib_entry_path_update (fib_node_index_t mfib_entry_index,
 {
     fib_node_index_t path_index;
     mfib_path_ext_t *path_ext;
-    mfib_itf_flags_t old, new;
     mfib_entry_t *mfib_entry;
     mfib_entry_src_t *msrc;
+    mfib_itf_flags_t old;
 
     mfib_entry = mfib_entry_get(mfib_entry_index);
     ASSERT(NULL != mfib_entry);
@@ -873,37 +876,32 @@ mfib_entry_path_update (fib_node_index_t mfib_entry_index,
     {
         mfib_itf_t *mfib_itf;
 
-        new = itf_flags;
-
-        if (old != new)
+        if (old != itf_flags)
         {
-            if (MFIB_ITF_FLAG_NONE == new)
+            /*
+             * change of flag contributions
+             */
+            mfib_itf = mfib_entry_itf_find(msrc->mfes_itfs,
+                                           rpath[0].frp_sw_if_index);
+
+            if (NULL == mfib_itf)
             {
-                /*
-                 * no more interface flags on this path, remove
-                 * from the data-plane set
-                 */
-                mfib_entry_itf_remove(msrc, rpath[0].frp_sw_if_index);
-            }
-            else if (MFIB_ITF_FLAG_NONE == old)
-            {
-                /*
-                 * This interface is now contributing
-                 */
                 mfib_entry_itf_add(msrc,
                                    rpath[0].frp_sw_if_index,
-                                   mfib_itf_create(rpath[0].frp_sw_if_index,
-                                                   itf_flags));
+                                   mfib_itf_create(path_index, itf_flags));
             }
             else
             {
-                /*
-                 * change of flag contributions
-                 */
-                mfib_itf = mfib_entry_itf_find(msrc->mfes_itfs,
-                                               rpath[0].frp_sw_if_index);
-                /* Seen by packets inflight */
-                mfib_itf->mfi_flags = new;
+                if (mfib_itf_update(mfib_itf,
+                                    path_index,
+                                    itf_flags))
+                {
+                    /*
+                     * no more interface flags on this path, remove
+                     * from the data-plane set
+                     */
+                    mfib_entry_itf_remove(msrc, rpath[0].frp_sw_if_index);
+                }
             }
         }
     }
@@ -952,7 +950,21 @@ mfib_entry_path_remove (fib_node_index_t mfib_entry_index,
         mfib_path_ext_remove(msrc, path_index);
         if (~0 != rpath[0].frp_sw_if_index)
         {
-            mfib_entry_itf_remove(msrc, rpath[0].frp_sw_if_index);
+            mfib_itf_t *mfib_itf;
+
+            mfib_itf = mfib_entry_itf_find(msrc->mfes_itfs,
+                                           rpath[0].frp_sw_if_index);
+
+            if (mfib_itf_update(mfib_itf,
+                                path_index,
+                                MFIB_ITF_FLAG_NONE))
+            {
+                /*
+                 * no more interface flags on this path, remove
+                 * from the data-plane set
+                 */
+                mfib_entry_itf_remove(msrc, rpath[0].frp_sw_if_index);
+            }
         }
     }
 
