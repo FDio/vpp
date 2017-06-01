@@ -49,14 +49,14 @@
  */
 
 
-#define VHOST_USER_DEBUG_SOCKET 0
 #define VHOST_DEBUG_VQ 0
 
-#if VHOST_USER_DEBUG_SOCKET == 1
-#define DBG_SOCK(args...) clib_warning(args);
-#else
-#define DBG_SOCK(args...)
-#endif
+#define DBG_SOCK(args...)			\
+  {						\
+    vhost_user_main_t *_vum = &vhost_user_main; \
+    if (_vum->debug)				\
+      clib_warning(args);			\
+  };
 
 #if VHOST_DEBUG_VQ == 1
 #define DBG_VQ(args...) clib_warning(args);
@@ -483,8 +483,6 @@ vhost_user_callfd_read_ready (unix_file_t * uf)
   u8 buff[8];
 
   n = read (uf->file_descriptor, ((char *) &buff), 8);
-  DBG_SOCK ("if %d CALL queue %d", uf->private_data >> 8,
-	    uf->private_data & 0xff);
 
   return 0;
 }
@@ -921,7 +919,7 @@ vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_CALL:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_CALL u64 %d",
+      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_CALL %d",
 		vui->hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
@@ -954,7 +952,7 @@ vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_KICK:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_KICK u64 %d",
+      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_KICK %d",
 		vui->hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
@@ -992,7 +990,7 @@ vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_SET_VRING_ERR:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_ERR u64 %d",
+      DBG_SOCK ("if %d msg VHOST_USER_SET_VRING_ERR %d",
 		vui->hw_if_index, msg.u64);
 
       q = (u8) (msg.u64 & 0xFF);
@@ -1020,9 +1018,6 @@ vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_GET_VRING_BASE:
-      DBG_SOCK ("if %d msg VHOST_USER_GET_VRING_BASE idx %d num %d",
-		vui->hw_if_index, msg.state.index, msg.state.num);
-
       if (msg.state.index >= VHOST_VRING_MAX_N)
 	{
 	  DBG_SOCK ("invalid vring index VHOST_USER_GET_VRING_BASE:"
@@ -1040,6 +1035,8 @@ vhost_user_socket_read (unix_file_t * uf)
 
       /* Spec says: Client must [...] stop ring upon receiving VHOST_USER_GET_VRING_BASE. */
       vhost_user_vring_close (vui, msg.state.index);
+      DBG_SOCK ("if %d msg VHOST_USER_GET_VRING_BASE idx %d num %d",
+		vui->hw_if_index, msg.state.index, msg.state.num);
       break;
 
     case VHOST_USER_NONE:
@@ -1101,28 +1098,30 @@ vhost_user_socket_read (unix_file_t * uf)
       break;
 
     case VHOST_USER_GET_PROTOCOL_FEATURES:
-      DBG_SOCK ("if %d msg VHOST_USER_GET_PROTOCOL_FEATURES",
-		vui->hw_if_index);
-
       msg.flags |= 4;
       msg.u64 = (1 << VHOST_USER_PROTOCOL_F_LOG_SHMFD) |
 	(1 << VHOST_USER_PROTOCOL_F_MQ);
       msg.size = sizeof (msg.u64);
+      DBG_SOCK
+	("if %d msg VHOST_USER_GET_PROTOCOL_FEATURES - reply 0x%016llx",
+	 vui->hw_if_index, msg.u64);
       break;
 
     case VHOST_USER_SET_PROTOCOL_FEATURES:
-      DBG_SOCK ("if %d msg VHOST_USER_SET_PROTOCOL_FEATURES features 0x%lx",
-		vui->hw_if_index, msg.u64);
+      DBG_SOCK
+	("if %d msg VHOST_USER_SET_PROTOCOL_FEATURES features 0x%016llx",
+	 vui->hw_if_index, msg.u64);
 
       vui->protocol_features = msg.u64;
 
       break;
 
     case VHOST_USER_GET_QUEUE_NUM:
-      DBG_SOCK ("if %d msg VHOST_USER_GET_QUEUE_NUM", vui->hw_if_index);
       msg.flags |= 4;
       msg.u64 = VHOST_VRING_MAX_N;
       msg.size = sizeof (msg.u64);
+      DBG_SOCK ("if %d msg VHOST_USER_GET_QUEUE_NUM - reply %d",
+		vui->hw_if_index, msg.u64);
       break;
 
     case VHOST_USER_SET_VRING_ENABLE:
@@ -3530,6 +3529,43 @@ VLIB_CLI_COMMAND (show_vhost_user_command, static) = {
     .path = "show vhost-user",
     .short_help = "show vhost-user [<interface> [<interface> [..]]] [descriptors]",
     .function = show_vhost_user_command_fn,
+};
+/* *INDENT-ON* */
+
+clib_error_t *
+debug_vhost_user_command_fn (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  vhost_user_main_t *vum = &vhost_user_main;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on"))
+	vum->debug = 1;
+      else if (unformat (line_input, "off"))
+	vum->debug = 0;
+      else
+	error = clib_error_return (0, "unknown input `%U'",
+				   format_unformat_error, line_input);
+    }
+
+  unformat_free (line_input);
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (debug_vhost_user_command, static) = {
+    .path = "debug vhost-user",
+    .short_help = "debug vhost-user <on | off>",
+    .function = debug_vhost_user_command_fn,
 };
 /* *INDENT-ON* */
 
