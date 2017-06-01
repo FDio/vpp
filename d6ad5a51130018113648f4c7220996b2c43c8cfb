@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_f6226500",
+        "filename": "Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 220,
+      "author": {
+        "id": 144
+      },
+      "writtenOn": "2017-06-01T18:37:05Z",
+      "side": 1,
+      "message": "My comment disappeared. I have to learn how this system works. My comment was to add openSUSE and correct CentOS spelling here.",
+      "range": {
+        "startLine": 220,
+        "startChar": 11,
+        "endLine": 220,
+        "endChar": 80
+      },
+      "revId": "d6ad5a51130018113648f4c7220996b2c43c8cfb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
