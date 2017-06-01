@@ -508,10 +508,9 @@ arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 	 * Complete the remaining fields of the adj's rewrite to direct the
 	 * complete of the rewrite at switch time by copying in the IP
 	 * dst address's bytes.
-	 * Ofset is 2 bytes into the MAC desintation address. And we copy 23 bits
-	 * from the address.
+	 * Ofset is 2 bytes into the MAC desintation address.
 	 */
-	adj_mcast_update_rewrite (ai, rewrite, offset, 0x007fffff);
+	adj_mcast_update_rewrite (ai, rewrite, offset);
 
 	break;
       }

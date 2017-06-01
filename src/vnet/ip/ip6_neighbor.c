@@ -672,10 +672,10 @@ ip6_ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 	 * Complete the remaining fields of the adj's rewrite to direct the
 	 * complete of the rewrite at switch time by copying in the IP
 	 * dst address's bytes.
-	 * Ofset is 2 bytes into the desintation address. And we write 4 bytes.
+	 * Ofset is 2 bytes into the desintation address.
 	 */
 	offset = vec_len (rewrite) - 2;
-	adj_mcast_update_rewrite (ai, rewrite, offset, 0xffffffff);
+	adj_mcast_update_rewrite (ai, rewrite, offset);
 
 	break;
       }

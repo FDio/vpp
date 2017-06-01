@@ -81,10 +81,6 @@ typedef CLIB_PACKED (struct {
    */
   u8 dst_mcast_offset;
 
-  /* The mask to apply to the lower 4 bytes of the IP address before ORing
-   * into the destinaiton MAC address */
-  u32 dst_mcast_mask;
-
   /* Rewrite string starting at end and going backwards. */
   u8 data[0];
 }) vnet_rewrite_header_t;
@@ -290,25 +286,18 @@ _vnet_rewrite_two_headers (vnet_rewrite_header_t * h0,
 			     (most_likely_size))
 
 always_inline void
-_vnet_fixup_one_header (vnet_rewrite_header_t * h0,
-			u8 * addr, u32 addr_len, u8 * packet0)
+vnet_ip_mcast_fixup_header (u32 dst_mcast_mask,
+			    u32 dst_mcast_offset, u32 * addr, u8 * packet0)
 {
-  if (PREDICT_TRUE (h0->dst_mcast_mask))
+  if (PREDICT_TRUE (0 != dst_mcast_offset))
     {
       /* location to write to in the packet */
-      u8 *p0 = packet0 - h0->dst_mcast_offset;
+      u8 *p0 = packet0 - dst_mcast_offset;
       u32 *p1 = (u32 *) p0;
-      /* location to copy from in the L3 dest address */
-      u32 *a0 = (u32 *) (addr + addr_len - sizeof (h0->dst_mcast_mask));
 
-      *p1 |= (*a0 & h0->dst_mcast_mask);
+      *p1 |= (*addr & dst_mcast_mask);
     }
 }
-
-#define vnet_fixup_one_header(rw0,addr,p0)              \
-  _vnet_fixup_one_header (&((rw0).rewrite_header),                      \
-                          (u8*)(addr), sizeof((*addr)),                 \
-                          (u8*)(p0))
 
 #define VNET_REWRITE_FOR_SW_INTERFACE_ADDRESS_BROADCAST ((void *) 0)
 /** Deprecated */

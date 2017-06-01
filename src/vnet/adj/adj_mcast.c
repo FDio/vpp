@@ -101,8 +101,7 @@ adj_mcast_add_or_lock (fib_protocol_t proto,
 void
 adj_mcast_update_rewrite (adj_index_t adj_index,
                           u8 *rewrite,
-                          u8 offset,
-                          u32 mask)
+                          u8 offset)
 {
     ip_adjacency_t *adj;
 
@@ -121,12 +120,9 @@ adj_mcast_update_rewrite (adj_index_t adj_index,
                                         adj->rewrite_header.sw_if_index),
                                     rewrite);
     /*
-     * set the fields corresponding to the mcast IP address rewrite
-     * The mask must be stored in network byte order, since the packet's
-     * IP address will also be in network order.
+     * set the offset corresponding to the mcast IP address rewrite
      */
     adj->rewrite_header.dst_mcast_offset = offset;
-    adj->rewrite_header.dst_mcast_mask = clib_host_to_net_u32(mask);
 }
 
 /**
@@ -174,13 +170,7 @@ adj_mcast_midchain_update_rewrite (adj_index_t adj_index,
                                         adj->rewrite_header.sw_if_index),
                                     rewrite);
 
-    /*
-     * set the fields corresponding to the mcast IP address rewrite
-     * The mask must be stored in network byte order, since the packet's
-     * IP address will also be in network order.
-     */
     adj->rewrite_header.dst_mcast_offset = offset;
-    adj->rewrite_header.dst_mcast_mask = clib_host_to_net_u32(mask);
 }
 
 void
