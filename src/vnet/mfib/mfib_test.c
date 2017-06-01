@@ -347,11 +347,14 @@ mfib_test_i (fib_protocol_t PROTO,
              const mfib_prefix_t *pfx_star_g_1,
              const mfib_prefix_t *pfx_star_g_2,
              const mfib_prefix_t *pfx_star_g_3,
-             const mfib_prefix_t *pfx_star_g_slash_m)
+             const mfib_prefix_t *pfx_star_g_slash_m,
+             const fib_prefix_t *pfx_itf,
+             const ip46_address_t *addr_nbr1,
+             const ip46_address_t *addr_nbr2)
 {
     fib_node_index_t mfei, mfei_dflt, mfei_no_f, mfei_s_g, mfei_g_1, mfei_g_2, mfei_g_3, mfei_g_m;
     u32 fib_index, n_entries, n_itfs, n_reps, n_pls;
-    fib_node_index_t ai_1, ai_2, ai_3;
+    fib_node_index_t ai_1, ai_2, ai_3, ai_nbr1, ai_nbr2;
     test_main_t *tm;
     int res;
 
@@ -374,11 +377,32 @@ mfib_test_i (fib_protocol_t PROTO,
     ai_3 = adj_mcast_add_or_lock(PROTO,
                                  LINKT,
                                  tm->hw[3]->sw_if_index);
+    ai_nbr1 = adj_nbr_add_or_lock(PROTO,
+                                  LINKT,
+                                  addr_nbr1,
+                                  tm->hw[0]->sw_if_index);
+    ai_nbr2 = adj_nbr_add_or_lock(PROTO,
+                                  LINKT,
+                                  addr_nbr2,
+                                  tm->hw[0]->sw_if_index);
 
     MFIB_TEST(3 == adj_mcast_db_size(), "3 MCAST adjs");
 
     /* Find or create FIB table 11 */
     fib_index = mfib_table_find_or_create_and_lock(PROTO, 11, MFIB_SOURCE_API);
+
+    fib_table_entry_update_one_path(0,
+                                    pfx_itf,
+				    FIB_SOURCE_INTERFACE,
+				    (FIB_ENTRY_FLAG_CONNECTED |
+				     FIB_ENTRY_FLAG_ATTACHED),
+				    DPO_PROTO_IP4,
+				    NULL,
+				    tm->hw[0]->sw_if_index,
+				    ~0, // invalid fib index
+				    1, // weight
+				    NULL,
+				    FIB_ROUTE_PATH_FLAG_NONE);
 
     mfib_prefix_t pfx_dft = {
         .fp_len = 0,
@@ -1043,6 +1067,69 @@ mfib_test_i (fib_protocol_t PROTO,
               format_mfib_prefix, pfx_star_g_slash_m);
 
     /*
+     * Entries with paths via unicast next-hops
+     */
+    fib_route_path_t path_via_nbr1 = {
+        .frp_proto = fib_proto_to_dpo(PROTO),
+        .frp_addr = *addr_nbr1,
+        .frp_sw_if_index = tm->hw[0]->sw_if_index,
+        .frp_fib_index = ~0,
+        .frp_weight = 0,
+        .frp_flags = 0,
+    };
+    fib_route_path_t path_via_nbr2 = {
+        .frp_proto = fib_proto_to_dpo(PROTO),
+        .frp_addr = *addr_nbr2,
+        .frp_sw_if_index = tm->hw[0]->sw_if_index,
+        .frp_fib_index = ~0,
+        .frp_weight = 0,
+        .frp_flags = 0,
+    };
+
+    mfei_g_1 = mfib_table_entry_path_update(fib_index,
+                                            pfx_star_g_1,
+                                            MFIB_SOURCE_API,
+                                            &path_via_nbr1,
+                                            (MFIB_ITF_FLAG_FORWARD));
+    mfei_g_1 = mfib_table_entry_path_update(fib_index,
+                                            pfx_star_g_1,
+                                            MFIB_SOURCE_API,
+                                            &path_via_nbr2,
+                                            (MFIB_ITF_FLAG_FORWARD));
+    MFIB_TEST(!mfib_test_entry(mfei_g_1,
+                               MFIB_ENTRY_FLAG_NONE,
+                               2,
+                               DPO_ADJACENCY_INCOMPLETE, ai_nbr1,
+                               DPO_ADJACENCY_INCOMPLETE, ai_nbr2),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_star_g_1);
+    MFIB_TEST_NS(!mfib_test_entry_itf(mfei_g_1, tm->hw[0]->sw_if_index,
+                                      MFIB_ITF_FLAG_FORWARD));
+
+    mfib_table_entry_path_remove(fib_index,
+                                 pfx_star_g_1,
+                                 MFIB_SOURCE_API,
+                                 &path_via_nbr1);
+
+    MFIB_TEST(!mfib_test_entry(mfei_g_1,
+                               MFIB_ENTRY_FLAG_NONE,
+                               1,
+                               DPO_ADJACENCY_INCOMPLETE, ai_nbr2),
+              "%U replicate OK",
+              format_mfib_prefix, pfx_star_g_1);
+    MFIB_TEST_NS(!mfib_test_entry_itf(mfei_g_1, tm->hw[0]->sw_if_index,
+                                      MFIB_ITF_FLAG_FORWARD));
+
+    mfib_table_entry_path_remove(fib_index,
+                                 pfx_star_g_1,
+                                 MFIB_SOURCE_API,
+                                 &path_via_nbr2);
+    mfei = mfib_table_lookup_exact_match(fib_index, pfx_star_g_1);
+    MFIB_TEST(FIB_NODE_INDEX_INVALID == mfei,
+              "%U Gone",
+              format_mfib_prefix, pfx_star_g_1);
+
+    /*
      * Add a prefix as a special/exclusive route
      */
     dpo_id_t td = DPO_INVALID;
@@ -1216,6 +1303,8 @@ mfib_test_i (fib_protocol_t PROTO,
     adj_unlock(ai_1);
     adj_unlock(ai_2);
     adj_unlock(ai_3);
+    adj_unlock(ai_nbr1);
+    adj_unlock(ai_nbr2);
 
     /*
      * MPLS disable the interface
@@ -1224,6 +1313,11 @@ mfib_test_i (fib_protocol_t PROTO,
                                      tm->hw[0]->sw_if_index,
                                      0, 0);
     mpls_table_delete(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API);
+
+    /*
+     * remove the connected
+     */
+    fib_table_entry_delete(0, pfx_itf, FIB_SOURCE_INTERFACE);
 
     /*
      * test we've leaked no resources
@@ -1303,7 +1397,19 @@ mfib_test_v4 (void)
             .ip4.as_u32 = 0,
         },
     };
-
+    const fib_prefix_t pfx_itf = {
+        .fp_len = 24,
+        .fp_proto = FIB_PROTOCOL_IP4,
+        .fp_addr = {
+            .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a0a),
+        },
+    };
+    const ip46_address_t nbr1 = {
+        .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a0b),
+    };
+    const ip46_address_t nbr2 = {
+        .ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a0c),
+    };
     return (mfib_test_i(FIB_PROTOCOL_IP4,
                         VNET_LINK_IP4,
                         &pfx_224_s_8,
@@ -1311,7 +1417,10 @@ mfib_test_v4 (void)
                         &pfx_239_1_1_1,
                         &pfx_239_1_1_2,
                         &pfx_239_1_1_3,
-                        &pfx_239));
+                        &pfx_239,
+                        &pfx_itf,
+                        &nbr1,
+                        &nbr2));
 }
 
 static int
@@ -1371,6 +1480,22 @@ mfib_test_v6 (void)
             .ip6.as_u64[1] = clib_host_to_net_u64(0x0000000000000000),
         },
     };
+    const fib_prefix_t pfx_itf = {
+        .fp_len = 64,
+        .fp_proto = FIB_PROTOCOL_IP6,
+        .fp_addr = {
+            .ip6.as_u64[0] = clib_host_to_net_u64(0x2001000000000000),
+            .ip6.as_u64[1] = clib_host_to_net_u64(0x0000000000000001),
+        },
+    };
+    const ip46_address_t nbr1 = {
+            .ip6.as_u64[0] = clib_host_to_net_u64(0x2001000000000000),
+            .ip6.as_u64[1] = clib_host_to_net_u64(0x0000000000000002),
+    };
+    const ip46_address_t nbr2 = {
+            .ip6.as_u64[0] = clib_host_to_net_u64(0x2001000000000000),
+            .ip6.as_u64[1] = clib_host_to_net_u64(0x0000000000000003),
+    };
 
     return (mfib_test_i(FIB_PROTOCOL_IP6,
                         VNET_LINK_IP6,
@@ -1379,7 +1504,10 @@ mfib_test_v6 (void)
                         &pfx_ff_1,
                         &pfx_ff_2,
                         &pfx_ff_3,
-                        &pfx_ff));
+                        &pfx_ff,
+                        &pfx_itf,
+                        &nbr1,
+                        &nbr2));
 }
 
 static clib_error_t *
@@ -1391,6 +1519,12 @@ mfib_test (vlib_main_t * vm,
 
     res += mfib_test_mk_intf(4);
     res += mfib_test_v4();
+
+    if (res)
+    {
+        return clib_error_return(0, "MFIB Unit Test Failed");
+    }
+
     res += mfib_test_v6();
 
     if (res)
