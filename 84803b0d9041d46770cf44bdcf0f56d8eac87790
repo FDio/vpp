@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_76879562",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 220,
+      "author": {
+        "id": 144
+      },
+      "writtenOn": "2017-06-01T18:37:05Z",
+      "side": 1,
+      "message": "Marco, can you add openSUSE here? If I have the spelling(s) correct, then:\n\nThis option currently works only on Ubuntu, Debian, CentOS, or openSUSE systems.",
+      "range": {
+        "startLine": 220,
+        "startChar": 10,
+        "endLine": 220,
+        "endChar": 78
+      },
+      "revId": "84803b0d9041d46770cf44bdcf0f56d8eac87790",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
