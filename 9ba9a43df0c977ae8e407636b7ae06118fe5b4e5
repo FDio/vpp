@@ -22,6 +22,30 @@
       "revId": "9ba9a43df0c977ae8e407636b7ae06118fe5b4e5",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_7e99ab6d",
+        "filename": "src/vppinfra/bihash_template.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-06-02T21:57:56Z",
+      "side": 1,
+      "message": "Right...",
+      "parentUuid": "fa5d592f_9ebfbfd0",
+      "range": {
+        "startLine": 104,
+        "startChar": 9,
+        "endLine": 104,
+        "endChar": 29
+      },
+      "revId": "9ba9a43df0c977ae8e407636b7ae06118fe5b4e5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
