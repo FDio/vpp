@@ -775,7 +775,7 @@ ping_ip_address (vlib_main_t * vm,
 	}
       else if (unformat (input, "table-id"))
 	{
-	  if (!unformat (input, "du", &table_id))
+	  if (!unformat (input, "%u", &table_id))
 	    {
 	      error =
 		clib_error_return (0,
