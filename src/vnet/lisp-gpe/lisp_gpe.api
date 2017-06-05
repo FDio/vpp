@@ -43,7 +43,7 @@ typeonly manual_print manual_endian define gpe_locator
     @param loc_num - number of locators
     @param locs - array of remote locators
 */
-autoreply manual_print manual_endian define gpe_add_del_fwd_entry
+manual_print manual_endian define gpe_add_del_fwd_entry
 {
   u32 client_index;
   u32 context;
@@ -58,6 +58,13 @@ autoreply manual_print manual_endian define gpe_add_del_fwd_entry
   u8 action;
   u32 loc_num;
   vl_api_gpe_locator_t locs[loc_num];
+};
+
+define gpe_add_del_fwd_entry_reply
+{
+  i32 retval;
+  u32 context;
+  u32 fwd_entry_index;
 };
 
 /** \brief enable or disable gpe protocol

@@ -221,6 +221,9 @@ typedef enum
 /** */
 typedef struct
 {
+  /** forwarding entry index of */
+  u32 fwd_entry_index;
+
   u8 is_src_dst;
 
   u8 is_add;

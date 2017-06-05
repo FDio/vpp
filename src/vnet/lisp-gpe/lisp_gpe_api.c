@@ -358,7 +358,12 @@ vl_api_gpe_add_del_fwd_entry_t_handler (vl_api_gpe_add_del_fwd_entry_t * mp)
   rv = vnet_lisp_gpe_add_del_fwd_entry (a, 0);
   vec_free (pairs);
 send_reply:
-  REPLY_MACRO (VL_API_GPE_ADD_DEL_FWD_ENTRY_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_GPE_ADD_DEL_FWD_ENTRY_REPLY,
+  {
+    rmp->fwd_entry_index = clib_host_to_net_u32 (a->fwd_entry_index);
+  });
+  /* *INDENT-ON* */
 }
 
 static void
