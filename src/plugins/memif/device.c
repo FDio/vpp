@@ -91,27 +91,30 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   vlib_frame_t * frame, memif_if_t * mif,
 			   memif_ring_type_t type)
 {
-  u8 rid;
+  u8 qid;
   memif_ring_t *ring;
   u32 *buffers = vlib_frame_args (frame);
   u32 n_left = frame->n_vectors;
-  u16 ring_size = 1 << mif->log2_ring_size;
-  u16 mask = ring_size - 1;
+  u16 ring_size, mask;
   u16 head, tail;
   u16 free_slots;
   u32 thread_index = vlib_get_thread_index ();
-  u8 tx_queues = memif_get_tx_queues (mif);
+  u8 tx_queues = vec_len (mif->tx_queues);
+  memif_queue_t *mq;
 
   if (tx_queues < vec_len (vlib_mains))
     {
-      rid = thread_index % tx_queues;
+      qid = thread_index % tx_queues;
       clib_spinlock_lock_if_init (&mif->lockp);
     }
   else
     {
-      rid = thread_index;
+      qid = thread_index;
     }
-  ring = memif_get_ring (mif, type, rid);
+  mq = vec_elt_at_index (mif->tx_queues, qid);
+  ring = mq->ring;
+  ring_size = 1 << mif->log2_ring_size;
+  mask = ring_size - 1;
 
   /* free consumed buffers */
 
@@ -214,10 +217,10 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
 
   vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
-  if (mif->interrupt_line.fd > 0)
+  if (mq->int_fd > 0 && (ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0)
     {
-      u8 b = rid;
-      CLIB_UNUSED (int r) = write (mif->interrupt_line.fd, &b, sizeof (b));
+      u64 b = 1;
+      CLIB_UNUSED (int r) = write (mq->int_fd, &b, sizeof (b));
     }
 
   return frame->n_vectors;
@@ -266,8 +269,6 @@ static clib_error_t *
 memif_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 {
   memif_main_t *apm = &memif_main;
-  vlib_main_t *vm = vlib_get_main ();
-  memif_msg_t msg = { 0 };
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   memif_if_t *mif = pool_elt_at_index (apm->interfaces, hw->dev_instance);
   static clib_error_t *error = 0;
@@ -277,19 +278,6 @@ memif_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
   else
     {
       mif->flags &= ~MEMIF_IF_FLAG_ADMIN_UP;
-      if (!(mif->flags & MEMIF_IF_FLAG_DELETING)
-	  && mif->connection.index != ~0)
-	{
-	  msg.version = MEMIF_VERSION;
-	  msg.type = MEMIF_MSG_TYPE_DISCONNECT;
-	  if (send (mif->connection.fd, &msg, sizeof (msg), 0) < 0)
-	    {
-	      clib_unix_warning ("Failed to send disconnect request");
-	      error = clib_error_return_unix (0, "send fd %d",
-					      mif->connection.fd);
-	      memif_disconnect (vm, mif);
-	    }
-	}
     }
 
   return error;
