@@ -24,6 +24,7 @@
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
 #include <memif/memif.h>
+#include <memif/private.h>
 
 #define __plugin_msg_base memif_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
