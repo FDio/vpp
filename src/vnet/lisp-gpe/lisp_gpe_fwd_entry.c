@@ -478,6 +478,7 @@ add_ip_fwd_entry (lisp_gpe_main_t * lgm,
 
   hash_set_mem (lgm->lisp_gpe_fwd_entries, lfe->key,
 		lfe - lgm->lisp_fwd_entry_pool);
+  a->fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
 
   fproto = (IP4 == ip_prefix_version (&fid_addr_ippref (&lfe->key->rmt)) ?
 	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
@@ -791,6 +792,7 @@ add_l2_fwd_entry (lisp_gpe_main_t * lgm,
 
   hash_set_mem (lgm->lisp_gpe_fwd_entries, lfe->key,
 		lfe - lgm->lisp_fwd_entry_pool);
+  a->fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
 
   lfe->type = (a->is_negative ?
 	       LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE :
@@ -1064,6 +1066,7 @@ add_nsh_fwd_entry (lisp_gpe_main_t * lgm,
 
   hash_set_mem (lgm->lisp_gpe_fwd_entries, lfe->key,
 		lfe - lgm->lisp_fwd_entry_pool);
+  a->fwd_entry_index = lfe - lgm->lisp_fwd_entry_pool;
 
   lfe->type = (a->is_negative ?
 	       LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE :

@@ -1694,6 +1694,39 @@ static void vl_api_l2tpv3_create_tunnel_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+static void vl_api_gpe_add_del_fwd_entry_reply_t_handler
+  (vl_api_gpe_add_del_fwd_entry_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_gpe_add_del_fwd_entry_reply_t_handler_json
+  (vl_api_gpe_add_del_fwd_entry_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "fwd_entry_index",
+			    clib_net_to_host_u32 (mp->fwd_entry_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
 
 static void vl_api_one_add_del_locator_set_reply_t_handler
   (vl_api_one_add_del_locator_set_reply_t * mp)
@@ -4390,7 +4423,6 @@ _(one_use_petr_reply)                                   \
 _(one_stats_enable_disable_reply)                       \
 _(one_add_del_l2_arp_entry_reply)                       \
 _(one_stats_flush_reply)                                \
-_(gpe_add_del_fwd_entry_reply)                          \
 _(gpe_enable_disable_reply)                             \
 _(gpe_set_encap_mode_reply)                             \
 _(gpe_add_del_iface_reply)                              \
