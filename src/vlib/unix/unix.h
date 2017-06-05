@@ -151,6 +151,14 @@ unix_file_del (unix_main_t * um, unix_file_t * f)
   pool_put (um->file_pool, f);
 }
 
+always_inline void
+unix_file_del_by_index (unix_main_t * um, uword index)
+{
+  unix_file_t *uf;
+  uf = pool_elt_at_index (um->file_pool, index);
+  unix_file_del (um, uf);
+}
+
 always_inline uword
 unix_file_set_data_available_to_write (u32 unix_file_index,
 				       uword is_available)
