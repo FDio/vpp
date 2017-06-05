@@ -94,6 +94,8 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   r = memif_create_if (vm, &args);
 
+  vec_free (args.socket_filename);
+
   if (r <= VNET_API_ERROR_SYSCALL_ERROR_1
       && r >= VNET_API_ERROR_SYSCALL_ERROR_10)
     return clib_error_return (0, "%s (errno %d)", strerror (errno), errno);
@@ -102,7 +104,7 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0, "Invalid interface name");
 
   if (r == VNET_API_ERROR_SUBIF_ALREADY_EXISTS)
-    return clib_error_return (0, "Interface already exists");
+    return clib_error_return (0, "Interface with same key already exists");
 
   return 0;
 }
@@ -122,8 +124,11 @@ memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  u64 key = 0;
-  u8 key_defined = 0;
+  u32 sw_if_index = ~0;
+  vnet_hw_interface_t *hw;
+  memif_main_t *mm = &memif_main;
+  memif_if_t *mif;
+  vnet_main_t *vnm = vnet_get_main ();
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -131,18 +136,27 @@ memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (line_input, "key 0x%" PRIx64, &key))
-	key_defined = 1;
+      if (unformat (line_input, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (line_input, "%U", unformat_vnet_sw_interface,
+			 vnm, &sw_if_index))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
   unformat_free (line_input);
 
-  if (!key_defined)
-    return clib_error_return (0, "missing key");
+  if (sw_if_index == ~0)
+    return clib_error_return (0,
+			      "please specify interface name or sw_if_index");
 
-  memif_delete_if (vm, key);
+  hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  if (hw == NULL || memif_device_class.index != hw->dev_class_index)
+    return clib_error_return (0, "not a memif interface");
+
+  mif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
+  memif_delete_if (vm, mif);
 
   return 0;
 }
@@ -150,7 +164,7 @@ memif_delete_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (memif_delete_command, static) = {
   .path = "delete memif",
-  .short_help = "delete memif key <key-value>",
+  .short_help = "delete memif {<interface> | sw_if_index <sw_idx>}",
   .function = memif_delete_command_fn,
 };
 /* *INDENT-ON* */
@@ -162,39 +176,47 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
   memif_main_t *mm = &memif_main;
   memif_if_t *mif;
   vnet_main_t *vnm = vnet_get_main ();
+  memif_queue_t *mq;
   int i;
 
   /* *INDENT-OFF* */
   pool_foreach (mif, mm->interfaces,
     ({
+       memif_socket_file_t * msf = vec_elt_at_index (mm->socket_files,
+						     mif->socket_file_index);
        vlib_cli_output (vm, "interface %U", format_vnet_sw_if_index_name,
 			vnm, mif->sw_if_index);
-       vlib_cli_output (vm, "  key 0x%" PRIx64 " file %s", mif->key,
-			mif->socket_filename);
-       vlib_cli_output (vm, "  listener %d conn-fd %d int-fd %d", mif->listener_index,
-			mif->connection.fd, mif->interrupt_line.fd);
-       vlib_cli_output (vm, "  ring-size %u num-s2m-rings %u num-m2s-rings %u buffer_size %u",
-			(1 << mif->log2_ring_size),
-			mif->num_s2m_rings,
-			mif->num_m2s_rings,
-			mif->buffer_size);
-       for (i=0; i < mif->num_s2m_rings; i++)
+       vlib_cli_output (vm, "  key 0x%x file %s", mif->key, msf->filename);
+       vlib_cli_output (vm, "  flags 0x%x", mif->flags);
+       vlib_cli_output (vm, "  listener-fd %d conn-fd %d", msf->fd, mif->conn_fd);
+       vlib_cli_output (vm, "  num-s2m-rings %u num-m2s-rings %u buffer_size %u",
+			mif->run.num_s2m_rings,
+			mif->run.num_m2s_rings,
+			mif->run.buffer_size);
+
+       vec_foreach_index (i, mif->tx_queues)
          {
-	   memif_ring_t * ring = memif_get_ring (mif, MEMIF_RING_S2M, i);
-	   if (ring)
-	     {
-	       vlib_cli_output (vm, "  slave-to-master ring %u:", i);
-	       vlib_cli_output (vm, "    head %u tail %u", ring->head, ring->tail);
-	     }
+	   mq = vec_elt_at_index (mif->tx_queues, i);
+	   vlib_cli_output (vm, "  %s ring %u:",
+			    (mif->flags & MEMIF_IF_FLAG_IS_SLAVE) ?
+			    "slave-to-master":"master-to-slave", i);
+	   vlib_cli_output (vm, "    region %u offset %u ring-size %u int-fd %d",
+			    mq->region, mq->offset, (1 << mq->log2_ring_size), mq->int_fd);
+
+	   if (mq->ring)
+	     vlib_cli_output (vm, "    head %u tail %u", mq->ring->head, mq->ring->tail);
 	 }
-       for (i=0; i < mif->num_m2s_rings; i++)
+       vec_foreach_index (i, mif->rx_queues)
          {
-	   memif_ring_t * ring = memif_get_ring (mif, MEMIF_RING_M2S, i);
-	   if (ring)
-	     {
-	       vlib_cli_output (vm, "  master-to-slave ring %u:", i);
-	       vlib_cli_output (vm, "    head %u tail %u", ring->head, ring->tail);
-	     }
+	   mq = vec_elt_at_index (mif->rx_queues, i);
+	   vlib_cli_output (vm, "  %s ring %u:",
+			    (mif->flags & MEMIF_IF_FLAG_IS_SLAVE) ?
+			    "master-to-slave" : "slave-to-master", i);
+	   vlib_cli_output (vm, "    region %u offset %u ring-size %u int-fd %d",
+			    mq->region, mq->offset, (1 << mq->log2_ring_size), mq->int_fd);
+
+	   if (mq->ring)
+	     vlib_cli_output (vm, "    head %u tail %u", mq->ring->head, mq->ring->tail);
 	 }
     }));
   /* *INDENT-ON* */
