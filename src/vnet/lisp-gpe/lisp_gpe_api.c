@@ -198,11 +198,11 @@ gpe_fwd_entries_copy (vl_api_gpe_fwd_entry_t * dst,
 
   vec_foreach (e, src)
   {
-    memset (dst, 0, sizeof (*dst));
-    dst[i].dp_table = src->dp_table;
-    dst[i].fwd_entry_index = src->fwd_entry_index;
-    dst[i].vni = src->vni;
-    dst[i].action = src->action;
+    memset (&dst[i], 0, sizeof (*dst));
+    dst[i].dp_table = e->dp_table;
+    dst[i].fwd_entry_index = e->fwd_entry_index;
+    dst[i].vni = e->vni;
+    dst[i].action = e->action;
     switch (fid_addr_type (&e->leid))
       {
       case FID_ADDR_IP_PREF:
