@@ -308,6 +308,8 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
   sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
   rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
 
+  key0.protocol = 0;
+
   err = icmp_get_key (ip0, &key0);
   if (err != -1)
     {
