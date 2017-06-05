@@ -515,7 +515,7 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
           goto out;
         }
 
-      if (PREDICT_FALSE(icmp0->type != ICMP4_echo_request))
+      if (PREDICT_FALSE(icmp_is_error_message (icmp0)))
         {
           b0->error = node->errors[SNAT_IN2OUT_ERROR_BAD_ICMP_TYPE];
           next0 = SNAT_IN2OUT_NEXT_DROP;
@@ -869,11 +869,77 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
                                          u32 thread_index,
                                          snat_session_t ** p_s0)
 {
+  snat_session_key_t key0, sm0;
+  clib_bihash_kv_8_8_t kv0, value0;
+  snat_worker_key_t k0;
+  u32 new_dst_addr0 = 0, old_dst_addr0, si, ti = 0;
+  ip_csum_t sum0;
+
   next0 = icmp_in2out(sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
                       next0, thread_index, p_s0, 0);
   snat_session_t * s0 = *p_s0;
   if (PREDICT_TRUE(next0 != SNAT_IN2OUT_NEXT_DROP && s0))
     {
+      /* Hairpinning */
+      if (!icmp_is_error_message (icmp0))
+        {
+          icmp_echo_header_t *echo0 = (icmp_echo_header_t *)(icmp0+1);
+          u16 icmp_id0 = echo0->identifier;
+          key0.addr = ip0->dst_address;
+          key0.port = icmp_id0;
+          key0.protocol = SNAT_PROTOCOL_ICMP;
+          key0.fib_index = sm->outside_fib_index;
+          kv0.key = key0.as_u64;
+
+          /* Check if destination is in active sessions */
+          if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+            {
+              /* or static mappings */
+              if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
+                {
+                  new_dst_addr0 = sm0.addr.as_u32;
+                  vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
+                }
+            }
+          else
+            {
+              si = value0.value;
+              if (sm->num_workers > 1)
+                {
+                  k0.addr = ip0->dst_address;
+                  k0.port = icmp_id0;
+                  k0.fib_index = sm->outside_fib_index;
+                  kv0.key = k0.as_u64;
+                  if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
+                    ASSERT(0);
+                  else
+                    ti = value0.value;
+                }
+              else
+                ti = sm->num_workers;
+
+              s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
+              new_dst_addr0 = s0->in2out.addr.as_u32;
+              vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+              echo0->identifier = s0->in2out.port;
+              sum0 = icmp0->checksum;
+              sum0 = ip_csum_update (sum0, icmp_id0, s0->in2out.port,
+                                     icmp_echo_header_t, identifier);
+              icmp0->checksum = ip_csum_fold (sum0);
+            }
+
+          /* Destination is behind the same NAT, use internal address and port */
+          if (new_dst_addr0)
+            {
+              old_dst_addr0 = ip0->dst_address.as_u32;
+              ip0->dst_address.as_u32 = new_dst_addr0;
+              sum0 = ip0->checksum;
+              sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
+                                     ip4_header_t, dst_address);
+              ip0->checksum = ip_csum_fold (sum0);
+            }
+        }
+
       /* Accounting */
       s0->last_heard = now;
       s0->total_pkts++;
