@@ -19,7 +19,9 @@
 
 #include <vlib/vlib.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vlib/unix/unix.h>
 #include <memif/memif.h>
+#include <memif/private.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -107,8 +109,8 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
   static const u8 empty_hw_addr[6];
   int rv = 0;
 
-  /* key */
-  args.key = clib_net_to_host_u64 (mp->key);
+  /* id */
+  args.id = clib_net_to_host_u32 (mp->id);
 
   /* socket filename */
   mp->socket_filename[ARRAY_LEN (mp->socket_filename) - 1] = 0;
@@ -118,6 +120,15 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
 		    strlen ((char *) mp->socket_filename));
       strncpy ((char *) args.socket_filename, (char *) mp->socket_filename,
 	       vec_len (args.socket_filename));
+    }
+
+  /* secret */
+  mp->secret[ARRAY_LEN (mp->secret) - 1] = 0;
+  if (strlen ((char *) mp->secret) > 0)
+    {
+      vec_validate (args.secret, strlen ((char *) mp->secret));
+      strncpy ((char *) args.secret, (char *) mp->secret,
+	       vec_len (args.secret));
     }
 
   /* role */
@@ -156,6 +167,9 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
 
   rv = memif_create_if (vm, &args);
 
+  vec_free (args.socket_filename);
+  vec_free (args.secret);
+
 reply:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_MEMIF_CREATE_REPLY,
@@ -173,26 +187,19 @@ void
 vl_api_memif_delete_t_handler (vl_api_memif_delete_t * mp)
 {
   memif_main_t *mm = &memif_main;
-  memif_if_t *mif;
   vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
   vl_api_memif_delete_reply_t *rmp;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
+  vnet_hw_interface_t *hi =
+    vnet_get_sup_hw_interface (vnm, ntohl (mp->sw_if_index));
+  memif_if_t *mif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
   int rv = 0;
 
-  /* *INDENT-OFF* */
-  pool_foreach (mif, mm->interfaces,
-    ({
-      if (sw_if_index == mif->sw_if_index)
-	{
-	  rv = memif_delete_if (vm, mif->key);
-	  goto reply;
-	}
-    }));
-  /* *INDENT-ON* */
+  if (hi == NULL || memif_device_class.index != hi->dev_class_index)
+    rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+  else
+    rv = memif_delete_if (vm, mif);
 
-  rv = VNET_API_ERROR_INVALID_SW_IF_INDEX;
-
-reply:
   REPLY_MACRO (VL_API_MEMIF_DELETE_REPLY);
 }
 
@@ -205,6 +212,8 @@ send_memif_details (unix_shared_memory_queue_t * q,
   vl_api_memif_details_t *mp;
   vnet_main_t *vnm = vnet_get_main ();
   memif_main_t *mm = &memif_main;
+  memif_socket_file_t *msf = vec_elt_at_index (mm->socket_files,
+					       mif->socket_file_index);
   vnet_hw_interface_t *hwif;
 
   hwif = vnet_get_sup_hw_interface (vnm, swif->sw_if_index);
@@ -220,14 +229,13 @@ send_memif_details (unix_shared_memory_queue_t * q,
 	   (char *) interface_name, ARRAY_LEN (mp->if_name) - 1);
   memcpy (mp->hw_addr, hwif->hw_address, ARRAY_LEN (mp->hw_addr));
 
-  mp->key = clib_host_to_net_u64 (mif->key);
+  mp->id = clib_host_to_net_u32 (mif->id);
   mp->role = (mif->flags & MEMIF_IF_FLAG_IS_SLAVE) ? 1 : 0;
   strncpy ((char *) mp->socket_filename,
-	   (char *) mif->socket_filename,
-	   ARRAY_LEN (mp->socket_filename) - 1);
+	   (char *) msf->filename, ARRAY_LEN (mp->socket_filename) - 1);
 
-  mp->ring_size = htonl (1 << mif->log2_ring_size);
-  mp->buffer_size = htons (mif->buffer_size);
+  mp->ring_size = htonl (1 << mif->run.log2_ring_size);
+  mp->buffer_size = htons (mif->run.buffer_size);
 
   mp->admin_up_down = (swif->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? 1 : 0;
   mp->link_up_down = (hwif->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ? 1 : 0;
