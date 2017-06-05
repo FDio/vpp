@@ -1023,6 +1023,7 @@ unix_cli_terminal_type (u8 * term, uword len)
   _("xterm-color");
   _("xterm-256color");		/* iTerm on Mac */
   _("screen");
+  _("screen-256color");		/* Screen and tmux */
   _("ansi");			/* Microsoft Telnet */
 #undef _
 

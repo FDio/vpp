@@ -18,6 +18,7 @@ memif_plugin_la_SOURCES = memif/memif.c   \
 	memif/cli.c                       \
 	memif/node.c                      \
 	memif/device.c                    \
+	memif/socket.c                    \
 	memif/memif_plugin.api.h
 
 noinst_HEADERS += memif/memif.h
