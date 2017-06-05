@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_a19a6212",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-06-05T07:59:42Z",
+      "side": 1,
+      "message": "Hm, this is not vec_validated anywhere, is it?",
+      "range": {
+        "startLine": 201,
+        "startChar": 13,
+        "endLine": 201,
+        "endChar": 16
+      },
+      "revId": "719aef4835403125284a4fa71093e8b536997841",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
