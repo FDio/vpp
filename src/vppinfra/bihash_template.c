@@ -252,6 +252,8 @@ int BV (clib_bihash_add_del)
 
   hash >>= h->log2_nbuckets;
 
+  tmp_b.linear_search = 0;
+
   while (__sync_lock_test_and_set (h->writer_lock, 1))
     ;
 
