@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_1265fee0",
+        "filename": "src/svm/svm.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 800,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-06-05T20:03:07Z",
+      "side": 0,
+      "message": "Before I even start reviewing, please remove this. It should not be part of this patch. Same applies to other occurrences.",
+      "range": {
+        "startLine": 800,
+        "startChar": 22,
+        "endLine": 800,
+        "endChar": 41
+      },
+      "revId": "560274d042d12f31aceabff6a293cdf71429552d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
