@@ -24,6 +24,7 @@
 #include <vppinfra/error.h>
 #include <vnet/ip/ip.h>
 #include <memif/memif.h>
+#include <memif/private.h>
 
 #define __plugin_msg_base memif_test_main.msg_id_base
 #include <vlibapi/vat_helper_macros.h>
@@ -118,8 +119,9 @@ api_memif_create (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_memif_create_t *mp;
-  u64 key = 0;
+  u32 id = 0;
   u8 *socket_filename = 0;
+  u8 *secret = 0;
   u8 role = 1;
   u32 ring_size = 0;
   u32 buffer_size = 0;
@@ -131,9 +133,11 @@ api_memif_create (vat_main_t * vam)
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "key 0x%" PRIx64, &key))
+      if (unformat (i, "id %u", &id))
 	;
       else if (unformat (i, "socket %s", &socket_filename))
+	;
+      else if (unformat (i, "secret %s", &secret))
 	;
       else if (unformat (i, "ring_size %u", &ring_size))
 	;
@@ -173,13 +177,18 @@ api_memif_create (vat_main_t * vam)
 
   M (MEMIF_CREATE, mp);
 
-  mp->key = clib_host_to_net_u64 (key);
+  mp->id = clib_host_to_net_u32 (id);
   mp->role = role;
   mp->ring_size = clib_host_to_net_u32 (ring_size);
   mp->buffer_size = clib_host_to_net_u16 (buffer_size & 0xffff);
   if (socket_filename != 0)
     {
       strncpy ((char *) mp->socket_filename, (char *) socket_filename, 127);
+      vec_free (socket_filename);
+    }
+  if (socket_filename != 0)
+    {
+      strncpy ((char *) mp->secret, (char *) secret, 16);
       vec_free (socket_filename);
     }
   memcpy (mp->hw_addr, hw_addr, 6);
@@ -282,11 +291,11 @@ static void vl_api_memif_details_t_handler (vl_api_memif_details_t * mp)
   vat_main_t *vam = memif_test_main.vat_main;
 
   fformat (vam->ofp, "%s: sw_if_index %u mac %U\n"
-	   "   key 0x%" PRIx64 " socket %s role %s\n"
+	   "   id %u socket %s role %s\n"
 	   "   ring_size %u buffer_size %u\n"
 	   "   state %s link %s\n",
 	   mp->if_name, ntohl (mp->sw_if_index), format_ethernet_address,
-	   mp->hw_addr, clib_net_to_host_u64 (mp->key), mp->socket_filename,
+	   mp->hw_addr, clib_net_to_host_u32 (mp->id), mp->socket_filename,
 	   mp->role ? "slave" : "master",
 	   ntohl (mp->ring_size), ntohs (mp->buffer_size),
 	   mp->admin_up_down ? "up" : "down",
@@ -298,7 +307,7 @@ static void vl_api_memif_details_t_handler (vl_api_memif_details_t * mp)
  * and that the data plane plugin processes
  */
 #define foreach_vpe_api_msg					  \
-_(memif_create, "[key <key>] [socket <path>] [ring_size <size>] " \
+_(memif_create, "[id <id>] [socket <path>] [ring_size <size>] " \
 		"[buffer_size <size>] [hw_addr <mac_address>] "   \
 		"<master|slave>")				  \
 _(memif_delete, "<sw_if_index>")                                  \
