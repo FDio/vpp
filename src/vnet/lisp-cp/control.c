@@ -3424,6 +3424,7 @@ parse_map_records (vlib_buffer_t * b, map_records_arg_t * a, u8 count)
   /* parse record eid */
   for (i = 0; i < count; i++)
     {
+      locators = 0;
       len = lisp_msg_parse_mapping_record (b, &deid, &locators, NULL);
       if (len == ~0)
 	{
