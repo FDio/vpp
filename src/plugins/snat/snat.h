@@ -30,8 +30,10 @@
 
 
 #define SNAT_UDP_TIMEOUT 300
+#define SNAT_UDP_TIMEOUT_MIN 120
 #define SNAT_TCP_TRANSITORY_TIMEOUT 240
 #define SNAT_TCP_ESTABLISHED_TIMEOUT 7440
+#define SNAT_TCP_INCOMING_SYN 6
 #define SNAT_ICMP_TIMEOUT 60
 
 /* Key */
@@ -383,14 +385,15 @@ typedef struct {
   u16 sequence;
 } icmp_echo_header_t;
 
-always_inline snat_protocol_t
+always_inline u32
 ip_proto_to_snat_proto (u8 ip_proto)
 {
-  snat_protocol_t snat_proto = ~0;
+  u32 snat_proto = ~0;
 
   snat_proto = (ip_proto == IP_PROTOCOL_UDP) ? SNAT_PROTOCOL_UDP : snat_proto;
   snat_proto = (ip_proto == IP_PROTOCOL_TCP) ? SNAT_PROTOCOL_TCP : snat_proto;
   snat_proto = (ip_proto == IP_PROTOCOL_ICMP) ? SNAT_PROTOCOL_ICMP : snat_proto;
+  snat_proto = (ip_proto == IP_PROTOCOL_ICMP6) ? SNAT_PROTOCOL_ICMP : snat_proto;
 
   return snat_proto;
 }
@@ -445,6 +448,9 @@ clib_error_t * snat_api_init(vlib_main_t * vm, snat_main_t * sm);
 int snat_set_workers (uword * bitmap);
 int snat_interface_add_del(u32 sw_if_index, u8 is_inside, int is_del);
 int snat_add_interface_address(snat_main_t *sm, u32 sw_if_index, int is_del);
+uword unformat_snat_protocol(unformat_input_t * input, va_list * args);
+u8 * format_snat_protocol(u8 * s, va_list * args);
+
 static_always_inline u8
 icmp_is_error_message (icmp46_header_t * icmp)
 {

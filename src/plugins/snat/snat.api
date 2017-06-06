@@ -600,3 +600,215 @@ define snat_det_session_details {
   u8 state;
   u32 expire;
 };
+
+/** \brief Add/delete address range to NAT64 pool
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param start_addr - start address of the range
+    @param end_addr - end address of the range
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
+    @param is_add - 1 if add, 0 if delete
+*/
+autoreply define nat64_add_del_pool_addr_range {
+  u32 client_index;
+  u32 context;
+  u8 start_addr[4];
+  u8 end_addr[4];
+  u32 vrf_id;
+  u8 is_add;
+};
+
+/** \brief Dump NAT64 pool addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat64_pool_addr_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT64 pool address details response
+    @param context - sender context, to match reply w/ request
+    @param address - IPv4 address
+    @param vfr_id - VRF id of tenant, ~0 means independent of VRF
+*/
+define nat64_pool_addr_details {
+  u32 context;
+  u8 address[4];
+  u32 vrf_id;
+};
+
+/** \brief Enable/disable NAT64 feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface
+    @param is_inside - 1 if inside, 0 if outside
+    @param is_add - 1 if add, 0 if delete
+*/
+autoreply define nat64_add_del_interface {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_inside;
+  u8 is_add;
+};
+
+/** \brief Dump interfaces with NAT64 feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat64_interface_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT64 interface details response
+    @param context - sender context, to match reply w/ request
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - index of the interface
+*/
+define nat64_interface_details {
+  u32 context;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Add/delete NAT64 static BIB entry
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param i_addr - inside IPv6 address
+    @param o_addr - outside IPv4 address
+    @param i_port - inside port number
+    @param o_port - outside port number
+    @param vrf_id - VRF id of tenant
+    @param proto - protocol number
+    @param is_add - 1 if add, 0 if delete
+*/
+ autoreply define nat64_add_del_static_bib {
+  u32 client_index;
+  u32 context;
+  u8 i_addr[16];
+  u8 o_addr[4];
+  u16 i_port;
+  u16 o_port;
+  u32 vrf_id;
+  u8 proto;
+  u8 is_add;
+};
+
+/** \brief Dump NAT64 BIB
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param proto - protocol of the BIB
+*/
+define nat64_bib_dump {
+  u32 client_index;
+  u32 context;
+  u8 proto;
+};
+
+/** \brief NAT64 BIB details response
+    @param context - sender context, to match reply w/ request
+    @param i_addr - inside IPv6 address
+    @param o_addr - outside IPv4 address
+    @param i_port - inside port number
+    @param o_port - outside port number
+    @param vrf_id - VRF id of tenant
+    @param proto - protocol number
+    @param is_static - 1 if static BIB entry, 0 if dynamic
+    @param ses_num - number of sessions associated with the BIB entry
+*/
+define nat64_bib_details {
+  u32 context;
+  u8 i_addr[16];
+  u8 o_addr[4];
+  u16 i_port;
+  u16 o_port;
+  u32 vrf_id;
+  u8 proto;
+  u8 is_static;
+  u32 ses_num;
+};
+
+/** \brief Set values of timeouts for NAT64 (seconds, 0 = default)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param udp - UDP timeout (default 300sec)
+    @param icmp - ICMP timeout (default 60sec)
+    @param tcp_trans - TCP transitory timeout (default 240sec)
+    @param tcp_est - TCP established timeout (default 7440sec)
+    @param tcp_incoming_syn - TCP incoming SYN timeout (default 6sec)
+*/
+autoreply define nat64_set_timeouts {
+  u32 client_index;
+  u32 context;
+  u32 udp;
+  u32 icmp;
+  u32 tcp_trans;
+  u32 tcp_est;
+  u32 tcp_incoming_syn;
+};
+
+/** \brief Get values of timeouts for NAT64 (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat64_get_timeouts {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get values of timeouts for NAT64 reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param udp - UDP timeout
+    @param icmp - ICMP timeout
+    @param tcp_trans - TCP transitory timeout
+    @param tcp_est - TCP established timeout
+    @param tcp_incoming_syn - TCP incoming SYN timeout
+*/
+define nat64_get_timeouts_reply {
+  u32 context;
+  i32 retval;
+  u32 udp;
+  u32 icmp;
+  u32 tcp_trans;
+  u32 tcp_est;
+  u32 tcp_incoming_syn;
+};
+
+/** \brief Dump NAT64 session table
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param proto - protocol of the session table
+*/
+define nat64_st_dump {
+  u32 client_index;
+  u32 context;
+  u8 proto;
+};
+
+/** \brief NAT64 session table details response
+    @param context - sender context, to match reply w/ request
+    @param il_addr - inside IPv6 address of the local host
+    @param ol_addr - outside IPv4 address of the local host
+    @param il_port - inside port number id of the local host/inside ICMP id
+    @param ol_port - outside port number of the local host/outside ICMP id
+    @param il_addr - inside IPv6 address of the remote host
+    @param ol_addr - outside IPv4 address of the remote host
+    @param l_port - port number of the remote host (not used for ICMP)
+    @param vrf_id - VRF id of tenant
+    @param proto - protocol number
+*/
+define nat64_st_details {
+  u32 context;
+  u8 il_addr[16];
+  u8 ol_addr[4];
+  u16 il_port;
+  u16 ol_port;
+  u8 ir_addr[16];
+  u8 or_addr[4];
+  u16 r_port;
+  u32 vrf_id;
+  u8 proto;
+};
