@@ -22,6 +22,7 @@
 #include <snat/snat.h>
 #include <snat/snat_ipfix_logging.h>
 #include <snat/snat_det.h>
+#include <snat/nat64.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 
@@ -780,6 +781,8 @@ static clib_error_t * snat_init (vlib_main_t * vm)
 
   /* Init IPFIX logging */
   snat_ipfix_logging_init(vm);
+
+  error = nat64_init(vm);
 
   return error;
 }
