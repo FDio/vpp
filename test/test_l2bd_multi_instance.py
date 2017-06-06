@@ -403,7 +403,39 @@ class TestL2bdMultiInst(VppTestCase):
         self.run_verify_test()
 
     def test_l2bd_inst_02(self):
-        """ L2BD Multi-instance test 2 - update data of 5 BDs
+        """ L2BD Multi-instance test 2 - delete 2 BDs
+        """
+        # Config 3
+        # Delete 2 BDs
+        self.delete_bd(2)
+
+        # Verify 3
+        for bd_id in self.bd_deleted_list:
+            self.assertEqual(self.verify_bd(bd_id), 0)
+        for bd_id in self.bd_list:
+            self.assertEqual(self.verify_bd(bd_id), 1)
+
+        # Test 3
+        self.run_verify_test()
+
+    def test_l2bd_inst_03(self):
+        """ L2BD Multi-instance test 3 - add 2 BDs
+        """
+        # Config 4
+        # Create 5 BDs, put interfaces to these BDs and send MAC learning
+        # packets
+        self.create_bd_and_mac_learn(2)
+
+        # Verify 4
+        for bd_id in self.bd_list:
+            self.assertEqual(self.verify_bd(bd_id), 1)
+
+        # Test 4
+        # self.vapi.cli("clear trace")
+        self.run_verify_test()
+
+    def test_l2bd_inst_04(self):
+        """ L2BD Multi-instance test 4 - update data of 5 BDs
         """
         # Config 2
         # Update data of 5 BDs (disable learn, forward, flood, uu-flood)
@@ -428,40 +460,8 @@ class TestL2bdMultiInst(VppTestCase):
         self.verify_bd(self.bd_list[4], learn=False, forward=True,
                        flood=True, uu_flood=True)
 
-    def test_l2bd_inst_03(self):
-        """ L2BD Multi-instance 3 - delete 2 BDs
-        """
-        # Config 3
-        # Delete 2 BDs
-        self.delete_bd(2)
-
-        # Verify 3
-        for bd_id in self.bd_deleted_list:
-            self.assertEqual(self.verify_bd(bd_id), 0)
-        for bd_id in self.bd_list:
-            self.assertEqual(self.verify_bd(bd_id), 1)
-
-        # Test 3
-        self.run_verify_test()
-
-    def test_l2bd_inst_04(self):
-        """ L2BD Multi-instance test 4 - add 2 BDs
-        """
-        # Config 4
-        # Create 5 BDs, put interfaces to these BDs and send MAC learning
-        # packets
-        self.create_bd_and_mac_learn(2)
-
-        # Verify 4
-        for bd_id in self.bd_list:
-            self.assertEqual(self.verify_bd(bd_id), 1)
-
-        # Test 4
-        # self.vapi.cli("clear trace")
-        self.run_verify_test()
-
     def test_l2bd_inst_05(self):
-        """ L2BD Multi-instance 5 - delete 5 BDs
+        """ L2BD Multi-instance test 5 - delete 5 BDs
         """
         # Config 5
         # Delete 5 BDs
