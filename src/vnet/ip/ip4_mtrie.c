@@ -284,8 +284,8 @@ set_leaf (ip4_fib_mtrie_t * m,
   if (n_dst_bits_next_plies <= 0)
     {
       /* The mask length of the address to insert maps to this ply */
-      uword i, old_leaf_is_terminal;
-      u32 n_dst_bits_this_ply;
+      uword old_leaf_is_terminal;
+      u32 i, n_dst_bits_this_ply;
 
       /* The number of bits, and hence slots/buckets, we will fill */
       n_dst_bits_this_ply = clib_min (8, -n_dst_bits_next_plies);
@@ -413,8 +413,8 @@ set_root_leaf (ip4_fib_mtrie_t * m,
   if (n_dst_bits_next_plies <= 0)
     {
       /* The mask length of the address to insert maps to this ply */
-      uword i, old_leaf_is_terminal;
-      u32 n_dst_bits_this_ply;
+      uword old_leaf_is_terminal;
+      u32 i, n_dst_bits_this_ply;
 
       /* The number of bits, and hence slots/buckets, we will fill */
       n_dst_bits_this_ply = 16 - a->dst_address_length;
