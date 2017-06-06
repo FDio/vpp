@@ -1,0 +1,123 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_2d966395",
+        "filename": "src/svm/svm.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 1155,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-06T08:46:12Z",
+      "side": 1,
+      "message": "why no longer const?",
+      "revId": "5d18fed8a35b942cc6b4a688fa5c99235b80cf78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_8dee6f21",
+        "filename": "src/vlibapi/api.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-06T08:46:12Z",
+      "side": 1,
+      "message": "why \"\" and not \u003cpath/api_common.h\u003e",
+      "revId": "5d18fed8a35b942cc6b4a688fa5c99235b80cf78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_6df33b0b",
+        "filename": "src/vlibapi/api_common.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-06T08:46:12Z",
+      "side": 1,
+      "message": "api_common.h",
+      "revId": "5d18fed8a35b942cc6b4a688fa5c99235b80cf78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_ede60b44",
+        "filename": "src/vlibmemory/memory_client.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 442,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-06T08:46:12Z",
+      "side": 1,
+      "message": "please don\u0027t remove the const",
+      "revId": "5d18fed8a35b942cc6b4a688fa5c99235b80cf78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_edbdeb03",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-06T08:46:12Z",
+      "side": 1,
+      "message": "use\n funciton (void)\nif the function takes no arguments.",
+      "revId": "5d18fed8a35b942cc6b4a688fa5c99235b80cf78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_0dc15f80",
+        "filename": "src/vpp-api/vapi/vapi.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-06T08:46:12Z",
+      "side": 1,
+      "message": "new-lines please",
+      "revId": "5d18fed8a35b942cc6b4a688fa5c99235b80cf78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_2dc42391",
+        "filename": "src/vpp-api/vapi/vapi.h",
+        "patchSetId": 10
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-06T08:46:12Z",
+      "side": 1,
+      "message": "copyright header.",
+      "revId": "5d18fed8a35b942cc6b4a688fa5c99235b80cf78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
