@@ -424,6 +424,9 @@ vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
 
   lfe = find_fwd_entry (lgm, a, &fe_key);
 
+  if (!lfe)
+    return;
+
   if (LISP_GPE_FWD_ENTRY_TYPE_NORMAL != lfe->type)
     return;
 
