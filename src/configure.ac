@@ -80,6 +80,23 @@ AC_DEFUN([PLUGIN_DISABLED],
 
 AC_DEFUN([PRINT_VAL], [ AC_MSG_RESULT(AC_HELP_STRING($1,$2)) ])
 
+AC_DEFUN([DPDK_IS_PMD_ENABLED],
+[
+  AC_MSG_CHECKING([for $1 in rte_config.h])
+  AC_COMPILE_IFELSE(
+    [AC_LANG_PROGRAM(
+      [[#include <rte_config.h>]],
+      [[return RTE_$1;]],
+    )],
+    [with_$2=yes]
+    [AC_MSG_RESULT([yes])],
+    [with_$2=no]
+    [AC_MSG_RESULT([no])]
+  )
+  AM_CONDITIONAL(m4_toupper(WITH_$2), test "$with_$2" = "yes")
+  m4_append_uniq([list_of_with], [$2], [, ])
+])
+
 ###############################################################################
 # configure arguments
 ###############################################################################
@@ -97,8 +114,6 @@ DISABLE_ARG(papi,	[Disable Python API bindings])
 DISABLE_ARG(japi,	[Disable Java API bindings])
 
 # --with-X
-WITH_ARG(dpdk_crypto_sw,[Use DPDK cryptodev SW PMDs])
-WITH_ARG(dpdk_mlx5_pmd,	[Use DPDK with mlx5 PMD])
 
 # --without-X
 WITHOUT_ARG(libssl,	[Disable libssl])
@@ -130,7 +145,6 @@ AC_SUBST(PRE_DATA_SIZE,		[$with_pre_data])
 AC_SUBST(APICLI,		[-DVPP_API_TEST_BUILTIN=${n_with_apicli}])
 
 AC_DEFINE_UNQUOTED(DPDK_SHARED_LIB,	[${n_enable_dpdk_shared}])
-AC_DEFINE_UNQUOTED(DPDK_CRYPTO_SW,	[${n_with_dpdk_crypto_sw}])
 AC_DEFINE_UNQUOTED(WITH_LIBSSL,		[${n_with_libssl}])
 
 
@@ -168,6 +182,34 @@ AM_COND_IF([ENABLE_DPDK_SHARED],
   AC_CHECK_LIB( [dpdk], [rte_eal_init],
     [],
     [AC_MSG_ERROR([DPDK shared library not found])],)
+])
+
+DPDK_IS_PMD_ENABLED(LIBRTE_PMD_AESNI_MB, dpdk_aesni_mb_pmd)
+AM_COND_IF([WITH_DPDK_AESNI_MB_PMD],
+[
+  AC_CHECK_LIB([IPSec_MB], [submit_job_sse], [],
+	       [AC_MSG_ERROR([IPSec_MB library not found])])
+])
+
+DPDK_IS_PMD_ENABLED(LIBRTE_PMD_AESNI_GCM, dpdk_aesni_gcm_pmd)
+AM_COND_IF([WITH_DPDK_AESNI_GCM_PMD],
+[
+  AC_CHECK_LIB([isal_crypto], [aesni_gcm128_init], [],
+	       [AC_MSG_ERROR([isal_crypto library not found])])
+])
+
+DPDK_IS_PMD_ENABLED(LIBRTE_MLX5_PMD, dpdk_mlx5_pmd)
+AM_COND_IF([WITH_DPDK_MLX5_PMD],
+[
+  AC_CHECK_LIB([ibverbs], [ibv_fork_init], [],
+	       [AC_MSG_ERROR([ibverbs library not found])])
+])
+
+DPDK_IS_PMD_ENABLED(LIBRTE_MLX4_PMD, dpdk_mlx4_pmd)
+AM_COND_IF([WITH_DPDK_MLX4_PMD],
+[
+  AC_CHECK_LIB([ibverbs], [ibv_fork_init], [],
+	       [AC_MSG_ERROR([ibverbs library not found])])
 ])
 
 AM_COND_IF([ENABLE_G2],

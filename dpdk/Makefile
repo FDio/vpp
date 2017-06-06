@@ -19,14 +19,13 @@ DPDK_INSTALL_DIR      ?= $(CURDIR)/_install
 DPDK_PKTMBUF_HEADROOM ?= 128
 DPDK_DOWNLOAD_DIR     ?= $(HOME)/Downloads
 DPDK_DEBUG            ?= n
-DPDK_CRYPTO_SW_PMD    ?= n
 DPDK_MLX4_PMD         ?= n
 DPDK_MLX5_PMD         ?= n
 
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
 DPDK_VERSION ?= 17.05
-PKG_SUFFIX ?= vpp5
+PKG_SUFFIX ?= vpp6
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
@@ -34,14 +33,15 @@ DPDK_17.02_TARBALL_MD5_CKSUM := 6b9f7387c35641f4e8dbba3e528f2376
 DPDK_17.05_TARBALL_MD5_CKSUM := 0a68c31cd6a6cabeed0a4331073e4c05
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 
-ifeq ($(DPDK_CRYPTO_SW_PMD),y)
-AESNIMB_LIB_TARBALL := v0.44-gcm.2.tar.gz
+IPSEC_MB_VER := 0.45
+AESNIMB_LIB_TARBALL := v$(IPSEC_MB_VER).tar.gz
 AESNIMB_LIB_TARBALL_URL := http://github.com/01org/intel-ipsec-mb/archive/$(AESNIMB_LIB_TARBALL)
-AESNIMB_LIB_SOURCE := $(B)/intel-ipsec-mb-0.44-gcm.2
-ISA_L_CRYPTO_LIB_TARBALL := isa_l_crypto.tar.gz
-ISA_L_CRYPTO_LIB_TARBALL_URL := http://github.com/01org/isa-l_crypto/archive/master.tar.gz
-ISA_L_CRYPTO_LIB_SOURCE := $(B)/isa-l_crypto-master
-endif
+AESNIMB_LIB_SOURCE := $(B)/intel-ipsec-mb-$(IPSEC_MB_VER)
+ISA_L_CRYPTO_VER := 2.18.0
+ISA_L_CRYPTO_LIB_TARBALL := v$(ISA_L_CRYPTO_VER).tar.gz
+ISA_L_CRYPTO_LIB_TARBALL_URL := http://github.com/01org/isa-l_crypto/archive/$(ISA_L_CRYPTO_LIB_TARBALL)
+ISA_L_CRYPTO_LIB_SOURCE := $(B)/isa-l_crypto-$(ISA_L_CRYPTO_VER)
+ISA_L_CRYPTO_INSTALL_DIR := $(ISA_L_CRYPTO_LIB_SOURCE)/install
 
 ifneq (,$(findstring clang,$(CC)))
 DPDK_CC=clang
@@ -95,11 +95,9 @@ else
 DPDK_EXTRA_CFLAGS := -g -O0
 endif
 
-ifeq ($(DPDK_CRYPTO_SW_PMD),y)
-DPDK_EXTRA_CFLAGS += -I$(I)/include
+DPDK_EXTRA_CFLAGS += -I$(ISA_L_CRYPTO_INSTALL_DIR)/include -Wl,-z,muldefs
 DPDK_EXTRA_LDFLAGS += -L$(I)/lib
 DPDK_MAKE_EXTRA_ARGS += AESNI_MULTI_BUFFER_LIB_PATH=$(AESNIMB_LIB_SOURCE)
-endif
 
 # assemble DPDK make arguments
 DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
@@ -110,8 +108,6 @@ DPDK_MAKE_ARGS := -C $(DPDK_SOURCE) -j $(JOBS) \
 	CPU_CFLAGS="$(DPDK_CPU_CFLAGS)" \
 	DESTDIR=$(I) \
         $(DPDK_MAKE_EXTRA_ARGS)
-
-DPDK_SOURCE_FILES := $(shell  [ -e $(DPDK_SOURCE) ] && find $(DPDK_SOURCE) -name "*.[chS]")
 
 define set
 @if grep -q CONFIG_$1 $@ ; \
@@ -143,8 +139,8 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_BOND,y)
 	$(call set,RTE_LIBRTE_IP_FRAG,y)
 	$(call set,RTE_LIBRTE_PMD_QAT,y)
-	$(call set,RTE_LIBRTE_PMD_AESNI_MB,$(DPDK_CRYPTO_SW_PMD))
-	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,$(DPDK_CRYPTO_SW_PMD))
+	$(call set,RTE_LIBRTE_PMD_AESNI_MB,y)
+	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,y)
 	$(call set,RTE_LIBRTE_MLX4_PMD,$(DPDK_MLX4_PMD))
 	$(call set,RTE_LIBRTE_MLX5_PMD,$(DPDK_MLX5_PMD))
 	@# not needed
@@ -181,10 +177,8 @@ $(CURDIR)/$(ISA_L_CRYPTO_LIB_TARBALL):
 	fi
 
 DPDK_DOWNLOADS = $(CURDIR)/$(DPDK_TARBALL)
-ifeq ($(DPDK_CRYPTO_SW_PMD),y)
 DPDK_DOWNLOADS += $(CURDIR)/$(AESNIMB_LIB_TARBALL)
 DPDK_DOWNLOADS += $(CURDIR)/$(ISA_L_CRYPTO_LIB_TARBALL)
-endif
 
 $(B)/.download.ok: $(DPDK_DOWNLOADS)
 	@mkdir -p $(B)
@@ -200,12 +194,10 @@ download: $(B)/.download.ok
 $(B)/.extract.ok: $(B)/.download.ok
 	@echo --- extracting $(DPDK_TARBALL) ---
 	@tar --directory $(B) --extract --file $(CURDIR)/$(DPDK_TARBALL)
-ifeq ($(DPDK_CRYPTO_SW_PMD),y)
 	@echo --- extracting $(AESNIMB_LIB_TARBALL) ---
 	@tar --directory $(B) --extract --file $(CURDIR)/$(AESNIMB_LIB_TARBALL)
 	@echo --- extracting $(ISA_L_CRYPTO_LIB_TARBALL) ---
 	@tar --directory $(B) --extract --file $(CURDIR)/$(ISA_L_CRYPTO_LIB_TARBALL)
-endif
 	@touch $@
 
 .PHONY: extract
@@ -231,18 +223,29 @@ $(B)/.config.ok: $(B)/.patch.ok $(B)/custom-config
 .PHONY: config
 config: $(B)/.config.ok
 
-$(B)/.build.ok: $(DPDK_SOURCE_FILES)
-	@if [ ! -e $(B)/.config.ok ] ; then echo 'Please run "make config" first' && false ; fi
-ifeq ($(DPDK_CRYPTO_SW_PMD),y)
-	# Build IPsec_MB library
+# Order matters
+BUILD_TARGETS += build-ipsec-mb build-isal-crypto build-dpdk
+
+.PHONY: build-ipsec-mb
+build-ipsec-mb:
 	mkdir -p $(I)/lib/
 	make -C $(AESNIMB_LIB_SOURCE) -j NO_GCM=y
 	cp $(AESNIMB_LIB_SOURCE)/libIPSec_MB.a $(I)/lib/
-	# Build ISA-L Crypto library
-	cd $(ISA_L_CRYPTO_LIB_SOURCE) && ./autogen.sh && ./configure --prefix=$(I)
+
+.PHONY: build-isal-crypto
+build-isal-crypto:
+	mkdir -p $(I)/lib/
+	cd $(ISA_L_CRYPTO_LIB_SOURCE) && ./autogen.sh && \
+	  ./configure --prefix=$(ISA_L_CRYPTO_INSTALL_DIR) CFLAGS='-fPIC -DPIC -O2'
 	make -C $(ISA_L_CRYPTO_LIB_SOURCE) -j install
-endif
+	cp $(ISA_L_CRYPTO_INSTALL_DIR)/lib/libisal_crypto.a $(I)/lib/
+
+.PHONY: build-dpdk
+build-dpdk:
+	@if [ ! -e $(B)/.config.ok ] ; then echo 'Please run "make config" first' && false ; fi
 	@make $(DPDK_MAKE_ARGS) install
+
+$(B)/.build.ok: $(BUILD_TARGETS)
 	@touch $@
 
 .PHONY: build
@@ -323,7 +326,7 @@ build-rpm: $(DEV_RPM)
 
 install-rpm:
 ifneq ($(INSTALLED_RPM_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
-	@make $(DEV_RPM)
+	@$(MAKE) $(DEV_RPM)
 	sudo rpm -Uih $(DEV_RPM)
 else
 	@echo "=========================================================="
