@@ -62,6 +62,7 @@ acl_main_t acl_main;
 
 #define foreach_acl_plugin_api_msg		\
 _(ACL_PLUGIN_GET_VERSION, acl_plugin_get_version) \
+_(ACL_PLUGIN_CONTROL_PING, acl_plugin_control_ping) \
 _(ACL_ADD_REPLACE, acl_add_replace)				\
 _(ACL_DEL, acl_del)				\
 _(ACL_INTERFACE_ADD_DEL, acl_interface_add_del)	\
@@ -106,6 +107,20 @@ vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
+static void
+vl_api_acl_plugin_control_ping_t_handler (vl_api_acl_plugin_control_ping_t * mp)
+{
+  vl_api_acl_plugin_control_ping_reply_t *rmp;
+  acl_main_t *am = &acl_main;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_ACL_PLUGIN_CONTROL_PING_REPLY,
+  ({
+    rmp->vpe_pid = ntohl (getpid ());
+  }));
+  /* *INDENT-ON* */
+}
 
 static int
 acl_add_list (u32 count, vl_api_acl_rule_t rules[],

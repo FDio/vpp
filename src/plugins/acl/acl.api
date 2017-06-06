@@ -44,6 +44,30 @@ define acl_plugin_get_version_reply
   u32 minor;
 };
 
+/** \brief Control ping from client to api server request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define acl_plugin_control_ping
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Control ping from the client to the server response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param vpe_pid - the pid of the vpe, returned by the server
+*/
+define acl_plugin_control_ping_reply
+{
+  u32 context;
+  i32 retval;
+  u32 client_index;
+  u32 vpe_pid;
+};
+
 /** \brief Access List Rule entry
     @param is_permit - deny (0), permit (1), or permit+reflect(2) action on this rule.
     @param is_ipv6   - IP addresses in this rule are IPv6 (1) or IPv4 (0)
