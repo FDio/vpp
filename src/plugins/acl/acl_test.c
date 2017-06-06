@@ -243,6 +243,22 @@ static void vl_api_macip_acl_interface_get_reply_t_handler
         vam->result_ready = 1;
     }
 
+static void vl_api_acl_plugin_control_ping_reply_t_handler
+  (vl_api_acl_plugin_control_ping_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
 
 /*
  * Table of message reply handlers, must include boilerplate handlers
@@ -260,6 +276,7 @@ _(MACIP_ACL_DEL_REPLY, macip_acl_del_reply) \
 _(MACIP_ACL_DETAILS, macip_acl_details)  \
 _(MACIP_ACL_INTERFACE_ADD_DEL_REPLY, macip_acl_interface_add_del_reply)  \
 _(MACIP_ACL_INTERFACE_GET_REPLY, macip_acl_interface_get_reply)  \
+_(ACL_PLUGIN_CONTROL_PING_REPLY, acl_plugin_control_ping_reply) \
 _(ACL_PLUGIN_GET_VERSION_REPLY, acl_plugin_get_version_reply)
 
 static int api_acl_plugin_get_version (vat_main_t * vam)
@@ -728,6 +745,15 @@ static int api_acl_interface_set_acl_list (vat_main_t * vam)
     return ret;
 }
 
+static void
+api_acl_send_control_ping(vat_main_t *vam)
+{
+  vl_api_acl_plugin_control_ping_t *mp_ping;
+
+  M(ACL_PLUGIN_CONTROL_PING, mp_ping);
+  S(mp_ping);
+}
+
 
 static int api_acl_interface_list_dump (vat_main_t * vam)
 {
@@ -752,6 +778,9 @@ static int api_acl_interface_list_dump (vat_main_t * vam)
 
     /* send it... */
     S(mp);
+
+    /* Use control ping for synchronization */
+    api_acl_send_control_ping(vam);
 
     /* Wait for a reply... */
     W (ret);
@@ -780,6 +809,9 @@ static int api_acl_dump (vat_main_t * vam)
     /* send it... */
     S(mp);
 
+    /* Use control ping for synchronization */
+    api_acl_send_control_ping(vam);
+
     /* Wait for a reply... */
     W (ret);
     return ret;
@@ -806,6 +838,9 @@ static int api_macip_acl_dump (vat_main_t * vam)
 
     /* send it... */
     S(mp);
+
+    /* Use control ping for synchronization */
+    api_acl_send_control_ping(vam);
 
     /* Wait for a reply... */
     W (ret);
