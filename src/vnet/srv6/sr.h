@@ -36,13 +36,14 @@
 
 #define SR_BEHAVIOR_END 1
 #define SR_BEHAVIOR_X 2
-#define SR_BEHAVIOR_D_FIRST 3	/* Unused. Separator in between regular and D */
-#define SR_BEHAVIOR_DX2 4
-#define SR_BEHAVIOR_DX6 5
-#define SR_BEHAVIOR_DX4 6
-#define SR_BEHAVIOR_DT6 7
-#define SR_BEHAVIOR_DT4 8
-#define SR_BEHAVIOR_LAST 9	/* Must always be the last one */
+#define SR_BEHAVIOR_T 3
+#define SR_BEHAVIOR_D_FIRST 4	/* Unused. Separator in between regular and D */
+#define SR_BEHAVIOR_DX2 5
+#define SR_BEHAVIOR_DX6 6
+#define SR_BEHAVIOR_DX4 7
+#define SR_BEHAVIOR_DT6 8
+#define SR_BEHAVIOR_DT4 9
+#define SR_BEHAVIOR_LAST 10	/* Must always be the last one */
 
 #define SR_STEER_L2 2
 #define SR_STEER_IPV4 4

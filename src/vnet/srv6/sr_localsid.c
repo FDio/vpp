@@ -115,7 +115,7 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
 	  /* Delete localsid registry */
 	  pool_put (sm->localsids, ls);
 	  mhash_unset (&sm->sr_localsids_index_hash, localsid_addr, NULL);
-	  return 1;
+	  return 0;
 	}
       else			/* create with function already existing; complain */
 	return -1;
@@ -161,6 +161,9 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
       ls->sw_if_index = sw_if_index;
       clib_memcpy (&ls->next_hop.ip6, &nh_addr->ip6, sizeof (ip6_address_t));
       break;
+    case SR_BEHAVIOR_T:
+      ls->vrf_index = sw_if_index;
+      break;
     case SR_BEHAVIOR_DX4:
       ls->sw_if_index = sw_if_index;
       clib_memcpy (&ls->next_hop.ip4, &nh_addr->ip4, sizeof (ip4_address_t));
@@ -170,6 +173,9 @@ sr_cli_localsid (char is_del, ip6_address_t * localsid_addr,
       clib_memcpy (&ls->next_hop.ip6, &nh_addr->ip6, sizeof (ip6_address_t));
       break;
     case SR_BEHAVIOR_DT6:
+      ls->vrf_index = sw_if_index;
+      break;
+    case SR_BEHAVIOR_DT4:
       ls->vrf_index = sw_if_index;
       break;
     case SR_BEHAVIOR_DX2:
@@ -294,6 +300,8 @@ sr_cli_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			unformat_vnet_sw_interface, vnm, &sw_if_index,
 			unformat_ip6_address, &next_hop.ip6))
 	    behavior = SR_BEHAVIOR_X;
+	  else if (unformat (input, "end.t %u", &sw_if_index))
+	    behavior = SR_BEHAVIOR_T;
 	  else if (unformat (input, "end.dx6 %U %U",
 			     unformat_vnet_sw_interface, vnm, &sw_if_index,
 			     unformat_ip6_address, &next_hop.ip6))
@@ -461,6 +469,13 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			   format_vnet_sw_if_index_name, vnm, ls->sw_if_index,
 			   format_ip6_address, &ls->next_hop.ip6);
 	  break;
+	case SR_BEHAVIOR_T:
+	  vlib_cli_output (vm,
+			   "\tAddress: \t%U\n\tBehavior: \tT (Endpoint with specific IPv6 table lookup)"
+			   "\n\tTable:  \t%u",
+			   format_ip6_address, &ls->localsid,
+			   format_vnet_sw_if_index_name, vnm, ls->vrf_index);
+	  break;
 	case SR_BEHAVIOR_DX4:
 	  vlib_cli_output (vm,
 			   "\tAddress: \t%U\n\tBehavior: \tDX4 (Endpoint with decapsulation and IPv4 cross-connect)"
@@ -492,13 +507,13 @@ show_sr_localsid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm,
 			   "\tAddress: \t%U\n\tBehavior: \tDT6 (Endpoint with decapsulation and specific IPv6 table lookup)"
 			   "\n\tTable: %u", format_ip6_address, &ls->localsid,
-			   ls->fib_table);
+			   ls->vrf_index);
 	  break;
 	case SR_BEHAVIOR_DT4:
 	  vlib_cli_output (vm,
 			   "\tAddress: \t%U\n\tBehavior: \tDT4 (Endpoint with decapsulation and specific IPv4 table lookup)"
 			   "\n\tTable: \t%u", format_ip6_address,
-			   &ls->localsid, ls->fib_table);
+			   &ls->localsid, ls->vrf_index);
 	  break;
 	default:
 	  if (ls->behavior >= SR_BEHAVIOR_LAST)
@@ -651,6 +666,9 @@ format_sr_localsid_trace (u8 * s, va_list * args)
     case SR_BEHAVIOR_X:
       s = format (s, "\tBehavior: IPv6 L3 xconnect\n");
       break;
+    case SR_BEHAVIOR_T:
+      s = format (s, "\tBehavior: IPv6 specific table lookup\n");
+      break;
     case SR_BEHAVIOR_DT6:
       s = format (s, "\tBehavior: Decapsulation with IPv6 Table lookup\n");
       break;
@@ -690,13 +708,64 @@ end_srh_processing (vlib_node_runtime_t * node,
 		    vlib_buffer_t * b0,
 		    ip6_header_t * ip0,
 		    ip6_sr_header_t * sr0,
-		    ip6_sr_localsid_t * ls0, u32 * next0)
+		    ip6_sr_localsid_t * ls0,
+		    u32 * next0, u8 psp, ip6_ext_header_t * prev0)
 {
   ip6_address_t *new_dst0;
 
   if (PREDICT_TRUE (sr0->type == ROUTING_HEADER_TYPE_SR))
     {
-      if (PREDICT_TRUE (sr0->segments_left != 0))
+      if (sr0->segments_left == 1 && psp)
+	{
+	  u32 new_l0, sr_len;
+	  u64 *copy_dst0, *copy_src0;
+	  u32 copy_len_u64s0 = 0;
+
+	  ip0->dst_address.as_u64[0] = sr0->segments->as_u64[0];
+	  ip0->dst_address.as_u64[1] = sr0->segments->as_u64[1];
+
+	  /* Remove the SRH taking care of the rest of IPv6 ext header */
+	  if (prev0)
+	    prev0->next_hdr = sr0->protocol;
+	  else
+	    ip0->protocol = sr0->protocol;
+
+	  sr_len = ip6_ext_header_len (sr0);
+	  vlib_buffer_advance (b0, sr_len);
+	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) - sr_len;
+	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
+	  copy_src0 = (u64 *) ip0;
+	  copy_dst0 = copy_src0 + (sr0->length + 1);
+	  /* number of 8 octet units to copy
+	   * By default in absence of extension headers it is equal to length of ip6 header
+	   * With extension headers it number of 8 octet units of ext headers preceding
+	   * SR header
+	   */
+	  copy_len_u64s0 =
+	    (((u8 *) sr0 - (u8 *) ip0) - sizeof (ip6_header_t)) >> 3;
+	  copy_dst0[4 + copy_len_u64s0] = copy_src0[4 + copy_len_u64s0];
+	  copy_dst0[3 + copy_len_u64s0] = copy_src0[3 + copy_len_u64s0];
+	  copy_dst0[2 + copy_len_u64s0] = copy_src0[2 + copy_len_u64s0];
+	  copy_dst0[1 + copy_len_u64s0] = copy_src0[1 + copy_len_u64s0];
+	  copy_dst0[0 + copy_len_u64s0] = copy_src0[0 + copy_len_u64s0];
+
+	  int i;
+	  for (i = copy_len_u64s0 - 1; i >= 0; i--)
+	    {
+	      copy_dst0[i] = copy_src0[i];
+	    }
+
+	  if (ls0->behavior == SR_BEHAVIOR_X)
+	    {
+	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+	      *next0 = SR_LOCALSID_NEXT_IP6_REWRITE;
+	    }
+	  else if (ls0->behavior == SR_BEHAVIOR_T)
+	    {
+	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
+	    }
+	}
+      else if (PREDICT_TRUE (sr0->segments_left > 0))
 	{
 	  sr0->segments_left -= 1;
 	  new_dst0 = (ip6_address_t *) (sr0->segments);
@@ -708,6 +777,10 @@ end_srh_processing (vlib_node_runtime_t * node,
 	    {
 	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
 	      *next0 = SR_LOCALSID_NEXT_IP6_REWRITE;
+	    }
+	  else if (ls0->behavior == SR_BEHAVIOR_T)
+	    {
+	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
 	    }
 	}
       else
@@ -727,7 +800,6 @@ end_srh_processing (vlib_node_runtime_t * node,
 /*
  * @brief Function doing SRH processing for D* variants
  */
-//FixME. I must crosscheck that next_proto matches the localsid
 static_always_inline void
 end_decaps_srh_processing (vlib_node_runtime_t * node,
 			   vlib_buffer_t * b0,
@@ -772,7 +844,7 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
       else if (ls0->behavior == SR_BEHAVIOR_DT6)
 	{
 	  vlib_buffer_advance (b0, total_size);
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->fib_table;
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
 	  return;
 	}
       break;
@@ -788,7 +860,7 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
       else if (ls0->behavior == SR_BEHAVIOR_DT4)
 	{
 	  vlib_buffer_advance (b0, total_size);
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->fib_table;
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
 	  *next0 = SR_LOCALSID_NEXT_IP4_LOOKUP;
 	  return;
 	}
@@ -807,72 +879,6 @@ end_decaps_srh_processing (vlib_node_runtime_t * node,
   *next0 = SR_LOCALSID_NEXT_ERROR;
   b0->error = node->errors[SR_LOCALSID_ERROR_NO_INNER_HEADER];
   return;
-}
-
-/**
- * @brief Function doing End processing with PSP
- */
-static_always_inline void
-end_psp_srh_processing (vlib_node_runtime_t * node,
-			vlib_buffer_t * b0,
-			ip6_header_t * ip0,
-			ip6_ext_header_t * prev0,
-			ip6_sr_header_t * sr0,
-			ip6_sr_localsid_t * ls0, u32 * next0)
-{
-  u32 new_l0, sr_len;
-  u64 *copy_dst0, *copy_src0;
-  u32 copy_len_u64s0 = 0;
-  int i;
-
-  if (PREDICT_TRUE (sr0->type == ROUTING_HEADER_TYPE_SR))
-    {
-      if (PREDICT_TRUE (sr0->segments_left == 1))
-	{
-	  ip0->dst_address.as_u64[0] = sr0->segments->as_u64[0];
-	  ip0->dst_address.as_u64[1] = sr0->segments->as_u64[1];
-
-	  /* Remove the SRH taking care of the rest of IPv6 ext header */
-	  if (prev0)
-	    prev0->next_hdr = sr0->protocol;
-	  else
-	    ip0->protocol = sr0->protocol;
-
-	  sr_len = ip6_ext_header_len (sr0);
-	  vlib_buffer_advance (b0, sr_len);
-	  new_l0 = clib_net_to_host_u16 (ip0->payload_length) - sr_len;
-	  ip0->payload_length = clib_host_to_net_u16 (new_l0);
-	  copy_src0 = (u64 *) ip0;
-	  copy_dst0 = copy_src0 + (sr0->length + 1);
-	  /* number of 8 octet units to copy
-	   * By default in absence of extension headers it is equal to length of ip6 header
-	   * With extension headers it number of 8 octet units of ext headers preceding
-	   * SR header
-	   */
-	  copy_len_u64s0 =
-	    (((u8 *) sr0 - (u8 *) ip0) - sizeof (ip6_header_t)) >> 3;
-	  copy_dst0[4 + copy_len_u64s0] = copy_src0[4 + copy_len_u64s0];
-	  copy_dst0[3 + copy_len_u64s0] = copy_src0[3 + copy_len_u64s0];
-	  copy_dst0[2 + copy_len_u64s0] = copy_src0[2 + copy_len_u64s0];
-	  copy_dst0[1 + copy_len_u64s0] = copy_src0[1 + copy_len_u64s0];
-	  copy_dst0[0 + copy_len_u64s0] = copy_src0[0 + copy_len_u64s0];
-
-	  for (i = copy_len_u64s0 - 1; i >= 0; i--)
-	    {
-	      copy_dst0[i] = copy_src0[i];
-	    }
-
-	  if (ls0->behavior == SR_BEHAVIOR_X)
-	    {
-	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
-	      *next0 = SR_LOCALSID_NEXT_IP6_REWRITE;
-	    }
-	  return;
-	}
-    }
-  /* Error. Routing header of type != SR */
-  *next0 = SR_LOCALSID_NEXT_ERROR;
-  b0->error = node->errors[SR_LOCALSID_ERROR_NO_PSP];
 }
 
 /**
@@ -1180,25 +1186,14 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    pool_elt_at_index (sm->localsids,
 			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
-	  if (ls0->end_psp)
-	    end_psp_srh_processing (node, b0, ip0, prev0, sr0, ls0, &next0);
-	  else
-	    end_srh_processing (node, b0, ip0, sr0, ls0, &next0);
-
-	  if (ls1->end_psp)
-	    end_psp_srh_processing (node, b1, ip1, prev1, sr1, ls1, &next1);
-	  else
-	    end_srh_processing (node, b1, ip1, sr1, ls1, &next1);
-
-	  if (ls2->end_psp)
-	    end_psp_srh_processing (node, b2, ip2, prev2, sr2, ls2, &next2);
-	  else
-	    end_srh_processing (node, b2, ip2, sr2, ls2, &next2);
-
-	  if (ls3->end_psp)
-	    end_psp_srh_processing (node, b3, ip3, prev3, sr3, ls3, &next3);
-	  else
-	    end_srh_processing (node, b3, ip3, sr3, ls3, &next3);
+	  end_srh_processing (node, b0, ip0, sr0, ls0, &next0, ls0->end_psp,
+			      prev0);
+	  end_srh_processing (node, b1, ip1, sr1, ls1, &next1, ls1->end_psp,
+			      prev1);
+	  end_srh_processing (node, b2, ip2, sr2, ls2, &next2, ls2->end_psp,
+			      prev2);
+	  end_srh_processing (node, b3, ip3, sr3, ls3, &next3, ls3->end_psp,
+			      prev3);
 
 	  //TODO: proper trace.
 
@@ -1259,10 +1254,8 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       vnet_buffer (b0)->ip.adj_index[VLIB_TX]);
 
 	  /* SRH processing */
-	  if (ls0->end_psp)
-	    end_psp_srh_processing (node, b0, ip0, prev0, sr0, ls0, &next0);
-	  else
-	    end_srh_processing (node, b0, ip0, sr0, ls0, &next0);
+	  end_srh_processing (node, b0, ip0, sr0, ls0, &next0, ls0->end_psp,
+			      prev0);
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -1431,8 +1424,10 @@ show_sr_localsid_behaviors_command_fn (vlib_main_t * vm,
   /* Print static behaviors */
   vlib_cli_output (vm, "Default behaviors:\n"
 		   "\tEnd\t-> Endpoint.\n"
-		   "\tEnd.X\t-> Endpoint with decapsulation and Layer-3 cross-connect.\n"
+		   "\tEnd.X\t-> Endpoint with Layer-3 cross-connect.\n"
 		   "\t\tParameters: '<iface> <ip6_next_hop>'\n"
+		   "\tEnd.T\t-> Endpoint with specific IPv6 table lookup.\n"
+		   "\t\tParameters: '<fib_table>'\n"
 		   "\tEnd.DX2\t-> Endpoint with decapsulation and Layer-2 cross-connect.\n"
 		   "\t\tParameters: '<iface>'\n"
 		   "\tEnd.DX6\t-> Endpoint with decapsulation and IPv6 cross-connect.\n"
