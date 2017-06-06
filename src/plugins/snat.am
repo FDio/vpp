@@ -21,7 +21,12 @@ snat_plugin_la_SOURCES = snat/snat.c		\
         snat/out2in.c				\
 	snat/snat_plugin.api.h			\
         snat/snat_ipfix_logging.c		\
-        snat/snat_det.c
+        snat/snat_det.c               		\
+        snat/nat64.c                  		\
+        snat/nat64_cli.c              		\
+        snat/nat64_in2out.c           		\
+        snat/nat64_out2in.c           		\
+        snat/nat64_db.c
 
 API_FILES += snat/snat.api
 

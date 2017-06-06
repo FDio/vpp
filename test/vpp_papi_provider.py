@@ -1327,6 +1327,124 @@ class VppPapiProvider(object):
             {'is_ip4': is_ip4,
              'user_addr': user_addr})
 
+    def nat64_add_del_pool_addr_range(
+            self,
+            start_addr,
+            end_addr,
+            vrf_id=0xFFFFFFFF,
+            is_add=1):
+        """Add/del address range to NAT64 pool
+
+        :param start_addr: First IP address
+        :param end_addr: Last IP address
+        :param vrf_id: VRF id for the address range
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(
+            self.papi.nat64_add_del_pool_addr_range,
+            {'start_addr': start_addr,
+             'end_addr': end_addr,
+             'vrf_id': vrf_id,
+             'is_add': is_add})
+
+    def nat64_pool_addr_dump(self):
+        """Dump NAT64 pool addresses
+        :return: Dictionary of NAT64 pool addresses
+        """
+        return self.api(self.papi.nat64_pool_addr_dump, {})
+
+    def nat64_add_del_interface(
+            self,
+            sw_if_index,
+            is_inside=1,
+            is_add=1):
+        """Enable/disable NAT64 feature on the interface
+           :param sw_if_index: Index of the interface
+           :param is_inside: 1 if inside, 0 if outside (Default value = 1)
+           :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(
+            self.papi.nat64_add_del_interface,
+            {'sw_if_index': sw_if_index,
+             'is_inside': is_inside,
+             'is_add': is_add})
+
+    def nat64_interface_dump(self):
+        """Dump interfaces with NAT64 feature
+        :return: Dictionary of interfaces with NAT64 feature
+        """
+        return self.api(self.papi.nat64_interface_dump, {})
+
+    def nat64_add_del_static_bib(
+            self,
+            in_ip,
+            out_ip,
+            in_port,
+            out_port,
+            protocol,
+            vrf_id=0,
+            is_add=1):
+        """Add/delete S-NAT static BIB entry
+
+        :param in_ip: Inside IPv6 address
+        :param out_ip: Outside IPv4 address
+        :param in_port: Inside port number
+        :param out_port: Outside port number
+        :param protocol: IP protocol
+        :param vrf_id: VRF ID (Default value = 0)
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(
+            self.papi.nat64_add_del_static_bib,
+            {'i_addr': in_ip,
+             'o_addr': out_ip,
+             'i_port': in_port,
+             'o_port': out_port,
+             'vrf_id': vrf_id,
+             'proto': protocol,
+             'is_add': is_add})
+
+    def nat64_bib_dump(self, protocol):
+        """Dump NAT64 BIB
+
+        :param protocol: IP protocol
+        :returns: Dictionary of NAT64 BIB entries
+        """
+        return self.api(self.papi.nat64_bib_dump, {'proto': protocol})
+
+    def nat64_set_timeouts(self, udp=300, icmp=60, tcp_trans=240, tcp_est=7440,
+                           tcp_incoming_syn=6):
+        """Set values of timeouts for NAT64 (in seconds)
+
+        :param udp - UDP timeout (Default value = 300)
+        :param icmp - ICMP timeout (Default value = 60)
+        :param tcp_trans - TCP transitory timeout (Default value = 240)
+        :param tcp_est - TCP established timeout (Default value = 7440)
+        :param tcp_incoming_syn - TCP incoming SYN timeout (Default value = 6)
+        """
+        return self.api(
+            self.papi.nat64_set_timeouts,
+            {'udp': udp,
+             'icmp': icmp,
+             'tcp_trans': tcp_trans,
+             'tcp_est': tcp_est,
+             'tcp_incoming_syn': tcp_incoming_syn})
+
+    def nat64_get_timeouts(self):
+        """Get values of timeouts for NAT64
+
+        :return: Timeouts for NAT64 (in seconds)
+        """
+        return self.api(self.papi.nat64_get_timeouts, {})
+
+    def nat64_st_dump(self, protocol):
+        """Dump NAT64 session table
+
+        :param protocol: IP protocol
+        :returns: Dictionary of NAT64 sesstion table entries
+        """
+        return self.api(self.papi.nat64_st_dump, {'proto': protocol})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 
