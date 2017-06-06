@@ -22,6 +22,30 @@
       "revId": "8bdad37048b7e1535d22e92f09cd7476d28983ca",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_8203d972",
+        "filename": "src/vpp-api/vapi/vapi_parse_json.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-06-06T16:34:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa5d592f_b23752b0",
+      "range": {
+        "startLine": 92,
+        "startChar": 4,
+        "endLine": 97,
+        "endChar": 41
+      },
+      "revId": "8bdad37048b7e1535d22e92f09cd7476d28983ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
