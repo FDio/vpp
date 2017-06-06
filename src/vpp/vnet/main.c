@@ -20,6 +20,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vpp/app/version.h>
 #include <vpp/api/vpe_msg_enum.h>
+#include "vat/vat.h"
 
 
 static void
@@ -162,6 +163,11 @@ main (int argc, char *argv[])
 	  if (i < (argc - 1))
 	    vlib_plugin_path = argv[++i];
 	}
+      else if (!strncmp (argv[i], "vat_plugin_path", 15))
+	{
+	  if (i < (argc - 1))
+	    vat_plugin_path = argv[++i];
+	}
       else if (!strncmp (argv[i], "heapsize", 8))
 	{
 	  sizep = (u8 *) argv[i + 1];
@@ -251,6 +257,17 @@ plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (plugin_path_config, "plugin_path");
+
+static clib_error_t *
+vat_plugin_path_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  clib_error_t *error;
+
+  error = plugin_path_config (vm, input);
+  return error;
+}
+
+VLIB_CONFIG_FUNCTION (vat_plugin_path_config, "vat_plugin_path");
 
 void vl_msg_api_post_mortem_dump (void);
 void elog_post_mortem_dump (void);
