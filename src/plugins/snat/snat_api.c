@@ -20,11 +20,12 @@
 
 #include <snat/snat.h>
 #include <snat/snat_det.h>
+#include <snat/nat64.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
 #include <snat/snat_msg_enum.h>
-#include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/fib_table.h>
 
 /* define message structures */
 #define vl_typedefs
@@ -138,7 +139,10 @@ static void
   rmp->is_ip4 = 1;
   clib_memcpy (rmp->ip_address, &(a->addr), 4);
   if (a->fib_index != ~0)
-    rmp->vrf_id = ntohl (ip4_fib_get (a->fib_index)->table_id);
+    {
+      fib_table_t *fib = fib_table_get (a->fib_index, FIB_PROTOCOL_IP4);
+      rmp->vrf_id = ntohl (fib->ft_table_id);
+    }
   else
     rmp->vrf_id = ~0;
   rmp->context = context;
@@ -669,14 +673,13 @@ static void
 {
   vl_api_snat_user_details_t *rmp;
   snat_main_t *sm = &snat_main;
-  ip4_fib_t *fib_table;
+  fib_table_t *fib = fib_table_get (u->fib_index, FIB_PROTOCOL_IP4);
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_SNAT_USER_DETAILS + sm->msg_id_base);
 
-  fib_table = ip4_fib_get (u->fib_index);
-  rmp->vrf_id = ntohl (fib_table->table_id);
+  rmp->vrf_id = ntohl (fib->ft_table_id);
 
   rmp->is_ip4 = 1;
   clib_memcpy (rmp->ip_address, &(u->addr), 4);
@@ -763,7 +766,7 @@ static void
     return;
 
   clib_memcpy (&ukey.addr, mp->ip_address, 4);
-  ukey.fib_index = ip4_fib_index_from_table_id (ntohl (mp->vrf_id));
+  ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
   key.key = ukey.as_u64;
   if (!clib_bihash_search_8_8 (&sm->worker_by_in, &key, &value))
     tsm = vec_elt_at_index (sm->per_thread_data, value.value);
@@ -804,6 +807,10 @@ static void *vl_api_snat_user_session_dump_t_print
 
   FINISH;
 }
+
+/****************************/
+/*** detrministic NAT/CGN ***/
+/****************************/
 
 static void
 vl_api_snat_add_det_map_t_handler (vl_api_snat_add_det_map_t * mp)
@@ -1193,6 +1200,435 @@ static void *vl_api_snat_det_session_dump_t_print
   FINISH;
 }
 
+/*************/
+/*** NAT64 ***/
+/*************/
+
+static void
+  vl_api_nat64_add_del_pool_addr_range_t_handler
+  (vl_api_nat64_add_del_pool_addr_range_t * mp)
+{
+  vl_api_nat64_add_del_pool_addr_range_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  int rv = 0;
+  ip4_address_t this_addr;
+  u32 start_host_order, end_host_order;
+  u32 vrf_id;
+  int i, count;
+  u32 *tmp;
+
+  tmp = (u32 *) mp->start_addr;
+  start_host_order = clib_host_to_net_u32 (tmp[0]);
+  tmp = (u32 *) mp->end_addr;
+  end_host_order = clib_host_to_net_u32 (tmp[0]);
+
+  count = (end_host_order - start_host_order) + 1;
+
+  vrf_id = clib_host_to_net_u32 (mp->vrf_id);
+
+  memcpy (&this_addr.as_u8, mp->start_addr, 4);
+
+  for (i = 0; i < count; i++)
+    {
+      if ((rv = nat64_add_del_pool_addr (&this_addr, vrf_id, mp->is_add)))
+	goto send_reply;
+
+      increment_v4_address (&this_addr);
+    }
+
+send_reply:
+  REPLY_MACRO (VL_API_NAT64_ADD_DEL_POOL_ADDR_RANGE_REPLY);
+}
+
+static void *vl_api_nat64_add_del_pool_addr_range_t_print
+  (vl_api_nat64_add_del_pool_addr_range_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat64_add_del_pool_addr_range");
+  s = format (s, "%U - %U vrf_id %u %s\n",
+	      format_ip4_address, mp->start_addr,
+	      format_ip4_address, mp->end_addr,
+	      ntohl (mp->vrf_id), mp->is_add ? "" : "del");
+
+  FINISH;
+}
+
+typedef struct nat64_api_walk_ctx_t_
+{
+  unix_shared_memory_queue_t *q;
+  u32 context;
+} nat64_api_walk_ctx_t;
+
+static int
+nat64_api_pool_walk (snat_address_t * a, void *arg)
+{
+  vl_api_nat64_pool_addr_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+  nat64_api_walk_ctx_t *ctx = arg;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_NAT64_POOL_ADDR_DETAILS + sm->msg_id_base);
+  clib_memcpy (rmp->address, &(a->addr), 4);
+  if (a->fib_index != ~0)
+    {
+      fib_table_t *fib = fib_table_get (a->fib_index, FIB_PROTOCOL_IP4);
+      if (!fib)
+	return -1;
+      rmp->vrf_id = ntohl (fib->ft_table_id);
+    }
+  else
+    rmp->vrf_id = ~0;
+  rmp->context = ctx->context;
+
+  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+
+  return 0;
+}
+
+static void
+vl_api_nat64_pool_addr_dump_t_handler (vl_api_nat64_pool_addr_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  nat64_api_walk_ctx_t ctx = {
+    .q = q,
+    .context = mp->context,
+  };
+
+  nat64_pool_addr_walk (nat64_api_pool_walk, &ctx);
+}
+
+static void *
+vl_api_nat64_pool_addr_dump_t_print (vl_api_nat64_pool_addr_dump_t * mp,
+				     void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat64_pool_addr_dump\n");
+
+  FINISH;
+}
+
+static void
+vl_api_nat64_add_del_interface_t_handler (vl_api_nat64_add_del_interface_t *
+					  mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat64_add_del_interface_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv =
+    nat64_add_del_interface (ntohl (mp->sw_if_index), mp->is_inside,
+			     mp->is_add);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_NAT64_ADD_DEL_INTERFACE_REPLY);
+}
+
+static void *
+vl_api_nat64_add_del_interface_t_print (vl_api_nat64_add_del_interface_t * mp,
+					void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat64_add_del_interface ");
+  s = format (s, "sw_if_index %d %s %s",
+	      clib_host_to_net_u32 (mp->sw_if_index),
+	      mp->is_inside ? "in" : "out", mp->is_add ? "" : "del");
+
+  FINISH;
+}
+
+static int
+nat64_api_interface_walk (snat_interface_t * i, void *arg)
+{
+  vl_api_nat64_interface_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+  nat64_api_walk_ctx_t *ctx = arg;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_NAT64_INTERFACE_DETAILS + sm->msg_id_base);
+  rmp->sw_if_index = ntohl (i->sw_if_index);
+  rmp->is_inside = i->is_inside;
+  rmp->context = ctx->context;
+
+  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+
+  return 0;
+}
+
+static void
+vl_api_nat64_interface_dump_t_handler (vl_api_nat64_interface_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  nat64_api_walk_ctx_t ctx = {
+    .q = q,
+    .context = mp->context,
+  };
+
+  nat64_interfaces_walk (nat64_api_interface_walk, &ctx);
+}
+
+static void *
+vl_api_nat64_interface_dump_t_print (vl_api_nat64_interface_dump_t * mp,
+				     void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_interface_dump ");
+
+  FINISH;
+}
+
+static void
+  vl_api_nat64_add_del_static_bib_t_handler
+  (vl_api_nat64_add_del_static_bib_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat64_add_del_static_bib_reply_t *rmp;
+  ip6_address_t in_addr;
+  ip4_address_t out_addr;
+  int rv = 0;
+
+  memcpy (&in_addr.as_u8, mp->i_addr, 16);
+  memcpy (&out_addr.as_u8, mp->o_addr, 4);
+
+  rv =
+    nat64_add_del_static_bib_entry (&in_addr, &out_addr,
+				    clib_net_to_host_u16 (mp->i_port),
+				    clib_net_to_host_u16 (mp->o_port),
+				    mp->proto,
+				    clib_net_to_host_u32 (mp->vrf_id),
+				    mp->is_add);
+
+  REPLY_MACRO (VL_API_NAT64_ADD_DEL_STATIC_BIB_REPLY);
+}
+
+static void *vl_api_nat64_add_del_static_bib_t_print
+  (vl_api_nat64_add_del_static_bib_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat64_add_del_static_bib ");
+  s = format (s, "protocol %d i_addr %U o_addr %U ",
+	      mp->proto,
+	      format_ip6_address, mp->i_addr, format_ip4_address, mp->o_addr);
+
+  if (mp->vrf_id != ~0)
+    s = format (s, "vrf %d", clib_net_to_host_u32 (mp->vrf_id));
+
+  FINISH;
+}
+
+static int
+nat64_api_bib_walk (nat64_db_bib_entry_t * bibe, void *arg)
+{
+  vl_api_nat64_bib_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+  nat64_api_walk_ctx_t *ctx = arg;
+  fib_table_t *fib;
+
+  fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
+  if (!fib)
+    return -1;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_NAT64_BIB_DETAILS + sm->msg_id_base);
+  rmp->context = ctx->context;
+  clib_memcpy (rmp->i_addr, &(bibe->in_addr), 16);
+  clib_memcpy (rmp->o_addr, &(bibe->out_addr), 4);
+  rmp->i_port = bibe->in_port;
+  rmp->o_port = bibe->out_port;
+  rmp->vrf_id = ntohl (fib->ft_table_id);
+  rmp->proto = snat_proto_to_ip_proto (bibe->proto);
+  rmp->is_static = bibe->is_static;
+  rmp->ses_num = ntohl (bibe->ses_num);
+
+  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+
+  return 0;
+}
+
+static void
+vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  nat64_main_t *nm = &nat64_main;
+  snat_protocol_t proto;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  nat64_api_walk_ctx_t ctx = {
+    .q = q,
+    .context = mp->context,
+  };
+
+  proto = ip_proto_to_snat_proto (mp->proto);
+
+  nat64_db_bib_walk (&nm->db, proto, nat64_api_bib_walk, &ctx);
+}
+
+static void *
+vl_api_nat64_bib_dump_t_print (vl_api_nat64_bib_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_bib_dump protocol %d", mp->proto);
+
+  FINISH;
+}
+
+static void
+vl_api_nat64_set_timeouts_t_handler (vl_api_nat64_set_timeouts_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat64_set_timeouts_reply_t *rmp;
+  int rv = 0;
+
+  rv = nat64_set_icmp_timeout (ntohl (mp->icmp));
+  if (rv)
+    goto send_reply;
+  rv = nat64_set_udp_timeout (ntohl (mp->udp));
+  if (rv)
+    goto send_reply;
+  rv =
+    nat64_set_tcp_timeouts (ntohl (mp->tcp_trans), ntohl (mp->tcp_est),
+			    ntohl (mp->tcp_incoming_syn));
+
+send_reply:
+  REPLY_MACRO (VL_API_NAT64_SET_TIMEOUTS_REPLY);
+}
+
+static void *vl_api_nat64_set_timeouts_t_print
+  (vl_api_nat64_set_timeouts_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat64_set_timeouts ");
+  s =
+    format (s,
+	    "udp %d icmp %d, tcp_trans %d, tcp_est %d, tcp_incoming_syn %d\n",
+	    ntohl (mp->udp), ntohl (mp->icmp), ntohl (mp->tcp_trans),
+	    ntohl (mp->tcp_est), ntohl (mp->tcp_incoming_syn));
+
+  FINISH;
+}
+
+static void
+vl_api_nat64_get_timeouts_t_handler (vl_api_nat64_get_timeouts_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat64_get_timeouts_reply_t *rmp;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_NAT64_GET_TIMEOUTS_REPLY,
+  ({
+    rmp->udp = htonl (nat64_get_udp_timeout());
+    rmp->icmp = htonl (nat64_get_icmp_timeout());
+    rmp->tcp_trans = htonl (nat64_get_tcp_trans_timeout());
+    rmp->tcp_est = htonl (nat64_get_tcp_est_timeout());
+    rmp->tcp_incoming_syn = htonl (nat64_get_tcp_incoming_syn_timeout());
+  }))
+  /* *INDENT-ON* */
+}
+
+static void *vl_api_nat64_get_timeouts_t_print
+  (vl_api_nat64_get_timeouts_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat64_get_timeouts");
+
+  FINISH;
+}
+
+static int
+nat64_api_st_walk (nat64_db_st_entry_t * ste, void *arg)
+{
+  vl_api_nat64_st_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+  nat64_api_walk_ctx_t *ctx = arg;
+  nat64_main_t *nm = &nat64_main;
+  nat64_db_bib_entry_t *bibe;
+  fib_table_t *fib;
+
+  bibe = nat64_db_bib_entry_by_index (&nm->db, ste->proto, ste->bibe_index);
+  if (!bibe)
+    return -1;
+
+  fib = fib_table_get (bibe->fib_index, FIB_PROTOCOL_IP6);
+  if (!fib)
+    return -1;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_NAT64_ST_DETAILS + sm->msg_id_base);
+  rmp->context = ctx->context;
+  clib_memcpy (rmp->il_addr, &(bibe->in_addr), 16);
+  clib_memcpy (rmp->ol_addr, &(bibe->out_addr), 4);
+  rmp->il_port = bibe->in_port;
+  rmp->ol_port = bibe->out_port;
+  clib_memcpy (rmp->ir_addr, &(ste->in_r_addr), 16);
+  clib_memcpy (rmp->or_addr, &(ste->out_r_addr), 4);
+  rmp->il_port = ste->r_port;
+  rmp->vrf_id = ntohl (fib->ft_table_id);
+  rmp->proto = snat_proto_to_ip_proto (ste->proto);
+
+  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+
+  return 0;
+}
+
+static void
+vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  nat64_main_t *nm = &nat64_main;
+  snat_protocol_t proto;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  nat64_api_walk_ctx_t ctx = {
+    .q = q,
+    .context = mp->context,
+  };
+
+  proto = ip_proto_to_snat_proto (mp->proto);
+
+  nat64_db_st_walk (&nm->db, proto, nat64_api_st_walk, &ctx);
+}
+
+static void *
+vl_api_nat64_st_dump_t_print (vl_api_nat64_st_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_st_dump protocol %d", mp->proto);
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1218,8 +1654,16 @@ _(SNAT_DET_SET_TIMEOUTS, snat_det_set_timeouts)                         \
 _(SNAT_DET_GET_TIMEOUTS, snat_det_get_timeouts)                         \
 _(SNAT_DET_CLOSE_SESSION_OUT, snat_det_close_session_out)               \
 _(SNAT_DET_CLOSE_SESSION_IN, snat_det_close_session_in)                 \
-_(SNAT_DET_SESSION_DUMP, snat_det_session_dump)
-
+_(SNAT_DET_SESSION_DUMP, snat_det_session_dump)                         \
+_(NAT64_ADD_DEL_POOL_ADDR_RANGE, nat64_add_del_pool_addr_range)         \
+_(NAT64_POOL_ADDR_DUMP, nat64_pool_addr_dump)                           \
+_(NAT64_ADD_DEL_INTERFACE, nat64_add_del_interface)                     \
+_(NAT64_INTERFACE_DUMP, nat64_interface_dump)                           \
+_(NAT64_ADD_DEL_STATIC_BIB, nat64_add_del_static_bib)                   \
+_(NAT64_BIB_DUMP, nat64_bib_dump)                                       \
+_(NAT64_SET_TIMEOUTS, nat64_set_timeouts)                               \
+_(NAT64_GET_TIMEOUTS, nat64_get_timeouts)                               \
+_(NAT64_ST_DUMP, nat64_st_dump)
 
 /* Set up the API message handling tables */
 static clib_error_t *
