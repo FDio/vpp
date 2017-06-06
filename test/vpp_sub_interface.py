@@ -1,7 +1,8 @@
-from scapy.layers.l2 import Ether, Dot1Q
+from scapy.layers.l2 import Dot1Q
 from abc import abstractmethod, ABCMeta
 from vpp_interface import VppInterface
 from vpp_pg_interface import VppPGInterface
+from vpp_papi_provider import L2_VTR_OP
 
 
 class VppSubInterface(VppPGInterface):
@@ -17,11 +18,26 @@ class VppSubInterface(VppPGInterface):
         """Sub-interface ID"""
         return self._sub_id
 
+    @property
+    def tag1(self):
+        return self._tag1
+
+    @property
+    def tag2(self):
+        return self._tag2
+
+    @property
+    def vtr(self):
+        return self._vtr
+
     def __init__(self, test, parent, sub_id):
         VppInterface.__init__(self, test)
         self._parent = parent
         self._parent.add_sub_if(self)
         self._sub_id = sub_id
+        self.set_vtr(L2_VTR_OP.L2_DISABLED)
+        self.DOT1AD_TYPE = 0x88A8
+        self.DOT1Q_TYPE = 0x8100
 
     @abstractmethod
     def create_arp_req(self):
@@ -43,6 +59,66 @@ class VppSubInterface(VppPGInterface):
 
     def remove_vpp_config(self):
         self.test.vapi.delete_subif(self._sw_if_index)
+
+    def _add_tag(self, packet, vlan, tag_type):
+        payload = packet.payload
+        inner_type = packet.type
+        packet.remove_payload()
+        packet.add_payload(Dot1Q(vlan=vlan) / payload)
+        packet.payload.type = inner_type
+        packet.payload.vlan = vlan
+        packet.type = tag_type
+        return packet
+
+    def _remove_tag(self, packet, vlan=None, tag_type=None):
+        if tag_type:
+            self.test.instance().assertEqual(packet.type, tag_type)
+
+        payload = packet.payload
+        if vlan:
+            self.test.instance().assertEqual(payload.vlan, vlan)
+        inner_type = payload.type
+        payload = payload.payload
+        packet.remove_payload()
+        packet.add_payload(payload)
+        packet.type = inner_type
+        return packet
+
+    def add_dot1q_layer(self, packet, vlan):
+        return self._add_tag(packet, vlan, self.DOT1Q_TYPE)
+
+    def add_dot1ad_layer(self, packet, outer, inner):
+        p = self._add_tag(packet, inner, self.DOT1Q_TYPE)
+        return self._add_tag(p, outer, self.DOT1AD_TYPE)
+
+    def remove_dot1q_layer(self, packet, vlan=None):
+        return self._remove_tag(packet, vlan, self.DOT1Q_TYPE)
+
+    def remove_dot1ad_layer(self, packet, outer=None, inner=None):
+        p = self._remove_tag(packet, outer, self.DOT1AD_TYPE)
+        return self._remove_tag(p, inner, self.DOT1Q_TYPE)
+
+    def set_vtr(self, vtr, push1q=0, tag=None, inner=None, outer=None):
+        self._tag1 = 0
+        self._tag2 = 0
+        self._push1q = 0
+
+        if (vtr == L2_VTR_OP.L2_PUSH_1 or
+            vtr == L2_VTR_OP.L2_TRANSLATE_1_1 or
+                vtr == L2_VTR_OP.L2_TRANSLATE_2_1):
+            self._tag1 = tag
+            self._push1q = push1q
+        if (vtr == L2_VTR_OP.L2_PUSH_2 or
+            vtr == L2_VTR_OP.L2_TRANSLATE_1_2 or
+                vtr == L2_VTR_OP.L2_TRANSLATE_2_2):
+            self._tag1 = outer
+            self._tag2 = inner
+            self._push1q = push1q
+
+        self.test.vapi.sw_interface_set_l2_tag_rewrite(
+            self.sw_if_index, vtr, push=self._push1q,
+            tag1=self._tag1, tag2=self._tag2)
+        self._vtr = vtr
 
 
 class VppDot1QSubint(VppSubInterface):
@@ -68,20 +144,13 @@ class VppDot1QSubint(VppSubInterface):
         packet = VppPGInterface.create_ndp_req(self)
         return self.add_dot1_layer(packet)
 
+    # called before sending packet
     def add_dot1_layer(self, packet):
-        payload = packet.payload
-        packet.remove_payload()
-        packet.add_payload(Dot1Q(vlan=self.sub_id) / payload)
-        return packet
+        return self.add_dot1q_layer(packet, self.vlan)
 
+    # called on received packet to "reverse" the add call
     def remove_dot1_layer(self, packet):
-        payload = packet.payload
-        self.test.instance().assertEqual(type(payload), Dot1Q)
-        self.test.instance().assertEqual(payload.vlan, self.vlan)
-        payload = payload.payload
-        packet.remove_payload()
-        packet.add_payload(payload)
-        return packet
+        return self.remove_dot1q_layer(packet, self.vlan)
 
 
 class VppDot1ADSubint(VppSubInterface):
@@ -101,11 +170,9 @@ class VppDot1ADSubint(VppSubInterface):
                                    inner_vlan, dot1ad=1, two_tags=1,
                                    exact_match=1)
         self._sw_if_index = r.sw_if_index
-        super(VppDot1ADSubint, self).__init__(test, parent, sub_id)
-        self.DOT1AD_TYPE = 0x88A8
-        self.DOT1Q_TYPE = 0x8100
         self._outer_vlan = outer_vlan
         self._inner_vlan = inner_vlan
+        super(VppDot1ADSubint, self).__init__(test, parent, sub_id)
 
     def create_arp_req(self):
         packet = VppPGInterface.create_arp_req(self)
@@ -116,25 +183,8 @@ class VppDot1ADSubint(VppSubInterface):
         return self.add_dot1_layer(packet)
 
     def add_dot1_layer(self, packet):
-        payload = packet.payload
-        packet.remove_payload()
-        packet.add_payload(Dot1Q(vlan=self.outer_vlan) /
-                           Dot1Q(vlan=self.inner_vlan) / payload)
-        packet.type = self.DOT1AD_TYPE
-        return packet
+        return self.add_dot1ad_layer(packet, self.outer_vlan, self.inner_vlan)
 
     def remove_dot1_layer(self, packet):
-        self.test.instance().assertEqual(type(packet), Ether)
-        self.test.instance().assertEqual(packet.type, self.DOT1AD_TYPE)
-        packet.type = self.DOT1Q_TYPE
-        packet = Ether(str(packet))
-        payload = packet.payload
-        self.test.instance().assertEqual(type(payload), Dot1Q)
-        self.test.instance().assertEqual(payload.vlan, self.outer_vlan)
-        payload = payload.payload
-        self.test.instance().assertEqual(type(payload), Dot1Q)
-        self.test.instance().assertEqual(payload.vlan, self.inner_vlan)
-        payload = payload.payload
-        packet.remove_payload()
-        packet.add_payload(payload)
-        return packet
+        return self.remove_dot1ad_layer(packet, self.outer_vlan,
+                                        self.inner_vlan)
