@@ -59,42 +59,101 @@ typedef enum {
 } srv6_localsid_sample_next_t;
 
 /**
- * @brief Function doing End processing. 
+ * @brief Function doing End processing.
  */
-//Fixme: support OAM (hop-by-hop header) here!
 static_always_inline void
 end_srh_processing (vlib_node_runtime_t * node,
-                    vlib_buffer_t * b0,
-                    ip6_header_t * ip0,
-                    ip6_sr_header_t * sr0,
-                    u32 * next0)
+        vlib_buffer_t * b0,
+        ip6_header_t * ip0,
+        ip6_sr_header_t * sr0,
+        ip6_sr_localsid_t * ls0,
+        u32 * next0,
+        u8 psp,
+        ip6_ext_header_t * prev0)
 {
   ip6_address_t *new_dst0;
 
-  if(PREDICT_TRUE(ip0->protocol == IP_PROTOCOL_IPV6_ROUTE))
+  if (PREDICT_TRUE (sr0->type == ROUTING_HEADER_TYPE_SR))
   {
-    if(PREDICT_TRUE(sr0->type == ROUTING_HEADER_TYPE_SR))
+    if (sr0->segments_left == 1 && psp)
     {
-      if(PREDICT_TRUE(sr0->segments_left != 0))
-      {
-        sr0->segments_left -= 1;
-        new_dst0 = (ip6_address_t *)(sr0->segments);
-        new_dst0 += sr0->segments_left;
-        ip0->dst_address.as_u64[0] = new_dst0->as_u64[0];
-        ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
-      }
+      u32 new_l0, sr_len;
+      u64 *copy_dst0, *copy_src0;
+      u32 copy_len_u64s0 = 0;
+
+      ip0->dst_address.as_u64[0] = sr0->segments->as_u64[0];
+      ip0->dst_address.as_u64[1] = sr0->segments->as_u64[1];
+
+      /* Remove the SRH taking care of the rest of IPv6 ext header */
+      if (prev0)
+        prev0->next_hdr = sr0->protocol;
       else
+        ip0->protocol = sr0->protocol;
+
+      sr_len = ip6_ext_header_len (sr0);
+      vlib_buffer_advance (b0, sr_len);
+      new_l0 = clib_net_to_host_u16 (ip0->payload_length) - sr_len;
+      ip0->payload_length = clib_host_to_net_u16 (new_l0);
+      copy_src0 = (u64 *) ip0;
+      copy_dst0 = copy_src0 + (sr0->length + 1);
+      /* number of 8 octet units to copy
+       * By default in absence of extension headers it is equal to length of ip6 header
+       * With extension headers it number of 8 octet units of ext headers preceding
+       * SR header
+       */
+      copy_len_u64s0 =
+        (((u8 *) sr0 - (u8 *) ip0) - sizeof (ip6_header_t)) >> 3;
+      copy_dst0[4 + copy_len_u64s0] = copy_src0[4 + copy_len_u64s0];
+      copy_dst0[3 + copy_len_u64s0] = copy_src0[3 + copy_len_u64s0];
+      copy_dst0[2 + copy_len_u64s0] = copy_src0[2 + copy_len_u64s0];
+      copy_dst0[1 + copy_len_u64s0] = copy_src0[1 + copy_len_u64s0];
+      copy_dst0[0 + copy_len_u64s0] = copy_src0[0 + copy_len_u64s0];
+
+      int i;
+      for (i = copy_len_u64s0 - 1; i >= 0; i--)
       {
-        *next0 = SRV6_SAMPLE_LOCALSID_NEXT_ERROR;
-        b0->error = node->errors[SRV6_LOCALSID_COUNTER_NO_SRH];
+        copy_dst0[i] = copy_src0[i];
+      }
+
+      if (ls0->behavior == SR_BEHAVIOR_X)
+      {
+        vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+        *next0 = SR_LOCALSID_NEXT_IP6_REWRITE;
+      }
+      else if(ls0->behavior == SR_BEHAVIOR_T)
+      {
+        vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
+      }
+    } 
+    else if (PREDICT_TRUE(sr0->segments_left > 0))
+    {
+      sr0->segments_left -= 1;
+      new_dst0 = (ip6_address_t *) (sr0->segments);
+      new_dst0 += sr0->segments_left;
+      ip0->dst_address.as_u64[0] = new_dst0->as_u64[0];
+      ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
+
+      if (ls0->behavior == SR_BEHAVIOR_X)
+      {
+        vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
+        *next0 = SR_LOCALSID_NEXT_IP6_REWRITE;
+      }
+      else if(ls0->behavior == SR_BEHAVIOR_T)
+      {
+        vnet_buffer (b0)->sw_if_index[VLIB_TX] = ls0->vrf_index;
       }
     }
     else
     {
-      /* Error. Routing header of type != SR */
-      *next0 = SRV6_SAMPLE_LOCALSID_NEXT_ERROR;
-      b0->error = node->errors[SRV6_LOCALSID_COUNTER_NO_SRH];
+      *next0 = SR_LOCALSID_NEXT_ERROR;
+      b0->error = node->errors[SR_LOCALSID_ERROR_NO_MORE_SEGMENTS];
     }
+  }
+  else
+  {
+    /* Error. Routing header of type != SR */
+    *next0 = SR_LOCALSID_NEXT_ERROR;
+    b0->error = node->errors[SR_LOCALSID_ERROR_NO_SRH];
   }
 }
 
@@ -129,6 +188,7 @@ srv6_localsid_sample_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_fram
       vlib_buffer_t * b0;
       ip6_header_t * ip0 = 0;
       ip6_sr_header_t * sr0;
+      ip6_ext_header_t *prev0
       u32 next0 = SRV6_SAMPLE_LOCALSID_NEXT_IP6LOOKUP;
       ip6_sr_localsid_t *ls0;
       srv6_localsid_sample_per_sid_memory_t *ls0_mem;
@@ -149,7 +209,8 @@ srv6_localsid_sample_fn (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_fram
       ls0_mem = ls0->plugin_mem;
 
       /* SRH processing */
-      end_srh_processing (node, b0, ip0, sr0, &next0);
+      ip6_ext_header_find_t (ip0, prev0, sr0, IP_PROTOCOL_IPV6_ROUTE);
+      end_decaps_srh_processing (node, b0, ip0, sr0, ls0, &next0);
 
       /* ==================================================================== */
       /* INSERT CODE HERE */
