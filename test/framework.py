@@ -9,6 +9,7 @@ import unittest
 import tempfile
 import time
 import resource
+import faulthandler
 from collections import deque
 from threading import Thread, Event
 from inspect import getdoc
@@ -940,7 +941,7 @@ class VppTestRunner(unittest.TextTestRunner):
         :param test:
 
         """
-        gc.disable()  # disable garbage collection, we'll do that manually
+        faulthandler.enable()  # emit stack trace to stderr if killed by signal
         print("Running tests using custom test runner")  # debug message
         filter_file, filter_class, filter_func = self.parse_test_option()
         print("Active filters: file=%s, class=%s, function=%s" % (
