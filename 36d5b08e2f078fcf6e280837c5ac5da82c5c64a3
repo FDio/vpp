@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_78b538cc",
+        "filename": "src/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-06-07T13:27:26Z",
+      "side": 1,
+      "message": "Need proper function to check for library",
+      "revId": "36d5b08e2f078fcf6e280837c5ac5da82c5c64a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_98b0ecde",
+        "filename": "src/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 206,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-06-07T13:27:26Z",
+      "side": 1,
+      "message": "Need proper function to check for library",
+      "revId": "36d5b08e2f078fcf6e280837c5ac5da82c5c64a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_d8b664dc",
+        "filename": "src/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 213,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-06-07T13:27:26Z",
+      "side": 1,
+      "message": "Need proper function to check for library",
+      "revId": "36d5b08e2f078fcf6e280837c5ac5da82c5c64a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_b8bbb0c3",
+        "filename": "src/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 215,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-06-07T13:27:26Z",
+      "side": 1,
+      "message": "Need proper function to check for library",
+      "revId": "36d5b08e2f078fcf6e280837c5ac5da82c5c64a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
