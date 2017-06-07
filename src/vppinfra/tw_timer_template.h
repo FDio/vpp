@@ -110,16 +110,39 @@ Expired timer callback:
      }
  */
 
+#if (TW_TIMER_WHEELS != 1 && TW_TIMER_WHEELS != 2 && TW_TIMER_WHEELS != 3)
+#error TW_TIMER_WHEELS must be 1, 2 or 3
+#endif
+
 typedef struct
 {
   /** next, previous pool indices */
   u32 next;
   u32 prev;
-#if TW_TIMER_WHEELS > 0
-  /** fast ring offset, only valid in the slow ring */
-  u16 fast_ring_offset;
-  u16 pad;
+
+  union
+  {
+    struct
+    {
+#if (TW_TIMER_WHEELS == 3)
+      /** fast ring offset, only valid in the slow ring */
+      u16 fast_ring_offset;
+      /** slow ring offset, only valid in the glacier ring */
+      u16 slow_ring_offset;
 #endif
+#if (TW_TIMER_WHEELS == 2)
+      /** fast ring offset, only valid in the slow ring */
+      u16 fast_ring_offset;
+      /** slow ring offset, only valid in the glacier ring */
+      u16 pad;
+#endif
+    };
+
+#if (TW_OVERFLOW_VECTOR > 0)
+    u64 expiration_time;
+#endif
+  };
+
   /** user timer handle */
   u32 user_handle;
 } TWT (tw_timer);
@@ -141,6 +164,8 @@ typedef enum
   TW_TIMER_RING_FAST,
   /** Slow timer ring ID */
   TW_TIMER_RING_SLOW,
+  /** Glacier ring ID */
+  TW_TIMER_RING_GLACIER,
 } tw_ring_index_t;
 #endif /* __defined_tw_timer_wheel_slot__ */
 
@@ -162,13 +187,20 @@ typedef struct
   f64 timer_interval;
 
   /** current tick */
-  u32 current_tick;
+  u64 current_tick;
+
+  /** first expiration time */
+  u64 first_expires_tick;
 
   /** current wheel indices */
   u32 current_index[TW_TIMER_WHEELS];
 
   /** wheel arrays */
   tw_timer_wheel_slot_t w[TW_TIMER_WHEELS][TW_SLOTS_PER_RING];
+
+#if TW_OVERFLOW_VECTOR > 0
+  tw_timer_wheel_slot_t overflow;
+#endif
 
   /** expired timer callback, receives a vector of handles */
   void (*expired_timer_callback) (u32 * expired_timer_handles);
@@ -181,7 +213,7 @@ typedef struct
 } TWT (tw_timer_wheel);
 
 u32 TW (tw_timer_start) (TWT (tw_timer_wheel) * tw,
-			 u32 pool_index, u32 timer_id, u32 interval);
+			 u32 pool_index, u32 timer_id, u64 interval);
 
 void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle);
 
@@ -191,7 +223,9 @@ void TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
 
 void TW (tw_timer_wheel_free) (TWT (tw_timer_wheel) * tw);
 
-u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now);
+u32 *TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now);
+u32 *TW (tw_timer_expire_timers_vec) (TWT (tw_timer_wheel) * tw, f64 now,
+				      u32 * vec);
 
 /*
  * fd.io coding-style-patch-verification: ON
