@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef __included_tw_timer_16t_2w_512sl_h__
-#define __included_tw_timer_16t_2w_512sl_h__
+#ifndef __included_tw_timer_4t_3w_4sl_ov_h__
+#define __included_tw_timer_4t_3w_4sl_ov_h__
 
 /* ... So that a client app can create multiple wheel geometries */
 #undef TW_TIMER_WHEELS
@@ -26,17 +26,18 @@
 #undef TW_SUFFIX
 #undef TW_OVERFLOW_VECTOR
 
-#define TW_TIMER_WHEELS 2
-#define TW_SLOTS_PER_RING 512
-#define TW_RING_SHIFT 9
+#define TW_TIMER_WHEELS 3
+#define TW_SLOTS_PER_RING 4
+#define TW_RING_SHIFT 2
 #define TW_RING_MASK (TW_SLOTS_PER_RING -1)
-#define TW_TIMERS_PER_OBJECT 16
-#define LOG2_TW_TIMERS_PER_OBJECT 4
-#define TW_SUFFIX _16t_2w_512sl
+#define TW_TIMERS_PER_OBJECT 4
+#define LOG2_TW_TIMERS_PER_OBJECT 2
+#define TW_SUFFIX _4t_3w_4sl_ov
+#define TW_OVERFLOW_VECTOR 1
 
 #include <vppinfra/tw_timer_template.h>
 
-#endif /* __included_tw_timer_16t_2w_512sl_h__ */
+#endif /* __included_tw_timer_4t_3w_256sl_h__ */
 
 /*
  * fd.io coding-style-patch-verification: ON
