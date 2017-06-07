@@ -405,7 +405,7 @@ int vnet_classify_add_del (vnet_classify_table_t * t,
   u32 old_log2_pages, new_log2_pages;
   u32 thread_index = vlib_get_thread_index();
   u8 * key_minus_skip;
-  int resplit_once;
+  int resplit_once = 0;
   int mark_bucket_linear;
 
   ASSERT ((add_v->flags & VNET_CLASSIFY_ENTRY_FREE) == 0);
