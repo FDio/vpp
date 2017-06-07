@@ -1112,14 +1112,18 @@ dispatch_node (vlib_main_t * vm,
 }
 
 static u64
-dispatch_pending_node (vlib_main_t * vm,
-		       vlib_pending_frame_t * p, u64 last_time_stamp)
+dispatch_pending_node (vlib_main_t * vm, uword pending_frame_index,
+		       u64 last_time_stamp)
 {
   vlib_node_main_t *nm = &vm->node_main;
   vlib_frame_t *f;
   vlib_next_frame_t *nf, nf_dummy;
   vlib_node_runtime_t *n;
   u32 restore_frame_index;
+  vlib_pending_frame_t *p;
+
+  /* See comment below about dangling references to nm->pending_frames */
+  p = nm->pending_frames + pending_frame_index;
 
   n = vec_elt_at_index (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL],
 			p->node_runtime_index);
@@ -1169,18 +1173,29 @@ dispatch_pending_node (vlib_main_t * vm,
   /* Frame is ready to be used again, so restore it. */
   if (restore_frame_index != ~0)
     {
-      /* we musn't restore a frame that is flagged to be freed. This shouldn't
-         happen since frames to be freed post dispatch are those used
-         when the to-node frame becomes full i.e. they form a sort of queue of
-         frames to a single node. If we get here then the to-node frame and the
-         pending frame *were* the same, and so we removed the to-node frame.
-         Therefore this frame is no longer part of the queue for that node
-         and hence it cannot be it's overspill.
+      /*
+       * We musn't restore a frame that is flagged to be freed. This
+       * shouldn't happen since frames to be freed post dispatch are
+       * those used when the to-node frame becomes full i.e. they form a
+       * sort of queue of frames to a single node. If we get here then
+       * the to-node frame and the pending frame *were* the same, and so
+       * we removed the to-node frame.  Therefore this frame is no
+       * longer part of the queue for that node and hence it cannot be
+       * it's overspill.
        */
       ASSERT (!(f->flags & VLIB_FRAME_FREE_AFTER_DISPATCH));
 
-      /* p->next_frame_index can change during node dispatch if node
-         function decides to change graph hook up. */
+      /*
+       * NB: dispatching node n can result in the creation and scheduling
+       * of new frames, and hence in the reallocation of nm->pending_frames.
+       * Recompute p, or no supper. This was broken for more than 10 years.
+       */
+      p = nm->pending_frames + pending_frame_index;
+
+      /*
+       * p->next_frame_index can change during node dispatch if node
+       * function decides to change graph hook up.
+       */
       nf = vec_elt_at_index (nm->next_frames, p->next_frame_index);
       nf->flags |= VLIB_FRAME_IS_ALLOCATED;
 
@@ -1607,8 +1622,7 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
          Process pending vector until there is nothing left.
          All pending vectors will be processed from input -> output. */
       for (i = 0; i < _vec_len (nm->pending_frames); i++)
-	cpu_time_now = dispatch_pending_node (vm, nm->pending_frames + i,
-					      cpu_time_now);
+	cpu_time_now = dispatch_pending_node (vm, i, cpu_time_now);
       /* Reset pending vector for next iteration. */
       _vec_len (nm->pending_frames) = 0;
 
