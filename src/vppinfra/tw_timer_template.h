@@ -110,16 +110,28 @@ Expired timer callback:
      }
  */
 
+#if (TW_TIMER_WHEELS != 1 && TW_TIMER_WHEELS != 2 && TW_TIMER_WHEELS != 3)
+#error TW_TIMER_WHEELS must be 1, 2 or 3
+#endif
+
 typedef struct
 {
   /** next, previous pool indices */
   u32 next;
   u32 prev;
-#if TW_TIMER_WHEELS > 0
+#if (TW_TIMER_WHEELS == 3)
   /** fast ring offset, only valid in the slow ring */
   u16 fast_ring_offset;
+  /** slow ring offset, only valid in the glacier ring */
+  u16 slow_ring_offset;
+#endif
+#if (TW_TIMER_WHEELS == 2)
+  /** fast ring offset, only valid in the slow ring */
+  u16 fast_ring_offset;
+  /** slow ring offset, only valid in the glacier ring */
   u16 pad;
 #endif
+  
   /** user timer handle */
   u32 user_handle;
 } TWT (tw_timer);
@@ -141,6 +153,8 @@ typedef enum
   TW_TIMER_RING_FAST,
   /** Slow timer ring ID */
   TW_TIMER_RING_SLOW,
+  /** Glacier ring ID */
+  TW_TIMER_RING_GLACIER,
 } tw_ring_index_t;
 #endif /* __defined_tw_timer_wheel_slot__ */
 

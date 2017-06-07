@@ -90,6 +90,9 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
   u16 slow_ring_offset;
   u32 carry;
 #endif
+#if TW_TIMER_WHEELS > 2
+  u16 glacier_ring_offset;
+#endif
   u16 fast_ring_offset;
   tw_timer_wheel_slot_t *ts;
   TWT (tw_timer) * t;
@@ -97,31 +100,70 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
   ASSERT (interval);
 
   pool_get (tw->timers, t);
-  t->next = t->prev = ~0;
-#if TW_TIMER_WHEELS > 1
-  t->fast_ring_offset = ~0;
-#endif
+  memset (t, 0xff, sizeof (*t));
+  
   t->user_handle = TW (make_internal_timer_handle) (pool_index, timer_id);
 
+  /* Factor interval into 1..3 wheel offsets */
+#if TW_TIMER_WHEELS > 2
+  glacier_ring_offset = interval >> (2*TW_RING_SHIFT);
+  ASSERT (glacier_ring_offset < TW_SLOTS_PER_RING);
+  interval -= (glacier_ring_offset << (2*TW_RING_SHIFT));
+#endif
+#if TW_TIMER_WHEELS > 1
+  slow_ring_offset = interval >> TW_RING_SHIFT;
+  ASSERT (slow_ring_offset < TW_SLOTS_PER_RING);
+  interval -= (slow_ring_offset << TW_RING_SHIFT);
+#endif
   fast_ring_offset = interval & TW_RING_MASK;
-  fast_ring_offset += tw->current_index[TW_TIMER_RING_FAST];
+
+  /* 
+   * Account for the current wheel positions(s) 
+   * This is made slightly complicated by the fact that the current
+   * index vector will contain (TW_SLOTS_PER_RING, ...) when
+   * the actual position is (0, ...)
+   */
+
+  fast_ring_offset += tw->current_index[TW_TIMER_RING_FAST] & TW_RING_MASK;
+
 #if TW_TIMER_WHEELS > 1
   carry = fast_ring_offset >= TW_SLOTS_PER_RING ? 1 : 0;
   fast_ring_offset %= TW_SLOTS_PER_RING;
-  slow_ring_offset = (interval >> TW_RING_SHIFT) + carry;
+  slow_ring_offset += (tw->current_index[TW_TIMER_RING_SLOW] & TW_RING_MASK)
+    + carry;
+  carry = slow_ring_offset >= TW_SLOTS_PER_RING ? 1 : 0;
+  slow_ring_offset %= TW_SLOTS_PER_RING;
+#endif
 
-  /* Timer duration exceeds ~7 hrs? Oops */
-  ASSERT (slow_ring_offset < TW_SLOTS_PER_RING);
-
-  /* Timer expires more than 51.2 seconds from now? */
-  if (slow_ring_offset)
+#if TW_TIMER_WHEELS > 2
+  glacier_ring_offset += 
+    (tw->current_index[TW_TIMER_RING_GLACIER] & TW_RING_MASK) + carry;
+  glacier_ring_offset %= TW_SLOTS_PER_RING;
+#endif
+  
+#if TW_TIMER_WHEELS > 2
+  if (glacier_ring_offset != 
+      (tw->current_index[TW_TIMER_RING_GLACIER] & TW_RING_MASK))
     {
-      slow_ring_offset += tw->current_index[TW_TIMER_RING_SLOW];
-      slow_ring_offset %= TW_SLOTS_PER_RING;
-
-      /* We'll want the fast ring offset later... */
+      /* We'll need slow and fast ring offsets later */
+      t->slow_ring_offset = slow_ring_offset;
       t->fast_ring_offset = fast_ring_offset;
-      ASSERT (t->fast_ring_offset < TW_SLOTS_PER_RING);
+
+      ts = &tw->w[TW_TIMER_RING_GLACIER][glacier_ring_offset];
+
+      timer_addhead (tw->timers, ts->head_index, t - tw->timers);
+
+      return t - tw->timers;
+    }
+#endif
+
+#if TW_TIMER_WHEELS > 1  
+  /* Timer expires more than 51.2 seconds from now? */
+  if (slow_ring_offset != 
+      (tw->current_index[TW_TIMER_RING_SLOW] & TW_RING_MASK))
+    {
+      /* We'll need the fast ring offset later... */
+      t->fast_ring_offset = fast_ring_offset;
 
       ts = &tw->w[TW_TIMER_RING_SLOW][slow_ring_offset];
 
@@ -131,7 +173,6 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
     }
 #else
   fast_ring_offset %= TW_SLOTS_PER_RING;
-  ASSERT (interval < TW_SLOTS_PER_RING);
 #endif
 
   /* Timer expires less than one fast-ring revolution from now */
@@ -244,9 +285,8 @@ u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
   u32 fast_wheel_index;
   u32 next_index;
   u32 nexpirations, total_nexpirations;
-#if TW_TIMER_WHEELS > 1
-  u32 slow_wheel_index;
-#endif
+  u32 slow_wheel_index __attribute__((unused));
+  u32 glacier_wheel_index __attribute__((unused));
 
   /* Shouldn't happen */
   if (PREDICT_FALSE (now < tw->next_run_time))
@@ -263,49 +303,107 @@ u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
   total_nexpirations = 0;
   for (i = 0; i < nticks; i++)
     {
-      fast_wheel_index = tw->current_index[TW_TIMER_RING_FAST];
-
-      /*
-       * If we've been around the fast ring once,
-       * process one slot in the slow ring before we handle
-       * the fast ring.
-       */
-      if (PREDICT_FALSE (fast_wheel_index == TW_SLOTS_PER_RING))
-	{
-	  fast_wheel_index = tw->current_index[TW_TIMER_RING_FAST] = 0;
-
-#if TW_TIMER_WHEELS > 1
-	  tw->current_index[TW_TIMER_RING_SLOW]++;
-	  tw->current_index[TW_TIMER_RING_SLOW] %= TW_SLOTS_PER_RING;
-	  slow_wheel_index = tw->current_index[TW_TIMER_RING_SLOW];
-
-	  ts = &tw->w[TW_TIMER_RING_SLOW][slow_wheel_index];
-
-	  head = pool_elt_at_index (tw->timers, ts->head_index);
-	  next_index = head->next;
-
-	  /* Make slot empty */
-	  head->next = head->prev = ts->head_index;
-
-	  /* traverse slot, deal timers into fast ring */
-	  while (next_index != head - tw->timers)
-	    {
-	      t = pool_elt_at_index (tw->timers, next_index);
-	      next_index = t->next;
-
-	      /* Remove from slow ring slot (hammer) */
-	      t->next = t->prev = ~0;
-	      ASSERT (t->fast_ring_offset < TW_SLOTS_PER_RING);
-	      /* Add to fast ring */
-	      ts = &tw->w[TW_TIMER_RING_FAST][t->fast_ring_offset];
-	      timer_addhead (tw->timers, ts->head_index, t - tw->timers);
-	    }
-#endif
-	}
-
-      /* Handle the fast ring */
       vec_reset_length (tw->expired_timer_handles);
 
+      fast_wheel_index = tw->current_index[TW_TIMER_RING_FAST];
+      if (TW_TIMER_WHEELS > 1)
+        slow_wheel_index = tw->current_index[TW_TIMER_RING_SLOW];
+      if (TW_TIMER_WHEELS > 2)
+        glacier_wheel_index = tw->current_index[TW_TIMER_RING_GLACIER];
+
+#if TW_TIMER_WHEELS > 2
+      /* 
+       * Double odometer-click? Process one slot in the glacier ring...
+       */
+      if (PREDICT_FALSE (fast_wheel_index == TW_SLOTS_PER_RING 
+                         && slow_wheel_index == TW_SLOTS_PER_RING))
+        {
+          glacier_wheel_index %= TW_SLOTS_PER_RING;
+          ts = &tw->w[TW_TIMER_RING_GLACIER][glacier_wheel_index];
+
+          head = pool_elt_at_index (tw->timers, ts->head_index);
+          next_index = head->next;
+
+          /* Make slot empty */
+          head->next = head->prev = ts->head_index;
+
+          /* traverse slot, deal timers into slow ring */
+          while (next_index != head - tw->timers)
+            {
+              t = pool_elt_at_index (tw->timers, next_index);
+              next_index = t->next;
+
+              /* Remove from glacier ring slot (hammer) */
+              t->next = t->prev = ~0;
+
+              /* Timer expires Right Now */
+              if (PREDICT_FALSE(t->slow_ring_offset == 0 &&
+                                t->fast_ring_offset == 0))
+                {
+                  vec_add1 (tw->expired_timer_handles, t->user_handle);
+                  pool_put (tw->timers, t);
+                }
+              /* Timer expires during slow-wheel tick 0 */
+              else if (PREDICT_FALSE (t->slow_ring_offset == 0))
+                {
+                  ts = &tw->w[TW_TIMER_RING_FAST][t->fast_ring_offset];
+                  timer_addhead (tw->timers, ts->head_index, 
+                                 t - tw->timers);
+                }
+              else /* typical case */
+                {
+                  /* Add to slow ring */
+                  ts = &tw->w[TW_TIMER_RING_SLOW][t->slow_ring_offset];
+                  timer_addhead (tw->timers, ts->head_index, 
+                                 t - tw->timers);
+                }
+            }
+        }
+#endif
+
+#if TW_TIMER_WHEELS > 1
+      /*
+       * Single odometer-click? Process a slot in the slow ring, 
+       */
+      if (PREDICT_FALSE (fast_wheel_index == TW_SLOTS_PER_RING))
+        {
+          slow_wheel_index %= TW_SLOTS_PER_RING;
+	  ts = &tw->w[TW_TIMER_RING_SLOW][slow_wheel_index];
+
+          head = pool_elt_at_index (tw->timers, ts->head_index);
+          next_index = head->next;
+
+          /* Make slot empty */
+          head->next = head->prev = ts->head_index;
+
+          /* traverse slot, deal timers into fast ring */
+          while (next_index != head - tw->timers)
+            {
+              t = pool_elt_at_index (tw->timers, next_index);
+              next_index = t->next;
+
+              /* Remove from sloe ring slot (hammer) */
+              t->next = t->prev = ~0;
+
+              /* Timer expires Right Now */
+              if (PREDICT_FALSE(t->fast_ring_offset == 0))
+                {
+                  vec_add1 (tw->expired_timer_handles, t->user_handle);
+                  pool_put (tw->timers, t);
+                }
+              else /* typical case */
+                {
+                  /* Add to fast ring */
+                  ts = &tw->w[TW_TIMER_RING_FAST][t->fast_ring_offset];
+                  timer_addhead (tw->timers, ts->head_index, 
+                                 t - tw->timers);
+                }
+            }
+	}
+#endif
+      
+      /* Handle the fast ring */
+      fast_wheel_index %= TW_SLOTS_PER_RING;
       ts = &tw->w[TW_TIMER_RING_FAST][fast_wheel_index];
 
       head = pool_elt_at_index (tw->timers, ts->head_index);
@@ -330,8 +428,21 @@ u32 TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now)
 	  tw->expired_timer_callback (tw->expired_timer_handles);
 	  total_nexpirations += nexpirations;
 	}
-      tw->current_index[TW_TIMER_RING_FAST]++;
       tw->current_tick++;
+      fast_wheel_index++;
+      tw->current_index[TW_TIMER_RING_FAST] = fast_wheel_index;
+
+#if TW_TIMER_WHEELS > 1
+      if (PREDICT_FALSE (fast_wheel_index == TW_SLOTS_PER_RING))
+          slow_wheel_index++;
+      tw->current_index[TW_TIMER_RING_SLOW] = slow_wheel_index;
+#endif
+
+#if TW_TIMER_WHEELS > 2
+      if (PREDICT_FALSE (slow_wheel_index == TW_SLOTS_PER_RING))
+        glacier_wheel_index++;
+      tw->current_index[TW_TIMER_RING_GLACIER] = glacier_wheel_index;
+#endif
 
       if (total_nexpirations >= tw->max_expirations)
 	break;
