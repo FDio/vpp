@@ -480,7 +480,7 @@ static int api_acl_add_replace (vat_main_t * vam)
     memset (mp, 0, msg_size);
     mp->_vl_msg_id = ntohs (VL_API_ACL_ADD_REPLACE + sm->msg_id_base);
     mp->client_index = vam->my_client_index;
-    if (n_rules > 0)
+    if ((n_rules > 0) && rules)
       clib_memcpy(mp->r, rules, n_rules*sizeof (vl_api_acl_rule_t));
     if (tag)
       {
@@ -934,7 +934,7 @@ static int api_macip_acl_add (vat_main_t * vam)
     memset (mp, 0, msg_size);
     mp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_ADD + sm->msg_id_base);
     mp->client_index = vam->my_client_index;
-    if (n_rules > 0)
+    if ((n_rules > 0) && rules)
       clib_memcpy(mp->r, rules, n_rules*sizeof (mp->r[0]));
     if (tag)
       {
