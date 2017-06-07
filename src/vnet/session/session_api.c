@@ -677,7 +677,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   /* Got some error, relay it */
 
 done:
-  REPLY_MACRO (VL_API_CONNECT_URI_REPLY);
+  REPLY_MACRO (VL_API_CONNECT_SOCK_REPLY);
 }
 
 static clib_error_t *

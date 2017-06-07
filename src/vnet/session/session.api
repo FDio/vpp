@@ -263,6 +263,7 @@ autoreply define unbind_sock {
 /** \brief Connect to a remote peer
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param app_connect - application connection id to be returned in reply
     @param vrf - connection namespace
     @param is_ip4 - flag that is 1 if ip address family is IPv4
     @param ip - ip address
@@ -275,6 +276,7 @@ autoreply define unbind_sock {
 define connect_sock {
   u32 client_index;
   u32 context;
+  u32 app_connect;
   u32 vrf;
   u8 is_ip4;
   u8 ip[16];
@@ -307,6 +309,7 @@ define bind_sock_reply {
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
     @param handle - connection handle
+    @param app_connect - application connection id from connect msg
     @param server_rx_fifo - rx (vpp -> vpp-client) fifo address 
     @param server_tx_fifo - tx (vpp-client -> vpp) fifo address 
     @param vpp_event_queue_address - vpp's event queue address
@@ -319,6 +322,7 @@ define connect_sock_reply {
   u32 context;
   i32 retval;
   u64 handle;
+  u32 app_connect;
   u64 server_rx_fifo;
   u64 server_tx_fifo;
   u64 vpp_event_queue_address;
