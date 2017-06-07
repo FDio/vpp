@@ -42,6 +42,8 @@ TESTS  +=  test_bihash_template \
 	   test_zvec
 endif
 
+TESTS += test_tw_timer
+
 noinst_PROGRAMS = $(TESTS)
 check_PROGRAMS	= $(TESTS)
 
@@ -211,6 +213,8 @@ nobase_include_HEADERS = \
   vppinfra/tw_timer_2t_1w_2048sl.h \
   vppinfra/tw_timer_16t_2w_512sl.h \
   vppinfra/tw_timer_16t_1w_2048sl.h \
+  vppinfra/tw_timer_4t_3w_256sl.h \
+  vppinfra/tw_timer_4t_3w_4sl_ov.h \
   vppinfra/tw_timer_template.h \
   vppinfra/tw_timer_template.c \
   vppinfra/types.h \
@@ -268,6 +272,10 @@ CLIB_CORE = \
   vppinfra/tw_timer_16t_2w_512sl.c \
   vppinfra/tw_timer_16t_1w_2048sl.h \
   vppinfra/tw_timer_16t_1w_2048sl.c \
+  vppinfra/tw_timer_4t_3w_256sl.h \
+  vppinfra/tw_timer_4t_3w_256sl.c \
+  vppinfra/tw_timer_4t_3w_4sl_ov.h \
+  vppinfra/tw_timer_4t_3w_4sl_ov.c \
   vppinfra/unformat.c \
   vppinfra/vec.c \
   vppinfra/vector.c \
