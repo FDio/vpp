@@ -293,7 +293,8 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      oh0->esp.seq = clib_net_to_host_u32 (sa0->seq);
 	    }
 
-	  if (PREDICT_TRUE (sa0->is_tunnel && !sa0->is_tunnel_ip6))
+	  if (PREDICT_TRUE
+	      (!is_ipv6 && sa0->is_tunnel && !sa0->is_tunnel_ip6))
 	    {
 	      oh0->ip4.src_address.as_u32 = sa0->tunnel_src_addr.ip4.as_u32;
 	      oh0->ip4.dst_address.as_u32 = sa0->tunnel_dst_addr.ip4.as_u32;
@@ -302,7 +303,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      next0 = ESP_ENCRYPT_NEXT_IP4_LOOKUP;
 	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 	    }
-	  else if (sa0->is_tunnel && sa0->is_tunnel_ip6)
+	  else if (is_ipv6 && sa0->is_tunnel && sa0->is_tunnel_ip6)
 	    {
 	      oh6_0->ip6.src_address.as_u64[0] =
 		sa0->tunnel_src_addr.ip6.as_u64[0];
