@@ -19,6 +19,23 @@
     },
     {
       "key": {
+        "uuid": "fa5d592f_18499cd0",
+        "filename": "src/configure.ac",
+        "patchSetId": 1
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-06-07T13:42:00Z",
+      "side": 1,
+      "message": "this does not need to be unique, each pmd has it own variabel",
+      "revId": "36d5b08e2f078fcf6e280837c5ac5da82c5c64a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa5d592f_78b538cc",
         "filename": "src/configure.ac",
         "patchSetId": 1
