@@ -1,0 +1,8 @@
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review-1: Damjan Marion <dmarion.lists@gmail.com>
+Code-Review+2: Ole Trøan <otroan@employees.org>
+Submitted-by: Ole Trøan <otroan@employees.org>
+Submitted-at: Wed, 07 Jun 2017 10:14:30 +0000
+Reviewed-on: https://gerrit.fd.io/r/7031
+Project: vpp
+Branch: refs/heads/stable/1704
