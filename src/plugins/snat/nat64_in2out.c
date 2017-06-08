@@ -221,9 +221,11 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
     }
   else
     {
-      //TODO: ICMP error
-      clib_warning ("not ICMP echo request/reply, %u", icmp->type);
-      return -1;
+      if (!vec_len (nm->addr_pool))
+	return -1;
+
+      ip4->src_address.as_u32 = nm->addr_pool[0].addr.as_u32;
+      ip4->dst_address.as_u32 = daddr.ip4.as_u32;
     }
 
   return 0;
@@ -231,10 +233,71 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 
 static int
 nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
-				void *ctx)
+				void *arg)
 {
-  //TODO:
-  return -1;
+  nat64_main_t *nm = &nat64_main;
+  nat64_in2out_set_ctx_t *ctx = arg;
+  nat64_db_st_entry_t *ste;
+  nat64_db_bib_entry_t *bibe;
+  ip46_address_t saddr, daddr;
+  u32 sw_if_index, fib_index;
+  snat_protocol_t proto = ip_proto_to_snat_proto (ip6->protocol);
+
+  sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
+  fib_index =
+    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, sw_if_index);
+
+  saddr.as_u64[0] = ip6->src_address.as_u64[0];
+  saddr.as_u64[1] = ip6->src_address.as_u64[1];
+  daddr.as_u64[0] = ip6->dst_address.as_u64[0];
+  daddr.as_u64[1] = ip6->dst_address.as_u64[1];
+
+  if (proto == SNAT_PROTOCOL_ICMP)
+    {
+      icmp46_header_t *icmp = ip6_next_header (ip6);
+      u16 in_id = ((u16 *) (icmp))[2];
+
+      if (!
+	  (icmp->type == ICMP4_echo_request
+	   || icmp->type == ICMP4_echo_reply))
+	return -1;
+
+      ste =
+	nat64_db_st_entry_find (&nm->db, &daddr, &saddr, in_id, 0, proto,
+				fib_index, 1);
+      if (!ste)
+	return -1;
+
+      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+
+      ip4->dst_address.as_u32 = bibe->out_addr.as_u32;
+      ((u16 *) (icmp))[2] = bibe->out_port;
+      ip4->src_address.as_u32 = saddr.ip4.as_u32;
+    }
+  else
+    {
+      udp_header_t *udp = ip6_next_header (ip6);
+      u16 sport = udp->src_port;
+      u16 dport = udp->dst_port;
+
+      ste =
+	nat64_db_st_entry_find (&nm->db, &daddr, &saddr, dport, sport, proto,
+				fib_index, 1);
+      if (!ste)
+	return -1;
+
+      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+
+      ip4->dst_address.as_u32 = bibe->out_addr.as_u32;
+      udp->dst_port = bibe->out_port;
+      ip4->src_address.as_u32 = saddr.ip4.as_u32;
+    }
+
+  return 0;
 }
 
 static uword

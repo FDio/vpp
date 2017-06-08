@@ -45,9 +45,19 @@ nat64_init (vlib_main_t * vm)
 {
   nat64_main_t *nm = &nat64_main;
   clib_error_t *error = 0;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+
+  if (tm->n_vlib_mains > 1)
+    {
+      error = clib_error_return (0, "multi thread not supported");
+      goto error;
+    }
 
   if (nat64_db_init (&nm->db))
-    error = clib_error_return (0, "NAT64 DB init failed");
+    {
+      error = clib_error_return (0, "NAT64 DB init failed");
+      goto error;
+    }
 
   /* set session timeouts to default values */
   nm->udp_timeout = SNAT_UDP_TIMEOUT;
@@ -56,6 +66,7 @@ nat64_init (vlib_main_t * vm)
   nm->tcp_est_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
   nm->tcp_incoming_syn_timeout = SNAT_TCP_INCOMING_SYN;
 
+error:
   return error;
 }
 

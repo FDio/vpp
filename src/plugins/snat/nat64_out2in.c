@@ -208,9 +208,12 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
     }
   else
     {
-      //TODO: ICMP error
-      clib_warning ("not ICMP echo request/reply, %u", icmp->type);
-      return -1;
+      ip6_header_t *inner_ip6 = (ip6_header_t *) u8_ptr_add (icmp, 8);
+
+      ip6->src_address.as_u64[0] = ip6_saddr.as_u64[0];
+      ip6->src_address.as_u64[1] = ip6_saddr.as_u64[1];
+      ip6->dst_address.as_u64[0] = inner_ip6->src_address.as_u64[0];
+      ip6->dst_address.as_u64[1] = inner_ip6->src_address.as_u64[1];
     }
 
   return 0;
@@ -218,10 +221,79 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
 
 static int
 nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
-				void *ctx)
+				void *arg)
 {
-  //TODO:
-  return -1;
+  nat64_main_t *nm = &nat64_main;
+  nat64_out2in_set_ctx_t *ctx = arg;
+  nat64_db_bib_entry_t *bibe;
+  nat64_db_st_entry_t *ste;
+  ip46_address_t saddr, daddr;
+  ip6_address_t ip6_daddr;
+  u32 sw_if_index, fib_index;
+  snat_protocol_t proto = ip_proto_to_snat_proto (ip4->protocol);
+
+  sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
+  fib_index =
+    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, sw_if_index);
+
+  memset (&saddr, 0, sizeof (saddr));
+  saddr.ip4.as_u32 = ip4->src_address.as_u32;
+  memset (&daddr, 0, sizeof (daddr));
+  daddr.ip4.as_u32 = ip4->dst_address.as_u32;
+
+  memcpy (&ip6_daddr, well_known_prefix, sizeof (ip6_daddr));
+  ip6_daddr.as_u32[3] = ip4->dst_address.as_u32;
+
+  if (proto == SNAT_PROTOCOL_ICMP)
+    {
+      icmp46_header_t *icmp = ip4_next_header (ip4);
+      u16 out_id = ((u16 *) (icmp))[2];
+
+      if (!
+	  (icmp->type == ICMP6_echo_request
+	   || icmp->type == ICMP6_echo_reply))
+	return -1;
+
+      ste =
+	nat64_db_st_entry_find (&nm->db, &saddr, &daddr, out_id, 0, proto,
+				fib_index, 0);
+      if (!ste)
+	return -1;
+
+      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+
+      ip6->dst_address.as_u64[0] = ip6_daddr.as_u64[0];
+      ip6->dst_address.as_u64[1] = ip6_daddr.as_u64[1];
+      ip6->src_address.as_u64[0] = bibe->in_addr.as_u64[0];
+      ip6->src_address.as_u64[1] = bibe->in_addr.as_u64[1];
+      ((u16 *) (icmp))[2] = bibe->in_port;
+    }
+  else
+    {
+      udp_header_t *udp = ip4_next_header (ip4);
+      u16 dport = udp->dst_port;
+      u16 sport = udp->src_port;
+
+      ste =
+	nat64_db_st_entry_find (&nm->db, &saddr, &daddr, sport, dport, proto,
+				fib_index, 0);
+      if (!ste)
+	return -1;
+
+      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+
+      ip6->dst_address.as_u64[0] = ip6_daddr.as_u64[0];
+      ip6->dst_address.as_u64[1] = ip6_daddr.as_u64[1];
+      ip6->src_address.as_u64[0] = bibe->in_addr.as_u64[0];
+      ip6->src_address.as_u64[1] = bibe->in_addr.as_u64[1];
+      udp->src_port = bibe->in_port;
+    }
+
+  return 0;
 }
 
 static uword

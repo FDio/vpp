@@ -310,14 +310,11 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
       else if (PREDICT_TRUE (inner_ip4->protocol == IP_PROTOCOL_UDP))
 	{
 	  inner_L4_checksum = &((udp_header_t *) (inner_ip4 + 1))->checksum;
-	  if (!*inner_L4_checksum)
-	    {
-	      return -1;
-	    }
-	  *inner_L4_checksum =
-	    ip_csum_fold (ip_csum_sub_even
-			  (*inner_L4_checksum,
-			   *((u64 *) (&inner_ip4->src_address))));
+	  if (*inner_L4_checksum)
+	    *inner_L4_checksum =
+	      ip_csum_fold (ip_csum_sub_even
+			    (*inner_L4_checksum,
+			     *((u64 *) (&inner_ip4->src_address))));
 	}
       else if (inner_ip4->protocol == IP_PROTOCOL_ICMP)
 	{

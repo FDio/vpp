@@ -812,3 +812,42 @@ define nat64_st_details {
   u32 vrf_id;
   u8 proto;
 };
+
+/** \brief Add/del NAT64 prefix
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param prefix - NAT64 prefix
+    @param prefix - NAT64 prefix length
+    @param vrf_id - VRF id of tenant
+    @param is_add - 1 if add, 0 if delete
+*/
+autoreply define nat64_add_del_prefix {
+  u32 client_index;
+  u32 context;
+  u8 prefix[16];
+  u8 prefix_len;
+  u32 vrf_id;
+  u8 is_add;
+};
+
+/** \brief Dump NAT64 prefix
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat64_prefix_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Dump NAT64 prefix details response
+    @param context - sender context, to match reply w/ request
+    @param prefix - NAT64 prefix
+    @param prefix - NAT64 prefix length
+    @param vrf_id - VRF id of tenant
+*/
+define nat64_prefix_details {
+  u32 context;
+  u8 prefix[16];
+  u8 prefix_len;
+  u32 vrf_id;
+};
