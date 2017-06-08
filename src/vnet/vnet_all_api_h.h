@@ -56,6 +56,7 @@
 #include <vnet/dhcp/dhcp.api.h>
 #include <vnet/cop/cop.api.h>
 #include <vnet/policer/policer.api.h>
+#include <vnet/ethernet/p2p_ethernet.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
