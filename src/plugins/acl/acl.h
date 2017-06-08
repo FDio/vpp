@@ -135,9 +135,9 @@ typedef struct {
   /* bitmaps when set the processing is enabled on the interface */
   uword *fa_in_acl_on_sw_if_index;
   uword *fa_out_acl_on_sw_if_index;
-  /* bitmap, when set the hash is initialized */
-  uword *fa_sessions_on_sw_if_index;
-  clib_bihash_40_8_t *fa_sessions_by_sw_if_index;
+  /* bihash holding all of the sessions */
+  int fa_sessions_hash_is_initialized;
+  clib_bihash_40_8_t fa_sessions_hash;
   /* The process node which orcherstrates the cleanup */
   u32 fa_cleaner_node_index;
   /* FA session timeouts, in seconds */
