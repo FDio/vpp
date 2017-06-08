@@ -325,13 +325,13 @@ _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v __ __ v
 }
 
 static int
-acl_classify_add_del_table_big (vnet_classify_main_t * cm, u8 * mask,
+acl_classify_add_del_table_tiny (vnet_classify_main_t * cm, u8 * mask,
 			    u32 mask_len, u32 next_table_index,
 			    u32 miss_next_index, u32 * table_index,
 			    int is_add)
 {
-  u32 nbuckets = 65536;
-  u32 memory_size = 2 << 30;
+  u32 nbuckets = 1;
+  u32 memory_size = 2 << 13;
   u32 skip = count_skip (mask, mask_len);
   u32 match = (mask_len / 16) - skip;
   u8 *skip_mask_ptr = mask + 16 * skip;
@@ -394,7 +394,7 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
       ip4_table_index =
 	am->acl_ip4_input_classify_table_by_sw_if_index[sw_if_index];
       am->acl_ip4_input_classify_table_by_sw_if_index[sw_if_index] = ~0;
-      acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
+      acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_input_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
@@ -404,7 +404,7 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
       ip6_table_index =
 	am->acl_ip6_input_classify_table_by_sw_if_index[sw_if_index];
       am->acl_ip6_input_classify_table_by_sw_if_index[sw_if_index] = ~0;
-      acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
+      acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
 				  sizeof (ip6_5tuple_mask) - 1, ~0,
 				  am->l2_input_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
@@ -432,7 +432,7 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
       ip4_table_index =
 	am->acl_ip4_output_classify_table_by_sw_if_index[sw_if_index];
       am->acl_ip4_output_classify_table_by_sw_if_index[sw_if_index] = ~0;
-      acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
+      acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_output_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
@@ -442,7 +442,7 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
       ip6_table_index =
 	am->acl_ip6_output_classify_table_by_sw_if_index[sw_if_index];
       am->acl_ip6_output_classify_table_by_sw_if_index[sw_if_index] = ~0;
-      acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
+      acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
 				  sizeof (ip6_5tuple_mask) - 1, ~0,
 				  am->l2_output_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
@@ -462,20 +462,20 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   /* in case there were previous tables attached */
   acl_unhook_l2_input_classify (am, sw_if_index);
   rv =
-    acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
+    acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
 				sizeof (ip4_5tuple_mask) - 1, ~0,
 				am->l2_input_classify_next_acl_ip4,
 				&ip4_table_index, 1);
   if (rv)
     return rv;
   rv =
-    acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
+    acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
 				sizeof (ip6_5tuple_mask) - 1, ~0,
 				am->l2_input_classify_next_acl_ip6,
 				&ip6_table_index, 1);
   if (rv)
     {
-      acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
+      acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_input_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
@@ -489,11 +489,11 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
      sw_if_index, ip4_table_index, ip6_table_index);
   if (rv)
     {
-      acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
+      acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
 				  sizeof (ip6_5tuple_mask) - 1, ~0,
 				  am->l2_input_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
-      acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
+      acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_input_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
@@ -520,20 +520,20 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   /* in case there were previous tables attached */
   acl_unhook_l2_output_classify (am, sw_if_index);
   rv =
-    acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
+    acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
 				sizeof (ip4_5tuple_mask) - 1, ~0,
 				am->l2_output_classify_next_acl_ip4,
 				&ip4_table_index, 1);
   if (rv)
     return rv;
   rv =
-    acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
+    acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
 				sizeof (ip6_5tuple_mask) - 1, ~0,
 				am->l2_output_classify_next_acl_ip6,
 				&ip6_table_index, 1);
   if (rv)
     {
-      acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
+      acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_output_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
@@ -547,11 +547,11 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
      sw_if_index, ip4_table_index, ip6_table_index);
   if (rv)
     {
-      acl_classify_add_del_table_big (cm, ip6_5tuple_mask,
+      acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
 				  sizeof (ip6_5tuple_mask) - 1, ~0,
 				  am->l2_output_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
-      acl_classify_add_del_table_big (cm, ip4_5tuple_mask,
+      acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_output_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
