@@ -1027,6 +1027,20 @@ nobase_include_HEADERS +=			\
   vnet/mfib/mfib_table.h
 
 ########################################
+# P2P Ethernet
+########################################
+
+libvnet_la_SOURCES +=				\
+ vnet/p2p-ethernet/p2p_ethernet.c				\
+ vnet/p2p-ethernet/p2p_ethernet_api.c
+
+nobase_include_HEADERS +=			\
+ vnet/p2p-ethernet/p2p_ethernet.api.h  			\
+ vnet/p2p-ethernet/p2p_ethernet.h
+
+API_FILES += vnet/p2p-ethernet/p2p_ethernet.api
+
+########################################
 # Utilities
 ########################################
 

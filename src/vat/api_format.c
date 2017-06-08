@@ -4445,7 +4445,9 @@ _(l2_interface_pbb_tag_rewrite_reply)                   \
 _(punt_reply)                                           \
 _(feature_enable_disable_reply)				\
 _(sw_interface_tag_add_del_reply)			\
-_(sw_interface_set_mtu_reply)
+_(sw_interface_set_mtu_reply)                           \
+_(p2p_ethernet_add_reply)                               \
+_(p2p_ethernet_del_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -4720,7 +4722,9 @@ _(SW_INTERFACE_TAG_ADD_DEL_REPLY, sw_interface_tag_add_del_reply)     	\
 _(L2_XCONNECT_DETAILS, l2_xconnect_details)                             \
 _(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)               \
 _(IP_NEIGHBOR_DETAILS, ip_neighbor_details)                             \
-_(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)
+_(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)           \
+_(P2P_ETHERNET_ADD_REPLY, p2p_ethernet_add_reply)                       \
+_(P2P_ETHERNET_DEL_REPLY, p2p_ethernet_del_reply)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
@@ -18689,6 +18693,101 @@ api_sw_interface_set_mtu (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_p2p_ethernet_add (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_p2p_ethernet_add_t *mp;
+  u32 parent_if_index = ~0;
+  u8 remote_mac[6];
+  u8 mac_set = 0;
+  int ret;
+
+  memset (remote_mac, 0, sizeof (remote_mac));
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &parent_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &parent_if_index))
+	;
+      else
+	if (unformat
+	    (i, "remote_mac %U", unformat_ethernet_address, remote_mac))
+	mac_set++;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (parent_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+  if (mac_set == 0)
+    {
+      errmsg ("missing remote mac address");
+      return -99;
+    }
+
+  M (P2P_ETHERNET_ADD, mp);
+  mp->parent_if_index = ntohl (parent_if_index);
+  clib_memcpy (mp->remote_mac, remote_mac, sizeof (remote_mac));
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_p2p_ethernet_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_p2p_ethernet_del_t *mp;
+  u32 parent_if_index = ~0;
+  u8 remote_mac[6];
+  u8 mac_set = 0;
+  int ret;
+
+  memset (remote_mac, 0, sizeof (remote_mac));
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &parent_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &parent_if_index))
+	;
+      else
+	if (unformat
+	    (i, "remote_mac %U", unformat_ethernet_address, remote_mac))
+	mac_set++;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (parent_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+  if (mac_set == 0)
+    {
+      errmsg ("missing remote mac address");
+      return -99;
+    }
+
+  M (P2P_ETHERNET_DEL, mp);
+  mp->parent_if_index = ntohl (parent_if_index);
+  clib_memcpy (mp->remote_mac, remote_mac, sizeof (remote_mac));
+
+  S (mp);
+  W (ret);
+  return ret;
+}
 
 static int
 q_or_quit (vat_main_t * vam)
@@ -19444,7 +19543,9 @@ _(sw_interface_tag_add_del, "<intfc> | sw_if_index <nn> tag <text>"	\
 _(l2_xconnect_dump, "")                                             	\
 _(sw_interface_set_mtu, "<intfc> | sw_if_index <nn> mtu <nn>")        \
 _(ip_neighbor_dump, "[ip6] <intfc> | sw_if_index <nn>")                 \
-_(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")
+_(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
+_(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
+_(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
