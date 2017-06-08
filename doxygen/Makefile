@@ -75,7 +75,8 @@ DOXY_INPUT := $(subst $(WS_ROOT)/,,$(DOXY_INPUT))
 DOXY_EXCLUDE ?= \
 	$(DOXY_SRC)/vlib/buffer.c \
 	$(DOXY_SRC)/vpp-api/lua \
-	$(DOXY_SRC)/examples/sample-plugin
+	$(DOXY_SRC)/examples/srv6-sample-localsid \
+	$(DOXY_SRC)/examples/vlib
 
 # Generate a regexp for filenames to exclude
 DOXY_EXCLUDE_REGEXP = ($(subst .,\.,$(shell echo '$(strip $(DOXY_EXCLUDE))' | sed -e 's/ /|/g')))
