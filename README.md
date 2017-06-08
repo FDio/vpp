@@ -45,7 +45,7 @@ Directory name         | Description
 @ref src/vppinfra      | VPP core library
      test              | Unit tests
 @ref src/vpp/api       | Not-yet-relocated API bindings
-
+@ref src/examples      | VPP example code
 
 ## Getting started
 

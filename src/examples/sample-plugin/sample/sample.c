@@ -12,10 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*
- *------------------------------------------------------------------
- * sample.c - simple MAC-swap API / debug CLI handling
- *------------------------------------------------------------------
+/**
+ * @file
+ * @brief Sample Plugin, plugin API / trace / CLI handling.
  */
 
 #include <vnet/vnet.h>
@@ -65,7 +64,11 @@ VLIB_PLUGIN_REGISTER () = {
 };
 /* *INDENT-ON* */
 
-/* Action function shared between message handler and debug CLI */
+/**
+ * @brief Enable/disable the macswap plugin. 
+ *
+ * Action function shared between message handler and debug CLI.
+ */
 
 int sample_macswap_enable_disable (sample_main_t * sm, u32 sw_if_index,
                                    int enable_disable)
@@ -135,6 +138,9 @@ macswap_enable_disable_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/**
+ * @brief CLI command to enable/disable the sample macswap plugin.
+ */
 VLIB_CLI_COMMAND (sr_content_command, static) = {
     .path = "sample macswap",
     .short_help = 
@@ -142,7 +148,9 @@ VLIB_CLI_COMMAND (sr_content_command, static) = {
     .function = macswap_enable_disable_command_fn,
 };
 
-/* API message handler */
+/**
+ * @brief Plugin API message handler.
+ */
 static void vl_api_sample_macswap_enable_disable_t_handler
 (vl_api_sample_macswap_enable_disable_t * mp)
 {
@@ -156,7 +164,9 @@ static void vl_api_sample_macswap_enable_disable_t_handler
   REPLY_MACRO(VL_API_SAMPLE_MACSWAP_ENABLE_DISABLE_REPLY);
 }
 
-/* Set up the API message handling tables */
+/**
+ * @brief Set up the API message handling tables.
+ */
 static clib_error_t *
 sample_plugin_api_hookup (vlib_main_t *vm)
 {
@@ -188,6 +198,9 @@ setup_message_id_table (sample_main_t * sm, api_main_t *am)
 #undef _
 }
 
+/**
+ * @brief Initialize the sample plugin.
+ */
 static clib_error_t * sample_init (vlib_main_t * vm)
 {
   sample_main_t * sm = &sample_main;
@@ -214,6 +227,9 @@ static clib_error_t * sample_init (vlib_main_t * vm)
 
 VLIB_INIT_FUNCTION (sample_init);
 
+/**
+ * @brief Hook the sample plugin into the VPP graph hierarchy.
+ */
 VNET_FEATURE_INIT (sample, static) = 
 {
   .arc_name = "device-input",
