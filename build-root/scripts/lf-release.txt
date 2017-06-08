@@ -1,0 +1,47 @@
+To: helpdesk@fd.io
+Subject: Publish vpp release artifacts
+
+vpp has completed release ${full_release}.
+
+Please copy:
+
+https://nexus.fd.io/content/repositories/fd.io.stable.${major_release_nodot}.centos7/io/fd/vpp/*/${full_release}-release.x86_64/*.rpm
+
+to
+
+https://nexus.fd.io/content/repositories/fd.io.centos7/io/fd/vpp/*/${major_release}-release.x86_64/*.rpm
+
+Please note: the groupId will be io.fd.vpp, the maven version will be ${major_release}-release.x86_64, the artifactId will be the '*' between io/fd/vpp/ and ${major_release}-release.x86_64
+
+Please copy:
+
+https://nexus.fd.io/content/repositories/fd.io.stable.${major_release_nodot}.ubuntu.trusty.main/io/fd/vpp/*/${full_release}_amd64/*.deb 
+
+to
+
+https://nexus.fd.io/content/repositories/fd.io.ubuntu.trusty.main/io/fd/vpp/*/${major_release}_amd64/*.deb 
+
+Please note: the groupId will be io.fd.vpp, the maven version will be ${major_release}_amd64, the artifactId will be the '*' between io/fd/vpp/ and ${major_release}_amd64
+
+Please copy:
+
+https://nexus.fd.io/content/repositories/fd.io.stable.${major_release_nodot}.ubuntu.xenial.main/io/fd/vpp/*/${full_release}_amd64/*.deb 
+
+to
+
+https://nexus.fd.io/content/repositories/fd.io.ubuntu.xenial.main/io/fd/vpp/*/${major_release}_amd64/*.deb
+
+Please note: the groupId will be io.fd.vpp, the maven version will be ${major_release}_amd64, the artifactId will be the '*' between io/fd/vpp/ and ${major_release}_amd64
+
+Please copy
+
+https://nexus.fd.io/content/repositories/fd.io.snapshot/io/fd/vpp/*/${full_release}-SNAPSHOT/*.jar 
+where you select the jar file with the highest build number
+
+to
+
+https://nexus.fd.io/content/repositories/fd.io.release/io/fd/vpp/*/${full_release}/*.jar 
+
+Please note: the groupId will be io.fd.vpp, the maven version will be ${full_release}, the artifactId will be the '*' between io/fd/vpp/ and ${full_release}
+
+When performing all of these copies, please make sure to *not* copy the .pom files.
