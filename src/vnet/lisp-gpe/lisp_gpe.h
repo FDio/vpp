@@ -163,6 +163,10 @@ typedef struct lisp_gpe_main
   uword *lisp_stats_index_by_key;
   vlib_combined_counter_main_t counters;
 
+  /* Native fwd data structures */
+  fib_node_index_t native_fwd_pl_index;
+  dpo_id_t native_fwd_dpo[2];
+
   /** convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -268,6 +272,12 @@ typedef struct
     u32 dp_table;
   };
 } vnet_lisp_gpe_add_del_fwd_entry_args_t;
+
+typedef struct
+{
+  fib_route_path_t rpath;
+  u8 is_add;
+} vnet_gpe_native_fwd_rpath_args_t;
 
 typedef struct
 {

@@ -283,10 +283,11 @@ ip_src_fib_add_route (u32 src_fib_index,
 static void
 create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 {
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   dpo_proto_t dproto;
   ip_prefix_t ippref;
-  dproto = (ip_prefix_version (&lfe->key->rmt.ippref) == IP4 ?
-	    DPO_PROTO_IP4 : DPO_PROTO_IP6);
+  u8 ip_version = ip_prefix_version (&lfe->key->rmt.ippref);
+  dproto = (ip_version == IP4 ? DPO_PROTO_IP4 : DPO_PROTO_IP6);
 
   if (lfe->is_src_dst)
     {
@@ -306,11 +307,15 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 
       switch (lfe->action)
 	{
+	case LISP_FORWARD_NATIVE:
+	  /* TODO handle route overlaps with fib and default route */
+	  if (lgm->native_fwd_dpo[ip_version].dpoi_index != DPO_FIRST)
+	    {
+	      dpo_copy (&dpo, &lgm->native_fwd_dpo[ip_version]);
+	      break;
+	    }
 	case LISP_NO_ACTION:
 	  /* TODO update timers? */
-	case LISP_FORWARD_NATIVE:
-	  /* TODO check if route/next-hop for eid exists in fib and add
-	   * more specific for the eid with the next-hop found */
 	case LISP_SEND_MAP_REQUEST:
 	  /* insert tunnel that always sends map-request */
 	  dpo_copy (&dpo, lisp_cp_dpo_get (dproto));
