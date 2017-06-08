@@ -362,8 +362,8 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  if (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
 	    {
 	      u32 *esp_iv =
-		(u32 *) vlib_buffer_get_current (b0) + ip_hdr_size +
-		sizeof (esp_header_t);
+		(u32 *) (b0->data + b0->current_data + ip_hdr_size +
+			 sizeof (esp_header_t));
 	      esp_iv[0] = sa0->seq;
 	      esp_iv[1] = sa0->seq_hi;
 	      sym_cop->cipher.data.offset =
