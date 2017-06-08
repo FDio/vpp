@@ -16,6 +16,24 @@
       "revId": "5df319918f806fd0ced61826c701b676b9e00d83",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_2e6ad61a",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 443,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-06-08T17:25:09Z",
+      "side": 1,
+      "message": "Yup. Until now, negative mapping with action native fwd would have resulted in drop. So now, if we have a route configured, we use it, and when it\u0027s removed, we fall back to dropping traffic.",
+      "parentUuid": "fa5d592f_ce88da24",
+      "revId": "5df319918f806fd0ced61826c701b676b9e00d83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
