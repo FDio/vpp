@@ -22,6 +22,9 @@
 #include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
 #include <vnet/lisp-gpe/lisp_gpe_adjacency.h>
 #include <vnet/lisp-gpe/lisp_gpe_tenant.h>
+#include <vnet/fib/fib_path_list.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_internal.h>
 
 /** LISP-GPE global state */
 lisp_gpe_main_t lisp_gpe_main;
@@ -384,6 +387,194 @@ VLIB_CLI_COMMAND (lisp_show_iface_command) = {
     .path = "show gpe interface",
     .short_help = "show gpe interface",
     .function = lisp_show_iface_command_fn,
+};
+/* *INDENT-ON* */
+
+/** CLI command to show GPE fwd native route path. */
+static clib_error_t *
+gpe_show_native_fwd_rpath_command_fn (vlib_main_t * vm,
+				      unformat_input_t * input,
+				      vlib_cli_command_t * cmd)
+{
+  lisp_gpe_main_t *lgm = &lisp_gpe_main;
+  fib_route_path_t *rpath;
+
+  if (vec_len (lgm->native_fwd_rpath[IP4]))
+    {
+      vec_foreach (rpath, lgm->native_fwd_rpath[IP4])
+      {
+	vlib_cli_output (vm, "nh: %U fib_index %u sw_if_index %u",
+			 format_ip46_address, &rpath->frp_addr, 1,
+			 rpath->frp_fib_index, rpath->frp_sw_if_index);
+      }
+    }
+  if (vec_len (lgm->native_fwd_rpath[IP6]))
+    {
+      vec_foreach (rpath, lgm->native_fwd_rpath[IP6])
+      {
+	vlib_cli_output (vm, "nh: %U fib_index %u sw_if_index %u",
+			 format_ip46_address, &rpath->frp_addr, 1,
+			 rpath->frp_fib_index, rpath->frp_sw_if_index);
+      }
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (gpe_show_native_fwd_rpath_command) = {
+    .path = "show gpe native-forward",
+    .short_help = "show gpe native-forward",
+    .function = gpe_show_native_fwd_rpath_command_fn,
+};
+/* *INDENT-ON* */
+
+void
+gpe_update_native_fwd_path (u8 ip_version)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  lisp_gpe_fwd_entry_t *lfe;
+  fib_prefix_t fib_prefix;
+  u32 *lfei;
+
+  vec_foreach (lfei, lgm->native_fwd_lfes[ip_version])
+  {
+    lfe = pool_elt_at_index (lgm->lisp_fwd_entry_pool, lfei[0]);
+    ip_prefix_to_fib_prefix (&lfe->key->rmt.ippref, &fib_prefix);
+    fib_table_entry_update (lfe->eid_fib_index, &fib_prefix, FIB_SOURCE_LISP,
+			    FIB_ENTRY_FLAG_NONE,
+			    lgm->native_fwd_rpath[ip_version]);
+  }
+}
+
+int
+vnet_gpe_add_del_native_fwd_rpath (vnet_gpe_native_fwd_rpath_args_t * a)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  fib_route_path_t *rpath;
+  u8 ip_version;
+
+  ip_version = a->rpath.frp_proto == FIB_PROTOCOL_IP4 ? IP4 : IP6;
+
+  if (a->is_add)
+    {
+      vec_add1 (lgm->native_fwd_rpath[ip_version], a->rpath);
+    }
+  else
+    {
+      vec_foreach (rpath, lgm->native_fwd_rpath[ip_version])
+      {
+	if (!fib_route_path_cmp (rpath, &a->rpath))
+	  {
+	    vec_del1 (lgm->native_fwd_rpath[ip_version],
+		      rpath - lgm->native_fwd_rpath[ip_version]);
+	    break;
+	  }
+      }
+    }
+  gpe_update_native_fwd_path (ip_version);
+  return 0;
+}
+
+/**
+ * CLI command to add action for native forward.
+ */
+static clib_error_t *
+gpe_native_forward_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_api_error_t rv;
+  fib_route_path_t rpath;
+  u32 table_id = ~0;
+  vnet_gpe_native_fwd_rpath_args_t _a, *a = &_a;
+  u8 is_add = 1;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  memset (&rpath, 0, sizeof (rpath));
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "table %d", &table_id))
+	;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "via %U %U",
+			 unformat_ip4_address,
+			 &rpath.frp_addr.ip4,
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index))
+	{
+	  rpath.frp_weight = 1;
+	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	}
+      else if (unformat (line_input, "via %U %U",
+			 unformat_ip6_address,
+			 &rpath.frp_addr.ip6,
+			 unformat_vnet_sw_interface, vnm,
+			 &rpath.frp_sw_if_index))
+	{
+	  rpath.frp_weight = 1;
+	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	}
+      else if (unformat (line_input, "via %U",
+			 unformat_ip4_address, &rpath.frp_addr.ip4))
+	{
+	  rpath.frp_weight = 1;
+	  rpath.frp_sw_if_index = ~0;
+	  rpath.frp_proto = FIB_PROTOCOL_IP4;
+	}
+      else if (unformat (line_input, "via %U",
+			 unformat_ip6_address, &rpath.frp_addr.ip6))
+	{
+	  rpath.frp_weight = 1;
+	  rpath.frp_sw_if_index = ~0;
+	  rpath.frp_proto = FIB_PROTOCOL_IP6;
+	}
+      else
+	{
+	  return clib_error_return (0, "parse error: '%U'",
+				    format_unformat_error, line_input);
+	}
+    }
+
+  if ((u32) ~ 0 == table_id)
+    {
+      rpath.frp_fib_index = 0;
+    }
+  else
+    {
+      rpath.frp_fib_index = fib_table_find (rpath.frp_proto, table_id);
+      if ((u32) ~ 0 == rpath.frp_fib_index)
+	{
+	  error = clib_error_return (0, "Nonexistent table id %d", table_id);
+	  goto done;
+	}
+    }
+
+  a->rpath = rpath;
+  a->is_add = is_add;
+
+  rv = vnet_gpe_add_del_native_fwd_rpath (a);
+  if (rv)
+    {
+      return clib_error_return (0, "Error: couldn't add path!");
+    }
+
+done:
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (gpe_native_forward_command) = {
+    .path = "gpe native-forward",
+    .short_help = "gpe native-forward [del] via <nh-ip-addr> [iface] "
+	"[table <table>]",
+    .function = gpe_native_forward_command_fn,
 };
 /* *INDENT-ON* */
 
