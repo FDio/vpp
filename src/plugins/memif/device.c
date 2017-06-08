@@ -30,6 +30,7 @@
 
 #define foreach_memif_tx_func_error	       \
 _(NO_FREE_SLOTS, "no free tx slots")           \
+_(TRUNC_PACKET, "packet > buffer size -- truncated in tx ring") \
 _(PENDING_MSGS, "pending msgs in tx ring")
 
 typedef enum
@@ -84,6 +85,70 @@ memif_prefetch_buffer_and_data (vlib_main_t * vm, u32 bi)
   vlib_buffer_t *b = vlib_get_buffer (vm, bi);
   vlib_prefetch_buffer_header (b, LOAD);
   CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, LOAD);
+}
+
+/**
+ * @brief Copy buffer to tx ring
+ *
+ * @param * vm (in)
+ * @param * node (in)
+ * @param * mif (in) pointer to memif interface
+ * @param bi (in) vlib buffer index
+ * @param * ring (in) pointer to memif ring
+ * @param * head (in/out) ring head
+ * @param mask (in) ring size - 1
+ */
+static_always_inline void
+memif_copy_buffer_to_tx_ring (vlib_main_t * vm, vlib_node_runtime_t * node,
+			      memif_if_t * mif, u32 bi, memif_ring_t * ring,
+			      u16 * head, u16 mask)
+{
+  vlib_buffer_t *b0;
+  void *mb0;
+  u32 total = 0, len;
+
+  mb0 = memif_get_buffer (mif, ring, *head);
+  ring->desc[*head].flags = 0;
+  do
+    {
+      b0 = vlib_get_buffer (vm, bi);
+      len = b0->current_length;
+      if (PREDICT_FALSE (ring->desc[*head].buffer_length < (total + len)))
+	{
+	  if (PREDICT_TRUE (total))
+	    {
+	      ring->desc[*head].length = total;
+	      total = 0;
+	      ring->desc[*head].flags |= MEMIF_DESC_FLAG_NEXT;
+	      *head = (*head + 1) & mask;
+	      mb0 = memif_get_buffer (mif, ring, *head);
+	      ring->desc[*head].flags = 0;
+	    }
+	}
+      if (PREDICT_TRUE (ring->desc[*head].buffer_length >= (total + len)))
+	{
+	  clib_memcpy (mb0 + total, vlib_buffer_get_current (b0),
+		       CLIB_CACHE_LINE_BYTES);
+	  if (len > CLIB_CACHE_LINE_BYTES)
+	    clib_memcpy (mb0 + CLIB_CACHE_LINE_BYTES + total,
+			 vlib_buffer_get_current (b0) + CLIB_CACHE_LINE_BYTES,
+			 len - CLIB_CACHE_LINE_BYTES);
+	  total += len;
+	}
+      else
+	{
+	  vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_TRUNC_PACKET,
+			    1);
+	  break;
+	}
+    }
+  while ((bi = (b0->flags & VLIB_BUFFER_NEXT_PRESENT) ? b0->next_buffer : 0));
+
+  if (PREDICT_TRUE (total))
+    {
+      ring->desc[*head].length = total;
+      *head = (*head + 1) & mask;
+    }
 }
 
 static_always_inline uword
@@ -152,32 +217,10 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       memif_prefetch_buffer_and_data (vm, buffers[2]);
       memif_prefetch_buffer_and_data (vm, buffers[3]);
 
-      vlib_buffer_t *b0 = vlib_get_buffer (vm, buffers[0]);
-      vlib_buffer_t *b1 = vlib_get_buffer (vm, buffers[1]);
-
-      void *mb0 = memif_get_buffer (mif, ring, head);
-      clib_memcpy (mb0, vlib_buffer_get_current (b0), CLIB_CACHE_LINE_BYTES);
-      ring->desc[head].length = b0->current_length;
-      head = (head + 1) & mask;
-
-      void *mb1 = memif_get_buffer (mif, ring, head);
-      clib_memcpy (mb1, vlib_buffer_get_current (b1), CLIB_CACHE_LINE_BYTES);
-      ring->desc[head].length = b1->current_length;
-      head = (head + 1) & mask;
-
-      if (b0->current_length > CLIB_CACHE_LINE_BYTES)
-	{
-	  clib_memcpy (mb0 + CLIB_CACHE_LINE_BYTES,
-		       vlib_buffer_get_current (b0) + CLIB_CACHE_LINE_BYTES,
-		       b0->current_length - CLIB_CACHE_LINE_BYTES);
-	}
-      if (b1->current_length > CLIB_CACHE_LINE_BYTES)
-	{
-	  clib_memcpy (mb1 + CLIB_CACHE_LINE_BYTES,
-		       vlib_buffer_get_current (b1) + CLIB_CACHE_LINE_BYTES,
-		       b1->current_length - CLIB_CACHE_LINE_BYTES);
-	}
-
+      memif_copy_buffer_to_tx_ring (vm, node, mif, buffers[0], ring, &head,
+				    mask);
+      memif_copy_buffer_to_tx_ring (vm, node, mif, buffers[1], ring, &head,
+				    mask);
 
       buffers += 2;
       n_left -= 2;
@@ -186,19 +229,8 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   while (n_left && free_slots)
     {
-      vlib_buffer_t *b0 = vlib_get_buffer (vm, buffers[0]);
-      void *mb0 = memif_get_buffer (mif, ring, head);
-      clib_memcpy (mb0, vlib_buffer_get_current (b0), CLIB_CACHE_LINE_BYTES);
-
-      if (b0->current_length > CLIB_CACHE_LINE_BYTES)
-	{
-	  clib_memcpy (mb0 + CLIB_CACHE_LINE_BYTES,
-		       vlib_buffer_get_current (b0) + CLIB_CACHE_LINE_BYTES,
-		       b0->current_length - CLIB_CACHE_LINE_BYTES);
-	}
-      ring->desc[head].length = b0->current_length;
-      head = (head + 1) & mask;
-
+      memif_copy_buffer_to_tx_ring (vm, node, mif, buffers[0], ring, &head,
+				    mask);
       buffers++;
       n_left--;
       free_slots--;
