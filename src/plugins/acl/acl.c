@@ -1823,6 +1823,11 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
         u64 n_dels = sw_if_index < vec_len(am->fa_session_dels_by_sw_if_index) ? am->fa_session_dels_by_sw_if_index[sw_if_index] : 0;
         out0 = format(out0, "sw_if_index %d: add %lu - del %lu = %lu\n", sw_if_index, n_adds, n_dels, n_adds - n_dels);
       }));
+      {
+        u64 n_adds = am->fa_session_total_adds;
+        u64 n_dels = am->fa_session_total_dels;
+        out0 = format(out0, "TOTAL: add %lu - del %lu = %lu\n", n_adds, n_dels, n_adds - n_dels);
+      }
       out0 = format(out0, "\n\nPer-worker data:\n");
       for (wk = 0; wk < vec_len (am->per_worker_data); wk++) {
         acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];

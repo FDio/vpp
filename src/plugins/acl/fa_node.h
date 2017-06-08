@@ -36,7 +36,7 @@ typedef union {
   struct {
     u16 port[2];
     u16 proto;
-    u16 rsvd;
+    u16 lsb_of_sw_if_index;
   };
 } fa_session_l4_key_t;
 

@@ -494,9 +494,7 @@ acl_make_5tuple_session_key (int is_input, fa_5tuple_t * p5tuple_pkt,
 static int
 acl_fa_ifc_has_sessions (acl_main_t * am, int sw_if_index0)
 {
-  int has_sessions =
-    clib_bitmap_get (am->fa_sessions_on_sw_if_index, sw_if_index0);
-  return has_sessions;
+  return am->fa_sessions_hash_is_initialized;
 }
 
 static int
@@ -594,13 +592,11 @@ acl_fa_ifc_init_sessions (acl_main_t * am, int sw_if_index0)
      sw_if_index0, am->fa_conn_table_hash_num_buckets,
      am->fa_conn_table_hash_memory_size);
 #endif
-  vec_validate (am->fa_sessions_by_sw_if_index, sw_if_index0);
-  BV (clib_bihash_init) (&am->fa_sessions_by_sw_if_index
-			 [sw_if_index0], "ACL plugin FA session bihash",
+  BV (clib_bihash_init) (&am->fa_sessions_hash,
+			 "ACL plugin FA session bihash",
 			 am->fa_conn_table_hash_num_buckets,
 			 am->fa_conn_table_hash_memory_size);
-  am->fa_sessions_on_sw_if_index =
-    clib_bitmap_set (am->fa_sessions_on_sw_if_index, sw_if_index0, 1);
+  am->fa_sessions_hash_is_initialized = 1;
 }
 
 static inline fa_session_t *get_session_ptr(acl_main_t *am, u16 thread_index, u32 session_index)
@@ -715,7 +711,7 @@ acl_fa_delete_session (acl_main_t * am, u32 sw_if_index, fa_full_session_id_t se
 {
   fa_session_t *sess = get_session_ptr(am, sess_id.thread_index, sess_id.session_index);
   ASSERT(sess->thread_index == os_get_thread_index ());
-  BV (clib_bihash_add_del) (&am->fa_sessions_by_sw_if_index[sw_if_index],
+  BV (clib_bihash_add_del) (&am->fa_sessions_hash,
 			    &sess->info.kv, 0);
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[sess_id.thread_index];
   pool_put_index (pw->fa_sessions_pool, sess_id.session_index);
@@ -723,18 +719,15 @@ acl_fa_delete_session (acl_main_t * am, u32 sw_if_index, fa_full_session_id_t se
      as the caller must have dealt with the timers. */
   vec_validate (am->fa_session_dels_by_sw_if_index, sw_if_index);
   am->fa_session_dels_by_sw_if_index[sw_if_index]++;
+  clib_smp_atomic_add(&am->fa_session_total_dels, 1);
 }
 
 static int
 acl_fa_can_add_session (acl_main_t * am, int is_input, u32 sw_if_index)
 {
-  u64 curr_sess;
-  vec_validate (am->fa_session_adds_by_sw_if_index, sw_if_index);
-  vec_validate (am->fa_session_dels_by_sw_if_index, sw_if_index);
-  curr_sess =
-    am->fa_session_adds_by_sw_if_index[sw_if_index] -
-    am->fa_session_dels_by_sw_if_index[sw_if_index];
-  return (curr_sess < am->fa_conn_table_max_entries);
+  u64 curr_sess_count;
+  curr_sess_count = am->fa_session_total_adds - am->fa_session_total_dels;
+  return (curr_sess_count < am->fa_conn_table_max_entries);
 }
 
 static u64
@@ -889,12 +882,13 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
       acl_fa_ifc_init_sessions (am, sw_if_index);
     }
 
-  BV (clib_bihash_add_del) (&am->fa_sessions_by_sw_if_index[sw_if_index],
+  BV (clib_bihash_add_del) (&am->fa_sessions_hash,
 			    &kv, 1);
   acl_fa_conn_list_add_session(am, f_sess_id, now);
 
   vec_validate (am->fa_session_adds_by_sw_if_index, sw_if_index);
   am->fa_session_adds_by_sw_if_index[sw_if_index]++;
+  clib_smp_atomic_add(&am->fa_session_total_adds, 1);
 }
 
 static int
@@ -902,7 +896,7 @@ acl_fa_find_session (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
 		     clib_bihash_kv_40_8_t * pvalue_sess)
 {
   return (BV (clib_bihash_search)
-	  (&am->fa_sessions_by_sw_if_index[sw_if_index0], &p5tuple->kv,
+	  (&am->fa_sessions_hash, &p5tuple->kv,
 	   pvalue_sess) == 0);
 }
 
@@ -977,6 +971,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 	   */
 
 	  acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
+          fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
 	  acl_make_5tuple_session_key (is_input, &fa_5tuple, &kv_sess);
 #ifdef FA_NODE_VERBOSE_DEBUG
 	  clib_warning
@@ -1024,6 +1019,20 @@ acl_fa_node_fn (vlib_main_t * vm,
 			0x00010000 + ((0xff & old_timeout_type) << 8) +
 			(0xff & new_timeout_type);
 		    }
+                  /*
+                   * I estimate the likelihood to be very low - the VPP needs
+                   * to have >64K interfaces to start with and then on
+                   * exactly 64K indices apart needs to be exactly the same
+                   * 5-tuple... Anyway, since this probability is nonzero -
+                   * print an error and drop the unlucky packet.
+                   * If this shows up in real world, we would need to bump
+                   * the hash key length.
+                   */
+		  if (PREDICT_FALSE(sess->sw_if_index != sw_if_index0)) {
+                    clib_warning("BUG: session LSB16(sw_if_index) and 5-tuple collision!");
+                    acl_check_needed = 0;
+                    action = 0;
+                  }
 		}
 	    }
 
