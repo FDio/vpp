@@ -76,6 +76,130 @@ memif_prefetch (vlib_main_t * vm, u32 bi)
   CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, STORE);
 }
 
+static_always_inline void
+memif_buffer_add_to_chain (vlib_main_t * vm, u32 bi, u32 first_bi,
+			   u32 prev_bi)
+{
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  vlib_buffer_t *first_b = vlib_get_buffer (vm, first_bi);
+  vlib_buffer_t *prev_b = vlib_get_buffer (vm, prev_bi);
+
+  /* update first buffer */
+  first_b->total_length_not_including_first_buffer += b->current_length;
+
+  /* update previous buffer */
+  prev_b->next_buffer = bi;
+  prev_b->flags |= VLIB_BUFFER_NEXT_PRESENT;
+
+  /* update current buffer */
+  b->next_buffer = 0;
+}
+
+/**
+ * @brief Copy buffer from rx ring
+ *
+ * @param * vm (in)
+ * @param * mif (in) pointer to memif interface
+ * @param * ring (in) pointer to memif ring
+ * @param * rd (in) pointer to ring data
+ * @param ring_size (in) ring size
+ * @param * n_free_bufs (in/out) the number of free vlib buffers available
+ * @param ** first_b (out) the first vlib buffer pointer
+ * @param * first_bi (out) the first vlib buffer index
+ * @param * bi (in/out) the current buffer index
+ * #param * num_slots (in/out) the number of descriptors available to read
+ *
+ * @return total bytes read from rx ring also written to vlib buffers
+ */
+static_always_inline uword
+memif_copy_buffer_from_rx_ring (vlib_main_t * vm, memif_if_t * mif,
+				memif_ring_t * ring, memif_queue_t * mq,
+				u16 ring_size, u32 n_buffer_bytes,
+				u32 * n_free_bufs, vlib_buffer_t ** first_b,
+				u32 * first_bi, u32 * bi, u16 * num_slots)
+{
+  memif_main_t *nm = &memif_main;
+  u32 thread_index = vlib_get_thread_index ();
+  u32 total_bytes = 0, offset = 0;
+  u32 data_len;
+  u32 bytes_to_copy;
+  void *mb;
+  vlib_buffer_t *b;
+  u16 mask = ring_size - 1;
+  u32 prev_bi;
+  u16 last_head;
+
+  while (*num_slots)
+    {
+      data_len = ring->desc[mq->last_head].length;
+      while (data_len && (*n_free_bufs))
+	{
+	  /* get empty buffer */
+	  u32 last_buf = vec_len (nm->rx_buffers[thread_index]) - 1;
+	  prev_bi = *bi;
+	  *bi = nm->rx_buffers[thread_index][last_buf];
+	  b = vlib_get_buffer (vm, *bi);
+	  _vec_len (nm->rx_buffers[thread_index]) = last_buf;
+	  (*n_free_bufs)--;
+	  if (PREDICT_FALSE (*n_free_bufs == 0))
+	    {
+	      *n_free_bufs +=
+		vlib_buffer_alloc (vm,
+				   &nm->rx_buffers[thread_index]
+				   [*n_free_bufs], ring_size);
+	      _vec_len (nm->rx_buffers[thread_index]) = *n_free_bufs;
+	    }
+
+	  if (last_buf > 4)
+	    {
+	      memif_prefetch (vm, nm->rx_buffers[thread_index][last_buf - 2]);
+	      memif_prefetch (vm, nm->rx_buffers[thread_index][last_buf - 3]);
+	    }
+
+	  /* copy buffer */
+	  bytes_to_copy =
+	    data_len > n_buffer_bytes ? n_buffer_bytes : data_len;
+	  b->current_data = 0;
+	  mb = memif_get_buffer (mif, ring, mq->last_head);
+	  clib_memcpy (vlib_buffer_get_current (b), mb + offset,
+		       CLIB_CACHE_LINE_BYTES);
+	  if (bytes_to_copy > CLIB_CACHE_LINE_BYTES)
+	    clib_memcpy (vlib_buffer_get_current (b) + CLIB_CACHE_LINE_BYTES,
+			 mb + CLIB_CACHE_LINE_BYTES + offset,
+			 bytes_to_copy - CLIB_CACHE_LINE_BYTES);
+
+	  /* fill buffer header */
+	  b->current_length = bytes_to_copy;
+
+	  if (total_bytes == 0)
+	    {
+	      /* fill buffer metadata */
+	      b->total_length_not_including_first_buffer = 0;
+	      b->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+	      vnet_buffer (b)->sw_if_index[VLIB_RX] = mif->sw_if_index;
+	      vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	      *first_bi = *bi;
+	      *first_b = vlib_get_buffer (vm, *first_bi);
+	    }
+	  else
+	    memif_buffer_add_to_chain (vm, *bi, *first_bi, prev_bi);
+
+	  offset += bytes_to_copy;
+	  total_bytes += bytes_to_copy;
+	  data_len -= bytes_to_copy;
+	}
+      last_head = mq->last_head;
+      /* Advance to next descriptor */
+      mq->last_head = (mq->last_head + 1) & mask;
+      offset = 0;
+      (*num_slots)--;
+      if ((ring->desc[last_head].flags & MEMIF_DESC_FLAG_NEXT) == 0)
+	break;
+    }
+
+  return (total_bytes);
+}
+
 static_always_inline uword
 memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   vlib_frame_t * frame, memif_if_t * mif,
@@ -92,11 +216,11 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_rx_bytes = 0;
   u32 *to_next = 0;
   u32 n_free_bufs;
+  u32 b0_total, b1_total;
   u32 thread_index = vlib_get_thread_index ();
-  u32 bi0, bi1;
-  vlib_buffer_t *b0, *b1;
   u16 ring_size, mask, num_slots;
-  void *mb0, *mb1;
+  u32 n_buffer_bytes = vlib_buffer_free_list_buffer_size (vm,
+							  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   mq = vec_elt_at_index (mif->rx_queues, qid);
   ring = mq->ring;
@@ -133,7 +257,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       u32 next1 = next_index;
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-      while (num_slots > 5 && n_left_to_next > 2)
+      while (num_slots > 11 && n_left_to_next > 2)
 	{
 	  if (PREDICT_TRUE (mq->last_head + 5 < ring_size))
 	    {
@@ -159,157 +283,125 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      CLIB_PREFETCH (&ring->desc[(mq->last_head + 5) % mask],
 			     CLIB_CACHE_LINE_BYTES, LOAD);
 	    }
-	  /* get empty buffer */
-	  u32 last_buf = vec_len (nm->rx_buffers[thread_index]) - 1;
-	  bi0 = nm->rx_buffers[thread_index][last_buf];
-	  bi1 = nm->rx_buffers[thread_index][last_buf - 1];
-	  _vec_len (nm->rx_buffers[thread_index]) -= 2;
 
-	  if (last_buf > 4)
-	    {
-	      memif_prefetch (vm, nm->rx_buffers[thread_index][last_buf - 2]);
-	      memif_prefetch (vm, nm->rx_buffers[thread_index][last_buf - 3]);
-	    }
+	  vlib_buffer_t *first_b0 = 0;
+	  u32 bi0 = 0, first_bi0 = 0;
+	  b0_total = memif_copy_buffer_from_rx_ring (vm, mif, ring, mq,
+						     ring_size,
+						     n_buffer_bytes,
+						     &n_free_bufs, &first_b0,
+						     &first_bi0, &bi0,
+						     &num_slots);
+
+	  vlib_buffer_t *first_b1 = 0;
+	  u32 bi1 = 0, first_bi1 = 0;
+	  b1_total = memif_copy_buffer_from_rx_ring (vm, mif, ring, mq,
+						     ring_size,
+						     n_buffer_bytes,
+						     &n_free_bufs, &first_b1,
+						     &first_bi1, &bi1,
+						     &num_slots);
 
 	  /* enqueue buffer */
-	  to_next[0] = bi0;
-	  to_next[1] = bi1;
+	  to_next[0] = first_bi0;
+	  to_next[1] = first_bi1;
 	  to_next += 2;
 	  n_left_to_next -= 2;
 
-	  /* fill buffer metadata */
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b1 = vlib_get_buffer (vm, bi1);
-
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-	  vnet_buffer (b1)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-	  vnet_buffer (b1)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-
-	  /* copy buffer */
-	  mb0 = memif_get_buffer (mif, ring, mq->last_head);
-	  clib_memcpy (vlib_buffer_get_current (b0), mb0,
-		       CLIB_CACHE_LINE_BYTES);
-	  b0->current_length = ring->desc[mq->last_head].length;
-	  mq->last_head = (mq->last_head + 1) & mask;
-
-	  mb1 = memif_get_buffer (mif, ring, mq->last_head);
-	  clib_memcpy (vlib_buffer_get_current (b1), mb1,
-		       CLIB_CACHE_LINE_BYTES);
-	  b1->current_length = ring->desc[mq->last_head].length;
-	  mq->last_head = (mq->last_head + 1) & mask;
-
-	  if (b0->current_length > CLIB_CACHE_LINE_BYTES)
-	    clib_memcpy (vlib_buffer_get_current (b0) + CLIB_CACHE_LINE_BYTES,
-			 mb0 + CLIB_CACHE_LINE_BYTES,
-			 b0->current_length - CLIB_CACHE_LINE_BYTES);
-
-	  if (b1->current_length > CLIB_CACHE_LINE_BYTES)
-	    clib_memcpy (vlib_buffer_get_current (b1) + CLIB_CACHE_LINE_BYTES,
-			 mb1 + CLIB_CACHE_LINE_BYTES,
-			 b1->current_length - CLIB_CACHE_LINE_BYTES);
-
 	  /* trace */
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b0);
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b1);
 
 	  if (PREDICT_FALSE (n_trace > 0))
 	    {
 	      /* b0 */
-	      memif_input_trace_t *tr;
-	      vlib_trace_buffer (vm, node, next0, b0,
-				 /* follow_chain */ 0);
-	      vlib_set_trace_count (vm, node, --n_trace);
-	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      tr->next_index = next0;
-	      tr->hw_if_index = mif->hw_if_index;
-	      tr->ring = qid;
-
+	      if (PREDICT_TRUE (first_b0 != 0))
+		{
+		  memif_input_trace_t *tr;
+		  vlib_trace_buffer (vm, node, next0, first_b0,
+				     /* follow_chain */ 0);
+		  vlib_set_trace_count (vm, node, --n_trace);
+		  tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
+		  tr->next_index = next0;
+		  tr->hw_if_index = mif->hw_if_index;
+		  tr->ring = qid;
+		}
 	      if (n_trace)
 		{
 		  /* b1 */
-		  memif_input_trace_t *tr;
-		  vlib_trace_buffer (vm, node, next1, b1,
-				     /* follow_chain */ 0);
-		  vlib_set_trace_count (vm, node, --n_trace);
-		  tr = vlib_add_trace (vm, node, b1, sizeof (*tr));
-		  tr->next_index = next1;
-		  tr->hw_if_index = mif->hw_if_index;
-		  tr->ring = qid;
+		  if (PREDICT_TRUE (first_b1 != 0))
+		    {
+		      memif_input_trace_t *tr;
+		      vlib_trace_buffer (vm, node, next1, first_b1,
+					 /* follow_chain */ 0);
+		      vlib_set_trace_count (vm, node, --n_trace);
+		      tr = vlib_add_trace (vm, node, first_b1, sizeof (*tr));
+		      tr->next_index = next1;
+		      tr->hw_if_index = mif->hw_if_index;
+		      tr->ring = qid;
+		    }
 		}
 	    }
 
 	  /* redirect if feature path enabled */
 	  vnet_feature_start_device_input_x2 (mif->sw_if_index,
-					      &next0, &next1, b0, b1);
+					      &next0, &next1, first_b0,
+					      first_b1);
 
 	  /* enqueue */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
-					   n_left_to_next,
-					   bi0, bi1, next0, next1);
+					   n_left_to_next, first_bi0,
+					   first_bi1, next0, next1);
 
 	  /* next packet */
-	  num_slots -= 2;
 	  n_rx_packets += 2;
-	  n_rx_bytes += b0->current_length;
-	  n_rx_bytes += b1->current_length;
+	  n_rx_bytes += b0_total + b1_total;
 	}
       while (num_slots && n_left_to_next)
 	{
-	  /* get empty buffer */
-	  u32 last_buf = vec_len (nm->rx_buffers[thread_index]) - 1;
-	  bi0 = nm->rx_buffers[thread_index][last_buf];
-	  _vec_len (nm->rx_buffers[thread_index]) = last_buf;
-
-	  /* enqueue buffer */
-	  to_next[0] = bi0;
-	  to_next += 1;
-	  n_left_to_next--;
-
-	  /* fill buffer metadata */
-	  b0 = vlib_get_buffer (vm, bi0);
-	  b0->current_length = ring->desc[mq->last_head].length;
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = mif->sw_if_index;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
-
-	  /* copy buffer */
-	  mb0 = memif_get_buffer (mif, ring, mq->last_head);
-	  clib_memcpy (vlib_buffer_get_current (b0), mb0,
-		       CLIB_CACHE_LINE_BYTES);
-	  if (b0->current_length > CLIB_CACHE_LINE_BYTES)
-	    clib_memcpy (vlib_buffer_get_current (b0) + CLIB_CACHE_LINE_BYTES,
-			 mb0 + CLIB_CACHE_LINE_BYTES,
-			 b0->current_length - CLIB_CACHE_LINE_BYTES);
+	  vlib_buffer_t *first_b0 = 0;
+	  u32 bi0 = 0, first_bi0 = 0;
+	  b0_total = memif_copy_buffer_from_rx_ring (vm, mif, ring, mq,
+						     ring_size,
+						     n_buffer_bytes,
+						     &n_free_bufs, &first_b0,
+						     &first_bi0, &bi0,
+						     &num_slots);
 
 	  /* trace */
-	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (first_b0);
 
 	  if (PREDICT_FALSE (n_trace > 0))
 	    {
-	      memif_input_trace_t *tr;
-	      vlib_trace_buffer (vm, node, next0, b0,
-				 /* follow_chain */ 0);
-	      vlib_set_trace_count (vm, node, --n_trace);
-	      tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
-	      tr->next_index = next0;
-	      tr->hw_if_index = mif->hw_if_index;
-	      tr->ring = qid;
+	      if (PREDICT_TRUE (first_b0 != 0))
+		{
+		  memif_input_trace_t *tr;
+		  vlib_trace_buffer (vm, node, next0, first_b0,
+				     /* follow_chain */ 0);
+		  vlib_set_trace_count (vm, node, --n_trace);
+		  tr = vlib_add_trace (vm, node, first_b0, sizeof (*tr));
+		  tr->next_index = next0;
+		  tr->hw_if_index = mif->hw_if_index;
+		  tr->ring = qid;
+		}
 	    }
 
+	  /* enqueue buffer */
+	  to_next[0] = first_bi0;
+	  to_next += 1;
+	  n_left_to_next--;
 
 	  /* redirect if feature path enabled */
-	  vnet_feature_start_device_input_x1 (mif->sw_if_index, &next0, b0);
+	  vnet_feature_start_device_input_x1 (mif->sw_if_index, &next0,
+					      first_b0);
 
 	  /* enqueue */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
-					   n_left_to_next, bi0, next0);
+					   n_left_to_next, first_bi0, next0);
 
 	  /* next packet */
-	  mq->last_head = (mq->last_head + 1) & mask;
-	  num_slots--;
 	  n_rx_packets++;
-	  n_rx_bytes += b0->current_length;
+	  n_rx_bytes += b0_total;
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
