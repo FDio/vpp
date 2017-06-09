@@ -27,6 +27,17 @@ class MethodHolder(VppTestCase):
     def tearDown(self):
         super(MethodHolder, self).tearDown()
 
+    def check_tcp_checksum(self, pkt):
+        """
+        Check TCP checksum in IP packet
+
+        :param pkt: Packet to check TCP checksum
+        """
+        new = pkt.__class__(str(pkt))
+        del new['TCP'].chksum
+        new = new.__class__(str(new))
+        self.assertEqual(new['TCP'].chksum, pkt['TCP'].chksum)
+
     def create_stream_in(self, in_if, out_if, ttl=64):
         """
         Create packet stream for inside network
@@ -1111,6 +1122,7 @@ class TestSNAT(MethodHolder):
             self.assertEqual(ip.dst, server.ip4)
             self.assertNotEqual(tcp.sport, host_in_port)
             self.assertEqual(tcp.dport, server_in_port)
+            self.check_tcp_checksum(p)
             host_out_port = tcp.sport
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", p))
@@ -1132,6 +1144,7 @@ class TestSNAT(MethodHolder):
             self.assertEqual(ip.dst, host.ip4)
             self.assertEqual(tcp.sport, server_out_port)
             self.assertEqual(tcp.dport, host_in_port)
+            self.check_tcp_checksum(p)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:"), p)
             raise
@@ -1182,6 +1195,7 @@ class TestSNAT(MethodHolder):
                     self.assertNotEqual(packet[TCP].sport, self.tcp_port_in)
                     self.assertEqual(packet[TCP].dport, server_tcp_port)
                     self.tcp_port_out = packet[TCP].sport
+                    self.check_tcp_checksum(packet)
                 elif packet.haslayer(UDP):
                     self.assertNotEqual(packet[UDP].sport, self.udp_port_in)
                     self.assertEqual(packet[UDP].dport, server_udp_port)
@@ -1218,6 +1232,7 @@ class TestSNAT(MethodHolder):
                 if packet.haslayer(TCP):
                     self.assertEqual(packet[TCP].dport, self.tcp_port_in)
                     self.assertEqual(packet[TCP].sport, server_tcp_port)
+                    self.check_tcp_checksum(packet)
                 elif packet.haslayer(UDP):
                     self.assertEqual(packet[UDP].dport, self.udp_port_in)
                     self.assertEqual(packet[UDP].sport, server_udp_port)
@@ -1253,6 +1268,7 @@ class TestSNAT(MethodHolder):
                     self.assertEqual(packet[TCP].sport, self.tcp_port_in)
                     self.assertEqual(packet[TCP].dport, server_tcp_port)
                     self.tcp_port_out = packet[TCP].sport
+                    self.check_tcp_checksum(packet)
                 elif packet.haslayer(UDP):
                     self.assertEqual(packet[UDP].sport, self.udp_port_in)
                     self.assertEqual(packet[UDP].dport, server_udp_port)
@@ -1289,6 +1305,7 @@ class TestSNAT(MethodHolder):
                 if packet.haslayer(TCP):
                     self.assertEqual(packet[TCP].dport, self.tcp_port_in)
                     self.assertEqual(packet[TCP].sport, server_tcp_port)
+                    self.check_tcp_checksum(packet)
                 elif packet.haslayer(UDP):
                     self.assertEqual(packet[UDP].dport, self.udp_port_in)
                     self.assertEqual(packet[UDP].sport, server_udp_port)
