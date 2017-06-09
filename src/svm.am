@@ -13,7 +13,7 @@
 
 bin_PROGRAMS += svmtool svmdbtool
 
-nobase_include_HEADERS += svm/svm.h svm/ssvm.h svm/svmdb.h \
+nobase_include_HEADERS += svm/svm.h svm/svm_common.h svm/ssvm.h svm/svmdb.h \
 	svm/svm_fifo.h svm/svm_fifo_segment.h
 
 lib_LTLIBRARIES += libsvm.la libsvmdb.la
