@@ -1277,7 +1277,9 @@ acl_fa_worker_conn_cleaner_process(vlib_main_t * vm,
 
        if (clib_bitmap_is_zero(pw->pending_clear_sw_if_index_bitmap)) {
          /* if the cross-section is a zero vector, no need to do anything. */
+#ifdef FA_NODE_VERBOSE_DEBUG
          clib_warning("WORKER: clearing done - nothing to do");
+#endif
          pw->clear_in_process = 0;
        } else {
 #ifdef FA_NODE_VERBOSE_DEBUG
