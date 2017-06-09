@@ -30,7 +30,10 @@ libvlibmemory_la_SOURCES =			\
 	vlibmemory/vl_memory_api_h.h		\
 	vlibmemory/vl_memory_msg_enum.h
 
-nobase_include_HEADERS += vlibapi/api.h vlibapi/api_helper_macros.h vlibapi/vat_helper_macros.h
+nobase_include_HEADERS += vlibapi/api.h		\
+	vlibapi/api_common.h			\
+	vlibapi/api_helper_macros.h		\
+	vlibapi/vat_helper_macros.h
 
 libvlibmemoryclient_la_DEPENDENCIES = libvppinfra.la libsvm.la
 libvlibmemoryclient_la_LIBADD = $(libvlibmemoryclient_la_DEPENDENCIES) -lpthread
@@ -49,6 +52,7 @@ libvlibmemoryclient_la_SOURCES = 		\
 
 nobase_include_HEADERS +=			\
 	vlibmemory/api.h			\
+	vlibmemory/api_common.h			\
 	vlibmemory/vl_memory_api_h.h		\
 	vlibmemory/vl_memory_msg_enum.h		\
 	vlibmemory/unix_shared_memory_queue.h 	\

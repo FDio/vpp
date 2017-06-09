@@ -72,19 +72,7 @@ void clib_error_register_handler (clib_error_handler_func_t func, void *arg);
 #define clib_panic(format,args...) \
   _clib_error (CLIB_ERROR_ABORT, (char *) clib_error_function, __LINE__, format, ## args)
 
-typedef struct
-{
-  /* Error message. */
-  u8 *what;
-
-  /* Where error occurred (e.g. __FUNCTION__ __LINE__) */
-  const u8 *where;
-
-  uword flags;
-
-  /* Error code (e.g. errno for Unix errors). */
-  any code;
-} clib_error_t;
+#include <vppinfra/clib_error.h>
 
 #define clib_error_get_code(err) ((err) ? (err)->code : 0)
 #define clib_error_set_code(err, c)		\
