@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_26b67a3e",
+        "filename": "src/examples/sample-plugin/sample_plugin_doc.md",
+        "patchSetId": 2
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-06-09T14:04:19Z",
+      "side": 1,
+      "message": "\u003cpedantic\u003e algorithm",
+      "range": {
+        "startLine": 6,
+        "startChar": 54,
+        "endLine": 6,
+        "endChar": 64
+      },
+      "revId": "634433d16afc49596408823967fc4f5975565c7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
