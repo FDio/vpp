@@ -428,7 +428,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
   }
   else
   {
-      fib_node_index_t lfe, fib_index;
+      fib_node_index_t fib_index;
       u32 fi;
 
       if (NULL == rpaths)
@@ -469,19 +469,31 @@ vnet_mpls_local_label (vlib_main_t * vm,
           goto done;
       }
 
-      lfe = fib_table_entry_path_add2(fib_index,
-				      &pfx,
-				      FIB_SOURCE_CLI,
-				      FIB_ENTRY_FLAG_NONE,
-				      rpaths);
-
-      if (FIB_NODE_INDEX_INVALID == lfe)
+      if (is_del)
       {
-          error = clib_error_return (0, "Failed to create %U-%U in MPLS table-id %d",
-                                     format_mpls_unicast_label, local_label,
-                                     format_mpls_eos_bit, eos,
-                                     table_id);
-          goto done;
+          fib_table_entry_path_remove2(fib_index,
+                                       &pfx,
+                                       FIB_SOURCE_CLI,
+                                       rpaths);
+      }
+      else
+      {
+          fib_node_index_t lfe;
+
+          lfe = fib_table_entry_path_add2(fib_index,
+                                          &pfx,
+                                          FIB_SOURCE_CLI,
+                                          FIB_ENTRY_FLAG_NONE,
+                                          rpaths);
+
+          if (FIB_NODE_INDEX_INVALID == lfe)
+          {
+              error = clib_error_return (0, "Failed to create %U-%U in MPLS table-id %d",
+                                         format_mpls_unicast_label, local_label,
+                                         format_mpls_eos_bit, eos,
+                                         table_id);
+              goto done;
+          }
       }
   }
 
