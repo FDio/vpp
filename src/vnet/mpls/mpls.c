@@ -469,11 +469,21 @@ vnet_mpls_local_label (vlib_main_t * vm,
           goto done;
       }
 
-      lfe = fib_table_entry_path_add2(fib_index,
-				      &pfx,
-				      FIB_SOURCE_CLI,
-				      FIB_ENTRY_FLAG_NONE,
-				      rpaths);
+      if (is_del)
+      {
+          fib_table_entry_path_remove2(fib_index,
+                                       &pfx,
+                                       FIB_SOURCE_CLI,
+                                       rpaths);
+      }
+      else
+      {
+          lfe = fib_table_entry_path_add2(fib_index,
+                                          &pfx,
+                                          FIB_SOURCE_CLI,
+                                          FIB_ENTRY_FLAG_NONE,
+                                          rpaths);
+      }
 
       if (FIB_NODE_INDEX_INVALID == lfe)
       {
