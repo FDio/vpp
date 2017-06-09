@@ -167,6 +167,7 @@ nobase_include_HEADERS = \
   vppinfra/byte_order.h \
   vppinfra/cache.h \
   vppinfra/clib.h \
+  vppinfra/clib_error.h \
   vppinfra/cpu.h \
   vppinfra/crc32.h \
   vppinfra/dlist.h \
