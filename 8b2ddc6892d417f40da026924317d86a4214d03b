@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_c418b986",
+        "filename": "src/vlibmemory/unix_shared_memory_queue.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-09T13:08:02Z",
+      "side": 1,
+      "message": "this is not part of the refactoring.",
+      "revId": "8b2ddc6892d417f40da026924317d86a4214d03b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
