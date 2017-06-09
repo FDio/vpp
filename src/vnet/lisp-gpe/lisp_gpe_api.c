@@ -466,7 +466,7 @@ static void
 
 static void
 gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t * dst,
-			    fib_route_path_t * src)
+			    fib_route_path_t * src, u8 is_ip4)
 {
   fib_route_path_t *e;
   u32 i = 0;
@@ -474,7 +474,11 @@ gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t * dst,
   vec_foreach (e, src)
   {
     memset (&dst[i], 0, sizeof (*dst));
-    clib_memcpy (&dst[i], e, sizeof (fib_route_path_t *));
+    dst[i].fib_index = e->frp_fib_index;
+    dst[i].nh_sw_if_index = e->frp_sw_if_index;
+    dst[i].is_ip4 = is_ip4;
+    clib_memcpy (&dst[i].nh_addr, &e->frp_addr,
+		 is_ip4 ? sizeof (ip4_address_t) : sizeof (ip6_address_t));
   }
 }
 
@@ -517,7 +521,8 @@ vl_api_gpe_native_fwd_rpaths_get_t_handler (vl_api_gpe_native_fwd_rpaths_get_t
   {
     rmp->count = vec_len (lgm->native_fwd_rpath[mp->is_ip4]);
     gpe_native_fwd_rpaths_copy (rmp->entries,
-				lgm->native_fwd_rpath[mp->is_ip4]);
+				lgm->native_fwd_rpath[mp->is_ip4],
+				mp->is_ip4);
     gpe_native_fwd_rpaths_get_reply_t_host_to_net (rmp);
   });
   /* *INDENT-ON* */
