@@ -279,7 +279,7 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
   ip6_address_t in_addr;
   ip4_address_t out_addr;
   u16 in_port;
-  u16 out_port;
+  u16 out_port = 0;
   u32 vrf_id = 0;
   snat_protocol_t proto = 0;
   u8 p = 0;
