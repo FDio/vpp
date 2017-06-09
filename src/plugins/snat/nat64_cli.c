@@ -278,8 +278,8 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
   u8 is_add = 1;
   ip6_address_t in_addr;
   ip4_address_t out_addr;
-  u16 in_port;
-  u16 out_port;
+  u16 in_port = 0;
+  u16 out_port = 0;
   u32 vrf_id = 0;
   snat_protocol_t proto = 0;
   u8 p = 0;
@@ -308,6 +308,18 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 				     format_unformat_error, line_input);
 	  goto done;
 	}
+    }
+
+  if (!in_port)
+    {
+      error = clib_error_return (0, "inside port and address  must be set");
+      goto done;
+    }
+
+  if (!out_port)
+    {
+      error = clib_error_return (0, "outside port and address  must be set");
+      goto done;
     }
 
   p = snat_proto_to_ip_proto (proto);
