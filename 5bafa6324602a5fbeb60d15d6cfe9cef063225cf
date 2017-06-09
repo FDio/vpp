@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_06ded611",
+        "filename": "src/vnet/mpls/mpls.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-06-09T20:50:04Z",
+      "side": 1,
+      "message": "this will be uninitialized in the is_del case",
+      "range": {
+        "startLine": 488,
+        "startChar": 6,
+        "endLine": 488,
+        "endChar": 40
+      },
+      "revId": "5bafa6324602a5fbeb60d15d6cfe9cef063225cf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
