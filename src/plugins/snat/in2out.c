@@ -854,6 +854,16 @@ snat_hairpinning (snat_main_t *sm,
               udp0->checksum = 0;
             }
         }
+      else
+        {
+          if (PREDICT_TRUE(proto0 == SNAT_PROTOCOL_TCP))
+            {
+              sum0 = tcp0->checksum;
+              sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
+                                     ip4_header_t, dst_address);
+              tcp0->checksum = ip_csum_fold(sum0);
+            }
+        }
     }
 }
 
