@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_c6a55e05",
+        "filename": "src/plugins/snat/nat64_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-06-09T13:51:46Z",
+      "side": 1,
+      "message": "these should probably all be initialized, too",
+      "range": {
+        "startLine": 279,
+        "startChar": 0,
+        "endLine": 281,
+        "endChar": 14
+      },
+      "revId": "105e5ffa562bfbeb2d03980c9793270d2281cd02",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
