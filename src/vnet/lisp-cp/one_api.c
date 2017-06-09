@@ -1154,6 +1154,7 @@ one_adjacency_copy (vl_api_one_adjacency_t * dst, lisp_adjacency_t * adjs)
 	  nsh.spi = clib_host_to_net_u32 (gid_address_nsh_spi (&adj->leid));
 	  nsh.si = gid_address_nsh_si (&adj->leid);
 	  clib_memcpy (a.leid, &nsh, sizeof (nsh));
+	  break;
 	default:
 	  ASSERT (0);
 	}
