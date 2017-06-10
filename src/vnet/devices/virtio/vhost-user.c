@@ -86,6 +86,16 @@
  * The value 64 was obtained by testing (48 and 128 were not as good).
  */
 #define VHOST_USER_RX_COPY_THRESHOLD 64
+/*
+ * On the transmit side, we keep processing the buffers from vlib in the while
+ * loop and prepare the copy order to be executed later. However, the static
+ * array which we keep the copy order is limited to VHOST_USER_COPY_ARRAY_N
+ * entries. In order to not corrupt memory, we have to do the copy when the
+ * static array reaches the copy threshold. We subtract 40 in case the code
+ * goes into the inner loop for a maximum of 64k frames which may require
+ * more array entries.
+ */
+#define VHOST_USER_TX_COPY_THRESHOLD (VHOST_USER_COPY_ARRAY_N - 40)
 
 #define UNIX_GET_FD(unixfd_idx) \
     (unixfd_idx != ~0) ? \
@@ -2000,7 +2010,7 @@ vhost_user_tx (vlib_main_t * vm,
 
   qid =
     VHOST_VRING_IDX_RX (*vec_elt_at_index
-			(vui->per_cpu_tx_qid, vlib_get_thread_index ()));
+			(vui->per_cpu_tx_qid, thread_index));
   rxvq = &vui->vrings[qid];
   if (PREDICT_FALSE (vui->use_tx_spinlock))
     vhost_user_vring_lock (vui, qid);
@@ -2212,6 +2222,27 @@ retry:
 	}
 
       n_left--;			//At the end for error counting when 'goto done' is invoked
+
+      /*
+       * Do the copy periodically to prevent
+       * vum->cpus[thread_index].copy array overflow and corrupt memory
+       */
+      if (PREDICT_FALSE (copy_len >= VHOST_USER_TX_COPY_THRESHOLD))
+	{
+	  if (PREDICT_FALSE
+	      (vhost_user_tx_copy (vui, vum->cpus[thread_index].copy,
+				   copy_len, &map_hint)))
+	    {
+	      vlib_error_count (vm, node->node_index,
+				VHOST_USER_TX_FUNC_ERROR_MMAP_FAIL, 1);
+	    }
+	  copy_len = 0;
+
+	  /* give buffers back to driver */
+	  CLIB_MEMORY_BARRIER ();
+	  rxvq->used->idx = rxvq->last_used_idx;
+	  vhost_user_log_dirty_ring (vui, rxvq, idx);
+	}
       buffers++;
     }
 
@@ -2266,7 +2297,7 @@ done3:
       vlib_increment_simple_counter
 	(vnet_main.interface_main.sw_if_counters
 	 + VNET_INTERFACE_COUNTER_DROP,
-	 vlib_get_thread_index (), vui->sw_if_index, n_left);
+	 thread_index, vui->sw_if_index, n_left);
     }
 
   vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
