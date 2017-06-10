@@ -44,78 +44,59 @@ typedef struct
 
 typedef struct
 {
-  /* API message ID base */
-  u16 msg_id_base;
+  /*
+   * Application setup parameters
+   */
+  unix_shared_memory_queue_t *vl_input_queue;	/**< vpe input queue */
+  unix_shared_memory_queue_t *our_event_queue;	/**< Our event queue */
+  unix_shared_memory_queue_t *vpp_event_queue;	/**< $$$ single thread */
 
-  /* vpe input queue */
-  unix_shared_memory_queue_t *vl_input_queue;
+  u32 cli_node_index;			/**< cli process node index */
+  u32 my_client_index;			/**< loopback API client handle */
+  u32 app_index;			/**< app index after attach */
 
-  /* API client handle */
-  u32 my_client_index;
+  /*
+   * Configuration params
+   */
+  u8 *connect_uri;			/**< URI for slave's connect */
+  u64 bytes_to_send;			/**< Bytes to send */
+  u32 configured_segment_size;
+  u32 fifo_size;
+  u32 expected_connections;		/**< Number of clients/connections */
 
-  /* The URI we're playing with */
-  u8 *uri;
+  /*
+   * Test state variables
+   */
+  session_t *sessions;			/**< Sessions pool */
+  u8 *rx_buf;				/**< intermediate rx buffer */
+  uword *session_index_by_vpp_handles;	/**< Hash table for disconnecting */
+  u8 *connect_test_data;		/**< Pre-computed test data */
+  u32 **connection_index_by_thread;
+  pthread_t client_thread_handle;
 
-  /* Session pool */
-  session_t *sessions;
-
-  /* Hash table for disconnect processing */
-  uword *session_index_by_vpp_handles;
-
-  /* intermediate rx buffer */
-  u8 *rx_buf;
-
-  /* URI for slave's connect */
-  u8 *connect_uri;
-
-  u32 connected_session_index;
-
-  int i_am_master;
-
-  /* drop all packets */
-  int drop_packets;
-
-  /* Our event queue */
-  unix_shared_memory_queue_t *our_event_queue;
-
-  /* $$$ single thread only for the moment */
-  unix_shared_memory_queue_t *vpp_event_queue;
-
-  pid_t my_pid;
+  volatile u32 ready_connections;
+  volatile u32 finished_connections;
+  volatile u64 rx_total;
+  volatile u64 tx_total;
+  volatile int run_test;		/**< Signal start of test */
 
   f64 test_start_time;
   f64 test_end_time;
 
-  u32 expected_connections;
-  u32 **connection_index_by_thread;
-  volatile u32 ready_connections;
-  volatile u32 finished_connections;
-
-  volatile u64 rx_total;
-  u32 cli_node_index;
-
-  /* Signal variable */
-  volatile int run_test;
-
-  /* Bytes to send */
-  u64 bytes_to_send;
-
-  u32 configured_segment_size;
-
-  /* VNET_API_ERROR_FOO -> "Foo" hash table */
-  uword *error_string_by_error_number;
-
-  u8 *connect_test_data;
-  pthread_t client_thread_handle;
-  u64 client_bytes_received;
-  u8 test_return_packets;
-
+  /*
+   * Flags
+   */
   u8 is_init;
   u8 test_client_attached;
+  u8 no_return;
+  u8 test_return_packets;
+  int i_am_master;
+  int drop_packets;		/**< drop all packets */
+  u8 prealloc_fifos;		/**< Request fifo preallocation */
 
-  u32 node_index;
-
-  /* convenience */
+  /*
+   * Convenience
+   */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
   ethernet_main_t *ethernet_main;

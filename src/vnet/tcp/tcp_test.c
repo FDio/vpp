@@ -190,11 +190,18 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((pool_elts (sb->holes) == 1),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
+  hole = scoreboard_first_hole (sb);
+  TCP_TEST ((hole->prev == TCP_INVALID_SACK_HOLE_INDEX
+	     && hole->next == TCP_INVALID_SACK_HOLE_INDEX), "hole is valid");
+  TCP_TEST ((sb->last_bytes_delivered == 100), "last bytes delivered %d",
+	    sb->last_bytes_delivered);
 
   /*
    * Add some more blocks and then remove all
    */
   vec_reset_length (tc->rcv_opts.sacks);
+  tc->snd_una += sb->snd_una_adv;
+  tc->snd_una_max = 1900;
   for (i = 0; i < 5; i++)
     {
       block.start = i * 100 + 1200;
@@ -241,6 +248,39 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 0),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
+
+  /*
+   * Inject one block, ack it and overlap hole
+   */
+
+  tc->snd_una = 0;
+  tc->snd_una_max = 1000;
+  tc->snd_nxt = 1000;
+
+  block.start = 100;
+  block.end = 500;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+
+  tcp_rcv_sacks (tc, 0);
+
+  if (verbose)
+    vlib_cli_output (vm, "sb added [100, 500]:\n%U",
+		     format_tcp_scoreboard, sb);
+
+  tcp_rcv_sacks (tc, 800);
+
+  if (verbose)
+    vlib_cli_output (vm, "sb ack [0, 800]:\n%U", format_tcp_scoreboard, sb);
+
+  TCP_TEST ((pool_elts (sb->holes) == 1),
+	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
+  TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 0),
+	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((sb->last_bytes_delivered == 400),
+	    "last bytes delivered %d", sb->last_bytes_delivered);
 
   return 0;
 }
@@ -571,7 +611,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
    */
   for (i = 0; i < 3; i++)
     {
-      offset = (2 * i + 1) * sizeof (u32);
+      offset = (2 * i + 1) * sizeof (u32) - f->tail;
       data = (u8 *) (test_data + (2 * i + 1));
       if (i == 0)
 	{
@@ -600,7 +640,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Try adding a completely overlapped segment
    */
-  offset = 3 * sizeof (u32);
+  offset = 3 * sizeof (u32) - f->tail;
   data = (u8 *) (test_data + 3);
   rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
   if (rv)
@@ -626,7 +666,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
    */
   for (i = 3; i > 1; i--)
     {
-      offset = (2 * i + 0) * sizeof (u32);
+      offset = (2 * i + 0) * sizeof (u32) - f->tail;
       data = (u8 *) (test_data + (2 * i + 0));
       rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
       if (verbose)
@@ -688,7 +728,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 
   for (i = 0; i < 4; i++)
     {
-      offset = (2 * i + 1) * sizeof (u32);
+      offset = (2 * i + 1) * sizeof (u32) - f->tail;
       data = (u8 *) (test_data + (2 * i + 1));
       rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
       if (verbose)
@@ -701,7 +741,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
-  rv = svm_fifo_enqueue_with_offset (f, 8, 21, data);
+  rv = svm_fifo_enqueue_with_offset (f, 8 - f->tail, 21, data);
   TCP_TEST ((rv == 0), "ooo enqueued %u", rv);
   TCP_TEST ((svm_fifo_number_ooo_segments (f) == 1),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
@@ -722,7 +762,7 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 
   for (i = 0; i < 4; i++)
     {
-      offset = (2 * i + 1) * sizeof (u32);
+      offset = (2 * i + 1) * sizeof (u32) - f->tail;
       data = (u8 *) (test_data + (2 * i + 1));
       rv = svm_fifo_enqueue_with_offset (f, offset, sizeof (u32), data);
       if (verbose)
@@ -735,7 +775,13 @@ tcp_test_fifo1 (vlib_main_t * vm, unformat_input_t * input)
 	}
     }
 
+  if (verbose)
+    vlib_cli_output (vm, "fifo after enqueue: %U", format_svm_fifo, f, 1);
+
   rv = svm_fifo_enqueue_nowait (f, 29, data);
+  if (verbose)
+    vlib_cli_output (vm, "fifo after enqueueing 29: %U", format_svm_fifo, f,
+		     1);
   TCP_TEST ((rv == 32), "ooo enqueued %u", rv);
   TCP_TEST ((svm_fifo_number_ooo_segments (f) == 0),
 	    "number of ooo segments %u", svm_fifo_number_ooo_segments (f));
@@ -788,7 +834,8 @@ tcp_test_fifo2 (vlib_main_t * vm)
     {
       tp = vp + i;
       data64 = tp->offset;
-      svm_fifo_enqueue_with_offset (f, tp->offset, tp->len, (u8 *) & data64);
+      svm_fifo_enqueue_with_offset (f, tp->offset - f->tail, tp->len,
+				    (u8 *) & data64);
     }
 
   /* Expected result: one big fat chunk at offset 4 */
@@ -817,7 +864,7 @@ tcp_test_fifo2 (vlib_main_t * vm)
     {
       tp = &test_data[i];
       data64 = tp->offset;
-      rv = svm_fifo_enqueue_with_offset (f, tp->offset, tp->len,
+      rv = svm_fifo_enqueue_with_offset (f, tp->offset - f->tail, tp->len,
 					 (u8 *) & data64);
       if (rv)
 	{
@@ -991,8 +1038,9 @@ tcp_test_fifo3 (vlib_main_t * vm, unformat_input_t * input)
   for (i = !randomize; i < vec_len (generate); i++)
     {
       tp = generate + i;
-      svm_fifo_enqueue_with_offset (f, fifo_initial_offset + tp->offset,
-				    tp->len,
+      svm_fifo_enqueue_with_offset (f,
+				    fifo_initial_offset + tp->offset -
+				    f->tail, tp->len,
 				    (u8 *) data_pattern + tp->offset);
     }
 
@@ -1107,7 +1155,7 @@ tcp_test_fifo4 (vlib_main_t * vm, unformat_input_t * input)
 
   for (i = test_n_bytes - 1; i > 0; i--)
     {
-      rv = svm_fifo_enqueue_with_offset (f, fifo_initial_offset + i,
+      rv = svm_fifo_enqueue_with_offset (f, fifo_initial_offset + i - f->tail,
 					 sizeof (u8), &test_data[i]);
       if (verbose)
 	vlib_cli_output (vm, "add [%d] [%d, %d]", i, i, i + sizeof (u8));

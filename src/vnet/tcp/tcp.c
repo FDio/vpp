@@ -726,15 +726,25 @@ tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
 u32
 tcp_snd_space (tcp_connection_t * tc)
 {
-  int snd_space;
+  int snd_space, snt_limited;
 
-  /* If we haven't gotten dupacks or if we did and have gotten sacked bytes
-   * then we can still send */
-  if (PREDICT_TRUE (tcp_in_cong_recovery (tc) == 0
-		    && (tc->rcv_dupacks == 0
-			|| tc->sack_sb.last_sacked_bytes)))
+  if (PREDICT_TRUE (tcp_in_cong_recovery (tc) == 0))
     {
       snd_space = tcp_available_snd_space (tc);
+
+      /* If we haven't gotten dupacks or if we did and have gotten sacked
+       * bytes then we can still send as per Limited Transmit (RFC3042) */
+      if (PREDICT_FALSE (tc->rcv_dupacks != 0
+			 && (tcp_opts_sack_permitted (tc)
+			     && tc->sack_sb.last_sacked_bytes == 0)))
+	{
+	  if (tc->rcv_dupacks == 1 && tc->limited_transmit != tc->snd_nxt)
+	    tc->limited_transmit = tc->snd_nxt;
+	  ASSERT (seq_leq (tc->limited_transmit, tc->snd_nxt));
+
+	  snt_limited = tc->snd_nxt - tc->limited_transmit;
+	  snd_space = clib_max (2 * tc->snd_mss - snt_limited, 0);
+	}
       return tcp_round_snd_space (tc, snd_space);
     }
 
