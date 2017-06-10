@@ -39,21 +39,30 @@
 
 typedef struct
 {
-  /* Per-thread RX buffer */
-  u8 **rx_buf;
+  /*
+   * Server app parameters
+   */
   unix_shared_memory_queue_t **vpp_queue;
+  unix_shared_memory_queue_t *vl_input_queue;	/**< Sever's event queue */
+
+  u32 app_index;		/**< Server app index */
+  u32 my_client_index;		/**< API client handle */
+  u32 node_index;		/**< process node index for evnt scheduling */
+
+  /*
+   * Config params
+   */
+  u8 no_echo;			/**< Don't echo traffic */
+  u32 fifo_size;		/**< Fifo size */
+  u32 rcv_buffer_size;		/**< Rcv buffer size */
+  u32 prealloc_fifos;		/**< Preallocate fifos */
+
+  /*
+   * Test state
+   */
+  u8 **rx_buf;			/**< Per-thread RX buffer */
   u64 byte_index;
 
-  /* Sever's event queue */
-  unix_shared_memory_queue_t *vl_input_queue;
-
-  /* API client handle */
-  u32 my_client_index;
-
-  u32 app_index;
-
-  /* process node index for evnt scheduling */
-  u32 node_index;
   vlib_main_t *vlib_main;
 } builtin_server_main_t;
 
@@ -132,6 +141,29 @@ test_bytes (builtin_server_main_t * bsm, int actual_transfer)
   bsm->byte_index += actual_transfer;
 }
 
+/*
+ * If no-echo, just read the data and be done with it
+ */
+int
+builtin_server_rx_callback_no_echo (stream_session_t * s)
+{
+  builtin_server_main_t *bsm = &builtin_server_main;
+  u32 my_thread_id = vlib_get_thread_index ();
+  int actual_transfer;
+  svm_fifo_t *rx_fifo;
+
+  rx_fifo = s->server_rx_fifo;
+
+  do
+    {
+      actual_transfer =
+	svm_fifo_dequeue_nowait (rx_fifo, bsm->rcv_buffer_size,
+				 bsm->rx_buf[my_thread_id]);
+    }
+  while (actual_transfer > 0);
+  return 0;
+}
+
 int
 builtin_server_rx_callback (stream_session_t * s)
 {
@@ -143,8 +175,8 @@ builtin_server_rx_callback (stream_session_t * s)
   static int serial_number = 0;
   u32 my_thread_id = vlib_get_thread_index ();
 
-  tx_fifo = s->server_tx_fifo;
   rx_fifo = s->server_rx_fifo;
+  tx_fifo = s->server_tx_fifo;
 
   max_dequeue = svm_fifo_max_dequeue (s->server_rx_fifo);
   max_enqueue = svm_fifo_max_enqueue (s->server_tx_fifo);
@@ -164,19 +196,22 @@ builtin_server_rx_callback (stream_session_t * s)
       /* Program self-tap to retry */
       if (svm_fifo_set_event (rx_fifo))
 	{
+	  unix_shared_memory_queue_t *q;
 	  evt.fifo = rx_fifo;
 	  evt.event_type = FIFO_EVENT_BUILTIN_RX;
 	  evt.event_id = 0;
-	  unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
-					(u8 *) & evt,
-					0 /* do wait for mutex */ );
+
+	  q = bsm->vpp_queue[s->thread_index];
+	  if (PREDICT_FALSE (q->cursize == q->maxsize))
+	    clib_warning ("out of event queue space");
+	  else
+	    unix_shared_memory_queue_add (q, (u8 *) & evt,
+					  0 /* don't wait for mutex */ );
 	}
 
       return 0;
     }
 
-  vec_validate (bsm->rx_buf, my_thread_id);
-  vec_validate (bsm->rx_buf[my_thread_id], max_transfer - 1);
   _vec_len (bsm->rx_buf[my_thread_id]) = max_transfer;
 
   actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, max_transfer,
@@ -281,14 +316,21 @@ server_attach ()
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
+  if (bsm->no_echo)
+    builtin_session_cb_vft.builtin_server_rx_callback =
+      builtin_server_rx_callback_no_echo;
+  else
+    builtin_session_cb_vft.builtin_server_rx_callback =
+      builtin_server_rx_callback;
   a->api_client_index = bsm->my_client_index;
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;
   a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 512 << 20;
-  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = 64 << 10;
-  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = 64 << 10;
+  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = bsm->fifo_size;
+  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = bsm->fifo_size;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
-  a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 8192;
+  a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
+    bsm->prealloc_fifos ? bsm->prealloc_fifos : 1;
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
@@ -316,17 +358,24 @@ static int
 server_create (vlib_main_t * vm)
 {
   builtin_server_main_t *bsm = &builtin_server_main;
-  u32 num_threads;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads;
+  int i;
 
   if (bsm->my_client_index == (u32) ~ 0)
     {
       if (create_api_loopback (vm))
-	return -1;
+	{
+	  clib_warning ("failed to create api loopback");
+	  return -1;
+	}
     }
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (builtin_server_main.vpp_queue, num_threads - 1);
+  vec_validate (bsm->rx_buf, num_threads - 1);
+  for (i = 0; i < num_threads; i++)
+    vec_validate (bsm->rx_buf[i], bsm->rcv_buffer_size);
 
   if (server_attach ())
     {
@@ -381,23 +430,35 @@ tcp_builtin_server_api_hookup (vlib_main_t * vm)
 }
 
 static clib_error_t *
-server_create_command_fn (vlib_main_t * vm,
-			  unformat_input_t * input, vlib_cli_command_t * cmd)
+server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			  vlib_cli_command_t * cmd)
 {
+  builtin_server_main_t *bsm = &builtin_server_main;
   int rv;
-#if 0
+
+  bsm->no_echo = 0;
+  bsm->fifo_size = 64 << 10;
+  bsm->rcv_buffer_size = 128 << 10;
+  bsm->prealloc_fifos = 0;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "whatever %d", &whatever))
+      if (unformat (input, "no-echo"))
+	bsm->no_echo = 1;
+      else if (unformat (input, "fifo-size %d", &bsm->fifo_size))
+	bsm->fifo_size <<= 10;
+      else if (unformat (input, "rcv-buf-size %d", &bsm->rcv_buffer_size))
+	;
+      else if (unformat (input, "prealloc-fifos", &bsm->prealloc_fifos))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
-#endif
 
   tcp_builtin_server_api_hookup (vm);
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
+
   rv = server_create (vm);
   switch (rv)
     {
@@ -406,6 +467,7 @@ server_create_command_fn (vlib_main_t * vm,
     default:
       return clib_error_return (0, "server_create returned %d", rv);
     }
+
   return 0;
 }
 

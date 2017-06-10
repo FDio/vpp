@@ -700,7 +700,7 @@ stream_session_init_fifos_pointers (transport_connection_t * tc,
   svm_fifo_init_pointers (s->server_tx_fifo, tx_pointer);
 }
 
-void
+int
 stream_session_connect_notify (transport_connection_t * tc, u8 sst,
 			       u8 is_fail)
 {
@@ -709,6 +709,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
   stream_session_t *new_s = 0;
   u64 handle;
   u32 api_context = 0;
+  int error = 0;
 
   handle = stream_session_half_open_lookup (smm, &tc->lcl_ip, &tc->rmt_ip,
 					    tc->lcl_port, tc->rmt_port,
@@ -716,7 +717,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
   if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
       clib_warning ("This can't be good!");
-      return;
+      return -1;
     }
 
   /* Get the app's index from the handle we stored when opening connection */
@@ -730,9 +731,12 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
 
       /* Create new session (svm segments are allocated if needed) */
       if (stream_session_create_i (sm, tc, &new_s))
-	return;
-
-      new_s->app_index = app->index;
+	{
+	  is_fail = 1;
+	  error = -1;
+	}
+      else
+	new_s->app_index = app->index;
     }
 
   /* Notify client */
@@ -741,6 +745,8 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
 
   /* Cleanup session lookup */
   stream_session_half_open_table_del (smm, sst, tc);
+
+  return error;
 }
 
 void
@@ -981,8 +987,13 @@ session_send_session_evt_to_thread (u64 session_handle,
 
   /* Based on request block (or not) for lack of space */
   if (PREDICT_TRUE (q->cursize < q->maxsize))
-    unix_shared_memory_queue_add (q, (u8 *) & evt,
-				  0 /* do wait for mutex */ );
+    {
+      if (unix_shared_memory_queue_add (q, (u8 *) & evt,
+					1 /* do wait for mutex */ ))
+	{
+	  clib_warning ("failed to enqueue evt");
+	}
+    }
   else
     {
       clib_warning ("queue full");

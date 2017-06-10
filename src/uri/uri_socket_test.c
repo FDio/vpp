@@ -19,6 +19,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include <vppinfra/format.h>
+#include <sys/time.h>
 
 int
 main (int argc, char *argv[])
@@ -26,28 +27,44 @@ main (int argc, char *argv[])
   int sockfd, portno, n;
   struct sockaddr_in serv_addr;
   struct hostent *server;
-  u8 *rx_buffer = 0, *tx_buffer = 0;
+  u8 *rx_buffer = 0, *tx_buffer = 0, no_echo = 0, test_bytes = 0;
   u32 offset;
-  int iter, i;
-  if (0 && argc < 3)
+  long bytes = 1 << 20, to_send;
+  int i;
+  struct timeval start, end;
+  double deltat;
+
+  if (argc >= 3)
     {
-      fformat (stderr, "usage %s hostname port\n", argv[0]);
-      exit (0);
+      bytes = ((long) atoi (argv[4])) << 20;
+      no_echo = atoi (argv[3]);
+      portno = atoi (argv[2]);
+      server = gethostbyname (argv[1]);
+      if (server == NULL)
+	{
+	  clib_unix_warning ("gethostbyname");
+	  exit (1);
+	}
+    }
+  else
+    {
+      portno = 1234;		// atoi(argv[2]);
+      server = gethostbyname ("6.0.1.1" /* argv[1] */ );
+      if (server == NULL)
+	{
+	  clib_unix_warning ("gethostbyname");
+	  exit (1);
+	}
     }
 
-  portno = 1234;		// atoi(argv[2]);
+  to_send = bytes;
   sockfd = socket (AF_INET, SOCK_STREAM, 0);
   if (sockfd < 0)
     {
       clib_unix_error ("socket");
       exit (1);
     }
-  server = gethostbyname ("6.0.1.1" /* argv[1] */ );
-  if (server == NULL)
-    {
-      clib_unix_warning ("gethostbyname");
-      exit (1);
-    }
+
   bzero ((char *) &serv_addr, sizeof (serv_addr));
   serv_addr.sin_family = AF_INET;
   bcopy ((char *) server->h_addr,
@@ -59,8 +76,8 @@ main (int argc, char *argv[])
       exit (1);
     }
 
-  vec_validate (rx_buffer, 1400);
-  vec_validate (tx_buffer, 1400);
+  vec_validate (rx_buffer, 128 << 10);
+  vec_validate (tx_buffer, 128 << 10);
 
   for (i = 0; i < vec_len (tx_buffer); i++)
     tx_buffer[i] = (i + 1) % 0xff;
@@ -75,19 +92,28 @@ main (int argc, char *argv[])
       exit (0);
     }
 
-  for (iter = 0; iter < 100000; iter++)
+  gettimeofday (&start, NULL);
+  while (bytes > 0)
     {
-      if (iter < 99999)
+      /*
+       * TX
+       */
+      n = send (sockfd, tx_buffer, vec_len (tx_buffer), 0 /* flags */ );
+      if (n != vec_len (tx_buffer))
 	{
-	  n = send (sockfd, tx_buffer, vec_len (tx_buffer), 0 /* flags */ );
-	  if (n != vec_len (tx_buffer))
-	    {
-	      clib_unix_warning ("write");
-	      exit (0);
-	    }
+	  clib_unix_warning ("write");
+	  exit (0);
 	}
-      offset = 0;
+      bytes -= n;
 
+      if (no_echo)
+	continue;
+
+      /*
+       * RX
+       */
+
+      offset = 0;
       do
 	{
 	  n = recv (sockfd, rx_buffer + offset,
@@ -101,18 +127,27 @@ main (int argc, char *argv[])
 	}
       while (offset < vec_len (rx_buffer));
 
-      for (i = 0; i < vec_len (rx_buffer); i++)
+      if (test_bytes)
 	{
-	  if (rx_buffer[i] != tx_buffer[i])
+	  for (i = 0; i < vec_len (rx_buffer); i++)
 	    {
-	      clib_warning ("[%d] read 0x%x not 0x%x",
-			    rx_buffer[i], tx_buffer[i]);
-	      exit (1);
+	      if (rx_buffer[i] != tx_buffer[i])
+		{
+		  clib_warning ("[%d] read 0x%x not 0x%x", rx_buffer[i],
+				tx_buffer[i]);
+		  exit (1);
+		}
 	    }
 	}
-
     }
   close (sockfd);
+  gettimeofday (&end, NULL);
+
+  deltat = (end.tv_sec - start.tv_sec);
+  deltat += (end.tv_usec - start.tv_usec) / 1000000.0;	// us to ms
+  clib_warning ("Finished in %.6f", deltat);
+  clib_warning ("%.4f Gbit/second %s", (((f64) to_send * 8.0) / deltat / 1e9),
+		no_echo ? "half" : "full");
   return 0;
 }
 
