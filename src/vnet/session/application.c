@@ -117,7 +117,7 @@ application_del (application_t * app)
   /* Actual listener cleanup */
   for (i = 0; i < vec_len (handles); i++)
     {
-      a->app_index = app->api_client_index;
+      a->app_index = app->index;
       a->handle = handles[i];
       /* seg manager is removed when unbind completes */
       vnet_unbind (a);
