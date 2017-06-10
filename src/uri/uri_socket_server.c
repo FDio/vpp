@@ -22,6 +22,7 @@
 #include <vppinfra/format.h>
 #include <signal.h>
 #include <sys/ucontext.h>
+#include <sys/time.h>
 
 volatile int signal_received;
 
@@ -78,7 +79,10 @@ main (int argc, char *argv[])
   struct sockaddr_in serv_addr;
   struct sockaddr_in client;
   struct hostent *server;
-  u8 *rx_buffer = 0;
+  u8 *rx_buffer = 0, no_echo = 0;
+  struct timeval start, end;
+  long rcvd = 0;
+  double deltat;
 
   if (argc > 1 && argc < 3)
     {
@@ -86,8 +90,9 @@ main (int argc, char *argv[])
       exit (0);
     }
 
-  if (argc >= 3)
+  if (argc >= 4)
     {
+      no_echo = atoi (argv[3]);
       portno = atoi (argv[2]);
       server = gethostbyname (argv[1]);
       if (server == NULL)
@@ -137,7 +142,7 @@ main (int argc, char *argv[])
       exit (1);
     }
 
-  vec_validate (rx_buffer, 8999 /* jumbo mtu */ );
+  vec_validate (rx_buffer, 128 << 10);
 
   if (listen (sockfd, 5 /* backlog */ ) < 0)
     {
@@ -160,6 +165,8 @@ main (int argc, char *argv[])
 	}
       fformat (stderr, "Accepted connection from: %s : %d\n",
 	       inet_ntoa (client.sin_addr), client.sin_port);
+      gettimeofday (&start, NULL);
+
       while (1)
 	{
 	  n = recv (accfd, rx_buffer, vec_len (rx_buffer), 0 /* flags */ );
@@ -167,6 +174,14 @@ main (int argc, char *argv[])
 	    {
 	      /* Graceful exit */
 	      close (accfd);
+	      gettimeofday (&end, NULL);
+	      deltat = (end.tv_sec - start.tv_sec);
+	      deltat += (end.tv_usec - start.tv_usec) / 1000000.0;
+	      clib_warning ("Finished in %.6f", deltat);
+	      clib_warning ("%.4f Gbit/second %s",
+			    (((f64) rcvd * 8.0) / deltat / 1e9),
+			    no_echo ? "half" : "full");
+	      rcvd = 0;
 	      break;
 	    }
 	  if (n < 0)
@@ -178,6 +193,10 @@ main (int argc, char *argv[])
 
 	  if (signal_received)
 	    break;
+
+	  rcvd += n;
+	  if (no_echo)
+	    continue;
 
 	  sent = send (accfd, rx_buffer, n, 0 /* flags */ );
 	  if (n < 0)
