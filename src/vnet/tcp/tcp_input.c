@@ -417,8 +417,8 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
   u32 mrtt = 0;
   u8 rtx_acked;
 
-  /* Determine if only rtx bytes are acked. TODO XXX fast retransmit */
-  rtx_acked = tc->rto_boff && (tc->bytes_acked <= tc->snd_mss);
+  /* Determine if only rtx bytes are acked. */
+  rtx_acked = tcp_in_cong_recovery (tc) || !tc->bytes_acked;
 
   /* Karn's rule, part 1. Don't use retransmitted segments to estimate
    * RTT because they're ambiguous. */
@@ -428,10 +428,9 @@ tcp_update_rtt (tcp_connection_t * tc, u32 ack)
     }
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
    * snd_una, i.e., the left side of the send window:
-   * seq_lt (tc->snd_una, ack). Note: last condition could be dropped, we don't
-   * try to update rtt for dupacks */
+   * seq_lt (tc->snd_una, ack). */
   else if (tcp_opts_tstamp (&tc->rcv_opts) && tc->rcv_opts.tsecr
-	   && tc->bytes_acked)
+	   && !rtx_acked)
     {
       mrtt = tcp_time_now () - tc->rcv_opts.tsecr;
     }
@@ -550,11 +549,13 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
   prev = scoreboard_get_hole (sb, prev_index);
   if (prev)
     {
-      hole->prev = prev - sb->holes;
+      hole->prev = prev_index;
       hole->next = prev->next;
 
       if ((next = scoreboard_next_hole (sb, hole)))
 	next->prev = hole_index;
+      else
+	sb->tail = hole_index;
 
       prev->next = hole_index;
     }
@@ -569,12 +570,13 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
 }
 
 void
-scoreboard_update_lost (tcp_connection_t * tc, sack_scoreboard_t * sb)
+scoreboard_update_bytes (tcp_connection_t * tc, sack_scoreboard_t * sb)
 {
   sack_scoreboard_hole_t *hole, *prev;
   u32 bytes = 0, blks = 0;
 
   sb->lost_bytes = 0;
+  sb->sacked_bytes = 0;
   hole = scoreboard_last_hole (sb);
   if (!hole)
     return;
@@ -594,13 +596,16 @@ scoreboard_update_lost (tcp_connection_t * tc, sack_scoreboard_t * sb)
       hole = prev;
     }
 
-  hole = prev;
   while (hole)
     {
       sb->lost_bytes += scoreboard_hole_bytes (hole);
       hole->is_lost = 1;
+      prev = hole;
       hole = scoreboard_prev_hole (sb, hole);
+      if (hole)
+	bytes += prev->start - hole->end;
     }
+  sb->sacked_bytes = bytes;
 }
 
 /**
@@ -677,7 +682,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 {
   sack_scoreboard_t *sb = &tc->sack_sb;
   sack_block_t *blk, tmp;
-  sack_scoreboard_hole_t *hole, *next_hole, *last_hole, *new_hole;
+  sack_scoreboard_hole_t *hole, *next_hole, *last_hole;
   u32 blk_index = 0, old_sacked_bytes, hole_index;
   int i, j;
 
@@ -743,6 +748,10 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
       if (seq_gt (tc->snd_una_max, sb->high_sacked)
 	  && seq_gt (tc->snd_una_max, last_hole->end))
 	last_hole->end = tc->snd_una_max;
+      /* keep track of max byte sacked for when the last hole
+       * is acked */
+      if (seq_gt(tmp.end, sb->high_sacked))
+	sb->high_sacked = tmp.end;
     }
 
   /* Walk the holes with the SACK blocks */
@@ -758,45 +767,19 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      next_hole = scoreboard_next_hole (sb, hole);
 
-	      /* Byte accounting */
-	      if (seq_leq (hole->end, ack))
+	      /* Byte accounting: snd_una needs to be advanced */
+	      if (blk->end == ack)
 		{
-		  /* Bytes lost because snd_wnd left edge advances */
-		  if (next_hole && seq_leq (next_hole->start, ack))
-		    sb->last_bytes_delivered += next_hole->start - hole->end;
-		  else
-		    sb->last_bytes_delivered += ack - hole->end;
-		}
-	      else
-		{
-		  sb->sacked_bytes += scoreboard_hole_bytes (hole);
-		}
-
-	      /* About to remove last hole */
-	      if (hole == last_hole)
-		{
-		  sb->tail = hole->prev;
-		  last_hole = scoreboard_last_hole (sb);
-		  /* keep track of max byte sacked for when the last hole
-		   * is acked */
-		  if (seq_gt (hole->end, sb->high_sacked))
-		    sb->high_sacked = hole->end;
-		}
-
-	      /* snd_una needs to be advanced */
-	      if (blk->end == ack && seq_geq (ack, hole->end))
-		{
-		  if (next_hole && seq_lt (ack, next_hole->start))
+		  if (next_hole)
 		    {
-		      sb->snd_una_adv = next_hole->start - ack;
-
-		      /* all these can be delivered */
-		      sb->last_bytes_delivered += sb->snd_una_adv;
+		      if (seq_lt(ack, next_hole->start))
+			sb->snd_una_adv = next_hole->start - ack;
+		      sb->last_bytes_delivered += next_hole->start - hole->end;
 		    }
 		  else if (!next_hole)
 		    {
 		      sb->snd_una_adv = sb->high_sacked - ack;
-		      sb->last_bytes_delivered += sb->snd_una_adv;
+		      sb->last_bytes_delivered += sb->high_sacked - hole->end;
 		    }
 		}
 
@@ -808,7 +791,6 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      if (seq_gt (blk->end, hole->start))
 		{
-		  sb->sacked_bytes += blk->end - hole->start;
 		  hole->start = blk->end;
 		}
 	      blk_index++;
@@ -819,28 +801,16 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  /* Hole must be split */
 	  if (seq_lt (blk->end, hole->end))
 	    {
-	      sb->sacked_bytes += blk->end - blk->start;
 	      hole_index = scoreboard_hole_index (sb, hole);
-	      new_hole = scoreboard_insert_hole (sb, hole_index, blk->end,
-						 hole->end);
+	      scoreboard_insert_hole (sb, hole_index, blk->end, hole->end);
 
 	      /* Pool might've moved */
 	      hole = scoreboard_get_hole (sb, hole_index);
 	      hole->end = blk->start;
-
-	      /* New or split of tail */
-	      if ((last_hole->end == new_hole->end)
-		  || seq_lt (last_hole->end, new_hole->start))
-		{
-		  last_hole = new_hole;
-		  sb->tail = scoreboard_hole_index (sb, new_hole);
-		}
-
 	      blk_index++;
 	    }
-	  else if (seq_leq (blk->start, hole->end))
+	  else if (seq_lt (blk->start, hole->end))
 	    {
-	      sb->sacked_bytes += hole->end - blk->start;
 	      hole->end = blk->start;
 	    }
 
@@ -848,9 +818,13 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	}
     }
 
-  sb->last_sacked_bytes = sb->sacked_bytes - old_sacked_bytes;
-  sb->sacked_bytes -= sb->last_bytes_delivered;
-  scoreboard_update_lost (tc, sb);
+  scoreboard_update_bytes (tc, sb);
+  sb->last_sacked_bytes = sb->sacked_bytes
+      - (old_sacked_bytes - sb->last_bytes_delivered);
+  ASSERT (sb->sacked_bytes == 0
+	  || sb->sacked_bytes < tc->snd_una_max - seq_max (tc->snd_una, ack));
+  ASSERT(sb->last_sacked_bytes + sb->lost_bytes <= tc->snd_una_max
+	 - seq_max (tc->snd_una, ack));
 }
 
 /**
@@ -1001,6 +975,8 @@ tcp_should_fastrecover (tcp_connection_t * tc)
 static void
 tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 {
+  u32 rxt_delivered;
+
   /*
    * Duplicate ACK. Check if we should enter fast recovery, or if already in
    * it account for the bytes that left the network.
@@ -1115,12 +1091,14 @@ partial_ack:
     return;
 
   /* Remove retransmitted bytes that have been delivered */
-  if (tc->sack_sb.last_bytes_delivered
+  ASSERT (tc->bytes_acked >= tc->sack_sb.last_bytes_delivered);
+  rxt_delivered = tc->bytes_acked - tc->sack_sb.last_bytes_delivered;
+  if (rxt_delivered
       && seq_gt (tc->sack_sb.high_rxt, tc->snd_una))
     {
       /* If we have sacks and we haven't gotten an ack beyond high_rxt,
        * remove sacked bytes delivered */
-      tc->snd_rxt_bytes -= tc->sack_sb.last_bytes_delivered;
+      tc->snd_rxt_bytes -= rxt_delivered;
     }
   else
     {
@@ -1153,6 +1131,8 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
 {
   u32 prev_snd_wnd, prev_snd_una;
   u8 is_dack;
+
+  TCP_EVT_DBG (TCP_EVT_CC_STAT, tc);
 
   /* If the ACK acks something not yet sent (SEG.ACK > SND.NXT) */
   if (PREDICT_FALSE (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt)))
@@ -1411,7 +1391,7 @@ tcp_can_delack (tcp_connection_t * tc)
       /* constrained to send ack */
       || (tc->flags & TCP_CONN_SNDACK) != 0
       /* we're almost out of tx wnd */
-      || tcp_available_snd_space (tc) < 2 * tc->snd_mss)
+      || tcp_available_snd_space (tc) < 4 * tc->snd_mss)
     return 0;
 
   return 1;
@@ -1873,8 +1853,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tcp_opts_wscale (&new_tc0->rcv_opts))
 	    new_tc0->snd_wscale = new_tc0->rcv_opts.wscale;
 
-	  /* No scaling */
-	  new_tc0->snd_wnd = clib_net_to_host_u16 (tcp0->window);
+	  new_tc0->snd_wnd = clib_net_to_host_u16 (tcp0->window)
+	      << new_tc0->snd_wscale;
 	  new_tc0->snd_wl1 = seq0;
 	  new_tc0->snd_wl2 = ack0;
 
@@ -1892,8 +1872,15 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* Make sure las is initialized for the wnd computation */
 	      new_tc0->rcv_las = new_tc0->rcv_nxt;
 
-	      /* Notify app that we have connection */
-	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
+	      /* Notify app that we have connection. If session layer can't
+	       * allocate session send reset */
+	      if (stream_session_connect_notify (&new_tc0->connection, sst,
+						 0))
+		{
+		  tcp_connection_cleanup (new_tc0);
+		  tcp_send_reset (b0, is_ip4);
+		  goto drop;
+		}
 
 	      stream_session_init_fifos_pointers (&new_tc0->connection,
 						  new_tc0->irs + 1,
@@ -1907,7 +1894,13 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      new_tc0->state = TCP_STATE_SYN_RCVD;
 
 	      /* Notify app that we have connection */
-	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
+	      if (stream_session_connect_notify (&new_tc0->connection, sst, 0))
+		{
+		  tcp_connection_cleanup (new_tc0);
+		  tcp_send_reset (b0, is_ip4);
+		  goto drop;
+		}
+
 	      stream_session_init_fifos_pointers (&new_tc0->connection,
 						  new_tc0->irs + 1,
 						  new_tc0->iss + 1);
@@ -2508,8 +2501,8 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tcp_opts_wscale (&child0->rcv_opts))
 	    child0->snd_wscale = child0->rcv_opts.wscale;
 
-	  /* No scaling */
-	  child0->snd_wnd = clib_net_to_host_u16 (th0->window);
+	  child0->snd_wnd = clib_net_to_host_u16 (th0->window)
+	      << child0->snd_wscale;
 	  child0->snd_wl1 = vnet_buffer (b0)->tcp.seq_number;
 	  child0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
 
