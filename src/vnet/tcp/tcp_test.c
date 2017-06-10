@@ -190,11 +190,19 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((pool_elts (sb->holes) == 1),
 	    "scoreboard has %d elements", pool_elts (sb->holes));
+  hole = scoreboard_first_hole (sb);
+  TCP_TEST((hole->prev == TCP_INVALID_SACK_HOLE_INDEX
+	    && hole->next == TCP_INVALID_SACK_HOLE_INDEX),
+	   "hole is valid");
+  TCP_TEST((sb->last_bytes_delivered == 100), "last bytes delivered %d",
+	   sb->last_bytes_delivered);
 
   /*
    * Add some more blocks and then remove all
    */
   vec_reset_length (tc->rcv_opts.sacks);
+  tc->snd_una += sb->snd_una_adv;
+  tc->snd_una_max = 1900;
   for (i = 0; i < 5; i++)
     {
       block.start = i * 100 + 1200;
@@ -241,6 +249,40 @@ tcp_test_sack_rx (vlib_main_t * vm, unformat_input_t * input)
   TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
   TCP_TEST ((sb->last_sacked_bytes == 0),
 	    "last sacked bytes %d", sb->last_sacked_bytes);
+
+  /*
+   * Inject one block, ack it and overlap hole
+   */
+
+  tc->snd_una = 0;
+  tc->snd_una_max = 1000;
+  tc->snd_nxt = 1000;
+
+  block.start = 100;
+  block.end = 500;
+  vec_add1 (tc->rcv_opts.sacks, block);
+  tc->rcv_opts.n_sack_blocks = vec_len (tc->rcv_opts.sacks);
+
+  tcp_rcv_sacks (tc, 0);
+
+  if (verbose)
+    vlib_cli_output (vm, "sb added [100, 500]:\n%U",
+		     format_tcp_scoreboard, sb);
+
+  tcp_rcv_sacks (tc, 800);
+
+  if (verbose)
+    vlib_cli_output (vm, "sb ack [0, 800]:\n%U",
+		     format_tcp_scoreboard, sb);
+
+  TCP_TEST ((pool_elts (sb->holes) == 1),
+	    "scoreboard has %d elements", pool_elts (sb->holes));
+  TCP_TEST ((sb->snd_una_adv == 0), "snd_una_adv %u", sb->snd_una_adv);
+  TCP_TEST ((sb->sacked_bytes == 0), "sacked bytes %d", sb->sacked_bytes);
+  TCP_TEST ((sb->last_sacked_bytes == 0),
+	    "last sacked bytes %d", sb->last_sacked_bytes);
+  TCP_TEST ((sb->last_bytes_delivered == 400),
+	    "last bytes delivered %d", sb->last_bytes_delivered);
 
   return 0;
 }
