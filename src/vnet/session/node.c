@@ -393,7 +393,7 @@ session_event_get_session (session_fifo_event_t * e0, u8 thread_index)
 
   s0 = stream_session_get_if_valid (session_index0, thread_index);
 
-  ASSERT (s0->thread_index == thread_index);
+  ASSERT (s0 == 0 || s0->thread_index == thread_index);
 
   return s0;
 }

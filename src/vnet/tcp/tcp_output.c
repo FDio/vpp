@@ -1052,6 +1052,7 @@ tcp_rtx_timeout_cc (tcp_connection_t * tc)
   tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
   tc->cwnd = tcp_loss_wnd (tc);
   tc->snd_congestion = tc->snd_una_max;
+
   tcp_recovery_on (tc);
 }
 
@@ -1213,7 +1214,7 @@ tcp_timer_persist_handler (u32 index)
   tc->timers[TCP_TIMER_PERSIST] = TCP_TIMER_HANDLE_INVALID;
 
   /* Problem already solved or worse */
-  if (tc->state == TCP_STATE_CLOSED
+  if (tc->state == TCP_STATE_CLOSED || tc->state > TCP_STATE_ESTABLISHED
       || tc->snd_wnd > tc->snd_mss || tcp_in_recovery (tc))
     return;
 
@@ -1505,10 +1506,7 @@ tcp46_output_inline (vlib_main_t * vm,
 
 	  /* Stop DELACK timer and fix flags */
 	  tc0->flags &= ~(TCP_CONN_SNDACK);
-	  if (tcp_timer_is_active (tc0, TCP_TIMER_DELACK))
-	    {
-	      tcp_timer_reset (tc0, TCP_TIMER_DELACK);
-	    }
+	  tcp_timer_reset (tc0, TCP_TIMER_DELACK);
 
 	  /* If not retransmitting
 	   * 1) update snd_una_max (SYN, SYNACK, FIN)
@@ -1630,7 +1628,7 @@ tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
   tc = (tcp_connection_t *) tconn;
   tcp_push_hdr_i (tc, b, TCP_STATE_ESTABLISHED, 0);
 
-  if (tc->rtt_ts == 0)
+  if (tc->rtt_ts == 0 && !tcp_in_cong_recovery (tc))
     {
       tc->rtt_ts = tcp_time_now ();
       tc->rtt_seq = tc->snd_nxt;
