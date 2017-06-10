@@ -399,7 +399,17 @@ typedef enum fib_walk_sleep_type_t_
  * @brief Durations for the sleep types
  */
 static f64 fib_walk_sleep_duration[] = {
-    [FIB_WALK_LONG_SLEEP] = 1e-3,
+    /**
+     * Long sleep when there is no more work, i.e. the queues are empty.
+     * This is a sleep (as opposed to a wait for event) just to be sure we
+     * are not missing events by sleeping forever.
+     */
+    [FIB_WALK_LONG_SLEEP] = 2,
+
+    /**
+     * Short sleep. There is work left in the queues. We are yielding the CPU
+     * momentarily.
+     */
     [FIB_WALK_SHORT_SLEEP] = 1e-8,
 };
 
