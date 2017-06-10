@@ -1505,10 +1505,7 @@ tcp46_output_inline (vlib_main_t * vm,
 
 	  /* Stop DELACK timer and fix flags */
 	  tc0->flags &= ~(TCP_CONN_SNDACK);
-	  if (tcp_timer_is_active (tc0, TCP_TIMER_DELACK))
-	    {
-	      tcp_timer_reset (tc0, TCP_TIMER_DELACK);
-	    }
+	  tcp_timer_reset (tc0, TCP_TIMER_DELACK);
 
 	  /* If not retransmitting
 	   * 1) update snd_una_max (SYN, SYNACK, FIN)
