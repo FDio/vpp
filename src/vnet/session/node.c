@@ -171,7 +171,10 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* Nothing to read return */
   if (max_dequeue0 == 0)
-    return 0;
+    {
+      svm_fifo_unset_event (s0->server_tx_fifo);
+      return 0;
+    }
 
   /* Ensure we're not writing more than transport window allows */
   if (max_dequeue0 < snd_space0)
@@ -393,7 +396,7 @@ session_event_get_session (session_fifo_event_t * e0, u8 thread_index)
 
   s0 = stream_session_get_if_valid (session_index0, thread_index);
 
-  ASSERT (s0->thread_index == thread_index);
+  ASSERT (s0 == 0 || s0->thread_index == thread_index);
 
   return s0;
 }

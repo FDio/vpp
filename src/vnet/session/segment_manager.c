@@ -306,11 +306,13 @@ again:
 	  if (added_a_segment)
 	    {
 	      clib_warning ("added a segment, still cant allocate a fifo");
+	      clib_spinlock_unlock (&sm->lockp);
 	      return SESSION_ERROR_NEW_SEG_NO_SPACE;
 	    }
 
 	  if (session_manager_add_segment (sm))
 	    {
+	      clib_spinlock_unlock (&sm->lockp);
 	      return VNET_API_ERROR_URI_FIFO_CREATE_FAILED;
 	    }
 
@@ -320,6 +322,7 @@ again:
       else
 	{
 	  clib_warning ("No space to allocate fifos!");
+	  clib_spinlock_unlock (&sm->lockp);
 	  return SESSION_ERROR_NO_SPACE;
 	}
     }
@@ -361,8 +364,10 @@ segment_manager_dealloc_fifos (u32 svm_segment_index, svm_fifo_t * rx_fifo,
   if (sm->segment_indices[0] != svm_segment_index
       && !svm_fifo_segment_has_fifos (fifo_segment))
     {
+      clib_spinlock_lock (&sm->lockp);
       svm_fifo_segment_delete (fifo_segment);
       vec_del1 (sm->segment_indices, svm_segment_index);
+      clib_spinlock_unlock (&sm->lockp);
     }
 }
 

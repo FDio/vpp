@@ -39,6 +39,7 @@ typedef struct _transport_connection
 
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
+  u32 cc_stat_tstamp;		/**< CC stats timestamp */
 #endif
 
   /** Macros for 'derived classes' where base is named "connection" */
@@ -57,6 +58,7 @@ typedef struct _transport_connection
 #define c_is_ip4 connection.is_ip4
 #define c_thread_index connection.thread_index
 #define c_elog_track connection.elog_track
+#define c_cc_stat_tstamp connection.cc_stat_tstamp
 } transport_connection_t;
 
 /*
