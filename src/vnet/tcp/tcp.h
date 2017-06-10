@@ -31,9 +31,9 @@
 #define TCP_MAX_OPTION_SPACE 40
 
 #define TCP_DUPACK_THRESHOLD 	3
-#define TCP_MAX_RX_FIFO_SIZE 	2 << 20
+#define TCP_MAX_RX_FIFO_SIZE 	4 << 20
 #define TCP_IW_N_SEGMENTS 	10
-#define TCP_ALWAYS_ACK		0	/**< If on, we always ack */
+#define TCP_ALWAYS_ACK		1	/**< On/off delayed acks */
 #define TCP_USE_SACKS		1	/**< Disable only for testing */
 
 /** TCP FSM state definitions as per RFC793. */
@@ -208,6 +208,7 @@ typedef struct _tcp_connection
   u32 snd_wl1;		/**< seq number used for last snd.wnd update */
   u32 snd_wl2;		/**< ack number used for last snd.wnd update */
   u32 snd_nxt;		/**< next seq number to be sent */
+  u16 snd_mss;		/**< Effective send max seg (data) size */
 
   /** Receive sequence variables RFC793 */
   u32 rcv_nxt;		/**< next sequence number expected */
@@ -252,8 +253,8 @@ typedef struct _tcp_connection
   u32 rtt_ts;		/**< Timestamp for tracked ACK */
   u32 rtt_seq;		/**< Sequence number for tracked ACK */
 
-  u16 snd_mss;		/**< Effective send max seg (data) size */
   u16 mss;		/**< Our max seg size that includes options */
+  u32 limited_transmit;	/**< snd_nxt when limited transmit starts */
 } tcp_connection_t;
 
 struct _tcp_cc_algorithm
@@ -433,6 +434,7 @@ tcp_end_seq (tcp_header_t * th, u32 len)
 #define seq_leq(_s1, _s2) ((i32)((_s1)-(_s2)) <= 0)
 #define seq_gt(_s1, _s2) ((i32)((_s1)-(_s2)) > 0)
 #define seq_geq(_s1, _s2) ((i32)((_s1)-(_s2)) >= 0)
+#define seq_max(_s1, _s2) (seq_gt((_s1), (_s2)) ? (_s1) : (_s2))
 
 /* Modulo arithmetic for timestamps */
 #define timestamp_lt(_t1, _t2) ((i32)((_t1)-(_t2)) < 0)
@@ -719,6 +721,7 @@ scoreboard_clear (sack_scoreboard_t * sb)
     {
       scoreboard_remove_hole (sb, hole);
     }
+  ASSERT (sb->head == sb->tail && sb->head == TCP_INVALID_SACK_HOLE_INDEX);
   sb->sacked_bytes = 0;
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
