@@ -33,7 +33,7 @@
 #define TCP_DUPACK_THRESHOLD 	3
 #define TCP_MAX_RX_FIFO_SIZE 	2 << 20
 #define TCP_IW_N_SEGMENTS 	10
-#define TCP_ALWAYS_ACK		0	/**< If on, we always ack */
+#define TCP_ALWAYS_ACK		1	/**< If on, we always ack */
 #define TCP_USE_SACKS		1	/**< Disable only for testing */
 
 /** TCP FSM state definitions as per RFC793. */
@@ -433,6 +433,7 @@ tcp_end_seq (tcp_header_t * th, u32 len)
 #define seq_leq(_s1, _s2) ((i32)((_s1)-(_s2)) <= 0)
 #define seq_gt(_s1, _s2) ((i32)((_s1)-(_s2)) > 0)
 #define seq_geq(_s1, _s2) ((i32)((_s1)-(_s2)) >= 0)
+#define seq_max(_s1, _s2) (seq_gt((_s1), (_s2)) ? (_s1) : (_s2))
 
 /* Modulo arithmetic for timestamps */
 #define timestamp_lt(_t1, _t2) ((i32)((_t1)-(_t2)) < 0)
@@ -719,6 +720,7 @@ scoreboard_clear (sack_scoreboard_t * sb)
     {
       scoreboard_remove_hole (sb, hole);
     }
+  ASSERT (sb->head == sb->tail && sb->head == TCP_INVALID_SACK_HOLE_INDEX);
   sb->sacked_bytes = 0;
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
