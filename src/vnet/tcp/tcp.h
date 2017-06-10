@@ -33,8 +33,8 @@
 #define TCP_DUPACK_THRESHOLD 	3
 #define TCP_MAX_RX_FIFO_SIZE 	2 << 20
 #define TCP_IW_N_SEGMENTS 	10
-#define TCP_ALWAYS_ACK		0	/**< If on, we always ack */
-#define TCP_USE_SACKS		1	/**< Disable only for testing */
+#define TCP_ALWAYS_ACK		1	/**< If on, we always ack */
+#define TCP_USE_SACKS		0	/**< Disable only for testing */
 
 /** TCP FSM state definitions as per RFC793. */
 #define foreach_tcp_fsm_state   \

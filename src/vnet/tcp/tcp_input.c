@@ -1154,6 +1154,8 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   u32 prev_snd_wnd, prev_snd_una;
   u8 is_dack;
 
+  TCP_EVT_DBG (TCP_EVT_CC_STAT, tc);
+
   /* If the ACK acks something not yet sent (SEG.ACK > SND.NXT) */
   if (PREDICT_FALSE (seq_gt (vnet_buffer (b)->tcp.ack_number, tc->snd_nxt)))
     {
@@ -1411,7 +1413,7 @@ tcp_can_delack (tcp_connection_t * tc)
       /* constrained to send ack */
       || (tc->flags & TCP_CONN_SNDACK) != 0
       /* we're almost out of tx wnd */
-      || tcp_available_snd_space (tc) < 2 * tc->snd_mss)
+      || tcp_available_snd_space (tc) < 4 * tc->snd_mss)
     return 0;
 
   return 1;
@@ -1873,8 +1875,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tcp_opts_wscale (&new_tc0->rcv_opts))
 	    new_tc0->snd_wscale = new_tc0->rcv_opts.wscale;
 
-	  /* No scaling */
-	  new_tc0->snd_wnd = clib_net_to_host_u16 (tcp0->window);
+	  new_tc0->snd_wnd = clib_net_to_host_u16 (tcp0->window)
+	      << new_tc0->snd_wscale;
 	  new_tc0->snd_wl1 = seq0;
 	  new_tc0->snd_wl2 = ack0;
 
@@ -1892,8 +1894,15 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* Make sure las is initialized for the wnd computation */
 	      new_tc0->rcv_las = new_tc0->rcv_nxt;
 
-	      /* Notify app that we have connection */
-	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
+	      /* Notify app that we have connection. If session layer can't
+	       * allocate session send reset */
+	      if (stream_session_connect_notify (&new_tc0->connection, sst,
+						 0))
+		{
+		  tcp_connection_cleanup (new_tc0);
+		  tcp_send_reset (b0, is_ip4);
+		  goto drop;
+		}
 
 	      stream_session_init_fifos_pointers (&new_tc0->connection,
 						  new_tc0->irs + 1,
@@ -1907,7 +1916,13 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      new_tc0->state = TCP_STATE_SYN_RCVD;
 
 	      /* Notify app that we have connection */
-	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
+	      if (stream_session_connect_notify (&new_tc0->connection, sst, 0))
+		{
+		  tcp_connection_cleanup (new_tc0);
+		  tcp_send_reset (b0, is_ip4);
+		  goto drop;
+		}
+
 	      stream_session_init_fifos_pointers (&new_tc0->connection,
 						  new_tc0->irs + 1,
 						  new_tc0->iss + 1);
@@ -2508,8 +2523,8 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tcp_opts_wscale (&child0->rcv_opts))
 	    child0->snd_wscale = child0->rcv_opts.wscale;
 
-	  /* No scaling */
-	  child0->snd_wnd = clib_net_to_host_u16 (th0->window);
+	  child0->snd_wnd = clib_net_to_host_u16 (th0->window)
+	      << child0->snd_wscale;
 	  child0->snd_wl1 = vnet_buffer (b0)->tcp.seq_number;
 	  child0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
 
