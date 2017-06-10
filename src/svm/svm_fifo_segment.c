@@ -305,14 +305,17 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
       /* Remove from active list */
       if (f->prev)
 	f->prev->next = f->next;
+      else
+	fsh->fifos = f->next;
       if (f->next)
 	f->next->prev = f->prev;
-      /* FALLTHROUGH */
+      /* Fall through: we add only rx fifos to active pool */
     case FIFO_SEGMENT_TX_FREELIST:
       /* Add to free list */
       f->next = fsh->free_fifos[list_index];
+      f->prev = 0;
       fsh->free_fifos[list_index] = f;
-      /* FALLTHROUGH */
+      break;
     case FIFO_SEGMENT_FREELIST_NONE:
       break;
 
