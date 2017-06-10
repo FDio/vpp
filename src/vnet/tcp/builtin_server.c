@@ -51,6 +51,7 @@ typedef struct
   u32 my_client_index;
 
   u32 app_index;
+  u8 no_echo;
 
   /* process node index for evnt scheduling */
   u32 node_index;
@@ -164,12 +165,17 @@ builtin_server_rx_callback (stream_session_t * s)
       /* Program self-tap to retry */
       if (svm_fifo_set_event (rx_fifo))
 	{
+	  unix_shared_memory_queue_t *q;
 	  evt.fifo = rx_fifo;
 	  evt.event_type = FIFO_EVENT_BUILTIN_RX;
 	  evt.event_id = 0;
-	  unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
-					(u8 *) & evt,
-					0 /* do wait for mutex */ );
+
+	  q = bsm->vpp_queue[s->thread_index];
+	  if (PREDICT_FALSE(q->cursize == q->maxsize))
+	    clib_warning("out of event queue space");
+	  else
+	    unix_shared_memory_queue_add (q, (u8 *) &evt,
+					  0 /* don't wait for mutex */);
 	}
 
       return 0;
@@ -384,17 +390,19 @@ static clib_error_t *
 server_create_command_fn (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  builtin_server_main_t *bsm = &builtin_server_main;
   int rv;
-#if 0
+
+  bsm->no_echo = 0;
+
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "whatever %d", &whatever))
-	;
+      if (unformat (input, "no-echo"))
+	bsm->no_echo = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
-#endif
 
   tcp_builtin_server_api_hookup (vm);
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );

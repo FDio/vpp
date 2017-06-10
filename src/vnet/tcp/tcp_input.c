@@ -1892,8 +1892,15 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* Make sure las is initialized for the wnd computation */
 	      new_tc0->rcv_las = new_tc0->rcv_nxt;
 
-	      /* Notify app that we have connection */
-	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
+	      /* Notify app that we have connection. If session layer can't
+	       * allocate session send reset */
+	      if (stream_session_connect_notify (&new_tc0->connection, sst,
+						 0))
+		{
+		  tcp_connection_cleanup (new_tc0);
+		  tcp_send_reset (b0, is_ip4);
+		  goto drop;
+		}
 
 	      stream_session_init_fifos_pointers (&new_tc0->connection,
 						  new_tc0->irs + 1,
@@ -1907,7 +1914,13 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      new_tc0->state = TCP_STATE_SYN_RCVD;
 
 	      /* Notify app that we have connection */
-	      stream_session_connect_notify (&new_tc0->connection, sst, 0);
+	      if (stream_session_connect_notify (&new_tc0->connection, sst, 0))
+		{
+		  tcp_connection_cleanup (new_tc0);
+		  tcp_send_reset (b0, is_ip4);
+		  goto drop;
+		}
+
 	      stream_session_init_fifos_pointers (&new_tc0->connection,
 						  new_tc0->irs + 1,
 						  new_tc0->iss + 1);

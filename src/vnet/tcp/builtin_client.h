@@ -45,43 +45,26 @@ typedef struct
 typedef struct
 {
   /* API message ID base */
-  u16 msg_id_base;
+//  u16 msg_id_base;
 
-  /* vpe input queue */
-  unix_shared_memory_queue_t *vl_input_queue;
+  session_t *sessions;  /**< Sessions pool */
 
-  /* API client handle */
-  u32 my_client_index;
+  unix_shared_memory_queue_t *vl_input_queue; 	/**< vpe input queue */
+  unix_shared_memory_queue_t *our_event_queue;	/**< Our event queue */
+  unix_shared_memory_queue_t *vpp_event_queue;	/**< $$$ single thread */
 
-  /* The URI we're playing with */
-  u8 *uri;
 
-  /* Session pool */
-  session_t *sessions;
+  u32 my_client_index;			/**< API client handle */
+//  u8 *uri;				/**< The URI we're playing with */
+  u8 *rx_buf;				/**< intermediate rx buffer */
+  u8 *connect_uri;			/**< URI for slave's connect */
+  uword *session_index_by_vpp_handles;	/* Hash table for disconnecting */
 
-  /* Hash table for disconnect processing */
-  uword *session_index_by_vpp_handles;
 
-  /* intermediate rx buffer */
-  u8 *rx_buf;
-
-  /* URI for slave's connect */
-  u8 *connect_uri;
-
-  u32 connected_session_index;
-
-  int i_am_master;
-
-  /* drop all packets */
-  int drop_packets;
-
-  /* Our event queue */
-  unix_shared_memory_queue_t *our_event_queue;
-
-  /* $$$ single thread only for the moment */
-  unix_shared_memory_queue_t *vpp_event_queue;
+//  u32 connected_session_index;
 
   pid_t my_pid;
+  u32 app_index;
 
   f64 test_start_time;
   f64 test_end_time;
@@ -92,6 +75,7 @@ typedef struct
   volatile u32 finished_connections;
 
   volatile u64 rx_total;
+  volatile u64 tx_total;
   u32 cli_node_index;
 
   /* Signal variable */
@@ -99,8 +83,8 @@ typedef struct
 
   /* Bytes to send */
   u64 bytes_to_send;
-
   u32 configured_segment_size;
+  u32 fifo_size;
 
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
@@ -108,10 +92,14 @@ typedef struct
   u8 *connect_test_data;
   pthread_t client_thread_handle;
   u64 client_bytes_received;
-  u8 test_return_packets;
 
   u8 is_init;
   u8 test_client_attached;
+  u8 no_return;
+  u8 test_return_packets;
+  int i_am_master;
+  int drop_packets;	/* drop all packets */
+  u8 prealloc_fifos;		/**< Request fifo preallocation */
 
   u32 node_index;
 
