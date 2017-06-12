@@ -32,10 +32,21 @@ fi
 # don't *fail*.
 command -v indent > /dev/null
 if [ $? != 0 ]; then
-    echo "Cound not find required commend \"indent\".  Checkstyle aborted"
+    echo "Cound not find required command \"indent\".  Checkstyle aborted"
     exit ${EXIT_CODE}
 fi
 indent --version
+
+# Check to make sure we have clang-format.  Exit if we don't with an error message, but
+# don't *fail*.
+command -v clang-format > /dev/null
+if [ $? != 0 ]; then
+    echo "Could not find command \"clang-format\". Checking C++ files will cause abort"
+    HAVE_CLANG_FORMAT=0
+else
+    HAVE_CLANG_FORMAT=1
+    clang-format --version
+fi
 
 cd ${VPP_DIR}
 git status
@@ -43,26 +54,53 @@ for i in ${FILELIST}; do
     if [ -f ${i} ] && [ ${i} != "build-root/scripts/checkstyle.sh" ] && [ ${i} != "extras/emacs/fix-coding-style.el" ]; then
         grep -q "fd.io coding-style-patch-verification: ON" ${i}
         if [ $? == 0 ]; then
+            EXTENSION=`basename ${i} | sed 's/^\w\+.//'`
+            case ${EXTENSION} in
+                hpp|cpp|cc|hh)
+                    CMD="clang-format"
+                    if [ ${HAVE_CLANG_FORMAT} == 0 ]; then
+                            echo "C++ file detected. Abort. (missing clang-format)"
+                            exit ${EXIT_CODE}
+                    fi
+                    ;;
+                *)
+                    CMD="indent"
+                    ;;
+            esac
             CHECKSTYLED_FILES="${CHECKSTYLED_FILES} ${i}"
             if [ ${FIX} == 0 ]; then
-                indent ${i} -o ${i}.out1 > /dev/null 2>&1
-                indent ${i}.out1 -o ${i}.out2 > /dev/null 2>&1
-		# Remove trailing whitespace
-		sed -i -e 's/[[:space:]]*$//' ${i}.out2
+                if [ "${CMD}" == "clang-format" ]
+                then
+                    clang-format ${i} > ${i}.out2
+                else
+                    indent ${i} -o ${i}.out1 > /dev/null 2>&1
+                    indent ${i}.out1 -o ${i}.out2 > /dev/null 2>&1
+                fi
+                # Remove trailing whitespace
+                sed -i -e 's/[[:space:]]*$//' ${i}.out2
                 diff -q ${i} ${i}.out2
             else
-                indent ${i}
-                indent ${i}
-		# Remove trailing whitespace
-		sed -i -e 's/[[:space:]]*$//' ${i}
+                if [ "${CMD}" == "clang-format" ]; then
+                    clang-format -i ${i} > /dev/null 2>&1
+                else
+                    indent ${i}
+                    indent ${i}
+                fi
+                # Remove trailing whitespace
+                sed -i -e 's/[[:space:]]*$//' ${i}
             fi
             if [ $? != 0 ]; then
                 EXIT_CODE=1
                 echo
                 echo "Checkstyle failed for ${i}."
-                echo "Run indent (twice!) as shown to fix the problem:"
-                echo "indent ${VPP_DIR}${i}"
-                echo "indent ${VPP_DIR}${i}"
+                if [ "${CMD}" == "clang-format" ]; then
+                    echo "Run clang-format as shown to fix the problem:"
+                    echo "clang-format -i ${VPP_DIR}${i}"
+                else
+                    echo "Run indent (twice!) as shown to fix the problem:"
+                    echo "indent ${VPP_DIR}${i}"
+                    echo "indent ${VPP_DIR}${i}"
+                fi
             fi
             if [ -f ${i}.out1 ]; then
                 rm ${i}.out1
