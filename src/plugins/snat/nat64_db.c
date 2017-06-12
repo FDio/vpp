@@ -480,7 +480,7 @@ nad64_db_st_free_expired (nat64_db_t * db, u32 now)
       vec_add1 (ste_to_be_free, ste - st); \
   })); \
   vec_foreach (ste_index, ste_to_be_free) \
-    pool_put_index (st, ste_index[0]); \
+    nat64_db_st_entry_free (db, pool_elt_at_index(st, ste_index[0])); \
   vec_free (ste_to_be_free); \
   ste_to_be_free = 0;
   foreach_snat_protocol
