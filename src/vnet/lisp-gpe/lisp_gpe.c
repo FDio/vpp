@@ -631,6 +631,89 @@ vnet_gpe_get_encap_mode (void)
   return lgm->encap_mode;
 }
 
+static clib_error_t *
+lisp_gpe_test_send_nsh_packet (u8 * file_name)
+{
+  vlib_frame_t *f;
+  vlib_buffer_t *b;
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  pcap_main_t pm;
+  clib_error_t *error = 0;
+
+  if (!file_name)
+    return clib_error_create ("no pcap file specified!");
+
+  memset (&pm, 0, sizeof (pm));
+  pm.file_name = (char *) file_name;
+  error = pcap_read (&pm);
+  if (error)
+    return error;
+
+  u32 bi;
+  if (vlib_buffer_alloc (lgm->vlib_main, &bi, 1) != 1)
+    return clib_error_create ("cannot allocate memory!");
+
+  b = vlib_get_buffer (lgm->vlib_main, bi);
+  tunnel_lookup_t *nsh_ifaces = &lgm->nsh_ifaces;
+  uword *hip;
+  vnet_hw_interface_t *hi;
+
+  hip = hash_get (nsh_ifaces->hw_if_index_by_dp_table, 0);
+  if (hip == 0)
+    return clib_error_create ("The NSH 0 interface doesn't exist");
+
+  hi = vnet_get_hw_interface (lgm->vnet_main, hip[0]);
+
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = hi->sw_if_index;
+  u8 *p = vlib_buffer_put_uninit (b, vec_len (pm.packets_read[0]));
+  clib_memcpy (p, pm.packets_read[0], vec_len (pm.packets_read[0]));
+  vlib_buffer_pull (b, sizeof (ethernet_header_t));
+
+  vlib_node_t *n = vlib_get_node_by_name (lgm->vlib_main,
+					  (u8 *) "interface-tx");
+  f = vlib_get_frame_to_node (lgm->vlib_main, n->index);
+  u32 *to_next = vlib_frame_vector_args (f);
+  to_next[0] = bi;
+  f->n_vectors = 1;
+  vlib_put_frame_to_node (lgm->vlib_main, n->index, f);
+
+  return error;
+}
+
+static clib_error_t *
+lisp_test_nsh_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			  vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  u8 *file_name = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "pcap %v", &file_name))
+	{
+	  error = lisp_gpe_test_send_nsh_packet (file_name);
+	  goto done;
+	}
+      else
+	{
+	  error = clib_error_create ("unknown input `%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+done:
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_test_nsh_command, static) = {
+  .path = "test one nsh",
+  .short_help = "test gpe nsh pcap <path-to-pcap-file>",
+  .function = lisp_test_nsh_command_fn,
+};
+/* *INDENT-ON* */
+
 VLIB_INIT_FUNCTION (lisp_gpe_init);
 
 /*
