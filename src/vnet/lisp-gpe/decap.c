@@ -545,6 +545,55 @@ gpe_decap_init (vlib_main_t * vm)
   return 0;
 }
 
+static uword
+lisp_gpe_nsh_dummy_input (vlib_main_t * vm, vlib_node_runtime_t * node,
+			  vlib_frame_t * from_frame)
+{
+  vlib_node_increment_counter (vm, node->node_index, 0, 1);
+  return from_frame->n_vectors;
+}
+
+static char *lisp_gpe_nsh_dummy_error_strings[] = {
+  "lisp gpe dummy nsh decap",
+};
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (lisp_gpe_nsh_dummy_input_node) = {
+  .function = lisp_gpe_nsh_dummy_input,
+  .name = "lisp-gpe-nsh-dummy-input",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_next_nodes = 1,
+
+  .n_errors = 1,
+  .error_strings = lisp_gpe_nsh_dummy_error_strings,
+
+  .next_nodes = {
+      [0] = "error-drop",
+  },
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+lisp_add_dummy_nsh_node_command_fn (vlib_main_t * vm,
+				    unformat_input_t * input,
+				    vlib_cli_command_t * cmd)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  vlib_node_add_next (lgm->vlib_main, lisp_gpe_ip4_input_node.index,
+		      lisp_gpe_nsh_dummy_input_node.index);
+  next_proto_to_next_index[LISP_GPE_NEXT_PROTO_NSH] =
+    LISP_GPE_INPUT_NEXT_NSH_INPUT;
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_add_dummy_nsh_node_command, static) = {
+  .path = "test one nsh add-dummy-decap-node",
+  .function = lisp_add_dummy_nsh_node_command_fn,
+};
+/* *INDENT-ON* */
+
 VLIB_INIT_FUNCTION (gpe_decap_init);
 
 /*
