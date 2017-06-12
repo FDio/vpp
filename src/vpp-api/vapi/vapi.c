@@ -102,7 +102,7 @@ vapi_requests_full (vapi_ctx_t ctx)
   return (ctx->requests_count == ctx->requests_size);
 }
 
-static bool
+bool
 vapi_requests_empty (vapi_ctx_t ctx)
 {
   return (0 == ctx->requests_count);
@@ -227,6 +227,16 @@ vapi_msg_free (vapi_ctx_t ctx, void *msg)
   vapi_trace_free (msg);
 #endif
   vl_msg_api_free (msg);
+}
+
+vapi_msg_id_t
+vapi_lookup_vapi_msg_id_t (vapi_ctx_t ctx, u16 vl_msg_id)
+{
+  if (vl_msg_id <= ctx->vl_msg_id_max)
+    {
+      return ctx->vl_msg_id_to_vapi_msg_t[vl_msg_id];
+    }
+  return ~0;
 }
 
 vapi_error_e
@@ -420,16 +430,17 @@ vapi_send (vapi_ctx_t ctx, void *msg)
       vapi_msg_id_t id = ctx->vl_msg_id_to_vapi_msg_t[msgid];
       if (id < __vapi_metadata.count)
 	{
-	  VAPI_DBG ("send msg %u[%s]", msgid, __vapi_metadata.msgs[id]->name);
+	  VAPI_DBG ("send msg@%p:%u[%s]", msg, msgid,
+		    __vapi_metadata.msgs[id]->name);
 	}
       else
 	{
-	  VAPI_DBG ("send msg %u[UNKNOWN]", msgid);
+	  VAPI_DBG ("send msg@%p:%u[UNKNOWN]", msg, msgid);
 	}
     }
   else
     {
-      VAPI_DBG ("send msg %u[UNKNOWN]", msgid);
+      VAPI_DBG ("send msg@%p:%u[UNKNOWN]", msg, msgid);
     }
 #endif
   tmp = unix_shared_memory_queue_add (q, (u8 *) & msg,
@@ -522,7 +533,26 @@ vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size)
 	}
       *msg = (u8 *) data;
       *msg_size = ntohl (msgbuf->data_len);
-      VAPI_DBG ("recv msg %p", *msg);
+#if VAPI_DEBUG
+      unsigned msgid = be16toh (*(u16 *) * msg);
+      if (msgid <= ctx->vl_msg_id_max)
+	{
+	  vapi_msg_id_t id = ctx->vl_msg_id_to_vapi_msg_t[msgid];
+	  if (id < __vapi_metadata.count)
+	    {
+	      VAPI_DBG ("recv msg@%p:%u[%s]", *msg, msgid,
+			__vapi_metadata.msgs[id]->name);
+	    }
+	  else
+	    {
+	      VAPI_DBG ("recv msg@%p:%u[UNKNOWN]", *msg, msgid);
+	    }
+	}
+      else
+	{
+	  VAPI_DBG ("recv msg@%p:%u[UNKNOWN]", *msg, msgid);
+	}
+#endif
     }
   else
     {
@@ -534,7 +564,6 @@ vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size)
 vapi_error_e
 vapi_wait (vapi_ctx_t ctx, vapi_wait_mode_e mode)
 {
-  /* FIXME */
   return VAPI_ENOTSUP;
 }
 
@@ -657,7 +686,7 @@ vapi_dispatch_event (vapi_ctx_t ctx, vapi_msg_id_t id, void *msg)
   return VAPI_OK;
 }
 
-static bool
+bool
 vapi_msg_is_with_context (vapi_msg_id_t id)
 {
   assert (id <= __vapi_metadata.count);
@@ -785,10 +814,6 @@ vapi_is_nonblocking (vapi_ctx_t ctx)
   return (VAPI_MODE_NONBLOCKING == ctx->mode);
 }
 
-bool vapi_requests_full (vapi_ctx_t ctx);
-
-size_t vapi_get_request_count (vapi_ctx_t ctx);
-
 size_t
 vapi_get_max_request_count (vapi_ctx_t ctx)
 {
@@ -884,6 +909,18 @@ vapi_producer_unlock (vapi_ctx_t ctx)
       return VAPI_MUTEX_FAILURE;
     }
   return VAPI_OK;
+}
+
+size_t
+vapi_get_message_count ()
+{
+  return __vapi_metadata.count;
+}
+
+const char *
+vapi_get_msg_name (vapi_msg_id_t id)
+{
+  return __vapi_metadata.msgs[id]->name;
 }
 
 /*

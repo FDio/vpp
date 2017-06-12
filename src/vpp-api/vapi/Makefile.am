@@ -15,7 +15,7 @@ AUTOMAKE_OPTIONS = foreign
 ACLOCAL_AMFLAGS = -I m4
 AM_LIBTOOLFLAGS = --quiet
 
-AM_CFLAGS = -Wall -I${top_srcdir} -I${top_builddir} -I. -I$(top_srcdir)/vpp-api/vapi
+AM_CFLAGS = -Wall -I${top_srcdir} -I${top_builddir} -I. -I$(top_srcdir)/vpp-api/
 
 AM_LDFLAGS = -shared -avoid-version -rpath /none -no-undefined
 
@@ -23,25 +23,32 @@ bin_PROGRAMS =
 noinst_LTLIBRARIES =
 CLEANDIRS =
 
-%.api.vapi.h: %.api.json vapi_c_gen.py
+vapi/%.api.vapi.h: %.api.json vapi_c_gen.py vapi_json_parser.py
 	@echo "  VAPI C GEN $< " $@ ;			\
 	mkdir -p `dirname $@` ;				\
-        $(top_srcdir)/vpp-api/vapi/vapi_c_gen.py $<
+        $(top_srcdir)/vpp-api/vapi/vapi_c_gen.py --prefix=vapi $<
+
+vapi/%.api.vapi.hpp: %.api.json vapi_cpp_gen.py vapi_c_gen.py vapi_json_parser.py
+	@echo "  VAPI CPP GEN $< " $@ ;			\
+	mkdir -p `dirname $@` ;				\
+        $(top_srcdir)/vpp-api/vapi/vapi_cpp_gen.py --prefix=vapi --gen-h-prefix=vapi $<
 
 %.api.json:
 	find $(top_builddir) -name '$@' | xargs ln -s
 
 BUILT_SOURCES = $(shell find $(top_builddir) -name '*.api.json' | xargs -n1 basename) \
-  $(patsubst %.api.json,%.api.vapi.h,$(JSON_FILES))
+  $(patsubst %.api.json,vapi/%.api.vapi.h,$(JSON_FILES)) \
+  $(patsubst %.api.json,vapi/%.api.vapi.hpp,$(JSON_FILES))
 
 vapi.c: $(BUILT_SOURCES)
 
 JSON_FILES = $(wildcard *.api.json)
 
-
 lib_LTLIBRARIES = libvapiclient.la
 
 libvapiclient_la_SOURCES = vapi.c
+
+libvapiclient_la_DEPENDENCIES = libvapiclient.map
 
 libvapiclient_la_LIBADD = -lpthread -lm -lrt \
   $(top_builddir)/libvppinfra.la \
@@ -54,10 +61,14 @@ libvapiclient_la_LDFLAGS = \
 
 libvapiclient_la_CPPFLAGS = -I. -I$(top_builddir)/vpp-api/vapi
 
-nobase_include_HEADERS = ${top_srcdir}/vpp-api/client/vppapiclient.h \
-  vapi.h \
+vapiincludedir = $(includedir)/vapi
+
+vapiinclude_HEADERS = vapi.h \
+  vapi.hpp \
   vapi_dbg.h \
+  vapi_common.h \
   vapi_internal.h \
-  $(patsubst %.api.json,%.api.vapi.h,$(JSON_FILES))
+  $(patsubst %.api.json,vapi/%.api.vapi.h,$(JSON_FILES)) \
+  $(patsubst %.api.json,vapi/%.api.vapi.hpp,$(JSON_FILES))
 
 # vi:syntax=automake

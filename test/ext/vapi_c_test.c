@@ -22,16 +22,18 @@
 #include <assert.h>
 #include <setjmp.h>
 #include <check.h>
-#include <vpp-api/vapi/vapi.h>
-#include <vpe.api.vapi.h>
-#include <interface.api.vapi.h>
-#include <l2.api.vapi.h>
-#include <stats.api.vapi.h>
+#include <vapi/vapi.h>
+#include <vapi/vpe.api.vapi.h>
+#include <vapi/interface.api.vapi.h>
+#include <vapi/l2.api.vapi.h>
+#include <vapi/stats.api.vapi.h>
+#include <fake.api.vapi.h>
 
 DEFINE_VAPI_MSG_IDS_VPE_API_JSON;
 DEFINE_VAPI_MSG_IDS_INTERFACE_API_JSON;
 DEFINE_VAPI_MSG_IDS_L2_API_JSON;
 DEFINE_VAPI_MSG_IDS_STATS_API_JSON;
+DEFINE_VAPI_MSG_IDS_FAKE_API_JSON;
 
 static char *app_name = NULL;
 static char *api_prefix = NULL;
@@ -521,9 +523,8 @@ START_TEST (test_show_version_1)
   size_t size;
   rv = vapi_recv (ctx, (void *) &resp, &size);
   ck_assert_int_eq (VAPI_OK, rv);
-  vapi_payload_show_version_reply *payload = &resp->payload;
   int dummy;
-  show_version_cb (NULL, &dummy, VAPI_OK, true, payload);
+  show_version_cb (NULL, &dummy, VAPI_OK, true, &resp->payload);
   vapi_msg_free (ctx, resp);
 }
 
@@ -1069,6 +1070,16 @@ START_TEST (test_no_response_2)
 }
 
 END_TEST;
+
+START_TEST (test_unsupported)
+{
+  printf ("--- Unsupported messages ---\n");
+  bool available = vapi_is_msg_available (ctx, vapi_msg_id_test_fake_msg);
+  ck_assert_int_eq (false, available);
+}
+
+END_TEST;
+
 Suite *
 test_suite (void)
 {
@@ -1114,6 +1125,11 @@ test_suite (void)
   tcase_add_test (tc_nonblock, test_no_response_1);
   tcase_add_test (tc_nonblock, test_no_response_2);
   suite_add_tcase (s, tc_nonblock);
+
+  TCase *tc_unsupported = tcase_create ("Unsupported message");
+  tcase_add_checked_fixture (tc_unsupported, setup_blocking, teardown);
+  tcase_add_test (tc_unsupported, test_unsupported);
+  suite_add_tcase (s, tc_unsupported);
 
   return s;
 }

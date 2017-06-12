@@ -1,0 +1,35 @@
+{
+    "types" : [
+
+    ],
+    "messages" : [
+        ["test_fake_msg",
+            ["u16", "_vl_msg_id"],
+            ["u32", "client_index"],
+            ["u32", "context"],
+            ["u8", "dummy", 256],
+            {"crc" : "0xcafebafe"}
+        ],
+        ["test_fake_msg_reply",
+            ["u16", "_vl_msg_id"],
+            ["u32", "context"],
+            ["i32", "retval"],
+            {"crc" : "0xcafebafe"}
+        ],
+	["test_fake_dump",
+            ["u16", "_vl_msg_id"],
+            ["u32", "client_index"],
+            ["u32", "context"],
+            ["u32", "dummy"],
+            {"crc" : "0xcafebafe"}
+	],
+        ["test_fake_details",
+            ["u16", "_vl_msg_id"],
+            ["u32", "client_index"],
+            ["u32", "context"],
+            ["u32", "dummy"],
+            {"crc" : "0xcafebafe"}
+        ]
+    ],
+"vl_api_version" :"0x224c7aad"
+}
