@@ -62,10 +62,13 @@ format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args)
   u32 sw_if_index = va_arg (*args, u32);
   if (sw_if_index == ~0)
     return format (s, "N/A");
-  else
-    return format (s, "%U",
-		   format_vnet_sw_interface_name, vnm,
-		   vnet_get_sw_interface (vnm, sw_if_index));
+
+  vnet_sw_interface_t *swif = vnet_get_sw_interface_safe (vnm, sw_if_index);
+  if (!swif)
+    return format (s, "Deleted");
+
+  return format (s, "%U", format_vnet_sw_interface_name, vnm,
+		 vnet_get_sw_interface_safe (vnm, sw_if_index));
 }
 
 void
