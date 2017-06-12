@@ -292,7 +292,8 @@ dpdk_lib_init (dpdk_main_t * dm)
       clib_memcpy (&xd->port_conf, &port_conf_template,
 		   sizeof (struct rte_eth_conf));
 
-      xd->tx_q_used = clib_min (dev_info.max_tx_queues, tm->n_vlib_mains);
+      xd->tx_q_used = clib_min (dev_info.max_tx_queues,
+          tm->n_vlib_mains > 1 ? tm->n_vlib_mains - 1 : 1);
 
       if (devconf->num_tx_queues > 0
 	  && devconf->num_tx_queues < xd->tx_q_used)
