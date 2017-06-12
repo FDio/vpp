@@ -26,7 +26,7 @@ class CField(Field):
     def get_swap_to_be_code(self, struct, var):
         if self.len is not None:
             if self.len > 0:
-                return "do { int i; for (i = 0; i < %d; ++i) { %s } }"\
+                return "do { unsigned i; for (i = 0; i < %d; ++i) { %s } }"\
                     " while(0);" % (
                         self.len,
                         self.type.get_swap_to_be_code(struct, "%s[i]" % var))
@@ -38,7 +38,7 @@ class CField(Field):
                 else:
                     nelem_field = "%s%s" % (struct, self.nelem_field.name)
                 return (
-                    "do { int i; for (i = 0; i < %s; ++i) { %s } }"
+                    "do { unsigned i; for (i = 0; i < %s; ++i) { %s } }"
                     " while(0);" %
                     (nelem_field, self.type.get_swap_to_be_code(
                         struct, "%s[i]" % var)))
@@ -47,14 +47,14 @@ class CField(Field):
     def get_swap_to_host_code(self, struct, var):
         if self.len is not None:
             if self.len > 0:
-                return "do { int i; for (i = 0; i < %d; ++i) { %s } }"\
+                return "do { unsigned i; for (i = 0; i < %d; ++i) { %s } }"\
                     " while(0);" % (
                         self.len,
                         self.type.get_swap_to_host_code(struct, "%s[i]" % var))
             else:
                 # nelem_field already swapped to host here...
                 return (
-                    "do { int i; for (i = 0; i < %s%s; ++i) { %s } }"
+                    "do { unsigned i; for (i = 0; i < %s%s; ++i) { %s } }"
                     " while(0);" %
                     (struct, self.nelem_field.name,
                      self.type.get_swap_to_host_code(
@@ -199,14 +199,17 @@ class CMessage (Message):
     def get_alloc_func_name(self):
         return "vapi_alloc_%s" % self.name
 
+    def get_alloc_vla_param_names(self):
+        return [self.get_alloc_func_vla_field_length_name(f)
+                for f in self.fields
+                if f.nelem_field is not None]
+
     def get_alloc_func_decl(self):
         return "%s* %s(struct vapi_ctx_s *ctx%s)" % (
             self.get_c_name(),
             self.get_alloc_func_name(),
-            "".join([", size_t %s" %
-                     self.get_alloc_func_vla_field_length_name(f)
-                     for f in self.fields
-                     if f.nelem_field is not None]))
+            "".join([", size_t %s" % n for n in
+                     self.get_alloc_vla_param_names()]))
 
     def get_alloc_func_def(self):
         extra = []
@@ -228,7 +231,8 @@ class CMessage (Message):
                     for f in self.fields
                     if f.nelem_field is not None
                 ])),
-            "  msg = vapi_msg_alloc(ctx, size);",
+            "  /* cast here required to play nicely with C++ world ... */",
+            "  msg = (%s*)vapi_msg_alloc(ctx, size);" % self.get_c_name(),
             "  if (!msg) {",
             "    return NULL;",
             "  }",
@@ -441,7 +445,7 @@ class CMessage (Message):
     def get_event_cb_func_decl(self):
         if not self.is_reply():
             raise Exception(
-                "Cannot register event callback for non-reply function")
+                "Cannot register event callback for non-reply message")
         if self.has_payload():
             return "\n".join([
                 "void vapi_set_%s_event_cb (" %
@@ -498,7 +502,7 @@ class CMessage (Message):
             '    offsetof(%s, context),' % self.header.get_c_name()
             if has_context else '    0,',
             ('    offsetof(%s, payload),' % self.get_c_name())
-            if self.has_payload() else '-1,',
+            if self.has_payload() else '    ~0,',
             '    sizeof(%s),' % self.get_c_name(),
             '    (generic_swap_fn_t)%s,' % self.get_swap_to_be_func_name(),
             '    (generic_swap_fn_t)%s,' % self.get_swap_to_host_func_name(),
@@ -539,6 +543,10 @@ def gen_json_header(parser, logger, j, io):
     print("#define %s" % include_guard)
     print("")
     print("#include <vapi_internal.h>")
+    print("#ifdef __cplusplus")
+    print("extern \"C\" {")
+    print("#endif")
+    print("")
     print("")
     if io.name == "vpe.api.vapi.h":
         print("static inline vapi_error_e vapi_send_with_control_ping "
@@ -587,6 +595,10 @@ def gen_json_header(parser, logger, j, io):
         print("%s" % vapi_send_with_control_ping)
         print("")
 
+    print("#ifdef __cplusplus")
+    print("}")
+    print("#endif")
+    print("")
     print("#endif")
     sys.stdout = orig_stdout
 
@@ -595,7 +607,7 @@ def gen_json_code(parser, logger, j, io):
     logger.info("Generating code `%s'" % io.name)
     orig_stdout = sys.stdout
     sys.stdout = io
-    print("#include <%s>" % json_to_header_name(j))
+    print("#include <%s>" % json_to_c_header_name(j))
     print("#include <stdlib.h>")
     print("#include <stddef.h>")
     print("#include <arpa/inet.h>")
@@ -657,6 +669,10 @@ def gen_json_unified_header(parser, logger, j, io):
     print("#include <stddef.h>")
     print("#include <arpa/inet.h>")
     print("#include <vapi_dbg.h>")
+    print("")
+    print("#ifdef __cplusplus")
+    print("extern \"C\" {")
+    print("#endif")
     if io.name == "vpe.api.vapi.h":
         print("")
         print("static inline vapi_error_e vapi_send_with_control_ping "
@@ -729,17 +745,21 @@ def gen_json_unified_header(parser, logger, j, io):
         print("%s" % vapi_send_with_control_ping)
         print("")
 
+    print("#ifdef __cplusplus")
+    print("}")
+    print("#endif")
+    print("")
     print("#endif")
     sys.stdout = orig_stdout
 
 
-def json_to_header_name(json_name):
+def json_to_c_header_name(json_name):
     if json_name.endswith(".json"):
         return "%s.vapi.h" % os.path.splitext(json_name)[0]
     raise Exception("Unexpected json name `%s'!" % json_name)
 
 
-def json_to_code_name(json_name):
+def json_to_c_code_name(json_name):
     if json_name.endswith(".json"):
         return "%s.vapi.c" % os.path.splitext(json_name)[0]
     raise Exception("Unexpected json name `%s'!" % json_name)
@@ -751,9 +771,9 @@ def gen_c_headers_and_code(parser, logger, prefix):
     else:
         prefix = "%s/" % prefix
     for j in parser.json_files:
-        with open('%s%s' % (prefix, json_to_header_name(j)), "w") as io:
+        with open('%s%s' % (prefix, json_to_c_header_name(j)), "w") as io:
             gen_json_header(parser, logger, j, io)
-        with open('%s%s' % (prefix, json_to_code_name(j)), "w") as io:
+        with open('%s%s' % (prefix, json_to_c_code_name(j)), "w") as io:
             gen_json_code(parser, logger, j, io)
 
 
@@ -763,7 +783,7 @@ def gen_c_unified_headers(parser, logger, prefix):
     else:
         prefix = "%s/" % prefix
     for j in parser.json_files:
-        with open('%s%s' % (prefix, json_to_header_name(j)), "w") as io:
+        with open('%s%s' % (prefix, json_to_c_header_name(j)), "w") as io:
             gen_json_unified_header(parser, logger, j, io)
 
 
@@ -784,7 +804,7 @@ if __name__ == '__main__':
     logger = logging.getLogger("VAPI C GEN")
     logger.setLevel(log_level)
 
-    argparser = argparse.ArgumentParser(description="VPP JSON API parser")
+    argparser = argparse.ArgumentParser(description="VPP C API generator")
     argparser.add_argument('files', metavar='api-file', action='append',
                            type=str, help='json api file'
                            '(may be specified multiple times)')
