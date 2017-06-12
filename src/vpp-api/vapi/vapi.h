@@ -21,6 +21,11 @@
 #include <string.h>
 #include <stdbool.h>
 #include <vppinfra/types.h>
+#include <vapi_common.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @file vapi.h
@@ -36,38 +41,6 @@
  * process). It's not recommended to mix the higher and lower level APIs. Due
  * to version issues, the higher-level APIs are not part of the shared library.
  */
-
-typedef enum
-{
-  VAPI_OK = 0,	      /**< success */
-  VAPI_EINVAL,	      /**< invalid value encountered */
-  VAPI_EAGAIN,	      /**< operation would block */
-  VAPI_ENOTSUP,	      /**< operation not supported */
-  VAPI_ENOMEM,	      /**< out of memory */
-  VAPI_ENORESP,	      /**< no response to request */
-  VAPI_EMAP_FAIL,     /**< failure while mapping api */
-  VAPI_ECON_FAIL,     /**< failure while connecting to vpp */
-  VAPI_EINCOMPATIBLE, /**< fundamental incompatibility while connecting to vpp
-                           (control ping/control ping reply mismatch) */
-  VAPI_MUTEX_FAILURE, /**< failure manipulating internal mutex(es) */
-  VAPI_EUSER,	      /**< user error used for breaking dispatch,
-                           never used by VAPI */
-} vapi_error_e;
-
-typedef enum
-{
-  VAPI_MODE_BLOCKING = 1,    /**< operations block until response received */
-  VAPI_MODE_NONBLOCKING = 2, /**< operations never block */
-} vapi_mode_e;
-
-typedef enum
-{
-  VAPI_WAIT_FOR_READ,	    /**< wait until a message can be read */
-  VAPI_WAIT_FOR_WRITE,	    /**< wait until a message can be written */
-  VAPI_WAIT_FOR_READ_WRITE, /**< wait until a read or write can be done */
-} vapi_wait_mode_e;
-
-typedef int vapi_msg_id_t;
 typedef struct vapi_ctx_s *vapi_ctx_t;
 
 /**
@@ -273,6 +246,10 @@ void vapi_set_generic_event_cb (vapi_ctx_t ctx,
  * @param ctx opaque vapi context
  */
 void vapi_clear_generic_event_cb (vapi_ctx_t ctx);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

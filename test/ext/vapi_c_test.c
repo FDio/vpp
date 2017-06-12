@@ -413,7 +413,7 @@ END_TEST;
 vapi_error_e
 show_version_cb (vapi_ctx_t ctx, void *caller_ctx,
 		 vapi_error_e rv, bool is_last,
-		 vapi_payload_show_version_reply * p)
+		 vapi_payload_show_version_reply *p)
 {
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (true, is_last);
@@ -519,9 +519,8 @@ START_TEST (test_show_version_1)
   size_t size;
   rv = vapi_recv (ctx, (void *) &resp, &size);
   ck_assert_int_eq (VAPI_OK, rv);
-  vapi_payload_show_version_reply *payload = &resp->payload;
   int dummy;
-  show_version_cb (NULL, &dummy, VAPI_OK, true, payload);
+  show_version_cb (NULL, &dummy, VAPI_OK, true, &resp->payload);
   vapi_msg_free (ctx, resp);
 }
 
