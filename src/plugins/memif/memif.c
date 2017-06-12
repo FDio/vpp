@@ -67,6 +67,7 @@ memif_queue_intfd_close (memif_queue_t * mq)
 void
 memif_disconnect (memif_if_t * mif, clib_error_t * err)
 {
+  memif_main_t *mm = &memif_main;
   vnet_main_t *vnm = vnet_get_main ();
   memif_region_t *mr;
   memif_queue_t *mq;
@@ -94,6 +95,9 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
   /* close connection socket */
   if (mif->conn_unix_file_index != ~0)
     {
+      memif_socket_file_t *msf = vec_elt_at_index (mm->socket_files,
+						   mif->socket_file_index);
+      hash_unset (msf->dev_instance_by_fd, mif->conn_fd);
       memif_file_del_by_index (mif->conn_unix_file_index);
       mif->conn_unix_file_index = ~0;
     }
