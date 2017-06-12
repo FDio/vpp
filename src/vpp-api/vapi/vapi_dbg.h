@@ -22,6 +22,7 @@
 #define VAPI_DEBUG (0)
 #define VAPI_DEBUG_CONNECT (0)
 #define VAPI_DEBUG_ALLOC (0)
+#define VAPI_CPP_DEBUG_LEAKS (0)
 
 #if VAPI_DEBUG
 #include <stdio.h>
