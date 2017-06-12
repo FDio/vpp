@@ -18,6 +18,7 @@
 #ifndef VAPI_INTERNAL_H
 #define VAPI_INTERNAL_H
 
+#include <endian.h>
 #include <string.h>
 #include <vppinfra/types.h>
 
@@ -30,6 +31,10 @@
  * used by the client programmer and the API defined here might change at any
  * time..
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct vapi_ctx_s;
 
@@ -71,7 +76,7 @@ vapi_type_msg_header2_t_ntoh (vapi_type_msg_header2_t * h)
 }
 
 
-#include <vapi.h>
+#include <vapi/vapi.h>
 
 typedef vapi_error_e (*vapi_cb_t) (struct vapi_ctx_s *, void *, vapi_error_e,
 				   bool, void *);
@@ -85,8 +90,8 @@ typedef struct
   const char *name_with_crc;
   size_t name_with_crc_len;
   bool has_context;
-  size_t context_offset;
-  size_t payload_offset;
+  int context_offset;
+  int payload_offset;
   size_t size;
   generic_swap_fn_t swap_to_be;
   generic_swap_fn_t swap_to_host;
@@ -102,12 +107,12 @@ typedef struct
   void (*swap_to_host) (void *payload);
 } vapi_event_desc_t;
 
-extern bool *__vapi_msg_is_with_context;
-
 vapi_msg_id_t vapi_register_msg (vapi_message_desc_t * msg);
 u16 vapi_lookup_vl_msg_id (vapi_ctx_t ctx, vapi_msg_id_t id);
+vapi_msg_id_t vapi_lookup_vapi_msg_id_t (vapi_ctx_t ctx, u16 vl_msg_id);
 int vapi_get_client_index (vapi_ctx_t ctx);
 bool vapi_is_nonblocking (vapi_ctx_t ctx);
+bool vapi_requests_empty (vapi_ctx_t ctx);
 bool vapi_requests_full (vapi_ctx_t ctx);
 size_t vapi_get_request_count (vapi_ctx_t ctx);
 size_t vapi_get_max_request_count (vapi_ctx_t ctx);
@@ -119,8 +124,15 @@ void (*vapi_get_swap_to_host_func (vapi_msg_id_t id)) (void *payload);
 void (*vapi_get_swap_to_be_func (vapi_msg_id_t id)) (void *payload);
 size_t vapi_get_message_size (vapi_msg_id_t id);
 size_t vapi_get_context_offset (vapi_msg_id_t id);
+bool vapi_msg_is_with_context (vapi_msg_id_t id);
+size_t vapi_get_message_count();
+const char *vapi_get_msg_name(vapi_msg_id_t id);
 
 vapi_error_e vapi_producer_lock (vapi_ctx_t ctx);
 vapi_error_e vapi_producer_unlock (vapi_ctx_t ctx);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

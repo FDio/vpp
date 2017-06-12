@@ -23,6 +23,7 @@ VAPICLIENT_17.07 {
 	vapi_register_msg;
 	vapi_get_client_index;
 	vapi_is_nonblocking;
+	vapi_requests_empty;
 	vapi_requests_full;
 	vapi_gen_req_context;
 	vapi_producer_lock;
@@ -36,6 +37,8 @@ VAPICLIENT_17.07 {
 	vapi_get_context_offset;
 	vapi_msg_id_control_ping;
 	vapi_msg_id_control_ping_reply;
+	vapi_get_message_count;
+	vapi_get_msg_name;
 
 	local: *;
 };

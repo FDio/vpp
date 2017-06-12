@@ -90,6 +90,7 @@ class Message:
 
     def __init__(self, logger, definition, typedict,
                  struct_type_class, simple_type_class, field_class):
+        self.request = None
         self.logger = logger
         m = definition
         logger.debug("Parsing message definition `%s'" % m)
@@ -292,6 +293,7 @@ class JsonParser:
                     if not m.is_reply():
                         try:
                             m.reply = self.get_reply(n)
+                            m.reply.request = m
                         except:
                             raise ParseError(
                                 "Cannot find reply to message `%s'" % n)
