@@ -25,6 +25,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/udp/udp.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/lisp-cp/control.h>
 #include <vnet/lisp-gpe/lisp_gpe.h>
 #include <vnet/lisp-gpe/lisp_gpe_fwd_entry.h>
 #include <vnet/lisp-gpe/lisp_gpe_tenant.h>
@@ -922,6 +923,68 @@ VLIB_CLI_COMMAND (add_del_lisp_gpe_iface_command, static) = {
   .path = "gpe iface",
   .short_help = "gpe iface add/del vni <vni> vrf <vrf>",
   .function = lisp_gpe_add_del_iface_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+lisp_test_nsh_command_fn (vlib_main_t * vm, unformat_input_t * input,
+				   vlib_cli_command_t * cmd)
+{
+  vlib_frame_t *f;
+  vlib_buffer_t *b;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  pcap_main_t pm;
+  clib_error_t *error = 0;
+  u8 *file_name = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "nsh %v", &file_name))
+        ;
+      else
+	{
+	  error = clib_error_create ("unknown input `%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
+    }
+
+  if (!file_name)
+    {
+      error = clib_error_create ("no pcap file specified!");
+      goto done;
+    }
+
+  memset (&pm, 0, sizeof (pm));
+  pm.file_name = (char *) file_name;
+  error = pcap_read (&pm);
+
+  u32 bi;
+  if (vlib_buffer_alloc (vm, &bi, 1) != 1)
+    {
+      error = clib_error_create ("cannot allocate memory!");
+      goto done;
+    }
+
+  b = vlib_get_buffer (vm, bi);
+  u8 *p = vlib_buffer_put_uninit (b, vec_len (pm.packets_read[0]));
+  clib_memcpy (p, pm.packets_read[0], vec_len (pm.packets_read[0]));
+
+  u32 next_index = nsh_lisp_gpe_device_class.index;
+  f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
+  u32 *to_next = vlib_frame_vector_args (f);
+  to_next[0] = bi;
+  f->n_vectors = 1;
+  vlib_put_frame_to_node (lcm->vlib_main, next_index, f);
+done:
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (lisp_test_nsh_command, static) = {
+  .path = "test one",
+  .short_help = "test one nsh <path-to-pcap-file>",
+  .function = lisp_test_nsh_command_fn,
 };
 /* *INDENT-ON* */
 
