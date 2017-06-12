@@ -107,6 +107,8 @@ nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
   nat64_db_bib_entry_key_t bibe_key;
   clib_bihash_kv_24_8_t kv;
   nat64_db_bib_entry_t *bib;
+  u32 *ste_to_be_free = 0, *ste_index, bibe_index;
+  nat64_db_st_entry_t *st, *ste;
 
   switch (bibe->proto)
     {
@@ -114,6 +116,7 @@ nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
 #define _(N, i, n, s) \
     case SNAT_PROTOCOL_##N: \
       bib = db->bib._##n##_bib; \
+      st = db->st._##n##_st; \
       break;
       foreach_snat_protocol
 #undef _
@@ -121,6 +124,21 @@ nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
     default:
       clib_warning ("unknown protocol %u", bibe->proto);
       return;
+    }
+
+  bibe_index = bibe - bib;
+
+  /* delete ST entries for static BIB entry */
+  if (bibe->is_static)
+    {
+      pool_foreach (ste, st, (
+			       {
+			       if (ste->bibe_index == bibe_index)
+			       vec_add1 (ste_to_be_free, ste - st);}
+		    ));
+      vec_foreach (ste_index, ste_to_be_free)
+	nat64_db_st_entry_free (db, pool_elt_at_index (st, ste_index[0]));
+      vec_free (ste_to_be_free);
     }
 
   /* delete hash lookup */
@@ -146,6 +164,7 @@ nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
 
   /* delete from pool */
   pool_put (bib, bibe);
+
 }
 
 nat64_db_bib_entry_t *
@@ -480,7 +499,7 @@ nad64_db_st_free_expired (nat64_db_t * db, u32 now)
       vec_add1 (ste_to_be_free, ste - st); \
   })); \
   vec_foreach (ste_index, ste_to_be_free) \
-    pool_put_index (st, ste_index[0]); \
+    nat64_db_st_entry_free (db, pool_elt_at_index(st, ste_index[0])); \
   vec_free (ste_to_be_free); \
   ste_to_be_free = 0;
   foreach_snat_protocol
