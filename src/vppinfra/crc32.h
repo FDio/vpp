@@ -16,6 +16,8 @@
 #ifndef __included_crc32_h__
 #define __included_crc32_h__
 
+#include <vppinfra/clib.h>
+
 #if __SSE4_2__
 #define clib_crc32c_uses_intrinsics
 #include <x86intrin.h>
