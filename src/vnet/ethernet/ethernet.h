@@ -88,6 +88,29 @@ ethernet_frame_is_tagged (u16 type)
   return 0;
 }
 
+static_always_inline int
+ethernet_frame_is_any_tagged (u16 type0, u16 type1)
+{
+#if __SSE4_2__
+  const __m128i ethertype_mask = _mm_set_epi16 (ETHERNET_TYPE_VLAN,
+						ETHERNET_TYPE_DOT1AD,
+						ETHERNET_TYPE_VLAN_9100,
+						ETHERNET_TYPE_VLAN_9200,
+						/* duplicate for type1 */
+						ETHERNET_TYPE_VLAN,
+						ETHERNET_TYPE_DOT1AD,
+						ETHERNET_TYPE_VLAN_9100,
+						ETHERNET_TYPE_VLAN_9200);
+
+  __m128i r =
+    _mm_set_epi16 (type0, type0, type0, type0, type1, type1, type1, type1);
+  r = _mm_cmpeq_epi16 (ethertype_mask, r);
+  return !_mm_test_all_zeros (r, r);
+#else
+  return ethernet_frame_is_tagged (type0) || ethernet_frame_istagged (type1);
+#endif
+}
+
 /* Max. sized ethernet/vlan header for parsing. */
 typedef struct
 {

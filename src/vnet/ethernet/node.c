@@ -374,8 +374,7 @@ ethernet_input_inline (vlib_main_t * vm,
 
 	  /* Speed-path for the untagged case */
 	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET
-			    && !ethernet_frame_is_tagged (type0)
-			    && !ethernet_frame_is_tagged (type1)))
+			    && !ethernet_frame_is_any_tagged (type0, type1)))
 	    {
 	      main_intf_t *intf0;
 	      subint_config_t *subint0;
