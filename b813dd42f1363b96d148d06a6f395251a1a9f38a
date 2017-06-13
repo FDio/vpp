@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_95542a55",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-13T11:09:49Z",
+      "side": 1,
+      "message": "does this need to be specified in the .h file? It\u0027s only used in one .c.\nThat is, does it need to be part of the public interface for ethernet ?",
+      "revId": "b813dd42f1363b96d148d06a6f395251a1a9f38a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
