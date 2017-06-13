@@ -229,9 +229,6 @@ l2vtr_configure (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 sw_if_ind
 	}
       in_config->pop_bytes = 8;
       in_config->push_bytes = 0;
-
-      out_config->push_bytes = in_config->pop_bytes;
-      out_config->pop_bytes = in_config->push_bytes;
       break;
 
     case L2_VTR_PUSH_1:

@@ -165,11 +165,12 @@ parse_header (ethernet_input_variant_t variant,
 
 	  vlib_buffer_advance (b0, sizeof (h0[0]));
 	  vlan_count = 2;
-
 	  if (*type == ETHERNET_TYPE_VLAN)
 	    {
 	      // More than double tagged packet
 	      *match_flags = SUBINT_CONFIG_VALID | SUBINT_CONFIG_MATCH_3_TAG;
+
+	      vlib_buffer_advance (b0, sizeof (h0[0]));
 	      vlan_count = 3;	// "unknown" number, aka, 3-or-more
 	    }
 	}
@@ -239,6 +240,8 @@ determine_next_node (ethernet_main_t * em,
       // record the L2 len and reset the buffer so the L2 header is preserved
       u32 eth_start = vnet_buffer (b0)->ethernet.start_of_ethernet_header;
       vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
+      ASSERT (vnet_buffer (b0)->l2.l2_len ==
+	      ethernet_buffer_header_size (b0));
       vlib_buffer_advance (b0, -ethernet_buffer_header_size (b0));
 
       // check for common IP/MPLS ethertypes
