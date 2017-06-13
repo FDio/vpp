@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_00efd61f",
+        "filename": "src/plugins/acl/bihash_48_8.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2017-06-13T13:58:50Z",
+      "side": 1,
+      "message": "Couldn\u0027t we have this in src/vppinfra/crc32.h ?\nWe could basically add the #else case there (where the clib_crc32c is defined) and here you could simply call the function clib_crc32c(..)",
+      "range": {
+        "startLine": 50,
+        "startChar": 6,
+        "endLine": 50,
+        "endChar": 9
+      },
+      "revId": "b11629c89bde10788bccd5534d65c777a1cad0b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_c0f89ee7",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2017-06-13T13:58:50Z",
+      "side": 1,
+      "message": "I wonder if we can rename this function to simply acl_match_5tuple?\n\nfull_ somehow tells me there should be another function starting with partial_",
+      "range": {
+        "startLine": 308,
+        "startChar": 0,
+        "endLine": 308,
+        "endChar": 21
+      },
+      "revId": "b11629c89bde10788bccd5534d65c777a1cad0b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
