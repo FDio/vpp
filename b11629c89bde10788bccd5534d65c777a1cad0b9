@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fa5d592f_202d3a47",
+        "filename": "src/plugins/acl/bihash_48_8.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-06-13T15:19:13Z",
+      "side": 1,
+      "message": "I suspect this (rather ugly IMO) way of folding the hash is done in lieu of performance on the platforms where crc32 is terribly slow. I have had a patch to make it use siphash-1-1 (arguably not perfect but seemed much better than this), but it was somewhat slower, about 20% I would say. Also, I am using bihash as it is something readily available, I would like to replace it with cuckoo hash as soon as it is available...",
+      "parentUuid": "fa5d592f_00efd61f",
+      "range": {
+        "startLine": 50,
+        "startChar": 6,
+        "endLine": 50,
+        "endChar": 9
+      },
+      "revId": "b11629c89bde10788bccd5534d65c777a1cad0b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa5d592f_c0f89ee7",
         "filename": "src/plugins/acl/fa_node.c",
         "patchSetId": 3
@@ -36,6 +60,30 @@
       "writtenOn": "2017-06-13T13:58:50Z",
       "side": 1,
       "message": "I wonder if we can rename this function to simply acl_match_5tuple?\n\nfull_ somehow tells me there should be another function starting with partial_",
+      "range": {
+        "startLine": 308,
+        "startChar": 0,
+        "endLine": 308,
+        "endChar": 21
+      },
+      "revId": "b11629c89bde10788bccd5534d65c777a1cad0b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_003236a7",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-06-13T15:19:13Z",
+      "side": 1,
+      "message": "right, full_* is to emphasise that it matches over the entire list of ACLs applied. The acl_match_5tuple already exists and matches only a single ACL... maybe a better option is to rename \"multi_..\" \u0026 \"single_..\" ?",
+      "parentUuid": "fa5d592f_c0f89ee7",
       "range": {
         "startLine": 308,
         "startChar": 0,
