@@ -132,13 +132,13 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
 #endif
 
   glacier_ring_offset = interval >> (2 * TW_RING_SHIFT);
-  ASSERT (glacier_ring_offset < TW_SLOTS_PER_RING);
-  interval -= (glacier_ring_offset << (2 * TW_RING_SHIFT));
+  ASSERT ((u64) glacier_ring_offset < TW_SLOTS_PER_RING);
+  interval -= (((u64) glacier_ring_offset) << (2 * TW_RING_SHIFT));
 #endif
 #if TW_TIMER_WHEELS > 1
   slow_ring_offset = interval >> TW_RING_SHIFT;
-  ASSERT (slow_ring_offset < TW_SLOTS_PER_RING);
-  interval -= (slow_ring_offset << TW_RING_SHIFT);
+  ASSERT ((u64) slow_ring_offset < TW_SLOTS_PER_RING);
+  interval -= (((u64) slow_ring_offset) << TW_RING_SHIFT);
 #endif
   fast_ring_offset = interval & TW_RING_MASK;
 
