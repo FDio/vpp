@@ -62,6 +62,8 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	args.is_master = 1;
       else if (unformat (line_input, "slave"))
 	args.is_master = 0;
+      else if (unformat (line_input, "mode ip"))
+	args.mode = MEMIF_INTERFACE_MODE_IP;
       else if (unformat (line_input, "hw-addr %U",
 			 unformat_ethernet_address, args.hw_addr))
 	args.hw_addr_set = 1;
@@ -107,7 +109,8 @@ VLIB_CLI_COMMAND (memif_create_command, static) = {
   .path = "create memif",
   .short_help = "create memif [id <id>] [socket <path>] "
                 "[ring-size <size>] [buffer-size <size>] [hw-addr <mac-address>] "
-		"<master|slave> [rx-queues <number>] [tx-queues <number>]",
+		"<master|slave> [rx-queues <number>] [tx-queues <number>]"
+		"[mode ip]",
   .function = memif_create_command_fn,
 };
 /* *INDENT-ON* */

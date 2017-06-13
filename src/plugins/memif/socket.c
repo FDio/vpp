@@ -132,6 +132,7 @@ memif_msg_enq_init (memif_if_t * mif)
   e->fd = -1;
   i->version = MEMIF_VERSION;
   i->id = mif->id;
+  i->mode = mif->mode;
   s = format (0, "VPP %s%c", VPP_BUILD_VER, 0);
   strncpy ((char *) i->name, (char *) s, sizeof (i->name));
   if (mif->secret)

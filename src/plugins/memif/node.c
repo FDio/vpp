@@ -30,7 +30,8 @@
 #include <memif/memif.h>
 #include <memif/private.h>
 
-#define foreach_memif_input_error
+#define foreach_memif_input_error \
+  _(NOT_IP, "not ip packet")
 
 typedef enum
 {
@@ -76,16 +77,32 @@ memif_prefetch (vlib_main_t * vm, u32 bi)
   CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, STORE);
 }
 
+static_always_inline u32
+memif_next_from_ip_hdr (vlib_node_runtime_t * node, vlib_buffer_t * b)
+{
+  u8 *ptr = vlib_buffer_get_current (b);
+  u8 v = *ptr & 0xf0;
+
+  if (PREDICT_TRUE (v == 0x40))
+    return VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
+  else if (PREDICT_TRUE (v == 0x60))
+    return VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+
+  b->error = node->errors[MEMIF_INPUT_ERROR_NOT_IP];
+  return VNET_DEVICE_INPUT_NEXT_DROP;
+}
+
 static_always_inline uword
 memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   vlib_frame_t * frame, memif_if_t * mif,
-			   memif_ring_type_t type, u16 qid)
+			   memif_ring_type_t type, u16 qid,
+			   memif_interface_mode_t mode)
 {
   vnet_main_t *vnm = vnet_get_main ();
   memif_ring_t *ring;
   memif_queue_t *mq;
   u16 head;
-  u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+  u32 next_index;
   uword n_trace = vlib_get_trace_count (vm, node);
   memif_main_t *nm = &memif_main;
   u32 n_rx_packets = 0;
@@ -103,8 +120,14 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   ring_size = 1 << mq->log2_ring_size;
   mask = ring_size - 1;
 
-  if (mif->per_interface_next_index != ~0)
-    next_index = mif->per_interface_next_index;
+  if (mode == MEMIF_INTERFACE_MODE_IP)
+    {
+      next_index = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
+    }
+  else
+    {
+      next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
+    }
 
   n_free_bufs = vec_len (nm->rx_buffers[thread_index]);
   if (PREDICT_FALSE (n_free_bufs < ring_size))
@@ -210,6 +233,21 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			 mb1 + CLIB_CACHE_LINE_BYTES,
 			 b1->current_length - CLIB_CACHE_LINE_BYTES);
 
+	  if (mode == MEMIF_INTERFACE_MODE_IP)
+	    {
+	      next0 = memif_next_from_ip_hdr (node, b0);
+	      next1 = memif_next_from_ip_hdr (node, b1);
+	    }
+	  else if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
+	    {
+	      if (PREDICT_FALSE (mif->per_interface_next_index != ~0))
+		next0 = next1 = mif->per_interface_next_index;
+	      else
+		/* redirect if feature path enabled */
+		vnet_feature_start_device_input_x2 (mif->sw_if_index,
+						    &next0, &next1, b0, b1);
+	    }
+
 	  /* trace */
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
@@ -241,8 +279,9 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* redirect if feature path enabled */
-	  vnet_feature_start_device_input_x2 (mif->sw_if_index,
-					      &next0, &next1, b0, b1);
+	  if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
+	    vnet_feature_start_device_input_x2 (mif->sw_if_index,
+						&next0, &next1, b0, b1);
 
 	  /* enqueue */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index, to_next,
@@ -282,6 +321,20 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			 mb0 + CLIB_CACHE_LINE_BYTES,
 			 b0->current_length - CLIB_CACHE_LINE_BYTES);
 
+	  if (mode == MEMIF_INTERFACE_MODE_IP)
+	    {
+	      next0 = memif_next_from_ip_hdr (node, b0);
+	    }
+	  else if (mode == MEMIF_INTERFACE_MODE_ETHERNET)
+	    {
+	      if (PREDICT_FALSE (mif->per_interface_next_index != ~0))
+		next0 = mif->per_interface_next_index;
+	      else
+		/* redirect if feature path enabled */
+		vnet_feature_start_device_input_x1 (mif->sw_if_index,
+						    &next0, b0);
+	    }
+
 	  /* trace */
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
@@ -297,9 +350,6 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tr->ring = qid;
 	    }
 
-
-	  /* redirect if feature path enabled */
-	  vnet_feature_start_device_input_x1 (mif->sw_if_index, &next0, b0);
 
 	  /* enqueue */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -341,11 +391,28 @@ memif_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	(mif->flags & MEMIF_IF_FLAG_CONNECTED))
       {
 	if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
-	  n_rx += memif_device_input_inline (vm, node, frame, mif,
-					     MEMIF_RING_M2S, dq->queue_id);
+	  {
+	    if (mif->mode == MEMIF_INTERFACE_MODE_IP)
+	      n_rx += memif_device_input_inline (vm, node, frame, mif,
+						 MEMIF_RING_M2S, dq->queue_id,
+						 MEMIF_INTERFACE_MODE_IP);
+	    else
+	      n_rx += memif_device_input_inline (vm, node, frame, mif,
+						 MEMIF_RING_M2S, dq->queue_id,
+						 MEMIF_INTERFACE_MODE_ETHERNET);
+	  }
 	else
-	  n_rx += memif_device_input_inline (vm, node, frame, mif,
-					     MEMIF_RING_S2M, dq->queue_id);
+	  {
+	    if (mif->mode == MEMIF_INTERFACE_MODE_IP)
+	      n_rx += memif_device_input_inline (vm, node, frame, mif,
+						 MEMIF_RING_S2M, dq->queue_id,
+						 MEMIF_INTERFACE_MODE_IP);
+	    else
+	      n_rx += memif_device_input_inline (vm, node, frame, mif,
+						 MEMIF_RING_S2M, dq->queue_id,
+						 MEMIF_INTERFACE_MODE_ETHERNET);
+	  }
+
       }
   }
 
