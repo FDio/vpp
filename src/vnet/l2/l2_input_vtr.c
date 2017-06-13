@@ -188,10 +188,7 @@ l2_invtr_node_fn (vlib_main_t * vm,
 	      if (config0->output_vtr.push_and_pop_bytes)
 		{
 		  /* perform the tag rewrite on two packets */
-		  if (l2_vtr_process
-		      (b0,
-		       &(vec_elt_at_index
-			 (l2output_main.configs, sw_if_index0)->input_vtr)))
+		  if (l2_vtr_process (b0, &config0->input_vtr))
 		    {
 		      /* Drop packet */
 		      next0 = L2_INVTR_NEXT_DROP;
@@ -212,10 +209,7 @@ l2_invtr_node_fn (vlib_main_t * vm,
 	    {
 	      if (config1->output_vtr.push_and_pop_bytes)
 		{
-		  if (l2_vtr_process
-		      (b1,
-		       &(vec_elt_at_index
-			 (l2output_main.configs, sw_if_index1)->input_vtr)))
+		  if (l2_vtr_process (b1, &config1->input_vtr))
 		    {
 		      /* Drop packet */
 		      next1 = L2_INVTR_NEXT_DROP;
@@ -305,10 +299,7 @@ l2_invtr_node_fn (vlib_main_t * vm,
 	      if (config0->output_vtr.push_and_pop_bytes)
 		{
 		  /* perform the tag rewrite on one packet */
-		  if (l2_vtr_process
-		      (b0,
-		       &(vec_elt_at_index
-			 (l2output_main.configs, sw_if_index0)->input_vtr)))
+		  if (l2_vtr_process (b0, &config0->input_vtr))
 		    {
 		      /* Drop packet */
 		      next0 = L2_INVTR_NEXT_DROP;
