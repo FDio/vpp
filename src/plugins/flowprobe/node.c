@@ -164,6 +164,14 @@ flowprobe_common_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
   clib_memcpy (to_b->data + offset, &packetdelta, sizeof (u64));
   offset += sizeof (u64);
 
+  /* flowStartNanoseconds       */
+  clib_memcpy (to_b->data + offset, &e->flow_start, sizeof (f64));
+  offset += sizeof (f64);
+
+  /* flowEndNanoseconds */
+  clib_memcpy (to_b->data + offset, &e->flow_end, sizeof (f64));
+  offset += sizeof (f64);
+
   return offset - start;
 }
 
@@ -250,6 +258,11 @@ flowprobe_l4_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 
   /* dst port */
   clib_memcpy (to_b->data + offset, &e->key.dst_port, 2);
+  offset += 2;
+
+  /* tcp control bits */
+  u16 control_bits = e->prot.tcp.flags;
+  clib_memcpy (to_b->data + offset, &control_bits, 2);
   offset += 2;
 
   return offset - start;
@@ -348,6 +361,8 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
   ip4_header_t *ip4 = 0;
   ip6_header_t *ip6 = 0;
   udp_header_t *udp = 0;
+  tcp_header_t *tcp = 0;
+  u8 tcp_flags = 0;
 
   if (flags & FLOW_RECORD_L3 || flags & FLOW_RECORD_L4)
     {
@@ -369,7 +384,6 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (collect_ip6 && ethertype == ETHERNET_TYPE_IP6)
     {
       ip6 = (ip6_header_t *) (eth + 1);
-      udp = (udp_header_t *) (ip6 + 1);
       if (flags & FLOW_RECORD_L3)
 	{
 	  k.src_address.as_u64[0] = ip6->src_address.as_u64[0];
@@ -378,27 +392,38 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  k.dst_address.as_u64[1] = ip6->dst_address.as_u64[1];
 	}
       k.protocol = ip6->protocol;
+      if (k.protocol == IP_PROTOCOL_UDP)
+	udp = (udp_header_t *) (ip6 + 1);
+      else if (k.protocol == IP_PROTOCOL_TCP)
+	tcp = (tcp_header_t *) (ip6 + 1);
+
       octets = clib_net_to_host_u16 (ip6->payload_length)
 	+ sizeof (ip6_header_t);
     }
   if (collect_ip4 && ethertype == ETHERNET_TYPE_IP4)
     {
       ip4 = (ip4_header_t *) (eth + 1);
-      udp = (udp_header_t *) (ip4 + 1);
       if (flags & FLOW_RECORD_L3)
 	{
 	  k.src_address.ip4.as_u32 = ip4->src_address.as_u32;
 	  k.dst_address.ip4.as_u32 = ip4->dst_address.as_u32;
 	}
       k.protocol = ip4->protocol;
+      if ((flags & FLOW_RECORD_L4) && k.protocol == IP_PROTOCOL_UDP)
+	udp = (udp_header_t *) (ip4 + 1);
+      else if ((flags & FLOW_RECORD_L4) && k.protocol == IP_PROTOCOL_TCP)
+	tcp = (tcp_header_t *) (ip4 + 1);
+
       octets = clib_net_to_host_u16 (ip4->length);
     }
-  if ((flags & FLOW_RECORD_L4) && udp &&
-      (k.protocol == IP_PROTOCOL_TCP || k.protocol == IP_PROTOCOL_UDP))
+
+  if (udp || tcp)
     {
       k.src_port = udp->src_port;
       k.dst_port = udp->dst_port;
     }
+  if (tcp)
+    tcp_flags = tcp->flags;
 
   if (t)
     {
@@ -437,6 +462,7 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  e = flowprobe_create (my_cpu_number, &k, &poolindex);
 	  e->last_exported = now;
 	}
+      e->flow_start = timestamp;
     }
   else
     {
@@ -450,7 +476,8 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
       e->packetcount++;
       e->octetcount += octets;
       e->last_updated = now;
-
+      e->flow_end = timestamp;
+      e->prot.tcp.flags |= tcp_flags;
       if (fm->active_timer == 0
 	  || (now > e->last_exported + fm->active_timer))
 	flowprobe_export_entry (vm, e);
