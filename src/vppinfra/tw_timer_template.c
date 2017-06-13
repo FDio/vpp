@@ -204,6 +204,11 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
   ts = &tw->w[TW_TIMER_RING_FAST][fast_ring_offset];
 
   timer_addhead (tw->timers, ts->head_index, t - tw->timers);
+
+#if TW_FAST_WHEEL_BITMAP
+  tw->fast_slot_bitmap = clib_bitmap_set (tw->fast_slot_bitmap,
+					  fast_ring_offset, 1);
+#endif
   return t - tw->timers;
 }
 
@@ -250,6 +255,16 @@ int TW (scan_for_handle) (TWT (tw_timer_wheel) * tw, u32 handle)
 void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
 {
   TWT (tw_timer) * t;
+
+#if TW_TIMER_ALLOW_DUPLICATE_STOP
+  /*
+   * A vlib process may have its timer expire, and receive
+   * an event before the expiration is processed.
+   * That results in a duplicate tw_timer_stop.
+   */
+  if (pool_is_free_index (tw->timers, handle))
+    return;
+#endif
 
   t = pool_elt_at_index (tw->timers, handle);
 
@@ -481,6 +496,11 @@ static inline
 		{
 		  ts = &tw->w[TW_TIMER_RING_FAST][t->fast_ring_offset];
 		  timer_addhead (tw->timers, ts->head_index, t - tw->timers);
+#if TW_FAST_WHEEL_BITMAP
+		  tw->fast_slot_bitmap =
+		    clib_bitmap_set (tw->fast_slot_bitmap,
+				     t->fast_ring_offset, 1);
+#endif
 		}
 	    }
 	}
@@ -523,6 +543,11 @@ static inline
 		{
 		  ts = &tw->w[TW_TIMER_RING_FAST][t->fast_ring_offset];
 		  timer_addhead (tw->timers, ts->head_index, t - tw->timers);
+#if TW_FAST_WHEEL_BITMAP
+		  tw->fast_slot_bitmap =
+		    clib_bitmap_set (tw->fast_slot_bitmap,
+				     t->fast_ring_offset, 1);
+#endif
 		}
 	      else		/* typical case */
 		{
@@ -569,6 +594,11 @@ static inline
 		  /* Add to fast ring */
 		  ts = &tw->w[TW_TIMER_RING_FAST][t->fast_ring_offset];
 		  timer_addhead (tw->timers, ts->head_index, t - tw->timers);
+#if TW_FAST_WHEEL_BITMAP
+		  tw->fast_slot_bitmap =
+		    clib_bitmap_set (tw->fast_slot_bitmap,
+				     t->fast_ring_offset, 1);
+#endif
 		}
 	    }
 	}
@@ -604,6 +634,12 @@ static inline
 	    }
 	  tw->expired_timer_handles = callback_vector;
 	}
+
+#if TW_FAST_WHEEL_BITMAP
+      tw->fast_slot_bitmap = clib_bitmap_set (tw->fast_slot_bitmap,
+					      fast_wheel_index, 0);
+#endif
+
       tw->current_tick++;
       fast_wheel_index++;
       tw->current_index[TW_TIMER_RING_FAST] = fast_wheel_index;
@@ -641,6 +677,44 @@ u32 *TW (tw_timer_expire_timers_vec) (TWT (tw_timer_wheel) * tw, f64 now,
 {
   return TW (tw_timer_expire_timers_internal) (tw, now, vec);
 }
+
+#if TW_FAST_WHEEL_BITMAP
+/** Returns an approximation to the first timer expiration in
+ * timer-ticks from "now". To avoid wasting an unjustifiable
+ * amount of time on the problem, we maintain an approximate fast-wheel slot
+ * occupancy bitmap. We don't worry about clearing fast wheel bits
+ * when timers are removed from fast wheel slots.
+ */
+
+u32 TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) * tw)
+{
+  u32 first_expiring_index, fast_ring_index;
+  i32 delta;
+
+  if (clib_bitmap_is_zero (tw->fast_slot_bitmap))
+    return TW_SLOTS_PER_RING;
+
+  fast_ring_index = tw->current_index[TW_TIMER_RING_FAST];
+  if (fast_ring_index == TW_SLOTS_PER_RING)
+    fast_ring_index = 0;
+
+  first_expiring_index = clib_bitmap_next_set (tw->fast_slot_bitmap,
+					       fast_ring_index);
+  if (first_expiring_index == ~0 && fast_ring_index != 0)
+    first_expiring_index = clib_bitmap_first_set (tw->fast_slot_bitmap);
+
+  ASSERT (first_expiring_index != ~0);
+
+  delta = (i32) first_expiring_index - (i32) fast_ring_index;
+  if (delta < 0)
+    delta += TW_SLOTS_PER_RING;
+
+  ASSERT (delta >= 0);
+
+  return (u32) delta;
+}
+
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON

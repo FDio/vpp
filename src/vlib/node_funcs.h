@@ -46,6 +46,7 @@
 #define included_vlib_node_funcs_h
 
 #include <vppinfra/fifo.h>
+#include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
 /** \brief Get vlib node by index.
  @warning This function will ASSERT if @c i is out of range.
@@ -428,14 +429,14 @@ vlib_current_process (vlib_main_t * vm)
   return vlib_get_current_process (vm)->node_runtime.node_index;
 }
 
-/** Returns TRUE if a process suspend time is less than 1us
+/** Returns TRUE if a process suspend time is less than 10us
     @param dt - remaining poll time in seconds
-    @returns 1 if dt < 1e-6, 0 otherwise
+    @returns 1 if dt < 10e-6, 0 otherwise
 */
 always_inline uword
 vlib_process_suspend_time_is_zero (f64 dt)
 {
-  return dt < 1e-6;
+  return dt < 10e-6;
 }
 
 /** Suspend a vlib cooperative multi-tasking thread for a period of time
@@ -450,7 +451,6 @@ vlib_process_suspend (vlib_main_t * vm, f64 dt)
   uword r;
   vlib_node_main_t *nm = &vm->node_main;
   vlib_process_t *p = vec_elt (nm->processes, nm->current_process_index);
-  u64 dt_cpu = dt * vm->clib_time.clocks_per_second;
 
   if (vlib_process_suspend_time_is_zero (dt))
     return VLIB_PROCESS_RESUME_LONGJMP_RESUME;
@@ -459,7 +459,8 @@ vlib_process_suspend (vlib_main_t * vm, f64 dt)
   r = clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
   if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
     {
-      p->resume_cpu_time = clib_cpu_time_now () + dt_cpu;
+      /* expiration time in 10us ticks */
+      p->resume_clock_interval = dt * 1e5;
       clib_longjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
     }
 
@@ -718,8 +719,7 @@ vlib_process_wait_for_event_or_clock (vlib_main_t * vm, f64 dt)
   r = clib_setjmp (&p->resume_longjmp, VLIB_PROCESS_RESUME_LONGJMP_SUSPEND);
   if (r == VLIB_PROCESS_RESUME_LONGJMP_SUSPEND)
     {
-      p->resume_cpu_time = (clib_cpu_time_now ()
-			    + (dt * vm->clib_time.clocks_per_second));
+      p->resume_clock_interval = dt * 1e5;
       clib_longjmp (&p->return_longjmp, VLIB_PROCESS_RETURN_LONGJMP_SUSPEND);
     }
 
@@ -834,7 +834,8 @@ vlib_process_signal_event_helper (vlib_node_main_t * nm,
       p->flags = p_flags | VLIB_PROCESS_RESUME_PENDING;
       vec_add1 (nm->data_from_advancing_timing_wheel, x);
       if (delete_from_wheel)
-	timing_wheel_delete (&nm->timing_wheel, x);
+	TW (tw_timer_stop) ((TWT (tw_timer_wheel) *) nm->timing_wheel,
+			    p->stop_timer_handle);
     }
 
   return data_to_be_written_by_caller;
@@ -895,7 +896,6 @@ vlib_process_signal_event_at_time (vlib_main_t * vm,
   else
     {
       vlib_signal_timed_event_data_t *te;
-      u64 dt_cpu = dt * vm->clib_time.clocks_per_second;
 
       pool_get_aligned (nm->signal_timed_event_data_pool, te, sizeof (te[0]));
 
@@ -911,10 +911,12 @@ vlib_process_signal_event_at_time (vlib_main_t * vm,
       te->process_node_index = n->runtime_index;
       te->event_type_index = t;
 
-      timing_wheel_insert (&nm->timing_wheel, clib_cpu_time_now () + dt_cpu,
-			   vlib_timing_wheel_data_set_timed_event (te -
-								   nm->
-								   signal_timed_event_data_pool));
+      p->stop_timer_handle =
+	TW (tw_timer_start) ((TWT (tw_timer_wheel) *) nm->timing_wheel,
+			     vlib_timing_wheel_data_set_timed_event
+			     (te - nm->signal_timed_event_data_pool),
+			     0 /* timer_id */ ,
+			     (vlib_time_now (vm) + dt) * 1e5);
 
       /* Inline data big enough to hold event? */
       if (te->n_data_bytes < sizeof (te->inline_event_data))

@@ -19,6 +19,7 @@
 #include <vnet/vnet.h>
 #include <vnet/lisp-cp/gid_dictionary.h>
 #include <vnet/lisp-cp/lisp_types.h>
+#include <vppinfra/timing_wheel.h>
 
 #define NUMBER_OF_RETRIES                   1
 #define PENDING_MREQ_EXPIRATION_TIME        3.0	/* seconds */
