@@ -98,12 +98,27 @@ STATIC_ASSERT (sizeof (flowprobe_key_t) == FLOWPROBE_KEY_IN_U32 *
 
 typedef struct
 {
+  u32 sec;
+  u32 nsec;
+} timestamp_nsec_t;
+
+typedef struct
+{
   flowprobe_key_t key;
   u64 packetcount;
   u64 octetcount;
+  timestamp_nsec_t flow_start;
+  timestamp_nsec_t flow_end;
   f64 last_updated;
   f64 last_exported;
   u32 passive_timer_handle;
+  union
+  {
+    struct
+    {
+      u16 flags;
+    } tcp;
+  } prot;
 } flowprobe_entry_t;
 
 /**

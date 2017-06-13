@@ -242,6 +242,15 @@ unix_time_now_nsec (void)
   return 1e9 * ts.tv_sec + ts.tv_nsec;
 }
 
+always_inline void
+unix_time_now_nsec_fraction (u32 * sec, u32 * nsec)
+{
+  struct timespec ts;
+  syscall (SYS_clock_gettime, CLOCK_REALTIME, &ts);
+  *sec = ts.tv_sec;
+  *nsec = ts.tv_nsec;
+}
+
 always_inline f64
 unix_usage_now (void)
 {
@@ -272,6 +281,11 @@ always_inline u64
 unix_time_now_nsec (void)
 {
   return 0;
+}
+
+always_inline void
+unix_time_now_nsec_fraction (u32 * sec, u32 * nsec)
+{
 }
 
 always_inline f64

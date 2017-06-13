@@ -3,10 +3,11 @@ import random
 import socket
 import unittest
 import time
+import re
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
-from scapy.layers.inet import IP, UDP
+from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
@@ -14,6 +15,7 @@ from vpp_object import VppObject
 from vpp_pg_interface import CaptureTimeoutError
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
+from vpp_ip_route import VppIpRoute, VppRoutePath
 
 
 class VppCFLOW(VppObject):
@@ -113,7 +115,7 @@ class MethodHolder(VppTestCase):
         super(MethodHolder, cls).setUpClass()
         try:
             # Create pg interfaces
-            cls.create_pg_interfaces(range(7))
+            cls.create_pg_interfaces(range(9))
 
             # Packet sizes
             cls.pg_if_packet_sizes = [64, 512, 1518, 9018]
@@ -140,6 +142,9 @@ class MethodHolder(VppTestCase):
             cls.pg3.resolve_arp()
             cls.pg4.config_ip4()
             cls.pg4.resolve_arp()
+            cls.pg7.config_ip4()
+            cls.pg8.config_ip4()
+            cls.pg8.configure_ipv4_neighbors()
 
             cls.pg5.config_ip6()
             cls.pg5.resolve_ndp()
@@ -176,7 +181,8 @@ class MethodHolder(VppTestCase):
                 p /= IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4)
             else:
                 p /= IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6)
-            p /= (UDP(sport=1234, dport=4321) / Raw(payload))
+            p /= UDP(sport=1234, dport=4321)
+            p /= Raw(payload)
             info.data = p.copy()
             self.extend_packet(p, pkt_size)
             self.pkts.append(p)
@@ -311,12 +317,12 @@ class MethodHolder(VppTestCase):
         return p
 
 
-class Timers(MethodHolder):
+class Flowprobe(MethodHolder):
     """Template verification, timer tests"""
 
     def test_0001(self):
         """ timer less than template timeout"""
-        self.logger.info("FFP_TEST_START_0002")
+        self.logger.info("FFP_TEST_START_0001")
         self.pg_enable_capture(self.pg_interfaces)
         self.pkts = []
 
@@ -327,20 +333,20 @@ class Timers(MethodHolder):
         # template packet should arrive immediately
         templates = ipfix.verify_templates(ipfix_decoder)
 
-        self.create_stream(packets=2)
+        self.create_stream(packets=1)
         self.send_packets()
-        capture = self.pg2.get_capture(2)
+        capture = self.pg2.get_capture(1)
 
         # make sure the one packet we expect actually showed up
         cflow = self.wait_for_cflow_packet(self.collector, templates[1], 15)
         self.verify_cflow_data(ipfix_decoder, capture, cflow)
 
         ipfix.remove_vpp_config()
-        self.logger.info("FFP_TEST_FINISH_0002")
+        self.logger.info("FFP_TEST_FINISH_0001")
 
     def test_0002(self):
         """ timer greater than template timeout"""
-        self.logger.info("FFP_TEST_START_0003")
+        self.logger.info("FFP_TEST_START_0002")
         self.pg_enable_capture(self.pg_interfaces)
         self.pkts = []
 
@@ -364,7 +370,87 @@ class Timers(MethodHolder):
         self.verify_cflow_data(ipfix_decoder, capture, cflow)
 
         ipfix.remove_vpp_config()
-        self.logger.info("FFP_TEST_FINISH_0003")
+        self.logger.info("FFP_TEST_FINISH_0002")
+
+    def test_cflow_packet(self):
+        """verify cflow packet fields"""
+        self.logger.info("FFP_TEST_START_0000")
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pkts = []
+
+        ipfix = VppCFLOW(test=self, intf='pg8', datapath="ip4",
+                         layer='l2 l3 l4', active=2)
+        ipfix.add_vpp_config()
+
+        route_9001 = VppIpRoute(self, "9.0.0.0", 24,
+                                [VppRoutePath(self.pg8._remote_hosts[0].ip4,
+                                              self.pg8.sw_if_index)])
+        route_9001.add_vpp_config()
+
+        ipfix_decoder = IPFIXDecoder()
+        templates = ipfix.verify_templates(ipfix_decoder, count=1)
+
+        self.pkts = [(Ether(dst=self.pg7.local_mac,
+                            src=self.pg7.remote_mac) /
+                      IP(src=self.pg7.remote_ip4, dst="9.0.0.100") /
+                      TCP(sport=1234, dport=4321, flags=80) /
+                      Raw('\xa5' * 100))]
+
+        nowUTC = int(time.time())
+        nowUNIX = nowUTC+2208988800
+        self.send_packets(src_if=self.pg7, dst_if=self.pg8)
+
+        cflow = self.wait_for_cflow_packet(self.collector, templates[0], 10)
+        self.collector.get_capture(2)
+
+        if cflow[0].haslayer(IPFIX):
+            self.assertEqual(cflow[IPFIX].version, 10)
+            self.assertEqual(cflow[IPFIX].observationDomainID, 1)
+            self.assertEqual(cflow[IPFIX].sequenceNumber, 0)
+            self.assertAlmostEqual(cflow[IPFIX].exportTime, nowUTC, delta=5)
+        if cflow.haslayer(Data):
+            record = ipfix_decoder.decode_data_set(cflow[0].getlayer(Set))[0]
+            # ingress interface
+            self.assertEqual(int(record[10].encode('hex'), 16), 8)
+            # egress interface
+            self.assertEqual(int(record[14].encode('hex'), 16), 9)
+            # packets
+            self.assertEqual(int(record[2].encode('hex'), 16), 1)
+            # src mac
+            self.assertEqual(':'.join(re.findall('..', record[56].encode(
+                'hex'))), self.pg8.local_mac)
+            # dst mac
+            self.assertEqual(':'.join(re.findall('..', record[80].encode(
+                'hex'))), self.pg8.remote_mac)
+            flowTimestamp = int(record[156].encode('hex'), 16) >> 32
+            # flow start timestamp
+            self.assertAlmostEqual(flowTimestamp, nowUNIX, delta=1)
+            flowTimestamp = int(record[157].encode('hex'), 16) >> 32
+            # flow end timestamp
+            self.assertAlmostEqual(flowTimestamp, nowUNIX, delta=1)
+            # ethernet type
+            self.assertEqual(int(record[256].encode('hex'), 16), 8)
+            # src ip
+            self.assertEqual('.'.join(re.findall('..', record[8].encode(
+                                      'hex'))),
+                             '.'.join('{:02x}'.format(int(n)) for n in
+                                      self.pg7.remote_ip4.split('.')))
+            # dst ip
+            self.assertEqual('.'.join(re.findall('..', record[12].encode(
+                                      'hex'))),
+                             '.'.join('{:02x}'.format(int(n)) for n in
+                                      "9.0.0.100".split('.')))
+            # protocol (TCP)
+            self.assertEqual(int(record[4].encode('hex'), 16), 6)
+            # src port
+            self.assertEqual(int(record[7].encode('hex'), 16), 1234)
+            # dst port
+            self.assertEqual(int(record[11].encode('hex'), 16), 4321)
+            # tcp flags
+            self.assertEqual(int(record[6].encode('hex'), 16), 80)
+
+        ipfix.remove_vpp_config()
+        self.logger.info("FFP_TEST_FINISH_0000")
 
 
 class Datapath(MethodHolder):

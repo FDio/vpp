@@ -21,6 +21,7 @@
 #include <vppinfra/error.h>
 #include <flowprobe/flowprobe.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vlibmemory/api.h>
 
 static void flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e);
 
@@ -144,6 +145,11 @@ flowprobe_get_variant (flowprobe_variant_t which,
   return which;
 }
 
+/*
+ * NTP rfc868 : 2 208 988 800 corresponds to 00:00  1 Jan 1970 GMT
+ */
+#define NTP_TIMESTAMP 2208988800L
+
 static inline u32
 flowprobe_common_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
 {
@@ -163,6 +169,22 @@ flowprobe_common_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
   u64 packetdelta = clib_host_to_net_u64 (e->packetcount);
   clib_memcpy (to_b->data + offset, &packetdelta, sizeof (u64));
   offset += sizeof (u64);
+
+  /* flowStartNanoseconds */
+  u32 t = clib_host_to_net_u32 (e->flow_start.sec + NTP_TIMESTAMP);
+  clib_memcpy (to_b->data + offset, &t, sizeof (u32));
+  offset += sizeof (u32);
+  t = clib_host_to_net_u32 (e->flow_start.nsec);
+  clib_memcpy (to_b->data + offset, &t, sizeof (u32));
+  offset += sizeof (u32);
+
+  /* flowEndNanoseconds */
+  t = clib_host_to_net_u32 (e->flow_end.sec + NTP_TIMESTAMP);
+  clib_memcpy (to_b->data + offset, &t, sizeof (u32));
+  offset += sizeof (u32);
+  t = clib_host_to_net_u32 (e->flow_end.nsec);
+  clib_memcpy (to_b->data + offset, &t, sizeof (u32));
+  offset += sizeof (u32);
 
   return offset - start;
 }
@@ -252,6 +274,11 @@ flowprobe_l4_add (vlib_buffer_t * to_b, flowprobe_entry_t * e, u16 offset)
   clib_memcpy (to_b->data + offset, &e->key.dst_port, 2);
   offset += 2;
 
+  /* tcp control bits */
+  u16 control_bits = htons (e->prot.tcp.flags);
+  clib_memcpy (to_b->data + offset, &control_bits, 2);
+  offset += 2;
+
   return offset - start;
 }
 
@@ -328,7 +355,7 @@ flowprobe_create (u32 my_cpu_number, flowprobe_key_t * k, u32 * poolindex)
 static inline void
 add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  flowprobe_main_t * fm, vlib_buffer_t * b,
-			  u64 timestamp, u16 length,
+			  timestamp_nsec_t timestamp, u16 length,
 			  flowprobe_variant_t which, flowprobe_trace_t * t)
 {
   if (fm->disabled)
@@ -348,6 +375,8 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
   ip4_header_t *ip4 = 0;
   ip6_header_t *ip6 = 0;
   udp_header_t *udp = 0;
+  tcp_header_t *tcp = 0;
+  u8 tcp_flags = 0;
 
   if (flags & FLOW_RECORD_L3 || flags & FLOW_RECORD_L4)
     {
@@ -369,7 +398,6 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (collect_ip6 && ethertype == ETHERNET_TYPE_IP6)
     {
       ip6 = (ip6_header_t *) (eth + 1);
-      udp = (udp_header_t *) (ip6 + 1);
       if (flags & FLOW_RECORD_L3)
 	{
 	  k.src_address.as_u64[0] = ip6->src_address.as_u64[0];
@@ -378,26 +406,41 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  k.dst_address.as_u64[1] = ip6->dst_address.as_u64[1];
 	}
       k.protocol = ip6->protocol;
+      if (k.protocol == IP_PROTOCOL_UDP)
+	udp = (udp_header_t *) (ip6 + 1);
+      else if (k.protocol == IP_PROTOCOL_TCP)
+	tcp = (tcp_header_t *) (ip6 + 1);
+
       octets = clib_net_to_host_u16 (ip6->payload_length)
 	+ sizeof (ip6_header_t);
     }
   if (collect_ip4 && ethertype == ETHERNET_TYPE_IP4)
     {
       ip4 = (ip4_header_t *) (eth + 1);
-      udp = (udp_header_t *) (ip4 + 1);
       if (flags & FLOW_RECORD_L3)
 	{
 	  k.src_address.ip4.as_u32 = ip4->src_address.as_u32;
 	  k.dst_address.ip4.as_u32 = ip4->dst_address.as_u32;
 	}
       k.protocol = ip4->protocol;
+      if ((flags & FLOW_RECORD_L4) && k.protocol == IP_PROTOCOL_UDP)
+	udp = (udp_header_t *) (ip4 + 1);
+      else if ((flags & FLOW_RECORD_L4) && k.protocol == IP_PROTOCOL_TCP)
+	tcp = (tcp_header_t *) (ip4 + 1);
+
       octets = clib_net_to_host_u16 (ip4->length);
     }
-  if ((flags & FLOW_RECORD_L4) && udp &&
-      (k.protocol == IP_PROTOCOL_TCP || k.protocol == IP_PROTOCOL_UDP))
+
+  if (udp)
     {
       k.src_port = udp->src_port;
       k.dst_port = udp->dst_port;
+    }
+  else if (tcp)
+    {
+      k.src_port = tcp->src_port;
+      k.dst_port = tcp->dst_port;
+      tcp_flags = tcp->flags;
     }
 
   if (t)
@@ -436,6 +479,7 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  e = flowprobe_create (my_cpu_number, &k, &poolindex);
 	  e->last_exported = now;
+	  e->flow_start = timestamp;
 	}
     }
   else
@@ -450,7 +494,8 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
       e->packetcount++;
       e->octetcount += octets;
       e->last_updated = now;
-
+      e->flow_end = timestamp;
+      e->prot.tcp.flags |= tcp_flags;
       if (fm->active_timer == 0
 	  || (now > e->last_exported + fm->active_timer))
 	flowprobe_export_entry (vm, e);
@@ -677,10 +722,9 @@ flowprobe_node_fn (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   flowprobe_next_t next_index;
   flowprobe_main_t *fm = &flowprobe_main;
-  u64 now;
+  timestamp_nsec_t timestamp;
 
-  now = (u64) ((vlib_time_now (vm) - fm->vlib_time_0) * 1e9);
-  now += fm->nanosecond_time_0;
+  unix_time_now_nsec_fraction (&timestamp.sec, &timestamp.nsec);
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -735,7 +779,7 @@ flowprobe_node_fn (vlib_main_t * vm,
 	  u16 ethertype0 = clib_net_to_host_u16 (eh0->type);
 
 	  if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_state (vm, node, fm, b0, now, len0,
+	    add_to_flow_record_state (vm, node, fm, b0, timestamp, len0,
 				      flowprobe_get_variant
 				      (which, fm->context[which].flags,
 				       ethertype0), 0);
@@ -745,7 +789,7 @@ flowprobe_node_fn (vlib_main_t * vm,
 	  u16 ethertype1 = clib_net_to_host_u16 (eh1->type);
 
 	  if (PREDICT_TRUE ((b1->flags & VLIB_BUFFER_FLOW_REPORT) == 0))
-	    add_to_flow_record_state (vm, node, fm, b1, now, len1,
+	    add_to_flow_record_state (vm, node, fm, b1, timestamp, len1,
 				      flowprobe_get_variant
 				      (which, fm->context[which].flags,
 				       ethertype1), 0);
@@ -787,7 +831,7 @@ flowprobe_node_fn (vlib_main_t * vm,
 				 && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 		t = vlib_add_trace (vm, node, b0, sizeof (*t));
 
-	      add_to_flow_record_state (vm, node, fm, b0, now, len0,
+	      add_to_flow_record_state (vm, node, fm, b0, timestamp, len0,
 					flowprobe_get_variant
 					(which, fm->context[which].flags,
 					 ethertype0), t);

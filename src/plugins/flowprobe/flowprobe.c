@@ -164,7 +164,7 @@ flowprobe_template_l2_fields (ipfix_field_specifier_t * f)
 static inline ipfix_field_specifier_t *
 flowprobe_template_common_fields (ipfix_field_specifier_t * f)
 {
-#define flowprobe_template_common_field_count() 3
+#define flowprobe_template_common_field_count() 5
   /* ingressInterface, TLV type 10, u32 */
   f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
 				      ingressInterface, 4);
@@ -180,13 +180,23 @@ flowprobe_template_common_fields (ipfix_field_specifier_t * f)
 				      packetDeltaCount, 8);
   f++;
 
+  /* flowStartNanoseconds, TLV type 156, u64 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      flowStartNanoseconds, 8);
+  f++;
+
+  /* flowEndNanoseconds, TLV type 157, u64 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      flowEndNanoseconds, 8);
+  f++;
+
   return f;
 }
 
 static inline ipfix_field_specifier_t *
 flowprobe_template_l4_fields (ipfix_field_specifier_t * f)
 {
-#define flowprobe_template_l4_field_count() 2
+#define flowprobe_template_l4_field_count() 3
   /* sourceTransportPort, TLV type 7, u16 */
   f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
 				      sourceTransportPort, 2);
@@ -195,6 +205,11 @@ flowprobe_template_l4_fields (ipfix_field_specifier_t * f)
   f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
 				      destinationTransportPort, 2);
   f++;
+  /* tcpControlBits, TLV type 6, u16 */
+  f->e_id_length = ipfix_e_id_length (0 /* enterprise */ ,
+				      tcpControlBits, 2);
+  f++;
+
   return f;
 }
 
