@@ -25,6 +25,8 @@
 #undef LOG2_TW_TIMERS_PER_OBJECT
 #undef TW_SUFFIX
 #undef TW_OVERFLOW_VECTOR
+#undef TW_FAST_WHEEL_BITMAP
+#undef TW_TIMER_ALLOW_DUPLICATE_STOP
 
 #define TW_TIMER_WHEELS 3
 #define TW_SLOTS_PER_RING 1024
@@ -34,6 +36,8 @@
 #define LOG2_TW_TIMERS_PER_OBJECT 0
 #define TW_SUFFIX _1t_3w_1024sl_ov
 #define TW_OVERFLOW_VECTOR 1
+#define TW_FAST_WHEEL_BITMAP 1
+#define TW_TIMER_ALLOW_DUPLICATE_STOP 1
 
 #include <vppinfra/tw_timer_template.h>
 
