@@ -41,6 +41,7 @@
 #include <vppinfra/format.h>
 #include <vlib/vlib.h>
 #include <vlib/threads.h>
+#include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
 #include <vlib/unix/cj.h>
 
@@ -1341,9 +1342,16 @@ dispatch_process (vlib_main_t * vm,
       p->suspended_process_frame_index = pf - nm->suspended_process_frames;
 
       if (p->flags & VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK)
-	timing_wheel_insert (&nm->timing_wheel, p->resume_cpu_time,
-			     vlib_timing_wheel_data_set_suspended_process
-			     (node->runtime_index));
+	{
+	  TWT (tw_timer_wheel) * tw =
+	    (TWT (tw_timer_wheel) *) nm->timing_wheel;
+	  p->stop_timer_handle =
+	    TW (tw_timer_start) (tw,
+				 vlib_timing_wheel_data_set_suspended_process
+				 (node->runtime_index) /* [sic] pool idex */ ,
+				 0 /* timer_id */ ,
+				 p->resume_clock_interval);
+	}
     }
   else
     p->flags &= ~VLIB_PROCESS_IS_RUNNING;
@@ -1416,9 +1424,14 @@ dispatch_suspended_process (vlib_main_t * vm,
       n_vectors = 0;
       p->n_suspends += 1;
       if (p->flags & VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK)
-	timing_wheel_insert (&nm->timing_wheel, p->resume_cpu_time,
-			     vlib_timing_wheel_data_set_suspended_process
-			     (node->runtime_index));
+	{
+	  p->stop_timer_handle =
+	    TW (tw_timer_start) ((TWT (tw_timer_wheel) *) nm->timing_wheel,
+				 vlib_timing_wheel_data_set_suspended_process
+				 (node->runtime_index) /* [sic] pool idex */ ,
+				 0 /* timer_id */ ,
+				 p->resume_clock_interval);
+	}
     }
   else
     {
@@ -1464,17 +1477,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
     }
   else
     cpu_time_now = clib_cpu_time_now ();
-
-  /* Arrange for first level of timing wheel to cover times we care
-     most about. */
-  if (is_main)
-    {
-      nm->timing_wheel.min_sched_time = 10e-6;
-      nm->timing_wheel.max_sched_time = 10e-3;
-      timing_wheel_init (&nm->timing_wheel,
-			 cpu_time_now, vm->clib_time.clocks_per_second);
-      vec_alloc (nm->data_from_advancing_timing_wheel, 32);
-    }
 
   /* Pre-allocate interupt runtime indices and lock. */
   vec_alloc (nm->pending_interrupt_node_runtime_indices, 32);
@@ -1561,12 +1563,15 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       if (is_main)
 	{
 	  /* Check if process nodes have expired from timing wheel. */
-	  nm->data_from_advancing_timing_wheel
-	    = timing_wheel_advance (&nm->timing_wheel, cpu_time_now,
-				    nm->data_from_advancing_timing_wheel,
-				    &nm->cpu_time_next_process_ready);
+	  ASSERT (nm->data_from_advancing_timing_wheel != 0);
+
+	  nm->data_from_advancing_timing_wheel =
+	    TW (tw_timer_expire_timers_vec)
+	    ((TWT (tw_timer_wheel) *) nm->timing_wheel, vlib_time_now (vm),
+	     nm->data_from_advancing_timing_wheel);
 
 	  ASSERT (nm->data_from_advancing_timing_wheel != 0);
+
 	  if (PREDICT_FALSE
 	      (_vec_len (nm->data_from_advancing_timing_wheel) > 0))
 	    {
@@ -1612,8 +1617,6 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 			dispatch_suspended_process (vm, di, cpu_time_now);
 		    }
 		}
-
-	      /* Reset vector. */
 	      _vec_len (nm->data_from_advancing_timing_wheel) = 0;
 	    }
 	}
@@ -1692,6 +1695,7 @@ int
 vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 {
   clib_error_t *volatile error;
+  vlib_node_main_t *nm = &vm->node_main;
 
   vm->queue_signal_callback = dummy_queue_signal_callback;
 
@@ -1745,6 +1749,18 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
   vlib_buffer_get_or_create_free_list (vm,
 				       VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES,
 				       "default");
+
+  nm->timing_wheel = clib_mem_alloc_aligned (sizeof (TWT (tw_timer_wheel)),
+					     CLIB_CACHE_LINE_BYTES);
+
+  vec_validate (nm->data_from_advancing_timing_wheel, 10);
+  _vec_len (nm->data_from_advancing_timing_wheel) = 0;
+
+  /* Create the process timing wheel */
+  TW (tw_timer_wheel_init) ((TWT (tw_timer_wheel) *) nm->timing_wheel,
+			    0 /* no callback */ ,
+			    10e-6 /* timer period 10us */ ,
+			    ~0 /* max expirations per call */ );
 
   switch (clib_setjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_NONE))
     {

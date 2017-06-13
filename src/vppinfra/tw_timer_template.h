@@ -19,6 +19,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/pool.h>
+#include <vppinfra/bitmap.h>
 
 #ifndef _twt
 #define _twt(a,b) a##b##_t
@@ -202,6 +203,11 @@ typedef struct
   tw_timer_wheel_slot_t overflow;
 #endif
 
+#if TW_FAST_WHEEL_BITMAP > 0
+  /** Fast wheel slot occupancy bitmap */
+  uword *fast_slot_bitmap;
+#endif
+
   /** expired timer callback, receives a vector of handles */
   void (*expired_timer_callback) (u32 * expired_timer_handles);
 
@@ -226,6 +232,9 @@ void TW (tw_timer_wheel_free) (TWT (tw_timer_wheel) * tw);
 u32 *TW (tw_timer_expire_timers) (TWT (tw_timer_wheel) * tw, f64 now);
 u32 *TW (tw_timer_expire_timers_vec) (TWT (tw_timer_wheel) * tw, f64 now,
 				      u32 * vec);
+#if TW_FAST_WHEEL_BITMAP
+u32 TW (tw_timer_first_expires_in_ticks) (TWT (tw_timer_wheel) * tw);
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
