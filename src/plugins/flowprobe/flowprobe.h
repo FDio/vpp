@@ -101,9 +101,18 @@ typedef struct
   flowprobe_key_t key;
   u64 packetcount;
   u64 octetcount;
+  f64 flow_start;
+  f64 flow_end;
   f64 last_updated;
   f64 last_exported;
   u32 passive_timer_handle;
+  union
+  {
+    struct
+    {
+      u16 flags;
+    } tcp;
+  } prot;
 } flowprobe_entry_t;
 
 /**
