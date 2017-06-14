@@ -89,7 +89,8 @@ _(HIT,           "L2 forward hits")			\
 _(BVI_BAD_MAC,   "BVI L3 MAC mismatch")  		\
 _(BVI_ETHERTYPE, "BVI packet with unhandled ethertype")	\
 _(FILTER_DROP,   "Filter Mac Drop")			\
-_(REFLECT_DROP,  "Reflection Drop")
+_(REFLECT_DROP,  "Reflection Drop")			\
+_(STALE_DROP,    "Stale entry Drop")
 
 typedef enum
 {
@@ -152,8 +153,19 @@ l2fwd_process (vlib_main_t * vm,
 
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = result0->fields.sw_if_index;
       *next0 = L2FWD_NEXT_L2_OUTPUT;
+      int l2fib_seq_num_valid = 1;
+      if (!result0->fields.static_mac)
+	{
+	  /* check l2fib seq num for deleted entries */
+	  l2fib_seq_num_t in_sn = {.as_u16 = vnet_buffer (b0)->l2.l2fib_sn };
+	  l2fib_seq_num_t expected_sn = {
+	    .bd = in_sn.bd,
+	    .swif = *l2fib_swif_seq_num (result0->fields.sw_if_index),
+	  };
+	  l2fib_seq_num_valid =
+	    expected_sn.as_u16 == result0->fields.sn.as_u16;
+	}
 
-      /* perform reflection check */
       if (PREDICT_FALSE (sw_if_index0 == result0->fields.sw_if_index))
 	{
 	  b0->error = node->errors[L2FWD_ERROR_REFLECT_DROP];
@@ -190,6 +202,13 @@ l2fwd_process (vlib_main_t * vm,
 		  *next0 = L2FWD_NEXT_DROP;
 		}
 	    }
+	}
+      else if (PREDICT_FALSE (!l2fib_seq_num_valid))
+	{
+	  b0->error = node->errors[L2FWD_ERROR_STALE_DROP];
+	  *next0 = L2FWD_NEXT_DROP;
+
+	  /* perform reflection check */
 	}
     }
 }
