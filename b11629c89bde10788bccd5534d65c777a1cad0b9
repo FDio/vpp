@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "fa5d592f_fb36b702",
+        "filename": "src/plugins/acl/bihash_48_8.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2017-06-14T08:34:45Z",
+      "side": 1,
+      "message": "Sure but that\u0027s not what I meant with my comment.\nI was suggesting to move your CRC code to src/vppinfra/crc32.h so that here you could simply have:\n\nstatic inline u64\nclib_bihash_hash_48_8 (const clib_bihash_kv_48_8_t * v)\n{\n  return clib_crc32c ((u8 *) v-\u003ekey, 48);\n}\n\nAll the logic around whether SSE4.2 instructions could be used would reside in a single place (being the the crc32.h)...",
+      "parentUuid": "fa5d592f_202d3a47",
+      "range": {
+        "startLine": 50,
+        "startChar": 6,
+        "endLine": 50,
+        "endChar": 9
+      },
+      "revId": "b11629c89bde10788bccd5534d65c777a1cad0b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa5d592f_c0f89ee7",
         "filename": "src/plugins/acl/fa_node.c",
         "patchSetId": 3
