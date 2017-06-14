@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "fa5d592f_f0637118",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 667,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-06-14T17:54:40Z",
+      "side": 1,
+      "message": "Hm, redirect with connect_uri works fine and it doesn\u0027t need any of this. To avoid duplicating this sort of checks, could you confirm the problem is still there after the fix lower?",
+      "parentUuid": "fa5d592f_d0c18de5",
+      "range": {
+        "startLine": 659,
+        "startChar": 0,
+        "endLine": 667,
+        "endChar": 57
+      },
+      "revId": "11151f1c1c66f8abc16e7fd2a57a18187b66b9c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa5d592f_7089c1c9",
         "filename": "src/vnet/session/session_api.c",
         "patchSetId": 1
@@ -84,6 +108,30 @@
       "side": 1,
       "message": "The memcpy below used to copy the ip4 address into the pad field.  For an unknonwn reason, the pad was put before the ip4 address in the definition of ip46_address_t:\n\ntypedef CLIB_PACKED (union {\n  struct {\n    u32 pad[3];\n    ip4_address_t ip4;\n  };\n  ip6_address_t ip6;\n  u8 as_u8[16];\n  u64 as_u64[2];\n}) ip46_address_t;\n\nI tried swapping the order of pad \u0026 ip4_address_t, but that caused all sort of bad juju.\n\nInitialization of is_ip4 \u0026 proto was added for completeness.",
       "parentUuid": "fa5d592f_7089c1c9",
+      "range": {
+        "startLine": 672,
+        "startChar": 6,
+        "endLine": 674,
+        "endChar": 33
+      },
+      "revId": "11151f1c1c66f8abc16e7fd2a57a18187b66b9c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_30aa291a",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-06-14T17:54:40Z",
+      "side": 1,
+      "message": "Ah. So the other option would be memsetting to 0 and copying everything. Anyway this works :)",
+      "parentUuid": "fa5d592f_90bb1572",
       "range": {
         "startLine": 672,
         "startChar": 6,
