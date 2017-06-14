@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_f095b1e4",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 667,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-06-14T16:55:51Z",
+      "side": 1,
+      "message": "This is implicitly done in redirect_connect_callback(). Any particular reason why it would be needed here? Also application_lookup should make sure we don\u0027t have invalid clients here.",
+      "range": {
+        "startLine": 659,
+        "startChar": 0,
+        "endLine": 667,
+        "endChar": 57
+      },
+      "revId": "11151f1c1c66f8abc16e7fd2a57a18187b66b9c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_7089c1c9",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-06-14T16:55:51Z",
+      "side": 1,
+      "message": "Not saying no but have you noticed issues with this, apart from is_ip4 not being properly initialized?",
+      "range": {
+        "startLine": 672,
+        "startChar": 6,
+        "endLine": 674,
+        "endChar": 33
+      },
+      "revId": "11151f1c1c66f8abc16e7fd2a57a18187b66b9c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
