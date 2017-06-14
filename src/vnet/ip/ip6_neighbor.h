@@ -87,6 +87,9 @@ extern int vnet_unset_ip6_ethernet_neighbor (vlib_main_t * vm,
 extern int ip6_neighbor_proxy_add_del (u32 sw_if_index,
 				       ip6_address_t * addr, u8 is_add);
 
+u32 ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index,
+				       u32 is_add);
+
 #endif /* included_ip6_neighbor_h */
 
 /*
