@@ -462,11 +462,15 @@ fib_entry_get_adj (fib_node_index_t fib_entry_index)
     const dpo_id_t *dpo;
 
     dpo = fib_entry_contribute_ip_forwarding(fib_entry_index);
-    dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
 
-    if (dpo_is_adj(dpo))
+    if (dpo_id_is_valid(dpo))
     {
-	return (dpo->dpoi_index);
+        dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
+
+        if (dpo_is_adj(dpo))
+        {
+            return (dpo->dpoi_index);
+        }
     }
     return (ADJ_INDEX_INVALID);
 }

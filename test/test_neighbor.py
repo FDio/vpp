@@ -142,7 +142,7 @@ class ARPTestCase(VppTestCase):
         #
         # Generate some hosts on the LAN
         #
-        self.pg1.generate_remote_hosts(10)
+        self.pg1.generate_remote_hosts(11)
 
         #
         # Send IP traffic to one of these unresolved hosts.
@@ -496,6 +496,65 @@ class ARPTestCase(VppTestCase):
                              self.pg1._remote_hosts[9].ip4)
 
         #
+        # Add a hierachy of routes for a host in the sub-net.
+        # Should still get an ARP resp since the cover is attached
+        #
+        p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg1.remote_mac) /
+             ARP(op="who-has",
+                 hwsrc=self.pg1.remote_mac,
+                 pdst=self.pg1.local_ip4,
+                 psrc=self.pg1.remote_hosts[10].ip4))
+
+        r1 = VppIpRoute(self, self.pg1.remote_hosts[10].ip4, 30,
+                        [VppRoutePath(self.pg1.remote_hosts[10].ip4,
+                                      self.pg1.sw_if_index)])
+        r1.add_vpp_config()
+
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg1.get_capture(1)
+        self.verify_arp_resp(rx[0],
+                             self.pg1.local_mac,
+                             self.pg1.remote_mac,
+                             self.pg1.local_ip4,
+                             self.pg1.remote_hosts[10].ip4)
+
+        r2 = VppIpRoute(self, self.pg1.remote_hosts[10].ip4, 32,
+                        [VppRoutePath(self.pg1.remote_hosts[10].ip4,
+                                      self.pg1.sw_if_index)])
+        r2.add_vpp_config()
+
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg1.get_capture(1)
+        self.verify_arp_resp(rx[0],
+                             self.pg1.local_mac,
+                             self.pg1.remote_mac,
+                             self.pg1.local_ip4,
+                             self.pg1.remote_hosts[10].ip4)
+
+        #
+        # add an ARP entry that's not on the sub-net and so whose
+        # adj-fib fails the refinement check. then send an ARP request
+        # from that source
+        #
+        a1 = VppNeighbor(self,
+                         self.pg0.sw_if_index,
+                         self.pg0.remote_mac,
+                         "100.100.100.50")
+        a1.add_vpp_config()
+
+        p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
+             ARP(op="who-has",
+                 hwsrc=self.pg0.remote_mac,
+                 psrc="100.100.100.50",
+                 pdst=self.pg0.remote_ip4))
+        self.send_and_assert_no_replies(self.pg0, p,
+                                        "ARP req for from failed adj-fib")
+
+        #
         # ERROR Cases
         #  1 - don't respond to ARP request for address not within the
         #      interface's sub-net
@@ -536,7 +595,8 @@ class ARPTestCase(VppTestCase):
         #
         #  2 - don't respond to ARP request from an address not within the
         #      interface's sub-net
-        #
+        #   2b - to a prxied address
+        #   2c - not within a differents interface's sub-net
         p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
              ARP(op="who-has",
                  hwsrc=self.pg0.remote_mac,
@@ -552,6 +612,13 @@ class ARPTestCase(VppTestCase):
         self.send_and_assert_no_replies(
             self.pg0, p,
             "ARP req for non-local source - unnum")
+        p = (Ether(dst="ff:ff:ff:ff:ff:ff", src=self.pg0.remote_mac) /
+             ARP(op="who-has",
+                 hwsrc=self.pg0.remote_mac,
+                 psrc=self.pg1.remote_ip4,
+                 pdst=self.pg0.local_ip4))
+        self.send_and_assert_no_replies(self.pg0, p,
+                                        "ARP req for non-local source 2c")
 
         #
         #  3 - don't respond to ARP request from an address that belongs to
@@ -588,6 +655,7 @@ class ARPTestCase(VppTestCase):
         # need this to flush the adj-fibs
         self.pg2.unset_unnumbered(self.pg1.sw_if_index)
         self.pg2.admin_down()
+        self.pg1.admin_down()
 
     def test_proxy_arp(self):
         """ Proxy ARP """
