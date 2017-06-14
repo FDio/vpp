@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "fa5d592f_9049d58d",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 667,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-06-14T18:19:38Z",
+      "side": 1,
+      "message": "There is a latent memory trashing bug here because redirect_connect_callback() casts mp to the uri msg type:\n\n   vl_api_connect_uri_t *mp \u003d mp_arg;\n\nBut in this code the mp is a vl_api_connect_sock_t, which has the client_queue_address at an entirely different location.  So in this code path redirect_connect_callback() is writing somewhere past the end of the vl_api_connect_sock_t structure!\n\nWe either need to rationalize the 2 message buffers, or somehow indicate to redirect_connect_callback() what type msg_arg is pointing to...\n\nNeither solution is very elegant, but IMHO the latter is the more correct one.  Your call.",
+      "parentUuid": "fa5d592f_f0637118",
+      "range": {
+        "startLine": 659,
+        "startChar": 0,
+        "endLine": 667,
+        "endChar": 57
+      },
+      "revId": "11151f1c1c66f8abc16e7fd2a57a18187b66b9c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa5d592f_7089c1c9",
         "filename": "src/vnet/session/session_api.c",
         "patchSetId": 1
