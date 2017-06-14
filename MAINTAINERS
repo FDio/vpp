@@ -122,6 +122,11 @@ M:	Ole Troan <ot@cisco.com>
 F:	src/plugins/sixrd/
 F:	src/plugins/sixrd.am
 
+Plugin - GTPU
+M:      Hongjun Ni <hongjun.ni@intel.com>
+F:      src/plugins/gtpu/
+F:      src/plugins/gtpu.am
+
 Test Infrastructure
 M:	Klement Sekera <ksekera@cisco.com>
 F:	test/
