@@ -39,6 +39,7 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6_neighbor.h>
 #include <vnet/ethernet/ethernet.h>	/* for ethernet_header_t */
 #include <vnet/srp/srp.h>	/* for srp_hw_interface_class */
 #include <vppinfra/cache.h>
@@ -687,6 +688,26 @@ ip6_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
   vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
+
+  if (!is_add)
+    {
+      /* Ensure that IPv6 is disabled */
+      ip6_main_t *im6 = &ip6_main;
+      ip_lookup_main_t *lm6 = &im6->lookup_main;
+      ip_interface_address_t *ia = 0;
+      ip6_address_t *address;
+      vlib_main_t *vm = vlib_get_main ();
+
+      ip6_neighbor_sw_interface_add_del (vnm, sw_if_index, 0 /* is_add */ );
+      /* *INDENT-OFF* */
+      foreach_ip_interface_address (lm6, ia, sw_if_index, 1 /* honor unnumbered */,
+      ({
+        address = ip_interface_address_get_address (lm6, ia);
+        ip6_add_del_interface_address(vm, sw_if_index, address, ia->address_length, 1);
+      }));
+      /* *INDENT-ON* */
+      ip6_mfib_interface_enable_disable (sw_if_index, 0);
+    }
 
   vnet_feature_enable_disable ("ip6-unicast", "ip6-drop", sw_if_index,
 			       is_add, 0, 0);
