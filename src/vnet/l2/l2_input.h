@@ -53,9 +53,6 @@ typedef struct
   /* split horizon group */
   u8 shg;
 
-  /* sequence number for interface based flush of MACs */
-  u8 seq_num;
-
 } l2_input_config_t;
 
 

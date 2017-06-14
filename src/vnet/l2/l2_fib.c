@@ -47,6 +47,9 @@ typedef struct
   /* hash table */
   BVT (clib_bihash) mac_table;
 
+  /* per swif vector of sequence number for interface based flush of MACs */
+  u8 *swif_seq_num;
+
   /* convenience variables */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -305,11 +308,10 @@ VLIB_CLI_COMMAND (clear_l2fib_cli, static) = {
 static inline l2fib_seq_num_t
 l2fib_cur_seq_num (u32 bd_index, u32 sw_if_index)
 {
-  l2_input_config_t *int_config = l2input_intf_config (sw_if_index);
   l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);
   /* *INDENT-OFF* */
   return (l2fib_seq_num_t) {
-    .swif = int_config->seq_num,
+    .swif = *l2fib_swif_seq_num (sw_if_index),
     .bd = bd_config->seq_num,
   };
   /* *INDENT-ON* */
@@ -742,14 +744,21 @@ l2fib_start_ager_scan (vlib_main_t * vm)
 			     L2_MAC_AGE_PROCESS_EVENT_ONE_PASS, 0);
 }
 
+u8 *
+l2fib_swif_seq_num (u32 sw_if_index)
+{
+  l2fib_main_t *mp = &l2fib_main;
+  vec_validate (mp->swif_seq_num, sw_if_index);
+  return vec_elt_at_index (mp->swif_seq_num, sw_if_index);
+}
+
 /**
     Flush all non static MACs from an interface
 */
 void
 l2fib_flush_int_mac (vlib_main_t * vm, u32 sw_if_index)
 {
-  l2_input_config_t *int_config = l2input_intf_config (sw_if_index);
-  int_config->seq_num += 1;
+  *l2fib_swif_seq_num (sw_if_index) += 1;
   l2fib_start_ager_scan (vm);
 }
 

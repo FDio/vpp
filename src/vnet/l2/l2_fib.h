@@ -352,6 +352,9 @@ u8 *format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args);
 
 BVT (clib_bihash) * get_mac_table (void);
 
+     u8 *
+     l2fib_swif_seq_num (u32 sw_if_index);
+
 #endif
 
 /*
