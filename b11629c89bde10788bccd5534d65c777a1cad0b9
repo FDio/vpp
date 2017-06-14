@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "fa5d592f_cd657646",
+        "filename": "src/plugins/acl/bihash_48_8.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-06-14T11:24:44Z",
+      "side": 1,
+      "message": "Oh, but then a bunch of XORs followed by a magic hash is not a crc32 :) That said, maybe it makes sense to just ditch the magic hash and just do the crc32 like you say - I think will depend on the perf test results. But I would be very much inclined to do that indeed, as the current \"hash\" gives perfect collision whenever e.g. source and destination IPs increment - hardly an effective one! This template code is not mine, I parroted it from elsewhere in VPP, only changed the numbers. But I\u0027ve stuck \"return clib_crc32c ((u8 *) v-\u003ekey, N);\" in the front of both 48 and 40 byte hash functions, and let\u0027s see how it behaves.",
+      "parentUuid": "fa5d592f_fb36b702",
+      "range": {
+        "startLine": 50,
+        "startChar": 6,
+        "endLine": 50,
+        "endChar": 9
+      },
+      "revId": "b11629c89bde10788bccd5534d65c777a1cad0b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa5d592f_c0f89ee7",
         "filename": "src/plugins/acl/fa_node.c",
         "patchSetId": 3
@@ -132,6 +156,30 @@
       "side": 1,
       "message": "Yeah, I believe something like multi_ / single_ would be closer to what you actual do with the code...",
       "parentUuid": "fa5d592f_003236a7",
+      "range": {
+        "startLine": 308,
+        "startChar": 0,
+        "endLine": 308,
+        "endChar": 21
+      },
+      "revId": "b11629c89bde10788bccd5534d65c777a1cad0b9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_ed603a37",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 308,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-06-14T11:24:44Z",
+      "side": 1,
+      "message": "yeah, cool. I\u0027ve renamed the functions in my worktree... Thanks a lot, this nomenclature is indeed much better!",
+      "parentUuid": "fa5d592f_db6d3306",
       "range": {
         "startLine": 308,
         "startChar": 0,
