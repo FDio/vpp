@@ -1019,8 +1019,7 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 	      {
 		l2_flood_member_t *member =
 		  vec_elt_at_index (bd_config->members, i);
-		l2_input_config_t *int_config =
-		  l2input_intf_config (member->sw_if_index);
+		u8 swif_seq_num = *l2fib_swif_seq_num (member->sw_if_index);
 		u32 vtr_opr, dot1q, tag1, tag2;
 		if (i == 0)
 		  {
@@ -1033,7 +1032,7 @@ bd_show (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
 		vlib_cli_output (vm, "%=30U%=7d%=5d%=5d%=5s%=9s%=30U",
 				 format_vnet_sw_if_index_name, vnm,
 				 member->sw_if_index, member->sw_if_index,
-				 int_config->seq_num, member->shg,
+				 swif_seq_num, member->shg,
 				 member->flags & L2_FLOOD_MEMBER_BVI ? "*" :
 				 "-", i < bd_config->flood_count ? "*" : "-",
 				 format_vtr, vtr_opr, dot1q, tag1, tag2);
