@@ -2391,6 +2391,7 @@ ip6_neighbor_process_timer_event (vlib_main_t * vm,
 {
   vnet_main_t *vnm = vnet_get_main ();
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  vnet_interface_main_t *im = &vnm->interface_main;
   ip6_radv_t *radv_info;
   vlib_frame_t *f = 0;
   u32 n_this_frame = 0;
@@ -2405,6 +2406,9 @@ ip6_neighbor_process_timer_event (vlib_main_t * vm,
   /* *INDENT-OFF* */
   pool_foreach (radv_info, nm->if_radv_pool,
   ({
+    if (pool_is_free_index (im->sw_interfaces, radv_info->sw_if_index))
+      continue;
+
     if( !vnet_sw_interface_is_admin_up (vnm, radv_info->sw_if_index))
       {
         radv_info->initial_adverts_sent = radv_info->initial_adverts_count-1;
