@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_707781d5",
+        "filename": "src/vnet/l2/l2_fwd.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-06-14T18:02:42Z",
+      "side": 1,
+      "message": "Is it possible to move these comments outside of the \"}\" to be better placed as it is for the next if statement? I wonder if this is done by the indent/style tool?",
+      "range": {
+        "startLine": 164,
+        "startChar": 14,
+        "endLine": 164,
+        "endChar": 24
+      },
+      "revId": "dd6e75d3ab9f1fbe938dfb9fd0d76e60dbf5c768",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
