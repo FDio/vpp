@@ -448,9 +448,9 @@ static void
   memset (a, 0, sizeof (a[0]));
 
   if (mp->is_ip4)
-    clib_memcpy (&a->rpath.frp_addr, mp->nh_addr, sizeof (ip4_address_t));
+    clib_memcpy (&a->rpath.frp_addr.ip4, mp->nh_addr, sizeof (ip4_address_t));
   else
-    clib_memcpy (&a->rpath.frp_addr, mp->nh_addr, sizeof (ip6_address_t));
+    clib_memcpy (&a->rpath.frp_addr.ip6, mp->nh_addr, sizeof (ip6_address_t));
 
   a->is_add = mp->is_add;
   a->rpath.frp_proto = mp->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
@@ -477,8 +477,11 @@ gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t * dst,
     dst[i].fib_index = e->frp_fib_index;
     dst[i].nh_sw_if_index = e->frp_sw_if_index;
     dst[i].is_ip4 = is_ip4;
-    clib_memcpy (&dst[i].nh_addr, &e->frp_addr,
-		 is_ip4 ? sizeof (ip4_address_t) : sizeof (ip6_address_t));
+    if (is_ip4)
+      clib_memcpy (&dst[i].nh_addr, &e->frp_addr.ip4, sizeof (ip4_address_t));
+    else
+      clib_memcpy (&dst[i].nh_addr, &e->frp_addr.ip6, sizeof (ip6_address_t));
+    i++;
   }
 }
 
@@ -513,15 +516,17 @@ vl_api_gpe_native_fwd_rpaths_get_t_handler (vl_api_gpe_native_fwd_rpaths_get_t
   u32 size = 0;
   int rv = 0;
 
-  size = vec_len (lgm->native_fwd_rpath[mp->is_ip4])
+  u8 rpath_index = mp->is_ip4 ? 0 : 1;
+
+  size = vec_len (lgm->native_fwd_rpath[rpath_index])
     * sizeof (vl_api_gpe_native_fwd_rpath_t);
 
   /* *INDENT-OFF* */
   REPLY_MACRO4 (VL_API_GPE_NATIVE_FWD_RPATHS_GET_REPLY, size,
   {
-    rmp->count = vec_len (lgm->native_fwd_rpath[mp->is_ip4]);
+    rmp->count = vec_len (lgm->native_fwd_rpath[rpath_index]);
     gpe_native_fwd_rpaths_copy (rmp->entries,
-				lgm->native_fwd_rpath[mp->is_ip4],
+				lgm->native_fwd_rpath[rpath_index],
 				mp->is_ip4);
     gpe_native_fwd_rpaths_get_reply_t_host_to_net (rmp);
   });

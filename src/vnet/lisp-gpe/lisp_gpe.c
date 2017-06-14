@@ -404,8 +404,9 @@ gpe_show_native_fwd_rpath_command_fn (vlib_main_t * vm,
       vec_foreach (rpath, lgm->native_fwd_rpath[IP4])
       {
 	vlib_cli_output (vm, "nh: %U fib_index %u sw_if_index %u",
-			 format_ip46_address, &rpath->frp_addr, 1,
-			 rpath->frp_fib_index, rpath->frp_sw_if_index);
+			 format_ip46_address, &rpath->frp_addr,
+			 IP46_TYPE_IP4, rpath->frp_fib_index,
+			 rpath->frp_sw_if_index);
       }
     }
   if (vec_len (lgm->native_fwd_rpath[IP6]))
@@ -413,7 +414,7 @@ gpe_show_native_fwd_rpath_command_fn (vlib_main_t * vm,
       vec_foreach (rpath, lgm->native_fwd_rpath[IP6])
       {
 	vlib_cli_output (vm, "nh: %U fib_index %u sw_if_index %u",
-			 format_ip46_address, &rpath->frp_addr, 1,
+			 format_ip46_address, &rpath->frp_addr, IP46_TYPE_IP6,
 			 rpath->frp_fib_index, rpath->frp_sw_if_index);
       }
     }
