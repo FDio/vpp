@@ -658,11 +658,20 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   app = application_lookup (mp->client_index);
   if (app)
     {
-      clib_memcpy (&a->tep.ip, mp->ip,
+      unix_shared_memory_queue_t *client_q;
+      u8 *ip = mp->is_ip4 ? (u8 *) & a->tep.ip.ip4 : (u8 *) & a->tep.ip;
+
+      client_q = vl_api_client_index_to_input_queue (mp->client_index);
+      mp->client_queue_address = pointer_to_uword (client_q);
+      a->tep.is_ip4 = mp->is_ip4;
+      a->tep.port = mp->port;
+
+      clib_memcpy (ip, mp->ip,
 		   (mp->is_ip4 ? sizeof (ip4_address_t) :
 		    sizeof (ip6_address_t)));
       a->api_context = mp->context;
       a->app_index = app->index;
+      a->proto = mp->proto;
       a->mp = mp;
       rv = vnet_connect (a);
     }
