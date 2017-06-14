@@ -504,7 +504,6 @@ class TestL2fib(VppTestCase):
         self.config_l2_fib_entries(bd_id=1, n_hosts_per_if=10)
         self.config_l2_fib_entries(bd_id=2, n_hosts_per_if=10)
         flushed = self.flush_bd(bd_id=1)
-        self.sleep(1)
         self.run_verify_negat_test(bd_id=1, dst_hosts=flushed)
         self.run_verify_test(bd_id=2, dst_hosts=self.learned_hosts)
 
@@ -518,7 +517,6 @@ class TestL2fib(VppTestCase):
         self.config_l2_fib_entries(bd_id=1, n_hosts_per_if=10)
         self.config_l2_fib_entries(bd_id=2, n_hosts_per_if=10)
         flushed = self.flush_all()
-        self.sleep(2)
         self.run_verify_negat_test(bd_id=1, dst_hosts=flushed)
         self.run_verify_negat_test(bd_id=2, dst_hosts=flushed)
 

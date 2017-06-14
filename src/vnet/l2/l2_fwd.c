@@ -89,7 +89,8 @@ _(HIT,           "L2 forward hits")			\
 _(BVI_BAD_MAC,   "BVI L3 MAC mismatch")  		\
 _(BVI_ETHERTYPE, "BVI packet with unhandled ethertype")	\
 _(FILTER_DROP,   "Filter Mac Drop")			\
-_(REFLECT_DROP,  "Reflection Drop")
+_(REFLECT_DROP,  "Reflection Drop")			\
+_(DELETED_DROP,  "Deleted entry Drop")
 
 typedef enum
 {
@@ -152,8 +153,16 @@ l2fwd_process (vlib_main_t * vm,
 
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = result0->fields.sw_if_index;
       *next0 = L2FWD_NEXT_L2_OUTPUT;
+      l2fib_seq_num_t in_sn = {.as_u16 = vnet_buffer (b0)->l2.l2fib_sn };
 
-      /* perform reflection check */
+      /* perform BD seq num check */
+      if (PREDICT_FALSE (in_sn.bd != result0->fields.sn.bd))
+	{
+	  b0->error = node->errors[L2FWD_ERROR_DELETED_DROP];
+	  *next0 = L2FWD_NEXT_DROP;
+
+	  /* perform reflection check */
+	}
       if (PREDICT_FALSE (sw_if_index0 == result0->fields.sw_if_index))
 	{
 	  b0->error = node->errors[L2FWD_ERROR_REFLECT_DROP];
