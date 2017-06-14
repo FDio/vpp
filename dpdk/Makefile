@@ -77,7 +77,13 @@ else
 $(error unknown platform)
 endif
 
-JOBS := $(shell grep processor /proc/cpuinfo | wc -l)
+# /proc/cpuinfo does not exist on platforms without a /proc and on some
+# platforms, notably inside containers, it has no content. In those cases
+# we assume there's 1 processor; we use 2*ncpu for the -j option.
+# NB: GNU Make 4.2 will let us use '$(file </proc/cpuinfo)' to both test
+# for file presence and content; for now this will have to do.
+JOBS := $(if $(shell [ -f /proc/cpuinfo ] && head /proc/cpuinfo),\
+	$(shell expr 2 '*' $$(grep -c ^processor /proc/cpuinfo)), 2)
 
 # compiler/linker custom arguments
 DPDK_CPU_CFLAGS := -pie -fPIC

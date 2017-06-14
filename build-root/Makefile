@@ -653,16 +653,13 @@ configure_check_timestamp =						\
 # Package build
 ######################################################################
 
-linux_n_cpus = `grep '^processor' /proc/cpuinfo | wc -l`
-
-MAKE_PARALLEL_JOBS =				\
-  -j $(shell					\
-    if [ -f /proc/cpuinfo ] ; then		\
-      expr 2 '*' $(linux_n_cpus) ;		\
-    else					\
-      echo 1 ;					\
-    fi)
-
+# /proc/cpuinfo does not exist on platforms without a /proc and on some
+# platforms, notably inside containers, it has no content. In those cases
+# we assume there's 1 processor; we use 2*ncpu for the -j option.
+# NB: GNU Make 4.2 will let us use '$(file </proc/cpuinfo)' to both test
+# for file presence and content; for now this will have to do.
+MAKE_PARALLEL_JOBS = -j $(if $(shell [ -f /proc/cpuinfo ] && head /proc/cpuinfo), \
+	$(shell expr 2 '*' $$(grep -c ^processor /proc/cpuinfo)), 2)
 MAKE_PARALLEL_FLAGS = $(if $($(PACKAGE)_make_parallel_fails),,$(MAKE_PARALLEL_JOBS))
 
 # Make command shorthand for packages & tools.
