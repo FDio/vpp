@@ -646,6 +646,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 {
   vl_api_connect_sock_reply_t *rmp;
   vnet_connect_args_t _a, *a = &_a;
+  unix_shared_memory_queue_t *client_q;
   application_t *app;
   int rv;
 
@@ -655,14 +656,30 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       goto done;
     }
 
+  client_q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!client_q)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE_2;
+      goto done;
+    }
+
+  /* Tell the server the client's API queue address, so it can reply */
+  mp->client_queue_address = pointer_to_uword (client_q);
+
   app = application_lookup (mp->client_index);
   if (app)
     {
-      clib_memcpy (&a->tep.ip, mp->ip,
+      u8 *ip = mp->is_ip4 ? (u8 *) & a->tep.ip.ip4 : (u8 *) & a->tep.ip;
+
+      a->tep.is_ip4 = mp->is_ip4;
+      a->tep.port = mp->port;
+
+      clib_memcpy (ip, mp->ip,
 		   (mp->is_ip4 ? sizeof (ip4_address_t) :
 		    sizeof (ip6_address_t)));
       a->api_context = mp->context;
       a->app_index = app->index;
+      a->proto = mp->proto;
       a->mp = mp;
       rv = vnet_connect (a);
     }
