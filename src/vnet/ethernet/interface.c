@@ -39,10 +39,12 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/ip/ip6_neighbor.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/adj/adj.h>
+#include <vnet/mfib/ip6_mfib.h>
 
 /**
  * @file
@@ -715,6 +717,22 @@ vnet_delete_sub_interface (u32 sw_if_index)
   if (pool_is_free_index (vnm->interface_main.sw_interfaces, sw_if_index))
     return VNET_API_ERROR_INVALID_SW_IF_INDEX;
 
+  /* Ensure that IPv6 is disabled */
+  ip6_main_t *im6 = &ip6_main;
+  ip_lookup_main_t *lm6 = &im6->lookup_main;
+  ip_interface_address_t *ia = 0;
+  ip6_address_t *r6;
+  vlib_main_t *vm = vlib_get_main ();
+
+  ip6_neighbor_sw_interface_add_del (vnm, sw_if_index, 0 /* is_add */ );
+  /* *INDENT-OFF* */
+  foreach_ip_interface_address (lm6, ia, sw_if_index, 1 /* honor unnumbered */,
+  ({
+    r6 = ip_interface_address_get_address (lm6, ia);
+    ip6_add_del_interface_address(vm, sw_if_index, r6, ia->address_length, 1);
+  }));
+  /* *INDENT-ON* */
+  ip6_mfib_interface_enable_disable (sw_if_index, 0);
 
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
