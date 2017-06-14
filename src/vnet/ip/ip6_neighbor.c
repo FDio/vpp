@@ -2081,7 +2081,7 @@ ip6_neighbor_add_mld_grp (ip6_radv_t * a,
  * @brief create and initialize router advertisement parameters with default
  * values for this intfc
  */
-static u32
+u32
 ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 				   u32 sw_if_index, u32 is_add)
 {
