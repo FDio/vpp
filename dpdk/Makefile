@@ -77,7 +77,11 @@ else
 $(error unknown platform)
 endif
 
-JOBS := $(shell grep processor /proc/cpuinfo | wc -l)
+JOBS := $(shell				\
+  ncpu=0;				\
+  [ -f /proc/cpuinfo ] && ncpu=$$(grep -c '^processor' /proc/cpuinfo); \
+  echo $$(($$ncpu ? 2*$$ncpu : 2));	\
+)
 
 # compiler/linker custom arguments
 DPDK_CPU_CFLAGS := -pie -fPIC

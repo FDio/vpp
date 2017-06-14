@@ -653,15 +653,11 @@ configure_check_timestamp =						\
 # Package build
 ######################################################################
 
-linux_n_cpus = `grep '^processor' /proc/cpuinfo | wc -l`
-
-MAKE_PARALLEL_JOBS =				\
-  -j $(shell					\
-    if [ -f /proc/cpuinfo ] ; then		\
-      expr 2 '*' $(linux_n_cpus) ;		\
-    else					\
-      echo 1 ;					\
-    fi)
+MAKE_PARALLEL_JOBS = -j $(shell			\
+  ncpu=0;					\
+  [ -f /proc/cpuinfo ] && ncpu=$$(grep -c '^processor' /proc/cpuinfo); \
+  echo $$(($$ncpu ? 2*$$ncpu : 2));		\
+)
 
 MAKE_PARALLEL_FLAGS = $(if $($(PACKAGE)_make_parallel_fails),,$(MAKE_PARALLEL_JOBS))
 
