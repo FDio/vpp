@@ -121,6 +121,30 @@
     },
     {
       "key": {
+        "uuid": "fa5d592f_43acb5ed",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 667,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-06-14T19:31:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa5d592f_f031310c",
+      "range": {
+        "startLine": 659,
+        "startChar": 0,
+        "endLine": 667,
+        "endChar": 57
+      },
+      "revId": "11151f1c1c66f8abc16e7fd2a57a18187b66b9c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa5d592f_7089c1c9",
         "filename": "src/vnet/session/session_api.c",
         "patchSetId": 1
@@ -180,6 +204,30 @@
       "side": 1,
       "message": "Ah. So the other option would be memsetting to 0 and copying everything. Anyway this works :)",
       "parentUuid": "fa5d592f_90bb1572",
+      "range": {
+        "startLine": 672,
+        "startChar": 6,
+        "endLine": 674,
+        "endChar": 33
+      },
+      "revId": "11151f1c1c66f8abc16e7fd2a57a18187b66b9c1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_23b9c12e",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 674,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-06-14T19:31:41Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa5d592f_30aa291a",
       "range": {
         "startLine": 672,
         "startChar": 6,
