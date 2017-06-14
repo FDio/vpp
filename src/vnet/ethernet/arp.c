@@ -22,6 +22,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vppinfra/mhash.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/fib/fib_entry_src.h>
 #include <vnet/adj/adj_nbr.h>
 #include <vnet/adj/adj_mcast.h>
 #include <vnet/mpls/mpls.h>
@@ -955,12 +956,101 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 					  32);
 	  dst_flags = fib_entry_get_flags (dst_fei);
 
-	  src_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
-					  &arp0->ip4_over_ethernet[0].ip4,
-					  32);
-	  src_flags = fib_entry_get_flags (src_fei);
-
 	  conn_sw_if_index0 = fib_entry_get_resolving_interface (dst_fei);
+
+	  /* Honor unnumbered interface, if any */
+	  is_unnum0 = sw_if_index0 != conn_sw_if_index0;
+
+	  {
+	    /*
+	     * we're looking for FIB entries that indicate the source
+	     * is attached. There may be more specific non-attached
+	     * routes tht match the source, but these do not influence
+	     * whether we respond to an ARP request, i.e. they do not
+	     * influence whether we are the correct way for the sender
+	     * to reach us, they only affect how we reach the sender.
+	     */
+	    fib_entry_t *src_fib_entry;
+	    fib_entry_src_t *src;
+	    fib_source_t source;
+	    fib_prefix_t pfx;
+	    int attached;
+	    int mask;
+
+	    mask = 32;
+	    attached = 0;
+
+	    do
+	      {
+		src_fei = ip4_fib_table_lookup (ip4_fib_get (fib_index0),
+						&arp0->
+						ip4_over_ethernet[0].ip4,
+						mask);
+		src_fib_entry = fib_entry_get (src_fei);
+
+		/*
+		 * It's possible that the source that provides the
+		 * flags we need, or the flags we must not have,
+		 * is not the best source, so check then all.
+		 */
+                /* *INDENT-OFF* */
+                FOR_EACH_SRC_ADDED(src_fib_entry, src, source,
+                ({
+                  src_flags = fib_entry_get_flags_for_source (src_fei, source);
+
+                  /* Reject requests/replies with our local interface
+                     address. */
+                  if (FIB_ENTRY_FLAG_LOCAL & src_flags)
+                    {
+                      error0 = ETHERNET_ARP_ERROR_l3_src_address_is_local;
+                      goto drop2;
+                    }
+                  /* A Source must also be local to subnet of matching
+                   * interface address. */
+                  if ((FIB_ENTRY_FLAG_ATTACHED & src_flags) ||
+                      (FIB_ENTRY_FLAG_CONNECTED & src_flags))
+                    {
+                      attached = 1;
+                      break;
+                    }
+                  /*
+                   * else
+                   *  The packet was sent from an address that is not
+                   *  connected nor attached i.e. it is not from an
+                   *  address that is covered by a link's sub-net,
+                   *  nor is it a already learned host resp.
+                   */
+                }));
+                /* *INDENT-ON* */
+
+		/*
+		 * shorter mask lookup for the next iteration.
+		 */
+		fib_entry_get_prefix (src_fei, &pfx);
+		mask = pfx.fp_len - 1;
+
+		/*
+		 * continue until we hit the default route or we find
+		 * the attached we are looking for. The most likely
+		 * outcome is we find the attached with the first source
+		 * on the first lookup.
+		 */
+	      }
+	    while (!attached &&
+		   !fib_entry_is_sourced (src_fei, FIB_SOURCE_DEFAULT_ROUTE));
+
+	    if (!attached)
+	      {
+		/*
+		 * the matching route is a not attached, i.e. it was
+		 * added as a result of routing, rather than interface/ARP
+		 * configuration. If the matching route is not a host route
+		 * (i.e. a /32)
+		 */
+		error0 = ETHERNET_ARP_ERROR_l3_src_address_not_local;
+		goto drop2;
+	      }
+	  }
 
 	  if (!(FIB_ENTRY_FLAG_CONNECTED & dst_flags))
 	    {
@@ -968,37 +1058,14 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      goto drop1;
 	    }
 
-	  /* Honor unnumbered interface, if any */
-	  is_unnum0 = sw_if_index0 != conn_sw_if_index0;
-
-	  /* Source must also be local to subnet of matching interface address. */
-	  if (!((FIB_ENTRY_FLAG_ATTACHED & src_flags) ||
-		(FIB_ENTRY_FLAG_CONNECTED & src_flags)))
-	    {
-	      /*
-	       * The packet was sent from an address that is not connected nor attached
-	       * i.e. it is not from an address that is covered by a link's sub-net,
-	       * nor is it a already learned host resp.
-	       */
-	      error0 = ETHERNET_ARP_ERROR_l3_src_address_not_local;
-	      goto drop2;
-	    }
-
 	  if (sw_if_index0 != fib_entry_get_resolving_interface (src_fei))
 	    {
 	      /*
 	       * The interface the ARP was received on is not the interface
-	       * on which the covering prefix is configured. Maybe this is a case
-	       * for unnumbered.
+	       * on which the covering prefix is configured. Maybe this is a
+	       * case for unnumbered.
 	       */
 	      is_unnum0 = 1;
-	    }
-
-	  /* Reject requests/replies with our local interface address. */
-	  if (FIB_ENTRY_FLAG_LOCAL & src_flags)
-	    {
-	      error0 = ETHERNET_ARP_ERROR_l3_src_address_is_local;
-	      goto drop2;
 	    }
 
 	  dst_is_local0 = (FIB_ENTRY_FLAG_LOCAL & dst_flags);
