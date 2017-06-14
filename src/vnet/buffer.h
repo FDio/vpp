@@ -195,9 +195,13 @@ typedef struct
     /* L2 classify */
     struct
     {
-      u64 pad;
-      u32 table_index;
-      u32 opaque_index;
+      u64 pad;			/* paddind for l2 */
+      u16 pad1;
+      union
+      {
+	u32 table_index;
+	u32 opaque_index;
+      };
       u64 hash;
     } l2_classify;
 
@@ -296,6 +300,11 @@ typedef struct
 STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <= STRUCT_SIZE_OF (vlib_buffer_t,
 								opaque),
 	       "VNET buffer meta-data too large for vlib_buffer");
+STATIC_ASSERT (STRUCT_OFFSET_OF
+	       (vnet_buffer_opaque_t,
+		l2_classify.table_index) >=
+	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, l2),
+	       "l2_classify padding smaller than l2");
 
 #define vnet_buffer(b) ((vnet_buffer_opaque_t *) (b)->opaque)
 

@@ -205,7 +205,7 @@ classify_and_dispatch (vlib_main_t * vm,
       /* Save bridge domain and interface seq_num */
       /* *INDENT-OFF* */
       l2fib_seq_num_t sn = {
-        .swif = config->seq_num,
+        .swif = *l2fib_swif_seq_num(sw_if_index0),
 	.bd = bd_config->seq_num,
       };
       /* *INDENT-ON* */
@@ -637,7 +637,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  config->xconnect = 0;
 	  config->bridge = 1;
 	  config->bd_index = bd_index;
-	  config->seq_num += 1;
+	  *l2fib_swif_seq_num (sw_if_index) += 1;
 
 	  /*
 	   * Enable forwarding, flooding, learning and ARP termination by default

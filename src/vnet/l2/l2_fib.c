@@ -41,17 +41,6 @@
  *
  */
 
-typedef struct
-{
-
-  /* hash table */
-  BVT (clib_bihash) mac_table;
-
-  /* convenience variables */
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-} l2fib_main_t;
-
 l2fib_main_t l2fib_main;
 
 /** Format sw_if_index. If the value is ~0, use the text "N/A" */
@@ -65,7 +54,7 @@ format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args)
 
   vnet_sw_interface_t *swif = vnet_get_sw_interface_safe (vnm, sw_if_index);
   if (!swif)
-    return format (s, "Deleted");
+    return format (s, "Stale");
 
   return format (s, "%U", format_vnet_sw_interface_name, vnm,
 		 vnet_get_sw_interface_safe (vnm, sw_if_index));
@@ -305,11 +294,10 @@ VLIB_CLI_COMMAND (clear_l2fib_cli, static) = {
 static inline l2fib_seq_num_t
 l2fib_cur_seq_num (u32 bd_index, u32 sw_if_index)
 {
-  l2_input_config_t *int_config = l2input_intf_config (sw_if_index);
   l2_bridge_domain_t *bd_config = l2input_bd_config (bd_index);
   /* *INDENT-OFF* */
   return (l2fib_seq_num_t) {
-    .swif = int_config->seq_num,
+    .swif = *l2fib_swif_seq_num (sw_if_index),
     .bd = bd_config->seq_num,
   };
   /* *INDENT-ON* */
@@ -748,8 +736,7 @@ l2fib_start_ager_scan (vlib_main_t * vm)
 void
 l2fib_flush_int_mac (vlib_main_t * vm, u32 sw_if_index)
 {
-  l2_input_config_t *int_config = l2input_intf_config (sw_if_index);
-  int_config->seq_num += 1;
+  *l2fib_swif_seq_num (sw_if_index) += 1;
   l2fib_start_ager_scan (vm);
 }
 
