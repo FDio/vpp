@@ -1136,6 +1136,23 @@ ip4_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
   vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
 
+  if (!is_add)
+    {
+      ip4_main_t *im4 = &ip4_main;
+      ip_lookup_main_t *lm4 = &im4->lookup_main;
+      ip_interface_address_t *ia = 0;
+      ip4_address_t *address;
+      vlib_main_t *vm = vlib_get_main ();
+
+      /* *INDENT-OFF* */
+      foreach_ip_interface_address (lm4, ia, sw_if_index, 1 /* honor unnumbered */,
+      ({
+        address = ip_interface_address_get_address (lm4, ia);
+        ip4_add_del_interface_address(vm, sw_if_index, address, ia->address_length, 1);
+      }));
+      /* *INDENT-ON* */
+    }
+
   vnet_feature_enable_disable ("ip4-unicast", "ip4-drop", sw_if_index,
 			       is_add, 0, 0);
 
