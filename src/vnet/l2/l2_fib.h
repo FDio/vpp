@@ -27,6 +27,22 @@
 #define L2FIB_NUM_BUCKETS (64 * 1024)
 #define L2FIB_MEMORY_SIZE (256<<20)
 
+typedef struct
+{
+
+  /* hash table */
+  BVT (clib_bihash) mac_table;
+
+  /* per swif vector of sequence number for interface based flush of MACs */
+  u8 *swif_seq_num;
+
+  /* convenience variables */
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
+} l2fib_main_t;
+
+extern l2fib_main_t l2fib_main;
+
 /*
  * The L2fib key is the mac address and bridge domain ID
  */
@@ -349,6 +365,14 @@ l2fib_table_dump (u32 bd_index, l2fib_entry_key_t ** l2fe_key,
 		  l2fib_entry_result_t ** l2fe_res);
 
 u8 *format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args);
+
+static_always_inline u8 *
+l2fib_swif_seq_num (u32 sw_if_index)
+{
+  l2fib_main_t *mp = &l2fib_main;
+  vec_validate (mp->swif_seq_num, sw_if_index);
+  return vec_elt_at_index (mp->swif_seq_num, sw_if_index);
+}
 
 BVT (clib_bihash) * get_mac_table (void);
 

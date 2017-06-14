@@ -89,7 +89,8 @@ _(HIT,           "L2 forward hits")			\
 _(BVI_BAD_MAC,   "BVI L3 MAC mismatch")  		\
 _(BVI_ETHERTYPE, "BVI packet with unhandled ethertype")	\
 _(FILTER_DROP,   "Filter Mac Drop")			\
-_(REFLECT_DROP,  "Reflection Drop")
+_(REFLECT_DROP,  "Reflection Drop")			\
+_(STALE_DROP,    "Stale entry Drop")
 
 typedef enum
 {
@@ -123,28 +124,15 @@ l2fwd_process (vlib_main_t * vm,
 	       vlib_buffer_t * b0,
 	       u32 sw_if_index0, l2fib_entry_result_t * result0, u32 * next0)
 {
-  if (PREDICT_FALSE (result0->raw == ~0))
-    {
-      /*
-       * lookup miss, so flood
-       * TODO:replicate packet to each intf in bridge-domain
-       * For now just drop
-       */
-      if (vnet_buffer (b0)->l2.feature_bitmap & L2INPUT_FEAT_UU_FLOOD)
-	{
-	  *next0 = L2FWD_NEXT_FLOOD;
-	}
-      else
-	{
-	  /* Flooding is disabled */
-	  b0->error = node->errors[L2FWD_ERROR_FLOOD];
-	  *next0 = L2FWD_NEXT_DROP;
-	}
+  int try_flood = result0->raw == ~0;
+  int flood_error;
 
+  if (PREDICT_FALSE (try_flood))
+    {
+      flood_error = L2FWD_ERROR_FLOOD;
     }
   else
     {
-
       /* lookup hit, forward packet  */
 #ifdef COUNTERS
       em->counters[node_counter_base_index + L2FWD_ERROR_HIT] += 1;
@@ -152,22 +140,37 @@ l2fwd_process (vlib_main_t * vm,
 
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = result0->fields.sw_if_index;
       *next0 = L2FWD_NEXT_L2_OUTPUT;
+      int l2fib_seq_num_valid = 1;
+      /* check l2fib seq num for stale entries */
+      if (!result0->fields.static_mac)
+	{
+	  l2fib_seq_num_t in_sn = {.as_u16 = vnet_buffer (b0)->l2.l2fib_sn };
+	  l2fib_seq_num_t expected_sn = {
+	    .bd = in_sn.bd,
+	    .swif = *l2fib_swif_seq_num (result0->fields.sw_if_index),
+	  };
+	  l2fib_seq_num_valid =
+	    expected_sn.as_u16 == result0->fields.sn.as_u16;
+	}
 
+      if (PREDICT_FALSE (!l2fib_seq_num_valid))
+	{
+	  flood_error = L2FWD_ERROR_STALE_DROP;
+	  try_flood = 1;
+	}
       /* perform reflection check */
-      if (PREDICT_FALSE (sw_if_index0 == result0->fields.sw_if_index))
+      else if (PREDICT_FALSE (sw_if_index0 == result0->fields.sw_if_index))
 	{
 	  b0->error = node->errors[L2FWD_ERROR_REFLECT_DROP];
 	  *next0 = L2FWD_NEXT_DROP;
-
-	  /* perform filter check */
 	}
+      /* perform filter check */
       else if (PREDICT_FALSE (result0->fields.filter))
 	{
 	  b0->error = node->errors[L2FWD_ERROR_FILTER_DROP];
 	  *next0 = L2FWD_NEXT_DROP;
-
-	  /* perform BVI check */
 	}
+      /* perform BVI check */
       else if (PREDICT_FALSE (result0->fields.bvi))
 	{
 	  u32 rc;
@@ -192,6 +195,27 @@ l2fwd_process (vlib_main_t * vm,
 	    }
 	}
     }
+
+  /* flood */
+  if (PREDICT_FALSE (try_flood))
+    {
+      /*
+       * lookup miss, so flood
+       * TODO:replicate packet to each intf in bridge-domain
+       * For now just drop
+       */
+      if (vnet_buffer (b0)->l2.feature_bitmap & L2INPUT_FEAT_UU_FLOOD)
+	{
+	  *next0 = L2FWD_NEXT_FLOOD;
+	}
+      else
+	{
+	  /* Flooding is disabled */
+	  b0->error = node->errors[flood_error];
+	  *next0 = L2FWD_NEXT_DROP;
+	}
+    }
+
 }
 
 
