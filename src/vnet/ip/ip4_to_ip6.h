@@ -321,17 +321,9 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
 	  //We have an ICMP inside an ICMP
 	  //It needs to be translated, but not for error ICMP messages
 	  icmp46_header_t *inner_icmp = (icmp46_header_t *) (inner_ip4 + 1);
-	  csum = inner_icmp->checksum;
 	  //Only types ICMP4_echo_request and ICMP4_echo_reply are handled by icmp_to_icmp6_header
-	  csum = ip_csum_sub_even (csum, *((u16 *) inner_icmp));
 	  inner_icmp->type = (inner_icmp->type == ICMP4_echo_request) ?
 	    ICMP6_echo_request : ICMP6_echo_reply;
-	  csum = ip_csum_add_even (csum, *((u16 *) inner_icmp));
-	  csum =
-	    ip_csum_add_even (csum, clib_host_to_net_u16 (IP_PROTOCOL_ICMP6));
-	  csum =
-	    ip_csum_add_even (csum, inner_ip4->length - sizeof (*inner_ip4));
-	  inner_icmp->checksum = ip_csum_fold (csum);
 	  inner_L4_checksum = &inner_icmp->checksum;
 	  inner_ip4->protocol = IP_PROTOCOL_ICMP6;
 	}
@@ -340,8 +332,6 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
 	  /* To shut up Coverity */
 	  os_panic ();
 	}
-
-      csum = *inner_L4_checksum;	//Initial checksum of the inner L4 header
 
       inner_ip6->ip_version_traffic_class_and_flow_label =
 	clib_host_to_net_u32 ((6 << 28) + (inner_ip4->tos << 20));
@@ -367,14 +357,42 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
 				  sizeof (*inner_frag));
 	}
 
-      /* UDP checksum is optional */
-      if (csum)
+      csum = *inner_L4_checksum;
+      if (inner_ip6->protocol == IP_PROTOCOL_ICMP6)
 	{
-	  csum = ip_csum_add_even (csum, inner_ip6->src_address.as_u64[0]);
-	  csum = ip_csum_add_even (csum, inner_ip6->src_address.as_u64[1]);
-	  csum = ip_csum_add_even (csum, inner_ip6->dst_address.as_u64[0]);
-	  csum = ip_csum_add_even (csum, inner_ip6->dst_address.as_u64[1]);
-	  *inner_L4_checksum = ip_csum_fold (csum);
+	  //Recompute ICMP checksum
+	  icmp46_header_t *inner_icmp = (icmp46_header_t *) (inner_ip4 + 1);
+
+	  inner_icmp->checksum = 0;
+	  csum = ip_csum_with_carry (0, inner_ip6->payload_length);
+	  csum =
+	    ip_csum_with_carry (csum,
+				clib_host_to_net_u16 (inner_ip6->protocol));
+	  csum = ip_csum_with_carry (csum, inner_ip6->src_address.as_u64[0]);
+	  csum = ip_csum_with_carry (csum, inner_ip6->src_address.as_u64[1]);
+	  csum = ip_csum_with_carry (csum, inner_ip6->dst_address.as_u64[0]);
+	  csum = ip_csum_with_carry (csum, inner_ip6->dst_address.as_u64[1]);
+	  csum =
+	    ip_incremental_checksum (csum, inner_icmp,
+				     clib_net_to_host_u16
+				     (inner_ip6->payload_length));
+	  inner_icmp->checksum = ~ip_csum_fold (csum);
+	}
+      else
+	{
+	  /* UDP checksum is optional */
+	  if (csum)
+	    {
+	      csum =
+		ip_csum_add_even (csum, inner_ip6->src_address.as_u64[0]);
+	      csum =
+		ip_csum_add_even (csum, inner_ip6->src_address.as_u64[1]);
+	      csum =
+		ip_csum_add_even (csum, inner_ip6->dst_address.as_u64[0]);
+	      csum =
+		ip_csum_add_even (csum, inner_ip6->dst_address.as_u64[1]);
+	      *inner_L4_checksum = ip_csum_fold (csum);
+	    }
 	}
     }
   else
@@ -518,6 +536,7 @@ ip4_to_ip6_tcp_udp (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx)
 
   csum = ip_csum_sub_even (*checksum, ip4->src_address.as_u32);
   csum = ip_csum_sub_even (csum, ip4->dst_address.as_u32);
+  *checksum = ip_csum_fold (csum);
 
   // Deal with fragmented packets
   if (PREDICT_FALSE (ip4->flags_and_fragment_offset &
@@ -558,7 +577,7 @@ ip4_to_ip6_tcp_udp (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx)
   if ((rv = fn (ip4, ip6, ctx)) != 0)
     return rv;
 
-  csum = ip_csum_add_even (csum, ip6->src_address.as_u64[0]);
+  csum = ip_csum_add_even (*checksum, ip6->src_address.as_u64[0]);
   csum = ip_csum_add_even (csum, ip6->src_address.as_u64[1]);
   csum = ip_csum_add_even (csum, ip6->dst_address.as_u64[0]);
   csum = ip_csum_add_even (csum, ip6->dst_address.as_u64[1]);

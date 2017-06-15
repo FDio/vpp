@@ -1245,7 +1245,7 @@ static void *vl_api_nat64_add_del_pool_addr_range_t_print
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: nat64_add_del_pool_addr_range");
+  s = format (0, "SCRIPT: nat64_add_del_pool_addr_range ");
   s = format (s, "%U - %U vrf_id %u %s\n",
 	      format_ip4_address, mp->start_addr,
 	      format_ip4_address, mp->end_addr,
@@ -1273,7 +1273,7 @@ nat64_api_pool_walk (snat_address_t * a, void *arg)
   clib_memcpy (rmp->address, &(a->addr), 4);
   if (a->fib_index != ~0)
     {
-      fib_table_t *fib = fib_table_get (a->fib_index, FIB_PROTOCOL_IP4);
+      fib_table_t *fib = fib_table_get (a->fib_index, FIB_PROTOCOL_IP6);
       if (!fib)
 	return -1;
       rmp->vrf_id = ntohl (fib->ft_table_id);

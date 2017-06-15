@@ -95,7 +95,10 @@ nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add)
 
       vec_add2 (nm->addr_pool, a, 1);
       a->addr = *addr;
-      a->fib_index = ip4_fib_index_from_table_id (vrf_id);
+      a->fib_index = 0;
+      if (vrf_id != ~0)
+	a->fib_index =
+	  fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id);
 #define _(N, i, n, s) \
       clib_bitmap_alloc (a->busy_##n##_port_bitmap, 65535);
       foreach_snat_protocol
@@ -218,7 +221,7 @@ nat64_alloc_out_addr_and_port (u32 fib_index, snat_protocol_t proto,
   nat64_main_t *nm = &nat64_main;
   snat_main_t *sm = &snat_main;
   int i;
-  snat_address_t *a;
+  snat_address_t *a, *ga = 0;
   u32 portnum;
 
   for (i = 0; i < vec_len (nm->addr_pool); i++)
@@ -230,22 +233,27 @@ nat64_alloc_out_addr_and_port (u32 fib_index, snat_protocol_t proto,
         case SNAT_PROTOCOL_##N: \
           if (a->busy_##n##_ports < (65535-1024)) \
             { \
-              while (1) \
+              if (a->fib_index == fib_index) \
                 { \
-                  portnum = random_u32 (&sm->random_seed); \
-                  portnum &= 0xFFFF; \
-                  if (portnum < 1024) \
-                    continue; \
-                  if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
-                                                portnum)) \
-                    continue; \
-                  clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, \
-                                            portnum, 1); \
-                  a->busy_##n##_ports++; \
-                  *port = portnum; \
-                  addr->as_u32 = a->addr.as_u32; \
-                  return 0; \
-                } \
+                  while (1) \
+                    { \
+                      portnum = random_u32 (&sm->random_seed); \
+                      portnum &= 0xFFFF; \
+                      if (portnum < 1024) \
+                        continue; \
+                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
+                                                    portnum)) \
+                        continue; \
+                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, \
+                                                portnum, 1); \
+                      a->busy_##n##_ports++; \
+                      *port = portnum; \
+                      addr->as_u32 = a->addr.as_u32; \
+                      return 0; \
+                    } \
+                 } \
+               else if (a->fib_index == 0) \
+                 ga = a; \
             } \
           break;
 	  foreach_snat_protocol
@@ -254,8 +262,39 @@ nat64_alloc_out_addr_and_port (u32 fib_index, snat_protocol_t proto,
 	  clib_warning ("unknown protocol");
 	  return 1;
 	}
-
     }
+
+  if (ga)
+    {
+      switch (proto)
+	{
+#define _(N, j, n, s) \
+        case SNAT_PROTOCOL_##N: \
+          while (1) \
+            { \
+              portnum = random_u32 (&sm->random_seed); \
+              portnum &= 0xFFFF; \
+              if (portnum < 1024) \
+                continue; \
+              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
+                                            portnum)) \
+                continue; \
+              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, \
+                                        portnum, 1); \
+              a->busy_##n##_ports++; \
+              *port = portnum; \
+              addr->as_u32 = a->addr.as_u32; \
+              return 0; \
+            }
+	  break;
+	  foreach_snat_protocol
+#undef _
+	default:
+	  clib_warning ("unknown protocol");
+	  return 1;
+	}
+    }
+
   /* Totally out of translations to use... */
   //TODO: IPFix
   return 1;
