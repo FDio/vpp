@@ -1445,8 +1445,10 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
     .path = "set interface rx-placement",
-    .short_help = "set interface rx-placement <hw-interface> [queue <n>] [thread <n> | main]",
+    .short_help = "set interface rx-placement <hw-interface> [queue <n>] "
+      "[worker <n> | main]",
     .function = set_interface_rx_placement,
+    .is_mp_safe = 1,
 };
 
 /* *INDENT-ON* */

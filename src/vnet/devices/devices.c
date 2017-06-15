@@ -123,7 +123,7 @@ vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
 				    u16 queue_id, uword thread_index)
 {
   vnet_device_main_t *vdm = &vnet_device_main;
-  vlib_main_t *vm;
+  vlib_main_t *vm, *vm0;
   vnet_device_input_runtime_t *rt;
   vnet_device_and_queue_t *dq;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
@@ -143,6 +143,10 @@ vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
     }
 
   vm = vlib_mains[thread_index];
+  vm0 = vlib_get_main ();
+
+  vlib_worker_thread_barrier_sync (vm0);
+
   rt = vlib_node_get_runtime_data (vm, hw->input_node_index);
 
   vec_add2 (rt->devices_and_queues, dq, 1);
@@ -157,6 +161,9 @@ vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
   vec_validate (hw->rx_mode_by_queue, queue_id);
   hw->input_node_thread_index_by_queue[queue_id] = thread_index;
   hw->rx_mode_by_queue[queue_id] = VNET_HW_INTERFACE_RX_MODE_POLLING;
+
+  vlib_worker_thread_barrier_release (vm0);
+
   vlib_node_set_state (vm, hw->input_node_index, rt->enabled_node_state);
 }
 
@@ -164,7 +171,7 @@ int
 vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
 				      u16 queue_id)
 {
-  vlib_main_t *vm;
+  vlib_main_t *vm, *vm0;
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
   vnet_device_input_runtime_t *rt;
   vnet_device_and_queue_t *dq;
@@ -187,16 +194,19 @@ vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
     if (dq->hw_if_index == hw_if_index && dq->queue_id == queue_id)
     {
       mode = dq->mode;
-      vec_del1 (rt->devices_and_queues, dq - rt->devices_and_queues);
-      goto deleted;
+      goto delete;
     }
 
   return VNET_API_ERROR_INVALID_INTERFACE;
 
-deleted:
+delete:
 
+  vm0 = vlib_get_main ();
+  vlib_worker_thread_barrier_sync (vm0);
+  vec_del1 (rt->devices_and_queues, dq - rt->devices_and_queues);
   vnet_device_queue_update (vnm, rt);
   hw->rx_mode_by_queue[queue_id] = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
+  vlib_worker_thread_barrier_release (vm0);
 
   if (vec_len (rt->devices_and_queues) == 0)
     vlib_node_set_state (vm, hw->input_node_index, VLIB_NODE_STATE_DISABLED);
