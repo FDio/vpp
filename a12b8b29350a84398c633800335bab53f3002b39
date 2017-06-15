@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_81d185fd",
+        "filename": "src/vnet/lisp-gpe/decap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-06-15T23:09:58Z",
+      "side": 1,
+      "message": "Can we keep this as drop and when starting the test call do something like gpe_add_arc_from_input_to_nsh()?",
+      "range": {
+        "startLine": 59,
+        "startChar": 2,
+        "endLine": 59,
+        "endChar": 31
+      },
+      "revId": "a12b8b29350a84398c633800335bab53f3002b39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_61ce915c",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 695,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-06-15T23:09:58Z",
+      "side": 1,
+      "message": "Could you have it disabled by default? Maybe change name to lisp_gpe_nsh_dummy_input_node",
+      "range": {
+        "startLine": 695,
+        "startChar": 20,
+        "endLine": 695,
+        "endChar": 43
+      },
+      "revId": "a12b8b29350a84398c633800335bab53f3002b39",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
