@@ -15950,9 +15950,9 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
   M (GPE_ADD_DEL_IFACE, mp);
 
   mp->is_add = is_add;
-  mp->dp_table = dp_table;
+  mp->dp_table = clib_host_to_net_u32 (dp_table);
   mp->is_l2 = is_l2;
-  mp->vni = vni;
+  mp->vni = clib_host_to_net_u32 (vni);
 
   /* send it... */
   S (mp);

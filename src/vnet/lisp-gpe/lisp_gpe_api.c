@@ -386,28 +386,30 @@ vl_api_gpe_add_del_iface_t_handler (vl_api_gpe_add_del_iface_t * mp)
 {
   vl_api_gpe_add_del_iface_reply_t *rmp;
   int rv = 0;
+  u32 vni, dp_table;
+
+  vni = clib_net_to_host_u32 (mp->vni);
+  dp_table = clib_net_to_host_u32 (mp->dp_table);
 
   if (mp->is_l2)
     {
       if (mp->is_add)
 	{
-	  if (~0 ==
-	      lisp_gpe_tenant_l2_iface_add_or_lock (mp->vni, mp->dp_table))
+	  if (~0 == lisp_gpe_tenant_l2_iface_add_or_lock (vni, dp_table))
 	    rv = 1;
 	}
       else
-	lisp_gpe_tenant_l2_iface_unlock (mp->vni);
+	lisp_gpe_tenant_l2_iface_unlock (vni);
     }
   else
     {
       if (mp->is_add)
 	{
-	  if (~0 ==
-	      lisp_gpe_tenant_l3_iface_add_or_lock (mp->vni, mp->dp_table))
+	  if (~0 == lisp_gpe_tenant_l3_iface_add_or_lock (vni, dp_table))
 	    rv = 1;
 	}
       else
-	lisp_gpe_tenant_l3_iface_unlock (mp->vni);
+	lisp_gpe_tenant_l3_iface_unlock (vni);
     }
 
   REPLY_MACRO (VL_API_GPE_ADD_DEL_IFACE_REPLY);
