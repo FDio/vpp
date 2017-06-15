@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_a36db106",
+        "filename": "MAINTAINERS",
+        "patchSetId": 2
+      },
+      "lineNbr": 128,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-15T08:00:32Z",
+      "side": 1,
+      "message": "is it just Gerrit or is the formatting not consistent here?",
+      "revId": "9cc434b1abf42624d339f0651dbf9527b9fce31c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
