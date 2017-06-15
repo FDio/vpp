@@ -21,6 +21,15 @@
 #include <vnet/ip/ip6_to_ip4.h>
 #include <vnet/fib/fib_table.h>
 
+/* *INDENT-OFF* */
+static u8 well_known_prefix[] = {
+  0x00, 0x64, 0xff, 0x9b,
+  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00
+};
+/* *INDENT-ON* */
+
 typedef struct
 {
   u32 sw_if_index;
@@ -65,7 +74,8 @@ static char *nat64_in2out_error_strings[] = {
 
 typedef enum
 {
-  NAT64_IN2OUT_NEXT_LOOKUP,
+  NAT64_IN2OUT_NEXT_IP4_LOOKUP,
+  NAT64_IN2OUT_NEXT_IP6_LOOKUP,
   NAT64_IN2OUT_NEXT_DROP,
   NAT64_IN2OUT_N_NEXT,
 } nat64_in2out_next_t;
@@ -75,6 +85,31 @@ typedef struct nat64_in2out_set_ctx_t_
   vlib_buffer_t *b;
   vlib_main_t *vm;
 } nat64_in2out_set_ctx_t;
+
+/**
+ * @brief Check whether is a hairpinning.
+ *
+ * If the destination IP address of the packet is an IPv4 address assigned to
+ * the NAT64 itself, then the packet is a hairpin packet.
+ *
+ * param dst_addr Destination address of the packet.
+ *
+ * @returns 1 if hairpinning, otherwise 0.
+ */
+static_always_inline int
+is_hairpinning (ip6_address_t * dst_addr)
+{
+  nat64_main_t *nm = &nat64_main;
+  int i;
+
+  for (i = 0; i < vec_len (nm->addr_pool); i++)
+    {
+      if (nm->addr_pool[i].addr.as_u32 == dst_addr->as_u32[3])
+	return 1;
+    }
+
+  return 0;
+}
 
 static int
 nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
@@ -144,6 +179,18 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   udp->src_port = bibe->out_port;
 
   ip4->dst_address.as_u32 = daddr.ip4.as_u32;
+
+  if (proto == SNAT_PROTOCOL_TCP)
+    {
+      u16 *checksum;
+      ip_csum_t csum;
+      tcp_header_t *tcp = ip6_next_header (ip6);
+
+      checksum = &tcp->checksum;
+      csum = ip_csum_sub_even (*checksum, sport);
+      csum = ip_csum_add_even (csum, udp->src_port);
+      *checksum = ip_csum_fold (csum);
+    }
 
   return 0;
 }
@@ -279,6 +326,10 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   else
     {
       udp_header_t *udp = ip6_next_header (ip6);
+      tcp_header_t *tcp = ip6_next_header (ip6);
+      u16 *checksum;
+      ip_csum_t csum;
+
       u16 sport = udp->src_port;
       u16 dport = udp->dst_port;
 
@@ -295,7 +346,263 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
       ip4->dst_address.as_u32 = bibe->out_addr.as_u32;
       udp->dst_port = bibe->out_port;
       ip4->src_address.as_u32 = saddr.ip4.as_u32;
+
+      if (proto == SNAT_PROTOCOL_TCP)
+	checksum = &tcp->checksum;
+      else
+	checksum = &udp->checksum;
+      csum = ip_csum_sub_even (*checksum, dport);
+      csum = ip_csum_add_even (csum, udp->dst_port);
+      *checksum = ip_csum_fold (csum);
     }
+
+  return 0;
+}
+
+static int
+nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
+				  ip6_header_t * ip6)
+{
+  nat64_main_t *nm = &nat64_main;
+  nat64_db_bib_entry_t *bibe;
+  nat64_db_st_entry_t *ste;
+  ip46_address_t saddr, daddr;
+  u32 sw_if_index, fib_index;
+  udp_header_t *udp = ip6_next_header (ip6);
+  tcp_header_t *tcp = ip6_next_header (ip6);
+  snat_protocol_t proto = ip_proto_to_snat_proto (ip6->protocol);
+  u16 sport = udp->src_port;
+  u16 dport = udp->dst_port;
+  u16 *checksum;
+  ip_csum_t csum;
+
+  sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  fib_index =
+    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, sw_if_index);
+
+  saddr.as_u64[0] = ip6->src_address.as_u64[0];
+  saddr.as_u64[1] = ip6->src_address.as_u64[1];
+  daddr.as_u64[0] = ip6->dst_address.as_u64[0];
+  daddr.as_u64[1] = ip6->dst_address.as_u64[1];
+
+  if (proto == SNAT_PROTOCOL_UDP)
+    checksum = &udp->checksum;
+  else
+    checksum = &tcp->checksum;
+
+  csum = ip_csum_sub_even (*checksum, ip6->src_address.as_u64[0]);
+  csum = ip_csum_sub_even (csum, ip6->src_address.as_u64[1]);
+  csum = ip_csum_sub_even (csum, ip6->dst_address.as_u64[0]);
+  csum = ip_csum_sub_even (csum, ip6->dst_address.as_u64[1]);
+  csum = ip_csum_sub_even (csum, sport);
+  csum = ip_csum_sub_even (csum, dport);
+
+  ste =
+    nat64_db_st_entry_find (&nm->db, &saddr, &daddr, sport, dport, proto,
+			    fib_index, 1);
+
+  if (ste)
+    {
+      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+    }
+  else
+    {
+      bibe =
+	nat64_db_bib_entry_find (&nm->db, &saddr, sport, proto, fib_index, 1);
+
+      if (!bibe)
+	{
+	  u16 out_port;
+	  ip4_address_t out_addr;
+	  if (nat64_alloc_out_addr_and_port
+	      (fib_index, proto, &out_addr, &out_port))
+	    return -1;
+
+	  bibe =
+	    nat64_db_bib_entry_create (&nm->db, &ip6->src_address, &out_addr,
+				       sport, clib_host_to_net_u16 (out_port),
+				       fib_index, proto, 0);
+	  if (!bibe)
+	    return -1;
+	}
+
+      ste =
+	nat64_db_st_entry_create (&nm->db, bibe, &ip6->dst_address,
+				  &daddr.ip4, dport);
+      if (!ste)
+	return -1;
+    }
+
+  nat64_session_reset_timeout (ste, vm);
+
+  sport = udp->src_port = bibe->out_port;
+  memcpy (&ip6->src_address, well_known_prefix, sizeof (ip6_address_t));
+  saddr.ip6.as_u32[3] = ip6->src_address.as_u32[3] = bibe->out_addr.as_u32;
+
+  saddr.ip6.as_u32[0] = 0;
+  saddr.ip6.as_u32[1] = 0;
+  saddr.ip6.as_u32[2] = 0;
+  daddr.ip6.as_u32[0] = 0;
+  daddr.ip6.as_u32[1] = 0;
+  daddr.ip6.as_u32[2] = 0;
+
+  ste =
+    nat64_db_st_entry_find (&nm->db, &daddr, &saddr, dport, sport, proto, 0,
+			    0);
+
+  if (ste)
+    {
+      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+    }
+  else
+    {
+      bibe = nat64_db_bib_entry_find (&nm->db, &daddr, dport, proto, 0, 0);
+
+      if (!bibe)
+	return -1;
+
+      ste =
+	nat64_db_st_entry_create (&nm->db, bibe, &ip6->src_address,
+				  &saddr.ip4, sport);
+    }
+
+  ip6->dst_address.as_u64[0] = bibe->in_addr.as_u64[0];
+  ip6->dst_address.as_u64[1] = bibe->in_addr.as_u64[1];
+  udp->dst_port = bibe->in_port;
+
+  csum = ip_csum_add_even (csum, ip6->src_address.as_u64[0]);
+  csum = ip_csum_add_even (csum, ip6->src_address.as_u64[1]);
+  csum = ip_csum_add_even (csum, ip6->dst_address.as_u64[0]);
+  csum = ip_csum_add_even (csum, ip6->dst_address.as_u64[1]);
+  csum = ip_csum_add_even (csum, udp->src_port);
+  csum = ip_csum_add_even (csum, udp->dst_port);
+  *checksum = ip_csum_fold (csum);
+
+  return 0;
+}
+
+static int
+nat64_in2out_icmp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
+			       ip6_header_t * ip6)
+{
+  nat64_main_t *nm = &nat64_main;
+  nat64_db_bib_entry_t *bibe;
+  nat64_db_st_entry_t *ste;
+  icmp46_header_t *icmp = ip6_next_header (ip6);
+  ip6_header_t *inner_ip6;
+  ip46_address_t saddr, daddr;
+  u32 sw_if_index, fib_index;
+  snat_protocol_t proto;
+  udp_header_t *udp;
+  tcp_header_t *tcp;
+  u16 *checksum, sport, dport;
+  ip_csum_t csum;
+
+  if (icmp->type == ICMP6_echo_request || icmp->type == ICMP6_echo_reply)
+    return -1;
+
+  inner_ip6 = (ip6_header_t *) u8_ptr_add (icmp, 8);
+
+  proto = ip_proto_to_snat_proto (inner_ip6->protocol);
+
+  if (proto == SNAT_PROTOCOL_ICMP)
+    return -1;
+
+  sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  fib_index =
+    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, sw_if_index);
+
+  saddr.as_u64[0] = inner_ip6->src_address.as_u64[0];
+  saddr.as_u64[1] = inner_ip6->src_address.as_u64[1];
+  daddr.as_u64[0] = inner_ip6->dst_address.as_u64[0];
+  daddr.as_u64[1] = inner_ip6->dst_address.as_u64[1];
+
+  udp = ip6_next_header (inner_ip6);
+  tcp = ip6_next_header (inner_ip6);
+
+  sport = udp->src_port;
+  dport = udp->dst_port;
+
+  if (proto == SNAT_PROTOCOL_UDP)
+    checksum = &udp->checksum;
+  else
+    checksum = &tcp->checksum;
+
+  csum = ip_csum_sub_even (*checksum, inner_ip6->src_address.as_u64[0]);
+  csum = ip_csum_sub_even (csum, inner_ip6->src_address.as_u64[1]);
+  csum = ip_csum_sub_even (csum, inner_ip6->dst_address.as_u64[0]);
+  csum = ip_csum_sub_even (csum, inner_ip6->dst_address.as_u64[1]);
+  csum = ip_csum_sub_even (csum, sport);
+  csum = ip_csum_sub_even (csum, dport);
+
+  ste =
+    nat64_db_st_entry_find (&nm->db, &daddr, &saddr, dport, sport, proto,
+			    fib_index, 1);
+  if (!ste)
+    return -1;
+
+  clib_warning ("");
+  bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+  if (!bibe)
+    return -1;
+
+  dport = udp->dst_port = bibe->out_port;
+  memcpy (&inner_ip6->dst_address, well_known_prefix, sizeof (ip6_address_t));
+  daddr.ip6.as_u32[3] = inner_ip6->dst_address.as_u32[3] =
+    bibe->out_addr.as_u32;
+
+  saddr.ip6.as_u32[0] = 0;
+  saddr.ip6.as_u32[1] = 0;
+  saddr.ip6.as_u32[2] = 0;
+  daddr.ip6.as_u32[0] = 0;
+  daddr.ip6.as_u32[1] = 0;
+  daddr.ip6.as_u32[2] = 0;
+
+  ste =
+    nat64_db_st_entry_find (&nm->db, &saddr, &daddr, sport, dport, proto, 0,
+			    0);
+  if (!ste)
+    return -1;
+
+  bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+  if (!bibe)
+    return -1;
+
+  inner_ip6->src_address.as_u64[0] = bibe->in_addr.as_u64[0];
+  inner_ip6->src_address.as_u64[1] = bibe->in_addr.as_u64[1];
+  udp->src_port = bibe->in_port;
+
+  csum = ip_csum_add_even (csum, inner_ip6->src_address.as_u64[0]);
+  csum = ip_csum_add_even (csum, inner_ip6->src_address.as_u64[1]);
+  csum = ip_csum_add_even (csum, inner_ip6->dst_address.as_u64[0]);
+  csum = ip_csum_add_even (csum, inner_ip6->dst_address.as_u64[1]);
+  csum = ip_csum_add_even (csum, udp->src_port);
+  csum = ip_csum_add_even (csum, udp->dst_port);
+  *checksum = ip_csum_fold (csum);
+
+  if (!vec_len (nm->addr_pool))
+    return -1;
+
+  memcpy (&ip6->src_address, well_known_prefix, sizeof (ip6_address_t));
+  ip6->src_address.as_u32[3] = nm->addr_pool[0].addr.as_u32;
+  ip6->dst_address.as_u64[0] = inner_ip6->src_address.as_u64[0];
+  ip6->dst_address.as_u64[1] = inner_ip6->src_address.as_u64[1];
+
+  icmp->checksum = 0;
+  csum = ip_csum_with_carry (0, ip6->payload_length);
+  csum = ip_csum_with_carry (csum, clib_host_to_net_u16 (ip6->protocol));
+  csum = ip_csum_with_carry (csum, ip6->src_address.as_u64[0]);
+  csum = ip_csum_with_carry (csum, ip6->src_address.as_u64[1]);
+  csum = ip_csum_with_carry (csum, ip6->dst_address.as_u64[0]);
+  csum = ip_csum_with_carry (csum, ip6->dst_address.as_u64[1]);
+  csum =
+    ip_incremental_checksum (csum, icmp,
+			     clib_net_to_host_u16 (ip6->payload_length));
+  icmp->checksum = ~ip_csum_fold (csum);
 
   return 0;
 }
@@ -343,7 +650,7 @@ nat64_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ctx0.b = b0;
 	  ctx0.vm = vm;
 
-	  next0 = NAT64_IN2OUT_NEXT_LOOKUP;
+	  next0 = NAT64_IN2OUT_NEXT_IP4_LOOKUP;
 
 	  if (PREDICT_FALSE
 	      (ip6_parse
@@ -366,6 +673,18 @@ nat64_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (proto0 == SNAT_PROTOCOL_ICMP)
 	    {
+	      if (is_hairpinning (&ip60->dst_address))
+		{
+		  next0 = NAT64_IN2OUT_NEXT_IP6_LOOKUP;
+		  if (nat64_in2out_icmp_hairpinning (vm, b0, ip60))
+		    {
+		      next0 = NAT64_IN2OUT_NEXT_DROP;
+		      b0->error =
+			node->errors[NAT64_IN2OUT_ERROR_NO_TRANSLATION];
+		    }
+		  goto trace0;
+		}
+
 	      if (icmp6_to_icmp
 		  (b0, nat64_in2out_icmp_set_cb, &ctx0,
 		   nat64_in2out_inner_icmp_set_cb, &ctx0))
@@ -377,6 +696,18 @@ nat64_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
+	      if (is_hairpinning (&ip60->dst_address))
+		{
+		  next0 = NAT64_IN2OUT_NEXT_IP6_LOOKUP;
+		  if (nat64_in2out_tcp_udp_hairpinning (vm, b0, ip60))
+		    {
+		      next0 = NAT64_IN2OUT_NEXT_DROP;
+		      b0->error =
+			node->errors[NAT64_IN2OUT_ERROR_NO_TRANSLATION];
+		    }
+		  goto trace0;
+		}
+
 	      if (ip6_to_ip4_tcp_udp
 		  (b0, nat64_in2out_tcp_udp_set_cb, &ctx0, 0))
 		{
@@ -422,7 +753,8 @@ VLIB_REGISTER_NODE (nat64_in2out_node) = {
   /* edit / add dispositions here */
   .next_nodes = {
     [NAT64_IN2OUT_NEXT_DROP] = "error-drop",
-    [NAT64_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
+    [NAT64_IN2OUT_NEXT_IP4_LOOKUP] = "ip4-lookup",
+    [NAT64_IN2OUT_NEXT_IP6_LOOKUP] = "ip6-lookup",
   },
 };
 /* *INDENT-ON* */

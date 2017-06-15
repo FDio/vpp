@@ -1245,7 +1245,7 @@ static void *vl_api_nat64_add_del_pool_addr_range_t_print
 {
   u8 *s;
 
-  s = format (0, "SCRIPT: nat64_add_del_pool_addr_range");
+  s = format (0, "SCRIPT: nat64_add_del_pool_addr_range ");
   s = format (s, "%U - %U vrf_id %u %s\n",
 	      format_ip4_address, mp->start_addr,
 	      format_ip4_address, mp->end_addr,

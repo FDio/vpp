@@ -27,8 +27,9 @@ static u8 well_known_prefix[] = {
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00
- };
+};
 /* *INDENT-ON* */
+
 typedef struct
 {
   u32 sw_if_index;
@@ -95,10 +96,13 @@ nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   ip46_address_t saddr, daddr;
   ip6_address_t ip6_saddr;
   udp_header_t *udp = ip4_next_header (ip4);
+  tcp_header_t *tcp = ip4_next_header (ip4);
   snat_protocol_t proto = ip_proto_to_snat_proto (ip4->protocol);
   u16 dport = udp->dst_port;
   u16 sport = udp->src_port;
   u32 sw_if_index, fib_index;
+  u16 *checksum;
+  ip_csum_t csum;
 
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
@@ -141,6 +145,16 @@ nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   ip6->dst_address.as_u64[0] = bibe->in_addr.as_u64[0];
   ip6->dst_address.as_u64[1] = bibe->in_addr.as_u64[1];
   udp->dst_port = bibe->in_port;
+
+  if (proto == SNAT_PROTOCOL_UDP)
+    checksum = &udp->checksum;
+  else
+    checksum = &tcp->checksum;
+  csum = ip_csum_sub_even (*checksum, dport);
+  csum = ip_csum_add_even (csum, udp->dst_port);
+  *checksum = ip_csum_fold (csum);
+
+  vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
 
   return 0;
 }
@@ -205,6 +219,7 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
       ip6->dst_address.as_u64[1] = bibe->in_addr.as_u64[1];
       ((u16 *) (icmp))[2] = bibe->in_port;
 
+      vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
     }
   else
     {
@@ -269,12 +284,17 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
       ip6->src_address.as_u64[0] = bibe->in_addr.as_u64[0];
       ip6->src_address.as_u64[1] = bibe->in_addr.as_u64[1];
       ((u16 *) (icmp))[2] = bibe->in_port;
+
+      vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
     }
   else
     {
       udp_header_t *udp = ip4_next_header (ip4);
+      tcp_header_t *tcp = ip4_next_header (ip4);
       u16 dport = udp->dst_port;
       u16 sport = udp->src_port;
+      u16 *checksum;
+      ip_csum_t csum;
 
       ste =
 	nat64_db_st_entry_find (&nm->db, &saddr, &daddr, sport, dport, proto,
@@ -291,6 +311,19 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
       ip6->src_address.as_u64[0] = bibe->in_addr.as_u64[0];
       ip6->src_address.as_u64[1] = bibe->in_addr.as_u64[1];
       udp->src_port = bibe->in_port;
+
+      if (proto == SNAT_PROTOCOL_UDP)
+	checksum = &udp->checksum;
+      else
+	checksum = &tcp->checksum;
+      if (*checksum)
+	{
+	  csum = ip_csum_sub_even (*checksum, sport);
+	  csum = ip_csum_add_even (csum, udp->src_port);
+	  *checksum = ip_csum_fold (csum);
+	}
+
+      vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
     }
 
   return 0;
