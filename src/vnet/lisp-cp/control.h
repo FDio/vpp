@@ -126,6 +126,14 @@ typedef struct
 
 typedef struct
 {
+  u64 nonce;
+  u8 is_rloc_probe;
+  mapping_t *mappings;
+  volatile u8 is_free;
+} map_records_arg_t;
+
+typedef struct
+{
   u32 flags;
 
   /* LISP feature status */
@@ -226,6 +234,9 @@ typedef struct
   /* timing wheel for mappping timeouts */
   timing_wheel_t wheel;
 
+  /** Per thread pool of records shared with thread0 */
+  map_records_arg_t **map_records_args_pool;
+
   /* commodity */
   ip4_main_t *im4;
   ip6_main_t *im6;
@@ -287,13 +298,6 @@ typedef struct
   u8 *key;
   u8 key_id;
 } vnet_lisp_add_del_mapping_args_t;
-
-typedef struct
-{
-  u64 nonce;
-  u8 is_rloc_probe;
-  mapping_t *mappings;
-} map_records_arg_t;
 
 int
 vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,

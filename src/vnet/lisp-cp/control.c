@@ -3352,14 +3352,14 @@ mapping_start_expiration_timer (lisp_cp_main_t * lcm, u32 mi,
 static void
 map_records_arg_free (map_records_arg_t * a)
 {
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *m;
   vec_foreach (m, a->mappings)
   {
     vec_free (m->locators);
     gid_address_free (&m->eid);
   }
-
-  clib_mem_free (a);
+  pool_put (lcm->map_records_args_pool[vlib_get_thread_index ()], a);
 }
 
 void *
@@ -3420,7 +3420,7 @@ process_map_reply (map_records_arg_t * a)
   pool_put (lcm->pending_map_requests_pool, pmr);
 
 done:
-  map_records_arg_free (a);
+  a->is_free = 1;
   return 0;
 }
 
@@ -3471,7 +3471,7 @@ process_map_notify (map_records_arg_t * a)
       return;
     }
 
-  map_records_arg_free (a);
+  a->is_free = 1;
   hash_unset (lcm->map_register_messages_by_nonce, a->nonce);
 }
 
@@ -3557,6 +3557,24 @@ parse_map_records (vlib_buffer_t * b, map_records_arg_t * a, u8 count)
 }
 
 static map_records_arg_t *
+map_record_args_get ()
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  map_records_arg_t *rec;
+
+  /* Cleanup first */
+  /* *INDENT-OFF* */
+  pool_foreach (rec, lcm->map_records_args_pool[vlib_get_thread_index()], ({
+    if (rec->is_free)
+      map_records_arg_free (rec);
+  }));
+  /* *INDENT-ON* */
+
+  pool_get (lcm->map_records_args_pool[vlib_get_thread_index ()], rec);
+  return rec;
+}
+
+static map_records_arg_t *
 parse_map_notify (vlib_buffer_t * b)
 {
   int rc = 0;
@@ -3567,8 +3585,9 @@ parse_map_notify (vlib_buffer_t * b)
   gid_address_t deid;
   u16 auth_data_len = 0;
   u8 record_count;
-  map_records_arg_t *a = clib_mem_alloc (sizeof (*a));
+  map_records_arg_t *a;
 
+  a = map_record_args_get ();
   memset (a, 0, sizeof (*a));
   mnotif_hdr = vlib_buffer_get_current (b);
   vlib_buffer_pull (b, sizeof (*mnotif_hdr));
@@ -3791,8 +3810,11 @@ parse_map_reply (vlib_buffer_t * b)
   u32 i, len = 0;
   mapping_t m;
   map_reply_hdr_t *mrep_hdr;
-  map_records_arg_t *a = clib_mem_alloc (sizeof (*a));
+  map_records_arg_t *a;
+
+  a = map_record_args_get ();
   memset (a, 0, sizeof (*a));
+
   locator_t *locators;
 
   mrep_hdr = vlib_buffer_get_current (b);
@@ -3948,6 +3970,8 @@ lisp_cp_init (vlib_main_t * vm)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   clib_error_t *error = 0;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads;
 
   if ((error = vlib_call_init_function (vm, lisp_gpe_init)))
     return error;
@@ -3964,6 +3988,9 @@ lisp_cp_init (vlib_main_t * vm)
   gid_dictionary_init (&lcm->mapping_index_by_gid);
   lcm->do_map_resolver_election = 1;
   lcm->map_request_mode = MR_MODE_DST_ONLY;
+
+  num_threads = 1 /* main thread */  + vtm->n_threads;
+  vec_validate (lcm->map_records_args_pool, num_threads - 1);
 
   /* default vrf mapped to vni 0 */
   hash_set (lcm->table_id_by_vni, 0, 0);
