@@ -476,12 +476,14 @@ gpe_native_fwd_rpaths_copy (vl_api_gpe_native_fwd_rpath_t * dst,
 			    fib_route_path_t * src, u8 is_ip4)
 {
   fib_route_path_t *e;
+  fib_table_t *table;
   u32 i = 0;
 
   vec_foreach (e, src)
   {
     memset (&dst[i], 0, sizeof (*dst));
-    dst[i].fib_index = e->frp_fib_index;
+    table = fib_table_get (e->frp_fib_index, e->frp_proto);
+    dst[i].fib_index = table->ft_table_id;
     dst[i].nh_sw_if_index = e->frp_sw_if_index;
     dst[i].is_ip4 = is_ip4;
     if (is_ip4)
