@@ -27,6 +27,17 @@ class MethodHolder(VppTestCase):
     def tearDown(self):
         super(MethodHolder, self).tearDown()
 
+    def check_ip_checksum(self, pkt):
+        """
+        Check IP checksum of the packet
+
+        :param pkt: Packet to check IP checksum
+        """
+        new = pkt.__class__(str(pkt))
+        del new['IP'].chksum
+        new = new.__class__(str(new))
+        self.assertEqual(new['IP'].chksum, pkt['IP'].chksum)
+
     def check_tcp_checksum(self, pkt):
         """
         Check TCP checksum in IP packet
@@ -37,6 +48,85 @@ class MethodHolder(VppTestCase):
         del new['TCP'].chksum
         new = new.__class__(str(new))
         self.assertEqual(new['TCP'].chksum, pkt['TCP'].chksum)
+
+    def check_udp_checksum(self, pkt):
+        """
+        Check UDP checksum in IP packet
+
+        :param pkt: Packet to check UDP checksum
+        """
+        new = pkt.__class__(str(pkt))
+        del new['UDP'].chksum
+        new = new.__class__(str(new))
+        self.assertEqual(new['UDP'].chksum, pkt['UDP'].chksum)
+
+    def check_icmp_errror_embedded(self, pkt):
+        """
+        Check ICMP error embeded packet checksum
+
+        :param pkt: Packet to check ICMP error embeded packet checksum
+        """
+        if pkt.haslayer(IPerror):
+            new = pkt.__class__(str(pkt))
+            del new['IPerror'].chksum
+            new = new.__class__(str(new))
+            self.assertEqual(new['IPerror'].chksum, pkt['IPerror'].chksum)
+
+        if pkt.haslayer(TCPerror):
+            new = pkt.__class__(str(pkt))
+            del new['TCPerror'].chksum
+            new = new.__class__(str(new))
+            self.assertEqual(new['TCPerror'].chksum, pkt['TCPerror'].chksum)
+
+        if pkt.haslayer(UDPerror):
+            if pkt['UDPerror'].chksum != 0:
+                new = pkt.__class__(str(pkt))
+                del new['UDPerror'].chksum
+                new = new.__class__(str(new))
+                self.assertEqual(new['UDPerror'].chksum,
+                                 pkt['UDPerror'].chksum)
+
+        if pkt.haslayer(ICMPerror):
+            del new['ICMPerror'].chksum
+            new = new.__class__(str(new))
+            self.assertEqual(new['ICMPerror'].chksum, pkt['ICMPerror'].chksum)
+
+    def check_icmp_checksum(self, pkt):
+        """
+        Check ICMP checksum in IPv4 packet
+
+        :param pkt: Packet to check ICMP checksum
+        """
+        new = pkt.__class__(str(pkt))
+        del new['ICMP'].chksum
+        new = new.__class__(str(new))
+        self.assertEqual(new['ICMP'].chksum, pkt['ICMP'].chksum)
+        if pkt.haslayer(IPerror):
+            self.check_icmp_errror_embedded(pkt)
+
+    def check_icmpv6_checksum(self, pkt):
+        """
+        Check ICMPv6 checksum in IPv4 packet
+
+        :param pkt: Packet to check ICMPv6 checksum
+        """
+        new = pkt.__class__(str(pkt))
+        if pkt.haslayer(ICMPv6DestUnreach):
+            del new['ICMPv6DestUnreach'].cksum
+            new = new.__class__(str(new))
+            self.assertEqual(new['ICMPv6DestUnreach'].cksum,
+                             pkt['ICMPv6DestUnreach'].cksum)
+            self.check_icmp_errror_embedded(pkt)
+        if pkt.haslayer(ICMPv6EchoRequest):
+            del new['ICMPv6EchoRequest'].cksum
+            new = new.__class__(str(new))
+            self.assertEqual(new['ICMPv6EchoRequest'].cksum,
+                             pkt['ICMPv6EchoRequest'].cksum)
+        if pkt.haslayer(ICMPv6EchoReply):
+            del new['ICMPv6EchoReply'].cksum
+            new = new.__class__(str(new))
+            self.assertEqual(new['ICMPv6EchoReply'].cksum,
+                             pkt['ICMPv6EchoReply'].cksum)
 
     def create_stream_in(self, in_if, out_if, ttl=64):
         """
@@ -144,6 +234,7 @@ class MethodHolder(VppTestCase):
         self.assertEqual(packet_num, len(capture))
         for packet in capture:
             try:
+                self.check_ip_checksum(packet)
                 self.assertEqual(packet[IP].src, nat_ip)
                 if dst_ip is not None:
                     self.assertEqual(packet[IP].dst, dst_ip)
@@ -154,6 +245,7 @@ class MethodHolder(VppTestCase):
                         self.assertNotEqual(
                             packet[TCP].sport, self.tcp_port_in)
                     self.tcp_port_out = packet[TCP].sport
+                    self.check_tcp_checksum(packet)
                 elif packet.haslayer(UDP):
                     if same_port:
                         self.assertEqual(packet[UDP].sport, self.udp_port_in)
@@ -167,6 +259,7 @@ class MethodHolder(VppTestCase):
                     else:
                         self.assertNotEqual(packet[ICMP].id, self.icmp_id_in)
                     self.icmp_id_out = packet[ICMP].id
+                    self.check_icmp_checksum(packet)
             except:
                 self.logger.error(ppp("Unexpected or invalid packet "
                                       "(outside network):", packet))
@@ -183,13 +276,16 @@ class MethodHolder(VppTestCase):
         self.assertEqual(packet_num, len(capture))
         for packet in capture:
             try:
+                self.check_ip_checksum(packet)
                 self.assertEqual(packet[IP].dst, in_if.remote_ip4)
                 if packet.haslayer(TCP):
                     self.assertEqual(packet[TCP].dport, self.tcp_port_in)
+                    self.check_tcp_checksum(packet)
                 elif packet.haslayer(UDP):
                     self.assertEqual(packet[UDP].dport, self.udp_port_in)
                 else:
                     self.assertEqual(packet[ICMP].id, self.icmp_id_in)
+                    self.check_icmp_checksum(packet)
             except:
                 self.logger.error(ppp("Unexpected or invalid packet "
                                       "(inside network):", packet))
@@ -211,11 +307,14 @@ class MethodHolder(VppTestCase):
                 self.assertEqual(packet[IPv6].dst, dst_ip)
                 if packet.haslayer(TCP):
                     self.assertEqual(packet[TCP].dport, self.tcp_port_in)
+                    self.check_tcp_checksum(packet)
                 elif packet.haslayer(UDP):
                     self.assertEqual(packet[UDP].dport, self.udp_port_in)
+                    self.check_udp_checksum(packet)
                 else:
                     self.assertEqual(packet[ICMPv6EchoReply].id,
                                      self.icmp_id_in)
+                    self.check_icmpv6_checksum(packet)
             except:
                 self.logger.error(ppp("Unexpected or invalid packet "
                                       "(inside network):", packet))
@@ -2400,15 +2499,24 @@ class TestNAT64(MethodHolder):
             cls.icmp_id_out = 6305
             cls.nat_addr = '10.0.0.3'
             cls.nat_addr_n = socket.inet_pton(socket.AF_INET, cls.nat_addr)
+            cls.vrf1_id = 10
+            cls.vrf1_nat_addr = '10.0.10.3'
+            cls.vrf1_nat_addr_n = socket.inet_pton(socket.AF_INET,
+                                                   cls.vrf1_nat_addr)
 
-            cls.create_pg_interfaces(range(2))
+            cls.create_pg_interfaces(range(3))
             cls.ip6_interfaces = list(cls.pg_interfaces[0:1])
+            cls.ip6_interfaces.append(cls.pg_interfaces[2])
             cls.ip4_interfaces = list(cls.pg_interfaces[1:2])
+
+            cls.pg_interfaces[2].set_table_ip6(cls.vrf1_id)
+
+            cls.pg0.generate_remote_hosts(2)
 
             for i in cls.ip6_interfaces:
                 i.admin_up()
                 i.config_ip6()
-                i.resolve_ndp()
+                i.configure_ipv6_neighbors()
 
             for i in cls.ip4_interfaces:
                 i.admin_up()
@@ -2540,8 +2648,8 @@ class TestNAT64(MethodHolder):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture(3)
-        self.verify_capture_out(capture, packet_num=3, nat_ip=self.nat_addr,
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip=self.nat_addr,
                                 dst_ip=self.pg1.remote_ip4)
 
         # out2in
@@ -2549,7 +2657,7 @@ class TestNAT64(MethodHolder):
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture(3)
+        capture = self.pg0.get_capture(len(pkts))
         ip = IPv6(src=''.join(['64:ff9b::', self.pg1.remote_ip4]))
         self.verify_capture_in_ip6(capture, ip[IPv6].src, self.pg0.remote_ip6)
 
@@ -2558,8 +2666,8 @@ class TestNAT64(MethodHolder):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture(3)
-        self.verify_capture_out(capture, packet_num=3, nat_ip=self.nat_addr,
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip=self.nat_addr,
                                 dst_ip=self.pg1.remote_ip4)
 
         # out2in
@@ -2567,13 +2675,33 @@ class TestNAT64(MethodHolder):
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture(3)
-        ip = IPv6(src=''.join(['64:ff9b::', self.pg1.remote_ip4]))
+        capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in_ip6(capture, ip[IPv6].src, self.pg0.remote_ip6)
 
         ses_num_end = self.nat64_get_ses_num()
 
         self.assertEqual(ses_num_end - ses_num_start, 3)
+
+        # tenant with specific VRF
+        self.vapi.nat64_add_del_pool_addr_range(self.vrf1_nat_addr_n,
+                                                self.vrf1_nat_addr_n,
+                                                vrf_id=self.vrf1_id)
+        self.vapi.nat64_add_del_interface(self.pg2.sw_if_index)
+
+        pkts = self.create_stream_in_ip6(self.pg2, self.pg1)
+        self.pg2.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip=self.vrf1_nat_addr,
+                                dst_ip=self.pg1.remote_ip4)
+
+        pkts = self.create_stream_out(self.pg1, dst_ip=self.vrf1_nat_addr)
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg2.get_capture(len(pkts))
+        self.verify_capture_in_ip6(capture, ip[IPv6].src, self.pg2.remote_ip6)
 
     def test_static(self):
         """ NAT64 static translation test """
@@ -2612,8 +2740,8 @@ class TestNAT64(MethodHolder):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture(3)
-        self.verify_capture_out(capture, packet_num=3, nat_ip=self.nat_addr,
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture, nat_ip=self.nat_addr,
                                 dst_ip=self.pg1.remote_ip4, same_port=True)
 
         # out2in
@@ -2621,7 +2749,7 @@ class TestNAT64(MethodHolder):
         self.pg1.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg0.get_capture(3)
+        capture = self.pg0.get_capture(len(pkts))
         ip = IPv6(src=''.join(['64:ff9b::', self.pg1.remote_ip4]))
         self.verify_capture_in_ip6(capture, ip[IPv6].src, self.pg0.remote_ip6)
 
@@ -2643,7 +2771,7 @@ class TestNAT64(MethodHolder):
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture(3)
+        capture = self.pg1.get_capture(len(pkts))
 
         ses_num_before_timeout = self.nat64_get_ses_num()
 
@@ -2672,7 +2800,7 @@ class TestNAT64(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture_ip4 = self.pg1.get_capture(len(pkts))
-        self.verify_capture_out(capture_ip4, packet_num=3,
+        self.verify_capture_out(capture_ip4,
                                 nat_ip=self.nat_addr,
                                 dst_ip=self.pg1.remote_ip4)
 
@@ -2703,6 +2831,7 @@ class TestNAT64(MethodHolder):
                 inner = packet[IPerror]
                 self.assertEqual(inner.src, self.pg1.remote_ip4)
                 self.assertEqual(inner.dst, self.nat_addr)
+                self.check_icmp_checksum(packet)
                 if inner.haslayer(TCPerror):
                     self.assertEqual(inner[TCPerror].dport, self.tcp_port_out)
                 elif inner.haslayer(UDPerror):
@@ -2731,6 +2860,7 @@ class TestNAT64(MethodHolder):
                 inner = icmp[IPerror6]
                 self.assertEqual(inner.src, self.pg0.remote_ip6)
                 self.assertEqual(inner.dst, ip.src)
+                self.check_icmpv6_checksum(packet)
                 if inner.haslayer(TCPerror):
                     self.assertEqual(inner[TCPerror].sport, self.tcp_port_in)
                 elif inner.haslayer(UDPerror):
@@ -2738,6 +2868,132 @@ class TestNAT64(MethodHolder):
                 else:
                     self.assertEqual(inner[ICMPv6EchoRequest].id,
                                      self.icmp_id_in)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+
+    def test_hairpinning(self):
+        """ NAT64 hairpinning """
+
+        client = self.pg0.remote_hosts[0]
+        server = self.pg0.remote_hosts[1]
+        server_tcp_in_port = 22
+        server_tcp_out_port = 4022
+        server_udp_in_port = 23
+        server_udp_out_port = 4023
+        client_tcp_in_port = 1234
+        client_udp_in_port = 1235
+        client_tcp_out_port = 0
+        client_udp_out_port = 0
+        ip = IPv6(src=''.join(['64:ff9b::', self.nat_addr]))
+        nat_addr_ip6 = ip.src
+
+        self.vapi.nat64_add_del_pool_addr_range(self.nat_addr_n,
+                                                self.nat_addr_n)
+        self.vapi.nat64_add_del_interface(self.pg0.sw_if_index)
+        self.vapi.nat64_add_del_interface(self.pg1.sw_if_index, is_inside=0)
+
+        self.vapi.nat64_add_del_static_bib(server.ip6n,
+                                           self.nat_addr_n,
+                                           server_tcp_in_port,
+                                           server_tcp_out_port,
+                                           IP_PROTOS.tcp)
+        self.vapi.nat64_add_del_static_bib(server.ip6n,
+                                           self.nat_addr_n,
+                                           server_udp_in_port,
+                                           server_udp_out_port,
+                                           IP_PROTOS.udp)
+
+        # client to server
+        pkts = []
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=client.ip6, dst=nat_addr_ip6) /
+             TCP(sport=client_tcp_in_port, dport=server_tcp_out_port))
+        pkts.append(p)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=client.ip6, dst=nat_addr_ip6) /
+             UDP(sport=client_udp_in_port, dport=server_udp_out_port))
+        pkts.append(p)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IPv6].src, nat_addr_ip6)
+                self.assertEqual(packet[IPv6].dst, server.ip6)
+                if packet.haslayer(TCP):
+                    self.assertNotEqual(packet[TCP].sport, client_tcp_in_port)
+                    self.assertEqual(packet[TCP].dport, server_tcp_in_port)
+                    self.check_tcp_checksum(packet)
+                    client_tcp_out_port = packet[TCP].sport
+                else:
+                    self.assertNotEqual(packet[UDP].sport, client_udp_in_port)
+                    self.assertEqual(packet[UDP].dport, server_udp_in_port)
+                    self.check_udp_checksum(packet)
+                    client_udp_out_port = packet[UDP].sport
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+
+        # server to client
+        pkts = []
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=server.ip6, dst=nat_addr_ip6) /
+             TCP(sport=server_tcp_in_port, dport=client_tcp_out_port))
+        pkts.append(p)
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=server.ip6, dst=nat_addr_ip6) /
+             UDP(sport=server_udp_in_port, dport=client_udp_out_port))
+        pkts.append(p)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IPv6].src, nat_addr_ip6)
+                self.assertEqual(packet[IPv6].dst, client.ip6)
+                if packet.haslayer(TCP):
+                    self.assertEqual(packet[TCP].sport, server_tcp_out_port)
+                    self.assertEqual(packet[TCP].dport, client_tcp_in_port)
+                    self.check_tcp_checksum(packet)
+                else:
+                    self.assertEqual(packet[UDP].sport, server_udp_out_port)
+                    self.assertEqual(packet[UDP].dport, client_udp_in_port)
+                    self.check_udp_checksum(packet)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+
+        # ICMP error
+        pkts = []
+        pkts = [Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+                IPv6(src=client.ip6, dst=nat_addr_ip6) /
+                ICMPv6DestUnreach(code=1) /
+                packet[IPv6] for packet in capture]
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for packet in capture:
+            try:
+                self.assertEqual(packet[IPv6].src, nat_addr_ip6)
+                self.assertEqual(packet[IPv6].dst, server.ip6)
+                icmp = packet[ICMPv6DestUnreach]
+                self.assertEqual(icmp.code, 1)
+                inner = icmp[IPerror6]
+                self.assertEqual(inner.src, server.ip6)
+                self.assertEqual(inner.dst, nat_addr_ip6)
+                self.check_icmpv6_checksum(packet)
+                if inner.haslayer(TCPerror):
+                    self.assertEqual(inner[TCPerror].sport, server_tcp_in_port)
+                    self.assertEqual(inner[TCPerror].dport,
+                                     client_tcp_out_port)
+                else:
+                    self.assertEqual(inner[UDPerror].sport, server_udp_in_port)
+                    self.assertEqual(inner[UDPerror].dport,
+                                     client_udp_out_port)
             except:
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
@@ -2804,6 +3060,7 @@ class TestNAT64(MethodHolder):
         for addr in adresses:
             self.vapi.nat64_add_del_pool_addr_range(addr.address,
                                                     addr.address,
+                                                    vrf_id=addr.vrf_id,
                                                     is_add=0)
 
     def tearDown(self):

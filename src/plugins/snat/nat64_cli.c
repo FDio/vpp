@@ -107,7 +107,7 @@ nat64_cli_pool_walk (snat_address_t * ap, void *ctx)
   if (ap->fib_index != ~0)
     {
       fib_table_t *fib;
-      fib = fib_table_get (ap->fib_index, FIB_PROTOCOL_IP4);
+      fib = fib_table_get (ap->fib_index, FIB_PROTOCOL_IP6);
       if (!fib)
 	return -1;
       vlib_cli_output (vm, " %U tenant VRF: %u", format_ip4_address,
