@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_26fc2f3e",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 748,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-06-15T12:51:24Z",
+      "side": 1,
+      "message": "Do you think if we make the l2fib_swif_seq_num() function static inline and put it in l2_fib.h may help with efficiency?",
+      "range": {
+        "startLine": 748,
+        "startChar": 0,
+        "endLine": 748,
+        "endChar": 18
+      },
+      "revId": "2d8059444165f6d709294546f206031efadab08e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
