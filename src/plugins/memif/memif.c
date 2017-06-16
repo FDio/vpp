@@ -482,7 +482,10 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
   clib_error_free (err);
 
   /* remove the interface */
-  ethernet_delete_interface (vnm, mif->hw_if_index);
+  if (mif->mode == MEMIF_INTERFACE_MODE_IP)
+    vnet_delete_hw_interface (vnm, mif->hw_if_index);
+  else
+    ethernet_delete_interface (vnm, mif->hw_if_index);
   mif->hw_if_index = ~0;
 
   /* free interface data structures */
@@ -518,6 +521,14 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
 
   return 0;
 }
+
+/* *INDENT-OFF* */
+VNET_HW_INTERFACE_CLASS (memif_ip_hw_if_class, static) =
+{
+  .name = "memif-ip",
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+};
+/* *INDENT-ON* */
 
 int
 memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
@@ -614,28 +625,43 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   mif->sw_if_index = mif->hw_if_index = mif->per_interface_next_index = ~0;
   mif->conn_unix_file_index = ~0;
   mif->conn_fd = -1;
+  mif->mode = args->mode;
   if (args->secret)
     mif->secret = vec_dup (args->secret);
 
   if (tm->n_vlib_mains > 1)
     clib_spinlock_init (&mif->lockp);
 
-  if (!args->hw_addr_set)
+
+  if (mif->mode == MEMIF_INTERFACE_MODE_ETHERNET)
     {
-      f64 now = vlib_time_now (vm);
-      u32 rnd;
-      rnd = (u32) (now * 1e6);
-      rnd = random_u32 (&rnd);
 
-      memcpy (args->hw_addr + 2, &rnd, sizeof (rnd));
-      args->hw_addr[0] = 2;
-      args->hw_addr[1] = 0xfe;
+      if (!args->hw_addr_set)
+	{
+	  f64 now = vlib_time_now (vm);
+	  u32 rnd;
+	  rnd = (u32) (now * 1e6);
+	  rnd = random_u32 (&rnd);
+
+	  memcpy (args->hw_addr + 2, &rnd, sizeof (rnd));
+	  args->hw_addr[0] = 2;
+	  args->hw_addr[1] = 0xfe;
+	}
+      error = ethernet_register_interface (vnm, memif_device_class.index,
+					   mif->dev_instance, args->hw_addr,
+					   &mif->hw_if_index,
+					   memif_eth_flag_change);
     }
-
-  error = ethernet_register_interface (vnm, memif_device_class.index,
-				       mif->dev_instance, args->hw_addr,
-				       &mif->hw_if_index,
-				       memif_eth_flag_change);
+  else if (mif->mode == MEMIF_INTERFACE_MODE_IP)
+    {
+      mif->hw_if_index =
+	vnet_register_interface (vnm, memif_device_class.index,
+				 mif->dev_instance,
+				 memif_ip_hw_if_class.index,
+				 mif->dev_instance);
+    }
+  else
+    error = clib_error_return (0, "unsupported interface mode");
 
   if (error)
     {
@@ -725,7 +751,10 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 error:
   if (mif->hw_if_index != ~0)
     {
-      ethernet_delete_interface (vnm, mif->hw_if_index);
+      if (mif->mode == MEMIF_INTERFACE_MODE_IP)
+	vnet_delete_hw_interface (vnm, mif->hw_if_index);
+      else
+	ethernet_delete_interface (vnm, mif->hw_if_index);
       mif->hw_if_index = ~0;
     }
   memif_delete_if (vm, mif);
