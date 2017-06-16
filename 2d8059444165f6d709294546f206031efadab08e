@@ -22,6 +22,52 @@
       "revId": "2d8059444165f6d709294546f206031efadab08e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_b7096b2e",
+        "filename": "src/vnet/l2/l2_fib.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 356,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-06-16T12:23:10Z",
+      "side": 1,
+      "message": "The BVT macro above is making style tool format the indentation of this function badly. May be should move it above the BVT macro.",
+      "range": {
+        "startLine": 356,
+        "startChar": 5,
+        "endLine": 356,
+        "endChar": 23
+      },
+      "revId": "2d8059444165f6d709294546f206031efadab08e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_d72bbf80",
+        "filename": "src/vnet/l2/l2_fwd.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 93,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-06-16T12:23:10Z",
+      "side": 1,
+      "message": "A better wording may be STALE_DROP - \"Stale entry Drop\"",
+      "range": {
+        "startLine": 93,
+        "startChar": 2,
+        "endLine": 93,
+        "endChar": 14
+      },
+      "revId": "2d8059444165f6d709294546f206031efadab08e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
