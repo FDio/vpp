@@ -21,6 +21,7 @@
 #include <vppinfra/error.h>
 #include <flowprobe/flowprobe.h>
 #include <vnet/ip/ip6_packet.h>
+#include "flowprobe.h"
 
 static void flowprobe_export_entry (vlib_main_t * vm, flowprobe_entry_t * e);
 
@@ -929,9 +930,16 @@ flowprobe_walker_process (vlib_main_t * vm,
      */
     if ((now - e->last_updated) < (fm->passive_timer * 0.9))
       {
-	f64 delta = fm->passive_timer - (now - e->last_updated);
-	e->passive_timer_handle = tw_timer_start_2t_1w_2048sl
-	  (fm->timers_per_worker[cpu_index], *i, 0, delta);
+    u64 delta = fm->passive_timer - (now - e->last_updated);
+        if (delta > 0)
+          {
+        e->passive_timer_handle = tw_timer_start_2t_1w_2048sl
+                (fm->timers_per_worker[cpu_index], *i, 0, delta);
+          }
+        else
+          {
+        vec_add1 (to_be_removed, *i);
+          }
       }
     else			/* Nuke entry */
       {
