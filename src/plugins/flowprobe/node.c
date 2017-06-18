@@ -971,9 +971,9 @@ flowprobe_walker_process (vlib_main_t * vm,
      * entry. Otherwise restart timer with what's left
      * Premature passive timer by more than 10%
      */
-    if ((now - e->last_updated) < (fm->passive_timer * 0.9))
+    if ((now - e->last_updated) < (u64) (fm->passive_timer * 0.9))
       {
-	f64 delta = fm->passive_timer - (now - e->last_updated);
+	u64 delta = fm->passive_timer - (now - e->last_updated);
 	e->passive_timer_handle = tw_timer_start_2t_1w_2048sl
 	  (fm->timers_per_worker[cpu_index], *i, 0, delta);
       }
