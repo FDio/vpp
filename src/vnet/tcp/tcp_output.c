@@ -1530,10 +1530,13 @@ tcp46_output_inline (vlib_main_t * vm,
 	      tc0->rto_boff = 0;
 	    }
 
-	  /* set fib index to default and lookup node */
+	  /* Use pre-computed dpo to set next node */
 	  /* XXX network virtualization (vrf/vni) */
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+//        vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+//        vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
+
+	  next0 = tc0->c_rmt_dpo.dpoi_next_node;
+	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = tc0->c_rmt_dpo.dpoi_index;
 
 	  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
 	done:

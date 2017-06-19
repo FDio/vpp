@@ -248,6 +248,11 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ASSERT (bi0);
 	  _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
 
+	  /* usual speculation, or the enqueue_x1 macro will barf */
+	  to_next[0] = bi0;
+	  to_next += 1;
+	  n_left_to_next -= 1;
+
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b0->error = 0;
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID
@@ -307,10 +312,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  }));
 	  /* *INDENT-ON* */
 
-	  /* usual speculation, or the enqueue_x1 macro will barf */
-	  to_next[0] = bi0;
-	  to_next += 1;
-	  n_left_to_next -= 1;
 
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 	  if (PREDICT_FALSE (n_trace > 0))
