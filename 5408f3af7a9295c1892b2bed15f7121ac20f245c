@@ -22,6 +22,30 @@
       "revId": "5408f3af7a9295c1892b2bed15f7121ac20f245c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_f7aa40d3",
+        "filename": "src/plugins/flowprobe/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 930,
+      "author": {
+        "id": 671
+      },
+      "writtenOn": "2017-06-19T13:16:06Z",
+      "side": 1,
+      "message": "Hi Ole, sorry I didn\u0027t get it. What\u0027s the meaning of 9.0 here? Did you mean if ((now - e-\u003elast_updated) \u003c (fm-\u003epassive_timer * 0.9 - 1.0)) ? It\u0027d be a good approximation to the original condition but not equivalent. For example, when now - e-\u003elast_updated \u003d 7.5 and fm-\u003epassive_timer \u003d 9.0. The original condition will consider it as a passive timer with 1 second left. While in the above condition it will be considered as an expiration. But they are very close and it\u0027ll be faster than the old one. I tend to use the condition presented here. What do you think?",
+      "parentUuid": "fa5d592f_f4aa3ed3",
+      "range": {
+        "startLine": 930,
+        "startChar": 4,
+        "endLine": 930,
+        "endChar": 60
+      },
+      "revId": "5408f3af7a9295c1892b2bed15f7121ac20f245c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
