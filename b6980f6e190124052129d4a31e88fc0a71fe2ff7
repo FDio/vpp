@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_7773f04d",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 754,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-06-19T15:57:16Z",
+      "side": 1,
+      "message": "There is another ethernet_delete_interface call that needs the same treatment.\n\nsluong@vpp-dev:~/vpp4.6/vpp$ git diff\nWARNING: terminal is not fully functional\n-  (press RETURN)\ndiff --git a/src/plugins/memif/memif.c b/src/plugins/memif/memif.c\nindex df20872..ec67023 100644\n--- a/src/plugins/memif/memif.c\n+++ b/src/plugins/memif/memif.c\n@@ -482,7 +482,10 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)\n   clib_error_free (err);\n   /* remove the interface */\n-  ethernet_delete_interface (vnm, mif-\u003ehw_if_index);\n+  if (mif-\u003emode \u003d\u003d MEMIF_INTERFACE_MODE_IP)\n+    vnet_delete_hw_interface (vnm, mif-\u003ehw_if_index);\n+  else\n+    ethernet_delete_interface (vnm, mif-\u003ehw_if_index);\n   mif-\u003ehw_if_index \u003d ~0;\n   /* free interface data structures */\nsluong@vpp-dev:~/vpp4.6/vpp$ sluong@vpp-dev:~/vpp4.6/vp",
+      "revId": "b6980f6e190124052129d4a31e88fc0a71fe2ff7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
