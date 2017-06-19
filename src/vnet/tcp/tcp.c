@@ -16,9 +16,176 @@
 #include <vnet/tcp/tcp.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
+#include <vnet/dpo/load_balance.h>
 #include <math.h>
 
 tcp_main_t tcp_main;
+
+typedef struct ip4_tcp_hdr
+{
+  ip4_header_t ip;
+  tcp_header_t tcp;
+} ip4_tcp_hdr_t;
+
+typedef struct ip6_tcp_hdr
+{
+  ip6_header_t ip;
+  tcp_header_t tcp;
+} ip6_tcp_hdr_t;
+
+static void
+tcp_connection_select_lb_bucket (tcp_connection_t * tc, const dpo_id_t * dpo,
+				 dpo_id_t *result)
+{
+  const dpo_id_t *choice;
+  load_balance_t *lb;
+  int hash;
+
+  lb = load_balance_get (dpo->dpoi_index);
+  if (tc->c_is_ip4)
+    {
+      ip4_tcp_hdr_t hdr;
+      memset (&hdr, 0, sizeof (hdr));
+      hdr.ip.protocol = IP_PROTOCOL_TCP;
+      hdr.ip.address_pair.src.as_u32 = tc->c_lcl_ip.ip4.as_u32;
+      hdr.ip.address_pair.dst.as_u32 = tc->c_rmt_ip.ip4.as_u32;
+      hdr.tcp.src_port = tc->c_lcl_port;
+      hdr.tcp.dst_port = tc->c_rmt_port;
+      hash = ip4_compute_flow_hash (&hdr.ip, lb->lb_hash_config);
+    }
+  else
+    {
+      ip6_tcp_hdr_t hdr;
+      memset (&hdr, 0, sizeof (hdr));
+      hdr.ip.protocol = IP_PROTOCOL_TCP;
+      clib_memcpy (&hdr.ip.src_address, &tc->c_lcl_ip.ip6,
+		   sizeof (ip6_address_t));
+      clib_memcpy (&hdr.ip.dst_address, &tc->c_rmt_ip.ip6,
+		   sizeof (ip6_address_t));
+      hdr.tcp.src_port = tc->c_lcl_port;
+      hdr.tcp.dst_port = tc->c_rmt_port;
+      hash = ip6_compute_flow_hash (&hdr.ip, lb->lb_hash_config);
+    }
+  choice = load_balance_get_bucket_i (lb, hash & lb->lb_n_buckets_minus_1);
+  dpo_copy (result, choice);
+}
+
+static fib_node_index_t
+tcp_connection_fib_index (tcp_connection_t *tc)
+{
+  return ((fib_node_index_t) (tc->c_thread_index << 24 | tc->c_c_index));
+}
+
+static tcp_connection_t *
+tcp_connection_get_w_fib_index (fib_node_index_t index)
+{
+  u32 thread_index = index >> 24;
+  u32 connection_index = index & 0x00FFFFFF;
+  return tcp_connection_get (connection_index, thread_index);
+}
+
+void
+tcp_connection_stack_on_fib_entry (tcp_connection_t * tc)
+{
+  const dpo_id_t *dpo = 0;
+  dpo_id_t choice = DPO_INVALID;
+  u32 output_node_index, fib_index;
+  fib_protocol_t fib_proto;
+  fib_prefix_t prefix;
+
+  /*
+   * Source the FIB entry for the rmt peer to track its forwarding chain
+   */
+  if (tc->c_is_ip4)
+    {
+      prefix.fp_len = 32;
+      prefix.fp_proto = fib_proto = FIB_PROTOCOL_IP4;
+      memset (&prefix.fp_addr.pad, 0, sizeof (prefix.fp_addr.pad));
+      clib_memcpy (&prefix.fp_addr.ip4, &tc->c_rmt_ip.ip4,
+		   sizeof(prefix.fp_addr.ip4));
+    }
+  else
+    {
+      prefix.fp_len = 128;
+      prefix.fp_proto = fib_proto = FIB_PROTOCOL_IP6;
+      memset (&prefix.fp_addr.pad, 0, sizeof (prefix.fp_addr.pad));
+      clib_memcpy (&prefix.fp_addr.ip6, &tc->c_rmt_ip.ip6,
+		   sizeof(prefix.fp_addr.ip6));
+    }
+
+  fib_index = fib_table_find (fib_proto, 0 /*FIXME*/);
+  tc->c_rmt_fei = fib_table_entry_special_add (fib_index, &prefix,
+					       FIB_SOURCE_RR,
+					       FIB_ENTRY_FLAG_NONE);
+  tc->c_rmt_fib_child_index = fib_entry_child_add (
+      tc->c_rmt_fei, FIB_NODE_TYPE_TCP, tcp_connection_fib_index (tc));
+
+  /*
+   * Stack output node for tcp connection onto peer's dpo (eg. ip rewrite)
+   */
+  dpo = fib_entry_contribute_ip_forwarding (tc->c_rmt_fei);
+  if (dpo->dpoi_type == DPO_LOAD_BALANCE)
+    tcp_connection_select_lb_bucket (tc, dpo, &choice);
+
+  output_node_index =
+    tc->c_is_ip4 ? tcp4_output_node.index : tcp6_output_node.index;
+  dpo_stack_from_node (output_node_index, &tc->c_rmt_dpo, &choice);
+}
+
+static void
+tcp_connection_unstack_fib_entry (tcp_connection_t *tc)
+{
+  fib_entry_child_remove (tc->c_rmt_fei, tc->c_rmt_fib_child_index);
+}
+
+static tcp_connection_t *
+tcp_connection_from_fib_node (const fib_node_t * node)
+{
+  transport_connection_t *transport;
+  transport = ((transport_connection_t *) ((u8 *) node
+					   -
+					   STRUCT_OFFSET_OF
+					   (transport_connection_t,
+					    fib_node)));
+  return ((tcp_connection_t *) transport);
+}
+
+static fib_node_t *
+tcp_fib_node_get (fib_node_index_t index)
+{
+  tcp_connection_t *tc = tcp_connection_get_w_fib_index (index);
+  return &tc->c_fib_node;
+}
+
+void
+tcp_connection_restack (tcp_connection_t * tc)
+{
+  /* XXX */
+
+}
+
+static fib_node_back_walk_rc_t
+tcp_fib_node_back_walk (fib_node_t * node, fib_node_back_walk_ctx_t * ctx)
+{
+  tcp_connection_restack (tcp_connection_from_fib_node (node));
+  return (FIB_NODE_BACK_WALK_CONTINUE);
+}
+
+static void
+tcp_fib_node_last_fib_lock_gone (fib_node_t * node)
+{
+  /*
+   * The TCP fib node is a root of the graph. It never has children and
+   * thereby is never locked.
+   */
+  ASSERT (0);
+}
+
+const static fib_node_vft_t tcp_fib_node_vft = {
+  .fnv_get = tcp_fib_node_get,
+  .fnv_back_walk = tcp_fib_node_back_walk,
+  .fnv_last_lock = tcp_fib_node_last_fib_lock_gone,
+};
 
 static u32
 tcp_connection_bind (u32 session_index, ip46_address_t * ip,
@@ -105,6 +272,8 @@ tcp_connection_cleanup (tcp_connection_t * tc)
   tcp_main_t *tm = &tcp_main;
   u32 tepi;
   transport_endpoint_t *tep;
+
+  tcp_connection_unstack_fib_entry (tc);
 
   /* Cleanup local endpoint if this was an active connect */
   tepi = transport_endpoint_lookup (&tm->local_endpoints_table, &tc->c_lcl_ip,
@@ -353,6 +522,10 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   tcp_init_mss (tc);
   scoreboard_init (&tc->sack_sb);
   tcp_cc_init (tc);
+
+  /* Stack tcp connection on peer's fib entry. This ultimately populates
+   * the dpo the connection will use to send packets. */
+  tcp_connection_stack_on_fib_entry (tc);
 }
 
 int
@@ -361,7 +534,8 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_connection_t *tc;
   fib_prefix_t prefix;
-  u32 fei, sw_if_index;
+  fib_node_index_t fei;
+  u32 sw_if_index;
   ip46_address_t lcl_addr;
   u16 lcl_port;
 
@@ -971,6 +1145,9 @@ tcp_main_enable (vlib_main_t * vm)
   session_register_transport (SESSION_TYPE_IP4_TCP, &tcp4_proto);
   session_register_transport (SESSION_TYPE_IP6_TCP, &tcp6_proto);
 
+  /* Register with FIB */
+  fib_node_register_type (FIB_NODE_TYPE_TCP, &tcp_fib_node_vft);
+
   /*
    * Initialize data structures
    */
@@ -984,8 +1161,6 @@ tcp_main_enable (vlib_main_t * vm)
   /* Initialize timer wheels */
   vec_validate (tm->timer_wheels, num_threads - 1);
   tcp_initialize_timer_wheels (tm);
-
-//  vec_validate (tm->delack_connections, num_threads - 1);
 
   /* Initialize clocks per tick for TCP timestamp. Used to compute
    * monotonically increasing timestamps. */

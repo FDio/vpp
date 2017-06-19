@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-noinst_PROGRAMS += uri_udp_test uri_tcp_test uri_socket_test uri_socket_server
+bin_PROGRAMS += uri_udp_test uri_tcp_test uri_socket_test uri_socket_server
 
 uri_udp_test_SOURCES = uri/uri_udp_test.c
 uri_udp_test_LDADD = libvlibmemoryclient.la libsvm.la \
