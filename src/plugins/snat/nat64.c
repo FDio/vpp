@@ -47,9 +47,11 @@ nat64_init (vlib_main_t * vm)
   clib_error_t *error = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
+  nm->is_disabled = 0;
+
   if (tm->n_vlib_mains > 1)
     {
-      error = clib_error_return (0, "multi thread not supported");
+      nm->is_disabled = 1;
       goto error;
     }
 
@@ -609,7 +611,7 @@ nat64_expire_walk_fn (vlib_main_t * vm, vlib_node_runtime_t * rt,
 {
   nat64_main_t *nm = &nat64_main;
 
-  while (1)
+  while (!nm->is_disabled)
     {
       vlib_process_wait_for_event_or_clock (vm, 10.0);
       vlib_process_get_events (vm, NULL);

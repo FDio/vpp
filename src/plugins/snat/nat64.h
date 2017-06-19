@@ -57,6 +57,8 @@ typedef struct
   u32 tcp_est_timeout;
   u32 tcp_incoming_syn_timeout;
 
+  u8 is_disabled;
+
   snat_main_t *sm;
 } nat64_main_t;
 
