@@ -611,6 +611,37 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
   return next0;
 }
 
+static void
+snat_out2in_unknown_proto (snat_main_t *sm,
+                           vlib_buffer_t * b,
+                           ip4_header_t * ip,
+                           u32 rx_fib_index)
+{
+  clib_bihash_kv_8_8_t kv, value;
+  snat_static_mapping_t *m;
+  snat_session_key_t m_key;
+  u32 old_addr, new_addr;
+  ip_csum_t sum;
+
+  m_key.addr = ip->dst_address;
+  m_key.port = 0;
+  m_key.protocol = 0;
+  m_key.fib_index = rx_fib_index;
+  kv.key = m_key.as_u64;
+  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+    return;
+
+  m = pool_elt_at_index (sm->static_mappings, value.value);
+
+  old_addr = ip->dst_address.as_u32;
+  new_addr = ip->dst_address.as_u32 = m->local_addr.as_u32;
+  sum = ip->checksum;
+  sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, dst_address);
+  ip->checksum = ip_csum_fold (sum);
+
+  vnet_buffer(b)->sw_if_index[VLIB_TX] = m->fib_index;
+}
+
 static uword
 snat_out2in_node_fn (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
@@ -703,7 +734,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
           proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
           if (PREDICT_FALSE (proto0 == ~0))
+            {
+              snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0);
               goto trace0;
+            }
 
           if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
             {
@@ -838,7 +872,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
           proto1 = ip_proto_to_snat_proto (ip1->protocol);
 
           if (PREDICT_FALSE (proto1 == ~0))
+            {
+              snat_out2in_unknown_proto(sm, b1, ip1, rx_fib_index1);
               goto trace1;
+            }
 
           if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_ICMP))
             {
@@ -997,7 +1034,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
           proto0 = ip_proto_to_snat_proto (ip0->protocol);
 
           if (PREDICT_FALSE (proto0 == ~0))
+            {
+              snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0);
               goto trace00;
+            }
 
           if (PREDICT_FALSE(ip0->ttl == 1))
             {
