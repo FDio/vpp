@@ -967,6 +967,55 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
   return next0;
 }
 
+static void
+snat_in2out_unknown_proto (snat_main_t *sm,
+                           vlib_buffer_t * b,
+                           ip4_header_t * ip,
+                           u32 rx_fib_index)
+{
+  clib_bihash_kv_8_8_t kv, value;
+  snat_static_mapping_t *m;
+  snat_session_key_t m_key;
+  u32 old_addr, new_addr;
+  ip_csum_t sum;
+
+  m_key.addr = ip->src_address;
+  m_key.port = 0;
+  m_key.protocol = 0;
+  m_key.fib_index = rx_fib_index;
+  kv.key = m_key.as_u64;
+  if (clib_bihash_search_8_8 (&sm->static_mapping_by_local, &kv, &value))
+    return;
+
+  m = pool_elt_at_index (sm->static_mappings, value.value);
+
+  old_addr = ip->src_address.as_u32;
+  new_addr = ip->src_address.as_u32 = m->external_addr.as_u32;
+  sum = ip->checksum;
+  sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, src_address);
+  ip->checksum = ip_csum_fold (sum);
+
+  /* Hairpinning */
+  m_key.addr = ip->dst_address;
+  m_key.fib_index = sm->outside_fib_index;
+  kv.key = m_key.as_u64;
+  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+    {
+      vnet_buffer(b)->sw_if_index[VLIB_TX] = sm->outside_fib_index;
+      return;
+    }
+
+  m = pool_elt_at_index (sm->static_mappings, value.value);
+
+  old_addr = ip->dst_address.as_u32;
+  new_addr = ip->dst_address.as_u32 = m->local_addr.as_u32;
+  sum = ip->checksum;
+  sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, dst_address);
+  ip->checksum = ip_csum_fold (sum);
+
+  vnet_buffer(b)->sw_if_index[VLIB_TX] = vnet_buffer(b)->sw_if_index[VLIB_RX];
+}
+
 static inline uword
 snat_in2out_node_fn_inline (vlib_main_t * vm,
                             vlib_node_runtime_t * node,
@@ -1065,8 +1114,11 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           if (is_slow_path)
             {
               if (PREDICT_FALSE (proto0 == ~0))
-                goto trace00;
-              
+                {
+                  snat_in2out_unknown_proto (sm, b0, ip0, rx_fib_index0);
+                  goto trace00;
+                }
+
               if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
                 {
                   next0 = icmp_in2out_slow_path 
@@ -1205,8 +1257,11 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           if (is_slow_path)
             {
               if (PREDICT_FALSE (proto1 == ~0))
-                goto trace01;
-              
+                {
+                  snat_in2out_unknown_proto (sm, b1, ip1, rx_fib_index1);
+                  goto trace01;
+                }
+
               if (PREDICT_FALSE (proto1 == SNAT_PROTOCOL_ICMP))
                 {
                   next1 = icmp_in2out_slow_path 
@@ -1380,8 +1435,11 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           if (is_slow_path)
             {
               if (PREDICT_FALSE (proto0 == ~0))
-                goto trace0;
-              
+                {
+                  snat_in2out_unknown_proto (sm, b0, ip0, rx_fib_index0);
+                  goto trace0;
+                }
+
               if (PREDICT_FALSE (proto0 == SNAT_PROTOCOL_ICMP))
                 {
                   next0 = icmp_in2out_slow_path 

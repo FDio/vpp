@@ -9,7 +9,7 @@ from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply
 from scapy.layers.inet6 import ICMPv6DestUnreach, IPerror6
-from scapy.layers.l2 import Ether, ARP
+from scapy.layers.l2 import Ether, ARP, GRE
 from scapy.data import IP_PROTOS
 from scapy.packet import bind_layers
 from util import ppp
@@ -1834,6 +1834,54 @@ class TestSNAT(MethodHolder):
         self.pg_start()
         capture = self.pg8.get_capture(len(pkts))
         self.verify_capture_out(capture)
+
+    def test_static_unknown_proto(self):
+        """ 1:1 NAT translate packet with unknown protocol """
+        nat_ip = "10.0.0.10"
+        self.snat_add_static_mapping(self.pg0.remote_ip4, nat_ip)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        # in2out
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             GRE() /
+             IP(src=self.pg2.remote_ip4, dst=self.pg2.remote_ip4) /
+             TCP(sport=1234, dport=1234))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg1.get_capture(1)
+        packet = p[0]
+        try:
+            self.assertEqual(packet[IP].src, nat_ip)
+            self.assertEqual(packet[IP].dst, self.pg1.remote_ip4)
+            self.assertTrue(packet.haslayer(GRE))
+            self.check_ip_checksum(packet)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
+
+        # out2in
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IP(src=self.pg1.remote_ip4, dst=nat_ip) /
+             GRE() /
+             IP(src=self.pg2.remote_ip4, dst=self.pg2.remote_ip4) /
+             TCP(sport=1234, dport=1234))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg0.get_capture(1)
+        packet = p[0]
+        try:
+            self.assertEqual(packet[IP].src, self.pg1.remote_ip4)
+            self.assertEqual(packet[IP].dst, self.pg0.remote_ip4)
+            self.assertTrue(packet.haslayer(GRE))
+            self.check_ip_checksum(packet)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
 
     def tearDown(self):
         super(TestSNAT, self).tearDown()
