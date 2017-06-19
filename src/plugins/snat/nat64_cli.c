@@ -26,6 +26,7 @@ nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
 				    unformat_input_t * input,
 				    vlib_cli_command_t * cmd)
 {
+  nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t start_addr, end_addr, this_addr;
   u32 start_host_order, end_host_order;
@@ -33,6 +34,10 @@ nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
   u32 vrf_id = ~0;
   u8 is_add = 1;
   clib_error_t *error = 0;
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -124,6 +129,12 @@ nat64_show_pool_command_fn (vlib_main_t * vm,
 			    unformat_input_t * input,
 			    vlib_cli_command_t * cmd)
 {
+  nat64_main_t *nm = &nat64_main;
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
+
   vlib_cli_output (vm, "NAT64 pool:");
   nat64_pool_addr_walk (nat64_cli_pool_walk, vm);
 
@@ -135,6 +146,7 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
 				    unformat_input_t *
 				    input, vlib_cli_command_t * cmd)
 {
+  nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -143,6 +155,10 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
   u32 *outside_sw_if_indices = 0;
   u8 is_add = 1;
   int i, rv;
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -261,6 +277,12 @@ nat64_show_interfaces_command_fn (vlib_main_t * vm,
 				  unformat_input_t *
 				  input, vlib_cli_command_t * cmd)
 {
+  nat64_main_t *nm = &nat64_main;
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
+
   vlib_cli_output (vm, "NAT64 interfaces:");
   nat64_interfaces_walk (nat64_cli_interface_walk, vm);
 
@@ -273,6 +295,7 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 				     unformat_input_t
 				     * input, vlib_cli_command_t * cmd)
 {
+  nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u8 is_add = 1;
@@ -284,6 +307,10 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
   snat_protocol_t proto = 0;
   u8 p = 0;
   int rv;
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -382,6 +409,10 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   snat_protocol_t proto = 0;
 
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
+
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
@@ -407,6 +438,7 @@ static clib_error_t *
 nat64_set_timeouts_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
 {
+  nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u32 timeout, tcp_trans, tcp_est, tcp_incoming_syn;
@@ -414,6 +446,10 @@ nat64_set_timeouts_command_fn (vlib_main_t * vm, unformat_input_t * input,
   tcp_trans = nat64_get_tcp_trans_timeout ();
   tcp_est = nat64_get_tcp_est_timeout ();
   tcp_incoming_syn = nat64_get_tcp_incoming_syn_timeout ();
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -490,6 +526,12 @@ static clib_error_t *
 nat64_show_timeouts_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				vlib_cli_command_t * cmd)
 {
+  nat64_main_t *nm = &nat64_main;
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
+
   vlib_cli_output (vm, "NAT64 session timeouts:");
   vlib_cli_output (vm, " UDP %usec", nat64_get_udp_timeout ());
   vlib_cli_output (vm, " ICMP %usec", nat64_get_icmp_timeout ());
@@ -552,6 +594,10 @@ nat64_show_st_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   snat_protocol_t proto = 0;
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;

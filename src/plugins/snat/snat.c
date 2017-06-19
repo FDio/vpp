@@ -725,7 +725,7 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
 static clib_error_t * snat_init (vlib_main_t * vm)
 {
   snat_main_t * sm = &snat_main;
-  clib_error_t * error = 0, * error_nat64 = 0;
+  clib_error_t * error = 0;
   ip4_main_t * im = &ip4_main;
   ip_lookup_main_t * lm = &im->lookup_main;
   uword *p;
@@ -772,6 +772,8 @@ static clib_error_t * snat_init (vlib_main_t * vm)
     }
 
   error = snat_api_init(vm, sm);
+  if (error)
+    return error;
 
   /* Set up the interface address add/del callback */
   cb4.function = snat_ip4_add_del_interface_address_cb;
@@ -782,9 +784,7 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   /* Init IPFIX logging */
   snat_ipfix_logging_init(vm);
 
-  error_nat64 = nat64_init(vm);
-  if (error_nat64)
-    clib_warning("NAT64 init failed: %U", format_clib_error, error_nat64);
+  error = nat64_init(vm);
 
   return error;
 }
