@@ -398,7 +398,6 @@ static void
 vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
 {
   uri_tcp_test_main_t *utm = &uri_tcp_test_main;
-  session_t *session;
   vl_api_reset_session_reply_t *rmp;
   uword *p;
   int rv = 0;
@@ -407,9 +406,8 @@ vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
 
   if (p)
     {
-      session = pool_elt_at_index (utm->sessions, p[0]);
-      hash_unset (utm->session_index_by_vpp_handles, mp->handle);
-      pool_put (utm->sessions, session);
+      clib_warning ("got reset");
+      /* Cleanup later */
       utm->time_to_stop = 1;
     }
   else
@@ -603,7 +601,7 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
   if (bytes_to_snd > vec_len (test_data))
     bytes_to_snd = vec_len (test_data);
 
-  while (bytes_to_snd > 0)
+  while (bytes_to_snd > 0 && !utm->time_to_stop)
     {
       actual_write = (bytes_to_snd > queue_max_chunk) ?
 	queue_max_chunk : bytes_to_snd;
@@ -652,6 +650,8 @@ client_send_data (uri_tcp_test_main_t * utm)
   for (i = 0; i < n_iterations; i++)
     {
       send_test_chunk (utm, tx_fifo, mypid, 0);
+      if (utm->time_to_stop)
+	break;
     }
 
   leftover = utm->bytes_to_send % vec_len (test_data);
