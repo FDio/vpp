@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_54deaa12",
+        "filename": "src/vnet/l2/l2_fib.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 371,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-06-19T11:44:16Z",
+      "side": 1,
+      "message": "May be we should move this function to before get_mac_table() function about to prevent the indentation tool make a mess of this indentation because it is confused by the BVT macro.",
+      "range": {
+        "startLine": 371,
+        "startChar": 5,
+        "endLine": 371,
+        "endChar": 25
+      },
+      "revId": "c474ee1e2737c23112909e0b7f7889b61c66c579",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_f4ec7ec9",
+        "filename": "src/vnet/l2/l2_fwd.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 209,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-06-19T11:44:16Z",
+      "side": 1,
+      "message": "We should not always drop but rather to uu_flood if it is enabled. The processing here should be identical to lookup-miss path above, except the drop reason being stale-drop if uu_flood is not enabled.",
+      "range": {
+        "startLine": 209,
+        "startChar": 4,
+        "endLine": 209,
+        "endChar": 9
+      },
+      "revId": "c474ee1e2737c23112909e0b7f7889b61c66c579",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
