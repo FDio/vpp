@@ -46,6 +46,30 @@
       "revId": "5408f3af7a9295c1892b2bed15f7121ac20f245c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_97e78440",
+        "filename": "src/plugins/flowprobe/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 930,
+      "author": {
+        "id": 671
+      },
+      "writtenOn": "2017-06-19T13:43:41Z",
+      "side": 1,
+      "message": "Actually if ((now - e-\u003elast_updated) \u003c (u64) (fm-\u003epassive_timer * 0.9)) could be a more precise one line replacement for the double conditions. It\u0027ll be slightly different for passive_timer \u003e 10 as the upper bound will be lower. But I think that\u0027s acceptable and would be a good replacement.",
+      "parentUuid": "fa5d592f_f7aa40d3",
+      "range": {
+        "startLine": 930,
+        "startChar": 4,
+        "endLine": 930,
+        "endChar": 60
+      },
+      "revId": "5408f3af7a9295c1892b2bed15f7121ac20f245c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
