@@ -30,12 +30,15 @@ typedef struct _transport_connection
   ip46_address_t lcl_ip;	/**< Local IP */
   u16 lcl_port;			/**< Local port */
   u16 rmt_port;			/**< Remote port */
-  u8 proto;			/**< Transport protocol id (also session type) */
+  u8 proto;			/**< Protocol id (also session type) */
 
   u32 s_index;			/**< Parent session index */
   u32 c_index;			/**< Connection index in transport pool */
   u8 is_ip4;			/**< Flag if IP4 connection */
   u32 thread_index;		/**< Worker-thread index */
+
+  fib_node_index_t rmt_fei;	/**< FIB entry index for rmt */
+  dpo_id_t rmt_dpo;		/**< Forwarding DPO for rmt */
 
 #if TRANSPORT_DEBUG
   elog_track_t elog_track;	/**< Event logging */
@@ -59,6 +62,8 @@ typedef struct _transport_connection
 #define c_thread_index connection.thread_index
 #define c_elog_track connection.elog_track
 #define c_cc_stat_tstamp connection.cc_stat_tstamp
+#define c_rmt_fei connection.rmt_fei
+#define c_rmt_dpo connection.rmt_dpo
 } transport_connection_t;
 
 /*
