@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_f4aa3ed3",
+        "filename": "src/plugins/flowprobe/node.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 930,
+      "author": {
+        "id": 8
+      },
+      "writtenOn": "2017-06-19T08:09:03Z",
+      "side": 1,
+      "message": "You couldn\u0027t just do:\nif ((now - e-\u003elast_updated) \u003c (fm-\u003epassive_timer * 9.0) + 1.0)",
+      "range": {
+        "startLine": 930,
+        "startChar": 4,
+        "endLine": 930,
+        "endChar": 60
+      },
+      "revId": "5408f3af7a9295c1892b2bed15f7121ac20f245c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
