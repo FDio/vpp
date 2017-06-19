@@ -16,6 +16,7 @@
 #include <vnet/tcp/tcp.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
+#include <vnet/dpo/load_balance.h>
 #include <math.h>
 
 tcp_main_t tcp_main;
@@ -342,6 +343,99 @@ tcp_connection_timers_reset (tcp_connection_t * tc)
     }
 }
 
+typedef struct ip4_tcp_hdr
+{
+  ip4_header_t ip;
+  tcp_header_t tcp;
+} ip4_tcp_hdr_t;
+
+typedef struct ip6_tcp_hdr
+{
+  ip6_header_t ip;
+  tcp_header_t tcp;
+} ip6_tcp_hdr_t;
+
+static void
+tcp_connection_select_lb_bucket (tcp_connection_t * tc, const dpo_id_t * dpo,
+				 dpo_id_t * result)
+{
+  const dpo_id_t *choice;
+  load_balance_t *lb;
+  int hash;
+
+  lb = load_balance_get (dpo->dpoi_index);
+  if (tc->c_is_ip4)
+    {
+      ip4_tcp_hdr_t hdr;
+      memset (&hdr, 0, sizeof (hdr));
+      hdr.ip.protocol = IP_PROTOCOL_TCP;
+      hdr.ip.address_pair.src.as_u32 = tc->c_lcl_ip.ip4.as_u32;
+      hdr.ip.address_pair.dst.as_u32 = tc->c_rmt_ip.ip4.as_u32;
+      hdr.tcp.src_port = tc->c_lcl_port;
+      hdr.tcp.dst_port = tc->c_rmt_port;
+      hash = ip4_compute_flow_hash (&hdr.ip, lb->lb_hash_config);
+    }
+  else
+    {
+      ip6_tcp_hdr_t hdr;
+      memset (&hdr, 0, sizeof (hdr));
+      hdr.ip.protocol = IP_PROTOCOL_TCP;
+      clib_memcpy (&hdr.ip.src_address, &tc->c_lcl_ip.ip6,
+		   sizeof (ip6_address_t));
+      clib_memcpy (&hdr.ip.dst_address, &tc->c_rmt_ip.ip6,
+		   sizeof (ip6_address_t));
+      hdr.tcp.src_port = tc->c_lcl_port;
+      hdr.tcp.dst_port = tc->c_rmt_port;
+      hash = ip6_compute_flow_hash (&hdr.ip, lb->lb_hash_config);
+    }
+  choice = load_balance_get_bucket_i (lb, hash & lb->lb_n_buckets_minus_1);
+  dpo_copy (result, choice);
+}
+
+fib_node_index_t
+tcp_lookup_rmt_in_fib (tcp_connection_t * tc)
+{
+  fib_prefix_t prefix;
+
+  clib_memcpy (&prefix.fp_addr, &tc->c_rmt_ip, sizeof (prefix.fp_addr));
+  prefix.fp_proto = tc->c_is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  prefix.fp_len = tc->c_is_ip4 ? 32 : 128;
+  return fib_table_lookup (0, &prefix);
+}
+
+static int
+tcp_connection_stack_on_fib_entry (tcp_connection_t * tc)
+{
+  dpo_id_t choice = DPO_INVALID;
+  u32 output_node_index;
+  fib_entry_t *fe;
+
+  fe = fib_entry_get (tc->c_rmt_fei);
+  if (fe->fe_lb.dpoi_type != DPO_LOAD_BALANCE)
+    return -1;
+
+  tcp_connection_select_lb_bucket (tc, &fe->fe_lb, &choice);
+
+  output_node_index =
+    tc->c_is_ip4 ? tcp4_output_node.index : tcp6_output_node.index;
+  dpo_stack_from_node (output_node_index, &tc->c_rmt_dpo, &choice);
+  return 0;
+}
+
+/** Stack tcp connection on peer's fib entry.
+ *
+ * This ultimately populates the dpo the connection will use to send packets.
+ */
+static void
+tcp_connection_fib_attach (tcp_connection_t * tc)
+{
+  tc->c_rmt_fei = tcp_lookup_rmt_in_fib (tc);
+
+  ASSERT (tc->c_rmt_fei != FIB_NODE_INDEX_INVALID);
+
+  tcp_connection_stack_on_fib_entry (tc);
+}
+
 /** Initialize tcp connection variables
  *
  * Should be called after having received a msg from the peer, i.e., a SYN or
@@ -353,6 +447,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   tcp_init_mss (tc);
   scoreboard_init (&tc->sack_sb);
   tcp_cc_init (tc);
+  tcp_connection_fib_attach (tc);
 }
 
 int
@@ -361,7 +456,8 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_connection_t *tc;
   fib_prefix_t prefix;
-  u32 fei, sw_if_index;
+  fib_node_index_t fei;
+  u32 sw_if_index;
   ip46_address_t lcl_addr;
   u16 lcl_port;
 
@@ -984,8 +1080,6 @@ tcp_main_enable (vlib_main_t * vm)
   /* Initialize timer wheels */
   vec_validate (tm->timer_wheels, num_threads - 1);
   tcp_initialize_timer_wheels (tm);
-
-//  vec_validate (tm->delack_connections, num_threads - 1);
 
   /* Initialize clocks per tick for TCP timestamp. Used to compute
    * monotonically increasing timestamps. */

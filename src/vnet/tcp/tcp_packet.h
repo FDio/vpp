@@ -144,12 +144,11 @@ typedef struct
 {
   u8 flags;		/** Option flags, see above */
 
-  /* Received options */
-  u16 mss;		/**< Maximum segment size advertised by peer */
-  u8 wscale;		/**< Window scale advertised by peer */
-  u32 tsval;		/**< Peer's timestamp value */
+  u16 mss;		/**< Maximum segment size advertised */
+  u8 wscale;		/**< Window scale advertised */
+  u32 tsval;		/**< Timestamp value */
   u32 tsecr;		/**< Echoed/reflected time stamp */
-  sack_block_t *sacks;	/**< SACK blocks received */
+  sack_block_t *sacks;	/**< SACK blocks */
   u8 n_sack_blocks;	/**< Number of SACKs blocks */
 } tcp_options_t;
 

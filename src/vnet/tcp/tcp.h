@@ -28,6 +28,7 @@
 #define THZ (u32) (1/TCP_TICK)		/**< TCP tick frequency */
 #define TCP_TSTAMP_RESOLUTION TCP_TICK	/**< Time stamp resolution */
 #define TCP_PAWS_IDLE 24 * 24 * 60 * 60 * THZ /**< 24 days */
+#define TCP_FIB_RECHECK_PERIOD	1 * THZ	/**< Recheck every 1s */
 #define TCP_MAX_OPTION_SPACE 40
 
 #define TCP_DUPACK_THRESHOLD 	3
@@ -256,6 +257,7 @@ typedef struct _tcp_connection
 
   u16 mss;		/**< Our max seg size that includes options */
   u32 limited_transmit;	/**< snd_nxt when limited transmit starts */
+  u32 last_fib_check;	/**< Last time we checked fib route for peer */
 } tcp_connection_t;
 
 struct _tcp_cc_algorithm
@@ -527,6 +529,8 @@ void tcp_fast_retransmit (tcp_connection_t * tc);
 void tcp_cc_init_congestion (tcp_connection_t * tc);
 int tcp_cc_recover (tcp_connection_t * tc);
 void tcp_cc_fastrecovery_exit (tcp_connection_t * tc);
+
+fib_node_index_t tcp_lookup_rmt_in_fib (tcp_connection_t * tc);
 
 /* Made public for unit testing only */
 void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);

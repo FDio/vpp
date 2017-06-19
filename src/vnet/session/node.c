@@ -248,16 +248,17 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ASSERT (bi0);
 	  _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
 
+	  /* usual speculation, or the enqueue_x1 macro will barf */
+	  to_next[0] = bi0;
+	  to_next += 1;
+	  n_left_to_next -= 1;
+
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b0->error = 0;
 	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID
 	    | VNET_BUFFER_LOCALLY_ORIGINATED;
 	  b0->current_data = 0;
 	  b0->total_length_not_including_first_buffer = 0;
-
-	  /* RX on the local interface. tx in default fib */
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
 	  len_to_deq0 = clib_min (left_to_snd0, deq_per_buf);
 
@@ -307,10 +308,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  }));
 	  /* *INDENT-ON* */
 
-	  /* usual speculation, or the enqueue_x1 macro will barf */
-	  to_next[0] = bi0;
-	  to_next += 1;
-	  n_left_to_next -= 1;
 
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 	  if (PREDICT_FALSE (n_trace > 0))
