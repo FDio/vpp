@@ -22,17 +22,14 @@ vlib_node_registration_t tcp6_output_node;
 typedef enum _tcp_output_nect
 {
   TCP_OUTPUT_NEXT_DROP,
-  TCP_OUTPUT_NEXT_IP_LOOKUP,
   TCP_OUTPUT_N_NEXT
 } tcp_output_next_t;
 
 #define foreach_tcp4_output_next              	\
   _ (DROP, "error-drop")                        \
-  _ (IP_LOOKUP, "ip4-lookup")
 
 #define foreach_tcp6_output_next              	\
   _ (DROP, "error-drop")                        \
-  _ (IP_LOOKUP, "ip6-lookup")
 
 static char *tcp_error_strings[] = {
 #define tcp_error(n,s) s,
@@ -1451,7 +1448,7 @@ tcp46_output_inline (vlib_main_t * vm,
 	  tcp_connection_t *tc0;
 	  tcp_tx_trace_t *t0;
 	  tcp_header_t *th0 = 0;
-	  u32 error0 = TCP_ERROR_PKTS_SENT, next0 = TCP_OUTPUT_NEXT_IP_LOOKUP;
+	  u32 error0 = TCP_ERROR_PKTS_SENT, next0 = TCP_OUTPUT_NEXT_DROP;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -1530,10 +1527,26 @@ tcp46_output_inline (vlib_main_t * vm,
 	      tc0->rto_boff = 0;
 	    }
 
-	  /* set fib index to default and lookup node */
-	  /* XXX network virtualization (vrf/vni) */
-	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	  /* Make sure we haven't lost route to our peer */
+	  if (PREDICT_FALSE (tc0->last_fib_check
+			     < tc0->snd_opts.tsval + TCP_FIB_RECHECK_PERIOD))
+	    {
+	      if (PREDICT_TRUE
+		  (tc0->c_rmt_fei == tcp_lookup_rmt_in_fib (tc0)))
+		{
+		  tc0->last_fib_check = tc0->snd_opts.tsval;
+		}
+	      else
+		{
+		  clib_warning ("lost connection to peer");
+		  tcp_connection_reset (tc0);
+		  goto done;
+		}
+	    }
+
+	  /* Use pre-computed dpo to set next node */
+	  next0 = tc0->c_rmt_dpo.dpoi_next_node;
+	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = tc0->c_rmt_dpo.dpoi_index;
 
 	  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
 	done:
