@@ -100,13 +100,16 @@ ethernet_build_rewrite (vnet_main_t * vnm,
 	{
 	  n_bytes += 2 * (sizeof (ethernet_vlan_header_t));
 	}
-      // Check for encaps that are not supported for L3 interfaces
-      if (!(sub_sw->sub.eth.flags.exact_match) ||
-	  (sub_sw->sub.eth.flags.default_sub) ||
-	  (sub_sw->sub.eth.flags.outer_vlan_id_any) ||
-	  (sub_sw->sub.eth.flags.inner_vlan_id_any))
+      if (sub_sw->type != VNET_SW_INTERFACE_TYPE_P2P)
 	{
-	  return 0;
+	  // Check for encaps that are not supported for L3 interfaces
+	  if (!(sub_sw->sub.eth.flags.exact_match) ||
+	      (sub_sw->sub.eth.flags.default_sub) ||
+	      (sub_sw->sub.eth.flags.outer_vlan_id_any) ||
+	      (sub_sw->sub.eth.flags.inner_vlan_id_any))
+	    {
+	      return 0;
+	    }
 	}
     }
 
@@ -120,6 +123,19 @@ ethernet_build_rewrite (vnet_main_t * vnm,
 #undef _
     default:
       return NULL;
+    }
+
+  if (sub_sw->type == VNET_SW_INTERFACE_TYPE_P2P)
+    {
+      vec_validate (rewrite, sizeof (ethernet_header_t) - 1);
+      h = (ethernet_header_t *) rewrite;
+
+      ei = pool_elt_at_index (em->interfaces, hw->hw_instance);
+      clib_memcpy (h->dst_address, sub_sw->p2p.client_mac,
+		   sizeof (h->dst_address));
+      clib_memcpy (h->src_address, ei->address, sizeof (h->src_address));
+      h->type = clib_host_to_net_u16 (type);
+      return rewrite;
     }
 
   vec_validate (rewrite, n_bytes - 1);
@@ -174,7 +190,12 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 
   adj = adj_get (ai);
 
-  if (FIB_PROTOCOL_IP4 == adj->ia_nh_proto)
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (si->type == VNET_SW_INTERFACE_TYPE_P2P)
+    {
+      default_update_adjacency (vnm, sw_if_index, ai);
+    }
+  else if (FIB_PROTOCOL_IP4 == adj->ia_nh_proto)
     {
       arp_update_adjacency (vnm, sw_if_index, ai);
     }
@@ -719,7 +740,8 @@ vnet_delete_sub_interface (u32 sw_if_index)
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
 
-  if (si->type == VNET_SW_INTERFACE_TYPE_SUB)
+  if (si->type == VNET_SW_INTERFACE_TYPE_SUB ||
+      si->type == VNET_SW_INTERFACE_TYPE_P2P)
     {
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
       u64 sup_and_sub_key =
