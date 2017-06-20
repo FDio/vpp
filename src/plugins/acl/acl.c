@@ -2076,6 +2076,8 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
       u32 show_bihash_verbose = 0;
 
       if (unformat (input, "acl")) {
+        show_acl_hash_info = 1;
+        /* mask-type is handy to see as well right there */
         show_mask_type = 1;
         unformat (input, "index %u", &acl_index);
       } else if (unformat (input, "applied")) {
