@@ -26,7 +26,7 @@ BUILT_SOURCES +=			\
 
 API_FILES += gtpu/gtpu.api
 
-noinst_HEADERS +=			\
+nobase_apiinclude_HEADERS +=			\
   gtpu/gtpu_all_api_h.h		\
   gtpu/gtpu_msg_enum.h		\
   gtpu/gtpu.api.h
