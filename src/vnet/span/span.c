@@ -37,7 +37,7 @@ span_add_delete_entry (vlib_main_t * vm,
   vnet_sw_interface_t *sw_if;
 
   sw_if = vnet_get_sw_interface (vnet_get_main (), src_sw_if_index);
-  if (sw_if->type == VNET_SW_INTERFACE_TYPE_SUB)
+  if (sw_if->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
     return VNET_API_ERROR_UNIMPLEMENTED;
 
   vec_validate_aligned (sm->interfaces, src_sw_if_index,
