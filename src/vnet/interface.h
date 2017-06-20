@@ -505,6 +505,7 @@ typedef enum
 
   /* A sub-interface. */
   VNET_SW_INTERFACE_TYPE_SUB,
+  VNET_SW_INTERFACE_TYPE_P2P,
 } vnet_sw_interface_type_t;
 
 typedef struct
@@ -537,6 +538,17 @@ typedef struct
     };
   } eth;
 } vnet_sub_interface_t;
+
+typedef struct
+{
+  /*
+   * Subinterface ID. A number 0-N to uniquely identify
+   * this subinterface under the main interface
+   */
+  u32 id;
+  u32 pool_index;
+  u8 client_mac[6];
+} vnet_p2p_sub_interface_t;
 
 typedef enum
 {
@@ -594,6 +606,9 @@ typedef struct
 
     /* VNET_SW_INTERFACE_TYPE_SUB. */
     vnet_sub_interface_t sub;
+
+    /* VNET_SW_INTERFACE_TYPE_P2P. */
+    vnet_p2p_sub_interface_t p2p;
   };
 
   vnet_flood_class_t flood_class;

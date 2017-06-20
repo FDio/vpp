@@ -18,6 +18,7 @@ define p2p_ethernet_add
   u32 client_index;
   u32 context;
   u32 parent_if_index;
+  u32 subif_id;
   u8  remote_mac[6];
 };
 

@@ -89,7 +89,10 @@ ethernet_build_rewrite (vnet_main_t * vnm,
   ethernet_type_t type;
   uword n_bytes = sizeof (h[0]);
   u8 *rewrite = NULL;
+  u8 is_p2p = 0;
 
+  if (sub_sw->type == VNET_SW_INTERFACE_TYPE_P2P)
+    is_p2p = 1;
   if (sub_sw != sup_sw)
     {
       if (sub_sw->sub.eth.flags.one_tag)
@@ -100,13 +103,24 @@ ethernet_build_rewrite (vnet_main_t * vnm,
 	{
 	  n_bytes += 2 * (sizeof (ethernet_vlan_header_t));
 	}
-      // Check for encaps that are not supported for L3 interfaces
-      if (!(sub_sw->sub.eth.flags.exact_match) ||
-	  (sub_sw->sub.eth.flags.default_sub) ||
-	  (sub_sw->sub.eth.flags.outer_vlan_id_any) ||
-	  (sub_sw->sub.eth.flags.inner_vlan_id_any))
+      else if (PREDICT_FALSE (is_p2p))
 	{
-	  return 0;
+	  n_bytes = sizeof (ethernet_header_t);
+	}
+      if (PREDICT_FALSE (!is_p2p))
+	{
+	  // Check for encaps that are not supported for L3 interfaces
+	  if (!(sub_sw->sub.eth.flags.exact_match) ||
+	      (sub_sw->sub.eth.flags.default_sub) ||
+	      (sub_sw->sub.eth.flags.outer_vlan_id_any) ||
+	      (sub_sw->sub.eth.flags.inner_vlan_id_any))
+	    {
+	      return 0;
+	    }
+	}
+      else
+	{
+	  n_bytes = sizeof (ethernet_header_t);
 	}
     }
 
@@ -126,12 +140,20 @@ ethernet_build_rewrite (vnet_main_t * vnm,
   h = (ethernet_header_t *) rewrite;
   ei = pool_elt_at_index (em->interfaces, hw->hw_instance);
   clib_memcpy (h->src_address, ei->address, sizeof (h->src_address));
-  if (dst_address)
-    clib_memcpy (h->dst_address, dst_address, sizeof (h->dst_address));
+  if (is_p2p)
+    {
+      clib_memcpy (h->dst_address, sub_sw->p2p.client_mac,
+		   sizeof (h->dst_address));
+    }
   else
-    memset (h->dst_address, ~0, sizeof (h->dst_address));	/* broadcast */
+    {
+      if (dst_address)
+	clib_memcpy (h->dst_address, dst_address, sizeof (h->dst_address));
+      else
+	memset (h->dst_address, ~0, sizeof (h->dst_address));	/* broadcast */
+    }
 
-  if (sub_sw->sub.eth.flags.one_tag)
+  if (PREDICT_FALSE (!is_p2p) && sub_sw->sub.eth.flags.one_tag)
     {
       ethernet_vlan_header_t *outer = (void *) (h + 1);
 
@@ -143,7 +165,7 @@ ethernet_build_rewrite (vnet_main_t * vnm,
       outer->type = clib_host_to_net_u16 (type);
 
     }
-  else if (sub_sw->sub.eth.flags.two_tags)
+  else if (PREDICT_FALSE (!is_p2p) && sub_sw->sub.eth.flags.two_tags)
     {
       ethernet_vlan_header_t *outer = (void *) (h + 1);
       ethernet_vlan_header_t *inner = (void *) (outer + 1);
@@ -174,7 +196,12 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 
   adj = adj_get (ai);
 
-  if (FIB_PROTOCOL_IP4 == adj->ia_nh_proto)
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (si->type == VNET_SW_INTERFACE_TYPE_P2P)
+    {
+      default_update_adjacency (vnm, sw_if_index, ai);
+    }
+  else if (FIB_PROTOCOL_IP4 == adj->ia_nh_proto)
     {
       arp_update_adjacency (vnm, sw_if_index, ai);
     }
@@ -719,7 +746,8 @@ vnet_delete_sub_interface (u32 sw_if_index)
   vnet_interface_main_t *im = &vnm->interface_main;
   vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
 
-  if (si->type == VNET_SW_INTERFACE_TYPE_SUB)
+  if (si->type == VNET_SW_INTERFACE_TYPE_SUB ||
+      si->type == VNET_SW_INTERFACE_TYPE_P2P)
     {
       vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
       u64 sup_and_sub_key =
