@@ -1013,7 +1013,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
   sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, dst_address);
   ip->checksum = ip_csum_fold (sum);
 
-  vnet_buffer(b)->sw_if_index[VLIB_TX] = vnet_buffer(b)->sw_if_index[VLIB_RX];
+  vnet_buffer(b)->sw_if_index[VLIB_TX] = m->fib_index;
 }
 
 static inline uword
