@@ -943,7 +943,7 @@ do {						\
   word _v(i) = 0;					\
   while (_v(i) < vec_len(v))				\
   {							\
-    if (v[_v(i)] == E)				        \
+    if ((v)[_v(i)] == E)				        \
       break;						\
     _v(i)++;						\
   }							\
