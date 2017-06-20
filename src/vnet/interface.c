@@ -1151,6 +1151,10 @@ vnet_hw_interface_compare (vnet_main_t * vnm,
 int
 vnet_sw_interface_is_p2p (vnet_main_t * vnm, u32 sw_if_index)
 {
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (si->type == VNET_SW_INTERFACE_TYPE_P2P)
+    return 1;
+
   vnet_hw_interface_t *hw = vnet_get_sup_hw_interface (vnm, sw_if_index);
   vnet_hw_interface_class_t *hc =
     vnet_get_hw_interface_class (vnm, hw->hw_class_index);

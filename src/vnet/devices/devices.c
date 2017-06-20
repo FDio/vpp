@@ -77,6 +77,12 @@ VNET_FEATURE_INIT (span_input, static) = {
   .runs_before = VNET_FEATURES ("ethernet-input"),
 };
 
+VNET_FEATURE_INIT (p2p_ethernet_node, static) = {
+  .arc_name = "device-input",
+  .node_name = "p2p-ethernet-input",
+  .runs_before = VNET_FEATURES ("ethernet-input"),
+};
+
 VNET_FEATURE_INIT (ethernet_input, static) = {
   .arc_name = "device-input",
   .node_name = "ethernet-input",

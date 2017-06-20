@@ -19161,6 +19161,7 @@ api_p2p_ethernet_add (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_p2p_ethernet_add_t *mp;
   u32 parent_if_index = ~0;
+  u32 sub_id = ~0;
   u8 remote_mac[6];
   u8 mac_set = 0;
   int ret;
@@ -19176,6 +19177,8 @@ api_p2p_ethernet_add (vat_main_t * vam)
 	if (unformat
 	    (i, "remote_mac %U", unformat_ethernet_address, remote_mac))
 	mac_set++;
+      else if (unformat (i, "sub_id %d", &sub_id))
+	;
       else
 	{
 	  clib_warning ("parse error '%U'", format_unformat_error, i);
@@ -19193,9 +19196,15 @@ api_p2p_ethernet_add (vat_main_t * vam)
       errmsg ("missing remote mac address");
       return -99;
     }
+  if (sub_id == ~0)
+    {
+      errmsg ("missing sub-interface id");
+      return -99;
+    }
 
   M (P2P_ETHERNET_ADD, mp);
   mp->parent_if_index = ntohl (parent_if_index);
+  mp->subif_id = ntohl (sub_id);
   clib_memcpy (mp->remote_mac, remote_mac, sizeof (remote_mac));
 
   S (mp);
@@ -20094,11 +20103,10 @@ _(l2_xconnect_dump, "")                                             	\
 _(sw_interface_set_mtu, "<intfc> | sw_if_index <nn> mtu <nn>")        \
 _(ip_neighbor_dump, "[ip6] <intfc> | sw_if_index <nn>")                 \
 _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
-_(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
+_(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address> sub_id <id>") \
 _(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
-_(lldp_config, "system-name <name> tx-hold <nn> tx-interval <nn>")      \
-_(sw_interface_set_lldp,                                                \
-  "<intfc> | sw_if_index <nn> [port-desc <description>] [disable]")
+_(lldp_config, "system-name <name> tx-hold <nn> tx-interval <nn>") \
+_(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>] [disable]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
@@ -20122,7 +20130,6 @@ _(search_node_table, "usage: search_node_table <name>...")	\
 _(set, "usage: set <variable-name> <value>")                    \
 _(script, "usage: script <file-name>")                          \
 _(unset, "usage: unset <variable-name>")
-
 #define _(N,n)                                  \
     static void vl_api_##n##_t_handler_uni      \
     (vl_api_##n##_t * mp)                       \

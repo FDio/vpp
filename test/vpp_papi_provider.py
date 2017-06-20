@@ -601,6 +601,19 @@ class VppPapiProvider(object):
              'outer_vlan_id': outer_vlan,
              'inner_vlan_id': inner_vlan})
 
+    def create_p2pethernet_subif(self, sw_if_index, remote_mac, subif_id):
+        """Create p2p ethernet subinterface
+
+        :param sw_if_index: main (parent) interface
+        :param remote_mac: client (remote) mac address
+
+        """
+        return self.api(
+            self.papi.p2p_ethernet_add,
+            {'parent_if_index': sw_if_index,
+             'remote_mac': remote_mac,
+             'subif_id': subif_id})
+
     def delete_subif(self, sw_if_index):
         """Delete subinterface
 
@@ -608,6 +621,18 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.delete_subif,
                         {'sw_if_index': sw_if_index})
+
+    def delete_p2pethernet_subif(self, sw_if_index, remote_mac):
+        """Delete p2p ethernet subinterface
+
+        :param sw_if_index: main (parent) interface
+        :param remote_mac: client (remote) mac address
+
+        """
+        return self.api(
+            self.papi.p2p_ethernet_del,
+            {'parent_if_index': sw_if_index,
+             'remote_mac': remote_mac})
 
     def create_vlan_subif(self, sw_if_index, vlan):
         """

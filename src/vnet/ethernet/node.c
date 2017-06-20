@@ -40,6 +40,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/p2p_ethernet.h>
 #include <vppinfra/sparse_vec.h>
 #include <vnet/l2/l2_bvi.h>
 
@@ -823,7 +824,21 @@ ethernet_sw_interface_get_config (vnet_main_t * vnm,
   // Locate the subint for the given ethernet config
   si = vnet_get_sw_interface (vnm, sw_if_index);
 
-  if (si->sub.eth.flags.default_sub)
+  if (si->type == VNET_SW_INTERFACE_TYPE_P2P)
+    {
+      p2p_ethernet_main_t *p2pm = &p2p_main;
+      u32 p2pe_sw_if_index =
+	p2p_ethernet_lookup (hi->hw_if_index, si->p2p.client_mac);
+      if (p2pe_sw_if_index == ~0)
+	{
+	  pool_get (p2pm->p2p_subif_pool, subint);
+	  si->p2p.pool_index = subint - p2pm->p2p_subif_pool;
+	}
+      else
+	subint = vec_elt_at_index (p2pm->p2p_subif_pool, si->p2p.pool_index);
+      *flags = SUBINT_CONFIG_P2P;
+    }
+  else if (si->sub.eth.flags.default_sub)
     {
       subint = &main_intf->default_subint;
       *flags = SUBINT_CONFIG_MATCH_0_TAG |

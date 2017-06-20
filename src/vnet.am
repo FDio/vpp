@@ -115,6 +115,7 @@ libvnet_la_SOURCES +=				\
  vnet/ethernet/pg.c				\
  vnet/ethernet/sfp.c				\
  vnet/ethernet/p2p_ethernet.c			\
+ vnet/ethernet/p2p_ethernet_input.c		\
  vnet/ethernet/p2p_ethernet_api.c
 
 nobase_include_HEADERS +=			\

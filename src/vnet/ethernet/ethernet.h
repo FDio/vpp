@@ -169,6 +169,7 @@ typedef struct
 #define SUBINT_CONFIG_MATCH_3_TAG (1<<3)
 #define SUBINT_CONFIG_VALID       (1<<4)
 #define SUBINT_CONFIG_L2          (1<<5)
+#define SUBINT_CONFIG_P2P         (1<<6)
 
 } subint_config_t;
 
