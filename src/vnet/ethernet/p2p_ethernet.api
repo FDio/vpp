@@ -19,6 +19,7 @@ define p2p_ethernet_add
   u32 context;
   u32 parent_if_index;
   u8  remote_mac[6];
+  u32 subif_id;
 };
 
 define p2p_ethernet_add_reply

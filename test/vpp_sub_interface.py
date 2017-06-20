@@ -188,3 +188,26 @@ class VppDot1ADSubint(VppSubInterface):
     def remove_dot1_layer(self, packet):
         return self.remove_dot1ad_layer(packet, self.outer_vlan,
                                         self.inner_vlan)
+
+
+class VppP2PSubint(VppSubInterface):
+
+    def __init__(self, test, parent, sub_id, remote_mac):
+        r = test.vapi.create_p2pethernet_subif(parent.sw_if_index,
+                                               remote_mac, sub_id)
+        self._sw_if_index = r.sw_if_index
+        super(VppP2PSubint, self).__init__(test, parent, sub_id)
+
+    def add_dot1_layer(self, packet):
+        return packet
+
+    def remove_dot1_layer(self, packet):
+        return packet
+
+    def create_arp_req(self):
+        packet = VppPGInterface.create_arp_req(self)
+        return packet
+
+    def create_ndp_req(self):
+        packet = VppPGInterface.create_ndp_req(self)
+        return packet

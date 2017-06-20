@@ -73,7 +73,8 @@ always_inline vnet_sw_interface_t *
 vnet_get_sup_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 {
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
-  if (sw->type == VNET_SW_INTERFACE_TYPE_SUB)
+  if (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||
+      sw->type == VNET_SW_INTERFACE_TYPE_P2P)
     sw = vnet_get_sw_interface (vnm, sw->sup_sw_if_index);
   return sw;
 }
