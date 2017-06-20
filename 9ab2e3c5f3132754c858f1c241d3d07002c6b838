@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_28e3d5da",
+        "filename": "src/vpp/app/vppctl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-06-20T17:27:40Z",
+      "side": 1,
+      "message": "(c) and License header",
+      "revId": "9ab2e3c5f3132754c858f1c241d3d07002c6b838",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_48de0913",
+        "filename": "src/vpp/app/vppctl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-06-20T17:27:40Z",
+      "side": 1,
+      "message": "should be marked volatile; unlikely to be an issue in that poll loop, but would be more correct",
+      "range": {
+        "startLine": 46,
+        "startChar": 0,
+        "endLine": 46,
+        "endChar": 3
+      },
+      "revId": "9ab2e3c5f3132754c858f1c241d3d07002c6b838",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_08e811b3",
+        "filename": "src/vpp/app/vppctl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 203,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-06-20T17:27:40Z",
+      "side": 1,
+      "message": "should also catch n\u003d\u003d0 which means EOF",
+      "range": {
+        "startLine": 203,
+        "startChar": 3,
+        "endLine": 203,
+        "endChar": 7
+      },
+      "revId": "9ab2e3c5f3132754c858f1c241d3d07002c6b838",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
