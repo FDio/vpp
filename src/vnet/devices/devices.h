@@ -61,7 +61,7 @@ typedef struct
   u32 dev_instance;
   u16 queue_id;
   vnet_hw_interface_rx_mode mode;
-  uword interrupt_pending;
+  u32 interrupt_pending;
 } vnet_device_and_queue_t;
 
 typedef struct
