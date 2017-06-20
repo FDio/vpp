@@ -85,6 +85,10 @@ bin_vpp_LDADD = \
 
 bin_vpp_LDFLAGS = -Wl,--export-dynamic
 
+bin_PROGRAMS += bin/vppctl
+bin_vppctl_SOURCES = vpp/app/vppctl.c
+bin_vppctl_LDADD = libvppinfra.la
+
 if ENABLE_TESTS
 noinst_PROGRAMS += bin/test_client
 

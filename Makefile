@@ -18,7 +18,7 @@ GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
 
-MINIMAL_STARTUP_CONF="unix { interactive }"
+MINIMAL_STARTUP_CONF="unix { interactive cli-listen /run/vpp/cli.sock gid $(shell id -g) }"
 
 GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 
