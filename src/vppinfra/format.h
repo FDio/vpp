@@ -310,6 +310,9 @@ void unformat_init_unix_file (unformat_input_t * input, int file_descriptor);
 /* Take input from Unix environment variable; returns
    1 if variable exists zero otherwise. */
 uword unformat_init_unix_env (unformat_input_t * input, char *var);
+
+/* Unformat unix group id (gid) specified as integer or string */
+unformat_function_t unformat_unix_gid;
 #endif /* CLIB_UNIX */
 
 /* Test code. */
