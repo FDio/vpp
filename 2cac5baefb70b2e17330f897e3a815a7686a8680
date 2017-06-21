@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_d2509a60",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 720,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-21T17:58:39Z",
+      "side": 1,
+      "message": "protocol specific code does not below in the generic interface file.\nwhen an interface is deleted, VPP will call all functions that have registered for such notifications with the VNET_SW_INTERFACE_ADD_DEL_FUNCTION. Please move this code into such an existing v6 specific function, or create a new one as you see fit.",
+      "revId": "2cac5baefb70b2e17330f897e3a815a7686a8680",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
