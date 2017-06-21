@@ -621,6 +621,96 @@ done:
   return error;
 }
 
+static clib_error_t *
+nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
+				 vlib_cli_command_t * cmd)
+{
+  nat64_main_t *nm = &nat64_main;
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 is_add = 1;
+  u32 vrf_id = 0;
+  ip6_address_t prefix;
+  u32 plen = 0;
+  int rv;
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U/%u", unformat_ip6_address, &prefix, &plen))
+	;
+      else if (unformat (line_input, "tenant-vrf %u", &vrf_id))
+	;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else
+	{
+	  error = clib_error_return (0, "unknown input: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (!plen)
+    {
+      error = clib_error_return (0, "NAT64 prefix must be set.");
+      goto done;
+    }
+
+  rv = nat64_add_del_prefix (&prefix, (u8) plen, vrf_id, is_add);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+      error = clib_error_return (0, "NAT64 prefix not exist.");
+      goto done;
+    case VNET_API_ERROR_INVALID_VALUE:
+      error = clib_error_return (0, "Invalid prefix length.");
+      goto done;
+    default:
+      break;
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static int
+nat64_cli_prefix_walk (nat64_prefix_t * p, void *ctx)
+{
+  vlib_main_t *vm = ctx;
+
+  vlib_cli_output (vm, " %U/%u tenant-vrf %u",
+		   format_ip6_address, &p->prefix, p->plen, p->vrf_id);
+
+  return 0;
+}
+
+static clib_error_t *
+nat64_show_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
+{
+  nat64_main_t *nm = &nat64_main;
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
+
+  vlib_cli_output (vm, "NAT64 prefix:");
+  nat64_prefix_walk (nat64_cli_prefix_walk, vm);
+
+  return 0;
+}
+
 /* *INDENT-OFF* */
 
 VLIB_CLI_COMMAND (nat64_add_pool_address_command, static) = {
@@ -678,6 +768,19 @@ VLIB_CLI_COMMAND (show_nat64_st_command, static) = {
   .path = "show nat64 session table",
   .short_help = "show nat64 session table tcp|udp|icmp",
   .function = nat64_show_st_command_fn,
+};
+
+VLIB_CLI_COMMAND (nat64_add_del_prefix_command, static) = {
+  .path = "nat64 add prefix",
+  .short_help = "nat64 add prefix <ip6-prefix>/<plen> [tenant-vrf <vrf-id>] "
+                "[del]",
+  .function = nat64_add_del_prefix_command_fn,
+};
+
+VLIB_CLI_COMMAND (show_nat64_prefix_command, static) = {
+  .path = "show nat64 prefix",
+  .short_help = "show nat64 prefix",
+  .function = nat64_show_prefix_command_fn,
 };
 
 /* *INDENT-ON* */

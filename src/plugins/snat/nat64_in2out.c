@@ -21,15 +21,6 @@
 #include <vnet/ip/ip6_to_ip4.h>
 #include <vnet/fib/fib_table.h>
 
-/* *INDENT-OFF* */
-static u8 well_known_prefix[] = {
-  0x00, 0x64, 0xff, 0x9b,
-  0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00
-};
-/* *INDENT-ON* */
-
 typedef struct
 {
   u32 sw_if_index;
@@ -166,6 +157,7 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 	    return -1;
 	}
 
+      nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
       ste =
 	nat64_db_st_entry_create (&nm->db, bibe, &ip6->dst_address,
 				  &daddr.ip4, dport);
@@ -178,7 +170,7 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   ip4->src_address.as_u32 = bibe->out_addr.as_u32;
   udp->src_port = bibe->out_port;
 
-  ip4->dst_address.as_u32 = daddr.ip4.as_u32;
+  ip4->dst_address.as_u32 = ste->out_r_addr.as_u32;
 
   if (proto == SNAT_PROTOCOL_TCP)
     {
@@ -252,6 +244,8 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 	      if (!bibe)
 		return -1;
 	    }
+
+	  nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
 	  ste =
 	    nat64_db_st_entry_create (&nm->db, bibe, &ip6->dst_address,
 				      &daddr.ip4, 0);
@@ -264,7 +258,7 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
       ip4->src_address.as_u32 = bibe->out_addr.as_u32;
       ((u16 *) (icmp))[2] = bibe->out_port;
 
-      ip4->dst_address.as_u32 = daddr.ip4.as_u32;
+      ip4->dst_address.as_u32 = ste->out_r_addr.as_u32;
     }
   else
     {
@@ -272,7 +266,7 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 	return -1;
 
       ip4->src_address.as_u32 = nm->addr_pool[0].addr.as_u32;
-      ip4->dst_address.as_u32 = daddr.ip4.as_u32;
+      nat64_extract_ip4 (&ip6->dst_address, &ip4->dst_address, fib_index);
     }
 
   return 0;
@@ -321,7 +315,7 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 
       ip4->dst_address.as_u32 = bibe->out_addr.as_u32;
       ((u16 *) (icmp))[2] = bibe->out_port;
-      ip4->src_address.as_u32 = saddr.ip4.as_u32;
+      ip4->src_address.as_u32 = ste->out_r_addr.as_u32;
     }
   else
     {
@@ -345,7 +339,7 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 
       ip4->dst_address.as_u32 = bibe->out_addr.as_u32;
       udp->dst_port = bibe->out_port;
-      ip4->src_address.as_u32 = saddr.ip4.as_u32;
+      ip4->src_address.as_u32 = ste->out_r_addr.as_u32;
 
       if (proto == SNAT_PROTOCOL_TCP)
 	checksum = &tcp->checksum;
@@ -428,6 +422,7 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 	    return -1;
 	}
 
+      nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
       ste =
 	nat64_db_st_entry_create (&nm->db, bibe, &ip6->dst_address,
 				  &daddr.ip4, dport);
@@ -438,15 +433,12 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
   nat64_session_reset_timeout (ste, vm);
 
   sport = udp->src_port = bibe->out_port;
-  memcpy (&ip6->src_address, well_known_prefix, sizeof (ip6_address_t));
-  saddr.ip6.as_u32[3] = ip6->src_address.as_u32[3] = bibe->out_addr.as_u32;
+  nat64_compose_ip6 (&ip6->src_address, &bibe->out_addr, fib_index);
 
-  saddr.ip6.as_u32[0] = 0;
-  saddr.ip6.as_u32[1] = 0;
-  saddr.ip6.as_u32[2] = 0;
-  daddr.ip6.as_u32[0] = 0;
-  daddr.ip6.as_u32[1] = 0;
-  daddr.ip6.as_u32[2] = 0;
+  memset (&saddr, 0, sizeof (saddr));
+  memset (&daddr, 0, sizeof (daddr));
+  saddr.ip4.as_u32 = bibe->out_addr.as_u32;
+  daddr.ip4.as_u32 = ste->out_r_addr.as_u32;
 
   ste =
     nat64_db_st_entry_find (&nm->db, &daddr, &saddr, dport, sport, proto, 0,
@@ -545,22 +537,17 @@ nat64_in2out_icmp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
   if (!ste)
     return -1;
 
-  clib_warning ("");
   bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
   if (!bibe)
     return -1;
 
   dport = udp->dst_port = bibe->out_port;
-  memcpy (&inner_ip6->dst_address, well_known_prefix, sizeof (ip6_address_t));
-  daddr.ip6.as_u32[3] = inner_ip6->dst_address.as_u32[3] =
-    bibe->out_addr.as_u32;
+  nat64_compose_ip6 (&inner_ip6->dst_address, &bibe->out_addr, fib_index);
 
-  saddr.ip6.as_u32[0] = 0;
-  saddr.ip6.as_u32[1] = 0;
-  saddr.ip6.as_u32[2] = 0;
-  daddr.ip6.as_u32[0] = 0;
-  daddr.ip6.as_u32[1] = 0;
-  daddr.ip6.as_u32[2] = 0;
+  memset (&saddr, 0, sizeof (saddr));
+  memset (&daddr, 0, sizeof (daddr));
+  saddr.ip4.as_u32 = ste->out_r_addr.as_u32;
+  daddr.ip4.as_u32 = bibe->out_addr.as_u32;
 
   ste =
     nat64_db_st_entry_find (&nm->db, &saddr, &daddr, sport, dport, proto, 0,
@@ -587,8 +574,7 @@ nat64_in2out_icmp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
   if (!vec_len (nm->addr_pool))
     return -1;
 
-  memcpy (&ip6->src_address, well_known_prefix, sizeof (ip6_address_t));
-  ip6->src_address.as_u32[3] = nm->addr_pool[0].addr.as_u32;
+  nat64_compose_ip6 (&ip6->src_address, &nm->addr_pool[0].addr, fib_index);
   ip6->dst_address.as_u64[0] = inner_ip6->src_address.as_u64[0];
   ip6->dst_address.as_u64[1] = inner_ip6->src_address.as_u64[1];
 
