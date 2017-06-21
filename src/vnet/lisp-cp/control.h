@@ -36,8 +36,8 @@
 /* normal map-register period */
 #define MAP_REGISTER_INTERVAL               60.0
 
-/* 15 minutes */
-#define MAP_REGISTER_DEFAULT_TTL            900
+/* 24 hours */
+#define MAP_REGISTER_DEFAULT_TTL            86400
 
 typedef struct
 {
