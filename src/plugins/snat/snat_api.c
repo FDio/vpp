@@ -1677,6 +1677,95 @@ vl_api_nat64_st_dump_t_print (vl_api_nat64_st_dump_t * mp, void *handle)
   FINISH;
 }
 
+static void
+vl_api_nat64_add_del_prefix_t_handler (vl_api_nat64_add_del_prefix_t * mp)
+{
+  vl_api_nat64_add_del_prefix_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  nat64_main_t *nm = &nat64_main;
+  ip6_address_t prefix;
+  int rv = 0;
+
+  if (nm->is_disabled)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto send_reply;
+    }
+
+  memcpy (&prefix.as_u8, mp->prefix, 16);
+
+  rv =
+    nat64_add_del_prefix (&prefix, mp->prefix_len,
+			  clib_net_to_host_u32 (mp->vrf_id), mp->is_add);
+send_reply:
+  REPLY_MACRO (VL_API_NAT64_ADD_DEL_PREFIX_REPLY);
+}
+
+static void *
+vl_api_nat64_add_del_prefix_t_print (vl_api_nat64_add_del_prefix_t * mp,
+				     void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat64_add_del_prefix %U/%u vrf_id %u %s\n",
+	      format_ip6_address, mp->prefix, mp->prefix_len,
+	      ntohl (mp->vrf_id), mp->is_add ? "" : "del");
+
+  FINISH;
+}
+
+static int
+nat64_api_prefix_walk (nat64_prefix_t * p, void *arg)
+{
+  vl_api_nat64_prefix_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+  nat64_api_walk_ctx_t *ctx = arg;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_NAT64_PREFIX_DETAILS + sm->msg_id_base);
+  clib_memcpy (rmp->prefix, &(p->prefix), 16);
+  rmp->prefix_len = p->plen;
+  rmp->vrf_id = ntohl (p->vrf_id);
+  rmp->context = ctx->context;
+
+  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+
+  return 0;
+}
+
+static void
+vl_api_nat64_prefix_dump_t_handler (vl_api_nat64_prefix_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  nat64_main_t *nm = &nat64_main;
+
+  if (nm->is_disabled)
+    return;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  nat64_api_walk_ctx_t ctx = {
+    .q = q,
+    .context = mp->context,
+  };
+
+  nat64_prefix_walk (nat64_api_prefix_walk, &ctx);
+}
+
+static void *
+vl_api_nat64_prefix_dump_t_print (vl_api_nat64_prefix_dump_t * mp,
+				  void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat64_prefix_dump\n");
+
+  FINISH;
+}
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -1711,7 +1800,9 @@ _(NAT64_ADD_DEL_STATIC_BIB, nat64_add_del_static_bib)                   \
 _(NAT64_BIB_DUMP, nat64_bib_dump)                                       \
 _(NAT64_SET_TIMEOUTS, nat64_set_timeouts)                               \
 _(NAT64_GET_TIMEOUTS, nat64_get_timeouts)                               \
-_(NAT64_ST_DUMP, nat64_st_dump)
+_(NAT64_ST_DUMP, nat64_st_dump)                                         \
+_(NAT64_ADD_DEL_PREFIX, nat64_add_del_prefix)                           \
+_(NAT64_PREFIX_DUMP, nat64_prefix_dump)
 
 /* Set up the API message handling tables */
 static clib_error_t *

@@ -41,13 +41,24 @@ typedef enum
 
 typedef struct
 {
+  ip6_address_t prefix;
+  u8 plen;
+  u32 vrf_id;
+  u32 fib_index;
+} nat64_prefix_t;
+
+typedef struct
+{
   /** Interface pool */
   snat_interface_t *interfaces;
 
   /** Address pool vector */
   snat_address_t *addr_pool;
 
-  /** BIB and session DB **/
+  /** Pref64 vector */
+  nat64_prefix_t *pref64;
+
+  /** BIB and session DB */
   nat64_db_t db;
 
   /* values of various timeouts */
@@ -250,6 +261,52 @@ void nat64_session_reset_timeout (nat64_db_st_entry_t * ste,
  */
 void nat64_tcp_session_set_state (nat64_db_st_entry_t * ste,
 				  tcp_header_t * tcp, u8 is_ip6);
+
+/**
+ * @brief Add/delete NAT64 prefix.
+ *
+ * @param prefix NAT64 prefix.
+ * @param plen Prefix length.
+ * @param vrf_id VRF id of tenant.
+ * @param is_add 1 if add, 0 if delete.
+ *
+ * @returns 0 on success, non-zero value otherwise.
+ */
+int nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id,
+			  u8 is_add);
+
+/**
+ * @brief Call back function when walking addresses in NAT64 prefixes, non-zero
+ * return value stop walk.
+ */
+typedef int (*nat64_prefix_walk_fn_t) (nat64_prefix_t * pref64, void *ctx);
+
+/**
+ * @brief Walk NAT64 prefixes.
+ *
+ * @param fn The function to invoke on each entry visited.
+ * @param ctx A context passed in the visit function.
+ */
+void nat64_prefix_walk (nat64_prefix_walk_fn_t fn, void *ctx);
+
+/**
+ * Compose IPv4-embedded IPv6 addresses.
+ * @param ip6 IPv4-embedded IPv6 addresses.
+ * @param ip4 IPv4 address.
+ * @param fib_index Tenant FIB index.
+ */
+void nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4,
+			u32 fib_index);
+
+/**
+ * Extract IPv4 address from the IPv4-embedded IPv6 addresses.
+ *
+ * @param ip6 IPv4-embedded IPv6 addresses.
+ * @param ip4 IPv4 address.
+ * @param fib_index Tenant FIB index.
+ */
+void nat64_extract_ip4 (ip6_address_t * ip6, ip4_address_t * ip4,
+			u32 fib_index);
 
 #define u8_ptr_add(ptr, index) (((u8 *)ptr) + index)
 #define u16_net_add(u, val) clib_host_to_net_u16(clib_net_to_host_u16(u) + (val))

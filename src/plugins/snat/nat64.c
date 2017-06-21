@@ -38,6 +38,13 @@ VNET_FEATURE_INIT (nat64_out2in, static) = {
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
+static u8 well_known_prefix[] = {
+  0x00, 0x64, 0xff, 0x9b,
+  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00
+};
+
 /* *INDENT-ON* */
 
 clib_error_t *
@@ -598,6 +605,209 @@ nat64_tcp_session_set_state (nat64_db_st_entry_t * ste, tcp_header_t * tcp,
     default:
       return;
     }
+}
+
+int
+nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id, u8 is_add)
+{
+  nat64_main_t *nm = &nat64_main;
+  nat64_prefix_t *p = 0;
+  int i;
+
+  /* Verify prefix length */
+  if (plen != 32 && plen != 40 && plen != 48 && plen != 56 && plen != 64
+      && plen != 96)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  /* Check if tenant already have prefix */
+  for (i = 0; i < vec_len (nm->pref64); i++)
+    {
+      if (nm->pref64[i].vrf_id == vrf_id)
+	{
+	  p = nm->pref64 + i;
+	  break;
+	}
+    }
+
+  if (is_add)
+    {
+      if (!p)
+	{
+	  vec_add2 (nm->pref64, p, 1);
+	  p->fib_index =
+	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id);
+	  p->vrf_id = vrf_id;
+	}
+
+      p->prefix.as_u64[0] = prefix->as_u64[0];
+      p->prefix.as_u64[1] = prefix->as_u64[1];
+      p->plen = plen;
+    }
+  else
+    {
+      if (!p)
+	return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+      vec_del1 (nm->pref64, i);
+    }
+
+  return 0;
+}
+
+void
+nat64_prefix_walk (nat64_prefix_walk_fn_t fn, void *ctx)
+{
+  nat64_main_t *nm = &nat64_main;
+  nat64_prefix_t *p = 0;
+
+  /* *INDENT-OFF* */
+  vec_foreach (p, nm->pref64)
+    {
+      if (fn (p, ctx))
+        break;
+    };
+  /* *INDENT-ON* */
+}
+
+void
+nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
+{
+  nat64_main_t *nm = &nat64_main;
+  nat64_prefix_t *p, *gp = 0, *prefix = 0;
+
+  /* *INDENT-OFF* */
+  vec_foreach (p, nm->pref64)
+    {
+      if (p->fib_index == fib_index)
+        {
+          prefix = p;
+          break;
+        }
+
+      if (p->fib_index == 0)
+        gp = p;
+    };
+  /* *INDENT-ON* */
+
+  if (!prefix)
+    prefix = gp;
+
+  if (prefix)
+    {
+      memset (ip6, 0, 16);
+      memcpy (ip6, &p->prefix, p->plen);
+      switch (p->plen)
+	{
+	case 32:
+	  ip6->as_u32[1] = ip4->as_u32;
+	  break;
+	case 40:
+	  ip6->as_u8[5] = ip4->as_u8[0];
+	  ip6->as_u8[6] = ip4->as_u8[1];
+	  ip6->as_u8[7] = ip4->as_u8[2];
+	  ip6->as_u8[9] = ip4->as_u8[3];
+	  break;
+	case 48:
+	  ip6->as_u8[6] = ip4->as_u8[0];
+	  ip6->as_u8[7] = ip4->as_u8[1];
+	  ip6->as_u8[9] = ip4->as_u8[2];
+	  ip6->as_u8[10] = ip4->as_u8[3];
+	  break;
+	case 56:
+	  ip6->as_u8[7] = ip4->as_u8[0];
+	  ip6->as_u8[9] = ip4->as_u8[1];
+	  ip6->as_u8[10] = ip4->as_u8[2];
+	  ip6->as_u8[11] = ip4->as_u8[3];
+	  break;
+	case 64:
+	  ip6->as_u8[9] = ip4->as_u8[0];
+	  ip6->as_u8[10] = ip4->as_u8[1];
+	  ip6->as_u8[11] = ip4->as_u8[2];
+	  ip6->as_u8[12] = ip4->as_u8[3];
+	  break;
+	case 96:
+	  ip6->as_u32[3] = ip4->as_u32;
+	  break;
+	default:
+	  clib_warning ("invalid prefix length");
+	  break;
+	}
+    }
+  else
+    {
+      memcpy (ip6, well_known_prefix, 16);
+      ip6->as_u32[3] = ip4->as_u32;
+    }
+}
+
+void
+nat64_extract_ip4 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
+{
+  nat64_main_t *nm = &nat64_main;
+  nat64_prefix_t *p, *gp = 0;
+  u8 plen = 0;
+
+  /* *INDENT-OFF* */
+  vec_foreach (p, nm->pref64)
+    {
+      if (p->fib_index == fib_index)
+        {
+          plen = p->plen;
+          break;
+        }
+
+      if (p->vrf_id == 0)
+        gp = p;
+    };
+  /* *INDENT-ON* */
+
+  if (!plen)
+    {
+      if (gp)
+	plen = gp->plen;
+      else
+	plen = 96;
+    }
+
+  switch (plen)
+    {
+    case 32:
+      ip4->as_u32 = ip6->as_u32[1];
+      break;
+    case 40:
+      ip4->as_u8[0] = ip6->as_u8[5];
+      ip4->as_u8[1] = ip6->as_u8[6];
+      ip4->as_u8[2] = ip6->as_u8[7];
+      ip4->as_u8[3] = ip6->as_u8[9];
+      break;
+    case 48:
+      ip4->as_u8[0] = ip6->as_u8[6];
+      ip4->as_u8[1] = ip6->as_u8[7];
+      ip4->as_u8[2] = ip6->as_u8[9];
+      ip4->as_u8[3] = ip6->as_u8[10];
+      break;
+    case 56:
+      ip4->as_u8[0] = ip6->as_u8[7];
+      ip4->as_u8[1] = ip6->as_u8[9];
+      ip4->as_u8[2] = ip6->as_u8[10];
+      ip4->as_u8[3] = ip6->as_u8[11];
+      break;
+    case 64:
+      ip4->as_u8[0] = ip6->as_u8[9];
+      ip4->as_u8[1] = ip6->as_u8[10];
+      ip4->as_u8[2] = ip6->as_u8[11];
+      ip4->as_u8[3] = ip6->as_u8[12];
+      break;
+    case 96:
+      ip4->as_u32 = ip6->as_u32[3];
+      break;
+    default:
+      clib_warning ("invalid prefix length");
+      break;
+    }
+
+  clib_warning ("%U %U plen %u", format_ip6_address, ip6, format_ip4_address,
+		ip4, plen);
 }
 
 /**

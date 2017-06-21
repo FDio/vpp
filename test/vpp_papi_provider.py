@@ -1424,11 +1424,11 @@ class VppPapiProvider(object):
                            tcp_incoming_syn=6):
         """Set values of timeouts for NAT64 (in seconds)
 
-        :param udp - UDP timeout (Default value = 300)
-        :param icmp - ICMP timeout (Default value = 60)
-        :param tcp_trans - TCP transitory timeout (Default value = 240)
-        :param tcp_est - TCP established timeout (Default value = 7440)
-        :param tcp_incoming_syn - TCP incoming SYN timeout (Default value = 6)
+        :param udpi: UDP timeout (Default value = 300)
+        :param icmp: ICMP timeout (Default value = 60)
+        :param tcp_trans: TCP transitory timeout (Default value = 240)
+        :param tcp_est: TCP established timeout (Default value = 7440)
+        :param tcp_incoming_syn: TCP incoming SYN timeout (Default value = 6)
         """
         return self.api(
             self.papi.nat64_set_timeouts,
@@ -1452,6 +1452,28 @@ class VppPapiProvider(object):
         :returns: Dictionary of NAT64 sesstion table entries
         """
         return self.api(self.papi.nat64_st_dump, {'proto': protocol})
+
+    def nat64_add_del_prefix(self, prefix, plen, vrf_id=0, is_add=1):
+        """Add/del NAT64 prefix
+
+        :param prefix: NAT64 prefix
+        :param plen: NAT64 prefix length
+        :param vrf_id: VRF id of tenant (Default 0)
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(
+            self.papi.nat64_add_del_prefix,
+            {'prefix': prefix,
+             'prefix_len': plen,
+             'vrf_id': vrf_id,
+             'is_add': is_add})
+
+    def nat64_prefix_dump(self):
+        """Dump NAT64 prefix
+
+        :returns: Dictionary of NAT64 prefixes
+        """
+        return self.api(self.papi.nat64_prefix_dump, {})
 
     def control_ping(self):
         self.api(self.papi.control_ping)
