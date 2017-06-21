@@ -24,10 +24,6 @@
 #define MEMIF_DEFAULT_TX_QUEUES 1
 #define MEMIF_DEFAULT_BUFFER_SIZE 2048
 
-#define MEMIF_VERSION_MAJOR		0
-#define MEMIF_VERSION_MINOR		1
-#define MEMIF_VERSION			((MEMIF_VERSION_MAJOR << 8) | MEMIF_VERSION_MINOR)
-#define MEMIF_COOKIE			0xdeadbeef
 #define MEMIF_MAX_M2S_RING		(vec_len (vlib_mains) - 1)
 #define MEMIF_MAX_S2M_RING		(vec_len (vlib_mains) - 1)
 #define MEMIF_MAX_REGION		255
@@ -88,7 +84,7 @@ typedef struct
 typedef struct
 {
   void *shm;
-  u32 region_size;
+  memif_region_size_t region_size;
   int fd;
 } memif_region_t;
 
@@ -102,9 +98,9 @@ typedef struct
 {
   /* ring data */
   memif_ring_t *ring;
-  u8 log2_ring_size;
-  u8 region;
-  u32 offset;
+  memif_log2_ring_size_t log2_ring_size;
+  memif_region_index_t region;
+  memif_region_offset_t offset;
 
   u16 last_head;
   u16 last_tail;
@@ -163,7 +159,7 @@ typedef struct
 
   struct
   {
-    u8 log2_ring_size;
+    memif_log2_ring_size_t log2_ring_size;
     u8 num_s2m_rings;
     u8 num_m2s_rings;
     u16 buffer_size;
@@ -171,7 +167,7 @@ typedef struct
 
   struct
   {
-    u8 log2_ring_size;
+    memif_log2_ring_size_t log2_ring_size;
     u8 num_s2m_rings;
     u8 num_m2s_rings;
     u16 buffer_size;
@@ -218,7 +214,7 @@ typedef struct
   u8 *secret;
   u8 is_master;
   memif_interface_mode_t mode:8;
-  u8 log2_ring_size;
+  memif_log2_ring_size_t log2_ring_size;
   u16 buffer_size;
   u8 hw_addr_set;
   u8 hw_addr[6];
