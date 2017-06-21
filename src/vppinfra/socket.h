@@ -58,6 +58,7 @@ typedef struct _socket_t
 #define SOCKET_IS_SERVER (1 << 0)
 #define SOCKET_IS_CLIENT (0 << 0)
 #define SOCKET_NON_BLOCKING_CONNECT (1 << 1)
+#define SOCKET_ALLOW_GROUP_WRITE (1 << 2)
 
   /* Read returned end-of-file. */
 #define SOCKET_RX_END_OF_FILE (1 << 2)

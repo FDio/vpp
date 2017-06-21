@@ -57,6 +57,8 @@
 #include <unistd.h>
 #include <arpa/telnet.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /** ANSI escape code. */
 #define ESC "\x1b"
@@ -2640,7 +2642,8 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
       /* CLI listen. */
       unix_file_t template = { 0 };
 
-      s->flags = SOCKET_IS_SERVER;	/* listen, don't connect */
+      s->flags = SOCKET_IS_SERVER |	/* listen, don't connect */
+	SOCKET_ALLOW_GROUP_WRITE;	/* PF_LOCAL socket only */
       error = clib_socket_init (s);
 
       if (error)
