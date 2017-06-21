@@ -1384,7 +1384,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 				vlib_frame_t * f)
 {
   acl_main_t *am = &acl_main;
-  u64 now = clib_cpu_time_now ();
+  u64 now;
   f64 cpu_cps = vm->clib_time.clocks_per_second;
   u64 next_expire;
   /* We should check if there are connections to clean up - at least twice a second */
@@ -1453,7 +1453,6 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    }
 	}
 
-      now = clib_cpu_time_now ();
       switch (event_type)
 	{
 	case ~0:
