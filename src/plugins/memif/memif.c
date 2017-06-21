@@ -222,7 +222,7 @@ memif_connect (memif_if_t * mif)
       }
     vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, i, ~0);
     rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
-					VNET_HW_INTERFACE_RX_MODE_INTERRUPT);
+					VNET_HW_INTERFACE_RX_MODE_DEFAULT);
     if (rv)
       clib_warning
 	("Warning: unable to set rx mode for interface %d queue %d: "
