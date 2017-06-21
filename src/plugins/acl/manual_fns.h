@@ -257,7 +257,7 @@ vl_api_macip_acl_add_t_print (vl_api_macip_acl_add_t * a, void *handle)
       count = a->count;
     }
 
-  s = format (0, "SCRIPT: macip_acl_add ");
+  s = format (s, "SCRIPT: macip_acl_add ");
   if (a->tag[0])
     s = format (s, "tag %s ", a->tag);
 
