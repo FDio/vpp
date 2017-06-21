@@ -230,7 +230,9 @@ done
 %{_mu_build_dir}/scripts/remove-rpath %{buildroot}
 
 %post
-sysctl --system
+if [ $1 -eq 1 ] ; then
+    sysctl --system
+fi
 %systemd_post vpp.service
 
 %preun
@@ -238,23 +240,27 @@ sysctl --system
 
 %postun
 %systemd_postun
-
-# Unbind user-mode PCI drivers
-removed=
-pci_dirs=`find /sys/bus/pci/drivers -type d -name igb_uio -o -name uio_pci_generic -o -name vfio-pci`
-for d in $pci_dirs; do
-    for f in ${d}/*; do
-        [ -e "${f}/config" ] || continue
-        echo ${f##*/} > ${d}/unbind
-        basename `dirname ${f}` | xargs echo -n "Removing driver"; echo " for PCI ID" `basename ${f}`
-        removed=y
+if [ $1 -eq 0 ] ; then
+    echo "Uninstalling, unbind user-mode PCI drivers"
+    # Unbind user-mode PCI drivers
+    removed=
+    pci_dirs=`find /sys/bus/pci/drivers -type d -name igb_uio -o -name uio_pci_generic -o -name vfio-pci`
+    for d in $pci_dirs; do
+        for f in ${d}/*; do
+            [ -e "${f}/config" ] || continue
+            echo ${f##*/} > ${d}/unbind
+            basename `dirname ${f}` | xargs echo -n "Removing driver"; echo " for PCI ID" `basename ${f}`
+            removed=y
+        done
     done
-done
-if [ -n "${removed}" ]; then
-    echo "There are changes in PCI drivers, rescaning"
-    echo 1 > /sys/bus/pci/rescan
+    if [ -n "${removed}" ]; then
+        echo "There are changes in PCI drivers, rescaning"
+        echo 1 > /sys/bus/pci/rescan
+    else
+        echo "There weren't PCI devices binded"
+    fi
 else
-    echo "There weren't PCI devices binded"
+    echo "Upgrading package, dont' unbind interfaces"
 fi
 
 %files
