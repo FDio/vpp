@@ -38,6 +38,7 @@
 #include <sys/un.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -347,6 +348,14 @@ clib_socket_init (clib_socket_t * s)
 	{
 	  error = clib_error_return_unix (0, "listen");
 	  goto done;
+	}
+      if (addr.sa.sa_family == PF_LOCAL
+	  && s->flags & SOCKET_ALLOW_GROUP_WRITE)
+	{
+	  struct stat st = { 0 };
+	  stat (((struct sockaddr_un *) &addr)->sun_path, &st);
+	  st.st_mode |= S_IWGRP;
+	  chmod (((struct sockaddr_un *) &addr)->sun_path, st.st_mode);
 	}
     }
   else
