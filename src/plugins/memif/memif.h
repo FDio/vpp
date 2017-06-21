@@ -22,6 +22,11 @@
 #define MEMIF_CACHELINE_SIZE 64
 #endif
 
+#define MEMIF_COOKIE		0x3E31F10
+#define MEMIF_VERSION_MAJOR	1
+#define MEMIF_VERSION_MINOR	0
+#define MEMIF_VERSION		((MEMIF_VERSION_MAJOR << 8) | MEMIF_VERSION_MINOR)
+
 /*
  *  Type definitions
  */
@@ -53,9 +58,12 @@ typedef enum
 } memif_interface_mode_t;
 
 typedef uint16_t memif_region_index_t;
+typedef uint64_t memif_region_offset_t;
+typedef uint64_t memif_region_size_t;
 typedef uint16_t memif_ring_index_t;
 typedef uint32_t memif_interface_id_t;
 typedef uint16_t memif_version_t;
+typedef uint8_t memif_log2_ring_size_t;
 
 /*
  *  Socket messages
@@ -69,7 +77,7 @@ typedef struct __attribute__ ((packed))
   memif_region_index_t max_region;
   memif_ring_index_t max_m2s_ring;
   memif_ring_index_t max_s2m_ring;
-  uint8_t max_log2_ring_size;
+  memif_log2_ring_size_t max_log2_ring_size;
 } memif_msg_hello_t;
 
 typedef struct __attribute__ ((packed))
@@ -84,7 +92,7 @@ typedef struct __attribute__ ((packed))
 typedef struct __attribute__ ((packed))
 {
   memif_region_index_t index;
-  uint32_t size;
+  memif_region_size_t size;
 } memif_msg_add_region_t;
 
 typedef struct __attribute__ ((packed))
@@ -93,8 +101,8 @@ typedef struct __attribute__ ((packed))
 #define MEMIF_MSG_ADD_RING_FLAG_S2M	(1 << 0)
   memif_ring_index_t index;
   memif_region_index_t region;
-  uint32_t offset;
-  uint8_t log2_ring_size;
+  memif_region_offset_t offset;
+  memif_log2_ring_size_t log2_ring_size;
 } memif_msg_add_ring_t;
 
 typedef struct __attribute__ ((packed))
@@ -143,7 +151,7 @@ typedef struct __attribute__ ((packed))
   uint32_t buffer_length;
   uint32_t length;
   uint8_t reserved[4];
-  uint64_t offset;
+  memif_region_offset_t offset;
   uint64_t metadata;
 } memif_desc_t;
 
