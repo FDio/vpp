@@ -170,7 +170,7 @@ typedef struct
     } swt;
 
     /* l2 bridging path, only valid there */
-    struct
+    struct opaque_l2
     {
       u32 feature_bitmap;
       u16 bd_index;		/* bridge-domain index */
@@ -195,8 +195,7 @@ typedef struct
     /* L2 classify */
     struct
     {
-      u64 pad;			/* paddind for l2 */
-      u16 pad1;
+      struct opaque_l2 pad;
       union
       {
 	u32 table_index;
@@ -297,14 +296,9 @@ typedef struct
  * The opaque field of the vlib_buffer_t is intepreted as a
  * vnet_buffer_opaque_t. Hence it should be big enough to accommodate one.
  */
-STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <= STRUCT_SIZE_OF (vlib_buffer_t,
-								opaque),
+STATIC_ASSERT (sizeof (vnet_buffer_opaque_t) <=
+	       STRUCT_SIZE_OF (vlib_buffer_t, opaque),
 	       "VNET buffer meta-data too large for vlib_buffer");
-STATIC_ASSERT (STRUCT_OFFSET_OF
-	       (vnet_buffer_opaque_t,
-		l2_classify.table_index) >=
-	       STRUCT_SIZE_OF (vnet_buffer_opaque_t, l2),
-	       "l2_classify padding smaller than l2");
 
 #define vnet_buffer(b) ((vnet_buffer_opaque_t *) (b)->opaque)
 
