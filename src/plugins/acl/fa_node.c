@@ -330,7 +330,7 @@ static void
 acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 		 int is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt)
 {
-  int l3_offset = 14;
+  int l3_offset = ethernet_buffer_header_size(b0);
   int l4_offset;
   u16 ports[2];
   u16 proto;
