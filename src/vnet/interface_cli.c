@@ -1186,6 +1186,9 @@ set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
   vnet_hw_interface_rx_mode old_mode;
   int rv;
 
+  if (mode == VNET_HW_INTERFACE_RX_MODE_DEFAULT)
+    mode = hw->default_rx_mode;
+
   rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &old_mode);
   switch (rv)
     {
@@ -1272,12 +1275,15 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
   hw = vnet_get_hw_interface (vnm, hw_if_index);
 
   if (queue_id == ~0)
-    for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
-      {
-	error = set_hw_interface_rx_mode (vnm, hw_if_index, i, mode);
-	if (error)
-	  break;
-      }
+    {
+      for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
+	{
+	  error = set_hw_interface_rx_mode (vnm, hw_if_index, i, mode);
+	  if (error)
+	    break;
+	}
+      hw->default_rx_mode = mode;
+    }
   else
     error = set_hw_interface_rx_mode (vnm, hw_if_index, queue_id, mode);
 

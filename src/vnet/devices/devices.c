@@ -245,6 +245,9 @@ vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
   vnet_device_input_runtime_t *rt;
   int is_polling = 0;
 
+  if (mode == VNET_HW_INTERFACE_RX_MODE_DEFAULT)
+    mode = hw->default_rx_mode;
+
   if (hw->input_node_thread_index_by_queue == 0 || hw->rx_mode_by_queue == 0)
     return VNET_API_ERROR_INVALID_INTERFACE;
 
