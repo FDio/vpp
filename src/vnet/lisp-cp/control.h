@@ -237,6 +237,9 @@ typedef struct
   /** Per thread pool of records shared with thread0 */
   map_records_arg_t **map_records_args_pool;
 
+  /* saved default route */
+  // TODO fib_route_path_t *rpath;
+
   /* commodity */
   ip4_main_t *im4;
   ip6_main_t *im6;

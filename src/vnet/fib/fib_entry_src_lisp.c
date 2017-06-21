@@ -130,4 +130,5 @@ void
 fib_entry_src_lisp_register (void)
 {
     fib_entry_src_register(FIB_SOURCE_LISP, &api_src_vft);
+    fib_entry_src_register(FIB_SOURCE_LISP_HI, &api_src_vft);
 }
