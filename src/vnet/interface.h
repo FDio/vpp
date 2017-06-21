@@ -54,6 +54,7 @@ typedef enum
   VNET_HW_INTERFACE_RX_MODE_POLLING,
   VNET_HW_INTERFACE_RX_MODE_INTERRUPT,
   VNET_HW_INTERFACE_RX_MODE_ADAPTIVE,
+  VNET_HW_INTERFACE_RX_MODE_DEFAULT,
   VNET_HW_INTERFACE_NUM_RX_MODES,
 } vnet_hw_interface_rx_mode;
 
@@ -492,6 +493,7 @@ typedef struct vnet_hw_interface_t
 
   /* vnet_hw_interface_rx_mode by queue */
   u8 *rx_mode_by_queue;
+  vnet_hw_interface_rx_mode default_rx_mode;
 
   /* device input device_and_queue runtime index */
   uword *dq_runtime_index_by_queue;

@@ -706,6 +706,7 @@ vnet_register_interface (vnet_main_t * vnm,
 
   hw_index = hw - im->hw_interfaces;
   hw->hw_if_index = hw_index;
+  hw->default_rx_mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
 
   if (dev_class->format_device_name)
     hw->name = format (0, "%U", dev_class->format_device_name, dev_instance);
