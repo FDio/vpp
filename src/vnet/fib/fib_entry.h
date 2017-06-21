@@ -57,6 +57,10 @@ typedef enum fib_source_t_ {
      */
     FIB_SOURCE_PLUGIN_HI,
     /**
+     * From LISP. This value is used only for default route overwrite
+     */
+    FIB_SOURCE_LISP_HI,
+    /**
      * From the control plane API
      */
     FIB_SOURCE_API,
@@ -143,6 +147,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_SR] = "SR",			        \
     [FIB_SOURCE_SIXRD] = "SixRD",			\
     [FIB_SOURCE_LISP] = "LISP", 			\
+    [FIB_SOURCE_LISP_HI] = "LISP_HIGH",                 \
     [FIB_SOURCE_CLASSIFY] = "classify",			\
     [FIB_SOURCE_DHCP] = "DHCP",   			\
     [FIB_SOURCE_IP6_ND_PROXY] = "IPv6-proxy-nd",        \
