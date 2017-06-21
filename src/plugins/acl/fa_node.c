@@ -1465,6 +1465,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  {
             uword *clear_sw_if_index_bitmap = 0;
 	    uword *sw_if_index0;
+            int clear_all = 0;
 #ifdef FA_NODE_VERBOSE_DEBUG
 	    clib_warning("ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX received");
 #endif
@@ -1476,7 +1477,17 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		("ACL_FA_NODE_CLEAN: ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX: %d",
 		 *sw_if_index0);
 #endif
-              clear_sw_if_index_bitmap = clib_bitmap_set(clear_sw_if_index_bitmap, *sw_if_index0, 1);
+              if (*sw_if_index0 == ~0)
+                {
+                  clear_all = 1;
+                }
+              else
+                {
+                  if (!pool_is_free_index (am->vnet_main->interface_main.sw_interfaces, *sw_if_index0))
+                    {
+                      clear_sw_if_index_bitmap = clib_bitmap_set(clear_sw_if_index_bitmap, *sw_if_index0, 1);
+                    }
+                }
 	    }
 #ifdef FA_NODE_VERBOSE_DEBUG
 	    clib_warning("ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX bitmap: %U", format_bitmap_hex, clear_sw_if_index_bitmap);
@@ -1496,7 +1507,15 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
               if (pw0->clear_in_process) {
                 clib_warning("ERROR-BUG! Could not initiate cleaning on worker because another cleanup in progress");
 	      } else {
-                pw0->pending_clear_sw_if_index_bitmap = clib_bitmap_dup(clear_sw_if_index_bitmap);
+                if (clear_all)
+                  {
+                    /* if we need to clear all, then just clear the interfaces that we are servicing */
+                    pw0->pending_clear_sw_if_index_bitmap = clib_bitmap_dup(pw0->serviced_sw_if_index_bitmap);
+                  }
+                else
+                  {
+                    pw0->pending_clear_sw_if_index_bitmap = clib_bitmap_dup(clear_sw_if_index_bitmap);
+                  }
                 pw0->clear_in_process = 1;
               }
             }

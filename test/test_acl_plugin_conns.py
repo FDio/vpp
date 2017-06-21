@@ -279,6 +279,27 @@ class ACLPluginConnTestCase(VppTestCase):
         # If it didn't - it is a problem
         self.assert_equal(p2, None, "packet on long-idle conn")
 
+    def run_clear_conn_test(self, af, acl_side):
+        """ Clear the connections via CLI """
+        conn1 = Conn(self, self.pg0, self.pg1, af, UDP, 42001, 4242)
+        conn1.apply_acls(0, acl_side)
+        conn1.send_through(0)
+        # the return packets should pass
+        conn1.send_through(1)
+        # send some packets on conn1, ensure it doesn't go away
+        for i in IterateWithSleep(self, 20, "Keep conn active", 0.3):
+            conn1.send_through(1)
+        # clear all connections
+        self.vapi.ppcli("clear acl-plugin sessions")
+        # now try to send a packet on the reflected side
+        try:
+            p2 = conn1.send_through(1).command()
+        except:
+            # If we asserted while waiting, it's good.
+            # the conn should have timed out.
+            p2 = None
+        self.assert_equal(p2, None, "packet on supposedly deleted conn")
+
     def test_0000_conn_prepare_test(self):
         """ Prepare the settings """
         self.vapi.ppcli("set acl-plugin session timeout udp idle 1")
@@ -290,6 +311,14 @@ class ACLPluginConnTestCase(VppTestCase):
     def test_0002_basic_conn_test(self):
         """ IPv4: Basic conn timeout test reflect on egress """
         self.run_basic_conn_test(AF_INET, 1)
+
+    def test_0005_clear_conn_test(self):
+        """ IPv4: reflect egress, clear conn """
+        self.run_clear_conn_test(AF_INET, 1)
+
+    def test_0006_clear_conn_test(self):
+        """ IPv4: reflect ingress, clear conn """
+        self.run_clear_conn_test(AF_INET, 0)
 
     def test_0011_active_conn_test(self):
         """ IPv4: Idle conn behind active conn, reflect on ingress """
@@ -306,6 +335,14 @@ class ACLPluginConnTestCase(VppTestCase):
     def test_1002_basic_conn_test(self):
         """ IPv6: Basic conn timeout test reflect on egress """
         self.run_basic_conn_test(AF_INET6, 1)
+
+    def test_1005_clear_conn_test(self):
+        """ IPv6: reflect egress, clear conn """
+        self.run_clear_conn_test(AF_INET6, 1)
+
+    def test_1006_clear_conn_test(self):
+        """ IPv6: reflect ingress, clear conn """
+        self.run_clear_conn_test(AF_INET6, 0)
 
     def test_1011_active_conn_test(self):
         """ IPv6: Idle conn behind active conn, reflect on ingress """

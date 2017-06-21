@@ -1828,12 +1828,6 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
       goto done;
     }
   if (unformat (input, "session")) {
-    if (unformat (input, "clear")) {
-      acl_main_t *am = &acl_main;
-      vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
-                               ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX, ~0);
-	  goto done;
-    }
     if (unformat (input, "table")) {
       /* The commands here are for tuning/testing. No user-serviceable parts inside */
       if (unformat (input, "max-entries")) {
@@ -2189,6 +2183,17 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
   return error;
 }
 
+static clib_error_t *
+acl_clear_aclplugin_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  acl_main_t *am = &acl_main;
+  vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
+                               ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX, ~0);
+  return error;
+}
 
  /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (aclplugin_set_command, static) = {
@@ -2201,6 +2206,12 @@ VLIB_CLI_COMMAND (aclplugin_show_command, static) = {
     .path = "show acl-plugin",
     .short_help = "show acl-plugin {sessions|acl|interface|tables}",
     .function = acl_show_aclplugin_fn,
+};
+
+VLIB_CLI_COMMAND (aclplugin_clear_command, static) = {
+    .path = "clear acl-plugin sessions",
+    .short_help = "clear acl-plugin sessions",
+    .function = acl_clear_aclplugin_fn,
 };
 /* *INDENT-ON* */
 
