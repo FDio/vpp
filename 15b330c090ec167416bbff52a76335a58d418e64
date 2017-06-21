@@ -16,6 +16,24 @@
       "revId": "15b330c090ec167416bbff52a76335a58d418e64",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da6255ed_ac76eb04",
+        "filename": "src/vnet/ip/ip6_neighbor.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2409,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2017-06-21T11:03:30Z",
+      "side": 1,
+      "message": "changed - now it is done in vnet_delete_sub_interface()",
+      "parentUuid": "fa5d592f_3dcd5932",
+      "revId": "15b330c090ec167416bbff52a76335a58d418e64",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
