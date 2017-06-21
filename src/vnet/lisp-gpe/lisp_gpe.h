@@ -31,6 +31,7 @@
 #include <vnet/lisp-cp/lisp_types.h>
 #include <vnet/lisp-gpe/lisp_gpe_packet.h>
 #include <vnet/adj/adj_types.h>
+#include <vnet/fib/fib.h>
 #include <vppinfra/bihash_24_8.h>
 #include <vppinfra/bihash_template.h>
 
@@ -166,6 +167,14 @@ typedef struct lisp_gpe_main
   /** Native fwd data structures */
   fib_route_path_t *native_fwd_rpath[2];
   u32 *native_fwd_lfes[2];
+
+  /* saved default route */
+  //fib_route_path_t *def_route[2];
+  fib_node_index_t def_route[2];
+
+  u8 def_route_set[2];
+
+  fib_node_index_t lisp_default_fei[2];
 
   /** convenience */
   vlib_main_t *vlib_main;

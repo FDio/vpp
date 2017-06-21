@@ -22,6 +22,7 @@
 #include <vnet/lisp-gpe/lisp_gpe_tunnel.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/fib_path_list.h>
 #include <vnet/ethernet/arp_packet.h>
 #include <vnet/ethernet/packet.h>
 
@@ -180,10 +181,20 @@ ip_fib_get_egress_iface_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst)
 {
   fib_node_index_t fei;
   fib_prefix_t prefix;
+  u8 proto = ip_addr_version (dst);
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
 
   ip_address_to_fib_prefix (dst, &prefix);
 
   fei = fib_table_lookup (0, &prefix);
+
+  /* check if we have a default route saved and we hit LISP default */
+  if (lgm->def_route_set[proto]
+      && fei == lgm->lisp_default_fei[proto])
+    {
+      if (lgm->def_route_set[proto])
+        fei = lgm->def_route[proto];
+    }
 
   return (fib_entry_get_resolving_interface (fei));
 }

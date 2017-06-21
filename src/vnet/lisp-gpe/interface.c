@@ -531,7 +531,7 @@ lisp_gpe_tenant_del_default_routes (u32 table_id)
     u32 fib_index;
 
     fib_index = fib_table_find (prefix.fp_proto, table_id);
-    fib_table_entry_special_remove (fib_index, &prefix, FIB_SOURCE_LISP);
+    fib_table_entry_special_remove (fib_index, &prefix, FIB_SOURCE_LISP_HI);
     fib_table_unlock (fib_index, prefix.fp_proto, FIB_SOURCE_LISP);
   }
 }
@@ -539,6 +539,7 @@ lisp_gpe_tenant_del_default_routes (u32 table_id)
 static void
 lisp_gpe_tenant_add_default_routes (u32 table_id)
 {
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   fib_protocol_t proto;
 
   FOR_EACH_FIB_IP_PROTOCOL (proto)
@@ -547,16 +548,27 @@ lisp_gpe_tenant_add_default_routes (u32 table_id)
       .fp_proto = proto,
     };
     u32 fib_index;
+    fib_node_index_t fib_entry_index, lfi;
+
+    /* get and save default route */
+    fib_entry_index = fib_table_lookup_exact_match (table_id, &prefix);
+
+    if (FIB_NODE_INDEX_INVALID != fib_entry_index)
+      {
+        lgm->def_route[proto] = fib_entry_index;
+        lgm->def_route_set[proto] = 1;
+      }
 
     /*
      * Add a deafult route that results in a control plane punt DPO
      */
     fib_index = fib_table_find_or_create_and_lock (prefix.fp_proto, table_id,
-						   FIB_SOURCE_LISP);
-    fib_table_entry_special_dpo_add (fib_index, &prefix, FIB_SOURCE_LISP,
+						   FIB_SOURCE_LISP_HI);
+    lfi = fib_table_entry_special_dpo_add (fib_index, &prefix, FIB_SOURCE_LISP_HI,
 				     FIB_ENTRY_FLAG_EXCLUSIVE,
 				     lisp_cp_dpo_get (fib_proto_to_dpo
 						      (proto)));
+    lgm->lisp_default_fei[proto] = lfi;
   }
 }
 
