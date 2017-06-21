@@ -49,6 +49,7 @@
 
 #include <unistd.h>
 #include <signal.h>
+#include <grp.h>
 
 #include <time.h>
 #include <sys/socket.h>
@@ -913,6 +914,31 @@ u8 * format_ucontext_pc (u8 * s, va_list * args)
     return format (s, "unsupported");
   else
     return format (s, "%p", regs[reg_no]);
+}
+
+uword
+unformat_unix_gid (unformat_input_t * input, va_list * args)
+{
+  gid_t *gid = va_arg (*args, gid_t *);
+  struct group *grp = 0;
+  int r;
+  u8 *s;
+
+  if (unformat (input, "%d", &r))
+    {
+      grp = getgrgid (r);
+    }
+  else if (unformat (input, "%s", &s))
+    {
+      grp = getgrnam ((char *) s);
+      vec_free (s);
+    }
+  if (grp)
+    {
+      *gid = grp->gr_gid;
+      return 1;
+    }
+  return 0;
 }
 
 #endif /* __KERNEL__ */

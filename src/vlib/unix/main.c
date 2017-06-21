@@ -48,6 +48,7 @@
 #include <fcntl.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <unistd.h>
 
 /** Default CLI pager limit is not configured in startup.conf */
 #define UNIX_CLI_DEFAULT_PAGER_LIMIT 100000
@@ -313,6 +314,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 {
   unix_main_t *um = &unix_main;
   clib_error_t *error = 0;
+  gid_t gid;
 
   /* Defaults */
   um->cli_pager_buffer_limit = UNIX_CLI_DEFAULT_PAGER_LIMIT;
@@ -403,6 +405,11 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	      }
 	      vec_free (lv);
 	    }
+	}
+      else if (unformat (input, "gid %U", unformat_unix_gid, &gid))
+	{
+	  if (setegid (gid) == -1)
+	    return clib_error_return_unix (0, "setegid");
 	}
       else
 	return clib_error_return (0, "unknown input `%U'",
