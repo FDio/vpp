@@ -17,3 +17,4 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage srv6_doc
 - @subpage srmpls_doc
 - @subpage sample_plugin_doc
+- @subpage nat64_doc

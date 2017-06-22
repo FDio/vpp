@@ -713,6 +713,18 @@ nat64_show_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
 /* *INDENT-OFF* */
 
+/*?
+ * @cliexpar
+ * @cliexstart{nat64 add pool address}
+ * Add/delete NAT64 pool address.
+ * To add single NAT64 pool address use:
+ *  vpp# nat64 add pool address 10.1.1.10
+ * To add NAT64 pool address range use:
+ *  vpp# nat64 add pool address 10.1.1.2 - 10.1.1.5
+ * To add NAT64 pool address for specific tenant use:
+ *  vpp# nat64 add pool address 10.1.1.100 tenant-vrf 100
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (nat64_add_pool_address_command, static) = {
   .path = "nat64 add pool address",
   .short_help = "nat64 add pool address <ip4-range-start> [- <ip4-range-end>] "
@@ -720,24 +732,64 @@ VLIB_CLI_COMMAND (nat64_add_pool_address_command, static) = {
   .function = nat64_add_del_pool_addr_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{show nat64 pool}
+ * Show NAT64 pool.
+ *  vpp# show nat64 pool
+ *  NAT64 pool:
+ *   10.1.1.3 tenant VRF: 0
+ *   10.1.1.10 tenant VRF: 10
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (show_nat64_pool_command, static) = {
   .path = "show nat64 pool",
   .short_help = "show nat64 pool",
   .function = nat64_show_pool_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{set interface nat64}
+ * Enable/disable NAT64 feature on the interface.
+ * To enable NAT64 feature with local (IPv6) network interface
+ * GigabitEthernet0/8/0 and external (IPv4) network interface
+ * GigabitEthernet0/a/0 use:
+ *  vpp# set interface nat64 in GigabitEthernet0/8/0 out GigabitEthernet0/a/0
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (set_interface_nat64_command, static) = {
   .path = "set interface nat64",
   .short_help = "set interface nat64 in|out <intfc> [del]",
   .function = nat64_interface_feature_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{show nat64 interfaces}
+ * Show interfaces with NAT64 feature.
+ * To show interfaces with NAT64 feature use:
+ *  vpp# show nat64 interfaces
+ *  NAT64 interfaces:
+ *   GigabitEthernet0/8/0 in
+ *   GigabitEthernet0/a/0 out
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (show_nat64_interfaces_command, static) = {
   .path = "show nat64 interfaces",
   .short_help = "show nat64 interfaces",
   .function = nat64_show_interfaces_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{nat64 add static bib}
+ * Add/delete NAT64 static BIB entry.
+ * To create NAT64 satatic BIB entry use:
+ *  vpp# nat64 add static bib 2001:db8:c000:221:: 1234 10.1.1.3 5678 tcp
+ *  vpp# nat64 add static bib 2001:db8:c000:221:: 1234 10.1.1.3 5678 udp vrf 10
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (nat64_add_del_static_bib_command, static) = {
   .path = "nat64 add static bib",
   .short_help = "nat64 add static bib <ip6-addr> <port> <ip4-addr> <port> "
@@ -745,12 +797,42 @@ VLIB_CLI_COMMAND (nat64_add_del_static_bib_command, static) = {
   .function = nat64_add_del_static_bib_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{show nat64 bib}
+ * Show NAT64 BIB entries.
+ * To show NAT64 TCP BIB entries use:
+ *  vpp# show nat64 bib tcp
+ *  NAT64 tcp BIB:
+ *   fd01:1::2 6303 10.0.0.3 62303 tcp vrf 0 dynamic 1 sessions
+ *   2001:db8:c000:221:: 1234 10.1.1.3 5678 tcp vrf 0 static 2 sessions
+ * To show NAT64 UDP BIB entries use:
+ *  vpp# show nat64 bib udp
+ *  NAT64 udp BIB:
+ *   fd01:1::2 6304 10.0.0.3 10546 udp vrf 0 dynamic 10 sessions
+ *   2001:db8:c000:221:: 1234 10.1.1.3 5678 udp vrf 10 static 0 sessions
+ * To show NAT64 ICMP BIB entries use:
+ *  vpp# show nat64 bib icmp
+ *  NAT64 icmp BIB:
+ *   fd01:1::2 6305 10.0.0.3 63209 icmp vrf 10 dynamic 1 sessions
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (show_nat64_bib_command, static) = {
   .path = "show nat64 bib",
   .short_help = "show nat64 bib tcp|udp|icmp",
   .function = nat64_show_bib_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{set nat64 timeouts}
+ * Set NAT64 session timeouts (in seconds).
+ * To set NAT64 session timeoutes use use:
+ *  vpp# set nat64 timeouts udp 200 icmp 30 tcp-trans 250 tcp-est 7450
+ * To reset NAT64 session timeoutes to default values use:
+ *  vpp# set nat64 timeouts reset
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (set_nat64_timeouts_command, static) = {
   .path = "set nat64 timeouts",
   .short_help = "set nat64 timeouts udp <sec> icmp <sec> tcp-trans <sec> "
@@ -758,18 +840,63 @@ VLIB_CLI_COMMAND (set_nat64_timeouts_command, static) = {
   .function = nat64_set_timeouts_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{show nat64 tiemouts}
+ * Show NAT64 session timeouts:
+ *  vpp# show nat64 tiemouts
+ *  NAT64 session timeouts:
+ *   UDP 300sec
+ *   ICMP 60sec
+ *   TCP transitory 240sec
+ *   TCP established 7440sec
+ *   TCP incoming SYN 6sec
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (show_nat64_timeouts_command, static) = {
   .path = "show nat64 tiemouts",
   .short_help = "show nat64 tiemouts",
   .function = nat64_show_timeouts_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{show nat64 session table}
+ * Show NAT64 session table.
+ * To show NAT64 TCP session table use:
+ *  vpp# show nat64 session table tcp
+ *  NAT64 tcp session table:
+ *   fd01:1::2 6303 64:ff9b::ac10:202 20 10.0.0.3 62303 172.16.2.2 20 tcp vrf 0
+ *   fd01:3::2 6303 64:ff9b::ac10:202 20 10.0.10.3 21300 172.16.2.2 20 tcp vrf 10
+ * To show NAT64 UDP session table use:
+ * #vpp show nat64 session table udp
+ * NAT64 udp session table:
+ *  fd01:1::2 6304 64:ff9b::ac10:202 20 10.0.0.3 10546 172.16.2.2 20 udp vrf 0
+ *  fd01:3::2 6304 64:ff9b::ac10:202 20 10.0.10.3 58627 172.16.2.2 20 udp vrf 10
+ *  fd01:1::2 1235 64:ff9b::a00:3 4023 10.0.0.3 24488 10.0.0.3 4023 udp vrf 0
+ *  fd01:1::3 23 64:ff9b::a00:3 24488 10.0.0.3 4023 10.0.0.3 24488 udp vrf 0
+ * To show NAT64 ICMP session table use:
+ * #vpp show nat64 session table icmp
+ * NAT64 icmp session table:
+ *  fd01:1::2 64:ff9b::ac10:202 6305 10.0.0.3 172.16.2.2 63209 icmp vrf 0
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (show_nat64_st_command, static) = {
   .path = "show nat64 session table",
   .short_help = "show nat64 session table tcp|udp|icmp",
   .function = nat64_show_st_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{nat64 add prefix}
+ * Set NAT64 prefix for generating IPv6 representations of IPv4 addresses.
+ * To set NAT64 global prefix use:
+ *  vpp# nat64 add prefix 2001:db8::/32
+ * To set NAT64 prefix for specific tenant use:
+ *  vpp# nat64 add prefix 2001:db8:122:300::/56 tenant-vrf 10
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (nat64_add_del_prefix_command, static) = {
   .path = "nat64 add prefix",
   .short_help = "nat64 add prefix <ip6-prefix>/<plen> [tenant-vrf <vrf-id>] "
@@ -777,6 +904,17 @@ VLIB_CLI_COMMAND (nat64_add_del_prefix_command, static) = {
   .function = nat64_add_del_prefix_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{show nat64 prefix}
+ * Show NAT64 prefix.
+ * To show NAT64 prefix use:
+ *  vpp# show nat64 prefix
+ *  NAT64 prefix:
+ *   2001:db8::/32 tenant-vrf 0
+ *   2001:db8:122:300::/56 tenant-vrf 10
+ * @cliexend
+?*/
 VLIB_CLI_COMMAND (show_nat64_prefix_command, static) = {
   .path = "show nat64 prefix",
   .short_help = "show nat64 prefix",
