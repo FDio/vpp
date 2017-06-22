@@ -83,6 +83,9 @@ u8 * format_vxlan_gpe_tunnel (u8 * s, va_list * args)
       s = format (s, "next-protocol unknown %d", t->protocol);
     }
 
+  if (ip46_address_is_multicast (&t->remote))
+    s = format (s, "mcast_sw_if_index %d ", t->mcast_sw_if_index);
+    
   s = format (s, " fibs: (encap %d, decap %d)",
               t->encap_fib_index,
               t->decap_fib_index);
