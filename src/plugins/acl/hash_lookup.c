@@ -216,26 +216,26 @@ activate_applied_ace_hash_entry(acl_main_t *am,
   int res = BV (clib_bihash_search) (&am->acl_lookup_hash, &kv, &result);
   if (res == 0) {
     /* There already exists an entry or more. Append at the end. */
-    u32 existing_index = result_val->applied_entry_index;
+    u32 first_index = result_val->applied_entry_index;
     DBG("A key already exists, with applied entry index: %d", existing_index);
-    ASSERT(existing_index != ~0);
-    applied_hash_ace_entry_t *existing_pae = &((*applied_hash_aces)[existing_index]);
-    /* walk the list to the last element */
-    while (existing_pae->next_applied_entry_index != ~0) {
-      if (existing_index == existing_pae->next_applied_entry_index) {
-        DBG("existing and next index of entry %d are the same, abort", existing_index);
-        ASSERT(existing_index != existing_pae->next_applied_entry_index);
-      }
-      existing_index = existing_pae->next_applied_entry_index;
-      existing_pae = &((*applied_hash_aces)[existing_index]);
-      DBG("...advance to chained entry index: %d", existing_index);
-    }
+    ASSERT(first_index != ~0);
+    applied_hash_ace_entry_t *first_pae = &((*applied_hash_aces)[first_index]);
+    /* move to "prev" by one, this should land us in the end of the list */
+    u32 last_index = first_pae->prev_applied_entry_index;
+    ASSERT(last_index != ~0);
+    applied_hash_ace_entry_t *last_pae = &((*applied_hash_aces)[last_index]);
+    ASSERT(last_pae->next_applied_entry_index == ~0);
     /* link ourseves in */
-    existing_pae->next_applied_entry_index = new_index;
-    pae->prev_applied_entry_index = existing_index;
+    last_pae->next_applied_entry_index = new_index;
+    pae->prev_applied_entry_index = last_index;
+    /* make a new reference from the very first element to new tail */
+    first_pae->prev_applied_entry_index = new_index;
   } else {
     /* It's the very first entry */
     hashtable_add_del(am, &kv, 1);
+    pae->is_first_entry = 1;
+    /* we are the tail */
+    pae->prev_applied_entry_index = new_index;
   }
 }
 
@@ -306,6 +306,7 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
   for(i=0; i < vec_len(ha->rules); i++) {
     u32 new_index = base_offset + i;
     applied_hash_ace_entry_t *pae = &((*applied_hash_aces)[new_index]);
+    pae->is_first_entry = 0;
     pae->acl_index = acl_index;
     pae->ace_index = ha->rules[i].ace_index;
     pae->action = ha->rules[i].action;
@@ -324,14 +325,13 @@ move_applied_ace_hash_entry(acl_main_t *am,
                             applied_hash_ace_entry_t **applied_hash_aces,
                             u32 old_index, u32 new_index)
 {
-
   /* move the entry */
   (*applied_hash_aces)[new_index] = (*applied_hash_aces)[old_index];
 
   /* update the linkage and hash table if necessary */
   applied_hash_ace_entry_t *pae = &((*applied_hash_aces)[old_index]);
 
-  if (pae->prev_applied_entry_index != ~0) {
+  if (!pae->is_first_entry) {
     applied_hash_ace_entry_t *prev_pae = &((*applied_hash_aces)[pae->prev_applied_entry_index]);
     ASSERT(prev_pae->next_applied_entry_index == old_index);
     prev_pae->next_applied_entry_index = new_index;
@@ -344,6 +344,20 @@ move_applied_ace_hash_entry(acl_main_t *am,
     applied_hash_ace_entry_t *next_pae = &((*applied_hash_aces)[pae->next_applied_entry_index]);
     ASSERT(next_pae->prev_applied_entry_index == old_index);
     next_pae->prev_applied_entry_index = new_index;
+  } else {
+    /*
+     * Moving the very last entry, so we need to update the tail pointer in the first one.
+     * find back the first entry. Inefficient so might need to be a bit cleverer
+     * if this proves to be a problem..
+     */
+    u32 an_index = pae->prev_applied_entry_index;
+    applied_hash_ace_entry_t *head_pae = &((*applied_hash_aces)[pae->prev_applied_entry_index]);
+    while(!head_pae->is_first_entry) {
+      an_index = head_pae->prev_applied_entry_index;
+      head_pae = &((*applied_hash_aces)[an_index]);
+    }
+    ASSERT(head_pae->prev_applied_entry_index == old_index);
+    head_pae->prev_applied_entry_index = new_index;
   }
   /* invalidate the old entry */
   pae->prev_applied_entry_index = ~0;
@@ -364,13 +378,20 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
     next_pae->prev_applied_entry_index = pae->prev_applied_entry_index;
   }
 
-  if (pae->prev_applied_entry_index != ~0) {
+  if (!pae->is_first_entry) {
     applied_hash_ace_entry_t *prev_pae = &((*applied_hash_aces)[pae->prev_applied_entry_index]);
     ASSERT(prev_pae->next_applied_entry_index == old_index);
     prev_pae->next_applied_entry_index = pae->next_applied_entry_index;
   } else {
     /* It was the first entry. We need either to reset the hash entry or delete it */
+    pae->is_first_entry = 0;
     if (pae->next_applied_entry_index != ~0) {
+      /* a custom case of relinking for the first node, with the tail not forward linked to it */
+      applied_hash_ace_entry_t *next_pae = &((*applied_hash_aces)[pae->next_applied_entry_index]);
+      /* this is the tail the new head should be aware of */
+      next_pae->prev_applied_entry_index = pae->prev_applied_entry_index;
+      next_pae->is_first_entry = 1;
+
       add_del_hashtable_entry(am, sw_if_index, is_input,
                               applied_hash_aces, pae->next_applied_entry_index, 1);
     } else {
