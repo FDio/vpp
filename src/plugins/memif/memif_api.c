@@ -133,10 +133,20 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
 
   /* role */
   args.is_master = (mp->role == 0);
+
+  /* rx/tx queues */
   if (args.is_master == 0)
     {
-      args.rx_queues = mp->rx_queues;
-      args.tx_queues = mp->tx_queues;
+      args.rx_queues = MEMIF_DEFAULT_RX_QUEUES;
+      args.tx_queues = MEMIF_DEFAULT_TX_QUEUES;
+      if (mp->rx_queues)
+	{
+	  args.rx_queues = mp->rx_queues;
+	}
+      if (mp->tx_queues)
+	{
+	  args.tx_queues = mp->tx_queues;
+	}
     }
 
   /* ring size */
