@@ -1598,6 +1598,7 @@ acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
   acl_main_t *am = &acl_main;
   if (is_input)
     {
+      ASSERT(clib_bitmap_get(am->fa_in_acl_on_sw_if_index, sw_if_index) != enable_disable);
       vnet_feature_enable_disable ("ip4-unicast", "acl-plugin-in-ip4-fa",
 				   sw_if_index, enable_disable, 0, 0);
       vnet_feature_enable_disable ("ip6-unicast", "acl-plugin-in-ip6-fa",
@@ -1608,6 +1609,7 @@ acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
     }
   else
     {
+      ASSERT(clib_bitmap_get(am->fa_out_acl_on_sw_if_index, sw_if_index) != enable_disable);
       vnet_feature_enable_disable ("ip4-output", "acl-plugin-out-ip4-fa",
 				   sw_if_index, enable_disable, 0, 0);
       vnet_feature_enable_disable ("ip6-output", "acl-plugin-out-ip6-fa",

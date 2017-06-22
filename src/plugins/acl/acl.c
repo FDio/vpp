@@ -665,12 +665,15 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
         /* the entry is already there */
         return -1;
       }
+      /* if there was no ACL applied before, enable the ACL processing */
+      if (vec_len(am->input_acl_vec_by_sw_if_index[sw_if_index]) == 0) {
+        acl_interface_in_enable_disable (am, sw_if_index, 1);
+      }
       vec_add (am->input_acl_vec_by_sw_if_index[sw_if_index], &acl_list_index,
 	       1);
       vec_validate (am->input_sw_if_index_vec_by_acl, acl_list_index);
       vec_add (am->input_sw_if_index_vec_by_acl[acl_list_index], &sw_if_index,
 	       1);
-      acl_interface_in_enable_disable (am, sw_if_index, 1);
     }
   else
     {
@@ -683,12 +686,15 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
         /* the entry is already there */
         return -1;
       }
+      /* if there was no ACL applied before, enable the ACL processing */
+      if (vec_len(am->output_acl_vec_by_sw_if_index[sw_if_index]) == 0) {
+        acl_interface_out_enable_disable (am, sw_if_index, 1);
+      }
       vec_add (am->output_acl_vec_by_sw_if_index[sw_if_index],
 	       &acl_list_index, 1);
       vec_validate (am->output_sw_if_index_vec_by_acl, acl_list_index);
       vec_add (am->output_sw_if_index_vec_by_acl[acl_list_index], &sw_if_index,
 	       1);
-      acl_interface_out_enable_disable (am, sw_if_index, 1);
     }
   return 0;
 }
@@ -723,6 +729,7 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
         }
       }
 
+      /* If there is no more ACLs applied on an interface, disable ACL processing */
       if (0 == vec_len (am->input_acl_vec_by_sw_if_index[sw_if_index]))
 	{
 	  acl_interface_in_enable_disable (am, sw_if_index, 0);
@@ -751,6 +758,7 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
         }
       }
 
+      /* If there is no more ACLs applied on an interface, disable ACL processing */
       if (0 == vec_len (am->output_acl_vec_by_sw_if_index[sw_if_index]))
 	{
 	  acl_interface_out_enable_disable (am, sw_if_index, 0);
@@ -766,8 +774,10 @@ acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input)
   int i;
   if (is_input)
     {
-      acl_interface_in_enable_disable (am, sw_if_index, 0);
       vec_validate (am->input_acl_vec_by_sw_if_index, sw_if_index);
+      if (vec_len(am->input_acl_vec_by_sw_if_index[sw_if_index]) > 0) {
+        acl_interface_in_enable_disable (am, sw_if_index, 0);
+      }
 
       for(i = vec_len(am->input_acl_vec_by_sw_if_index[sw_if_index])-1; i>=0; i--) {
         u32 acl_list_index = am->input_acl_vec_by_sw_if_index[sw_if_index][i];
@@ -784,8 +794,10 @@ acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input)
     }
   else
     {
-      acl_interface_out_enable_disable (am, sw_if_index, 0);
       vec_validate (am->output_acl_vec_by_sw_if_index, sw_if_index);
+      if (vec_len(am->output_acl_vec_by_sw_if_index[sw_if_index]) > 0) {
+        acl_interface_out_enable_disable (am, sw_if_index, 0);
+      }
 
       for(i = vec_len(am->output_acl_vec_by_sw_if_index[sw_if_index])-1; i>=0; i--) {
         u32 acl_list_index = am->output_acl_vec_by_sw_if_index[sw_if_index][i];
