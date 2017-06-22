@@ -672,7 +672,8 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
     segment_list = pool_elt_at_index (sm->sid_lists, *sl_index);
     vec_free (segment_list->segments);
     vec_free (segment_list->rewrite);
-    vec_free (segment_list->rewrite_bsid);
+    if (!sr_policy->is_encap)
+      vec_free (segment_list->rewrite_bsid);
     pool_put_index (sm->sid_lists, *sl_index);
   }
 
@@ -766,7 +767,8 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
       segment_list = pool_elt_at_index (sm->sid_lists, sl_index);
       vec_free (segment_list->segments);
       vec_free (segment_list->rewrite);
-      vec_free (segment_list->rewrite_bsid);
+      if (!sr_policy->is_encap)
+	vec_free (segment_list->rewrite_bsid);
       pool_put_index (sm->sid_lists, sl_index);
       vec_del1 (sr_policy->segments_lists,
 		sl_index_iterate - sr_policy->segments_lists);
