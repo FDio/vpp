@@ -1,4 +1,4 @@
-AC_INIT([vpp], [17.07], [vpp-dev@fd.io])
+AC_INIT([vpp], [17.10], [vpp-dev@fd.io])
 LT_INIT
 AC_CONFIG_AUX_DIR([.])
 AM_INIT_AUTOMAKE([subdir-objects])
