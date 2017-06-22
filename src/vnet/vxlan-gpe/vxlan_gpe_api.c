@@ -47,7 +47,7 @@
 #define foreach_vpe_api_msg                             \
 _(SW_INTERFACE_SET_VXLAN_GPE_BYPASS, sw_interface_set_vxlan_gpe_bypass)         \
 _(VXLAN_GPE_ADD_DEL_TUNNEL, vxlan_gpe_add_del_tunnel)                   \
-_(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
+_(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)
 
 static void
   vl_api_sw_interface_set_vxlan_gpe_bypass_t_handler
@@ -156,15 +156,15 @@ static void send_vxlan_gpe_tunnel_details
   rmp->_vl_msg_id = ntohs (VL_API_VXLAN_GPE_TUNNEL_DETAILS);
   if (is_ipv6)
     {
-      memcpy (rmp->local, &(t->local.ip6), 16);
-      memcpy (rmp->remote, &(t->remote.ip6), 16);
+      memcpy (rmp->local, &(t->local.ip6.as_u8), 16);
+      memcpy (rmp->remote, &(t->remote.ip6.as_u8), 16);
       rmp->encap_vrf_id = htonl (im6->fibs[t->encap_fib_index].ft_table_id);
       rmp->decap_vrf_id = htonl (im6->fibs[t->decap_fib_index].ft_table_id);
     }
   else
     {
-      memcpy (rmp->local, &(t->local.ip4), 4);
-      memcpy (rmp->remote, &(t->remote.ip4), 4);
+      memcpy (rmp->local, &(t->local.ip4.as_u8), 4);
+      memcpy (rmp->remote, &(t->remote.ip4.as_u8), 4);
       rmp->encap_vrf_id = htonl (im4->fibs[t->encap_fib_index].ft_table_id);
       rmp->decap_vrf_id = htonl (im4->fibs[t->decap_fib_index].ft_table_id);
     }
@@ -249,6 +249,9 @@ vxlan_gpe_api_hookup (vlib_main_t * vm)
                            sizeof(vl_api_##n##_t), 1);
   foreach_vpe_api_msg;
 #undef _
+
+  am->api_trace_cfg[VL_API_VXLAN_GPE_ADD_DEL_TUNNEL].size +=
+    17 * sizeof (u32);
 
   /*
    * Set up the (msg_name, crc, message-id) table
