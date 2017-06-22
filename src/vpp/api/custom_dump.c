@@ -1703,10 +1703,18 @@ static void *vl_api_vxlan_gpe_add_del_tunnel_t_print
 
   s = format (0, "SCRIPT: vxlan_gpe_add_del_tunnel ");
 
-  s = format (s, "local %U ", format_ip46_address, &mp->local, mp->is_ipv6);
+  ip46_address_t local = to_ip46 (mp->is_ipv6, mp->local);
+  ip46_address_t remote = to_ip46 (mp->is_ipv6, mp->remote);
 
-  s = format (s, "remote %U ", format_ip46_address, &mp->remote, mp->is_ipv6);
+  u8 is_grp = ip46_address_is_multicast (&remote);
+  char *remote_name = is_grp ? "group" : "remote";
 
+  s = format (s, "local %U ", format_ip46_address, &local, IP46_TYPE_ANY);
+  s = format (s, "%s %U ", remote_name, format_ip46_address,
+	      &remote, IP46_TYPE_ANY);
+
+  if (is_grp)
+    s = format (s, "mcast_sw_if_index %d ", ntohl (mp->mcast_sw_if_index));
   s = format (s, "protocol %d ", ntohl (mp->protocol));
 
   s = format (s, "vni %d ", ntohl (mp->vni));
