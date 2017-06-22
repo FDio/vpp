@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_d273fae5",
+        "filename": "src/vnet/session/node.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 263,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-06-22T16:55:01Z",
+      "side": 1,
+      "message": "Is this needed any more?",
+      "revId": "8cf2e94692874b4a92b4237c09d9cf5db63a8e78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
