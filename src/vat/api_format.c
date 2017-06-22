@@ -1795,6 +1795,40 @@ static void vl_api_vxlan_add_del_tunnel_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+static void vl_api_vxlan_gpe_add_del_tunnel_reply_t_handler
+  (vl_api_vxlan_gpe_add_del_tunnel_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_vxlan_gpe_add_del_tunnel_reply_t_handler_json
+  (vl_api_vxlan_gpe_add_del_tunnel_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
 static void vl_api_gre_add_del_tunnel_reply_t_handler
   (vl_api_gre_add_del_tunnel_reply_t * mp)
 {
@@ -4480,6 +4514,7 @@ _(sw_interface_set_table_reply)                         \
 _(sw_interface_set_mpls_enable_reply)                   \
 _(sw_interface_set_vpath_reply)                         \
 _(sw_interface_set_vxlan_bypass_reply)                  \
+_(sw_interface_set_vxlan_gpe_bypass_reply)              \
 _(sw_interface_set_l2_bridge_reply)                     \
 _(bridge_domain_add_del_reply)                          \
 _(sw_interface_set_l2_xconnect_reply)                   \
@@ -4578,7 +4613,6 @@ _(gpe_enable_disable_reply)                             \
 _(gpe_set_encap_mode_reply)                             \
 _(gpe_add_del_iface_reply)                              \
 _(gpe_add_del_native_fwd_rpath_reply)                   \
-_(vxlan_gpe_add_del_tunnel_reply)                       \
 _(af_packet_delete_reply)                               \
 _(policer_classify_set_interface_reply)                 \
 _(netmap_create_reply)                                  \
@@ -4651,6 +4685,7 @@ _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
 _(SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply) \
 _(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
 _(SW_INTERFACE_SET_VXLAN_BYPASS_REPLY, sw_interface_set_vxlan_bypass_reply) \
+_(SW_INTERFACE_SET_VXLAN_GPE_BYPASS_REPLY, sw_interface_set_vxlan_gpe_bypass_reply) \
 _(SW_INTERFACE_SET_L2_XCONNECT_REPLY,                                   \
   sw_interface_set_l2_xconnect_reply)                                   \
 _(SW_INTERFACE_SET_L2_BRIDGE_REPLY,                                     \
@@ -6038,6 +6073,7 @@ api_sw_interface_set_vxlan_bypass (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
 
 static int
 api_sw_interface_set_l2_xconnect (vat_main_t * vam)
@@ -12002,12 +12038,20 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
   u8 ipv4_set = 0, ipv6_set = 0;
   u8 local_set = 0;
   u8 remote_set = 0;
+  u8 grp_set = 0;
+  u32 mcast_sw_if_index = ~0;
   u32 encap_vrf_id = 0;
   u32 decap_vrf_id = 0;
   u8 protocol = ~0;
   u32 vni;
   u8 vni_set = 0;
   int ret;
+
+  /* Can't "universally zero init" (={0}) due to GCC bug 53119 */
+  memset (&local4, 0, sizeof local4);
+  memset (&remote4, 0, sizeof remote4);
+  memset (&local6, 0, sizeof local6);
+  memset (&remote6, 0, sizeof remote6);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -12037,6 +12081,35 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
 	  remote_set = 1;
 	  ipv6_set = 1;
 	}
+      else if (unformat (line_input, "group %U %U",
+			 unformat_ip4_address, &remote4,
+			 api_unformat_sw_if_index, vam, &mcast_sw_if_index))
+	{
+	  grp_set = remote_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "group %U",
+			 unformat_ip4_address, &remote4))
+	{
+	  grp_set = remote_set = 1;
+	  ipv4_set = 1;
+	}
+      else if (unformat (line_input, "group %U %U",
+			 unformat_ip6_address, &remote6,
+			 api_unformat_sw_if_index, vam, &mcast_sw_if_index))
+	{
+	  grp_set = remote_set = 1;
+	  ipv6_set = 1;
+	}
+      else if (unformat (line_input, "group %U",
+			 unformat_ip6_address, &remote6))
+	{
+	  grp_set = remote_set = 1;
+	  ipv6_set = 1;
+	}
+      else
+	if (unformat (line_input, "mcast_sw_if_index %u", &mcast_sw_if_index))
+	;
       else if (unformat (line_input, "encap-vrf-id %d", &encap_vrf_id))
 	;
       else if (unformat (line_input, "decap-vrf-id %d", &decap_vrf_id))
@@ -12068,6 +12141,11 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
       errmsg ("tunnel remote address not specified");
       return -99;
     }
+  if (grp_set && mcast_sw_if_index == ~0)
+    {
+      errmsg ("tunnel nonexistent multicast device");
+      return -99;
+    }
   if (ipv4_set && ipv6_set)
     {
       errmsg ("both IPv4 and IPv6 addresses specified");
@@ -12094,6 +12172,7 @@ api_vxlan_gpe_add_del_tunnel (vat_main_t * vam)
       clib_memcpy (&mp->remote, &remote4, sizeof (remote4));
     }
 
+  mp->mcast_sw_if_index = ntohl (mcast_sw_if_index);
   mp->encap_vrf_id = ntohl (encap_vrf_id);
   mp->decap_vrf_id = ntohl (decap_vrf_id);
   mp->protocol = protocol;
@@ -12110,15 +12189,18 @@ static void vl_api_vxlan_gpe_tunnel_details_t_handler
   (vl_api_vxlan_gpe_tunnel_details_t * mp)
 {
   vat_main_t *vam = &vat_main;
+  ip46_address_t local = to_ip46 (mp->is_ipv6, mp->local);
+  ip46_address_t remote = to_ip46 (mp->is_ipv6, mp->remote);
 
-  print (vam->ofp, "%11d%24U%24U%13d%12d%14d%14d",
+  print (vam->ofp, "%11d%24U%24U%13d%12d%19d%14d%14d",
 	 ntohl (mp->sw_if_index),
-	 format_ip46_address, &(mp->local[0]),
-	 format_ip46_address, &(mp->remote[0]),
-	 ntohl (mp->vni),
-	 ntohl (mp->protocol),
+	 format_ip46_address, &local, IP46_TYPE_ANY,
+	 format_ip46_address, &remote, IP46_TYPE_ANY,
+	 ntohl (mp->vni), mp->protocol,
+	 ntohl (mp->mcast_sw_if_index),
 	 ntohl (mp->encap_vrf_id), ntohl (mp->decap_vrf_id));
 }
+
 
 static void vl_api_vxlan_gpe_tunnel_details_t_handler_json
   (vl_api_vxlan_gpe_tunnel_details_t * mp)
@@ -12153,6 +12235,8 @@ static void vl_api_vxlan_gpe_tunnel_details_t_handler_json
     }
   vat_json_object_add_uint (node, "vni", ntohl (mp->vni));
   vat_json_object_add_uint (node, "protocol", ntohl (mp->protocol));
+  vat_json_object_add_uint (node, "mcast_sw_if_index",
+			    ntohl (mp->mcast_sw_if_index));
   vat_json_object_add_uint (node, "encap_vrf_id", ntohl (mp->encap_vrf_id));
   vat_json_object_add_uint (node, "decap_vrf_id", ntohl (mp->decap_vrf_id));
   vat_json_object_add_uint (node, "is_ipv6", mp->is_ipv6 ? 1 : 0);
@@ -12184,9 +12268,9 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
 
   if (!vam->json_output)
     {
-      print (vam->ofp, "%11s%24s%24s%13s%15s%14s%14s",
+      print (vam->ofp, "%11s%24s%24s%13s%15s%19s%14s%14s",
 	     "sw_if_index", "local", "remote", "vni",
-	     "protocol", "encap_vrf_id", "decap_vrf_id");
+	     "protocol", "mcast_sw_if_index", "encap_vrf_id", "decap_vrf_id");
     }
 
   /* Get list of vxlan-tunnel interfaces */
@@ -12203,6 +12287,7 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
   W (ret);
   return ret;
 }
+
 
 u8 *
 format_l2_fib_mac_address (u8 * s, va_list * args)
@@ -19673,9 +19758,10 @@ _(delete_vhost_user_if, "<intfc> | sw_if_index <nn>")                   \
 _(sw_interface_vhost_user_dump, "")                                     \
 _(show_version, "")                                                     \
 _(vxlan_gpe_add_del_tunnel,                                             \
-  "local <addr> remote <addr> vni <nn>\n"                               \
-    "[encap-vrf-id <nn>] [decap-vrf-id <nn>] [next-ip4][next-ip6]"      \
-  "[next-ethernet] [next-nsh]\n")                                       \
+  "local <addr> remote <addr>  | group <mcast-ip-addr>\n"               \
+  "{ <intfc> | mcast_sw_if_index <nn> } }\n"                            \
+  "vni <nn> [encap-vrf-id <nn>] [decap-vrf-id <nn>]\n"                  \
+  "[next-ip4][next-ip6][next-ethernet] [next-nsh] [del]\n")             \
 _(vxlan_gpe_tunnel_dump, "[<intfc> | sw_if_index <nn>]")                \
 _(l2_fib_table_dump, "bd_id <bridge-domain-id>")			\
 _(interface_name_renumber,                                              \
