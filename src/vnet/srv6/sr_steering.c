@@ -165,7 +165,7 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	      sm->fib_table_ip4 = (u32) ~ 0;
 	    }
 
-	  return 1;
+	  return 0;
 	}
       else			/* It means user requested to update an existing SR steering policy */
 	{
