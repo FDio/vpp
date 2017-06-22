@@ -2108,3 +2108,121 @@ class VppPapiProvider(object):
                          'client_ip': client_ip,
                          'decap_vrf_id': decap_vrf_id,
                          'client_mac': client_mac})
+
+    def sr_localsid_add_del(self,
+                            localsid_addr,
+                            behavior,
+                            nh_addr,
+                            is_del=0,
+                            end_psp=0,
+                            sw_if_index=0xFFFFFFFF,
+                            vlan_index=0,
+                            fib_table=0,
+                            ):
+        """ Add/del IPv6 SR local-SID.
+
+        :param localsid_addr:
+        :param behavior: END=1; END.X=2; END.DX2=4; END.DX6=5;
+        :param behavior: END.DX4=6; END.DT6=7; END.DT4=8
+        :param nh_addr:
+        :param is_del:  (Default value = 0)
+        :param end_psp: (Default value = 0)
+        :param sw_if_index: (Default value = 0xFFFFFFFF)
+        :param vlan_index:  (Default value = 0)
+        :param fib_table:   (Default value = 0)
+        """
+        return self.api(
+            self.papi.sr_localsid_add_del,
+            {'is_del': is_del,
+             'localsid_addr': localsid_addr,
+             'end_psp': end_psp,
+             'behavior': behavior,
+             'sw_if_index': sw_if_index,
+             'vlan_index': vlan_index,
+             'fib_table': fib_table,
+             'nh_addr': nh_addr
+             }
+        )
+
+    def sr_policy_add(
+            self,
+            bsid_addr,
+            weight=1,
+            is_encap=1,
+            type=0,
+            fib_table=0,
+            n_segments=0,
+            segments=[]):
+        """
+        :param bsid_addr: bindingSID of the SR Policy
+        :param weight: weight of the sid list. optional. (default: 1)
+        :param is_encap: (bool) whether SR policy should Encap or SRH insert \
+            (default: Encap)
+        :param type: type/behavior of the SR policy. (default or spray) \
+            (default: default)
+        :param fib_table: VRF where to install the FIB entry for the BSID \
+            (default: 0)
+        :param n_segments: number of segments \
+            (default: 0)
+        :param segments: a vector of IPv6 address composing the segment list \
+            (default: [])
+        """
+        return self.api(
+            self.papi.sr_policy_add,
+            {'bsid_addr': bsid_addr,
+             'weight': weight,
+             'is_encap': is_encap,
+             'type': type,
+             'fib_table': fib_table,
+             'n_segments': n_segments,
+             'segments': segments
+             }
+        )
+
+    def sr_policy_del(
+            self,
+            bsid_addr,
+            sr_policy_index=0):
+        """
+        :param bsid: bindingSID of the SR Policy
+        :param sr_policy_index: index of the sr policy (default: 0)
+        """
+        return self.api(
+            self.papi.sr_policy_del,
+            {'bsid_addr': bsid_addr,
+             'sr_policy_index': sr_policy_index
+             })
+
+    def sr_steering_add_del(
+            self,
+            is_del,
+            bsid_addr,
+            sr_policy_index,
+            table_id,
+            prefix_addr,
+            mask_width,
+            sw_if_index,
+            traffic_type):
+        """
+        Steer traffic L2 and L3 traffic through a given SR policy
+
+        :param is_del: delete or add
+        :param bsid_addr: bindingSID of the SR Policy (alt to sr_policy_index)
+        :param sr_policy: is the index of the SR Policy (alt to bsid)
+        :param table_id: is the VRF where to install the FIB entry for the BSID
+        :param prefix_addr: is the IPv4/v6 address for L3 traffic type
+        :param mask_width: is the mask for L3 traffic type
+        :param sw_if_index: is the incoming interface for L2 traffic
+        :param traffic_type: type of traffic (IPv4: 4, IPv6: 6, L2: 2)
+        """
+        return self.api(
+            self.papi.sr_steering_add_del,
+            {'is_del': is_del,
+             'bsid_addr': bsid_addr,
+             'sr_policy_index': sr_policy_index,
+             'table_id': table_id,
+             'prefix_addr': prefix_addr,
+             'mask_width': mask_width,
+             'sw_if_index': sw_if_index,
+             'traffic_type': traffic_type
+             })
