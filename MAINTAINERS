@@ -112,6 +112,11 @@ VNET VXLAN
 M:	John Lo <loj@cisco.com>
 F:	src/vnet/vxlan/
 
+VNET VXLAN-GPE
+M:	Keith Burns <alagalah@gmail.com>
+M:	Hongjun Ni <hongjun.ni@intel.com>
+F:	src/vnet/vxlan-gpe/
+
 Plugin - flowprobe
 M:	Ole Troan <otroan@employees.org>
 F:	src/plugins/flowprobe/
@@ -123,9 +128,9 @@ F:	src/plugins/sixrd/
 F:	src/plugins/sixrd.am
 
 Plugin - GTPU
-M:      Hongjun Ni <hongjun.ni@intel.com>
-F:      src/plugins/gtpu/
-F:      src/plugins/gtpu.am
+M:	Hongjun Ni <hongjun.ni@intel.com>
+F:	src/plugins/gtpu/
+F:	src/plugins/gtpu.am
 
 Test Infrastructure
 M:	Klement Sekera <ksekera@cisco.com>
