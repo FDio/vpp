@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa5d592f_d82c244d",
+        "filename": "src/vlibmemory/memory_client.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 401,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-24T10:53:12Z",
+      "side": 1,
+      "message": "still some disappering const",
+      "revId": "0a863f77037a43346e6f6ba6210fee67691874bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_b83170a4",
+        "filename": "src/vlibmemory/memory_shared.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-24T10:53:12Z",
+      "side": 1,
+      "message": "const",
+      "revId": "0a863f77037a43346e6f6ba6210fee67691874bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_b8bf30d0",
+        "filename": "src/vpp-api/vapi/vapi.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-24T10:53:12Z",
+      "side": 1,
+      "message": "i\u0027ve always found this trick a bit too cute.\nwhen I look at a function declaration like vapi_msg_alloc(vpai_ctx_t ctx, ..)\ni think to myself, should that be a pointer to a ctx struct, then go look for the typdef and see it\u0027s declared as a pointer too. grr, why?",
+      "revId": "0a863f77037a43346e6f6ba6210fee67691874bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa5d592f_78b9b8e8",
+        "filename": "src/vpp-api/vapi/vapi.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-24T10:53:12Z",
+      "side": 1,
+      "message": "separate typedef for the function pointer please. like you did above.",
+      "revId": "0a863f77037a43346e6f6ba6210fee67691874bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
