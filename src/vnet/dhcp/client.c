@@ -194,7 +194,7 @@ int dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
       /* OK, we own the address (etc), add to the routing table(s) */
       if (c->state == DHCP_REQUEST)
         {
-          void (*fp)(u32, u32, u8 *, u8, u8 *, u8 *, u8 *) = c->event_callback;
+          void (*fp)(u32, u32, u8 *, u8, u8, u8 *, u8 *, u8 *) = c->event_callback;
 
           dhcp_client_acquire_address (dcm, c);
 
@@ -236,6 +236,7 @@ int dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
             (*fp) (c->client_index,  /* clinet index */
                    c->pid,
                    c->hostname,
+                   c->subnet_mask_width,
                    0, /* is_ipv6 */
                    (u8 *)&c->leased_address,  /* host IP address */
                    (u8 *)&c->router_address,  /* router IP address */
