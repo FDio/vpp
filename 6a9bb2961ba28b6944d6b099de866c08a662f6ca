@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_a8192e7b",
+        "filename": "test/ext/vapi_test.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-24T10:53:12Z",
+      "side": 1,
+      "message": "can we please stick to the well known convention of hton and ntoh",
+      "revId": "6a9bb2961ba28b6944d6b099de866c08a662f6ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da6255ed_88266ab9",
+        "filename": "test/ext/vapi_test.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-24T10:53:12Z",
+      "side": 1,
+      "message": "is this the typical sequence one would expect a client to call?\nCan we wrap it all into a single API function that takes the \u0027ctx\u0027 members as const input arguments and \u0027resp\u0027 members as output arguments and returns rv?",
+      "revId": "6a9bb2961ba28b6944d6b099de866c08a662f6ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
