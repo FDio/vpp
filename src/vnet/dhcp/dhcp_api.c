@@ -186,7 +186,7 @@ dhcp_send_details (fib_protocol_t proto,
 }
 
 void
-dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
+dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname, u8 netmask,
 			   u8 is_ipv6, u8 * host_address, u8 * router_address,
 			   u8 * host_mac)
 {
@@ -203,6 +203,7 @@ dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
   mp->is_ipv6 = is_ipv6;
   clib_memcpy (&mp->hostname, hostname, vec_len (hostname));
   mp->hostname[vec_len (hostname) + 1] = '\n';
+  mp->netmask = netmask;
   clib_memcpy (&mp->host_address[0], host_address, 16);
   clib_memcpy (&mp->router_address[0], router_address, 16);
 

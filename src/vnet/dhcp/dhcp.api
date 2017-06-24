@@ -121,6 +121,7 @@ define dhcp_compl_event
   u32 pid;
   u8 hostname[64];
   u8 is_ipv6;
+  u8 netmask;
   u8 host_address[16];
   u8 router_address[16];
   u8 host_mac[6];
