@@ -413,8 +413,10 @@ l2fib_add (vlib_main_t * vm,
 	}
     }
 
-  l2fib_add_entry (mac, bd_index, sw_if_index, static_mac, filter_mac,
-		   bvi_mac);
+  if (filter_mac)
+    l2fib_add_filter_entry (mac, bd_index);
+  else
+    l2fib_add_fwd_entry (mac, bd_index, sw_if_index, static_mac, bvi_mac);
 
 done:
   return error;
@@ -464,7 +466,6 @@ l2fib_test_command_fn (vlib_main_t * vm,
   u64 mac, save_mac;
   u32 bd_index = 0;
   u32 sw_if_index = 8;
-  u32 filter_mac = 0;
   u32 bvi_mac = 0;
   u32 is_add = 0;
   u32 is_del = 0;
@@ -503,8 +504,7 @@ l2fib_test_command_fn (vlib_main_t * vm,
       for (i = 0; i < count; i++)
 	{
 	  u64 tmp;
-	  l2fib_add_entry (mac, bd_index, sw_if_index, mac,
-			   filter_mac, bvi_mac);
+	  l2fib_add_fwd_entry (mac, bd_index, sw_if_index, mac, bvi_mac);
 	  tmp = clib_net_to_host_u64 (mac);
 	  tmp >>= 16;
 	  tmp++;
