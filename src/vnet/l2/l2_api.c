@@ -187,30 +187,24 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
   l2input_main_t *l2im = &l2input_main;
   vl_api_l2fib_add_del_reply_t *rmp;
   int rv = 0;
-  u64 mac = 0;
-  u32 sw_if_index = ntohl (mp->sw_if_index);
   u32 bd_id = ntohl (mp->bd_id);
-  u32 bd_index;
-  u32 static_mac;
-  u32 filter_mac;
-  u32 bvi_mac;
-  uword *p;
+  uword *p = hash_get (bdm->bd_index_by_bd_id, bd_id);
 
-  mac = mp->mac;
-
-  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
   if (!p)
     {
       rv = VNET_API_ERROR_NO_SUCH_ENTRY;
       goto bad_sw_if_index;
     }
-  bd_index = p[0];
+  u32 bd_index = p[0];
 
+  u64 mac = mp->mac;
   if (mp->is_add)
     {
-      filter_mac = mp->filter_mac ? 1 : 0;
-      if (filter_mac == 0)
+      if (mp->filter_mac)
+	l2fib_add_filter_entry (mac, bd_index);
+      else
 	{
+	  u32 sw_if_index = ntohl (mp->sw_if_index);
 	  VALIDATE_SW_IF_INDEX (mp);
 	  if (vec_len (l2im->configs) <= sw_if_index)
 	    {
@@ -227,11 +221,11 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
 		  goto bad_sw_if_index;
 		}
 	    }
+	  u32 static_mac = mp->static_mac ? 1 : 0;
+	  u32 bvi_mac = mp->bvi_mac ? 1 : 0;
+	  l2fib_add_fwd_entry (mac, bd_index, sw_if_index, static_mac,
+			       bvi_mac);
 	}
-      static_mac = mp->static_mac ? 1 : 0;
-      bvi_mac = mp->bvi_mac ? 1 : 0;
-      l2fib_add_entry (mac, bd_index, sw_if_index, static_mac, filter_mac,
-		       bvi_mac);
     }
   else
     {

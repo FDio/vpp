@@ -350,6 +350,19 @@ l2fib_add_entry (u64 mac,
 		 u32 bd_index,
 		 u32 sw_if_index, u32 static_mac, u32 drop_mac, u32 bvi_mac);
 
+static inline void
+l2fib_add_fwd_entry (u64 mac, u32 bd_index, u32 sw_if_index, u32 static_mac,
+		     u32 bvi_mac)
+{
+  l2fib_add_entry (mac, bd_index, sw_if_index, static_mac, 0, bvi_mac);
+}
+
+static inline void
+l2fib_add_filter_entry (u64 mac, u32 bd_index)
+{
+  l2fib_add_entry (mac, bd_index, ~0, 1, 1, 0);
+}
+
 u32 l2fib_del_entry (u64 mac, u32 bd_index);
 
 void l2fib_start_ager_scan (vlib_main_t * vm);

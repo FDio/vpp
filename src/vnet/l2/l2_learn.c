@@ -131,27 +131,22 @@ l2learn_process (vlib_node_runtime_t * node,
 					    feature_bitmap);
 
   /* Check mac table lookup result */
-
   if (PREDICT_TRUE (result0->fields.sw_if_index == sw_if_index0))
     {
       /*
        * The entry was in the table, and the sw_if_index matched, the normal case
        */
       counter_base[L2LEARN_ERROR_HIT] += 1;
-      if (!result0->fields.static_mac)
-	{
-	  if (PREDICT_FALSE (result0->fields.timestamp != timestamp))
-	    result0->fields.timestamp = timestamp;
-	  if (PREDICT_FALSE
-	      (result0->fields.sn.as_u16 != vnet_buffer (b0)->l2.l2fib_sn))
-	    result0->fields.sn.as_u16 = vnet_buffer (b0)->l2.l2fib_sn;
-	}
+      int update = !result0->fields.static_mac &&
+	(result0->fields.timestamp != timestamp ||
+	 result0->fields.sn.as_u16 != vnet_buffer (b0)->l2.l2fib_sn);
+
+      if (PREDICT_TRUE (!update))
+	return;
     }
   else if (result0->raw == ~0)
     {
-
       /* The entry was not in table, so add it  */
-
       counter_base[L2LEARN_ERROR_MISS] += 1;
 
       if (msm->global_learn_count == msm->global_learn_limit)
@@ -161,32 +156,27 @@ l2learn_process (vlib_node_runtime_t * node,
 	   * In the future, limits could also be per-interface or bridge-domain.
 	   */
 	  counter_base[L2LEARN_ERROR_LIMIT] += 1;
-	  goto done;
-
-	}
-      else
-	{
-	  BVT (clib_bihash_kv) kv;
-	  /* It is ok to learn */
-
-	  result0->raw = 0;	/* clear all fields */
-	  result0->fields.sw_if_index = sw_if_index0;
-	  result0->fields.timestamp = timestamp;
-	  result0->fields.sn.as_u16 = vnet_buffer (b0)->l2.l2fib_sn;
-	  kv.key = key0->raw;
-	  kv.value = result0->raw;
-
-	  BV (clib_bihash_add_del) (msm->mac_table, &kv, 1 /* is_add */ );
-
-	  cached_key->raw = ~0;	/* invalidate the cache */
-	  msm->global_learn_count++;
+	  return;
 	}
 
+      /* It is ok to learn */
+      msm->global_learn_count++;
+      result0->raw = 0;		/* clear all fields */
+      result0->fields.sw_if_index = sw_if_index0;
+      cached_key->raw = ~0;	/* invalidate the cache */
     }
   else
     {
-
       /* The entry was in the table, but with the wrong sw_if_index mapping (mac move) */
+      if (result0->fields.filter)
+	{
+	  ASSERT (result0->fields.sw_if_index == ~0);
+	  /* drop packet because lookup matched a filter mac entry */
+	  b0->error = node->errors[L2LEARN_ERROR_FILTER_DROP];
+	  *next0 = L2LEARN_NEXT_DROP;
+	  return;
+	}
+
       counter_base[L2LEARN_ERROR_MAC_MOVE] += 1;
 
       if (result0->fields.static_mac)
@@ -197,44 +187,24 @@ l2learn_process (vlib_node_runtime_t * node,
 	   */
 	  b0->error = node->errors[L2LEARN_ERROR_MAC_MOVE_VIOLATE];
 	  *next0 = L2LEARN_NEXT_DROP;
+	  return;
 	}
-      else
-	{
-	  /*
-	   * Update the entry
-	   * TODO: may want to rate limit mac moves
-	   * TODO: check global/bridge domain/interface learn limits
-	   */
-	  BVT (clib_bihash_kv) kv;
 
-	  result0->raw = 0;	/* clear all fields */
-	  result0->fields.sw_if_index = sw_if_index0;
-	  result0->fields.timestamp = timestamp;
-	  result0->fields.sn.as_u16 = vnet_buffer (b0)->l2.l2fib_sn;
-
-	  kv.key = key0->raw;
-	  kv.value = result0->raw;
-
-	  cached_key->raw = ~0;	/* invalidate the cache */
-
-	  BV (clib_bihash_add_del) (msm->mac_table, &kv, 1 /* is_add */ );
-	}
+      /*
+       * TODO: may want to rate limit mac moves
+       * TODO: check global/bridge domain/interface learn limits
+       */
+      result0->fields.sw_if_index = sw_if_index0;
     }
 
-  if (result0->fields.filter)
-    {
-      /* drop packet because lookup matched a filter mac entry */
+  /* Update the entry */
+  result0->fields.timestamp = timestamp;
+  result0->fields.sn.as_u16 = vnet_buffer (b0)->l2.l2fib_sn;
 
-      if (*next0 != L2LEARN_NEXT_DROP)
-	{
-	  /* if we're not already dropping the packet, do it now */
-	  b0->error = node->errors[L2LEARN_ERROR_FILTER_DROP];
-	  *next0 = L2LEARN_NEXT_DROP;
-	}
-    }
-
-done:
-  return;
+  BVT (clib_bihash_kv) kv;
+  kv.key = key0->raw;
+  kv.value = result0->raw;
+  BV (clib_bihash_add_del) (msm->mac_table, &kv, 1 /* is_add */ );
 }
 
 
