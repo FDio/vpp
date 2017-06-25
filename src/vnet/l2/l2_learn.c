@@ -138,13 +138,20 @@ l2learn_process (vlib_node_runtime_t * node,
        * The entry was in the table, and the sw_if_index matched, the normal case
        */
       counter_base[L2LEARN_ERROR_HIT] += 1;
-      if (!result0->fields.static_mac)
+      int update = !result0->fields.static_mac &&
+	(result0->fields.timestamp != timestamp ||
+	 result0->fields.sn.as_u16 != vnet_buffer (b0)->l2.l2fib_sn);
+
+      if (PREDICT_FALSE (update))
 	{
-	  if (PREDICT_FALSE (result0->fields.timestamp != timestamp))
-	    result0->fields.timestamp = timestamp;
-	  if (PREDICT_FALSE
-	      (result0->fields.sn.as_u16 != vnet_buffer (b0)->l2.l2fib_sn))
-	    result0->fields.sn.as_u16 = vnet_buffer (b0)->l2.l2fib_sn;
+	  BVT (clib_bihash_kv) kv;
+
+	  result0->fields.timestamp = timestamp;
+	  result0->fields.sn.as_u16 = vnet_buffer (b0)->l2.l2fib_sn;
+	  kv.key = key0->raw;
+	  kv.value = result0->raw;
+
+	  BV (clib_bihash_add_del) (msm->mac_table, &kv, 1 /* is_add */ );
 	}
     }
   else if (result0->raw == ~0)
