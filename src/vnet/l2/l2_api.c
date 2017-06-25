@@ -227,9 +227,16 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
 		  goto bad_sw_if_index;
 		}
 	    }
+	  static_mac = mp->static_mac ? 1 : 0;
+	  bvi_mac = mp->bvi_mac ? 1 : 0;
 	}
-      static_mac = mp->static_mac ? 1 : 0;
-      bvi_mac = mp->bvi_mac ? 1 : 0;
+      else
+	{
+	  /* filter entries are static and have no out swif */
+	  static_mac = 1;
+	  sw_if_index = ~0;
+	  bvi_mac = 0;
+	}
       l2fib_add_entry (mac, bd_index, sw_if_index, static_mac, filter_mac,
 		       bvi_mac);
     }
