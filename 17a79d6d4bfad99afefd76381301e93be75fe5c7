@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_4babcc89",
+        "filename": "src/vnet/l2/l2_learn.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-06-25T22:33:41Z",
+      "side": 1,
+      "message": "Putting the filter check here may not be correct. In fact, a filter entry may not have sw_if_index set anyway so that sw_if_index does not match sw_if_index0.",
+      "range": {
+        "startLine": 156,
+        "startChar": 19,
+        "endLine": 156,
+        "endChar": 25
+      },
+      "revId": "17a79d6d4bfad99afefd76381301e93be75fe5c7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
