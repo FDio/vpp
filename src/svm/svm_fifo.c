@@ -113,7 +113,7 @@ svm_fifo_create (u32 data_size_in_bytes)
   if (f == 0)
     return 0;
 
-  memset (f, 0, sizeof (*f) + data_size_in_bytes);
+  memset (f, 0, sizeof (*f));
   f->nitems = data_size_in_bytes;
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
 
@@ -321,7 +321,7 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
   s = pool_elt_at_index (f->ooo_segments, f->ooos_list_head);
 
   diff = (f->tail >= s->start) ?
-    f->tail - s->start : f->nitems + f->tail - s->start;
+    f->tail - s->start : f->nitems + ((int)f->tail - s->start);
 
   if (diff > n_bytes_enqueued)
     return 0;
@@ -346,7 +346,7 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
 	{
 	  s = pool_elt_at_index (f->ooo_segments, s->next);
 	  diff = (f->tail >= s->start) ?
-	    f->tail - s->start : f->nitems + f->tail - s->start;
+	    f->tail - s->start : f->nitems + ((int)f->tail - s->start);
 	  ooo_segment_del (f, index);
 	}
       /* End of search */
