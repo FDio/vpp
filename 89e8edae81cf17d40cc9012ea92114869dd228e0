@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_01da5578",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2920,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-06-26T15:47:39Z",
+      "side": 1,
+      "message": "Actually here we should let the packet go to rcv_process. There we decide if the packet is in window and if a reset is in order.",
+      "range": {
+        "startLine": 2920,
+        "startChar": 31,
+        "endLine": 2920,
+        "endChar": 51
+      },
+      "revId": "89e8edae81cf17d40cc9012ea92114869dd228e0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
