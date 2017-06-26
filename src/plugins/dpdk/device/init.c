@@ -1373,8 +1373,10 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
     /*
      * Extra set up for bond interfaces:
      *  1. Setup MACs for bond interfaces and their slave links which was set
-     *     in dpdk_device_setup() but needs to be done again here to take effect.
-     *  2. Set up info for bond interface related CLI support.
+     *     in dpdk_device_setup() but needs to be done again here to take
+     *     effect.
+     *  2. Set up info and register slave link state change callback handling.
+     *  3. Set up info for bond interface related CLI support.
      */
     int nports = rte_eth_dev_count ();
     if (nports > 0)
@@ -1399,7 +1401,8 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		      (slink[0], (struct ether_addr *) addr);
 
 		    /* Set MAC of bounded interface to that of 1st slave link */
-		    clib_warning ("Set MAC for bond dev# %d", i);
+		    clib_warning ("Set MAC for bond port %d BondEthernet%d",
+				  i, xd->port_id);
 		    rv = rte_eth_bond_mac_address_set
 		      (i, (struct ether_addr *) addr);
 		    if (rv)
@@ -1428,34 +1431,38 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 			/* Add MAC to all slave links except the first one */
 			if (nlink)
 			  {
-			    clib_warning ("Add MAC for slave dev# %d", slave);
+			    clib_warning ("Add MAC for slave port %d", slave);
 			    rv = rte_eth_dev_mac_addr_add
 			      (slave, (struct ether_addr *) addr, 0);
 			    if (rv)
 			      clib_warning ("Add MAC addr failure rv=%d", rv);
 			  }
+			/* Setup slave link state change callback handling */
+			rte_eth_dev_callback_register
+			  (slave, RTE_ETH_EVENT_INTR_LSC,
+			   dpdk_port_state_callback, NULL);
+			dpdk_device_t *sxd = &dm->devices[slave];
+			sxd->flags |= DPDK_DEVICE_FLAG_BOND_SLAVE;
+			sxd->bond_port = i;
 			/* Set slaves bitmap for bonded interface */
 			bhi->bond_info = clib_bitmap_set
 			  (bhi->bond_info, sdev->hw_if_index, 1);
-			/* Set slave link flags on slave interface */
+			/* Set MACs and slave link flags on slave interface */
 			shi = vnet_get_hw_interface (vnm, sdev->hw_if_index);
 			ssi = vnet_get_sw_interface
 			  (vnm, sdev->vlib_sw_if_index);
 			sei = pool_elt_at_index
 			  (em->interfaces, shi->hw_instance);
-
 			shi->bond_info = VNET_HW_INTERFACE_BOND_INFO_SLAVE;
 			ssi->flags |= VNET_SW_INTERFACE_FLAG_BOND_SLAVE;
 			clib_memcpy (shi->hw_address, addr, 6);
 			clib_memcpy (sei->address, addr, 6);
-
 			/* Set l3 packet size allowed as the lowest of slave */
 			if (bhi->max_l3_packet_bytes[VLIB_RX] >
 			    shi->max_l3_packet_bytes[VLIB_RX])
 			  bhi->max_l3_packet_bytes[VLIB_RX] =
 			    bhi->max_l3_packet_bytes[VLIB_TX] =
 			    shi->max_l3_packet_bytes[VLIB_RX];
-
 			/* Set max packet size allowed as the lowest of slave */
 			if (bhi->max_packet_bytes > shi->max_packet_bytes)
 			  bhi->max_packet_bytes = shi->max_packet_bytes;
