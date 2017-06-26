@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_0186d5b9",
+        "filename": "src/vnet/l2/l2_learn.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-06-26T23:33:04Z",
+      "side": 1,
+      "message": "The filter check is still needed in MAC move case when sw_if_index of entry does not match and also it may be static MAC. The original code did have this filter check at end of function to capture all cases.",
+      "range": {
+        "startLine": 156,
+        "startChar": 26,
+        "endLine": 156,
+        "endChar": 32
+      },
+      "revId": "b813d802de918072d3f3077ae108452c22d6060c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
