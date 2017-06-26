@@ -2153,7 +2153,16 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tc0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
 
 	      /* Shoulder tap the server */
+              ELOG_TYPE_DECLARE (e) = 
+                {
+                  .format = "accept-notify: %d",
+                  .format_args = "i4",
+                };
+              elog (&vlib_global_main.elog_main, &e, 0);
+
 	      stream_session_accept_notify (&tc0->connection);
+
+              elog (&vlib_global_main.elog_main, &e, 1);
 
 	      /* Reset SYN-ACK retransmit timer */
 	      tcp_retransmit_timer_reset (tc0);
@@ -2889,6 +2898,8 @@ do {                                                       	\
   /* ACK for for a SYN-ACK -> tcp-rcv-process. */
   _(SYN_RCVD, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(SYN_RCVD, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  /*$$$ FC: is this right? */
+  _(SYN_RCVD, TCP_FLAG_SYN, TCP_INPUT_NEXT_RESET, TCP_ERROR_NONE);
   /* SYN-ACK for a SYN */
   _(SYN_SENT, TCP_FLAG_SYN | TCP_FLAG_ACK, TCP_INPUT_NEXT_SYN_SENT,
     TCP_ERROR_NONE);
@@ -2905,6 +2916,8 @@ do {                                                       	\
   _(ESTABLISHED, TCP_FLAG_RST, TCP_INPUT_NEXT_ESTABLISHED, TCP_ERROR_NONE);
   _(ESTABLISHED, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_ESTABLISHED,
     TCP_ERROR_NONE);
+  /*$$$ FC: is this right? */
+  _(ESTABLISHED, TCP_FLAG_SYN, TCP_INPUT_NEXT_RESET, TCP_ERROR_NONE);
   /* ACK or FIN-ACK to our FIN */
   _(FIN_WAIT_1, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(FIN_WAIT_1, TCP_FLAG_ACK | TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS,

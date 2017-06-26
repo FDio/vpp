@@ -348,6 +348,10 @@ typedef struct _tcp_main
   /* Flag that indicates if stack is on or off */
   u8 is_enabled;
 
+  /** Number of preallocated connections */
+  u32 preallocated_connections;
+  u32 preallocated_half_open_connections;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;

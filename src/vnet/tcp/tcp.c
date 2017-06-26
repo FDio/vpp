@@ -1042,6 +1042,8 @@ tcp_main_enable (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   clib_error_t *error = 0;
   u32 num_threads;
+  int thread, i;
+  tcp_connection_t *tc __attribute__((unused));
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
@@ -1073,6 +1075,27 @@ tcp_main_enable (vlib_main_t * vm)
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (tm->connections, num_threads - 1);
+
+  /*
+   * Preallocate connections 
+   */
+  for (thread = 0; thread < num_threads; thread++)
+    {
+      for (i = 0; i < tm->preallocated_connections; i++)
+        pool_get (tm->connections[thread], tc);
+  
+      for (i = 0; i < tm->preallocated_connections; i++)
+        pool_put_index (tm->connections[thread], i);
+    }
+
+  /*
+   * Preallocate half-open connections
+   */
+  for (i = 0; i < tm->preallocated_half_open_connections; i++)
+    pool_get (tm->half_open_connections, tc);
+
+  for (i = 0; i < tm->preallocated_half_open_connections; i++)
+    pool_put_index (tm->half_open_connections, i);
 
   /* Initialize per worker thread tx buffers (used for control messages) */
   vec_validate (tm->tx_buffers, num_threads - 1);
@@ -1124,6 +1147,27 @@ tcp_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (tcp_init);
+
+
+static clib_error_t *tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+      {
+      if (unformat (input, "preallocated-connections %d", &tm->preallocated_connections))
+        ;
+      else if (unformat (input, "preallocated-half-open-connections %d", 
+                         &tm->preallocated_half_open_connections))
+        ;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (tcp_config_fn, "tcp");
 
 /*
  * fd.io coding-style-patch-verification: ON

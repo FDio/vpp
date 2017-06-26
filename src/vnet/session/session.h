@@ -211,7 +211,11 @@ struct _session_manager_main
   /** Per transport rx function that can either dequeue or peek */
   session_fifo_rx_fn *session_tx_fns[SESSION_N_TYPES];
 
+  /** Session manager is enabled */
   u8 is_enabled;
+
+  /** Preallocate session config parameter */
+  u32 preallocated_sessions;
 
   /* Convenience */
   vlib_main_t *vlib_main;

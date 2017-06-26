@@ -170,7 +170,6 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   tclient_main_t *tm = &tclient_main;
   int my_thread_index = vlib_get_thread_index ();
-  vl_api_disconnect_session_t *dmp;
   session_t *sp;
   int i;
   int delete_session;
@@ -206,26 +205,27 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       if (PREDICT_FALSE (delete_session == 1))
 	{
+          u32 index, thread_index;
+          stream_session_t *s;
+
 	  __sync_fetch_and_add (&tm->tx_total, tm->bytes_to_send);
 	  __sync_fetch_and_add (&tm->rx_total, sp->bytes_received);
 
-	  dmp = vl_msg_api_alloc_as_if_client (sizeof (*dmp));
-	  memset (dmp, 0, sizeof (*dmp));
-	  dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
-	  dmp->client_index = tm->my_client_index;
-	  dmp->handle = sp->vpp_session_handle;
-	  if (!unix_shared_memory_queue_add (tm->vl_input_queue, (u8 *) & dmp,
-					     1))
-	    {
-	      vec_delete (connection_indices, 1, i);
-	      tm->connection_index_by_thread[my_thread_index] =
-		connection_indices;
-	      __sync_fetch_and_add (&tm->ready_connections, -1);
-	    }
-	  else
-	    {
-	      vl_msg_api_free (dmp);
-	    }
+              
+          stream_session_parse_handle (sp->vpp_session_handle, 
+                                       &index, &thread_index);
+          s = stream_session_get_if_valid (index, thread_index);
+          
+          if (s)
+            {
+              stream_session_disconnect (s);
+              vec_delete (connection_indices, 1, i);
+              tm->connection_index_by_thread[my_thread_index] =
+                connection_indices;
+              __sync_fetch_and_add (&tm->ready_connections, -1);
+            }
+          else
+            clib_warning ("session AWOL?");
 
 	  /* Kick the debug CLI process */
 	  if (tm->ready_connections == 0)
@@ -582,6 +582,8 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 	tm->no_return = 1;
       else if (unformat (input, "fifo-size %d", &tm->fifo_size))
 	tm->fifo_size <<= 10;
+      else if (unformat (input, "preallocate-fifos"))
+        tm->prealloc_fifos = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
