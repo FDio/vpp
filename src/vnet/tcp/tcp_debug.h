@@ -19,7 +19,7 @@
 #include <vlib/vlib.h>
 
 #define TCP_DEBUG (1)
-#define TCP_DEBUG_SM (0)
+#define TCP_DEBUG_SM (1)
 #define TCP_DEBUG_CC (1)
 #define TCP_DEBUG_CC_STAT (1)
 #define TCP_DEBUG_SM_VERBOSE (0)
@@ -383,9 +383,16 @@ typedef enum _tcp_dbg_evt
       "establish",                                              	\
     },                                                          	\
   };                                                            	\
-  DECLARE_ETD(_tc, _e, 2);                                      	\
-  ed->data[0] = _timer_id;                                      	\
-  ed->data[1] = _timer_id;                                      	\
+  if (_tc)								\
+    {									\
+      DECLARE_ETD(_tc, _e, 2);                                      	\
+      ed->data[0] = _timer_id;                                      	\
+      ed->data[1] = _timer_id;                                      	\
+    }									\
+  else									\
+    {									\
+      clib_warning ("pop for unexisting connection %d", _tc_index);	\
+    }									\
 }
 
 #define TCP_EVT_SEG_INVALID_HANDLER(_tc, _seq, _end, ...)		\

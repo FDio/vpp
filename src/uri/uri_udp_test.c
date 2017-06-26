@@ -707,7 +707,7 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
 	  return;
 	}
 
-      segment_index = a->new_segment_index;
+      segment_index = a->new_segment_indices[0];
       vec_add2 (utm->seg, seg, 1);
       memcpy (seg, sm->segments + segment_index, sizeof (*seg));
       sleep (1);
