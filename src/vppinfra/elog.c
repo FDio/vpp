@@ -108,6 +108,13 @@ elog_event_type_register (elog_main_t * em, elog_event_type_t * t)
 
   elog_lock (em);
 
+  /* Multiple simultaneous registration attempts, */
+  if (t->type_index_plus_one > 0)
+    {
+      elog_unlock (em);
+      return t->type_index_plus_one - 1;
+    }
+
   l = vec_len (em->event_types);
 
   t->type_index_plus_one = 1 + l;

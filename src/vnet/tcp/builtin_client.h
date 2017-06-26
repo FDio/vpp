@@ -63,6 +63,9 @@ typedef struct
   u32 configured_segment_size;
   u32 fifo_size;
   u32 expected_connections;		/**< Number of clients/connections */
+  u32 connections_per_batch;		/**< Connections to rx/tx at once */
+  u32 private_segment_count;		/**< Number of private fifo segs */
+  u32 private_segment_size;		/**< size of private fifo segs */
 
   /*
    * Test state variables
@@ -72,6 +75,7 @@ typedef struct
   uword *session_index_by_vpp_handles;	/**< Hash table for disconnecting */
   u8 *connect_test_data;		/**< Pre-computed test data */
   u32 **connection_index_by_thread;
+  u32 **connections_this_batch_by_thread; /**< active connection batch */
   pthread_t client_thread_handle;
 
   volatile u32 ready_connections;
@@ -82,7 +86,8 @@ typedef struct
 
   f64 test_start_time;
   f64 test_end_time;
-
+  u32 prev_conns;
+  u32 repeats;
   /*
    * Flags
    */

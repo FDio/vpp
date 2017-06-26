@@ -750,9 +750,20 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
        * last hole end */
       tmp = tc->rcv_opts.sacks[vec_len (tc->rcv_opts.sacks) - 1];
       last_hole = scoreboard_last_hole (sb);
-      if (seq_gt (tc->snd_una_max, sb->high_sacked)
-	  && seq_gt (tc->snd_una_max, last_hole->end))
-	last_hole->end = tc->snd_una_max;
+      if (seq_gt (tc->snd_una_max, last_hole->end))
+	{
+	  if (seq_geq(last_hole->start, sb->high_sacked))
+	    {
+	      last_hole->end = tc->snd_una_max;
+	    }
+	  /* New segment after high sacked block */
+	  else if (seq_lt (sb->high_sacked, tc->snd_una_max))
+	    {
+	      last_hole = scoreboard_insert_hole (sb, sb->tail,
+						  sb->high_sacked, tc->snd_una_max);
+	      sb->tail = scoreboard_hole_index (sb, last_hole);
+	    }
+	}
       /* keep track of max byte sacked for when the last hole
        * is acked */
       if (seq_gt (tmp.end, sb->high_sacked))
@@ -819,7 +830,6 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      hole->end = blk->start;
 	    }
-
 	  hole = scoreboard_next_hole (sb, hole);
 	}
     }
@@ -827,10 +837,13 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   scoreboard_update_bytes (tc, sb);
   sb->last_sacked_bytes = sb->sacked_bytes
     - (old_sacked_bytes - sb->last_bytes_delivered);
+  ASSERT (sb->last_sacked_bytes <= sb->sacked_bytes);
   ASSERT (sb->sacked_bytes == 0
 	  || sb->sacked_bytes < tc->snd_una_max - seq_max (tc->snd_una, ack));
   ASSERT (sb->last_sacked_bytes + sb->lost_bytes <= tc->snd_una_max
 	  - seq_max (tc->snd_una, ack));
+  ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX
+	  || sb->holes[sb->head].start == ack + sb->snd_una_adv);
 }
 
 /**
@@ -2151,8 +2164,6 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		<< tc0->rcv_opts.wscale;
 	      tc0->snd_wl1 = vnet_buffer (b0)->tcp.seq_number;
 	      tc0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
-
-	      /* Shoulder tap the server */
 	      stream_session_accept_notify (&tc0->connection);
 
 	      /* Reset SYN-ACK retransmit timer */
@@ -2886,9 +2897,12 @@ do {                                                       	\
   _(LISTEN, TCP_FLAG_SYN, TCP_INPUT_NEXT_LISTEN, TCP_ERROR_NONE);
   _(LISTEN, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_NONE);
   _(LISTEN, TCP_FLAG_RST, TCP_INPUT_NEXT_DROP, TCP_ERROR_NONE);
+  _(LISTEN, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET,
+    TCP_ERROR_NONE);
   /* ACK for for a SYN-ACK -> tcp-rcv-process. */
   _(SYN_RCVD, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(SYN_RCVD, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(SYN_RCVD, TCP_FLAG_SYN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   /* SYN-ACK for a SYN */
   _(SYN_SENT, TCP_FLAG_SYN | TCP_FLAG_ACK, TCP_INPUT_NEXT_SYN_SENT,
     TCP_ERROR_NONE);
@@ -2905,6 +2919,7 @@ do {                                                       	\
   _(ESTABLISHED, TCP_FLAG_RST, TCP_INPUT_NEXT_ESTABLISHED, TCP_ERROR_NONE);
   _(ESTABLISHED, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_ESTABLISHED,
     TCP_ERROR_NONE);
+  _(ESTABLISHED, TCP_FLAG_SYN, TCP_INPUT_NEXT_ESTABLISHED, TCP_ERROR_NONE);
   /* ACK or FIN-ACK to our FIN */
   _(FIN_WAIT_1, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(FIN_WAIT_1, TCP_FLAG_ACK | TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS,
