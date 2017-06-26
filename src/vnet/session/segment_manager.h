@@ -39,6 +39,10 @@ typedef struct _segment_manager_properties
 
   /** Use private memory segment instead of shared memory */
   u8 use_private_segment;
+
+  /** Use one or more private mheaps, instead of the global heap */
+  u32 private_segment_count;
+  u32 private_segment_size;
 } segment_manager_properties_t;
 
 typedef struct _segment_manager
