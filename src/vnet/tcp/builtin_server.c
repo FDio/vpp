@@ -449,7 +449,7 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	bsm->fifo_size <<= 10;
       else if (unformat (input, "rcv-buf-size %d", &bsm->rcv_buffer_size))
 	;
-      else if (unformat (input, "prealloc-fifos", &bsm->prealloc_fifos))
+      else if (unformat (input, "prealloc-fifos %d", &bsm->prealloc_fifos))
 	;
       else
 	return clib_error_return (0, "unknown input `%U'",
