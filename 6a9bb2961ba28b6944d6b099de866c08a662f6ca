@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "da6255ed_e6199723",
+        "filename": "test/ext/vapi_test.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-06-26T11:37:53Z",
+      "side": 1,
+      "message": "The reasoning behind this is that hton/ntoh and friends are incomplete (missing 64 bit variants), so I use beXYtoh and htobeXY everywhere. The naming is an attempt to be consistent with that functions. Do you want me to switch to hton/ntoh style and use htobe/betoh only for 64 bit?",
+      "parentUuid": "da6255ed_a8192e7b",
+      "revId": "6a9bb2961ba28b6944d6b099de866c08a662f6ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da6255ed_88266ab9",
         "filename": "test/ext/vapi_test.c",
         "patchSetId": 23
@@ -30,6 +48,24 @@
       "writtenOn": "2017-06-24T10:53:12Z",
       "side": 1,
       "message": "is this the typical sequence one would expect a client to call?\nCan we wrap it all into a single API function that takes the \u0027ctx\u0027 members as const input arguments and \u0027resp\u0027 members as output arguments and returns rv?",
+      "revId": "6a9bb2961ba28b6944d6b099de866c08a662f6ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da6255ed_c61693f1",
+        "filename": "test/ext/vapi_test.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 291,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-06-26T11:37:53Z",
+      "side": 1,
+      "message": "no, of course not. this is a synthetic test of low-level api.\n\nthe same functionality is acheived in test_show_version_2 here starting @line ~296.",
+      "parentUuid": "da6255ed_88266ab9",
       "revId": "6a9bb2961ba28b6944d6b099de866c08a662f6ca",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
