@@ -198,21 +198,28 @@ stream_session_lookup_listener4 (ip4_address_t * lcl, u16 lcl_port, u8 proto)
  */
 stream_session_t *
 stream_session_lookup4 (ip4_address_t * lcl, ip4_address_t * rmt,
-			u16 lcl_port, u16 rmt_port, u8 proto,
-			u32 my_thread_index)
+			u16 lcl_port, u16 rmt_port, u8 proto)
 {
   session_manager_main_t *smm = &session_manager_main;
   session_kv4_t kv4;
+  stream_session_t *s;
   int rv;
 
   /* Lookup session amongst established ones */
   make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
   rv = clib_bihash_search_inline_16_8 (&smm->v4_session_hash, &kv4);
   if (rv == 0)
-    return stream_session_get_tsi (kv4.value, my_thread_index);
+    return stream_session_get_from_handle (kv4.value);
 
   /* If nothing is found, check if any listener is available */
-  return stream_session_lookup_listener4 (lcl, lcl_port, proto);
+  if ((s = stream_session_lookup_listener4 (lcl, lcl_port, proto)))
+    return s;
+
+  /* Finally, try half-open connections */
+  rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
+  if (rv == 0)
+    return stream_session_get_from_handle (kv4.value);
+  return 0;
 }
 
 stream_session_t *
@@ -242,20 +249,27 @@ stream_session_lookup_listener6 (ip6_address_t * lcl, u16 lcl_port, u8 proto)
  * wildcarded local source (listener bound to all interfaces) */
 stream_session_t *
 stream_session_lookup6 (ip6_address_t * lcl, ip6_address_t * rmt,
-			u16 lcl_port, u16 rmt_port, u8 proto,
-			u32 my_thread_index)
+			u16 lcl_port, u16 rmt_port, u8 proto)
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
   session_kv6_t kv6;
+  stream_session_t *s;
   int rv;
 
   make_v6_ss_kv (&kv6, lcl, rmt, lcl_port, rmt_port, proto);
   rv = clib_bihash_search_inline_48_8 (&smm->v6_session_hash, &kv6);
   if (rv == 0)
-    return stream_session_get_tsi (kv6.value, my_thread_index);
+    return stream_session_get_from_handle (kv6.value);
 
   /* If nothing is found, check if any listener is available */
-  return stream_session_lookup_listener6 (lcl, lcl_port, proto);
+  if ((s = stream_session_lookup_listener6 (lcl, lcl_port, proto)))
+    return s;
+
+  /* Finally, try half-open connections */
+  rv = clib_bihash_search_inline_48_8 (&smm->v6_half_open_hash, &kv6);
+  if (rv == 0)
+    return stream_session_get_from_handle (kv6.value);
+  return 0;
 }
 
 stream_session_t *
@@ -340,7 +354,6 @@ stream_session_lookup_transport4 (ip4_address_t * lcl, ip4_address_t * rmt,
   rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
   if (rv == 0)
     return tp_vfts[proto].get_half_open (kv4.value & 0xFFFFFFFF);
-
   return 0;
 }
 
@@ -389,6 +402,8 @@ stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
   u64 value;
   u32 thread_index = tc->thread_index;
   int rv;
+
+  ASSERT (thread_index == vlib_get_thread_index ());
 
   if ((rv = segment_manager_alloc_session_fifos (sm, &server_rx_fifo,
 						 &server_tx_fifo,
@@ -854,6 +869,7 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
 
   s->app_index = server->index;
   s->listener_index = listener_index;
+  s->session_state = SESSION_STATE_ACCEPTING;
 
   /* Shoulder-tap the server */
   if (notify)
@@ -1088,6 +1104,27 @@ session_vpp_event_queue_allocate (session_manager_main_t * smm,
     }
 }
 
+session_type_t
+session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
+{
+  if (proto == TRANSPORT_PROTO_TCP)
+    {
+      if (is_ip4)
+	return SESSION_TYPE_IP4_TCP;
+      else
+	return SESSION_TYPE_IP6_TCP;
+    }
+  else
+    {
+      if (is_ip4)
+	return SESSION_TYPE_IP4_UDP;
+      else
+	return SESSION_TYPE_IP6_UDP;
+    }
+
+  return SESSION_N_TYPES;
+}
+
 static clib_error_t *
 session_manager_main_enable (vlib_main_t * vm)
 {
@@ -1131,14 +1168,13 @@ session_manager_main_enable (vlib_main_t * vm)
     session_vpp_event_queue_allocate (smm, i);
 
   /* $$$$ preallocate hack config parameter */
-  for (i = 0; i < 200000; i++)
+  for (i = 0; i < smm->preallocated_sessions; i++)
     {
-      stream_session_t *ss;
+      stream_session_t *ss __attribute__ ((unused));
       pool_get_aligned (smm->sessions[0], ss, CLIB_CACHE_LINE_BYTES);
-      memset (ss, 0, sizeof (*ss));
     }
 
-  for (i = 0; i < 200000; i++)
+  for (i = 0; i < smm->preallocated_sessions; i++)
     pool_put_index (smm->sessions[0], i);
 
   clib_bihash_init_16_8 (&smm->v4_session_hash, "v4 session table",
@@ -1208,9 +1244,10 @@ session_manager_main_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (session_manager_main_init)
-     static clib_error_t *session_config_fn (vlib_main_t * vm,
-					     unformat_input_t * input)
+VLIB_INIT_FUNCTION (session_manager_main_init);
+
+static clib_error_t *
+session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   session_manager_main_t *smm = &session_manager_main;
   u32 nitems;
@@ -1224,6 +1261,9 @@ VLIB_INIT_FUNCTION (session_manager_main_init)
 	  else
 	    clib_warning ("event queue length %d too small, ignored", nitems);
 	}
+      if (unformat (input, "preallocated-sessions %d",
+		    &smm->preallocated_sessions))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

@@ -290,7 +290,7 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
 {
   tcp_connection_t _tc, *tc = &_tc;
   sack_block_t *sacks;
-  int i, verbose = 0;
+  int i, verbose = 0, expected;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -326,8 +326,12 @@ tcp_test_sack_tx (vlib_main_t * vm, unformat_input_t * input)
   sacks = vec_dup (tc->snd_sacks);
 
   tcp_update_sack_list (tc, 1100, 1200);
-  TCP_TEST ((vec_len (tc->snd_sacks) == 5), "sack blocks %d expected %d",
-	    vec_len (tc->snd_sacks), 5);
+  if (verbose)
+    vlib_cli_output (vm, "add new segment [1100, 1200]\n%U",
+		     format_tcp_sacks, tc);
+  expected = 5 < TCP_MAX_SACK_BLOCKS ? 6 : 5;
+  TCP_TEST ((vec_len (tc->snd_sacks) == expected),
+	    "sack blocks %d expected %d", vec_len (tc->snd_sacks), expected);
   TCP_TEST ((tc->snd_sacks[0].start == 1100),
 	    "first sack block start %u expected %u", tc->snd_sacks[0].start,
 	    1100);

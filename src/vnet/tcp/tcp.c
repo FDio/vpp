@@ -74,8 +74,16 @@ static void
 tcp_connection_unbind (u32 listener_index)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
-  TCP_EVT_DBG (TCP_EVT_UNBIND,
-	       pool_elt_at_index (tm->listener_pool, listener_index));
+  tcp_connection_t *tc;
+
+  tc = pool_elt_at_index (tm->listener_pool, listener_index);
+
+  TCP_EVT_DBG (TCP_EVT_UNBIND, tc);
+
+  /* Poison the entry */
+  if (CLIB_DEBUG > 0)
+    memset (tc, 0xFA, sizeof (*tc));
+
   pool_put_index (tm->listener_pool, listener_index);
 }
 
@@ -124,9 +132,20 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 
   /* Check if half-open */
   if (tc->state == TCP_STATE_SYN_SENT)
-    pool_put (tm->half_open_connections, tc);
+    {
+      /* Poison the entry */
+      if (CLIB_DEBUG > 0)
+	memset (tc, 0xFA, sizeof (*tc));
+      pool_put (tm->half_open_connections, tc);
+    }
   else
-    pool_put (tm->connections[tc->c_thread_index], tc);
+    {
+      int thread_index = tc->c_thread_index;
+      /* Poison the entry */
+      if (CLIB_DEBUG > 0)
+	memset (tc, 0xFA, sizeof (*tc));
+      pool_put (tm->connections[thread_index], tc);
+    }
 }
 
 /**
@@ -168,13 +187,14 @@ tcp_connection_reset (tcp_connection_t * tc)
 
       /* Make sure all timers are cleared */
       tcp_connection_timers_reset (tc);
-
       stream_session_reset_notify (&tc->connection);
+
+      /* Wait for cleanup from session layer but not forever */
+      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
       break;
     case TCP_STATE_CLOSED:
       return;
     }
-
 }
 
 /**
@@ -278,6 +298,9 @@ tcp_allocate_local_port (tcp_main_t * tm, ip46_address_t * ip)
   tries = max - min;
   time_now = tcp_time_now ();
 
+  /* Only support active opens from thread 0 */
+  ASSERT (vlib_get_thread_index () == 0);
+
   /* Start at random point or max */
   pool_get (tm->local_endpoints, tep);
   clib_memcpy (&tep->ip, ip, sizeof (*ip));
@@ -343,6 +366,7 @@ tcp_connection_timers_reset (tcp_connection_t * tc)
     }
 }
 
+#if 0
 typedef struct ip4_tcp_hdr
 {
   ip4_header_t ip;
@@ -435,6 +459,7 @@ tcp_connection_fib_attach (tcp_connection_t * tc)
 
   tcp_connection_stack_on_fib_entry (tc);
 }
+#endif /* 0 */
 
 /** Initialize tcp connection variables
  *
@@ -447,7 +472,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   tcp_init_mss (tc);
   scoreboard_init (&tc->sack_sb);
   tcp_cc_init (tc);
-  tcp_connection_fib_attach (tc);
+  //  tcp_connection_fib_attach (tc);
 }
 
 int
@@ -485,14 +510,38 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   if (is_ip4)
     {
       ip4_address_t *ip4;
-      ip4 = ip_interface_get_first_ip (sw_if_index, 1);
-      lcl_addr.ip4.as_u32 = ip4->as_u32;
+      int index;
+      if (vec_len (tm->ip4_src_addresses))
+	{
+	  index = tm->last_v4_address_rotor++;
+	  if (tm->last_v4_address_rotor >= vec_len (tm->ip4_src_addresses))
+	    tm->last_v4_address_rotor = 0;
+	  lcl_addr.ip4.as_u32 = tm->ip4_src_addresses[index].as_u32;
+	}
+      else
+	{
+	  ip4 = ip_interface_get_first_ip (sw_if_index, 1);
+	  lcl_addr.ip4.as_u32 = ip4->as_u32;
+	}
     }
   else
     {
       ip6_address_t *ip6;
-      ip6 = ip_interface_get_first_ip (sw_if_index, 0);
-      clib_memcpy (&lcl_addr.ip6, ip6, sizeof (*ip6));
+      int index;
+
+      if (vec_len (tm->ip6_src_addresses))
+	{
+	  index = tm->last_v6_address_rotor++;
+	  if (tm->last_v6_address_rotor >= vec_len (tm->ip6_src_addresses))
+	    tm->last_v6_address_rotor = 0;
+	  clib_memcpy (&lcl_addr.ip6, &tm->ip6_src_addresses[index],
+		       sizeof (*ip6));
+	}
+      else
+	{
+	  ip6 = ip_interface_get_first_ip (sw_if_index, 0);
+	  clib_memcpy (&lcl_addr.ip6, ip6, sizeof (*ip6));
+	}
     }
 
   /* Allocate source port */
@@ -614,7 +663,7 @@ u8 *
 format_tcp_vars (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
-  s = format (s, " snd_una %u snd_nxt %u snd_una_max %u\n",
+  s = format (s, " snd_una %u snd_nxt %u snd_una_max %u",
 	      tc->snd_una - tc->iss, tc->snd_nxt - tc->iss,
 	      tc->snd_una_max - tc->iss);
   s = format (s, " rcv_nxt %u rcv_las %u\n",
@@ -628,12 +677,17 @@ format_tcp_vars (u8 * s, va_list * args)
   s = format (s, " cong %U ", format_tcp_congestion_status, tc);
   s = format (s, "cwnd %u ssthresh %u rtx_bytes %u bytes_acked %u\n",
 	      tc->cwnd, tc->ssthresh, tc->snd_rxt_bytes, tc->bytes_acked);
-  s = format (s, " prev_ssthresh %u snd_congestion %u dupack %u\n",
+  s = format (s, " prev_ssthresh %u snd_congestion %u dupack %u",
 	      tc->prev_ssthresh, tc->snd_congestion - tc->iss,
 	      tc->rcv_dupacks);
+  s = format (s, " limited_transmit %u\n", tc->limited_transmit - tc->iss);
+  s = format (s, " tsecr %u tsecr_last_ack %u\n", tc->rcv_opts.tsecr,
+	      tc->tsecr_last_ack);
   s = format (s, " rto %u rto_boff %u srtt %u rttvar %u rtt_ts %u ", tc->rto,
 	      tc->rto_boff, tc->srtt, tc->rttvar, tc->rtt_ts);
   s = format (s, "rtt_seq %u\n", tc->rtt_seq);
+  s = format (s, " tsval_recent %u tsval_recent_age %u\n", tc->tsval_recent,
+	      tcp_time_now () - tc->tsval_recent_age);
   s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb);
   if (vec_len (tc->snd_sacks))
     s = format (s, " sacks tx: %U\n", format_tcp_sacks, tc);
@@ -719,11 +773,21 @@ format_tcp_sacks (u8 * s, va_list * args)
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   sack_block_t *sacks = tc->snd_sacks;
   sack_block_t *block;
-  vec_foreach (block, sacks)
-  {
-    s = format (s, " start %u end %u\n", block->start - tc->irs,
-		block->end - tc->irs);
-  }
+  int i, len = 0;
+
+  len = vec_len (sacks);
+  for (i = 0; i < len - 1; i++)
+    {
+      block = &sacks[i];
+      s = format (s, " start %u end %u\n", block->start - tc->irs,
+		  block->end - tc->irs);
+    }
+  if (len)
+    {
+      block = &sacks[len - 1];
+      s = format (s, " start %u end %u", block->start - tc->irs,
+		  block->end - tc->irs);
+    }
   return s;
 }
 
@@ -796,14 +860,18 @@ tcp_session_send_mss (transport_connection_t * trans_conn)
 always_inline u32
 tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
 {
-  if (tc->snd_wnd < tc->snd_mss)
+  if (PREDICT_FALSE (tc->snd_wnd < tc->snd_mss))
     {
       return tc->snd_wnd <= snd_space ? tc->snd_wnd : 0;
     }
 
   /* If we can't write at least a segment, don't try at all */
-  if (snd_space < tc->snd_mss)
-    return 0;
+  if (PREDICT_FALSE (snd_space < tc->snd_mss))
+    {
+      if (snd_space > clib_min (tc->mss, tc->rcv_opts.mss) - TCP_HDR_LEN_MAX)
+	return snd_space;
+      return 0;
+    }
 
   /* round down to mss multiple */
   return snd_space - (snd_space % tc->snd_mss);
@@ -1042,6 +1110,8 @@ tcp_main_enable (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   clib_error_t *error = 0;
   u32 num_threads;
+  int thread, i;
+  tcp_connection_t *tc __attribute__ ((unused));
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
@@ -1073,6 +1143,27 @@ tcp_main_enable (vlib_main_t * vm)
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (tm->connections, num_threads - 1);
+
+  /*
+   * Preallocate connections
+   */
+  for (thread = 0; thread < num_threads; thread++)
+    {
+      for (i = 0; i < tm->preallocated_connections; i++)
+	pool_get (tm->connections[thread], tc);
+
+      for (i = 0; i < tm->preallocated_connections; i++)
+	pool_put_index (tm->connections[thread], i);
+    }
+
+  /*
+   * Preallocate half-open connections
+   */
+  for (i = 0; i < tm->preallocated_half_open_connections; i++)
+    pool_get (tm->half_open_connections, tc);
+
+  for (i = 0; i < tm->preallocated_half_open_connections; i++)
+    pool_put_index (tm->half_open_connections, i);
 
   /* Initialize per worker thread tx buffers (used for control messages) */
   vec_validate (tm->tx_buffers, num_threads - 1);
@@ -1116,7 +1207,6 @@ tcp_init (vlib_main_t * vm)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
 
-  tm->vlib_main = vm;
   tm->vnet_main = vnet_get_main ();
   tm->is_enabled = 0;
 
@@ -1124,6 +1214,97 @@ tcp_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (tcp_init);
+
+
+static clib_error_t *
+tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (input, "preallocated-connections %d",
+	   &tm->preallocated_connections))
+	;
+      else if (unformat (input, "preallocated-half-open-connections %d",
+			 &tm->preallocated_half_open_connections))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  return 0;
+}
+
+VLIB_CONFIG_FUNCTION (tcp_config_fn, "tcp");
+
+static clib_error_t *
+tcp_src_address (vlib_main_t * vm,
+		 unformat_input_t * input, vlib_cli_command_t * cmd_arg)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  ip4_address_t v4start, v4end;
+  ip6_address_t v6start, v6end;
+  int v4set = 0;
+  int v6set = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U - %U", unformat_ip4_address, &v4start,
+		    unformat_ip4_address, &v4end))
+	v4set = 1;
+      else if (unformat (input, "%U", unformat_ip4_address, &v4start))
+	{
+	  memcpy (&v4end, &v4start, sizeof (v4start));
+	  v4set = 1;
+	}
+      else if (unformat (input, "%U - %U", unformat_ip6_address, &v6start,
+			 unformat_ip4_address, &v6end))
+	v6set = 1;
+      else if (unformat (input, "%U", unformat_ip6_address, &v6start))
+	{
+	  memcpy (&v6end, &v6start, sizeof (v4start));
+	  v6set = 1;
+	}
+      else
+	break;
+    }
+
+  if (!v4set && !v6set)
+    return clib_error_return (0, "at least one v4 or v6 address required");
+
+  if (v4set)
+    {
+      u32 tmp;
+
+      do
+	{
+	  vec_add1 (tm->ip4_src_addresses, v4start);
+	  tmp = clib_net_to_host_u32 (v4start.as_u32);
+	  tmp++;
+	  v4start.as_u32 = clib_host_to_net_u32 (tmp);
+	}
+      while (clib_host_to_net_u32 (v4start.as_u32) <=
+	     clib_host_to_net_u32 (v4end.as_u32));
+    }
+  if (v6set)
+    {
+      clib_warning ("v6 src address list unimplemented...");
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (tcp_src_address_command, static) =
+{
+  .path = "tcp src-address",
+  .short_help = "tcp src-address <ip-addr> [- <ip-addr>] add src address range",
+  .function = tcp_src_address,
+};
+/* *INDENT-ON* */
+
+
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -22,12 +22,6 @@
 #include <vnet/session/application.h>
 #include <vnet/session/transport.h>
 
-typedef enum _session_api_proto
-{
-  SESSION_PROTO_TCP,
-  SESSION_PROTO_UDP
-} session_api_proto_t;
-
 typedef struct _vnet_app_attach_args_t
 {
   /** Binary API client index */
@@ -65,7 +59,7 @@ typedef struct _vnet_bind_args_t
     struct
     {
       transport_endpoint_t tep;
-      session_api_proto_t proto;
+      transport_proto_t proto;
     };
   };
 
@@ -98,7 +92,7 @@ typedef struct _vnet_connect_args
     struct
     {
       transport_endpoint_t tep;
-      session_api_proto_t proto;
+      transport_proto_t proto;
     };
   };
   u32 app_index;
@@ -120,6 +114,8 @@ typedef enum
   APP_EVT_QUEUE_SIZE,
   APP_OPTIONS_FLAGS,
   APP_OPTIONS_PREALLOC_FIFO_PAIRS,
+  APP_OPTIONS_PRIVATE_SEGMENT_COUNT,
+  APP_OPTIONS_PRIVATE_SEGMENT_SIZE,
   SESSION_OPTIONS_SEGMENT_SIZE,
   SESSION_OPTIONS_ADD_SEGMENT_SIZE,
   SESSION_OPTIONS_RX_FIFO_SIZE,
