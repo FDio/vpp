@@ -19,17 +19,20 @@
 vlib_node_registration_t tcp4_output_node;
 vlib_node_registration_t tcp6_output_node;
 
-typedef enum _tcp_output_nect
+typedef enum _tcp_output_next
 {
   TCP_OUTPUT_NEXT_DROP,
+  TCP_OUTPUT_NEXT_IP_LOOKUP,
   TCP_OUTPUT_N_NEXT
 } tcp_output_next_t;
 
 #define foreach_tcp4_output_next              	\
   _ (DROP, "error-drop")                        \
+  _ (IP_LOOKUP, "ip4-lookup")
 
 #define foreach_tcp6_output_next              	\
   _ (DROP, "error-drop")                        \
+  _ (IP_LOOKUP, "ip6-lookup")
 
 static char *tcp_error_strings[] = {
 #define tcp_error(n,s) s,
@@ -427,16 +430,16 @@ tcp_init_mss (tcp_connection_t * tc)
 #define tcp_get_free_buffer_index(tm, bidx)                             \
 do {                                                                    \
   u32 *my_tx_buffers, n_free_buffers;                                   \
-  u32 thread_index = vlib_get_thread_index();                             	\
-  my_tx_buffers = tm->tx_buffers[thread_index];                            \
+  u32 thread_index = vlib_get_thread_index();                           \
+  my_tx_buffers = tm->tx_buffers[thread_index];                         \
   if (PREDICT_FALSE(vec_len (my_tx_buffers) == 0))                      \
     {                                                                   \
       n_free_buffers = 32;      /* TODO config or macro */              \
       vec_validate (my_tx_buffers, n_free_buffers - 1);                 \
       _vec_len(my_tx_buffers) = vlib_buffer_alloc_from_free_list (      \
-          tm->vlib_main, my_tx_buffers, n_free_buffers,                 \
+       vlib_get_main(), my_tx_buffers, n_free_buffers,                  \
           VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);                         \
-      tm->tx_buffers[thread_index] = my_tx_buffers;                        \
+      tm->tx_buffers[thread_index] = my_tx_buffers;                     \
     }                                                                   \
   /* buffer shortage */                                                 \
   if (PREDICT_FALSE (vec_len (my_tx_buffers) == 0))                     \
@@ -445,12 +448,12 @@ do {                                                                    \
   _vec_len (my_tx_buffers) -= 1;                                        \
 } while (0)
 
-#define tcp_return_buffer(tm)						\
-do {									\
-  u32 *my_tx_buffers;							\
-  u32 thread_index = vlib_get_thread_index();                             	\
-  my_tx_buffers = tm->tx_buffers[thread_index];                          	\
-  _vec_len (my_tx_buffers) +=1;						\
+#define tcp_return_buffer(tm)                   \
+do {                                            \
+  u32 *my_tx_buffers;                           \
+  u32 thread_index = vlib_get_thread_index();   \
+  my_tx_buffers = tm->tx_buffers[thread_index]; \
+  _vec_len (my_tx_buffers) +=1;                 \
 } while (0)
 
 always_inline void
@@ -851,6 +854,13 @@ tcp_enqueue_to_output (vlib_main_t * vm, vlib_buffer_t * b, u32 bi, u8 is_ip4)
   /* Decide where to send the packet */
   next_index = is_ip4 ? tcp4_output_node.index : tcp6_output_node.index;
 
+  /* Initialize the trajectory trace, if configured */
+  if (VLIB_BUFFER_TRACE_TRAJECTORY > 0)
+    {
+      b->pre_data[0] = 1;
+      b->pre_data[1] = next_index;
+    }
+
   /* Enqueue the packet */
   f = vlib_get_frame_to_node (vm, next_index);
   to_next = vlib_frame_vector_args (f);
@@ -1232,7 +1242,7 @@ tcp_timer_persist_handler (u32 index)
   /* Nothing to send */
   if (n_bytes <= 0)
     {
-      clib_warning ("persist found nothing to send");
+      // clib_warning ("persist found nothing to send");
       tcp_return_buffer (tm);
       return;
     }
@@ -1448,7 +1458,7 @@ tcp46_output_inline (vlib_main_t * vm,
 	  tcp_connection_t *tc0;
 	  tcp_tx_trace_t *t0;
 	  tcp_header_t *th0 = 0;
-	  u32 error0 = TCP_ERROR_PKTS_SENT, next0 = TCP_OUTPUT_NEXT_DROP;
+	  u32 error0 = TCP_ERROR_PKTS_SENT, next0 = TCP_OUTPUT_NEXT_IP_LOOKUP;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -1460,6 +1470,7 @@ tcp46_output_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  tc0 = tcp_connection_get (vnet_buffer (b0)->tcp.connection_index,
 				    my_thread_index);
+	  ASSERT (tc0->state != 0xFA);
 	  if (PREDICT_FALSE (tc0 == 0 || tc0->state == TCP_STATE_CLOSED))
 	    {
 	      error0 = TCP_ERROR_INVALID_CONNECTION;
@@ -1527,26 +1538,8 @@ tcp46_output_inline (vlib_main_t * vm,
 	      tc0->rto_boff = 0;
 	    }
 
-	  /* Make sure we haven't lost route to our peer */
-	  if (PREDICT_FALSE (tc0->last_fib_check
-			     < tc0->snd_opts.tsval + TCP_FIB_RECHECK_PERIOD))
-	    {
-	      if (PREDICT_TRUE
-		  (tc0->c_rmt_fei == tcp_lookup_rmt_in_fib (tc0)))
-		{
-		  tc0->last_fib_check = tc0->snd_opts.tsval;
-		}
-	      else
-		{
-		  clib_warning ("lost connection to peer");
-		  tcp_connection_reset (tc0);
-		  goto done;
-		}
-	    }
-
-	  /* Use pre-computed dpo to set next node */
-	  next0 = tc0->c_rmt_dpo.dpoi_next_node;
-	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = tc0->c_rmt_dpo.dpoi_index;
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 
 	  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
 	done:
