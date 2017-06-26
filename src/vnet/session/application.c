@@ -174,6 +174,8 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   props->preallocated_fifo_pairs = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
   props->use_private_segment = options[APP_OPTIONS_FLAGS]
     & APP_OPTIONS_FLAGS_BUILTIN_APP;
+  props->private_segment_count = options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT];
+  props->private_segment_size = options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE];
 
   first_seg_size = options[SESSION_OPTIONS_SEGMENT_SIZE];
   if ((rv = segment_manager_init (sm, props, first_seg_size)))
