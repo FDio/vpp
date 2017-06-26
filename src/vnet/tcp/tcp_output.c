@@ -1232,7 +1232,7 @@ tcp_timer_persist_handler (u32 index)
   /* Nothing to send */
   if (n_bytes <= 0)
     {
-      clib_warning ("persist found nothing to send");
+      // clib_warning ("persist found nothing to send");
       tcp_return_buffer (tm);
       return;
     }
