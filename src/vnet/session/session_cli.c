@@ -47,7 +47,8 @@ format_stream_session (u8 * s, va_list * args)
 		  svm_fifo_max_enqueue (ss->server_tx_fifo),
 		  stream_session_get_index (ss));
 
-  if (ss->session_state == SESSION_STATE_READY)
+  if (ss->session_state == SESSION_STATE_READY
+      || ss->session_state == SESSION_STATE_ACCEPTING)
     {
       s = format (s, "%U", tp_vft->format_connection, ss->connection_index,
 		  ss->thread_index, verbose);
@@ -92,8 +93,14 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   session_manager_main_t *smm = &session_manager_main;
   int verbose = 0, i;
   stream_session_t *pool;
-  stream_session_t *s;
-  u8 *str = 0;
+  transport_connection_t *tc;
+  stream_session_t *s = 0;
+  u8 *str = 0, thread_index, one_session = 0;
+  ip4_address_t lcl_ip4, rmt_ip4;
+  u32 lcl_port = 0, rmt_port = 0;
+
+  memset (&lcl_ip4, 0, sizeof(lcl_ip4));
+  memset (&rmt_ip4, 0, sizeof(rmt_ip4));
 
   if (!smm->is_enabled)
     {
@@ -106,8 +113,32 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (input, "verbose"))
 	verbose = 1;
+      else if (unformat (input, "thread %d %U:%d %U:%d", &thread_index,
+			 unformat_ip4_address, &lcl_ip4, &lcl_port,
+			 unformat_ip4_address, &rmt_ip4, &rmt_port))
+	{
+	  one_session = 1;
+	}
+
       else
 	break;
+    }
+
+  if (one_session)
+    {
+      tc = stream_session_lookup_transport4 (&lcl_ip4, &rmt_ip4,
+					     clib_host_to_net_u16 (lcl_port),
+					     clib_host_to_net_u16 (rmt_port),
+					     SESSION_TYPE_IP4_TCP,
+					     thread_index);
+      if (tc)
+	s = stream_session_get_if_valid (tc->s_index, tc->thread_index);
+      if (s)
+	vlib_cli_output (vm, "%U", format_stream_session, s, 2);
+      else
+	vlib_cli_output (vm, "session does not exist");
+
+      return 0;
     }
 
   for (i = 0; i < vec_len (smm->sessions); i++)
@@ -146,6 +177,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else
 	vlib_cli_output (vm, "Thread %d: no active sessions", i);
+      vec_reset_length (str);
     }
   vec_free (str);
 
@@ -161,15 +193,22 @@ VLIB_CLI_COMMAND (show_session_command, static) =
 };
 /* *INDENT-ON* */
 
+static int
+clear_session (stream_session_t * s)
+{
+  application_t *server = application_get (s->app_index);
+  server->cb_fns.session_disconnect_callback (s);
+  return 0;
+}
+
 static clib_error_t *
 clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			  vlib_cli_command_t * cmd)
 {
   session_manager_main_t *smm = &session_manager_main;
-  u32 thread_index = 0;
+  u32 thread_index = 0, clear_all = 0;
   u32 session_index = ~0;
-  stream_session_t *pool, *session;
-  application_t *server;
+  stream_session_t **pool, *session;
 
   if (!smm->is_enabled)
     {
@@ -182,28 +221,36 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (input, "session %d", &session_index))
 	;
+      else if (unformat (input, "all"))
+	clear_all = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
 
-  if (session_index == ~0)
+  if (!clear_all && session_index == ~0)
     return clib_error_return (0, "session <nn> required, but not set.");
 
-  if (thread_index > vec_len (smm->sessions))
-    return clib_error_return (0, "thread %d out of range [0-%d]",
-			      thread_index, vec_len (smm->sessions));
+  if (session_index != ~0)
+    {
+      session = stream_session_get_if_valid (session_index, thread_index);
+      if (!session)
+	return clib_error_return (0, "no session %d on thread %d",
+				  session_index, thread_index);
+      clear_session (session);
+    }
 
-  pool = smm->sessions[thread_index];
-
-  if (pool_is_free_index (pool, session_index))
-    return clib_error_return (0, "session %d not active", session_index);
-
-  session = pool_elt_at_index (pool, session_index);
-  server = application_get (session->app_index);
-
-  /* Disconnect both app and transport */
-  server->cb_fns.session_disconnect_callback (session);
+  if (clear_all)
+    {
+      /* *INDENT-OFF* */
+      vec_foreach (pool, smm->sessions)
+	{
+	  pool_foreach(session, *pool, ({
+	    clear_session (session);
+	  }));
+	};
+      /* *INDENT-ON* */
+    }
 
   return 0;
 }
