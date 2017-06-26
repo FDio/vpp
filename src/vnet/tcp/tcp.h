@@ -348,6 +348,16 @@ typedef struct _tcp_main
   /* Flag that indicates if stack is on or off */
   u8 is_enabled;
 
+  /** Number of preallocated connections */
+  u32 preallocated_connections;
+  u32 preallocated_half_open_connections;
+
+  /** Vectors of src addresses. Optional unless one needs > 63K active-opens */
+  ip4_address_t *ip4_src_addresses;
+  u32 last_v4_address_rotor;
+  u32 last_v6_address_rotor;
+  ip6_address_t *ip6_src_addresses;
+
   /* convenience */
   vlib_main_t *vlib_main;
   vnet_main_t *vnet_main;
@@ -569,6 +579,7 @@ tcp_connection_force_ack (tcp_connection_t * tc, vlib_buffer_t * b)
 always_inline void
 tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
 {
+  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
   tc->timers[timer_id]
     = tw_timer_start_16t_2w_512sl (&tcp_main.timer_wheels[tc->c_thread_index],
 				   tc->c_c_index, timer_id, interval);
@@ -577,6 +588,7 @@ tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
 always_inline void
 tcp_timer_reset (tcp_connection_t * tc, u8 timer_id)
 {
+  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
   if (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID)
     return;
 
@@ -588,6 +600,7 @@ tcp_timer_reset (tcp_connection_t * tc, u8 timer_id)
 always_inline void
 tcp_timer_update (tcp_connection_t * tc, u8 timer_id, u32 interval)
 {
+  ASSERT (tc->c_thread_index == vlib_get_thread_index ());
   if (tc->timers[timer_id] != TCP_TIMER_HANDLE_INVALID)
     tw_timer_stop_16t_2w_512sl (&tcp_main.timer_wheels[tc->c_thread_index],
 				tc->timers[timer_id]);

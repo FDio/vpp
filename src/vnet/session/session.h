@@ -80,6 +80,10 @@ typedef enum
     SESSION_N_TYPES,
 } session_type_t;
 
+
+session_type_t
+session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4);
+
 /*
  * Application session state
  */
@@ -87,6 +91,7 @@ typedef enum
 {
   SESSION_STATE_LISTENING,
   SESSION_STATE_CONNECTING,
+  SESSION_STATE_ACCEPTING,
   SESSION_STATE_READY,
   SESSION_STATE_CLOSED,
   SESSION_STATE_N_STATES,
@@ -211,7 +216,11 @@ struct _session_manager_main
   /** Per transport rx function that can either dequeue or peek */
   session_fifo_rx_fn *session_tx_fns[SESSION_N_TYPES];
 
+  /** Session manager is enabled */
   u8 is_enabled;
+
+  /** Preallocate session config parameter */
+  u32 preallocated_sessions;
 
   /* Convenience */
   vlib_main_t *vlib_main;
@@ -247,13 +256,12 @@ stream_session_t *stream_session_lookup_listener4 (ip4_address_t * lcl,
 						   u16 lcl_port, u8 proto);
 stream_session_t *stream_session_lookup4 (ip4_address_t * lcl,
 					  ip4_address_t * rmt, u16 lcl_port,
-					  u16 rmt_port, u8 proto,
-					  u32 thread_index);
+					  u16 rmt_port, u8 proto);
 stream_session_t *stream_session_lookup_listener6 (ip6_address_t * lcl,
 						   u16 lcl_port, u8 proto);
 stream_session_t *stream_session_lookup6 (ip6_address_t * lcl,
 					  ip6_address_t * rmt, u16 lcl_port,
-					  u16 rmt_port, u8, u32 thread_index);
+					  u16 rmt_port, u8 proto);
 transport_connection_t
   * stream_session_lookup_transport4 (ip4_address_t * lcl,
 				      ip4_address_t * rmt, u16 lcl_port,
@@ -277,9 +285,24 @@ stream_session_get_tsi (u64 ti_and_si, u32 thread_index)
 			    ti_and_si & 0xFFFFFFFFULL);
 }
 
+always_inline u8
+stream_session_is_valid (u32 si, u8 thread_index)
+{
+  stream_session_t *s;
+  s = pool_elt_at_index (session_manager_main.sessions[thread_index], si);
+  if (s->thread_index != thread_index || s->session_index != si
+      || s->server_rx_fifo->master_session_index != si
+      || s->server_tx_fifo->master_session_index != si
+      || s->server_rx_fifo->master_thread_index != thread_index
+      || s->server_tx_fifo->master_thread_index != thread_index)
+    return 0;
+  return 1;
+}
+
 always_inline stream_session_t *
 stream_session_get (u32 si, u32 thread_index)
 {
+  ASSERT (stream_session_is_valid (si, thread_index));
   return pool_elt_at_index (session_manager_main.sessions[thread_index], si);
 }
 
@@ -292,6 +315,7 @@ stream_session_get_if_valid (u64 si, u32 thread_index)
   if (pool_is_free_index (session_manager_main.sessions[thread_index], si))
     return 0;
 
+  ASSERT (stream_session_is_valid (si, thread_index));
   return pool_elt_at_index (session_manager_main.sessions[thread_index], si);
 }
 

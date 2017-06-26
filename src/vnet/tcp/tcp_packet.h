@@ -168,6 +168,7 @@ typedef struct
 #define TCP_OPTION_LEN_TIMESTAMP        10
 #define TCP_OPTION_LEN_SACK_BLOCK        8
 
+#define TCP_HDR_LEN_MAX			60
 #define TCP_WND_MAX                     65535U
 #define TCP_MAX_WND_SCALE               14	/* See RFC 1323 */
 #define TCP_OPTS_ALIGN                  4

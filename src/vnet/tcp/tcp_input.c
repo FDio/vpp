@@ -251,6 +251,7 @@ tcp_update_timestamp (tcp_connection_t * tc, u32 seq, u32 seq_end)
   if (tcp_opts_tstamp (&tc->rcv_opts) && tc->tsval_recent
       && seq_leq (seq, tc->rcv_las) && seq_leq (tc->rcv_las, seq_end))
     {
+      ASSERT (timestamp_leq (tc->tsval_recent, tc->rcv_opts.tsval));
       tc->tsval_recent = tc->rcv_opts.tsval;
       tc->tsval_recent_age = tcp_time_now ();
     }
@@ -383,12 +384,9 @@ tcp_estimate_rtt (tcp_connection_t * tc, u32 mrtt)
   if (tc->srtt != 0)
     {
       err = mrtt - tc->srtt;
-//      tc->srtt += err >> 3;
 
       /* XXX Drop in RTT results in RTTVAR increase and bigger RTO.
        * The increase should be bound */
-//      tc->rttvar += ((int) clib_abs (err) - (int) tc->rttvar) >> 2;
-
       tc->srtt = clib_max ((int) tc->srtt + (err >> 3), 1);
       diff = (clib_abs (err) - (int) tc->rttvar) >> 2;
       tc->rttvar = clib_max ((int) tc->rttvar + diff, 1);
@@ -491,6 +489,14 @@ tcp_ack_is_dupack (tcp_connection_t * tc, vlib_buffer_t * b, u32 prev_snd_wnd,
 	  && (prev_snd_wnd == tc->snd_wnd));
 }
 
+static u8
+tcp_is_lost_fin (tcp_connection_t * tc)
+{
+  if ((tc->flags & TCP_CONN_FINSNT) && tc->snd_una_max - tc->snd_una == 1)
+    return 1;
+  return 0;
+}
+
 /**
  * Checks if ack is a congestion control event.
  */
@@ -503,7 +509,7 @@ tcp_ack_is_cc_event (tcp_connection_t * tc, vlib_buffer_t * b,
   *is_dack = tc->sack_sb.last_sacked_bytes
     || tcp_ack_is_dupack (tc, b, prev_snd_wnd, prev_snd_una);
 
-  return (*is_dack || tcp_in_cong_recovery (tc));
+  return ((*is_dack || tcp_in_cong_recovery (tc)) && !tcp_is_lost_fin (tc));
 }
 
 void
@@ -750,10 +756,20 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
        * last hole end */
       tmp = tc->rcv_opts.sacks[vec_len (tc->rcv_opts.sacks) - 1];
       last_hole = scoreboard_last_hole (sb);
-      if (seq_gt (tc->snd_una_max, sb->high_sacked)
-	  && seq_gt (tc->snd_una_max, last_hole->end))
-	last_hole->end = tc->snd_una_max;
-      /* keep track of max byte sacked for when the last hole
+      if (seq_gt (tc->snd_una_max, last_hole->end))
+	{
+	  if (seq_geq (last_hole->start, sb->high_sacked))
+	    {
+	      last_hole->end = tc->snd_una_max;
+	    }
+	  /* New hole after high sacked block */
+	  else if (seq_lt (sb->high_sacked, tc->snd_una_max))
+	    {
+	      scoreboard_insert_hole (sb, sb->tail, sb->high_sacked,
+				      tc->snd_una_max);
+	    }
+	}
+      /* Keep track of max byte sacked for when the last hole
        * is acked */
       if (seq_gt (tmp.end, sb->high_sacked))
 	sb->high_sacked = tmp.end;
@@ -764,7 +780,6 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   while (hole && blk_index < vec_len (tc->rcv_opts.sacks))
     {
       blk = &tc->rcv_opts.sacks[blk_index];
-
       if (seq_leq (blk->start, hole->start))
 	{
 	  /* Block covers hole. Remove hole */
@@ -784,6 +799,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		    }
 		  else if (!next_hole)
 		    {
+		      ASSERT (seq_geq (sb->high_sacked, ack));
 		      sb->snd_una_adv = sb->high_sacked - ack;
 		      sb->last_bytes_delivered += sb->high_sacked - hole->end;
 		    }
@@ -819,7 +835,6 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	    {
 	      hole->end = blk->start;
 	    }
-
 	  hole = scoreboard_next_hole (sb, hole);
 	}
     }
@@ -827,10 +842,13 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
   scoreboard_update_bytes (tc, sb);
   sb->last_sacked_bytes = sb->sacked_bytes
     - (old_sacked_bytes - sb->last_bytes_delivered);
+  ASSERT (sb->last_sacked_bytes <= sb->sacked_bytes);
   ASSERT (sb->sacked_bytes == 0
 	  || sb->sacked_bytes < tc->snd_una_max - seq_max (tc->snd_una, ack));
   ASSERT (sb->last_sacked_bytes + sb->lost_bytes <= tc->snd_una_max
 	  - seq_max (tc->snd_una, ack));
+  ASSERT (sb->head == TCP_INVALID_SACK_HOLE_INDEX || tcp_in_recovery (tc)
+	  || sb->holes[sb->head].start == ack + sb->snd_una_adv);
 }
 
 /**
@@ -916,7 +934,8 @@ tcp_cc_congestion_undo (tcp_connection_t * tc)
 static u8
 tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
 {
-  return (tc->snd_rxt_ts
+  return (tcp_in_recovery (tc)
+	  && tc->snd_rxt_ts
 	  && tcp_opts_tstamp (&tc->rcv_opts)
 	  && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
 }
@@ -994,6 +1013,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
     {
       ASSERT (tc->snd_una != tc->snd_una_max
 	      || tc->sack_sb.last_sacked_bytes);
+
       tc->rcv_dupacks++;
 
       if (tc->rcv_dupacks > TCP_DUPACK_THRESHOLD && !tc->bytes_acked)
@@ -1012,17 +1032,20 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	      goto partial_ack_test;
 	    }
 
-	  /* If of of the two conditions lower hold, reset dupacks
-	   * 1) Cumulative ack does not cover more than congestion threshold,
-	   *    and the following doesn't hold: the congestion window is
-	   *    greater than SMSS bytes and the difference between highest_ack
-	   *    and prev_highest_ack is at most 4*SMSS bytes (XXX)
-	   * 2) RFC6582 heuristic to avoid multiple fast retransmits
+	  /* If of of the two conditions lower hold, reset dupacks because
+	   * we're probably after timeout (RFC6582 heuristics).
+	   * If Cumulative ack does not cover more than congestion threshold,
+	   * and:
+	   * 1) The following doesn't hold: The congestion window is greater
+	   *    than SMSS bytes and the difference between highest_ack
+	   *    and prev_highest_ack is at most 4*SMSS bytes
+	   * 2) Echoed timestamp in the last non-dup ack does not equal the
+	   *    stored timestamp
 	   */
-	  if ((seq_gt (tc->snd_una, tc->snd_congestion)
-	       || !(tc->cwnd > tc->snd_mss
-		    && tc->bytes_acked <= 4 * tc->snd_mss))
-	      || tc->rcv_opts.tsecr != tc->tsecr_last_ack)
+	  if (seq_leq (tc->snd_una, tc->snd_congestion)
+	      && ((!(tc->cwnd > tc->snd_mss
+		     && tc->bytes_acked <= 4 * tc->snd_mss))
+		  || (tc->rcv_opts.tsecr != tc->tsecr_last_ack)))
 	    {
 	      tc->rcv_dupacks = 0;
 	      return;
@@ -1038,6 +1061,7 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	   * three segments that have left the network and should've been
 	   * buffered at the receiver XXX */
 	  tc->cwnd = tc->ssthresh + tc->rcv_dupacks * tc->snd_mss;
+	  ASSERT (tc->cwnd >= tc->snd_mss);
 
 	  /* If cwnd allows, send more data */
 	  if (tcp_opts_sack_permitted (&tc->rcv_opts)
@@ -1112,7 +1136,7 @@ partial_ack:
 	  >= tc->sack_sb.last_bytes_delivered);
   rxt_delivered = tc->bytes_acked + tc->sack_sb.snd_una_adv
     - tc->sack_sb.last_bytes_delivered;
-  if (rxt_delivered && seq_gt (tc->sack_sb.high_rxt, tc->snd_una))
+  if (0 && rxt_delivered && seq_gt (tc->sack_sb.high_rxt, tc->snd_una))
     {
       /* If we have sacks and we haven't gotten an ack beyond high_rxt,
        * remove sacked bytes delivered */
@@ -1301,6 +1325,8 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 {
   int written;
 
+  ASSERT (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
+
   /* Pure ACK. Update rcv_nxt and be done. */
   if (PREDICT_FALSE (data_len == 0))
     {
@@ -1450,6 +1476,7 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
 	  /* Chop off the bytes in the past */
 	  n_bytes_to_drop = tc->rcv_nxt - vnet_buffer (b)->tcp.seq_number;
 	  n_data_bytes -= n_bytes_to_drop;
+	  vnet_buffer (b)->tcp.seq_number = tc->rcv_nxt;
 	  vlib_buffer_advance (b, n_bytes_to_drop);
 
 	  goto in_order;
@@ -1912,11 +1939,12 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  goto drop;
 		}
 
-	      stream_session_init_fifos_pointers (&new_tc0->connection,
-						  new_tc0->irs + 1,
-						  new_tc0->iss + 1);
 	      /* Make sure after data segment processing ACK is sent */
 	      new_tc0->flags |= TCP_CONN_SNDACK;
+
+	      /* Update rtt with the syn-ack sample */
+	      new_tc0->bytes_acked = 1;
+	      tcp_update_rtt (new_tc0, vnet_buffer (b0)->tcp.ack_number);
 	    }
 	  /* SYN: Simultaneous open. Change state to SYN-RCVD and send SYN-ACK */
 	  else
@@ -1932,9 +1960,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  goto drop;
 		}
 
-	      stream_session_init_fifos_pointers (&new_tc0->connection,
-						  new_tc0->irs + 1,
-						  new_tc0->iss + 1);
+	      tc0->rtt_ts = 0;
+
 	      tcp_make_synack (new_tc0, b0);
 	      next0 = tcp_next_output (is_ip4);
 
@@ -2151,8 +2178,6 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		<< tc0->rcv_opts.wscale;
 	      tc0->snd_wl1 = vnet_buffer (b0)->tcp.seq_number;
 	      tc0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
-
-	      /* Shoulder tap the server */
 	      stream_session_accept_notify (&tc0->connection);
 
 	      /* Reset SYN-ACK retransmit timer */
@@ -2175,6 +2200,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* If FIN is ACKed */
 	      if (tc0->snd_una == tc0->snd_una_max)
 		{
+		  ASSERT (tcp_fin (tcp0));
 		  tc0->state = TCP_STATE_FIN_WAIT_2;
 		  /* Stop all timers, 2MSL will be set lower */
 		  tcp_connection_timers_reset (tc0);
@@ -2545,10 +2571,6 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_make_synack (child0, b0);
 	  next0 = tcp_next_output (is_ip4);
 
-	  /* Init fifo pointers after we have iss */
-	  stream_session_init_fifos_pointers (&child0->connection,
-					      child0->irs + 1,
-					      child0->iss + 1);
 	drop:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -2886,9 +2908,12 @@ do {                                                       	\
   _(LISTEN, TCP_FLAG_SYN, TCP_INPUT_NEXT_LISTEN, TCP_ERROR_NONE);
   _(LISTEN, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_NONE);
   _(LISTEN, TCP_FLAG_RST, TCP_INPUT_NEXT_DROP, TCP_ERROR_NONE);
+  _(LISTEN, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET,
+    TCP_ERROR_NONE);
   /* ACK for for a SYN-ACK -> tcp-rcv-process. */
   _(SYN_RCVD, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(SYN_RCVD, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(SYN_RCVD, TCP_FLAG_SYN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   /* SYN-ACK for a SYN */
   _(SYN_SENT, TCP_FLAG_SYN | TCP_FLAG_ACK, TCP_INPUT_NEXT_SYN_SENT,
     TCP_ERROR_NONE);
@@ -2905,12 +2930,14 @@ do {                                                       	\
   _(ESTABLISHED, TCP_FLAG_RST, TCP_INPUT_NEXT_ESTABLISHED, TCP_ERROR_NONE);
   _(ESTABLISHED, TCP_FLAG_RST | TCP_FLAG_ACK, TCP_INPUT_NEXT_ESTABLISHED,
     TCP_ERROR_NONE);
+  _(ESTABLISHED, TCP_FLAG_SYN, TCP_INPUT_NEXT_ESTABLISHED, TCP_ERROR_NONE);
   /* ACK or FIN-ACK to our FIN */
   _(FIN_WAIT_1, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(FIN_WAIT_1, TCP_FLAG_ACK | TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS,
     TCP_ERROR_NONE);
   /* FIN in reply to our FIN from the other side */
   _(FIN_WAIT_1, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
+  _(FIN_WAIT_1, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   /* FIN confirming that the peer (app) has closed */
   _(FIN_WAIT_2, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(FIN_WAIT_2, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
@@ -2929,6 +2956,8 @@ do {                                                       	\
     TCP_ERROR_NONE);
   _(CLOSED, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_CONNECTION_CLOSED);
   _(CLOSED, TCP_FLAG_RST, TCP_INPUT_NEXT_DROP, TCP_ERROR_CONNECTION_CLOSED);
+  _(CLOSED, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET,
+    TCP_ERROR_CONNECTION_CLOSED);
 #undef _
 }
 

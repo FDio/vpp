@@ -225,6 +225,12 @@ make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * t)
 		 t->rmt_port, t->proto);
 }
 
+typedef enum _transport_proto
+{
+  TRANSPORT_PROTO_TCP,
+  TRANSPORT_PROTO_UDP
+} transport_proto_t;
+
 typedef struct _transport_endpoint
 {
   ip46_address_t ip;	/** ip address */
