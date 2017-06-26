@@ -4192,6 +4192,59 @@ ethernet_ndp_change_mac (u32 sw_if_index)
   /* *INDENT-ON* */
 }
 
+void
+send_ip6_na (vlib_main_t * vm, vnet_hw_interface_t * hi)
+{
+  ip6_main_t *i6m = &ip6_main;
+  u32 sw_if_index = hi->sw_if_index;
+  ip6_address_t *ip6_addr = ip6_interface_first_address (i6m, sw_if_index);
+  if (ip6_addr)
+    {
+      clib_warning
+	("Sending unsolicitated NA IP6 address %U on sw_if_idex %d",
+	 format_ip6_address, ip6_addr, sw_if_index);
+
+      /* Form unsolicited neighbor advertisement packet from NS pkt template */
+      int bogus_length;
+      u32 bi = 0;
+      icmp6_neighbor_solicitation_header_t *h =
+	vlib_packet_template_get_packet (vm,
+					 &i6m->discover_neighbor_packet_template,
+					 &bi);
+      ip6_set_reserved_multicast_address (&h->ip.dst_address,
+					  IP6_MULTICAST_SCOPE_link_local,
+					  IP6_MULTICAST_GROUP_ID_all_hosts);
+      h->ip.src_address = ip6_addr[0];
+      h->neighbor.icmp.type = ICMP6_neighbor_advertisement;
+      h->neighbor.target_address = ip6_addr[0];
+      h->neighbor.advertisement_flags = clib_host_to_net_u32
+	(ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
+      clib_memcpy (h->link_layer_option.ethernet_address,
+		   hi->hw_address, vec_len (hi->hw_address));
+      h->neighbor.icmp.checksum =
+	ip6_tcp_udp_icmp_compute_checksum (vm, 0, &h->ip, &bogus_length);
+      ASSERT (bogus_length == 0);
+
+      /* Setup MAC header with IP6 Etype and mcast DMAC */
+      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+      vlib_buffer_advance (b, -sizeof (ethernet_header_t));
+      ethernet_header_t *e = vlib_buffer_get_current (b);
+      e->type = clib_host_to_net_u16 (ETHERNET_TYPE_IP6);
+      clib_memcpy (e->src_address, hi->hw_address, sizeof (e->src_address));
+      ip6_multicast_ethernet_address (e->dst_address,
+				      IP6_MULTICAST_GROUP_ID_all_hosts);
+
+      /* Send unsolicited ND advertisement packet out the specified interface */
+      vnet_buffer (b)->sw_if_index[VLIB_RX] =
+	vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index;
+      vlib_frame_t *f = vlib_get_frame_to_node (vm, hi->output_node_index);
+      u32 *to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi;
+      f->n_vectors = 1;
+      vlib_put_frame_to_node (vm, hi->output_node_index, f);
+    }
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

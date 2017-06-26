@@ -173,6 +173,8 @@ typedef struct
 #define DPDK_DEVICE_FLAG_MAYBE_MULTISEG     (1 << 4)
 #define DPDK_DEVICE_FLAG_HAVE_SUBIF         (1 << 5)
 #define DPDK_DEVICE_FLAG_HQOS               (1 << 6)
+#define DPDK_DEVICE_FLAG_BOND_SLAVE         (1 << 7)
+#define DPDK_DEVICE_FLAG_BOND_SLAVE_UP      (1 << 8)
 
   u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -196,6 +198,10 @@ typedef struct
 
   /* af_packet or BondEthernet instance number */
   u8 port_id;
+
+  /* Bonded interface port# of a slave -
+     only valid if DPDK_DEVICE_FLAG_BOND_SLAVE bit is set */
+  u8 bond_port;
 
   struct rte_eth_link link;
   f64 time_last_link_update;
@@ -408,6 +414,8 @@ typedef struct
 void dpdk_device_setup (dpdk_device_t * xd);
 void dpdk_device_start (dpdk_device_t * xd);
 void dpdk_device_stop (dpdk_device_t * xd);
+void dpdk_port_state_callback (uint8_t port_id,
+			       enum rte_eth_event_type type, void *param);
 
 #define foreach_dpdk_error						\
   _(NONE, "no error")							\

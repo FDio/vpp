@@ -12,13 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <vnet/vnet.h>
 #include <vppinfra/vec.h>
 #include <vppinfra/format.h>
 #include <vlib/unix/cj.h>
 #include <assert.h>
 
+#include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ethernet/arp_packet.h>
 #include <dpdk/device/dpdk.h>
 
 #include <dpdk/device/dpdk_priv.h>
@@ -175,6 +178,65 @@ dpdk_device_stop (dpdk_device_t * xd)
 	  u8 dpdk_port = slink[--nlink];
 	  rte_eth_dev_stop (dpdk_port);
 	}
+    }
+}
+
+void
+dpdk_port_state_callback (uint8_t port_id,
+			  enum rte_eth_event_type type, void *param)
+{
+  struct rte_eth_link link;
+  vlib_main_t *vm = vlib_get_main ();
+  dpdk_device_t *xd = &dpdk_main.devices[port_id];
+
+  RTE_SET_USED (param);
+  if (type != RTE_ETH_EVENT_INTR_LSC)
+    {
+      clib_warning ("Unknown event %d received for port %d", type, port_id);
+      return;
+    }
+
+  rte_eth_link_get_nowait (port_id, &link);
+  u8 link_up = link.link_status;
+
+  if (xd->flags & DPDK_DEVICE_FLAG_BOND_SLAVE)
+    {
+      u8 bd_port = xd->bond_port;
+      int bd_mode = rte_eth_bond_mode_get (bd_port);
+
+      if ((link_up && !(xd->flags & DPDK_DEVICE_FLAG_BOND_SLAVE_UP)) ||
+	  (!link_up && (xd->flags & DPDK_DEVICE_FLAG_BOND_SLAVE_UP)))
+	{
+	  clib_warning ("Port %d state to %s, "
+			"slave of port %d BondEthernet%d in mode %d",
+			port_id, (link_up) ? "UP" : "DOWN",
+			bd_port, xd->port_id, bd_mode);
+	  if (bd_mode == BONDING_MODE_ACTIVE_BACKUP)
+	    {
+	      rte_eth_link_get_nowait (bd_port, &link);
+	      if (link.link_status)	/* bonded interface up */
+		{
+		  u32 hw_if_index = dpdk_main.devices[bd_port].hw_if_index;
+		  vlib_process_signal_event
+		    (vm, send_garp_na_process_node_index, SEND_GARP_NA,
+		     hw_if_index);
+		}
+	    }
+	}
+      if (link_up)		/* Update slave link status */
+	xd->flags |= DPDK_DEVICE_FLAG_BOND_SLAVE_UP;
+      else
+	xd->flags &= ~DPDK_DEVICE_FLAG_BOND_SLAVE_UP;
+    }
+  else				/* Should not happen as callback not setup for "normal" links */
+    {
+      if (link_up)
+	clib_warning ("Port %d Link Up - speed %u Mbps - %s",
+		      port_id, (unsigned) link.link_speed,
+		      (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
+		      "full-duplex" : "half-duplex");
+      else
+	clib_warning ("Port %d Link Down\n\n", port_id);
     }
 }
 
