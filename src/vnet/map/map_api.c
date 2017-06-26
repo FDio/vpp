@@ -203,6 +203,12 @@ vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t * mp)
   rmp->context = mp->context;
   rmp->retval = 0;
 
+  if (pool_elts (mm->domains) == 0)
+    {
+      rmp->retval = -1;
+      goto out;
+    }
+
   memset (total_pkts, 0, sizeof (total_pkts));
   memset (total_bytes, 0, sizeof (total_bytes));
 
@@ -239,6 +245,7 @@ vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t * mp)
     clib_host_to_net_u64 (map_error_counter_get
 			  (ip4_map_node.index, MAP_ERROR_DECAP_SEC_CHECK));
 
+out:
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
