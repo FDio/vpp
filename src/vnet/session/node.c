@@ -378,24 +378,12 @@ session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 					 n_tx_pkts, 0);
 }
 
-stream_session_t *
-session_event_get_session (session_fifo_event_t * e0, u8 thread_index)
+always_inline stream_session_t *
+session_event_get_session (session_fifo_event_t * e, u8 thread_index)
 {
-  svm_fifo_t *f0;
-  stream_session_t *s0;
-  u32 session_index0;
-
-  f0 = e0->fifo;
-  session_index0 = f0->master_session_index;
-
-  /* $$$ add multiple event queues, per vpp worker thread */
-  ASSERT (f0->master_thread_index == thread_index);
-
-  s0 = stream_session_get_if_valid (session_index0, thread_index);
-
-  ASSERT (s0 == 0 || s0->thread_index == thread_index);
-
-  return s0;
+  ASSERT (e->fifo->master_thread_index == thread_index);
+  return stream_session_get_if_valid (e->fifo->master_session_index,
+				      thread_index);
 }
 
 void
@@ -569,7 +557,6 @@ skip_dequeue:
 	case FIFO_EVENT_BUILTIN_RX:
 	  s0 = session_event_get_session (e0, my_thread_index);
 	  svm_fifo_unset_event (s0->server_rx_fifo);
-	  /* Get session's server */
 	  app = application_get (s0->app_index);
 	  app->cb_fns.builtin_server_rx_callback (s0);
 	  break;
