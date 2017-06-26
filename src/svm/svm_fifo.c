@@ -113,7 +113,7 @@ svm_fifo_create (u32 data_size_in_bytes)
   if (f == 0)
     return 0;
 
-  memset (f, 0, sizeof (*f) + data_size_in_bytes);
+  memset (f, 0, sizeof (*f));
   f->nitems = data_size_in_bytes;
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
 
