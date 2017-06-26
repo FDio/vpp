@@ -129,7 +129,7 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
   ssvm_pop_heap (oldheap);
 
   sh->ready = 1;
-  a->new_segment_index = s - sm->segments;
+  vec_add1 (a->new_segment_indices, s - sm->segments);
   return (0);
 }
 
@@ -141,35 +141,77 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
   svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
   ssvm_shared_header_t *sh;
   svm_fifo_segment_header_t *fsh;
+  void *oldheap;
+  u8 **heaps = 0;
+  int segment_count = 1;
+  int i;
 
-  /* Allocate a fresh segment */
-  pool_get (sm->segments, s);
-  memset (s, 0, sizeof (*s));
+  if (a->private_segment_count && a->private_segment_size)
+    {
+      void *mem;
+      u8 *heap;
+      u32 pagesize = clib_mem_get_page_size ();
+      u32 rnd_size;
 
-  s->ssvm.ssvm_size = ~0;
-  s->ssvm.i_am_master = 1;
-  s->ssvm.my_pid = getpid ();
-  s->ssvm.name = (u8 *) a->segment_name;
-  s->ssvm.requested_va = ~0;
+      for (i = 0; i < a->private_segment_count; i++)
+	{
+	  rnd_size = (a->private_segment_size + (pagesize - 1)) & ~pagesize;
 
-  /* Allocate a [sic] shared memory header, in process memory... */
-  sh = clib_mem_alloc_aligned (sizeof (*sh), CLIB_CACHE_LINE_BYTES);
-  s->ssvm.sh = sh;
+	  mem = mmap (0, rnd_size, PROT_READ | PROT_WRITE,
+		      MAP_PRIVATE | MAP_ANONYMOUS,
+		      -1 /* fd */ , 0 /* offset */ );
 
-  memset (sh, 0, sizeof (*sh));
-  sh->heap = clib_mem_get_heap ();
+	  if (mem == MAP_FAILED)
+	    {
+	      clib_unix_warning ("mmap");
+	      return -1;
+	    }
 
-  /* Set up svm_fifo_segment shared header */
-  fsh = clib_mem_alloc (sizeof (*fsh));
-  memset (fsh, 0, sizeof (*fsh));
-  sh->opaque[0] = fsh;
-  s->h = fsh;
-  fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
+	  heap = mheap_alloc (mem, rnd_size);
+	  vec_add1 (heaps, heap);
+	}
+      segment_count = a->private_segment_count;
+    }
 
-  preallocate_fifo_pairs (fsh, a);
 
-  sh->ready = 1;
-  a->new_segment_index = s - sm->segments;
+  /* Allocate segments */
+  for (i = 0; i < segment_count; i++)
+    {
+      pool_get (sm->segments, s);
+      memset (s, 0, sizeof (*s));
+
+      s->ssvm.ssvm_size = ~0;
+      s->ssvm.i_am_master = 1;
+      s->ssvm.my_pid = getpid ();
+      s->ssvm.name = (u8 *) a->segment_name;
+      s->ssvm.requested_va = ~0;
+
+      /* Allocate a [sic] shared memory header, in process memory... */
+      sh = clib_mem_alloc_aligned (sizeof (*sh), CLIB_CACHE_LINE_BYTES);
+      s->ssvm.sh = sh;
+
+      memset (sh, 0, sizeof (*sh));
+      sh->heap = a->private_segment_count ? heaps[i] : clib_mem_get_heap ();
+
+      /* Set up svm_fifo_segment shared header */
+      fsh = clib_mem_alloc (sizeof (*fsh));
+      memset (fsh, 0, sizeof (*fsh));
+      sh->opaque[0] = fsh;
+      s->h = fsh;
+      fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
+
+      if (a->private_segment_count)
+	{
+	  oldheap = clib_mem_get_heap ();
+	  clib_mem_set_heap (sh->heap);
+	  preallocate_fifo_pairs (fsh, a);
+	  clib_mem_set_heap (oldheap);
+	}
+
+      sh->ready = 1;
+      vec_add1 (a->new_segment_indices, s - sm->segments);
+    }
+  vec_free (heaps);
   return (0);
 }
 
@@ -205,7 +247,7 @@ svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
   fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
   s->h = fsh;
 
-  a->new_segment_index = s - sm->segments;
+  vec_add1 (a->new_segment_indices, s - sm->segments);
   return (0);
 }
 
