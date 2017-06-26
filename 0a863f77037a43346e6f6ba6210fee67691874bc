@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "da6255ed_c651f3d9",
+        "filename": "src/vlibmemory/memory_client.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 401,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-06-26T11:37:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa5d592f_d82c244d",
+      "revId": "0a863f77037a43346e6f6ba6210fee67691874bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa5d592f_b83170a4",
         "filename": "src/vlibmemory/memory_shared.c",
         "patchSetId": 12
@@ -30,6 +48,24 @@
       "writtenOn": "2017-06-24T10:53:12Z",
       "side": 1,
       "message": "const",
+      "revId": "0a863f77037a43346e6f6ba6210fee67691874bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da6255ed_a65effe7",
+        "filename": "src/vlibmemory/memory_shared.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-06-26T11:37:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa5d592f_b83170a4",
       "revId": "0a863f77037a43346e6f6ba6210fee67691874bc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "da6255ed_8663fbb0",
+        "filename": "src/vpp-api/vapi/vapi.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 53,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-06-26T11:37:53Z",
+      "side": 1,
+      "message": "by making it \"opaque\", one doesn\u0027t need to think about pointers or values or what\u0027s the proper form. just declare it as a variable and use it as such.",
+      "parentUuid": "fa5d592f_b8bf30d0",
+      "revId": "0a863f77037a43346e6f6ba6210fee67691874bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "fa5d592f_78b9b8e8",
         "filename": "src/vpp-api/vapi/vapi.h",
         "patchSetId": 12
@@ -64,6 +118,24 @@
       "writtenOn": "2017-06-24T10:53:12Z",
       "side": 1,
       "message": "separate typedef for the function pointer please. like you did above.",
+      "revId": "0a863f77037a43346e6f6ba6210fee67691874bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da6255ed_665807fb",
+        "filename": "src/vpp-api/vapi/vapi.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 230,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-06-26T11:37:53Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "fa5d592f_78b9b8e8",
       "revId": "0a863f77037a43346e6f6ba6210fee67691874bc",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
