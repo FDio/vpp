@@ -30,7 +30,7 @@ segment_manager_t *segment_managers = 0;
 /**
  * Process private segment index
  */
-u32 private_segment_index = ~0;
+u32 *private_segment_indices;
 
 /**
  * Default fifo and segment size. TODO config.
@@ -70,7 +70,8 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
       return VNET_API_ERROR_SVM_SEGMENT_CREATE_FAIL;
     }
 
-  vec_add1 (sm->segment_indices, ca->new_segment_index);
+  vec_append (sm->segment_indices, ca->new_segment_indices);
+  vec_free (ca->new_segment_indices);
 
   return 0;
 }
@@ -111,22 +112,23 @@ static void
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
 
-  if (private_segment_index != ~0)
+  if (private_segment_indices)
     return;
 
   memset (a, 0, sizeof (*a));
   a->segment_name = "process-private-segment";
   a->segment_size = ~0;
-  a->new_segment_index = ~0;
   a->rx_fifo_size = props->rx_fifo_size;
   a->tx_fifo_size = props->tx_fifo_size;
   a->preallocated_fifo_pairs = props->preallocated_fifo_pairs;
+  a->private_segment_count = props->private_segment_count;
+  a->private_segment_size = props->private_segment_size;
 
   if (svm_fifo_segment_create_process_private (a))
     clib_warning ("Failed to create process private segment");
 
-  private_segment_index = a->new_segment_index;
-  ASSERT (private_segment_index != ~0);
+  private_segment_indices = a->new_segment_indices;
+  ASSERT (vec_len (private_segment_indices));
 }
 
 /**
@@ -156,10 +158,10 @@ segment_manager_init (segment_manager_t * sm,
     }
   else
     {
-      if (private_segment_index == ~0)
+      if (vec_len (private_segment_indices) == 0)
 	segment_manager_alloc_process_private_segment (properties);
-      ASSERT (private_segment_index != ~0);
-      vec_add1 (sm->segment_indices, private_segment_index);
+      ASSERT (vec_len (private_segment_indices));
+      vec_append (sm->segment_indices, private_segment_indices);
     }
 
   clib_spinlock_init (&sm->lockp);
@@ -320,7 +322,7 @@ again:
   /* See if we're supposed to create another segment */
   if (*server_rx_fifo == 0)
     {
-      if (sm->properties->add_segment)
+      if (sm->properties->add_segment && !sm->properties->use_private_segment)
 	{
 	  if (added_a_segment)
 	    {
@@ -378,6 +380,10 @@ segment_manager_dealloc_fifos (u32 svm_segment_index, svm_fifo_t * rx_fifo,
 			      FIFO_SEGMENT_RX_FREELIST);
   svm_fifo_segment_free_fifo (fifo_segment, tx_fifo,
 			      FIFO_SEGMENT_TX_FREELIST);
+
+  /* Don't try to delete process-private segments */
+  if (sm->properties->private_segment_count > 0)
+    return;
 
   /* Remove segment only if it holds no fifos and not the first */
   if (sm->segment_indices[0] != svm_segment_index
