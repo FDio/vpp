@@ -102,6 +102,15 @@ ssvm_lock (ssvm_shared_header_t * h, u32 my_pid, u32 tag)
 }
 
 always_inline void
+ssvm_lock_non_recursive (ssvm_shared_header_t * h, u32 tag)
+{
+  while (__sync_lock_test_and_set (&h->lock, 1))
+    ;
+
+  h->tag = tag;
+}
+
+always_inline void
 ssvm_unlock (ssvm_shared_header_t * h)
 {
   if (--h->recursion_count == 0)
@@ -111,6 +120,14 @@ ssvm_unlock (ssvm_shared_header_t * h)
       CLIB_MEMORY_BARRIER ();
       h->lock = 0;
     }
+}
+
+always_inline void
+ssvm_unlock_non_recursive (ssvm_shared_header_t * h)
+{
+  h->tag = 0;
+  CLIB_MEMORY_BARRIER ();
+  h->lock = 0;
 }
 
 static inline void *

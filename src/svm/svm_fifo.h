@@ -133,25 +133,31 @@ svm_fifo_newest_ooo_segment (svm_fifo_t * f)
 }
 
 always_inline u32
-ooo_segment_distance_to_tail (svm_fifo_t * f, u32 a)
+ooo_segment_distance_from_tail (svm_fifo_t * f, u32 pos)
 {
   /* Ambiguous. Assumption is that ooo segments don't touch tail */
-  if (a == f->tail && f->tail == f->head)
+  if (PREDICT_FALSE (pos == f->tail && f->tail == f->head))
     return f->nitems;
 
-  return ((f->nitems + a - f->tail) % f->nitems);
+  return (((f->nitems + pos) - f->tail) % f->nitems);
+}
+
+always_inline u32
+ooo_segment_distance_to_tail (svm_fifo_t * f, u32 pos)
+{
+  return (((f->nitems + f->tail) - pos) % f->nitems);
 }
 
 always_inline u32
 ooo_segment_offset (svm_fifo_t * f, ooo_segment_t * s)
 {
-  return ooo_segment_distance_to_tail (f, s->start);
+  return ooo_segment_distance_from_tail (f, s->start);
 }
 
 always_inline u32
 ooo_segment_end_offset (svm_fifo_t * f, ooo_segment_t * s)
 {
-  return ooo_segment_distance_to_tail (f, s->start) + s->length;
+  return ooo_segment_distance_from_tail (f, s->start) + s->length;
 }
 
 always_inline u32

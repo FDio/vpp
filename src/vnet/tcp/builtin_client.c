@@ -170,62 +170,90 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   tclient_main_t *tm = &tclient_main;
   int my_thread_index = vlib_get_thread_index ();
-  vl_api_disconnect_session_t *dmp;
   session_t *sp;
   int i;
   int delete_session;
   u32 *connection_indices;
-  u32 tx_quota = 0;
-  u32 delta, prev_bytes_received_this_session;
+  u32 *connections_this_batch;
+  u32 nconnections_this_batch;
 
   connection_indices = tm->connection_index_by_thread[my_thread_index];
+  connections_this_batch =
+    tm->connections_this_batch_by_thread[my_thread_index];
 
-  if (tm->run_test == 0 || vec_len (connection_indices) == 0)
+  if ((tm->run_test == 0) ||
+      ((vec_len (connection_indices) == 0)
+       && vec_len (connections_this_batch) == 0))
     return 0;
 
-  for (i = 0; i < vec_len (connection_indices); i++)
+  /* Grab another pile of connections */
+  if (PREDICT_FALSE (vec_len (connections_this_batch) == 0))
+    {
+      nconnections_this_batch =
+	clib_min (tm->connections_per_batch, vec_len (connection_indices));
+
+      ASSERT (nconnections_this_batch > 0);
+      vec_validate (connections_this_batch, nconnections_this_batch - 1);
+      clib_memcpy (connections_this_batch,
+		   connection_indices + vec_len (connection_indices)
+		   - nconnections_this_batch,
+		   nconnections_this_batch * sizeof (u32));
+      _vec_len (connection_indices) -= nconnections_this_batch;
+    }
+
+  if (PREDICT_FALSE (tm->prev_conns != tm->connections_per_batch
+		     && tm->prev_conns == vec_len (connections_this_batch)))
+    {
+      tm->repeats++;
+      tm->prev_conns = vec_len (connections_this_batch);
+      if (tm->repeats == 500000)
+	{
+	  clib_warning ("stuck clients");
+	}
+    }
+  else
+    {
+      tm->prev_conns = vec_len (connections_this_batch);
+      tm->repeats = 0;
+    }
+
+  for (i = 0; i < vec_len (connections_this_batch); i++)
     {
       delete_session = 1;
 
-      sp = pool_elt_at_index (tm->sessions, connection_indices[i]);
+      sp = pool_elt_at_index (tm->sessions, connections_this_batch[i]);
 
-      if ((tm->no_return || tx_quota < 60) && sp->bytes_to_send > 0)
+      if (sp->bytes_to_send > 0)
 	{
 	  send_test_chunk (tm, sp);
 	  delete_session = 0;
-	  tx_quota++;
 	}
-      if (!tm->no_return && sp->bytes_to_receive > 0)
+      if (sp->bytes_to_receive > 0)
 	{
-	  prev_bytes_received_this_session = sp->bytes_received;
 	  receive_test_chunk (tm, sp);
-	  delta = sp->bytes_received - prev_bytes_received_this_session;
-	  if (delta > 0)
-	    tx_quota--;
 	  delete_session = 0;
 	}
       if (PREDICT_FALSE (delete_session == 1))
 	{
-	  __sync_fetch_and_add (&tm->tx_total, tm->bytes_to_send);
+	  u32 index, thread_index;
+	  stream_session_t *s;
+
+	  __sync_fetch_and_add (&tm->tx_total, sp->bytes_sent);
 	  __sync_fetch_and_add (&tm->rx_total, sp->bytes_received);
 
-	  dmp = vl_msg_api_alloc_as_if_client (sizeof (*dmp));
-	  memset (dmp, 0, sizeof (*dmp));
-	  dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
-	  dmp->client_index = tm->my_client_index;
-	  dmp->handle = sp->vpp_session_handle;
-	  if (!unix_shared_memory_queue_add (tm->vl_input_queue, (u8 *) & dmp,
-					     1))
+	  stream_session_parse_handle (sp->vpp_session_handle,
+				       &index, &thread_index);
+	  s = stream_session_get_if_valid (index, thread_index);
+
+	  if (s)
 	    {
-	      vec_delete (connection_indices, 1, i);
-	      tm->connection_index_by_thread[my_thread_index] =
-		connection_indices;
+	      stream_session_disconnect (s);
+	      vec_delete (connections_this_batch, 1, i);
+	      i--;
 	      __sync_fetch_and_add (&tm->ready_connections, -1);
 	    }
 	  else
-	    {
-	      vl_msg_api_free (dmp);
-	    }
+	    clib_warning ("session AWOL?");
 
 	  /* Kick the debug CLI process */
 	  if (tm->ready_connections == 0)
@@ -236,6 +264,10 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	}
     }
+
+  tm->connection_index_by_thread[my_thread_index] = connection_indices;
+  tm->connections_this_batch_by_thread[my_thread_index] =
+    connections_this_batch;
   return 0;
 }
 
@@ -356,6 +388,8 @@ tcp_test_clients_init (vlib_main_t * vm)
   tm->vlib_main = vm;
 
   vec_validate (tm->connection_index_by_thread, thread_main->n_vlib_mains);
+  vec_validate (tm->connections_this_batch_by_thread,
+		thread_main->n_vlib_mains);
   return 0;
 }
 
@@ -388,7 +422,8 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
   pool_get (tm->sessions, session);
   memset (session, 0, sizeof (*session));
   session_index = session - tm->sessions;
-  session->bytes_to_receive = session->bytes_to_send = tm->bytes_to_send;
+  session->bytes_to_send = tm->bytes_to_send;
+  session->bytes_to_receive = tm->no_return ? 0ULL : tm->bytes_to_send;
   session->server_rx_fifo = s->server_rx_fifo;
   session->server_rx_fifo->client_session_index = session_index;
   session->server_tx_fifo = s->server_tx_fifo;
@@ -485,6 +520,8 @@ attach_builtin_test_clients_app (void)
   options[SESSION_OPTIONS_SEGMENT_SIZE] = (2ULL << 32);
   options[SESSION_OPTIONS_RX_FIFO_SIZE] = tm->fifo_size;
   options[SESSION_OPTIONS_TX_FIFO_SIZE] = tm->fifo_size / 2;
+  options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = tm->private_segment_count;
+  options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE] = tm->private_segment_size;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
 
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
@@ -561,6 +598,9 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   tm->bytes_to_send = 8192;
   tm->no_return = 0;
   tm->fifo_size = 64 << 10;
+  tm->connections_per_batch = 1000;
+  tm->private_segment_count = 0;
+  tm->private_segment_size = 0;
 
   vec_free (tm->connect_uri);
 
@@ -582,6 +622,20 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 	tm->no_return = 1;
       else if (unformat (input, "fifo-size %d", &tm->fifo_size))
 	tm->fifo_size <<= 10;
+      else if (unformat (input, "private-segment-count %d",
+			 &tm->private_segment_count))
+	;
+      else if (unformat (input, "private-segment-size %dm", &tmp))
+	tm->private_segment_size = tmp << 20;
+      else if (unformat (input, "private-segment-size %dg", &tmp))
+	tm->private_segment_size = tmp << 30;
+      else if (unformat (input, "private-segment-size %d", &tmp))
+	tm->private_segment_size = tmp;
+      else if (unformat (input, "preallocate-fifos"))
+	tm->prealloc_fifos = 1;
+      else
+	if (unformat (input, "client-batch %d", &tm->connections_per_batch))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -688,9 +742,13 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "zero delta-t?");
 
 cleanup:
-  pool_free (tm->sessions);
+  tm->run_test = 0;
   for (i = 0; i < vec_len (tm->connection_index_by_thread); i++)
-    vec_reset_length (tm->connection_index_by_thread[i]);
+    {
+      vec_reset_length (tm->connection_index_by_thread[i]);
+      vec_reset_length (tm->connections_this_batch_by_thread[i]);
+    }
+  pool_free (tm->sessions);
 
   return 0;
 }

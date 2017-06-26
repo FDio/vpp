@@ -275,27 +275,6 @@ vnet_application_detach (vnet_app_detach_args_t * a)
   return 0;
 }
 
-session_type_t
-session_type_from_proto_and_ip (session_api_proto_t proto, u8 is_ip4)
-{
-  if (proto == SESSION_PROTO_TCP)
-    {
-      if (is_ip4)
-	return SESSION_TYPE_IP4_TCP;
-      else
-	return SESSION_TYPE_IP6_TCP;
-    }
-  else
-    {
-      if (is_ip4)
-	return SESSION_TYPE_IP4_UDP;
-      else
-	return SESSION_TYPE_IP6_UDP;
-    }
-
-  return SESSION_N_TYPES;
-}
-
 int
 vnet_bind_uri (vnet_bind_args_t * a)
 {
