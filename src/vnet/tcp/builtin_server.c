@@ -56,12 +56,15 @@ typedef struct
   u32 fifo_size;		/**< Fifo size */
   u32 rcv_buffer_size;		/**< Rcv buffer size */
   u32 prealloc_fifos;		/**< Preallocate fifos */
+  u32 private_segment_count;	/**< Number of private segments  */
+  u32 private_segment_size;	/**< Size of private segments  */
 
   /*
    * Test state
    */
   u8 **rx_buf;			/**< Per-thread RX buffer */
   u64 byte_index;
+  u32 **rx_retries;
 
   vlib_main_t *vlib_main;
 } builtin_server_main_t;
@@ -77,6 +80,8 @@ builtin_session_accept_callback (stream_session_t * s)
     session_manager_get_vpp_event_queue (s->thread_index);
   s->session_state = SESSION_STATE_READY;
   bsm->byte_index = 0;
+  vec_validate (bsm->rx_retries[s->thread_index], s->session_index);
+  bsm->rx_retries[s->thread_index][s->session_index] = 0;
   return 0;
 }
 
@@ -173,10 +178,15 @@ builtin_server_rx_callback (stream_session_t * s)
   builtin_server_main_t *bsm = &builtin_server_main;
   session_fifo_event_t evt;
   static int serial_number = 0;
-  u32 my_thread_id = vlib_get_thread_index ();
+  u32 thread_index = vlib_get_thread_index ();
+
+  ASSERT (s->thread_index == thread_index);
 
   rx_fifo = s->server_rx_fifo;
   tx_fifo = s->server_tx_fifo;
+
+  ASSERT (rx_fifo->master_thread_index == thread_index);
+  ASSERT (tx_fifo->master_thread_index == thread_index);
 
   max_dequeue = svm_fifo_max_dequeue (s->server_rx_fifo);
   max_enqueue = svm_fifo_max_enqueue (s->server_tx_fifo);
@@ -201,21 +211,31 @@ builtin_server_rx_callback (stream_session_t * s)
 	  evt.event_type = FIFO_EVENT_BUILTIN_RX;
 	  evt.event_id = 0;
 
-	  q = bsm->vpp_queue[s->thread_index];
+	  q = bsm->vpp_queue[thread_index];
 	  if (PREDICT_FALSE (q->cursize == q->maxsize))
 	    clib_warning ("out of event queue space");
-	  else
-	    unix_shared_memory_queue_add (q, (u8 *) & evt,
-					  0 /* don't wait for mutex */ );
+	  else if (unix_shared_memory_queue_add (q, (u8 *) & evt, 0	/* don't wait for mutex */
+		   ))
+	    clib_warning ("failed to enqueue self-tap");
+
+	  bsm->rx_retries[thread_index][s->session_index]++;
+	  if (bsm->rx_retries[thread_index][s->session_index] == 500000)
+	    {
+	      clib_warning ("session stuck: %U", format_stream_session, s, 2);
+	    }
+	}
+      else
+	{
+	  bsm->rx_retries[thread_index][s->session_index] = 0;
 	}
 
       return 0;
     }
 
-  _vec_len (bsm->rx_buf[my_thread_id]) = max_transfer;
+  _vec_len (bsm->rx_buf[thread_index]) = max_transfer;
 
   actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, max_transfer,
-					     bsm->rx_buf[my_thread_id]);
+					     bsm->rx_buf[thread_index]);
   ASSERT (actual_transfer == max_transfer);
 
 //  test_bytes (bsm, actual_transfer);
@@ -225,7 +245,7 @@ builtin_server_rx_callback (stream_session_t * s)
    */
 
   n_written = svm_fifo_enqueue_nowait (tx_fifo, actual_transfer,
-				       bsm->rx_buf[my_thread_id]);
+				       bsm->rx_buf[thread_index]);
 
   if (n_written != max_transfer)
     clib_warning ("short trout!");
@@ -237,11 +257,13 @@ builtin_server_rx_callback (stream_session_t * s)
       evt.event_type = FIFO_EVENT_APP_TX;
       evt.event_id = serial_number++;
 
-      unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
-				    (u8 *) & evt, 0 /* do wait for mutex */ );
+      if (unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
+					(u8 *) & evt,
+					0 /* do wait for mutex */ ))
+	clib_warning ("failed to enqueue tx evt");
     }
 
-  if (PREDICT_FALSE (max_enqueue < max_dequeue))
+  if (PREDICT_FALSE (n_written < max_dequeue))
     goto rx_event;
 
   return 0;
@@ -328,9 +350,13 @@ server_attach ()
   a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 512 << 20;
   a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = bsm->fifo_size;
   a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = bsm->fifo_size;
-  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+  a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = bsm->private_segment_count;
+  a->options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE] = bsm->private_segment_size;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     bsm->prealloc_fifos ? bsm->prealloc_fifos : 1;
+
+  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
@@ -374,6 +400,8 @@ server_create (vlib_main_t * vm)
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (builtin_server_main.vpp_queue, num_threads - 1);
   vec_validate (bsm->rx_buf, num_threads - 1);
+  vec_validate (bsm->rx_retries, num_threads - 1);
+
   for (i = 0; i < num_threads; i++)
     vec_validate (bsm->rx_buf[i], bsm->rcv_buffer_size);
 
@@ -435,11 +463,14 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   builtin_server_main_t *bsm = &builtin_server_main;
   int rv;
+  u32 tmp;
 
   bsm->no_echo = 0;
   bsm->fifo_size = 64 << 10;
   bsm->rcv_buffer_size = 128 << 10;
   bsm->prealloc_fifos = 0;
+  bsm->private_segment_count = 0;
+  bsm->private_segment_size = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -449,8 +480,17 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	bsm->fifo_size <<= 10;
       else if (unformat (input, "rcv-buf-size %d", &bsm->rcv_buffer_size))
 	;
-      else if (unformat (input, "prealloc-fifos", &bsm->prealloc_fifos))
+      else if (unformat (input, "prealloc-fifos %d", &bsm->prealloc_fifos))
 	;
+      else if (unformat (input, "private-segment-count %d",
+			 &bsm->private_segment_count))
+	;
+      else if (unformat (input, "private-segment-size %dm", &tmp))
+	bsm->private_segment_size = tmp << 20;
+      else if (unformat (input, "private-segment-size %dg", &tmp))
+	bsm->private_segment_size = tmp << 30;
+      else if (unformat (input, "private-segment-size %d", &tmp))
+	bsm->private_segment_size = tmp;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
