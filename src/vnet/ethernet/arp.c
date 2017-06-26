@@ -110,6 +110,9 @@ typedef struct
 
 static const u8 vrrp_prefix[] = { 0x00, 0x00, 0x5E, 0x00, 0x01 };
 
+/* Node index for send_garp_na_process */
+u32 send_garp_na_process_node_index;
+
 static void
 set_ip4_over_ethernet_rpc_callback (vnet_arp_set_ip4_over_ethernet_rpc_args_t
 				    * a);
@@ -2377,6 +2380,86 @@ ethernet_arp_change_mac (u32 sw_if_index)
   }));
   /* *INDENT-ON* */
 }
+
+void static
+send_ip4_garp (vlib_main_t * vm, vnet_hw_interface_t * hi)
+{
+  ip4_main_t *i4m = &ip4_main;
+  u32 sw_if_index = hi->sw_if_index;
+  ip4_address_t *ip4_addr = ip4_interface_first_address (i4m, sw_if_index, 0);
+
+  if (ip4_addr)
+    {
+      clib_warning ("Sending GARP for IP4 address %U on sw_if_idex %d",
+		    format_ip4_address, ip4_addr, sw_if_index);
+
+      /* Form GARP packet for output - Gratuitous ARP is an ARP request packet
+         where the interface IP/MAC pair is used for both source and request
+         MAC/IP pairs in the request */
+      u32 bi = 0;
+      ethernet_arp_header_t *h = vlib_packet_template_get_packet
+	(vm, &i4m->ip4_arp_request_packet_template, &bi);
+      clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address,
+		   sizeof (h->ip4_over_ethernet[0].ethernet));
+      clib_memcpy (h->ip4_over_ethernet[1].ethernet, hi->hw_address,
+		   sizeof (h->ip4_over_ethernet[1].ethernet));
+      h->ip4_over_ethernet[0].ip4 = ip4_addr[0];
+      h->ip4_over_ethernet[1].ip4 = ip4_addr[0];
+
+      /* Setup MAC header with ARP Etype and broadcast DMAC */
+      vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+      vlib_buffer_advance (b, -sizeof (ethernet_header_t));
+      ethernet_header_t *e = vlib_buffer_get_current (b);
+      e->type = clib_host_to_net_u16 (ETHERNET_TYPE_ARP);
+      clib_memcpy (e->src_address, hi->hw_address, sizeof (e->src_address));
+      memset (e->dst_address, 0xff, sizeof (e->dst_address));
+
+      /* Send GARP packet out the specified interface */
+      vnet_buffer (b)->sw_if_index[VLIB_RX] =
+	vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index;
+      vlib_frame_t *f = vlib_get_frame_to_node (vm, hi->output_node_index);
+      u32 *to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi;
+      f->n_vectors = 1;
+      vlib_put_frame_to_node (vm, hi->output_node_index, f);
+    }
+}
+
+static vlib_node_registration_t send_garp_na_proc_node;
+
+static uword
+send_garp_na_process (vlib_main_t * vm,
+		      vlib_node_runtime_t * rt, vlib_frame_t * f)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  uword event_type, *event_data = 0;
+
+  send_garp_na_process_node_index = send_garp_na_proc_node.index;
+
+  while (1)
+    {
+      vlib_process_wait_for_event (vm);
+      event_type = vlib_process_get_events (vm, &event_data);
+      if ((event_type == SEND_GARP_NA) && (vec_len (event_data) >= 1))
+	{
+	  u32 hw_if_index = event_data[0];
+	  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+	  send_ip4_garp (vm, hi);
+	  send_ip6_na (vm, hi);
+	}
+      vec_reset_length (event_data);
+    }
+  return 0;
+}
+
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (send_garp_na_proc_node, static) = {
+    .function = send_garp_na_process,
+    .type = VLIB_NODE_TYPE_PROCESS,
+    .name = "send-garp-na-process",
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
