@@ -340,7 +340,6 @@ stream_session_lookup_transport4 (ip4_address_t * lcl, ip4_address_t * rmt,
   rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
   if (rv == 0)
     return tp_vfts[proto].get_half_open (kv4.value & 0xFFFFFFFF);
-
   return 0;
 }
 
@@ -854,6 +853,7 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
 
   s->app_index = server->index;
   s->listener_index = listener_index;
+  s->session_state = SESSION_STATE_ACCEPTING;
 
   /* Shoulder-tap the server */
   if (notify)
@@ -1131,14 +1131,13 @@ session_manager_main_enable (vlib_main_t * vm)
     session_vpp_event_queue_allocate (smm, i);
 
   /* $$$$ preallocate hack config parameter */
-  for (i = 0; i < 200000; i++)
+  for (i = 0; i < smm->preallocated_sessions; i++)
     {
-      stream_session_t *ss;
+      stream_session_t *ss __attribute__ ((unused));
       pool_get_aligned (smm->sessions[0], ss, CLIB_CACHE_LINE_BYTES);
-      memset (ss, 0, sizeof (*ss));
     }
 
-  for (i = 0; i < 200000; i++)
+  for (i = 0; i < smm->preallocated_sessions; i++)
     pool_put_index (smm->sessions[0], i);
 
   clib_bihash_init_16_8 (&smm->v4_session_hash, "v4 session table",
@@ -1208,9 +1207,10 @@ session_manager_main_init (vlib_main_t * vm)
   return 0;
 }
 
-VLIB_INIT_FUNCTION (session_manager_main_init)
-     static clib_error_t *session_config_fn (vlib_main_t * vm,
-					     unformat_input_t * input)
+VLIB_INIT_FUNCTION (session_manager_main_init);
+
+static clib_error_t *
+session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   session_manager_main_t *smm = &session_manager_main;
   u32 nitems;
@@ -1224,6 +1224,9 @@ VLIB_INIT_FUNCTION (session_manager_main_init)
 	  else
 	    clib_warning ("event queue length %d too small, ignored", nitems);
 	}
+      if (unformat (input, "preallocated-sessions %d",
+		    &smm->preallocated_sessions))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

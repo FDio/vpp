@@ -56,6 +56,8 @@ typedef struct
   u32 fifo_size;		/**< Fifo size */
   u32 rcv_buffer_size;		/**< Rcv buffer size */
   u32 prealloc_fifos;		/**< Preallocate fifos */
+  u32 private_segment_count;	/**< Number of private segments  */
+  u32 private_segment_size;	/**< Size of private segments  */
 
   /*
    * Test state
@@ -202,11 +204,13 @@ builtin_server_rx_callback (stream_session_t * s)
 	  evt.event_id = 0;
 
 	  q = bsm->vpp_queue[s->thread_index];
-	  if (PREDICT_FALSE (q->cursize == q->maxsize))
+	  if (PREDICT_FALSE(q->cursize == q->maxsize))
 	    clib_warning ("out of event queue space");
-	  else
-	    unix_shared_memory_queue_add (q, (u8 *) & evt,
-					  0 /* don't wait for mutex */ );
+	  else if (unix_shared_memory_queue_add (q, (u8 *) &evt,
+						 0 /* don't wait for mutex */))
+	    {
+	      clib_warning ("failed to enqueue self-tap");
+	    }
 	}
 
       return 0;
@@ -237,8 +241,11 @@ builtin_server_rx_callback (stream_session_t * s)
       evt.event_type = FIFO_EVENT_APP_TX;
       evt.event_id = serial_number++;
 
-      unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
-				    (u8 *) & evt, 0 /* do wait for mutex */ );
+      if (unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
+				    (u8 *) & evt, 0 /* do wait for mutex */ ))
+	{
+	  clib_warning ("failed to enqueue tx evt");
+	}
     }
 
   if (PREDICT_FALSE (max_enqueue < max_dequeue))
@@ -328,9 +335,13 @@ server_attach ()
   a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 512 << 20;
   a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = bsm->fifo_size;
   a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = bsm->fifo_size;
-  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+  a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = bsm->private_segment_count;
+  a->options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE] = bsm->private_segment_size;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     bsm->prealloc_fifos ? bsm->prealloc_fifos : 1;
+
+  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
@@ -435,11 +446,14 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   builtin_server_main_t *bsm = &builtin_server_main;
   int rv;
+  u32 tmp;
 
   bsm->no_echo = 0;
   bsm->fifo_size = 64 << 10;
   bsm->rcv_buffer_size = 128 << 10;
   bsm->prealloc_fifos = 0;
+  bsm->private_segment_count = 0;
+  bsm->private_segment_size = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -449,8 +463,17 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	bsm->fifo_size <<= 10;
       else if (unformat (input, "rcv-buf-size %d", &bsm->rcv_buffer_size))
 	;
-      else if (unformat (input, "prealloc-fifos", &bsm->prealloc_fifos))
+      else if (unformat (input, "prealloc-fifos %d", &bsm->prealloc_fifos))
 	;
+      else if (unformat (input, "private-segment-count %d",
+			 &bsm->private_segment_count))
+	;
+      else if (unformat (input, "private-segment-size %dm", &tmp))
+	bsm->private_segment_size = tmp << 20;
+      else if (unformat (input, "private-segment-size %dg", &tmp))
+	bsm->private_segment_size = tmp << 30;
+      else if (unformat (input, "private-segment-size %d", &tmp))
+	bsm->private_segment_size = tmp;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

@@ -309,7 +309,6 @@ elog_event_data_inline (elog_main_t * em,
 	track_index = elog_track_register (em, track);
     }
 
-  ASSERT (type_index < vec_len (em->event_types));
   ASSERT (track_index < vec_len (em->tracks));
   ASSERT (is_pow2 (vec_len (em->event_ring)));
 

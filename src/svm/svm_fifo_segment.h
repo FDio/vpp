@@ -57,10 +57,12 @@ typedef struct
 {
   char *segment_name;
   u32 segment_size;
-  u32 new_segment_index;
+  u32 *new_segment_indices;
   u32 rx_fifo_size;
   u32 tx_fifo_size;
   u32 preallocated_fifo_pairs;
+  u32 private_segment_count;
+  u32 private_segment_size;
 } svm_fifo_segment_create_args_t;
 
 static inline svm_fifo_segment_private_t *

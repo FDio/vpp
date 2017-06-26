@@ -47,7 +47,8 @@ format_stream_session (u8 * s, va_list * args)
 		  svm_fifo_max_enqueue (ss->server_tx_fifo),
 		  stream_session_get_index (ss));
 
-  if (ss->session_state == SESSION_STATE_READY)
+  if (ss->session_state == SESSION_STATE_READY
+      || ss->session_state == SESSION_STATE_ACCEPTING)
     {
       s = format (s, "%U", tp_vft->format_connection, ss->connection_index,
 		  ss->thread_index, verbose);
@@ -146,6 +147,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else
 	vlib_cli_output (vm, "Thread %d: no active sessions", i);
+      vec_reset_length (str);
     }
   vec_free (str);
 
