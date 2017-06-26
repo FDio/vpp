@@ -167,6 +167,15 @@ typedef struct
 ethernet_arp_ip4_entry_t *ip4_neighbor_entries (u32 sw_if_index);
 u8 *format_ethernet_arp_ip4_entry (u8 * s, va_list * va);
 
+/* Node index for send_garp_na_process */
+extern u32 send_garp_na_process_node_index;
+
+/* Even type for send_garp_na_process */
+enum
+{
+  SEND_GARP_NA = 1,
+} dpdk_send_garp_na_process_event_t;
+
 #endif /* included_ethernet_arp_packet_h */
 
 /*
