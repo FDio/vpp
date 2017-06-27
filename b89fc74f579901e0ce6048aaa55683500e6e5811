@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_1ce75c14",
+        "filename": "src/vnet/l2/l2_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 233,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-06-27T08:45:38Z",
+      "side": 1,
+      "message": "I wonder if we should do the filter MAC handling for static and sw_if_index in l2fib_add_entry() instead of here so both API and CLI will be covered. I see that CLI does already set static for filter MAC but it does not set the sw_if_index to ~0 yet.",
+      "range": {
+        "startLine": 233,
+        "startChar": 6,
+        "endLine": 233,
+        "endChar": 10
+      },
+      "revId": "b89fc74f579901e0ce6048aaa55683500e6e5811",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
