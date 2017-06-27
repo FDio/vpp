@@ -46,6 +46,30 @@
       "revId": "b813d802de918072d3f3077ae108452c22d6060c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da6255ed_fc36c8e6",
+        "filename": "src/vnet/l2/l2_learn.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 156,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-06-27T04:58:28Z",
+      "side": 1,
+      "message": "I do see the original filter check at end of the function would not work for MAC move case because the filter bit would have been cleared. This is a bug of the original code and adding a filter check in the MAC move path with static check would fix this issue. Thus, a filter MAC would also not allow MAC move which would be a correct behavior.",
+      "parentUuid": "da6255ed_41bbad72",
+      "range": {
+        "startLine": 156,
+        "startChar": 26,
+        "endLine": 156,
+        "endChar": 32
+      },
+      "revId": "b813d802de918072d3f3077ae108452c22d6060c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
