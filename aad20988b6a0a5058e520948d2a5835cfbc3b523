@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_77a0b3f4",
+        "filename": "src/vpp/conf/startup.conf",
+        "patchSetId": 6
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2017-06-27T14:41:24Z",
+      "side": 1,
+      "message": "Could we also add gid vpp here so that the behavior matches the previous behavior of allowing users in group vpp to successfully use vppctl ?",
+      "revId": "aad20988b6a0a5058e520948d2a5835cfbc3b523",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
