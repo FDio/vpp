@@ -42,6 +42,7 @@
 
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/lookup.h>
+#include <vnet/buffer.h>
 #include <vnet/feature/feature.h>
 
 typedef struct ip4_mfib_t
@@ -346,7 +347,8 @@ vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
   ih->src_address.as_u32 = src->as_u32;
   ih->dst_address.as_u32 = dst->as_u32;
 
-  ih->checksum = ip4_header_checksum (ih);
+  ih->checksum = 0;
+  b->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
   return ih;
 }
 #endif /* included_ip_ip4_h */

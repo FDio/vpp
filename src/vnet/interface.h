@@ -419,6 +419,9 @@ typedef struct vnet_hw_interface_t
   /* rx mode flags */
 #define VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE (1 << 10)
 
+  /* tx checksum offload */
+#define VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD (1 << 11)
+
   /* Hardware address as vector.  Zero (e.g. zero-length vector) if no
      address for this class (e.g. PPP). */
   u8 *hw_address;

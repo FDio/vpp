@@ -47,9 +47,14 @@
   _( 2, L4_CHECKSUM_CORRECT)				\
   _( 3, VLAN_2_DEEP)					\
   _( 4, VLAN_1_DEEP)					\
+  _( 8, SPAN_CLONE)					\
   _( 6, HANDOFF_NEXT_VALID)				\
   _( 7, LOCALLY_ORIGINATED)				\
-  _( 8, SPAN_CLONE)
+  _( 8, IS_IP4)						\
+  _( 9, IS_IP6)						\
+  _(10, OFFLOAD_IP_CKSUM)				\
+  _(11, OFFLOAD_TCP_CKSUM)				\
+  _(12, OFFLOAD_UDP_CKSUM)
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)

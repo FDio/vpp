@@ -351,6 +351,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IGB:
 	    case VNET_DPDK_PMD_IXGBE:
 	    case VNET_DPDK_PMD_I40E:
+	      xd->port_type = port_type_from_speed_capa (&dev_info);
+	      xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
+		DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+
+	      break;
 	    case VNET_DPDK_PMD_CXGBE:
 	    case VNET_DPDK_PMD_MLX4:
 	    case VNET_DPDK_PMD_MLX5:
@@ -574,6 +579,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  }
 
       hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
+
+      if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD)
+	hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
 
       dpdk_device_setup (xd);
 

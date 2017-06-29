@@ -1485,7 +1485,12 @@ tcp46_output_inline (vlib_main_t * vm,
 	      ip4_header_t *ih0;
 	      ih0 = vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4,
 					  &tc0->c_rmt_ip4, IP_PROTOCOL_TCP);
-	      th0->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ih0);
+	      b0->flags |= VNET_BUFFER_F_IS_IP4 |
+		VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
+		VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ih0 - b0->data;
+	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
+	      th0->checksum = 0;
 	    }
 	  else
 	    {
@@ -1494,8 +1499,13 @@ tcp46_output_inline (vlib_main_t * vm,
 
 	      ih0 = vlib_buffer_push_ip6 (vm, b0, &tc0->c_lcl_ip6,
 					  &tc0->c_rmt_ip6, IP_PROTOCOL_TCP);
-	      th0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b0, ih0,
-								 &bogus);
+
+	      b0->flags |= VNET_BUFFER_F_IS_IP6 |
+		VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
+		VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ih0 - b0->data;
+	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;
+	      th0->checksum = 0;
 	      ASSERT (!bogus);
 	    }
 

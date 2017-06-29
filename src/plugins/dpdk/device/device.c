@@ -335,6 +335,37 @@ dpdk_buffer_recycle (vlib_main_t * vm, vlib_node_runtime_t * node,
   vec_add1 (dm->recycle[my_cpu], bi);
 }
 
+static_always_inline void
+dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
+			struct rte_mbuf *mb)
+{
+  u32 ip_cksum = b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+  u32 tcp_cksum = b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+  u32 udp_cksum = b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+  int is_ip4 = b->flags & VNET_BUFFER_F_IS_IP4;
+  u64 ol_flags;
+
+  /* Is there any work for us? */
+  if (PREDICT_TRUE ((ip_cksum | tcp_cksum | udp_cksum) == 0))
+    return;
+
+  mb->l2_len = vnet_buffer (b)->l3_hdr_offset - b->current_data;
+  mb->l3_len = vnet_buffer (b)->l4_hdr_offset -
+    vnet_buffer (b)->l3_hdr_offset;
+  mb->outer_l3_len = 0;
+  mb->outer_l2_len = 0;
+  ol_flags = is_ip4 ? PKT_TX_IPV4 : PKT_TX_IPV6;
+  ol_flags |= ip_cksum ? PKT_TX_IP_CKSUM : 0;
+  ol_flags |= tcp_cksum ? PKT_TX_TCP_CKSUM : 0;
+  ol_flags |= udp_cksum ? PKT_TX_UDP_CKSUM : 0;
+  mb->ol_flags |= ol_flags;
+
+  /* we are trying to help compiler here by using local ol_flags with known
+     state of all flags */
+  if (xd->flags & DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM)
+    rte_net_intel_cksum_flags_prepare (mb, ol_flags);
+}
+
 /*
  * Transmits the packets on the frame to the interface associated with the
  * node. It first copies packets on the frame to a tx_vector containing the
@@ -455,6 +486,15 @@ dpdk_interface_tx (vlib_main_t * vm,
       mb2 = rte_mbuf_from_vlib_buffer (b2);
       mb3 = rte_mbuf_from_vlib_buffer (b3);
 
+      if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
+			 (or_flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)))
+	{
+	  dpdk_buffer_tx_offload (xd, b0, mb0);
+	  dpdk_buffer_tx_offload (xd, b1, mb1);
+	  dpdk_buffer_tx_offload (xd, b2, mb2);
+	  dpdk_buffer_tx_offload (xd, b3, mb3);
+	}
+
       if (PREDICT_FALSE (or_flags & VLIB_BUFFER_RECYCLE))
 	{
 	  dpdk_buffer_recycle (vm, node, b0, bi0, &mb0);
@@ -521,6 +561,7 @@ dpdk_interface_tx (vlib_main_t * vm,
       dpdk_validate_rte_mbuf (vm, b0, 1);
 
       mb0 = rte_mbuf_from_vlib_buffer (b0);
+      dpdk_buffer_tx_offload (xd, b0, mb0);
       dpdk_buffer_recycle (vm, node, b0, bi0, &mb0);
 
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
