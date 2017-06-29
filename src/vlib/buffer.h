@@ -91,6 +91,7 @@ typedef struct
 #define VLIB_BUFFER_RECYCLE (1 << 5)
 #define VLIB_BUFFER_FLOW_REPORT (1 << 6)
 #define VLIB_BUFFER_EXT_HDR_VALID (1 << 7)
+#define VLIB_BUFFER_L4_CHECKSUM_OFFLOAD (1 << 8)
 
   /* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
@@ -137,7 +138,7 @@ typedef struct
                       if VLIB_PACKET_IS_TRACED flag is set.
                    */
   u32 recycle_count; /**< Used by L2 path recycle code */
-  u32 opaque2[14];  /**< More opaque data, currently unused */
+  u32 opaque2[14];  /**< More opaque data */
 
   /***** end of second cache line */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
