@@ -38,6 +38,7 @@
 #include <rte_version.h>
 #include <rte_eth_bond.h>
 #include <rte_sched.h>
+#include <rte_net.h>
 
 #include <vnet/unix/pcap.h>
 #include <vnet/devices/devices.h>
@@ -176,6 +177,8 @@ typedef struct
 #define DPDK_DEVICE_FLAG_HQOS               (1 << 6)
 #define DPDK_DEVICE_FLAG_BOND_SLAVE         (1 << 7)
 #define DPDK_DEVICE_FLAG_BOND_SLAVE_UP      (1 << 8)
+#define DPDK_DEVICE_FLAG_TX_OFFLOAD         (1 << 9)
+#define DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM   (1 << 10)
 
   u16 nb_tx_desc;
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
