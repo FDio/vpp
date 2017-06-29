@@ -1475,7 +1475,14 @@ tcp46_output_inline (vlib_main_t * vm,
 	      ip4_header_t *ih0;
 	      ih0 = vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4,
 					  &tc0->c_rmt_ip4, IP_PROTOCOL_TCP);
-	      th0->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ih0);
+	      b0->flags |= VLIB_BUFFER_L4_CHECKSUM_OFFLOAD;
+	      vnet_buffer2 (b0)->l4_checksum.ip_offset =
+		(u8 *) ih0 - b0->data;
+	      /* We know by construction that there are no IP options */
+	      vnet_buffer2 (b0)->l4_checksum.ip_length =
+		sizeof (ip4_header_t);
+	      /* DAMJAN: here's the s/w calculation */
+	      th0->checksum = 0;	// ip4_tcp_udp_compute_checksum (vm, b0, ih0);
 	    }
 	  else
 	    {
@@ -1484,8 +1491,15 @@ tcp46_output_inline (vlib_main_t * vm,
 
 	      ih0 = vlib_buffer_push_ip6 (vm, b0, &tc0->c_lcl_ip6,
 					  &tc0->c_rmt_ip6, IP_PROTOCOL_TCP);
-	      th0->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b0, ih0,
-								 &bogus);
+
+	      b0->flags |= VLIB_BUFFER_L4_CHECKSUM_OFFLOAD;
+	      vnet_buffer2 (b0)->l4_checksum.ip_offset =
+		(u8 *) ih0 - b0->data;
+	      vnet_buffer2 (b0)->l4_checksum.ip_length =
+		sizeof (ip6_header_t);
+	      /* DAMJAN: here's the s/w calculation */
+	      th0->checksum = 0;
+	      // ip6_tcp_udp_icmp_compute_checksum (vm, b0, ih0, &bogus);
 	      ASSERT (!bogus);
 	    }
 
