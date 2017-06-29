@@ -327,6 +327,8 @@ dpo_get_next_node (dpo_type_t child_type,
 
         vm = vlib_get_main();
 
+        vlib_worker_thread_barrier_sync(vm);
+
         ASSERT(NULL != dpo_nodes[child_type]);
         ASSERT(NULL != dpo_nodes[child_type][child_proto]);
         ASSERT(NULL != dpo_nodes[parent_type]);
@@ -368,6 +370,8 @@ dpo_get_next_node (dpo_type_t child_type,
             }
             cc++;
         }
+
+        vlib_worker_thread_barrier_release(vm);
     }
 
     return (dpo_edges[child_type][child_proto][parent_type][parent_proto]);
@@ -445,9 +449,20 @@ dpo_stack_from_node (u32 child_node_index,
     parent_node =
         vlib_get_node_by_name(vm, (u8*) dpo_nodes[parent_type][parent_proto][0]);
 
-    edge = vlib_node_add_next(vm,
+    edge = vlib_node_get_next(vm,
                               child_node_index,
                               parent_node->index);
+
+    if (~0 == edge)
+    {
+        vlib_worker_thread_barrier_sync(vm);
+
+        edge = vlib_node_add_next(vm,
+                                  child_node_index,
+                                  parent_node->index);
+
+        vlib_worker_thread_barrier_release(vm);
+    }
 
     dpo_stack_i(edge, dpo, parent);
 }
