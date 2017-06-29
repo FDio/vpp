@@ -201,6 +201,7 @@ ioam_export_thread_buffer_init (ioam_export_main_t * em, vlib_main_t * vm)
 
 #define IPFIX_IOAM_EXPORT_ID 272
 #define IPFIX_VXLAN_IOAM_EXPORT_ID 273
+#define IPFIX_SR_IOAM_EXPORT_ID 280
 
 /* Used to build the rewrite */
 /* data set packet */

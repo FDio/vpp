@@ -210,6 +210,52 @@ udp_ping_test_plugin_la_SOURCES =          	\
 
 vppapitestplugins_LTLIBRARIES += udp_ping_test_plugin.la
  
+
+
+########################################
+# VxLAN-GPE
+########################################
+IOAM_SR_SRC =					\
+	ioam/srv6/sr_api.c		\
+	ioam/srv6/sr_ioam_trace.c	\
+	ioam/srv6/sr_ioam_localsid.c	\
+	ioam/srv6/sr_policy_rewrite_ioam.c	\
+	ioam/srv6/sr_ioam.c		\
+	ioam/export-srv6/sr_ioam_export.c	\
+	ioam/export-srv6/sr_node.c		\
+	ioam/srv6/sr_ioam_pop.c	\
+	ioam/export-srv6/sr_ioam_export.api.h\
+	ioam/export-srv6/sr_ioam_export_thread.c
+
+IOAM_SR_NOINST_HDR =                       		\
+  ioam/export/ioam_export_all_api_h.h   			\
+  ioam/srv6/sr_all_api_h.h			\
+  ioam/srv6/sr_msg_enum.h			\
+  ioam/srv6/ioam_sr.api.h			\
+  ioam/srv6/sr_ioam_util.h			\
+  ioam/srv6/sr_ioam.h				\
+  ioam/srv6/sr_ioam_trace.h		\
+  ioam/export-srv6/sr_ioam_export_all_api_h.h       \
+  ioam/export-srv6/sr_ioam_export_msg_enum.h        \
+  ioam/export-srv6/sr_ioam_export.api.h
+
+IOAM_SR_API  = ioam/srv6/ioam_sr.api
+IOAM_SR_API += ioam/export-srv6/sr_ioam_export.api
+
+ioam_sr_test_plugin_la_SOURCES =		\
+	ioam/srv6/sr_test.c			\
+	ioam/srv6/sr_plugin.api.h
+
+vppapitestplugins_LTLIBRARIES += ioam_sr_test_plugin.la
+
+sr_ioam_export_test_plugin_la_SOURCES =          \
+  ioam/export-srv6/sr_ioam_export_test.c      \
+  ioam/export-srv6/sr_ioam_export_plugin.api.h
+
+vppapitestplugins_LTLIBRARIES += sr_ioam_export_test_plugin.la
+
+
+
 ########################################
 # iOAM plugins
 ########################################
@@ -219,6 +265,7 @@ ioam_plugin_la_SOURCES =		    \
         $(IOAM_EXPORT_SRC)          \
         $(IOAM_TRACE_SRC)           \
         $(IOAM_VXLAN_GPE_SRC)   	\
+        $(IOAM_SR_SRC)   	\
         $(IOAM_E2E_SRC)			    \
 		$(IPFIX_COLLECTOR_SRC)		\
 		$(IOAM_ANALYSE_SRC)		    \
@@ -230,6 +277,7 @@ API_FILES +=				            \
         $(IOAM_EXPORT_API)              \
         $(IOAM_TRACE_API)               \
         $(IOAM_VXLAN_GPE_API)		    \
+        $(IOAM_SR_API)		    \
         $(IOAM_IP6_MANYCAST_API)        \
 		$(UDP_PING_API)
 
@@ -238,6 +286,7 @@ noinst_HEADERS +=                               \
         $(IOAM_EXPORT_NOINST_HDR)               \
         $(IOAM_TRACE_NOINST_HDR)                \
         $(IOAM_VXLAN_GPE_NOINST_HDR)            \
+        $(IOAM_SR_NOINST_HDR)            \
         $(IOAM_E2E_NOINST_HDR)			        \
         $(IOAM_IP6_MANYCAST_NOINST_HDR)         \
 		$(UDP_PING_NOINST_HDR)

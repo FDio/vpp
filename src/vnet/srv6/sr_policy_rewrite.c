@@ -144,13 +144,16 @@ VLIB_CLI_COMMAND (set_sr_src_command, static) = {
  * @return precomputed rewrite string for encapsulation
  */
 static inline u8 *
-compute_rewrite_encaps (ip6_address_t * sl)
+compute_rewrite_encaps (ip6_address_t * sl, u8 type1, u8 type2)
 {
   ip6_header_t *iph;
   ip6_sr_header_t *srh;
   ip6_address_t *addrp, *this_address;
   u32 header_length = 0;
   u8 *rs = NULL;
+  u8 *rs1 = NULL;
+  ip6_sr_policy_tlv_registration_t *tlv_handler;
+  ip6_sr_main_t *sm = &sr_main;
 
   header_length = 0;
   header_length += IPv6_DEFAULT_HEADER_LENGTH;
@@ -189,7 +192,23 @@ compute_rewrite_encaps (ip6_address_t * sl)
   }
   iph->dst_address.as_u64[0] = sl->as_u64[0];
   iph->dst_address.as_u64[1] = sl->as_u64[1];
-  return rs;
+
+  tlv_handler = sm->tlv_policy_handlers[type1];
+  if (tlv_handler && tlv_handler->encap_creation)
+    {
+      rs1 = tlv_handler->encap_creation (rs, 1);
+      rs = rs1;
+    }
+  else
+    rs1 = rs;
+
+  tlv_handler = sm->tlv_policy_handlers[type2];
+  if (tlv_handler && tlv_handler->encap_creation)
+    rs1 = tlv_handler->encap_creation (rs, 1);
+  else
+    rs1 = rs;
+
+  return rs1;
 }
 
 /**
@@ -200,12 +219,15 @@ compute_rewrite_encaps (ip6_address_t * sl)
  * @return precomputed rewrite string for SRH insertion
  */
 static inline u8 *
-compute_rewrite_insert (ip6_address_t * sl)
+compute_rewrite_insert (ip6_address_t * sl, u8 type1, u8 type2)
 {
   ip6_sr_header_t *srh;
   ip6_address_t *addrp, *this_address;
   u32 header_length = 0;
   u8 *rs = NULL;
+  u8 *rs1 = NULL;
+  ip6_sr_policy_tlv_registration_t *tlv_handler;
+  ip6_sr_main_t *sm = &sr_main;
 
   header_length = 0;
   header_length += sizeof (ip6_sr_header_t);
@@ -227,7 +249,23 @@ compute_rewrite_insert (ip6_address_t * sl)
     clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
     addrp--;
   }
-  return rs;
+
+  tlv_handler = sm->tlv_policy_handlers[type1];
+  if (tlv_handler && tlv_handler->creation)
+    {
+      rs1 = tlv_handler->creation (rs, 1);
+      rs = rs1;
+    }
+  else
+    rs1 = rs;
+
+  tlv_handler = sm->tlv_policy_handlers[type2];
+  if (tlv_handler && tlv_handler->creation)
+    rs1 = tlv_handler->creation (rs, 1);
+  else
+    rs1 = rs;
+
+  return rs1;
 }
 
 /**
@@ -285,7 +323,7 @@ compute_rewrite_bsid (ip6_address_t * sl)
  */
 static inline ip6_sr_sl_t *
 create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
-	   u8 is_encap)
+	   u8 is_encap, u8 tlv_type1, u8 tlv_type2)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_sl_t *segment_list;
@@ -302,12 +340,14 @@ create_sl (ip6_sr_policy_t * sr_policy, ip6_address_t * sl, u32 weight,
 
   if (is_encap)
     {
-      segment_list->rewrite = compute_rewrite_encaps (sl);
+      segment_list->rewrite =
+	compute_rewrite_encaps (sl, tlv_type1, tlv_type2);
       segment_list->rewrite_bsid = segment_list->rewrite;
     }
   else
     {
-      segment_list->rewrite = compute_rewrite_insert (sl);
+      segment_list->rewrite =
+	compute_rewrite_insert (sl, tlv_type1, tlv_type2);
       segment_list->rewrite_bsid = compute_rewrite_bsid (sl);
     }
 
@@ -539,7 +579,8 @@ update_replicate (ip6_sr_policy_t * sr_policy)
  */
 int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
-	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap)
+	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
+	       u8 tlv_type1, u8 tlv_type2)
 {
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_policy_t *sr_policy = 0;
@@ -583,13 +624,15 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
   sr_policy->type = behavior;
   sr_policy->fib_table = (fib_table != (u32) ~ 0 ? fib_table : 0);	//Is default FIB 0 ?
   sr_policy->is_encap = is_encap;
+  sr_policy->tlv_type1 = tlv_type1;
+  sr_policy->tlv_type2 = tlv_type2;
 
   /* Copy the key */
   mhash_set (&sm->sr_policies_index_hash, bsid, sr_policy - sm->sr_policies,
 	     NULL);
 
   /* Create a segment list and add the index to the SR policy */
-  create_sl (sr_policy, segments, weight, is_encap);
+  create_sl (sr_policy, segments, weight, is_encap, tlv_type1, tlv_type2);
 
   /* If FIB doesnt exist, create them */
   if (sm->fib_table_ip6 == (u32) ~ 0)
@@ -743,7 +786,8 @@ sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
     {
       /* Create the new SL */
       segment_list =
-	create_sl (sr_policy, segments, weight, sr_policy->is_encap);
+	create_sl (sr_policy, segments, weight, sr_policy->is_encap,
+		   sr_policy->tlv_type1, sr_policy->tlv_type2);
 
       /* Create a new LB DPO */
       if (sr_policy->type == SR_POLICY_TYPE_DEFAULT)
@@ -822,6 +866,8 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 operation = 0;
   char is_encap = 1;
   char is_spray = 0;
+  u8 tlv_type1 = 0;
+  u8 tlv_type2 = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -859,6 +905,8 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	is_encap = 0;
       else if (unformat (input, "spray"))
 	is_spray = 1;
+      else if (is_add && unformat (input, "tlv ioam-trace"))
+	tlv_type1 = 59;
       else
 	break;
     }
@@ -875,7 +923,8 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	return clib_error_return (0, "No Segment List specified");
       rv = sr_policy_add (&bsid, segments, weight,
 			  (is_spray ? SR_POLICY_TYPE_SPRAY :
-			   SR_POLICY_TYPE_DEFAULT), fib_table, is_encap);
+			   SR_POLICY_TYPE_DEFAULT), fib_table, is_encap,
+			  tlv_type1, tlv_type2);
     }
   else if (is_del)
     rv = sr_policy_del ((sr_policy_index != (u32) ~ 0 ? NULL : &bsid),
@@ -929,7 +978,7 @@ sr_policy_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (sr_policy_command, static) = {
   .path = "sr policy",
   .short_help = "sr policy [add||del||mod] [bsid 2001::1||index 5] "
-    "next A:: next B:: next C:: (weight 1) (fib-table 2) (encap|insert)",
+    "next A:: next B:: next C:: (weight 1) (fib-table 2) (encap|insert) [tlv ioam-trace]",
   .long_help =
     "Manipulation of SR policies.\n"
     "A Segment Routing policy may contain several SID lists. Each SID list has\n"
@@ -1227,6 +1276,7 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_buffer_t *b0;
 	  ip6_header_t *ip0 = 0, *ip0_encap = 0;
 	  ip6_sr_sl_t *sl0;
+	  ip6_sr_header_t *sr0;
 	  u32 next0 = SR_POLICY_REWRITE_NEXT_IP6_LOOKUP;
 
 	  bi0 = from[0];
@@ -1263,6 +1313,27 @@ sr_policy_rewrite_encaps (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      clib_memcpy (tr->dst.as_u8, ip0->dst_address.as_u8,
 			   sizeof (tr->dst.as_u8));
 	    }
+
+	  /* Check if there are TLVs, if so process them */
+	  sr0 = (void *) (ip0 + 1);
+	  if (sr0->length << 3 > (sr0->first_segment + 1) << 4)
+	    {
+	      u8 sr_tlv_type;
+	      u8 *temp0;
+	      ip6_sr_policy_tlv_registration_t *tlv_handler;
+	      ip6_sr_main_t *sm = &sr_main;
+
+	      temp0 = (u8 *) sr0;
+	      sr_tlv_type =
+		*(temp0 + sizeof (ip6_sr_header_t) +
+		  ((sr0->first_segment + 1) << 4));
+	      tlv_handler = sm->tlv_policy_handlers[sr_tlv_type];
+	      next0 = (tlv_handler
+		       && tlv_handler->
+		       next_node) ? tlv_handler->next_node : (next0);
+
+	    }
+
 
 	  encap_pkts++;
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -2274,6 +2345,82 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 			       sizeof (tr->dst.as_u8));
 		}
 	    }
+	  /* Check if there are TLVs, if so process them */
+	  if (sr0->length << 3 > (sr0->first_segment + 1) << 4)
+	    {
+	      u8 sr_tlv_type;
+	      u8 *temp0;
+	      ip6_sr_policy_tlv_registration_t *tlv_handler;
+	      ip6_sr_main_t *sm = &sr_main;
+
+	      temp0 = (u8 *) sr0;
+	      sr_tlv_type =
+		*(temp0 + sizeof (ip6_sr_header_t) +
+		  ((sr0->first_segment + 1) << 4));
+	      tlv_handler = sm->tlv_policy_handlers[sr_tlv_type];
+	      next0 = (tlv_handler
+		       && tlv_handler->
+		       next_node) ? tlv_handler->next_node : (next0);
+
+	    }
+
+	  /* Check if there are TLVs, if so process them */
+	  if (sr1->length << 3 > (sr1->first_segment + 1) << 4)
+	    {
+	      u8 sr_tlv_type;
+	      u8 *temp1;
+	      ip6_sr_policy_tlv_registration_t *tlv_handler;
+	      ip6_sr_main_t *sm = &sr_main;
+
+	      temp1 = (u8 *) sr1;
+	      sr_tlv_type =
+		*(temp1 + sizeof (ip6_sr_header_t) +
+		  ((sr1->first_segment + 1) << 4));
+	      tlv_handler = sm->tlv_policy_handlers[sr_tlv_type];
+	      next1 = (tlv_handler
+		       && tlv_handler->
+		       next_node) ? tlv_handler->next_node : (next1);
+
+	    }
+
+	  /* Check if there are TLVs, if so process them */
+	  if (sr2->length << 3 > (sr2->first_segment + 1) << 4)
+	    {
+	      u8 sr_tlv_type;
+	      u8 *temp2;
+	      ip6_sr_policy_tlv_registration_t *tlv_handler;
+	      ip6_sr_main_t *sm = &sr_main;
+
+	      temp2 = (u8 *) sr2;
+	      sr_tlv_type =
+		*(temp2 + sizeof (ip6_sr_header_t) +
+		  ((sr2->first_segment + 1) << 4));
+	      tlv_handler = sm->tlv_policy_handlers[sr_tlv_type];
+	      next2 = (tlv_handler
+		       && tlv_handler->
+		       next_node) ? tlv_handler->next_node : (next2);
+
+	    }
+
+	  /* Check if there are TLVs, if so process them */
+	  if (sr3->length << 3 > (sr3->first_segment + 1) << 4)
+	    {
+	      u8 sr_tlv_type;
+	      u8 *temp3;
+	      ip6_sr_policy_tlv_registration_t *tlv_handler;
+	      ip6_sr_main_t *sm = &sr_main;
+
+	      temp3 = (u8 *) sr3;
+	      sr_tlv_type =
+		*(temp3 + sizeof (ip6_sr_header_t) +
+		  ((sr3->first_segment + 1) << 4));
+	      tlv_handler = sm->tlv_policy_handlers[sr_tlv_type];
+	      next3 = (tlv_handler
+		       && tlv_handler->
+		       next_node) ? tlv_handler->next_node : (next3);
+
+	    }
+
 
 	  vlib_validate_buffer_enqueue_x4 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, bi1, bi2, bi3,
@@ -2361,6 +2508,25 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  insert_pkts++;
+
+	  /* Check if there are TLVs, if so process them */
+	  if (sr0->length << 3 > (sr0->first_segment + 1) << 4)
+	    {
+	      u8 sr_tlv_type;
+	      u8 *temp0;
+	      ip6_sr_policy_tlv_registration_t *tlv_handler;
+	      ip6_sr_main_t *sm = &sr_main;
+
+	      temp0 = (u8 *) sr0;
+	      sr_tlv_type =
+		*(temp0 + sizeof (ip6_sr_header_t) +
+		  ((sr0->first_segment + 1) << 4));
+	      tlv_handler = sm->tlv_policy_handlers[sr_tlv_type];
+	      next0 = (tlv_handler
+		       && tlv_handler->
+		       next_node) ? tlv_handler->next_node : (next0);
+
+	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
@@ -3217,6 +3383,39 @@ sr_policy_rewrite_init (vlib_main_t * vm)
   sm->fib_table_ip4 = (u32) ~ 0;
 
   return 0;
+}
+
+
+int
+sr_oam_register_policy_function (vlib_main_t * vm,
+				 u8 type,
+				 u32 next_node,
+				 sr_policy_callback_t * policy_creation_fn,
+				 sr_policy_callback_t * policy_removal_fn,
+				 sr_policy_callback_t * encap_creation_fn,
+				 sr_policy_callback_t * encap_removal_fn)
+{
+
+  ip6_sr_main_t *sm = &sr_main;
+
+  ip6_sr_policy_tlv_registration_t *tlv_policy_handler = NULL;
+
+  /* Did this function exist? If so update it */
+
+  vec_validate (tlv_policy_handler,
+		sizeof (ip6_sr_policy_tlv_registration_t) - 1);
+  sm->tlv_policy_handlers[type] = tlv_policy_handler;
+  memset (tlv_policy_handler, 0, sizeof (*tlv_policy_handler));
+
+  tlv_policy_handler->creation = policy_creation_fn;
+  tlv_policy_handler->removal = policy_removal_fn;
+  tlv_policy_handler->encap_creation = encap_creation_fn;
+  tlv_policy_handler->encap_removal = encap_removal_fn;
+  tlv_policy_handler->next_node = next_node;
+
+  return 0;
+
+
 }
 
 VLIB_INIT_FUNCTION (sr_policy_rewrite_init);
