@@ -70,6 +70,12 @@
 #define LOG2_VNET_BUFFER_SPAN_CLONE LOG2_VLIB_BUFFER_FLAG_USER(8)
 #define VNET_BUFFER_SPAN_CLONE (1 << LOG2_VNET_BUFFER_SPAN_CLONE)
 
+#define LOG2_VNET_BUFFER_IP4_L4_CKSUM_OFFLOAD LOG2_VLIB_BUFFER_FLAG_USER(9)
+#define VNET_BUFFER_IP4_L4_CKSUM_OFFLOAD (1 << LOG2_VNET_BUFFER_IP4_L4_CKSUM_OFFLOAD)
+
+#define LOG2_VNET_BUFFER_IP6_L4_CKSUM_OFFLOAD LOG2_VLIB_BUFFER_FLAG_USER(10)
+#define VNET_BUFFER_IP6_L4_CKSUM_OFFLOAD (1 << LOG2_VNET_BUFFER_IP6_L4_CKSUM_OFFLOAD)
+
 #define foreach_buffer_opaque_union_subtype     \
 _(ethernet)                                     \
 _(ip)                                           \
@@ -307,10 +313,27 @@ typedef struct
 {
   union
   {
+    /* L4 checksum offload */
+    struct
+    {
+      /**
+       * Signed offset from b->data[0] of the inner ip4/ip6 header
+       * which contains the TCP/UDP header which uses checksum offload.
+       */
+      i16 ip_offset;
+      /** Length of the ip header */
+      u16 ip_length;
+    } l4_checksum;
+
+    /**
+     * Declared size of the opaque2, required to avoid type-punned
+     * pointer complaints
+     */
+    u32 unused[14];
   };
 } vnet_buffer_opaque2_t;
 
-
+#define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)
 
 #endif /* included_vnet_buffer_h */
 
