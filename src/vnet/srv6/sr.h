@@ -125,6 +125,8 @@ typedef struct
 } ip6_sr_localsid_t;
 
 typedef int (sr_plugin_callback_t) (ip6_sr_localsid_t * localsid);
+typedef int (sr_oam_callback_t) (ip6_sr_localsid_t * localsid);
+typedef u8 *(sr_policy_callback_t) (u8 *rewrite_buf, u8 type1);
 
 /**
  * @brief SR LocalSID behavior registration
@@ -255,6 +257,22 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 			       unformat_function_t * ls_unformat,
 			       sr_plugin_callback_t * creation_fn,
 			       sr_plugin_callback_t * removal_fn);
+
+extern int
+sr_oam_register_localsid_function (vlib_main_t * vm,
+				   u32 next_node,
+				   sr_oam_callback_t * creation_fn,
+				   sr_oam_callback_t * removal_fn);
+
+extern int sr_oam_clean_localsid_function (vlib_main_t * vm);
+
+extern int
+sr_oam_register_policy_function (vlib_main_t * vm,
+				 u32 next_node,
+				 sr_policy_callback_t * creation_fn,
+				 sr_policy_callback_t * removal_fn);
+
+extern int sr_oam_clean_policy_function (vlib_main_t * vm);
 
 extern int
 sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
