@@ -135,6 +135,7 @@ VLIB_CLI_COMMAND (set_sr_src_command, static) = {
 };
 /* *INDENT-ON* */
 
+sr_policy_callback_t *g_create_fn;
 /*********************** SR rewrite string computation ************************/
 /**
  * @brief SR rewrite string computation for IPv6 encapsulation (inline)
@@ -151,6 +152,7 @@ compute_rewrite_encaps (ip6_address_t * sl)
   ip6_address_t *addrp, *this_address;
   u32 header_length = 0;
   u8 *rs = NULL;
+  u8 *rs1 = NULL;
 
   header_length = 0;
   header_length += IPv6_DEFAULT_HEADER_LENGTH;
@@ -189,7 +191,12 @@ compute_rewrite_encaps (ip6_address_t * sl)
   }
   iph->dst_address.as_u64[0] = sl->as_u64[0];
   iph->dst_address.as_u64[1] = sl->as_u64[1];
-  return rs;
+  if (g_create_fn)
+    rs1 = g_create_fn (rs, 1);
+  else
+    rs1 = rs;
+
+  return rs1;
 }
 
 /**
@@ -206,6 +213,7 @@ compute_rewrite_insert (ip6_address_t * sl)
   ip6_address_t *addrp, *this_address;
   u32 header_length = 0;
   u8 *rs = NULL;
+  u8 *rs1 = NULL;
 
   header_length = 0;
   header_length += sizeof (ip6_sr_header_t);
@@ -227,7 +235,12 @@ compute_rewrite_insert (ip6_address_t * sl)
     clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
     addrp--;
   }
-  return rs;
+  if (g_create_fn)
+    rs1 = g_create_fn (rs, 1);
+  else
+    rs1 = rs;
+
+  return rs1;
 }
 
 /**
@@ -1973,6 +1986,7 @@ VLIB_REGISTER_NODE (sr_policy_rewrite_encaps_l2_node) = {
 };
 /* *INDENT-ON* */
 
+u32 g_hacked_ioam_policy_next_node;
 /**
  * @brief Graph node for applying a SR policy into a packet. SRH insertion.
  */
@@ -2360,6 +2374,7 @@ sr_policy_rewrite_insert (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  insert_pkts++;
 
+	  next0 = g_hacked_ioam_policy_next_node;
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, bi0, next0);
 	}
@@ -3214,6 +3229,18 @@ sr_policy_rewrite_init (vlib_main_t * vm)
   sm->fib_table_ip6 = (u32) ~ 0;
   sm->fib_table_ip4 = (u32) ~ 0;
 
+  return 0;
+}
+
+
+int
+sr_oam_register_policy_function (vlib_main_t * vm,
+				 u32 next_node,
+				 sr_policy_callback_t * policy_creation_fn,
+				 sr_policy_callback_t * policy_removal_fn)
+{
+  g_hacked_ioam_policy_next_node = next_node;
+  g_create_fn = policy_creation_fn;
   return 0;
 }
 

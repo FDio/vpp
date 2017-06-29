@@ -695,6 +695,7 @@ format_sr_localsid_trace (u8 * s, va_list * args)
   return s;
 }
 
+int g_hacked_ioam_next_node;
 /**
  * @brief Function doing End processing.
  */
@@ -767,6 +768,7 @@ end_srh_processing (vlib_node_runtime_t * node,
 	  new_dst0 += sr0->segments_left;
 	  ip0->dst_address.as_u64[0] = new_dst0->as_u64[0];
 	  ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
+	  *next0 = g_hacked_ioam_next_node;
 
 	  if (ls0->behavior == SR_BEHAVIOR_X)
 	    {
@@ -984,8 +986,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
@@ -1007,8 +1008,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr1->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
-		      tr->num_segments =
-			sr1->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr1->first_segment + 1;
 		      tr->segments_left = sr1->segments_left;
 		    }
 		}
@@ -1030,8 +1030,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr2->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
-		      tr->num_segments =
-			sr2->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr2->first_segment + 1;
 		      tr->segments_left = sr2->segments_left;
 		    }
 		}
@@ -1053,8 +1052,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr3->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
-		      tr->num_segments =
-			sr3->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr3->first_segment + 1;
 		      tr->segments_left = sr3->segments_left;
 		    }
 		}
@@ -1137,8 +1135,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
@@ -1291,8 +1288,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
@@ -1314,8 +1310,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr1->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
-		      tr->num_segments =
-			sr1->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr1->first_segment + 1;
 		      tr->segments_left = sr1->segments_left;
 		    }
 		}
@@ -1337,8 +1332,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr2->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
-		      tr->num_segments =
-			sr2->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr2->first_segment + 1;
 		      tr->segments_left = sr2->segments_left;
 		    }
 		}
@@ -1360,8 +1354,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr3->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
-		      tr->num_segments =
-			sr3->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr3->first_segment + 1;
 		      tr->segments_left = sr3->segments_left;
 		    }
 		}
@@ -1443,8 +1436,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
@@ -1641,6 +1633,20 @@ sr_localsids_init (vlib_main_t * vm)
     dpo_register_new_type (&sr_loc_vft, sr_loc_d_nodes);
   /* Init memory for localsid plugins */
   sm->plugin_functions_by_key = hash_create_string (0, sizeof (uword));
+  return 0;
+}
+
+/*
+ * HACK ALERT - UT Stub function to be substituted with real SR code.
+ */
+int
+sr_oam_register_localsid_function (vlib_main_t * vm,
+				   u32 next_node,
+				   sr_oam_callback_t * creation_fn,
+				   sr_oam_callback_t * removal_fn)
+
+{
+  g_hacked_ioam_next_node = next_node;
   return 0;
 }
 
