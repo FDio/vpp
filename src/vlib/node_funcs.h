@@ -1070,6 +1070,9 @@ vlib_node_vectors_per_main_loop_as_integer (vlib_main_t * vm, u32 node_index)
 void
 vlib_frame_free (vlib_main_t * vm, vlib_node_runtime_t * r, vlib_frame_t * f);
 
+/* Return the edge index if present, ~0 otherwise */
+uword vlib_node_get_next (vlib_main_t * vm, uword node, uword next_node);
+
 /* Add next node to given node in given slot. */
 uword
 vlib_node_add_next_with_slot (vlib_main_t * vm,

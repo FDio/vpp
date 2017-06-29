@@ -151,6 +151,26 @@ vlib_node_runtime_update (vlib_main_t * vm, u32 node_index, u32 next_index)
   vlib_worker_thread_barrier_release (vm);
 }
 
+uword
+vlib_node_get_next (vlib_main_t * vm, uword node_index, uword next_node_index)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_t *node;
+  uword *p;
+
+  node = vec_elt (nm->nodes, node_index);
+
+  /* Runtime has to be initialized. */
+  ASSERT (nm->flags & VLIB_NODE_MAIN_RUNTIME_STARTED);
+
+  if ((p = hash_get (node->next_slot_by_node, next_node_index)))
+    {
+      return p[0];
+    }
+
+  return (~0);
+}
+
 /* Add next node to given node in given slot. */
 uword
 vlib_node_add_next_with_slot (vlib_main_t * vm,
