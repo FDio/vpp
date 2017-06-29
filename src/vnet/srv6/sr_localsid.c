@@ -707,6 +707,10 @@ end_srh_processing (vlib_node_runtime_t * node,
 		    u32 * next0, u8 psp, ip6_ext_header_t * prev0)
 {
   ip6_address_t *new_dst0;
+  u8 sr_tlv_type;
+  u8 *temp0;
+  sr_tlv_handler_registration_t *tlv_handler;
+  ip6_sr_main_t *sm = &sr_main;
 
   if (PREDICT_TRUE (sr0->type == ROUTING_HEADER_TYPE_SR))
     {
@@ -767,7 +771,15 @@ end_srh_processing (vlib_node_runtime_t * node,
 	  new_dst0 += sr0->segments_left;
 	  ip0->dst_address.as_u64[0] = new_dst0->as_u64[0];
 	  ip0->dst_address.as_u64[1] = new_dst0->as_u64[1];
+          /* Check if there are TLVs, if so process them */
+          if (sr0->length << 3 > (sr0->first_segment + 1 ) << 4)
+          {
+              temp0 = (u8 *)sr0;
+              sr_tlv_type = *(temp0 + sizeof(ip6_sr_header_t) + ((sr0->first_segment + 1 ) << 4));
+              tlv_handler = sm->tlv_handler_functions[sr_tlv_type];
+              *next0 = (tlv_handler && tlv_handler->next_node) ? tlv_handler->next_node: (*next0);
 
+          }
 	  if (ls0->behavior == SR_BEHAVIOR_X)
 	    {
 	      vnet_buffer (b0)->ip.adj_index[VLIB_TX] = ls0->nh_adj;
@@ -984,8 +996,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
@@ -1007,8 +1018,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr1->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
-		      tr->num_segments =
-			sr1->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr1->first_segment + 1;
 		      tr->segments_left = sr1->segments_left;
 		    }
 		}
@@ -1030,8 +1040,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr2->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
-		      tr->num_segments =
-			sr2->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr2->first_segment + 1;
 		      tr->segments_left = sr2->segments_left;
 		    }
 		}
@@ -1053,8 +1062,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr3->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
-		      tr->num_segments =
-			sr3->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr3->first_segment + 1;
 		      tr->segments_left = sr3->segments_left;
 		    }
 		}
@@ -1137,8 +1145,7 @@ sr_localsid_d_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
@@ -1291,8 +1298,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
@@ -1314,8 +1320,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr1->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr1->segments, sr1->length * 8);
-		      tr->num_segments =
-			sr1->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr1->first_segment + 1;
 		      tr->segments_left = sr1->segments_left;
 		    }
 		}
@@ -1337,8 +1342,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr2->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr2->segments, sr2->length * 8);
-		      tr->num_segments =
-			sr2->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr2->first_segment + 1;
 		      tr->segments_left = sr2->segments_left;
 		    }
 		}
@@ -1360,8 +1364,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr3->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr3->segments, sr3->length * 8);
-		      tr->num_segments =
-			sr3->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr3->first_segment + 1;
 		      tr->segments_left = sr3->segments_left;
 		    }
 		}
@@ -1443,8 +1446,7 @@ sr_localsid_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      && sr0->type == ROUTING_HEADER_TYPE_SR)
 		    {
 		      clib_memcpy (tr->sr, sr0->segments, sr0->length * 8);
-		      tr->num_segments =
-			sr0->length * 8 / sizeof (ip6_address_t);
+		      tr->num_segments = sr0->first_segment + 1;
 		      tr->segments_left = sr0->segments_left;
 		    }
 		}
@@ -1641,7 +1643,37 @@ sr_localsids_init (vlib_main_t * vm)
     dpo_register_new_type (&sr_loc_vft, sr_loc_d_nodes);
   /* Init memory for localsid plugins */
   sm->plugin_functions_by_key = hash_create_string (0, sizeof (uword));
+  //sm->tlv_handler_functions_by_key = hash_create_string (0, sizeof (uword));
   return 0;
+}
+
+/*
+ * @brief SR TLV handler registry
+ */
+int
+sr_register_tlv_handler_function (vlib_main_t * vm,
+                                   uword type,
+				   u32 next_node,
+				   sr_oam_callback_t * creation_fn,
+				   sr_oam_callback_t * removal_fn)
+
+{
+  ip6_sr_main_t *sm = &sr_main;
+
+  sr_tlv_handler_registration_t *tlv_handler = NULL;
+
+  /* Did this function exist? If so update it */
+
+  vec_validate(tlv_handler, sizeof(sr_tlv_handler_registration_t) - 1);
+  sm->tlv_handler_functions[type] = tlv_handler;
+  memset (tlv_handler, 0, sizeof (*tlv_handler));
+
+  tlv_handler->creation = creation_fn;
+  tlv_handler->removal = removal_fn;
+  tlv_handler->next_node = next_node;
+
+  return 0;
+
 }
 
 VLIB_INIT_FUNCTION (sr_localsids_init);

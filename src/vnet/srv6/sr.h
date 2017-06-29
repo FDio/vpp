@@ -71,6 +71,22 @@ typedef struct
   dpo_id_t ip4_dpo;				/**< DPO for Encaps IPv6 */
 } ip6_sr_sl_t;
 
+ /**
+  * @brief Policy callbacks for SR TLVs
+  */
+typedef u8 *(sr_policy_callback_t) (u8 * rewrite_buf, u8 type1);
+
+ /**
+  * @brief Policy registration for SR TLVs
+  */
+typedef struct
+{
+  uword next_node;
+  sr_policy_callback_t *creation;			/**< Function within plugin that will be called after localsid creation*/
+  sr_policy_callback_t *removal;			/**< Function within plugin that will be called before localsid removal */
+} ip6_sr_policy_tlv_registration_t;
+
+
 /* SR policy types */
 #define SR_POLICY_TYPE_DEFAULT 0
 #define SR_POLICY_TYPE_SPRAY 1
@@ -94,6 +110,8 @@ typedef struct
   u32 fib_table;			/**< FIB table */
 
   u8 is_encap;				/**< Mode (0 is SRH insert, 1 Encaps) */
+  u8 tlv_type1;
+  u8 tlv_type2;
 } ip6_sr_policy_t;
 
 /**
@@ -125,6 +143,7 @@ typedef struct
 } ip6_sr_localsid_t;
 
 typedef int (sr_plugin_callback_t) (ip6_sr_localsid_t * localsid);
+typedef int (sr_oam_callback_t) (ip6_sr_localsid_t * localsid);
 
 /**
  * @brief SR LocalSID behavior registration
@@ -151,6 +170,16 @@ typedef struct
 
   sr_plugin_callback_t *removal;			/**< Function within plugin that will be called before localsid removal */
 } sr_localsid_fn_registration_t;
+
+ /**
+  * @brief SR TLV behavior registration
+  */
+typedef struct
+{
+  uword next_node;
+  sr_oam_callback_t *creation;			/**< Function within plugin that will be called after localsid creation*/
+  sr_oam_callback_t *removal;			/**< Function within plugin that will be called before localsid removal */
+} sr_tlv_handler_registration_t;
 
 /**
  * @brief Steering db key
@@ -224,6 +253,13 @@ typedef struct
   /* Find plugin function by name */
   uword *plugin_functions_by_key;
 
+  /* TLV handler functions */
+  sr_tlv_handler_registration_t *tlv_handler_functions[MAX_SR_TLV_TYPES];
+  ip6_sr_policy_tlv_registration_t *tlv_policy_handlers[MAX_SR_TLV_TYPES];
+
+  /* Find tlv_handler function by name */
+  //uword *tlv_handler_functions_by_key;
+
   /* Counters */
   vlib_combined_counter_main_t sr_ls_valid_counters;
   vlib_combined_counter_main_t sr_ls_invalid_counters;
@@ -257,12 +293,32 @@ sr_localsid_register_function (vlib_main_t * vm, u8 * fn_name,
 			       sr_plugin_callback_t * removal_fn);
 
 extern int
-sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
-	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap);
+sr_register_tlv_handler_function (vlib_main_t * vm,
+				  uword type,
+				  u32 next_node,
+				  sr_oam_callback_t * creation_fn,
+				  sr_oam_callback_t * removal_fn);
+
+extern int sr_oam_clean_localsid_function (vlib_main_t * vm);
+
 extern int
-sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
-	       u8 operation, ip6_address_t * segments, u32 sl_index,
-	       u32 weight);
+sr_oam_register_policy_function (vlib_main_t * vm,
+				 u8 type,
+				 u32 next_node,
+				 sr_policy_callback_t * creation_fn,
+				 sr_policy_callback_t * removal_fn,
+				 sr_policy_callback_t * encap_create_fn,
+				 sr_policy_callback_t * encap_removal_fn);
+
+extern int sr_oam_clean_policy_function (vlib_main_t * vm);
+
+extern int
+sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
+	       u32 weight, u8 behavior, u32 fib_table, u8 is_encap,
+	       u8 tlv_type1, u8 tlv_type2);
+extern int sr_policy_mod (ip6_address_t * bsid, u32 index, u32 fib_table,
+			  u8 operation, ip6_address_t * segments,
+			  u32 sl_index, u32 weight);
 extern int sr_policy_del (ip6_address_t * bsid, u32 index);
 
 extern int

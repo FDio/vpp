@@ -148,6 +148,15 @@ typedef struct
   ip6_address_t segments[0];
 } __attribute__ ((packed)) ip6_sr_header_t;
 
+typedef struct
+{
+#define MAX_SR_TLV_TYPES 0xff
+  u8 type;
+  u8 length;
+  u16 reserved;
+  u32 data[0];
+} __attribute__ ((packed)) ip6_sr_tlv_header_t;
+
 /*
 * fd.io coding-style-patch-verification: ON
 *
