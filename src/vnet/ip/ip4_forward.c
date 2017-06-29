@@ -2457,7 +2457,8 @@ ip4_rewrite_inline (vlib_main_t * vm,
 		}
 
 	      /* Verify checksum. */
-	      ASSERT (ip0->checksum == ip4_header_checksum (ip0));
+	      ASSERT ((ip0->checksum == ip4_header_checksum (ip0)) ||
+		      (p0->flags | VNET_BUFFER_F_OFFLOAD_IP_CKSUM));
 	    }
 	  else
 	    {
@@ -2492,7 +2493,8 @@ ip4_rewrite_inline (vlib_main_t * vm,
 		}
 
 	      /* Verify checksum. */
-	      ASSERT (ip1->checksum == ip4_header_checksum (ip1));
+	      ASSERT ((ip1->checksum == ip4_header_checksum (ip1)) ||
+		      (p1->flags | VNET_BUFFER_F_OFFLOAD_IP_CKSUM));
 	    }
 	  else
 	    {
@@ -2630,7 +2632,8 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
 	      ip0->ttl = ttl0;
 
-	      ASSERT (ip0->checksum == ip4_header_checksum (ip0));
+	      ASSERT ((ip0->checksum == ip4_header_checksum (ip0)) ||
+		      (p0->flags | VNET_BUFFER_F_OFFLOAD_IP_CKSUM));
 
 	      if (PREDICT_FALSE (ttl0 <= 0))
 		{

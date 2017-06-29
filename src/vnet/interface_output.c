@@ -38,6 +38,10 @@
  */
 
 #include <vnet/vnet.h>
+#include <vnet/ip/icmp46_packet.h>
+#include <vnet/ip/ip4.h>
+#include <vnet/ip/ip6.h>
+#include <vnet/udp/udp_packet.h>
 #include <vnet/feature/feature.h>
 
 typedef struct
@@ -153,14 +157,58 @@ vnet_interface_output_trace (vlib_main_t * vm,
     }
 }
 
-uword
-vnet_interface_output_node (vlib_main_t * vm,
-			    vlib_node_runtime_t * node, vlib_frame_t * frame)
+static_always_inline void
+calc_checksums (vlib_main_t * vm, vlib_buffer_t * b)
 {
-  vnet_main_t *vnm = vnet_get_main ();
+  ip4_header_t *ip4;
+  ip6_header_t *ip6;
+  tcp_header_t *th;
+  udp_header_t *uh;
+
+  int is_ip4 = (b->flags & VNET_BUFFER_F_IS_IP4) != 0;
+  int is_ip6 = (b->flags & VNET_BUFFER_F_IS_IP6) != 0;
+
+  ASSERT (!(is_ip4 && is_ip6));
+
+  ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+  ip6 = (ip6_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+  th = (tcp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+  uh = (udp_header_t *) (b->data + vnet_buffer (b)->l4_hdr_offset);
+
+  if (is_ip4)
+    {
+      ip4 = (ip4_header_t *) (b->data + vnet_buffer (b)->l3_hdr_offset);
+      if (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM)
+	ip4->checksum = ip4_header_checksum (ip4);
+      if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+	th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
+      if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+	uh->checksum = ip4_tcp_udp_compute_checksum (vm, b, ip4);
+    }
+  if (is_ip6)
+    {
+      int bogus;
+      ASSERT (b->flags & VNET_BUFFER_F_OFFLOAD_IP_CKSUM);
+      if (b->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)
+	th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+      if (b->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)
+	uh->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip6, &bogus);
+    }
+
+  b->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+  b->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+  b->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+}
+
+static_always_inline uword
+vnet_interface_output_node_inline (vlib_main_t * vm,
+				   vlib_node_runtime_t * node,
+				   vlib_frame_t * frame, vnet_main_t * vnm,
+				   vnet_hw_interface_t * hi,
+				   int do_tx_offloads)
+{
   vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
   vnet_sw_interface_t *si;
-  vnet_hw_interface_t *hi;
   u32 n_left_to_tx, *from, *from_end, *to_tx;
   u32 n_bytes, n_buffers, n_packets;
   u32 n_bytes_b0, n_bytes_b1, n_bytes_b2, n_bytes_b3;
@@ -234,6 +282,7 @@ vnet_interface_output_node (vlib_main_t * vm,
 	  u32 bi0, bi1, bi2, bi3;
 	  vlib_buffer_t *b0, *b1, *b2, *b3;
 	  u32 tx_swif0, tx_swif1, tx_swif2, tx_swif3;
+	  u32 or_flags;
 
 	  /* Prefetch next iteration. */
 	  vlib_prefetch_buffer_with_index (vm, from[4], LOAD);
@@ -324,6 +373,22 @@ vnet_interface_output_node (vlib_main_t * vm,
 					       thread_index, tx_swif3, 1,
 					       n_bytes_b3);
 	    }
+
+	  or_flags = b0->flags | b1->flags | b2->flags | b3->flags;
+
+	  if (do_tx_offloads)
+	    {
+	      if (or_flags &
+		  (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM |
+		   VNET_BUFFER_F_OFFLOAD_UDP_CKSUM |
+		   VNET_BUFFER_F_OFFLOAD_IP_CKSUM))
+		{
+		  calc_checksums (vm, b0);
+		  calc_checksums (vm, b1);
+		  calc_checksums (vm, b2);
+		  calc_checksums (vm, b3);
+		}
+	    }
 	}
 
       while (from + 1 <= from_end && n_left_to_tx >= 1)
@@ -363,6 +428,9 @@ vnet_interface_output_node (vlib_main_t * vm,
 					       thread_index, tx_swif0, 1,
 					       n_bytes_b0);
 	    }
+
+	  if (do_tx_offloads)
+	    calc_checksums (vm, b0);
 	}
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_tx);
@@ -374,6 +442,23 @@ vnet_interface_output_node (vlib_main_t * vm,
 				   thread_index,
 				   rt->sw_if_index, n_packets, n_bytes);
   return n_buffers;
+}
+
+static_always_inline uword
+vnet_interface_output_node (vlib_main_t * vm, vlib_node_runtime_t * node,
+			    vlib_frame_t * frame)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hi;
+  vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
+  hi = vnet_get_sup_hw_interface (vnm, rt->sw_if_index);
+
+  if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
+    return vnet_interface_output_node_inline (vm, node, frame, vnm, hi,
+					      /* do_tx_offloads */ 0);
+  else
+    return vnet_interface_output_node_inline (vm, node, frame, vnm, hi,
+					      /* do_tx_offloads */ 1);
 }
 
 VLIB_NODE_FUNCTION_MULTIARCH_CLONE (vnet_interface_output_node);
