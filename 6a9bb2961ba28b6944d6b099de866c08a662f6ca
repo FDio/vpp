@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "da6255ed_00c48a3e",
+        "filename": "test/ext/vapi_test.c",
+        "patchSetId": 23
+      },
+      "lineNbr": 107,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-06-30T10:00:46Z",
+      "side": 1,
+      "message": "I\u0027d like your generated function to be called: \n  vapi_msg_vnet_combined_counters_hton(...)\nwhich uses\n  clib_host_to_net_uXY",
+      "parentUuid": "da6255ed_e6199723",
+      "revId": "6a9bb2961ba28b6944d6b099de866c08a662f6ca",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da6255ed_88266ab9",
         "filename": "test/ext/vapi_test.c",
         "patchSetId": 23
