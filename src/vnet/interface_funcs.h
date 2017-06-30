@@ -301,9 +301,8 @@ typedef struct
   u32 is_deleted;
 } vnet_interface_output_runtime_t;
 
-/* Interface output functions. */
+/* Interface output function. */
 void *vnet_interface_output_node_multiarch_select (void);
-void *vnet_interface_output_node_flatten_multiarch_select (void);
 
 word vnet_sw_interface_compare (vnet_main_t * vnm, uword sw_if_index0,
 				uword sw_if_index1);

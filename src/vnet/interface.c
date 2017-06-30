@@ -783,9 +783,7 @@ vnet_register_interface (vnet_main_t * vnm,
       /* The new class may differ from the old one.
        * Functions have to be updated. */
       node = vlib_get_node (vm, hw->output_node_index);
-      node->function = dev_class->flatten_output_chains ?
-	vnet_interface_output_node_flatten_multiarch_select () :
-	vnet_interface_output_node_multiarch_select ();
+      node->function = vnet_interface_output_node_multiarch_select ();
       node->format_trace = format_vnet_interface_output_trace;
       nrt = vlib_node_get_runtime (vm, hw->output_node_index);
       nrt->function = node->function;
@@ -827,9 +825,7 @@ vnet_register_interface (vnet_main_t * vnm,
 
       r.flags = 0;
       r.name = output_node_name;
-      r.function = dev_class->flatten_output_chains ?
-	vnet_interface_output_node_flatten_multiarch_select () :
-	vnet_interface_output_node_multiarch_select ();
+      r.function = vnet_interface_output_node_multiarch_select ();
       r.format_trace = format_vnet_interface_output_trace;
 
       {
