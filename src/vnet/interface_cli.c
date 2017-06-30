@@ -1339,8 +1339,10 @@ show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
 
         vec_foreach (dq, rt->devices_and_queues)
 	  {
+	    vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm,
+							     dq->hw_if_index);
 	    s = format (s, "    %U queue %u (%U)\n",
-			format_vnet_sw_if_index_name, vnm, dq->hw_if_index,
+			format_vnet_sw_if_index_name, vnm, hi->sw_if_index,
 			dq->queue_id,
 			format_vnet_hw_interface_rx_mode, dq->mode);
 	  }
