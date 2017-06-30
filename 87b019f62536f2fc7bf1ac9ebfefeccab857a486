@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_86041216",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 711,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-06-30T18:26:27Z",
+      "side": 1,
+      "message": "Aren\u0027t these reversed?",
+      "range": {
+        "startLine": 711,
+        "startChar": 31,
+        "endLine": 711,
+        "endChar": 34
+      },
+      "revId": "87b019f62536f2fc7bf1ac9ebfefeccab857a486",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
