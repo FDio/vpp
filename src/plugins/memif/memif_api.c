@@ -91,7 +91,6 @@ do {                                                            \
 #define foreach_memif_plugin_api_msg                     \
 _(MEMIF_CREATE, memif_create)                            \
 _(MEMIF_DELETE, memif_delete)                            \
-_(MEMIF_DETAILS, memif_details)                          \
 _(MEMIF_DUMP, memif_dump)                                \
 
 /**
@@ -286,16 +285,6 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
   /* *INDENT-ON* */
 
   vec_free (if_name);
-}
-
-/**
- * @brief Message handler for memif_details API.
- * @param mp vl_api_memif_details_t * mp the api message
- */
-void
-vl_api_memif_details_t_handler (vl_api_memif_details_t * mp)
-{
-  clib_warning ("BUG");
 }
 
 #define vl_msg_name_crc_list
