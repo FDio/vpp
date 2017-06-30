@@ -198,9 +198,6 @@ typedef struct _vnet_device_class
   /* Link-list of all device classes set up by constructors created below */
   struct _vnet_device_class *next_class_registration;
 
-  /* Splice vnet_interface_output_node into TX path */
-  u8 flatten_output_chains;
-
   /* Function to set mac address. */
   vnet_interface_set_mac_address_function_t *mac_addr_change_function;
 } vnet_device_class_t;
