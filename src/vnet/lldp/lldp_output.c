@@ -75,6 +75,20 @@ lldp_add_ttl (const lldp_main_t * lm, u8 ** t0p, int shutdown)
 }
 
 static void
+lldp_add_port_desc (const lldp_main_t * lm, lldp_intf_t * n, u8 ** t0p)
+{
+  const size_t len = vec_len (n->port_desc);
+  if (len)
+    {
+      lldp_tlv_t *t = (lldp_tlv_t *) * t0p;
+      lldp_tlv_set_code (t, LLDP_TLV_NAME (port_desc));
+      lldp_tlv_set_length (t, len);
+      clib_memcpy (t->v, n->port_desc, len);
+      *t0p += STRUCT_SIZE_OF (lldp_tlv_t, head) + len;
+    }
+}
+
+static void
 lldp_add_sys_name (const lldp_main_t * lm, u8 ** t0p)
 {
   const size_t len = vec_len (lm->sys_name);
@@ -99,11 +113,12 @@ lldp_add_pdu_end (u8 ** t0p)
 
 static void
 lldp_add_tlvs (lldp_main_t * lm, vnet_hw_interface_t * hw, u8 ** t0p,
-	       int shutdown)
+	       int shutdown, lldp_intf_t * n)
 {
   lldp_add_chassis_id (hw, t0p);
   lldp_add_port_id (hw, t0p);
   lldp_add_ttl (lm, t0p, shutdown);
+  lldp_add_port_desc (lm, n, t0p);
   lldp_add_sys_name (lm, t0p);
   lldp_add_pdu_end (t0p);
 }
@@ -139,7 +154,7 @@ lldp_send_ethernet (lldp_main_t * lm, lldp_intf_t * n, int shutdown)
   t0 = data;
 
   /* add TLVs */
-  lldp_add_tlvs (lm, hw, &t0, shutdown);
+  lldp_add_tlvs (lm, hw, &t0, shutdown, n);
 
   /* Set the outbound packet length */
   b0 = vlib_get_buffer (vm, bi0);
@@ -167,6 +182,7 @@ lldp_delete_intf (lldp_main_t * lm, lldp_intf_t * n)
       hash_unset (lm->intf_by_hw_if_index, n->hw_if_index);
       vec_free (n->chassis_id);
       vec_free (n->port_id);
+      vec_free (n->port_desc);
       pool_put (lm->intfs, n);
     }
 }
