@@ -19,18 +19,12 @@
  *
  */
 #include <vnet/lisp-cp/lisp_types.h>
+#include <vnet/lldp/lldp.h>
 #include <vnet/lldp/lldp_node.h>
 
 #ifndef ETHER_ADDR_LEN
 #include <net/ethernet.h>
 #endif
-
-typedef enum lldp_cfg_err
-{
-  lldp_ok,
-  lldp_not_supported,
-  lldp_invalid_arg,
-} lldp_cfg_err_t;
 
 static clib_error_t *
 lldp_cfg_err_to_clib_err (lldp_cfg_err_t e)
@@ -48,8 +42,8 @@ lldp_cfg_err_to_clib_err (lldp_cfg_err_t e)
   return 0;
 }
 
-static lldp_cfg_err_t
-lldp_cfg_intf_set (u32 hw_if_index, int enable)
+lldp_cfg_err_t
+lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, int enable)
 {
   lldp_main_t *lm = &lldp_main;
   vnet_main_t *vnm = lm->vnet_main;
@@ -68,9 +62,16 @@ lldp_cfg_intf_set (u32 hw_if_index, int enable)
       if (n)
 	{
 	  /* already enabled */
-	  return 0;
+	  return lldp_ok;
 	}
       n = lldp_create_intf (lm, hw_if_index);
+
+      if (port_desc && *port_desc)
+	{
+	  n->port_desc = *port_desc;
+	  *port_desc = NULL;
+	}
+
       const vnet_sw_interface_t *sw =
 	vnet_get_sw_interface (lm->vnet_main, hi->sw_if_index);
       if (sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
@@ -84,7 +85,7 @@ lldp_cfg_intf_set (u32 hw_if_index, int enable)
       lldp_delete_intf (lm, n);
     }
 
-  return 0;
+  return lldp_ok;
 }
 
 static clib_error_t *
@@ -93,24 +94,33 @@ lldp_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
 {
   lldp_main_t *lm = &lldp_main;
   vnet_main_t *vnm = lm->vnet_main;
-  u32 hw_if_index;
-  int enable = 0;
+  u32 sw_if_index = (u32) ~ 0;
+  int enable = 1;
+  u8 *port_desc = NULL;
 
-  if (unformat (input, "%U %U", unformat_vnet_hw_interface, vnm, &hw_if_index,
-		unformat_vlib_enable_disable, &enable))
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      return
-	lldp_cfg_err_to_clib_err (lldp_cfg_intf_set (hw_if_index, enable));
+      if (unformat (input, "sw_if_index %d", &sw_if_index))
+	;
+      if (unformat
+	  (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (input, "disable"))
+	enable = 0;
+      else if (unformat (input, "port-desc %s", &port_desc))
+	;
+      else
+	break;
     }
-  else
-    {
-      return clib_error_return (0, "unknown input `%U'",
-				format_unformat_error, input);
-    }
-  return 0;
+
+  if (sw_if_index == (u32) ~ 0)
+    return clib_error_return (0, "Interface name is invalid!");
+
+  return lldp_cfg_err_to_clib_err (lldp_cfg_intf_set (sw_if_index,
+						      &port_desc, enable));
 }
 
-static lldp_cfg_err_t
+lldp_cfg_err_t
 lldp_cfg_set (u8 ** host, int hold_time, int tx_interval)
 {
   lldp_main_t *lm = &lldp_main;
@@ -208,7 +218,8 @@ out:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND(set_interface_lldp_cmd, static) = {
   .path = "set interface lldp",
-  .short_help = "set interface lldp <interface> (enable | disable) ",
+  .short_help = "set interface lldp <interface> | sw_if_index <idx>"
+                " [port-desc <string>] [disable]",
   .function = lldp_intf_cmd,
 };
 
@@ -499,23 +510,26 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
         else if (now < n->last_heard + n->ttl)
           {
             s = format(s,
-                       "\nInterface name: %s\nInterface/peer state: "
-                       "active\nPeer chassis ID: %U\nRemote port ID: %U\nLast "
-                       "packet sent: %U\nLast packet received: %U\n",
-                       hw->name, format_lldp_chassis_id, n->chassis_id_subtype,
-                       n->chassis_id, vec_len(n->chassis_id), 1,
+                       "\nInterface name: %s\nPort Desc: %s\nInterface/peer "
+                       "state: active\nPeer chassis ID: %U\nRemote port ID:"
+                       " %U\nLast packet sent: %U\nLast packet received: %U\n",
+                       hw->name, n->port_desc, format_lldp_chassis_id,
+                       n->chassis_id_subtype, n->chassis_id,
+                       vec_len(n->chassis_id), 1,
                        format_lldp_port_id, n->port_id_subtype, n->port_id,
                        vec_len(n->port_id), 1, format_time_ago, n->last_sent,
                        now, format_time_ago, n->last_heard, now);
           }
         else
           {
-            s = format(s, "\nInterface name: %s\nInterface/peer state: "
-                          "inactive(timeout)\nLast known peer chassis ID: "
-                          "%U\nLast known peer port ID: %U\nLast packet sent: "
-                          "%U\nLast packet received: %U\n",
-                       hw->name, format_lldp_chassis_id, n->chassis_id_subtype,
-                       n->chassis_id, vec_len(n->chassis_id), 1,
+            s = format(s,
+                       "\nInterface name: %s\nPort Desc: %s\nInterface/peer "
+                       "state: inactive(timeout)\nLast known peer chassis ID:"
+                       "%U\nLast known peer port ID: %U\nLast packet sent: "
+                       "%U\nLast packet received: %U\n",
+                       hw->name, n->port_desc, format_lldp_chassis_id,
+                       n->chassis_id_subtype, n->chassis_id,
+                       vec_len(n->chassis_id), 1,
                        format_lldp_port_id, n->port_id_subtype, n->port_id,
                        vec_len(n->port_id), 1, format_time_ago, n->last_sent,
                        now, format_time_ago, n->last_heard, now);
