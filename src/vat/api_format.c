@@ -4633,7 +4633,9 @@ _(feature_enable_disable_reply)				\
 _(sw_interface_tag_add_del_reply)			\
 _(sw_interface_set_mtu_reply)                           \
 _(p2p_ethernet_add_reply)                               \
-_(p2p_ethernet_del_reply)
+_(p2p_ethernet_del_reply)                               \
+_(lldp_config_reply)                                    \
+_(sw_interface_set_lldp_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -4915,7 +4917,9 @@ _(SW_INTERFACE_SET_MTU_REPLY, sw_interface_set_mtu_reply)               \
 _(IP_NEIGHBOR_DETAILS, ip_neighbor_details)                             \
 _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)           \
 _(P2P_ETHERNET_ADD_REPLY, p2p_ethernet_add_reply)                       \
-_(P2P_ETHERNET_DEL_REPLY, p2p_ethernet_del_reply)
+_(P2P_ETHERNET_DEL_REPLY, p2p_ethernet_del_reply)                       \
+_(LLDP_CONFIG_REPLY, lldp_config_reply)                                 \
+_(SW_INTERFACE_SET_LLDP_REPLY, sw_interface_set_lldp_reply)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
@@ -19233,6 +19237,88 @@ api_p2p_ethernet_del (vat_main_t * vam)
 }
 
 static int
+api_lldp_config (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_lldp_config_t *mp;
+  int tx_hold = 0;
+  int tx_interval = 0;
+  u8 *sys_name = NULL;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "system-name %s", &sys_name))
+	;
+      else if (unformat (i, "tx-hold %d", &tx_hold))
+	;
+      else if (unformat (i, "tx-interval %d", &tx_interval))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  vec_add1 (sys_name, 0);
+
+  M (LLDP_CONFIG, mp);
+  mp->tx_hold = htonl (tx_hold);
+  mp->tx_interval = htonl (tx_interval);
+  clib_memcpy (mp->system_name, sys_name, vec_len (sys_name));
+  vec_free (sys_name);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_sw_interface_set_lldp (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_lldp_t *mp;
+  u32 sw_if_index = ~0;
+  u32 enable = 1;
+  u8 *port_desc = NULL;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "disable"))
+	enable = 0;
+      else
+	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	;
+      else if (unformat (i, "port-desc %s", &port_desc))
+	;
+      else
+	break;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+
+  /* Construct the API message */
+  vec_add1 (port_desc, 0);
+  M (SW_INTERFACE_SET_LLDP, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->enable = enable;
+  clib_memcpy (mp->port_desc, port_desc, vec_len (port_desc));
+  vec_free (port_desc);
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
 q_or_quit (vat_main_t * vam)
 {
 #if VPP_API_TEST_BUILTIN == 0
@@ -19994,7 +20080,10 @@ _(sw_interface_set_mtu, "<intfc> | sw_if_index <nn> mtu <nn>")        \
 _(ip_neighbor_dump, "[ip6] <intfc> | sw_if_index <nn>")                 \
 _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
 _(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
-_(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>")
+_(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
+_(lldp_config, "system-name <name> tx-hold <nn> tx-interval <nn>")      \
+_(sw_interface_set_lldp,                                                \
+  "<intfc> | sw_if_index <nn> [port-desc <description>] [disable]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

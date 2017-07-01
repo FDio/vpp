@@ -43,6 +43,9 @@ typedef struct lldp_intf
   lldp_port_id_subtype_t port_id_subtype;
   lldp_chassis_id_subtype_t chassis_id_subtype;
 
+  /* Local info */
+  u8 *port_desc;
+
 } lldp_intf_t;
 
 typedef struct

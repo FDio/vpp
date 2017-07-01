@@ -27,10 +27,12 @@ tx-interval: time interval between sending out LLDP packets
 
 Per interface setting is done using the "set interface lldp" command
 
-set interface lldp <interface> (enable | disable)
+set interface lldp <interface> | if_index <idx> [port-desc <string>] [disable]
 
 interface: the name of the interface for which to enable/disable LLDP
-
+if_index: sw interface index can be used if interface name is not used.
+port-desc: port description
+disable: LLDP feature can be enabled or disabled per interface.
 
 ### Configuration example
 
@@ -38,9 +40,9 @@ Configure system-name as "VPP" and transmit interval to 10 seconds:
 
 set lldp system-name VPP tx-interval 10
 
-Enable LLDP on interface TenGigabitEthernet5/0/1
+Enable LLDP on interface TenGigabitEthernet5/0/1 with port description
 
-set interface lldp TenGigabitEthernet5/0/1 enable
+set interface lldp TenGigabitEthernet5/0/1 port-desc vtf:eth0
 
 
 ### Operational data
