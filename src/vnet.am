@@ -269,10 +269,15 @@ libvnet_la_SOURCES +=				\
   vnet/lldp/lldp_input.c			\
   vnet/lldp/lldp_node.c				\
   vnet/lldp/lldp_output.c			\
-  vnet/lldp/lldp_cli.c
+  vnet/lldp/lldp_cli.c                          \
+  vnet/lldp/lldp_api.c
 
 nobase_include_HEADERS +=			\
-  vnet/lldp/lldp_protocol.h
+  vnet/lldp/lldp_protocol.h                     \
+  vnet/lldp/lldp.h                              \
+  vnet/lldp/lldp.api.h
+
+API_FILES += vnet/lldp/lldp.api
 
 ########################################
 # Layer 2/3 "classify"
