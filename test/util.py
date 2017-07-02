@@ -89,6 +89,11 @@ class Host(object):
         return self._mac
 
     @property
+    def bin_mac(self):
+        """ MAC address """
+        return mactobinary(self._mac)
+
+    @property
     def ip4(self):
         """ IPv4 address - string """
         return self._ip4
@@ -118,6 +123,27 @@ class Host(object):
         """ IPv6 link-local address of remote host -
         raw, suitable as API parameter."""
         return socket.inet_pton(socket.AF_INET6, self._ip6_ll)
+
+    def __eq__(self, other):
+        if isinstance(other, Host):
+            return (self.mac == other.mac and
+                    self.ip4 == other.ip4 and
+                    self.ip6 == other.ip6 and
+                    self.ip6_ll == other.ip6_ll)
+        else:
+            return False
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return "Host { mac:%s ip4:%s ip6:%s ip6_ll:%s }" % (self.mac,
+                                                            self.ip4,
+                                                            self.ip6,
+                                                            self.ip6_ll)
+
+    def __hash__(self):
+        return hash(self.__repr__())
 
     def __init__(self, mac=None, ip4=None, ip6=None, ip6_ll=None):
         self._mac = mac
