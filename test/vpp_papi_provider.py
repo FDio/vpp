@@ -411,6 +411,14 @@ class VppPapiProvider(object):
                          'arp_term': arp_term,
                          'is_add': is_add})
 
+    def bd_ip_mac_add_del(self, bd_id, mac, ip, is_ipv6=0, is_add=1):
+        return self.api(self.papi.bd_ip_mac_add_del,
+                        {'bd_id': bd_id,
+                         'is_add': is_add,
+                         'is_ipv6': is_ipv6,
+                         'ip_address': ip,
+                         'mac_address': mac})
+
     def l2fib_add_del(self, mac, bd_id, sw_if_index, is_add=1, static_mac=0,
                       filter_mac=0, bvi_mac=0):
         """Create/delete L2 FIB entry.
