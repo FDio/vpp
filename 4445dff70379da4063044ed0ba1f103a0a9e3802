@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_66123e64",
+        "filename": "test/util.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-03T01:10:25Z",
+      "side": 1,
+      "message": "Should all these ip4/ip6/ip4_ll be other.x?",
+      "range": {
+        "startLine": 130,
+        "startChar": 32,
+        "endLine": 130,
+        "endChar": 36
+      },
+      "revId": "4445dff70379da4063044ed0ba1f103a0a9e3802",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
