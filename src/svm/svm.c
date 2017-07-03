@@ -458,13 +458,14 @@ svm_map_region (svm_map_region_args_t * a)
   struct stat stat;
   struct timespec ts, tsrem;
 
-  if (CLIB_DEBUG > 1)
-    clib_warning ("[%d] map region %s", getpid (), a->name);
-
   ASSERT ((a->size & ~(MMAP_PAGESIZE - 1)) == a->size);
   ASSERT (a->name);
 
   shm_name = shm_name_from_svm_map_region_args (a);
+
+  if (CLIB_DEBUG > 1)
+    clib_warning ("[%d] map region %s: shm_open (%s)",
+		  getpid (), a->name, shm_name);
 
   svm_fd = shm_open ((char *) shm_name, O_RDWR | O_CREAT | O_EXCL, 0777);
 
@@ -947,6 +948,29 @@ svm_region_find_or_create (svm_map_region_args_t * a)
   return (rp);
 }
 
+void
+svm_region_unlink (svm_region_t * rp)
+{
+  svm_map_region_args_t _a, *a = &_a;
+  svm_main_region_t *mp;
+  u8 *shm_name;
+
+  ASSERT (root_rp);
+  ASSERT (rp);
+  ASSERT (vec_c_string_is_terminated (rp->region_name));
+
+  mp = root_rp->data_base;
+  ASSERT (mp);
+
+  a->root_path = (char *) mp->root_path;
+  a->name = rp->region_name;
+  shm_name = shm_name_from_svm_map_region_args (a);
+  if (CLIB_DEBUG > 1)
+    clib_warning ("[%d] shm_unlink (%s)", getpid (), shm_name);
+  shm_unlink ((const char *) shm_name);
+  vec_free (shm_name);
+}
+
 /*
  * svm_region_unmap
  *
@@ -1056,7 +1080,7 @@ found:
       vec_free (name);
 
       region_unlock (rp);
-      shm_unlink (rp->region_name);
+      svm_region_unlink (rp);
       munmap ((void *) virtual_base, virtual_size);
       region_unlock (root_rp);
       svm_pop_heap (oldheap);
@@ -1071,9 +1095,6 @@ found:
 
 /*
  * svm_region_exit
- * There is no clean way to unlink the
- * root region when all clients go away,
- * so remove the pid entry and call it a day.
  */
 void
 svm_region_exit ()
@@ -1115,6 +1136,9 @@ svm_region_exit ()
   clib_warning ("pid %d AWOL", mypid);
 
 found:
+
+  if (vec_len (root_rp->client_pids) == 0)
+    svm_region_unlink (root_rp);
 
   region_unlock (root_rp);
   svm_pop_heap (oldheap);
