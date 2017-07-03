@@ -36,7 +36,7 @@ vpp_uses_dpdk = yes
 # Uncoment to enable building unit tests
 # vpp_enable_tests = yes
 
-vpp_root_packages = vpp gmod
+vpp_root_packages = vpp
 
 # DPDK configuration parameters
 # vpp_uses_dpdk_cryptodev_sw = yes

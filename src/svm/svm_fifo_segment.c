@@ -105,7 +105,7 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
   s->ssvm.ssvm_size = a->segment_size;
   s->ssvm.i_am_master = 1;
   s->ssvm.my_pid = getpid ();
-  s->ssvm.name = (u8 *) a->segment_name;
+  s->ssvm.name = format (0, "%s", a->segment_name);
   s->ssvm.requested_va = sm->next_baseva;
 
   rv = ssvm_master_init (&s->ssvm, s - sm->segments);
