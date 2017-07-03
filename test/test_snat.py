@@ -2542,6 +2542,7 @@ class TestDeterministicNAT(MethodHolder):
         dms = self.vapi.snat_det_map_dump()
         self.assertEqual(0, dms[0].ses_num)
 
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_session_limit_per_user(self):
         """ CGNAT maximum 1000 sessions per user should be created """
         self.vapi.snat_add_det_map(self.pg0.remote_ip4n,
@@ -2595,6 +2596,7 @@ class TestDeterministicNAT(MethodHolder):
 
         # verify IPFIX logging
         self.vapi.cli("ipfix flush")  # FIXME this should be an API call
+        sleep(1)
         capture = self.pg2.get_capture(2)
         ipfix = IPFIXDecoder()
         # first load template
