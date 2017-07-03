@@ -1974,6 +1974,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
 #define _(cnt, desc) out0 = format(out0, "             %20lu: %s\n", am->cnt, desc);
       foreach_fa_cleaner_counter;
 #undef _
+      vec_terminate_c_string(out0);
       vlib_cli_output(vm, "\n\n%s\n\n", out0);
       vlib_cli_output(vm, "Sessions per interval: min %lu max %lu increment: %f ms current: %f ms",
               am->fa_min_deleted_sessions_per_interval, am->fa_max_deleted_sessions_per_interval,
@@ -2011,6 +2012,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
         }
 
       }
+      vec_terminate_c_string(out0);
       vlib_cli_output(vm, "\n%s\n", out0);
       vec_free(out0);
     }
@@ -2067,6 +2069,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
           out0 = format(out0, "\n");
         }
       }
+      vec_terminate_c_string(out0);
       vlib_cli_output(vm, "\n%s\n", out0);
       vec_free(out0);
     }
@@ -2138,6 +2141,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
                                 pa->src_portrange_not_powerof2, pa->dst_portrange_not_powerof2);
           }
         }
+        vec_terminate_c_string(out0);
         vlib_cli_output(vm, "\n%s\n", out0);
         vec_free(out0);
       }
@@ -2184,6 +2188,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
           }
 
         }
+        vec_terminate_c_string(out0);
         vlib_cli_output(vm, "\n%s\n", out0);
         vec_free(out0);
       }
