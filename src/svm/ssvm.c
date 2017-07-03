@@ -29,6 +29,9 @@ ssvm_master_init (ssvm_private_t * ssvm, u32 master_index)
   if (ssvm->ssvm_size == 0)
     return SSVM_API_ERROR_NO_SIZE;
 
+  if (CLIB_DEBUG > 1)
+    clib_warning ("[%d] creating segment '%s'", getpid (), ssvm->name);
+
   ssvm_filename = format (0, "/dev/shm/%s%c", ssvm->name, 0);
 
   unlink ((char *) ssvm_filename);
@@ -176,12 +179,18 @@ ssvm_delete (ssvm_private_t * ssvm)
 
   fn = format (0, "/dev/shm/%s%c", ssvm->name, 0);
 
+  if (CLIB_DEBUG > 1)
+    clib_warning ("[%d] unlinking ssvm (%s) backing file '%s'", getpid (),
+		  ssvm->name, fn);
+
   /* Throw away the backing file */
   if (unlink ((char *) fn) < 0)
     clib_unix_warning ("unlink segment '%s'", ssvm->name);
 
-  munmap ((void *) ssvm->requested_va, ssvm->ssvm_size);
   vec_free (fn);
+  vec_free (ssvm->name);
+
+  munmap ((void *) ssvm->requested_va, ssvm->ssvm_size);
 }
 
 
