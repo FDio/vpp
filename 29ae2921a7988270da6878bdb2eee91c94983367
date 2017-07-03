@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_d1540623",
+        "filename": "src/vlib/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-03T12:42:20Z",
+      "side": 1,
+      "message": "Is there any chance that another thread will access nm-\u003enode_by_name during the interval between hash_unset(...) and the barrier sync call? \n\nFrom first principles: barrier_sync(...), change things, then drop the barrier...",
+      "revId": "29ae2921a7988270da6878bdb2eee91c94983367",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
