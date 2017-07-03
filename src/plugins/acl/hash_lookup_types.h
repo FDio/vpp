@@ -53,10 +53,14 @@ typedef struct {
    */
   u32 next_applied_entry_index;
   /*
-   * previous entry in the list of the chained ones,
-   * if ~0 then this is entry in the hash.
+   * previous entry in the ring list of the chained ones.
    */
   u32 prev_applied_entry_index;
+  /*
+   * 1 if it is the very first entry in the list,
+   * referenced from the hash.
+   */
+  u8 is_first_entry;
   /*
    * Action of this applied ACE
    */
