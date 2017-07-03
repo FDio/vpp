@@ -232,8 +232,6 @@ unformat_sw_if_index (unformat_input_t * input, va_list * args)
   u32 *result = va_arg (*args, u32 *);
   vnet_main_t *vnm = vnet_get_main ();
   u32 sw_if_index = ~0;
-  u8 *if_name;
-  uword *p;
 
   if (unformat (input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
     {

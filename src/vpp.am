@@ -33,11 +33,11 @@ if WITH_APICLI
   vpp/api/plugin.h
 endif
 
-# comment out to disable stats upload to gmond
+# uncomment to enable stats upload to gmond
+# bin_vpp_SOURCES +=				\
+#  vpp/api/gmon.c
 
 bin_vpp_CFLAGS = @APICLI@
-bin_vpp_SOURCES +=				\
-  vpp/api/gmon.c
 
 nobase_include_HEADERS +=			\
   vpp/api/vpe_all_api_h.h			\

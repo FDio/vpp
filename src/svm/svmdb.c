@@ -106,11 +106,16 @@ svmdb_map (svmdb_map_args_t * dba)
     }
   /* Nope, it's our problem... */
 
-  /* Add a bogus client (pid=0) so the svm won't be deallocated */
-  oldheap = svm_push_pvt_heap (db_rp);
-  vec_add1 (client->db_rp->client_pids, 0);
-  svm_pop_heap (oldheap);
-
+  if (CLIB_DEBUG > 2)
+    {
+      /* Add a bogus client (pid=0) so the svm won't be deallocated */
+      clib_warning
+	("[%d] adding fake client (pid=0) so '%s' won't be unlinked",
+	 getpid (), db_rp->region_name);
+      oldheap = svm_push_pvt_heap (db_rp);
+      vec_add1 (client->db_rp->client_pids, 0);
+      svm_pop_heap (oldheap);
+    }
   oldheap = svm_push_data_heap (db_rp);
 
   vec_validate (hp, 0);

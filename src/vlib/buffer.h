@@ -87,17 +87,17 @@ typedef struct
 /* any change to the following line requres update of
  * vlib_buffer_get_free_list_index(...) and
  * vlib_buffer_set_free_list_index(...) functions */
-#define VLIB_BUFFER_FREE_LIST_INDEX_MASK ((1 << 4) - 1)
+#define VLIB_BUFFER_FREE_LIST_INDEX_MASK ((1 << 5) - 1)
 
-#define VLIB_BUFFER_IS_TRACED (1 << 4)
-#define VLIB_BUFFER_LOG2_NEXT_PRESENT (5)
+#define VLIB_BUFFER_IS_TRACED (1 << 5)
+#define VLIB_BUFFER_LOG2_NEXT_PRESENT (6)
 #define VLIB_BUFFER_NEXT_PRESENT (1 << VLIB_BUFFER_LOG2_NEXT_PRESENT)
-#define VLIB_BUFFER_IS_RECYCLED (1 << 6)
-#define VLIB_BUFFER_TOTAL_LENGTH_VALID (1 << 7)
-#define VLIB_BUFFER_REPL_FAIL (1 << 8)
-#define VLIB_BUFFER_RECYCLE (1 << 9)
-#define VLIB_BUFFER_FLOW_REPORT (1 << 10)
-#define VLIB_BUFFER_EXT_HDR_VALID (1 << 11)
+#define VLIB_BUFFER_IS_RECYCLED (1 << 7)
+#define VLIB_BUFFER_TOTAL_LENGTH_VALID (1 << 8)
+#define VLIB_BUFFER_REPL_FAIL (1 << 9)
+#define VLIB_BUFFER_RECYCLE (1 << 10)
+#define VLIB_BUFFER_FLOW_REPORT (1 << 11)
+#define VLIB_BUFFER_EXT_HDR_VALID (1 << 12)
 
   /* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))

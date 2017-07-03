@@ -577,7 +577,6 @@ do_ip4_fibs (stats_main_t * sm)
   ip4_route_t *r;
   fib_table_t *fib;
   ip4_fib_t *v4_fib;
-  ip_lookup_main_t *lm = &im4->lookup_main;
   static uword *results;
   vl_api_vnet_ip4_fib_counters_t *mp = 0;
   u32 items_this_message;

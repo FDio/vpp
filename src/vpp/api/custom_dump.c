@@ -1174,7 +1174,6 @@ static void *vl_api_sr_policy_mod_t_print
   (vl_api_sr_policy_mod_t * mp, void *handle)
 {
   u8 *s;
-  u32 weight;
 
   ip6_address_t *segments = 0, *seg;
   ip6_address_t *this_address = (ip6_address_t *) mp->segments;
@@ -1216,8 +1215,6 @@ static void *vl_api_sr_policy_del_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: sr_policy_del ");
-  u8 bsid_addr[16];
-  u32 sr_policy_index;
   s = format (s, "To be delivered. Good luck.");
   FINISH;
 }
@@ -2432,7 +2429,7 @@ static void *vl_api_lisp_add_del_remote_mapping_t_print
   (vl_api_lisp_add_del_remote_mapping_t * mp, void *handle)
 {
   u8 *s;
-  u32 i, rloc_num = 0;
+  u32 rloc_num = 0;
 
   s = format (0, "SCRIPT: lisp_add_del_remote_mapping ");
 
@@ -2574,7 +2571,6 @@ static void *vl_api_lisp_add_del_locator_set_t_print
   (vl_api_lisp_add_del_locator_set_t * mp, void *handle)
 {
   u8 *s;
-  u32 loc_num = 0, i;
 
   s = format (0, "SCRIPT: lisp_add_del_locator_set ");
 
@@ -2582,8 +2578,6 @@ static void *vl_api_lisp_add_del_locator_set_t_print
     s = format (s, "del ");
 
   s = format (s, "locator-set %s ", mp->locator_set_name);
-
-  loc_num = clib_net_to_host_u32 (mp->locator_num);
 
   FINISH;
 }

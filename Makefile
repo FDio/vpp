@@ -55,8 +55,10 @@ else ifeq ($(filter rhel centos fedora opensuse,$(OS_ID)),$(OS_ID))
 PKG=rpm
 endif
 
+# +libganglia1-dev if building the gmond plugin
+
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
-DEB_DEPENDS += debhelper dkms git libtool libganglia1-dev libapr1-dev dh-systemd
+DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf nasm indent
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6
@@ -79,9 +81,12 @@ else
 	RPM_DEPENDS += python-virtualenv
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 endif
+
+# +ganglia-devel if building the ganglia plugin
+
 RPM_DEPENDS += chrpath libffi-devel rpm-build
 RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
-EPEL_DEPENDS = libconfuse-devel ganglia-devel epel-rpm-macros
+EPEL_DEPENDS = libconfuse-devel epel-rpm-macros
 ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
 	EPEL_DEPENDS += lcov
 else
