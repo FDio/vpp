@@ -2087,3 +2087,29 @@ class VppPapiProvider(object):
                          'decap_vrf_id': decap_vrf_id,
                          'protocol': protocol,
                          'vni': vni})
+
+    def pppoe_add_del_session(
+            self,
+            client_ip,
+            client_mac,
+            session_id=0,
+            is_add=1,
+            is_ipv6=0,
+            decap_vrf_id=0):
+        """
+
+        :param is_add:  (Default value = 1)
+        :param is_ipv6:  (Default value = 0)
+        :param client_ip:
+        :param session_id:  (Default value = 0)
+        :param client_mac:
+        :param decap_vrf_id:  (Default value = 0)
+
+        """
+        return self.api(self.papi.pppoe_add_del_session,
+                        {'is_add': is_add,
+                         'is_ipv6': is_ipv6,
+                         'session_id': session_id,
+                         'client_ip': client_ip,
+                         'decap_vrf_id': decap_vrf_id,
+                         'client_mac': client_mac})

@@ -132,6 +132,11 @@ M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/plugins/gtpu/
 F:	src/plugins/gtpu.am
 
+Plugin - PPPoE
+M:  Hongjun Ni <hongjun.ni@intel.com>
+F:  src/plugins/pppoe/
+F:  src/plugins/pppoe.am
+
 Test Infrastructure
 M:	Klement Sekera <ksekera@cisco.com>
 F:	test/
