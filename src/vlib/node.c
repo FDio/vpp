@@ -72,6 +72,32 @@ node_set_elog_name (vlib_main_t * vm, uword node_index)
   n->name_elog_string = elog_string (&vm->elog_main, "%v%c", n->name, 0);
 }
 
+static void
+vlib_worker_thread_node_rename (u32 node_index)
+{
+  int i;
+  vlib_main_t *vm;
+  vlib_node_t *n;
+
+  if (vec_len (vlib_mains) == 1)
+    return;
+
+  vm = vlib_mains[0];
+  n = vlib_get_node (vm, node_index);
+
+  ASSERT (vlib_get_thread_index () == 0);
+  ASSERT (*vlib_worker_threads->wait_at_barrier == 1);
+
+  for (i = 1; i < vec_len (vlib_mains); i++)
+    {
+      vlib_main_t *vm_worker = vlib_mains[i];
+      vlib_node_t *n_worker = vlib_get_node (vm_worker, node_index);
+
+      n_worker->name = n->name;
+      n_worker->name_elog_string = n->name_elog_string;
+    }
+}
+
 void
 vlib_node_rename (vlib_main_t * vm, u32 node_index, char *fmt, ...)
 {
@@ -87,6 +113,9 @@ vlib_node_rename (vlib_main_t * vm, u32 node_index, char *fmt, ...)
   hash_set (nm->node_by_name, n->name, n->index);
 
   node_set_elog_name (vm, node_index);
+
+  /* Propagate the change to all worker threads */
+  vlib_worker_thread_node_rename (node_index);
 }
 
 static void
