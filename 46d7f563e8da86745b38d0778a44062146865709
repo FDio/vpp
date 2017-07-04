@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "da6255ed_40acbded",
+        "filename": "src/vnet/lldp/lldp_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 304
+      },
+      "writtenOn": "2017-07-04T04:28:03Z",
+      "side": 1,
+      "message": "Fixed. Change vpe_api_hookup to lldp_api_hookup.",
+      "parentUuid": "da6255ed_710f9ae2",
+      "range": {
+        "startLine": 94,
+        "startChar": 0,
+        "endLine": 100,
+        "endChar": 11
+      },
+      "revId": "46d7f563e8da86745b38d0778a44062146865709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "da6255ed_910a0ed1",
         "filename": "src/vnet/lldp/lldp_cli.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2017-07-03T07:47:40Z",
       "side": 1,
       "message": "could we please change the naming to maintain consistency? unformat...sw... -\u003e sw_if_index",
+      "range": {
+        "startLine": 106,
+        "startChar": 51,
+        "endLine": 106,
+        "endChar": 62
+      },
+      "revId": "46d7f563e8da86745b38d0778a44062146865709",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da6255ed_a0ddb944",
+        "filename": "src/vnet/lldp/lldp_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 304
+      },
+      "writtenOn": "2017-07-04T04:28:03Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "da6255ed_910a0ed1",
       "range": {
         "startLine": 106,
         "startChar": 51,
