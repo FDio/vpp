@@ -79,6 +79,7 @@ vlib_node_rename (vlib_main_t * vm, u32 node_index, char *fmt, ...)
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *n = vlib_get_node (vm, node_index);
 
+  vlib_worker_thread_barrier_sync (vm);
   va_start (va, fmt);
   hash_unset (nm->node_by_name, n->name);
   vec_free (n->name);
@@ -87,6 +88,10 @@ vlib_node_rename (vlib_main_t * vm, u32 node_index, char *fmt, ...)
   hash_set (nm->node_by_name, n->name, n->index);
 
   node_set_elog_name (vm, node_index);
+
+  /* Propagate the change to all worker threads */
+  vlib_worker_thread_node_runtime_update ();
+  vlib_worker_thread_barrier_release (vm);
 }
 
 static void
