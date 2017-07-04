@@ -149,6 +149,26 @@ jvpp-gtpu/io_fd_vpp_jvpp_gtpu_JVppGtpuImpl.h: $(jvpp_registry_ok) $(jvpp_gtpu_js
 endif
 
 #
+# PPPOE Plugin
+#
+if ENABLE_PPPOE_PLUGIN
+noinst_LTLIBRARIES += libjvpp_pppoe.la
+libjvpp_pppoe_la_SOURCES = jvpp-pppoe/jvpp_pppoe.c
+libjvpp_pppoe_la_CPPFLAGS = -Ijvpp-pppoe
+libjvpp_pppoe_la_LIBADD = $(JVPP_LIBS)
+libjvpp_pppoe_la_DEPENDENCIES = libjvpp_common.la
+
+BUILT_SOURCES += jvpp-pppoe/io_fd_vpp_jvpp_pppoe_JVppPppoeImpl.h
+JAR_FILES += jvpp-pppoe-$(PACKAGE_VERSION).jar
+CLEANDIRS += jvpp-pppoe/target
+
+jvpp_pppoe_json_files = @top_builddir@/plugins/pppoe/pppoe.api.json
+
+jvpp-pppoe/io_fd_vpp_jvpp_pppoe_JVppPppoeImpl.h: $(jvpp_registry_ok) $(jvpp_pppoe_json_files)
+	$(call japigen,pppoe,JVppPppoeImpl)
+endif
+
+#
 # SNAT Plugin
 #
 if ENABLE_SNAT_PLUGIN
