@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_e35e1be9",
+        "filename": "src/vpp-api/vapi/vapi_internal.h",
+        "patchSetId": 31
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-07-04T19:55:52Z",
+      "side": 1,
+      "message": "copyright header",
+      "revId": "4bcf1a95b209b9ea72af5c86224a3477dc8405a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
