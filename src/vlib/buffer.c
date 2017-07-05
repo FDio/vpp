@@ -383,7 +383,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
   f->index = f - bm->buffer_free_list_pool;
   f->n_data_bytes = vlib_buffer_round_size (n_data_bytes);
   f->min_n_buffers_each_physmem_alloc = VLIB_FRAME_SIZE;
-  f->name = clib_mem_is_heap_object (name) ? name : format (0, "%s", name);
+  f->name = clib_mem_is_vec (name) ? name : format (0, "%s", name);
 
   /* Setup free buffer template. */
   f->buffer_init_template.free_list_index = f->index;
@@ -774,7 +774,7 @@ vlib_packet_template_init (vlib_main_t * vm,
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   va_list va;
-  __attribute__ ((unused)) u8 *name;
+  u8 *name;
   vlib_buffer_free_list_t *fl;
 
   va_start (va, fmt);
@@ -962,7 +962,7 @@ format_vlib_buffer_free_list (u8 * s, va_list * va)
   bytes_alloc = size * f->n_alloc;
   bytes_free = size * n_free;
 
-  s = format (s, "%7d%30s%12d%12d%=12U%=12U%=12d%=12d", threadnum,
+  s = format (s, "%7d%30v%12d%12d%=12U%=12U%=12d%=12d", threadnum,
 	      f->name, f->index, f->n_data_bytes,
 	      format_memory_size, bytes_alloc,
 	      format_memory_size, bytes_free, f->n_alloc, n_free);
