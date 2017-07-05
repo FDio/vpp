@@ -97,7 +97,7 @@ void segment_manager_get_segment_info (u32 index, u8 ** name, u32 * size);
 int
 session_manager_add_first_segment (segment_manager_t * sm, u32 segment_size);
 int session_manager_add_segment (segment_manager_t * sm);
-void segment_manager_del (segment_manager_t * sm);
+void segment_manager_del (segment_manager_t * sm, u8 del_first_segment);
 int
 segment_manager_alloc_session_fifos (segment_manager_t * sm,
 				     svm_fifo_t ** server_rx_fifo,

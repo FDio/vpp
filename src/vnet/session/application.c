@@ -81,6 +81,9 @@ application_new ()
   memset (app, 0, sizeof (*app));
   app->index = application_get_index (app);
   app->connects_seg_manager = ~0;
+  app->first_segment_manager = ~0;
+  if (CLIB_DEBUG > 1)
+    clib_warning ("[%d] New app (%d)", getpid (), app->index);
   return app;
 }
 
@@ -97,6 +100,8 @@ application_del (application_t * app)
    * The app event queue allocated in first segment is cleared with
    * the segment manager. No need to explicitly free it.
    */
+  if (CLIB_DEBUG > 1)
+    clib_warning ("[%d] Delete app (%d)", getpid (), app->index);
 
   /*
    * Cleanup segment managers
@@ -104,7 +109,7 @@ application_del (application_t * app)
   if (app->connects_seg_manager != (u32) ~ 0)
     {
       sm = segment_manager_get (app->connects_seg_manager);
-      segment_manager_del (sm);
+      segment_manager_del (sm, 0 /* del_first_segment */ );
     }
 
   /* *INDENT-OFF* */
@@ -123,6 +128,12 @@ application_del (application_t * app)
       vnet_unbind (a);
     }
 
+  if (app->first_segment_manager != ~0)
+    {
+      sm = segment_manager_get (app->first_segment_manager);
+      segment_manager_del (sm, 1 /* del_first_segment */ );
+    }
+  
   application_table_del (app);
   pool_put (app_pool, app);
 }
@@ -214,7 +225,6 @@ application_alloc_segment_manager (application_t * app)
   if (app->first_segment_manager != (u32) ~ 0)
     {
       sm = segment_manager_get (app->first_segment_manager);
-      app->first_segment_manager = ~0;
       return sm;
     }
 
@@ -287,7 +297,8 @@ application_stop_listen (application_t * srv, u64 handle)
   ASSERT (indexp);
 
   sm = segment_manager_get (*indexp);
-  segment_manager_del (sm);
+  segment_manager_del (sm, 1 /* del_first_segment */ );
+  srv->first_segment_manager = ~0;
   hash_unset (srv->listeners_table, handle);
   listen_session_del (listener);
 
