@@ -222,6 +222,19 @@ done:
   return r;
 }
 
+clib_error_t *
+unix_make_vpp_run_dir (void)
+{
+  int rv;
+
+  rv = mkdir (VPP_RUN_DIR, 0755);
+  if (rv && errno != EEXIST)
+    return clib_error_return (0, "mkdir '%s' failed errno %d",
+			      VPP_RUN_DIR, errno);
+
+  return 0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

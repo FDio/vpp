@@ -37,8 +37,7 @@ dpdk_main_t dpdk_main;
 
 #define LINK_STATE_ELOGS	0
 
-#define DEFAULT_HUGE_DIR "/run/vpp/hugepages"
-#define VPP_RUN_DIR "/run/vpp"
+#define DEFAULT_HUGE_DIR (VPP_RUN_DIR "/hugepages")
 
 /* Port configuration, mildly modified Intel app values */
 
@@ -1047,13 +1046,10 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       vec_free (mem_by_socket);
 
-      rv = mkdir (VPP_RUN_DIR, 0755);
-      if (rv && errno != EEXIST)
-	{
-	  error = clib_error_return (0, "mkdir '%s' failed errno %d",
-				     VPP_RUN_DIR, errno);
-	  goto done;
-	}
+      /* Make sure VPP_RUN_DIR exists */
+      error = unix_make_vpp_run_dir ();
+      if (error)
+	goto done;
 
       rv = mkdir (DEFAULT_HUGE_DIR, 0755);
       if (rv && errno != EEXIST)

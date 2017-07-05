@@ -2642,6 +2642,17 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
       /* CLI listen. */
       unix_file_t template = { 0 };
 
+      /* If our listen address looks like a path and it starts with
+       * VPP_RUN_DIR, go make sure VPP_RUN_DIR exists before trying to open
+       * a socket in it.
+       */
+      if (strncmp (s->config, VPP_RUN_DIR "/", strlen (VPP_RUN_DIR) + 1) == 0)
+	{
+	  error = unix_make_vpp_run_dir ();
+	  if (error)
+	    return error;
+	}
+
       s->flags = SOCKET_IS_SERVER |	/* listen, don't connect */
 	SOCKET_ALLOW_GROUP_WRITE;	/* PF_LOCAL socket only */
       error = clib_socket_init (s);
