@@ -24,7 +24,7 @@
 
 Name: vpp
 Summary: Vector Packet Processing
-License: MIT
+License: ASL 2.0
 Version: %{_version}
 Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
