@@ -227,6 +227,14 @@ memif_connect (memif_if_t * mif)
       clib_warning
 	("Warning: unable to set rx mode for interface %d queue %d: "
 	 "rc=%d", mif->hw_if_index, i, rv);
+    else
+      {
+	vnet_hw_interface_rx_mode rxmode;
+	vnet_hw_interface_get_rx_mode (vnm, mif->hw_if_index, i, &rxmode);
+
+	if (rxmode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+	  mq->ring->flags |= MEMIF_RING_FLAG_MASK_INT;
+      }
   }
 
   mif->flags &= ~MEMIF_IF_FLAG_CONNECTING;
