@@ -67,7 +67,6 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
     {
       clib_warning ("svm_fifo_segment_create ('%s', %d) failed",
 		    ca->segment_name, ca->segment_size);
-      vec_free (segment_name);
       return VNET_API_ERROR_SVM_SEGMENT_CREATE_FAIL;
     }
 
@@ -175,9 +174,10 @@ segment_manager_init (segment_manager_t * sm,
  * subsequently propages into transport.
  */
 void
-segment_manager_del (segment_manager_t * sm)
+segment_manager_del (segment_manager_t * sm, u8 del_first_segment)
 {
   int j;
+  ASSERT (vec_len (sm->segment_indices));
 
   /* Across all fifo segments used by the server */
   for (j = 0; j < vec_len (sm->segment_indices); j++)
@@ -214,6 +214,14 @@ segment_manager_del (segment_manager_t * sm)
       /* Instead of removing the segment, test when cleaning up disconnected
        * sessions if the segment can be removed.
        */
+    }
+
+  if (del_first_segment)
+    {
+      clib_spinlock_lock (&sm->lockp);
+      svm_fifo_segment_delete (svm_fifo_get_segment (sm->segment_indices[0]));
+      vec_del1 (sm->segment_indices, 0);
+      clib_spinlock_unlock (&sm->lockp);
     }
 
   clib_spinlock_free (&sm->lockp);
