@@ -186,6 +186,10 @@ format_dpdk_device_name (u8 * s, va_list * args)
       device_name = "FortyGigabitEthernet";
       break;
 
+    case VNET_DPDK_PORT_TYPE_ETH_50G:
+      device_name = "FiftyGigabitEthernet";
+      break;
+
     case VNET_DPDK_PORT_TYPE_ETH_100G:
       device_name = "HundredGigabitEthernet";
       break;
