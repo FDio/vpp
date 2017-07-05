@@ -60,6 +60,8 @@ port_type_from_speed_capa (struct rte_eth_dev_info *dev_info)
 
   if (dev_info->speed_capa & ETH_LINK_SPEED_100G)
     return VNET_DPDK_PORT_TYPE_ETH_100G;
+  else if (dev_info->speed_capa & ETH_LINK_SPEED_50G)
+    return VNET_DPDK_PORT_TYPE_ETH_50G;
   else if (dev_info->speed_capa & ETH_LINK_SPEED_40G)
     return VNET_DPDK_PORT_TYPE_ETH_40G;
   else if (dev_info->speed_capa & ETH_LINK_SPEED_25G)
