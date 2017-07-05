@@ -113,7 +113,7 @@ vnet_unbind_i (u32 app_index, u64 handle)
 
   if (!app)
     {
-      clib_warning ("app not attached");
+      clib_warning ("app (%d) not attached", app_index);
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 

@@ -67,7 +67,6 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
     {
       clib_warning ("svm_fifo_segment_create ('%s', %d) failed",
 		    ca->segment_name, ca->segment_size);
-      vec_free (segment_name);
       return VNET_API_ERROR_SVM_SEGMENT_CREATE_FAIL;
     }
 
@@ -167,7 +166,24 @@ segment_manager_init (segment_manager_t * sm,
   return 0;
 }
 
-/**
+void
+segment_manager_first_segment_maybe_del (segment_manager_t * sm)
+{
+  svm_fifo_segment_private_t *fifo_segment;
+
+  /* If the first semgment has no fifos, then delete the 1st segment
+   */
+  fifo_segment = svm_fifo_get_segment (sm->segment_indices[0]);
+  if (!svm_fifo_segment_has_fifos (fifo_segment))
+    {
+      clib_spinlock_lock (&sm->lockp);
+      svm_fifo_segment_delete (fifo_segment);
+      vec_del1 (sm->segment_indices, 0);
+      clib_spinlock_unlock (&sm->lockp);
+    }
+}
+
+  /**
  * Removes segment manager.
  *
  * Since the fifos allocated in the segment keep backpointers to the sessions
@@ -178,11 +194,12 @@ void
 segment_manager_del (segment_manager_t * sm)
 {
   int j;
+  svm_fifo_segment_private_t *fifo_segment;
+  ASSERT (vec_len (sm->segment_indices));
 
   /* Across all fifo segments used by the server */
   for (j = 0; j < vec_len (sm->segment_indices); j++)
     {
-      svm_fifo_segment_private_t *fifo_segment;
       svm_fifo_t *fifo;
 
       /* Vector of fifos allocated in the segment */
@@ -215,6 +232,8 @@ segment_manager_del (segment_manager_t * sm)
        * sessions if the segment can be removed.
        */
     }
+
+  segment_manager_first_segment_maybe_del (sm);
 
   clib_spinlock_free (&sm->lockp);
   pool_put (segment_managers, sm);
