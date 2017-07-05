@@ -43,6 +43,10 @@
 #include <vppinfra/socket.h>
 #include <termios.h>
 
+
+/** VPP runtime ephemeral directory. Typically stored in a tmpfs. */
+#define VPP_RUN_DIR "/run/vpp"
+
 struct unix_file;
 typedef clib_error_t *(unix_file_function_t) (struct unix_file * f);
 
@@ -228,6 +232,8 @@ clib_error_t *foreach_directory_file (char *dir_name,
 							   u8 * path_name,
 							   u8 * file_name),
 				      void *arg, int scan_dirs);
+
+clib_error_t *unix_make_vpp_run_dir (void);
 
 #endif /* included_unix_unix_h */
 
