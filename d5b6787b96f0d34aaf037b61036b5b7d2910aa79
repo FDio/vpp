@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "da6255ed_74f8a3e5",
+        "filename": "src/vnet/dhcp/dhcp.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-06T14:15:48Z",
+      "side": 1,
+      "message": "Isn\u0027t this parameter usually called \"mask_width\"? Cosmetic, etc. etc.",
+      "revId": "d5b6787b96f0d34aaf037b61036b5b7d2910aa79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
