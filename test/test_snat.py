@@ -1932,7 +1932,7 @@ class TestSNAT(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
             raise
 
-    def test_hairpinning_unknown_proto(self):
+    def test_hairpinning_static_unknown_proto(self):
         """ 1:1 NAT translate packet with unknown protocol - hairpinning """
 
         host = self.pg0.remote_hosts[0]
@@ -1970,6 +1970,127 @@ class TestSNAT(MethodHolder):
         # server to host
         p = (Ether(dst=self.pg0.local_mac, src=server.mac) /
              IP(src=server.ip4, dst=host_nat_ip) /
+             GRE() /
+             IP(src=self.pg3.remote_ip4, dst=self.pg2.remote_ip4) /
+             TCP(sport=1234, dport=1234))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg0.get_capture(1)
+        packet = p[0]
+        try:
+            self.assertEqual(packet[IP].src, server_nat_ip)
+            self.assertEqual(packet[IP].dst, host.ip4)
+            self.assertTrue(packet.haslayer(GRE))
+            self.check_ip_checksum(packet)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
+
+    def test_unknown_proto(self):
+        """ SNAT translate packet with unknown protocol """
+        self.snat_add_address(self.snat_addr)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        # in2out
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=self.tcp_port_in, dport=20))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg1.get_capture(1)
+
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             GRE() /
+             IP(src=self.pg2.remote_ip4, dst=self.pg3.remote_ip4) /
+             TCP(sport=1234, dport=1234))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg1.get_capture(1)
+        packet = p[0]
+        try:
+            self.assertEqual(packet[IP].src, self.snat_addr)
+            self.assertEqual(packet[IP].dst, self.pg1.remote_ip4)
+            self.assertTrue(packet.haslayer(GRE))
+            self.check_ip_checksum(packet)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
+
+        # out2in
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.snat_addr) /
+             GRE() /
+             IP(src=self.pg3.remote_ip4, dst=self.pg2.remote_ip4) /
+             TCP(sport=1234, dport=1234))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg0.get_capture(1)
+        packet = p[0]
+        try:
+            self.assertEqual(packet[IP].src, self.pg1.remote_ip4)
+            self.assertEqual(packet[IP].dst, self.pg0.remote_ip4)
+            self.assertTrue(packet.haslayer(GRE))
+            self.check_ip_checksum(packet)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
+
+    def test_hairpinning_unknown_proto(self):
+        """ SNAT translate packet with unknown protocol - hairpinning """
+        host = self.pg0.remote_hosts[0]
+        server = self.pg0.remote_hosts[1]
+        host_in_port = 1234
+        host_out_port = 0
+        server_in_port = 5678
+        server_out_port = 8765
+        server_nat_ip = "10.0.0.11"
+
+        self.snat_add_address(self.snat_addr)
+        self.vapi.snat_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.snat_interface_add_del_feature(self.pg1.sw_if_index,
+                                                 is_inside=0)
+
+        # add static mapping for server
+        self.snat_add_static_mapping(server.ip4, server_nat_ip)
+
+        # host to server
+        p = (Ether(src=host.mac, dst=self.pg0.local_mac) /
+             IP(src=host.ip4, dst=server_nat_ip) /
+             TCP(sport=host_in_port, dport=server_out_port))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+
+        p = (Ether(dst=self.pg0.local_mac, src=host.mac) /
+             IP(src=host.ip4, dst=server_nat_ip) /
+             GRE() /
+             IP(src=self.pg2.remote_ip4, dst=self.pg3.remote_ip4) /
+             TCP(sport=1234, dport=1234))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg0.get_capture(1)
+        packet = p[0]
+        try:
+            self.assertEqual(packet[IP].src, self.snat_addr)
+            self.assertEqual(packet[IP].dst, server.ip4)
+            self.assertTrue(packet.haslayer(GRE))
+            self.check_ip_checksum(packet)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
+
+        # server to host
+        p = (Ether(dst=self.pg0.local_mac, src=server.mac) /
+             IP(src=server.ip4, dst=self.snat_addr) /
              GRE() /
              IP(src=self.pg3.remote_ip4, dst=self.pg2.remote_ip4) /
              TCP(sport=1234, dport=1234))
@@ -3229,6 +3350,130 @@ class TestNAT64(MethodHolder):
                                   vrf1_pref64,
                                   vrf1_pref64_len)
         self.verify_capture_in_ip6(capture, dst_ip, self.pg2.remote_ip6)
+
+    def _test_unknown_proto(self):
+        """ NAT64 translate packet with unknown protocol """
+
+        self.vapi.nat64_add_del_pool_addr_range(self.nat_addr_n,
+                                                self.nat_addr_n)
+        self.vapi.nat64_add_del_interface(self.pg0.sw_if_index)
+        self.vapi.nat64_add_del_interface(self.pg1.sw_if_index, is_inside=0)
+        remote_ip6 = self.compose_ip6(self.pg1.remote_ip4, '64:ff9b::', 96)
+
+        # in2out
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst=remote_ip6) /
+             TCP(sport=self.tcp_port_in, dport=20))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg1.get_capture(1)
+
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=self.pg0.remote_ip6, dst=remote_ip6) /
+             GRE() /
+             IP(src=self.pg2.local_ip4, dst=self.pg2.remote_ip4) /
+             TCP(sport=1234, dport=1234))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg1.get_capture(1)
+        packet = p[0]
+        try:
+            self.assertEqual(packet[IP].src, self.nat_addr)
+            self.assertEqual(packet[IP].dst, self.pg1.remote_ip4)
+            self.assertTrue(packet.haslayer(GRE))
+            self.check_ip_checksum(packet)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
+
+        # out2in
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             GRE() /
+             IP(src=self.pg2.remote_ip4, dst=self.pg2.local_ip4) /
+             TCP(sport=1234, dport=1234))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg0.get_capture(1)
+        packet = p[0]
+        try:
+            self.assertEqual(packet[IPv6].src, remote_ip6)
+            self.assertEqual(packet[IPv6].dst, self.pgi0.remote_ip6)
+            self.assertTrue(packet.haslayer(GRE))
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
+
+    def _test_hairpinning_unknown_proto(self):
+        """ NAT64 translate packet with unknown protocol - hairpinning """
+
+        client = self.pg0.remote_hosts[0]
+        server = self.pg0.remote_hosts[1]
+        server_tcp_in_port = 22
+        server_tcp_out_port = 4022
+        client_tcp_in_port = 1234
+        client_udp_in_port = 1235
+        nat_addr_ip6 = self.compose_ip6(self.nat_addr, '64:ff9b::', 96)
+
+        self.vapi.nat64_add_del_pool_addr_range(self.nat_addr_n,
+                                                self.nat_addr_n)
+        self.vapi.nat64_add_del_interface(self.pg0.sw_if_index)
+        self.vapi.nat64_add_del_interface(self.pg1.sw_if_index, is_inside=0)
+
+        self.vapi.nat64_add_del_static_bib(server.ip6n,
+                                           self.nat_addr_n,
+                                           server_tcp_in_port,
+                                           server_tcp_out_port,
+                                           IP_PROTOS.tcp)
+
+        # client to server
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=client.ip6, dst=nat_addr_ip6) /
+             TCP(sport=client_tcp_in_port, dport=server_tcp_out_port))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg0.get_capture(1)
+
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=client.ip6, dst=nat_addr_ip6) /
+             GRE() /
+             IP(src=self.pg2.local_ip4, dst=self.pg2.remote_ip4) /
+             TCP(sport=1234, dport=1234))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg0.get_capture(1)
+        packet = p[0]
+        try:
+            self.assertEqual(packet[IPv6].src, nat_addr_ip6)
+            self.assertEqual(packet[IPv6].dst, server.ip6)
+            self.assertTrue(packet.haslayer(GRE))
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
+
+        # server to client
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=server.ip6, dst=nat_addr_ip6) /
+             GRE() /
+             IP(src=self.pg2.remote_ip4, dst=self.pg2.local_ip4) /
+             TCP(sport=1234, dport=1234))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        p = self.pg0.get_capture(1)
+        packet = p[0]
+        try:
+            self.assertEqual(packet[IPv6].src, nat_addr_ip6)
+            self.assertEqual(packet[IPv6].dst, client.ip6)
+            self.assertTrue(packet.haslayer(GRE))
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", packet))
+            raise
 
     def nat64_get_ses_num(self):
         """

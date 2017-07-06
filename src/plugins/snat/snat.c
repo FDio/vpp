@@ -468,6 +468,31 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                             continue;
                         }
 
+                      if (snat_is_unk_proto_session (s))
+                        {
+                          clib_bihash_kv_16_8_t up_kv;
+                          snat_unk_proto_ses_key_t up_key;
+                          up_key.l_addr = s->in2out.addr;
+                          up_key.r_addr = s->ext_host_addr;
+                          up_key.fib_index = s->in2out.fib_index;
+                          up_key.proto = s->in2out.port;
+                          up_key.rsvd[0] = up_key.rsvd[1] = up_key.rsvd[2] = 0;
+                          up_kv.key[0] = up_key.as_u64[0];
+                          up_kv.key[1] = up_key.as_u64[1];
+                          if (clib_bihash_add_del_16_8 (&sm->in2out_unk_proto,
+                                                        &up_kv, 0))
+                            clib_warning ("in2out key del failed");
+
+                          up_key.l_addr = s->out2in.addr;
+                          up_key.fib_index = s->out2in.fib_index;
+                          up_kv.key[0] = up_key.as_u64[0];
+                          up_kv.key[1] = up_key.as_u64[1];
+                          if (clib_bihash_add_del_16_8 (&sm->out2in_unk_proto,
+                                                        &up_kv, 0))
+                            clib_warning ("out2in key del failed");
+
+                          goto delete;
+                        }
                       /* log NAT event */
                       snat_ipfix_logging_nat44_ses_delete(s->in2out.addr.as_u32,
                                                           s->out2in.addr.as_u32,
@@ -477,9 +502,12 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                                                           s->in2out.fib_index);
 
                       value.key = s->in2out.as_u64;
-                      clib_bihash_add_del_8_8 (&sm->in2out, &value, 0);
+                      if (clib_bihash_add_del_8_8 (&sm->in2out, &value, 0))
+                        clib_warning ("in2out key del failed");
                       value.key = s->out2in.as_u64;
-                      clib_bihash_add_del_8_8 (&sm->out2in, &value, 0);
+                      if (clib_bihash_add_del_8_8 (&sm->out2in, &value, 0))
+                        clib_warning ("out2in key del failed");
+delete:
                       pool_put (tsm->sessions, s);
 
                       clib_dlist_remove (tsm->list_pool, del_elt_index);
@@ -572,18 +600,44 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
           pool_foreach (ses, tsm->sessions, ({
             if (ses->out2in.addr.as_u32 == addr.as_u32)
               {
-                /* log NAT event */
-                snat_ipfix_logging_nat44_ses_delete(ses->in2out.addr.as_u32,
-                                                    ses->out2in.addr.as_u32,
-                                                    ses->in2out.protocol,
-                                                    ses->in2out.port,
-                                                    ses->out2in.port,
-                                                    ses->in2out.fib_index);
+                if (snat_is_unk_proto_session (ses))
+                  {
+                    clib_bihash_kv_16_8_t up_kv;
+                    snat_unk_proto_ses_key_t up_key;
+                    up_key.l_addr = ses->in2out.addr;
+                    up_key.r_addr = ses->ext_host_addr;
+                    up_key.fib_index = ses->in2out.fib_index;
+                    up_key.proto = ses->in2out.port;
+                    up_key.rsvd[0] = up_key.rsvd[1] = up_key.rsvd[2] = 0;
+                    up_kv.key[0] = up_key.as_u64[0];
+                    up_kv.key[1] = up_key.as_u64[1];
+                    if (clib_bihash_add_del_16_8 (&sm->in2out_unk_proto,
+                                                  &up_kv, 0))
+                      clib_warning ("in2out key del failed");
+
+                    up_key.l_addr = ses->out2in.addr;
+                    up_key.fib_index = ses->out2in.fib_index;
+                    up_kv.key[0] = up_key.as_u64[0];
+                    up_kv.key[1] = up_key.as_u64[1];
+                    if (clib_bihash_add_del_16_8 (&sm->out2in_unk_proto,
+                                                  &up_kv, 0))
+                      clib_warning ("out2in key del failed");
+                  }
+                else
+                  {
+                    /* log NAT event */
+                    snat_ipfix_logging_nat44_ses_delete(ses->in2out.addr.as_u32,
+                                                        ses->out2in.addr.as_u32,
+                                                        ses->in2out.protocol,
+                                                        ses->in2out.port,
+                                                        ses->out2in.port,
+                                                        ses->in2out.fib_index);
+                    kv.key = ses->in2out.as_u64;
+                    clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0);
+                    kv.key = ses->out2in.as_u64;
+                    clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0);
+                  }
                 vec_add1 (ses_to_be_removed, ses - tsm->sessions);
-                kv.key = ses->in2out.as_u64;
-                clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0);
-                kv.key = ses->out2in.as_u64;
-                clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0);
                 clib_dlist_remove (tsm->list_pool, ses->per_user_index);
                 user_key.addr = ses->in2out.addr;
                 user_key.fib_index = ses->in2out.fib_index;
@@ -1575,6 +1629,12 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
           clib_bihash_init_8_8 (&sm->user_hash, "users", user_buckets,
                                 user_memory_size);
+
+          clib_bihash_init_16_8 (&sm->in2out_unk_proto, "in2out-unk-proto",
+                                 translation_buckets, translation_memory_size);
+
+          clib_bihash_init_16_8 (&sm->out2in_unk_proto, "out2in-unk-proto",
+                                 translation_buckets, translation_memory_size);
         }
       else
         {
@@ -1636,8 +1696,20 @@ u8 * format_snat_session (u8 * s, va_list * args)
   snat_main_t * sm __attribute__((unused)) = va_arg (*args, snat_main_t *);
   snat_session_t * sess = va_arg (*args, snat_session_t *);
 
-  s = format (s, "  i2o %U\n", format_snat_key, &sess->in2out);
-  s = format (s, "    o2i %U\n", format_snat_key, &sess->out2in);
+  if (snat_is_unk_proto_session (sess))
+    {
+      s = format (s, "  i2o %U proto %u fib %u\n",
+                  format_ip4_address, &sess->in2out.addr, sess->in2out.port,
+                  sess->in2out.fib_index);
+      s = format (s, "    o2i %U proto %u fib %u\n",
+                  format_ip4_address, &sess->out2in.addr, sess->out2in.port,
+                  sess->out2in.fib_index);
+    }
+  else
+    {
+      s = format (s, "  i2o %U\n", format_snat_key, &sess->in2out);
+      s = format (s, "    o2i %U\n", format_snat_key, &sess->out2in);
+    }
   s = format (s, "       last heard %.2f\n", sess->last_heard);
   s = format (s, "       total pkts %d, total bytes %lld\n",
               sess->total_pkts, sess->total_bytes);

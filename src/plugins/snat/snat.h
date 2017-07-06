@@ -24,6 +24,7 @@
 #include <vnet/ip/icmp46_packet.h>
 #include <vnet/api_errno.h>
 #include <vppinfra/bihash_8_8.h>
+#include <vppinfra/bihash_16_8.h>
 #include <vppinfra/dlist.h>
 #include <vppinfra/error.h>
 #include <vlibapi/api.h>
@@ -50,6 +51,21 @@ typedef struct {
     u64 as_u64;
   };
 } snat_session_key_t;
+
+typedef struct {
+  union
+  {
+    struct
+    {
+      ip4_address_t l_addr;
+      ip4_address_t r_addr;
+      u32 fib_index;
+      u8 proto;
+      u8 rsvd[3];
+    };
+    u64 as_u64[2];
+  };
+} snat_unk_proto_ses_key_t;
 
 typedef struct {
   union
@@ -120,6 +136,7 @@ typedef enum {
 
 
 #define SNAT_SESSION_FLAG_STATIC_MAPPING 1
+#define SNAT_SESSION_FLAG_UNKNOWN_PROTO  2
 
 typedef CLIB_PACKED(struct {
   snat_session_key_t out2in;    /* 0-15 */
@@ -142,6 +159,9 @@ typedef CLIB_PACKED(struct {
 
   /* Outside address */
   u32 outside_address_index;    /* 64-67 */
+
+  /* External host address */
+  ip4_address_t ext_host_addr;  /* 68-71 */
 
 }) snat_session_t;
 
@@ -239,6 +259,10 @@ typedef struct snat_main_s {
   /* Main lookup tables */
   clib_bihash_8_8_t out2in;
   clib_bihash_8_8_t in2out;
+
+  /* Unknown protocol sessions lookup tables */
+  clib_bihash_16_8_t out2in_unk_proto;
+  clib_bihash_16_8_t in2out_unk_proto;
 
   /* Find-a-user => src address lookup */
   clib_bihash_8_8_t user_hash;
@@ -373,6 +397,12 @@ typedef struct {
     @return 1 if SNAT session is created from static mapping otherwise 0
 */
 #define snat_is_session_static(s) s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING
+
+/** \brief Check if SNAT session for unknown protocol.
+    @param s SNAT session
+    @return 1 if SNAT session for unknown protocol otherwise 0
+*/
+#define snat_is_unk_proto_session(s) s->flags & SNAT_SESSION_FLAG_UNKNOWN_PROTO
 
 /* 
  * Why is this here? Because we don't need to touch this layer to
