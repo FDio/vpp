@@ -81,6 +81,7 @@ autoreply define dhcp_client_config
     @param client_index - opaque cookie to identify the sender
     @param pid - client pid registered to receive notification
     @param is_ipv6 - if non-zero the address is ipv6, else ipv4
+    @param mask_width - The length of the subnet mask assigned
     @param host_address - Host IP address
     @param router_address - Router IP address
     @param host_mac - Host MAC address
@@ -91,6 +92,7 @@ define dhcp_compl_event
   u32 pid;
   u8 hostname[64];
   u8 is_ipv6;
+  u8 mask_width;
   u8 host_address[16];
   u8 router_address[16];
   u8 host_mac[6];
