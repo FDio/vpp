@@ -187,8 +187,8 @@ dhcp_send_details (fib_protocol_t proto,
 
 void
 dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
-			   u8 is_ipv6, u8 * host_address, u8 * router_address,
-			   u8 * host_mac)
+			   u8 mask_width, u8 is_ipv6, u8 * host_address,
+			   u8 * router_address, u8 * host_mac)
 {
   unix_shared_memory_queue_t *q;
   vl_api_dhcp_compl_event_t *mp;
@@ -205,6 +205,7 @@ dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
   len = (vec_len (hostname) < 63) ? vec_len (hostname) : 63;
   clib_memcpy (&mp->hostname, hostname, len);
   mp->hostname[len] = 0;
+  mp->mask_width = mask_width;
   clib_memcpy (&mp->host_address[0], host_address, 16);
   clib_memcpy (&mp->router_address[0], router_address, 16);
 
