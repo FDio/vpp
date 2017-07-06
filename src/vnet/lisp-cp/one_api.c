@@ -1555,7 +1555,7 @@ vl_api_one_l2_arp_entries_get_t_handler (vl_api_one_l2_arp_entries_get_t * mp)
   u32 bd = clib_net_to_host_u32 (mp->bd);
 
   entries = vnet_lisp_l2_arp_entries_get_by_bd (bd);
-  u32 size = vec_len (entries) * sizeof (u32);
+  u32 size = vec_len (entries) * sizeof (vl_api_one_l2_arp_entry_t);
 
   /* *INDENT-OFF* */
   REPLY_MACRO4 (VL_API_ONE_L2_ARP_ENTRIES_GET_REPLY, size,
