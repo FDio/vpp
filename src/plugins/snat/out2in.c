@@ -137,6 +137,9 @@ create_session_for_static_mapping (snat_main_t *sm,
   clib_bihash_kv_8_8_t kv0, value0;
   dlist_elt_t * per_user_translation_list_elt;
   dlist_elt_t * per_user_list_head_elt;
+  ip4_header_t *ip0;
+
+  ip0 = vlib_buffer_get_current (b0);
 
   user_key.addr = in2out.addr;
   user_key.fib_index = in2out.fib_index;
@@ -180,6 +183,7 @@ create_session_for_static_mapping (snat_main_t *sm,
 
   s->outside_address_index = ~0;
   s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
+  s->ext_host_addr.as_u32 = ip0->dst_address.as_u32;
   u->nstaticsessions++;
 
   /* Create list elts */
@@ -615,31 +619,134 @@ static void
 snat_out2in_unknown_proto (snat_main_t *sm,
                            vlib_buffer_t * b,
                            ip4_header_t * ip,
-                           u32 rx_fib_index)
+                           u32 rx_fib_index,
+                           u32 thread_index,
+                           f64 now,
+                           vlib_main_t * vm)
 {
   clib_bihash_kv_8_8_t kv, value;
+  clib_bihash_kv_16_8_t s_kv, s_value;
   snat_static_mapping_t *m;
   snat_session_key_t m_key;
   u32 old_addr, new_addr;
   ip_csum_t sum;
-
-  m_key.addr = ip->dst_address;
-  m_key.port = 0;
-  m_key.protocol = 0;
-  m_key.fib_index = rx_fib_index;
-  kv.key = m_key.as_u64;
-  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
-    return;
-
-  m = pool_elt_at_index (sm->static_mappings, value.value);
+  snat_unk_proto_ses_key_t key;
+  snat_session_t * s;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  snat_user_key_t u_key;
+  snat_user_t *u;
+  dlist_elt_t *head, *elt;
 
   old_addr = ip->dst_address.as_u32;
-  new_addr = ip->dst_address.as_u32 = m->local_addr.as_u32;
+
+  key.l_addr = ip->dst_address;
+  key.r_addr = ip->src_address;
+  key.fib_index = rx_fib_index;
+  key.proto = ip->protocol;
+  key.rsvd[0] = key.rsvd[1] = key.rsvd[2] = 0;
+  s_kv.key[0] = key.as_u64[0];
+  s_kv.key[1] = key.as_u64[1];
+
+  if (!clib_bihash_search_16_8 (&sm->out2in_unk_proto, &s_kv, &s_value))
+    {
+      s = pool_elt_at_index (tsm->sessions, s_value.value);
+      new_addr = ip->dst_address.as_u32 = s->in2out.addr.as_u32;
+    }
+  else
+    {
+      m_key.addr = ip->dst_address;
+      m_key.port = 0;
+      m_key.protocol = 0;
+      m_key.fib_index = rx_fib_index;
+      kv.key = m_key.as_u64;
+      if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+        return;
+
+      m = pool_elt_at_index (sm->static_mappings, value.value);
+
+      new_addr = ip->dst_address.as_u32 = m->local_addr.as_u32;
+
+      u_key.addr = ip->src_address;
+      u_key.fib_index = m->fib_index;
+      kv.key = u_key.as_u64;
+
+      /* Ever heard of the "user" = src ip4 address before? */
+      if (clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+        {
+          /* no, make a new one */
+          pool_get (tsm->users, u);
+          memset (u, 0, sizeof (*u));
+          u->addr = ip->src_address;
+          u->fib_index = rx_fib_index;
+
+          pool_get (tsm->list_pool, head);
+          u->sessions_per_user_list_head_index = head - tsm->list_pool;
+
+          clib_dlist_init (tsm->list_pool,
+                           u->sessions_per_user_list_head_index);
+
+          kv.value = u - tsm->users;
+
+          /* add user */
+          clib_bihash_add_del_8_8 (&sm->user_hash, &kv, 1);
+        }
+      else
+        {
+          u = pool_elt_at_index (tsm->users, value.value);
+        }
+
+      /* Create a new session */
+      pool_get (tsm->sessions, s);
+      memset (s, 0, sizeof (*s));
+
+      s->ext_host_addr.as_u32 = ip->src_address.as_u32;
+      s->flags |= SNAT_SESSION_FLAG_UNKNOWN_PROTO;
+      s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
+      s->outside_address_index = ~0;
+      s->out2in.addr.as_u32 = old_addr;
+      s->out2in.fib_index = rx_fib_index;
+      s->in2out.addr.as_u32 = new_addr;
+      s->in2out.fib_index = m->fib_index;
+      s->in2out.port = s->out2in.port = ip->protocol;
+      u->nstaticsessions++;
+
+      /* Create list elts */
+      pool_get (tsm->list_pool, elt);
+      clib_dlist_init (tsm->list_pool, elt - tsm->list_pool);
+      elt->value = s - tsm->sessions;
+      s->per_user_index = elt - tsm->list_pool;
+      s->per_user_list_head_index = u->sessions_per_user_list_head_index;
+      clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
+                          s->per_user_index);
+
+      /* Add to lookup tables */
+      s_kv.value = s - tsm->sessions;
+      if (clib_bihash_add_del_16_8 (&sm->out2in_unk_proto, &s_kv, 1))
+        clib_warning ("out2in key add failed");
+
+      key.l_addr = ip->dst_address;
+      key.fib_index = m->fib_index;
+      s_kv.key[0] = key.as_u64[0];
+      s_kv.key[1] = key.as_u64[1];
+      if (clib_bihash_add_del_16_8 (&sm->in2out_unk_proto, &s_kv, 1))
+        clib_warning ("in2out key add failed");
+   }
+
+  /* Update IP checksum */
   sum = ip->checksum;
   sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, dst_address);
   ip->checksum = ip_csum_fold (sum);
 
-  vnet_buffer(b)->sw_if_index[VLIB_TX] = m->fib_index;
+  vnet_buffer(b)->sw_if_index[VLIB_TX] = s->in2out.fib_index;
+
+  /* Accounting */
+  s->last_heard = now;
+  s->total_pkts++;
+  s->total_bytes += vlib_buffer_length_in_chain (vm, b);
+  /* Per-user LRU list maintenance */
+  clib_dlist_remove (tsm->list_pool, s->per_user_index);
+  clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
+                      s->per_user_index);
 }
 
 static uword
@@ -735,7 +842,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE (proto0 == ~0))
             {
-              snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0);
+              snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0,
+                                        thread_index, now, vm);
               goto trace0;
             }
 
@@ -873,7 +981,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE (proto1 == ~0))
             {
-              snat_out2in_unknown_proto(sm, b1, ip1, rx_fib_index1);
+              snat_out2in_unknown_proto(sm, b1, ip1, rx_fib_index1,
+                                        thread_index, now, vm);
               goto trace1;
             }
 
@@ -1035,7 +1144,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE (proto0 == ~0))
             {
-              snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0);
+              snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0,
+                                        thread_index, now, vm);
               goto trace00;
             }
 

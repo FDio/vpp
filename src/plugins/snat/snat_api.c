@@ -732,15 +732,24 @@ static void
     ntohs (VL_API_SNAT_USER_SESSION_DETAILS + sm->msg_id_base);
   rmp->is_ip4 = 1;
   clib_memcpy (rmp->outside_ip_address, (&s->out2in.addr), 4);
-  rmp->outside_port = s->out2in.port;
   clib_memcpy (rmp->inside_ip_address, (&s->in2out.addr), 4);
-  rmp->inside_port = s->in2out.port;
-  rmp->protocol = ntohs (snat_proto_to_ip_proto (s->in2out.protocol));
   rmp->is_static = s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING ? 1 : 0;
   rmp->last_heard = clib_host_to_net_u64 ((u64) s->last_heard);
   rmp->total_bytes = clib_host_to_net_u64 (s->total_bytes);
   rmp->total_pkts = ntohl (s->total_pkts);
   rmp->context = context;
+  if (snat_is_unk_proto_session (s))
+    {
+      rmp->outside_port = 0;
+      rmp->inside_port = 0;
+      rmp->protocol = ntohs (s->in2out.port);
+    }
+  else
+    {
+      rmp->outside_port = s->out2in.port;
+      rmp->inside_port = s->in2out.port;
+      rmp->protocol = ntohs (snat_proto_to_ip_proto (s->in2out.protocol));
+    }
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
