@@ -427,7 +427,7 @@ dpdk_packet_template_init (vlib_main_t * vm,
 }
 
 clib_error_t *
-vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
+dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 			 unsigned socket_id)
 {
   dpdk_main_t *dm = &dpdk_main;
