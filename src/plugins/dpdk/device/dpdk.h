@@ -453,6 +453,9 @@ uword
 admin_up_down_process (vlib_main_t * vm,
 		       vlib_node_runtime_t * rt, vlib_frame_t * f);
 
+clib_error_t *dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
+				       unsigned socket_id);
+
 #endif /* __included_dpdk_h__ */
 
 /*

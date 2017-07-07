@@ -237,9 +237,6 @@ vlib_buffer_set_known_state (vlib_main_t * vm,
 u8 *vlib_validate_buffer (vlib_main_t * vm, u32 buffer_index,
 			  uword follow_chain);
 
-clib_error_t *vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
-				       unsigned socket_id);
-
 /** \brief Allocate buffers into supplied array
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
