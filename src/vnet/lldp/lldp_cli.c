@@ -74,7 +74,8 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, int enable)
 
       const vnet_sw_interface_t *sw =
 	vnet_get_sw_interface (lm->vnet_main, hi->sw_if_index);
-      if (sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+      if (sw->flags & (VNET_SW_INTERFACE_FLAG_ADMIN_UP |
+		       VNET_SW_INTERFACE_FLAG_BOND_SLAVE))
 	{
 	  lldp_schedule_intf (lm, n);
 	}
@@ -501,7 +502,8 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
         hw = vnet_get_hw_interface(vnm, n->hw_if_index);
         sw = vnet_get_sw_interface(lm->vnet_main, hw->sw_if_index);
         /* Interface shutdown */
-        if (!(sw->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP))
+        if (!(sw->flags & (VNET_SW_INTERFACE_FLAG_ADMIN_UP |
+                           VNET_SW_INTERFACE_FLAG_BOND_SLAVE)))
           {
             s = format(s, "\nInterface name: %s\nInterface/peer state: "
                           "interface down\nLast packet sent: %U\n",

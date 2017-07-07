@@ -259,7 +259,8 @@ vnet_interface_output_node_flatten (vlib_main_t * vm,
 
   si = vnet_get_sw_interface (vnm, rt->sw_if_index);
   hi = vnet_get_sup_hw_interface (vnm, rt->sw_if_index);
-  if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ||
+  if (!(si->flags & (VNET_SW_INTERFACE_FLAG_ADMIN_UP |
+		     VNET_SW_INTERFACE_FLAG_BOND_SLAVE)) ||
       !(hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
     {
       vlib_simple_counter_main_t *cm;
@@ -451,7 +452,8 @@ vnet_interface_output_node (vlib_main_t * vm,
 
   si = vnet_get_sw_interface (vnm, rt->sw_if_index);
   hi = vnet_get_sup_hw_interface (vnm, rt->sw_if_index);
-  if (!(si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ||
+  if (!(si->flags & (VNET_SW_INTERFACE_FLAG_ADMIN_UP |
+		     VNET_SW_INTERFACE_FLAG_BOND_SLAVE)) ||
       !(hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP))
     {
       vlib_simple_counter_main_t *cm;
