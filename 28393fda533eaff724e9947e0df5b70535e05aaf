@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ba57610f_ab76d504",
+        "filename": "src/vpp-api/python/vpp_papi.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-07-07T18:06:32Z",
+      "side": 1,
+      "message": "looks like debugging output, did you intend to keep it in?",
+      "range": {
+        "startLine": 454,
+        "startChar": 8,
+        "endLine": 454,
+        "endChar": 53
+      },
+      "revId": "28393fda533eaff724e9947e0df5b70535e05aaf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
