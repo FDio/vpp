@@ -15,10 +15,22 @@
 #
 
 from __future__ import print_function
-import sys, os, logging, collections, struct, json, threading, glob
-import atexit, Queue
-
+import sys
+import os
+import logging
+import collections
+import struct
+import json
+import threading
+import glob
+import atexit
 from cffi import FFI
+
+if sys.version[0] == '2':
+    import Queue as queue
+else:
+    import queue as queue
+
 ffi = FFI()
 ffi.cdef("""
 typedef void (*vac_callback_t)(unsigned char * data, int len);
@@ -42,6 +54,7 @@ void vac_set_error_handler(vac_error_callback_t);
 # Barfs on failure, no need to check success.
 vpp_api = ffi.dlopen('libvppapiclient.so')
 
+
 def vpp_atexit(self):
     """Clean up VPP connection on shutdown."""
     if self.connected:
@@ -50,15 +63,28 @@ def vpp_atexit(self):
 
 vpp_object = None
 
+
+def vpp_iterator(d):
+    if sys.version[0] == '2':
+        return d.iteritems()
+    else:
+        return d.items()
+
+
 @ffi.callback("void(unsigned char *, int)")
 def vac_callback_sync(data, len):
     vpp_object.msg_handler_sync(ffi.buffer(data, len))
+
+
 @ffi.callback("void(unsigned char *, int)")
 def vac_callback_async(data, len):
     vpp_object.msg_handler_async(ffi.buffer(data, len))
+
+
 @ffi.callback("void(void *, unsigned char *, int)")
 def vac_error_handler(arg, msg, msg_len):
-    vpp_object.logger.warning("PNEUM: %s", ffi.string(msg, msg_len))
+    vpp_object.logger.warning("VPP API client:: %s", ffi.string(msg, msg_len))
+
 
 class Empty(object):
     pass
@@ -85,8 +111,8 @@ class VPP():
     provides a means to register a callback function to receive
     these messages in a background thread.
     """
-    def __init__(self, apifiles = None, testmode = False, async_thread = True,
-                 logger = logging.getLogger('vpp_papi'), loglevel = 'debug'):
+    def __init__(self, apifiles=None, testmode=False, async_thread=True,
+                 logger=logging.getLogger('vpp_papi'), loglevel='debug'):
         """Create a VPP API object.
 
         apifiles is a list of files containing API
@@ -108,11 +134,12 @@ class VPP():
         self.header = struct.Struct('>HI')
         self.apifiles = []
         self.event_callback = None
-        self.message_queue = Queue.Queue()
+        self.message_queue = queue.Queue()
         self.read_timeout = 0
         self.vpp_api = vpp_api
         if async_thread:
-            self.event_thread = threading.Thread(target=self.thread_msg_handler)
+            self.event_thread = threading.Thread(
+                target=self.thread_msg_handler)
             self.event_thread.daemon = True
             self.event_thread.start()
 
@@ -128,7 +155,7 @@ class VPP():
 
                 for m in api['messages']:
                     self.add_message(m[0], m[1:])
-	self.apifiles = apifiles
+        self.apifiles = apifiles
 
         # Basic sanity check
         if len(self.messages) == 0 and not testmode:
@@ -144,12 +171,13 @@ class VPP():
         """Thread-safe provider of unique context IDs."""
         def __init__(self):
             self.context = 0
-	    self.lock = threading.Lock()
+            self.lock = threading.Lock()
+
         def __call__(self):
             """Get a new unique (or, at least, not recently used) context."""
-	    with self.lock:
-		self.context += 1
-		return self.context
+            with self.lock:
+                self.context += 1
+                return self.context
     get_context = ContextId()
 
     def status(self):
@@ -157,15 +185,14 @@ class VPP():
         print('Connected') if self.connected else print('Not Connected')
         print('Read API definitions from', ', '.join(self.apifiles))
 
-    def __struct (self, t, n = None, e = -1, vl = None):
+    def __struct(self, t, n=None, e=-1, vl=None):
         """Create a packing structure for a message."""
-        base_types = { 'u8' : 'B',
-                       'u16' : 'H',
-                       'u32' : 'I',
-                       'i32' : 'i',
-                       'u64' : 'Q',
-                       'f64' : 'd',
-                       }
+        base_types = {'u8': 'B',
+                      'u16': 'H',
+                      'u32': 'I',
+                      'i32': 'i',
+                      'u64': 'Q',
+                      'f64': 'd', }
         pack = None
         if t in base_types:
             pack = base_types[t]
@@ -187,7 +214,7 @@ class VPP():
             return struct.Struct('>' + base_types[t])
 
         if t in self.messages:
-            ### Return a list in case of array ###
+            # Return a list in case of array
             if e > 0 and not vl:
                 return [e, lambda self, encode, buf, offset, args: (
                     self.__struct_type(encode, self.messages[t], buf, offset,
@@ -198,7 +225,8 @@ class VPP():
                                        args))]
             elif e == 0:
                 # Old style VLA
-                raise NotImplementedError(1, 'No support for compound types ' + t)
+                raise NotImplementedError(1,
+                                          'No support for compound types ' + t)
             return lambda self, encode, buf, offset, args: (
                 self.__struct_type(encode, self.messages[t], buf, offset, args)
             )
@@ -220,7 +248,7 @@ class VPP():
             if k not in msgdef['args']:
                 raise ValueError(1, 'Invalid field-name in message call ' + k)
 
-        for k,v in msgdef['args'].iteritems():
+        for k, v in vpp_iterator(msgdef['args']):
             off += size
             if k in kwargs:
                 if type(v) is list:
@@ -254,7 +282,6 @@ class VPP():
 
         return off + size - offset
 
-
     def __getitem__(self, name):
         if name in self.messages:
             return self.messages[name]
@@ -274,19 +301,19 @@ class VPP():
         res = []
         off = offset
         size = 0
-        for k,v in msgdef['args'].iteritems():
+        for k, v in vpp_iterator(msgdef['args']):
             off += size
             if type(v) is list:
                 lst = []
-                if callable(v[1]): # compound type
+                if callable(v[1]):  # compound type
                     size = 0
-                    if v[0] in msgdef['args']: # vla
+                    if v[0] in msgdef['args']:  # vla
                         e = res[v[2]]
-                    else: # fixed array
+                    else:  # fixed array
                         e = v[0]
                     res.append(lst)
                     for i in range(e):
-                        (s,l) = v[1](self, False, buf, off + size, None)
+                        (s, l) = v[1](self, False, buf, off + size, None)
                         lst.append(l)
                         size += s
                     continue
@@ -308,7 +335,7 @@ class VPP():
                         size += v[1].size
             else:
                 if callable(v):
-                    (s,l) = v(self, False, buf, off, None)
+                    (s, l) = v(self, False, buf, off, None)
                     res.append(l)
                     size += s
                 else:
@@ -322,7 +349,7 @@ class VPP():
             return self.messages[name]['return_tuple']
         return None
 
-    def add_message(self, name, msgdef, typeonly = False):
+    def add_message(self, name, msgdef, typeonly=False):
         if name in self.messages:
             raise ValueError('Duplicate message name: ' + name)
 
@@ -340,11 +367,12 @@ class VPP():
                 raise ValueError('Variable Length Array must be last: ' + name)
             args[field_name] = self.__struct(*f)
             argtypes[field_name] = field_type
-            if len(f) == 4: # Find offset to # elements field
-                args[field_name].append(args.keys().index(f[3]) - i)
+            if len(f) == 4:  # Find offset to # elements field
+                idx = list(args.keys()).index(f[3]) - i
+                args[field_name].append(idx)
             fields.append(field_name)
         msg['return_tuple'] = collections.namedtuple(name, fields,
-                                                     rename = True)
+                                                     rename=True)
         self.messages[name] = msg
         self.messages[name]['args'] = args
         self.messages[name]['argtypes'] = argtypes
@@ -352,17 +380,20 @@ class VPP():
         return self.messages[name]
 
     def add_type(self, name, typedef):
-        return self.add_message('vl_api_' + name + '_t', typedef, typeonly=True)
+        return self.add_message('vl_api_' + name + '_t', typedef,
+                                typeonly=True)
 
     def make_function(self, name, i, msgdef, multipart, async):
         if (async):
             f = lambda **kwargs: (self._call_vpp_async(i, msgdef, **kwargs))
         else:
-            f = lambda **kwargs: (self._call_vpp(i, msgdef, multipart, **kwargs))
+            f = lambda **kwargs: (self._call_vpp(i, msgdef, multipart,
+                                                 **kwargs))
         args = self.messages[name]['args']
         argtypes = self.messages[name]['argtypes']
         f.__name__ = str(name)
-        f.__doc__ = ", ".join(["%s %s" % (argtypes[k], k) for k in args.keys()])
+        f.__doc__ = ", ".join(["%s %s" %
+                               (argtypes[k], k) for k in args.keys()])
         return f
 
     @property
@@ -375,11 +406,12 @@ class VPP():
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
         self.id_msgdef = [None] * (self.vpp_dictionary_maxid + 1)
         self._api = Empty()
-        for name, msgdef in self.messages.iteritems():
-            if self.messages[name]['typeonly']: continue
+        for name, msgdef in vpp_iterator(self.messages):
+            if self.messages[name]['typeonly']:
+                continue
             crc = self.messages[name]['crc']
             n = name + '_' + crc[2:]
-            i = vpp_api.vac_get_msg_index(bytes(n))
+            i = vpp_api.vac_get_msg_index(n.encode())
             if i > 0:
                 self.id_msgdef[i] = msgdef
                 self.id_names[i] = name
@@ -394,15 +426,16 @@ class VPP():
                 setattr(self, name, f)
                 # old API stuff ends here
             else:
-                self.logger.debug('No such message type or failed CRC checksum: %s', n)
+                self.logger.debug(
+                    'No such message type or failed CRC checksum: %s', n)
 
-    def _write (self, buf):
+    def _write(self, buf):
         """Send a binary-packed message to VPP."""
         if not self.connected:
             raise IOError(1, 'Not connected')
-        return vpp_api.vac_write(str(buf), len(buf))
+        return vpp_api.vac_write(ffi.from_buffer(buf), len(buf))
 
-    def _read (self):
+    def _read(self):
         if not self.connected:
             raise IOError(1, 'Not connected')
         mem = ffi.new("char **")
@@ -414,8 +447,10 @@ class VPP():
         vpp_api.vac_free(mem[0])
         return msg
 
-    def connect_internal(self, name, msg_handler, chroot_prefix, rx_qlen, async):
-	rv = vpp_api.vac_connect(name, chroot_prefix, msg_handler, rx_qlen)
+    def connect_internal(self, name, msg_handler, chroot_prefix, rx_qlen,
+                         async):
+        rv = vpp_api.vac_connect(name.encode(), chroot_prefix.encode(),
+                                 msg_handler, rx_qlen)
         if rv != 0:
             raise IOError(2, 'Connect failed')
         self.connected = True
@@ -425,13 +460,12 @@ class VPP():
 
         # Initialise control ping
         crc = self.messages['control_ping']['crc']
-        self.control_ping_index = \
-                                  vpp_api.vac_get_msg_index(
-                                      bytes('control_ping' + '_' + crc[2:]))
+        self.control_ping_index = vpp_api.vac_get_msg_index(
+            ('control_ping' + '_' + crc[2:]).encode())
         self.control_ping_msgdef = self.messages['control_ping']
+        return rv
 
-    def connect(self, name, chroot_prefix = ffi.NULL,
-                async = False, rx_qlen = 32):
+    def connect(self, name, chroot_prefix=ffi.NULL, async=False, rx_qlen=32):
         """Attach to VPP.
 
         name - the name of the client.
@@ -440,12 +474,11 @@ class VPP():
         rx_qlen - the length of the VPP message receive queue between
         client and server.
         """
-        msg_handler = vac_callback_sync if not async \
-                      else vac_callback_async
+        msg_handler = vac_callback_sync if not async else vac_callback_async
         return self.connect_internal(name, msg_handler, chroot_prefix, rx_qlen,
                                      async)
 
-    def connect_sync (self, name, chroot_prefix = ffi.NULL, rx_qlen = 32):
+    def connect_sync(self, name, chroot_prefix=ffi.NULL, rx_qlen=32):
         """Attach to VPP in synchronous mode. Application must poll for events.
 
         name - the name of the client.
@@ -517,13 +550,13 @@ class VPP():
 
         msgname = type(r).__name__
 
-	if self.event_callback:
-	    self.event_callback(msgname, r)
+        if self.event_callback:
+            self.event_callback(msgname, r)
 
     def _control_ping(self, context):
         """Send a ping command."""
         self._call_vpp_async(self.control_ping_index,
-			     self.control_ping_msgdef,
+                             self.control_ping_msgdef,
                              context=context)
 
     def _call_vpp(self, i, msgdef, multipart, **kwargs):
@@ -542,7 +575,7 @@ class VPP():
         no response within the timeout window.
         """
 
-        if not 'context' in kwargs:
+        if 'context' not in kwargs:
             context = self.get_context()
             kwargs['context'] = context
         else:
@@ -563,12 +596,11 @@ class VPP():
         while (True):
             msg = self._read()
             if not msg:
-                print('PNEUM ERROR: OH MY GOD')
-                raise IOError(2, 'PNEUM read failed')
+                raise IOError(2, 'VPP API client: read failed')
 
             r = self.decode_incoming_msg(msg)
             msgname = type(r).__name__
-            if not context in r or r.context == 0 or context != r.context:
+            if context not in r or r.context == 0 or context != r.context:
                 self.message_queue.put_nowait(r)
                 continue
 
@@ -593,7 +625,7 @@ class VPP():
         supplied.
         The remainder of the kwargs are the arguments to the API call.
         """
-        if not 'context' in kwargs:
+        if 'context' not in kwargs:
             context = self.get_context()
             kwargs['context'] = context
         else:
@@ -631,5 +663,5 @@ class VPP():
         while True:
             r = self.message_queue.get()
             msgname = type(r).__name__
-	    if self.event_callback:
-	        self.event_callback(msgname, r)
+            if self.event_callback:
+                self.event_callback(msgname, r)
