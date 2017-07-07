@@ -1268,9 +1268,9 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
       ed->new_link_state = (u8) xd->link.link_status;
     }
 
-  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) &&
-      ((xd->link.link_status != 0) ^
-       vnet_hw_interface_is_link_up (vnm, xd->hw_if_index)))
+  if ((xd->flags & (DPDK_DEVICE_FLAG_ADMIN_UP | DPDK_DEVICE_FLAG_BOND_SLAVE))
+      && ((xd->link.link_status != 0) ^
+	  vnet_hw_interface_is_link_up (vnm, xd->hw_if_index)))
     {
       hw_flags_chg = 1;
       hw_flags |= (xd->link.link_status ? VNET_HW_INTERFACE_FLAG_LINK_UP : 0);
