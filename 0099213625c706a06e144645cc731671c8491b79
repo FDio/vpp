@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_66ba4ee3",
+        "filename": "src/vpp-api/python/vpp_papi.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 465,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-07-08T15:13:42Z",
+      "side": 1,
+      "message": "more diagnostic output?",
+      "range": {
+        "startLine": 465,
+        "startChar": 8,
+        "endLine": 465,
+        "endChar": 60
+      },
+      "revId": "0099213625c706a06e144645cc731671c8491b79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_46bf52d1",
+        "filename": "src/vpp-api/python/vpp_papi.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-07-08T15:13:42Z",
+      "side": 1,
+      "message": "more diagnostic output?",
+      "range": {
+        "startLine": 467,
+        "startChar": 8,
+        "endLine": 467,
+        "endChar": 33
+      },
+      "revId": "0099213625c706a06e144645cc731671c8491b79",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
