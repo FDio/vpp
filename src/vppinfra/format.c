@@ -62,6 +62,7 @@
 #include <vppinfra/error.h>
 #include <vppinfra/string.h>
 #include <vppinfra/os.h>	/* os_puts */
+#include <vppinfra/math.h>
 
 typedef struct
 {
@@ -708,8 +709,12 @@ format_float (u8 * s, f64 x, uword n_fraction_digits, uword output_style)
       sign = 1;
     }
 
+  /* Check for not-a-number. */
+  if (isnan (x))
+    return format (s, "%cNaN", sign ? '-' : '+');
+
   /* Check for infinity. */
-  if (x == x / 2)
+  if (isinf (x))
     return format (s, "%cinfinity", sign ? '-' : '+');
 
   x = normalize (x, &expon, &prec);
