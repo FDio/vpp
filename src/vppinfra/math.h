@@ -52,6 +52,14 @@ fabs (f64 x)
   return __builtin_fabs (x);
 }
 
+#ifndef isnan
+#define isnan(x) __builtin_isnan(x)
+#endif
+
+#ifndef isinf
+#define isinf(x) __builtin_isinf(x)
+#endif
+
 #endif /* included_math_h */
 
 /*
