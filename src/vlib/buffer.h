@@ -390,10 +390,16 @@ typedef struct
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /* Virtual memory address and size of buffer memory, used for calculating
+     buffer index */
+  uword buffer_mem_start;
+  uword buffer_mem_size;
+
   /* Buffer free callback, for subversive activities */
-  u32 (*buffer_free_callback) (struct vlib_main_t * vm,
-			       u32 * buffers,
-			       u32 n_buffers, u32 follow_buffer_next);
+    u32 (*buffer_free_callback) (struct vlib_main_t * vm,
+				 u32 * buffers,
+				 u32 n_buffers, u32 follow_buffer_next);
   /* Pool of buffer free lists.
      Multiple free lists exist for packet generator which uses
      separate free lists for each packet stream --- so as to avoid
@@ -420,6 +426,8 @@ typedef struct
   int extern_buffer_mgmt;
 } vlib_buffer_main_t;
 
+void vlib_buffer_add_mem_range (struct vlib_main_t *vm, uword start,
+				uword size);
 void vlib_buffer_cb_init (struct vlib_main_t *vm);
 int vlib_buffer_cb_register (struct vlib_main_t *vm,
 			     vlib_buffer_callbacks_t * cb);

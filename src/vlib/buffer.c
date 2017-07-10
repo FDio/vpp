@@ -587,7 +587,11 @@ alloc_from_free_list (vlib_main_t * vm,
   /* wait with buffer memory allocation as long as possible
      in case external buffer manager takes over */
   if (PREDICT_FALSE (vm->os_physmem_alloc_aligned == 0))
-    unix_physmem_init (vm, 0 /* fail_if_physical_memory_not_present */ );
+    {
+      vlib_physmem_main_t *vpm = &vm->physmem_main;
+      unix_physmem_init (vm, 0 /* fail_if_physical_memory_not_present */ );
+      vlib_buffer_add_mem_range (vm, vpm->virtual.start, vpm->virtual.size);
+    }
 
   n_filled = fill_free_list (vm, free_list, n_alloc_buffers);
   if (n_filled == 0)
@@ -944,6 +948,36 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
   return copied;
 }
 
+void
+vlib_buffer_add_mem_range (vlib_main_t * vm, uword start, uword size)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+
+  if (bm->buffer_mem_size == 0)
+    {
+      bm->buffer_mem_start = start;
+      bm->buffer_mem_size = size;
+    }
+  else if (start < bm->buffer_mem_start)
+    {
+      bm->buffer_mem_size += bm->buffer_mem_start - start;
+      bm->buffer_mem_start = start;
+      if (size > bm->buffer_mem_size)
+	bm->buffer_mem_size = size;
+    }
+  else if (start > bm->buffer_mem_start)
+    {
+      uword new_size = start - bm->buffer_mem_start + size;
+      if (new_size > bm->buffer_mem_size)
+	bm->buffer_mem_size = new_size;
+    }
+
+  if ((u64) bm->buffer_mem_size >
+      ((u64) 1 << (32 + CLIB_LOG2_CACHE_LINE_BYTES)))
+    {
+      clib_panic ("buffer memory size out of range!");
+    }
+}
 
 static u8 *
 format_vlib_buffer_free_list (u8 * s, va_list * va)

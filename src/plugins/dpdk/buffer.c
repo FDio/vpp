@@ -431,7 +431,6 @@ vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 			 unsigned socket_id)
 {
   dpdk_main_t *dm = &dpdk_main;
-  vlib_physmem_main_t *vpm = &vm->physmem_main;
   struct rte_mempool *rmp;
   int i;
 
@@ -453,63 +452,10 @@ vlib_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
   if (rmp)
     {
       {
-	uword this_pool_end;
-	uword this_pool_start;
-	uword this_pool_size;
-	uword save_vpm_start, save_vpm_end, save_vpm_size;
 	struct rte_mempool_memhdr *memhdr;
 
-	this_pool_start = ~0;
-	this_pool_end = 0;
-
 	STAILQ_FOREACH (memhdr, &rmp->mem_list, next)
-	{
-	  if (((uword) (memhdr->addr + memhdr->len)) > this_pool_end)
-	    this_pool_end = (uword) (memhdr->addr + memhdr->len);
-	  if (((uword) memhdr->addr) < this_pool_start)
-	    this_pool_start = (uword) (memhdr->addr);
-	}
-	ASSERT (this_pool_start < ~0 && this_pool_end > 0);
-	this_pool_size = this_pool_end - this_pool_start;
-
-	if (CLIB_DEBUG > 1)
-	  {
-	    clib_warning ("%s: pool start %llx pool end %llx pool size %lld",
-			  pool_name, this_pool_start, this_pool_end,
-			  this_pool_size);
-	    clib_warning
-	      ("before: virtual.start %llx virtual.end %llx virtual.size %lld",
-	       vpm->virtual.start, vpm->virtual.end, vpm->virtual.size);
-	  }
-
-	save_vpm_start = vpm->virtual.start;
-	save_vpm_end = vpm->virtual.end;
-	save_vpm_size = vpm->virtual.size;
-
-	if ((this_pool_start < vpm->virtual.start) || vpm->virtual.start == 0)
-	  vpm->virtual.start = this_pool_start;
-	if (this_pool_end > vpm->virtual.end)
-	  vpm->virtual.end = this_pool_end;
-
-	vpm->virtual.size = vpm->virtual.end - vpm->virtual.start;
-
-	if (CLIB_DEBUG > 1)
-	  {
-	    clib_warning
-	      ("after: virtual.start %llx virtual.end %llx virtual.size %lld",
-	       vpm->virtual.start, vpm->virtual.end, vpm->virtual.size);
-	  }
-
-	/* check if fits into buffer index range */
-	if ((u64) vpm->virtual.size >
-	    ((u64) 1 << (32 + CLIB_LOG2_CACHE_LINE_BYTES)))
-	  {
-	    clib_warning ("physmem: virtual size out of range!");
-	    vpm->virtual.start = save_vpm_start;
-	    vpm->virtual.end = save_vpm_end;
-	    vpm->virtual.size = save_vpm_size;
-	    rmp = 0;
-	  }
+	  vlib_buffer_add_mem_range (vm, (uword) memhdr->addr, memhdr->len);
       }
       if (rmp)
 	{
