@@ -710,7 +710,6 @@ autoreply define want_ip4_arp_events
 
 /** \brief Tell client about an ip4 arp resolution event
     @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
     @param address - the exact ip4 address of interest
     @param pid - client pid registered to receive notification
     @param sw_if_index - interface which received ARP packet
@@ -720,7 +719,6 @@ autoreply define want_ip4_arp_events
 define ip4_arp_event
 {
   u32 client_index;
-  u32 context;
   u32 address;
   u32 pid;
   u32 sw_if_index;
@@ -746,7 +744,6 @@ autoreply define want_ip6_nd_events
 
 /** \brief Tell client about an ip6 nd resolution or mac/ip event
     @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
     @param pid - client pid registered to receive notification
     @param sw_if_index - interface which received ARP packet
     @param address - the exact ip6 address of interest
@@ -756,7 +753,6 @@ autoreply define want_ip6_nd_events
 define ip6_nd_event
 {
   u32 client_index;
-  u32 context;
   u32 pid;
   u32 sw_if_index;
   u8 address[16];
