@@ -401,7 +401,7 @@ unformat_line (unformat_input_t * i, va_list * va)
     }
 
   *result = line;
-  return 1;
+  return vec_len (line);
 }
 
 /* Parse a line ending with \n and return it as an unformat_input_t. */
@@ -410,7 +410,8 @@ unformat_line_input (unformat_input_t * i, va_list * va)
 {
   unformat_input_t *result = va_arg (*va, unformat_input_t *);
   u8 *line;
-  unformat_user (i, unformat_line, &line);
+  if (!unformat_user (i, unformat_line, &line))
+    return 0;
   unformat_init_vector (result, line);
   return 1;
 }
