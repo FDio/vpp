@@ -720,7 +720,6 @@ autoreply define want_ip4_arp_events
 define ip4_arp_event
 {
   u32 client_index;
-  u32 context;
   u32 address;
   u32 pid;
   u32 sw_if_index;
