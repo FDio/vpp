@@ -562,8 +562,6 @@ scan_device (void *arg, u8 * dev_dir_name, u8 * ignored)
   hash_set (pm->pci_dev_index_by_pci_addr, dev->bus_address.as_u32,
 	    dev - pm->pci_devs);
 
-  error = init_device (vm, dev, &pdev);
-
   vec_reset_length (f);
   f = format (f, "%v/vpd%c", dev_dir_name, 0);
   fd = open ((char *) f, O_RDONLY);
@@ -601,10 +599,6 @@ scan_device (void *arg, u8 * dev_dir_name, u8 * ignored)
       close (fd);
     }
 
-  vec_reset_length (f);
-  f = format (f, "%v/driver%c", dev_dir_name, 0);
-  dev->driver_name = vlib_sysfs_link_to_name ((char *) f);
-
   dev->numa_node = -1;
   vec_reset_length (f);
   f = format (f, "%v/numa_node%c", dev_dir_name, 0);
@@ -624,6 +618,12 @@ scan_device (void *arg, u8 * dev_dir_name, u8 * ignored)
   f = format (f, "%v/device%c", dev_dir_name, 0);
   vlib_sysfs_read ((char *) f, "0x%x", &tmp);
   dev->device_id = tmp;
+
+  error = init_device (vm, dev, &pdev);
+
+  vec_reset_length (f);
+  f = format (f, "%v/driver%c", dev_dir_name, 0);
+  dev->driver_name = vlib_sysfs_link_to_name ((char *) f);
 
 done:
   vec_free (f);
