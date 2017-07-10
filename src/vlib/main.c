@@ -43,6 +43,7 @@
 #include <vlib/threads.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
 
+#include <vlib/unix/unix.h>
 #include <vlib/unix/cj.h>
 
 CJ_GLOBAL_LOG_PROTOTYPE;
@@ -466,7 +467,7 @@ vlib_put_next_frame (vlib_main_t * vm,
   vlib_frame_t *f;
   u32 n_vectors_in_frame;
 
-  if (vm->buffer_main->extern_buffer_mgmt == 0 && CLIB_DEBUG > 0)
+  if (vm->buffer_main->callbacks_registered == 0 && CLIB_DEBUG > 0)
     vlib_put_next_frame_validate (vm, r, next_index, n_vectors_left);
 
   nf = vlib_node_runtime_get_next_frame (vm, r, next_index);
@@ -1712,7 +1713,22 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     vm->name = "VLIB";
 
   vec_validate (vm->buffer_main, 0);
-  vlib_buffer_cb_init (vm);
+  if (vlib_buffer_callbacks)
+    {
+      /* external plugin has registered own buffer callbacks
+         so we just copy them */
+      vlib_buffer_main_t *bm = vm->buffer_main;
+      clib_memcpy (&bm->cb, vlib_buffer_callbacks,
+		   sizeof (vlib_buffer_callbacks_t));
+      bm->callbacks_registered = 1;
+    }
+  else
+    {
+      vlib_physmem_main_t *vpm = &vm->physmem_main;
+      vlib_buffer_cb_init (vm);
+      unix_physmem_init (vm, 0 /* fail_if_physical_memory_not_present */ );
+      vlib_buffer_add_mem_range (vm, vpm->virtual.start, vpm->virtual.size);
+    }
 
   if ((error = vlib_thread_init (vm)))
     {

@@ -388,12 +388,20 @@ typedef struct
 					   u32 free_list_index);
 } vlib_buffer_callbacks_t;
 
+extern vlib_buffer_callbacks_t *vlib_buffer_callbacks;
+
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  /* Virtual memory address and size of buffer memory, used for calculating
+     buffer index */
+  uword buffer_mem_start;
+  uword buffer_mem_size;
+
   /* Buffer free callback, for subversive activities */
-  u32 (*buffer_free_callback) (struct vlib_main_t * vm,
-			       u32 * buffers,
-			       u32 n_buffers, u32 follow_buffer_next);
+    u32 (*buffer_free_callback) (struct vlib_main_t * vm,
+				 u32 * buffers,
+				 u32 n_buffers, u32 follow_buffer_next);
   /* Pool of buffer free lists.
      Multiple free lists exist for packet generator which uses
      separate free lists for each packet stream --- so as to avoid
@@ -417,12 +425,12 @@ typedef struct
 
   /* Callbacks */
   vlib_buffer_callbacks_t cb;
-  int extern_buffer_mgmt;
+  int callbacks_registered;
 } vlib_buffer_main_t;
 
+void vlib_buffer_add_mem_range (struct vlib_main_t *vm, uword start,
+				uword size);
 void vlib_buffer_cb_init (struct vlib_main_t *vm);
-int vlib_buffer_cb_register (struct vlib_main_t *vm,
-			     vlib_buffer_callbacks_t * cb);
 
 typedef struct
 {
@@ -497,6 +505,18 @@ serialize_vlib_buffer_n_bytes (serialize_main_t * m)
 #endif /* VLIB_BUFFER_TRACE_TRAJECTORY */
 
 #endif /* included_vlib_buffer_h */
+
+#define VLIB_BUFFER_REGISTER_CALLBACKS(x,...)                           \
+    __VA_ARGS__ vlib_buffer_callbacks_t __##x##_buffer_callbacks;       \
+static void __vlib_add_buffer_callbacks_t_##x (void)                    \
+    __attribute__((__constructor__)) ;                                  \
+static void __vlib_add_buffer_callbacks_t_##x (void)                    \
+{                                                                       \
+    if (vlib_buffer_callbacks)                                          \
+      clib_panic ("vlib buffer callbacks already registered");          \
+    vlib_buffer_callbacks = &__##x##_buffer_callbacks;                  \
+}                                                                       \
+__VA_ARGS__ vlib_buffer_callbacks_t __##x##_buffer_callbacks
 
 /*
  * fd.io coding-style-patch-verification: ON

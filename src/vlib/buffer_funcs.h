@@ -56,8 +56,11 @@
 always_inline vlib_buffer_t *
 vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
 {
-  return vlib_physmem_at_offset (&vm->physmem_main, ((uword) buffer_index)
-				 << CLIB_LOG2_CACHE_LINE_BYTES);
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  uword offset = ((uword) buffer_index) << CLIB_LOG2_CACHE_LINE_BYTES;
+  ASSERT (offset < bm->buffer_mem_size);
+
+  return uword_to_pointer (bm->buffer_mem_start + offset, void *);
 }
 
 /** \brief Translate buffer pointer into buffer index
@@ -66,10 +69,14 @@ vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
     @param p - (void *) buffer pointer
     @return - (u32) buffer index
 */
+
 always_inline u32
 vlib_get_buffer_index (vlib_main_t * vm, void *p)
 {
-  uword offset = vlib_physmem_offset_of (&vm->physmem_main, p);
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  uword offset = pointer_to_uword (p) - bm->buffer_mem_start;
+  ASSERT (pointer_to_uword (p) >= bm->buffer_mem_start);
+  ASSERT (offset < bm->buffer_mem_size);
   ASSERT ((offset % (1 << CLIB_LOG2_CACHE_LINE_BYTES)) == 0);
   return offset >> CLIB_LOG2_CACHE_LINE_BYTES;
 }

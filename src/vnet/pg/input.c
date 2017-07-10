@@ -1214,7 +1214,7 @@ pg_stream_fill_helper (pg_main_t * pg,
    * Historically, the pg maintained its own free lists and
    * device drivers tx paths would return pkts.
    */
-  if (vm->buffer_main->extern_buffer_mgmt == 0 &&
+  if (vm->buffer_main->callbacks_registered == 0 &&
       !(s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE))
     f->buffer_init_function = pg_buffer_init;
   f->buffer_init_function_opaque =
@@ -1238,7 +1238,7 @@ pg_stream_fill_helper (pg_main_t * pg,
   n_alloc = n_allocated;
 
   /* Reinitialize buffers */
-  if (vm->buffer_main->extern_buffer_mgmt == 0 || CLIB_DEBUG > 0
+  if (vm->buffer_main->callbacks_registered == 0 || CLIB_DEBUG > 0
       || (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE))
     init_buffers_inline
       (vm, s,
@@ -1246,7 +1246,7 @@ pg_stream_fill_helper (pg_main_t * pg,
        n_alloc, (bi - s->buffer_indices) * s->buffer_bytes /* data offset */ ,
        s->buffer_bytes,
        /* set_data */
-       vm->buffer_main->extern_buffer_mgmt != 0
+       vm->buffer_main->callbacks_registered != 0
        || (s->flags & PG_STREAM_FLAGS_DISABLE_BUFFER_RECYCLE) != 0);
 
   if (next_buffers)
