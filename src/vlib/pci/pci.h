@@ -215,12 +215,16 @@ vlib_pci_bus_master_enable (vlib_pci_device_t * dev)
   if (err)
     return err;
 
-  if (!(command & PCI_COMMAND_BUS_MASTER))
+  if (command & PCI_COMMAND_BUS_MASTER)
     return 0;
 
   command |= PCI_COMMAND_BUS_MASTER;
 
-  return vlib_pci_write_config_u16 (dev, 4, &command);
+  err = vlib_pci_write_config_u16 (dev, 4, &command);
+
+  CLIB_MEMORY_BARRIER ();
+
+  return err;
 }
 
 clib_error_t *vlib_pci_map_resource (vlib_pci_device_t * dev, u32 resource,
