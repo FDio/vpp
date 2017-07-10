@@ -21,6 +21,8 @@ import subprocess
 import re
 import sys
 from optparse import OptionParser
+from errno import EACCES, EPERM, ENOENT
+
 
 try:
         import readline
@@ -43,6 +45,30 @@ class Vppctl(Cmd):
                         readline.set_history_length(persishist_size)
                         readline.write_history_file(persishist)
 
+        def print_file_error_message(self,e, file_name):
+                #PermissionError
+                if e.errno==EPERM or e.errno==EACCES:
+                        print("PermissionError error({0}): {1} for:\n{2}".format(e.errno, e.strerror, file_name))
+                        #FileNotFoundError
+                elif e.errno==ENOENT:
+                        print("FileNotFoundError error({0}): {1} as:\n{2}".format(e.errno, e.strerror, file_name))
+                elif IOError:
+                        print("I/O error({0}): {1} as:\n{2}".format(e.errno, e.strerror, file_name))
+                elif OSError:
+                        print("OS error({0}): {1} as:\n{2}".format(e.errno, e.strerror, file_name))
+
+        def testPermissions(self):
+                if(self.api_prefix is None):
+                        filename = "/dev/shm/vpe-api"
+                else:
+                        filename = "/dev/shm/%s-vpe-api" % self.api_prefix
+                try:
+                        file = open(filename)
+                        file.close()
+                except (IOError, OSError) as e:
+                        self.print_file_error_message(e,filename)
+                        sys.exit()
+
         def runVat(self, line):
                 input_prefix = "exec "
                 input_command = input_prefix + line
@@ -53,6 +79,7 @@ class Vppctl(Cmd):
                 else:
                         command = ['vpp_api_test',"chroot prefix %s " % self.api_prefix]
 
+                self.testPermissions()
                 vpp_process = subprocess.Popen(command,
                         stderr=subprocess.PIPE,
                         stdin=subprocess.PIPE,
