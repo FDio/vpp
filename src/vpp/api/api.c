@@ -1520,9 +1520,9 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
 	}
       memset (event, 0, sizeof (*event));
 
+      /* Python API expects events to have no context */
       event->_vl_msg_id = ntohs (VL_API_IP4_ARP_EVENT);
       event->client_index = mp->client_index;
-      event->context = mp->context;
       event->address = mp->address;
       event->pid = mp->pid;
       if (mp->address == 0)
@@ -1568,7 +1568,6 @@ vl_api_want_ip6_nd_events_t_handler (vl_api_want_ip6_nd_events_t * mp)
 
       event->_vl_msg_id = ntohs (VL_API_IP6_ND_EVENT);
       event->client_index = mp->client_index;
-      event->context = mp->context;
       clib_memcpy (event->address, mp->address, 16);
       event->pid = mp->pid;
       if (ip6_address_is_zero ((ip6_address_t *) mp->address))
