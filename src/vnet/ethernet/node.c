@@ -304,7 +304,7 @@ ethernet_frame_is_any_tagged (u16 type0, u16 type1)
   r = _mm_cmpeq_epi16 (ethertype_mask, r);
   return !_mm_test_all_zeros (r, r);
 #else
-  return ethernet_frame_is_tagged (type0) || ethernet_frame_istagged (type1);
+  return ethernet_frame_is_tagged (type0) || ethernet_frame_is_tagged (type1);
 #endif
 }
 
