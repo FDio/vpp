@@ -51,7 +51,7 @@ static inline u64
 clib_bihash_hash_8_8 (clib_bihash_kv_8_8_t * v)
 {
   /* Note: to torture-test linear scan, make this fn return a constant */
-#if __SSE4_2__
+#ifdef clib_crc32c_uses_intrinsics
   return clib_crc32c ((u8 *) & v->key, 8);
 #else
   return clib_xxhash (v->key);
