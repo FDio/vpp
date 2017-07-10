@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_692c614b",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 590,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-10T13:49:23Z",
+      "side": 1,
+      "message": "Would it be possible to set up the init sequence to do this once - if needed - otherwise not at all?",
+      "revId": "ad7594edfd6bf46a6bf003973fc5896b6026da87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
