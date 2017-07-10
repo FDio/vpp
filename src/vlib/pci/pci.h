@@ -215,7 +215,7 @@ vlib_pci_bus_master_enable (vlib_pci_device_t * dev)
   if (err)
     return err;
 
-  if (!(command & PCI_COMMAND_BUS_MASTER))
+  if (command & PCI_COMMAND_BUS_MASTER)
     return 0;
 
   command |= PCI_COMMAND_BUS_MASTER;
