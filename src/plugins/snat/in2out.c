@@ -1093,6 +1093,10 @@ snat_in2out_unknown_proto (snat_main_t *sm,
               while (ses_index != ~0)
                 {
                   s =  pool_elt_at_index (tsm->sessions, ses_index);
+                  elt_index = elt->next;
+                  elt = pool_elt_at_index (tsm->list_pool, elt_index);
+                  ses_index = elt->value;
+
                   if (s->ext_host_addr.as_u32 == ip->dst_address.as_u32)
                     {
                       new_addr = ip->src_address.as_u32 = s->out2in.addr.as_u32;
