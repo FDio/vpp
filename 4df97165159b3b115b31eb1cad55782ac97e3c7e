@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_c9d91585",
+        "filename": "src/vpp/api/vpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 723,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-10T13:06:25Z",
+      "side": 0,
+      "message": "If this is needed for ip4_arp_event, it should also be removed from ip6_nd_event.",
+      "range": {
+        "startLine": 723,
+        "startChar": 13,
+        "endLine": 723,
+        "endChar": 14
+      },
+      "revId": "4df97165159b3b115b31eb1cad55782ac97e3c7e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
