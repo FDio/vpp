@@ -45,13 +45,9 @@ static void *
 unix_physmem_alloc_aligned (vlib_physmem_main_t * vpm, uword n_bytes,
 			    uword alignment)
 {
-  vlib_main_t *vm = vlib_get_main ();
   physmem_main_t *pm = &physmem_main;
   uword lo_offset, hi_offset;
   uword *to_free = 0;
-
-  if (vm->buffer_main->extern_buffer_mgmt)
-    clib_warning ("unsafe alloc!");
 
   /* IO memory is always at least cache aligned. */
   alignment = clib_max (alignment, CLIB_CACHE_LINE_BYTES);
@@ -270,11 +266,6 @@ show_physmem (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   physmem_main_t *pm = &physmem_main;
-  if (vm->buffer_main->extern_buffer_mgmt)
-    {
-      vlib_cli_output (vm, "Not supported with external buffer management.");
-      return 0;
-    }
 
   if (pm->heap)
     vlib_cli_output (vm, "%U", format_mheap, pm->heap, /* verbose */ 1);

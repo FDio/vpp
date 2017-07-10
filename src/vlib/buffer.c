@@ -46,6 +46,8 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 
+vlib_buffer_callbacks_t *vlib_buffer_callbacks = 0;
+
 uword
 vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
 				       vlib_buffer_t * b_first)
@@ -584,11 +586,6 @@ alloc_from_free_list (vlib_main_t * vm,
 
   dst = alloc_buffers;
 
-  /* wait with buffer memory allocation as long as possible
-     in case external buffer manager takes over */
-  if (PREDICT_FALSE (vm->os_physmem_alloc_aligned == 0))
-    unix_physmem_init (vm, 0 /* fail_if_physical_memory_not_present */ );
-
   n_filled = fill_free_list (vm, free_list, n_alloc_buffers);
   if (n_filled == 0)
     return 0;
@@ -944,6 +941,36 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
   return copied;
 }
 
+void
+vlib_buffer_add_mem_range (vlib_main_t * vm, uword start, uword size)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+
+  if (bm->buffer_mem_size == 0)
+    {
+      bm->buffer_mem_start = start;
+      bm->buffer_mem_size = size;
+    }
+  else if (start < bm->buffer_mem_start)
+    {
+      bm->buffer_mem_size += bm->buffer_mem_start - start;
+      bm->buffer_mem_start = start;
+      if (size > bm->buffer_mem_size)
+	bm->buffer_mem_size = size;
+    }
+  else if (start > bm->buffer_mem_start)
+    {
+      uword new_size = start - bm->buffer_mem_start + size;
+      if (new_size > bm->buffer_mem_size)
+	bm->buffer_mem_size = new_size;
+    }
+
+  if ((u64) bm->buffer_mem_size >
+      ((u64) 1 << (32 + CLIB_LOG2_CACHE_LINE_BYTES)))
+    {
+      clib_panic ("buffer memory size out of range!");
+    }
+}
 
 static u8 *
 format_vlib_buffer_free_list (u8 * s, va_list * va)
@@ -1011,6 +1038,7 @@ void
 vlib_buffer_cb_init (struct vlib_main_t *vm)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
+
   bm->cb.vlib_buffer_alloc_cb = &vlib_buffer_alloc_internal;
   bm->cb.vlib_buffer_alloc_from_free_list_cb =
     &vlib_buffer_alloc_from_free_list_internal;
@@ -1018,25 +1046,6 @@ vlib_buffer_cb_init (struct vlib_main_t *vm)
   bm->cb.vlib_buffer_free_no_next_cb = &vlib_buffer_free_no_next_internal;
   bm->cb.vlib_buffer_delete_free_list_cb =
     &vlib_buffer_delete_free_list_internal;
-  bm->extern_buffer_mgmt = 0;
-}
-
-int
-vlib_buffer_cb_register (struct vlib_main_t *vm, vlib_buffer_callbacks_t * cb)
-{
-  vlib_buffer_main_t *bm = vm->buffer_main;
-  if (bm->extern_buffer_mgmt)
-    return -1;
-
-#define _(x) bm->cb.x = cb->x
-  _(vlib_buffer_alloc_cb);
-  _(vlib_buffer_alloc_from_free_list_cb);
-  _(vlib_buffer_free_cb);
-  _(vlib_buffer_free_no_next_cb);
-  _(vlib_buffer_delete_free_list_cb);
-#undef _
-  bm->extern_buffer_mgmt = 1;
-  return 0;
 }
 
 /** @endcond */

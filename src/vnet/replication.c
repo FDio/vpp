@@ -214,7 +214,7 @@ replication_recycle_callback (vlib_main_t * vm, vlib_buffer_free_list_t * fl)
 	  b0->flags |= VLIB_BUFFER_IS_RECYCLED;
 
 #if (CLIB_DEBUG > 0)
-	  if (vm->buffer_main->extern_buffer_mgmt == 0)
+	  if (vm->buffer_main->callbacks_registered == 0)
 	    vlib_buffer_set_known_state (vm, bi0,
 					 VLIB_BUFFER_KNOWN_ALLOCATED);
 #endif
