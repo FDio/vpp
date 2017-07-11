@@ -25,6 +25,7 @@ typedef struct
 {
   u32 sw_if_index;
   u32 next_index;
+  u8 is_slow_path;
 } nat64_in2out_trace_t;
 
 static u8 *
@@ -33,15 +34,19 @@ format_nat64_in2out_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   nat64_in2out_trace_t *t = va_arg (*args, nat64_in2out_trace_t *);
+  char *tag;
+
+  tag = t->is_slow_path ? "NAT64-in2out-slowpath" : "NAT64-in2out";
 
   s =
-    format (s, "NAT64-in2out: sw_if_index %d, next index %d", t->sw_if_index,
+    format (s, "%s: sw_if_index %d, next index %d", tag, t->sw_if_index,
 	    t->next_index);
 
   return s;
 }
 
 vlib_node_registration_t nat64_in2out_node;
+vlib_node_registration_t nat64_in2out_slowpath_node;
 
 #define foreach_nat64_in2out_error                 \
 _(UNSUPPORTED_PROTOCOL, "unsupported protocol")    \
@@ -68,6 +73,7 @@ typedef enum
   NAT64_IN2OUT_NEXT_IP4_LOOKUP,
   NAT64_IN2OUT_NEXT_IP6_LOOKUP,
   NAT64_IN2OUT_NEXT_DROP,
+  NAT64_IN2OUT_NEXT_SLOWPATH,
   NAT64_IN2OUT_N_NEXT,
 } nat64_in2out_next_t;
 
@@ -113,7 +119,7 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   ip46_address_t saddr, daddr;
   u32 sw_if_index, fib_index;
   udp_header_t *udp = ip6_next_header (ip6);
-  snat_protocol_t proto = ip_proto_to_snat_proto (ip6->protocol);
+  u8 proto = ip6->protocol;
   u16 sport = udp->src_port;
   u16 dport = udp->dst_port;
 
@@ -146,7 +152,8 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 	  u16 out_port;
 	  ip4_address_t out_addr;
 	  if (nat64_alloc_out_addr_and_port
-	      (fib_index, proto, &out_addr, &out_port))
+	      (fib_index, ip_proto_to_snat_proto (proto), &out_addr,
+	       &out_port))
 	    return -1;
 
 	  bibe =
@@ -172,7 +179,7 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 
   ip4->dst_address.as_u32 = ste->out_r_addr.as_u32;
 
-  if (proto == SNAT_PROTOCOL_TCP)
+  if (proto == IP_PROTOCOL_TCP)
     {
       u16 *checksum;
       ip_csum_t csum;
@@ -212,12 +219,12 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
       u16 in_id = ((u16 *) (icmp))[2];
       ste =
 	nat64_db_st_entry_find (&nm->db, &saddr, &daddr, in_id, 0,
-				SNAT_PROTOCOL_ICMP, fib_index, 1);
+				IP_PROTOCOL_ICMP, fib_index, 1);
 
       if (ste)
 	{
 	  bibe =
-	    nat64_db_bib_entry_by_index (&nm->db, SNAT_PROTOCOL_ICMP,
+	    nat64_db_bib_entry_by_index (&nm->db, IP_PROTOCOL_ICMP,
 					 ste->bibe_index);
 	  if (!bibe)
 	    return -1;
@@ -226,7 +233,7 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 	{
 	  bibe =
 	    nat64_db_bib_entry_find (&nm->db, &saddr, in_id,
-				     SNAT_PROTOCOL_ICMP, fib_index, 1);
+				     IP_PROTOCOL_ICMP, fib_index, 1);
 
 	  if (!bibe)
 	    {
@@ -240,7 +247,7 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 		nat64_db_bib_entry_create (&nm->db, &ip6->src_address,
 					   &out_addr, in_id,
 					   clib_host_to_net_u16 (out_id),
-					   fib_index, SNAT_PROTOCOL_ICMP, 0);
+					   fib_index, IP_PROTOCOL_ICMP, 0);
 	      if (!bibe)
 		return -1;
 	    }
@@ -282,7 +289,7 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   nat64_db_bib_entry_t *bibe;
   ip46_address_t saddr, daddr;
   u32 sw_if_index, fib_index;
-  snat_protocol_t proto = ip_proto_to_snat_proto (ip6->protocol);
+  u8 proto = ip6->protocol;
 
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index =
@@ -293,10 +300,11 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   daddr.as_u64[0] = ip6->dst_address.as_u64[0];
   daddr.as_u64[1] = ip6->dst_address.as_u64[1];
 
-  if (proto == SNAT_PROTOCOL_ICMP)
+  if (proto == IP_PROTOCOL_ICMP6)
     {
       icmp46_header_t *icmp = ip6_next_header (ip6);
       u16 in_id = ((u16 *) (icmp))[2];
+      proto = IP_PROTOCOL_ICMP;
 
       if (!
 	  (icmp->type == ICMP4_echo_request
@@ -341,7 +349,7 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
       udp->dst_port = bibe->out_port;
       ip4->src_address.as_u32 = ste->out_r_addr.as_u32;
 
-      if (proto == SNAT_PROTOCOL_TCP)
+      if (proto == IP_PROTOCOL_TCP)
 	checksum = &tcp->checksum;
       else
 	checksum = &udp->checksum;
@@ -352,6 +360,153 @@ nat64_in2out_inner_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 
   return 0;
 }
+
+typedef struct unk_proto_st_walk_ctx_t_
+{
+  ip6_address_t src_addr;
+  ip6_address_t dst_addr;
+  ip4_address_t out_addr;
+  u32 fib_index;
+  u8 proto;
+} unk_proto_st_walk_ctx_t;
+
+static int
+unk_proto_st_walk (nat64_db_st_entry_t * ste, void *arg)
+{
+  nat64_main_t *nm = &nat64_main;
+  unk_proto_st_walk_ctx_t *ctx = arg;
+  nat64_db_bib_entry_t *bibe;
+  ip46_address_t saddr, daddr;
+
+  if (ip46_address_is_equal (&ste->in_r_addr, &ctx->dst_addr))
+    {
+      bibe =
+	nat64_db_bib_entry_by_index (&nm->db, ste->proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+
+      if (ip46_address_is_equal (&bibe->in_addr, &ctx->src_addr)
+	  && bibe->fib_index == ctx->fib_index)
+	{
+	  memset (&saddr, 0, sizeof (saddr));
+	  saddr.ip4.as_u32 = bibe->out_addr.as_u32;
+	  memset (&daddr, 0, sizeof (daddr));
+	  nat64_extract_ip4 (&ctx->dst_addr, &daddr.ip4, ctx->fib_index);
+
+	  if (nat64_db_st_entry_find
+	      (&nm->db, &daddr, &saddr, 0, 0, ctx->proto, ctx->fib_index, 0))
+	    return -1;
+
+	  ctx->out_addr.as_u32 = bibe->out_addr.as_u32;
+	  return 1;
+	}
+    }
+
+  return 0;
+}
+
+static int
+nat64_in2out_unk_proto_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
+			       void *arg)
+{
+  nat64_main_t *nm = &nat64_main;
+  nat64_in2out_set_ctx_t *ctx = arg;
+  nat64_db_bib_entry_t *bibe;
+  nat64_db_st_entry_t *ste;
+  ip46_address_t saddr, daddr, addr;
+  u32 sw_if_index, fib_index;
+  u8 proto = ip6->protocol;
+  int i;
+
+  sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
+  fib_index =
+    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, sw_if_index);
+
+  saddr.as_u64[0] = ip6->src_address.as_u64[0];
+  saddr.as_u64[1] = ip6->src_address.as_u64[1];
+  daddr.as_u64[0] = ip6->dst_address.as_u64[0];
+  daddr.as_u64[1] = ip6->dst_address.as_u64[1];
+
+  ste =
+    nat64_db_st_entry_find (&nm->db, &saddr, &daddr, 0, 0, proto, fib_index,
+			    1);
+
+  if (ste)
+    {
+      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+    }
+  else
+    {
+      bibe =
+	nat64_db_bib_entry_find (&nm->db, &saddr, 0, proto, fib_index, 1);
+
+      if (!bibe)
+	{
+	  /* Choose same out address as for TCP/UDP session to same dst */
+	  unk_proto_st_walk_ctx_t ctx = {
+	    .src_addr.as_u64[0] = ip6->src_address.as_u64[0],
+	    .src_addr.as_u64[1] = ip6->src_address.as_u64[1],
+	    .dst_addr.as_u64[0] = ip6->dst_address.as_u64[0],
+	    .dst_addr.as_u64[1] = ip6->dst_address.as_u64[1],
+	    .out_addr.as_u32 = 0,
+	    .fib_index = fib_index,
+	    .proto = proto,
+	  };
+
+	  nat64_db_st_walk (&nm->db, IP_PROTOCOL_TCP, unk_proto_st_walk,
+			    &ctx);
+
+	  if (!ctx.out_addr.as_u32)
+	    nat64_db_st_walk (&nm->db, IP_PROTOCOL_UDP, unk_proto_st_walk,
+			      &ctx);
+
+	  /* Verify if out address is not already in use for protocol */
+	  memset (&addr, 0, sizeof (addr));
+	  addr.ip4.as_u32 = ctx.out_addr.as_u32;
+	  if (nat64_db_bib_entry_find (&nm->db, &addr, 0, proto, 0, 0))
+	    ctx.out_addr.as_u32 = 0;
+
+	  if (!ctx.out_addr.as_u32)
+	    {
+	      for (i = 0; i < vec_len (nm->addr_pool); i++)
+		{
+		  addr.ip4.as_u32 = nm->addr_pool[i].addr.as_u32;
+		  if (!nat64_db_bib_entry_find
+		      (&nm->db, &addr, 0, proto, 0, 0))
+		    break;
+		}
+	    }
+
+	  if (!ctx.out_addr.as_u32)
+	    return -1;
+
+	  bibe =
+	    nat64_db_bib_entry_create (&nm->db, &ip6->src_address,
+				       &ctx.out_addr, 0, 0, fib_index, proto,
+				       0);
+	  if (!bibe)
+	    return -1;
+	}
+
+      nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
+      ste =
+	nat64_db_st_entry_create (&nm->db, bibe, &ip6->dst_address,
+				  &daddr.ip4, 0);
+      if (!ste)
+	return -1;
+    }
+
+  nat64_session_reset_timeout (ste, ctx->vm);
+
+  ip4->src_address.as_u32 = bibe->out_addr.as_u32;
+  ip4->dst_address.as_u32 = ste->out_r_addr.as_u32;
+
+  return 0;
+}
+
+
 
 static int
 nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
@@ -364,7 +519,7 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
   u32 sw_if_index, fib_index;
   udp_header_t *udp = ip6_next_header (ip6);
   tcp_header_t *tcp = ip6_next_header (ip6);
-  snat_protocol_t proto = ip_proto_to_snat_proto (ip6->protocol);
+  u8 proto = ip6->protocol;
   u16 sport = udp->src_port;
   u16 dport = udp->dst_port;
   u16 *checksum;
@@ -379,7 +534,7 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
   daddr.as_u64[0] = ip6->dst_address.as_u64[0];
   daddr.as_u64[1] = ip6->dst_address.as_u64[1];
 
-  if (proto == SNAT_PROTOCOL_UDP)
+  if (proto == IP_PROTOCOL_UDP)
     checksum = &udp->checksum;
   else
     checksum = &tcp->checksum;
@@ -411,7 +566,8 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 	  u16 out_port;
 	  ip4_address_t out_addr;
 	  if (nat64_alloc_out_addr_and_port
-	      (fib_index, proto, &out_addr, &out_port))
+	      (fib_index, ip_proto_to_snat_proto (proto), &out_addr,
+	       &out_port))
 	    return -1;
 
 	  bibe =
@@ -488,7 +644,7 @@ nat64_in2out_icmp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
   ip6_header_t *inner_ip6;
   ip46_address_t saddr, daddr;
   u32 sw_if_index, fib_index;
-  snat_protocol_t proto;
+  u8 proto;
   udp_header_t *udp;
   tcp_header_t *tcp;
   u16 *checksum, sport, dport;
@@ -499,9 +655,9 @@ nat64_in2out_icmp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 
   inner_ip6 = (ip6_header_t *) u8_ptr_add (icmp, 8);
 
-  proto = ip_proto_to_snat_proto (inner_ip6->protocol);
+  proto = inner_ip6->protocol;
 
-  if (proto == SNAT_PROTOCOL_ICMP)
+  if (proto == IP_PROTOCOL_ICMP6)
     return -1;
 
   sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
@@ -519,7 +675,7 @@ nat64_in2out_icmp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
   sport = udp->src_port;
   dport = udp->dst_port;
 
-  if (proto == SNAT_PROTOCOL_UDP)
+  if (proto == IP_PROTOCOL_UDP)
     checksum = &udp->checksum;
   else
     checksum = &tcp->checksum;
@@ -593,13 +749,144 @@ nat64_in2out_icmp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
   return 0;
 }
 
-static uword
-nat64_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		      vlib_frame_t * frame)
+static int
+nat64_in2out_unk_proto_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
+				    ip6_header_t * ip6)
+{
+  nat64_main_t *nm = &nat64_main;
+  nat64_db_bib_entry_t *bibe;
+  nat64_db_st_entry_t *ste;
+  ip46_address_t saddr, daddr, addr;
+  u32 sw_if_index, fib_index;
+  u8 proto = ip6->protocol;
+  int i;
+
+  sw_if_index = vnet_buffer (b)->sw_if_index[VLIB_RX];
+  fib_index =
+    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP6, sw_if_index);
+
+  saddr.as_u64[0] = ip6->src_address.as_u64[0];
+  saddr.as_u64[1] = ip6->src_address.as_u64[1];
+  daddr.as_u64[0] = ip6->dst_address.as_u64[0];
+  daddr.as_u64[1] = ip6->dst_address.as_u64[1];
+
+  ste =
+    nat64_db_st_entry_find (&nm->db, &saddr, &daddr, 0, 0, proto, fib_index,
+			    1);
+
+  if (ste)
+    {
+      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+    }
+  else
+    {
+      bibe =
+	nat64_db_bib_entry_find (&nm->db, &saddr, 0, proto, fib_index, 1);
+
+      if (!bibe)
+	{
+	  /* Choose same out address as for TCP/UDP session to same dst */
+	  unk_proto_st_walk_ctx_t ctx = {
+	    .src_addr.as_u64[0] = ip6->src_address.as_u64[0],
+	    .src_addr.as_u64[1] = ip6->src_address.as_u64[1],
+	    .dst_addr.as_u64[0] = ip6->dst_address.as_u64[0],
+	    .dst_addr.as_u64[1] = ip6->dst_address.as_u64[1],
+	    .out_addr.as_u32 = 0,
+	    .fib_index = fib_index,
+	    .proto = proto,
+	  };
+
+	  nat64_db_st_walk (&nm->db, IP_PROTOCOL_TCP, unk_proto_st_walk,
+			    &ctx);
+
+	  if (!ctx.out_addr.as_u32)
+	    nat64_db_st_walk (&nm->db, IP_PROTOCOL_UDP, unk_proto_st_walk,
+			      &ctx);
+
+	  /* Verify if out address is not already in use for protocol */
+	  memset (&addr, 0, sizeof (addr));
+	  addr.ip4.as_u32 = ctx.out_addr.as_u32;
+	  if (nat64_db_bib_entry_find (&nm->db, &addr, 0, proto, 0, 0))
+	    ctx.out_addr.as_u32 = 0;
+
+	  if (!ctx.out_addr.as_u32)
+	    {
+	      for (i = 0; i < vec_len (nm->addr_pool); i++)
+		{
+		  addr.ip4.as_u32 = nm->addr_pool[i].addr.as_u32;
+		  if (!nat64_db_bib_entry_find
+		      (&nm->db, &addr, 0, proto, 0, 0))
+		    break;
+		}
+	    }
+
+	  if (!ctx.out_addr.as_u32)
+	    return -1;
+
+	  bibe =
+	    nat64_db_bib_entry_create (&nm->db, &ip6->src_address,
+				       &ctx.out_addr, 0, 0, fib_index, proto,
+				       0);
+	  if (!bibe)
+	    return -1;
+	}
+
+      nat64_extract_ip4 (&ip6->dst_address, &daddr.ip4, fib_index);
+      ste =
+	nat64_db_st_entry_create (&nm->db, bibe, &ip6->dst_address,
+				  &daddr.ip4, 0);
+      if (!ste)
+	return -1;
+    }
+
+  nat64_session_reset_timeout (ste, vm);
+
+  nat64_compose_ip6 (&ip6->src_address, &bibe->out_addr, fib_index);
+
+  memset (&saddr, 0, sizeof (saddr));
+  memset (&daddr, 0, sizeof (daddr));
+  saddr.ip4.as_u32 = bibe->out_addr.as_u32;
+  daddr.ip4.as_u32 = ste->out_r_addr.as_u32;
+
+  ste = nat64_db_st_entry_find (&nm->db, &daddr, &saddr, 0, 0, proto, 0, 0);
+
+  if (ste)
+    {
+      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+    }
+  else
+    {
+      bibe = nat64_db_bib_entry_find (&nm->db, &daddr, 0, proto, 0, 0);
+
+      if (!bibe)
+	return -1;
+
+      ste =
+	nat64_db_st_entry_create (&nm->db, bibe, &ip6->src_address,
+				  &saddr.ip4, 0);
+    }
+
+  ip6->dst_address.as_u64[0] = bibe->in_addr.as_u64[0];
+  ip6->dst_address.as_u64[1] = bibe->in_addr.as_u64[1];
+
+  return 0;
+}
+
+static inline uword
+nat64_in2out_node_fn_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+			     vlib_frame_t * frame, u8 is_slow_path)
 {
   u32 n_left_from, *from, *to_next;
   nat64_in2out_next_t next_index;
   u32 pkts_processed = 0;
+  u32 stats_node_index;
+
+  stats_node_index =
+    is_slow_path ? nat64_in2out_slowpath_node.index : nat64_in2out_node.index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -649,12 +936,47 @@ nat64_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  proto0 = ip_proto_to_snat_proto (l4_protocol0);
-	  if (PREDICT_FALSE ((proto0 == ~0) || (frag_offset0 != 0)))
+	  if (frag_offset0 != 0)
 	    {
 	      next0 = NAT64_IN2OUT_NEXT_DROP;
 	      b0->error =
 		node->errors[NAT64_IN2OUT_ERROR_UNSUPPORTED_PROTOCOL];
 	      goto trace0;
+	    }
+
+	  if (is_slow_path)
+	    {
+	      if (PREDICT_TRUE (proto0 == ~0))
+		{
+		  if (is_hairpinning (&ip60->dst_address))
+		    {
+		      next0 = NAT64_IN2OUT_NEXT_IP6_LOOKUP;
+		      if (nat64_in2out_unk_proto_hairpinning (vm, b0, ip60))
+			{
+			  next0 = NAT64_IN2OUT_NEXT_DROP;
+			  b0->error =
+			    node->errors[NAT64_IN2OUT_ERROR_NO_TRANSLATION];
+			}
+		      goto trace0;
+		    }
+
+		  if (ip6_to_ip4 (b0, nat64_in2out_unk_proto_set_cb, &ctx0))
+		    {
+		      next0 = NAT64_IN2OUT_NEXT_DROP;
+		      b0->error =
+			node->errors[NAT64_IN2OUT_ERROR_NO_TRANSLATION];
+		      goto trace0;
+		    }
+		}
+	      goto trace0;
+	    }
+	  else
+	    {
+	      if (PREDICT_FALSE (proto0 == ~0))
+		{
+		  next0 = NAT64_IN2OUT_NEXT_SLOWPATH;
+		  goto trace0;
+		}
 	    }
 
 	  if (proto0 == SNAT_PROTOCOL_ICMP)
@@ -680,7 +1002,7 @@ nat64_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  goto trace0;
 		}
 	    }
-	  else
+	  else if (proto0 == SNAT_PROTOCOL_TCP || proto0 == SNAT_PROTOCOL_UDP)
 	    {
 	      if (is_hairpinning (&ip60->dst_address))
 		{
@@ -711,6 +1033,7 @@ nat64_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      t->next_index = next0;
+	      t->is_slow_path = is_slow_path;
 	    }
 
 	  pkts_processed += next0 != NAT64_IN2OUT_NEXT_DROP;
@@ -721,31 +1044,70 @@ nat64_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, nat64_in2out_node.index,
+  vlib_node_increment_counter (vm, stats_node_index,
 			       NAT64_IN2OUT_ERROR_IN2OUT_PACKETS,
 			       pkts_processed);
   return frame->n_vectors;
 }
 
+static uword
+nat64_in2out_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		      vlib_frame_t * frame)
+{
+  return nat64_in2out_node_fn_inline (vm, node, frame, 0);
+}
+
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (nat64_in2out_node) = {
-  .function = nat64_in2out_node_fn,.name = "nat64-in2out",
+  .function = nat64_in2out_node_fn,
+  .name = "nat64-in2out",
   .vector_size = sizeof (u32),
   .format_trace = format_nat64_in2out_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
   .n_errors = ARRAY_LEN (nat64_in2out_error_strings),
   .error_strings = nat64_in2out_error_strings,
-  .n_next_nodes = 2,
+  .n_next_nodes = NAT64_IN2OUT_N_NEXT,
   /* edit / add dispositions here */
   .next_nodes = {
     [NAT64_IN2OUT_NEXT_DROP] = "error-drop",
     [NAT64_IN2OUT_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [NAT64_IN2OUT_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [NAT64_IN2OUT_NEXT_SLOWPATH] = "nat64-in2out-slowpath",
   },
 };
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (nat64_in2out_node, nat64_in2out_node_fn);
+
+static uword
+nat64_in2out_slowpath_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			       vlib_frame_t * frame)
+{
+  return nat64_in2out_node_fn_inline (vm, node, frame, 1);
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (nat64_in2out_slowpath_node) = {
+  .function = nat64_in2out_slowpath_node_fn,
+  .name = "nat64-in2out-slowpath",
+  .vector_size = sizeof (u32),
+  .format_trace = format_nat64_in2out_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (nat64_in2out_error_strings),
+  .error_strings = nat64_in2out_error_strings,
+  .n_next_nodes = NAT64_IN2OUT_N_NEXT,
+  /* edit / add dispositions here */
+  .next_nodes = {
+    [NAT64_IN2OUT_NEXT_DROP] = "error-drop",
+    [NAT64_IN2OUT_NEXT_IP4_LOOKUP] = "ip4-lookup",
+    [NAT64_IN2OUT_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [NAT64_IN2OUT_NEXT_SLOWPATH] = "nat64-in2out-slowpath",
+  },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (nat64_in2out_slowpath_node,
+			      nat64_in2out_slowpath_node_fn);
 
 /*
  * fd.io coding-style-patch-verification: ON

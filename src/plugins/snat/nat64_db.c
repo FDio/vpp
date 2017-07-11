@@ -44,7 +44,7 @@ nat64_db_init (nat64_db_t * db)
 nat64_db_bib_entry_t *
 nat64_db_bib_entry_create (nat64_db_t * db, ip6_address_t * in_addr,
 			   ip4_address_t * out_addr, u16 in_port,
-			   u16 out_port, u32 fib_index, snat_protocol_t proto,
+			   u16 out_port, u32 fib_index, u8 proto,
 			   u8 is_static)
 {
   nat64_db_bib_entry_t *bibe;
@@ -52,7 +52,7 @@ nat64_db_bib_entry_create (nat64_db_t * db, ip6_address_t * in_addr,
   clib_bihash_kv_24_8_t kv;
 
   /* create pool entry */
-  switch (proto)
+  switch (ip_proto_to_snat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -64,8 +64,9 @@ nat64_db_bib_entry_create (nat64_db_t * db, ip6_address_t * in_addr,
 #undef _
 /* *INDENT-ON* */
     default:
-      clib_warning ("unknown protocol %u", proto);
-      return 0;
+      pool_get (db->bib._unk_proto_bib, bibe);
+      kv.value = bibe - db->bib._unk_proto_bib;
+      break;
     }
   memset (bibe, 0, sizeof (*bibe));
   bibe->in_addr.as_u64[0] = in_addr->as_u64[0];
@@ -110,7 +111,7 @@ nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
   u32 *ste_to_be_free = 0, *ste_index, bibe_index;
   nat64_db_st_entry_t *st, *ste;
 
-  switch (bibe->proto)
+  switch (ip_proto_to_snat_proto (bibe->proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -122,8 +123,9 @@ nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
 #undef _
 /* *INDENT-ON* */
     default:
-      clib_warning ("unknown protocol %u", bibe->proto);
-      return;
+      bib = db->bib._unk_proto_bib;
+      st = db->st._unk_proto_st;
+      break;
     }
 
   bibe_index = bibe - bib;
@@ -169,14 +171,14 @@ nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
 
 nat64_db_bib_entry_t *
 nat64_db_bib_entry_find (nat64_db_t * db, ip46_address_t * addr, u16 port,
-			 snat_protocol_t proto, u32 fib_index, u8 is_ip6)
+			 u8 proto, u32 fib_index, u8 is_ip6)
 {
   nat64_db_bib_entry_t *bibe = 0;
   nat64_db_bib_entry_key_t bibe_key;
   clib_bihash_kv_24_8_t kv, value;
   nat64_db_bib_entry_t *bib;
 
-  switch (proto)
+  switch (ip_proto_to_snat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -187,8 +189,8 @@ nat64_db_bib_entry_find (nat64_db_t * db, ip46_address_t * addr, u16 port,
 #undef _
 /* *INDENT-ON* */
     default:
-      clib_warning ("unknown protocol %u", proto);
-      return 0;
+      bib = db->bib._unk_proto_bib;
+      break;
     }
 
   bibe_key.addr.as_u64[0] = addr->as_u64[0];
@@ -210,12 +212,12 @@ nat64_db_bib_entry_find (nat64_db_t * db, ip46_address_t * addr, u16 port,
 }
 
 void
-nat64_db_bib_walk (nat64_db_t * db, snat_protocol_t proto,
+nat64_db_bib_walk (nat64_db_t * db, u8 proto,
 		   nat64_db_bib_walk_fn_t fn, void *ctx)
 {
   nat64_db_bib_entry_t *bib, *bibe;
 
-  switch (proto)
+  switch (ip_proto_to_snat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -226,8 +228,8 @@ nat64_db_bib_walk (nat64_db_t * db, snat_protocol_t proto,
 #undef _
 /* *INDENT-ON* */
     default:
-      clib_warning ("unknown protocol");
-      return;
+      bib = db->bib._unk_proto_bib;
+      break;
     }
 
   /* *INDENT-OFF* */
@@ -240,12 +242,11 @@ nat64_db_bib_walk (nat64_db_t * db, snat_protocol_t proto,
 }
 
 nat64_db_bib_entry_t *
-nat64_db_bib_entry_by_index (nat64_db_t * db, snat_protocol_t proto,
-			     u32 bibe_index)
+nat64_db_bib_entry_by_index (nat64_db_t * db, u8 proto, u32 bibe_index)
 {
   nat64_db_bib_entry_t *bib;
 
-  switch (proto)
+  switch (ip_proto_to_snat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -256,20 +257,20 @@ nat64_db_bib_entry_by_index (nat64_db_t * db, snat_protocol_t proto,
 #undef _
 /* *INDENT-ON* */
     default:
-      clib_warning ("unknown protocol %u", proto);
-      return 0;
+      bib = db->bib._unk_proto_bib;
+      break;
     }
 
   return pool_elt_at_index (bib, bibe_index);
 }
 
 void
-nat64_db_st_walk (nat64_db_t * db, snat_protocol_t proto,
+nat64_db_st_walk (nat64_db_t * db, u8 proto,
 		  nat64_db_st_walk_fn_t fn, void *ctx)
 {
   nat64_db_st_entry_t *st, *ste;
 
-  switch (proto)
+  switch (ip_proto_to_snat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -280,8 +281,8 @@ nat64_db_st_walk (nat64_db_t * db, snat_protocol_t proto,
 #undef _
 /* *INDENT-ON* */
     default:
-      clib_warning ("unknown protocol");
-      return;
+      st = db->st._unk_proto_st;
+      break;
     }
 
   /* *INDENT-OFF* */
@@ -304,7 +305,7 @@ nat64_db_st_entry_create (nat64_db_t * db, nat64_db_bib_entry_t * bibe,
   clib_bihash_kv_48_8_t kv;
 
   /* create pool entry */
-  switch (bibe->proto)
+  switch (ip_proto_to_snat_proto (bibe->proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -317,8 +318,10 @@ nat64_db_st_entry_create (nat64_db_t * db, nat64_db_bib_entry_t * bibe,
 #undef _
 /* *INDENT-ON* */
     default:
-      clib_warning ("unknown protocol %u", bibe->proto);
-      return 0;
+      pool_get (db->st._unk_proto_st, ste);
+      kv.value = ste - db->st._unk_proto_st;
+      bib = db->bib._unk_proto_bib;
+      break;
     }
   memset (ste, 0, sizeof (*ste));
   ste->in_r_addr.as_u64[0] = in_r_addr->as_u64[0];
@@ -374,7 +377,7 @@ nat64_db_st_entry_free (nat64_db_t * db, nat64_db_st_entry_t * ste)
   nat64_db_st_entry_key_t ste_key;
   clib_bihash_kv_48_8_t kv;
 
-  switch (ste->proto)
+  switch (ip_proto_to_snat_proto (ste->proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -386,8 +389,9 @@ nat64_db_st_entry_free (nat64_db_t * db, nat64_db_st_entry_t * ste)
 #undef _
 /* *INDENT-ON* */
     default:
-      clib_warning ("unknown protocol %u", ste->proto);
-      return;
+      st = db->st._unk_proto_st;
+      bib = db->bib._unk_proto_bib;
+      break;
     }
 
   bibe = pool_elt_at_index (bib, ste->bibe_index);
@@ -438,14 +442,14 @@ nat64_db_st_entry_free (nat64_db_t * db, nat64_db_st_entry_t * ste)
 nat64_db_st_entry_t *
 nat64_db_st_entry_find (nat64_db_t * db, ip46_address_t * l_addr,
 			ip46_address_t * r_addr, u16 l_port, u16 r_port,
-			snat_protocol_t proto, u32 fib_index, u8 is_ip6)
+			u8 proto, u32 fib_index, u8 is_ip6)
 {
   nat64_db_st_entry_t *ste = 0;
   nat64_db_st_entry_t *st;
   nat64_db_st_entry_key_t ste_key;
   clib_bihash_kv_48_8_t kv, value;
 
-  switch (proto)
+  switch (ip_proto_to_snat_proto (proto))
     {
 /* *INDENT-OFF* */
 #define _(N, i, n, s) \
@@ -456,8 +460,8 @@ nat64_db_st_entry_find (nat64_db_t * db, ip46_address_t * l_addr,
 #undef _
 /* *INDENT-ON* */
     default:
-      clib_warning ("unknown protocol %u", proto);
-      return ste;
+      st = db->st._unk_proto_st;
+      break;
     }
 
   memset (&ste_key, 0, sizeof (ste_key));
@@ -504,6 +508,47 @@ nad64_db_st_free_expired (nat64_db_t * db, u32 now)
   ste_to_be_free = 0;
   foreach_snat_protocol
 #undef _
+  st = db->st._unk_proto_st;
+  pool_foreach (ste, st, ({
+    if (ste->expire < now)
+      vec_add1 (ste_to_be_free, ste - st);
+  }));
+  vec_foreach (ste_index, ste_to_be_free)
+    nat64_db_st_entry_free (db, pool_elt_at_index(st, ste_index[0]));
+  vec_free (ste_to_be_free);
+/* *INDENT-ON* */
+}
+
+void
+nat64_db_free_out_addr (nat64_db_t * db, ip4_address_t * out_addr)
+{
+  u32 *ste_to_be_free = 0, *ste_index;
+  nat64_db_st_entry_t *st, *ste;
+  nat64_db_bib_entry_t *bibe;
+
+/* *INDENT-OFF* */
+#define _(N, i, n, s) \
+  st = db->st._##n##_st; \
+  pool_foreach (ste, st, ({ \
+    bibe = pool_elt_at_index (db->bib._##n##_bib, ste->bibe_index); \
+    if (bibe->out_addr.as_u32 == out_addr->as_u32) \
+      vec_add1 (ste_to_be_free, ste - st); \
+  })); \
+  vec_foreach (ste_index, ste_to_be_free) \
+    nat64_db_st_entry_free (db, pool_elt_at_index(st, ste_index[0])); \
+  vec_free (ste_to_be_free); \
+  ste_to_be_free = 0;
+  foreach_snat_protocol
+#undef _
+  st = db->st._unk_proto_st;
+  pool_foreach (ste, st, ({
+    bibe = pool_elt_at_index (db->bib._unk_proto_bib, ste->bibe_index);
+    if (bibe->out_addr.as_u32 == out_addr->as_u32)
+      vec_add1 (ste_to_be_free, ste - st);
+  }));
+  vec_foreach (ste_index, ste_to_be_free)
+    nat64_db_st_entry_free (db, pool_elt_at_index(st, ste_index[0]));
+  vec_free (ste_to_be_free);
 /* *INDENT-ON* */
 }
 

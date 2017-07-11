@@ -3497,7 +3497,7 @@ class TestNAT64(MethodHolder):
                                   vrf1_pref64_len)
         self.verify_capture_in_ip6(capture, dst_ip, self.pg2.remote_ip6)
 
-    def _test_unknown_proto(self):
+    def test_unknown_proto(self):
         """ NAT64 translate packet with unknown protocol """
 
         self.vapi.nat64_add_del_pool_addr_range(self.nat_addr_n,
@@ -3516,7 +3516,7 @@ class TestNAT64(MethodHolder):
         p = self.pg1.get_capture(1)
 
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(src=self.pg0.remote_ip6, dst=remote_ip6) /
+             IPv6(src=self.pg0.remote_ip6, dst=remote_ip6, nh=47) /
              GRE() /
              IP(src=self.pg2.local_ip4, dst=self.pg2.remote_ip4) /
              TCP(sport=1234, dport=1234))
@@ -3547,13 +3547,13 @@ class TestNAT64(MethodHolder):
         packet = p[0]
         try:
             self.assertEqual(packet[IPv6].src, remote_ip6)
-            self.assertEqual(packet[IPv6].dst, self.pgi0.remote_ip6)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertEqual(packet[IPv6].dst, self.pg0.remote_ip6)
+            self.assertEqual(packet[IPv6].nh, 47)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
             raise
 
-    def _test_hairpinning_unknown_proto(self):
+    def test_hairpinning_unknown_proto(self):
         """ NAT64 translate packet with unknown protocol - hairpinning """
 
         client = self.pg0.remote_hosts[0]
@@ -3561,23 +3561,40 @@ class TestNAT64(MethodHolder):
         server_tcp_in_port = 22
         server_tcp_out_port = 4022
         client_tcp_in_port = 1234
-        client_udp_in_port = 1235
-        nat_addr_ip6 = self.compose_ip6(self.nat_addr, '64:ff9b::', 96)
+        client_tcp_out_port = 1235
+        server_nat_ip = "10.0.0.100"
+        client_nat_ip = "10.0.0.110"
+        server_nat_ip_n = socket.inet_pton(socket.AF_INET, server_nat_ip)
+        client_nat_ip_n = socket.inet_pton(socket.AF_INET, client_nat_ip)
+        server_nat_ip6 = self.compose_ip6(server_nat_ip, '64:ff9b::', 96)
+        client_nat_ip6 = self.compose_ip6(client_nat_ip, '64:ff9b::', 96)
 
-        self.vapi.nat64_add_del_pool_addr_range(self.nat_addr_n,
-                                                self.nat_addr_n)
+        self.vapi.nat64_add_del_pool_addr_range(server_nat_ip_n,
+                                                client_nat_ip_n)
         self.vapi.nat64_add_del_interface(self.pg0.sw_if_index)
         self.vapi.nat64_add_del_interface(self.pg1.sw_if_index, is_inside=0)
 
         self.vapi.nat64_add_del_static_bib(server.ip6n,
-                                           self.nat_addr_n,
+                                           server_nat_ip_n,
                                            server_tcp_in_port,
                                            server_tcp_out_port,
                                            IP_PROTOS.tcp)
 
+        self.vapi.nat64_add_del_static_bib(server.ip6n,
+                                           server_nat_ip_n,
+                                           0,
+                                           0,
+                                           IP_PROTOS.gre)
+
+        self.vapi.nat64_add_del_static_bib(client.ip6n,
+                                           client_nat_ip_n,
+                                           client_tcp_in_port,
+                                           client_tcp_out_port,
+                                           IP_PROTOS.tcp)
+
         # client to server
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(src=client.ip6, dst=nat_addr_ip6) /
+             IPv6(src=client.ip6, dst=server_nat_ip6) /
              TCP(sport=client_tcp_in_port, dport=server_tcp_out_port))
         self.pg0.add_stream(p)
         self.pg_enable_capture(self.pg_interfaces)
@@ -3585,7 +3602,7 @@ class TestNAT64(MethodHolder):
         p = self.pg0.get_capture(1)
 
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(src=client.ip6, dst=nat_addr_ip6) /
+             IPv6(src=client.ip6, dst=server_nat_ip6, nh=IP_PROTOS.gre) /
              GRE() /
              IP(src=self.pg2.local_ip4, dst=self.pg2.remote_ip4) /
              TCP(sport=1234, dport=1234))
@@ -3595,16 +3612,16 @@ class TestNAT64(MethodHolder):
         p = self.pg0.get_capture(1)
         packet = p[0]
         try:
-            self.assertEqual(packet[IPv6].src, nat_addr_ip6)
+            self.assertEqual(packet[IPv6].src, client_nat_ip6)
             self.assertEqual(packet[IPv6].dst, server.ip6)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertEqual(packet[IPv6].nh, IP_PROTOS.gre)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
             raise
 
         # server to client
         p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
-             IPv6(src=server.ip6, dst=nat_addr_ip6) /
+             IPv6(src=server.ip6, dst=client_nat_ip6, nh=IP_PROTOS.gre) /
              GRE() /
              IP(src=self.pg2.remote_ip4, dst=self.pg2.local_ip4) /
              TCP(sport=1234, dport=1234))
@@ -3614,9 +3631,9 @@ class TestNAT64(MethodHolder):
         p = self.pg0.get_capture(1)
         packet = p[0]
         try:
-            self.assertEqual(packet[IPv6].src, nat_addr_ip6)
+            self.assertEqual(packet[IPv6].src, server_nat_ip6)
             self.assertEqual(packet[IPv6].dst, client.ip6)
-            self.assertTrue(packet.haslayer(GRE))
+            self.assertEqual(packet[IPv6].nh, IP_PROTOS.gre)
         except:
             self.logger.error(ppp("Unexpected or invalid packet:", packet))
             raise
@@ -3702,9 +3719,11 @@ class TestNAT64(MethodHolder):
             self.logger.info(self.vapi.cli("show nat64 bib tcp"))
             self.logger.info(self.vapi.cli("show nat64 bib udp"))
             self.logger.info(self.vapi.cli("show nat64 bib icmp"))
+            self.logger.info(self.vapi.cli("show nat64 bib unknown"))
             self.logger.info(self.vapi.cli("show nat64 session table tcp"))
             self.logger.info(self.vapi.cli("show nat64 session table udp"))
             self.logger.info(self.vapi.cli("show nat64 session table icmp"))
+            self.logger.info(self.vapi.cli("show nat64 session table unknown"))
             self.clear_nat64()
 
 if __name__ == '__main__':
