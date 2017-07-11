@@ -562,6 +562,67 @@ no_csum:
   return 0;
 }
 
+/**
+ * @brief Translate IPv6 packet to IPv4 (IP header only).
+ *
+ * @param p   Buffer to translate.
+ * @param fn  The function to translate header.
+ * @param ctx A context passed in the header translate function.
+ *
+ * @returns 0 on success, non-zero value otherwise.
+ */
+always_inline int
+ip6_to_ip4 (vlib_buffer_t * p, ip6_to_ip4_set_fn_t fn, void *ctx)
+{
+  ip6_header_t *ip6;
+  ip4_header_t *ip4;
+  u16 fragment_id;
+  u16 flags;
+  u16 frag_offset;
+  u8 l4_protocol;
+  u16 l4_offset;
+  int rv;
+
+  ip6 = vlib_buffer_get_current (p);
+
+  if (ip6_parse
+      (ip6, p->current_length, &l4_protocol, &l4_offset, &frag_offset))
+    return -1;
+
+  ip4 = (ip4_header_t *) u8_ptr_add (ip6, l4_offset - sizeof (*ip4));
+
+  vlib_buffer_advance (p, l4_offset - sizeof (*ip4));
+
+  if (PREDICT_FALSE (frag_offset))
+    {
+      //Only the first fragment
+      ip6_frag_hdr_t *hdr = (ip6_frag_hdr_t *) u8_ptr_add (ip6, frag_offset);
+      fragment_id = frag_id_6to4 (hdr->identification);
+      flags = clib_host_to_net_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS);
+    }
+  else
+    {
+      fragment_id = 0;
+      flags = 0;
+    }
+
+  if ((rv = fn (ip6, ip4, ctx)) != 0)
+    return rv;
+
+  ip4->ip_version_and_header_length =
+    IP4_VERSION_AND_HEADER_LENGTH_NO_OPTIONS;
+  ip4->tos = ip6_translate_tos (ip6);
+  ip4->length = u16_net_add (ip6->payload_length,
+			     sizeof (*ip4) + sizeof (*ip6) - l4_offset);
+  ip4->fragment_id = fragment_id;
+  ip4->flags_and_fragment_offset = flags;
+  ip4->ttl = ip6->hop_limit;
+  ip4->protocol = l4_protocol;
+  ip4->checksum = ip4_header_checksum (ip4);
+
+  return 0;
+}
+
 #endif /* __included_ip6_to_ip4_h__ */
 
 /*

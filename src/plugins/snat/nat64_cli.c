@@ -303,7 +303,7 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
   ip4_address_t out_addr;
   u16 in_port = 0;
   u16 out_port = 0;
-  u32 vrf_id = 0;
+  u32 vrf_id = 0, protocol;
   snat_protocol_t proto = 0;
   u8 p = 0;
   int rv;
@@ -327,6 +327,11 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 	;
       else if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
 	;
+      else
+	if (unformat
+	    (line_input, "%U %U %u", unformat_ip6_address, &in_addr,
+	     unformat_ip4_address, &out_addr, &protocol))
+	p = (u8) protocol;
       else if (unformat (line_input, "del"))
 	is_add = 0;
       else
@@ -337,19 +342,24 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 	}
     }
 
-  if (!in_port)
+  if (!p)
     {
-      error = clib_error_return (0, "inside port and address  must be set");
-      goto done;
-    }
+      if (!in_port)
+	{
+	  error =
+	    clib_error_return (0, "inside port and address  must be set");
+	  goto done;
+	}
 
-  if (!out_port)
-    {
-      error = clib_error_return (0, "outside port and address  must be set");
-      goto done;
-    }
+      if (!out_port)
+	{
+	  error =
+	    clib_error_return (0, "outside port and address  must be set");
+	  goto done;
+	}
 
-  p = snat_proto_to_ip_proto (proto);
+      p = snat_proto_to_ip_proto (proto);
+    }
 
   rv =
     nat64_add_del_static_bib_entry (&in_addr, &out_addr, in_port, out_port, p,
@@ -391,12 +401,27 @@ nat64_cli_bib_walk (nat64_db_bib_entry_t * bibe, void *ctx)
   if (!fib)
     return -1;
 
-  vlib_cli_output (vm, " %U %u %U %u %U vrf %u %s %u sessions",
-		   format_ip6_address, &bibe->in_addr,
-		   clib_net_to_host_u16 (bibe->in_port), format_ip4_address,
-		   &bibe->out_addr, clib_net_to_host_u16 (bibe->out_port),
-		   format_snat_protocol, bibe->proto, fib->ft_table_id,
-		   bibe->is_static ? "static" : "dynamic", bibe->ses_num);
+  switch (bibe->proto)
+    {
+    case IP_PROTOCOL_ICMP:
+    case IP_PROTOCOL_TCP:
+    case IP_PROTOCOL_UDP:
+      vlib_cli_output (vm, " %U %u %U %u protocol %U vrf %u %s %u sessions",
+		       format_ip6_address, &bibe->in_addr,
+		       clib_net_to_host_u16 (bibe->in_port),
+		       format_ip4_address, &bibe->out_addr,
+		       clib_net_to_host_u16 (bibe->out_port),
+		       format_snat_protocol,
+		       ip_proto_to_snat_proto (bibe->proto), fib->ft_table_id,
+		       bibe->is_static ? "static" : "dynamic", bibe->ses_num);
+      break;
+    default:
+      vlib_cli_output (vm, " %U %U protocol %u vrf %u %s %u sessions",
+		       format_ip6_address, &bibe->in_addr,
+		       format_ip4_address, &bibe->out_addr,
+		       bibe->proto, fib->ft_table_id,
+		       bibe->is_static ? "static" : "dynamic", bibe->ses_num);
+    }
   return 0;
 }
 
@@ -407,7 +432,8 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  snat_protocol_t proto = 0;
+  u32 proto = ~0;
+  u8 p = 0;
 
   if (nm->is_disabled)
     return clib_error_return (0,
@@ -417,6 +443,8 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
     return 0;
 
   if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
+    p = snat_proto_to_ip_proto (proto);
+  else if (unformat (line_input, "unknown"))
     ;
   else
     {
@@ -426,7 +454,7 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
     }
 
   vlib_cli_output (vm, "NAT64 %U BIB:", format_snat_protocol, proto);
-  nat64_db_bib_walk (&nm->db, proto, nat64_cli_bib_walk, vm);
+  nat64_db_bib_walk (&nm->db, p, nat64_cli_bib_walk, vm);
 
 done:
   unformat_free (line_input);
@@ -563,26 +591,36 @@ nat64_cli_st_walk (nat64_db_st_entry_t * ste, void *ctx)
 
   u32 vrf_id = fib->ft_table_id;
 
-  if (ste->proto == SNAT_PROTOCOL_ICMP)
-    vlib_cli_output (vm, " %U %U %u %U %U %u %U vrf %u",
+  if (ste->proto == IP_PROTOCOL_ICMP)
+    vlib_cli_output (vm, " %U %U %u %U %U %u protocol %U vrf %u",
 		     format_ip6_address, &bibe->in_addr,
 		     format_ip6_address, &ste->in_r_addr,
 		     clib_net_to_host_u16 (bibe->in_port),
 		     format_ip4_address, &bibe->out_addr,
 		     format_ip4_address, &ste->out_r_addr,
 		     clib_net_to_host_u16 (bibe->out_port),
-		     format_snat_protocol, bibe->proto, vrf_id);
+		     format_snat_protocol,
+		     ip_proto_to_snat_proto (bibe->proto), vrf_id);
+  else if (ste->proto == IP_PROTOCOL_TCP || ste->proto == IP_PROTOCOL_UDP)
+    vlib_cli_output (vm, " %U %u %U %u %U %u %U %u protcol %U vrf %u",
+		     format_ip6_address, &bibe->in_addr,
+		     clib_net_to_host_u16 (bibe->in_port),
+		     format_ip6_address, &ste->in_r_addr,
+		     clib_net_to_host_u16 (ste->r_port),
+		     format_ip4_address, &bibe->out_addr,
+		     clib_net_to_host_u16 (bibe->out_port),
+		     format_ip4_address, &ste->out_r_addr,
+		     clib_net_to_host_u16 (ste->r_port),
+		     format_snat_protocol,
+		     ip_proto_to_snat_proto (bibe->proto), vrf_id);
   else
-    vlib_cli_output (vm, " %U %u %U %u %U %u %U %u %U vrf %u",
+    vlib_cli_output (vm, " %U %U %U %U protocol %u vrf %u",
 		     format_ip6_address, &bibe->in_addr,
-		     clib_net_to_host_u16 (bibe->in_port),
 		     format_ip6_address, &ste->in_r_addr,
-		     clib_net_to_host_u16 (ste->r_port),
 		     format_ip4_address, &bibe->out_addr,
-		     clib_net_to_host_u16 (bibe->out_port),
 		     format_ip4_address, &ste->out_r_addr,
-		     clib_net_to_host_u16 (ste->r_port),
-		     format_snat_protocol, bibe->proto, vrf_id);
+		     bibe->proto, vrf_id);
+
   return 0;
 }
 
@@ -593,7 +631,8 @@ nat64_show_st_command_fn (vlib_main_t * vm,
   nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
-  snat_protocol_t proto = 0;
+  u32 proto = ~0;
+  u8 p = 0;
 
   if (nm->is_disabled)
     return clib_error_return (0,
@@ -603,6 +642,8 @@ nat64_show_st_command_fn (vlib_main_t * vm,
     return 0;
 
   if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
+    p = snat_proto_to_ip_proto (proto);
+  else if (unformat (line_input, "unknown"))
     ;
   else
     {
@@ -613,7 +654,7 @@ nat64_show_st_command_fn (vlib_main_t * vm,
 
   vlib_cli_output (vm, "NAT64 %U session table:", format_snat_protocol,
 		   proto);
-  nat64_db_st_walk (&nm->db, proto, nat64_cli_st_walk, vm);
+  nat64_db_st_walk (&nm->db, p, nat64_cli_st_walk, vm);
 
 done:
   unformat_free (line_input);
@@ -819,7 +860,7 @@ VLIB_CLI_COMMAND (nat64_add_del_static_bib_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (show_nat64_bib_command, static) = {
   .path = "show nat64 bib",
-  .short_help = "show nat64 bib tcp|udp|icmp",
+  .short_help = "show nat64 bib tcp|udp|icmp|unknown",
   .function = nat64_show_bib_command_fn,
 };
 
@@ -883,7 +924,7 @@ VLIB_CLI_COMMAND (show_nat64_timeouts_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (show_nat64_st_command, static) = {
   .path = "show nat64 session table",
-  .short_help = "show nat64 session table tcp|udp|icmp",
+  .short_help = "show nat64 session table tcp|udp|icmp|unknown",
   .function = nat64_show_st_command_fn,
 };
 
