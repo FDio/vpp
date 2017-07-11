@@ -76,7 +76,7 @@ $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@touch $@
 
 define retest-func
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS)"
+	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && setsid scripts/run_with_cleanup.sh python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS)"
 endef
 
 .PHONY: sanity
