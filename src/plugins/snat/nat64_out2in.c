@@ -88,7 +88,7 @@ nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   ip6_address_t ip6_saddr;
   udp_header_t *udp = ip4_next_header (ip4);
   tcp_header_t *tcp = ip4_next_header (ip4);
-  snat_protocol_t proto = ip_proto_to_snat_proto (ip4->protocol);
+  u8 proto = ip4->protocol;
   u16 dport = udp->dst_port;
   u16 sport = udp->src_port;
   u32 sw_if_index, fib_index;
@@ -135,7 +135,7 @@ nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   ip6->dst_address.as_u64[1] = bibe->in_addr.as_u64[1];
   udp->dst_port = bibe->in_port;
 
-  if (proto == SNAT_PROTOCOL_UDP)
+  if (proto == IP_PROTOCOL_UDP)
     checksum = &udp->checksum;
   else
     checksum = &tcp->checksum;
@@ -173,12 +173,12 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
       u16 out_id = ((u16 *) (icmp))[2];
       ste =
 	nat64_db_st_entry_find (&nm->db, &daddr, &saddr, out_id, 0,
-				SNAT_PROTOCOL_ICMP, fib_index, 0);
+				IP_PROTOCOL_ICMP, fib_index, 0);
 
       if (ste)
 	{
 	  bibe =
-	    nat64_db_bib_entry_by_index (&nm->db, SNAT_PROTOCOL_ICMP,
+	    nat64_db_bib_entry_by_index (&nm->db, IP_PROTOCOL_ICMP,
 					 ste->bibe_index);
 	  if (!bibe)
 	    return -1;
@@ -187,7 +187,7 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
 	{
 	  bibe =
 	    nat64_db_bib_entry_find (&nm->db, &daddr, out_id,
-				     SNAT_PROTOCOL_ICMP, fib_index, 0);
+				     IP_PROTOCOL_ICMP, fib_index, 0);
 	  if (!bibe)
 	    return -1;
 
@@ -231,7 +231,7 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   nat64_db_st_entry_t *ste;
   ip46_address_t saddr, daddr;
   u32 sw_if_index, fib_index;
-  snat_protocol_t proto = ip_proto_to_snat_proto (ip4->protocol);
+  u8 proto = ip4->protocol;
 
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index =
@@ -242,10 +242,11 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   memset (&daddr, 0, sizeof (daddr));
   daddr.ip4.as_u32 = ip4->dst_address.as_u32;
 
-  if (proto == SNAT_PROTOCOL_ICMP)
+  if (proto == IP_PROTOCOL_ICMP6)
     {
       icmp46_header_t *icmp = ip4_next_header (ip4);
       u16 out_id = ((u16 *) (icmp))[2];
+      proto = IP_PROTOCOL_ICMP;
 
       if (!
 	  (icmp->type == ICMP6_echo_request
@@ -294,7 +295,7 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
       ip6->src_address.as_u64[1] = bibe->in_addr.as_u64[1];
       udp->src_port = bibe->in_port;
 
-      if (proto == SNAT_PROTOCOL_UDP)
+      if (proto == IP_PROTOCOL_UDP)
 	checksum = &udp->checksum;
       else
 	checksum = &tcp->checksum;
@@ -307,6 +308,62 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
 
       vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
     }
+
+  return 0;
+}
+
+static int
+nat64_out2in_unk_proto_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
+			       void *arg)
+{
+  nat64_main_t *nm = &nat64_main;
+  nat64_out2in_set_ctx_t *ctx = arg;
+  nat64_db_bib_entry_t *bibe;
+  nat64_db_st_entry_t *ste;
+  ip46_address_t saddr, daddr;
+  ip6_address_t ip6_saddr;
+  u32 sw_if_index, fib_index;
+  u8 proto = ip4->protocol;
+
+  sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
+  fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
+
+  memset (&saddr, 0, sizeof (saddr));
+  saddr.ip4.as_u32 = ip4->src_address.as_u32;
+  memset (&daddr, 0, sizeof (daddr));
+  daddr.ip4.as_u32 = ip4->dst_address.as_u32;
+
+  ste =
+    nat64_db_st_entry_find (&nm->db, &daddr, &saddr, 0, 0, proto, fib_index,
+			    0);
+  if (ste)
+    {
+      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      if (!bibe)
+	return -1;
+    }
+  else
+    {
+      bibe =
+	nat64_db_bib_entry_find (&nm->db, &daddr, 0, proto, fib_index, 0);
+
+      if (!bibe)
+	return -1;
+
+      nat64_compose_ip6 (&ip6_saddr, &ip4->src_address, bibe->fib_index);
+      ste =
+	nat64_db_st_entry_create (&nm->db, bibe, &ip6_saddr, &saddr.ip4, 0);
+    }
+
+  nat64_session_reset_timeout (ste, ctx->vm);
+
+  ip6->src_address.as_u64[0] = ste->in_r_addr.as_u64[0];
+  ip6->src_address.as_u64[1] = ste->in_r_addr.as_u64[1];
+
+  ip6->dst_address.as_u64[0] = bibe->in_addr.as_u64[0];
+  ip6->dst_address.as_u64[1] = bibe->in_addr.as_u64[1];
+
+  vnet_buffer (ctx->b)->sw_if_index[VLIB_TX] = bibe->fib_index;
 
   return 0;
 }
@@ -354,13 +411,6 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  next0 = NAT64_OUT2IN_NEXT_LOOKUP;
 
 	  proto0 = ip_proto_to_snat_proto (ip40->protocol);
-	  if (PREDICT_FALSE (proto0 == ~0))
-	    {
-	      next0 = NAT64_OUT2IN_NEXT_DROP;
-	      b0->error =
-		node->errors[NAT64_OUT2IN_ERROR_UNSUPPORTED_PROTOCOL];
-	      goto trace0;
-	    }
 
 	  if (proto0 == SNAT_PROTOCOL_ICMP)
 	    {
@@ -373,9 +423,18 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  goto trace0;
 		}
 	    }
-	  else
+	  else if (proto0 == SNAT_PROTOCOL_TCP || proto0 == SNAT_PROTOCOL_UDP)
 	    {
 	      if (ip4_to_ip6_tcp_udp (b0, nat64_out2in_tcp_udp_set_cb, &ctx0))
+		{
+		  next0 = NAT64_OUT2IN_NEXT_DROP;
+		  b0->error = node->errors[NAT64_OUT2IN_ERROR_NO_TRANSLATION];
+		  goto trace0;
+		}
+	    }
+	  else
+	    {
+	      if (ip4_to_ip6 (b0, nat64_out2in_unk_proto_set_cb, &ctx0))
 		{
 		  next0 = NAT64_OUT2IN_NEXT_DROP;
 		  b0->error = node->errors[NAT64_OUT2IN_ERROR_NO_TRANSLATION];

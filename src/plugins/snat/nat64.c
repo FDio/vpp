@@ -125,7 +125,9 @@ nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add)
       clib_bitmap_free (a->busy_##n##_port_bitmap);
       foreach_snat_protocol
 #undef _
-	vec_del1 (nm->addr_pool, i);
+	/* Delete sessions using address */
+	nat64_db_free_out_addr (&nm->db, &a->addr);
+      vec_del1 (nm->addr_pool, i);
     }
 
   /* Add/del external address to FIB */
@@ -362,7 +364,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
   addr.as_u64[1] = in_addr->as_u64[1];
   bibe =
     nat64_db_bib_entry_find (&nm->db, &addr, clib_host_to_net_u16 (in_port),
-			     p, fib_index, 1);
+			     proto, fib_index, 1);
 
   if (is_add)
     {
@@ -389,8 +391,11 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	      foreach_snat_protocol
 #undef _
 	    default:
-	      clib_warning ("unknown protocol");
-	      return VNET_API_ERROR_INVALID_VALUE_2;
+	      memset (&addr, 0, sizeof (addr));
+	      addr.ip4.as_u32 = out_addr->as_u32;
+	      if (nat64_db_bib_entry_find
+		  (&nm->db, &addr, 0, proto, fib_index, 0))
+		return VNET_API_ERROR_INVALID_VALUE;
 	    }
 	  break;
 	}
@@ -398,7 +403,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	nat64_db_bib_entry_create (&nm->db, in_addr, out_addr,
 				   clib_host_to_net_u16 (in_port),
 				   clib_host_to_net_u16 (out_port), fib_index,
-				   p, 1);
+				   proto, 1);
       if (!bibe)
 	return VNET_API_ERROR_UNSPECIFIED;
     }
@@ -511,7 +516,7 @@ nat64_session_reset_timeout (nat64_db_st_entry_t * ste, vlib_main_t * vm)
   nat64_main_t *nm = &nat64_main;
   u32 now = (u32) vlib_time_now (vm);
 
-  switch (ste->proto)
+  switch (ip_proto_to_snat_proto (ste->proto))
     {
     case SNAT_PROTOCOL_ICMP:
       ste->expire = now + nm->icmp_timeout;
@@ -539,6 +544,7 @@ nat64_session_reset_timeout (nat64_db_st_entry_t * ste, vlib_main_t * vm)
       ste->expire = now + nm->udp_timeout;
       return;
     default:
+      ste->expire = now + nm->udp_timeout;
       return;
     }
 }
@@ -808,9 +814,6 @@ nat64_extract_ip4 (ip6_address_t * ip6, ip4_address_t * ip4, u32 fib_index)
       clib_warning ("invalid prefix length");
       break;
     }
-
-  clib_warning ("%U %U plen %u", format_ip6_address, ip6, format_ip4_address,
-		ip4, plen);
 }
 
 /**

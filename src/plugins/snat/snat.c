@@ -1398,6 +1398,7 @@ format_snat_protocol (u8 * s, va_list * args)
 #undef _
     default:
       s = format (s, "unknown");
+      return s;
     }
   s = format (s, "%s", t);
   return s;

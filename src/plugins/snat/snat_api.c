@@ -1580,7 +1580,7 @@ nat64_api_bib_walk (nat64_db_bib_entry_t * bibe, void *arg)
   rmp->i_port = bibe->in_port;
   rmp->o_port = bibe->out_port;
   rmp->vrf_id = ntohl (fib->ft_table_id);
-  rmp->proto = snat_proto_to_ip_proto (bibe->proto);
+  rmp->proto = bibe->proto;
   rmp->is_static = bibe->is_static;
   rmp->ses_num = ntohl (bibe->ses_num);
 
@@ -1594,7 +1594,6 @@ vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
 {
   unix_shared_memory_queue_t *q;
   nat64_main_t *nm = &nat64_main;
-  snat_protocol_t proto;
 
   if (nm->is_disabled)
     return;
@@ -1608,9 +1607,7 @@ vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
     .context = mp->context,
   };
 
-  proto = ip_proto_to_snat_proto (mp->proto);
-
-  nat64_db_bib_walk (&nm->db, proto, nat64_api_bib_walk, &ctx);
+  nat64_db_bib_walk (&nm->db, mp->proto, nat64_api_bib_walk, &ctx);
 }
 
 static void *
@@ -1729,7 +1726,7 @@ nat64_api_st_walk (nat64_db_st_entry_t * ste, void *arg)
   clib_memcpy (rmp->or_addr, &(ste->out_r_addr), 4);
   rmp->il_port = ste->r_port;
   rmp->vrf_id = ntohl (fib->ft_table_id);
-  rmp->proto = snat_proto_to_ip_proto (ste->proto);
+  rmp->proto = ste->proto;
 
   vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
 
@@ -1741,7 +1738,6 @@ vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
 {
   unix_shared_memory_queue_t *q;
   nat64_main_t *nm = &nat64_main;
-  snat_protocol_t proto;
 
   if (nm->is_disabled)
     return;
@@ -1755,9 +1751,7 @@ vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
     .context = mp->context,
   };
 
-  proto = ip_proto_to_snat_proto (mp->proto);
-
-  nat64_db_st_walk (&nm->db, proto, nat64_api_st_walk, &ctx);
+  nat64_db_st_walk (&nm->db, mp->proto, nat64_api_st_walk, &ctx);
 }
 
 static void *
