@@ -245,7 +245,6 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
     {
       vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
 			n_left);
-      vlib_buffer_free (vm, buffers, n_left);
     }
 
   vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
