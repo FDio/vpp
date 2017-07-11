@@ -124,13 +124,10 @@ typedef enum
 #define _(sym,str) L2INPUT_FEAT_##sym##_BIT,
   foreach_l2input_feat
 #undef _
-    L2INPUT_N_FEAT,
-  L2INPUT_VALID_MASK =
-#define _(sym,str) L2INPUT_FEAT_##sym##_BIT |
-    foreach_l2input_feat
-#undef _
-    0,
+  L2INPUT_N_FEAT
 } l2input_feat_t;
+
+STATIC_ASSERT (L2INPUT_N_FEAT <= 32, "too many l2 input features");
 
 /* Feature bit masks */
 typedef enum
@@ -138,7 +135,14 @@ typedef enum
 #define _(sym,str) L2INPUT_FEAT_##sym = (1<<L2INPUT_FEAT_##sym##_BIT),
   foreach_l2input_feat
 #undef _
+    L2INPUT_VALID_MASK =
+#define _(sym,str) L2INPUT_FEAT_##sym |
+    foreach_l2input_feat
+#undef _
+  0
 } l2input_feat_masks_t;
+
+STATIC_ASSERT ((u64) L2INPUT_VALID_MASK == (1ull << L2INPUT_N_FEAT) - 1, "");
 
 /** Return an array of strings containing graph node names of each feature */
 char **l2input_get_feat_names (void);
