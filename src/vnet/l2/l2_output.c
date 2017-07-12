@@ -601,90 +601,27 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2output_node, l2output_node_fn)
 			       mp->next_nodes.feat_next_node_index);
 
   /* Initialize the output node mapping table */
-  l2output_init_output_node_vec (&mp->next_nodes.output_node_index_vec);
+  vec_validate_init_empty (mp->next_nodes.output_node_index_vec, 100,
+			   L2OUTPUT_NEXT_DROP);
 
   return 0;
 }
 
 VLIB_INIT_FUNCTION (l2output_init);
 
-typedef struct
-{
-  u32 node_index;
-  u32 sw_if_index;
-} output_node_mapping_rpc_args_t;
-
-static void output_node_rpc_callback (output_node_mapping_rpc_args_t * a);
-
-static void
-output_node_mapping_send_rpc (u32 node_index, u32 sw_if_index)
-{
-  output_node_mapping_rpc_args_t args;
-  void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
-
-  args.node_index = node_index;
-  args.sw_if_index = sw_if_index;
-
-  vl_api_rpc_call_main_thread (output_node_rpc_callback,
-			       (u8 *) & args, sizeof (args));
-}
-
 
 /** Create a mapping in the next node mapping table for the given sw_if_index. */
-u32
-l2output_create_output_node_mapping (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 node_index,	/* index of current node */
-				     u32 * output_node_index_vec,
-				     u32 sw_if_index)
+void
+l2output_create_output_node_mapping (vlib_main_t * vlib_main,
+				     vnet_main_t * vnet_main, u32 sw_if_index)
 {
-
-  u32 next;			/* index of next graph node */
-  vnet_hw_interface_t *hw0;
-  u32 *node;
-
-  hw0 = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
-
-  uword thread_index;
-
-  thread_index = vlib_get_thread_index ();
-
-  if (thread_index)
-    {
-      u32 oldflags;
-
-      oldflags = __sync_fetch_and_or (&hw0->flags,
-				      VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED);
-
-      if ((oldflags & VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED))
-	return L2OUTPUT_NEXT_DROP;
-
-      output_node_mapping_send_rpc (node_index, sw_if_index);
-      return L2OUTPUT_NEXT_DROP;
-    }
+  vnet_hw_interface_t *hw0 =
+    vnet_get_sup_hw_interface (vnet_main, sw_if_index);
 
   /* dynamically create graph node arc  */
-  next = vlib_node_add_next (vlib_main, node_index, hw0->output_node_index);
-
-  /* Initialize vector with the mapping */
-
-  node = vec_elt_at_index (output_node_index_vec, sw_if_index);
-  *node = next;
-
-  /* reset mapping bit, includes memory barrier */
-  __sync_fetch_and_and (&hw0->flags, ~VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED);
-
-  return next;
-}
-
-void
-output_node_rpc_callback (output_node_mapping_rpc_args_t * a)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  vnet_main_t *vnm = vnet_get_main ();
-  l2output_main_t *mp = &l2output_main;
-
-  (void) l2output_create_output_node_mapping
-    (vm, vnm, a->node_index, mp->next_nodes.output_node_index_vec,
-     a->sw_if_index);
+  u32 next = vlib_node_add_next (vlib_main, l2output_node.index,
+				 hw0->output_node_index);
+  l2output_main.next_nodes.output_node_index_vec[sw_if_index] = next;
 }
 
 /* Get a pointer to the config for the given interface */
