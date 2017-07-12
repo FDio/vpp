@@ -297,9 +297,6 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_outacl_node, l2_outacl_node_fn)
 			       l2output_get_feat_names (),
 			       mp->next_nodes.feat_next_node_index);
 
-  /* Initialize the output node mapping table */
-  l2output_init_output_node_vec (&mp->next_nodes.output_node_index_vec);
-
   return 0;
 }
 

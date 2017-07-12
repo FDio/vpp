@@ -130,7 +130,7 @@ _(EFP_DROP,     "L2 EFP filter pre-rewrite drops")	\
 _(VTR_DROP,     "L2 output tag rewrite drops")		\
 _(SHG_DROP,     "L2 split horizon drops")		\
 _(DROP,         "L2 output drops")			\
-_(MAPPING_DROP, "L2 Output interface mapping in progress")
+_(MAPPING_DROP, "L2 Output interface not valid")
 
 typedef enum
 {
@@ -159,52 +159,9 @@ char **l2output_get_feat_names (void);
  */
 
 /* Create a mapping to the output graph node for the given sw_if_index */
-u32 l2output_create_output_node_mapping (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 node_index,	/* index of current node */
-					 u32 * output_node_index_vec,
-					 u32 sw_if_index);
-
-/* Initialize the next node mapping table */
-always_inline void
-l2output_init_output_node_vec (u32 ** output_node_index_vec)
-{
-
-  /*
-   * Size it at 100 sw_if_indexes initially
-   * Uninitialized mappings are set to ~0
-   */
-  vec_validate_init_empty (*output_node_index_vec, 100, ~0);
-}
-
-
-/**
- *  Get a mapping from the output node mapping table,
- * creating the entry if necessary.
- */
-always_inline u32
-l2output_get_output_node (vlib_main_t * vlib_main, vnet_main_t * vnet_main, u32 node_index,	/* index of current node */
-			  u32 sw_if_index, u32 ** output_node_index_vec)	/* may be updated */
-{
-  u32 next;			/* index of next graph node */
-
-  /* Insure the vector is big enough */
-  vec_validate_init_empty (*output_node_index_vec, sw_if_index, ~0);
-
-  /* Get the mapping for the sw_if_index */
-  next = vec_elt (*output_node_index_vec, sw_if_index);
-
-  if (next == ~0)
-    {
-      /* Mapping doesn't exist so create it */
-      next = l2output_create_output_node_mapping (vlib_main,
-						  vnet_main,
-						  node_index,
-						  *output_node_index_vec,
-						  sw_if_index);
-    }
-
-  return next;
-}
-
+void l2output_create_output_node_mapping (vlib_main_t * vlib_main,
+					  vnet_main_t * vnet_main,
+					  u32 sw_if_index);
 
 /** Determine the next L2 node based on the output feature bitmap */
 always_inline void
@@ -257,21 +214,12 @@ l2_output_dispatch (vlib_main_t * vlib_main,
 	}
       else
 	{
-	  /* Look up the output TX node */
-	  *next0 = l2output_get_output_node (vlib_main,
-					     vnet_main,
-					     node_index,
-					     sw_if_index,
-					     &next_nodes->output_node_index_vec);
+	  /* Look up the output TX node for the sw_if_index */
+	  *next0 = vec_elt (l2output_main.next_nodes.output_node_index_vec,
+			    sw_if_index);
 
 	  if (*next0 == L2OUTPUT_NEXT_DROP)
-	    {
-	      vnet_hw_interface_t *hw0;
-	      hw0 = vnet_get_sup_hw_interface (vnet_main, sw_if_index);
-
-	      if (hw0->flags & VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED)
-		b0->error = node->errors[L2OUTPUT_ERROR_MAPPING_DROP];
-	    }
+	    b0->error = node->errors[L2OUTPUT_ERROR_MAPPING_DROP];
 
 	  /* Update the one-entry cache */
 	  *cached_sw_if_index = sw_if_index;

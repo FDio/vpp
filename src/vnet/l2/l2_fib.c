@@ -413,6 +413,13 @@ l2fib_add (vlib_main_t * vm,
 	}
     }
 
+  if (vec_len (l2input_main.configs) <= sw_if_index)
+    {
+      error = clib_error_return (0, "Interface sw_if_index %d not in L2 mode",
+				 sw_if_index);
+      goto done;
+    }
+
   if (filter_mac)
     l2fib_add_filter_entry (mac, bd_index);
   else
