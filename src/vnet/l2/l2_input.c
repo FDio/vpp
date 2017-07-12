@@ -573,13 +573,9 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
       l2_if_adjust--;
     }
 
-  /*
-   * Directs the l2 output path to work out the interface
-   * output next-arc itself. Needed when recycling a sw_if_index.
-   */
+  /* Make sure vector is big enough */
   vec_validate_init_empty (l2om->next_nodes.output_node_index_vec,
-			   sw_if_index, ~0);
-  l2om->next_nodes.output_node_index_vec[sw_if_index] = ~0;
+			   sw_if_index, L2OUTPUT_NEXT_DROP);
 
   /* Initialize the l2-input configuration for the interface */
   if (mode == MODE_L3)
@@ -601,26 +597,11 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
       l2om->next_nodes.output_node_index_vec[sw_if_index] =
 	L2OUTPUT_NEXT_BAD_INTF;
     }
-  else if (mode == MODE_L2_CLASSIFY)
-    {
-      config->xconnect = 1;
-      config->bridge = 0;
-      config->output_sw_if_index = xc_sw_if_index;
-
-      /* Make sure last-chance drop is configured */
-      config->feature_bitmap |=
-	L2INPUT_FEAT_DROP | L2INPUT_FEAT_INPUT_CLASSIFY;
-
-      /* Make sure bridging features are disabled */
-      config->feature_bitmap &=
-	~(L2INPUT_FEAT_LEARN | L2INPUT_FEAT_FWD | L2INPUT_FEAT_FLOOD);
-      shg = 0;			/* not used in xconnect */
-
-      /* Insure all packets go to ethernet-input */
-      ethernet_set_rx_redirect (vnet_main, hi, 1);
-    }
   else
     {
+      /* Add or update l2-output node next-arc and output_node_index_vec table
+       * for the interface */
+      l2output_create_output_node_mapping (vm, vnet_main, sw_if_index);
 
       if (mode == MODE_L2_BRIDGE)
 	{
@@ -693,7 +674,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  bd_add_member (bd_config, &member);
 
 	}
-      else
+      else if (mode == MODE_L2_XC)
 	{
 	  config->xconnect = 1;
 	  config->bridge = 0;
@@ -708,6 +689,24 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 
 	  config->feature_bitmap |= L2INPUT_FEAT_XCONNECT;
 	  shg = 0;		/* not used in xconnect */
+	}
+      else if (mode == MODE_L2_CLASSIFY)
+	{
+	  config->xconnect = 1;
+	  config->bridge = 0;
+	  config->output_sw_if_index = xc_sw_if_index;
+
+	  /* Make sure last-chance drop is configured */
+	  config->feature_bitmap |=
+	    L2INPUT_FEAT_DROP | L2INPUT_FEAT_INPUT_CLASSIFY;
+
+	  /* Make sure bridging features are disabled */
+	  config->feature_bitmap &=
+	    ~(L2INPUT_FEAT_LEARN | L2INPUT_FEAT_FWD | L2INPUT_FEAT_FLOOD);
+	  shg = 0;		/* not used in xconnect */
+
+	  /* Insure all packets go to ethernet-input */
+	  ethernet_set_rx_redirect (vnet_main, hi, 1);
 	}
 
       /* set up split-horizon group and set output feature bit */

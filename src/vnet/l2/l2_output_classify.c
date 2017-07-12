@@ -497,9 +497,6 @@ l2_output_classify_init (vlib_main_t * vm)
   rt->l2cm = cm;
   rt->vcm = cm->vnet_classify_main;
 
-  /* Initialize the output node mapping table */
-  l2output_init_output_node_vec (&cm->next_nodes.output_node_index_vec);
-
   return 0;
 }
 

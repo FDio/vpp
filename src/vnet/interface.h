@@ -416,10 +416,6 @@ typedef struct vnet_hw_interface_t
    VNET_HW_INTERFACE_FLAG_SPEED_40G |		\
    VNET_HW_INTERFACE_FLAG_SPEED_100G)
 
-  /* l2output node flags */
-#define VNET_HW_INTERFACE_FLAG_L2OUTPUT_SHIFT	9
-#define VNET_HW_INTERFACE_FLAG_L2OUTPUT_MAPPED	(1 << 9)
-
   /* rx mode flags */
 #define VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE (1 << 10)
 
@@ -569,10 +565,10 @@ typedef struct
 
 #define VNET_SW_INTERFACE_FLAG_BOND_SLAVE (1 << 4)
 
-/* Interface does not appear in CLI/API */
+  /* Interface does not appear in CLI/API */
 #define VNET_SW_INTERFACE_FLAG_HIDDEN (1 << 5)
 
-/* Interface in ERROR state */
+  /* Interface in ERROR state */
 #define VNET_SW_INTERFACE_FLAG_ERROR (1 << 6)
 
   /* Index for this interface. */
