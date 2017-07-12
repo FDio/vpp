@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_3aa58904",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 2
+      },
+      "lineNbr": 244,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-07-12T09:15:28Z",
+      "side": 1,
+      "message": "Maybe a naive question but why do we unbind devices when we uninstall the package?\nI understand it is desirable effect for testing (leaving the system in the same state as it was before installing the package and binding devices), but it is a problem if there were other devices using vfio-pci and/or uio_pci_generic in the system.",
+      "revId": "73fafafb9a2838bc6a7328362aa3be29ec87b8f6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
