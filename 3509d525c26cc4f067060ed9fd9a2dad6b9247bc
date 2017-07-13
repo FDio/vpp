@@ -1,0 +1,717 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_7b4d4372",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 6
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "why not just jvpp?",
+      "range": {
+        "startLine": 21,
+        "startChar": 36,
+        "endLine": 21,
+        "endChar": 51
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_0077fad5",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/test/CallbackApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "It could be abstract class living in src/vpp-api/java/jvpp-registry, taking Class\u003c? extends JVpp\u003e in constructor\u0027s paramater.",
+      "range": {
+        "startLine": 33,
+        "startChar": 4,
+        "endLine": 69,
+        "endChar": 5
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_e0acde37",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/test/CallbackApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "could be default/static method of some interface",
+      "range": {
+        "startLine": 71,
+        "startChar": 0,
+        "endLine": 75,
+        "endChar": 5
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_a0a6e651",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "FQN?",
+      "range": {
+        "startLine": 32,
+        "startChar": 55,
+        "endLine": 32,
+        "endChar": 92
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_00b01a8a",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "lets be consistent and use logger in tests",
+      "range": {
+        "startLine": 39,
+        "startChar": 8,
+        "endLine": 39,
+        "endChar": 26
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_c080c28d",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "acl dump",
+      "range": {
+        "startLine": 51,
+        "startChar": 26,
+        "endLine": 51,
+        "endChar": 37
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_c0a9e225",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "assertions can be disabled from command line, we need preconditions like check here",
+      "range": {
+        "startLine": 57,
+        "startChar": 8,
+        "endLine": 57,
+        "endChar": 30
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_406df203",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/CallbackApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "can we make this test generic?",
+      "range": {
+        "startLine": 33,
+        "startChar": 4,
+        "endLine": 68,
+        "endChar": 9
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_6068eef5",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/CallbackApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 75,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "could be part of common interface",
+      "range": {
+        "startLine": 71,
+        "startChar": 4,
+        "endLine": 75,
+        "endChar": 5
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_804aca81",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/NotificationUtils.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "why not to move to examples as well?",
+      "range": {
+        "startLine": 24,
+        "startChar": 0,
+        "endLine": 24,
+        "endChar": 6
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_2049d68b",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/Readme.txt",
+        "patchSetId": 6
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": ".10\nreadme files would need more updates after renaming tests to examples",
+      "range": {
+        "startLine": 5,
+        "startChar": 61,
+        "endLine": 5,
+        "endChar": 67
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_e05a9e4f",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/examples/CallbackApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "I would prefer\nio.fd.vpp.jvpp.core.examples",
+      "range": {
+        "startLine": 17,
+        "startChar": 8,
+        "endLine": 17,
+        "endChar": 41
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_c057a225",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/examples/CallbackApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "CallbackApiExample",
+      "range": {
+        "startLine": 35,
+        "startChar": 13,
+        "endLine": 35,
+        "endChar": 28
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_a054a621",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/examples/CallbackApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 42,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "Java callback API with JVppRegistry",
+      "range": {
+        "startLine": 42,
+        "startChar": 28,
+        "endLine": 42,
+        "endChar": 71
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_8031aa0d",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/examples/CallbackApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "CallbackApiExample",
+      "range": {
+        "startLine": 43,
+        "startChar": 65,
+        "endLine": 43,
+        "endChar": 80
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_2040b655",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/examples/CallbackJVppFacadeNotificationTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "As I understand, special prefix is needed only for tests that are invoked as a part of make test, right?\nSo can\u0027t we use default prefix in the examples?",
+      "range": {
+        "startLine": 34,
+        "startChar": 47,
+        "endLine": 34,
+        "endChar": 95
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_e0217eb5",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/examples/CreateSubInterfaceTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "We do not need to change it because this will not be invoked using make test, right?",
+      "range": {
+        "startLine": 90,
+        "startChar": 36,
+        "endLine": 90,
+        "endChar": 43
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_c02e82a5",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/examples/NonAdminConnectionTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "not sure if it is needed anymore",
+      "range": {
+        "startLine": 29,
+        "startChar": 13,
+        "endLine": 29,
+        "endChar": 35
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_a02b8693",
+        "filename": "src/vpp-api/java/jvpp-ioamexport/io/fd/vpp/jvpp/ioamexport/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "IoamExportIp6EnableDisable",
+      "range": {
+        "startLine": 51,
+        "startChar": 26,
+        "endLine": 51,
+        "endChar": 37
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_601d8e73",
+        "filename": "src/vpp-api/java/jvpp-ioamexport/io/fd/vpp/jvpp/ioamexport/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "I would prefer some get/dump",
+      "range": {
+        "startLine": 52,
+        "startChar": 51,
+        "endLine": 52,
+        "endChar": 84
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_80188a85",
+        "filename": "src/vpp-api/java/jvpp-ioamexport/io/fd/vpp/jvpp/ioamexport/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "asserts can be disabled, we need explicit check",
+      "range": {
+        "startLine": 57,
+        "startChar": 8,
+        "endLine": 57,
+        "endChar": 30
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_40129263",
+        "filename": "src/vpp-api/java/jvpp-ioamexport/io/fd/vpp/jvpp/ioamexport/test/examples/IoamExportApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "I would prefer examples",
+      "range": {
+        "startLine": 17,
+        "startChar": 34,
+        "endLine": 17,
+        "endChar": 47
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_e0085e2f",
+        "filename": "src/vpp-api/java/jvpp-ioampot/io/fd/vpp/jvpp/ioampot/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 39,
+        "startChar": 58,
+        "endLine": 39,
+        "endChar": 61
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_c0056215",
+        "filename": "src/vpp-api/java/jvpp-ioampot/io/fd/vpp/jvpp/ioampot/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 40,
+        "startChar": 65,
+        "endLine": 40,
+        "endChar": 80
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_000c9a41",
+        "filename": "src/vpp-api/java/jvpp-ioampot/io/fd/vpp/jvpp/ioampot/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 51,
+        "startChar": 26,
+        "endLine": 51,
+        "endChar": 37
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_20179653",
+        "filename": "src/vpp-api/java/jvpp-ioampot/io/fd/vpp/jvpp/ioampot/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 62,
+        "startChar": 29,
+        "endLine": 62,
+        "endChar": 90
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_a0026609",
+        "filename": "src/vpp-api/java/jvpp-registry/io/fd/vpp/jvpp/VppJNIConnection.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "needs jvadoc",
+      "range": {
+        "startLine": 65,
+        "startChar": 66,
+        "endLine": 65,
+        "endChar": 75
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_fb3933d9",
+        "filename": "src/vpp-api/java/jvpp-snat/io/fd/vpp/jvpp/snat/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 51,
+        "startChar": 26,
+        "endLine": 51,
+        "endChar": 37
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_db3677e7",
+        "filename": "src/vpp-api/java/jvpp-snat/io/fd/vpp/jvpp/snat/test/FutureApiTest.java",
+        "patchSetId": 6
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 62,
+        "startChar": 38,
+        "endLine": 62,
+        "endChar": 91
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_403bb2eb",
+        "filename": "test/test_jvpp.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "$(PACKAGE_VERSION) is used in .am files to produce jar names",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 41
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_9b30ffe9",
+        "filename": "test/test_jvpp_parts.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "Acl",
+      "range": {
+        "startLine": 18,
+        "startChar": 17,
+        "endLine": 18,
+        "endChar": 21
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
