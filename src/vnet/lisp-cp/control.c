@@ -3706,7 +3706,7 @@ send_map_reply (lisp_cp_main_t * lcm, u32 mi, ip_address_t * dst,
 static void
 find_ip_header (vlib_buffer_t * b, u8 ** ip_hdr)
 {
-  const i32 start = vnet_buffer (b)->ip.start_of_ip_header;
+  const i32 start = vnet_buffer (b)->l3_hdr_offset;
   if (start < 0 && start < -sizeof (b->pre_data))
     {
       *ip_hdr = 0;

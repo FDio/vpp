@@ -1479,9 +1479,8 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			sizeof (icmp6_router_advertisement_header_t);
 
 		      vlib_buffer_add_data (vm,
-					    p0->free_list_index,
-					    bi0,
-					    (void *) &rh,
+					    vlib_buffer_get_free_list_index
+					    (p0), bi0, (void *) &rh,
 					    sizeof
 					    (icmp6_router_advertisement_header_t));
 
@@ -1499,9 +1498,8 @@ icmp6_router_solicitation (vlib_main_t * vm,
 				       eth_if0->address, 6);
 
 			  vlib_buffer_add_data (vm,
-						p0->free_list_index,
-						bi0,
-						(void *) &h,
+						vlib_buffer_get_free_list_index
+						(p0), bi0, (void *) &h,
 						sizeof
 						(icmp6_neighbor_discovery_ethernet_link_layer_address_option_t));
 
@@ -1525,9 +1523,8 @@ icmp6_router_solicitation (vlib_main_t * vm,
 			    sizeof (icmp6_neighbor_discovery_mtu_option_t);
 
 			  vlib_buffer_add_data (vm,
-						p0->free_list_index,
-						bi0,
-						(void *) &h,
+						vlib_buffer_get_free_list_index
+						(p0), bi0, (void *) &h,
 						sizeof
 						(icmp6_neighbor_discovery_mtu_option_t));
 			}
@@ -1579,7 +1576,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
                             payload_length += sizeof( icmp6_neighbor_discovery_prefix_information_option_t);
 
                             vlib_buffer_add_data (vm,
-                                                  p0->free_list_index,
+					    vlib_buffer_get_free_list_index (p0),
                                                   bi0,
                                                   (void *)&h, sizeof(icmp6_neighbor_discovery_prefix_information_option_t));
 
@@ -2326,7 +2323,7 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
     num_addr_records++;
 
     vlib_buffer_add_data
-      (vm, b0->free_list_index, bo0,
+      (vm, vlib_buffer_get_free_list_index (b0), bo0,
        (void *)&rr, sizeof(icmp6_multicast_address_record_t));
 
     payload_length += sizeof( icmp6_multicast_address_record_t);

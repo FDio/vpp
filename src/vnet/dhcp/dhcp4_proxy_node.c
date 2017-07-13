@@ -231,7 +231,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
               o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
           }
 
-          fl = vlib_buffer_get_free_list (vm, b0->free_list_index);
+          fl = vlib_buffer_get_free_list (vm, vlib_buffer_get_free_list_index (b0));
           // start write at (option*)o, some packets have padding
           if (((u8 *)o - (u8 *)b0->data + VPP_DHCP_OPTION82_SIZE) > fl->n_data_bytes)
           {
