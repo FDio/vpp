@@ -585,7 +585,7 @@ tcp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
   u32 *to_next, next_index;
   vlib_frame_t *f;
 
-  b->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
+  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
 
   /* Default FIB for now */
@@ -847,7 +847,7 @@ tcp_enqueue_to_output (vlib_main_t * vm, vlib_buffer_t * b, u32 bi, u8 is_ip4)
   u32 *to_next, next_index;
   vlib_frame_t *f;
 
-  b->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
+  b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->error = 0;
 
   /* Decide where to send the packet */
@@ -1563,7 +1563,7 @@ tcp46_output_inline (vlib_main_t * vm,
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = 0;
 	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 
-	  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
+	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	done:
 	  b0->error = node->errors[error0];
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -1728,7 +1728,7 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	done:
 	  b0->error = node->errors[error0];
-	  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
+	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      th0 = vlib_buffer_get_current (b0);

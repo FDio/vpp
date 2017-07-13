@@ -1509,15 +1509,15 @@ ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
   udp0 = (void *) (ip0 + 1);
   if (ip0->protocol == IP_PROTOCOL_UDP && udp0->checksum == 0)
     {
-      p0->flags |= (IP_BUFFER_L4_CHECKSUM_COMPUTED
-		    | IP_BUFFER_L4_CHECKSUM_CORRECT);
+      p0->flags |= (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED
+		    | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
       return p0->flags;
     }
 
   sum16 = ip4_tcp_udp_compute_checksum (vm, p0, ip0);
 
-  p0->flags |= (IP_BUFFER_L4_CHECKSUM_COMPUTED
-		| ((sum16 == 0) << LOG2_IP_BUFFER_L4_CHECKSUM_CORRECT));
+  p0->flags |= (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED
+		| ((sum16 == 0) << VNET_BUFFER_F_LOG2_L4_CHECKSUM_CORRECT));
 
   return p0->flags;
 }
@@ -1629,8 +1629,8 @@ ip4_local_inline (vlib_main_t * vm,
 	  flags0 = p0->flags;
 	  flags1 = p1->flags;
 
-	  good_tcp_udp0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
-	  good_tcp_udp1 = (flags1 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	  good_tcp_udp0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
+	  good_tcp_udp1 = (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 
 	  udp0 = ip4_next_header (ip0);
 	  udp1 = ip4_next_header (ip1);
@@ -1657,19 +1657,19 @@ ip4_local_inline (vlib_main_t * vm,
 	      if (is_tcp_udp0)
 		{
 		  if (is_tcp_udp0
-		      && !(flags0 & IP_BUFFER_L4_CHECKSUM_COMPUTED))
+		      && !(flags0 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED))
 		    flags0 = ip4_tcp_udp_validate_checksum (vm, p0);
 		  good_tcp_udp0 =
-		    (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+		    (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 		  good_tcp_udp0 |= is_udp0 && udp0->checksum == 0;
 		}
 	      if (is_tcp_udp1)
 		{
 		  if (is_tcp_udp1
-		      && !(flags1 & IP_BUFFER_L4_CHECKSUM_COMPUTED))
+		      && !(flags1 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED))
 		    flags1 = ip4_tcp_udp_validate_checksum (vm, p1);
 		  good_tcp_udp1 =
-		    (flags1 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+		    (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 		  good_tcp_udp1 |= is_udp1 && udp1->checksum == 0;
 		}
 	    }
@@ -1817,7 +1817,7 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  flags0 = p0->flags;
 
-	  good_tcp_udp0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	  good_tcp_udp0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 
 	  udp0 = ip4_next_header (ip0);
 
@@ -1837,10 +1837,10 @@ ip4_local_inline (vlib_main_t * vm,
 	      if (is_tcp_udp0)
 		{
 		  if (is_tcp_udp0
-		      && !(flags0 & IP_BUFFER_L4_CHECKSUM_COMPUTED))
+		      && !(flags0 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED))
 		    flags0 = ip4_tcp_udp_validate_checksum (vm, p0);
 		  good_tcp_udp0 =
-		    (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+		    (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 		  good_tcp_udp0 |= is_udp0 && udp0->checksum == 0;
 		}
 	    }
@@ -2428,7 +2428,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
 	  /* Decrement TTL & update checksum.
 	     Works either endian, so no need for byte swap. */
-	  if (PREDICT_TRUE (!(p0->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
+	  if (PREDICT_TRUE (!(p0->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)))
 	    {
 	      i32 ttl0 = ip0->ttl;
 
@@ -2461,9 +2461,9 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      p0->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+	      p0->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
-	  if (PREDICT_TRUE (!(p1->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
+	  if (PREDICT_TRUE (!(p1->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)))
 	    {
 	      i32 ttl1 = ip1->ttl;
 
@@ -2496,7 +2496,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      p1->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+	      p1->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
 
 	  /* Rewrite packet header and updates lengths. */
@@ -2614,7 +2614,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  next0 = IP4_REWRITE_NEXT_DROP;	/* drop on error */
 
 	  /* Decrement TTL & update checksum. */
-	  if (PREDICT_TRUE (!(p0->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
+	  if (PREDICT_TRUE (!(p0->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)))
 	    {
 	      i32 ttl0 = ip0->ttl;
 
@@ -2648,7 +2648,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      p0->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+	      p0->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
 
 	  if (do_counters)
