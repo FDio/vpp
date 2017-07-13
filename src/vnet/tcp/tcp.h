@@ -62,6 +62,7 @@ typedef enum _tcp_state
 format_function_t format_tcp_state;
 format_function_t format_tcp_flags;
 format_function_t format_tcp_sacks;
+format_function_t format_tcp_rcv_sacks;
 
 /** TCP timers */
 #define foreach_tcp_timer               \
@@ -151,8 +152,18 @@ enum
 #undef _
 };
 
+#define TCP_SCOREBOARD_TRACE (0)
 #define TCP_MAX_SACK_BLOCKS 15	/**< Max number of SACK blocks stored */
 #define TCP_INVALID_SACK_HOLE_INDEX ((u32)~0)
+
+typedef struct _scoreboard_trace_elt
+{
+  u32 start;
+  u32 end;
+  u32 ack;
+  u32 snd_una_max;
+  u32 group;
+} scoreboard_trace_elt_t;
 
 typedef struct _sack_scoreboard_hole
 {
@@ -177,7 +188,37 @@ typedef struct _sack_scoreboard
   u32 rescue_rxt;			/**< Rescue sequence number */
   u32 lost_bytes;			/**< Bytes lost as per RFC6675 */
   u32 cur_rxt_hole;			/**< Retransmitting from this hole */
+
+#if TCP_SCOREBOARD_TRACE
+  scoreboard_trace_elt_t *trace;
+#endif
+
 } sack_scoreboard_t;
+
+#if TCP_SCOREBOARD_TRACE
+#define tcp_scoreboard_trace_add(_tc, _ack) 				\
+{									\
+    static u64 _group = 0;						\
+    sack_scoreboard_t *_sb = &_tc->sack_sb;				\
+    sack_block_t *_sack, *_sacks;					\
+    scoreboard_trace_elt_t *_elt;					\
+    int i;								\
+    _group++;								\
+    _sacks = _tc->rcv_opts.sacks;					\
+    for (i = 0; i < vec_len (_sacks); i++) 				\
+      {									\
+	_sack = &_sacks[i];						\
+	vec_add2 (_sb->trace, _elt, 1);					\
+	_elt->start = _sack->start;					\
+	_elt->end = _sack->end;						\
+	_elt->ack = _elt->end == _ack ? _ack : 0;			\
+	_elt->snd_una_max = _elt->end == _ack ? _tc->snd_una_max : 0;	\
+	_elt->group = _group;						\
+      }									\
+}
+#else
+#define tcp_scoreboard_trace_add(_tc, _ack)
+#endif
 
 typedef enum _tcp_cc_algorithm_type
 {
@@ -405,6 +446,12 @@ tcp_connection_get_if_valid (u32 conn_index, u32 thread_index)
   return pool_elt_at_index (tcp_main.connections[thread_index], conn_index);
 }
 
+always_inline tcp_connection_t *
+tcp_get_connection_from_transport (transport_connection_t * tconn)
+{
+  return (tcp_connection_t *) tconn;
+}
+
 void tcp_connection_close (tcp_connection_t * tc);
 void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
@@ -413,6 +460,8 @@ void tcp_connection_reset (tcp_connection_t * tc);
 u8 *format_tcp_connection_id (u8 * s, va_list * args);
 u8 *format_tcp_connection (u8 * s, va_list * args);
 u8 *format_tcp_scoreboard (u8 * s, va_list * args);
+
+u8 *tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose);
 
 always_inline tcp_connection_t *
 tcp_listener_get (u32 tli)
@@ -689,7 +738,7 @@ sack_scoreboard_hole_t *scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 						  start, u8 have_sent_1_smss,
 						  u8 * can_rescue,
 						  u8 * snd_limited);
-void scoreboard_init_high_rxt (sack_scoreboard_t * sb);
+void scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 seq);
 
 always_inline sack_scoreboard_hole_t *
 scoreboard_get_hole (sack_scoreboard_t * sb, u32 index)
@@ -740,6 +789,7 @@ scoreboard_clear (sack_scoreboard_t * sb)
       scoreboard_remove_hole (sb, hole);
     }
   ASSERT (sb->head == sb->tail && sb->head == TCP_INVALID_SACK_HOLE_INDEX);
+  ASSERT (pool_elts (sb->holes) == 0);
   sb->sacked_bytes = 0;
   sb->last_sacked_bytes = 0;
   sb->last_bytes_delivered = 0;
@@ -759,6 +809,7 @@ scoreboard_hole_bytes (sack_scoreboard_hole_t * hole)
 always_inline u32
 scoreboard_hole_index (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
 {
+  ASSERT (!pool_is_free_index (sb->holes, hole - sb->holes));
   return hole - sb->holes;
 }
 

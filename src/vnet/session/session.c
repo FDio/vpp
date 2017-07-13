@@ -325,9 +325,9 @@ stream_session_half_open_lookup (session_manager_main_t * smm,
 }
 
 transport_connection_t *
-stream_session_lookup_transport4 (ip4_address_t * lcl, ip4_address_t * rmt,
-				  u16 lcl_port, u16 rmt_port, u8 proto,
-				  u32 my_thread_index)
+stream_session_lookup_transport_wt4 (ip4_address_t * lcl, ip4_address_t * rmt,
+				     u16 lcl_port, u16 rmt_port, u8 proto,
+				     u32 my_thread_index)
 {
   session_manager_main_t *smm = &session_manager_main;
   session_kv4_t kv4;
@@ -358,9 +358,40 @@ stream_session_lookup_transport4 (ip4_address_t * lcl, ip4_address_t * rmt,
 }
 
 transport_connection_t *
-stream_session_lookup_transport6 (ip6_address_t * lcl, ip6_address_t * rmt,
-				  u16 lcl_port, u16 rmt_port, u8 proto,
-				  u32 my_thread_index)
+stream_session_lookup_transport4 (ip4_address_t * lcl, ip4_address_t * rmt,
+				  u16 lcl_port, u16 rmt_port, u8 proto)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  session_kv4_t kv4;
+  stream_session_t *s;
+  int rv;
+
+  /* Lookup session amongst established ones */
+  make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
+  rv = clib_bihash_search_inline_16_8 (&smm->v4_session_hash, &kv4);
+  if (rv == 0)
+    {
+      s = stream_session_get_from_handle (kv4.value);
+      return tp_vfts[s->session_type].get_connection (s->connection_index,
+						      s->thread_index);
+    }
+
+  /* If nothing is found, check if any listener is available */
+  s = stream_session_lookup_listener4 (lcl, lcl_port, proto);
+  if (s)
+    return tp_vfts[s->session_type].get_listener (s->connection_index);
+
+  /* Finally, try half-open connections */
+  rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
+  if (rv == 0)
+    return tp_vfts[proto].get_half_open (kv4.value & 0xFFFFFFFF);
+  return 0;
+}
+
+transport_connection_t *
+stream_session_lookup_transport_wt6 (ip6_address_t * lcl, ip6_address_t * rmt,
+				     u16 lcl_port, u16 rmt_port, u8 proto,
+				     u32 my_thread_index)
 {
   session_manager_main_t *smm = &session_manager_main;
   stream_session_t *s;
@@ -375,6 +406,37 @@ stream_session_lookup_transport6 (ip6_address_t * lcl, ip6_address_t * rmt,
 
       return tp_vfts[s->session_type].get_connection (s->connection_index,
 						      my_thread_index);
+    }
+
+  /* If nothing is found, check if any listener is available */
+  s = stream_session_lookup_listener6 (lcl, lcl_port, proto);
+  if (s)
+    return tp_vfts[s->session_type].get_listener (s->connection_index);
+
+  /* Finally, try half-open connections */
+  rv = clib_bihash_search_inline_48_8 (&smm->v6_half_open_hash, &kv6);
+  if (rv == 0)
+    return tp_vfts[proto].get_half_open (kv6.value & 0xFFFFFFFF);
+
+  return 0;
+}
+
+transport_connection_t *
+stream_session_lookup_transport6 (ip6_address_t * lcl, ip6_address_t * rmt,
+				  u16 lcl_port, u16 rmt_port, u8 proto)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  stream_session_t *s;
+  session_kv6_t kv6;
+  int rv;
+
+  make_v6_ss_kv (&kv6, lcl, rmt, lcl_port, rmt_port, proto);
+  rv = clib_bihash_search_inline_48_8 (&smm->v6_session_hash, &kv6);
+  if (rv == 0)
+    {
+      s = stream_session_get_from_handle (kv6.value);
+      return tp_vfts[s->session_type].get_connection (s->connection_index,
+						      s->thread_index);
     }
 
   /* If nothing is found, check if any listener is available */
