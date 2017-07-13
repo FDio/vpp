@@ -982,7 +982,7 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	    }
 
 	  flags0 = b0->flags;
-	  good_udp0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	  good_udp0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 
 	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
 	  good_udp0 |= udp0->checksum == 0;
@@ -998,14 +998,14 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	  /* Verify UDP checksum */
 	  if (PREDICT_FALSE (!good_udp0))
 	    {
-	      if ((flags0 & IP_BUFFER_L4_CHECKSUM_COMPUTED) == 0)
+	      if ((flags0 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED) == 0)
 	        {
 		  if (is_ip4)
 		    flags0 = ip4_tcp_udp_validate_checksum (vm, b0);
 		  else
 		    flags0 = ip6_tcp_udp_icmp_validate_checksum (vm, b0);
 		  good_udp0 =
-		    (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+		    (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	        }
 	    }
 
@@ -1064,7 +1064,7 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	    }
 
 	  flags1 = b1->flags;
-	  good_udp1 = (flags1 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	  good_udp1 = (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 
 	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
 	  good_udp1 |= udp1->checksum == 0;
@@ -1080,14 +1080,14 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	  /* Verify UDP checksum */
 	  if (PREDICT_FALSE (!good_udp1))
 	    {
-	      if ((flags1 & IP_BUFFER_L4_CHECKSUM_COMPUTED) == 0)
+	      if ((flags1 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED) == 0)
 	        {
 		  if (is_ip4)
 		    flags1 = ip4_tcp_udp_validate_checksum (vm, b1);
 		  else
 		    flags1 = ip6_tcp_udp_icmp_validate_checksum (vm, b1);
 		  good_udp1 =
-		    (flags1 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+		    (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	        }
 	    }
 
@@ -1182,7 +1182,7 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	    }
 
 	  flags0 = b0->flags;
-	  good_udp0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	  good_udp0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 
 	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
 	  good_udp0 |= udp0->checksum == 0;
@@ -1198,14 +1198,14 @@ ip_gtpu_bypass_inline (vlib_main_t * vm,
 	  /* Verify UDP checksum */
 	  if (PREDICT_FALSE (!good_udp0))
 	    {
-	      if ((flags0 & IP_BUFFER_L4_CHECKSUM_COMPUTED) == 0)
+	      if ((flags0 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED) == 0)
 	        {
 		  if (is_ip4)
 		    flags0 = ip4_tcp_udp_validate_checksum (vm, b0);
 		  else
 		    flags0 = ip6_tcp_udp_icmp_validate_checksum (vm, b0);
 		  good_udp0 =
-		    (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+		    (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	        }
 	    }
 

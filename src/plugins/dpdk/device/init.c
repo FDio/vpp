@@ -196,8 +196,8 @@ dpdk_lib_init (dpdk_main_t * dm)
 					 "dpdk rx");
 
   if (dm->conf->enable_tcp_udp_checksum)
-    dm->buffer_flags_template &= ~(IP_BUFFER_L4_CHECKSUM_CORRECT
-				   | IP_BUFFER_L4_CHECKSUM_COMPUTED);
+    dm->buffer_flags_template &= ~(VNET_BUFFER_F_L4_CHECKSUM_CORRECT
+				   | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED);
 
   /* vlib_buffer_t template */
   vec_validate_aligned (dm->buffer_templates, tm->n_vlib_mains - 1,
@@ -1544,7 +1544,8 @@ dpdk_init (vlib_main_t * vm)
   /* Default vlib_buffer_t flags, DISABLES tcp/udp checksumming... */
   dm->buffer_flags_template =
     (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID
-     | IP_BUFFER_L4_CHECKSUM_COMPUTED | IP_BUFFER_L4_CHECKSUM_CORRECT);
+     | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED |
+     VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
 
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;

@@ -42,33 +42,32 @@
 
 #include <vlib/vlib.h>
 
-/* VLIB buffer flags for ip4/ip6 packets.  Set by input interfaces for ip4/ip6
-   tcp/udp packets with hardware computed checksums. */
-#define LOG2_IP_BUFFER_L4_CHECKSUM_COMPUTED LOG2_VLIB_BUFFER_FLAG_USER(1)
-#define LOG2_IP_BUFFER_L4_CHECKSUM_CORRECT  LOG2_VLIB_BUFFER_FLAG_USER(2)
-#define IP_BUFFER_L4_CHECKSUM_COMPUTED (1 << LOG2_IP_BUFFER_L4_CHECKSUM_COMPUTED)
-#define IP_BUFFER_L4_CHECKSUM_CORRECT  (1 << LOG2_IP_BUFFER_L4_CHECKSUM_CORRECT)
+#define foreach_vnet_buffer_field \
+  _( 1, L4_CHECKSUM_COMPUTED)				\
+  _( 2, L4_CHECKSUM_CORRECT)				\
+  _( 3, VLAN_2_DEEP)					\
+  _( 4, VLAN_1_DEEP)					\
+  _( 6, HANDOFF_NEXT_VALID)				\
+  _( 7, LOCALLY_ORIGINATED)				\
+  _( 8, SPAN_CLONE)
 
-/* VLAN header flags.
- * These bits are zeroed in vlib_buffer_init_for_free_list()
- * meaning wherever the buffer comes from they have a reasonable
- * value (eg, if ip4/ip6 generates the packet.)
- */
-#define LOG2_ETH_BUFFER_VLAN_2_DEEP LOG2_VLIB_BUFFER_FLAG_USER(3)
-#define LOG2_ETH_BUFFER_VLAN_1_DEEP LOG2_VLIB_BUFFER_FLAG_USER(4)
-#define ETH_BUFFER_VLAN_2_DEEP (1 << LOG2_ETH_BUFFER_VLAN_2_DEEP)
-#define ETH_BUFFER_VLAN_1_DEEP (1 << LOG2_ETH_BUFFER_VLAN_1_DEEP)
-#define ETH_BUFFER_VLAN_BITS (ETH_BUFFER_VLAN_1_DEEP | \
-                              ETH_BUFFER_VLAN_2_DEEP)
+#define VNET_BUFFER_FLAGS_VLAN_BITS \
+  (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
 
-#define LOG2_BUFFER_HANDOFF_NEXT_VALID LOG2_VLIB_BUFFER_FLAG_USER(6)
-#define BUFFER_HANDOFF_NEXT_VALID (1 << LOG2_BUFFER_HANDOFF_NEXT_VALID)
+enum
+{
+#define _(bit, name) VNET_BUFFER_F_##name  = (1 << LOG2_VLIB_BUFFER_FLAG_USER(bit)),
+  foreach_vnet_buffer_field
+#undef _
+};
 
-#define LOG2_VNET_BUFFER_LOCALLY_ORIGINATED LOG2_VLIB_BUFFER_FLAG_USER(7)
-#define VNET_BUFFER_LOCALLY_ORIGINATED (1 << LOG2_VNET_BUFFER_LOCALLY_ORIGINATED)
+enum
+{
+#define _(bit, name) VNET_BUFFER_F_LOG2_##name  = LOG2_VLIB_BUFFER_FLAG_USER(bit),
+  foreach_vnet_buffer_field
+#undef _
+};
 
-#define LOG2_VNET_BUFFER_SPAN_CLONE LOG2_VLIB_BUFFER_FLAG_USER(8)
-#define VNET_BUFFER_SPAN_CLONE (1 << LOG2_VNET_BUFFER_SPAN_CLONE)
 
 #define foreach_buffer_opaque_union_subtype     \
 _(ip)                                           \

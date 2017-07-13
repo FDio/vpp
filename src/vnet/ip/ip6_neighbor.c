@@ -1649,7 +1649,7 @@ icmp6_router_solicitation (vlib_main_t * vm,
 				adj_index0;
 			    }
 			}
-		      p0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
+		      p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
 		      radv_info->n_solicitations_dropped += is_dropped;
 		      radv_info->n_solicitations_rcvd += is_solicitation;
@@ -2348,7 +2348,7 @@ ip6_neighbor_send_mldpv2_report (u32 sw_if_index)
     vnet_main.local_interface_sw_if_index;
 
   vnet_buffer (b0)->ip.adj_index[VLIB_TX] = radv_info->mcast_adj_index;
-  b0->flags |= VNET_BUFFER_LOCALLY_ORIGINATED;
+  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 
   vlib_node_t *node = vlib_get_node_by_name (vm, (u8 *) "ip6-rewrite-mcast");
 

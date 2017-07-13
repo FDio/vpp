@@ -77,7 +77,7 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
     return;
 
   /* Don't do it again */
-  if (PREDICT_FALSE (b0->flags & VNET_BUFFER_SPAN_CLONE))
+  if (PREDICT_FALSE (b0->flags & VNET_BUFFER_F_SPAN_CLONE))
     return;
 
   /* *INDENT-OFF* */
@@ -92,7 +92,7 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
       if (PREDICT_TRUE(c0 != 0))
         {
           vnet_buffer (c0)->sw_if_index[VLIB_TX] = i;
-          c0->flags |= VNET_BUFFER_SPAN_CLONE;
+          c0->flags |= VNET_BUFFER_F_SPAN_CLONE;
           to_mirror_next[0] = vlib_get_buffer_index (vm, c0);
           mirror_frames[i]->n_vectors++;
           if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))

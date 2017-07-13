@@ -352,7 +352,7 @@ ethernet_buffer_get_header (vlib_buffer_t * b)
  * the number of headers is not known.
  */
 #define ethernet_buffer_get_vlan_count(b) ( \
-    ((b)->flags & ETH_BUFFER_VLAN_BITS) >> LOG2_ETH_BUFFER_VLAN_1_DEEP \
+    ((b)->flags & VNET_BUFFER_FLAGS_VLAN_BITS) >> VNET_BUFFER_F_LOG2_VLAN_1_DEEP \
 )
 
 /** Sets the number of VLAN headers in the current Ethernet frame in the
@@ -360,8 +360,8 @@ ethernet_buffer_get_header (vlib_buffer_t * b)
  * the number of headers is not known.
  */
 #define ethernet_buffer_set_vlan_count(b, v) ( \
-    (b)->flags = ((b)->flags & ~ETH_BUFFER_VLAN_BITS) | \
-        (((v) << LOG2_ETH_BUFFER_VLAN_1_DEEP) & ETH_BUFFER_VLAN_BITS) \
+    (b)->flags = ((b)->flags & ~VNET_BUFFER_FLAGS_VLAN_BITS) | \
+        (((v) << VNET_BUFFER_F_LOG2_VLAN_1_DEEP) & VNET_BUFFER_FLAGS_VLAN_BITS) \
 )
 
 /** Adjusts the vlan count by the delta in 'v' */
@@ -372,10 +372,10 @@ ethernet_buffer_get_header (vlib_buffer_t * b)
 
 /** Adjusts the vlan count by the header size byte delta in 'v' */
 #define ethernet_buffer_adjust_vlan_count_by_bytes(b, v) ( \
-    (b)->flags = ((b)->flags & ~ETH_BUFFER_VLAN_BITS) | (( \
-        ((b)->flags & ETH_BUFFER_VLAN_BITS) + \
-        ((v) << (LOG2_ETH_BUFFER_VLAN_1_DEEP - 2)) \
-    ) & ETH_BUFFER_VLAN_BITS) \
+    (b)->flags = ((b)->flags & ~VNET_BUFFER_FLAGS_VLAN_BITS) | (( \
+        ((b)->flags & VNET_BUFFER_FLAGS_VLAN_BITS) + \
+        ((v) << (VNET_BUFFER_F_LOG2_VLAN_1_DEEP - 2)) \
+    ) & VNET_BUFFER_FLAGS_VLAN_BITS) \
 )
 
 /**

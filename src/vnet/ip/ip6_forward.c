@@ -1284,15 +1284,15 @@ ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0)
   udp0 = (void *) (ip0 + 1);
   if (ip0->protocol == IP_PROTOCOL_UDP && udp0->checksum == 0)
     {
-      p0->flags |= (IP_BUFFER_L4_CHECKSUM_COMPUTED
-		    | IP_BUFFER_L4_CHECKSUM_CORRECT);
+      p0->flags |= (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED
+		    | VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
       return p0->flags;
     }
 
   sum16 = ip6_tcp_udp_icmp_compute_checksum (vm, p0, ip0, &bogus_length);
 
-  p0->flags |= (IP_BUFFER_L4_CHECKSUM_COMPUTED
-		| ((sum16 == 0) << LOG2_IP_BUFFER_L4_CHECKSUM_CORRECT));
+  p0->flags |= (VNET_BUFFER_F_L4_CHECKSUM_COMPUTED
+		| ((sum16 == 0) << VNET_BUFFER_F_LOG2_L4_CHECKSUM_CORRECT));
 
   return p0->flags;
 }
@@ -1374,8 +1374,10 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  flags0 = p0->flags;
 	  flags1 = p1->flags;
 
-	  good_l4_checksum0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
-	  good_l4_checksum1 = (flags1 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	  good_l4_checksum0 =
+	    (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
+	  good_l4_checksum1 =
+	    (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	  len_diff0 = 0;
 	  len_diff1 = 0;
 
@@ -1414,19 +1416,21 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  if (PREDICT_FALSE (type0 != IP_BUILTIN_PROTOCOL_UNKNOWN
 			     && !good_l4_checksum0
-			     && !(flags0 & IP_BUFFER_L4_CHECKSUM_COMPUTED)))
+			     && !(flags0 &
+				  VNET_BUFFER_F_L4_CHECKSUM_COMPUTED)))
 	    {
 	      flags0 = ip6_tcp_udp_icmp_validate_checksum (vm, p0);
 	      good_l4_checksum0 =
-		(flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+		(flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	    }
 	  if (PREDICT_FALSE (type1 != IP_BUILTIN_PROTOCOL_UNKNOWN
 			     && !good_l4_checksum1
-			     && !(flags1 & IP_BUFFER_L4_CHECKSUM_COMPUTED)))
+			     && !(flags1 &
+				  VNET_BUFFER_F_L4_CHECKSUM_COMPUTED)))
 	    {
 	      flags1 = ip6_tcp_udp_icmp_validate_checksum (vm, p1);
 	      good_l4_checksum1 =
-		(flags1 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+		(flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	    }
 
 	  error0 = error1 = IP6_ERROR_UNKNOWN_PROTOCOL;
@@ -1500,7 +1504,8 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  flags0 = p0->flags;
 
-	  good_l4_checksum0 = (flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+	  good_l4_checksum0 =
+	    (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	  len_diff0 = 0;
 
 	  if (PREDICT_TRUE (IP_PROTOCOL_UDP == ip6_locate_header (p0, ip0,
@@ -1522,11 +1527,12 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  if (PREDICT_FALSE (type0 != IP_BUILTIN_PROTOCOL_UNKNOWN
 			     && !good_l4_checksum0
-			     && !(flags0 & IP_BUFFER_L4_CHECKSUM_COMPUTED)))
+			     && !(flags0 &
+				  VNET_BUFFER_F_L4_CHECKSUM_COMPUTED)))
 	    {
 	      flags0 = ip6_tcp_udp_icmp_validate_checksum (vm, p0);
 	      good_l4_checksum0 =
-		(flags0 & IP_BUFFER_L4_CHECKSUM_CORRECT) != 0;
+		(flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 	    }
 
 	  error0 = IP6_ERROR_UNKNOWN_PROTOCOL;
@@ -2019,7 +2025,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  error0 = error1 = IP6_ERROR_NONE;
 	  next0 = next1 = IP6_REWRITE_NEXT_DROP;
 
-	  if (PREDICT_TRUE (!(p0->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
+	  if (PREDICT_TRUE (!(p0->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)))
 	    {
 	      i32 hop_limit0 = ip0->hop_limit;
 
@@ -2046,9 +2052,9 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      p0->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+	      p0->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
-	  if (PREDICT_TRUE (!(p1->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
+	  if (PREDICT_TRUE (!(p1->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)))
 	    {
 	      i32 hop_limit1 = ip1->hop_limit;
 
@@ -2075,7 +2081,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      p1->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+	      p1->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
 	  adj0 = adj_get (adj_index0);
 	  adj1 = adj_get (adj_index1);
@@ -2186,7 +2192,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	  next0 = IP6_REWRITE_NEXT_DROP;
 
 	  /* Check hop limit */
-	  if (PREDICT_TRUE (!(p0->flags & VNET_BUFFER_LOCALLY_ORIGINATED)))
+	  if (PREDICT_TRUE (!(p0->flags & VNET_BUFFER_F_LOCALLY_ORIGINATED)))
 	    {
 	      i32 hop_limit0 = ip0->hop_limit;
 
@@ -2212,7 +2218,7 @@ ip6_rewrite_inline (vlib_main_t * vm,
 	    }
 	  else
 	    {
-	      p0->flags &= ~VNET_BUFFER_LOCALLY_ORIGINATED;
+	      p0->flags &= ~VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	    }
 
 	  /* Guess we are only writing on simple Ethernet header. */
