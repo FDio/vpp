@@ -221,12 +221,8 @@ builtin_server_rx_callback (stream_session_t * s)
 	  bsm->rx_retries[thread_index][s->session_index]++;
 	  if (bsm->rx_retries[thread_index][s->session_index] == 500000)
 	    {
-	      clib_warning ("session stuck: %U", format_stream_session, s, 2);
+	      clib_warning("session stuck: %U", format_stream_session, s, 2);
 	    }
-	}
-      else
-	{
-	  bsm->rx_retries[thread_index][s->session_index] = 0;
 	}
 
       return 0;
