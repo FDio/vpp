@@ -1362,8 +1362,8 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
-	  vnet_buffer (p0)->ip.start_of_ip_header = p0->current_data;
-	  vnet_buffer (p1)->ip.start_of_ip_header = p1->current_data;
+	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
+	  vnet_buffer (p1)->l3_hdr_offset = p1->current_data;
 
 	  type0 = lm->builtin_protocol_by_ip_protocol[ip0->protocol];
 	  type1 = lm->builtin_protocol_by_ip_protocol[ip1->protocol];
@@ -1493,7 +1493,7 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  vnet_buffer (p0)->ip.start_of_ip_header = p0->current_data;
+	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
 
 	  type0 = lm->builtin_protocol_by_ip_protocol[ip0->protocol];
 	  next0 = lm->local_next_by_ip_protocol[ip0->protocol];

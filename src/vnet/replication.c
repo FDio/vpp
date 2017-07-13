@@ -43,12 +43,12 @@ replication_prep (vlib_main_t * vm,
   ctx_id = ctx - rm->contexts[thread_index];
 
   /* Save state from vlib buffer */
-  ctx->saved_free_list_index = b0->free_list_index;
+  ctx->saved_free_list_index = vlib_buffer_get_free_list_index (b0);
   ctx->current_data = b0->current_data;
 
   /* Set up vlib buffer hooks */
   b0->recycle_count = ctx_id;
-  b0->free_list_index = rm->recycle_list_index;
+  vlib_buffer_set_free_list_index (b0, rm->recycle_list_index);
   b0->flags |= VLIB_BUFFER_RECYCLE;
 
   /* Save feature state */
@@ -129,7 +129,7 @@ replication_recycle (vlib_main_t * vm, vlib_buffer_t * b0, u32 is_last)
        * This is the last replication in the list.
        * Restore original buffer free functionality.
        */
-      b0->free_list_index = ctx->saved_free_list_index;
+      vlib_buffer_set_free_list_index (b0, ctx->saved_free_list_index);
       b0->flags &= ~VLIB_BUFFER_RECYCLE;
 
       /* Free context back to its pool */
