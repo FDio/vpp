@@ -206,8 +206,8 @@ tcp_options_parse (tcp_header_t * th, tcp_options_t * to)
 	  vec_reset_length (to->sacks);
 	  for (j = 0; j < to->n_sack_blocks; j++)
 	    {
-	      b.start = clib_net_to_host_u32 (*(u32 *) (data + 2 + 4 * j));
-	      b.end = clib_net_to_host_u32 (*(u32 *) (data + 6 + 4 * j));
+	      b.start = clib_net_to_host_u32 (*(u32 *) (data + 2 + 8 * j));
+	      b.end = clib_net_to_host_u32 (*(u32 *) (data + 6 + 8 * j));
 	      vec_add1 (to->sacks, b);
 	    }
 	  break;
@@ -540,6 +540,10 @@ scoreboard_remove_hole (sack_scoreboard_t * sb, sack_scoreboard_hole_t * hole)
   if (scoreboard_hole_index (sb, hole) == sb->cur_rxt_hole)
     sb->cur_rxt_hole = TCP_INVALID_SACK_HOLE_INDEX;
 
+  /* Poison the entry */
+  if (CLIB_DEBUG > 0)
+    memset (hole, 0xfe, sizeof (*hole));
+
   pool_put (sb->holes, hole);
 }
 
@@ -555,7 +559,7 @@ scoreboard_insert_hole (sack_scoreboard_t * sb, u32 prev_index,
 
   hole->start = start;
   hole->end = end;
-  hole_index = hole - sb->holes;
+  hole_index = scoreboard_hole_index (sb, hole);
 
   prev = scoreboard_get_hole (sb, prev_index);
   if (prev)
@@ -680,12 +684,30 @@ scoreboard_next_rxt_hole (sack_scoreboard_t * sb,
 }
 
 void
-scoreboard_init_high_rxt (sack_scoreboard_t * sb)
+scoreboard_init_high_rxt (sack_scoreboard_t * sb, u32 seq)
 {
   sack_scoreboard_hole_t *hole;
   hole = scoreboard_first_hole (sb);
-  sb->high_rxt = hole->start;
-  sb->cur_rxt_hole = sb->head;
+  if (hole)
+    {
+      seq = seq_gt (seq, hole->start) ? seq : hole->start;
+      sb->cur_rxt_hole = sb->head;
+    }
+  sb->high_rxt = seq;
+}
+
+/**
+ * Test that scoreboard is sane after recovery
+ *
+ * Returns 1 if scoreboard is empty or if first hole beyond
+ * snd_una.
+ */
+u8
+tcp_scoreboard_is_sane_post_recovery (tcp_connection_t *tc)
+{
+  sack_scoreboard_hole_t *hole;
+  hole = scoreboard_first_hole (&tc->sack_sb);
+  return (!hole || seq_geq (hole->start, tc->snd_una));
 }
 
 void
@@ -712,7 +734,7 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
     {
       if (seq_lt (blk->start, blk->end)
 	  && seq_gt (blk->start, tc->snd_una)
-	  && seq_gt (blk->start, ack) && seq_leq (blk->end, tc->snd_nxt))
+	  && seq_gt (blk->start, ack) && seq_leq (blk->end, tc->snd_una_max))
 	{
 	  blk++;
 	  continue;
@@ -730,6 +752,8 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 
   if (vec_len (tc->rcv_opts.sacks) == 0)
     return;
+
+  tcp_scoreboard_trace_add (tc, ack);
 
   /* Make sure blocks are ordered */
   for (i = 0; i < vec_len (tc->rcv_opts.sacks); i++)
@@ -793,15 +817,29 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 		  if (next_hole)
 		    {
 		      if (seq_lt (ack, next_hole->start))
+			{
 			sb->snd_una_adv = next_hole->start - ack;
+//			if (sb->snd_una_adv)
+//			  {
+//			    tcp_scoreboard_dump_trace (sb);
+//			    clib_warning ("%U", format_tcp_connection, tc, 2);
+//			    ASSERT(0);
+//			  }
+			}
 		      sb->last_bytes_delivered +=
 			next_hole->start - hole->end;
 		    }
-		  else if (!next_hole)
+		  else
 		    {
 		      ASSERT (seq_geq (sb->high_sacked, ack));
 		      sb->snd_una_adv = sb->high_sacked - ack;
 		      sb->last_bytes_delivered += sb->high_sacked - hole->end;
+//			if (sb->snd_una_adv)
+//			  {
+//			    tcp_scoreboard_dump_trace (sb);
+//			    clib_warning ("%U", format_tcp_connection, tc, 2);
+//			    ASSERT(0);
+//			  }
 		    }
 		}
 
@@ -824,12 +862,14 @@ tcp_rcv_sacks (tcp_connection_t * tc, u32 ack)
 	  if (seq_lt (blk->end, hole->end))
 	    {
 	      hole_index = scoreboard_hole_index (sb, hole);
-	      scoreboard_insert_hole (sb, hole_index, blk->end, hole->end);
+	      next_hole = scoreboard_insert_hole (sb, hole_index, blk->end,
+						  hole->end);
 
 	      /* Pool might've moved */
 	      hole = scoreboard_get_hole (sb, hole_index);
 	      hole->end = blk->start;
 	      blk_index++;
+	      ASSERT (hole->next == scoreboard_hole_index (sb, next_hole));
 	    }
 	  else if (seq_lt (blk->start, hole->end))
 	    {
@@ -957,7 +997,7 @@ tcp_cc_recover (tcp_connection_t * tc)
 
   ASSERT (tc->rto_boff == 0);
   ASSERT (!tcp_in_cong_recovery (tc));
-
+  ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
   return 0;
 }
@@ -1064,10 +1104,10 @@ tcp_cc_handle_event (tcp_connection_t * tc, u32 is_dack)
 	  ASSERT (tc->cwnd >= tc->snd_mss);
 
 	  /* If cwnd allows, send more data */
-	  if (tcp_opts_sack_permitted (&tc->rcv_opts)
-	      && scoreboard_first_hole (&tc->sack_sb))
+	  if (tcp_opts_sack_permitted (&tc->rcv_opts))
 	    {
-	      scoreboard_init_high_rxt (&tc->sack_sb);
+	      scoreboard_init_high_rxt (&tc->sack_sb,
+					tc->snd_una + tc->snd_mss);
 	      tcp_fast_retransmit_sack (tc);
 	    }
 	  else
@@ -1134,12 +1174,13 @@ partial_ack:
   /* Remove retransmitted bytes that have been delivered */
   ASSERT (tc->bytes_acked + tc->sack_sb.snd_una_adv
 	  >= tc->sack_sb.last_bytes_delivered);
-  rxt_delivered = tc->bytes_acked + tc->sack_sb.snd_una_adv
-    - tc->sack_sb.last_bytes_delivered;
-  if (0 && rxt_delivered && seq_gt (tc->sack_sb.high_rxt, tc->snd_una))
+
+  if (seq_lt (tc->snd_una, tc->sack_sb.high_rxt))
     {
       /* If we have sacks and we haven't gotten an ack beyond high_rxt,
        * remove sacked bytes delivered */
+      rxt_delivered = tc->bytes_acked + tc->sack_sb.snd_una_adv
+        - tc->sack_sb.last_bytes_delivered;
       ASSERT (tc->snd_rxt_bytes >= rxt_delivered);
       tc->snd_rxt_bytes -= rxt_delivered;
     }
@@ -1224,6 +1265,18 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   if (tcp_opts_sack_permitted (&tc->rcv_opts))
     tcp_rcv_sacks (tc, vnet_buffer (b)->tcp.ack_number);
 
+  /* DELETE */
+  if (0 && tc->sack_sb.snd_una_adv)
+    {
+      stream_session_t *s = stream_session_get (tc->c_s_index, tc->c_thread_index);
+      clib_warning("\n\nSND_UNA_ADV %u\n%U",
+		   vnet_buffer (b)->tcp.ack_number - tc->iss,
+		   format_stream_session, s, 2);
+      clib_warning ("\n%U\n", format_tcp_rcv_sacks, tc);
+      tcp_send_reset (b, 1);
+    }
+  /* DELETE */
+
   prev_snd_wnd = tc->snd_wnd;
   prev_snd_una = tc->snd_una;
   tcp_update_snd_wnd (tc, vnet_buffer (b)->tcp.seq_number,
@@ -1254,6 +1307,18 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   tcp_cc_update (tc, b);
 
   return 0;
+}
+
+static u8
+tcp_sack_vector_is_sane (sack_block_t *sacks)
+{
+  int i;
+  for (i = 1; i < vec_len (sacks); i++)
+    {
+      if (sacks[i-1].end == sacks[i].start)
+	return 0;
+    }
+  return 1;
 }
 
 /**
@@ -1316,6 +1381,9 @@ tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end)
   /* Replace old vector with new one */
   vec_free (tc->snd_sacks);
   tc->snd_sacks = new_list;
+
+  /* Segments should not 'touch' */
+  ASSERT (tcp_sack_vector_is_sane (tc->snd_sacks));
 }
 
 /** Enqueue data for delivery to application */
@@ -1330,7 +1398,6 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
   /* Pure ACK. Update rcv_nxt and be done. */
   if (PREDICT_FALSE (data_len == 0))
     {
-      tc->rcv_nxt = vnet_buffer (b)->tcp.seq_end;
       return TCP_ERROR_PURE_ACK;
     }
 
@@ -1385,7 +1452,7 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
 			 u16 data_len)
 {
   stream_session_t *s0;
-  int rv;
+  int rv, offset;
 
   ASSERT (seq_gt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
 
@@ -1421,12 +1488,12 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
       newest = svm_fifo_newest_ooo_segment (s0->server_rx_fifo);
       if (newest)
 	{
-	  start =
-	    tc->rcv_nxt + ooo_segment_offset (s0->server_rx_fifo, newest);
+	  offset = ooo_segment_offset (s0->server_rx_fifo, newest);
+	  ASSERT(offset <= vnet_buffer (b)->tcp.seq_number - tc->rcv_nxt);
+	  start = tc->rcv_nxt + offset;
 	  end = start + ooo_segment_length (s0->server_rx_fifo, newest);
 	  tcp_update_sack_list (tc, start, end);
-
-	  ASSERT (seq_gt (start, tc->rcv_nxt));
+	  svm_fifo_newest_ooo_segment_reset (s0->server_rx_fifo);
 	}
     }
 
@@ -2954,6 +3021,7 @@ do {                                                       	\
   _(TIME_WAIT, TCP_FLAG_FIN, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(TIME_WAIT, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS,
     TCP_ERROR_NONE);
+  _(TIME_WAIT, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(CLOSED, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_CONNECTION_CLOSED);
   _(CLOSED, TCP_FLAG_RST, TCP_INPUT_NEXT_DROP, TCP_ERROR_CONNECTION_CLOSED);
   _(CLOSED, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET,

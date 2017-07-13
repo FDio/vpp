@@ -81,7 +81,6 @@ format_stream_session (u8 * s, va_list * args)
     {
       clib_warning ("Session in state: %d!", ss->session_state);
     }
-
   vec_free (str);
 
   return s;

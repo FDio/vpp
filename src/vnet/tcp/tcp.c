@@ -170,6 +170,16 @@ tcp_connection_del (tcp_connection_t * tc)
 void
 tcp_connection_reset (tcp_connection_t * tc)
 {
+  /* DELETE */
+  if (0)
+    {
+      stream_session_t *s = stream_session_get (tc->c_s_index,
+						tc->c_thread_index);
+      clib_warning("\n\nBOMB\n%U", format_stream_session, s, 2);
+      clib_warning("\n %U", format_svm_fifo, s->server_rx_fifo, 2);
+    }
+  /* DELETE */
+
   switch (tc->state)
     {
     case TCP_STATE_SYN_RCVD:
@@ -732,6 +742,7 @@ format_tcp_connection (u8 * s, va_list * args)
       if (verbose > 1)
 	s = format (s, " %U\n%U", format_tcp_timers, tc, format_tcp_vars, tc);
     }
+
   return s;
 }
 
@@ -792,12 +803,58 @@ format_tcp_sacks (u8 * s, va_list * args)
 }
 
 u8 *
+format_tcp_rcv_sacks (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  sack_block_t *sacks = tc->rcv_opts.sacks;
+  sack_block_t *block;
+  int i, len = 0;
+
+  len = vec_len (sacks);
+  for (i = 0; i < len - 1; i++)
+    {
+      block = &sacks[i];
+      s = format (s, " start %u end %u\n", block->start - tc->iss,
+		  block->end - tc->iss);
+    }
+  if (len)
+    {
+      block = &sacks[len - 1];
+      s = format (s, " start %u end %u", block->start - tc->iss,
+		  block->end - tc->iss);
+    }
+  return s;
+}
+
+u8 *
 format_tcp_sack_hole (u8 * s, va_list * args)
 {
   sack_scoreboard_hole_t *hole = va_arg (*args, sack_scoreboard_hole_t *);
   s = format (s, "[%u, %u]", hole->start, hole->end);
   return s;
 }
+
+#if TCP_SCOREBOARD_TRACE
+u8 *
+tcp_scoreboard_dump_trace (u8 *s, sack_scoreboard_t *sb)
+{
+  scoreboard_trace_elt_t *block;
+  int i = 0;
+
+  if (!sb->trace)
+    return s;
+
+  s = format (s, "\nscoreboard trace:");
+  vec_foreach (block, sb->trace)
+    {
+      s = format (s, "{%u, %u, %u, %u, %u}, ", block->start, block->end,
+		  block->ack, block->snd_una_max, block->group);
+      if ((++i % 3) == 0)
+	s = format (s, "\n");
+    }
+  return s;
+}
+#endif
 
 u8 *
 format_tcp_scoreboard (u8 * s, va_list * args)
@@ -820,6 +877,11 @@ format_tcp_scoreboard (u8 * s, va_list * args)
       s = format (s, "%U", format_tcp_sack_hole, hole);
       hole = scoreboard_next_hole (sb, hole);
     }
+
+#if TCP_SCOREBOARD_TRACE
+  s = tcp_scoreboard_dump_trace (s, sb);
+#endif
+
   return s;
 }
 
