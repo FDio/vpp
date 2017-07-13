@@ -130,7 +130,8 @@ worker_handoff_node_fn (vlib_main_t * vm,
 
       /* if input node did not specify next index, then packet
          should go to eternet-input */
-      if (PREDICT_FALSE ((b0->flags & BUFFER_HANDOFF_NEXT_VALID) == 0))
+      if (PREDICT_FALSE
+	  ((b0->flags & VNET_BUFFER_FLAG_HANDOFF_NEXT_VALID) == 0))
 	vnet_buffer (b0)->handoff.next_index =
 	  HANDOFF_DISPATCH_NEXT_ETHERNET_INPUT;
       else if (vnet_buffer (b0)->handoff.next_index ==
