@@ -263,15 +263,30 @@ stream_session_t *stream_session_lookup6 (ip6_address_t * lcl,
 					  ip6_address_t * rmt, u16 lcl_port,
 					  u16 rmt_port, u8 proto);
 transport_connection_t
-  * stream_session_lookup_transport4 (ip4_address_t * lcl,
-				      ip4_address_t * rmt, u16 lcl_port,
-				      u16 rmt_port, u8 proto,
-				      u32 thread_index);
-transport_connection_t
-  * stream_session_lookup_transport6 (ip6_address_t * lcl,
-				      ip6_address_t * rmt, u16 lcl_port,
-				      u16 rmt_port, u8 proto,
-				      u32 thread_index);
+  * stream_session_lookup_transport_wt4 (ip4_address_t * lcl,
+					 ip4_address_t * rmt, u16 lcl_port,
+					 u16 rmt_port, u8 proto,
+					 u32 thread_index);
+transport_connection_t *stream_session_lookup_transport4 (ip4_address_t * lcl,
+							  ip4_address_t * rmt,
+							  u16 lcl_port,
+							  u16 rmt_port,
+							  u8 proto);
+transport_connection_t *stream_session_lookup_transport_wt6 (ip6_address_t *
+							     lcl,
+							     ip6_address_t *
+							     rmt,
+							     u16 lcl_port,
+							     u16 rmt_port,
+							     u8 proto,
+							     u32
+							     thread_index);
+transport_connection_t *stream_session_lookup_transport6 (ip6_address_t * lcl,
+							  ip6_address_t * rmt,
+							  u16 lcl_port,
+							  u16 rmt_port,
+							  u8 proto);
+
 stream_session_t *stream_session_lookup_listener (ip46_address_t * lcl,
 						  u16 lcl_port, u8 proto);
 void stream_session_table_add_for_tc (transport_connection_t * tc, u64 value);
@@ -415,7 +430,12 @@ void stream_session_cleanup (stream_session_t * s);
 void session_send_session_evt_to_thread (u64 session_handle,
 					 fifo_event_type_t evt_type,
 					 u32 thread_index);
+
 u8 *format_stream_session (u8 * s, va_list * args);
+uword unformat_stream_session (unformat_input_t * input, va_list * args);
+uword unformat_transport_connection (unformat_input_t * input,
+				     va_list * args);
+
 int
 send_session_connected_callback (u32 app_index, u32 api_context,
 				 stream_session_t * s, u8 is_fail);
