@@ -464,6 +464,7 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
 static void
 builtin_session_reset_callback (stream_session_t * s)
 {
+  clib_warning ("Reset session %U", format_stream_session, s, 2);
   return;
 }
 
