@@ -72,6 +72,7 @@ typedef struct
                           the end of this buffer.
                        */
   u32 flags; /**< buffer flags:
+                <br> VLIB_BUFFER_FREE_LIST_INDEX_MASK: bits used to store free list index,
                 <br> VLIB_BUFFER_IS_TRACED: trace this buffer.
                 <br> VLIB_BUFFER_NEXT_PRESENT: this is a multi-chunk buffer.
                 <br> VLIB_BUFFER_TOTAL_LENGTH_VALID: as it says
@@ -82,28 +83,26 @@ typedef struct
                 set to avoid adding it to a flow report
                 <br> VLIB_BUFFER_FLAG_USER(n): user-defined bit N
              */
-#define VLIB_BUFFER_IS_TRACED (1 << 0)
-#define VLIB_BUFFER_LOG2_NEXT_PRESENT (1)
+
+/* any change to the following line requres update of
+ * vlib_buffer_get_free_list_index(...) and
+ * vlib_buffer_set_free_list_index(...) functions */
+#define VLIB_BUFFER_FREE_LIST_INDEX_MASK ((1 << 4) - 1)
+
+#define VLIB_BUFFER_IS_TRACED (1 << 4)
+#define VLIB_BUFFER_LOG2_NEXT_PRESENT (5)
 #define VLIB_BUFFER_NEXT_PRESENT (1 << VLIB_BUFFER_LOG2_NEXT_PRESENT)
-#define VLIB_BUFFER_IS_RECYCLED (1 << 2)
-#define VLIB_BUFFER_TOTAL_LENGTH_VALID (1 << 3)
-#define VLIB_BUFFER_REPL_FAIL (1 << 4)
-#define VLIB_BUFFER_RECYCLE (1 << 5)
-#define VLIB_BUFFER_FLOW_REPORT (1 << 6)
-#define VLIB_BUFFER_EXT_HDR_VALID (1 << 7)
+#define VLIB_BUFFER_IS_RECYCLED (1 << 6)
+#define VLIB_BUFFER_TOTAL_LENGTH_VALID (1 << 7)
+#define VLIB_BUFFER_REPL_FAIL (1 << 8)
+#define VLIB_BUFFER_RECYCLE (1 << 9)
+#define VLIB_BUFFER_FLOW_REPORT (1 << 10)
+#define VLIB_BUFFER_EXT_HDR_VALID (1 << 11)
 
   /* User defined buffer flags. */
 #define LOG2_VLIB_BUFFER_FLAG_USER(n) (32 - (n))
 #define VLIB_BUFFER_FLAG_USER(n) (1 << LOG2_VLIB_BUFFER_FLAG_USER(n))
 
-  u32 free_list_index; /**< Buffer free list that this buffer was
-                          allocated from and will be freed to.
-                       */
-
-  u32 total_length_not_including_first_buffer;
-  /**< Only valid for first buffer in chain. Current length plus
-     total length given here give total number of bytes in buffer chain.
-  */
     STRUCT_MARK (template_end);
 
   u32 next_buffer;   /**< Next buffer for this linked-list of buffers.
@@ -128,7 +127,7 @@ typedef struct
                           Before allocating any of it, discussion required!
                        */
 
-  u32 opaque[8]; /**< Opaque data used by sub-graphs for their own purposes.
+  u32 opaque[10]; /**< Opaque data used by sub-graphs for their own purposes.
                     See .../vnet/vnet/buffer.h
                  */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
@@ -137,7 +136,12 @@ typedef struct
                       if VLIB_PACKET_IS_TRACED flag is set.
                    */
   u32 recycle_count; /**< Used by L2 path recycle code */
-  u32 opaque2[14];  /**< More opaque data, currently unused */
+
+  u32 total_length_not_including_first_buffer;
+  /**< Only valid for first buffer in chain. Current length plus
+     total length given here give total number of bytes in buffer chain.
+  */
+  u32 opaque2[13];  /**< More opaque data, currently unused */
 
   /***** end of second cache line */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);

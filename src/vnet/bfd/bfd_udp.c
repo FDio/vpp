@@ -843,7 +843,7 @@ bfd_udp4_find_headers (vlib_buffer_t * b, ip4_header_t ** ip4,
 		       udp_header_t ** udp)
 {
   /* sanity check first */
-  const i32 start = vnet_buffer (b)->ip.start_of_ip_header;
+  const i32 start = vnet_buffer (b)->l3_hdr_offset;
   if (start < 0 && start < sizeof (b->pre_data))
     {
       BFD_ERR ("Start of ip header is before pre_data, ignoring");
@@ -1000,7 +1000,7 @@ bfd_udp6_find_headers (vlib_buffer_t * b, ip6_header_t ** ip6,
 		       udp_header_t ** udp)
 {
   /* sanity check first */
-  const i32 start = vnet_buffer (b)->ip.start_of_ip_header;
+  const i32 start = vnet_buffer (b)->l3_hdr_offset;
   if (start < 0 && start < sizeof (b->pre_data))
     {
       BFD_ERR ("Start of ip header is before pre_data, ignoring");

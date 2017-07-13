@@ -1585,8 +1585,8 @@ ip4_local_inline (vlib_main_t * vm,
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
-	  vnet_buffer (p0)->ip.start_of_ip_header = p0->current_data;
-	  vnet_buffer (p1)->ip.start_of_ip_header = p1->current_data;
+	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
+	  vnet_buffer (p1)->l3_hdr_offset = p1->current_data;
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
@@ -1788,7 +1788,7 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  ip0 = vlib_buffer_get_current (p0);
 
-	  vnet_buffer (p0)->ip.start_of_ip_header = p0->current_data;
+	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
 
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 

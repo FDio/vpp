@@ -101,7 +101,7 @@ parse_header (ethernet_input_variant_t variant,
 
       e0 = (void *) (b0->data + b0->current_data);
 
-      vnet_buffer (b0)->ethernet.start_of_ethernet_header = b0->current_data;
+      vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
 
       vlib_buffer_advance (b0, sizeof (e0[0]));
 
@@ -205,9 +205,7 @@ identify_subint (vnet_hw_interface_t * hi,
       if (!(*is_l2))
 	{
 	  ethernet_header_t *e0;
-	  e0 =
-	    (void *) (b0->data +
-		      vnet_buffer (b0)->ethernet.start_of_ethernet_header);
+	  e0 = (void *) (b0->data + vnet_buffer (b0)->l2_hdr_offset);
 
 	  if (!(ethernet_address_cast (e0->dst_address)))
 	    {
@@ -238,7 +236,7 @@ determine_next_node (ethernet_main_t * em,
     {
       *next0 = em->l2_next;
       // record the L2 len and reset the buffer so the L2 header is preserved
-      u32 eth_start = vnet_buffer (b0)->ethernet.start_of_ethernet_header;
+      u32 eth_start = vnet_buffer (b0)->l2_hdr_offset;
       vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
       ASSERT (vnet_buffer (b0)->l2.l2_len ==
 	      ethernet_buffer_header_size (b0));
@@ -424,10 +422,8 @@ ethernet_input_inline (vlib_main_t * vm,
 		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
 		}
 
-	      vnet_buffer (b0)->ethernet.start_of_ethernet_header =
-		b0->current_data;
-	      vnet_buffer (b1)->ethernet.start_of_ethernet_header =
-		b1->current_data;
+	      vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
+	      vnet_buffer (b1)->l2_hdr_offset = b1->current_data;
 
 	      if (PREDICT_TRUE (is_l20 != 0))
 		{
@@ -519,9 +515,9 @@ ethernet_input_inline (vlib_main_t * vm,
 	    {
 
 	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data
-		- vnet_buffer (b0)->ethernet.start_of_ethernet_header;
+		- vnet_buffer (b0)->l2_hdr_offset;
 	      len1 = vlib_buffer_length_in_chain (vm, b1) + b1->current_data
-		- vnet_buffer (b1)->ethernet.start_of_ethernet_header;
+		- vnet_buffer (b1)->l2_hdr_offset;
 
 	      stats_n_packets += 2;
 	      stats_n_bytes += len0 + len1;
@@ -646,8 +642,7 @@ ethernet_input_inline (vlib_main_t * vm,
 		  cached_is_l2 = is_l20 = subint0->flags & SUBINT_CONFIG_L2;
 		}
 
-	      vnet_buffer (b0)->ethernet.start_of_ethernet_header =
-		b0->current_data;
+	      vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
 
 	      if (PREDICT_TRUE (is_l20 != 0))
 		{
@@ -710,7 +705,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	    {
 
 	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data
-		- vnet_buffer (b0)->ethernet.start_of_ethernet_header;
+		- vnet_buffer (b0)->l2_hdr_offset;
 
 	      stats_n_packets += 1;
 	      stats_n_bytes += len0;

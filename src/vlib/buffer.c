@@ -72,8 +72,8 @@ format_vlib_buffer (u8 * s, va_list * args)
   uword indent = format_get_indent (s);
 
   s = format (s, "current data %d, length %d, free-list %d, clone-count %u",
-	      b->current_data, b->current_length, b->free_list_index,
-	      b->n_add_refs);
+	      b->current_data, b->current_length,
+	      vlib_buffer_get_free_list_index (b), b->n_add_refs);
 
   if (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
     s = format (s, ", totlen-nifb %d",
@@ -163,10 +163,14 @@ vlib_validate_buffer_helper (vlib_main_t * vm,
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *fl;
 
-  if (pool_is_free_index (bm->buffer_free_list_pool, b->free_list_index))
-    return format (0, "unknown free list 0x%x", b->free_list_index);
+  if (pool_is_free_index
+      (bm->buffer_free_list_pool, vlib_buffer_get_free_list_index (b)))
+    return format (0, "unknown free list 0x%x",
+		   vlib_buffer_get_free_list_index (b));
 
-  fl = pool_elt_at_index (bm->buffer_free_list_pool, b->free_list_index);
+  fl =
+    pool_elt_at_index (bm->buffer_free_list_pool,
+		       vlib_buffer_get_free_list_index (b));
 
   if ((signed) b->current_data < (signed) -VLIB_BUFFER_PRE_DATA_SIZE)
     return format (0, "current data %d before pre-data", b->current_data);
@@ -388,7 +392,7 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
   f->name = clib_mem_is_vec (name) ? name : format (0, "%s", name);
 
   /* Setup free buffer template. */
-  f->buffer_init_template.free_list_index = f->index;
+  vlib_buffer_set_free_list_index (&f->buffer_init_template, f->index);
   f->buffer_init_template.n_add_refs = 0;
 
   if (is_public)

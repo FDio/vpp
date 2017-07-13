@@ -208,7 +208,13 @@ dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
   mb_seg = mb->next;
   b_chain = b;
 
-  while ((mb->nb_segs > 1) && (nb_seg < mb->nb_segs))
+  if (mb->nb_segs < 2)
+    return;
+
+  b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  b->total_length_not_including_first_buffer = 0;
+
+  while (nb_seg < mb->nb_segs)
     {
       ASSERT (mb_seg != 0);
 

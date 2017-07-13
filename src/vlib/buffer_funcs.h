@@ -106,12 +106,15 @@ uword vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
 always_inline uword
 vlib_buffer_length_in_chain (vlib_main_t * vm, vlib_buffer_t * b)
 {
-  uword l = b->current_length + b->total_length_not_including_first_buffer;
-  if (PREDICT_FALSE ((b->flags & (VLIB_BUFFER_NEXT_PRESENT
-				  | VLIB_BUFFER_TOTAL_LENGTH_VALID))
-		     == VLIB_BUFFER_NEXT_PRESENT))
-    return vlib_buffer_length_in_chain_slow_path (vm, b);
-  return l;
+  uword len = b->current_length;
+
+  if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0))
+    return len;
+
+  if (PREDICT_TRUE (b->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID))
+    return len + b->total_length_not_including_first_buffer;
+
+  return vlib_buffer_length_in_chain_slow_path (vm, b);
 }
 
 /** \brief Get length in bytes of the buffer index buffer chain
@@ -261,6 +264,24 @@ vlib_buffer_round_size (u32 size)
   return round_pow2 (size, sizeof (vlib_buffer_t));
 }
 
+always_inline u32
+vlib_buffer_get_free_list_index (vlib_buffer_t * b)
+{
+  return b->flags & VLIB_BUFFER_FREE_LIST_INDEX_MASK;
+}
+
+always_inline void
+vlib_buffer_set_free_list_index (vlib_buffer_t * b, u32 index)
+{
+  /* if there is an need for more free lists we should consider
+     storig data in the 2nd cacheline */
+  ASSERT (VLIB_BUFFER_FREE_LIST_INDEX_MASK & 1);
+  ASSERT (index <= VLIB_BUFFER_FREE_LIST_INDEX_MASK);
+
+  b->flags &= ~VLIB_BUFFER_FREE_LIST_INDEX_MASK;
+  b->flags |= index & VLIB_BUFFER_FREE_LIST_INDEX_MASK;
+}
+
 /** \brief Allocate buffers from specific freelist into supplied array
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
@@ -381,7 +402,7 @@ vlib_buffer_get_buffer_free_list (vlib_main_t * vm, vlib_buffer_t * b,
   vlib_buffer_main_t *bm = vm->buffer_main;
   u32 i;
 
-  *index = i = b->free_list_index;
+  *index = i = vlib_buffer_get_free_list_index (b);
   return pool_elt_at_index (bm->buffer_free_list_pool, i);
 }
 
@@ -569,7 +590,8 @@ vlib_buffer_clone (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
     }
 
   n_buffers = vlib_buffer_alloc_from_free_list (vm, buffers, n_buffers,
-						s->free_list_index);
+						vlib_buffer_get_free_list_index
+						(s));
   if (PREDICT_FALSE (n_buffers == 0))
     {
       buffers[0] = src_buffer;
@@ -581,7 +603,8 @@ vlib_buffer_clone (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
       vlib_buffer_t *d = vlib_get_buffer (vm, buffers[i]);
       d->current_data = s->current_data;
       d->current_length = head_end_offset;
-      d->free_list_index = s->free_list_index;
+      vlib_buffer_set_free_list_index (d,
+				       vlib_buffer_get_free_list_index (s));
       d->total_length_not_including_first_buffer =
 	s->total_length_not_including_first_buffer + s->current_length -
 	head_end_offset;
@@ -615,7 +638,8 @@ vlib_buffer_attach_clone (vlib_main_t * vm, vlib_buffer_t * head,
 			  vlib_buffer_t * tail)
 {
   ASSERT ((head->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
-  ASSERT (head->free_list_index == tail->free_list_index);
+  ASSERT (vlib_buffer_get_free_list_index (head) ==
+	  vlib_buffer_get_free_list_index (tail));
 
   head->flags |= VLIB_BUFFER_NEXT_PRESENT;
   head->flags &= ~VLIB_BUFFER_TOTAL_LENGTH_VALID;
@@ -791,7 +815,7 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
 	  CLIB_CACHE_LINE_BYTES * 2);
 
   /* Make sure buffer template is sane. */
-  ASSERT (fl->index == fl->buffer_init_template.free_list_index);
+  ASSERT (fl->index == vlib_buffer_get_free_list_index (src));
 
   clib_memcpy (STRUCT_MARK_PTR (dst, template_start),
 	       STRUCT_MARK_PTR (src, template_start),
@@ -806,7 +830,6 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
   _(current_data);
   _(current_length);
   _(flags);
-  _(free_list_index);
 #undef _
   ASSERT (dst->total_length_not_including_first_buffer == 0);
   ASSERT (dst->n_add_refs == 0);
@@ -832,7 +855,7 @@ vlib_buffer_init_two_for_free_list (vlib_buffer_t * dst0,
   vlib_buffer_t *src = &fl->buffer_init_template;
 
   /* Make sure buffer template is sane. */
-  ASSERT (fl->index == fl->buffer_init_template.free_list_index);
+  ASSERT (fl->index == vlib_buffer_get_free_list_index (src));
 
   clib_memcpy (STRUCT_MARK_PTR (dst0, template_start),
 	       STRUCT_MARK_PTR (src, template_start),
@@ -853,7 +876,6 @@ vlib_buffer_init_two_for_free_list (vlib_buffer_t * dst0,
   _(current_data);
   _(current_length);
   _(flags);
-  _(free_list_index);
 #undef _
 
   ASSERT (dst0->total_length_not_including_first_buffer == 0);
