@@ -772,11 +772,15 @@ API_FILES += vnet/srv6/sr.api
 
 libvnet_la_SOURCES +=				\
  vnet/srmpls/sr_mpls_policy.c		\
- vnet/srmpls/sr_mpls_steering.c
+ vnet/srmpls/sr_mpls_steering.c   \
+ vnet/srmpls/sr_mpls_api.c
 
 
 nobase_include_HEADERS +=			\
- vnet/srmpls/sr.h
+ vnet/srmpls/sr_mpls.h      \
+ vnet/srmpls/sr_mpls.api.h
+
+API_FILES += vnet/srmpls/sr_mpls.api
 
 ########################################
 # IPFIX / netflow v10
