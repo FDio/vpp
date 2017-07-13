@@ -732,6 +732,7 @@ format_tcp_connection (u8 * s, va_list * args)
       if (verbose > 1)
 	s = format (s, " %U\n%U", format_tcp_timers, tc, format_tcp_vars, tc);
     }
+
   return s;
 }
 
@@ -792,6 +793,30 @@ format_tcp_sacks (u8 * s, va_list * args)
 }
 
 u8 *
+format_tcp_rcv_sacks (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  sack_block_t *sacks = tc->rcv_opts.sacks;
+  sack_block_t *block;
+  int i, len = 0;
+
+  len = vec_len (sacks);
+  for (i = 0; i < len - 1; i++)
+    {
+      block = &sacks[i];
+      s = format (s, " start %u end %u\n", block->start - tc->iss,
+		  block->end - tc->iss);
+    }
+  if (len)
+    {
+      block = &sacks[len - 1];
+      s = format (s, " start %u end %u", block->start - tc->iss,
+		  block->end - tc->iss);
+    }
+  return s;
+}
+
+u8 *
 format_tcp_sack_hole (u8 * s, va_list * args)
 {
   sack_scoreboard_hole_t *hole = va_arg (*args, sack_scoreboard_hole_t *);
@@ -820,6 +845,7 @@ format_tcp_scoreboard (u8 * s, va_list * args)
       s = format (s, "%U", format_tcp_sack_hole, hole);
       hole = scoreboard_next_hole (sb, hole);
     }
+
   return s;
 }
 
@@ -1304,7 +1330,189 @@ VLIB_CLI_COMMAND (tcp_src_address_command, static) =
 };
 /* *INDENT-ON* */
 
+static u8 *
+tcp_scoreboard_dump_trace (u8 * s, sack_scoreboard_t * sb)
+{
+#if TCP_SCOREBOARD_TRACE
 
+  scoreboard_trace_elt_t *block;
+  int i = 0;
+
+  if (!sb->trace)
+    return s;
+
+  s = format (s, "scoreboard trace:");
+  vec_foreach (block, sb->trace)
+  {
+    s = format (s, "{%u, %u, %u, %u, %u}, ", block->start, block->end,
+		block->ack, block->snd_una_max, block->group);
+    if ((++i % 3) == 0)
+      s = format (s, "\n");
+  }
+  return s;
+#else
+  return 0;
+#endif
+}
+
+static clib_error_t *
+tcp_show_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
+			      vlib_cli_command_t * cmd_arg)
+{
+  transport_connection_t *tconn = 0;
+  tcp_connection_t *tc;
+  u8 *s = 0;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_transport_connection, &tconn,
+		    TRANSPORT_PROTO_TCP))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (!TCP_SCOREBOARD_TRACE)
+    {
+      vlib_cli_output (vm, "scoreboard tracing not enabled");
+      return 0;
+    }
+
+  tc = tcp_get_connection_from_transport (tconn);
+  s = tcp_scoreboard_dump_trace (s, &tc->sack_sb);
+  vlib_cli_output (vm, "%v", s);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (tcp_show_scoreboard_trace_command, static) =
+{
+  .path = "show tcp scoreboard trace",
+  .short_help = "show tcp scoreboard trace <connection>",
+  .function = tcp_show_scoreboard_trace_fn,
+};
+/* *INDENT-ON* */
+
+u8 *
+tcp_scoreboard_replay (u8 * s, tcp_connection_t * tc, u8 verbose)
+{
+  int i, trace_len;
+  scoreboard_trace_elt_t *trace;
+  u32 next_ack, left, group, has_new_ack = 0;
+  tcp_connection_t _dummy_tc, *dummy_tc = &_dummy_tc;
+  sack_block_t *block;
+
+  if (!tc)
+    return s;
+
+  memset (dummy_tc, 0, sizeof (*dummy_tc));
+  tcp_connection_timers_init (dummy_tc);
+  scoreboard_init (&dummy_tc->sack_sb);
+  dummy_tc->rcv_opts.flags |= TCP_OPTS_FLAG_SACK;
+
+#if TCP_SCOREBOARD_TRACE
+  trace = tc->sack_sb.trace;
+  trace_len = vec_len (tc->sack_sb.trace);
+#else
+  trace = 0;
+  trace_len = 0;
+#endif
+
+  for (i = 0; i < trace_len; i++)
+    {
+      if (trace[i].ack != 0)
+	{
+	  dummy_tc->snd_una = trace[i].ack - 1448;
+	  dummy_tc->snd_una_max = trace[i].ack;
+	}
+    }
+
+  left = 0;
+  while (left < trace_len)
+    {
+      group = trace[left].group;
+      vec_reset_length (dummy_tc->rcv_opts.sacks);
+      has_new_ack = 0;
+      while (trace[left].group == group)
+	{
+	  if (trace[left].ack != 0)
+	    {
+	      if (verbose)
+		s = format (s, "Adding ack %u, snd_una_max %u, segs: ",
+			    trace[left].ack, trace[left].snd_una_max);
+	      dummy_tc->snd_una_max = trace[left].snd_una_max;
+	      next_ack = trace[left].ack;
+	      has_new_ack = 1;
+	    }
+	  else
+	    {
+	      if (verbose)
+		s = format (s, "[%u, %u], ", trace[left].start,
+			    trace[left].end);
+	      vec_add2 (dummy_tc->rcv_opts.sacks, block, 1);
+	      block->start = trace[left].start;
+	      block->end = trace[left].end;
+	    }
+	  left++;
+	}
+
+      /* Push segments */
+      tcp_rcv_sacks (dummy_tc, next_ack);
+      if (has_new_ack)
+	dummy_tc->snd_una = next_ack + dummy_tc->sack_sb.snd_una_adv;
+
+      if (verbose)
+	s = format (s, "result: %U", format_tcp_scoreboard,
+		    &dummy_tc->sack_sb);
+
+    }
+  s = format (s, "result: %U", format_tcp_scoreboard, &dummy_tc->sack_sb);
+
+  return s;
+}
+
+static clib_error_t *
+tcp_scoreboard_trace_fn (vlib_main_t * vm, unformat_input_t * input,
+			 vlib_cli_command_t * cmd_arg)
+{
+  transport_connection_t *tconn = 0;
+  tcp_connection_t *tc = 0;
+  u8 *str = 0;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_transport_connection, &tconn,
+		    TRANSPORT_PROTO_TCP))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (!TCP_SCOREBOARD_TRACE)
+    {
+      vlib_cli_output (vm, "scoreboard tracing not enabled");
+      return 0;
+    }
+
+  tc = tcp_get_connection_from_transport (tconn);
+  if (!tc)
+    {
+      vlib_cli_output (vm, "connection not found");
+      return 0;
+    }
+  str = tcp_scoreboard_replay (str, tc, 1);
+  vlib_cli_output (vm, "%v", str);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (tcp_replay_scoreboard_command, static) =
+{
+  .path = "tcp replay scoreboard",
+  .short_help = "tcp replay scoreboard <connection>",
+  .function = tcp_scoreboard_trace_fn,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

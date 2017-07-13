@@ -99,8 +99,7 @@ builtin_session_disconnect_callback (stream_session_t * s)
 void
 builtin_session_reset_callback (stream_session_t * s)
 {
-  clib_warning ("called.. ");
-
+  clib_warning ("Reset session %U", format_stream_session, s, 2);
   stream_session_cleanup (s);
 }
 
@@ -223,10 +222,6 @@ builtin_server_rx_callback (stream_session_t * s)
 	    {
 	      clib_warning ("session stuck: %U", format_stream_session, s, 2);
 	    }
-	}
-      else
-	{
-	  bsm->rx_retries[thread_index][s->session_index] = 0;
 	}
 
       return 0;
