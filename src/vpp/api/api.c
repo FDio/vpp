@@ -52,9 +52,8 @@
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6.h>
 #include <vnet/ip/ip6_neighbor.h>
-#if WITH_LIBSSL > 0
+#include <vnet/srmpls/sr_mpls.h>
 #include <vnet/srv6/sr.h>
-#endif
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>

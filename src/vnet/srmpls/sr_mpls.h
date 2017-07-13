@@ -42,6 +42,11 @@
 #define SR_STEER_IPV4 4
 #define SR_STEER_IPV6 6
 
+#define SR_TE_CO_BITS_00 0
+#define SR_TE_CO_BITS_01 1
+#define SR_TE_CO_BITS_10 2
+#define SR_TE_CO_BITS_11 3
+
 /**
  * @brief SR Segment List (SID list)
  */
@@ -70,6 +75,9 @@ typedef struct
   /* IF Type = DEFAULT Then Load Balancer DPO among SID lists     */
   /* IF Type = SPRAY then Spray DPO with all SID lists            */
 
+  ip46_address_t endpoint;     /**< Optional NH for SR TE */
+  u32 color;		/**< Optional color for SR TE */
+  u32 steering_locks;	/**< Steering locks for this policy */
 } mpls_sr_policy_t;
 
 /**
@@ -89,7 +97,10 @@ typedef struct
 typedef struct
 {
   sr_mpls_steering_key_t classify;		/**< Traffic classification */
-  u32 sr_policy;						/**< SR Policy index */
+  mpls_label_t bsid;						      /**< SR Policy index */
+  ip46_address_t next_hop;	      /**< SR TE NH */
+  u32 *color;			      /**< Vector of SR TE colors */
+  char co_bits;			      /**< Color-Only bits */
 } mpls_sr_steering_policy_t;
 
 /**
@@ -123,6 +134,11 @@ typedef struct
   mhash_t sr_steer_policies_hash;
 
   /**
+  * Hash table mapping (Color->Endpoint->BSID) for SR policies
+  */
+  mhash_t sr_policies_c2e2bsid_hash;
+
+  /**
     * convenience
     */
   vlib_main_t *vlib_main;
@@ -136,10 +152,34 @@ sr_mpls_policy_add (mpls_label_t bsid, mpls_label_t * segments,
 		    u8 behavior, u32 weight);
 
 extern int
-sr_mpls_policy_mod (mpls_label_t bsid, u32 index, u8 operation,
+sr_mpls_policy_mod (mpls_label_t bsid, u8 operation,
 		    mpls_label_t * segments, u32 sl_index, u32 weight);
 
-extern int sr_mpls_policy_del (mpls_label_t bsid, u32 index);
+extern int sr_mpls_policy_del (mpls_label_t bsid);
+
+extern mpls_sr_policy_t
+  * sr_mpls_policy_find_bsid_from_nh_color (ip46_address_t * nh, u32 color,
+					    char co_bits);
+
+extern int
+sr_mpls_policy_assign_endpoint_color (mpls_label_t bsid,
+				      ip46_address_t * endpoint, u32 color);
+
+extern int
+sr_mpls_steering_policy_add (mpls_label_t bsid, u32 table_id,
+			     ip46_address_t * prefix, u32 mask_width,
+			     u8 traffic_type, ip46_address_t * next_hop,
+			     u32 color, char co_bits);
+
+int
+sr_mpls_steering_policy_del (mpls_label_t bsid, u32 table_id,
+			     ip46_address_t * prefix, u32 mask_width,
+			     u8 traffic_type, ip46_address_t * next_hop,
+			     u32 color, char co_bits);
+
+extern void sr_mpls_policy_lock (mpls_sr_policy_t * sr_policy);
+
+extern void sr_mpls_policy_unlock (mpls_sr_policy_t * sr_policy);
 
 #endif /* included_vnet_sr_mpls_h */
 
