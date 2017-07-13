@@ -64,7 +64,6 @@ Note that this CLI cannot be used to remove the last SID list of a policy. Inste
 The weight of a SID list can also be modified with:
 
     sr mpls policy mod bsid 40001 mod sl index 1 weight 4
-    sr mpls policy mod index 1    mod sl index 1 weight 4
 
 ### SR Policies: Spray policies
 
@@ -80,8 +79,43 @@ Spray policies are used for removing multicast state from a network core domain,
 
 ## Steering packets into a SR Policy
 
-To steer packets in Transit into an SR policy, the user needs to create an 'sr steering policy'.
+Segment Routing supports three methos of steering traffic into an SR policy.
+
+### Local steering
+
+In this variant incoming packets match a routing policy which directs them on a local SR policy.
+
+In order to achieve this behavior the user needs to create an 'sr steering policy via sr policy bsid'.
 
     sr mpls steer l3 2001::/64 via sr policy bsid 40001
     sr mpls steer l3 2001::/64 via sr policy bsid 40001 fib-table 3
     sr mpls steer l3 10.0.0.0/16 via sr policy bsid 40001
+    sr mpls steer l3 10.0.0.0/16 via sr policy bsid 40001 vpn-label 500
+
+### Remote steering
+
+In this variant incoming packets have an active SID matching a local BSID at the head-end.
+
+In order to achieve this behavior the packets should simply arrive with an active SID equal to the Binding SID of a locally instantiated SR policy.
+
+### Automated steering
+
+In this variant incoming packets match a BGP/Service route which recurses on the BSID of a local policy.
+
+In order to achieve this behavior the user first needs to color the SR policies. He can do so by using the CLI:
+
+    sr mpls policy te bsid xxxxx endpoint x.x.x.x color 12341234
+
+Notice that an SR policy can have a single endpoint and a single color. Notice that the *endpoint* value is an IP46 address and the color a u32.
+
+
+Then, for any BGP/Service route the user has to use the API to steer prefixes:
+
+    sr steer l3 2001::/64 via next-hop 2001::1 color 1234 co 2
+    sr steer l3 2001::/64 via next-hop 2001::1 color 1234 co 2 vpn-label 500    
+
+Notice that *co* refers to the CO-bits (values [0|1|2|3]). 
+
+Notice also that a given prefix might be steered over several colors (same next-hop and same co-bit value). In order to add new colors just execute the API several times (or with the del parameter to delete the color).
+
+This variant is meant to be used in conjunction with a control plane agent that uses the underlying binary API bindings of *sr_mpls_steering_policy_add*/*sr_mpls_steering_policy_del* for any BGP service route received.
