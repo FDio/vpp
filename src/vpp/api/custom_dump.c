@@ -1,20 +1,20 @@
 /*
- *------------------------------------------------------------------
+ * ------------------------------------------------------------------
  * custom_dump.c - pretty-print API messages for replay
  *
- * Copyright (c) 2014-2016 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
+ * Copyright (c) 2014-2016 Cisco and/or its affiliates. Licensed under the
+ * Apache License, Version 2.0 (the "License"); you may not use this file
+ * except in compliance with the License. You may obtain a copy of the
+ * License at:
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *------------------------------------------------------------------
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ * ------------------------------------------------------------------
  */
 
 #include <vnet/vnet.h>
@@ -25,6 +25,7 @@
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/srv6/sr.h>
+#include <vnet/srmpls/sr_mpls.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/geneve/geneve.h>
 #include <vnet/classify/policer_classify.h>
@@ -2005,7 +2006,6 @@ format_policer_action (u8 * s, va_list * va)
 	}
       s = format (s, "%s", t);
     }
-
   return s;
 }
 
@@ -2551,7 +2551,6 @@ static void *vl_api_lisp_add_del_remote_mapping_t_print
       s = format (s, "seid %U ", format_lisp_flat_eid,
 		  mp->eid_type, mp->seid, mp->seid_len);
     }
-
   rloc_num = clib_net_to_host_u32 (mp->rloc_num);
 
   if (0 == rloc_num)
@@ -2774,7 +2773,6 @@ static void *vl_api_lisp_eid_table_dump_t_print
 	  break;
 	}
     }
-
   FINISH;
 }
 
@@ -2887,7 +2885,6 @@ static void *vl_api_l2_interface_pbb_tag_rewrite_t_print
       s = format (s, "sid %d ", ntohl (mp->i_sid));
       s = format (s, "vlanid %d ", ntohs (mp->b_vlanid));
     }
-
   FINISH;
 }
 
@@ -3441,7 +3438,5 @@ vl_msg_api_custom_dump_configure (api_main_t * am)
 /*
  * fd.io coding-style-patch-verification: ON
  *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
+ * Local Variables: eval: (c-set-style "gnu") End:
  */
