@@ -170,6 +170,12 @@ tcp_connection_del (tcp_connection_t * tc)
 void
 tcp_connection_reset (tcp_connection_t * tc)
 {
+  /* DELETE */
+  stream_session_t *s = stream_session_get (tc->c_s_index, tc->c_thread_index);
+  clib_warning("\n\nBOMB\n%U", format_stream_session, s, 2);
+  clib_warning ("\n %U", format_svm_fifo, s->server_rx_fifo, 2);
+  /* DELETE */
+
   switch (tc->state)
     {
     case TCP_STATE_SYN_RCVD:
@@ -787,6 +793,30 @@ format_tcp_sacks (u8 * s, va_list * args)
       block = &sacks[len - 1];
       s = format (s, " start %u end %u", block->start - tc->irs,
 		  block->end - tc->irs);
+    }
+  return s;
+}
+
+u8 *
+format_tcp_rcv_sacks (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  sack_block_t *sacks = tc->rcv_opts.sacks;
+  sack_block_t *block;
+  int i, len = 0;
+
+  len = vec_len (sacks);
+  for (i = 0; i < len - 1; i++)
+    {
+      block = &sacks[i];
+      s = format (s, " start %u end %u\n", block->start - tc->iss,
+		  block->end - tc->iss);
+    }
+  if (len)
+    {
+      block = &sacks[len - 1];
+      s = format (s, " start %u end %u", block->start - tc->iss,
+		  block->end - tc->iss);
     }
   return s;
 }

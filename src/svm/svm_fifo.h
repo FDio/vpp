@@ -64,6 +64,8 @@ typedef struct _svm_fifo
   u32 ooos_newest;		/**< Last segment to have been updated */
   struct _svm_fifo *next;	/**< next in freelist/active chain */
   struct _svm_fifo *prev;	/**< prev in active chain */
+  ooo_segment_t *history;
+
     CLIB_CACHE_LINE_ALIGN_MARK (data);
 } svm_fifo_t;
 
@@ -172,6 +174,14 @@ ooo_segment_get_prev (svm_fifo_t * f, ooo_segment_t * s)
   if (s->prev == OOO_SEGMENT_INVALID_INDEX)
     return 0;
   return pool_elt_at_index (f->ooo_segments, s->prev);
+}
+
+always_inline ooo_segment_t *
+ooo_segment_next (svm_fifo_t * f, ooo_segment_t * s)
+{
+  if (s->next == OOO_SEGMENT_INVALID_INDEX)
+    return 0;
+  return pool_elt_at_index (f->ooo_segments, s->next);
 }
 
 #endif /* __included_ssvm_fifo_h__ */
