@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_bb33bbf5",
+        "filename": "test/test_jvpp_core.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-13T07:19:22Z",
+      "side": 1,
+      "message": "can be removed?",
+      "range": {
+        "startLine": 13,
+        "startChar": 3,
+        "endLine": 54,
+        "endChar": 7
+      },
+      "revId": "9a3e50626745a9803bdf7692ff046c61f7293334",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
