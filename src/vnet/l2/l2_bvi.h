@@ -57,7 +57,7 @@ l2_to_bvi (vlib_main_t * vlib_main,
     }
 
   /* Save L2 header position which may be changed due to packet replication */
-  vnet_buffer (b0)->ethernet.start_of_ethernet_header = b0->current_data;
+  vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
 
   /* Strip L2 header */
   l2_len = vnet_buffer (b0)->l2.l2_len;

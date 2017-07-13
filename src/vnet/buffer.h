@@ -71,7 +71,6 @@
 #define VNET_BUFFER_SPAN_CLONE (1 << LOG2_VNET_BUFFER_SPAN_CLONE)
 
 #define foreach_buffer_opaque_union_subtype     \
-_(ethernet)                                     \
 _(ip)                                           \
 _(swt)                                          \
 _(l2)                                           \
@@ -100,16 +99,12 @@ _(tcp)
 typedef struct
 {
   u32 sw_if_index[VLIB_N_RX_TX];
+  i16 l2_hdr_offset;
+  i16 l3_hdr_offset;
+  i16 l4_hdr_offset;
 
   union
   {
-    /* Ethernet. */
-    struct
-    {
-      /* Saved value of current header by ethernet-input. */
-      i32 start_of_ethernet_header;
-    } ethernet;
-
     /* IP4/6 buffer opaque. */
     struct
     {
@@ -143,9 +138,6 @@ typedef struct
 	  u8 code;
 	  u32 data;
 	} icmp;
-
-	/* IP header offset from vlib_buffer.data - saved by ip*_local nodes */
-	i32 start_of_ip_header;
       };
 
     } ip;
