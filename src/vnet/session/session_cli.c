@@ -81,10 +81,139 @@ format_stream_session (u8 * s, va_list * args)
     {
       clib_warning ("Session in state: %d!", ss->session_state);
     }
-
   vec_free (str);
 
   return s;
+}
+
+uword
+unformat_stream_session_id (unformat_input_t * input, va_list * args)
+{
+  u8 *proto = va_arg (*args, u8 *);
+  ip46_address_t *lcl = va_arg (*args, ip46_address_t *);
+  ip46_address_t *rmt = va_arg (*args, ip46_address_t *);
+  u16 *lcl_port = va_arg (*args, u16 *);
+  u16 *rmt_port = va_arg (*args, u16 *);
+  u8 *is_ip4 = va_arg (*args, u8 *);
+  u8 tuple_is_set = 0;
+
+  memset (lcl, 0, sizeof (*lcl));
+  memset (rmt, 0, sizeof (*rmt));
+
+  if (unformat (input, "tcp"))
+    {
+      *proto = TRANSPORT_PROTO_TCP;
+    }
+  if (unformat (input, "udp"))
+    {
+      *proto = TRANSPORT_PROTO_UDP;
+    }
+  else if (unformat (input, "%U:%d->%U:%d", unformat_ip4_address, &lcl->ip4,
+		     lcl_port, unformat_ip4_address, &rmt->ip4, rmt_port))
+    {
+      *is_ip4 = 1;
+      tuple_is_set = 1;
+    }
+  else if (unformat (input, "%U:%d->%U:%d", unformat_ip6_address, &lcl->ip6,
+		     lcl_port, unformat_ip6_address, &rmt->ip6, rmt_port))
+    {
+      *is_ip4 = 0;
+      tuple_is_set = 1;
+    }
+  else
+    return 0;
+
+  if (tuple_is_set)
+    return 1;
+
+  return 0;
+}
+
+uword
+unformat_stream_session (unformat_input_t * input, va_list * args)
+{
+  stream_session_t **result = va_arg (*args, stream_session_t **);
+  stream_session_t *s;
+  u8 proto = ~0;
+  ip46_address_t lcl, rmt;
+  u32 lcl_port = 0, rmt_port = 0;
+  u8 is_ip4 = 0, s_type = ~0, id_is_set = 0;
+
+  if (unformat (input, "%U", unformat_stream_session_id, &proto, &lcl, &rmt,
+		&lcl_port, &rmt_port, &is_ip4))
+    {
+      id_is_set = 1;
+    }
+  else
+    return 0;
+
+  if (!id_is_set)
+    {
+      return 0;
+    }
+
+  s_type = session_type_from_proto_and_ip (proto, is_ip4);
+  if (is_ip4)
+    s = stream_session_lookup4 (&lcl.ip4, &rmt.ip4,
+				clib_host_to_net_u16 (lcl_port),
+				clib_host_to_net_u16 (rmt_port), s_type);
+  else
+    s = stream_session_lookup6 (&lcl.ip6, &rmt.ip6,
+				clib_host_to_net_u16 (lcl_port),
+				clib_host_to_net_u16 (rmt_port), s_type);
+  if (s)
+    {
+      *result = s;
+      return 1;
+    }
+  return 0;
+}
+
+uword
+unformat_transport_connection (unformat_input_t * input, va_list * args)
+{
+  transport_connection_t **result = va_arg (*args, transport_connection_t **);
+  u32 suggested_proto = va_arg (*args, u32);
+  transport_connection_t *tc;
+  u8 proto = ~0;
+  ip46_address_t lcl, rmt;
+  u32 lcl_port = 0, rmt_port = 0;
+  u8 is_ip4 = 0, s_type = ~0, id_is_set = 0;
+
+  if (unformat (input, "%U", unformat_stream_session_id, &proto, &lcl, &rmt,
+		&lcl_port, &rmt_port, &is_ip4))
+    {
+      id_is_set = 1;
+    }
+  else
+    return 0;
+
+  if (!id_is_set)
+    {
+      return 0;
+    }
+
+  proto = (proto == (u8) ~ 0) ? suggested_proto : proto;
+  if (proto == (u8) ~ 0)
+    return 0;
+  s_type = session_type_from_proto_and_ip (proto, is_ip4);
+  if (is_ip4)
+    tc = stream_session_lookup_transport4 (&lcl.ip4, &rmt.ip4,
+					   clib_host_to_net_u16 (lcl_port),
+					   clib_host_to_net_u16 (rmt_port),
+					   s_type);
+  else
+    tc = stream_session_lookup_transport6 (&lcl.ip6, &rmt.ip6,
+					   clib_host_to_net_u16 (lcl_port),
+					   clib_host_to_net_u16 (rmt_port),
+					   s_type);
+
+  if (tc)
+    {
+      *result = tc;
+      return 1;
+    }
+  return 0;
 }
 
 static clib_error_t *
@@ -95,13 +224,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int verbose = 0, i;
   stream_session_t *pool;
   stream_session_t *s;
-  u8 *str = 0, one_session = 0, proto_set = 0, proto = 0;
-  u8 is_ip4 = 0, s_type = 0;
-  ip4_address_t lcl_ip4, rmt_ip4;
-  u32 lcl_port = 0, rmt_port = 0;
-
-  memset (&lcl_ip4, 0, sizeof (lcl_ip4));
-  memset (&rmt_ip4, 0, sizeof (rmt_ip4));
+  u8 *str = 0, one_session = 0;
 
   if (!smm->is_enabled)
     {
@@ -114,40 +237,18 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (input, "verbose"))
 	verbose = 1;
-      else if (unformat (input, "tcp"))
-	{
-	  proto_set = 1;
-	  proto = TRANSPORT_PROTO_TCP;
-	}
-      else if (unformat (input, "%U:%d->%U:%d",
-			 unformat_ip4_address, &lcl_ip4, &lcl_port,
-			 unformat_ip4_address, &rmt_ip4, &rmt_port))
+      else if (unformat (input, "%U", unformat_stream_session, &s))
 	{
 	  one_session = 1;
-	  is_ip4 = 1;
 	}
-
       else
-	break;
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
     }
 
   if (one_session)
     {
-      if (!proto_set)
-	{
-	  vlib_cli_output (vm, "proto not set");
-	  return clib_error_return (0, "proto not set");
-	}
-
-      s_type = session_type_from_proto_and_ip (proto, is_ip4);
-      s = stream_session_lookup4 (&lcl_ip4, &rmt_ip4,
-				  clib_host_to_net_u16 (lcl_port),
-				  clib_host_to_net_u16 (rmt_port), s_type);
-      if (s)
-	vlib_cli_output (vm, "%U", format_stream_session, s, 2);
-      else
-	vlib_cli_output (vm, "session does not exist");
-
+      vlib_cli_output (vm, "%U", format_stream_session, s, 2);
       return 0;
     }
 
@@ -271,6 +372,103 @@ VLIB_CLI_COMMAND (clear_session_command, static) =
   .path = "clear session",
   .short_help = "clear session thread <thread> session <index>",
   .function = clear_session_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_session_fifo_trace_command_fn (vlib_main_t * vm,
+				    unformat_input_t * input,
+				    vlib_cli_command_t * cmd)
+{
+  stream_session_t *s = 0;
+  u8 is_rx = 0, *str = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_stream_session, &s))
+	;
+      else if (unformat (input, "rx"))
+	is_rx = 1;
+      else if (unformat (input, "tx"))
+	is_rx = 0;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (!SVM_FIFO_TRACE)
+    {
+      vlib_cli_output (vm, "fifo tracing not enabled");
+      return 0;
+    }
+
+  if (!s)
+    {
+      vlib_cli_output (vm, "could not find session");
+      return 0;
+    }
+
+  str = is_rx ?
+    svm_fifo_dump_trace (str, s->server_rx_fifo) :
+    svm_fifo_dump_trace (str, s->server_tx_fifo);
+
+  vlib_cli_output (vm, "%v", str);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_session_fifo_trace_command, static) =
+{
+  .path = "show session fifo trace",
+  .short_help = "show session fifo trace <session>",
+  .function = show_session_fifo_trace_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+session_replay_fifo_command_fn (vlib_main_t * vm, unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  stream_session_t *s = 0;
+  u8 is_rx = 0, *str = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_stream_session, &s))
+	;
+      else if (unformat (input, "rx"))
+	is_rx = 1;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (!SVM_FIFO_TRACE)
+    {
+      vlib_cli_output (vm, "fifo tracing not enabled");
+      return 0;
+    }
+
+  if (!s)
+    {
+      vlib_cli_output (vm, "could not find session");
+      return 0;
+    }
+
+  str = is_rx ?
+    svm_fifo_replay (str, s->server_rx_fifo, 0, 1) :
+    svm_fifo_replay (str, s->server_tx_fifo, 0, 1);
+
+  vlib_cli_output (vm, "%v", str);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (session_replay_fifo_trace_command, static) =
+{
+  .path = "session replay fifo",
+  .short_help = "session replay fifo <session>",
+  .function = session_replay_fifo_command_fn,
 };
 /* *INDENT-ON* */
 
