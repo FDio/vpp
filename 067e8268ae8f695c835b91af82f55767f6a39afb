@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_cd191a24",
+        "filename": "src/vlib/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-13T20:04:33Z",
+      "side": 1,
+      "message": "Please fix doxygen tag which describes the flags, and also please add a comment about the freelist being the low-order N bits, and that if someone decides to move them it will break things badly, unless they fix the inline you added.",
+      "revId": "067e8268ae8f695c835b91af82f55767f6a39afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_0d205248",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 109,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-13T20:04:33Z",
+      "side": 1,
+      "message": "See below. Maybe rename \"l\" to \"len\", so it doesn\u0027t look like the function always returns 1...",
+      "revId": "067e8268ae8f695c835b91af82f55767f6a39afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_ed1cd615",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-13T20:04:33Z",
+      "side": 1,
+      "message": "I did a quadruple-take because \u0027l\u0027 looks like \u00271\u0027",
+      "revId": "067e8268ae8f695c835b91af82f55767f6a39afb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
