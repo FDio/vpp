@@ -25,6 +25,7 @@
 #include <vnet/l2tp/l2tp.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/srv6/sr.h>
+#include <vnet/srmpls/sr_mpls.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
 #include <vnet/geneve/geneve.h>
 #include <vnet/classify/policer_classify.h>

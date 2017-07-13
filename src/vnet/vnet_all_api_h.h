@@ -53,6 +53,7 @@
 #include <vnet/session/session.api.h>
 #include <vnet/mpls/mpls.api.h>
 #include <vnet/srv6/sr.api.h>
+#include <vnet/srmpls/sr_mpls.api.h>
 #include <vnet/classify/classify.api.h>
 #include <vnet/flow/flow.api.h>
 #include <vnet/dhcp/dhcp.api.h>
