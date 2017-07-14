@@ -45,6 +45,52 @@
       "revId": "4273bde0a53f2de42bebdea09e0890caec2d4fe1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_839bf1c8",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 239,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-14T13:23:10Z",
+      "side": 1,
+      "message": "This should be i16 instead of u32",
+      "range": {
+        "startLine": 239,
+        "startChar": 6,
+        "endLine": 239,
+        "endChar": 9
+      },
+      "revId": "4273bde0a53f2de42bebdea09e0890caec2d4fe1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_c3b8c92c",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 243,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-14T13:23:10Z",
+      "side": 1,
+      "message": "I think this block of code would be more efficient if we do this:\nu8 l2_len \u003d (u8) b0-\u003ecurrent_data - eth_start;\nASSERT (l2_len \u003d\u003d ethernet_buffer_header_size (b0));\nvnet_buffer (b0)-\u003el2.l2_len \u003d l2_len;\nvlib_buffer_advance (b0, -l2_len);",
+      "range": {
+        "startLine": 243,
+        "startChar": 6,
+        "endLine": 243,
+        "endChar": 25
+      },
+      "revId": "4273bde0a53f2de42bebdea09e0890caec2d4fe1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
