@@ -66,7 +66,7 @@ l2fib_table_dump (u32 bd_index, l2fib_entry_key_t ** l2fe_key,
 {
   l2fib_main_t *msm = &l2fib_main;
   BVT (clib_bihash) * h = &msm->mac_table;
-  clib_bihash_bucket_t *b;
+  BVT (clib_bihash_bucket) * b;
   BVT (clib_bihash_value) * v;
   l2fib_entry_key_t key;
   l2fib_entry_result_t result;
@@ -108,7 +108,7 @@ show_l2fib (vlib_main_t * vm,
   l2fib_main_t *msm = &l2fib_main;
   l2_bridge_domain_t *bd_config;
   BVT (clib_bihash) * h = &msm->mac_table;
-  clib_bihash_bucket_t *b;
+  BVT (clib_bihash_bucket) * b;
   BVT (clib_bihash_value) * v;
   l2fib_entry_key_t key;
   l2fib_entry_result_t result;
@@ -961,7 +961,7 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
 	  if (i < (h->nbuckets - 3))
 	    {
-	      clib_bihash_bucket_t *b = &h->buckets[i + 3];
+	      BVT (clib_bihash_bucket) * b = &h->buckets[i + 3];
 	      CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
 	      b = &h->buckets[i + 1];
 	      if (b->offset)
@@ -972,7 +972,7 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 		}
 	    }
 
-	  clib_bihash_bucket_t *b = &h->buckets[i];
+	  BVT (clib_bihash_bucket) * b = &h->buckets[i];
 	  if (b->offset == 0)
 	    continue;
 	  BVT (clib_bihash_value) * v =
