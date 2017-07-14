@@ -237,11 +237,44 @@ test_bihash (test_main_t * tm)
 }
 
 clib_error_t *
+test_bihash_cache (test_main_t * tm)
+{
+  u32 lru;
+  BVT (clib_bihash_bucket) _b, *b = &_b;
+
+  BV (clib_bihash_reset_cache) (b);
+
+  fformat (stdout, "Initial LRU config: %U\n", BV (format_bihash_lru), b);
+
+  BV (clib_bihash_update_lru_not_inline) (b, 3);
+
+  fformat (stdout, "use slot 3, LRU config: %U\n", BV (format_bihash_lru), b);
+
+  BV (clib_bihash_update_lru) (b, 1);
+
+  fformat (stdout, "use slot 1 LRU config: %U\n", BV (format_bihash_lru), b);
+
+  lru = BV (clib_bihash_get_lru) (b);
+
+  fformat (stdout, "least-recently-used is %d\n", lru);
+
+  BV (clib_bihash_update_lru) (b, 4);
+
+  fformat (stdout, "use slot 4 LRU config: %U\n", BV (format_bihash_lru), b);
+
+  lru = BV (clib_bihash_get_lru) (b);
+
+  fformat (stdout, "least-recently-used is %d\n", lru);
+
+  return 0;
+}
+
+clib_error_t *
 test_bihash_main (test_main_t * tm)
 {
   unformat_input_t *i = tm->input;
   clib_error_t *error;
-  int test_vec64 = 0;
+  int which = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -261,7 +294,10 @@ test_bihash_main (test_main_t * tm)
       else if (unformat (i, "search %d", &tm->search_iter))
 	;
       else if (unformat (i, "vec64"))
-	test_vec64 = 1;
+	which = 1;
+      else if (unformat (i, "cache"))
+	which = 2;
+
       else if (unformat (i, "verbose"))
 	tm->verbose = 1;
       else
@@ -269,10 +305,23 @@ test_bihash_main (test_main_t * tm)
 				  format_unformat_error, i);
     }
 
-  if (test_vec64)
-    error = test_bihash_vec64 (tm);
-  else
-    error = test_bihash (tm);
+  switch (which)
+    {
+    case 0:
+      error = test_bihash (tm);
+      break;
+
+    case 1:
+      error = test_bihash_vec64 (tm);
+      break;
+
+    case 2:
+      error = test_bihash_cache (tm);
+      break;
+
+    default:
+      return clib_error_return (0, "no such test?");
+    }
 
   return error;
 }
