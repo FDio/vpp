@@ -13,9 +13,12 @@
  * limitations under the License.
  */
 #undef BIHASH_TYPE
+#undef BIHASH_KVP_CACHE_SIZE
+#undef BIHASH_KVP_PER_PAGE
 
 #define BIHASH_TYPE _16_8
 #define BIHASH_KVP_PER_PAGE 4
+#define BIHASH_KVP_CACHE_SIZE 5
 
 #ifndef __included_bihash_16_8_h__
 #define __included_bihash_16_8_h__

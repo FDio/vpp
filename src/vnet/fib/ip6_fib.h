@@ -68,7 +68,7 @@ ip6_fib_table_fwding_lookup (ip6_main_t * im,
                              u32 fib_index,
                              const ip6_address_t * dst)
 {
-    const ip6_fib_table_instance_t *table;
+    ip6_fib_table_instance_t *table;
     int i, len;
     int rv;
     BVT(clib_bihash_kv) kv, value;
