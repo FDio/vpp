@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_f05a6d4f",
+        "filename": "src/vnet/bfd/bfd_udp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 847,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-14T12:31:53Z",
+      "side": 1,
+      "message": "This is the current unchanged code. But the logic seems wrong to me. If start is less than 0, then it is definitely less than sizeof(b-\u003epre_data). I think it should be:\n  if (start \u003c 0 \u0026\u0026 start \u003c -(sizeof (b-\u003epre_data)))\nor simply:\n  if (start \u003c -(sizeof (b-\u003epre_data))\nWhat do you think?",
+      "range": {
+        "startLine": 847,
+        "startChar": 35,
+        "endLine": 847,
+        "endChar": 36
+      },
+      "revId": "4273bde0a53f2de42bebdea09e0890caec2d4fe1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_b054f521",
+        "filename": "src/vnet/bfd/bfd_udp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1004,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-14T12:31:53Z",
+      "side": 1,
+      "message": "Same comment as my previous one.",
+      "range": {
+        "startLine": 1004,
+        "startChar": 27,
+        "endLine": 1004,
+        "endChar": 33
+      },
+      "revId": "4273bde0a53f2de42bebdea09e0890caec2d4fe1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
