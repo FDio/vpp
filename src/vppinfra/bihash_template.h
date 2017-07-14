@@ -48,12 +48,10 @@ typedef struct BV (clib_bihash_value)
   };
 } BVT (clib_bihash_value);
 
-/*
- * This is shared across all uses of the template, so it needs
- * a "personal" #include recursion block
- */
-#ifndef __defined_clib_bihash_bucket_t__
-#define __defined_clib_bihash_bucket_t__
+#if BIHASH_KVP_CACHE_SIZE > 5
+#error Requested KVP cache LRU data exceeds 16 bits
+#endif
+
 typedef struct
 {
   union
@@ -62,34 +60,137 @@ typedef struct
     {
       u32 offset;
       u8 linear_search;
-      u8 pad[2];
       u8 log2_pages;
+      u16 cache_lru;
     };
     u64 as_u64;
   };
-} clib_bihash_bucket_t;
-#endif /* __defined_clib_bihash_bucket_t__ */
+    BVT (clib_bihash_kv) cache[BIHASH_KVP_CACHE_SIZE];
+} BVT (clib_bihash_bucket);
 
 typedef struct
 {
   BVT (clib_bihash_value) * values;
-  clib_bihash_bucket_t *buckets;
+  BVT (clib_bihash_bucket) * buckets;
   volatile u32 *writer_lock;
 
     BVT (clib_bihash_value) ** working_copies;
   int *working_copy_lengths;
-  clib_bihash_bucket_t saved_bucket;
+    BVT (clib_bihash_bucket) saved_bucket;
 
   u32 nbuckets;
   u32 log2_nbuckets;
   u32 linear_buckets;
   u8 *name;
 
+  u64 cache_hits;
+  u64 cache_misses;
+
     BVT (clib_bihash_value) ** freelists;
   void *mheap;
 
 } BVT (clib_bihash);
 
+
+static inline void
+BV (clib_bihash_update_lru) (BVT (clib_bihash_bucket) * b, u8 slot)
+{
+  u16 value, tmp, mask;
+  u8 found_lru_pos;
+  u16 save_hi;
+
+  if (BIHASH_KVP_CACHE_SIZE < 2)
+    return;
+
+  ASSERT (slot < BIHASH_KVP_CACHE_SIZE);
+
+  /* First, find the slot in cache_lru */
+  mask = slot;
+  if (BIHASH_KVP_CACHE_SIZE > 1)
+    mask |= slot << 3;
+  if (BIHASH_KVP_CACHE_SIZE > 2)
+    mask |= slot << 6;
+  if (BIHASH_KVP_CACHE_SIZE > 3)
+    mask |= slot << 9;
+  if (BIHASH_KVP_CACHE_SIZE > 4)
+    mask |= slot << 12;
+
+  value = b->cache_lru;
+  tmp = value ^ mask;
+
+  /* Already the most-recently used? */
+  if ((tmp & 7) == 0)
+    return;
+
+  found_lru_pos = ((tmp & (7 << 3)) == 0) ? 1 : 0;
+  if (BIHASH_KVP_CACHE_SIZE > 2)
+    found_lru_pos = ((tmp & (7 << 6)) == 0) ? 2 : found_lru_pos;
+  if (BIHASH_KVP_CACHE_SIZE > 3)
+    found_lru_pos = ((tmp & (7 << 9)) == 0) ? 3 : found_lru_pos;
+  if (BIHASH_KVP_CACHE_SIZE > 4)
+    found_lru_pos = ((tmp & (7 << 12)) == 0) ? 4 : found_lru_pos;
+
+  ASSERT (found_lru_pos);
+
+  /* create a mask to kill bits in or above slot */
+  mask = 0xFFFF << found_lru_pos;
+  mask <<= found_lru_pos;
+  mask <<= found_lru_pos;
+  mask ^= 0xFFFF;
+  tmp = value & mask;
+
+  /* Save bits above slot */
+  mask ^= 0xFFFF;
+  mask <<= 3;
+  save_hi = value & mask;
+
+  value = save_hi | (tmp << 3) | slot;
+
+  b->cache_lru = value;
+}
+
+void
+BV (clib_bihash_update_lru_not_inline) (BVT (clib_bihash_bucket) * b,
+					u8 slot);
+
+static inline u8 BV (clib_bihash_get_lru) (BVT (clib_bihash_bucket) * b)
+{
+  return (b->cache_lru >> (3 * (BIHASH_KVP_CACHE_SIZE - 1))) & 7;
+}
+
+static inline void BV (clib_bihash_reset_cache) (BVT (clib_bihash_bucket) * b)
+{
+  u16 initial_lru_value;
+
+  memset (b->cache, 0xff, sizeof (b->cache));
+
+  /*
+   * We'll want the cache to be loaded from slot 0 -> slot N, so
+   * the initial LRU order is reverse index order.
+   */
+  if (BIHASH_KVP_CACHE_SIZE == 1)
+    initial_lru_value = 0;
+  else if (BIHASH_KVP_CACHE_SIZE == 2)
+    initial_lru_value = (0 << 3) | (1 << 0);
+  else if (BIHASH_KVP_CACHE_SIZE == 3)
+    initial_lru_value = (0 << 6) | (1 << 3) | (2 << 0);
+  else if (BIHASH_KVP_CACHE_SIZE == 4)
+    initial_lru_value = (0 << 9) | (1 << 6) | (2 << 3) | (3 << 0);
+  else if (BIHASH_KVP_CACHE_SIZE == 5)
+    initial_lru_value = (0 << 12) | (1 << 9) | (2 << 6) | (3 << 3) | (4 << 0);
+
+  b->cache_lru = initial_lru_value;
+}
+
+static inline void BV (clib_bihash_cache_enable_disable)
+  (BVT (clib_bihash_bucket) * b, u8 enable)
+{
+  BVT (clib_bihash_bucket) tmp_b;
+  tmp_b.as_u64 = b->as_u64;
+  tmp_b.cache_lru &= 0x7FFF;
+  tmp_b.cache_lru |= enable << 15;
+  b->as_u64 = tmp_b.as_u64;
+}
 
 static inline void *BV (clib_bihash_get_value) (const BVT (clib_bihash) * h,
 						uword offset)
@@ -119,7 +220,7 @@ void BV (clib_bihash_free) (BVT (clib_bihash) * h);
 
 int BV (clib_bihash_add_del) (BVT (clib_bihash) * h,
 			      BVT (clib_bihash_kv) * add_v, int is_add);
-int BV (clib_bihash_search) (const BVT (clib_bihash) * h,
+int BV (clib_bihash_search) (BVT (clib_bihash) * h,
 			     BVT (clib_bihash_kv) * search_v,
 			     BVT (clib_bihash_kv) * return_v);
 
@@ -128,7 +229,7 @@ void BV (clib_bihash_foreach_key_value_pair) (BVT (clib_bihash) * h,
 
 format_function_t BV (format_bihash);
 format_function_t BV (format_bihash_kvp);
-
+format_function_t BV (format_bihash_lru);
 
 static inline int BV (clib_bihash_search_inline)
   (const BVT (clib_bihash) * h, BVT (clib_bihash_kv) * kvp)
@@ -136,7 +237,7 @@ static inline int BV (clib_bihash_search_inline)
   u64 hash;
   u32 bucket_index;
   BVT (clib_bihash_value) * v;
-  clib_bihash_bucket_t *b;
+  BVT (clib_bihash_bucket) * b;
   int i, limit;
 
   hash = BV (clib_bihash_hash) (kvp);
@@ -175,7 +276,7 @@ static inline int BV (clib_bihash_search_inline_2)
   u64 hash;
   u32 bucket_index;
   BVT (clib_bihash_value) * v;
-  clib_bihash_bucket_t *b;
+  BVT (clib_bihash_bucket) * b;
   int i, limit;
 
   ASSERT (valuep);

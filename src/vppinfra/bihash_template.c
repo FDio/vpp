@@ -19,12 +19,15 @@ void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size)
 {
   void *oldheap;
+  int i;
 
   nbuckets = 1 << (max_log2 (nbuckets));
 
   h->name = (u8 *) name;
   h->nbuckets = nbuckets;
   h->log2_nbuckets = max_log2 (nbuckets);
+  h->cache_hits = 0;
+  h->cache_misses = 0;
 
   h->mheap = mheap_alloc (0 /* use VM */ , memory_size);
 
@@ -32,6 +35,9 @@ void BV (clib_bihash_init)
   vec_validate_aligned (h->buckets, nbuckets - 1, CLIB_CACHE_LINE_BYTES);
   h->writer_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
 					   CLIB_CACHE_LINE_BYTES);
+
+  for (i = 0; i < nbuckets; i++)
+    BV (clib_bihash_reset_cache) (h->buckets + i);
 
   clib_mem_set_heap (oldheap);
 }
@@ -87,10 +93,10 @@ BV (value_free) (BVT (clib_bihash) * h, BVT (clib_bihash_value) * v,
 }
 
 static inline void
-BV (make_working_copy) (BVT (clib_bihash) * h, clib_bihash_bucket_t * b)
+BV (make_working_copy) (BVT (clib_bihash) * h, BVT (clib_bihash_bucket) * b)
 {
   BVT (clib_bihash_value) * v;
-  clib_bihash_bucket_t working_bucket __attribute__ ((aligned (8)));
+  BVT (clib_bihash_bucket) working_bucket __attribute__ ((aligned (8)));
   void *oldheap;
   BVT (clib_bihash_value) * working_copy;
   u32 thread_index = os_get_thread_index ();
@@ -128,6 +134,9 @@ BV (make_working_copy) (BVT (clib_bihash) * h, clib_bihash_bucket_t * b)
     }
 
   clib_mem_set_heap (oldheap);
+
+  /* Turn off the cache */
+  BV (clib_bihash_cache_enable_disable) (b, 0);
 
   v = BV (clib_bihash_get_value) (h, b->offset);
 
@@ -235,7 +244,7 @@ int BV (clib_bihash_add_del)
   (BVT (clib_bihash) * h, BVT (clib_bihash_kv) * add_v, int is_add)
 {
   u32 bucket_index;
-  clib_bihash_bucket_t *b, tmp_b;
+  BVT (clib_bihash_bucket) * b, tmp_b;
   BVT (clib_bihash_value) * v, *new_v, *save_new_v, *working_copy;
   int rv = 0;
   int i, limit;
@@ -276,6 +285,7 @@ int BV (clib_bihash_add_del)
       goto unlock;
     }
 
+  /* Note: this leaves the cache disabled */
   BV (make_working_copy) (h, b);
 
   v = BV (clib_bihash_get_value) (h, h->saved_bucket.offset);
@@ -405,19 +415,22 @@ expand_ok:
   BV (value_free) (h, v, old_log2_pages);
 
 unlock:
+  BV (clib_bihash_reset_cache) (b);
+  BV (clib_bihash_cache_enable_disable) (b, 1 /* enable */ );
   CLIB_MEMORY_BARRIER ();
   h->writer_lock[0] = 0;
   return rv;
 }
 
 int BV (clib_bihash_search)
-  (const BVT (clib_bihash) * h,
+  (BVT (clib_bihash) * h,
    BVT (clib_bihash_kv) * search_key, BVT (clib_bihash_kv) * valuep)
 {
   u64 hash;
   u32 bucket_index;
   BVT (clib_bihash_value) * v;
-  clib_bihash_bucket_t *b;
+  BVT (clib_bihash_kv) * kvp;
+  BVT (clib_bihash_bucket) * b;
   int i, limit;
 
   ASSERT (valuep);
@@ -429,6 +442,22 @@ int BV (clib_bihash_search)
 
   if (b->offset == 0)
     return -1;
+
+  /* Check the cache, if currently enabled */
+  if (PREDICT_TRUE (b->cache_lru & (1 << 15)))
+    {
+      limit = BIHASH_KVP_CACHE_SIZE;
+      kvp = b->cache;
+      for (i = 0; i < limit; i++)
+	{
+	  if (BV (clib_bihash_key_compare) (kvp[i].key, search_key->key))
+	    {
+	      *valuep = kvp[i];
+	      h->cache_hits++;
+	      return 0;
+	    }
+	}
+    }
 
   hash >>= h->log2_nbuckets;
 
@@ -442,18 +471,50 @@ int BV (clib_bihash_search)
     {
       if (BV (clib_bihash_key_compare) (v->kvp[i].key, search_key->key))
 	{
+	  u8 cache_slot;
 	  *valuep = v->kvp[i];
+
+	  /* Shut off the cache */
+	  BV (clib_bihash_cache_enable_disable) (b, 0);
+	  CLIB_MEMORY_BARRIER ();
+
+	  cache_slot = BV (clib_bihash_get_lru) (b);
+	  b->cache[cache_slot] = v->kvp[i];
+	  BV (clib_bihash_update_lru) (b, cache_slot);
+
+	  /* Reenable the cache */
+	  BV (clib_bihash_cache_enable_disable) (b, 1);
+	  h->cache_misses++;
 	  return 0;
 	}
     }
   return -1;
 }
 
+u8 *BV (format_bihash_lru) (u8 * s, va_list * args)
+{
+  int i;
+  BVT (clib_bihash_bucket) * b = va_arg (*args, BVT (clib_bihash_bucket) *);
+  u16 cache_lru = b->cache_lru;
+
+  s = format (s, "cache %s, order ", cache_lru & (1 << 15) ? "on" : "off");
+
+  for (i = 0; i < BIHASH_KVP_CACHE_SIZE; i++)
+    s = format (s, "[%d] ", ((cache_lru >> (3 * i)) & 7));
+  return (s);
+}
+
+void
+BV (clib_bihash_update_lru_not_inline) (BVT (clib_bihash_bucket) * b, u8 slot)
+{
+  BV (clib_bihash_update_lru) (b, slot);
+}
+
 u8 *BV (format_bihash) (u8 * s, va_list * args)
 {
   BVT (clib_bihash) * h = va_arg (*args, BVT (clib_bihash) *);
   int verbose = va_arg (*args, int);
-  clib_bihash_bucket_t *b;
+  BVT (clib_bihash_bucket) * b;
   BVT (clib_bihash_value) * v;
   int i, j, k;
   u64 active_elements = 0;
@@ -503,7 +564,8 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
   s = format (s, "    %lld active elements\n", active_elements);
   s = format (s, "    %d free lists\n", vec_len (h->freelists));
   s = format (s, "    %d linear search buckets\n", h->linear_buckets);
-
+  s = format (s, "    %lld cache hits, %lld cache misses\n",
+	      h->cache_hits, h->cache_misses);
   return s;
 }
 
@@ -511,7 +573,7 @@ void BV (clib_bihash_foreach_key_value_pair)
   (BVT (clib_bihash) * h, void *callback, void *arg)
 {
   int i, j, k;
-  clib_bihash_bucket_t *b;
+  BVT (clib_bihash_bucket) * b;
   BVT (clib_bihash_value) * v;
   void (*fp) (BVT (clib_bihash_kv) *, void *) = callback;
 
