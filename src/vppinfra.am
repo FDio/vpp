@@ -42,6 +42,8 @@ TESTS  +=  test_bihash_template \
 	   test_zvec
 endif
 
+TESTS += test_bihash_template
+
 noinst_PROGRAMS = $(TESTS)
 check_PROGRAMS	= $(TESTS)
 

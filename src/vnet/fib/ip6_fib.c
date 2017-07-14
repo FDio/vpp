@@ -200,7 +200,7 @@ ip6_fib_table_lookup (u32 fib_index,
 		      const ip6_address_t *addr,
 		      u32 len)
 {
-    const ip6_fib_table_instance_t *table;
+    ip6_fib_table_instance_t *table;
     BVT(clib_bihash_kv) kv, value;
     int i, n_p, rv;
     u64 fib;
@@ -246,7 +246,7 @@ ip6_fib_table_lookup_exact_match (u32 fib_index,
 				  const ip6_address_t *addr,
 				  u32 len)
 {
-    const ip6_fib_table_instance_t *table;
+    ip6_fib_table_instance_t *table;
     BVT(clib_bihash_kv) kv, value;
     ip6_address_t *mask;
     u64 fib;
