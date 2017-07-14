@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_e3e3c503",
+        "filename": "src/vnet/buffer.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-14T16:34:00Z",
+      "side": 1,
+      "message": "Maybe call these bits OFFLOAD_xxx or NEEDS_xxx instead of MISSING_xxx?\n\nYour call...",
+      "revId": "a53ec940c8e5c73db46e7ae36136b5a9675da53d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_c3f0c9cb",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 2460,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-14T16:34:00Z",
+      "side": 1,
+      "message": "Good catch...",
+      "revId": "a53ec940c8e5c73db46e7ae36136b5a9675da53d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
