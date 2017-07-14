@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "7a51691d_e3abc5d4",
+        "filename": "src/vnet/ethernet/p2p_ethernet.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 43,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2017-07-14T13:23:06Z",
+      "side": 1,
+      "message": "I will remove this part, and I will update API to make sub-id mandatory so looking for free sub-id will not be necessary.\n\nI check both p2p and vlan on main intf and it works.",
+      "parentUuid": "ba57610f_c8d7cfbe",
+      "range": {
+        "startLine": 36,
+        "startChar": 1,
+        "endLine": 43,
+        "endChar": 5
+      },
+      "revId": "0bbfde309a9c4cd85f91ef6b7db4bc7719663d4b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "ba57610f_a8e49bac",
         "filename": "src/vnet/interface.c",
         "patchSetId": 3
