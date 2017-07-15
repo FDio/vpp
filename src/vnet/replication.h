@@ -27,8 +27,8 @@
 typedef struct
 {
   /* The entire vnet buffer header restored for each replica */
-  u8 vnet_buffer[32];		/* 16B aligned to allow vector unit copy */
-  u8 reserved[32];		/* space for future expansion of vnet buffer header */
+  u8 vnet_buffer[40];		/* 16B aligned to allow vector unit copy */
+  u8 reserved[24];		/* space for future expansion of vnet buffer header */
 
   /* feature state used during this replication */
   u64 feature_replicas;		/* feature's id for its set of replicas */
