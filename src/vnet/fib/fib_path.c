@@ -196,9 +196,15 @@ typedef struct fib_path_t_ {
     fib_protocol_t fp_nh_proto;
 
     /**
-     * UCMP [unnormalised] weigt
+     * UCMP [unnormalised] weigth
      */
-    u32 fp_weight;
+    u16 fp_weight;
+    /**
+     * A path preference. 0 is the best.
+     * Only paths of the best preference, that are 'up', are considered
+     * for forwarding.
+     */
+    u16 fp_preference;
 
     /**
      * per-type union of the data required to resolve the path
@@ -376,6 +382,7 @@ format_fib_path (u8 * s, va_list * args)
     s = format (s, "pl-index:%d ", path->fp_pl_index);
     s = format (s, "%U ", format_fib_protocol, path->fp_nh_proto);
     s = format (s, "weight=%d ", path->fp_weight);
+    s = format (s, "pref=%d ", path->fp_preference);
     s = format (s, "%s: ", fib_path_type_names[path->fp_type]);
     if (FIB_PATH_OPER_FLAG_NONE != path->fp_oper_flags) {
 	s = format(s, " oper-flags:");
@@ -697,6 +704,14 @@ fib_path_recursive_adj_update (fib_path_t *path,
          * PIC edge trigger. let the load-balance maps know
          */
         load_balance_map_path_state_change(fib_path_get_index(path));
+    }
+
+    /*
+     * If this path is contributing a drop, then it's not resolved
+     */
+    if (dpo_is_drop(&via_dpo) || load_balance_is_drop(&via_dpo))
+    {
+        path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
     }
 
     /*
@@ -1071,6 +1086,7 @@ fib_path_create (fib_node_index_t pl_index,
          */
         path->fp_weight = 1;
     }
+    path->fp_preference = rpath->frp_preference;
     path->fp_cfg_flags = fib_path_route_flags_to_cfg_flags(rpath);
 
     /*
@@ -1165,6 +1181,7 @@ fib_path_create_special (fib_node_index_t pl_index,
 
     path->fp_pl_index = pl_index;
     path->fp_weight = 1;
+    path->fp_preference = 0;
     path->fp_nh_proto = nh_proto;
     path->fp_via_fib = FIB_NODE_INDEX_INVALID;
     path->fp_cfg_flags = flags;
@@ -1275,7 +1292,7 @@ fib_path_cmp_i (const fib_path_t *path1,
 
     /*
      * paths of different types and protocol are not equal.
-     * different weights only are the same path.
+     * different weights and/or preference only are the same path.
      */
     if (path1->fp_type != path2->fp_type)
     {
@@ -1349,6 +1366,15 @@ fib_path_cmp_for_sort (void * v1,
 
     path1 = fib_path_get(*pi1);
     path2 = fib_path_get(*pi2);
+
+    /*
+     * when sorting paths we want the highest preference paths
+     * first, so that the choices set built is in prefernce order
+     */
+    if (path1->fp_preference != path2->fp_preference)
+    {
+	return (path1->fp_preference - path2->fp_preference);
+    }
 
     return (fib_path_cmp_i(path1, path2));
 }
@@ -1750,7 +1776,7 @@ fib_path_get_adj (fib_node_index_t path_index)
     return (ADJ_INDEX_INVALID);
 }
 
-int
+u16
 fib_path_get_weight (fib_node_index_t path_index)
 {
     fib_path_t *path;
@@ -1760,6 +1786,18 @@ fib_path_get_weight (fib_node_index_t path_index)
     ASSERT(path);
 
     return (path->fp_weight);
+}
+
+u16
+fib_path_get_preference (fib_node_index_t path_index)
+{
+    fib_path_t *path;
+
+    path = fib_path_get(path_index);
+
+    ASSERT(path);
+
+    return (path->fp_preference);
 }
 
 /**
@@ -2116,6 +2154,7 @@ fib_path_encode (fib_node_index_t path_list_index,
       return (FIB_PATH_LIST_WALK_CONTINUE);
     vec_add2(*api_rpaths, api_rpath, 1);
     api_rpath->rpath.frp_weight = path->fp_weight;
+    api_rpath->rpath.frp_preference = path->fp_preference;
     api_rpath->rpath.frp_proto = path->fp_nh_proto;
     api_rpath->rpath.frp_sw_if_index = ~0;
     api_rpath->dpo = path->exclusive.fp_ex_dpo;

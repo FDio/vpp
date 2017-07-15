@@ -31,6 +31,7 @@ define ip_fib_dump
 /** \brief FIB path
     @param sw_if_index - index of the interface
     @param weight - The weight, for UCMP
+    @param preference - The preference of the path. lowest preference is prefered
     @param is_local - local if non-zero, else remote
     @param is_drop - Drop the packet
     @param is_unreach - Drop the packet and rate limit send ICMP unreachable
@@ -43,7 +44,8 @@ define ip_fib_dump
 typeonly manual_print manual_endian define fib_path
 {
   u32 sw_if_index;
-  u32 weight;
+  u8 weight;
+  u8 preference;
   u8 is_local;
   u8 is_drop;
   u8 is_unreach;
@@ -374,6 +376,7 @@ autoreply define ip_add_del_route
   /* Is last/not-last message in group of multiple add/del messages. */
   u8 not_last;
   u8 next_hop_weight;
+  u8 next_hop_preference;
   u8 dst_address_length;
   u8 dst_address[16];
   u8 next_hop_address[16];
