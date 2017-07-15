@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_a354ad21",
+        "filename": "src/vlibmemory/unix_shared_memory_queue.c",
+        "patchSetId": 40
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-15T13:38:12Z",
+      "side": 1,
+      "message": "Are these checks needed in production images?\n\nPlease do not place executable code before variable declarations.",
+      "revId": "a8e8d61582a677bdbfd313b9e65fbca6519ed6b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_8331b10d",
+        "filename": "src/vlibmemory/unix_shared_memory_queue.h",
+        "patchSetId": 40
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-15T13:38:12Z",
+      "side": 1,
+      "message": "This name is not descriptive. Please substitute \u003csomething-which-describes-it\u003e for \"custom\".",
+      "revId": "a8e8d61582a677bdbfd313b9e65fbca6519ed6b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
