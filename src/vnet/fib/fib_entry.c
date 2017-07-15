@@ -1373,7 +1373,7 @@ fib_entry_is_resolved (fib_node_index_t fib_entry_index)
     if (NULL == fed)
     {
         /*
-         * no BFD tracking - resolved
+         * no BFD tracking - consider it resolved.
          */
         return (!0);
     }

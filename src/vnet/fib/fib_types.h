@@ -380,7 +380,13 @@ typedef struct fib_route_path_t_ {
     /**
      * [un]equal cost path weight
      */
-    u32 frp_weight;
+    u16 frp_weight;
+    /**
+     * A path preference. 0 is the best.
+     * Only paths of the best preference, that are 'up', are considered
+     * for forwarding.
+     */
+    u16 frp_preference;
     /**
      * flags on the path
      */

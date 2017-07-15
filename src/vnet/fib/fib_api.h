@@ -47,7 +47,8 @@ add_del_route_t_handler (u8 is_multipath,
 			 const ip46_address_t * next_hop,
 			 u32 next_hop_sw_if_index,
 			 u8 next_hop_fib_index,
-			 u32 next_hop_weight,
+			 u16 next_hop_weight,
+			 u16 next_hop_preference,
 			 mpls_label_t next_hop_via_label,
 			 mpls_label_t * next_hop_out_label_stack);
 
