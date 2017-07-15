@@ -193,6 +193,7 @@ typedef struct fib_entry_src_collect_forwarding_ctx_t_
     const fib_entry_src_t *esrc;
     fib_forward_chain_type_t fct;
     int n_recursive_constrained;
+    u16 preference;
 } fib_entry_src_collect_forwarding_ctx_t;
 
 /**
@@ -351,6 +352,22 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
     {
         ctx->n_recursive_constrained += 1;
     }
+    if (0xffff == ctx->preference)
+    {
+        /*
+         * not set a preference yet, so the first path we encounter
+         * sets the preference we are collecting.
+         */
+        ctx->preference = fib_path_get_preference(path_index);
+    }
+    else if (ctx->preference != fib_path_get_preference(path_index))
+    {
+        /*
+         * this path does not belong to the same preference as the
+         * previous paths encountered. we are done now.
+         */
+        return (FIB_PATH_LIST_WALK_STOP);
+    }
 
     /*
      * get the matching path-extension for the path being visited.
@@ -422,6 +439,7 @@ fib_entry_src_mk_lb (fib_entry_t *fib_entry,
         .next_hops = NULL,
         .n_recursive_constrained = 0,
         .fct = fct,
+        .preference = 0xffff,
     };
 
     /*

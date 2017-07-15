@@ -360,6 +360,7 @@ vnet_ip_route_cmd (vlib_main_t * vm,
   fib_prefix_t *prefixs = NULL, pfx;
   mpls_label_t out_label, via_label;
   clib_error_t *error = NULL;
+  u32 weight, preference;
   u32 table_id, is_del;
   vnet_main_t *vnm;
   u32 fib_index;
@@ -441,26 +442,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  vec_add1 (prefixs, pfx);
 	}
-      else if (unformat (line_input, "via %U %U weight %u",
-			 unformat_ip4_address,
-			 &rpath.frp_addr.ip4,
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index, &rpath.frp_weight))
-	{
-	  rpath.frp_proto = FIB_PROTOCOL_IP4;
-	  vec_add1 (rpaths, rpath);
-	}
-
-      else if (unformat (line_input, "via %U %U weight %u",
-			 unformat_ip6_address,
-			 &rpath.frp_addr.ip6,
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index, &rpath.frp_weight))
-	{
-	  rpath.frp_proto = FIB_PROTOCOL_IP6;
-	  vec_add1 (rpaths, rpath);
-	}
-
       else if (unformat (line_input, "via %U %U",
 			 unformat_ip4_address,
 			 &rpath.frp_addr.ip4,
@@ -481,6 +462,16 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  rpath.frp_weight = 1;
 	  rpath.frp_proto = FIB_PROTOCOL_IP6;
 	  vec_add1 (rpaths, rpath);
+	}
+      else if (unformat (line_input, "weight %u", &weight))
+	{
+	  ASSERT (vec_len (rpaths));
+	  rpaths[vec_len (rpaths) - 1].frp_weight = weight;
+	}
+      else if (unformat (line_input, "preference %u", &preference))
+	{
+	  ASSERT (vec_len (rpaths));
+	  rpaths[vec_len (rpaths) - 1].frp_preference = preference;
 	}
       else if (unformat (line_input, "via %U next-hop-table %d",
 			 unformat_ip4_address,

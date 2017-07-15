@@ -680,6 +680,16 @@ fib_path_list_create (fib_path_list_flags_t flags,
                      fib_path_create(path_list_index,
                                      &rpaths[i]));
         }
+        /*
+         * we sort the paths since the key for the path-list is
+         * the description of the paths it contains. The paths need to
+         * be sorted else this description will differ.
+         */
+        if (vec_len(path_list->fpl_paths) > 1)
+        {
+            vec_sort_with_function(path_list->fpl_paths,
+                                   fib_path_cmp_for_sort);
+        }
     }
 
     /*

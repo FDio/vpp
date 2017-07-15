@@ -206,6 +206,7 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
 				   &nh, ntohl (mp->mr_next_hop_sw_if_index),
 				   next_hop_fib_index,
 				   mp->mr_next_hop_weight,
+				   mp->mr_next_hop_preference,
 				   ntohl (mp->mr_next_hop_via_label),
 				   label_stack));
 }
