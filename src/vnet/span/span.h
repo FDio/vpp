@@ -18,17 +18,32 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
+#include <vnet/l2/l2_output.h>
+
+typedef enum
+{
+  SPAN_FEAT_DEVICE,
+  SPAN_FEAT_L2,
+  SPAN_FEAT_N
+} span_feat_t;
 
 typedef struct
 {
-  clib_bitmap_t *rx_mirror_ports;
-  clib_bitmap_t *tx_mirror_ports;
-  u32 num_rx_mirror_ports;
-  u32 num_tx_mirror_ports;
+  clib_bitmap_t *mirror_ports;
+  u32 num_mirror_ports;
+} span_mirror_t;
+
+typedef struct
+{
+  span_mirror_t mirror_rxtx[SPAN_FEAT_N][VLIB_N_RX_TX];
 } span_interface_t;
 
 typedef struct
 {
+  /* l2 feature Next nodes */
+  u32 l2_input_next[32];
+  u32 l2_output_next[32];
+
   /* per-interface vector of span instances */
   span_interface_t *interfaces;
 
@@ -52,7 +67,7 @@ typedef struct
 
 int
 span_add_delete_entry (vlib_main_t * vm, u32 src_sw_if_index,
-		       u32 dst_sw_if_index, u8 is_add);
+		       u32 dst_sw_if_index, u8 state, span_feat_t sf);
 /*
  * fd.io coding-style-patch-verification: ON
  *
