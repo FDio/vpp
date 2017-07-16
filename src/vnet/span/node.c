@@ -18,6 +18,9 @@
 #include <vppinfra/error.h>
 
 #include <vnet/span/span.h>
+#include <vnet/l2/l2_input.h>
+#include <vnet/l2/l2_output.h>
+#include <vnet/l2/feat_bitmap.h>
 
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
@@ -59,21 +62,19 @@ static char *span_error_strings[] = {
 
 static_always_inline void
 span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
-	     vlib_buffer_t * b0, vlib_frame_t ** mirror_frames, int is_rx)
+	     vlib_buffer_t * b0, vlib_frame_t ** mirror_frames,
+	     vlib_rx_or_tx_t rxtx, span_feat_t sf)
 {
   vlib_buffer_t *c0;
   span_main_t *sm = &span_main;
   vnet_main_t *vnm = &vnet_main;
-  span_interface_t *si0 = 0;
   u32 *to_mirror_next = 0;
   u32 i;
 
-  si0 = vec_elt_at_index (sm->interfaces, sw_if_index0);
+  span_interface_t *si0 = vec_elt_at_index (sm->interfaces, sw_if_index0);
+  span_mirror_t *sm0 = &si0->mirror_rxtx[sf][rxtx];
 
-  if (is_rx != 0 && si0->num_rx_mirror_ports == 0)
-    return;
-
-  if (is_rx == 0 && si0->num_tx_mirror_ports == 0)
+  if (sm0->num_mirror_ports == 0)
     return;
 
   /* Don't do it again */
@@ -81,10 +82,15 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
     return;
 
   /* *INDENT-OFF* */
-  clib_bitmap_foreach (i, is_rx ? si0->rx_mirror_ports : si0->tx_mirror_ports, (
+  clib_bitmap_foreach (i, sm0->mirror_ports, (
     {
       if (mirror_frames[i] == 0)
-	mirror_frames[i] = vnet_get_frame_to_sw_interface (vnm, i);
+        {
+          if (sf == SPAN_FEAT_L2)
+            mirror_frames[i] = vlib_get_frame_to_node (vnm->vlib_main, l2output_node.index);
+          else
+            mirror_frames[i] = vnet_get_frame_to_sw_interface (vnm, i);
+	}
       to_mirror_next = vlib_frame_vector_args (mirror_frames[i]);
       to_mirror_next += mirror_frames[i]->n_vectors;
       /* This can fail */
@@ -93,6 +99,8 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
         {
           vnet_buffer (c0)->sw_if_index[VLIB_TX] = i;
           c0->flags |= VNET_BUFFER_F_SPAN_CLONE;
+          if (sf == SPAN_FEAT_L2)
+	    vnet_buffer (c0)->l2.feature_bitmap = L2OUTPUT_FEAT_OUTPUT;
           to_mirror_next[0] = vlib_get_buffer_index (vm, c0);
           mirror_frames[i]->n_vectors++;
           if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -108,7 +116,8 @@ span_mirror (vlib_main_t * vm, vlib_node_runtime_t * node, u32 sw_if_index0,
 
 static_always_inline uword
 span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     vlib_frame_t * frame, int is_rx)
+		     vlib_frame_t * frame, vlib_rx_or_tx_t rxtx,
+		     span_feat_t sf)
 {
   span_main_t *sm = &span_main;
   vnet_main_t *vnm = &vnet_main;
@@ -117,7 +126,6 @@ span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 next_index;
   u32 sw_if_index;
   static __thread vlib_frame_t **mirror_frames = 0;
-  vlib_rx_or_tx_t rxtx = is_rx ? VLIB_RX : VLIB_TX;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -156,11 +164,33 @@ span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[rxtx];
 	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[rxtx];
 
-	  span_mirror (vm, node, sw_if_index0, b0, mirror_frames, is_rx);
-	  span_mirror (vm, node, sw_if_index1, b1, mirror_frames, is_rx);
+	  span_mirror (vm, node, sw_if_index0, b0, mirror_frames, rxtx, sf);
+	  span_mirror (vm, node, sw_if_index1, b1, mirror_frames, rxtx, sf);
 
-	  vnet_feature_next (sw_if_index0, &next0, b0);
-	  vnet_feature_next (sw_if_index1, &next1, b1);
+	  switch (sf)
+	    {
+	    case SPAN_FEAT_L2:
+	      if (rxtx == VLIB_RX)
+		{
+		  next0 = vnet_l2_feature_next (b0, sm->l2_input_next,
+						L2INPUT_FEAT_SPAN);
+		  next1 = vnet_l2_feature_next (b1, sm->l2_input_next,
+						L2INPUT_FEAT_SPAN);
+		}
+	      else
+		{
+		  next0 = vnet_l2_feature_next (b0, sm->l2_output_next,
+						L2OUTPUT_FEAT_SPAN);
+		  next1 = vnet_l2_feature_next (b1, sm->l2_output_next,
+						L2OUTPUT_FEAT_SPAN);
+		}
+	      break;
+	    case SPAN_FEAT_DEVICE:
+	    default:
+	      vnet_feature_next (sw_if_index0, &next0, b0);
+	      vnet_feature_next (sw_if_index1, &next1, b1);
+	      break;
+	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -184,9 +214,23 @@ span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[rxtx];
 
-	  span_mirror (vm, node, sw_if_index0, b0, mirror_frames, is_rx);
+	  span_mirror (vm, node, sw_if_index0, b0, mirror_frames, rxtx, sf);
 
-	  vnet_feature_next (sw_if_index0, &next0, b0);
+	  switch (sf)
+	    {
+	    case SPAN_FEAT_L2:
+	      if (rxtx == VLIB_RX)
+		next0 = vnet_l2_feature_next (b0, sm->l2_input_next,
+					      L2INPUT_FEAT_SPAN);
+	      else
+		next0 = vnet_l2_feature_next (b0, sm->l2_output_next,
+					      L2OUTPUT_FEAT_SPAN);
+	      break;
+	    case SPAN_FEAT_DEVICE:
+	    default:
+	      vnet_feature_next (sw_if_index0, &next0, b0);
+	      break;
+	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
@@ -199,11 +243,14 @@ span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   for (sw_if_index = 0; sw_if_index < vec_len (mirror_frames); sw_if_index++)
     {
-      if (mirror_frames[sw_if_index] == 0)
+      vlib_frame_t *f = mirror_frames[sw_if_index];
+      if (f == 0)
 	continue;
 
-      vnet_put_frame_to_sw_interface (vnm, sw_if_index,
-				      mirror_frames[sw_if_index]);
+      if (sf == SPAN_FEAT_L2)
+	vlib_put_frame_to_node (vnm->vlib_main, l2output_node.index, f);
+      else
+	vnet_put_frame_to_sw_interface (vnm, sw_if_index, f);
       mirror_frames[sw_if_index] = 0;
     }
   vlib_node_increment_counter (vm, span_node.index, SPAN_ERROR_HITS,
@@ -213,62 +260,103 @@ span_node_inline_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 static uword
-span_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		    vlib_frame_t * frame)
+span_device_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			   vlib_frame_t * frame)
 {
-  return span_node_inline_fn (vm, node, frame, 1);
+  return span_node_inline_fn (vm, node, frame, VLIB_RX, SPAN_FEAT_DEVICE);
 }
 
 static uword
-span_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		     vlib_frame_t * frame)
+span_device_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			    vlib_frame_t * frame)
 {
-  return span_node_inline_fn (vm, node, frame, 0);
+  return span_node_inline_fn (vm, node, frame, VLIB_TX, SPAN_FEAT_DEVICE);
 }
+
+static uword
+span_l2_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+		       vlib_frame_t * frame)
+{
+  return span_node_inline_fn (vm, node, frame, VLIB_RX, SPAN_FEAT_L2);
+}
+
+static uword
+span_l2_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			vlib_frame_t * frame)
+{
+  return span_node_inline_fn (vm, node, frame, VLIB_TX, SPAN_FEAT_L2);
+}
+
+#define span_node_defs                           \
+  .vector_size = sizeof (u32),                   \
+  .format_trace = format_span_trace,             \
+  .type = VLIB_NODE_TYPE_INTERNAL,               \
+  .n_errors = ARRAY_LEN(span_error_strings),     \
+  .error_strings = span_error_strings,           \
+  .n_next_nodes = 0,                             \
+  .next_nodes = {                                \
+    [0] = "error-drop"                           \
+  }
 
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (span_input_node) = {
-  .function = span_input_node_fn,
+  span_node_defs,
+  .function = span_device_input_node_fn,
   .name = "span-input",
-  .vector_size = sizeof (u32),
-  .format_trace = format_span_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = ARRAY_LEN(span_error_strings),
-  .error_strings = span_error_strings,
-
-  .n_next_nodes = 0,
-
-  /* edit / add dispositions here */
-  .next_nodes = {
-    [0] = "error-drop",
-  },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (span_input_node, span_input_node_fn)
+VLIB_NODE_FUNCTION_MULTIARCH (span_input_node, span_device_input_node_fn)
 
 VLIB_REGISTER_NODE (span_output_node) = {
-  .function = span_output_node_fn,
+  span_node_defs,
+  .function = span_device_output_node_fn,
   .name = "span-output",
-  .vector_size = sizeof (u32),
-  .format_trace = format_span_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-
-  .n_errors = ARRAY_LEN(span_error_strings),
-  .error_strings = span_error_strings,
-
-  .n_next_nodes = 0,
-
-  /* edit / add dispositions here */
-  .next_nodes = {
-    [0] = "error-drop",
-  },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (span_output_node, span_output_node_fn)
+VLIB_NODE_FUNCTION_MULTIARCH (span_output_node, span_device_output_node_fn)
 
+VLIB_REGISTER_NODE (span_l2_input_node) = {
+  span_node_defs,
+  .function = span_l2_input_node_fn,
+  .name = "span-l2-input",
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (span_l2_input_node, span_l2_input_node_fn)
+
+VLIB_REGISTER_NODE (span_l2_output_node) = {
+  span_node_defs,
+  .function = span_l2_output_node_fn,
+  .name = "span-l2-output",
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (span_l2_output_node, span_l2_output_node_fn)
+
+clib_error_t *span_init (vlib_main_t * vm)
+{
+  span_main_t *sm = &span_main;
+
+  sm->vlib_main = vm;
+  sm->vnet_main = vnet_get_main ();
+
+  /* Initialize the feature next-node indexes */
+  feat_bitmap_init_next_nodes (vm,
+			       span_l2_input_node.index,
+			       L2INPUT_N_FEAT,
+			       l2input_get_feat_names (),
+			       sm->l2_input_next);
+
+  feat_bitmap_init_next_nodes (vm,
+			       span_l2_output_node.index,
+			       L2OUTPUT_N_FEAT,
+			       l2output_get_feat_names (),
+			       sm->l2_output_next);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (span_init);
 /* *INDENT-ON* */
 
+#undef span_node_defs
 /*
  * fd.io coding-style-patch-verification: ON
  *

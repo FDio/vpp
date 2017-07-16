@@ -195,8 +195,6 @@ l2output_vtr (vlib_node_runtime_t * node, l2_output_config_t * config,
 }
 
 
-static vlib_node_registration_t l2output_node;
-
 static_always_inline uword
 l2output_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      vlib_frame_t * frame, int do_trace)
@@ -477,7 +475,7 @@ l2output_node_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2output_node,static) = {
+VLIB_REGISTER_NODE (l2output_node) = {
   .function = l2output_node_fn,
   .name = "l2-output",
   .vector_size = sizeof (u32),
@@ -495,6 +493,8 @@ VLIB_REGISTER_NODE (l2output_node,static) = {
         [L2OUTPUT_NEXT_BAD_INTF] = "l2-output-bad-intf",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (l2output_node, l2output_node_fn);
 /* *INDENT-ON* */
 
 
@@ -601,11 +601,12 @@ VLIB_REGISTER_NODE (l2output_bad_intf_node,static) = {
 	[0] = "error-drop",
   },
 };
+
+VLIB_NODE_FUNCTION_MULTIARCH (l2output_bad_intf_node, l2output_bad_intf_node_fn);
 /* *INDENT-ON* */
 
-
-VLIB_NODE_FUNCTION_MULTIARCH (l2output_node, l2output_node_fn)
-     clib_error_t *l2output_init (vlib_main_t * vm)
+static clib_error_t *
+l2output_init (vlib_main_t * vm)
 {
   l2output_main_t *mp = &l2output_main;
 

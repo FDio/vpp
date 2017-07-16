@@ -77,12 +77,14 @@ typedef struct
 
 l2output_main_t l2output_main;
 
+extern vlib_node_registration_t l2output_node;
+
 /* L2 output features */
 
-/* Mappings from feature ID to graph node name */
+/* Mappings from feature ID to graph node name in reverse order */
 #define foreach_l2output_feat \
  _(OUTPUT,            "interface-output")           \
- _(SPAN,              "feature-bitmap-drop")        \
+ _(SPAN,              "span-l2-output")             \
  _(CFM,               "feature-bitmap-drop")        \
  _(QOS,               "feature-bitmap-drop")        \
  _(ACL,               "l2-output-acl")              \
@@ -102,6 +104,8 @@ typedef enum
 #undef _
     L2OUTPUT_N_FEAT,
 } l2output_feat_t;
+
+STATIC_ASSERT (L2OUTPUT_N_FEAT <= 32, "too many l2 output features");
 
 /* Feature bit masks */
 typedef enum

@@ -2227,6 +2227,9 @@ static void *vl_api_sw_interface_span_enable_disable_t_print
   s = format (s, "src_sw_if_index %u ", ntohl (mp->sw_if_index_from));
   s = format (s, "dst_sw_if_index %u ", ntohl (mp->sw_if_index_to));
 
+  if (mp->is_l2)
+    s = format (s, "l2 ");
+
   switch (mp->state)
     {
     case 0:
