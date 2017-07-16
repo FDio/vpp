@@ -56,7 +56,8 @@ static void
   vlib_main_t *vm = vlib_get_main ();
 
   rv = span_add_delete_entry (vm, ntohl (mp->sw_if_index_from),
-			      ntohl (mp->sw_if_index_to), mp->state);
+			      ntohl (mp->sw_if_index_to), mp->state,
+			      mp->is_l2 ? SPAN_FEAT_L2 : SPAN_FEAT_DEVICE);
 
   REPLY_MACRO (VL_API_SW_INTERFACE_SPAN_ENABLE_DISABLE_REPLY);
 }
@@ -76,11 +77,14 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
 
   /* *INDENT-OFF* */
   vec_foreach (si, sm->interfaces)
-    if (si->num_rx_mirror_ports || si->num_tx_mirror_ports)
+  {
+  span_mirror_t * drxm = &si->mirror_rxtx[SPAN_FEAT_DEVICE][VLIB_RX];
+  span_mirror_t * dtxm = &si->mirror_rxtx[SPAN_FEAT_DEVICE][VLIB_TX];
+    if (drxm->num_mirror_ports || dtxm->num_mirror_ports)
     {
       clib_bitmap_t *b;
       u32 i;
-      b = clib_bitmap_dup_or (si->rx_mirror_ports, si->tx_mirror_ports);
+      b = clib_bitmap_dup_or (drxm->mirror_ports, dtxm->mirror_ports);
       clib_bitmap_foreach (i, b, (
         {
           rmp = vl_msg_api_alloc (sizeof (*rmp));
@@ -90,12 +94,13 @@ vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
 
           rmp->sw_if_index_from = htonl (si - sm->interfaces);
           rmp->sw_if_index_to = htonl (i);
-          rmp->state = (u8) (clib_bitmap_get (si->rx_mirror_ports, i) +
-                             clib_bitmap_get (si->tx_mirror_ports, i) * 2);
+          rmp->state = (u8) (clib_bitmap_get (drxm->mirror_ports, i) +
+                             clib_bitmap_get (dtxm->mirror_ports, i) * 2);
 
           vl_msg_api_send_shmem (q, (u8 *) & rmp);
         }));
       clib_bitmap_free (b);
+    }
     }
   /* *INDENT-ON* */
 }

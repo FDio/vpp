@@ -847,17 +847,20 @@ class VppPapiProvider(object):
         )
 
     def sw_interface_span_enable_disable(
-            self, sw_if_index_from, sw_if_index_to, state=1):
+            self, sw_if_index_from, sw_if_index_to, state=1, is_l2=0):
         """
 
         :param sw_if_index_from:
         :param sw_if_index_to:
         :param state:
+        :param is_l2:
         """
         return self.api(self.papi.sw_interface_span_enable_disable,
                         {'sw_if_index_from': sw_if_index_from,
                          'sw_if_index_to': sw_if_index_to,
-                         'state': state})
+                         'state': state,
+                         'is_l2': is_l2,
+                         })
 
     def gre_tunnel_add_del(self,
                            src_address,

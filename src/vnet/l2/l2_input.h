@@ -102,7 +102,7 @@ l2input_bd_config (u32 bd_index)
 
 /* L2 input features */
 
-/* Mappings from feature ID to graph node name */
+/* Mappings from feature ID to graph node name in reverse order */
 #define foreach_l2input_feat                    \
  _(DROP,          "feature-bitmap-drop")        \
  _(XCONNECT,      "l2-output")                  \
@@ -116,7 +116,8 @@ l2input_bd_config (u32 bd_index)
  _(VPATH,         "vpath-input-l2")             \
  _(ACL,           "l2-input-acl")               \
  _(POLICER_CLAS,  "l2-policer-classify")	\
- _(INPUT_CLASSIFY, "l2-input-classify")
+ _(INPUT_CLASSIFY, "l2-input-classify")         \
+ _(SPAN,          "span-l2-input")
 
 /* Feature bitmap positions */
 typedef enum
