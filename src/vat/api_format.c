@@ -18082,6 +18082,7 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
   u32 dst_sw_if_index = ~0;
   u8 state = 3;
   int ret;
+  u8 is_l2 = 0;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -18104,6 +18105,8 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
 	state = 2;
       else if (unformat (i, "both"))
 	state = 3;
+      else if (unformat (i, "l2"))
+	is_l2 = 1;
       else
 	break;
     }
@@ -18113,6 +18116,7 @@ api_sw_interface_span_enable_disable (vat_main_t * vam)
   mp->sw_if_index_from = htonl (src_sw_if_index);
   mp->sw_if_index_to = htonl (dst_sw_if_index);
   mp->state = state;
+  mp->is_l2 = is_l2;
 
   S (mp);
   W (ret);
@@ -20044,7 +20048,7 @@ _(set_ipfix_classify_stream, "[domain <domain-id>] [src_port <src-port>]") \
 _(ipfix_classify_stream_dump, "")                                       \
 _(ipfix_classify_table_add_del, "table <table-index> ip4|ip6 [tcp|udp]") \
 _(ipfix_classify_table_dump, "")                                        \
-_(sw_interface_span_enable_disable, "[src <intfc> | src_sw_if_index <id>] [disable | [[dst <intfc> | dst_sw_if_index <id>] [both|rx|tx]]]") \
+_(sw_interface_span_enable_disable, "[l2] [src <intfc> | src_sw_if_index <id>] [disable | [[dst <intfc> | dst_sw_if_index <id>] [both|rx|tx]]]") \
 _(sw_interface_span_dump, "")                                           \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(pg_create_interface, "if_id <nn>")                                    \
