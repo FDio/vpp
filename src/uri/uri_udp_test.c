@@ -47,10 +47,6 @@
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_printfun
 
-/* Satisfy external references when not linking with -lvlib */
-vlib_main_t vlib_global_main;
-vlib_main_t **vlib_mains;
-
 typedef enum
 {
   STATE_START,
