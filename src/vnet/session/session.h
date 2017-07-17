@@ -15,7 +15,9 @@
 #ifndef __included_session_h__
 #define __included_session_h__
 
-#include <vnet/session/transport.h>
+#include <vnet/session/stream_session.h>
+#include <vnet/session/session_lookup.h>
+#include <vnet/session/transport_interface.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
 #include <vnet/session/session_debug.h>
 #include <vnet/session/segment_manager.h>
@@ -66,37 +68,6 @@ typedef enum
   SESSION_QUEUE_N_NEXT,
 } session_queue_next_t;
 
-#define foreach_session_type                    \
-  _(IP4_TCP, ip4_tcp)                           \
-  _(IP4_UDP, ip4_udp)                           \
-  _(IP6_TCP, ip6_tcp)                           \
-  _(IP6_UDP, ip6_udp)
-
-typedef enum
-{
-#define _(A, a) SESSION_TYPE_##A,
-  foreach_session_type
-#undef _
-    SESSION_N_TYPES,
-} session_type_t;
-
-
-session_type_t
-session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4);
-
-/*
- * Application session state
- */
-typedef enum
-{
-  SESSION_STATE_LISTENING,
-  SESSION_STATE_CONNECTING,
-  SESSION_STATE_ACCEPTING,
-  SESSION_STATE_READY,
-  SESSION_STATE_CLOSED,
-  SESSION_STATE_N_STATES,
-} stream_session_state_t;
-
 typedef struct
 {
   void *fp;
@@ -116,48 +87,6 @@ typedef CLIB_PACKED (struct {
 }) session_fifo_event_t;
 /* *INDENT-ON* */
 
-typedef struct _stream_session_t
-{
-  /** fifo pointers. Once allocated, these do not move */
-  svm_fifo_t *server_rx_fifo;
-  svm_fifo_t *server_tx_fifo;
-
-  /** Type */
-  u8 session_type;
-
-  /** State */
-  u8 session_state;
-
-  u8 thread_index;
-
-  /** To avoid n**2 "one event per frame" check */
-  u8 enqueue_epoch;
-
-  /** Pad to a multiple of 8 octets */
-  u8 align_pad[4];
-
-  /** svm segment index where fifos were allocated */
-  u32 svm_segment_index;
-
-  /** Session index in per_thread pool */
-  u32 session_index;
-
-  /** Transport specific */
-  u32 connection_index;
-
-  /** Application specific */
-  u32 pid;
-
-  /** stream server pool index */
-  u32 app_index;
-
-  /** Parent listener session if the result of an accept */
-  u32 listener_index;
-
-  /** Opaque, pad to a 64-octet boundary */
-  u64 opaque[2];
-} stream_session_t;
-
 /* Forward definition */
 typedef struct _session_manager_main session_manager_main_t;
 
@@ -174,14 +103,6 @@ u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_fifo_event_t * e);
 
 struct _session_manager_main
 {
-  /** Lookup tables for established sessions and listeners */
-  clib_bihash_16_8_t v4_session_hash;
-  clib_bihash_48_8_t v6_session_hash;
-
-  /** Lookup tables for half-open sessions */
-  clib_bihash_16_8_t v4_half_open_hash;
-  clib_bihash_48_8_t v6_half_open_hash;
-
   /** Per worker thread session pools */
   stream_session_t **sessions;
 
@@ -224,10 +145,6 @@ struct _session_manager_main
   /** Preallocate session config parameter */
   u32 preallocated_sessions;
 
-  /* Convenience */
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-
 #if SESSION_DBG
   /**
    * last event poll time by thread
@@ -248,60 +165,6 @@ always_inline session_manager_main_t *
 vnet_get_session_manager_main ()
 {
   return &session_manager_main;
-}
-
-/*
- * Stream session functions
- */
-
-stream_session_t *stream_session_lookup_listener4 (ip4_address_t * lcl,
-						   u16 lcl_port, u8 proto);
-stream_session_t *stream_session_lookup4 (ip4_address_t * lcl,
-					  ip4_address_t * rmt, u16 lcl_port,
-					  u16 rmt_port, u8 proto);
-stream_session_t *stream_session_lookup_listener6 (ip6_address_t * lcl,
-						   u16 lcl_port, u8 proto);
-stream_session_t *stream_session_lookup6 (ip6_address_t * lcl,
-					  ip6_address_t * rmt, u16 lcl_port,
-					  u16 rmt_port, u8 proto);
-transport_connection_t
-  * stream_session_lookup_transport_wt4 (ip4_address_t * lcl,
-					 ip4_address_t * rmt, u16 lcl_port,
-					 u16 rmt_port, u8 proto,
-					 u32 thread_index);
-transport_connection_t *stream_session_lookup_transport4 (ip4_address_t * lcl,
-							  ip4_address_t * rmt,
-							  u16 lcl_port,
-							  u16 rmt_port,
-							  u8 proto);
-transport_connection_t *stream_session_lookup_transport_wt6 (ip6_address_t *
-							     lcl,
-							     ip6_address_t *
-							     rmt,
-							     u16 lcl_port,
-							     u16 rmt_port,
-							     u8 proto,
-							     u32
-							     thread_index);
-transport_connection_t *stream_session_lookup_transport6 (ip6_address_t * lcl,
-							  ip6_address_t * rmt,
-							  u16 lcl_port,
-							  u16 rmt_port,
-							  u8 proto);
-
-stream_session_t *stream_session_lookup_listener (ip46_address_t * lcl,
-						  u16 lcl_port, u8 proto);
-transport_connection_t
-  * stream_session_lookup_half_open (transport_connection_t * tc);
-void stream_session_table_add_for_tc (transport_connection_t * tc, u64 value);
-int stream_session_table_del_for_tc (transport_connection_t * tc);
-
-always_inline stream_session_t *
-stream_session_get_tsi (u64 ti_and_si, u32 thread_index)
-{
-  ASSERT ((u32) (ti_and_si >> 32) == thread_index);
-  return pool_elt_at_index (session_manager_main.sessions[thread_index],
-			    ti_and_si & 0xFFFFFFFFULL);
 }
 
 always_inline u8
@@ -445,9 +308,6 @@ send_session_connected_callback (u32 app_index, u32 api_context,
 				 stream_session_t * s, u8 is_fail);
 
 
-void session_register_transport (u8 type, const transport_proto_vft_t * vft);
-transport_proto_vft_t *session_get_transport_vft (u8 type);
-
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 
 always_inline unix_shared_memory_queue_t *
@@ -509,6 +369,24 @@ listen_session_del (stream_session_t * s)
 {
   pool_put (session_manager_main.listen_sessions[s->session_type], s);
 }
+
+always_inline stream_session_t *
+session_manager_get_listener (u8 type, u32 index)
+{
+  return pool_elt_at_index (session_manager_main.listen_sessions[type],
+			    index);
+}
+
+always_inline void
+session_manager_set_transport_rx_fn (u8 type, u8 is_peek)
+{
+  /* If an offset function is provided, then peek instead of dequeue */
+  session_manager_main.session_tx_fns[type] = (is_peek) ?
+    session_tx_fifo_peek_and_snd : session_tx_fifo_dequeue_and_snd;
+}
+
+session_type_t
+session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4);
 
 always_inline u8
 session_manager_is_enabled ()

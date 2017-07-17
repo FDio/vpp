@@ -2742,7 +2742,10 @@ tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
 
   if (!is_valid)
     {
-      if ((tmp = stream_session_lookup_half_open (&tc->connection)))
+      if ((tmp =
+	   stream_session_half_open_lookup (&tc->c_lcl_ip, &tc->c_rmt_ip,
+					    tc->c_lcl_port, tc->c_rmt_port,
+					    tc->c_proto)))
 	{
 	  if (tmp->lcl_port == hdr->dst_port
 	      && tmp->rmt_port == hdr->src_port)

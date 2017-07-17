@@ -832,19 +832,22 @@ nobase_include_HEADERS +=			\
 
 libvnet_la_SOURCES +=				\
   vnet/session/session.c			\
-  vnet/session/node.c				\
-  vnet/session/transport.c			\
+  vnet/session/session_lookup.c			\
+  vnet/session/session_node.c			\
+  vnet/session/transport_interface.c		\
   vnet/session/application.c			\
   vnet/session/session_cli.c			\
-  vnet/session/hashes.c				\
   vnet/session/application_interface.c		\
   vnet/session/segment_manager.c		\
   vnet/session/session_api.c
 
 nobase_include_HEADERS +=			\
   vnet/session/session.h			\
+  vnet/session/stream_session.h			\
+  vnet/session/session_lookup.h			\
   vnet/session/application.h			\
   vnet/session/transport.h			\
+  vnet/session/transport_interface.h		\
   vnet/session/application_interface.h		\
   vnet/session/session_debug.h			\
   vnet/session/segment_manager.h		\

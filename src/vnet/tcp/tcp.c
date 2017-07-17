@@ -22,8 +22,7 @@
 tcp_main_t tcp_main;
 
 static u32
-tcp_connection_bind (u32 session_index, ip46_address_t * ip,
-		     u16 port_host_byte_order, u8 is_ip4)
+tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
 {
   tcp_main_t *tm = &tcp_main;
   tcp_connection_t *listener;
@@ -32,17 +31,18 @@ tcp_connection_bind (u32 session_index, ip46_address_t * ip,
   memset (listener, 0, sizeof (*listener));
 
   listener->c_c_index = listener - tm->listener_pool;
-  listener->c_lcl_port = clib_host_to_net_u16 (port_host_byte_order);
+  listener->c_lcl_port = clib_host_to_net_u16 (lcl->port);
 
-  if (is_ip4)
+  if (lcl->is_ip4)
     {
-      listener->c_lcl_ip4.as_u32 = ip->ip4.as_u32;
+      listener->c_lcl_ip4.as_u32 = lcl->ip.ip4.as_u32;
       listener->c_is_ip4 = 1;
       listener->c_proto = SESSION_TYPE_IP4_TCP;
     }
   else
     {
-      clib_memcpy (&listener->c_lcl_ip6, &ip->ip6, sizeof (ip6_address_t));
+      clib_memcpy (&listener->c_lcl_ip6, &lcl->ip.ip6,
+		   sizeof (ip6_address_t));
       listener->c_proto = SESSION_TYPE_IP6_TCP;
     }
 
@@ -57,17 +57,9 @@ tcp_connection_bind (u32 session_index, ip46_address_t * ip,
 }
 
 u32
-tcp_session_bind_ip4 (u32 session_index, ip46_address_t * ip,
-		      u16 port_host_byte_order)
+tcp_session_bind (u32 session_index, transport_endpoint_t * tep)
 {
-  return tcp_connection_bind (session_index, ip, port_host_byte_order, 1);
-}
-
-u32
-tcp_session_bind_ip6 (u32 session_index, ip46_address_t * ip,
-		      u16 port_host_byte_order)
-{
-  return tcp_connection_bind (session_index, ip, port_host_byte_order, 0);
+  return tcp_connection_bind (session_index, tep);
 }
 
 static void
@@ -133,10 +125,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
   /* Check if half-open */
   if (tc->state == TCP_STATE_SYN_SENT)
     {
-      /* Poison the entry */
-      if (CLIB_DEBUG > 0)
-	memset (tc, 0xFA, sizeof (*tc));
-      pool_put (tm->half_open_connections, tc);
+      tcp_half_open_connection_del (tc);
     }
   else
     {
@@ -172,9 +161,21 @@ tcp_half_open_connection_del (tcp_connection_t * tc)
   tcp_main_t *tm = vnet_get_tcp_main ();
   if (CLIB_DEBUG)
     memset (tc, 0xFA, sizeof (*tc));
-  clib_spinlock_lock (&tm->half_open_lock);
+  clib_spinlock_lock_if_init (&tm->half_open_lock);
   pool_put (tm->half_open_connections, tc);
-  clib_spinlock_unlock (&tm->half_open_lock);
+  clib_spinlock_unlock_if_init (&tm->half_open_lock);
+}
+
+tcp_connection_t *
+tcp_half_open_connection_new ()
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_connection_t *tc = 0;
+  clib_spinlock_lock_if_init (&tm->half_open_lock);
+  pool_get (tm->half_open_connections, tc);
+  clib_spinlock_unlock_if_init (&tm->half_open_lock);
+  memset (tc, 0, sizeof (*tc));
+  return tc;
 }
 
 tcp_connection_t *
@@ -456,11 +457,13 @@ fib_node_index_t
 tcp_lookup_rmt_in_fib (tcp_connection_t * tc)
 {
   fib_prefix_t prefix;
+  u32 fib_index;
 
   clib_memcpy (&prefix.fp_addr, &tc->c_rmt_ip, sizeof (prefix.fp_addr));
   prefix.fp_proto = tc->c_is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   prefix.fp_len = tc->c_is_ip4 ? 32 : 128;
-  return fib_table_lookup (0, &prefix);
+  fib_index = fib_table_find (prefix.fp_proto, tc->c_vrf);
+  return fib_table_lookup (fib_index, &prefix);
 }
 
 static int
@@ -512,13 +515,13 @@ tcp_connection_init_vars (tcp_connection_t * tc)
 }
 
 int
-tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
+tcp_connection_open (transport_endpoint_t * rmt)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_connection_t *tc;
   fib_prefix_t prefix;
   fib_node_index_t fei;
-  u32 sw_if_index;
+  u32 sw_if_index, fib_index;
   ip46_address_t lcl_addr;
   int lcl_port;
 
@@ -528,11 +531,12 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   memset (&lcl_addr, 0, sizeof (lcl_addr));
 
   /* Find a FIB path to the destination */
-  clib_memcpy (&prefix.fp_addr, rmt_addr, sizeof (*rmt_addr));
-  prefix.fp_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
-  prefix.fp_len = is_ip4 ? 32 : 128;
+  clib_memcpy (&prefix.fp_addr, &rmt->ip, sizeof (rmt->ip));
+  prefix.fp_proto = rmt->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  prefix.fp_len = rmt->is_ip4 ? 32 : 128;
 
-  fei = fib_table_lookup (0, &prefix);
+  fib_index = fib_table_find (prefix.fp_proto, rmt->vrf);
+  fei = fib_table_lookup (fib_index, &prefix);
 
   /* Couldn't find route to destination. Bail out. */
   if (fei == FIB_NODE_INDEX_INVALID)
@@ -546,11 +550,11 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   if (sw_if_index == (u32) ~ 0)
     {
       clib_warning ("no resolving interface for %U", format_ip46_address,
-		    rmt_addr, IP46_TYPE_IP4);
+		    &rmt->ip, IP46_TYPE_IP4);
       return -1;
     }
 
-  if (is_ip4)
+  if (rmt->is_ip4)
     {
       ip4_address_t *ip4;
       int index;
@@ -599,17 +603,16 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
    * Create connection and send SYN
    */
 
-  pool_get (tm->half_open_connections, tc);
-  memset (tc, 0, sizeof (*tc));
+  tc = tcp_half_open_connection_new ();
 
-  clib_memcpy (&tc->c_rmt_ip, rmt_addr, sizeof (ip46_address_t));
+  clib_memcpy (&tc->c_rmt_ip, &rmt->ip, sizeof (ip46_address_t));
   clib_memcpy (&tc->c_lcl_ip, &lcl_addr, sizeof (ip46_address_t));
-  tc->c_rmt_port = clib_host_to_net_u16 (rmt_port);
+  tc->c_rmt_port = clib_host_to_net_u16 (rmt->port);
   tc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
   tc->c_c_index = tc - tm->half_open_connections;
-  tc->c_is_ip4 = is_ip4;
-  tc->c_proto = is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
-
+  tc->c_is_ip4 = rmt->is_ip4;
+  tc->c_proto = rmt->is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
+  tc->c_vrf = rmt->vrf;
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
 
@@ -621,15 +624,9 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
 }
 
 int
-tcp_session_open_ip4 (ip46_address_t * addr, u16 port)
+tcp_session_open (transport_endpoint_t * tep)
 {
-  return tcp_connection_open (addr, port, 1);
-}
-
-int
-tcp_session_open_ip6 (ip46_address_t * addr, u16 port)
-{
-  return tcp_connection_open (addr, port, 0);
+  return tcp_connection_open (tep);
 }
 
 const char *tcp_dbg_evt_str[] = {
@@ -1025,32 +1022,14 @@ tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
 }
 
 /* *INDENT-OFF* */
-const static transport_proto_vft_t tcp4_proto = {
-  .bind = tcp_session_bind_ip4,
+const static transport_proto_vft_t tcp_proto = {
+  .bind = tcp_session_bind,
   .unbind = tcp_session_unbind,
   .push_header = tcp_push_header,
   .get_connection = tcp_session_get_transport,
   .get_listener = tcp_session_get_listener,
   .get_half_open = tcp_half_open_session_get_transport,
-  .open = tcp_session_open_ip4,
-  .close = tcp_session_close,
-  .cleanup = tcp_session_cleanup,
-  .send_mss = tcp_session_send_mss,
-  .send_space = tcp_session_send_space,
-  .tx_fifo_offset = tcp_session_tx_fifo_offset,
-  .format_connection = format_tcp_session,
-  .format_listener = format_tcp_listener_session,
-  .format_half_open = format_tcp_half_open_session,
-};
-
-const static transport_proto_vft_t tcp6_proto = {
-  .bind = tcp_session_bind_ip6,
-  .unbind = tcp_session_unbind,
-  .push_header = tcp_push_header,
-  .get_connection = tcp_session_get_transport,
-  .get_listener = tcp_session_get_listener,
-  .get_half_open = tcp_half_open_session_get_transport,
-  .open = tcp_session_open_ip6,
+  .open = tcp_session_open,
   .close = tcp_session_close,
   .cleanup = tcp_session_cleanup,
   .send_mss = tcp_session_send_mss,
@@ -1200,9 +1179,9 @@ tcp_main_enable (vlib_main_t * vm)
 
   ip4_register_protocol (IP_PROTOCOL_TCP, tcp4_input_node.index);
 
-  /* Register as transport with URI */
-  session_register_transport (SESSION_TYPE_IP4_TCP, &tcp4_proto);
-  session_register_transport (SESSION_TYPE_IP6_TCP, &tcp6_proto);
+  /* Register as transport with session layer */
+  session_register_transport (SESSION_TYPE_IP4_TCP, &tcp_proto);
+  session_register_transport (SESSION_TYPE_IP6_TCP, &tcp_proto);
 
   /*
    * Initialize data structures
@@ -1247,7 +1226,8 @@ tcp_main_enable (vlib_main_t * vm)
   clib_bihash_init_24_8 (&tm->local_endpoints_table, "local endpoint table",
 			 200000 /* $$$$ config parameter nbuckets */ ,
 			 (64 << 20) /*$$$ config parameter table size */ );
-  clib_spinlock_init (&tm->half_open_lock);
+  if (num_threads > 1)
+    clib_spinlock_init (&tm->half_open_lock);
   return error;
 }
 
