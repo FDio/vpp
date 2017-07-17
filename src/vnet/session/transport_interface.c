@@ -13,7 +13,13 @@
  * limitations under the License.
  */
 
-#include <vnet/session/transport.h>
+#include <vnet/session/transport_interface.h>
+#include <vnet/session/session.h>
+
+/**
+ * Per-type vector of transport protocol virtual function tables
+ */
+transport_proto_vft_t *tp_vfts;
 
 u32
 transport_endpoint_lookup (transport_endpoint_table_t *ht, ip46_address_t *ip,
@@ -60,5 +66,40 @@ transport_endpoint_table_del (transport_endpoint_table_t *ht,
   clib_bihash_add_del_24_8 (ht, &kv, 0);
 }
 
+/**
+ * Register transport virtual function table.
+ *
+ * @param type - session type (not protocol type)
+ * @param vft - virtual function table
+ */
+void
+session_register_transport (u8 session_type,
+			    const transport_proto_vft_t * vft)
+{
+  vec_validate (tp_vfts, session_type);
+  tp_vfts[session_type] = *vft;
 
+  /* If an offset function is provided, then peek instead of dequeue */
+  session_manager_set_transport_rx_fn (session_type, vft->tx_fifo_offset != 0);
+}
 
+/**
+ * Get transport virtual function table
+ *
+ * @param type - session type (not protocol type)
+ */
+transport_proto_vft_t *
+session_get_transport_vft (u8 session_type)
+{
+  if (session_type >= vec_len (tp_vfts))
+    return 0;
+  return &tp_vfts[session_type];
+}
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
