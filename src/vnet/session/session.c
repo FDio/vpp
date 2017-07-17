@@ -18,455 +18,15 @@
  */
 
 #include <vnet/session/session.h>
+#include <vnet/session/session_debug.h>
+#include <vnet/session/application.h>
 #include <vlibmemory/api.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
-#include <vnet/session/application.h>
 #include <vnet/tcp/tcp.h>
-#include <vnet/session/session_debug.h>
-
-/**
- * Per-type vector of transport protocol virtual function tables
- */
-static transport_proto_vft_t *tp_vfts;
 
 session_manager_main_t session_manager_main;
-
-transport_connection_t *
-stream_session_lookup_half_open (transport_connection_t * tc)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  session_kv4_t kv4;
-  int rv;
-  if (tc->is_ip4)
-    {
-      make_v4_ss_kv_from_tc (&kv4, tc);
-      rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
-      if (rv == 0)
-	return tp_vfts[tc->proto].get_half_open (kv4.value & 0xFFFFFFFFULL);
-    }
-  return 0;
-}
-
-/*
- * Session lookup key; (src-ip, dst-ip, src-port, dst-port, session-type)
- * Value: (owner thread index << 32 | session_index);
- */
-void
-stream_session_table_add_for_tc (transport_connection_t * tc, u64 value)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  session_kv4_t kv4;
-  session_kv6_t kv6;
-
-  switch (tc->proto)
-    {
-    case SESSION_TYPE_IP4_UDP:
-    case SESSION_TYPE_IP4_TCP:
-      make_v4_ss_kv_from_tc (&kv4, tc);
-      kv4.value = value;
-      clib_bihash_add_del_16_8 (&smm->v4_session_hash, &kv4, 1 /* is_add */ );
-      break;
-    case SESSION_TYPE_IP6_UDP:
-    case SESSION_TYPE_IP6_TCP:
-      make_v6_ss_kv_from_tc (&kv6, tc);
-      kv6.value = value;
-      clib_bihash_add_del_48_8 (&smm->v6_session_hash, &kv6, 1 /* is_add */ );
-      break;
-    default:
-      clib_warning ("Session type not supported");
-      ASSERT (0);
-    }
-}
-
-void
-stream_session_table_add (session_manager_main_t * smm, stream_session_t * s,
-			  u64 value)
-{
-  transport_connection_t *tc;
-
-  tc = tp_vfts[s->session_type].get_connection (s->connection_index,
-						s->thread_index);
-  stream_session_table_add_for_tc (tc, value);
-}
-
-static void
-stream_session_half_open_table_add (session_type_t sst,
-				    transport_connection_t * tc, u64 value)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  session_kv4_t kv4;
-  session_kv6_t kv6;
-
-  switch (sst)
-    {
-    case SESSION_TYPE_IP4_UDP:
-    case SESSION_TYPE_IP4_TCP:
-      make_v4_ss_kv_from_tc (&kv4, tc);
-      kv4.value = value;
-      clib_bihash_add_del_16_8 (&smm->v4_half_open_hash, &kv4,
-				1 /* is_add */ );
-      break;
-    case SESSION_TYPE_IP6_UDP:
-    case SESSION_TYPE_IP6_TCP:
-      make_v6_ss_kv_from_tc (&kv6, tc);
-      kv6.value = value;
-      clib_bihash_add_del_48_8 (&smm->v6_half_open_hash, &kv6,
-				1 /* is_add */ );
-      break;
-    default:
-      clib_warning ("Session type not supported");
-      ASSERT (0);
-    }
-}
-
-int
-stream_session_table_del_for_tc (transport_connection_t * tc)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  session_kv4_t kv4;
-  session_kv6_t kv6;
-  switch (tc->proto)
-    {
-    case SESSION_TYPE_IP4_UDP:
-    case SESSION_TYPE_IP4_TCP:
-      make_v4_ss_kv_from_tc (&kv4, tc);
-      return clib_bihash_add_del_16_8 (&smm->v4_session_hash, &kv4,
-				       0 /* is_add */ );
-      break;
-    case SESSION_TYPE_IP6_UDP:
-    case SESSION_TYPE_IP6_TCP:
-      make_v6_ss_kv_from_tc (&kv6, tc);
-      return clib_bihash_add_del_48_8 (&smm->v6_session_hash, &kv6,
-				       0 /* is_add */ );
-      break;
-    default:
-      clib_warning ("Session type not supported");
-      ASSERT (0);
-    }
-
-  return 0;
-}
-
-static int
-stream_session_table_del (session_manager_main_t * smm, stream_session_t * s)
-{
-  transport_connection_t *ts;
-
-  ts = tp_vfts[s->session_type].get_connection (s->connection_index,
-						s->thread_index);
-  return stream_session_table_del_for_tc (ts);
-}
-
-static void
-stream_session_half_open_table_del (session_manager_main_t * smm, u8 sst,
-				    transport_connection_t * tc)
-{
-  session_kv4_t kv4;
-  session_kv6_t kv6;
-
-  switch (sst)
-    {
-    case SESSION_TYPE_IP4_UDP:
-    case SESSION_TYPE_IP4_TCP:
-      make_v4_ss_kv_from_tc (&kv4, tc);
-      clib_bihash_add_del_16_8 (&smm->v4_half_open_hash, &kv4,
-				0 /* is_add */ );
-      break;
-    case SESSION_TYPE_IP6_UDP:
-    case SESSION_TYPE_IP6_TCP:
-      make_v6_ss_kv_from_tc (&kv6, tc);
-      clib_bihash_add_del_48_8 (&smm->v6_half_open_hash, &kv6,
-				0 /* is_add */ );
-      break;
-    default:
-      clib_warning ("Session type not supported");
-      ASSERT (0);
-    }
-}
-
-stream_session_t *
-stream_session_lookup_listener4 (ip4_address_t * lcl, u16 lcl_port, u8 proto)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  session_kv4_t kv4;
-  int rv;
-
-  make_v4_listener_kv (&kv4, lcl, lcl_port, proto);
-  rv = clib_bihash_search_inline_16_8 (&smm->v4_session_hash, &kv4);
-  if (rv == 0)
-    return pool_elt_at_index (smm->listen_sessions[proto], (u32) kv4.value);
-
-  /* Zero out the lcl ip */
-  kv4.key[0] = 0;
-  rv = clib_bihash_search_inline_16_8 (&smm->v4_session_hash, &kv4);
-  if (rv == 0)
-    return pool_elt_at_index (smm->listen_sessions[proto], kv4.value);
-
-  return 0;
-}
-
-/** Looks up a session based on the 5-tuple passed as argument.
- *
- * First it tries to find an established session, if this fails, it tries
- * finding a listener session if this fails, it tries a lookup with a
- * wildcarded local source (listener bound to all interfaces)
- */
-stream_session_t *
-stream_session_lookup4 (ip4_address_t * lcl, ip4_address_t * rmt,
-			u16 lcl_port, u16 rmt_port, u8 proto)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  session_kv4_t kv4;
-  stream_session_t *s;
-  int rv;
-
-  /* Lookup session amongst established ones */
-  make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
-  rv = clib_bihash_search_inline_16_8 (&smm->v4_session_hash, &kv4);
-  if (rv == 0)
-    return stream_session_get_from_handle (kv4.value);
-
-  /* If nothing is found, check if any listener is available */
-  if ((s = stream_session_lookup_listener4 (lcl, lcl_port, proto)))
-    return s;
-
-  /* Finally, try half-open connections */
-  rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
-  if (rv == 0)
-    return stream_session_get_from_handle (kv4.value);
-  return 0;
-}
-
-stream_session_t *
-stream_session_lookup_listener6 (ip6_address_t * lcl, u16 lcl_port, u8 proto)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  session_kv6_t kv6;
-  int rv;
-
-  make_v6_listener_kv (&kv6, lcl, lcl_port, proto);
-  rv = clib_bihash_search_inline_48_8 (&smm->v6_session_hash, &kv6);
-  if (rv == 0)
-    return pool_elt_at_index (smm->listen_sessions[proto], kv6.value);
-
-  /* Zero out the lcl ip */
-  kv6.key[0] = kv6.key[1] = 0;
-  rv = clib_bihash_search_inline_48_8 (&smm->v6_session_hash, &kv6);
-  if (rv == 0)
-    return pool_elt_at_index (smm->listen_sessions[proto], kv6.value);
-
-  return 0;
-}
-
-/* Looks up a session based on the 5-tuple passed as argument.
- * First it tries to find an established session, if this fails, it tries
- * finding a listener session if this fails, it tries a lookup with a
- * wildcarded local source (listener bound to all interfaces) */
-stream_session_t *
-stream_session_lookup6 (ip6_address_t * lcl, ip6_address_t * rmt,
-			u16 lcl_port, u16 rmt_port, u8 proto)
-{
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
-  session_kv6_t kv6;
-  stream_session_t *s;
-  int rv;
-
-  make_v6_ss_kv (&kv6, lcl, rmt, lcl_port, rmt_port, proto);
-  rv = clib_bihash_search_inline_48_8 (&smm->v6_session_hash, &kv6);
-  if (rv == 0)
-    return stream_session_get_from_handle (kv6.value);
-
-  /* If nothing is found, check if any listener is available */
-  if ((s = stream_session_lookup_listener6 (lcl, lcl_port, proto)))
-    return s;
-
-  /* Finally, try half-open connections */
-  rv = clib_bihash_search_inline_48_8 (&smm->v6_half_open_hash, &kv6);
-  if (rv == 0)
-    return stream_session_get_from_handle (kv6.value);
-  return 0;
-}
-
-stream_session_t *
-stream_session_lookup_listener (ip46_address_t * lcl, u16 lcl_port, u8 proto)
-{
-  switch (proto)
-    {
-    case SESSION_TYPE_IP4_UDP:
-    case SESSION_TYPE_IP4_TCP:
-      return stream_session_lookup_listener4 (&lcl->ip4, lcl_port, proto);
-      break;
-    case SESSION_TYPE_IP6_UDP:
-    case SESSION_TYPE_IP6_TCP:
-      return stream_session_lookup_listener6 (&lcl->ip6, lcl_port, proto);
-      break;
-    }
-  return 0;
-}
-
-static u64
-stream_session_half_open_lookup (session_manager_main_t * smm,
-				 ip46_address_t * lcl, ip46_address_t * rmt,
-				 u16 lcl_port, u16 rmt_port, u8 proto)
-{
-  session_kv4_t kv4;
-  session_kv6_t kv6;
-  int rv;
-
-  switch (proto)
-    {
-    case SESSION_TYPE_IP4_UDP:
-    case SESSION_TYPE_IP4_TCP:
-      make_v4_ss_kv (&kv4, &lcl->ip4, &rmt->ip4, lcl_port, rmt_port, proto);
-      rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
-
-      if (rv == 0)
-	return kv4.value;
-
-      return (u64) ~ 0;
-      break;
-    case SESSION_TYPE_IP6_UDP:
-    case SESSION_TYPE_IP6_TCP:
-      make_v6_ss_kv (&kv6, &lcl->ip6, &rmt->ip6, lcl_port, rmt_port, proto);
-      rv = clib_bihash_search_inline_48_8 (&smm->v6_half_open_hash, &kv6);
-
-      if (rv == 0)
-	return kv6.value;
-
-      return (u64) ~ 0;
-      break;
-    }
-  return 0;
-}
-
-transport_connection_t *
-stream_session_lookup_transport_wt4 (ip4_address_t * lcl, ip4_address_t * rmt,
-				     u16 lcl_port, u16 rmt_port, u8 proto,
-				     u32 my_thread_index)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  session_kv4_t kv4;
-  stream_session_t *s;
-  int rv;
-
-  /* Lookup session amongst established ones */
-  make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
-  rv = clib_bihash_search_inline_16_8 (&smm->v4_session_hash, &kv4);
-  if (rv == 0)
-    {
-      s = stream_session_get_tsi (kv4.value, my_thread_index);
-
-      return tp_vfts[s->session_type].get_connection (s->connection_index,
-						      my_thread_index);
-    }
-
-  /* If nothing is found, check if any listener is available */
-  s = stream_session_lookup_listener4 (lcl, lcl_port, proto);
-  if (s)
-    return tp_vfts[s->session_type].get_listener (s->connection_index);
-
-  /* Finally, try half-open connections */
-  rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
-  if (rv == 0)
-    return tp_vfts[proto].get_half_open (kv4.value & 0xFFFFFFFF);
-  return 0;
-}
-
-transport_connection_t *
-stream_session_lookup_transport4 (ip4_address_t * lcl, ip4_address_t * rmt,
-				  u16 lcl_port, u16 rmt_port, u8 proto)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  session_kv4_t kv4;
-  stream_session_t *s;
-  int rv;
-
-  /* Lookup session amongst established ones */
-  make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
-  rv = clib_bihash_search_inline_16_8 (&smm->v4_session_hash, &kv4);
-  if (rv == 0)
-    {
-      s = stream_session_get_from_handle (kv4.value);
-      return tp_vfts[s->session_type].get_connection (s->connection_index,
-						      s->thread_index);
-    }
-
-  /* If nothing is found, check if any listener is available */
-  s = stream_session_lookup_listener4 (lcl, lcl_port, proto);
-  if (s)
-    return tp_vfts[s->session_type].get_listener (s->connection_index);
-
-  /* Finally, try half-open connections */
-  rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
-  if (rv == 0)
-    return tp_vfts[proto].get_half_open (kv4.value & 0xFFFFFFFF);
-  return 0;
-}
-
-transport_connection_t *
-stream_session_lookup_transport_wt6 (ip6_address_t * lcl, ip6_address_t * rmt,
-				     u16 lcl_port, u16 rmt_port, u8 proto,
-				     u32 my_thread_index)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  stream_session_t *s;
-  session_kv6_t kv6;
-  int rv;
-
-  make_v6_ss_kv (&kv6, lcl, rmt, lcl_port, rmt_port, proto);
-  rv = clib_bihash_search_inline_48_8 (&smm->v6_session_hash, &kv6);
-  if (rv == 0)
-    {
-      s = stream_session_get_tsi (kv6.value, my_thread_index);
-
-      return tp_vfts[s->session_type].get_connection (s->connection_index,
-						      my_thread_index);
-    }
-
-  /* If nothing is found, check if any listener is available */
-  s = stream_session_lookup_listener6 (lcl, lcl_port, proto);
-  if (s)
-    return tp_vfts[s->session_type].get_listener (s->connection_index);
-
-  /* Finally, try half-open connections */
-  rv = clib_bihash_search_inline_48_8 (&smm->v6_half_open_hash, &kv6);
-  if (rv == 0)
-    return tp_vfts[proto].get_half_open (kv6.value & 0xFFFFFFFF);
-
-  return 0;
-}
-
-transport_connection_t *
-stream_session_lookup_transport6 (ip6_address_t * lcl, ip6_address_t * rmt,
-				  u16 lcl_port, u16 rmt_port, u8 proto)
-{
-  session_manager_main_t *smm = &session_manager_main;
-  stream_session_t *s;
-  session_kv6_t kv6;
-  int rv;
-
-  make_v6_ss_kv (&kv6, lcl, rmt, lcl_port, rmt_port, proto);
-  rv = clib_bihash_search_inline_48_8 (&smm->v6_session_hash, &kv6);
-  if (rv == 0)
-    {
-      s = stream_session_get_from_handle (kv6.value);
-      return tp_vfts[s->session_type].get_connection (s->connection_index,
-						      s->thread_index);
-    }
-
-  /* If nothing is found, check if any listener is available */
-  s = stream_session_lookup_listener6 (lcl, lcl_port, proto);
-  if (s)
-    return tp_vfts[s->session_type].get_listener (s->connection_index);
-
-  /* Finally, try half-open connections */
-  rv = clib_bihash_search_inline_48_8 (&smm->v6_half_open_hash, &kv6);
-  if (rv == 0)
-    return tp_vfts[proto].get_half_open (kv6.value & 0xFFFFFFFF);
-
-  return 0;
-}
+extern transport_proto_vft_t *tp_vfts;
 
 int
 stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
@@ -797,16 +357,15 @@ int
 stream_session_connect_notify (transport_connection_t * tc, u8 sst,
 			       u8 is_fail)
 {
-  session_manager_main_t *smm = &session_manager_main;
   application_t *app;
   stream_session_t *new_s = 0;
   u64 handle;
   u32 api_context = 0;
   int error = 0;
 
-  handle = stream_session_half_open_lookup (smm, &tc->lcl_ip, &tc->rmt_ip,
-					    tc->lcl_port, tc->rmt_port,
-					    tc->proto);
+  handle = stream_session_half_open_lookup_handle (&tc->lcl_ip, &tc->rmt_ip,
+						   tc->lcl_port, tc->rmt_port,
+						   tc->proto);
   if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
       clib_warning ("This can't be good!");
@@ -847,7 +406,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
     }
 
   /* Cleanup session lookup */
-  stream_session_half_open_table_del (smm, sst, tc);
+  stream_session_half_open_table_del (sst, tc);
 
   return error;
 }
@@ -891,7 +450,7 @@ stream_session_delete (stream_session_t * s)
   int rv;
 
   /* Delete from the main lookup table. */
-  if ((rv = stream_session_table_del (smm, s)))
+  if ((rv = stream_session_table_del (s)))
     clib_warning ("hash delete error, rv %d", rv);
 
   /* Cleanup fifo segments */
@@ -986,14 +545,14 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
  */
 int
 stream_session_open (u32 app_index, session_type_t st,
-		     transport_endpoint_t * tep,
+		     transport_endpoint_t * rmt,
 		     transport_connection_t ** res)
 {
   transport_connection_t *tc;
   int rv;
   u64 handle;
 
-  rv = tp_vfts[st].open (&tep->ip, tep->port);
+  rv = tp_vfts[st].open (rmt);
   if (rv < 0)
     {
       clib_warning ("Transport failed to open connection.");
@@ -1030,7 +589,7 @@ stream_session_listen (stream_session_t * s, transport_endpoint_t * tep)
   u32 tci;
 
   /* Transport bind/listen  */
-  tci = tp_vfts[s->session_type].bind (s->session_index, &tep->ip, tep->port);
+  tci = tp_vfts[s->session_type].bind (s->session_index, tep);
 
   if (tci == (u32) ~ 0)
     return -1;
@@ -1132,39 +691,16 @@ stream_session_disconnect (stream_session_t * s)
 void
 stream_session_cleanup (stream_session_t * s)
 {
-  session_manager_main_t *smm = &session_manager_main;
   int rv;
 
   s->session_state = SESSION_STATE_CLOSED;
 
   /* Delete from the main lookup table to avoid more enqueues */
-  rv = stream_session_table_del (smm, s);
+  rv = stream_session_table_del (s);
   if (rv)
     clib_warning ("hash delete error, rv %d", rv);
 
   tp_vfts[s->session_type].cleanup (s->connection_index, s->thread_index);
-}
-
-void
-session_register_transport (u8 type, const transport_proto_vft_t * vft)
-{
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
-
-  vec_validate (tp_vfts, type);
-  tp_vfts[type] = *vft;
-
-  /* If an offset function is provided, then peek instead of dequeue */
-  smm->session_tx_fns[type] =
-    (vft->tx_fifo_offset) ? session_tx_fifo_peek_and_snd :
-    session_tx_fifo_dequeue_and_snd;
-}
-
-transport_proto_vft_t *
-session_get_transport_vft (u8 type)
-{
-  if (type >= vec_len (tp_vfts))
-    return 0;
-  return &tp_vfts[type];
 }
 
 /**
@@ -1269,19 +805,7 @@ session_manager_main_enable (vlib_main_t * vm)
   for (i = 0; i < smm->preallocated_sessions; i++)
     pool_put_index (smm->sessions[0], i);
 
-  clib_bihash_init_16_8 (&smm->v4_session_hash, "v4 session table",
-			 200000 /* $$$$ config parameter nbuckets */ ,
-			 (64 << 20) /*$$$ config parameter table size */ );
-  clib_bihash_init_48_8 (&smm->v6_session_hash, "v6 session table",
-			 200000 /* $$$$ config parameter nbuckets */ ,
-			 (64 << 20) /*$$$ config parameter table size */ );
-
-  clib_bihash_init_16_8 (&smm->v4_half_open_hash, "v4 half-open table",
-			 200000 /* $$$$ config parameter nbuckets */ ,
-			 (64 << 20) /*$$$ config parameter table size */ );
-  clib_bihash_init_48_8 (&smm->v6_half_open_hash, "v6 half-open table",
-			 200000 /* $$$$ config parameter nbuckets */ ,
-			 (64 << 20) /*$$$ config parameter table size */ );
+  session_lookup_init ();
 
   smm->is_enabled = 1;
 
@@ -1328,11 +852,7 @@ clib_error_t *
 session_manager_main_init (vlib_main_t * vm)
 {
   session_manager_main_t *smm = &session_manager_main;
-
-  smm->vlib_main = vm;
-  smm->vnet_main = vnet_get_main ();
   smm->is_enabled = 0;
-
   return 0;
 }
 
