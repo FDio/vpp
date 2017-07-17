@@ -25,34 +25,32 @@
 udp_uri_main_t udp_uri_main;
 
 u32
-udp_session_bind_ip4 (u32 session_index,
-		      ip46_address_t * ip, u16 port_number_host_byte_order)
+udp_session_bind_ip4 (u32 session_index, transport_endpoint_t * lcl)
 {
   udp_uri_main_t *um = vnet_get_udp_main ();
   udp_connection_t *listener;
 
   pool_get (um->udp_listeners, listener);
   memset (listener, 0, sizeof (udp_connection_t));
-  listener->c_lcl_port = clib_host_to_net_u16 (port_number_host_byte_order);
-  listener->c_lcl_ip4.as_u32 = ip->ip4.as_u32;
+  listener->c_lcl_port = clib_host_to_net_u16 (lcl->port);
+  listener->c_lcl_ip4.as_u32 = lcl->ip.ip4.as_u32;
   listener->c_proto = SESSION_TYPE_IP4_UDP;
-  udp_register_dst_port (um->vlib_main, port_number_host_byte_order,
-			 udp4_uri_input_node.index, 1 /* is_ipv4 */ );
+  udp_register_dst_port (um->vlib_main, lcl->port, udp4_uri_input_node.index,
+			 1 /* is_ipv4 */ );
   return 0;
 }
 
 u32
-udp_session_bind_ip6 (u32 session_index,
-		      ip46_address_t * ip, u16 port_number_host_byte_order)
+udp_session_bind_ip6 (u32 session_index, transport_endpoint_t * lcl)
 {
   udp_uri_main_t *um = vnet_get_udp_main ();
   udp_connection_t *listener;
 
   pool_get (um->udp_listeners, listener);
-  listener->c_lcl_port = clib_host_to_net_u16 (port_number_host_byte_order);
-  clib_memcpy (&listener->c_lcl_ip6, &ip->ip6, sizeof (ip6_address_t));
+  listener->c_lcl_port = clib_host_to_net_u16 (lcl->port);
+  clib_memcpy (&listener->c_lcl_ip6, &lcl->ip.ip6, sizeof (ip6_address_t));
   listener->c_proto = SESSION_TYPE_IP6_UDP;
-  udp_register_dst_port (um->vlib_main, port_number_host_byte_order,
+  udp_register_dst_port (um->vlib_main, lcl->port,
 			 udp4_uri_input_node.index, 0 /* is_ipv4 */ );
   return 0;
 }
@@ -251,7 +249,7 @@ udp_send_space_uri (transport_connection_t * t)
 }
 
 int
-udp_open_connection (ip46_address_t * addr, u16 port)
+udp_open_connection (transport_endpoint_t * tep)
 {
   clib_warning ("Not implemented");
   return 0;
