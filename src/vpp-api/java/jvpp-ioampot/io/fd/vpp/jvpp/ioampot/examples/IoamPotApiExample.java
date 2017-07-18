@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.ioampot.test;
+package io.fd.vpp.jvpp.ioampot.examples;
 
 import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
@@ -26,7 +26,7 @@ import io.fd.vpp.jvpp.ioampot.dto.PotProfileAdd;
 import io.fd.vpp.jvpp.ioampot.dto.PotProfileAddReply;
 import java.nio.charset.StandardCharsets;
 
-public class IoamPotApiTest {
+public class IoamPotApiExample {
 
     static class IoamPotTestCallback implements PotProfileAddCallback {
 
@@ -49,7 +49,7 @@ public class IoamPotApiTest {
 
     private static void ioamPotTestApi() throws Exception {
         System.out.println("Testing Java API for ioam pot plugin");
-        try (final JVppRegistry registry = new JVppRegistryImpl("ioamPotApiTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("ioamPotApiExample");
              final JVpp jvpp = new JVppIoampotImpl()) {
             registry.register(jvpp, new IoamPotTestCallback());
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.ioamexport.test;
+package io.fd.vpp.jvpp.ioamexport.examples;
 
 import java.net.InetAddress;
 
@@ -27,7 +27,7 @@ import io.fd.vpp.jvpp.ioamexport.future.FutureJVppIoamexportFacade;
 import io.fd.vpp.jvpp.ioamexport.dto.IoamExportIp6EnableDisable;
 import io.fd.vpp.jvpp.ioamexport.dto.IoamExportIp6EnableDisableReply;
 
-public class IoamExportApiTest {
+public class IoamExportApiExample {
 
     public static void main(String[] args) throws Exception {
         ioamExportTestApi();
@@ -35,7 +35,7 @@ public class IoamExportApiTest {
 
     private static void ioamExportTestApi() throws Exception {
         System.out.println("Testing Java API for ioam export plugin");
-        try (final JVppRegistry registry = new JVppRegistryImpl("ioamExportApiTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("ioamExportApiExample");
              final JVpp jvpp = new JVppIoamexportImpl()) {
 	    FutureJVppIoamexportFacade ioamexportJvpp = new FutureJVppIoamexportFacade(registry,jvpp);
             System.out.println("Sending ioam export request...");

@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.examples;
 
-import static io.fd.vpp.jvpp.core.test.NotificationUtils.getChangeInterfaceState;
-import static io.fd.vpp.jvpp.core.test.NotificationUtils.getDisableInterfaceNotificationsReq;
-import static io.fd.vpp.jvpp.core.test.NotificationUtils.getEnableInterfaceNotificationsReq;
+import static io.fd.vpp.jvpp.core.examples.NotificationUtils.getChangeInterfaceState;
+import static io.fd.vpp.jvpp.core.examples.NotificationUtils.getDisableInterfaceNotificationsReq;
+import static io.fd.vpp.jvpp.core.examples.NotificationUtils.getEnableInterfaceNotificationsReq;
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
 import io.fd.vpp.jvpp.core.future.FutureJVppCoreFacade;
 
-public class FutureApiNotificationTest {
+public class FutureApiNotificationExample {
 
     private static void testFutureApi() throws Exception {
         System.out.println("Testing Java future API for notifications");
-        try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiNotificationTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiNotificationExample");
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl());
              final AutoCloseable notificationListenerReg =
                  jvppFacade.getNotificationRegistry()

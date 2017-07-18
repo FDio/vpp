@@ -14,31 +14,31 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.acl.test;
+package io.fd.vpp.jvpp.acl.examples;
 
 
-import static io.fd.vpp.jvpp.acl.test.AclTestData.FIRST_RULE_ADDRESS_2_AS_ARRAY;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.FIRST_RULE_ADDRESS_AS_ARRAY;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.FIRST_RULE_DST_ICMP_TYPE_END;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.FIRST_RULE_DST_ICMP_TYPE_START;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.FIRST_RULE_MAC;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.FIRST_RULE_MAC_MASK;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.FIRST_RULE_PREFIX;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.FIRST_RULE_PREFIX_2;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.FIRST_RULE_SRC_ICMP_TYPE_END;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.FIRST_RULE_SRC_ICMP_TYPE_START;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.ICMP_PROTOCOL;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.SECOND_RULE_ADDRESS_2_AS_ARRAY;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.SECOND_RULE_ADDRESS_AS_ARRAY;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.SECOND_RULE_DST_PORT_RANGE_END;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.SECOND_RULE_DST_PORT_RANGE_START;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.SECOND_RULE_MAC;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.SECOND_RULE_MAC_MASK;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.SECOND_RULE_PREFIX;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.SECOND_RULE_PREFIX_2;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.SECOND_RULE_SRC_PORT_RANGE_END;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.SECOND_RULE_SRC_PORT_RANGE_START;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.UDP_PROTOCOL;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.FIRST_RULE_ADDRESS_2_AS_ARRAY;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.FIRST_RULE_ADDRESS_AS_ARRAY;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.FIRST_RULE_DST_ICMP_TYPE_END;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.FIRST_RULE_DST_ICMP_TYPE_START;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.FIRST_RULE_MAC;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.FIRST_RULE_MAC_MASK;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.FIRST_RULE_PREFIX;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.FIRST_RULE_PREFIX_2;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.FIRST_RULE_SRC_ICMP_TYPE_END;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.FIRST_RULE_SRC_ICMP_TYPE_START;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.ICMP_PROTOCOL;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.SECOND_RULE_ADDRESS_2_AS_ARRAY;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.SECOND_RULE_ADDRESS_AS_ARRAY;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.SECOND_RULE_DST_PORT_RANGE_END;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.SECOND_RULE_DST_PORT_RANGE_START;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.SECOND_RULE_MAC;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.SECOND_RULE_MAC_MASK;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.SECOND_RULE_PREFIX;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.SECOND_RULE_PREFIX_2;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.SECOND_RULE_SRC_PORT_RANGE_END;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.SECOND_RULE_SRC_PORT_RANGE_START;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.UDP_PROTOCOL;
 
 import io.fd.vpp.jvpp.acl.dto.AclDetails;
 import io.fd.vpp.jvpp.acl.dto.AclInterfaceListDetails;

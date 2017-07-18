@@ -14,27 +14,27 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.acl.test;
+package io.fd.vpp.jvpp.acl.examples;
 
-import static io.fd.vpp.jvpp.acl.test.AclExpectedDumpData.verifyAclDump;
-import static io.fd.vpp.jvpp.acl.test.AclExpectedDumpData.verifyAclInterfaceList;
-import static io.fd.vpp.jvpp.acl.test.AclExpectedDumpData.verifyMacIpDump;
-import static io.fd.vpp.jvpp.acl.test.AclTestRequests.sendAclAddRequest;
-import static io.fd.vpp.jvpp.acl.test.AclTestRequests.sendAclDelRequest;
-import static io.fd.vpp.jvpp.acl.test.AclTestRequests.sendAclDumpRequest;
-import static io.fd.vpp.jvpp.acl.test.AclTestRequests.sendAclInterfaceDeleteList;
-import static io.fd.vpp.jvpp.acl.test.AclTestRequests.sendAclInterfaceListDumpRequest;
-import static io.fd.vpp.jvpp.acl.test.AclTestRequests.sendAclInterfaceSetAclList;
-import static io.fd.vpp.jvpp.acl.test.AclTestRequests.sendMacIpAddRequest;
-import static io.fd.vpp.jvpp.acl.test.AclTestRequests.sendMacIpDelRequest;
-import static io.fd.vpp.jvpp.acl.test.AclTestRequests.sendMacIpDumpRequest;
+import static io.fd.vpp.jvpp.acl.examples.AclExpectedDumpData.verifyAclDump;
+import static io.fd.vpp.jvpp.acl.examples.AclExpectedDumpData.verifyAclInterfaceList;
+import static io.fd.vpp.jvpp.acl.examples.AclExpectedDumpData.verifyMacIpDump;
+import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendAclAddRequest;
+import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendAclDelRequest;
+import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendAclDumpRequest;
+import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendAclInterfaceDeleteList;
+import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendAclInterfaceListDumpRequest;
+import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendAclInterfaceSetAclList;
+import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendMacIpAddRequest;
+import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendMacIpDelRequest;
+import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendMacIpDumpRequest;
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.acl.JVppAclImpl;
 import io.fd.vpp.jvpp.acl.future.FutureJVppAclFacade;
 
-public class FutureApiTest {
+public class FutureApiExample {
 
     public static void main(String[] args) throws Exception {
         testCallbackApi();

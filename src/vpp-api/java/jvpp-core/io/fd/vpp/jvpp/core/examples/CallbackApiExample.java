@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.examples;
 
 import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
@@ -32,7 +32,7 @@ import io.fd.vpp.jvpp.core.dto.SwInterfaceDetails;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceDump;
 import java.nio.charset.StandardCharsets;
 
-public class CallbackApiTest {
+public class CallbackApiExample {
 
     public static void main(String[] args) throws Exception {
         testCallbackApi();
@@ -40,7 +40,7 @@ public class CallbackApiTest {
 
     private static void testCallbackApi() throws Exception {
         System.out.println("Testing Java callback API with JVppRegistry");
-        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackApiTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackApiExample");
              final JVpp jvpp = new JVppCoreImpl()) {
             registry.register(jvpp, new TestCallback());
 

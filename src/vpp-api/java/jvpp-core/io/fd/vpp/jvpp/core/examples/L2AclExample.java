@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.examples;
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
@@ -47,7 +47,7 @@ import javax.xml.bind.DatatypeConverter;
  * }
  * </pre>
  */
-public class L2AclTest {
+public class L2AclExample {
 
     private static final int LOCAL0_IFACE_ID = 0;
 
@@ -146,7 +146,7 @@ public class L2AclTest {
 
     private static void testL2Acl() throws Exception {
         System.out.println("Testing L2 ACLs using Java callback API");
-        try (final JVppRegistry registry = new JVppRegistryImpl("L2AclTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("L2AclExample");
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
 
             System.out.println("Successfully connected to VPP");

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.acl.test;
+package io.fd.vpp.jvpp.acl.examples;
 
 
 import io.fd.vpp.jvpp.acl.types.AclRule;
