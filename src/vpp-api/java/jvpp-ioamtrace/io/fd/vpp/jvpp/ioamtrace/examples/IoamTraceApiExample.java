@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.ioamtrace.test;
+package io.fd.vpp.jvpp.ioamtrace.examples;
 
 import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
@@ -28,7 +28,7 @@ import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileAddReply;
 import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileShowConfig;
 import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileShowConfigReply;
 
-public class IoamTraceApiTest {
+public class IoamTraceApiExample {
 
     static class IoamTraceTestCallback implements TraceProfileAddCallback {
 

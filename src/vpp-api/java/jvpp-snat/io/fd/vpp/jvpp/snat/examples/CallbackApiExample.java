@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.snat.test;
+package io.fd.vpp.jvpp.snat.examples;
 
 import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
@@ -25,7 +25,7 @@ import io.fd.vpp.jvpp.snat.callback.SnatInterfaceAddDelFeatureCallback;
 import io.fd.vpp.jvpp.snat.dto.SnatInterfaceAddDelFeature;
 import io.fd.vpp.jvpp.snat.dto.SnatInterfaceAddDelFeatureReply;
 
-public class CallbackApiTest {
+public class CallbackApiExample {
 
     static class TestCallback implements SnatInterfaceAddDelFeatureCallback {
 

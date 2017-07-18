@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.examples;
 
 import static java.util.Objects.requireNonNull;
 
@@ -42,7 +42,7 @@ import java.nio.charset.StandardCharsets;
  * vat# sw_interface_dump
  * }
  */
-public class CreateSubInterfaceTest {
+public class CreateSubInterfaceExample {
 
     private static SwInterfaceDump createSwInterfaceDumpRequest(final String ifaceName) {
         SwInterfaceDump request = new SwInterfaceDump();
@@ -82,12 +82,12 @@ public class CreateSubInterfaceTest {
 
     private static void testCreateSubInterface() throws Exception {
         System.out.println("Testing sub-interface creation using Java callback API");
-        try (final JVppRegistry registry = new JVppRegistryImpl("CreateSubInterface");
+        try (final JVppRegistry registry = new JVppRegistryImpl("CreateSubInterfaceExample");
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
             System.out.println("Successfully connected to VPP");
             Thread.sleep(1000);
 
-            final String ifaceName = "GigabitEthernet0/8/0";
+            final String ifaceName = "Gigabitethernet0/8/0";
 
             final SwInterfaceDetailsReplyDump swInterfaceDetails =
                 jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(ifaceName)).toCompletableFuture().get();
@@ -103,7 +103,7 @@ public class CreateSubInterfaceTest {
                 jvppFacade.createSubif(createSubifRequest(swIfIndex, subId)).toCompletableFuture().get();
             print(createSubifReply);
 
-            final String subIfaceName = "GigabitEthernet0/8/0." + subId;
+            final String subIfaceName = "Gigabitethernet0/8/0." + subId;
             final SwInterfaceDetailsReplyDump subIface =
                 jvppFacade.swInterfaceDump(createSwInterfaceDumpRequest(subIfaceName)).toCompletableFuture().get();
             requireNonNull(swInterfaceDetails, "swInterfaceDump returned null");
