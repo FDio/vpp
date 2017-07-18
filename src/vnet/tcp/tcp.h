@@ -371,11 +371,9 @@ typedef struct _tcp_main
   /* Per worker-thread timer wheel for connections timers */
   tw_timer_wheel_16t_2w_512sl_t *timer_wheels;
 
-//  /* Convenience per worker-thread vector of connections to DELACK */
-//  u32 **delack_connections;
-
   /* Pool of half-open connections on which we've sent a SYN */
   tcp_connection_t *half_open_connections;
+  clib_spinlock_t half_open_lock;
 
   /* Pool of local TCP endpoints */
   transport_endpoint_t *local_endpoints;
@@ -455,6 +453,8 @@ tcp_get_connection_from_transport (transport_connection_t * tconn)
 void tcp_connection_close (tcp_connection_t * tc);
 void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
+void tcp_half_open_connection_del (tcp_connection_t * tc);
+tcp_connection_t *tcp_connection_new (u8 thread_index);
 void tcp_connection_reset (tcp_connection_t * tc);
 
 u8 *format_tcp_connection_id (u8 * s, va_list * args);
@@ -472,13 +472,15 @@ tcp_listener_get (u32 tli)
 always_inline tcp_connection_t *
 tcp_half_open_connection_get (u32 conn_index)
 {
+  if (pool_is_free_index (tcp_main.half_open_connections, conn_index))
+    return 0;
   return pool_elt_at_index (tcp_main.half_open_connections, conn_index);
 }
 
 void tcp_make_ack (tcp_connection_t * ts, vlib_buffer_t * b);
 void tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b);
 void tcp_make_synack (tcp_connection_t * ts, vlib_buffer_t * b);
-void tcp_send_reset (vlib_buffer_t * pkt, u8 is_ip4);
+void tcp_send_reset (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4);
 void tcp_send_syn (tcp_connection_t * tc);
 void tcp_send_fin (tcp_connection_t * tc);
 void tcp_init_mss (tcp_connection_t * tc);

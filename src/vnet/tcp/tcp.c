@@ -163,6 +163,33 @@ tcp_connection_del (tcp_connection_t * tc)
   tcp_connection_cleanup (tc);
 }
 
+/**
+ * Cleanup half-open connection
+ */
+void
+tcp_half_open_connection_del (tcp_connection_t * tc)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  if (CLIB_DEBUG)
+    memset (tc, 0xFA, sizeof (*tc));
+  clib_spinlock_lock (&tm->half_open_lock);
+  pool_put (tm->half_open_connections, tc);
+  clib_spinlock_unlock (&tm->half_open_lock);
+}
+
+tcp_connection_t *
+tcp_connection_new (u8 thread_index)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_connection_t *tc;
+
+  pool_get (tm->connections[thread_index], tc);
+  memset (tc, 0, sizeof (*tc));
+  tc->c_c_index = tc - tm->connections[thread_index];
+  tc->c_thread_index = thread_index;
+  return tc;
+}
+
 /** Notify session that connection has been reset.
  *
  * Switch state to closed and wait for session to call cleanup.
@@ -170,6 +197,7 @@ tcp_connection_del (tcp_connection_t * tc)
 void
 tcp_connection_reset (tcp_connection_t * tc)
 {
+  TCP_EVT_DBG (TCP_EVT_RST_RCVD, tc);
   switch (tc->state)
     {
     case TCP_STATE_SYN_RCVD:
@@ -178,12 +206,18 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_SYN_SENT:
+      /* XXX remove sst from call */
+      stream_session_connect_notify (&tc->connection, tc->connection.proto,
+				     1 /* fail */ );
+      tcp_connection_cleanup (tc);
+      break;
     case TCP_STATE_ESTABLISHED:
     case TCP_STATE_CLOSE_WAIT:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
     case TCP_STATE_CLOSING:
       tc->state = TCP_STATE_CLOSED;
+      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
 
       /* Make sure all timers are cleared */
       tcp_connection_timers_reset (tc);
@@ -227,6 +261,7 @@ tcp_connection_close (tcp_connection_t * tc)
     tc->state = TCP_STATE_CLOSED;
   else if (tc->state == TCP_STATE_CLOSE_WAIT)
     tc->state = TCP_STATE_LAST_ACK;
+  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
 
   /* If in CLOSED and WAITCLOSE timer is not set, delete connection now */
   if (tc->timers[TCP_TIMER_WAITCLOSE] == TCP_TIMER_HANDLE_INVALID
@@ -250,6 +285,7 @@ tcp_session_cleanup (u32 conn_index, u32 thread_index)
 
   /* Wait for the session tx events to clear */
   tc->state = TCP_STATE_CLOSED;
+  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
   tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 }
 
@@ -287,7 +323,7 @@ ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
  * Allocate local port and add if successful add entry to local endpoint
  * table to mark the pair as used.
  */
-u16
+int
 tcp_allocate_local_port (tcp_main_t * tm, ip46_address_t * ip)
 {
   transport_endpoint_t *tep;
@@ -484,7 +520,7 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   fib_node_index_t fei;
   u32 sw_if_index;
   ip46_address_t lcl_addr;
-  u16 lcl_port;
+  int lcl_port;
 
   /*
    * Find the local address and allocate port
@@ -500,12 +536,19 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
 
   /* Couldn't find route to destination. Bail out. */
   if (fei == FIB_NODE_INDEX_INVALID)
-    return -1;
+    {
+      clib_warning ("no route to destination");
+      return -1;
+    }
 
   sw_if_index = fib_entry_get_resolving_interface (fei);
 
   if (sw_if_index == (u32) ~ 0)
-    return -1;
+    {
+      clib_warning ("no resolving interface for %U", format_ip46_address,
+		    rmt_addr, IP46_TYPE_IP4);
+      return -1;
+    }
 
   if (is_ip4)
     {
@@ -570,11 +613,9 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
 
-  tcp_send_syn (tc);
-
-  tc->state = TCP_STATE_SYN_SENT;
-
   TCP_EVT_DBG (TCP_EVT_OPEN, tc);
+  tc->state = TCP_STATE_SYN_SENT;
+  tcp_send_syn (tc);
 
   return tc->c_c_index;
 }
@@ -1206,7 +1247,7 @@ tcp_main_enable (vlib_main_t * vm)
   clib_bihash_init_24_8 (&tm->local_endpoints_table, "local endpoint table",
 			 200000 /* $$$$ config parameter nbuckets */ ,
 			 (64 << 20) /*$$$ config parameter table size */ );
-
+  clib_spinlock_init (&tm->half_open_lock);
   return error;
 }
 
