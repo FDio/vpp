@@ -184,13 +184,6 @@ send_session_connected_callback (u32 app_index, u32 api_context,
     }
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
-
-  /* Remove client if connect failed */
-  if (!is_fail)
-    {
-      s->session_state = SESSION_STATE_READY;
-    }
-
   return 0;
 }
 

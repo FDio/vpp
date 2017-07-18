@@ -289,6 +289,7 @@ transport_connection_t *stream_session_lookup_transport6 (ip6_address_t * lcl,
 
 stream_session_t *stream_session_lookup_listener (ip46_address_t * lcl,
 						  u16 lcl_port, u8 proto);
+transport_connection_t * stream_session_lookup_half_open (transport_connection_t *tc);
 void stream_session_table_add_for_tc (transport_connection_t * tc, u64 value);
 int stream_session_table_del_for_tc (transport_connection_t * tc);
 
