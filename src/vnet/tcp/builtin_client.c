@@ -466,6 +466,7 @@ builtin_session_reset_callback (stream_session_t * s)
 {
   if (s->session_state == SESSION_STATE_READY)
     clib_warning ("Reset active connection %U", format_stream_session, s, 2);
+  stream_session_cleanup (s);
   return;
 }
 
@@ -478,6 +479,11 @@ builtin_session_create_callback (stream_session_t * s)
 static void
 builtin_session_disconnect_callback (stream_session_t * s)
 {
+  tclient_main_t *tm = &tclient_main;
+  vnet_disconnect_args_t _a, *a = &_a;
+  a->handle = stream_session_handle (s);
+  a->app_index = tm->app_index;
+  vnet_disconnect_session (a);
   return;
 }
 

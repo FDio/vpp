@@ -32,6 +32,62 @@ static transport_proto_vft_t *tp_vfts;
 
 session_manager_main_t session_manager_main;
 
+u8
+stream_session_table_insertion_half_is_valid (transport_connection_t *tc)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  session_kv4_t kv4;
+  int rv;
+
+  if (tc->is_ip4)
+    {
+      make_v4_ss_kv (&kv4, &tc->lcl_ip.ip4, &tc->rmt_ip.ip4, tc->lcl_port,
+		     tc->rmt_port, tc->proto);
+      rv = clib_bihash_search_inline_16_8 (&smm->v4_session_hash, &kv4);
+      if (rv == 0)
+	{
+	  return 0;
+	}
+
+      /* Finally, try half-open connections */
+      rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
+      if (rv == 0)
+	return 0;
+      return 1;
+    }
+  else
+    ASSERT(
+	stream_session_lookup_transport6 (&tc->lcl_ip.ip6, &tc->rmt_ip.ip6,
+					  tc->lcl_port, tc->rmt_port, tc->proto)
+	    == 0);
+  return 1;
+}
+
+u8
+stream_session_table_insertion_is_valid (transport_connection_t *tc)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  session_kv4_t kv4;
+  int rv;
+
+  if (tc->is_ip4)
+    {
+      make_v4_ss_kv (&kv4, &tc->lcl_ip.ip4, &tc->rmt_ip.ip4, tc->lcl_port,
+		     tc->rmt_port, tc->proto);
+      rv = clib_bihash_search_inline_16_8 (&smm->v4_session_hash, &kv4);
+      if (rv == 0)
+	{
+	  return 0;
+	}
+    }
+  else
+    ASSERT(
+	stream_session_lookup_transport6 (&tc->lcl_ip.ip6, &tc->rmt_ip.ip6,
+					  tc->lcl_port, tc->rmt_port, tc->proto)
+	    == 0);
+  return 1;
+}
+
 /*
  * Session lookup key; (src-ip, dst-ip, src-port, dst-port, session-type)
  * Value: (owner thread index << 32 | session_index);
@@ -42,6 +98,8 @@ stream_session_table_add_for_tc (transport_connection_t * tc, u64 value)
   session_manager_main_t *smm = &session_manager_main;
   session_kv4_t kv4;
   session_kv6_t kv6;
+
+  ASSERT (stream_session_table_insertion_is_valid (tc));
 
   switch (tc->proto)
     {
@@ -82,7 +140,9 @@ stream_session_half_open_table_add (session_type_t sst,
   session_kv4_t kv4;
   session_kv6_t kv6;
 
-  switch (sst)
+  ASSERT (stream_session_table_insertion_half_is_valid (tc));
+
+  switch(sst)
     {
     case SESSION_TYPE_IP4_UDP:
     case SESSION_TYPE_IP4_TCP:

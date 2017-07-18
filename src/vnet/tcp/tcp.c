@@ -163,6 +163,34 @@ tcp_connection_del (tcp_connection_t * tc)
   tcp_connection_cleanup (tc);
 }
 
+/**
+ * Cleanup half-open connection
+ */
+void
+tcp_half_open_connection_del (tcp_connection_t *tc)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  if (CLIB_DEBUG)
+    memset (tc, 0xFA, sizeof (*tc));
+  clib_spinlock_lock (&tm->half_open_lock);
+  pool_put (tm->half_open_connections, tc);
+  clib_spinlock_unlock (&tm->half_open_lock);
+}
+
+tcp_connection_t *
+tcp_connection_new (u8 thread_index, u8 do_init)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_connection_t *tc;
+
+  pool_get (tm->connections[thread_index], tc);
+  if (do_init)
+    memset (tc, 0, sizeof (*tc));
+  tc->c_c_index = tc - tm->connections[thread_index];
+  tc->c_thread_index = thread_index;
+  return tc;
+}
+
 /** Notify session that connection has been reset.
  *
  * Switch state to closed and wait for session to call cleanup.
@@ -287,7 +315,7 @@ ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
  * Allocate local port and add if successful add entry to local endpoint
  * table to mark the pair as used.
  */
-u16
+int
 tcp_allocate_local_port (tcp_main_t * tm, ip46_address_t * ip)
 {
   transport_endpoint_t *tep;
@@ -484,7 +512,7 @@ tcp_connection_open (ip46_address_t * rmt_addr, u16 rmt_port, u8 is_ip4)
   fib_node_index_t fei;
   u32 sw_if_index;
   ip46_address_t lcl_addr;
-  u16 lcl_port;
+  int lcl_port;
 
   /*
    * Find the local address and allocate port
@@ -1206,7 +1234,7 @@ tcp_main_enable (vlib_main_t * vm)
   clib_bihash_init_24_8 (&tm->local_endpoints_table, "local endpoint table",
 			 200000 /* $$$$ config parameter nbuckets */ ,
 			 (64 << 20) /*$$$ config parameter table size */ );
-
+  clib_spinlock_init (&tm->half_open_lock);
   return error;
 }
 

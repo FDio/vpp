@@ -1148,7 +1148,6 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
       vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
-
       tcp_push_hdr_i (tc, b, tc->state, 1);
 
       /* Account for the SYN */
