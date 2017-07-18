@@ -75,11 +75,25 @@ tcp_window_compute_scale (u32 available_space)
 }
 
 /**
+ * Update max segment size we're able to process.
+ *
+ * The value is constrained by our interface's MTU and IP options. It is
+ * also what we advertise to our peer.
+ */
+void
+tcp_update_rcv_mss (tcp_connection_t * tc)
+{
+  /* TODO find our iface MTU */
+  tc->mss = dummy_mtu;
+}
+
+/**
  * TCP's IW as recommended by RFC6928
  */
 always_inline u32
 tcp_initial_wnd_unscaled (tcp_connection_t * tc)
 {
+  tcp_update_rcv_mss (tc);
   return TCP_IW_N_SEGMENTS * tc->mss;
 }
 
@@ -373,19 +387,6 @@ tcp_make_options (tcp_connection_t * tc, tcp_options_t * opts,
 }
 
 /**
- * Update max segment size we're able to process.
- *
- * The value is constrained by our interface's MTU and IP options. It is
- * also what we advertise to our peer.
- */
-void
-tcp_update_rcv_mss (tcp_connection_t * tc)
-{
-  /* TODO find our iface MTU */
-  tc->mss = dummy_mtu;
-}
-
-/**
  * Update snd_mss to reflect the effective segment size that we can send
  * by taking into account all TCP options, including SACKs
  */
@@ -576,6 +577,7 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
 
   /* Init retransmit timer */
   tcp_retransmit_timer_set (tc);
+  TCP_EVT_DBG (TCP_EVT_SYNACK_SENT, tc);
 }
 
 always_inline void
@@ -684,7 +686,7 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
  *  Send reset without reusing existing buffer
  */
 void
-tcp_send_reset (vlib_buffer_t * pkt, u8 is_ip4)
+tcp_send_reset (tcp_connection_t *tc, vlib_buffer_t * pkt, u8 is_ip4)
 {
   vlib_buffer_t *b;
   u32 bi;
@@ -720,7 +722,7 @@ tcp_send_reset (vlib_buffer_t * pkt, u8 is_ip4)
     {
       flags = TCP_FLAG_RST;
       seq = pkt_th->ack_number;
-      ack = 0;
+      ack = tc->state >= TCP_STATE_SYN_SENT ? tc->rcv_nxt : 0;
     }
   else
     {
@@ -754,6 +756,7 @@ tcp_send_reset (vlib_buffer_t * pkt, u8 is_ip4)
     }
 
   tcp_enqueue_to_ip_lookup (vm, b, bi, is_ip4);
+  TCP_EVT_DBG (TCP_EVT_RST_SENT, tc);
 }
 
 void
@@ -839,6 +842,7 @@ tcp_send_syn (tcp_connection_t * tc)
 
   tcp_push_ip_hdr (tm, tc, b);
   tcp_enqueue_to_ip_lookup (vm, b, bi, tc->c_is_ip4);
+  TCP_EVT_DBG (TCP_EVT_SYN_SENT, tc);
 }
 
 always_inline void
@@ -1148,12 +1152,13 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
       vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
-
       tcp_push_hdr_i (tc, b, tc->state, 1);
 
       /* Account for the SYN */
       tc->snd_nxt += 1;
       tc->rtt_ts = 0;
+      TCP_EVT_DBG (TCP_EVT_SYN_RXT, tc,
+		   (tc->state == TCP_STATE_SYN_SENT ? 0 : 1));
     }
   else
     {
@@ -1172,8 +1177,6 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   else
     {
       ASSERT (tc->state == TCP_STATE_SYN_SENT);
-
-      TCP_EVT_DBG (TCP_EVT_SYN_RTX, tc);
 
       /* This goes straight to ipx_lookup */
       tcp_push_ip_hdr (tm, tc, b);
