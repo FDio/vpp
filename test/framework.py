@@ -654,9 +654,9 @@ class VppTestCase(unittest.TestCase):
         time.sleep(timeout)
         after = time.time()
         if after - before > 2 * timeout:
-            cls.logger.error(
-                    "time.sleep() derp! slept for %ss instead of ~%ss!" % (
-                        after - before, timeout))
+            cls.logger.error("unexpected time.sleep() result - "
+                             "slept for %ss instead of ~%ss!" % (
+                                 after - before, timeout))
         if hasattr(cls, 'logger'):
             cls.logger.debug(
                 "Finished sleep (%s) - slept %ss (wanted %ss)" % (
