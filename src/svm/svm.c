@@ -426,7 +426,7 @@ shm_name_from_svm_map_region_args (svm_map_region_args_t * a)
       if (a->name[0] == '/')
 	name_offset = 1;
 
-      shm_name = format (0, "/%s-%s%c", a->root_path,
+      shm_name = format (0, "/%s-%s%c", &a->root_path[root_path_offset],
 			 &a->name[name_offset], 0);
     }
   else
