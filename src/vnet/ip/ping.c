@@ -1,16 +1,15 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at:
+ * Copyright (c) 2016 Cisco and/or its affiliates. Licensed under the Apache
+ * License, Version 2.0 (the "License"); you may not use this file except in
+ * compliance with the License. You may obtain a copy of the License at:
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
  */
 
 #include <stddef.h>
@@ -18,6 +17,8 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_entry.h>
+#include <vlib/vlib.h>
+#include <emmintrin.h>
 
 /**
  * @file
@@ -44,16 +45,15 @@ format_icmp_echo_trace (u8 * s, va_list * va)
 }
 
 /*
- * If we can find the ping run by an ICMP ID, then we send the signal
- * to the CLI process referenced by that ping run, alongside with
- * a freshly made copy of the packet.
- * I opted for a packet copy to keep the main packet processing path
- * the same as for all the other nodes.
+ * If we can find the ping run by an ICMP ID, then we send the signal to the
+ * CLI process referenced by that ping run, alongside with a freshly made
+ * copy of the packet. I opted for a packet copy to keep the main packet
+ * processing path the same as for all the other nodes.
  *
  */
 
 static int
-signal_ip46_icmp_reply_event (vlib_main_t * vm,
+signal_ip46_icmp_reply_event (CLIB_UNUSED (vlib_main_t * vm),
 			      u8 event_type, vlib_buffer_t * b0)
 {
   ping_main_t *pm = &ping_main;
@@ -84,14 +84,22 @@ signal_ip46_icmp_reply_event (vlib_main_t * vm,
     return 0;
 
   ping_run_t *pr = vec_elt_at_index (pm->ping_runs, p[0]);
-  if (vlib_buffer_alloc (vm, &bi0_copy, 1) == 1)
+  if (vlib_buffer_alloc (vlib_mains[pr->cli_thread_index], &bi0_copy, 1) == 1)
     {
-      void *dst = vlib_buffer_get_current (vlib_get_buffer (vm, bi0_copy));
+      void *dst =
+	vlib_buffer_get_current (vlib_get_buffer
+				 (vlib_mains[pr->cli_thread_index],
+				  bi0_copy));
       clib_memcpy (dst, vlib_buffer_get_current (b0), b0->current_length);
     }
   /* If buffer_alloc failed, bi0_copy == 0 - just signaling an event. */
-
-  vlib_process_signal_event (vm, pr->cli_process_id, event_type, bi0_copy);
+  f64 nowts = vlib_time_now (vlib_mains[pr->cli_thread_index]);
+  clib_memcpy (vnet_buffer
+	       (vlib_get_buffer
+		(vlib_mains[pr->cli_thread_index], bi0_copy))->unused, &nowts,
+	       sizeof (nowts));
+  vlib_process_signal_event (vlib_mains[pr->cli_thread_index],
+			     pr->cli_process_id, event_type, bi0_copy);
   return 1;
 }
 
@@ -127,7 +135,6 @@ ip6_icmp_echo_reply_node_fn (vlib_main_t * vm,
 	  tr->seq = h0->icmp_echo.seq;
 	  tr->bound = (next0 == ICMP6_ECHO_REPLY_NEXT_DROP);
 	}
-
       /* push this pkt to the next graph node */
       vlib_set_next_frame_buffer (vm, node, next0, bi0);
 
@@ -139,17 +146,17 @@ ip6_icmp_echo_reply_node_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_icmp_echo_reply_node, static) =
+VLIB_REGISTER_NODE(ip6_icmp_echo_reply_node, static)=
 {
-  .function = ip6_icmp_echo_reply_node_fn,
-  .name = "ip6-icmp-echo-reply",
-  .vector_size = sizeof (u32),
-  .format_trace = format_icmp_echo_trace,
-  .n_next_nodes = ICMP6_ECHO_REPLY_N_NEXT,
-  .next_nodes = {
-    [ICMP6_ECHO_REPLY_NEXT_DROP] = "error-drop",
-    [ICMP6_ECHO_REPLY_NEXT_PUNT] = "error-punt",
-  },
+	.function = ip6_icmp_echo_reply_node_fn,
+		.name = "ip6-icmp-echo-reply",
+		.vector_size = sizeof(u32),
+		.format_trace = format_icmp_echo_trace,
+		.n_next_nodes = ICMP6_ECHO_REPLY_N_NEXT,
+		.next_nodes = {
+		[ICMP6_ECHO_REPLY_NEXT_DROP] = "error-drop",
+			[ICMP6_ECHO_REPLY_NEXT_PUNT] = "error-punt",
+	},
 };
 /* *INDENT-ON* */
 
@@ -185,7 +192,6 @@ ip4_icmp_echo_reply_node_fn (vlib_main_t * vm,
 	  tr->seq = h0->icmp_echo.seq;
 	  tr->bound = (next0 == ICMP4_ECHO_REPLY_NEXT_DROP);
 	}
-
       /* push this pkt to the next graph node */
       vlib_set_next_frame_buffer (vm, node, next0, bi0);
 
@@ -197,24 +203,27 @@ ip4_icmp_echo_reply_node_fn (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_icmp_echo_reply_node, static) =
+VLIB_REGISTER_NODE(ip4_icmp_echo_reply_node, static)=
 {
-  .function = ip4_icmp_echo_reply_node_fn,
-  .name = "ip4-icmp-echo-reply",
-  .vector_size = sizeof (u32),
-  .format_trace = format_icmp_echo_trace,
-  .n_next_nodes = ICMP4_ECHO_REPLY_N_NEXT,
-  .next_nodes = {
-    [ICMP4_ECHO_REPLY_NEXT_DROP] = "error-drop",
-    [ICMP4_ECHO_REPLY_NEXT_PUNT] = "error-punt",
-  },
+	.function = ip4_icmp_echo_reply_node_fn,
+		.name = "ip4-icmp-echo-reply",
+		.vector_size = sizeof(u32),
+		.format_trace = format_icmp_echo_trace,
+		.n_next_nodes = ICMP4_ECHO_REPLY_N_NEXT,
+		.next_nodes = {
+		[ICMP4_ECHO_REPLY_NEXT_DROP] = "error-drop",
+			[ICMP4_ECHO_REPLY_NEXT_PUNT] = "error-punt",
+	},
 };
 /* *INDENT-ON* */
 
 char *ip6_lookup_next_nodes[] = IP6_LOOKUP_NEXT_NODES;
 char *ip4_lookup_next_nodes[] = IP4_LOOKUP_NEXT_NODES;
 
-/* Fill in the ICMP ECHO structure, return the safety-checked and possibly shrunk data_len */
+/*
+ * Fill in the ICMP ECHO structure, return the safety-checked and possibly
+ * shrunk data_len
+ */
 static u16
 init_icmp46_echo_request (icmp46_echo_request_t * icmp46_echo,
 			  u16 seq_host, u16 id_host, u16 data_len)
@@ -253,8 +262,8 @@ send_ip6_ping (vlib_main_t * vm, ip6_main_t * im,
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (p0);
 
   /*
-   * if the user did not provide a source interface, use the any interface
-   * that the destination resolves via.
+   * if the user did not provide a source interface, use the any
+   * interface that the destination resolves via.
    */
   if (~0 == sw_if_index)
     {
@@ -268,11 +277,11 @@ send_ip6_ping (vlib_main_t * vm, ip6_main_t * im,
 	  vlib_buffer_free (vm, &bi0, 1);
 	  return SEND_PING_NO_TABLE;
 	}
-
       fib_entry_index = ip6_fib_table_lookup (fib_index, pa6, 128);
       sw_if_index = fib_entry_get_resolving_interface (fib_entry_index);
       /*
-       * Set the TX interface to force ip-lookup to use its table ID
+       * Set the TX interface to force ip-lookup to use its table
+       * ID
        */
       vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index;
     }
@@ -291,7 +300,6 @@ send_ip6_ping (vlib_main_t * vm, ip6_main_t * im,
       vlib_buffer_free (vm, &bi0, 1);
       return SEND_PING_NO_INTERFACE;
     }
-
   vnet_buffer (p0)->sw_if_index[VLIB_RX] = sw_if_index;
 
   h0 = vlib_buffer_get_current (p0);
@@ -379,8 +387,8 @@ send_ip4_ping (vlib_main_t * vm,
   VLIB_BUFFER_TRACE_TRAJECTORY_INIT (p0);
 
   /*
-   * if the user did not provide a source interface, use the any interface
-   * that the destination resolves via.
+   * if the user did not provide a source interface, use the any
+   * interface that the destination resolves via.
    */
   if (~0 == sw_if_index)
     {
@@ -394,12 +402,12 @@ send_ip4_ping (vlib_main_t * vm,
 	  vlib_buffer_free (vm, &bi0, 1);
 	  return SEND_PING_NO_TABLE;
 	}
-
       fib_entry_index =
 	ip4_fib_table_lookup (ip4_fib_get (fib_index), pa4, 32);
       sw_if_index = fib_entry_get_resolving_interface (fib_entry_index);
       /*
-       * Set the TX interface to force ip-lookup to use the user's table ID
+       * Set the TX interface to force ip-lookup to use the user's
+       * table ID
        */
       vnet_buffer (p0)->sw_if_index[VLIB_TX] = fib_index;
     }
@@ -418,7 +426,6 @@ send_ip4_ping (vlib_main_t * vm,
       vlib_buffer_free (vm, &bi0, 1);
       return SEND_PING_NO_INTERFACE;
     }
-
   vnet_buffer (p0)->sw_if_index[VLIB_RX] = sw_if_index;
 
   h0 = vlib_buffer_get_current (p0);
@@ -449,7 +456,6 @@ send_ip4_ping (vlib_main_t * vm,
 			   format_ip4_address, &h0->ip4.src_address);
 	}
     }
-
   /* Fill in icmp fields */
   h0->icmp.type = ICMP4_echo_request;
   h0->icmp.code = 0;
@@ -497,8 +503,9 @@ print_ip6_icmp_reply (vlib_main_t * vm, u32 bi0)
 {
   vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
   icmp6_echo_request_header_t *h0 = vlib_buffer_get_current (b0);
-  f64 rtt = vlib_time_now (vm) - h0->icmp_echo.time_sent;
-
+  f64 rtt = 0;
+  clib_memcpy (&rtt, vnet_buffer (b0)->unused, sizeof (rtt));
+  rtt -= h0->icmp_echo.time_sent;
   vlib_cli_output (vm,
 		   "%d bytes from %U: icmp_seq=%d ttl=%d time=%.4f ms",
 		   clib_host_to_net_u16 (h0->ip6.payload_length),
@@ -513,7 +520,9 @@ print_ip4_icmp_reply (vlib_main_t * vm, u32 bi0)
 {
   vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
   icmp4_echo_request_header_t *h0 = vlib_buffer_get_current (b0);
-  f64 rtt = vlib_time_now (vm) - h0->icmp_echo.time_sent;
+  f64 rtt = 0;
+  clib_memcpy (&rtt, vnet_buffer (b0)->unused, sizeof (rtt));
+  rtt -= h0->icmp_echo.time_sent;
   u32 rcvd_icmp_len =
     clib_host_to_net_u16 (h0->ip4.length) -
     (4 * (0xF & h0->ip4.ip_version_and_header_length));
@@ -530,9 +539,10 @@ print_ip4_icmp_reply (vlib_main_t * vm, u32 bi0)
 
 /*
  * Perform the ping run with the given parameters in the current CLI process.
- * Depending on whether pa4 or pa6 is set, runs IPv4 or IPv6 ping.
- * The amusing side effect is of course if both are set, then both pings are sent.
- * This behavior can be used to ping a dualstack host over IPv4 and IPv6 at once.
+ * Depending on whether pa4 or pa6 is set, runs IPv4 or IPv6 ping. The
+ * amusing side effect is of course if both are set, then both pings are
+ * sent. This behavior can be used to ping a dualstack host over IPv4 and
+ * IPv6 at once.
  */
 
 static void
@@ -565,13 +575,17 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
   pool_get (pm->ping_runs, pr);
   ping_run_index = pr - pm->ping_runs;
   pr->cli_process_id = curr_proc;
+  pr->cli_thread_index = vlib_get_thread_index ();
   pr->icmp_id = icmp_id;
   hash_set (pm->ping_run_by_icmp_id, icmp_id, ping_run_index);
   for (i = 1; i <= ping_repeat; i++)
     {
       f64 sleep_interval;
       f64 time_ping_sent = vlib_time_now (vm);
-      /* Reset pr: running ping in other process could have changed pm->ping_runs */
+      /*
+       * Reset pr: running ping in other process could have changed
+       * pm->ping_runs
+       */
       pr = vec_elt_at_index (pm->ping_runs, ping_run_index);
       pr->curr_seq = i;
       if (pa6 &&
@@ -647,7 +661,10 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
     vlib_cli_output (vm,
 		     "Statistics: %u sent, %u received, %f%% packet loss\n",
 		     n_requests, n_replies, loss);
-    /* Reset pr: running ping in other process could have changed pm->ping_runs */
+    /*
+     * Reset pr: running ping in other process could have changed
+     * pm->ping_runs
+     */
     pr = vec_elt_at_index (pm->ping_runs, ping_run_index);
     hash_unset (pm->ping_run_by_icmp_id, icmp_id);
     pool_put (pm->ping_runs, pr);
@@ -738,7 +755,6 @@ ping_ip_address (vlib_main_t * vm,
 	  ping_ip6 = 1;
 	}
     }
-
   /* parse the rest of the parameters  in a cycle */
   while (!unformat_eof (input, NULL))
     {
@@ -840,57 +856,41 @@ done:
   return error;
 }
 
-/*?
- * This command sends an ICMP ECHO_REQUEST to network hosts. The address
+/*
+ * ? This command sends an ICMP ECHO_REQUEST to network hosts. The address
  * can be an IPv4 or IPv6 address (or both at the same time).
  *
- * @cliexpar
- * @parblock
- * Example of how ping an IPv4 address:
- * @cliexstart{ping 172.16.1.2 source GigabitEthernet2/0/0 repeat 2}
- * 64 bytes from 172.16.1.2: icmp_seq=1 ttl=64 time=.1090 ms
- * 64 bytes from 172.16.1.2: icmp_seq=2 ttl=64 time=.0914 ms
+ * @cliexpar @parblock Example of how ping an IPv4 address: @cliexstart{ping
+ * 172.16.1.2 source GigabitEthernet2/0/0 repeat 2} 64 bytes from 172.16.1.2:
+ * icmp_seq=1 ttl=64 time=.1090 ms 64 bytes from 172.16.1.2: icmp_seq=2
+ * ttl=64 time=.0914 ms
  *
- * Statistics: 2 sent, 2 received, 0% packet loss
- * @cliexend
+ * Statistics: 2 sent, 2 received, 0% packet loss @cliexend
  *
  * Example of how ping both an IPv4 address and IPv6 address at the same time:
- * @cliexstart{ping 172.16.1.2 ipv6 fe80::24a5:f6ff:fe9c:3a36 source GigabitEthernet2/0/0 repeat 2 verbose}
- * Adjacency index: 10, sw_if_index: 1
- * Adj: ip6-discover-neighbor
- * Adj Interface: 0
- * Forced set interface: 1
- * Adjacency index: 0, sw_if_index: 4294967295
- * Adj: ip4-miss
- * Adj Interface: 0
- * Forced set interface: 1
- * Source address: 172.16.1.1
- * 64 bytes from 172.16.1.2: icmp_seq=1 ttl=64 time=.1899 ms
- * Adjacency index: 10, sw_if_index: 1
- * Adj: ip6-discover-neighbor
- * Adj Interface: 0
- * Forced set interface: 1
- * Adjacency index: 0, sw_if_index: 4294967295
- * Adj: ip4-miss
- * Adj Interface: 0
- * Forced set interface: 1
- * Source address: 172.16.1.1
- * 64 bytes from 172.16.1.2: icmp_seq=2 ttl=64 time=.0910 ms
+ * @cliexstart{ping 172.16.1.2 ipv6 fe80::24a5:f6ff:fe9c:3a36 source
+ * GigabitEthernet2/0/0 repeat 2 verbose} Adjacency index: 10, sw_if_index: 1
+ * Adj: ip6-discover-neighbor Adj Interface: 0 Forced set interface: 1
+ * Adjacency index: 0, sw_if_index: 4294967295 Adj: ip4-miss Adj Interface: 0
+ * Forced set interface: 1 Source address: 172.16.1.1 64 bytes from
+ * 172.16.1.2: icmp_seq=1 ttl=64 time=.1899 ms Adjacency index: 10,
+ * sw_if_index: 1 Adj: ip6-discover-neighbor Adj Interface: 0 Forced set
+ * interface: 1 Adjacency index: 0, sw_if_index: 4294967295 Adj: ip4-miss Adj
+ * Interface: 0 Forced set interface: 1 Source address: 172.16.1.1 64 bytes
+ * from 172.16.1.2: icmp_seq=2 ttl=64 time=.0910 ms
  *
- * Statistics: 4 sent, 2 received, 50% packet loss
- * @cliexend
- * @endparblock
-?*/
+ * Statistics: 4 sent, 2 received, 50% packet loss @cliexend @endparblock ?
+ */
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ping_command, static) =
+VLIB_CLI_COMMAND(ping_command, static)=
 {
-  .path = "ping",
-  .function = ping_ip_address,
-  .short_help = "ping {<ip-addr> | ipv4 <ip4-addr> | ipv6 <ip6-addr>}"
-  " [ipv4 <ip4-addr> | ipv6 <ip6-addr>] [source <interface>]"
-  " [size <pktsize>] [interval <sec>] [repeat <cnt>] [table-id <id>]"
-  " [verbose]",
-  .is_mp_safe = 1,
+	.path = "ping",
+		.function = ping_ip_address,
+		.short_help = "ping {<ip-addr> | ipv4 <ip4-addr> | ipv6 <ip6-addr>}"
+		" [ipv4 <ip4-addr> | ipv6 <ip6-addr>] [source <interface>]"
+		" [size <pktsize>] [interval <sec>] [repeat <cnt>] [table-id <id>]"
+		" [verbose]",
+		.is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
@@ -911,7 +911,5 @@ VLIB_INIT_FUNCTION (ping_cli_init);
 /*
  * fd.io coding-style-patch-verification: ON
  *
- * Local Variables:
- * eval: (c-set-style "gnu")
- * End:
+ * Local Variables: eval: (c-set-style "gnu") End:
  */
