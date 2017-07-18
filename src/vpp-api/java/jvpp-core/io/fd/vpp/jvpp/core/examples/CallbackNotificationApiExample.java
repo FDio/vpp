@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.examples;
 
-import static io.fd.vpp.jvpp.core.test.NotificationUtils.getChangeInterfaceState;
-import static io.fd.vpp.jvpp.core.test.NotificationUtils.getDisableInterfaceNotificationsReq;
-import static io.fd.vpp.jvpp.core.test.NotificationUtils.getEnableInterfaceNotificationsReq;
-import static io.fd.vpp.jvpp.core.test.NotificationUtils.printNotification;
+import static io.fd.vpp.jvpp.core.examples.NotificationUtils.getChangeInterfaceState;
+import static io.fd.vpp.jvpp.core.examples.NotificationUtils.getDisableInterfaceNotificationsReq;
+import static io.fd.vpp.jvpp.core.examples.NotificationUtils.getEnableInterfaceNotificationsReq;
+import static io.fd.vpp.jvpp.core.examples.NotificationUtils.printNotification;
 
 import io.fd.vpp.jvpp.JVpp;
 import io.fd.vpp.jvpp.JVppRegistry;
@@ -33,11 +33,11 @@ import io.fd.vpp.jvpp.core.dto.SwInterfaceSetFlagsNotification;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceSetFlagsReply;
 import io.fd.vpp.jvpp.core.dto.WantInterfaceEventsReply;
 
-public class CallbackNotificationApiTest {
+public class CallbackNotificationApiExample {
 
     private static void testCallbackApi() throws Exception {
         System.out.println("Testing Java callback API for notifications");
-        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackNotificationTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackNotificationApiExample");
              final JVpp jvpp = new JVppCoreImpl()) {
             registry.register(jvpp, new TestCallback());
             System.out.println("Successfully connected to VPP");

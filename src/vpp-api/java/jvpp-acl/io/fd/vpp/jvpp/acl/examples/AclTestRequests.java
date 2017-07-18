@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.acl.test;
+package io.fd.vpp.jvpp.acl.examples;
 
-import static io.fd.vpp.jvpp.acl.test.AclTestData.createAclRules;
-import static io.fd.vpp.jvpp.acl.test.AclTestData.createMacipRules;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.createAclRules;
+import static io.fd.vpp.jvpp.acl.examples.AclTestData.createMacipRules;
 
 import io.fd.vpp.jvpp.VppInvocationException;
 import io.fd.vpp.jvpp.acl.dto.AclAddReplace;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.examples;
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
@@ -25,12 +25,12 @@ import io.fd.vpp.jvpp.core.callback.WantInterfaceEventsCallback;
 import io.fd.vpp.jvpp.core.callfacade.CallbackJVppCoreFacade;
 import io.fd.vpp.jvpp.core.dto.WantInterfaceEventsReply;
 
-public class CallbackJVppFacadeNotificationTest {
+public class CallbackJVppFacadeNotificationExample {
 
     private static void testCallbackFacade() throws Exception {
         System.out.println("Testing CallbackJVppFacade for notifications");
 
-        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackFacadeTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackFacadeExample");
              final JVppCore jvpp = new JVppCoreImpl()) {
             final CallbackJVppCoreFacade jvppCallbackFacade = new CallbackJVppCoreFacade(registry, jvpp);
             System.out.println("Successfully connected to VPP");

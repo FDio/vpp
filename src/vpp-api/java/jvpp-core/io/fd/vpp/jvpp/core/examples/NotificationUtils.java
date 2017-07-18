@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.examples;
 
 import java.io.PrintStream;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceSetFlags;
