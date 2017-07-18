@@ -410,9 +410,6 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
       return -1;
     }
 
-  /* Mark vpp session as connected */
-  s->session_state = SESSION_STATE_READY;
-
   tm->our_event_queue = session_manager_get_vpp_event_queue (s->thread_index);
   tm->vpp_event_queue = session_manager_get_vpp_event_queue (s->thread_index);
 
@@ -466,6 +463,7 @@ builtin_session_reset_callback (stream_session_t * s)
 {
   if (s->session_state == SESSION_STATE_READY)
     clib_warning ("Reset active connection %U", format_stream_session, s, 2);
+  stream_session_cleanup (s);
   return;
 }
 
@@ -478,6 +476,11 @@ builtin_session_create_callback (stream_session_t * s)
 static void
 builtin_session_disconnect_callback (stream_session_t * s)
 {
+  tclient_main_t *tm = &tclient_main;
+  vnet_disconnect_args_t _a, *a = &_a;
+  a->handle = stream_session_handle (s);
+  a->app_index = tm->app_index;
+  vnet_disconnect_session (a);
   return;
 }
 
@@ -521,7 +524,7 @@ attach_builtin_test_clients_app (void)
   options[SESSION_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
   options[SESSION_OPTIONS_SEGMENT_SIZE] = (2ULL << 32);
   options[SESSION_OPTIONS_RX_FIFO_SIZE] = tm->fifo_size;
-  options[SESSION_OPTIONS_TX_FIFO_SIZE] = tm->fifo_size / 2;
+  options[SESSION_OPTIONS_TX_FIFO_SIZE] = tm->fifo_size;
   options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = tm->private_segment_count;
   options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE] = tm->private_segment_size;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;

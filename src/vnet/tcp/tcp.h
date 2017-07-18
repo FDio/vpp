@@ -33,6 +33,7 @@
 
 #define TCP_DUPACK_THRESHOLD 	3
 #define TCP_MAX_RX_FIFO_SIZE 	4 << 20
+#define TCP_MIN_RX_FIFO_SIZE	4 << 10
 #define TCP_IW_N_SEGMENTS 	10
 #define TCP_ALWAYS_ACK		1	/**< On/off delayed acks */
 #define TCP_USE_SACKS		1	/**< Disable only for testing */
@@ -371,11 +372,9 @@ typedef struct _tcp_main
   /* Per worker-thread timer wheel for connections timers */
   tw_timer_wheel_16t_2w_512sl_t *timer_wheels;
 
-//  /* Convenience per worker-thread vector of connections to DELACK */
-//  u32 **delack_connections;
-
   /* Pool of half-open connections on which we've sent a SYN */
   tcp_connection_t *half_open_connections;
+  clib_spinlock_t half_open_lock;
 
   /* Pool of local TCP endpoints */
   transport_endpoint_t *local_endpoints;
@@ -455,6 +454,8 @@ tcp_get_connection_from_transport (transport_connection_t * tconn)
 void tcp_connection_close (tcp_connection_t * tc);
 void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
+void tcp_half_open_connection_del (tcp_connection_t * tc);
+tcp_connection_t *tcp_connection_new (u8 thread_index);
 void tcp_connection_reset (tcp_connection_t * tc);
 
 u8 *format_tcp_connection_id (u8 * s, va_list * args);
@@ -472,13 +473,15 @@ tcp_listener_get (u32 tli)
 always_inline tcp_connection_t *
 tcp_half_open_connection_get (u32 conn_index)
 {
+  if (pool_is_free_index (tcp_main.half_open_connections, conn_index))
+    return 0;
   return pool_elt_at_index (tcp_main.half_open_connections, conn_index);
 }
 
 void tcp_make_ack (tcp_connection_t * ts, vlib_buffer_t * b);
 void tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b);
 void tcp_make_synack (tcp_connection_t * ts, vlib_buffer_t * b);
-void tcp_send_reset (vlib_buffer_t * pkt, u8 is_ip4);
+void tcp_send_reset (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4);
 void tcp_send_syn (tcp_connection_t * tc);
 void tcp_send_fin (tcp_connection_t * tc);
 void tcp_init_mss (tcp_connection_t * tc);
@@ -658,7 +661,6 @@ tcp_timer_update (tcp_connection_t * tc, u8 timer_id, u32 interval)
 				 tc->c_c_index, timer_id, interval);
 }
 
-/* XXX Switch retransmit to faster TW */
 always_inline void
 tcp_retransmit_timer_set (tcp_connection_t * tc)
 {
