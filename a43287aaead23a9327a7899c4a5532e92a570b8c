@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_c11681f1",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-07-18T10:47:25Z",
+      "side": 1,
+      "message": "always try and minimise the amount of special case code you need to add.\nthis line could be;\n  if (P2P)\n    n_bytes \u003d sizeof(ehternet_header)\n\nthen below one if (P2P) below when dealing with the dst_Address.",
+      "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_81d88954",
+        "filename": "src/vnet/ethernet/p2p_ethernet.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-07-18T10:47:25Z",
+      "side": 1,
+      "message": "declare before the u8 array for better layout.",
+      "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_61dd8d42",
+        "filename": "src/vnet/ethernet/p2p_ethernet.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-07-18T10:47:25Z",
+      "side": 1,
+      "message": "~0",
+      "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_41e29104",
+        "filename": "src/vnet/ethernet/p2p_ethernet.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-07-18T10:47:25Z",
+      "side": 1,
+      "message": "this hash table add is not undone in the delete case.",
+      "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
