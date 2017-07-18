@@ -227,7 +227,8 @@ static void vl_api_dhcp_client_config_t_handler
   VALIDATE_SW_IF_INDEX (mp);
 
   rv = dhcp_client_config (vm, ntohl (mp->sw_if_index),
-			   mp->hostname, mp->is_add, mp->client_index,
+			   mp->hostname, mp->client_id,
+			   mp->is_add, mp->client_index,
 			   mp->want_dhcp_event ? dhcp_compl_event_callback :
 			   NULL, mp->pid);
 
