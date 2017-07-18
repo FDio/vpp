@@ -426,7 +426,7 @@ shm_name_from_svm_map_region_args (svm_map_region_args_t * a)
       if (a->name[0] == '/')
 	name_offset = 1;
 
-      shm_name = format (0, "/%s-%s%c", a->root_path,
+      shm_name = format (0, "/%s-%s%c", &a->root_path[root_path_offset],
 			 &a->name[name_offset], 0);
     }
   else
@@ -461,7 +461,10 @@ svm_map_region (svm_map_region_args_t * a)
   ASSERT ((a->size & ~(MMAP_PAGESIZE - 1)) == a->size);
   ASSERT (a->name);
 
-  shm_name = shm_name_from_svm_map_region_args (a);
+  if (strstr (a->name, "/vpe-api"))
+    shm_name = format (0, "%s%c", a->name, 0);
+  else
+    shm_name = shm_name_from_svm_map_region_args (a);
 
   if (CLIB_DEBUG > 1)
     clib_warning ("[%d] map region %s: shm_open (%s)",
