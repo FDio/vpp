@@ -1755,6 +1755,21 @@ class VppPapiProvider(object):
                 'oui': oui,
             })
 
+    def dhcp_client(self,
+                    sw_if_index,
+                    hostname,
+                    is_add=1,
+                    want_dhcp_events=0):
+        return self.api(
+            self.papi.dhcp_client_config,
+            {
+                'sw_if_index': sw_if_index,
+                'hostname': hostname,
+                'is_add': is_add,
+                'want_dhcp_event': want_dhcp_events,
+                'pid': os.getpid(),
+            })
+
     def ip_mroute_add_del(self,
                           src_address,
                           grp_address,

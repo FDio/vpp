@@ -821,6 +821,7 @@ int dhcp_client_add_del (dhcp_client_add_del_args_t * a)
 				      1,
 				      FIB_ROUTE_PATH_FLAG_NONE);
       }
+      dhcp_client_release_address (dcm, c);
       ip4_sw_interface_enable_disable (c->sw_if_index, 0);
 
       vec_free (c->option_55_data);
