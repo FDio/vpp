@@ -692,6 +692,30 @@
     },
     {
       "key": {
+        "uuid": "7a51691d_1c72c27c",
+        "filename": "test/test_jvpp.py",
+        "patchSetId": 6
+      },
+      "lineNbr": 15,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-18T06:40:43Z",
+      "side": 1,
+      "message": "another approach would be to use find or some python equivalent (it should be safe to assume there is only single version present)",
+      "parentUuid": "7a51691d_403bb2eb",
+      "range": {
+        "startLine": 15,
+        "startChar": 0,
+        "endLine": 15,
+        "endChar": 41
+      },
+      "revId": "3509d525c26cc4f067060ed9fd9a2dad6b9247bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a51691d_9b30ffe9",
         "filename": "test/test_jvpp_parts.py",
         "patchSetId": 6
