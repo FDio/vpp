@@ -116,11 +116,18 @@ typedef enum
 
 /** Forward one packet based on the mac table lookup result. */
 
+typedef struct
+{
+  u32 sw_if_index;
+  u8 sn;
+} swif_sn_cache_t;
+
 static_always_inline void
 l2fwd_process (vlib_main_t * vm,
 	       vlib_node_runtime_t * node,
 	       l2fwd_main_t * msm,
 	       vlib_error_main_t * em,
+	       swif_sn_cache_t * cached_sn,
 	       vlib_buffer_t * b0,
 	       u32 sw_if_index0, l2fib_entry_result_t * result0, u32 * next0)
 {
@@ -138,17 +145,25 @@ l2fwd_process (vlib_main_t * vm,
       em->counters[node_counter_base_index + L2FWD_ERROR_HIT] += 1;
 #endif
 
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = result0->fields.sw_if_index;
+      u32 sw_if_index = result0->fields.sw_if_index;
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index;
       *next0 = L2FWD_NEXT_L2_OUTPUT;
       int l2fib_seq_num_valid = 1;
       /* check l2fib seq num for stale entries */
       if (!result0->fields.static_mac)
 	{
 	  l2fib_seq_num_t in_sn = {.as_u16 = vnet_buffer (b0)->l2.l2fib_sn };
-	  l2fib_seq_num_t expected_sn = {
-	    .bd = in_sn.bd,
-	    .swif = *l2fib_swif_seq_num (result0->fields.sw_if_index),
-	  };
+	  l2fib_seq_num_t expected_sn = {.bd = in_sn.bd };
+	  int sn_hit = cached_sn->sw_if_index == sw_if_index;
+	  if (PREDICT_TRUE (sn_hit))
+	    expected_sn.swif = cached_sn->sn;
+	  else
+	    {
+	      cached_sn->sw_if_index = sw_if_index;
+	      cached_sn->sn = expected_sn.swif =
+		*l2fib_swif_seq_num (sw_if_index);
+	    }
+
 	  l2fib_seq_num_valid =
 	    expected_sn.as_u16 == result0->fields.sn.as_u16;
 	}
@@ -235,6 +250,8 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* Clear the one-entry cache in case mac table was updated */
   cached_key.raw = ~0;
   cached_result.raw = ~0;
+
+  swif_sn_cache_t snc = { ~0, ~0 };
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
@@ -370,13 +387,13 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			  &result2,
 			  &result3);
 	  /* *INDENT-ON* */
-	  l2fwd_process (vm, node, msm, em, b0, sw_if_index0, &result0,
+	  l2fwd_process (vm, node, msm, em, &snc, b0, sw_if_index0, &result0,
 			 &next0);
-	  l2fwd_process (vm, node, msm, em, b1, sw_if_index1, &result1,
+	  l2fwd_process (vm, node, msm, em, &snc, b1, sw_if_index1, &result1,
 			 &next1);
-	  l2fwd_process (vm, node, msm, em, b2, sw_if_index2, &result2,
+	  l2fwd_process (vm, node, msm, em, &snc, b2, sw_if_index2, &result2,
 			 &next2);
-	  l2fwd_process (vm, node, msm, em, b3, sw_if_index3, &result3,
+	  l2fwd_process (vm, node, msm, em, &snc, b3, sw_if_index3, &result3,
 			 &next3);
 
 	  /* verify speculative enqueues, maybe switch current next frame */
@@ -428,7 +445,7 @@ l2fwd_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  l2fib_lookup_1 (msm->mac_table, &cached_key, &cached_result, h0->dst_address, vnet_buffer (b0)->l2.bd_index, &key0,	/* not used */
 			  &bucket0,	/* not used */
 			  &result0);
-	  l2fwd_process (vm, node, msm, em, b0, sw_if_index0, &result0,
+	  l2fwd_process (vm, node, msm, em, &snc, b0, sw_if_index0, &result0,
 			 &next0);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
