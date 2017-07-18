@@ -340,12 +340,12 @@ vl_map_shmem (const char *region_name, int is_vlib)
   int i;
   struct timespec ts, tsrem;
   u32 vlib_input_queue_length;
+  char root_path[strlen (region_name)];
 
   memset (a, 0, sizeof (*a));
 
   if (strstr (region_name, "-vpe-api"))
     {
-      char root_path[strlen (region_name)];
       strncpy (root_path, region_name, strlen (region_name) - 8);
       a->root_path = root_path;
       am->root_path = root_path;
