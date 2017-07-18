@@ -414,6 +414,16 @@ send_dhcp_pkt (dhcp_client_main_t * dcm, dhcp_client_t * c,
       o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
     }
 
+  /* send option 61, client_id */
+  if (vec_len (c->client_identifier))
+    {
+      o->option = 61;
+      o->length = vec_len (c->client_identifier);
+      clib_memcpy (o->data, c->client_identifier,
+                   vec_len (c->client_identifier));
+      o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
+    }
+
   /* $$ maybe send the client s/w version if anyone cares */
 
   /* 
@@ -838,6 +848,7 @@ int
 dhcp_client_config (vlib_main_t * vm,
                     u32 sw_if_index,
                     u8 * hostname,
+                    u8 * client_id,
                     u32 is_add,
                     u32 client_index,
                     void * event_callback,
@@ -854,7 +865,9 @@ dhcp_client_config (vlib_main_t * vm,
   a->event_callback = event_callback;
   vec_validate(a->hostname, strlen((char *)hostname) - 1);
   strncpy((char *)a->hostname, (char *)hostname, vec_len(a->hostname));
-  a->client_identifier = format (0, "vpe 1.0%c", 0);
+  vec_validate(a->client_identifier, strlen((char *)client_id) - 1);
+  strncpy((char *)a->client_identifier, (char *)client_id, vec_len(a->client_identifier));
+
   /* 
    * Option 55 request list. These data precisely match
    * the Ubuntu dhcp client. YMMV.

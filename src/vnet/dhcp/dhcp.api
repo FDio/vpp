@@ -61,6 +61,7 @@ autoreply define dhcp_proxy_set_vss
     @param context - sender context, to match reply w/ request
     @param sw_if_index - index of the interface for DHCP client
     @param hostname - hostname
+    @param client_id - Client ID - option 61
     @param is_add - add the config if non-zero, else delete
     @param want_dhcp_event - DHCP event sent to the sender
            via dhcp_compl_event API message if non-zero
@@ -72,6 +73,7 @@ autoreply define dhcp_client_config
   u32 context;
   u32 sw_if_index;
   u8 hostname[64];
+  u8 client_id[64];
   u8 is_add;
   u8 want_dhcp_event;
   u32 pid;

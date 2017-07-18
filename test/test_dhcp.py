@@ -9,7 +9,7 @@ from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route
 from util import mk_ll_addr
 
-from scapy.layers.l2 import Ether, getmacbyip
+from scapy.layers.l2 import Ether, getmacbyip, ARP
 from scapy.layers.inet import IP, UDP, ICMP
 from scapy.layers.inet6 import IPv6, in6_getnsmac, in6_mactoifaceid
 from scapy.layers.dhcp import DHCP, BOOTP, DHCPTypes
@@ -189,11 +189,13 @@ class TestDHCP(VppTestCase):
         self.assertEqual(udp.dport, DHCP4_SERVER_PORT)
         self.assertEqual(udp.sport, DHCP4_CLIENT_PORT)
 
-    def verify_orig_dhcp_discover(self, pkt, intf, hostname):
+    def verify_orig_dhcp_discover(self, pkt, intf, hostname, client_id=None):
         self.verify_orig_dhcp_pkt(pkt, intf)
 
         self.verify_dhcp_msg_type(pkt, "discover")
         self.verify_dhcp_has_option(pkt, "hostname", hostname)
+        if client_id:
+            self.verify_dhcp_has_option(pkt, "client_id", client_id)
 
     def verify_orig_dhcp_request(self, pkt, intf, hostname, ip):
         self.verify_orig_dhcp_pkt(pkt, intf)
@@ -1090,11 +1092,24 @@ class TestDHCP(VppTestCase):
         self.pg_start()
 
         #
+        # We'll get an ARP request for the router address
+        #
+        rx = self.pg2.get_capture(1)
+
+        self.assertEqual(rx[0][ARP].pdst, self.pg2.remote_ip4)
+        self.pg_enable_capture(self.pg_interfaces)
+
+        #
         # At the end of this procedure there should be a connected route
         # in the FIB
         #
         self.assertTrue(find_route(self, self.pg2.local_ip4, 32))
 
+        # remove the left over ARP entry
+        self.vapi.ip_neighbor_add_del(self.pg2.sw_if_index,
+                                      self.pg2.remote_mac,
+                                      self.pg2.remote_ip4,
+                                      is_add=0)
         #
         # remove the DHCP config
         #
@@ -1105,6 +1120,21 @@ class TestDHCP(VppTestCase):
         #
         self.assertFalse(find_route(self, self.pg2.local_ip4, 32))
 
+        #
+        # Start the procedure again. this time have VPP send the clientiid
+        #
+        self.vapi.dhcp_client(self.pg2.sw_if_index, hostname,
+                              client_id=self.pg2.local_mac)
+
+        rx = self.pg2.get_capture(1)
+
+        self.verify_orig_dhcp_discover(rx[0], self.pg2, hostname,
+                                       self.pg2.local_mac)
+
+        #
+        # remove the DHCP config
+        #
+        self.vapi.dhcp_client(self.pg2.sw_if_index, hostname, is_add=0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

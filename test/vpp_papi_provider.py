@@ -1758,6 +1758,7 @@ class VppPapiProvider(object):
     def dhcp_client(self,
                     sw_if_index,
                     hostname,
+                    client_id='',
                     is_add=1,
                     want_dhcp_events=0):
         return self.api(
@@ -1765,6 +1766,7 @@ class VppPapiProvider(object):
             {
                 'sw_if_index': sw_if_index,
                 'hostname': hostname,
+                'client_id': client_id,
                 'is_add': is_add,
                 'want_dhcp_event': want_dhcp_events,
                 'pid': os.getpid(),
