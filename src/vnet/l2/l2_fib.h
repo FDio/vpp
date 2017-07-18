@@ -383,8 +383,15 @@ static_always_inline u8 *
 l2fib_swif_seq_num (u32 sw_if_index)
 {
   l2fib_main_t *mp = &l2fib_main;
-  vec_validate (mp->swif_seq_num, sw_if_index);
   return vec_elt_at_index (mp->swif_seq_num, sw_if_index);
+}
+
+static_always_inline u8 *
+l2fib_valid_swif_seq_num (u32 sw_if_index)
+{
+  l2fib_main_t *mp = &l2fib_main;
+  vec_validate (mp->swif_seq_num, sw_if_index);
+  return l2fib_swif_seq_num (sw_if_index);
 }
 
 BVT (clib_bihash) * get_mac_table (void);

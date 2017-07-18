@@ -618,7 +618,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  config->xconnect = 0;
 	  config->bridge = 1;
 	  config->bd_index = bd_index;
-	  *l2fib_swif_seq_num (sw_if_index) += 1;
+	  *l2fib_valid_swif_seq_num (sw_if_index) += 1;
 
 	  /*
 	   * Enable forwarding, flooding, learning and ARP termination by default
