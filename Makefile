@@ -274,12 +274,17 @@ DIST_FILE = $(BR)/vpp-$(shell src/scripts/version).tar
 DIST_SUBDIR = vpp-$(shell src/scripts/version|cut -f1 -d-)
 
 dist:
-	@git archive \
-	  --prefix=$(DIST_SUBDIR)/ \
-	  --format=tar \
-	  -o $(DIST_FILE) \
-	  HEAD
-	@git describe > $(BR)/.version
+	@if git rev-parse 2> /dev/null ; then \
+	    git archive \
+	      --prefix=$(DIST_SUBDIR)/ \
+	      --format=tar \
+	      -o $(DIST_FILE) \
+	    HEAD ; \
+	    git describe > $(BR)/.version ; \
+	else \
+	    (cd .. ; tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude=*.tar) ; \
+	    src/scripts/version > $(BR)/.version ; \
+	fi
 	@tar --append \
 	  --file $(DIST_FILE) \
 	  --transform='s,.*/.version,$(DIST_SUBDIR)/src/scripts/.version,' \
