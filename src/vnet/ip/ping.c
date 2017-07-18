@@ -18,6 +18,8 @@
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/fib_entry.h>
+#include <vlib/vlib.h>
+#include <emmintrin.h>
 
 /**
  * @file
@@ -53,7 +55,7 @@ format_icmp_echo_trace (u8 * s, va_list * va)
  */
 
 static int
-signal_ip46_icmp_reply_event (vlib_main_t * vm,
+signal_ip46_icmp_reply_event (CLIB_UNUSED (vlib_main_t * vm),
 			      u8 event_type, vlib_buffer_t * b0)
 {
   ping_main_t *pm = &ping_main;
@@ -84,14 +86,22 @@ signal_ip46_icmp_reply_event (vlib_main_t * vm,
     return 0;
 
   ping_run_t *pr = vec_elt_at_index (pm->ping_runs, p[0]);
-  if (vlib_buffer_alloc (vm, &bi0_copy, 1) == 1)
+  if (vlib_buffer_alloc (vlib_mains[pr->cli_thread_index], &bi0_copy, 1) == 1)
     {
-      void *dst = vlib_buffer_get_current (vlib_get_buffer (vm, bi0_copy));
+      void *dst =
+	vlib_buffer_get_current (vlib_get_buffer
+				 (vlib_mains[pr->cli_thread_index],
+				  bi0_copy));
       clib_memcpy (dst, vlib_buffer_get_current (b0), b0->current_length);
     }
   /* If buffer_alloc failed, bi0_copy == 0 - just signaling an event. */
-
-  vlib_process_signal_event (vm, pr->cli_process_id, event_type, bi0_copy);
+  f64 nowts = vlib_time_now (vlib_mains[pr->cli_thread_index]);
+  clib_memcpy (vnet_buffer
+	       (vlib_get_buffer
+		(vlib_mains[pr->cli_thread_index], bi0_copy))->unused, &nowts,
+	       sizeof (nowts));
+  vlib_process_signal_event (vlib_mains[pr->cli_thread_index],
+			     pr->cli_process_id, event_type, bi0_copy);
   return 1;
 }
 
@@ -497,8 +507,9 @@ print_ip6_icmp_reply (vlib_main_t * vm, u32 bi0)
 {
   vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
   icmp6_echo_request_header_t *h0 = vlib_buffer_get_current (b0);
-  f64 rtt = vlib_time_now (vm) - h0->icmp_echo.time_sent;
-
+  f64 rtt = 0;
+  clib_memcpy (&rtt, vnet_buffer (b0)->unused, sizeof (rtt));
+  rtt -= h0->icmp_echo.time_sent;
   vlib_cli_output (vm,
 		   "%d bytes from %U: icmp_seq=%d ttl=%d time=%.4f ms",
 		   clib_host_to_net_u16 (h0->ip6.payload_length),
@@ -513,7 +524,9 @@ print_ip4_icmp_reply (vlib_main_t * vm, u32 bi0)
 {
   vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
   icmp4_echo_request_header_t *h0 = vlib_buffer_get_current (b0);
-  f64 rtt = vlib_time_now (vm) - h0->icmp_echo.time_sent;
+  f64 rtt = 0;
+  clib_memcpy (&rtt, vnet_buffer (b0)->unused, sizeof (rtt));
+  rtt -= h0->icmp_echo.time_sent;
   u32 rcvd_icmp_len =
     clib_host_to_net_u16 (h0->ip4.length) -
     (4 * (0xF & h0->ip4.ip_version_and_header_length));
@@ -565,6 +578,7 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
   pool_get (pm->ping_runs, pr);
   ping_run_index = pr - pm->ping_runs;
   pr->cli_process_id = curr_proc;
+  pr->cli_thread_index = vlib_get_thread_index ();
   pr->icmp_id = icmp_id;
   hash_set (pm->ping_run_by_icmp_id, icmp_id, ping_run_index);
   for (i = 1; i <= ping_repeat; i++)
