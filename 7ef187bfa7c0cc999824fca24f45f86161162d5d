@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_575a5384",
+        "filename": "src/vlib/buffer.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-18T14:23:23Z",
+      "side": 1,
+      "message": "Should this be 12 instead of 13 after adding the extra u32 above?",
+      "range": {
+        "startLine": 148,
+        "startChar": 14,
+        "endLine": 148,
+        "endChar": 16
+      },
+      "revId": "7ef187bfa7c0cc999824fca24f45f86161162d5d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
