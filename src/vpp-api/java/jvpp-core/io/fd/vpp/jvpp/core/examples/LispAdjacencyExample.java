@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.examples;
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
@@ -34,9 +34,9 @@ import java.util.logging.Logger;
 /**
  * Tests lisp adjacency creation and read (custom vpe.api type support showcase).
  */
-public class LispAdjacencyTest {
+public class LispAdjacencyExample {
 
-    private static final Logger LOG = Logger.getLogger(LispAdjacencyTest.class.getName());
+    private static final Logger LOG = Logger.getLogger(LispAdjacencyExample.class.getName());
 
     private static void enableLisp(final FutureJVppCoreFacade jvpp) throws ExecutionException, InterruptedException {
         final LispEnableDisable request = new LispEnableDisable();
@@ -110,7 +110,7 @@ public class LispAdjacencyTest {
 
     private static void testFutureApi() throws Exception {
         LOG.info("Create lisp adjacency test");
-        try (final JVppRegistry registry = new JVppRegistryImpl("LispAdjacencyTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("LispAdjacencyExample");
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
             LOG.info("Successfully connected to VPP");
 

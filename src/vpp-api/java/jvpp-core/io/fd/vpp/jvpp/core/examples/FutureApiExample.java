@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.examples;
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
@@ -36,9 +36,9 @@ import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class FutureApiTest {
+public class FutureApiExample {
 
-    private static final Logger LOG = Logger.getLogger(FutureApiTest.class.getName());
+    private static final Logger LOG = Logger.getLogger(FutureApiExample.class.getName());
 
     private static void testShowVersion(final FutureJVppCoreFacade jvpp) throws Exception {
         LOG.info("Sending ShowVersion request...");
@@ -108,7 +108,7 @@ public class FutureApiTest {
 
     private static void testFutureApi() throws Exception {
         LOG.info("Testing Java future API");
-        try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiExample");
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl())) {
             LOG.info("Successfully connected to VPP");
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.fd.vpp.jvpp.core.test;
+package io.fd.vpp.jvpp.core.examples;
 
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
@@ -30,9 +30,9 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * CallbackJVppFacade together with CallbackJVppFacadeCallback allow for setting different callback for each request.
- * This is more convenient than the approach shown in CallbackApiTest.
+ * This is more convenient than the approach shown in CallbackApiExample.
  */
-public class CallbackJVppFacadeTest {
+public class CallbackJVppFacadeExample {
 
     private static ShowVersionCallback showVersionCallback1 = new ShowVersionCallback() {
         @Override
@@ -87,7 +87,7 @@ public class CallbackJVppFacadeTest {
     private static void testCallbackFacade() throws Exception {
         System.out.println("Testing CallbackJVppFacade");
 
-        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackFacadeTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("CallbackFacadeExample");
              final CallbackJVppCoreFacade callbackFacade = new CallbackJVppCoreFacade(registry, new JVppCoreImpl())) {
             System.out.println("Successfully connected to VPP");
 
