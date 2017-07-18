@@ -267,6 +267,9 @@ vlib_buffer_round_size (u32 size)
 always_inline u32
 vlib_buffer_get_free_list_index (vlib_buffer_t * b)
 {
+  if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_FREE_LIST_INDEX_MASK) ==
+		     VLIB_BUFFER_FREE_LIST_INDEX_MASK))
+    return b->ext_free_list_index;
   return b->flags & VLIB_BUFFER_FREE_LIST_INDEX_MASK;
 }
 
@@ -276,7 +279,13 @@ vlib_buffer_set_free_list_index (vlib_buffer_t * b, u32 index)
   /* if there is an need for more free lists we should consider
      storig data in the 2nd cacheline */
   ASSERT (VLIB_BUFFER_FREE_LIST_INDEX_MASK & 1);
-  ASSERT (index <= VLIB_BUFFER_FREE_LIST_INDEX_MASK);
+
+  if (PREDICT_FALSE (index >= VLIB_BUFFER_FREE_LIST_INDEX_MASK))
+    {
+      b->flags |= VLIB_BUFFER_FREE_LIST_INDEX_MASK;
+      b->ext_free_list_index = index;
+      return;
+    }
 
   b->flags &= ~VLIB_BUFFER_FREE_LIST_INDEX_MASK;
   b->flags |= index & VLIB_BUFFER_FREE_LIST_INDEX_MASK;
@@ -801,9 +810,10 @@ unserialize_vlib_buffer_n_bytes (serialize_main_t * m)
 /* Set a buffer quickly into "uninitialized" state.  We want this to
    be extremely cheap and arrange for all fields that need to be
    initialized to be in the first 128 bits of the buffer. */
-always_inline void
-vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
-				vlib_buffer_free_list_t * fl)
+static_always_inline void
+vlib_buffer_init_for_free_list_inline (vlib_buffer_t * dst,
+				       vlib_buffer_free_list_t * fl,
+				       int is_default)
 {
   vlib_buffer_t *src = &fl->buffer_init_template;
 
@@ -831,8 +841,27 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
   _(current_length);
   _(flags);
 #undef _
+
+  if (!is_default)
+    vlib_buffer_set_free_list_index (dst, fl->index);
+
   ASSERT (dst->total_length_not_including_first_buffer == 0);
   ASSERT (dst->n_add_refs == 0);
+}
+
+always_inline void
+vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
+				vlib_buffer_free_list_t * fl)
+{
+  vlib_buffer_init_for_free_list_inline (dst, fl, 0);
+}
+
+always_inline void
+vlib_buffer_init (vlib_main_t * vm, vlib_buffer_t * dst)
+{
+  vlib_buffer_free_list_t *fl;
+  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  vlib_buffer_init_for_free_list_inline (dst, fl, 1);
 }
 
 always_inline void

@@ -137,6 +137,10 @@ typedef struct
                    */
   u32 recycle_count; /**< Used by L2 path recycle code */
 
+  u32 ext_free_list_index; /**< Used when free_list_index doesn't fit into
+                              dedicated bits in flags, only valid when all
+			      free_list_index bits in flags are set to 1 */
+
   u32 total_length_not_including_first_buffer;
   /**< Only valid for first buffer in chain. Current length plus
      total length given here give total number of bytes in buffer chain.
