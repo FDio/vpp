@@ -43,6 +43,7 @@ typedef struct ping_run_t
   u16 icmp_id;
   u16 curr_seq;
   uword cli_process_id;
+  uword cli_thread_index;
 } ping_run_t;
 
 typedef struct ping_main_t
