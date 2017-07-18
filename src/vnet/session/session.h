@@ -170,6 +170,8 @@ typedef int
 extern session_fifo_rx_fn session_tx_fifo_peek_and_snd;
 extern session_fifo_rx_fn session_tx_fifo_dequeue_and_snd;
 
+u8 session_node_lookup_fifo_event (svm_fifo_t * f, session_fifo_event_t * e);
+
 struct _session_manager_main
 {
   /** Lookup tables for established sessions and listeners */
@@ -289,6 +291,8 @@ transport_connection_t *stream_session_lookup_transport6 (ip6_address_t * lcl,
 
 stream_session_t *stream_session_lookup_listener (ip46_address_t * lcl,
 						  u16 lcl_port, u8 proto);
+transport_connection_t
+  * stream_session_lookup_half_open (transport_connection_t * tc);
 void stream_session_table_add_for_tc (transport_connection_t * tc, u64 value);
 int stream_session_table_del_for_tc (transport_connection_t * tc);
 

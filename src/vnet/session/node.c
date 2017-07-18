@@ -443,6 +443,79 @@ dump_thread_0_event_queue (void)
     }
 }
 
+static u8
+session_node_cmp_event (session_fifo_event_t * e, svm_fifo_t * f)
+{
+  stream_session_t *s;
+  switch (e->event_type)
+    {
+    case FIFO_EVENT_APP_RX:
+    case FIFO_EVENT_APP_TX:
+    case FIFO_EVENT_BUILTIN_RX:
+      if (e->fifo == f)
+	return 1;
+      break;
+    case FIFO_EVENT_DISCONNECT:
+      break;
+    case FIFO_EVENT_RPC:
+      s = stream_session_get_from_handle (e->session_handle);
+      if (!s)
+	{
+	  clib_warning ("session has event but doesn't exist!");
+	  break;
+	}
+      if (s->server_rx_fifo == f || s->server_tx_fifo == f)
+	return 1;
+      break;
+    default:
+      break;
+    }
+  return 0;
+}
+
+u8
+session_node_lookup_fifo_event (svm_fifo_t * f, session_fifo_event_t * e)
+{
+  session_manager_main_t *smm = vnet_get_session_manager_main ();
+  unix_shared_memory_queue_t *q;
+  session_fifo_event_t *pending_event_vector, *evt;
+  int i, index, found = 0;
+  i8 *headp;
+  u8 thread_index;
+
+  ASSERT (e);
+  thread_index = f->master_thread_index;
+  /*
+   * Search evt queue
+   */
+  q = smm->vpp_event_queues[thread_index];
+  index = q->head;
+  for (i = 0; i < q->cursize; i++)
+    {
+      headp = (i8 *) (&q->data[0] + q->elsize * index);
+      clib_memcpy (e, headp, q->elsize);
+      found = session_node_cmp_event (e, f);
+      if (found)
+	break;
+      if (++index == q->maxsize)
+	index = 0;
+    }
+  /*
+   * Search pending events vector
+   */
+  pending_event_vector = smm->pending_event_vector[thread_index];
+  vec_foreach (evt, pending_event_vector)
+  {
+    found = session_node_cmp_event (evt, f);
+    if (found)
+      {
+	clib_memcpy (e, evt, sizeof (*evt));
+	break;
+      }
+  }
+  return found;
+}
+
 static uword
 session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)

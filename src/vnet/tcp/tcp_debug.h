@@ -19,10 +19,9 @@
 #include <vlib/vlib.h>
 
 #define TCP_DEBUG (1)
-#define TCP_DEBUG_SM (0)
-#define TCP_DEBUG_CC (1)
-#define TCP_DEBUG_CC_STAT (1)
-#define TCP_DEBUG_SM_VERBOSE (0)
+#define TCP_DEBUG_SM (2)
+#define TCP_DEBUG_CC (0)
+#define TCP_DEBUG_CC_STAT (0)
 
 #define foreach_tcp_dbg_evt		\
   _(INIT, "")				\
@@ -33,7 +32,9 @@
   _(UNBIND, "unbind")			\
   _(DELETE, "delete")			\
   _(SYN_SENT, "SYN sent")		\
-  _(SYN_RTX, "SYN retransmit")		\
+  _(SYNACK_SENT, "SYNACK sent")		\
+  _(SYNACK_RCVD, "SYNACK rcvd")		\
+  _(SYN_RXT, "SYN retransmit")		\
   _(FIN_SENT, "FIN sent")		\
   _(ACK_SENT, "ACK sent")		\
   _(DUPACK_SENT, "DUPACK sent")		\
@@ -43,6 +44,7 @@
   _(DUPACK_RCVD, "DUPACK rcvd")		\
   _(FIN_RCVD, "FIN rcvd")		\
   _(RST_RCVD, "RST rcvd")		\
+  _(STATE_CHANGE, "state change")	\
   _(PKTIZE, "packetize")		\
   _(INPUT, "in")			\
   _(SND_WND, "snd_wnd update")		\
@@ -96,11 +98,64 @@ typedef enum _tcp_dbg_evt
   ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main,			\
 			_e, _tc->c_elog_track)
 
-#define TCP_EVT_INIT_HANDLER(_tc, _fmt, ...)				\
+#define TCP_DBG_IP_TAG_LCL(_tc)						\
 {									\
-  _tc->c_elog_track.name = 						\
-	(char *) format (0, _fmt, _tc->c_c_index, 0);			\
+  if (_tc->c_is_ip4)							\
+    {									\
+      ELOG_TYPE_DECLARE (_e) =						\
+      {									\
+        .format = "lcl: %d.%d.%d.%d:%d",				\
+        .format_args = "i4i4i4i4i4",					\
+      };								\
+      DECLARE_ETD(_tc, _e, 5);						\
+      ed->data[0] = _tc->c_lcl_ip.ip4.as_u8[0];				\
+      ed->data[1] = _tc->c_lcl_ip.ip4.as_u8[1];				\
+      ed->data[2] = _tc->c_lcl_ip.ip4.as_u8[2];				\
+      ed->data[3] = _tc->c_lcl_ip.ip4.as_u8[3];				\
+      ed->data[4] = clib_net_to_host_u16(_tc->c_lcl_port);		\
+    }									\
+}
+
+#define TCP_DBG_IP_TAG_RMT(_tc)						\
+{									\
+  if (_tc->c_is_ip4)							\
+    {									\
+      ELOG_TYPE_DECLARE (_e) =						\
+      {									\
+        .format = "rmt: %d.%d.%d.%d:%d",				\
+        .format_args = "i4i4i4i4i4",					\
+      };								\
+      DECLARE_ETD(_tc, _e, 5);						\
+      ed->data[0] = _tc->c_rmt_ip.ip4.as_u8[0];				\
+      ed->data[1] = _tc->c_rmt_ip.ip4.as_u8[1];				\
+      ed->data[2] = _tc->c_rmt_ip.ip4.as_u8[2];				\
+      ed->data[3] = _tc->c_rmt_ip.ip4.as_u8[3];				\
+      ed->data[4] = clib_net_to_host_u16(_tc->c_rmt_port);		\
+    }									\
+}
+
+#define TCP_EVT_INIT_HANDLER(_tc, _is_l, ...)				\
+{									\
+  char *_fmt = _is_l ? "l[%d].%d:%d%c" : "[%d].%d:%d->.%d:%d%c";	\
+  if (_tc->c_is_ip4)							\
+    {									\
+      _tc->c_elog_track.name =						\
+  	(char *) format (0, _fmt, _tc->c_thread_index, 			\
+			 _tc->c_lcl_ip.ip4.as_u8[3],			\
+			 clib_net_to_host_u16(_tc->c_lcl_port),		\
+			 _tc->c_rmt_ip.ip4.as_u8[3], 			\
+			 clib_net_to_host_u16(_tc->c_rmt_port), 0);	\
+    }									\
+  else									\
+      _tc->c_elog_track.name =						\
+	(char *) format (0, _fmt, _tc->c_thread_index, 			\
+			 _tc->c_lcl_ip.ip6.as_u8[15],			\
+			 clib_net_to_host_u16(_tc->c_lcl_port),		\
+			 _tc->c_rmt_ip.ip6.as_u8[15], 			\
+			 clib_net_to_host_u16(_tc->c_rmt_port), 0);	\
   elog_track_register (&vlib_global_main.elog_main, &_tc->c_elog_track);\
+  TCP_DBG_IP_TAG_LCL(_tc);						\
+  TCP_DBG_IP_TAG_RMT(_tc);						\
 }
 
 #define TCP_EVT_DEALLOC_HANDLER(_tc, ...)				\
@@ -110,7 +165,7 @@ typedef enum _tcp_dbg_evt
 
 #define TCP_EVT_OPEN_HANDLER(_tc, ...)					\
 {									\
-  TCP_EVT_INIT_HANDLER(_tc, "s%d%c");					\
+  TCP_EVT_INIT_HANDLER(_tc, 0);						\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
     .format = "open: index %d",						\
@@ -133,7 +188,7 @@ typedef enum _tcp_dbg_evt
 
 #define TCP_EVT_BIND_HANDLER(_tc, ...)					\
 {									\
-  TCP_EVT_INIT_HANDLER(_tc, "l%d%c");					\
+  TCP_EVT_INIT_HANDLER(_tc, 1);						\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
     .format = "bind: listener %d",					\
@@ -166,18 +221,6 @@ typedef enum _tcp_dbg_evt
   TCP_EVT_DEALLOC_HANDLER(_tc);						\
 }
 
-#define TCP_EVT_SYN_RCVD_HANDLER(_tc, ...)				\
-{									\
-  TCP_EVT_INIT_HANDLER(_tc, "s%d%c");					\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "SYNrx: irs %u",						\
-    .format_args = "i4",						\
-  };									\
-  DECLARE_ETD(_tc, _e, 1);						\
-  ed->data[0] = _tc->irs;						\
-}
-
 #define CONCAT_HELPER(_a, _b) _a##_b
 #define CC(_a, _b) CONCAT_HELPER(_a, _b)
 #define TCP_EVT_DBG(_evt, _args...) CC(_evt, _HANDLER)(_args)
@@ -190,11 +233,166 @@ typedef enum _tcp_dbg_evt
  */
 #if TCP_DEBUG_SM
 
+#define TCP_EVT_STATE_CHANGE_HANDLER(_tc, ...)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "state: %s",						\
+    .format_args = "t4",						\
+    .n_enum_strings = 11,						\
+    .enum_strings = {                                           	\
+      "closed",	                                             		\
+      "listen",                                                 	\
+      "syn-sent",                                                 	\
+      "syn-rcvd",							\
+      "established",							\
+      "close_wait",							\
+      "fin-wait-1",							\
+      "last-ack",							\
+      "closing",							\
+      "fin-wait-2",							\
+      "time-wait",							\
+    },  								\
+  };									\
+  DECLARE_ETD(_tc, _e, 1);						\
+  ed->data[0] = _tc->state;						\
+}
+
+#define TCP_EVT_SYN_RCVD_HANDLER(_tc, ...)				\
+{									\
+  TCP_EVT_INIT_HANDLER(_tc, 0);						\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "syn-rx: irs %u",						\
+    .format_args = "i4",						\
+  };									\
+  DECLARE_ETD(_tc, _e, 1);						\
+  ed->data[0] = _tc->irs;						\
+  TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
+}
+
+#define TCP_EVT_SYN_SENT_HANDLER(_tc, ...)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "syn-tx: iss %u",						\
+    .format_args = "i4",						\
+  };									\
+  DECLARE_ETD(_tc, _e, 1);						\
+  ed->data[0] = _tc->iss;						\
+  TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
+}
+
+#define TCP_EVT_SYNACK_SENT_HANDLER(_tc, ...)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "synack-tx: iss %u irs %u",				\
+    .format_args = "i4i4",						\
+  };									\
+  DECLARE_ETD(_tc, _e, 2);						\
+  ed->data[0] = _tc->iss;						\
+  ed->data[1] = _tc->irs;						\
+}
+
+#define TCP_EVT_SYNACK_RCVD_HANDLER(_tc, ...)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "synack-rx: iss %u irs %u",				\
+    .format_args = "i4i4",						\
+  };									\
+  DECLARE_ETD(_tc, _e, 2);						\
+  ed->data[0] = _tc->iss;						\
+  ed->data[1] = _tc->irs;						\
+  TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
+}
+
+#define TCP_EVT_FIN_SENT_HANDLER(_tc, ...)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "fin-tx: snd_nxt %d rcv_nxt %d",				\
+    .format_args = "i4i4",						\
+  };									\
+  DECLARE_ETD(_tc, _e, 2);						\
+  ed->data[0] = _tc->snd_nxt - _tc->iss;				\
+  ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
+}
+
+#define TCP_EVT_RST_SENT_HANDLER(_tc, ...)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "rst-tx: snd_nxt %d rcv_nxt %d",				\
+    .format_args = "i4i4",						\
+  };									\
+  DECLARE_ETD(_tc, _e, 2);						\
+  ed->data[0] = _tc->snd_nxt - _tc->iss;				\
+  ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
+  TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
+}
+
+#define TCP_EVT_FIN_RCVD_HANDLER(_tc, ...)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "fin-rx: snd_nxt %d rcv_nxt %d",				\
+    .format_args = "i4i4",						\
+  };									\
+  DECLARE_ETD(_tc, _e, 2);						\
+  ed->data[0] = _tc->snd_nxt - _tc->iss;				\
+  ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
+}
+
+#define TCP_EVT_RST_RCVD_HANDLER(_tc, ...)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "rst-rx: snd_nxt %d rcv_nxt %d",				\
+    .format_args = "i4i4",						\
+  };									\
+  DECLARE_ETD(_tc, _e, 2);						\
+  ed->data[0] = _tc->snd_nxt - _tc->iss;				\
+  ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
+}
+
+#define TCP_EVT_SYN_RXT_HANDLER(_tc, _type, ...)			\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "%s-rxt: iss %u",						\
+    .format_args = "t4i4",						\
+    .n_enum_strings = 2,						\
+    .enum_strings = {                                           	\
+	"syn",	                                             		\
+        "syn-ack",							\
+    },  								\
+  };									\
+  DECLARE_ETD(_tc, _e, 2);						\
+  ed->data[0] = _type;							\
+  ed->data[1] = _tc->iss;						\
+}
+
+#else
+#define TCP_EVT_SYN_SENT_HANDLER(_tc, ...)
+#define TCP_EVT_SYNACK_SENT_HANDLER(_tc, ...)
+#define TCP_EVT_SYNACK_RCVD_HANDLER(_tc, ...)
+#define TCP_EVT_SYN_RXT_HANDLER(_tc, ...)
+#define TCP_EVT_FIN_SENT_HANDLER(_tc, ...)
+#define TCP_EVT_RST_SENT_HANDLER(_tc, ...)
+#define TCP_EVT_FIN_RCVD_HANDLER(_tc, ...)
+#define TCP_EVT_RST_RCVD_HANDLER(_tc, ...)
+#define TCP_EVT_STATE_CHANGE_HANDLER(_tc, ...)
+#endif
+
+#if TCP_DEBUG_SM > 1
+
 #define TCP_EVT_ACK_SENT_HANDLER(_tc, ...)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "ack_tx: acked %u rcv_nxt %u rcv_wnd %u snd_nxt %u snd_wnd %u",\
+    .format = "ack-tx: acked %u rcv_nxt %u rcv_wnd %u snd_nxt %u snd_wnd %u",\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
@@ -209,7 +407,7 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "dack_tx: rcv_nxt %u rcv_wnd %u snd_nxt %u av_wnd %u snd_wnd %u",\
+    .format = "dack-tx: rcv_nxt %u rcv_wnd %u snd_nxt %u av_wnd %u snd_wnd %u",\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
@@ -218,76 +416,6 @@ typedef enum _tcp_dbg_evt
   ed->data[2] = _tc->snd_nxt - _tc->iss;				\
   ed->data[3] = tcp_available_wnd(_tc);					\
   ed->data[4] = _tc->snd_wnd;						\
-}
-
-#define TCP_EVT_SYN_SENT_HANDLER(_tc, ...)				\
-{									\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "SYNtx: iss %u",						\
-    .format_args = "i4",						\
-  };									\
-  DECLARE_ETD(_tc, _e, 1);						\
-  ed->data[0] = _tc->iss;						\
-}
-
-#define TCP_EVT_SYN_RTX_HANDLER(_tc, ...)				\
-{									\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "SYNrtx: iss %u",						\
-    .format_args = "i4",						\
-  };									\
-  DECLARE_ETD(_tc, _e, 1);						\
-  ed->data[0] = _tc->iss;						\
-}
-
-#define TCP_EVT_FIN_SENT_HANDLER(_tc, ...)				\
-{									\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "FINtx: snd_nxt %d rcv_nxt %d",				\
-    .format_args = "i4i4",						\
-  };									\
-  DECLARE_ETD(_tc, _e, 2);						\
-  ed->data[0] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
-}
-
-#define TCP_EVT_RST_SENT_HANDLER(_tc, ...)				\
-{									\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "RSTtx: snd_nxt %d rcv_nxt %d",				\
-    .format_args = "i4i4",						\
-  };									\
-  DECLARE_ETD(_tc, _e, 2);						\
-  ed->data[0] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
-}
-
-#define TCP_EVT_FIN_RCVD_HANDLER(_tc, ...)				\
-{									\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "FINrx: snd_nxt %d rcv_nxt %d",				\
-    .format_args = "i4i4",						\
-  };									\
-  DECLARE_ETD(_tc, _e, 2);						\
-  ed->data[0] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
-}
-
-#define TCP_EVT_RST_RCVD_HANDLER(_tc, ...)				\
-{									\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "RSTrx: snd_nxt %d rcv_nxt %d",				\
-    .format_args = "i4i4",						\
-  };									\
-  DECLARE_ETD(_tc, _e, 2);						\
-  ed->data[0] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[1] = _tc->rcv_nxt - _tc->irs;				\
 }
 
 #define TCP_EVT_ACK_RCVD_HANDLER(_tc, ...)				\
@@ -309,7 +437,7 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "dack_rx: snd_una %u cwnd %u snd_wnd %u flight %u rcv_wnd %u",\
+    .format = "dack-rx: snd_una %u cwnd %u snd_wnd %u flight %u rcv_wnd %u",\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
@@ -370,7 +498,7 @@ typedef enum _tcp_dbg_evt
     }                                                           	\
   ELOG_TYPE_DECLARE (_e) =                                      	\
   {                                                             	\
-    .format = "TimerPop: %s (%d)",                              	\
+    .format = "timer-pop: %s (%d)",                              	\
     .format_args = "t4i4",                                      	\
     .n_enum_strings = 7,                                        	\
     .enum_strings = {                                           	\
@@ -391,7 +519,8 @@ typedef enum _tcp_dbg_evt
     }									\
   else									\
     {									\
-      clib_warning ("pop for unexisting connection %d", _tc_index);	\
+      clib_warning ("pop %d for unexisting connection %d", _timer_id,	\
+		    _tc_index);						\
     }									\
 }
 
@@ -414,7 +543,7 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "paws fail: seq %u end %u tsval %u tsval_recent %u",	\
+    .format = "paws-err: seq %u end %u tsval %u tsval_recent %u",	\
     .format_args = "i4i4i4i4",						\
   };									\
   DECLARE_ETD(_tc, _e, 4);						\
@@ -465,12 +594,6 @@ if (_av > 0) 								\
 #else
 #define TCP_EVT_ACK_SENT_HANDLER(_tc, ...)
 #define TCP_EVT_DUPACK_SENT_HANDLER(_tc, ...)
-#define TCP_EVT_SYN_SENT_HANDLER(_tc, ...)
-#define TCP_EVT_SYN_RTX_HANDLER(_tc, ...)
-#define TCP_EVT_FIN_SENT_HANDLER(_tc, ...)
-#define TCP_EVT_RST_SENT_HANDLER(_tc, ...)
-#define TCP_EVT_FIN_RCVD_HANDLER(_tc, ...)
-#define TCP_EVT_RST_RCVD_HANDLER(_tc, ...)
 #define TCP_EVT_ACK_RCVD_HANDLER(_tc, ...)
 #define TCP_EVT_DUPACK_RCVD_HANDLER(_tc, ...)
 #define TCP_EVT_PKTIZE_HANDLER(_tc, ...)
@@ -485,12 +608,12 @@ if (_av > 0) 								\
 /*
  * State machine verbose
  */
-#if TCP_DBG_SM_VERBOSE
+#if TCP_DEBUG_SM > 2
 #define TCP_EVT_SND_WND_HANDLER(_tc, ...)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "snd_wnd update: %u ",					\
+    .format = "snd-wnd update: %u ",					\
     .format_args = "i4",						\
   };									\
   DECLARE_ETD(_tc, _e, 1);						\
@@ -617,6 +740,7 @@ if (_tc->c_cc_stat_tstamp + STATS_INTERVAL < tcp_time_now())		\
 #define TCP_EVT_CC_RTX_HANDLER(_tc, offset, n_bytes, ...)
 #define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)
 #define TCP_EVT_CC_PACK_HANDLER(_tc, ...)
+#define TCP_EVT_CC_STAT_HANDLER(_tc, ...)
 #endif
 
 #endif /* SRC_VNET_TCP_TCP_DEBUG_H_ */

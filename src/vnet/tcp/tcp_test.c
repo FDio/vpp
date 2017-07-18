@@ -1551,6 +1551,101 @@ tcp_test_fifo (vlib_main_t * vm, unformat_input_t * input)
 }
 
 static int
+tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  tcp_main_t *tm = &tcp_main;
+  transport_connection_t _tc1, *tc1 = &_tc1, _tc2, *tc2 = &_tc2, *tconn;
+  tcp_connection_t *tc;
+  stream_session_t *s;
+  u8 cmp = 0;
+
+  pool_get (smm->sessions[0], s);
+  memset (s, 0, sizeof (*s));
+  s->session_index = s - smm->sessions[0];
+
+  pool_get (tm->connections[0], tc);
+  memset (tc, 0, sizeof (*tc));
+  tc->connection.c_index = tc - tm->connections[0];
+  tc->connection.s_index = s->session_index;
+  s->connection_index = tc->connection.c_index;
+
+  tc->connection.lcl_ip.ip4.as_u32 = clib_host_to_net_u32 (0x06000101);
+  tc->connection.rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x06000103);
+  tc->connection.lcl_port = 35051;
+  tc->connection.rmt_port = 53764;
+  tc->connection.proto = 0;
+  clib_memcpy (tc1, &tc->connection, sizeof (*tc1));
+
+  pool_get (session_manager_main.sessions[0], s);
+  memset (s, 0, sizeof (*s));
+  s->session_index = s - smm->sessions[0];
+  pool_get (tm->connections[0], tc);
+  memset (tc, 0, sizeof (*tc));
+  tc->connection.c_index = tc - tm->connections[0];
+  tc->connection.s_index = s->session_index;
+  s->connection_index = tc->connection.c_index;
+
+  tc->connection.lcl_ip.ip4.as_u32 = clib_host_to_net_u32 (0x06000101);
+  tc->connection.rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x06000102);
+  tc->connection.lcl_port = 38225;
+  tc->connection.rmt_port = 53764;
+  tc->connection.proto = 0;
+  clib_memcpy (tc2, &tc->connection, sizeof (*tc2));
+
+  /*
+   * Confirm that connection lookup works
+   */
+
+  stream_session_table_add_for_tc (tc1, tc1->s_index);
+  tconn = stream_session_lookup_transport_wt4 (&tc1->lcl_ip.ip4,
+					       &tc1->rmt_ip.ip4,
+					       tc1->lcl_port, tc1->rmt_port,
+					       tc1->proto, 0);
+  cmp = (memcmp (&tconn->rmt_ip, &tc1->rmt_ip, sizeof (tc1->rmt_ip)) == 0);
+  TCP_TEST ((cmp), "rmt ip is identical %d", cmp);
+  TCP_TEST ((tconn->lcl_port == tc1->lcl_port),
+	    "rmt port is identical %d", tconn->lcl_port == tc1->lcl_port);
+
+  /*
+   * Non-existing connection lookup should not work
+   */
+
+  tconn = stream_session_lookup_transport_wt4 (&tc2->lcl_ip.ip4,
+					       &tc2->rmt_ip.ip4,
+					       tc2->lcl_port, tc2->rmt_port,
+					       tc2->proto, 0);
+  TCP_TEST ((tconn == 0), "lookup result should be null");
+
+  /*
+   * Delete and lookup again
+   */
+  stream_session_table_del_for_tc (tc1);
+  tconn = stream_session_lookup_transport_wt4 (&tc1->lcl_ip.ip4,
+					       &tc1->rmt_ip.ip4,
+					       tc1->lcl_port, tc1->rmt_port,
+					       tc1->proto, 0);
+  TCP_TEST ((tconn == 0), "lookup result should be null");
+  tconn = stream_session_lookup_transport_wt4 (&tc2->lcl_ip.ip4,
+					       &tc2->rmt_ip.ip4,
+					       tc2->lcl_port, tc2->rmt_port,
+					       tc2->proto, 0);
+  TCP_TEST ((tconn == 0), "lookup result should be null");
+
+  /*
+   * Re-add and lookup tc2
+   */
+  stream_session_table_add_for_tc (tc1, tc1->s_index);
+  tconn = stream_session_lookup_transport_wt4 (&tc2->lcl_ip.ip4,
+					       &tc2->rmt_ip.ip4,
+					       tc2->lcl_port, tc2->rmt_port,
+					       tc2->proto, 0);
+  TCP_TEST ((tconn == 0), "lookup result should be null");
+
+  return 0;
+}
+
+static int
 tcp_test_session (vlib_main_t * vm, unformat_input_t * input)
 {
   int rv = 0;
@@ -1631,6 +1726,10 @@ tcp_test (vlib_main_t * vm,
       else if (unformat (input, "session"))
 	{
 	  res = tcp_test_session (vm, input);
+	}
+      else if (unformat (input, "lookup"))
+	{
+	  res = tcp_test_lookup (vm, input);
 	}
       else
 	break;

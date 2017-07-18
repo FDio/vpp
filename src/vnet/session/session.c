@@ -32,6 +32,22 @@ static transport_proto_vft_t *tp_vfts;
 
 session_manager_main_t session_manager_main;
 
+transport_connection_t *
+stream_session_lookup_half_open (transport_connection_t * tc)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  session_kv4_t kv4;
+  int rv;
+  if (tc->is_ip4)
+    {
+      make_v4_ss_kv_from_tc (&kv4, tc);
+      rv = clib_bihash_search_inline_16_8 (&smm->v4_half_open_hash, &kv4);
+      if (rv == 0)
+	return tp_vfts[tc->proto].get_half_open (kv4.value & 0xFFFFFFFFULL);
+    }
+  return 0;
+}
+
 /*
  * Session lookup key; (src-ip, dst-ip, src-port, dst-port, session-type)
  * Value: (owner thread index << 32 | session_index);
@@ -501,7 +517,7 @@ stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
   tc->s_index = s->session_index;
 
   /* Add to the main lookup table */
-  value = (((u64) thread_index) << 32) | (u64) s->session_index;
+  value = stream_session_handle (s);
   stream_session_table_add_for_tc (tc, value);
 
   *ret_s = s;
@@ -817,8 +833,18 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
     }
 
   /* Notify client */
-  app->cb_fns.session_connected_callback (app->index, api_context, new_s,
-					  is_fail);
+  if (app->cb_fns.session_connected_callback (app->index, api_context, new_s,
+					      is_fail))
+    {
+      clib_warning ("failed to notify app");
+      if (!is_fail)
+	stream_session_disconnect (new_s);
+    }
+  else
+    {
+      if (!is_fail)
+	new_s->session_state = SESSION_STATE_READY;
+    }
 
   /* Cleanup session lookup */
   stream_session_half_open_table_del (smm, sst, tc);
@@ -862,15 +888,19 @@ void
 stream_session_delete (stream_session_t * s)
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
+  int rv;
 
   /* Delete from the main lookup table. */
-  stream_session_table_del (smm, s);
+  if ((rv = stream_session_table_del (smm, s)))
+    clib_warning ("hash delete error, rv %d", rv);
 
   /* Cleanup fifo segments */
   segment_manager_dealloc_fifos (s->svm_segment_index, s->server_rx_fifo,
 				 s->server_tx_fifo);
 
   pool_put (smm->sessions[s->thread_index], s);
+  if (CLIB_DEBUG)
+    memset (s, 0xFA, sizeof (*s));
 }
 
 /**

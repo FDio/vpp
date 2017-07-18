@@ -19,8 +19,24 @@ u8 *
 format_stream_session_fifos (u8 * s, va_list * args)
 {
   stream_session_t *ss = va_arg (*args, stream_session_t *);
+  int verbose = va_arg (*args, int);
+  session_fifo_event_t _e, *e = &_e;
+  u8 found;
+
   s = format (s, " Rx fifo: %U", format_svm_fifo, ss->server_rx_fifo, 1);
+  if (verbose > 2 && ss->server_rx_fifo->has_event)
+    {
+      found = session_node_lookup_fifo_event (ss->server_rx_fifo, e);
+      s = format (s, " session node event: %s\n",
+		  found ? "found" : "not found");
+    }
   s = format (s, " Tx fifo: %U", format_svm_fifo, ss->server_tx_fifo, 1);
+  if (verbose > 2 && ss->server_tx_fifo->has_event)
+    {
+      found = session_node_lookup_fifo_event (ss->server_tx_fifo, e);
+      s = format (s, " session node event: %s\n",
+		  found ? "found" : "not found");
+    }
   return s;
 }
 
@@ -55,7 +71,7 @@ format_stream_session (u8 * s, va_list * args)
       if (verbose == 1)
 	s = format (s, "%v", str);
       if (verbose > 1)
-	s = format (s, "%U", format_stream_session_fifos, ss);
+	s = format (s, "%U", format_stream_session_fifos, ss, verbose);
     }
   else if (ss->session_state == SESSION_STATE_LISTENING)
     {
@@ -75,7 +91,7 @@ format_stream_session (u8 * s, va_list * args)
       if (verbose == 1)
 	s = format (s, "%v", str);
       if (verbose > 1)
-	s = format (s, "%U", format_stream_session_fifos, ss);
+	s = format (s, "%U", format_stream_session_fifos, ss, verbose);
     }
   else
     {
@@ -248,7 +264,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (one_session)
     {
-      vlib_cli_output (vm, "%U", format_stream_session, s, 2);
+      vlib_cli_output (vm, "%U", format_stream_session, s, 3);
       return 0;
     }
 
