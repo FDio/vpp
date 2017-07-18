@@ -213,15 +213,15 @@ builtin_server_rx_callback (stream_session_t * s)
 	  q = bsm->vpp_queue[thread_index];
 	  if (PREDICT_FALSE (q->cursize == q->maxsize))
 	    clib_warning ("out of event queue space");
-	  else if (unix_shared_memory_queue_add (q, (u8 *) & evt, 0	/* don't wait for mutex */
-		   ))
+	  else if (unix_shared_memory_queue_add (q, (u8 *) & evt, 0))
 	    clib_warning ("failed to enqueue self-tap");
 
-	  bsm->rx_retries[thread_index][s->session_index]++;
 	  if (bsm->rx_retries[thread_index][s->session_index] == 500000)
 	    {
 	      clib_warning ("session stuck: %U", format_stream_session, s, 2);
 	    }
+	  if (bsm->rx_retries[thread_index][s->session_index] < 500001)
+	    bsm->rx_retries[thread_index][s->session_index]++;
 	}
 
       return 0;
@@ -303,7 +303,7 @@ create_api_loopback (vlib_main_t * vm)
 
   /* Wait for reply */
   bsm->node_index = vlib_get_current_process (vm)->node_runtime.node_index;
-  vlib_process_wait_for_event_or_clock (vm, 1.0);
+  vlib_process_wait_for_event_or_clock (vm, 2.0);
   event_type = vlib_process_get_events (vm, &event_data);
   switch (event_type)
     {
