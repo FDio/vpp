@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_17c17880",
+        "filename": "src/vpp-api/java/jvpp-registry/jvpp_registry.c",
+        "patchSetId": 10
+      },
+      "lineNbr": 290,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T12:31:27Z",
+      "side": 0,
+      "message": "The check here is probably to make debugin easier in situations when vpp was started as root and java was not.\nHave you checked how would java api behave in such situation (e.g. if you try to create interface or something you would need root privileges)?\n\nPerhaps we should check if uid and gid match the ones that \nare configured by (if it is not already checked by connect_to_vpe):\nhttps://wiki.fd.io/view/VPP/Command-line_Arguments#.22api-segment.22_parameters\n\nI believe we should at least add to todo with jira ticket (probably related to HC2VPP-176)",
+      "range": {
+        "startLine": 283,
+        "startChar": 0,
+        "endLine": 290,
+        "endChar": 5
+      },
+      "revId": "7a98b38cace8f86f12432208444ba3a5269f925c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
