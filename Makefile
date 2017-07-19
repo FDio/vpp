@@ -435,6 +435,9 @@ pkg-deb:
 pkg-rpm: dist
 	make -C extras/rpm
 
+pkg-srpm: dist
+	make -C extras/rpm srpm
+
 dpdk-install-dev:
 	make -C dpdk install-$(PKG)
 
