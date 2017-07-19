@@ -53,6 +53,12 @@ endif
 
 MACHINE=$(shell uname -m)
 
+ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
+AESNI := y
+else
+AESNI := n
+endif
+
 ##############################################################################
 # Intel x86
 ##############################################################################
@@ -60,7 +66,6 @@ ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
 DPDK_TARGET           ?= $(MACHINE)-native-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= nhm
 DPDK_TUNE             ?= core-avx2
-
 ##############################################################################
 # Cavium ThunderX
 ##############################################################################
@@ -139,8 +144,8 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_BOND,y)
 	$(call set,RTE_LIBRTE_IP_FRAG,y)
 	$(call set,RTE_LIBRTE_PMD_QAT,y)
-	$(call set,RTE_LIBRTE_PMD_AESNI_MB,y)
-	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,y)
+	$(call set,RTE_LIBRTE_PMD_AESNI_MB,$(AESNI))
+	$(call set,RTE_LIBRTE_PMD_AESNI_GCM,$(AESNI))
 	$(call set,RTE_LIBRTE_MLX4_PMD,$(DPDK_MLX4_PMD))
 	$(call set,RTE_LIBRTE_MLX5_PMD,$(DPDK_MLX5_PMD))
 	@# not needed
@@ -177,8 +182,10 @@ $(CURDIR)/$(ISA_L_CRYPTO_LIB_TARBALL):
 	fi
 
 DPDK_DOWNLOADS = $(CURDIR)/$(DPDK_TARBALL)
+ifeq ($(AESNI),y)
 DPDK_DOWNLOADS += $(CURDIR)/$(AESNIMB_LIB_TARBALL)
 DPDK_DOWNLOADS += $(CURDIR)/$(ISA_L_CRYPTO_LIB_TARBALL)
+endif
 
 $(B)/.download.ok: $(DPDK_DOWNLOADS)
 	@mkdir -p $(B)
