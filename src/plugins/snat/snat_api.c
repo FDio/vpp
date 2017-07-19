@@ -253,7 +253,91 @@ static void *vl_api_snat_interface_dump_t_print
   s = format (0, "SCRIPT: snat_interface_dump ");
 
   FINISH;
-} static void
+}
+
+static void
+  vl_api_snat_interface_add_del_output_feature_t_handler
+  (vl_api_snat_interface_add_del_output_feature_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_snat_interface_add_del_output_feature_reply_t *rmp;
+  u8 is_del = mp->is_add == 0;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = snat_interface_add_del_output_feature (sw_if_index, mp->is_inside,
+					      is_del);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SNAT_INTERFACE_ADD_DEL_OUTPUT_FEATURE_REPLY);
+}
+
+static void *vl_api_snat_interface_add_del_output_feature_t_print
+  (vl_api_snat_interface_add_del_output_feature_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_interface_add_del_output_feature ");
+  s = format (s, "sw_if_index %d %s %s",
+	      clib_host_to_net_u32 (mp->sw_if_index),
+	      mp->is_inside ? "in" : "out", mp->is_add ? "" : "del");
+
+  FINISH;
+}
+
+static void
+send_snat_interface_output_feature_details (snat_interface_t * i,
+					    unix_shared_memory_queue_t * q,
+					    u32 context)
+{
+  vl_api_snat_interface_output_feature_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_SNAT_INTERFACE_OUTPUT_FEATURE_DETAILS + sm->msg_id_base);
+  rmp->sw_if_index = ntohl (i->sw_if_index);
+  rmp->context = context;
+  rmp->is_inside = i->is_inside;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+  vl_api_snat_interface_output_feature_dump_t_handler
+  (vl_api_snat_interface_output_feature_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t *sm = &snat_main;
+  snat_interface_t *i;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  /* *INDENT-OFF* */
+  pool_foreach (i, sm->output_feature_interfaces,
+  ({
+    send_snat_interface_output_feature_details(i, q, mp->context);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void *vl_api_snat_interface_output_feature_dump_t_print
+  (vl_api_snat_interface_output_feature_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_interface_output_feature_dump ");
+
+  FINISH;
+}
+
+static void
   vl_api_snat_add_static_mapping_t_handler
   (vl_api_snat_add_static_mapping_t * mp)
 {
@@ -1792,6 +1876,10 @@ _(SNAT_INTERFACE_ADDR_DUMP, snat_interface_addr_dump)                   \
 _(SNAT_IPFIX_ENABLE_DISABLE, snat_ipfix_enable_disable)                 \
 _(SNAT_USER_DUMP, snat_user_dump)                                       \
 _(SNAT_USER_SESSION_DUMP, snat_user_session_dump)                       \
+_(SNAT_INTERFACE_ADD_DEL_OUTPUT_FEATURE,                                \
+  snat_interface_add_del_output_feature)                                \
+_(SNAT_INTERFACE_OUTPUT_FEATURE_DUMP,                                   \
+  snat_interface_output_feature_dump)                                   \
 _(SNAT_ADD_DET_MAP, snat_add_det_map)                                   \
 _(SNAT_DET_FORWARD, snat_det_forward)                                   \
 _(SNAT_DET_REVERSE, snat_det_reverse)                                   \

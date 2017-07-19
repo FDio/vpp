@@ -297,6 +297,7 @@ typedef struct snat_main_s {
 
   /* Interface pool */
   snat_interface_t * interfaces;
+  snat_interface_t * output_feature_interfaces;
 
   /* Vector of outside addresses */
   snat_address_t * addresses;
@@ -312,10 +313,12 @@ typedef struct snat_main_s {
 
   /* Worker handoff index */
   u32 fq_in2out_index;
+  u32 fq_in2out_output_index;
   u32 fq_out2in_index;
 
   /* in2out and out2in node index */
   u32 in2out_node_index;
+  u32 in2out_output_node_index;
   u32 out2in_node_index;
 
   /* Deterministic NAT */
@@ -357,10 +360,12 @@ typedef struct snat_main_s {
 
 extern snat_main_t snat_main;
 extern vlib_node_registration_t snat_in2out_node;
+extern vlib_node_registration_t snat_in2out_output_node;
 extern vlib_node_registration_t snat_out2in_node;
 extern vlib_node_registration_t snat_in2out_fast_node;
 extern vlib_node_registration_t snat_out2in_fast_node;
 extern vlib_node_registration_t snat_in2out_worker_handoff_node;
+extern vlib_node_registration_t snat_in2out_output_worker_handoff_node;
 extern vlib_node_registration_t snat_out2in_worker_handoff_node;
 extern vlib_node_registration_t snat_det_in2out_node;
 extern vlib_node_registration_t snat_det_out2in_node;
@@ -477,6 +482,8 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
 clib_error_t * snat_api_init(vlib_main_t * vm, snat_main_t * sm);
 int snat_set_workers (uword * bitmap);
 int snat_interface_add_del(u32 sw_if_index, u8 is_inside, int is_del);
+int snat_interface_add_del_output_feature(u32 sw_if_index, u8 is_inside,
+                                          int is_del);
 int snat_add_interface_address(snat_main_t *sm, u32 sw_if_index, int is_del);
 uword unformat_snat_protocol(unformat_input_t * input, va_list * args);
 u8 * format_snat_protocol(u8 * s, va_list * args);

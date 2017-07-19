@@ -73,6 +73,20 @@ VNET_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
+/* Hook up output features */
+VNET_FEATURE_INIT (ip4_snat_in2out_output, static) = {
+  .arc_name = "ip4-output",
+  .node_name = "snat-in2out-output",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
+
+VNET_FEATURE_INIT (ip4_snat_in2out_output_worker_handoff, static) = {
+  .arc_name = "ip4-output",
+  .node_name = "snat-in2out-output-worker-handoff",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
+
+
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
     .version = VPP_BUILD_VER,
@@ -150,6 +164,14 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id)
 
   /* Add external address to FIB */
   pool_foreach (i, sm->interfaces,
+  ({
+    if (i->is_inside)
+      continue;
+
+    snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1);
+    break;
+  }));
+  pool_foreach (i, sm->output_feature_interfaces,
   ({
     if (i->is_inside)
       continue;
@@ -542,6 +564,14 @@ delete:
     snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
     break;
   }));
+  pool_foreach (interface, sm->output_feature_interfaces,
+  ({
+    if (interface->is_inside)
+      continue;
+
+    snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
+    break;
+  }));
 
   return 0;
 }
@@ -668,6 +698,14 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
     snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
     break;
   }));
+  pool_foreach (interface, sm->output_feature_interfaces,
+  ({
+    if (interface->is_inside)
+      continue;
+
+    snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
+    break;
+  }));
 
   return 0;
 }
@@ -741,6 +779,85 @@ fib:
   pool_foreach (dm, sm->det_maps,
   ({
     snat_add_del_addr_to_fib(&dm->out_addr, dm->out_plen, sw_if_index, !is_del);
+  }));
+
+  return 0;
+}
+
+int snat_interface_add_del_output_feature (u32 sw_if_index,
+                                           u8 is_inside,
+                                           int is_del)
+{
+  snat_main_t *sm = &snat_main;
+  snat_interface_t *i;
+  snat_address_t * ap;
+  snat_static_mapping_t * m;
+
+  if (sm->deterministic ||
+      (sm->static_mapping_only && !(sm->static_mapping_connection_tracking)))
+    return VNET_API_ERROR_UNSUPPORTED;
+
+  if (is_inside)
+    goto find;
+
+  if (sm->num_workers > 1)
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "snat-out2in-worker-handoff",
+                                   sw_if_index, !is_del, 0, 0);
+      vnet_feature_enable_disable ("ip4-output",
+                                   "snat-in2out-output-worker-handoff",
+                                   sw_if_index, !is_del, 0, 0);
+    }
+  else
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "snat-out2in", sw_if_index,
+                                   !is_del, 0, 0);
+      vnet_feature_enable_disable ("ip4-output", "snat-in2out-output",
+                                   sw_if_index, !is_del, 0, 0);
+    }
+
+  if (sm->fq_in2out_output_index == ~0 && sm->num_workers > 1)
+    sm->fq_in2out_output_index =
+      vlib_frame_queue_main_init (sm->in2out_output_node_index, 0);
+
+  if (sm->fq_out2in_index == ~0 && sm->num_workers > 1)
+    sm->fq_out2in_index = vlib_frame_queue_main_init (sm->out2in_node_index, 0);
+
+find:
+  pool_foreach (i, sm->output_feature_interfaces,
+  ({
+    if (i->sw_if_index == sw_if_index)
+      {
+        if (is_del)
+          pool_put (sm->output_feature_interfaces, i);
+        else
+          return VNET_API_ERROR_VALUE_EXIST;
+
+        goto fib;
+      }
+  }));
+
+  if (is_del)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  pool_get (sm->output_feature_interfaces, i);
+  i->sw_if_index = sw_if_index;
+  i->is_inside = is_inside;
+
+  /* Add/delete external addresses to FIB */
+fib:
+  if (is_inside)
+    return 0;
+
+  vec_foreach (ap, sm->addresses)
+    snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, !is_del);
+
+  pool_foreach (m, sm->static_mappings,
+  ({
+    if (!(m->addr_only))
+      continue;
+
+    snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del);
   }));
 
   return 0;
@@ -1103,6 +1220,7 @@ snat_feature_command_fn (vlib_main_t * vm,
   u32 sw_if_index;
   u32 * inside_sw_if_indices = 0;
   u32 * outside_sw_if_indices = 0;
+  u8 is_output_feature = 0;
   int is_del = 0;
   int i;
 
@@ -1120,6 +1238,8 @@ snat_feature_command_fn (vlib_main_t * vm,
       else if (unformat (line_input, "out %U", unformat_vnet_sw_interface,
                          vnm, &sw_if_index))
         vec_add1 (outside_sw_if_indices, sw_if_index);
+      else if (unformat (line_input, "output-feature"))
+        is_output_feature = 1;
       else if (unformat (line_input, "del"))
         is_del = 1;
       else
@@ -1135,7 +1255,30 @@ snat_feature_command_fn (vlib_main_t * vm,
       for (i = 0; i < vec_len(inside_sw_if_indices); i++)
         {
           sw_if_index = inside_sw_if_indices[i];
-          snat_interface_add_del (sw_if_index, 1, is_del);
+          if (is_output_feature)
+            {
+              if (snat_interface_add_del_output_feature (sw_if_index, 1, is_del))
+                {
+                  error = clib_error_return (0, "%s %U failed",
+                                             is_del ? "del" : "add",
+                                             format_vnet_sw_interface_name, vnm,
+                                             vnet_get_sw_interface (vnm,
+                                                                    sw_if_index));
+                  goto done;
+                }
+            }
+          else
+            {
+              if (snat_interface_add_del (sw_if_index, 1, is_del))
+                {
+                  error = clib_error_return (0, "%s %U failed",
+                                             is_del ? "del" : "add",
+                                             format_vnet_sw_interface_name, vnm,
+                                             vnet_get_sw_interface (vnm,
+                                                                    sw_if_index));
+                  goto done;
+                }
+            }
         }
     }
 
@@ -1144,7 +1287,30 @@ snat_feature_command_fn (vlib_main_t * vm,
       for (i = 0; i < vec_len(outside_sw_if_indices); i++)
         {
           sw_if_index = outside_sw_if_indices[i];
-          snat_interface_add_del (sw_if_index, 0, is_del);
+          if (is_output_feature)
+            {
+              if (snat_interface_add_del_output_feature (sw_if_index, 0, is_del))
+                {
+                  error = clib_error_return (0, "%s %U failed",
+                                             is_del ? "del" : "add",
+                                             format_vnet_sw_interface_name, vnm,
+                                             vnet_get_sw_interface (vnm,
+                                                                    sw_if_index));
+                  goto done;
+                }
+            }
+          else
+            {
+              if (snat_interface_add_del (sw_if_index, 0, is_del))
+                {
+                  error = clib_error_return (0, "%s %U failed",
+                                             is_del ? "del" : "add",
+                                             format_vnet_sw_interface_name, vnm,
+                                             vnet_get_sw_interface (vnm,
+                                                                    sw_if_index));
+                  goto done;
+                }
+            }
         }
     }
 
@@ -1159,7 +1325,8 @@ done:
 VLIB_CLI_COMMAND (set_interface_snat_command, static) = {
   .path = "set interface snat",
   .function = snat_feature_command_fn,
-  .short_help = "set interface snat in <intfc> out <intfc> [del]",
+  .short_help = "set interface snat in <intfc> out <intfc> [output-feature] "
+                "[del]",
 };
 
 uword
@@ -1597,6 +1764,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   if (sm->deterministic)
     {
       sm->in2out_node_index = snat_det_in2out_node.index;
+      sm->in2out_output_node_index = ~0;
       sm->out2in_node_index = snat_det_out2in_node.index;
       sm->icmp_match_in2out_cb = icmp_match_in2out_det;
       sm->icmp_match_out2in_cb = icmp_match_out2in_det;
@@ -1606,6 +1774,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
       sm->worker_in2out_cb = snat_get_worker_in2out_cb;
       sm->worker_out2in_cb = snat_get_worker_out2in_cb;
       sm->in2out_node_index = snat_in2out_node.index;
+      sm->in2out_output_node_index = snat_in2out_output_node.index;
       sm->out2in_node_index = snat_out2in_node.index;
       if (!static_mapping_only ||
           (static_mapping_only && static_mapping_connection_tracking))
@@ -1877,6 +2046,14 @@ show_snat_command_fn (vlib_main_t * vm,
       pool_foreach (i, sm->interfaces,
       ({
         vlib_cli_output (vm, "%U %s", format_vnet_sw_interface_name, vnm,
+                         vnet_get_sw_interface (vnm, i->sw_if_index),
+                         i->is_inside ? "in" : "out");
+      }));
+
+      pool_foreach (i, sm->output_feature_interfaces,
+      ({
+        vlib_cli_output (vm, "%U output-feature %s",
+                         format_vnet_sw_interface_name, vnm,
                          vnet_get_sw_interface (vnm, i->sw_if_index),
                          i->is_inside ? "in" : "out");
       }));
