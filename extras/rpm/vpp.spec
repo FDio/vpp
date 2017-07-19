@@ -30,8 +30,8 @@ Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd, chrpath
 
-# Source: %{name}-%{_version}-%{_release}.tar.xz
-Source: vpp-latest.tar.xz
+Source: %{name}-%{_version}-%{_release}.tar.xz
+# Source: vpp-latest.tar.xz
 
 %description
 This package provides VPP executables: vpp, vpp_api_test, vpp_json_test

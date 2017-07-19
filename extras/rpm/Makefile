@@ -17,11 +17,27 @@ TARBALL=$(shell realpath ../../build-root/vpp-latest.tar.xz)
 BASENAME=$(shell basename $(TARBALL) | sed -e s/.tar.\*//)
 VERSION=$(shell echo $(BASENAME) | cut -f2 -d-)
 RELEASE=$(shell echo $(BASENAME) | cut -f3- -d- | sed -e s/-/_/g)
+PC=%
 
-all:
+all: RPM
+
+srpm:
 	@echo $(TARBALL)
-	mkdir -p SOURCES RPMS
-	cp $(TARBALL) SOURCES/vpp-latest.tar.xz
+	mkdir -p rpmbuild/{RPMS,SRPMS,BUILD,SOURCES,SPECS}
+	cp $(TARBALL) rpmbuild/SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
+	cp vpp.spec rpmbuild/SOURCES
+	sed -i '1s/^/$(PC)define _version $(VERSION)\n/' rpmbuild/SOURCES/vpp.spec
+	sed -i '1s/^/$(PC)define _release $(RELEASE)\n/' rpmbuild/SOURCES/vpp.spec
+	sed -i '/define _topdir/d' rpmbuild/SOURCES/vpp.spec
+	rpmbuild -bs \
+	  --define "_topdir rpmbuild" \
+	  rpmbuild/SOURCES/vpp.spec
+	mv $$(find rpmbuild/SRPMS -name \*.src.rpm -type f) .
+
+RPM:
+	@echo $(TARBALL)
+	mkdir -p RPMS SOURCES
+	cp $(TARBALL) SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
 	rpmbuild -bb \
 	  --define "_topdir $(PWD)" \
 	  --define "_version $(VERSION)" \
