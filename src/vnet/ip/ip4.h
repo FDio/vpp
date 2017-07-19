@@ -347,8 +347,18 @@ vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
   ih->src_address.as_u32 = src->as_u32;
   ih->dst_address.as_u32 = dst->as_u32;
 
-  ih->checksum = 0;
-  b->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
+  /* Offload ip4 header checksum generation */
+  if (1)
+    {
+      ih->checksum = 0;
+      b->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
+      vnet_buffer (b)->l3_hdr_offset = (u8 *) ih - b->data;
+      vnet_buffer (b)->l4_hdr_offset = vnet_buffer (b)->l3_hdr_offset +
+	sizeof (*ih);
+    }
+  else
+    ih->checksum = ip4_header_checksum (ih);
+
   return ih;
 }
 #endif /* included_ip_ip4_h */
