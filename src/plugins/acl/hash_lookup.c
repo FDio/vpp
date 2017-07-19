@@ -382,6 +382,17 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
     applied_hash_ace_entry_t *prev_pae = &((*applied_hash_aces)[pae->prev_applied_entry_index]);
     ASSERT(prev_pae->next_applied_entry_index == old_index);
     prev_pae->next_applied_entry_index = pae->next_applied_entry_index;
+    if (pae->next_applied_entry_index == ~0) {
+      /* it was a last entry we removed, update the pointer on the first one */
+      u32 an_index = pae->prev_applied_entry_index;
+      applied_hash_ace_entry_t *head_pae = &((*applied_hash_aces)[pae->prev_applied_entry_index]);
+      while(!head_pae->is_first_entry) {
+	an_index = head_pae->prev_applied_entry_index;
+	head_pae = &((*applied_hash_aces)[an_index]);
+      }
+      ASSERT(head_pae->prev_applied_entry_index == old_index);
+      head_pae->prev_applied_entry_index = pae->prev_applied_entry_index;
+    }
   } else {
     /* It was the first entry. We need either to reset the hash entry or delete it */
     pae->is_first_entry = 0;
