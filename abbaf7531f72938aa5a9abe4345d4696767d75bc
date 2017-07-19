@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_f4e49aad",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/examples/Readme.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T10:54:58Z",
+      "side": 1,
+      "message": "are you sure?",
+      "range": {
+        "startLine": 1,
+        "startChar": 112,
+        "endLine": 1,
+        "endChar": 116
+      },
+      "revId": "abbaf7531f72938aa5a9abe4345d4696767d75bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_54d6cec6",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/Readme.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T10:54:58Z",
+      "side": 1,
+      "message": "please update",
+      "range": {
+        "startLine": 1,
+        "startChar": 28,
+        "endLine": 1,
+        "endChar": 60
+      },
+      "revId": "abbaf7531f72938aa5a9abe4345d4696767d75bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_34db52ef",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/Readme.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T10:54:58Z",
+      "side": 1,
+      "message": "examples",
+      "range": {
+        "startLine": 7,
+        "startChar": 10,
+        "endLine": 7,
+        "endChar": 15
+      },
+      "revId": "abbaf7531f72938aa5a9abe4345d4696767d75bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_14d856ee",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/Readme.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T10:54:58Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 8,
+        "startChar": 0,
+        "endLine": 17,
+        "endChar": 97
+      },
+      "revId": "abbaf7531f72938aa5a9abe4345d4696767d75bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_b4ee228a",
+        "filename": "src/vpp-api/java/jvpp-ioamexport/io/fd/vpp/jvpp/ioamexport/examples/Readme.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T10:54:58Z",
+      "side": 1,
+      "message": "are you sure? Please check all the plugins",
+      "range": {
+        "startLine": 1,
+        "startChar": 133,
+        "endLine": 1,
+        "endChar": 137
+      },
+      "revId": "abbaf7531f72938aa5a9abe4345d4696767d75bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
