@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_94e206d4",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/FutureApiTest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T09:47:12Z",
+      "side": 0,
+      "message": "I think we should move this as well, future api test for core would contain just show version call",
+      "revId": "60c1223acb21d9cc5925b14da3cb186155941624",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_f4c37a36",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/Readme.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T09:47:12Z",
+      "side": 0,
+      "message": "should also be moved and updated",
+      "revId": "60c1223acb21d9cc5925b14da3cb186155941624",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
