@@ -1,10 +1,74 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_1707
 * @subpage release_notes_1704
 * @subpage release_notes_17011
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_1707 Release notes for VPP 17.07
+
+More than 400 commits since the 1704 release.
+
+## Features
+- Infrastructure
+  - make test; improved debuggability.
+  - TAB auto-completion on the CLI
+  - DPDK 17.05
+  - python 3 support in test infra
+
+- Host stack
+  - Improved Linux TCP stack compatibility using IWL test suite (https://jira.fd.io/browse/VPP-720)
+  - Improved loss recovery (RFC5681, RFC6582, RF6675)
+  - Basic implementation of Eifel detection algorithm (RFC3522)
+  - Basic support for buffer chains
+  - Refactored session layer API
+  - Overall performance, scale and hardening
+
+- Interfaces
+  - memif: IP mode, jumbo frames, multi queue
+  - virtio-user support
+  - vhost-usr; adaptive (poll/interupt) support.
+
+- Network features
+  - MPLS Multicast FIB
+
+  - BFD FIB integration
+
+  - NAT64 support
+
+  - GRE over IPv6
+
+  - Segement routing MPLS
+
+  - IOAM configuration for SRv6 localsid
+
+  - LISP
+    - NSH support
+    - native forward static routes
+    - L2 ARP
+
+  - ACL multi-core suuport
+
+  - Flowprobe:
+    - Add flowstartns, flowendns and tcpcontrolbits
+    - Stateful flows and IPv6, L4 recording
+
+  - GTP-U support
+
+  - VXLAN GPE support for FIB2.0 and bypass.
+
+
+## Known issues
+
+For the full list of issues please reffer to fd.io [JIRA](https://jira.fd.io).
+
+## Issues fixed
+
+For the full list of fixed issues please reffer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1707)
 
 @page release_notes_1704 Release notes for VPP 17.04
 
