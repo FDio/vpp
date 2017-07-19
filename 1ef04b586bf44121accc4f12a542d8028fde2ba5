@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_d4ee3eb4",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 7
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T10:01:40Z",
+      "side": 1,
+      "message": "needs update, eg.\n\njvpp: make shm prefix configurable\n\n+ explanation how memory_shared.c and svm.c\nwere changed and why",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 16,
+        "endChar": 52
+      },
+      "revId": "1ef04b586bf44121accc4f12a542d8028fde2ba5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
