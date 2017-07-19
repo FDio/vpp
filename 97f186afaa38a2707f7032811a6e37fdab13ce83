@@ -1,0 +1,280 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_f7613cd4",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "This change is directly related to VPP-591, so please add ticket number in the parentheses at the end of commit message (this is vpp convention)\n\nplease also mention that these tests are integrated with \u0027make test\u0027 and how to run them",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 67
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_d7e1a09b",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/test/CallbackApiTest.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "acl",
+      "range": {
+        "startLine": 30,
+        "startChar": 66,
+        "endLine": 30,
+        "endChar": 70
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_577370b1",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/test/CallbackApiTest.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "I bet coverity would complain JVppAclImpl is not properly closed (I know that it should not be an issue for this particular test, but nevertheless we don\u0027t want coverity issues for jvpp). Before your change we used try-with resources, thats why I suggested paramterizing AbstractCallbackApiTest...",
+      "range": {
+        "startLine": 31,
+        "startChar": 32,
+        "endLine": 31,
+        "endChar": 50
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_17d858ee",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/test/FutureApiTest.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 39,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "acl",
+      "range": {
+        "startLine": 39,
+        "startChar": 46,
+        "endLine": 39,
+        "endChar": 50
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_d773e013",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/CallbackApiTest.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "2017",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_77d1cccc",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/Readme.txt",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "needs update",
+      "range": {
+        "startLine": 1,
+        "startChar": 0,
+        "endLine": 17,
+        "endChar": 97
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_57d6d0c6",
+        "filename": "src/vpp-api/java/jvpp-ioamexport/io/fd/vpp/jvpp/ioamexport/test/CallbackApiTest.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "2017",
+      "range": {
+        "startLine": 2,
+        "startChar": 17,
+        "endLine": 2,
+        "endChar": 21
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_f71ffcb5",
+        "filename": "src/vpp-api/java/jvpp-registry/io/fd/vpp/jvpp/AbstractCallbackApiTest.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "io.fd.vpp.jvpp.test ?",
+      "range": {
+        "startLine": 17,
+        "startChar": 0,
+        "endLine": 17,
+        "endChar": 23
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_77830ccd",
+        "filename": "src/vpp-api/java/jvpp-registry/io/fd/vpp/jvpp/AbstractCallbackApiTest.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "javadoc please...",
+      "range": {
+        "startLine": 23,
+        "startChar": 0,
+        "endLine": 23,
+        "endChar": 6
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_f7f13c96",
+        "filename": "src/vpp-api/java/jvpp-registry/io/fd/vpp/jvpp/Assertions.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "perhaps we should move it to separete package, eg. io.fd.vpp.jvpp.test ?",
+      "range": {
+        "startLine": 17,
+        "startChar": 8,
+        "endLine": 17,
+        "endChar": 22
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_173cd82e",
+        "filename": "src/vpp-api/java/jvpp-registry/io/fd/vpp/jvpp/Assertions.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "javadoc please...",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 1
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_b7ee248a",
+        "filename": "src/vpp-api/java/jvpp-snat/io/fd/vpp/jvpp/snat/test/CallbackApiTest.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-19T13:33:13Z",
+      "side": 1,
+      "message": "snat",
+      "range": {
+        "startLine": 30,
+        "startChar": 66,
+        "endLine": 30,
+        "endChar": 70
+      },
+      "revId": "97f186afaa38a2707f7032811a6e37fdab13ce83",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
