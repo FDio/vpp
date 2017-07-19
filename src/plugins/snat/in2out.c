@@ -88,6 +88,9 @@ vlib_node_registration_t snat_in2out_slowpath_node;
 vlib_node_registration_t snat_in2out_fast_node;
 vlib_node_registration_t snat_in2out_worker_handoff_node;
 vlib_node_registration_t snat_det_in2out_node;
+vlib_node_registration_t snat_in2out_output_node;
+vlib_node_registration_t snat_in2out_output_slowpath_node;
+vlib_node_registration_t snat_in2out_output_worker_handoff_node;
 
 #define foreach_snat_in2out_error                       \
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
@@ -515,8 +518,13 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
   clib_bihash_kv_8_8_t kv0, value0;
   u32 next0 = ~0;
   int err;
+  u32 iph_offset0 = 0;
 
-  ip0 = vlib_buffer_get_current (b0);
+  if (PREDICT_FALSE(vnet_buffer(b0)->sw_if_index[VLIB_TX] != ~0))
+    {
+      iph_offset0 = vnet_buffer (b0)->ip.save_rewrite_length;
+    }
+  ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) + iph_offset0);
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
   rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
@@ -535,7 +543,8 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
   if (clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0))
     {
       if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0, ip0,
-          IP_PROTOCOL_ICMP, rx_fib_index0)))
+          IP_PROTOCOL_ICMP, rx_fib_index0) &&
+          vnet_buffer(b0)->sw_if_index[VLIB_TX] == ~0))
         {
           dont_translate = 1;
           goto out;
@@ -704,7 +713,8 @@ static inline u32 icmp_in2out (snat_main_t *sm,
 
   old_addr0 = ip0->src_address.as_u32;
   new_addr0 = ip0->src_address.as_u32 = sm0.addr.as_u32;
-  vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
+  if (vnet_buffer(b0)->sw_if_index[VLIB_TX] == ~0)
+    vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
 
   sum0 = ip0->checksum;
   sum0 = ip_csum_update (sum0, old_addr0, new_addr0, ip4_header_t,
@@ -1276,7 +1286,8 @@ create_ses:
       kv.key = m_key.as_u64;
       if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
         {
-          vnet_buffer(b)->sw_if_index[VLIB_TX] = sm->outside_fib_index;
+          if (vnet_buffer(b)->sw_if_index[VLIB_TX] == ~0)
+            vnet_buffer(b)->sw_if_index[VLIB_TX] = sm->outside_fib_index;
           return;
         }
 
@@ -1298,7 +1309,8 @@ create_ses:
 static inline uword
 snat_in2out_node_fn_inline (vlib_main_t * vm,
                             vlib_node_runtime_t * node,
-                            vlib_frame_t * frame, int is_slow_path)
+                            vlib_frame_t * frame, int is_slow_path,
+                            int is_output_feature)
 {
   u32 n_left_from, * from, * to_next;
   snat_in2out_next_t next_index;
@@ -1340,6 +1352,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           u32 proto0, proto1;
           snat_session_t * s0 = 0, * s1 = 0;
           clib_bihash_kv_8_8_t kv0, value0, kv1, value1;
+          u32 iph_offset0 = 0, iph_offset1 = 0;
           
 	  /* Prefetch next iteration. */
 	  {
@@ -1366,7 +1379,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-          ip0 = vlib_buffer_get_current (b0);
+          if (is_output_feature)
+            iph_offset0 = vnet_buffer (b0)->ip.save_rewrite_length;
+
+          ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
+                 iph_offset0);
+
           udp0 = ip4_next_header (ip0);
           tcp0 = (tcp_header_t *) udp0;
           icmp0 = (icmp46_header_t *) udp0;
@@ -1427,8 +1445,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0, ip0,
-                      proto0, rx_fib_index0)))
+                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
+                      ip0, proto0, rx_fib_index0)) && !is_output_feature)
                     goto trace00;
 
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
@@ -1449,7 +1467,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           old_addr0 = ip0->src_address.as_u32;
           ip0->src_address = s0->out2in.addr;
           new_addr0 = ip0->src_address.as_u32;
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->out2in.fib_index;
+          if (!is_output_feature)
+            vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->out2in.fib_index;
 
           sum0 = ip0->checksum;
           sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
@@ -1512,7 +1531,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           pkts_processed += next0 != SNAT_IN2OUT_NEXT_DROP;
 
-          ip1 = vlib_buffer_get_current (b1);
+          if (is_output_feature)
+            iph_offset1 = vnet_buffer (b1)->ip.save_rewrite_length;
+
+          ip1 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b1) +
+                 iph_offset1);
+
           udp1 = ip4_next_header (ip1);
           tcp1 = (tcp_header_t *) udp1;
           icmp1 = (icmp46_header_t *) udp1;
@@ -1571,8 +1595,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index1, ip1,
-                      proto1, rx_fib_index1)))
+                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index1,
+                      ip1, proto1, rx_fib_index1)) && !is_output_feature)
                     goto trace01;
 
                   next1 = slow_path (sm, b1, ip1, rx_fib_index1, &key1,
@@ -1593,7 +1617,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           old_addr1 = ip1->src_address.as_u32;
           ip1->src_address = s1->out2in.addr;
           new_addr1 = ip1->src_address.as_u32;
-          vnet_buffer(b1)->sw_if_index[VLIB_TX] = s1->out2in.fib_index;
+          if (!is_output_feature)
+            vnet_buffer(b1)->sw_if_index[VLIB_TX] = s1->out2in.fib_index;
 
           sum1 = ip1->checksum;
           sum1 = ip_csum_update (sum1, old_addr1, new_addr1,
@@ -1679,7 +1704,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           u32 proto0;
           snat_session_t * s0 = 0;
           clib_bihash_kv_8_8_t kv0, value0;
-          
+          u32 iph_offset0 = 0;
+
           /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -1691,7 +1717,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
           next0 = SNAT_IN2OUT_NEXT_LOOKUP;
 
-          ip0 = vlib_buffer_get_current (b0);
+          if (is_output_feature)
+            iph_offset0 = vnet_buffer (b0)->ip.save_rewrite_length;
+
+          ip0 = (ip4_header_t *) ((u8 *) vlib_buffer_get_current (b0) +
+                 iph_offset0);
+
           udp0 = ip4_next_header (ip0);
           tcp0 = (tcp_header_t *) udp0;
           icmp0 = (icmp46_header_t *) udp0;
@@ -1750,8 +1781,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0, ip0,
-                      proto0, rx_fib_index0)))
+                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
+                      ip0, proto0, rx_fib_index0)) && !is_output_feature)
                     goto trace0;
 
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
@@ -1773,7 +1804,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           old_addr0 = ip0->src_address.as_u32;
           ip0->src_address = s0->out2in.addr;
           new_addr0 = ip0->src_address.as_u32;
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->out2in.fib_index;
+          if (!is_output_feature)
+            vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->out2in.fib_index;
 
           sum0 = ip0->checksum;
           sum0 = ip_csum_update (sum0, old_addr0, new_addr0,
@@ -1856,7 +1888,7 @@ snat_in2out_fast_path_fn (vlib_main_t * vm,
                           vlib_node_runtime_t * node,
                           vlib_frame_t * frame)
 {
-  return snat_in2out_node_fn_inline (vm, node, frame, 0 /* is_slow_path */);
+  return snat_in2out_node_fn_inline (vm, node, frame, 0 /* is_slow_path */, 0);
 }
 
 VLIB_REGISTER_NODE (snat_in2out_node) = {
@@ -1865,12 +1897,12 @@ VLIB_REGISTER_NODE (snat_in2out_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_snat_in2out_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  
+
   .n_errors = ARRAY_LEN(snat_in2out_error_strings),
   .error_strings = snat_in2out_error_strings,
 
   .runtime_data_bytes = sizeof (snat_runtime_t),
-  
+
   .n_next_nodes = SNAT_IN2OUT_N_NEXT,
 
   /* edit / add dispositions here */
@@ -1885,11 +1917,45 @@ VLIB_REGISTER_NODE (snat_in2out_node) = {
 VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_node, snat_in2out_fast_path_fn);
 
 static uword
+snat_in2out_output_fast_path_fn (vlib_main_t * vm,
+                                 vlib_node_runtime_t * node,
+                                 vlib_frame_t * frame)
+{
+  return snat_in2out_node_fn_inline (vm, node, frame, 0 /* is_slow_path */, 1);
+}
+
+VLIB_REGISTER_NODE (snat_in2out_output_node) = {
+  .function = snat_in2out_output_fast_path_fn,
+  .name = "snat-in2out-output",
+  .vector_size = sizeof (u32),
+  .format_trace = format_snat_in2out_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(snat_in2out_error_strings),
+  .error_strings = snat_in2out_error_strings,
+
+  .runtime_data_bytes = sizeof (snat_runtime_t),
+
+  .n_next_nodes = SNAT_IN2OUT_N_NEXT,
+
+  /* edit / add dispositions here */
+  .next_nodes = {
+    [SNAT_IN2OUT_NEXT_DROP] = "error-drop",
+    [SNAT_IN2OUT_NEXT_LOOKUP] = "interface-output",
+    [SNAT_IN2OUT_NEXT_SLOW_PATH] = "snat-in2out-output-slowpath",
+    [SNAT_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_output_node,
+                              snat_in2out_output_fast_path_fn);
+
+static uword
 snat_in2out_slow_path_fn (vlib_main_t * vm,
                           vlib_node_runtime_t * node,
                           vlib_frame_t * frame)
 {
-  return snat_in2out_node_fn_inline (vm, node, frame, 1 /* is_slow_path */);
+  return snat_in2out_node_fn_inline (vm, node, frame, 1 /* is_slow_path */, 0);
 }
 
 VLIB_REGISTER_NODE (snat_in2out_slowpath_node) = {
@@ -1898,12 +1964,12 @@ VLIB_REGISTER_NODE (snat_in2out_slowpath_node) = {
   .vector_size = sizeof (u32),
   .format_trace = format_snat_in2out_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  
+
   .n_errors = ARRAY_LEN(snat_in2out_error_strings),
   .error_strings = snat_in2out_error_strings,
 
   .runtime_data_bytes = sizeof (snat_runtime_t),
-  
+
   .n_next_nodes = SNAT_IN2OUT_N_NEXT,
 
   /* edit / add dispositions here */
@@ -1915,7 +1981,42 @@ VLIB_REGISTER_NODE (snat_in2out_slowpath_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_slowpath_node, snat_in2out_slow_path_fn);
+VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_slowpath_node,
+                              snat_in2out_slow_path_fn);
+
+static uword
+snat_in2out_output_slow_path_fn (vlib_main_t * vm,
+                                 vlib_node_runtime_t * node,
+                                 vlib_frame_t * frame)
+{
+  return snat_in2out_node_fn_inline (vm, node, frame, 1 /* is_slow_path */, 1);
+}
+
+VLIB_REGISTER_NODE (snat_in2out_output_slowpath_node) = {
+  .function = snat_in2out_output_slow_path_fn,
+  .name = "snat-in2out-output-slowpath",
+  .vector_size = sizeof (u32),
+  .format_trace = format_snat_in2out_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_errors = ARRAY_LEN(snat_in2out_error_strings),
+  .error_strings = snat_in2out_error_strings,
+
+  .runtime_data_bytes = sizeof (snat_runtime_t),
+
+  .n_next_nodes = SNAT_IN2OUT_N_NEXT,
+
+  /* edit / add dispositions here */
+  .next_nodes = {
+    [SNAT_IN2OUT_NEXT_DROP] = "error-drop",
+    [SNAT_IN2OUT_NEXT_LOOKUP] = "interface-output",
+    [SNAT_IN2OUT_NEXT_SLOW_PATH] = "snat-in2out-output-slowpath",
+    [SNAT_IN2OUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_output_slowpath_node,
+                              snat_in2out_output_slow_path_fn);
 
 /**************************/
 /*** deterministic mode ***/
@@ -2677,10 +2778,11 @@ out:
 /**********************/
 /*** worker handoff ***/
 /**********************/
-static uword
-snat_in2out_worker_handoff_fn (vlib_main_t * vm,
-                               vlib_node_runtime_t * node,
-                               vlib_frame_t * frame)
+static inline uword
+snat_in2out_worker_handoff_fn_inline (vlib_main_t * vm,
+                                      vlib_node_runtime_t * node,
+                                      vlib_frame_t * frame,
+                                      u8 is_output)
 {
   snat_main_t *sm = &snat_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
@@ -2695,8 +2797,21 @@ snat_in2out_worker_handoff_fn (vlib_main_t * vm,
   u32 next_worker_index = 0;
   u32 current_worker_index = ~0;
   u32 thread_index = vlib_get_thread_index ();
+  u32 fq_index;
+  u32 to_node_index;
 
   ASSERT (vec_len (sm->workers));
+
+  if (is_output)
+    {
+      fq_index = sm->fq_in2out_output_index;
+      to_node_index = sm->in2out_output_node_index;
+    }
+  else
+    {
+      fq_index = sm->fq_in2out_index;
+      to_node_index = sm->in2out_node_index;
+    }
 
   if (PREDICT_FALSE (handoff_queue_elt_by_worker_index == 0))
     {
@@ -2741,7 +2856,7 @@ snat_in2out_worker_handoff_fn (vlib_main_t * vm,
               if (hf)
                 hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
 
-              hf = vlib_get_worker_handoff_queue_elt (sm->fq_in2out_index,
+              hf = vlib_get_worker_handoff_queue_elt (fq_index,
                                                       next_worker_index,
                                                       handoff_queue_elt_by_worker_index);
 
@@ -2770,7 +2885,7 @@ snat_in2out_worker_handoff_fn (vlib_main_t * vm,
           /* if this is 1st frame */
           if (!f)
             {
-              f = vlib_get_frame_to_node (vm, sm->in2out_node_index);
+              f = vlib_get_frame_to_node (vm, to_node_index);
               to_next = vlib_frame_vector_args (f);
             }
 
@@ -2790,7 +2905,7 @@ snat_in2out_worker_handoff_fn (vlib_main_t * vm,
     }
 
   if (f)
-    vlib_put_frame_to_node (vm, sm->in2out_node_index, f);
+    vlib_put_frame_to_node (vm, to_node_index, f);
 
   if (hf)
     hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
@@ -2821,13 +2936,21 @@ snat_in2out_worker_handoff_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+static uword
+snat_in2out_worker_handoff_fn (vlib_main_t * vm,
+                               vlib_node_runtime_t * node,
+                               vlib_frame_t * frame)
+{
+  return snat_in2out_worker_handoff_fn_inline (vm, node, frame, 0);
+}
+
 VLIB_REGISTER_NODE (snat_in2out_worker_handoff_node) = {
   .function = snat_in2out_worker_handoff_fn,
   .name = "snat-in2out-worker-handoff",
   .vector_size = sizeof (u32),
   .format_trace = format_snat_in2out_worker_handoff_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  
+
   .n_next_nodes = 1,
 
   .next_nodes = {
@@ -2835,7 +2958,33 @@ VLIB_REGISTER_NODE (snat_in2out_worker_handoff_node) = {
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_worker_handoff_node, snat_in2out_worker_handoff_fn);
+VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_worker_handoff_node,
+                              snat_in2out_worker_handoff_fn);
+
+static uword
+snat_in2out_output_worker_handoff_fn (vlib_main_t * vm,
+                                      vlib_node_runtime_t * node,
+                                      vlib_frame_t * frame)
+{
+  return snat_in2out_worker_handoff_fn_inline (vm, node, frame, 1);
+}
+
+VLIB_REGISTER_NODE (snat_in2out_output_worker_handoff_node) = {
+  .function = snat_in2out_output_worker_handoff_fn,
+  .name = "snat-in2out-output-worker-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_snat_in2out_worker_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_output_worker_handoff_node,
+                              snat_in2out_output_worker_handoff_fn);
 
 static uword
 snat_in2out_fast_static_map_fn (vlib_main_t * vm,

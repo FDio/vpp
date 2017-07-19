@@ -1055,6 +1055,23 @@ class VppPapiProvider(object):
              'is_inside': is_inside,
              'sw_if_index': sw_if_index})
 
+    def snat_interface_add_del_output_feature(
+            self,
+            sw_if_index,
+            is_inside=1,
+            is_add=1):
+        """Enable/disable S-NAT output feature on the interface
+
+        :param sw_if_index: Software index of the interface
+        :param is_inside: 1 if inside, 0 if outside (Default value = 1)
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(
+            self.papi.snat_interface_add_del_output_feature,
+            {'is_add': is_add,
+             'is_inside': is_inside,
+             'sw_if_index': sw_if_index})
+
     def snat_add_static_mapping(
             self,
             local_ip,
@@ -1127,6 +1144,12 @@ class VppPapiProvider(object):
         :return: Dictionary of interfaces with S-NAT feature
         """
         return self.api(self.papi.snat_interface_dump, {})
+
+    def snat_interface_output_feature_dump(self):
+        """Dump interfaces with S-NAT output feature
+        :return: Dictionary of interfaces with S-NAT output feature
+        """
+        return self.api(self.papi.snat_interface_output_feature_dump, {})
 
     def snat_static_mapping_dump(self):
         """Dump S-NAT static mappings
