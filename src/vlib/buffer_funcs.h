@@ -162,7 +162,7 @@ vlib_buffer_contents (vlib_main_t * vm, u32 buffer_index, u8 * contents)
 always_inline u64
 vlib_get_buffer_data_physical_address (vlib_main_t * vm, u32 buffer_index)
 {
-  return vlib_physmem_offset_to_physical (&vm->physmem_main,
+  return vlib_physmem_offset_to_physical (vm, vm->buffer_main->physmem_region,
 					  (((uword) buffer_index) <<
 					   CLIB_LOG2_CACHE_LINE_BYTES) +
 					  STRUCT_OFFSET_OF (vlib_buffer_t,
@@ -453,43 +453,6 @@ vlib_copy_buffers (u32 * dst, u32 * src, u32 n)
       src += 1;
       n -= 1;
     }
-}
-
-always_inline void *
-vlib_physmem_alloc_aligned (vlib_main_t * vm, clib_error_t ** error,
-			    uword n_bytes, uword alignment)
-{
-  void *r =
-    vm->os_physmem_alloc_aligned (&vm->physmem_main, n_bytes, alignment);
-  if (!r)
-    *error =
-      clib_error_return (0, "failed to allocate %wd bytes of I/O memory",
-			 n_bytes);
-  else
-    *error = 0;
-  return r;
-}
-
-/* By default allocate I/O memory with cache line alignment. */
-always_inline void *
-vlib_physmem_alloc (vlib_main_t * vm, clib_error_t ** error, uword n_bytes)
-{
-  return vlib_physmem_alloc_aligned (vm, error, n_bytes,
-				     CLIB_CACHE_LINE_BYTES);
-}
-
-always_inline void
-vlib_physmem_free (vlib_main_t * vm, void *mem)
-{
-  return vm->os_physmem_free (mem);
-}
-
-always_inline u64
-vlib_physmem_virtual_to_physical (vlib_main_t * vm, void *mem)
-{
-  vlib_physmem_main_t *pm = &vm->physmem_main;
-  uword o = pointer_to_uword (mem) - pm->virtual.start;
-  return vlib_physmem_offset_to_physical (pm, o);
 }
 
 /* Append given data to end of buffer, possibly allocating new buffers. */
