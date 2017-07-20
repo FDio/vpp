@@ -26,6 +26,18 @@
 #define DEBUG_LOG(...)
 #endif
 
+#define _(a,b,c)  \
+if (b == x)       \
+    m = c;        \
+else
+
+#define get_error_message(msg,errno)    \
+int x = errno;                          \
+char *m;                                \
+foreach_vnet_api_error                  \
+    m = "Reason unknown";               \
+msg = m;
+
 /* shared jvpp main structure */
 jvpp_main_t jvpp_main __attribute__((aligned (64)));
 
@@ -40,7 +52,7 @@ void call_on_error(const char* callName, int contextId, int retval,
         return;
     }
     jmethodID excConstructor = (*env)->GetMethodID(env, callbackExceptionClass,
-            "<init>", "(Ljava/lang/String;II)V");
+            "<init>", "(Ljava/lang/String;Ljava/lang/String;II)V");
     if (!excConstructor) {
         DEBUG_LOG("CallOnError : excConstructor is null!\n");
         return;
@@ -52,8 +64,11 @@ void call_on_error(const char* callName, int contextId, int retval,
         return;
     }
 
+    char *message;
+    get_error_message(message, clib_net_to_host_u32(retval));
     jobject excObject = (*env)->NewObject(env, callbackExceptionClass,
             excConstructor, (*env)->NewStringUTF(env, callName),
+            (*env)->NewStringUTF(env, message),
             clib_net_to_host_u32(contextId), clib_net_to_host_u32(retval));
     if (!excObject) {
         DEBUG_LOG("CallOnError : excObject is null!\n");
