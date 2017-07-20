@@ -1,0 +1,9 @@
+Code-Review+1: Steve Shin <jonshin@cisco.com>
+Verified+1: fd.io JJB <jobbuilder@projectrotterdam.info>
+Code-Review+1: Naveen Joy <najoy@cisco.com>
+Code-Review+2: Dave Barach <openvpp@barachs.net>
+Submitted-by: Dave Barach <openvpp@barachs.net>
+Submitted-at: Thu, 20 Jul 2017 12:05:36 +0000
+Reviewed-on: https://gerrit.fd.io/r/7651
+Project: vpp
+Branch: refs/heads/stable/1707
