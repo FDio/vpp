@@ -45,6 +45,9 @@ core_main_t core_main __attribute__((aligned (64)));
 
 #include "io_fd_vpp_jvpp_core_JVppCoreImpl.h"
 #include "jvpp_core_gen.h"
+#ifdef _
+  #undef _
+#endif
 
 JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_core_JVppCoreImpl_init0
 (JNIEnv * env, jclass clazz, jobject callback, jlong queue_address, jint my_client_index) {

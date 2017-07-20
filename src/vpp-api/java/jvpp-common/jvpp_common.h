@@ -19,6 +19,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <jni.h>
+#include <vnet/api_errno.h>
 
 typedef struct {
     /* Unique identifier used for matching replays with requests  */
@@ -70,5 +71,17 @@ void call_on_error(const char* callName, int contextId, int retval,
  * Throws java/lang/IllegalStateException on failure.
  */
 u32 get_message_id(JNIEnv *env, const char* key);
+
+#define _(a,b,c)  \
+if (b == x)       \
+    m = c;        \
+else
+
+#define get_error_message(msg,errno)    \
+int x = errno;                          \
+char *m;                                \
+foreach_vnet_api_error                  \
+    m = "Reason unknown";               \
+msg = m;
 
 #endif /* __included_jvpp_common_h__ */

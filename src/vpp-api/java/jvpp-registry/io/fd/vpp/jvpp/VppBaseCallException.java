@@ -16,6 +16,7 @@
 
 package io.fd.vpp.jvpp;
 
+
 /**
  * Base exception representing failed operation of JVpp request call
  */
@@ -32,6 +33,24 @@ public abstract class VppBaseCallException extends Exception {
      */
     public VppBaseCallException(final String methodName, final int errorCode) {
         super(String.format("vppApi.%s failed with error code: %d", methodName, errorCode));
+        this.methodName = java.util.Objects.requireNonNull(methodName, "apiMethodName is null!");
+        this.errorCode = errorCode;
+        if(errorCode >= 0) {
+            throw new IllegalArgumentException("Error code must be < 0. Was " + errorCode +
+                    " for " + methodName );
+        }
+    }
+
+    /**
+     * Constructs an VppCallbackException with the specified api method name, error description and error code.
+     *
+     * @param methodName name of a method, which invocation or execution failed
+     * @param message    description of error reason
+     * @param errorCode  negative error code value associated with this failure
+     * @throws NullPointerException     if apiMethodName is null
+     */
+    public VppBaseCallException(final String methodName, final String message, final int errorCode) {
+        super(String.format("vppApi.%s failed: %s (error code: %d)", methodName,message, errorCode));
         this.methodName = java.util.Objects.requireNonNull(methodName, "apiMethodName is null!");
         this.errorCode = errorCode;
         if(errorCode >= 0) {
