@@ -84,7 +84,6 @@ libvlib_la_SOURCES +=				\
 nobase_include_HEADERS +=			\
   vlib/unix/cj.h				\
   vlib/unix/mc_socket.h				\
-  vlib/unix/physmem.h				\
   vlib/unix/plugin.h				\
   vlib/unix/unix.h
 
