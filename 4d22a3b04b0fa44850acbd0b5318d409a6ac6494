@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "7a51691d_88366502",
+        "filename": "src/vlib/unix/cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2648,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-07-20T19:12:21Z",
+      "side": 1,
+      "message": "In the previous code I deliberately checked whether it was in the RUNDIR to avoid making arbitrary directories. I\u0027m of that sysadmin mindset where if it\u0027s not in /run (ie, ephemeral) then the sysadmin should mkdir those places explicitly.",
+      "revId": "4d22a3b04b0fa44850acbd0b5318d409a6ac6494",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a51691d_0874b5cd",
         "filename": "src/vlib/unix/main.c",
         "patchSetId": 1
@@ -13,6 +30,24 @@
       "writtenOn": "2017-07-20T18:34:53Z",
       "side": 1,
       "message": "Any reason not to add a set function and skip the weak definition? I see that there\u0027s already a \"get\" function. Weak references are mainly good for trouble, unless they\u0027re absolutely necessary...",
+      "revId": "4d22a3b04b0fa44850acbd0b5318d409a6ac6494",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_a831210d",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-07-20T19:12:21Z",
+      "side": 1,
+      "message": "What he said. My mileage with weak references has varied widely.",
+      "parentUuid": "7a51691d_0874b5cd",
       "revId": "4d22a3b04b0fa44850acbd0b5318d409a6ac6494",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
