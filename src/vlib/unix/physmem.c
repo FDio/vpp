@@ -37,24 +37,66 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include <vlib/unix/physmem.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/mount.h>
+#include <sys/mman.h>
+#include <sys/fcntl.h>
+#include <sys/stat.h>
+#include <numa.h>
+#include <numaif.h>
 
-static physmem_main_t physmem_main;
+#include <vlib/vlib.h>
+#include <vlib/physmem.h>
+#include <vlib/unix/unix.h>
+
+#ifndef __NR_memfd_create
+#if defined __x86_64__
+#define __NR_memfd_create 319
+#elif defined __arm__
+#define __NR_memfd_create 385
+#elif defined __aarch64__
+#define __NR_memfd_create 279
+#else
+#error "__NR_memfd_create unknown for this architecture"
+#endif
+#endif
+
+static inline int
+memfd_create (const char *name, unsigned int flags)
+{
+  return syscall (__NR_memfd_create, name, flags);
+}
+
+#ifndef F_LINUX_SPECIFIC_BASE
+#define F_LINUX_SPECIFIC_BASE 1024
+#endif
+#define MFD_ALLOW_SEALING       0x0002U
+#define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
+#define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
+
+#define F_SEAL_SEAL     0x0001	/* prevent further seals from being set */
+#define F_SEAL_SHRINK   0x0002	/* prevent file from shrinking */
+#define F_SEAL_GROW     0x0004	/* prevent file from growing */
+#define F_SEAL_WRITE    0x0008	/* prevent writes */
 
 static void *
-unix_physmem_alloc_aligned (vlib_physmem_main_t * vpm, uword n_bytes,
-			    uword alignment)
+unix_physmem_alloc_aligned (vlib_main_t * vm, vlib_physmem_region_index_t idx,
+			    uword n_bytes, uword alignment)
 {
-  physmem_main_t *pm = &physmem_main;
+  vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, idx);
   uword lo_offset, hi_offset;
   uword *to_free = 0;
+
+  if (pr->heap == 0)
+    return 0;
 
   /* IO memory is always at least cache aligned. */
   alignment = clib_max (alignment, CLIB_CACHE_LINE_BYTES);
 
   while (1)
     {
-      mheap_get_aligned (pm->heap, n_bytes,
+      mheap_get_aligned (pr->heap, n_bytes,
 			 /* align */ alignment,
 			 /* align offset */ 0,
 			 &lo_offset);
@@ -63,11 +105,14 @@ unix_physmem_alloc_aligned (vlib_physmem_main_t * vpm, uword n_bytes,
       if (lo_offset == ~0)
 	break;
 
+      if (pr->flags & VLIB_PHYSMEM_F_FAKE)
+	break;
+
       /* Make sure allocation does not span DMA physical chunk boundary. */
       hi_offset = lo_offset + n_bytes - 1;
 
-      if ((lo_offset >> vpm->log2_n_bytes_per_page) ==
-	  (hi_offset >> vpm->log2_n_bytes_per_page))
+      if ((lo_offset >> pr->log2_page_size) ==
+	  (hi_offset >> pr->log2_page_size))
 	break;
 
       /* Allocation would span chunk boundary, queue it to be freed as soon as
@@ -79,134 +124,267 @@ unix_physmem_alloc_aligned (vlib_physmem_main_t * vpm, uword n_bytes,
     {
       uword i;
       for (i = 0; i < vec_len (to_free); i++)
-	mheap_put (pm->heap, to_free[i]);
+	mheap_put (pr->heap, to_free[i]);
       vec_free (to_free);
     }
 
-  return lo_offset != ~0 ? pm->heap + lo_offset : 0;
+  return lo_offset != ~0 ? pr->heap + lo_offset : 0;
 }
 
 static void
-unix_physmem_free (void *x)
+unix_physmem_free (vlib_main_t * vm, vlib_physmem_region_index_t idx, void *x)
 {
-  physmem_main_t *pm = &physmem_main;
-
+  vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, idx);
   /* Return object to region's heap. */
-  mheap_put (pm->heap, x - pm->heap);
+  mheap_put (pr->heap, x - pr->heap);
 }
 
-static void
-htlb_shutdown (void)
+static u64
+get_page_paddr (int fd, uword addr)
 {
-  physmem_main_t *pm = &physmem_main;
+  int pagesize = sysconf (_SC_PAGESIZE);
+  u64 seek, pagemap = 0;
 
-  if (!pm->shmid)
-    return;
-  shmctl (pm->shmid, IPC_RMID, 0);
-  pm->shmid = 0;
+  seek = ((u64) addr / pagesize) * sizeof (u64);
+  if (lseek (fd, seek, SEEK_SET) != seek)
+    {
+      clib_unix_warning ("lseek to 0x%llx", seek);
+      return 0;
+    }
+  if (read (fd, &pagemap, sizeof (pagemap)) != (sizeof (pagemap)))
+    {
+      clib_unix_warning ("read ptbits");
+      return 0;
+    }
+  if ((pagemap & (1ULL << 63)) == 0)
+    return 0;
+
+  pagemap &= pow2_mask (55);
+
+  return pagemap * pagesize;
 }
 
-/* try to use huge TLB pgs if possible */
-static int
-htlb_init (vlib_main_t * vm)
+static clib_error_t *
+unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
+			   u8 numa_node, u32 flags,
+			   vlib_physmem_region_index_t * idx)
 {
   vlib_physmem_main_t *vpm = &vm->physmem_main;
-  physmem_main_t *pm = &physmem_main;
-  u64 hugepagesize, pagesize;
-  u64 pfn, seek_loc;
-  u64 cur, physaddr, ptbits;
-  int fd, i;
+  vlib_physmem_region_t *pr;
+  clib_error_t *error = 0;
+  int pagemap_fd = -1;
+  u8 *mount_dir = 0;
+  u8 *filename = 0;
+  struct stat st;
+  int old_mpol;
+  int mmap_flags;
+  struct bitmask *old_mask = numa_allocate_nodemask ();
 
-  pm->shmid = shmget (11 /* key, my amp goes to 11 */ , pm->mem_size,
-		      IPC_CREAT | SHM_HUGETLB | SHM_R | SHM_W);
-  if (pm->shmid < 0)
+  if (geteuid () != 0 && (flags & VLIB_PHYSMEM_F_FAKE) == 0)
+    return clib_error_return (0, "not allowed");
+
+  pool_get (vpm->regions, pr);
+
+  if ((pr - vpm->regions) >= 256)
     {
-      clib_unix_warning ("shmget");
-      return 0;
+      error = clib_error_return (0, "maximum number of regions reached");
+      goto error;
     }
 
-  pm->mem = shmat (pm->shmid, NULL, 0 /* flags */ );
-  if (pm->mem == 0)
+  pr->index = pr - vpm->regions;
+  pr->fd = -1;
+  pr->flags = flags;
+
+  if (get_mempolicy (&old_mpol, old_mask->maskp, old_mask->size + 1, NULL, 0)
+      == -1)
     {
-      shmctl (pm->shmid, IPC_RMID, 0);
-      return 0;
+      error = clib_error_return_unix (0, "get_mempolicy");
+      goto error;
     }
 
-  memset (pm->mem, 0, pm->mem_size);
-
-  /* $$$ get page size info from /proc/meminfo */
-  hugepagesize = 2 << 20;
-  pagesize = 4 << 10;
-  vpm->log2_n_bytes_per_page = min_log2 (hugepagesize);
-  vec_resize (vpm->page_table, pm->mem_size / hugepagesize);
-
-  vpm->page_mask = pow2_mask (vpm->log2_n_bytes_per_page);
-  vpm->virtual.start = pointer_to_uword (pm->mem);
-  vpm->virtual.size = pm->mem_size;
-  vpm->virtual.end = vpm->virtual.start + vpm->virtual.size;
-
-  fd = open ("/proc/self/pagemap", O_RDONLY);
-
-  if (fd < 0)
+  if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
     {
-      (void) shmdt (pm->mem);
-      return 0;
-    }
-
-  pm->heap = mheap_alloc_with_flags (pm->mem, pm->mem_size,
-				     /* Don't want mheap mmap/munmap with IO memory. */
-				     MHEAP_FLAG_DISABLE_VM |
-				     MHEAP_FLAG_THREAD_SAFE);
-
-  cur = pointer_to_uword (pm->mem);
-  i = 0;
-
-  while (cur < pointer_to_uword (pm->mem) + pm->mem_size)
-    {
-      pfn = (u64) cur / pagesize;
-      seek_loc = pfn * sizeof (u64);
-      if (lseek (fd, seek_loc, SEEK_SET) != seek_loc)
+      if ((pagemap_fd = open ((char *) "/proc/self/pagemap", O_RDONLY)) == -1)
 	{
-	  clib_unix_warning ("lseek to 0x%llx", seek_loc);
-	  shmctl (pm->shmid, IPC_RMID, 0);
-	  close (fd);
-	  return 0;
-	}
-      if (read (fd, &ptbits, sizeof (ptbits)) != (sizeof (ptbits)))
-	{
-	  clib_unix_warning ("read ptbits");
-	  shmctl (pm->shmid, IPC_RMID, 0);
-	  close (fd);
-	  return 0;
+	  error = clib_error_return_unix (0, "open '/proc/self/pagemap'");
+	  goto error;
 	}
 
-      /* bits 0-54 are the physical page number */
-      physaddr = (ptbits & 0x7fffffffffffffULL) * pagesize;
-      if (CLIB_DEBUG > 1)
-	fformat (stderr, "pm: virtual 0x%llx physical 0x%llx\n",
-		 cur, physaddr);
-      vpm->page_table[i++] = physaddr;
+      mount_dir = format (0, "%s/physmem_region%d%c",
+			  vlib_unix_get_runtime_dir (), pr->index, 0);
+      filename = format (0, "%s/mem%c", mount_dir, 0);
 
-      cur += hugepagesize;
+      unlink ((char *) mount_dir);
+
+      error = vlib_unix_recursive_mkdir ((char *) mount_dir);
+      if (error)
+	goto error;
+
+      if (mount ("none", (char *) mount_dir, "hugetlbfs", 0, NULL))
+	{
+	  error = clib_error_return_unix (0, "mount hugetlb directory '%s'",
+					  mount_dir);
+	  goto error;
+	}
+
+      if ((pr->fd = open ((char *) filename, O_CREAT | O_RDWR, 0755)) == -1)
+	{
+	  error = clib_error_return_unix (0, "open");
+	  goto error;
+	}
+
+      mmap_flags = MAP_SHARED | MAP_HUGETLB | MAP_LOCKED;
     }
-  close (fd);
-  atexit (htlb_shutdown);
-  return 1;
+  else
+    {
+      if ((pr->fd = memfd_create (name, MFD_ALLOW_SEALING)) == -1)
+	return clib_error_return_unix (0, "memfd_create");
+
+      if ((fcntl (pr->fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1)
+	{
+	  error =
+	    clib_error_return_unix (0, "fcntl (F_ADD_SEALS, F_SEAL_SHRINK)");
+	  goto error;
+	}
+      mmap_flags = MAP_SHARED;
+    }
+
+  if (fstat (pr->fd, &st))
+    {
+      error = clib_error_return_unix (0, "fstat");
+      goto error;
+    }
+
+  pr->log2_page_size = min_log2 (st.st_blksize);
+  pr->n_pages = ((size - 1) >> pr->log2_page_size) + 1;
+  size = pr->n_pages * (1 << pr->log2_page_size);
+
+  if ((ftruncate (pr->fd, size)) == -1)
+    {
+      error = clib_error_return_unix (0, "ftruncate length: %d", size);
+      goto error;
+    }
+
+  if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
+    {
+      error = vlib_sysfs_prealloc_hugepages (numa_node,
+					     1 << (pr->log2_page_size - 10),
+					     pr->n_pages);
+      if (error)
+	goto error;
+    }
+
+  numa_set_preferred (numa_node);
+
+  pr->mem = mmap (0, size, (PROT_READ | PROT_WRITE), mmap_flags, pr->fd, 0);
+
+  if (pr->mem == MAP_FAILED)
+    {
+      pr->mem = 0;
+      error = clib_error_return_unix (0, "mmap");
+      goto error;
+    }
+
+  if (set_mempolicy (old_mpol, old_mask->maskp, old_mask->size + 1) == -1)
+    {
+      error = clib_error_return_unix (0, "set_mempolicy");
+      goto error;
+    }
+
+  pr->size = pr->n_pages << pr->log2_page_size;
+  pr->page_mask = (1 << pr->log2_page_size) - 1;
+  pr->numa_node = numa_node;
+  pr->name = format (0, "%s", name);
+
+  if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
+    {
+      int i;
+      for (i = 0; i < pr->n_pages; i++)
+	{
+	  void *ptr = pr->mem + (i << pr->log2_page_size);
+	  int node;
+	  move_pages (0, 1, &ptr, 0, &node, 0);
+	  if (numa_node != node)
+	    {
+	      clib_warning
+		("physmem page for region \'%s\' allocated on the wrong"
+		 " numa node (requested %u actual %u)", pr->name,
+		 pr->numa_node, node, i);
+	      break;
+	    }
+	}
+    }
+
+  if (flags & VLIB_PHYSMEM_F_INIT_MHEAP)
+    {
+      pr->heap = mheap_alloc_with_flags (pr->mem, pr->size,
+					 /* Don't want mheap mmap/munmap with IO memory. */
+					 MHEAP_FLAG_DISABLE_VM |
+					 MHEAP_FLAG_THREAD_SAFE);
+      fformat (stdout, "%U", format_mheap, pr->heap, /* verbose */ 1);
+    }
+
+  if (flags & VLIB_PHYSMEM_F_HAVE_BUFFERS)
+    {
+      vlib_buffer_add_mem_range (vm, pointer_to_uword (pr->mem), pr->size);
+    }
+
+  *idx = pr->index;
+
+  if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
+    {
+      int i;
+      for (i = 0; i < pr->n_pages; i++)
+	{
+	  uword vaddr =
+	    pointer_to_uword (pr->mem) + (((u64) i) << pr->log2_page_size);
+	  u64 page_paddr = get_page_paddr (pagemap_fd, vaddr);
+	  vec_add1 (pr->page_table, page_paddr);
+	}
+    }
+
+  goto done;
+
+error:
+  if (pr->fd > -1)
+    close (pr->fd);
+
+  if (pr->mem)
+    munmap (pr->mem, size);
+
+  memset (pr, 0, sizeof (*pr));
+  pool_put (vpm->regions, pr);
+
+done:
+  if (mount_dir)
+    {
+      umount2 ((char *) mount_dir, MNT_DETACH);
+      rmdir ((char *) mount_dir);
+      vec_free (mount_dir);
+    }
+  numa_free_cpumask (old_mask);
+  vec_free (filename);
+  if (pagemap_fd > -1)
+    close (pagemap_fd);
+  return error;
 }
 
-int vlib_app_physmem_init (vlib_main_t * vm,
-			   physmem_main_t * pm, int) __attribute__ ((weak));
-int
-vlib_app_physmem_init (vlib_main_t * vm, physmem_main_t * pm, int x)
+static void
+unix_physmem_region_free (vlib_main_t * vm, vlib_physmem_region_index_t idx)
 {
-  return 0;
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, idx);
+
+  if (pr->fd > 0)
+    close (pr->fd);
+  munmap (pr->mem, pr->size);
+  vec_free (pr->name);
+  pool_put (vpm->regions, pr);
 }
 
 clib_error_t *
-unix_physmem_init (vlib_main_t * vm, int physical_memory_required)
+unix_physmem_init (vlib_main_t * vm)
 {
-  vlib_physmem_main_t *vpm = &vm->physmem_main;
-  physmem_main_t *pm = &physmem_main;
   clib_error_t *error = 0;
 
   /* Avoid multiple calls. */
@@ -215,50 +393,9 @@ unix_physmem_init (vlib_main_t * vm, int physical_memory_required)
 
   vm->os_physmem_alloc_aligned = unix_physmem_alloc_aligned;
   vm->os_physmem_free = unix_physmem_free;
-  pm->mem = MAP_FAILED;
+  vm->os_physmem_region_alloc = unix_physmem_region_alloc;
+  vm->os_physmem_region_free = unix_physmem_region_free;
 
-  if (pm->mem_size == 0)
-    pm->mem_size = 16 << 20;
-
-  /* OK, Mr. App, you tell us */
-  if (vlib_app_physmem_init (vm, pm, physical_memory_required))
-    return 0;
-
-  if (!pm->no_hugepages && htlb_init (vm))
-    {
-      fformat (stderr, "%s: use huge pages\n", __FUNCTION__);
-      return 0;
-    }
-
-  pm->mem =
-    mmap (0, pm->mem_size, PROT_READ | PROT_WRITE,
-	  MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  if (pm->mem == MAP_FAILED)
-    {
-      error = clib_error_return_unix (0, "mmap");
-      goto done;
-    }
-
-  pm->heap = mheap_alloc (pm->mem, pm->mem_size);
-
-  /* Identity map with a single page. */
-  vpm->log2_n_bytes_per_page = min_log2 (pm->mem_size);
-  vec_add1 (vpm->page_table, pointer_to_uword (pm->mem));
-
-  vpm->page_mask = pow2_mask (vpm->log2_n_bytes_per_page);
-  vpm->virtual.start = pointer_to_uword (pm->mem);
-  vpm->virtual.size = pm->mem_size;
-  vpm->virtual.end = vpm->virtual.start + vpm->virtual.size;
-  vpm->is_fake = 1;
-
-  fformat (stderr, "%s: use fake dma pages\n", __FUNCTION__);
-
-done:
-  if (error)
-    {
-      if (pm->mem != MAP_FAILED)
-	munmap (pm->mem, pm->mem_size);
-    }
   return error;
 }
 
@@ -266,12 +403,22 @@ static clib_error_t *
 show_physmem (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  physmem_main_t *pm = &physmem_main;
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  vlib_physmem_region_t *pr;
 
-  if (pm->heap)
-    vlib_cli_output (vm, "%U", format_mheap, pm->heap, /* verbose */ 1);
-  else
-    vlib_cli_output (vm, "No physmem allocated.");
+  /* *INDENT-OFF* */
+  pool_foreach (pr, vpm->regions, (
+    {
+      vlib_cli_output (vm, "index %u name '%s' page-size %uKB num-pages %d "
+		       "numa-node %u fd %d\n",
+		       pr->index, pr->name, (1 << (pr->log2_page_size -10)),
+		       pr->n_pages, pr->numa_node, pr->fd);
+      if (pr->heap)
+	vlib_cli_output (vm, "  %U", format_mheap, pr->heap, /* verbose */ 1);
+      else
+	vlib_cli_output (vm, "  no heap\n");
+    }));
+  /* *INDENT-ON* */
   return 0;
 }
 
@@ -282,177 +429,6 @@ VLIB_CLI_COMMAND (show_physmem_command, static) = {
   .function = show_physmem,
 };
 /* *INDENT-ON* */
-
-static clib_error_t *
-show_affinity (vlib_main_t * vm,
-	       unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  cpu_set_t set;
-  cpu_set_t *setp = &set;
-  int i, rv;
-  u8 *s = 0;
-  int first_set_bit_in_run = -1;
-  int last_set_bit_in_run = -1;
-  int output_done = 0;
-
-  rv = sched_getaffinity (0 /* pid, 0 = this proc */ ,
-			  sizeof (*setp), setp);
-  if (rv < 0)
-    {
-      vlib_cli_output (vm, "Couldn't get affinity mask: %s\n",
-		       strerror (errno));
-      return 0;
-    }
-
-  for (i = 0; i < 64; i++)
-    {
-      if (CPU_ISSET (i, setp))
-	{
-	  if (first_set_bit_in_run == -1)
-	    {
-	      first_set_bit_in_run = i;
-	      last_set_bit_in_run = i;
-	      if (output_done)
-		s = format (s, ",");
-	      s = format (s, "%d-", i);
-	      output_done = 1;
-	    }
-	  else
-	    {
-	      if (i == (last_set_bit_in_run + 1))
-		last_set_bit_in_run = i;
-	    }
-	}
-      else
-	{
-	  if (first_set_bit_in_run != -1)
-	    {
-	      if (first_set_bit_in_run == (i - 1))
-		{
-		  _vec_len (s) -= 2 + ((first_set_bit_in_run / 10));
-		}
-	      s = format (s, "%d", last_set_bit_in_run);
-	      first_set_bit_in_run = -1;
-	      last_set_bit_in_run = -1;
-	    }
-	}
-    }
-
-  if (first_set_bit_in_run != -1)
-    s = format (s, "%d", first_set_bit_in_run);
-
-  vlib_cli_output (vm, "Process runs on: %v", s);
-  return 0;
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_affinity_command, static) = {
-  .path = "show affinity",
-  .short_help = "Show process cpu affinity",
-  .function = show_affinity,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-set_affinity (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  cpu_set_t set;
-  cpu_set_t *setp = &set;
-  int i, rv;
-  int another_round;
-  u32 first, last;
-
-  memset (setp, 0, sizeof (*setp));
-
-  do
-    {
-      another_round = 0;
-      if (unformat (input, "%d-%d,", &first, &last))
-	{
-	  if (first > 64 || last > 64)
-	    {
-	    barf1:
-	      vlib_cli_output (vm, "range %d-%d invalid", first, last);
-	      return 0;
-	    }
-
-	  for (i = first; i <= last; i++)
-	    CPU_SET (i, setp);
-	  another_round = 1;
-	}
-      else if (unformat (input, "%d-%d", &first, &last))
-	{
-	  if (first > 64 || last > 64)
-	    goto barf1;
-
-	  for (i = first; i <= last; i++)
-	    CPU_SET (i, setp);
-	}
-      else if (unformat (input, "%d,", &first))
-	{
-	  if (first > 64)
-	    {
-	    barf2:
-	      vlib_cli_output (vm, "cpu %d invalid", first);
-	      return 0;
-	    }
-	  CPU_SET (first, setp);
-	  another_round = 1;
-	}
-      else if (unformat (input, "%d", &first))
-	{
-	  if (first > 64)
-	    goto barf2;
-
-	  CPU_SET (first, setp);
-	}
-    }
-  while (another_round);
-
-  rv = sched_setaffinity (0 /* pid, 0 = this proc */ ,
-			  sizeof (*setp), setp);
-
-  if (rv < 0)
-    {
-      vlib_cli_output (vm, "Couldn't get affinity mask: %s\n",
-		       strerror (errno));
-      return 0;
-    }
-  return show_affinity (vm, input, cmd);
-}
-
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_affinity_command, static) = {
-  .path = "set affinity",
-  .short_help = "Set process cpu affinity",
-  .function = set_affinity,
-};
-/* *INDENT-ON* */
-
-static clib_error_t *
-vlib_physmem_configure (vlib_main_t * vm, unformat_input_t * input)
-{
-  physmem_main_t *pm = &physmem_main;
-  u32 size_in_mb;
-
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (input, "no-huge") || unformat (input, "no-huge-pages"))
-	pm->no_hugepages = 1;
-
-      else if (unformat (input, "size-in-mb %d", &size_in_mb) ||
-	       unformat (input, "size %d", &size_in_mb))
-	pm->mem_size = size_in_mb << 20;
-      else
-	return unformat_parse_error (input);
-    }
-
-  unformat_free (input);
-  return 0;
-}
-
-VLIB_EARLY_CONFIG_FUNCTION (vlib_physmem_configure, "physmem");
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -13,7 +13,7 @@
 
 
 lib_LTLIBRARIES += libvlib.la
-libvlib_la_LIBADD = libvppinfra.la -ldl -lpthread
+libvlib_la_LIBADD = libvppinfra.la -ldl -lpthread -lnuma
 libvlib_la_DEPENDENCIES = libvppinfra.la
 
 BUILT_SOURCES += vlib/config.h
@@ -65,6 +65,7 @@ nobase_include_HEADERS +=			\
   vlib/physmem.h				\
   vlib/pci/pci.h				\
   vlib/pci/pci_config.h				\
+  vlib/physmem_funcs.h				\
   vlib/threads.h				\
   vlib/trace_funcs.h				\
   vlib/trace.h					\
@@ -84,7 +85,6 @@ libvlib_la_SOURCES +=				\
 nobase_include_HEADERS +=			\
   vlib/unix/cj.h				\
   vlib/unix/mc_socket.h				\
-  vlib/unix/physmem.h				\
   vlib/unix/plugin.h				\
   vlib/unix/unix.h
 
