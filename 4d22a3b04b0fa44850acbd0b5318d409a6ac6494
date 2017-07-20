@@ -51,6 +51,24 @@
       "revId": "4d22a3b04b0fa44850acbd0b5318d409a6ac6494",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_a326e2b8",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-07-20T20:19:04Z",
+      "side": 1,
+      "message": "Same scheme like with plugin path, vlib sets weak default, vpp as application sets default, user is able to override default.\n\nIn previous code VPP path was defined inside vlib which is wrong, we are trying to keep vlib as independent library not directly tied to vpp.",
+      "parentUuid": "7a51691d_a831210d",
+      "revId": "4d22a3b04b0fa44850acbd0b5318d409a6ac6494",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
