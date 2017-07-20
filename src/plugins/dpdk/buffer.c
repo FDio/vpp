@@ -409,13 +409,26 @@ dpdk_packet_template_init (vlib_main_t * vm,
   vlib_worker_thread_barrier_release (vm);
 }
 
+typedef struct
+{
+  /* must be first */
+  struct rte_pktmbuf_pool_private mbp_priv;
+  vlib_physmem_region_index_t region_index;
+} dpdk_mempool_private_t;
+
 clib_error_t *
 dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 			 unsigned socket_id)
 {
   dpdk_main_t *dm = &dpdk_main;
   struct rte_mempool *rmp;
-  int i;
+  dpdk_mempool_private_t priv;
+  vlib_physmem_region_t *pr;
+  vlib_physmem_region_index_t pri;
+  u8 *pool_name;
+  unsigned elt_size;
+  u32 size;
+  i32 i, ret;
 
   vec_validate_aligned (dm->pktmbuf_pools, socket_id, CLIB_CACHE_LINE_BYTES);
 
@@ -423,29 +436,64 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
   if (dm->pktmbuf_pools[socket_id])
     return 0;
 
-  u8 *pool_name = format (0, "mbuf_pool_socket%u%c", socket_id, 0);
+  pool_name = format (0, "dpdk_mbuf_pool_socket%u%c", socket_id, 0);
 
-  rmp = rte_pktmbuf_pool_create ((char *) pool_name,	/* pool name */
-				 num_mbufs,	/* number of mbufs */
-				 512,	/* cache size */
-				 VLIB_BUFFER_HDR_SIZE,	/* priv size */
-				 VLIB_BUFFER_PRE_DATA_SIZE + VLIB_BUFFER_DATA_SIZE,	/* dataroom size */
-				 socket_id);	/* cpu socket */
+  elt_size = sizeof (struct rte_mbuf) +
+    VLIB_BUFFER_HDR_SIZE /* priv size */  +
+    VLIB_BUFFER_PRE_DATA_SIZE + VLIB_BUFFER_DATA_SIZE;	/*data room size */
 
+  size = rte_mempool_xmem_size (num_mbufs, elt_size, 21);
+
+  clib_error_t *error = 0;
+  error =
+    vlib_physmem_region_alloc (vm, (char *) pool_name, size, socket_id,
+			       VLIB_PHYSMEM_F_HAVE_BUFFERS, &pri);
+  if (error)
+    clib_error_report (error);
+
+  pr = vlib_physmem_get_region (vm, pri);
+
+  priv.mbp_priv.mbuf_data_room_size = VLIB_BUFFER_PRE_DATA_SIZE +
+    VLIB_BUFFER_DATA_SIZE;
+  priv.mbp_priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
+
+#if 0
+  /* Check that pg_shift parameter is valid. */
+  if (pg_shift > MEMPOOL_PG_SHIFT_MAX)
+    {
+      rte_errno = EINVAL;
+      return NULL;
+    }
+#endif
+  rmp = rte_mempool_create_empty ((char *) pool_name,	/* pool name */
+				  num_mbufs,	/* number of mbufs */
+				  elt_size, 512,	/* cache size */
+				  sizeof (dpdk_mempool_private_t),	/* private data size */
+				  socket_id, 0);	/* flags */
   if (rmp)
     {
-      {
-	struct rte_mempool_memhdr *memhdr;
+      rte_mempool_set_ops_byname (rmp, RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL);
 
-	STAILQ_FOREACH (memhdr, &rmp->mem_list, next)
-	  vlib_buffer_add_mem_range (vm, (uword) memhdr->addr, memhdr->len);
-      }
-      if (rmp)
+      /* call the mempool priv initializer */
+      rte_pktmbuf_pool_init (rmp, &priv);
+
+      ret = rte_mempool_populate_phys_tab (rmp, pr->mem, pr->page_table,
+					   pr->n_pages, pr->log2_page_size,
+					   NULL, NULL);
+      if (ret == (i32) rmp->size)
 	{
+	  /* call the object initializers */
+	  rte_mempool_obj_iter (rmp, rte_pktmbuf_init, 0);
+
+	  dpdk_mempool_private_t *privp = rte_mempool_get_priv (rmp);
+	  privp->region_index = pri;
+
 	  dm->pktmbuf_pools[socket_id] = rmp;
-	  vec_free (pool_name);
+
 	  return 0;
 	}
+
+      rte_mempool_free (rmp);
     }
 
   vec_free (pool_name);
@@ -455,10 +503,9 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
     {
       if (dm->pktmbuf_pools[i])
 	{
-	  clib_warning
-	    ("WARNING: Failed to allocate mempool for CPU socket %u. "
-	     "Threads running on socket %u will use socket %u mempool.",
-	     socket_id, socket_id, i);
+	  clib_warning ("WARNING: Failed to allocate mempool for CPU socket "
+			"%u. Threads running on socket %u will use socket %u "
+			"mempool.", socket_id, socket_id, i);
 	  dm->pktmbuf_pools[socket_id] = dm->pktmbuf_pools[i];
 	  return 0;
 	}
