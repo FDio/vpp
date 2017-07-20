@@ -56,6 +56,8 @@
 /** Default CLI history depth if not configured in startup.conf */
 #define UNIX_CLI_DEFAULT_HISTORY 50
 
+char *vlib_default_runtime_dir __attribute__ ((weak));
+char *vlib_default_runtime_dir = "/run/vlib";
 
 unix_main_t unix_main;
 
@@ -332,6 +334,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
       else
 	if (unformat (input, "cli-listen %s", &um->cli_listen_socket.config))
 	;
+      else if (unformat (input, "runtime-dir %s", &um->runtime_dir))
+	;
       else if (unformat (input, "cli-line-mode"))
 	um->cli_line_mode = 1;
       else if (unformat (input, "cli-no-banner"))
@@ -432,6 +436,9 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
     }
   um->unix_config_complete = 1;
 
+  if (um->runtime_dir == 0)
+    um->runtime_dir = format (0, "%s%c", vlib_default_runtime_dir, 0);
+
   return 0;
 }
 
@@ -463,6 +470,10 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
  * Ask the Linux kernel to dump all memory-mapped address regions, instead
  * of just text+data+bss.
  *
+ * @cfgcmd{runtime-dir}
+ * Define directory where VPP is going to store all runtime files.
+ * Default is /run/vpp.
+ *
  * @cfgcmd{cli-listen, &lt;address:port&gt;}
  * Bind the CLI to listen at the address and port given. @clocalhost
  * on TCP port @c 5002, given as <tt>cli-listen localhost:5002</tt>,
@@ -489,7 +500,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
  * Limit pager buffer to @c nn lines of output.
  * A value of @c 0 disables the pager. Default value: @c 100000
 ?*/
-VLIB_CONFIG_FUNCTION (unix_config, "unix");
+VLIB_EARLY_CONFIG_FUNCTION (unix_config, "unix");
 
 static clib_error_t *
 unix_exit (vlib_main_t * vm)

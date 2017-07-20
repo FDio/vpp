@@ -17,7 +17,6 @@
 
 #include <vppinfra/lock.h>
 
-#define MEMIF_DEFAULT_SOCKET_DIR "/run/vpp"
 #define MEMIF_DEFAULT_SOCKET_FILENAME  "memif.sock"
 #define MEMIF_DEFAULT_RING_SIZE 1024
 #define MEMIF_DEFAULT_RX_QUEUES 1
