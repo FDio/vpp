@@ -60,7 +60,7 @@ endif
 DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
-DEB_DEPENDS += lcov chrpath autoconf nasm indent
+DEB_DEPENDS += lcov chrpath autoconf nasm indent libnuma-dev
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
@@ -86,9 +86,10 @@ endif
 
 RPM_DEPENDS += chrpath libffi-devel rpm-build
 ifeq ($(OS_ID),fedora)
-	RPM_DEPENDS += nasm
+	RPM_DEPENDS += nasm numactl-devel
 else
 	RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
+	RPM_DEPENDS += libnuma-devel
 endif
 EPEL_DEPENDS = libconfuse-devel epel-rpm-macros
 ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
@@ -99,7 +100,7 @@ endif
 
 RPM_SUSE_DEPENDS = autoconf automake bison ccache chrpath distribution-release gcc6 glibc-devel-static
 RPM_SUSE_DEPENDS += java-1_8_0-openjdk-devel libopenssl-devel libtool lsb-release make openssl-devel
-RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow nasm
+RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow nasm libnuma-devel
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
