@@ -574,7 +574,7 @@ fa_session_get_shortest_timeout(acl_main_t * am)
  */
 
 static u64
-fa_session_get_list_timeout (acl_main_t * am, fa_session_t * sess)
+fa_session_get_list_timeout (acl_main_t * am)
 {
   u64 timeout = am->vlib_main->clib_time.clocks_per_second;
   /*
@@ -596,6 +596,18 @@ fa_session_get_timeout (acl_main_t * am, fa_session_t * sess)
   int timeout_type = fa_session_get_timeout_type (am, sess);
   timeout *= am->session_timeout_sec[timeout_type];
   return timeout;
+}
+
+static void
+acl_fa_verify_init_sessions(acl_main_t * am)
+{
+  if (!am->fa_sessions_hash_is_initialized) { 
+    BV (clib_bihash_init) (&am->fa_sessions_hash,
+			 "ACL plugin FA session bihash",
+			 am->fa_conn_table_hash_num_buckets,
+			 am->fa_conn_table_hash_memory_size);
+    am->fa_sessions_hash_is_initialized = 1;
+  }
 }
 
 static void
@@ -649,8 +661,13 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id, u64
   if (~0 == pw->fa_conn_list_head[list_id]) {
     pw->fa_conn_list_head[list_id] = sess_id.session_index;
     /* If it is a first conn in any list, kick the cleaner */
+    /*
+    while (__sync_lock_test_and_set (am->fa_process_signaling_lock, 1));
     vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
                                  ACL_FA_CLEANER_RESCHEDULE, 0);
+    CLIB_MEMORY_BARRIER ();
+    am->fa_process_signaling_lock[0] = 0;
+    */
   }
 }
 
@@ -733,7 +750,7 @@ acl_fa_delete_session (acl_main_t * am, u32 sw_if_index, fa_full_session_id_t se
   pool_put_index (pw->fa_sessions_pool, sess_id.session_index);
   /* Deleting from timer structures not needed,
      as the caller must have dealt with the timers. */
-  vec_validate (am->fa_session_dels_by_sw_if_index, sw_if_index);
+  ASSERT(vec_len(am->fa_session_dels_by_sw_if_index) > sw_if_index);
   am->fa_session_dels_by_sw_if_index[sw_if_index]++;
   clib_smp_atomic_add(&am->fa_session_total_dels, 1);
 }
@@ -749,12 +766,14 @@ acl_fa_can_add_session (acl_main_t * am, int is_input, u32 sw_if_index)
 static u64
 acl_fa_get_list_head_expiry_time(acl_main_t *am, acl_fa_per_worker_data_t *pw, u64 now, u16 thread_index, int timeout_type)
 {
-  if (~0 == pw->fa_conn_list_head[timeout_type]) {
+  u32 head_session_index = pw->fa_conn_list_head[timeout_type];
+  
+  if (~0 == head_session_index) {
     return ~0LL; // infinity.
   } else {
-    fa_session_t *sess = get_session_ptr(am, thread_index, pw->fa_conn_list_head[timeout_type]);
+    fa_session_t *sess = pw->fa_sessions_pool + head_session_index;
     u64 timeout_time =
-              sess->link_enqueue_time + fa_session_get_list_timeout (am, sess);
+              sess->link_enqueue_time + fa_session_get_list_timeout (am);
     return timeout_time;
   }
 }
@@ -764,7 +783,7 @@ acl_fa_conn_time_to_check (acl_main_t *am, acl_fa_per_worker_data_t *pw, u64 now
 {
   fa_session_t *sess = get_session_ptr(am, thread_index, session_index);
   u64 timeout_time =
-              sess->link_enqueue_time + fa_session_get_list_timeout (am, sess);
+              sess->link_enqueue_time + fa_session_get_list_timeout (am);
   return (timeout_time < now) || (sess->link_enqueue_time <= pw->swipe_end_time);
 }
 
@@ -893,6 +912,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
 
 
 
+  while (__sync_lock_test_and_set (am->fa_session_bihash_add_del_lock, 1));
   if (!acl_fa_ifc_has_sessions (am, sw_if_index))
     {
       acl_fa_ifc_init_sessions (am, sw_if_index);
@@ -900,9 +920,11 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
 
   BV (clib_bihash_add_del) (&am->fa_sessions_hash,
 			    &kv, 1);
+  CLIB_MEMORY_BARRIER ();
+  am->fa_session_bihash_add_del_lock[0] = 0;
   acl_fa_conn_list_add_session(am, f_sess_id, now);
 
-  vec_validate (am->fa_session_adds_by_sw_if_index, sw_if_index);
+  ASSERT (vec_len(am->fa_session_adds_by_sw_if_index) > sw_if_index);
   am->fa_session_adds_by_sw_if_index[sw_if_index]++;
   clib_smp_atomic_add(&am->fa_session_total_adds, 1);
 }
@@ -1378,6 +1400,11 @@ send_interrupts_to_workers (vlib_main_t * vm, acl_main_t *am)
   }
 }
 
+int acl_fa_cleaner_status = 0;
+f64 acl_fa_timeout = 0;
+
+static int fa_total_acls_applied = 0;
+
 /* centralized process to drive per-worker cleaners */
 static uword
 acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
@@ -1399,7 +1426,6 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
     {
       now = clib_cpu_time_now ();
       next_expire = now + am->fa_current_cleaner_timer_wait_interval;
-      int has_pending_conns = 0;
       u16 ti;
       u8 tt;
 
@@ -1424,18 +1450,17 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 #endif
             next_expire = head_expiry;
 	  }
-          if (~0 != pw->fa_conn_list_head[tt]) {
-            has_pending_conns = 1;
-          }
         }
       }
 
       /* If no pending connections then no point in timing out */
-      if (!has_pending_conns)
+      if (0 == fa_total_acls_applied)
         {
           am->fa_cleaner_cnt_wait_without_timeout++;
           (void) vlib_process_wait_for_event (vm);
+          acl_fa_cleaner_status = 1;
           event_type = vlib_process_get_events (vm, &event_data);
+          acl_fa_cleaner_status = 2;
         }
       else
 	{
@@ -1448,7 +1473,10 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	  else
 	    {
               am->fa_cleaner_cnt_wait_with_timeout++;
+              acl_fa_cleaner_status = 3;
+              acl_fa_timeout = timeout;
 	      (void) vlib_process_wait_for_event_or_clock (vm, timeout);
+              acl_fa_cleaner_status = 4;
 	      event_type = vlib_process_get_events (vm, &event_data);
 	    }
 	}
@@ -1494,6 +1522,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 #endif
 	    vec_foreach(pw0, am->per_worker_data) {
               CLIB_MEMORY_BARRIER ();
+              acl_fa_cleaner_status = 1000 + (pw0 - am->per_worker_data);
 	      while (pw0->clear_in_process) {
                 CLIB_MEMORY_BARRIER ();
 #ifdef FA_NODE_VERBOSE_DEBUG
@@ -1521,12 +1550,14 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
             }
             /* send some interrupts so they can start working */
             send_interrupts_to_workers(vm, am);
+            acl_fa_cleaner_status = 20;
 
             /* now wait till they all complete */
 #ifdef FA_NODE_VERBOSE_DEBUG
 	    clib_warning("CLEANER mains len: %d per-worker len: %d", vec_len(vlib_mains), vec_len(am->per_worker_data));
 #endif
 	    vec_foreach(pw0, am->per_worker_data) {
+              acl_fa_cleaner_status = 2000 + (pw0 - am->per_worker_data);
               CLIB_MEMORY_BARRIER ();
 	      while (pw0->clear_in_process) {
                 CLIB_MEMORY_BARRIER ();
@@ -1559,6 +1590,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	}
 
       send_interrupts_to_workers(vm, am);
+      vlib_process_suspend(vm, 0.00001);
 
       if (event_data)
 	_vec_len (event_data) = 0;
@@ -1580,6 +1612,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       if (interrupts_needed) {
         /* they need more interrupts, do less waiting around next time */
         am->fa_current_cleaner_timer_wait_interval /= 2;
+        am->fa_current_cleaner_timer_wait_interval += 1;
       } else if (interrupts_unwanted) {
         /* slowly increase the amount of sleep up to a limit */
         if (am->fa_current_cleaner_timer_wait_interval < max_timer_wait_interval)
@@ -1591,11 +1624,18 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   return 0;
 }
 
-
 void
 acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
 {
   acl_main_t *am = &acl_main;
+  if (enable_disable) {
+    acl_fa_verify_init_sessions(am);
+    fa_total_acls_applied++;
+    vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
+                                 ACL_FA_CLEANER_RESCHEDULE, 0);
+  } else {
+    fa_total_acls_applied--;
+  }
   if (is_input)
     {
       ASSERT(clib_bitmap_get(am->fa_in_acl_on_sw_if_index, sw_if_index) != enable_disable);
