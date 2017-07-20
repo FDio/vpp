@@ -48,6 +48,29 @@
     },
     {
       "key": {
+        "uuid": "7a51691d_83d52645",
+        "filename": "src/vnet/span/span.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-20T23:46:20Z",
+      "side": 1,
+      "message": "I wonder why the original implementation is using a bitmap. You would think there is typically just one or very few mirror ports to output copied packets. A vector of output sw_if_index\u0027s would be much more efficient, especially of the value of sw_if_index is a large value. Or, a pool which imply its bitmap will be sized by number of interfaces, rather than sw_if_index range would also be better. What do you think?",
+      "range": {
+        "startLine": 32,
+        "startChar": 17,
+        "endLine": 32,
+        "endChar": 29
+      },
+      "revId": "d2fb0c178a466ab0c902635e05451e8f2eff284e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a51691d_233af2cd",
         "filename": "test/test_span.py",
         "patchSetId": 5
