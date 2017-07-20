@@ -425,30 +425,52 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 
   u8 *pool_name = format (0, "mbuf_pool_socket%u%c", socket_id, 0);
 
-  rmp = rte_pktmbuf_pool_create ((char *) pool_name,	/* pool name */
+  vlib_physmem_region_t *pr;
+  vlib_physmem_region_index_t pri;
+
+  unsigned elt_size = sizeof (struct rte_mbuf) +
+    VLIB_BUFFER_HDR_SIZE /* priv size */  +
+    VLIB_BUFFER_PRE_DATA_SIZE + VLIB_BUFFER_DATA_SIZE;	/*data room size */
+
+  u32 s = rte_mempool_xmem_size (num_mbufs, elt_size, 21);
+
+  clib_error_t *error = 0;
+  error = vlib_physmem_region_alloc (vm, (char *) pool_name, s, socket_id, 0,
+				     &pri);
+
+  if (error)
+    clib_error_report (error);
+
+  pr = vlib_physmem_get_region (vm, pri);
+
+  struct rte_pktmbuf_pool_private mbp_priv;
+  mbp_priv.mbuf_data_room_size = VLIB_BUFFER_PRE_DATA_SIZE +
+    VLIB_BUFFER_DATA_SIZE;
+  mbp_priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
+
+  rmp = rte_mempool_xmem_create ((char *) pool_name,	/* pool name */
 				 num_mbufs,	/* number of mbufs */
-				 512,	/* cache size */
-				 VLIB_BUFFER_HDR_SIZE,	/* priv size */
-				 VLIB_BUFFER_PRE_DATA_SIZE + VLIB_BUFFER_DATA_SIZE,	/* dataroom size */
-				 socket_id);	/* cpu socket */
+				 elt_size, 512,	/* cache size */
+				 VLIB_BUFFER_HDR_SIZE,	/* private data size */
+				 rte_pktmbuf_pool_init,	/* mp init */
+				 &mbp_priv,	/* mp init arg */
+				 rte_pktmbuf_init,	/* obj init */
+				 0,	/* obj init arg */
+				 socket_id, 0,	/* flags */
+				 uword_to_pointer (pr->va_start, void *),
+				 pr->page_table,
+				 pr->n_pages, pr->log2_page_size);
+
+  vec_free (pool_name);
 
   if (rmp)
     {
-      {
-	struct rte_mempool_memhdr *memhdr;
-
-	STAILQ_FOREACH (memhdr, &rmp->mem_list, next)
-	  vlib_buffer_add_mem_range (vm, (uword) memhdr->addr, memhdr->len);
-      }
-      if (rmp)
-	{
-	  dm->pktmbuf_pools[socket_id] = rmp;
-	  vec_free (pool_name);
-	  return 0;
-	}
+      rmp->pool_id = pr->index;
+      vlib_buffer_add_mem_range (vm, pr->va_start,
+				 pr->n_pages << pr->log2_page_size);
+      dm->pktmbuf_pools[socket_id] = rmp;
+      return 0;
     }
-
-  vec_free (pool_name);
 
   /* no usable pool for this socket, try to use pool from another one */
   for (i = 0; i < vec_len (dm->pktmbuf_pools); i++)
