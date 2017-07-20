@@ -2493,10 +2493,11 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
     round_pow2 (xm->n_descriptors[rt], xm->n_descriptors_per_cache_line);
   dq->head_index = dq->tail_index = 0;
 
-  dq->descriptors = vlib_physmem_alloc_aligned (vm, &error,
-						dq->n_descriptors *
-						sizeof (dq->descriptors[0]),
-						128 /* per chip spec */ );
+  dq->descriptors =
+    vlib_physmem_alloc_aligned (vm, xm->physmem_region, &error,
+				dq->n_descriptors *
+				sizeof (dq->descriptors[0]),
+				128 /* per chip spec */ );
   if (error)
     return error;
 
@@ -2518,7 +2519,8 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
 	  vlib_buffer_t *b =
 	    vlib_get_buffer (vm, dq->descriptor_buffer_indices[i]);
 	  dq->descriptors[i].rx_to_hw.tail_address =
-	    vlib_physmem_virtual_to_physical (vm, b->data);
+	    vlib_physmem_virtual_to_physical (vm, xm->physmem_region,
+					      b->data);
 	}
     }
   else
@@ -2526,7 +2528,8 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
       u32 i;
 
       dq->tx.head_index_write_back =
-	vlib_physmem_alloc (vm, &error, CLIB_CACHE_LINE_BYTES);
+	vlib_physmem_alloc (vm, vm->buffer_main->physmem_region, &error,
+			    CLIB_CACHE_LINE_BYTES);
 
       for (i = 0; i < dq->n_descriptors; i++)
 	dq->descriptors[i].tx = xm->tx_descriptor_template;
@@ -2538,7 +2541,9 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
     ixge_dma_regs_t *dr = get_dma_regs (xd, rt, queue_index);
     u64 a;
 
-    a = vlib_physmem_virtual_to_physical (vm, dq->descriptors);
+    a =
+      vlib_physmem_virtual_to_physical (vm, vm->buffer_main->physmem_region,
+					dq->descriptors);
     dr->descriptor_address[0] = a & 0xFFFFFFFF;
     dr->descriptor_address[1] = a >> (u64) 32;
     dr->n_descriptor_bytes = dq->n_descriptors * sizeof (dq->descriptors[0]);
@@ -2564,7 +2569,9 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
 	dq->tx.head_index_write_back[0] = dq->head_index;
 
 	a =
-	  vlib_physmem_virtual_to_physical (vm, dq->tx.head_index_write_back);
+	  vlib_physmem_virtual_to_physical (vm,
+					    vm->buffer_main->physmem_region,
+					    dq->tx.head_index_write_back);
 	dr->tx.head_index_write_back_address[0] = /* enable bit */ 1 | a;
 	dr->tx.head_index_write_back_address[1] = (u64) a >> (u64) 32;
       }
@@ -2850,9 +2857,12 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_device_t * dev)
   void *r;
   ixge_device_t *xd;
 
-  /* Device found: make sure we have dma memory. */
-  if (unix_physmem_is_fake (vm))
-    return clib_error_return (0, "no physical memory available");
+  /* Allocate physmem region for DMA buffers */
+  error = vlib_physmem_region_alloc (vm, "ixge decriptors", 2 << 20, 0,
+				     VLIB_PHYSMEM_F_INIT_MHEAP,
+				     &xm->physmem_region);
+  if (error)
+    return error;
 
   error = vlib_pci_map_resource (dev, 0, &r);
   if (error)
