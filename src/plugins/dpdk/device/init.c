@@ -977,9 +977,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     {
       u32 x, *mem_by_socket = 0;
       uword c = 0;
-      u8 use_1g = 1;
-      u8 use_2m = 1;
-      u8 less_than_1g = 1;
       int rv;
 
       umount ((char *) huge_dir_path);
@@ -1001,9 +998,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 		break;
 
 	      vec_add1 (mem_by_socket, x);
-
-	      if (x > 1023)
-		less_than_1g = 0;
 	    }
 	  /* Note: unformat_free vec_frees(in.buffer), aka socket_mem... */
 	  unformat_free (&in);
@@ -1015,39 +1009,22 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
 	    {
 	      vec_validate(mem_by_socket, c);
-	      mem_by_socket[c] = 256; /* default per-socket mem */
+	      mem_by_socket[c] = 64; /* default per-socket mem */
 	    }
 	  ));
 	  /* *INDENT-ON* */
 	}
 
-      /* check if available enough 1GB pages for each socket */
       /* *INDENT-OFF* */
       clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
         {
-	  int pages_avail, page_size, mem;
-	  clib_error_t  *e = 0;
+	  clib_error_t *e;
 
 	  vec_validate(mem_by_socket, c);
-	  mem = mem_by_socket[c];
 
-	  page_size = 1024;
-	  e = vlib_sysfs_get_free_hugepages(c, page_size * 1024, &pages_avail);
-
-	  if (e != 0 || pages_avail < 0 || page_size * pages_avail < mem)
-	    use_1g = 0;
-
+	  e = vlib_sysfs_prealloc_hugepages(c, 2 << 10, mem_by_socket[c] / 2);
 	  if (e)
-	   clib_error_free (e);
-
-	  page_size = 2;
-	  e = vlib_sysfs_get_free_hugepages(c, page_size * 1024, &pages_avail);
-
-	  if (e != 0 || pages_avail < 0 || page_size * pages_avail < mem)
-	    use_2m = 0;
-
-	  if (e)
-	   clib_error_free (e);
+	    clib_error_report (e);
       }));
       /* *INDENT-ON* */
 
@@ -1072,19 +1049,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  goto done;
 	}
 
-      if (use_1g && !(less_than_1g && use_2m))
-	{
-	  rv = mount ("none", (char *) huge_dir_path, "hugetlbfs", 0,
-		      "pagesize=1G");
-	}
-      else if (use_2m)
-	{
-	  rv = mount ("none", (char *) huge_dir_path, "hugetlbfs", 0, NULL);
-	}
-      else
-	{
-	  return clib_error_return (0, "not enough free huge pages");
-	}
+      rv = mount ("none", (char *) huge_dir_path, "hugetlbfs", 0, NULL);
 
       if (rv)
 	{
