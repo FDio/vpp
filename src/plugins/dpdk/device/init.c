@@ -17,10 +17,10 @@
 #include <vppinfra/error.h>
 #include <vppinfra/format.h>
 #include <vppinfra/bitmap.h>
+#include <vlib/unix/unix.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <dpdk/device/dpdk.h>
-#include <vlib/unix/physmem.h>
 #include <vlib/pci/pci.h>
 
 #include <stdio.h>
@@ -1015,7 +1015,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
 	    {
 	      vec_validate(mem_by_socket, c);
-	      mem_by_socket[c] = 256; /* default per-socket mem */
+	      mem_by_socket[c] = 64; /* default per-socket mem */
 	    }
 	  ));
 	  /* *INDENT-ON* */
