@@ -649,8 +649,11 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id, u64
   if (~0 == pw->fa_conn_list_head[list_id]) {
     pw->fa_conn_list_head[list_id] = sess_id.session_index;
     /* If it is a first conn in any list, kick the cleaner */
+    while (__sync_lock_test_and_set (am->fa_process_signaling_lock, 1));
     vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
                                  ACL_FA_CLEANER_RESCHEDULE, 0);
+    CLIB_MEMORY_BARRIER ();
+    am->fa_process_signaling_lock[0] = 0;
   }
 }
 
@@ -733,7 +736,7 @@ acl_fa_delete_session (acl_main_t * am, u32 sw_if_index, fa_full_session_id_t se
   pool_put_index (pw->fa_sessions_pool, sess_id.session_index);
   /* Deleting from timer structures not needed,
      as the caller must have dealt with the timers. */
-  vec_validate (am->fa_session_dels_by_sw_if_index, sw_if_index);
+  ASSERT(vec_len(am->fa_session_dels_by_sw_if_index) > sw_if_index);
   am->fa_session_dels_by_sw_if_index[sw_if_index]++;
   clib_smp_atomic_add(&am->fa_session_total_dels, 1);
 }
@@ -898,11 +901,14 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
       acl_fa_ifc_init_sessions (am, sw_if_index);
     }
 
+  while (__sync_lock_test_and_set (am->fa_session_bihash_add_del_lock, 1));
   BV (clib_bihash_add_del) (&am->fa_sessions_hash,
 			    &kv, 1);
+  CLIB_MEMORY_BARRIER ();
+  am->fa_session_bihash_add_del_lock[0] = 0;
   acl_fa_conn_list_add_session(am, f_sess_id, now);
 
-  vec_validate (am->fa_session_adds_by_sw_if_index, sw_if_index);
+  ASSERT (vec_len(am->fa_session_adds_by_sw_if_index) > sw_if_index);
   am->fa_session_adds_by_sw_if_index[sw_if_index]++;
   clib_smp_atomic_add(&am->fa_session_total_adds, 1);
 }

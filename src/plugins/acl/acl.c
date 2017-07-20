@@ -820,6 +820,14 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
 {
   int rv = -1;
   acl_main_t *am = &acl_main;
+  /*
+   * FIXME: danger will robinson.
+   * These two are touched in the datapath.
+   * So if we add an interface with existing interfaces with stateful ACLs,
+   * this might blow up in our face. So this needs to be fixed.
+   */
+  vec_validate (am->fa_session_dels_by_sw_if_index, sw_if_index);
+  vec_validate (am->fa_session_adds_by_sw_if_index, sw_if_index);
   if (is_add)
     {
       rv =
@@ -2283,6 +2291,11 @@ acl_init (vlib_main_t * vm)
   am->fa_min_deleted_sessions_per_interval = ACL_FA_DEFAULT_MIN_DELETED_SESSIONS_PER_INTERVAL;
   am->fa_max_deleted_sessions_per_interval = ACL_FA_DEFAULT_MAX_DELETED_SESSIONS_PER_INTERVAL;
   am->fa_cleaner_wait_time_increment = ACL_FA_DEFAULT_CLEANER_WAIT_TIME_INCREMENT;
+
+  am->fa_process_signaling_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+  am->fa_process_signaling_lock[0] = 0;
+  am->fa_session_bihash_add_del_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+  am->fa_session_bihash_add_del_lock[0] = 0;
 
   am->fa_cleaner_cnt_delete_by_sw_index = 0;
   am->fa_cleaner_cnt_delete_by_sw_index_ok = 0;
