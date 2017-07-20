@@ -37,8 +37,6 @@ dpdk_main_t dpdk_main;
 
 #define LINK_STATE_ELOGS	0
 
-#define DEFAULT_HUGE_DIR (VPP_RUN_DIR "/hugepages")
-
 /* Port configuration, mildly modified Intel app values */
 
 static struct rte_eth_conf port_conf_template = {
@@ -835,6 +833,10 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   u8 huge_dir = 0;
   u8 file_prefix = 0;
   u8 *socket_mem = 0;
+  u8 *huge_dir_path = 0;
+
+  huge_dir_path =
+    format (0, "%s/hugepages%c", vlib_unix_get_runtime_dir (), 0);
 
   conf->device_config_index_by_pci_addr = hash_create (0, sizeof (uword));
   log_level = RTE_LOG_NOTICE;
@@ -980,7 +982,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       u8 less_than_1g = 1;
       int rv;
 
-      umount (DEFAULT_HUGE_DIR);
+      umount ((char *) huge_dir_path);
 
       /* Process "socket-mem" parameter value */
       if (vec_len (socket_mem))
@@ -1057,27 +1059,20 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       vec_free (mem_by_socket);
 
-      /* Make sure VPP_RUN_DIR exists */
-      error = unix_make_vpp_run_dir ();
+      error = vlib_unix_recursive_mkdir ((char *) huge_dir_path);
       if (error)
-	goto done;
-
-      rv = mkdir (DEFAULT_HUGE_DIR, 0755);
-      if (rv && errno != EEXIST)
 	{
-	  error = clib_error_return (0, "mkdir '%s' failed errno %d",
-				     DEFAULT_HUGE_DIR, errno);
 	  goto done;
 	}
 
       if (use_1g && !(less_than_1g && use_2m))
 	{
-	  rv =
-	    mount ("none", DEFAULT_HUGE_DIR, "hugetlbfs", 0, "pagesize=1G");
+	  rv = mount ("none", (char *) huge_dir_path, "hugetlbfs", 0,
+		      "pagesize=1G");
 	}
       else if (use_2m)
 	{
-	  rv = mount ("none", DEFAULT_HUGE_DIR, "hugetlbfs", 0, NULL);
+	  rv = mount ("none", (char *) huge_dir_path, "hugetlbfs", 0, NULL);
 	}
       else
 	{
@@ -1092,7 +1087,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       tmp = format (0, "--huge-dir%c", 0);
       vec_add1 (conf->eal_init_args, tmp);
-      tmp = format (0, "%s%c", DEFAULT_HUGE_DIR, 0);
+      tmp = format (0, "%s%c", huge_dir_path, 0);
       vec_add1 (conf->eal_init_args, tmp);
       if (!file_prefix)
 	{
@@ -1209,7 +1204,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 		  (char **) conf->eal_init_args);
 
   /* lazy umount hugepages */
-  umount2 (DEFAULT_HUGE_DIR, MNT_DETACH);
+  umount2 ((char *) huge_dir_path, MNT_DETACH);
+  rmdir ((char *) huge_dir_path);
+  vec_free (huge_dir_path);
 
   if (ret < 0)
     return clib_error_return (0, "rte_eal_init returned %d", ret);

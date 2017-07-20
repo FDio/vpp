@@ -44,9 +44,6 @@
 #include <termios.h>
 
 
-/** VPP runtime ephemeral directory. Typically stored in a tmpfs. */
-#define VPP_RUN_DIR "/run/vpp"
-
 struct unix_file;
 typedef clib_error_t *(unix_file_function_t) (struct unix_file * f);
 
@@ -105,6 +102,9 @@ typedef struct
 
   /* startup-config filename */
   u8 *startup_config_filename;
+
+  /* runtime directory path */
+  u8 *runtime_dir;
 
   /* unix config complete */
   volatile int unix_config_complete;
@@ -214,6 +214,12 @@ vlib_unix_get_main (void)
   return &unix_main;
 }
 
+static inline char *
+vlib_unix_get_runtime_dir (void)
+{
+  return (char *) unix_main.runtime_dir;
+}
+
 /* thread stack array; vec_len = max number of threads */
 extern u8 **vlib_thread_stacks;
 
@@ -233,7 +239,7 @@ clib_error_t *foreach_directory_file (char *dir_name,
 							   u8 * file_name),
 				      void *arg, int scan_dirs);
 
-clib_error_t *unix_make_vpp_run_dir (void);
+clib_error_t *vlib_unix_recursive_mkdir (char *path);
 
 #endif /* included_unix_unix_h */
 

@@ -556,15 +556,19 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 
   if (args->socket_filename == 0 || args->socket_filename[0] != '/')
     {
-      rv = mkdir (MEMIF_DEFAULT_SOCKET_DIR, 0755);
-      if (rv && errno != EEXIST)
-	return VNET_API_ERROR_SYSCALL_ERROR_1;
+      clib_error_t *error;
+      error = vlib_unix_recursive_mkdir (vlib_unix_get_runtime_dir ());
+      if (error)
+	{
+	  clib_error_free (error);
+	  return VNET_API_ERROR_SYSCALL_ERROR_1;
+	}
 
       if (args->socket_filename == 0)
-	socket_filename = format (0, "%s/%s%c", MEMIF_DEFAULT_SOCKET_DIR,
+	socket_filename = format (0, "%s/%s%c", vlib_unix_get_runtime_dir (),
 				  MEMIF_DEFAULT_SOCKET_FILENAME, 0);
       else
-	socket_filename = format (0, "%s/%s%c", MEMIF_DEFAULT_SOCKET_DIR,
+	socket_filename = format (0, "%s/%s%c", vlib_unix_get_runtime_dir (),
 				  args->socket_filename, 0);
 
     }
