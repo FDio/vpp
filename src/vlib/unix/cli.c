@@ -2642,15 +2642,19 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
       /* CLI listen. */
       unix_file_t template = { 0 };
 
-      /* If our listen address looks like a path and it starts with
-       * VPP_RUN_DIR, go make sure VPP_RUN_DIR exists before trying to open
-       * a socket in it.
-       */
-      if (strncmp (s->config, VPP_RUN_DIR "/", strlen (VPP_RUN_DIR) + 1) == 0)
+      /* mkdir of file socketu, only under /run  */
+      if (strncmp (s->config, "/run", 4) == 0)
 	{
-	  error = unix_make_vpp_run_dir ();
-	  if (error)
-	    return error;
+	  u8 *tmp = format (0, "%s", s->config);
+	  int i = vec_len (tmp);
+	  while (i && tmp[--i] != '/')
+	    ;
+
+	  tmp[i] = 0;
+
+	  if (i)
+	    vlib_unix_recursive_mkdir ((char *) tmp);
+	  vec_free (tmp);
 	}
 
       s->flags = SOCKET_IS_SERVER |	/* listen, don't connect */

@@ -223,16 +223,38 @@ done:
 }
 
 clib_error_t *
-unix_make_vpp_run_dir (void)
+vlib_unix_recursive_mkdir (char *path)
 {
-  int rv;
+  clib_error_t *error = 0;
+  char *c = 0;
+  int i = 0;
 
-  rv = mkdir (VPP_RUN_DIR, 0755);
-  if (rv && errno != EEXIST)
-    return clib_error_return (0, "mkdir '%s' failed errno %d",
-			      VPP_RUN_DIR, errno);
+  while (path[i] != 0)
+    {
+      if (c && path[i] == '/')
+	{
+	  vec_add1 (c, 0);
+	  if ((mkdir (c, 0755)) && (errno != EEXIST))
+	    {
+	      error = clib_error_return_unix (0, "mkdir '%s'", c);
+	      goto done;
+	    }
+	  _vec_len (c)--;
+	}
+      vec_add1 (c, path[i]);
+      i++;
+    }
 
-  return 0;
+  if ((mkdir (path, 0755)) && (errno != EEXIST))
+    {
+      error = clib_error_return_unix (0, "mkdir '%s'", path);
+      goto done;
+    }
+
+done:
+  vec_free (c);
+
+  return error;
 }
 
 /*

@@ -42,6 +42,11 @@ vpe_main_init (vlib_main_t * vm)
 }
 
 /*
+ * Default path for runtime data
+ */
+char *vlib_default_runtime_dir = "/run/vpp";
+
+/*
  * Load plugins from /usr/lib/vpp_plugins by default
  */
 char *vlib_plugin_path = "/usr/lib/vpp_plugins";
