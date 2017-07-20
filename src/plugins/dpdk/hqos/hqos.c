@@ -29,7 +29,6 @@
 #include <vnet/ethernet/ethernet.h>
 #include <dpdk/device/dpdk.h>
 
-#include <vlib/unix/physmem.h>
 #include <vlib/pci/pci.h>
 #include <vlibmemory/api.h>
 #include <vlibmemory/vl_memory_msg_enum.h>	/* enumerate all vlib messages */
