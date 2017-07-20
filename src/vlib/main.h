@@ -107,9 +107,20 @@ typedef struct vlib_main_t
 
   /* Allocate/free buffer memory for DMA transfers, descriptor rings, etc.
      buffer memory is guaranteed to be cache-aligned. */
-  void *(*os_physmem_alloc_aligned) (vlib_physmem_main_t * pm,
+
+#if 0
+  clib_error_t *(os_physmem_region_alloc) (struct vlib_main_t * vm,
+					   char *name, u32 size, u8 numa_node,
+					   u32 flags,
+					   vlib_physmem_region_t ** region);
+
+  void *(os_physmem_region_free) (struct vlib_main_t * vm,
+				  vlib_physmem_region_t * region);
+#endif
+
+  void *(*os_physmem_alloc_aligned) (vlib_physmem_region_t * pr,
 				     uword n_bytes, uword alignment);
-  void (*os_physmem_free) (void *x);
+  void (*os_physmem_free) (vlib_physmem_region_t * pr, void *x);
 
   /* Node graph main structure. */
   vlib_node_main_t node_main;

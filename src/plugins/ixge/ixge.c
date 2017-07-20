@@ -52,6 +52,8 @@ typedef unsigned long long u32x4;
 #define XGE_PHY_CONTROL 0x0
 #define XGE_PHY_CONTROL_RESET (1 << 15)
 
+#if 0
+
 ixge_main_t ixge_main;
 static vlib_node_registration_t ixge_input_node;
 static vlib_node_registration_t ixge_process_node;
@@ -2928,6 +2930,7 @@ ixge_set_next_node (ixge_rx_next_t next, char *name)
       break;
     }
 }
+#endif
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {

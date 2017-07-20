@@ -47,6 +47,7 @@
 #include <vlib/error.h>		/* for vlib_error_t */
 
 #include <vlib/config.h>	/* for __PRE_DATA_SIZE */
+#include <vlib/physmem.h>
 #define VLIB_BUFFER_DATA_SIZE		(2048)
 #define VLIB_BUFFER_PRE_DATA_SIZE	__PRE_DATA_SIZE
 
@@ -122,10 +123,12 @@ typedef struct
 
   u8 n_add_refs; /**< Number of additional references to this buffer. */
 
-  u8 dont_waste_me[2]; /**< Available space in the (precious)
+  u8 dont_waste_me; /**< Available space in the (precious)
                           first 32 octets of buffer metadata
-                          Before allocating any of it, discussion required!
+                          Before allocating, discussion required!
                        */
+
+  u8 physmem_region; /**< physical memory region index. */
 
   u32 opaque[10]; /**< Opaque data used by sub-graphs for their own purposes.
                     See .../vnet/vnet/buffer.h
@@ -401,6 +404,7 @@ typedef struct
      buffer index */
   uword buffer_mem_start;
   uword buffer_mem_size;
+  u8 physmem_region;
 
   /* Buffer free callback, for subversive activities */
     u32 (*buffer_free_callback) (struct vlib_main_t * vm,

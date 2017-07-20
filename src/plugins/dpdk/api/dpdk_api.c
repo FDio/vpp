@@ -20,7 +20,6 @@
 
 #include <vnet/ethernet/ethernet.h>
 #include <dpdk/device/dpdk.h>
-#include <vlib/unix/physmem.h>
 #include <vlib/pci/pci.h>
 
 #include <stdio.h>

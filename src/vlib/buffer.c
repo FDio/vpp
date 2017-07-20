@@ -462,10 +462,12 @@ vlib_buffer_get_or_create_free_list (vlib_main_t * vm, u32 n_data_bytes,
 static void
 del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
 {
+  vlib_physmem_region_t *pr;
+  pr = vlib_physmem_get_region (vm, vm->buffer_main->physmem_region);
   u32 i;
 
   for (i = 0; i < vec_len (f->buffer_memory_allocated); i++)
-    vm->os_physmem_free (f->buffer_memory_allocated[i]);
+    vm->os_physmem_free (pr, f->buffer_memory_allocated[i]);
   vec_free (f->name);
   vec_free (f->buffer_memory_allocated);
   vec_free (f->buffers);
@@ -514,6 +516,8 @@ static uword
 fill_free_list (vlib_main_t * vm,
 		vlib_buffer_free_list_t * fl, uword min_free_buffers)
 {
+  vlib_physmem_region_t *pr;
+  pr = vlib_physmem_get_region (vm, vm->buffer_main->physmem_region);
   vlib_buffer_t *buffers, *b;
   int n, n_bytes, i;
   u32 *bi;
@@ -539,8 +543,7 @@ fill_free_list (vlib_main_t * vm,
       n_bytes = n_this_chunk * (sizeof (b[0]) + fl->n_data_bytes);
 
       /* drb: removed power-of-2 ASSERT */
-      buffers = vm->os_physmem_alloc_aligned (&vm->physmem_main,
-					      n_bytes,
+      buffers = vm->os_physmem_alloc_aligned (pr, n_bytes,
 					      sizeof (vlib_buffer_t));
       if (!buffers)
 	return n_alloc;

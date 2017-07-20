@@ -42,12 +42,33 @@
 
 typedef struct
 {
-  uword start, end, size;
+  u8 index;
+  void *mem;
+  uword va_start;
+  uword va_end;
+  uword va_size;
+  int fd;
+  u8 log2_page_size;
+  u16 n_pages;
+  u32 page_mask;
+
+  void *heap;
+  u32 flags;
+#define VLIB_PHYSMEM_F_INIT_MHEAP (1<<0)
+
+  u8 numa_node;
+  u64 *page_table;
+  u8 *name;
 } vlib_physmem_region_t;
+
+clib_error_t *unix_physmem_region_alloc (struct vlib_main_t *vm, char *name,
+					 u32 size, u8 numa_node, u32 flags,
+					 vlib_physmem_region_t ** region);
 
 typedef struct
 {
-  vlib_physmem_region_t virtual;
+#if 0
+  uword va_start, va_end, va_size;
 
   uword log2_n_bytes_per_page;
 
@@ -55,46 +76,61 @@ typedef struct
   uword page_mask;
 
   u64 *page_table;
+#endif
+
+  /* NEW */
+  vlib_physmem_region_t *regions;
+  u8 default_region;
 
   /* is fake physmem */
   u8 is_fake;
 } vlib_physmem_main_t;
 
-always_inline u64
-vlib_physmem_offset_to_physical (vlib_physmem_main_t * pm, uword o)
+
+#if 0
+always_inline vlib_physmem_region_t *
+vlib_physmem_get_region (vlib_main_t * vm, u8 index)
 {
-  uword page_index = o >> pm->log2_n_bytes_per_page;
-  ASSERT (o < pm->virtual.size);
-  ASSERT (pm->page_table[page_index] != 0);
-  return (vec_elt (pm->page_table, page_index) + (o & pm->page_mask));
+  vlib_physmem_main_t *vpm = &vm->physmem_main;
+  return pool_elt_at_index (vpm->regions, index);
+}
+#endif
+
+always_inline u64
+vlib_physmem_offset_to_physical (vlib_physmem_region_t * pr, uword o)
+{
+  uword page_index = o >> pr->log2_page_size;
+  ASSERT (o < pr->va_size);
+  ASSERT (pr->page_table[page_index] != 0);
+  return (vec_elt (pr->page_table, page_index) + (o & pr->page_mask));
 }
 
 always_inline int
-vlib_physmem_is_virtual (vlib_physmem_main_t * pm, uword p)
+vlib_physmem_is_virtual (vlib_physmem_region_t * pr, uword p)
 {
-  return p >= pm->virtual.start && p < pm->virtual.end;
+  return p >= pr->va_start && p < pr->va_end;
 }
 
 always_inline uword
-vlib_physmem_offset_of (vlib_physmem_main_t * pm, void *p)
+vlib_physmem_offset_of (vlib_physmem_region_t * pr, void *p)
 {
   uword a = pointer_to_uword (p);
   uword o;
 
-  ASSERT (vlib_physmem_is_virtual (pm, a));
-  o = a - pm->virtual.start;
+  ASSERT (vlib_physmem_is_virtual (pr, a));
+  o = a - pr->va_start;
 
   /* Offset must fit in 32 bits. */
-  ASSERT ((uword) o == a - pm->virtual.start);
+  ASSERT ((uword) o == a - pr->va_start);
 
   return o;
 }
 
 always_inline void *
-vlib_physmem_at_offset (vlib_physmem_main_t * pm, uword offset)
+vlib_physmem_at_offset (vlib_physmem_region_t * pr, uword offset)
 {
-  ASSERT (offset < pm->virtual.size);
-  return uword_to_pointer (pm->virtual.start + offset, void *);
+  ASSERT (offset < pr->va_size);
+  return uword_to_pointer (pr->va_start + offset, void *);
 }
 
 #endif /* included_vlib_physmem_h */

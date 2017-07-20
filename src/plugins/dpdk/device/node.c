@@ -403,6 +403,11 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 9]);
 	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 5]);
 
+	  b0->physmem_region = mb0->pool->pool_id;
+	  b1->physmem_region = mb1->pool->pool_id;
+	  b2->physmem_region = mb2->pool->pool_id;
+	  b3->physmem_region = mb3->pool->pool_id;
+
 	  /* current_data must be set to -RTE_PKTMBUF_HEADROOM in template */
 	  b0->current_data += mb0->data_off;
 	  b1->current_data += mb1->data_off;
@@ -521,6 +526,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  clib_memcpy (b0, bt, CLIB_CACHE_LINE_BYTES);
 
 	  ASSERT (b0->current_data == -RTE_PKTMBUF_HEADROOM);
+	  b0->physmem_region = mb0->pool->pool_id;
 	  b0->current_data += mb0->data_off;
 	  b0->current_length = mb0->data_len;
 
