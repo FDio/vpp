@@ -402,6 +402,7 @@ typedef struct
      buffer index */
   uword buffer_mem_start;
   uword buffer_mem_size;
+  vlib_physmem_region_index_t physmem_region;
 
   /* Buffer free callback, for subversive activities */
     u32 (*buffer_free_callback) (struct vlib_main_t * vm,

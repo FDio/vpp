@@ -50,6 +50,7 @@
 struct vlib_main_t;
 
 /* All includes in alphabetical order. */
+#include <vlib/physmem.h>
 #include <vlib/buffer.h>
 #include <vlib/cli.h>
 #include <vlib/counter.h>
@@ -57,7 +58,6 @@ struct vlib_main_t;
 #include <vlib/init.h>
 #include <vlib/mc.h>
 #include <vlib/node.h>
-#include <vlib/physmem.h>
 #include <vlib/trace.h>
 
 /* Main include depends on other vlib/ includes so we put it last. */
@@ -65,6 +65,7 @@ struct vlib_main_t;
 
 /* Inline/extern function declarations. */
 #include <vlib/threads.h>
+#include <vlib/physmem_funcs.h>
 #include <vlib/buffer_funcs.h>
 #include <vlib/cli_funcs.h>
 #include <vlib/error_funcs.h>
