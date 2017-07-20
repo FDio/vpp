@@ -47,6 +47,7 @@
 #include <vlib/unix/unix.h>
 
 vlib_buffer_callbacks_t *vlib_buffer_callbacks = 0;
+static u32 vlib_buffer_physmem_sz = 32 << 20;
 
 uword
 vlib_buffer_length_in_chain_slow_path (vlib_main_t * vm,
@@ -461,7 +462,8 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
   u32 i;
 
   for (i = 0; i < vec_len (f->buffer_memory_allocated); i++)
-    vm->os_physmem_free (f->buffer_memory_allocated[i]);
+    vm->os_physmem_free (vm, vm->buffer_main->physmem_region,
+			 f->buffer_memory_allocated[i]);
   vec_free (f->name);
   vec_free (f->buffer_memory_allocated);
   vec_free (f->buffers);
@@ -552,9 +554,9 @@ fill_free_list (vlib_main_t * vm,
       n_bytes = n_this_chunk * (sizeof (b[0]) + fl->n_data_bytes);
 
       /* drb: removed power-of-2 ASSERT */
-      buffers = vm->os_physmem_alloc_aligned (&vm->physmem_main,
-					      n_bytes,
-					      sizeof (vlib_buffer_t));
+      buffers =
+	vm->os_physmem_alloc_aligned (vm, vm->buffer_main->physmem_region,
+				      n_bytes, sizeof (vlib_buffer_t));
       if (!buffers)
 	return n_alloc;
 
@@ -1051,10 +1053,25 @@ VLIB_CLI_COMMAND (show_buffers_command, static) = {
 };
 /* *INDENT-ON* */
 
-void
-vlib_buffer_cb_init (struct vlib_main_t *vm)
+clib_error_t *
+vlib_buffer_main_init (struct vlib_main_t * vm)
 {
-  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_main_t *bm;
+  clib_error_t *error;
+
+  vec_validate (vm->buffer_main, 0);
+  bm = vm->buffer_main;
+
+  if (vlib_buffer_callbacks)
+    {
+      /* external plugin has registered own buffer callbacks
+         so we just copy them  and quit */
+      vlib_buffer_main_t *bm = vm->buffer_main;
+      clib_memcpy (&bm->cb, vlib_buffer_callbacks,
+		   sizeof (vlib_buffer_callbacks_t));
+      bm->callbacks_registered = 1;
+      return 0;
+    }
 
   bm->cb.vlib_buffer_alloc_cb = &vlib_buffer_alloc_internal;
   bm->cb.vlib_buffer_alloc_from_free_list_cb =
@@ -1064,7 +1081,48 @@ vlib_buffer_cb_init (struct vlib_main_t *vm)
   bm->cb.vlib_buffer_delete_free_list_cb =
     &vlib_buffer_delete_free_list_internal;
   clib_spinlock_init (&bm->buffer_known_hash_lockp);
+
+  /* allocate default region */
+  error = vlib_physmem_region_alloc (vm, "buffers",
+				     vlib_buffer_physmem_sz, 0,
+				     VLIB_PHYSMEM_F_INIT_MHEAP |
+				     VLIB_PHYSMEM_F_HAVE_BUFFERS,
+				     &bm->physmem_region);
+
+  if (error == 0)
+    return 0;
+
+  clib_error_free (error);
+
+  /* we my be running unpriviledged, so try to allocate fake physmem */
+  error = vlib_physmem_region_alloc (vm, "buffers (fake)",
+				     vlib_buffer_physmem_sz, 0,
+				     VLIB_PHYSMEM_F_FAKE |
+				     VLIB_PHYSMEM_F_INIT_MHEAP |
+				     VLIB_PHYSMEM_F_HAVE_BUFFERS,
+				     &bm->physmem_region);
+  return error;
 }
+
+static clib_error_t *
+vlib_buffers_configure (vlib_main_t * vm, unformat_input_t * input)
+{
+  u32 size_in_mb;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "memory-size-in-mb %d", &size_in_mb))
+	vlib_buffer_physmem_sz = size_in_mb << 20;
+      else
+	return unformat_parse_error (input);
+    }
+
+  unformat_free (input);
+  return 0;
+}
+
+VLIB_EARLY_CONFIG_FUNCTION (vlib_buffers_configure, "buffers");
+
 
 /** @endcond */
 /*
