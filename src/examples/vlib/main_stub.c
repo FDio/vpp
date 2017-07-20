@@ -27,8 +27,7 @@ main_stub_init (vlib_main_t * vm)
 {
   clib_error_t *error;
 
-  if ((error =
-       unix_physmem_init (vm, /* fail_if_physical_memory_not_present */ 0)))
+  if ((error = unix_physmem_init (vm)))
     return error;
 
   if ((error = vlib_call_init_function (vm, unix_cli_init)))
