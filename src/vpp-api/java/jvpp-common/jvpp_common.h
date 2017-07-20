@@ -19,6 +19,7 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <jni.h>
+#include <vnet/api_errno.h>
 
 typedef struct {
     /* Unique identifier used for matching replays with requests  */

@@ -122,6 +122,19 @@ typedef enum
     VNET_API_N_ERROR,
 } vnet_api_error_t;
 
+#define _(a,b,c)		\
+if (b == x)				\
+    m = c;				\
+else
+
+#define get_error_message(msg,errno)	\
+int x = errno;							\
+char *m;								\
+foreach_vnet_api_error					\
+    m = "Reason unknown";				\
+msg = m;
+
+
 #endif /* included_vnet_api_errno_h */
 
 /*
