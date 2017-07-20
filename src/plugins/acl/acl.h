@@ -246,6 +246,9 @@ typedef struct {
   foreach_fa_cleaner_counter
 #undef _
 
+  volatile u32 *fa_process_signaling_lock;
+  volatile u32 *fa_session_bihash_add_del_lock;
+
   /* convenience */
   vlib_main_t * vlib_main;
   vnet_main_t * vnet_main;

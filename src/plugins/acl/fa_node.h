@@ -109,6 +109,8 @@ typedef struct {
   /* per-worker ACL_N_TIMEOUTS of conn lists */
   u32 *fa_conn_list_head;
   u32 *fa_conn_list_tail;
+  /* the enqueue times to be checked by the conn cleaner */
+  u64 *fa_conn_list_head_link_enqueue_time;
   /* Vector of expired connections retrieved from lists */
   u32 *expired;
   /* the earliest next expiry time */
