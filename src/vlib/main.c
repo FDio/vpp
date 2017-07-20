@@ -1713,6 +1713,7 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     vm->name = "VLIB";
 
   vec_validate (vm->buffer_main, 0);
+  unix_physmem_init (vm, 0);
   if (vlib_buffer_callbacks)
     {
       /* external plugin has registered own buffer callbacks
@@ -1724,10 +1725,16 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
     }
   else
     {
-      vlib_physmem_main_t *vpm = &vm->physmem_main;
       vlib_buffer_cb_init (vm);
-      unix_physmem_init (vm, 0 /* fail_if_physical_memory_not_present */ );
-      vlib_buffer_add_mem_range (vm, vpm->virtual.start, vpm->virtual.size);
+      if ((error =
+	   vlib_physmem_region_alloc (vm, "buffers", 32 << 20, 0,
+				      VLIB_PHYSMEM_F_INIT_MHEAP |
+				      VLIB_PHYSMEM_F_HAVE_BUFFERS,
+				      &vm->buffer_main->physmem_region)))
+	{
+	  clib_error_report (error);
+	  goto done;
+	}
     }
 
   if ((error = vlib_thread_init (vm)))
