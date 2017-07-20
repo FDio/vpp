@@ -210,7 +210,7 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 	  goto error;
 	}
 
-      mmap_flags = MAP_SHARED | MAP_HUGETLB | MAP_LOCKED;
+      mmap_flags = MAP_SHARED | MAP_LOCKED;
     }
   else
     {
