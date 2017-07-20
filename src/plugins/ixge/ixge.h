@@ -1266,6 +1266,8 @@ typedef struct
   u32 *rx_buffers_to_add;
 
   f64 time_last_stats_update;
+
+  vlib_physmem_region_index_t physmem_region;
 } ixge_main_t;
 
 ixge_main_t ixge_main;

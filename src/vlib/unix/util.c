@@ -189,37 +189,132 @@ vlib_sysfs_link_to_name (char *link)
   return s;
 }
 
-int
-vlib_sysfs_get_free_hugepages (unsigned int numa_node, int page_size)
+clib_error_t *
+vlib_sysfs_set_nr_hugepages (unsigned int numa_node, int page_size, int nr)
 {
+  clib_error_t *error = 0;
   struct stat sb;
   u8 *p = 0;
-  int r = -1;
 
   p = format (p, "/sys/devices/system/node/node%u%c", numa_node, 0);
 
   if (stat ((char *) p, &sb) == 0)
     {
       if (S_ISDIR (sb.st_mode) == 0)
-	goto done;
+	{
+	  error = clib_error_return (0, "'%s' is not directory", p);
+	  goto done;
+	}
     }
   else if (numa_node == 0)
     {
       vec_reset_length (p);
       p = format (p, "/sys/kernel/mm%c", 0);
       if (stat ((char *) p, &sb) < 0 || S_ISDIR (sb.st_mode) == 0)
-	goto done;
+	{
+	  error = clib_error_return (0, "'%s' does not exist or it is not "
+				     "directory", p);
+	  goto done;
+	}
     }
   else
-    goto done;
+    {
+      error = clib_error_return (0, "'%s' does not exist", p);
+      goto done;
+    }
 
   _vec_len (p) -= 1;
-  p = format (p, "/hugepages/hugepages-%ukB/free_hugepages%c", page_size, 0);
-  vlib_sysfs_read ((char *) p, "%d", &r);
+  p = format (p, "/hugepages/hugepages-%ukB/nr_hugepages%c", page_size, 0);
+  vlib_sysfs_write ((char *) p, "%d", nr);
 
 done:
   vec_free (p);
-  return r;
+  return error;
+}
+
+
+static clib_error_t *
+vlib_sysfs_get_xxx_hugepages (char *type, unsigned int numa_node,
+			      int page_size, int *val)
+{
+  clib_error_t *error = 0;
+  struct stat sb;
+  u8 *p = 0;
+
+  p = format (p, "/sys/devices/system/node/node%u%c", numa_node, 0);
+
+  if (stat ((char *) p, &sb) == 0)
+    {
+      if (S_ISDIR (sb.st_mode) == 0)
+	{
+	  error = clib_error_return (0, "'%s' is not directory", p);
+	  goto done;
+	}
+    }
+  else if (numa_node == 0)
+    {
+      vec_reset_length (p);
+      p = format (p, "/sys/kernel/mm%c", 0);
+      if (stat ((char *) p, &sb) < 0 || S_ISDIR (sb.st_mode) == 0)
+	{
+	  error = clib_error_return (0, "'%s' does not exist or it is not "
+				     "directory", p);
+	  goto done;
+	}
+    }
+  else
+    {
+      error = clib_error_return (0, "'%s' does not exist", p);
+      goto done;
+    }
+
+  _vec_len (p) -= 1;
+  p = format (p, "/hugepages/hugepages-%ukB/%s_hugepages%c", page_size,
+	      type, 0);
+  error = vlib_sysfs_read ((char *) p, "%d", val);
+
+done:
+  vec_free (p);
+  return error;
+}
+
+clib_error_t *
+vlib_sysfs_get_free_hugepages (unsigned int numa_node, int page_size, int *v)
+{
+  return vlib_sysfs_get_xxx_hugepages ("free", numa_node, page_size, v);
+}
+
+clib_error_t *
+vlib_sysfs_get_nr_hugepages (unsigned int numa_node, int page_size, int *v)
+{
+  return vlib_sysfs_get_xxx_hugepages ("nr", numa_node, page_size, v);
+}
+
+clib_error_t *
+vlib_sysfs_get_surplus_hugepages (unsigned int numa_node, int page_size,
+				  int *v)
+{
+  return vlib_sysfs_get_xxx_hugepages ("surplus", numa_node, page_size, v);
+}
+
+clib_error_t *
+vlib_sysfs_prealloc_hugepages (unsigned int numa_node, int page_size, int nr)
+{
+  clib_error_t *error = 0;
+  int n, needed;
+  error = vlib_sysfs_get_free_hugepages (numa_node, page_size, &n);
+  if (error)
+    return error;
+  needed = nr - n;
+  if (needed <= 0)
+    return 0;
+
+  error = vlib_sysfs_get_nr_hugepages (numa_node, page_size, &n);
+  if (error)
+    return error;
+  clib_warning ("pre-allocating %u additional %uK hugepages on numa node %u",
+		needed, page_size, numa_node);
+  return vlib_sysfs_set_nr_hugepages (numa_node, page_size, n + needed);
 }
 
 clib_error_t *
