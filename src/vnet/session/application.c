@@ -106,7 +106,8 @@ application_del (application_t * app)
   /*
    * Cleanup segment managers
    */
-  if (app->connects_seg_manager != (u32) ~ 0)
+  if ((app->connects_seg_manager != (u32) ~ 0) &&
+      (app->connects_seg_manager != app->first_segment_manager))
     {
       sm = segment_manager_get (app->connects_seg_manager);
       segment_manager_del (sm);
