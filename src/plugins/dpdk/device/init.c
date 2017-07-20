@@ -17,10 +17,10 @@
 #include <vppinfra/error.h>
 #include <vppinfra/format.h>
 #include <vppinfra/bitmap.h>
+#include <vlib/unix/unix.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <dpdk/device/dpdk.h>
-#include <vlib/unix/physmem.h>
 #include <vlib/pci/pci.h>
 
 #include <stdio.h>
@@ -1026,21 +1026,28 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
       clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
         {
 	  int pages_avail, page_size, mem;
+	  clib_error_t  *e = 0;
 
 	  vec_validate(mem_by_socket, c);
 	  mem = mem_by_socket[c];
 
 	  page_size = 1024;
-	  pages_avail = vlib_sysfs_get_free_hugepages(c, page_size * 1024);
+	  e = vlib_sysfs_get_free_hugepages(c, page_size * 1024, &pages_avail);
 
-	  if (pages_avail < 0 || page_size * pages_avail < mem)
+	  if (e != 0 || pages_avail < 0 || page_size * pages_avail < mem)
 	    use_1g = 0;
 
-	  page_size = 2;
-	  pages_avail = vlib_sysfs_get_free_hugepages(c, page_size * 1024);
+	  if (e)
+	   clib_error_free (e);
 
-	  if (pages_avail < 0 || page_size * pages_avail < mem)
+	  page_size = 2;
+	  e = vlib_sysfs_get_free_hugepages(c, page_size * 1024, &pages_avail);
+
+	  if (e != 0 || pages_avail < 0 || page_size * pages_avail < mem)
 	    use_2m = 0;
+
+	  if (e)
+	   clib_error_free (e);
       }));
       /* *INDENT-ON* */
 

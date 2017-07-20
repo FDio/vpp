@@ -195,18 +195,7 @@ unix_save_error (unix_main_t * um, clib_error_t * error)
 /* Main function for Unix VLIB. */
 int vlib_unix_main (int argc, char *argv[]);
 
-/* Call to allocate/initialize physical DMA memory subsystem.
-   This is not an init function so that users can explicitly enable/disable
-   physmem when its not needed. */
-clib_error_t *unix_physmem_init (vlib_main_t * vm,
-				 int fail_if_physical_memory_not_present);
-
-static inline int
-unix_physmem_is_fake (vlib_main_t * vm)
-{
-  vlib_physmem_main_t *vpm = &vm->physmem_main;
-  return vpm->is_fake;
-}
+clib_error_t *unix_physmem_init (vlib_main_t * vm);
 
 /* Set prompt for CLI. */
 void vlib_unix_cli_set_prompt (char *prompt);
@@ -234,7 +223,16 @@ clib_error_t *vlib_sysfs_read (char *file_name, char *fmt, ...);
 
 u8 *vlib_sysfs_link_to_name (char *link);
 
-int vlib_sysfs_get_free_hugepages (unsigned int numa_node, int page_size);
+clib_error_t *vlib_sysfs_set_nr_hugepages (unsigned int numa_node,
+					   int page_size, int nr);
+clib_error_t *vlib_sysfs_get_nr_hugepages (unsigned int numa_node,
+					   int page_size, int *v);
+clib_error_t *vlib_sysfs_get_free_hugepages (unsigned int numa_node,
+					     int page_size, int *v);
+clib_error_t *vlib_sysfs_get_surplus_hugepages (unsigned int numa_node,
+						int page_size, int *v);
+clib_error_t *vlib_sysfs_prealloc_hugepages (unsigned int numa_node,
+					     int page_size, int nr);
 
 clib_error_t *foreach_directory_file (char *dir_name,
 				      clib_error_t * (*f) (void *arg,
