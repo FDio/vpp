@@ -26,12 +26,13 @@ public class VppCallbackException extends VppBaseCallException {
      * Constructs an VppCallbackException with the specified api method name and error code.
      *
      * @param methodName  name of a method, which invocation failed.
+     * @param message    description of error reason
      * @param ctxId      api request context identifier
      * @param errorCode  negative error code value associated with this failure
      * @throws NullPointerException     if apiMethodName is null
      */
-    public VppCallbackException(final String methodName, final int ctxId, final int errorCode ){
-        super(methodName, errorCode);
+    public VppCallbackException(final String methodName, final String message, final int ctxId, final int errorCode ){
+        super(methodName, message, errorCode);
         this.ctxId = ctxId;
     }
 
