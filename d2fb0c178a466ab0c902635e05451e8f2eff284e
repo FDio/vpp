@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_884f8592",
+        "filename": "src/vnet/l2/l2_output.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-20T20:56:02Z",
+      "side": 1,
+      "message": "I think SPAN should be at the original position, just after OUTPUT. In other words, SPAN should be the last feature that\u0027s applied before packet output.",
+      "range": {
+        "startLine": 110,
+        "startChar": 3,
+        "endLine": 110,
+        "endChar": 7
+      },
+      "revId": "d2fb0c178a466ab0c902635e05451e8f2eff284e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_68444974",
+        "filename": "src/vnet/span/node.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-20T20:56:02Z",
+      "side": 1,
+      "message": "Can you change the variable name from f to something like feat_bit, please? It confused me for a while thinking the code is doing \"\u0026\u003d ~0xf\" and wondering why it is clearing the least significant 4 bits.",
+      "range": {
+        "startLine": 118,
+        "startChar": 41,
+        "endLine": 118,
+        "endChar": 42
+      },
+      "revId": "d2fb0c178a466ab0c902635e05451e8f2eff284e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_233af2cd",
+        "filename": "test/test_span.py",
+        "patchSetId": 5
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-20T20:56:02Z",
+      "side": 1,
+      "message": "GRE header not VXLAN header here",
+      "range": {
+        "startLine": 98,
+        "startChar": 59,
+        "endLine": 98,
+        "endChar": 64
+      },
+      "revId": "d2fb0c178a466ab0c902635e05451e8f2eff284e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
