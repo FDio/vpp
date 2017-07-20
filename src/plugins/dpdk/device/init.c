@@ -24,6 +24,8 @@
 #include <dpdk/device/dpdk.h>
 #include <vlib/pci/pci.h>
 
+#include <rte_ring.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -135,6 +137,60 @@ dpdk_device_lock_init (dpdk_device_t * xd)
 					     CLIB_CACHE_LINE_BYTES);
       memset ((void *) xd->lockp[q], 0, CLIB_CACHE_LINE_BYTES);
     }
+}
+
+static struct rte_mempool_ops *
+get_ops_by_name (i8 * ops_name)
+{
+  u32 i;
+
+  for (i = 0; i < rte_mempool_ops_table.num_ops; i++)
+    {
+      if (!strcmp (ops_name, rte_mempool_ops_table.ops[i].name))
+	return &rte_mempool_ops_table.ops[i];
+    }
+
+  return 0;
+}
+
+static int
+dpdk_ring_alloc (struct rte_mempool *mp)
+{
+  u32 rg_flags = 0, count;
+  i32 ret;
+  i8 rg_name[RTE_RING_NAMESIZE];
+  struct rte_ring *r;
+
+  ret = snprintf (rg_name, sizeof (rg_name), RTE_MEMPOOL_MZ_FORMAT, mp->name);
+  if (ret < 0 || ret >= (i32) sizeof (rg_name))
+    return -ENAMETOOLONG;
+
+  /* ring flags */
+  if (mp->flags & MEMPOOL_F_SP_PUT)
+    rg_flags |= RING_F_SP_ENQ;
+  if (mp->flags & MEMPOOL_F_SC_GET)
+    rg_flags |= RING_F_SC_DEQ;
+
+  count = rte_align32pow2 (mp->size + 1);
+  /*
+   * Allocate the ring that will be used to store objects.
+   * Ring functions will return appropriate errors if we are
+   * running as a secondary process etc., so no checks made
+   * in this function for that condition.
+   */
+  /* XXX can we get memory from the right socket? */
+  r = clib_mem_alloc_aligned (rte_ring_get_memsize (count),
+			      CLIB_CACHE_LINE_BYTES);
+
+  /* XXX rte_ring_lookup will not work */
+
+  ret = rte_ring_init (r, rg_name, count, rg_flags);
+  if (ret)
+    return ret;
+
+  mp->pool_data = r;
+
+  return 0;
 }
 
 static clib_error_t *
@@ -420,10 +476,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_VIRTIO_USER;
 	      break;
 
-	    case VNET_DPDK_PMD_VHOST_ETHER:
-	      xd->port_type = VNET_DPDK_PORT_TYPE_VHOST_ETHER;
-	      break;
-
 	    default:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
 	    }
@@ -689,9 +741,6 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       ;
     /* Chelsio T4/T5 */
     else if (d->vendor_id == 0x1425 && (d->device_id & 0xe000) == 0x4000)
-      ;
-    /* Mellanox  */
-    else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1013 && d->device_id <= 0x101a)
       ;
     else
       {
@@ -985,9 +1034,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     {
       u32 x, *mem_by_socket = 0;
       uword c = 0;
-      u8 use_1g = 1;
-      u8 use_2m = 1;
-      u8 less_than_1g = 1;
       int rv;
 
       umount ((char *) huge_dir_path);
@@ -1009,9 +1055,6 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 		break;
 
 	      vec_add1 (mem_by_socket, x);
-
-	      if (x > 1023)
-		less_than_1g = 0;
 	    }
 	  /* Note: unformat_free vec_frees(in.buffer), aka socket_mem... */
 	  unformat_free (&in);
@@ -1023,39 +1066,22 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
 	    {
 	      vec_validate(mem_by_socket, c);
-	      mem_by_socket[c] = 256; /* default per-socket mem */
+	      mem_by_socket[c] = 128; /* default per-socket mem */
 	    }
 	  ));
 	  /* *INDENT-ON* */
 	}
 
-      /* check if available enough 1GB pages for each socket */
       /* *INDENT-OFF* */
       clib_bitmap_foreach (c, tm->cpu_socket_bitmap, (
         {
-	  int pages_avail, page_size, mem;
-	  clib_error_t  *e = 0;
+	  clib_error_t *e;
 
 	  vec_validate(mem_by_socket, c);
-	  mem = mem_by_socket[c];
 
-	  page_size = 1024;
-	  e = clib_sysfs_get_free_hugepages(c, page_size * 1024, &pages_avail);
-
-	  if (e != 0 || pages_avail < 0 || page_size * pages_avail < mem)
-	    use_1g = 0;
-
+	  e = clib_sysfs_prealloc_hugepages(c, 2 << 10, mem_by_socket[c] / 2);
 	  if (e)
-	   clib_error_free (e);
-
-	  page_size = 2;
-	  e = clib_sysfs_get_free_hugepages(c, page_size * 1024, &pages_avail);
-
-	  if (e != 0 || pages_avail < 0 || page_size * pages_avail < mem)
-	    use_2m = 0;
-
-	  if (e)
-	   clib_error_free (e);
+	    clib_error_report (e);
       }));
       /* *INDENT-ON* */
 
@@ -1080,19 +1106,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  goto done;
 	}
 
-      if (use_1g && !(less_than_1g && use_2m))
-	{
-	  rv = mount ("none", (char *) huge_dir_path, "hugetlbfs", 0,
-		      "pagesize=1G");
-	}
-      else if (use_2m)
-	{
-	  rv = mount ("none", (char *) huge_dir_path, "hugetlbfs", 0, NULL);
-	}
-      else
-	{
-	  return clib_error_return (0, "not enough free huge pages");
-	}
+      rv = mount ("none", (char *) huge_dir_path, "hugetlbfs", 0, NULL);
 
       if (rv)
 	{
@@ -1225,6 +1239,23 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
   /* Dump the physical memory layout prior to creating the mbuf_pool */
   fprintf (stdout, "DPDK physical memory layout:\n");
   rte_dump_physmem_layout (stdout);
+
+  /* set custom ring memory allocator */
+  {
+    struct rte_mempool_ops *ops = NULL;
+
+    ops = get_ops_by_name ("ring_sp_sc");
+    ops->alloc = dpdk_ring_alloc;
+
+    ops = get_ops_by_name ("ring_mp_sc");
+    ops->alloc = dpdk_ring_alloc;
+
+    ops = get_ops_by_name ("ring_sp_mc");
+    ops->alloc = dpdk_ring_alloc;
+
+    ops = get_ops_by_name ("ring_mp_mc");
+    ops->alloc = dpdk_ring_alloc;
+  }
 
   /* main thread 1st */
   error = dpdk_buffer_pool_create (vm, conf->num_mbufs, rte_socket_id ());
@@ -1525,6 +1556,7 @@ VLIB_REGISTER_NODE (dpdk_process_node,static) = {
 };
 /* *INDENT-ON* */
 
+
 static clib_error_t *
 dpdk_init (vlib_main_t * vm)
 {
@@ -1566,6 +1598,7 @@ dpdk_init (vlib_main_t * vm)
 
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
+
 
   /* init CLI */
   if ((error = vlib_call_init_function (vm, dpdk_cli_init)))
