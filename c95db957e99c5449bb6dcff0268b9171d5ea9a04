@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_43b04ef4",
+        "filename": "src/vnet/api_errno.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-21T05:46:27Z",
+      "side": 1,
+      "message": "That will not work. Why can\u0027t we include api_errno.h in  jvpp_common.c, where exception is thrown and pass error message in constructor?",
+      "range": {
+        "startLine": 116,
+        "startChar": 0,
+        "endLine": 119,
+        "endChar": 3
+      },
+      "revId": "c95db957e99c5449bb6dcff0268b9171d5ea9a04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
