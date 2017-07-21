@@ -37,6 +37,8 @@
 #define SNAT_TCP_INCOMING_SYN 6
 #define SNAT_ICMP_TIMEOUT 60
 
+#define SNAT_FLAG_HAIRPINNING (1 << 0)
+
 /* Key */
 typedef struct {
   union 
@@ -369,6 +371,8 @@ extern vlib_node_registration_t snat_in2out_output_worker_handoff_node;
 extern vlib_node_registration_t snat_out2in_worker_handoff_node;
 extern vlib_node_registration_t snat_det_in2out_node;
 extern vlib_node_registration_t snat_det_out2in_node;
+extern vlib_node_registration_t snat_hairpin_dst_node;
+extern vlib_node_registration_t snat_hairpin_src_node;
 
 void snat_free_outside_address_and_port (snat_main_t * sm, 
                                          snat_session_key_t * k, 

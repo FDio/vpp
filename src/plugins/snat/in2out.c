@@ -91,6 +91,9 @@ vlib_node_registration_t snat_det_in2out_node;
 vlib_node_registration_t snat_in2out_output_node;
 vlib_node_registration_t snat_in2out_output_slowpath_node;
 vlib_node_registration_t snat_in2out_output_worker_handoff_node;
+vlib_node_registration_t snat_hairpin_dst_node;
+vlib_node_registration_t snat_hairpin_src_node;
+
 
 #define foreach_snat_in2out_error                       \
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
@@ -120,6 +123,14 @@ typedef enum {
   SNAT_IN2OUT_NEXT_SLOW_PATH,
   SNAT_IN2OUT_N_NEXT,
 } snat_in2out_next_t;
+
+typedef enum {
+  SNAT_HAIRPIN_SRC_NEXT_DROP,
+  SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT,
+  SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT_WH,
+  SNAT_HAIRPIN_SRC_NEXT_INTERFACE_OUTPUT,
+  SNAT_HAIRPIN_SRC_N_NEXT,
+} snat_hairpin_next_t;
 
 /**
  * @brief Check if packet should be translated
@@ -903,6 +914,80 @@ snat_hairpinning (snat_main_t *sm,
     }
 }
 
+static inline void
+snat_icmp_hairpinning (snat_main_t *sm,
+                       vlib_buffer_t * b0,
+                       ip4_header_t * ip0,
+                       icmp46_header_t * icmp0)
+{
+  snat_session_key_t key0, sm0;
+  clib_bihash_kv_8_8_t kv0, value0;
+  snat_worker_key_t k0;
+  u32 new_dst_addr0 = 0, old_dst_addr0, si, ti = 0;
+  ip_csum_t sum0;
+  snat_session_t *s0;
+
+  if (!icmp_is_error_message (icmp0))
+    {
+      icmp_echo_header_t *echo0 = (icmp_echo_header_t *)(icmp0+1);
+      u16 icmp_id0 = echo0->identifier;
+      key0.addr = ip0->dst_address;
+      key0.port = icmp_id0;
+      key0.protocol = SNAT_PROTOCOL_ICMP;
+      key0.fib_index = sm->outside_fib_index;
+      kv0.key = key0.as_u64;
+
+      /* Check if destination is in active sessions */
+      if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+        {
+          /* or static mappings */
+          if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
+            {
+              new_dst_addr0 = sm0.addr.as_u32;
+              vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
+            }
+        }
+      else
+        {
+          si = value0.value;
+          if (sm->num_workers > 1)
+            {
+              k0.addr = ip0->dst_address;
+              k0.port = icmp_id0;
+              k0.fib_index = sm->outside_fib_index;
+              kv0.key = k0.as_u64;
+              if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
+                ASSERT(0);
+              else
+                ti = value0.value;
+            }
+          else
+            ti = sm->num_workers;
+
+          s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
+          new_dst_addr0 = s0->in2out.addr.as_u32;
+          vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+          echo0->identifier = s0->in2out.port;
+          sum0 = icmp0->checksum;
+          sum0 = ip_csum_update (sum0, icmp_id0, s0->in2out.port,
+                                 icmp_echo_header_t, identifier);
+          icmp0->checksum = ip_csum_fold (sum0);
+        }
+
+      /* Destination is behind the same NAT, use internal address and port */
+      if (new_dst_addr0)
+        {
+          old_dst_addr0 = ip0->dst_address.as_u32;
+          ip0->dst_address.as_u32 = new_dst_addr0;
+          sum0 = ip0->checksum;
+          sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
+                                 ip4_header_t, dst_address);
+          ip0->checksum = ip_csum_fold (sum0);
+        }
+    }
+
+}
+
 static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
                                          vlib_buffer_t * b0,
                                          ip4_header_t * ip0,
@@ -915,77 +1000,14 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
                                          u32 thread_index,
                                          snat_session_t ** p_s0)
 {
-  snat_session_key_t key0, sm0;
-  clib_bihash_kv_8_8_t kv0, value0;
-  snat_worker_key_t k0;
-  u32 new_dst_addr0 = 0, old_dst_addr0, si, ti = 0;
-  ip_csum_t sum0;
-
   next0 = icmp_in2out(sm, b0, ip0, icmp0, sw_if_index0, rx_fib_index0, node,
                       next0, thread_index, p_s0, 0);
   snat_session_t * s0 = *p_s0;
   if (PREDICT_TRUE(next0 != SNAT_IN2OUT_NEXT_DROP && s0))
     {
       /* Hairpinning */
-      if (!icmp_is_error_message (icmp0))
-        {
-          icmp_echo_header_t *echo0 = (icmp_echo_header_t *)(icmp0+1);
-          u16 icmp_id0 = echo0->identifier;
-          key0.addr = ip0->dst_address;
-          key0.port = icmp_id0;
-          key0.protocol = SNAT_PROTOCOL_ICMP;
-          key0.fib_index = sm->outside_fib_index;
-          kv0.key = key0.as_u64;
-
-          /* Check if destination is in active sessions */
-          if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
-            {
-              /* or static mappings */
-              if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
-                {
-                  new_dst_addr0 = sm0.addr.as_u32;
-                  vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
-                }
-            }
-          else
-            {
-              si = value0.value;
-              if (sm->num_workers > 1)
-                {
-                  k0.addr = ip0->dst_address;
-                  k0.port = icmp_id0;
-                  k0.fib_index = sm->outside_fib_index;
-                  kv0.key = k0.as_u64;
-                  if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
-                    ASSERT(0);
-                  else
-                    ti = value0.value;
-                }
-              else
-                ti = sm->num_workers;
-
-              s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
-              new_dst_addr0 = s0->in2out.addr.as_u32;
-              vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
-              echo0->identifier = s0->in2out.port;
-              sum0 = icmp0->checksum;
-              sum0 = ip_csum_update (sum0, icmp_id0, s0->in2out.port,
-                                     icmp_echo_header_t, identifier);
-              icmp0->checksum = ip_csum_fold (sum0);
-            }
-
-          /* Destination is behind the same NAT, use internal address and port */
-          if (new_dst_addr0)
-            {
-              old_dst_addr0 = ip0->dst_address.as_u32;
-              ip0->dst_address.as_u32 = new_dst_addr0;
-              sum0 = ip0->checksum;
-              sum0 = ip_csum_update (sum0, old_dst_addr0, new_dst_addr0,
-                                     ip4_header_t, dst_address);
-              ip0->checksum = ip_csum_fold (sum0);
-            }
-        }
-
+      if (vnet_buffer(b0)->sw_if_index[VLIB_TX] == 0)
+        snat_icmp_hairpinning(sm, b0, ip0, icmp0);
       /* Accounting */
       s0->last_heard = now;
       s0->total_pkts++;
@@ -1001,6 +1023,69 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
         }
     }
   return next0;
+}
+static inline void
+snat_hairpinning_unknown_proto (snat_main_t *sm,
+                                vlib_buffer_t * b,
+                                ip4_header_t * ip)
+{
+  u32 old_addr, new_addr = 0, ti = 0;
+  clib_bihash_kv_8_8_t kv, value;
+  clib_bihash_kv_16_8_t s_kv, s_value;
+  snat_unk_proto_ses_key_t key;
+  snat_session_key_t m_key;
+  snat_worker_key_t w_key;
+  snat_static_mapping_t *m;
+  ip_csum_t sum;
+  snat_session_t *s;
+
+  old_addr = ip->dst_address.as_u32;
+  key.l_addr.as_u32 = ip->dst_address.as_u32;
+  key.r_addr.as_u32 = ip->src_address.as_u32;
+  key.fib_index = sm->outside_fib_index;
+  key.proto = ip->protocol;
+  key.rsvd[0] = key.rsvd[1] = key.rsvd[2] = 0;
+  s_kv.key[0] = key.as_u64[0];
+  s_kv.key[1] = key.as_u64[1];
+  if (clib_bihash_search_16_8 (&sm->out2in_unk_proto, &s_kv, &s_value))
+    {
+      m_key.addr = ip->dst_address;
+      m_key.fib_index = sm->outside_fib_index;
+      m_key.port = 0;
+      m_key.protocol = 0;
+      kv.key = m_key.as_u64;
+      if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+        return;
+
+      m = pool_elt_at_index (sm->static_mappings, value.value);
+      if (vnet_buffer(b)->sw_if_index[VLIB_TX] == ~0)
+        vnet_buffer(b)->sw_if_index[VLIB_TX] = m->fib_index;
+      new_addr = ip->dst_address.as_u32 = m->local_addr.as_u32;
+    }
+  else
+    {
+      if (sm->num_workers > 1)
+        {
+          w_key.addr = ip->dst_address;
+          w_key.port = 0;
+          w_key.fib_index = sm->outside_fib_index;
+          kv.key = w_key.as_u64;
+          if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv, &value))
+            return;
+          else
+            ti = value.value;
+        }
+      else
+        ti = sm->num_workers;
+
+      s = pool_elt_at_index (sm->per_thread_data[ti].sessions, s_value.value);
+      if (vnet_buffer(b)->sw_if_index[VLIB_TX] == ~0)
+        vnet_buffer(b)->sw_if_index[VLIB_TX] = s->in2out.fib_index;
+      new_addr = ip->dst_address.as_u32 = s->in2out.addr.as_u32;
+    }
+  sum = ip->checksum;
+  sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, dst_address);
+  ip->checksum = ip_csum_fold (sum);
 }
 
 static void
@@ -1273,37 +1358,11 @@ create_ses:
                       s->per_user_index);
 
   /* Hairpinning */
-  old_addr = ip->dst_address.as_u32;
-  key.l_addr.as_u32 = ip->dst_address.as_u32;
-  key.r_addr.as_u32 = new_addr;
-  key.fib_index = sm->outside_fib_index;
-  s_kv.key[0] = key.as_u64[0];
-  s_kv.key[1] = key.as_u64[1];
-  if (clib_bihash_search_16_8 (&sm->out2in_unk_proto, &s_kv, &s_value))
-    {
-      m_key.addr = ip->dst_address;
-      m_key.fib_index = sm->outside_fib_index;
-      kv.key = m_key.as_u64;
-      if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
-        {
-          if (vnet_buffer(b)->sw_if_index[VLIB_TX] == ~0)
-            vnet_buffer(b)->sw_if_index[VLIB_TX] = sm->outside_fib_index;
-          return;
-        }
+  if (vnet_buffer(b)->sw_if_index[VLIB_TX] == ~0)
+    snat_hairpinning_unknown_proto(sm, b, ip);
 
-      m = pool_elt_at_index (sm->static_mappings, value.value);
-      vnet_buffer(b)->sw_if_index[VLIB_TX] = m->fib_index;
-      new_addr = ip->dst_address.as_u32 = m->local_addr.as_u32;
-    }
-  else
-    {
-      s = pool_elt_at_index (tsm->sessions, s_value.value);
-      vnet_buffer(b)->sw_if_index[VLIB_TX] = s->in2out.fib_index;
-      new_addr = ip->dst_address.as_u32 = s->in2out.addr.as_u32;
-    }
-  sum = ip->checksum;
-  sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, dst_address);
-  ip->checksum = ip_csum_fold (sum);
+  if (vnet_buffer(b)->sw_if_index[VLIB_TX] == ~0)
+    vnet_buffer(b)->sw_if_index[VLIB_TX] = sm->outside_fib_index;
 }
 
 static inline uword
@@ -1499,7 +1558,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             }
 
           /* Hairpinning */
-          snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
+          if (!is_output_feature)
+            snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
 
           /* Accounting */
           s0->last_heard = now;
@@ -1649,7 +1709,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             }
 
           /* Hairpinning */
-          snat_hairpinning (sm, b1, ip1, udp1, tcp1, proto1);
+          if (!is_output_feature)
+            snat_hairpinning (sm, b1, ip1, udp1, tcp1, proto1);
 
           /* Accounting */
           s1->last_heard = now;
@@ -1836,7 +1897,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             }
 
           /* Hairpinning */
-          snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
+          if (!is_output_feature)
+            snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
 
           /* Accounting */
           s0->last_heard = now;
@@ -2985,6 +3047,214 @@ VLIB_REGISTER_NODE (snat_in2out_output_worker_handoff_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_output_worker_handoff_node,
                               snat_in2out_output_worker_handoff_fn);
+
+static_always_inline int
+is_hairpinning (snat_main_t *sm, ip4_address_t * dst_addr)
+{
+  snat_address_t * ap;
+  clib_bihash_kv_8_8_t kv, value;
+  snat_session_key_t m_key;
+
+  vec_foreach (ap, sm->addresses)
+    {
+      if (ap->addr.as_u32 == dst_addr->as_u32)
+        return 1;
+    }
+
+  m_key.addr.as_u32 = dst_addr->as_u32;
+  m_key.fib_index = sm->outside_fib_index;
+  m_key.port = 0;
+  m_key.protocol = 0;
+  kv.key = m_key.as_u64;
+  if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+    return 1;
+
+  return 0;
+}
+
+static uword
+snat_hairpin_dst_fn (vlib_main_t * vm,
+                     vlib_node_runtime_t * node,
+                     vlib_frame_t * frame)
+{
+  u32 n_left_from, * from, * to_next;
+  snat_in2out_next_t next_index;
+  u32 pkts_processed = 0;
+  snat_main_t * sm = &snat_main;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index,
+			   to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+          u32 bi0;
+	  vlib_buffer_t * b0;
+          u32 next0;
+          ip4_header_t * ip0;
+          u32 proto0;
+
+          /* speculatively enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+          next0 = SNAT_IN2OUT_NEXT_LOOKUP;
+          ip0 = vlib_buffer_get_current (b0);
+
+          proto0 = ip_proto_to_snat_proto (ip0->protocol);
+
+          vnet_buffer (b0)->snat.flags = 0;
+          if (PREDICT_FALSE (is_hairpinning (sm, &ip0->dst_address)))
+            {
+              if (proto0 == SNAT_PROTOCOL_TCP || proto0 == SNAT_PROTOCOL_UDP)
+                {
+                  udp_header_t * udp0 = ip4_next_header (ip0);
+                  tcp_header_t * tcp0 = (tcp_header_t *) udp0;
+
+                  snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
+                }
+              else if (proto0 == SNAT_PROTOCOL_ICMP)
+                {
+                  icmp46_header_t * icmp0 = ip4_next_header (ip0);
+
+                  snat_icmp_hairpinning (sm, b0, ip0, icmp0);
+                }
+              else
+                {
+                  snat_hairpinning_unknown_proto (sm, b0, ip0);
+                }
+
+              vnet_buffer (b0)->snat.flags = SNAT_FLAG_HAIRPINNING;
+              clib_warning("is hairpinning");
+            }
+
+          pkts_processed += next0 != SNAT_IN2OUT_NEXT_DROP;
+
+          /* verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+         }
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  vlib_node_increment_counter (vm, snat_hairpin_dst_node.index,
+                               SNAT_IN2OUT_ERROR_IN2OUT_PACKETS,
+                               pkts_processed);
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (snat_hairpin_dst_node) = {
+  .function = snat_hairpin_dst_fn,
+  .name = "snat-hairpin-dst",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(snat_in2out_error_strings),
+  .error_strings = snat_in2out_error_strings,
+  .n_next_nodes = 2,
+  .next_nodes = {
+    [SNAT_IN2OUT_NEXT_DROP] = "error-drop",
+    [SNAT_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (snat_hairpin_dst_node,
+                              snat_hairpin_dst_fn);
+
+static uword
+snat_hairpin_src_fn (vlib_main_t * vm,
+                     vlib_node_runtime_t * node,
+                     vlib_frame_t * frame)
+{
+  u32 n_left_from, * from, * to_next;
+  snat_in2out_next_t next_index;
+  u32 pkts_processed = 0;
+  snat_main_t *sm = &snat_main;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index,
+			   to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+          u32 bi0;
+	  vlib_buffer_t * b0;
+          u32 next0;
+
+          /* speculatively enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+          next0 = SNAT_HAIRPIN_SRC_NEXT_INTERFACE_OUTPUT;
+
+          if (PREDICT_FALSE ((vnet_buffer (b0)->snat.flags) & SNAT_FLAG_HAIRPINNING))
+            {
+              if (PREDICT_TRUE (sm->num_workers > 1))
+                next0 = SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT_WH;
+              else
+                next0 = SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT;
+            }
+
+          pkts_processed += next0 != SNAT_IN2OUT_NEXT_DROP;
+
+          /* verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+         }
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  vlib_node_increment_counter (vm, snat_hairpin_src_node.index,
+                               SNAT_IN2OUT_ERROR_IN2OUT_PACKETS,
+                               pkts_processed);
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (snat_hairpin_src_node) = {
+  .function = snat_hairpin_src_fn,
+  .name = "snat-hairpin-src",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(snat_in2out_error_strings),
+  .error_strings = snat_in2out_error_strings,
+  .n_next_nodes = SNAT_HAIRPIN_SRC_N_NEXT,
+  .next_nodes = {
+     [SNAT_HAIRPIN_SRC_NEXT_DROP] = "error-drop",
+     [SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT] = "snat-in2out-output",
+     [SNAT_HAIRPIN_SRC_NEXT_INTERFACE_OUTPUT] = "interface-output",
+     [SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT_WH] = "snat-in2out-output-worker-handoff",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (snat_hairpin_src_node,
+                              snat_hairpin_src_fn);
 
 static uword
 snat_in2out_fast_static_map_fn (vlib_main_t * vm,

@@ -284,6 +284,12 @@ typedef struct
       u8 flags;
     } tcp;
 
+    /* SNAT */
+    struct
+    {
+      u32 flags;
+    } snat;
+
     u32 unused[6];
   };
 } vnet_buffer_opaque_t;

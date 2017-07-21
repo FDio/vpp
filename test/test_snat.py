@@ -2192,7 +2192,7 @@ class TestSNAT(MethodHolder):
         capture = self.pg6.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg6)
 
-    def _test_output_feature_hairpinning(self):
+    def test_output_feature_hairpinning(self):
         """ S-NAT interface output feature hairpinning (in2out postrouting) """
         host = self.pg0.remote_hosts[0]
         server = self.pg0.remote_hosts[1]

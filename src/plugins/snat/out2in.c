@@ -818,7 +818,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
-            
+
+          vnet_buffer (b0)->snat.flags = 0;
+          vnet_buffer (b1)->snat.flags = 0;
+
           ip0 = vlib_buffer_get_current (b0);
           udp0 = ip4_next_header (ip0);
           tcp0 = (tcp_header_t *) udp0;
@@ -1130,6 +1133,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+
+          vnet_buffer (b0)->snat.flags = 0;
 
           ip0 = vlib_buffer_get_current (b0);
           udp0 = ip4_next_header (ip0);

@@ -72,6 +72,11 @@ VNET_FEATURE_INIT (ip4_snat_out2in_fast, static) = {
   .node_name = "snat-out2in-fast",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
+VNET_FEATURE_INIT (ip4_snat_hairpin_dst, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "snat-hairpin-dst",
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
 
 /* Hook up output features */
 VNET_FEATURE_INIT (ip4_snat_in2out_output, static) = {
@@ -79,10 +84,14 @@ VNET_FEATURE_INIT (ip4_snat_in2out_output, static) = {
   .node_name = "snat-in2out-output",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
-
 VNET_FEATURE_INIT (ip4_snat_in2out_output_worker_handoff, static) = {
   .arc_name = "ip4-output",
   .node_name = "snat-in2out-output-worker-handoff",
+  .runs_before = VNET_FEATURES ("interface-output"),
+};
+VNET_FEATURE_INIT (ip4_snat_hairpin_src, static) = {
+  .arc_name = "ip4-output",
+  .node_name = "snat-hairpin-src",
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
@@ -798,7 +807,13 @@ int snat_interface_add_del_output_feature (u32 sw_if_index,
     return VNET_API_ERROR_UNSUPPORTED;
 
   if (is_inside)
-    goto find;
+    {
+      vnet_feature_enable_disable ("ip4-unicast", "snat-hairpin-dst",
+                                   sw_if_index, !is_del, 0, 0);
+      vnet_feature_enable_disable ("ip4-output", "snat-hairpin-src",
+                                   sw_if_index, !is_del, 0, 0);
+      goto fq;
+    }
 
   if (sm->num_workers > 1)
     {
@@ -816,6 +831,7 @@ int snat_interface_add_del_output_feature (u32 sw_if_index,
                                    sw_if_index, !is_del, 0, 0);
     }
 
+fq:
   if (sm->fq_in2out_output_index == ~0 && sm->num_workers > 1)
     sm->fq_in2out_output_index =
       vlib_frame_queue_main_init (sm->in2out_output_node_index, 0);
@@ -823,7 +839,6 @@ int snat_interface_add_del_output_feature (u32 sw_if_index,
   if (sm->fq_out2in_index == ~0 && sm->num_workers > 1)
     sm->fq_out2in_index = vlib_frame_queue_main_init (sm->out2in_node_index, 0);
 
-find:
   pool_foreach (i, sm->output_feature_interfaces,
   ({
     if (i->sw_if_index == sw_if_index)
