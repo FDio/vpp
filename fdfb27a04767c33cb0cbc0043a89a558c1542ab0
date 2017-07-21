@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_aeba49df",
+        "filename": "src/plugins/dpdk/device/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 406,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-21T13:05:41Z",
+      "side": 1,
+      "message": "This might be a case where speculatively setting 4x physmem_region to the last pool_id seen / fixing any botches in a PREDICT_FALSE (...) will mitigate the number of clock cycles expended.",
+      "revId": "fdfb27a04767c33cb0cbc0043a89a558c1542ab0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_2e209948",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 545,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-21T13:05:41Z",
+      "side": 1,
+      "message": "Might remove this historical comment (;-)...",
+      "revId": "fdfb27a04767c33cb0cbc0043a89a558c1542ab0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
