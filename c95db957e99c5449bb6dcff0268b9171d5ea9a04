@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "7a51691d_e39e1a63",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-07-21T05:51:07Z",
+      "side": 1,
+      "message": "missing jira ticket number",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 42
+      },
+      "revId": "c95db957e99c5449bb6dcff0268b9171d5ea9a04",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a51691d_43b04ef4",
         "filename": "src/vnet/api_errno.h",
         "patchSetId": 2
