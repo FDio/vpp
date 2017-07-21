@@ -3540,22 +3540,43 @@ debug_vhost_user_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
   vhost_user_main_t *vum = &vhost_user_main;
+  u8 onoff = 0;
+  u8 input_found = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, "missing argument");
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
+      if (input_found)
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+
       if (unformat (line_input, "on"))
-	vum->debug = 1;
+	{
+	  input_found = 1;
+	  onoff = 1;
+	}
       else if (unformat (line_input, "off"))
-	vum->debug = 0;
+	{
+	  input_found = 1;
+	  onoff = 0;
+	}
       else
-	error = clib_error_return (0, "unknown input `%U'",
-				   format_unformat_error, line_input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
+  vum->debug = onoff;
+
+done:
   unformat_free (line_input);
 
   return error;
