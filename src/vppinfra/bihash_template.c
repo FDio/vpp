@@ -135,8 +135,9 @@ BV (make_working_copy) (BVT (clib_bihash) * h, BVT (clib_bihash_bucket) * b)
 
   clib_mem_set_heap (oldheap);
 
-  /* Turn off the cache */
-  BV (clib_bihash_cache_enable_disable) (b, 0);
+  /* Lock the bucket... */
+  while (BV (clib_bihash_lock_bucket) (b) == 0)
+    ;
 
   v = BV (clib_bihash_get_value) (h, b->offset);
 
@@ -416,7 +417,7 @@ expand_ok:
 
 unlock:
   BV (clib_bihash_reset_cache) (b);
-  BV (clib_bihash_cache_enable_disable) (b, 1 /* enable */ );
+  BV (clib_bihash_unlock_bucket) (b);
   CLIB_MEMORY_BARRIER ();
   h->writer_lock[0] = 0;
   return rv;
@@ -444,7 +445,7 @@ int BV (clib_bihash_search)
     return -1;
 
   /* Check the cache, if currently enabled */
-  if (PREDICT_TRUE (b->cache_lru & (1 << 15)))
+  if (PREDICT_TRUE ((b->cache_lru & (1 << 15)) == 0))
     {
       limit = BIHASH_KVP_CACHE_SIZE;
       kvp = b->cache;
@@ -475,16 +476,16 @@ int BV (clib_bihash_search)
 	  *valuep = v->kvp[i];
 
 	  /* Shut off the cache */
-	  BV (clib_bihash_cache_enable_disable) (b, 0);
-	  CLIB_MEMORY_BARRIER ();
+	  if (BV (clib_bihash_lock_bucket) (b))
+	    {
+	      cache_slot = BV (clib_bihash_get_lru) (b);
+	      b->cache[cache_slot] = v->kvp[i];
+	      BV (clib_bihash_update_lru) (b, cache_slot);
 
-	  cache_slot = BV (clib_bihash_get_lru) (b);
-	  b->cache[cache_slot] = v->kvp[i];
-	  BV (clib_bihash_update_lru) (b, cache_slot);
-
-	  /* Reenable the cache */
-	  BV (clib_bihash_cache_enable_disable) (b, 1);
-	  h->cache_misses++;
+	      /* Reenable the cache */
+	      BV (clib_bihash_unlock_bucket) (b);
+	      h->cache_misses++;
+	    }
 	  return 0;
 	}
     }

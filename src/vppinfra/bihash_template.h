@@ -182,13 +182,29 @@ static inline void BV (clib_bihash_reset_cache) (BVT (clib_bihash_bucket) * b)
   b->cache_lru = initial_lru_value;
 }
 
-static inline void BV (clib_bihash_cache_enable_disable)
-  (BVT (clib_bihash_bucket) * b, u8 enable)
+static inline int BV (clib_bihash_lock_bucket) (BVT (clib_bihash_bucket) * b)
 {
   BVT (clib_bihash_bucket) tmp_b;
+  u64 rv;
+
+  tmp_b.as_u64 = 0;
+  tmp_b.cache_lru = 1 << 15;
+
+  rv = __sync_fetch_and_or (&b->as_u64, tmp_b.as_u64);
+  tmp_b.as_u64 = rv;
+  /* Was already locked? */
+  if (tmp_b.cache_lru & (1 << 15))
+    return 0;
+  return 1;
+}
+
+static inline void BV (clib_bihash_unlock_bucket)
+  (BVT (clib_bihash_bucket) * b)
+{
+  BVT (clib_bihash_bucket) tmp_b;
+
   tmp_b.as_u64 = b->as_u64;
-  tmp_b.cache_lru &= 0x7FFF;
-  tmp_b.cache_lru |= enable << 15;
+  tmp_b.cache_lru &= ~(1 << 15);
   b->as_u64 = tmp_b.as_u64;
 }
 
@@ -249,8 +265,8 @@ static inline int BV (clib_bihash_search_inline)
   if (b->offset == 0)
     return -1;
 
-  /* Check the cache, if currently enabled */
-  if (PREDICT_TRUE (b->cache_lru & (1 << 15)))
+  /* Check the cache, if not currently locked */
+  if (PREDICT_TRUE ((b->cache_lru & (1 << 15)) == 0))
     {
       limit = BIHASH_KVP_CACHE_SIZE;
       kvp = b->cache;
@@ -282,17 +298,17 @@ static inline int BV (clib_bihash_search_inline)
 	  u8 cache_slot;
 	  *key_result = v->kvp[i];
 
-	  /* Shut off the cache */
-	  BV (clib_bihash_cache_enable_disable) (b, 0);
-	  CLIB_MEMORY_BARRIER ();
+	  /* Try to lock the bucket */
+	  if (BV (clib_bihash_lock_bucket) (b))
+	    {
+	      cache_slot = BV (clib_bihash_get_lru) (b);
+	      b->cache[cache_slot] = v->kvp[i];
+	      BV (clib_bihash_update_lru) (b, cache_slot);
 
-	  cache_slot = BV (clib_bihash_get_lru) (b);
-	  b->cache[cache_slot] = v->kvp[i];
-	  BV (clib_bihash_update_lru) (b, cache_slot);
-
-	  /* Reenable the cache */
-	  BV (clib_bihash_cache_enable_disable) (b, 1);
-	  h->cache_misses++;
+	      /* Unlock the bucket */
+	      BV (clib_bihash_unlock_bucket) (b);
+	      h->cache_misses++;
+	    }
 	  return 0;
 	}
     }
@@ -320,8 +336,8 @@ static inline int BV (clib_bihash_search_inline_2)
   if (b->offset == 0)
     return -1;
 
-  /* Check the cache, if currently enabled */
-  if (PREDICT_TRUE (b->cache_lru & (1 << 15)))
+  /* Check the cache, if currently unlocked */
+  if (PREDICT_TRUE ((b->cache_lru & (1 << 15)) == 0))
     {
       limit = BIHASH_KVP_CACHE_SIZE;
       kvp = b->cache;
@@ -352,17 +368,17 @@ static inline int BV (clib_bihash_search_inline_2)
 	  u8 cache_slot;
 	  *valuep = v->kvp[i];
 
-	  /* Shut off the cache */
-	  BV (clib_bihash_cache_enable_disable) (b, 0);
-	  CLIB_MEMORY_BARRIER ();
+	  /* Try to lock the bucket */
+	  if (BV (clib_bihash_lock_bucket) (b))
+	    {
+	      cache_slot = BV (clib_bihash_get_lru) (b);
+	      b->cache[cache_slot] = v->kvp[i];
+	      BV (clib_bihash_update_lru) (b, cache_slot);
 
-	  cache_slot = BV (clib_bihash_get_lru) (b);
-	  b->cache[cache_slot] = v->kvp[i];
-	  BV (clib_bihash_update_lru) (b, cache_slot);
-
-	  /* Reenable the cache */
-	  BV (clib_bihash_cache_enable_disable) (b, 1);
-	  h->cache_misses++;
+	      /* Reenable the cache */
+	      BV (clib_bihash_unlock_bucket) (b);
+	      h->cache_misses++;
+	    }
 	  return 0;
 	}
     }
