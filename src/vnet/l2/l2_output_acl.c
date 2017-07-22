@@ -34,8 +34,8 @@
 
 typedef struct
 {
-  /* Next nodes for features and output interfaces */
-  l2_output_next_nodes_st next_nodes;
+  /* Next nodes for L2 output features */
+  u32 l2_out_feat_next[32];
 
   /* convenience variables */
   vlib_main_t *vlib_main;
@@ -108,8 +108,6 @@ l2_outacl_node_fn (vlib_main_t * vm,
   vlib_node_t *n = vlib_get_node (vm, l2_outacl_node.index);
   u32 node_counter_base_index = n->error_heap_index;
   vlib_error_main_t *em = &vm->error_main;
-  u32 cached_sw_if_index = (u32) ~ 0;
-  u32 cached_next_index = (u32) ~ 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
@@ -201,7 +199,6 @@ l2_outacl_node_fn (vlib_main_t * vm,
 	  u32 next0;
 	  u32 sw_if_index0;
 	  ethernet_header_t *h0;
-	  u32 feature_bitmap0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -234,20 +231,9 @@ l2_outacl_node_fn (vlib_main_t * vm,
 	   * Dummy for now, just go to next feature node
 	   */
 
-
-	  /* Remove ourself from the feature bitmap */
-	  feature_bitmap0 =
-	    vnet_buffer (b0)->l2.feature_bitmap & ~L2OUTPUT_FEAT_ACL;
-
 	  /* Determine next node */
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2_outacl_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b0, sw_if_index0, feature_bitmap0, &next0);
+	  next0 = vnet_l2_feature_next (b0, msm->l2_out_feat_next,
+					L2OUTPUT_FEAT_ACL);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -295,7 +281,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_outacl_node, l2_outacl_node_fn)
 			       l2_outacl_node.index,
 			       L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
-			       mp->next_nodes.feat_next_node_index);
+			       mp->l2_out_feat_next);
 
   return 0;
 }

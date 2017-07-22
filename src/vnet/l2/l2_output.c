@@ -98,6 +98,57 @@ split_horizon_violation (u8 shg1, u8 shg2)
     }
 }
 
+/** Determine the next L2 node based on the output feature bitmap */
+static_always_inline void
+l2_output_dispatch (vlib_buffer_t * b0, vlib_node_runtime_t * node,
+		    u32 * cached_sw_if_index, u32 * cached_next_index,
+		    u32 sw_if_index, u32 feature_bitmap, u32 * next0)
+{
+  /*
+   * The output feature bitmap always have at least the L2 output bit set
+   * for a normal L2 interface (or 0 if the interface is changed from L2
+   * to L3 mode). So if the feature bitmap is 0 or just have L2 output bits set,
+   * we know there is no more feature and will just output packets on interface.
+   * Otherwise, get the index of the next feature node.
+   */
+  if (PREDICT_FALSE ((feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT) != 0))
+    {
+      /* Save bitmap for the next feature graph nodes */
+      vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
+
+      /* Determine the next node */
+      *next0 =
+	feat_bitmap_get_next_node_index (l2output_main.l2_out_feat_next,
+					 feature_bitmap);
+    }
+  else
+    {
+      /*
+       * There are no features. Send packet to TX node for sw_if_index0
+       * This is a little tricky in that the output interface next node indexes
+       * are not precomputed at init time.
+       */
+
+      if (sw_if_index == *cached_sw_if_index)
+	{
+	  /* We hit in the one-entry cache. Use it. */
+	  *next0 = *cached_next_index;
+	}
+      else
+	{
+	  /* Look up the output TX node for the sw_if_index */
+	  *next0 = vec_elt (l2output_main.output_node_index_vec, sw_if_index);
+
+	  if (PREDICT_FALSE (*next0 == L2OUTPUT_NEXT_DROP))
+	    b0->error = node->errors[L2OUTPUT_ERROR_MAPPING_DROP];
+
+	  /* Update the one-entry cache */
+	  *cached_sw_if_index = sw_if_index;
+	  *cached_next_index = *next0;
+	}
+    }
+}
+
 static_always_inline void
 l2output_vtr (vlib_node_runtime_t * node, l2_output_config_t * config,
 	      u32 feature_bitmap, vlib_buffer_t * b, u32 * next)
@@ -239,41 +290,18 @@ l2output_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  feature_bitmap3 = config3->feature_bitmap;
 
 	  /* Determine next node */
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2output_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b0, sw_if_index0, feature_bitmap0, &next0);
-
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2output_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b1, sw_if_index1, feature_bitmap1, &next1);
-
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2output_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b2, sw_if_index2, feature_bitmap2, &next2);
-
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2output_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b3, sw_if_index3, feature_bitmap3, &next3);
+	  l2_output_dispatch (b0, node, &cached_sw_if_index,
+			      &cached_next_index, sw_if_index0,
+			      feature_bitmap0, &next0);
+	  l2_output_dispatch (b1, node, &cached_sw_if_index,
+			      &cached_next_index, sw_if_index1,
+			      feature_bitmap1, &next1);
+	  l2_output_dispatch (b2, node, &cached_sw_if_index,
+			      &cached_next_index, sw_if_index2,
+			      feature_bitmap2, &next2);
+	  l2_output_dispatch (b3, node, &cached_sw_if_index,
+			      &cached_next_index, sw_if_index3,
+			      feature_bitmap3, &next3);
 
 	  l2output_vtr (node, config0, feature_bitmap0, b0, &next0);
 	  l2output_vtr (node, config1, feature_bitmap1, b1, &next1);
@@ -401,14 +429,9 @@ l2output_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  feature_bitmap0 = config0->feature_bitmap;
 
 	  /* Determine next node */
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2output_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b0, sw_if_index0, feature_bitmap0, &next0);
+	  l2_output_dispatch (b0, node, &cached_sw_if_index,
+			      &cached_next_index, sw_if_index0,
+			      feature_bitmap0, &next0);
 
 	  l2output_vtr (node, config0, feature_bitmap0, b0, &next0);
 
@@ -598,10 +621,10 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2output_node, l2output_node_fn)
 			       l2output_node.index,
 			       L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
-			       mp->next_nodes.feat_next_node_index);
+			       mp->l2_out_feat_next);
 
   /* Initialize the output node mapping table */
-  vec_validate_init_empty (mp->next_nodes.output_node_index_vec, 100,
+  vec_validate_init_empty (mp->output_node_index_vec, 100,
 			   L2OUTPUT_NEXT_DROP);
 
   return 0;
@@ -621,7 +644,7 @@ l2output_create_output_node_mapping (vlib_main_t * vlib_main,
   /* dynamically create graph node arc  */
   u32 next = vlib_node_add_next (vlib_main, l2output_node.index,
 				 hw0->output_node_index);
-  l2output_main.next_nodes.output_node_index_vec[sw_if_index] = next;
+  l2output_main.output_node_index_vec[sw_if_index] = next;
 }
 
 /* Get a pointer to the config for the given interface */

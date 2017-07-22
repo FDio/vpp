@@ -75,14 +75,28 @@ feat_bitmap_init_next_nodes (vlib_main_t * vm, u32 node_index,	/* the current gr
  Return the graph node index for the feature corresponding to the
  first set bit in the bitmap.
 */
-always_inline
-  u32 feat_bitmap_get_next_node_index (u32 * next_nodes, u32 bitmap)
+always_inline u32
+feat_bitmap_get_next_node_index (u32 * next_nodes, u32 bitmap)
 {
   u32 first_bit;
 
   count_leading_zeros (first_bit, bitmap);
   first_bit = uword_bits - 1 - first_bit;
   return next_nodes[first_bit];
+}
+
+/**
+ Return the graph node index for the feature corresponding to the next
+ set bit after clearing the current feature bit in the feature_bitmap
+ of the current packet.
+*/
+always_inline u32
+vnet_l2_feature_next (vlib_buffer_t * b, u32 * next_nodes, u32 feat_bit)
+{
+  vnet_buffer (b)->l2.feature_bitmap &= ~feat_bit;
+  u32 fb = vnet_buffer (b)->l2.feature_bitmap;
+  ASSERT (fb != 0);
+  return feat_bitmap_get_next_node_index (next_nodes, fb);
 }
 
 #endif /* included_vnet_l2_feat_bitmap_h */

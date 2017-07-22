@@ -152,7 +152,6 @@ l2_input_classify_node_fn (vlib_main_t * vm,
   vnet_classify_main_t *vcm = cm->vnet_classify_main;
   l2_input_classify_runtime_t *rt =
     (l2_input_classify_runtime_t *) node->runtime_data;
-  u32 feature_bitmap;
   u32 hits = 0;
   u32 misses = 0;
   u32 chain_hits = 0;
@@ -354,13 +353,6 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 	  e0 = 0;
 	  vnet_buffer (b0)->l2_classify.opaque_index = ~0;
 
-	  /* Remove ourself from the feature bitmap */
-	  feature_bitmap = vnet_buffer (b0)->l2.feature_bitmap
-	    & ~L2INPUT_FEAT_INPUT_CLASSIFY;
-
-	  /* save for next feature graph nodes */
-	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
-
 	  if (PREDICT_TRUE (table_index0 != ~0))
 	    {
 	      hash0 = vnet_buffer (b0)->l2_classify.hash;
@@ -412,13 +404,13 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 	  if (PREDICT_FALSE (next0 == 0))
 	    b0->error = node->errors[L2_INPUT_CLASSIFY_ERROR_DROP];
 
+	  /* Determine the next node and remove ourself from bitmap */
 	  if (PREDICT_TRUE (next0 == ~0))
-	    {
-	      // Determine the next node
-	      next0 =
-		feat_bitmap_get_next_node_index (cm->feat_next_node_index,
-						 feature_bitmap);
-	    }
+	    next0 = vnet_l2_feature_next (b0, cm->l2_inp_feat_next,
+					  L2INPUT_FEAT_INPUT_CLASSIFY);
+	  else
+	    vnet_buffer (b0)->l2.feature_bitmap &=
+	      ~L2INPUT_FEAT_INPUT_CLASSIFY;
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
@@ -496,7 +488,7 @@ l2_input_classify_init (vlib_main_t * vm)
 			       l2_input_classify_node.index,
 			       L2INPUT_N_FEAT,
 			       l2input_get_feat_names (),
-			       cm->feat_next_node_index);
+			       cm->l2_inp_feat_next);
   rt->l2cm = cm;
   rt->vcm = cm->vnet_classify_main;
 
