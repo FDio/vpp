@@ -736,14 +736,9 @@ policer_classify_inline (vlib_main_t * vm,
 
 	  if (tid == POLICER_CLASSIFY_TABLE_L2)
 	    {
-	      /* Feature bitmap update */
-	      vnet_buffer (b0)->l2.feature_bitmap &=
-		~L2INPUT_FEAT_POLICER_CLAS;
-	      /* Determine the next node */
-	      next0 =
-		feat_bitmap_get_next_node_index (pcm->feat_next_node_index,
-						 vnet_buffer (b0)->
-						 l2.feature_bitmap);
+	      /* Feature bitmap update and determine the next node */
+	      next0 = vnet_l2_feature_next (b0, pcm->feat_next_node_index,
+					    L2INPUT_FEAT_POLICER_CLAS);
 	    }
 	  else
 	    vnet_get_config_data (pcm->vnet_config_main[tid],

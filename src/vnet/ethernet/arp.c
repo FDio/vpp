@@ -2291,12 +2291,8 @@ arp_term_l2bd (vlib_main_t * vm,
 
 	next_l2_feature:
 	  {
-	    u32 feature_bitmap0 =
-	      vnet_buffer (p0)->l2.feature_bitmap & ~L2INPUT_FEAT_ARP_TERM;
-	    vnet_buffer (p0)->l2.feature_bitmap = feature_bitmap0;
-	    next0 =
-	      feat_bitmap_get_next_node_index (arp_term_next_node_index,
-					       feature_bitmap0);
+	    next0 = vnet_l2_feature_next (p0, arp_term_next_node_index,
+					  L2INPUT_FEAT_ARP_TERM);
 	    vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					     to_next, n_left_to_next,
 					     pi0, next0);
