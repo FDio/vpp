@@ -52,11 +52,6 @@ typedef struct
 
 } l2_output_config_t;
 
-
-/*
- * The set of next nodes for features and interface output.
- * Each output feature node should include this.
- */
 typedef struct
 {
   /*
@@ -70,15 +65,7 @@ typedef struct
    * array of next node index for each output feature, indexed
    * by l2output_feat_t. Used to determine next feature node.
    */
-  u32 feat_next_node_index[32];
-
-} l2_output_next_nodes_st;
-
-
-typedef struct
-{
-  /* Next nodes for features and output interfaces */
-  l2_output_next_nodes_st next_nodes;
+  u32 l2_out_feat_next[32];
 
   /* config vector indexed by sw_if_index */
   l2_output_config_t *configs;
@@ -162,71 +149,6 @@ char **l2output_get_feat_names (void);
 void l2output_create_output_node_mapping (vlib_main_t * vlib_main,
 					  vnet_main_t * vnet_main,
 					  u32 sw_if_index);
-
-/** Determine the next L2 node based on the output feature bitmap */
-always_inline void
-l2_output_dispatch (vlib_main_t * vlib_main,
-		    vnet_main_t * vnet_main,
-		    vlib_node_runtime_t * node,
-		    u32 node_index,
-		    u32 * cached_sw_if_index,
-		    u32 * cached_next_index,
-		    l2_output_next_nodes_st * next_nodes,
-		    vlib_buffer_t * b0,
-		    u32 sw_if_index, u32 feature_bitmap, u32 * next0)
-{
-  /*
-   * The output feature bitmap always have at least the output feature bit set
-   * for a normal L2 interface (or all 0's if the interface is changed from L2
-   * to L3 mode). So if next_nodes specified is that from the l2-output node and
-   * the bitmap is all clear except output feature bit, we know there is no more
-   * feature and will fall through to output packet. If next_nodes is from a L2
-   * output feature node (and not l2-output), we always want to get the node for
-   * the next L2 output feature, including the last feature being interface-
-   * output node to output packet.
-   */
-  if ((next_nodes != &l2output_main.next_nodes)
-      || ((feature_bitmap & ~L2OUTPUT_FEAT_OUTPUT) != 0))
-    {
-      /* There are some features to execute */
-      ASSERT (feature_bitmap != 0);
-
-      /* Save bitmap for the next feature graph nodes */
-      vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
-
-      /* Determine the next node */
-      *next0 =
-	feat_bitmap_get_next_node_index (next_nodes->feat_next_node_index,
-					 feature_bitmap);
-    }
-  else
-    {
-      /*
-       * There are no features. Send packet to TX node for sw_if_index0
-       * This is a little tricky in that the output interface next node indexes
-       * are not precomputed at init time.
-       */
-
-      if (sw_if_index == *cached_sw_if_index)
-	{
-	  /* We hit in the one-entry cache. Use it. */
-	  *next0 = *cached_next_index;
-	}
-      else
-	{
-	  /* Look up the output TX node for the sw_if_index */
-	  *next0 = vec_elt (l2output_main.next_nodes.output_node_index_vec,
-			    sw_if_index);
-
-	  if (*next0 == L2OUTPUT_NEXT_DROP)
-	    b0->error = node->errors[L2OUTPUT_ERROR_MAPPING_DROP];
-
-	  /* Update the one-entry cache */
-	  *cached_sw_if_index = sw_if_index;
-	  *cached_next_index = *next0;
-	}
-    }
-}
 
 /** Get a pointer to the config for the given interface */
 l2_output_config_t *l2output_intf_config (u32 sw_if_index);

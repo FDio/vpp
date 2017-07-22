@@ -931,7 +931,6 @@ acl_fa_node_fn (vlib_main_t * vm,
   u32 pkts_acl_permit = 0;
   u32 pkts_restart_session_timer = 0;
   u32 trace_bitmap = 0;
-  u32 feature_bitmap0;
   acl_main_t *am = &acl_main;
   fa_5tuple_t fa_5tuple, kv_sess;
   clib_bihash_kv_40_8_t value_sess;
@@ -977,8 +976,6 @@ acl_fa_node_fn (vlib_main_t * vm,
 	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  else
 	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-	  if (is_l2_path)
-	    feature_bitmap0 = vnet_buffer (b0)->l2.feature_bitmap;
 
 	  /*
 	   * Extract the L3/L4 matching info into a 5-tuple structure,
@@ -1089,9 +1086,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  if (action > 0)
 	    {
 	      if (is_l2_path)
-		next0 =
-		  feat_bitmap_get_next_node_index (l2_feat_next_node_index,
-						   feature_bitmap0);
+		next0 = vnet_l2_feature_next (b0, l2_feat_next_node_index, 0);
 	      else
 		vnet_feature_next (sw_if_index0, &next0, b0);
 	    }

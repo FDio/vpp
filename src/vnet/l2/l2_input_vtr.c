@@ -111,7 +111,6 @@ l2_invtr_node_fn (vlib_main_t * vm,
 	  vlib_buffer_t *b0, *b1;
 	  u32 next0, next1;
 	  u32 sw_if_index0, sw_if_index1;
-	  u32 feature_bitmap0, feature_bitmap1;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -160,23 +159,11 @@ l2_invtr_node_fn (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_RX];
 
-	  /* process 2 packets */
-
-	  /* Remove ourself from the feature bitmap */
-	  feature_bitmap0 =
-	    vnet_buffer (b0)->l2.feature_bitmap & ~L2INPUT_FEAT_VTR;
-	  feature_bitmap1 =
-	    vnet_buffer (b1)->l2.feature_bitmap & ~L2INPUT_FEAT_VTR;
-
-	  /* save for next feature graph nodes */
-	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap0;
-	  vnet_buffer (b1)->l2.feature_bitmap = feature_bitmap1;
-
 	  /* Determine the next node */
-	  next0 = feat_bitmap_get_next_node_index (msm->feat_next_node_index,
-						   feature_bitmap0);
-	  next1 = feat_bitmap_get_next_node_index (msm->feat_next_node_index,
-						   feature_bitmap1);
+	  next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
+					L2INPUT_FEAT_VTR);
+	  next1 = vnet_l2_feature_next (b1, msm->feat_next_node_index,
+					L2INPUT_FEAT_VTR);
 
 	  l2_output_config_t *config0;
 	  l2_output_config_t *config1;
@@ -264,7 +251,6 @@ l2_invtr_node_fn (vlib_main_t * vm,
 	  vlib_buffer_t *b0;
 	  u32 next0;
 	  u32 sw_if_index0;
-	  u32 feature_bitmap0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -278,18 +264,9 @@ l2_invtr_node_fn (vlib_main_t * vm,
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 
-	  /* process 1 packet */
-
-	  /* Remove ourself from the feature bitmap */
-	  feature_bitmap0 =
-	    vnet_buffer (b0)->l2.feature_bitmap & ~L2INPUT_FEAT_VTR;
-
-	  /* save for next feature graph nodes */
-	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap0;
-
 	  /* Determine the next node */
-	  next0 = feat_bitmap_get_next_node_index (msm->feat_next_node_index,
-						   feature_bitmap0);
+	  next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
+					L2INPUT_FEAT_VTR);
 
 	  l2_output_config_t *config0;
 	  config0 = vec_elt_at_index (l2output_main.configs, sw_if_index0);

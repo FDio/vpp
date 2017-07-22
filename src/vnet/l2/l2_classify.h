@@ -68,14 +68,12 @@ typedef enum
 
 typedef struct _l2_classify_main
 {
-  /* Next nodes for each feature */
-  u32 feat_next_node_index[32];
+  /* Next nodes for L2 input and output features */
+  u32 l2_inp_feat_next[32];
+  u32 l2_out_feat_next[32];
 
   /* Per-address-family classifier table vectors */
   u32 *classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_N_TABLES];
-
-  /* Next nodes for features and output interfaces */
-  l2_output_next_nodes_st next_nodes;
 
   /* convenience variables */
   vlib_main_t *vlib_main;

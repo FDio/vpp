@@ -116,19 +116,9 @@ l2learn_process (vlib_node_runtime_t * node,
 		 u32 * bucket0,
 		 l2fib_entry_result_t * result0, u32 * next0, u8 timestamp)
 {
-  u32 feature_bitmap;
-
   /* Set up the default next node (typically L2FWD) */
-
-  /* Remove ourself from the feature bitmap */
-  feature_bitmap = vnet_buffer (b0)->l2.feature_bitmap & ~L2INPUT_FEAT_LEARN;
-
-  /* Save for next feature graph nodes */
-  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap;
-
-  /* Determine the next node */
-  *next0 = feat_bitmap_get_next_node_index (msm->feat_next_node_index,
-					    feature_bitmap);
+  *next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
+				 L2INPUT_FEAT_LEARN);
 
   /* Check mac table lookup result */
   if (PREDICT_TRUE (result0->fields.sw_if_index == sw_if_index0))
