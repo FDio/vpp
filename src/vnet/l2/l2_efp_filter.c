@@ -43,9 +43,8 @@
  */
 typedef struct
 {
-
-  /* Next nodes for features and output interfaces */
-  l2_output_next_nodes_st next_nodes;
+  /* Next nodes for L2 output features */
+  u32 l2_out_feat_next[32];
 
   /* convenience variables */
   vlib_main_t *vlib_main;
@@ -180,11 +179,6 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
   vlib_node_t *n = vlib_get_node (vm, l2_efp_filter_node.index);
   u32 node_counter_base_index = n->error_heap_index;
   vlib_error_main_t *em = &vm->error_main;
-  u32 cached_sw_if_index = ~0;
-  u32 cached_next_index = ~0;
-
-  /* invalidate cache to begin with */
-  cached_sw_if_index = ~0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
@@ -203,7 +197,6 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 	  vlib_buffer_t *b0, *b1;
 	  u32 next0, next1;
 	  u32 sw_if_index0, sw_if_index1;
-	  u32 feature_bitmap0, feature_bitmap1;
 	  u16 first_ethertype0, first_ethertype1;
 	  u16 outer_id0, inner_id0, outer_id1, inner_id1;
 	  u32 match_flags0, match_flags1;
@@ -267,29 +260,11 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 	  em->counters[node_counter_base_index +
 		       L2_EFP_FILTER_ERROR_L2_EFP_FILTER] += 2;
 
-	  /* Remove ourself from the feature bitmap */
-	  feature_bitmap0 =
-	    vnet_buffer (b0)->l2.feature_bitmap & ~L2OUTPUT_FEAT_EFP_FILTER;
-	  feature_bitmap1 =
-	    vnet_buffer (b1)->l2.feature_bitmap & ~L2OUTPUT_FEAT_EFP_FILTER;
-
 	  /* Determine next node */
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2_efp_filter_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b0, sw_if_index0, feature_bitmap0, &next0);
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2_efp_filter_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b1, sw_if_index1, feature_bitmap1, &next1);
+	  next0 = vnet_l2_feature_next (b0, msm->l2_out_feat_next,
+					L2OUTPUT_FEAT_EFP_FILTER);
+	  next1 = vnet_l2_feature_next (b1, msm->l2_out_feat_next,
+					L2OUTPUT_FEAT_EFP_FILTER);
 
 	  /* perform the efp filter check on two packets */
 
@@ -394,7 +369,6 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 	  vlib_buffer_t *b0;
 	  u32 next0;
 	  u32 sw_if_index0;
-	  u32 feature_bitmap0;
 	  u16 first_ethertype0;
 	  u16 outer_id0, inner_id0;
 	  u32 match_flags0;
@@ -422,19 +396,9 @@ l2_efp_filter_node_fn (vlib_main_t * vm,
 	  em->counters[node_counter_base_index +
 		       L2_EFP_FILTER_ERROR_L2_EFP_FILTER] += 1;
 
-	  /* Remove ourself from the feature bitmap */
-	  feature_bitmap0 =
-	    vnet_buffer (b0)->l2.feature_bitmap & ~L2OUTPUT_FEAT_EFP_FILTER;
-
 	  /* Determine next node */
-	  l2_output_dispatch (msm->vlib_main,
-			      msm->vnet_main,
-			      node,
-			      l2_efp_filter_node.index,
-			      &cached_sw_if_index,
-			      &cached_next_index,
-			      &msm->next_nodes,
-			      b0, sw_if_index0, feature_bitmap0, &next0);
+	  next0 = vnet_l2_feature_next (b0, msm->l2_out_feat_next,
+					L2OUTPUT_FEAT_EFP_FILTER);
 
 	  /* perform the efp filter check on one packet */
 
@@ -528,7 +492,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2_efp_filter_node, l2_efp_filter_node_fn)
 			       l2_efp_filter_node.index,
 			       L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
-			       mp->next_nodes.feat_next_node_index);
+			       mp->l2_out_feat_next);
 
   return 0;
 }

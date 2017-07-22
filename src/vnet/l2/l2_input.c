@@ -115,10 +115,7 @@ typedef enum
 
 
 static_always_inline void
-classify_and_dispatch (vlib_main_t * vm,
-		       vlib_node_runtime_t * node,
-		       u32 thread_index,
-		       l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
+classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
 {
   /*
    * Load L2 input feature struct
@@ -187,12 +184,7 @@ classify_and_dispatch (vlib_main_t * vm,
     }
 
 
-  if (config->xconnect)
-    {
-      /* Set the output interface */
-      vnet_buffer (b0)->sw_if_index[VLIB_TX] = config->output_sw_if_index;
-    }
-  else
+  if (config->bridge)
     {
       /* Do bridge-domain processing */
       bd_index0 = config->bd_index;
@@ -220,6 +212,13 @@ classify_and_dispatch (vlib_main_t * vm,
        */
       feat_mask = feat_mask & bd_config->feature_bitmap;
     }
+  else if (config->xconnect)
+    {
+      /* Set the output interface */
+      vnet_buffer (b0)->sw_if_index[VLIB_TX] = config->output_sw_if_index;
+    }
+  else
+    feat_mask = L2INPUT_FEAT_DROP;
 
   /* mask out features from bitmap using packet type and bd config */
   feature_bitmap = config->feature_bitmap & feat_mask;
@@ -240,7 +239,6 @@ l2input_node_inline (vlib_main_t * vm,
   u32 n_left_from, *from, *to_next;
   l2input_next_t next_index;
   l2input_main_t *msm = &l2input_main;
-  u32 thread_index = vlib_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
@@ -353,10 +351,10 @@ l2input_node_inline (vlib_main_t * vm,
 	  vlib_node_increment_counter (vm, l2input_node.index,
 				       L2INPUT_ERROR_L2INPUT, 4);
 
-	  classify_and_dispatch (vm, node, thread_index, msm, b0, &next0);
-	  classify_and_dispatch (vm, node, thread_index, msm, b1, &next1);
-	  classify_and_dispatch (vm, node, thread_index, msm, b2, &next2);
-	  classify_and_dispatch (vm, node, thread_index, msm, b3, &next3);
+	  classify_and_dispatch (msm, b0, &next0);
+	  classify_and_dispatch (msm, b1, &next1);
+	  classify_and_dispatch (msm, b2, &next2);
+	  classify_and_dispatch (msm, b3, &next3);
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
@@ -396,7 +394,7 @@ l2input_node_inline (vlib_main_t * vm,
 	  vlib_node_increment_counter (vm, l2input_node.index,
 				       L2INPUT_ERROR_L2INPUT, 1);
 
-	  classify_and_dispatch (vm, node, thread_index, msm, b0, &next0);
+	  classify_and_dispatch (msm, b0, &next0);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -574,8 +572,8 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
     }
 
   /* Make sure vector is big enough */
-  vec_validate_init_empty (l2om->next_nodes.output_node_index_vec,
-			   sw_if_index, L2OUTPUT_NEXT_DROP);
+  vec_validate_init_empty (l2om->output_node_index_vec, sw_if_index,
+			   L2OUTPUT_NEXT_DROP);
 
   /* Initialize the l2-input configuration for the interface */
   if (mode == MODE_L3)
@@ -594,8 +592,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 
       /* Make sure any L2-output packet to this interface now in L3 mode is
        * dropped. This may happen if L2 FIB MAC entry is stale */
-      l2om->next_nodes.output_node_index_vec[sw_if_index] =
-	L2OUTPUT_NEXT_BAD_INTF;
+      l2om->output_node_index_vec[sw_if_index] = L2OUTPUT_NEXT_BAD_INTF;
     }
   else
     {

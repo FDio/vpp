@@ -179,8 +179,8 @@ l2_rw_node_fn (vlib_main_t * vm,
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-	  u32 bi0, next0, sw_if_index0, feature_bitmap0, rwe_index0;
-	  u32 bi1, next1, sw_if_index1, feature_bitmap1, rwe_index1;
+	  u32 bi0, next0, sw_if_index0, rwe_index0;
+	  u32 bi1, next1, sw_if_index1, rwe_index1;
 	  vlib_buffer_t *b0, *b1;
 	  ethernet_header_t *h0, *h1;
 	  l2_rw_config_t *config0, *config1;
@@ -273,16 +273,10 @@ l2_rw_node_fn (vlib_main_t * vm,
 	    }
 
 	  /* Update feature bitmap and get next feature index */
-	  feature_bitmap0 =
-	    vnet_buffer (b0)->l2.feature_bitmap & ~L2INPUT_FEAT_RW;
-	  feature_bitmap1 =
-	    vnet_buffer (b1)->l2.feature_bitmap & ~L2INPUT_FEAT_RW;
-	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap0;
-	  vnet_buffer (b1)->l2.feature_bitmap = feature_bitmap1;
-	  next0 = feat_bitmap_get_next_node_index (rw->feat_next_node_index,
-						   feature_bitmap0);
-	  next1 = feat_bitmap_get_next_node_index (rw->feat_next_node_index,
-						   feature_bitmap1);
+	  next0 = vnet_l2_feature_next (b0, rw->feat_next_node_index,
+					L2INPUT_FEAT_RW);
+	  next1 = vnet_l2_feature_next (b1, rw->feat_next_node_index,
+					L2INPUT_FEAT_RW);
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -291,7 +285,7 @@ l2_rw_node_fn (vlib_main_t * vm,
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
-	  u32 bi0, next0, sw_if_index0, feature_bitmap0, rwe_index0;
+	  u32 bi0, next0, sw_if_index0, rwe_index0;
 	  vlib_buffer_t *b0;
 	  ethernet_header_t *h0;
 	  l2_rw_config_t *config0;
@@ -341,11 +335,8 @@ l2_rw_node_fn (vlib_main_t * vm,
 	    }
 
 	  /* Update feature bitmap and get next feature index */
-	  feature_bitmap0 =
-	    vnet_buffer (b0)->l2.feature_bitmap & ~L2INPUT_FEAT_RW;
-	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap0;
-	  next0 = feat_bitmap_get_next_node_index (rw->feat_next_node_index,
-						   feature_bitmap0);
+	  next0 = vnet_l2_feature_next (b0, rw->feat_next_node_index,
+					L2INPUT_FEAT_RW);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,

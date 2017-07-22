@@ -144,14 +144,11 @@ l2_output_classify_node_fn (vlib_main_t * vm,
   vnet_classify_main_t *vcm = cm->vnet_classify_main;
   l2_output_classify_runtime_t *rt =
     (l2_output_classify_runtime_t *) node->runtime_data;
-  u32 feature_bitmap0;
   u32 hits = 0;
   u32 misses = 0;
   u32 chain_hits = 0;
   f64 now;
   u32 n_next_nodes;
-  u32 cached_sw_if_index = (u32) ~ 0;
-  u32 cached_next_index = (u32) ~ 0;
   u32 sw_if_index0;
 
   n_next_nodes = node->n_next_nodes;
@@ -347,12 +344,6 @@ l2_output_classify_node_fn (vlib_main_t * vm,
 	  table_index0 = vnet_buffer (b0)->l2_classify.table_index;
 	  e0 = 0;
 	  vnet_buffer (b0)->l2_classify.opaque_index = ~0;
-	  /* Remove ourself from the feature bitmap */
-	  feature_bitmap0 = vnet_buffer (b0)->l2.feature_bitmap
-	    & ~L2OUTPUT_FEAT_OUTPUT_CLASSIFY;
-
-	  /* save for next feature graph nodes */
-	  vnet_buffer (b0)->l2.feature_bitmap = feature_bitmap0;
 
 	  if (PREDICT_TRUE (table_index0 != ~0))
 	    {
@@ -405,20 +396,13 @@ l2_output_classify_node_fn (vlib_main_t * vm,
 	  if (PREDICT_FALSE (next0 == 0))
 	    b0->error = node->errors[L2_OUTPUT_CLASSIFY_ERROR_DROP];
 
+	  /* Determine the next node and remove ourself from bitmap */
 	  if (PREDICT_FALSE (next0 == ~0))
-	    {
-	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
-
-	      /* Determine next node */
-	      l2_output_dispatch (cm->vlib_main,
-				  cm->vnet_main,
-				  node,
-				  l2_output_classify_node.index,
-				  &cached_sw_if_index,
-				  &cached_next_index,
-				  &cm->next_nodes,
-				  b0, sw_if_index0, feature_bitmap0, &next0);
-	    }
+	    next0 = vnet_l2_feature_next (b0, cm->l2_out_feat_next,
+					  L2OUTPUT_FEAT_OUTPUT_CLASSIFY);
+	  else
+	    vnet_buffer (b0)->l2.feature_bitmap &=
+	      ~L2OUTPUT_FEAT_OUTPUT_CLASSIFY;
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
@@ -493,7 +477,7 @@ l2_output_classify_init (vlib_main_t * vm)
 			       l2_output_classify_node.index,
 			       L2OUTPUT_N_FEAT,
 			       l2output_get_feat_names (),
-			       cm->next_nodes.feat_next_node_index);
+			       cm->l2_out_feat_next);
   rt->l2cm = cm;
   rt->vcm = cm->vnet_classify_main;
 
