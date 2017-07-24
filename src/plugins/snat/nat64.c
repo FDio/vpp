@@ -118,6 +118,9 @@ nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add)
       if (!a)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
+      if (a->fib_index)
+	fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP6);
+
 #define _(N, id, n, s) \
       clib_bitmap_free (a->busy_##n##_port_bitmap);
       foreach_snat_protocol
