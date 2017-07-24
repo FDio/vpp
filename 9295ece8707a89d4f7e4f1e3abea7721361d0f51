@@ -16,6 +16,24 @@
       "revId": "9295ece8707a89d4f7e4f1e3abea7721361d0f51",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_71f8b1e5",
+        "filename": "src/vpp/conf/startup.conf",
+        "patchSetId": 2
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-24T23:14:49Z",
+      "side": 1,
+      "message": "These are DPDK EAL parameters and DPDK document used eth_bondN format in their doc example. I suspect any name would be OK as long as it does not conflict with another one. These are device names known to DPDK and would not affect VPP as VPP uses bonded interface driver name (not device name) to detect bonded interface on startup.",
+      "parentUuid": "7a51691d_11905d94",
+      "revId": "9295ece8707a89d4f7e4f1e3abea7721361d0f51",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
