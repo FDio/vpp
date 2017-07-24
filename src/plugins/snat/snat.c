@@ -165,7 +165,11 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id)
 
   vec_add2 (sm->addresses, ap, 1);
   ap->addr = *addr;
-  ap->fib_index = ip4_fib_index_from_table_id(vrf_id);
+  if (vrf_id != ~0)
+    ap->fib_index =
+      fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id);
+  else
+    ap->fib_index = ~0;
 #define _(N, i, n, s) \
   clib_bitmap_alloc (ap->busy_##n##_port_bitmap, 65535);
   foreach_snat_protocol
@@ -630,6 +634,9 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
           return VNET_API_ERROR_UNSPECIFIED;
         }
     }
+
+  if (a->fib_index != ~0)
+    fib_table_unlock(a->fib_index, FIB_PROTOCOL_IP4);
 
   /* Delete sessions using address */
   if (a->busy_tcp_ports || a->busy_udp_ports || a->busy_icmp_ports)
