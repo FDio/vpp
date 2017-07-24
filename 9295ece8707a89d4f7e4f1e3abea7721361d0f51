@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_11905d94",
+        "filename": "src/vpp/conf/startup.conf",
+        "patchSetId": 2
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-07-24T22:39:50Z",
+      "side": 1,
+      "message": "Hmmm. I found that \"vdev net_bonding,mode\u003d2,...\" works. Is that wrong in some way?",
+      "revId": "9295ece8707a89d4f7e4f1e3abea7721361d0f51",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
