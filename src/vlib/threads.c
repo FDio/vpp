@@ -642,7 +642,8 @@ start_workers (vlib_main_t * vm)
 		}
 	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL] =
 		vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL]);
-	      vec_foreach (rt, nm_clone->nodes_by_type[VLIB_NODE_TYPE_INPUT])
+	      vec_foreach (rt,
+			   nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
 	      {
 		vlib_node_t *n = vlib_get_node (vm, rt->node_index);
 		rt->thread_index = vm_clone->thread_index;
