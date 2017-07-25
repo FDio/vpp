@@ -207,9 +207,7 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_SYN_SENT:
-      /* XXX remove sst from call */
-      stream_session_connect_notify (&tc->connection, tc->connection.proto,
-				     1 /* fail */ );
+      stream_session_connect_notify (&tc->connection, 1 /* fail */);
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_ESTABLISHED:
@@ -1057,16 +1055,12 @@ void
 tcp_timer_establish_handler (u32 conn_index)
 {
   tcp_connection_t *tc;
-  u8 sst;
 
   tc = tcp_half_open_connection_get (conn_index);
   tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
 
   ASSERT (tc->state == TCP_STATE_SYN_SENT);
-
-  sst = tc->c_is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
-  stream_session_connect_notify (&tc->connection, sst, 1 /* fail */ );
-
+  stream_session_connect_notify (&tc->connection, 1 /* fail */ );
   tcp_connection_cleanup (tc);
 }
 

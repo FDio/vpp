@@ -1819,7 +1819,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_main_t *tm = vnet_get_tcp_main ();
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index, errors = 0;
-  u8 sst = is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -1980,8 +1979,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* Notify app that we have connection. If session layer can't
 	       * allocate session send reset */
-	      if (stream_session_connect_notify (&new_tc0->connection, sst,
-						 0))
+	      if (stream_session_connect_notify (&new_tc0->connection, 0))
 		{
 		  tcp_connection_cleanup (new_tc0);
 		  tcp_send_reset (tc0, b0, is_ip4);
@@ -2002,8 +2000,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      new_tc0->state = TCP_STATE_SYN_RCVD;
 
 	      /* Notify app that we have connection */
-	      if (stream_session_connect_notify
-		  (&new_tc0->connection, sst, 0))
+	      if (stream_session_connect_notify (&new_tc0->connection, 0))
 		{
 		  tcp_connection_cleanup (new_tc0);
 		  tcp_send_reset (tc0, b0, is_ip4);
