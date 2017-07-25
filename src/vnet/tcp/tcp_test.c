@@ -1574,7 +1574,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tc->connection.rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x06000103);
   tc->connection.lcl_port = 35051;
   tc->connection.rmt_port = 53764;
-  tc->connection.proto = 0;
+  tc->connection.transport_proto = 0;
   clib_memcpy (tc1, &tc->connection, sizeof (*tc1));
 
   pool_get (session_manager_main.sessions[0], s);
@@ -1590,7 +1590,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tc->connection.rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x06000102);
   tc->connection.lcl_port = 38225;
   tc->connection.rmt_port = 53764;
-  tc->connection.proto = 0;
+  tc->connection.transport_proto = 0;
   clib_memcpy (tc2, &tc->connection, sizeof (*tc2));
 
   /*
@@ -1601,7 +1601,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tconn = stream_session_lookup_transport_wt4 (&tc1->lcl_ip.ip4,
 					       &tc1->rmt_ip.ip4,
 					       tc1->lcl_port, tc1->rmt_port,
-					       tc1->proto, 0);
+					       tc1->transport_proto, 0);
   cmp = (memcmp (&tconn->rmt_ip, &tc1->rmt_ip, sizeof (tc1->rmt_ip)) == 0);
   TCP_TEST ((cmp), "rmt ip is identical %d", cmp);
   TCP_TEST ((tconn->lcl_port == tc1->lcl_port),
@@ -1614,7 +1614,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tconn = stream_session_lookup_transport_wt4 (&tc2->lcl_ip.ip4,
 					       &tc2->rmt_ip.ip4,
 					       tc2->lcl_port, tc2->rmt_port,
-					       tc2->proto, 0);
+					       tc2->transport_proto, 0);
   TCP_TEST ((tconn == 0), "lookup result should be null");
 
   /*
@@ -1624,12 +1624,12 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tconn = stream_session_lookup_transport_wt4 (&tc1->lcl_ip.ip4,
 					       &tc1->rmt_ip.ip4,
 					       tc1->lcl_port, tc1->rmt_port,
-					       tc1->proto, 0);
+					       tc1->transport_proto, 0);
   TCP_TEST ((tconn == 0), "lookup result should be null");
   tconn = stream_session_lookup_transport_wt4 (&tc2->lcl_ip.ip4,
 					       &tc2->rmt_ip.ip4,
 					       tc2->lcl_port, tc2->rmt_port,
-					       tc2->proto, 0);
+					       tc2->transport_proto, 0);
   TCP_TEST ((tconn == 0), "lookup result should be null");
 
   /*
@@ -1639,7 +1639,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tconn = stream_session_lookup_transport_wt4 (&tc2->lcl_ip.ip4,
 					       &tc2->rmt_ip.ip4,
 					       tc2->lcl_port, tc2->rmt_port,
-					       tc2->proto, 0);
+					       tc2->transport_proto, 0);
   TCP_TEST ((tconn == 0), "lookup result should be null");
 
   return 0;

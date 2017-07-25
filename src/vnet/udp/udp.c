@@ -34,7 +34,7 @@ udp_session_bind_ip4 (u32 session_index, transport_endpoint_t * lcl)
   memset (listener, 0, sizeof (udp_connection_t));
   listener->c_lcl_port = clib_host_to_net_u16 (lcl->port);
   listener->c_lcl_ip4.as_u32 = lcl->ip.ip4.as_u32;
-  listener->c_proto = SESSION_TYPE_IP4_UDP;
+  listener->c_transport_proto = TRANSPORT_PROTO_UDP;
   udp_register_dst_port (um->vlib_main, lcl->port, udp4_uri_input_node.index,
 			 1 /* is_ipv4 */ );
   return 0;
@@ -49,7 +49,7 @@ udp_session_bind_ip6 (u32 session_index, transport_endpoint_t * lcl)
   pool_get (um->udp_listeners, listener);
   listener->c_lcl_port = clib_host_to_net_u16 (lcl->port);
   clib_memcpy (&listener->c_lcl_ip6, &lcl->ip.ip6, sizeof (ip6_address_t));
-  listener->c_proto = SESSION_TYPE_IP6_UDP;
+  listener->c_transport_proto = TRANSPORT_PROTO_UDP;
   udp_register_dst_port (um->vlib_main, lcl->port,
 			 udp4_uri_input_node.index, 0 /* is_ipv4 */ );
   return 0;
@@ -318,8 +318,8 @@ udp_init (vlib_main_t * vm)
 
 
   /* Register as transport with URI */
-  session_register_transport (SESSION_TYPE_IP4_UDP, &udp4_proto);
-  session_register_transport (SESSION_TYPE_IP6_UDP, &udp6_proto);
+  session_register_transport (TRANSPORT_PROTO_UDP, 1, &udp4_proto);
+  session_register_transport (TRANSPORT_PROTO_UDP, 0, &udp6_proto);
 
   /*
    * Initialize data structures

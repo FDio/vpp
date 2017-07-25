@@ -67,7 +67,7 @@ void transport_endpoint_table_add (transport_endpoint_table_t * ht,
 void transport_endpoint_table_del (transport_endpoint_table_t * ht,
 				   transport_endpoint_t * te);
 
-void session_register_transport (u8 session_type,
+void session_register_transport (transport_proto_t transport_proto, u8 is_ip4,
 				 const transport_proto_vft_t * vft);
 transport_proto_vft_t *session_get_transport_vft (u8 session_type);
 
