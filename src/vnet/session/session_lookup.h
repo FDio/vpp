@@ -83,9 +83,8 @@ transport_connection_t *stream_session_half_open_lookup (ip46_address_t * lcl,
 void stream_session_table_add_for_tc (transport_connection_t * tc, u64 value);
 int stream_session_table_del_for_tc (transport_connection_t * tc);
 int stream_session_table_del (stream_session_t * s);
-void stream_session_half_open_table_del (u8 sst, transport_connection_t * tc);
-void stream_session_half_open_table_add (session_type_t sst,
-					 transport_connection_t * tc,
+void stream_session_half_open_table_del (transport_connection_t * tc);
+void stream_session_half_open_table_add (transport_connection_t * tc,
 					 u64 value);
 
 void session_lookup_init (void);
