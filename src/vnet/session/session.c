@@ -354,8 +354,7 @@ stream_session_init_fifos_pointers (transport_connection_t * tc,
 }
 
 int
-stream_session_connect_notify (transport_connection_t * tc, u8 sst,
-			       u8 is_fail)
+stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
 {
   application_t *app;
   stream_session_t *new_s = 0;
@@ -406,7 +405,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
     }
 
   /* Cleanup session lookup */
-  stream_session_half_open_table_del (sst, tc);
+  stream_session_half_open_table_del (tc);
 
   return error;
 }
@@ -567,7 +566,7 @@ stream_session_open (u32 app_index, session_type_t st,
   handle = (((u64) app_index) << 32) | (u64) tc->c_index;
 
   /* Add to the half-open lookup table */
-  stream_session_half_open_table_add (st, tc, handle);
+  stream_session_half_open_table_add (tc, handle);
 
   *res = tc;
 
