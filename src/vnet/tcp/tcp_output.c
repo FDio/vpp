@@ -1087,14 +1087,13 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   if (is_syn)
     {
       tc = tcp_half_open_connection_get (index);
+      tc->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
     }
   else
     {
       tc = tcp_connection_get (index, thread_index);
+      tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
     }
-
-  /* Make sure timer handle is set to invalid */
-  tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
 
   if (!tcp_in_recovery (tc) && tc->rto_boff > 0
       && tc->state >= TCP_STATE_ESTABLISHED)
@@ -1154,6 +1153,20 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   /* Retransmit for SYN/SYNACK */
   else if (tc->state == TCP_STATE_SYN_RCVD || tc->state == TCP_STATE_SYN_SENT)
     {
+      /* Half-open connection actually moved to established but we were
+       * waiting for syn retransmit to pop to call cleanup from the right
+       * thread. */
+      if (tc->flags & TCP_CONN_HALF_OPEN_DONE)
+	{
+	  ASSERT (tc->state == TCP_STATE_SYN_SENT);
+	  if (tcp_half_open_connection_cleanup (tc))
+	    {
+	      clib_warning ("could not remove half-open connection");
+	      ASSERT (0);
+	    }
+	  return;
+	}
+
       /* Try without increasing RTO a number of times. If this fails,
        * start growing RTO exponentially */
       if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
