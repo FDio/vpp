@@ -376,6 +376,12 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
       break;
     }
 
+  if (CLIB_DEBUG)
+    {
+      f->master_session_index = ~0;
+      f->master_thread_index = ~0;
+    }
+
   ssvm_pop_heap (oldheap);
   ssvm_unlock_non_recursive (sh);
 }
