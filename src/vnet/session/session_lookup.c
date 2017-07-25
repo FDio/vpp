@@ -164,23 +164,17 @@ stream_session_table_add_for_tc (transport_connection_t * tc, u64 value)
   session_kv4_t kv4;
   session_kv6_t kv6;
 
-  switch (tc->proto)
+  if (tc->is_ip4)
     {
-    case SESSION_TYPE_IP4_UDP:
-    case SESSION_TYPE_IP4_TCP:
       make_v4_ss_kv_from_tc (&kv4, tc);
       kv4.value = value;
       clib_bihash_add_del_16_8 (&sl->v4_session_hash, &kv4, 1 /* is_add */ );
-      break;
-    case SESSION_TYPE_IP6_UDP:
-    case SESSION_TYPE_IP6_TCP:
+    }
+  else
+    {
       make_v6_ss_kv_from_tc (&kv6, tc);
       kv6.value = value;
       clib_bihash_add_del_48_8 (&sl->v6_session_hash, &kv6, 1 /* is_add */ );
-      break;
-    default:
-      clib_warning ("Session type not supported");
-      ASSERT (0);
     }
 }
 
@@ -203,25 +197,19 @@ stream_session_half_open_table_add (session_type_t sst,
   session_kv4_t kv4;
   session_kv6_t kv6;
 
-  switch (sst)
+  if (tc->is_ip4)
     {
-    case SESSION_TYPE_IP4_UDP:
-    case SESSION_TYPE_IP4_TCP:
       make_v4_ss_kv_from_tc (&kv4, tc);
       kv4.value = value;
       clib_bihash_add_del_16_8 (&sl->v4_half_open_hash, &kv4,
 				1 /* is_add */ );
-      break;
-    case SESSION_TYPE_IP6_UDP:
-    case SESSION_TYPE_IP6_TCP:
+    }
+  else
+    {
       make_v6_ss_kv_from_tc (&kv6, tc);
       kv6.value = value;
       clib_bihash_add_del_48_8 (&sl->v6_half_open_hash, &kv6,
 				1 /* is_add */ );
-      break;
-    default:
-      clib_warning ("Session type not supported");
-      ASSERT (0);
     }
 }
 
@@ -231,23 +219,18 @@ stream_session_table_del_for_tc (transport_connection_t * tc)
   session_lookup_t *sl = &session_lookup;
   session_kv4_t kv4;
   session_kv6_t kv6;
-  switch (tc->proto)
+
+  if (tc->is_ip4)
     {
-    case SESSION_TYPE_IP4_UDP:
-    case SESSION_TYPE_IP4_TCP:
       make_v4_ss_kv_from_tc (&kv4, tc);
       return clib_bihash_add_del_16_8 (&sl->v4_session_hash, &kv4,
 				       0 /* is_add */ );
-      break;
-    case SESSION_TYPE_IP6_UDP:
-    case SESSION_TYPE_IP6_TCP:
+    }
+  else
+    {
       make_v6_ss_kv_from_tc (&kv6, tc);
       return clib_bihash_add_del_48_8 (&sl->v6_session_hash, &kv6,
 				       0 /* is_add */ );
-      break;
-    default:
-      clib_warning ("Session type not supported");
-      ASSERT (0);
     }
 
   return 0;
@@ -263,29 +246,23 @@ stream_session_table_del (stream_session_t * s)
 }
 
 void
-stream_session_half_open_table_del (u8 sst, transport_connection_t * tc)
+stream_session_half_open_table_del (transport_connection_t * tc)
 {
   session_lookup_t *sl = &session_lookup;
   session_kv4_t kv4;
   session_kv6_t kv6;
 
-  switch (sst)
+  if (tc->is_ip4)
     {
-    case SESSION_TYPE_IP4_UDP:
-    case SESSION_TYPE_IP4_TCP:
       make_v4_ss_kv_from_tc (&kv4, tc);
       clib_bihash_add_del_16_8 (&sl->v4_half_open_hash, &kv4,
 				0 /* is_add */ );
-      break;
-    case SESSION_TYPE_IP6_UDP:
-    case SESSION_TYPE_IP6_TCP:
+    }
+  else
+    {
       make_v6_ss_kv_from_tc (&kv6, tc);
       clib_bihash_add_del_48_8 (&sl->v6_half_open_hash, &kv6,
 				0 /* is_add */ );
-      break;
-    default:
-      clib_warning ("Session type not supported");
-      ASSERT (0);
     }
 }
 
