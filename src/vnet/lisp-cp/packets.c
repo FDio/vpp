@@ -167,6 +167,8 @@ pkt_push_ip (vlib_main_t * vm, vlib_buffer_t * b, ip_address_t * src,
   return 0;
 }
 
+#define UDP_CHECKSUM_OFFLOAD 1
+
 void *
 pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
 		     ip_address_t * sip, ip_address_t * dip)
@@ -179,14 +181,24 @@ pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
 
   ih = pkt_push_ip (vm, b, sip, dip, IP_PROTOCOL_UDP);
 
-  udpsum = udp_checksum (uh, clib_net_to_host_u16 (uh->length), ih,
-			 ip_addr_version (sip));
-  if (udpsum == (u16) ~ 0)
+  if (UDP_CHECKSUM_OFFLOAD)
     {
-      clib_warning ("Failed UDP checksum! Discarding");
-      return 0;
+      b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+      vnet_buffer (b)->l3_hdr_offset = (u8 *) ih - b->data;
+      vnet_buffer (b)->l4_hdr_offset = (u8 *) uh - b->data;
+      uh->checksum = 0;
     }
-  uh->checksum = udpsum;
+  else
+    {
+      udpsum = udp_checksum (uh, clib_net_to_host_u16 (uh->length), ih,
+			     ip_addr_version (sip));
+      if (udpsum == (u16) ~ 0)
+	{
+	  clib_warning ("Failed UDP checksum! Discarding");
+	  return 0;
+	}
+      uh->checksum = udpsum;
+    }
   return ih;
 }
 
