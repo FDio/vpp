@@ -46,6 +46,24 @@
 #define TCP_BUILTIN_CLIENT_DBG (0)
 
 static void
+signal_evt_to_cli_i (int *code)
+{
+  tclient_main_t *tm = &tclient_main;
+  ASSERT (vlib_get_thread_index () == 0);
+  vlib_process_signal_event (tm->vlib_main, tm->cli_node_index, *code, 0);
+}
+
+static void
+signal_evt_to_cli (int code)
+{
+  if (vlib_get_thread_index () != 0)
+    vl_api_rpc_call_main_thread (signal_evt_to_cli_i, (u8 *) &code,
+				 sizeof(code));
+  else
+    signal_evt_to_cli_i (&code);
+}
+
+static void
 send_test_chunk (tclient_main_t * tm, session_t * s)
 {
   u8 *test_data = tm->connect_test_data;
@@ -112,14 +130,16 @@ receive_test_chunk (tclient_main_t * tm, session_t * s)
 {
   svm_fifo_t *rx_fifo = s->server_rx_fifo;
   int n_read, test_bytes = 0;
+  u32 my_thread_index = vlib_get_thread_index();
 
   /* Allow enqueuing of new event */
   // svm_fifo_unset_event (rx_fifo);
 
   if (test_bytes)
     {
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, vec_len (tm->rx_buf),
-					tm->rx_buf);
+      n_read = svm_fifo_dequeue_nowait (rx_fifo, 
+                                        vec_len (tm->rx_buf[my_thread_index]),
+					tm->rx_buf[my_thread_index]);
     }
   else
     {
@@ -151,10 +171,12 @@ receive_test_chunk (tclient_main_t * tm, session_t * s)
 	  int i;
 	  for (i = 0; i < n_read; i++)
 	    {
-	      if (tm->rx_buf[i] != ((s->bytes_received + i) & 0xff))
+	      if (tm->rx_buf[my_thread_index][i] 
+                  != ((s->bytes_received + i) & 0xff))
 		{
 		  clib_warning ("read %d error at byte %lld, 0x%x not 0x%x",
-				n_read, s->bytes_received + i, tm->rx_buf[i],
+				n_read, s->bytes_received + i, 
+                                tm->rx_buf[my_thread_index][i],
 				((s->bytes_received + i) & 0xff));
 		}
 	    }
@@ -247,7 +269,11 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (s)
 	    {
-	      stream_session_disconnect (s);
+	      vnet_disconnect_args_t _a, *a = &_a;
+	      a->handle = stream_session_handle (s);
+	      a->app_index = tm->app_index;
+	      vnet_disconnect_session (a);
+
 	      vec_delete (connections_this_batch, 1, i);
 	      i--;
 	      __sync_fetch_and_add (&tm->ready_connections, -1);
@@ -259,8 +285,7 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tm->ready_connections == 0)
 	    {
 	      tm->test_end_time = vlib_time_now (vm);
-	      vlib_process_signal_event (vm, tm->cli_node_index,
-					 2, 0 /* data */ );
+	      signal_evt_to_cli (2);
 	    }
 	}
     }
@@ -285,11 +310,9 @@ VLIB_REGISTER_NODE (builtin_client_node) =
 static void
 vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
 {
-  vlib_main_t *vm = vlib_get_main ();
   tclient_main_t *tm = &tclient_main;
   tm->my_client_index = mp->index;
-  vlib_process_signal_event (vm, tm->cli_node_index, 1 /* evt */ ,
-			     0 /* data */ );
+  signal_evt_to_cli (1);
 }
 
 static int
@@ -370,22 +393,26 @@ tcp_test_clients_init (vlib_main_t * vm)
 {
   tclient_main_t *tm = &tclient_main;
   vlib_thread_main_t *thread_main = vlib_get_thread_main ();
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads;
   int i;
 
   tclient_api_hookup (vm);
   if (create_api_loopback (tm))
     return -1;
 
+  num_threads = 1 /* main thread */  + vtm->n_threads;
+
   /* Init test data. Big buffer */
   vec_validate (tm->connect_test_data, 1024 * 1024 - 1);
   for (i = 0; i < vec_len (tm->connect_test_data); i++)
     tm->connect_test_data[i] = i & 0xff;
 
-  tm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
-  vec_validate (tm->rx_buf, vec_len (tm->connect_test_data) - 1);
+  vec_validate (tm->rx_buf, num_threads - 1);
+  for (i = 0; i < num_threads; i++)
+    vec_validate (tm->rx_buf[i], vec_len (tm->connect_test_data) - 1);
 
   tm->is_init = 1;
-  tm->vlib_main = vm;
 
   vec_validate (tm->connection_index_by_thread, thread_main->n_vlib_mains);
   vec_validate (tm->connections_this_batch_by_thread,
@@ -400,14 +427,15 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
   tclient_main_t *tm = &tclient_main;
   session_t *session;
   u32 session_index;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads = 1 /* main thread */  + vtm->n_threads;
   int i;
 
   if (is_fail)
     {
       clib_warning ("connection %d failed!", api_context);
-      vlib_process_signal_event (tm->vlib_main, tm->cli_node_index, -1,
-				 0 /* data */ );
-      return -1;
+      signal_evt_to_cli (-1);
+      return 0;
     }
 
   tm->our_event_queue = session_manager_get_vpp_event_queue (s->thread_index);
@@ -427,22 +455,19 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
   session->server_tx_fifo->client_session_index = session_index;
   session->vpp_session_handle = stream_session_handle (s);
 
-  /* Add it to the session lookup table */
-  hash_set (tm->session_index_by_vpp_handles, session->vpp_session_handle,
-	    session_index);
-
   if (tm->ready_connections == tm->expected_connections - 1)
     {
       vlib_thread_main_t *thread_main = vlib_get_thread_main ();
       int thread_index;
 
-      thread_index = 0;
+      thread_index = (num_threads > 1) ? 1 : 0;
+
       for (i = 0; i < pool_elts (tm->sessions); i++)
 	{
 	  vec_add1 (tm->connection_index_by_thread[thread_index], i);
 	  thread_index++;
 	  if (thread_index == thread_main->n_vlib_mains)
-	    thread_index = 0;
+            thread_index = (num_threads > 1) ? 1 : 0;
 	}
     }
   __sync_fetch_and_add (&tm->ready_connections, 1);
@@ -451,8 +476,7 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
       tm->run_test = 1;
       tm->test_start_time = vlib_time_now (tm->vlib_main);
       /* Signal the CLI process that the action is starting... */
-      vlib_process_signal_event (tm->vlib_main, tm->cli_node_index, 1,
-				 0 /* data */ );
+      signal_evt_to_cli (1);
     }
 
   return 0;
@@ -606,6 +630,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   tm->connections_per_batch = 1000;
   tm->private_segment_count = 0;
   tm->private_segment_size = 0;
+  tm->vlib_main = vm;
 
   vec_free (tm->connect_uri);
 
@@ -688,7 +713,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   clients_connect (vm, uri, n_clients);
 
   /* Park until the sessions come up, or ten seconds elapse... */
-  vlib_process_wait_for_event_or_clock (vm, 10.0 /* timeout, seconds */ );
+  vlib_process_wait_for_event_or_clock (vm, 10 /* timeout, seconds */ );
   event_type = vlib_process_get_events (vm, &event_data);
 
   switch (event_type)
@@ -753,6 +778,7 @@ cleanup:
       vec_reset_length (tm->connection_index_by_thread[i]);
       vec_reset_length (tm->connections_this_batch_by_thread[i]);
     }
+
   pool_free (tm->sessions);
 
   return 0;
