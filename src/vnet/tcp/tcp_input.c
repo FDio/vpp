@@ -1819,7 +1819,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_main_t *tm = vnet_get_tcp_main ();
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index, errors = 0;
-  u8 sst = is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -1936,10 +1935,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tcp_options_parse (tcp0, &tc0->rcv_opts))
 	    goto drop;
 
-	  /* Stop connection establishment and retransmit timers */
-	  tcp_timer_reset (tc0, TCP_TIMER_ESTABLISH);
-	  tcp_timer_reset (tc0, TCP_TIMER_RETRANSMIT_SYN);
-
 	  /* Valid SYN or SYN-ACK. Move connection from half-open pool to
 	   * current thread pool. */
 	  pool_get (tm->connections[my_thread_index], new_tc0);
@@ -1948,7 +1943,13 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  new_tc0->c_thread_index = my_thread_index;
 	  new_tc0->rcv_nxt = vnet_buffer (b0)->tcp.seq_end;
 	  new_tc0->irs = seq0;
-	  tcp_half_open_connection_del (tc0);
+	  new_tc0->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
+	  new_tc0->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
+
+	  /* If this is not the owning thread, wait for syn retransmit to
+	   * expire and cleanup then */
+	  if (tcp_half_open_connection_cleanup (tc0))
+	    tc0->flags |= TCP_CONN_HALF_OPEN_DONE;
 
 	  if (tcp_opts_tstamp (&new_tc0->rcv_opts))
 	    {
@@ -1980,11 +1981,10 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* Notify app that we have connection. If session layer can't
 	       * allocate session send reset */
-	      if (stream_session_connect_notify (&new_tc0->connection, sst,
-						 0))
+	      if (stream_session_connect_notify (&new_tc0->connection, 0))
 		{
+		  tcp_send_reset (new_tc0, b0, is_ip4);
 		  tcp_connection_cleanup (new_tc0);
-		  tcp_send_reset (tc0, b0, is_ip4);
 		  goto drop;
 		}
 
@@ -2002,8 +2002,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      new_tc0->state = TCP_STATE_SYN_RCVD;
 
 	      /* Notify app that we have connection */
-	      if (stream_session_connect_notify
-		  (&new_tc0->connection, sst, 0))
+	      if (stream_session_connect_notify (&new_tc0->connection, 0))
 		{
 		  tcp_connection_cleanup (new_tc0);
 		  tcp_send_reset (tc0, b0, is_ip4);
