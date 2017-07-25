@@ -64,7 +64,8 @@ stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
   s->server_tx_fifo = server_tx_fifo;
 
   /* Initialize state machine, such as it is... */
-  s->session_type = tc->proto;
+  s->session_type = session_type_from_proto_and_ip (tc->transport_proto,
+						    tc->is_ip4);
   s->session_state = SESSION_STATE_CONNECTING;
   s->svm_segment_index = fifo_segment_index;
   s->thread_index = thread_index;
@@ -354,8 +355,7 @@ stream_session_init_fifos_pointers (transport_connection_t * tc,
 }
 
 int
-stream_session_connect_notify (transport_connection_t * tc, u8 sst,
-			       u8 is_fail)
+stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
 {
   application_t *app;
   stream_session_t *new_s = 0;
@@ -365,7 +365,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
 
   handle = stream_session_half_open_lookup_handle (&tc->lcl_ip, &tc->rmt_ip,
 						   tc->lcl_port, tc->rmt_port,
-						   tc->proto);
+						   tc->transport_proto);
   if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
       clib_warning ("This can't be good!");
@@ -391,7 +391,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
 	new_s->app_index = app->index;
     }
 
-  /* Notify client */
+  /* Notify client application */
   if (app->cb_fns.session_connected_callback (app->index, api_context, new_s,
 					      is_fail))
     {
@@ -406,7 +406,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 sst,
     }
 
   /* Cleanup session lookup */
-  stream_session_half_open_table_del (sst, tc);
+  stream_session_half_open_table_del (tc);
 
   return error;
 }
@@ -567,7 +567,7 @@ stream_session_open (u32 app_index, session_type_t st,
   handle = (((u64) app_index) << 32) | (u64) tc->c_index;
 
   /* Add to the half-open lookup table */
-  stream_session_half_open_table_add (st, tc, handle);
+  stream_session_half_open_table_add (tc, handle);
 
   *res = tc;
 

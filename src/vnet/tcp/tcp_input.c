@@ -1724,9 +1724,13 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       * in CLOSE-WAIT, set timer (reuse WAITCLOSE). */
 	      tc0->state = TCP_STATE_CLOSE_WAIT;
 	      TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc0);
-	      tc0->rcv_nxt += (vnet_buffer (b0)->tcp.data_len == 0);
+	      if (vnet_buffer (b0)->tcp.data_len == 0)
+		{
+		  tc0->rcv_nxt += 1;
+		  next0 = TCP_ESTABLISHED_NEXT_DROP;
+		}
 	      stream_session_disconnect_notify (&tc0->connection);
-	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
 	    }
 
 	done:
@@ -1819,7 +1823,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_main_t *tm = vnet_get_tcp_main ();
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index, errors = 0;
-  u8 sst = is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -1936,10 +1939,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (tcp_options_parse (tcp0, &tc0->rcv_opts))
 	    goto drop;
 
-	  /* Stop connection establishment and retransmit timers */
-	  tcp_timer_reset (tc0, TCP_TIMER_ESTABLISH);
-	  tcp_timer_reset (tc0, TCP_TIMER_RETRANSMIT_SYN);
-
 	  /* Valid SYN or SYN-ACK. Move connection from half-open pool to
 	   * current thread pool. */
 	  pool_get (tm->connections[my_thread_index], new_tc0);
@@ -1948,7 +1947,14 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  new_tc0->c_thread_index = my_thread_index;
 	  new_tc0->rcv_nxt = vnet_buffer (b0)->tcp.seq_end;
 	  new_tc0->irs = seq0;
-	  tcp_half_open_connection_del (tc0);
+	  new_tc0->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
+	  new_tc0->timers[TCP_TIMER_RETRANSMIT_SYN] =
+	    TCP_TIMER_HANDLE_INVALID;
+
+	  /* If this is not the owning thread, wait for syn retransmit to
+	   * expire and cleanup then */
+	  if (tcp_half_open_connection_cleanup (tc0))
+	    tc0->flags |= TCP_CONN_HALF_OPEN_DONE;
 
 	  if (tcp_opts_tstamp (&new_tc0->rcv_opts))
 	    {
@@ -1980,11 +1986,10 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* Notify app that we have connection. If session layer can't
 	       * allocate session send reset */
-	      if (stream_session_connect_notify (&new_tc0->connection, sst,
-						 0))
+	      if (stream_session_connect_notify (&new_tc0->connection, 0))
 		{
+		  tcp_send_reset (new_tc0, b0, is_ip4);
 		  tcp_connection_cleanup (new_tc0);
-		  tcp_send_reset (tc0, b0, is_ip4);
 		  goto drop;
 		}
 
@@ -2002,8 +2007,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      new_tc0->state = TCP_STATE_SYN_RCVD;
 
 	      /* Notify app that we have connection */
-	      if (stream_session_connect_notify
-		  (&new_tc0->connection, sst, 0))
+	      if (stream_session_connect_notify (&new_tc0->connection, 0))
 		{
 		  tcp_connection_cleanup (new_tc0);
 		  tcp_send_reset (tc0, b0, is_ip4);
@@ -2250,6 +2254,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (tc0->snd_una == tc0->snd_una_max)
 		{
 		  ASSERT (tcp_fin (tcp0));
+		  tc0->rcv_nxt += 1;
 		  tc0->state = TCP_STATE_FIN_WAIT_2;
 		  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
 
@@ -2263,6 +2268,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       * acknowledged ("ok") but do not delete the TCB. */
 	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
 		goto drop;
+
 	      /* check if rtx queue is empty and ack CLOSE TODO */
 	      break;
 	    case TCP_STATE_CLOSE_WAIT:
@@ -2384,7 +2390,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* Got FIN, send ACK! */
 	      tc0->state = TCP_STATE_TIME_WAIT;
 	      tcp_connection_timers_reset (tc0);
-	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
 	      tcp_make_ack (tc0, b0);
 	      next0 = tcp_next_output (is_ip4);
 	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
@@ -2745,7 +2751,7 @@ tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
       if ((tmp =
 	   stream_session_half_open_lookup (&tc->c_lcl_ip, &tc->c_rmt_ip,
 					    tc->c_lcl_port, tc->c_rmt_port,
-					    tc->c_proto)))
+					    tc->c_transport_proto)))
 	{
 	  if (tmp->lcl_port == hdr->dst_port
 	      && tmp->rmt_port == hdr->src_port)

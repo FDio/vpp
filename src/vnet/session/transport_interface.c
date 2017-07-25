@@ -73,9 +73,12 @@ transport_endpoint_table_del (transport_endpoint_table_t * ht,
  * @param vft - virtual function table
  */
 void
-session_register_transport (u8 session_type,
+session_register_transport (transport_proto_t transport_proto, u8 is_ip4,
 			    const transport_proto_vft_t * vft)
 {
+  u8 session_type;
+  session_type = session_type_from_proto_and_ip (transport_proto, is_ip4);
+
   vec_validate (tp_vfts, session_type);
   tp_vfts[session_type] = *vft;
 

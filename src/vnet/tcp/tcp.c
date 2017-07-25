@@ -37,15 +37,14 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
     {
       listener->c_lcl_ip4.as_u32 = lcl->ip.ip4.as_u32;
       listener->c_is_ip4 = 1;
-      listener->c_proto = SESSION_TYPE_IP4_TCP;
     }
   else
     {
       clib_memcpy (&listener->c_lcl_ip6, &lcl->ip.ip6,
 		   sizeof (ip6_address_t));
-      listener->c_proto = SESSION_TYPE_IP6_TCP;
-    }
 
+    }
+  listener->c_transport_proto = TRANSPORT_PROTO_TCP;
   listener->c_s_index = session_index;
   listener->state = TCP_STATE_LISTEN;
 
@@ -95,6 +94,71 @@ tcp_session_get_listener (u32 listener_index)
   return &tc->connection;
 }
 
+always_inline void
+transport_endpoint_del (u32 tepi)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  clib_spinlock_lock_if_init (&tm->local_endpoints_lock);
+  pool_put_index (tm->local_endpoints, tepi);
+  clib_spinlock_unlock_if_init (&tm->local_endpoints_lock);
+}
+
+always_inline transport_endpoint_t *
+transport_endpoint_new (void)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  transport_endpoint_t *tep;
+  pool_get (tm->local_endpoints, tep);
+  return tep;
+}
+
+/**
+ * Cleanup half-open connection
+ *
+ */
+void
+tcp_half_open_connection_del (tcp_connection_t * tc)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  clib_spinlock_lock_if_init (&tm->half_open_lock);
+  pool_put_index (tm->half_open_connections, tc->c_c_index);
+  if (CLIB_DEBUG)
+    memset (tc, 0xFA, sizeof (*tc));
+  clib_spinlock_unlock_if_init (&tm->half_open_lock);
+}
+
+/**
+ * Try to cleanup half-open connection
+ *
+ * If called from a thread that doesn't own tc, the call won't have any
+ * effect.
+ *
+ * @param tc - connection to be cleaned up
+ * @return non-zero if cleanup failed.
+ */
+int
+tcp_half_open_connection_cleanup (tcp_connection_t * tc)
+{
+  /* Make sure this is the owning thread */
+  if (tc->c_thread_index != vlib_get_thread_index ())
+    return 1;
+  tcp_timer_reset (tc, TCP_TIMER_ESTABLISH);
+  tcp_timer_reset (tc, TCP_TIMER_RETRANSMIT_SYN);
+  tcp_half_open_connection_del (tc);
+  return 0;
+}
+
+tcp_connection_t *
+tcp_half_open_connection_new (void)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tcp_connection_t *tc = 0;
+  pool_get (tm->half_open_connections, tc);
+  memset (tc, 0, sizeof (*tc));
+  tc->c_c_index = tc - tm->half_open_connections;
+  return tc;
+}
+
 /**
  * Cleans up connection state.
  *
@@ -110,26 +174,28 @@ tcp_connection_cleanup (tcp_connection_t * tc)
   /* Cleanup local endpoint if this was an active connect */
   tepi = transport_endpoint_lookup (&tm->local_endpoints_table, &tc->c_lcl_ip,
 				    tc->c_lcl_port);
-
-  /*XXX lock */
   if (tepi != TRANSPORT_ENDPOINT_INVALID_INDEX)
     {
       tep = pool_elt_at_index (tm->local_endpoints, tepi);
       transport_endpoint_table_del (&tm->local_endpoints_table, tep);
-      pool_put (tm->local_endpoints, tep);
+      transport_endpoint_del (tepi);
     }
 
-  /* Make sure all timers are cleared */
-  tcp_connection_timers_reset (tc);
-
-  /* Check if half-open */
+  /* Check if connection is not yet fully established */
   if (tc->state == TCP_STATE_SYN_SENT)
     {
-      tcp_half_open_connection_del (tc);
+      /* Try to remove the half-open connection. If this is not the owning
+       * thread, tc won't be removed. Retransmit or establish timers will
+       * eventually expire and call again cleanup on the right thread. */
+      tcp_half_open_connection_cleanup (tc);
     }
   else
     {
       int thread_index = tc->c_thread_index;
+
+      /* Make sure all timers are cleared */
+      tcp_connection_timers_reset (tc);
+
       /* Poison the entry */
       if (CLIB_DEBUG > 0)
 	memset (tc, 0xFA, sizeof (*tc));
@@ -150,32 +216,6 @@ tcp_connection_del (tcp_connection_t * tc)
   TCP_EVT_DBG (TCP_EVT_DELETE, tc);
   stream_session_delete_notify (&tc->connection);
   tcp_connection_cleanup (tc);
-}
-
-/**
- * Cleanup half-open connection
- */
-void
-tcp_half_open_connection_del (tcp_connection_t * tc)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  if (CLIB_DEBUG)
-    memset (tc, 0xFA, sizeof (*tc));
-  clib_spinlock_lock_if_init (&tm->half_open_lock);
-  pool_put (tm->half_open_connections, tc);
-  clib_spinlock_unlock_if_init (&tm->half_open_lock);
-}
-
-tcp_connection_t *
-tcp_half_open_connection_new ()
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  tcp_connection_t *tc = 0;
-  clib_spinlock_lock_if_init (&tm->half_open_lock);
-  pool_get (tm->half_open_connections, tc);
-  clib_spinlock_unlock_if_init (&tm->half_open_lock);
-  memset (tc, 0, sizeof (*tc));
-  return tc;
 }
 
 tcp_connection_t *
@@ -207,9 +247,7 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_SYN_SENT:
-      /* XXX remove sst from call */
-      stream_session_connect_notify (&tc->connection, tc->connection.proto,
-				     1 /* fail */ );
+      stream_session_connect_notify (&tc->connection, 1 /* fail */ );
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_ESTABLISHED:
@@ -225,7 +263,7 @@ tcp_connection_reset (tcp_connection_t * tc)
       stream_session_reset_notify (&tc->connection);
 
       /* Wait for cleanup from session layer but not forever */
-      tcp_timer_set (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
       break;
     case TCP_STATE_CLOSED:
       return;
@@ -325,8 +363,9 @@ ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
  * table to mark the pair as used.
  */
 int
-tcp_allocate_local_port (tcp_main_t * tm, ip46_address_t * ip)
+tcp_allocate_local_port (ip46_address_t * ip)
 {
+  tcp_main_t *tm = vnet_get_tcp_main ();
   transport_endpoint_t *tep;
   u32 time_now, tei;
   u16 min = 1024, max = 65535;	/* XXX configurable ? */
@@ -337,10 +376,6 @@ tcp_allocate_local_port (tcp_main_t * tm, ip46_address_t * ip)
 
   /* Only support active opens from thread 0 */
   ASSERT (vlib_get_thread_index () == 0);
-
-  /* Start at random point or max */
-  pool_get (tm->local_endpoints, tep);
-  clib_memcpy (&tep->ip, ip, sizeof (*ip));
 
   /* Search for first free slot */
   for (; tries >= 0; tries--)
@@ -355,21 +390,22 @@ tcp_allocate_local_port (tcp_main_t * tm, ip46_address_t * ip)
 	    break;
 	}
 
-      tep->port = port;
-
       /* Look it up */
-      tei = transport_endpoint_lookup (&tm->local_endpoints_table, &tep->ip,
-				       tep->port);
+      tei = transport_endpoint_lookup (&tm->local_endpoints_table, ip, port);
       /* If not found, we're done */
       if (tei == TRANSPORT_ENDPOINT_INVALID_INDEX)
 	{
+	  clib_spinlock_lock_if_init (&tm->local_endpoints_lock);
+	  tep = transport_endpoint_new ();
+	  clib_memcpy (&tep->ip, ip, sizeof (*ip));
+	  tep->port = port;
 	  transport_endpoint_table_add (&tm->local_endpoints_table, tep,
 					tep - tm->local_endpoints);
+	  clib_spinlock_unlock_if_init (&tm->local_endpoints_lock);
+
 	  return tep->port;
 	}
     }
-  /* No free ports */
-  pool_put (tm->local_endpoints, tep);
   return -1;
 }
 
@@ -592,7 +628,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
     }
 
   /* Allocate source port */
-  lcl_port = tcp_allocate_local_port (tm, &lcl_addr);
+  lcl_port = tcp_allocate_local_port (&lcl_addr);
   if (lcl_port < 1)
     {
       clib_warning ("Failed to allocate src port");
@@ -602,16 +638,14 @@ tcp_connection_open (transport_endpoint_t * rmt)
   /*
    * Create connection and send SYN
    */
-
+  clib_spinlock_lock_if_init (&tm->half_open_lock);
   tc = tcp_half_open_connection_new ();
-
   clib_memcpy (&tc->c_rmt_ip, &rmt->ip, sizeof (ip46_address_t));
   clib_memcpy (&tc->c_lcl_ip, &lcl_addr, sizeof (ip46_address_t));
   tc->c_rmt_port = clib_host_to_net_u16 (rmt->port);
   tc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
-  tc->c_c_index = tc - tm->half_open_connections;
   tc->c_is_ip4 = rmt->is_ip4;
-  tc->c_proto = rmt->is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
+  tc->c_transport_proto = TRANSPORT_PROTO_TCP;
   tc->c_vrf = rmt->vrf;
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
@@ -619,6 +653,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
   TCP_EVT_DBG (TCP_EVT_OPEN, tc);
   tc->state = TCP_STATE_SYN_SENT;
   tcp_send_syn (tc);
+  clib_spinlock_unlock_if_init (&tm->half_open_lock);
 
   return tc->c_c_index;
 }
@@ -1057,16 +1092,12 @@ void
 tcp_timer_establish_handler (u32 conn_index)
 {
   tcp_connection_t *tc;
-  u8 sst;
 
   tc = tcp_half_open_connection_get (conn_index);
   tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
 
   ASSERT (tc->state == TCP_STATE_SYN_SENT);
-
-  sst = tc->c_is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
-  stream_session_connect_notify (&tc->connection, sst, 1 /* fail */ );
-
+  stream_session_connect_notify (&tc->connection, 1 /* fail */ );
   tcp_connection_cleanup (tc);
 }
 
@@ -1077,6 +1108,8 @@ tcp_timer_waitclose_handler (u32 conn_index)
   tcp_connection_t *tc;
 
   tc = tcp_connection_get (conn_index, thread_index);
+  if (!tc)
+    return;
   tc->timers[TCP_TIMER_WAITCLOSE] = TCP_TIMER_HANDLE_INVALID;
 
   /* Session didn't come back with a close(). Send FIN either way
@@ -1180,8 +1213,8 @@ tcp_main_enable (vlib_main_t * vm)
   ip4_register_protocol (IP_PROTOCOL_TCP, tcp4_input_node.index);
 
   /* Register as transport with session layer */
-  session_register_transport (SESSION_TYPE_IP4_TCP, &tcp_proto);
-  session_register_transport (SESSION_TYPE_IP6_TCP, &tcp_proto);
+  session_register_transport (TRANSPORT_PROTO_TCP, 1, &tcp_proto);
+  session_register_transport (TRANSPORT_PROTO_TCP, 0, &tcp_proto);
 
   /*
    * Initialize data structures
@@ -1227,7 +1260,10 @@ tcp_main_enable (vlib_main_t * vm)
 			 200000 /* $$$$ config parameter nbuckets */ ,
 			 (64 << 20) /*$$$ config parameter table size */ );
   if (num_threads > 1)
-    clib_spinlock_init (&tm->half_open_lock);
+    {
+      clib_spinlock_init (&tm->half_open_lock);
+      clib_spinlock_init (&tm->local_endpoints_lock);
+    }
   return error;
 }
 

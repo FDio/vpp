@@ -179,7 +179,7 @@ udp4_uri_input_node_fn (vlib_main_t * vm,
 	      us->c_rmt_ip4.as_u32 = ip0->src_address.as_u32;
 	      us->c_lcl_port = udp0->dst_port;
 	      us->c_rmt_port = udp0->src_port;
-	      us->c_proto = SESSION_TYPE_IP4_UDP;
+	      us->c_transport_proto = TRANSPORT_PROTO_UDP;
 	      us->c_c_index = us - um->udp_sessions[my_thread_index];
 
 	      /*
