@@ -70,9 +70,9 @@ typedef struct
   /*
    * Test state variables
    */
-  session_t *sessions;			/**< Sessions pool */
-  u8 *rx_buf;				/**< intermediate rx buffer */
-  uword *session_index_by_vpp_handles;	/**< Hash table for disconnecting */
+  session_t *sessions;			/**< Session pool, shared */
+  clib_spinlock_t sessions_lock;
+  u8 **rx_buf;				/**< intermediate rx buffers */
   u8 *connect_test_data;		/**< Pre-computed test data */
   u32 **connection_index_by_thread;
   u32 **connections_this_batch_by_thread; /**< active connection batch */

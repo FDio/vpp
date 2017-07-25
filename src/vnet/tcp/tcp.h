@@ -115,7 +115,8 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
   _(SENT_RCV_WND0, "Sent 0 receive window")     \
   _(RECOVERY, "Recovery on")                    \
   _(FAST_RECOVERY, "Fast Recovery on")		\
-  _(FR_1_SMSS, "Sent 1 SMSS")
+  _(FR_1_SMSS, "Sent 1 SMSS")			\
+  _(HALF_OPEN_DONE, "Half-open completed")
 
 typedef enum _tcp_connection_flag_bits
 {
@@ -381,6 +382,7 @@ typedef struct _tcp_main
 
   /* Local endpoints lookup table */
   transport_endpoint_table_t local_endpoints_table;
+  clib_spinlock_t local_endpoints_lock;
 
   /* Congestion control algorithms registered */
   tcp_cc_algorithm_t *cc_algos;
@@ -430,7 +432,8 @@ clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
 always_inline tcp_connection_t *
 tcp_connection_get (u32 conn_index, u32 thread_index)
 {
-  if (pool_is_free_index (tcp_main.connections[thread_index], conn_index))
+  if (PREDICT_FALSE
+      (pool_is_free_index (tcp_main.connections[thread_index], conn_index)))
     return 0;
   return pool_elt_at_index (tcp_main.connections[thread_index], conn_index);
 }
@@ -454,7 +457,7 @@ tcp_get_connection_from_transport (transport_connection_t * tconn)
 void tcp_connection_close (tcp_connection_t * tc);
 void tcp_connection_cleanup (tcp_connection_t * tc);
 void tcp_connection_del (tcp_connection_t * tc);
-void tcp_half_open_connection_del (tcp_connection_t * tc);
+int tcp_half_open_connection_cleanup (tcp_connection_t * tc);
 tcp_connection_t *tcp_connection_new (u8 thread_index);
 void tcp_connection_reset (tcp_connection_t * tc);
 
@@ -473,9 +476,12 @@ tcp_listener_get (u32 tli)
 always_inline tcp_connection_t *
 tcp_half_open_connection_get (u32 conn_index)
 {
-  if (pool_is_free_index (tcp_main.half_open_connections, conn_index))
-    return 0;
-  return pool_elt_at_index (tcp_main.half_open_connections, conn_index);
+  tcp_connection_t *tc = 0;
+  clib_spinlock_lock_if_init (&tcp_main.half_open_lock);
+  if (!pool_is_free_index (tcp_main.half_open_connections, conn_index))
+    tc = pool_elt_at_index (tcp_main.half_open_connections, conn_index);
+  clib_spinlock_unlock_if_init (&tcp_main.half_open_lock);
+  return tc;
 }
 
 void tcp_make_ack (tcp_connection_t * ts, vlib_buffer_t * b);
