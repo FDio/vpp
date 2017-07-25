@@ -48,8 +48,7 @@ typedef struct
    * Application setup parameters
    */
   unix_shared_memory_queue_t *vl_input_queue;	/**< vpe input queue */
-  unix_shared_memory_queue_t *our_event_queue;	/**< Our event queue */
-  unix_shared_memory_queue_t *vpp_event_queue;	/**< $$$ single thread */
+  unix_shared_memory_queue_t **vpp_event_queue;
 
   u32 cli_node_index;			/**< cli process node index */
   u32 my_client_index;			/**< loopback API client handle */
@@ -70,9 +69,9 @@ typedef struct
   /*
    * Test state variables
    */
-  session_t *sessions;			/**< Sessions pool */
-  u8 *rx_buf;				/**< intermediate rx buffer */
-  uword *session_index_by_vpp_handles;	/**< Hash table for disconnecting */
+  session_t *sessions;			/**< Session pool, shared */
+  clib_spinlock_t sessions_lock;
+  u8 **rx_buf;				/**< intermediate rx buffers */
   u8 *connect_test_data;		/**< Pre-computed test data */
   u32 **connection_index_by_thread;
   u32 **connections_this_batch_by_thread; /**< active connection batch */

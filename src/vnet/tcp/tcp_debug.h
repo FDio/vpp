@@ -19,9 +19,9 @@
 #include <vlib/vlib.h>
 
 #define TCP_DEBUG (1)
-#define TCP_DEBUG_SM (2)
-#define TCP_DEBUG_CC (0)
-#define TCP_DEBUG_CC_STAT (0)
+#define TCP_DEBUG_SM (0)
+#define TCP_DEBUG_CC (1)
+#define TCP_DEBUG_CC_STAT (1)
 
 #define foreach_tcp_dbg_evt		\
   _(INIT, "")				\
@@ -375,6 +375,7 @@ typedef enum _tcp_dbg_evt
 }
 
 #else
+#define TCP_EVT_SYN_RCVD_HANDLER(_tc, ...)
 #define TCP_EVT_SYN_SENT_HANDLER(_tc, ...)
 #define TCP_EVT_SYNACK_SENT_HANDLER(_tc, ...)
 #define TCP_EVT_SYNACK_RCVD_HANDLER(_tc, ...)
