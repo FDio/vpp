@@ -67,6 +67,29 @@
       "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_743adf37",
+        "filename": "src/vnet/span/span.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-25T16:12:20Z",
+      "side": 1,
+      "message": "There was a recent merged patch to allow SPAN to be an L2 feature which also allow destination ports to be a VLAN sub-interface,  VXLAN tunnel or GRE tunnel in L2 mode. This is not correct anymore and is causing merge conflict.",
+      "range": {
+        "startLine": 40,
+        "startChar": 21,
+        "endLine": 40,
+        "endChar": 52
+      },
+      "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
