@@ -277,6 +277,8 @@ lb_node_fn (vlib_main_t * vm,
 	    ip40->dst_address = lbm->ass[asindex0].address.ip4;
 	    ip40->ip_version_and_header_length = 0x45;
 	    ip40->ttl = 128;
+	    ip40->fragment_id = 0;
+	    ip40->flags_and_fragment_offset = 0;
 	    ip40->length = clib_host_to_net_u16(len0 + sizeof(gre_header_t) + sizeof(ip4_header_t));
 	    ip40->protocol = IP_PROTOCOL_GRE;
 	    ip40->checksum = ip4_header_checksum (ip40);
