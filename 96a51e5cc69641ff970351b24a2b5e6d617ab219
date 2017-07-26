@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7a51691d_ea726648",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-26T16:31:27Z",
+      "side": 1,
+      "message": "The interface bitmap needs to be bitwise-AND\u0027ed with BD feature bitmap if it is configured for bridging. Otherwise, it mat be mis-leading. One feature that is enabled by default on interface and disabled on BD is arp-termination.",
+      "range": {
+        "startLine": 269,
+        "startChar": 43,
+        "endLine": 269,
+        "endChar": 45
+      },
+      "revId": "96a51e5cc69641ff970351b24a2b5e6d617ab219",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
