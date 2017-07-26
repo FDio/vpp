@@ -23,6 +23,12 @@
 #include <vnet/mpls/packet.h>
 
 /**
+ * Keep a lock per-source and a total
+ */
+#define FIB_TABLE_N_LOCKS (FIB_SOURCE_MAX+1)
+#define FIB_TABLE_TOTAL_LOCKS FIB_SOURCE_MAX
+
+/**
  * @brief 
  *   A protocol Independent FIB table
  */
@@ -34,9 +40,9 @@ typedef struct fib_table_t_
     fib_protocol_t ft_proto;
 
     /**
-     * number of locks on the table
+     * per-source number of locks on the table
      */
-    u16 ft_locks;
+    u16 ft_locks[FIB_TABLE_N_LOCKS];
 
     /**
      * Table ID (hash key) for this FIB.
@@ -628,9 +634,13 @@ extern u32 fib_table_find(fib_protocol_t proto, u32 table_id);
  *
  * @return fib_index
  *  The index of the FIB
+ *
+ * @param source
+ *  The ID of the client/source.
  */
 extern u32 fib_table_find_or_create_and_lock(fib_protocol_t proto,
-					     u32 table_id);
+					     u32 table_id,
+                                             fib_source_t source);
 
 /**
  * @brief
@@ -643,10 +653,14 @@ extern u32 fib_table_find_or_create_and_lock(fib_protocol_t proto,
  * @param fmt
  *  A string to describe the table
  *
+ * @param source
+ *  The ID of the client/source.
+ *
  * @return fib_index
  *  The index of the FIB
  */
 extern u32 fib_table_create_and_lock(fib_protocol_t proto,
+                                     fib_source_t source,
                                      const char *const fmt,
                                      ...);
 
@@ -704,9 +718,13 @@ extern void fib_table_set_flow_hash_config(u32 fib_index,
  *
  * @paran proto
  *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @param source
+ *  The ID of the client/source.
  */ 
 extern void fib_table_unlock(u32 fib_index,
-			     fib_protocol_t proto);
+			     fib_protocol_t proto,
+                             fib_source_t source);
 
 /**
  * @brief
@@ -718,9 +736,13 @@ extern void fib_table_unlock(u32 fib_index,
  *
  * @paran proto
  *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @param source
+ *  The ID of the client/source.
  */ 
 extern void fib_table_lock(u32 fib_index,
-			   fib_protocol_t proto);
+			   fib_protocol_t proto,
+                           fib_source_t source);
 
 /**
  * @brief

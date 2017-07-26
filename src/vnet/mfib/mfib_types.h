@@ -166,9 +166,10 @@ typedef enum mfib_source_t_
     MFIB_SOURCE_VXLAN,
     MFIB_SOURCE_DHCP,
     MFIB_SOURCE_SRv6,
-    MFIB_SOURCE_DEFAULT_ROUTE,
     MFIB_SOURCE_GTPU,
     MFIB_SOURCE_VXLAN_GPE,
+    MFIB_SOURCE_RR,
+    MFIB_SOURCE_DEFAULT_ROUTE,
 } mfib_source_t;
 
 #define MFIB_SOURCE_NAMES {                        \
@@ -178,10 +179,13 @@ typedef enum mfib_source_t_
     [MFIB_SOURCE_DHCP] = "DHCP",                   \
     [MFIB_SOURCE_VXLAN] = "VXLAN",                 \
     [MFIB_SOURCE_SRv6] = "SRv6",                   \
-    [MFIB_SOURCE_DEFAULT_ROUTE] = "Default Route", \
     [MFIB_SOURCE_GTPU] = "GTPU",                   \
     [MFIB_SOURCE_VXLAN_GPE] = "VXLAN-GPE",         \
+    [MFIB_SOURCE_RR] = "Recursive-resolution",     \
+    [MFIB_SOURCE_DEFAULT_ROUTE] = "Default Route", \
 }
+
+#define MFIB_N_SOURCES (MFIB_SOURCE_DEFAULT_ROUTE)
 
 /**
  * \brief Compare two prefixes for equality

@@ -151,7 +151,8 @@ static const ip6_mfib_special_t ip6_mfib_specials[] =
 
 
 static u32
-ip6_create_mfib_with_table_id (u32 table_id)
+ip6_create_mfib_with_table_id (u32 table_id,
+                               mfib_source_t src)
 {
     mfib_table_t *mfib_table;
     mfib_prefix_t pfx = {
@@ -182,7 +183,7 @@ ip6_create_mfib_with_table_id (u32 table_id)
         mfib_table->v6.table_id =
             table_id;
 
-    mfib_table_lock(mfib_table->mft_index, FIB_PROTOCOL_IP6);
+    mfib_table_lock(mfib_table->mft_index, FIB_PROTOCOL_IP6, src);
 
     mfib_table->v6.rhead =
         clib_mem_alloc_aligned (sizeof(*mfib_table->v6.rhead),
@@ -297,14 +298,15 @@ ip6_mfib_interface_enable_disable (u32 sw_if_index, int is_enable)
 }
 
 u32
-ip6_mfib_table_find_or_create_and_lock (u32 table_id)
+ip6_mfib_table_find_or_create_and_lock (u32 table_id,
+                                        mfib_source_t src)
 {
     u32 index;
 
     index = ip6_mfib_index_from_table_id(table_id);
     if (~0 == index)
-        return ip6_create_mfib_with_table_id(table_id);
-    mfib_table_lock(index, FIB_PROTOCOL_IP6);
+        return ip6_create_mfib_with_table_id(table_id, src);
+    mfib_table_lock(index, FIB_PROTOCOL_IP6, src);
 
     return (index);
 }
