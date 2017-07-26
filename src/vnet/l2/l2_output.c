@@ -40,6 +40,29 @@ l2output_get_feat_names (void)
   return l2output_feat_names;
 }
 
+u8 *
+format_l2_output_features (u8 * s, va_list * args)
+{
+  static char *display_names[] = {
+#define _(sym,name) #sym,
+    foreach_l2output_feat
+#undef _
+  };
+  u32 feature_bitmap = va_arg (*args, u32);
+
+  if (feature_bitmap == 0)
+    {
+      s = format (s, "  none configured");
+      return s;
+    }
+
+  int i;
+  for (i = L2OUTPUT_N_FEAT - 1; i >= 0; i--)
+    if (feature_bitmap & (1 << i))
+      s = format (s, "%10s (%s)\n", display_names[i], l2output_feat_names[i]);
+  return s;
+}
+
 l2output_main_t l2output_main;
 
 typedef struct
