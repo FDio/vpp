@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "7a51691d_4fcaac50",
+        "filename": "src/vnet/ethernet/interface.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 103,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2017-07-26T06:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7a51691d_c11681f1",
+      "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a51691d_81d88954",
         "filename": "src/vnet/ethernet/p2p_ethernet.api",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2017-07-18T10:47:25Z",
       "side": 1,
       "message": "declare before the u8 array for better layout.",
+      "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_2fc77047",
+        "filename": "src/vnet/ethernet/p2p_ethernet.api",
+        "patchSetId": 5
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2017-07-26T06:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7a51691d_81d88954",
       "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "7a51691d_0fc4b43e",
+        "filename": "src/vnet/ethernet/p2p_ethernet.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2017-07-26T06:30:21Z",
+      "side": 1,
+      "message": "Removed, as sub-id is not looked-up but given",
+      "parentUuid": "7a51691d_61dd8d42",
+      "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a51691d_41e29104",
         "filename": "src/vnet/ethernet/p2p_ethernet.c",
         "patchSetId": 5
@@ -70,6 +124,24 @@
     },
     {
       "key": {
+        "uuid": "7a51691d_efc0382c",
+        "filename": "src/vnet/ethernet/p2p_ethernet.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 138,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2017-07-26T06:30:21Z",
+      "side": 1,
+      "message": "This table is removed in vnet_delete_sub_interface()",
+      "parentUuid": "7a51691d_41e29104",
+      "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a51691d_743adf37",
         "filename": "src/vnet/span/span.c",
         "patchSetId": 5
@@ -81,6 +153,30 @@
       "writtenOn": "2017-07-25T16:12:20Z",
       "side": 1,
       "message": "There was a recent merged patch to allow SPAN to be an L2 feature which also allow destination ports to be a VLAN sub-interface,  VXLAN tunnel or GRE tunnel in L2 mode. This is not correct anymore and is causing merge conflict.",
+      "range": {
+        "startLine": 40,
+        "startChar": 21,
+        "endLine": 40,
+        "endChar": 52
+      },
+      "revId": "a43287aaead23a9327a7899c4a5532e92a570b8c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7a51691d_cfdd7c16",
+        "filename": "src/vnet/span/span.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2017-07-26T06:30:21Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "7a51691d_743adf37",
       "range": {
         "startLine": 40,
         "startChar": 21,
