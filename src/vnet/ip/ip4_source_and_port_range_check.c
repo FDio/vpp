@@ -1126,6 +1126,14 @@ ip6_source_and_port_range_check_add_del (ip6_address_t * address,
 					 u16 * low_ports,
 					 u16 * high_ports, int is_add)
 {
+  uint32_t fib_index;
+
+  fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+
+  ASSERT (~0 != fib_index);
+
+  fib_table_unlock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_CLASSIFY);
+
   return 0;
 }
 
@@ -1138,7 +1146,8 @@ ip4_source_and_port_range_check_add_del (ip4_address_t * address,
 {
   u32 fib_index;
 
-  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id);
+  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
+						 FIB_SOURCE_CLASSIFY);
 
   if (is_add == 0)
     {

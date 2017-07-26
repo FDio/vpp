@@ -54,6 +54,46 @@ def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
     return False
 
 
+class VppIpTable(VppObject):
+
+    def __init__(self,
+                 test,
+                 table_id,
+                 is_ip6=0):
+        self._test = test
+        self.table_id = table_id
+        self.is_ip6 = is_ip6
+
+    def add_vpp_config(self):
+        self._test.vapi.ip_table_add_del(
+            self.table_id,
+            is_ipv6=self.is_ip6,
+            is_add=1)
+        self._test.registry.register(self, self._test.logger)
+
+    def remove_vpp_config(self):
+        self._test.vapi.ip_table_add_del(
+            self.table_id,
+            is_ipv6=self.is_ip6,
+            is_add=0)
+
+    def query_vpp_config(self):
+        # find the default route
+        return find_route(self._test,
+                          "::" if self.is_ip6 else "0.0.0.0",
+                          0,
+                          self.table_id,
+                          inet=AF_INET6 if self.is_ip6 == 1 else AF_INET)
+
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return ("table-%s-%d" %
+                ("v6" if self.is_ip6 == 1 else "v4",
+                 self.table_id))
+
+
 class VppRoutePath(object):
 
     def __init__(
@@ -389,6 +429,39 @@ class VppMplsIpBind(VppObject):
                    self.ip_table_id,
                    self.dest_addr,
                    self.dest_addr_len))
+
+
+class VppMplsTable(VppObject):
+
+    def __init__(self,
+                 test,
+                 table_id):
+        self._test = test
+        self.table_id = table_id
+
+    def add_vpp_config(self):
+        self._test.vapi.mpls_table_add_del(
+            self.table_id,
+            is_add=1)
+        self._test.registry.register(self, self._test.logger)
+
+    def remove_vpp_config(self):
+        self._test.vapi.mpls_table_add_del(
+            self.table_id,
+            is_add=0)
+
+    def query_vpp_config(self):
+        # find the default route
+        dump = self._test.vapi.mpls_fib_dump()
+        if len(dump):
+            return True
+        return False
+
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return ("table-mpls-%d" % (self.table_id))
 
 
 class VppMplsRoute(VppObject):

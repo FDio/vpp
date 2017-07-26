@@ -187,9 +187,10 @@ class TestIP6VrfMultiInst(VppTestCase):
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
             dest_addr = pg_if.remote_hosts[0].ip6n
             dest_addr_len = 64
+            self.vapi.ip_table_add_del(vrf_id, is_add=1, is_ipv6=1)
             self.vapi.ip_add_del_route(
                 dest_addr, dest_addr_len, pg_if.local_ip6n, is_ipv6=1,
-                table_id=vrf_id, create_vrf_if_needed=1, is_multipath=1)
+                table_id=vrf_id, is_multipath=1)
             self.logger.info("IPv6 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:
                 self.vrf_list.append(vrf_id)
@@ -232,6 +233,7 @@ class TestIP6VrfMultiInst(VppTestCase):
         self.logger.info("IPv6 VRF ID %d reset" % vrf_id)
         self.logger.debug(self.vapi.ppcli("show ip6 fib"))
         self.logger.debug(self.vapi.ppcli("show ip6 neighbors"))
+        self.vapi.ip_table_add_del(vrf_id, is_add=0, is_ipv6=1)
 
     def create_stream(self, src_if, packet_sizes):
         """

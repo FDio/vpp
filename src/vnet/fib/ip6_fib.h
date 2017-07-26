@@ -144,8 +144,9 @@ ip6_src_lookup_for_packet (ip6_main_t * im,
  * \returns A pointer to the retrieved or created fib.
  *
  */
-extern u32 ip6_fib_table_find_or_create_and_lock(u32 table_id);
-extern u32 ip6_fib_table_create_and_lock(void);
+extern u32 ip6_fib_table_find_or_create_and_lock(u32 table_id,
+                                                 fib_source_t src);
+extern u32 ip6_fib_table_create_and_lock(fib_source_t src);
 
 static inline ip6_fib_t *
 ip6_fib_get (fib_node_index_t index)

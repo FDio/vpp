@@ -4615,8 +4615,10 @@ _(l2fib_add_del_reply)                                  \
 _(l2fib_flush_int_reply)                                \
 _(l2fib_flush_bd_reply)                                 \
 _(ip_add_del_route_reply)                               \
+_(ip_table_add_del_reply)                               \
 _(ip_mroute_add_del_reply)                              \
 _(mpls_route_add_del_reply)                             \
+_(mpls_table_add_del_reply)                             \
 _(mpls_ip_bind_unbind_reply)                            \
 _(proxy_arp_add_del_reply)                              \
 _(proxy_arp_intfc_enable_disable_reply)                 \
@@ -4801,8 +4803,10 @@ _(TAP_MODIFY_REPLY, tap_modify_reply)					\
 _(TAP_DELETE_REPLY, tap_delete_reply)					\
 _(SW_INTERFACE_TAP_DETAILS, sw_interface_tap_details)                   \
 _(IP_ADD_DEL_ROUTE_REPLY, ip_add_del_route_reply)			\
+_(IP_TABLE_ADD_DEL_REPLY, ip_table_add_del_reply)			\
 _(IP_MROUTE_ADD_DEL_REPLY, ip_mroute_add_del_reply)			\
 _(MPLS_ROUTE_ADD_DEL_REPLY, mpls_route_add_del_reply)			\
+_(MPLS_TABLE_ADD_DEL_REPLY, mpls_table_add_del_reply)			\
 _(MPLS_IP_BIND_UNBIND_REPLY, mpls_ip_bind_unbind_reply)			\
 _(PROXY_ARP_ADD_DEL_REPLY, proxy_arp_add_del_reply)                     \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY,                                 \
@@ -7049,6 +7053,55 @@ api_tap_delete (vat_main_t * vam)
 }
 
 static int
+api_ip_table_add_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_add_del_route_t *mp;
+  u32 table_id = ~0;
+  u8 is_ipv6 = 0;
+  u8 is_add = 1;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	is_add = 1;
+      else if (unformat (i, "table-id %d", &table_id))
+	;
+      else if (unformat (i, "ip6"))
+	is_ipv6 = 1;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (~0 == table_id)
+    {
+      errmsg ("missing table-id");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (IP_TABLE_ADD_DEL, mp);
+
+  mp->table_id = ntohl (table_id);
+  mp->is_add = is_add;
+  mp->is_ipv6 = is_ipv6;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
 api_ip_add_del_route (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -7057,7 +7110,6 @@ api_ip_add_del_route (vat_main_t * vam)
   u8 is_ipv6 = 0;
   u8 is_local = 0, is_drop = 0;
   u8 is_unreach = 0, is_prohibit = 0;
-  u8 create_vrf_if_needed = 0;
   u8 is_add = 1;
   u32 next_hop_weight = 1;
   u8 not_last = 0;
@@ -7154,8 +7206,6 @@ api_ip_add_del_route (vat_main_t * vam)
 	is_multipath = 1;
       else if (unformat (i, "vrf %d", &vrf_id))
 	;
-      else if (unformat (i, "create-vrf"))
-	create_vrf_if_needed = 1;
       else if (unformat (i, "count %d", &count))
 	;
       else if (unformat (i, "lookup-in-vrf %d", &next_hop_table_id))
@@ -7242,7 +7292,6 @@ api_ip_add_del_route (vat_main_t * vam)
 
       mp->next_hop_sw_if_index = ntohl (sw_if_index);
       mp->table_id = ntohl (vrf_id);
-      mp->create_vrf_if_needed = create_vrf_if_needed;
 
       mp->is_add = is_add;
       mp->is_drop = is_drop;
@@ -7356,7 +7405,6 @@ api_ip_mroute_add_del (vat_main_t * vam)
   u32 sw_if_index = ~0, vrf_id = 0;
   u8 is_ipv6 = 0;
   u8 is_local = 0;
-  u8 create_vrf_if_needed = 0;
   u8 is_add = 1;
   u8 address_set = 0;
   u32 grp_address_length = 0;
@@ -7413,8 +7461,6 @@ api_ip_mroute_add_del (vat_main_t * vam)
 	is_add = 1;
       else if (unformat (i, "vrf %d", &vrf_id))
 	;
-      else if (unformat (i, "create-vrf"))
-	create_vrf_if_needed = 1;
       else if (unformat (i, "%U", unformat_mfib_itf_flags, &iflags))
 	;
       else if (unformat (i, "%U", unformat_mfib_entry_flags, &eflags))
@@ -7437,7 +7483,6 @@ api_ip_mroute_add_del (vat_main_t * vam)
 
   mp->next_hop_sw_if_index = ntohl (sw_if_index);
   mp->table_id = ntohl (vrf_id);
-  mp->create_vrf_if_needed = create_vrf_if_needed;
 
   mp->is_add = is_add;
   mp->is_ipv6 = is_ipv6;
@@ -7467,12 +7512,56 @@ api_ip_mroute_add_del (vat_main_t * vam)
 }
 
 static int
+api_mpls_table_add_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ip_table_add_del_t *mp;
+  u32 table_id = ~0;
+  u8 is_add = 1;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	is_add = 1;
+      else if (unformat (i, "table-id %d", &table_id))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (~0 == table_id)
+    {
+      errmsg ("missing table-id");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (IP_TABLE_ADD_DEL, mp);
+
+  mp->table_id = ntohl (table_id);
+  mp->is_add = is_add;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
 api_mpls_route_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
   vl_api_mpls_route_add_del_t *mp;
   u32 sw_if_index = ~0, table_id = 0;
-  u8 create_table_if_needed = 0;
   u8 is_add = 1;
   u32 next_hop_weight = 1;
   u8 is_multipath = 0;
@@ -7522,8 +7611,6 @@ api_mpls_route_add_del (vat_main_t * vam)
 	}
       else if (unformat (i, "weight %d", &next_hop_weight))
 	;
-      else if (unformat (i, "create-table"))
-	create_table_if_needed = 1;
       else if (unformat (i, "classify %d", &classify_table_index))
 	{
 	  is_classify = 1;
@@ -7591,7 +7678,6 @@ api_mpls_route_add_del (vat_main_t * vam)
 
       mp->mr_next_hop_sw_if_index = ntohl (sw_if_index);
       mp->mr_table_id = ntohl (table_id);
-      mp->mr_create_table_if_needed = create_table_if_needed;
 
       mp->mr_is_add = is_add;
       mp->mr_next_hop_proto = next_hop_proto;
@@ -7697,7 +7783,6 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_mpls_ip_bind_unbind_t *mp;
   u32 ip_table_id = 0;
-  u8 create_table_if_needed = 0;
   u8 is_bind = 1;
   u8 is_ip4 = 1;
   ip4_address_t v4_address;
@@ -7724,8 +7809,6 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
 	}
       else if (unformat (i, "%d", &local_label))
 	;
-      else if (unformat (i, "create-table"))
-	create_table_if_needed = 1;
       else if (unformat (i, "table-id %d", &ip_table_id))
 	;
       else if (unformat (i, "unbind"))
@@ -7754,7 +7837,6 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
   /* Construct the API message */
   M (MPLS_IP_BIND_UNBIND, mp);
 
-  mp->mb_create_table_if_needed = create_table_if_needed;
   mp->mb_is_bind = is_bind;
   mp->mb_is_ip4 = is_ip4;
   mp->mb_ip_table_id = ntohl (ip_table_id);
@@ -20000,6 +20082,8 @@ _(tap_modify,                                                           \
 _(tap_delete,                                                           \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_dump, "")                                            \
+_(ip_table_add_del,                                                     \
+  "table-id [ip6]\n")                                                   \
 _(ip_add_del_route,                                                     \
   "<addr>/<mask> via <addr> [table-id <n>]\n"                           \
   "[<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"               \
@@ -20008,6 +20092,8 @@ _(ip_add_del_route,                                                     \
 _(ip_mroute_add_del,                                                    \
   "<src> <grp>/<mask> [table-id <n>]\n"                                 \
   "[<intfc> | sw_if_index <id>] [local] [del]")                         \
+_(mpls_table_add_del,                                                   \
+  "table-id\n")                                                         \
 _(mpls_route_add_del,                                                   \
   "<label> <eos> via <addr> [table-id <n>]\n"                           \
   "[<intfc> | sw_if_index <id>] [resolve-attempts <n>]\n"               \

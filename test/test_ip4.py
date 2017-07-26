@@ -6,7 +6,8 @@ import unittest
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
-    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind
+    VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
+    VppMplsTable
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, ARP
@@ -774,6 +775,8 @@ class TestIPLoadBalance(VppTestCase):
         super(TestIPLoadBalance, self).setUp()
 
         self.create_pg_interfaces(range(5))
+        mpls_tbl = VppMplsTable(self, 0)
+        mpls_tbl.add_vpp_config()
 
         for i in self.pg_interfaces:
             i.admin_up()
@@ -782,11 +785,11 @@ class TestIPLoadBalance(VppTestCase):
             i.enable_mpls()
 
     def tearDown(self):
-        super(TestIPLoadBalance, self).tearDown()
         for i in self.pg_interfaces:
             i.disable_mpls()
             i.unconfig_ip4()
             i.admin_down()
+        super(TestIPLoadBalance, self).tearDown()
 
     def send_and_expect_load_balancing(self, input, pkts, outputs):
         input.add_stream(pkts)
@@ -966,6 +969,8 @@ class TestIPVlan0(VppTestCase):
         super(TestIPVlan0, self).setUp()
 
         self.create_pg_interfaces(range(2))
+        mpls_tbl = VppMplsTable(self, 0)
+        mpls_tbl.add_vpp_config()
 
         for i in self.pg_interfaces:
             i.admin_up()
@@ -974,11 +979,11 @@ class TestIPVlan0(VppTestCase):
             i.enable_mpls()
 
     def tearDown(self):
-        super(TestIPVlan0, self).tearDown()
         for i in self.pg_interfaces:
             i.disable_mpls()
             i.unconfig_ip4()
             i.admin_down()
+        super(TestIPVlan0, self).tearDown()
 
     def send_and_expect(self, input, pkts, output):
         input.add_stream(pkts)
