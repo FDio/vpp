@@ -159,8 +159,10 @@ sr_steering_policy (int is_del, ip6_address_t * bsid, u32 sr_policy_index,
 	  /* If no more SR policies or steering policies */
 	  if (!pool_elts (sm->sr_policies) && !pool_elts (sm->steer_policies))
 	    {
-	      fib_table_unlock (sm->fib_table_ip6, FIB_PROTOCOL_IP6);
-	      fib_table_unlock (sm->fib_table_ip4, FIB_PROTOCOL_IP6);
+	      fib_table_unlock (sm->fib_table_ip6,
+				FIB_PROTOCOL_IP6, FIB_SOURCE_SR);
+	      fib_table_unlock (sm->fib_table_ip4,
+				FIB_PROTOCOL_IP6, FIB_SOURCE_SR);
 	      sm->fib_table_ip6 = (u32) ~ 0;
 	      sm->fib_table_ip4 = (u32) ~ 0;
 	    }

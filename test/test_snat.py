@@ -548,6 +548,8 @@ class TestSNAT(MethodHolder):
             cls.pg0.configure_ipv4_neighbors()
 
             cls.overlapping_interfaces = list(list(cls.pg_interfaces[4:7]))
+            cls.vapi.ip_table_add_del(10, is_add=1)
+            cls.vapi.ip_table_add_del(20, is_add=1)
 
             cls.pg4._local_ip4 = "172.16.255.1"
             cls.pg4._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
@@ -1694,6 +1696,8 @@ class TestSNAT(MethodHolder):
 
         self.pg0.unconfig_ip4()
         self.pg1.unconfig_ip4()
+        self.vapi.ip_table_add_del(vrf_id1, is_add=1)
+        self.vapi.ip_table_add_del(vrf_id2, is_add=1)
         self.pg0.set_table_ip4(vrf_id1)
         self.pg1.set_table_ip4(vrf_id2)
         self.pg0.config_ip4()
@@ -1721,6 +1725,13 @@ class TestSNAT(MethodHolder):
         self.pg_start()
         capture = self.pg2.get_capture(len(pkts))
         self.verify_capture_out(capture, nat_ip2)
+
+        self.pg0.unconfig_ip4()
+        self.pg1.unconfig_ip4()
+        self.pg0.set_table_ip4(0)
+        self.pg1.set_table_ip4(0)
+        self.vapi.ip_table_add_del(vrf_id1, is_add=0)
+        self.vapi.ip_table_add_del(vrf_id2, is_add=0)
 
     def test_vrf_feature_independent(self):
         """ S-NAT tenant VRF independent address pool mode """
@@ -2929,6 +2940,8 @@ class TestNAT64(MethodHolder):
             cls.ip6_interfaces = list(cls.pg_interfaces[0:1])
             cls.ip6_interfaces.append(cls.pg_interfaces[2])
             cls.ip4_interfaces = list(cls.pg_interfaces[1:2])
+
+            cls.vapi.ip_table_add_del(cls.vrf1_id, is_add=1, is_ipv6=1)
 
             cls.pg_interfaces[2].set_table_ip6(cls.vrf1_id)
 

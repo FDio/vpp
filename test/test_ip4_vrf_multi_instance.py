@@ -172,9 +172,10 @@ class TestIp4VrfMultiInst(VppTestCase):
             pg_if = self.pg_if_by_vrf_id[vrf_id][0]
             dest_addr = pg_if.remote_hosts[0].ip4n
             dest_addr_len = 24
+            self.vapi.ip_table_add_del(vrf_id, is_add=1)
             self.vapi.ip_add_del_route(
                 dest_addr, dest_addr_len, pg_if.local_ip4n,
-                table_id=vrf_id, create_vrf_if_needed=1, is_multipath=1)
+                table_id=vrf_id, is_multipath=1)
             self.logger.info("IPv4 VRF ID %d created" % vrf_id)
             if vrf_id not in self.vrf_list:
                 self.vrf_list.append(vrf_id)
@@ -216,6 +217,7 @@ class TestIp4VrfMultiInst(VppTestCase):
         self.logger.info("IPv4 VRF ID %d reset" % vrf_id)
         self.logger.debug(self.vapi.ppcli("show ip fib"))
         self.logger.debug(self.vapi.ppcli("show ip arp"))
+        self.vapi.ip_table_add_del(vrf_id, is_add=0)
 
     def create_stream(self, src_if, packet_sizes):
         """

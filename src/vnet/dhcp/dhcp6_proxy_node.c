@@ -841,7 +841,8 @@ dhcp6_proxy_set_server (ip46_address_t *addr,
     return VNET_API_ERROR_INVALID_SRC_ADDRESS;
 
   rx_fib_index = mfib_table_find_or_create_and_lock(FIB_PROTOCOL_IP6,
-                                                    rx_table_id);
+                                                    rx_table_id,
+                                                    MFIB_SOURCE_DHCP);
 
   if (is_del)
     {
@@ -851,7 +852,7 @@ dhcp6_proxy_set_server (ip46_address_t *addr,
           mfib_table_entry_delete(rx_fib_index,
                                   &all_dhcp_servers,
                                   MFIB_SOURCE_DHCP);
-          mfib_table_unlock(rx_fib_index, FIB_PROTOCOL_IP6);
+          mfib_table_unlock(rx_fib_index, FIB_PROTOCOL_IP6, MFIB_SOURCE_DHCP);
       }
     }
   else
@@ -885,11 +886,11 @@ dhcp6_proxy_set_server (ip46_address_t *addr,
                                  MFIB_SOURCE_DHCP,
                                  MFIB_RPF_ID_NONE,
                                  MFIB_ENTRY_FLAG_ACCEPT_ALL_ITF);
-         mfib_table_lock(rx_fib_index, FIB_PROTOCOL_IP6);
+         mfib_table_lock(rx_fib_index, FIB_PROTOCOL_IP6, MFIB_SOURCE_DHCP);
      }
     }
 
-  mfib_table_unlock(rx_fib_index, FIB_PROTOCOL_IP6);
+  mfib_table_unlock(rx_fib_index, FIB_PROTOCOL_IP6, MFIB_SOURCE_DHCP);
 
   return (rc);
 }
