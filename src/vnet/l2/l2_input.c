@@ -60,6 +60,29 @@ l2input_get_feat_names (void)
   return l2input_feat_names;
 }
 
+u8 *
+format_l2_input_features (u8 * s, va_list * args)
+{
+  static char *display_names[] = {
+#define _(sym,name) #sym,
+    foreach_l2input_feat
+#undef _
+  };
+  u32 feature_bitmap = va_arg (*args, u32);
+
+  if (feature_bitmap == 0)
+    {
+      s = format (s, "  none configured");
+      return s;
+    }
+
+  feature_bitmap &= ~L2INPUT_FEAT_DROP;	/* Not a feature */
+  int i;
+  for (i = L2INPUT_N_FEAT; i >= 0; i--)
+    if (feature_bitmap & (1 << i))
+      s = format (s, "%10s (%s)\n", display_names[i], l2input_feat_names[i]);
+  return s;
+}
 
 typedef struct
 {
