@@ -47,6 +47,8 @@
 #include <vppinfra/bitmap.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
+#include <vnet/l2/l2_output.h>
+#include <vnet/l2/l2_input.h>
 
 static int
 compare_interface_names (void *a1, void *a2)
@@ -262,6 +264,20 @@ show_sw_interfaces (vlib_main_t * vm,
   if (show_features)
     {
       vnet_interface_features_show (vm, sw_if_index);
+
+      l2_input_config_t *l2_input = l2input_intf_config (sw_if_index);
+      u32 fb = l2_input->feature_bitmap;
+      /* intf input features are masked by bridge domain */
+      if (l2_input->bridge)
+	fb &= l2input_bd_config (l2_input->bd_index)->feature_bitmap;
+      vlib_cli_output (vm, "\nl2-input:\n%U", format_l2_input_features, fb);
+
+      l2_output_config_t *l2_output = l2output_intf_config (sw_if_index);
+      vlib_cli_output (vm, "\nl2-output:");
+      if (l2_output->out_vtr_flag)
+	vlib_cli_output (vm, "%10s (%s)", "VTR", "--internal--");
+      vlib_cli_output (vm, "%U", format_l2_output_features,
+		       l2_output->feature_bitmap);
       return 0;
     }
   if (show_tag)
@@ -285,9 +301,10 @@ show_sw_interfaces (vlib_main_t * vm,
       _vec_len (sorted_sis) = 0;
       pool_foreach (si, im->sw_interfaces, (
 					     {
-					     if (vnet_swif_is_api_visible
-						 (si)) vec_add1 (sorted_sis,
-								 si[0]);}
+					     int visible =
+					     vnet_swif_is_api_visible (si);
+					     if (visible)
+					     vec_add1 (sorted_sis, si[0]);}
 		    ));
 
       /* Sort by name. */
@@ -298,7 +315,6 @@ show_sw_interfaces (vlib_main_t * vm,
     {
       vec_foreach (si, sorted_sis)
       {
-	l2input_main_t *l2m = &l2input_main;
 	ip4_main_t *im4 = &ip4_main;
 	ip6_main_t *im6 = &ip6_main;
 	ip_lookup_main_t *lm4 = &im4->lookup_main;
@@ -309,7 +325,6 @@ show_sw_interfaces (vlib_main_t * vm,
 	u32 fib_index4 = 0, fib_index6 = 0;
 	ip4_fib_t *fib4;
 	ip6_fib_t *fib6;
-	l2_input_config_t *config;
 
 	if (vec_len (im4->fib_index_by_sw_if_index) > si->sw_if_index)
 	  fib_index4 = vec_elt (im4->fib_index_by_sw_if_index,
@@ -339,21 +354,20 @@ show_sw_interfaces (vlib_main_t * vm,
 			     ? "up" : "dn");
 	  }
 
-	/* Display any L2 addressing info */
-	vec_validate (l2m->configs, si->sw_if_index);
-	config = vec_elt_at_index (l2m->configs, si->sw_if_index);
-	if (config->bridge)
+	/* Display any L2 info */
+	l2_input_config_t *l2_input = l2input_intf_config (si->sw_if_index);
+	if (l2_input->bridge)
 	  {
-	    u32 bd_id = l2input_main.bd_configs[config->bd_index].bd_id;
+	    u32 bd_id = l2input_main.bd_configs[l2_input->bd_index].bd_id;
 	    vlib_cli_output (vm, "  l2 bridge bd_id %d%s%d", bd_id,
-			     config->bvi ? " bvi shg " : " shg ",
-			     config->shg);
+			     l2_input->bvi ? " bvi shg " : " shg ",
+			     l2_input->shg);
 	  }
-	else if (config->xconnect)
+	else if (l2_input->xconnect)
 	  {
 	    vlib_cli_output (vm, "  l2 xconnect %U",
 			     format_vnet_sw_if_index_name,
-			     vnm, config->output_sw_if_index);
+			     vnm, l2_input->output_sw_if_index);
 	  }
 
 	/* Display any IP4 addressing info */

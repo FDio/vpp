@@ -34,7 +34,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } bd_main_t;
 
-bd_main_t bd_main;
+extern bd_main_t bd_main;
 
 /* Bridge domain member  */
 
