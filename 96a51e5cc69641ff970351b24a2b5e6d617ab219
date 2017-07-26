@@ -25,6 +25,29 @@
     },
     {
       "key": {
+        "uuid": "7a51691d_eac0262c",
+        "filename": "src/vnet/interface_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-07-26T17:13:24Z",
+      "side": 1,
+      "message": "The l2-output VTR is not controlled by feature bitmap so needs to be explicitly checked and displayed. It is actually done by l2-output node and does not have its ow node. I suppose one way may be to imply existence of output VTR if input VTR bit is set. Also, output VTR is always the first output feature.",
+      "range": {
+        "startLine": 271,
+        "startChar": 39,
+        "endLine": 271,
+        "endChar": 41
+      },
+      "revId": "96a51e5cc69641ff970351b24a2b5e6d617ab219",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "7a51691d_6ab556cc",
         "filename": "src/vnet/l2/l2_input.c",
         "patchSetId": 2
