@@ -739,7 +739,8 @@ fib_test_v4 (void)
     lb_count = pool_elts(load_balance_pool);
 
     /* Find or create FIB table 11 */
-    fib_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4, 11);
+    fib_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4, 11,
+                                                  FIB_SOURCE_API);
 
     for (ii = 0; ii < 4; ii++)
     {
@@ -4150,7 +4151,7 @@ fib_test_v4 (void)
                                              FIB_SOURCE_INTERFACE)),
              "NO INterface Source'd prefixes");
 
-    fib_table_unlock(fib_index, FIB_PROTOCOL_IP4);
+    fib_table_unlock(fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_API);
 
     FIB_TEST((0  == fib_path_list_db_size()), "path list DB population:%d",
     	     fib_path_list_db_size());
@@ -4201,7 +4202,8 @@ fib_test_v6 (void)
     dpo_drop = drop_dpo_get(DPO_PROTO_IP6);
 
     /* Find or create FIB table 11 */
-    fib_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP6, 11);
+    fib_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP6, 11,
+                                                  FIB_SOURCE_API);
 
     for (ii = 0; ii < 4; ii++)
     {
@@ -5025,7 +5027,7 @@ fib_test_v6 (void)
     /*
      * now remove the VRF
      */
-    fib_table_unlock(fib_index, FIB_PROTOCOL_IP6);
+    fib_table_unlock(fib_index, FIB_PROTOCOL_IP6, FIB_SOURCE_API);
 
     FIB_TEST((0 == fib_path_list_db_size()),   "path list DB population:%d",
 	     fib_path_list_db_size());
@@ -5157,7 +5159,9 @@ fib_test_ae (void)
      */
     u32 import_fib_index1;
 
-    import_fib_index1 = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4, 11);
+    import_fib_index1 = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
+                                                          11,
+                                                          FIB_SOURCE_CLI);
 
     /*
      * Add an attached route in the import FIB
@@ -5233,7 +5237,8 @@ fib_test_ae (void)
      */
     u32 import_fib_index2;
 
-    import_fib_index2 = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4, 12);
+    import_fib_index2 = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4, 12,
+                                                          FIB_SOURCE_CLI);
 
     /*
      * Add an attached route in the import FIB
@@ -5595,8 +5600,8 @@ fib_test_ae (void)
 			   &local_pfx,
 			   FIB_SOURCE_API);
 
-    fib_table_unlock(import_fib_index1, FIB_PROTOCOL_IP4);
-    fib_table_unlock(import_fib_index2, FIB_PROTOCOL_IP4);
+    fib_table_unlock(import_fib_index1, FIB_PROTOCOL_IP4, FIB_SOURCE_CLI);
+    fib_table_unlock(import_fib_index2, FIB_PROTOCOL_IP4, FIB_SOURCE_CLI);
 
     FIB_TEST((0 == adj_nbr_db_size()), "ADJ DB size is %d",
 	     adj_nbr_db_size());
@@ -8168,9 +8173,10 @@ lfib_test (void)
     /*
      * MPLS enable an interface so we get the MPLS table created
      */
+    mpls_table_create(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API);
     mpls_sw_interface_enable_disable(&mpls_main,
                                      tm->hw[0]->sw_if_index,
-                                     1);
+                                     1, 1);
 
     ip46_address_t nh_10_10_10_1 = {
 	.ip4.as_u32 = clib_host_to_net_u32(0x0a0a0a01),
@@ -8662,7 +8668,8 @@ lfib_test (void)
      */
     mpls_sw_interface_enable_disable(&mpls_main,
                                      tm->hw[0]->sw_if_index,
-                                     0);
+                                     0, 1);
+    mpls_table_delete(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API);
 
     FIB_TEST(lb_count == pool_elts(load_balance_pool),
 	     "Load-balance resources freed %d of %d",

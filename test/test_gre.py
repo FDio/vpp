@@ -6,7 +6,7 @@ from logging import *
 from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppDot1QSubint
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
 from vpp_papi_provider import L2_VTR_OP
 
 from scapy.packet import Raw
@@ -30,6 +30,9 @@ class TestGRE(VppTestCase):
 
         # create 3 pg interfaces - set one in a non-default table.
         self.create_pg_interfaces(range(3))
+
+        self.tbl = VppIpTable(self, 1)
+        self.tbl.add_vpp_config()
         self.pg1.set_table_ip4(1)
 
         for i in self.pg_interfaces:
@@ -43,11 +46,12 @@ class TestGRE(VppTestCase):
         self.pg2.resolve_ndp()
 
     def tearDown(self):
-        super(TestGRE, self).tearDown()
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.unconfig_ip6()
             i.admin_down()
+        self.pg1.set_table_ip4(0)
+        super(TestGRE, self).tearDown()
 
     def create_stream_ip4(self, src_if, src_ip, dst_ip):
         pkts = []

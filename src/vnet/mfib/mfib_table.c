@@ -424,7 +424,8 @@ mfib_table_find (fib_protocol_t proto,
 
 u32
 mfib_table_find_or_create_and_lock (fib_protocol_t proto,
-                                    u32 table_id)
+                                    u32 table_id,
+                                    mfib_source_t src)
 {
     mfib_table_t *mfib_table;
     fib_node_index_t fi;
@@ -432,10 +433,10 @@ mfib_table_find_or_create_and_lock (fib_protocol_t proto,
     switch (proto)
     {
     case FIB_PROTOCOL_IP4:
-        fi = ip4_mfib_table_find_or_create_and_lock(table_id);
+        fi = ip4_mfib_table_find_or_create_and_lock(table_id, src);
         break;
     case FIB_PROTOCOL_IP6:
-        fi = ip6_mfib_table_find_or_create_and_lock(table_id);
+        fi = ip6_mfib_table_find_or_create_and_lock(table_id, src);
         break;
     case FIB_PROTOCOL_MPLS:
     default:
@@ -449,6 +450,59 @@ mfib_table_find_or_create_and_lock (fib_protocol_t proto,
                                   table_id);
 
     return (fi);
+}
+
+/**
+ * @brief Table flush context. Store the indicies of matching FIB entries
+ * that need to be removed.
+ */
+typedef struct mfib_table_flush_ctx_t_
+{
+    /**
+     * The list of entries to flush
+     */
+    fib_node_index_t *mftf_entries;
+
+    /**
+     * The source we are flushing
+     */
+    mfib_source_t mftf_source;
+} mfib_table_flush_ctx_t;
+
+static int
+mfib_table_flush_cb (fib_node_index_t mfib_entry_index,
+                     void *arg)
+{
+    mfib_table_flush_ctx_t *ctx = arg;
+
+    if (mfib_entry_is_sourced(mfib_entry_index, ctx->mftf_source))
+    {
+        vec_add1(ctx->mftf_entries, mfib_entry_index);
+    }
+    return (1);
+}
+
+void
+mfib_table_flush (u32 mfib_index,
+                  fib_protocol_t proto,
+                  mfib_source_t source)
+{
+    fib_node_index_t *mfib_entry_index;
+    mfib_table_flush_ctx_t ctx = {
+        .mftf_entries = NULL,
+        .mftf_source = source,
+    };
+
+    mfib_table_walk(mfib_index, proto,
+                    mfib_table_flush_cb,
+                    &ctx);
+
+    vec_foreach(mfib_entry_index, ctx.mftf_entries)
+    {
+        mfib_table_entry_delete_index(*mfib_entry_index, source);
+    }
+
+    vec_free(ctx.mftf_entries);
 }
 
 static void
@@ -472,27 +526,43 @@ mfib_table_destroy (mfib_table_t *mfib_table)
 
 void
 mfib_table_unlock (u32 fib_index,
-                   fib_protocol_t proto)
+                   fib_protocol_t proto,
+                   mfib_source_t source)
 {
     mfib_table_t *mfib_table;
 
     mfib_table = mfib_table_get(fib_index, proto);
-    mfib_table->mft_locks--;
+    mfib_table->mft_locks[source]--;
+    mfib_table->mft_locks[MFIB_TABLE_TOTAL_LOCKS]--;
 
-    if (0 == mfib_table->mft_locks)
+    if (0 == mfib_table->mft_locks[source])
     {
-        mfib_table_destroy(mfib_table);
+        /*
+         * The source no longer needs the table. flush any routes
+         * from it just in case
+         */
+        mfib_table_flush(fib_index, proto, source);
+    }
+
+    if (0 == mfib_table->mft_locks[MFIB_TABLE_TOTAL_LOCKS])
+    {
+        /*
+         * no more locak from any source - kill it
+         */
+	mfib_table_destroy(mfib_table);
     }
 }
 
 void
 mfib_table_lock (u32 fib_index,
-                 fib_protocol_t proto)
+                 fib_protocol_t proto,
+                 mfib_source_t source)
 {
     mfib_table_t *mfib_table;
 
     mfib_table = mfib_table_get(fib_index, proto);
-    mfib_table->mft_locks++;
+    mfib_table->mft_locks[source]++;
+    mfib_table->mft_locks[MFIB_TABLE_TOTAL_LOCKS]++;
 }
 
 void

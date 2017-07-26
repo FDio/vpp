@@ -94,7 +94,9 @@ fib_entry_src_mpls_set_data (fib_entry_src_t *src,
 	    fib_table_entry_delete_index(src->mpls.fesm_lfes[eos],
 					 FIB_SOURCE_SPECIAL);
         }
-        fib_table_unlock(MPLS_FIB_DEFAULT_TABLE_ID, FIB_PROTOCOL_MPLS);
+        fib_table_unlock(MPLS_FIB_DEFAULT_TABLE_ID,
+                         FIB_PROTOCOL_MPLS,
+                         FIB_SOURCE_MPLS);
         src->mpls.fesm_label = label;
     }
     else
@@ -113,7 +115,8 @@ fib_entry_src_mpls_set_data (fib_entry_src_t *src,
         {
             fib_index =
 		fib_table_find_or_create_and_lock(FIB_PROTOCOL_MPLS,
-						  MPLS_FIB_DEFAULT_TABLE_ID);
+						  MPLS_FIB_DEFAULT_TABLE_ID,
+                                                  FIB_SOURCE_MPLS);
         }
 	else
 	{

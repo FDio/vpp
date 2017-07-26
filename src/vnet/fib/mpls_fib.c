@@ -83,7 +83,8 @@ mpls_fib_index_from_table_id (u32 table_id)
 }
 
 static u32
-mpls_fib_create_with_table_id (u32 table_id)
+mpls_fib_create_with_table_id (u32 table_id,
+                               fib_source_t src)
 {
     dpo_id_t dpo = DPO_INVALID;
     fib_table_t *fib_table;
@@ -107,7 +108,7 @@ mpls_fib_create_with_table_id (u32 table_id)
     fib_table->ft_table_id = table_id;
     fib_table->ft_flow_hash_config = MPLS_FLOW_HASH_DEFAULT;
     
-    fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_MPLS);
+    fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_MPLS, src);
 
     if (INDEX_INVALID == mpls_fib_drop_dpo_index)
     {
@@ -220,22 +221,23 @@ mpls_fib_create_with_table_id (u32 table_id)
 }
 
 u32
-mpls_fib_table_find_or_create_and_lock (u32 table_id)
+mpls_fib_table_find_or_create_and_lock (u32 table_id,
+                                        fib_source_t src)
 {
     u32 index;
 
     index = mpls_fib_index_from_table_id(table_id);
     if (~0 == index)
-	return mpls_fib_create_with_table_id(table_id);
+	return mpls_fib_create_with_table_id(table_id, src);
 
-    fib_table_lock(index, FIB_PROTOCOL_MPLS);
+    fib_table_lock(index, FIB_PROTOCOL_MPLS, src);
 
     return (index);
 }
 u32
-mpls_fib_table_create_and_lock (void)
+mpls_fib_table_create_and_lock (fib_source_t src)
 {
-    return (mpls_fib_create_with_table_id(~0));
+    return (mpls_fib_create_with_table_id(~0, src));
 }
 
 void

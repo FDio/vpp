@@ -33,7 +33,8 @@ static const mfib_prefix_t ip4_specials[] = {
 };
 
 static u32
-ip4_create_mfib_with_table_id (u32 table_id)
+ip4_create_mfib_with_table_id (u32 table_id,
+                               mfib_source_t src)
 {
     mfib_table_t *mfib_table;
 
@@ -53,7 +54,7 @@ ip4_create_mfib_with_table_id (u32 table_id)
         mfib_table->v4.table_id =
             table_id;
 
-    mfib_table_lock(mfib_table->mft_index, FIB_PROTOCOL_IP4);
+    mfib_table_lock(mfib_table->mft_index, FIB_PROTOCOL_IP4, src);
 
     /*
      * add the special entries into the new FIB
@@ -113,14 +114,15 @@ ip4_mfib_table_destroy (ip4_mfib_t *mfib)
 }
 
 u32
-ip4_mfib_table_find_or_create_and_lock (u32 table_id)
+ip4_mfib_table_find_or_create_and_lock (u32 table_id,
+                                        mfib_source_t src)
 {
     u32 index;
 
     index = ip4_mfib_index_from_table_id(table_id);
     if (~0 == index)
-        return ip4_create_mfib_with_table_id(table_id);
-    mfib_table_lock(index, FIB_PROTOCOL_IP4);
+        return ip4_create_mfib_with_table_id(table_id, src);
+    mfib_table_lock(index, FIB_PROTOCOL_IP4, src);
 
     return (index);
 }

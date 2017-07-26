@@ -560,9 +560,6 @@ static void *vl_api_ip_add_del_route_t_print
   if (mp->table_id != 0)
     s = format (s, "vrf %d ", ntohl (mp->table_id));
 
-  if (mp->create_vrf_if_needed)
-    s = format (s, "create-vrf ");
-
   if (mp->next_hop_weight != 1)
     s = format (s, "weight %d ", mp->next_hop_weight);
 

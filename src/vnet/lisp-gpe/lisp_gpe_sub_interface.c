@@ -89,13 +89,15 @@ lisp_gpe_sub_interface_set_table (u32 sw_if_index, u32 table_id)
 {
   fib_node_index_t fib_index;
 
-  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id);
+  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id,
+						 FIB_SOURCE_LISP);
   ASSERT (FIB_NODE_INDEX_INVALID != fib_index);
 
   vec_validate (ip4_main.fib_index_by_sw_if_index, sw_if_index);
   ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
 
-  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, table_id);
+  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, table_id,
+						 FIB_SOURCE_LISP);
   ASSERT (FIB_NODE_INDEX_INVALID != fib_index);
 
   vec_validate (ip6_main.fib_index_by_sw_if_index, sw_if_index);
@@ -105,9 +107,13 @@ lisp_gpe_sub_interface_set_table (u32 sw_if_index, u32 table_id)
 static void
 lisp_gpe_sub_interface_unset_table (u32 sw_if_index, u32 table_id)
 {
+  fib_table_unlock (ip4_main.fib_index_by_sw_if_index[sw_if_index],
+		    FIB_PROTOCOL_IP4, FIB_SOURCE_LISP);
   ip4_main.fib_index_by_sw_if_index[sw_if_index] = 0;
   ip4_sw_interface_enable_disable (sw_if_index, 0);
 
+  fib_table_unlock (ip6_main.fib_index_by_sw_if_index[sw_if_index],
+		    FIB_PROTOCOL_IP6, FIB_SOURCE_LISP);
   ip6_main.fib_index_by_sw_if_index[sw_if_index] = 0;
   ip6_sw_interface_enable_disable (sw_if_index, 0);
 }
@@ -185,6 +191,7 @@ lisp_gpe_sub_interface_unlock (index_t l3si)
 
   l3s = lisp_gpe_sub_interface_get_i (l3si);
 
+  ASSERT (0 != l3s->locks);
   l3s->locks--;
 
   if (0 == l3s->locks)

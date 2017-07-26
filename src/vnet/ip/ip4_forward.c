@@ -1198,8 +1198,10 @@ ip4_lookup_init (vlib_main_t * vm)
   ip_lookup_init (&im->lookup_main, /* is_ip6 */ 0);
 
   /* Create FIB with index 0 and table id of 0. */
-  fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, 0);
-  mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, 0);
+  fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, 0,
+				     FIB_SOURCE_DEFAULT_ROUTE);
+  mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, 0,
+				      MFIB_SOURCE_DEFAULT_ROUTE);
 
   {
     pg_node_t *pn;
@@ -2793,101 +2795,6 @@ VLIB_REGISTER_NODE (ip4_midchain_node) = {
 };
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_midchain_node, ip4_midchain);
 /* *INDENT-ON */
-
-static clib_error_t *
-add_del_interface_table (vlib_main_t * vm,
-			 unformat_input_t * input, vlib_cli_command_t * cmd)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  ip_interface_address_t *ia;
-  clib_error_t *error = 0;
-  u32 sw_if_index, table_id;
-
-  sw_if_index = ~0;
-
-  if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
-    {
-      error = clib_error_return (0, "unknown interface `%U'",
-				 format_unformat_error, input);
-      goto done;
-    }
-
-  if (unformat (input, "%d", &table_id))
-    ;
-  else
-    {
-      error = clib_error_return (0, "expected table id `%U'",
-				 format_unformat_error, input);
-      goto done;
-    }
-
-  /*
-   * If the interface already has in IP address, then a change int
-   * VRF is not allowed. The IP address applied must first be removed.
-   * We do not do that automatically here, since VPP has no knowledge
-   * of whether thoses subnets are valid in the destination VRF.
-   */
-  /* *INDENT-OFF* */
-  foreach_ip_interface_address (&ip4_main.lookup_main,
-                                ia, sw_if_index,
-                                1 /* honor unnumbered */,
-  ({
-      ip4_address_t * a;
-
-      a = ip_interface_address_get_address (&ip4_main.lookup_main, ia);
-      error = clib_error_return (0, "interface %U has address %U",
-                                 format_vnet_sw_if_index_name, vnm,
-                                 sw_if_index,
-                                 format_ip4_address, a);
-      goto done;
-   }));
-   /* *INDENT-ON* */
-
-{
-  ip4_main_t *im = &ip4_main;
-  u32 fib_index;
-
-  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id);
-
-  vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
-  im->fib_index_by_sw_if_index[sw_if_index] = fib_index;
-
-  fib_index = mfib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, table_id);
-  vec_validate (im->mfib_index_by_sw_if_index, sw_if_index);
-  im->mfib_index_by_sw_if_index[sw_if_index] = fib_index;
-}
-
-done:
-return error;
-}
-
-/*?
- * Place the indicated interface into the supplied IPv4 FIB table (also known
- * as a VRF). If the FIB table does not exist, this command creates it. To
- * display the current IPv4 FIB table, use the command '<em>show ip fib</em>'.
- * FIB table will only be displayed if a route has been added to the table, or
- * an IP Address is assigned to an interface in the table (which adds a route
- * automatically).
- *
- * @note IP addresses added after setting the interface IP table are added to
- * the indicated FIB table. If an IP address is added prior to changing the
- * table then this is an error. The control plane must remove these addresses
- * first and then change the table. VPP will not automatically move the
- * addresses from the old to the new table as it does not know the validity
- * of such a change.
- *
- * @cliexpar
- * Example of how to add an interface to an IPv4 FIB table (where 2 is the table-id):
- * @cliexcmd{set interface ip table GigabitEthernet2/0/0 2}
- ?*/
-/* *INDENT-OFF* */
-VLIB_CLI_COMMAND (set_interface_ip_table_command, static) =
-{
-  .path = "set interface ip table",
-  .function = add_del_interface_table,
-  .short_help = "set interface ip table <interface> <table-id>",
-};
-/* *INDENT-ON* */
 
 int
 ip4_lookup_validate (ip4_address_t * a, u32 fib_index0)

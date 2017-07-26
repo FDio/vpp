@@ -23,6 +23,12 @@
 #include <vnet/mfib/mfib_types.h>
 
 /**
+ * Keep a lock per-source and a total
+ */
+#define MFIB_TABLE_N_LOCKS (MFIB_N_SOURCES+1)
+#define MFIB_TABLE_TOTAL_LOCKS MFIB_N_SOURCES
+
+/**
  * @brief
  *   A protocol Independent IP multicast FIB table
  */
@@ -47,7 +53,7 @@ typedef struct mfib_table_t_
     /**
      * number of locks on the table
      */
-    u16 mft_locks;
+    u16 mft_locks[MFIB_TABLE_N_LOCKS];
 
     /**
      * Table ID (hash key) for this FIB.
@@ -259,7 +265,8 @@ extern fib_node_index_t mfib_table_entry_special_add(u32 fib_index,
  *  the source to flush
  */
 extern void mfib_table_flush(u32 fib_index,
-                             fib_protocol_t proto);
+                             fib_protocol_t proto,
+                             mfib_source_t source);
 
 /**
  * @brief
@@ -307,9 +314,13 @@ extern u32 mfib_table_find(fib_protocol_t proto, u32 table_id);
  *
  * @return fib_index
  *  The index of the FIB
+ *
+ * @param source
+ *  The ID of the client/source.
  */
 extern u32 mfib_table_find_or_create_and_lock(fib_protocol_t proto,
-                                              u32 table_id);
+                                              u32 table_id,
+                                              mfib_source_t source);
 
 
 /**
@@ -321,9 +332,13 @@ extern u32 mfib_table_find_or_create_and_lock(fib_protocol_t proto,
  *
  * @paran proto
  *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @param source
+ *  The ID of the client/source.
  */
 extern void mfib_table_unlock(u32 fib_index,
-                              fib_protocol_t proto);
+                              fib_protocol_t proto,
+                              mfib_source_t source);
 
 /**
  * @brief
@@ -335,9 +350,13 @@ extern void mfib_table_unlock(u32 fib_index,
  *
  * @paran proto
  *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @param source
+ *  The ID of the client/source.
  */
 extern void mfib_table_lock(u32 fib_index,
-                            fib_protocol_t proto);
+                            fib_protocol_t proto,
+                            mfib_source_t source);
 
 /**
  * @brief

@@ -595,8 +595,10 @@ sr_policy_add (ip6_address_t * bsid, ip6_address_t * segments,
   if (sm->fib_table_ip6 == (u32) ~ 0)
     {
       sm->fib_table_ip6 = fib_table_create_and_lock (FIB_PROTOCOL_IP6,
+						     FIB_SOURCE_SR,
 						     "SRv6 steering of IP6 prefixes through BSIDs");
       sm->fib_table_ip4 = fib_table_create_and_lock (FIB_PROTOCOL_IP6,
+						     FIB_SOURCE_SR,
 						     "SRv6 steering of IP4 prefixes through BSIDs");
     }
 
@@ -684,8 +686,8 @@ sr_policy_del (ip6_address_t * bsid, u32 index)
   /* If FIB empty unlock it */
   if (!pool_elts (sm->sr_policies) && !pool_elts (sm->steer_policies))
     {
-      fib_table_unlock (sm->fib_table_ip6, FIB_PROTOCOL_IP6);
-      fib_table_unlock (sm->fib_table_ip4, FIB_PROTOCOL_IP6);
+      fib_table_unlock (sm->fib_table_ip6, FIB_PROTOCOL_IP6, FIB_SOURCE_SR);
+      fib_table_unlock (sm->fib_table_ip4, FIB_PROTOCOL_IP6, FIB_SOURCE_SR);
       sm->fib_table_ip6 = (u32) ~ 0;
       sm->fib_table_ip4 = (u32) ~ 0;
     }

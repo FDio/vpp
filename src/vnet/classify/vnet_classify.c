@@ -368,10 +368,10 @@ vnet_classify_entry_claim_resource (vnet_classify_entry_t *e)
     switch (e->action)
     {
     case CLASSIFY_ACTION_SET_IP4_FIB_INDEX:
-        fib_table_lock (e->metadata, FIB_PROTOCOL_IP4);
+        fib_table_lock (e->metadata, FIB_PROTOCOL_IP4, FIB_SOURCE_CLASSIFY);
         break;
     case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
-        fib_table_lock (e->metadata, FIB_PROTOCOL_IP6);
+        fib_table_lock (e->metadata, FIB_PROTOCOL_IP6, FIB_SOURCE_CLASSIFY);
         break;
     }
 }
@@ -382,10 +382,10 @@ vnet_classify_entry_release_resource (vnet_classify_entry_t *e)
     switch (e->action)
     {
     case CLASSIFY_ACTION_SET_IP4_FIB_INDEX:
-        fib_table_unlock (e->metadata, FIB_PROTOCOL_IP4);
+        fib_table_unlock (e->metadata, FIB_PROTOCOL_IP4, FIB_SOURCE_CLASSIFY);
         break;
     case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
-        fib_table_unlock (e->metadata, FIB_PROTOCOL_IP6);
+        fib_table_unlock (e->metadata, FIB_PROTOCOL_IP6, FIB_SOURCE_CLASSIFY);
         break;
     }
 }
@@ -2096,9 +2096,13 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
   e->flags = 0;
   e->action = action;
   if (e->action == CLASSIFY_ACTION_SET_IP4_FIB_INDEX)
-    e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, metadata);
+    e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+                                                     metadata,
+                                                     FIB_SOURCE_CLASSIFY);
   else if (e->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
-    e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, metadata);
+    e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
+                                                     metadata,
+                                                     FIB_SOURCE_CLASSIFY);
   else
     e->metadata = 0;
 

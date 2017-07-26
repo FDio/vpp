@@ -687,6 +687,78 @@ done:
   return error;
 }
 
+clib_error_t *
+vnet_ip_table_cmd (vlib_main_t * vm,
+		   unformat_input_t * main_input,
+		   vlib_cli_command_t * cmd, fib_protocol_t fproto)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  u32 table_id, is_add;
+
+  is_add = 1;
+  table_id = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (main_input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%d", &table_id))
+	;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "add"))
+	is_add = 1;
+      else
+	{
+	  error = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+
+  if (~0 == table_id)
+    {
+      error = clib_error_return (0, "No table id");
+      goto done;
+    }
+  else if (0 == table_id)
+    {
+      error = clib_error_return (0, "Can't change the default table");
+      goto done;
+    }
+  else
+    {
+      if (is_add)
+	{
+	  ip_table_create (fproto, table_id, 0);
+	}
+      else
+	{
+	  ip_table_delete (fproto, table_id, 0);
+	}
+    }
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+clib_error_t *
+vnet_ip4_table_cmd (vlib_main_t * vm,
+		    unformat_input_t * main_input, vlib_cli_command_t * cmd)
+{
+  return (vnet_ip_table_cmd (vm, main_input, cmd, FIB_PROTOCOL_IP4));
+}
+
+clib_error_t *
+vnet_ip6_table_cmd (vlib_main_t * vm,
+		    unformat_input_t * main_input, vlib_cli_command_t * cmd)
+{
+  return (vnet_ip_table_cmd (vm, main_input, cmd, FIB_PROTOCOL_IP6));
+}
+
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (vlib_cli_ip_command, static) = {
   .path = "ip",
@@ -748,6 +820,159 @@ VLIB_CLI_COMMAND (ip_route_command, static) = {
   .short_help = "ip route [add|del] [count <n>] <dst-ip-addr>/<width> [table <table-id>] [via <next-hop-ip-addr> [<interface>] [weight <weight>]] | [via arp <interface> <adj-hop-ip-addr>] | [via drop|punt|local<id>|arp|classify <classify-idx>] [lookup in table <out-table-id>]",
   .function = vnet_ip_route_cmd,
   .is_mp_safe = 1,
+};
+
+/* *INDENT-ON* */
+/*?
+ * This command is used to add or delete IPv4  Tables. All
+ * Tables must be explicitly added before that can be used. Creating a
+ * table will add both unicast and multicast FIBs
+ *
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ip4_table_command, static) = {
+  .path = "ip table",
+  .short_help = "ip table [add|del] <table-id>",
+  .function = vnet_ip4_table_cmd,
+  .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+/* *INDENT-ON* */
+/*?
+ * This command is used to add or delete IPv4  Tables. All
+ * Tables must be explicitly added before that can be used. Creating a
+ * table will add both unicast and multicast FIBs
+ *
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ip6_table_command, static) = {
+  .path = "ip6 table",
+  .short_help = "ip6 table [add|del] <table-id>",
+  .function = vnet_ip6_table_cmd,
+  .is_mp_safe = 1,
+};
+
+static clib_error_t *
+ip_table_bind_cmd (vlib_main_t * vm,
+                   unformat_input_t * input,
+                   vlib_cli_command_t * cmd,
+                   fib_protocol_t fproto)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  clib_error_t *error = 0;
+  u32 sw_if_index, table_id;
+  int rv;
+
+  sw_if_index = ~0;
+
+  if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+    {
+      error = clib_error_return (0, "unknown interface `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+
+  if (unformat (input, "%d", &table_id))
+    ;
+  else
+    {
+      error = clib_error_return (0, "expected table id `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+
+  rv = ip_table_bind (fproto, sw_if_index, table_id, 0);
+
+  if (VNET_API_ERROR_ADDRESS_FOUND_FOR_INTERFACE == rv)
+    {
+      error = clib_error_return (0, "IP addresses are still present on %U",
+                                 format_vnet_sw_if_index_name,
+                                 vnet_get_main(),
+                                 sw_if_index);
+    }
+  else if (VNET_API_ERROR_NO_SUCH_FIB == rv)
+    {
+      error = clib_error_return (0, "no such table %d", table_id);
+    }
+  else if (0 != rv)
+    {
+      error = clib_error_return (0, "unknown error");
+    }
+
+ done:
+  return error;
+}
+
+static clib_error_t *
+ip4_table_bind_cmd (vlib_main_t * vm,
+                    unformat_input_t * input,
+                    vlib_cli_command_t * cmd)
+{
+  return (ip_table_bind_cmd (vm , input, cmd, FIB_PROTOCOL_IP4));
+}
+
+static clib_error_t *
+ip6_table_bind_cmd (vlib_main_t * vm,
+                    unformat_input_t * input,
+                    vlib_cli_command_t * cmd)
+{
+  return (ip_table_bind_cmd (vm , input, cmd, FIB_PROTOCOL_IP6));
+}
+
+/*?
+ * Place the indicated interface into the supplied IPv4 FIB table (also known
+ * as a VRF). If the FIB table does not exist, this command creates it. To
+ * display the current IPv4 FIB table, use the command '<em>show ip fib</em>'.
+ * FIB table will only be displayed if a route has been added to the table, or
+ * an IP Address is assigned to an interface in the table (which adds a route
+ * automatically).
+ *
+ * @note IP addresses added after setting the interface IP table are added to
+ * the indicated FIB table. If an IP address is added prior to changing the
+ * table then this is an error. The control plane must remove these addresses
+ * first and then change the table. VPP will not automatically move the
+ * addresses from the old to the new table as it does not know the validity
+ * of such a change.
+ *
+ * @cliexpar
+ * Example of how to add an interface to an IPv4 FIB table (where 2 is the table-id):
+ * @cliexcmd{set interface ip table GigabitEthernet2/0/0 2}
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_interface_ip_table_command, static) =
+{
+  .path = "set interface ip table",
+  .function = ip4_table_bind_cmd,
+  .short_help = "set interface ip table <interface> <table-id>",
+};
+/* *INDENT-ON* */
+
+/*?
+ * Place the indicated interface into the supplied IPv6 FIB table (also known
+ * as a VRF). If the FIB table does not exist, this command creates it. To
+ * display the current IPv6 FIB table, use the command '<em>show ip6 fib</em>'.
+ * FIB table will only be displayed if a route has been added to the table, or
+ * an IP Address is assigned to an interface in the table (which adds a route
+ * automatically).
+ *
+ * @note IP addresses added after setting the interface IP table are added to
+ * the indicated FIB table. If an IP address is added prior to changing the
+ * table then this is an error. The control plane must remove these addresses
+ * first and then change the table. VPP will not automatically move the
+ * addresses from the old to the new table as it does not know the validity
+ * of such a change.
+ *
+ * @cliexpar
+ * Example of how to add an interface to an IPv6 FIB table (where 2 is the table-id):
+ * @cliexcmd{set interface ip6 table GigabitEthernet2/0/0 2}
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (set_interface_ip6_table_command, static) =
+{
+  .path = "set interface ip6 table",
+  .function = ip6_table_bind_cmd,
+  .short_help = "set interface ip6 table <interface> <table-id>"
 };
 /* *INDENT-ON* */
 

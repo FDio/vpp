@@ -6,7 +6,7 @@ import struct
 
 from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor
-from vpp_ip_route import find_route
+from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr
 
 from scapy.layers.l2 import Ether, getmacbyip, ARP
@@ -34,9 +34,19 @@ class TestDHCP(VppTestCase):
 
         # create 3 pg interfaces
         self.create_pg_interfaces(range(4))
+        self.tables = []
 
         # pg0 and 1 are IP configured in VRF 0 and 1.
         # pg2 and 3 are non IP-configured in VRF 0 and 1
+        table_id = 0
+        for table_id in range(1, 4):
+            tbl4 = VppIpTable(self, table_id)
+            tbl4.add_vpp_config()
+            self.tables.append(tbl4)
+            tbl6 = VppIpTable(self, table_id, is_ip6=1)
+            tbl6.add_vpp_config()
+            self.tables.append(tbl6)
+
         table_id = 0
         for i in self.pg_interfaces[:2]:
             i.admin_up()
@@ -56,11 +66,15 @@ class TestDHCP(VppTestCase):
             table_id += 1
 
     def tearDown(self):
-        super(TestDHCP, self).tearDown()
-        for i in self.pg_interfaces:
+        for i in self.pg_interfaces[:2]:
             i.unconfig_ip4()
             i.unconfig_ip6()
+
+        for i in self.pg_interfaces:
+            i.set_table_ip4(0)
+            i.set_table_ip6(0)
             i.admin_down()
+        super(TestDHCP, self).tearDown()
 
     def send_and_assert_no_replies(self, intf, pkts, remark):
         intf.add_stream(pkts)
@@ -667,6 +681,8 @@ class TestDHCP(VppTestCase):
                                         "DHCP cleanup VRF 0")
         self.send_and_assert_no_replies(self.pg3, pkts_disc_vrf1,
                                         "DHCP cleanup VRF 1")
+        self.pg2.unconfig_ip4()
+        self.pg3.unconfig_ip4()
 
     def test_dhcp6_proxy(self):
         """ DHCPv6 Proxy"""
@@ -1045,6 +1061,8 @@ class TestDHCP(VppTestCase):
                                     server_table_id=0,
                                     is_ipv6=1,
                                     is_add=0)
+        self.pg2.unconfig_ip6()
+        self.pg3.unconfig_ip6()
 
     def test_dhcp_client(self):
         """ DHCP Client"""

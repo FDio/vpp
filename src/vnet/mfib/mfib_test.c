@@ -22,6 +22,7 @@
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_test.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/fib/mpls_fib.h>
 
 #include <vnet/dpo/replicate_dpo.h>
 #include <vnet/adj/adj_mcast.h>
@@ -366,7 +367,7 @@ mfib_test_i (fib_protocol_t PROTO,
     MFIB_TEST(3 == adj_mcast_db_size(), "3 MCAST adjs");
 
     /* Find or create FIB table 11 */
-    fib_index = mfib_table_find_or_create_and_lock(PROTO, 11);
+    fib_index = mfib_table_find_or_create_and_lock(PROTO, 11, MFIB_SOURCE_API);
 
     mfib_prefix_t pfx_dft = {
         .fp_len = 0,
@@ -1113,9 +1114,10 @@ mfib_test_i (fib_protocol_t PROTO,
     /*
      * MPLS enable an interface so we get the MPLS table created
      */
+    mpls_table_create(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API);
     mpls_sw_interface_enable_disable(&mpls_main,
                                      tm->hw[0]->sw_if_index,
-                                     1);
+                                     1, 0);
 
     lfei = fib_table_entry_update_one_path(0, // default MPLS Table
                                            &pfx_3500,
@@ -1192,7 +1194,7 @@ mfib_test_i (fib_protocol_t PROTO,
     /*
      * Unlock the table - it's the last lock so should be gone thereafter
      */
-    mfib_table_unlock(fib_index, PROTO);
+    mfib_table_unlock(fib_index, PROTO, MFIB_SOURCE_API);
 
     MFIB_TEST((FIB_NODE_INDEX_INVALID ==
                mfib_table_find(PROTO, fib_index)),
@@ -1207,7 +1209,8 @@ mfib_test_i (fib_protocol_t PROTO,
      */
     mpls_sw_interface_enable_disable(&mpls_main,
                                      tm->hw[0]->sw_if_index,
-                                     0);
+                                     0, 0);
+    mpls_table_delete(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API);
 
     /*
      * test we've leaked no resources

@@ -8,7 +8,7 @@ from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_pg_interface import is_ipv6_misc
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsRoute, DpoProto
+    VppMplsRoute, DpoProto, VppMplsTable
 from vpp_neighbor import find_nbr, VppNeighbor
 
 from scapy.packet import Raw
@@ -1260,6 +1260,9 @@ class TestIP6LoadBalance(VppTestCase):
 
         self.create_pg_interfaces(range(5))
 
+        mpls_tbl = VppMplsTable(self, 0)
+        mpls_tbl.add_vpp_config()
+
         for i in self.pg_interfaces:
             i.admin_up()
             i.config_ip6()
@@ -1267,11 +1270,11 @@ class TestIP6LoadBalance(VppTestCase):
             i.enable_mpls()
 
     def tearDown(self):
-        super(TestIP6LoadBalance, self).tearDown()
         for i in self.pg_interfaces:
             i.unconfig_ip6()
             i.admin_down()
             i.disable_mpls()
+        super(TestIP6LoadBalance, self).tearDown()
 
     def send_and_expect_load_balancing(self, input, pkts, outputs):
         input.add_stream(pkts)

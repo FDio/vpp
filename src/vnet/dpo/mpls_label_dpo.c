@@ -105,9 +105,17 @@ format_mpls_label_dpo (u8 *s, va_list *args)
     mpls_label_dpo_t *mld;
     u32 ii;
 
-    mld = mpls_label_dpo_get(index);
-
     s = format(s, "mpls-label:[%d]:", index);
+
+    if (pool_is_free_index(mpls_label_dpo_pool, index))
+    {
+        /*
+         * the packet trace can be printed after the DPO has been deleted
+         */
+        return (s);
+    }
+
+    mld = mpls_label_dpo_get(index);
 
     for (ii = 0; ii < mld->mld_n_labels; ii++)
     {

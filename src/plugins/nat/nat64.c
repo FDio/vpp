@@ -107,7 +107,8 @@ nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add)
       a->fib_index = 0;
       if (vrf_id != ~0)
 	a->fib_index =
-	  fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id);
+	  fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
+					     FIB_SOURCE_PLUGIN_HI);
 #define _(N, i, n, s) \
       clib_bitmap_alloc (a->busy_##n##_port_bitmap, 65535);
       foreach_snat_protocol
@@ -119,7 +120,8 @@ nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       if (a->fib_index)
-	fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP6);
+	fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP6,
+			  FIB_SOURCE_PLUGIN_HI);
 
 #define _(N, id, n, s) \
       clib_bitmap_free (a->busy_##n##_port_bitmap);
@@ -353,8 +355,8 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 {
   nat64_main_t *nm = &nat64_main;
   nat64_db_bib_entry_t *bibe;
-  u32 fib_index =
-    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id);
+  u32 fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
+						     FIB_SOURCE_PLUGIN_HI);
   snat_protocol_t p = ip_proto_to_snat_proto (proto);
   ip46_address_t addr;
   int i;
@@ -644,7 +646,8 @@ nat64_add_del_prefix (ip6_address_t * prefix, u8 plen, u32 vrf_id, u8 is_add)
 	{
 	  vec_add2 (nm->pref64, p, 1);
 	  p->fib_index =
-	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id);
+	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
+					       FIB_SOURCE_PLUGIN_HI);
 	  p->vrf_id = vrf_id;
 	}
 
