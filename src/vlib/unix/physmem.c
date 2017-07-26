@@ -155,7 +155,8 @@ htlb_init (vlib_main_t * vm)
 
   pm->heap = mheap_alloc_with_flags (pm->mem, pm->mem_size,
 				     /* Don't want mheap mmap/munmap with IO memory. */
-				     MHEAP_FLAG_DISABLE_VM);
+				     MHEAP_FLAG_DISABLE_VM |
+				     MHEAP_FLAG_THREAD_SAFE);
 
   cur = pointer_to_uword (pm->mem);
   i = 0;
