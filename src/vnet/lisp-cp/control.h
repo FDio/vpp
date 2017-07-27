@@ -53,6 +53,11 @@ typedef struct
 
 typedef struct
 {
+  f64 time_to_expire;
+} pending_map_register_t;
+
+typedef struct
+{
   gid_address_t leid;
   gid_address_t reid;
   u8 is_src_dst;
@@ -180,6 +185,9 @@ typedef struct
   /* pool of pending map requests */
   pending_map_request_t *pending_map_requests_pool;
 
+  /* pool of pending map registers */
+  pending_map_register_t *pending_map_registers_pool;
+
   /* hash map of sent map register messages */
   uword *map_register_messages_by_nonce;
 
@@ -194,8 +202,10 @@ typedef struct
    * since the vector may be modified during request resend/retry procedure
    * and break things :-) */
   ip_address_t active_map_resolver;
+  ip_address_t active_map_server;
 
   u8 do_map_resolver_election;
+  u8 do_map_server_election;
 
   /* map-request  locator set index */
   u32 mreq_itr_rlocs;
