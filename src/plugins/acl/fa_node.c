@@ -621,14 +621,14 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 static inline fa_session_t *get_session_ptr(acl_main_t *am, u16 thread_index, u32 session_index)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  fa_session_t *sess = pw->fa_sessions_pool + session_index;
+  fa_session_t *sess = pool_is_free_index (pw->fa_sessions_pool, session_index) ? 0 : pool_elt_at_index(pw->fa_sessions_pool, session_index);
   return sess;
 }
 
 static inline int is_valid_session_ptr(acl_main_t *am, u16 thread_index, fa_session_t *sess)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  return ((sess - pw->fa_sessions_pool) < pool_len(pw->fa_sessions_pool));
+  return ((sess != 0) && ((sess - pw->fa_sessions_pool) < pool_len(pw->fa_sessions_pool)));
 }
 
 static void
