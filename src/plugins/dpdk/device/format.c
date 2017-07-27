@@ -213,6 +213,10 @@ format_dpdk_device_name (u8 * s, va_list * args)
       device_name = "VirtioUser";
       break;
 
+    case VNET_DPDK_PORT_TYPE_VHOST_ETHER:
+      device_name = "VhostEthernet";
+      break;
+
     default:
     case VNET_DPDK_PORT_TYPE_UNKNOWN:
       device_name = "UnknownEthernet";
@@ -316,6 +320,9 @@ format_dpdk_device_type (u8 * s, va_list * args)
 
     case VNET_DPDK_PMD_THUNDERX:
       dev_type = "Cavium ThunderX";
+
+    case VNET_DPDK_PMD_VHOST_ETHER:
+      dev_type = "VhostEthernet";
       break;
 
     default:
