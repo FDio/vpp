@@ -135,7 +135,7 @@ clib_socket_free (clib_socket_t * s)
 {
   vec_free (s->tx_buffer);
   vec_free (s->rx_buffer);
-  if (clib_mem_is_heap_object (s->config))
+  if (clib_mem_is_vec(s->config))
     vec_free (s->config);
   memset (s, 0, sizeof (s[0]));
 }
