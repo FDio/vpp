@@ -2167,9 +2167,9 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
             out0 = format(out0, "  input lookup applied entries:\n");
             for(j=0; j<vec_len(am->input_hash_entry_vec_by_sw_if_index[swi]); j++) {
               applied_hash_ace_entry_t *pae = &am->input_hash_entry_vec_by_sw_if_index[swi][j];
-              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d\n",
+              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d\n",
                                        j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
-                                       pae->next_applied_entry_index, pae->prev_applied_entry_index);
+                                       pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index);
             }
           }
 
@@ -2181,9 +2181,9 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
             out0 = format(out0, "  output lookup applied entries:\n");
             for(j=0; j<vec_len(am->output_hash_entry_vec_by_sw_if_index[swi]); j++) {
               applied_hash_ace_entry_t *pae = &am->output_hash_entry_vec_by_sw_if_index[swi][j];
-              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d\n",
+              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d\n",
                                        j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
-                                       pae->next_applied_entry_index, pae->prev_applied_entry_index);
+                                       pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index);
             }
           }
 
