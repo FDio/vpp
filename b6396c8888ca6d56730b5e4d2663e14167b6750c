@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_a88ff374",
+        "filename": "Makefile",
+        "patchSetId": 48
+      },
+      "lineNbr": 59,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-07-27T12:52:20Z",
+      "side": 1,
+      "message": "merge error?",
+      "revId": "b6396c8888ca6d56730b5e4d2663e14167b6750c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_888c3781",
+        "filename": "Makefile",
+        "patchSetId": 48
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-07-27T12:52:20Z",
+      "side": 1,
+      "message": "merge error?",
+      "revId": "b6396c8888ca6d56730b5e4d2663e14167b6750c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
