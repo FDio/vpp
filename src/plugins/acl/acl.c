@@ -190,14 +190,14 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
   else
     {
       a = am->acls + *acl_list_index;
-      hash_acl_delete(am, *acl_list_index);
+      // AYXXHASH hash_acl_delete(am, *acl_list_index);
       /* Get rid of the old rules */
       clib_mem_free (a->rules);
     }
   a->rules = acl_new_rules;
   a->count = count;
   memcpy (a->tag, tag, sizeof (a->tag));
-  hash_acl_add(am, *acl_list_index);
+  //AYXXHASH hash_acl_add(am, *acl_list_index);
 
   return 0;
 }
@@ -259,7 +259,7 @@ acl_del_list (u32 acl_list_index)
     }
   /* delete the hash table data */
 
-  hash_acl_delete(am, acl_list_index);
+  //AYXXHASH hash_acl_delete(am, acl_list_index);
   /* now we can delete the ACL itself */
   a = &am->acls[acl_list_index];
   if (a->rules)
@@ -400,6 +400,7 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   vnet_classify_main_t *cm = &vnet_classify_main;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  return 0;
 
   vec_validate_init_empty (am->acl_ip4_input_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
@@ -438,6 +439,7 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   vnet_classify_main_t *cm = &vnet_classify_main;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  return 0;
 
   vec_validate_init_empty (am->acl_ip4_output_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
@@ -477,6 +479,7 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
   int rv;
+  return 0;
 
   /* in case there were previous tables attached */
   acl_unhook_l2_input_classify (am, sw_if_index);
@@ -535,6 +538,7 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
   int rv;
+  return 0;
 
   /* in case there were previous tables attached */
   acl_unhook_l2_output_classify (am, sw_if_index);
@@ -593,6 +597,7 @@ acl_interface_in_enable_disable (acl_main_t * am, u32 sw_if_index,
 				 int enable_disable)
 {
   int rv;
+  return 0;
 
   /* Utterly wrong? */
   if (pool_is_free_index (am->vnet_main->interface_main.sw_interfaces,
@@ -618,6 +623,7 @@ acl_interface_out_enable_disable (acl_main_t * am, u32 sw_if_index,
 				  int enable_disable)
 {
   int rv;
+  return 0;
 
   /* Utterly wrong? */
   if (pool_is_free_index (am->vnet_main->interface_main.sw_interfaces,
@@ -724,7 +730,7 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
       if (acl_list_index < vec_len(am->input_sw_if_index_vec_by_acl)) {
         u32 index = vec_search(am->input_sw_if_index_vec_by_acl[acl_list_index], sw_if_index);
         if (index < vec_len(am->input_sw_if_index_vec_by_acl[acl_list_index])) {
-          hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
+          //AYXXHASH hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
           vec_del1 (am->input_sw_if_index_vec_by_acl[acl_list_index], index);
         }
       }
@@ -753,7 +759,7 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
       if (acl_list_index < vec_len(am->output_sw_if_index_vec_by_acl)) {
         u32 index = vec_search(am->output_sw_if_index_vec_by_acl[acl_list_index], sw_if_index);
         if (index < vec_len(am->output_sw_if_index_vec_by_acl[acl_list_index])) {
-          hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
+          //AYXXHASH hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
           vec_del1 (am->output_sw_if_index_vec_by_acl[acl_list_index], index);
         }
       }
@@ -781,7 +787,7 @@ acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input)
 
       for(i = vec_len(am->input_acl_vec_by_sw_if_index[sw_if_index])-1; i>=0; i--) {
         u32 acl_list_index = am->input_acl_vec_by_sw_if_index[sw_if_index][i];
-        hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
+        //AYXXHASH hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
         if (acl_list_index < vec_len(am->input_sw_if_index_vec_by_acl)) {
           u32 index = vec_search(am->input_sw_if_index_vec_by_acl[acl_list_index], sw_if_index);
           if (index < vec_len(am->input_sw_if_index_vec_by_acl[acl_list_index])) {
@@ -801,7 +807,7 @@ acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input)
 
       for(i = vec_len(am->output_acl_vec_by_sw_if_index[sw_if_index])-1; i>=0; i--) {
         u32 acl_list_index = am->output_acl_vec_by_sw_if_index[sw_if_index][i];
-        hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
+        //AYXXHASH hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
         if (acl_list_index < vec_len(am->output_sw_if_index_vec_by_acl)) {
           u32 index = vec_search(am->output_sw_if_index_vec_by_acl[acl_list_index], sw_if_index);
           if (index < vec_len(am->output_sw_if_index_vec_by_acl[acl_list_index])) {
@@ -819,19 +825,19 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
 				 u32 acl_list_index)
 {
   int rv = -1;
-  acl_main_t *am = &acl_main;
+  // acl_main_t *am = &acl_main;
   if (is_add)
     {
       rv =
 	acl_interface_add_inout_acl (sw_if_index, is_input, acl_list_index);
       if (rv == 0)
         {
-          hash_acl_apply(am, sw_if_index, is_input, acl_list_index);
+          //AYXXHASH hash_acl_apply(am, sw_if_index, is_input, acl_list_index);
         }
     }
   else
     {
-      hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
+      //AYXXHASH hash_acl_unapply(am, sw_if_index, is_input, acl_list_index);
       rv =
 	acl_interface_del_inout_acl (sw_if_index, is_input, acl_list_index);
     }
