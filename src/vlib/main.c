@@ -456,6 +456,15 @@ vlib_put_next_frame_validate (vlib_main_t * vm,
 }
 
 void
+vlib_print_pending_frames_length(vlib_main_t * vm)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  clib_warning("NM pending frames length : %u\n", vec_len(nm->pending_frames));
+}
+
+static int vlib_max_pending_frames = 128;
+
+void
 vlib_put_next_frame (vlib_main_t * vm,
 		     vlib_node_runtime_t * r,
 		     u32 next_index, u32 n_vectors_left)
@@ -502,7 +511,8 @@ vlib_put_next_frame (vlib_main_t * vm,
 	  node = vlib_get_node (vm, r->node_index);
 	  next_node = vlib_get_next_node (vm, r->node_index, next_index);
 	  next_runtime = vlib_node_get_runtime (vm, next_node->index);
-
+	  if (vec_len(nm->pending_frames) > vlib_max_pending_frames)
+            vlib_print_pending_frames_length(vm);
 	  vec_add2 (nm->pending_frames, p, 1);
 
 	  p->frame_index = nf->frame_index;
