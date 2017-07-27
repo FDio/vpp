@@ -62,6 +62,7 @@ vec_resize_allocate_memory (void *v,
       memset (new, 0, data_bytes);
       v = new + header_bytes;
       _vec_len (v) = length_increment;
+      _vec_set_magic (v);
       return v;
     }
 
@@ -93,6 +94,7 @@ vec_resize_allocate_memory (void *v,
        length_increment, data_bytes, data_align);
 
   clib_memcpy (new, old, old_alloc_bytes);
+  vec_garble_magic(v);
   clib_mem_free (old);
   v = new;
 
@@ -108,6 +110,9 @@ vec_resize_allocate_memory (void *v,
 uword
 clib_mem_is_vec_h (void *v, uword header_bytes)
 {
+  if (clib_mem_is_heap_object (vec_header (v, header_bytes))) {
+    vec_check_magic (v);
+  }
   return clib_mem_is_heap_object (vec_header (v, header_bytes));
 }
 
