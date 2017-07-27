@@ -50,9 +50,11 @@ static char *memif_tx_func_error_strings[] = {
 u8 *
 format_memif_device_name (u8 * s, va_list * args)
 {
-  u32 i = va_arg (*args, u32);
+  u32 dev_instance = va_arg (*args, u32);
+  memif_main_t *mm = &memif_main;
+  memif_if_t *mif = pool_elt_at_index (mm->interfaces, dev_instance);
 
-  s = format (s, "memif%u", i);
+  s = format (s, "memif%lu/%lu", mif->socket_file_index, mif->id);
   return s;
 }
 
