@@ -43,7 +43,7 @@ match_portranges(acl_main_t *am, fa_5tuple_t *match, u32 index)
 {
   applied_hash_ace_entry_t **applied_hash_aces = match->pkt.is_input ? &am->input_hash_entry_vec_by_sw_if_index[match->pkt.sw_if_index] :
                                                     &am->output_hash_entry_vec_by_sw_if_index[match->pkt.sw_if_index];
-  applied_hash_ace_entry_t *pae = &((*applied_hash_aces)[index]);
+  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), index);
 
   // hash_acl_info_t *ha = &am->hash_acl_infos[pae->acl_index];
   acl_rule_t *r = &(am->acls[pae->acl_index].rules[pae->ace_index]);
@@ -79,7 +79,7 @@ multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
 	       pmatch[0], pmatch[1], pmatch[2], pmatch[3], pmatch[4], pmatch[5]);
 
   for(mask_type_index=0; mask_type_index < pool_len(am->ace_mask_type_pool); mask_type_index++) {
-    if (!clib_bitmap_get((*applied_hash_acls)[sw_if_index].mask_type_index_bitmap, mask_type_index)) {
+    if (!clib_bitmap_get(vec_elt_at_index((*applied_hash_acls), sw_if_index)->mask_type_index_bitmap, mask_type_index)) {
       /* This bit is not set. Avoid trying to match */
       continue;
     }
@@ -120,7 +120,7 @@ multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
           u32 curr_index = result_val->applied_entry_index;
           while ((curr_index != ~0) && !match_portranges(am, match, curr_index)) {
             /* while no match and there are more entries, walk... */
-            applied_hash_ace_entry_t *pae = &((*applied_hash_aces)[curr_index]);
+            applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces),curr_index);
             DBG("entry %d did not portmatch, advancing to %d", curr_index, pae->next_applied_entry_index);
             curr_index = pae->next_applied_entry_index;
           }
@@ -153,9 +153,9 @@ multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
 static void
 hashtable_add_del(acl_main_t *am, clib_bihash_kv_48_8_t *kv, int is_add)
 {
-    DBG("HASH ADD/DEL: %016llx %016llx %016llx %016llx %016llx %016llx add %d",
+    DBG("HASH ADD/DEL: %016llx %016llx %016llx %016llx %016llx %016llx %016llx add %d",
                         kv->key[0], kv->key[1], kv->key[2],
-                        kv->key[3], kv->key[4], kv->key[5], is_add);
+                        kv->key[3], kv->key[4], kv->key[5], kv->value, is_add);
     BV (clib_bihash_add_del) (&am->acl_lookup_hash, kv, is_add);
 }
 
@@ -167,17 +167,17 @@ fill_applied_hash_ace_kv(acl_main_t *am,
 {
   fa_5tuple_t *kv_key = (fa_5tuple_t *)kv->key;
   hash_acl_lookup_value_t *kv_val = (hash_acl_lookup_value_t *)&kv->value;
-  applied_hash_ace_entry_t *pae = &((*applied_hash_aces)[new_index]);
-  hash_acl_info_t *ha = &am->hash_acl_infos[pae->acl_index];
+  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), new_index);
+  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, pae->acl_index);
 
-  memcpy(kv_key, &ha->rules[pae->hash_ace_info_index].match, sizeof(*kv_key));
+  memcpy(kv_key, &(vec_elt_at_index(ha->rules, pae->hash_ace_info_index)->match), sizeof(*kv_key));
   /* initialize the sw_if_index and direction */
   kv_key->pkt.sw_if_index = sw_if_index;
   kv_key->pkt.is_input = is_input;
   kv_val->as_u64 = 0;
   kv_val->applied_entry_index = new_index;
-  kv_val->need_portrange_check = ha->rules[pae->hash_ace_info_index].src_portrange_not_powerof2 ||
-				   ha->rules[pae->hash_ace_info_index].dst_portrange_not_powerof2;
+  kv_val->need_portrange_check = vec_elt_at_index(ha->rules, pae->hash_ace_info_index)->src_portrange_not_powerof2 ||
+				   vec_elt_at_index(ha->rules, pae->hash_ace_info_index)->dst_portrange_not_powerof2;
   /* by default assume all values are shadowed -> check all mask types */
   kv_val->shadowed = 1;
 }
@@ -203,7 +203,9 @@ activate_applied_ace_hash_entry(acl_main_t *am,
                             u32 new_index)
 {
   clib_bihash_kv_48_8_t kv;
-  applied_hash_ace_entry_t *pae = &((*applied_hash_aces)[new_index]);
+  ASSERT(new_index != ~0);
+  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), new_index);
+  DBG("activate_applied_ace_hash_entry sw_if_index %d is_input %d new_index %d", sw_if_index, is_input, new_index);
 
   fill_applied_hash_ace_kv(am, applied_hash_aces, sw_if_index, is_input, new_index, &kv);
 
@@ -214,28 +216,27 @@ activate_applied_ace_hash_entry(acl_main_t *am,
   clib_bihash_kv_48_8_t result;
   hash_acl_lookup_value_t *result_val = (hash_acl_lookup_value_t *)&result.value;
   int res = BV (clib_bihash_search) (&am->acl_lookup_hash, &kv, &result);
+  ASSERT(new_index != ~0);
   if (res == 0) {
     /* There already exists an entry or more. Append at the end. */
     u32 first_index = result_val->applied_entry_index;
-    DBG("A key already exists, with applied entry index: %d", existing_index);
     ASSERT(first_index != ~0);
-    applied_hash_ace_entry_t *first_pae = &((*applied_hash_aces)[first_index]);
-    /* move to "prev" by one, this should land us in the end of the list */
-    u32 last_index = first_pae->prev_applied_entry_index;
+    DBG("A key already exists, with applied entry index: %d", first_index);
+    applied_hash_ace_entry_t *first_pae = vec_elt_at_index((*applied_hash_aces), first_index);
+    u32 last_index = first_pae->tail_applied_entry_index;
     ASSERT(last_index != ~0);
-    applied_hash_ace_entry_t *last_pae = &((*applied_hash_aces)[last_index]);
-    ASSERT(last_pae->next_applied_entry_index == ~0);
+    applied_hash_ace_entry_t *last_pae = vec_elt_at_index((*applied_hash_aces), last_index);
+    DBG("...advance to chained entry index: %d", last_index);
     /* link ourseves in */
     last_pae->next_applied_entry_index = new_index;
     pae->prev_applied_entry_index = last_index;
-    /* make a new reference from the very first element to new tail */
-    first_pae->prev_applied_entry_index = new_index;
+    /* adjust the pointer to the new tail */
+    first_pae->tail_applied_entry_index = new_index;
   } else {
     /* It's the very first entry */
     hashtable_add_del(am, &kv, 1);
-    pae->is_first_entry = 1;
-    /* we are the tail */
-    pae->prev_applied_entry_index = new_index;
+    ASSERT(new_index != ~0);
+    pae->tail_applied_entry_index = new_index;
   }
 }
 
@@ -305,8 +306,7 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
   /* add the rules from the ACL to the hash table for lookup and append to the vector*/
   for(i=0; i < vec_len(ha->rules); i++) {
     u32 new_index = base_offset + i;
-    applied_hash_ace_entry_t *pae = &((*applied_hash_aces)[new_index]);
-    pae->is_first_entry = 0;
+    applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), new_index);
     pae->acl_index = acl_index;
     pae->ace_index = ha->rules[i].ace_index;
     pae->action = ha->rules[i].action;
@@ -314,9 +314,28 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
     /* we might link it in later */
     pae->next_applied_entry_index = ~0;
     pae->prev_applied_entry_index = ~0;
+    pae->tail_applied_entry_index = ~0;
     activate_applied_ace_hash_entry(am, sw_if_index, is_input, applied_hash_aces, new_index);
   }
   applied_hash_entries_analyze(am, applied_hash_aces);
+}
+
+static u32
+find_head_applied_ace_index(applied_hash_ace_entry_t **applied_hash_aces, u32 curr_index)
+{
+  /*
+   * find back the first entry. Inefficient so might need to be a bit cleverer
+   * if this proves to be a problem..
+   */
+  u32 an_index = curr_index;
+  ASSERT(an_index != ~0);
+  applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), an_index);
+  while(head_pae->prev_applied_entry_index != ~0) {
+    an_index = head_pae->prev_applied_entry_index;
+    ASSERT(an_index != ~0);
+    head_pae = vec_elt_at_index((*applied_hash_aces), an_index);
+  }
+  return an_index;
 }
 
 static void
@@ -325,43 +344,43 @@ move_applied_ace_hash_entry(acl_main_t *am,
                             applied_hash_ace_entry_t **applied_hash_aces,
                             u32 old_index, u32 new_index)
 {
+  ASSERT(old_index != ~0);
+  ASSERT(new_index != ~0);
   /* move the entry */
-  (*applied_hash_aces)[new_index] = (*applied_hash_aces)[old_index];
+  *vec_elt_at_index((*applied_hash_aces), new_index) = *vec_elt_at_index((*applied_hash_aces), old_index);
 
   /* update the linkage and hash table if necessary */
-  applied_hash_ace_entry_t *pae = &((*applied_hash_aces)[old_index]);
+  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), old_index);
 
-  if (!pae->is_first_entry) {
-    applied_hash_ace_entry_t *prev_pae = &((*applied_hash_aces)[pae->prev_applied_entry_index]);
+  if (pae->prev_applied_entry_index != ~0) {
+    applied_hash_ace_entry_t *prev_pae = vec_elt_at_index((*applied_hash_aces), pae->prev_applied_entry_index);
     ASSERT(prev_pae->next_applied_entry_index == old_index);
     prev_pae->next_applied_entry_index = new_index;
   } else {
     /* first entry - so the hash points to it, update */
     add_del_hashtable_entry(am, sw_if_index, is_input,
                             applied_hash_aces, new_index, 1);
+    ASSERT(pae->tail_applied_entry_index != ~0);
   }
   if (pae->next_applied_entry_index != ~0) {
-    applied_hash_ace_entry_t *next_pae = &((*applied_hash_aces)[pae->next_applied_entry_index]);
+    applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
     ASSERT(next_pae->prev_applied_entry_index == old_index);
     next_pae->prev_applied_entry_index = new_index;
   } else {
     /*
      * Moving the very last entry, so we need to update the tail pointer in the first one.
-     * find back the first entry. Inefficient so might need to be a bit cleverer
-     * if this proves to be a problem..
      */
-    u32 an_index = pae->prev_applied_entry_index;
-    applied_hash_ace_entry_t *head_pae = &((*applied_hash_aces)[pae->prev_applied_entry_index]);
-    while(!head_pae->is_first_entry) {
-      an_index = head_pae->prev_applied_entry_index;
-      head_pae = &((*applied_hash_aces)[an_index]);
-    }
-    ASSERT(head_pae->prev_applied_entry_index == old_index);
-    head_pae->prev_applied_entry_index = new_index;
+    u32 head_index = find_head_applied_ace_index(applied_hash_aces, old_index);
+    ASSERT(head_index != ~0);
+    applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), head_index);
+
+    ASSERT(head_pae->tail_applied_entry_index == old_index);
+    head_pae->tail_applied_entry_index = new_index;
   }
   /* invalidate the old entry */
   pae->prev_applied_entry_index = ~0;
   pae->next_applied_entry_index = ~0;
+  pae->tail_applied_entry_index = ~0;
 }
 
 static void
@@ -370,39 +389,37 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
                             applied_hash_ace_entry_t **applied_hash_aces,
                             u32 old_index)
 {
-  applied_hash_ace_entry_t *pae = &((*applied_hash_aces)[old_index]);
+  applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), old_index);
+  DBG("UNAPPLY DEACTIVATE: sw_if_index %d is_input %d, applied index %d", sw_if_index, is_input, old_index);
 
-  if (pae->next_applied_entry_index != ~0) {
-    applied_hash_ace_entry_t *next_pae = &((*applied_hash_aces)[pae->next_applied_entry_index]);
-    ASSERT(next_pae->prev_applied_entry_index == old_index);
-    next_pae->prev_applied_entry_index = pae->prev_applied_entry_index;
-  }
-
-  if (!pae->is_first_entry) {
-    applied_hash_ace_entry_t *prev_pae = &((*applied_hash_aces)[pae->prev_applied_entry_index]);
+  if (pae->prev_applied_entry_index != ~0) {
+    DBG("UNAPPLY = index %d has prev_applied_entry_index %d", old_index, pae->prev_applied_entry_index);
+    applied_hash_ace_entry_t *prev_pae = vec_elt_at_index((*applied_hash_aces), pae->prev_applied_entry_index);
     ASSERT(prev_pae->next_applied_entry_index == old_index);
     prev_pae->next_applied_entry_index = pae->next_applied_entry_index;
     if (pae->next_applied_entry_index == ~0) {
       /* it was a last entry we removed, update the pointer on the first one */
-      u32 an_index = pae->prev_applied_entry_index;
-      applied_hash_ace_entry_t *head_pae = &((*applied_hash_aces)[pae->prev_applied_entry_index]);
-      while(!head_pae->is_first_entry) {
-	an_index = head_pae->prev_applied_entry_index;
-	head_pae = &((*applied_hash_aces)[an_index]);
-      }
-      ASSERT(head_pae->prev_applied_entry_index == old_index);
-      head_pae->prev_applied_entry_index = pae->prev_applied_entry_index;
+      u32 head_index = find_head_applied_ace_index(applied_hash_aces, old_index);
+      DBG("UNAPPLY = index %d head index to update %d", old_index, head_index);
+      ASSERT(head_index != ~0);
+      applied_hash_ace_entry_t *head_pae = vec_elt_at_index((*applied_hash_aces), head_index);
+
+      ASSERT(head_pae->tail_applied_entry_index == old_index);
+      head_pae->tail_applied_entry_index = pae->prev_applied_entry_index;
+    } else {
+      applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
+      next_pae->prev_applied_entry_index = pae->prev_applied_entry_index;
     }
   } else {
     /* It was the first entry. We need either to reset the hash entry or delete it */
-    pae->is_first_entry = 0;
     if (pae->next_applied_entry_index != ~0) {
-      /* a custom case of relinking for the first node, with the tail not forward linked to it */
-      applied_hash_ace_entry_t *next_pae = &((*applied_hash_aces)[pae->next_applied_entry_index]);
-      /* this is the tail the new head should be aware of */
-      next_pae->prev_applied_entry_index = pae->prev_applied_entry_index;
-      next_pae->is_first_entry = 1;
-
+      /* the next element becomes the new first one, so needs the tail pointer to be set */
+      applied_hash_ace_entry_t *next_pae = vec_elt_at_index((*applied_hash_aces), pae->next_applied_entry_index);
+      ASSERT(pae->tail_applied_entry_index != ~0);
+      next_pae->tail_applied_entry_index = pae->tail_applied_entry_index;
+      DBG("Resetting the hash table entry from %d to %d, setting tail index to %d", old_index, pae->next_applied_entry_index, pae->tail_applied_entry_index);
+      /* unlink from the next element */
+      next_pae->prev_applied_entry_index = ~0;
       add_del_hashtable_entry(am, sw_if_index, is_input,
                               applied_hash_aces, pae->next_applied_entry_index, 1);
     } else {
@@ -411,6 +428,10 @@ deactivate_applied_ace_hash_entry(acl_main_t *am,
                               applied_hash_aces, old_index, 0);
     }
   }
+  /* invalidate the old entry */
+  pae->prev_applied_entry_index = ~0;
+  pae->next_applied_entry_index = ~0;
+  pae->tail_applied_entry_index = ~0;
 }
 
 
@@ -423,10 +444,10 @@ hash_acl_build_applied_lookup_bitmap(acl_main_t *am, u32 sw_if_index, u8 is_inpu
                                   &am->output_acl_vec_by_sw_if_index[sw_if_index];
   applied_hash_acl_info_t **applied_hash_acls = is_input ? &am->input_applied_hash_acl_info_by_sw_if_index :
                                                     &am->output_applied_hash_acl_info_by_sw_if_index;
-  applied_hash_acl_info_t *pal = &(*applied_hash_acls)[sw_if_index];
+  applied_hash_acl_info_t *pal = vec_elt_at_index((*applied_hash_acls), sw_if_index);
   for(i=0; i < vec_len(*applied_acls); i++) {
     u32 a_acl_index = (*applied_acls)[i];
-    hash_acl_info_t *ha = &am->hash_acl_infos[a_acl_index];
+    hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, a_acl_index);
     new_lookup_bitmap = clib_bitmap_or(new_lookup_bitmap,
                                        ha->mask_type_index_bitmap);
   }
@@ -441,7 +462,7 @@ hash_acl_unapply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
   int i;
 
   DBG("HASH ACL unapply: sw_if_index %d is_input %d acl %d", sw_if_index, is_input, acl_index);
-  hash_acl_info_t *ha = &am->hash_acl_infos[acl_index];
+  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
   applied_hash_ace_entry_t **applied_hash_aces = is_input ? &am->input_hash_entry_vec_by_sw_if_index[sw_if_index] :
                                                     &am->output_hash_entry_vec_by_sw_if_index[sw_if_index];
 
@@ -462,7 +483,6 @@ hash_acl_unapply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
   DBG("base_offset: %d, tail_offset: %d, tail_len: %d", base_offset, tail_offset, tail_len);
 
   for(i=0; i < vec_len(ha->rules); i ++) {
-    DBG("UNAPPLY DEACTIVATE: sw_if_index %d is_input %d, applied index %d", sw_if_index, is_input, base_offset + i);
     deactivate_applied_ace_hash_entry(am, sw_if_index, is_input,
                                       applied_hash_aces, base_offset + i);
   }
@@ -663,7 +683,7 @@ void hash_acl_add(acl_main_t *am, int acl_index)
   int i;
   acl_list_t *a = &am->acls[acl_index];
   vec_validate(am->hash_acl_infos, acl_index);
-  hash_acl_info_t *ha = &am->hash_acl_infos[acl_index];
+  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
   memset(ha, 0, sizeof(*ha));
 
   /* walk the newly added ACL entries and ensure that for each of them there
@@ -757,7 +777,7 @@ hash_multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l
                                                     &am->output_hash_entry_vec_by_sw_if_index[sw_if_index];
   u32 match_index = multi_acl_match_get_applied_ace_index(am, pkt_5tuple);
   if (match_index < vec_len((*applied_hash_aces))) {
-    applied_hash_ace_entry_t *pae = &((*applied_hash_aces)[match_index]);
+    applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), match_index);
     *acl_match_p = pae->acl_index;
     *rule_match_p = pae->ace_index;
     return pae->action;
