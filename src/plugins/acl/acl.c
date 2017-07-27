@@ -400,6 +400,7 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   vnet_classify_main_t *cm = &vnet_classify_main;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  return 0;
 
   vec_validate_init_empty (am->acl_ip4_input_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
@@ -438,6 +439,7 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   vnet_classify_main_t *cm = &vnet_classify_main;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  return 0;
 
   vec_validate_init_empty (am->acl_ip4_output_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
@@ -477,6 +479,7 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
   int rv;
+  return 0;
 
   /* in case there were previous tables attached */
   acl_unhook_l2_input_classify (am, sw_if_index);
@@ -535,6 +538,7 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
   int rv;
+  return 0;
 
   /* in case there were previous tables attached */
   acl_unhook_l2_output_classify (am, sw_if_index);
@@ -593,6 +597,7 @@ acl_interface_in_enable_disable (acl_main_t * am, u32 sw_if_index,
 				 int enable_disable)
 {
   int rv;
+  return 0;
 
   /* Utterly wrong? */
   if (pool_is_free_index (am->vnet_main->interface_main.sw_interfaces,
@@ -618,6 +623,7 @@ acl_interface_out_enable_disable (acl_main_t * am, u32 sw_if_index,
 				  int enable_disable)
 {
   int rv;
+  return 0;
 
   /* Utterly wrong? */
   if (pool_is_free_index (am->vnet_main->interface_main.sw_interfaces,
