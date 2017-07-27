@@ -420,6 +420,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_type = VNET_DPDK_PORT_TYPE_VIRTIO_USER;
 	      break;
 
+	    case VNET_DPDK_PMD_VHOST_ETHER:
+	      xd->port_type = VNET_DPDK_PORT_TYPE_VHOST_ETHER;
+	      break;
+
 	    default:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_UNKNOWN;
 	    }
