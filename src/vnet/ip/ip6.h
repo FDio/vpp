@@ -576,6 +576,7 @@ vlib_buffer_push_ip6 (vlib_main_t * vm, vlib_buffer_t * b,
 	       sizeof (ip6h->src_address));
   clib_memcpy (ip6h->dst_address.as_u8, dst->as_u8,
 	       sizeof (ip6h->src_address));
+  b->flags |= VNET_BUFFER_F_IS_IP6;
 
   return ip6h;
 }
