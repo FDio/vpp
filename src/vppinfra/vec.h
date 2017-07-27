@@ -125,6 +125,7 @@ _vec_resize (void *v,
 
   if (PREDICT_TRUE (v != 0))
     {
+      vec_check_magic(v);
       void *p = v - aligned_header_bytes;
 
       /* Vector header must start heap object. */
@@ -171,6 +172,7 @@ _vec_resize_will_expand (void *v,
   if (PREDICT_TRUE (v != 0))
     {
       void *p = v - aligned_header_bytes;
+      vec_check_magic(v);
 
       /* Vector header must start heap object. */
       ASSERT (clib_mem_is_heap_object (p));
@@ -328,6 +330,7 @@ do {						\
 do {						\
   if (V)					\
     {						\
+      vec_garble_magic(V);			\
       clib_mem_free (vec_header ((V), (H)));	\
       V = 0;					\
     }						\
@@ -415,6 +418,7 @@ do {										\
 
 #define vec_validate_ha(V,I,H,A)					\
 do {									\
+  vec_check_magic(V);							\
   word _v(i) = (I);							\
   word _v(l) = vec_len (V);						\
   if (_v(i) >= _v(l))							\
