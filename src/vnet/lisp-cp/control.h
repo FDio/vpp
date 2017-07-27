@@ -25,17 +25,21 @@
 #define PENDING_MREQ_EXPIRATION_TIME        3.0	/* seconds */
 #define PENDING_MREQ_QUEUE_LEN              5
 
-#define PENDING_MREG_EXPIRATION_TIME        3.0	/* seconds */
 #define RLOC_PROBING_INTERVAL               60.0
 
 /* when map-registration is enabled "quick registration" takes place first.
    In this mode ETR sends map-register messages at an increased frequency
    until specified message count is reached */
-#define QUICK_MAP_REGISTER_MSG_COUNT        3
+#define QUICK_MAP_REGISTER_MSG_COUNT        5
 #define QUICK_MAP_REGISTER_INTERVAL         3.0
 
 /* normal map-register period */
 #define MAP_REGISTER_INTERVAL               60.0
+
+/* how many tries until next map-server election */
+#define MAX_EXPIRED_MAP_REGISTERS_DEFAULT   3
+
+#define PENDING_MREG_EXPIRATION_TIME        3.0	/* seconds */
 
 /* 24 hours */
 #define MAP_REGISTER_DEFAULT_TTL            86400
@@ -50,6 +54,11 @@ typedef struct
   u64 *nonces;
   u8 to_be_removed;
 } pending_map_request_t;
+
+typedef struct
+{
+  f64 time_to_expire;
+} pending_map_register_t;
 
 typedef struct
 {
@@ -180,6 +189,9 @@ typedef struct
   /* pool of pending map requests */
   pending_map_request_t *pending_map_requests_pool;
 
+  /* pool of pending map registers */
+  pending_map_register_t *pending_map_registers_pool;
+
   /* hash map of sent map register messages */
   uword *map_register_messages_by_nonce;
 
@@ -194,8 +206,10 @@ typedef struct
    * since the vector may be modified during request resend/retry procedure
    * and break things :-) */
   ip_address_t active_map_resolver;
+  ip_address_t active_map_server;
 
   u8 do_map_resolver_election;
+  u8 do_map_server_election;
 
   /* map-request  locator set index */
   u32 mreq_itr_rlocs;
@@ -240,6 +254,10 @@ typedef struct
 
   /* TTL used for all mappings when registering */
   u32 map_register_ttl;
+
+  /* control variables for map server election */
+  u32 max_expired_map_registers;
+  u32 expired_map_registers;
 
   /* commodity */
   ip4_main_t *im4;
@@ -367,6 +385,8 @@ lisp_api_l2_arp_entry_t *vnet_lisp_l2_arp_entries_get_by_bd (u32 bd);
 int vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add);
 int vnet_lisp_map_register_set_ttl (u32 ttl);
 u32 vnet_lisp_map_register_get_ttl (void);
+int vnet_lisp_map_register_fallback_threshold_set (u32 value);
+u32 vnet_lisp_map_register_fallback_threshold_get (void);
 
 map_records_arg_t *parse_map_reply (vlib_buffer_t * b);
 

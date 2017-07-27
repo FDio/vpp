@@ -87,6 +87,8 @@ _(ONE_ADD_DEL_MAP_SERVER, one_add_del_map_server)                       \
 _(ONE_ENABLE_DISABLE, one_enable_disable)                               \
 _(ONE_RLOC_PROBE_ENABLE_DISABLE, one_rloc_probe_enable_disable)         \
 _(ONE_MAP_REGISTER_ENABLE_DISABLE, one_map_register_enable_disable)     \
+_(ONE_MAP_REGISTER_FALLBACK_THRESHOLD,                                  \
+  one_map_register_fallback_threshold)                                  \
 _(ONE_ADD_DEL_REMOTE_MAPPING, one_add_del_remote_mapping)               \
 _(ONE_ADD_DEL_ADJACENCY, one_add_del_adjacency)                         \
 _(ONE_PITR_SET_LOCATOR_SET, one_pitr_set_locator_set)                   \
@@ -106,6 +108,8 @@ _(SHOW_ONE_NSH_MAPPING, show_one_nsh_mapping)                           \
 _(SHOW_ONE_RLOC_PROBE_STATE, show_one_rloc_probe_state)                 \
 _(SHOW_ONE_MAP_REGISTER_STATE, show_one_map_register_state)             \
 _(SHOW_ONE_MAP_REGISTER_TTL, show_one_map_register_ttl)                 \
+_(SHOW_ONE_MAP_REGISTER_FALLBACK_THRESHOLD,                             \
+  show_one_map_register_fallback_threshold)                             \
 _(SHOW_ONE_STATUS, show_one_status)                                     \
 _(ONE_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                    \
   one_add_del_map_request_itr_rlocs)                                    \
@@ -1602,6 +1606,35 @@ vl_api_one_l2_arp_entries_get_t_handler (vl_api_one_l2_arp_entries_get_t * mp)
   /* *INDENT-ON* */
 
   vec_free (entries);
+}
+
+static void
+  vl_api_one_map_register_fallback_threshold_t_handler
+  (vl_api_one_map_register_fallback_threshold_t * mp)
+{
+  vl_api_one_map_register_fallback_threshold_reply_t *rmp;
+  int rv = 0;
+
+  mp->value = clib_net_to_host_u32 (mp->value);
+  rv = vnet_lisp_map_register_fallback_threshold_set (mp->value);
+  REPLY_MACRO (VL_API_ONE_MAP_REGISTER_FALLBACK_THRESHOLD);
+}
+
+static void
+  vl_api_show_one_map_register_fallback_threshold_t_handler
+  (vl_api_show_one_map_register_fallback_threshold_t * mp)
+{
+  vl_api_show_one_map_register_fallback_threshold_reply_t *rmp;
+  int rv = 0;
+
+  u32 value = vnet_lisp_map_register_fallback_threshold_get ();
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_SHOW_ONE_MAP_REGISTER_FALLBACK_THRESHOLD_REPLY,
+  ({
+    rmp->value = clib_host_to_net_u32 (value);
+  }));
+  /* *INDENT-ON* */
 }
 
 /*

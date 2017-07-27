@@ -670,6 +670,9 @@ vnet_lisp_add_del_map_server (ip_address_t * addr, u8 is_add)
       memset (ms, 0, sizeof (*ms));
       ip_address_copy (&ms->address, addr);
       vec_add1 (lcm->map_servers, ms[0]);
+
+      if (vec_len (lcm->map_servers) == 1)
+	lcm->do_map_server_election = 1;
     }
   else
     {
@@ -678,6 +681,9 @@ vnet_lisp_add_del_map_server (ip_address_t * addr, u8 is_add)
 	  ms = vec_elt_at_index (lcm->map_servers, i);
 	  if (!ip_address_cmp (&ms->address, addr))
 	    {
+	      if (!ip_address_cmp (&ms->address, &lcm->active_map_server))
+		lcm->do_map_server_election = 1;
+
 	      vec_del1 (lcm->map_servers, i);
 	      break;
 	    }
@@ -1494,6 +1500,26 @@ vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add)
       lcm->lisp_pitr = 0;
     }
   return 0;
+}
+
+int
+vnet_lisp_map_register_fallback_threshold_set (u32 value)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  if (0 == value)
+    {
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+
+  lcm->max_expired_map_registers = value;
+  return 0;
+}
+
+u32
+vnet_lisp_map_register_fallback_threshold_get (void)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  return lcm->max_expired_map_registers;
 }
 
 /**
@@ -2342,24 +2368,29 @@ reset_pending_mr_counters (pending_map_request_t * r)
   r->retries_num = 0;
 }
 
-static int
-elect_map_resolver (lisp_cp_main_t * lcm)
-{
-  lisp_msmr_t *mr;
+#define foreach_msmr \
+  _(server) \
+  _(resolver)
 
-  vec_foreach (mr, lcm->map_resolvers)
-  {
-    if (!mr->is_down)
-      {
-	ip_address_copy (&lcm->active_map_resolver, &mr->address);
-	lcm->do_map_resolver_election = 0;
-	return 1;
-      }
-  }
-  return 0;
+#define _(name) \
+static int                                                              \
+elect_map_ ## name (lisp_cp_main_t * lcm)                               \
+{                                                                       \
+  lisp_msmr_t *mr;                                                      \
+  vec_foreach (mr, lcm->map_ ## name ## s)                              \
+  {                                                                     \
+    if (!mr->is_down)                                                   \
+      {                                                                 \
+	ip_address_copy (&lcm->active_map_ ##name, &mr->address);       \
+	lcm->do_map_ ## name ## _election = 0;                          \
+	return 1;                                                       \
+      }                                                                 \
+  }                                                                     \
+  return 0;                                                             \
 }
-
-static void
+foreach_msmr
+#undef _
+  static void
 free_map_register_records (mapping_t * maps)
 {
   mapping_t *map;
@@ -2488,31 +2519,32 @@ build_map_register (lisp_cp_main_t * lcm, ip_address_t * sloc,
   return b;
 }
 
-static int
-get_egress_map_resolver_ip (lisp_cp_main_t * lcm, ip_address_t * ip)
-{
-  lisp_msmr_t *mr;
-  while (lcm->do_map_resolver_election
-	 | (0 == ip_fib_get_first_egress_ip_for_dst (lcm,
-						     &lcm->active_map_resolver,
-						     ip)))
-    {
-      if (0 == elect_map_resolver (lcm))
-	/* all map resolvers are down */
-	{
-	  /* restart MR checking by marking all of them up */
-	  vec_foreach (mr, lcm->map_resolvers) mr->is_down = 0;
-	  return -1;
-	}
-    }
-  return 0;
+#define _(name) \
+static int                                                              \
+get_egress_map_ ##name## _ip (lisp_cp_main_t * lcm, ip_address_t * ip)  \
+{                                                                       \
+  lisp_msmr_t *mr;                                                      \
+  while (lcm->do_map_ ## name ## _election                              \
+	 | (0 == ip_fib_get_first_egress_ip_for_dst                     \
+            (lcm, &lcm->active_map_ ##name, ip)))                       \
+    {                                                                   \
+      if (0 == elect_map_ ## name (lcm))                                \
+	/* all map resolvers/servers are down */                        \
+	{                                                               \
+	  /* restart MR/MS checking by marking all of them up */        \
+	  vec_foreach (mr, lcm->map_ ## name ## s) mr->is_down = 0;     \
+	  return -1;                                                    \
+	}                                                               \
+    }                                                                   \
+  return 0;                                                             \
 }
 
+foreach_msmr
+#undef _
 /* CP output statistics */
 #define foreach_lisp_cp_output_error                  \
 _(MAP_REGISTERS_SENT, "map-registers sent")           \
 _(RLOC_PROBES_SENT, "rloc-probes sent")
-
 static char *lisp_cp_output_error_strings[] = {
 #define _(sym,string) string,
   foreach_lisp_cp_output_error
@@ -2588,7 +2620,6 @@ send_rloc_probe (lisp_cp_main_t * lcm, gid_address_t * deid,
   f->n_vectors = 1;
   vlib_put_frame_to_node (lcm->vlib_main, next_index, f);
 
-  hash_set (lcm->map_register_messages_by_nonce, nonce, 0);
   return 0;
 }
 
@@ -2642,27 +2673,17 @@ send_rloc_probes (lisp_cp_main_t * lcm)
 static int
 send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
 {
+  pending_map_register_t *pmr;
   u32 bi, map_registers_sent = 0;
   vlib_buffer_t *b;
   ip_address_t sloc;
   vlib_frame_t *f;
   u64 nonce = 0;
   u32 next_index, *to_next;
-  ip_address_t *ms = 0;
   mapping_t *records, *r, *group, *k;
 
-  // TODO: support multiple map servers and do election
-  if (0 == vec_len (lcm->map_servers))
+  if (get_egress_map_server_ip (lcm, &sloc) < 0)
     return -1;
-
-  ms = &lcm->map_servers[0].address;
-
-  if (0 == ip_fib_get_first_egress_ip_for_dst (lcm, ms, &sloc))
-    {
-      clib_warning ("no eligible interface address found for %U!",
-		    format_ip_address, &lcm->map_servers[0]);
-      return -1;
-    }
 
   records = build_map_register_record_list (lcm);
   if (!records)
@@ -2692,15 +2713,15 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
 	  }
       }
 
-    b = build_map_register (lcm, &sloc, ms, &nonce, want_map_notif, group,
-			    key_id, key, &bi);
+    b = build_map_register (lcm, &sloc, &lcm->active_map_server, &nonce,
+			    want_map_notif, group, key_id, key, &bi);
     vec_free (group);
     if (!b)
       continue;
 
     vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
 
-    next_index = (ip_addr_version (&lcm->active_map_resolver) == IP4) ?
+    next_index = (ip_addr_version (&lcm->active_map_server) == IP4) ?
       ip4_lookup_node.index : ip6_lookup_node.index;
 
     f = vlib_get_frame_to_node (lcm->vlib_main, next_index);
@@ -2712,7 +2733,11 @@ send_map_register (lisp_cp_main_t * lcm, u8 want_map_notif)
     vlib_put_frame_to_node (lcm->vlib_main, next_index, f);
     map_registers_sent++;
 
-    hash_set (lcm->map_register_messages_by_nonce, nonce, 0);
+    pool_get (lcm->pending_map_registers_pool, pmr);
+    memset (pmr, 0, sizeof (*pmr));
+    pmr->time_to_expire = PENDING_MREG_EXPIRATION_TIME;
+    hash_set (lcm->map_register_messages_by_nonce, nonce,
+	      pmr - lcm->pending_map_registers_pool);
   }
   free_map_register_records (records);
 
@@ -3488,7 +3513,11 @@ process_map_notify (map_records_arg_t * a)
     }
 
   a->is_free = 1;
+  pool_put_index (lcm->pending_map_registers_pool, pmr_index[0]);
   hash_unset (lcm->map_register_messages_by_nonce, a->nonce);
+
+  /* reset map-notify counter */
+  lcm->expired_map_registers = 0;
 }
 
 static mapping_t *
@@ -3635,8 +3664,8 @@ parse_map_notify (vlib_buffer_t * b)
   if (!is_auth_data_valid (mnotif_hdr, vlib_buffer_get_tail (b)
 			   - (u8 *) mnotif_hdr, key_id, key))
     {
-      clib_warning ("Map-notify auth data verification failed for nonce %lu!",
-		    a->nonce);
+      clib_warning ("Map-notify auth data verification failed for nonce "
+		    "0x%lx!", a->nonce);
       map_records_arg_free (a);
       return 0;
     }
@@ -4000,9 +4029,11 @@ lisp_cp_init (vlib_main_t * vm)
   lcm->lisp_pitr = 0;
   lcm->flags = 0;
   memset (&lcm->active_map_resolver, 0, sizeof (lcm->active_map_resolver));
+  memset (&lcm->active_map_server, 0, sizeof (lcm->active_map_server));
 
   gid_dictionary_init (&lcm->mapping_index_by_gid);
   lcm->do_map_resolver_election = 1;
+  lcm->do_map_server_election = 1;
   lcm->map_request_mode = MR_MODE_DST_ONLY;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
@@ -4021,6 +4052,8 @@ lisp_cp_init (vlib_main_t * vm)
   timing_wheel_init (&lcm->wheel, now, vm->clib_time.clocks_per_second);
   lcm->nsh_map_index = ~0;
   lcm->map_register_ttl = MAP_REGISTER_DEFAULT_TTL;
+  lcm->max_expired_map_registers = MAX_EXPIRED_MAP_REGISTERS_DEFAULT;
+  lcm->expired_map_registers = 0;
   return 0;
 }
 
@@ -4180,7 +4213,7 @@ remove_dead_pending_map_requests (lisp_cp_main_t * lcm)
   /* *INDENT-ON* */
 
   vec_foreach (pmr_index, to_be_removed)
-    pool_put_index (lcm->pending_map_requests_by_nonce, pmr_index[0]);
+    pool_put_index (lcm->pending_map_requests_pool, pmr_index[0]);
 
   vec_free (to_be_removed);
 }
@@ -4201,14 +4234,97 @@ update_rloc_probing (lisp_cp_main_t * lcm, f64 dt)
     }
 }
 
+static int
+update_pending_map_register (pending_map_register_t * r, f64 dt, u8 * del_all)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  lisp_msmr_t *ms;
+  del_all[0] = 0;
+
+  r->time_to_expire -= dt;
+
+  if (r->time_to_expire < 0)
+    {
+      lcm->expired_map_registers++;
+
+      if (lcm->expired_map_registers >= lcm->max_expired_map_registers)
+	{
+	  ms = get_map_server (&lcm->active_map_server);
+	  if (!ms)
+	    {
+	      clib_warning ("Map server %U not found - probably deleted "
+			    "by the user recently.", format_ip_address,
+			    &lcm->active_map_server);
+	    }
+	  else
+	    {
+	      clib_warning ("map server %U is unreachable, ignoring",
+			    format_ip_address, &lcm->active_map_server);
+
+	      /* mark current map server unavailable so it won't be
+	       * elected next time */
+	      ms->is_down = 1;
+	      ms->last_update = vlib_time_now (lcm->vlib_main);
+	    }
+
+	  elect_map_server (lcm);
+
+	  /* indication for deleting all pending map registers */
+	  del_all[0] = 1;
+	  lcm->expired_map_registers = 0;
+	  return 0;
+	}
+      else
+	{
+	  /* delete pending map register */
+	  return 0;
+	}
+    }
+  return 1;
+}
+
 static void
 update_map_register (lisp_cp_main_t * lcm, f64 dt)
 {
+  u32 *to_be_removed = 0, *pmr_index;
   static f64 time_left = QUICK_MAP_REGISTER_INTERVAL;
   static u64 mreg_sent_counter = 0;
 
+  pending_map_register_t *pmr;
+  u8 del_all = 0;
+
   if (!lcm->is_enabled || !lcm->map_registering)
     return;
+
+  /* *INDENT-OFF* */
+  pool_foreach (pmr, lcm->pending_map_registers_pool,
+  ({
+    if (!update_pending_map_register (pmr, dt, &del_all))
+    {
+      if (del_all)
+        break;
+      vec_add1 (to_be_removed, pmr - lcm->pending_map_registers_pool);
+    }
+  }));
+  /* *INDENT-ON* */
+
+  if (del_all)
+    {
+      /* delete all pending map register messages so they won't
+       * trigger another map server election.. */
+      pool_free (lcm->pending_map_registers_pool);
+      hash_free (lcm->map_register_messages_by_nonce);
+
+      /* ..and trigger registration against next map server (if any) */
+      time_left = 0;
+    }
+  else
+    {
+      vec_foreach (pmr_index, to_be_removed)
+	pool_put_index (lcm->pending_map_registers_pool, pmr_index[0]);
+    }
+
+  vec_free (to_be_removed);
 
   time_left -= dt;
   if (time_left <= 0)
