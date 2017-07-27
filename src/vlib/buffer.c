@@ -305,12 +305,6 @@ vlib_buffer_validate_alloc_free (vlib_main_t * vm,
   if (CLIB_DEBUG == 0)
     return;
 
-  ASSERT (vlib_get_thread_index () == 0);
-
-  /* smp disaster check */
-  if (vec_len (vlib_mains) > 1)
-    ASSERT (vm == vlib_mains[0]);
-
   is_free = expected_state == VLIB_BUFFER_KNOWN_ALLOCATED;
   b = buffers;
   for (i = 0; i < n_buffers; i++)
@@ -1050,6 +1044,7 @@ vlib_buffer_cb_init (struct vlib_main_t *vm)
   bm->cb.vlib_buffer_free_no_next_cb = &vlib_buffer_free_no_next_internal;
   bm->cb.vlib_buffer_delete_free_list_cb =
     &vlib_buffer_delete_free_list_internal;
+  clib_spinlock_init (&bm->buffer_known_hash_lockp);
 }
 
 /** @endcond */
