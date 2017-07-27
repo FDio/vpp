@@ -1768,7 +1768,7 @@ static clib_error_t *
 api_trace_command_fn (vlib_main_t * vm,
 		      unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u32 nitems = 256 << 10;
+  u32 nitems = 256 << 19;
   api_main_t *am = &api_main;
   vl_api_trace_which_t which = VL_API_TRACE_RX;
   u8 *filename;
