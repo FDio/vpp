@@ -777,6 +777,70 @@ VLIB_CLI_COMMAND (one_nsh_set_locator_set_command) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+lisp_map_register_fallback_threshold_show_command_fn (vlib_main_t * vm,
+						      unformat_input_t *
+						      input,
+						      vlib_cli_command_t *
+						      cmd)
+{
+  u32 val = vnet_lisp_map_register_fallback_threshold_get ();
+  vlib_cli_output (vm, "map register fallback treshold value: %d", val);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_map_register_fallback_threshold_show_command) = {
+    .path = "show one map-register fallback-threshold",
+    .short_help = "show one map-register fallback-threshold",
+    .function = lisp_map_register_fallback_threshold_show_command_fn,
+};
+
+/* *INDENT-ON* */
+
+static clib_error_t *
+lisp_map_register_fallback_threshold_command_fn (vlib_main_t * vm,
+						 unformat_input_t * input,
+						 vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  u32 val = 0;
+  int rv = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%d", &val))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error");
+	  goto done;
+	}
+    }
+
+  rv = vnet_lisp_map_register_fallback_threshold_set (val);
+  if (rv)
+    {
+      error = clib_error_return (0, "setting fallback threshold failed!");
+    }
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_map_register_fallback_threshold_command) = {
+    .path = "one map-register fallback-threshold",
+    .short_help = "one map-register fallback-threshold <count>",
+    .function = lisp_map_register_fallback_threshold_command_fn,
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
