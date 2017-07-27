@@ -83,6 +83,18 @@ VLIB_PLUGIN_REGISTER () = {
 };
 /* *INDENT-ON* */
 
+
+static void *
+acl_set_heap(acl_main_t *am)
+{
+  if (0 == am->acl_mheap) {
+    am->acl_mheap = mheap_alloc (0 /* use VM */ , 2 << 29);
+  }
+  void *oldheap = clib_mem_set_heap(am->acl_mheap);
+  return oldheap;
+}
+
+
 static void
 vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
 {
@@ -130,7 +142,7 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
   acl_main_t *am = &acl_main;
   acl_list_t *a;
   acl_rule_t *r;
-  acl_rule_t *acl_new_rules;
+  acl_rule_t *acl_new_rules = 0;
   int i;
 
   if (*acl_list_index != ~0)
@@ -139,22 +151,23 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
       if (pool_is_free_index (am->acls, *acl_list_index))
 	{
 	  /* tried to replace a non-existent ACL, no point doing anything */
+          clib_warning("acl-plugin-error: Trying to replace nonexistent ACL %d (tag %s)", *acl_list_index, tag);
 	  return -1;
 	}
     }
+  if (0 == count) {
+    clib_warning("acl-plugin-warning: supplied no rules for ACL %d (tag %s)", *acl_list_index, tag);
+  }
+
+  void *oldheap = acl_set_heap(am);
 
   /* Create and populate the rules */
-  acl_new_rules = clib_mem_alloc_aligned (sizeof (acl_rule_t) * count,
-					  CLIB_CACHE_LINE_BYTES);
-  if (!acl_new_rules)
-    {
-      /* Could not allocate rules. New or existing ACL - bail out regardless */
-      return -1;
-    }
+  if (count > 0)
+    vec_validate(acl_new_rules, count-1);
 
   for (i = 0; i < count; i++)
     {
-      r = &acl_new_rules[i];
+      r = vec_elt_at_index(acl_new_rules, i);
       memset(r, 0, sizeof(*r));
       r->is_permit = rules[i].is_permit;
       r->is_ipv6 = rules[i].is_ipv6;
@@ -192,13 +205,14 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
       a = am->acls + *acl_list_index;
       hash_acl_delete(am, *acl_list_index);
       /* Get rid of the old rules */
-      clib_mem_free (a->rules);
+      if (a->rules)
+        vec_free (a->rules);
     }
   a->rules = acl_new_rules;
   a->count = count;
   memcpy (a->tag, tag, sizeof (a->tag));
   hash_acl_add(am, *acl_list_index);
-
+  clib_mem_set_heap (oldheap);
   return 0;
 }
 
@@ -226,6 +240,7 @@ acl_del_list (u32 acl_list_index)
     }
   }
 
+  void *oldheap = acl_set_heap(am);
   /* delete any references to the ACL */
   for (i = 0; i < vec_len (am->output_acl_vec_by_sw_if_index); i++)
     {
@@ -263,10 +278,10 @@ acl_del_list (u32 acl_list_index)
   /* now we can delete the ACL itself */
   a = &am->acls[acl_list_index];
   if (a->rules)
-    {
-      clib_mem_free (a->rules);
-    }
+    vec_free (a->rules);
+
   pool_put (am->acls, a);
+  clib_mem_set_heap (oldheap);
   return 0;
 }
 
@@ -359,13 +374,15 @@ acl_classify_add_del_table_tiny (vnet_classify_main_t * cm, u8 * mask,
 
   if (0 == match)
     match = 1;
-
-  return vnet_classify_add_del_table (cm, skip_mask_ptr, nbuckets,
+  void *oldheap = clib_mem_set_heap (cm->vlib_main->heap_base);
+  int ret = vnet_classify_add_del_table (cm, skip_mask_ptr, nbuckets,
 				      memory_size, skip, match,
 				      next_table_index, miss_next_index,
 				      table_index, current_data_flag,
 				      current_data_offset, is_add,
 				      1 /* delete_chain */);
+  clib_mem_set_heap (oldheap);
+  return ret;
 }
 
 static int
@@ -385,12 +402,15 @@ acl_classify_add_del_table_small (vnet_classify_main_t * cm, u8 * mask,
   if (0 == match)
     match = 1;
 
-  return vnet_classify_add_del_table (cm, skip_mask_ptr, nbuckets,
+  void *oldheap = clib_mem_set_heap (cm->vlib_main->heap_base);
+  int ret = vnet_classify_add_del_table (cm, skip_mask_ptr, nbuckets,
 				      memory_size, skip, match,
 				      next_table_index, miss_next_index,
 				      table_index, current_data_flag,
 				      current_data_offset, is_add,
 				      1 /* delete_chain */);
+  return ret;
+  clib_mem_set_heap (oldheap);
 }
 
 
@@ -400,12 +420,15 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   vnet_classify_main_t *cm = &vnet_classify_main;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  void *oldheap = acl_set_heap(am);
 
   vec_validate_init_empty (am->acl_ip4_input_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
   vec_validate_init_empty (am->acl_ip6_input_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
 
+  /* switch to global heap while calling vnet_* functions */
+  clib_mem_set_heap (cm->vlib_main->heap_base);
   vnet_l2_input_classify_enable_disable (sw_if_index, 0);
 
   if (am->acl_ip4_input_classify_table_by_sw_if_index[sw_if_index] != ~0)
@@ -428,7 +451,7 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 				  am->l2_input_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
     }
-
+  clib_mem_set_heap (oldheap);
   return 0;
 }
 
@@ -438,11 +461,15 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   vnet_classify_main_t *cm = &vnet_classify_main;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  void *oldheap = acl_set_heap(am);
 
   vec_validate_init_empty (am->acl_ip4_output_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
   vec_validate_init_empty (am->acl_ip6_output_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
+
+  /* switch to global heap while calling vnet_* functions */
+  clib_mem_set_heap (cm->vlib_main->heap_base);
 
   vnet_l2_output_classify_enable_disable (sw_if_index, 0);
 
@@ -466,7 +493,7 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
 				  am->l2_output_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
     }
-
+  clib_mem_set_heap (oldheap);
   return 0;
 }
 
@@ -478,6 +505,8 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   u32 ip6_table_index = ~0;
   int rv;
 
+  void *prevheap = clib_mem_set_heap (cm->vlib_main->heap_base);
+
   /* in case there were previous tables attached */
   acl_unhook_l2_input_classify (am, sw_if_index);
   rv =
@@ -486,7 +515,7 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 				am->l2_input_classify_next_acl_ip4,
 				&ip4_table_index, 1);
   if (rv)
-    return rv;
+    goto done;
   rv =
     acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
 				sizeof (ip6_5tuple_mask) - 1, ~0,
@@ -498,7 +527,7 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_input_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
-      return rv;
+      goto done;
     }
   rv =
     vnet_l2_input_classify_set_tables (sw_if_index, ip4_table_index,
@@ -516,7 +545,7 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_input_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
-      return rv;
+      goto done;
     }
 
   am->acl_ip4_input_classify_table_by_sw_if_index[sw_if_index] =
@@ -525,6 +554,8 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
     ip6_table_index;
 
   vnet_l2_input_classify_enable_disable (sw_if_index, 1);
+done:
+  clib_mem_set_heap (prevheap);
   return rv;
 }
 
@@ -536,6 +567,8 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   u32 ip6_table_index = ~0;
   int rv;
 
+  void *prevheap = clib_mem_set_heap (cm->vlib_main->heap_base);
+
   /* in case there were previous tables attached */
   acl_unhook_l2_output_classify (am, sw_if_index);
   rv =
@@ -544,7 +577,7 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
 				am->l2_output_classify_next_acl_ip4,
 				&ip4_table_index, 1);
   if (rv)
-    return rv;
+    goto done;
   rv =
     acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
 				sizeof (ip6_5tuple_mask) - 1, ~0,
@@ -556,7 +589,7 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_output_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
-      return rv;
+      goto done;
     }
   rv =
     vnet_l2_output_classify_set_tables (sw_if_index, ip4_table_index,
@@ -574,7 +607,7 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_output_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
-      return rv;
+      goto done;
     }
 
   am->acl_ip4_output_classify_table_by_sw_if_index[sw_if_index] =
@@ -583,6 +616,8 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
     ip6_table_index;
 
   vnet_l2_output_classify_enable_disable (sw_if_index, 1);
+done:
+  clib_mem_set_heap (prevheap);
   return rv;
 }
 
@@ -653,6 +688,7 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
     /* ACL is not defined. Can not apply */
     return -1;
   }
+  void *oldheap = acl_set_heap(am);
 
   if (is_input)
     {
@@ -663,6 +699,7 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
         clib_warning("ACL %d is already applied inbound on sw_if_index %d (index %d)",
                      acl_list_index, sw_if_index, index);
         /* the entry is already there */
+        clib_mem_set_heap (oldheap);
         return -1;
       }
       /* if there was no ACL applied before, enable the ACL processing */
@@ -684,6 +721,7 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
         clib_warning("ACL %d is already applied outbound on sw_if_index %d (index %d)",
                      acl_list_index, sw_if_index, index);
         /* the entry is already there */
+        clib_mem_set_heap (oldheap);
         return -1;
       }
       /* if there was no ACL applied before, enable the ACL processing */
@@ -696,6 +734,7 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
       vec_add (am->output_sw_if_index_vec_by_acl[acl_list_index], &sw_if_index,
 	       1);
     }
+  clib_mem_set_heap (oldheap);
   return 0;
 }
 
@@ -706,6 +745,7 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
   acl_main_t *am = &acl_main;
   int i;
   int rv = -1;
+  void *oldheap = acl_set_heap(am);
   if (is_input)
     {
       vec_validate (am->input_acl_vec_by_sw_if_index, sw_if_index);
@@ -764,6 +804,7 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
 	  acl_interface_out_enable_disable (am, sw_if_index, 0);
 	}
     }
+  clib_mem_set_heap (oldheap);
   return rv;
 }
 
@@ -772,6 +813,7 @@ acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input)
 {
   acl_main_t *am = &acl_main;
   int i;
+  void *oldheap = acl_set_heap(am);
   if (is_input)
     {
       vec_validate (am->input_acl_vec_by_sw_if_index, sw_if_index);
@@ -812,6 +854,7 @@ acl_interface_reset_inout_acls (u32 sw_if_index, u8 is_input)
 
       vec_reset_length (am->output_acl_vec_by_sw_if_index[sw_if_index]);
     }
+  clib_mem_set_heap (oldheap);
 }
 
 static int
@@ -820,6 +863,7 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
 {
   int rv = -1;
   acl_main_t *am = &acl_main;
+  void *oldheap = acl_set_heap(am);
   if (is_add)
     {
       rv =
@@ -835,6 +879,7 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
       rv =
 	acl_interface_del_inout_acl (sw_if_index, is_input, acl_list_index);
     }
+  clib_mem_set_heap (oldheap);
   return rv;
 }
 
@@ -1015,6 +1060,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	macip_find_match_type (mvec, a->rules[i].src_mac_mask,
 			       a->rules[i].src_prefixlen,
 			       a->rules[i].is_ipv6);
+      ASSERT(match_type_index != ~0);
       /* add session to table mvec[match_type_index].table_index; */
       vnet_classify_add_del_session (cm, mvec[match_type_index].table_index,
 				     mask, a->rules[i].is_permit ? ~0 : 0, i,
@@ -1066,17 +1112,15 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
   acl_main_t *am = &acl_main;
   macip_acl_list_t *a;
   macip_acl_rule_t *r;
-  macip_acl_rule_t *acl_new_rules;
+  macip_acl_rule_t *acl_new_rules = 0;
   int i;
-
+  if (0 == count) {
+    clib_warning("acl-plugin-warning: Trying to create empty MACIP ACL (tag %s)", tag);
+  }
+  void *oldheap = acl_set_heap(am);
   /* Create and populate the rules */
-  acl_new_rules = clib_mem_alloc_aligned (sizeof (macip_acl_rule_t) * count,
-					  CLIB_CACHE_LINE_BYTES);
-  if (!acl_new_rules)
-    {
-      /* Could not allocate rules. New or existing ACL - bail out regardless */
-      return -1;
-    }
+  if (count > 0)
+    vec_validate(acl_new_rules, count-1);
 
   for (i = 0; i < count; i++)
     {
@@ -1104,7 +1148,7 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
 
   /* Create and populate the classifer tables */
   macip_create_classify_tables (am, *acl_list_index);
-
+  clib_mem_set_heap (oldheap);
   return 0;
 }
 
@@ -1117,7 +1161,9 @@ macip_acl_interface_del_acl (acl_main_t * am, u32 sw_if_index)
   int rv;
   u32 macip_acl_index;
   macip_acl_list_t *a;
+  void *oldheap = acl_set_heap(am);
   vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
+  clib_mem_set_heap (oldheap);
   macip_acl_index = am->macip_acl_by_sw_if_index[sw_if_index];
   /* No point in deleting MACIP ACL which is not applied */
   if (~0 == macip_acl_index)
@@ -1144,12 +1190,15 @@ macip_acl_interface_add_acl (acl_main_t * am, u32 sw_if_index,
     {
       return -1;
     }
+  void *oldheap = acl_set_heap(am);
   a = &am->macip_acls[macip_acl_index];
   vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
   /* If there already a MACIP ACL applied, unapply it */
   if (~0 != am->macip_acl_by_sw_if_index[sw_if_index])
     macip_acl_interface_del_acl(am, sw_if_index);
   am->macip_acl_by_sw_if_index[sw_if_index] = macip_acl_index;
+  clib_mem_set_heap (oldheap);
+
   /* Apply the classifier tables for L2 ACLs */
   rv =
     vnet_set_input_acl_intfc (am->vlib_main, sw_if_index, a->ip4_table_index,
@@ -1161,6 +1210,7 @@ static int
 macip_acl_del_list (u32 acl_list_index)
 {
   acl_main_t *am = &acl_main;
+  void *oldheap = acl_set_heap(am);
   macip_acl_list_t *a;
   int i;
   if (pool_is_free_index (am->macip_acls, acl_list_index))
@@ -1184,9 +1234,10 @@ macip_acl_del_list (u32 acl_list_index)
   a = &am->macip_acls[acl_list_index];
   if (a->rules)
     {
-      clib_mem_free (a->rules);
+      vec_free (a->rules);
     }
   pool_put (am->macip_acls, a);
+  clib_mem_set_heap (oldheap);
   return 0;
 }
 
@@ -1196,6 +1247,7 @@ macip_acl_interface_add_del_acl (u32 sw_if_index, u8 is_add,
 				 u32 acl_list_index)
 {
   acl_main_t *am = &acl_main;
+  void *oldheap = acl_set_heap(am);
   int rv = -1;
   if (is_add)
     {
@@ -1205,6 +1257,7 @@ macip_acl_interface_add_del_acl (u32 sw_if_index, u8 is_add,
     {
       rv = macip_acl_interface_del_acl (am, sw_if_index);
     }
+  clib_mem_set_heap (oldheap);
   return rv;
 }
 
@@ -1363,6 +1416,7 @@ send_acl_details (acl_main_t * am, unix_shared_memory_queue_t * q,
   vl_api_acl_rule_t *rules;
   int i;
   int msg_size = sizeof (*mp) + sizeof (mp->r[0]) * acl->count;
+  void *oldheap = acl_set_heap(am);
 
   mp = vl_msg_api_alloc (msg_size);
   memset (mp, 0, msg_size);
@@ -1381,6 +1435,7 @@ send_acl_details (acl_main_t * am, unix_shared_memory_queue_t * q,
     }
 
   clib_warning("Sending acl details for ACL index %d", ntohl(mp->acl_index));
+  clib_mem_set_heap (oldheap);
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
@@ -1439,6 +1494,7 @@ send_acl_interface_list_details (acl_main_t * am,
   int n_output;
   int count;
   int i = 0;
+  void *oldheap = acl_set_heap(am);
 
   vec_validate (am->input_acl_vec_by_sw_if_index, sw_if_index);
   vec_validate (am->output_acl_vec_by_sw_if_index, sw_if_index);
@@ -1469,7 +1525,7 @@ send_acl_interface_list_details (acl_main_t * am,
       mp->acls[n_input + i] =
 	htonl (am->output_acl_vec_by_sw_if_index[sw_if_index][i]);
     }
-
+  clib_mem_set_heap (oldheap);
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
@@ -1784,6 +1840,7 @@ static int
 acl_set_skip_ipv6_eh(u32 eh, u32 value)
 {
   acl_main_t *am = &acl_main;
+
   if ((eh < 256) && (value < 2))
     {
       am->fa_ipv6_known_eh_bitmap = clib_bitmap_set(am->fa_ipv6_known_eh_bitmap, eh, value);
@@ -2104,6 +2161,21 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
       vlib_cli_output(vm, "\n%s\n", out0);
       vec_free(out0);
     }
+  else if (unformat (input, "memory"))
+    {
+      vlib_cli_output (vm, "ACL plugin main heap statistics:\n");
+      if (am->acl_mheap) {
+        vlib_cli_output (vm, " %U\n", format_mheap, am->acl_mheap, 1);
+      } else {
+        vlib_cli_output (vm, " Not initialized\n");
+      }
+      vlib_cli_output (vm, "ACL hash lookup support heap statistics:\n");
+      if (am->hash_lookup_mheap) {
+        vlib_cli_output (vm, " %U\n", format_mheap, am->hash_lookup_mheap, 1);
+      } else {
+        vlib_cli_output (vm, " Not initialized\n");
+      }
+    }
   else if (unformat (input, "tables"))
     {
       ace_mask_type_entry_t *mte;
@@ -2198,9 +2270,9 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
             out0 = format(out0, "  input lookup applied entries:\n");
             for(j=0; j<vec_len(am->input_hash_entry_vec_by_sw_if_index[swi]); j++) {
               applied_hash_ace_entry_t *pae = &am->input_hash_entry_vec_by_sw_if_index[swi][j];
-              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d\n",
+              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d\n",
                                        j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
-                                       pae->next_applied_entry_index, pae->prev_applied_entry_index);
+                                       pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index);
             }
           }
 
@@ -2212,9 +2284,9 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
             out0 = format(out0, "  output lookup applied entries:\n");
             for(j=0; j<vec_len(am->output_hash_entry_vec_by_sw_if_index[swi]); j++) {
               applied_hash_ace_entry_t *pae = &am->output_hash_entry_vec_by_sw_if_index[swi][j];
-              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d\n",
+              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d\n",
                                        j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
-                                       pae->next_applied_entry_index, pae->prev_applied_entry_index);
+                                       pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index);
             }
           }
 
@@ -2288,6 +2360,7 @@ acl_init (vlib_main_t * vm)
   vec_free (name);
 
   acl_setup_fa_nodes();
+
   am->session_timeout_sec[ACL_TIMEOUT_TCP_TRANSIENT] = TCP_SESSION_TRANSIENT_TIMEOUT_SEC;
   am->session_timeout_sec[ACL_TIMEOUT_TCP_IDLE] = TCP_SESSION_IDLE_TIMEOUT_SEC;
   am->session_timeout_sec[ACL_TIMEOUT_UDP_IDLE] = UDP_SESSION_IDLE_TIMEOUT_SEC;
@@ -2329,7 +2402,6 @@ acl_init (vlib_main_t * vm)
   am->l4_match_nonfirst_fragment = 1;
 
   /* use the new fancy hash-based matching */
-  // NOT IMMEDIATELY
   am->use_hash_acl_matching = 1;
 
   return error;

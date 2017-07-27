@@ -621,14 +621,14 @@ acl_fa_verify_init_sessions (acl_main_t * am)
 static inline fa_session_t *get_session_ptr(acl_main_t *am, u16 thread_index, u32 session_index)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  fa_session_t *sess = pw->fa_sessions_pool + session_index;
+  fa_session_t *sess = pool_is_free_index (pw->fa_sessions_pool, session_index) ? 0 : pool_elt_at_index(pw->fa_sessions_pool, session_index);
   return sess;
 }
 
 static inline int is_valid_session_ptr(acl_main_t *am, u16 thread_index, fa_session_t *sess)
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
-  return ((sess - pw->fa_sessions_pool) < pool_len(pw->fa_sessions_pool));
+  return ((sess != 0) && ((sess - pw->fa_sessions_pool) < pool_len(pw->fa_sessions_pool)));
 }
 
 static void
@@ -731,6 +731,7 @@ acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
 static void
 acl_fa_delete_session (acl_main_t * am, u32 sw_if_index, fa_full_session_id_t sess_id)
 {
+  void *oldheap = clib_mem_set_heap(am->acl_mheap);
   fa_session_t *sess = get_session_ptr(am, sess_id.thread_index, sess_id.session_index);
   ASSERT(sess->thread_index == os_get_thread_index ());
   BV (clib_bihash_add_del) (&am->fa_sessions_hash,
@@ -740,6 +741,7 @@ acl_fa_delete_session (acl_main_t * am, u32 sw_if_index, fa_full_session_id_t se
   /* Deleting from timer structures not needed,
      as the caller must have dealt with the timers. */
   vec_validate (pw->fa_session_dels_by_sw_if_index, sw_if_index);
+  clib_mem_set_heap (oldheap);
   pw->fa_session_dels_by_sw_if_index[sw_if_index]++;
   clib_smp_atomic_add(&am->fa_session_total_dels, 1);
 }
@@ -877,6 +879,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   clib_bihash_kv_40_8_t kv;
   fa_full_session_id_t f_sess_id;
   uword thread_index = os_get_thread_index();
+  void *oldheap = clib_mem_set_heap(am->acl_mheap);
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
   f_sess_id.thread_index = thread_index;
@@ -909,6 +912,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   acl_fa_conn_list_add_session(am, f_sess_id, now);
 
   vec_validate (pw->fa_session_adds_by_sw_if_index, sw_if_index);
+  clib_mem_set_heap (oldheap);
   pw->fa_session_adds_by_sw_if_index[sw_if_index]++;
   clib_smp_atomic_add(&am->fa_session_total_adds, 1);
 }
@@ -1616,8 +1620,10 @@ acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
   if (enable_disable) {
     acl_fa_verify_init_sessions(am);
     am->fa_total_enabled_count++;
+    void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
     vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
                                  ACL_FA_CLEANER_RESCHEDULE, 0);
+    clib_mem_set_heap (oldheap);
   } else {
     am->fa_total_enabled_count--;
   }
@@ -1625,10 +1631,12 @@ acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
   if (is_input)
     {
       ASSERT(clib_bitmap_get(am->fa_in_acl_on_sw_if_index, sw_if_index) != enable_disable);
+      void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
       vnet_feature_enable_disable ("ip4-unicast", "acl-plugin-in-ip4-fa",
 				   sw_if_index, enable_disable, 0, 0);
       vnet_feature_enable_disable ("ip6-unicast", "acl-plugin-in-ip6-fa",
 				   sw_if_index, enable_disable, 0, 0);
+      clib_mem_set_heap (oldheap);
       am->fa_in_acl_on_sw_if_index =
 	clib_bitmap_set (am->fa_in_acl_on_sw_if_index, sw_if_index,
 			 enable_disable);
@@ -1636,10 +1644,12 @@ acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
   else
     {
       ASSERT(clib_bitmap_get(am->fa_out_acl_on_sw_if_index, sw_if_index) != enable_disable);
+      void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
       vnet_feature_enable_disable ("ip4-output", "acl-plugin-out-ip4-fa",
 				   sw_if_index, enable_disable, 0, 0);
       vnet_feature_enable_disable ("ip6-output", "acl-plugin-out-ip6-fa",
 				   sw_if_index, enable_disable, 0, 0);
+      clib_mem_set_heap (oldheap);
       am->fa_out_acl_on_sw_if_index =
 	clib_bitmap_set (am->fa_out_acl_on_sw_if_index, sw_if_index,
 			 enable_disable);
@@ -1650,9 +1660,11 @@ acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
 #ifdef FA_NODE_VERBOSE_DEBUG
       clib_warning("ENABLE-DISABLE: clean the connections on interface %d", sw_if_index);
 #endif
+      void *oldheap = clib_mem_set_heap (am->vlib_main->heap_base);
       vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
 				 ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX,
 				 sw_if_index);
+      clib_mem_set_heap (oldheap);
     }
 }
 
