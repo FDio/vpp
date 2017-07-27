@@ -122,12 +122,18 @@ typedef struct
 } ace_mask_type_entry_t;
 
 typedef struct {
+  /* mheap to hold all the ACL module related allocations, other than hash */
+  void *acl_mheap;
+
   /* API message ID base */
   u16 msg_id_base;
 
   acl_list_t *acls;	/* Pool of ACLs */
   hash_acl_info_t *hash_acl_infos; /* corresponding hash matching housekeeping info */
   clib_bihash_48_8_t acl_lookup_hash; /* ACL lookup hash table. */
+
+  /* mheap to hold all the miscellaneous allocations related to hash-based lookups */
+  void *hash_lookup_mheap;
   int acl_lookup_hash_initialized;
   applied_hash_ace_entry_t **input_hash_entry_vec_by_sw_if_index;
   applied_hash_ace_entry_t **output_hash_entry_vec_by_sw_if_index;
