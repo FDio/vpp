@@ -52,12 +52,21 @@
    If you change u32 len -> u64 len, single vectors can
    exceed 2**32 elements. Clib heaps are vectors. */
 
+#define VEC_MAGIC1 0xC0FFFEFE
+#define VEC_MAGIC2 0xF0FEC0FF
+
 typedef struct
 {
 #if CLIB_VEC64 > 0
+  u64 magic1;
   u64 len;
+  u64 magic2;
+  u64 padding[5];
 #else
+  u32 magic1;
   u32 len; /**< Number of elements in vector (NOT its allocated length). */
+  u32 magic2;
+  u32 padding[5];
 #endif
   u8 vector_data[0];  /**< Vector data . */
 } vec_header_t;
@@ -132,6 +141,41 @@ vec_aligned_header_end (void *v, uword header_bytes, uword align)
 */
 
 #define _vec_len(v)	(_vec_find(v)->len)
+#define _vec_magic1(v)  (_vec_find(v)->magic1)
+#define _vec_magic2(v)  (_vec_find(v)->magic2)
+
+always_inline void
+vec_check_magic(const void *v)
+{
+  u8 *p = 0;
+  if (0 == v) {
+    return;
+  }
+  if(_vec_magic1(v) != VEC_MAGIC1) {
+    *p = 41;
+  }
+  if(_vec_magic2(v) != VEC_MAGIC2) {
+    *p = 42;
+  }
+}
+
+always_inline void
+vec_set_magic(void *v)
+{
+  _vec_magic1(v) = VEC_MAGIC1;
+  _vec_magic2(v) = VEC_MAGIC2;
+}
+
+always_inline void
+vec_garble_magic(void *v)
+{
+  _vec_magic1(v) = VEC_MAGIC2;
+  _vec_magic2(v) = VEC_MAGIC1;
+}
+
+#define _vec_set_magic(v) vec_set_magic(v)
+#define _vec_garble_magic(v) vec_garble_magic(v)
+#define _vec_check_magic(v) vec_check_magic((const void *)v)
 
 /** \brief Number of elements in vector (rvalue-only, NULL tolerant)
 
@@ -155,6 +199,7 @@ vec_aligned_header_end (void *v, uword header_bytes, uword align)
 
 #define vec_capacity(v,b)							\
 ({										\
+  vec_check_magic(v);								\
   void * _vec_capacity_v = (void *) (v);					\
   uword _vec_capacity_b = (b);							\
   _vec_capacity_b = sizeof (vec_header_t) + _vec_round_size (_vec_capacity_b);	\
@@ -173,6 +218,7 @@ vec_aligned_header_end (void *v, uword header_bytes, uword align)
 /** \brief Get vector value at index i checking that i is in bounds. */
 #define vec_elt_at_index(v,i)			\
 ({						\
+  vec_check_magic(v);				\
   ASSERT ((i) < vec_len (v));			\
   (v) + (i);					\
 })
@@ -181,14 +227,14 @@ vec_aligned_header_end (void *v, uword header_bytes, uword align)
 #define vec_elt(v,i) (vec_elt_at_index(v,i))[0]
 
 /** \brief Vector iterator */
-#define vec_foreach(var,vec) for (var = (vec); var < vec_end (vec); var++)
+#define vec_foreach(var,vec) for (vec_check_magic(vec), var = (vec); var < vec_end (vec); vec_check_magic(vec), var++)
 
 /** \brief Vector iterator (reverse) */
 #define vec_foreach_backwards(var,vec) \
-for (var = vec_end (vec) - 1; var >= (vec); var--)
+for (vec_check_magic(vec), var = vec_end (vec) - 1; var >= (vec); vec_check_magic(vec), var--)
 
 /** \brief Iterate over vector indices. */
-#define vec_foreach_index(var,v) for ((var) = 0; (var) < vec_len (v); (var)++)
+#define vec_foreach_index(var,v) for (vec_check_magic(v), (var) = 0; (var) < vec_len (v); vec_check_magic(v), (var)++)
 
 #endif /* included_clib_vec_bootstrap_h */
 
