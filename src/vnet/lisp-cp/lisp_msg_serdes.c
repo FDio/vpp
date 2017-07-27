@@ -229,7 +229,7 @@ lisp_msg_push_ecm (vlib_main_t * vm, vlib_buffer_t * b, int lp, int rp,
     }
 
   /* Push inner ip and udp */
-  pkt_push_udp_and_ip (vm, b, lp, rp, src_ip, dst_ip);
+  pkt_push_udp_and_ip (vm, b, lp, rp, src_ip, dst_ip, 0);
 
   /* Push lisp ecm hdr */
   h = pkt_push_ecm_hdr (b);
