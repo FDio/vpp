@@ -675,7 +675,7 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
   if (is_ip4)
     {
       ih4 = vlib_buffer_push_ip4 (vm, b0, &dst_ip40, &src_ip40,
-				  IP_PROTOCOL_TCP);
+				  IP_PROTOCOL_TCP, 1);
       th0->checksum = ip4_tcp_udp_compute_checksum (vm, b0, ih4);
     }
   else
@@ -747,7 +747,7 @@ tcp_send_reset (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4)
     {
       ASSERT ((pkt_ih4->ip_version_and_header_length & 0xF0) == 0x40);
       ih4 = vlib_buffer_push_ip4 (vm, b, &pkt_ih4->dst_address,
-				  &pkt_ih4->src_address, IP_PROTOCOL_TCP);
+				  &pkt_ih4->src_address, IP_PROTOCOL_TCP, 1);
       th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih4);
     }
   else
@@ -776,7 +776,7 @@ tcp_push_ip_hdr (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b)
     {
       ip4_header_t *ih;
       ih = vlib_buffer_push_ip4 (vm, b, &tc->c_lcl_ip4,
-				 &tc->c_rmt_ip4, IP_PROTOCOL_TCP);
+				 &tc->c_rmt_ip4, IP_PROTOCOL_TCP, 1);
       th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih);
     }
   else
@@ -1508,9 +1508,10 @@ tcp46_output_inline (vlib_main_t * vm,
 	    {
 	      ip4_header_t *ih0;
 	      ih0 = vlib_buffer_push_ip4 (vm, b0, &tc0->c_lcl_ip4,
-					  &tc0->c_rmt_ip4, IP_PROTOCOL_TCP);
-	      b0->flags |= VNET_BUFFER_F_IS_IP4 |
-		VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
+					  &tc0->c_rmt_ip4, IP_PROTOCOL_TCP,
+					  1);
+	      b0->flags |=
+		VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_IP_CKSUM |
 		VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
 	      vnet_buffer (b0)->l3_hdr_offset = (u8 *) ih0 - b0->data;
 	      vnet_buffer (b0)->l4_hdr_offset = (u8 *) th0 - b0->data;

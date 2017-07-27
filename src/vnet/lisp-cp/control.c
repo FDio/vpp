@@ -2257,7 +2257,7 @@ build_map_request (lisp_cp_main_t * lcm, gid_address_t * deid,
 
   /* push outer ip header */
   pkt_push_udp_and_ip (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, sloc,
-		       rloc);
+		       rloc, 1);
 
   bi_res[0] = bi;
 
@@ -2283,6 +2283,7 @@ build_encapsulated_map_request (lisp_cp_main_t * lcm,
     }
 
   b = vlib_get_buffer (vm, bi);
+  b->flags = 0;
 
   /* leave some space for the encap headers */
   vlib_buffer_make_headroom (b, MAX_LISP_MSG_ENCAP_LEN);
@@ -2311,7 +2312,7 @@ build_encapsulated_map_request (lisp_cp_main_t * lcm,
 
   /* push outer ip header */
   pkt_push_udp_and_ip (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, sloc,
-		       mr_ip);
+		       mr_ip, 1);
 
   bi_res[0] = bi;
 
@@ -2466,7 +2467,7 @@ build_map_register (lisp_cp_main_t * lcm, ip_address_t * sloc,
 
   /* push outer ip header */
   pkt_push_udp_and_ip (vm, b, LISP_CONTROL_PORT, LISP_CONTROL_PORT, sloc,
-		       ms_ip);
+		       ms_ip, 1);
 
   bi_res[0] = bi;
   return b;
@@ -3650,7 +3651,7 @@ build_map_reply (lisp_cp_main_t * lcm, ip_address_t * sloc,
   lisp_msg_put_map_reply (b, records, nonce, probe_bit);
 
   /* push outer ip header */
-  pkt_push_udp_and_ip (vm, b, LISP_CONTROL_PORT, dst_port, sloc, dst);
+  pkt_push_udp_and_ip (vm, b, LISP_CONTROL_PORT, dst_port, sloc, dst, 1);
 
   bi_res[0] = bi;
   return b;

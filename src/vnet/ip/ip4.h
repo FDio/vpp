@@ -329,7 +329,8 @@ u32 ip4_tcp_udp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
  */
 always_inline void *
 vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
-		      ip4_address_t * src, ip4_address_t * dst, int proto)
+		      ip4_address_t * src, ip4_address_t * dst, int proto,
+		      u8 csum_offload)
 {
   ip4_header_t *ih;
 
@@ -348,7 +349,7 @@ vlib_buffer_push_ip4 (vlib_main_t * vm, vlib_buffer_t * b,
   ih->dst_address.as_u32 = dst->as_u32;
 
   /* Offload ip4 header checksum generation */
-  if (1)
+  if (csum_offload)
     {
       ih->checksum = 0;
       b->flags |= VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;

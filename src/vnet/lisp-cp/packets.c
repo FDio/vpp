@@ -143,7 +143,7 @@ pkt_push_udp (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp)
 
 void *
 pkt_push_ip (vlib_main_t * vm, vlib_buffer_t * b, ip_address_t * src,
-	     ip_address_t * dst, u32 proto)
+	     ip_address_t * dst, u32 proto, u8 csum_offload)
 {
   if (ip_addr_version (src) != ip_addr_version (dst))
     {
@@ -156,7 +156,7 @@ pkt_push_ip (vlib_main_t * vm, vlib_buffer_t * b, ip_address_t * src,
     {
     case IP4:
       return vlib_buffer_push_ip4 (vm, b, &ip_addr_v4 (src),
-				   &ip_addr_v4 (dst), proto);
+				   &ip_addr_v4 (dst), proto, csum_offload);
       break;
     case IP6:
       return vlib_buffer_push_ip6 (vm, b, &ip_addr_v6 (src),
@@ -167,11 +167,9 @@ pkt_push_ip (vlib_main_t * vm, vlib_buffer_t * b, ip_address_t * src,
   return 0;
 }
 
-#define UDP_CHECKSUM_OFFLOAD 1
-
 void *
 pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
-		     ip_address_t * sip, ip_address_t * dip)
+		     ip_address_t * sip, ip_address_t * dip, u8 csum_offload)
 {
   u16 udpsum;
   udp_header_t *uh;
@@ -179,10 +177,9 @@ pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
 
   uh = pkt_push_udp (vm, b, sp, dp);
 
-  ih = pkt_push_ip (vm, b, sip, dip, IP_PROTOCOL_UDP);
-
-  if (UDP_CHECKSUM_OFFLOAD)
+  if (csum_offload)
     {
+      ih = pkt_push_ip (vm, b, sip, dip, IP_PROTOCOL_UDP, 1);
       b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
       vnet_buffer (b)->l3_hdr_offset = (u8 *) ih - b->data;
       vnet_buffer (b)->l4_hdr_offset = (u8 *) uh - b->data;
@@ -190,6 +187,7 @@ pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
     }
   else
     {
+      ih = pkt_push_ip (vm, b, sip, dip, IP_PROTOCOL_UDP, 0);
       udpsum = udp_checksum (uh, clib_net_to_host_u16 (uh->length), ih,
 			     ip_addr_version (sip));
       if (udpsum == (u16) ~ 0)
@@ -197,6 +195,8 @@ pkt_push_udp_and_ip (vlib_main_t * vm, vlib_buffer_t * b, u16 sp, u16 dp,
 	  clib_warning ("Failed UDP checksum! Discarding");
 	  return 0;
 	}
+      /* clear flags used for csum since we're not offloading */
+      b->flags &= ~(VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_IS_IP6);
       uh->checksum = udpsum;
     }
   return ih;
