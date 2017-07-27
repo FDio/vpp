@@ -44,6 +44,7 @@
 #include <vppinfra/cache.h>
 #include <vppinfra/serialize.h>
 #include <vppinfra/vector.h>
+#include <vppinfra/lock.h>
 #include <vlib/error.h>		/* for vlib_error_t */
 
 #include <vlib/config.h>	/* for __PRE_DATA_SIZE */
@@ -423,6 +424,7 @@ typedef struct
      If buffer index is not in hash table then this buffer
      has never been allocated. */
   uword *buffer_known_hash;
+  clib_spinlock_t buffer_known_hash_lockp;
 
   /* List of free-lists needing Blue Light Special announcements */
   vlib_buffer_free_list_t **announce_list;

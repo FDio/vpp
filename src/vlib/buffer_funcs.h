@@ -219,9 +219,10 @@ always_inline vlib_buffer_known_state_t
 vlib_buffer_is_known (vlib_main_t * vm, u32 buffer_index)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  ASSERT (vlib_get_thread_index () == 0);
 
+  clib_spinlock_lock (&bm->buffer_known_hash_lockp);
   uword *p = hash_get (bm->buffer_known_hash, buffer_index);
+  clib_spinlock_unlock (&bm->buffer_known_hash_lockp);
   return p ? p[0] : VLIB_BUFFER_UNKNOWN;
 }
 
@@ -231,8 +232,9 @@ vlib_buffer_set_known_state (vlib_main_t * vm,
 			     vlib_buffer_known_state_t state)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
-  ASSERT (vlib_get_thread_index () == 0);
+  clib_spinlock_lock (&bm->buffer_known_hash_lockp);
   hash_set (bm->buffer_known_hash, buffer_index, state);
+  clib_spinlock_unlock (&bm->buffer_known_hash_lockp);
 }
 
 /* Validates sanity of a single buffer.
@@ -841,10 +843,19 @@ vlib_buffer_add_to_free_list (vlib_main_t * vm,
 			      u32 buffer_index, u8 do_init)
 {
   vlib_buffer_t *b;
+  u32 i;
   b = vlib_get_buffer (vm, buffer_index);
   if (PREDICT_TRUE (do_init))
     vlib_buffer_init_for_free_list (b, f);
   vec_add1_aligned (f->buffers, buffer_index, CLIB_CACHE_LINE_BYTES);
+
+  if (vec_len (f->buffers) > 3 * VLIB_FRAME_SIZE)
+    {
+      /* keep last stored buffers, as they are more likely hot in the cache */
+      for (i = 0; i < VLIB_FRAME_SIZE; i++)
+	vm->os_physmem_free (vlib_get_buffer (vm, i));
+      vec_delete (f->buffers, VLIB_FRAME_SIZE, 0);
+    }
 }
 
 always_inline void
