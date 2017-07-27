@@ -1439,6 +1439,22 @@ dispatch_suspended_process (vlib_main_t * vm,
   return t;
 }
 
+static void
+vlib_complain_too_many_pending_frames(vlib_main_t * vm)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  int i;
+  u32 thread_index = vlib_get_thread_index();
+  clib_error("Thread %d: too many pending frames: %d\n", thread_index, vec_len(nm->pending_frames));
+  for(i=0; i<vec_len(nm->pending_frames); i++) {
+    vlib_pending_frame_t *pf = vec_elt_at_index(nm->pending_frames, i);
+
+    clib_error("frame %d: node_runtime_index %d frame_index %x next_frame_index %d | node name: '%s'\n",
+               i, pf->node_runtime_index, pf->frame_index, pf->next_frame_index,
+               nm->nodes[nm->nodes_by_type[0][pf->node_runtime_index].node_index]->name);
+  }
+}
+
 static_always_inline void
 vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 {
@@ -1621,8 +1637,16 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
       /* Input nodes may have added work to the pending vector.
          Process pending vector until there is nothing left.
          All pending vectors will be processed from input -> output. */
-      for (i = 0; i < _vec_len (nm->pending_frames); i++)
+
+      int max_pending_frames = 4 * vec_max_len(nm->pending_frames);
+      if (max_pending_frames > 512) {
+        max_pending_frames = 256;
+      }
+      for (i = 0; i < (_vec_len (nm->pending_frames) > max_pending_frames ? max_pending_frames : _vec_len (nm->pending_frames)); i++)
 	cpu_time_now = dispatch_pending_node (vm, i, cpu_time_now);
+      /* If the pending frames vector grew more than 4x its original capacity, something must have run amok, log this fact */
+      if (_vec_len (nm->pending_frames) >= max_pending_frames)
+        vlib_complain_too_many_pending_frames(vm);
       /* Reset pending vector for next iteration. */
       _vec_len (nm->pending_frames) = 0;
 
