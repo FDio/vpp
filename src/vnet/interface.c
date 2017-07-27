@@ -785,14 +785,22 @@ vnet_register_interface (vnet_main_t * vnm,
       node = vlib_get_node (vm, hw->output_node_index);
       node->function = vnet_interface_output_node_multiarch_select ();
       node->format_trace = format_vnet_interface_output_trace;
-      nrt = vlib_node_get_runtime (vm, hw->output_node_index);
-      nrt->function = node->function;
+      /* *INDENT-OFF* */
+      foreach_vlib_main ({
+        nrt = vlib_node_get_runtime (this_vlib_main, hw->output_node_index);
+        nrt->function = node->function;
+      });
+      /* *INDENT-ON* */
 
       node = vlib_get_node (vm, hw->tx_node_index);
       node->function = dev_class->tx_function;
       node->format_trace = dev_class->format_tx_trace;
-      nrt = vlib_node_get_runtime (vm, hw->tx_node_index);
-      nrt->function = node->function;
+      /* *INDENT-OFF* */
+      foreach_vlib_main ({
+        nrt = vlib_node_get_runtime (this_vlib_main, hw->tx_node_index);
+        nrt->function = node->function;
+      });
+      /* *INDENT-ON* */
 
       _vec_len (im->deleted_hw_interface_nodes) -= 1;
     }
