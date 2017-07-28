@@ -315,6 +315,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
   unix_main_t *um = &unix_main;
   clib_error_t *error = 0;
   gid_t gid;
+  u8 *pidfile;
 
   /* Defaults */
   um->cli_pager_buffer_limit = UNIX_CLI_DEFAULT_PAGER_LIMIT;
@@ -410,6 +411,24 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	{
 	  if (setegid (gid) == -1)
 	    return clib_error_return_unix (0, "setegid");
+	}
+      else if (unformat (input, "pidfile %s", &pidfile))
+	{
+	  int fd;
+	  if ((fd = open ((char *) pidfile,
+			  O_CREAT | O_WRONLY | O_TRUNC, 0644)) < 0)
+	    {
+	      vec_free (pidfile);
+	      return clib_error_return_unix (0, "open");
+	    }
+	  u8 *lv = format (0, "%d", getpid ());
+	  vec_free (pidfile);
+	  if (write (fd, (char *) lv, vec_len (lv)) < 0)
+	    {
+	      return clib_error_return_unix (0, "write");
+	    }
+	  vec_free (lv);
+	  close (fd);
 	}
       else
 	return clib_error_return (0, "unknown input `%U'",
