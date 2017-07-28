@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_ab548dca",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 418,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-07-28T12:55:12Z",
+      "side": 1,
+      "message": "fyi, note https://gerrit.fd.io/r/#/c/7690\n\nsince the runtime dir is the logical location for the pidfile, we should include \"mkdir -p\" logic here too if the pid is configured for the runtime path",
+      "range": {
+        "startLine": 418,
+        "startChar": 8,
+        "endLine": 418,
+        "endChar": 35
+      },
+      "revId": "9f288e1397d9db9a0af59c50fb7ef0fcf01ddac9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_0b460124",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-07-28T12:55:12Z",
+      "side": 1,
+      "message": "this is run before fork() when daemonizing; this pid value needs to be written immediately after that fork()",
+      "range": {
+        "startLine": 424,
+        "startChar": 29,
+        "endLine": 424,
+        "endChar": 38
+      },
+      "revId": "9f288e1397d9db9a0af59c50fb7ef0fcf01ddac9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_2b41bd0b",
+        "filename": "src/vlib/unix/main.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 467,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-07-28T12:55:12Z",
+      "side": 1,
+      "message": "document it",
+      "range": {
+        "startLine": 467,
+        "startChar": 0,
+        "endLine": 467,
+        "endChar": 2
+      },
+      "revId": "9f288e1397d9db9a0af59c50fb7ef0fcf01ddac9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
