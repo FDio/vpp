@@ -315,6 +315,7 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
   unix_main_t *um = &unix_main;
   clib_error_t *error = 0;
   gid_t gid;
+  int pidfd = -1;
 
   /* Defaults */
   um->cli_pager_buffer_limit = UNIX_CLI_DEFAULT_PAGER_LIMIT;
@@ -411,6 +412,8 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	  if (setegid (gid) == -1)
 	    return clib_error_return_unix (0, "setegid");
 	}
+      else if (unformat (input, "pidfile %s", &um->pidfile))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -419,6 +422,13 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
   error = setup_signal_handlers (um);
   if (error)
     return error;
+
+  if (um->pidfile &&
+      ((pidfd = open ((char *) um->pidfile,
+		      O_CREAT | O_WRONLY | O_TRUNC, 0644)) < 0))
+    {
+      return clib_error_return_unix (0, "open");
+    }
 
   if (!(um->flags & UNIX_FLAG_INTERACTIVE))
     {
@@ -430,6 +440,20 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 						       0) < 0)
 	clib_error_return (0, "daemon () fails");
     }
+
+  if (pidfd >= 0)
+    {
+      u8 *lv = format (0, "%d", getpid ());
+      if (write (pidfd, (char *) lv, vec_len (lv)) != vec_len (lv))
+	{
+	  vec_free (lv);
+	  close (pidfd);
+	  return clib_error_return_unix (0, "write");
+	}
+      vec_free (lv);
+      close (pidfd);
+    }
+
   um->unix_config_complete = 1;
 
   return 0;
@@ -458,6 +482,9 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
  * @c filename.
  * Very useful in situations where folks don't remember or can't be bothered
  * to include CLI commands in bug reports.
+ *
+ * @cfgcmd{pidfile, &lt;filename&gt;}
+ * Writes the pid of the main thread in @c filename.
  *
  * @cfgcmd{full-coredump}
  * Ask the Linux kernel to dump all memory-mapped address regions, instead

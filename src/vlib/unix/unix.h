@@ -106,6 +106,9 @@ typedef struct
   /* startup-config filename */
   u8 *startup_config_filename;
 
+  /* pidfile filename */
+  u8 *pidfile;
+
   /* unix config complete */
   volatile int unix_config_complete;
 
