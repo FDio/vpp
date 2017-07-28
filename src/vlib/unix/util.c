@@ -257,6 +257,55 @@ done:
   return error;
 }
 
+clib_error_t *
+vlib_unix_validate_runtime_file (unix_main_t * um,
+				 const char *path, u8 ** full_path)
+{
+  u8 *fp = 0;
+  char *last_slash = 0;
+
+  if (path[0] == '\0')
+    {
+      return clib_error_return (0, "path is an empty string");
+    }
+  else if (strncmp (path, "../", 3) == 0 || strstr (path, "/../"))
+    {
+      return clib_error_return (0, "'..' not allowed in runtime path");
+    }
+  else if (path[0] == '/')
+    {
+      /* Absolute path. Has to start with runtime directory */
+      if (strncmp ((char *) um->runtime_dir, path,
+		   strlen ((char *) um->runtime_dir)))
+	{
+	  return clib_error_return (0,
+				    "file %s is not in runtime directory %s",
+				    path, um->runtime_dir);
+	}
+      fp = format (0, "%s%c", path, '\0');
+    }
+  else
+    {
+      /* Relative path, just append to runtime */
+      fp = format (0, "%s/%s%c", um->runtime_dir, path, '\0');
+    }
+
+  /* We don't want to create a directory out of the last file */
+  if ((last_slash = strrchr ((char *) fp, '/')) != NULL)
+    *last_slash = '\0';
+
+  clib_error_t *error = vlib_unix_recursive_mkdir ((char *) fp);
+
+  if (last_slash != NULL)
+    *last_slash = '/';
+
+  if (error)
+    vec_free (fp);
+
+  *full_path = fp;
+  return error;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

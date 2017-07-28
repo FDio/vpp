@@ -106,6 +106,9 @@ typedef struct
   /* runtime directory path */
   u8 *runtime_dir;
 
+  /* pidfile filename */
+  u8 *pidfile;
+
   /* unix config complete */
   volatile int unix_config_complete;
 
@@ -240,6 +243,10 @@ clib_error_t *foreach_directory_file (char *dir_name,
 				      void *arg, int scan_dirs);
 
 clib_error_t *vlib_unix_recursive_mkdir (char *path);
+
+clib_error_t *vlib_unix_validate_runtime_file (unix_main_t * um,
+					       const char *path,
+					       u8 ** full_path);
 
 #endif /* included_unix_unix_h */
 
