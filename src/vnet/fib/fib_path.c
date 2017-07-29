@@ -2163,9 +2163,11 @@ fib_path_encode (fib_node_index_t path_list_index,
       case FIB_PATH_TYPE_RECEIVE:
         api_rpath->rpath.frp_addr = path->receive.fp_addr;
         api_rpath->rpath.frp_sw_if_index = path->receive.fp_interface;
+        api_rpath->dpo = path->fp_dpo;
         break;
       case FIB_PATH_TYPE_ATTACHED:
         api_rpath->rpath.frp_sw_if_index = path->attached.fp_interface;
+        api_rpath->dpo = path->fp_dpo;
         break;
       case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
         api_rpath->rpath.frp_sw_if_index = path->attached_next_hop.fp_interface;
