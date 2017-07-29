@@ -23,6 +23,7 @@
 #define VHOST_VRING_IDX_RX(qid)         (2*qid)
 #define VHOST_VRING_IDX_TX(qid)         (2*qid + 1)
 
+#define VHOST_USER_VRING_NOFD_MASK      0x100
 #define VIRTQ_DESC_F_NEXT               1
 #define VIRTQ_DESC_F_INDIRECT           4
 #define VHOST_USER_REPLY_MASK       (0x1 << 2)
