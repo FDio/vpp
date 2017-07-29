@@ -933,7 +933,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	  vui->vrings[q].callfd_idx = ~0;
 	}
 
-      if (!(msg.u64 & 0x100))
+      if (!(msg.u64 & VHOST_USER_VRING_NOFD_MASK))
 	{
 	  if (number_of_fds != 1)
 	    {
@@ -965,7 +965,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	  vui->vrings[q].kickfd_idx = ~0;
 	}
 
-      if (!(msg.u64 & 0x100))
+      if (!(msg.u64 & VHOST_USER_VRING_NOFD_MASK))
 	{
 	  if (number_of_fds != 1)
 	    {
@@ -998,7 +998,7 @@ vhost_user_socket_read (unix_file_t * uf)
       if (vui->vrings[q].errfd != -1)
 	close (vui->vrings[q].errfd);
 
-      if (!(msg.u64 & 0x100))
+      if (!(msg.u64 & VHOST_USER_VRING_NOFD_MASK))
 	{
 	  if (number_of_fds != 1)
 	    goto close_socket;
@@ -2382,6 +2382,11 @@ vhost_user_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index,
   if ((mode == VNET_HW_INTERFACE_RX_MODE_INTERRUPT) ||
       (mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE))
     {
+      if (txvq->kickfd_idx == ~0)
+	{
+	  // We cannot support interrupt mode if the driver opts out
+	  return clib_error_return (0, "Driver does not support interrupt");
+	}
       if (txvq->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
 	{
 	  vum->ifq_count++;
