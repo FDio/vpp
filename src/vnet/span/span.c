@@ -32,8 +32,15 @@ typedef enum
 static_always_inline u32
 span_dst_set (span_mirror_t * sm, u32 dst_sw_if_index, int enable)
 {
-  sm->mirror_ports =
-    clib_bitmap_set (sm->mirror_ports, dst_sw_if_index, enable);
+  if (dst_sw_if_index == ~0)
+    {
+      ASSERT (enable == 0);
+      clib_bitmap_zero (sm->mirror_ports);
+    }
+  else
+    sm->mirror_ports =
+      clib_bitmap_set (sm->mirror_ports, dst_sw_if_index, enable);
+
   u32 last = sm->num_mirror_ports;
   sm->num_mirror_ports = clib_bitmap_count_set_bits (sm->mirror_ports);
   return last;
@@ -68,9 +75,9 @@ span_add_delete_entry (vlib_main_t * vm,
   u32 last_tx_ports_count = span_dst_set (txm, dst_sw_if_index, tx);
 
   int enable_rx = last_rx_ports_count == 0 && rxm->num_mirror_ports == 1;
-  int disable_rx = last_rx_ports_count == 1 && rxm->num_mirror_ports == 0;
+  int disable_rx = last_rx_ports_count > 0 && rxm->num_mirror_ports == 0;
   int enable_tx = last_tx_ports_count == 0 && txm->num_mirror_ports == 1;
-  int disable_tx = last_tx_ports_count == 1 && txm->num_mirror_ports == 0;
+  int disable_tx = last_tx_ports_count > 0 && txm->num_mirror_ports == 0;
 
   switch (sf)
     {
@@ -92,10 +99,27 @@ span_add_delete_entry (vlib_main_t * vm,
       return VNET_API_ERROR_UNIMPLEMENTED;
     }
 
-  if (dst_sw_if_index > sm->max_sw_if_index)
+  if (dst_sw_if_index != ~0 && dst_sw_if_index > sm->max_sw_if_index)
     sm->max_sw_if_index = dst_sw_if_index;
 
   return 0;
+}
+
+static uword
+unformat_span_state (unformat_input_t * input, va_list * args)
+{
+  span_state_t *state = va_arg (*args, span_state_t *);
+  if (unformat (input, "disable"))
+    *state = SPAN_DISABLE;
+  else if (unformat (input, "rx"))
+    *state = SPAN_RX;
+  else if (unformat (input, "tx"))
+    *state = SPAN_TX;
+  else if (unformat (input, "both"))
+    *state = SPAN_BOTH;
+  else
+    return 0;
+  return 1;
 }
 
 static clib_error_t *
@@ -106,8 +130,9 @@ set_interface_span_command_fn (vlib_main_t * vm,
   span_main_t *sm = &span_main;
   u32 src_sw_if_index = ~0;
   u32 dst_sw_if_index = ~0;
-  u8 state = SPAN_BOTH;
   span_feat_t sf = SPAN_FEAT_DEVICE;
+  span_state_t state = SPAN_BOTH;
+  int state_set = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -117,18 +142,16 @@ set_interface_span_command_fn (vlib_main_t * vm,
       else if (unformat (input, "destination %U", unformat_vnet_sw_interface,
 			 sm->vnet_main, &dst_sw_if_index))
 	;
-      else if (unformat (input, "disable"))
-	state = SPAN_DISABLE;
-      else if (unformat (input, "rx"))
-	state = SPAN_RX;
-      else if (unformat (input, "tx"))
-	state = SPAN_TX;
-      else if (unformat (input, "both"))
-	state = SPAN_BOTH;
+      else if (unformat (input, "%U", unformat_span_state, &state))
+	{
+	  if (state_set)
+	    return clib_error_return (0, "Multiple mirror states in input");
+	  state_set = 1;
+	}
       else if (unformat (input, "l2"))
 	sf = SPAN_FEAT_L2;
       else
-	break;
+	return clib_error_return (0, "Invalid input");
     }
 
   int rv =
@@ -155,7 +178,12 @@ show_interfaces_span_command_fn (vlib_main_t * vm,
   span_interface_t *si;
   vnet_main_t *vnm = &vnet_main;
   u8 header = 1;
-  char *states[] = { "none", "rx", "tx", "both" };
+  static const char *states[] = {
+    [SPAN_DISABLE] = "none",
+    [SPAN_RX] = "rx",
+    [SPAN_TX] = "tx",
+    [SPAN_BOTH] = "both"
+  };
   u8 *s = 0;
 
   /* *INDENT-OFF* */
