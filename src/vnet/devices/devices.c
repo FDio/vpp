@@ -264,6 +264,10 @@ vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
       (hw->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE) == 0)
     return VNET_API_ERROR_UNSUPPORTED;
 
+  if ((vec_len (hw->input_node_thread_index_by_queue) < queue_id + 1) ||
+      (vec_len (hw->rx_mode_by_queue) < queue_id + 1))
+    return VNET_API_ERROR_INVALID_QUEUE;
+
   hw->rx_mode_by_queue[queue_id] = mode;
   thread_index = hw->input_node_thread_index_by_queue[queue_id];
   vm = vlib_mains[thread_index];
@@ -306,6 +310,10 @@ vnet_hw_interface_get_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 
   if (hw->input_node_thread_index_by_queue == 0)
     return VNET_API_ERROR_INVALID_INTERFACE;
+
+  if ((vec_len (hw->input_node_thread_index_by_queue) < queue_id + 1) ||
+      (vec_len (hw->rx_mode_by_queue) < queue_id + 1))
+    return VNET_API_ERROR_INVALID_QUEUE;
 
   thread_index = hw->input_node_thread_index_by_queue[queue_id];
   vm = vlib_mains[thread_index];
