@@ -112,7 +112,8 @@ _(BD_ALREADY_EXISTS, -119, "Bridge domain already exists")              \
 _(BD_IN_USE, -120, "Bridge domain has member interfaces")		\
 _(BD_NOT_MODIFIABLE, -121, "Bridge domain 0 can't be deleted/modified") \
 _(BD_ID_EXCEED_MAX, -122, "Bridge domain ID exceed 16M limit")		\
-_(UNSUPPORTED, -123, "Unsupported")
+_(INVALID_QUEUE, -123, "Invalid queue")                 		\
+_(UNSUPPORTED, -124, "Unsupported")
 
 typedef enum
 {
