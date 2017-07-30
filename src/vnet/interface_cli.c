@@ -1313,6 +1313,8 @@ set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
       break;
     case VNET_API_ERROR_INVALID_INTERFACE:
       return clib_error_return (0, "invalid interface");
+    case VNET_API_ERROR_INVALID_QUEUE:
+      return clib_error_return (0, "invalid queue");
     default:
       return clib_error_return (0, "unknown error");
     }
@@ -1334,6 +1336,8 @@ set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
       return clib_error_return (0, "unsupported");
     case VNET_API_ERROR_INVALID_INTERFACE:
       return clib_error_return (0, "invalid interface");
+    case VNET_API_ERROR_INVALID_QUEUE:
+      return clib_error_return (0, "invalid queue");
     default:
       return clib_error_return (0, "unknown error");
     }
