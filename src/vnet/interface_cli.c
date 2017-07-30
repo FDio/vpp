@@ -1313,6 +1313,8 @@ set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
       break;
     case VNET_API_ERROR_INVALID_INTERFACE:
       return clib_error_return (0, "invalid interface");
+    case VNET_API_ERROR_INVALID_QUEUE:
+      return clib_error_return (0, "invalid queue");
     default:
       return clib_error_return (0, "unknown error");
     }
@@ -1334,6 +1336,8 @@ set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
       return clib_error_return (0, "unsupported");
     case VNET_API_ERROR_INVALID_INTERFACE:
       return clib_error_return (0, "invalid interface");
+    case VNET_API_ERROR_INVALID_QUEUE:
+      return clib_error_return (0, "invalid queue");
     default:
       return clib_error_return (0, "unknown error");
     }
@@ -1353,6 +1357,7 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
   u32 queue_id = (u32) ~ 0;
   vnet_hw_interface_rx_mode mode = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
   int i;
+  u8 input_queue_id = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1363,7 +1368,7 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
 	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
 	;
       else if (unformat (line_input, "queue %d", &queue_id))
-	;
+	input_queue_id = 1;
       else if (unformat (line_input, "polling"))
 	mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
       else if (unformat (line_input, "interrupt"))
@@ -1389,7 +1394,7 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
 
   hw = vnet_get_hw_interface (vnm, hw_if_index);
 
-  if (queue_id == ~0)
+  if (input_queue_id == 0)
     {
       for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
 	{
