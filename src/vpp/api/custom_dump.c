@@ -2258,6 +2258,9 @@ vl_api_sw_interface_span_dump_t_print (vl_api_sw_interface_span_dump_t * mp,
 
   s = format (0, "SCRIPT: sw_interface_span_dump ");
 
+  if (mp->is_l2)
+    s = format (s, "l2 ");
+
   FINISH;
 }
 
