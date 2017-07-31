@@ -70,6 +70,8 @@ _(IP_DUMP, ip_dump)                                                     \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
+_(IP_PUNT_POLICE, ip_punt_police)                                       \
+_(IP_PUNT_REDIRECT, ip_punt_redirect)                                   \
 _(SET_IP_FLOW_HASH,set_ip_flow_hash)                                    \
 _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
 _(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
@@ -645,6 +647,64 @@ vl_api_ip6_mfib_dump_t_handler (vl_api_ip6_mfib_dump_t * mp)
 
   vec_free (ctx.entries);
   vec_free (api_rpaths);
+}
+
+static void
+vl_api_ip_punt_police_t_handler (vl_api_ip_punt_police_t * mp,
+				 vlib_main_t * vm)
+{
+  vl_api_ip_punt_police_reply_t *rmp;
+  int rv = 0;
+
+  if (mp->is_ip6)
+    ip6_punt_policer_add_del (mp->is_add, ntohl (mp->policer_index));
+  else
+    ip4_punt_policer_add_del (mp->is_add, ntohl (mp->policer_index));
+
+  REPLY_MACRO (VL_API_IP_PUNT_POLICE_REPLY);
+}
+
+static void
+vl_api_ip_punt_redirect_t_handler (vl_api_ip_punt_redirect_t * mp,
+				   vlib_main_t * vm)
+{
+  vl_api_ip_punt_redirect_reply_t *rmp;
+  int rv = 0;
+
+  if (mp->is_add)
+    {
+      ip46_address_t nh;
+
+      memset (&nh, 0, sizeof (nh));
+
+      if (mp->is_ip6)
+	{
+	  memcpy (&nh.ip6, mp->nh, sizeof (nh.ip6));
+
+	  ip6_punt_redirect_add (ntohl (mp->rx_sw_if_index),
+				 ntohl (mp->tx_sw_if_index), &nh);
+	}
+      else
+	{
+	  memcpy (&nh.ip4, mp->nh, sizeof (nh.ip4));
+
+	  ip4_punt_redirect_add (ntohl (mp->rx_sw_if_index),
+				 ntohl (mp->tx_sw_if_index), &nh);
+	}
+    }
+  else
+    {
+      if (mp->is_ip6)
+	{
+	  ip6_punt_redirect_del (ntohl (mp->rx_sw_if_index));
+	}
+      else
+	{
+	  ip4_punt_redirect_del (ntohl (mp->rx_sw_if_index));
+	}
+    }
+
+  REPLY_MACRO (VL_API_IP_PUNT_REDIRECT_REPLY);
 }
 
 static void

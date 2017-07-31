@@ -230,6 +230,11 @@ extern vlib_node_registration_t ip6_discover_neighbor_node;
 extern vlib_node_registration_t ip6_glean_node;
 extern vlib_node_registration_t ip6_midchain_node;
 
+extern void ip6_forward_next_trace (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame,
+				    vlib_rx_or_tx_t which_adj_index);
+
 always_inline uword
 ip6_destination_matches_route (const ip6_main_t * im,
 			       const ip6_address_t * key,
@@ -393,6 +398,11 @@ void send_ip6_na (vlib_main_t * vm, vnet_hw_interface_t * hi);
 u8 *format_ip6_forward_next_trace (u8 * s, va_list * args);
 
 u32 ip6_tcp_udp_icmp_validate_checksum (vlib_main_t * vm, vlib_buffer_t * p0);
+
+void ip6_punt_policer_add_del (u8 is_add, u32 policer_index);
+void ip6_punt_redirect_add (u32 rx_sw_if_index,
+			    u32 tx_sw_if_index, ip46_address_t * nh);
+void ip6_punt_redirect_del (u32 rx_sw_if_index);
 
 int vnet_set_ip6_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
 				 u32 table_index);

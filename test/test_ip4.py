@@ -11,7 +11,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, ARP
-from scapy.layers.inet import IP, UDP, ICMP, icmptypes, icmpcodes
+from scapy.layers.inet import IP, UDP, TCP, ICMP, icmptypes, icmpcodes
 from util import ppp
 from scapy.contrib.mpls import MPLS
 
@@ -1008,6 +1008,79 @@ class TestIPVlan0(VppTestCase):
         #
         self.send_and_expect(self.pg0, pkts, self.pg1)
 
+
+class TestIPPunt(VppTestCase):
+    """ IPv4 Punt Police/Redirect """
+
+    def setUp(self):
+        super(TestIPPunt, self).setUp()
+
+        self.create_pg_interfaces(range(2))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        super(TestIPPunt, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def send_and_expect(self, input, pkts, output):
+        input.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = output.get_capture(len(pkts))
+        return rx
+
+    def test_ip_punt(self):
+        """ IP punt police and redirect """
+
+        p = (Ether(src=self.pg0.remote_mac,
+                   dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
+             TCP(sport=1234, dport=1234) /
+             Raw('\xa5' * 100))
+
+        pkts = p * 257
+
+        #
+        # Configure a punt redirect via pg1.
+        #
+        nh_addr = socket.inet_pton(socket.AF_INET,
+                                   self.pg1.remote_ip4)
+        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
+                                   self.pg1.sw_if_index,
+                                   nh_addr)
+
+        self.send_and_expect(self.pg0, pkts, self.pg1)
+
+        #
+        # add a policer
+        #
+        policer = self.vapi.policer_add_del("ip4-punt", 4, 0, 5, 0, rate_type=1)
+        self.vapi.ip_punt_police(policer.policer_index)
+
+        self.vapi.cli("clear trace")
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        #
+        # the number of packet recieved should be greater than 0,
+        # but not equal to the number sent, since some were policed
+        #
+        rx = self.pg1._get_capture(1)
+        self.assertTrue(len(rx) > 0)
+        self.assertTrue(len(rx) < len(pkts))
+
+        self.vapi.policer_add_del("ip4-punt", 4, 0, 5, 0, rate_type=1, is_add=0)
+        self.vapi.ip_punt_redirect(self.pg0.sw_if_index,
+                                   self.pg1.sw_if_index,
+                                   nh_addr,
+                                   is_add=0)
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
