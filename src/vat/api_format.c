@@ -18207,11 +18207,22 @@ static void
 static int
 api_sw_interface_span_dump (vat_main_t * vam)
 {
+  unformat_input_t *input = vam->input;
   vl_api_sw_interface_span_dump_t *mp;
   vl_api_control_ping_t *mp_ping;
+  u8 is_l2 = 0;
   int ret;
 
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "l2"))
+	is_l2 = 1;
+      else
+	break;
+    }
+
   M (SW_INTERFACE_SPAN_DUMP, mp);
+  mp->is_l2 = is_l2;
   S (mp);
 
   /* Use a control ping for synchronization */
@@ -20049,7 +20060,7 @@ _(ipfix_classify_stream_dump, "")                                       \
 _(ipfix_classify_table_add_del, "table <table-index> ip4|ip6 [tcp|udp]") \
 _(ipfix_classify_table_dump, "")                                        \
 _(sw_interface_span_enable_disable, "[l2] [src <intfc> | src_sw_if_index <id>] [disable | [[dst <intfc> | dst_sw_if_index <id>] [both|rx|tx]]]") \
-_(sw_interface_span_dump, "")                                           \
+_(sw_interface_span_dump, "[l2]")                                           \
 _(get_next_index, "node-name <node-name> next-node-name <node-name>")   \
 _(pg_create_interface, "if_id <nn>")                                    \
 _(pg_capture, "if_id <nnn> pcap <file_name> count <nnn> [disable]")     \
