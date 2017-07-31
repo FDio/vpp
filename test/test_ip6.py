@@ -1469,6 +1469,39 @@ class TestIP6LoadBalance(VppTestCase):
                                             [self.pg1, self.pg2,
                                              self.pg3, self.pg4])
 
+        #
+        # Recursive prefixes
+        #  - testing that 2 stages of load-balancing no choices
+        #
+        port_pkts = []
+
+        for ii in range(257):
+            port_pkts.append((Ether(src=self.pg0.remote_mac,
+                                    dst=self.pg0.local_mac) /
+                              IPv6(dst="6000::1", src="6000:1::1") /
+                              UDP(sport=1234, dport=1234 + ii) /
+                              Raw('\xa5' * 100)))
+
+        route_5000_2 = VppIpRoute(self, "5000::2", 128,
+                                  [VppRoutePath(self.pg3.remote_ip6,
+                                                self.pg3.sw_if_index,
+                                                is_ip6=1)],
+                                  is_ip6=1)
+        route_5000_2.add_vpp_config()
+
+        route_6000_1 = VppIpRoute(self, "6000::1", 128,
+                                  [VppRoutePath("5000::2",
+                                                0xffffffff,
+                                                is_ip6=1)],
+                                  is_ip6=1)
+        route_6000_1.add_vpp_config()
+
+        #
+        # inject the packet on pg0 - expect load-balancing across all 4 paths
+        #
+        self.vapi.cli("clear trace")
+        self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg3)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
