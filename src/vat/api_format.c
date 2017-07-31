@@ -18349,10 +18349,10 @@ api_policer_add_del (vat_main_t * vam)
   clib_memcpy (mp->name, name, vec_len (name));
   vec_free (name);
   mp->is_add = is_add;
-  mp->cir = cir;
-  mp->eir = eir;
-  mp->cb = cb;
-  mp->eb = eb;
+  mp->cir = ntohl (cir);
+  mp->eir = ntohl (eir);
+  mp->cb = clib_net_to_host_u64 (cb);
+  mp->eb = clib_net_to_host_u64 (eb);
   mp->rate_type = rate_type;
   mp->round_type = round_type;
   mp->type = type;
