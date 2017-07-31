@@ -63,10 +63,10 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
   cfg.rfc = mp->type;
   cfg.rnd_type = mp->round_type;
   cfg.rate_type = mp->rate_type;
-  cfg.rb.kbps.cir_kbps = mp->cir;
-  cfg.rb.kbps.eir_kbps = mp->eir;
-  cfg.rb.kbps.cb_bytes = mp->cb;
-  cfg.rb.kbps.eb_bytes = mp->eb;
+  cfg.rb.kbps.cir_kbps = ntohl (mp->cir);
+  cfg.rb.kbps.eir_kbps = ntohl (mp->eir);
+  cfg.rb.kbps.cb_bytes = clib_net_to_host_u64 (mp->cb);
+  cfg.rb.kbps.eb_bytes = clib_net_to_host_u64 (mp->eb);
   cfg.conform_action.action_type = mp->conform_action_type;
   cfg.conform_action.dscp = mp->conform_dscp;
   cfg.exceed_action.action_type = mp->exceed_action_type;

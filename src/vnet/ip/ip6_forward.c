@@ -61,11 +61,6 @@
  * This file contains the source code for IPv6 forwarding.
  */
 
-void
-ip6_forward_next_trace (vlib_main_t * vm,
-			vlib_node_runtime_t * node,
-			vlib_frame_t * frame,
-			vlib_rx_or_tx_t which_adj_index);
 
 always_inline uword
 ip6_lookup_inline (vlib_main_t * vm,
@@ -1133,70 +1128,6 @@ ip6_forward_next_trace (vlib_main_t * vm,
     }
 }
 
-static uword
-ip6_drop_or_punt (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame, ip6_error_t error_code)
-{
-  u32 *buffers = vlib_frame_vector_args (frame);
-  uword n_packets = frame->n_vectors;
-
-  vlib_error_drop_buffers (vm, node, buffers,
-			   /* stride */ 1,
-			   n_packets,
-			   /* next */ 0,
-			   ip6_input_node.index, error_code);
-
-  if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip6_forward_next_trace (vm, node, frame, VLIB_TX);
-
-  return n_packets;
-}
-
-static uword
-ip6_drop (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  return ip6_drop_or_punt (vm, node, frame, IP6_ERROR_ADJACENCY_DROP);
-}
-
-static uword
-ip6_punt (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  return ip6_drop_or_punt (vm, node, frame, IP6_ERROR_ADJACENCY_PUNT);
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_drop_node, static) =
-{
-  .function = ip6_drop,
-  .name = "ip6-drop",
-  .vector_size = sizeof (u32),
-  .format_trace = format_ip6_forward_next_trace,
-  .n_next_nodes = 1,
-  .next_nodes =
-  {
-    [0] = "error-drop",},
-};
-/* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_drop_node, ip6_drop);
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip6_punt_node, static) =
-{
-  .function = ip6_punt,
-  .name = "ip6-punt",
-  .vector_size = sizeof (u32),
-  .format_trace = format_ip6_forward_next_trace,
-  .n_next_nodes = 1,
-  .next_nodes =
-  {
-    [0] = "error-punt",},
-};
-/* *INDENT-ON* */
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip6_punt_node, ip6_punt);
-
 /* Compute TCP/UDP/ICMP6 checksum in software. */
 u16
 ip6_tcp_udp_icmp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
@@ -1649,8 +1580,8 @@ VLIB_REGISTER_NODE (ip6_local_node, static) =
   .n_next_nodes = IP_LOCAL_N_NEXT,
   .next_nodes =
   {
-    [IP_LOCAL_NEXT_DROP] = "error-drop",
-    [IP_LOCAL_NEXT_PUNT] = "error-punt",
+    [IP_LOCAL_NEXT_DROP] = "ip6-drop",
+    [IP_LOCAL_NEXT_PUNT] = "ip6-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip6-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip6-icmp-input",
   },
