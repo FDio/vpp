@@ -796,6 +796,12 @@ class TestIPLoadBalance(VppTestCase):
             rx = oo._get_capture(1)
             self.assertNotEqual(0, len(rx))
 
+    def send_and_expect_one_itf(self, input, pkts, itf):
+        input.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = itf.get_capture(len(pkts))
+
     def test_ip_load_balance(self):
         """ IP Load-Balancing """
 
@@ -874,11 +880,7 @@ class TestIPLoadBalance(VppTestCase):
         self.send_and_expect_load_balancing(self.pg0, src_mpls_pkts,
                                             [self.pg1, self.pg2])
 
-        self.pg0.add_stream(port_ip_pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-
-        rx = self.pg2.get_capture(len(port_ip_pkts))
+        self.send_and_expect_one_itf(self.pg0, port_ip_pkts, self.pg2)
 
         #
         # change the flow hash config back to defaults
@@ -927,6 +929,34 @@ class TestIPLoadBalance(VppTestCase):
         self.send_and_expect_load_balancing(self.pg0, src_pkts,
                                             [self.pg1, self.pg2,
                                              self.pg3, self.pg4])
+
+        #
+        # Recursive prefixes
+        #  - testing that 2 stages of load-balancing, no choices
+        #
+        port_pkts = []
+
+        for ii in range(257):
+            port_pkts.append((Ether(src=self.pg0.remote_mac,
+                                    dst=self.pg0.local_mac) /
+                              IP(dst="1.1.1.2", src="20.0.0.2") /
+                              UDP(sport=1234, dport=1234 + ii) /
+                              Raw('\xa5' * 100)))
+
+        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+                                    [VppRoutePath(self.pg3.remote_ip4,
+                                                  self.pg3.sw_if_index)])
+        route_10_0_0_3.add_vpp_config()
+
+        route_1_1_1_2 = VppIpRoute(self, "1.1.1.2", 32,
+                                   [VppRoutePath("10.0.0.3", 0xffffffff)])
+        route_1_1_1_2.add_vpp_config()
+
+        #
+        # inject the packet on pg0 - expect load-balancing across all 4 paths
+        #
+        self.vapi.cli("clear trace")
+        self.send_and_expect_one_itf(self.pg0, port_pkts, self.pg3)
 
 
 class TestIPVlan0(VppTestCase):
