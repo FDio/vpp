@@ -32,6 +32,7 @@ ssvm_master_init (ssvm_private_t * ssvm, u32 master_index)
   if (CLIB_DEBUG > 1)
     clib_warning ("[%d] creating segment '%s'", getpid (), ssvm->name);
 
+  ASSERT (vec_c_string_is_terminated (ssvm->name));
   ssvm_filename = format (0, "/dev/shm/%s%c", ssvm->name, 0);
 
   unlink ((char *) ssvm_filename);
@@ -110,6 +111,7 @@ ssvm_slave_init (ssvm_private_t * ssvm, int timeout_in_seconds)
   int ssvm_fd = -1;
   ssvm_shared_header_t *sh;
 
+  ASSERT (vec_c_string_is_terminated (ssvm->name));
   ssvm->i_am_master = 0;
 
   while (timeout_in_seconds-- > 0)

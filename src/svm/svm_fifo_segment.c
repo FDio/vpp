@@ -105,7 +105,7 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
   s->ssvm.ssvm_size = a->segment_size;
   s->ssvm.i_am_master = 1;
   s->ssvm.my_pid = getpid ();
-  s->ssvm.name = format (0, "%s", a->segment_name);
+  s->ssvm.name = format (0, "%s%c", a->segment_name, 0);
   s->ssvm.requested_va = sm->next_baseva;
 
   rv = ssvm_master_init (&s->ssvm, s - sm->segments);
@@ -192,7 +192,7 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
       s->ssvm.ssvm_size = ~0;
       s->ssvm.i_am_master = 1;
       s->ssvm.my_pid = getpid ();
-      s->ssvm.name = (u8 *) a->segment_name;
+      s->ssvm.name = format (0, "%s%c", a->segment_name, 0);
       s->ssvm.requested_va = ~0;
 
       /* Allocate a [sic] shared memory header, in process memory... */
@@ -240,7 +240,7 @@ svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
 
   s->ssvm.ssvm_size = a->segment_size;
   s->ssvm.my_pid = getpid ();
-  s->ssvm.name = (u8 *) a->segment_name;
+  s->ssvm.name = format (0, "%s%c", a->segment_name, 0);
   s->ssvm.requested_va = sm->next_baseva;
 
   rv = ssvm_slave_init (&s->ssvm, sm->timeout_in_seconds);
