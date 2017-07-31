@@ -54,8 +54,8 @@
   _ (MTU_EXCEEDED, "ip6 MTU exceeded")                                  \
   _ (DST_LOOKUP_MISS, "ip6 destination lookup miss")                    \
   _ (SRC_LOOKUP_MISS, "ip6 source lookup miss")                         \
-  _ (ADJACENCY_DROP, "ip6 adjacency drop")                              \
-  _ (ADJACENCY_PUNT, "ip6 adjacency punt")                              \
+  _ (DROP, "ip6 drop")                                                  \
+  _ (PUNT, "ip6 punt")                                                  \
                                                                         \
   /* Errors signalled by ip6-local. */                                  \
   _ (UNKNOWN_PROTOCOL, "unknown ip protocol")                           \

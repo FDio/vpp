@@ -60,12 +60,6 @@
  * This file contains the source code for IPv4 forwarding.
  */
 
-void
-ip4_forward_next_trace (vlib_main_t * vm,
-			vlib_node_runtime_t * node,
-			vlib_frame_t * frame,
-			vlib_rx_or_tx_t which_adj_index);
-
 always_inline uword
 ip4_lookup_inline (vlib_main_t * vm,
 		   vlib_node_runtime_t * node,
@@ -1387,68 +1381,6 @@ ip4_forward_next_trace (vlib_main_t * vm,
     }
 }
 
-static uword
-ip4_drop_or_punt (vlib_main_t * vm,
-		  vlib_node_runtime_t * node,
-		  vlib_frame_t * frame, ip4_error_t error_code)
-{
-  u32 *buffers = vlib_frame_vector_args (frame);
-  uword n_packets = frame->n_vectors;
-
-  vlib_error_drop_buffers (vm, node, buffers,
-			   /* stride */ 1,
-			   n_packets,
-			   /* next */ 0,
-			   ip4_input_node.index, error_code);
-
-  if (node->flags & VLIB_NODE_FLAG_TRACE)
-    ip4_forward_next_trace (vm, node, frame, VLIB_TX);
-
-  return n_packets;
-}
-
-static uword
-ip4_drop (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  return ip4_drop_or_punt (vm, node, frame, IP4_ERROR_ADJACENCY_DROP);
-}
-
-static uword
-ip4_punt (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
-{
-  return ip4_drop_or_punt (vm, node, frame, IP4_ERROR_ADJACENCY_PUNT);
-}
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (ip4_drop_node, static) =
-{
-  .function = ip4_drop,
-  .name = "ip4-drop",
-  .vector_size = sizeof (u32),
-  .format_trace = format_ip4_forward_next_trace,
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [0] = "error-drop",
-  },
-};
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_drop_node, ip4_drop);
-
-VLIB_REGISTER_NODE (ip4_punt_node, static) =
-{
-  .function = ip4_punt,
-  .name = "ip4-punt",
-  .vector_size = sizeof (u32),
-  .format_trace = format_ip4_forward_next_trace,
-  .n_next_nodes = 1,
-  .next_nodes = {
-    [0] = "error-punt",
-  },
-};
-
-VLIB_NODE_FUNCTION_MULTIARCH (ip4_punt_node, ip4_punt);
-/* *INDENT-ON */
-
 /* Compute TCP/UDP/ICMP4 checksum in software. */
 u16
 ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
@@ -1483,11 +1415,12 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 
   n_bytes_left = n_this_buffer = payload_length_host_byte_order;
   data_this_buffer = (void *) ip0 + ip_header_length;
-  n_ip_bytes_this_buffer = p0->current_length - (((u8 *) ip0 - p0->data) - p0->current_data);
+  n_ip_bytes_this_buffer =
+    p0->current_length - (((u8 *) ip0 - p0->data) - p0->current_data);
   if (n_this_buffer + ip_header_length > n_ip_bytes_this_buffer)
     {
       n_this_buffer = n_ip_bytes_this_buffer > ip_header_length ?
-	  n_ip_bytes_this_buffer - ip_header_length : 0;
+	n_ip_bytes_this_buffer - ip_header_length : 0;
     }
   while (1)
     {
@@ -1870,8 +1803,8 @@ VLIB_REGISTER_NODE (ip4_local_node) =
   .n_next_nodes = IP_LOCAL_N_NEXT,
   .next_nodes =
   {
-    [IP_LOCAL_NEXT_DROP] = "error-drop",
-    [IP_LOCAL_NEXT_PUNT] = "error-punt",
+    [IP_LOCAL_NEXT_DROP] = "ip4-drop",
+    [IP_LOCAL_NEXT_PUNT] = "ip4-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip4-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",
   },

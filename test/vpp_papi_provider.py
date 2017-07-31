@@ -2422,3 +2422,60 @@ class VppPapiProvider(object):
 
         return self.api(
             self.papi.macip_acl_dump, {'acl_index': acl_index})
+
+    def policer_add_del(self,
+                        name,
+                        cir,
+                        eir,
+                        cb,
+                        eb,
+                        is_add=1,
+                        rate_type=0,
+                        round_type=0,
+                        ptype=0,
+                        color_aware=0,
+                        conform_action_type=1,
+                        conform_dscp=0,
+                        exceed_action_type=0,
+                        exceed_dscp=0,
+                        violate_action_type=0,
+                        violate_dscp=0):
+        return self.api(self.papi.policer_add_del,
+                        {'name': name,
+                         'cir': cir,
+                         'eir': eir,
+                         'cb': cb,
+                         'eb': eb,
+                         'is_add': is_add,
+                         'rate_type': rate_type,
+                         'round_type': round_type,
+                         'type': ptype,
+                         'color_aware': color_aware,
+                         'conform_action_type': conform_action_type,
+                         'conform_dscp': conform_dscp,
+                         'exceed_action_type': exceed_action_type,
+                         'exceed_dscp': exceed_dscp,
+                         'violate_action_type': violate_action_type,
+                         'violate_dscp': violate_dscp})
+
+    def ip_punt_police(self,
+                       policer_index,
+                       is_ip6=0,
+                       is_add=1):
+        return self.api(self.papi.ip_punt_police,
+                        {'policer_index': policer_index,
+                         'is_add': is_add,
+                         'is_ip6': is_ip6})
+
+    def ip_punt_redirect(self,
+                         rx_sw_if_index,
+                         tx_sw_if_index,
+                         nh,
+                         is_ip6=0,
+                         is_add=1):
+        return self.api(self.papi.ip_punt_redirect,
+                        {'rx_sw_if_index': rx_sw_if_index,
+                         'tx_sw_if_index': tx_sw_if_index,
+                         'nh': nh,
+                         'is_add': is_add,
+                         'is_ip6': is_ip6})
