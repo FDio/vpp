@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_d4d76abe",
+        "filename": "src/vnet/ip/ip_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 235,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-01T19:25:32Z",
+      "side": 1,
+      "message": "ntohs/clib_host_to_net_u16? Or that\u0027s done some other place?",
+      "range": {
+        "startLine": 234,
+        "startChar": 0,
+        "endLine": 235,
+        "endChar": 53
+      },
+      "revId": "dd77115a4fc45a29edddecfb8a01a43b93549d78",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
