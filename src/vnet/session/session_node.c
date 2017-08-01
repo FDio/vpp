@@ -75,20 +75,25 @@ always_inline void
 session_tx_fifo_chain_tail (session_manager_main_t * smm, vlib_main_t * vm,
 			    u8 thread_index, svm_fifo_t * fifo,
 			    vlib_buffer_t * b0, u32 bi0, u8 n_bufs_per_seg,
-			    u32 * left_to_snd0, u16 * n_bufs, u32 * rx_offset,
-			    u16 deq_per_buf, u8 peek_data)
+			    u32 left_from_seg, u32 * left_to_snd0,
+			    u16 * n_bufs, u32 * rx_offset, u16 deq_per_buf,
+			    u8 peek_data)
 {
   vlib_buffer_t *chain_b0, *prev_b0;
-  u32 chain_bi0;
+  u32 chain_bi0, to_deq;
   u16 len_to_deq0, n_bytes_read;
   u8 *data0, j;
 
+  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+  b0->total_length_not_including_first_buffer = 0;
+
   chain_bi0 = bi0;
   chain_b0 = b0;
+  to_deq = left_from_seg;
   for (j = 1; j < n_bufs_per_seg; j++)
     {
       prev_b0 = chain_b0;
-      len_to_deq0 = clib_min (*left_to_snd0, deq_per_buf);
+      len_to_deq0 = clib_min (to_deq, deq_per_buf);
 
       *n_bufs -= 1;
       chain_bi0 = smm->tx_buffers[thread_index][*n_bufs];
@@ -117,10 +122,12 @@ session_tx_fifo_chain_tail (session_manager_main_t * smm, vlib_main_t * vm,
       /* update current buffer */
       chain_b0->next_buffer = 0;
 
-      *left_to_snd0 -= n_bytes_read;
-      if (*left_to_snd0 == 0)
+      to_deq -= n_bytes_read;
+      if (to_deq == 0)
 	break;
     }
+  ASSERT (to_deq == 0);
+  *left_to_snd0 -= left_from_seg;
 }
 
 always_inline int
@@ -223,7 +230,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 		 && ((buffers_allocated + n_bufs < VLIB_FRAME_SIZE)));
 
 	  n_bufs += buffers_allocated;
-
 	  _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
 
 	  if (PREDICT_FALSE (n_bufs < VLIB_FRAME_SIZE))
@@ -289,11 +295,15 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   * Fill in the remaining buffers in the chain, if any
 	   */
 	  if (PREDICT_FALSE (n_bufs_per_seg > 1))
-	    session_tx_fifo_chain_tail (smm, vm, thread_index,
-					s0->server_tx_fifo, b0, bi0,
-					n_bufs_per_seg, &left_to_snd0,
-					&n_bufs, &rx_offset, deq_per_buf,
-					peek_data);
+	    {
+	      u32 left_for_seg;
+	      left_for_seg = clib_min (snd_mss0 - n_bytes_read, left_to_snd0);
+	      session_tx_fifo_chain_tail (smm, vm, thread_index,
+					  s0->server_tx_fifo, b0, bi0,
+					  n_bufs_per_seg, left_for_seg,
+					  &left_to_snd0, &n_bufs, &rx_offset,
+					  deq_per_buf, peek_data);
+	    }
 
 	  /* Ask transport to push header after current_length and
 	   * total_length_not_including_first_buffer are updated */
@@ -607,8 +617,9 @@ skip_dequeue:
 	      clib_warning ("It's dead, Jim!");
 	      continue;
 	    }
-
-	  if (PREDICT_FALSE (s0->session_state == SESSION_STATE_CLOSED))
+	  /* Can retransmit for closed sessions but can't do anything if
+	   * session is not ready or closed */
+	  if (PREDICT_FALSE (s0->session_state < SESSION_STATE_READY))
 	    continue;
 	  /* Spray packets in per session type frames, since they go to
 	   * different nodes */
