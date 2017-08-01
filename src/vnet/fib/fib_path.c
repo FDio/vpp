@@ -198,13 +198,14 @@ typedef struct fib_path_t_ {
     /**
      * UCMP [unnormalised] weigth
      */
-    u16 fp_weight;
+    u8 fp_weight;
+
     /**
      * A path preference. 0 is the best.
      * Only paths of the best preference, that are 'up', are considered
      * for forwarding.
      */
-    u16 fp_preference;
+    u8 fp_preference;
 
     /**
      * per-type union of the data required to resolve the path

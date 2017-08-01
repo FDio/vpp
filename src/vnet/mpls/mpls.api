@@ -112,7 +112,8 @@ define mpls_tunnel_dump
 typeonly manual_print manual_endian define fib_path2
 {
   u32 sw_if_index;
-  u32 weight;
+  u8 weight;
+  u8 preference;
   u8 is_local;
   u8 is_drop;
   u8 is_unreach;
