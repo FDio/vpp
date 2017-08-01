@@ -334,7 +334,8 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
   {
     memset (fp, 0, sizeof (*fp));
 
-    fp->weight = htonl (api_rpath->rpath.frp_weight);
+    fp->weight = api_rpath->rpath.frp_weight;
+    fp->preference = api_rpath->rpath.frp_preference;
     fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
     copy_fib_next_hop (api_rpath, fp);
     fp++;
@@ -393,7 +394,8 @@ send_mpls_fib_details (vpe_api_main_t * am,
   vec_foreach (api_rpath, api_rpaths)
   {
     memset (fp, 0, sizeof (*fp));
-    fp->weight = htonl (api_rpath->rpath.frp_weight);
+    fp->weight = api_rpath->rpath.frp_weight;
+    fp->preference = api_rpath->rpath.frp_preference;
     fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
     copy_fib_next_hop (api_rpath, fp);
     fp++;

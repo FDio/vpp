@@ -5919,7 +5919,7 @@ fib_test_pref (void)
         .frp_sw_if_index = ~0,
         .frp_fib_index = 0,
         .frp_weight = 1,
-        .frp_preference = 1000,
+        .frp_preference = 255,
         .frp_flags = FIB_ROUTE_PATH_RESOLVE_VIA_HOST,
         .frp_addr = pfx_1_1_1_3_s_32.fp_addr,
     };
