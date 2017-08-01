@@ -21,7 +21,7 @@
 
 #include <vlib/threads.h>
 #include <vnet/vnet.h>
-
+#include <vppinfra/format.h>
 
 /**
  * @brief GDB callable function: vl - Return vector length of vector
@@ -135,6 +135,47 @@ void vlib_runtime_index_to_node_name (u32 index)
   fformat(stderr, "node runtime index %d name %s\n", index, nm->nodes[index]->name);
 }
 
+void gdb_show_errors (int verbose)
+{
+  extern vlib_cli_command_t vlib_cli_show_errors;
+  unformat_input_t input;
+  vlib_main_t * vm = vlib_get_main();
+
+  if (verbose == 0)
+    unformat_init_string (&input, "verbose 0", 9);
+  else if (verbose == 1)
+    unformat_init_string (&input, "verbose 1", 9);
+  else 
+    {
+      fformat(stderr, "verbose not 0 or 1\n");
+      return;
+    }
+
+  vlib_cli_show_errors.function (vm, &input, 0 /* cmd */);
+  unformat_free (&input);
+}  
+
+void gdb_show_session (int verbose)
+{
+  extern vlib_cli_command_t vlib_cli_show_session_command;
+  unformat_input_t input;
+  vlib_main_t * vm = vlib_get_main();
+
+  if (verbose == 0)
+    unformat_init_string (&input, "verbose 0", 9);
+  else if (verbose == 1)
+    unformat_init_string (&input, "verbose 1", 9);
+  else if (verbose == 2)
+    unformat_init_string (&input, "verbose 2", 9);
+  else 
+    {
+      fformat(stderr, "verbose not 0 - 2\n");
+      return;
+    }
+
+  vlib_cli_show_session_command.function (vm, &input, 0 /* cmd */);
+  unformat_free (&input);
+}  
 
 /**
  * @brief GDB callable function: show_gdb_command_fn - show gdb
@@ -151,6 +192,8 @@ show_gdb_command_fn (vlib_main_t * vm,
   vlib_cli_output (vm, "vl(p) returns vec_len(p)");
   vlib_cli_output (vm, "pe(p) returns pool_elts(p)");
   vlib_cli_output (vm, "pifi(p, i) returns pool_is_free_index(p, i)");
+  vlib_cli_output (vm, "gdb_show_errors(0|1) dumps error counters");
+  vlib_cli_output (vm, "gdb_show_session dumps session counters");
   vlib_cli_output (vm, "debug_hex_bytes (ptr, n_bytes) dumps n_bytes in hex");
   vlib_cli_output (vm, "vlib_dump_frame_ownership() does what it says");
   vlib_cli_output (vm, "vlib_runtime_index_to_node_name (index) prints NN");

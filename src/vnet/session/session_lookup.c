@@ -569,23 +569,45 @@ stream_session_lookup_transport6 (ip6_address_t * lcl, ip6_address_t * rmt,
   return 0;
 }
 
+#define foreach_hash_table_parameter            \
+  _(v4,session,buckets,20000)                   \
+  _(v4,session,memory,(64<<20))                 \
+  _(v6,session,buckets,20000)                   \
+  _(v6,session,memory,(64<<20))                 \
+  _(v4,halfopen,buckets,20000)                  \
+  _(v4,halfopen,memory,(64<<20))                \
+  _(v6,halfopen,buckets,20000)                  \
+  _(v6,halfopen,memory,(64<<20))
+
 void
 session_lookup_init (void)
 {
   session_lookup_t *sl = &session_lookup;
-  clib_bihash_init_16_8 (&sl->v4_session_hash, "v4 session table",
-			 200000 /* $$$$ config parameter nbuckets */ ,
-			 (64 << 20) /*$$$ config parameter table size */ );
-  clib_bihash_init_48_8 (&sl->v6_session_hash, "v6 session table",
-			 200000 /* $$$$ config parameter nbuckets */ ,
-			 (64 << 20) /*$$$ config parameter table size */ );
 
+#define _(af,table,parm,value) \
+  u32 configured_##af##_##table##_table_##parm = value;
+  foreach_hash_table_parameter;
+#undef _
+
+#define _(af,table,parm,value)                                          \
+  if (session_manager_main.configured_##af##_##table##_table_##parm)    \
+    configured_##af##_##table##_table_##parm =                          \
+      session_manager_main.configured_##af##_##table##_table_##parm;
+  foreach_hash_table_parameter;
+#undef _
+
+  clib_bihash_init_16_8 (&sl->v4_session_hash, "v4 session table",
+			 configured_v4_session_table_buckets,
+			 configured_v4_session_table_memory);
+  clib_bihash_init_48_8 (&sl->v6_session_hash, "v6 session table",
+			 configured_v6_session_table_buckets,
+			 configured_v6_session_table_memory);
   clib_bihash_init_16_8 (&sl->v4_half_open_hash, "v4 half-open table",
-			 200000 /* $$$$ config parameter nbuckets */ ,
-			 (64 << 20) /*$$$ config parameter table size */ );
+			 configured_v4_halfopen_table_buckets,
+			 configured_v4_halfopen_table_memory);
   clib_bihash_init_48_8 (&sl->v6_half_open_hash, "v6 half-open table",
-			 200000 /* $$$$ config parameter nbuckets */ ,
-			 (64 << 20) /*$$$ config parameter table size */ );
+			 configured_v6_halfopen_table_buckets,
+			 configured_v6_halfopen_table_memory);
 }
 
 /*

@@ -1751,6 +1751,8 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   errors = session_manager_flush_enqueue_events (my_thread_index);
   tcp_established_inc_counter (vm, is_ip4, TCP_ERROR_EVENT_FIFO_FULL, errors);
+  tcp_flush_frame_to_output (vm, my_thread_index, is_ip4);
+
   return from_frame->n_vectors;
 }
 
