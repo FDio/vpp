@@ -133,6 +133,16 @@ struct _session_manager_main
   /** vpp fifo event queue configured length */
   u32 configured_event_queue_length;
 
+  /** session table size parameters */
+  u32 configured_v4_session_table_buckets;
+  u32 configured_v4_session_table_memory;
+  u32 configured_v4_halfopen_table_buckets;
+  u32 configured_v4_halfopen_table_memory;
+  u32 configured_v6_session_table_buckets;
+  u32 configured_v6_session_table_memory;
+  u32 configured_v6_halfopen_table_buckets;
+  u32 configured_v6_halfopen_table_memory;
+
   /** Unique segment name counter */
   u32 unique_segment_name_counter;
 
