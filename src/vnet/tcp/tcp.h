@@ -404,6 +404,9 @@ typedef struct _tcp_main
 
   /** Port allocator random number generator seed */
   u32 port_allocator_seed;
+
+  /** vlib buffer size */
+  u32 bytes_per_buffer;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
@@ -621,8 +624,8 @@ tcp_update_time (f64 now, u32 thread_index)
 u32 tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b);
 
 u32
-tcp_prepare_retransmit_segment (tcp_connection_t * tc, vlib_buffer_t * b,
-				u32 offset, u32 max_bytes);
+tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
+				u32 max_bytes, vlib_buffer_t ** b);
 
 void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);

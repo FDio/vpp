@@ -223,7 +223,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 		 && ((buffers_allocated + n_bufs < VLIB_FRAME_SIZE)));
 
 	  n_bufs += buffers_allocated;
-
 	  _vec_len (smm->tx_buffers[thread_index]) = n_bufs;
 
 	  if (PREDICT_FALSE (n_bufs < VLIB_FRAME_SIZE))
