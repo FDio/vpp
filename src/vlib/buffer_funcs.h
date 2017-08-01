@@ -833,7 +833,7 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
   _(current_length);
   _(flags);
 #undef _
-  ASSERT (dst->total_length_not_including_first_buffer == 0);
+//  ASSERT (dst->total_length_not_including_first_buffer == 0);
   ASSERT (dst->n_add_refs == 0);
 }
 

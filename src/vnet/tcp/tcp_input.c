@@ -1162,7 +1162,8 @@ partial_ack:
 
   /* Remove retransmitted bytes that have been delivered */
   ASSERT (tc->bytes_acked + tc->sack_sb.snd_una_adv
-	  >= tc->sack_sb.last_bytes_delivered);
+	  >= tc->sack_sb.last_bytes_delivered
+	  || (tc->flags & TCP_CONN_FINSNT));
 
   if (seq_lt (tc->snd_una, tc->sack_sb.high_rxt))
     {
@@ -2252,8 +2253,15 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
 		goto drop;
 
+	      /* Still have to send the FIN */
+	      if (tc0->flags & TCP_CONN_FINPNDG)
+		{
+		  /* TX fifo finally drained */
+		  if (!stream_session_tx_fifo_max_dequeue (&tc0->connection))
+		    tcp_send_fin (tc0);
+		}
 	      /* If FIN is ACKed */
-	      if (tc0->snd_una == tc0->snd_una_max)
+	      else if (tc0->snd_una == tc0->snd_una_max)
 		{
 		  ASSERT (tcp_fin (tcp0));
 		  tc0->rcv_nxt += 1;
