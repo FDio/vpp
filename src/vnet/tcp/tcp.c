@@ -1264,6 +1264,10 @@ tcp_main_enable (vlib_main_t * vm)
       clib_spinlock_init (&tm->half_open_lock);
       clib_spinlock_init (&tm->local_endpoints_lock);
     }
+
+  vec_validate (tm->tx_frames[0], num_threads - 1);
+  vec_validate (tm->tx_frames[1], num_threads - 1);
+
   return error;
 }
 
@@ -1289,15 +1293,11 @@ clib_error_t *
 tcp_init (vlib_main_t * vm)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
-
-  tm->vnet_main = vnet_get_main ();
   tm->is_enabled = 0;
-
   return 0;
 }
 
 VLIB_INIT_FUNCTION (tcp_init);
-
 
 static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
