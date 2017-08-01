@@ -492,14 +492,6 @@ tcp_ack_is_dupack (tcp_connection_t * tc, vlib_buffer_t * b, u32 prev_snd_wnd,
 	  && (prev_snd_wnd == tc->snd_wnd));
 }
 
-static u8
-tcp_is_lost_fin (tcp_connection_t * tc)
-{
-  if ((tc->flags & TCP_CONN_FINSNT) && tc->snd_una_max - tc->snd_una == 1)
-    return 1;
-  return 0;
-}
-
 /**
  * Checks if ack is a congestion control event.
  */
@@ -1162,7 +1154,8 @@ partial_ack:
 
   /* Remove retransmitted bytes that have been delivered */
   ASSERT (tc->bytes_acked + tc->sack_sb.snd_una_adv
-	  >= tc->sack_sb.last_bytes_delivered);
+	  >= tc->sack_sb.last_bytes_delivered
+	  || (tc->flags & TCP_CONN_FINSNT));
 
   if (seq_lt (tc->snd_una, tc->sack_sb.high_rxt))
     {
@@ -1273,6 +1266,8 @@ tcp_rcv_ack (tcp_connection_t * tc, vlib_buffer_t * b,
   if (tcp_ack_is_cc_event (tc, b, prev_snd_wnd, prev_snd_una, &is_dack))
     {
       tcp_cc_handle_event (tc, is_dack);
+      if (!tcp_in_cong_recovery (tc))
+	return 0;
       *error = TCP_ERROR_ACK_DUP;
       TCP_EVT_DBG (TCP_EVT_DUPACK_RCVD, tc, 1);
       return vnet_buffer (b)->tcp.data_len ? 0 : -1;
@@ -1498,6 +1493,29 @@ tcp_can_delack (tcp_connection_t * tc)
 }
 
 static int
+tcp_buffer_discard_bytes (vlib_buffer_t * b, u32 n_bytes_to_drop)
+{
+  u32 discard;
+  vlib_main_t *vm = vlib_get_main ();
+
+  /* Handle multi segment packets */
+  if (n_bytes_to_drop > b->current_length)
+    {
+      if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
+	return -1;
+      do
+	{
+	  discard = clib_min (n_bytes_to_drop, b->current_length);
+	  vlib_buffer_advance (b, discard);
+	  b = vlib_get_buffer (vm, b->next_buffer);
+	  n_bytes_to_drop -= discard;
+	}
+      while (n_bytes_to_drop);
+    }
+  return 0;
+}
+
+static int
 tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
 		 u32 * next0)
 {
@@ -1530,7 +1548,8 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
 	  n_bytes_to_drop = tc->rcv_nxt - vnet_buffer (b)->tcp.seq_number;
 	  n_data_bytes -= n_bytes_to_drop;
 	  vnet_buffer (b)->tcp.seq_number = tc->rcv_nxt;
-	  vlib_buffer_advance (b, n_bytes_to_drop);
+	  if (tcp_buffer_discard_bytes (b, n_bytes_to_drop))
+	    goto done;
 
 	  goto in_order;
 	}
@@ -2252,8 +2271,15 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
 		goto drop;
 
+	      /* Still have to send the FIN */
+	      if (tc0->flags & TCP_CONN_FINPNDG)
+		{
+		  /* TX fifo finally drained */
+		  if (!stream_session_tx_fifo_max_dequeue (&tc0->connection))
+		    tcp_send_fin (tc0);
+		}
 	      /* If FIN is ACKed */
-	      if (tc0->snd_una == tc0->snd_una_max)
+	      else if (tc0->snd_una == tc0->snd_una_max)
 		{
 		  ASSERT (tcp_fin (tcp0));
 		  tc0->rcv_nxt += 1;

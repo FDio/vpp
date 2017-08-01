@@ -288,18 +288,31 @@ tcp_connection_close (tcp_connection_t * tc)
 {
   TCP_EVT_DBG (TCP_EVT_CLOSE, tc);
 
-  /* Send FIN if needed */
-  if (tc->state == TCP_STATE_ESTABLISHED
-      || tc->state == TCP_STATE_SYN_RCVD || tc->state == TCP_STATE_CLOSE_WAIT)
-    tcp_send_fin (tc);
+  /* Send/Program FIN if needed and switch state */
+  switch (tc->state)
+    {
+    case TCP_STATE_SYN_SENT:
+      tc->state = TCP_STATE_CLOSED;
+      break;
+    case TCP_STATE_SYN_RCVD:
+      tcp_send_fin (tc);
+      tc->state = TCP_STATE_FIN_WAIT_1;
+      break;
+    case TCP_STATE_ESTABLISHED:
+      if (!stream_session_tx_fifo_max_dequeue (&tc->connection))
+	tcp_send_fin (tc);
+      else
+	tc->flags |= TCP_CONN_FINPNDG;
+      tc->state = TCP_STATE_FIN_WAIT_1;
+      break;
+    case TCP_STATE_CLOSE_WAIT:
+      tcp_send_fin (tc);
+      tc->state = TCP_STATE_LAST_ACK;
+      break;
+    default:
+      clib_warning ("shouldn't be here");
+    }
 
-  /* Switch state */
-  if (tc->state == TCP_STATE_ESTABLISHED || tc->state == TCP_STATE_SYN_RCVD)
-    tc->state = TCP_STATE_FIN_WAIT_1;
-  else if (tc->state == TCP_STATE_SYN_SENT)
-    tc->state = TCP_STATE_CLOSED;
-  else if (tc->state == TCP_STATE_CLOSE_WAIT)
-    tc->state = TCP_STATE_LAST_ACK;
   TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
 
   /* If in CLOSED and WAITCLOSE timer is not set, delete connection now */
@@ -1284,6 +1297,8 @@ tcp_main_enable (vlib_main_t * vm)
   vec_validate (tm->tx_frames[0], num_threads - 1);
   vec_validate (tm->tx_frames[1], num_threads - 1);
 
+  tm->bytes_per_buffer = vlib_buffer_free_list_buffer_size
+    (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
   return error;
 }
 

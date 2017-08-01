@@ -98,9 +98,9 @@ session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
 			    u32 offset, u8 is_in_order)
 {
   vlib_buffer_t *chain_b;
-  u32 chain_bi = b->next_buffer;
+  u32 chain_bi = b->next_buffer, len;
   vlib_main_t *vm = vlib_get_main ();
-  u8 *data, len;
+  u8 *data;
   u16 written = 0;
   int rv = 0;
 
@@ -226,7 +226,7 @@ u32
 stream_session_tx_fifo_max_dequeue (transport_connection_t * tc)
 {
   stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
-  if (s->session_state != SESSION_STATE_READY)
+  if (!s->server_tx_fifo)
     return 0;
   return svm_fifo_max_dequeue (s->server_tx_fifo);
 }
