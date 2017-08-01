@@ -312,7 +312,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (show_session_command, static) =
+VLIB_CLI_COMMAND (vlib_cli_show_session_command) =
 {
   .path = "show session",
   .short_help = "show session [verbose]",
