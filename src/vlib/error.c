@@ -280,7 +280,7 @@ show_errors (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cli_show_errors, static) = {
+VLIB_CLI_COMMAND (vlib_cli_show_errors) = {
   .path = "show errors",
   .short_help = "Show error counts",
   .function = show_errors,
