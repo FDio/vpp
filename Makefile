@@ -85,7 +85,11 @@ endif
 # +ganglia-devel if building the ganglia plugin
 
 RPM_DEPENDS += chrpath libffi-devel rpm-build
-RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
+ifeq ($(OS_ID),fedora)
+	RPM_DEPENDS += nasm
+else
+	RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
+endif
 EPEL_DEPENDS = libconfuse-devel epel-rpm-macros
 ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
 	EPEL_DEPENDS += lcov
