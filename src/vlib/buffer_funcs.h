@@ -833,7 +833,12 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
   _(current_length);
   _(flags);
 #undef _
-  ASSERT (dst->total_length_not_including_first_buffer == 0);
+  /* ASSERT (dst->total_length_not_including_first_buffer == 0); */
+  /* total_length_not_including_first_buffer is not in the template anymore
+   * so it may actually not zeroed for some buffers. One option is to
+   * uncomment the line lower (comes at a cost), the other, is to just  not
+   * care */
+  /* dst->total_length_not_including_first_buffer = 0; */
   ASSERT (dst->n_add_refs == 0);
 }
 

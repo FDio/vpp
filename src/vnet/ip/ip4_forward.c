@@ -1454,7 +1454,7 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 {
   ip_csum_t sum0;
   u32 ip_header_length, payload_length_host_byte_order;
-  u32 n_this_buffer, n_bytes_left;
+  u32 n_this_buffer, n_bytes_left, n_ip_bytes_this_buffer;
   u16 sum16;
   void *data_this_buffer;
 
@@ -1481,10 +1481,12 @@ ip4_tcp_udp_compute_checksum (vlib_main_t * vm, vlib_buffer_t * p0,
 
   n_bytes_left = n_this_buffer = payload_length_host_byte_order;
   data_this_buffer = (void *) ip0 + ip_header_length;
-  if (n_this_buffer + ip_header_length > p0->current_length)
-    n_this_buffer =
-      p0->current_length >
-      ip_header_length ? p0->current_length - ip_header_length : 0;
+  n_ip_bytes_this_buffer = p0->current_length - (((u8 *) ip0 - p0->data) - p0->current_data);
+  if (n_this_buffer + ip_header_length > n_ip_bytes_this_buffer)
+    {
+      n_this_buffer = n_ip_bytes_this_buffer > ip_header_length ?
+	  n_ip_bytes_this_buffer - ip_header_length : 0;
+    }
   while (1)
     {
       sum0 = ip_incremental_checksum (sum0, data_this_buffer, n_this_buffer);
