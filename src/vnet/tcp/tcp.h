@@ -369,6 +369,8 @@ typedef struct _tcp_main
 
   /** per-worker tx buffer free lists */
   u32 **tx_buffers;
+  /** per-worker tx frames to 4/6 output nodes */
+  vlib_frame_t **tx_frames[2];
 
   /* Per worker-thread timer wheel for connections timers */
   tw_timer_wheel_16t_2w_512sl_t *timer_wheels;
@@ -400,11 +402,8 @@ typedef struct _tcp_main
   u32 last_v6_address_rotor;
   ip6_address_t *ip6_src_addresses;
 
-  /* convenience */
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-  ip4_main_t *ip4_main;
-  ip6_main_t *ip6_main;
+  /** Port allocator random number generator seed */
+  u32 port_allocator_seed;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
@@ -493,6 +492,8 @@ void tcp_send_fin (tcp_connection_t * tc);
 void tcp_init_mss (tcp_connection_t * tc);
 void tcp_update_snd_mss (tcp_connection_t * tc);
 void tcp_update_rto (tcp_connection_t * tc);
+void tcp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, u8 is_ip4);
+void tcp_flush_frames_to_output (u8 thread_index);
 
 always_inline u32
 tcp_end_seq (tcp_header_t * th, u32 len)
@@ -614,6 +615,7 @@ tcp_update_time (f64 now, u32 thread_index)
 {
   tw_timer_expire_timers_16t_2w_512sl (&tcp_main.timer_wheels[thread_index],
 				       now);
+  tcp_flush_frames_to_output (thread_index);
 }
 
 u32 tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b);

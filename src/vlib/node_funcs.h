@@ -410,17 +410,19 @@ vlib_frame_t *vlib_get_frame_to_node (vlib_main_t * vm, u32 to_node_index);
 void vlib_put_frame_to_node (vlib_main_t * vm, u32 to_node_index,
 			     vlib_frame_t * f);
 
-always_inline vlib_process_t *
-vlib_get_current_process (vlib_main_t * vm)
-{
-  vlib_node_main_t *nm = &vm->node_main;
-  return vec_elt (nm->processes, nm->current_process_index);
-}
-
 always_inline uword
 vlib_in_process_context (vlib_main_t * vm)
 {
   return vm->node_main.current_process_index != ~0;
+}
+
+always_inline vlib_process_t *
+vlib_get_current_process (vlib_main_t * vm)
+{
+  vlib_node_main_t *nm = &vm->node_main;
+  if (vlib_in_process_context (vm))
+    return vec_elt (nm->processes, nm->current_process_index);
+  return 0;
 }
 
 always_inline uword
