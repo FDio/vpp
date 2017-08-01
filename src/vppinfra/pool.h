@@ -200,7 +200,7 @@ do {									\
 #define pool_get(P,E) pool_get_aligned(P,E,0)
 
 /** See if pool_get will expand the pool or not */
-#define pool_get_aligned_will_expand (P,YESNO,A)                        \
+#define pool_get_aligned_will_expand(P,YESNO,A)                         \
 do {                                                                    \
   pool_header_t * _pool_var (p) = pool_header (P);                      \
   uword _pool_var (l);                                                  \

@@ -173,7 +173,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 
   /* Cleanup local endpoint if this was an active connect */
   tepi = transport_endpoint_lookup (&tm->local_endpoints_table, &tc->c_lcl_ip,
-				    tc->c_lcl_port);
+				    clib_net_to_host_u16 (tc->c_lcl_port));
   if (tepi != TRANSPORT_ENDPOINT_INVALID_INDEX)
     {
       tep = pool_elt_at_index (tm->local_endpoints, tepi);
@@ -367,25 +367,24 @@ tcp_allocate_local_port (ip46_address_t * ip)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   transport_endpoint_t *tep;
-  u32 time_now, tei;
+  u32 tei;
   u16 min = 1024, max = 65535;	/* XXX configurable ? */
-  int tries;
+  int tries, limit;
 
-  tries = max - min;
-  time_now = tcp_time_now ();
+  limit = max - min;
 
   /* Only support active opens from thread 0 */
   ASSERT (vlib_get_thread_index () == 0);
 
   /* Search for first free slot */
-  for (; tries >= 0; tries--)
+  for (tries = 0; tries < limit; tries++)
     {
       u16 port = 0;
 
       /* Find a port in the specified range */
       while (1)
 	{
-	  port = random_u32 (&time_now) & PORT_MASK;
+	  port = random_u32 (&tm->port_allocator_seed) & PORT_MASK;
 	  if (PREDICT_TRUE (port >= min && port < max))
 	    break;
 	}
@@ -1189,8 +1188,9 @@ tcp_main_enable (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   clib_error_t *error = 0;
   u32 num_threads;
-  int thread, i;
+  int i, thread;
   tcp_connection_t *tc __attribute__ ((unused));
+  u32 preallocated_connections_per_thread;
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
@@ -1224,14 +1224,26 @@ tcp_main_enable (vlib_main_t * vm)
   vec_validate (tm->connections, num_threads - 1);
 
   /*
-   * Preallocate connections
+   * Preallocate connections. Assume that thread 0 won't
+   * use preallocated threads when running multi-core
    */
-  for (thread = 0; thread < num_threads; thread++)
+  if (num_threads == 1)
     {
-      for (i = 0; i < tm->preallocated_connections; i++)
+      thread = 0;
+      preallocated_connections_per_thread = tm->preallocated_connections;
+    }
+  else
+    {
+      thread = 1;
+      preallocated_connections_per_thread =
+	tm->preallocated_connections / (num_threads - 1);
+    }
+  for (; thread < num_threads; thread++)
+    {
+      for (i = 0; i < preallocated_connections_per_thread; i++)
 	pool_get (tm->connections[thread], tc);
 
-      for (i = 0; i < tm->preallocated_connections; i++)
+      for (i = 0; i < preallocated_connections_per_thread; i++)
 	pool_put_index (tm->connections[thread], i);
     }
 
@@ -1257,13 +1269,21 @@ tcp_main_enable (vlib_main_t * vm)
     / TCP_TSTAMP_RESOLUTION;
 
   clib_bihash_init_24_8 (&tm->local_endpoints_table, "local endpoint table",
-			 200000 /* $$$$ config parameter nbuckets */ ,
-			 (64 << 20) /*$$$ config parameter table size */ );
+			 1000000 /* $$$$ config parameter nbuckets */ ,
+			 (512 << 20) /*$$$ config parameter table size */ );
+
+  /* Initialize [port-allocator] random number seed */
+  tm->port_allocator_seed = (u32) clib_cpu_time_now ();
+
   if (num_threads > 1)
     {
       clib_spinlock_init (&tm->half_open_lock);
       clib_spinlock_init (&tm->local_endpoints_lock);
     }
+
+  vec_validate (tm->tx_frames[0], num_threads - 1);
+  vec_validate (tm->tx_frames[1], num_threads - 1);
+
   return error;
 }
 
@@ -1289,15 +1309,11 @@ clib_error_t *
 tcp_init (vlib_main_t * vm)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
-
-  tm->vnet_main = vnet_get_main ();
   tm->is_enabled = 0;
-
   return 0;
 }
 
 VLIB_INIT_FUNCTION (tcp_init);
-
 
 static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)

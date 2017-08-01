@@ -759,6 +759,7 @@ session_manager_main_enable (vlib_main_t * vm)
   session_manager_main_t *smm = &session_manager_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
+  u32 preallocated_sessions_per_worker;
   int i;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
@@ -795,15 +796,35 @@ session_manager_main_enable (vlib_main_t * vm)
   for (i = 0; i < vec_len (smm->vpp_event_queues); i++)
     session_vpp_event_queue_allocate (smm, i);
 
-  /* $$$$ preallocate hack config parameter */
-  for (i = 0; i < smm->preallocated_sessions; i++)
+  /* Preallocate sessions */
+  if (num_threads == 1)
     {
-      stream_session_t *ss __attribute__ ((unused));
-      pool_get_aligned (smm->sessions[0], ss, CLIB_CACHE_LINE_BYTES);
-    }
+      for (i = 0; i < smm->preallocated_sessions; i++)
+	{
+	  stream_session_t *ss __attribute__ ((unused));
+	  pool_get_aligned (smm->sessions[0], ss, CLIB_CACHE_LINE_BYTES);
+	}
 
-  for (i = 0; i < smm->preallocated_sessions; i++)
-    pool_put_index (smm->sessions[0], i);
+      for (i = 0; i < smm->preallocated_sessions; i++)
+	pool_put_index (smm->sessions[0], i);
+    }
+  else
+    {
+      int j;
+      preallocated_sessions_per_worker = smm->preallocated_sessions /
+	(num_threads - 1);
+
+      for (j = 1; j < num_threads; j++)
+	{
+	  for (i = 0; i < preallocated_sessions_per_worker; i++)
+	    {
+	      stream_session_t *ss __attribute__ ((unused));
+	      pool_get_aligned (smm->sessions[j], ss, CLIB_CACHE_LINE_BYTES);
+	    }
+	  for (i = 0; i < preallocated_sessions_per_worker; i++)
+	    pool_put_index (smm->sessions[j], i);
+	}
+    }
 
   session_lookup_init ();
 
@@ -863,6 +884,7 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   session_manager_main_t *smm = &session_manager_main;
   u32 nitems;
+  uword tmp;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -873,9 +895,53 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	  else
 	    clib_warning ("event queue length %d too small, ignored", nitems);
 	}
-      if (unformat (input, "preallocated-sessions %d",
-		    &smm->preallocated_sessions))
+      else if (unformat (input, "preallocated-sessions %d",
+			 &smm->preallocated_sessions))
 	;
+      else if (unformat (input, "v4-session-table-buckets %d",
+			 &smm->configured_v4_session_table_buckets))
+	;
+      else if (unformat (input, "v4-halfopen-table-buckets %d",
+			 &smm->configured_v4_halfopen_table_buckets))
+	;
+      else if (unformat (input, "v6-session-table-buckets %d",
+			 &smm->configured_v6_session_table_buckets))
+	;
+      else if (unformat (input, "v6-halfopen-table-buckets %d",
+			 &smm->configured_v6_halfopen_table_buckets))
+	;
+      else if (unformat (input, "v4-session-table-memory %U",
+			 unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large",
+				      tmp, tmp);
+	  smm->configured_v4_session_table_memory = tmp;
+	}
+      else if (unformat (input, "v4-halfopen-table-memory %U",
+			 unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large",
+				      tmp, tmp);
+	  smm->configured_v4_halfopen_table_memory = tmp;
+	}
+      else if (unformat (input, "v6-session-table-memory %U",
+			 unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large",
+				      tmp, tmp);
+	  smm->configured_v6_session_table_memory = tmp;
+	}
+      else if (unformat (input, "v6-halfopen-table-memory %U",
+			 unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large",
+				      tmp, tmp);
+	  smm->configured_v6_halfopen_table_memory = tmp;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
