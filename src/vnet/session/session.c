@@ -220,7 +220,7 @@ u32
 stream_session_tx_fifo_max_dequeue (transport_connection_t * tc)
 {
   stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
-  if (s->session_state != SESSION_STATE_READY)
+  if (!s->server_tx_fifo)
     return 0;
   return svm_fifo_max_dequeue (s->server_tx_fifo);
 }
