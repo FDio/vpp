@@ -597,8 +597,9 @@ clients_connect (vlib_main_t * vm, u8 * uri, u32 n_clients)
       a->mp = 0;
       vnet_connect_uri (a);
 
-      /* Crude pacing for call setups, 100k/sec  */
-      vlib_process_suspend (vm, 10e-6);
+      /* Crude pacing for call setups  */
+      if ((i % 4) == 0)
+	vlib_process_suspend (vm, 10e-6);
     }
 }
 
@@ -612,8 +613,10 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   uword *event_data = 0, event_type;
   u8 *default_connect_uri = (u8 *) "tcp://6.0.1.1/1234", *uri;
   u64 tmp, total_bytes;
-  f64 cli_timeout = 20.0, delta;
+  f64 test_timeout = 20.0, syn_timeout = 20.0, delta;
+  f64 time_before_connects;
   u32 n_clients = 1;
+  int preallocate_sessions = 0;
   char *transfer_type;
   int i;
 
@@ -640,7 +643,9 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 	;
       else if (unformat (input, "uri %s", &tm->connect_uri))
 	;
-      else if (unformat (input, "cli-timeout %f", &cli_timeout))
+      else if (unformat (input, "test-timeout %f", &test_timeout))
+	;
+      else if (unformat (input, "syn-timeout %f", &syn_timeout))
 	;
       else if (unformat (input, "no-return"))
 	tm->no_return = 1;
@@ -657,6 +662,8 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 	tm->private_segment_size = tmp;
       else if (unformat (input, "preallocate-fifos"))
 	tm->prealloc_fifos = 1;
+      else if (unformat (input, "preallocate-sessions"))
+	preallocate_sessions = 1;
       else
 	if (unformat (input, "client-batch %d", &tm->connections_per_batch))
 	;
@@ -673,6 +680,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
       if (tcp_test_clients_init (vm))
 	return clib_error_return (0, "failed init");
     }
+
 
   tm->ready_connections = 0;
   tm->expected_connections = n_clients;
@@ -705,11 +713,21 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
     vlib_node_set_state (vlib_mains[i], builtin_client_node.index,
 			 VLIB_NODE_STATE_POLLING);
 
+  if (preallocate_sessions)
+    {
+      session_t *sp __attribute__ ((unused));
+      for (i = 0; i < n_clients; i++)
+	pool_get (tm->sessions, sp);
+      for (i = 0; i < n_clients; i++)
+	pool_put_index (tm->sessions, i);
+    }
+
   /* Fire off connect requests */
+  time_before_connects = vlib_time_now (vm);
   clients_connect (vm, uri, n_clients);
 
   /* Park until the sessions come up, or ten seconds elapse... */
-  vlib_process_wait_for_event_or_clock (vm, 10 /* timeout, seconds */ );
+  vlib_process_wait_for_event_or_clock (vm, syn_timeout);
   event_type = vlib_process_get_events (vm, &event_data);
   switch (event_type)
     {
@@ -719,6 +737,15 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
       goto cleanup;
 
     case 1:
+      delta = vlib_time_now (vm) - time_before_connects;
+
+      if (delta != 0.0)
+	{
+	  vlib_cli_output
+	    (vm, "%d three-way handshakes in %.2f seconds, %.2f/sec",
+	     n_clients, delta, ((f64) n_clients) / delta);
+	}
+
       tm->test_start_time = vlib_time_now (tm->vlib_main);
       vlib_cli_output (vm, "Test started at %.6f", tm->test_start_time);
       break;
@@ -729,7 +756,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
     }
 
   /* Now wait for the sessions to finish... */
-  vlib_process_wait_for_event_or_clock (vm, cli_timeout);
+  vlib_process_wait_for_event_or_clock (vm, test_timeout);
   event_type = vlib_process_get_events (vm, &event_data);
   switch (event_type)
     {
