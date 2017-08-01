@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "5a4e6583_998febcc",
+        "filename": "src/vpp-api/java/jvpp-common/jvpp_common.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-08-01T07:05:51Z",
+      "side": 1,
+      "message": "please find better names, e.g\nb\u003derrno,c\u003dmsg",
+      "range": {
+        "startLine": 74,
+        "startChar": 0,
+        "endLine": 82,
+        "endChar": 16
+      },
+      "revId": "68c858776a3117d719cf22fee362957ee311e3a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a4e6583_39e8f77b",
         "filename": "src/vpp-api/java/jvpp-common/jvpp_common.h",
         "patchSetId": 5
