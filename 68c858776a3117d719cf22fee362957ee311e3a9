@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_39e8f77b",
+        "filename": "src/vpp-api/java/jvpp-common/jvpp_common.h",
+        "patchSetId": 5
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-08-01T06:44:55Z",
+      "side": 1,
+      "message": "how about moving it to jvpp_common.c/call_on_error? We don\u0027t need to expose this macro. Perhaps it will fix compilation errors too (without touching every plugin).",
+      "range": {
+        "startLine": 75,
+        "startChar": 0,
+        "endLine": 85,
+        "endChar": 8
+      },
+      "revId": "68c858776a3117d719cf22fee362957ee311e3a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_19ed3b8c",
+        "filename": "src/vpp-api/java/jvpp-core/jvpp_core.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-08-01T06:44:55Z",
+      "side": 1,
+      "message": "does not look good... And compilation errors say, it is not the only file we need to update. So perhaps we should hide the macro...",
+      "range": {
+        "startLine": 48,
+        "startChar": 0,
+        "endLine": 50,
+        "endChar": 6
+      },
+      "revId": "68c858776a3117d719cf22fee362957ee311e3a9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
