@@ -192,8 +192,11 @@ svm_fifo_t *
 svm_fifo_create (u32 data_size_in_bytes)
 {
   svm_fifo_t *f;
+  u32 rounded_data_size;
 
-  f = clib_mem_alloc_aligned_or_null (sizeof (*f) + data_size_in_bytes,
+  /* always round fifo data size to the next highest power-of-two */
+  rounded_data_size = (1 << (max_log2 (data_size_in_bytes)));
+  f = clib_mem_alloc_aligned_or_null (sizeof (*f) + rounded_data_size,
 				      CLIB_CACHE_LINE_BYTES);
   if (f == 0)
     return 0;
