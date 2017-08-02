@@ -27,11 +27,15 @@ typedef enum
   FIFO_SEGMENT_N_FREELISTS
 } svm_fifo_segment_freelist_t;
 
+#define FIFO_SEGMENT_MIN_FIFO_SIZE 2048
+#define FIFO_SEGMENT_MAX_FIFO_SIZE (8<<20)	/* 8mb max fifo size */
+#define FIFO_SEGMENT_ALLOC_CHUNK_SIZE 32	/* allocation quantum */
+
 typedef struct
 {
   svm_fifo_t *fifos;		/**< Linked list of active RX fifos */
   u8 *segment_name;		/**< Segment name */
-  svm_fifo_t *free_fifos[FIFO_SEGMENT_N_FREELISTS];	/**< Free lists */
+  svm_fifo_t **free_fifos;	/**< Freelists, by fifo size  */
 } svm_fifo_segment_header_t;
 
 typedef struct
