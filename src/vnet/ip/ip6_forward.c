@@ -1776,6 +1776,9 @@ ip6_discover_neighbor_inline (vlib_main_t * vm,
 
 	    h0->neighbor.target_address = ip0->dst_address;
 
+	    if (PREDICT_FALSE (!hw_if0->hw_address))
+	      continue;
+
 	    clib_memcpy (h0->link_layer_option.ethernet_address,
 			 hw_if0->hw_address, vec_len (hw_if0->hw_address));
 
@@ -1917,6 +1920,14 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)
 
   h->ip.src_address = src[0];
   h->neighbor.target_address = dst[0];
+
+  if (PREDICT_FALSE (!hi->hw_address))
+    {
+      return clib_error_return (0, "%U: interface %U do not support ip probe",
+				format_ip6_address, dst,
+				format_vnet_sw_if_index_name, vnm,
+				sw_if_index);
+    }
 
   clib_memcpy (h->link_layer_option.ethernet_address, hi->hw_address,
 	       vec_len (hi->hw_address));
