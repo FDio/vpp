@@ -898,6 +898,13 @@ ip4_add_del_interface_address_internal (vlib_main_t * vm,
   u32 if_address_index, elts_before;
   ip4_address_fib_t ip4_af, *addr_fib = 0;
 
+  /* local0 interface doesn't support IP addressing  */
+  if (sw_if_index == 0)
+    {
+      return
+       clib_error_create ("local0 interface doesn't support IP addressing");
+    }
+
   vec_validate (im->fib_index_by_sw_if_index, sw_if_index);
   ip4_addr_fib_init (&ip4_af, address,
 		     vec_elt (im->fib_index_by_sw_if_index, sw_if_index));
@@ -2319,6 +2326,13 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
 				       &bi);
 
   hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  if (PREDICT_FALSE (!hi->hw_address))
+    {
+      return clib_error_return (0, "%U: interface %U do not support ip probe",
+				format_ip4_address, dst,
+				format_vnet_sw_if_index_name, vnm,
+				sw_if_index);
+    }
 
   clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address,
 	       sizeof (h->ip4_over_ethernet[0].ethernet));
