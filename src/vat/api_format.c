@@ -3851,6 +3851,42 @@ static void
 }
 
 static void
+  vl_api_show_one_map_register_ttl_reply_t_handler
+  (vl_api_show_one_map_register_ttl_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  vl_api_show_one_map_register_ttl_reply_t_endian (mp);
+
+  if (0 <= retval)
+    {
+      print (vam->ofp, "ttl: %u", mp->ttl);
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_show_one_map_register_ttl_reply_t_handler_json
+  (vl_api_show_one_map_register_ttl_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vl_api_show_one_map_register_ttl_reply_t_endian (mp);
+  vat_json_init_object (&node);
+  vat_json_object_add_uint (&node, "ttl", mp->ttl);
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
 vl_api_show_one_pitr_reply_t_handler (vl_api_show_one_pitr_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
@@ -4601,6 +4637,7 @@ _(one_add_del_map_server_reply)                         \
 _(one_enable_disable_reply)                             \
 _(one_rloc_probe_enable_disable_reply)                  \
 _(one_map_register_enable_disable_reply)                \
+_(one_map_register_set_ttl_reply)                       \
 _(one_pitr_set_locator_set_reply)                       \
 _(one_map_request_mode_reply)                           \
 _(one_add_del_map_request_itr_rlocs_reply)              \
@@ -4825,6 +4862,7 @@ _(ONE_ADD_DEL_MAP_SERVER_REPLY, one_add_del_map_server_reply)           \
 _(ONE_ENABLE_DISABLE_REPLY, one_enable_disable_reply)                   \
 _(ONE_MAP_REGISTER_ENABLE_DISABLE_REPLY,                                \
   one_map_register_enable_disable_reply)                                \
+_(ONE_MAP_REGISTER_SET_TTL_REPLY, one_map_register_set_ttl_reply)       \
 _(ONE_RLOC_PROBE_ENABLE_DISABLE_REPLY,                                  \
   one_rloc_probe_enable_disable_reply)                                  \
 _(ONE_PITR_SET_LOCATOR_SET_REPLY, one_pitr_set_locator_set_reply)       \
@@ -4871,6 +4909,7 @@ _(SHOW_ONE_MAP_REQUEST_MODE_REPLY, show_one_map_request_mode_reply)     \
 _(SHOW_ONE_RLOC_PROBE_STATE_REPLY, show_one_rloc_probe_state_reply)     \
 _(SHOW_ONE_MAP_REGISTER_STATE_REPLY,                                    \
   show_one_map_register_state_reply)                                    \
+_(SHOW_ONE_MAP_REGISTER_TTL_REPLY, show_one_map_register_ttl_reply)     \
 _(AF_PACKET_CREATE_REPLY, af_packet_create_reply)                       \
 _(AF_PACKET_DELETE_REPLY, af_packet_delete_reply)                       \
 _(POLICER_ADD_DEL_REPLY, policer_add_del_reply)                         \
@@ -16051,6 +16090,60 @@ api_lisp_gpe_add_del_iface (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_one_map_register_set_ttl (vat_main_t * vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_one_map_register_set_ttl_t *mp;
+  u32 ttl = 0;
+  u8 is_set = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%u", &ttl))
+	is_set = 1;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, input);
+	  return -99;
+	}
+    }
+
+  if (!is_set)
+    {
+      errmsg ("TTL value missing!");
+      return -99;
+    }
+
+  M (ONE_MAP_REGISTER_SET_TTL, mp);
+  mp->ttl = clib_host_to_net_u32 (ttl);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_show_one_map_register_ttl (vat_main_t * vam)
+{
+  vl_api_show_one_map_register_ttl_t *mp;
+  int ret;
+
+  M (SHOW_ONE_MAP_REGISTER_TTL, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
 /**
  * Add/del map request itr rlocs from ONE control plane and updates
  *
@@ -19984,10 +20077,12 @@ _(show_one_status, "")                                                  \
 _(one_stats_dump, "")                                                   \
 _(one_stats_flush, "")                                                  \
 _(one_get_map_request_itr_rlocs, "")                                    \
+_(one_map_register_set_ttl, "<ttl>")                                    \
 _(show_one_nsh_mapping, "")                                             \
 _(show_one_pitr, "")                                                    \
 _(show_one_use_petr, "")                                                \
 _(show_one_map_request_mode, "")                                        \
+_(show_one_map_register_ttl, "")                                        \
 _(lisp_add_del_locator_set, "locator-set <locator_name> [iface <intf> |"\
                             " sw_if_index <sw_if_index> p <priority> "  \
                             "w <weight>] [del]")                        \

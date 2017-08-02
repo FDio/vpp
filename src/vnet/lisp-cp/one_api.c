@@ -101,9 +101,11 @@ _(ONE_MAP_SERVER_DUMP, one_map_server_dump)                             \
 _(ONE_EID_TABLE_MAP_DUMP, one_eid_table_map_dump)                       \
 _(ONE_EID_TABLE_VNI_DUMP, one_eid_table_vni_dump)                       \
 _(ONE_ADJACENCIES_GET, one_adjacencies_get)                             \
+_(ONE_MAP_REGISTER_SET_TTL, one_map_register_set_ttl)                   \
 _(SHOW_ONE_NSH_MAPPING, show_one_nsh_mapping)                           \
 _(SHOW_ONE_RLOC_PROBE_STATE, show_one_rloc_probe_state)                 \
 _(SHOW_ONE_MAP_REGISTER_STATE, show_one_map_register_state)             \
+_(SHOW_ONE_MAP_REGISTER_TTL, show_one_map_register_ttl)                 \
 _(SHOW_ONE_STATUS, show_one_status)                                     \
 _(ONE_ADD_DEL_MAP_REQUEST_ITR_RLOCS,                                    \
   one_add_del_map_request_itr_rlocs)                                    \
@@ -141,6 +143,35 @@ unformat_one_locs (vl_api_one_remote_locator_t * rmt_locs, u32 rloc_num)
       vec_add1 (locs, loc);
     }
   return locs;
+}
+
+static void
+vl_api_one_map_register_set_ttl_t_handler (vl_api_one_map_register_set_ttl_t *
+					   mp)
+{
+  vl_api_one_map_register_set_ttl_reply_t *rmp;
+  int rv = 0;
+
+  vl_api_one_map_register_set_ttl_t_endian (mp);
+  rv = vnet_lisp_map_register_set_ttl (mp->ttl);
+
+  REPLY_MACRO (VL_API_ONE_MAP_REGISTER_SET_TTL_REPLY);
+}
+
+static void
+  vl_api_show_one_map_register_ttl_t_handler
+  (vl_api_show_one_map_register_ttl_t * mp)
+{
+  vl_api_show_one_map_register_ttl_reply_t *rmp;
+  int rv = 0;
+
+  u32 ttl = vnet_lisp_map_register_get_ttl ();
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_SHOW_ONE_MAP_REGISTER_TTL_REPLY,
+  ({
+    rmp->ttl = clib_host_to_net_u32 (ttl);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void

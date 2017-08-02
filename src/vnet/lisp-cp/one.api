@@ -102,6 +102,40 @@ autoreply define one_add_del_local_eid
   u8 key[64];
 };
 
+/** \brief Set TTL for map register messages
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ttl - time to live
+*/
+autoreply define one_map_register_set_ttl
+{
+  u32 client_index;
+  u32 context;
+  u32 ttl;
+};
+
+/** \brief Get TTL for map register messages
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define show_one_map_register_ttl
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Contains current TTL for map register messages
+    @param client_index - opaque cookie to identify the sender
+    @param retval - return code
+    @param ttl - time to live
+*/
+define show_one_map_register_ttl_reply
+{
+  u32 context;
+  i32 retval;
+  u32 ttl;
+};
+
 /** \brief Add/delete map server
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
