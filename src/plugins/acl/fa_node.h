@@ -109,6 +109,9 @@ typedef struct {
   /* per-worker ACL_N_TIMEOUTS of conn lists */
   u32 *fa_conn_list_head;
   u32 *fa_conn_list_tail;
+  /* adds and deletes per-worker-per-interface */
+  u64 *fa_session_dels_by_sw_if_index;
+  u64 *fa_session_adds_by_sw_if_index;
   /* Vector of expired connections retrieved from lists */
   u32 *expired;
   /* the earliest next expiry time */

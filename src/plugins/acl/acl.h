@@ -144,6 +144,9 @@ typedef struct {
   u32 **input_sw_if_index_vec_by_acl;
   u32 **output_sw_if_index_vec_by_acl;
 
+  /* Total count of interface+direction pairs enabled */
+  u32 fa_total_enabled_count;
+
   /* Do we use hash-based ACL matching or linear */
   int use_hash_acl_matching;
 
@@ -172,9 +175,6 @@ typedef struct {
   u32 fa_cleaner_node_index;
   /* FA session timeouts, in seconds */
   u32 session_timeout_sec[ACL_N_TIMEOUTS];
-  /* session add/delete counters */
-  u64 *fa_session_adds_by_sw_if_index;
-  u64 *fa_session_dels_by_sw_if_index;
   /* total session adds/dels */
   u64 fa_session_total_adds;
   u64 fa_session_total_dels;
