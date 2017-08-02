@@ -433,14 +433,14 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
   u32 session_index;
   u8 thread_index = vlib_get_thread_index ();
 
-  ASSERT (s->thread_index == thread_index);
-
   if (is_fail)
     {
       clib_warning ("connection %d failed!", api_context);
       signal_evt_to_cli (-1);
       return 0;
     }
+
+  ASSERT (s->thread_index == thread_index);
 
   if (!tm->vpp_event_queue[thread_index])
     tm->vpp_event_queue[thread_index] =
