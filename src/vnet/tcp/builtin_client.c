@@ -713,6 +713,20 @@ cleanup:
 
   pool_free (tm->sessions);
 
+  /* Detach the application, so we can use different fifo sizes next time */
+  if (tm->test_client_attached)
+    {
+      vnet_app_detach_args_t _da, *da = &_da;
+      int rv;
+
+      da->app_index = tm->app_index;
+
+      rv = vnet_application_detach (da);
+      if (rv)
+	vlib_cli_output (vm, "WARNING: app detach failed...");
+      tm->test_client_attached = 0;
+      tm->app_index = ~0;
+    }
   return 0;
 }
 

@@ -75,7 +75,8 @@ typedef struct _svm_fifo
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;
 #endif
-  i8 refcnt;
+  u32 freelist_index;		/**< aka log2(allocated_size) - const. */
+  i8 refcnt;			/**< reference count  */
     CLIB_CACHE_LINE_ALIGN_MARK (data);
 } svm_fifo_t;
 

@@ -266,7 +266,13 @@ stream_session_enqueue_notify (stream_session_t * s, u8 block)
     return 0;
 
   /* Get session's server */
-  app = application_get (s->app_index);
+  app = application_get_if_valid (s->app_index);
+
+  if (PREDICT_FALSE (app == 0))
+    {
+      clib_warning ("invalid s->app_index = %d", s->app_index);
+      return 0;
+    }
 
   /* Built-in server? Hand event to the callback... */
   if (app->cb_fns.builtin_server_rx_callback)
@@ -327,8 +333,9 @@ session_manager_flush_enqueue_events (u32 thread_index)
       stream_session_t *s0;
 
       /* Get session */
-      s0 = stream_session_get (session_indices_to_enqueue[i], thread_index);
-      if (stream_session_enqueue_notify (s0, 0 /* don't block */ ))
+      s0 = stream_session_get_if_valid (session_indices_to_enqueue[i],
+					thread_index);
+      if (s0 == 0 || stream_session_enqueue_notify (s0, 0 /* don't block */ ))
 	{
 	  errors++;
 	}
