@@ -2148,6 +2148,8 @@ ip4_arp_inline (vlib_main_t * vm,
 				       sizeof (ethernet_header_t));
 
 	      hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+	      if (PREDICT_FALSE (!hw_if0->hw_address))
+		continue;
 
 	      /* Src ethernet address in ARP header. */
 	      clib_memcpy (h0->ip4_over_ethernet[0].ethernet,
@@ -2319,6 +2321,13 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
 				       &bi);
 
   hi = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  if (PREDICT_FALSE (!hi->hw_address))
+    {
+      return clib_error_return (0, "%U: interface %U do not support ip probe",
+				format_ip4_address, dst,
+				format_vnet_sw_if_index_name, vnm,
+				sw_if_index);
+    }
 
   clib_memcpy (h->ip4_over_ethernet[0].ethernet, hi->hw_address,
 	       sizeof (h->ip4_over_ethernet[0].ethernet));
