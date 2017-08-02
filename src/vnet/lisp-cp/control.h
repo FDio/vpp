@@ -238,6 +238,9 @@ typedef struct
   /** Per thread pool of records shared with thread0 */
   map_records_arg_t **map_records_args_pool;
 
+  /* TTL used for all mappings when registering */
+  u32 map_register_ttl;
+
   /* commodity */
   ip4_main_t *im4;
   ip6_main_t *im6;
@@ -362,6 +365,8 @@ int vnet_lisp_add_del_l2_arp_entry (gid_address_t * key, u8 * mac, u8 is_add);
 u32 *vnet_lisp_l2_arp_bds_get (void);
 lisp_api_l2_arp_entry_t *vnet_lisp_l2_arp_entries_get_by_bd (u32 bd);
 int vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add);
+int vnet_lisp_map_register_set_ttl (u32 ttl);
+u32 vnet_lisp_map_register_get_ttl (void);
 
 map_records_arg_t *parse_map_reply (vlib_buffer_t * b);
 

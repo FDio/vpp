@@ -1082,6 +1082,73 @@ VLIB_CLI_COMMAND (one_cp_enable_disable_command) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
+lisp_map_register_set_ttl_command_fn (vlib_main_t * vm,
+				      unformat_input_t * input,
+				      vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 ttl = 0;
+  u8 is_set = 0;
+  clib_error_t *error = NULL;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%u", &ttl))
+	is_set = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   line_input);
+	  goto done;
+	}
+    }
+
+  if (!is_set)
+    {
+      vlib_cli_output (vm, "expected integer value for TTL!");
+      goto done;
+    }
+
+  vnet_lisp_map_register_set_ttl (ttl);
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_map_register_set_ttl_command) = {
+    .path = "one map-register ttl",
+    .short_help = "one map-register ttl",
+    .function = lisp_map_register_set_ttl_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+lisp_map_register_show_ttl_command_fn (vlib_main_t * vm,
+				       unformat_input_t * input,
+				       vlib_cli_command_t * cmd)
+{
+  u32 ttl = vnet_lisp_map_register_get_ttl ();
+
+  vlib_cli_output (vm, "map-register TTL: %u", ttl);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_map_register_show_ttl_command) = {
+    .path = "show one map-register ttl",
+    .short_help = "show one map-register ttl",
+    .function = lisp_map_register_show_ttl_command_fn,
+};
+
+/* *INDENT-ON* */
+
+static clib_error_t *
 lisp_map_register_enable_disable_command_fn (vlib_main_t * vm,
 					     unformat_input_t * input,
 					     vlib_cli_command_t * cmd)

@@ -2075,6 +2075,21 @@ vnet_lisp_add_del_map_resolver (vnet_lisp_add_del_map_resolver_args_t * a)
 }
 
 int
+vnet_lisp_map_register_set_ttl (u32 ttl)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  lcm->map_register_ttl = ttl;
+  return 0;
+}
+
+u32
+vnet_lisp_map_register_get_ttl (void)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  return lcm->map_register_ttl;
+}
+
+int
 vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -4005,6 +4020,7 @@ lisp_cp_init (vlib_main_t * vm)
   u64 now = clib_cpu_time_now ();
   timing_wheel_init (&lcm->wheel, now, vm->clib_time.clocks_per_second);
   lcm->nsh_map_index = ~0;
+  lcm->map_register_ttl = MAP_REGISTER_DEFAULT_TTL;
   return 0;
 }
 
