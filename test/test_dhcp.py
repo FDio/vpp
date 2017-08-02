@@ -196,6 +196,10 @@ class TestDHCP(VppTestCase):
         self.verify_dhcp_has_option(pkt, "hostname", hostname)
         if client_id:
             self.verify_dhcp_has_option(pkt, "client_id", client_id)
+        bootp = pkt[BOOTP]
+        self.assertEqual(bootp.ciaddr, "0.0.0.0")
+        self.assertEqual(bootp.giaddr, "0.0.0.0")
+        self.assertEqual(bootp.flags, 0x8000)
 
     def verify_orig_dhcp_request(self, pkt, intf, hostname, ip):
         self.verify_orig_dhcp_pkt(pkt, intf)
@@ -203,6 +207,10 @@ class TestDHCP(VppTestCase):
         self.verify_dhcp_msg_type(pkt, "request")
         self.verify_dhcp_has_option(pkt, "hostname", hostname)
         self.verify_dhcp_has_option(pkt, "requested_addr", ip)
+        bootp = pkt[BOOTP]
+        self.assertEqual(bootp.ciaddr, "0.0.0.0")
+        self.assertEqual(bootp.giaddr, "0.0.0.0")
+        self.assertEqual(bootp.flags, 0x8000)
 
     def verify_relayed_dhcp_discover(self, pkt, intf, src_intf=None,
                                      fib_id=0, oui=0,
@@ -1057,14 +1065,15 @@ class TestDHCP(VppTestCase):
         #
         # Sned back on offer, expect the request
         #
-        p = (Ether(dst=self.pg2.local_mac, src=self.pg2.remote_mac) /
-             IP(src=self.pg2.remote_ip4, dst="255.255.255.255") /
-             UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
-             BOOTP(op=1,
-                   yiaddr=self.pg2.local_ip4) /
-             DHCP(options=[('message-type', 'offer'), ('end')]))
+        p_offer = (Ether(dst=self.pg2.local_mac, src=self.pg2.remote_mac) /
+                   IP(src=self.pg2.remote_ip4, dst="255.255.255.255") /
+                   UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
+                   BOOTP(op=1, yiaddr=self.pg2.local_ip4) /
+                   DHCP(options=[('message-type', 'offer'),
+                                 ('server_id', self.pg2.remote_ip4),
+                                 ('end')]))
 
-        self.pg2.add_stream(p)
+        self.pg2.add_stream(p_offer)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -1075,19 +1084,18 @@ class TestDHCP(VppTestCase):
         #
         # Send an acknowloedgement
         #
-        p = (Ether(dst=self.pg2.local_mac, src=self.pg2.remote_mac) /
-             IP(src=self.pg2.remote_ip4, dst="255.255.255.255") /
-             UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
-             BOOTP(op=1,
-                   yiaddr=self.pg2.local_ip4) /
-             DHCP(options=[('message-type', 'ack'),
-                           ('subnet_mask', "255.255.255.0"),
-                           ('router', self.pg2.remote_ip4),
-                           ('server_id', self.pg2.remote_ip4),
-                           ('lease_time', 43200),
-                           ('end')]))
+        p_ack = (Ether(dst=self.pg2.local_mac, src=self.pg2.remote_mac) /
+                 IP(src=self.pg2.remote_ip4, dst="255.255.255.255") /
+                 UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
+                 BOOTP(op=1, yiaddr=self.pg2.local_ip4) /
+                 DHCP(options=[('message-type', 'ack'),
+                               ('subnet_mask', "255.255.255.0"),
+                               ('router', self.pg2.remote_ip4),
+                               ('server_id', self.pg2.remote_ip4),
+                               ('lease_time', 43200),
+                               ('end')]))
 
-        self.pg2.add_stream(p)
+        self.pg2.add_stream(p_ack)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -1103,6 +1111,7 @@ class TestDHCP(VppTestCase):
         # At the end of this procedure there should be a connected route
         # in the FIB
         #
+        self.assertTrue(find_route(self, self.pg2.local_ip4, 24))
         self.assertTrue(find_route(self, self.pg2.local_ip4, 32))
 
         # remove the left over ARP entry
@@ -1119,10 +1128,14 @@ class TestDHCP(VppTestCase):
         # and now the route should be gone
         #
         self.assertFalse(find_route(self, self.pg2.local_ip4, 32))
+        self.assertFalse(find_route(self, self.pg2.local_ip4, 24))
 
         #
-        # Start the procedure again. this time have VPP send the clientiid
+        # Start the procedure again. this time have VPP send the client-ID
         #
+        self.pg2.admin_down()
+        self.sleep(1)
+        self.pg2.admin_up()
         self.vapi.dhcp_client(self.pg2.sw_if_index, hostname,
                               client_id=self.pg2.local_mac)
 
@@ -1131,10 +1144,47 @@ class TestDHCP(VppTestCase):
         self.verify_orig_dhcp_discover(rx[0], self.pg2, hostname,
                                        self.pg2.local_mac)
 
+        self.pg2.add_stream(p_offer)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(1)
+        self.verify_orig_dhcp_request(rx[0], self.pg2, hostname,
+                                      self.pg2.local_ip4)
+
+        #
+        # unicast the ack to the offered address
+        #
+        p_ack = (Ether(dst=self.pg2.local_mac, src=self.pg2.remote_mac) /
+                 IP(src=self.pg2.remote_ip4, dst=self.pg2.local_ip4) /
+                 UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
+                 BOOTP(op=1, yiaddr=self.pg2.local_ip4) /
+                 DHCP(options=[('message-type', 'ack'),
+                               ('subnet_mask', "255.255.255.0"),
+                               ('router', self.pg2.remote_ip4),
+                               ('server_id', self.pg2.remote_ip4),
+                               ('lease_time', 43200),
+                               ('end')]))
+
+        self.pg2.add_stream(p_ack)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        #
+        # At the end of this procedure there should be a connected route
+        # in the FIB
+        #
+        self.assertTrue(find_route(self, self.pg2.local_ip4, 32))
+        self.assertTrue(find_route(self, self.pg2.local_ip4, 24))
+
         #
         # remove the DHCP config
         #
         self.vapi.dhcp_client(self.pg2.sw_if_index, hostname, is_add=0)
+
+        self.assertFalse(find_route(self, self.pg2.local_ip4, 32))
+        self.assertFalse(find_route(self, self.pg2.local_ip4, 24))
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
