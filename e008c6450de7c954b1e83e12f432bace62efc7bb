@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_7a377db1",
+        "filename": "src/vpp-api/java/jvpp-common/jvpp_common.c",
+        "patchSetId": 8
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-08-02T13:20:22Z",
+      "side": 1,
+      "message": "It is generally good form to \"#undef _\" after utilizing the foreach_* macro.  Either line 68 or 80 would be a reasonable choice.",
+      "range": {
+        "startLine": 30,
+        "startChar": 0,
+        "endLine": 30,
+        "endChar": 33
+      },
+      "revId": "e008c6450de7c954b1e83e12f432bace62efc7bb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
