@@ -205,13 +205,8 @@ typedef enum fib_entry_attribute_t_ {
     /**
      * Marker. add new entries before this one.
      */
-    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_MULTICAST,
+    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT,
 } fib_entry_attribute_t;
-
-/**
- * The maximum number of sources
- */
-#define FIB_ENTRY_ATTRIBUTE_MAX (FIB_ENTRY_ATTRIBUTE_LAST+1)
 
 #define FIB_ENTRY_ATTRIBUTES {		       		\
     [FIB_ENTRY_ATTRIBUTE_CONNECTED] = "connected",	\
@@ -226,7 +221,7 @@ typedef enum fib_entry_attribute_t_ {
 
 #define FOR_EACH_FIB_ATTRIBUTE(_item)			\
     for (_item = FIB_ENTRY_ATTRIBUTE_FIRST;		\
-	 _item < FIB_ENTRY_ATTRIBUTE_MAX;		\
+	 _item <= FIB_ENTRY_ATTRIBUTE_LAST;		\
 	 _item++)
 
 typedef enum fib_entry_flag_t_ {
