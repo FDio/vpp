@@ -1939,23 +1939,54 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
       u8 * out0 = format(0, "");
       u16 wk;
       u32 show_bihash_verbose = 0;
+      u32 show_session_thread_id = ~0;
+      u32 show_session_session_index = ~0;
+      unformat (input, "thread %u index %u", &show_session_thread_id, &show_session_session_index);
       unformat (input, "verbose %u", &show_bihash_verbose);
-      pool_foreach (swif, im->sw_interfaces,
-      ({
-        u32 sw_if_index =  swif->sw_if_index;
-        u64 n_adds = sw_if_index < vec_len(am->fa_session_adds_by_sw_if_index) ? am->fa_session_adds_by_sw_if_index[sw_if_index] : 0;
-        u64 n_dels = sw_if_index < vec_len(am->fa_session_dels_by_sw_if_index) ? am->fa_session_dels_by_sw_if_index[sw_if_index] : 0;
-        out0 = format(out0, "sw_if_index %d: add %lu - del %lu = %lu\n", sw_if_index, n_adds, n_dels, n_adds - n_dels);
-      }));
       {
         u64 n_adds = am->fa_session_total_adds;
         u64 n_dels = am->fa_session_total_dels;
-        out0 = format(out0, "TOTAL: add %lu - del %lu = %lu\n", n_adds, n_dels, n_adds - n_dels);
+        out0 = format(out0, "Sessions total: add %lu - del %lu = %lu\n", n_adds, n_dels, n_adds - n_dels);
       }
-      out0 = format(out0, "\n\nPer-worker data:\n");
+      out0 = format(out0, "\n\nPer-thread data:\n");
       for (wk = 0; wk < vec_len (am->per_worker_data); wk++) {
         acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
-	out0 = format(out0, "Worker #%d:\n", wk);
+	out0 = format(out0, "Thread #%d:\n", wk);
+        if (show_session_thread_id == wk && show_session_session_index < pool_len(pw->fa_sessions_pool)) {
+	  out0 = format(out0, "  session index %u:\n", show_session_session_index);
+          fa_session_t *sess = pw->fa_sessions_pool + show_session_session_index;
+          u64 *m =  (u64 *)&sess->info;
+          out0 = format(out0, "    info: %016llx %016llx %016llx %016llx %016llx %016llx\n", m[0], m[1], m[2], m[3], m[4], m[5]);
+	  out0 = format(out0, "    sw_if_index: %u\n", sess->sw_if_index);
+	  out0 = format(out0, "    tcp_flags_seen: %x\n", sess->tcp_flags_seen.as_u16);
+	  out0 = format(out0, "    last active time: %lu\n", sess->last_active_time);
+	  out0 = format(out0, "    thread index: %u\n", sess->thread_index);
+	  out0 = format(out0, "    link enqueue time: %lu\n", sess->link_enqueue_time);
+	  out0 = format(out0, "    link next index: %u\n", sess->link_next_idx);
+	  out0 = format(out0, "    link prev index: %u\n", sess->link_prev_idx);
+	  out0 = format(out0, "    link list id: %u\n", sess->link_list_id);
+        }
+	out0 = format(out0, "  connection add/del stats:\n", wk);
+        pool_foreach (swif, im->sw_interfaces,
+        ({
+          u32 sw_if_index =  swif->sw_if_index;
+          u64 n_adds = sw_if_index < vec_len(pw->fa_session_adds_by_sw_if_index) ? pw->fa_session_adds_by_sw_if_index[sw_if_index] : 0;
+          u64 n_dels = sw_if_index < vec_len(pw->fa_session_dels_by_sw_if_index) ? pw->fa_session_dels_by_sw_if_index[sw_if_index] : 0;
+          out0 = format(out0, "    sw_if_index %d: add %lu - del %lu = %lu\n", sw_if_index, n_adds, n_dels, n_adds - n_dels);
+        }));
+
+	out0 = format(out0, "  connection timeout type lists:\n", wk);
+        u8 tt = 0;
+        for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
+          u32 head_session_index = pw->fa_conn_list_head[tt];
+          out0 = format(out0, "  fa_conn_list_head[%d]: %d\n", tt, head_session_index);
+          if (~0 != head_session_index) {
+            fa_session_t *sess = pw->fa_sessions_pool + head_session_index;
+	    out0 = format(out0, "    last active time: %lu\n", sess->last_active_time);
+	    out0 = format(out0, "    link enqueue time: %lu\n", sess->link_enqueue_time);
+          }
+        }
+
 	out0 = format(out0, "  Next expiry time: %lu\n", pw->next_expiry_time);
 	out0 = format(out0, "  Requeue until time: %lu\n", pw->requeue_until_time);
 	out0 = format(out0, "  Current time wait interval: %lu\n", pw->current_time_wait_interval);
