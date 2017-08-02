@@ -205,7 +205,7 @@ typedef enum fib_entry_attribute_t_ {
     /**
      * Marker. add new entries before this one.
      */
-    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_MULTICAST,
+    FIB_ENTRY_ATTRIBUTE_LAST = FIB_ENTRY_ATTRIBUTE_URPF_EXEMPT,
 } fib_entry_attribute_t;
 
 /**

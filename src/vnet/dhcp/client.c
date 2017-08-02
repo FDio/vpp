@@ -22,6 +22,70 @@ static u8 * format_dhcp_client_state (u8 * s, va_list * va);
 static vlib_node_registration_t dhcp_client_process_node;
 
 static void 
+dhcp_client_add_rx_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
+{
+  /* Install a local entry for the offered address */
+  fib_prefix_t rx =
+    {
+      .fp_len = 32,
+      .fp_addr.ip4 = c->leased_address,
+      .fp_proto = FIB_PROTOCOL_IP4,
+    };
+
+  fib_table_entry_special_add(fib_table_get_index_for_sw_if_index(
+                                  FIB_PROTOCOL_IP4,
+                                  c->sw_if_index),
+                              &rx,
+                              FIB_SOURCE_DHCP,
+                              (FIB_ENTRY_FLAG_LOCAL));
+
+  /* And add the server's address as uRPF exempt so we can accept
+   * local packets from it */
+  fib_prefix_t server =
+    {
+      .fp_len = 32,
+      .fp_addr.ip4 = c->dhcp_server,
+      .fp_proto = FIB_PROTOCOL_IP4,
+    };
+
+  fib_table_entry_special_add(fib_table_get_index_for_sw_if_index(
+                                  FIB_PROTOCOL_IP4,
+                                  c->sw_if_index),
+                              &server,
+                              FIB_SOURCE_URPF_EXEMPT,
+                              (FIB_ENTRY_FLAG_DROP));
+}
+
+static void
+dhcp_client_remove_rx_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
+{
+  fib_prefix_t rx =
+    {
+      .fp_len = 32,
+      .fp_addr.ip4 = c->leased_address,
+      .fp_proto = FIB_PROTOCOL_IP4,
+    };
+
+  fib_table_entry_special_remove(fib_table_get_index_for_sw_if_index(
+                                     FIB_PROTOCOL_IP4,
+                                     c->sw_if_index),
+                                 &rx,
+                                 FIB_SOURCE_DHCP);
+  fib_prefix_t server =
+    {
+      .fp_len = 32,
+      .fp_addr.ip4 = c->dhcp_server,
+      .fp_proto = FIB_PROTOCOL_IP4,
+    };
+
+  fib_table_entry_special_remove(fib_table_get_index_for_sw_if_index(
+                                     FIB_PROTOCOL_IP4,
+                                     c->sw_if_index),
+                                 &server,
+                                 FIB_SOURCE_URPF_EXEMPT);
+}
+
+static void
 dhcp_client_acquire_address (dhcp_client_main_t * dcm, dhcp_client_t * c)
 {
   /* 
@@ -95,7 +159,9 @@ int dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
   /* parse through the packet, learn what we can */
   if (dhcp->your_ip_address.as_u32)
     c->leased_address.as_u32 = dhcp->your_ip_address.as_u32;
-      
+
+  c->dhcp_server.as_u32 = dhcp->server_ip_address.as_u32;
+
   o = (dhcp_option_t *) dhcp->options;
   
   while (o->option != 0xFF /* end of options */ &&
@@ -172,6 +238,14 @@ int dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
           c->next_transmit = now + 5.0;
           break;
         }
+      /*
+       * in order to accept unicasted ACKs we need to configure the offered
+       * address on the interface. However, at this point we may not know the
+       * subnet-mask (an OFFER may not contain it). So add a temporary receice
+       * and uRPF excempt entry
+       */
+      dhcp_client_add_rx_address (dcm, c);
+
       /* Received an offer, go send a request */
       c->state = DHCP_REQUEST;
       c->retry_count = 0;
@@ -196,6 +270,8 @@ int dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
         {
           void (*fp)(u32, u32, u8 *, u8, u8, u8 *, u8 *, u8 *) = c->event_callback;
 
+          /* replace the temporary RX address with the correct subnet */
+          dhcp_client_remove_rx_address (dcm, c);
           dhcp_client_acquire_address (dcm, c);
 
           /*
@@ -831,6 +907,7 @@ int dhcp_client_add_del (dhcp_client_add_del_args_t * a)
 				      1,
 				      FIB_ROUTE_PATH_FLAG_NONE);
       }
+      dhcp_client_remove_rx_address (dcm, c);
       dhcp_client_release_address (dcm, c);
       ip4_sw_interface_enable_disable (c->sw_if_index, 0);
 
