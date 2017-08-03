@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_6e68def5",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1110,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:38:47Z",
+      "side": 1,
+      "message": "as the number of workers increases so does the probability that the random port number will not lie within the limits, so the performance will degrade.\nFor a more deterministic approach try one of the mechanisms in http://c-faq.com/lib/randrange.html for constraining the range of the generated random number.",
+      "revId": "a9966acca6f02790e4fe358dd5053390c89db506",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_2ebb0674",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1120,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:38:47Z",
+      "side": 1,
+      "message": "if the worker_index is equal to the number of workers, why is there no upper_limit?",
+      "revId": "a9966acca6f02790e4fe358dd5053390c89db506",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
