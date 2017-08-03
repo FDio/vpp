@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_f1d713be",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 88,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-08-03T14:23:03Z",
+      "side": 1,
+      "message": "Given that Fedora 23 is EOL, and Fedora 24+ all have nasm 2.12+, what do you think about just checking for OS_ID fedora and ignore the OS_VERSION_ID ?",
+      "revId": "89f9c3a8b11d899597290b614c91cca084c37458",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
