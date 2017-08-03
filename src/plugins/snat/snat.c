@@ -1081,14 +1081,22 @@ int snat_static_mapping_match (snat_main_t * sm,
   return 0;
 }
 
-int snat_alloc_outside_address_and_port (snat_main_t * sm, 
+static_always_inline u16
+snat_random_port (snat_main_t * sm, u16 min, u16 max)
+{
+  return min + random_u32 (&sm->random_seed) /
+    (random_u32_max() / (max - min + 1) + 1);
+}
+
+int snat_alloc_outside_address_and_port (snat_main_t * sm,
                                          u32 fib_index,
+                                         u32 thread_index,
                                          snat_session_key_t * k,
                                          u32 * address_indexp)
 {
   int i;
   snat_address_t *a;
-  u32 portnum;
+  u32 portnum, ports_per_thread, worker_index, min, max, num_workers;
 
   for (i = 0; i < vec_len (sm->addresses); i++)
     {
@@ -1103,10 +1111,22 @@ int snat_alloc_outside_address_and_port (snat_main_t * sm,
             { \
               while (1) \
                 { \
-                  portnum = random_u32 (&sm->random_seed); \
-                  portnum &= 0xFFFF; \
-                  if (portnum < 1024) \
-                    continue; \
+                  if (sm->num_workers > 1) \
+                    { \
+                      num_workers = _vec_len (sm->workers); \
+                      ports_per_thread = (65535-1024) / num_workers; \
+                      worker_index = thread_index % num_workers; \
+                      min = 1024 + ports_per_thread * worker_index; \
+                      worker_index++; \
+                      max = 1024 + ports_per_thread * worker_index; \
+                      if (worker_index == num_workers) \
+                        max = 65535; \
+                      portnum = snat_random_port (sm, min, max); \
+                    } \
+                  else \
+                    { \
+                      portnum = snat_random_port (sm, 1024, 65535); \
+                    } \
                   if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
                     continue; \
                   clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
