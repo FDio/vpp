@@ -888,7 +888,7 @@ fib:
 int snat_set_workers (uword * bitmap)
 {
   snat_main_t *sm = &snat_main;
-  int i;
+  int i, j = 0;
 
   if (sm->num_workers < 2)
     return VNET_API_ERROR_FEATURE_DISABLED;
@@ -900,7 +900,12 @@ int snat_set_workers (uword * bitmap)
   clib_bitmap_foreach (i, bitmap,
     ({
       vec_add1(sm->workers, i);
+      sm->per_thread_data[i].snat_thread_index = j;
+      j++;
     }));
+
+  sm->port_per_thread = (0xffff - 1024) / _vec_len (sm->workers);
+  sm->num_snat_thread = _vec_len (sm->workers);
 
   return 0;
 }
@@ -936,7 +941,9 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->first_worker_index = 0;
   sm->next_worker = 0;
   sm->num_workers = 0;
+  sm->num_snat_thread = 1;
   sm->workers = 0;
+  sm->port_per_thread = 0xffff - 1024;
   sm->fq_in2out_index = ~0;
   sm->fq_out2in_index = ~0;
   sm->udp_timeout = SNAT_UDP_TIMEOUT;
@@ -955,6 +962,8 @@ static clib_error_t * snat_init (vlib_main_t * vm)
         }
     }
 
+  vec_validate (sm->per_thread_data, tm->n_vlib_mains - 1);
+
   /* Use all available workers by default */
   if (sm->num_workers > 1)
     {
@@ -962,6 +971,10 @@ static clib_error_t * snat_init (vlib_main_t * vm)
         bitmap = clib_bitmap_set (bitmap, i, 1);
       snat_set_workers(bitmap);
       clib_bitmap_free (bitmap);
+    }
+  else
+    {
+      sm->per_thread_data[0].snat_thread_index = 0;
     }
 
   error = snat_api_init(vm, sm);
@@ -1081,8 +1094,16 @@ int snat_static_mapping_match (snat_main_t * sm,
   return 0;
 }
 
-int snat_alloc_outside_address_and_port (snat_main_t * sm, 
+static_always_inline u16
+snat_random_port (snat_main_t * sm, u16 min, u16 max)
+{
+  return min + random_u32 (&sm->random_seed) /
+    (random_u32_max() / (max - min + 1) + 1);
+}
+
+int snat_alloc_outside_address_and_port (snat_main_t * sm,
                                          u32 fib_index,
+                                         u32 thread_index,
                                          snat_session_key_t * k,
                                          u32 * address_indexp)
 {
@@ -1099,14 +1120,13 @@ int snat_alloc_outside_address_and_port (snat_main_t * sm,
         {
 #define _(N, j, n, s) \
         case SNAT_PROTOCOL_##N: \
-          if (a->busy_##n##_ports < (65535-1024)) \
+          if (a->busy_##n##_ports < (sm->port_per_thread * sm->num_snat_thread)) \
             { \
               while (1) \
                 { \
-                  portnum = random_u32 (&sm->random_seed); \
-                  portnum &= 0xFFFF; \
-                  if (portnum < 1024) \
-                    continue; \
+                  portnum = (sm->port_per_thread * \
+                    sm->per_thread_data[thread_index].snat_thread_index) + \
+                    snat_random_port(sm, 0, sm->port_per_thread) + 1024; \
                   if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
                     continue; \
                   clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
@@ -1731,7 +1751,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u32 static_mapping_memory_size = 64<<20;
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
-  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   sm->deterministic = 0;
 
@@ -1809,8 +1828,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
           clib_bihash_init_8_8 (&sm->worker_by_out, "worker-by-out", user_buckets,
                                 user_memory_size);
-
-          vec_validate (sm->per_thread_data, tm->n_vlib_mains - 1);
 
           clib_bihash_init_8_8 (&sm->in2out, "in2out", translation_buckets,
                                 translation_memory_size);
