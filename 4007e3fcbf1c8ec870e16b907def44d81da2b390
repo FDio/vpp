@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_a4b5d732",
+        "filename": "src/vpp-api/vapi/Makefile.am",
+        "patchSetId": 1
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T19:31:34Z",
+      "side": 1,
+      "message": "vapi_common.h",
+      "revId": "4007e3fcbf1c8ec870e16b907def44d81da2b390",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_8482db50",
+        "filename": "src/vpp-api/vapi/vapi_cpp.hpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T19:31:34Z",
+      "side": 1,
+      "message": "since all type are declared with the \u0027vapi\u0027 namesace do al the types have to be prefixed with\u0027Vapi_\u0027?",
+      "revId": "4007e3fcbf1c8ec870e16b907def44d81da2b390",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_6487df62",
+        "filename": "src/vpp-api/vapi/vapi_cpp.hpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 548,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T19:31:34Z",
+      "side": 1,
+      "message": "reference not a pointer to a connection?",
+      "revId": "4007e3fcbf1c8ec870e16b907def44d81da2b390",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
