@@ -1,10 +1,13 @@
+create packet-generator interface pg0
+create packet-generator interface pg1
+
 packet-generator new {
   name f1
   limit 1000000
   node ip4-input
   size 64-64
   no-recycle
-  worker 0
+  interface pg0
   data {
     UDP: 10.0.0.3 -> 172.16.1.2
     UDP: 3000 -> 3001
@@ -19,7 +22,7 @@ packet-generator new {
   node ip4-input
   size 64-64
   no-recycle
-  worker 1
+  interface pg0
   data {
     UDP: 10.0.0.3 -> 172.16.1.2
     UDP: 3005 -> 3006
@@ -28,7 +31,11 @@ packet-generator new {
 }
 
 snat add address 172.16.1.3
-ip route 172.16.1.2/32 via drop
 set int ip address pg0 10.0.0.1/24
-set int snat in pg0
-trace add pg-input 10
+set int ip address pg1 172.16.1.1/24
+set int state pg0 up
+set int state pg1 up
+set ip arp static pg0 10.0.0.3 abcd.abcd.abcd
+set ip arp static pg0 10.0.0.4 abcd.abcd.abcd
+set ip arp static pg1 172.16.1.2 cdef.abcd.abcd
+set int snat in pg0 out pg1
