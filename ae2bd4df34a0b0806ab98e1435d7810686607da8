@@ -1,0 +1,157 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_8edd5a17",
+        "filename": "src/plugins/pppoe.am",
+        "patchSetId": 21
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:21:08Z",
+      "side": 1,
+      "message": "can we please have consistent tabs or spaces at the beginning of the line",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_ee85eead",
+        "filename": "src/plugins/pppoe/pppoe.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 105,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:21:08Z",
+      "side": 1,
+      "message": "add:\n   .flags \u003d VNET_HW_INTERFACE_CLASS_FLAG_P2P,",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_0e3f2a27",
+        "filename": "src/plugins/pppoe/pppoe.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 607,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:21:08Z",
+      "side": 1,
+      "message": "indent-off",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_ceda3217",
+        "filename": "src/plugins/pppoe/pppoe.h",
+        "patchSetId": 21
+      },
+      "lineNbr": 204,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:21:08Z",
+      "side": 1,
+      "message": "extern",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_ee228e00",
+        "filename": "src/plugins/pppoe/pppoe_api.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:21:08Z",
+      "side": 1,
+      "message": "use:\n  fib_table_find() to get the index and exist if it does notexist\nthen:\n  fib_table_lock() once you are using it.\nbe sure to unlock when the session is removed.\n\nor lock the table on first seesion and unlock on removal of the last.",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_4e5ac284",
+        "filename": "src/plugins/pppoe/pppoe_decap.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:21:08Z",
+      "side": 1,
+      "message": "does this make effective perf increases as a dual lopp? there\u0027s very little overlap in packet processing.",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_ee504e60",
+        "filename": "src/plugins/pppoe/pppoe_decap.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:21:08Z",
+      "side": 1,
+      "message": "remove these commeted code.",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_2ed666c6",
+        "filename": "src/plugins/pppoe/pppoe_encap.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 146,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:21:08Z",
+      "side": 1,
+      "message": "wouldn\u0027t it be more performant to have a session DB keyed on the sw_if_index?",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_4e9f6204",
+        "filename": "src/plugins/pppoe/pppoe_encap.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T09:21:08Z",
+      "side": 1,
+      "message": "how about adding this rewrite into the IP Adjacencies that are created on the PPPoE interface? since there is a 1:1 mapping between PPPoE session and sw_if_index, the would then be no need to be a session lookup.\nsee, e.g. ethernet_update_adjacency.",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
