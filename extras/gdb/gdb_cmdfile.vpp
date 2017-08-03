@@ -1,0 +1,7 @@
+echo \n\n====== gdb_cmdfile.vpp ======\n
+
+# Here are some interesting vpp-api breakpoints...
+# Uncomment them out to set during gdb init.
+#
+#b vl_api_connect_sock_t_handler
+#b vl_api_connect_sock_reply_t_handler
