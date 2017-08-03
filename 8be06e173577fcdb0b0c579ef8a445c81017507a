@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_6e79fe92",
+        "filename": "src/plugins/gtpu/gtpu.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-08-03T03:55:35Z",
+      "side": 1,
+      "message": "adds /* *INDENT-OFF* */ for code alignment.",
+      "revId": "8be06e173577fcdb0b0c579ef8a445c81017507a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_2e7306b3",
+        "filename": "src/plugins/gtpu/gtpu.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-08-03T03:55:35Z",
+      "side": 1,
+      "message": "adds /* *INDENT-ON* */ for code alignment",
+      "revId": "8be06e173577fcdb0b0c579ef8a445c81017507a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
