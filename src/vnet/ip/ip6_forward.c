@@ -620,6 +620,13 @@ VNET_FEATURE_INIT (ip6_vpath, static) =
   .runs_before = VNET_FEATURES ("ip6-vxlan-bypass"),
 };
 
+VNET_FEATURE_INIT (ip6_vxlan_gpe_bypass, static) =
+{
+  .arc_name = "ip6-unicast",
+  .node_name = "ip6-vxlan-gpe-bypass",
+  .runs_before = VNET_FEATURES ("ip6-lookup"),
+};
+
 VNET_FEATURE_INIT (ip6_vxlan_bypass, static) =
 {
   .arc_name = "ip6-unicast",

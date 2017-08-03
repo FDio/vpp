@@ -1060,6 +1060,13 @@ VNET_FEATURE_INIT (ip4_vxlan_bypass, static) =
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 
+VNET_FEATURE_INIT (ip4_vxlan_gpe_bypass, static) =
+{
+  .arc_name = "ip4-unicast",
+  .node_name = "ip4-vxlan-gpe-bypass",
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
+
 VNET_FEATURE_INIT (ip4_drop, static) =
 {
   .arc_name = "ip4-unicast",
