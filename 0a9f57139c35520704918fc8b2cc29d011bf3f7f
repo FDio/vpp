@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_0ea3aa9f",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1063,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T08:32:03Z",
+      "side": 1,
+      "message": "wouldn\u0027t these be better located in a VXLAN-gpe file?",
+      "revId": "0a9f57139c35520704918fc8b2cc29d011bf3f7f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
