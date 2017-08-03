@@ -1,0 +1,10 @@
+echo \n\n====== gdb_cmdfile.vppcom_server ======\n
+
+# Here are some interesting vppcom breakpoints...
+# Uncomment them out to set during gdb init.
+#
+#b vppcom_session_accept
+#b vppcom_session_write
+#b vppcom_session_read
+#b vl_api_connect_sock_t_handler
+#b vl_api_connect_sock_reply_t_handler
