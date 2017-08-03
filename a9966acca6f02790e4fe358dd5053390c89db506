@@ -69,6 +69,24 @@
       "revId": "a9966acca6f02790e4fe358dd5053390c89db506",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_4e12c263",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1120,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T10:20:18Z",
+      "side": 1,
+      "message": "then maybe:\nif (worker_index !\u003d num_workers)\n{\n  upper_limit \u003d 1024 + ports_per_thread * worker_index;\n  if (portnum \u003e upper_limit)\n     continue;\n}",
+      "parentUuid": "5a4e6583_4e3be2eb",
+      "revId": "a9966acca6f02790e4fe358dd5053390c89db506",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
