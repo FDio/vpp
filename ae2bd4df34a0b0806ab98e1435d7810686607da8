@@ -169,6 +169,23 @@
       "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_44574303",
+        "filename": "test/test_pppoe.py",
+        "patchSetId": 21
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T16:50:17Z",
+      "side": 1,
+      "message": "I think these tests would be more effective if you created/deleted many sessions and sent traffic through them all.\nAlso add a dump API so you can test that the delete really does remove them.\nyou might consider a PPPoE object here analogous to the VppIpRoute.",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
