@@ -29,6 +29,21 @@ Version: %{_version}
 Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd, chrpath
+BuildRequires: libffi-devel, openssl-devel
+%if 0%{?fedora} >= 26
+BuildRequires: python2-devel, python2-virtualenv
+%else
+%if 0%{?fedora} == 25
+BuildRequires: python-devel, python2-virtualenv
+%else
+BuildRequires: python-devel, python-virtualenv
+%endif
+%endif
+BuildRequires: glibc-static, java-1.8.0-openjdk, java-1.8.0-openjdk-devel yum-utils, redhat-lsb
+BuildRequires: apr-devel
+BuildRequires: nasm
+BuildRequires: numactl-devel
+BuildRequires: autoconf automake libtool byacc bison flex
 
 Source: %{name}-%{_version}-%{_release}.tar.xz
 # Source: vpp-latest.tar.xz
@@ -156,10 +171,11 @@ install -p -m 644 %{_mu_build_dir}/../src/scripts/vppctl-cmd-list %{buildroot}/u
 # Lua bindings
 mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/lua/examples/cli
 mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/lua/examples/lute
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/vpp-api/lua && git ls-files .)
+# for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/vpp-api/lua && git ls-files .)
+for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/vpp-api/lua && find . -type f -regex '.*/*.[luteamd]' -print | sed -e 's/^\.\///')
 do
-	install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/../../src/vpp-api/lua/$file \
-	   %{buildroot}/usr/share/doc/vpp/examples/lua/$file
+	( cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/vpp-api/lua && install -p -m 644 $file \
+	   %{buildroot}/usr/share/doc/vpp/examples/lua/$file )
 done
 
 # Java bindings
@@ -195,10 +211,11 @@ done;
 
 # sample plugin
 mkdir -p -m755 %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/sample
-for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/examples/sample-plugin && git ls-files .)
+#for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/examples/sample-plugin && git ls-files .)
+for file in $(cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/examples/sample-plugin && find . -type f -regex '.*/*.[acdhimp]' -print | sed -e 's/^\.\///')
 do
-	install -p -m 644 %{_mu_build_dir}/%{_vpp_install_dir}/../../src/examples/sample-plugin/$file \
-	   %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/$file
+	( cd %{_mu_build_dir}/%{_vpp_install_dir}/../../src/examples/sample-plugin && install -p -m 644 $file \
+	   %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/$file )
 done
 
 
