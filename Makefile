@@ -47,6 +47,7 @@ GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
 ifneq ($(shell uname),Darwin)
 OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+OS_FED_NEW= $(shell ( if [ "$(OS_VERSION_ID)" -gt "25" ] ; then echo "true" ; fi ))
 endif
 
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
@@ -72,12 +73,18 @@ else
 endif
 
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
-RPM_DEPENDS += openssl-devel https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm apr-devel
-RPM_DEPENDS += python-devel numactl-devel
+RPM_DEPENDS += openssl-devel
+RPM_DEPENDS += numactl-devel
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
+	RPM_DEPENDS += python-devel
+	RPM_DEPENDS += python2-virtualenv
+	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
+else ifeq ($(OS_FED_NEW),true)
+	RPM_DEPENDS += python2-devel
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else
+	RPM_DEPENDS += python-devel
 	RPM_DEPENDS += python-virtualenv
 	RPM_DEPENDS_GROUPS = 'Development Tools'
 endif
@@ -89,12 +96,6 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += nasm
 else
 	RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
-endif
-EPEL_DEPENDS = libconfuse-devel epel-rpm-macros
-ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
-	EPEL_DEPENDS += lcov
-else
-	RPM_DEPENDS += lcov
 endif
 
 RPM_SUSE_DEPENDS = autoconf automake bison ccache chrpath distribution-release gcc6 glibc-devel-static
@@ -206,13 +207,9 @@ ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 	fi ; \
 	exit 0
 else ifneq ("$(wildcard /etc/redhat-release)","")
-	@for i in $(RPM_DEPENDS) $(EPEL_DEPENDS) ; do \
+	@for i in $(RPM_DEPENDS) ; do \
 	    RPM=$$(basename -s .rpm "$${i##*/}" | cut -d- -f1,2,3)  ;	\
-	    if [[ "$$RPM" =~ "epel-release-latest" ]] ; then		\
-	        MISSING+=$$(rpm -q epel-release | grep "^package") ;	\
-	    else							\
-		MISSING+=$$(rpm -q $$RPM | grep "^package")	   ;    \
-	    fi							   ;    \
+	    MISSING+=$$(rpm -q $$RPM | grep "^package")	   ;    \
 	done							   ;	\
 	if [ -n "$$MISSING" ] ; then \
 	  echo "Please install missing RPMs: \n$$MISSING\n" ; \
@@ -255,7 +252,6 @@ endif
 else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo -E yum groupinstall $(CONFIRM) $(RPM_DEPENDS_GROUPS)
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
-	@sudo -E yum install $(CONFIRM) --enablerepo=epel $(EPEL_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
 else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper -n install -y $(RPM_SUSE_DEPENDS)
