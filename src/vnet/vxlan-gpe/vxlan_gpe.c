@@ -1200,6 +1200,22 @@ VLIB_CLI_COMMAND (set_interface_ip6_vxlan_gpe_bypass_command, static) = {
 };
 /* *INDENT-ON* */
 
+/* *INDENT-OFF* */
+VNET_FEATURE_INIT (ip4_vxlan_gpe_bypass, static) =
+{
+  .arc_name = "ip4-unicast",
+  .node_name = "ip4-vxlan-gpe-bypass",
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
+
+VNET_FEATURE_INIT (ip6_vxlan_gpe_bypass, static) =
+{
+  .arc_name = "ip6-unicast",
+  .node_name = "ip6-vxlan-gpe-bypass",
+  .runs_before = VNET_FEATURES ("ip6-lookup"),
+};
+/* *INDENT-ON* */
+
 /**
  * @brief Feature init function for VXLAN GPE
  *
