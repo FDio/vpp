@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "5a4e6583_2e40a655",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1110,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-08-03T10:10:18Z",
+      "side": 1,
+      "message": "thanks, will use some mechanism from link",
+      "parentUuid": "5a4e6583_6e68def5",
+      "revId": "a9966acca6f02790e4fe358dd5053390c89db506",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a4e6583_2ebb0674",
         "filename": "src/plugins/snat/snat.c",
         "patchSetId": 1
@@ -30,6 +48,24 @@
       "writtenOn": "2017-08-03T09:38:47Z",
       "side": 1,
       "message": "if the worker_index is equal to the number of workers, why is there no upper_limit?",
+      "revId": "a9966acca6f02790e4fe358dd5053390c89db506",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_4e3be2eb",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1120,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-08-03T10:10:18Z",
+      "side": 1,
+      "message": "not needed when it is last port range",
+      "parentUuid": "5a4e6583_2ebb0674",
       "revId": "a9966acca6f02790e4fe358dd5053390c89db506",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
