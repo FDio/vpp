@@ -373,10 +373,19 @@ vl_api_l2_flags_t_print (vl_api_l2_flags_t * mp, void *handle)
 
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
-#define _(a,b) \
-    if (flags & L2INPUT_FEAT_ ## a) s = format (s, #a " ");
-  foreach_l2input_feat;
-#undef _
+  if (flags & L2_LEARN)
+    s = format (s, "learn ");
+  if (flags & L2_FWD)
+    s = format (s, "forward ");
+  if (flags & L2_FLOOD)
+    s = format (s, "flood ");
+  if (flags & L2_UU_FLOOD)
+    s = format (s, "uu-flood ");
+  if (flags & L2_ARP_TERM)
+    s = format (s, "arp-term ");
+
+  if (mp->is_set == 0)
+    s = format (s, "clear ");
 
   FINISH;
 }
@@ -1783,6 +1792,21 @@ static void *vl_api_want_ip6_nd_events_t_print
   FINISH;
 }
 
+static void *vl_api_want_l2_macs_events_t_print
+  (vl_api_want_l2_macs_events_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: want_l2_macs_events ");
+  s = format (s, "learn-limit %d ", ntohl (mp->learn_limit));
+  s = format (s, "scan-delay %d ", (u32) mp->scan_delay);
+  s = format (s, "max-entries %d ", (u32) mp->max_macs_in_event * 10);
+  if (mp->enable_disable == 0)
+    s = format (s, "disable");
+
+  FINISH;
+}
+
 static void *vl_api_input_acl_set_interface_t_print
   (vl_api_input_acl_set_interface_t * mp, void *handle)
 {
@@ -3066,6 +3090,7 @@ _(VXLAN_GPE_TUNNEL_DUMP, vxlan_gpe_tunnel_dump)                         \
 _(INTERFACE_NAME_RENUMBER, interface_name_renumber)			\
 _(WANT_IP4_ARP_EVENTS, want_ip4_arp_events)                             \
 _(WANT_IP6_ND_EVENTS, want_ip6_nd_events)                               \
+_(WANT_L2_MACS_EVENTS, want_l2_macs_events)                             \
 _(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
 _(IP_ADDRESS_DUMP, ip_address_dump)                                     \
 _(IP_DUMP, ip_dump)                                                     \
