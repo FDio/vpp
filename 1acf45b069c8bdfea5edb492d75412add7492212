@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_849bfbc8",
+        "filename": "src/plugins/snat/snat.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1118,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-03T17:18:51Z",
+      "side": 1,
+      "message": "this modulo operation means different thread_indexs can return the same worker_index and so use the same port range.\nwhat\u0027s the relationship between n_workers and n_threads?\n\nhow about first cache on snat_main:\n  sm-\u003eport_per_thread \u003d (0xffff - 1024) / n_threads .\nthen in the fast path:\n  portnum \u003d (sm-\u003eports_per_thread * thread_index) + snat_random_port(sm, 0, ports_per_thread) + 1024;",
+      "revId": "1acf45b069c8bdfea5edb492d75412add7492212",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
