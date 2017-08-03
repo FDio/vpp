@@ -34,6 +34,20 @@
 
 gtpu_main_t gtpu_main;
 
+/* *INDENT-OFF* */
+VNET_FEATURE_INIT (ip4_gtpu_bypass, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "ip4-gtpu-bypass",
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
+
+VNET_FEATURE_INIT (ip6_gtpu_bypass, static) = {
+  .arc_name = "ip6-unicast",
+  .node_name = "ip6-gtpu-bypass",
+  .runs_before = VNET_FEATURES ("ip6-lookup"),
+};
+/* *INDENT-on* */
+
 static u8 *
 format_decap_next (u8 * s, va_list * args)
 {
