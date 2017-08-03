@@ -133,12 +133,64 @@ autoreply define l2fib_add_del
   u8 bvi_mac;
 };
 
-/** \brief Set L2 flags request !!! TODO - need more info, feature bits in l2_input.h
+/** \brief Register to recive L2 MAC events for leanred and aged MAC
+    Will also change MAC learn limit to L2LEARN_INFORM_LIMIT
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param learn_limit - MAC learn limit, 0 => default to 1000
+    @param scan_delay - event scan delay in 10 msec unit, 0 => default to 100 msec
+    @param max_macs_in_event - in units of 10 mac entries, 0 => default to 100 entries
+    @param enable_disable - 1 => register for MAC events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_l2_macs_events
+{
+  u32 client_index;
+  u32 context;
+  u32 learn_limit;
+  u8  scan_delay;
+  u8  max_macs_in_event;
+  u8  enable_disable;
+  u32 pid;
+};
+
+/** \brief Entry for learned or aged MAC in L2 MAC Events
+    @param sw_if_index - sw_if_index in the domain
+    @param mac_addr - mac_address
+    @is_del - 0 => newly learned MAC, 1 => aged out MAC
+*/
+typeonly define mac_entry
+{
+  u32 sw_if_index;
+  u8  mac_addr[6];
+  u8  is_del;
+  u8  spare;
+};
+
+/** \brief L2 MAC event for a list of learned or aged MACs
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param n_macs - number of learned/aged MAC enntries
+    @param mac - array of learned/aged MAC entries
+*/
+define l2_macs_event
+{
+  u32 client_index;
+  u32 pid;
+  u32 n_macs;
+  vl_api_mac_entry_t mac[n_macs];
+};
+
+/** \brief Set interface L2 flags (such as L2_LEARN, L2_FWD, 
+    L2_FLOOD, L2_UU_FLOOD, or L2_ARP_TERM bits). This can be used
+    to disable one or more of the features represented by the
+    flag bits on an interface to override what is set as default
+    for all interfaces in the bridge domain
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param sw_if_index - interface 
     @param is_set - if non-zero, set the bits, else clear them
-    @param feature_bitmap - non-zero bits to set or clear
+    @param feature_bitmap - non-zero bits (as above) to set or clear
 */
 define l2_flags
 {
@@ -149,9 +201,10 @@ define l2_flags
   u32 feature_bitmap;
 };
 
-/** \brief Set L2 bits response
+/** \brief Set interface L2 flags response
     @param context - sender context, to match reply w/ request
     @param retval - return code for the set l2 bits request
+    @param resulting_feature_bitmap - the internal l2 feature bitmap after the request is implemented
 */
 define l2_flags_reply
 {
@@ -250,12 +303,12 @@ manual_print manual_endian define bridge_domain_details
 };
 
 /** \brief Set bridge flags (such as L2_LEARN, L2_FWD, L2_FLOOD, 
-    L2_UU_FLOOD, or L2_ARP_TERM) request
+    L2_UU_FLOOD, or L2_ARP_TERM bits) request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param bd_id - the bridge domain to set the flags for
     @param is_set - if non-zero, set the flags, else clear them
-    @param feature_bitmap - bits that are non-zero to set or clear
+    @param feature_bitmap - bits (as above) that are non-zero to set or clear
 */
 define bridge_flags
 {
@@ -269,7 +322,7 @@ define bridge_flags
 /** \brief Set bridge flags response
     @param context - sender context, to match reply w/ request
     @param retval - return code for the set bridge flags request
-    @param resulting_feature_bitmap - the feature bitmap value after the request is implemented
+    @param resulting_feature_bitmap - the internal L2 feature bitmap after the request is implemented
 */
 define bridge_flags_reply
 {

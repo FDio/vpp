@@ -263,7 +263,7 @@ bd_set_flags (vlib_main_t * vm, u32 bd_index, u32 flags, u32 enable)
       bd_config->feature_bitmap &= ~feature_bitmap;
     }
 
-  return 0;
+  return bd_config->feature_bitmap;
 }
 
 /**
@@ -328,12 +328,7 @@ bd_learn (vlib_main_t * vm,
     }
 
   /* set the bridge domain flag */
-  if (bd_set_flags (vm, bd_index, L2_LEARN, enable))
-    {
-      error =
-	clib_error_return (0, "bridge-domain id %d out of range", bd_index);
-      goto done;
-    }
+  bd_set_flags (vm, bd_index, L2_LEARN, enable);
 
 done:
   return error;
@@ -397,12 +392,7 @@ bd_fwd (vlib_main_t * vm, unformat_input_t * input, vlib_cli_command_t * cmd)
     }
 
   /* set the bridge domain flag */
-  if (bd_set_flags (vm, bd_index, L2_FWD, enable))
-    {
-      error =
-	clib_error_return (0, "bridge-domain id %d out of range", bd_index);
-      goto done;
-    }
+  bd_set_flags (vm, bd_index, L2_FWD, enable);
 
 done:
   return error;
@@ -468,12 +458,7 @@ bd_flood (vlib_main_t * vm,
     }
 
   /* set the bridge domain flag */
-  if (bd_set_flags (vm, bd_index, L2_FLOOD, enable))
-    {
-      error =
-	clib_error_return (0, "bridge-domain id %d out of range", bd_index);
-      goto done;
-    }
+  bd_set_flags (vm, bd_index, L2_FLOOD, enable);
 
 done:
   return error;
@@ -538,12 +523,7 @@ bd_uu_flood (vlib_main_t * vm,
     }
 
   /* set the bridge domain flag */
-  if (bd_set_flags (vm, bd_index, L2_UU_FLOOD, enable))
-    {
-      error =
-	clib_error_return (0, "bridge-domain id %d out of range", bd_index);
-      goto done;
-    }
+  bd_set_flags (vm, bd_index, L2_UU_FLOOD, enable);
 
 done:
   return error;
@@ -605,12 +585,7 @@ bd_arp_term (vlib_main_t * vm,
     enable = 0;
 
   /* set the bridge domain flag */
-  if (bd_set_flags (vm, bd_index, L2_ARP_TERM, enable))
-    {
-      error =
-	clib_error_return (0, "bridge-domain id %d out of range", bd_index);
-      goto done;
-    }
+  bd_set_flags (vm, bd_index, L2_ARP_TERM, enable);
 
 done:
   return error;

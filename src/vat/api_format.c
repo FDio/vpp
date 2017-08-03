@@ -1283,6 +1283,30 @@ vl_api_ip6_nd_event_t_handler_json (vl_api_ip6_nd_event_t * mp)
   /* JSON output not supported */
 }
 
+static void
+vl_api_l2_macs_event_t_handler (vl_api_l2_macs_event_t * mp)
+{
+  u32 n_macs = ntohl (mp->n_macs);
+  errmsg ("L2MAC event recived with pid %d cl-idx %d for %d macs: \n",
+	  ntohl (mp->pid), mp->client_index, n_macs);
+  int i;
+  for (i = 0; i < n_macs; i++)
+    {
+      vl_api_mac_entry_t *mac = &mp->mac[i];
+      errmsg (" [%d] sw_if_index %d  mac_addr %U  is_del %d \n",
+	      i + 1, ntohl (mac->sw_if_index),
+	      format_ethernet_address, mac->mac_addr, mac->is_del);
+      if (i == 1000)
+	break;
+    }
+}
+
+static void
+vl_api_l2_macs_event_t_handler_json (vl_api_l2_macs_event_t * mp)
+{
+  /* JSON output not supported */
+}
+
 #define vl_api_bridge_domain_details_t_endian vl_noop_handler
 #define vl_api_bridge_domain_details_t_print vl_noop_handler
 
@@ -4597,6 +4621,7 @@ _(modify_vhost_user_if_reply)                           \
 _(delete_vhost_user_if_reply)                           \
 _(want_ip4_arp_events_reply)                            \
 _(want_ip6_nd_events_reply)                             \
+_(want_l2_macs_events_reply)                            \
 _(input_acl_set_interface_reply)                        \
 _(ipsec_spd_add_del_reply)                              \
 _(ipsec_interface_add_del_spd_reply)                    \
@@ -4813,6 +4838,8 @@ _(WANT_IP4_ARP_EVENTS_REPLY, want_ip4_arp_events_reply)			\
 _(IP4_ARP_EVENT, ip4_arp_event)                                         \
 _(WANT_IP6_ND_EVENTS_REPLY, want_ip6_nd_events_reply)			\
 _(IP6_ND_EVENT, ip6_nd_event)						\
+_(WANT_L2_MACS_EVENTS_REPLY, want_l2_macs_events_reply)			\
+_(L2_MACS_EVENT, l2_macs_event)						\
 _(INPUT_ACL_SET_INTERFACE_REPLY, input_acl_set_interface_reply)         \
 _(IP_ADDRESS_DETAILS, ip_address_details)                               \
 _(IP_DETAILS, ip_details)                                               \
@@ -6607,8 +6634,9 @@ api_l2_flags (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_l2_flags_t *mp;
   u32 sw_if_index;
-  u32 feature_bitmap = 0;
+  u32 flags = 0;
   u8 sw_if_index_set = 0;
+  u8 is_set = 0;
   int ret;
 
   /* Parse args required to build the message */
@@ -6628,13 +6656,19 @@ api_l2_flags (vat_main_t * vam)
 	    break;
 	}
       else if (unformat (i, "learn"))
-	feature_bitmap |= L2INPUT_FEAT_LEARN;
+	flags |= L2_LEARN;
       else if (unformat (i, "forward"))
-	feature_bitmap |= L2INPUT_FEAT_FWD;
+	flags |= L2_FWD;
       else if (unformat (i, "flood"))
-	feature_bitmap |= L2INPUT_FEAT_FLOOD;
+	flags |= L2_FLOOD;
       else if (unformat (i, "uu-flood"))
-	feature_bitmap |= L2INPUT_FEAT_UU_FLOOD;
+	flags |= L2_UU_FLOOD;
+      else if (unformat (i, "arp-term"))
+	flags |= L2_ARP_TERM;
+      else if (unformat (i, "off"))
+	is_set = 0;
+      else if (unformat (i, "disable"))
+	is_set = 0;
       else
 	break;
     }
@@ -6648,7 +6682,8 @@ api_l2_flags (vat_main_t * vam)
   M (L2_FLAGS, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
-  mp->feature_bitmap = ntohl (feature_bitmap);
+  mp->feature_bitmap = ntohl (flags);
+  mp->is_set = is_set;
 
   S (mp);
   W (ret);
@@ -12529,6 +12564,42 @@ api_want_ip6_nd_events (vat_main_t * vam)
   mp->pid = htonl (getpid ());
   clib_memcpy (mp->address, &address, sizeof (ip6_address_t));
 
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_want_l2_macs_events (vat_main_t * vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_want_l2_macs_events_t *mp;
+  u8 enable_disable = 1;
+  u32 scan_delay = 0;
+  u32 max_macs_in_event = 0;
+  u32 learn_limit = 0;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "learn-limit %d", &learn_limit))
+	;
+      else if (unformat (line_input, "scan-delay %d", &scan_delay))
+	;
+      else if (unformat (line_input, "max-entries %d", &max_macs_in_event))
+	;
+      else if (unformat (line_input, "disable"))
+	enable_disable = 0;
+      else
+	break;
+    }
+
+  M (WANT_L2_MACS_EVENTS, mp);
+  mp->enable_disable = enable_disable;
+  mp->pid = htonl (getpid ());
+  mp->learn_limit = htonl (learn_limit);
+  mp->scan_delay = (u8) scan_delay;
+  mp->max_macs_in_event = (u8) (max_macs_in_event / 10);
   S (mp);
   W (ret);
   return ret;
@@ -19831,7 +19902,7 @@ _(l2fib_add_del,                                                        \
 _(l2fib_flush_bd, "bd_id <bridge-domain-id>")                           \
 _(l2fib_flush_int, "<intfc> | sw_if_index <id>")                        \
 _(l2_flags,                                                             \
-  "sw_if <intfc> | sw_if_index <id> [learn] [forward] [uu-flood] [flood]\n") \
+  "sw_if <intfc> | sw_if_index <id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(bridge_flags,                                                         \
   "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(tap_connect,                                                          \
@@ -19974,6 +20045,7 @@ _(input_acl_set_interface,                                              \
   "  [l2-table <nn>] [del]")                                            \
 _(want_ip4_arp_events, "address <ip4-address> [del]")                   \
 _(want_ip6_nd_events, "address <ip6-address> [del]")                    \
+_(want_l2_macs_events, "[disable] [learn-limit <n>] [scan-delay <n>] [max-entries <n>]") \
 _(ip_address_dump, "(ipv4 | ipv6) (<intfc> | sw_if_index <id>)")        \
 _(ip_dump, "ipv4 | ipv6")                                               \
 _(ipsec_spd_add_del, "spd_id <n> [del]")                                \

@@ -25,6 +25,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_fib.h>
 #include <vnet/l2/l2_vtr.h>
+#include <vnet/l2/l2_learn.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -55,6 +56,7 @@ _(L2FIB_FLUSH_ALL, l2fib_flush_all)                         \
 _(L2FIB_FLUSH_INT, l2fib_flush_int)                         \
 _(L2FIB_FLUSH_BD, l2fib_flush_bd)                           \
 _(L2FIB_ADD_DEL, l2fib_add_del)                             \
+_(WANT_L2_MACS_EVENTS, want_l2_macs_events)		    \
 _(L2_FLAGS, l2_flags)                                       \
 _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)             \
 _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                   \
@@ -221,8 +223,8 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
 		  goto bad_sw_if_index;
 		}
 	    }
-	  u32 static_mac = mp->static_mac ? 1 : 0;
-	  u32 bvi_mac = mp->bvi_mac ? 1 : 0;
+	  u8 static_mac = mp->static_mac ? 1 : 0;
+	  u8 bvi_mac = mp->bvi_mac ? 1 : 0;
 	  l2fib_add_fwd_entry (mac, bd_index, sw_if_index, static_mac,
 			       bvi_mac);
 	}
@@ -235,6 +237,58 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_L2FIB_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_want_l2_macs_events_t_handler (vl_api_want_l2_macs_events_t * mp)
+{
+  int rv = 0;
+  vl_api_want_l2_macs_events_reply_t *rmp;
+  l2learn_main_t *lm = &l2learn_main;
+  l2fib_main_t *fm = &l2fib_main;
+  u32 pid = ntohl (mp->pid);
+  u32 learn_limit = ntohl (mp->learn_limit);
+
+  if (mp->enable_disable)
+    {
+      if (lm->client_pid == 0)
+	{
+	  lm->client_pid = pid;
+	  lm->client_index = mp->client_index;
+
+	  if (mp->max_macs_in_event)
+	    fm->max_macs_in_event = mp->max_macs_in_event * 10;
+	  else
+	    fm->max_macs_in_event = L2FIB_EVENT_MAX_MACS_DEFAULT;
+
+	  if (mp->scan_delay)
+	    fm->event_scan_delay = (f64) (mp->scan_delay) * 10e-3;
+	  else
+	    fm->event_scan_delay = L2FIB_EVENT_SCAN_DELAY_DEFAULT;
+
+	  /* change learn limit and flush all learned MACs */
+	  if (learn_limit && (learn_limit < L2LEARN_DEFAULT_LIMIT))
+	    lm->global_learn_limit = learn_limit;
+	  else
+	    lm->global_learn_limit = L2FIB_EVENT_LEARN_LIMIT_DEFAULT;
+
+	  l2fib_flush_all_mac (vlib_get_main ());
+	}
+      else if (lm->client_pid != pid)
+	{
+	  rv = VNET_API_ERROR_L2_MACS_EVENT_CLINET_PRESENT;
+	  goto exit;
+	}
+    }
+  else if (lm->client_pid)
+    {
+      lm->client_pid = 0;
+      lm->client_index = 0;
+      lm->global_learn_limit = L2LEARN_DEFAULT_LIMIT;
+    }
+
+exit:
+  REPLY_MACRO (VL_API_WANT_L2_MACS_EVENTS_REPLY);
 }
 
 static void
@@ -293,8 +347,25 @@ vl_api_l2_flags_t_handler (vl_api_l2_flags_t * mp)
   VALIDATE_SW_IF_INDEX (mp);
 
   u32 sw_if_index = ntohl (mp->sw_if_index);
-  u32 flags = ntohl (mp->feature_bitmap) & L2INPUT_VALID_MASK;
-  rbm = l2input_intf_bitmap_enable (sw_if_index, flags, mp->is_set);
+  u32 flags = ntohl (mp->feature_bitmap);
+  u32 bitmap = 0;
+
+  if (flags & L2_LEARN)
+    bitmap |= L2INPUT_FEAT_LEARN;
+
+  if (flags & L2_FWD)
+    bitmap |= L2INPUT_FEAT_FWD;
+
+  if (flags & L2_FLOOD)
+    bitmap |= L2INPUT_FEAT_FLOOD;
+
+  if (flags & L2_UU_FLOOD)
+    bitmap |= L2INPUT_FEAT_UU_FLOOD;
+
+  if (flags & L2_ARP_TERM)
+    bitmap |= L2INPUT_FEAT_ARP_TERM;
+
+  rbm = l2input_intf_bitmap_enable (sw_if_index, bitmap, mp->is_set);
 
   BAD_SW_IF_INDEX_LABEL;
 
@@ -455,13 +526,13 @@ vl_api_bridge_flags_t_handler (vl_api_bridge_flags_t * mp)
       goto out;
     }
 
-  bd_set_flags (vm, bd_index, flags, mp->is_set);
+  u32 bitmap = bd_set_flags (vm, bd_index, flags, mp->is_set);
 
 out:
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_BRIDGE_FLAGS_REPLY,
   ({
-    rmp->resulting_feature_bitmap = ntohl(flags);
+    rmp->resulting_feature_bitmap = ntohl(bitmap);
   }));
   /* *INDENT-ON* */
 }

@@ -123,11 +123,9 @@ l2learn_process (vlib_node_runtime_t * node,
   /* Check mac table lookup result */
   if (PREDICT_TRUE (result0->fields.sw_if_index == sw_if_index0))
     {
-      /*
-       * The entry was in the table, and the sw_if_index matched, the normal case
-       */
+      /* Entry in L2FIB with matching sw_if_index matched - normal fast path */
       counter_base[L2LEARN_ERROR_HIT] += 1;
-      int update = !result0->fields.static_mac &&
+      int update = !result0->fields.age_not &&	/* static_mac always age_not */
 	(result0->fields.timestamp != timestamp ||
 	 result0->fields.sn.as_u16 != vnet_buffer (b0)->l2.l2fib_sn);
 
@@ -136,10 +134,10 @@ l2learn_process (vlib_node_runtime_t * node,
     }
   else if (result0->raw == ~0)
     {
-      /* The entry was not in table, so add it  */
+      /* Entry not in L2FIB - add it  */
       counter_base[L2LEARN_ERROR_MISS] += 1;
 
-      if (msm->global_learn_count == msm->global_learn_limit)
+      if (msm->global_learn_count >= msm->global_learn_limit)
 	{
 	  /*
 	   * Global limit reached. Do not learn the mac but forward the packet.
@@ -149,15 +147,22 @@ l2learn_process (vlib_node_runtime_t * node,
 	  return;
 	}
 
+      /* Do not learn if mac is 0 */
+      l2fib_entry_key_t key = *key0;
+      key.fields.bd_index = 0;
+      if (key.raw == 0)
+	return;
+
       /* It is ok to learn */
       msm->global_learn_count++;
       result0->raw = 0;		/* clear all fields */
       result0->fields.sw_if_index = sw_if_index0;
+      result0->fields.lrn_evt = (msm->client_pid != 0);
       cached_key->raw = ~0;	/* invalidate the cache */
     }
   else
     {
-      /* The entry was in the table, but with the wrong sw_if_index mapping (mac move) */
+      /* Entry in L2FIB with different sw_if_index - mac move or filter */
       if (result0->fields.filter)
 	{
 	  ASSERT (result0->fields.sw_if_index == ~0);
@@ -166,8 +171,6 @@ l2learn_process (vlib_node_runtime_t * node,
 	  *next0 = L2LEARN_NEXT_DROP;
 	  return;
 	}
-
-      counter_base[L2LEARN_ERROR_MAC_MOVE] += 1;
 
       if (result0->fields.static_mac)
 	{
@@ -185,6 +188,13 @@ l2learn_process (vlib_node_runtime_t * node,
        * TODO: check global/bridge domain/interface learn limits
        */
       result0->fields.sw_if_index = sw_if_index0;
+      if (result0->fields.age_not)	/* The mac was provisioned */
+	{
+	  msm->global_learn_count++;
+	  result0->fields.age_not = 0;
+	}
+      result0->fields.lrn_evt = (msm->client_pid != 0);
+      counter_base[L2LEARN_ERROR_MAC_MOVE] += 1;
     }
 
   /* Update the entry */
@@ -479,7 +489,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2learn_node, l2learn_node_fn)
    * Set the default number of dynamically learned macs to the number
    * of buckets.
    */
-  mp->global_learn_limit = L2FIB_NUM_BUCKETS * 16;
+  mp->global_learn_limit = L2LEARN_DEFAULT_LIMIT;
 
   return 0;
 }
