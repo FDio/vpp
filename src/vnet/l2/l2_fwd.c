@@ -141,8 +141,9 @@ l2fwd_process (vlib_main_t * vm,
       vnet_buffer (b0)->sw_if_index[VLIB_TX] = result0->fields.sw_if_index;
       *next0 = L2FWD_NEXT_L2_OUTPUT;
       int l2fib_seq_num_valid = 1;
+
       /* check l2fib seq num for stale entries */
-      if (!result0->fields.static_mac)
+      if (!result0->fields.age_not)
 	{
 	  l2fib_seq_num_t in_sn = {.as_u16 = vnet_buffer (b0)->l2.l2fib_sn };
 	  l2fib_seq_num_t expected_sn = {

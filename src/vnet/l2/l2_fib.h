@@ -27,6 +27,18 @@
 #define L2FIB_NUM_BUCKETS (64 * 1024)
 #define L2FIB_MEMORY_SIZE (256<<20)
 
+/* Ager scan interval is 1 minute for aging */
+#define L2FIB_AGE_SCAN_INTERVAL		(60.0)
+
+/* MAC event scan delay is 100 msec unless specified by MAC event client */
+#define L2FIB_EVENT_SCAN_DELAY_DEFAULT	(0.1)
+
+/* Max MACs in a event message is 100 unless specified by MAC event client */
+#define L2FIB_EVENT_MAX_MACS_DEFAULT	(100)
+
+/* MAC event learn limit is 1000 unless specified by MAC event client */
+#define L2FIB_EVENT_LEARN_LIMIT_DEFAULT	(1000)
+
 typedef struct
 {
 
@@ -35,6 +47,16 @@ typedef struct
 
   /* per swif vector of sequence number for interface based flush of MACs */
   u8 *swif_seq_num;
+
+  /* last event or ager scan duration */
+  f64 evt_scan_duration;
+  f64 age_scan_duration;
+
+  /* delay between event scans, default to 100 msec */
+  f64 event_scan_delay;
+
+  /* max macs in evet message, default to 100 entries */
+  u32 max_macs_in_event;
 
   /* convenience variables */
   vlib_main_t *vlib_main;
@@ -89,12 +111,15 @@ typedef struct
   {
     struct
     {
-      u32 sw_if_index;		/* output sw_if_index (L3 interface if bvi==1) */
+      u32 sw_if_index;		/* output sw_if_index (L3 intf if bvi==1) */
 
-      u8 static_mac:1;		/* static mac, no dataplane learning */
+      u8 static_mac:1;		/* static mac, no MAC move */
+      u8 age_not:1;		/* not subject to age */
       u8 bvi:1;			/* mac is for a bridged virtual interface */
       u8 filter:1;		/* drop packets to/from this mac */
-      u8 unused1:5;
+      u8 lrn_evt:1;		/* MAC learned to be sent in L2 MAC event */
+      u8 unused:3;
+
       u8 timestamp;		/* timestamp for aging */
       l2fib_seq_num_t sn;	/* bd/int seq num */
     } fields;
@@ -348,11 +373,11 @@ void l2fib_clear_table (void);
 void
 l2fib_add_entry (u64 mac,
 		 u32 bd_index,
-		 u32 sw_if_index, u32 static_mac, u32 drop_mac, u32 bvi_mac);
+		 u32 sw_if_index, u8 static_mac, u8 drop_mac, u8 bvi_mac);
 
 static inline void
-l2fib_add_fwd_entry (u64 mac, u32 bd_index, u32 sw_if_index, u32 static_mac,
-		     u32 bvi_mac)
+l2fib_add_fwd_entry (u64 mac, u32 bd_index, u32 sw_if_index, u8 static_mac,
+		     u8 bvi_mac)
 {
   l2fib_add_entry (mac, bd_index, sw_if_index, static_mac, 0, bvi_mac);
 }

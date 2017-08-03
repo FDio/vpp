@@ -112,8 +112,9 @@ _(BD_ALREADY_EXISTS, -119, "Bridge domain already exists")              \
 _(BD_IN_USE, -120, "Bridge domain has member interfaces")		\
 _(BD_NOT_MODIFIABLE, -121, "Bridge domain 0 can't be deleted/modified") \
 _(BD_ID_EXCEED_MAX, -122, "Bridge domain ID exceed 16M limit")		\
-_(UNSUPPORTED, -123, "Unsupported")                                     \
-_(SUBIF_DOESNT_EXIST, -124, "Subinterface doesn't exist")
+_(SUBIF_DOESNT_EXIST, -123, "Subinterface doesn't exist")               \
+_(L2_MACS_EVENT_CLINET_PRESENT, -124, "Client already exist for L2 MACs events") \
+_(UNSUPPORTED, -125, "Unsupported")
 
 typedef enum
 {
