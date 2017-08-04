@@ -334,6 +334,24 @@
     },
     {
       "key": {
+        "uuid": "5a4e6583_04ca6b4f",
+        "filename": "src/plugins/pppoe/pppoe_encap.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-08-04T06:50:39Z",
+      "side": 1,
+      "message": "I think current implementation is simple and clear, and also could add new features easily if needed in the future.",
+      "parentUuid": "5a4e6583_4e9f6204",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a4e6583_44574303",
         "filename": "test/test_pppoe.py",
         "patchSetId": 21
