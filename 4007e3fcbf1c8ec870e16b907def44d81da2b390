@@ -101,6 +101,23 @@
       "revId": "4007e3fcbf1c8ec870e16b907def44d81da2b390",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_0795cd3f",
+        "filename": "src/vpp-api/vapi/vapi_cpp_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-04T21:29:45Z",
+      "side": 1,
+      "message": "all the template specialisation need to be declared inline.",
+      "revId": "4007e3fcbf1c8ec870e16b907def44d81da2b390",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
