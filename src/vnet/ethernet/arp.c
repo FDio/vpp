@@ -264,7 +264,7 @@ format_ethernet_arp_ip4_entry (u8 * s, va_list * va)
   if (e->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_NO_FIB_ENTRY)
     flags = format (flags, "N");
 
-  s = format (s, "%=12U%=16U%=6s%=20U%=24U",
+  s = format (s, "%=12U%=16U%=6s%=20U%U",
 	      format_vlib_cpu_time, vnm->vlib_main, e->cpu_time_last_updated,
 	      format_ip4_address, &e->ip4_address,
 	      flags ? (char *) flags : "",
