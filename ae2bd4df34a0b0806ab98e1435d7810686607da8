@@ -370,6 +370,24 @@
     },
     {
       "key": {
+        "uuid": "5a4e6583_449f4304",
+        "filename": "src/plugins/pppoe/pppoe_encap.c",
+        "patchSetId": 21
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-04T08:53:45Z",
+      "side": 1,
+      "message": "\u0027simple\u0027, \u0027clear\u0027 and even \u0027flexible\u0027 are subjective qualities. You and I could discuss, over many a beer, whether these qualities contribute to code\u0027s \u0027goodness\u0027 and what constitutes simpler and flexibler and not come to a definitive answer.\nThis code, however, is the fast-path and there is really only one measure goodness we care for; performance. What will always count against this approach is the need to retrieve the PPPoE session and thus incur the associated cache misses. If the rewrite were instead added to the IP adjacency then no extra misses (i.e. no more than one gets already during ip4_rewrite) would occur.\nThe ppp header\u0027s length field can be updated in the adjacency\u0027s \u0027fixup\u0027 function. We\u0027ll need to make a few modifications to allow a . non-mdichain adj to have a fixup function, but should be easy\u003e I can help with that.",
+      "parentUuid": "5a4e6583_04ca6b4f",
+      "revId": "ae2bd4df34a0b0806ab98e1435d7810686607da8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a4e6583_44574303",
         "filename": "test/test_pppoe.py",
         "patchSetId": 21
