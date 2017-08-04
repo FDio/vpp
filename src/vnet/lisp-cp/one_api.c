@@ -152,7 +152,7 @@ vl_api_one_map_register_set_ttl_t_handler (vl_api_one_map_register_set_ttl_t *
   vl_api_one_map_register_set_ttl_reply_t *rmp;
   int rv = 0;
 
-  vl_api_one_map_register_set_ttl_t_endian (mp);
+  mp->ttl = clib_net_to_host_u32 (mp->ttl);
   rv = vnet_lisp_map_register_set_ttl (mp->ttl);
 
   REPLY_MACRO (VL_API_ONE_MAP_REGISTER_SET_TTL_REPLY);
