@@ -53,6 +53,23 @@
     },
     {
       "key": {
+        "uuid": "5a4e6583_87badddf",
+        "filename": "src/vpp-api/vapi/vapi_cpp.hpp",
+        "patchSetId": 1
+      },
+      "lineNbr": 682,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-04T17:39:06Z",
+      "side": 1,
+      "message": "please add a typedef or using decpartion for Resp - like you have for resp_type in the event_registration.",
+      "revId": "4007e3fcbf1c8ec870e16b907def44d81da2b390",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a4e6583_8463fb19",
         "filename": "src/vpp-api/vapi/vapi_cpp.hpp",
         "patchSetId": 1
