@@ -48,11 +48,17 @@ stats_main_t stats_main;
 #define foreach_stats_msg						\
 _(WANT_STATS, want_stats)						\
 _(VNET_INTERFACE_SIMPLE_COUNTERS, vnet_interface_simple_counters)	\
+_(WANT_INTERFACE_SIMPLE_STATS, want_interface_simple_stats)	\
 _(VNET_INTERFACE_COMBINED_COUNTERS, vnet_interface_combined_counters)	\
+_(WANT_INTERFACE_COMBINED_STATS, want_interface_combined_stats)	\
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)				\
+_(WANT_IP4_FIB_STATS, want_ip4_fib_stats)            \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)				\
+_(WANT_IP6_FIB_STATS, want_ip6_fib_stats)        \
 _(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)				\
-_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)
+_(WANT_IP4_NBR_STATS, want_ip4_nbr_stats)            \
+_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters) \
+_(WANT_IP6_NBR_STATS, want_ip6_nbr_stats)
 
 /* These constants ensure msg sizes <= 1024, aka ring allocation */
 #define SIMPLE_COUNTER_BATCH_SIZE	126
@@ -944,7 +950,7 @@ static void
   vl_api_vnet_interface_simple_counters_t_handler
   (vl_api_vnet_interface_simple_counters_t * mp)
 {
-  vpe_client_registration_t *reg;
+  vpe_client_stats_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_interface_simple_counters_t *mp_copy = NULL;
@@ -961,7 +967,7 @@ static void
   /* *INDENT-OFF* */
   pool_foreach(reg, sm->stats_registrations,
 	       ({
-		 q = vl_api_client_index_to_input_queue (reg->client_index);
+		 q = vl_api_client_index_to_input_queue (reg->client.client_index);
 		 if (q)
 		   {
 		     if (q_prev && (q_prev->cursize < q_prev->maxsize))
@@ -1036,7 +1042,7 @@ static void
   vl_api_vnet_interface_combined_counters_t_handler
   (vl_api_vnet_interface_combined_counters_t * mp)
 {
-  vpe_client_registration_t *reg;
+  vpe_client_stats_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_interface_combined_counters_t *mp_copy = NULL;
@@ -1053,7 +1059,7 @@ static void
   /* *INDENT-OFF* */
   pool_foreach(reg, sm->stats_registrations,
 	       ({
-		 q = vl_api_client_index_to_input_queue (reg->client_index);
+		 q = vl_api_client_index_to_input_queue (reg->client.client_index);
 		 if (q)
 		   {
 		     if (q_prev && (q_prev->cursize < q_prev->maxsize))
@@ -1118,7 +1124,7 @@ static void
 static void
 vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 {
-  vpe_client_registration_t *reg;
+  vpe_client_stats_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip4_fib_counters_t *mp_copy = NULL;
@@ -1130,7 +1136,7 @@ vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
   /* *INDENT-OFF* */
   pool_foreach(reg, sm->stats_registrations,
   ({
-    q = vl_api_client_index_to_input_queue (reg->client_index);
+    q = vl_api_client_index_to_input_queue (reg->client.client_index);
     if (q)
       {
         if (q_prev && (q_prev->cursize < q_prev->maxsize))
@@ -1157,7 +1163,7 @@ vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 static void
 vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
 {
-  vpe_client_registration_t *reg;
+  vpe_client_stats_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip4_nbr_counters_t *mp_copy = NULL;
@@ -1169,7 +1175,7 @@ vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
   /* *INDENT-OFF* */
   pool_foreach(reg, sm->stats_registrations,
   ({
-    q = vl_api_client_index_to_input_queue (reg->client_index);
+    q = vl_api_client_index_to_input_queue (reg->client.client_index);
     if (q)
       {
         if (q_prev && (q_prev->cursize < q_prev->maxsize))
@@ -1196,7 +1202,7 @@ vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
 static void
 vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 {
-  vpe_client_registration_t *reg;
+  vpe_client_stats_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip6_fib_counters_t *mp_copy = NULL;
@@ -1208,7 +1214,7 @@ vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
   /* *INDENT-OFF* */
   pool_foreach(reg, sm->stats_registrations,
   ({
-    q = vl_api_client_index_to_input_queue (reg->client_index);
+    q = vl_api_client_index_to_input_queue (reg->client.client_index);
     if (q)
       {
         if (q_prev && (q_prev->cursize < q_prev->maxsize))
@@ -1235,7 +1241,7 @@ vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 static void
 vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
 {
-  vpe_client_registration_t *reg;
+  vpe_client_stats_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip6_nbr_counters_t *mp_copy = NULL;
@@ -1247,7 +1253,7 @@ vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
   /* *INDENT-OFF* */
   pool_foreach(reg, sm->stats_registrations,
   ({
-    q = vl_api_client_index_to_input_queue (reg->client_index);
+    q = vl_api_client_index_to_input_queue (reg->client.client_index);
     if (q)
       {
         if (q_prev && (q_prev->cursize < q_prev->maxsize))
@@ -1275,7 +1281,7 @@ static void
 vl_api_want_stats_t_handler (vl_api_want_stats_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  vpe_client_registration_t *rp;
+  vpe_client_stats_registration_t *rp;
   vl_api_want_stats_reply_t *rmp;
   uword *p;
   i32 retval = 0;
@@ -1305,9 +1311,9 @@ vl_api_want_stats_t_handler (vl_api_want_stats_t * mp)
       goto reply;
     }
   pool_get (sm->stats_registrations, rp);
-  rp->client_index = mp->client_index;
-  rp->client_pid = mp->pid;
-  hash_set (sm->stats_registration_hash, rp->client_index,
+  rp->client.client_index = mp->client_index;
+  rp->client.client_pid = mp->pid;
+  hash_set (sm->stats_registration_hash, rp->client.client_index,
 	    rp - sm->stats_registrations);
 
 reply:
@@ -1329,10 +1335,93 @@ reply:
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
+static void
+vl_api_want_interface_simple_stats_t_handler (vl_api_want_interface_simple_stats_t * mp)
+{
+  stats_main_t *sm = &stats_main;
+  vpe_client_stats_registration_t *rp;
+  vl_api_want_interface_simple_stats_reply_t *rmp;
+  uword *p;
+  i32 retval = 0;
+  unix_shared_memory_queue_t *q;
+
+  p = hash_get (sm->stats_registration_hash, mp->client_index);
+  if (p)
+    {
+      if (mp->enable_disable)
+	{
+	  clib_warning ("pid %d: already enabled...", mp->pid);
+	  retval = -2;
+	  goto reply;
+	}
+      else
+	{
+	  rp = pool_elt_at_index (sm->stats_registrations, p[0]);
+	  pool_put (sm->stats_registrations, rp);
+	  hash_unset (sm->stats_registration_hash, mp->client_index);
+	  goto reply;
+	}
+    }
+  if (mp->enable_disable == 0)
+    {
+      clib_warning ("pid %d: already disabled...", mp->pid);
+      retval = -3;
+      goto reply;
+    }
+  pool_get (sm->stats_registrations, rp);
+  rp->client.client_index = mp->client_index;
+  rp->client.client_pid = mp->pid;
+  hash_set (sm->stats_registration_hash, rp->client.client_index,
+	    rp - sm->stats_registrations);
+
+reply:
+  if (pool_elts (sm->stats_registrations))
+    sm->enable_poller = 1;
+  else
+    sm->enable_poller = 0;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+
+  if (!q)
+    return;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_WANT_INTERFACE_SIMPLE_STATS_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = retval;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_want_interface_combined_stats_t_handler (vl_api_want_interface_combined_stats_t * mp)
+{
+}
+
+static void
+vl_api_want_ip4_fib_stats_t_handler (vl_api_want_ip4_fib_stats_t * mp)
+{
+}
+
+static void
+vl_api_want_ip6_fib_stats_t_handler (vl_api_want_ip6_fib_stats_t * mp)
+{
+}
+
+static void
+vl_api_want_ip4_nbr_stats_t_handler (vl_api_want_ip4_nbr_stats_t * mp)
+{
+}
+
+static void
+vl_api_want_ip6_nbr_stats_t_handler (vl_api_want_ip6_nbr_stats_t * mp)
+{
+}
+
 int
 stats_memclnt_delete_callback (u32 client_index)
 {
-  vpe_client_registration_t *rp;
+  vpe_client_stats_registration_t *rp;
   stats_main_t *sm = &stats_main;
   uword *p;
 
