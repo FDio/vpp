@@ -217,7 +217,6 @@ _(from_netconf_client)                          \
 _(oam_events)                                   \
 _(bfd_events)
 
-/* WARNING: replicated in vpp/stats.h */
 typedef struct
 {
   u32 client_index;		/* in memclnt registration pool */
