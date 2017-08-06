@@ -40,6 +40,12 @@ noinst_PROGRAMS +=				\
 	sock_test_server			\
 	sock_test_client
 
+bin_PROGRAMS += stats_test
+
+stats_test_SOURCES = uri/stats_test.c
+stats_test_LDADD = libvlibmemoryclient.la libsvm.la \
+libvppinfra.la -lpthread -lm -lrt
+
 uri_udp_test_SOURCES = uri/uri_udp_test.c
 uri_udp_test_LDADD = libvlibmemoryclient.la libsvm.la \
 	libvppinfra.la -lpthread -lm -lrt

@@ -89,29 +89,29 @@ bin_PROGRAMS += bin/vppctl
 bin_vppctl_SOURCES = vpp/app/vppctl.c
 bin_vppctl_LDADD = libvppinfra.la
 
-if ENABLE_TESTS
-noinst_PROGRAMS += bin/test_client
+# if ENABLE_TESTS
+# noinst_PROGRAMS += bin/test_client
 
-bin_test_client_SOURCES = \
-  vpp/api/test_client.c
+# bin_test_client_SOURCES = \
+#   vpp/api/test_client.c
 
-bin_test_client_LDADD = \
-  libvlibmemoryclient.la \
-  libsvm.la \
-  libvppinfra.la \
-  -lpthread -lm -lrt
+# bin_test_client_LDADD = \
+#   libvlibmemoryclient.la \
+#   libsvm.la \
+#   libvppinfra.la \
+#   -lpthread -lm -lrt
 
-noinst_PROGRAMS += bin/test_client bin/test_ha
+# noinst_PROGRAMS += bin/test_client bin/test_ha
 
-bin_test_ha_SOURCES = \
-  vpp/api/test_ha.c
+# bin_test_ha_SOURCES = \
+#   vpp/api/test_ha.c
 
-bin_test_ha_LDADD = \
-  libvlibmemoryclient.la \
-  libsvm.la \
-  libvppinfra.la \
-  -lpthread -lm -lrt
-endif
+# bin_test_ha_LDADD = \
+#   libvlibmemoryclient.la \
+#   libsvm.la \
+#   libvppinfra.la \
+#   -lpthread -lm -lrt
+# endif
 
 noinst_PROGRAMS += bin/summary_stats_client
 
