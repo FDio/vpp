@@ -42,9 +42,11 @@ bin_vpp_CFLAGS = @APICLI@
 nobase_include_HEADERS +=			\
   vpp/api/vpe_all_api_h.h			\
   vpp/api/vpe_msg_enum.h			\
+  vpp/stats/stats.api.h 			\
   vpp/api/vpe.api.h
 
 API_FILES += vpp/api/vpe.api
+API_FILES += vpp/stats/stats.api
 
 BUILT_SOURCES += .version
 
@@ -116,13 +118,13 @@ endif
 noinst_PROGRAMS += bin/summary_stats_client
 
 bin_summary_stats_client_SOURCES = \
-  vpp/api/summary_stats_client.c
+   vpp/api/summary_stats_client.c
 
 bin_summary_stats_client_LDADD = \
-  libvlibmemoryclient.la \
-  libsvm.la \
-  libvppinfra.la \
-  -lpthread -lm -lrt
+   libvlibmemoryclient.la \
+   libsvm.la \
+   libvppinfra.la \
+   -lpthread -lm -lrt
 
 bin_PROGRAMS += bin/vpp_get_metrics
 

@@ -21,6 +21,7 @@
 #include <vnet/interface.h>
 #include <pthread.h>
 #include <vlib/threads.h>
+#include <vnet/fib/fib_table.h>
 #include <vlib/unix/unix.h>
 #include <vlibmemory/api.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
@@ -37,6 +38,44 @@ typedef struct
 
 typedef struct
 {
+  vpe_client_registration_t client;
+  u8 stats_registrations;
+#define INTERFACE_SIMPLE_COUNTERS (1 << 0)
+#define INTERFACE_COMBINED_COUNTERS (1 << 1)
+#define IP4_FIB_COUNTERS (1 << 2)
+#define IP4_NBR_COUNTERS (1 << 3)
+#define IP6_FIB_COUNTERS (1 << 4)
+#define IP6_NBR_COUNTERS (1 << 5)
+
+} vpe_client_stats_registration_t;
+
+/* from .../vnet/vnet/ip/lookup.c. Yuck */
+typedef CLIB_PACKED (struct
+		     {
+		     ip4_address_t address;
+u32 address_length: 6;
+u32 index:	     26;
+		     }) ip4_route_t;
+
+typedef struct
+{
+  ip6_address_t address;
+  u32 address_length;
+  u32 index;
+} ip6_route_t;
+
+
+typedef struct
+{
+  ip4_route_t *ip4routes;
+  ip6_route_t *ip6routes;
+  fib_table_t **fibs;
+  hash_pair_t **pvec;
+  uword *results;
+} do_ip46_fibs_t;
+
+typedef struct
+{
   void *mheap;
   pthread_t thread_self;
   pthread_t thread_handle;
@@ -45,13 +84,17 @@ typedef struct
   u32 enable_poller;
 
   uword *stats_registration_hash;
-  vpe_client_registration_t *stats_registrations;
+  vpe_client_stats_registration_t *stats_registrations;
+  vpe_client_stats_registration_t **regs;
 
   /* control-plane data structure lock */
   data_structure_lock_t *data_structure_lock;
 
   /* bail out of FIB walk if set */
   clib_longjmp_t jmp_buf;
+
+  /* Vectors for Distribution funcs: do_ip4_fibs and do_ip6_fibs. */
+  do_ip46_fibs_t do_ip46_fibs;
 
   /* convenience */
   vlib_main_t *vlib_main;

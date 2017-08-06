@@ -1,0 +1,222 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+
+    This file defines the stats API 
+*/
+
+
+/** \brief Want Stats, enable/disable ALL stats updates
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want Interface Simple Stats, register for detailed interface stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_interface_simple_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want Interface Combined Stats, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_interface_combined_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want IP4 FIB Stats, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_ip4_fib_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want IP6 FIB Stats, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_ip6_fib_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want IP4 NBR Stats, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_ip4_nbr_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want IP6 NBR Stats, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_ip6_nbr_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+typeonly manual_print manual_endian define ip4_fib_counter
+{
+  u32 address;
+  u8 address_length;
+  u64 packets;
+  u64 bytes;
+};
+
+manual_print manual_endian define vnet_ip4_fib_counters
+{
+  u32 vrf_id;
+  u32 count;
+  vl_api_ip4_fib_counter_t c[count];
+};
+
+typeonly manual_print manual_endian define ip4_nbr_counter
+{
+  u32 address;
+  u8  link_type;
+  u64 packets;
+  u64 bytes;
+};
+
+/**
+ * @brief Per-neighbour (i.e. per-adjacency) coutners
+ * @param count The size of the array of counters
+ * @param sw_if_index The interface the adjacency is on
+ * @param begin Flag to indicate this is the first set of stats for this
+ *        interface. If this flag is not set the it is a continuation of
+ *        stats for this interface
+ * @param  c counters
+ */
+manual_print manual_endian define vnet_ip4_nbr_counters
+{
+  u32 count;
+  u32 sw_if_index;
+  u8 begin;
+  vl_api_ip4_nbr_counter_t c[count];
+};
+
+typeonly manual_print manual_endian define ip6_fib_counter
+{
+  u64 address[2];
+  u8 address_length;
+  u64 packets;
+  u64 bytes;
+};
+
+manual_print manual_endian define vnet_ip6_fib_counters
+{
+  u32 vrf_id;
+  u32 count;
+  vl_api_ip6_fib_counter_t c[count];
+};
+
+typeonly manual_print manual_endian define ip6_nbr_counter
+{
+  u64 address[2];
+  u8  link_type;
+  u64 packets;
+  u64 bytes;
+};
+
+manual_print manual_endian define vnet_ip6_nbr_counters
+{
+  u32 count;
+  u32 sw_if_index;
+  u8 begin;
+  vl_api_ip6_nbr_counter_t c[count];
+};
+
+
+/** \brief Request for a single block of summary stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define vnet_get_summary_stats
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for vnet_get_summary_stats request
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for request
+    @param total_pkts -  
+    @param total_bytes -
+    @param vector_rate - 
+*/
+define vnet_get_summary_stats_reply
+{
+  u32 context;
+  i32 retval;
+  u64 total_pkts[2];
+  u64 total_bytes[2];
+  f64 vector_rate;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
