@@ -37,6 +37,12 @@ typedef struct
 
 typedef struct
 {
+  vpe_client_registration_t client;
+  u16 stat_registrations;
+} vpe_client_stats_registration_t;
+
+typedef struct
+{
   void *mheap;
   pthread_t thread_self;
   pthread_t thread_handle;
@@ -45,7 +51,7 @@ typedef struct
   u32 enable_poller;
 
   uword *stats_registration_hash;
-  vpe_client_registration_t *stats_registrations;
+  vpe_client_stats_registration_t *stats_registrations;
 
   /* control-plane data structure lock */
   data_structure_lock_t *data_structure_lock;

@@ -150,6 +150,90 @@ autoreply define want_stats
   u32 pid;
 };
 
+/** \brief Want Interface Simple Counters, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_interface_simple_counters
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want Interface Combined Counters, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_interface_combined_counters
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want IP4 FIB Counters, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_ip4_fib_counters
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want IP6 FIB Counters, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_ip6_fib_counters
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want IP4 NBR Counters, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_ip4_nbr_counters
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want IP6 NBR Counters, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_ip6_nbr_counters
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
 typeonly manual_print manual_endian define ip4_fib_counter
 {
   u32 address;
