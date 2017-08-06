@@ -37,6 +37,19 @@ typedef struct
 
 typedef struct
 {
+  vpe_client_registration_t client;
+  u8 stat_registrations;
+#define INTERFACE_SIMPLE_COUNTERS (1 << 0)
+#define INTERFACE_COMBINED_COUNTERS (1 << 1)
+#define IP4_FIB_COUNTERS (1 << 2)
+#define IP4_NBR_COUNTERS (1 << 3)
+#define IP6_FIB_COUNTERS (1 << 4)
+#define IP6_NBR_COUNTERS (1 << 5)
+
+} vpe_client_stats_registration_t;
+
+typedef struct
+{
   void *mheap;
   pthread_t thread_self;
   pthread_t thread_handle;
@@ -45,7 +58,7 @@ typedef struct
   u32 enable_poller;
 
   uword *stats_registration_hash;
-  vpe_client_registration_t *stats_registrations;
+  vpe_client_stats_registration_t *stats_registrations;
 
   /* control-plane data structure lock */
   data_structure_lock_t *data_structure_lock;
