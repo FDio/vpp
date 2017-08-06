@@ -1,4 +1,4 @@
-# Copyright (c) 2016 Cisco and/or its affiliates.
+# Copyright (c) 2017 Cisco and/or its affiliates.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at:
@@ -58,7 +58,7 @@ vcl_test_server_SOURCES = uri/vcl_test_server.c
 vcl_test_server_LDADD = libvppcom.la
 
 vcl_test_client_SOURCES = uri/vcl_test_client.c
-vcl_test_client_LDADD = libvppcom.la 
+vcl_test_client_LDADD = libvppcom.la
 
 sock_test_server_SOURCES = uri/sock_test_server.c
 sock_test_client_SOURCES = uri/sock_test_client.c
