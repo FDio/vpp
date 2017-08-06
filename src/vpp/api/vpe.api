@@ -47,6 +47,7 @@
  * DHCP APIs: see ... /src/vnet/dhcp/{dhcpk.api, dhcp_api.c}
  * COP APIs: see ... /src/vnet/cop/{cop.api, cop_api.c}
  * POLICER APIs: see ... /src/vnet/policer/{policer.api, policer_api.c}
+ * STATS APIs: see .../src/vpp/stats/{stats.api, stats.c}
  */
 
 /** \brief Create a new subinterface with the given vlan id
@@ -134,117 +135,6 @@ autoreply define reset_vrf
   u32 context;
   u8 is_ipv6;
   u32 vrf_id;
-};
-
-/** \brief Want Stats, register for stats updates
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param enable_disable - 1 = enable stats, 0 = disable
-    @param pid - pid of process requesting stats updates
-*/
-autoreply define want_stats
-{
-  u32 client_index;
-  u32 context;
-  u32 enable_disable;
-  u32 pid;
-};
-
-typeonly manual_print manual_endian define ip4_fib_counter
-{
-  u32 address;
-  u8 address_length;
-  u64 packets;
-  u64 bytes;
-};
-
-manual_print manual_endian define vnet_ip4_fib_counters
-{
-  u32 vrf_id;
-  u32 count;
-  vl_api_ip4_fib_counter_t c[count];
-};
-
-typeonly manual_print manual_endian define ip4_nbr_counter
-{
-  u32 address;
-  u8  link_type;
-  u64 packets;
-  u64 bytes;
-};
-
-/**
- * @brief Per-neighbour (i.e. per-adjacency) coutners
- * @param count The size of the array of counters
- * @param sw_if_index The interface the adjacency is on
- * @param begin Flag to indicate this is the first set of stats for this
- *        interface. If this flag is not set the it is a continuation of
- *        stats for this interface
- * @param  c counters
- */
-manual_print manual_endian define vnet_ip4_nbr_counters
-{
-  u32 count;
-  u32 sw_if_index;
-  u8 begin;
-  vl_api_ip4_nbr_counter_t c[count];
-};
-
-typeonly manual_print manual_endian define ip6_fib_counter
-{
-  u64 address[2];
-  u8 address_length;
-  u64 packets;
-  u64 bytes;
-};
-
-manual_print manual_endian define vnet_ip6_fib_counters
-{
-  u32 vrf_id;
-  u32 count;
-  vl_api_ip6_fib_counter_t c[count];
-};
-
-typeonly manual_print manual_endian define ip6_nbr_counter
-{
-  u64 address[2];
-  u8  link_type;
-  u64 packets;
-  u64 bytes;
-};
-
-manual_print manual_endian define vnet_ip6_nbr_counters
-{
-  u32 count;
-  u32 sw_if_index;
-  u8 begin;
-  vl_api_ip6_nbr_counter_t c[count];
-};
-
-/** \brief Request for a single block of summary stats
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-*/
-define vnet_get_summary_stats
-{
-  u32 client_index;
-  u32 context;
-};
-
-/** \brief Reply for vnet_get_summary_stats request
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for request
-    @param total_pkts -  
-    @param total_bytes -
-    @param vector_rate - 
-*/
-define vnet_get_summary_stats_reply
-{
-  u32 context;
-  i32 retval;
-  u64 total_pkts[2];
-  u64 total_bytes[2];
-  f64 vector_rate;
 };
 
 /** \brief OAM event structure
