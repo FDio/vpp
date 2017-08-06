@@ -58,7 +58,7 @@ vcl_test_server_SOURCES = uri/vcl_test_server.c
 vcl_test_server_LDADD = libvppcom.la
 
 vcl_test_client_SOURCES = uri/vcl_test_client.c
-vcl_test_client_LDADD = libvppcom.la 
+vcl_test_client_LDADD = libvppcom.la
 
 sock_test_server_SOURCES = uri/sock_test_server.c
 sock_test_client_SOURCES = uri/sock_test_client.c
