@@ -55,6 +55,7 @@ test-driver
 *.iml
 .bootstrap.ok
 .settings
+.autotools
 # stop autotools ignore
 
 # OSX and some IDE

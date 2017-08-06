@@ -110,7 +110,6 @@ _(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \
 _(CREATE_SUBIF, create_subif)                                           \
 _(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
-_(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats)			\
 _(RESET_FIB, reset_fib)							\
 _(CREATE_LOOPBACK, create_loopback)					\
 _(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)			\
@@ -745,64 +744,6 @@ vl_api_oam_add_del_t_handler (vl_api_oam_add_del_t * mp)
   REPLY_MACRO (VL_API_OAM_ADD_DEL_REPLY);
 }
 
-static void
-vl_api_vnet_get_summary_stats_t_handler (vl_api_vnet_get_summary_stats_t * mp)
-{
-  stats_main_t *sm = &stats_main;
-  vnet_interface_main_t *im = sm->interface_main;
-  vl_api_vnet_get_summary_stats_reply_t *rmp;
-  vlib_combined_counter_main_t *cm;
-  vlib_counter_t v;
-  int i, which;
-  u64 total_pkts[VLIB_N_RX_TX];
-  u64 total_bytes[VLIB_N_RX_TX];
-
-  unix_shared_memory_queue_t *q =
-    vl_api_client_index_to_input_queue (mp->client_index);
-
-  if (!q)
-    return;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_VNET_GET_SUMMARY_STATS_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = 0;
-
-  memset (total_pkts, 0, sizeof (total_pkts));
-  memset (total_bytes, 0, sizeof (total_bytes));
-
-  vnet_interface_counter_lock (im);
-
-  vec_foreach (cm, im->combined_sw_if_counters)
-  {
-    which = cm - im->combined_sw_if_counters;
-
-    for (i = 0; i < vlib_combined_counter_n_counters (cm); i++)
-      {
-	vlib_get_combined_counter (cm, i, &v);
-	total_pkts[which] += v.packets;
-	total_bytes[which] += v.bytes;
-      }
-  }
-  vnet_interface_counter_unlock (im);
-
-  rmp->total_pkts[VLIB_RX] = clib_host_to_net_u64 (total_pkts[VLIB_RX]);
-  rmp->total_bytes[VLIB_RX] = clib_host_to_net_u64 (total_bytes[VLIB_RX]);
-  rmp->total_pkts[VLIB_TX] = clib_host_to_net_u64 (total_pkts[VLIB_TX]);
-  rmp->total_bytes[VLIB_TX] = clib_host_to_net_u64 (total_bytes[VLIB_TX]);
-  rmp->vector_rate =
-    clib_host_to_net_u64 (vlib_last_vector_length_per_node (sm->vlib_main));
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
-}
-
-/* *INDENT-OFF* */
-typedef CLIB_PACKED (struct {
-  ip4_address_t address;
-  u32 address_length: 6;
-  u32 index:26;
-}) ip4_route_t;
-/* *INDENT-ON* */
 
 static int
 ip4_reset_fib_t_handler (vl_api_reset_fib_t * mp)
