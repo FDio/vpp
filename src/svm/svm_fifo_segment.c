@@ -296,6 +296,7 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
 	  memset (f, 0, sizeof (*f));
 	  f->nitems = data_size_in_bytes;
 	  f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
+	  f->refcnt = 1;
 	  goto found;
 	}
       /* FALLTHROUGH */
@@ -344,6 +345,10 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
   svm_fifo_segment_header_t *fsh;
   void *oldheap;
 
+  ASSERT (f->refcnt > 0);
+
+  if (--f->refcnt > 0)
+    return;
 
   sh = s->ssvm.sh;
   fsh = (svm_fifo_segment_header_t *) sh->opaque[0];

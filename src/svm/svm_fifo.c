@@ -201,14 +201,20 @@ svm_fifo_create (u32 data_size_in_bytes)
   memset (f, 0, sizeof (*f));
   f->nitems = data_size_in_bytes;
   f->ooos_list_head = OOO_SEGMENT_INVALID_INDEX;
+  f->refcnt = 1;
   return (f);
 }
 
 void
 svm_fifo_free (svm_fifo_t * f)
 {
-  pool_free (f->ooo_segments);
-  clib_mem_free (f);
+  ASSERT (f->refcnt > 0);
+
+  if (--f->refcnt == 0)
+    {
+      pool_free (f->ooo_segments);
+      clib_mem_free (f);
+    }
 }
 
 always_inline ooo_segment_t *

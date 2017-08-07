@@ -116,6 +116,7 @@ segment_manager_t *application_get_listen_segment_manager (application_t *
 							   s);
 segment_manager_t *application_get_connect_segment_manager (application_t *
 							    app);
+int application_is_proxy (application_t * app);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 
