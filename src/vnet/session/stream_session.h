@@ -83,8 +83,11 @@ typedef struct _stream_session_t
 
   u32 opaque2;
 
+  /** connected (server) session handle */
+  u64 server_session_handle;
+
   /** Opaque, pad to a 64-octet boundary */
-  u64 opaque[2];
+  u64 opaque[1];
 } stream_session_t;
 
 #endif /* SRC_VNET_SESSION_STREAM_SESSION_H_ */

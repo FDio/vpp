@@ -183,10 +183,10 @@ stream_session_is_valid (u32 si, u8 thread_index)
   stream_session_t *s;
   s = pool_elt_at_index (session_manager_main.sessions[thread_index], si);
   if (s->thread_index != thread_index || s->session_index != si
-      || s->server_rx_fifo->master_session_index != si
-      || s->server_tx_fifo->master_session_index != si
-      || s->server_rx_fifo->master_thread_index != thread_index
-      || s->server_tx_fifo->master_thread_index != thread_index)
+      /* || s->server_rx_fifo->master_session_index != si
+         || s->server_tx_fifo->master_session_index != si
+         || s->server_rx_fifo->master_thread_index != thread_index
+         || s->server_tx_fifo->master_thread_index != thread_index */ )
     return 0;
   return 1;
 }

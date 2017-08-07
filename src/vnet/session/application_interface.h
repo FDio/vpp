@@ -100,6 +100,9 @@ typedef struct _vnet_connect_args
 
   /* Used for redirects */
   void *mp;
+
+  /* used for proxy connections */
+  u64 server_handle;
 } vnet_connect_args_t;
 
 typedef struct _vnet_disconnect_args_t
@@ -129,6 +132,7 @@ typedef enum
   _(USE_FIFO, "Use FIFO with redirects")			\
   _(ADD_SEGMENT, "Add segment and signal app if needed")	\
   _(BUILTIN_APP, "Application is builtin")			\
+  _(IS_PROXY, "Application is proxying")
 
 typedef enum _app_options
 {

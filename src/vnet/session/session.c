@@ -30,7 +30,7 @@ extern transport_proto_vft_t *tp_vfts;
 
 int
 stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
-			 stream_session_t ** ret_s)
+			 u8 alloc_fifos, stream_session_t ** ret_s)
 {
   session_manager_main_t *smm = &session_manager_main;
   svm_fifo_t *server_rx_fifo = 0, *server_tx_fifo = 0;
@@ -43,31 +43,37 @@ stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
 
   ASSERT (thread_index == vlib_get_thread_index ());
 
-  if ((rv = segment_manager_alloc_session_fifos (sm, &server_rx_fifo,
-						 &server_tx_fifo,
-						 &fifo_segment_index)))
-    return rv;
-
   /* Create the session */
   pool_get_aligned (smm->sessions[thread_index], s, CLIB_CACHE_LINE_BYTES);
   memset (s, 0, sizeof (*s));
-
-  /* Initialize backpointers */
   pool_index = s - smm->sessions[thread_index];
-  server_rx_fifo->master_session_index = pool_index;
-  server_rx_fifo->master_thread_index = thread_index;
 
-  server_tx_fifo->master_session_index = pool_index;
-  server_tx_fifo->master_thread_index = thread_index;
+  /* Allocate fifos */
+  if (alloc_fifos)
+    {
+      if ((rv = segment_manager_alloc_session_fifos (sm, &server_rx_fifo,
+						     &server_tx_fifo,
+						     &fifo_segment_index)))
+	{
+	  pool_put (smm->sessions[thread_index], s);
+	  return rv;
+	}
+      /* Initialize backpointers */
+      server_rx_fifo->master_session_index = pool_index;
+      server_rx_fifo->master_thread_index = thread_index;
 
-  s->server_rx_fifo = server_rx_fifo;
-  s->server_tx_fifo = server_tx_fifo;
+      server_tx_fifo->master_session_index = pool_index;
+      server_tx_fifo->master_thread_index = thread_index;
+
+      s->server_rx_fifo = server_rx_fifo;
+      s->server_tx_fifo = server_tx_fifo;
+      s->svm_segment_index = fifo_segment_index;
+    }
 
   /* Initialize state machine, such as it is... */
   s->session_type = session_type_from_proto_and_ip (tc->transport_proto,
 						    tc->is_ip4);
   s->session_state = SESSION_STATE_CONNECTING;
-  s->svm_segment_index = fifo_segment_index;
   s->thread_index = thread_index;
   s->session_index = pool_index;
 
@@ -379,10 +385,11 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
   if (!is_fail)
     {
       segment_manager_t *sm;
+      u8 alloc_fifos;
       sm = application_get_connect_segment_manager (app);
-
+      alloc_fifos = application_is_proxy (app);
       /* Create new session (svm segments are allocated if needed) */
-      if (stream_session_create_i (sm, tc, &new_s))
+      if (stream_session_create_i (sm, tc, alloc_fifos, &new_s))
 	{
 	  is_fail = 1;
 	  error = -1;
@@ -515,7 +522,7 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
   server = application_get (listener->app_index);
 
   sm = application_get_listen_segment_manager (server, listener);
-  if ((rv = stream_session_create_i (sm, tc, &s)))
+  if ((rv = stream_session_create_i (sm, tc, 1, &s)))
     return rv;
 
   s->app_index = server->index;
