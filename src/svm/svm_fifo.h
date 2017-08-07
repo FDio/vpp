@@ -75,6 +75,7 @@ typedef struct _svm_fifo
 #if SVM_FIFO_TRACE
   svm_fifo_trace_elem_t *trace;
 #endif
+  i8 refcnt;
     CLIB_CACHE_LINE_ALIGN_MARK (data);
 } svm_fifo_t;
 
