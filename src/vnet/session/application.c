@@ -367,6 +367,12 @@ app_get_name_from_reg_index (application_t * app)
   return app_name;
 }
 
+int
+application_is_proxy (application_t * app)
+{
+  return !(app->flags & APP_OPTIONS_FLAGS_IS_PROXY);
+}
+
 u8 *
 format_application_listener (u8 * s, va_list * args)
 {

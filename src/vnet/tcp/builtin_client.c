@@ -24,25 +24,6 @@
 #include <vlibsocket/api.h>
 #include <vpp/app/version.h>
 
-/* define message IDs */
-#include <vpp/api/vpe_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_printfun
-
 #define TCP_BUILTIN_CLIENT_DBG (0)
 
 static void
@@ -308,87 +289,16 @@ VLIB_REGISTER_NODE (builtin_client_node) =
 };
 /* *INDENT-ON* */
 
-/* So we don't get "no handler for... " msgs */
-static void
-vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  tclient_main_t *tm = &tclient_main;
-  tm->my_client_index = mp->index;
-  vlib_process_signal_event (vm, tm->cli_node_index, 1 /* evt */ ,
-			     0 /* data */ );
-}
-
 static int
 create_api_loopback (tclient_main_t * tm)
 {
-  vlib_main_t *vm = vlib_get_main ();
-  vl_api_memclnt_create_t _m, *mp = &_m;
-  extern void vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t *);
   api_main_t *am = &api_main;
   vl_shmem_hdr_t *shmem_hdr;
-  uword *event_data = 0, event_type;
-  int resolved = 0;
-
-  /*
-   * Create a "loopback" API client connection
-   * Don't do things like this unless you know what you're doing...
-   */
 
   shmem_hdr = am->shmem_hdr;
   tm->vl_input_queue = shmem_hdr->vl_input_queue;
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = VL_API_MEMCLNT_CREATE;
-  mp->context = 0xFEEDFACE;
-  mp->input_queue = pointer_to_uword (tm->vl_input_queue);
-  strncpy ((char *) mp->name, "tcp_clients_tester", sizeof (mp->name) - 1);
-
-  vl_api_memclnt_create_t_handler (mp);
-
-  /* Wait for reply */
-  vlib_process_wait_for_event_or_clock (vm, 1.0);
-  event_type = vlib_process_get_events (vm, &event_data);
-  switch (event_type)
-    {
-    case 1:
-      resolved = 1;
-      break;
-    case ~0:
-      /* timed out */
-      break;
-    default:
-      clib_warning ("unknown event_type %d", event_type);
-    }
-  if (!resolved)
-    return -1;
-  return 0;
-}
-
-#define foreach_tclient_static_api_msg       	\
-_(MEMCLNT_CREATE_REPLY, memclnt_create_reply)   \
-
-static clib_error_t *
-tclient_api_hookup (vlib_main_t * vm)
-{
-  vl_msg_api_msg_config_t _c, *c = &_c;
-
-  /* Hook up client-side static APIs to our handlers */
-#define _(N,n) do {                                             \
-    c->id = VL_API_##N;                                         \
-    c->name = #n;                                               \
-    c->handler = vl_api_##n##_t_handler;                        \
-    c->cleanup = vl_noop_handler;                               \
-    c->endian = vl_api_##n##_t_endian;                          \
-    c->print = vl_api_##n##_t_print;                            \
-    c->size = sizeof(vl_api_##n##_t);                           \
-    c->traced = 1; /* trace, so these msgs print */             \
-    c->replay = 0; /* don't replay client create/delete msgs */ \
-    c->message_bounce = 0; /* don't bounce this message */	\
-    vl_msg_api_config(c);} while (0);
-
-  foreach_tclient_static_api_msg;
-#undef _
-
+  tm->my_client_index =
+    vl_api_memclnt_create_internal ("tcp_test_client", tm->vl_input_queue);
   return 0;
 }
 
@@ -400,7 +310,6 @@ tcp_test_clients_init (vlib_main_t * vm)
   u32 num_threads;
   int i;
 
-  tclient_api_hookup (vm);
   if (create_api_loopback (tm))
     return -1;
 

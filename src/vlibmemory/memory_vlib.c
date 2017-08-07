@@ -137,6 +137,44 @@ vl_api_serialize_message_table (api_main_t * am, u8 * vector)
 }
 
 /*
+ * vl_api_memclnt_create_internal
+ */
+
+u32
+vl_api_memclnt_create_internal (char *name, unix_shared_memory_queue_t * q)
+{
+  vl_api_registration_t **regpp;
+  vl_api_registration_t *regp;
+  svm_region_t *svm;
+  void *oldheap;
+  api_main_t *am = &api_main;
+
+  ASSERT (vlib_get_thread_index () == 0);
+  pool_get (am->vl_clients, regpp);
+
+  svm = am->vlib_rp;
+
+  pthread_mutex_lock (&svm->mutex);
+  oldheap = svm_push_data_heap (svm);
+  *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
+
+  regp = *regpp;
+  memset (regp, 0, sizeof (*regp));
+  regp->registration_type = REGISTRATION_TYPE_SHMEM;
+  regp->vl_api_registration_pool_index = regpp - am->vl_clients;
+
+  regp->vl_input_queue = q;
+  regp->name = format (0, "%s%c", name, 0);
+
+  pthread_mutex_unlock (&svm->mutex);
+  svm_pop_heap (oldheap);
+  return vl_msg_api_handle_from_index_and_epoch
+    (regp->vl_api_registration_pool_index,
+     am->shmem_hdr->application_restarts);
+}
+
+
+/*
  * vl_api_memclnt_create_t_handler
  */
 void
