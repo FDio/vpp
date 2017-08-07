@@ -199,15 +199,6 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
   am->my_registration = 0;
   am->vl_input_queue = vl_input_queue;
 
-  mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_create_t));
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE);
-  mp->ctx_quota = ctx_quota;
-  mp->input_queue = (uword) vl_input_queue;
-  strncpy ((char *) mp->name, name, sizeof (mp->name) - 1);
-
-  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
-
   while (1)
     {
       int qstatus;
@@ -215,14 +206,31 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
       int i;
 
       /* Wait up to 10 seconds */
-      for (i = 0; i < 1000; i++)
+      for (i = 0; i < 10; i++)
 	{
+	  mp = vl_msg_api_alloc (sizeof (vl_api_memclnt_create_t));
+	  memset (mp, 0, sizeof (*mp));
+	  mp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE);
+	  mp->ctx_quota = ctx_quota;
+	  mp->input_queue = (uword) vl_input_queue;
+	  strncpy ((char *) mp->name, name, sizeof (mp->name) - 1);
+
+	  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & mp);
+
+	  /* give vlib 10ms to reply */
+	  ts.tv_sec = 0;
+	  ts.tv_nsec = 10L * 1000 * 1000;
+	  while (nanosleep (&ts, &tsrem) < 0)
+	    ts = tsrem;
+
 	  qstatus = unix_shared_memory_queue_sub (vl_input_queue, (u8 *) & rp,
 						  1 /* nowait */ );
 	  if (qstatus == 0)
 	    goto read_one_msg;
+
+	  /* wait 1 second in between requests */
 	  ts.tv_sec = 0;
-	  ts.tv_nsec = 10000 * 1000;	/* 10 ms */
+	  ts.tv_nsec = 990L * 1000 * 1000;
 	  while (nanosleep (&ts, &tsrem) < 0)
 	    ts = tsrem;
 	}
