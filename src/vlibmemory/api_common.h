@@ -126,6 +126,7 @@ int vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
 u16 vl_client_get_first_plugin_msg_id (const char *plugin_name);
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+u32 vl_api_memclnt_create_internal (char *, unix_shared_memory_queue_t *);
 
 #endif /* included_vlibmemory_api_common_h */
 

@@ -18,25 +18,6 @@
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
 
-/* define message IDs */
-#include <vpp/api/vpe_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_printfun
-
 typedef struct
 {
   /*
@@ -279,46 +260,13 @@ static int
 create_api_loopback (vlib_main_t * vm)
 {
   builtin_server_main_t *bsm = &builtin_server_main;
-  vl_api_memclnt_create_t _m, *mp = &_m;
-  extern void vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t *);
   api_main_t *am = &api_main;
   vl_shmem_hdr_t *shmem_hdr;
-  uword *event_data = 0, event_type;
-  int resolved = 0;
-
-  /*
-   * Create a "loopback" API client connection
-   * Don't do things like this unless you know what you're doing...
-   */
 
   shmem_hdr = am->shmem_hdr;
   bsm->vl_input_queue = shmem_hdr->vl_input_queue;
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = VL_API_MEMCLNT_CREATE;
-  mp->context = 0xFEEDFACE;
-  mp->input_queue = pointer_to_uword (bsm->vl_input_queue);
-  strncpy ((char *) mp->name, "tcp_test_server", sizeof (mp->name) - 1);
-
-  vl_api_memclnt_create_t_handler (mp);
-
-  /* Wait for reply */
-  bsm->node_index = vlib_get_current_process (vm)->node_runtime.node_index;
-  vlib_process_wait_for_event_or_clock (vm, 2.0);
-  event_type = vlib_process_get_events (vm, &event_data);
-  switch (event_type)
-    {
-    case 1:
-      resolved = 1;
-      break;
-    case ~0:
-      /* timed out */
-      break;
-    default:
-      clib_warning ("unknown event_type %d", event_type);
-    }
-  if (!resolved)
-    return -1;
-
+  bsm->my_client_index =
+    vl_api_memclnt_create_internal ("tcp_test_server", bsm->vl_input_queue);
   return 0;
 }
 
@@ -413,45 +361,6 @@ server_create (vlib_main_t * vm)
   return 0;
 }
 
-/* Get our api client index */
-static void
-vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  builtin_server_main_t *bsm = &builtin_server_main;
-  bsm->my_client_index = mp->index;
-  vlib_process_signal_event (vm, bsm->node_index, 1 /* evt */ ,
-			     0 /* data */ );
-}
-
-#define foreach_tcp_builtin_server_api_msg      		\
-_(MEMCLNT_CREATE_REPLY, memclnt_create_reply)   		\
-
-static clib_error_t *
-tcp_builtin_server_api_hookup (vlib_main_t * vm)
-{
-  vl_msg_api_msg_config_t _c, *c = &_c;
-
-  /* Hook up client-side static APIs to our handlers */
-#define _(N,n) do {                                             \
-    c->id = VL_API_##N;                                         \
-    c->name = #n;                                               \
-    c->handler = vl_api_##n##_t_handler;                        \
-    c->cleanup = vl_noop_handler;                               \
-    c->endian = vl_api_##n##_t_endian;                          \
-    c->print = vl_api_##n##_t_print;                            \
-    c->size = sizeof(vl_api_##n##_t);                           \
-    c->traced = 1; /* trace, so these msgs print */             \
-    c->replay = 0; /* don't replay client create/delete msgs */ \
-    c->message_bounce = 0; /* don't bounce this message */	\
-    vl_msg_api_config(c);} while (0);
-
-  foreach_tcp_builtin_server_api_msg;
-#undef _
-
-  return 0;
-}
-
 static clib_error_t *
 server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			  vlib_cli_command_t * cmd)
@@ -491,7 +400,6 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				  format_unformat_error, input);
     }
 
-  tcp_builtin_server_api_hookup (vm);
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
 
   rv = server_create (vm);
