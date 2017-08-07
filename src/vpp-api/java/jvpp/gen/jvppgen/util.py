@@ -161,7 +161,6 @@ unconventional_naming_rep_req = {
 #
 # FIXME no convention in the naming of events (notifications) in vpe.api
 notifications_message_suffixes = ("event", "counters")
-notification_messages_reused = ["sw_interface_set_flags"]
 
 # messages that must be ignored. These messages are INSUFFICIENTLY marked as disabled in vpe.api
 # FIXME
@@ -170,7 +169,7 @@ ignored_messages = []
 
 def is_notification(name):
     """ Returns true if the structure is a notification regardless of its no other use """
-    return is_just_notification(name) or name.lower() in notification_messages_reused
+    return is_just_notification(name)
 
 
 def is_just_notification(name):

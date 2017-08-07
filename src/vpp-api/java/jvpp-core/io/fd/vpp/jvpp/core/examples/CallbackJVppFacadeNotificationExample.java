@@ -36,7 +36,7 @@ public class CallbackJVppFacadeNotificationExample {
             System.out.println("Successfully connected to VPP");
 
             final AutoCloseable notificationListenerReg =
-                jvppCallbackFacade.getNotificationRegistry().registerSwInterfaceSetFlagsNotificationCallback(
+                jvppCallbackFacade.getNotificationRegistry().registerSwInterfaceEventNotificationCallback(
                     NotificationUtils::printNotification
                 );
 
