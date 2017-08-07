@@ -33,7 +33,7 @@ public class FutureApiNotificationExample {
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl());
              final AutoCloseable notificationListenerReg =
                  jvppFacade.getNotificationRegistry()
-                     .registerSwInterfaceSetFlagsNotificationCallback(NotificationUtils::printNotification)) {
+                     .registerSwInterfaceEventNotificationCallback(NotificationUtils::printNotification)) {
             System.out.println("Successfully connected to VPP");
             jvppFacade.wantInterfaceEvents(getEnableInterfaceNotificationsReq()).toCompletableFuture().get();
             System.out.println("Interface events started");
