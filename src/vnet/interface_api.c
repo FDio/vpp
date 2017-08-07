@@ -571,11 +571,11 @@ event_data_cmp (void *a1, void *a2)
 }
 
 static void
-send_sw_interface_flags (vpe_api_main_t * am,
+send_sw_interface_event (vpe_api_main_t * am,
 			 unix_shared_memory_queue_t * q,
 			 vnet_sw_interface_t * swif)
 {
-  vl_api_sw_interface_set_flags_t *mp;
+  vl_api_sw_interface_event_t *mp;
   vnet_main_t *vnm = am->vnet_main;
 
   vnet_hw_interface_t *hi = vnet_get_sup_hw_interface (vnm,
@@ -638,7 +638,7 @@ link_state_process (vlib_main_t * vm,
                                          event_data[i]))
                   {
                     swif = vnet_get_sw_interface (vnm, event_data[i]);
-                    send_sw_interface_flags (vam, q, swif);
+                    send_sw_interface_event (vam, q, swif);
                   }
               }
           }));
