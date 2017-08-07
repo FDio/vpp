@@ -108,10 +108,29 @@ static void *vl_api_sw_interface_set_flags_t_print
   else
     s = format (s, "admin-down ");
 
+  FINISH;
+}
+
+static void *vl_api_sw_interface_event_t_print
+  (vl_api_sw_interface_event_t * mp, void *handle)
+{
+  u8 *s;
+  s = format (0, "SCRIPT: sw_interface_event ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  if (mp->admin_up_down)
+    s = format (s, "admin-up ");
+  else
+    s = format (s, "admin-down ");
+
   if (mp->link_up_down)
     s = format (s, "link-up");
   else
     s = format (s, "link-down");
+
+  if (mp->deleted)
+    s = format (s, " deleted");
 
   FINISH;
 }
@@ -3010,6 +3029,7 @@ foreach_custom_print_no_arg_function
 _(CREATE_LOOPBACK, create_loopback)                                     \
 _(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)                   \
 _(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
+_(SW_INTERFACE_EVENT, sw_interface_event)                               \
 _(SW_INTERFACE_ADD_DEL_ADDRESS, sw_interface_add_del_address)           \
 _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \
 _(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \

@@ -59,11 +59,11 @@ _(SW_INTERFACE_TAP_DUMP, sw_interface_tap_dump)
  * WARNING: replicated pending api refactor completion
  */
 static void
-send_sw_interface_flags_deleted (vpe_api_main_t * am,
+send_sw_interface_event_deleted (vpe_api_main_t * am,
 				 unix_shared_memory_queue_t * q,
 				 u32 sw_if_index)
 {
-  vl_api_sw_interface_set_flags_t *mp;
+  vl_api_sw_interface_event_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
@@ -196,7 +196,7 @@ vl_api_tap_delete_t_handler (vl_api_tap_delete_t * mp)
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 
   if (!rv)
-    send_sw_interface_flags_deleted (vam, q, sw_if_index);
+    send_sw_interface_event_deleted (vam, q, sw_if_index);
 }
 
 static void
