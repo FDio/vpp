@@ -100,6 +100,9 @@ typedef struct _vnet_connect_args
 
   /* Used for redirects */
   void *mp;
+
+  /* used for proxy connections */
+  u64 server_handle;
 } vnet_connect_args_t;
 
 typedef struct _vnet_disconnect_args_t
