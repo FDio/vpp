@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_227c3720",
+        "filename": "src/vpp-api/vapi/vapi.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 334,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-07T12:56:28Z",
+      "side": 1,
+      "message": "the RX thread can get the response before this sending thread obtains this lock. then bad stuff happens",
+      "revId": "e441d19a503e9a9ef6d4748b77271c0cc1244050",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_475aa584",
+        "filename": "src/vpp-api/vapi/vapi.hpp",
+        "patchSetId": 3
+      },
+      "lineNbr": 525,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-07T12:56:28Z",
+      "side": 1,
+      "message": "this assert fires if a generated file is included more than once.",
+      "revId": "e441d19a503e9a9ef6d4748b77271c0cc1244050",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
