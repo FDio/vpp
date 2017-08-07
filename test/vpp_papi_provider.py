@@ -550,21 +550,16 @@ class VppPapiProvider(object):
                          'tag1': tag1,
                          'tag2': tag2})
 
-    def sw_interface_set_flags(self, sw_if_index, admin_up_down,
-                               link_up_down=0, deleted=0):
+    def sw_interface_set_flags(self, sw_if_index, admin_up_down):
         """
 
         :param admin_up_down:
         :param sw_if_index:
-        :param link_up_down:  (Default value = 0)
-        :param deleted:  (Default value = 0)
 
         """
         return self.api(self.papi.sw_interface_set_flags,
                         {'sw_if_index': sw_if_index,
-                         'admin_up_down': admin_up_down,
-                         'link_up_down': link_up_down,
-                         'deleted': deleted})
+                         'admin_up_down': admin_up_down})
 
     def create_subif(self, sw_if_index, sub_id, outer_vlan, inner_vlan,
                      no_tags=0, one_tag=0, two_tags=0, dot1ad=0, exact_match=0,

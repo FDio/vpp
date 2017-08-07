@@ -972,8 +972,8 @@ static void vl_api_sw_interface_details_t_handler_json
 }
 
 #if VPP_API_TEST_BUILTIN == 0
-static void vl_api_sw_interface_set_flags_t_handler
-  (vl_api_sw_interface_set_flags_t * mp)
+static void vl_api_sw_interface_event_t_handler
+  (vl_api_sw_interface_event_t * mp)
 {
   vat_main_t *vam = &vat_main;
   if (vam->interface_event_display)
@@ -984,8 +984,8 @@ static void vl_api_sw_interface_set_flags_t_handler
 }
 #endif
 
-static void vl_api_sw_interface_set_flags_t_handler_json
-  (vl_api_sw_interface_set_flags_t * mp)
+static void vl_api_sw_interface_event_t_handler_json
+  (vl_api_sw_interface_event_t * mp)
 {
   /* JSON output not supported */
 }
@@ -5026,7 +5026,7 @@ _(LLDP_CONFIG_REPLY, lldp_config_reply)                                 \
 _(SW_INTERFACE_SET_LLDP_REPLY, sw_interface_set_lldp_reply)
 
 #define foreach_standalone_reply_msg					\
-_(SW_INTERFACE_SET_FLAGS, sw_interface_set_flags)                       \
+_(SW_INTERFACE_EVENT, sw_interface_event)                               \
 _(VNET_INTERFACE_SIMPLE_COUNTERS, vnet_interface_simple_counters)       \
 _(VNET_INTERFACE_COMBINED_COUNTERS, vnet_interface_combined_counters)   \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
@@ -5772,7 +5772,7 @@ api_sw_interface_set_flags (vat_main_t * vam)
   vl_api_sw_interface_set_flags_t *mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
-  u8 admin_up = 0, link_up = 0;
+  u8 admin_up = 0;
   int ret;
 
   /* Parse args required to build the message */
@@ -5782,10 +5782,6 @@ api_sw_interface_set_flags (vat_main_t * vam)
 	admin_up = 1;
       else if (unformat (i, "admin-down"))
 	admin_up = 0;
-      else if (unformat (i, "link-up"))
-	link_up = 1;
-      else if (unformat (i, "link-down"))
-	link_up = 0;
       else
 	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
 	sw_if_index_set = 1;
@@ -5805,7 +5801,6 @@ api_sw_interface_set_flags (vat_main_t * vam)
   M (SW_INTERFACE_SET_FLAGS, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->admin_up_down = admin_up;
-  mp->link_up_down = link_up;
 
   /* send it... */
   S (mp);
