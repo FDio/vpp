@@ -2,10 +2,14 @@
 
 import sys
 import os
+import select
 import unittest
 import argparse
 import importlib
+from multiprocessing import Process, Pipe
 from framework import VppTestRunner
+from debug import spawn_gdb
+from log import global_logger
 
 
 def add_from_dir(suite, directory):
@@ -39,11 +43,37 @@ def add_from_dir(suite, directory):
                 if method.startswith("test_"):
                     suite.addTest(cls(method))
 
+
+def test_runner_wrapper(keep_alive_pipe, result_pipe):
+    result = not VppTestRunner(
+        pipe=keep_alive_pipe,
+        verbosity=verbose,
+        failfast=failfast).run(suite).wasSuccessful()
+    result_pipe.send(result)
+    result_pipe.close()
+    keep_alive_pipe.close()
+
+
+def handle_core(vpp_binary, core_path):
+    try:
+        d = os.getenv("DEBUG")
+    except:
+        d = None
+    if d and d.lower() == "core":
+        spawn_gdb(vpp_binary, core_path, global_logger)
+
+
 if __name__ == '__main__':
     try:
         verbose = int(os.getenv("V", 0))
     except:
         verbose = 0
+
+    default_test_timeout = 120
+    try:
+        test_timeout = int(os.getenv("TIMEOUT", default_test_timeout))
+    except:
+        test_timeout = default_test_timeout
 
     parser = argparse.ArgumentParser(description="VPP unit tests")
     parser.add_argument("-f", "--failfast", action='count',
@@ -56,7 +86,43 @@ if __name__ == '__main__':
 
     suite = unittest.TestSuite()
     for d in args.dir:
-        print("Adding tests from directory tree %s" % d)
+        global_logger.info("Adding tests from directory tree %s" % d)
         add_from_dir(suite, d)
-    sys.exit(not VppTestRunner(verbosity=verbose,
-                               failfast=failfast).run(suite).wasSuccessful())
+    keep_alive_parent_end, keep_alive_child_end = Pipe(duplex=False)
+    result_parent_end, result_child_end = Pipe(duplex=False)
+
+    p = Process(target=test_runner_wrapper,
+                args=(keep_alive_child_end,
+                      result_child_end))
+    p.start()
+    last_test_temp_dir = None
+    last_test_vpp_binary = None
+    last_test = None
+    result = None
+    while result is None:
+        readable = select.select([keep_alive_parent_end.fileno(),
+                                  result_parent_end.fileno(),
+                                  ],
+                                 [], [], test_timeout)[0]
+        if result_parent_end.fileno() in readable:
+            result = result_parent_end.recv()
+        elif keep_alive_parent_end.fileno() in readable:
+            while keep_alive_parent_end.poll():
+                last_test, last_test_vpp_binary, last_test_temp_dir =\
+                    keep_alive_parent_end.recv()
+        else:
+            global_logger.critical("Timeout while waiting for child test "
+                                   "runner process (last test running was "
+                                   "`%s' in `%s')!" %
+                                   (last_test, last_test_temp_dir))
+            if last_test_temp_dir and last_test_vpp_binary:
+                core_path = "%s/core" % last_test_temp_dir
+                if os.path.isfile(core_path):
+                    global_logger.error("Core-file exists in test temporary "
+                                        "directory: %s!" % core_path)
+                    handle_core(last_test_vpp_binary, core_path)
+            p.terminate()
+            result = -1
+    keep_alive_parent_end.close()
+    result_parent_end.close()
+    sys.exit(result)
