@@ -409,8 +409,8 @@ acl_classify_add_del_table_small (vnet_classify_main_t * cm, u8 * mask,
 				      table_index, current_data_flag,
 				      current_data_offset, is_add,
 				      1 /* delete_chain */);
-  return ret;
   clib_mem_set_heap (oldheap);
+  return ret;
 }
 
 
