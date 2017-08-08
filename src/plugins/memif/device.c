@@ -265,7 +265,7 @@ memif_interface_tx (vlib_main_t * vm,
 		    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   memif_main_t *nm = &memif_main;
-  vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
+  vnet_interface_tx_runtime_t *rund = (void *) node->runtime_data;
   memif_if_t *mif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
 
   if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)

@@ -248,10 +248,11 @@ af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_rx_packets = 0;
   af_packet_main_t *apm = &af_packet_main;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
+  vnet_hw_interface_rx_runtime_t *rt =
+    (vnet_hw_interface_rx_runtime_t *) node->runtime_data;
+  vnet_hw_interface_rx_queue_runtime_t *dq;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  foreach_device_and_queue (vm, rt, dq)
   {
     af_packet_if_t *apif;
     apif = vec_elt_at_index (apm->interfaces, dq->dev_instance);
@@ -259,6 +260,7 @@ af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif);
   }
 
+  vnet_device_input_rx_finish (vm, node, rt);
   return n_rx_packets;
 }
 

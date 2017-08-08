@@ -481,7 +481,7 @@ mpls_tunnel_tx (vlib_main_t * vm,
 {
   u32 next_index;
   u32 * from, * to_next, n_left_from, n_left_to_next;
-  vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
+  vnet_interface_tx_runtime_t * rd = (void *) node->runtime_data;
   const mpls_tunnel_t *mt;
 
   mt = pool_elt_at_index(mpls_tunnel_pool, rd->dev_instance);

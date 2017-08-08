@@ -74,14 +74,29 @@ dpdk_device_setup (dpdk_device_t * xd)
       if (rv < 0)
 	rv = rte_eth_tx_queue_setup (xd->device_index, j, xd->nb_tx_desc,
 				     SOCKET_ID_ANY, &xd->tx_conf);
+
       if (rv < 0)
 	dpdk_device_error (xd, "rte_eth_tx_queue_setup", rv);
+
+      rv = vnet_hw_interface_enable_tx_queue (vnm, sw->hw_if_index, j, 0);
+      if (rv)
+	dpdk_device_error (xd, "vnet_hw_interface_set_tx_queue", rv);
     }
 
   for (j = 0; j < xd->rx_q_used; j++)
     {
-      uword tidx = vnet_get_device_input_thread_index (dm->vnet_main,
-						       xd->hw_if_index, j);
+      u32 tidx;
+      u16 rss_slot;
+      rv = vnet_hw_interface_enable_rx_queue (vnm, sw->hw_if_index, j, 0);
+      if (rv)
+	dpdk_device_error (xd, "vnet_hw_interface_enable_rx_queue", rv);
+
+      rv = vnet_hw_interface_get_rx_thread (vnm, sw->hw_if_index,
+					    j, &tidx, &rss_slot);
+
+      if (rv)
+	dpdk_device_error (xd, "vnet_hw_interface_get_rx_thread", rv);
+
       unsigned lcore = vlib_worker_threads[tidx].lcore_id;
       u16 socket_id = rte_lcore_to_socket_id (lcore);
 

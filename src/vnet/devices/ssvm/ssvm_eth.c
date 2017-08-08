@@ -243,7 +243,7 @@ ssvm_eth_interface_tx (vlib_main_t * vm,
 		       vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   ssvm_eth_main_t *em = &ssvm_eth_main;
-  vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
+  vnet_interface_tx_runtime_t *rd = (void *) node->runtime_data;
   ssvm_private_t *intfc = vec_elt_at_index (em->intfcs, rd->dev_instance);
   ssvm_shared_header_t *sh = intfc->sh;
   unix_shared_memory_queue_t *q;
