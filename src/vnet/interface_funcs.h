@@ -278,6 +278,7 @@ clib_error_t *vnet_hw_interface_change_mac_address (vnet_main_t * vnm,
 
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
+format_function_t format_vnet_hw_interface_name;
 format_function_t format_vnet_hw_interface_rx_mode;
 format_function_t format_vnet_sw_interface;
 format_function_t format_vnet_sw_interface_name;
@@ -293,6 +294,20 @@ unformat_function_t unformat_vnet_hw_interface;
 unformat_function_t unformat_vnet_hw_interface_flags;
 unformat_function_t unformat_vnet_sw_interface_flags;
 
+unformat_function_t unformat_vnet_hw_interface_rx_mode;
+
+typedef struct __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)))
+{
+  /* The actual used queue */
+  u16 queue_id;
+  /* The configured queue (or 0xffff if none configured) */
+  u16 configured_queue;
+  /* index of the queue in tx queue vector */
+  u16 tx_queue_index;
+  /* A pointer to the tx lock, or NULL if no tx lock */
+  uword *tx_lock;
+} vnet_interface_tx_queue_runtime_t;
+
 /* Node runtime for interface output function. */
 typedef struct
 {
@@ -302,6 +317,39 @@ typedef struct
   u32 is_deleted;
 } vnet_interface_output_runtime_t;
 
+/* Node runtime for interface tx function */
+typedef struct
+{
+  u32 hw_if_index;
+  u32 sw_if_index;
+  u32 dev_instance;
+
+  /*
+   * When a vector has to be sent, the used queue is
+   * queue_per_rss[vm->main_loop_count & rss_mask].queue
+   */
+  u32 rss_mask;
+  vnet_interface_tx_queue_runtime_t *tx_queue_per_rss;
+} vnet_interface_tx_runtime_t;
+
+/* Return the rss queue structure given the tx node runtime */
+#define vnet_interface_tx_queue(vm, rt) \
+  &((rt)->tx_queue_per_rss[(vm)->main_loop_count & (rt)->rss_mask])
+
+/* Locks the queue if necessary */
+#define vnet_interface_tx_queue_lock(tx_queue) do { \
+  if ((tx_queue)->tx_lock) \
+    while (__sync_lock_test_and_set ((tx_queue)->tx_lock, 1)) \
+      ; \
+  } while (0)
+
+/* Unlocks the queue if necessary */
+#define vnet_interface_tx_queue_unlock(tx_queue) do { \
+    if ((tx_queue)->tx_lock) \
+      *(tx_queue)->tx_lock = 0; \
+  } while (0)
+
+
 /* Interface output function. */
 void *vnet_interface_output_node_multiarch_select (void);
 
@@ -309,6 +357,8 @@ word vnet_sw_interface_compare (vnet_main_t * vnm, uword sw_if_index0,
 				uword sw_if_index1);
 word vnet_hw_interface_compare (vnet_main_t * vnm, uword hw_if_index0,
 				uword hw_if_index1);
+
+
 
 typedef enum
 {

@@ -1226,7 +1226,6 @@ done:
  *
  * @cliexpar
  * @parblock
- * Example of how to change MAC Address of interface:
  * @cliexcmd{set interface mac address GigabitEthernet0/8/0 aa:bb:cc:dd:ee:01}
  * @cliexcmd{set interface mac address host-vpp0 aa:bb:cc:dd:ee:02}
  * @cliexcmd{set interface mac address tap-0 aa:bb:cc:dd:ee:03}
@@ -1291,68 +1290,16 @@ VLIB_CLI_COMMAND (clear_tag_command, static) = {
 /* *INDENT-ON* */
 
 static clib_error_t *
-set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
-			  u32 queue_id, vnet_hw_interface_rx_mode mode)
-{
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  vnet_device_class_t *dev_class =
-    vnet_get_device_class (vnm, hw->dev_class_index);
-  clib_error_t *error;
-  vnet_hw_interface_rx_mode old_mode;
-  int rv;
-
-  if (mode == VNET_HW_INTERFACE_RX_MODE_DEFAULT)
-    mode = hw->default_rx_mode;
-
-  rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &old_mode);
-  switch (rv)
-    {
-    case 0:
-      if (old_mode == mode)
-	return 0;		/* same rx-mode, no change */
-      break;
-    case VNET_API_ERROR_INVALID_INTERFACE:
-      return clib_error_return (0, "invalid interface");
-    default:
-      return clib_error_return (0, "unknown error");
-    }
-
-  if (dev_class->rx_mode_change_function)
-    {
-      error = dev_class->rx_mode_change_function (vnm, hw_if_index, queue_id,
-						  mode);
-      if (error)
-	return (error);
-    }
-
-  rv = vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
-  switch (rv)
-    {
-    case 0:
-      break;
-    case VNET_API_ERROR_UNSUPPORTED:
-      return clib_error_return (0, "unsupported");
-    case VNET_API_ERROR_INVALID_INTERFACE:
-      return clib_error_return (0, "invalid interface");
-    default:
-      return clib_error_return (0, "unknown error");
-    }
-
-  return 0;
-}
-
-static clib_error_t *
 set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
 {
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_hw_interface_t *hw;
   u32 hw_if_index = (u32) ~ 0;
   u32 queue_id = (u32) ~ 0;
   vnet_hw_interface_rx_mode mode = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
-  int i;
+  int rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1364,12 +1311,98 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "queue %d", &queue_id))
 	;
-      else if (unformat (line_input, "polling"))
-	mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
-      else if (unformat (line_input, "interrupt"))
-	mode = VNET_HW_INTERFACE_RX_MODE_INTERRUPT;
-      else if (unformat (line_input, "adaptive"))
-	mode = VNET_HW_INTERFACE_RX_MODE_ADAPTIVE;
+      else if (unformat (line_input, "%U",
+			 unformat_vnet_hw_interface_rx_mode, &mode))
+	;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
+    }
+  unformat_free (line_input);
+
+  if (hw_if_index == (u32) ~ 0)
+    return clib_error_return (0, "please specify valid interface name");
+
+  if (mode == VNET_HW_INTERFACE_RX_MODE_UNKNOWN)
+    return clib_error_return (0, "please specify valid rx-mode");
+
+  if (queue_id == ~0)
+    queue_id = VNET_HW_INVALID_QUEUE;
+
+  if ((rv = vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode)))
+    return clib_error_return (0, "unable to set rx mode (%d)", rv);
+
+  return 0;
+}
+
+/*?
+ * This command is used to set the RX mode of a given interface and queue.
+ * If the queue argument is not specified, all current queues as well as
+ * the default mode are set to the provided value.
+ *
+ * The available modes are:
+ *   polling:    The worker thread constantly loops and tries to receive packets.
+ *   interrupt:  The worker thread sleeps when no packets are being received and
+ *                 wakes up upon interrupt.
+ *   adaptative: The worker thread switches from one mode to another depending
+ *                 on the amount of received traffic.
+ *
+ * The command will fail if the device does not support the requested RX mode.
+ *
+ * @cliexpar
+ * @parblock
+ * @cliexcmd{set interface rx-mode GigabitEthernet0/8/0 polling}
+ * @cliexcmd{set interface rx-mode GigabitEthernet0/8/0 queue 1 polling}
+ * @cliexcmd{set interface rx-mode VirtualEthernet0/0/1 queue 2 interrupt}
+ * @cliexcmd{set interface rx-mode VirtualEthernet0/0/1 queue 3 adaptative}
+ * @endparblock
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cmd_set_if_rx_mode,static) = {
+    .path = "set interface rx-mode",
+    .short_help = "set interface rx-mode <interface> [queue <n>] [polling | interrupt | adaptive]",
+    .function = set_interface_rx_mode,
+};
+/* *INDENT-ON* */
+
+
+static clib_error_t *
+set_interface_tx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_device_main_t *vdm = &vnet_device_main;
+  u32 hw_if_index = (u32) ~ 0;
+  u32 queue_id = (u32) ~ 0;
+  u32 thread_index = (u32) ~ 0;
+  u32 rss_slot = 0;
+  u32 rss = ~0;
+  int rv;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "Missing arguments");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	;
+      else if (unformat (line_input, "queue none"))
+	queue_id = VNET_HW_INVALID_QUEUE;
+      else if (unformat (line_input, "queue %d", &queue_id))
+	;
+      else if (unformat (line_input, "thread %d", &thread_index))
+	;
+      else if (unformat (line_input, "rss-slot %d", &rss_slot))
+	;
+      else if (unformat (line_input, "rss %d", &rss))
+	;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -1382,67 +1415,153 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
   unformat_free (line_input);
 
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify valid interface name");
+    return clib_error_return (0, "missing interface name");
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_UNKNOWN)
-    return clib_error_return (0, "please specify valid rx-mode");
+  if (!vnet_thread_is_valid (vdm, thread_index))
+    return clib_error_return (0, "thread index is invalid");
 
-  hw = vnet_get_hw_interface (vnm, hw_if_index);
-
-  if (queue_id == ~0)
+  /* Setting the total number of slots */
+  if (rss != ~0)
     {
-      for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
-	{
-	  error = set_hw_interface_rx_mode (vnm, hw_if_index, i, mode);
-	  if (error)
-	    break;
-	}
-      hw->default_rx_mode = mode;
-    }
-  else
-    error = set_hw_interface_rx_mode (vnm, hw_if_index, queue_id, mode);
+      if (rss == 0)
+	return clib_error_return (0, "rss is null");
 
-  return (error);
+      if ((rss - 1) & rss)
+	return clib_error_return (0, "rss must be a power of 2");
+
+      if (rss > 0x10000)
+	return clib_error_return (0, "rss > %d", 0x10000);
+
+      if ((rv =
+	   vnet_hw_interface_set_tx_rss_mask (vnm, hw_if_index, thread_index,
+					      rss - 1)))
+	return clib_error_return (0, "Unable to set rss mask (%d)", rv);
+    }
+
+  if (rss_slot > 0xffff)
+    return clib_error_return (0, "rss-slot > %d", 0xffff);
+
+  if ((queue_id != ~0) && (rv =
+			   vnet_hw_interface_set_tx_thread (vnm, hw_if_index,
+							    thread_index,
+							    rss_slot,
+							    queue_id)))
+    return clib_error_return (0, "Unable to set tx thread (%d)", rv);
+
+  return 0;
 }
 
 /*?
- * This command is used to assign the RX packet processing mode (polling,
- * interrupt, adaptive) of the a given interface, and optionally a
- * given queue. If the '<em>queue</em>' is not provided, the '<em>mode</em>'
- * is applied to all queues of the interface. Not all interfaces support
- * all modes. To display the current rx-mode use the command
- * '<em>show interface rx-placement</em>'.
+ * This command is used to associate threads with transmission queues.
+ * Threads may be configured to always transmit on the same queue of a given
+ * device (rss = 1), or use different queues following a deterministic
+ * sequence (e.g. rss = 4, where slots 0, 1, 2 and 3 would use any queue).
+ *
+ * All threads are always configured with one transmission queue per device
+ * and per rss slot (it can be the same queue, or different queue).
+ *
+ * This command is used to both set the number of slots and set the queue used
+ * on a specific rss slot.
  *
  * @cliexpar
- * Example of how to assign rx-mode to all queues on an interface:
- * @cliexcmd{set interface rx-mode VirtualEthernet0/0/12 polling}
- * Example of how to assign rx-mode to one queue of an interface:
- * @cliexcmd{set interface rx-mode VirtualEthernet0/0/12 queue 0 interrupt}
- * Example of how to display the rx-mode of all interfaces:
- * @cliexstart{show interface rx-placement}
- * Thread 1 (vpp_wk_0):
- *   node dpdk-input:
- *     GigabitEthernet7/0/0 queue 0 (polling)
- *   node vhost-user-input:
- *     VirtualEthernet0/0/12 queue 0 (interrupt)
- *     VirtualEthernet0/0/12 queue 2 (polling)
- *     VirtualEthernet0/0/13 queue 0 (polling)
- *     VirtualEthernet0/0/13 queue 2 (polling)
- * Thread 2 (vpp_wk_1):
- *   node dpdk-input:
- *     GigabitEthernet7/0/1 queue 0 (polling)
- *   node vhost-user-input:
- *     VirtualEthernet0/0/12 queue 1 (polling)
- *     VirtualEthernet0/0/12 queue 3 (polling)
- *     VirtualEthernet0/0/13 queue 1 (polling)
- *     VirtualEthernet0/0/13 queue 3 (polling)
- * @cliexend
+ * @parblock
+ * Set the number of rss slots for a given interface and thread:
+ * @cliexcmd{set interface tx-placement GigabitEthernet0/8/0 thread 1 rss 4}
+ * @cliexcmd{set interface tx-placement VirtualEthernet0/0/1 thread 4 rss 1}
+ * Set a given queue for a specific thread and rss slot:
+ * @cliexcmd{set interface tx-placement GigabitEthernet0/8/0 thread 1 rss-slot 2 queue 2}
+ * @cliexcmd{set interface tx-placement VirtualEthernet0/0/1 thread 4 queue 1}
+ * Set both number of rss slots and a given queue for a thread and slot.
+ * @cliexcmd{set interface tx-placement GigabitEthernet0/8/0 thread 2 rss 2 rss-slot 1 queue 2}
+ * @endparblock
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cmd_set_if_rx_mode,static) = {
-    .path = "set interface rx-mode",
-    .short_help = "set interface rx-mode <interface> [queue <n>] [polling | interrupt | adaptive]",
-    .function = set_interface_rx_mode,
+VLIB_CLI_COMMAND (cmd_set_interface_tx_placement,static) = {
+    .path = "set interface tx-placement",
+    .short_help = "set interface tx-placement <interface> "
+	"[thread <n>] [rss-slot <n>] [queue <n>] ",
+    .function = set_interface_tx_placement_fn,
+    .is_mp_safe = 1,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_interface_tx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  u8 *s = 0;
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_interface_tx_runtime_t *rt;
+  u32 hw_if_index = ~0;
+  vnet_interface_tx_queue_runtime_t *oq;
+  vnet_hw_interface_tx_queue_t *q;
+  int index = 0;
+
+  if (!unformat_user (input, unformat_vnet_hw_interface, vnm, &hw_if_index))
+    return clib_error_return (0, "unknown hardware interface `%U'",
+			      format_unformat_error, input);
+
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  // Available queues
+  s = format (s, "  TX Queues:");
+  vec_foreach (q, hw->tx_queues)
+  {
+    s = format (s, " %d", q->queue_id);
+  }
+  vlib_cli_output (vm, "%v\n", s);
+  vec_reset_length (s);
+
+  // Queues assignment
+  /* *INDENT-OFF* */
+  foreach_vlib_main ((
+      {
+    rt = (vnet_interface_tx_runtime_t *)
+			   vlib_node_get_runtime_data (this_vlib_main,
+						       hw->tx_node_index);
+    // Used ones
+    vec_foreach (oq, rt->tx_queue_per_rss)
+    {
+      if (oq - rt->tx_queue_per_rss > rt->rss_mask &&
+	  oq->configured_queue == VNET_HW_INVALID_QUEUE)
+	continue;
+
+      s = format (s, "    rss %d", oq - rt->tx_queue_per_rss);
+      if (oq - rt->tx_queue_per_rss <= rt->rss_mask)
+	{
+	  if (oq->queue_id != VNET_HW_INVALID_QUEUE)
+	    s = format (s, " queue %d", oq->queue_id);
+	  else
+	    s = format (s, " queue none", oq->queue_id);
+
+	  if (oq->tx_lock)
+	    s = format (s, " shared");
+	}
+      else
+	s = format (s, " disabled", oq->queue_id);
+
+
+      if (oq->configured_queue != VNET_HW_INVALID_QUEUE)
+	s = format (s, " configured %d", oq->configured_queue);
+
+      s = format (s, "\n");
+    }
+
+    vlib_cli_output (vm, "  Thread %u (%v):\n%v\n", index,
+		     vlib_worker_threads[index].name, s);
+    vec_reset_length (s); index++;}
+  ))
+  /* *INDENT-ON* */
+
+  vec_free (s);
+  return 0;
+}
+
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_interface_tx_placement, static) = {
+  .path = "show interface tx-placement",
+  .short_help = "show interface tx-placement <interface>",
+  .function = show_interface_tx_placement_fn,
 };
 /* *INDENT-ON* */
 
@@ -1452,8 +1571,8 @@ show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   u8 *s = 0;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_device_input_runtime_t *rt;
-  vnet_device_and_queue_t *dq;
+  vnet_hw_interface_rx_runtime_t *rt;
+  vnet_hw_interface_rx_queue_runtime_t **rssdq, *dq;
   vlib_node_t *pn = vlib_get_node_by_name (vm, (u8 *) "device-input");
   uword si;
   int index = 0;
@@ -1462,24 +1581,33 @@ show_interface_rx_placement_fn (vlib_main_t * vm, unformat_input_t * input,
   foreach_vlib_main (({
     clib_bitmap_foreach (si, pn->sibling_bitmap,
       ({
-        rt = vlib_node_get_runtime_data (this_vlib_main, si);
+        rt =  (vnet_hw_interface_rx_runtime_t *)
+            vlib_node_get_runtime_data (this_vlib_main, si);
 
-        if (vec_len (rt->devices_and_queues))
-          s = format (s, "  node %U:\n", format_vlib_node_name, vm, si);
+        if (vec_len(rt->queues_per_rss))
+          {
+            s = format (s, "  node %U:\n", format_vlib_node_name, vm, si,
+		    rt->rss_mask + 1);
 
-        vec_foreach (dq, rt->devices_and_queues)
-	  {
-	    vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm,
-							     dq->hw_if_index);
-	    s = format (s, "    %U queue %u (%U)\n",
-			format_vnet_sw_if_index_name, vnm, hi->sw_if_index,
-			dq->queue_id,
-			format_vnet_hw_interface_rx_mode, dq->mode);
-	  }
+            vec_foreach (rssdq, rt->queues_per_rss)
+            {
+              if (rt->rss_mask)
+		s = format (s, "    rss %d:\n",
+			    rssdq - rt->queues_per_rss);
+	      vec_foreach (dq, *rssdq) {
+		vnet_hw_interface_t *hi =
+		    vnet_get_hw_interface (vnm, dq->hw_if_index);
+		s = format (s, "      %U queue %u rx-mode %U\n",
+			    format_vnet_sw_if_index_name, vnm, hi->sw_if_index,
+			    dq->queue_id,
+			    format_vnet_hw_interface_rx_mode, dq->mode);
+              }
+            }
+          }
       }));
     if (vec_len (s) > 0)
       {
-        vlib_cli_output(vm, "Thread %u (%v):\n%v", index,
+        vlib_cli_output(vm, "Thread %u (%v):\n%v\n", index,
 			vlib_worker_threads[index].name, s);
         vec_reset_length (s);
       }
@@ -1532,10 +1660,11 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
-  vnet_hw_interface_rx_mode mode;
   u32 hw_if_index = (u32) ~ 0;
-  u32 queue_id = (u32) 0;
+  u32 queue_id = (u32) ~ 0;
   u32 thread_index = (u32) ~ 0;
+  u32 rss_slot = 0;
+  u32 rss = ~0;
   int rv;
 
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -1552,6 +1681,12 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
 	thread_index = 0;
       else if (unformat (line_input, "worker %d", &thread_index))
 	thread_index += vdm->first_worker_thread_index;
+      else if (unformat (line_input, "thread %d", &thread_index))
+	;
+      else if (unformat (line_input, "rss %d", &rss))
+	;
+      else if (unformat (line_input, "rss-slot %d", &rss_slot))
+	;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -1564,25 +1699,35 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
   unformat_free (line_input);
 
   if (hw_if_index == (u32) ~ 0)
-    return clib_error_return (0, "please specify valid interface name");
+    return clib_error_return (0, "missing interface name");
 
-  if (thread_index > vdm->last_worker_thread_index)
+  if (!vnet_thread_is_valid (vdm, thread_index))
     return clib_error_return (0,
 			      "please specify valid worker thread or main");
 
-  rv = vnet_hw_interface_get_rx_mode (vnm, hw_if_index, queue_id, &mode);
+  if ((queue_id != ~0) && (rss != ~0) && (rss_slot >= rss))
+    return clib_error_return (0, "rss-slot >= rss");
 
-  if (rv)
-    return clib_error_return (0, "not found");
+  /* Setting the total number of RSS slots */
+  if (rss != ~0)
+    {
+      if (rss == 0)
+	return clib_error_return (0, "rss is null");
 
-  rv = vnet_hw_interface_unassign_rx_thread (vnm, hw_if_index, queue_id);
+      if ((rss - 1) & rss)
+	return clib_error_return (0, "rss must be a power of 2");
 
-  if (rv)
-    return clib_error_return (0, "not found");
+      if ((rv = vnet_hw_interface_set_rx_rss_mask (vnm, hw_if_index,
+						   thread_index, rss - 1)))
+	return clib_error_return (0, "Unable to set rss mask (%d)", rv);
+    }
 
-  vnet_hw_interface_assign_rx_thread (vnm, hw_if_index, queue_id,
-				      thread_index);
-  vnet_hw_interface_set_rx_mode (vnm, hw_if_index, queue_id, mode);
+  /* Setting the RSS value for a given queue */
+  if ((queue_id != ~0) &&
+      (rv = vnet_hw_interface_set_rx_thread (vnm, hw_if_index,
+					     queue_id, thread_index,
+					     rss_slot)))
+    return clib_error_return (0, "Unable to assign thread (%d)", rv);
 
   return 0;
 }
@@ -1638,12 +1783,117 @@ set_interface_rx_placement (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cmd_set_if_rx_placement,static) = {
     .path = "set interface rx-placement",
-    .short_help = "set interface rx-placement <interface> [queue <n>] "
-      "[worker <n> | main]",
+    .short_help = "set interface rx-placement <hw-interface> [queue <n>] "
+      "[worker <n> | main] [rss-slot <n>] [rss <n>]",
     .function = set_interface_rx_placement,
     .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
+
+
+clib_error_t *
+debug_vnet_command_fn (vlib_main_t * vm,
+		       unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  vnet_main_t *vnm = vnet_get_main ();
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on"))
+	vnm->debug = 1;
+      else if (unformat (line_input, "off"))
+	vnm->debug = 0;
+      else
+	error = clib_error_return (0, "unknown input `%U'",
+				   format_unformat_error, line_input);
+    }
+
+  unformat_free (line_input);
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (debug_vnet_command, static) = {
+    .path = "debug vnet",
+    .short_help = "debug vnet <on | off>",
+    .function = debug_vnet_command_fn,
+};
+/* *INDENT-ON* */
+
+clib_error_t *
+test_vnet_command_fn (vlib_main_t * vm,
+		      unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 hw_if_index = (u32) ~ 0;
+  u32 queue_id = (u32) ~ 0;
+  u32 tx = ~0;
+  u32 add = ~0;
+
+  clib_warning ("TEST FUNCTION ONLY. DO NOT USE IN PRODUCTION.");
+  clib_warning ("This function is overriding driver's queue management");
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
+	;
+      else if (unformat (line_input, "queue %d", &queue_id))
+	;
+      else if (unformat (line_input, "tx"))
+	tx = 1;
+      else if (unformat (line_input, "rx"))
+	tx = 0;
+      else if (unformat (line_input, "add"))
+	add = 1;
+      else if (unformat (line_input, "del"))
+	add = 0;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
+    }
+
+  unformat_free (line_input);
+
+  if (hw_if_index == ~0 || queue_id == ~0 || tx == ~0 || add == ~0)
+    return clib_error_return (0, "Missing argument");
+
+  if (tx)
+    vnet_hw_interface_enable_tx_queue (vnm, hw_if_index, queue_id, !add);
+  else
+    vnet_hw_interface_enable_rx_queue (vnm, hw_if_index, queue_id, !add);
+
+  return 0;
+}
+
+/*
+ * Test CLI used to simulate driver enabling and disabling certain queues.
+ */
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_vnet_queue_command, static) = {
+    .path = "test vnet-queues",
+    .short_help = "test vnet-queues <iface> queue <queue> [tx] [del]",
+    .function = test_vnet_command_fn,
+};
+/* *INDENT-ON* */
+
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

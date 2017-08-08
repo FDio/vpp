@@ -50,7 +50,7 @@ pg_output (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   u32 *buffers = vlib_frame_args (frame);
   uword n_buffers = frame->n_vectors;
   uword n_left = n_buffers;
-  vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
+  vnet_interface_tx_runtime_t *rd = (void *) node->runtime_data;
   pg_interface_t *pif = pool_elt_at_index (pg->interfaces, rd->dev_instance);
 
   if (PREDICT_FALSE (pif->lockp != 0))

@@ -189,6 +189,7 @@ dpdk_validate_rte_mbuf (vlib_main_t * vm, vlib_buffer_t * b,
 static_always_inline
   u32 tx_burst_vector_internal (vlib_main_t * vm,
 				dpdk_device_t * xd,
+				vnet_interface_tx_queue_runtime_t * tx_queue,
 				struct rte_mbuf **tx_vector)
 {
   dpdk_main_t *dm = &dpdk_main;
@@ -197,7 +198,6 @@ static_always_inline
   u32 tx_tail;
   u32 n_retry;
   int rv;
-  int queue_id;
   tx_ring_hdr_t *ring;
 
   ring = vec_header (tx_vector, sizeof (*ring));
@@ -205,6 +205,12 @@ static_always_inline
   n_packets = ring->tx_head - ring->tx_tail;
 
   tx_head = ring->tx_head % xd->nb_tx_desc;
+
+  /*
+   * This happens when no tx queues are available.
+   * But we shouldn't be here if that is the case.
+   */
+  ASSERT (tx_queue->queue_id != VNET_HW_INVALID_QUEUE);
 
   /*
    * Ensure rte_eth_tx_burst is not called with 0 packets, which can lead to
@@ -223,24 +229,13 @@ static_always_inline
   ASSERT (ring->tx_tail == 0);
 
   n_retry = 16;
-  queue_id = vm->thread_index;
 
   do
     {
       /* start the burst at the tail */
       tx_tail = ring->tx_tail % xd->nb_tx_desc;
 
-      /*
-       * This device only supports one TX queue,
-       * and we're running multi-threaded...
-       */
-      if (PREDICT_FALSE (xd->lockp != 0))
-	{
-	  queue_id = queue_id % xd->tx_q_used;
-	  while (__sync_lock_test_and_set (xd->lockp[queue_id], 1))
-	    /* zzzz */
-	    queue_id = (queue_id + 1) % xd->tx_q_used;
-	}
+      vnet_interface_tx_queue_lock (tx_queue);
 
       if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_HQOS))	/* HQoS ON */
 	{
@@ -260,7 +255,7 @@ static_always_inline
 	{
 	  /* no wrap, transmit in one burst */
 	  rv = rte_eth_tx_burst (xd->device_index,
-				 (uint16_t) queue_id,
+				 tx_queue->queue_id,
 				 &tx_vector[tx_tail],
 				 (uint16_t) (tx_head - tx_tail));
 	}
@@ -270,8 +265,7 @@ static_always_inline
 	  rv = 0;
 	}
 
-      if (PREDICT_FALSE (xd->lockp != 0))
-	*xd->lockp[queue_id] = 0;
+      vnet_interface_tx_queue_unlock (tx_queue);
 
       if (PREDICT_FALSE (rv < 0))
 	{
@@ -373,7 +367,7 @@ dpdk_interface_tx (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   dpdk_main_t *dm = &dpdk_main;
-  vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
+  vnet_interface_tx_runtime_t *rd = (void *) node->runtime_data;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, rd->dev_instance);
   u32 n_packets = f->n_vectors;
   u32 n_left;
@@ -381,7 +375,6 @@ dpdk_interface_tx (vlib_main_t * vm,
   struct rte_mbuf **tx_vector;
   u16 i;
   u16 nb_tx_desc = xd->nb_tx_desc;
-  int queue_id;
   u32 my_cpu;
   u32 tx_pkts = 0;
   tx_ring_hdr_t *ring;
@@ -389,9 +382,7 @@ dpdk_interface_tx (vlib_main_t * vm,
 
   my_cpu = vm->thread_index;
 
-  queue_id = my_cpu;
-
-  tx_vector = xd->tx_vectors[queue_id];
+  tx_vector = xd->tx_vectors[my_cpu];
   ring = vec_header (tx_vector, sizeof (*ring));
 
   n_on_ring = ring->tx_head - ring->tx_tail;
@@ -535,13 +526,13 @@ dpdk_interface_tx (vlib_main_t * vm,
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	{
 	  if (b0->flags & VLIB_BUFFER_IS_TRACED)
-	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi0, b0);
+	    dpdk_tx_trace_buffer (dm, node, xd, my_cpu, bi0, b0);
 	  if (b1->flags & VLIB_BUFFER_IS_TRACED)
-	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi1, b1);
+	    dpdk_tx_trace_buffer (dm, node, xd, my_cpu, bi1, b1);
 	  if (b2->flags & VLIB_BUFFER_IS_TRACED)
-	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi2, b2);
+	    dpdk_tx_trace_buffer (dm, node, xd, my_cpu, bi2, b2);
 	  if (b3->flags & VLIB_BUFFER_IS_TRACED)
-	    dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi3, b3);
+	    dpdk_tx_trace_buffer (dm, node, xd, my_cpu, bi3, b3);
 	}
 
       n_left -= 4;
@@ -565,7 +556,7 @@ dpdk_interface_tx (vlib_main_t * vm,
 
       if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE))
 	if (b0->flags & VLIB_BUFFER_IS_TRACED)
-	  dpdk_tx_trace_buffer (dm, node, xd, queue_id, bi0, b0);
+	  dpdk_tx_trace_buffer (dm, node, xd, my_cpu, bi0, b0);
 
       if (PREDICT_TRUE ((b0->flags & VLIB_BUFFER_REPL_FAIL) == 0))
 	{
@@ -580,7 +571,10 @@ dpdk_interface_tx (vlib_main_t * vm,
   n_on_ring = ring->tx_head - ring->tx_tail;
 
   /* transmit as many packets as possible */
-  n_packets = tx_burst_vector_internal (vm, xd, tx_vector);
+  n_packets = tx_burst_vector_internal (vm, xd,
+					vnet_hw_interface_get_tx_queue (vm,
+									rd),
+					tx_vector);
 
   /*
    * tx_pkts is the number of packets successfully transmitted

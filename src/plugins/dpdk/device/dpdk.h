@@ -146,7 +146,6 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  volatile u32 **lockp;
 
   /* Instance ID */
   u32 device_index;

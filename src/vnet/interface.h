@@ -48,14 +48,21 @@ struct vnet_hw_interface_t;
 struct vnet_sw_interface_t;
 struct ip46_address_t;
 
+#define foreach_vnet_hw_rx_mode \
+  _(POLLING, "polling")     \
+  _(INTERRUPT, "interrupt") \
+  _(ADAPTIVE, "adaptive")   \
+  _(DISABLED, "disabled")   \
+  _(UNKNOWN, "unknown")     \
+  _(DEFAULT, "default")
+
 typedef enum
 {
-  VNET_HW_INTERFACE_RX_MODE_UNKNOWN,
-  VNET_HW_INTERFACE_RX_MODE_POLLING,
-  VNET_HW_INTERFACE_RX_MODE_INTERRUPT,
-  VNET_HW_INTERFACE_RX_MODE_ADAPTIVE,
-  VNET_HW_INTERFACE_RX_MODE_DEFAULT,
-  VNET_HW_INTERFACE_NUM_RX_MODES,
+#define _(n,s) VNET_HW_INTERFACE_RX_MODE_##n,
+  foreach_vnet_hw_rx_mode
+#undef _
+    VNET_HW_INTERFACE_RX_N_RUN_MODES = VNET_HW_INTERFACE_RX_MODE_ADAPTIVE + 1,
+  VNET_HW_INTERFACE_RX_N_API_MODES,
 } vnet_hw_interface_rx_mode;
 
 /* Interface up/down callback. */
@@ -74,7 +81,7 @@ typedef clib_error_t *(vnet_interface_set_mac_address_function_t)
 /* Interface set rx mode callback. */
 typedef clib_error_t *(vnet_interface_set_rx_mode_function_t)
   (struct vnet_main_t * vnm, u32 if_index, u32 queue_id,
-   vnet_hw_interface_rx_mode mode);
+   vnet_hw_interface_rx_mode new_mode);
 
 typedef enum vnet_interface_function_priority_t_
 {
@@ -149,7 +156,12 @@ typedef struct _vnet_device_class
   /* Function to call when sub-interface is added/deleted */
   vnet_subif_add_del_function_t *subif_add_del_function;
 
-  /* Function to call interface rx mode is changed */
+  /* Function to call when some active interface queue rx mode is changed,
+   * or when the queue is enabled or disabled.
+   * The new mode is specified as an argument while the current mode
+   * can be retrieved with vnet_hw_interface_get_rx_mode.
+   * Both old and new modes may be VNET_HW_INTERFACE_RX_MODE_DISABLED
+   * in case the queue is enabled or disabled. */
   vnet_interface_set_rx_mode_function_t *rx_mode_change_function;
 
   /* Redistribute flag changes/existence of this interface class. */
@@ -382,6 +394,55 @@ static void __vnet_add_hw_interface_class_registration_##x (void)       \
 }                                                                       \
 __VA_ARGS__ vnet_hw_interface_class_t x
 
+#define VNET_HW_INVALID_QUEUE 0xffff
+
+typedef struct
+{
+  /* Queue id */
+  u16 queue_id;
+  /* Used to count whether more than one thread uses the queue */
+  u32 thread_index;
+  /* A tx lock */
+  uword __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES))) lock;
+} vnet_hw_interface_tx_queue_t;
+
+typedef struct
+{
+  u32 hw_if_index;
+  u32 dev_instance;
+  u16 queue_id;
+  u32 interrupt_pending;
+  vnet_hw_interface_rx_mode mode;
+} vnet_hw_interface_rx_queue_runtime_t;
+
+typedef struct
+{
+  u16 rss_mask;
+  u16 last_interrupt_rss;
+  vnet_hw_interface_rx_queue_runtime_t **queues_per_rss;
+
+  /* Per thread data that is not used on data path */
+  vlib_node_state_t enabled_node_state;
+  u32 queue_mode_counters[VNET_HW_INTERFACE_RX_N_RUN_MODES];
+} vnet_hw_interface_rx_runtime_t;
+
+typedef struct
+{
+  /*
+   * The currently configured rx mode for this queue
+   */
+  vnet_hw_interface_rx_mode rx_mode;
+
+  /* Enabled thread index and rss slot. */
+  u32 thread_index;
+  u16 rss_slot;
+
+  /* Pointer to the runtime structure in one of the thread's rx list. */
+  vnet_hw_interface_rx_queue_runtime_t *current_rx_queue_runtime;
+} vnet_hw_interface_rx_queue_t;
+
+#define vnet_hw_interface_rx_queue_id(hw, rxq) ((rxq) - (hw)->rx_queues)
+
 /* Hardware-interface.  This corresponds to a physical wire
    that packets flow over. */
 typedef struct vnet_hw_interface_t
@@ -484,15 +545,14 @@ typedef struct vnet_hw_interface_t
   /* Input node */
   u32 input_node_index;
 
-  /* input node cpu index by queue */
-  u32 *input_node_thread_index_by_queue;
-
   /* vnet_hw_interface_rx_mode by queue */
-  u8 *rx_mode_by_queue;
   vnet_hw_interface_rx_mode default_rx_mode;
 
-  /* device input device_and_queue runtime index */
-  uword *dq_runtime_index_by_queue;
+  /* Array of rx queues data, indexed by queue id */
+  vnet_hw_interface_rx_queue_t *rx_queues;
+
+  /* An array of enabled tx queues which will be used to assign to threads */
+  vnet_hw_interface_tx_queue_t *tx_queues;
 
 } vnet_hw_interface_t;
 

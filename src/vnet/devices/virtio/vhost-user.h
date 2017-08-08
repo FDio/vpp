@@ -209,9 +209,8 @@ typedef struct
   u32 callfd_idx;
   u32 kickfd_idx;
   u64 log_guest_addr;
-
-  /* The rx queue policy (interrupt/adaptive/polling) for this queue */
-  u32 mode;
+  u64 call_ctr;
+  u64 kick_ctr;
 } vhost_user_vring_t;
 
 #define VHOST_USER_EVENT_START_TIMER 1
@@ -244,7 +243,6 @@ typedef struct
 
   //Virtual rings
   vhost_user_vring_t vrings[VHOST_VRING_MAX_N];
-  volatile u32 *vring_locks[VHOST_VRING_MAX_N];
 
   int virtio_net_hdr_sz;
   int is_any_layout;
@@ -252,12 +250,6 @@ typedef struct
   void *log_base_addr;
   u64 log_size;
 
-  /* Whether to use spinlock or per_cpu_tx_qid assignment */
-  u8 use_tx_spinlock;
-  u16 *per_cpu_tx_qid;
-
-  /* Vector of active rx queues for this interface */
-  u16 *rx_queues;
 } vhost_user_intf_t;
 
 typedef struct

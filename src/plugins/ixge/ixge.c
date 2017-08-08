@@ -1204,7 +1204,7 @@ ixge_interface_tx (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * f)
 {
   ixge_main_t *xm = &ixge_main;
-  vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
+  vnet_interface_tx_runtime_t *rd = (void *) node->runtime_data;
   ixge_device_t *xd = vec_elt_at_index (xm->devices, rd->dev_instance);
   ixge_dma_queue_t *dq;
   u32 *from, n_left_tx, n_descriptors_to_tx, n_tail_drop;
