@@ -25,7 +25,8 @@
 #include <vppinfra/bitmap.h>
 #include <vppinfra/elog.h>
 #include <vppinfra/bihash_48_8.h>
-#include "bihash_40_8.h"
+#include <vppinfra/bihash_40_8.h>
+
 #include "fa_node.h"
 #include "hash_lookup_types.h"
 

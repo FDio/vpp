@@ -20,7 +20,7 @@
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
 #include <acl/acl.h>
-#include "bihash_40_8.h"
+#include <vppinfra/bihash_40_8.h>
 
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
