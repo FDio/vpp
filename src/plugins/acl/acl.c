@@ -74,7 +74,9 @@ _(MACIP_ACL_ADD, macip_acl_add) \
 _(MACIP_ACL_DEL, macip_acl_del) \
 _(MACIP_ACL_INTERFACE_ADD_DEL, macip_acl_interface_add_del) \
 _(MACIP_ACL_DUMP, macip_acl_dump) \
-_(MACIP_ACL_INTERFACE_GET, macip_acl_interface_get)
+_(MACIP_ACL_INTERFACE_GET, macip_acl_interface_get) \
+_(MACIP_ACL_INTERFACE_LIST_DUMP, macip_acl_interface_list_dump)
+
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
@@ -1736,6 +1738,66 @@ vl_api_macip_acl_interface_get_t_handler (vl_api_macip_acl_interface_get_t *
     }
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+send_macip_acl_interface_list_details (acl_main_t * am,
+                                       unix_shared_memory_queue_t * q,
+                                       u32 sw_if_index,
+                                       u32 acl_index,
+                                       u32 context)
+{
+  vl_api_macip_acl_interface_list_details_t *rmp;
+  /* at this time there is only ever 1 mac ip acl per interface */
+  int msg_size = sizeof (*rmp) + sizeof (rmp->acls[0]);
+
+  rmp = vl_msg_api_alloc (msg_size);
+  memset (rmp, 0, msg_size);
+  rmp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_INTERFACE_LIST_DETAILS + am->msg_id_base);
+
+  /* fill in the message */
+  rmp->context = context;
+  rmp->count = 1;
+  rmp->sw_if_index = htonl (sw_if_index);
+  rmp->acls[0] = htonl (acl_index);
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_macip_acl_interface_list_dump_t_handler (vl_api_macip_acl_interface_list_dump_t *mp)
+{
+  unix_shared_memory_queue_t *q;
+  acl_main_t *am = &acl_main;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  if (sw_if_index == ~0)
+    {
+      vec_foreach_index(sw_if_index, am->macip_acl_by_sw_if_index)
+        {
+          if (~0 != am->macip_acl_by_sw_if_index[sw_if_index])
+            {
+              send_macip_acl_interface_list_details(am, q,  sw_if_index,
+                                                    am->macip_acl_by_sw_if_index[sw_if_index],
+                                                    mp->context);
+            }
+        }
+    }
+  else
+    {
+      if (vec_len(am->macip_acl_by_sw_if_index) > sw_if_index)
+        {
+          send_macip_acl_interface_list_details(am, q, sw_if_index,
+                                                am->macip_acl_by_sw_if_index[sw_if_index],
+                                                mp->context);
+        }
+    }
 }
 
 /* Set up the API message handling tables */
