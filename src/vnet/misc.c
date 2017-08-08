@@ -40,6 +40,8 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 
+#define VNET_DEBUG_DEFAULT 1
+
 vnet_main_t vnet_main;
 
 vnet_main_t *
@@ -107,6 +109,8 @@ vnet_main_init (vlib_main_t * vm)
 
   vnm->local_interface_hw_if_index = hw_if_index;
   vnm->local_interface_sw_if_index = hw->sw_if_index;
+
+  vnm->debug = VNET_DEBUG_DEFAULT;
 
   /* the local interface is used as an input interface when decapping from
    * an IPSEC tunnel. so it needs to be IP enabled */
