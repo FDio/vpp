@@ -787,7 +787,6 @@ typedef enum
   _ (opcode_not_request, "ARP opcode not request")                      \
   _ (proxy_arp_replies_sent, "Proxy ARP replies sent")			\
   _ (l2_address_mismatch, "ARP hw addr does not match L2 frame src addr") \
-  _ (missing_interface_address, "ARP missing interface address") \
   _ (gratuitous_arp, "ARP probe or announcement dropped") \
   _ (interface_no_table, "Interface is not mapped to an IP table") \
   _ (interface_not_ip_enabled, "Interface is not IP enabled") \
@@ -906,8 +905,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  fib_node_index_t dst_fei, src_fei;
 	  fib_prefix_t pfx0;
 	  fib_entry_flag_t src_flags, dst_flags;
-	  ip_adjacency_t *adj0 = NULL;
-	  adj_index_t ai;
+	  u8 *rewrite0, rewrite0_len;
 
 	  pi0 = from[0];
 	  to_next[0] = pi0;
@@ -1105,20 +1103,18 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	      goto drop1;
 	    }
 
-	  /* Send a reply. */
 	send_reply:
-	  ai = fib_entry_get_adj (src_fei);
-	  if (ADJ_INDEX_INVALID != ai)
-	    {
-	      adj0 = adj_get (ai);
-	    }
-	  else
-	    {
-	      error0 = ETHERNET_ARP_ERROR_missing_interface_address;
-	      goto drop2;
-	    }
+	  /* Send a reply.
+	     An adjacency to the sender is not always present,
+	     so we use the interface to build us a rewrite string
+	     which will contain all the necessary tags. */
+	  rewrite0 = ethernet_build_rewrite (vnm, sw_if_index0,
+					     VNET_LINK_ARP,
+					     eth_rx->src_address);
+	  rewrite0_len = vec_len (rewrite0);
+
 	  /* Figure out how much to rewind current data from adjacency. */
-	  vlib_buffer_advance (p0, -adj0->rewrite_header.data_bytes);
+	  vlib_buffer_advance (p0, -rewrite0_len);
 	  eth_tx = vlib_buffer_get_current (p0);
 
 	  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index0;
@@ -1143,8 +1139,8 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  /* the rx nd tx ethernet headers wil overlap in the case
 	   * when we received a tagged VLAN=0 packet, but we are sending
 	   * back untagged */
-	  memmove (eth_tx->dst_address, eth_rx->src_address, 6);
-	  clib_memcpy (eth_tx->src_address, hw_if0->hw_address, 6);
+	  clib_memcpy (eth_tx, rewrite0, vec_len (rewrite0));
+	  vec_free (rewrite0);
 
 	  if (NULL == pa)
 	    {
