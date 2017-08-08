@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5a4e6583_9d746e9d",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 31,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-08T07:25:10Z",
+      "side": 1,
+      "message": "want_interface_events?",
+      "range": {
+        "startLine": 31,
+        "startChar": 40,
+        "endLine": 31,
+        "endChar": 51
+      },
+      "revId": "d3540b63cf2417c1422f159071117f098586a211",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_5d6ef6ca",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-08T07:25:10Z",
+      "side": 1,
+      "message": "double context?",
+      "range": {
+        "startLine": 33,
+        "startChar": 11,
+        "endLine": 33,
+        "endChar": 18
+      },
+      "revId": "d3540b63cf2417c1422f159071117f098586a211",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_3d733ab3",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-08T07:25:10Z",
+      "side": 1,
+      "message": "index of the interface generating the event",
+      "range": {
+        "startLine": 34,
+        "startChar": 25,
+        "endLine": 34,
+        "endChar": 62
+      },
+      "revId": "d3540b63cf2417c1422f159071117f098586a211",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_fd6482e6",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-08T07:25:10Z",
+      "side": 1,
+      "message": "administrative state of the interface",
+      "range": {
+        "startLine": 35,
+        "startChar": 27,
+        "endLine": 35,
+        "endChar": 46
+      },
+      "revId": "d3540b63cf2417c1422f159071117f098586a211",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_1d687eb9",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-08T07:25:10Z",
+      "side": 1,
+      "message": "operational state of the interface",
+      "range": {
+        "startLine": 36,
+        "startChar": 26,
+        "endLine": 36,
+        "endChar": 78
+      },
+      "revId": "d3540b63cf2417c1422f159071117f098586a211",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_7d79b292",
+        "filename": "src/vnet/interface.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-08T07:25:10Z",
+      "side": 1,
+      "message": "whitespace error",
+      "range": {
+        "startLine": 47,
+        "startChar": 0,
+        "endLine": 47,
+        "endChar": 1
+      },
+      "revId": "d3540b63cf2417c1422f159071117f098586a211",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_dd61c6d4",
+        "filename": "src/vpp/api/custom_dump.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 118,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-08T07:25:10Z",
+      "side": 1,
+      "message": "sw_interface_event?",
+      "range": {
+        "startLine": 118,
+        "startChar": 26,
+        "endLine": 118,
+        "endChar": 48
+      },
+      "revId": "d3540b63cf2417c1422f159071117f098586a211",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
