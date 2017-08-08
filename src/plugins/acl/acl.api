@@ -416,3 +416,30 @@ define macip_acl_interface_get_reply
   u32 acls[count];
 };
 
+/** \brief Dump the list(s) of MACIP ACLs applied to specific or all interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to dump the ACL list for
+*/
+
+define macip_acl_interface_list_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index; /* ~0 for all interfaces */
+};
+
+/** \brief Details about a single MACIP ACL contents
+    @param context - returned sender context, to match reply w/ request
+    @param sw_if_index - interface for which the list of ACLs is applied
+    @param count - total length of acl indices vector
+    @param acls - the vector of ACL indices
+*/
+
+define macip_acl_interface_list_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u8 count;
+  u32 acls[count];
+};
