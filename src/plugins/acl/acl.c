@@ -89,6 +89,11 @@ acl_set_heap(acl_main_t *am)
 {
   if (0 == am->acl_mheap) {
     am->acl_mheap = mheap_alloc (0 /* use VM */ , 2 << 29);
+    mheap_t *h = mheap_header (am->acl_mheap);
+    h->flags |= MHEAP_FLAG_THREAD_SAFE;
+    /* Turn on validation */
+    h->flags |= MHEAP_FLAG_VALIDATE;
+    h->flags = ~MHEAP_FLAG_SMALL_OBJECT_CACHE;
   }
   void *oldheap = clib_mem_set_heap(am->acl_mheap);
   return oldheap;

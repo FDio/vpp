@@ -269,6 +269,13 @@ hash_acl_set_heap(acl_main_t *am)
 {
   if (0 == am->hash_lookup_mheap) {
     am->hash_lookup_mheap = mheap_alloc (0 /* use VM */ , 2 << 25);
+    mheap_t *h = mheap_header (am->hash_lookup_mheap);
+    /* 
+     * We technically do not need this heap to be thread-safe since
+     * all the allocations/deallocations should happen from main thread
+     * but better safe than sorry...
+     */
+    h->flags |= MHEAP_FLAG_THREAD_SAFE;
   }
   void *oldheap = clib_mem_set_heap(am->hash_lookup_mheap);
   return oldheap;
