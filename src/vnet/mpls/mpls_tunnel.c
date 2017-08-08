@@ -800,11 +800,24 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
             is_del = 0;
         else if (unformat (line_input, "add"))
             is_del = 0;
-        else if (unformat (line_input, "out-label %U",
-                           unformat_mpls_unicast_label, &out_label))
-        {
-            vec_add1(rpath.frp_label_stack, out_label);
-        }
+        else if (unformat (line_input, "out-labels"))
+	{
+            if (vec_len (rpaths) == 0)
+	    {
+                error = clib_error_return (0, "Paths then labels");
+                goto done;
+            }
+            else
+            {
+                while (unformat (line_input, "%U",
+                                 unformat_mpls_unicast_label,
+                                 &out_label))
+                {
+                    vec_add1 (rpaths[vec_len (rpaths) - 1].frp_label_stack,
+                              out_label);
+                }
+            }
+	}
         else if (unformat (line_input, "via %U %U",
                            unformat_ip4_address,
                            &rpath.frp_addr.ip4,
