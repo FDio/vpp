@@ -12,7 +12,7 @@ import resource
 import faulthandler
 from collections import deque
 from threading import Thread, Event
-from inspect import getdoc
+from inspect import getdoc, isclass
 from traceback import format_exception
 from logging import FileHandler, DEBUG, Formatter
 from scapy.packet import Raw
@@ -90,6 +90,39 @@ def running_extended_tests():
     except:
         return False
     return False
+
+
+class KeepAliveReporter(object):
+    """
+    Singleton object which reports test start to parent process
+    """
+    _shared_state = {}
+
+    def __init__(self):
+        self.__dict__ = self._shared_state
+
+    @property
+    def pipe(self):
+        return self._pipe
+
+    @pipe.setter
+    def pipe(self, pipe):
+        if hasattr(self, '_pipe'):
+            raise Exception("Internal error - pipe should only be set once.")
+        self._pipe = pipe
+
+    def send_keep_alive(self, test):
+        """
+        Write current test tmpdir & desc to keep-alive pipe to signal liveness
+        """
+        if isclass(test):
+            desc = test.__name__
+        else:
+            desc = test.shortDescription()
+            if not desc:
+                desc = str(test)
+
+        self.pipe.send((desc, test.vpp_bin, test.tempdir))
 
 
 class VppTestCase(unittest.TestCase):
@@ -257,6 +290,8 @@ class VppTestCase(unittest.TestCase):
         cls.vpp_dead = False
         cls.registry = VppObjectRegistry()
         cls.vpp_startup_failed = False
+        cls.reporter = KeepAliveReporter()
+        cls.reporter.send_keep_alive(cls)
         # need to catch exceptions here because if we raise, then the cleanup
         # doesn't get called and we might end with a zombie vpp
         try:
@@ -394,6 +429,7 @@ class VppTestCase(unittest.TestCase):
 
     def setUp(self):
         """ Clear trace before running each test"""
+        self.reporter.send_keep_alive(self)
         self.logger.debug("--- setUp() for %s.%s(%s) called ---" %
                           (self.__class__.__name__, self._testMethodName,
                            self._testMethodDoc))
@@ -865,13 +901,15 @@ class VppTestRunner(unittest.TextTestRunner):
         """Class maintaining the results of the tests"""
         return VppTestResult
 
-    def __init__(self, stream=sys.stderr, descriptions=True, verbosity=1,
+    def __init__(self, pipe, stream=sys.stderr, descriptions=True, verbosity=1,
                  failfast=False, buffer=False, resultclass=None):
         # ignore stream setting here, use hard-coded stdout to be in sync
         # with prints from VppTestCase methods ...
         super(VppTestRunner, self).__init__(sys.stdout, descriptions,
                                             verbosity, failfast, buffer,
                                             resultclass)
+        reporter = KeepAliveReporter()
+        reporter.pipe = pipe
 
     test_option = "TEST"
 
