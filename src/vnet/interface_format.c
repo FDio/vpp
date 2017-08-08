@@ -65,16 +65,29 @@ format_vnet_hw_interface_rx_mode (u8 * s, va_list * args)
 {
   vnet_hw_interface_rx_mode mode = va_arg (*args, vnet_hw_interface_rx_mode);
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
-    return format (s, "polling");
+#define _(n,str) \
+    if (mode == VNET_HW_INTERFACE_RX_MODE_##n) \
+      return format(s, str);
+  foreach_vnet_hw_rx_mode
+#undef _
+    return format (s, "unknown");
+}
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_INTERRUPT)
-    return format (s, "interrupt");
+uword
+unformat_vnet_hw_interface_rx_mode (unformat_input_t * input, va_list * args)
+{
+  vnet_hw_interface_rx_mode *mode =
+    va_arg (*args, vnet_hw_interface_rx_mode *);
 
-  if (mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE)
-    return format (s, "adaptive");
-
-  return format (s, "unknown");
+#define _(n,str) \
+    if (unformat(input, str)) \
+      { \
+	*mode = VNET_HW_INTERFACE_RX_MODE_##n; \
+	return 1; \
+      }
+  foreach_vnet_hw_rx_mode
+#undef _
+    return 0;
 }
 
 u8 *
@@ -174,6 +187,14 @@ format_vnet_sw_if_index_name (u8 * s, va_list * args)
       return format (s, "DELETED");
     }
   return format (s, "%U", format_vnet_sw_interface_name, vnm, si);
+}
+
+u8 *
+format_vnet_hw_interface_name (u8 * s, va_list * args)
+{
+  vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
+  vnet_hw_interface_t *hw = va_arg (*args, vnet_hw_interface_t *);
+  return format (s, "%U", format_vnet_sw_if_index_name, vnm, hw->sw_if_index);
 }
 
 u8 *

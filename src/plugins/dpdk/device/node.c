@@ -650,15 +650,16 @@ dpdk_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd;
   uword n_rx_packets = 0;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
+  vnet_hw_interface_rx_runtime_t *rt =
+    (vnet_hw_interface_rx_runtime_t *) node->runtime_data;
+  vnet_hw_interface_rx_queue_runtime_t *dq;
   u32 thread_index = node->thread_index;
 
   /*
    * Poll all devices on this cpu for input/interrupts.
    */
   /* *INDENT-OFF* */
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  foreach_device_and_queue (vm, rt, dq)
     {
       xd = vec_elt_at_index(dm->devices, dq->dev_instance);
       if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
@@ -667,6 +668,8 @@ dpdk_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
         n_rx_packets += dpdk_device_input (dm, xd, node, thread_index, dq->queue_id, /* maybe_multiseg */ 0);
     }
   /* *INDENT-ON* */
+
+  vnet_device_input_rx_finish (vm, node, rt);
 
   poll_rate_limit (dm);
 
