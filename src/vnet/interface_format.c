@@ -74,6 +74,9 @@ format_vnet_hw_interface_rx_mode (u8 * s, va_list * args)
   if (mode == VNET_HW_INTERFACE_RX_MODE_ADAPTIVE)
     return format (s, "adaptive");
 
+  if (mode == VNET_HW_INTERFACE_RX_MODE_DEFAULT)
+    return format (s, "default");
+
   return format (s, "unknown");
 }
 
@@ -174,6 +177,14 @@ format_vnet_sw_if_index_name (u8 * s, va_list * args)
       return format (s, "DELETED");
     }
   return format (s, "%U", format_vnet_sw_interface_name, vnm, si);
+}
+
+u8 *
+format_vnet_hw_interface_name (u8 * s, va_list * args)
+{
+  vnet_main_t *vnm = va_arg (*args, vnet_main_t *);
+  vnet_hw_interface_t *hw = va_arg (*args, vnet_hw_interface_t *);
+  return format (s, "%U", format_vnet_sw_if_index_name, vnm, hw->sw_if_index);
 }
 
 u8 *
