@@ -269,9 +269,38 @@ hash_acl_set_heap(acl_main_t *am)
 {
   if (0 == am->hash_lookup_mheap) {
     am->hash_lookup_mheap = mheap_alloc (0 /* use VM */ , 2 << 25);
+    mheap_t *h = mheap_header (am->hash_lookup_mheap);
+    h->flags |= MHEAP_FLAG_THREAD_SAFE;
   }
   void *oldheap = clib_mem_set_heap(am->hash_lookup_mheap);
   return oldheap;
+}
+
+void
+acl_plugin_hash_acl_set_validate_heap(acl_main_t *am, int on)
+{
+  clib_mem_set_heap(hash_acl_set_heap(am));
+  mheap_t *h = mheap_header (am->hash_lookup_mheap);
+  if (on) {
+    h->flags |= MHEAP_FLAG_VALIDATE;
+    h->flags &= ~MHEAP_FLAG_SMALL_OBJECT_CACHE;
+    mheap_validate(h);
+  } else {
+    h->flags &= ~MHEAP_FLAG_VALIDATE;
+    h->flags |= MHEAP_FLAG_SMALL_OBJECT_CACHE;
+  }
+}
+
+void
+acl_plugin_hash_acl_set_trace_heap(acl_main_t *am, int on)
+{
+  clib_mem_set_heap(hash_acl_set_heap(am));
+  mheap_t *h = mheap_header (am->hash_lookup_mheap);
+  if (on) {
+    h->flags |= MHEAP_FLAG_TRACE;
+  } else {
+    h->flags &= ~MHEAP_FLAG_TRACE;
+  }
 }
 
 void

@@ -57,4 +57,8 @@ hash_multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l
  */
 void show_hash_acl_hash(vlib_main_t * vm, acl_main_t *am, u32 verbose);
 
+/* Debug functions to turn validate/trace on and off */
+void acl_plugin_hash_acl_set_validate_heap(acl_main_t *am, int on);
+void acl_plugin_hash_acl_set_trace_heap(acl_main_t *am, int on);
+
 #endif
