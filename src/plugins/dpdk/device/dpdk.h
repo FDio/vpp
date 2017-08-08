@@ -145,8 +145,13 @@ typedef struct
 
 typedef struct
 {
+  u16 queue_id;
+
+} dpdk_tx_queue_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  volatile u32 **lockp;
 
   /* Instance ID */
   u32 device_index;
@@ -196,6 +201,10 @@ typedef struct
   struct rte_eth_conf port_conf;
   struct rte_eth_txconf tx_conf;
 
+  /* tx rss mask used for the device. */
+  u8 tx_rss_mask;
+  dpdk_tx_queue_t *tx_queue_by_thread_and_tx_rss;
+
   /* HQoS related */
   dpdk_device_hqos_per_worker_thread_t *hqos_wt;
   dpdk_device_hqos_per_hqos_thread_t *hqos_ht;
@@ -223,6 +232,7 @@ typedef struct
 
   /* error string */
   clib_error_t *errors;
+
 } dpdk_device_t;
 
 #define DPDK_STATS_POLL_INTERVAL      (10.0)

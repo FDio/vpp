@@ -318,7 +318,7 @@ gre_interface_tx_inline (vlib_main_t * vm,
   gre_main_t * gm = &gre_main;
   u32 next_index;
   u32 * from, * to_next, n_left_from, n_left_to_next;
-  vnet_interface_output_runtime_t * rd = (void *) node->runtime_data;
+  vnet_interface_tx_runtime_t * rd = (void *) node->runtime_data;
   const gre_tunnel_t *gt = pool_elt_at_index (gm->tunnels, rd->dev_instance);
   u8 is_ipv6 = gt->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
 

@@ -101,7 +101,7 @@ netmap_interface_tx (vlib_main_t * vm,
   u32 *buffers = vlib_frame_args (frame);
   u32 n_left = frame->n_vectors;
   f64 const time_constant = 1e3;
-  vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
+  vnet_interface_tx_runtime_t *rd = (void *) node->runtime_data;
   netmap_if_t *nif = pool_elt_at_index (nm->interfaces, rd->dev_instance);
   int cur_ring;
 
