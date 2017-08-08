@@ -1617,7 +1617,7 @@ static void
 
   mp->value = clib_net_to_host_u32 (mp->value);
   rv = vnet_lisp_map_register_fallback_threshold_set (mp->value);
-  REPLY_MACRO (VL_API_ONE_MAP_REGISTER_FALLBACK_THRESHOLD);
+  REPLY_MACRO (VL_API_ONE_MAP_REGISTER_FALLBACK_THRESHOLD_REPLY);
 }
 
 static void
