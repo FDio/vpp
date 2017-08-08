@@ -99,7 +99,7 @@ ipsec_gre_interface_tx (vlib_main_t * vm,
   ipsec_gre_main_t *igm = &ipsec_gre_main;
   u32 next_index;
   u32 *from, *to_next, n_left_from, n_left_to_next;
-  vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
+  vnet_interface_tx_runtime_t *rd = (void *) node->runtime_data;
   ipsec_gre_tunnel_t *t = pool_elt_at_index (igm->tunnels, rd->dev_instance);
 
   /* Vector of buffer / pkt indices we're supposed to process */

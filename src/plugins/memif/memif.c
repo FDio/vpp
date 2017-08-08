@@ -111,9 +111,9 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
     if (mq->ring)
       {
 	int rv;
-	rv = vnet_hw_interface_unassign_rx_thread (vnm, mif->hw_if_index, i);
+	rv = vnet_hw_interface_enable_rx_queue (vnm, mif->hw_if_index, i, 1);
 	if (rv)
-	  DBG ("Warning: unable to unassign interface %d, "
+	  DBG ("Warning: unable to disable interface %d, "
 	       "queue %d: rc=%d", mif->hw_if_index, i, rv);
 	mq->ring = 0;
       }
@@ -220,12 +220,10 @@ memif_connect (memif_if_t * mif)
 	template.private_data = (mif->dev_instance << 16) | (i & 0xFFFF);
 	memif_file_add (&mq->int_unix_file_index, &template);
       }
-    vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, i, ~0);
-    rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
-					VNET_HW_INTERFACE_RX_MODE_DEFAULT);
+    rv = vnet_hw_interface_enable_rx_queue (vnm, mif->hw_if_index, i, 0);
     if (rv)
       clib_warning
-	("Warning: unable to set rx mode for interface %d queue %d: "
+	("Warning: unable to enable rx for interface %d queue %d: "
 	 "rc=%d", mif->hw_if_index, i, rv);
     else
       {
