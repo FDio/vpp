@@ -91,11 +91,39 @@ acl_set_heap(acl_main_t *am)
 {
   if (0 == am->acl_mheap) {
     am->acl_mheap = mheap_alloc (0 /* use VM */ , 2 << 29);
+    mheap_t *h = mheap_header (am->acl_mheap);
+    h->flags |= MHEAP_FLAG_THREAD_SAFE;
   }
   void *oldheap = clib_mem_set_heap(am->acl_mheap);
   return oldheap;
 }
 
+void
+acl_plugin_acl_set_validate_heap(acl_main_t *am, int on)
+{
+  clib_mem_set_heap(acl_set_heap(am));
+  mheap_t *h = mheap_header (am->acl_mheap);
+  if (on) {
+    h->flags |= MHEAP_FLAG_VALIDATE;
+    h->flags &= ~MHEAP_FLAG_SMALL_OBJECT_CACHE;
+    mheap_validate(h);
+  } else {
+    h->flags &= ~MHEAP_FLAG_VALIDATE;
+    h->flags |= MHEAP_FLAG_SMALL_OBJECT_CACHE;
+  }
+}
+
+void
+acl_plugin_acl_set_trace_heap(acl_main_t *am, int on)
+{
+  clib_mem_set_heap(acl_set_heap(am));
+  mheap_t *h = mheap_header (am->acl_mheap);
+  if (on) {
+    h->flags |= MHEAP_FLAG_TRACE;
+  } else {
+    h->flags &= ~MHEAP_FLAG_TRACE;
+  }
+}
 
 static void
 vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
@@ -1930,6 +1958,8 @@ acl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (acl_sw_interface_add_del);
 
+
+
 static clib_error_t *
 acl_set_aclplugin_fn (vlib_main_t * vm,
                               unformat_input_t * input,
@@ -1956,6 +1986,26 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
   if (unformat (input, "l4-match-nonfirst-fragment %u", &val))
     {
       am->l4_match_nonfirst_fragment = (val != 0);
+      goto done;
+    }
+  if (unformat (input, "heap"))
+    {
+      if (unformat(input, "main"))
+        {
+          if (unformat(input, "validate %u", &val))
+            acl_plugin_acl_set_validate_heap(am, val);
+          else if (unformat(input, "trace %u", &val))
+            acl_plugin_acl_set_trace_heap(am, val);
+          goto done;
+        }
+      else if (unformat(input, "hash"))
+        {
+          if (unformat(input, "validate %u", &val))
+            acl_plugin_hash_acl_set_validate_heap(am, val);
+          else if (unformat(input, "trace %u", &val))
+            acl_plugin_hash_acl_set_trace_heap(am, val);
+          goto done;
+        }
       goto done;
     }
   if (unformat (input, "session")) {
