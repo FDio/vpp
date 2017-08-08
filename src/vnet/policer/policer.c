@@ -41,8 +41,8 @@ policer_add_del (vlib_main_t * vm,
 	  vec_free (name);
 	  return clib_error_return (0, "No such policer configuration");
 	}
-      pool_put_index(pm->configs, p[0]);
-      pool_put_index(pm->policer_templates, p[0]);
+      pool_put_index (pm->configs, p[0]);
+      pool_put_index (pm->policer_templates, p[0]);
       hash_unset_mem (pm->policer_config_by_name, name);
 
       /* free policer */
@@ -52,7 +52,7 @@ policer_add_del (vlib_main_t * vm,
 	  vec_free (name);
 	  return clib_error_return (0, "No such policer");
 	}
-      pool_put_index(pm->policers, p[0]);
+      pool_put_index (pm->policers, p[0]);
       hash_unset_mem (pm->policer_index_by_name, name);
 
       vec_free (name);
@@ -514,15 +514,15 @@ VLIB_CLI_COMMAND (show_policer_command, static) = {
 
 static clib_error_t *
 show_policer_pools_command_fn (vlib_main_t * vm,
-			       unformat_input_t * input, 
+			       unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
 {
   vnet_policer_main_t *pm = &vnet_policer_main;
 
   vlib_cli_output (vm, "pool sizes: configs=%d templates=%d policers=%d",
-		   pool_elts(pm->configs), 
-		   pool_elts(pm->policer_templates), 
-		   pool_elts(pm->policers));
+		   pool_elts (pm->configs),
+		   pool_elts (pm->policer_templates),
+		   pool_elts (pm->policers));
   return 0;
 }
 /* *INDENT-OFF* */
@@ -556,7 +556,6 @@ policer_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (policer_init);
-
 
 
 /*
