@@ -1,8 +1,8 @@
 import signal
 import os
-import pexpect
 import traceback
-from log import *
+from log import RED, single_line_delim, double_line_delim
+from debug import spawn_gdb, gdb_path
 
 
 class Hook(object):
@@ -60,31 +60,16 @@ class PollHook(Hook):
         self.testcase = testcase
         self.logger = testcase.logger
 
-    def spawn_gdb(self, gdb_path, core_path):
-        gdb_cmdline = gdb_path + ' ' + self.testcase.vpp_bin + ' ' + core_path
-        gdb = pexpect.spawn(gdb_cmdline)
-        gdb.interact()
-        try:
-            gdb.terminate(True)
-        except:
-            pass
-        if gdb.isalive():
-            raise Exception("GDB refused to die...")
-
     def on_crash(self, core_path):
         if self.testcase.debug_core:
-            gdb_path = '/usr/bin/gdb'
-            if os.path.isfile(gdb_path) and os.access(gdb_path, os.X_OK):
-                # automatically attach gdb
-                self.spawn_gdb(gdb_path, core_path)
-                return
-            else:
+            if not spawn_gdb(self.testcase.vpp_bin, core_path):
                 self.logger.error(
                     "Debugger '%s' does not exist or is not an executable.." %
                     gdb_path)
-
-        self.logger.critical('core file present, debug with: gdb ' +
-                             self.testcase.vpp_bin + ' ' + core_path)
+            else:
+                return
+        self.logger.critical("Core file present, debug with: gdb %s %s" %
+                             (self.testcase.vpp_bin, core_path))
 
     def poll_vpp(self):
         """
