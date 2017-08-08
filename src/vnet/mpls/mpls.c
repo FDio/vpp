@@ -66,8 +66,18 @@ uword unformat_mpls_unicast_label (unformat_input_t * input, va_list * args)
       *label = MPLS_IETF_ROUTER_ALERT_LABEL;
   else if (unformat (input, MPLS_IETF_IMPLICIT_NULL_STRING))
       *label = MPLS_IETF_IMPLICIT_NULL_LABEL;
+  else if (unformat (input, MPLS_IETF_IPV4_EXPLICIT_NULL_BRIEF_STRING))
+      *label = MPLS_IETF_IPV4_EXPLICIT_NULL_LABEL;
+  else if (unformat (input, MPLS_IETF_IPV6_EXPLICIT_NULL_BRIEF_STRING))
+      *label = MPLS_IETF_IPV6_EXPLICIT_NULL_LABEL;
+  else if (unformat (input, MPLS_IETF_ROUTER_ALERT_BRIEF_STRING))
+      *label = MPLS_IETF_ROUTER_ALERT_LABEL;
+  else if (unformat (input, MPLS_IETF_IMPLICIT_NULL_BRIEF_STRING))
+      *label = MPLS_IETF_IMPLICIT_NULL_LABEL;
   else if (unformat (input, "%d", label))
       ;
+  else
+    return (0);
 
   return (1);
 }
@@ -388,16 +398,23 @@ vnet_mpls_local_label (vlib_main_t * vm,
           rpath.frp_flags = FIB_ROUTE_PATH_INTF_RX;
 	  vec_add1(rpaths, rpath);
       }
-      else if (unformat (line_input, "out-label %U",
-                         unformat_mpls_unicast_label,
-			 &out_label))
+      else if (unformat (line_input, "out-labels"))
       {
-	  if (vec_len(rpaths) == 0)
-	  {
-	      error = clib_error_return(0 , "Paths then labels");
+	  if (vec_len (rpaths) == 0)
+          {
+	      error = clib_error_return (0, "Paths then labels");
 	      goto done;
-	  }
-	  vec_add1(rpaths[vec_len(rpaths)-1].frp_label_stack, out_label);
+          }
+          else
+          {
+              while (unformat (line_input, "%U",
+                               unformat_mpls_unicast_label,
+                               &out_label))
+              {
+                  vec_add1 (rpaths[vec_len (rpaths) - 1].frp_label_stack,
+                            out_label);
+              }
+          }
       }
       else
       {

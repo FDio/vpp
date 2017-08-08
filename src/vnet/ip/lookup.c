@@ -408,15 +408,22 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  rpaths[vec_len (rpaths) - 1].frp_flags |=
 	    FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED;
 	}
-      else if (unformat (line_input, "out-label %U",
-			 unformat_mpls_unicast_label, &out_label))
+      else if (unformat (line_input, "out-labels"))
 	{
 	  if (vec_len (rpaths) == 0)
 	    {
 	      error = clib_error_return (0, "Paths then labels");
 	      goto done;
 	    }
-	  vec_add1 (rpaths[vec_len (rpaths) - 1].frp_label_stack, out_label);
+	  else
+	    {
+	      while (unformat (line_input, "%U",
+			       unformat_mpls_unicast_label, &out_label))
+		{
+		  vec_add1 (rpaths[vec_len (rpaths) - 1].frp_label_stack,
+			    out_label);
+		}
+	    }
 	}
       else if (unformat (line_input, "via-label %U",
 			 unformat_mpls_unicast_label, &rpath.frp_local_label))
