@@ -28,18 +28,33 @@ policer_add_del (vlib_main_t * vm,
   uword *p;
   u32 pi;
   int rv;
+  policer_read_response_type_st *pp;
+  sse2_qos_pol_cfg_params_st *cp;
 
   p = hash_get_mem (pm->policer_config_by_name, name);
 
   if (is_add == 0)
     {
+      /* free policer config and template */
       if (p == 0)
 	{
 	  vec_free (name);
 	  return clib_error_return (0, "No such policer configuration");
 	}
+      pool_put_index (pm->configs, p[0]);
+      pool_put_index (pm->policer_templates, p[0]);
       hash_unset_mem (pm->policer_config_by_name, name);
+
+      /* free policer */
+      p = hash_get_mem (pm->policer_index_by_name, name);
+      if (p == 0)
+	{
+	  vec_free (name);
+	  return clib_error_return (0, "No such policer");
+	}
+      pool_put_index (pm->policers, p[0]);
       hash_unset_mem (pm->policer_index_by_name, name);
+
       vec_free (name);
       return 0;
     }
@@ -55,9 +70,6 @@ policer_add_del (vlib_main_t * vm,
 
   if (rv == 0)
     {
-      policer_read_response_type_st *pp;
-      sse2_qos_pol_cfg_params_st *cp;
-
       pool_get (pm->configs, cp);
       pool_get (pm->policer_templates, pp);
 
@@ -497,6 +509,27 @@ VLIB_CLI_COMMAND (show_policer_command, static) = {
     .path = "show policer",
     .short_help = "show policer [name]",
     .function = show_policer_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_policer_pools_command_fn (vlib_main_t * vm,
+			       unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  vnet_policer_main_t *pm = &vnet_policer_main;
+
+  vlib_cli_output (vm, "pool sizes: configs=%d templates=%d policers=%d",
+		   pool_elts (pm->configs),
+		   pool_elts (pm->policer_templates),
+		   pool_elts (pm->policers));
+  return 0;
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_policer_pools_command, static) = {
+    .path = "show policer pools",
+    .short_help = "show policer pools",
+    .function = show_policer_pools_command_fn,
 };
 /* *INDENT-ON* */
 
