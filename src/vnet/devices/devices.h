@@ -55,43 +55,101 @@ typedef struct
   uword next_worker_thread_index;
 } vnet_device_main_t;
 
-typedef struct
-{
-  u32 hw_if_index;
-  u32 dev_instance;
-  u16 queue_id;
-  vnet_hw_interface_rx_mode mode;
-  u32 interrupt_pending;
-} vnet_device_and_queue_t;
-
-typedef struct
-{
-  vnet_device_and_queue_t *devices_and_queues;
-  vlib_node_state_t enabled_node_state;
-} vnet_device_input_runtime_t;
-
 extern vnet_device_main_t vnet_device_main;
 extern vlib_node_registration_t device_input_node;
 extern const u32 device_input_next_node_advance[];
 
+#define vnet_thread_is_valid(vdm, thread_index) \
+    (((thread_index) == 0) || \
+	(thread_index >= (vdm)->first_worker_thread_index && \
+	    thread_index <= (vdm)->last_worker_thread_index))
+
+/**
+ * Bind input node to a given interface.
+ * This will overwrite any existing runtime data.
+ */
 static inline void
 vnet_hw_interface_set_input_node (vnet_main_t * vnm, u32 hw_if_index,
 				  u32 node_index)
 {
   vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  DBG_VNET ("set interface input node %U to node index %d",
+	    format_vnet_hw_interface_name, vnm, hw, node_index);
   hw->input_node_index = node_index;
+
+  vlib_node_t *n = vlib_get_node (vlib_get_main (), node_index);
+  if (n->runtime_data_bytes != sizeof (vnet_hw_interface_rx_runtime_t))
+    {
+      /*
+       * TODO: find a more element way to initialize the input node only once.
+       */
+      DBG_VNET ("Initialize input runtime for node %v (%d)",
+		n->name, node_index);
+      vlib_main_t **vm;
+      vec_foreach (vm, vlib_mains)
+      {
+	vnet_hw_interface_rx_runtime_t rt = { };
+	rt.enabled_node_state = VLIB_NODE_STATE_DISABLED;
+	vec_validate (rt.queues_per_rss, 0);
+	vlib_node_set_runtime_data (*vm, node_index, &rt, sizeof (rt));
+      }
+    }
 }
 
-void vnet_hw_interface_assign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
-					 u16 queue_id, uword thread_index);
-int vnet_hw_interface_unassign_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
-					  u16 queue_id);
+/*
+ * Assign a given thread index and rss slot to a given queue.
+ */
+int vnet_hw_interface_set_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
+				     u16 queue_id,
+				     u32 thread_index, u16 rss_slot);
+
+int vnet_hw_interface_get_rx_thread (vnet_main_t * vnm, u32 hw_if_index,
+				     u16 queue_id,
+				     u32 * thread_index, u16 * rss_slot);
+
 int vnet_hw_interface_set_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 				   u16 queue_id,
 				   vnet_hw_interface_rx_mode mode);
 int vnet_hw_interface_get_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
 				   u16 queue_id,
 				   vnet_hw_interface_rx_mode * mode);
+
+int vnet_hw_interface_enable_rx_queue (vnet_main_t * vnm, u32 hw_if_index,
+				       u16 queue_id, u8 disable);
+
+int vnet_hw_interface_set_rx_queue_rss_mask (vnet_main_t * vnm,
+					     u32 hw_if_index,
+					     u32 thread_index, u16 rss_mask);
+
+/*
+ * Enable or disable a queue index on this interface.
+ * Only enabled queues will be assigned to threads to transmit packets.
+ */
+int vnet_hw_interface_enable_tx_queue (vnet_main_t * vnm,
+				       u32 hw_if_index, u16 queue_id,
+				       u8 disable);
+
+static_always_inline vnet_interface_tx_queue_runtime_t *
+vnet_hw_interface_get_tx_queue (vlib_main_t * vm,
+				vnet_interface_tx_runtime_t * rt)
+{
+  ASSERT (vec_len (rt->tx_queue_per_rss) >= rt->rss_mask);
+  return &rt->tx_queue_per_rss[vm->main_loop_count & rt->rss_mask];
+}
+
+/*
+ * rss is used to make sure that packets received on a given rx queue
+ * are always going out through the same tx queue.
+ */
+int vnet_hw_interface_set_tx_rss_mask (vnet_main_t * vnm, u32 hw_if_index,
+				       u32 thread_index, u16 rss_mask);
+
+/*
+ * Assigns a queue to a given thread and rss slot.
+ */
+int vnet_hw_interface_set_tx_thread (vnet_main_t * vnm, u32 hw_if_index,
+				     u32 thread_index, u16 rss_slot,
+				     u16 queue_id);
 
 static inline u64
 vnet_get_aggregate_rx_packets (void)
@@ -115,47 +173,58 @@ vnet_device_increment_rx_packets (u32 thread_index, u64 count)
   pwd->aggregate_rx_packets += count;
 }
 
-static_always_inline vnet_device_and_queue_t *
-vnet_get_device_and_queue (vlib_main_t * vm, vlib_node_runtime_t * node)
-{
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  return rt->devices_and_queues;
-}
-
-static_always_inline uword
-vnet_get_device_input_thread_index (vnet_main_t * vnm, u32 hw_if_index,
-				    u16 queue_id)
-{
-  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
-  ASSERT (queue_id < vec_len (hw->input_node_thread_index_by_queue));
-  return hw->input_node_thread_index_by_queue[queue_id];
-}
-
 static_always_inline void
 vnet_device_input_set_interrupt_pending (vnet_main_t * vnm, u32 hw_if_index,
 					 u16 queue_id)
 {
   vlib_main_t *vm;
   vnet_hw_interface_t *hw;
-  vnet_device_input_runtime_t *rt;
-  vnet_device_and_queue_t *dq;
+  vnet_hw_interface_rx_queue_runtime_t *dq;
   uword idx;
 
   hw = vnet_get_hw_interface (vnm, hw_if_index);
-  idx = vnet_get_device_input_thread_index (vnm, hw_if_index, queue_id);
+  idx = hw->rx_queues[queue_id].thread_index;
   vm = vlib_mains[idx];
-  rt = vlib_node_get_runtime_data (vm, hw->input_node_index);
-  idx = hw->dq_runtime_index_by_queue[queue_id];
-  dq = vec_elt_at_index (rt->devices_and_queues, idx);
-  dq->interrupt_pending = 1;
-
+  ASSERT (hw->rx_queues[queue_id].current_rx_queue_runtime != NULL);
+  dq = hw->rx_queues[queue_id].current_rx_queue_runtime;
+  clib_smp_swap (&dq->interrupt_pending, 1);
   vlib_node_set_interrupt_pending (vm, hw->input_node_index);
 }
 
-#define foreach_device_and_queue(var,vec) \
-  for (var = (vec); var < vec_end (vec); var++)			\
-    if (clib_smp_swap (&((var)->interrupt_pending), 0) ||	\
-	var->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+static_always_inline int
+vnet_device_input_should_rx_queue (vlib_main_t * vm,
+				   vnet_hw_interface_rx_runtime_t * rt,
+				   vnet_hw_interface_rx_queue_runtime_t * dq)
+{
+  /* Always rx if the queue is in polling mode. */
+  if ((dq)->mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+    return 1;
+
+  /* rx if we have a pending interrupt */
+  if (clib_smp_swap (&dq->interrupt_pending, 0))
+    {
+      /* Keep running the thread until a full round of rss */
+      rt->last_interrupt_rss = (vm->main_loop_count - 1) & rt->rss_mask;
+      return 1;
+    }
+
+  return 0;
+}
+
+static_always_inline void
+vnet_device_input_rx_finish (vlib_main_t * vm, vlib_node_runtime_t * node,
+			     vnet_hw_interface_rx_runtime_t * rt)
+{
+  /* If we had an interrupt during the last rss round, keep finishing it. */
+  if (rt->last_interrupt_rss != (vm->main_loop_count & rt->rss_mask))
+    vlib_node_set_interrupt_pending (vm, node->node_index);
+  else
+    rt->last_interrupt_rss++;
+}
+
+#define foreach_device_and_queue(vm, rt, dq) \
+  vec_foreach (dq, (rt)->queues_per_rss[(vm)->main_loop_count & (rt)->rss_mask]) \
+    if (vnet_device_input_should_rx_queue(vm, rt, dq))
 
 #endif /* included_vnet_vnet_device_h */
 

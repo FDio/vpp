@@ -322,8 +322,8 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
   vnet_hw_interface_set_input_node (vnm, apif->hw_if_index,
 				    af_packet_input_node.index);
 
-  vnet_hw_interface_assign_rx_thread (vnm, apif->hw_if_index, 0,	/* queue */
-				      ~0 /* any cpu */ );
+  /* Enable queue 0 */
+  vnet_hw_interface_enable_rx_queue (vnm, apif->hw_if_index, 0, 0);
 
   hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_INT_MODE;
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index,
@@ -367,7 +367,9 @@ af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name)
 
   /* bring down the interface */
   vnet_hw_interface_set_flags (vnm, apif->hw_if_index, 0);
-  vnet_hw_interface_unassign_rx_thread (vnm, apif->hw_if_index, 0);
+
+  /* Disable rx queue */
+  vnet_hw_interface_enable_rx_queue (vnm, apif->hw_if_index, 0, 1);
 
   /* clean up */
   if (apif->unix_file_index != ~0)
