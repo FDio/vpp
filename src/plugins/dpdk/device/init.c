@@ -566,16 +566,18 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  q = 0;
 	  /* *INDENT-OFF* */
 	  clib_bitmap_foreach (i, devconf->workers, ({
-	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q++,
-					     vdm->first_worker_thread_index + i);
+	    vnet_hw_interface_set_rx_thread(dm->vnet_main, xd->hw_if_index,
+					    q++,
+					    vdm->first_worker_thread_index + i,
+					    0);
 	  }));
 	  /* *INDENT-ON* */
 	}
       else
 	for (q = 0; q < xd->rx_q_used; q++)
 	  {
-	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q,	/* any */
-						~1);
+	    vnet_hw_interface_set_rx_thread(dm->vnet_main, xd->hw_if_index,
+					    q++, ~0, 0); /* any */
 	  }
 
       hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);

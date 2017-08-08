@@ -536,6 +536,7 @@ start_workers (vlib_main_t * vm)
     {
       /* Replace hand-crafted length-1 vector with a real vector */
       vlib_mains = 0;
+      clib_warning("NVLIB_MAINS %d", n_vlib_mains);
 
       vec_validate_aligned (vlib_mains, tm->n_vlib_mains - 1,
 			    CLIB_CACHE_LINE_BYTES);

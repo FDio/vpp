@@ -48,10 +48,16 @@
 #include <vnet/interface.h>
 #include <vnet/api_errno.h>
 
+typedef struct
+{
+  volatile uword lock[CLIB_CACHE_LINE_BYTES / sizeof(uword)] __attribute__((aligned(CLIB_CACHE_LINE_BYTES)));
+} vnet_tx_lock_t;
+
 typedef struct vnet_main_t
 {
   u32 local_interface_hw_if_index;
   u32 local_interface_sw_if_index;
+  u32 next_thread_index;
 
   vnet_interface_main_t interface_main;
 
@@ -75,6 +81,13 @@ typedef struct vnet_main_t
    */
   vnet_api_error_t api_errno;
 
+  /*
+   * Pool of tx locks for devices.
+   */
+  vnet_tx_lock_t *tx_locks;
+
+  u8 debug;
+
   vlib_main_t *vlib_main;
 } vnet_main_t;
 
@@ -83,6 +96,11 @@ vnet_main_t **vnet_mains;
 
 #include <vnet/interface_funcs.h>
 #include <vnet/global_funcs.h>
+
+#define DBG_VNET(args...) do {  \
+    if (vnet_main.debug)        \
+      clib_warning(args);       \
+  } while (0)
 
 #endif /* included_vnet_vnet_h */
 
