@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_c4d9fe84",
+        "filename": "src/vlibmemory/memory_shared.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-08-09T21:34:27Z",
+      "side": 1,
+      "message": "Please allocate a vector to hold this string instead of using calloc().  This allocation also belongs in the conditional statement below where root_path is used.  As it stands, this is a memory leak in the non-vpe-api case.",
+      "range": {
+        "startLine": 343,
+        "startChar": 20,
+        "endLine": 343,
+        "endChar": 26
+      },
+      "revId": "c15ad8ca4d48342c9945b2c313f3532d1cf8adc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
