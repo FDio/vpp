@@ -36,6 +36,23 @@
     },
     {
       "key": {
+        "uuid": "5a4e6583_b382ba50",
+        "filename": "src/vpp-api/vapi/vapi.hpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-09T12:47:13Z",
+      "side": 1,
+      "message": "zero initialise the vapi_ctx.",
+      "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a4e6583_580f24e2",
         "filename": "src/vpp-api/vapi/vapi.hpp",
         "patchSetId": 4
