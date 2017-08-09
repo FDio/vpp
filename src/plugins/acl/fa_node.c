@@ -871,7 +871,7 @@ acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index, u32
   }
 }
 
-static void
+static fa_session_t *
 acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
 		    fa_5tuple_t * p5tuple)
 {
@@ -915,6 +915,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   clib_mem_set_heap (oldheap);
   pw->fa_session_adds_by_sw_if_index[sw_if_index]++;
   clib_smp_atomic_add(&am->fa_session_total_adds, 1);
+  return sess;
 }
 
 static int
@@ -1079,8 +1080,10 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 		  if (acl_fa_can_add_session (am, is_input, sw_if_index0))
 		    {
-                      acl_fa_add_session (am, is_input, sw_if_index0, now,
-					  &kv_sess);
+                      fa_session_t *sess = acl_fa_add_session (am, is_input, sw_if_index0, now,
+					                       &kv_sess);
+                      acl_fa_track_session (am, is_input, sw_if_index0, now,
+                                            sess, &fa_5tuple);
 		      pkts_new_session += 1;
 		    }
 		  else
