@@ -1635,6 +1635,9 @@ vnet_arp_unset_ip4_over_ethernet_internal (vnet_main_t * vnm,
   ethernet_arp_ip4_entry_t *e;
   ethernet_arp_interface_t *eai;
 
+  if (vec_len (am->ethernet_arp_by_sw_if_index) <= args->sw_if_index)
+    return 0;
+
   eai = &am->ethernet_arp_by_sw_if_index[args->sw_if_index];
 
   e = arp_entry_find (eai, &args->a.ip4);
@@ -1658,6 +1661,9 @@ vnet_arp_flush_ip4_over_ethernet_internal (vnet_main_t * vnm,
   ethernet_arp_main_t *am = &ethernet_arp_main;
   ethernet_arp_ip4_entry_t *e;
   ethernet_arp_interface_t *eai;
+
+  if (vec_len (am->ethernet_arp_by_sw_if_index) <= args->sw_if_index)
+    return 0;
 
   eai = &am->ethernet_arp_by_sw_if_index[args->sw_if_index];
 
@@ -1692,6 +1698,7 @@ vnet_arp_populate_ip4_over_ethernet_internal (vnet_main_t * vnm,
   ethernet_arp_ip4_entry_t *e;
   ethernet_arp_interface_t *eai;
 
+  vec_validate (am->ethernet_arp_by_sw_if_index, args->sw_if_index);
   eai = &am->ethernet_arp_by_sw_if_index[args->sw_if_index];
 
   e = arp_entry_find (eai, &args->a.ip4);
