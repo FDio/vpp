@@ -72,29 +72,21 @@ typedef struct
   u16 *next_record_offset_per_worker;
 } flowprobe_protocol_context_t;
 
-#define FLOWPROBE_KEY_IN_U32 22
 /* *INDENT-OFF* */
-typedef CLIB_PACKED (union
-{
-  struct {
-    u32 rx_sw_if_index;
-    u32 tx_sw_if_index;
-    u8 src_mac[6];
-    u8 dst_mac[6];
-    u16 ethertype;
-    ip46_address_t src_address;
-    ip46_address_t dst_address;
-    u8 protocol;
-    u16 src_port;
-    u16 dst_port;
-    flowprobe_variant_t which;
-  };
-  u32 as_u32[FLOWPROBE_KEY_IN_U32];
-}) flowprobe_key_t;
+typedef struct __attribute__ ((aligned (8))) {
+  u32 rx_sw_if_index;
+  u32 tx_sw_if_index;
+  u8 src_mac[6];
+  u8 dst_mac[6];
+  u16 ethertype;
+  ip46_address_t src_address;
+  ip46_address_t dst_address;
+  u8 protocol;
+  u16 src_port;
+  u16 dst_port;
+  flowprobe_variant_t which;
+} flowprobe_key_t;
 /* *INDENT-ON* */
-
-STATIC_ASSERT (sizeof (flowprobe_key_t) == FLOWPROBE_KEY_IN_U32 *
-	       sizeof (u32), "flowprobe_key_t padding is wrong");
 
 typedef struct
 {

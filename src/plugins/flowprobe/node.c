@@ -289,10 +289,13 @@ flowprobe_hash (flowprobe_key_t * k)
   u32 h = 0;
 
 #ifdef clib_crc32c_uses_intrinsics
-  h = clib_crc32c ((u8 *) k->as_u32, FLOWPROBE_KEY_IN_U32);
+  h = clib_crc32c ((u8 *) k, sizeof (*k));
 #else
-  u64 tmp =
-    k->as_u32[0] ^ k->as_u32[1] ^ k->as_u32[2] ^ k->as_u32[3] ^ k->as_u32[4];
+  int i;
+  u64 tmp = 0;
+  for (i = 0; i < sizeof (*k) / 8; i++)
+    tmp ^= ((u64 *) k)[i];
+
   h = clib_xxhash (tmp);
 #endif
 
@@ -370,7 +373,7 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
   ethernet_header_t *eth = vlib_buffer_get_current (b);
   u16 ethertype = clib_net_to_host_u16 (eth->type);
   /* *INDENT-OFF* */
-  flowprobe_key_t k = { {0} };
+  flowprobe_key_t k = {};
   /* *INDENT-ON* */
   ip4_header_t *ip4 = 0;
   ip6_header_t *ip6 = 0;
@@ -472,6 +475,7 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (e->packetcount)
 	    flowprobe_export_entry (vm, e);
 	  e->key = k;
+	  e->flow_start = timestamp;
 	  vlib_node_increment_counter (vm, node->node_index,
 				       FLOWPROBE_ERROR_COLLISION, 1);
 	}
