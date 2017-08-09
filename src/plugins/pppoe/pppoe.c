@@ -291,7 +291,8 @@ int vnet_pppoe_add_del_session
       /* add reverse route for client ip */
       fib_table_entry_path_add (a->decap_fib_index, &pfx,
 				FIB_SOURCE_PLUGIN_HI, FIB_ENTRY_FLAG_NONE,
-				pfx.fp_proto, &pfx.fp_addr, sw_if_index, ~0,
+				fib_proto_to_dpo (pfx.fp_proto),
+				&pfx.fp_addr, sw_if_index, ~0,
 				1, NULL, FIB_ROUTE_PATH_FLAG_NONE);
 
     }
@@ -322,7 +323,7 @@ int vnet_pppoe_add_del_session
       /* delete reverse route for client ip */
       fib_table_entry_path_remove (a->decap_fib_index, &pfx,
 				   FIB_SOURCE_PLUGIN_HI,
-				   pfx.fp_proto,
+				   fib_proto_to_dpo (pfx.fp_proto),
 				   &pfx.fp_addr,
 				   sw_if_index, ~0, 1,
 				   FIB_ROUTE_PATH_FLAG_NONE);
