@@ -472,6 +472,7 @@ add_to_flow_record_state (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (e->packetcount)
 	    flowprobe_export_entry (vm, e);
 	  e->key = k;
+	  e->flow_start = timestamp;
 	  vlib_node_increment_counter (vm, node->node_index,
 				       FLOWPROBE_ERROR_COLLISION, 1);
 	}
