@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "5a4e6583_b3d07a54",
+        "filename": "src/vpp-api/vapi/Makefile.am",
+        "patchSetId": 4
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-09T16:30:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a4e6583_982c7c4c",
+      "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a4e6583_b8ff38aa",
         "filename": "src/vpp-api/vapi/Makefile.am",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2017-08-08T16:07:36Z",
       "side": 1,
       "message": "is it better (can we) install these files in /usr/include/vpp/ rather then in /usr/include ?",
+      "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_13ff4e36",
+        "filename": "src/vpp-api/vapi/Makefile.am",
+        "patchSetId": 4
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-09T16:30:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a4e6583_b8ff38aa",
       "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -53,6 +89,24 @@
     },
     {
       "key": {
+        "uuid": "5a4e6583_f3fb9245",
+        "filename": "src/vpp-api/vapi/vapi.hpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-09T16:30:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a4e6583_b382ba50",
+      "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a4e6583_580f24e2",
         "filename": "src/vpp-api/vapi/vapi.hpp",
         "patchSetId": 4
@@ -64,6 +118,24 @@
       "writtenOn": "2017-08-08T16:07:36Z",
       "side": 1,
       "message": "is this to protect against simultaneous calls to dispatch? is that a model we can support?",
+      "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_3377ead6",
+        "filename": "src/vpp-api/vapi/vapi.hpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 249,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-09T16:30:45Z",
+      "side": 1,
+      "message": "yes, this is to protect simultaneous calls to dispatch\n\nthe issue with multi-dispatch is this:\n\nsay you have two threads doing dispatch at the same time, and both fetch a (different) shared memory message at the same time. now we know that the messages come back in the same order as the requests sent, so assuming there are no other requests in the queue, the \"proper\" threads needs to process the \"requests.front()\" first, otherwise the other thread will assume that a response was missed, pop \"requests.front()\" (call its callback) and then the other thread will throw away the response (because no request in queue). The other option being to search the whole queue trying to match a context value with a known \"outstanding request\" context value, which is not that efficient..\n\nso yes, we could support multi-dispatch - by moving the dispatch-mutex lock inside the while (loop_again) { } loop, which would effectively make the waiting threads to take turns dispatching, which I deem quite useless, plus, it hurts performance (though only a bit) by repeatedly locking and unlocking the mutex in single-dispatch-thread case.\n\nin this case I think it\u0027s better if client does its own multiple dispatch algorithm on its own by having a single reader thread pumping responses from shm to an internal queue and a pool of workers handling that queue.",
+      "parentUuid": "5a4e6583_580f24e2",
       "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -87,6 +159,24 @@
     },
     {
       "key": {
+        "uuid": "5a4e6583_b3951ae6",
+        "filename": "src/vpp-api/vapi/vapi.hpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-09T16:30:45Z",
+      "side": 1,
+      "message": "!x is not possible...\nboth functions which add to \"requests\" queue dereference the request so I\u0027ll add the non-NULL check there..",
+      "parentUuid": "5a4e6583_02225bb9",
+      "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a4e6583_381468f4",
         "filename": "src/vpp-api/vapi/vapi.hpp",
         "patchSetId": 4
@@ -98,6 +188,24 @@
       "writtenOn": "2017-08-08T16:07:36Z",
       "side": 1,
       "message": "move this lock like in send () ?",
+      "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5a4e6583_d3f8964b",
+        "filename": "src/vpp-api/vapi/vapi.hpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 390,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-09T16:30:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5a4e6583_381468f4",
       "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
