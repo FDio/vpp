@@ -339,6 +339,16 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
                                                     &am->output_applied_hash_acl_info_by_sw_if_index;
   vec_validate((*applied_hash_acls), sw_if_index);
   applied_hash_acl_info_t *pal = vec_elt_at_index((*applied_hash_acls), sw_if_index);
+
+  /* ensure the list of applied hash acls is initialized and add this acl# to it */
+  u32 index = vec_search(pal->applied_acls, acl_index);
+  if (index != ~0) {
+    clib_warning("BUG: trying to apply twice acl_index %d on sw_if_index %d is_input %d",
+                 acl_index, sw_if_index, is_input);
+    goto done;
+  }
+  vec_add1(pal->applied_acls, acl_index);
+
   pal->mask_type_index_bitmap = clib_bitmap_or(pal->mask_type_index_bitmap,
                                      ha->mask_type_index_bitmap);
   /*
@@ -369,6 +379,7 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
     activate_applied_ace_hash_entry(am, sw_if_index, is_input, applied_hash_aces, new_index);
   }
   applied_hash_entries_analyze(am, applied_hash_aces);
+done:
   clib_mem_set_heap (oldheap);
 }
 
@@ -492,14 +503,14 @@ hash_acl_build_applied_lookup_bitmap(acl_main_t *am, u32 sw_if_index, u8 is_inpu
 {
   int i;
   uword *new_lookup_bitmap = 0;
-  u32 **applied_acls = is_input ? vec_elt_at_index(am->input_acl_vec_by_sw_if_index, sw_if_index)
-                                : vec_elt_at_index(am->output_acl_vec_by_sw_if_index, sw_if_index);
   applied_hash_acl_info_t **applied_hash_acls = is_input ? &am->input_applied_hash_acl_info_by_sw_if_index
                                                          : &am->output_applied_hash_acl_info_by_sw_if_index;
   applied_hash_acl_info_t *pal = vec_elt_at_index((*applied_hash_acls), sw_if_index);
-  for(i=0; i < vec_len(*applied_acls); i++) {
-    u32 a_acl_index = *vec_elt_at_index((*applied_acls), i);
+  for(i=0; i < vec_len(pal->applied_acls); i++) {
+    u32 a_acl_index = *vec_elt_at_index((pal->applied_acls), i);
     hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, a_acl_index);
+    DBG("Update bitmask = %U or %U (acl_index %d)\n", format_bitmap_hex, new_lookup_bitmap,
+          format_bitmap_hex, ha->mask_type_index_bitmap, a_acl_index);
     new_lookup_bitmap = clib_bitmap_or(new_lookup_bitmap,
                                        ha->mask_type_index_bitmap);
   }
@@ -514,6 +525,18 @@ hash_acl_unapply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
   int i;
 
   DBG("HASH ACL unapply: sw_if_index %d is_input %d acl %d", sw_if_index, is_input, acl_index);
+  applied_hash_acl_info_t **applied_hash_acls = is_input ? &am->input_applied_hash_acl_info_by_sw_if_index
+                                                         : &am->output_applied_hash_acl_info_by_sw_if_index;
+  applied_hash_acl_info_t *pal = vec_elt_at_index((*applied_hash_acls), sw_if_index);
+
+  /* remove this acl# from the list of applied hash acls */
+  u32 index = vec_search(pal->applied_acls, acl_index);
+  if (index == ~0) {
+    clib_warning("BUG: trying to unapply unapplied acl_index %d on sw_if_index %d is_input %d",
+                 acl_index, sw_if_index, is_input);
+    return;
+  }
+  vec_del1(pal->applied_acls, index);
 
   hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
   applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, is_input, sw_if_index);

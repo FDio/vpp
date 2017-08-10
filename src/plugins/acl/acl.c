@@ -2377,6 +2377,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
           if (swi < vec_len(am->input_applied_hash_acl_info_by_sw_if_index)) {
             applied_hash_acl_info_t *pal = &am->input_applied_hash_acl_info_by_sw_if_index[swi];
             out0 = format(out0, "  input lookup mask_type_index_bitmap: %U\n", format_bitmap_hex, pal->mask_type_index_bitmap);
+            out0 = format(out0, "  input applied acls: %U\n", format_vec32, pal->applied_acls, "%d");
           }
           if (swi < vec_len(am->input_hash_entry_vec_by_sw_if_index)) {
             out0 = format(out0, "  input lookup applied entries:\n");
@@ -2391,6 +2392,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
           if (swi < vec_len(am->output_applied_hash_acl_info_by_sw_if_index)) {
             applied_hash_acl_info_t *pal = &am->output_applied_hash_acl_info_by_sw_if_index[swi];
             out0 = format(out0, "  output lookup mask_type_index_bitmap: %U\n", format_bitmap_hex, pal->mask_type_index_bitmap);
+            out0 = format(out0, "  output applied acls: %U\n", format_vec32, pal->applied_acls, "%d");
           }
           if (swi < vec_len(am->output_hash_entry_vec_by_sw_if_index)) {
             out0 = format(out0, "  output lookup applied entries:\n");
