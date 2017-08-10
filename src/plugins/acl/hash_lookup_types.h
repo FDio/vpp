@@ -73,6 +73,8 @@ typedef struct {
     *                            hash_ace_info_t=>mask_type_index bits set
     */
    uword *mask_type_index_bitmap;
+   /* applied ACLs so we can track them independently from main ACL module */
+   u32 *applied_acls;
 } applied_hash_acl_info_t;
 
 
