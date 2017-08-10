@@ -3137,7 +3137,7 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 						   n_left_to_next, pi0,
 						   next0);
 		}
-	      continue;
+	      goto done;
 	    }
 
 	  /* if we have remote mapping for destination already in map-chache
@@ -3180,6 +3180,7 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	      pkts_mapped++;
 	    }
 
+	done:
 	  b0->error = node->errors[LISP_CP_LOOKUP_ERROR_DROP];
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
