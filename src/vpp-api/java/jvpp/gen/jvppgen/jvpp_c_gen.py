@@ -226,11 +226,19 @@ static void vl_api_${handler_name}_t_handler (vl_api_${handler_name}_t * mp)
 {
     ${plugin_name}_main_t *plugin_main = &${plugin_name}_main;
     JNIEnv *env = jvpp_main.jenv;
+    jthrowable exc;
 
     $err_handler
 
     jmethodID constructor = (*env)->GetMethodID(env, ${class_ref_name}Class, "<init>", "()V");
     jmethodID callbackMethod = (*env)->GetMethodID(env, plugin_main->callbackClass, "on${dto_name}", "(Lio/fd/vpp/jvpp/${plugin_name}/dto/${dto_name};)V");
+    exc = (*env)->ExceptionOccurred(env);
+    if (exc) {
+        clib_warning("Unable to extract on${dto_name} method reference from ${plugin_name} plugin's callbackClass. Ignoring message.\\n");
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+        return;
+    }
 
     jobject dto = (*env)->NewObject(env, ${class_ref_name}Class, constructor);
     $dto_setters
