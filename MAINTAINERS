@@ -108,6 +108,14 @@ VNET MPLS
 M:	Neale Ranns <nranns@cisco.com>
 F:	src/vnet/mpls/
 
+VNET Host Stack Session Layer
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/vnet/session
+
+VNET TCP Stack
+M:	Florin Coras <fcoras@cisco.com>
+F:	src/vnet/tcp
+
 VNET VXLAN
 M:	John Lo <loj@cisco.com>
 F:	src/vnet/vxlan/
