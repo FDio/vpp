@@ -16,6 +16,24 @@
       "revId": "3ea739a7f60585f27d4eaa3b4b383a2a4b9c7471",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_27121463",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 3183,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-10T17:41:03Z",
+      "side": 1,
+      "message": "Yes it does. I forgot to move the continue to the if branch above. Thanks for catching it!",
+      "parentUuid": "3a4b7175_84a66652",
+      "revId": "3ea739a7f60585f27d4eaa3b4b383a2a4b9c7471",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
