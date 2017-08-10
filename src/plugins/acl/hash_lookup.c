@@ -134,11 +134,7 @@ multi_acl_match_get_applied_ace_index(acl_main_t *am, fa_5tuple_t *match)
           }
           if (curr_index < curr_match_index) {
             DBG("The index %d is the new candidate in portrange matches.", curr_index);
-            curr_match_index = result_val->applied_entry_index;
-	    if (!result_val->shadowed) {
-              /* new result is known to not be shadowed, so no point to look up further */
-              break;
-	    }
+            curr_match_index = curr_index;
           } else {
             DBG("Curr portmatch index %d is too big vs. current matched one %d", curr_index, curr_match_index);
           }
