@@ -66,6 +66,7 @@ typedef enum
   IP4_INPUT_NEXT_PUNT,
   IP4_INPUT_NEXT_LOOKUP,
   IP4_INPUT_NEXT_LOOKUP_MULTICAST,
+  IP4_INPUT_NEXT_VXLAN4_BYPASS,
   IP4_INPUT_NEXT_ICMP_ERROR,
   IP4_INPUT_N_NEXT,
 } ip4_input_next_t;
@@ -257,6 +258,12 @@ ip4_input_inline (vlib_main_t * vm,
 		  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
 	    }
 
+	  if (p0->ptype_vxlan)
+	    next0 = IP4_INPUT_NEXT_VXLAN4_BYPASS;
+
+	  if (p1->ptype_vxlan)
+	    next1 = IP4_INPUT_NEXT_VXLAN4_BYPASS;
+
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   pi0, pi1, next0, next1);
@@ -347,6 +354,9 @@ ip4_input_inline (vlib_main_t * vm,
 		  IP4_INPUT_NEXT_DROP : IP4_INPUT_NEXT_PUNT;
 	    }
 
+	  if (p0->ptype_vxlan)
+	    next0 = IP4_INPUT_NEXT_VXLAN4_BYPASS;
+
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   pi0, next0);
@@ -427,6 +437,7 @@ VLIB_REGISTER_NODE (ip4_input_node) = {
     [IP4_INPUT_NEXT_PUNT] = "error-punt",
     [IP4_INPUT_NEXT_LOOKUP] = "ip4-lookup",
     [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-mfib-forward-lookup",
+    [IP4_INPUT_NEXT_VXLAN4_BYPASS] = "ip4-vxlan-bypass",
     [IP4_INPUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 
@@ -449,6 +460,7 @@ VLIB_REGISTER_NODE (ip4_input_no_checksum_node,static) = {
     [IP4_INPUT_NEXT_PUNT] = "error-punt",
     [IP4_INPUT_NEXT_LOOKUP] = "ip4-lookup",
     [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-mfib-forward-lookup",
+    [IP4_INPUT_NEXT_VXLAN4_BYPASS] = "ip4-vxlan-bypass",
     [IP4_INPUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 

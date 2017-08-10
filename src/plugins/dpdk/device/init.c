@@ -19,6 +19,7 @@
 #include <vppinfra/bitmap.h>
 
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/vxlan/vxlan.h>
 #include <dpdk/device/dpdk.h>
 #include <vlib/unix/physmem.h>
 #include <vlib/pci/pci.h>
@@ -218,9 +219,10 @@ dpdk_lib_init (dpdk_main_t * dm)
     {
       u8 addr[6];
       u8 vlan_strip = 0;
-      int j;
+      int j, ret;
       struct rte_eth_dev_info dev_info;
       struct rte_eth_link l;
+      struct rte_eth_udp_tunnel tunnel_udp;
       dpdk_device_config_t *devconf = 0;
       vlib_pci_addr_t pci_addr;
       uword *p = 0;
@@ -247,6 +249,14 @@ dpdk_lib_init (dpdk_main_t * dm)
       xd->nb_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
       xd->nb_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
       xd->cpu_socket = (i8) rte_eth_dev_socket_id (i);
+
+      tunnel_udp.udp_port = UDP_DST_PORT_vxlan;
+      tunnel_udp.prot_type = RTE_TUNNEL_TYPE_VXLAN;
+      ret = rte_eth_dev_udp_tunnel_port_add (i, &tunnel_udp);
+
+      if (ret < 0)
+	return clib_error_return (0, "udp tunneling add error: (%s)\n",
+				  strerror (-ret));
 
       /* Handle interface naming for devices with multiple ports sharing same PCI ID */
       if (dev_info.pci_dev)

@@ -60,6 +60,8 @@ dpdk_rx_next_from_etype (struct rte_mbuf * mb, vlib_buffer_t * b0)
 {
   if (PREDICT_TRUE (vlib_buffer_is_ip4 (b0)))
     {
+      if (((mb->packet_type) & RTE_PTYPE_TUNNEL_GRENAT) != 0)
+	b0->ptype_vxlan = 1;
       if (PREDICT_TRUE ((mb->ol_flags & PKT_RX_IP_CKSUM_GOOD) != 0))
 	return VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
       else
@@ -86,6 +88,8 @@ dpdk_rx_next_from_packet_start (struct rte_mbuf * mb, vlib_buffer_t * b0)
 
   if (PREDICT_TRUE (vlib_buffer_is_ip4 (b0)))
     {
+      if (((mb->packet_type) & RTE_PTYPE_TUNNEL_GRENAT) != 0)
+	b0->ptype_vxlan = 1;
       if (PREDICT_TRUE ((mb->ol_flags & PKT_RX_IP_CKSUM_GOOD) != 0))
 	rv = VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
       else
