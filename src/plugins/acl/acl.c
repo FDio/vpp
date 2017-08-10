@@ -2091,6 +2091,75 @@ done:
   return error;
 }
 
+static u8 *
+my_format_mac_address (u8 * s, va_list * args)
+{
+  u8 *a = va_arg (*args, u8 *);
+  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
+                 a[0], a[1], a[2], a[3], a[4], a[5]);
+}
+
+static inline u8 *
+my_macip_acl_rule_t_pretty_format (u8 *out, va_list *args)
+{
+  macip_acl_rule_t *a = va_arg (*args, macip_acl_rule_t *);
+
+  out = format(out, "%s action %d ip %U/%d mac %U mask %U",
+                     a->is_ipv6 ? "ipv6" : "ipv4", a->is_permit,
+                     format_ip46_address, &a->src_ip_addr, IP46_TYPE_ANY,
+                     a->src_prefixlen,
+                     my_format_mac_address, a->src_mac,
+                     my_format_mac_address, a->src_mac_mask);
+  return(out);
+}
+
+static void
+macip_acl_print(acl_main_t *am, u32 macip_acl_index)
+{
+  vlib_main_t * vm = am->vlib_main;
+  int i;
+
+  /* Don't try to print someone else's memory */
+  if (macip_acl_index > vec_len(am->macip_acls))
+    return;
+
+  macip_acl_list_t *a = vec_elt_at_index(am->macip_acls, macip_acl_index);
+  int free_pool_slot = pool_is_free_index(am->macip_acls, macip_acl_index);
+
+  vlib_cli_output(vm, "MACIP acl_index: %d, count: %d (true len %d) tag {%s} is free pool slot: %d\n",
+                  macip_acl_index, a->count, vec_len(a->rules), a->tag, free_pool_slot);
+  vlib_cli_output(vm, "  ip4_table_index %d, ip6_table_index %d, l2_table_index %d\n",
+                  a->ip4_table_index, a->ip6_table_index, a->l2_table_index);
+  for(i=0; i<vec_len(a->rules); i++)
+    vlib_cli_output(vm, "    rule %d: %U\n", i, my_macip_acl_rule_t_pretty_format,
+                    vec_elt_at_index(a->rules, i));
+
+}
+
+static clib_error_t *
+acl_show_aclplugin_macip_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  acl_main_t *am = &acl_main;
+  int i;
+  if (unformat (input, "interface"))
+    {
+      for(i=0; i < vec_len(am->macip_acl_by_sw_if_index); i++)
+        {
+          vlib_cli_output(vm, "  sw_if_index %d: %d\n", i, vec_elt(am->macip_acl_by_sw_if_index, i));
+        }
+    }
+  else if (unformat (input, "acl"))
+    {
+      for(i=0; i < vec_len(am->macip_acls); i++)
+        macip_acl_print(am, i);
+    }
+  return error;
+}
+
+
 static clib_error_t *
 acl_show_aclplugin_fn (vlib_main_t * vm,
                               unformat_input_t * input,
@@ -2441,6 +2510,13 @@ VLIB_CLI_COMMAND (aclplugin_show_command, static) = {
     .short_help = "show acl-plugin {sessions|acl|interface|tables}",
     .function = acl_show_aclplugin_fn,
 };
+
+VLIB_CLI_COMMAND (aclplugin_show_macip_command, static) = {
+    .path = "show acl-plugin macip",
+    .short_help = "show acl-plugin macip {acl|interface}",
+    .function = acl_show_aclplugin_macip_fn,
+};
+
 
 VLIB_CLI_COMMAND (aclplugin_clear_command, static) = {
     .path = "clear acl-plugin sessions",
