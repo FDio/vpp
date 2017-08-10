@@ -45,6 +45,7 @@
 #include <vlib/unix/unix.h>
 
 #include <vnet/ip/ip.h>
+#include <vnet/fib/fib_table.h>
 
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
@@ -692,6 +693,16 @@ tuntap_ip4_add_del_interface_address (ip4_main_t * im,
   if (tm->have_normal_interface ||  tm->dev_tap_fd < 0)
     return;
 
+  /* if the address is being applied to an interface that is not in
+   * the same table/VRF as this tap, then ignore it.
+   * If we don't do this overlapping address spaces in the diferent tables
+   * breaks the linux host's routing tables */
+  if (fib_table_get_index_for_sw_if_index(FIB_PROTOCOL_IP4,
+                                          sw_if_index) !=
+      fib_table_get_index_for_sw_if_index(FIB_PROTOCOL_IP4,
+                                          tm->sw_if_index))
+      return;
+
   /** See if we already know about this subif */
   memset (&subif_addr, 0, sizeof (subif_addr));
   subif_addr.sw_if_index = sw_if_index;
@@ -798,6 +809,16 @@ tuntap_ip6_add_del_interface_address (ip6_main_t * im,
   /* Tuntap disabled, or using a "normal" interface. */
   if (tm->have_normal_interface ||  tm->dev_tap_fd < 0)
     return;
+
+  /* if the address is being applied to an interface that is not in
+   * the same table/VRF as this tap, then ignore it.
+   * If we don't do this overlapping address spaces in the diferent tables
+   * breaks the linux host's routing tables */
+  if (fib_table_get_index_for_sw_if_index(FIB_PROTOCOL_IP6,
+                                          sw_if_index) !=
+      fib_table_get_index_for_sw_if_index(FIB_PROTOCOL_IP6,
+                                          tm->sw_if_index))
+      return;
 
   /* See if we already know about this subif */
   memset (&subif_addr, 0, sizeof (subif_addr));
