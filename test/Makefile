@@ -13,6 +13,14 @@ else
 VPP_PIDS=$(shell pgrep -d, -x vpp_main)
 endif
 
+ifeq ($(DEBUG),gdb)
+FORCE_FOREGROUND=1
+else ifeq ($(DEBUG),gdbserver)
+FORCE_FOREGROUND=1
+else
+FORCE_FOREGROUND=0
+endif
+
 verify-no-running-vpp:
 	@if [ "$(VPP_PIDS)" != "" ]; then \
 		echo; \
@@ -76,7 +84,7 @@ $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@touch $@
 
 define retest-func
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && setsid scripts/run_with_cleanup.sh python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS)"
+	@scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS)
 endef
 
 .PHONY: sanity
