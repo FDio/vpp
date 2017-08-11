@@ -16,6 +16,24 @@
       "revId": "136f3658549a26a8e52ca351e8188563243c469c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_2d3b15ed",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 1484,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-11T15:20:53Z",
+      "side": 1,
+      "message": "It used to be the case, but now we can call this after adding the ethernet header from interface_output.",
+      "parentUuid": "3a4b7175_6d310d0b",
+      "revId": "136f3658549a26a8e52ca351e8188563243c469c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
