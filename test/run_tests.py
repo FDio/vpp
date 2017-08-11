@@ -44,7 +44,7 @@ def add_from_dir(suite, directory):
                     suite.addTest(cls(method))
 
 
-def test_runner_wrapper(keep_alive_pipe, result_pipe):
+def test_runner_wrapper(suite, keep_alive_pipe, result_pipe):
     result = not VppTestRunner(
         pipe=keep_alive_pipe,
         verbosity=verbose,
@@ -54,47 +54,13 @@ def test_runner_wrapper(keep_alive_pipe, result_pipe):
     keep_alive_pipe.close()
 
 
-def handle_core(vpp_binary, core_path):
-    try:
-        d = os.getenv("DEBUG")
-    except:
-        d = None
-    if d and d.lower() == "core":
-        spawn_gdb(vpp_binary, core_path, global_logger)
-
-
-if __name__ == '__main__':
-    try:
-        verbose = int(os.getenv("V", 0))
-    except:
-        verbose = 0
-
-    default_test_timeout = 600  # 10 minutes
-    try:
-        test_timeout = int(os.getenv("TIMEOUT", default_test_timeout))
-    except:
-        test_timeout = default_test_timeout
-
-    parser = argparse.ArgumentParser(description="VPP unit tests")
-    parser.add_argument("-f", "--failfast", action='count',
-                        help="fast failure flag")
-    parser.add_argument("-d", "--dir", action='append', type=str,
-                        help="directory containing test files "
-                             "(may be specified multiple times)")
-    args = parser.parse_args()
-    failfast = True if args.failfast == 1 else False
-
-    suite = unittest.TestSuite()
-    for d in args.dir:
-        global_logger.info("Adding tests from directory tree %s" % d)
-        add_from_dir(suite, d)
+def run_forked(suite):
     keep_alive_parent_end, keep_alive_child_end = Pipe(duplex=False)
     result_parent_end, result_child_end = Pipe(duplex=False)
 
-    p = Process(target=test_runner_wrapper,
-                args=(keep_alive_child_end,
-                      result_child_end))
-    p.start()
+    child = Process(target=test_runner_wrapper,
+                    args=(suite, keep_alive_child_end, result_child_end))
+    child.start()
     last_test_temp_dir = None
     last_test_vpp_binary = None
     last_test = None
@@ -120,9 +86,51 @@ if __name__ == '__main__':
                 if os.path.isfile(core_path):
                     global_logger.error("Core-file exists in test temporary "
                                         "directory: %s!" % core_path)
-                    handle_core(last_test_vpp_binary, core_path)
-            p.terminate()
+                    if d and d.lower() == "core":
+                        spawn_gdb(last_test_vpp_binary, core_path,
+                                  global_logger)
+            child.terminate()
             result = -1
     keep_alive_parent_end.close()
     result_parent_end.close()
-    sys.exit(result)
+    return result
+
+
+if __name__ == '__main__':
+
+    try:
+        verbose = int(os.getenv("V", 0))
+    except:
+        verbose = 0
+
+    default_test_timeout = 600  # 10 minutes
+    try:
+        test_timeout = int(os.getenv("TIMEOUT", default_test_timeout))
+    except:
+        test_timeout = default_test_timeout
+
+    try:
+        debug = os.getenv("DEBUG")
+    except:
+        debug = None
+
+    parser = argparse.ArgumentParser(description="VPP unit tests")
+    parser.add_argument("-f", "--failfast", action='count',
+                        help="fast failure flag")
+    parser.add_argument("-d", "--dir", action='append', type=str,
+                        help="directory containing test files "
+                             "(may be specified multiple times)")
+    args = parser.parse_args()
+    failfast = True if args.failfast == 1 else False
+
+    suite = unittest.TestSuite()
+    for d in args.dir:
+        global_logger.info("Adding tests from directory tree %s" % d)
+        add_from_dir(suite, d)
+
+    if debug is None or debug.lower() not in ["gdb", "gdbserver"]:
+        sys.exit(run_forked(suite))
+
+    # don't fork if debugging..
+    sys.exit(not VppTestRunner(verbosity=verbose,
+                               failfast=failfast).run(suite).wasSuccessful())

@@ -115,6 +115,10 @@ class KeepAliveReporter(object):
         """
         Write current test tmpdir & desc to keep-alive pipe to signal liveness
         """
+        if self.pipe is None:
+            # if not running forked..
+            return
+
         if isclass(test):
             desc = test.__name__
         else:
@@ -901,8 +905,8 @@ class VppTestRunner(unittest.TextTestRunner):
         """Class maintaining the results of the tests"""
         return VppTestResult
 
-    def __init__(self, pipe, stream=sys.stderr, descriptions=True, verbosity=1,
-                 failfast=False, buffer=False, resultclass=None):
+    def __init__(self, pipe=None, stream=sys.stderr, descriptions=True,
+                 verbosity=1, failfast=False, buffer=False, resultclass=None):
         # ignore stream setting here, use hard-coded stdout to be in sync
         # with prints from VppTestCase methods ...
         super(VppTestRunner, self).__init__(sys.stdout, descriptions,
