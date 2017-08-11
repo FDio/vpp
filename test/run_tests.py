@@ -16,8 +16,6 @@ child = None
 
 
 def signal_handler(signum, frame):
-    if child:
-        child.terminate()
     sys.exit(-1)
 
 
