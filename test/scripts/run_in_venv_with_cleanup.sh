@@ -17,9 +17,22 @@ atexit() {
 	exit $rv
 }
 
-trap "atexit" SIGINT SIGTERM
+trap "atexit;" SIGINT SIGTERM
 
-$*
+FORCE_FOREGROUND=$1
+shift
+
+source $1
+shift
+
+if [[ "${FORCE_FOREGROUND}" == "1" ]]
+then
+	$*
+else
+	$* &
+	wait
+fi
+
 rv=$?
 atexit
 exit $rv
