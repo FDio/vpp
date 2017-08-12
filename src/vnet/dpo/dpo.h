@@ -112,7 +112,8 @@ typedef enum dpo_type_t_ {
     DPO_MPLS_LABEL,
     DPO_MPLS_DISPOSITION,
     DPO_MFIB_ENTRY,
-    DPO_INTERFACE,
+    DPO_INTERFACE_RX,
+    DPO_INTERFACE_TX,
     DPO_LAST,
 } __attribute__((packed)) dpo_type_t;
 
@@ -138,7 +139,8 @@ typedef enum dpo_type_t_ {
     [DPO_MPLS_LABEL] = "dpo-mpls-label", \
     [DPO_MPLS_DISPOSITION] = "dpo-mpls-diposition", \
     [DPO_MFIB_ENTRY] = "dpo-mfib_entry", \
-    [DPO_INTERFACE] = "dpo-interface"	\
+    [DPO_INTERFACE_RX] = "dpo-interface-rx",	\
+    [DPO_INTERFACE_TX] = "dpo-interface-tx"	\
 }
 
 /**
@@ -332,6 +334,12 @@ typedef void (*dpo_unlock_fn_t)(dpo_id_t *dpo);
 typedef void (*dpo_mem_show_t)(void);
 
 /**
+ * @brief Given a DPO instance return a vector of node indices that
+ * the type/instance will use.
+ */
+typedef u32* (*dpo_get_next_node_t)(const dpo_id_t *dpo);
+
+/**
  * @brief A virtual function table regisitered for a DPO type
  */
 typedef struct dpo_vft_t_
@@ -352,6 +360,13 @@ typedef struct dpo_vft_t_
      * A show memory usage function
      */
     dpo_mem_show_t dv_mem_show;
+    /**
+     * A function to get the next VLIB node given an instance
+     * of the DPO. If this is null, then the node's name MUST be
+     * retreiveable from the nodes names array passed in the register
+     * function
+     */
+    dpo_get_next_node_t dv_get_next_node;
 } dpo_vft_t;
 
 

@@ -65,8 +65,7 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 	/* set up to enqueue to our disposition with index = next_index */
 	vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
-
-	while (n_left_from >= 4 && n_left_to_next > 2)
+	while (n_left_from >= 8 && n_left_to_next > 4)
 	{
 	    u32 bi0, adj_index0, next0;
 	    const ip_adjacency_t * adj0;
@@ -76,49 +75,75 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 	    const ip_adjacency_t * adj1;
 	    const dpo_id_t *dpo1;
 	    vlib_buffer_t * b1;
+	    u32 bi2, adj_index2, next2;
+	    const ip_adjacency_t * adj2;
+	    const dpo_id_t *dpo2;
+	    vlib_buffer_t * b2;
+	    u32 bi3, adj_index3, next3;
+	    const ip_adjacency_t * adj3;
+	    const dpo_id_t *dpo3;
+	    vlib_buffer_t * b3;
 
 	    /* Prefetch next iteration. */
 	    {
-		vlib_buffer_t * p2, * p3;
+		vlib_buffer_t * p4, * p5;
+		vlib_buffer_t * p6, * p7;
 
-		p2 = vlib_get_buffer (vm, from[2]);
-		p3 = vlib_get_buffer (vm, from[3]);
+		p4 = vlib_get_buffer (vm, from[4]);
+		p5 = vlib_get_buffer (vm, from[5]);
+		p6 = vlib_get_buffer (vm, from[6]);
+		p7 = vlib_get_buffer (vm, from[7]);
 
-		vlib_prefetch_buffer_header (p2, LOAD);
-		vlib_prefetch_buffer_header (p3, LOAD);
-
-		CLIB_PREFETCH (p2->data, CLIB_CACHE_LINE_BYTES, STORE);
-		CLIB_PREFETCH (p3->data, CLIB_CACHE_LINE_BYTES, STORE);
+		vlib_prefetch_buffer_header (p4, LOAD);
+		vlib_prefetch_buffer_header (p5, LOAD);
+		vlib_prefetch_buffer_header (p6, LOAD);
+		vlib_prefetch_buffer_header (p7, LOAD);
 	    }
 
 	    bi0 = from[0];
 	    to_next[0] = bi0;
 	    bi1 = from[1];
 	    to_next[1] = bi1;
+	    bi2 = from[2];
+	    to_next[2] = bi2;
+	    bi3 = from[3];
+	    to_next[3] = bi3;
 
-	    from += 2;
-	    to_next += 2;
-	    n_left_from -= 2;
-	    n_left_to_next -= 2;
+	    from += 4;
+	    to_next += 4;
+	    n_left_from -= 4;
+	    n_left_to_next -= 4;
 
 	    b0 = vlib_get_buffer(vm, bi0);
 	    b1 = vlib_get_buffer(vm, bi1);
+	    b2 = vlib_get_buffer(vm, bi2);
+	    b3 = vlib_get_buffer(vm, bi3);
 
 	    /* Follow the DPO on which the midchain is stacked */
 	    adj_index0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
 	    adj_index1 = vnet_buffer(b1)->ip.adj_index[VLIB_TX];
+	    adj_index2 = vnet_buffer(b2)->ip.adj_index[VLIB_TX];
+	    adj_index3 = vnet_buffer(b3)->ip.adj_index[VLIB_TX];
 
 	    adj0 = adj_get(adj_index0);
 	    adj1 = adj_get(adj_index1);
+	    adj2 = adj_get(adj_index2);
+	    adj3 = adj_get(adj_index3);
 
 	    dpo0 = &adj0->sub_type.midchain.next_dpo;
 	    dpo1 = &adj1->sub_type.midchain.next_dpo;
+	    dpo2 = &adj2->sub_type.midchain.next_dpo;
+	    dpo3 = &adj3->sub_type.midchain.next_dpo;
 
 	    next0 = dpo0->dpoi_next_node;
 	    next1 = dpo1->dpoi_next_node;
+	    next2 = dpo2->dpoi_next_node;
+	    next3 = dpo3->dpoi_next_node;
 
-	    vnet_buffer(b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
-	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+            vnet_buffer(b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+            vnet_buffer(b2)->ip.adj_index[VLIB_TX] = dpo2->dpoi_index;
+            vnet_buffer(b3)->ip.adj_index[VLIB_TX] = dpo3->dpoi_index;
 
 	    if (interface_count)
 	    {
@@ -134,6 +159,18 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 						 adj1->rewrite_header.sw_if_index,
 						 1,
 						 vlib_buffer_length_in_chain (vm, b1));
+		vlib_increment_combined_counter (im->combined_sw_if_counters
+						 + VNET_INTERFACE_COUNTER_TX,
+						 thread_index,
+						 adj2->rewrite_header.sw_if_index,
+						 1,
+						 vlib_buffer_length_in_chain (vm, b2));
+		vlib_increment_combined_counter (im->combined_sw_if_counters
+						 + VNET_INTERFACE_COUNTER_TX,
+						 thread_index,
+						 adj3->rewrite_header.sw_if_index,
+						 1,
+						 vlib_buffer_length_in_chain (vm, b3));
 	    }
 
 	    if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -148,11 +185,23 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 							      b1, sizeof (*tr));
 		tr->ai = adj_index1;
 	    }
+	    if (PREDICT_FALSE(b2->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+		adj_midchain_tx_trace_t *tr = vlib_add_trace (vm, node,
+							      b2, sizeof (*tr));
+		tr->ai = adj_index2;
+	    }
+	    if (PREDICT_FALSE(b3->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+		adj_midchain_tx_trace_t *tr = vlib_add_trace (vm, node,
+							      b3, sizeof (*tr));
+		tr->ai = adj_index3;
+	    }
 
-	    vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
+	    vlib_validate_buffer_enqueue_x4 (vm, node, next_index,
 					     to_next, n_left_to_next,
-					     bi0, bi1,
-					     next0, next1);
+					     bi0, bi1, bi2, bi3,
+					     next0, next1, next2, next3);
 	}
 	while (n_left_from > 0 && n_left_to_next > 0)
 	{
@@ -175,7 +224,7 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 	    adj0 = adj_get(adj_index0);
 	    dpo0 = &adj0->sub_type.midchain.next_dpo;
 	    next0 = dpo0->dpoi_next_node;
-	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
 	    if (interface_count)
 	    {
@@ -392,6 +441,17 @@ adj_nbr_midchain_get_tx_node (ip_adjacency_t *adj)
             adj_midchain_tx_node.index);
 }
 
+static u32
+adj_nbr_midchain_get_feature_node (ip_adjacency_t *adj)
+{
+    if (adj->ia_flags & ADJ_FLAG_MIDCHAIN_NO_COUNT)
+    {
+        return (adj_midchain_tx_no_count_feature_node[adj->ia_link]);
+    }
+
+    return (adj_midchain_tx_feature_node[adj->ia_link]);
+}
+
 /**
  * adj_midchain_setup
  *
@@ -414,10 +474,7 @@ adj_midchain_setup (adj_index_t adj_index,
     adj->ia_flags |= flags;
 
     arc_index = adj_midchain_get_feature_arc_index_for_link_type (adj);
-    feature_index = (flags & ADJ_FLAG_MIDCHAIN_NO_COUNT) ?
-                    adj_midchain_tx_no_count_feature_node[adj->ia_link] :
-                    adj_midchain_tx_feature_node[adj->ia_link];
-
+    feature_index = adj_nbr_midchain_get_feature_node(adj);
     tx_node = adj_nbr_midchain_get_tx_node(adj);
 
     vnet_feature_enable_disable_with_index (arc_index, feature_index,
@@ -432,8 +489,8 @@ adj_midchain_setup (adj_index_t adj_index,
      * need to get to the stacked child's node.
      */
     dpo_stack_from_node(tx_node,
-			&adj->sub_type.midchain.next_dpo,
-			drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
+                        &adj->sub_type.midchain.next_dpo,
+                        drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
 }
 
 /**
@@ -495,10 +552,9 @@ adj_nbr_midchain_unstack (adj_index_t adj_index)
      * stack on the drop
      */
     dpo_stack(DPO_ADJACENCY_MIDCHAIN,
-	      vnet_link_to_dpo_proto(adj->ia_link),
-	      &adj->sub_type.midchain.next_dpo,
-	      drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
-
+              vnet_link_to_dpo_proto(adj->ia_link),
+              &adj->sub_type.midchain.next_dpo,
+              drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
     CLIB_MEMORY_BARRIER();
 }
 
@@ -537,9 +593,9 @@ format_adj_midchain (u8* s, va_list *ap)
 		format_vnet_rewrite,
 		&adj->rewrite_header, sizeof (adj->rewrite_data), indent);
     s = format (s, "\n%Ustacked-on:\n%U%U",
-		format_white_space, indent,
-		format_white_space, indent+2,
-		format_dpo_id, &adj->sub_type.midchain.next_dpo, indent+2);
+                format_white_space, indent,
+                format_white_space, indent+2,
+                format_dpo_id, &adj->sub_type.midchain.next_dpo, indent+2);
 
     return (s);
 }

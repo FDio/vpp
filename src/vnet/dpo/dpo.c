@@ -37,7 +37,8 @@
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
 #include <vnet/dpo/replicate_dpo.h>
-#include <vnet/dpo/interface_dpo.h>
+#include <vnet/dpo/interface_rx_dpo.h>
+#include <vnet/dpo/interface_tx_dpo.h>
 #include <vnet/dpo/mpls_disposition.h>
 
 /**
@@ -275,6 +276,29 @@ dpo_is_adj (const dpo_id_t *dpo)
 	    (dpo->dpoi_type == DPO_ADJACENCY_GLEAN));
 }
 
+static u32 *
+dpo_default_get_next_node (const dpo_id_t *dpo)
+{
+    u32 *node_indices = NULL;
+    const char *node_name;
+    u32 ii = 0;
+
+    node_name = dpo_nodes[dpo->dpoi_type][dpo->dpoi_proto][ii];
+    while (NULL != node_name)
+    {
+        vlib_node_t *node;
+
+        node = vlib_get_node_by_name(vlib_get_main(), (u8*) node_name);
+        ASSERT(NULL != node);
+        vec_add1(node_indices, node->index);
+
+        ++ii;
+        node_name = dpo_nodes[dpo->dpoi_type][dpo->dpoi_proto][ii];
+    }
+
+    return (node_indices);
+}
+
 void
 dpo_register (dpo_type_t type,
 	      const dpo_vft_t *vft,
@@ -282,6 +306,10 @@ dpo_register (dpo_type_t type,
 {
     vec_validate(dpo_vfts, type);
     dpo_vfts[type] = *vft;
+    if (NULL == dpo_vfts[type].dv_get_next_node)
+    {
+        dpo_vfts[type].dv_get_next_node = dpo_default_get_next_node;
+    }
 
     vec_validate(dpo_nodes, type);
     dpo_nodes[type] = nodes;
@@ -340,24 +368,25 @@ dpo_get_next_node (dpo_type_t child_type,
      */
     if (~0 == dpo_edges[child_type][child_proto][parent_type][parent_proto])
     {
-        vlib_node_t *parent_node, *child_node;
+        vlib_node_t *child_node;
+        u32 *parent_indices;
         vlib_main_t *vm;
-        u32 edge ,pp, cc;
+        u32 edge, *pi, cc;
 
         vm = vlib_get_main();
 
-        vlib_worker_thread_barrier_sync(vm);
-
+        ASSERT(NULL != dpo_vfts[parent_type].dv_get_next_node);
         ASSERT(NULL != dpo_nodes[child_type]);
         ASSERT(NULL != dpo_nodes[child_type][child_proto]);
-        ASSERT(NULL != dpo_nodes[parent_type]);
-        ASSERT(NULL != dpo_nodes[parent_type][parent_proto]);
 
         cc = 0;
+        parent_indices = dpo_vfts[parent_type].dv_get_next_node(parent_dpo);
+
+        vlib_worker_thread_barrier_sync(vm);
 
         /*
-         * create a graph arc from each of the parent's registered node types,
-         * to each of the childs.
+         * create a graph arc from each of the child's registered node types,
+         * to each of the parent's.
          */
         while (NULL != dpo_nodes[child_type][child_proto][cc])
         {
@@ -365,17 +394,9 @@ dpo_get_next_node (dpo_type_t child_type,
                 vlib_get_node_by_name(vm,
                                       (u8*) dpo_nodes[child_type][child_proto][cc]);
 
-            pp = 0;
-
-            while (NULL != dpo_nodes[parent_type][parent_proto][pp])
+            vec_foreach(pi, parent_indices)
             {
-                parent_node =
-                    vlib_get_node_by_name(vm,
-                                          (u8*) dpo_nodes[parent_type][parent_proto][pp]);
-
-                edge = vlib_node_add_next(vm,
-                                          child_node->index,
-                                          parent_node->index);
+                edge = vlib_node_add_next(vm, child_node->index, *pi);
 
                 if (~0 == dpo_edges[child_type][child_proto][parent_type][parent_proto])
                 {
@@ -385,12 +406,12 @@ dpo_get_next_node (dpo_type_t child_type,
                 {
                     ASSERT(dpo_edges[child_type][child_proto][parent_type][parent_proto] == edge);
                 }
-                pp++;
             }
             cc++;
         }
 
         vlib_worker_thread_barrier_release(vm);
+        vec_free(parent_indices);
     }
 
     return (dpo_edges[child_type][child_proto][parent_type][parent_proto]);
@@ -451,38 +472,39 @@ dpo_stack_from_node (u32 child_node_index,
                      dpo_id_t *dpo,
                      const dpo_id_t *parent)
 {
-    dpo_proto_t parent_proto;
-    vlib_node_t *parent_node;
     dpo_type_t parent_type;
+    u32 *parent_indices;
     vlib_main_t *vm;
-    u32 edge;
+    u32 edge, *pi;
 
+    edge = 0;
     parent_type = parent->dpoi_type;
-    parent_proto = parent->dpoi_proto;
-
     vm = vlib_get_main();
 
-    ASSERT(NULL != dpo_nodes[parent_type]);
-    ASSERT(NULL != dpo_nodes[parent_type][parent_proto]);
+    ASSERT(NULL != dpo_vfts[parent_type].dv_get_next_node);
+    parent_indices = dpo_vfts[parent_type].dv_get_next_node(parent);
+    ASSERT(parent_indices);
 
-    parent_node =
-        vlib_get_node_by_name(vm, (u8*) dpo_nodes[parent_type][parent_proto][0]);
-
-    edge = vlib_node_get_next(vm,
-                              child_node_index,
-                              parent_node->index);
-
-    if (~0 == edge)
+    /*
+     * This loop is purposefully written with the worker thread lock in the
+     * inner loop because;
+     *  1) the likelihood that the edge does not exist is smaller
+     *  2) the likelihood there is more than one node is even smaller
+     * so we are optimising for not need to take the lock
+     */
+    vec_foreach(pi, parent_indices)
     {
-        vlib_worker_thread_barrier_sync(vm);
+        edge = vlib_node_get_next(vm, child_node_index, *pi);
 
-        edge = vlib_node_add_next(vm,
-                                  child_node_index,
-                                  parent_node->index);
+        if (~0 == edge)
+        {
+            vlib_worker_thread_barrier_sync(vm);
 
-        vlib_worker_thread_barrier_release(vm);
+            edge = vlib_node_add_next(vm, child_node_index, *pi);
+
+            vlib_worker_thread_barrier_release(vm);
+        }
     }
-
     dpo_stack_i(edge, dpo, parent);
 }
 
@@ -498,7 +520,8 @@ dpo_module_init (vlib_main_t * vm)
     lookup_dpo_module_init();
     ip_null_dpo_module_init();
     replicate_module_init();
-    interface_dpo_module_init();
+    interface_rx_dpo_module_init();
+    interface_tx_dpo_module_init();
     mpls_disp_dpo_module_init();
 
     return (NULL);

@@ -25,7 +25,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
 #include <vnet/bfd/bfd_main.h>
-#include <vnet/dpo/interface_dpo.h>
+#include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/replicate_dpo.h>
 
 #include <vnet/mpls/mpls.h>
@@ -407,7 +407,7 @@ fib_test_validate_rep_v (const replicate_t *rep,
 	    }
 	    break;
 	case FT_REP_INTF:
-            FIB_TEST_LB((DPO_INTERFACE == dpo->dpoi_type),
+            FIB_TEST_LB((DPO_INTERFACE_RX == dpo->dpoi_type),
                         "bucket %d stacks on %U",
                         bucket,
                         format_dpo_type, dpo->dpoi_type);
@@ -589,7 +589,7 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 			exp->adj.adj);
 	    break;
 	case FT_LB_INTF:
-	    FIB_TEST_I((DPO_INTERFACE == dpo->dpoi_type),
+	    FIB_TEST_I((DPO_INTERFACE_RX == dpo->dpoi_type),
 		       "bucket %d stacks on %U",
 		       bucket,
 		       format_dpo_type, dpo->dpoi_type);
@@ -8523,7 +8523,7 @@ lfib_test (void)
      */
     dpo_id_t idpo = DPO_INVALID;
 
-    interface_dpo_add_or_lock(DPO_PROTO_IP4,
+    interface_rx_dpo_add_or_lock(DPO_PROTO_IP4,
                               tm->hw[0]->sw_if_index,
                               &idpo);
 
@@ -8667,9 +8667,9 @@ lfib_test (void)
     FIB_TEST(lb_count == pool_elts(load_balance_pool),
 	     "Load-balance resources freed %d of %d",
              lb_count, pool_elts(load_balance_pool));
-    FIB_TEST(0 == pool_elts(interface_dpo_pool),
-	     "interface_dpo resources freed %d of %d",
-             0, pool_elts(interface_dpo_pool));
+    FIB_TEST(0 == pool_elts(interface_rx_dpo_pool),
+	     "interface_rx_dpo resources freed %d of %d",
+             0, pool_elts(interface_rx_dpo_pool));
 
     return (0);
 }
