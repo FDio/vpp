@@ -43,6 +43,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/adj/adj.h>
+#include <vnet/ethernet/p2p_ethernet.h>
 
 /**
  * @file
@@ -199,7 +200,7 @@ ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
   vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
   if (si->type == VNET_SW_INTERFACE_TYPE_P2P)
     {
-      default_update_adjacency (vnm, sw_if_index, ai);
+      p2p_update_adjacency (vnm, sw_if_index, ai);
     }
   else if (FIB_PROTOCOL_IP4 == adj->ia_nh_proto)
     {

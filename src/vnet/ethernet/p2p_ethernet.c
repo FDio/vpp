@@ -19,6 +19,7 @@
 #include <vnet/vnet.h>
 #include <vnet/ethernet/p2p_ethernet.h>
 #include <vnet/l2/l2_input.h>
+#include <vnet/adj/adj_mcast.h>
 
 p2p_ethernet_main_t p2p_main;
 
@@ -44,6 +45,49 @@ p2p_ethernet_lookup (u32 parent_if_index, u8 * client_mac)
     return p[0];
 
   return ~0;
+}
+
+void
+p2p_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
+{
+  ip_adjacency_t *adj;
+
+  adj = adj_get (ai);
+
+  switch (adj->lookup_next_index)
+    {
+    case IP_LOOKUP_NEXT_ARP:
+    case IP_LOOKUP_NEXT_GLEAN:
+      /*
+       * construct complete adj for p2p ethernet
+       */
+      adj_nbr_update_rewrite (ai,
+			      ADJ_NBR_REWRITE_FLAG_COMPLETE,
+			      ethernet_build_rewrite (vnm,
+						      sw_if_index,
+						      adj->ia_link, NULL));
+      break;
+    case IP_LOOKUP_NEXT_MCAST:
+      /*
+       * mcast traffic also uses default P2P rewrite string
+       */
+      adj_mcast_update_rewrite (ai,
+				ethernet_build_rewrite (vnm,
+							sw_if_index,
+							adj->ia_link,
+							NULL), 0, 0);
+      break;
+    case IP_LOOKUP_NEXT_DROP:
+    case IP_LOOKUP_NEXT_PUNT:
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+    case IP_LOOKUP_NEXT_MIDCHAIN:
+    case IP_LOOKUP_NEXT_ICMP_ERROR:
+    case IP_LOOKUP_N_NEXT:
+      ASSERT (0);
+      break;
+    }
 }
 
 int
@@ -222,10 +266,14 @@ vnet_p2p_ethernet_add_del (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (p2p_ethernet_add_del_command, static) =
 {
-.path = "p2p_ethernet ",.function = vnet_p2p_ethernet_add_del,.short_help =
-    "p2p_ethernet <intfc> <mac-address> [sub-id <id> | del]",};
+  .path = "p2p_ethernet ",
+  .function = vnet_p2p_ethernet_add_del,
+  .short_help = "p2p_ethernet <intfc> <mac-address> [sub-id <id> | del]",
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 p2p_ethernet_init (vlib_main_t * vm)
