@@ -293,6 +293,7 @@ class TestPPPoE(VppTestCase):
         self.logger.info(self.vapi.cli("show pppoe fib"))
         self.logger.info(self.vapi.cli("show pppoe session"))
         self.logger.info(self.vapi.cli("show ip fib"))
+        self.logger.info(self.vapi.cli("show adj"))
 
         #
         # test case cleanup

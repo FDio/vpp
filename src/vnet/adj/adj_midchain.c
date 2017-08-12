@@ -117,8 +117,8 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 	    next0 = dpo0->dpoi_next_node;
 	    next1 = dpo1->dpoi_next_node;
 
-	    vnet_buffer(b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
-	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+            vnet_buffer(b1)->ip.adj_index[VLIB_TX] = dpo1->dpoi_index;
+            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
 	    if (interface_count)
 	    {
@@ -175,7 +175,7 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 	    adj0 = adj_get(adj_index0);
 	    dpo0 = &adj0->sub_type.midchain.next_dpo;
 	    next0 = dpo0->dpoi_next_node;
-	    vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
+            vnet_buffer(b0)->ip.adj_index[VLIB_TX] = dpo0->dpoi_index;
 
 	    if (interface_count)
 	    {
@@ -392,6 +392,17 @@ adj_nbr_midchain_get_tx_node (ip_adjacency_t *adj)
             adj_midchain_tx_node.index);
 }
 
+static u32
+adj_nbr_midchain_get_feature_node (ip_adjacency_t *adj)
+{
+    if (adj->ia_flags & ADJ_FLAG_MIDCHAIN_NO_COUNT)
+    {
+        return (adj_midchain_tx_no_count_feature_node[adj->ia_link]);
+    }
+
+    return (adj_midchain_tx_feature_node[adj->ia_link]);
+}
+
 /**
  * adj_midchain_setup
  *
@@ -414,10 +425,7 @@ adj_midchain_setup (adj_index_t adj_index,
     adj->ia_flags |= flags;
 
     arc_index = adj_midchain_get_feature_arc_index_for_link_type (adj);
-    feature_index = (flags & ADJ_FLAG_MIDCHAIN_NO_COUNT) ?
-                    adj_midchain_tx_no_count_feature_node[adj->ia_link] :
-                    adj_midchain_tx_feature_node[adj->ia_link];
-
+    feature_index = adj_nbr_midchain_get_feature_node(adj);
     tx_node = adj_nbr_midchain_get_tx_node(adj);
 
     vnet_feature_enable_disable_with_index (arc_index, feature_index,
@@ -432,8 +440,8 @@ adj_midchain_setup (adj_index_t adj_index,
      * need to get to the stacked child's node.
      */
     dpo_stack_from_node(tx_node,
-			&adj->sub_type.midchain.next_dpo,
-			drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
+                        &adj->sub_type.midchain.next_dpo,
+                        drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
 }
 
 /**
@@ -495,10 +503,9 @@ adj_nbr_midchain_unstack (adj_index_t adj_index)
      * stack on the drop
      */
     dpo_stack(DPO_ADJACENCY_MIDCHAIN,
-	      vnet_link_to_dpo_proto(adj->ia_link),
-	      &adj->sub_type.midchain.next_dpo,
-	      drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
-
+              vnet_link_to_dpo_proto(adj->ia_link),
+              &adj->sub_type.midchain.next_dpo,
+              drop_dpo_get(vnet_link_to_dpo_proto(adj->ia_link)));
     CLIB_MEMORY_BARRIER();
 }
 
@@ -537,9 +544,9 @@ format_adj_midchain (u8* s, va_list *ap)
 		format_vnet_rewrite,
 		&adj->rewrite_header, sizeof (adj->rewrite_data), indent);
     s = format (s, "\n%Ustacked-on:\n%U%U",
-		format_white_space, indent,
-		format_white_space, indent+2,
-		format_dpo_id, &adj->sub_type.midchain.next_dpo, indent+2);
+                format_white_space, indent,
+                format_white_space, indent+2,
+                format_dpo_id, &adj->sub_type.midchain.next_dpo, indent+2);
 
     return (s);
 }
