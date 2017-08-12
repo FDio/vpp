@@ -21,7 +21,7 @@
 #include <vnet/dpo/receive_dpo.h>
 #include <vnet/dpo/load_balance_map.h>
 #include <vnet/dpo/lookup_dpo.h>
-#include <vnet/dpo/interface_dpo.h>
+#include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/mpls_disposition.h>
 
 #include <vnet/adj/adj.h>
@@ -1707,9 +1707,9 @@ fib_path_resolve (fib_node_index_t path_index)
 	/*
 	 * Resolve via a receive DPO.
 	 */
-	interface_dpo_add_or_lock(path->fp_nh_proto,
-                                  path->intf_rx.fp_interface,
-                                  &path->fp_dpo);
+	interface_rx_dpo_add_or_lock(path->fp_nh_proto,
+                                     path->intf_rx.fp_interface,
+                                     &path->fp_dpo);
 	break;
     }
     case FIB_PATH_TYPE_EXCLUSIVE:
@@ -2041,9 +2041,9 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
             /*
              * Create the adj needed for sending IP multicast traffic
              */
-            interface_dpo_add_or_lock(fib_forw_chain_type_to_dpo_proto(fct),
-                                      path->attached.fp_interface,
-                                      dpo);
+            interface_rx_dpo_add_or_lock(fib_forw_chain_type_to_dpo_proto(fct),
+                                         path->attached.fp_interface,
+                                         dpo);
             break;
         case FIB_PATH_TYPE_RECEIVE:
         case FIB_PATH_TYPE_SPECIAL:
