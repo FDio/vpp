@@ -59,5 +59,6 @@ typedef struct {
 
 u32 p2p_ethernet_lookup (u32 parent_sw_if_index, u8* client_mac);
 int p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index, u8 * client_mac, u32 sub_id, int is_add, u32 *p2pe_if_index);
+void p2p_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai);
 
 #endif /* included_vnet_p2p_ethernet_h */
