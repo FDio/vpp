@@ -12,17 +12,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * @brief
- * The data-path object representing interfaceing the packet, i.e. it's for-us
- */
 
-#ifndef __INTERFACE_DPO_H__
-#define __INTERFACE_DPO_H__
+#ifndef __INTERFACE_RX_DPO_H__
+#define __INTERFACE_RX_DPO_H__
 
 #include <vnet/dpo/dpo.h>
 
-typedef struct interface_dpo_t_
+/**
+ * @brief
+ * The data-path object representing a change of receive interface.
+ * If a packet encounters an object of this type in the data-path, it's
+ * RX interface is changed.
+ */
+typedef struct interface_rx_dpo_t_
 {
     /**
      * The Software interface index that the packets will be given
@@ -45,23 +47,23 @@ typedef struct interface_dpo_t_
      * number of locks.
      */
     u16 ido_locks;
-} interface_dpo_t;
+} interface_rx_dpo_t;
 
-extern void interface_dpo_add_or_lock (dpo_proto_t proto,
-                                       u32 sw_if_index,
-                                       dpo_id_t *dpo);
+extern void interface_rx_dpo_add_or_lock (dpo_proto_t proto,
+                                          u32 sw_if_index,
+                                          dpo_id_t *dpo);
 
-extern void interface_dpo_module_init(void);
+extern void interface_rx_dpo_module_init(void);
 
 /**
  * @brief pool of all interface DPOs
  */
-interface_dpo_t *interface_dpo_pool;
+interface_rx_dpo_t *interface_rx_dpo_pool;
 
-static inline interface_dpo_t *
-interface_dpo_get (index_t index)
+static inline interface_rx_dpo_t *
+interface_rx_dpo_get (index_t index)
 {
-    return (pool_elt_at_index(interface_dpo_pool, index));
+    return (pool_elt_at_index(interface_rx_dpo_pool, index));
 }
 
 #endif

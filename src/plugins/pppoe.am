@@ -14,27 +14,26 @@
 vppapitestplugins_LTLIBRARIES += pppoe_test_plugin.la
 vppplugins_LTLIBRARIES += pppoe_plugin.la
 
-pppoe_plugin_la_SOURCES =		\
-    pppoe/pppoe_decap.c		    \
-    pppoe/pppoe_encap.c		    \
-    pppoe/pppoe_tap.c		    \
-    pppoe/pppoe_tap_node.c		\
-    pppoe/pppoe.c		        \
+pppoe_plugin_la_SOURCES =	\
+    pppoe/pppoe_decap.c		\
+    pppoe/pppoe_tap.c		\
+    pppoe/pppoe_tap_node.c	\
+    pppoe/pppoe.c		\
     pppoe/pppoe_api.c
 
-BUILT_SOURCES +=			   \
-    pppoe/pppoe.api.h		    \
+BUILT_SOURCES +=		\
+    pppoe/pppoe.api.h		\
     pppoe/pppoe.api.json
 
 API_FILES += pppoe/pppoe.api
 
 nobase_apiinclude_HEADERS +=	\
-    pppoe/pppoe_all_api_h.h		\
-    pppoe/pppoe_msg_enum.h		\
+    pppoe/pppoe_all_api_h.h	\
+    pppoe/pppoe_msg_enum.h	\
     pppoe/pppoe.api.h
 
-pppoe_test_plugin_la_SOURCES = \
-    pppoe/pppoe_test.c            \
+pppoe_test_plugin_la_SOURCES =	\
+    pppoe/pppoe_test.c		\
     pppoe/pppoe_plugin.api.h
 
 # vi:syntax=automake
