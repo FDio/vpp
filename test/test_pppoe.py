@@ -281,7 +281,7 @@ class TestPPPoE(VppTestCase):
         #
         self.vapi.cli("clear trace")
         tx2 = self.create_stream_ip4(self.pg1, self.pg0,
-                                     self.pg0.remote_ip4, self.dst_ip)
+                                     self.pg0.remote_ip4, self.dst_ip, 65)
         self.pg1.add_stream(tx2)
 
         self.pg_enable_capture(self.pg_interfaces)
@@ -293,6 +293,7 @@ class TestPPPoE(VppTestCase):
         self.logger.info(self.vapi.cli("show pppoe fib"))
         self.logger.info(self.vapi.cli("show pppoe session"))
         self.logger.info(self.vapi.cli("show ip fib"))
+        self.logger.info(self.vapi.cli("show adj"))
 
         #
         # test case cleanup

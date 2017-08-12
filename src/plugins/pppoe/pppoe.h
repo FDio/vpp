@@ -48,9 +48,6 @@ typedef struct
 
 typedef struct
 {
-  /* Rewrite string */
-  u8 *rewrite;
-
   /* pppoe session_id in HOST byte order */
   u16 session_id;
 
@@ -177,10 +174,7 @@ typedef struct
 extern pppoe_main_t pppoe_main;
 
 extern vlib_node_registration_t pppoe_input_node;
-extern vlib_node_registration_t pppoe_encap_node;
 extern vlib_node_registration_t pppoe_tap_dispatch_node;
-
-u8 *format_pppoe_encap_trace (u8 * s, va_list * args);
 
 typedef struct
 {
