@@ -24,11 +24,13 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
-#include <vnet/dpo/dpo.h>
+#include <vnet/dpo/interface_tx_dpo.h>
 #include <vnet/plugin/plugin.h>
 #include <vpp/app/version.h>
 #include <vnet/ppp/packet.h>
 #include <pppoe/pppoe.h>
+#include <vnet/adj/adj_midchain.h>
+#include <vnet/adj/adj_mcast.h>
 
 #include <vppinfra/hash.h>
 #include <vppinfra/bihash_template.c>
@@ -85,7 +87,6 @@ pppoe_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
 VNET_DEVICE_CLASS (pppoe_device_class,static) = {
   .name = "PPPPOE",
   .format_device_name = format_pppoe_name,
-  .format_tx_trace = format_pppoe_encap_trace,
   .tx_function = dummy_interface_tx,
   .admin_up_down_function = pppoe_interface_admin_up_down,
 };
@@ -99,27 +100,19 @@ format_pppoe_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-/* *INDENT-OFF* */
-VNET_HW_INTERFACE_CLASS (pppoe_hw_class) =
+static u8 *
+pppoe_build_rewrite (vnet_main_t * vnm,
+		     u32 sw_if_index,
+		     vnet_link_t link_type, const void *dst_address)
 {
-  .name = "PPPPOE",
-  .format_header = format_pppoe_header_with_length,
-  .build_rewrite = default_build_rewrite,
-  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
-};
-/* *INDENT-ON* */
-
-#define foreach_copy_field                      \
-_(session_id)                                   \
-_(encap_if_index)                               \
-_(decap_fib_index)                              \
-_(client_ip)
-
-static void
-eth_pppoe_rewrite (pppoe_session_t * t, bool is_ip6)
-{
-  u8 *rw = 0;
   int len = sizeof (pppoe_header_t) + sizeof (ethernet_header_t);
+  pppoe_main_t *pem = &pppoe_main;
+  pppoe_session_t *t;
+  u32 session_id;
+  u8 *rw = 0;
+
+  session_id = pem->session_index_by_sw_if_index[sw_if_index];
+  t = pool_elt_at_index (pem->sessions, session_id);
 
   vec_validate_aligned (rw, len - 1, CLIB_CACHE_LINE_BYTES);
 
@@ -134,20 +127,111 @@ eth_pppoe_rewrite (pppoe_session_t * t, bool is_ip6)
   pppoe->session_id = clib_host_to_net_u16 (t->session_id);
   pppoe->length = 0;		/* To be filled in at run-time */
 
-  if (!is_ip6)
+  switch (link_type)
     {
+    case VNET_LINK_IP4:
       pppoe->ppp_proto = clib_host_to_net_u16 (PPP_PROTOCOL_ip4);
-    }
-  else
-    {
+      break;
+    case VNET_LINK_IP6:
       pppoe->ppp_proto = clib_host_to_net_u16 (PPP_PROTOCOL_ip6);
+      break;
+    default:
+      break;
     }
 
-  t->rewrite = rw;
-  _vec_len (t->rewrite) = len;
-
-  return;
+  return rw;
 }
+
+/**
+ * @brief Fixup the adj rewrite post encap. Insert the packet's length
+ */
+static void
+pppoe_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b0)
+{
+  pppoe_header_t *pppoe0;
+
+  pppoe0 = vlib_buffer_get_current (b0);
+
+  pppoe0->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+					 - sizeof (pppoe_header_t)
+					 - sizeof (ethernet_header_t));
+}
+
+static void
+pppoe_update_adj (vnet_main_t * vnm, u32 sw_if_index, adj_index_t ai)
+{
+  pppoe_main_t *pem = &pppoe_main;
+  dpo_id_t dpo = DPO_INVALID;
+  ip_adjacency_t *adj;
+  pppoe_session_t *t;
+  u32 session_id;
+
+  ASSERT (ADJ_INDEX_INVALID != ai);
+
+  adj = adj_get (ai);
+
+  switch (adj->lookup_next_index)
+    {
+    case IP_LOOKUP_NEXT_ARP:
+    case IP_LOOKUP_NEXT_GLEAN:
+      adj_nbr_midchain_update_rewrite (ai, pppoe_fixup,
+				       ADJ_FLAG_NONE,
+				       pppoe_build_rewrite (vnm,
+							    sw_if_index,
+							    adj->ia_link,
+							    NULL));
+      break;
+    case IP_LOOKUP_NEXT_MCAST:
+      /*
+       * Construct a partial rewrite from the known ethernet mcast dest MAC
+       * There's no MAC fixup, so the last 2 parameters are 0
+       */
+      adj_mcast_midchain_update_rewrite (ai, pppoe_fixup,
+					 ADJ_FLAG_NONE,
+					 pppoe_build_rewrite (vnm,
+							      sw_if_index,
+							      adj->ia_link,
+							      NULL), 0, 0);
+      break;
+
+    case IP_LOOKUP_NEXT_DROP:
+    case IP_LOOKUP_NEXT_PUNT:
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_MIDCHAIN:
+    case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+    case IP_LOOKUP_NEXT_ICMP_ERROR:
+    case IP_LOOKUP_N_NEXT:
+      ASSERT (0);
+      break;
+    }
+
+  session_id = pem->session_index_by_sw_if_index[sw_if_index];
+  t = pool_elt_at_index (pem->sessions, session_id);
+  interface_tx_dpo_add_or_lock (vnet_link_to_dpo_proto (adj->ia_link),
+				t->encap_if_index, &dpo);
+
+  adj_nbr_midchain_stack (ai, &dpo);
+
+  dpo_reset (&dpo);
+}
+
+/* *INDENT-OFF* */
+VNET_HW_INTERFACE_CLASS (pppoe_hw_class) =
+{
+  .name = "PPPPOE",
+  .format_header = format_pppoe_header_with_length,
+  .build_rewrite = pppoe_build_rewrite,
+  .update_adjacency = pppoe_update_adj,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
+};
+/* *INDENT-ON* */
+
+#define foreach_copy_field                      \
+_(session_id)                                   \
+_(encap_if_index)                               \
+_(decap_fib_index)                              \
+_(client_ip)
 
 static bool
 pppoe_decap_next_is_valid (pppoe_main_t * pem, u32 is_ip6,
@@ -231,8 +315,6 @@ int vnet_pppoe_add_del_session
 
       clib_memcpy (t->client_mac, a->client_mac, 6);
 
-      eth_pppoe_rewrite (t, is_ip6);
-
       /* update pppoe fib with session_index */
       result.fields.session_index = t - pem->sessions;
       pppoe_update_1 (&pem->session_table,
@@ -285,9 +367,6 @@ int vnet_pppoe_add_del_session
       vnet_sw_interface_set_flags (vnm, sw_if_index,
 				   VNET_SW_INTERFACE_FLAG_ADMIN_UP);
 
-      /* Set pppoe session output node */
-      hi->output_node_index = pppoe_encap_node.index;
-
       /* add reverse route for client ip */
       fib_table_entry_path_add (a->decap_fib_index, &pfx,
 				FIB_SOURCE_PLUGIN_HI, FIB_ENTRY_FLAG_NONE,
@@ -328,7 +407,6 @@ int vnet_pppoe_add_del_session
 				   sw_if_index, ~0, 1,
 				   FIB_ROUTE_PATH_FLAG_NONE);
 
-      vec_free (t->rewrite);
       pool_put (pem->sessions, t);
     }
 
