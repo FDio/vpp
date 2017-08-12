@@ -234,6 +234,13 @@ format_nsh_address (u8 * s, va_list * args)
 }
 
 u8 *
+format_fid_nsh_address (u8 * s, va_list * args)
+{
+  u32 *a = va_arg (*args, u32 *);
+  return format (s, "SPI:%d SI:%d", *a >> 8, *a & 0xff);
+}
+
+u8 *
 format_fid_address (u8 * s, va_list * args)
 {
   fid_address_t *a = va_arg (*args, fid_address_t *);
@@ -245,7 +252,7 @@ format_fid_address (u8 * s, va_list * args)
     case FID_ADDR_MAC:
       return format (s, "%U", format_mac_address, &fid_addr_mac (a));
     case FID_ADDR_NSH:
-      return format (s, "%U", format_nsh_address, &fid_addr_nsh (a));
+      return format (s, "%U", format_fid_nsh_address, &fid_addr_nsh (a));
 
     default:
       clib_warning ("Can't format fid address type %d!", fid_addr_type (a));
