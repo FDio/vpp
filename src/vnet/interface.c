@@ -41,6 +41,7 @@
 #include <vnet/plugin/plugin.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/adj/adj.h>
+#include <vnet/adj/adj_mcast.h>
 
 #define VNET_INTERFACE_SET_FLAGS_HELPER_IS_CREATE (1 << 0)
 #define VNET_INTERFACE_SET_FLAGS_HELPER_WANT_REDISTRIBUTE (1 << 1)
@@ -1411,15 +1412,48 @@ default_build_rewrite (vnet_main_t * vnm,
 void
 default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 {
-  u8 *rewrite;
+  ip_adjacency_t *adj;
 
-  rewrite = vnet_build_rewrite_for_sw_interface (vnm, sw_if_index,
-						 adj_get_link_type (ai),
-						 NULL);
+  adj = adj_get (ai);
 
-  adj_nbr_update_rewrite (ai, ADJ_NBR_REWRITE_FLAG_COMPLETE, rewrite);
+  switch (adj->lookup_next_index)
+    {
+    case IP_LOOKUP_NEXT_ARP:
+    case IP_LOOKUP_NEXT_GLEAN:
+      /*
+       * default rewirte in neighbour adj
+       */
+      adj_nbr_update_rewrite
+	(ai,
+	 ADJ_NBR_REWRITE_FLAG_COMPLETE,
+	 vnet_build_rewrite_for_sw_interface (vnm,
+					      sw_if_index,
+					      adj_get_link_type (ai), NULL));
+      break;
+    case IP_LOOKUP_NEXT_MCAST:
+      /*
+       * mcast traffic also uses default rewrite string with no mcast
+       * switch time updates.
+       */
+      adj_mcast_update_rewrite
+	(ai,
+	 vnet_build_rewrite_for_sw_interface (vnm,
+					      sw_if_index,
+					      adj_get_link_type (ai),
+					      NULL), 0, 0);
+      break;
+    case IP_LOOKUP_NEXT_DROP:
+    case IP_LOOKUP_NEXT_PUNT:
+    case IP_LOOKUP_NEXT_LOCAL:
+    case IP_LOOKUP_NEXT_REWRITE:
+    case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+    case IP_LOOKUP_NEXT_MIDCHAIN:
+    case IP_LOOKUP_NEXT_ICMP_ERROR:
+    case IP_LOOKUP_N_NEXT:
+      ASSERT (0);
+      break;
+    }
 }
-
 
 /*
  * fd.io coding-style-patch-verification: ON
