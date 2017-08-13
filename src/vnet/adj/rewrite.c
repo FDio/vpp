@@ -68,7 +68,6 @@ u8 *
 format_vnet_rewrite (u8 * s, va_list * args)
 {
   vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
-  u32 max_data_bytes = va_arg (*args, u32);
   CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
   vnet_main_t *vnm = vnet_get_main ();
 
@@ -86,9 +85,7 @@ format_vnet_rewrite (u8 * s, va_list * args)
 
   /* Format rewrite string. */
   if (rw->data_bytes > 0)
-    s = format (s, " %U",
-		format_hex_bytes,
-		rw->data + max_data_bytes - rw->data_bytes, rw->data_bytes);
+    s = format (s, "  %U", format_hex_bytes, rw->data, rw->data_bytes);
 
   return s;
 }
@@ -169,41 +166,6 @@ vnet_rewrite_for_tunnel (vnet_main_t * vnm,
   /* Leave room for ethernet + VLAN tag */
   vnet_rewrite_set_data_internal (rw, sizeof (adj->rewrite_data),
 				  rewrite_data, rewrite_length);
-}
-
-void
-serialize_vnet_rewrite (serialize_main_t * m, va_list * va)
-{
-  vnet_rewrite_header_t *rw = va_arg (*va, vnet_rewrite_header_t *);
-  u32 max_data_bytes = va_arg (*va, u32);
-  u8 *p;
-
-  serialize_integer (m, rw->sw_if_index, sizeof (rw->sw_if_index));
-  serialize_integer (m, rw->data_bytes, sizeof (rw->data_bytes));
-  serialize_integer (m, rw->max_l3_packet_bytes,
-		     sizeof (rw->max_l3_packet_bytes));
-  p = serialize_get (m, rw->data_bytes);
-  clib_memcpy (p, vnet_rewrite_get_data_internal (rw, max_data_bytes),
-	       rw->data_bytes);
-}
-
-void
-unserialize_vnet_rewrite (serialize_main_t * m, va_list * va)
-{
-  vnet_rewrite_header_t *rw = va_arg (*va, vnet_rewrite_header_t *);
-  u32 max_data_bytes = va_arg (*va, u32);
-  u8 *p;
-
-  /* It is up to user to fill these in. */
-  rw->next_index = ~0;
-
-  unserialize_integer (m, &rw->sw_if_index, sizeof (rw->sw_if_index));
-  unserialize_integer (m, &rw->data_bytes, sizeof (rw->data_bytes));
-  unserialize_integer (m, &rw->max_l3_packet_bytes,
-		       sizeof (rw->max_l3_packet_bytes));
-  p = unserialize_get (m, rw->data_bytes);
-  clib_memcpy (vnet_rewrite_get_data_internal (rw, max_data_bytes), p,
-	       rw->data_bytes);
 }
 
 u8 *
