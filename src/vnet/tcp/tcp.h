@@ -367,6 +367,7 @@ typedef struct _tcp_main
 
   u8 log2_tstamp_clocks_per_tick;
   f64 tstamp_ticks_per_clock;
+  u32 *time_now;
 
   /** per-worker tx buffer free lists */
   u32 **tx_buffers;
@@ -619,12 +620,21 @@ void tcp_update_sack_list (tcp_connection_t * tc, u32 start, u32 end);
 always_inline u32
 tcp_time_now (void)
 {
-  return clib_cpu_time_now () * tcp_main.tstamp_ticks_per_clock;
+  return tcp_main.time_now[vlib_get_thread_index ()];
+}
+
+always_inline u32
+tcp_set_time_now (u32 thread_index)
+{
+  tcp_main.time_now[thread_index] = clib_cpu_time_now ()
+    * tcp_main.tstamp_ticks_per_clock;
+  return tcp_main.time_now[thread_index];
 }
 
 always_inline void
 tcp_update_time (f64 now, u32 thread_index)
 {
+  tcp_set_time_now (thread_index);
   tw_timer_expire_timers_16t_2w_512sl (&tcp_main.timer_wheels[thread_index],
 				       now);
   tcp_flush_frames_to_output (thread_index);
