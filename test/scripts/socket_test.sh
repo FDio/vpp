@@ -11,7 +11,7 @@ lib64_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/lib64/"
 docker_vpp_dir="/vpp/"
 docker_lib64_dir="/vpp-lib64/"
 docker_os="ubuntu"
-preload_lib="libvppsocketwrapper.so.0.0.0"
+vcl_ldpreload_lib="libvcl_ldpreload.so.0.0.0"
 vpp_app="vpp"
 sock_srvr_app="sock_test_server"
 sock_clnt_app="sock_test_client"
@@ -43,6 +43,7 @@ trap_signals="SIGINT SIGTERM EXIT"
 VPP_GDB_CMDFILE="${VPP_GDB_CMDFILE:-${def_gdb_cmdfile_prefix}.vpp}"
 VPPCOM_CLIENT_GDB_CMDFILE="${VPPCOM_CLIENT_GDB_CMDFILE:-${def_gdb_cmdfile_prefix}.vppcom_client}"
 VPPCOM_SERVER_GDB_CMDFILE="${VPPCOM_SERVER_GDB_CMDFILE:-${def_gdb_cmdfile_prefix}.vppcom_server}"
+VCL_LDPRELOAD_LIB_DIR="${VCL_LDPRELOAD_LIB_DIR:-/usr/local/lib}"
 
 usage() {
     cat <<EOF
@@ -238,10 +239,13 @@ if [[ $run_test =~ .*"_preload" ]] ; then
    if [ ! -d $lib64_dir ] ; then
        echo "ERROR: Missing VPP$DEBUG lib64 directory!" >&2
        echo "       $lib64_dir" >&2
+   elif [ ! -d $VCL_LDPRELOAD_LIB_DIR ] ; then
+       echo "ERROR: Missing VCL LD_PRELOAD Library directory!" >&2
+       echo "       $VCL_LDPRELOAD_LIB_DIR" >&2
        env_test_failed="true"
-   elif [ ! -f $lib64_dir$preload_lib ] ; then
-       echo "ERROR: Missing VPP$DEBUG PRE_LOAD library!" >&2
-       echo "       $lib64_dir$preload_lib" >&2
+   elif [ ! -f $VCL_LDPRELOAD_LIB_DIR/$vcl_ldpreload_lib ] ; then
+       echo "ERROR: Missing VCL LD_PRELOAD library!" >&2
+       echo "       $VCL_LDPRELOAD_LIB_DIR/$vcl_ldpreload_lib" >&2
        env_test_failed="true"
    fi
 fi
@@ -368,7 +372,7 @@ write_script_header() {
     echo "$bash_header" > $1
     echo -e "#\n# $1 generated on $(date)\n#" >> $1
     if [ $leave_tmp_files -eq 0 ] ; then
-        echo "trap \"rm -f $1 $2\" $trap_signals" >> $1
+        echo "trap \"rm -f $1 $2 $dup_vcl_ldpreload_lib\" $trap_signals" >> $1
     fi
     echo "export VPPCOM_CONF=${vppcom_conf_dir}${vppcom_conf}" >> $1
     if [ "$pre_cmd" = "$gdb_in_emacs " ] ; then
@@ -444,7 +448,7 @@ native_kernel() {
 native_preload() {
     verify_no_vpp
     banner="Running NATIVE-PRELOAD socket test"
-    ld_preload="$lib64_dir$preload_lib "
+    ld_preload="$VCL_LDPRELOAD_LIB_DIR/$vcl_ldpreload_lib "
 
     title1="VPP$title_dbg (Native-Preload Socket Test)"
     tmp_gdb_cmdfile=$tmp_gdb_cmdfile_vpp
@@ -536,7 +540,10 @@ docker_preload() {
     verify_no_vpp
     verify_no_docker_containers
     banner="Running DOCKER-PRELOAD socket test"
-    ld_preload="$docker_lib64_dir$preload_lib "
+    ld_preload="$VCL_LDPRELOAD_LIB_DIR/$vcl_ldpreload_lib "
+    docker_ld_preload_lib="$docker_lib64_dir$vcl_ldpreload_lib "
+    dup_vcl_ldpreload_lib="$lib64_dir$vcl_ldpreload_lib"
+    cp $ld_preload $dup_vcl_ldpreload_lib
     
     title1="VPP$title_dbg (Docker-Preload Socket Test)"
     tmp_gdb_cmdfile=$tmp_gdb_cmdfile_vpp
@@ -549,7 +556,7 @@ docker_preload() {
     title2="SERVER$title_dbg (Docker-Preload Socket Test)"
     tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
     gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
-    set_pre_cmd $emacs_server $gdb_server $ld_preload
+    set_pre_cmd $emacs_server $gdb_server $docker_ld_preload_lib
     write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
     echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -p $sock_srvr_port:$sock_srvr_port -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir ${docker_ld_preload}$docker_os ${docker_vpp_dir}${srvr_app}" >> $cmd2_file
     write_script_footer $cmd2_file $perf_server
@@ -557,7 +564,7 @@ docker_preload() {
     title3="CLIENT$title_dbg (Docker-Preload Socket Test)"
     tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
     gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
-    set_pre_cmd $emacs_client $gdb_client $ld_preload
+    set_pre_cmd $emacs_client $gdb_client $docker_ld_preload_lib
     write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
     echo "$get_docker_server_ip4addr" >> $cmd3_file
     echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir ${docker_ld_preload}$docker_os ${docker_vpp_dir}${clnt_app}" >> $cmd3_file
