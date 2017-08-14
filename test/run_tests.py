@@ -103,7 +103,7 @@ if __name__ == '__main__':
     except:
         verbose = 0
 
-    default_test_timeout = 600  # 10 minutes
+    default_test_timeout = 1200  # 20 minutes
     try:
         test_timeout = int(os.getenv("TIMEOUT", default_test_timeout))
     except:
