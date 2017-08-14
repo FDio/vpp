@@ -139,6 +139,20 @@ manual_endian manual_print define mpls_tunnel_details
 /** \brief MPLS Route Add / del route
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
+    @param mt_table_id - The MPLS table-id the route is added in
+    @param mt_is_add - Is this a route add or delete
+*/
+autoreply define mpls_table_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 mt_table_id;
+  u8  mt_is_add;
+};
+
+/** \brief MPLS Route Add / del route
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
     @param mr_label - The MPLS label value
     @param mr_eos - The End of stack bit
     @param mr_table_id - The MPLS table-id the route is added in
