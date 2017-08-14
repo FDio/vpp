@@ -1106,10 +1106,17 @@ tcp_timer_establish_handler (u32 conn_index)
   tcp_connection_t *tc;
 
   tc = tcp_half_open_connection_get (conn_index);
-  tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
-
-  ASSERT (tc->state == TCP_STATE_SYN_SENT);
-  stream_session_connect_notify (&tc->connection, 1 /* fail */ );
+  if (tc)
+    {
+      ASSERT (tc->state == TCP_STATE_SYN_SENT);
+      tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
+      stream_session_connect_notify (&tc->connection, 1 /* fail */ );
+    }
+  else
+    {
+      tc = tcp_connection_get (conn_index, vlib_get_thread_index ());
+      ASSERT (tc->state == TCP_STATE_SYN_RCVD);
+    }
   tcp_connection_cleanup (tc);
 }
 

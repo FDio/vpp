@@ -37,7 +37,7 @@ typedef struct _stream_session_cb_vft
   int (*session_accept_callback) (stream_session_t * new_session);
 
   /* Connection request callback */
-  int (*session_connected_callback) (u32 app_index, u32 api_context,
+  int (*session_connected_callback) (u32 app_index, u32 opaque,
 				     stream_session_t * s, u8 code);
 
   /** Notify app that session is closing */

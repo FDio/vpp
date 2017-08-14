@@ -329,7 +329,7 @@ application_open_session (application_t * app, session_type_t sst,
     return rv;
 
   /* Store api_context for when the reply comes. Not the nicest thing
-   * but better allocating a separate half-open pool.  */
+   * but better than allocating a separate half-open pool. */
   tc->s_index = api_context;
 
   return 0;
