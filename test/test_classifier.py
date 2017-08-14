@@ -60,6 +60,10 @@ class TestClassifier(VppTestCase):
 
     def tearDown(self):
         """Run standard test teardown and acl related log."""
+        for intf in self.interfaces:
+            intf.unconfig_ip4()
+            intf.admin_down()
+
         super(TestClassifier, self).tearDown()
         if not self.vpp_dead:
             self.logger.info(self.vapi.cli("show classify table verbose"))
