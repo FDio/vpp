@@ -7,10 +7,10 @@ This document is meant to contain all related information about implementation a
 
 DPDK Cryptodev is an asynchronous crypto API that supports both Hardware and Software implementations (for more details refer to [DPDK Cryptography Device Library documentation](http://dpdk.org/doc/guides/prog_guide/cryptodev_lib.html)).
 
-When DPDK support is enabled and there are enough Cryptodev resources for all workers, the node graph is reconfigured by adding and changing default next nodes.
+When there are enough Cryptodev resources for all workers, the node graph is reconfigured by adding and changing the default next nodes.
 
 The following nodes are added:
-* dpdk-crypto-input : polling input node, basically dequeuing from crypto devices.
+* dpdk-crypto-input : polling input node, dequeuing from crypto devices.
 * dpdk-esp-encrypt : internal node.
 * dpdk-esp-decrypt : internal node.
 * dpdk-esp-encrypt-post : internal node.
@@ -23,16 +23,9 @@ Set new default next nodes:
 
 ### How to enable VPP IPSec with DPDK Cryptodev support
 
-DPDK Cryptodev is supported in DPDK enabled VPP and by default only HW Cryptodev is supported.
-To enable SW Cryptodev support (AESNI-MB-PMD and GCM-PMD), we need the following env option:
+When building DPDK with VPP, Cryptodev support is always enabled.
 
-    vpp_uses_dpdk_cryptodev_sw=yes
-
-A couple of ways to achive this:
-* uncomment/add it in the platforms config (ie. build-data/platforms/vpp.mk)
-* set the option when building vpp (ie. make vpp_uses_dpdk_cryptodev_sw=yes build-release)
-
-When enabling SW Cryptodev support, it means that you need to pre-build the required crypto libraries needed by those SW Cryptodev PMDs. This requires nasm, see nasm section below.
+Additionally, on x86_64 platforms, DPDK is built with SW crypto support.
 
 
 ### Crypto Resources allocation
