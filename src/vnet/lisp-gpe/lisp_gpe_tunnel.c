@@ -282,6 +282,16 @@ lisp_gpe_tunnel_module_init (vlib_main_t * vm)
   return (NULL);
 }
 
+int
+vnet_lisp_gpe_get_tunnel_counter (index_t tunnel_index, vlib_counter_t *c)
+{
+  lisp_gpe_tunnel_t *t;
+  t = lisp_gpe_tunnel_get_i (tunnel_index);
+  fib_entry_t *fib = get_fib_entry (t->fib_entry_index);
+
+  vlib_get_combined_counter (&adjacency_counter, fib->fe_lb.dpoi_index, c);
+}
+
 VLIB_INIT_FUNCTION (lisp_gpe_tunnel_module_init);
 
 /*

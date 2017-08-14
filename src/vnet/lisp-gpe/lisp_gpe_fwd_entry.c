@@ -1538,6 +1538,34 @@ vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni)
   return entries;
 }
 
+vlib_counter_t *
+vnet_lisp_gpe_get_fib_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t *a)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  vlib_counter_t *counters = 0;
+  lisp_gpe_fwd_entry_t *lfe;
+  lisp_gpe_fwd_entry_key_t unused;
+  vlib_counter_t c;
+  lisp_fwd_path_t *path;
+
+  lfe = find_fwd_entry (lgm, a, &unused);
+  if (NULL != lfe)
+    return 0;
+
+  if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE == lfe->type)
+    return 0;
+
+  vec_foreach (path, lfe->paths)
+  {
+    if (vnet_lisp_gpe_adjacency_get_fib_stats (path->lisp_adj, &c) < 0)
+      continue;
+
+    vec_add1 (counters, c);
+  }
+
+  return counters;
+}
+
 VLIB_INIT_FUNCTION (lisp_gpe_fwd_entry_init);
 
 /*

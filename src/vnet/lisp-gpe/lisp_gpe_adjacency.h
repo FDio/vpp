@@ -124,6 +124,8 @@ typedef enum lisp_gpe_adjacency_format_flags_t_
 } lisp_gpe_adjacency_format_flags_t;
 
 extern u8 *format_lisp_gpe_adjacency (u8 * s, va_list * args);
+extern int
+vnet_lisp_gpe_adjacency_get_fib_stats (index_t index, vlib_counter_t * c);
 
 #endif
 

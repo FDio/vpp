@@ -30,6 +30,10 @@
 
 #define MAX_VALUE_U24 0xffffff
 
+/* mapping timer control constants (in seconds) */
+#define TIME_UNTIL_REFETCH_OR_DELETE  20
+#define MAPPING_TIMEOUT (((m->ttl) * 60) - TIME_UNTIL_REFETCH_OR_DELETE)
+
 lisp_cp_main_t lisp_control_main;
 
 u8 *format_lisp_cp_input_trace (u8 * s, va_list * args);
@@ -3393,6 +3397,52 @@ mapping_start_expiration_timer (lisp_cp_main_t * lcm, u32 mi,
 }
 
 static void
+process_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
+{
+  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
+  mapping_t *m = pool_elt_at_index (lcm->mapping_pool, mi);
+  uword *fei;
+  fwd_entry_t *fe;
+  vlib_counter_t *counters = 0;
+
+  if (m->delete_after_expiration)
+    {
+      remove_expired_mapping (lcm, mi);
+      return;
+    }
+
+  if (m->almost_expired)
+    {
+      // get stats and compare
+    }
+  else
+    {
+      m->almost_expired = 1;
+      mapping_start_expiration_timer (lcm, mi, TIME_UNTIL_REFETCH_OR_DELETE);
+
+      fei = hash_get (lcm->fwd_entry_by_mapping_index, mi);
+      if (!fei)
+        return;
+
+      fe = pool_elt_at_index (lcm->fwd_entry_pool, fei[0]);
+
+      a->lcl_eid = fe->leid;
+      a->rmt_eid = fe->reid;
+      a->vni = gid_address_vni (&fe->reid);
+
+      counters = vnet_lisp_gpe_get_fib_stats (a);
+      if (counters)
+        {
+          vec_free (counters);
+        }
+      else
+        {
+          m->delete_after_expiration = 1;
+        }
+    }
+}
+
+static void
 map_records_arg_free (map_records_arg_t * a)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -3448,7 +3498,7 @@ process_map_reply (map_records_arg_t * a)
       clib_warning ("failed to add adjacency!");
 
     if ((u32) ~ 0 != m->ttl)
-      mapping_start_expiration_timer (lcm, dst_map_index, m->ttl * 60);
+      mapping_start_expiration_timer (lcm, dst_map_index, MAPPING_TIMEOUT);
   }
 
   /* remove pending map request entry */
@@ -4379,7 +4429,7 @@ send_map_resolver_service (vlib_main_t * vm,
 	  u32 *mi = 0;
 	  vec_foreach (mi, expired)
 	  {
-	    remove_expired_mapping (lcm, mi[0]);
+	    process_expired_mapping (lcm, mi[0]);
 	  }
 	  _vec_len (expired) = 0;
 	}

@@ -624,6 +624,13 @@ lisp_gpe_adj_module_init (vlib_main_t * vm)
   return (NULL);
 }
 
+int
+vnet_lisp_gpe_adjacency_get_fib_stats (index_t index, vlib_counter_t * c)
+{
+  lisp_gpe_adjacency_t *ladj = lisp_gpe_adjacency_get_i (index);
+  return vnet_lisp_gpe_get_tunnel_counter (ladj->tunnel_index, c);
+}
+
 VLIB_INIT_FUNCTION (lisp_gpe_adj_module_init)
 /*
  * fd.io coding-style-patch-verification: ON

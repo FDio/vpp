@@ -78,6 +78,9 @@ extern u8 *lisp_gpe_tunnel_build_rewrite (const lisp_gpe_tunnel_t * lgt,
 					  payload_proto);
 extern u8 *format_lisp_gpe_tunnel (u8 * s, va_list * args);
 
+extern int
+vnet_lisp_gpe_get_tunnel_counter (index_t tunnel_index, vlib_counter_t *c);
+
 #endif
 
 /*
