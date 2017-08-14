@@ -10,11 +10,6 @@ DPDK_MAKE_ARGS = -C $(call find_source_fn,$(PACKAGE_SOURCE)) \
 	DPDK_INSTALL_DIR=$(PACKAGE_INSTALL_DIR) \
 	DPDK_DEBUG=$(DPDK_DEBUG)
 
-DPDK_CRYPTO_SW_PMD=$(strip $($(PLATFORM)_uses_dpdk_cryptodev_sw))
-ifneq ($(DPDK_CRYPTO_SW_PMD),)
-DPDK_MAKE_ARGS += DPDK_CRYPTO_SW_PMD=y
-endif
-
 DPDK_MLX5_PMD=$(strip $($(PLATFORM)_uses_dpdk_mlx5_pmd))
 ifneq ($(DPDK_MLX5_PMD),)
 DPDK_MAKE_ARGS += DPDK_MLX5_PMD=y

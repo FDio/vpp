@@ -39,7 +39,6 @@ vpp_uses_dpdk = yes
 vpp_root_packages = vpp
 
 # DPDK configuration parameters
-# vpp_uses_dpdk_cryptodev_sw = yes
 # vpp_uses_dpdk_mlx5_pmd = yes
 # vpp_uses_external_dpdk = yes
 # vpp_dpdk_inc_dir = /usr/include/dpdk
