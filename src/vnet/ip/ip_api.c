@@ -69,6 +69,7 @@ _(IP_ADDRESS_DUMP, ip_address_dump)                                     \
 _(IP_DUMP, ip_dump)                                                     \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
+_(IP_TABLE_ADD_DEL, ip_table_add_del)                                   \
 _(SET_IP_FLOW_HASH,set_ip_flow_hash)                                    \
 _(SW_INTERFACE_IP6ND_RA_CONFIG, sw_interface_ip6nd_ra_config)           \
 _(SW_INTERFACE_IP6ND_RA_PREFIX, sw_interface_ip6nd_ra_prefix)           \
@@ -696,6 +697,15 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 
   stats_dsunlock ();
   REPLY_MACRO (VL_API_IP_NEIGHBOR_ADD_DEL_REPLY);
+}
+
+void
+vl_api_ip_table_add_del_t_handler (vl_api_ip_table_add_del_t * mp)
+{
+  vl_api_ip_table_add_del_reply_t *rmp;
+  int rv = 0;
+
+  REPLY_MACRO (VL_API_IP_TABLE_ADD_DEL_REPLY);
 }
 
 int

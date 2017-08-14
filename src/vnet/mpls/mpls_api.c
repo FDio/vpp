@@ -50,12 +50,29 @@
 #define foreach_vpe_api_msg                                 \
 _(MPLS_IP_BIND_UNBIND, mpls_ip_bind_unbind)                 \
 _(MPLS_ROUTE_ADD_DEL, mpls_route_add_del)                   \
+_(MPLS_TABLE_ADD_DEL, mpls_table_add_del)                   \
 _(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)                 \
 _(MPLS_TUNNEL_DUMP, mpls_tunnel_dump)                       \
 _(MPLS_FIB_DUMP, mpls_fib_dump)
 
 extern void stats_dslock_with_hint (int hint, int tag);
 extern void stats_dsunlock (void);
+
+void
+vl_api_mpls_table_add_del_t_handler (vl_api_mpls_table_add_del_t * mp)
+{
+  vl_api_mpls_table_add_del_reply_t *rmp;
+  vnet_main_t *vnm;
+  int rv = 0;
+
+  vnm = vnet_get_main ();
+  vnm->api_errno = 0;
+
+
+  rv = (rv == 0) ? vnm->api_errno : rv;
+
+  REPLY_MACRO (VL_API_MPLS_TABLE_ADD_DEL_REPLY);
+}
 
 static int
 mpls_ip_bind_unbind_handler (vnet_main_t * vnm,

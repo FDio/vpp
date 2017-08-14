@@ -19,6 +19,24 @@
     called through a shared memory interface. 
 */
 
+/** \brief Add / del table request
+           A table can be added multiple times, but need be deleted only once.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ipv6 - V4 or V6 table
+    @param table_id - table ID associated with the route
+                      This table ID will apply to both the unicats
+		      and mlticast FIBs
+*/
+autoreply define ip_table_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 table_id;
+  u8 is_ipv6;
+  u8 is_add;
+};
+
 /** \brief Dump IP fib table
     @param client_index - opaque cookie to identify the sender
 */
