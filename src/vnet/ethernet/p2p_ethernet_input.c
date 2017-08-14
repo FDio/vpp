@@ -34,10 +34,9 @@ format_p2p_ethernet_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   p2p_ethernet_trace_t *t = va_arg (*args, p2p_ethernet_trace_t *);
 
-  vnet_main_t *vnm = &vnet_main;
-  s = format (s, "P2P ethernet: %U -> %U",
-	      format_vnet_sw_if_index_name, vnm, t->sw_if_index,
-	      format_vnet_sw_if_index_name, vnm, t->p2pe_sw_if_index);
+  s =
+    format (s, "P2P ethernet: sw_if_index %d -> sw_if_index %d",
+	    t->sw_if_index, t->p2pe_sw_if_index);
 
   return s;
 }
