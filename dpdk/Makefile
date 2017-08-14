@@ -244,7 +244,8 @@ build-ipsec-mb:
 build-isal-crypto:
 	mkdir -p $(I)/lib/
 	cd $(ISA_L_CRYPTO_LIB_SOURCE) && ./autogen.sh && \
-	  ./configure --prefix=$(ISA_L_CRYPTO_INSTALL_DIR) CFLAGS='-fPIC -DPIC -O2'
+	  ./configure --prefix=$(ISA_L_CRYPTO_INSTALL_DIR) \
+	  --libdir=$(ISA_L_CRYPTO_INSTALL_DIR)/lib CFLAGS='-fPIC -DPIC -O2'
 	make -C $(ISA_L_CRYPTO_LIB_SOURCE) -j install
 	cp $(ISA_L_CRYPTO_INSTALL_DIR)/lib/libisal_crypto.a $(I)/lib/
 
