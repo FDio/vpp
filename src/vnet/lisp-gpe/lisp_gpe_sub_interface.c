@@ -192,7 +192,7 @@ lisp_gpe_sub_interface_unlock (index_t l3si)
       lisp_gpe_sub_interface_unset_table (l3s->sw_if_index,
 					  l3s->eid_table_id);
 
-      lisp_gpe_tenant_l3_iface_unlock (clib_net_to_host_u32 (l3s->key->vni));
+      lisp_gpe_tenant_l3_iface_unlock (l3s->key->vni);
       vnet_sw_interface_set_flags (vnet_get_main (), l3s->sw_if_index, 0);
       vnet_delete_sub_interface (l3s->sw_if_index);
 

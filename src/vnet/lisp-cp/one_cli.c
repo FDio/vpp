@@ -487,8 +487,19 @@ lisp_add_del_remote_mapping_command_fn (vlib_main_t * vm,
 
   /* add as static remote mapping, i.e., not authoritative and infinite
    * ttl */
-  rv = vnet_lisp_add_del_mapping (&eid, rlocs, action, 0, ~0, is_add,
-				  1 /* is_static */ , 0);
+  if (is_add)
+    {
+      vnet_lisp_add_del_mapping_args_t _map_args, *map_args = &_map_args;
+      memset (map_args, 0, sizeof (map_args[0]));
+      gid_address_copy (&map_args->eid, &eid);
+      map_args->action = action;
+      map_args->is_static = 1;
+      map_args->authoritative = 0;
+      map_args->ttl = ~0;
+      rv = vnet_lisp_add_mapping (map_args, rlocs, NULL, NULL);
+    }
+  else
+    rv = vnet_lisp_del_mapping (&eid, NULL);
 
   if (rv)
     clib_warning ("failed to %s remote mapping!", is_add ? "add" : "delete");
