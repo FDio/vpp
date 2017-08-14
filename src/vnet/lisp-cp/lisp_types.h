@@ -358,12 +358,14 @@ typedef struct
   u8 is_static:1;
   u8 pitr_set:1;
   u8 nsh_set:1;
-  u8 rsvd:3;
-
+  u8 almost_expired:1;
+  u8 delete_after_expiration:1;
+  u8 rsvd:1;
 
   u8 *key;
   lisp_key_type_t key_id;
   u8 timer_set;
+  counter_t packets;
 } mapping_t;
 
 uword

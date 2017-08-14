@@ -262,7 +262,7 @@ lisp_gpe_mk_fib_paths (const lisp_fwd_path_t * paths)
  * @param[in]   paths           The paths from which to construct the
  *                              load balance
  */
-static void
+static fib_node_index_t
 ip_src_fib_add_route (u32 src_fib_index,
 		      const ip_prefix_t * src_prefix,
 		      const lisp_fwd_path_t * paths)
@@ -274,10 +274,11 @@ ip_src_fib_add_route (u32 src_fib_index,
 
   rpaths = lisp_gpe_mk_fib_paths (paths);
 
-  fib_table_entry_update (src_fib_index,
-			  &src_fib_prefix,
-			  FIB_SOURCE_LISP, FIB_ENTRY_FLAG_NONE, rpaths);
+  fib_node_index_t fib_entry_index =
+    fib_table_entry_update (src_fib_index, &src_fib_prefix, FIB_SOURCE_LISP,
+			    FIB_ENTRY_FLAG_NONE, rpaths);
   vec_free (rpaths);
+  return fib_entry_index;
 }
 
 static void
@@ -311,7 +312,7 @@ gpe_native_fwd_add_del_lfe (lisp_gpe_fwd_entry_t * lfe, u8 is_add)
     }
 }
 
-static void
+static fib_node_index_t
 create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 {
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
@@ -363,11 +364,13 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 	}
       ip_src_fib_add_route_w_dpo (lfe->src_fib_index, &ippref, &dpo);
       dpo_reset (&dpo);
+      // TODO check fib entry for src/dst
     }
   else
     {
-      ip_src_fib_add_route (lfe->src_fib_index, &ippref, lfe->paths);
+      return ip_src_fib_add_route (lfe->src_fib_index, &ippref, lfe->paths);
     }
+  return ~0;
 }
 
 static void
@@ -546,7 +549,7 @@ add_ip_fwd_entry (lisp_gpe_main_t * lgm,
       lfe->action = a->action;
     }
 
-  create_fib_entries (lfe);
+  lfe->fib_entry_index = create_fib_entries (lfe);
   return (0);
 }
 
@@ -1536,6 +1539,30 @@ vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni)
   /* *INDENT-ON* */
 
   return entries;
+}
+
+int
+vnet_lisp_gpe_get_fib_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+			     vlib_counter_t * c)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  lisp_gpe_fwd_entry_t *lfe;
+  lisp_gpe_fwd_entry_key_t unused;
+
+  lfe = find_fwd_entry (lgm, a, &unused);
+  if (NULL == lfe)
+    return 0;
+
+  if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE == lfe->type)
+    return 0;
+
+  if (~0 == lfe->fib_entry_index)
+    return 0;
+
+  fib_entry_t *fe = fib_entry_get (lfe->fib_entry_index);
+  vlib_get_combined_counter (&load_balance_main.lbm_to_counters,
+			     fe->fe_lb.dpoi_index, c);
+  return 1;
 }
 
 VLIB_INIT_FUNCTION (lisp_gpe_fwd_entry_init);

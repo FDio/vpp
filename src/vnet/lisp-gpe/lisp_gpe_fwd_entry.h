@@ -198,6 +198,12 @@ typedef struct lisp_gpe_fwd_entry_t_
      */
     negative_fwd_actions_e action;
   };
+
+  /**
+   * FIB entry index of overlay prefix
+   */
+  fib_node_index_t fib_entry_index;
+
 } lisp_gpe_fwd_entry_t;
 
 extern int
@@ -218,6 +224,10 @@ extern void
 vnet_lisp_gpe_add_fwd_counters (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
 				u32 fwd_entry_index);
 extern u32 *vnet_lisp_gpe_get_fwd_entry_vnis (void);
+
+int
+vnet_lisp_gpe_get_fib_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+			     vlib_counter_t * c);
 
 #endif
 

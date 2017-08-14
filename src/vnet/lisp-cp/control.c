@@ -30,9 +30,14 @@
 
 #define MAX_VALUE_U24 0xffffff
 
+/* mapping timer control constants (in seconds) */
+#define TIME_UNTIL_REFETCH_OR_DELETE  20
+#define MAPPING_TIMEOUT (((m->ttl) * 60) - TIME_UNTIL_REFETCH_OR_DELETE)
+
 lisp_cp_main_t lisp_control_main;
 
 u8 *format_lisp_cp_input_trace (u8 * s, va_list * args);
+static void *send_map_request_thread_fn (void *arg);
 
 typedef enum
 {
@@ -1213,9 +1218,9 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
 	      ls_args->is_add = 1;
 	      ls_args->index = old_map->locator_set_index;
 	      vnet_lisp_add_del_locator_set (ls_args, 0);
-	      if (res_map_index)
-		res_map_index[0] = mi;
 	    }
+	  if (res_map_index)
+	    res_map_index[0] = mi;
 	}
       /* new mapping */
       else
@@ -3393,6 +3398,86 @@ mapping_start_expiration_timer (lisp_cp_main_t * lcm, u32 mi,
 }
 
 static void
+process_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
+{
+  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
+  mapping_t *m = pool_elt_at_index (lcm->mapping_pool, mi);
+  uword *fei;
+  fwd_entry_t *fe;
+  vlib_counter_t c;
+  u8 no_stats = 1;
+
+  if (m->delete_after_expiration)
+    {
+      clib_warning ("DBG removing expired negative mapping %U",
+		    format_gid_address, &m->eid);
+      remove_expired_mapping (lcm, mi);
+      return;
+    }
+
+  fei = hash_get (lcm->fwd_entry_by_mapping_index, mi);
+  if (!fei)
+    {
+      clib_warning ("DBG: no fwd entry for mapping %U",
+		    format_gid_address, &m->eid);
+      return;
+    }
+
+  fe = pool_elt_at_index (lcm->fwd_entry_pool, fei[0]);
+
+  memset (a, 0, sizeof (*a));
+  a->rmt_eid = fe->reid;
+  if (fe->is_src_dst)
+    a->lcl_eid = fe->leid;
+  a->vni = gid_address_vni (&fe->reid);
+
+  if (vnet_lisp_gpe_get_fib_stats (a, &c))
+    no_stats = 0;
+
+  if (m->almost_expired)
+    {
+      if (!no_stats)
+	{
+	  clib_warning ("DBG about to expire c:%u for %U", c.packets,
+			format_gid_address, &m->eid);
+	  if (m->packets != c.packets)
+	    {
+	      /* mapping is in use, re-fetch */
+	      m->almost_expired = 0;	/* reset flag */
+
+	      map_request_args_t mr_args;
+	      memset (&mr_args, 0, sizeof (mr_args));
+	      mr_args.seid = fe->leid;
+	      mr_args.deid = fe->reid;
+
+	      send_map_request_thread_fn (&mr_args);
+	      clib_warning ("re-fetching mapping %U", format_gid_address,
+			    &fe->reid);
+	    }
+	  else
+	    {
+	      remove_expired_mapping (lcm, mi);
+	      clib_warning ("mapping %U is not in use -> deleting",
+			    format_gid_address, &fe->reid);
+	    }
+	}
+      else
+	remove_expired_mapping (lcm, mi);
+    }
+  else
+    {
+      m->almost_expired = 1;
+      mapping_start_expiration_timer (lcm, mi, TIME_UNTIL_REFETCH_OR_DELETE);
+
+      if (no_stats)
+	m->delete_after_expiration = 1;
+      else
+	/* save counter */
+	m->packets = c.packets;
+    }
+}
+
+static void
 map_records_arg_free (map_records_arg_t * a)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -3448,7 +3533,7 @@ process_map_reply (map_records_arg_t * a)
       clib_warning ("failed to add adjacency!");
 
     if ((u32) ~ 0 != m->ttl)
-      mapping_start_expiration_timer (lcm, dst_map_index, m->ttl * 60);
+      mapping_start_expiration_timer (lcm, dst_map_index, MAPPING_TIMEOUT);
   }
 
   /* remove pending map request entry */
@@ -4379,7 +4464,7 @@ send_map_resolver_service (vlib_main_t * vm,
 	  u32 *mi = 0;
 	  vec_foreach (mi, expired)
 	  {
-	    remove_expired_mapping (lcm, mi[0]);
+	    process_expired_mapping (lcm, mi[0]);
 	  }
 	  _vec_len (expired) = 0;
 	}
