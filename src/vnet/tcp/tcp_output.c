@@ -1621,8 +1621,8 @@ tcp46_output_inline (vlib_main_t * vm,
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
-
   next_index = node->cached_next_index;
+  tcp_set_time_now (my_thread_index);
 
   while (n_left_from > 0)
     {

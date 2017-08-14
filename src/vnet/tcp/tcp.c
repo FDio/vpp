@@ -1299,6 +1299,8 @@ tcp_main_enable (vlib_main_t * vm)
 
   tm->bytes_per_buffer = vlib_buffer_free_list_buffer_size
     (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+
+  vec_validate (tm->time_now, num_threads - 1);
   return error;
 }
 
