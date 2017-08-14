@@ -212,10 +212,11 @@ class TestIPv6(TestIPv6ND):
 
     def tearDown(self):
         """Run standard test teardown and log ``show ip6 neighbors``."""
-        for i in self.sub_interfaces:
+        for i in self.interfaces:
             i.unconfig_ip6()
             i.ip6_disable()
             i.admin_down()
+        for i in self.sub_interfaces:
             i.remove_vpp_config()
 
         super(TestIPv6, self).tearDown()
