@@ -193,12 +193,15 @@ ip_src_dst_fib_del_route (u32 src_fib_index,
  * @param[in]   src_fib_index   The index/ID of the SRC FIB
  * @param[in]   src_prefix      Source IP prefix.
  * @param[in]   src_dpo         The DPO the route will link to.
+ *
+ * @return fib index of the inserted prefix
  */
-static void
+static fib_node_index_t
 ip_src_fib_add_route_w_dpo (u32 src_fib_index,
 			    const ip_prefix_t * src_prefix,
 			    const dpo_id_t * src_dpo)
 {
+  fib_node_index_t fei = ~0;
   fib_prefix_t src_fib_prefix;
 
   ip_prefix_to_fib_prefix (src_prefix, &src_fib_prefix);
@@ -213,11 +216,13 @@ ip_src_fib_add_route_w_dpo (u32 src_fib_index,
   if (FIB_NODE_INDEX_INVALID == src_fei ||
       !fib_entry_is_sourced (src_fei, FIB_SOURCE_LISP))
     {
-      fib_table_entry_special_dpo_add (src_fib_index,
-				       &src_fib_prefix,
-				       FIB_SOURCE_LISP,
-				       FIB_ENTRY_FLAG_EXCLUSIVE, src_dpo);
+      fei = fib_table_entry_special_dpo_add (src_fib_index,
+					     &src_fib_prefix,
+					     FIB_SOURCE_LISP,
+					     FIB_ENTRY_FLAG_EXCLUSIVE,
+					     src_dpo);
     }
+  return fei;
 }
 
 static fib_route_path_t *
@@ -262,7 +267,7 @@ lisp_gpe_mk_fib_paths (const lisp_fwd_path_t * paths)
  * @param[in]   paths           The paths from which to construct the
  *                              load balance
  */
-static void
+static fib_node_index_t
 ip_src_fib_add_route (u32 src_fib_index,
 		      const ip_prefix_t * src_prefix,
 		      const lisp_fwd_path_t * paths)
@@ -274,10 +279,11 @@ ip_src_fib_add_route (u32 src_fib_index,
 
   rpaths = lisp_gpe_mk_fib_paths (paths);
 
-  fib_table_entry_update (src_fib_index,
-			  &src_fib_prefix,
-			  FIB_SOURCE_LISP, FIB_ENTRY_FLAG_NONE, rpaths);
+  fib_node_index_t fib_entry_index =
+    fib_table_entry_update (src_fib_index, &src_fib_prefix, FIB_SOURCE_LISP,
+			    FIB_ENTRY_FLAG_NONE, rpaths);
   vec_free (rpaths);
+  return fib_entry_index;
 }
 
 static void
@@ -311,9 +317,11 @@ gpe_native_fwd_add_del_lfe (lisp_gpe_fwd_entry_t * lfe, u8 is_add)
     }
 }
 
-static void
+static index_t
 create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 {
+  fib_node_index_t fi;
+  fib_entry_t *fe;
   lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
   dpo_proto_t dproto;
   ip_prefix_t ippref;
@@ -361,13 +369,15 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 	  dpo_copy (&dpo, drop_dpo_get (dproto));
 	  break;
 	}
-      ip_src_fib_add_route_w_dpo (lfe->src_fib_index, &ippref, &dpo);
+      fi = ip_src_fib_add_route_w_dpo (lfe->src_fib_index, &ippref, &dpo);
       dpo_reset (&dpo);
     }
   else
     {
-      ip_src_fib_add_route (lfe->src_fib_index, &ippref, lfe->paths);
+      fi = ip_src_fib_add_route (lfe->src_fib_index, &ippref, lfe->paths);
     }
+  fe = fib_entry_get (fi);
+  return fe->fe_lb.dpoi_index;
 }
 
 static void
@@ -546,7 +556,7 @@ add_ip_fwd_entry (lisp_gpe_main_t * lgm,
       lfe->action = a->action;
     }
 
-  create_fib_entries (lfe);
+  lfe->dpoi_index = create_fib_entries (lfe);
   return (0);
 }
 
@@ -793,6 +803,7 @@ lisp_gpe_l2_update_fwding (lisp_gpe_fwd_entry_t * lfe)
   lisp_l2_fib_add_del_entry (lfe->l2.eid_bd_index,
 			     fid_addr_mac (&lfe->key->lcl),
 			     fid_addr_mac (&lfe->key->rmt), &dpo, 1);
+  lfe->dpoi_index = dpo.dpoi_index;
 
   dpo_reset (&dpo);
 }
@@ -1536,6 +1547,29 @@ vnet_lisp_gpe_fwd_entries_get_by_vni (u32 vni)
   /* *INDENT-ON* */
 
   return entries;
+}
+
+int
+vnet_lisp_gpe_get_fwd_stats (vnet_lisp_gpe_add_del_fwd_entry_args_t * a,
+			     vlib_counter_t * c)
+{
+  lisp_gpe_main_t *lgm = vnet_lisp_gpe_get_main ();
+  lisp_gpe_fwd_entry_t *lfe;
+  lisp_gpe_fwd_entry_key_t unused;
+
+  lfe = find_fwd_entry (lgm, a, &unused);
+  if (NULL == lfe)
+    return -1;
+
+  if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE == lfe->type)
+    return -1;
+
+  if (~0 == lfe->dpoi_index)
+    return -1;
+
+  vlib_get_combined_counter (&load_balance_main.lbm_to_counters,
+			     lfe->dpoi_index, c);
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (lisp_gpe_fwd_entry_init);

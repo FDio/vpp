@@ -620,8 +620,19 @@ static void
 
   /* NOTE: for now this works as a static remote mapping, i.e.,
    * not authoritative and ttl infinite. */
-  rv = vnet_lisp_add_del_mapping (eid, rlocs, mp->action, 0, ~0,
-				  mp->is_add, 1 /* is_static */ , 0);
+  if (mp->is_add)
+    {
+      vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
+      memset (m_args, 0, sizeof (m_args[0]));
+      gid_address_copy (&m_args->eid, eid);
+      m_args->action = mp->action;
+      m_args->is_static = 1;
+      m_args->ttl = ~0;
+      m_args->authoritative = 0;
+      rv = vnet_lisp_add_mapping (m_args, rlocs, NULL, NULL);
+    }
+  else
+    rv = vnet_lisp_del_mapping (eid, NULL);
 
   if (mp->del_all)
     vnet_lisp_clear_all_remote_adjacencies ();

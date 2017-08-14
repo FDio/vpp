@@ -30,9 +30,14 @@
 
 #define MAX_VALUE_U24 0xffffff
 
+/* mapping timer control constants (in seconds) */
+#define TIME_UNTIL_REFETCH_OR_DELETE  20
+#define MAPPING_TIMEOUT (((m->ttl) * 60) - TIME_UNTIL_REFETCH_OR_DELETE)
+
 lisp_cp_main_t lisp_control_main;
 
 u8 *format_lisp_cp_input_trace (u8 * s, va_list * args);
+static void *send_map_request_thread_fn (void *arg);
 
 typedef enum
 {
@@ -1102,7 +1107,7 @@ remove_overlapping_sub_prefixes (lisp_cp_main_t * lcm, gid_address_t * eid,
     if (vnet_lisp_add_del_adjacency (adj_args))
       clib_warning ("failed to del adjacency!");
 
-    vnet_lisp_add_del_mapping (e, 0, 0, 0, 0, 0 /* is add */ , 0, 0);
+    vnet_lisp_del_mapping (e, NULL);
   }
 
   vec_free (a.eids_to_be_deleted);
@@ -1129,24 +1134,19 @@ is_local_ip (lisp_cp_main_t * lcm, ip_address_t * addr)
 }
 
 /**
- * Adds/removes/updates mapping. Does not program forwarding.
+ * Adds/updates mapping. Does not program forwarding.
  *
- * @param eid end-host identifier
+ * @param a parameters of the new mapping
  * @param rlocs vector of remote locators
- * @param action action for negative map-reply
- * @param is_add add mapping if non-zero, delete otherwise
- * @param res_map_index the map-index that was created/updated/removed. It is
- *                      set to ~0 if no action is taken.
- * @param is_static used for distinguishing between statically learned
-                    remote mappings and mappings obtained from MR
+ * @param res_map_index index of the newly created mapping
+ * @param locators_changed indicator if locators were updated in the mapping
  * @return return code
  */
 int
-vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
-			   u8 authoritative, u32 ttl, u8 is_add, u8 is_static,
-			   u32 * res_map_index)
+vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
+		       locator_t * rlocs,
+		       u32 * res_map_index, u8 * is_updated)
 {
-  vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
   vnet_lisp_add_del_locator_set_args_t _ls_args, *ls_args = &_ls_args;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 mi, ls_index = 0, dst_map_index;
@@ -1161,114 +1161,137 @@ vnet_lisp_add_del_mapping (gid_address_t * eid, locator_t * rlocs, u8 action,
 
   if (res_map_index)
     res_map_index[0] = ~0;
+  if (is_updated)
+    is_updated[0] = 0;
 
-  memset (m_args, 0, sizeof (m_args[0]));
   memset (ls_args, 0, sizeof (ls_args[0]));
 
   ls_args->locators = rlocs;
+  mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &a->eid);
+  old_map = ((u32) ~ 0 != mi) ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
+
+  /* check if none of the locators match localy configured address */
+  vec_foreach (loc, rlocs)
+  {
+    ip_prefix_t *p = &gid_address_ippref (&loc->address);
+    if (is_local_ip (lcm, &ip_prefix_addr (p)))
+      {
+	clib_warning ("RLOC %U matches a local address!",
+		      format_gid_address, &loc->address);
+	return VNET_API_ERROR_LISP_RLOC_LOCAL;
+      }
+  }
+
+  /* overwrite: if mapping already exists, decide if locators should be
+   * updated and be done */
+  if (old_map && gid_address_cmp (&old_map->eid, &a->eid) == 0)
+    {
+      if (!a->is_static && (old_map->is_static || old_map->local))
+	{
+	  /* do not overwrite local or static remote mappings */
+	  clib_warning ("mapping %U rejected due to collision with local "
+			"or static remote mapping!", format_gid_address,
+			&a->eid);
+	  return 0;
+	}
+
+      locator_set_t *old_ls;
+
+      /* update mapping attributes */
+      old_map->action = a->action;
+      if (old_map->action != a->action && NULL != is_updated)
+	is_updated[0] = 1;
+
+      old_map->authoritative = a->authoritative;
+      old_map->ttl = a->ttl;
+
+      old_ls = pool_elt_at_index (lcm->locator_set_pool,
+				  old_map->locator_set_index);
+      if (compare_locators (lcm, old_ls->locator_indices, ls_args->locators))
+	{
+	  /* set locator-set index to overwrite */
+	  ls_args->is_add = 1;
+	  ls_args->index = old_map->locator_set_index;
+	  vnet_lisp_add_del_locator_set (ls_args, 0);
+	  if (is_updated)
+	    is_updated[0] = 1;
+	}
+      if (res_map_index)
+	res_map_index[0] = mi;
+    }
+  /* new mapping */
+  else
+    {
+      remove_overlapping_sub_prefixes (lcm, &a->eid, 0 == ls_args->locators);
+
+      ls_args->is_add = 1;
+      ls_args->index = ~0;
+
+      vnet_lisp_add_del_locator_set (ls_args, &ls_index);
+
+      /* add mapping */
+      a->is_add = 1;
+      a->locator_set_index = ls_index;
+      vnet_lisp_map_cache_add_del (a, &dst_map_index);
+
+      if (res_map_index)
+	res_map_index[0] = dst_map_index;
+    }
+
+  /* success */
+  return 0;
+}
+
+/**
+ * Removes a mapping. Does not program forwarding.
+ *
+ * @param eid end-host indetifier
+ * @param res_map_index index of the removed mapping
+ * @return return code
+ */
+int
+vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
+  vnet_lisp_add_del_locator_set_args_t _ls_args, *ls_args = &_ls_args;
+  mapping_t *old_map;
+  u32 mi;
+
+  memset (m_args, 0, sizeof (m_args[0]));
+  if (res_map_index)
+    res_map_index[0] = ~0;
 
   mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, eid);
   old_map = ((u32) ~ 0 != mi) ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
 
-  if (is_add)
+  if (old_map == 0 || gid_address_cmp (&old_map->eid, eid) != 0)
     {
-      /* check if none of the locators match localy configured address */
-      vec_foreach (loc, rlocs)
-      {
-	ip_prefix_t *p = &gid_address_ippref (&loc->address);
-	if (is_local_ip (lcm, &ip_prefix_addr (p)))
-	  {
-	    clib_warning ("RLOC %U matches a local address!",
-			  format_gid_address, &loc->address);
-	    return VNET_API_ERROR_LISP_RLOC_LOCAL;
-	  }
-      }
-
-      /* overwrite: if mapping already exists, decide if locators should be
-       * updated and be done */
-      if (old_map && gid_address_cmp (&old_map->eid, eid) == 0)
-	{
-	  if (!is_static && (old_map->is_static || old_map->local))
-	    {
-	      /* do not overwrite local or static remote mappings */
-	      clib_warning ("mapping %U rejected due to collision with local "
-			    "or static remote mapping!", format_gid_address,
-			    eid);
-	      return 0;
-	    }
-
-	  locator_set_t *old_ls;
-
-	  /* update mapping attributes */
-	  old_map->action = action;
-	  old_map->authoritative = authoritative;
-	  old_map->ttl = ttl;
-
-	  old_ls = pool_elt_at_index (lcm->locator_set_pool,
-				      old_map->locator_set_index);
-	  if (compare_locators (lcm, old_ls->locator_indices,
-				ls_args->locators))
-	    {
-	      /* set locator-set index to overwrite */
-	      ls_args->is_add = 1;
-	      ls_args->index = old_map->locator_set_index;
-	      vnet_lisp_add_del_locator_set (ls_args, 0);
-	      if (res_map_index)
-		res_map_index[0] = mi;
-	    }
-	}
-      /* new mapping */
-      else
-	{
-	  remove_overlapping_sub_prefixes (lcm, eid, 0 == ls_args->locators);
-
-	  ls_args->is_add = 1;
-	  ls_args->index = ~0;
-
-	  vnet_lisp_add_del_locator_set (ls_args, &ls_index);
-
-	  /* add mapping */
-	  gid_address_copy (&m_args->eid, eid);
-	  m_args->is_add = 1;
-	  m_args->action = action;
-	  m_args->locator_set_index = ls_index;
-	  m_args->is_static = is_static;
-	  m_args->ttl = ttl;
-	  vnet_lisp_map_cache_add_del (m_args, &dst_map_index);
-
-	  if (res_map_index)
-	    res_map_index[0] = dst_map_index;
-	}
+      clib_warning ("cannot delete mapping for eid %U",
+		    format_gid_address, eid);
+      return -1;
     }
-  else
-    {
-      if (old_map == 0 || gid_address_cmp (&old_map->eid, eid) != 0)
-	{
-	  clib_warning ("cannot delete mapping for eid %U",
-			format_gid_address, eid);
-	  return -1;
-	}
 
-      m_args->is_add = 0;
-      gid_address_copy (&m_args->eid, eid);
-      m_args->locator_set_index = old_map->locator_set_index;
+  m_args->is_add = 0;
+  gid_address_copy (&m_args->eid, eid);
+  m_args->locator_set_index = old_map->locator_set_index;
 
-      /* delete mapping associated from map-cache */
-      vnet_lisp_map_cache_add_del (m_args, 0);
+  /* delete mapping associated from map-cache */
+  vnet_lisp_map_cache_add_del (m_args, 0);
 
-      ls_args->is_add = 0;
-      ls_args->index = old_map->locator_set_index;
-      /* delete locator set */
-      vnet_lisp_add_del_locator_set (ls_args, 0);
+  ls_args->is_add = 0;
+  ls_args->index = old_map->locator_set_index;
 
-      /* delete timer associated to the mapping if any */
-      if (old_map->timer_set)
-	mapping_delete_timer (lcm, mi);
+  /* delete locator set */
+  vnet_lisp_add_del_locator_set (ls_args, 0);
 
-      /* return old mapping index */
-      if (res_map_index)
-	res_map_index[0] = mi;
-    }
+  /* delete timer associated to the mapping if any */
+  if (old_map->timer_set)
+    mapping_delete_timer (lcm, mi);
+
+  /* return old mapping index */
+  if (res_map_index)
+    res_map_index[0] = mi;
 
   /* success */
   return 0;
@@ -3372,8 +3395,7 @@ remove_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
   if (vnet_lisp_add_del_adjacency (adj_args))
     clib_warning ("failed to del adjacency!");
 
-  vnet_lisp_add_del_mapping (&m->eid, 0, 0, 0, ~0, 0 /* is_add */ ,
-			     0 /* is_static */ , 0);
+  vnet_lisp_del_mapping (&m->eid, NULL);
   mapping_delete_timer (lcm, mi);
 }
 
@@ -3390,6 +3412,73 @@ mapping_start_expiration_timer (lisp_cp_main_t * lcm, u32 mi,
 
   m->timer_set = 1;
   timing_wheel_insert (&lcm->wheel, exp_clock_time, mi);
+}
+
+static void
+process_expired_mapping (lisp_cp_main_t * lcm, u32 mi)
+{
+  int rv;
+  vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
+  mapping_t *m = pool_elt_at_index (lcm->mapping_pool, mi);
+  uword *fei;
+  fwd_entry_t *fe;
+  vlib_counter_t c;
+  u8 have_stats = 0;
+
+  if (m->delete_after_expiration)
+    {
+      remove_expired_mapping (lcm, mi);
+      return;
+    }
+
+  fei = hash_get (lcm->fwd_entry_by_mapping_index, mi);
+  if (!fei)
+    return;
+
+  fe = pool_elt_at_index (lcm->fwd_entry_pool, fei[0]);
+
+  memset (a, 0, sizeof (*a));
+  a->rmt_eid = fe->reid;
+  if (fe->is_src_dst)
+    a->lcl_eid = fe->leid;
+  a->vni = gid_address_vni (&fe->reid);
+
+  rv = vnet_lisp_gpe_get_fwd_stats (a, &c);
+  if (0 == rv)
+    have_stats = 1;
+
+  if (m->almost_expired)
+    {
+      m->almost_expired = 0;	/* reset flag */
+      if (have_stats)
+	{
+	  if (m->packets != c.packets)
+	    {
+	      /* mapping is in use, re-fetch */
+	      map_request_args_t mr_args;
+	      memset (&mr_args, 0, sizeof (mr_args));
+	      mr_args.seid = fe->leid;
+	      mr_args.deid = fe->reid;
+
+	      send_map_request_thread_fn (&mr_args);
+	    }
+	  else
+	    remove_expired_mapping (lcm, mi);
+	}
+      else
+	remove_expired_mapping (lcm, mi);
+    }
+  else
+    {
+      m->almost_expired = 1;
+      mapping_start_expiration_timer (lcm, mi, TIME_UNTIL_REFETCH_OR_DELETE);
+
+      if (have_stats)
+	/* save counter */
+	m->packets = c.packets;
+      else
+	m->delete_after_expiration = 1;
+    }
 }
 
 static void
@@ -3414,6 +3503,7 @@ process_map_reply (map_records_arg_t * a)
   pending_map_request_t *pmr;
   u64 *noncep;
   uword *pmr_index;
+  u8 is_changed = 0;
 
   if (a->is_rloc_probe)
     goto done;
@@ -3429,26 +3519,36 @@ process_map_reply (map_records_arg_t * a)
 
   vec_foreach (m, a->mappings)
   {
+    vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
+    memset (m_args, 0, sizeof (m_args[0]));
+    gid_address_copy (&m_args->eid, &m->eid);
+    m_args->action = m->action;
+    m_args->authoritative = m->authoritative;
+    m_args->ttl = m->ttl;
+    m_args->is_static = 0;
+
     /* insert/update mappings cache */
-    vnet_lisp_add_del_mapping (&m->eid, m->locators, m->action,
-			       m->authoritative, m->ttl,
-			       1, 0 /* is_static */ , &dst_map_index);
+    vnet_lisp_add_mapping (m_args, m->locators, &dst_map_index, &is_changed);
 
     if (dst_map_index == (u32) ~ 0)
       continue;
 
-    /* try to program forwarding only if mapping saved or updated */
-    vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
-    memset (adj_args, 0, sizeof (adj_args[0]));
+    if (is_changed)
+      {
+	/* try to program forwarding only if mapping saved or updated */
+	vnet_lisp_add_del_adjacency_args_t _adj_args, *adj_args = &_adj_args;
+	memset (adj_args, 0, sizeof (adj_args[0]));
 
-    gid_address_copy (&adj_args->leid, &pmr->src);
-    gid_address_copy (&adj_args->reid, &m->eid);
-    adj_args->is_add = 1;
-    if (vnet_lisp_add_del_adjacency (adj_args))
-      clib_warning ("failed to add adjacency!");
+	gid_address_copy (&adj_args->leid, &pmr->src);
+	gid_address_copy (&adj_args->reid, &m->eid);
+	adj_args->is_add = 1;
+
+	if (vnet_lisp_add_del_adjacency (adj_args))
+	  clib_warning ("failed to add adjacency!");
+      }
 
     if ((u32) ~ 0 != m->ttl)
-      mapping_start_expiration_timer (lcm, dst_map_index, m->ttl * 60);
+      mapping_start_expiration_timer (lcm, dst_map_index, MAPPING_TIMEOUT);
   }
 
   /* remove pending map request entry */
@@ -4379,7 +4479,7 @@ send_map_resolver_service (vlib_main_t * vm,
 	  u32 *mi = 0;
 	  vec_foreach (mi, expired)
 	  {
-	    remove_expired_mapping (lcm, mi[0]);
+	    process_expired_mapping (lcm, mi[0]);
 	  }
 	  _vec_len (expired) = 0;
 	}
