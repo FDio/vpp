@@ -128,8 +128,6 @@ class P2PEthernetIPV6(VppTestCase):
             self.packets.remove(p)
         self.create_p2p_ethernet(self.pg0, 1, self.pg0._remote_hosts[0].mac)
         self.create_p2p_ethernet(self.pg0, 2, self.pg0._remote_hosts[1].mac)
-        self.p2p_sub_ifs[0].config_ip6()
-        self.p2p_sub_ifs[1].config_ip6()
         self.vapi.cli("trace add p2p-ethernet-input 50")
 
     def tearDown(self):
@@ -357,8 +355,6 @@ class P2PEthernetIPV4(VppTestCase):
             self.packets.remove(p)
         self.create_p2p_ethernet(self.pg0, 1, self.pg0._remote_hosts[0].mac)
         self.create_p2p_ethernet(self.pg0, 2, self.pg0._remote_hosts[1].mac)
-        self.p2p_sub_ifs[0].config_ip4()
-        self.p2p_sub_ifs[1].config_ip4()
         self.vapi.cli("trace add p2p-ethernet-input 50")
 
     def tearDown(self):
