@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_4b5876fa",
+        "filename": "src/vnet/adj/rewrite.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-14T16:18:05Z",
+      "side": 1,
+      "message": "Maybe update the name to indicate that this is purely for mcast?",
+      "range": {
+        "startLine": 289,
+        "startChar": 0,
+        "endLine": 289,
+        "endChar": 21
+      },
+      "revId": "7fb037e0700bd216f79b168430cfb0837fbab3cc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
