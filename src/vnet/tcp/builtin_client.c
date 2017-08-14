@@ -734,8 +734,11 @@ cleanup:
 VLIB_CLI_COMMAND (test_clients_command, static) =
 {
   .path = "test tcp clients",
-  .short_help = "test tcp clients [nclients %d]"
-  "[iterations %d] [bytes %d] [uri tcp://6.0.1.1/1234]",
+  .short_help = "test tcp clients [nclients %d] [[m|g]bytes <bytes>] "
+      "[test-timeout <time>][syn-timeout <time>][no-return][fifo-size <size>]"
+      "[private-segment-count <count>][private-segment-size <bytes>[m|g]]"
+      "[preallocate-fifos][preallocate-sessions][client-batch <batch-size>]"
+      "[uri <tcp://ip/port>]",
   .function = test_tcp_clients_command_fn,
   .is_mp_safe = 1,
 };

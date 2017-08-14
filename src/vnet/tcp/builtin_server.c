@@ -34,11 +34,12 @@ typedef struct
    * Config params
    */
   u8 no_echo;			/**< Don't echo traffic */
-  u32 fifo_size;		/**< Fifo size */
+  u32 fifo_size;			/**< Fifo size */
   u32 rcv_buffer_size;		/**< Rcv buffer size */
   u32 prealloc_fifos;		/**< Preallocate fifos */
   u32 private_segment_count;	/**< Number of private segments  */
   u32 private_segment_size;	/**< Size of private segments  */
+  char *server_uri;		/**< Server URI */
 
   /*
    * Test state
@@ -319,7 +320,7 @@ server_listen ()
   vnet_bind_args_t _a, *a = &_a;
   memset (a, 0, sizeof (*a));
   a->app_index = bsm->app_index;
-  a->uri = "tcp://0.0.0.0/1234";
+  a->uri = bsm->server_uri;
   return vnet_bind_uri (a);
 }
 
@@ -366,6 +367,7 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			  vlib_cli_command_t * cmd)
 {
   builtin_server_main_t *bsm = &builtin_server_main;
+  u8 server_uri_set = 0;
   int rv;
   u32 tmp;
 
@@ -375,6 +377,7 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   bsm->prealloc_fifos = 0;
   bsm->private_segment_count = 0;
   bsm->private_segment_size = 0;
+  vec_free (bsm->server_uri);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -395,12 +398,17 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	bsm->private_segment_size = tmp << 30;
       else if (unformat (input, "private-segment-size %d", &tmp))
 	bsm->private_segment_size = tmp;
+      else if (unformat (input, "uri %s", &bsm->server_uri))
+	server_uri_set = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
 
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
+
+  if (!server_uri_set)
+    bsm->server_uri = (char *) format (0, "tcp://0.0.0.0/1234%c", 0);
 
   rv = server_create (vm);
   switch (rv)
@@ -418,7 +426,10 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (server_create_command, static) =
 {
   .path = "test tcp server",
-  .short_help = "test tcp server",
+  .short_help = "test tcp server [no echo][fifo-size <mbytes>] "
+      "[rcv-buf-size <bytes>][prealloc-fifos <count>]"
+      "[private-segment-count <count>][private-segment-size <bytes[m|g]>]"
+      "[uri <tcp://ip/port>]",
   .function = server_create_command_fn,
 };
 /* *INDENT-ON* */
