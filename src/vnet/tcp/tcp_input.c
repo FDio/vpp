@@ -2254,8 +2254,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tc0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
 	      stream_session_accept_notify (&tc0->connection);
 
-	      /* Reset SYN-ACK retransmit timer */
+	      /* Reset SYN-ACK retransmit and SYN_RCV establish timers */
 	      tcp_retransmit_timer_reset (tc0);
+	      tcp_timer_reset (tc0, TCP_TIMER_ESTABLISH);
 	      break;
 	    case TCP_STATE_ESTABLISHED:
 	      /* We can get packets in established state here because they
@@ -2281,13 +2282,21 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* If FIN is ACKed */
 	      else if (tc0->snd_una == tc0->snd_una_max)
 		{
-		  ASSERT (tcp_fin (tcp0));
 		  tc0->rcv_nxt += 1;
 		  tc0->state = TCP_STATE_FIN_WAIT_2;
 		  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
 
-		  /* Stop all timers, 2MSL will be set lower */
-		  tcp_connection_timers_reset (tc0);
+		  if (tcp_fin (tcp0))
+		    {
+		      /* Stop all timers, 2MSL will be set lower */
+		      tcp_connection_timers_reset (tc0);
+		    }
+		  else
+		    {
+		      /* Wait for peer to finish sending its data */
+		      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE,
+					TCP_2MSL_TIME);
+		    }
 		}
 	      break;
 	    case TCP_STATE_FIN_WAIT_2:
@@ -2296,8 +2305,6 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       * acknowledged ("ok") but do not delete the TCB. */
 	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
 		goto drop;
-
-	      /* check if rtx queue is empty and ack CLOSE TODO */
 	      break;
 	    case TCP_STATE_CLOSE_WAIT:
 	      /* Do the same processing as for the ESTABLISHED state. */
@@ -2311,9 +2318,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (tcp_rcv_ack (tc0, b0, tcp0, &next0, &error0))
 		goto drop;
 
-	      /* XXX test that send queue empty */
 	      tc0->state = TCP_STATE_TIME_WAIT;
 	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	      goto drop;
 
 	      break;
@@ -2409,10 +2416,12 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* move along .. */
 	      break;
 	    case TCP_STATE_FIN_WAIT_1:
-	      tc0->state = TCP_STATE_TIME_WAIT;
-	      tcp_connection_timers_reset (tc0);
-	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
+	      tc0->state = TCP_STATE_CLOSING;
+	      tcp_make_ack (tc0, b0);
+	      next0 = tcp_next_output (is_ip4);
 	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
+	      /* Wait for ACK but not forever */
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	      break;
 	    case TCP_STATE_FIN_WAIT_2:
 	      /* Got FIN, send ACK! */
@@ -2652,6 +2661,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* Reuse buffer to make syn-ack and send */
 	  tcp_make_synack (child0, b0);
 	  next0 = tcp_next_output (is_ip4);
+	  tcp_timer_set (child0, TCP_TIMER_ESTABLISH, TCP_SYN_RCVD_TIME);
 
 	drop:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))

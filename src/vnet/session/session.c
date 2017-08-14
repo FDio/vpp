@@ -373,7 +373,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
   application_t *app;
   stream_session_t *new_s = 0;
   u64 handle;
-  u32 api_context = 0;
+  u32 opaque = 0;
   int error = 0;
 
   handle = stream_session_half_open_lookup_handle (&tc->lcl_ip, &tc->rmt_ip,
@@ -385,9 +385,11 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
       return -1;
     }
 
-  /* Get the app's index from the handle we stored when opening connection */
+  /* Get the app's index from the handle we stored when opening connection
+   * and the opaque (api_context for external apps) from transport session
+   * index*/
   app = application_get (handle >> 32);
-  api_context = tc->s_index;
+  opaque = tc->s_index;
 
   if (!is_fail)
     {
@@ -406,7 +408,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
     }
 
   /* Notify client application */
-  if (app->cb_fns.session_connected_callback (app->index, api_context, new_s,
+  if (app->cb_fns.session_connected_callback (app->index, opaque, new_s,
 					      is_fail))
     {
       clib_warning ("failed to notify app");
