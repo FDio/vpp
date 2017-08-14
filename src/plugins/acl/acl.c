@@ -1945,6 +1945,10 @@ static clib_error_t *
 acl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 {
   acl_main_t *am = &acl_main;
+  if (0 == am->acl_mheap) {
+    /* ACL heap is not initialized, so definitely nothing to do. */
+    return 0;
+  }
   if (0 == is_add) {
     vlib_process_signal_event (am->vlib_main, am->fa_cleaner_node_index,
                                ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX, sw_if_index);
