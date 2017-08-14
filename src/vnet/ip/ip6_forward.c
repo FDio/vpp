@@ -495,6 +495,47 @@ ip6_add_del_interface_address (vlib_main_t * vm,
 		     vec_elt (im->fib_index_by_sw_if_index, sw_if_index));
   vec_add1 (addr_fib, ip6_af);
 
+  /* *INDENT-OFF* */
+  if (!is_del)
+    {
+      /* When adding an address check that it does not conflict
+         with an existing address on any interface in this table. */
+      ip_interface_address_t *ia;
+      vnet_sw_interface_t *sif;
+
+      pool_foreach(sif, vnm->interface_main.sw_interfaces,
+      ({
+          if (im->fib_index_by_sw_if_index[sw_if_index] ==
+              im->fib_index_by_sw_if_index[sif->sw_if_index])
+            {
+              foreach_ip_interface_address
+                (&im->lookup_main, ia, sif->sw_if_index,
+                 0 /* honor unnumbered */ ,
+                 ({
+                   ip6_address_t * x =
+                     ip_interface_address_get_address
+                     (&im->lookup_main, ia);
+                   if (ip6_destination_matches_route
+                       (im, address, x, ia->address_length) ||
+                       ip6_destination_matches_route (im,
+                                                      x,
+                                                      address,
+                                                      address_length))
+                     return
+                       clib_error_create
+                       ("failed to add %U which conflicts with %U for interface %U",
+                        format_ip6_address_and_length, address,
+                        address_length,
+                        format_ip6_address_and_length, x,
+                        ia->address_length,
+                        format_vnet_sw_if_index_name, vnm,
+                        sif->sw_if_index);
+                 }));
+            }
+      }));
+    }
+  /* *INDENT-ON* */
+
   {
     uword elts_before = pool_elts (lm->if_address_pool);
 
