@@ -33,6 +33,13 @@ DPDK_17.02_TARBALL_MD5_CKSUM := 6b9f7387c35641f4e8dbba3e528f2376
 DPDK_17.05_TARBALL_MD5_CKSUM := 0a68c31cd6a6cabeed0a4331073e4c05
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 
+ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
+AESNI := y
+else
+AESNI := n
+endif
+
+ifeq ($(AESNI),y)
 IPSEC_MB_VER := 0.45
 AESNIMB_LIB_TARBALL := v$(IPSEC_MB_VER).tar.gz
 AESNIMB_LIB_TARBALL_URL := http://github.com/01org/intel-ipsec-mb/archive/$(AESNIMB_LIB_TARBALL)
@@ -42,6 +49,7 @@ ISA_L_CRYPTO_LIB_TARBALL := v$(ISA_L_CRYPTO_VER).tar.gz
 ISA_L_CRYPTO_LIB_TARBALL_URL := http://github.com/01org/isa-l_crypto/archive/$(ISA_L_CRYPTO_LIB_TARBALL)
 ISA_L_CRYPTO_LIB_SOURCE := $(B)/isa-l_crypto-$(ISA_L_CRYPTO_VER)
 ISA_L_CRYPTO_INSTALL_DIR := $(ISA_L_CRYPTO_LIB_SOURCE)/install
+endif
 
 ifneq (,$(findstring clang,$(CC)))
 DPDK_CC=clang
@@ -201,11 +209,13 @@ download: $(B)/.download.ok
 $(B)/.extract.ok: $(B)/.download.ok
 	@echo --- extracting $(DPDK_TARBALL) ---
 	@tar --directory $(B) --extract --file $(CURDIR)/$(DPDK_TARBALL)
+ifeq ($(AESNI),y)
 	@echo --- extracting $(AESNIMB_LIB_TARBALL) ---
 	@tar --directory $(B) --extract --file $(CURDIR)/$(AESNIMB_LIB_TARBALL)
 	@echo --- extracting $(ISA_L_CRYPTO_LIB_TARBALL) ---
 	@tar --directory $(B) --extract --file $(CURDIR)/$(ISA_L_CRYPTO_LIB_TARBALL)
 	@touch $@
+endif
 
 .PHONY: extract
 extract: $(B)/.extract.ok
@@ -231,7 +241,11 @@ $(B)/.config.ok: $(B)/.patch.ok $(B)/custom-config
 config: $(B)/.config.ok
 
 # Order matters
+ifeq ($(AESNI),y)
 BUILD_TARGETS += build-ipsec-mb build-isal-crypto build-dpdk
+else
+BUILD_TARGETS += build-dpdk
+endif
 
 .PHONY: build-ipsec-mb
 build-ipsec-mb:
