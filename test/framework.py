@@ -275,7 +275,7 @@ class VppTestCase(unittest.TestCase):
         gc.collect()  # run garbage collection first
         cls.logger = getLogger(cls.__name__)
         cls.tempdir = tempfile.mkdtemp(
-            prefix='vpp-unittest-' + cls.__name__ + '-')
+            prefix='vpp-unittest-%s-' % cls.__name__)
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
@@ -789,15 +789,29 @@ class VppTestResult(unittest.TestResult):
         :param err: error message
 
         """
+        logger = None
         if hasattr(test, 'logger'):
-            test.logger.debug("--- addFailure() %s.%s(%s) called, err is %s"
-                              % (test.__class__.__name__,
-                                 test._testMethodName,
-                                 test._testMethodDoc, err))
-            test.logger.debug("formatted exception is:\n%s" %
-                              "".join(format_exception(*err)))
+            logger = test.logger
+            logger.debug("--- addFailure() %s.%s(%s) called, err is %s"
+                         % (test.__class__.__name__,
+                            test._testMethodName,
+                            test._testMethodDoc, err))
+            logger.debug("formatted exception is:\n%s" %
+                         "".join(format_exception(*err)))
         unittest.TestResult.addFailure(self, test, err)
         if hasattr(test, 'tempdir'):
+            try:
+                failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
+                if logger:
+                    logger.debug("creating a link to the failed test")
+                    logger.debug("os.symlink(%s, %s)" %
+                                 (test.tempdir, '%s%s' %
+                                  (failed_dir, test.tempdir.split("/")[-1])))
+                os.symlink(test.tempdir, '%s/%s' %
+                           (failed_dir, test.tempdir.split("/")[-1]))
+            except Exception as e:
+                if logger:
+                    logger.error(e)
             self.result_string = colorize("FAIL", RED) + \
                 ' [ temp dir used by test case: ' + test.tempdir + ' ]'
         else:
@@ -811,15 +825,29 @@ class VppTestResult(unittest.TestResult):
         :param err: error message
 
         """
+        logger = None
         if hasattr(test, 'logger'):
-            test.logger.debug("--- addError() %s.%s(%s) called, err is %s"
-                              % (test.__class__.__name__,
-                                 test._testMethodName,
-                                 test._testMethodDoc, err))
-            test.logger.debug("formatted exception is:\n%s" %
-                              "".join(format_exception(*err)))
+            logger = test.logger
+            logger.debug("--- addError() %s.%s(%s) called, err is %s"
+                         % (test.__class__.__name__,
+                            test._testMethodName,
+                            test._testMethodDoc, err))
+            logger.debug("formatted exception is:\n%s" %
+                         "".join(format_exception(*err)))
         unittest.TestResult.addError(self, test, err)
         if hasattr(test, 'tempdir'):
+            try:
+                failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
+                if logger:
+                    logger.debug("creating a link to the failed test")
+                    logger.debug("os.symlink(%s, %s)" %
+                                 (test.tempdir, '%s%s' %
+                                  (failed_dir, test.tempdir.split("/")[-1])))
+                os.symlink(test.tempdir, '%s/%s' %
+                           (failed_dir, test.tempdir.split("/")[-1]))
+            except Exception as e:
+                if logger:
+                    logger.error(e)
             self.result_string = colorize("ERROR", RED) + \
                 ' [ temp dir used by test case: ' + test.tempdir + ' ]'
         else:
