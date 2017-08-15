@@ -275,7 +275,7 @@ class VppTestCase(unittest.TestCase):
         gc.collect()  # run garbage collection first
         cls.logger = getLogger(cls.__name__)
         cls.tempdir = tempfile.mkdtemp(
-            prefix='vpp-unittest-' + cls.__name__ + '-')
+            prefix='vpp-unittest-%s-' % cls.__name__)
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
@@ -781,6 +781,24 @@ class VppTestResult(unittest.TestResult):
         unittest.TestResult.addSkip(self, test, reason)
         self.result_string = colorize("SKIP", YELLOW)
 
+    def symlink_failed(self, test):
+        logger = None
+        if hasattr(test, 'logger'):
+            logger = test.logger
+        if hasattr(test, 'tempdir'):
+            try:
+                failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
+                link_path = '%s/%s-FAILED' % (failed_dir,
+                                              test.tempdir.split("/")[-1])
+                if logger:
+                    logger.debug("creating a link to the failed test")
+                    logger.debug("os.symlink(%s, %s)" %
+                                 (test.tempdir, link_path))
+                os.symlink(test.tempdir, link_path)
+            except Exception as e:
+                if logger:
+                    logger.error(e)
+
     def addFailure(self, test, err):
         """
         Record a test failed result
@@ -800,6 +818,7 @@ class VppTestResult(unittest.TestResult):
         if hasattr(test, 'tempdir'):
             self.result_string = colorize("FAIL", RED) + \
                 ' [ temp dir used by test case: ' + test.tempdir + ' ]'
+            self.symlink_failed(test)
         else:
             self.result_string = colorize("FAIL", RED) + ' [no temp dir]'
 
@@ -822,6 +841,7 @@ class VppTestResult(unittest.TestResult):
         if hasattr(test, 'tempdir'):
             self.result_string = colorize("ERROR", RED) + \
                 ' [ temp dir used by test case: ' + test.tempdir + ' ]'
+            self.symlink_failed(test)
         else:
             self.result_string = colorize("ERROR", RED) + ' [no temp dir]'
 
