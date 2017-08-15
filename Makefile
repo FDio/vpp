@@ -501,7 +501,7 @@ endif
 	$(call banner,"Building $(PKG) packages")
 	@make pkg-$(PKG)
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
-	@make test
+	@make COMPRESS_FAILED_TEST_LOGS=yes test
 endif
 
 
