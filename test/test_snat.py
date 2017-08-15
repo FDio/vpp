@@ -553,9 +553,9 @@ class TestSNAT(MethodHolder):
             cls.pg4._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
             cls.pg4._remote_hosts[0]._ip4 = "172.16.255.2"
             cls.pg4.set_table_ip4(10)
-            cls.pg5._local_ip4 = "172.16.255.3"
+            cls.pg5._local_ip4 = "172.17.255.3"
             cls.pg5._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
-            cls.pg5._remote_hosts[0]._ip4 = "172.16.255.4"
+            cls.pg5._remote_hosts[0]._ip4 = "172.17.255.4"
             cls.pg5.set_table_ip4(10)
             cls.pg6._local_ip4 = "172.16.255.1"
             cls.pg6._local_ip4n = socket.inet_pton(socket.AF_INET, i.local_ip4)
