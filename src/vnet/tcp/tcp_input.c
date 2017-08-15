@@ -1877,26 +1877,12 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tc0 =
 	    tcp_half_open_connection_get (vnet_buffer (b0)->
 					  tcp.connection_index);
+	  ASSERT (tc0);
 
 	  ack0 = vnet_buffer (b0)->tcp.ack_number;
 	  seq0 = vnet_buffer (b0)->tcp.seq_number;
 	  tcp0 = tcp_buffer_hdr (b0);
 
-	  if (!tc0)
-	    {
-	      ip4_header_t *ip40 = vlib_buffer_get_current (b0);
-	      tcp0 = ip4_next_header (ip40);
-	      tc0 =
-		(tcp_connection_t *)
-		stream_session_lookup_transport_wt4 (&ip40->dst_address,
-						     &ip40->src_address,
-						     tcp0->dst_port,
-						     tcp0->src_port,
-						     SESSION_TYPE_IP4_TCP,
-						     my_thread_index);
-	      ASSERT (0);
-	      goto drop;
-	    }
 	  if (PREDICT_FALSE
 	      (!tcp_ack (tcp0) && !tcp_rst (tcp0) && !tcp_syn (tcp0)))
 	    goto drop;
