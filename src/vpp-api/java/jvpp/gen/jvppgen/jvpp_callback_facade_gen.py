@@ -222,11 +222,12 @@ public final class CallbackJVpp${plugin_name}FacadeCallback implements $plugin_p
 
     @Override
     @SuppressWarnings("unchecked")
-    public void onControlPingReply($base_package.$dto_package.ControlPingReply reply) {
+    public void onControlPingReply(final $base_package.$dto_package.ControlPingReply reply) {
 
         $base_package.$callback_package.ControlPingCallback callback;
+        final int replyId = reply.context;
         synchronized(requests) {
-            callback = ($base_package.$callback_package.ControlPingCallback) requests.remove(reply.context);
+            callback = ($base_package.$callback_package.ControlPingCallback) requests.remove(replyId);
         }
 
         if(callback != null) {
@@ -241,11 +242,12 @@ $methods
 jvpp_facade_callback_method_template = Template("""
     @Override
     @SuppressWarnings("unchecked")
-    public void on$callback_dto($plugin_package.$dto_package.$callback_dto reply) {
+    public void on$callback_dto(final $plugin_package.$dto_package.$callback_dto reply) {
 
         $plugin_package.$callback_package.$callback callback;
+        final int replyId = reply.context;
         synchronized(requests) {
-            callback = ($plugin_package.$callback_package.$callback) requests.remove(reply.context);
+            callback = ($plugin_package.$callback_package.$callback) requests.remove(replyId);
         }
 
         if(callback != null) {
