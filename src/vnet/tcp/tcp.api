@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ 
+/** \brief Configure TCP source addresses, for active-open TCP sessions
+
+    TCP src/dst ports are 16 bits, with the low-order 1024 ports
+    reserved. So, it's necessary to provide a considerable number of
+    source IP addresses if one wishes to initiate a large number of
+    connections.
+
+    Each of those addresses needs to have a receive adjacency - 
+    either a /32 or a /128 - and vpp needs to answer (proxy) arps or
+    neighbor discovery requests for the addresses. 
+
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ipv6 - 1 for ipv6, 0 for ipv4
+    @param vrf_id - fib table / vrf id for local adjacencies
+    @param first_address - first address that TCP will use
+    @param last_address - last address that TCP will use
+*/
+autoreply define tcp_configure_src_addresses {
+    u32 client_index;
+    u32 context;
+    u8 is_ipv6;
+    u32 vrf_id;
+    u8 first_address[16];
+    u8 last_address[16];
+ };
+ 

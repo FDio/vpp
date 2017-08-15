@@ -3007,6 +3007,27 @@ static void *vl_api_p2p_ethernet_del_t_print
   FINISH;
 }
 
+static void *vl_api_tcp_configure_src_addresses_t_print
+  (vl_api_tcp_configure_src_addresses_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: tcp_configure_src_addresses ");
+  if (mp->is_ipv6)
+    s = format (s, "%U - %U ",
+		format_ip6_address, (ip6_address_t *) mp->first_address,
+		format_ip6_address, (ip6_address_t *) mp->last_address);
+  else
+    s = format (s, "%U - %U ",
+		format_ip4_address, (ip4_address_t *) mp->first_address,
+		format_ip4_address, (ip4_address_t *) mp->last_address);
+
+  if (mp->vrf_id)
+    s = format (s, "vrf %d ", ntohl (mp->vrf_id));
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -3191,7 +3212,8 @@ _(FEATURE_ENABLE_DISABLE, feature_enable_disable)			\
 _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)			\
 _(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                           \
 _(P2P_ETHERNET_ADD, p2p_ethernet_add)                                   \
-_(P2P_ETHERNET_DEL, p2p_ethernet_del)
+_(P2P_ETHERNET_DEL, p2p_ethernet_del)					\
+_(TCP_CONFIGURE_SRC_ADDRESSES, tcp_configure_src_addresses)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {

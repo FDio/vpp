@@ -466,6 +466,7 @@ endif
 # Layer 4 protocol: tcp
 ########################################
 libvnet_la_SOURCES +=				\
+ vnet/tcp/tcp_api.c				\
  vnet/tcp/tcp_format.c				\
  vnet/tcp/tcp_pg.c				\
  vnet/tcp/tcp_syn_filter4.c			\
@@ -484,6 +485,8 @@ nobase_include_HEADERS +=			\
  vnet/tcp/tcp_timer.h				\
  vnet/tcp/tcp_debug.h				\
  vnet/tcp/tcp.h
+
+API_FILES += vnet/tcp/tcp.api
 
 ########################################
 # Layer 4 protocol: udp

@@ -4733,7 +4733,8 @@ _(sw_interface_set_mtu_reply)                           \
 _(p2p_ethernet_add_reply)                               \
 _(p2p_ethernet_del_reply)                               \
 _(lldp_config_reply)                                    \
-_(sw_interface_set_lldp_reply)
+_(sw_interface_set_lldp_reply)				\
+_(tcp_configure_src_addresses_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -5027,7 +5028,8 @@ _(SW_INTERFACE_GET_TABLE_REPLY, sw_interface_get_table_reply)           \
 _(P2P_ETHERNET_ADD_REPLY, p2p_ethernet_add_reply)                       \
 _(P2P_ETHERNET_DEL_REPLY, p2p_ethernet_del_reply)                       \
 _(LLDP_CONFIG_REPLY, lldp_config_reply)                                 \
-_(SW_INTERFACE_SET_LLDP_REPLY, sw_interface_set_lldp_reply)
+_(SW_INTERFACE_SET_LLDP_REPLY, sw_interface_set_lldp_reply)		\
+_(TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)                               \
@@ -19695,6 +19697,73 @@ api_sw_interface_set_lldp (vat_main_t * vam)
 }
 
 static int
+api_tcp_configure_src_addresses (vat_main_t * vam)
+{
+  vl_api_tcp_configure_src_addresses_t *mp;
+  unformat_input_t *i = vam->input;
+  ip4_address_t v4first, v4last;
+  ip6_address_t v6first, v6last;
+  u8 range_set = 0;
+  u32 vrf_id = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U - %U",
+		    unformat_ip4_address, &v4first,
+		    unformat_ip4_address, &v4last))
+	{
+	  if (range_set)
+	    {
+	      errmsg ("one range per message (range already set)");
+	      return -99;
+	    }
+	  range_set = 1;
+	}
+      else if (unformat (i, "%U - %U",
+			 unformat_ip6_address, &v6first,
+			 unformat_ip6_address, &v6last))
+	{
+	  if (range_set)
+	    {
+	      errmsg ("one range per message (range already set)");
+	      return -99;
+	    }
+	  range_set = 2;
+	}
+      else if (unformat (i, "vrf %d", &vrf_id))
+	;
+      else
+	break;
+    }
+
+  if (range_set == 0)
+    {
+      errmsg ("address range not set");
+      return -99;
+    }
+
+  M (TCP_CONFIGURE_SRC_ADDRESSES, mp);
+  mp->vrf_id = ntohl (vrf_id);
+  /* ipv6? */
+  if (range_set == 2)
+    {
+      mp->is_ipv6 = 1;
+      clib_memcpy (mp->first_address, &v6first, sizeof (v6first));
+      clib_memcpy (mp->last_address, &v6last, sizeof (v6last));
+    }
+  else
+    {
+      mp->is_ipv6 = 0;
+      clib_memcpy (mp->first_address, &v4first, sizeof (v4first));
+      clib_memcpy (mp->last_address, &v4last, sizeof (v4last));
+    }
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
 q_or_quit (vat_main_t * vam)
 {
 #if VPP_API_TEST_BUILTIN == 0
@@ -20467,7 +20536,8 @@ _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
 _(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address> sub_id <id>") \
 _(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
 _(lldp_config, "system-name <name> tx-hold <nn> tx-interval <nn>") \
-_(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>] [disable]")
+_(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>] [disable]") \
+_(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
