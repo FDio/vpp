@@ -375,10 +375,12 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
   u64 handle;
   u32 opaque = 0;
   int error = 0;
+  u8 st;
 
+  st = session_type_from_proto_and_ip (tc->transport_proto, tc->is_ip4);
   handle = stream_session_half_open_lookup_handle (&tc->lcl_ip, &tc->rmt_ip,
 						   tc->lcl_port, tc->rmt_port,
-						   tc->transport_proto);
+						   st);
   if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
       clib_warning ("This can't be good!");

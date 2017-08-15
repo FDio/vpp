@@ -362,7 +362,11 @@ ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
       /* *INDENT-OFF* */
       foreach_ip_interface_address (lm6, ia, sw_if_index, 1 /* unnumbered */ ,
       ({
-        return ip_interface_address_get_address (lm6, ia);
+        ip6_address_t *rv;
+        rv = ip_interface_address_get_address (lm6, ia);
+        /* Trying to use a link-local ip6 src address is a fool's errand */
+        if (!ip6_address_is_link_local_unicast (rv))
+          return rv;
       }));
       /* *INDENT-ON* */
     }
@@ -635,6 +639,14 @@ tcp_connection_open (transport_endpoint_t * rmt)
       else
 	{
 	  ip6 = ip_interface_get_first_ip (sw_if_index, 0);
+	  if (ip6 == 0)
+	    {
+	      clib_warning ("no routable ip6 addresses on %U",
+			    format_vnet_sw_if_index_name, vnet_get_main (),
+			    sw_if_index);
+	      return -1;
+	    }
+
 	  clib_memcpy (&lcl_addr.ip6, ip6, sizeof (*ip6));
 	}
     }
@@ -1109,7 +1121,6 @@ tcp_timer_establish_handler (u32 conn_index)
   if (tc)
     {
       ASSERT (tc->state == TCP_STATE_SYN_SENT);
-      tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
       stream_session_connect_notify (&tc->connection, 1 /* fail */ );
     }
   else
@@ -1117,6 +1128,7 @@ tcp_timer_establish_handler (u32 conn_index)
       tc = tcp_connection_get (conn_index, vlib_get_thread_index ());
       ASSERT (tc->state == TCP_STATE_SYN_RCVD);
     }
+  tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
   tcp_connection_cleanup (tc);
 }
 
@@ -1231,6 +1243,7 @@ tcp_main_enable (vlib_main_t * vm)
   pi->unformat_pg_edit = unformat_pg_tcp_header;
 
   ip4_register_protocol (IP_PROTOCOL_TCP, tcp4_input_node.index);
+  ip6_register_protocol (IP_PROTOCOL_TCP, tcp6_input_node.index);
 
   /* Register as transport with session layer */
   session_register_transport (TRANSPORT_PROTO_TCP, 1, &tcp_proto);

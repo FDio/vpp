@@ -106,8 +106,8 @@ make_v4_listener_kv (session_kv4_t * kv, ip4_address_t * lcl, u16 lcl_port,
 always_inline void
 make_v4_ss_kv_from_tc (session_kv4_t * kv, transport_connection_t * t)
 {
-  return make_v4_ss_kv (kv, &t->lcl_ip.ip4, &t->rmt_ip.ip4, t->lcl_port,
-			t->rmt_port, t->transport_proto);
+  make_v4_ss_kv (kv, &t->lcl_ip.ip4, &t->rmt_ip.ip4, t->lcl_port, t->rmt_port,
+		 session_type_from_proto_and_ip (t->transport_proto, 1));
 }
 
 always_inline void
@@ -149,8 +149,8 @@ make_v6_listener_kv (session_kv6_t * kv, ip6_address_t * lcl, u16 lcl_port,
 always_inline void
 make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * t)
 {
-  make_v6_ss_kv (kv, &t->lcl_ip.ip6, &t->rmt_ip.ip6, t->lcl_port,
-		 t->rmt_port, t->transport_proto);
+  make_v6_ss_kv (kv, &t->lcl_ip.ip6, &t->rmt_ip.ip6, t->lcl_port, t->rmt_port,
+		 session_type_from_proto_and_ip (t->transport_proto, 0));
 }
 
 /*
