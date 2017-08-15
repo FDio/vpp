@@ -163,6 +163,12 @@ class VppInterface(object):
 
         self._local_ip4 = "172.16.%u.1" % self.sw_if_index
         self._local_ip4n = socket.inet_pton(socket.AF_INET, self.local_ip4)
+        self._local_ip4_subnet = "172.16.%u.0" % self.sw_if_index
+        self._local_ip4n_subnet = socket.inet_pton(socket.AF_INET,
+                                                   self._local_ip4_subnet)
+        self._local_ip4_bcast = "172.16.%u.255" % self.sw_if_index
+        self._local_ip4n_bcast = socket.inet_pton(socket.AF_INET,
+                                                  self._local_ip4_bcast)
         self.local_ip4_prefix_len = 24
         self.has_ip4_config = False
         self.ip4_table_id = 0

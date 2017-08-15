@@ -657,6 +657,70 @@ class ARPTestCase(VppTestCase):
         self.pg2.admin_down()
         self.pg1.admin_down()
 
+    def test_proxy_mirror_arp(self):
+        """ Interface Mirror Proxy ARP """
+
+        #
+        # When VPP has an interface whose address is also applied to a TAP
+        # interface on the host, then VPP's TAP interface will be unnumbered
+        # to the 'real' interface and do proxy ARP from the host.
+        # the curious aspect of this setup is that ARP requests from the host
+        # will come from the VPP's own address.
+        #
+        self.pg0.generate_remote_hosts(2)
+
+        arp_req_from_me = (Ether(src=self.pg2.remote_mac,
+                                 dst="ff:ff:ff:ff:ff:ff") /
+                           ARP(op="who-has",
+                               hwsrc=self.pg2.remote_mac,
+                               pdst=self.pg0.remote_hosts[1].ip4,
+                               psrc=self.pg0.local_ip4))
+
+        #
+        # Configure Proxy ARP for the subnet on PG0addresses on pg0
+        #
+        self.vapi.proxy_arp_add_del(self.pg0._local_ip4n_subnet,
+                                    self.pg0._local_ip4n_bcast)
+
+        # Make pg2 un-numbered to pg0
+        #
+        self.pg2.set_unnumbered(self.pg0.sw_if_index)
+
+        #
+        # Enable pg2 for proxy ARP
+        #
+        self.pg2.set_proxy_arp()
+
+        #
+        # Send the ARP request with an originating address that
+        # is VPP's own address
+        #
+        self.pg2.add_stream(arp_req_from_me)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(1)
+        self.verify_arp_resp(rx[0],
+                             self.pg2.local_mac,
+                             self.pg2.remote_mac,
+                             self.pg0.remote_hosts[1].ip4,
+                             self.pg0.local_ip4)
+
+        #
+        # validate we have not learned an ARP entry as a result of this
+        #
+        self.assertFalse(find_nbr(self,
+                                  self.pg2.sw_if_index,
+                                  self.pg0.local_ip4))
+
+        #
+        # cleanup
+        #
+        self.pg2.set_proxy_arp(0)
+        self.vapi.proxy_arp_add_del(self.pg0._local_ip4n_subnet,
+                                    self.pg0._local_ip4n_bcast,
+                                    is_add=0)
+
     def test_proxy_arp(self):
         """ Proxy ARP """
 
