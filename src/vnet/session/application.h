@@ -86,6 +86,7 @@ typedef struct _application
   uword *listeners_table;
 
   u32 first_segment_manager;
+  u8 first_segment_manager_in_use;
 
   /** Segment manager properties. Shared by all segment managers */
   segment_manager_properties_t sm_properties;
