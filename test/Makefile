@@ -1,5 +1,7 @@
 .PHONY: verify-python-path
 
+VPP_TEST_FAILED_DIR=/tmp/vpp-failed-unittests/
+
 verify-python-path:
 ifndef VPP_PYTHON_PREFIX
 	$(error VPP_PYTHON_PREFIX is not set)
@@ -84,7 +86,8 @@ $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@touch $@
 
 define retest-func
-	@scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS)
+	@env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS)
+	@env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) scripts/compress_failed.sh
 endef
 
 .PHONY: sanity
@@ -129,6 +132,8 @@ shell: verify-python-path $(PAPI_INSTALL_DONE)
 reset:
 	@rm -f /dev/shm/vpp-unittest-*
 	@rm -rf /tmp/vpp-unittest-*
+	@rm -rf $(VPP_TEST_FAILED_DIR)
+	@mkdir $(VPP_TEST_FAILED_DIR)
 
 wipe: reset
 	@rm -rf $(PYTHON_VENV_PATH)
