@@ -28,7 +28,7 @@
 #include <vnet/session/session_lookup.h>
 #include <vnet/session/session.h>
 
-static session_lookup_t session_lookup;
+session_lookup_t session_lookup;
 extern transport_proto_vft_t *tp_vfts;
 
 /* *INDENT-OFF* */
@@ -122,7 +122,7 @@ make_v6_ss_kv (session_kv6_t * kv, ip6_address_t * lcl, ip6_address_t * rmt,
   key->dst.as_u64[1] = rmt->as_u64[1];
   key->src_port = lcl_port;
   key->dst_port = rmt_port;
-  key->proto = proto;
+  key->proto = 0 /* proto */; /*$$$ FLORIN fix ip6 proto handling */
   key->unused = 0;
 
   kv->value = ~0ULL;
@@ -140,7 +140,7 @@ make_v6_listener_kv (session_kv6_t * kv, ip6_address_t * lcl, u16 lcl_port,
   key->dst.as_u64[1] = 0;
   key->src_port = lcl_port;
   key->dst_port = 0;
-  key->proto = proto;
+  key->proto = 0 /*proto*/; /*$$$ FLORIN fix ip6 proto handling */
   key->unused = 0;
 
   kv->value = ~0ULL;
