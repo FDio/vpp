@@ -96,6 +96,31 @@ p2p_ethernet_add_del (vlib_main_t * vm, u32 parent_if_index,
 	  if (vnet_create_sw_interface (vnm, &template, &p2pe_sw_if_index))
 	    return VNET_API_ERROR_SUBIF_CREATE_FAILED;
 
+	  /* Allocate counters for this interface. */
+	  {
+	    u32 i;
+
+	    vnet_interface_counter_lock (im);
+
+	    for (i = 0; i < vec_len (im->sw_if_counters); i++)
+	      {
+		vlib_validate_simple_counter (&im->sw_if_counters[i],
+					      p2pe_sw_if_index);
+		vlib_zero_simple_counter (&im->sw_if_counters[i],
+					  p2pe_sw_if_index);
+	      }
+
+	    for (i = 0; i < vec_len (im->combined_sw_if_counters); i++)
+	      {
+		vlib_validate_combined_counter (&im->combined_sw_if_counters
+						[i], p2pe_sw_if_index);
+		vlib_zero_combined_counter (&im->combined_sw_if_counters[i],
+					    p2pe_sw_if_index);
+	      }
+
+	    vnet_interface_counter_unlock (im);
+	  }
+
 	  vnet_interface_main_t *im = &vnm->interface_main;
 	  sup_and_sub_key =
 	    ((u64) (hi->sw_if_index) << 32) | (u64) p2pe_subif_id;

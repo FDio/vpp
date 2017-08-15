@@ -63,10 +63,13 @@ static uword
 p2p_ethernet_input_node_fn (vlib_main_t * vm,
 			    vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
+  u32 thread_index = vlib_get_thread_index ();
   u32 n_trace = vlib_get_trace_count (vm, node);
   u32 n_left_from, *from, *to_next;
   u32 next_index;
   u32 n_p2p_ethernet_packets = 0;
+  vlib_combined_counter_main_t *cm =
+    vnet_get_main ()->interface_main.combined_sw_if_counters;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -126,6 +129,10 @@ p2p_ethernet_input_node_fn (vlib_main_t * vm,
 		  t0->sw_if_index = sw_if_index0;
 		  t0->p2pe_sw_if_index = rx0;
 		}
+
+	      vlib_increment_combined_counter (cm, thread_index, rx0, 1,
+					       vlib_buffer_length_in_chain
+					       (vm, b0));
 	    }
 	  if (rx1 != ~0)
 	    {
@@ -143,6 +150,10 @@ p2p_ethernet_input_node_fn (vlib_main_t * vm,
 		  t1->sw_if_index = sw_if_index1;
 		  t1->p2pe_sw_if_index = rx1;
 		}
+
+	      vlib_increment_combined_counter (cm, thread_index, rx1, 1,
+					       vlib_buffer_length_in_chain
+					       (vm, b1));
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
@@ -194,6 +205,10 @@ p2p_ethernet_input_node_fn (vlib_main_t * vm,
 		  t0->sw_if_index = sw_if_index0;
 		  t0->p2pe_sw_if_index = rx0;
 		}
+
+	      vlib_increment_combined_counter (cm, thread_index, rx0, 1,
+					       vlib_buffer_length_in_chain
+					       (vm, b0));
 	    }
 	  else
 	    {
