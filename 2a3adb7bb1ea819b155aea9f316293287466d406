@@ -22,6 +22,30 @@
       "revId": "2a3adb7bb1ea819b155aea9f316293287466d406",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_6b521215",
+        "filename": "test/run_tests.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-15T07:59:58Z",
+      "side": 1,
+      "message": "Note that this timeout was introduced last friday and before that the\n      only timeout ever occuring was the 90m build timeout by jenkins... Test\n      framework didn\u0027t have any timeout on its own and would get stuck forever\n      if allowed.",
+      "parentUuid": "3a4b7175_6b045215",
+      "range": {
+        "startLine": 106,
+        "startChar": 0,
+        "endLine": 106,
+        "endChar": 45
+      },
+      "revId": "2a3adb7bb1ea819b155aea9f316293287466d406",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
