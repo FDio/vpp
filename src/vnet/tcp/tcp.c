@@ -13,10 +13,17 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ * @brief TCP host stack utilities
+ */
+
 #include <vnet/tcp/tcp.h>
 #include <vnet/session/session.h>
 #include <vnet/fib/fib.h>
 #include <vnet/dpo/load_balance.h>
+#include <vnet/dpo/receive_dpo.h>
+#include <vnet/ip/ip6_neighbor.h>
 #include <math.h>
 
 tcp_main_t tcp_main;
@@ -1347,6 +1354,7 @@ tcp_init (vlib_main_t * vm)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   tm->is_enabled = 0;
+  tcp_api_reference ();
   return 0;
 }
 
@@ -1375,15 +1383,191 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (tcp_config_fn, "tcp");
 
+
+/**
+ * \brief Configure an ipv4 source address range
+ * @param vm vlib_main_t pointer
+ * @param start first ipv4 address in the source address range
+ * @param end last ipv4 address in the source address range
+ * @param table_id VRF / table ID, 0 for the default FIB
+ * @return 0 if all OK, else an error indication from api_errno.h
+ */
+
+int
+tcp_configure_v4_source_address_range (vlib_main_t * vm,
+				       ip4_address_t * start,
+				       ip4_address_t * end, u32 table_id)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 start_host_byte_order, end_host_byte_order;
+  fib_prefix_t prefix;
+  vnet_sw_interface_t *si;
+  fib_node_index_t fei;
+  u32 fib_index = 0;
+  u32 sw_if_index;
+  int rv;
+  int vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
+			      ip4_address_t * hi_addr, u32 fib_index,
+			      int is_del);
+
+  memset (&prefix, 0, sizeof (prefix));
+
+  fib_index = fib_table_find (FIB_PROTOCOL_IP4, table_id);
+
+  if (fib_index == ~0)
+    return VNET_API_ERROR_NO_SUCH_FIB;
+
+  start_host_byte_order = clib_net_to_host_u32 (start->as_u32);
+  end_host_byte_order = clib_net_to_host_u32 (end->as_u32);
+
+  /* sanity check for reversed args or some such */
+  if ((end_host_byte_order - start_host_byte_order) > (10 << 10))
+    return VNET_API_ERROR_INVALID_ARGUMENT;
+
+  /* Lookup the last address, to identify the interface involved */
+  prefix.fp_len = 32;
+  prefix.fp_proto = FIB_PROTOCOL_IP4;
+  memcpy (&prefix.fp_addr.ip4, end, sizeof (ip4_address_t));
+
+  fei = fib_table_lookup (fib_index, &prefix);
+
+  /* Couldn't find route to destination. Bail out. */
+  if (fei == FIB_NODE_INDEX_INVALID)
+    return VNET_API_ERROR_NEXT_HOP_NOT_IN_FIB;
+
+  sw_if_index = fib_entry_get_resolving_interface (fei);
+
+  /* Enable proxy arp on the interface */
+  si = vnet_get_sw_interface (vnm, sw_if_index);
+  si->flags |= VNET_SW_INTERFACE_FLAG_PROXY_ARP;
+
+  /* Configure proxy arp across the range */
+  rv = vnet_proxy_arp_add_del (start, end, fib_index, 0 /* is_del */ );
+
+  if (rv)
+    return rv;
+
+  do
+    {
+      dpo_id_t dpo = DPO_INVALID;
+
+      vec_add1 (tm->ip4_src_addresses, start[0]);
+
+      /* Add local adjacencies for the range */
+
+      receive_dpo_add_or_lock (DPO_PROTO_IP4, ~0 /* sw_if_index */ ,
+			       NULL, &dpo);
+      prefix.fp_len = 32;
+      prefix.fp_proto = FIB_PROTOCOL_IP4;
+      prefix.fp_addr.ip4.as_u32 = start->as_u32;
+
+      fib_table_entry_special_dpo_update (fib_index,
+					  &prefix,
+					  FIB_SOURCE_API,
+					  FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
+      dpo_reset (&dpo);
+
+      start_host_byte_order++;
+      start->as_u32 = clib_host_to_net_u32 (start_host_byte_order);
+    }
+  while (start_host_byte_order <= end_host_byte_order);
+
+  return 0;
+}
+
+/**
+ * \brief Configure an ipv6 source address range
+ * @param vm vlib_main_t pointer
+ * @param start first ipv6 address in the source address range
+ * @param end last ipv6 address in the source address range
+ * @param table_id VRF / table ID, 0 for the default FIB
+ * @return 0 if all OK, else an error indication from api_errno.h
+ */
+
+int
+tcp_configure_v6_source_address_range (vlib_main_t * vm,
+				       ip6_address_t * start,
+				       ip6_address_t * end, u32 table_id)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  fib_prefix_t prefix;
+  u32 fib_index = 0;
+  fib_node_index_t fei;
+  u32 sw_if_index;
+
+  memset (&prefix, 0, sizeof (prefix));
+
+  fib_index = fib_table_find (FIB_PROTOCOL_IP6, table_id);
+
+  if (fib_index == ~0)
+    return VNET_API_ERROR_NO_SUCH_FIB;
+
+  while (1)
+    {
+      int i;
+      ip6_address_t tmp;
+      dpo_id_t dpo = DPO_INVALID;
+
+      /* Remember this address */
+      vec_add1 (tm->ip6_src_addresses, start[0]);
+
+      /* Lookup the prefix, to identify the interface involved */
+      prefix.fp_len = 128;
+      prefix.fp_proto = FIB_PROTOCOL_IP6;
+      memcpy (&prefix.fp_addr.ip6, start, sizeof (ip6_address_t));
+
+      fei = fib_table_lookup (fib_index, &prefix);
+
+      /* Couldn't find route to destination. Bail out. */
+      if (fei == FIB_NODE_INDEX_INVALID)
+	return VNET_API_ERROR_NEXT_HOP_NOT_IN_FIB;
+
+      sw_if_index = fib_entry_get_resolving_interface (fei);
+
+      if (sw_if_index == (u32) ~ 0)
+	return VNET_API_ERROR_NO_MATCHING_INTERFACE;
+
+      /* Add a proxy neighbor discovery entry for this address */
+      ip6_neighbor_proxy_add_del (sw_if_index, start, 0 /* is_del */ );
+
+      /* Add a receive adjacency for this address */
+      receive_dpo_add_or_lock (DPO_PROTO_IP6, ~0 /* sw_if_index */ ,
+			       NULL, &dpo);
+
+      fib_table_entry_special_dpo_update (fib_index,
+					  &prefix,
+					  FIB_SOURCE_API,
+					  FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
+      dpo_reset (&dpo);
+
+      /* Done with the entire range? */
+      if (!memcmp (start, end, sizeof (start[0])))
+	break;
+
+      /* Increment the address. DGMS. */
+      tmp = start[0];
+      for (i = 15; i >= 0; i--)
+	{
+	  tmp.as_u8[i] += 1;
+	  if (tmp.as_u8[i] != 0)
+	    break;
+	}
+      start[0] = tmp;
+    }
+  return 0;
+}
+
 static clib_error_t *
 tcp_src_address (vlib_main_t * vm,
 		 unformat_input_t * input, vlib_cli_command_t * cmd_arg)
 {
-  tcp_main_t *tm = vnet_get_tcp_main ();
   ip4_address_t v4start, v4end;
   ip6_address_t v6start, v6end;
+  u32 table_id = 0;
   int v4set = 0;
   int v6set = 0;
+  int rv;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1396,13 +1580,15 @@ tcp_src_address (vlib_main_t * vm,
 	  v4set = 1;
 	}
       else if (unformat (input, "%U - %U", unformat_ip6_address, &v6start,
-			 unformat_ip4_address, &v6end))
+			 unformat_ip6_address, &v6end))
 	v6set = 1;
       else if (unformat (input, "%U", unformat_ip6_address, &v6start))
 	{
 	  memcpy (&v6end, &v6start, sizeof (v4start));
 	  v6set = 1;
 	}
+      else if (unformat (input, "fib-table %d", &table_id))
+	;
       else
 	break;
     }
@@ -1412,21 +1598,41 @@ tcp_src_address (vlib_main_t * vm,
 
   if (v4set)
     {
-      u32 tmp;
-
-      do
+      rv = tcp_configure_v4_source_address_range (vm, &v4start, &v4end,
+						  table_id);
+      switch (rv)
 	{
-	  vec_add1 (tm->ip4_src_addresses, v4start);
-	  tmp = clib_net_to_host_u32 (v4start.as_u32);
-	  tmp++;
-	  v4start.as_u32 = clib_host_to_net_u32 (tmp);
+	case 0:
+	  break;
+
+	case VNET_API_ERROR_NO_SUCH_FIB:
+	  return clib_error_return (0, "Invalid table-id %d", table_id);
+
+	case VNET_API_ERROR_INVALID_ARGUMENT:
+	  return clib_error_return (0, "Invalid address range %U - %U",
+				    format_ip4_address, &v4start,
+				    format_ip4_address, &v4end);
+	default:
+	  return clib_error_return (0, "error %d", rv);
+	  break;
 	}
-      while (clib_host_to_net_u32 (v4start.as_u32) <=
-	     clib_host_to_net_u32 (v4end.as_u32));
     }
   if (v6set)
     {
-      clib_warning ("v6 src address list unimplemented...");
+      rv = tcp_configure_v6_source_address_range (vm, &v6start, &v6end,
+						  table_id);
+      switch (rv)
+	{
+	case 0:
+	  break;
+
+	case VNET_API_ERROR_NO_SUCH_FIB:
+	  return clib_error_return (0, "Invalid table-id %d", table_id);
+
+	default:
+	  return clib_error_return (0, "error %d", rv);
+	  break;
+	}
     }
   return 0;
 }

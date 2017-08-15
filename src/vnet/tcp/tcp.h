@@ -465,7 +465,13 @@ void tcp_connection_del (tcp_connection_t * tc);
 int tcp_half_open_connection_cleanup (tcp_connection_t * tc);
 tcp_connection_t *tcp_connection_new (u8 thread_index);
 void tcp_connection_reset (tcp_connection_t * tc);
-
+int tcp_configure_v4_source_address_range (vlib_main_t * vm,
+					   ip4_address_t * start,
+					   ip4_address_t * end, u32 table_id);
+int tcp_configure_v6_source_address_range (vlib_main_t * vm,
+					   ip6_address_t * start,
+					   ip6_address_t * end, u32 table_id);
+void tcp_api_reference (void);
 u8 *format_tcp_connection_id (u8 * s, va_list * args);
 u8 *format_tcp_connection (u8 * s, va_list * args);
 u8 *format_tcp_scoreboard (u8 * s, va_list * args);
