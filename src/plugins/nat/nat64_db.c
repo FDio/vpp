@@ -529,6 +529,52 @@ nat64_db_st_entry_find (nat64_db_t * db, ip46_address_t * l_addr,
   return ste;
 }
 
+u32
+nat64_db_st_entry_get_index (nat64_db_t * db, nat64_db_st_entry_t * ste)
+{
+  nat64_db_st_entry_t *st;
+
+  switch (ip_proto_to_snat_proto (ste->proto))
+    {
+/* *INDENT-OFF* */
+#define _(N, i, n, s) \
+    case SNAT_PROTOCOL_##N: \
+      st = db->st._##n##_st; \
+      break;
+      foreach_snat_protocol
+#undef _
+/* *INDENT-ON* */
+    default:
+      st = db->st._unk_proto_st;
+      return (u32) ~ 0;
+    }
+
+  return ste - st;
+}
+
+nat64_db_st_entry_t *
+nat64_db_st_entry_by_index (nat64_db_t * db, u8 proto, u32 ste_index)
+{
+  nat64_db_st_entry_t *st;
+
+  switch (ip_proto_to_snat_proto (proto))
+    {
+/* *INDENT-OFF* */
+#define _(N, i, n, s) \
+    case SNAT_PROTOCOL_##N: \
+      st = db->st._##n##_st; \
+      break;
+      foreach_snat_protocol
+#undef _
+/* *INDENT-ON* */
+    default:
+      st = db->st._unk_proto_st;
+      break;
+    }
+
+  return pool_elt_at_index (st, ste_index);
+}
+
 void
 nad64_db_st_free_expired (nat64_db_t * db, u32 now)
 {

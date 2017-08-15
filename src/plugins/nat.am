@@ -22,6 +22,7 @@ nat_plugin_la_SOURCES = nat/nat.c		\
 	nat/nat_plugin.api.h			\
         nat/nat_ipfix_logging.c	        	\
         nat/nat_det.c               		\
+        nat/nat_reass.c             		\
         nat/nat64.c                  		\
         nat/nat64_cli.c              		\
         nat/nat64_in2out.c           		\

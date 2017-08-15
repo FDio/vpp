@@ -24,6 +24,7 @@
 #include <nat/nat_det.h>
 #include <nat/nat64.h>
 #include <nat/dslite.h>
+#include <nat/nat_reass.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 
@@ -1447,11 +1448,15 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   /* Init IPFIX logging */
   snat_ipfix_logging_init(vm);
 
+  /* Init NAT64 */
   error = nat64_init(vm);
+  if (error)
+    return error;
 
   dslite_init(vm);
 
-  return error;
+  /* Init virtual fragmenentation reassembly */
+  return nat_reass_init(vm);
 }
 
 VLIB_INIT_FUNCTION (snat_init);
@@ -2889,6 +2894,7 @@ show_snat_command_fn (vlib_main_t * vm,
             }
         }
     }
+
   return 0;
 }
 

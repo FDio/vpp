@@ -760,6 +760,87 @@ autoreply define nat_ipfix_enable_disable {
   u8 enable;
 };
 
+/** \brief Set NAT virtual fragmentation reassembly
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param timeout - reassembly timeout
+    @param max_reass - maximum number of concurrent reassemblies
+    @param max_frag - maximum number of fragmets per reassembly
+    @param drop_frag - if 0 translate fragments, otherwise drop fragments
+    @param is_ip6 - 1 if IPv6, 0 if IPv4
+*/
+autoreply define nat_set_reass {
+  u32 client_index;
+  u32 context;
+  u32 timeout;
+  u16 max_reass;
+  u8  max_frag;
+  u8  drop_frag;
+  u8  is_ip6;
+};
+
+/** \brief Get NAT virtual fragmentation reassembly configuration
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_get_reass {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get NAT virtual fragmentation reassembly configuration reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip4_timeout - reassembly timeout
+    @param ip4_max_reass - maximum number of concurrent reassemblies
+    @param ip4_max_frag - maximum number of fragmets per reassembly
+    @param ip4_drop_frag - if 0 translate fragments, otherwise drop fragments
+    @param ip6_timeout - reassembly timeout
+    @param ip6_max_reass - maximum number of concurrent reassemblies
+    @param ip6_max_frag - maximum number of fragmets per reassembly
+    @param ip6_drop_frag - if 0 translate fragments, otherwise drop fragments
+*/
+define nat_get_reass_reply {
+  u32 context;
+  i32 retval;
+  u32 ip4_timeout;
+  u16 ip4_max_reass;
+  u8  ip4_max_frag;
+  u8  ip4_drop_frag;
+  u32 ip6_timeout;
+  u16 ip6_max_reass;
+  u8  ip6_max_frag;
+  u8  ip6_drop_frag;
+};
+
+/** \brief Dump NAT virtual fragmentation reassemblies
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_reass_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT virtual fragmentation reassemblies response
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param src_addr - source IP address
+    @param dst_addr - destination IP address
+    @param frag_id - fragment ID
+    @param proto - protocol
+    @param frag_n - number of cached fragments
+*/
+define nat_reass_details {
+  u32 context;
+  u8 is_ip4;
+  u8 src_addr[16];
+  u8 dst_addr[16];
+  u32 frag_id;
+  u8 proto;
+  u8 frag_n;
+};
+
 /*
  * NAT44 APIs
  */

@@ -296,6 +296,27 @@ void nad64_db_st_free_expired (nat64_db_t * db, u32 now);
  */
 void nat64_db_free_out_addr (nat64_db_t * db, ip4_address_t * out_addr);
 
+/*
+ * @brief Get ST entry index.
+ *
+ * @param db NAT64 DB.
+ * @param ste ST entry.
+ *
+ * @return ST entry index on success, ~0 otherwise.
+ */
+u32 nat64_db_st_entry_get_index (nat64_db_t * db, nat64_db_st_entry_t * ste);
+
+/**
+ * @brief Get ST entry by index and protocol.
+ *
+ * @param db NAT64 DB.
+ * @param proto L4 protocol.
+ * @param bibe_index ST entry index.
+ *
+ * @return BIB entry if found.
+ */
+nat64_db_st_entry_t *nat64_db_st_entry_by_index (nat64_db_t * db,
+						 u8 proto, u32 ste_index);
 #endif /* __included_nat64_db_h__ */
 
 /*
