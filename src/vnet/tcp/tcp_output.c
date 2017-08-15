@@ -775,12 +775,10 @@ tcp_send_reset (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4)
   else
     {
       int bogus = ~0;
-      pkt_ih6 = (ip6_header_t *) (pkt_th - 1);
       ASSERT ((pkt_ih6->ip_version_traffic_class_and_flow_label & 0xF0) ==
 	      0x60);
-      ih6 =
-	vlib_buffer_push_ip6 (vm, b, &pkt_ih6->dst_address,
-			      &pkt_ih6->src_address, IP_PROTOCOL_TCP);
+      ih6 = vlib_buffer_push_ip6 (vm, b, &pkt_ih6->dst_address,
+				  &pkt_ih6->src_address, IP_PROTOCOL_TCP);
       th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ih6, &bogus);
       ASSERT (!bogus);
     }
