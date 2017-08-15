@@ -30,6 +30,8 @@ typedef struct _session_lookup
   clib_bihash_48_8_t v6_half_open_hash;
 } session_lookup_t;
 
+extern session_lookup_t session_lookup;
+
 stream_session_t *stream_session_lookup_listener4 (ip4_address_t * lcl,
 						   u16 lcl_port, u8 proto);
 stream_session_t *stream_session_lookup4 (ip4_address_t * lcl,

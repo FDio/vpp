@@ -308,6 +308,15 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   vec_free (str);
 
+  if (verbose >= 2)
+    {
+      session_lookup_t *sl = &session_lookup;
+
+      vlib_cli_output (vm, "v6 session hash: %U",
+                       format_bihash_48_8, &sl->v6_session_hash, 
+                       1 /* verbose */);
+    }
+
   return 0;
 }
 
@@ -315,7 +324,7 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (vlib_cli_show_session_command) =
 {
   .path = "show session",
-  .short_help = "show session [verbose]",
+  .short_help = "show session [verbose [nnn]]",
   .function = show_session_command_fn,
 };
 /* *INDENT-ON* */
