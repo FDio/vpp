@@ -3413,7 +3413,8 @@ enable_ip6_interface (vlib_main_t * vm, u32 sw_if_index)
 		    (&link_local_address, eth_if0->address);
 
 		  sw_if0 = vnet_get_sw_interface (vnm, sw_if_index);
-		  if (sw_if0->type == VNET_SW_INTERFACE_TYPE_SUB)
+		  if (sw_if0->type == VNET_SW_INTERFACE_TYPE_SUB ||
+		      sw_if0->type == VNET_SW_INTERFACE_TYPE_P2P)
 		    {
 		      /* make up  an interface id */
 		      md5_context_t m;
