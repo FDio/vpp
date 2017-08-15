@@ -1246,6 +1246,43 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.snat_user_dump, {})
 
+    def snat_set_reass(
+            self,
+            timeout=2,
+            max_reass=1024,
+            max_frag=5,
+            drop_frag=0,
+            is_ip6=0):
+        """Set S-NAT virtual fragmentation reassembly
+
+        :param timeout: reassembly timeout (Default 2sec)
+        :param max_reass: maximum concurrent reassemblies (Default 1024)
+        :param max_frag: maximum fragmets per reassembly (Default 5)
+        :param drop_frag: if 0 translate fragments, otherwise drop fragments
+        :param is_ip6: 1 if IPv6, 0 if IPv4
+        """
+        return self.api(
+            self.papi.snat_set_reass,
+            {'timeout': timeout,
+             'max_reass': max_reass,
+             'max_frag': max_frag,
+             'drop_frag': drop_frag,
+             'is_ip6': is_ip6})
+
+    def snat_get_reass(self):
+        """Get S-NAT virtual fragmentation reassembly configuration
+
+        :return: S-NAT virtual fragmentation reassembly configuration
+        """
+        return self.api(self.papi.snat_get_reass, {})
+
+    def snat_reass_dump(self):
+        """Dump S-NAT virtual fragmentation reassemblies
+
+        :return: Dictionary of S-NAT virtual fragmentation reassemblies
+        """
+        return self.api(self.papi.snat_reass_dump, {})
+
     def snat_add_det_map(
             self,
             in_addr,

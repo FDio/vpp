@@ -483,6 +483,53 @@ nat64_db_st_entry_find (nat64_db_t * db, ip46_address_t * l_addr,
   return ste;
 }
 
+u32
+nat64_db_st_entry_get_index (nat64_db_t * db, nat64_db_st_entry_t * ste)
+{
+  nat64_db_st_entry_t *st;
+
+  switch (ste->proto)
+    {
+/* *INDENT-OFF* */
+#define _(N, i, n, s) \
+    case SNAT_PROTOCOL_##N: \
+      st = db->st._##n##_st; \
+      break;
+      foreach_snat_protocol
+#undef _
+/* *INDENT-ON* */
+    default:
+      clib_warning ("unknown protocol %u", ste->proto);
+      return (u32) ~ 0;
+    }
+
+  return ste - st;
+}
+
+nat64_db_st_entry_t *
+nat64_db_st_entry_by_index (nat64_db_t * db, snat_protocol_t proto,
+			    u32 ste_index)
+{
+  nat64_db_st_entry_t *st;
+
+  switch (proto)
+    {
+/* *INDENT-OFF* */
+#define _(N, i, n, s) \
+    case SNAT_PROTOCOL_##N: \
+      st = db->st._##n##_st; \
+      break;
+      foreach_snat_protocol
+#undef _
+/* *INDENT-ON* */
+    default:
+      clib_warning ("unknown protocol %u", proto);
+      return 0;
+    }
+
+  return pool_elt_at_index (st, ste_index);
+}
+
 void
 nad64_db_st_free_expired (nat64_db_t * db, u32 now)
 {

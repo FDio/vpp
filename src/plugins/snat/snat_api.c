@@ -21,6 +21,7 @@
 #include <snat/snat.h>
 #include <snat/snat_det.h>
 #include <snat/nat64.h>
+#include <snat/snat_reass.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
@@ -897,6 +898,146 @@ static void *vl_api_snat_user_session_dump_t_print
   s = format (s, "ip_address %U vrf_id %d\n",
 	      format_ip4_address, mp->ip_address,
 	      clib_net_to_host_u32 (mp->vrf_id));
+
+  FINISH;
+}
+
+static void
+vl_api_snat_set_reass_t_handler (vl_api_snat_set_reass_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_snat_set_reass_reply_t *rmp;
+  int rv = 0;
+
+  rv =
+    snat_reass_set (ntohl (mp->timeout), ntohs (mp->max_reass), mp->max_frag,
+		    mp->drop_frag, mp->is_ip6);
+
+  REPLY_MACRO (VL_API_SNAT_SET_REASS_REPLY);
+}
+
+static void *
+vl_api_snat_set_reass_t_print (vl_api_snat_set_reass_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_set_reass ");
+  s = format (s, "timeout %d max_reass %d max_frag %d drop_frag %d is_ip6 %d",
+	      clib_host_to_net_u32 (mp->timeout),
+	      clib_host_to_net_u16 (mp->max_reass),
+	      mp->max_frag, mp->drop_frag, mp->is_ip6);
+
+  FINISH;
+}
+
+static void
+vl_api_snat_get_reass_t_handler (vl_api_snat_get_reass_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_snat_get_reass_reply_t *rmp;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_SNAT_GET_REASS_REPLY,
+  ({
+    rmp->ip4_timeout = htonl (snat_reass_get_timeout(0));
+    rmp->ip4_max_reass = htons (snat_reass_get_max_reass(0));
+    rmp->ip4_max_frag = snat_reass_get_max_frag(0);
+    rmp->ip4_drop_frag = snat_reass_is_drop_frag(0);
+    rmp->ip6_timeout = htonl (snat_reass_get_timeout(1));
+    rmp->ip6_max_reass = htons (snat_reass_get_max_reass(1));
+    rmp->ip6_max_frag = snat_reass_get_max_frag(1);
+    rmp->ip6_drop_frag = snat_reass_is_drop_frag(1);
+  }))
+  /* *INDENT-ON* */
+}
+
+static void *
+vl_api_snat_get_reass_t_print (vl_api_snat_get_reass_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_get_reass");
+
+  FINISH;
+}
+
+typedef struct snat_api_walk_ctx_t_
+{
+  unix_shared_memory_queue_t *q;
+  u32 context;
+} snat_api_walk_ctx_t;
+
+static int
+snat_ip4_reass_walk_api (snat_reass_ip4_t * reass, void *arg)
+{
+  vl_api_snat_reass_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+  snat_api_walk_ctx_t *ctx = arg;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_REASS_DETAILS + sm->msg_id_base);
+  rmp->context = ctx->context;
+  clib_memcpy (rmp->src_addr, &(reass->key.src), 4);
+  clib_memcpy (rmp->dst_addr, &(reass->key.dst), 4);
+  rmp->proto = reass->key.proto;
+  rmp->frag_id = ntohl (reass->key.frag_id);
+  rmp->frag_n = reass->frag_n;
+  rmp->is_ip4 = 1;
+
+  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+
+  return 0;
+}
+
+static int
+snat_ip6_reass_walk_api (snat_reass_ip6_t * reass, void *arg)
+{
+  vl_api_snat_reass_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+  snat_api_walk_ctx_t *ctx = arg;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SNAT_REASS_DETAILS + sm->msg_id_base);
+  rmp->context = ctx->context;
+  clib_memcpy (rmp->src_addr, &(reass->key.src), 16);
+  clib_memcpy (rmp->dst_addr, &(reass->key.dst), 16);
+  rmp->proto = reass->key.proto;
+  rmp->frag_id = ntohl (reass->key.frag_id);
+  rmp->frag_n = reass->frag_n;
+  rmp->is_ip4 = 0;
+
+  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+
+  return 0;
+}
+
+static void
+vl_api_snat_reass_dump_t_handler (vl_api_snat_reass_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  snat_api_walk_ctx_t ctx = {
+    .q = q,
+    .context = mp->context,
+  };
+
+  snat_ip4_reass_walk (snat_ip4_reass_walk_api, &ctx);
+  snat_ip6_reass_walk (snat_ip6_reass_walk_api, &ctx);
+}
+
+static void *
+vl_api_snat_reass_dump_t_print (vl_api_snat_reass_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: snat_reass_dump");
 
   FINISH;
 }
@@ -1880,6 +2021,9 @@ _(SNAT_INTERFACE_ADD_DEL_OUTPUT_FEATURE,                                \
   snat_interface_add_del_output_feature)                                \
 _(SNAT_INTERFACE_OUTPUT_FEATURE_DUMP,                                   \
   snat_interface_output_feature_dump)                                   \
+_(SNAT_SET_REASS, snat_set_reass)                                       \
+_(SNAT_GET_REASS, snat_get_reass)                                       \
+_(SNAT_REASS_DUMP, snat_reass_dump)                                     \
 _(SNAT_ADD_DET_MAP, snat_add_det_map)                                   \
 _(SNAT_DET_FORWARD, snat_det_forward)                                   \
 _(SNAT_DET_REVERSE, snat_det_reverse)                                   \
