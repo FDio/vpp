@@ -156,15 +156,15 @@ typedef CLIB_PACKED(struct {
   f64 last_heard;               /* 44-51 */
 
   u64 total_bytes;              /* 52-59 */
-  
+
   u32 total_pkts;               /* 60-63 */
 
   /* Outside address */
   u32 outside_address_index;    /* 64-67 */
 
-  /* External host address */
+  /* External host address and port */
   ip4_address_t ext_host_addr;  /* 68-71 */
-
+  u16 ext_host_port;            /* 72-73 */
 }) snat_session_t;
 
 
@@ -536,6 +536,32 @@ is_interface_addr(snat_main_t *sm, vlib_node_runtime_t *node, u32 sw_if_index0,
     return 1;
   else
     return 0;
+}
+
+static_always_inline void
+snat_send_all_to_node(vlib_main_t *vm, u32 *bi_vector,
+                      vlib_node_runtime_t *node, vlib_error_t *error, u32 next)
+{
+  u32 n_left_from, *from, next_index, *to_next, n_left_to_next;
+
+  from = bi_vector;
+  n_left_from = vec_len(bi_vector);
+  next_index = node->cached_next_index;
+  while (n_left_from > 0) {
+    vlib_get_next_frame(vm, node, next_index, to_next, n_left_to_next);
+    while (n_left_from > 0 && n_left_to_next > 0) {
+      u32 bi0 = to_next[0] = from[0];
+      from += 1;
+      n_left_from -= 1;
+      to_next += 1;
+      n_left_to_next -= 1;
+      vlib_buffer_t *p0 = vlib_get_buffer(vm, bi0);
+      p0->error = *error;
+      vlib_validate_buffer_enqueue_x1(vm, node, next_index, to_next,
+                                      n_left_to_next, bi0, next);
+    }
+    vlib_put_next_frame(vm, node, next_index, n_left_to_next);
+  }
 }
 
 #endif /* __included_snat_h__ */
