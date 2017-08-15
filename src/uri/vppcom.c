@@ -783,9 +783,7 @@ vppcom_send_connect_sock (session_t * session, u32 session_index)
 
   cmp->vrf = session->vrf;
   cmp->is_ip4 = session->is_ip4;
-  clib_memcpy (cmp->ip, session->ip, (session->is_ip4 ?
-				      sizeof (ip4_address_t) :
-				      sizeof (ip6_address_t)));
+  clib_memcpy (cmp->ip, session->ip, sizeof (cmp->ip));
   cmp->port = session->port;
   cmp->proto = session->proto;
   clib_memcpy (cmp->options, session->options, sizeof (cmp->options));
@@ -999,9 +997,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->is_cut_thru = 0;
   session->port = ntohs (mp->port);
   session->is_ip4 = mp->is_ip4;
-  clib_memcpy (session->ip, mp->ip, (mp->is_ip4 ?
-				     sizeof (ip4_address_t) :
-				     sizeof (ip6_address_t)));
+  clib_memcpy (session->ip, mp->ip, sizeof (session->ip));
   clib_spinlock_unlock (&vcm->sessions_lockp);
 
   /* Add it to lookup table */
@@ -1130,9 +1126,8 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
     ssvm_pop_heap (oldheap);
     ssvm_unlock_non_recursive (sh);
   }
-  clib_memcpy (session->ip, mp->ip, (mp->is_ip4 ?
-				     sizeof (ip4_address_t) :
-				     sizeof (ip6_address_t)));
+  clib_memcpy (session->ip, mp->ip, sizeof (session->ip));
+
   session->state = STATE_ACCEPT;
   if (VPPCOM_DEBUG > 1)
     clib_warning ("[%d] Connected cut-thru to client: sid %d",
@@ -1181,9 +1176,7 @@ vppcom_send_bind_sock (session_t * session)
   bmp->context = htonl (0xfeedface);
   bmp->vrf = session->vrf;
   bmp->is_ip4 = session->is_ip4;
-  clib_memcpy (bmp->ip, session->ip, (session->is_ip4 ?
-				      sizeof (ip4_address_t) :
-				      sizeof (ip6_address_t)));
+  clib_memcpy (bmp->ip, session->ip, sizeof (bmp->ip));
   bmp->port = session->port;
   bmp->proto = session->proto;
   clib_memcpy (bmp->options, session->options, sizeof (bmp->options));
@@ -1906,9 +1899,7 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
   session->vrf = ep->vrf;
   session->is_ip4 = ep->is_ip4;
   memset (session->ip, 0, sizeof (*session->ip));
-  clib_memcpy (session->ip, ep->ip, (ep->is_ip4 ?
-				     sizeof (ip4_address_t) :
-				     sizeof (ip6_address_t)));
+  clib_memcpy (session->ip, ep->ip, sizeof (session->ip));
   session->port = ep->port;
 
   clib_spinlock_unlock (&vcm->sessions_lockp);
@@ -2039,9 +2030,7 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
   ep->is_ip4 = session->is_ip4;
   ep->port = session->port;
   memset (ep->ip, 0, sizeof (ip6_address_t));
-  clib_memcpy (ep->ip, session->ip, (session->is_ip4 ?
-				     sizeof (ip4_address_t) :
-				     sizeof (ip6_address_t)));
+  clib_memcpy (ep->ip, session->ip, sizeof (ip6_address_t));
   session->state = STATE_LISTEN;
   clib_spinlock_unlock (&vcm->sessions_lockp);
   return (int) client_session_index;
