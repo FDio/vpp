@@ -5934,7 +5934,7 @@ fib_test_pref (void)
      */
     #define N_PFXS 64
     fib_prefix_t pfx_r[N_PFXS];
-    uint32_t n_pfxs;
+    unsigned int n_pfxs;
     for (n_pfxs = 0; n_pfxs < N_PFXS; n_pfxs++)
     {
         pfx_r[n_pfxs].fp_len = 32;
