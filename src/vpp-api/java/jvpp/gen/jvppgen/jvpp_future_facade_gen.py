@@ -59,11 +59,12 @@ public final class FutureJVpp${plugin_name}FacadeCallback implements $plugin_pac
 
     @Override
     @SuppressWarnings("unchecked")
-    public void onControlPingReply($base_package.$dto_package.ControlPingReply reply) {
+    public void onControlPingReply(final $base_package.$dto_package.ControlPingReply reply) {
         final java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>> completableFuture;
 
+        final int replyId = reply.context;
         synchronized(requests) {
-            completableFuture = (java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>>) requests.get(reply.context);
+            completableFuture = (java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>>) requests.get(replyId);
         }
 
         if(completableFuture != null) {
@@ -77,9 +78,8 @@ public final class FutureJVpp${plugin_name}FacadeCallback implements $plugin_pac
             } else {
                 completableFuture.complete(reply);
             }
-
             synchronized(requests) {
-                requests.remove(reply.context);
+                requests.remove(replyId);
             }
         }
     }
@@ -91,18 +91,18 @@ $methods
 jvpp_facade_callback_method_template = Template("""
     @Override
     @SuppressWarnings("unchecked")
-    public void on$callback_dto($plugin_package.$dto_package.$callback_dto reply) {
+    public void on$callback_dto(final $plugin_package.$dto_package.$callback_dto reply) {
         final java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>> completableFuture;
-
+        final int replyId = reply.context;
         synchronized(requests) {
-            completableFuture = (java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>>) requests.get(reply.context);
+            completableFuture = (java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>>) requests.get(replyId);
         }
 
         if(completableFuture != null) {
             completableFuture.complete(reply);
 
             synchronized(requests) {
-                requests.remove(reply.context);
+                requests.remove(replyId);
             }
         }
     }
@@ -118,11 +118,11 @@ jvpp_facade_callback_notification_method_template = Template("""
 jvpp_facade_details_callback_method_template = Template("""
     @Override
     @SuppressWarnings("unchecked")
-    public void on$callback_dto($plugin_package.$dto_package.$callback_dto reply) {
+    public void on$callback_dto(final $plugin_package.$dto_package.$callback_dto reply) {
         final $base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture<$plugin_package.$dto_package.$callback_dto_reply_dump> completableFuture;
-
+        final int replyId = reply.context;
         synchronized(requests) {
-            completableFuture = ($base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture<$plugin_package.$dto_package.$callback_dto_reply_dump>) requests.get(reply.context);
+            completableFuture = ($base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture<$plugin_package.$dto_package.$callback_dto_reply_dump>) requests.get(replyId);
         }
 
         if(completableFuture != null) {
