@@ -1383,7 +1383,7 @@ tcp_src_address (vlib_main_t * vm,
 	  v4set = 1;
 	}
       else if (unformat (input, "%U - %U", unformat_ip6_address, &v6start,
-			 unformat_ip4_address, &v6end))
+			 unformat_ip6_address, &v6end))
 	v6set = 1;
       else if (unformat (input, "%U", unformat_ip6_address, &v6start))
 	{
@@ -1413,7 +1413,28 @@ tcp_src_address (vlib_main_t * vm,
     }
   if (v6set)
     {
-      clib_warning ("v6 src address list unimplemented...");
+      while (1)
+	{
+          int i;
+          ip6_address_t v6tmp;
+	  vec_add1 (tm->ip6_src_addresses, v6start);
+          if (!memcmp (&v6start, &v6end, sizeof (v6start)))
+            break;
+          v6tmp = v6start;
+          /*
+           * Bits of code like this make me wonder why
+           * a 64-bit address "wasn't big enough."
+           *
+           * Increment a v6 address. DGMS.
+           */ 
+          for (i = 15; i >= 0; i--)
+            {
+              v6tmp.as_u8[i] += 1;
+              if (v6tmp.as_u8[i] != 0)
+                break;
+            }
+          v6start = v6tmp;
+	}
     }
   return 0;
 }
