@@ -1004,7 +1004,17 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
                   if (FIB_ENTRY_FLAG_LOCAL & src_flags)
                     {
                       error0 = ETHERNET_ARP_ERROR_l3_src_address_is_local;
-                      goto drop2;
+                      /*
+                       * When VPP has an interface whose address is also
+                       * applied to a TAP interface on the host, then VPP's
+                       * TAP interface will be unnumbered  to the 'real'
+                       * interface and do proxy ARP from the host.
+                       * The curious aspect of this setup is that ARP requests
+                       * from the host will come from the VPP's own address.
+                       * So don't drop immediately here, instead go see if this
+                       * is a proxy ARP case.
+                       */
+                      goto drop1;
                     }
                   /* A Source must also be local to subnet of matching
                    * interface address. */
@@ -1151,9 +1161,11 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		}
 	    }
 
-	  /* We are going to reply to this request, so learn the sender */
-	  error0 = arp_learn (vnm, am, sw_if_index0,
-			      &arp0->ip4_over_ethernet[1]);
+	  /* We are going to reply to this request, so, in the absence of
+	     errors, learn the sender */
+	  if (!error0)
+	    error0 = arp_learn (vnm, am, sw_if_index0,
+				&arp0->ip4_over_ethernet[1]);
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
