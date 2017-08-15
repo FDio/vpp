@@ -225,15 +225,17 @@ application_alloc_segment_manager (application_t * app)
 {
   segment_manager_t *sm = 0;
 
-  if (app->first_segment_manager != (u32) ~ 0)
+  if (app->first_segment_manager != (u32) ~ 0
+      && app->first_segment_manager_in_use == 0)
     {
       sm = segment_manager_get (app->first_segment_manager);
+      app->first_segment_manager_in_use = 1;
       return sm;
     }
 
   sm = segment_manager_new ();
-  if (segment_manager_init (sm, &app->sm_properties, 0))
-    return 0;
+  sm->properties = &app->sm_properties;
+
   return sm;
 }
 
@@ -301,7 +303,11 @@ application_stop_listen (application_t * srv, u64 handle)
 
   sm = segment_manager_get (*indexp);
   segment_manager_del (sm);
-  srv->first_segment_manager = ~0;
+  if (srv->first_segment_manager == *indexp)
+    {
+      srv->first_segment_manager_in_use = 0;
+      srv->first_segment_manager = ~0;
+    }
   hash_unset (srv->listeners_table, handle);
   listen_session_del (listener);
 

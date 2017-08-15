@@ -63,9 +63,6 @@ typedef struct _stream_session_t
   /** To avoid n**2 "one event per frame" check */
   u8 enqueue_epoch;
 
-  /** Pad to a multiple of 8 octets */
-  u8 align_pad[4];
-
   /** svm segment index where fifos were allocated */
   u32 svm_segment_index;
 
@@ -81,10 +78,7 @@ typedef struct _stream_session_t
   /** Parent listener session if the result of an accept */
   u32 listener_index;
 
-  u32 opaque2;
-
-  /** Opaque, pad to a 64-octet boundary */
-  u64 opaque[1];
+    CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } stream_session_t;
 
 #endif /* SRC_VNET_SESSION_STREAM_SESSION_H_ */

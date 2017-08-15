@@ -14,33 +14,20 @@
 */
 
 #include <vnet/vnet.h>
-#include <vlibmemory/api.h>
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
-
-/* define message IDs */
-#include <vpp/api/vpe_msg_enum.h>
-
-/* define message structures */
-#define vl_typedefs
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_typedefs
-
-/* define generated endian-swappers */
-#define vl_endianfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_endianfun
-
-/* instantiate all the print functions we know about */
-#define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
-#define vl_printfun
-#include <vpp/api/vpe_all_api_h.h>
-#undef vl_printfun
 
 typedef enum
 {
   EVENT_WAKEUP = 1,
 } http_process_event_t;
+
+typedef struct
+{
+  u64 session_handle;
+  u64 node_index;
+  u8 *data;
+} builtin_http_server_args;
 
 typedef struct
 {
@@ -68,26 +55,25 @@ typedef struct
 http_server_main_t http_server_main;
 
 static void
-free_http_process (stream_session_t * s)
+free_http_process (builtin_http_server_args * args)
 {
   vlib_node_runtime_t *rt;
   vlib_main_t *vm = &vlib_global_main;
   http_server_main_t *hsm = &http_server_main;
   vlib_node_t *n;
   u32 node_index;
-  stream_session_t **save_s;
+  builtin_http_server_args **save_args;
 
-  node_index = (u64) (s->opaque[0]);
+  node_index = args->node_index;
   ASSERT (node_index != 0);
 
   n = vlib_get_node (vm, node_index);
-  rt = vlib_node_get_runtime (vm, n->runtime_index);
-  save_s = (stream_session_t **) vlib_node_get_runtime (vm, n->runtime_index);
+  rt = vlib_node_get_runtime (vm, n->index);
+  save_args = vlib_node_get_runtime_data (vm, n->index);
 
-  /* Reset session saved node index */
-  s->opaque[0] = 0;
   /* Reset process session pointer */
-  *save_s = 0;
+  clib_mem_free (*save_args);
+  *save_args = 0;
 
   /* Turn off the process node */
   vlib_node_set_state (vm, rt->node_index, VLIB_NODE_STATE_DISABLED);
@@ -133,7 +119,7 @@ http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 }
 
 void
-send_data (stream_session_t * s, u8 * data)
+send_data (builtin_http_server_args * args, u8 * data)
 {
   session_fifo_event_t evt;
   u32 offset, bytes_to_send;
@@ -141,7 +127,10 @@ send_data (stream_session_t * s, u8 * data)
   http_server_main_t *hsm = &http_server_main;
   vlib_main_t *vm = hsm->vlib_main;
   f64 last_sent_timer = vlib_time_now (vm);
+  stream_session_t *s;
 
+  s = stream_session_get_from_handle (args->session_handle);
+  ASSERT (s);
   bytes_to_send = vec_len (data);
   offset = 0;
 
@@ -189,12 +178,12 @@ send_data (stream_session_t * s, u8 * data)
 }
 
 static void
-send_error (stream_session_t * s, char *str)
+send_error (builtin_http_server_args * args, char *str)
 {
   u8 *data;
 
   data = format (0, http_error_template, str);
-  send_data (s, data);
+  send_data (args, data);
   vec_free (data);
 }
 
@@ -204,21 +193,19 @@ http_cli_process (vlib_main_t * vm,
 {
   http_server_main_t *hsm = &http_server_main;
   u8 *request = 0, *reply = 0;
-  stream_session_t **save_s;
-  stream_session_t *s;
+  builtin_http_server_args **save_args;
+  builtin_http_server_args *args;
   unformat_input_t input;
   int i;
   u8 *http = 0, *html = 0;
 
-  save_s = vlib_node_get_runtime_data (hsm->vlib_main, rt->node_index);
-  s = *save_s;
+  save_args = vlib_node_get_runtime_data (hsm->vlib_main, rt->node_index);
+  args = *save_args;
 
-  request = (u8 *) (void *) (s->opaque[1]);
-  s->opaque[1] = 0;
-
+  request = (u8 *) (void *) (args->data);
   if (vec_len (request) < 7)
     {
-      send_error (s, "400 Bad Request");
+      send_error (args, "400 Bad Request");
       goto out;
     }
 
@@ -230,7 +217,7 @@ http_cli_process (vlib_main_t * vm,
 	goto found;
     }
 bad_request:
-  send_error (s, "400 Bad Request");
+  send_error (args, "400 Bad Request");
   goto out;
 
 found:
@@ -271,7 +258,7 @@ found:
   http = format (0, http_response, vec_len (html), html);
 
   /* Send it */
-  send_data (s, http);
+  send_data (args, http);
 
 out:
   /* Cleanup */
@@ -280,26 +267,24 @@ out:
   vec_free (html);
   vec_free (http);
 
-  free_http_process (s);
+  free_http_process (args);
   return (0);
 }
 
 static void
-alloc_http_process (stream_session_t * s)
+alloc_http_process (builtin_http_server_args * args)
 {
   char *name;
   vlib_node_t *n;
   http_server_main_t *hsm = &http_server_main;
   vlib_main_t *vm = hsm->vlib_main;
   uword l = vec_len (hsm->free_http_cli_process_node_indices);
-  stream_session_t **save_s;
+  builtin_http_server_args **save_args;
 
   if (vec_len (hsm->free_http_cli_process_node_indices) > 0)
     {
       n = vlib_get_node (vm, hsm->free_http_cli_process_node_indices[l - 1]);
-
       vlib_node_set_state (vm, n->index, VLIB_NODE_STATE_POLLING);
-
       _vec_len (hsm->free_http_cli_process_node_indices) = l - 1;
     }
   else
@@ -312,7 +297,6 @@ alloc_http_process (stream_session_t * s)
       };
 
       name = (char *) format (0, "http-cli-%d", l);
-
       r.name = name;
       vlib_register_node (vm, &r);
       vec_free (name);
@@ -320,14 +304,64 @@ alloc_http_process (stream_session_t * s)
       n = vlib_get_node (vm, r.index);
     }
 
-  /* Save the node index in the stream_session_t. It won't be zero. */
-  s->opaque[0] = (u64) n->index;
+  /* Save the node index in the args. It won't be zero. */
+  args->node_index = n->index;
 
-  /* Save the stream_session_t (pointer) in the node runtime */
-  save_s = vlib_node_get_runtime_data (vm, n->index);
-  *save_s = s;
+  /* Save the args (pointer) in the node runtime */
+  save_args = vlib_node_get_runtime_data (vm, n->index);
+  *save_args = args;
 
   vlib_start_process (vm, n->runtime_index);
+}
+
+static void
+alloc_http_process_callback (void *cb_args)
+{
+  alloc_http_process ((builtin_http_server_args *) cb_args);
+}
+
+static int
+http_server_rx_callback (stream_session_t * s)
+{
+  u32 max_dequeue;
+  int actual_transfer;
+  http_server_main_t *hsm = &http_server_main;
+  svm_fifo_t *rx_fifo;
+  builtin_http_server_args *args;
+
+  rx_fifo = s->server_rx_fifo;
+  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
+  svm_fifo_unset_event (rx_fifo);
+  if (PREDICT_FALSE (max_dequeue == 0))
+    return 0;
+
+  vec_validate (hsm->rx_buf, max_dequeue - 1);
+  _vec_len (hsm->rx_buf) = max_dequeue;
+
+  actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, max_dequeue,
+					     hsm->rx_buf);
+  ASSERT (actual_transfer > 0);
+  _vec_len (hsm->rx_buf) = actual_transfer;
+
+  /* send the command to a new/recycled vlib process */
+  args = clib_mem_alloc (sizeof (*args));
+  args->data = vec_dup (hsm->rx_buf);
+  args->session_handle = stream_session_handle (s);
+
+  /* Send an RPC request via the thread-0 input node */
+  if (vlib_get_thread_index () != 0)
+    {
+      session_fifo_event_t evt;
+      evt.rpc_args.fp = alloc_http_process_callback;
+      evt.rpc_args.arg = args;
+      evt.event_type = FIFO_EVENT_RPC;
+      unix_shared_memory_queue_add
+	(session_manager_get_vpp_event_queue (0 /* main thread */ ),
+	 (u8 *) & evt, 0 /* do wait for mutex */ );
+    }
+  else
+    alloc_http_process (args);
+  return 0;
 }
 
 static int
@@ -361,7 +395,6 @@ builtin_session_reset_callback (stream_session_t * s)
   stream_session_cleanup (s);
 }
 
-
 static int
 builtin_session_connected_callback (u32 app_index, u32 api_context,
 				    stream_session_t * s, u8 is_fail)
@@ -385,58 +418,6 @@ builtin_redirect_connect_callback (u32 client_index, void *mp)
   return -1;
 }
 
-static void
-alloc_http_process_callback (void *s_arg)
-{
-  stream_session_t *s = (stream_session_t *) s_arg;
-  alloc_http_process (s);
-}
-
-static int
-http_server_rx_callback (stream_session_t * s)
-{
-  u32 max_dequeue;
-  int actual_transfer;
-  http_server_main_t *hsm = &http_server_main;
-  svm_fifo_t *rx_fifo;
-
-  rx_fifo = s->server_rx_fifo;
-
-  max_dequeue = svm_fifo_max_dequeue (rx_fifo);
-
-  svm_fifo_unset_event (rx_fifo);
-
-  if (PREDICT_FALSE (max_dequeue == 0))
-    return 0;
-
-  vec_validate (hsm->rx_buf, max_dequeue - 1);
-  _vec_len (hsm->rx_buf) = max_dequeue;
-
-  actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, max_dequeue,
-					     hsm->rx_buf);
-  ASSERT (actual_transfer > 0);
-
-  _vec_len (hsm->rx_buf) = actual_transfer;
-
-  /* send the command to a new/recycled vlib process */
-  s->opaque[1] = (u64) vec_dup (hsm->rx_buf);
-
-  /* Send an RPC request via the thread-0 input node */
-  if (vlib_get_thread_index () != 0)
-    {
-      session_fifo_event_t evt;
-      evt.rpc_args.fp = alloc_http_process_callback;
-      evt.rpc_args.arg = s;
-      evt.event_type = FIFO_EVENT_RPC;
-      unix_shared_memory_queue_add
-	(session_manager_get_vpp_event_queue (0 /* main thread */ ),
-	 (u8 *) & evt, 0 /* do wait for mutex */ );
-    }
-  else
-    alloc_http_process (s);
-  return 0;
-}
-
 static session_cb_vft_t builtin_session_cb_vft = {
   .session_accept_callback = builtin_session_accept_callback,
   .session_disconnect_callback = builtin_session_disconnect_callback,
@@ -452,46 +433,13 @@ static int
 create_api_loopback (vlib_main_t * vm)
 {
   http_server_main_t *hsm = &http_server_main;
-  vl_api_memclnt_create_t _m, *mp = &_m;
-  extern void vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t *);
   api_main_t *am = &api_main;
   vl_shmem_hdr_t *shmem_hdr;
-  uword *event_data = 0, event_type;
-  int resolved = 0;
-
-  /*
-   * Create a "loopback" API client connection
-   * Don't do things like this unless you know what you're doing...
-   */
 
   shmem_hdr = am->shmem_hdr;
   hsm->vl_input_queue = shmem_hdr->vl_input_queue;
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = VL_API_MEMCLNT_CREATE;
-  mp->context = 0xFEEDFACE;
-  mp->input_queue = (u64) hsm->vl_input_queue;
-  strncpy ((char *) mp->name, "tcp_http_server", sizeof (mp->name) - 1);
-
-  vl_api_memclnt_create_t_handler (mp);
-
-  /* Wait for reply */
-  hsm->node_index = vlib_get_current_process (vm)->node_runtime.node_index;
-  vlib_process_wait_for_event_or_clock (vm, 1.0);
-  event_type = vlib_process_get_events (vm, &event_data);
-  switch (event_type)
-    {
-    case 1:
-      resolved = 1;
-      break;
-    case ~0:
-      /* timed out */
-      break;
-    default:
-      clib_warning ("unknown event_type %d", event_type);
-    }
-  if (!resolved)
-    return -1;
-
+  hsm->my_client_index =
+    vl_api_memclnt_create_internal ("tcp_test_client", hsm->vl_input_queue);
   return 0;
 }
 
@@ -544,11 +492,9 @@ server_create (vlib_main_t * vm)
   u32 num_threads;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
 
-  if (hsm->my_client_index == (u32) ~ 0)
-    {
-      if (create_api_loopback (vm))
-	return -1;
-    }
+  ASSERT (hsm->my_client_index == (u32) ~ 0);
+  if (create_api_loopback (vm))
+    return -1;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
   vec_validate (http_server_main.vpp_queue, num_threads - 1);
@@ -566,52 +512,16 @@ server_create (vlib_main_t * vm)
   return 0;
 }
 
-/* Get our api client index */
-static void
-vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  http_server_main_t *hsm = &http_server_main;
-  hsm->my_client_index = mp->index;
-  vlib_process_signal_event (vm, hsm->node_index, 1 /* evt */ ,
-			     0 /* data */ );
-}
-
-#define foreach_tcp_http_server_api_msg      		\
-_(MEMCLNT_CREATE_REPLY, memclnt_create_reply)   		\
-
-static clib_error_t *
-tcp_http_server_api_hookup (vlib_main_t * vm)
-{
-  vl_msg_api_msg_config_t _c, *c = &_c;
-
-  /* Hook up client-side static APIs to our handlers */
-#define _(N,n) do {                                             \
-    c->id = VL_API_##N;                                         \
-    c->name = #n;                                               \
-    c->handler = vl_api_##n##_t_handler;                        \
-    c->cleanup = vl_noop_handler;                               \
-    c->endian = vl_api_##n##_t_endian;                          \
-    c->print = vl_api_##n##_t_print;                            \
-    c->size = sizeof(vl_api_##n##_t);                           \
-    c->traced = 1; /* trace, so these msgs print */             \
-    c->replay = 0; /* don't replay client create/delete msgs */ \
-    c->message_bounce = 0; /* don't bounce this message */	\
-    vl_msg_api_config(c);} while (0);
-
-  foreach_tcp_http_server_api_msg;
-#undef _
-
-  return 0;
-}
-
 static clib_error_t *
 server_create_command_fn (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
+  http_server_main_t *hsm = &http_server_main;
   int rv;
 
-  tcp_http_server_api_hookup (vm);
+  if (hsm->my_client_index != (u32) ~ 0)
+    return clib_error_return (0, "test http server is already running");
+
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
   rv = server_create (vm);
   switch (rv)
