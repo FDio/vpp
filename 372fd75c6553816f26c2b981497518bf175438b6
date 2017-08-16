@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_ff6eb895",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 741,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-08-16T12:49:43Z",
+      "side": 1,
+      "message": "ICMP/ICMPv6\n\nor\n\nboth no matter if 1 or 58 is given\n\n?",
+      "range": {
+        "startLine": 741,
+        "startChar": 40,
+        "endLine": 741,
+        "endChar": 55
+      },
+      "revId": "372fd75c6553816f26c2b981497518bf175438b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_1f72b47c",
+        "filename": "src/plugins/snat/snat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 823,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-08-16T12:49:43Z",
+      "side": 1,
+      "message": "could be removed",
+      "range": {
+        "startLine": 823,
+        "startChar": 4,
+        "endLine": 823,
+        "endChar": 48
+      },
+      "revId": "372fd75c6553816f26c2b981497518bf175438b6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
