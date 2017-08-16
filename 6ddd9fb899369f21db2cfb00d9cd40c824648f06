@@ -22,6 +22,30 @@
       "revId": "6ddd9fb899369f21db2cfb00d9cd40c824648f06",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_3a257eab",
+        "filename": "test/scripts/compress_failed.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-16T22:02:59Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a4b7175_5f3b8ceb",
+      "range": {
+        "startLine": 12,
+        "startChar": 10,
+        "endLine": 12,
+        "endChar": 11
+      },
+      "revId": "6ddd9fb899369f21db2cfb00d9cd40c824648f06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
