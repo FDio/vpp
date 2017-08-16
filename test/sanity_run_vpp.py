@@ -9,7 +9,7 @@ from framework import VppTestCase, KeepAliveReporter
 
 class SanityTestCase(VppTestCase):
     """ Dummy test case used to check if VPP is able to start """
-    pass
+    extra_vpp_config = []
 
 if __name__ == '__main__':
     rc = 0
