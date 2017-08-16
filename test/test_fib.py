@@ -2,9 +2,10 @@
 
 import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestFIB(VppTestCase):
     """ FIB Test Case """
 

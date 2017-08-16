@@ -12,7 +12,8 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario,\
+        running_extended_tests
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import L2_VTR_OP
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
