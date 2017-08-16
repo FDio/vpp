@@ -198,6 +198,8 @@ help:
 	@echo " V=[0|1|2]            - set test verbosity level"
 	@echo " FAILFAST=[0|1]       - fail fast if 1, complete all tests if 0"
 	@echo " TIMEOUT=<timeout>    - fail test suite if any single test takes longer than <timeout> to finish"
+	@echo " SINGLE_THREAD=[0|1]  - run tests against single-thread VPP (default: 1)"
+	@echo " MULTI_WORKER=[0|1]   - run tests against multi-worker VPP (default: 1)"
 	@echo " DEBUG=<type>         - set VPP debugging kind"
 	@echo "    DEBUG=core        - detect coredump and load it in gdb on crash"
 	@echo "    DEBUG=gdb         - allow easy debugging by printing VPP PID "

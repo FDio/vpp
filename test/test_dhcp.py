@@ -2,22 +2,21 @@
 
 import unittest
 import socket
-import struct
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route
 from util import mk_ll_addr
 
-from scapy.layers.l2 import Ether, getmacbyip, ARP
-from scapy.layers.inet import IP, UDP, ICMP
-from scapy.layers.inet6 import IPv6, in6_getnsmac, in6_mactoifaceid
+from scapy.layers.l2 import Ether, ARP
+from scapy.layers.inet import IP, UDP
+from scapy.layers.inet6 import IPv6, in6_getnsmac
 from scapy.layers.dhcp import DHCP, BOOTP, DHCPTypes
-from scapy.layers.dhcp6 import DHCP6, DHCP6_Solicit, DHCP6_RelayForward, \
+from scapy.layers.dhcp6 import DHCP6_Solicit, DHCP6_RelayForward, \
     DHCP6_RelayReply, DHCP6_Advertise, DHCP6OptRelayMsg, DHCP6OptIfaceId, \
     DHCP6OptStatusCode, DHCP6OptVSS, DHCP6OptClientLinkLayerAddr, DHCP6_Request
 from socket import AF_INET, AF_INET6
-from scapy.utils import inet_pton, inet_ntop
+from scapy.utils import inet_pton
 from scapy.utils6 import in6_ptop
 
 DHCP4_CLIENT_PORT = 68
@@ -26,6 +25,7 @@ DHCP6_CLIENT_PORT = 547
 DHCP6_SERVER_PORT = 546
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestDHCP(VppTestCase):
     """ DHCP Test Case """
 
