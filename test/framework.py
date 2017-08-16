@@ -10,6 +10,7 @@ import tempfile
 import time
 import resource
 import faulthandler
+from multiprocessing import cpu_count
 from collections import deque
 from threading import Thread, Event
 from inspect import getdoc, isclass
@@ -84,12 +85,18 @@ def pump_output(testclass):
 
 
 def running_extended_tests():
-    try:
-        s = os.getenv("EXTENDED_TESTS")
-        return True if s.lower() in ("y", "yes", "1") else False
-    except:
-        return False
-    return False
+    s = os.getenv("EXTENDED_TESTS", "no")
+    return True if s.lower() in ("y", "yes", "1") else False
+
+
+def running_single_thread_tests():
+    run = os.getenv("SINGLE_THREAD", "1")
+    return run.lower() in ("y", "yes", "1")
+
+
+def running_multiple_worker_tests():
+    run = os.getenv("MULTI_WORKER", "1")
+    return run.lower() in ("y", "yes", "1")
 
 
 class KeepAliveReporter(object):
@@ -170,21 +177,7 @@ class VppTestCase(unittest.TestCase):
             raise Exception("Unrecognized DEBUG option: '%s'" % d)
 
     @classmethod
-    def setUpConstants(cls):
-        """ Set-up the test case class based on environment variables """
-        try:
-            s = os.getenv("STEP")
-            cls.step = True if s.lower() in ("y", "yes", "1") else False
-        except:
-            cls.step = False
-        try:
-            d = os.getenv("DEBUG")
-        except:
-            d = None
-        cls.set_debug_flags(d)
-        cls.vpp_bin = os.getenv('VPP_TEST_BIN', "vpp")
-        cls.plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
-        cls.extern_plugin_path = os.getenv('EXTERN_PLUGINS')
+    def get_vpp_cmdline(cls):
         plugin_path = None
         if cls.plugin_path is not None:
             if cls.extern_plugin_path is not None:
@@ -198,22 +191,32 @@ class VppTestCase(unittest.TestCase):
         if cls.step or cls.debug_gdb or cls.debug_gdbserver:
             debug_cli = "cli-listen localhost:5002"
         coredump_size = None
-        try:
-            size = os.getenv("COREDUMP_SIZE")
-            if size is not None:
-                coredump_size = "coredump-size %s" % size
-        except:
-            pass
+        size = os.getenv("COREDUMP_SIZE")
+        if size:
+            coredump_size = "coredump-size %s" % size
         if coredump_size is None:
             coredump_size = "coredump-size unlimited"
-        cls.vpp_cmdline = [cls.vpp_bin, "unix",
-                           "{", "nodaemon", debug_cli, coredump_size, "}",
-                           "api-trace", "{", "on", "}",
-                           "api-segment", "{", "prefix", cls.shm_prefix, "}",
-                           "plugins", "{", "plugin", "dpdk_plugin.so", "{",
-                           "disable", "}", "}"]
+        cmdline = [cls.vpp_bin, "unix",
+                   "{", "nodaemon", debug_cli, coredump_size, "}",
+                   "api-trace", "{", "on", "}",
+                   "api-segment", "{", "prefix", cls.shm_prefix, "}",
+                   "plugins", "{", "plugin", "dpdk_plugin.so", "{",
+                   "disable", "}", "}"]
         if plugin_path is not None:
-            cls.vpp_cmdline.extend(["plugin_path", plugin_path])
+            cmdline.extend(["plugin_path", plugin_path])
+        return cmdline
+
+    @classmethod
+    def setUpConstants(cls):
+        """ Set-up the test case class based on environment variables """
+        s = os.getenv("STEP", "no")
+        cls.step = True if s.lower() in ("y", "yes", "1") else False
+        d = os.getenv("DEBUG")
+        cls.set_debug_flags(d)
+        cls.vpp_bin = os.getenv('VPP_TEST_BIN', "vpp")
+        cls.plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')
+        cls.extern_plugin_path = os.getenv('EXTERN_PLUGINS')
+        cls.vpp_cmdline = cls.get_vpp_cmdline()
         cls.logger.info("vpp_cmdline: %s" % cls.vpp_cmdline)
 
     @classmethod
@@ -703,6 +706,129 @@ class VppTestCase(unittest.TestCase):
                     remark, after - before, timeout))
 
 
+class VppScenario(VppTestCase):
+    @staticmethod
+    def get_scenario_desc():
+        return ""
+
+    @classmethod
+    def add_scenario_desc(cls, string):
+        return "%s [%s]" % (
+            string.rstrip(),
+            cls.get_scenario_desc())
+
+    def shortDescription(self):
+        sd = super(VppScenario, self).shortDescription()
+        if sd is None:
+            sd = str(self)
+        return self.add_scenario_desc(sd)
+
+
+class VppSingleThreadScenario(VppScenario):
+    @staticmethod
+    def get_suffix():
+        return "-SingleThread"
+
+    @staticmethod
+    def get_scenario_desc():
+        return "single-thread"
+
+    @classmethod
+    def resolve_skip_tests(cls, oldclass):
+        if not running_single_thread_tests():
+            decorator = unittest.skip(
+                "Not runing single-thread tests per env variable setting")
+            return decorator(cls)
+        return cls
+
+
+class VppMultiWorkerScenario(VppScenario):
+    @staticmethod
+    def get_suffix():
+        return "-MultipleWorkers"
+
+    @staticmethod
+    def get_scenario_desc():
+        return "multiple workers"
+
+    @classmethod
+    def get_vpp_cmdline(cls):
+        cmdline = super(VppMultiWorkerScenario, cls).get_vpp_cmdline()
+        count = cpu_count()
+        if count > 8:
+            count = 8
+        if count > 2:
+            extra = ["cpu", "{",
+                     "skip-cores", "1",
+                     "workers", "%d" % (count - 2),
+                     "}"]
+        else:
+            extra = ["cpu", "{",
+                     "workers", "%d" % count,
+                     "}"]
+        cmdline.extend(extra)
+        return cmdline
+
+    @classmethod
+    def resolve_skip_tests(cls, oldclass):
+        if not running_multiple_worker_tests():
+            decorator = unittest.skip(
+                "Not runing multiple-worker tests per env variable setting")
+            return decorator(cls)
+
+        if hasattr(oldclass, 'skip_multi_worker_functions'):
+            for f, reason in oldclass.skip_multi_worker_functions:
+                decorator = unittest.skip(f, reason)
+                cls.f = decorator(cls.f)
+        newclass = cls
+        if hasattr(oldclass, 'skip_multi_worker'):
+            decorator = unittest.skip(oldclass.skip_multi_worker)
+            newclass = decorator(cls)
+        return newclass
+
+    @staticmethod
+    def skip(reason):
+        def decorator(test_item):
+            if hasattr(test_item, 'im_class'):
+                if not hasattr(test_item.im_class,
+                               'skip_multi_worker_functions'):
+                    test_item.im_class.skip_multi_worker_functions = {}
+                test_item.im_class.skip_multi_worker_functions[test_item] =\
+                    reason
+            else:
+                test_item.skip_multi_worker = reason
+            return test_item
+        return decorator
+
+
+scenario_class_list = [VppSingleThreadScenario, VppMultiWorkerScenario]
+
+
+def get_scenario_classes(cls):
+    """
+    Get a list of new test classes equivalent to cls in different scenarios.
+    """
+    result = []
+    for newbase in scenario_class_list:
+        newclass = type("%s%s" % (cls.__name__, newbase.get_suffix()),
+                        (newbase, cls), {"__doc__": cls.__doc__})
+        newclass.__module__ = cls.__module__
+        newclass = newclass.resolve_skip_tests(cls)
+        result.append(newclass)
+    return result
+
+
+def compare_sans_scenario_suffix(filter_class, class_name):
+    """
+    Is the class name the same as filter class name ignoring added suffix?
+    """
+    for base in scenario_class_list:
+        suffix = base.get_suffix()
+        if class_name.endswith(suffix):
+            return filter_class == class_name[:-len(suffix)]
+    return False
+
+
 class TestCasePrinter(object):
     _shared_state = {}
 
@@ -713,8 +839,11 @@ class TestCasePrinter(object):
 
     def print_test_case_heading_if_first_time(self, case):
         if case.__class__ not in self._test_case_set:
+            desc = case.add_scenario_desc(
+                getdoc(case.__class__).splitlines()[0])
+            desc = desc[0:78]
             print(double_line_delim)
-            print(colorize(getdoc(case.__class__).splitlines()[0], YELLOW))
+            print(colorize(desc, YELLOW))
             print(double_line_delim)
             self._test_case_set.add(case.__class__)
 
@@ -790,6 +919,13 @@ class VppTestResult(unittest.TestResult):
                 failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
                 link_path = '%s/%s-FAILED' % (failed_dir,
                                               test.tempdir.split("/")[-1])
+
+                if os.path.islink(link_path):
+                    if logger:
+                        logger.debug(
+                            "symlink to the failed test already exists")
+                    return
+
                 if logger:
                     logger.debug("creating a link to the failed test")
                     logger.debug("os.symlink(%s, %s)" %
@@ -882,14 +1018,13 @@ class VppTestResult(unittest.TestResult):
 
         """
         unittest.TestResult.stopTest(self, test)
+        desc = self.getDescription(test)[0:72]
         if self.verbosity > 0:
             self.stream.writeln(single_line_delim)
-            self.stream.writeln("%-73s%s" % (self.getDescription(test),
-                                             self.result_string))
+            self.stream.writeln("%-73s%s" % (desc, self.result_string))
             self.stream.writeln(single_line_delim)
         else:
-            self.stream.writeln("%-73s%s" % (self.getDescription(test),
-                                             self.result_string))
+            self.stream.writeln("%-73s%s" % (desc, self.result_string))
 
     def printErrors(self):
         """
@@ -938,10 +1073,7 @@ class VppTestRunner(unittest.TextTestRunner):
     test_option = "TEST"
 
     def parse_test_option(self):
-        try:
-            f = os.getenv(self.test_option)
-        except:
-            f = None
+        f = os.getenv(self.test_option)
         filter_file_name = None
         filter_class_name = None
         filter_func_name = None
@@ -986,7 +1118,9 @@ class VppTestRunner(unittest.TextTestRunner):
                 if len(parts) == 3:
                     if filter_file and filter_file != parts[0]:
                         continue
-                    if filter_class and filter_class != parts[1]:
+                    if filter_class and \
+                            not compare_sans_scenario_suffix(filter_class,
+                                                             parts[1]):
                         continue
                     if filter_func and filter_func != parts[2]:
                         continue
@@ -1014,4 +1148,18 @@ class VppTestRunner(unittest.TextTestRunner):
             filtered.countTestCases(), test.countTestCases()))
         if not running_extended_tests():
             print("Not running extended tests (some tests will be skipped)")
+        if running_single_thread_tests():
+            if running_multiple_worker_tests():
+                print("Running tests against both single-thread "
+                      "and multiple-worker VPP")
+            else:
+                print("Running tests against single-thread VPP only, "
+                      "skipping run against multiple-worker VPP")
+        else:
+            if running_multiple_worker_tests():
+                print("Running tests against multiple-thread VPP only, "
+                      "skipping run against single-worker VPP")
+            else:
+                print("WARNING: Not running tests vs single-thread, "
+                      "nor multiple-worker VPP")
         return super(VppTestRunner, self).run(filtered)
