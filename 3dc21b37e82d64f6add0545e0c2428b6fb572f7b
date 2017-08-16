@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_24cfa7b2",
+        "filename": "test/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-16T08:37:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a4b7175_01f81d7b",
+      "range": {
+        "startLine": 3,
+        "startChar": 0,
+        "endLine": 3,
+        "endChar": 46
+      },
+      "revId": "3dc21b37e82d64f6add0545e0c2428b6fb572f7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_e1f4e188",
         "filename": "test/framework.py",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2017-08-15T17:24:10Z",
       "side": 1,
       "message": "The unit-test files will get archived along with the build logs in a directory with the same name as the symlink.  Therefore it would be better to append \"-FAILED\" to the symlink name so that it is obvious that these are the output of the failed unit tests.\n\nHere is an example of the build log directory:\n\nhttps://logs.fd.io/production/vex-yul-rot-jenkins-1/vpp-verify-master-ubuntu1604/6614/\n\nAlso, all of the files in the directory should be gzip\u0027d like the existing log files so that we\u0027re not pushing/storing uncompressed files to the log server.",
+      "range": {
+        "startLine": 805,
+        "startChar": 0,
+        "endLine": 812,
+        "endChar": 1
+      },
+      "revId": "3dc21b37e82d64f6add0545e0c2428b6fb572f7b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_c4bd7304",
+        "filename": "test/framework.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-08-16T08:37:12Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a4b7175_e1f4e188",
       "range": {
         "startLine": 805,
         "startChar": 0,
