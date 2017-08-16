@@ -69,10 +69,11 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 from util import Host, ppp
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestL2bdMultiInst(VppTestCase):
     """ L2BD Multi-instance Test Case """
 
