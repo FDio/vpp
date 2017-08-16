@@ -14,7 +14,7 @@ atexit() {
 			kill -9 $id
 		fi
 	done
-	exit $rv
+	exit ${rv}
 }
 
 trap "atexit;" SIGINT SIGTERM
@@ -30,9 +30,10 @@ then
 	$*
 else
 	$* &
-	wait
+	pid=$!
+	wait ${pid}
 fi
 
 rv=$?
 atexit
-exit $rv
+exit ${rv}
