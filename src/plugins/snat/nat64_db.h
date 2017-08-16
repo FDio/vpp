@@ -171,7 +171,12 @@ typedef int (*nat64_db_bib_walk_fn_t) (nat64_db_bib_entry_t * bibe,
  * @brief Walk NAT64 BIB.
  *
  * @param db NAT64 DB.
- * @param proto L4 protocol.
+ * @param proto BIB L4 protocol:
+ *  - 255 all BIBs
+ *  - 6 TCP BIB
+ *  - 17 UDP BIB
+ *  - 1/58 ICMP BIB
+ *  - otherwise "unknown" protocol BIB
  * @param fn The function to invoke on each entry visited.
  * @param ctx A context passed in the visit function.
  */
@@ -263,7 +268,12 @@ typedef int (*nat64_db_st_walk_fn_t) (nat64_db_st_entry_t * ste, void *ctx);
  * @brief Walk NAT64 session table.
  *
  * @param db NAT64 DB.
- * @param proto L4 protocol.
+ * @param proto L4 protocol:
+ *  - 255 all session tables
+ *  - 6 TCP session table
+ *  - 17 UDP session table
+ *  - 1/58 ICMP session table
+ *  - otherwise "unknown" protocol session table
  * @param fn The function to invoke on each entry visited.
  * @param ctx A context passed in the visit function.
  */

@@ -3642,14 +3642,8 @@ class TestNAT64(MethodHolder):
         """
         Return number of active NAT64 sessions.
         """
-        ses_num = 0
-        st = self.vapi.nat64_st_dump(IP_PROTOS.tcp)
-        ses_num += len(st)
-        st = self.vapi.nat64_st_dump(IP_PROTOS.udp)
-        ses_num += len(st)
-        st = self.vapi.nat64_st_dump(IP_PROTOS.icmp)
-        ses_num += len(st)
-        return ses_num
+        st = self.vapi.nat64_st_dump()
+        return len(st)
 
     def clear_nat64(self):
         """
@@ -3716,14 +3710,8 @@ class TestNAT64(MethodHolder):
             self.logger.info(self.vapi.cli("show nat64 pool"))
             self.logger.info(self.vapi.cli("show nat64 interfaces"))
             self.logger.info(self.vapi.cli("show nat64 prefix"))
-            self.logger.info(self.vapi.cli("show nat64 bib tcp"))
-            self.logger.info(self.vapi.cli("show nat64 bib udp"))
-            self.logger.info(self.vapi.cli("show nat64 bib icmp"))
-            self.logger.info(self.vapi.cli("show nat64 bib unknown"))
-            self.logger.info(self.vapi.cli("show nat64 session table tcp"))
-            self.logger.info(self.vapi.cli("show nat64 session table udp"))
-            self.logger.info(self.vapi.cli("show nat64 session table icmp"))
-            self.logger.info(self.vapi.cli("show nat64 session table unknown"))
+            self.logger.info(self.vapi.cli("show nat64 bib all"))
+            self.logger.info(self.vapi.cli("show nat64 session table all"))
             self.clear_nat64()
 
 if __name__ == '__main__':
