@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_5f3b8ceb",
+        "filename": "test/scripts/compress_failed.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-08-16T17:26:00Z",
+      "side": 1,
+      "message": "In order for the logs to be viewable in a web browser, it would be better to gzip each file in place and create a link to the vpp-unittest-* dir, rather than generating an archive which will need to be downloaded/extracted in order to view the logs.",
+      "range": {
+        "startLine": 12,
+        "startChar": 10,
+        "endLine": 12,
+        "endChar": 11
+      },
+      "revId": "6ddd9fb899369f21db2cfb00d9cd40c824648f06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
