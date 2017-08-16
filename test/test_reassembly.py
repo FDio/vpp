@@ -2,7 +2,7 @@
 import unittest
 from random import shuffle
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, GRE
@@ -17,6 +17,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
 test_packet_count = 257
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestIPv4Reassembly(VppTestCase):
     """ IPv4 Reassembly """
 
@@ -358,6 +359,7 @@ class TestIPv4Reassembly(VppTestCase):
         self.pg_if.assert_nothing_captured()
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestIPv6Reassembly(VppTestCase):
     """ IPv6 Reassembly """
 

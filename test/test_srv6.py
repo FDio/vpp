@@ -2,9 +2,8 @@
 
 import unittest
 import binascii
-from socket import AF_INET6
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
 from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
     SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
@@ -12,13 +11,12 @@ from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet6 import IPv6, UDP, IPv6ExtHdrSegmentRouting
-from scapy.layers.inet import IP, UDP
-
-from scapy.utils import inet_pton, inet_ntop
+from scapy.layers.inet import IP
 
 from util import ppp
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestSRv6(VppTestCase):
     """ SRv6 Test Case """
 
@@ -1491,19 +1489,15 @@ class TestSRv6(VppTestCase):
         # get first (outer) IPv6 header of rx'ed packet
         rx_ip = rx_pkt.getlayer(IPv6)
         rx_srh = None
-        rx_ip2 = None
         rx_srh2 = None
-        rx_ip3 = None
         rx_udp = rx_pkt[UDP]
 
         tx_ip = tx_pkt.getlayer(IPv6)
         tx_srh = None
-        tx_ip2 = None
         # some packets have been tx'ed with an SRH, some without it
         # get SRH if tx'ed packet has it
         if tx_pkt.haslayer(IPv6ExtHdrSegmentRouting):
             tx_srh = tx_pkt.getlayer(IPv6ExtHdrSegmentRouting)
-            tx_ip2 = tx_pkt.getlayer(IPv6, 2)
         tx_udp = tx_pkt[UDP]
 
         # expected segment-list (make copy of SR Policy segment list)
@@ -1512,9 +1506,6 @@ class TestSRv6(VppTestCase):
         seglist.append(tx_ip.dst)
         # reverse list to get order as in SRH
         tx_seglist = seglist[::-1]
-
-        # get source address of SR Policy
-        sr_policy_source = self.sr_policy.source
 
         # checks common to cases tx with and without SRH
         # rx'ed packet should have SRH and only one IPv6 header
@@ -1700,7 +1691,6 @@ class TestSRv6(VppTestCase):
         # get first (outer) IPv6 header of rx'ed packet
         rx_ip = rx_pkt.getlayer(IPv6)
 
-        tx_ip = tx_pkt.getlayer(IPv6)
         tx_ip2 = tx_pkt.getlayer(IPv6, 2)
 
         # verify if rx'ed packet has no SRH
@@ -1732,7 +1722,6 @@ class TestSRv6(VppTestCase):
         # get IPv4 header of rx'ed packet
         rx_ip = rx_pkt.getlayer(IP)
 
-        tx_ip = tx_pkt.getlayer(IPv6)
         tx_ip2 = tx_pkt.getlayer(IP)
 
         # verify if rx'ed packet has no SRH
@@ -1769,7 +1758,6 @@ class TestSRv6(VppTestCase):
         # get IPv4 header of rx'ed packet
         rx_eth = rx_pkt.getlayer(Ether)
 
-        tx_ip = tx_pkt.getlayer(IPv6)
         # we can't just get the 2nd Ether layer
         # get the Raw content and dissect it as Ether
         tx_eth1 = Ether(str(tx_pkt[Raw]))
@@ -2125,7 +2113,7 @@ class TestSRv6(VppTestCase):
                 compare_func(txed_packet, packet)
 
             except:
-                print packet.command()
+                print(packet.command())
                 self.logger.error(ppp("Unexpected or invalid packet:", packet))
                 raise
 
