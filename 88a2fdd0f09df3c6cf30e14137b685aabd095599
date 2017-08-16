@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_1ff8747b",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/test/Readme.txt",
+        "patchSetId": 13
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-08-16T14:46:21Z",
+      "side": 1,
+      "message": "This presumes that the tests are being run for the release version of vpp (i.e. vpp was built using \"make build-release\").\n\nIn order to test with the debug version of vpp, the correct directory is \"build-vpp_debug-native\".\n\nSome of the individual test README.txt files have the release version, others have the debug version.  I would recommend documenting both versions in all of the README.txt files.",
+      "range": {
+        "startLine": 5,
+        "startChar": 18,
+        "endLine": 5,
+        "endChar": 34
+      },
+      "revId": "88a2fdd0f09df3c6cf30e14137b685aabd095599",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_dff1bc96",
+        "filename": "test/jvpp_connection.py",
+        "patchSetId": 13
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-08-16T14:46:21Z",
+      "side": 1,
+      "message": "This is hard-coded for the release version of VPP.\n\nThe version of VPP to use should be configurable such that the test can be run against either the release or debug version of VPP.",
+      "range": {
+        "startLine": 10,
+        "startChar": 18,
+        "endLine": 10,
+        "endChar": 34
+      },
+      "revId": "88a2fdd0f09df3c6cf30e14137b685aabd095599",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
