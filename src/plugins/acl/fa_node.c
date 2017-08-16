@@ -1366,6 +1366,7 @@ acl_fa_worker_conn_cleaner_process(vlib_main_t * vm,
        pw->interrupt_is_unwanted = 0;
      }
    }
+   pw->interrupt_generation = am->fa_interrupt_generation;
    return 0;
 }
 
@@ -1409,7 +1410,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   am->fa_current_cleaner_timer_wait_interval = max_timer_wait_interval;
   am->fa_cleaner_node_index = acl_fa_session_cleaner_process_node.index;
-
+  am->fa_interrupt_generation = 1;
   while (1)
     {
       now = clib_cpu_time_now ();
@@ -1508,10 +1509,6 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    clib_warning("ACL_FA_CLEANER_DELETE_BY_SW_IF_INDEX bitmap: %U", format_bitmap_hex, clear_sw_if_index_bitmap);
 #endif
 	    vec_foreach(pw0, am->per_worker_data) {
-              if ((pw0 == am->per_worker_data) && (vec_len(vlib_mains) > 1)) {
-                /* thread 0 in multithreaded scenario is not used */
-                continue;
-              }
               CLIB_MEMORY_BARRIER ();
 	      while (pw0->clear_in_process) {
                 CLIB_MEMORY_BARRIER ();
@@ -1546,10 +1543,6 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 	    clib_warning("CLEANER mains len: %d per-worker len: %d", vec_len(vlib_mains), vec_len(am->per_worker_data));
 #endif
 	    vec_foreach(pw0, am->per_worker_data) {
-              if ((pw0 == am->per_worker_data) && (vec_len(vlib_mains) > 1)) {
-                /* thread 0 in multithreaded scenario is not used */
-                continue;
-              }
               CLIB_MEMORY_BARRIER ();
 	      while (pw0->clear_in_process) {
                 CLIB_MEMORY_BARRIER ();
@@ -1586,15 +1579,28 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       if (event_data)
 	_vec_len (event_data) = 0;
 
+      /*
+       * If the interrupts were not processed yet, ensure we wait a bit,
+       * but up to a point.
+       */
+      int need_more_wait = 0;
+      int max_wait_cycles = 100;
+      do {
+        need_more_wait = 0;
+        vec_foreach(pw0, am->per_worker_data) {
+          if (pw0->interrupt_generation != am->fa_interrupt_generation) {
+            need_more_wait = 1;
+          }
+        }
+        if (need_more_wait) {
+          vlib_process_suspend(vm, 0.0001);
+        }
+      } while (need_more_wait && (--max_wait_cycles > 0));
 
       int interrupts_needed = 0;
       int interrupts_unwanted = 0;
 
       vec_foreach(pw0, am->per_worker_data) {
-        if ((pw0 == am->per_worker_data) && (vec_len(vlib_mains) > 1)) {
-          /* thread 0 in multithreaded scenario is not used */
-          continue;
-        }
         if (pw0->interrupt_is_needed) {
           interrupts_needed++;
           /* the per-worker value is reset when sending the interrupt */
@@ -1615,6 +1621,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
           am->fa_current_cleaner_timer_wait_interval += cpu_cps * am->fa_cleaner_wait_time_increment;
       }
       am->fa_cleaner_cnt_event_cycles++;
+      am->fa_interrupt_generation++;
     }
   /* NOT REACHED */
   return 0;
