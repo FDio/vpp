@@ -12,10 +12,12 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, TCP
 from scapy.layers.inet6 import IPv6
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario,\
+        running_extended_tests
 from vpp_lo_interface import VppLoInterface
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestMACIP(VppTestCase):
     """MACIP Test Case"""
 

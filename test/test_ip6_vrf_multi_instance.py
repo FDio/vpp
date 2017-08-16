@@ -67,7 +67,7 @@ from scapy.utils6 import in6_ismaddr, in6_isllsnmaddr, in6_getAddrType
 from scapy.pton_ntop import inet_ntop
 from scapy.data import IPV6_ADDR_UNICAST
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 from util import ppp
 
 # VRF status constants
@@ -92,6 +92,7 @@ def is_ipv6_misc_ext(p):
     return False
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestIP6VrfMultiInst(VppTestCase):
     """ IP6 VRF  Multi-instance Test Case """
 

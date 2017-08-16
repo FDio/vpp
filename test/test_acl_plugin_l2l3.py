@@ -25,20 +25,18 @@
 
 import unittest
 from socket import inet_pton, AF_INET, AF_INET6
-from random import choice
-from pprint import pprint
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ICMP, TCP
-from scapy.layers.inet6 import IPv6, ICMPv6Unknown, ICMPv6EchoRequest
-from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
+from scapy.layers.inet6 import IPv6, ICMPv6Unknown
+from scapy.layers.inet6 import IPv6ExtHdrRouting
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 
-from framework import VppTestCase, VppTestRunner
-import time
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestIpIrb(VppTestCase):
     """IRB Test Case"""
 

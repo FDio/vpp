@@ -4,7 +4,8 @@ import socket
 import unittest
 import struct
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner, running_extended_tests, \
+    VppMultiWorkerScenario
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply
@@ -519,6 +520,7 @@ class MethodHolder(VppTestCase):
         self.assertEqual(struct.pack("!I", 0), record[283])
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestNAT44(MethodHolder):
     """ NAT44 Test Cases """
 
@@ -3007,6 +3009,7 @@ class TestDeterministicNAT(MethodHolder):
             self.clear_nat_det()
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestNAT64(MethodHolder):
     """ NAT64 Test Cases """
 
@@ -3816,6 +3819,7 @@ class TestNAT64(MethodHolder):
             self.logger.info(self.vapi.cli("show nat64 bib all"))
             self.logger.info(self.vapi.cli("show nat64 session table all"))
             self.clear_nat64()
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

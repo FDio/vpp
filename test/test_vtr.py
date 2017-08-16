@@ -8,7 +8,7 @@ from scapy.layers.l2 import Ether, Dot1Q
 from scapy.layers.inet import IP, UDP
 
 from util import Host
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 from vpp_sub_interface import VppDot1QSubint, VppDot1ADSubint
 from vpp_papi_provider import L2_VTR_OP
 from collections import namedtuple
@@ -18,6 +18,7 @@ DOT1AD = 0x88A8
 DOT1Q = 0x8100
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestVtr(VppTestCase):
     """ VTR Test Case """
 

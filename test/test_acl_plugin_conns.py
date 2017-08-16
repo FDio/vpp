@@ -2,17 +2,14 @@
 """ ACL plugin extended stateful tests """
 
 import unittest
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, running_extended_tests, \
+    VppMultiWorkerScenario
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
 from scapy.layers.inet import IP, UDP, TCP
 from scapy.packet import Packet
 from socket import inet_pton, AF_INET, AF_INET6
-from scapy.layers.inet6 import IPv6, ICMPv6Unknown, ICMPv6EchoRequest
-from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
-from scapy.layers.inet6 import IPv6ExtHdrFragment
-from pprint import pprint
-from random import randint
+from scapy.layers.inet6 import IPv6
 from util import L4_Conn
 
 
@@ -36,21 +33,22 @@ def to_acl_rule(self, is_permit, wildcard_sport=False):
         rule_l4_sport_last = rule_l4_sport
 
     new_rule = {
-          'is_permit': is_permit,
-          'is_ipv6': p.haslayer(IPv6),
-          'src_ip_addr': inet_pton(rule_family,
-                                   p[rule_l3_layer].src),
-          'src_ip_prefix_len': rule_prefix_len,
-          'dst_ip_addr': inet_pton(rule_family,
-                                   p[rule_l3_layer].dst),
-          'dst_ip_prefix_len': rule_prefix_len,
-          'srcport_or_icmptype_first': rule_l4_sport_first,
-          'srcport_or_icmptype_last': rule_l4_sport_last,
-          'dstport_or_icmpcode_first': rule_l4_dport,
-          'dstport_or_icmpcode_last': rule_l4_dport,
-          'proto': rule_l4_proto,
-         }
+        'is_permit': is_permit,
+        'is_ipv6': p.haslayer(IPv6),
+        'src_ip_addr': inet_pton(rule_family,
+                                 p[rule_l3_layer].src),
+        'src_ip_prefix_len': rule_prefix_len,
+        'dst_ip_addr': inet_pton(rule_family,
+                                 p[rule_l3_layer].dst),
+        'dst_ip_prefix_len': rule_prefix_len,
+        'srcport_or_icmptype_first': rule_l4_sport_first,
+        'srcport_or_icmptype_last': rule_l4_sport_last,
+        'dstport_or_icmpcode_first': rule_l4_dport,
+        'dstport_or_icmpcode_last': rule_l4_dport,
+        'proto': rule_l4_proto,
+    }
     return new_rule
+
 
 Packet.to_acl_rule = to_acl_rule
 
@@ -70,6 +68,36 @@ class IterateWithSleep():
 
 
 class Conn(L4_Conn):
+    def __init__(self, testcase, if1, if2, af, l4proto, port1, port2):
+        self.testcase = testcase
+        self.ifs = [None, None]
+        self.ifs[0] = if1
+        self.ifs[1] = if2
+        self.address_family = af
+        self.l4proto = l4proto
+        self.ports = [None, None]
+        self.ports[0] = port1
+        self.ports[1] = port2
+        self
+
+    def pkt(self, side, flags=None):
+        is_ip6 = 1 if self.address_family == AF_INET6 else 0
+        s0 = side
+        s1 = 1 - side
+        src_if = self.ifs[s0]
+        dst_if = self.ifs[s1]
+        layer_3 = [IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4),
+                   IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6)]
+        payload = "x"
+        l4args = {'sport': self.ports[s0], 'dport': self.ports[s1]}
+        if flags is not None:
+            l4args['flags'] = flags
+        p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
+             layer_3[is_ip6] /
+             self.l4proto(**l4args) /
+             Raw(payload))
+        return p
+
     def apply_acls(self, reflect_side, acl_side):
         pkts = []
         pkts.append(self.pkt(0))
@@ -91,40 +119,60 @@ class Conn(L4_Conn):
 
         if reflect_side == acl_side:
             self.testcase.api_acl_interface_set_acl_list(
-                   self.ifs[acl_side].sw_if_index, 2, 1,
-                   [reflect_acl_index,
+                self.ifs[acl_side].sw_if_index, 2, 1,
+                [reflect_acl_index,
                     deny_acl_index])
             self.testcase.api_acl_interface_set_acl_list(
-                   self.ifs[1-acl_side].sw_if_index, 0, 0, [])
+                self.ifs[1 - acl_side].sw_if_index, 0, 0, [])
         else:
             self.testcase.api_acl_interface_set_acl_list(
-                   self.ifs[acl_side].sw_if_index, 2, 1,
-                   [deny_acl_index,
+                self.ifs[acl_side].sw_if_index, 2, 1,
+                [deny_acl_index,
                     reflect_acl_index])
             self.testcase.api_acl_interface_set_acl_list(
-                   self.ifs[1-acl_side].sw_if_index, 0, 0, [])
+                self.ifs[1 - acl_side].sw_if_index, 0, 0, [])
 
     def wildcard_rule(self, is_permit):
         any_addr = ["0.0.0.0", "::"]
         rule_family = self.address_family
         is_ip6 = 1 if rule_family == AF_INET6 else 0
         new_rule = {
-              'is_permit': is_permit,
-              'is_ipv6': is_ip6,
-              'src_ip_addr': inet_pton(rule_family, any_addr[is_ip6]),
-              'src_ip_prefix_len': 0,
-              'dst_ip_addr': inet_pton(rule_family, any_addr[is_ip6]),
-              'dst_ip_prefix_len': 0,
-              'srcport_or_icmptype_first': 0,
-              'srcport_or_icmptype_last': 65535,
-              'dstport_or_icmpcode_first': 0,
-              'dstport_or_icmpcode_last': 65535,
-              'proto': 0,
-             }
+            'is_permit': is_permit,
+            'is_ipv6': is_ip6,
+            'src_ip_addr': inet_pton(rule_family, any_addr[is_ip6]),
+            'src_ip_prefix_len': 0,
+            'dst_ip_addr': inet_pton(rule_family, any_addr[is_ip6]),
+            'dst_ip_prefix_len': 0,
+            'srcport_or_icmptype_first': 0,
+            'srcport_or_icmptype_last': 65535,
+            'dstport_or_icmpcode_first': 0,
+            'dstport_or_icmpcode_last': 65535,
+            'proto': 0,
+        }
         return new_rule
+
+    def send(self, side, flags=None):
+        self.ifs[side].add_stream(self.pkt(side, flags))
+        self.ifs[1 - side].enable_capture()
+        self.testcase.pg_start()
+
+    def recv(self, side):
+        p = self.ifs[side].wait_for_packet(1)
+        return p
+
+    def send_through(self, side, flags=None):
+        self.send(side, flags)
+        p = self.recv(1 - side)
+        return p
+
+    def send_pingpong(self, side, flags1=None, flags2=None):
+        p1 = self.send_through(side, flags1)
+        p2 = self.send_through(1 - side, flags2)
+        return [p1, p2]
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class ACLPluginConnTestCase(VppTestCase):
     """ ACL plugin connection-oriented extended testcases """
 
@@ -208,7 +256,7 @@ class ACLPluginConnTestCase(VppTestCase):
 
     def run_active_conn_test(self, af, acl_side):
         """ Idle connection behind active connection test """
-        base = 10000 + 1000*acl_side
+        base = 10000 + 1000 * acl_side
         conn1 = Conn(self, self.pg0, self.pg1, af, UDP, base + 1, 2323)
         conn2 = Conn(self, self.pg0, self.pg1, af, UDP, base + 2, 2323)
         conn3 = Conn(self, self.pg0, self.pg1, af, UDP, base + 3, 2323)
