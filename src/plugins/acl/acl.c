@@ -1897,6 +1897,7 @@ acl_sw_interface_add_del (vnet_main_t * vnm, u32 sw_if_index, u32 is_add)
 VNET_SW_INTERFACE_ADD_DEL_FUNCTION (acl_sw_interface_add_del);
 
 
+extern void acl_fa_set_debug_busy_loop(int want);
 
 static clib_error_t *
 acl_set_aclplugin_fn (vlib_main_t * vm,
@@ -1924,6 +1925,11 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
   if (unformat (input, "l4-match-nonfirst-fragment %u", &val))
     {
       am->l4_match_nonfirst_fragment = (val != 0);
+      goto done;
+    }
+  if (unformat(input, "debug-busy-loop %u", &val))
+    {
+      acl_fa_set_debug_busy_loop(val);
       goto done;
     }
   if (unformat (input, "heap"))
@@ -2176,6 +2182,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
 	out0 = format(out0, "  interrupt is pending: %d\n", pw->interrupt_is_pending);
 	out0 = format(out0, "  interrupt is needed: %d\n", pw->interrupt_is_needed);
 	out0 = format(out0, "  interrupt is unwanted: %d\n", pw->interrupt_is_unwanted);
+	out0 = format(out0, "  interrupt generation: %d\n", pw->interrupt_generation);
       }
       out0 = format(out0, "\n\nConn cleaner thread counters:\n");
 #define _(cnt, desc) out0 = format(out0, "             %20lu: %s\n", am->cnt, desc);
@@ -2183,6 +2190,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
 #undef _
       vec_terminate_c_string(out0);
       vlib_cli_output(vm, "\n\n%s\n\n", out0);
+      vlib_cli_output(vm, "Interrupt generation: %d\n", am->fa_interrupt_generation);
       vlib_cli_output(vm, "Sessions per interval: min %lu max %lu increment: %f ms current: %f ms",
               am->fa_min_deleted_sessions_per_interval, am->fa_max_deleted_sessions_per_interval,
               am->fa_cleaner_wait_time_increment * 1000.0, ((f64)am->fa_current_cleaner_timer_wait_interval) * 1000.0/(f64)vm->clib_time.clocks_per_second);
