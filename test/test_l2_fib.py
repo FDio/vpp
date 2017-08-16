@@ -67,10 +67,12 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, running_with_multiple_worker
 from util import Host, ppp
 
 
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class TestL2fib(VppTestCase):
     """ L2 FIB Test Case """
 

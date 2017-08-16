@@ -3,16 +3,19 @@
 import socket
 from util import ip4n_range
 import unittest
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner, running_extended_tests, \
+    running_with_multiple_worker
 from template_bd import BridgeDomain
 
-from scapy.layers.l2 import Ether, Raw
+from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.vxlan import VXLAN
 from scapy.utils import atol
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class TestVxlanGpe(BridgeDomain, VppTestCase):
     """ VXLAN-GPE Test Case """
 

@@ -10,6 +10,7 @@ import tempfile
 import time
 import resource
 import faulthandler
+from multiprocessing import cpu_count
 from collections import deque
 from threading import Thread, Event
 from inspect import getdoc, isclass
@@ -92,6 +93,16 @@ def running_extended_tests():
     return False
 
 
+def running_with_multiple_worker():
+    try:
+        multi = os.getenv("VPP_TEST_MULTI_WORKER")
+    except:
+        multi = "no"
+    if multi and multi.lower() in ("yes", "y", "1"):
+        return True
+    return False
+
+
 class KeepAliveReporter(object):
     """
     Singleton object which reports test start to parent process
@@ -127,6 +138,21 @@ class KeepAliveReporter(object):
                 desc = str(test)
 
         self.pipe.send((desc, test.vpp_bin, test.tempdir))
+
+
+def get_multi_core_vpp_config():
+    count = cpu_count()
+    if count > 8:
+        count = 8
+    if count > 2:
+        return ["cpu", "{",
+                "skip-cores", "1",
+                "workers", "%d" % (count - 2),
+                "}"]
+    else:
+        return ["cpu", "{",
+                "workers", "%d" % count,
+                "}"]
 
 
 class VppTestCase(unittest.TestCase):
@@ -214,6 +240,8 @@ class VppTestCase(unittest.TestCase):
                            "disable", "}", "}"]
         if plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", plugin_path])
+        if running_with_multiple_worker():
+            cls.vpp_cmdline.extend(get_multi_core_vpp_config())
         cls.logger.info("vpp_cmdline: %s" % cls.vpp_cmdline)
 
     @classmethod
@@ -274,8 +302,12 @@ class VppTestCase(unittest.TestCase):
         """
         gc.collect()  # run garbage collection first
         cls.logger = getLogger(cls.__name__)
-        cls.tempdir = tempfile.mkdtemp(
-            prefix='vpp-unittest-%s-' % cls.__name__)
+        if running_with_multiple_worker():
+            cls.tempdir = tempfile.mkdtemp(
+                prefix='vpp-unittest-%s-multiple-workers-' % cls.__name__)
+        else:
+            cls.tempdir = tempfile.mkdtemp(
+                prefix='vpp-unittest-%s-single-thread-' % cls.__name__)
         cls.file_handler = FileHandler("%s/log.txt" % cls.tempdir)
         cls.file_handler.setFormatter(
             Formatter(fmt='%(asctime)s,%(msecs)03d %(message)s',
@@ -714,7 +746,13 @@ class TestCasePrinter(object):
     def print_test_case_heading_if_first_time(self, case):
         if case.__class__ not in self._test_case_set:
             print(double_line_delim)
-            print(colorize(getdoc(case.__class__).splitlines()[0], YELLOW))
+            if running_with_multiple_worker():
+                extra = "(VPP with multiple workers)"
+            else:
+                extra = "(single-thread VPP)"
+            print(colorize(
+                "%s%s" % (getdoc(case.__class__).splitlines()[0], extra),
+                YELLOW))
             print(double_line_delim)
             self._test_case_set.add(case.__class__)
 
