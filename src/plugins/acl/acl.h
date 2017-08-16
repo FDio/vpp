@@ -230,6 +230,8 @@ typedef struct {
 
   u64 fa_current_cleaner_timer_wait_interval;
 
+  int fa_interrupt_generation;
+
   /* per-worker data related t conn management */
   acl_fa_per_worker_data_t *per_worker_data;
 
