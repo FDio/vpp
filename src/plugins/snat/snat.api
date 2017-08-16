@@ -735,7 +735,11 @@ define nat64_interface_details {
 /** \brief Dump NAT64 BIB
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param proto - protocol of the BIB
+    @param proto - protocol of the BIB: 255 - all BIBs
+                                        6 - TCP BIB
+                                        17 - UDP BIB
+                                        1/58 - ICMP BIB
+                                        otherwise - "unknown" protocol BIB
 */
 define nat64_bib_dump {
   u32 client_index;
@@ -816,7 +820,11 @@ define nat64_get_timeouts_reply {
 /** \brief Dump NAT64 session table
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param proto - protocol of the session table
+    @param proto - protocol of the session table: 255 - all STs
+                                                  6 - TCP ST
+                                                  17 - UDP ST
+                                                  1/58 - ICMP ST
+                                                  otherwise - "unknown" proto ST
 */
 define nat64_st_dump {
   u32 client_index;

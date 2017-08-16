@@ -217,28 +217,49 @@ nat64_db_bib_walk (nat64_db_t * db, u8 proto,
 {
   nat64_db_bib_entry_t *bib, *bibe;
 
-  switch (ip_proto_to_snat_proto (proto))
+  if (proto == 255)
     {
-/* *INDENT-OFF* */
-#define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    /* *INDENT-OFF* */
+    #define _(N, i, n, s) \
       bib = db->bib._##n##_bib; \
-      break;
+      pool_foreach (bibe, bib, ({ \
+        if (fn (bibe, ctx)) \
+          return; \
+      }));
       foreach_snat_protocol
-#undef _
-/* *INDENT-ON* */
-    default:
+    #undef _
       bib = db->bib._unk_proto_bib;
-      break;
+      pool_foreach (bibe, bib, ({
+        if (fn (bibe, ctx))
+          return;
+      }));
+    /* *INDENT-ON* */
     }
+  else
+    {
+      switch (ip_proto_to_snat_proto (proto))
+	{
+    /* *INDENT-OFF* */
+    #define _(N, i, n, s) \
+        case SNAT_PROTOCOL_##N: \
+          bib = db->bib._##n##_bib; \
+          break;
+          foreach_snat_protocol
+    #undef _
+    /* *INDENT-ON* */
+	default:
+	  bib = db->bib._unk_proto_bib;
+	  break;
+	}
 
-  /* *INDENT-OFF* */
-  pool_foreach (bibe, bib,
-  ({
-    if (fn (bibe, ctx))
-      return;
-  }));
-  /* *INDENT-ON* */
+      /* *INDENT-OFF* */
+      pool_foreach (bibe, bib,
+      ({
+        if (fn (bibe, ctx))
+          return;
+      }));
+      /* *INDENT-ON* */
+    }
 }
 
 nat64_db_bib_entry_t *
@@ -270,28 +291,49 @@ nat64_db_st_walk (nat64_db_t * db, u8 proto,
 {
   nat64_db_st_entry_t *st, *ste;
 
-  switch (ip_proto_to_snat_proto (proto))
+  if (proto == 255)
     {
-/* *INDENT-OFF* */
-#define _(N, i, n, s) \
-    case SNAT_PROTOCOL_##N: \
+    /* *INDENT-OFF* */
+    #define _(N, i, n, s) \
       st = db->st._##n##_st; \
-      break;
+      pool_foreach (ste, st, ({ \
+        if (fn (ste, ctx)) \
+          return; \
+      }));
       foreach_snat_protocol
-#undef _
-/* *INDENT-ON* */
-    default:
+    #undef _
       st = db->st._unk_proto_st;
-      break;
+      pool_foreach (ste, st, ({
+        if (fn (ste, ctx))
+          return;
+      }));
+    /* *INDENT-ON* */
     }
+  else
+    {
+      switch (ip_proto_to_snat_proto (proto))
+	{
+    /* *INDENT-OFF* */
+    #define _(N, i, n, s) \
+        case SNAT_PROTOCOL_##N: \
+          st = db->st._##n##_st; \
+          break;
+          foreach_snat_protocol
+    #undef _
+    /* *INDENT-ON* */
+	default:
+	  st = db->st._unk_proto_st;
+	  break;
+	}
 
-  /* *INDENT-OFF* */
-  pool_foreach (ste, st,
-  ({
-    if (fn (ste, ctx))
-      return;
-  }));
-  /* *INDENT-ON* */
+      /* *INDENT-OFF* */
+      pool_foreach (ste, st,
+      ({
+        if (fn (ste, ctx))
+          return;
+      }));
+      /* *INDENT-ON* */
+    }
 }
 
 nat64_db_st_entry_t *

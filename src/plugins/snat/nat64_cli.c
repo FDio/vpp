@@ -433,7 +433,7 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u32 proto = ~0;
-  u8 p = 0;
+  u8 p = 255;
 
   if (nm->is_disabled)
     return clib_error_return (0,
@@ -445,6 +445,8 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
     p = snat_proto_to_ip_proto (proto);
   else if (unformat (line_input, "unknown"))
+    p = 0;
+  else if (unformat (line_input, "all"))
     ;
   else
     {
@@ -453,7 +455,11 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  vlib_cli_output (vm, "NAT64 %U BIB:", format_snat_protocol, proto);
+  if (p == 255)
+    vlib_cli_output (vm, "NAT64 BIB entries:");
+  else
+    vlib_cli_output (vm, "NAT64 %U BIB entries:", format_snat_protocol,
+		     proto);
   nat64_db_bib_walk (&nm->db, p, nat64_cli_bib_walk, vm);
 
 done:
@@ -632,7 +638,7 @@ nat64_show_st_command_fn (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u32 proto = ~0;
-  u8 p = 0;
+  u8 p = 255;
 
   if (nm->is_disabled)
     return clib_error_return (0,
@@ -644,6 +650,8 @@ nat64_show_st_command_fn (vlib_main_t * vm,
   if (unformat (line_input, "%U", unformat_snat_protocol, &proto))
     p = snat_proto_to_ip_proto (proto);
   else if (unformat (line_input, "unknown"))
+    p = 0;
+  else if (unformat (line_input, "all"))
     ;
   else
     {
@@ -652,8 +660,10 @@ nat64_show_st_command_fn (vlib_main_t * vm,
       goto done;
     }
 
-  vlib_cli_output (vm, "NAT64 %U session table:", format_snat_protocol,
-		   proto);
+  if (p == 255)
+    vlib_cli_output (vm, "NAT64 sessions:");
+  else
+    vlib_cli_output (vm, "NAT64 %U sessions:", format_snat_protocol, proto);
   nat64_db_st_walk (&nm->db, p, nat64_cli_st_walk, vm);
 
 done:
@@ -860,7 +870,7 @@ VLIB_CLI_COMMAND (nat64_add_del_static_bib_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (show_nat64_bib_command, static) = {
   .path = "show nat64 bib",
-  .short_help = "show nat64 bib tcp|udp|icmp|unknown",
+  .short_help = "show nat64 bib all|tcp|udp|icmp|unknown",
   .function = nat64_show_bib_command_fn,
 };
 
@@ -924,7 +934,7 @@ VLIB_CLI_COMMAND (show_nat64_timeouts_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (show_nat64_st_command, static) = {
   .path = "show nat64 session table",
-  .short_help = "show nat64 session table tcp|udp|icmp|unknown",
+  .short_help = "show nat64 session table all|tcp|udp|icmp|unknown",
   .function = nat64_show_st_command_fn,
 };
 
