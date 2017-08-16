@@ -147,6 +147,10 @@ typedef struct {
    * because there is not enough work for the current rate.
    */
   int interrupt_is_unwanted;
+  /*
+   * Set to copy of a "generation" counter in main thread so we can sync the interrupts.
+   */
+  int interrupt_generation;
 } acl_fa_per_worker_data_t;
 
 

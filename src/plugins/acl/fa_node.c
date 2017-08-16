@@ -1366,6 +1366,7 @@ acl_fa_worker_conn_cleaner_process(vlib_main_t * vm,
        pw->interrupt_is_unwanted = 0;
      }
    }
+   pw->interrupt_generation = am->fa_interrupt_generation;
    return 0;
 }
 
@@ -1409,7 +1410,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   am->fa_current_cleaner_timer_wait_interval = max_timer_wait_interval;
   am->fa_cleaner_node_index = acl_fa_session_cleaner_process_node.index;
-
+  am->fa_interrupt_generation = 1;
   while (1)
     {
       now = clib_cpu_time_now ();
@@ -1428,6 +1429,22 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
        */
       for(ti = 0; ti < vec_len(vlib_mains); ti++) {
         if (ti >= vec_len(am->per_worker_data)) {
+          continue;
+        }
+        if ((0 == ti) && (vec_len(vlib_mains) > 1)) {
+          /* thread 0 in multithreaded scenario is not used, but packets are output... So we have to emulate the interrupts here... */
+          u64 next_expire_0 = next_expire;
+          acl_fa_per_worker_data_t *pw = &am->per_worker_data[ti];
+          for(tt = 0; tt < vec_len(pw->fa_conn_list_head); tt++) {
+            u64 head_expiry = acl_fa_get_list_head_expiry_time(am, pw, now, ti, tt);
+            if (head_expiry < next_expire_0) {
+              next_expire_0 = head_expiry;
+            }
+          }
+          if (next_expire_0 < now) {
+            /* make a synthetic interrupt-like thingy */
+            acl_fa_worker_conn_cleaner_process(vm, rt, f);
+          }
           continue;
         }
         acl_fa_per_worker_data_t *pw = &am->per_worker_data[ti];
@@ -1586,6 +1603,27 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       if (event_data)
 	_vec_len (event_data) = 0;
 
+      /*
+       * If the interrupts were not processed yet, ensure we wait a bit,
+       * but up to a point.
+       */
+      int need_more_wait = 0;
+      int max_wait_cycles = 100;
+      do {
+        need_more_wait = 0;
+        vec_foreach(pw0, am->per_worker_data) {
+          if ((pw0 == am->per_worker_data) && (vec_len(vlib_mains) > 1)) {
+            /* thread 0 in multithreaded scenario is not used */
+            continue;
+          }
+          if (pw0->interrupt_generation != am->fa_interrupt_generation) {
+            need_more_wait = 1;
+          }
+        }
+        if (need_more_wait) {
+          vlib_process_suspend(vm, 0.0001);
+        }
+      } while (need_more_wait && (--max_wait_cycles > 0));
 
       int interrupts_needed = 0;
       int interrupts_unwanted = 0;
@@ -1615,6 +1653,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
           am->fa_current_cleaner_timer_wait_interval += cpu_cps * am->fa_cleaner_wait_time_increment;
       }
       am->fa_cleaner_cnt_event_cycles++;
+      am->fa_interrupt_generation++;
     }
   /* NOT REACHED */
   return 0;
