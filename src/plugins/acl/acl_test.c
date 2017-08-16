@@ -886,7 +886,7 @@ static int api_macip_acl_add (vat_main_t * vam)
         else if (unformat (i, "ipv4"))
           {
             vec_validate_macip_acl_rules(rules, rule_idx);
-            rules[rule_idx].is_ipv6 = 1;
+            rules[rule_idx].is_ipv6 = 0;
           }
         else if (unformat (i, "permit"))
           {
@@ -908,8 +908,12 @@ static int api_macip_acl_add (vat_main_t * vam)
             rules[rule_idx].is_permit = action;
           }
         else if (unformat (i, "ip %U/%d",
-         unformat_ip4_address, &src_v4address, &src_prefix_length))
+         unformat_ip4_address, &src_v4address, &src_prefix_length) ||
+                 unformat (i, "ip %U",
+         unformat_ip4_address, &src_v4address))
           {
+            if (src_prefix_length == 0)
+              src_prefix_length = 32;
             vec_validate_macip_acl_rules(rules, rule_idx);
             memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4);
             rules[rule_idx].src_ip_prefix_len = src_prefix_length;
@@ -920,8 +924,12 @@ static int api_macip_acl_add (vat_main_t * vam)
             /* Everything in MACIP is "source" but allow this verbosity */
           }
         else if (unformat (i, "ip %U/%d",
-         unformat_ip6_address, &src_v6address, &src_prefix_length))
+         unformat_ip6_address, &src_v6address, &src_prefix_length) ||
+                 unformat (i, "ip %U",
+         unformat_ip6_address, &src_v6address))
           {
+            if (src_prefix_length == 0)
+              src_prefix_length = 128;
             vec_validate_macip_acl_rules(rules, rule_idx);
             memcpy (rules[rule_idx].src_ip_addr, &src_v6address, 16);
             rules[rule_idx].src_ip_prefix_len = src_prefix_length;
