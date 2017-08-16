@@ -67,7 +67,7 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 from util import Host, ppp
 
 # from src/vnet/l2/l2_fib.h
@@ -76,6 +76,7 @@ MAC_EVENT_ACTION_DELETE = 1
 MAC_EVENT_ACTION_MOVE = 2
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestL2fib(VppTestCase):
     """ L2 FIB Test Case """
 

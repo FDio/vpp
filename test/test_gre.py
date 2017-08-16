@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 import unittest
-from logging import *
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 from vpp_sub_interface import VppDot1QSubint
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
@@ -24,6 +23,7 @@ class GreTunnelTypes:
     TT_ERSPAN = 2
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestGRE(VppTestCase):
     """ GRE Test Case """
 

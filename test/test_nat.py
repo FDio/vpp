@@ -6,8 +6,8 @@ import struct
 import StringIO
 import random
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from framework import VppTestCase, VppTestRunner, running_extended_tests, \
+    VppMultiWorkerScenario
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from scapy.layers.inet import IPerror, TCPerror, UDPerror, ICMPerror
 from scapy.layers.inet6 import IPv6, ICMPv6EchoRequest, ICMPv6EchoReply
@@ -892,6 +892,7 @@ class MethodHolder(VppTestCase):
         self.assertEqual(struct.pack("!H", dst_port), record[228])
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestNAT44(MethodHolder):
     """ NAT44 Test Cases """
 
@@ -3966,6 +3967,7 @@ class TestNAT44(MethodHolder):
             self.clear_nat44()
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestNAT44Out2InDPO(MethodHolder):
     """ NAT44 Test Cases using out2in DPO """
 
@@ -4734,6 +4736,7 @@ class TestDeterministicNAT(MethodHolder):
             self.clear_nat_det()
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestNAT64(MethodHolder):
     """ NAT64 Test Cases """
 

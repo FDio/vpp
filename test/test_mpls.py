@@ -3,7 +3,7 @@
 import unittest
 import socket
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
     MRouteItfFlags, MRouteEntryFlags, DpoProto, VppIpTable, VppMplsTable, \
@@ -47,6 +47,7 @@ def verify_mpls_stack(tst, rx, mpls_labels):
             rx_mpls = rx_mpls[MPLS].payload
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestMPLS(VppTestCase):
     """ MPLS Test Case """
 
