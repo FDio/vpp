@@ -1539,6 +1539,32 @@ VNET_FEATURE_ARC_INIT (ip4_local) =
 };
 /* *INDENT-ON* */
 
+static inline void
+ip4_local_validate_l4 (vlib_main_t * vm, vlib_buffer_t * p, ip4_header_t * ip,
+		       u8 is_udp, u8 * error, u8 * good_tcp_udp)
+{
+  u32 flags0;
+  flags0 = ip4_tcp_udp_validate_checksum (vm, p);
+  *good_tcp_udp = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
+  if (is_udp)
+    {
+      udp_header_t *udp;
+      u32 ip_len, udp_len;
+      i32 len_diff;
+      udp = ip4_next_header (ip);
+      /* Verify UDP length. */
+      ip_len = clib_net_to_host_u16 (ip->length);
+      udp_len = clib_net_to_host_u16 (udp->length);
+
+      len_diff = ip_len - udp_len;
+      *good_tcp_udp &= len_diff >= 0;
+      *error = len_diff < 0 ? IP4_ERROR_UDP_LENGTH : *error;
+    }
+}
+
+#define ip4_local_do_l4_check(is_tcp_udp, flags) 			\
+    (is_tcp_udp && !(flags & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED))
+
 static inline uword
 ip4_local_inline (vlib_main_t * vm,
 		  vlib_node_runtime_t * node,
@@ -1567,14 +1593,12 @@ ip4_local_inline (vlib_main_t * vm,
 	{
 	  vlib_buffer_t *p0, *p1;
 	  ip4_header_t *ip0, *ip1;
-	  udp_header_t *udp0, *udp1;
 	  ip4_fib_mtrie_t *mtrie0, *mtrie1;
 	  ip4_fib_mtrie_leaf_t leaf0, leaf1;
 	  const dpo_id_t *dpo0, *dpo1;
 	  const load_balance_t *lb0, *lb1;
-	  u32 pi0, ip_len0, udp_len0, flags0, next0, fib_index0, lbi0;
-	  u32 pi1, ip_len1, udp_len1, flags1, next1, fib_index1, lbi1;
-	  i32 len_diff0, len_diff1;
+	  u32 pi0, next0, fib_index0, lbi0;
+	  u32 pi1, next1, fib_index1, lbi1;
 	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
 	  u8 error1, is_udp1, is_tcp_udp1, good_tcp_udp1, proto1;
 	  u32 sw_if_index0, sw_if_index1;
@@ -1587,6 +1611,7 @@ ip4_local_inline (vlib_main_t * vm,
 	  n_left_to_next -= 2;
 
 	  next0 = next1 = IP_LOCAL_NEXT_DROP;
+	  error0 = error1 = IP4_ERROR_UNKNOWN_PROTOCOL;
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  p1 = vlib_get_buffer (vm, pi1);
@@ -1600,8 +1625,41 @@ ip4_local_inline (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
 
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
-	  fib_index1 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index1);
+	  /* Treat IP frag packets as "experimental" protocol for now
+	     until support of IP frag reassembly is implemented */
+	  proto0 = ip4_is_fragment (ip0) ? 0xfe : ip0->protocol;
+	  proto1 = ip4_is_fragment (ip1) ? 0xfe : ip1->protocol;
+
+	  if (head_of_feature_arc == 0)
+	    goto skip_checks;
+
+	  is_udp0 = proto0 == IP_PROTOCOL_UDP;
+	  is_udp1 = proto1 == IP_PROTOCOL_UDP;
+	  is_tcp_udp0 = is_udp0 || proto0 == IP_PROTOCOL_TCP;
+	  is_tcp_udp1 = is_udp1 || proto1 == IP_PROTOCOL_TCP;
+
+	  good_tcp_udp0 =
+	    (p0->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
+	  good_tcp_udp1 =
+	    (p1->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
+
+	  if (PREDICT_FALSE (ip4_local_do_l4_check (is_tcp_udp0, p0->flags)
+			     || ip4_local_do_l4_check (is_tcp_udp1,
+						       p1->flags)))
+	    {
+	      if (is_tcp_udp0)
+		ip4_local_validate_l4 (vm, p0, ip0, is_udp0, &error0,
+				       &good_tcp_udp0);
+	      if (is_tcp_udp1)
+		ip4_local_validate_l4 (vm, p1, ip1, is_udp1, &error1,
+				       &good_tcp_udp1);
+	    }
+
+	  ASSERT (IP4_ERROR_TCP_CHECKSUM + 1 == IP4_ERROR_UDP_CHECKSUM);
+	  error0 = (is_tcp_udp0 && !good_tcp_udp0
+		    ? IP4_ERROR_TCP_CHECKSUM + is_udp0 : error0);
+	  error1 = (is_tcp_udp1 && !good_tcp_udp1
+		    ? IP4_ERROR_TCP_CHECKSUM + is_udp1 : error1);
 
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
 	  fib_index0 =
@@ -1618,94 +1676,14 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
 	  leaf1 = ip4_fib_mtrie_lookup_step_one (mtrie1, &ip1->src_address);
-
-	  /* Treat IP frag packets as "experimental" protocol for now
-	     until support of IP frag reassembly is implemented */
-	  proto0 = ip4_is_fragment (ip0) ? 0xfe : ip0->protocol;
-	  proto1 = ip4_is_fragment (ip1) ? 0xfe : ip1->protocol;
-
-	  if (head_of_feature_arc == 0)
-	    {
-	      error0 = error1 = IP4_ERROR_UNKNOWN_PROTOCOL;
-	      goto skip_checks;
-	    }
-
-	  is_udp0 = proto0 == IP_PROTOCOL_UDP;
-	  is_udp1 = proto1 == IP_PROTOCOL_UDP;
-	  is_tcp_udp0 = is_udp0 || proto0 == IP_PROTOCOL_TCP;
-	  is_tcp_udp1 = is_udp1 || proto1 == IP_PROTOCOL_TCP;
-
-	  flags0 = p0->flags;
-	  flags1 = p1->flags;
-
-	  good_tcp_udp0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-	  good_tcp_udp1 = (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-
-	  udp0 = ip4_next_header (ip0);
-	  udp1 = ip4_next_header (ip1);
-
-	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
-	  good_tcp_udp0 |= is_udp0 && udp0->checksum == 0;
-	  good_tcp_udp1 |= is_udp1 && udp1->checksum == 0;
-
-	  /* Verify UDP length. */
-	  ip_len0 = clib_net_to_host_u16 (ip0->length);
-	  ip_len1 = clib_net_to_host_u16 (ip1->length);
-	  udp_len0 = clib_net_to_host_u16 (udp0->length);
-	  udp_len1 = clib_net_to_host_u16 (udp1->length);
-
-	  len_diff0 = ip_len0 - udp_len0;
-	  len_diff1 = ip_len1 - udp_len1;
-
-	  len_diff0 = is_udp0 ? len_diff0 : 0;
-	  len_diff1 = is_udp1 ? len_diff1 : 0;
-
-	  if (PREDICT_FALSE (!(is_tcp_udp0 & is_tcp_udp1
-			       & good_tcp_udp0 & good_tcp_udp1)))
-	    {
-	      if (is_tcp_udp0)
-		{
-		  if (is_tcp_udp0
-		      && !(flags0 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED))
-		    flags0 = ip4_tcp_udp_validate_checksum (vm, p0);
-		  good_tcp_udp0 =
-		    (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-		  good_tcp_udp0 |= is_udp0 && udp0->checksum == 0;
-		}
-	      if (is_tcp_udp1)
-		{
-		  if (is_tcp_udp1
-		      && !(flags1 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED))
-		    flags1 = ip4_tcp_udp_validate_checksum (vm, p1);
-		  good_tcp_udp1 =
-		    (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-		  good_tcp_udp1 |= is_udp1 && udp1->checksum == 0;
-		}
-	    }
-
-	  good_tcp_udp0 &= len_diff0 >= 0;
-	  good_tcp_udp1 &= len_diff1 >= 0;
-
-	  leaf0 =
-	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 2);
-	  leaf1 =
-	    ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 2);
-
-	  error0 = error1 = IP4_ERROR_UNKNOWN_PROTOCOL;
-
-	  error0 = len_diff0 < 0 ? IP4_ERROR_UDP_LENGTH : error0;
-	  error1 = len_diff1 < 0 ? IP4_ERROR_UDP_LENGTH : error1;
-
-	  ASSERT (IP4_ERROR_TCP_CHECKSUM + 1 == IP4_ERROR_UDP_CHECKSUM);
-	  error0 = (is_tcp_udp0 && !good_tcp_udp0
-		    ? IP4_ERROR_TCP_CHECKSUM + is_udp0 : error0);
-	  error1 = (is_tcp_udp1 && !good_tcp_udp1
-		    ? IP4_ERROR_TCP_CHECKSUM + is_udp1 : error1);
-
-	  leaf0 =
-	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
-	  leaf1 =
-	    ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address, 3);
+	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address,
+					     2);
+	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address,
+					     2);
+	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address,
+					     3);
+	  leaf1 = ip4_fib_mtrie_lookup_step (mtrie1, leaf1, &ip1->src_address,
+					     3);
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = lbi0 =
 	    ip4_fib_mtrie_leaf_get_adj_index (leaf0);
@@ -1775,11 +1753,9 @@ ip4_local_inline (vlib_main_t * vm,
 	{
 	  vlib_buffer_t *p0;
 	  ip4_header_t *ip0;
-	  udp_header_t *udp0;
 	  ip4_fib_mtrie_t *mtrie0;
 	  ip4_fib_mtrie_leaf_t leaf0;
-	  u32 pi0, next0, ip_len0, udp_len0, flags0, fib_index0, lbi0;
-	  i32 len_diff0;
+	  u32 pi0, next0, fib_index0, lbi0;
 	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
 	  load_balance_t *lb0;
 	  const dpo_id_t *dpo0;
@@ -1792,92 +1768,51 @@ ip4_local_inline (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  next0 = IP_LOCAL_NEXT_DROP;
+	  error0 = IP4_ERROR_UNKNOWN_PROTOCOL;
 
 	  p0 = vlib_get_buffer (vm, pi0);
-
 	  ip0 = vlib_buffer_get_current (p0);
-
 	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
-
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
-
-	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
-
-	  fib_index0 =
-	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
-	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
-
-	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
-
-	  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
 
 	  /* Treat IP frag packets as "experimental" protocol for now
 	     until support of IP frag reassembly is implemented */
 	  proto0 = ip4_is_fragment (ip0) ? 0xfe : ip0->protocol;
 
 	  if (head_of_feature_arc == 0)
-	    {
-	      error0 = IP4_ERROR_UNKNOWN_PROTOCOL;
-	      goto skip_check;
-	    }
+	    goto skip_check;
 
 	  is_udp0 = proto0 == IP_PROTOCOL_UDP;
 	  is_tcp_udp0 = is_udp0 || proto0 == IP_PROTOCOL_TCP;
+	  good_tcp_udp0 =
+	    (p0->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 
-	  flags0 = p0->flags;
-
-	  good_tcp_udp0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-
-	  udp0 = ip4_next_header (ip0);
-
-	  /* Don't verify UDP checksum for packets with explicit zero checksum. */
-	  good_tcp_udp0 |= is_udp0 && udp0->checksum == 0;
-
-	  /* Verify UDP length. */
-	  ip_len0 = clib_net_to_host_u16 (ip0->length);
-	  udp_len0 = clib_net_to_host_u16 (udp0->length);
-
-	  len_diff0 = ip_len0 - udp_len0;
-
-	  len_diff0 = is_udp0 ? len_diff0 : 0;
-
-	  if (PREDICT_FALSE (!(is_tcp_udp0 & good_tcp_udp0)))
+	  if (PREDICT_FALSE (ip4_local_do_l4_check (is_tcp_udp0, p0->flags)))
 	    {
-	      if (is_tcp_udp0)
-		{
-		  if (is_tcp_udp0
-		      && !(flags0 & VNET_BUFFER_F_L4_CHECKSUM_COMPUTED))
-		    flags0 = ip4_tcp_udp_validate_checksum (vm, p0);
-		  good_tcp_udp0 =
-		    (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-		  good_tcp_udp0 |= is_udp0 && udp0->checksum == 0;
-		}
+	      ip4_local_validate_l4 (vm, p0, ip0, is_udp0, &error0,
+				     &good_tcp_udp0);
 	    }
-
-	  good_tcp_udp0 &= len_diff0 >= 0;
-
-	  leaf0 =
-	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 2);
-
-	  error0 = IP4_ERROR_UNKNOWN_PROTOCOL;
-
-	  error0 = len_diff0 < 0 ? IP4_ERROR_UDP_LENGTH : error0;
 
 	  ASSERT (IP4_ERROR_TCP_CHECKSUM + 1 == IP4_ERROR_UDP_CHECKSUM);
 	  error0 = (is_tcp_udp0 && !good_tcp_udp0
 		    ? IP4_ERROR_TCP_CHECKSUM + is_udp0 : error0);
 
-	  leaf0 =
-	    ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address, 3);
-
+	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
+	  fib_index0 =
+	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
+	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
+	  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
+	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address,
+					     2);
+	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address,
+					     3);
 	  lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
 	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbi0;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = lbi0;
 
 	  lb0 = load_balance_get (lbi0);
 	  dpo0 = load_balance_get_bucket_i (lb0, 0);
-
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
-	    vnet_buffer (p0)->ip.adj_index[VLIB_RX] = lbi0;
 
 	  error0 = ((error0 == IP4_ERROR_UNKNOWN_PROTOCOL &&
 		     dpo0->dpoi_type == DPO_RECEIVE) ?
@@ -1888,9 +1823,7 @@ ip4_local_inline (vlib_main_t * vm,
 		    ? IP4_ERROR_SRC_LOOKUP_MISS : error0);
 
 	skip_check:
-
 	  next0 = lm->local_next_by_ip_protocol[proto0];
-
 	  next0 =
 	    error0 != IP4_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
 
@@ -1904,9 +1837,7 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
 					   n_left_to_next, pi0, next0);
-
 	}
-
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
@@ -1932,7 +1863,8 @@ VLIB_REGISTER_NODE (ip4_local_node) =
     [IP_LOCAL_NEXT_DROP] = "error-drop",
     [IP_LOCAL_NEXT_PUNT] = "error-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip4-udp-lookup",
-    [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",},
+    [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",
+  },
 };
 /* *INDENT-ON* */
 
