@@ -30,9 +30,10 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestIpIrb(VppTestCase):
     """IRB Test Case"""
 

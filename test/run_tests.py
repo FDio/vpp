@@ -4,11 +4,11 @@ import sys
 import shutil
 import os
 import select
-import unittest
 import argparse
 import time
+from unittest import TestSuite
 from multiprocessing import Process, Pipe
-from framework import VppTestRunner
+from framework import VppTestRunner, get_scenario_classes
 from debug import spawn_gdb
 from log import global_logger
 from discover_tests import discover_tests
@@ -33,11 +33,20 @@ def test_runner_wrapper(suite, keep_alive_pipe, result_pipe, failed_pipe):
 
 
 class add_to_suite_callback:
-    def __init__(self, suite):
-        self.suite = suite
+    def __init__(self):
+        self.classes = {}
+        self.order = []
+        self.tests_by_scenario_class = {}
 
     def __call__(self, file_name, cls, method):
-        suite.addTest(cls(method))
+        if cls not in self.classes:
+            self.classes[cls] = get_scenario_classes(cls)
+            self.order.append(cls)
+            for c in self.classes[cls]:
+                self.tests_by_scenario_class[c] = []
+
+        for c in self.classes[cls]:
+            self.tests_by_scenario_class[c].append(c(method))
 
 
 class Filter_by_class_list:
@@ -87,7 +96,7 @@ def run_forked(suite):
         if failed_parent_end.fileno() in readable:
             while failed_parent_end.poll():
                 failed_test = failed_parent_end.recv()
-                failed.add(failed_test.__name__)
+                failed.add(failed_test)
             last_heard = time.time()
         fail = False
         if last_heard + test_timeout < time.time() and \
@@ -174,21 +183,25 @@ if __name__ == '__main__':
     args = parser.parse_args()
     failfast = True if args.failfast == 1 else False
 
-    suite = unittest.TestSuite()
-    cb = add_to_suite_callback(suite)
+    cb = add_to_suite_callback()
+
     for d in args.dir:
         print("Adding tests from directory tree %s" % d)
         discover_tests(d, cb)
 
     try:
-        retries = int(os.getenv("RETRIES"))
+        retries = int(os.getenv("RETRIES", 0))
     except:
-        retries = 0
-    if retries is None:
         retries = 0
     attempts = retries + 1
     if attempts > 1:
         print("Perform %s attempts to pass the suite..." % attempts)
+    suite = TestSuite()
+    for cls in cb.order:
+        for scenario_class in cb.classes[cls]:
+            for test in cb.tests_by_scenario_class[scenario_class]:
+                suite.addTest(test)
+
     if debug is None or debug.lower() not in ["gdb", "gdbserver"]:
         while True:
             result, failed = run_forked(suite)
