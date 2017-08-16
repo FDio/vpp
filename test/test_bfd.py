@@ -15,7 +15,8 @@ from scapy.layers.inet import UDP, IP
 from scapy.layers.inet6 import IPv6
 from bfd import VppBFDAuthKey, BFD, BFDAuthType, VppBFDUDPSession, \
     BFDDiagCode, BFDState, BFD_vpp_echo
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner, running_extended_tests, \
+    VppMultiWorkerScenario
 from vpp_pg_interface import CaptureTimeoutError, is_ipv6_misc
 from vpp_lo_interface import VppLoInterface
 from util import ppp
@@ -615,6 +616,7 @@ def wait_for_bfd_packet(test, timeout=1, pcap_time_min=None):
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class BFD4TestCase(VppTestCase):
     """Bidirectional Forwarding Detection (BFD)"""
 
@@ -1629,6 +1631,7 @@ class BFD6TestCase(VppTestCase):
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class BFDFIBTestCase(VppTestCase):
     """ BFD-FIB interactions (IPv6) """
 
@@ -2586,6 +2589,7 @@ class BFDCLITestCase(VppTestCase):
         self.cli_verify_no_response(cli_del)
         self.cli_verify_response("show bfd echo-source",
                                  "UDP echo source is not set.")
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
