@@ -1009,6 +1009,11 @@ START_TEST (test_stats_3)
 	  ck_assert_int_eq (VAPI_OK, rv);
 	}
     }
+  ws = vapi_alloc_want_stats (ctx);
+  ws->payload.enable_disable = 0;
+  ws->payload.pid = getpid ();
+  rv = vapi_want_stats (ctx, ws, stats_cb, NULL);
+  ck_assert_int_eq (VAPI_OK, rv);
 }
 
 END_TEST;

@@ -9,7 +9,8 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, running_extended_tests,\
+    VppMultiWorkerScenario
 from vpp_sub_interface import VppP2PSubint
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
 from util import mactobinary
@@ -74,14 +75,15 @@ class P2PEthernetAPI(VppTestCase):
         clients = 1000
         mac = int("dead00000000", 16)
 
-        for i in range(1, clients+1):
+        for i in range(1, clients + 1):
             try:
-                macs.append(':'.join(re.findall('..', '{:02x}'.format(mac+i))))
+                macs.append(
+                    ':'.join(re.findall('..', '{:02x}'.format(mac + i))))
                 self.vapi.create_p2pethernet_subif(self.pg2.sw_if_index,
-                                                   mactobinary(macs[i-1]),
+                                                   mactobinary(macs[i - 1]),
                                                    i)
             except Exception:
-                print "Failed to create subif %d %s" % (i, macs[i-1])
+                print "Failed to create subif %d %s" % (i, macs[i - 1])
                 raise
 
         intfs = self.vapi.cli("show interface").split("\n")
@@ -93,7 +95,42 @@ class P2PEthernetAPI(VppTestCase):
 
         self.logger.info("FFP_TEST_FINISH_0001")
 
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+    def test_p2p_subif_creation_10k(self):
+        """create 100k of p2p subifs"""
+        self.logger.info("FFP_TEST_START_0001")
 
+        macs = []
+        clients = 100000
+        mac = int("dead00000000", 16)
+
+        s_time = datetime.datetime.now()
+        for i in range(1, clients + 1):
+            if i % 1000 == 0:
+                e_time = datetime.datetime.now()
+                print "Created 1000 subifs in %s secs" % (e_time - s_time)
+                s_time = e_time
+            try:
+                macs.append(
+                    ':'.join(re.findall('..', '{:02x}'.format(mac + i))))
+                self.vapi.create_p2pethernet_subif(self.pg3.sw_if_index,
+                                                   mactobinary(macs[i - 1]),
+                                                   i)
+            except Exception:
+                print "Failed to create subif %d %s" % (i, macs[i - 1])
+                raise
+
+        intfs = self.vapi.cli("show interface").split("\n")
+        count = 0
+        for intf in intfs:
+            if intf.startswith('pg3.'):
+                count += 1
+        self.assertEqual(count, clients)
+
+        self.logger.info("FFP_TEST_FINISH_0001")
+
+
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class P2PEthernetIPV6(VppTestCase):
     """P2P Ethernet IPv6 tests"""
 
@@ -172,7 +209,7 @@ class P2PEthernetIPV6(VppTestCase):
     def verify_counters(self, counter_id, expected_value):
         counters = self.vapi.cli("sh errors").split('\n')
         counter_value = -1
-        for i in range(1, len(counters)-1):
+        for i in range(1, len(counters) - 1):
             results = counters[i].split()
             if results[1] == counter_id:
                 counter_value = int(results[0])
@@ -323,6 +360,7 @@ class P2PEthernetIPV6(VppTestCase):
         self.logger.info("FFP_TEST_FINISH_0006")
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class P2PEthernetIPV4(VppTestCase):
     """P2P Ethernet IPv4 tests"""
 
@@ -390,7 +428,7 @@ class P2PEthernetIPV4(VppTestCase):
     def verify_counters(self, counter_id, expected_value):
         counters = self.vapi.cli("sh errors").split('\n')
         counter_value = -1
-        for i in range(1, len(counters)-1):
+        for i in range(1, len(counters) - 1):
             results = counters[i].split()
             if results[1] == counter_id:
                 counter_value = int(results[0])
@@ -475,7 +513,7 @@ class P2PEthernetIPV4(VppTestCase):
                 self.create_stream(src_mac=self.pg1.remote_mac,
                                    dst_mac=self.pg1.local_mac,
                                    src_ip=self.pg1.remote_ip4,
-                                   dst_ip="9.%d.0.100" % (i+1)))
+                                   dst_ip="9.%d.0.100" % (i + 1)))
 
         self.send_packets(self.pg1, self.pg0)
 

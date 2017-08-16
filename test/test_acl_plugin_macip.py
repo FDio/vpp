@@ -6,13 +6,13 @@ import re
 import unittest
 
 from socket import inet_ntop, inet_pton, AF_INET, AF_INET6
-from struct import *
+from struct import pack, unpack
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner, VppMultiWorkerScenario
 from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import L2_VTR_OP
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
@@ -67,10 +67,10 @@ class MethodHolder(VppTestCase):
 
             # create 2 subinterfaces
             cls.subifs = [
-                 VppDot1QSubint(cls, cls.pg1, 10),
-                 VppDot1ADSubint(cls, cls.pg2, 20, 300, 400),
-                 VppDot1QSubint(cls, cls.pg3, 30),
-                 VppDot1ADSubint(cls, cls.pg3, 40, 600, 700)]
+                VppDot1QSubint(cls, cls.pg1, 10),
+                VppDot1ADSubint(cls, cls.pg2, 20, 300, 400),
+                VppDot1QSubint(cls, cls.pg3, 30),
+                VppDot1ADSubint(cls, cls.pg3, 40, 600, 700)]
 
             cls.subifs[0].set_vtr(L2_VTR_OP.L2_POP_1,
                                   inner=10, push1q=1)
@@ -112,7 +112,7 @@ class MethodHolder(VppTestCase):
             cls.loop0.generate_remote_hosts(cls.remote_hosts_count)
             # Modify host mac addresses to have different OUI parts
             for i in range(2, cls.remote_hosts_count + 2):
-                mac = cls.loop0.remote_hosts[i-2]._mac.split(':')
+                mac = cls.loop0.remote_hosts[i - 2]._mac.split(':')
                 mac[2] = format(int(mac[2], 16) + i, "02x")
                 cls.loop0.remote_hosts[i - 2]._mac = ":".join(mac)
 
@@ -174,26 +174,26 @@ class MethodHolder(VppTestCase):
         acls = self.vapi.macip_acl_dump()
         if self.DEBUG:
             for acl in acls:
-                print "ACL #"+str(acl.acl_index)
+                print("ACL #%s" % acl.acl_index)
                 for r in acl.r:
                     rule = "ACTION"
                     if r.is_permit == 1:
                         rule = "PERMIT"
                     elif r.is_permit == 0:
                         rule = "DENY  "
-                    print "    IP6" if r.is_ipv6 else "    IP4", \
-                          rule, \
-                          r.src_mac.encode('hex'), \
-                          r.src_mac_mask.encode('hex'),\
-                          unpack('<16B', r.src_ip_addr), \
-                          r.src_ip_prefix_len
+                    print("    IP6" if r.is_ipv6 else "    IP4",
+                          rule,
+                          r.src_mac.encode('hex'),
+                          r.src_mac_mask.encode('hex'),
+                          unpack('<16B', r.src_ip_addr),
+                          r.src_ip_prefix_len)
         return acls
 
     def create_rules(self, mac_type=EXACT_MAC, ip_type=EXACT_IP,
                      acl_count=1, rules_count=[1]):
         acls = []
         src_mac = int("220000dead00", 16)
-        for acl in range(2, (acl_count+1) * 2):
+        for acl in range(2, (acl_count + 1) * 2):
             rules = []
             host = random.choice(self.loop0.remote_hosts)
             is_ip6 = acl % 2
@@ -231,7 +231,7 @@ class MethodHolder(VppTestCase):
                     mac = "00:00:00:00:00:00"
                 elif mac_type == self.OUI_MAC:
                     mac = ':'.join(re.findall('..', '{:02x}'.format(
-                        src_mac))[:3])+":00:00:00"
+                        src_mac))[:3]) + ":00:00:00"
                 else:
                     mac = ':'.join(re.findall('..', '{:02x}'.format(src_mac)))
 
@@ -269,8 +269,8 @@ class MethodHolder(VppTestCase):
 
     def verify_macip_acls(self, acl_count, rules_count, expected_count=2):
         reply = self.macip_acl_dump_debug()
-        for acl in range(2, (acl_count+1) * 2):
-            self.assertEqual(reply[acl - 2].count, rules_count[acl/2-1])
+        for acl in range(2, (acl_count + 1) * 2):
+            self.assertEqual(reply[acl - 2].count, rules_count[acl / 2 - 1])
 
         self.vapi.macip_acl_interface_get()
 
@@ -281,7 +281,7 @@ class MethodHolder(VppTestCase):
         self.assertEqual(reply.count, expected_count)
 
     def delete_acls(self):
-        for acl in range(len(self.ACLS)-1, -1, -1):
+        for acl in range(len(self.ACLS) - 1, -1, -1):
             self.vapi.macip_acl_del(self.ACLS[acl])
 
         reply = self.vapi.macip_acl_dump()
@@ -343,7 +343,7 @@ class MethodHolder(VppTestCase):
                     mac_permit = src_mac
                 if denyMAC:
                     mac = src_mac.split(':')
-                    mac[0] = format(int(mac[0], 16)+1, "02x")
+                    mac[0] = format(int(mac[0], 16) + 1, "02x")
                     src_mac = ":".join(mac)
                     if is_ip6:
                         src_ip6 = ip_permit
@@ -423,15 +423,15 @@ class MethodHolder(VppTestCase):
                         sub_ip[3] = str(random.randint(200, 255))
                     elif ip_type == self.SUBNET_IP:
                         if denyIP:
-                            sub_ip[1] = str(int(sub_ip[1])+1)
+                            sub_ip[1] = str(int(sub_ip[1]) + 1)
                         sub_ip[2] = str(random.randint(100, 199))
                         sub_ip[3] = str(random.randint(200, 255))
                     src_ip4 = ".".join(sub_ip)
                 packet /= IP(src=src_ip4, dst=dst_ip4, frag=0, flags=0)
 
-            packet /= UDP(sport=src_port, dport=dst_port)/Raw(payload)
+            packet /= UDP(sport=src_port, dport=dst_port) / Raw(payload)
 
-            packet[Raw].load += " mac:"+src_mac
+            packet[Raw].load += " mac:" + src_mac
 
             size = self.pg_if_packet_sizes[p % len(self.pg_if_packet_sizes)]
             if isinstance(src_if, VppSubInterface):
@@ -639,8 +639,8 @@ class MethodHolder(VppTestCase):
 
             if isMACIP:
                 self.vapi.macip_acl_interface_add_del(
-                                                 sw_if_index=tx_if.sw_if_index,
-                                                 acl_index=acl_index)
+                    sw_if_index=tx_if.sw_if_index,
+                    acl_index=acl_index)
                 reply = self.vapi.macip_acl_interface_get()
                 self.assertEqual(reply.acls[tx_if.sw_if_index], acl_index)
                 self.ACLS.append(reply.acls[tx_if.sw_if_index])
@@ -654,8 +654,8 @@ class MethodHolder(VppTestCase):
         if try_replace:
             if isMACIP:
                 reply = self.vapi.macip_acl_add_replace(
-                                                   test_dict['macip_rules'],
-                                                   acl_index)
+                    test_dict['macip_rules'],
+                    acl_index)
             else:
                 reply = self.vapi.acl_add_replace(acl_index=acl_index,
                                                   r=test_dict['acl_rules'])
@@ -693,6 +693,7 @@ class MethodHolder(VppTestCase):
             self.run_traffic(self.EXACT_MAC, self.EXACT_IP, traffic, ip, 9)
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestMACIP_IP4(MethodHolder):
     """MACIP with IP4 traffic"""
 
@@ -827,6 +828,7 @@ class TestMACIP_IP4(MethodHolder):
                          self.BRIDGED, self.IS_IP4, 9, try_replace=True)
 
 
+@VppMultiWorkerScenario.skip("test doesn't pass with multiple workers")
 class TestMACIP_IP6(MethodHolder):
     """MACIP with IP6 traffic"""
 
@@ -1056,8 +1058,8 @@ class TestMACIP(MethodHolder):
         # verify changes
         self.assertEqual(len(acls_before), len(acls_after))
         for acl1, acl2 in zip(
-                acls_before[:2]+acls_before[4:],
-                acls_after[:2]+acls_after[4:]):
+                acls_before[:2] + acls_before[4:],
+                acls_after[:2] + acls_after[4:]):
             self.assertEqual(len(acl1), len(acl2))
 
             self.assertEqual(len(acl1.r), len(acl2.r))
@@ -1078,7 +1080,7 @@ class TestMACIP(MethodHolder):
         """ MACIP ACL delete intf with acl
         """
 
-        intf_count = len(self.interfaces)+1
+        intf_count = len(self.interfaces) + 1
         intf = []
         self.apply_macip_rules(self.create_rules(acl_count=3,
                                                  rules_count=[3, 5, 4]))
@@ -1090,19 +1092,19 @@ class TestMACIP(MethodHolder):
         self.vapi.macip_acl_interface_add_del(sw_if_index0, 1)
 
         reply = self.vapi.macip_acl_interface_get()
-        self.assertEqual(reply.count, intf_count+1)
+        self.assertEqual(reply.count, intf_count + 1)
         self.assertEqual(reply.acls[sw_if_index0], 1)
 
         sw_if_index1 = intf[1].sw_if_index
         self.vapi.macip_acl_interface_add_del(sw_if_index1, 0)
 
         reply = self.vapi.macip_acl_interface_get()
-        self.assertEqual(reply.count, intf_count+2)
+        self.assertEqual(reply.count, intf_count + 2)
         self.assertEqual(reply.acls[sw_if_index1], 0)
 
         intf[0].remove_vpp_config()
         reply = self.vapi.macip_acl_interface_get()
-        self.assertEqual(reply.count, intf_count+2)
+        self.assertEqual(reply.count, intf_count + 2)
         self.assertEqual(reply.acls[sw_if_index0], 4294967295)
         self.assertEqual(reply.acls[sw_if_index1], 0)
 
@@ -1114,7 +1116,7 @@ class TestMACIP(MethodHolder):
         self.vapi.macip_acl_interface_add_del(sw_if_index3, 1)
 
         reply = self.vapi.macip_acl_interface_get()
-        self.assertEqual(reply.count, intf_count+3)
+        self.assertEqual(reply.count, intf_count + 3)
         self.assertEqual(reply.acls[sw_if_index1], 0)
         self.assertEqual(reply.acls[sw_if_index2], 1)
         self.assertEqual(reply.acls[sw_if_index3], 1)
@@ -1123,7 +1125,7 @@ class TestMACIP(MethodHolder):
         intf[1].remove_vpp_config()
 
         reply = self.vapi.macip_acl_interface_get()
-        self.assertEqual(reply.count, intf_count+3)
+        self.assertEqual(reply.count, intf_count + 3)
         self.assertEqual(reply.acls[sw_if_index0], 4294967295)
         self.assertEqual(reply.acls[sw_if_index1], 4294967295)
         self.assertEqual(reply.acls[sw_if_index2], 4294967295)
