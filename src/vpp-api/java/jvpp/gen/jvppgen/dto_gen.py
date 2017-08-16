@@ -193,10 +193,12 @@ def generate_dto_equals(camel_case_dto_name, func):
 
 
 hash_template = Template("""    @Override
+    @io.fd.vpp.jvpp.coverity.SuppressFBWarnings("UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD")
     public int hashCode() {
         return java.util.Objects.hash($fields);
     }\n\n""")
 hash_single_array_type_template = Template("""    @Override
+    @io.fd.vpp.jvpp.coverity.SuppressFBWarnings("UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD")
     public int hashCode() {
         return java.util.Arrays.hashCode($fields);
     }\n\n""")
