@@ -1,11 +1,12 @@
 import socket
+import unittest
 
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
 from scapy.packet import Raw
 
-from framework import VppTestCase
+from framework import VppTestCase, running_with_multiple_worker
 from util import ppp
 
 """ TestLB is a subclass of  VPPTestCase classes.
@@ -23,6 +24,8 @@ from util import ppp
 """
 
 
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class TestLB(VppTestCase):
     """ Load Balancer Test Case """
 

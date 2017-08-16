@@ -3,7 +3,7 @@ import random
 import socket
 import unittest
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, running_with_multiple_worker
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind
@@ -204,6 +204,8 @@ class TestIPv4(VppTestCase):
             self.verify_capture(i, pkts)
 
 
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class TestIPv4FibCrud(VppTestCase):
     """ FIB - add/update/delete - ip4 routes
 

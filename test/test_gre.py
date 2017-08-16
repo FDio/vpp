@@ -3,7 +3,7 @@
 import unittest
 from logging import *
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, running_with_multiple_worker
 from vpp_sub_interface import VppDot1QSubint
 from vpp_gre_interface import VppGreInterface, VppGre6Interface
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
@@ -18,6 +18,8 @@ from scapy.volatile import RandMAC, RandIP
 from util import ppp, ppc
 
 
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class TestGRE(VppTestCase):
     """ GRE Test Case """
 

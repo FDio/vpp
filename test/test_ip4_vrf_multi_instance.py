@@ -65,7 +65,7 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, ARP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, running_with_multiple_worker
 from util import ppp
 
 
@@ -76,6 +76,8 @@ def is_ipv4_misc(p):
     return False
 
 
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class TestIp4VrfMultiInst(VppTestCase):
     """ IP4 VRF  Multi-instance Test Case """
 

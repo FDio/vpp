@@ -10,7 +10,8 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import IPv6
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner, running_extended_tests,\
+    running_with_multiple_worker
 from vpp_object import VppObject
 from vpp_pg_interface import CaptureTimeoutError
 from util import ppp
@@ -27,7 +28,7 @@ class VppCFLOW(VppObject):
         self._intf = intf
         self._active = active
         if passive == 0 or passive < active:
-            self._passive = active+1
+            self._passive = active + 1
         else:
             self._passive = passive
         self._datapath = datapath           # l2 ip4 ip6
@@ -299,13 +300,13 @@ class MethodHolder(VppTestCase):
                 if time_left < 0 and expected:
                     # self.logger.debug(self.vapi.ppcli("show flow table"))
                     raise CaptureTimeoutError(
-                          "Packet did not arrive within timeout")
+                        "Packet did not arrive within timeout")
                 p = collector_intf.wait_for_packet(timeout=time_left)
             except CaptureTimeoutError:
                 if expected:
                     # self.logger.debug(self.vapi.ppcli("show flow table"))
                     raise CaptureTimeoutError(
-                          "Packet did not arrive within timeout")
+                        "Packet did not arrive within timeout")
                 else:
                     return
             if not expected:
@@ -317,6 +318,8 @@ class MethodHolder(VppTestCase):
         return p
 
 
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class Flowprobe(MethodHolder):
     """Template verification, timer tests"""
 
@@ -397,7 +400,7 @@ class Flowprobe(MethodHolder):
                       Raw('\xa5' * 100))]
 
         nowUTC = int(time.time())
-        nowUNIX = nowUTC+2208988800
+        nowUNIX = nowUTC + 2208988800
         self.send_packets(src_if=self.pg7, dst_if=self.pg8)
 
         cflow = self.wait_for_cflow_packet(self.collector, templates[0], 10)
@@ -453,6 +456,8 @@ class Flowprobe(MethodHolder):
         self.logger.info("FFP_TEST_FINISH_0000")
 
 
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class Datapath(MethodHolder):
     """collect information on Ethernet, IP4 and IP6 datapath (no timers)"""
 
@@ -820,6 +825,8 @@ class Datapath(MethodHolder):
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class DisableIPFIX(MethodHolder):
     """Disable IPFIX"""
 
@@ -861,6 +868,8 @@ class DisableIPFIX(MethodHolder):
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class ReenableIPFIX(MethodHolder):
     """Re-enable IPFIX"""
 
@@ -922,6 +931,8 @@ class ReenableIPFIX(MethodHolder):
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class DisableFP(MethodHolder):
     """Disable Flowprobe feature"""
 
@@ -962,6 +973,8 @@ class DisableFP(MethodHolder):
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")
+@unittest.skipIf(running_with_multiple_worker(),
+                 "test doesn't pass with multiple workers")
 class ReenableFP(MethodHolder):
     """Re-enable Flowprobe feature"""
 

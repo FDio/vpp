@@ -86,7 +86,10 @@ $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@touch $@
 
 define retest-func
+	@echo "Running tests against single-thread VPP..."
 	@env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS)
+	@echo "Running tests against VPP with multiple workers..."
+	@env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) VPP_TEST_MULTI_WORKER=yes scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS)
 	@env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) scripts/compress_failed.sh
 endef
 
