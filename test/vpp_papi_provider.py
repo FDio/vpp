@@ -1466,10 +1466,10 @@ class VppPapiProvider(object):
              'proto': protocol,
              'is_add': is_add})
 
-    def nat64_bib_dump(self, protocol):
+    def nat64_bib_dump(self, protocol=255):
         """Dump NAT64 BIB
 
-        :param protocol: IP protocol
+        :param protocol: IP protocol (Default value = 255, all BIBs)
         :returns: Dictionary of NAT64 BIB entries
         """
         return self.api(self.papi.nat64_bib_dump, {'proto': protocol})
@@ -1499,10 +1499,10 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.nat64_get_timeouts, {})
 
-    def nat64_st_dump(self, protocol):
+    def nat64_st_dump(self, protocol=255):
         """Dump NAT64 session table
 
-        :param protocol: IP protocol
+        :param protocol: IP protocol (Default value = 255, all STs)
         :returns: Dictionary of NAT64 sesstion table entries
         """
         return self.api(self.papi.nat64_st_dump, {'proto': protocol})
