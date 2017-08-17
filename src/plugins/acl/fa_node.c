@@ -25,6 +25,56 @@
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
 
+
+int BV (clib_bihash_search_with_hash)
+  (const BVT (clib_bihash) * h,
+   BVT (clib_bihash_kv) * search_key, u64 hash, BVT (clib_bihash_kv) * valuep)
+{
+  u32 bucket_index;
+  BVT (clib_bihash_value) * v;
+  clib_bihash_bucket_t *b;
+  int i, limit;
+
+  ASSERT (valuep);
+
+  bucket_index = hash & (h->nbuckets - 1);
+  b = &h->buckets[bucket_index];
+
+  if (b->offset == 0)
+    return -1;
+
+  hash >>= h->log2_nbuckets;
+
+  v = BV (clib_bihash_get_value) (h, b->offset);
+  limit = BIHASH_KVP_PER_PAGE;
+  v += (b->linear_search == 0) ? hash & ((1 << b->log2_pages) - 1) : 0;
+  if (PREDICT_FALSE (b->linear_search))
+    limit <<= b->log2_pages;
+
+  for (i = 0; i < limit; i++)
+    {
+      if (BV (clib_bihash_key_compare) (v->kvp[i].key, search_key->key))
+        {
+          *valuep = v->kvp[i];
+          return 0;
+        }
+    }
+  return -1;
+}
+
+static inline void BV (clib_bihash_prefetch_bucket)
+  (const BVT (clib_bihash) * h, u64 hash)
+{
+  u32 bucket_index;
+
+  ASSERT(is_pow2(h->nbuckets));
+
+  bucket_index = hash & (h->nbuckets - 1);
+
+  CLIB_PREFETCH(&h->buckets[bucket_index], CLIB_CACHE_LINE_BYTES, LOAD);
+}
+
+
 #include "fa_node.h"
 #include "hash_lookup.h"
 
@@ -493,7 +543,7 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 
 
 /* Session keys match the packets received, and mirror the packets sent */
-static void
+static inline void
 acl_make_5tuple_session_key (int is_input, fa_5tuple_t * p5tuple_pkt,
 			     fa_5tuple_t * p5tuple_sess)
 {
@@ -504,7 +554,25 @@ acl_make_5tuple_session_key (int is_input, fa_5tuple_t * p5tuple_pkt,
   p5tuple_sess->l4.as_u64 = p5tuple_pkt->l4.as_u64;
   p5tuple_sess->l4.port[src_index] = p5tuple_pkt->l4.port[0];
   p5tuple_sess->l4.port[dst_index] = p5tuple_pkt->l4.port[1];
+  /* copy the packet stuff too, even if we overwrite it later */
+  p5tuple_sess->kv.value = p5tuple_pkt->kv.value;
 }
+
+/* Reconstruct 5-tuple from session key */
+static inline void
+acl_make_5tuple_from_session_key (int is_input, fa_5tuple_t * p5tuple_pkt,
+			     fa_5tuple_t * p5tuple_sess)
+{
+  int src_index = is_input ? 0 : 1;
+  int dst_index = is_input ? 1 : 0;
+  p5tuple_pkt->addr[0] = p5tuple_sess->addr[src_index];
+  p5tuple_pkt->addr[1] = p5tuple_sess->addr[dst_index];
+  p5tuple_pkt->l4.as_u64 = p5tuple_sess->l4.as_u64;
+  p5tuple_pkt->l4.port[0] = p5tuple_sess->l4.port[src_index];
+  p5tuple_pkt->l4.port[1] = p5tuple_sess->l4.port[dst_index];
+  p5tuple_pkt->kv.value = p5tuple_sess->kv.value;
+}
+
 
 
 static int
@@ -715,12 +783,15 @@ acl_fa_restart_timer_for_session (acl_main_t * am, u64 now, fa_full_session_id_t
 }
 
 
-static u8
-acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
+static inline u8
+acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now, u64 threshold,
 		      fa_session_t * sess, fa_5tuple_t * pkt_5tuple)
 {
-  sess->last_active_time = now;
-  if (pkt_5tuple->pkt.tcp_flags_valid)
+  if(PREDICT_FALSE(now - sess->last_active_time > threshold))
+    {
+      sess->last_active_time = now;
+    }
+  if (PREDICT_FALSE(pkt_5tuple->pkt.tcp_flags_valid))
     {
       sess->tcp_flags_seen.as_u8[is_input] |= pkt_5tuple->pkt.tcp_flags;
     }
@@ -918,6 +989,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   return sess;
 }
 
+/**
 static int
 acl_fa_find_session (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
 		     clib_bihash_kv_40_8_t * pvalue_sess)
@@ -927,6 +999,26 @@ acl_fa_find_session (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
 	   pvalue_sess) == 0);
 }
 
+static int
+acl_fa_find_session_with_hash (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple, u64 hash_val,
+		     clib_bihash_kv_40_8_t * pvalue_sess)
+{
+  return (BV (clib_bihash_search_with_hash)
+	  (&am->fa_sessions_hash, &p5tuple->kv, hash_val,
+	   pvalue_sess) == 0);
+}
+**/
+
+static_always_inline void
+acl_fa_prefetch_buffer_and_data (vlib_main_t * vm, u32 bi)
+{
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  // vlib_prefetch_buffer_header (b, STORE);
+  CLIB_PREFETCH (b, 2*64, STORE);
+  CLIB_PREFETCH (b->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+}
+
+#define ACL_FA_NO_SESSION (~0ULL)
 
 always_inline uword
 acl_fa_node_fn (vlib_main_t * vm,
@@ -944,11 +1036,14 @@ acl_fa_node_fn (vlib_main_t * vm,
   u32 trace_bitmap = 0;
   u32 feature_bitmap0;
   acl_main_t *am = &acl_main;
-  fa_5tuple_t fa_5tuple, kv_sess;
+  // fa_5tuple_t fa_5tuple, kv_sess;
+  // fa_5tuple_t kv_sess;
   clib_bihash_kv_40_8_t value_sess;
   vlib_node_runtime_t *error_node;
   u64 now = clib_cpu_time_now ();
+  u64 session_ts_threshold = (vm->clib_time.clocks_per_second/10);
   uword thread_index = os_get_thread_index ();
+  int vlib_tx_rx = is_input ? VLIB_RX : VLIB_TX;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -956,9 +1051,106 @@ acl_fa_node_fn (vlib_main_t * vm,
 
   error_node = vlib_node_get_runtime (vm, acl_fa_node->index);
 
+  /* step 1 - compute hashes */
+  while (n_left_from > 0)
+    {
+      vlib_buffer_t *b0;
+      u32 bi0;
+      // u8 *h0;
+      u32 sw_if_index0;
+      fa_per_packet_info_t *fpp0;
+
+      bi0 = from[0];
+      b0 = vlib_get_buffer (vm, bi0);
+      fpp0 = vnet_buffer_acl_info (b0);
+
+      sw_if_index0 = vnet_buffer (b0)->sw_if_index[vlib_tx_rx];
+
+      if (PREDICT_TRUE (n_left_from > 3))
+        {
+          acl_fa_prefetch_buffer_and_data(vm, from[3]);
+        }
+
+      vlib_prefetch_buffer_header(b0, STORE);
+
+      {
+              fa_5tuple_t fa_5tuple; // , kv_sess;
+	      acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
+	      fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
+	     //  acl_make_5tuple_session_key (is_input, &fa_5tuple, &kv_sess);
+	      fa_5tuple.pkt.sw_if_index = sw_if_index0;
+	      fa_5tuple.pkt.is_ip6 = is_ip6;
+	      fa_5tuple.pkt.is_input = is_input;
+	      fa_5tuple.pkt.mask_type_index_lsb = ~0;
+
+	      // acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fpp0->five_5tuple);
+	      // fpp0->five_tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
+	      acl_make_5tuple_session_key (is_input, &fa_5tuple, &fpp0->five_tuple);
+	      // &fpp0->five_tuple, &kv_sess);
+      }
+
+      // vnet_buffer (b0)->l2_classify.hash = BV (clib_bihash_hash) (&kv_sess.kv);
+      vnet_buffer (b0)->l2_classify.hash = BV (clib_bihash_hash) (&fpp0->five_tuple.kv);
+
+      from++;
+      n_left_from--;
+    }
+
+  next_index = node->cached_next_index;
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  /* step 2 - look up the existing sessions */
+  while (n_left_from > 0)
+    {
+      vlib_buffer_t *b0;
+      u32 bi0;
+      // u32 sw_if_index0;
+      fa_per_packet_info_t *fpp0;
+
+      bi0 = from[0];
+      b0 = vlib_get_buffer (vm, bi0);
+      fpp0 = vnet_buffer_acl_info (b0);
+
+      // sw_if_index0 = vnet_buffer (b0)->sw_if_index[vlib_tx_rx];
+
+      if (PREDICT_TRUE (n_left_from > 5))
+        {
+          acl_fa_prefetch_buffer_and_data(vm, from[5]);
+        }
+
+      if (PREDICT_TRUE (n_left_from > 3))
+        {
+          u32 biX = from[3];
+          vlib_buffer_t *bX = vlib_get_buffer (vm, biX);
+          BV (clib_bihash_prefetch_bucket) (&am->fa_sessions_hash, vnet_buffer (bX)->l2_classify.hash);
+        }
+
+      /* 
+      acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
+      fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
+      acl_make_5tuple_session_key (is_input, &fa_5tuple, &kv_sess);
+      */
+
+      // if (PREDICT_FALSE(BV (clib_bihash_search) (&am->fa_sessions_hash,&kv_sess.kv, &value_sess)))
+      if (PREDICT_FALSE(BV (clib_bihash_search) (&am->fa_sessions_hash, &fpp0->five_tuple.kv, &value_sess)))
+        vnet_buffer (b0)->l2_classify.hash = ACL_FA_NO_SESSION;
+      else
+        vnet_buffer (b0)->l2_classify.hash = value_sess.value;
+
+      from++;
+      n_left_from--;
+    }
+
+  next_index = node->cached_next_index;
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  /* step 3 - forward the packets for the existing sessions, create sessions for new sessions... */
   while (n_left_from > 0)
     {
       u32 n_left_to_next;
+      fa_5tuple_t fa_5tuple;
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
@@ -973,6 +1165,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  u32 match_acl_in_index = ~0;
 	  u32 match_rule_index = ~0;
 	  u8 error0 = 0;
+          fa_per_packet_info_t *fpp0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -983,20 +1176,19 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+          fpp0 = vnet_buffer_acl_info (b0);
 
-	  if (is_input)
-	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-	  else
-	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
+	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[vlib_tx_rx];
 	  if (is_l2_path)
 	    feature_bitmap0 = vnet_buffer (b0)->l2.feature_bitmap;
+
 
 	  /*
 	   * Extract the L3/L4 matching info into a 5-tuple structure,
 	   * then create a session key whose layout is independent on forward or reverse
 	   * direction of the packet.
 	   */
-
+          /*
 	  acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
           fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
 	  acl_make_5tuple_session_key (is_input, &fa_5tuple, &kv_sess);
@@ -1004,36 +1196,33 @@ acl_fa_node_fn (vlib_main_t * vm,
           fa_5tuple.pkt.is_ip6 = is_ip6;
           fa_5tuple.pkt.is_input = is_input;
           fa_5tuple.pkt.mask_type_index_lsb = ~0;
-#ifdef FA_NODE_VERBOSE_DEBUG
-	  clib_warning
-	    ("ACL_FA_NODE_DBG: session 5-tuple %016llx %016llx %016llx %016llx %016llx : %016llx",
-	     kv_sess.kv.key[0], kv_sess.kv.key[1], kv_sess.kv.key[2],
-	     kv_sess.kv.key[3], kv_sess.kv.key[4], kv_sess.kv.value);
-	  clib_warning
-	    ("ACL_FA_NODE_DBG: packet 5-tuple %016llx %016llx %016llx %016llx %016llx : %016llx",
-	     fa_5tuple.kv.key[0], fa_5tuple.kv.key[1], fa_5tuple.kv.key[2],
-	     fa_5tuple.kv.key[3], fa_5tuple.kv.key[4], fa_5tuple.kv.value);
-#endif
+          */
+
+	  acl_make_5tuple_from_session_key (is_input, &fa_5tuple, &fpp0->five_tuple);
+
+          if (PREDICT_TRUE (n_left_from > 5))
+            {
+              acl_fa_prefetch_buffer_and_data(vm, from[5]);
+            }
 
 	  /* Try to match an existing session first */
 
-	  if (acl_fa_ifc_has_sessions (am, sw_if_index0))
+	  if (PREDICT_TRUE(acl_fa_ifc_has_sessions (am, sw_if_index0)))
 	    {
-	      if (acl_fa_find_session
-		  (am, sw_if_index0, &kv_sess, &value_sess))
+	      if (PREDICT_TRUE(vnet_buffer (b0)->l2_classify.hash != ACL_FA_NO_SESSION))
 		{
 		  trace_bitmap |= 0x80000000;
 		  error0 = ACL_FA_ERROR_ACL_EXIST_SESSION;
 		  fa_full_session_id_t f_sess_id;
 
-                  f_sess_id.as_u64 = value_sess.value;
+                  f_sess_id.as_u64 = vnet_buffer (b0)->l2_classify.hash;
                   ASSERT(f_sess_id.thread_index < vec_len(vlib_mains));
 
 		  fa_session_t *sess = get_session_ptr(am, f_sess_id.thread_index, f_sess_id.session_index);
 		  int old_timeout_type =
 		    fa_session_get_timeout_type (am, sess);
 		  action =
-		    acl_fa_track_session (am, is_input, sw_if_index0, now,
+		    acl_fa_track_session (am, is_input, sw_if_index0, now, session_ts_threshold,
 					  sess, &fa_5tuple);
 		  /* expose the session id to the tracer */
 		  match_rule_index = f_sess_id.session_index;
@@ -1067,7 +1256,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 		}
 	    }
 
-	  if (acl_check_needed)
+	  if (PREDICT_FALSE(acl_check_needed))
 	    {
 	      action =
 		multi_acl_match_5tuple (sw_if_index0, &fa_5tuple, is_l2_path,
@@ -1084,8 +1273,8 @@ acl_fa_node_fn (vlib_main_t * vm,
 		  if (acl_fa_can_add_session (am, is_input, sw_if_index0))
 		    {
                       fa_session_t *sess = acl_fa_add_session (am, is_input, sw_if_index0, now,
-					                       &kv_sess);
-                      acl_fa_track_session (am, is_input, sw_if_index0, now,
+					                       &fpp0->five_tuple);
+                      acl_fa_track_session (am, is_input, sw_if_index0, now, session_ts_threshold,
                                             sess, &fa_5tuple);
 		      pkts_new_session += 1;
 		    }
