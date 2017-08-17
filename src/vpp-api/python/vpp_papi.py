@@ -449,8 +449,8 @@ class VPP():
 
     def connect_internal(self, name, msg_handler, chroot_prefix, rx_qlen,
                          async):
-        rv = vpp_api.vac_connect(name.encode(), chroot_prefix.encode(),
-                                 msg_handler, rx_qlen)
+        pfx = chroot_prefix.encode() if chroot_prefix else ffi.NULL
+        rv = vpp_api.vac_connect(name.encode(), pfx, msg_handler, rx_qlen)
         if rv != 0:
             raise IOError(2, 'Connect failed')
         self.connected = True
@@ -465,7 +465,7 @@ class VPP():
         self.control_ping_msgdef = self.messages['control_ping']
         return rv
 
-    def connect(self, name, chroot_prefix=ffi.NULL, async=False, rx_qlen=32):
+    def connect(self, name, chroot_prefix=None, async=False, rx_qlen=32):
         """Attach to VPP.
 
         name - the name of the client.
@@ -478,7 +478,7 @@ class VPP():
         return self.connect_internal(name, msg_handler, chroot_prefix, rx_qlen,
                                      async)
 
-    def connect_sync(self, name, chroot_prefix=ffi.NULL, rx_qlen=32):
+    def connect_sync(self, name, chroot_prefix=None, rx_qlen=32):
         """Attach to VPP in synchronous mode. Application must poll for events.
 
         name - the name of the client.
