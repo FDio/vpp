@@ -188,7 +188,7 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
       return (rv);
     }
 
-  /* Note; requested_va updated due to seg base addr randomization */
+  /* Note: requested_va updated due to seg base addr randomization */
   sm->next_baseva = s->ssvm.requested_va + a->segment_size;
 
   sh = s->ssvm.sh;
@@ -200,7 +200,6 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
   sh->opaque[0] = fsh;
   s->h = fsh;
   fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
-
   preallocate_fifo_pairs (fsh, a);
 
   ssvm_pop_heap (oldheap);
@@ -226,25 +225,19 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
 
   if (a->private_segment_count && a->private_segment_size)
     {
-      void *mem;
       u8 *heap;
       u32 pagesize = clib_mem_get_page_size ();
       u32 rnd_size;
+      rnd_size = (a->private_segment_size + (pagesize - 1)) & ~pagesize;
 
       for (i = 0; i < a->private_segment_count; i++)
 	{
-	  rnd_size = (a->private_segment_size + (pagesize - 1)) & ~pagesize;
-
-	  mem = mmap (0, rnd_size, PROT_READ | PROT_WRITE,
-		      MAP_PRIVATE | MAP_ANONYMOUS,
-		      -1 /* fd */ , 0 /* offset */ );
-
-	  if (mem == MAP_FAILED)
+	  heap = mheap_alloc (0, rnd_size);
+	  if (heap == 0)
 	    {
-	      clib_unix_warning ("mmap");
+	      clib_unix_warning ("mheap alloc");
 	      return -1;
 	    }
-	  heap = mheap_alloc (mem, rnd_size);
 	  heap_header = mheap_header (heap);
 	  heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
 	  vec_add1 (heaps, heap);
@@ -279,6 +272,9 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
       memset (fsh, 0, sizeof (*fsh));
       sh->opaque[0] = fsh;
       s->h = fsh;
+      fsh->flags = FIFO_SEGMENT_F_IS_PRIVATE;
+      if (!a->private_segment_count)
+	fsh->flags |= FIFO_SEGMENT_F_IS_MAIN_HEAP;
       fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
 
       if (a->private_segment_count)
@@ -288,7 +284,6 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
 	  preallocate_fifo_pairs (fsh, a);
 	  clib_mem_set_heap (oldheap);
 	}
-
       sh->ready = 1;
       vec_add1 (a->new_segment_indices, s - sm->segments);
     }
@@ -336,8 +331,20 @@ void
 svm_fifo_segment_delete (svm_fifo_segment_private_t * s)
 {
   svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
-  ssvm_delete (&s->ssvm);
-  pool_put (sm->segments, s);
+  if (s->h->flags & FIFO_SEGMENT_F_IS_PRIVATE)
+    {
+      /* Don't try to free vpp's heap! */
+      if (!(s->h->flags & FIFO_SEGMENT_F_IS_MAIN_HEAP))
+	mheap_free (s->ssvm.sh->heap);
+      clib_mem_free (s->ssvm.sh);
+      clib_mem_free (s->h);
+      pool_put (sm->segments, s);
+    }
+  else
+    {
+      ssvm_delete (&s->ssvm);
+      pool_put (sm->segments, s);
+    }
 }
 
 svm_fifo_t *
@@ -352,8 +359,8 @@ svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
   int freelist_index;
 
   /*
-   * 2K minimum. It's not likely that anything good will happen
-   * with a 1K FIFO.
+   * 4K minimum. It's not likely that anything good will happen
+   * with a smaller FIFO.
    */
   if (data_size_in_bytes < FIFO_SEGMENT_MIN_FIFO_SIZE ||
       data_size_in_bytes > FIFO_SEGMENT_MAX_FIFO_SIZE)
@@ -428,6 +435,7 @@ found:
 	}
       fsh->fifos = f;
     }
+  fsh->n_active_fifos++;
 
   ssvm_pop_heap (oldheap);
   ssvm_unlock_non_recursive (sh);
@@ -489,6 +497,7 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
       f->master_thread_index = ~0;
     }
 
+  fsh->n_active_fifos--;
   ssvm_pop_heap (oldheap);
   ssvm_unlock_non_recursive (sh);
 }
@@ -506,6 +515,25 @@ u32
 svm_fifo_segment_index (svm_fifo_segment_private_t * s)
 {
   return s - svm_fifo_segment_main.segments;
+}
+
+/**
+ * Retrieve svm segments pool. Used only for debug purposes.
+ */
+svm_fifo_segment_private_t *
+svm_fifo_segment_segments_pool (void)
+{
+  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
+  return sm->segments;
+}
+
+/**
+ * Get number of active fifos
+ */
+u32
+svm_fifo_segment_num_fifos (svm_fifo_segment_private_t * fifo_segment)
+{
+  return fifo_segment->h->n_active_fifos;
 }
 
 /*
