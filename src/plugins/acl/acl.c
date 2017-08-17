@@ -994,7 +994,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	  match_type_index = vec_len (mvec);
 	  vec_validate (mvec, match_type_index);
 	  memcpy (mvec[match_type_index].mac_mask,
-		  a->rules[match_type_index].src_mac_mask, 6);
+		  a->rules[i].src_mac_mask, 6);
 	  mvec[match_type_index].prefix_len = a->rules[i].src_prefixlen;
 	  mvec[match_type_index].is_ipv6 = a->rules[i].is_ipv6;
 	  mvec[match_type_index].table_index = ~0;
