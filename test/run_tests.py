@@ -5,43 +5,11 @@ import os
 import select
 import unittest
 import argparse
-import importlib
 from multiprocessing import Process, Pipe
 from framework import VppTestRunner
 from debug import spawn_gdb
 from log import global_logger
-
-
-def add_from_dir(suite, directory):
-    do_insert = True
-    for _f in os.listdir(directory):
-        f = "%s/%s" % (directory, _f)
-        if os.path.isdir(f):
-            add_from_dir(suite, f)
-            continue
-        if not os.path.isfile(f):
-            continue
-        if do_insert:
-            sys.path.insert(0, directory)
-            do_insert = False
-        if not _f.startswith("test_") or not _f.endswith(".py"):
-            continue
-        name = "".join(f.split("/")[-1].split(".")[:-1])
-        if name in sys.modules:
-            raise Exception("Duplicate test module `%s' found!" % name)
-        module = importlib.import_module(name)
-        for name, cls in module.__dict__.items():
-            if not isinstance(cls, type):
-                continue
-            if not issubclass(cls, unittest.TestCase):
-                continue
-            if name == "VppTestCase":
-                continue
-            for method in dir(cls):
-                if not callable(getattr(cls, method)):
-                    continue
-                if method.startswith("test_"):
-                    suite.addTest(cls(method))
+from discover_tests import discover_tests
 
 
 def test_runner_wrapper(suite, keep_alive_pipe, result_pipe):
@@ -52,6 +20,14 @@ def test_runner_wrapper(suite, keep_alive_pipe, result_pipe):
     result_pipe.send(result)
     result_pipe.close()
     keep_alive_pipe.close()
+
+
+class add_to_suite_callback:
+    def __init__(self, suite):
+        self.suite = suite
+
+    def __call__(self, file_name, cls, method):
+        suite.addTest(cls(method))
 
 
 def run_forked(suite):
@@ -124,9 +100,10 @@ if __name__ == '__main__':
     failfast = True if args.failfast == 1 else False
 
     suite = unittest.TestSuite()
+    cb = add_to_suite_callback(suite)
     for d in args.dir:
         global_logger.info("Adding tests from directory tree %s" % d)
-        add_from_dir(suite, d)
+        discover_tests(d, cb)
 
     if debug is None or debug.lower() not in ["gdb", "gdbserver"]:
         sys.exit(run_forked(suite))
