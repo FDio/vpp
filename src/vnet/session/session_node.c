@@ -205,6 +205,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   n_frames_per_evt = ceil ((double) n_bufs_per_evt / VLIB_FRAME_SIZE);
 
   deq_per_buf = clib_min (snd_mss0, n_bytes_per_buf);
+  ASSERT (deq_per_buf > MAX_HDRS_LEN);
 
   n_bufs = vec_len (smm->tx_buffers[thread_index]);
   left_to_snd0 = max_len_to_snd0;
@@ -266,8 +267,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->current_data = 0;
 	  b0->total_length_not_including_first_buffer = 0;
 
-	  len_to_deq0 = clib_min (left_to_snd0, deq_per_buf);
-
+	  len_to_deq0 = clib_min (left_to_snd0, deq_per_buf) - MAX_HDRS_LEN;
 	  data0 = vlib_buffer_make_headroom (b0, MAX_HDRS_LEN);
 	  if (peek_data)
 	    {
