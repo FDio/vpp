@@ -148,7 +148,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   u16 snd_mss0, n_bufs_per_seg, n_bufs;
   u8 *data0;
   int i, n_bytes_read;
-  u32 n_bytes_per_buf, deq_per_buf;
+  u32 n_bytes_per_buf, deq_per_buf, deq_per_first_buf;
   u32 buffers_allocated, buffers_allocated_this_call;
 
   next_index = next0 = session_type_to_next[s0->session_type];
@@ -198,6 +198,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   n_bytes_per_buf = vlib_buffer_free_list_buffer_size
     (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  ASSERT (n_bytes_per_buf > MAX_HDRS_LEN);
   n_bytes_per_seg = MAX_HDRS_LEN + snd_mss0;
   n_bufs_per_seg = ceil ((double) n_bytes_per_seg / n_bytes_per_buf);
   n_bufs_per_evt = (ceil ((double) max_len_to_snd0 / n_bytes_per_seg))
@@ -205,6 +206,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   n_frames_per_evt = ceil ((double) n_bufs_per_evt / VLIB_FRAME_SIZE);
 
   deq_per_buf = clib_min (snd_mss0, n_bytes_per_buf);
+  deq_per_first_buf = clib_min (snd_mss0, n_bytes_per_buf - MAX_HDRS_LEN);
 
   n_bufs = vec_len (smm->tx_buffers[thread_index]);
   left_to_snd0 = max_len_to_snd0;
@@ -266,8 +268,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  b0->current_data = 0;
 	  b0->total_length_not_including_first_buffer = 0;
 
-	  len_to_deq0 = clib_min (left_to_snd0, deq_per_buf);
-
+	  len_to_deq0 = clib_min (left_to_snd0, deq_per_first_buf);
 	  data0 = vlib_buffer_make_headroom (b0, MAX_HDRS_LEN);
 	  if (peek_data)
 	    {
