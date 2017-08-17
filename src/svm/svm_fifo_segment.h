@@ -36,6 +36,7 @@ typedef struct
   svm_fifo_t *fifos;		/**< Linked list of active RX fifos */
   u8 *segment_name;		/**< Segment name */
   svm_fifo_t **free_fifos;	/**< Freelists, by fifo size  */
+  u8 is_private;			/**< Segment is proc private*/
 } svm_fifo_segment_header_t;
 
 typedef struct
