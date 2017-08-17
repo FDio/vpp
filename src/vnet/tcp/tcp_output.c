@@ -1096,7 +1096,8 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = vlib_get_main ();
   int n_bytes = 0;
-  u32 start, bi, available_bytes;
+  u32 start, bi, available_bytes, seg_size;
+  u8 *data;
 
   ASSERT (tc->state >= TCP_STATE_ESTABLISHED);
   ASSERT (max_deq_bytes != 0);
@@ -1104,14 +1105,15 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
   /*
    * Make sure we can retransmit something
    */
-  max_deq_bytes = clib_min (tc->snd_mss, max_deq_bytes);
   available_bytes = stream_session_tx_fifo_max_dequeue (&tc->connection);
   if (!available_bytes)
     return 0;
+  max_deq_bytes = clib_min (tc->snd_mss, max_deq_bytes);
   max_deq_bytes = clib_min (available_bytes, max_deq_bytes);
-  start = tc->snd_una + offset;
+  seg_size = max_deq_bytes + MAX_HDRS_LEN;
 
   /* Start is beyond snd_congestion */
+  start = tc->snd_una + offset;
   if (seq_geq (start, tc->snd_congestion))
     {
       goto done;
@@ -1139,13 +1141,13 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
     return 0;
   *b = vlib_get_buffer (vm, bi);
+  data = vlib_buffer_make_headroom (*b, MAX_HDRS_LEN);
 
   /* Easy case, buffer size greater than mss */
-  if (PREDICT_TRUE (max_deq_bytes <= tm->bytes_per_buffer))
+  if (PREDICT_TRUE (seg_size <= tm->bytes_per_buffer))
     {
-      n_bytes = stream_session_peek_bytes (&tc->connection,
-					   vlib_buffer_get_current (*b),
-					   offset, max_deq_bytes);
+      n_bytes = stream_session_peek_bytes (&tc->connection, data, offset,
+					   max_deq_bytes);
       ASSERT (n_bytes == max_deq_bytes);
       b[0]->current_length = n_bytes;
       tcp_push_hdr_i (tc, *b, tc->state, 0);
@@ -1157,10 +1159,9 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
       u32 thread_index = vlib_get_thread_index ();
       u16 n_peeked, len_to_deq, available_bufs;
       vlib_buffer_t *chain_b, *prev_b;
-      u8 *data0;
       int i;
 
-      n_bufs_per_seg = ceil ((double) max_deq_bytes / tm->bytes_per_buffer);
+      n_bufs_per_seg = ceil ((double) seg_size / tm->bytes_per_buffer);
       ASSERT (available_bytes >= max_deq_bytes);
 
       /* Make sure we have enough buffers */
@@ -1175,9 +1176,9 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 	    }
 	}
 
-      n_bytes = stream_session_peek_bytes (&tc->connection,
-					   vlib_buffer_get_current (*b),
-					   offset, tm->bytes_per_buffer);
+      n_bytes = stream_session_peek_bytes (&tc->connection, data, offset,
+					   tm->bytes_per_buffer -
+					   MAX_HDRS_LEN);
       b[0]->current_length = n_bytes;
       b[0]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
       b[0]->total_length_not_including_first_buffer = 0;
@@ -1194,8 +1195,8 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 	  ASSERT (chain_bi != (u32) ~ 0);
 	  chain_b = vlib_get_buffer (vm, chain_bi);
 	  chain_b->current_data = 0;
-	  data0 = vlib_buffer_get_current (chain_b);
-	  n_peeked = stream_session_peek_bytes (&tc->connection, data0,
+	  data = vlib_buffer_get_current (chain_b);
+	  n_peeked = stream_session_peek_bytes (&tc->connection, data,
 						n_bytes, len_to_deq);
 	  n_bytes += n_peeked;
 	  ASSERT (n_peeked == len_to_deq);
@@ -1215,6 +1216,8 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
     }
 
   ASSERT (n_bytes > 0);
+  ASSERT (((*b)->current_data + (*b)->current_length) <=
+	  tm->bytes_per_buffer);
 
   if (tcp_in_fastrecovery (tc))
     tc->snd_rxt_bytes += n_bytes;

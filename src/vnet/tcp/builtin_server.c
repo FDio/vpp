@@ -267,7 +267,7 @@ create_api_loopback (vlib_main_t * vm)
   shmem_hdr = am->shmem_hdr;
   bsm->vl_input_queue = shmem_hdr->vl_input_queue;
   bsm->my_client_index =
-    vl_api_memclnt_create_internal ("http_test_server", bsm->vl_input_queue);
+    vl_api_memclnt_create_internal ("tcp_test_server", bsm->vl_input_queue);
   return 0;
 }
 
