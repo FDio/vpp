@@ -82,15 +82,20 @@ typedef struct _application
    */
   u32 connects_seg_manager;
 
-  /* Lookup tables for listeners. Value is segment manager index */
+  /** Lookup tables for listeners. Value is segment manager index */
   uword *listeners_table;
 
+  /** First segment manager has in the the first segment the application's
+   * event fifo. Depending on what the app does, it may be either used for
+   * a listener or for connects. */
   u32 first_segment_manager;
   u8 first_segment_manager_in_use;
 
   /** Segment manager properties. Shared by all segment managers */
   segment_manager_properties_t sm_properties;
 } application_t;
+
+#define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
 
 application_t *application_new ();
 int
@@ -118,6 +123,7 @@ segment_manager_t *application_get_listen_segment_manager (application_t *
 segment_manager_t *application_get_connect_segment_manager (application_t *
 							    app);
 int application_is_proxy (application_t * app);
+int application_add_segment_notify (u32 app_index, u32 fifo_segment_index);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 
