@@ -56,22 +56,41 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
 
   memset (ca, 0, sizeof (*ca));
 
-  ca->segment_name = (char *) segment_name;
-  ca->segment_size = segment_size;
-  ca->rx_fifo_size = sm->properties->rx_fifo_size;
-  ca->tx_fifo_size = sm->properties->tx_fifo_size;
-  ca->preallocated_fifo_pairs = sm->properties->preallocated_fifo_pairs;
-
-  rv = svm_fifo_segment_create (ca);
-  if (rv)
+  if (!sm->properties->use_private_segment)
     {
-      clib_warning ("svm_fifo_segment_create ('%s', %d) failed",
-		    ca->segment_name, ca->segment_size);
-      return VNET_API_ERROR_SVM_SEGMENT_CREATE_FAIL;
-    }
+      ca->segment_name = (char *) segment_name;
+      ca->segment_size = segment_size;
+      ca->rx_fifo_size = sm->properties->rx_fifo_size;
+      ca->tx_fifo_size = sm->properties->tx_fifo_size;
+      ca->preallocated_fifo_pairs = sm->properties->preallocated_fifo_pairs;
 
-  vec_append (sm->segment_indices, ca->new_segment_indices);
-  vec_free (ca->new_segment_indices);
+      rv = svm_fifo_segment_create (ca);
+      if (rv)
+	{
+	  clib_warning("svm_fifo_segment_create ('%s', %d) failed",
+		       ca->segment_name, ca->segment_size);
+	  return VNET_API_ERROR_SVM_SEGMENT_CREATE_FAIL;
+	}
+
+      vec_append(sm->segment_indices, ca->new_segment_indices);
+      vec_free(ca->new_segment_indices);
+    }
+  else
+    {
+      ca->segment_name = "process-private-segment";
+      ca->segment_size = ~0;
+      ca->rx_fifo_size = sm->properties->rx_fifo_size;
+      ca->tx_fifo_size = sm->properties->tx_fifo_size;
+      ca->preallocated_fifo_pairs = sm->properties->preallocated_fifo_pairs;
+      ca->private_segment_count = sm->properties->private_segment_count;
+      ca->private_segment_size = sm->properties->private_segment_size;
+
+      if (svm_fifo_segment_create_process_private (ca))
+        clib_warning ("Failed to create process private segment");
+
+      private_segment_indices = ca->new_segment_indices;
+      ASSERT (vec_len (private_segment_indices));
+    }
 
   return 0;
 }
@@ -112,7 +131,7 @@ static void
 {
   svm_fifo_segment_create_args_t _a, *a = &_a;
 
-  if (private_segment_indices)
+  if (vec_len (private_segment_indices))
     return;
 
   memset (a, 0, sizeof (*a));
@@ -173,7 +192,7 @@ segment_manager_first_segment_maybe_del (segment_manager_t * sm)
 {
   svm_fifo_segment_private_t *fifo_segment;
 
-  /* If the first semgment has no fifos, then delete the 1st segment
+  /* If the first segment has no fifos, then delete the 1st segment
    */
   fifo_segment = svm_fifo_get_segment (sm->segment_indices[0]);
   if (!svm_fifo_segment_has_fifos (fifo_segment))

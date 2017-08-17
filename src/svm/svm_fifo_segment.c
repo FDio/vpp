@@ -230,21 +230,16 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
       u8 *heap;
       u32 pagesize = clib_mem_get_page_size ();
       u32 rnd_size;
+      rnd_size = (a->private_segment_size + (pagesize - 1)) & ~pagesize;
 
       for (i = 0; i < a->private_segment_count; i++)
 	{
-	  rnd_size = (a->private_segment_size + (pagesize - 1)) & ~pagesize;
-
-	  mem = mmap (0, rnd_size, PROT_READ | PROT_WRITE,
-		      MAP_PRIVATE | MAP_ANONYMOUS,
-		      -1 /* fd */ , 0 /* offset */ );
-
-	  if (mem == MAP_FAILED)
+	  heap = mheap_alloc (0, rnd_size);
+	  if (heap == 0)
 	    {
-	      clib_unix_warning ("mmap");
+	      clib_unix_warning ("mheap alloc");
 	      return -1;
 	    }
-	  heap = mheap_alloc (mem, rnd_size);
 	  heap_header = mheap_header (heap);
 	  heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
 	  vec_add1 (heaps, heap);
@@ -337,6 +332,21 @@ svm_fifo_segment_delete (svm_fifo_segment_private_t * s)
 {
   svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
   ssvm_delete (&s->ssvm);
+  pool_put (sm->segments, s);
+}
+
+void
+svm_fifo_segment_delete_process_private (svm_fifo_segment_private_t * s)
+{
+  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
+
+  /* Don't try to free vpp's heap! */
+  if (clib_mem_get_heap () == s->ssvm.sh->heap)
+    return;
+
+  mheap_free (s->ssvm.sh->heap);
+  clib_mem_free (s->ssvm.sh);
+  clib_mem_free (s->h);
   pool_put (sm->segments, s);
 }
 

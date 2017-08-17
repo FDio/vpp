@@ -390,7 +390,10 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
   /* Get the app's index from the handle we stored when opening connection
    * and the opaque (api_context for external apps) from transport session
    * index*/
-  app = application_get (handle >> 32);
+  app = application_get_if_valid (handle >> 32);
+  if (!app)
+    return -1;
+
   opaque = tc->s_index;
 
   if (!is_fail)
