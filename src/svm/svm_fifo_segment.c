@@ -226,25 +226,19 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
 
   if (a->private_segment_count && a->private_segment_size)
     {
-      void *mem;
       u8 *heap;
       u32 pagesize = clib_mem_get_page_size ();
       u32 rnd_size;
+      rnd_size = (a->private_segment_size + (pagesize - 1)) & ~pagesize;
 
       for (i = 0; i < a->private_segment_count; i++)
 	{
-	  rnd_size = (a->private_segment_size + (pagesize - 1)) & ~pagesize;
-
-	  mem = mmap (0, rnd_size, PROT_READ | PROT_WRITE,
-		      MAP_PRIVATE | MAP_ANONYMOUS,
-		      -1 /* fd */ , 0 /* offset */ );
-
-	  if (mem == MAP_FAILED)
+	  heap = mheap_alloc (0, rnd_size);
+	  if (heap == 0)
 	    {
-	      clib_unix_warning ("mmap");
+	      clib_unix_warning ("mheap alloc");
 	      return -1;
 	    }
-	  heap = mheap_alloc (mem, rnd_size);
 	  heap_header = mheap_header (heap);
 	  heap_header->flags |= MHEAP_FLAG_THREAD_SAFE;
 	  vec_add1 (heaps, heap);
@@ -279,6 +273,7 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
       memset (fsh, 0, sizeof (*fsh));
       sh->opaque[0] = fsh;
       s->h = fsh;
+      fsh->is_private = 1;
       fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
 
       if (a->private_segment_count)
@@ -288,7 +283,6 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
 	  preallocate_fifo_pairs (fsh, a);
 	  clib_mem_set_heap (oldheap);
 	}
-
       sh->ready = 1;
       vec_add1 (a->new_segment_indices, s - sm->segments);
     }
@@ -336,8 +330,22 @@ void
 svm_fifo_segment_delete (svm_fifo_segment_private_t * s)
 {
   svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
-  ssvm_delete (&s->ssvm);
-  pool_put (sm->segments, s);
+  if (s->h->is_private)
+    {
+      /* Don't try to free vpp's heap! */
+      if (clib_mem_get_heap () == s->ssvm.sh->heap)
+        return;
+
+      mheap_free (s->ssvm.sh->heap);
+      clib_mem_free (s->ssvm.sh);
+      clib_mem_free (s->h);
+      pool_put (sm->segments, s);
+    }
+  else
+    {
+      ssvm_delete (&s->ssvm);
+      pool_put (sm->segments, s);
+    }
 }
 
 svm_fifo_t *

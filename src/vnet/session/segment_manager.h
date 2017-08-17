@@ -55,10 +55,21 @@ typedef struct _segment_manager
   /** Owner app index */
   u32 app_index;
 
-  /** Pointer to manager properties. Could be shared among all of
-   * an app's segment managers s*/
+  /**
+   * Pointer to manager properties. Could be shared among all of
+   * an app's segment managers s
+   */
   segment_manager_properties_t *properties;
+
+  /**
+   * First segment should not be deleted unless segment manger is deleted.
+   * This also indicates that the segment manager is the first to have been
+   * allocated for the app.
+   */
+  u8 first_is_protected;
 } segment_manager_t;
+
+#define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
 
 /** Pool of segment managers */
 extern segment_manager_t *segment_managers;
@@ -100,9 +111,11 @@ segment_manager_init (segment_manager_t * sm,
 void segment_manager_get_segment_info (u32 index, u8 ** name, u32 * size);
 int
 session_manager_add_first_segment (segment_manager_t * sm, u32 segment_size);
-void segment_manager_first_segment_maybe_del (segment_manager_t * sm);
 int session_manager_add_segment (segment_manager_t * sm);
+void segment_manager_del_sessions (segment_manager_t *sm);
 void segment_manager_del (segment_manager_t * sm);
+void segment_manager_init_del (segment_manager_t *sm);
+u8 segment_manager_has_fifos (segment_manager_t *sm);
 int
 segment_manager_alloc_session_fifos (segment_manager_t * sm,
 				     svm_fifo_t ** server_rx_fifo,

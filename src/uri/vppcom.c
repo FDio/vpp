@@ -1076,7 +1076,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   session->sm_seg_index = a->new_segment_indices[0];
   vec_reset_length (a->new_segment_indices);
 
-  seg = svm_fifo_get_segment (session->sm_seg_index);
+  seg = svm_fifo_segment_get_segment (session->sm_seg_index);
   rx_fifo = session->server_rx_fifo =
     svm_fifo_segment_alloc_fifo (seg, vcm->cfg.rx_fifo_size,
 				 FIFO_SEGMENT_RX_FREELIST);
