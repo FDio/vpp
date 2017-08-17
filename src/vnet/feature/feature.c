@@ -65,8 +65,11 @@ vnet_feature_init (vlib_main_t * vm)
       vnet_feature_registration_t *next;
       uword *p = hash_get_mem (fm->arc_index_by_name, freg->arc_name);
       if (p == 0)
-	return clib_error_return (0, "Unknown feature arc '%s'",
-				  freg->arc_name);
+	{
+	  /* Don't start vpp with broken features arcs */
+	  clib_warning ("Unknown feature arc '%s'", freg->arc_name);
+	  os_exit (1);
+	}
 
       areg = uword_to_pointer (p[0], vnet_feature_arc_registration_t *);
       arc_index = areg->feature_arc_index;
@@ -95,7 +98,8 @@ vnet_feature_init (vlib_main_t * vm)
 					  fm->next_feature_by_arc[arc_index],
 					  &fm->feature_nodes[arc_index])))
 	{
-	  return error;
+	  clib_error_report (error);
+	  os_exit (1);
 	}
 
       fm->next_feature_by_name[arc_index] =
