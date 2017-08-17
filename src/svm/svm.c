@@ -733,7 +733,7 @@ svm_mutex_cleanup (void)
     }
 }
 
-static void
+static int
 svm_region_init_internal (svm_map_region_args_t * a)
 {
   svm_region_t *rp;
@@ -742,7 +742,7 @@ svm_region_init_internal (svm_map_region_args_t * a)
 
   /* guard against klutz calls */
   if (root_rp)
-    return;
+    return -1;
 
   root_rp_refcount++;
 
@@ -757,7 +757,8 @@ svm_region_init_internal (svm_map_region_args_t * a)
   a->baseva += randomize_baseva;
 
   rp = svm_map_region (a);
-  ASSERT (rp);
+  if (!rp)
+    return -1;
 
   region_lock (rp, 3);
 
@@ -778,6 +779,8 @@ svm_region_init_internal (svm_map_region_args_t * a)
     }
   region_unlock (rp);
   root_rp = rp;
+
+  return 0;
 }
 
 void
@@ -797,7 +800,7 @@ svm_region_init (void)
   svm_region_init_internal (a);
 }
 
-void
+int
 svm_region_init_chroot (const char *root_path)
 {
   svm_map_region_args_t _a, *a = &_a;
@@ -811,7 +814,7 @@ svm_region_init_chroot (const char *root_path)
   a->uid = 0;
   a->gid = 0;
 
-  svm_region_init_internal (a);
+  return svm_region_init_internal (a);
 }
 
 void
