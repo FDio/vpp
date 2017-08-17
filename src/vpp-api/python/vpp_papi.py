@@ -442,7 +442,7 @@ class VPP():
         size = ffi.new("int *")
         rv = vpp_api.vac_read(mem, size, self.read_timeout)
         if rv:
-            raise IOError(rv, 'vac_read filed')
+            raise IOError(rv, 'vac_read failed')
         msg = bytes(ffi.buffer(mem[0], size[0]))
         vpp_api.vac_free(mem[0])
         return msg
