@@ -337,7 +337,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
   void *oldheap;
   vl_shmem_hdr_t *shmem_hdr = 0;
   api_main_t *am = &api_main;
-  int i;
+  int i, rv;
   struct timespec ts, tsrem;
   u32 vlib_input_queue_length;
 
@@ -352,7 +352,11 @@ vl_map_shmem (const char *region_name, int is_vlib)
     }
 
   if (is_vlib == 0)
-    svm_region_init_chroot (am->root_path);
+    {
+      rv = svm_region_init_chroot (am->root_path);
+      if (rv)
+	return rv;
+    }
 
   if (a->root_path != NULL)
     {
