@@ -19,3 +19,8 @@ then
 else
 	echo "No symlinks to failed tests' temporary directories found in ${VPP_TEST_FAILED_DIR}."
 fi
+
+# This script gets run only if there was a 'make test' failure,
+# so return failure error status so that the build results are
+# recorded correctly.
+exit 1
