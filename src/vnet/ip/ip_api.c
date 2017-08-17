@@ -964,7 +964,7 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
   memset (&nh, 0, sizeof (nh));
   memcpy (&nh.ip4, mp->next_hop_address, sizeof (nh.ip4));
 
-  n_labels = mp->next_hop_n_out_labels;
+  n_labels = ntohl (mp->next_hop_n_out_labels);
   if (n_labels == 0)
     ;
   else if (1 == n_labels)
@@ -1024,7 +1024,7 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
   memset (&nh, 0, sizeof (nh));
   memcpy (&nh.ip6, mp->next_hop_address, sizeof (nh.ip6));
 
-  n_labels = mp->next_hop_n_out_labels;
+  n_labels = ntohl (mp->next_hop_n_out_labels);
   if (n_labels == 0)
     ;
   else if (1 == n_labels)
