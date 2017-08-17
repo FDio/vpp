@@ -65,8 +65,15 @@ vnet_feature_init (vlib_main_t * vm)
       vnet_feature_registration_t *next;
       uword *p = hash_get_mem (fm->arc_index_by_name, freg->arc_name);
       if (p == 0)
-	return clib_error_return (0, "Unknown feature arc '%s'",
-				  freg->arc_name);
+	{
+	  /* Print error but process the remaining features. This makes
+	   * sure vnet_feature_config_main is at least partially initialized
+	   * if feature arcs are missing (e.g. misconfigured plugins don't
+	   * affect native features) */
+	  clib_warning ("Unknown feature arc '%s'", freg->arc_name);
+	  freg = freg->next;
+	  continue;
+	}
 
       areg = uword_to_pointer (p[0], vnet_feature_arc_registration_t *);
       arc_index = areg->feature_arc_index;
@@ -95,6 +102,8 @@ vnet_feature_init (vlib_main_t * vm)
 					  fm->next_feature_by_arc[arc_index],
 					  &fm->feature_nodes[arc_index])))
 	{
+	  clib_warning ("Feature arc init %v", error);
+	  continue;
 	  return error;
 	}
 
