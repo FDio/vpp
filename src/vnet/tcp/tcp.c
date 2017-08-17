@@ -316,8 +316,10 @@ tcp_connection_close (tcp_connection_t * tc)
       tcp_send_fin (tc);
       tc->state = TCP_STATE_LAST_ACK;
       break;
+    case TCP_STATE_FIN_WAIT_1:
+      break;
     default:
-      clib_warning ("shouldn't be here");
+      clib_warning ("state: %u", tc->state);
     }
 
   TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
@@ -836,6 +838,8 @@ format_tcp_connection (u8 * s, va_list * args)
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   u32 verbose = va_arg (*args, u32);
 
+  if (!tc)
+    return s;
   s = format (s, "%-50U", format_tcp_connection_id, tc);
   if (verbose)
     {

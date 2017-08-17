@@ -394,7 +394,6 @@ session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 always_inline stream_session_t *
 session_event_get_session (session_fifo_event_t * e, u8 thread_index)
 {
-  ASSERT (e->fifo->master_thread_index == thread_index);
   return stream_session_get_if_valid (e->fifo->master_session_index,
 				      thread_index);
 }
@@ -643,6 +642,8 @@ skip_dequeue:
 	  break;
 	case FIFO_EVENT_BUILTIN_RX:
 	  s0 = session_event_get_session (e0, my_thread_index);
+	  if (PREDICT_FALSE (!s0))
+	    continue;
 	  svm_fifo_unset_event (s0->server_rx_fifo);
 	  app = application_get (s0->app_index);
 	  app->cb_fns.builtin_server_rx_callback (s0);
