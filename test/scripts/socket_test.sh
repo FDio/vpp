@@ -9,6 +9,7 @@ vpp_shm_dir="/dev/shm/"
 lib64_dir="$WS_ROOT/build-root/install-vpp-native/vpp/lib64/"
 lib64_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/lib64/"
 docker_vpp_dir="/vpp/"
+docker_app_dir="/vpp/"
 docker_lib64_dir="/vpp-lib64/"
 docker_os="ubuntu"
 vcl_ldpreload_lib="libvcl_ldpreload.so.0.0.0"
@@ -17,8 +18,8 @@ sock_srvr_app="sock_test_server"
 sock_clnt_app="sock_test_client"
 sock_srvr_addr="127.0.0.1"
 sock_srvr_port="22000"
-iperf_srvr_app="iperf3 -V4d1 -s"
-iperf_clnt_app="iperf3 -V4d -c localhost"
+iperf_srvr_app="iperf3 -V4d -s"
+iperf_clnt_app="iperf3 -V4d -c \$srvr_addr"
 gdb_in_emacs="gdb_in_emacs"
 vppcom_conf="vppcom.conf"
 vppcom_conf_dir="$WS_ROOT/src/uri/"
@@ -256,13 +257,13 @@ if [ ! -f $vpp_dir$vpp_app ] ; then
     env_test_failed="true"
 fi
 
-if [ ! -f $vpp_dir$sock_srvr_app ] ; then
+if [ ! -f $vpp_dir$sock_srvr_app ] && [ ! $iperf3 -eq 1 ] ; then
     echo "ERROR: Missing$DEBUG Socket Server Application!" >&2
     echo "       $vpp_dir$sock_srvr_app" >&2
     env_test_failed="true"
 fi
 
-if [ ! -f $vpp_dir$sock_clnt_app ] ; then
+if [ ! -f $vpp_dir$sock_clnt_app ] && [ ! $iperf3 -eq 1 ] ; then
     echo "ERROR: Missing$DEBUG Socket Client Application!" >&2
     echo "       $vpp_dir$sock_clnt_app" >&2
     env_test_failed="true"
@@ -280,6 +281,12 @@ if [[ $run_test =~ "docker_".* ]] ; then
     fi
 fi
 
+if [[ $run_test =~ .*"_vcl" ]] && [ $iperf3 -eq 1 ] ; then
+    echo "ERROR: Invalid option 'i' for test $run_test!"
+    echo "       iperf3 is not compiled with the VCL library."
+    env_test_failed="true"
+fi
+
 if [ -n "$env_test_failed" ] ; then
     exit 1
 fi
@@ -294,10 +301,16 @@ if [ -f "$VPPCOM_CONF" ] ; then
 fi
 vpp_args="unix { interactive cli-listen /run/vpp/cli.sock }${api_segment}"
 
-if [ $iperf3 -eq 1 ] &&  [[ ! $run_test =~ "docker_".* ]] ; then
+if [ $iperf3 -eq 1 ] ; then
     app_dir="$(dirname $(which iperf3))/"
     srvr_app=$iperf_srvr_app
     clnt_app=$iperf_clnt_app
+    if [[ $run_test =~ "docker_".* ]] ; then
+        unset -v app_dir
+        sock_srvr_port=5201
+        docker_app_dir="networkstatic/"
+        unset -v docker_os
+    fi
 else
     app_dir="$vpp_dir"
     srvr_app="$sock_srvr_app $sock_srvr_port"
@@ -372,7 +385,7 @@ write_script_header() {
     echo "$bash_header" > $1
     echo -e "#\n# $1 generated on $(date)\n#" >> $1
     if [ $leave_tmp_files -eq 0 ] ; then
-        echo "trap \"rm -f $1 $2 $dup_vcl_ldpreload_lib\" $trap_signals" >> $1
+        echo "trap \"rm -f $1 $2\" $trap_signals" >> $1
     fi
     echo "export VPPCOM_CONF=${vppcom_conf_dir}${vppcom_conf}" >> $1
     if [ "$pre_cmd" = "$gdb_in_emacs " ] ; then
@@ -463,6 +476,7 @@ native_preload() {
     gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
     set_pre_cmd $emacs_server $gdb_server $ld_preload
     write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
+    echo "export LD_LIBRARY_PATH=\"$lib64_dir:$VCL_LDPRELOAD_LIB_DIR:$LD_LIBRARY_PATH\"" >> $cmd2_file
     echo "${pre_cmd}${app_dir}${srvr_app}" >> $cmd2_file
     write_script_footer $cmd2_file $perf_server
 
@@ -471,6 +485,7 @@ native_preload() {
     gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
     set_pre_cmd $emacs_client $gdb_client $ld_preload
     write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
+    echo "export LD_LIBRARY_PATH=\"$lib64_dir:$VCL_LDPRELOAD_LIB_DIR:$LD_LIBRARY_PATH\"" >> $cmd3_file
     echo "srvr_addr=\"$sock_srvr_addr\"" >> $cmd3_file
     echo "${pre_cmd}${app_dir}${clnt_app}" >> $cmd3_file
     write_script_footer $cmd3_file $perf_client
@@ -521,7 +536,7 @@ docker_kernel() {
     gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
     set_pre_cmd $emacs_server $gdb_server
     write_script_header $cmd1_file $tmp_gdb_cmdfile "$title1"
-    echo "docker run -it -v $vpp_dir:$docker_vpp_dir -p $sock_srvr_port:$sock_srvr_port $docker_os ${docker_vpp_dir}${srvr_app}" >> $cmd1_file
+    echo "docker run -it -v $vpp_dir:$docker_vpp_dir -p $sock_srvr_port:$sock_srvr_port $docker_os ${docker_app_dir}${srvr_app}" >> $cmd1_file
     write_script_footer $cmd1_file $perf_server
     
     title2="CLIENT$title_dbg (Docker-Native Socket Test)"
@@ -530,7 +545,7 @@ docker_kernel() {
     set_pre_cmd $emacs_client $gdb_client
     write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
     echo "$get_docker_server_ip4addr" >> $cmd2_file
-    echo "docker run -it -v $vpp_dir:$docker_vpp_dir $docker_os ${docker_vpp_dir}${clnt_app}" >> $cmd2_file
+    echo "docker run -it -v $vpp_dir:$docker_vpp_dir $docker_os ${docker_app_dir}${clnt_app}" >> $cmd2_file
     write_script_footer $cmd2_file $perf_client
     
     chmod +x $cmd1_file $cmd2_file
@@ -540,10 +555,10 @@ docker_preload() {
     verify_no_vpp
     verify_no_docker_containers
     banner="Running DOCKER-PRELOAD socket test"
-    ld_preload="$VCL_LDPRELOAD_LIB_DIR/$vcl_ldpreload_lib "
-    docker_ld_preload_lib="$docker_lib64_dir$vcl_ldpreload_lib "
-    dup_vcl_ldpreload_lib="$lib64_dir$vcl_ldpreload_lib"
-    cp $ld_preload $dup_vcl_ldpreload_lib
+    docker_ld_preload_dir="/vcl-ldpreload/"
+    ld_preload_dir="$VCL_LDPRELOAD_LIB_DIR"
+    ld_preload="$docker_ld_preload_dir$vcl_ldpreload_lib "
+    docker_ld_preload_lib="$docker_ld_preload_dir$vcl_ldpreload_lib "
     
     title1="VPP$title_dbg (Docker-Preload Socket Test)"
     tmp_gdb_cmdfile=$tmp_gdb_cmdfile_vpp
@@ -558,7 +573,7 @@ docker_preload() {
     gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
     set_pre_cmd $emacs_server $gdb_server $docker_ld_preload_lib
     write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
-    echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -p $sock_srvr_port:$sock_srvr_port -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir ${docker_ld_preload}$docker_os ${docker_vpp_dir}${srvr_app}" >> $cmd2_file
+    echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $ld_preload_dir:$docker_ld_preload_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -p $sock_srvr_port:$sock_srvr_port -e VPPCOM_CONF=${docker_vppcom_conf_dir}$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir:$docker_ld_preload_dir ${docker_ld_preload}$docker_os ${docker_app_dir}${srvr_app}" >> $cmd2_file
     write_script_footer $cmd2_file $perf_server
 
     title3="CLIENT$title_dbg (Docker-Preload Socket Test)"
@@ -567,7 +582,7 @@ docker_preload() {
     set_pre_cmd $emacs_client $gdb_client $docker_ld_preload_lib
     write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
     echo "$get_docker_server_ip4addr" >> $cmd3_file
-    echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir ${docker_ld_preload}$docker_os ${docker_vpp_dir}${clnt_app}" >> $cmd3_file
+    echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir  -v $ld_preload_dir:$docker_ld_preload_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -e VPPCOM_CONF=${docker_vppcom_conf_dir}$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir ${docker_ld_preload}$docker_os ${docker_app_dir}${clnt_app}" >> $cmd3_file
     write_script_footer $cmd3_file $perf_client
 
     chmod +x $cmd1_file $cmd2_file $cmd3_file
@@ -591,7 +606,7 @@ docker_vcl() {
     gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
     set_pre_cmd $emacs_server $gdb_server
     write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
-    echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -p $sock_srvr_port:$sock_srvr_port -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir $docker_os ${docker_vpp_dir}${srvr_app}" >> $cmd2_file
+    echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -p $sock_srvr_port:$sock_srvr_port -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir $docker_os ${docker_app_dir}${srvr_app}" >> $cmd2_file
     write_script_footer $cmd2_file $perf_server
 
     title3="CLIENT$title_dbg (Docker-VCL Socket Test)"
@@ -600,7 +615,7 @@ docker_vcl() {
     set_pre_cmd $emacs_client $gdb_client
     write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
     echo "$get_docker_server_ip4addr" >> $cmd3_file
-    echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir $docker_os ${docker_vpp_dir}${clnt_app}" >> $cmd3_file
+    echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir $docker_os ${docker_app_dir}${clnt_app}" >> $cmd3_file
     write_script_footer $cmd3_file $perf_client
 
     chmod +x $cmd1_file $cmd2_file $cmd3_file
