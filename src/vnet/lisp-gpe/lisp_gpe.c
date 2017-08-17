@@ -91,8 +91,8 @@ lisp_gpe_add_del_fwd_entry_command_fn (vlib_main_t * vm,
 			 unformat_ip_address, &lloc,
 			 unformat_ip_address, &rloc, &w))
 	{
-	  pair.lcl_loc = lloc;
-	  pair.rmt_loc = rloc;
+	  ip_address_copy (&pair.lcl_loc, &lloc);
+	  ip_address_copy (&pair.rmt_loc, &rloc);
 	  pair.weight = w;
 	  pair.priority = 0;
 	  vec_add1 (pairs, pair);
