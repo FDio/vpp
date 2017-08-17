@@ -64,7 +64,8 @@ format_stream_session (u8 * s, va_list * args)
 		  stream_session_get_index (ss));
 
   if (ss->session_state == SESSION_STATE_READY
-      || ss->session_state == SESSION_STATE_ACCEPTING)
+      || ss->session_state == SESSION_STATE_ACCEPTING
+      || ss->session_state == SESSION_STATE_CLOSED)
     {
       s = format (s, "%U", tp_vft->format_connection, ss->connection_index,
 		  ss->thread_index, verbose);
@@ -82,16 +83,6 @@ format_stream_session (u8 * s, va_list * args)
     {
       s = format (s, "%-40U%v", tp_vft->format_half_open,
 		  ss->connection_index, str);
-    }
-  else if (ss->session_state == SESSION_STATE_CLOSED)
-    {
-      s =
-	format (s, "[CL] %U", tp_vft->format_connection, ss->connection_index,
-		ss->thread_index, verbose);
-      if (verbose == 1)
-	s = format (s, "%v", str);
-      if (verbose > 1)
-	s = format (s, "%U", format_stream_session_fifos, ss, verbose);
     }
   else
     {
@@ -284,9 +275,9 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    {
 	      if (once_per_pool && verbose == 1)
 		{
-		  str =
-		    format (str, "%-50s%-15s%-10s%-10s%-10s", "Connection",
-			    "State", "Rx-f", "Tx-f", "S-idx");
+		  str = format (str, "%-50s%-15s%-10s%-10s%-10s",
+				"Connection", "State", "Rx-f", "Tx-f",
+				"S-idx");
 		  vlib_cli_output (vm, "%v", str);
 		  vec_reset_length (str);
 		  once_per_pool = 0;

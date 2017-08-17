@@ -80,8 +80,8 @@ application_new ()
   pool_get (app_pool, app);
   memset (app, 0, sizeof (*app));
   app->index = application_get_index (app);
-  app->connects_seg_manager = ~0;
-  app->first_segment_manager = ~0;
+  app->connects_seg_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
+  app->first_segment_manager = APP_INVALID_SEGMENT_MANAGER_INDEX;
   if (CLIB_DEBUG > 1)
     clib_warning ("[%d] New app (%d)", getpid (), app->index);
   return app;
@@ -104,14 +104,8 @@ application_del (application_t * app)
     clib_warning ("[%d] Delete app (%d)", getpid (), app->index);
 
   /*
-   * Cleanup segment managers
+   *  Listener cleanup
    */
-  if ((app->connects_seg_manager != (u32) ~ 0) &&
-      (app->connects_seg_manager != app->first_segment_manager))
-    {
-      sm = segment_manager_get (app->connects_seg_manager);
-      segment_manager_del (sm);
-    }
 
   /* *INDENT-OFF* */
   hash_foreach (handle, index, app->listeners_table,
@@ -120,7 +114,6 @@ application_del (application_t * app)
   }));
   /* *INDENT-ON* */
 
-  /* Actual listener cleanup */
   for (i = 0; i < vec_len (handles); i++)
     {
       a->app_index = app->index;
@@ -129,10 +122,30 @@ application_del (application_t * app)
       vnet_unbind (a);
     }
 
-  if (app->first_segment_manager != ~0)
+  /*
+   * Connects segment manager cleanup
+   */
+
+  if (app->connects_seg_manager != APP_INVALID_SEGMENT_MANAGER_INDEX)
+    {
+      sm = segment_manager_get (app->connects_seg_manager);
+      sm->app_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
+      segment_manager_init_del (sm);
+    }
+
+
+  /* If first segment manager is used by a listener */
+  if (app->first_segment_manager != APP_INVALID_SEGMENT_MANAGER_INDEX
+      && app->first_segment_manager != app->connects_seg_manager)
     {
       sm = segment_manager_get (app->first_segment_manager);
-      segment_manager_first_segment_maybe_del (sm);
+      /* .. and has no fifos, e.g. it might be used for redirected sessions,
+       * remove it */
+      if (!segment_manager_has_fifos (sm))
+	{
+	  sm->app_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
+	  segment_manager_del (sm);
+	}
     }
 
   application_table_del (app);
@@ -159,6 +172,7 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   segment_manager_t *sm;
   segment_manager_properties_t *props;
   u32 app_evt_queue_size, first_seg_size;
+  u32 default_rx_fifo_size = 16 << 10, default_tx_fifo_size = 16 << 10;
   int rv;
 
   app_evt_queue_size = options[APP_EVT_QUEUE_SIZE] > 0 ?
@@ -170,7 +184,11 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   props = &app->sm_properties;
   props->add_segment_size = options[SESSION_OPTIONS_ADD_SEGMENT_SIZE];
   props->rx_fifo_size = options[SESSION_OPTIONS_RX_FIFO_SIZE];
+  props->rx_fifo_size =
+    props->rx_fifo_size ? props->rx_fifo_size : default_rx_fifo_size;
   props->tx_fifo_size = options[SESSION_OPTIONS_TX_FIFO_SIZE];
+  props->tx_fifo_size =
+    props->tx_fifo_size ? props->tx_fifo_size : default_tx_fifo_size;
   props->add_segment = props->add_segment_size != 0;
   props->preallocated_fifo_pairs = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
   props->use_private_segment = options[APP_OPTIONS_FLAGS]
@@ -181,6 +199,7 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   first_seg_size = options[SESSION_OPTIONS_SEGMENT_SIZE];
   if ((rv = segment_manager_init (sm, props, first_seg_size)))
     return rv;
+  sm->first_is_protected = 1;
 
   app->first_segment_manager = segment_manager_index (sm);
   app->api_client_index = api_client_index;
@@ -225,7 +244,8 @@ application_alloc_segment_manager (application_t * app)
 {
   segment_manager_t *sm = 0;
 
-  if (app->first_segment_manager != (u32) ~ 0
+  /* If the first segment manager is not in use, don't allocate a new one */
+  if (app->first_segment_manager != APP_INVALID_SEGMENT_MANAGER_INDEX
       && app->first_segment_manager_in_use == 0)
     {
       sm = segment_manager_get (app->first_segment_manager);
@@ -302,11 +322,15 @@ application_stop_listen (application_t * srv, u64 handle)
   ASSERT (indexp);
 
   sm = segment_manager_get (*indexp);
-  segment_manager_del (sm);
   if (srv->first_segment_manager == *indexp)
     {
+      /* Delete sessions but don't remove segment manager */
       srv->first_segment_manager_in_use = 0;
-      srv->first_segment_manager = ~0;
+      segment_manager_del_sessions (sm);
+    }
+  else
+    {
+      segment_manager_init_del (sm);
     }
   hash_unset (srv->listeners_table, handle);
   listen_session_del (listener);
@@ -379,6 +403,21 @@ application_is_proxy (application_t * app)
   return !(app->flags & APP_OPTIONS_FLAGS_IS_PROXY);
 }
 
+int
+application_add_segment_notify (u32 app_index, u32 fifo_segment_index)
+{
+  application_t *app = application_get (app_index);
+  u32 seg_size = 0;
+  u8 *seg_name;
+
+  /* Send an API message to the external app, to map new segment */
+  ASSERT (app->cb_fns.add_segment_callback);
+
+  segment_manager_get_segment_info (fifo_segment_index, &seg_name, &seg_size);
+  return app->cb_fns.add_segment_callback (app->api_client_index, seg_name,
+					   seg_size);
+}
+
 u8 *
 format_application_listener (u8 * s, va_list * args)
 {
@@ -449,7 +488,7 @@ application_format_connects (application_t * app, int verbose)
       svm_fifo_t *fifo;
       u8 *str;
 
-      fifo_segment = svm_fifo_get_segment (sm->segment_indices[j]);
+      fifo_segment = svm_fifo_segment_get_segment (sm->segment_indices[j]);
       fifo = svm_fifo_segment_get_fifo_list (fifo_segment);
       while (fifo)
 	{
