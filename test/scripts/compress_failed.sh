@@ -19,3 +19,14 @@ then
 else
 	echo "No symlinks to failed tests' temporary directories found in ${VPP_TEST_FAILED_DIR}."
 fi
+
+if [ -n "$WORKSPACE" ] ; then
+    echo "WORKSPACE = $WORKSPACE"
+    ARCHIVES_DIR="$JENKINS_HOSTNAME/$JOB_NAME/$BUILD_NUMBER"
+    echo "ARCHIVES_DIR = $ARCHIVES_DIR"
+fi
+
+# This script gets run only if there was a 'make test' failure,
+# so return failure error status so that the build results are
+# recorded correctly.
+exit 1
