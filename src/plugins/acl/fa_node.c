@@ -25,6 +25,44 @@
 #include <vppinfra/bihash_template.h>
 #include <vppinfra/bihash_template.c>
 
+
+int BV (clib_bihash_search_with_hash)
+  (const BVT (clib_bihash) * h,
+   BVT (clib_bihash_kv) * search_key, u64 hash, BVT (clib_bihash_kv) * valuep)
+{
+  u32 bucket_index;
+  BVT (clib_bihash_value) * v;
+  clib_bihash_bucket_t *b;
+  int i, limit;
+
+  ASSERT (valuep);
+
+  bucket_index = hash & (h->nbuckets - 1);
+  b = &h->buckets[bucket_index];
+
+  if (b->offset == 0)
+    return -1;
+
+  hash >>= h->log2_nbuckets;
+
+  v = BV (clib_bihash_get_value) (h, b->offset);
+  limit = BIHASH_KVP_PER_PAGE;
+  v += (b->linear_search == 0) ? hash & ((1 << b->log2_pages) - 1) : 0;
+  if (PREDICT_FALSE (b->linear_search))
+    limit <<= b->log2_pages;
+
+  for (i = 0; i < limit; i++)
+    {
+      if (BV (clib_bihash_key_compare) (v->kvp[i].key, search_key->key))
+        {
+          *valuep = v->kvp[i];
+          return 0;
+        }
+    }
+  return -1;
+}
+
+
 #include "fa_node.h"
 #include "hash_lookup.h"
 
@@ -716,11 +754,14 @@ acl_fa_restart_timer_for_session (acl_main_t * am, u64 now, fa_full_session_id_t
 
 
 static u8
-acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
+acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now, u64 threshold,
 		      fa_session_t * sess, fa_5tuple_t * pkt_5tuple)
 {
-  sess->last_active_time = now;
-  if (pkt_5tuple->pkt.tcp_flags_valid)
+  if(PREDICT_FALSE(now - sess->last_active_time > threshold))
+    {
+      sess->last_active_time = now;
+    }
+  if (PREDICT_FALSE(pkt_5tuple->pkt.tcp_flags_valid))
     {
       sess->tcp_flags_seen.as_u8[is_input] |= pkt_5tuple->pkt.tcp_flags;
     }
@@ -948,6 +989,7 @@ acl_fa_node_fn (vlib_main_t * vm,
   clib_bihash_kv_40_8_t value_sess;
   vlib_node_runtime_t *error_node;
   u64 now = clib_cpu_time_now ();
+  u64 session_ts_threshold = (vm->clib_time.clocks_per_second/10);
   uword thread_index = os_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
@@ -1015,6 +1057,25 @@ acl_fa_node_fn (vlib_main_t * vm,
 	     fa_5tuple.kv.key[3], fa_5tuple.kv.key[4], fa_5tuple.kv.value);
 #endif
 
+/*
+          if (PREDICT_TRUE (n_left_from > 3))
+            {
+              vlib_buffer_t *p1 = vlib_get_buffer (vm, from[3]);
+              vnet_classify_table_t *tp1;
+              u32 table_index1;
+              u64 phash1;
+
+              table_index1 = vnet_buffer (p1)->l2_classify.table_index;
+
+              if (PREDICT_TRUE (table_index1 != ~0))
+                {
+                  tp1 = pool_elt_at_index (vcm->tables, table_index1);
+                  phash1 = vnet_buffer (p1)->l2_classify.hash;
+                  vnet_classify_prefetch_entry (tp1, phash1);
+                }
+            }
+*/
+
 	  /* Try to match an existing session first */
 
 	  if (acl_fa_ifc_has_sessions (am, sw_if_index0))
@@ -1033,7 +1094,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 		  int old_timeout_type =
 		    fa_session_get_timeout_type (am, sess);
 		  action =
-		    acl_fa_track_session (am, is_input, sw_if_index0, now,
+		    acl_fa_track_session (am, is_input, sw_if_index0, now, session_ts_threshold,
 					  sess, &fa_5tuple);
 		  /* expose the session id to the tracer */
 		  match_rule_index = f_sess_id.session_index;
@@ -1085,7 +1146,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 		    {
                       fa_session_t *sess = acl_fa_add_session (am, is_input, sw_if_index0, now,
 					                       &kv_sess);
-                      acl_fa_track_session (am, is_input, sw_if_index0, now,
+                      acl_fa_track_session (am, is_input, sw_if_index0, now, session_ts_threshold,
                                             sess, &fa_5tuple);
 		      pkts_new_session += 1;
 		    }
