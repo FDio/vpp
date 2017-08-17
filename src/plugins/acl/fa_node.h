@@ -53,6 +53,15 @@ typedef union {
   clib_bihash_kv_40_8_t kv;
 } fa_5tuple_t;
 
+typedef struct {
+  fa_5tuple_t five_tuple;
+} fa_per_packet_info_t;
+
+STATIC_ASSERT (sizeof (fa_per_packet_info_t) <=
+               STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
+               "ACL plugin per-packet metadata too large for vlib_buffer");
+
+#define vnet_buffer_acl_info(b) ((fa_per_packet_info_t *) (b)->opaque2)
 
 typedef struct {
   fa_5tuple_t info; /* (5+1)*8 = 48 bytes */
