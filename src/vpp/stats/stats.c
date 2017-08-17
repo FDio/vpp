@@ -647,9 +647,11 @@ again:
     vec_foreach (r, routes)
       {
         vlib_counter_t c;
+        const dpo_id_t *dpo_id;
 
+        dpo_id = fib_entry_contribute_ip_forwarding(r->index);
         vlib_get_combined_counter (&load_balance_main.lbm_to_counters,
-                                   r->index, &c);
+                                   (u32)dpo_id->dpoi_index, &c);
         /*
          * If it has actually
          * seen at least one packet, send it.
