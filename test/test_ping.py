@@ -58,7 +58,7 @@ class TestPing(VppTestCase):
             icmp_seq = 1
             for p in out:
                 ip = p[IP]
-                self.assertEqual(ip.version, 4)
+                self.assertEqual(ip.version, 3)
                 self.assertEqual(ip.flags, 0)
                 self.assertEqual(ip.src, self.pg1.local_ip4)
                 self.assertEqual(ip.dst, self.pg1.remote_ip4)
