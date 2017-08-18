@@ -177,6 +177,24 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_39c46991",
+        "filename": "src/vpp-api/vapi/vapi.hpp",
+        "patchSetId": 4
+      },
+      "lineNbr": 276,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-08-18T12:44:25Z",
+      "side": 1,
+      "message": "Thread 15 \"agent_ovs\" received signal SIGSEGV, Segmentation fault.\n[Switching to Thread 0x7fffe09fb700 (LWP 23673)]\nvapi::Connection::dispatch (limit\u003d0x0, this\u003d0xb896c8) at /home/vagrant/vpp/build-data/../src/vpp-api/vapi/vapi.hpp:277\n277\t            if (context \u003d\u003d x-\u003econtext)\n(gdb) p x\n$7 \u003d (vapi::Common_req * const) 0x0\n(gdb)",
+      "parentUuid": "5a4e6583_b3951ae6",
+      "revId": "2c60e0dc52e5cb2ba587e0c0ed805c0ca4c7ef30",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5a4e6583_381468f4",
         "filename": "src/vpp-api/vapi/vapi.hpp",
         "patchSetId": 4
