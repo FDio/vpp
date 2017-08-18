@@ -489,7 +489,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (l2learn_node, l2learn_node_fn)
    * Set the default number of dynamically learned macs to the number
    * of buckets.
    */
-  mp->global_learn_limit = L2FIB_NUM_BUCKETS * 16;
+  mp->global_learn_limit = L2FIB_NUM_BUCKETS * 128;
 
   return 0;
 }
