@@ -20,7 +20,8 @@ pppoe_plugin_la_SOURCES =		\
     pppoe/pppoe_tap.c		    \
     pppoe/pppoe_tap_node.c		\
     pppoe/pppoe.c		        \
-    pppoe/pppoe_api.c
+    pppoe/pppoe_api.c           \
+    pppoe/pppoe_export.c
 
 BUILT_SOURCES +=			   \
     pppoe/pppoe.api.h		    \
@@ -31,7 +32,8 @@ API_FILES += pppoe/pppoe.api
 nobase_apiinclude_HEADERS +=	\
     pppoe/pppoe_all_api_h.h		\
     pppoe/pppoe_msg_enum.h		\
-    pppoe/pppoe.api.h
+    pppoe/pppoe.api.h           \
+    pppoe/pppoe_export.h
 
 pppoe_test_plugin_la_SOURCES = \
     pppoe/pppoe_test.c            \
