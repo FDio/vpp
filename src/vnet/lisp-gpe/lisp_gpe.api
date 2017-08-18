@@ -226,8 +226,6 @@ define gpe_native_fwd_rpaths_get
 */
 typeonly manual_print manual_endian define gpe_native_fwd_rpath
 {
-  u32 context;
-  i32 retval;
   u32 fib_index;
   u32 nh_sw_if_index;
   u8 is_ip4;
