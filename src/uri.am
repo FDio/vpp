@@ -34,7 +34,9 @@ noinst_PROGRAMS +=				\
 	uri_udp_test				\
 	uri_tcp_test				\
 	uri_socket_test				\
-	uri_socket_server			\
+	uri_socket_server
+
+bin_PROGRAMS +=					\
 	vcl_test_server				\
 	vcl_test_client				\
 	sock_test_server			\
