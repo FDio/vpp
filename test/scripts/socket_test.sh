@@ -8,6 +8,8 @@ vpp_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/bin/"
 vpp_shm_dir="/dev/shm/"
 lib64_dir="$WS_ROOT/build-root/install-vpp-native/vpp/lib64/"
 lib64_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/lib64/"
+vpp_build_dir="$WS_ROOT/build-root/build-vpp-native/vpp/"
+vpp_debug_build_dir="$WS_ROOT/build-root/build-vpp_debug-native/vpp/"
 docker_vpp_dir="/vpp/"
 docker_app_dir="/vpp/"
 docker_lib64_dir="/vpp-lib64/"
@@ -126,6 +128,7 @@ while getopts ":hitlbcde:g:p:E:I:N:P:R:S:T:UBVX" opt; do
         d) title_dbg="-DEBUG"
            vpp_dir=$vpp_debug_dir
            lib64_dir=$lib64_debug_dir
+           vpp_build_dir=$vpp_debug_build_dir
            ;;
         e) if [ $OPTARG = "a" ] || [ $OPTARG = "all" ] ; then
                emacs_client=1
@@ -144,6 +147,7 @@ while getopts ":hitlbcde:g:p:E:I:N:P:R:S:T:UBVX" opt; do
            title_dbg="-DEBUG"
            vpp_dir=$vpp_debug_dir
            lib64_dir=$lib64_debug_dir
+           vpp_build_dir=$vpp_debug_build_dir
            ;;
         g) if [ $OPTARG = "a" ] || [ $OPTARG = "all" ] ; then
                gdb_client=1
@@ -162,6 +166,7 @@ while getopts ":hitlbcde:g:p:E:I:N:P:R:S:T:UBVX" opt; do
            title_dbg="-DEBUG"
            vpp_dir=$vpp_debug_dir
            lib64_dir=$lib64_debug_dir
+           vpp_build_dir=$vpp_debug_build_dir
            ;;
         p) if [ $OPTARG = "a" ] || [ $OPTARG = "all" ] ; then
                perf_client=1
@@ -236,6 +241,12 @@ if [ ! -d $vpp_dir ] ; then
     env_test_failed="true"
 fi
 
+if [ ! -d $vpp_build_dir ] ; then
+    echo "ERROR: Missing VPP$DEBUG build directory!" >&2
+    echo "       $vpp_build_dir" >&2
+    env_test_failed="true"
+fi
+
 if [[ $run_test =~ .*"_preload" ]] ; then
    if [ ! -d $lib64_dir ] ; then
        echo "ERROR: Missing VPP$DEBUG lib64 directory!" >&2
@@ -257,15 +268,15 @@ if [ ! -f $vpp_dir$vpp_app ] ; then
     env_test_failed="true"
 fi
 
-if [ ! -f $vpp_dir$sock_srvr_app ] && [ ! $iperf3 -eq 1 ] ; then
+if [ ! -f $vpp_build_dir$sock_srvr_app ] && [ ! $iperf3 -eq 1 ] ; then
     echo "ERROR: Missing$DEBUG Socket Server Application!" >&2
-    echo "       $vpp_dir$sock_srvr_app" >&2
+    echo "       $vpp_build_dir$sock_srvr_app" >&2
     env_test_failed="true"
 fi
 
-if [ ! -f $vpp_dir$sock_clnt_app ] && [ ! $iperf3 -eq 1 ] ; then
+if [ ! -f $vpp_build_dir$sock_clnt_app ] && [ ! $iperf3 -eq 1 ] ; then
     echo "ERROR: Missing$DEBUG Socket Client Application!" >&2
-    echo "       $vpp_dir$sock_clnt_app" >&2
+    echo "       $vpp_build_dir$sock_clnt_app" >&2
     env_test_failed="true"
 fi
 
@@ -312,7 +323,7 @@ if [ $iperf3 -eq 1 ] ; then
         unset -v docker_os
     fi
 else
-    app_dir="$vpp_dir"
+    app_dir="$vpp_build_dir"
     srvr_app="$sock_srvr_app $sock_srvr_port"
     clnt_app="$sock_clnt_app${sock_clnt_options} \$srvr_addr $sock_srvr_port"
 fi
