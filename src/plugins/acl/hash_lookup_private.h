@@ -16,6 +16,7 @@
  */
 
 #define ACL_HASH_LOOKUP_DEBUG 0
+#define DBG0(...) clib_warning(__VA_ARGS__)
 
 #if ACL_HASH_LOOKUP_DEBUG == 1
 #define DBG(...) clib_warning(__VA_ARGS__)
