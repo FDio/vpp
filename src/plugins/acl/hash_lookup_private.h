@@ -18,9 +18,15 @@
 #define ACL_HASH_LOOKUP_DEBUG 0
 
 #if ACL_HASH_LOOKUP_DEBUG == 1
+#define DBG0(...) clib_warning(__VA_ARGS__)
+#define DBG(...)
+#define DBG_UNIX_LOG(...)
+#elif ACL_HASH_LOOKUP_DEBUG == 2
+#define DBG0(...) clib_warning(__VA_ARGS__)
 #define DBG(...) clib_warning(__VA_ARGS__)
 #define DBG_UNIX_LOG(...) clib_unix_warning(__VA_ARGS__)
 #else
+#define DBG0(...)
 #define DBG(...)
 #define DBG_UNIX_LOG(...)
 #endif

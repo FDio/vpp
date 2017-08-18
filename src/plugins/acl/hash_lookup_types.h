@@ -38,6 +38,9 @@ typedef struct {
 typedef struct {
   /* The mask types present in this ACL */
   uword *mask_type_index_bitmap;
+  /* hash ACL applied on these interfaces */
+  u32 *inbound_sw_if_index_list;
+  u32 *outbound_sw_if_index_list;
   hash_ace_info_t *rules;
 } hash_acl_info_t;
 
