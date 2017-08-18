@@ -44,8 +44,7 @@ typedef enum {
  _(NOT_IP, "Not IP packet (dropped)")	         \
  _(ENQ_FAIL, "Enqueue failed (buffer full)")     \
  _(NO_CRYPTODEV, "Cryptodev not configured")     \
- _(BAD_LEN, "Invalid ciphertext length")         \
- _(UNSUPPORTED, "Cipher/Auth not supported")
+ _(BAD_LEN, "Invalid ciphertext length")
 
 
 typedef enum {
@@ -169,17 +168,9 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 
 	  sa0->total_data_size += b0->current_length;
 
-	  if (PREDICT_FALSE(sa0->integ_alg == IPSEC_INTEG_ALG_NONE) ||
-		  PREDICT_FALSE(sa0->crypto_alg == IPSEC_CRYPTO_ALG_NONE))
-	    {
-	      clib_warning ("SPI %u : only cipher + auth supported", sa0->spi);
-	      vlib_node_increment_counter (vm, dpdk_esp_decrypt_node.index,
-					   ESP_DECRYPT_ERROR_UNSUPPORTED, 1);
-	      to_next[0] = bi0;
-	      to_next += 1;
-	      n_left_to_next -= 1;
-	      goto trace;
-	    }
+	  ASSERT ((sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128 &&
+		   sa0->integ_alg == IPSEC_INTEG_ALG_NONE) ||
+		  (sa0->integ_alg != IPSEC_INTEG_ALG_NONE));
 
 	  sa_sess = pool_elt_at_index(cwm->sa_sess_d[0], sa_index0);
 
@@ -211,7 +202,10 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 
 	  rte_crypto_op_attach_sym_session(cop, sess);
 
-	  icv_size = em->esp_integ_algs[sa0->integ_alg].trunc_size;
+	  if (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
+	    icv_size = 16;
+	  else
+	    icv_size = em->esp_integ_algs[sa0->integ_alg].trunc_size;
 	  iv_size = em->esp_crypto_algs[sa0->crypto_alg].iv_len;
 
 	  /* Convert vlib buffer to mbuf */
@@ -255,40 +249,23 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
               icb->salt = sa0->salt;
               clib_memcpy(icb->iv, iv, 8);
               icb->cnt = clib_host_to_net_u32(1);
-              sym_cop->cipher.iv.data = (u8 *)icb;
-              sym_cop->cipher.iv.phys_addr = cop->phys_addr +
-		(uintptr_t)icb - (uintptr_t)cop;
-              sym_cop->cipher.iv.length = 16;
 
               u8 *aad = priv->aad;
               clib_memcpy(aad, iv - sizeof(esp_header_t), 8);
-              sym_cop->auth.aad.data = aad;
-              sym_cop->auth.aad.phys_addr = cop->phys_addr +
+              sym_cop->aead.aad.data = aad;
+              sym_cop->aead.aad.phys_addr = cop->phys_addr +
                   (uintptr_t)aad - (uintptr_t)cop;
               if (sa0->use_esn)
-                {
-                  *((u32*)&aad[8]) = sa0->seq_hi;
-                  sym_cop->auth.aad.length = 12;
-                }
-              else
-                {
-                  sym_cop->auth.aad.length = 8;
-                }
+                *((u32*)&aad[8]) = sa0->seq_hi;
 
-              sym_cop->auth.digest.data = rte_pktmbuf_mtod_offset(mb0, void*,
+              sym_cop->aead.digest.data = rte_pktmbuf_mtod_offset(mb0, void*,
                        rte_pktmbuf_pkt_len(mb0) - icv_size);
-              sym_cop->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(mb0,
+              sym_cop->aead.digest.phys_addr = rte_pktmbuf_mtophys_offset(mb0,
                        rte_pktmbuf_pkt_len(mb0) - icv_size);
-              sym_cop->auth.digest.length = icv_size;
-
             }
           else
             {
-              sym_cop->cipher.iv.data = rte_pktmbuf_mtod_offset(mb0, void*,
-                       sizeof (esp_header_t));
-              sym_cop->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(mb0,
-                       sizeof (esp_header_t));
-              sym_cop->cipher.iv.length = iv_size;
+              clib_memcpy(&priv->cb, iv, 16);
 
               if (sa0->use_esn)
                 {
@@ -304,7 +281,6 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
                   sym_cop->auth.digest.data = priv->icv;
                   sym_cop->auth.digest.phys_addr = cop->phys_addr
                       + (uintptr_t) priv->icv - (uintptr_t) cop;
-                  sym_cop->auth.digest.length = icv_size;
                 }
               else
                 {
@@ -316,7 +292,6 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
                            rte_pktmbuf_pkt_len(mb0) - icv_size);
                   sym_cop->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(mb0,
                            rte_pktmbuf_pkt_len(mb0) - icv_size);
-                  sym_cop->auth.digest.length = icv_size;
                 }
             }
 
@@ -338,6 +313,9 @@ trace:
   vec_foreach_index (i, cwm->qp_data)
     {
       u32 enq;
+
+      if (!n_cop_qp[i])
+	continue;
 
       qpd = vec_elt_at_index(cwm->qp_data, i);
       enq = rte_cryptodev_enqueue_burst(qpd->dev_id, qpd->qp_id,
@@ -455,7 +433,10 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
 	  to_next[0] = bi0;
 	  to_next += 1;
 
-	  icv_size = em->esp_integ_algs[sa0->integ_alg].trunc_size;
+	  if (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
+	    icv_size = 16;
+	  else
+	    icv_size = em->esp_integ_algs[sa0->integ_alg].trunc_size;
 	  iv_size = em->esp_crypto_algs[sa0->crypto_alg].iv_len;
 
 	  if (sa0->use_anti_replay)

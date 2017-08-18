@@ -53,6 +53,7 @@ typedef struct
   u8 cipher_algo;
   u8 auth_algo;
   u8 is_outbound;
+  u8 is_aead;
 } crypto_worker_qp_key_t;
 
 typedef struct
@@ -81,6 +82,8 @@ typedef struct
 
 typedef struct
 {
+  struct rte_mempool **sess_h_pools;
+  struct rte_mempool **sess_pools;
   struct rte_mempool **cop_pools;
   crypto_worker_main_t *workers_main;
   u8 enabled;
@@ -146,12 +149,12 @@ check_algo_is_supported (const struct rte_cryptodev_capabilities *cap,
 {
   struct
   {
-    uint8_t cipher_algo;
     enum rte_crypto_sym_xform_type type;
     union
     {
       enum rte_crypto_auth_algorithm auth;
       enum rte_crypto_cipher_algorithm cipher;
+      enum rte_crypto_aead_algorithm aead;
     };
     char *name;
   } supported_algo[] =
@@ -163,14 +166,11 @@ check_algo_is_supported (const struct rte_cryptodev_capabilities *cap,
     .type = RTE_CRYPTO_SYM_XFORM_CIPHER,.cipher =
 	RTE_CRYPTO_CIPHER_AES_CBC,.name = "AES_CBC"},
     {
-    .type = RTE_CRYPTO_SYM_XFORM_CIPHER,.cipher =
-	RTE_CRYPTO_CIPHER_AES_CTR,.name = "AES_CTR"},
+    .type = RTE_CRYPTO_SYM_XFORM_AEAD,.aead =
+	RTE_CRYPTO_AEAD_AES_GCM,.name = "AES-GCM"},
     {
-    .type = RTE_CRYPTO_SYM_XFORM_CIPHER,.cipher =
-	RTE_CRYPTO_CIPHER_3DES_CBC,.name = "3DES-CBC"},
-    {
-    .type = RTE_CRYPTO_SYM_XFORM_CIPHER,.cipher =
-	RTE_CRYPTO_CIPHER_AES_GCM,.name = "AES-GCM"},
+    .type = RTE_CRYPTO_SYM_XFORM_AUTH,.cipher =
+	RTE_CRYPTO_AUTH_NULL,.name = "NULL"},
     {
     .type = RTE_CRYPTO_SYM_XFORM_AUTH,.auth =
 	RTE_CRYPTO_AUTH_SHA1_HMAC,.name = "HMAC-SHA1"},
@@ -184,14 +184,10 @@ check_algo_is_supported (const struct rte_cryptodev_capabilities *cap,
     .type = RTE_CRYPTO_SYM_XFORM_AUTH,.auth =
 	RTE_CRYPTO_AUTH_SHA512_HMAC,.name = "HMAC-SHA512"},
     {
-    .type = RTE_CRYPTO_SYM_XFORM_AUTH,.auth =
-	RTE_CRYPTO_AUTH_AES_XCBC_MAC,.name = "AES-XCBC-MAC"},
-    {
-    .type = RTE_CRYPTO_SYM_XFORM_AUTH,.auth =
-	RTE_CRYPTO_AUTH_AES_GCM,.name = "AES-GCM"},
-    {
       /* tail */
-  .type = RTE_CRYPTO_SYM_XFORM_NOT_SPECIFIED},};
+    .type = RTE_CRYPTO_SYM_XFORM_NOT_SPECIFIED}
+  };
+
   uint32_t i = 0;
 
   if (cap->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
@@ -203,6 +199,8 @@ check_algo_is_supported (const struct rte_cryptodev_capabilities *cap,
 	{
 	  if ((cap->sym.xform_type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
 	       cap->sym.cipher.algo == supported_algo[i].cipher) ||
+	      (cap->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AEAD &&
+	       cap->sym.aead.algo == supported_algo[i].aead) ||
 	      (cap->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AUTH &&
 	       cap->sym.auth.algo == supported_algo[i].auth))
 	    {

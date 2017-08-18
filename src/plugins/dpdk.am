@@ -19,19 +19,14 @@ dpdk_plugin_la_LDFLAGS = $(AM_LDFLAGS) -ldpdk
 else
 dpdk_plugin_la_LDFLAGS = $(AM_LDFLAGS) -Wl,--whole-archive,-l:libdpdk.a,--no-whole-archive
 endif
-if WITH_DPDK_AESNI_MB_PMD
+dpdk_plugin_la_LDFLAGS += -lnuma
+if WITH_DPDK_AESNI_PMDS
 dpdk_plugin_la_LDFLAGS += -Wl,--exclude-libs,libIPSec_MB.a,-l:libIPSec_MB.a
 endif
-if WITH_DPDK_AESNI_GCM_PMD
-dpdk_plugin_la_LDFLAGS += -Wl,--exclude-libs,libisal_crypto.a,-l:libisal_crypto.a
+if WITH_DPDK_MLX_PMDS
+dpdk_plugin_la_LDFLAGS += -Wl,-libverbs
 endif
 dpdk_plugin_la_LDFLAGS += -Wl,-lm,-ldl
-if WITH_DPDK_MLX5_PMD
-dpdk_plugin_la_LDFLAGS += -Wl,-libverbs
-endif
-if WITH_DPDK_MLX4_PMD
-dpdk_plugin_la_LDFLAGS += -Wl,-libverbs
-endif
 
 dpdk_plugin_la_SOURCES =					\
   dpdk/main.c							\
@@ -57,11 +52,8 @@ API_FILES += dpdk/api/dpdk.api
 
 nobase_include_HEADERS +=					\
   dpdk/device/dpdk.h						\
-  dpdk/api/dpdk_all_api_h.h
-
-nobase_include_HEADERS +=			\
- dpdk/ipsec/ipsec.h		\
- dpdk/ipsec/esp.h
+  dpdk/api/dpdk_all_api_h.h					\
+  dpdk/ipsec/ipsec.h
 
 dpdk_test_plugin_la_SOURCES = 					\
   dpdk/api/dpdk_test.c dpdk/api/dpdk_plugin.api.h

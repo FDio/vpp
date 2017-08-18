@@ -186,30 +186,28 @@ AM_COND_IF([ENABLE_DPDK_SHARED],
 ])
 
 DPDK_IS_PMD_ENABLED(LIBRTE_PMD_AESNI_MB, dpdk_aesni_mb_pmd)
-AM_COND_IF([WITH_DPDK_AESNI_MB_PMD],
+DPDK_IS_PMD_ENABLED(LIBRTE_PMD_AESNI_GCM, dpdk_aesni_gcm_pmd)
+
+AM_CONDITIONAL(WITH_DPDK_AESNI_PMDS,
+	       test "$with_dpdk_aesni_mb_pmd" = "yes" ||
+	       test "$with_dpdk_aesni_gcm_pmd" = "yes" )
+
+AM_COND_IF([WITH_DPDK_AESNI_PMDS],
 [
-  AC_CHECK_LIB([IPSec_MB], [submit_job_sse], [],
+  AC_CHECK_LIB([IPSec_MB], [submit_job_sse], [:],
 	       [AC_MSG_ERROR([IPSec_MB library not found])])
 ])
 
-DPDK_IS_PMD_ENABLED(LIBRTE_PMD_AESNI_GCM, dpdk_aesni_gcm_pmd)
-AM_COND_IF([WITH_DPDK_AESNI_GCM_PMD],
-[
-  AC_CHECK_LIB([isal_crypto], [aesni_gcm128_init], [],
-	       [AC_MSG_ERROR([isal_crypto library not found])])
-])
-
-DPDK_IS_PMD_ENABLED(LIBRTE_MLX5_PMD, dpdk_mlx5_pmd)
-AM_COND_IF([WITH_DPDK_MLX5_PMD],
-[
-  AC_CHECK_LIB([ibverbs], [ibv_fork_init], [],
-	       [AC_MSG_ERROR([ibverbs library not found])])
-])
-
 DPDK_IS_PMD_ENABLED(LIBRTE_MLX4_PMD, dpdk_mlx4_pmd)
-AM_COND_IF([WITH_DPDK_MLX4_PMD],
+DPDK_IS_PMD_ENABLED(LIBRTE_MLX5_PMD, dpdk_mlx5_pmd)
+
+AM_CONDITIONAL(WITH_DPDK_MLX_PMDS,
+	       test "$with_dpdk_mlx4_pmd" = "yes" ||
+	       test "$with_dpdk_mlx5_pmd" = "yes" )
+
+AM_COND_IF([WITH_DPDK_MLX_PMDS],
 [
-  AC_CHECK_LIB([ibverbs], [ibv_fork_init], [],
+  AC_CHECK_LIB([ibverbs], [ibv_fork_init], [:],
 	       [AC_MSG_ERROR([ibverbs library not found])])
 ])
 
