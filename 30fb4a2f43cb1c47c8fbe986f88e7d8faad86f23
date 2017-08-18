@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_d6a64253",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2017-08-18T12:17:17Z",
+      "side": 0,
+      "message": "Since you\u0027re cleaning this, can you please remove this line too?",
+      "range": {
+        "startLine": 229,
+        "startChar": 2,
+        "endLine": 229,
+        "endChar": 14
+      },
+      "revId": "30fb4a2f43cb1c47c8fbe986f88e7d8faad86f23",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
