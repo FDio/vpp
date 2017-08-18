@@ -2421,6 +2421,8 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
           }
           hash_acl_info_t *ha = &am->hash_acl_infos[i];
           out0 = format(out0, "acl-index %u bitmask-ready layout\n", i);
+          out0 = format(out0, "  applied  inbound on sw_if_index list: %U\n", format_vec32, ha->inbound_sw_if_index_list, "%d");
+          out0 = format(out0, "  applied outbound on sw_if_index list: %U\n", format_vec32, ha->outbound_sw_if_index_list, "%d");
           out0 = format(out0, "  mask type index bitmap: %U\n", format_bitmap_hex, ha->mask_type_index_bitmap);
           for(j=0; j<vec_len(ha->rules); j++) {
             hash_ace_info_t *pa = &ha->rules[j];

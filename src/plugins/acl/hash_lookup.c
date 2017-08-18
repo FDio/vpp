@@ -308,15 +308,12 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
 {
   int i;
 
-  DBG("HASH ACL apply: sw_if_index %d is_input %d acl %d", sw_if_index, is_input, acl_index);
+  DBG0("HASH ACL apply: sw_if_index %d is_input %d acl %d", sw_if_index, is_input, acl_index);
   if (!am->acl_lookup_hash_initialized) {
     BV (clib_bihash_init) (&am->acl_lookup_hash, "ACL plugin rule lookup bihash",
                            65536, 2 << 25);
     am->acl_lookup_hash_initialized = 1;
   }
-
-  u32 *acl_vec = is_input ? *vec_elt_at_index(am->input_acl_vec_by_sw_if_index, sw_if_index)
-                          : *vec_elt_at_index(am->output_acl_vec_by_sw_if_index, sw_if_index);
 
   void *oldheap = hash_acl_set_heap(am);
   if (is_input) {
@@ -327,9 +324,9 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
   vec_validate(am->hash_acl_infos, acl_index);
   applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, is_input, sw_if_index);
 
-  u32 order_index = vec_search(acl_vec, acl_index);
   hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
-  ASSERT(order_index != ~0);
+  u32 **hash_acl_applied_sw_if_index = is_input ? &ha->inbound_sw_if_index_list
+                                                : &ha->outbound_sw_if_index_list;
 
   int base_offset = vec_len(*applied_hash_aces);
 
@@ -348,6 +345,13 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
     goto done;
   }
   vec_add1(pal->applied_acls, acl_index);
+  u32 index2 = vec_search((*hash_acl_applied_sw_if_index), sw_if_index);
+  if (index2 != ~0) {
+    clib_warning("BUG: trying to apply twice acl_index %d on (sw_if_index %d) is_input %d",
+                 acl_index, sw_if_index, is_input);
+    goto done;
+  }
+  vec_add1((*hash_acl_applied_sw_if_index), sw_if_index);
 
   pal->mask_type_index_bitmap = clib_bitmap_or(pal->mask_type_index_bitmap,
                                      ha->mask_type_index_bitmap);
@@ -524,10 +528,14 @@ hash_acl_unapply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
 {
   int i;
 
-  DBG("HASH ACL unapply: sw_if_index %d is_input %d acl %d", sw_if_index, is_input, acl_index);
+  DBG0("HASH ACL unapply: sw_if_index %d is_input %d acl %d", sw_if_index, is_input, acl_index);
   applied_hash_acl_info_t **applied_hash_acls = is_input ? &am->input_applied_hash_acl_info_by_sw_if_index
                                                          : &am->output_applied_hash_acl_info_by_sw_if_index;
   applied_hash_acl_info_t *pal = vec_elt_at_index((*applied_hash_acls), sw_if_index);
+
+  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
+  u32 **hash_acl_applied_sw_if_index = is_input ? &ha->inbound_sw_if_index_list
+                                                : &ha->outbound_sw_if_index_list;
 
   /* remove this acl# from the list of applied hash acls */
   u32 index = vec_search(pal->applied_acls, acl_index);
@@ -538,7 +546,14 @@ hash_acl_unapply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
   }
   vec_del1(pal->applied_acls, index);
 
-  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
+  u32 index2 = vec_search((*hash_acl_applied_sw_if_index), sw_if_index);
+  if (index2 == ~0) {
+    clib_warning("BUG: trying to unapply twice acl_index %d on (sw_if_index %d) is_input %d",
+                 acl_index, sw_if_index, is_input);
+    return;
+  }
+  vec_del1((*hash_acl_applied_sw_if_index), index2);
+
   applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, is_input, sw_if_index);
 
   for(i=0; i < vec_len((*applied_hash_aces)); i++) {
@@ -602,7 +617,7 @@ hash_acl_reapply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
   ASSERT(start_index < vec_len(*applied_acls));
 
   /* unapply all the ACLs till the current one */
-  for(i = vec_len(*applied_acls) - 1; i >= start_index; i--) {
+  for(i = vec_len(*applied_acls) - 1; i > start_index; i--) {
     hash_acl_unapply(am, sw_if_index, is_input, *vec_elt_at_index(*applied_acls, i));
   }
   for(i = start_index; i < vec_len(*applied_acls); i++) {
@@ -815,7 +830,7 @@ void hash_acl_add(acl_main_t *am, int acl_index)
 void hash_acl_delete(acl_main_t *am, int acl_index)
 {
   void *oldheap = hash_acl_set_heap(am);
-  DBG("HASH ACL delete : %d", acl_index);
+  DBG0("HASH ACL delete : %d", acl_index);
   /*
    * If the ACL is applied somewhere, remove the references of it (call hash_acl_unapply)
    * this is a different behavior from the linear lookup where an empty ACL is "deny all",
@@ -823,16 +838,23 @@ void hash_acl_delete(acl_main_t *am, int acl_index)
    * However, following vpp-dev discussion the ACL that is referenced elsewhere
    * should not be possible to delete, and the change adding this also adds
    * the safeguards to that respect, so this is not a problem.
+   *
+   * The part to rememeber is that this routine is called in process of reapplication
+   * during the acl_add_replace() API call - the old acl ruleset is deleted, then
+   * the new one is added, without the change in the applied ACLs - so this case
+   * has to be handled.
    */
-  if (acl_index < vec_len(am->input_sw_if_index_vec_by_acl)) {
+  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
+  u32 *interface_list_copy = 0;
+  {
     u32 *sw_if_index;
-    vec_foreach(sw_if_index, am->input_sw_if_index_vec_by_acl[acl_index]) {
+    interface_list_copy = vec_dup(ha->inbound_sw_if_index_list);
+    vec_foreach(sw_if_index, interface_list_copy) {
       hash_acl_unapply(am, *sw_if_index, 1, acl_index);
     }
-  }
-  if (acl_index < vec_len(am->output_sw_if_index_vec_by_acl)) {
-    u32 *sw_if_index;
-    vec_foreach(sw_if_index, am->output_sw_if_index_vec_by_acl[acl_index]) {
+    vec_free(interface_list_copy);
+    interface_list_copy = vec_dup(ha->outbound_sw_if_index_list);
+    vec_foreach(sw_if_index, interface_list_copy) {
       hash_acl_unapply(am, *sw_if_index, 0, acl_index);
     }
   }
@@ -840,7 +862,6 @@ void hash_acl_delete(acl_main_t *am, int acl_index)
   /* walk the mask types for the ACL about-to-be-deleted, and decrease
    * the reference count, possibly freeing up some of them */
   int i;
-  hash_acl_info_t *ha = vec_elt_at_index(am->hash_acl_infos, acl_index);
   for(i=0; i < vec_len(ha->rules); i++) {
     release_mask_type_index(am, ha->rules[i].mask_type_index);
   }
