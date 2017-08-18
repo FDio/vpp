@@ -384,6 +384,12 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 
       if (unformat (line_input, "table %d", &table_id))
 	;
+      else if (unformat (line_input, "%U/%d",
+			 unformat_ip6_address, &pfx.fp_addr.ip6, &pfx.fp_len))
+	{
+	  pfx.fp_proto = FIB_PROTOCOL_IP6;
+	  vec_add1 (prefixs, pfx);
+	}
       else if (unformat (line_input, "del"))
 	is_del = 1;
       else if (unformat (line_input, "add"))
@@ -441,12 +447,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 			 unformat_ip4_address, &pfx.fp_addr.ip4, &pfx.fp_len))
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP4;
-	  vec_add1 (prefixs, pfx);
-	}
-      else if (unformat (line_input, "%U/%d",
-			 unformat_ip6_address, &pfx.fp_addr.ip6, &pfx.fp_len))
-	{
-	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  vec_add1 (prefixs, pfx);
 	}
       else if (unformat (line_input, "via %U %U",
