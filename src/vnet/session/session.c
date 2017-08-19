@@ -123,7 +123,10 @@ session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
 	  rv = svm_fifo_enqueue_with_offset (s->server_rx_fifo, offset, len,
 					     data);
 	  if (rv)
-	    return -1;
+	    {
+	      clib_warning ("failed to enque multi-buffer seg");
+	      return -1;
+	    }
 	  offset += len;
 	}
     }
@@ -165,7 +168,7 @@ stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
 	svm_fifo_enqueue_nowait (s->server_rx_fifo, b->current_length,
 				 vlib_buffer_get_current (b));
       if (PREDICT_FALSE
-	  ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued > 0))
+	  ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
 	{
 	  rv = session_enqueue_chain_tail (s, b, 0, 1);
 	  if (rv <= 0)
