@@ -498,7 +498,9 @@ tcp_half_open_connection_get (u32 conn_index)
 void tcp_make_ack (tcp_connection_t * ts, vlib_buffer_t * b);
 void tcp_make_fin (tcp_connection_t * tc, vlib_buffer_t * b);
 void tcp_make_synack (tcp_connection_t * ts, vlib_buffer_t * b);
-void tcp_send_reset (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4);
+void tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt,
+			   u8 is_ip4);
+void tcp_send_reset (tcp_connection_t * tc);
 void tcp_send_syn (tcp_connection_t * tc);
 void tcp_send_fin (tcp_connection_t * tc);
 void tcp_init_mss (tcp_connection_t * tc);
@@ -582,15 +584,30 @@ tcp_loss_wnd (const tcp_connection_t * tc)
 }
 
 always_inline u32
-tcp_available_wnd (const tcp_connection_t * tc)
+tcp_available_snd_wnd (const tcp_connection_t * tc)
 {
   return clib_min (tc->cwnd, tc->snd_wnd);
 }
 
 always_inline u32
+tcp_available_output_snd_space (const tcp_connection_t * tc)
+{
+  u32 available_wnd = tcp_available_snd_wnd (tc);
+  int flight_size = (int) (tc->snd_nxt - tc->snd_una);
+
+  if (available_wnd <= flight_size)
+    return 0;
+
+  return available_wnd - flight_size;
+}
+
+/**
+ * Estimate of how many bytes we can still push into the network
+ */
+always_inline u32
 tcp_available_snd_space (const tcp_connection_t * tc)
 {
-  u32 available_wnd = tcp_available_wnd (tc);
+  u32 available_wnd = tcp_available_snd_wnd (tc);
   u32 flight_size = tcp_flight_size (tc);
 
   if (available_wnd <= flight_size)

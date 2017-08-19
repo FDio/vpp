@@ -53,10 +53,12 @@ ooo_segment_end_pos (svm_fifo_t * f, ooo_segment_t * s)
 u8 *
 format_ooo_segment (u8 * s, va_list * args)
 {
+  svm_fifo_t *f = va_arg (*args, svm_fifo_t *);
   ooo_segment_t *seg = va_arg (*args, ooo_segment_t *);
-
-  s = format (s, "pos %u, len %u, next %d, prev %d",
-	      seg->start, seg->length, seg->next, seg->prev);
+  u32 normalized_start = (seg->start + f->nitems - f->tail) % f->nitems;
+  s = format (s, "[%u, %u], len %u, next %d, prev %d", normalized_start,
+	      (normalized_start + seg->length) % f->nitems, seg->length,
+	      seg->next, seg->prev);
   return s;
 }
 
@@ -154,7 +156,7 @@ format_ooo_list (u8 * s, va_list * args)
   while (ooo_segment_index != OOO_SEGMENT_INVALID_INDEX)
     {
       seg = pool_elt_at_index (f->ooo_segments, ooo_segment_index);
-      s = format (s, "  %U\n", format_ooo_segment, seg);
+      s = format (s, "  %U\n", format_ooo_segment, f, seg);
       ooo_segment_index = seg->next;
     }
 
@@ -557,7 +559,6 @@ svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems, normalized_offset;
-  u32 offset_from_tail;
 
   f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 
@@ -570,8 +571,7 @@ svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
   normalized_offset = (f->tail + offset) % nitems;
 
   /* Will this request fit? */
-  offset_from_tail = (nitems + normalized_offset - f->tail) % nitems;
-  if ((required_bytes + offset_from_tail) > (nitems - cursize))
+  if ((required_bytes + offset) > (nitems - cursize))
     return -1;
 
   svm_fifo_trace_add (f, offset, required_bytes, 1);

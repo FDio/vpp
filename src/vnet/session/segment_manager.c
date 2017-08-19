@@ -224,6 +224,7 @@ segment_manager_del (segment_manager_t * sm)
 	  session = stream_session_get (session_index, thread_index);
 
 	  /* Instead of directly removing the session call disconnect */
+	  session->session_state = SESSION_STATE_CLOSED;
 	  session_send_session_evt_to_thread (stream_session_handle (session),
 					      FIFO_EVENT_DISCONNECT,
 					      thread_index);
