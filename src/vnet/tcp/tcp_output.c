@@ -47,7 +47,7 @@ typedef struct
   tcp_connection_t tcp_connection;
 } tcp_tx_trace_t;
 
-u16 dummy_mtu = 1460;
+u16 dummy_mtu = 8000;
 
 u8 *
 format_tcp_tx_trace (u8 * s, va_list * args)
@@ -440,7 +440,8 @@ tcp_init_mss (tcp_connection_t * tc)
 always_inline int
 tcp_alloc_tx_buffers (tcp_main_t * tm, u8 thread_index, u32 n_free_buffers)
 {
-  vec_validate (tm->tx_buffers[thread_index], n_free_buffers - 1);
+  vec_validate(tm->tx_buffers[thread_index],
+	       vec_len (tm->tx_buffers[thread_index]) + n_free_buffers - 1);
   _vec_len (tm->tx_buffers[thread_index]) =
     vlib_buffer_alloc_from_free_list (vlib_get_main (),
 				      tm->tx_buffers[thread_index],
@@ -480,27 +481,40 @@ tcp_return_buffer (tcp_main_t * tm)
   _vec_len (my_tx_buffers) += 1;
 }
 
-always_inline void
+always_inline void *
 tcp_reuse_buffer (vlib_main_t * vm, vlib_buffer_t * b)
 {
-  vlib_buffer_t *it = b;
-  u32 save_free_list = b->flags & VLIB_BUFFER_FREE_LIST_INDEX_MASK;
-  do
-    {
-      it->current_data = 0;
-      it->current_length = 0;
-      it->total_length_not_including_first_buffer = 0;
-    }
-  while ((it->flags & VLIB_BUFFER_NEXT_PRESENT)
-	 && (it = vlib_get_buffer (vm, it->next_buffer)));
+//  vlib_buffer_t *it = b;
+//  u32 save_free_list = b->flags & VLIB_BUFFER_FREE_LIST_INDEX_MASK;
+//  do
+//    {
+//      it->current_data = 0;
+//      it->current_length = 0;
+//      it->total_length_not_including_first_buffer = 0;
+//    }
+//  while ((it->flags & VLIB_BUFFER_NEXT_PRESENT)
+//	 && (it = vlib_get_buffer (vm, it->next_buffer)));
 
   if (b->flags & VLIB_BUFFER_NEXT_PRESENT)
     vlib_buffer_free_one (vm, b->next_buffer);
-  b->flags = save_free_list;
+  b->flags = 0;
+  b->current_data = 0;
+  b->current_length = 0;
+  vnet_buffer (b)->tcp.flags = 0;
 
   /* Leave enough space for headers */
-  vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+  return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
+}
+
+always_inline void *
+tcp_init_buffer (vlib_main_t *vm, vlib_buffer_t *b)
+{
+  ASSERT ((b->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
+  b->flags = 0;
   vnet_buffer (b)->tcp.flags = 0;
+
+  /* Leave enough space for headers */
+  return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
 }
 
 /**
@@ -1013,6 +1027,8 @@ tcp_push_hdr_i (tcp_connection_t * tc, vlib_buffer_t * b,
   tcp_header_t *th;
 
   data_len = b->current_length + b->total_length_not_including_first_buffer;
+  ASSERT (!b->total_length_not_including_first_buffer
+	  || (b->flags & VLIB_BUFFER_NEXT_PRESENT));
   vnet_buffer (b)->tcp.flags = 0;
 
   if (compute_opts)
@@ -1106,28 +1122,26 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
    * Make sure we can retransmit something
    */
   available_bytes = stream_session_tx_fifo_max_dequeue (&tc->connection);
+  available_bytes -= offset;
   if (!available_bytes)
     return 0;
   max_deq_bytes = clib_min (tc->snd_mss, max_deq_bytes);
   max_deq_bytes = clib_min (available_bytes, max_deq_bytes);
-  seg_size = max_deq_bytes + MAX_HDRS_LEN;
 
   /* Start is beyond snd_congestion */
   start = tc->snd_una + offset;
   if (seq_geq (start, tc->snd_congestion))
-    {
-      goto done;
-    }
+    goto done;
 
   /* Don't overshoot snd_congestion */
   if (seq_gt (start + max_deq_bytes, tc->snd_congestion))
     {
       max_deq_bytes = tc->snd_congestion - start;
       if (max_deq_bytes == 0)
-	{
-	  goto done;
-	}
+	goto done;
     }
+
+  seg_size = max_deq_bytes + MAX_HDRS_LEN;
 
   /*
    * Prepare options
@@ -1141,7 +1155,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
     return 0;
   *b = vlib_get_buffer (vm, bi);
-  data = vlib_buffer_make_headroom (*b, MAX_HDRS_LEN);
+  data = tcp_init_buffer (vm, *b);
 
   /* Easy case, buffer size greater than mss */
   if (PREDICT_TRUE (seg_size <= tm->bytes_per_buffer))
@@ -1162,7 +1176,6 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
       int i;
 
       n_bufs_per_seg = ceil ((double) seg_size / tm->bytes_per_buffer);
-      ASSERT (available_bytes >= max_deq_bytes);
 
       /* Make sure we have enough buffers */
       available_bufs = vec_len (tm->tx_buffers[thread_index]);
@@ -1182,8 +1195,6 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
       b[0]->current_length = n_bytes;
       b[0]->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
       b[0]->total_length_not_including_first_buffer = 0;
-
-      tcp_push_hdr_i (tc, *b, tc->state, 0);
       max_deq_bytes -= n_bytes;
 
       chain_b = *b;
@@ -1197,22 +1208,22 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 	  chain_b->current_data = 0;
 	  data = vlib_buffer_get_current (chain_b);
 	  n_peeked = stream_session_peek_bytes (&tc->connection, data,
-						n_bytes, len_to_deq);
-	  n_bytes += n_peeked;
+						offset + n_bytes, len_to_deq);
 	  ASSERT (n_peeked == len_to_deq);
+	  n_bytes += n_peeked;
 	  chain_b->current_length = n_peeked;
-	  b[0]->total_length_not_including_first_buffer +=
-	    chain_b->current_length;
+	  chain_b->flags = 0;
+	  chain_b->next_buffer = 0;
 
 	  /* update previous buffer */
 	  prev_b->next_buffer = chain_bi;
 	  prev_b->flags |= VLIB_BUFFER_NEXT_PRESENT;
 
-	  /* update current buffer */
-	  chain_b->next_buffer = 0;
-
 	  max_deq_bytes -= n_peeked;
+	  b[0]->total_length_not_including_first_buffer += n_peeked;
 	}
+
+      tcp_push_hdr_i (tc, *b, tc->state, 0);
     }
 
   ASSERT (n_bytes > 0);
@@ -1409,8 +1420,9 @@ tcp_timer_persist_handler (u32 index)
   u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
   vlib_buffer_t *b;
-  u32 bi, old_snd_nxt, snd_bytes = 0, available_bytes = 0;
+  u32 bi, old_snd_nxt, max_snd_bytes, available_bytes, offset;
   int n_bytes = 0;
+  u8 *data;
 
   tc = tcp_connection_get_if_valid (index, thread_index);
 
@@ -1419,12 +1431,13 @@ tcp_timer_persist_handler (u32 index)
 
   /* Make sure timer handle is set to invalid */
   tc->timers[TCP_TIMER_PERSIST] = TCP_TIMER_HANDLE_INVALID;
+  offset = tc->snd_una_max - tc->snd_una;
 
   /* Problem already solved or worse */
   available_bytes = stream_session_tx_fifo_max_dequeue (&tc->connection);
   if (tc->state == TCP_STATE_CLOSED || tc->state > TCP_STATE_ESTABLISHED
       || tc->snd_wnd > tc->snd_mss || tcp_in_recovery (tc)
-      || !available_bytes)
+      || !available_bytes || available_bytes <= offset)
     return;
 
   /* Increment RTO backoff */
@@ -1437,18 +1450,17 @@ tcp_timer_persist_handler (u32 index)
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
     return;
   b = vlib_get_buffer (vm, bi);
+  data = tcp_init_buffer (vm, b);
 
-  tcp_validate_txf_size (tc, tc->snd_una_max - tc->snd_una);
+  tcp_validate_txf_size (tc, offset);
   tc->snd_opts_len = tcp_make_options (tc, &tc->snd_opts, tc->state);
-  snd_bytes = clib_min (tc->snd_mss, tm->bytes_per_buffer);
-  n_bytes = stream_session_peek_bytes (&tc->connection,
-				       vlib_buffer_get_current (b),
-				       tc->snd_una_max - tc->snd_una,
-				       snd_bytes);
-  ASSERT (n_bytes != 0);
+  max_snd_bytes = clib_min (tc->snd_mss,
+			    tm->bytes_per_buffer - MAX_HDRS_LEN);
+  n_bytes = stream_session_peek_bytes (&tc->connection, data, offset,
+				       max_snd_bytes);
   b->current_length = n_bytes;
-  ASSERT (tc->snd_nxt == tc->snd_una_max || tc->rto_boff > 1
-	  || tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT));
+  ASSERT (n_bytes != 0 && (tc->snd_nxt == tc->snd_una_max || tc->rto_boff > 1
+	  || tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)));
 
   /* Allow updating of snd_una_max but don't update snd_nxt */
   old_snd_nxt = tc->snd_nxt;
@@ -1456,8 +1468,8 @@ tcp_timer_persist_handler (u32 index)
   tc->snd_nxt = old_snd_nxt;
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 
-  /* Re-enable persist timer */
-  tcp_persist_timer_set (tc);
+  /* Just sent new data, enable retransmit */
+  tcp_retransmit_timer_update (tc);
 }
 
 /**
@@ -1523,7 +1535,8 @@ tcp_fast_retransmit_sack (tcp_connection_t * tc)
 	   * unSACKed sequence number SHOULD be returned, and RescueRxt set to
 	   * RecoveryPoint. HighRxt MUST NOT be updated.
 	   */
-	  max_bytes = clib_min (tc->snd_mss, snd_space);
+	  max_bytes = clib_min (tc->snd_mss, tc->snd_congestion - tc->snd_una);
+	  max_bytes = clib_min (max_bytes, snd_space);
 	  offset = tc->snd_congestion - tc->snd_una - max_bytes;
 	  sb->rescue_rxt = tc->snd_congestion;
 	  tc->snd_nxt = tc->snd_una + offset;

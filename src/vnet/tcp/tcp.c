@@ -995,11 +995,12 @@ tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
       return tc->snd_wnd <= snd_space ? tc->snd_wnd : 0;
     }
 
-  /* If we can't write at least a segment, don't try at all */
+  /* If not snd_wnd constrained and we can't write at least a segment,
+   * don't try at all */
   if (PREDICT_FALSE (snd_space < tc->snd_mss))
     {
-      if (snd_space > clib_min (tc->mss, tc->rcv_opts.mss) - TCP_HDR_LEN_MAX)
-	return snd_space;
+//      if (snd_space > clib_min (tc->mss, tc->rcv_opts.mss) - TCP_HDR_LEN_MAX)
+//	return snd_space;
       return 0;
     }
 

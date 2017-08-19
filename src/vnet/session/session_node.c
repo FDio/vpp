@@ -193,7 +193,8 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   else
     {
-      max_len_to_snd0 = snd_space0;
+      max_len_to_snd0 = (snd_space0 > snd_mss0) ?
+	  snd_space0 - snd_space0 % snd_mss0 : snd_space0;
     }
 
   n_bytes_per_buf = vlib_buffer_free_list_buffer_size

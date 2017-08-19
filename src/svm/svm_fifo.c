@@ -54,9 +54,8 @@ u8 *
 format_ooo_segment (u8 * s, va_list * args)
 {
   ooo_segment_t *seg = va_arg (*args, ooo_segment_t *);
-
-  s = format (s, "pos %u, len %u, next %d, prev %d",
-	      seg->start, seg->length, seg->next, seg->prev);
+  s = format (s, "[%u, %u], len %u, next %d, prev %d", seg->start,
+	      seg->start + seg->length, seg->length, seg->next, seg->prev);
   return s;
 }
 
@@ -557,7 +556,7 @@ svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
 {
   u32 total_copy_bytes, first_copy_bytes, second_copy_bytes;
   u32 cursize, nitems, normalized_offset;
-  u32 offset_from_tail;
+//  u32 offset_from_tail;
 
   f->ooos_newest = OOO_SEGMENT_INVALID_INDEX;
 
@@ -570,8 +569,8 @@ svm_fifo_enqueue_with_offset_internal (svm_fifo_t * f,
   normalized_offset = (f->tail + offset) % nitems;
 
   /* Will this request fit? */
-  offset_from_tail = (nitems + normalized_offset - f->tail) % nitems;
-  if ((required_bytes + offset_from_tail) > (nitems - cursize))
+//  offset_from_tail = (nitems + normalized_offset - f->tail) % nitems;
+  if ((required_bytes + offset) > (nitems - cursize))
     return -1;
 
   svm_fifo_trace_add (f, offset, required_bytes, 1);
