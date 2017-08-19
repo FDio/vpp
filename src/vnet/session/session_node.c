@@ -76,7 +76,7 @@ session_tx_fifo_chain_tail (session_manager_main_t * smm, vlib_main_t * vm,
 			    u8 thread_index, svm_fifo_t * fifo,
 			    vlib_buffer_t * b0, u32 bi0, u8 n_bufs_per_seg,
 			    u32 left_from_seg, u32 * left_to_snd0,
-			    u16 * n_bufs, u32 * rx_offset, u16 deq_per_buf,
+			    u16 * n_bufs, u32 * tx_offset, u16 deq_per_buf,
 			    u8 peek_data)
 {
   vlib_buffer_t *chain_b0, *prev_b0;
@@ -104,8 +104,8 @@ session_tx_fifo_chain_tail (session_manager_main_t * smm, vlib_main_t * vm,
       data0 = vlib_buffer_get_current (chain_b0);
       if (peek_data)
 	{
-	  n_bytes_read = svm_fifo_peek (fifo, *rx_offset, len_to_deq0, data0);
-	  *rx_offset += n_bytes_read;
+	  n_bytes_read = svm_fifo_peek (fifo, *tx_offset, len_to_deq0, data0);
+	  *tx_offset += n_bytes_read;
 	}
       else
 	{
@@ -126,7 +126,8 @@ session_tx_fifo_chain_tail (session_manager_main_t * smm, vlib_main_t * vm,
       if (to_deq == 0)
 	break;
     }
-  ASSERT (to_deq == 0);
+  ASSERT (to_deq == 0
+	  && b0->total_length_not_including_first_buffer == left_from_seg);
   *left_to_snd0 -= left_from_seg;
 }
 
@@ -144,7 +145,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   transport_proto_vft_t *transport_vft;
   u32 next_index, next0, *to_next, n_left_to_next, bi0;
   vlib_buffer_t *b0;
-  u32 rx_offset = 0, max_dequeue0, n_bytes_per_seg;
+  u32 tx_offset = 0, max_dequeue0, n_bytes_per_seg, left_for_seg;
   u16 snd_mss0, n_bufs_per_seg, n_bufs;
   u8 *data0;
   int i, n_bytes_read;
@@ -170,11 +171,11 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (peek_data)
     {
       /* Offset in rx fifo from where to peek data  */
-      rx_offset = transport_vft->tx_fifo_offset (tc0);
+      tx_offset = transport_vft->tx_fifo_offset (tc0);
     }
 
   /* Check how much we can pull. If buffering, subtract the offset */
-  max_dequeue0 = svm_fifo_max_dequeue (s0->server_tx_fifo) - rx_offset;
+  max_dequeue0 = svm_fifo_max_dequeue (s0->server_tx_fifo) - tx_offset;
 
   /* Nothing to read return */
   if (max_dequeue0 == 0)
@@ -193,6 +194,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
     }
   else
     {
+      /* Expectation is that snd_space0 is already a multiple of snd_mss */
       max_len_to_snd0 = snd_space0;
     }
 
@@ -265,8 +267,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b0->error = 0;
-	  b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID
-	    | VNET_BUFFER_F_LOCALLY_ORIGINATED;
+	  b0->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  b0->current_data = 0;
 	  b0->total_length_not_including_first_buffer = 0;
 
@@ -274,11 +275,11 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  data0 = vlib_buffer_make_headroom (b0, MAX_HDRS_LEN);
 	  if (peek_data)
 	    {
-	      n_bytes_read = svm_fifo_peek (s0->server_tx_fifo, rx_offset,
+	      n_bytes_read = svm_fifo_peek (s0->server_tx_fifo, tx_offset,
 					    len_to_deq0, data0);
 	      /* Keep track of progress locally, transport is also supposed to
 	       * increment it independently when pushing the header */
-	      rx_offset += n_bytes_read;
+	      tx_offset += n_bytes_read;
 	    }
 	  else
 	    {
@@ -299,12 +300,11 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	   */
 	  if (PREDICT_FALSE (n_bufs_per_seg > 1 && left_to_snd0))
 	    {
-	      u32 left_for_seg;
 	      left_for_seg = clib_min (snd_mss0 - n_bytes_read, left_to_snd0);
 	      session_tx_fifo_chain_tail (smm, vm, thread_index,
 					  s0->server_tx_fifo, b0, bi0,
 					  n_bufs_per_seg, left_for_seg,
-					  &left_to_snd0, &n_bufs, &rx_offset,
+					  &left_to_snd0, &n_bufs, &tx_offset,
 					  deq_per_buf, peek_data);
 	    }
 
