@@ -798,7 +798,8 @@ format_tcp_vars (u8 * s, va_list * args)
   s = format (s, "rtt_seq %u\n", tc->rtt_seq);
   s = format (s, " tsval_recent %u tsval_recent_age %u\n", tc->tsval_recent,
 	      tcp_time_now () - tc->tsval_recent_age);
-  s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb);
+  s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
+	      tc);
   if (vec_len (tc->snd_sacks))
     s = format (s, " sacks tx: %U\n", format_tcp_sacks, tc);
 
@@ -858,7 +859,7 @@ format_tcp_session (u8 * s, va_list * args)
   if (tc)
     s = format (s, "%U", format_tcp_connection, tc, verbose);
   else
-    s = format (s, "empty");
+    s = format (s, "empty\n");
   return s;
 }
 
@@ -930,7 +931,11 @@ u8 *
 format_tcp_sack_hole (u8 * s, va_list * args)
 {
   sack_scoreboard_hole_t *hole = va_arg (*args, sack_scoreboard_hole_t *);
-  s = format (s, "[%u, %u]", hole->start, hole->end);
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  if (tc)
+    s = format (s, "  [%u, %u]", hole->start - tc->iss, hole->end - tc->iss);
+  else
+    s = format (s, "  [%u, %u]", hole->start, hole->end);
   return s;
 }
 
@@ -938,6 +943,7 @@ u8 *
 format_tcp_scoreboard (u8 * s, va_list * args)
 {
   sack_scoreboard_t *sb = va_arg (*args, sack_scoreboard_t *);
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
   sack_scoreboard_hole_t *hole;
   s = format (s, "sacked_bytes %u last_sacked_bytes %u lost_bytes %u\n",
 	      sb->sacked_bytes, sb->last_sacked_bytes, sb->lost_bytes);
@@ -952,7 +958,7 @@ format_tcp_scoreboard (u8 * s, va_list * args)
 
   while (hole)
     {
-      s = format (s, "%U", format_tcp_sack_hole, hole);
+      s = format (s, "%U", format_tcp_sack_hole, hole, tc);
       hole = scoreboard_next_hole (sb, hole);
     }
 
@@ -1001,13 +1007,10 @@ tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
       return tc->snd_wnd <= snd_space ? tc->snd_wnd : 0;
     }
 
-  /* If we can't write at least a segment, don't try at all */
+  /* If not snd_wnd constrained and we can't write at least a segment,
+   * don't try at all */
   if (PREDICT_FALSE (snd_space < tc->snd_mss))
-    {
-      if (snd_space > clib_min (tc->mss, tc->rcv_opts.mss) - TCP_HDR_LEN_MAX)
-	return snd_space;
-      return 0;
-    }
+    return 0;
 
   /* round down to mss multiple */
   return snd_space - (snd_space % tc->snd_mss);
@@ -1030,7 +1033,7 @@ tcp_snd_space (tcp_connection_t * tc)
 
   if (PREDICT_TRUE (tcp_in_cong_recovery (tc) == 0))
     {
-      snd_space = tcp_available_snd_space (tc);
+      snd_space = tcp_available_output_snd_space (tc);
 
       /* If we haven't gotten dupacks or if we did and have gotten sacked
        * bytes then we can still send as per Limited Transmit (RFC3042) */
@@ -1051,17 +1054,20 @@ tcp_snd_space (tcp_connection_t * tc)
   if (tcp_in_recovery (tc))
     {
       tc->snd_nxt = tc->snd_una_max;
-      snd_space = tcp_available_wnd (tc) - tc->snd_rxt_bytes
+      snd_space = tcp_available_snd_wnd (tc) - tc->snd_rxt_bytes
 	- (tc->snd_una_max - tc->snd_congestion);
       if (snd_space <= 0 || (tc->snd_una_max - tc->snd_una) >= tc->snd_wnd)
 	return 0;
       return tcp_round_snd_space (tc, snd_space);
     }
 
-  /* If in fast recovery, send 1 SMSS if wnd allows */
-  if (tcp_in_fastrecovery (tc)
-      && tcp_available_snd_space (tc) && !tcp_fastrecovery_sent_1_smss (tc))
+  /* RFC 5681: When previously unsent data is available and the new value of
+   * cwnd and the receiver's advertised window allow, a TCP SHOULD send 1*SMSS
+   * bytes of previously unsent data. */
+  if (tcp_in_fastrecovery (tc) && !tcp_fastrecovery_sent_1_smss (tc))
     {
+      if (tcp_available_output_snd_space (tc) < tc->snd_mss)
+	return 0;
       tcp_fastrecovery_1_smss_on (tc);
       return tc->snd_mss;
     }
@@ -1073,7 +1079,8 @@ u32
 tcp_session_send_space (transport_connection_t * trans_conn)
 {
   tcp_connection_t *tc = (tcp_connection_t *) trans_conn;
-  return tcp_snd_space (tc);
+  return clib_min (tcp_snd_space (tc),
+		   tc->snd_wnd - (tc->snd_nxt - tc->snd_una));
 }
 
 i32
