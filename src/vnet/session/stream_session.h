@@ -56,7 +56,7 @@ typedef struct _stream_session_t
   u8 session_type;
 
   /** State */
-  u8 session_state;
+  volatile u8 session_state;
 
   u8 thread_index;
 

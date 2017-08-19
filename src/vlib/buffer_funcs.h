@@ -838,7 +838,7 @@ vlib_buffer_init_for_free_list (vlib_buffer_t * dst,
    * so it may actually not zeroed for some buffers. One option is to
    * uncomment the line lower (comes at a cost), the other, is to just  not
    * care */
-  /* dst->total_length_not_including_first_buffer = 0; */
+  /*dst->total_length_not_including_first_buffer = 0;*/
   ASSERT (dst->n_add_refs == 0);
 }
 
