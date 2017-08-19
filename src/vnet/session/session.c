@@ -92,13 +92,15 @@ stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
   return 0;
 }
 
-/** Enqueue buffer chain tail */
+/**
+ * Enqueue buffer chain tail
+ */
 always_inline int
 session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
 			    u32 offset, u8 is_in_order)
 {
-  vlib_buffer_t *chain_b;
-  u32 chain_bi = b->next_buffer, len;
+  vlib_buffer_t *chain_b, *next;
+  u32 chain_bi = b->next_buffer, len, to_drop;
   vlib_main_t *vm = vlib_get_main ();
   u8 *data;
   u16 written = 0;
@@ -109,21 +111,53 @@ session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
       chain_b = vlib_get_buffer (vm, chain_bi);
       data = vlib_buffer_get_current (chain_b);
       len = chain_b->current_length;
+      if (!len)
+	continue;
       if (is_in_order)
 	{
 	  rv = svm_fifo_enqueue_nowait (s->server_rx_fifo, len, data);
-	  if (rv < len)
+	  if (rv == len)
+	    {
+	      written += rv;
+	    }
+	  else if (rv < len)
 	    {
 	      return (rv > 0) ? (written + rv) : written;
 	    }
-	  written += rv;
+	  else if (rv > len)
+	    {
+	      /* written more than what was left in chain */
+	      if (rv > b->total_length_not_including_first_buffer
+		  - (written + len))
+		return written + rv;
+
+	      /* drop the bytes that have already been delivered */
+	      next = chain_b;
+	      ASSERT (next->flags & VLIB_BUFFER_NEXT_PRESENT);
+	      to_drop = rv - len;
+	      while (to_drop && (next->flags & VLIB_BUFFER_NEXT_PRESENT))
+		{
+		  chain_b = next;
+		  next = vlib_get_buffer (vm, next->next_buffer);
+		  if (next->current_length > to_drop)
+		    {
+		      vlib_buffer_advance (b, to_drop);
+		      to_drop = 0;
+		    }
+		  else
+		    to_drop -= next->current_length;
+		}
+	    }
 	}
       else
 	{
 	  rv = svm_fifo_enqueue_with_offset (s->server_rx_fifo, offset, len,
 					     data);
 	  if (rv)
-	    return -1;
+	    {
+	      clib_warning ("failed to enqueue multi-buffer seg");
+	      return -1;
+	    }
 	  offset += len;
 	}
     }
@@ -165,7 +199,7 @@ stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
 	svm_fifo_enqueue_nowait (s->server_rx_fifo, b->current_length,
 				 vlib_buffer_get_current (b));
       if (PREDICT_FALSE
-	  ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued > 0))
+	  ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
 	{
 	  rv = session_enqueue_chain_tail (s, b, 0, 1);
 	  if (rv <= 0)
