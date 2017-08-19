@@ -1363,7 +1363,7 @@ always_inline int
 tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
 			  u16 data_len)
 {
-  int written;
+  int written, error = TCP_ERROR_ENQUEUED;
 
   ASSERT (seq_geq (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt));
 
@@ -1381,12 +1381,12 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
   /* Update rcv_nxt */
   if (PREDICT_TRUE (written == data_len))
     {
-      tc->rcv_nxt = vnet_buffer (b)->tcp.seq_end;
+      tc->rcv_nxt += written;
     }
   /* If more data written than expected, account for out-of-order bytes. */
   else if (written > data_len)
     {
-      tc->rcv_nxt = vnet_buffer (b)->tcp.seq_end + written - data_len;
+      tc->rcv_nxt += written;
 
       /* Send ACK confirming the update */
       tc->flags |= TCP_CONN_SNDACK;
@@ -1400,7 +1400,7 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
        * not be enqueued. Inform peer */
       tc->flags |= TCP_CONN_SNDACK;
 
-      return TCP_ERROR_PARTIALLY_ENQUEUED;
+      error = TCP_ERROR_PARTIALLY_ENQUEUED;
     }
   else
     {
@@ -1415,7 +1415,7 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
       tcp_update_sack_list (tc, tc->rcv_nxt, tc->rcv_nxt);
     }
 
-  return TCP_ERROR_ENQUEUED;
+  return error;
 }
 
 /** Enqueue out-of-order data */
@@ -1498,7 +1498,7 @@ tcp_buffer_discard_bytes (vlib_buffer_t * b, u32 n_bytes_to_drop)
   u32 discard;
   vlib_main_t *vm = vlib_get_main ();
 
-  /* Handle multi segment packets */
+  /* Handle multi-buffer segments */
   if (n_bytes_to_drop > b->current_length)
     {
       if (!(b->flags & VLIB_BUFFER_NEXT_PRESENT))
@@ -1512,6 +1512,9 @@ tcp_buffer_discard_bytes (vlib_buffer_t * b, u32 n_bytes_to_drop)
 	}
       while (n_bytes_to_drop);
     }
+  else
+    vlib_buffer_advance (b, n_bytes_to_drop);
+  vnet_buffer (b)->tcp.data_len -= n_bytes_to_drop;
   return 0;
 }
 

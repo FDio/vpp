@@ -47,7 +47,7 @@ typedef struct
   tcp_connection_t tcp_connection;
 } tcp_tx_trace_t;
 
-u16 dummy_mtu = 1460;
+u16 dummy_mtu = 8000;
 
 u8 *
 format_tcp_tx_trace (u8 * s, va_list * args)
@@ -440,7 +440,8 @@ tcp_init_mss (tcp_connection_t * tc)
 always_inline int
 tcp_alloc_tx_buffers (tcp_main_t * tm, u8 thread_index, u32 n_free_buffers)
 {
-  vec_validate (tm->tx_buffers[thread_index], n_free_buffers - 1);
+  vec_validate(tm->tx_buffers[thread_index],
+	       vec_len (tm->tx_buffers[thread_index]) + n_free_buffers - 1);
   _vec_len (tm->tx_buffers[thread_index]) =
     vlib_buffer_alloc_from_free_list (vlib_get_main (),
 				      tm->tx_buffers[thread_index],
@@ -1456,8 +1457,8 @@ tcp_timer_persist_handler (u32 index)
   tc->snd_nxt = old_snd_nxt;
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 
-  /* Re-enable persist timer */
-  tcp_persist_timer_set (tc);
+  /* Just sent new data, enable retransmit */
+  tcp_retransmit_timer_update (tc);
 }
 
 /**

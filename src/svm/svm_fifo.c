@@ -54,9 +54,8 @@ u8 *
 format_ooo_segment (u8 * s, va_list * args)
 {
   ooo_segment_t *seg = va_arg (*args, ooo_segment_t *);
-
-  s = format (s, "pos %u, len %u, next %d, prev %d",
-	      seg->start, seg->length, seg->next, seg->prev);
+  s = format (s, "[%u, %u], len %u, next %d, prev %d", seg->start,
+	      seg->start + seg->length, seg->length, seg->next, seg->prev);
   return s;
 }
 
