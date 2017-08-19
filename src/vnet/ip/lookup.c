@@ -384,16 +384,6 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 
       if (unformat (line_input, "table %d", &table_id))
 	;
-      else if (unformat (line_input, "%U/%d",
-			 unformat_ip6_address, &pfx.fp_addr.ip6, &pfx.fp_len))
-	{
-	  pfx.fp_proto = FIB_PROTOCOL_IP6;
-	  vec_add1 (prefixs, pfx);
-	}
-      else if (unformat (line_input, "del"))
-	is_del = 1;
-      else if (unformat (line_input, "add"))
-	is_del = 0;
       else if (unformat (line_input, "resolve-via-host"))
 	{
 	  if (vec_len (rpaths) == 0)
@@ -449,6 +439,12 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  pfx.fp_proto = FIB_PROTOCOL_IP4;
 	  vec_add1 (prefixs, pfx);
 	}
+      else if (unformat (line_input, "%U/%d",
+                         unformat_ip6_address, &pfx.fp_addr.ip6, &pfx.fp_len))
+        {
+          pfx.fp_proto = FIB_PROTOCOL_IP6;
+          vec_add1 (prefixs, pfx);
+        }
       else if (unformat (line_input, "via %U %U",
 			 unformat_ip4_address,
 			 &rpath.frp_addr.ip4,
@@ -542,6 +538,10 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	{
 	  vec_add1 (dpos, dpo);
 	}
+      else if (unformat (line_input, "del"))
+        is_del = 1;
+      else if (unformat (line_input, "add"))
+        is_del = 0;
       else
 	{
 	  error = unformat_parse_error (line_input);
