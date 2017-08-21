@@ -1061,12 +1061,12 @@ class VppPapiProvider(object):
              'mt_next_hop_table_id': next_hop_table_id,
              'mt_next_hop_out_label_stack': next_hop_out_label_stack})
 
-    def snat_interface_add_del_feature(
+    def nat44_interface_add_del_feature(
             self,
             sw_if_index,
             is_inside=1,
             is_add=1):
-        """Enable/disable S-NAT feature on the interface
+        """Enable/disable NAT44 feature on the interface
 
         :param sw_if_index: Software index of the interface
         :param is_inside: 1 if inside, 0 if outside (Default value = 1)
@@ -1078,12 +1078,12 @@ class VppPapiProvider(object):
              'is_inside': is_inside,
              'sw_if_index': sw_if_index})
 
-    def snat_interface_add_del_output_feature(
+    def nat44_interface_add_del_output_feature(
             self,
             sw_if_index,
             is_inside=1,
             is_add=1):
-        """Enable/disable S-NAT output feature on the interface
+        """Enable/disable NAT44 output feature on the interface
 
         :param sw_if_index: Software index of the interface
         :param is_inside: 1 if inside, 0 if outside (Default value = 1)
@@ -1095,7 +1095,7 @@ class VppPapiProvider(object):
              'is_inside': is_inside,
              'sw_if_index': sw_if_index})
 
-    def snat_add_static_mapping(
+    def nat44_add_static_mapping(
             self,
             local_ip,
             external_ip=0,
@@ -1107,7 +1107,7 @@ class VppPapiProvider(object):
             protocol=0,
             is_add=1,
             is_ip4=1):
-        """Add/delete S-NAT static mapping
+        """Add/delete NAT44 static mapping
 
         :param local_ip: Local IP address
         :param external_ip: External IP address
@@ -1133,14 +1133,14 @@ class VppPapiProvider(object):
              'vrf_id': vrf_id,
              'protocol': protocol})
 
-    def snat_add_address_range(
+    def nat44_add_address_range(
             self,
             first_ip_address,
             last_ip_address,
             is_add=1,
             is_ip4=1,
             vrf_id=0xFFFFFFFF):
-        """Add/del S-NAT address range
+        """Add/del NAT44 address range
 
         :param first_ip_address: First IP address
         :param last_ip_address: Last IP address
@@ -1156,41 +1156,41 @@ class VppPapiProvider(object):
              'vrf_id': vrf_id,
              'is_add': is_add})
 
-    def snat_address_dump(self):
-        """Dump S-NAT addresses
-        :return: Dictionary of S-NAT addresses
+    def nat44_address_dump(self):
+        """Dump NAT44 addresses
+        :return: Dictionary of NAT44 addresses
         """
         return self.api(self.papi.snat_address_dump, {})
 
-    def snat_interface_dump(self):
-        """Dump interfaces with S-NAT feature
-        :return: Dictionary of interfaces with S-NAT feature
+    def nat44_interface_dump(self):
+        """Dump interfaces with NAT44 feature
+        :return: Dictionary of interfaces with NAT44 feature
         """
         return self.api(self.papi.snat_interface_dump, {})
 
-    def snat_interface_output_feature_dump(self):
-        """Dump interfaces with S-NAT output feature
-        :return: Dictionary of interfaces with S-NAT output feature
+    def nat44_interface_output_feature_dump(self):
+        """Dump interfaces with NAT44 output feature
+        :return: Dictionary of interfaces with NAT44 output feature
         """
         return self.api(self.papi.snat_interface_output_feature_dump, {})
 
-    def snat_static_mapping_dump(self):
-        """Dump S-NAT static mappings
-        :return: Dictionary of S-NAT static mappings
+    def nat44_static_mapping_dump(self):
+        """Dump NAT44 static mappings
+        :return: Dictionary of NAT44 static mappings
         """
         return self.api(self.papi.snat_static_mapping_dump, {})
 
-    def snat_show_config(self):
-        """Show S-NAT config
-        :return: S-NAT config parameters
+    def nat_show_config(self):
+        """Show NAT plugin config
+        :return: NAT plugin config parameters
         """
         return self.api(self.papi.snat_show_config, {})
 
-    def snat_add_interface_addr(
+    def nat44_add_interface_addr(
             self,
             sw_if_index,
             is_add=1):
-        """Add/del S-NAT address from interface
+        """Add/del NAT44 address from interface
 
         :param sw_if_index: Software index of the interface
         :param is_add: 1 if add, 0 if delete (Default value = 1)
@@ -1198,18 +1198,18 @@ class VppPapiProvider(object):
         return self.api(self.papi.snat_add_del_interface_addr,
                         {'is_add': is_add, 'sw_if_index': sw_if_index})
 
-    def snat_interface_addr_dump(self):
-        """Dump S-NAT addresses interfaces
-        :return: Dictionary of S-NAT addresses interfaces
+    def nat44_interface_addr_dump(self):
+        """Dump NAT44 addresses interfaces
+        :return: Dictionary of NAT44 addresses interfaces
         """
         return self.api(self.papi.snat_interface_addr_dump, {})
 
-    def snat_ipfix(
+    def nat_ipfix(
             self,
             domain_id=1,
             src_port=4739,
             enable=1):
-        """Enable/disable S-NAT IPFIX logging
+        """Enable/disable NAT IPFIX logging
 
         :param domain_id: Observation domain ID (Default value = 1)
         :param src_port: Source port number (Default value = 4739)
@@ -1221,12 +1221,12 @@ class VppPapiProvider(object):
              'src_port': src_port,
              'enable': enable})
 
-    def snat_user_session_dump(
+    def nat44_user_session_dump(
             self,
             ip_address,
             vrf_id,
             is_ip4=1):
-        """Dump S-NAT user's sessions
+        """Dump NAT44 user's sessions
 
         :param ip_address: ip adress of the user to be dumped
         :param cpu_index: cpu_index on which the user is
@@ -1239,21 +1239,21 @@ class VppPapiProvider(object):
              'vrf_id': vrf_id,
              'is_ip4': is_ip4})
 
-    def snat_user_dump(self):
-        """Dump S-NAT users
+    def nat44_user_dump(self):
+        """Dump NAT44 users
 
-        :return: Dictionary of S-NAT users
+        :return: Dictionary of NAT44 users
         """
         return self.api(self.papi.snat_user_dump, {})
 
-    def snat_add_det_map(
+    def nat44_add_det_map(
             self,
             in_addr,
             in_plen,
             out_addr,
             out_plen,
             is_add=1):
-        """Add/delete S-NAT deterministic mapping
+        """Add/delete NAT44 deterministic mapping
 
         :param is_add - 1 if add, 0 if delete
         :param in_addr - inside IP address
@@ -1269,7 +1269,7 @@ class VppPapiProvider(object):
              'out_addr': out_addr,
              'out_plen': out_plen})
 
-    def snat_det_forward(
+    def nat44_det_forward(
             self,
             in_addr):
         """Get outside address and port range from inside address
@@ -1280,7 +1280,7 @@ class VppPapiProvider(object):
             self.papi.snat_det_forward,
             {'in_addr': in_addr})
 
-    def snat_det_reverse(
+    def nat44_det_reverse(
             self,
             out_addr,
             out_port):
@@ -1294,14 +1294,14 @@ class VppPapiProvider(object):
             {'out_addr': out_addr,
              'out_port': out_port})
 
-    def snat_det_map_dump(self):
-        """Dump S-NAT deterministic mappings
+    def nat44_det_map_dump(self):
+        """Dump NAT44 deterministic mappings
 
-        :return: Dictionary of S-NAT deterministic mappings
+        :return: Dictionary of NAT44 deterministic mappings
         """
         return self.api(self.papi.snat_det_map_dump, {})
 
-    def snat_det_set_timeouts(
+    def nat44_det_set_timeouts(
             self,
             udp=300,
             tcp_established=7440,
@@ -1321,21 +1321,21 @@ class VppPapiProvider(object):
              'tcp_transitory': tcp_transitory,
              'icmp': icmp})
 
-    def snat_det_get_timeouts(self):
+    def nat44_det_get_timeouts(self):
         """Get values of timeouts for deterministic NAT
 
         :return: Timeouts for deterministic NAT (in seconds)
         """
         return self.api(self.papi.snat_det_get_timeouts, {})
 
-    def snat_det_close_session_out(
+    def nat44_det_close_session_out(
             self,
             out_addr,
             out_port,
             ext_addr,
             ext_port,
             is_ip4=1):
-        """Close CGN session using outside address and port
+        """Close NAT44 deterministic session using outside address and port
 
         :param out_addr - outside IP address
         :param out_port - outside port
@@ -1351,14 +1351,14 @@ class VppPapiProvider(object):
              'ext_port': ext_port,
              'is_ip4': is_ip4})
 
-    def snat_det_close_session_in(
+    def nat44_det_close_session_in(
             self,
             in_addr,
             in_port,
             ext_addr,
             ext_port,
             is_ip4=1):
-        """Close CGN session using inside address and port
+        """Close NAT44 deterministic session using inside address and port
 
         :param in_addr - inside IP address
         :param in_port - inside port
@@ -1374,15 +1374,15 @@ class VppPapiProvider(object):
              'ext_port': ext_port,
              'is_ip4': is_ip4})
 
-    def snat_det_session_dump(
+    def nat44_det_session_dump(
             self,
             user_addr,
             is_ip4=1):
-        """Dump S-NAT deterministic sessions belonging to a user
+        """Dump NAT44 deterministic sessions belonging to a user
 
         :param user_addr - inside IP address of the user
         :param is_ip4: - 1 if address type is IPv4 (Default value = 1)
-        :return: Dictionary of S-NAT deterministic sessions
+        :return: Dictionary of NAT44 deterministic sessions
         """
         return self.api(
             self.papi.snat_det_session_dump,

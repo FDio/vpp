@@ -74,8 +74,8 @@ if ENABLE_SIXRD_PLUGIN
 include sixrd.am
 endif
 
-if ENABLE_SNAT_PLUGIN
-include snat.am
+if ENABLE_NAT_PLUGIN
+include nat.am
 endif
 
 include ../suffix-rules.mk
