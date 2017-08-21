@@ -32,6 +32,7 @@ DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
 DPDK_17.02_TARBALL_MD5_CKSUM := 6b9f7387c35641f4e8dbba3e528f2376
 DPDK_17.05_TARBALL_MD5_CKSUM := 0a68c31cd6a6cabeed0a4331073e4c05
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
+MACHINE=$(shell uname -m)
 
 ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
 AESNI := y
@@ -56,8 +57,6 @@ DPDK_CC=icc
 else
 DPDK_CC=gcc
 endif
-
-MACHINE=$(shell uname -m)
 
 ##############################################################################
 # Intel x86
