@@ -29,7 +29,7 @@ Now run VPP and make sure the plugin is loaded.
 	...
 	load_one_plugin:184: Loaded plugin: memif_plugin.so (Packet Memory Interface (experimetal))
 	load_one_plugin:184: Loaded plugin: sample_plugin.so (Sample of VPP Plugin)
-	load_one_plugin:184: Loaded plugin: snat_plugin.so (Network Address Translation)
+	load_one_plugin:184: Loaded plugin: nat_plugin.so (Network Address Translation)
 	...
 	DBGvpp#
 

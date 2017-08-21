@@ -1,0 +1,41 @@
+create packet-generator interface pg0
+create packet-generator interface pg1
+
+packet-generator new {
+  name f1
+  limit 1000000
+  node ip4-input
+  size 64-64
+  no-recycle
+  interface pg0
+  data {
+    UDP: 10.0.0.3 -> 172.16.1.2
+    UDP: 3000 -> 3001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+
+packet-generator new {
+  name f2
+  limit 1000000
+  node ip4-input
+  size 64-64
+  no-recycle
+  interface pg0
+  data {
+    UDP: 10.0.0.3 -> 172.16.1.2
+    UDP: 3005 -> 3006
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+nat44 add address 172.16.1.3
+set int ip address pg0 10.0.0.1/24
+set int ip address pg1 172.16.1.1/24
+set int state pg0 up
+set int state pg1 up
+set ip arp static pg0 10.0.0.3 abcd.abcd.abcd
+set ip arp static pg0 10.0.0.4 abcd.abcd.abcd
+set ip arp static pg1 172.16.1.2 cdef.abcd.abcd
+set int nat44 in pg0 out pg1

@@ -1,0 +1,1513 @@
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+/**
+ * @file nat.api
+ * @brief VPP control-plane API messages.
+ *
+ * This file defines VPP control-plane API messages which are generally
+ * called through a shared memory interface.
+ */
+
+/*
+ * Old "snat" APIs, will be deprecated after 17.10
+ */
+
+/** \brief Add/del NAT44 address range
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param first_ip_address - first IP address
+    @param last_ip_address - last IP address
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
+    @param is_add - 1 if add, 0 if delete
+*/
+autoreply define snat_add_address_range {
+  u32 client_index;
+  u32 context;
+  u8 is_ip4;
+  u8 first_ip_address[16];
+  u8 last_ip_address[16];
+  u32 vrf_id;
+  u8 is_add;
+};
+
+/** \brief Dump NAT44 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_address_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 address details response
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param ip_address - IP address
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
+*/
+define snat_address_details {
+  u32 context;
+  u8 is_ip4;
+  u8 ip_address[16];
+  u32 vrf_id;
+};
+
+/** \brief Enable/disable NAT44 feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - software index of the interface
+*/
+autoreply define snat_interface_add_del_feature {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Dump interfaces with NAT44 feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_interface_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 interface details response
+    @param context - sender context, to match reply w/ request
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - software index of the interface
+*/
+define snat_interface_details {
+  u32 context;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Enable/disbale NAT44 as an interface output feature (postrouting
+           in2out translation)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - software index of the interface
+*/
+autoreply define snat_interface_add_del_output_feature {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Dump interfaces with NAT44 output feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_interface_output_feature_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 interface with output feature details response
+    @param context - sender context, to match reply w/ request
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - software index of the interface
+*/
+define snat_interface_output_feature_details {
+  u32 context;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Add/delete NAT44 static mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param is_ip4 - 1 if address type is IPv4
+    @param addr_only - 1 if address only mapping
+    @param local_ip_address - local IP address
+    @param external_ip_address - external IP address
+    @param protocol - IP protocol
+    @param local_port - local port number
+    @param external_port - external port number
+    @param external_sw_if_index - external interface (if set
+                                  external_ip_address is ignored, ~0 means not
+                                  used)
+    @param vfr_id - VRF ID
+*/
+autoreply define snat_add_static_mapping {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_ip4;
+  u8 addr_only;
+  u8 local_ip_address[16];
+  u8 external_ip_address[16];
+  u8 protocol;
+  u16 local_port;
+  u16 external_port;
+  u32 external_sw_if_index;
+  u32 vrf_id;
+};
+
+/** \brief Dump NAT44 static mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_static_mapping_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 static mapping details response
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param addr_only - 1 if address only mapping
+    @param local_ip_address - local IP address
+    @param external_ip_address - external IP address
+    @param protocol - IP protocol
+    @param local_port - local port number
+    @param external_port - external port number
+    @param external_sw_if_index - external interface
+    @param vfr_id - VRF ID
+*/
+define snat_static_mapping_details {
+  u32 context;
+  u8 is_ip4;
+  u8 addr_only;
+  u8 local_ip_address[16];
+  u8 external_ip_address[16];
+  u8 protocol;
+  u16 local_port;
+  u16 external_port;
+  u32 external_sw_if_index;
+  u32 vrf_id;
+};
+
+/** \brief Control ping from client to api server request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_control_ping
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Control ping from the client to the server response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param vpe_pid - the pid of the vpe, returned by the server
+*/
+define snat_control_ping_reply
+{
+  u32 context;
+  i32 retval;
+  u32 client_index;
+  u32 vpe_pid;
+};
+
+/** \brief Show NAT plugin startup config
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_show_config
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Show NAT plugin startup config reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param static_mapping_only - if 1 dynamic translations disabled
+    @param static_mapping_connection_tracking - if 1 create session data
+    @param deterministic - if 1 deterministic mapping
+    @param translation_buckets - number of translation hash buckets
+    @param translation_memory_size - translation hash memory size
+    @param user_buckets - number of user hash buckets
+    @param user_memory_size - user hash memory size
+    @param max_translations_per_user - maximum number of translations per user
+    @param outside_vrf_id - outside VRF id
+    @param inside_vrf_id - default inside VRF id
+*/
+define snat_show_config_reply
+{
+  u32 context;
+  i32 retval;
+  u8 static_mapping_only;
+  u8 static_mapping_connection_tracking;
+  u8 deterministic;
+  u32 translation_buckets;
+  u32 translation_memory_size;
+  u32 user_buckets;
+  u32 user_memory_size;
+  u32 max_translations_per_user;
+  u32 outside_vrf_id;
+  u32 inside_vrf_id;
+};
+
+/** \brief Set NAT workers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param worker_mask - NAT workers mask
+*/
+autoreply define snat_set_workers {
+  u32 client_index;
+  u32 context;
+  u64 worker_mask;
+};
+
+/** \brief Dump NAT workers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_worker_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT workers details response
+    @param context - sender context, to match reply w/ request
+    @param worker_index - worker index
+    @param lcore_id - lcore ID
+    @param name - worker name
+*/
+define snat_worker_details {
+  u32 context;
+  u32 worker_index;
+  u32 lcore_id;
+  u8 name[64];
+};
+
+/** \brief Add/delete NAT44 pool address from specific interfce
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param sw_if_index - software index of the interface
+*/
+autoreply define snat_add_del_interface_addr {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Dump NAT44 pool addresses interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_interface_addr_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 pool addresses interfaces details response
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+*/
+define snat_interface_addr_details {
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief Enable/disable NAT IPFIX logging
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param domain_id - observation domain ID
+    @param src_port - source port number
+    @param enable - 1 if enable, 0 if disable
+*/
+autoreply define snat_ipfix_enable_disable {
+  u32 client_index;
+  u32 context;
+  u32 domain_id;
+  u16 src_port;
+  u8 enable;
+};
+
+/** \brief Dump NAT44 users
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_user_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 users response
+    @param context - sender context, to match reply w/ request
+    @vrf_id - VRF ID
+    @param is_ip4 - 1 if address type is IPv4
+    @param ip_adress - IP address
+    @param nsessions - number of dynamic sessions
+    @param nstaticsessions - number of static sessions
+*/
+define snat_user_details {
+  u32 context;
+  u32 vrf_id;
+  u8 is_ip4;
+  u8 ip_address[16];
+  u32 nsessions;
+  u32 nstaticsessions;
+};
+
+/** \brief NAT44 user's sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param user_ip - IP address of the user to dump
+    @param vrf_id - VRF_ID
+*/
+define snat_user_session_dump {
+  u32 client_index;
+  u32 context;
+  u8 is_ip4;
+  u8 ip_address[16];
+  u32 vrf_id;
+};
+
+/** \brief NAT44 user's sessions response
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param outside_ip_address - outside IP address
+    @param outside_port - outside port
+    @param inside_ip_address - inside IP address
+    @param inside_port - inside port
+    @param protocol - protocol
+    @param is_static - 1 if session is static
+    @param last_heard - last heard timer
+    @param total_bytes - count of bytes sent through session
+    @param total_pkts - count of pakets sent through session
+*/
+define snat_user_session_details {
+  u32 context;
+  u8 is_ip4;
+  u8 outside_ip_address[16];
+  u16 outside_port;
+  u8 inside_ip_address[16];
+  u16 inside_port;
+  u16 protocol;
+  u8 is_static;
+  u64 last_heard;
+  u64 total_bytes;
+  u32 total_pkts;
+};
+
+/** \brief Add/delete NAT deterministic mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_addr - inside IP address
+    @param in_plen - inside IP address prefix length
+    @param out_addr - outside IP address
+    @param out_addr - outside IP address prefix length
+*/
+autoreply define snat_add_det_map {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_ip4;
+  u8 addr_only;
+  u8 in_addr[16];
+  u8 in_plen;
+  u8 out_addr[16];
+  u8 out_plen;
+};
+
+/** \brief Get outside address and port range from inside address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_addr - inside IP address
+*/
+define snat_det_forward {
+  u32 client_index;
+  u32 context;
+  u8 is_ip4;
+  u8 in_addr[16];
+};
+
+/** \brief Get outside address and port range from inside address
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param out_port_lo - outside port range start
+    @param out_port_hi - outside port range end
+    @param is_ip4 - 1 if address type is IPv4
+    @param out_addr - outside IP address
+*/
+define snat_det_forward_reply {
+  u32 context;
+  i32 retval;
+  u16 out_port_lo;
+  u16 out_port_hi;
+  u8 is_ip4;
+  u8 out_addr[16];
+};
+
+/** \brief Get inside address from outside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param out_port - outside port
+    @param is_ip4 - 1 if address type is IPv4
+    @param out_addr - outside IP address
+*/
+define snat_det_reverse {
+  u32 client_index;
+  u32 context;
+  u16 out_port;
+  u8 is_ip4;
+  u8 out_addr[16];
+};
+
+/** \brief Get inside address from outside address and port reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_addr - inside IP address
+*/
+define snat_det_reverse_reply {
+  u32 context;
+  i32 retval;
+  u8 is_ip4;
+  u8 in_addr[16];
+};
+
+/** \brief Dump NAT deterministic mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_det_map_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT users response
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_addr - inside IP address
+    @param in_plen - inside IP address prefix length
+    @param out_addr - outside IP address
+    @param out_plen - outside IP address prefix length
+    @param sharing_ratio - outside to inside address sharing ratio
+    @param ports_per_host - number of ports available to a host
+    @param ses_num - number of sessions belonging to this mapping
+*/
+define snat_det_map_details {
+  u32 context;
+  u8 is_ip4;
+  u8 in_addr[16];
+  u8 in_plen;
+  u8 out_addr[16];
+  u8 out_plen;
+  u32 sharing_ratio;
+  u16 ports_per_host;
+  u32 ses_num;
+};
+
+/** \brief Set values of timeouts for deterministic NAT (seconds, 0 = default)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param udp - UDP timeout (default 300sec)
+    @param tcp_established - TCP established timeout (default 7440sec)
+    @param tcp_transitory - TCP transitory timeout (default 240sec)
+    @param icmp - ICMP timeout (default 60sec)
+*/
+autoreply define snat_det_set_timeouts {
+  u32 client_index;
+  u32 context;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+};
+
+/** \brief Get values of timeouts for deterministic NAT (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define snat_det_get_timeouts {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get values of timeouts for deterministic NAT reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param udp - UDP timeout (default 300sec)
+    @param tcp_established - TCP established timeout (default 7440sec)
+    @param tcp_transitory - TCP transitory timeout (default 240sec)
+    @param icmp - ICMP timeout (default 60sec)
+*/
+define snat_det_get_timeouts_reply {
+  u32 context;
+  i32 retval;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+};
+
+/** \brief Close deterministic NAT session by outside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param out_addr - outside IP address
+    @param out_port - outside port
+    @param ext_addr - external host address
+    @param ext_port - external host port
+*/
+autoreply define snat_det_close_session_out {
+  u32 client_index;
+  u32 context;
+  u8 is_ip4;
+  u8 out_addr[16];
+  u16 out_port;
+  u8 ext_addr[16];
+  u16 ext_port;
+};
+
+/** \brief Close deterministic NAT session by inside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_addr - inside IP address
+    @param in_port - inside port
+    @param ext_addr - external host address
+    @param ext_port - external host port
+*/
+autoreply define snat_det_close_session_in {
+  u32 client_index;
+  u32 context;
+  u8 is_ip4;
+  u8 in_addr[16];
+  u16 in_port;
+  u8 ext_addr[16];
+  u16 ext_port;
+};
+
+/** \brief Dump determinstic NAT sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param user_addr - address of an inside user whose sessions to dump
+*/
+define snat_det_session_dump {
+  u32 client_index;
+  u32 context;
+  u8 is_ip4;
+  u8 user_addr[16];
+};
+
+/** \brief Deterministic NAT sessions reply
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param in_port - inside port
+    @param ext_addr - external host address
+    @param ext_port - external host port
+    @param out_port - outside NAT port
+    @param state - session state
+    @param expire - session expiration timestamp
+*/
+define snat_det_session_details {
+  u32 client_index;
+  u32 context;
+  u8 is_ip4;
+  u16 in_port;
+  u8 ext_addr[16];
+  u16 ext_port;
+  u16 out_port;
+  u8 state;
+  u32 expire;
+};
+
+/*
+ * Common NAT plugin APIs
+ */
+
+/** \brief Control ping from client to api server request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_control_ping
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Control ping from the client to the server response
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param vpe_pid - the pid of the vpe, returned by the server
+*/
+define nat_control_ping_reply
+{
+  u32 context;
+  i32 retval;
+  u32 client_index;
+  u32 vpe_pid;
+};
+
+/** \brief Show NAT plugin startup config
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_show_config
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Show NAT plugin startup config reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for the request
+    @param static_mapping_only - if 1 dynamic translations disabled
+    @param static_mapping_connection_tracking - if 1 create session data
+    @param deterministic - if 1 deterministic mapping
+    @param translation_buckets - number of translation hash buckets
+    @param translation_memory_size - translation hash memory size
+    @param user_buckets - number of user hash buckets
+    @param user_memory_size - user hash memory size
+    @param max_translations_per_user - maximum number of translations per user
+    @param outside_vrf_id - outside VRF id
+    @param inside_vrf_id - default inside VRF id
+*/
+define nat_show_config_reply
+{
+  u32 context;
+  i32 retval;
+  u8 static_mapping_only;
+  u8 static_mapping_connection_tracking;
+  u8 deterministic;
+  u32 translation_buckets;
+  u32 translation_memory_size;
+  u32 user_buckets;
+  u32 user_memory_size;
+  u32 max_translations_per_user;
+  u32 outside_vrf_id;
+  u32 inside_vrf_id;
+};
+
+/** \brief Set NAT workers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param worker_mask - NAT workers mask
+*/
+autoreply define nat_set_workers {
+  u32 client_index;
+  u32 context;
+  u64 worker_mask;
+};
+
+/** \brief Dump NAT workers
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_worker_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT workers details response
+    @param context - sender context, to match reply w/ request
+    @param worker_index - worker index
+    @param lcore_id - lcore ID
+    @param name - worker name
+*/
+define nat_worker_details {
+  u32 context;
+  u32 worker_index;
+  u32 lcore_id;
+  u8 name[64];
+};
+
+/** \brief Enable/disable NAT IPFIX logging
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param domain_id - observation domain ID
+    @param src_port - source port number
+    @param enable - 1 if enable, 0 if disable
+*/
+autoreply define nat_ipfix_enable_disable {
+  u32 client_index;
+  u32 context;
+  u32 domain_id;
+  u16 src_port;
+  u8 enable;
+};
+
+/*
+ * NAT44 APIs
+ */
+
+/** \brief Add/del NAT44 address range
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param first_ip_address - first IPv4 address
+    @param last_ip_address - last IPv4 address
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
+    @param is_add - 1 if add, 0 if delete
+*/
+autoreply define nat44_add_del_address_range {
+  u32 client_index;
+  u32 context;
+  u8 first_ip_address[4];
+  u8 last_ip_address[4];
+  u32 vrf_id;
+  u8 is_add;
+};
+
+/** \brief Dump NAT44 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_address_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 address details response
+    @param context - sender context, to match reply w/ request
+    @param ip_address - IPv4 address
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
+*/
+define nat44_address_details {
+  u32 context;
+  u8 ip_address[4];
+  u32 vrf_id;
+};
+
+/** \brief Enable/disable NAT44 feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - software index of the interface
+*/
+autoreply define nat44_interface_add_del_feature {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Dump interfaces with NAT44 feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_interface_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 interface details response
+    @param context - sender context, to match reply w/ request
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - software index of the interface
+*/
+define nat44_interface_details {
+  u32 context;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Enable/disbale NAT44 as an interface output feature (postrouting
+           in2out translation)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - software index of the interface
+*/
+autoreply define nat44_interface_add_del_output_feature {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Dump interfaces with NAT44 output feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_interface_output_feature_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 interface with output feature details response
+    @param context - sender context, to match reply w/ request
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - software index of the interface
+*/
+define nat44_interface_output_feature_details {
+  u32 context;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Add/delete NAT44 static mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param addr_only - 1 if address only mapping
+    @param local_ip_address - local IPv4 address
+    @param external_ip_address - external IPv4 address
+    @param protocol - IP protocol
+    @param local_port - local port number
+    @param external_port - external port number
+    @param external_sw_if_index - external interface (if set
+                                  external_ip_address is ignored, ~0 means not
+                                  used)
+    @param vfr_id - VRF ID
+*/
+autoreply define nat44_add_del_static_mapping {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 addr_only;
+  u8 local_ip_address[4];
+  u8 external_ip_address[4];
+  u8 protocol;
+  u16 local_port;
+  u16 external_port;
+  u32 external_sw_if_index;
+  u32 vrf_id;
+};
+
+/** \brief Dump NAT44 static mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_static_mapping_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 static mapping details response
+    @param context - sender context, to match reply w/ request
+    @param addr_only - 1 if address only mapping
+    @param local_ip_address - local IPv4 address
+    @param external_ip_address - external IPv4 address
+    @param protocol - IP protocol
+    @param local_port - local port number
+    @param external_port - external port number
+    @param external_sw_if_index - external interface
+    @param vfr_id - VRF ID
+*/
+define nat44_static_mapping_details {
+  u32 context;
+  u8 addr_only;
+  u8 local_ip_address[4];
+  u8 external_ip_address[4];
+  u8 protocol;
+  u16 local_port;
+  u16 external_port;
+  u32 external_sw_if_index;
+  u32 vrf_id;
+};
+
+/** \brief Add/delete NAT44 pool address from specific interfce
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param sw_if_index - software index of the interface
+*/
+autoreply define nat44_add_del_interface_addr {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Dump NAT44 pool addresses interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_interface_addr_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 pool addresses interfaces details response
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the interface
+*/
+define nat44_interface_addr_details {
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief Dump NAT44 users
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_user_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 users response
+    @param context - sender context, to match reply w/ request
+    @vrf_id - VRF ID
+    @param ip_adress - IPv4 address
+    @param nsessions - number of dynamic sessions
+    @param nstaticsessions - number of static sessions
+*/
+define nat44_user_details {
+  u32 context;
+  u32 vrf_id;
+  u8 ip_address[4];
+  u32 nsessions;
+  u32 nstaticsessions;
+};
+
+/** \brief NAT44 user's sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip4 - 1 if address type is IPv4
+    @param user_ip - IP address of the user to dump
+    @param vrf_id - VRF_ID
+*/
+define nat44_user_session_dump {
+  u32 client_index;
+  u32 context;
+  u8 ip_address[4];
+  u32 vrf_id;
+};
+
+/** \brief NAT44 user's sessions response
+    @param context - sender context, to match reply w/ request
+    @param outside_ip_address - outside IPv4 address
+    @param outside_port - outside port
+    @param inside_ip_address - inside IPv4 address
+    @param inside_port - inside port
+    @param protocol - protocol
+    @param is_static - 1 if session is static
+    @param last_heard - last heard timer
+    @param total_bytes - count of bytes sent through session
+    @param total_pkts - count of pakets sent through session
+*/
+define nat44_user_session_details {
+  u32 context;
+  u8 outside_ip_address[4];
+  u16 outside_port;
+  u8 inside_ip_address[4];
+  u16 inside_port;
+  u16 protocol;
+  u8 is_static;
+  u64 last_heard;
+  u64 total_bytes;
+  u32 total_pkts;
+};
+
+/*
+ * Deterministic NAT (CGN) APIs
+ */
+
+/** \brief Add/delete NAT deterministic mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param is_nat44 - 1 if NAT44
+    @param in_addr - inside IP address
+    @param in_plen - inside IP address prefix length
+    @param out_addr - outside IPv4 address
+    @param out_addr - outside IPv4 address prefix length
+*/
+autoreply define nat_det_add_del_map {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_nat44;
+  u8 addr_only;
+  u8 in_addr[16];
+  u8 in_plen;
+  u8 out_addr[4];
+  u8 out_plen;
+};
+
+/** \brief Get outside address and port range from inside address
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_nat44 - 1 if NAT44
+    @param in_addr - inside IP address
+*/
+define nat_det_forward {
+  u32 client_index;
+  u32 context;
+  u8 is_nat44;
+  u8 in_addr[16];
+};
+
+/** \brief Get outside address and port range from inside address
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param out_port_lo - outside port range start
+    @param out_port_hi - outside port range end
+    @param out_addr - outside IPv4 address
+*/
+define nat_det_forward_reply {
+  u32 context;
+  i32 retval;
+  u16 out_port_lo;
+  u16 out_port_hi;
+  u8 out_addr[4];
+};
+
+/** \brief Get inside address from outside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param out_port - outside port
+    @param out_addr - outside IPv4 address
+*/
+define nat_det_reverse {
+  u32 client_index;
+  u32 context;
+  u16 out_port;
+  u8 out_addr[4];
+};
+
+/** \brief Get inside address from outside address and port reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param is_nat44 - 1 if NAT44
+    @param in_addr - inside IP address
+*/
+define nat_det_reverse_reply {
+  u32 context;
+  i32 retval;
+  u8 is_nat44;
+  u8 in_addr[16];
+};
+
+/** \brief Dump NAT deterministic mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_det_map_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT users response
+    @param context - sender context, to match reply w/ request
+    @param is_nat44 - 1 if NAT44
+    @param in_addr - inside IP address
+    @param in_plen - inside IP address prefix length
+    @param out_addr - outside IPv4 address
+    @param out_plen - outside IPv4 address prefix length
+    @param sharing_ratio - outside to inside address sharing ratio
+    @param ports_per_host - number of ports available to a host
+    @param ses_num - number of sessions belonging to this mapping
+*/
+define nat_det_map_details {
+  u32 context;
+  u8 is_nat44;
+  u8 in_addr[16];
+  u8 in_plen;
+  u8 out_addr[4];
+  u8 out_plen;
+  u32 sharing_ratio;
+  u16 ports_per_host;
+  u32 ses_num;
+};
+
+/** \brief Set values of timeouts for deterministic NAT (seconds, 0 = default)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param udp - UDP timeout (default 300sec)
+    @param tcp_established - TCP established timeout (default 7440sec)
+    @param tcp_transitory - TCP transitory timeout (default 240sec)
+    @param icmp - ICMP timeout (default 60sec)
+*/
+autoreply define nat_det_set_timeouts {
+  u32 client_index;
+  u32 context;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+};
+
+/** \brief Get values of timeouts for deterministic NAT (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat_det_get_timeouts {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get values of timeouts for deterministic NAT reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param udp - UDP timeout (default 300sec)
+    @param tcp_established - TCP established timeout (default 7440sec)
+    @param tcp_transitory - TCP transitory timeout (default 240sec)
+    @param icmp - ICMP timeout (default 60sec)
+*/
+define nat_det_get_timeouts_reply {
+  u32 context;
+  i32 retval;
+  u32 udp;
+  u32 tcp_established;
+  u32 tcp_transitory;
+  u32 icmp;
+};
+
+/** \brief Close deterministic NAT session by outside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param out_addr - outside IPv4 address
+    @param out_port - outside port
+    @param ext_addr - external host IPv4 address
+    @param ext_port - external host port
+*/
+autoreply define nat_det_close_session_out {
+  u32 client_index;
+  u32 context;
+  u8 out_addr[4];
+  u16 out_port;
+  u8 ext_addr[4];
+  u16 ext_port;
+};
+
+/** \brief Close deterministic NAT session by inside address and port
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_nat44 - 1 if NAT44
+    @param in_addr - inside IP address
+    @param in_port - inside port
+    @param ext_addr - external host IP address
+    @param ext_port - external host port
+*/
+autoreply define nat_det_close_session_in {
+  u32 client_index;
+  u32 context;
+  u8 is_nat44;
+  u8 in_addr[16];
+  u16 in_port;
+  u8 ext_addr[16];
+  u16 ext_port;
+};
+
+/** \brief Dump determinstic NAT sessions
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_nat44 - 1 if NAT44
+    @param user_addr - address of an inside user whose sessions to dump
+*/
+define nat_det_session_dump {
+  u32 client_index;
+  u32 context;
+  u8 is_nat44;
+  u8 user_addr[16];
+};
+
+/** \brief Deterministic NAT sessions reply
+    @param context - sender context, to match reply w/ request
+    @param in_port - inside port
+    @param ext_addr - external host address
+    @param ext_port - external host port
+    @param out_port - outside NAT port
+    @param state - session state
+    @param expire - session expiration timestamp
+*/
+define nat_det_session_details {
+  u32 client_index;
+  u32 context;
+  u16 in_port;
+  u8 ext_addr[4];
+  u16 ext_port;
+  u16 out_port;
+  u8 state;
+  u32 expire;
+};
+
+/*
+ * NAT64 APIs
+ */
+
+/** \brief Add/delete address range to NAT64 pool
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param start_addr - start address of the range
+    @param end_addr - end address of the range
+    @param vrf_id - VRF id of tenant, ~0 means independent of VRF
+    @param is_add - 1 if add, 0 if delete
+*/
+autoreply define nat64_add_del_pool_addr_range {
+  u32 client_index;
+  u32 context;
+  u8 start_addr[4];
+  u8 end_addr[4];
+  u32 vrf_id;
+  u8 is_add;
+};
+
+/** \brief Dump NAT64 pool addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat64_pool_addr_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT64 pool address details response
+    @param context - sender context, to match reply w/ request
+    @param address - IPv4 address
+    @param vfr_id - VRF id of tenant, ~0 means independent of VRF
+*/
+define nat64_pool_addr_details {
+  u32 context;
+  u8 address[4];
+  u32 vrf_id;
+};
+
+/** \brief Enable/disable NAT64 feature on the interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface
+    @param is_inside - 1 if inside, 0 if outside
+    @param is_add - 1 if add, 0 if delete
+*/
+autoreply define nat64_add_del_interface {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_inside;
+  u8 is_add;
+};
+
+/** \brief Dump interfaces with NAT64 feature
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat64_interface_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT64 interface details response
+    @param context - sender context, to match reply w/ request
+    @param is_inside - 1 if inside, 0 if outside
+    @param sw_if_index - index of the interface
+*/
+define nat64_interface_details {
+  u32 context;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
+/** \brief Add/delete NAT64 static BIB entry
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param i_addr - inside IPv6 address
+    @param o_addr - outside IPv4 address
+    @param i_port - inside port number
+    @param o_port - outside port number
+    @param vrf_id - VRF id of tenant
+    @param proto - protocol number
+    @param is_add - 1 if add, 0 if delete
+*/
+ autoreply define nat64_add_del_static_bib {
+  u32 client_index;
+  u32 context;
+  u8 i_addr[16];
+  u8 o_addr[4];
+  u16 i_port;
+  u16 o_port;
+  u32 vrf_id;
+  u8 proto;
+  u8 is_add;
+};
+
+/** \brief Dump NAT64 BIB
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param proto - protocol of the BIB: 255 - all BIBs
+                                        6 - TCP BIB
+                                        17 - UDP BIB
+                                        1/58 - ICMP BIB
+                                        otherwise - "unknown" protocol BIB
+*/
+define nat64_bib_dump {
+  u32 client_index;
+  u32 context;
+  u8 proto;
+};
+
+/** \brief NAT64 BIB details response
+    @param context - sender context, to match reply w/ request
+    @param i_addr - inside IPv6 address
+    @param o_addr - outside IPv4 address
+    @param i_port - inside port number
+    @param o_port - outside port number
+    @param vrf_id - VRF id of tenant
+    @param proto - protocol number
+    @param is_static - 1 if static BIB entry, 0 if dynamic
+    @param ses_num - number of sessions associated with the BIB entry
+*/
+define nat64_bib_details {
+  u32 context;
+  u8 i_addr[16];
+  u8 o_addr[4];
+  u16 i_port;
+  u16 o_port;
+  u32 vrf_id;
+  u8 proto;
+  u8 is_static;
+  u32 ses_num;
+};
+
+/** \brief Set values of timeouts for NAT64 (seconds, 0 = default)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param udp - UDP timeout (default 300sec)
+    @param icmp - ICMP timeout (default 60sec)
+    @param tcp_trans - TCP transitory timeout (default 240sec)
+    @param tcp_est - TCP established timeout (default 7440sec)
+    @param tcp_incoming_syn - TCP incoming SYN timeout (default 6sec)
+*/
+autoreply define nat64_set_timeouts {
+  u32 client_index;
+  u32 context;
+  u32 udp;
+  u32 icmp;
+  u32 tcp_trans;
+  u32 tcp_est;
+  u32 tcp_incoming_syn;
+};
+
+/** \brief Get values of timeouts for NAT64 (seconds)
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat64_get_timeouts {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get values of timeouts for NAT64 reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param udp - UDP timeout
+    @param icmp - ICMP timeout
+    @param tcp_trans - TCP transitory timeout
+    @param tcp_est - TCP established timeout
+    @param tcp_incoming_syn - TCP incoming SYN timeout
+*/
+define nat64_get_timeouts_reply {
+  u32 context;
+  i32 retval;
+  u32 udp;
+  u32 icmp;
+  u32 tcp_trans;
+  u32 tcp_est;
+  u32 tcp_incoming_syn;
+};
+
+/** \brief Dump NAT64 session table
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param proto - protocol of the session table: 255 - all STs
+                                                  6 - TCP ST
+                                                  17 - UDP ST
+                                                  1/58 - ICMP ST
+                                                  otherwise - "unknown" proto ST
+*/
+define nat64_st_dump {
+  u32 client_index;
+  u32 context;
+  u8 proto;
+};
+
+/** \brief NAT64 session table details response
+    @param context - sender context, to match reply w/ request
+    @param il_addr - inside IPv6 address of the local host
+    @param ol_addr - outside IPv4 address of the local host
+    @param il_port - inside port number id of the local host/inside ICMP id
+    @param ol_port - outside port number of the local host/outside ICMP id
+    @param il_addr - inside IPv6 address of the remote host
+    @param ol_addr - outside IPv4 address of the remote host
+    @param l_port - port number of the remote host (not used for ICMP)
+    @param vrf_id - VRF id of tenant
+    @param proto - protocol number
+*/
+define nat64_st_details {
+  u32 context;
+  u8 il_addr[16];
+  u8 ol_addr[4];
+  u16 il_port;
+  u16 ol_port;
+  u8 ir_addr[16];
+  u8 or_addr[4];
+  u16 r_port;
+  u32 vrf_id;
+  u8 proto;
+};
+
+/** \brief Add/del NAT64 prefix
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param prefix - NAT64 prefix
+    @param prefix - NAT64 prefix length
+    @param vrf_id - VRF id of tenant
+    @param is_add - 1 if add, 0 if delete
+*/
+autoreply define nat64_add_del_prefix {
+  u32 client_index;
+  u32 context;
+  u8 prefix[16];
+  u8 prefix_len;
+  u32 vrf_id;
+  u8 is_add;
+};
+
+/** \brief Dump NAT64 prefix
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat64_prefix_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Dump NAT64 prefix details response
+    @param context - sender context, to match reply w/ request
+    @param prefix - NAT64 prefix
+    @param prefix - NAT64 prefix length
+    @param vrf_id - VRF id of tenant
+*/
+define nat64_prefix_details {
+  u32 context;
+  u8 prefix[16];
+  u8 prefix_len;
+  u32 vrf_id;
+};

@@ -169,23 +169,23 @@ jvpp-pppoe/io_fd_vpp_jvpp_pppoe_JVppPppoeImpl.h: $(jvpp_registry_ok) $(jvpp_pppo
 endif
 
 #
-# SNAT Plugin
+# NAT Plugin
 #
-if ENABLE_SNAT_PLUGIN
-noinst_LTLIBRARIES += libjvpp_snat.la
-libjvpp_snat_la_SOURCES = jvpp-snat/jvpp_snat.c
-libjvpp_snat_la_CPPFLAGS = -Ijvpp-snat
-libjvpp_snat_la_LIBADD = $(JVPP_LIBS)
-libjvpp_snat_la_DEPENDENCIES = libjvpp_common.la
+if ENABLE_NAT_PLUGIN
+noinst_LTLIBRARIES += libjvpp_nat.la
+libjvpp_nat_la_SOURCES = jvpp-nat/jvpp_nat.c
+libjvpp_nat_la_CPPFLAGS = -Ijvpp-nat
+libjvpp_nat_la_LIBADD = $(JVPP_LIBS)
+libjvpp_nat_la_DEPENDENCIES = libjvpp_common.la
 
-BUILT_SOURCES += jvpp-snat/io_fd_vpp_jvpp_snat_JVppSnatImpl.h
-JAR_FILES += jvpp-snat-$(PACKAGE_VERSION).jar
-CLEANDIRS += jvpp-snat/target
+BUILT_SOURCES += jvpp-nat/io_fd_vpp_jvpp_nat_JVppNatImpl.h
+JAR_FILES += jvpp-nat-$(PACKAGE_VERSION).jar
+CLEANDIRS += jvpp-nat/target
 
-jvpp_snat_json_files = @top_builddir@/plugins/snat/snat.api.json
+jvpp_nat_json_files = @top_builddir@/plugins/nat/nat.api.json
 
-jvpp-snat/io_fd_vpp_jvpp_snat_JVppSnatImpl.h: $(jvpp_registry_ok) $(jvpp_snat_json_files)
-	$(call japigen,snat,JVppSnatImpl)
+jvpp-nat/io_fd_vpp_jvpp_nat_JVppNatImpl.h: $(jvpp_registry_ok) $(jvpp_nat_json_files)
+	$(call japigen,nat,JVppNatImpl)
 endif
 
 #

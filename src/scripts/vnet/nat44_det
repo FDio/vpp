@@ -1,0 +1,108 @@
+create packet-generator interface pg0
+create packet-generator interface pg1
+
+packet-generator new {
+  name f1
+  limit 1000000
+  node ip4-input
+  size 64-64
+  no-recycle
+  worker 0
+  interface pg0
+  data {
+    UDP: 10.0.0.3 -> 172.16.1.2
+    UDP: 3000 -> 3001
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+
+packet-generator new {
+  name f2
+  limit 1000000
+  node ip4-input
+  size 64-64
+  no-recycle
+  worker 1
+  interface pg0
+  data {
+    UDP: 10.0.0.3 -> 172.16.1.2
+    UDP: 3005 -> 3006
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+
+packet-generator new {
+  name f3
+  limit 1000000
+  node ip4-input
+  size 64-64
+  no-recycle
+  worker 0
+  interface pg1
+  data {
+    UDP: 172.16.1.2 -> 1.1.1.2
+    UDP: 3001 -> 1141
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+
+packet-generator new {
+  name f4
+  limit 1000000
+  node ip4-input
+  size 64-64
+  no-recycle
+  worker 1
+  interface pg1
+  data {
+    UDP: 172.16.1.2 -> 1.1.1.2
+    UDP: 3006 -> 1146
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+
+packet-generator new {
+  name f5
+  limit 1000000
+  node ip4-input
+  size 64-64
+  no-recycle
+  worker 2
+  interface pg0
+  data {
+    UDP: 10.0.0.4 -> 172.16.1.2
+    UDP: 3005 -> 3006
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+
+packet-generator new {
+  name f6
+  limit 1000000
+  node ip4-input
+  size 64-64
+  no-recycle
+  worker 1
+  interface pg1
+  data {
+    UDP: 172.16.1.2 -> 1.1.1.2
+    UDP: 3006 -> 1177
+    length 128 checksum 0 incrementing 1
+  }
+}
+
+nat44 deterministic add in 10.0.0.0/21 out 1.1.1.2/32
+set int ip address pg0 10.0.0.1/24
+set int ip address pg1 172.16.1.1/24
+set int state pg0 up
+set int state pg1 up
+set ip arp static pg0 10.0.0.3 abcd.abcd.abcd
+set ip arp static pg0 10.0.0.4 abcd.abcd.abcd
+set ip arp static pg1 172.16.1.2 cdef.abcd.abcd
+set int nat44 in pg0 out pg1
+trace add pg-input 10
