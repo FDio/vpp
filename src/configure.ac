@@ -169,7 +169,7 @@ PLUGIN_ENABLED(lb)
 PLUGIN_ENABLED(memif)
 PLUGIN_ENABLED(pppoe)
 PLUGIN_ENABLED(sixrd)
-PLUGIN_ENABLED(snat)
+PLUGIN_ENABLED(nat)
 
 ###############################################################################
 # Dependency checks
