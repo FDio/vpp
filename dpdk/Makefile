@@ -150,6 +150,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_MLX4_PMD,$(DPDK_MLX4_PMD))
 	$(call set,RTE_LIBRTE_MLX5_PMD,$(DPDK_MLX5_PMD))
 	@# not needed
+	$(call set,RTE_LIBRTE_PMD_TAP,n)
 	$(call set,RTE_LIBRTE_TIMER,n)
 	$(call set,RTE_LIBRTE_CFGFILE,n)
 	$(call set,RTE_LIBRTE_LPM,n)
