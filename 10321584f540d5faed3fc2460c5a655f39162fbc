@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_e51ce26c",
+        "filename": "src/vpp-api/java/jvpp-acl/io/fd/vpp/jvpp/acl/test/Readme.txt",
+        "patchSetId": 14
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-08-22T06:46:37Z",
+      "side": 1,
+      "message": "please remove this component, and check other plugins as well.\n\nSince you are updating this, could you also update readmes for jvpp examples in separate commit?",
+      "range": {
+        "startLine": 2,
+        "startChar": 101,
+        "endLine": 2,
+        "endChar": 112
+      },
+      "revId": "10321584f540d5faed3fc2460c5a655f39162fbc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
