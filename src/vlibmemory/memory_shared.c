@@ -340,15 +340,18 @@ vl_map_shmem (const char *region_name, int is_vlib)
   int i, rv;
   struct timespec ts, tsrem;
   u32 vlib_input_queue_length;
+  char *vpe_api_region_suffix = "-vpe-api";
 
   memset (a, 0, sizeof (*a));
 
-  if (strstr (region_name, "-vpe-api"))
+  if (strstr (region_name, vpe_api_region_suffix))
     {
-      char root_path[strlen (region_name)];
-      strncpy (root_path, region_name, strlen (region_name) - 8);
-      a->root_path = root_path;
-      am->root_path = root_path;
+      u8 *root_path = format (0, "%s", region_name);
+      _vec_len (root_path) = (vec_len (root_path) -
+			      strlen (vpe_api_region_suffix));
+      vec_terminate_c_string (root_path);
+      a->root_path = (const char *) root_path;
+      am->root_path = (const char *) root_path;
     }
 
   if (is_vlib == 0)
