@@ -216,24 +216,21 @@ always_inline vlib_frame_t *
 vlib_get_frame_no_check (vlib_main_t * vm, uword frame_index)
 {
   vlib_frame_t *f;
-  u32 thread_index = frame_index & VLIB_CPU_MASK;
-  u32 offset = frame_index & VLIB_OFFSET_MASK;
-  vm = vlib_mains[thread_index];
-  f = vm->heap_base + offset;
+  f = vm->heap_base + (frame_index * VLIB_FRAME_ALIGN);
   return f;
 }
 
 always_inline u32
 vlib_frame_index_no_check (vlib_main_t * vm, vlib_frame_t * f)
 {
-  u32 i;
+  uword i;
 
-  ASSERT (((uword) f & VLIB_CPU_MASK) == 0);
-
-  vm = vlib_mains[f->thread_index];
+  ASSERT (((uword) f & (VLIB_FRAME_ALIGN - 1)) == 0);
 
   i = ((u8 *) f - (u8 *) vm->heap_base);
-  return i | f->thread_index;
+  ASSERT ((i / VLIB_FRAME_ALIGN) <= 0xFFFFFFFFULL);
+
+  return i / VLIB_FRAME_ALIGN;
 }
 
 always_inline vlib_frame_t *

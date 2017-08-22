@@ -1321,9 +1321,14 @@ tcp_main_enable (vlib_main_t * vm)
   tm->tstamp_ticks_per_clock = vm->clib_time.seconds_per_clock
     / TCP_TSTAMP_RESOLUTION;
 
+  if (tm->local_endpoints_table_buckets == 0)
+    tm->local_endpoints_table_buckets = 250000;
+  if (tm->local_endpoints_table_memory == 0)
+    tm->local_endpoints_table_memory = 512 << 20;
+
   clib_bihash_init_24_8 (&tm->local_endpoints_table, "local endpoint table",
-			 1000000 /* $$$$ config parameter nbuckets */ ,
-			 (512 << 20) /*$$$ config parameter table size */ );
+			 tm->local_endpoints_table_buckets,
+			 tm->local_endpoints_table_memory);
 
   /* Initialize [port-allocator] random number seed */
   tm->port_allocator_seed = (u32) clib_cpu_time_now ();
@@ -1377,6 +1382,7 @@ static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
+  u64 tmp;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1387,6 +1393,19 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "preallocated-half-open-connections %d",
 			 &tm->preallocated_half_open_connections))
 	;
+      else if (unformat (input, "local-endpoints-table-memory %U",
+			 unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large",
+				      tmp, tmp);
+	  tm->local_endpoints_table_memory = tmp;
+	}
+      else if (unformat (input, "local-endpoints-table-buckets %d",
+			 &tm->local_endpoints_table_buckets))
+	;
+
+
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

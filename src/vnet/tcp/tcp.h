@@ -399,6 +399,10 @@ typedef struct _tcp_main
   u32 preallocated_connections;
   u32 preallocated_half_open_connections;
 
+  /** Transport table (preallocation) size parameters */
+  u32 local_endpoints_table_memory;
+  u32 local_endpoints_table_buckets;
+
   /** Vectors of src addresses. Optional unless one needs > 63K active-opens */
   ip4_address_t *ip4_src_addresses;
   u32 last_v4_address_rotor;

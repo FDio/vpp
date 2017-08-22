@@ -326,7 +326,7 @@ typedef struct vlib_node_t
 
 /* Max number of vector elements to process at once per node. */
 #define VLIB_FRAME_SIZE 256
-#define VLIB_FRAME_ALIGN VLIB_MAX_CPUS
+#define VLIB_FRAME_ALIGN CLIB_CACHE_LINE_BYTES
 
 /* Calling frame (think stack frame) for a node. */
 typedef struct vlib_frame_t
@@ -342,9 +342,6 @@ typedef struct vlib_frame_t
 
   /* Number of vector elements currently in frame. */
   u16 n_vectors;
-
-  /* Owner thread / heap id */
-  u16 thread_index;
 
   /* Scalar and vector arguments to next node. */
   u8 arguments[0];

@@ -138,19 +138,12 @@ vlib_frame_alloc_to_node (vlib_main_t * vm, u32 to_node_index,
   else
     {
       f = clib_mem_alloc_aligned_no_fail (n, VLIB_FRAME_ALIGN);
-      f->thread_index = vm->thread_index;
       fi = vlib_frame_index_no_check (vm, f);
     }
 
   /* Poison frame when debugging. */
   if (CLIB_DEBUG > 0)
-    {
-      u32 save_thread_index = f->thread_index;
-
-      memset (f, 0xfe, n);
-
-      f->thread_index = save_thread_index;
-    }
+    memset (f, 0xfe, n);
 
   /* Insert magic number. */
   {

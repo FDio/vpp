@@ -1882,7 +1882,11 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tc0 =
 	    tcp_half_open_connection_get (vnet_buffer (b0)->
 					  tcp.connection_index);
-	  ASSERT (tc0);
+	  if (PREDICT_FALSE (tc0 == 0))
+	    {
+	      error0 = TCP_ERROR_INVALID_CONNECTION;
+	      goto drop;
+	    }
 
 	  ack0 = vnet_buffer (b0)->tcp.ack_number;
 	  seq0 = vnet_buffer (b0)->tcp.seq_number;
