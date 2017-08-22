@@ -314,6 +314,10 @@ format_dpdk_device_type (u8 * s, va_list * args)
       dev_type = "Virtio User";
       break;
 
+    case VNET_DPDK_PMD_THUNDERX:
+      dev_type = "Cavium ThunderX";
+      break;
+
     default:
     case VNET_DPDK_PMD_UNKNOWN:
       dev_type = "### UNKNOWN ###";
