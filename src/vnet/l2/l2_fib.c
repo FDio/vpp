@@ -1021,7 +1021,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 
 	      if (PREDICT_FALSE (evt_idx >= fm->max_macs_in_event))
 		{
-		  /* evet message full, sent it and start a new one */
+		  /* event message full, send it and start a new one */
 		  if (q && (q->cursize < q->maxsize))
 		    {
 		      mp->n_macs = htonl (evt_idx);

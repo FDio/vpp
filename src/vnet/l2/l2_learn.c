@@ -131,6 +131,8 @@ l2learn_process (vlib_node_runtime_t * node,
 
       if (PREDICT_TRUE (!update))
 	return;
+      else if (msm->global_learn_count > msm->global_learn_limit)
+	return;			/* Above learn limit - do not update */
     }
   else if (result0->raw == ~0)
     {
