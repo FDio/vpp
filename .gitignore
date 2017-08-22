@@ -19,6 +19,8 @@
 /build-config.mk
 /dpdk/*.tar.gz
 /dpdk/*.tar.xz
+/dpdk/vpp-dpdk*.deb
+/dpdk/vpp-dpdk*.changes
 /path_setup
 /tools/
 # start autotools ignore
