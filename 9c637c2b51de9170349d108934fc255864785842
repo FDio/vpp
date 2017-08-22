@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_a5bcaa6d",
+        "filename": "src/svm/svm.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 465,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-08-22T14:25:08Z",
+      "side": 1,
+      "message": "shm_name is required to be a NULL terminated c-string:\n\nformat (0, \"%s%c\", a-\u003ename, 0);",
+      "range": {
+        "startLine": 465,
+        "startChar": 0,
+        "endLine": 465,
+        "endChar": 41
+      },
+      "revId": "9c637c2b51de9170349d108934fc255864785842",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
