@@ -98,8 +98,15 @@ vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, sw_if_index);
-  ethernet_interface_t *eif = ethernet_get_interface (em, sw_if_index);
+  vnet_sw_interface_t *si = vnet_get_sw_interface (vnm, sw_if_index);
+  if (si->type != VNET_SW_INTERFACE_TYPE_HARDWARE)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto bad_sw_if_index;
+    }
+
+  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, si->hw_if_index);
+  ethernet_interface_t *eif = ethernet_get_interface (em, si->hw_if_index);
 
   if (!eif)
     {
