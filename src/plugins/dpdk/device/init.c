@@ -372,6 +372,7 @@ dpdk_lib_init (dpdk_main_t * dm)
 
 	    case VNET_DPDK_PMD_THUNDERX:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+	      xd->port_conf.rxmode.hw_strip_crc = 1;
 	      break;
 
 	    case VNET_DPDK_PMD_DPAA2:
