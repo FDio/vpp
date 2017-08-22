@@ -134,7 +134,6 @@ autoreply define l2fib_add_del
 };
 
 /** \brief Register to recive L2 MAC events for leanred and aged MAC
-    Will also change MAC learn limit to L2LEARN_INFORM_LIMIT
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param learn_limit - MAC learn limit, 0 => default to 1000
