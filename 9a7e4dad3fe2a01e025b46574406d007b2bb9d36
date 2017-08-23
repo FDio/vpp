@@ -22,6 +22,30 @@
       "revId": "9a7e4dad3fe2a01e025b46574406d007b2bb9d36",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_10929a57",
+        "filename": "src/vlibmemory/memory_shared.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 354,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-08-23T03:39:17Z",
+      "side": 1,
+      "message": "Yes, indeed.  Nice catch.",
+      "parentUuid": "3a4b7175_b05e26e8",
+      "range": {
+        "startLine": 354,
+        "startChar": 6,
+        "endLine": 354,
+        "endChar": 18
+      },
+      "revId": "9a7e4dad3fe2a01e025b46574406d007b2bb9d36",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
