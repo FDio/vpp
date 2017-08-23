@@ -239,6 +239,8 @@ l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, next_index, *from, *to_next;
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
+  u32 thread_index = vlib_get_thread_index ();
+  vlib_combined_counter_main_t *cm = &load_balance_main.lbm_to_counters;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -274,7 +276,9 @@ l2_lisp_gpe_interface_tx (vlib_main_t * vm, vlib_node_runtime_t * node,
 				     e0->src_address, e0->dst_address);
 	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = lbi0;
 
-
+	  vlib_increment_combined_counter (cm, thread_index, lbi0, 1,
+					   vlib_buffer_length_in_chain (vm,
+									b0));
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      l2_lisp_gpe_tx_trace_t *tr = vlib_add_trace (vm, node, b0,
