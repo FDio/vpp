@@ -14,12 +14,16 @@
 vppapitestplugins_LTLIBRARIES += pppoe_test_plugin.la
 vppplugins_LTLIBRARIES += pppoe_plugin.la
 
-pppoe_plugin_la_SOURCES =	\
-    pppoe/pppoe_decap.c		\
-    pppoe/pppoe_tap.c		\
-    pppoe/pppoe_tap_node.c	\
-    pppoe/pppoe.c		\
-    pppoe/pppoe_api.c
+
+pppoe_plugin_la_SOURCES =		\
+    pppoe/pppoe_decap.c		    \
+    pppoe/pppoe_encap.c		    \
+    pppoe/pppoe_tap.c		    \
+    pppoe/pppoe_tap_node.c		\
+    pppoe/pppoe.c		        \
+    pppoe/pppoe_api.c           \
+    pppoe/pppoe_export.c
+
 
 BUILT_SOURCES +=		\
     pppoe/pppoe.api.h		\

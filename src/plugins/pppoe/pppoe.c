@@ -37,7 +37,7 @@
 
 pppoe_main_t pppoe_main;
 
-u8 *
+static u8 *
 format_pppoe_session (u8 * s, va_list * args)
 {
   pppoe_session_t *t = va_arg (*args, pppoe_session_t *);

@@ -186,7 +186,6 @@ vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
     }
 }
 
-
 static clib_error_t *
 pppoe_api_hookup (vlib_main_t * vm)
 {
@@ -195,6 +194,8 @@ pppoe_api_hookup (vlib_main_t * vm)
   u8 *name = format (0, "pppoe_%08x%c", api_version, 0);
   pem->msg_id_base = vl_msg_api_get_msg_ids
     ((char *) name, VL_MSG_FIRST_AVAILABLE);
+
+  pem->msg_id_base = 10000;
 
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers((VL_API_##N + pem->msg_id_base),     \
