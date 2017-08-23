@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_10a05a8f",
+        "filename": "src/vnet.am",
+        "patchSetId": 2
+      },
+      "lineNbr": 488,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-08-23T03:43:38Z",
+      "side": 1,
+      "message": "This is only required for the libvcl_ldpreload in vppsb to build.  I have fixed that in https://gerrit.fd.io/r/#/c/8096/ in vppsb.",
+      "range": {
+        "startLine": 488,
+        "startChar": 0,
+        "endLine": 488,
+        "endChar": 19
+      },
+      "revId": "6afd01b7db6469b490c1290e08ec4b20af48e6bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
