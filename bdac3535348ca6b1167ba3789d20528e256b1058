@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_3d1d6e10",
+        "filename": "src/vlibmemory/memory_shared.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 343,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-08-23T13:12:53Z",
+      "side": 1,
+      "message": "This code has been refactored in https://gerrit.fd.io/r/#/c/8163\n\nPlease remove this change and rebase this patch",
+      "range": {
+        "startLine": 343,
+        "startChar": 0,
+        "endLine": 343,
+        "endChar": 39
+      },
+      "revId": "bdac3535348ca6b1167ba3789d20528e256b1058",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
