@@ -484,7 +484,8 @@ nobase_include_HEADERS +=			\
  vnet/tcp/tcp_packet.h				\
  vnet/tcp/tcp_timer.h				\
  vnet/tcp/tcp_debug.h				\
- vnet/tcp/tcp.h
+ vnet/tcp/tcp.h					\
+ vnet/tcp/tcp.api.h
 
 API_FILES += vnet/tcp/tcp.api
 
