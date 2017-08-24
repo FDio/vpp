@@ -41,6 +41,11 @@ static inline applied_hash_ace_entry_t **get_applied_hash_aces(acl_main_t *am, i
   return applied_hash_aces;
 }
 
+static inline int has_applied_hash_aces(acl_main_t *am, int is_input, u32 sw_if_index)
+{
+  return is_input ? (sw_if_index < vec_len(am->input_hash_entry_vec_by_sw_if_index))
+                  : (sw_if_index < vec_len(am->output_hash_entry_vec_by_sw_if_index));
+}
 
 
 /*
@@ -371,6 +376,7 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
     pae->acl_index = acl_index;
     pae->ace_index = ha->rules[i].ace_index;
     pae->action = ha->rules[i].action;
+    pae->hitcount = 0;
     pae->hash_ace_info_index = i;
     /* we might link it in later */
     pae->next_applied_entry_index = ~0;
@@ -849,6 +855,58 @@ void hash_acl_delete(acl_main_t *am, int acl_index)
   clib_mem_set_heap (oldheap);
 }
 
+
+static void
+get_hitcount_inout(acl_main_t *am, u32 sw_if_index, int is_input, u64 **hitcount_vector)
+{
+  int index;
+
+  u32 curr_acl_index = ~0;
+  u32 curr_rule_index = ~0;
+  u64 curr_hitcount = 0;
+  int accumulated_counters = 0;
+
+  if (!has_applied_hash_aces(am, is_input, sw_if_index)) {
+    return;
+  }
+
+  applied_hash_ace_entry_t **applied_hash_aces = get_applied_hash_aces(am, is_input, sw_if_index);
+
+  for(index=0; index<vec_len((*applied_hash_aces)); index++) {
+    applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), index);
+    /* If we are not on the first entry it is the new rule, flush the total hitcount */
+    if (((curr_acl_index != pae->acl_index) || (curr_rule_index != pae->ace_index)) &&
+        accumulated_counters > 0) {
+      vec_add1(*hitcount_vector, curr_hitcount);
+      curr_hitcount = 0;
+      accumulated_counters = 0;
+    }
+    curr_acl_index = pae->acl_index;
+    curr_rule_index = pae->ace_index;
+    curr_hitcount += pae->hitcount;
+    accumulated_counters++;
+  }
+  if (accumulated_counters > 0) {
+    vec_add1(*hitcount_vector, curr_hitcount);
+  }
+}
+
+u64 *hash_acl_get_hitcounts(acl_main_t *am, u32 sw_if_index, u32 *inbound_hitcount_length)
+{
+  u64 *hitcount_vector = 0;
+
+  /* get the hitcounts for the inbound ACEs */
+  get_hitcount_inout(am, sw_if_index, 1, &hitcount_vector);
+
+  /* store the length of the inbound hitcounts */
+  *inbound_hitcount_length = vec_len(hitcount_vector);
+
+  /* get the hitcounts for the outbound ACEs */
+  get_hitcount_inout(am, sw_if_index, 0, &hitcount_vector);
+
+  return hitcount_vector;
+}
+
 u8
 hash_multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
                        int is_ip6, int is_input, u32 * acl_match_p,
@@ -859,6 +917,7 @@ hash_multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l
   u32 match_index = multi_acl_match_get_applied_ace_index(am, pkt_5tuple);
   if (match_index < vec_len((*applied_hash_aces))) {
     applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), match_index);
+    pae->hitcount++;
     *acl_match_p = pae->acl_index;
     *rule_match_p = pae->ace_index;
     return pae->action;

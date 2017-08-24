@@ -154,6 +154,29 @@ static void vl_api_acl_interface_list_details_t_handler
         vam->result_ready = 1;
     }
 
+static void vl_api_acl_hitcount_details_t_handler
+    (vl_api_acl_hitcount_details_t * mp)
+    {
+        int i;
+        vat_main_t * vam = acl_test_main.vat_main;
+        u8 *out = 0;
+        vl_api_acl_hitcount_details_t_endian(mp);
+	out = format(out, "sw_if_index: %d, count: %d\n", mp->sw_if_index, mp->count);
+        out = format(out, "   input ");
+
+	for(i=0; i<mp->count; i++) {
+          if (i == mp->n_input_hitcounts)
+            out = format(out, "\n  output ");
+	  out = format(out, "%lld ", mp->hitcount[i]); // ntohl (mp->acls[i]));
+	}
+
+        out = format(out, "\n");
+
+        clib_warning("%s", out);
+        vec_free(out);
+        vam->result_ready = 1;
+    }
+
 
 static inline u8 *
 vl_api_acl_rule_t_pretty_format (u8 *out, vl_api_acl_rule_t * a)
@@ -277,7 +300,8 @@ _(MACIP_ACL_DETAILS, macip_acl_details)  \
 _(MACIP_ACL_INTERFACE_ADD_DEL_REPLY, macip_acl_interface_add_del_reply)  \
 _(MACIP_ACL_INTERFACE_GET_REPLY, macip_acl_interface_get_reply)  \
 _(ACL_PLUGIN_CONTROL_PING_REPLY, acl_plugin_control_ping_reply) \
-_(ACL_PLUGIN_GET_VERSION_REPLY, acl_plugin_get_version_reply)
+_(ACL_PLUGIN_GET_VERSION_REPLY, acl_plugin_get_version_reply) \
+_(ACL_HITCOUNT_DETAILS, acl_hitcount_details)
 
 static int api_acl_plugin_get_version (vat_main_t * vam)
 {
@@ -787,6 +811,38 @@ static int api_acl_interface_list_dump (vat_main_t * vam)
     return ret;
 }
 
+static int api_acl_hitcount_dump (vat_main_t * vam)
+{
+    unformat_input_t * i = vam->input;
+    u32 sw_if_index = ~0;
+    vl_api_acl_hitcount_dump_t * mp;
+    int ret;
+
+    /* Parse args required to build the message */
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT) {
+        if (unformat (i, "%U", unformat_sw_if_index, vam, &sw_if_index))
+            ;
+        else if (unformat (i, "sw_if_index %d", &sw_if_index))
+            ;
+        else
+            break;
+    }
+
+    /* Construct the API message */
+    M(ACL_HITCOUNT_DUMP, mp);
+    mp->sw_if_index = ntohl (sw_if_index);
+
+    /* send it... */
+    S(mp);
+
+    /* Use control ping for synchronization */
+    api_acl_send_control_ping(vam);
+
+    /* Wait for a reply... */
+    W (ret);
+    return ret;
+}
+
 static int api_acl_dump (vat_main_t * vam)
 {
     unformat_input_t * i = vam->input;
@@ -1012,6 +1068,7 @@ _(acl_dump, "[<acl-idx>]") \
 _(acl_interface_add_del, "<intfc> | sw_if_index <if-idx> [add|del] [input|output] acl <acl-idx>") \
 _(acl_interface_set_acl_list, "<intfc> | sw_if_index <if-idx> input [acl-idx list] output [acl-idx list]") \
 _(acl_interface_list_dump, "[<intfc> | sw_if_index <if-idx>]") \
+_(acl_hitcount_dump, "[<intfc> | sw_if_index <if-idx>]") \
 _(macip_acl_add, "...") \
 _(macip_acl_del, "<acl-idx>")\
 _(macip_acl_dump, "[<acl-idx>]") \

@@ -41,6 +41,14 @@ void hash_acl_add(acl_main_t *am, int acl_index);
 void hash_acl_delete(acl_main_t *am, int acl_index);
 
 /*
+ * Get the vector of hitcounts off the applied ACEs, and fill in
+ * number of starting elements in this vector which correspond to inbound
+ * hits.
+ */
+
+u64 *hash_acl_get_hitcounts(acl_main_t *am, u32 sw_if_index, u32 *inbound_hitcount_length);
+
+/*
  * Do the work required to match a given 5-tuple from the packet,
  * and return the action as well as populate the values pointed
  * to by the *_match_p pointers and maybe trace_bitmap.

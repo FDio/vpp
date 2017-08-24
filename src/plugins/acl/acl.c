@@ -75,8 +75,8 @@ _(MACIP_ACL_DEL, macip_acl_del) \
 _(MACIP_ACL_INTERFACE_ADD_DEL, macip_acl_interface_add_del) \
 _(MACIP_ACL_DUMP, macip_acl_dump) \
 _(MACIP_ACL_INTERFACE_GET, macip_acl_interface_get) \
-_(MACIP_ACL_INTERFACE_LIST_DUMP, macip_acl_interface_list_dump)
-
+_(MACIP_ACL_INTERFACE_LIST_DUMP, macip_acl_interface_list_dump) \
+_(ACL_HITCOUNT_DUMP, acl_hitcount_dump)
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
@@ -1560,6 +1560,45 @@ send_acl_interface_list_details (acl_main_t * am,
 }
 
 static void
+send_acl_hitcount_details (acl_main_t * am,
+				 unix_shared_memory_queue_t * q,
+				 u32 sw_if_index, u32 context)
+{
+  vl_api_acl_hitcount_details_t *mp;
+  int msg_size;
+  int count;
+  int i = 0;
+  u64 *hitcounts = 0;
+  u32 n_input_hitcounts = 0;
+  void *oldheap = acl_set_heap(am);
+
+  hitcounts = hash_acl_get_hitcounts(am, sw_if_index, &n_input_hitcounts);
+
+  count = vec_len(hitcounts);
+
+  msg_size = sizeof (*mp);
+  msg_size += sizeof(mp->hitcount[0])  * count;
+
+  mp = vl_msg_api_alloc (msg_size);
+  memset (mp, 0, msg_size);
+  mp->_vl_msg_id =
+    ntohs (VL_API_ACL_HITCOUNT_DETAILS + am->msg_id_base);
+
+  /* fill in the message */
+  mp->context = context;
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->count = htonl (count);
+  mp->n_input_hitcounts = htonl (n_input_hitcounts);
+  for (i = 0; i < count; i++)
+    {
+      mp->hitcount[i] = vec_elt(hitcounts, i); // FIXME htonl (42); // u64 ?
+    }
+  vec_free(hitcounts);
+  clib_mem_set_heap (oldheap);
+  vl_msg_api_send_shmem (q, (u8 *) & mp);
+}
+
+static void
 vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
 					  mp)
 {
@@ -1590,6 +1629,41 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
       sw_if_index = ntohl (mp->sw_if_index);
       if (!pool_is_free_index(im->sw_interfaces, sw_if_index))
         send_acl_interface_list_details (am, q, sw_if_index, mp->context);
+    }
+}
+
+static void
+vl_api_acl_hitcount_dump_t_handler (vl_api_acl_hitcount_dump_t * mp)
+{
+  acl_main_t *am = &acl_main;
+  vnet_sw_interface_t *swif;
+  vnet_interface_main_t *im = &am->vnet_main->interface_main;
+
+  u32 sw_if_index;
+  unix_shared_memory_queue_t *q;
+  clib_warning("hit count dump");
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  if (mp->sw_if_index == ~0)
+    {
+    /* *INDENT-OFF* */
+    pool_foreach (swif, im->sw_interfaces,
+    ({
+      send_acl_hitcount_details(am, q, swif->sw_if_index, mp->context);
+    }));
+    /* *INDENT-ON* */
+    }
+  else
+    {
+      sw_if_index = ntohl (mp->sw_if_index);
+      if (!pool_is_free_index(im->sw_interfaces, sw_if_index)) {
+        send_acl_hitcount_details (am, q, sw_if_index, mp->context);
+      }
     }
 }
 
@@ -2458,9 +2532,9 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
             out0 = format(out0, "  input lookup applied entries:\n");
             for(j=0; j<vec_len(am->input_hash_entry_vec_by_sw_if_index[swi]); j++) {
               applied_hash_ace_entry_t *pae = &am->input_hash_entry_vec_by_sw_if_index[swi][j];
-              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d\n",
+              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d hitcount %lld\n",
                                        j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
-                                       pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index);
+                                       pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index, pae->hitcount);
             }
           }
 
@@ -2473,9 +2547,9 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
             out0 = format(out0, "  output lookup applied entries:\n");
             for(j=0; j<vec_len(am->output_hash_entry_vec_by_sw_if_index[swi]); j++) {
               applied_hash_ace_entry_t *pae = &am->output_hash_entry_vec_by_sw_if_index[swi][j];
-              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d\n",
+              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d hitcount %lld\n",
                                        j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
-                                       pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index);
+                                       pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index, pae->hitcount);
             }
           }
 

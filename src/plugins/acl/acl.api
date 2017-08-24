@@ -443,3 +443,33 @@ define macip_acl_interface_list_details
   u8 count;
   u32 acls[count];
 };
+
+/** \brief Dump the ACL hit counters on a specific or all interfaces
+    @param client_index - opaque cookie to identify the sender
+    @param contet - sender context, to match reply w/ request
+    @param sw_if_index - interface to dump the ACL list for
+*/
+
+define acl_hitcount_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index; /* ~0 for all interfaces */
+};
+
+/** \brief Details about hitcounts on a given ACL entry
+    @param context - returned sender context, to match reply w/ request
+    @param sw_if_index - interface for which the list of ACLs is applied
+    @param count - total length of acl indices vector
+    @param n_input_hitcounts - count of slots corresponding to input ACL hitcounts
+    @param hitcount - the vector of hitcounts for all of the ACEs applied to interface
+*/
+
+define acl_hitcount_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u32 count;
+  u32 n_input_hitcounts;
+  u64 hitcount[count];
+};
