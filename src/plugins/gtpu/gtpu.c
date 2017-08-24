@@ -59,9 +59,9 @@ format_decap_next (u8 * s, va_list * args)
       return format (s, "drop");
     case GTPU_INPUT_NEXT_L2_INPUT:
       return format (s, "l2");
-    case GTPU_INPUT_NEXT_IP4_INPUT:
+    case GTPU_INPUT_NEXT_IP4_LOOKUP:
       return format (s, "ip4");
-    case GTPU_INPUT_NEXT_IP6_INPUT:
+    case GTPU_INPUT_NEXT_IP6_LOOKUP:
       return format (s, "ip6");
     default:
       return format (s, "index %d", next_index);
@@ -668,9 +668,9 @@ unformat_decap_next (unformat_input_t * input, va_list * args)
   if (unformat (input, "l2"))
     *result = GTPU_INPUT_NEXT_L2_INPUT;
   else if (unformat (input, "ip4"))
-    *result = GTPU_INPUT_NEXT_IP4_INPUT;
+    *result = GTPU_INPUT_NEXT_IP4_LOOKUP;
   else if (unformat (input, "ip6"))
-    *result = GTPU_INPUT_NEXT_IP6_INPUT;
+    *result = GTPU_INPUT_NEXT_IP6_LOOKUP;
   else if (unformat (input, "node %U", unformat_vlib_node, vm, &node_index))
     *result = get_decap_next_for_node (node_index, ipv4_set);
   else if (unformat (input, "%d", &tmp))
