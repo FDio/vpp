@@ -22,6 +22,9 @@
 typedef struct
 {
   enum rte_crypto_cipher_algorithm algo;
+#if ! DPDK_NO_AEAD
+  enum rte_crypto_aead_algorithm aead_algo;
+#endif
   u8 key_len;
   u8 iv_len;
 } dpdk_esp_crypto_alg_t;
@@ -65,7 +68,11 @@ dpdk_esp_init ()
   c->iv_len = 16;
 
   c = &em->esp_crypto_algs[IPSEC_CRYPTO_ALG_AES_GCM_128];
+#if DPDK_NO_AEAD
   c->algo = RTE_CRYPTO_CIPHER_AES_GCM;
+#else
+  c->aead_algo = RTE_CRYPTO_AEAD_AES_GCM;
+#endif
   c->key_len = 16;
   c->iv_len = 8;
 
@@ -90,41 +97,56 @@ dpdk_esp_init ()
   i = &em->esp_integ_algs[IPSEC_INTEG_ALG_SHA_512_256];
   i->algo = RTE_CRYPTO_AUTH_SHA512_HMAC;
   i->trunc_size = 32;
-
+#if DPDK_NO_AEAD
   i = &em->esp_integ_algs[IPSEC_INTEG_ALG_AES_GCM_128];
   i->algo = RTE_CRYPTO_AUTH_AES_GCM;
   i->trunc_size = 16;
+#endif
 }
 
 static_always_inline int
 translate_crypto_algo (ipsec_crypto_alg_t crypto_algo,
-		       struct rte_crypto_sym_xform *cipher_xform)
+		       struct rte_crypto_sym_xform *xform, u8 use_esn)
 {
+  xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+
   switch (crypto_algo)
     {
     case IPSEC_CRYPTO_ALG_NONE:
-      cipher_xform->cipher.algo = RTE_CRYPTO_CIPHER_NULL;
+#if ! DPDK_NO_AEAD
+      xform->cipher.iv.length = 0;
+#endif
+      xform->cipher.algo = RTE_CRYPTO_CIPHER_NULL;
       break;
     case IPSEC_CRYPTO_ALG_AES_CBC_128:
     case IPSEC_CRYPTO_ALG_AES_CBC_192:
     case IPSEC_CRYPTO_ALG_AES_CBC_256:
-      cipher_xform->cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
+#if ! DPDK_NO_AEAD
+      xform->cipher.iv.length = 16;
+#endif
+      xform->cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
       break;
     case IPSEC_CRYPTO_ALG_AES_GCM_128:
-      cipher_xform->cipher.algo = RTE_CRYPTO_CIPHER_AES_GCM;
+#if DPDK_NO_AEAD
+      xform->cipher.algo = RTE_CRYPTO_CIPHER_AES_GCM;
+#else
+      xform->type = RTE_CRYPTO_SYM_XFORM_AEAD;
+      xform->aead.algo = RTE_CRYPTO_AEAD_AES_GCM;
+      xform->aead.iv.length = 12;	/* GCM IV, not ESP IV */
+      xform->aead.digest_length = 16;
+      xform->aead.aad_length = use_esn ? 12 : 8;
+#endif
       break;
     default:
       return -1;
     }
-
-  cipher_xform->type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 
   return 0;
 }
 
 static_always_inline int
 translate_integ_algo (ipsec_integ_alg_t integ_alg,
-		      struct rte_crypto_sym_xform *auth_xform, int use_esn)
+		      struct rte_crypto_sym_xform *auth_xform, u8 use_esn)
 {
   switch (integ_alg)
     {
@@ -152,11 +174,13 @@ translate_integ_algo (ipsec_integ_alg_t integ_alg,
       auth_xform->auth.algo = RTE_CRYPTO_AUTH_SHA512_HMAC;
       auth_xform->auth.digest_length = 32;
       break;
+#if DPDK_NO_AEAD
     case IPSEC_INTEG_ALG_AES_GCM_128:
       auth_xform->auth.algo = RTE_CRYPTO_AUTH_AES_GCM;
       auth_xform->auth.digest_length = 16;
       auth_xform->auth.add_auth_data_length = use_esn ? 12 : 8;
       break;
+#endif
     default:
       return -1;
     }
@@ -166,7 +190,7 @@ translate_integ_algo (ipsec_integ_alg_t integ_alg,
   return 0;
 }
 
-static_always_inline int
+static_always_inline i32
 create_sym_sess (ipsec_sa_t * sa, crypto_sa_session_t * sa_sess,
 		 u8 is_outbound)
 {
@@ -178,6 +202,10 @@ create_sym_sess (ipsec_sa_t * sa, crypto_sa_session_t * sa_sess,
   struct rte_crypto_sym_xform *xfs;
   uword key = 0, *data;
   crypto_worker_qp_key_t *p_key = (crypto_worker_qp_key_t *) & key;
+#if ! DPDK_NO_AEAD
+  i32 socket_id = rte_socket_id ();
+  i32 ret;
+#endif
 
   if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
     {
@@ -198,27 +226,48 @@ create_sym_sess (ipsec_sa_t * sa, crypto_sa_session_t * sa_sess,
   auth_xform.auth.key.data = sa->integ_key;
   auth_xform.auth.key.length = sa->integ_key_len;
 
-  if (translate_crypto_algo (sa->crypto_alg, &cipher_xform) < 0)
+  if (translate_crypto_algo (sa->crypto_alg, &cipher_xform, sa->use_esn) < 0)
     return -1;
+#if ! DPDK_NO_AEAD
+  cipher_xform.aead.iv.offset =
+    sizeof (struct rte_crypto_op) + sizeof (struct rte_crypto_sym_op) +
+    offsetof (dpdk_cop_priv_t, cb);
+#endif
   p_key->cipher_algo = cipher_xform.cipher.algo;
 
   if (translate_integ_algo (sa->integ_alg, &auth_xform, sa->use_esn) < 0)
     return -1;
   p_key->auth_algo = auth_xform.auth.algo;
 
-  if (is_outbound)
+#if ! DPDK_NO_AEAD
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
     {
-      cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
-      auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
-      cipher_xform.next = &auth_xform;
+      if (is_outbound)
+	cipher_xform.cipher.op = RTE_CRYPTO_AEAD_OP_ENCRYPT;
+      else
+	cipher_xform.cipher.op = RTE_CRYPTO_AEAD_OP_DECRYPT;
+      cipher_xform.next = NULL;
       xfs = &cipher_xform;
+      p_key->is_aead = 1;
     }
   else
+#endif
     {
-      cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
-      auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
-      auth_xform.next = &cipher_xform;
-      xfs = &auth_xform;
+      if (is_outbound)
+	{
+	  cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+	  auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+	  cipher_xform.next = &auth_xform;
+	  xfs = &cipher_xform;
+	}
+      else
+	{
+	  cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
+	  auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
+	  auth_xform.next = &cipher_xform;
+	  xfs = &auth_xform;
+	}
+      p_key->is_aead = 0;
     }
 
   p_key->is_outbound = is_outbound;
@@ -227,11 +276,23 @@ create_sym_sess (ipsec_sa_t * sa, crypto_sa_session_t * sa_sess,
   if (!data)
     return -1;
 
+#if DPDK_NO_AEAD
   sa_sess->sess =
     rte_cryptodev_sym_session_create (cwm->qp_data[*data].dev_id, xfs);
-
   if (!sa_sess->sess)
     return -1;
+#else
+  sa_sess->sess =
+    rte_cryptodev_sym_session_create (dcm->sess_h_pools[socket_id]);
+  if (!sa_sess->sess)
+    return -1;
+
+  ret =
+    rte_cryptodev_sym_session_init (cwm->qp_data[*data].dev_id, sa_sess->sess,
+				    xfs, dcm->sess_pools[socket_id]);
+  if (ret)
+    return -1;
+#endif
 
   sa_sess->qp_index = (u8) * data;
 

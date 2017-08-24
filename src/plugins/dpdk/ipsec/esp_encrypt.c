@@ -43,8 +43,7 @@ typedef enum
  _(RX_PKTS, "ESP pkts received")                    \
  _(SEQ_CYCLED, "sequence number cycled")            \
  _(ENQ_FAIL, "Enqueue failed (buffer full)")        \
- _(NO_CRYPTODEV, "Cryptodev not configured")        \
- _(UNSUPPORTED, "Cipher/Auth not supported")
+ _(NO_CRYPTODEV, "Cryptodev not configured")
 
 
 typedef enum
@@ -142,6 +141,8 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  const int BLOCK_SIZE = 16;
 	  u32 iv_size;
 	  u16 orig_sz;
+	  u16 digest_off;
+	  u8 trunc_size;
 	  crypto_sa_session_t *sa_sess;
 	  void *sess;
 	  struct rte_crypto_op *cop = 0;
@@ -199,6 +200,11 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 
 	  ssize_t adv;
 	  iv_size = em->esp_crypto_algs[sa0->crypto_alg].iv_len;
+	  if (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
+	    trunc_size = 16;
+	  else
+	    trunc_size = em->esp_integ_algs[sa0->integ_alg].trunc_size;
+
 	  ih0 = vlib_buffer_get_current (b0);
 	  orig_sz = b0->current_length;
 	  is_ipv6 = (ih0->ip4.ip_version_and_header_length & 0xF0) == 0x60;
@@ -314,8 +320,8 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      transport_mode = 1;
 	    }
 
-	  ASSERT (sa0->crypto_alg < IPSEC_CRYPTO_N_ALG);
 	  ASSERT (sa0->crypto_alg != IPSEC_CRYPTO_ALG_NONE);
+	  ASSERT (sa0->crypto_alg < IPSEC_CRYPTO_N_ALG);
 
 	  int blocks = 1 + (orig_sz + 1) / BLOCK_SIZE;
 
@@ -330,8 +336,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  f0 = vlib_buffer_get_current (b0) + b0->current_length + pad_bytes;
 	  f0->pad_length = pad_bytes;
 	  f0->next_header = next_hdr_type;
-	  b0->current_length += pad_bytes + 2 +
-	    em->esp_integ_algs[sa0->integ_alg].trunc_size;
+	  b0->current_length += pad_bytes + 2 + trunc_size;
 
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
 	    vnet_buffer (b0)->sw_if_index[VLIB_RX];
@@ -357,7 +362,9 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  icb->salt = sa0->salt;
 	  icb->iv[0] = sa0->seq;
 	  icb->iv[1] = sa0->seq_hi;
+#if DPDK_NO_AEAD
 	  icb->cnt = clib_host_to_net_u32 (1);
+#endif
 
 	  if (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128)
 	    {
@@ -366,32 +373,41 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 			 sizeof (esp_header_t));
 	      esp_iv[0] = sa0->seq;
 	      esp_iv[1] = sa0->seq_hi;
+#if DPDK_NO_AEAD
 	      sym_cop->cipher.data.offset =
 		ip_hdr_size + sizeof (esp_header_t) + iv_size;
 	      sym_cop->cipher.data.length = BLOCK_SIZE * blocks;
-	      sym_cop->cipher.iv.length = 16;
+	      iv_size = 16;
+#else
+	      sym_cop->aead.data.offset =
+		ip_hdr_size + sizeof (esp_header_t) + iv_size;
+	      sym_cop->aead.data.length = BLOCK_SIZE * blocks;
+#endif
 	    }
 	  else
 	    {
 	      sym_cop->cipher.data.offset =
 		ip_hdr_size + sizeof (esp_header_t);
 	      sym_cop->cipher.data.length = BLOCK_SIZE * blocks + iv_size;
-	      sym_cop->cipher.iv.length = iv_size;
 	    }
 
+#if DPDK_NO_AEAD
 	  sym_cop->cipher.iv.data = (u8 *) icb;
-	  sym_cop->cipher.iv.phys_addr = cop->phys_addr + (uintptr_t) icb
-	    - (uintptr_t) cop;
+	  sym_cop->cipher.iv.phys_addr =
+	    cop->phys_addr + (uintptr_t) icb - (uintptr_t) cop;
+	  sym_cop->cipher.iv.length = iv_size;
 
-
+	  ASSERT (sa0->integ_alg != IPSEC_INTEG_N_ALG);
+#endif
 	  ASSERT (sa0->integ_alg < IPSEC_INTEG_N_ALG);
-	  ASSERT (sa0->integ_alg != IPSEC_INTEG_ALG_NONE);
 
-	  if (PREDICT_FALSE (sa0->integ_alg == IPSEC_INTEG_ALG_AES_GCM_128))
+	  if (PREDICT_FALSE (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128))
 	    {
 	      u8 *aad = priv->aad;
+	      digest_off = b0->current_length - trunc_size;
 	      clib_memcpy (aad, vlib_buffer_get_current (b0) + ip_hdr_size,
 			   8);
+#if DPDK_NO_AEAD
 	      sym_cop->auth.aad.data = aad;
 	      sym_cop->auth.aad.phys_addr = cop->phys_addr +
 		(uintptr_t) aad - (uintptr_t) cop;
@@ -402,15 +418,33 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		  sym_cop->auth.aad.length = 12;
 		}
 	      else
-		{
-		  sym_cop->auth.aad.length = 8;
-		}
+		sym_cop->auth.aad.length = 8;
+
+	      sym_cop->auth.digest.data =
+		vlib_buffer_get_current (b0) + digest_off;
+	      sym_cop->auth.digest.phys_addr =
+		rte_pktmbuf_mtophys_offset (mb0, digest_off);
+	      sym_cop->auth.digest.length = trunc_size;
+#else
+	      sym_cop->aead.aad.data = aad;
+	      sym_cop->aead.aad.phys_addr = cop->phys_addr +
+		(uintptr_t) aad - (uintptr_t) cop;
+
+	      if (PREDICT_FALSE (sa0->use_esn))
+		*((u32 *) & aad[8]) = sa0->seq_hi;
+
+	      sym_cop->aead.digest.data =
+		vlib_buffer_get_current (b0) + digest_off;
+	      sym_cop->aead.digest.phys_addr =
+		rte_pktmbuf_mtophys_offset (mb0, digest_off);
+#endif
 	    }
 	  else
 	    {
+	      digest_off = b0->current_length - trunc_size;
 	      sym_cop->auth.data.offset = ip_hdr_size;
-	      sym_cop->auth.data.length = b0->current_length - ip_hdr_size
-		- em->esp_integ_algs[sa0->integ_alg].trunc_size;
+	      sym_cop->auth.data.length =
+		b0->current_length - ip_hdr_size - trunc_size;
 
 	      if (PREDICT_FALSE (sa0->use_esn))
 		{
@@ -419,17 +453,14 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		  *((u32 *) payload_end) = sa0->seq_hi;
 		  sym_cop->auth.data.length += sizeof (sa0->seq_hi);
 		}
+	      sym_cop->auth.digest.data =
+		vlib_buffer_get_current (b0) + digest_off;
+	      sym_cop->auth.digest.phys_addr =
+		rte_pktmbuf_mtophys_offset (mb0, digest_off);
+#if DPDK_NO_AEAD
+	      sym_cop->auth.digest.length = trunc_size;
+#endif
 	    }
-	  sym_cop->auth.digest.data = vlib_buffer_get_current (b0) +
-	    b0->current_length -
-	    em->esp_integ_algs[sa0->integ_alg].trunc_size;
-	  sym_cop->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset (mb0,
-								       b0->current_length
-								       -
-								       em->esp_integ_algs
-								       [sa0->integ_alg].trunc_size);
-	  sym_cop->auth.digest.length =
-	    em->esp_integ_algs[sa0->integ_alg].trunc_size;
 
 
 	  if (PREDICT_FALSE (is_ipv6))
@@ -469,6 +500,9 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
   vec_foreach_index (i, cwm->qp_data)
     {
       u32 enq;
+
+      if (!n_cop_qp[i])
+	continue;
 
       qpd = vec_elt_at_index(cwm->qp_data, i);
       enq = rte_cryptodev_enqueue_burst(qpd->dev_id, qpd->qp_id,
