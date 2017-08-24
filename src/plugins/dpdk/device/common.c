@@ -181,9 +181,9 @@ dpdk_device_stop (dpdk_device_t * xd)
     }
 }
 
-void
-dpdk_port_state_callback (uint8_t port_id,
-			  enum rte_eth_event_type type, void *param)
+always_inline int
+dpdk_port_state_callback_inline (uint8_t port_id,
+				 enum rte_eth_event_type type, void *param)
 {
   struct rte_eth_link link;
   vlib_main_t *vm = vlib_get_main ();
@@ -193,7 +193,7 @@ dpdk_port_state_callback (uint8_t port_id,
   if (type != RTE_ETH_EVENT_INTR_LSC)
     {
       clib_warning ("Unknown event %d received for port %d", type, port_id);
-      return;
+      return -1;
     }
 
   rte_eth_link_get_nowait (port_id, &link);
@@ -238,8 +238,28 @@ dpdk_port_state_callback (uint8_t port_id,
       else
 	clib_warning ("Port %d Link Down\n\n", port_id);
     }
+
+  return 0;
 }
 
+#if DPDK_VOID_CALLBACK
+void
+dpdk_port_state_callback (uint8_t port_id,
+			  enum rte_eth_event_type type, void *param)
+{
+  dpdk_port_state_callback_inline (port_id, type, param);
+}
+
+#else
+int
+dpdk_port_state_callback (uint8_t port_id,
+			  enum rte_eth_event_type type,
+			  void *param,
+			  void *ret_param __attribute__ ((unused)))
+{
+  return dpdk_port_state_callback_inline (port_id, type, param);
+}
+#endif
 /*
  * fd.io coding-style-patch-verification: ON
  *
