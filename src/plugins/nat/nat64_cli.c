@@ -511,7 +511,8 @@ nat64_set_timeouts_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  if (nat64_set_tcp_timeouts (tcp_trans, tcp_est, tcp_incoming_syn))
 	    {
 	      error =
-		clib_error_return (0, "Invalid TCP transitory tiemout value");
+		clib_error_return (0,
+				   "Invalid TCP transitory timeouts value");
 	      goto done;
 	    }
 	}
@@ -521,7 +522,7 @@ nat64_set_timeouts_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    {
 	      error =
 		clib_error_return (0,
-				   "Invalid TCP established tiemout value");
+				   "Invalid TCP established timeouts value");
 	      goto done;
 	    }
 	}
@@ -532,7 +533,7 @@ nat64_set_timeouts_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	    {
 	      error =
 		clib_error_return (0,
-				   "Invalid TCP incoming SYN tiemout value");
+				   "Invalid TCP incoming SYN timeouts value");
 	      goto done;
 	    }
 	}
@@ -893,7 +894,7 @@ VLIB_CLI_COMMAND (set_nat64_timeouts_command, static) = {
 
 /*?
  * @cliexpar
- * @cliexstart{show nat64 tiemouts}
+ * @cliexstart{show nat64 timeoutss}
  * Show NAT64 session timeouts:
  *  vpp# show nat64 timeouts
  *  NAT64 session timeouts:
@@ -906,7 +907,7 @@ VLIB_CLI_COMMAND (set_nat64_timeouts_command, static) = {
 ?*/
 VLIB_CLI_COMMAND (show_nat64_timeouts_command, static) = {
   .path = "show nat64 timeouts",
-  .short_help = "show nat64 temeouts",
+  .short_help = "show nat64 timeouts",
   .function = nat64_show_timeouts_command_fn,
 };
 
