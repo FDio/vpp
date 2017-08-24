@@ -895,7 +895,7 @@ VLIB_CLI_COMMAND (set_nat64_timeouts_command, static) = {
  * @cliexpar
  * @cliexstart{show nat64 tiemouts}
  * Show NAT64 session timeouts:
- *  vpp# show nat64 tiemouts
+ *  vpp# show nat64 timeouts
  *  NAT64 session timeouts:
  *   UDP 300sec
  *   ICMP 60sec
@@ -905,8 +905,8 @@ VLIB_CLI_COMMAND (set_nat64_timeouts_command, static) = {
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (show_nat64_timeouts_command, static) = {
-  .path = "show nat64 tiemouts",
-  .short_help = "show nat64 tiemouts",
+  .path = "show nat64 timeouts",
+  .short_help = "show nat64 temeouts",
   .function = nat64_show_timeouts_command_fn,
 };
 

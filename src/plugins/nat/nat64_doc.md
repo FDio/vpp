@@ -65,7 +65,7 @@ tenant-vrf: VRF id of the tenant associated with the prefix
 > show nat64 interfaces
 > show nat64 bib tcp|udp|icmp
 > show nat64 session table tcp|udp|icmp
-> show nat64 tiemouts
+> show nat64 timeouts
 > show nat64 prefix
 
 ## Notes
