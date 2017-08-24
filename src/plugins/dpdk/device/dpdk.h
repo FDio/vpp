@@ -418,8 +418,15 @@ typedef struct
 void dpdk_device_setup (dpdk_device_t * xd);
 void dpdk_device_start (dpdk_device_t * xd);
 void dpdk_device_stop (dpdk_device_t * xd);
+
+#if DPDK_VOID_CALLBACK
 void dpdk_port_state_callback (uint8_t port_id,
 			       enum rte_eth_event_type type, void *param);
+#else
+int dpdk_port_state_callback (uint8_t port_id,
+			      enum rte_eth_event_type type,
+			      void *param, void *ret_param);
+#endif
 
 #define foreach_dpdk_error						\
   _(NONE, "no error")							\
