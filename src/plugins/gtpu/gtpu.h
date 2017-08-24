@@ -173,8 +173,8 @@ typedef struct
 #define foreach_gtpu_input_next        \
 _(DROP, "error-drop")                  \
 _(L2_INPUT, "l2-input")                \
-_(IP4_INPUT,  "ip4-input")             \
-_(IP6_INPUT, "ip6-input" )
+_(IP4_LOOKUP,  "ip4-lookup")             \
+_(IP6_LOOKUP, "ip6-lookup" )
 
 typedef enum
 {
