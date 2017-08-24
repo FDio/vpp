@@ -112,6 +112,8 @@ typedef struct {
   /* adds and deletes per-worker-per-interface */
   u64 *fa_session_dels_by_sw_if_index;
   u64 *fa_session_adds_by_sw_if_index;
+  /* in & out */
+  u64 *fa_existing_session_packets_by_sw_if_index[2];
   /* Vector of expired connections retrieved from lists */
   u32 *expired;
   /* the earliest next expiry time */

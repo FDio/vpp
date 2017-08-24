@@ -948,6 +948,7 @@ acl_fa_node_fn (vlib_main_t * vm,
   vlib_node_runtime_t *error_node;
   u64 now = clib_cpu_time_now ();
   uword thread_index = os_get_thread_index ();
+  acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -1019,6 +1020,8 @@ acl_fa_node_fn (vlib_main_t * vm,
 	      if (acl_fa_find_session
 		  (am, sw_if_index0, &kv_sess, &value_sess))
 		{
+                  vec_validate (pw->fa_existing_session_packets_by_sw_if_index[is_input], sw_if_index0);
+                  pw->fa_existing_session_packets_by_sw_if_index[is_input][sw_if_index0]++;
 		  trace_bitmap |= 0x80000000;
 		  error0 = ACL_FA_ERROR_ACL_EXIST_SESSION;
 		  fa_full_session_id_t f_sess_id;
