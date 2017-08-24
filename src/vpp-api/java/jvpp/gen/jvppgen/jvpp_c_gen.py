@@ -227,10 +227,13 @@ static void vl_api_${handler_name}_t_handler (vl_api_${handler_name}_t * mp)
     ${plugin_name}_main_t *plugin_main = &${plugin_name}_main;
     JNIEnv *env = jvpp_main.jenv;
     jthrowable exc;
-
     $err_handler
 
     jmethodID constructor = (*env)->GetMethodID(env, ${class_ref_name}Class, "<init>", "()V");
+
+    // User does not have to provide callbacks for all VPP messages.
+    // We are ignoring messages that are not supported by user.
+    (*env)->ExceptionClear(env); // just in case exception occurred in different place and was not properly cleared
     jmethodID callbackMethod = (*env)->GetMethodID(env, plugin_main->callbackClass, "on${dto_name}", "(Lio/fd/vpp/jvpp/${plugin_name}/dto/${dto_name};)V");
     exc = (*env)->ExceptionOccurred(env);
     if (exc) {
