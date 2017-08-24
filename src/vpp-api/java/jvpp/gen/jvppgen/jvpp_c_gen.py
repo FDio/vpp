@@ -136,6 +136,7 @@ JNIEXPORT jint JNICALL Java_io_fd_vpp_jvpp_${plugin_name}_JVpp${java_plugin_name
     mp->_vl_msg_id = ntohs (get_message_id(env, "${c_name}_${crc}"));
     mp->client_index = plugin_main->my_client_index;
     mp->context = clib_host_to_net_u32 (my_context_id);
+    printf("Message ready with id: %d\\n", htons(mp->_vl_msg_id));
 
     $msg_initialization
 

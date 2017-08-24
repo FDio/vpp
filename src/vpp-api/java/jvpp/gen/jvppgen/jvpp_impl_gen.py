@@ -139,6 +139,7 @@ method_native_template = Template(
 method_impl_template = Template("""    public final int $name($plugin_package.$dto_package.$request request) throws io.fd.vpp.jvpp.VppInvocationException {
         java.util.Objects.requireNonNull(request,"Null request object");
         connection.checkActive();
+        System.out.printf("Received ${name} call\\n");
         int result=${name}0(request);
         if(result<0){
             throw new io.fd.vpp.jvpp.VppInvocationException("${name}",result);
