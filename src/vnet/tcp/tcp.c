@@ -595,6 +595,12 @@ tcp_connection_open (transport_endpoint_t * rmt)
   prefix.fp_len = rmt->is_ip4 ? 32 : 128;
 
   fib_index = fib_table_find (prefix.fp_proto, rmt->vrf);
+  if (fib_index == (u32) ~ 0)
+    {
+      clib_warning ("no fib table");
+      return -1;
+    }
+
   fei = fib_table_lookup (fib_index, &prefix);
 
   /* Couldn't find route to destination. Bail out. */
