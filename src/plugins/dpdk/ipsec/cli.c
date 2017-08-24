@@ -86,13 +86,28 @@ dpdk_ipsec_show_mapping (vlib_main_t * vm, u16 detail_display)
 	  hash_foreach (key, data, cwm->algo_qp_map,
 	  ({
 	    cap.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
+#if DPDK_NO_AEAD
 	    cap.sym.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	    cap.sym.cipher.algo = p_key->cipher_algo;
+#else
+	    if (p_key->is_aead)
+	      {
+		cap.sym.xform_type = RTE_CRYPTO_SYM_XFORM_AEAD;
+		cap.sym.aead.algo = p_key->cipher_algo;
+	      }
+	    else
+	      {
+		cap.sym.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+		cap.sym.cipher.algo = p_key->cipher_algo;
+	      }
+#endif
 	    check_algo_is_supported (&cap, cipher_str);
+
 	    cap.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
 	    cap.sym.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	    cap.sym.auth.algo = p_key->auth_algo;
 	    check_algo_is_supported (&cap, auth_str);
+
 	    vlib_cli_output (vm, "%u\t%10s\t%15s\t%3s\t%u\t%u\n",
 			     vlib_mains[i]->thread_index, cipher_str, auth_str,
 			     p_key->is_outbound ? "out" : "in",
