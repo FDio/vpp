@@ -56,18 +56,23 @@ add_del_sa_sess (u32 sa_index, u8 is_add)
 	  else
 	    {
 	      u8 dev_id;
+	      i32 ret;
 
 	      sa_sess = pool_elt_at_index (cwm->sa_sess_d[is_outbound], sa_index);
 	      dev_id = cwm->qp_data[sa_sess->qp_index].dev_id;
 
 	      if (!sa_sess->sess)
 		continue;
+#if DPDK_NO_AEAD
+	      ret = (rte_cryptodev_sym_session_free(dev_id, sa_sess->sess) == NULL);
+	      ASSERT (ret);
+#else
+	      ret = rte_cryptodev_sym_session_clear(dev_id, sa_sess->sess);
+	      ASSERT (!ret);
 
-	      if (rte_cryptodev_sym_session_free(dev_id, sa_sess->sess))
-		{
-		  clib_warning("failed to free session");
-		  return -1;
-		}
+	      ret = rte_cryptodev_sym_session_free(sa_sess->sess);
+	      ASSERT (!ret);
+#endif
 	      memset(sa_sess, 0, sizeof(sa_sess[0]));
 	    }
 	}
@@ -94,7 +99,7 @@ update_qp_data (crypto_worker_main_t * cwm,
     }
   /* *INDENT-ON* */
 
-  vec_add2 (cwm->qp_data, qpd, 1);
+  vec_add2_aligned (cwm->qp_data, qpd, 1, CLIB_CACHE_LINE_BYTES);
 
   qpd->dev_id = cdev_id;
   qpd->qp_id = qp_id;
@@ -119,6 +124,9 @@ add_mapping (crypto_worker_main_t * cwm,
   p_key->cipher_algo = (u8) cipher_cap->sym.cipher.algo;
   p_key->auth_algo = (u8) auth_cap->sym.auth.algo;
   p_key->is_outbound = is_outbound;
+#if ! DPDK_NO_AEAD
+  p_key->is_aead = cipher_cap->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AEAD;
+#endif
 
   ret = hash_get (cwm->algo_qp_map, key);
   if (ret)
@@ -147,6 +155,20 @@ add_cdev_mapping (crypto_worker_main_t * cwm,
 
   for (i = dev_info->capabilities; i->op != RTE_CRYPTO_OP_TYPE_UNDEFINED; i++)
     {
+#if ! DPDK_NO_AEAD
+      if (i->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AEAD)
+	{
+	  struct rte_cryptodev_capabilities none = { 0 };
+
+	  if (check_algo_is_supported (i, NULL) != 0)
+	    continue;
+
+	  none.sym.auth.algo = RTE_CRYPTO_AUTH_NULL;
+
+	  mapped |= add_mapping (cwm, cdev_id, qp, is_outbound, i, &none);
+	  continue;
+	}
+#endif
       if (i->sym.xform_type != RTE_CRYPTO_SYM_XFORM_CIPHER)
 	continue;
 
@@ -205,17 +227,23 @@ dpdk_ipsec_check_support (ipsec_sa_t * sa)
     {
       if (sa->integ_alg != IPSEC_INTEG_ALG_NONE)
 	return clib_error_return (0, "unsupported integ-alg %U with "
-				  "crypto-algo aes-gcm-128",
+				  "crypto-alg aes-gcm-128",
 				  format_ipsec_integ_alg, sa->integ_alg);
+#if DPDK_NO_AEAD
       sa->integ_alg = IPSEC_INTEG_ALG_AES_GCM_128;
+#endif
     }
-  else
-    {
-      if (sa->integ_alg == IPSEC_INTEG_ALG_NONE ||
-	  sa->integ_alg == IPSEC_INTEG_ALG_AES_GCM_128)
-	return clib_error_return (0, "unsupported integ-alg %U",
-				  format_ipsec_integ_alg, sa->integ_alg);
-    }
+#if DPDK_NO_AEAD
+  else if (sa->crypto_alg == IPSEC_CRYPTO_ALG_NONE ||
+	   sa->integ_alg == IPSEC_INTEG_ALG_NONE ||
+	   sa->integ_alg == IPSEC_INTEG_ALG_AES_GCM_128)
+#else
+  else if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
+#endif
+    return clib_error_return (0,
+			      "unsupported integ-alg %U with crypto-alg %U",
+			      format_ipsec_integ_alg, sa->integ_alg,
+			      format_ipsec_crypto_alg, sa->crypto_alg);
 
   return 0;
 }
@@ -233,6 +261,10 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   struct rte_mempool *rmp;
   i32 dev_id, ret;
   u32 i, skip_master;
+#if ! DPDK_NO_AEAD
+  u32 max_sess_size = 0, sess_size;
+  i8 socket_id;
+#endif
 
   if (check_cryptodev_queues () < 0)
     {
@@ -297,9 +329,10 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
       dev_conf.socket_id = rte_cryptodev_socket_id (dev_id);
       dev_conf.nb_queue_pairs = cdev_info.max_nb_queue_pairs;
+#if DPDK_NO_AEAD
       dev_conf.session_mp.nb_objs = DPDK_CRYPTO_NB_SESS_OBJS;
       dev_conf.session_mp.cache_size = DPDK_CRYPTO_CACHE_SIZE;
-
+#endif
       ret = rte_cryptodev_configure (dev_id, &dev_conf);
       if (ret < 0)
 	{
@@ -310,16 +343,26 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       qp_conf.nb_descriptors = DPDK_CRYPTO_N_QUEUE_DESC;
       for (qp = 0; qp < dev_conf.nb_queue_pairs; qp++)
 	{
+#if DPDK_NO_AEAD
 	  ret = rte_cryptodev_queue_pair_setup (dev_id, qp, &qp_conf,
 						dev_conf.socket_id);
+#else
+	  ret = rte_cryptodev_queue_pair_setup (dev_id, qp, &qp_conf,
+						dev_conf.socket_id, NULL);
+#endif
 	  if (ret < 0)
 	    {
 	      clib_warning ("cryptodev %u qp %u setup error", dev_id, qp);
 	      goto error;
 	    }
 	}
-      vec_validate_aligned (dcm->cop_pools, dev_conf.socket_id,
-			    CLIB_CACHE_LINE_BYTES);
+      vec_validate (dcm->cop_pools, dev_conf.socket_id);
+
+#if ! DPDK_NO_AEAD
+      sess_size = rte_cryptodev_get_private_session_size (dev_id);
+      if (sess_size > max_sess_size)
+	max_sess_size = sess_size;
+#endif
 
       if (!vec_elt (dcm->cop_pools, dev_conf.socket_id))
 	{
@@ -333,20 +376,65 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 					   DPDK_CRYPTO_CACHE_SIZE,
 					   DPDK_CRYPTO_PRIV_SIZE,
 					   dev_conf.socket_id);
-	  vec_free (pool_name);
 
 	  if (!rmp)
 	    {
-	      clib_warning ("failed to allocate mempool on socket %u",
-			    dev_conf.socket_id);
+	      clib_warning ("failed to allocate %s", pool_name);
+	      vec_free (pool_name);
 	      goto error;
 	    }
+	  vec_free (pool_name);
 	  vec_elt (dcm->cop_pools, dev_conf.socket_id) = rmp;
 	}
 
       fprintf (stdout, "%u\t%u\t%u\t%u\n", dev_id, dev_conf.nb_queue_pairs,
 	       DPDK_CRYPTO_NB_SESS_OBJS, DPDK_CRYPTO_CACHE_SIZE);
     }
+
+#if ! DPDK_NO_AEAD
+  /* *INDENT-OFF* */
+  vec_foreach_index (socket_id, dcm->cop_pools)
+    {
+      u8 *pool_name;
+
+      if (!vec_elt (dcm->cop_pools, socket_id))
+	continue;
+
+      vec_validate (dcm->sess_h_pools, socket_id);
+      pool_name = format (0, "crypto_sess_h_socket%u%c",
+			      socket_id, 0);
+      rmp =
+	rte_mempool_create((i8 *)pool_name, DPDK_CRYPTO_NB_SESS_OBJS,
+			   rte_cryptodev_get_header_session_size (),
+			   512, 0, NULL, NULL, NULL, NULL,
+			   socket_id, 0);
+      if (!rmp)
+	{
+	  clib_warning ("failed to allocate %s", pool_name);
+	  vec_free (pool_name);
+	  goto error;
+	}
+      vec_free (pool_name);
+      vec_elt (dcm->sess_h_pools, socket_id) = rmp;
+
+      vec_validate (dcm->sess_pools, socket_id);
+      pool_name = format (0, "crypto_sess_socket%u%c",
+			      socket_id, 0);
+      rmp =
+	rte_mempool_create((i8 *)pool_name, DPDK_CRYPTO_NB_SESS_OBJS,
+			   max_sess_size, 512, 0, NULL, NULL, NULL, NULL,
+			   socket_id, 0);
+      if (!rmp)
+	{
+	  clib_warning ("failed to allocate %s", pool_name);
+	  vec_free (pool_name);
+	  goto error;
+	}
+      vec_free (pool_name);
+      vec_elt (dcm->sess_pools, socket_id) = rmp;
+    }
+  /* *INDENT-ON* */
+#endif
 
   dpdk_esp_init ();
 
