@@ -242,9 +242,11 @@ create_sym_sess (ipsec_sa_t * sa, crypto_sa_session_t * sa_sess,
       cipher_xform.aead.key.length = sa->crypto_key_len;
 
       if (is_outbound)
-	cipher_xform.cipher.op = RTE_CRYPTO_AEAD_OP_ENCRYPT;
+	cipher_xform.cipher.op =
+	  (enum rte_crypto_cipher_operation) RTE_CRYPTO_AEAD_OP_ENCRYPT;
       else
-	cipher_xform.cipher.op = RTE_CRYPTO_AEAD_OP_DECRYPT;
+	cipher_xform.cipher.op =
+	  (enum rte_crypto_cipher_operation) RTE_CRYPTO_AEAD_OP_DECRYPT;
       cipher_xform.next = NULL;
       xfs = &cipher_xform;
       p_key->is_aead = 1;
