@@ -46,6 +46,30 @@
       "revId": "660feec614cb8e1cde1887680672b9f4afcd9de6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_91e8c97d",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2017-08-25T09:33:48Z",
+      "side": 1,
+      "message": "That\u0027s also a fair view; I was thinking about that just to give the user the freedom to have this feature enabled or not. In order not to get it enabled just because the platform is an x86...\nAnyway, it was a suggestion, nothing else. :)",
+      "parentUuid": "3a4b7175_91d1e9cf",
+      "range": {
+        "startLine": 44,
+        "startChar": 37,
+        "endLine": 44,
+        "endChar": 43
+      },
+      "revId": "660feec614cb8e1cde1887680672b9f4afcd9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
