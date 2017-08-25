@@ -286,7 +286,8 @@ dist:
 	    HEAD ; \
 	    git describe > $(BR)/.version ; \
 	else \
-	    (cd .. ; tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude=*.tar) ; \
+	    (cd .. ; mkdir -p $(DIST_SUBDIR); cp -rf $(WS_ROOT)/* $(DIST_SUBDIR); \
+            tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude=*.tar) ; \
 	    src/scripts/version > $(BR)/.version ; \
 	fi
 	@tar --append \
