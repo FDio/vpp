@@ -278,25 +278,38 @@ DIST_FILE = $(BR)/vpp-$(shell src/scripts/version).tar
 DIST_SUBDIR = vpp-$(shell src/scripts/version|cut -f1 -d-)
 
 dist:
-	@if git rev-parse 2> /dev/null ; then \
+	@dist_file=$(DIST_FILE) ; \
+	if git rev-parse 2> /dev/null ; then \
+	    git describe > $(BR)/.version ; \
+	    dirty=`git diff-index --quiet HEAD || echo "dirty"` ; \
+	    if [ ! -z $$dirty ] ; then \
+		git describe | sed -e 's/-g/-dirty/' > $(BR)/.version ; \
+		dist_file=`echo $(DIST_FILE) | sed -e 's/-g/-dirty/'` ; \
+		files=`git status --porcelain 2>/dev/null | grep -e "^ M" -e "^A" | cut -d' ' -f3` ; \
+	    fi ; \
 	    git archive \
 	      --prefix=$(DIST_SUBDIR)/ \
 	      --format=tar \
-	      -o $(DIST_FILE) \
-	    HEAD ; \
-	    git describe > $(BR)/.version ; \
+	      -o $$dist_file \
+	      HEAD ; \
+	    for i in $$files ; do \
+		tar --append \
+		  --file $$dist_file \
+		  --transform='s,$\$i,$(DIST_SUBDIR)/$\$i,' \
+		  $$i ; \
+	    done ; \
 	else \
-	    (cd .. ; tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude=*.tar) ; \
+	    (cd .. ; tar -cf $$dist_file $(DIST_SUBDIR) --exclude=*.tar) ; \
 	    src/scripts/version > $(BR)/.version ; \
-	fi
-	@tar --append \
-	  --file $(DIST_FILE) \
+	fi ; \
+	tar --append \
+	  --file $$dist_file \
 	  --transform='s,.*/.version,$(DIST_SUBDIR)/src/scripts/.version,' \
-	  $(BR)/.version
-	@$(RM) $(BR)/.version $(DIST_FILE).xz
-	@xz -v --threads=0 $(DIST_FILE)
-	@$(RM) $(BR)/vpp-latest.tar.xz
-	@ln -rs $(DIST_FILE).xz $(BR)/vpp-latest.tar.xz
+	  $(BR)/.version ; \
+	$(RM) $(BR)/.version $$dist_file.xz ; \
+	xz -v --threads=0 $$dist_file ; \
+	$(RM) $(BR)/vpp-latest.tar.xz ; \
+	ln -rs $$dist_file.xz $(BR)/vpp-latest.tar.xz
 
 build: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,$(addsuffix -install,$(TARGETS)))
