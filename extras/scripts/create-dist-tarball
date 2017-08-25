@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# For execution from top level vpp Makefile
+#
+# Create dist tarball from clean vpp git tree
+# or from "dirty" git repo adding modified files
+# and new files added but not yet committed.
+#
+# Also builds tar ball from non-git tree with
+# what is presumed to be a source only tree for use
+# with SRPM wrangling.
+
+BR=$1
+DIST_FILE=$2
+DIST_SUBDIR=$3
+
+if git rev-parse 2> /dev/null ; then
+    git describe > $BR/.version
+
+    dirty=`git diff-index --quiet HEAD || echo "dirty"`
+    files=`git status --porcelain 2>/dev/null | grep -e "^ M" -e "^A" | cut -d' ' -f3`
+
+    if [ ! -z $dirty ] ; then
+        git describe | sed -e 's/-g/-dirty/' > $BR/.version
+        DIST_FILE=`echo $2 | sed -e 's/-g/-dirty/'`
+    fi
+    git archive                 \
+      --prefix=$DIST_SUBDIR/     \
+      --format=tar              \
+      -o $DIST_FILE             \
+      HEAD
+
+    for i in $files ; do
+        tar --append            \
+          --file $DIST_FILE     \
+          --transform="s,$i,$DIST_SUBDIR/$i," \
+          $i
+    done
+else
+    (cd .. ; tar -cf $DIST_FILE $DIST_SUBDIR --exclude=*.tar)
+    src/scripts/version > $BR/.version
+fi
+tar --append                    \
+  --file $DIST_FILE             \
+  --transform="s,.*/.version,$DIST_SUBDIR/src/scripts/.version," \
+  $BR/.version
+
+rm $BR/.version $DIST_FILE.xz 2> /dev/null
+xz -v --threads=0 $DIST_FILE
+rm $BR/vpp-latest.tar.xz 2> /dev/null
+ln -rs $DIST_FILE.xz $BR/vpp-latest.tar.xz

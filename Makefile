@@ -278,25 +278,7 @@ DIST_FILE = $(BR)/vpp-$(shell src/scripts/version).tar
 DIST_SUBDIR = vpp-$(shell src/scripts/version|cut -f1 -d-)
 
 dist:
-	@if git rev-parse 2> /dev/null ; then \
-	    git archive \
-	      --prefix=$(DIST_SUBDIR)/ \
-	      --format=tar \
-	      -o $(DIST_FILE) \
-	    HEAD ; \
-	    git describe > $(BR)/.version ; \
-	else \
-	    (cd .. ; tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude=*.tar) ; \
-	    src/scripts/version > $(BR)/.version ; \
-	fi
-	@tar --append \
-	  --file $(DIST_FILE) \
-	  --transform='s,.*/.version,$(DIST_SUBDIR)/src/scripts/.version,' \
-	  $(BR)/.version
-	@$(RM) $(BR)/.version $(DIST_FILE).xz
-	@xz -v --threads=0 $(DIST_FILE)
-	@$(RM) $(BR)/vpp-latest.tar.xz
-	@ln -rs $(DIST_FILE).xz $(BR)/vpp-latest.tar.xz
+	@extras/scripts/create-dist-tarball $(BR) $(DIST_FILE) $(DIST_SUBDIR)
 
 build: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,$(addsuffix -install,$(TARGETS)))
