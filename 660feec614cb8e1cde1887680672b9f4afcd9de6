@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_114e19c2",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2017-08-25T09:13:34Z",
+      "side": 1,
+      "message": "Wouldn\u0027t be nice to AND this condition with AESNI\u003dy?\nSince at line 38 you\u0027re checking whether is being set or not, we could drive this functionality to be enabled/disabled exposing this variable to the end-user.",
+      "range": {
+        "startLine": 44,
+        "startChar": 37,
+        "endLine": 44,
+        "endChar": 43
+      },
+      "revId": "660feec614cb8e1cde1887680672b9f4afcd9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
