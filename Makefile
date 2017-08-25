@@ -99,7 +99,7 @@ endif
 
 RPM_SUSE_DEPENDS = autoconf automake bison ccache chrpath distribution-release gcc6 glibc-devel-static
 RPM_SUSE_DEPENDS += java-1_8_0-openjdk-devel libopenssl-devel libtool lsb-release make openssl-devel
-RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow nasm numactl-devel
+RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow nasm libnuma-devel
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
