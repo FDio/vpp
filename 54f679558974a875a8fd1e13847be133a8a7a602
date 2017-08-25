@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_a7526711",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1201,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-25T16:51:18Z",
+      "side": 1,
+      "message": "If mapping is negative and the action changed, we should update the fwd entries. Therefore, locators_changed should probably converted to something like \"is_updated\". The other two mapping properties lower are cp specific so they they don\u0027t have any effect on dp.",
+      "range": {
+        "startLine": 1201,
+        "startChar": 6,
+        "endLine": 1201,
+        "endChar": 33
+      },
+      "revId": "54f679558974a875a8fd1e13847be133a8a7a602",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_675c6f26",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3442,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-25T16:51:18Z",
+      "side": 1,
+      "message": "nit: move declaration above. Any reason for doing it here?",
+      "range": {
+        "startLine": 3442,
+        "startChar": 2,
+        "endLine": 3442,
+        "endChar": 8
+      },
+      "revId": "54f679558974a875a8fd1e13847be133a8a7a602",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_e7305fea",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 3538,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-25T16:51:18Z",
+      "side": 1,
+      "message": "add this under if",
+      "range": {
+        "startLine": 3533,
+        "startChar": 0,
+        "endLine": 3538,
+        "endChar": 25
+      },
+      "revId": "54f679558974a875a8fd1e13847be133a8a7a602",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_8709ab2e",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_fwd_entry.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 370,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-25T16:51:18Z",
+      "side": 1,
+      "message": "This should be done on negative mapping branch as well, no?",
+      "range": {
+        "startLine": 370,
+        "startChar": 6,
+        "endLine": 370,
+        "endChar": 25
+      },
+      "revId": "54f679558974a875a8fd1e13847be133a8a7a602",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
