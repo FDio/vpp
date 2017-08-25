@@ -282,7 +282,10 @@ dist:
 	    HEAD ; \
 	    git describe > $(BR)/.version ; \
 	else \
-	    (cd .. ; tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude=*.tar) ; \
+	    (cd .. ; mkdir -p $(DIST_SUBDIR); \
+            rsync -av --exclude $(WS_ROOT)/.git/ --exclude $(BR)/build-*/ \
+            --exclude $(BR)/install-*/  $(WS_ROOT)/*  $(DIST_SUBDIR); \
+            tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude=*.tar) ; \
 	    src/scripts/version > $(BR)/.version ; \
 	fi
 	@tar --append \
