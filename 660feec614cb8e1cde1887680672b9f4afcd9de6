@@ -94,6 +94,30 @@
       "revId": "660feec614cb8e1cde1887680672b9f4afcd9de6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_11fcd93d",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2017-08-25T09:57:47Z",
+      "side": 1,
+      "message": "Nah, it\u0027s fine as is. \nI suppose that having that option enabled on x86 platforms provide better performance anyway. So, thinking about it again, it\u0027s better off having it enabled by default.",
+      "parentUuid": "3a4b7175_5102513f",
+      "range": {
+        "startLine": 44,
+        "startChar": 37,
+        "endLine": 44,
+        "endChar": 43
+      },
+      "revId": "660feec614cb8e1cde1887680672b9f4afcd9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
