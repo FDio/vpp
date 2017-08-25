@@ -1186,11 +1186,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
   /* Set up DPDK eal and packet mbuf pool early. */
 
-#if RTE_VERSION >= RTE_VERSION_NUM(17, 5, 0, 0)
   rte_log_set_global_level (log_level);
-#else
-  rte_set_log_level (log_level);
-#endif
 
   vm = vlib_get_main ();
 

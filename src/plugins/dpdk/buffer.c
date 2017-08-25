@@ -213,18 +213,6 @@ fill_free_list (vlib_main_t * vm,
       mb2 = vm->mbuf_alloc_list[i + 2];
       mb3 = vm->mbuf_alloc_list[i + 3];
 
-#if RTE_VERSION < RTE_VERSION_NUM(17, 5, 0, 0)
-      ASSERT (rte_mbuf_refcnt_read (mb0) == 0);
-      ASSERT (rte_mbuf_refcnt_read (mb1) == 0);
-      ASSERT (rte_mbuf_refcnt_read (mb2) == 0);
-      ASSERT (rte_mbuf_refcnt_read (mb3) == 0);
-
-      rte_mbuf_refcnt_set (mb0, 1);
-      rte_mbuf_refcnt_set (mb1, 1);
-      rte_mbuf_refcnt_set (mb2, 1);
-      rte_mbuf_refcnt_set (mb3, 1);
-#endif
-
       b0 = vlib_buffer_from_rte_mbuf (mb0);
       b1 = vlib_buffer_from_rte_mbuf (mb1);
       b2 = vlib_buffer_from_rte_mbuf (mb2);
@@ -258,11 +246,6 @@ fill_free_list (vlib_main_t * vm,
   while (i < n)
     {
       mb0 = vm->mbuf_alloc_list[i];
-
-#if RTE_VERSION < RTE_VERSION_NUM(17, 5, 0, 0)
-      ASSERT (rte_mbuf_refcnt_read (mb0) == 0);
-      rte_mbuf_refcnt_set (mb0, 1);
-#endif
 
       b0 = vlib_buffer_from_rte_mbuf (mb0);
       bi0 = vlib_get_buffer_index (vm, b0);
