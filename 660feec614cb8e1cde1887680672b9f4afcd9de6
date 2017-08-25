@@ -70,6 +70,30 @@
       "revId": "660feec614cb8e1cde1887680672b9f4afcd9de6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_5102513f",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-08-25T09:52:57Z",
+      "side": 1,
+      "message": "It was as you suggested in previous releases.\n\nIMHO It means having more options and more code while not providing anything new as you can achieve same result in different ways.\n\nA reasonable compromise would be to just provide the option as an env variable (as it is) but not through the makefile (like it was before).\nIt would be almost same code but you still would have deps like nasm being installed either way, etc.\n\nWhat do you think about that?",
+      "parentUuid": "3a4b7175_91e8c97d",
+      "range": {
+        "startLine": 44,
+        "startChar": 37,
+        "endLine": 44,
+        "endChar": 43
+      },
+      "revId": "660feec614cb8e1cde1887680672b9f4afcd9de6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
