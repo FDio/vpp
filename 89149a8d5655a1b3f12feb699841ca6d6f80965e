@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_07e7fb41",
+        "filename": "src/plugins/pppoe/pppoe_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 198,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-25T17:05:43Z",
+      "side": 1,
+      "message": "Debug code? Otherwise it defeats the purpose of the initialization done above.",
+      "range": {
+        "startLine": 198,
+        "startChar": 2,
+        "endLine": 198,
+        "endChar": 27
+      },
+      "revId": "89149a8d5655a1b3f12feb699841ca6d6f80965e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_67cfcfb1",
+        "filename": "src/plugins/pppoe/pppoe_export.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-25T17:05:43Z",
+      "side": 1,
+      "message": "What is actually the purpose of this whole file?",
+      "range": {
+        "startLine": 92,
+        "startChar": 0,
+        "endLine": 92,
+        "endChar": 21
+      },
+      "revId": "89149a8d5655a1b3f12feb699841ca6d6f80965e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_a7d5c744",
+        "filename": "src/plugins/pppoe/pppoe_export.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-25T17:05:43Z",
+      "side": 1,
+      "message": "Again, why?",
+      "range": {
+        "startLine": 106,
+        "startChar": 2,
+        "endLine": 106,
+        "endChar": 27
+      },
+      "revId": "89149a8d5655a1b3f12feb699841ca6d6f80965e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
