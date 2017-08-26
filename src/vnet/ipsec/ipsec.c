@@ -434,7 +434,7 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
 	}
       hash_unset (im->sa_index_by_sa_id, sa->id);
       if (im->cb.add_del_sa_sess_cb &&
-	  im->cb.add_del_sa_sess_cb (sa_index, is_add) < 0)
+	  im->cb.add_del_sa_sess_cb (sa_index, 0) < 0)
 	return VNET_API_ERROR_SYSCALL_ERROR_1;
       pool_put (im->sad, sa);
     }
@@ -445,7 +445,7 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
       sa_index = sa - im->sad;
       hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
       if (im->cb.add_del_sa_sess_cb &&
-	  im->cb.add_del_sa_sess_cb (sa_index, is_add) < 0)
+	  im->cb.add_del_sa_sess_cb (sa_index, 1) < 0)
 	return VNET_API_ERROR_SYSCALL_ERROR_1;
     }
   return 0;
@@ -482,7 +482,7 @@ ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update)
       sa->integ_key_len = sa_update->integ_key_len;
     }
 
-  if (sa->crypto_key_len + sa->integ_key_len > 0)
+  if (0 < sa_update->crypto_key_len || 0 < sa_update->integ_key_len)
     {
       if (im->cb.add_del_sa_sess_cb &&
 	  im->cb.add_del_sa_sess_cb (sa_index, 0) < 0)
@@ -516,8 +516,6 @@ ipsec_check_support (ipsec_sa_t * sa)
     return clib_error_return (0, "unsupported aes-gcm-128 crypto-alg");
   if (sa->integ_alg == IPSEC_INTEG_ALG_NONE)
     return clib_error_return (0, "unsupported none integ-alg");
-  if (sa->integ_alg == IPSEC_INTEG_ALG_AES_GCM_128)
-    return clib_error_return (0, "unsupported aes-gcm-128 integ-alg");
 
   return 0;
 }
