@@ -15,6 +15,9 @@
 #ifndef __ESP_H__
 #define __ESP_H__
 
+#include <vnet/ip/ip.h>
+#include <vnet/ipsec/ipsec.h>
+
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/evp.h>
@@ -82,6 +85,7 @@ esp_main_t esp_main;
 #define ESP_WINDOW_SIZE		(64)
 #define ESP_SEQ_MAX 		(4294967295UL)
 
+u8 *format_esp_header (u8 * s, va_list * args);
 
 always_inline int
 esp_replay_check (ipsec_sa_t * sa, u32 seq)
