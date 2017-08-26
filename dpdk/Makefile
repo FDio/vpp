@@ -146,7 +146,6 @@ JOBS := $(if $(shell [ -f /proc/cpuinfo ] && head /proc/cpuinfo),\
 
 # compiler/linker custom arguments
 DPDK_CPU_CFLAGS := -pie -fPIC
-DPDK_EXTRA_LDFLAGS := -g
 
 ifeq ($(DPDK_DEBUG),n)
 DPDK_EXTRA_CFLAGS := -g -mtune=$(DPDK_TUNE)
@@ -297,7 +296,8 @@ config: $(B)/.config.ok
 build-ipsec-mb:
 	mkdir -p $(I)/lib/
 	# Do not build GCM stuff if we are building ISA_L
-	make -C $(AESNIMB_LIB_SOURCE) -j NO_GCM=$(ISA_L_CRYPTO_LIB)
+	make -C $(AESNIMB_LIB_SOURCE) -j NO_GCM=$(ISA_L_CRYPTO_LIB) \
+	  DEBUG=$(DPDK_DEBUG) EXTRA_CFLAGS=-fPIC
 	cp $(AESNIMB_LIB_SOURCE)/libIPSec_MB.a $(I)/lib/
 
 .PHONY: build-isal-crypto

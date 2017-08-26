@@ -61,11 +61,8 @@ API_FILES += dpdk/api/dpdk.api
 
 nobase_include_HEADERS +=					\
   dpdk/device/dpdk.h						\
-  dpdk/api/dpdk_all_api_h.h
-
-nobase_include_HEADERS +=			\
- dpdk/ipsec/ipsec.h		\
- dpdk/ipsec/esp.h
+  dpdk/api/dpdk_all_api_h.h					\
+  dpdk/ipsec/ipsec.h
 
 dpdk_test_plugin_la_SOURCES = 					\
   dpdk/api/dpdk_test.c dpdk/api/dpdk_plugin.api.h
