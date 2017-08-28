@@ -848,18 +848,21 @@ vlib_buffer_add_to_free_list (vlib_main_t * vm,
 			      u32 buffer_index, u8 do_init)
 {
   vlib_buffer_t *b;
-  u32 i;
   b = vlib_get_buffer (vm, buffer_index);
   if (PREDICT_TRUE (do_init))
     vlib_buffer_init_for_free_list (b, f);
   vec_add1_aligned (f->buffers, buffer_index, CLIB_CACHE_LINE_BYTES);
 
-  if (vec_len (f->buffers) > 3 * VLIB_FRAME_SIZE)
+  if (vec_len (f->buffers) > 4 * VLIB_FRAME_SIZE)
     {
+      vlib_buffer_free_list_t *mf;
+      mf = vlib_buffer_get_free_list (vlib_mains[0], f->index);
+      clib_spinlock_lock (&mf->global_buffers_lock);
       /* keep last stored buffers, as they are more likely hot in the cache */
-      for (i = 0; i < VLIB_FRAME_SIZE; i++)
-	vm->os_physmem_free (vlib_get_buffer (vm, i));
+      vec_add_aligned (mf->global_buffers, f->buffers, VLIB_FRAME_SIZE,
+		       CLIB_CACHE_LINE_BYTES);
       vec_delete (f->buffers, VLIB_FRAME_SIZE, 0);
+      clib_spinlock_unlock (&mf->global_buffers_lock);
     }
 }
 
