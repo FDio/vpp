@@ -75,14 +75,23 @@ ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
 DPDK_TARGET           ?= $(MACHINE)-native-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= nhm
 DPDK_TUNE             ?= core-avx2
+else ifeq ($(MACHINE),aarch64)
+export CROSS=""
+ifneq (,$(findstring thunder,$(shell [[ -f /sys/bus/pci/devices/0000:00:01.0/uevent ]] && cat /sys/bus/pci/devices/0000:00:01.0/uevent | grep cavium)))
 ##############################################################################
 # Cavium ThunderX
 ##############################################################################
-else ifneq (,$(findstring thunder,$(shell cat /sys/bus/pci/devices/0000:00:01.0/uevent | grep cavium)))
-export CROSS=""
 DPDK_TARGET           ?= arm64-thunderx-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= thunderx
 DPDK_TUNE             ?= generic
+else
+##############################################################################
+# Generic ARM64
+##############################################################################
+DPDK_TARGET           ?= arm64-armv8a-linuxapp-$(DPDK_CC)
+DPDK_MACHINE          ?= armv8a
+DPDK_TUNE             ?= generic
+endif
 
 ##############################################################################
 # Unknown platofrm
