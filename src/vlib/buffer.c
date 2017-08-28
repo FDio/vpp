@@ -396,6 +396,8 @@ vlib_buffer_create_free_list_helper (vlib_main_t * vm,
 	hash_set (bm->free_list_by_size, f->n_data_bytes, f->index);
     }
 
+  clib_spinlock_init (&f->global_buffers_lock);
+
   for (i = 1; i < vec_len (vlib_mains); i++)
     {
       vlib_buffer_main_t *wbm = vlib_mains[i]->buffer_main;
@@ -509,6 +511,7 @@ fill_free_list (vlib_main_t * vm,
 		vlib_buffer_free_list_t * fl, uword min_free_buffers)
 {
   vlib_buffer_t *buffers, *b;
+  vlib_buffer_free_list_t *mfl;
   int n, n_bytes, i;
   u32 *bi;
   u32 n_remaining, n_alloc, n_this_chunk;
@@ -517,6 +520,22 @@ fill_free_list (vlib_main_t * vm,
   n = min_free_buffers - vec_len (fl->buffers);
   if (n <= 0)
     return min_free_buffers;
+
+  mfl = vlib_buffer_get_free_list (vlib_mains[0], fl->index);
+  if (vec_len (mfl->global_buffers) > 0)
+    {
+      int n_copy, n_left;
+      clib_spinlock_lock (&mfl->global_buffers_lock);
+      n_copy = clib_min (vec_len (mfl->global_buffers), n);
+      n_left = vec_len (mfl->global_buffers) - n_copy;
+      vec_add_aligned (fl->buffers, mfl->global_buffers + n_left, n_copy,
+		       CLIB_CACHE_LINE_BYTES);
+      _vec_len (mfl->global_buffers) = n_left;
+      clib_spinlock_unlock (&mfl->global_buffers_lock);
+      n = min_free_buffers - vec_len (fl->buffers);
+      if (n <= 0)
+	return min_free_buffers;
+    }
 
   /* Always allocate round number of buffers. */
   n = round_pow2 (n, CLIB_CACHE_LINE_BYTES / sizeof (u32));
