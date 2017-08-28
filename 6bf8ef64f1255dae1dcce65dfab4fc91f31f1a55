@@ -22,6 +22,30 @@
       "revId": "6bf8ef64f1255dae1dcce65dfab4fc91f31f1a55",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_6bc1d97f",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-08-28T15:31:19Z",
+      "side": 1,
+      "message": "Yes, make dist will still work from top level and it just calls the script. It is just the logic is moved to the script but otherwise unchanged.",
+      "parentUuid": "3a4b7175_68daff79",
+      "range": {
+        "startLine": 281,
+        "startChar": 0,
+        "endLine": 281,
+        "endChar": 70
+      },
+      "revId": "6bf8ef64f1255dae1dcce65dfab4fc91f31f1a55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
