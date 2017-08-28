@@ -68,25 +68,21 @@ else
 DPDK_CC=gcc
 endif
 
-##############################################################################
-# Intel x86
-##############################################################################
 ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
 DPDK_TARGET           ?= $(MACHINE)-native-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= nhm
 DPDK_TUNE             ?= core-avx2
-##############################################################################
-# Cavium ThunderX
-##############################################################################
-else ifneq (,$(findstring thunder,$(shell cat /sys/bus/pci/devices/0000:00:01.0/uevent | grep cavium)))
+else ifeq ($(MACHINE),aarch64)
 export CROSS=""
+ifneq (,$(findstring thunder,$(shell [[ -f /sys/bus/pci/devices/0000:00:01.0/uevent ]] && cat /sys/bus/pci/devices/0000:00:01.0/uevent | grep cavium)))
 DPDK_TARGET           ?= arm64-thunderx-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= thunderx
 DPDK_TUNE             ?= generic
-
-##############################################################################
-# Unknown platofrm
-##############################################################################
+else
+DPDK_TARGET           ?= arm64-armv8a-linuxapp-$(DPDK_CC)
+DPDK_MACHINE          ?= armv8a
+DPDK_TUNE             ?= generic
+endif
 else
 $(error unknown platform)
 endif
