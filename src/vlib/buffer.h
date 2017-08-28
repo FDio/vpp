@@ -350,6 +350,12 @@ typedef struct vlib_buffer_free_list_t
   /* Vector of free buffers.  Each element is a byte offset into I/O heap. */
   u32 *buffers;
 
+  /* global vector of free buffers, used only on main thread.
+     Bufers are returned to global buffers only in case when number of
+     buffers on free buffers list grows about threshold */
+  u32 *global_buffers;
+  clib_spinlock_t global_buffers_lock;
+
   /* Memory chunks allocated for this free list
      recorded here so they can be freed when free list
      is deleted. */
