@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_68daff79",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 281,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-08-28T10:12:41Z",
+      "side": 1,
+      "message": "Can we keep original \"make dist\" target here, as other people might want to create tarball out of current git tree.",
+      "range": {
+        "startLine": 281,
+        "startChar": 0,
+        "endLine": 281,
+        "endChar": 70
+      },
+      "revId": "6bf8ef64f1255dae1dcce65dfab4fc91f31f1a55",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
