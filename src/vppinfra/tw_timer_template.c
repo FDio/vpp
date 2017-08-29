@@ -18,6 +18,87 @@
  *
  *
  */
+#if TW_START_STOP_TRACE_SIZE > 0
+
+void TW (tw_timer_trace) (TWT (tw_timer_wheel) * tw, u32 timer_id,
+			  u32 pool_index, u32 handle)
+{
+  TWT (trace) * t = &tw->traces[tw->trace_index];
+
+  t->timer_id = timer_id;
+  t->pool_index = pool_index;
+  t->handle = handle;
+
+  tw->trace_index++;
+  if (tw->trace_index == TW_START_STOP_TRACE_SIZE)
+    {
+      tw->trace_index = 0;
+      tw->trace_wrapped++;
+    }
+}
+
+void TW (tw_search_trace) (TWT (tw_timer_wheel) * tw, u32 handle)
+{
+  u32 i, start_pos;
+  TWT (trace) * t;
+  char *s = "bogus!";
+
+  /* reverse search for the supplied handle */
+
+  start_pos = tw->trace_index;
+  if (start_pos == 0)
+    start_pos = TW_START_STOP_TRACE_SIZE - 1;
+  else
+    start_pos--;
+
+  for (i = start_pos; i > 0; i--)
+    {
+      t = &tw->traces[i];
+      if (t->handle == handle)
+	{
+	  switch (t->timer_id)
+	    {
+	    case 0xFF:
+	      s = "stopped";
+	      break;
+	    case 0xFE:
+	      s = "expired";
+	      break;
+	    default:
+	      s = "started";
+	      break;
+	    }
+	  fformat (stderr, "handle 0x%x (%d) %s at trace %d\n",
+		   handle, handle, s, i);
+	}
+    }
+  if (tw->trace_wrapped > 0)
+    {
+      for (i = TW_START_STOP_TRACE_SIZE; i >= tw->trace_index; i--)
+	{
+	  t = &tw->traces[i];
+	  if (t->handle == handle)
+	    {
+	      switch (t->timer_id)
+		{
+		case 0xFF:
+		  s = "stopped";
+		  break;
+		case 0xFE:
+		  s = "expired";
+		  break;
+		default:
+		  s = "started";
+		  break;
+		}
+	      fformat (stderr, "handle 0x%x (%d) %s at trace %d\n",
+		       handle, handle, s, i);
+	    }
+	}
+    }
+}
+#endif /* TW_START_STOP_TRACE_SIZE > 0 */
+
 static inline u32
 TW (make_internal_timer_handle) (u32 pool_index, u32 timer_id)
 {
@@ -127,6 +208,9 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
       t->expiration_time = tw->current_tick + interval;
       ts = &tw->overflow;
       timer_addhead (tw->timers, ts->head_index, t - tw->timers);
+#if TW_START_STOP_TRACE_SIZE > 0
+      TW (tw_timer_trace) (tw, timer_id, pool_index, t - tw->timers);
+#endif
       return t - tw->timers;
     }
 #endif
@@ -177,7 +261,9 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
       ts = &tw->w[TW_TIMER_RING_GLACIER][glacier_ring_offset];
 
       timer_addhead (tw->timers, ts->head_index, t - tw->timers);
-
+#if TW_START_STOP_TRACE_SIZE > 0
+      TW (tw_timer_trace) (tw, timer_id, pool_index, t - tw->timers);
+#endif
       return t - tw->timers;
     }
 #endif
@@ -193,7 +279,9 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
       ts = &tw->w[TW_TIMER_RING_SLOW][slow_ring_offset];
 
       timer_addhead (tw->timers, ts->head_index, t - tw->timers);
-
+#if TW_START_STOP_TRACE_SIZE > 0
+      TW (tw_timer_trace) (tw, timer_id, pool_index, t - tw->timers);
+#endif
       return t - tw->timers;
     }
 #else
@@ -208,6 +296,9 @@ TW (tw_timer_start) (TWT (tw_timer_wheel) * tw, u32 pool_index, u32 timer_id,
 #if TW_FAST_WHEEL_BITMAP
   tw->fast_slot_bitmap = clib_bitmap_set (tw->fast_slot_bitmap,
 					  fast_ring_offset, 1);
+#endif
+#if TW_START_STOP_TRACE_SIZE > 0
+  TW (tw_timer_trace) (tw, timer_id, pool_index, t - tw->timers);
 #endif
   return t - tw->timers;
 }
@@ -265,6 +356,9 @@ void TW (tw_timer_stop) (TWT (tw_timer_wheel) * tw, u32 handle)
   if (pool_is_free_index (tw->timers, handle))
     return;
 #endif
+#if TW_START_STOP_TRACE_SIZE > 0
+  TW (tw_timer_trace) (tw, ~0, ~0, handle);
+#endif
 
   t = pool_elt_at_index (tw->timers, handle);
 
@@ -302,6 +396,7 @@ TW (tw_timer_wheel_init) (TWT (tw_timer_wheel) * tw,
   tw->timer_interval = timer_interval_in_seconds;
   tw->ticks_per_second = 1.0 / timer_interval_in_seconds;
   tw->first_expires_tick = ~0ULL;
+
   vec_validate (tw->expired_timer_handles, 0);
   _vec_len (tw->expired_timer_handles) = 0;
 
@@ -476,6 +571,9 @@ static inline
 				 new_glacier_ring_offset == 0))
 		{
 		  vec_add1 (callback_vector, t->user_handle);
+#if TW_START_STOP_TRACE_SIZE > 0
+		  TW (tw_timer_trace) (tw, 0xfe, ~0, t - tw->timers);
+#endif
 		  pool_put (tw->timers, t);
 		}
 	      /* Timer moves to the glacier ring */
@@ -536,6 +634,9 @@ static inline
 				 t->fast_ring_offset == 0))
 		{
 		  vec_add1 (callback_vector, t->user_handle);
+#if TW_START_STOP_TRACE_SIZE > 0
+		  TW (tw_timer_trace) (tw, 0xfe, ~0, t - tw->timers);
+#endif
 		  pool_put (tw->timers, t);
 		}
 	      /* Timer expires during slow-wheel tick 0 */
@@ -587,6 +688,9 @@ static inline
 	      if (PREDICT_FALSE (t->fast_ring_offset == 0))
 		{
 		  vec_add1 (callback_vector, t->user_handle);
+#if TW_START_STOP_TRACE_SIZE > 0
+		  TW (tw_timer_trace) (tw, 0xfe, ~0, t - tw->timers);
+#endif
 		  pool_put (tw->timers, t);
 		}
 	      else		/* typical case */
@@ -620,6 +724,9 @@ static inline
 	  t = pool_elt_at_index (tw->timers, next_index);
 	  next_index = t->next;
 	  vec_add1 (callback_vector, t->user_handle);
+#if TW_START_STOP_TRACE_SIZE > 0
+	  TW (tw_timer_trace) (tw, 0xfe, ~0, t - tw->timers);
+#endif
 	  pool_put (tw->timers, t);
 	}
 
@@ -628,10 +735,7 @@ static inline
 	{
 	  /* The callback is optional. We return the u32 * handle vector */
 	  if (tw->expired_timer_callback)
-	    {
-	      tw->expired_timer_callback (callback_vector);
-	      _vec_len (callback_vector) = 0;
-	    }
+	    tw->expired_timer_callback (callback_vector);
 	  tw->expired_timer_handles = callback_vector;
 	}
 
