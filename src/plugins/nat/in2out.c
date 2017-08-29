@@ -3340,6 +3340,7 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
             }
 
           key0.addr = ip0->src_address;
+          key0.protocol = proto0;
           key0.port = udp0->src_port;
           key0.fib_index = rx_fib_index0;
 
