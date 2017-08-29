@@ -1452,14 +1452,28 @@ tcp_timer_persist_handler (u32 index)
 
   /* Make sure timer handle is set to invalid */
   tc->timers[TCP_TIMER_PERSIST] = TCP_TIMER_HANDLE_INVALID;
-  offset = tc->snd_una_max - tc->snd_una;
 
   /* Problem already solved or worse */
-  available_bytes = stream_session_tx_fifo_max_dequeue (&tc->connection);
   if (tc->state == TCP_STATE_CLOSED || tc->state > TCP_STATE_ESTABLISHED
-      || tc->snd_wnd > tc->snd_mss || tcp_in_recovery (tc)
-      || !available_bytes || available_bytes <= offset)
+      || tc->snd_wnd > tc->snd_mss || tcp_in_recovery (tc))
     return;
+
+  available_bytes = stream_session_tx_fifo_max_dequeue (&tc->connection);
+  offset = tc->snd_una_max - tc->snd_una;
+
+  /* Reprogram persist if no new bytes available to send. We may have data
+   * next time */
+  if (!available_bytes)
+    {
+      tcp_persist_timer_set (tc);
+      return;
+    }
+
+  if (available_bytes <= offset)
+    {
+      ASSERT (tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT));
+      return;
+    }
 
   /* Increment RTO backoff */
   tc->rto_boff += 1;
