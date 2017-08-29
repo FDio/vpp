@@ -10,6 +10,7 @@
 /build-root/path_setup
 /build-root/build-config.mk
 /build-root/deb/debian/vpp-plugins/
+/build-root/deb/.pybuild/
 /build-root/*.deb
 /build-root/*.rpm
 /build-root/*.changes
