@@ -18,10 +18,11 @@ TESTS =
 if ENABLE_TESTS
 TESTS  +=  test_bihash_template \
 	   test_dlist \
-	   test_elog \
 	   test_elf \
+	   test_elog \
 	   test_fifo \
 	   test_format \
+	   test_fpool \
 	   test_hash \
 	   test_heap \
 	   test_longjmp \
@@ -42,17 +43,16 @@ TESTS  +=  test_bihash_template \
 	   test_zvec
 endif
 
-TESTS += test_bihash_template
-
 noinst_PROGRAMS = $(TESTS)
 check_PROGRAMS	= $(TESTS)
 
 test_bihash_template_SOURCES = vppinfra/test_bihash_template.c
 test_dlist_SOURCES = vppinfra/test_dlist.c
-test_elog_SOURCES = vppinfra/test_elog.c
 test_elf_SOURCES = vppinfra/test_elf.c
+test_elog_SOURCES = vppinfra/test_elog.c
 test_fifo_SOURCES = vppinfra/test_fifo.c
 test_format_SOURCES = vppinfra/test_format.c
+test_fpool_SOURCES = vppinfra/test_fpool.c
 test_hash_SOURCES = vppinfra/test_hash.c
 test_heap_SOURCES = vppinfra/test_heap.c
 test_longjmp_SOURCES = vppinfra/test_longjmp.c
@@ -61,8 +61,8 @@ test_md5_SOURCES = vppinfra/test_md5.c
 test_mheap_SOURCES = vppinfra/test_mheap.c
 test_pool_iterate_SOURCES = vppinfra/test_pool_iterate.c
 test_ptclosure_SOURCES = vppinfra/test_ptclosure.c
-test_random_SOURCES = vppinfra/test_random.c
 test_random_isaac_SOURCES = vppinfra/test_random_isaac.c
+test_random_SOURCES = vppinfra/test_random.c
 test_serialize_SOURCES = vppinfra/test_serialize.c
 test_slist_SOURCES = vppinfra/test_slist.c
 test_socket_SOURCES = vppinfra/test_socket.c
@@ -76,10 +76,11 @@ test_zvec_SOURCES = vppinfra/test_zvec.c
 # So we'll need -DDEBUG to enable ASSERTs
 test_bihash_template_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_dlist_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
-test_elog_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_elf_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_elog_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_fifo_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_format_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_fpool_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_hash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_heap_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_longjmp_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -90,9 +91,9 @@ test_pool_iterate_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_ptclosure_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_random_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_random_isaac_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
-test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_serialize_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_slist_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
+test_socket_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_time_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_timing_wheel_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_tw_timer_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -101,10 +102,11 @@ test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 
 test_bihash_template_LDADD =	libvppinfra.la
 test_dlist_LDADD =	libvppinfra.la
-test_elog_LDADD =	libvppinfra.la
 test_elf_LDADD =	libvppinfra.la
+test_elog_LDADD =	libvppinfra.la
 test_fifo_LDADD =	libvppinfra.la
 test_format_LDADD =	libvppinfra.la
+test_fpool_LDADD =	libvppinfra.la
 test_hash_LDADD =	libvppinfra.la
 test_heap_LDADD =	libvppinfra.la
 test_longjmp_LDADD =	libvppinfra.la
@@ -113,8 +115,8 @@ test_md5_LDADD =	libvppinfra.la
 test_mheap_LDADD =	libvppinfra.la
 test_pool_iterate_LDADD =	libvppinfra.la
 test_ptclosure_LDADD =	libvppinfra.la
-test_random_LDADD =	libvppinfra.la
 test_random_isaac_LDADD =	libvppinfra.la
+test_random_LDADD =	libvppinfra.la
 test_serialize_LDADD =	libvppinfra.la
 test_slist_LDADD =	libvppinfra.la
 test_socket_LDADD =	libvppinfra.la
@@ -126,10 +128,11 @@ test_zvec_LDADD =	libvppinfra.la
 
 test_bihash_template_LDFLAGS = -static
 test_dlist_LDFLAGS = -static
-test_elog_LDFLAGS = -static
 test_elf_LDFLAGS = -static
+test_elog_LDFLAGS = -static
 test_fifo_LDFLAGS = -static
 test_format_LDFLAGS = -static
+test_fpool_LDFLAGS = -static
 test_hash_LDFLAGS = -static
 test_heap_LDFLAGS = -static
 test_longjmp_LDFLAGS = -static
@@ -138,8 +141,8 @@ test_md5_LDFLAGS = -static
 test_mheap_LDFLAGS = -static
 test_pool_iterate_LDFLAGS = -static
 test_ptclosure_LDFLAGS = -static
-test_random_LDFLAGS = -static
 test_random_isaac_LDFLAGS = -static
+test_random_LDFLAGS = -static
 test_serialize_LDFLAGS = -static
 test_slist_LDFLAGS = -static
 test_socket_LDFLAGS = -static
@@ -247,6 +250,7 @@ CLIB_CORE = \
   vppinfra/fifo.c \
   vppinfra/fheap.c \
   vppinfra/format.c \
+  vppinfra/pool.c \
   vppinfra/graph.c \
   vppinfra/hash.c \
   vppinfra/heap.c \
