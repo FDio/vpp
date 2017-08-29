@@ -207,10 +207,21 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
   return 0;
 }
 
+static u8 *cache_uri;
+static session_type_t cache_sst;
+static transport_endpoint_t *cache_tep;
+
 int
 parse_uri (char *uri, session_type_t * sst, transport_endpoint_t * tep)
 {
   unformat_input_t _input, *input = &_input;
+
+  if (cache_uri && !strncmp (uri, (char *) cache_uri, vec_len (cache_uri)))
+    {
+      *sst = cache_sst;
+      *tep = *cache_tep;
+      return 0;
+    }
 
   /* Make sure */
   uri = (char *) format (0, "%s%c", uri, 0);
@@ -223,6 +234,14 @@ parse_uri (char *uri, session_type_t * sst, transport_endpoint_t * tep)
       return VNET_API_ERROR_INVALID_VALUE;
     }
   unformat_free (input);
+
+  vec_free (cache_uri);
+  cache_uri = (u8 *) uri;
+  cache_sst = *sst;
+  if (cache_tep)
+    clib_mem_free (cache_tep);
+  cache_tep = clib_mem_alloc (sizeof (*tep));
+  *cache_tep = *tep;
 
   return 0;
 }

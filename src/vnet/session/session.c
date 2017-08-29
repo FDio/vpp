@@ -889,32 +889,24 @@ session_manager_main_enable (vlib_main_t * vm)
     session_vpp_event_queue_allocate (smm, i);
 
   /* Preallocate sessions */
-  if (num_threads == 1)
+  if (smm->preallocated_sessions)
     {
-      for (i = 0; i < smm->preallocated_sessions; i++)
+      if (num_threads == 1)
 	{
-	  stream_session_t *ss __attribute__ ((unused));
-	  pool_get_aligned (smm->sessions[0], ss, CLIB_CACHE_LINE_BYTES);
+	  pool_init_fixed (smm->sessions[0], smm->preallocated_sessions);
 	}
-
-      for (i = 0; i < smm->preallocated_sessions; i++)
-	pool_put_index (smm->sessions[0], i);
-    }
-  else
-    {
-      int j;
-      preallocated_sessions_per_worker = smm->preallocated_sessions /
-	(num_threads - 1);
-
-      for (j = 1; j < num_threads; j++)
+      else
 	{
-	  for (i = 0; i < preallocated_sessions_per_worker; i++)
+	  int j;
+	  preallocated_sessions_per_worker =
+	    (1.1 * (f64) smm->preallocated_sessions /
+	     (f64) (num_threads - 1));
+
+	  for (j = 1; j < num_threads; j++)
 	    {
-	      stream_session_t *ss __attribute__ ((unused));
-	      pool_get_aligned (smm->sessions[j], ss, CLIB_CACHE_LINE_BYTES);
+	      pool_init_fixed (smm->sessions[j],
+			       preallocated_sessions_per_worker);
 	    }
-	  for (i = 0; i < preallocated_sessions_per_worker; i++)
-	    pool_put_index (smm->sessions[j], i);
 	}
     }
 
