@@ -1246,7 +1246,7 @@ done:
 
 VLIB_CLI_COMMAND (add_address_command, static) = {
   .path = "nat44 add address",
-  .short_help = "nat44 add addresses <ip4-range-start> [- <ip4-range-end>] "
+  .short_help = "nat44 add address <ip4-range-start> [- <ip4-range-end>] "
                 "[tenant-vrf <vrf-id>] [del]",
   .function = add_address_command_fn,
 };
@@ -1503,7 +1503,7 @@ done:
  * to to the local network host.
  * To create static mapping between local host address 10.0.0.3 port 6303 and
  * external address 4.4.4.4 port 3606 for TCP protocol use:
- *  vpp# nat44 add static mapping local tcp 10.0.0.3 6303 external 4.4.4.4 3606
+ *  vpp# nat44 add static mapping tcp local 10.0.0.3 6303 external 4.4.4.4 3606
  * If not runnig "static mapping only" NAT plugin mode use before:
  *  vpp# nat44 add address 4.4.4.4
  * To create static mapping between local and external address use:
@@ -1514,7 +1514,7 @@ VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
   .path = "nat44 add static mapping",
   .function = add_static_mapping_command_fn,
   .short_help =
-    "nat44 add static mapping local tcp|udp|icmp <addr> [<port>] external <addr> [<port>] [vrf <table-id>] [del]",
+    "nat44 add static mapping tcp|udp|icmp local <addr> [<port>] external <addr> [<port>] [vrf <table-id>] [del]",
 };
 
 static clib_error_t *
