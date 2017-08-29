@@ -191,7 +191,7 @@ typedef struct vhost_user_msg {
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
-  u16 qsz;
+  u16 qsz_mask;
   u16 last_avail_idx;
   u16 last_used_idx;
   u16 n_since_last_int;
