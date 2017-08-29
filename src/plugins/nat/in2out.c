@@ -3340,6 +3340,7 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
             }
 
           key0.addr = ip0->src_address;
+          key0.protocol = proto0;
           key0.port = udp0->src_port;
           key0.fib_index = rx_fib_index0;
 
@@ -3398,7 +3399,7 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
             }
 
           /* Hairpinning */
-          snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
+          //snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
 
         trace0:
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
