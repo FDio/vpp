@@ -330,7 +330,13 @@ stream_session_enqueue_notify (stream_session_t * s, u8 block)
   static u32 serial_number;
 
   if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
-    return 0;
+    {
+      /* Session is closed so app will never clean up. Flush rx fifo */
+      u32 to_dequeue = svm_fifo_max_dequeue (s->server_rx_fifo);
+      if (to_dequeue)
+	svm_fifo_dequeue_drop (s->server_rx_fifo, to_dequeue);
+      return 0;
+    }
 
   /* Get session's server */
   app = application_get_if_valid (s->app_index);
