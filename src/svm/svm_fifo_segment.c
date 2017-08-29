@@ -461,7 +461,7 @@ svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s, svm_fifo_t * f,
 
   freelist_index = f->freelist_index;
 
-  ASSERT (freelist_index > 0 && freelist_index < vec_len (fsh->free_fifos));
+  ASSERT (freelist_index < vec_len (fsh->free_fifos));
 
   ssvm_lock_non_recursive (sh, 2);
   oldheap = ssvm_push_heap (sh);

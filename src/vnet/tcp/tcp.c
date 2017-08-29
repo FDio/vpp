@@ -1150,6 +1150,10 @@ tcp_timer_establish_handler (u32 conn_index)
   else
     {
       tc = tcp_connection_get (conn_index, vlib_get_thread_index ());
+      /* note: the connection may have already disappeared */
+      if (PREDICT_FALSE (tc == 0))
+	return;
+
       ASSERT (tc->state == TCP_STATE_SYN_RCVD);
     }
   tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
@@ -1244,7 +1248,7 @@ tcp_main_enable (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   clib_error_t *error = 0;
   u32 num_threads;
-  int i, thread;
+  int thread;
   tcp_connection_t *tc __attribute__ ((unused));
   u32 preallocated_connections_per_thread;
 
@@ -1297,21 +1301,17 @@ tcp_main_enable (vlib_main_t * vm)
     }
   for (; thread < num_threads; thread++)
     {
-      for (i = 0; i < preallocated_connections_per_thread; i++)
-	pool_get (tm->connections[thread], tc);
-
-      for (i = 0; i < preallocated_connections_per_thread; i++)
-	pool_put_index (tm->connections[thread], i);
+      if (preallocated_connections_per_thread)
+	pool_init_fixed (tm->connections[thread],
+			 preallocated_connections_per_thread);
     }
 
   /*
-   * Preallocate half-open connections
+   * Use a preallocated half-open connection pool?
    */
-  for (i = 0; i < tm->preallocated_half_open_connections; i++)
-    pool_get (tm->half_open_connections, tc);
-
-  for (i = 0; i < tm->preallocated_half_open_connections; i++)
-    pool_put_index (tm->half_open_connections, i);
+  if (tm->preallocated_half_open_connections)
+    pool_init_fixed (tm->half_open_connections,
+		     tm->preallocated_half_open_connections);
 
   /* Initialize per worker thread tx buffers (used for control messages) */
   vec_validate (tm->tx_buffers, num_threads - 1);

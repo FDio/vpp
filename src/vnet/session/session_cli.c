@@ -115,8 +115,8 @@ unformat_stream_session_id (unformat_input_t * input, va_list * args)
     {
       *proto = TRANSPORT_PROTO_UDP;
     }
-  else if (unformat (input, "%U:%d->%U:%d", unformat_ip4_address, &lcl->ip4,
-		     lcl_port, unformat_ip4_address, &rmt->ip4, rmt_port))
+  if (unformat (input, "%U:%d->%U:%d", unformat_ip4_address, &lcl->ip4,
+		lcl_port, unformat_ip4_address, &rmt->ip4, rmt_port))
     {
       *is_ip4 = 1;
       tuple_is_set = 1;
