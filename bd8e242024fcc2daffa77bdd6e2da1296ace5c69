@@ -22,6 +22,30 @@
       "revId": "bd8e242024fcc2daffa77bdd6e2da1296ace5c69",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_71ac26ee",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 2
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2017-08-29T14:42:24Z",
+      "side": 0,
+      "message": "I thought the code was clear enough to not need these comments. I\u0027ll add them back as requested.",
+      "parentUuid": "3a4b7175_ceab3b88",
+      "range": {
+        "startLine": 71,
+        "startChar": 0,
+        "endLine": 73,
+        "endChar": 78
+      },
+      "revId": "bd8e242024fcc2daffa77bdd6e2da1296ace5c69",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
