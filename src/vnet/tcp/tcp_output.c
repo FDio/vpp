@@ -440,13 +440,16 @@ tcp_init_mss (tcp_connection_t * tc)
 always_inline int
 tcp_alloc_tx_buffers (tcp_main_t * tm, u8 thread_index, u32 n_free_buffers)
 {
+  u32 current_length = vec_len (tm->tx_buffers[thread_index]);
+
   vec_validate (tm->tx_buffers[thread_index],
-		vec_len (tm->tx_buffers[thread_index]) + n_free_buffers - 1);
+		current_length + n_free_buffers - 1);
   _vec_len (tm->tx_buffers[thread_index]) =
-    vlib_buffer_alloc_from_free_list (vlib_get_main (),
-				      tm->tx_buffers[thread_index],
-				      n_free_buffers,
-				      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+    current_length + vlib_buffer_alloc_from_free_list (vlib_get_main (),
+						       tm->tx_buffers
+						       [thread_index],
+						       n_free_buffers,
+						       VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
   /* buffer shortage, report failure */
   if (vec_len (tm->tx_buffers[thread_index]) == 0)
     {
@@ -1293,11 +1296,17 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   if (is_syn)
     {
       tc = tcp_half_open_connection_get (index);
+      /* Note: the connection may have transitioned to ESTABLISHED... */
+      if (PREDICT_FALSE (tc == 0))
+	return;
       tc->timers[TCP_TIMER_RETRANSMIT_SYN] = TCP_TIMER_HANDLE_INVALID;
     }
   else
     {
       tc = tcp_connection_get (index, thread_index);
+      /* Note: the connection may have been closed and pool_put */
+      if (PREDICT_FALSE (tc == 0))
+	return;
       tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
     }
 
@@ -1332,24 +1341,26 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
 
-      /* Send one segment */
+      /* Send one segment. Note that n_bytes may be zero due to buffer shortfall  */
       n_bytes = tcp_prepare_retransmit_segment (tc, 0, tc->snd_mss, &b);
-      ASSERT (n_bytes);
-      bi = vlib_get_buffer_index (vm, b);
+
       /* TODO be less aggressive about this */
       scoreboard_clear (&tc->sack_sb);
 
       if (n_bytes == 0)
 	{
-	  clib_warning ("could not retransmit anything");
-	  clib_warning ("%U", format_tcp_connection, tc, 2);
-
+	  if (b)
+	    {
+	      clib_warning ("retransmit fail: %U", format_tcp_connection, tc,
+			    2);
+	      ASSERT (tc->rto_boff > 1 && tc->snd_una == tc->snd_congestion);
+	    }
 	  /* Try again eventually */
 	  tcp_retransmit_timer_set (tc);
-	  ASSERT (0 || (tc->rto_boff > 1
-			&& tc->snd_una == tc->snd_congestion));
 	  return;
 	}
+
+      bi = vlib_get_buffer_index (vm, b);
 
       /* For first retransmit, record timestamp (Eifel detection RFC3522) */
       if (tc->rto_boff == 1)
@@ -1378,7 +1389,10 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
       if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
-	return;
+	{
+	  clib_warning ("tcp_get_free_buffer_index FAIL");
+	  return;
+	}
       b = vlib_get_buffer (vm, bi);
       tcp_init_buffer (vm, b);
       tcp_push_hdr_i (tc, b, tc->state, 1);
