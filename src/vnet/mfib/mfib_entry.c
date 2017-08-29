@@ -404,7 +404,7 @@ mfib_entry_alloc (u32 fib_index,
      */
     mfib_entry->mfe_flags = 0;
     mfib_entry->mfe_fib_index = fib_index;
-    mfib_entry->mfe_prefix = *prefix;
+    memcpy(&mfib_entry->mfe_prefix, prefix, sizeof(mfib_entry->mfe_prefix));
     mfib_entry->mfe_srcs = NULL;
     mfib_entry->mfe_itfs = NULL;
     mfib_entry->mfe_rpf_id = MFIB_RPF_ID_NONE;
