@@ -854,7 +854,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	  (msg.state.num == 0) ||	/* it cannot be zero */
 	  ((msg.state.num - 1) & msg.state.num))	/* must be power of 2 */
 	goto close_socket;
-      vui->vrings[msg.state.index].qsz = msg.state.num;
+      vui->vrings[msg.state.index].qsz_mask = msg.state.num - 1;
       break;
 
     case VHOST_USER_SET_VRING_ADDR:
@@ -1288,9 +1288,8 @@ vhost_user_rx_trace (vhost_trace_t * t,
 		     vlib_buffer_t * b, vhost_user_vring_t * txvq)
 {
   vhost_user_main_t *vum = &vhost_user_main;
-  u32 qsz_mask = txvq->qsz - 1;
   u32 last_avail_idx = txvq->last_avail_idx;
-  u32 desc_current = txvq->avail->ring[last_avail_idx & qsz_mask];
+  u32 desc_current = txvq->avail->ring[last_avail_idx & txvq->qsz_mask];
   vring_desc_t *hdr_desc = 0;
   virtio_net_hdr_mrg_rxbuf_t *hdr;
   u32 hint = 0;
@@ -1409,19 +1408,19 @@ vhost_user_rx_discard_packet (vlib_main_t * vm,
    */
   u32 discarded_packets = 0;
   u32 avail_idx = txvq->avail->idx;
-  u16 qsz_mask = txvq->qsz - 1;
   while (discarded_packets != discard_max)
     {
       if (avail_idx == txvq->last_avail_idx)
 	goto out;
 
       u16 desc_chain_head =
-	txvq->avail->ring[txvq->last_avail_idx & qsz_mask];
+	txvq->avail->ring[txvq->last_avail_idx & txvq->qsz_mask];
       txvq->last_avail_idx++;
-      txvq->used->ring[txvq->last_used_idx & qsz_mask].id = desc_chain_head;
-      txvq->used->ring[txvq->last_used_idx & qsz_mask].len = 0;
+      txvq->used->ring[txvq->last_used_idx & txvq->qsz_mask].id =
+	desc_chain_head;
+      txvq->used->ring[txvq->last_used_idx & txvq->qsz_mask].len = 0;
       vhost_user_log_dirty_ring (vui, txvq,
-				 ring[txvq->last_used_idx & qsz_mask]);
+				 ring[txvq->last_used_idx & txvq->qsz_mask]);
       txvq->last_used_idx++;
       discarded_packets++;
     }
@@ -1469,7 +1468,6 @@ vhost_user_if_input (vlib_main_t * vm,
   u32 n_left_to_next, *to_next;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 n_trace = vlib_get_trace_count (vm, node);
-  u16 qsz_mask;
   u32 map_hint = 0;
   u16 thread_index = vlib_get_thread_index ();
   u16 copy_len = 0;
@@ -1529,7 +1527,7 @@ vhost_user_if_input (vlib_main_t * vm,
       return 0;
     }
 
-  if (PREDICT_FALSE (n_left == txvq->qsz))
+  if (PREDICT_FALSE (n_left == (txvq->qsz_mask + 1)))
     {
       /*
        * Informational error logging when VPP is not
@@ -1538,8 +1536,6 @@ vhost_user_if_input (vlib_main_t * vm,
       vlib_error_count (vm, node->node_index,
 			VHOST_USER_INPUT_FUNC_ERROR_FULL_RX_QUEUE, 1);
     }
-
-  qsz_mask = txvq->qsz - 1;
 
   if (n_left > VLIB_FRAME_SIZE)
     n_left = VLIB_FRAME_SIZE;
@@ -1605,7 +1601,8 @@ vhost_user_if_input (vlib_main_t * vm,
 	      break;
 	    }
 
-	  desc_current = txvq->avail->ring[txvq->last_avail_idx & qsz_mask];
+	  desc_current =
+	    txvq->avail->ring[txvq->last_avail_idx & txvq->qsz_mask];
 	  vum->cpus[thread_index].rx_buffers_len--;
 	  bi_current = (vum->cpus[thread_index].rx_buffers)
 	    [vum->cpus[thread_index].rx_buffers_len];
@@ -1621,10 +1618,12 @@ vhost_user_if_input (vlib_main_t * vm,
 					    rx_buffers_len - 1], LOAD);
 
 	  /* Just preset the used descriptor id and length for later */
-	  txvq->used->ring[txvq->last_used_idx & qsz_mask].id = desc_current;
-	  txvq->used->ring[txvq->last_used_idx & qsz_mask].len = 0;
+	  txvq->used->ring[txvq->last_used_idx & txvq->qsz_mask].id =
+	    desc_current;
+	  txvq->used->ring[txvq->last_used_idx & txvq->qsz_mask].len = 0;
 	  vhost_user_log_dirty_ring (vui, txvq,
-				     ring[txvq->last_used_idx & qsz_mask]);
+				     ring[txvq->last_used_idx &
+					  txvq->qsz_mask]);
 
 	  /* The buffer should already be initialized */
 	  b_head->total_length_not_including_first_buffer = 0;
@@ -1889,9 +1888,8 @@ vhost_user_tx_trace (vhost_trace_t * t,
 		     vlib_buffer_t * b, vhost_user_vring_t * rxvq)
 {
   vhost_user_main_t *vum = &vhost_user_main;
-  u32 qsz_mask = rxvq->qsz - 1;
   u32 last_avail_idx = rxvq->last_avail_idx;
-  u32 desc_current = rxvq->avail->ring[last_avail_idx & qsz_mask];
+  u32 desc_current = rxvq->avail->ring[last_avail_idx & rxvq->qsz_mask];
   vring_desc_t *hdr_desc = 0;
   u32 hint = 0;
 
@@ -1979,7 +1977,6 @@ vhost_user_tx (vlib_main_t * vm,
     pool_elt_at_index (vum->vhost_user_interfaces, rd->dev_instance);
   u32 qid = ~0;
   vhost_user_vring_t *rxvq;
-  u16 qsz_mask;
   u8 error;
   u32 thread_index = vlib_get_thread_index ();
   u32 map_hint = 0;
@@ -2005,8 +2002,6 @@ vhost_user_tx (vlib_main_t * vm,
   rxvq = &vui->vrings[qid];
   if (PREDICT_FALSE (vui->use_tx_spinlock))
     vhost_user_vring_lock (vui, qid);
-
-  qsz_mask = rxvq->qsz - 1;	/* qsz is always power of 2 */
 
 retry:
   error = VHOST_USER_TX_FUNC_ERROR_NONE;
@@ -2043,7 +2038,7 @@ retry:
 
       desc_table = rxvq->desc;
       desc_head = desc_index =
-	rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
+	rxvq->avail->ring[rxvq->last_avail_idx & rxvq->qsz_mask];
 
       /* Go deeper in case of indirect descriptor
        * I don't know of any driver providing indirect for RX. */
@@ -2108,13 +2103,13 @@ retry:
 		    &vum->cpus[thread_index].tx_headers[tx_headers_len - 1];
 
 		  //Move from available to used buffer
-		  rxvq->used->ring[rxvq->last_used_idx & qsz_mask].id =
+		  rxvq->used->ring[rxvq->last_used_idx & rxvq->qsz_mask].id =
 		    desc_head;
-		  rxvq->used->ring[rxvq->last_used_idx & qsz_mask].len =
+		  rxvq->used->ring[rxvq->last_used_idx & rxvq->qsz_mask].len =
 		    desc_len;
 		  vhost_user_log_dirty_ring (vui, rxvq,
 					     ring[rxvq->last_used_idx &
-						  qsz_mask]);
+						  rxvq->qsz_mask]);
 
 		  rxvq->last_avail_idx++;
 		  rxvq->last_used_idx++;
@@ -2133,7 +2128,7 @@ retry:
 
 		  desc_table = rxvq->desc;
 		  desc_head = desc_index =
-		    rxvq->avail->ring[rxvq->last_avail_idx & qsz_mask];
+		    rxvq->avail->ring[rxvq->last_avail_idx & rxvq->qsz_mask];
 		  if (PREDICT_FALSE
 		      (rxvq->desc[desc_head].flags & VIRTQ_DESC_F_INDIRECT))
 		    {
@@ -2201,10 +2196,10 @@ retry:
 	}
 
       //Move from available to used ring
-      rxvq->used->ring[rxvq->last_used_idx & qsz_mask].id = desc_head;
-      rxvq->used->ring[rxvq->last_used_idx & qsz_mask].len = desc_len;
+      rxvq->used->ring[rxvq->last_used_idx & rxvq->qsz_mask].id = desc_head;
+      rxvq->used->ring[rxvq->last_used_idx & rxvq->qsz_mask].len = desc_len;
       vhost_user_log_dirty_ring (vui, rxvq,
-				 ring[rxvq->last_used_idx & qsz_mask]);
+				 ring[rxvq->last_used_idx & rxvq->qsz_mask]);
       rxvq->last_avail_idx++;
       rxvq->last_used_idx++;
 
@@ -3263,7 +3258,8 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 
 	  vlib_cli_output (vm,
 			   "  qsz %d last_avail_idx %d last_used_idx %d\n",
-			   vui->vrings[q].qsz, vui->vrings[q].last_avail_idx,
+			   vui->vrings[q].qsz_mask + 1,
+			   vui->vrings[q].last_avail_idx,
 			   vui->vrings[q].last_used_idx);
 
 	  if (vui->vrings[q].avail && vui->vrings[q].used)
@@ -3286,7 +3282,7 @@ show_vhost_user_command_fn (vlib_main_t * vm,
 			       "   id          addr         len  flags  next      user_addr\n");
 	      vlib_cli_output (vm,
 			       "  ===== ================== ===== ====== ===== ==================\n");
-	      for (j = 0; j < vui->vrings[q].qsz; j++)
+	      for (j = 0; j < vui->vrings[q].qsz_mask + 1; j++)
 		{
 		  u32 mem_hint = 0;
 		  vlib_cli_output (vm,
