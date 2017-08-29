@@ -1,3 +1,4 @@
+%bcond_without aesni
 %define _vpp_build_dir   build-tool-native
 %define _unitdir         /lib/systemd/system
 %define _topdir          %(pwd)
@@ -41,7 +42,9 @@ BuildRequires: python-devel, python-virtualenv
 %endif
 BuildRequires: glibc-static, java-1.8.0-openjdk, java-1.8.0-openjdk-devel yum-utils, redhat-lsb
 BuildRequires: apr-devel
+%if %{with aesni}
 BuildRequires: nasm
+%endif
 BuildRequires: numactl-devel
 BuildRequires: autoconf automake libtool byacc bison flex
 
@@ -120,8 +123,13 @@ This package contains the python bindings for the vpp api
 groupadd -f -r vpp
 
 %build
-make bootstrap
-make -C build-root PLATFORM=vpp TAG=%{_vpp_tag} install-packages
+%if %{with aesni}
+    make bootstrap
+    make -C build-root PLATFORM=vpp TAG=%{_vpp_tag} install-packages
+%else
+    make bootstrap AESNI=n
+    make -C build-root PLATFORM=vpp AESNI=n TAG=%{_vpp_tag} install-packages
+%endif
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_build
 
 %install

@@ -17,6 +17,7 @@ CCACHE_DIR?=$(BR)/.ccache
 GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
+export AESNI?=y
 
 ,:=,
 define disable_plugins
@@ -94,7 +95,7 @@ endif
 RPM_DEPENDS += chrpath libffi-devel rpm-build
 ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += nasm
-else
+else ifeq ($(findstring y,$(AESNI)),y)
 	RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
 endif
 
