@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_112732b8",
+        "filename": "src/vlib/unix/util.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 260,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-08-29T12:41:31Z",
+      "side": 1,
+      "message": "Does this funtion reject \"../../boot/grub/grub.cfg?\" In other places, a check based on strstr(xxx,\"..\") has been used...",
+      "revId": "f79344d84a4222c4dad544ba17583d623711a889",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
