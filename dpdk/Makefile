@@ -34,14 +34,13 @@ DPDK_17.08_TARBALL_MD5_CKSUM := 0641f59ea8ea98afefa7cfa2699f6241
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 MACHINE=$(shell uname -m)
 
-AESNI ?= n
 ISA_L_CRYPTO_LIB := n
 
 IPSEC_MB_VER ?= 0.46
 ISA_L_CRYPTO_VER := 2.18.0
 
 ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
-AESNI = y
+  AESNI ?= y
 # DPDK pre 17.08 depends on ISA-L Crypto library for GCM PMD
   ifneq ($(firstword $(sort $(DPDK_VERSION), 17.08)), 17.08)
   ISA_L_CRYPTO_LIB = y
@@ -49,6 +48,8 @@ AESNI = y
   $(info Building ISA-L Crypto $(ISA_L_CRYPTO_VER) library)
   endif
 $(info Building IPSec-MB $(IPSEC_MB_VER) library)
+else
+  AESNI ?= N
 endif
 
 AESNIMB_LIB_TARBALL := v$(IPSEC_MB_VER).tar.gz
