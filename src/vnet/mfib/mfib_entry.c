@@ -393,7 +393,7 @@ mfib_entry_alloc (u32 fib_index,
 {
     mfib_entry_t *mfib_entry;
 
-    pool_get(mfib_entry_pool, mfib_entry);
+    pool_get_aligned(mfib_entry_pool, mfib_entry, CLIB_CACHE_LINE_BYTES);
 
     fib_node_init(&mfib_entry->mfe_node,
                   FIB_NODE_TYPE_MFIB_ENTRY);
