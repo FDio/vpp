@@ -3486,3 +3486,49 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.sw_interface_bond_dump,
                         {})
+
+    def create_vhost_user_if(
+            self,
+            is_server,
+            sock_filename,
+            renumber,
+            custom_dev_instance,
+            use_custom_mac,
+            mac_address,
+            tag=''):
+        """
+        :param is_server: is server
+        :param sock_filename: socket name
+        :param renumber: renumber
+        :param custom_dev_instance: custom dev instance
+        :param use_custom_mac: use custom mac
+        :param mac_address: mac address
+        :param tag: tag (default ''
+        """
+        return self.api(
+            self.papi.create_vhost_user_if,
+            {'is_server': is_server,
+             'sock_filename': sock_filename,
+             'renumber': renumber,
+             'custom_dev_instance': custom_dev_instance,
+             'use_custom_mac': use_custom_mac,
+             'mac_address': mac_address,
+             'tag': tag
+             })
+
+    def delete_vhost_user_if(
+            self,
+            sw_if_index):
+        """
+        :param sw_if_index: interface the operation is applied to
+        """
+        return self.api(self.papi.delete_vhost_user_if,
+                        {'sw_if_index': sw_if_index, })
+
+    def sw_interface_vhost_user_dump(
+            self):
+        """
+
+        """
+        return self.api(self.papi.sw_interface_vhost_user_dump,
+                        {})
