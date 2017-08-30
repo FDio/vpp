@@ -483,7 +483,10 @@ dpdk_interface_tx (vlib_main_t * vm,
       mb3 = rte_mbuf_from_vlib_buffer (b3);
 
       if (PREDICT_FALSE ((xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD) &&
-			 (or_flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM)))
+			 (or_flags &
+			  (VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+			   | VNET_BUFFER_F_OFFLOAD_IP_CKSUM
+			   | VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))))
 	{
 	  dpdk_buffer_tx_offload (xd, b0, mb0);
 	  dpdk_buffer_tx_offload (xd, b1, mb1);
