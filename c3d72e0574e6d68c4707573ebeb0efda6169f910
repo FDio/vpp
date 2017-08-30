@@ -46,6 +46,30 @@
       "revId": "c3d72e0574e6d68c4707573ebeb0efda6169f910",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_f7d80655",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-08-30T15:26:46Z",
+      "side": 1,
+      "message": "I\u0027m unfamiliar with rpm packaging requirements, so I don\u0027t know how to best meet them.  \n\nThere must be a better way to solve this issue other than copying the entire tree (including the .git sub-directory and any build artifacts present in the tree).",
+      "parentUuid": "3a4b7175_029369fb",
+      "range": {
+        "startLine": 289,
+        "startChar": 39,
+        "endLine": 289,
+        "endChar": 74
+      },
+      "revId": "c3d72e0574e6d68c4707573ebeb0efda6169f910",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
