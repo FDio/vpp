@@ -61,7 +61,7 @@ DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf nasm indent libnuma-dev
-DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6
+DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 bc
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
@@ -74,11 +74,12 @@ endif
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += openssl-devel
 RPM_DEPENDS += numactl-devel
+RPM_DEPENDS += bc
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS += python-devel
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
-else ifeq ($(shell if [ $(echo "$(OS_VERSION_ID) > 25" | bc) -eq 1 ] ; then echo "y" ; fi),"y")
+else ifeq ($(shell if [ `echo "$(OS_VERSION_ID) > 25" | bc` -eq 1 ] ; then echo "y" ; fi),"y")
 	RPM_DEPENDS += python2-devel
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
@@ -99,7 +100,7 @@ endif
 
 RPM_SUSE_DEPENDS = autoconf automake bison ccache chrpath distribution-release gcc6 glibc-devel-static
 RPM_SUSE_DEPENDS += java-1_8_0-openjdk-devel libopenssl-devel libtool lsb-release make openssl-devel
-RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow nasm libnuma-devel
+RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow nasm libnuma-devel bc
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
