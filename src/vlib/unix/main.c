@@ -57,7 +57,7 @@
 #define UNIX_CLI_DEFAULT_HISTORY 50
 
 char *vlib_default_runtime_dir __attribute__ ((weak));
-char *vlib_default_runtime_dir = "/run/vlib";
+char *vlib_default_runtime_dir = "vlib";
 
 unix_main_t unix_main;
 
@@ -437,7 +437,16 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
   um->unix_config_complete = 1;
 
   if (um->runtime_dir == 0)
-    um->runtime_dir = format (0, "%s%c", vlib_default_runtime_dir, 0);
+    {
+      uid_t uid = geteuid ();
+      if (uid == 00)
+	um->runtime_dir = format (0, "/run/%s%c",
+				  vlib_default_runtime_dir, 0);
+      else
+	um->runtime_dir = format (0, "/run/user/%u/%s%c", uid,
+				  vlib_default_runtime_dir, 0);
+    }
+
 
   return 0;
 }
