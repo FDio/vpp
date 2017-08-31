@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 #include "ssvm.h"
+#include "svm_common.h"
 
 int
 ssvm_master_init (ssvm_private_t * ssvm, u32 master_index)
 {
+  svm_main_region_t *smr = svm_get_root_rp ()->data_base;
   int ssvm_fd;
   u8 *ssvm_filename;
   u8 junk = 0;
@@ -46,6 +48,11 @@ ssvm_master_init (ssvm_private_t * ssvm, u32 master_index)
       clib_unix_warning ("create segment '%s'", ssvm->name);
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
+
+  if (fchmod (ssvm_fd, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0)
+    clib_unix_warning ("ssvm segment chmod");
+  if (fchown (ssvm_fd, smr->uid, smr->gid) < 0)
+    clib_unix_warning ("ssvm segment chown");
 
   if (lseek (ssvm_fd, ssvm->ssvm_size, SEEK_SET) < 0)
     {
