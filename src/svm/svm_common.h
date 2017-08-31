@@ -105,6 +105,8 @@ typedef struct
   svm_subregion_t *subregions;	/* subregion pool */
   uword *name_hash;
   u8 *root_path;
+  int uid;
+  int gid;
 } svm_main_region_t;
 
 
