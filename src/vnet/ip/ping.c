@@ -646,6 +646,7 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
 	      i = 1 + ping_repeat;
 	      break;
 	    }
+      vec_free(event_data);
 	}
     }
   vlib_cli_output (vm, "\n");
