@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_d2a075f6",
+        "filename": "src/vnet/devices/devices.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 269,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-08-31T20:44:17Z",
+      "side": 1,
+      "message": "Is queue_id actually checked to be within the bounds of hw-\u003erx_mode_by_queue and hw-\u003einput_node_thread_index_by_queue[queue_id]? If not, you may want to test for that.",
+      "range": {
+        "startLine": 269,
+        "startChar": 2,
+        "endLine": 269,
+        "endChar": 32
+      },
+      "revId": "bed020ba377f5f1411aa22b539ad2cd0175e80c0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
