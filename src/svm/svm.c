@@ -774,6 +774,8 @@ svm_region_init_internal (svm_map_region_args_t * a)
       vec_validate (mp, 0);
       mp->name_hash = hash_create_string (0, sizeof (uword));
       mp->root_path = a->root_path ? format (0, "%s%c", a->root_path, 0) : 0;
+      mp->uid = a->uid;
+      mp->gid = a->gid;
       rp->data_base = mp;
       svm_pop_heap (oldheap);
     }
