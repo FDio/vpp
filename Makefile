@@ -79,7 +79,7 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS += python-devel
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
-else ifeq ($(shell if [ `echo "$(OS_VERSION_ID) > 25" | bc` -eq 1 ] ; then echo "y" ; fi),"y")
+else ifeq ($(shell if [ $$(echo "$(OS_VERSION_ID) > 25" | bc) -eq 1 ] ; then echo "y" ; fi),"y")
 	RPM_DEPENDS += python2-devel
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
