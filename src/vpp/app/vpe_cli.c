@@ -113,6 +113,7 @@ virtual_ip_cmd_fn_command_fn (vlib_main_t * vm,
 done:
   vec_free (mac_addrs);
   vec_free (next_hops);
+  vec_free (rpaths);
   unformat_free (line_input);
 
   return error;
