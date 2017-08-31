@@ -246,7 +246,10 @@ class VPP():
 
         for k in kwargs:
             if k not in msgdef['args']:
-                raise ValueError(1, 'Invalid field-name in message call ' + k)
+                raise ValueError(1,'Non existing argument [' + k + ']' + \
+                                 ' used in call to: ' + \
+                                 self.id_names[kwargs['_vl_msg_id']] + '()' )
+
 
         for k, v in vpp_iterator(msgdef['args']):
             off += size
