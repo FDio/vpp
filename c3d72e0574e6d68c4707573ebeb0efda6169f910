@@ -70,6 +70,30 @@
       "revId": "c3d72e0574e6d68c4707573ebeb0efda6169f910",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_020b62d7",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2017-08-31T01:40:41Z",
+      "side": 1,
+      "message": "Thank you, Wallace. I appreciate your advice. I think so that copying the entire tree is not a good method ,although it is convenient and well-understand. I use \"rsync\" command to reslove this problem, please give me some advice.",
+      "parentUuid": "3a4b7175_f7d80655",
+      "range": {
+        "startLine": 289,
+        "startChar": 39,
+        "endLine": 289,
+        "endChar": 74
+      },
+      "revId": "c3d72e0574e6d68c4707573ebeb0efda6169f910",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
