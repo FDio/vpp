@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_e5ff2d00",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-01T18:37:13Z",
+      "side": 1,
+      "message": "This should be defined as static, otherwise you\u0027ll be leaking memory...",
+      "range": {
+        "startLine": 587,
+        "startChar": 0,
+        "endLine": 587,
+        "endChar": 25
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_f2181186",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-01T18:37:13Z",
+      "side": 1,
+      "message": "There should be a \"vec_reset_length (fibs);\" after this label.\n\nOtherwise in the case(s) where \"goto again;\" is executed, the vector \"fibs\" is going to contain multiple copies of the fib pool.",
+      "range": {
+        "startLine": 596,
+        "startChar": 0,
+        "endLine": 596,
+        "endChar": 6
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_52092530",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 971,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-01T18:37:13Z",
+      "side": 1,
+      "message": "This should be defined as static, otherwise you\u0027ll be leaking memory...",
+      "range": {
+        "startLine": 971,
+        "startChar": 0,
+        "endLine": 971,
+        "endChar": 45
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_3206a921",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 984,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-01T18:37:13Z",
+      "side": 1,
+      "message": "Add \"vec_reset_length (regs);\" here.",
+      "range": {
+        "startLine": 984,
+        "startChar": 0,
+        "endLine": 984,
+        "endChar": 0
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_1203ad10",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1403,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-01T18:37:13Z",
+      "side": 1,
+      "message": "IMHO, 0 is sufficient.  \n\nIf the state is already what is being requested, then there\u0027s no need to be pedantic and force the control plane app to figure out that it is clueless about the current state.  Just declare victory and move on.\n\nOtherwise, there will need to be an excessive amount of state synchronization and extra code to maintain in the control plane app.  This can rapidly get out of hand in high availability test cases (e.g. VPP restart, control plane app restart, multiple control plane apps, etc)",
+      "range": {
+        "startLine": 1400,
+        "startChar": 0,
+        "endLine": 1403,
+        "endChar": 1
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
