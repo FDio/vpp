@@ -26,6 +26,8 @@ endif
 ifeq ($($(PLATFORM)_uses_dpdk_mlx5_pmd),yes)
 vpp_configure_args += --with-dpdk-mlx5-pmd
 endif
+else
+vpp_configure_args += --disable-dpdk-plugin
 endif
 
 ifeq ($($(PLATFORM)_enable_tests),yes)
