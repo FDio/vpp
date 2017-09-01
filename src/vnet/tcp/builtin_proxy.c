@@ -523,7 +523,7 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   builtin_proxy_main_t *bpm = &builtin_proxy_main;
   int rv;
-  u32 tmp;
+  u64 tmp;
 
   bpm->fifo_size = 64 << 10;
   bpm->rcv_buffer_size = 1024;
@@ -542,12 +542,14 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (input, "private-segment-count %d",
 			 &bpm->private_segment_count))
 	;
-      else if (unformat (input, "private-segment-size %dm", &tmp))
-	bpm->private_segment_size = tmp << 20;
-      else if (unformat (input, "private-segment-size %dg", &tmp))
-	bpm->private_segment_size = tmp << 30;
-      else if (unformat (input, "private-segment-size %d", &tmp))
-	bpm->private_segment_size = tmp;
+      else if (unformat (input, "private-segment-size %U",
+			 unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000ULL)
+	    return clib_error_return
+	      (0, "private segment size %lld (%llu) too large", tmp, tmp);
+	  bpm->private_segment_size = tmp;
+	}
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

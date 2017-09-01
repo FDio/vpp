@@ -118,7 +118,11 @@ void svm_fifo_segment_free_fifo (svm_fifo_segment_private_t * s,
 void svm_fifo_segment_init (u64 baseva, u32 timeout_in_seconds);
 u32 svm_fifo_segment_index (svm_fifo_segment_private_t * s);
 u32 svm_fifo_segment_num_fifos (svm_fifo_segment_private_t * fifo_segment);
+u32 svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t *
+				     fifo_segment, u32 fifo_size_in_bytes);
+
 svm_fifo_segment_private_t *svm_fifo_segment_segments_pool (void);
+format_function_t format_svm_fifo_segment;
 
 #endif /* __included_ssvm_fifo_segment_h__ */
 

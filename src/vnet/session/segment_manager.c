@@ -74,6 +74,11 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
     }
   else
     {
+      u32 rx_fifo_size, tx_fifo_size, rx_rounded_data_size,
+	tx_rounded_data_size;
+      u32 approx_segment_count;
+      u64 approx_total_size;
+
       ca->segment_name = "process-private-segment";
       ca->segment_size = ~0;
       ca->rx_fifo_size = sm->properties->rx_fifo_size;
@@ -81,6 +86,36 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
       ca->preallocated_fifo_pairs = sm->properties->preallocated_fifo_pairs;
       ca->private_segment_count = sm->properties->private_segment_count;
       ca->private_segment_size = sm->properties->private_segment_size;
+
+      /* Default to a small private segment */
+      if (ca->private_segment_size == 0)
+	ca->private_segment_size = 128 << 20;
+
+      /* Calculate space requirements */
+      rx_rounded_data_size = (1 << (max_log2 (ca->rx_fifo_size)));
+      tx_rounded_data_size = (1 << (max_log2 (ca->tx_fifo_size)));
+
+      rx_fifo_size = sizeof (svm_fifo_t) + rx_rounded_data_size;
+      tx_fifo_size = sizeof (svm_fifo_t) + tx_rounded_data_size;
+
+      approx_total_size = (u64) ca->preallocated_fifo_pairs
+	* (rx_fifo_size + tx_fifo_size);
+      approx_segment_count =
+	(approx_total_size +
+	 (ca->private_segment_size - 1)) / (u64) ca->private_segment_size;
+
+      /* The user asked us to figure it out... */
+      if (ca->private_segment_count == 0)
+	{
+	  ca->private_segment_count = approx_segment_count;
+	}
+      /* Follow directions, but issue a warning */
+      else if (approx_segment_count != ca->private_segment_count)
+	{
+	  clib_warning
+	    ("Honoring segment count %u, but calculated count was %u",
+	     ca->private_segment_count, approx_segment_count);
+	}
 
       if (svm_fifo_segment_create_process_private (ca))
 	clib_warning ("Failed to create process private segment");
@@ -503,7 +538,9 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
   u8 show_segments = 0, verbose = 0, *name;
   uword address;
   u64 size;
-  u32 fifos;
+  u32 active_fifos;
+  u32 free_fifos;
+
   mheap_t *heap_header;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
@@ -536,8 +573,8 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
       segments = svm_fifo_segment_segments_pool ();
       vlib_cli_output (vm, "%d svm fifo segments allocated",
 		       pool_elts (segments));
-      vlib_cli_output (vm, "%-20s%=12s%=12s%=15s", "Name", "Size (M)",
-		       "Fifos", "Address");
+      vlib_cli_output (vm, "%-20s%=12s%=16s%=16s%=16s", "Name",
+		       "HeapSize (M)", "ActiveFifos", "FreeFifos", "Address");
 
       /* *INDENT-OFF* */
       pool_foreach (seg, segments, ({
@@ -557,9 +594,14 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 	    size = seg->ssvm.ssvm_size;
 	    name = seg->ssvm.sh->name;
 	  }
-	fifos = svm_fifo_segment_num_fifos (seg);
-	vlib_cli_output (vm, "%-20s%=12u%=12u%=15x", name, size << 20, fifos,
+	active_fifos = svm_fifo_segment_num_fifos (seg);
+        free_fifos = svm_fifo_segment_num_free_fifos (seg, ~0 /* size */);
+	vlib_cli_output (vm, "%-20v%=16llu%=16u%=16u%16llx",
+                         name, size >> 20ULL, active_fifos, free_fifos,
 			 address);
+        if (verbose)
+          vlib_cli_output (vm, "%U",
+                           format_svm_fifo_segment, seg, verbose);
 	if (seg->h->flags & FIFO_SEGMENT_F_IS_PRIVATE)
 	  vec_free (name);
       }));
@@ -573,7 +615,7 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (segment_manager_show_command, static) =
 {
   .path = "show segment-manager",
-  .short_help = "show segment-manager [segments]",
+  .short_help = "show segment-manager [segments][verbose]",
   .function = segment_manager_show_fn,
 };
 /* *INDENT-ON* */

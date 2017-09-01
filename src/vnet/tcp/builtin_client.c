@@ -563,12 +563,14 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
       else if (unformat (input, "private-segment-count %d",
 			 &tm->private_segment_count))
 	;
-      else if (unformat (input, "private-segment-size %dm", &tmp))
-	tm->private_segment_size = tmp << 20;
-      else if (unformat (input, "private-segment-size %dg", &tmp))
-	tm->private_segment_size = tmp << 30;
-      else if (unformat (input, "private-segment-size %d", &tmp))
-	tm->private_segment_size = tmp;
+      else if (unformat (input, "private-segment-size %U",
+			 unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000ULL)
+	    return clib_error_return
+	      (0, "private segment size %lld (%llu) too large", tmp, tmp);
+	  tm->private_segment_size = tmp;
+	}
       else if (unformat (input, "preallocate-fifos"))
 	tm->prealloc_fifos = 1;
       else if (unformat (input, "preallocate-sessions"))
