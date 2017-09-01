@@ -221,13 +221,13 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
   u8 **heaps = 0;
   mheap_t *heap_header;
   int segment_count = 1;
+  u32 rnd_size = 0;
   int i;
 
   if (a->private_segment_count && a->private_segment_size)
     {
       u8 *heap;
       u32 pagesize = clib_mem_get_page_size ();
-      u32 rnd_size;
       rnd_size = (a->private_segment_size + (pagesize - 1)) & ~pagesize;
 
       for (i = 0; i < a->private_segment_count; i++)
@@ -246,7 +246,8 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
     }
 
   /* Spread preallocated fifo pairs across segments */
-  a->preallocated_fifo_pairs /= segment_count;
+  a->preallocated_fifo_pairs =
+    (a->preallocated_fifo_pairs + segment_count - 1) / segment_count;
 
   /* Allocate segments */
   for (i = 0; i < segment_count; i++)
@@ -254,7 +255,7 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
       pool_get (sm->segments, s);
       memset (s, 0, sizeof (*s));
 
-      s->ssvm.ssvm_size = ~0;
+      s->ssvm.ssvm_size = rnd_size;
       s->ssvm.i_am_master = 1;
       s->ssvm.my_pid = getpid ();
       s->ssvm.name = format (0, "%s%c", a->segment_name, 0);
@@ -534,6 +535,100 @@ u32
 svm_fifo_segment_num_fifos (svm_fifo_segment_private_t * fifo_segment)
 {
   return fifo_segment->h->n_active_fifos;
+}
+
+u32
+svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t * fifo_segment,
+				 u32 fifo_size_in_bytes)
+{
+  ssvm_shared_header_t *sh;
+  svm_fifo_segment_header_t *fsh;
+  svm_fifo_t *f;
+  int i;
+  u32 count = 0, rounded_data_size, freelist_index;
+
+  sh = fifo_segment->ssvm.sh;
+  fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
+
+  /* Count all free fifos? */
+  if (fifo_size_in_bytes == ~0)
+    {
+      for (i = 0; i < vec_len (fsh->free_fifos); i++)
+	{
+	  f = fsh->free_fifos[i];
+	  if (f == 0)
+	    continue;
+
+	  while (f)
+	    {
+	      f = f->next;
+	      count++;
+	    }
+	}
+      return count;
+    }
+
+  rounded_data_size = (1 << (max_log2 (fifo_size_in_bytes)));
+  freelist_index = max_log2 (rounded_data_size)
+    - max_log2 (FIFO_SEGMENT_MIN_FIFO_SIZE);
+
+  if (freelist_index > vec_len (fsh->free_fifos))
+    return 0;
+
+  f = fsh->free_fifos[freelist_index];
+  if (f == 0)
+    return 0;
+
+  while (f)
+    {
+      f = f->next;
+      count++;
+    }
+  return count;
+}
+
+/**
+ * Segment format function
+ */
+u8 *
+format_svm_fifo_segment (u8 * s, va_list * args)
+{
+  svm_fifo_segment_private_t *sp
+    = va_arg (*args, svm_fifo_segment_private_t *);
+  int verbose = va_arg (*args, int);
+  ssvm_shared_header_t *sh;
+  svm_fifo_segment_header_t *fsh;
+  svm_fifo_t *f;
+  int i;
+  u32 count;
+  uword indent = format_get_indent (s) + 2;
+
+  sh = sp->ssvm.sh;
+  fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
+
+  s = format (s, "%USegment Heap: %U\n", format_white_space, indent,
+	      format_mheap, sh->heap, verbose);
+  s = format (s, "%U segment has %u active fifos\n",
+	      format_white_space, indent, svm_fifo_segment_num_fifos (sp));
+
+  for (i = 0; i < vec_len (fsh->free_fifos); i++)
+    {
+      f = fsh->free_fifos[i];
+      if (f == 0)
+	continue;
+      count = 0;
+      while (f)
+	{
+	  f = f->next;
+	  count++;
+	}
+
+      s = format (s, "%U%-5u Kb: %u free",
+		  format_white_space, indent + 2,
+		  1 << (i + max_log2 (FIFO_SEGMENT_MIN_FIFO_SIZE) - 10),
+		  count);
+    }
+  return s;
 }
 
 /*

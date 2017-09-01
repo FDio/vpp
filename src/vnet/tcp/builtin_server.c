@@ -369,7 +369,7 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   builtin_server_main_t *bsm = &builtin_server_main;
   u8 server_uri_set = 0;
   int rv;
-  u32 tmp;
+  u64 tmp;
 
   bsm->no_echo = 0;
   bsm->fifo_size = 64 << 10;
@@ -392,12 +392,14 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (input, "private-segment-count %d",
 			 &bsm->private_segment_count))
 	;
-      else if (unformat (input, "private-segment-size %dm", &tmp))
-	bsm->private_segment_size = tmp << 20;
-      else if (unformat (input, "private-segment-size %dg", &tmp))
-	bsm->private_segment_size = tmp << 30;
-      else if (unformat (input, "private-segment-size %d", &tmp))
-	bsm->private_segment_size = tmp;
+      else if (unformat (input, "private-segment-size %U",
+			 unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000ULL)
+	    return clib_error_return
+	      (0, "private segment size %lld (%llu) too large", tmp, tmp);
+	  bsm->private_segment_size = tmp;
+	}
       else if (unformat (input, "uri %s", &bsm->server_uri))
 	server_uri_set = 1;
       else
