@@ -34,6 +34,7 @@ vl (void *p)
 
 vlib_worker_thread_t *vlib_worker_threads;
 vlib_thread_main_t vlib_thread_main;
+int update_needed;
 
 uword
 os_get_nthreads (void)
@@ -568,6 +569,8 @@ start_workers (vlib_main_t * vm)
 
 	  for (k = 0; k < tr->count; k++)
 	    {
+	      vlib_node_t *n;
+
 	      vec_add2 (vlib_worker_threads, w, 1);
 	      if (tr->mheap_size)
 		w->thread_mheap =
@@ -628,10 +631,12 @@ start_workers (vlib_main_t * vm)
 
 	      /* fork nodes */
 	      nm_clone->nodes = 0;
+
+	      /* Allocate all nodes in single block for speed */
+	      n = clib_mem_alloc_no_fail (vec_len (nm->nodes) * sizeof (*n));
+
 	      for (j = 0; j < vec_len (nm->nodes); j++)
 		{
-		  vlib_node_t *n;
-		  n = clib_mem_alloc_no_fail (sizeof (*n));
 		  clib_memcpy (n, nm->nodes[j], sizeof (*n));
 		  /* none of the copied nodes have enqueue rights given out */
 		  n->owner_node_index = VLIB_INVALID_NODE_INDEX;
@@ -639,6 +644,7 @@ start_workers (vlib_main_t * vm)
 		  memset (&n->stats_last_clear, 0,
 			  sizeof (n->stats_last_clear));
 		  vec_add1 (nm_clone->nodes, n);
+		  n++;
 		}
 	      nm_clone->nodes_by_type[VLIB_NODE_TYPE_INTERNAL] =
 		vec_dup (nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL]);
@@ -806,6 +812,13 @@ vlib_worker_thread_node_runtime_update (void)
   ASSERT (vlib_get_thread_index () == 0);
   ASSERT (*vlib_worker_threads->wait_at_barrier == 1);
 
+  /* Delay update until barrier about to open */
+  if (update_needed >= 0)
+    {
+      update_needed++;
+      return;
+    }
+
   /*
    * Scrape all runtime stats, so we don't lose node runtime(s) with
    * pending counts, or throw away worker / io thread counts.
@@ -835,6 +848,8 @@ vlib_worker_thread_node_runtime_update (void)
 
   for (i = 1; i < vec_len (vlib_mains); i++)
     {
+      vlib_node_t *new_n_clone;
+
       vlib_node_runtime_t *rt;
       w = vlib_worker_threads + i;
       oldheap = clib_mem_set_heap (w->thread_mheap);
@@ -873,15 +888,18 @@ vlib_worker_thread_node_runtime_update (void)
       nm_clone->nodes = 0;
 
       /* re-fork nodes */
+
+      /* Allocate all nodes in single block for speed */
+      new_n_clone =
+	clib_mem_alloc_no_fail (vec_len (nm->nodes) * sizeof (*new_n_clone));
       for (j = 0; j < vec_len (nm->nodes); j++)
 	{
 	  vlib_node_t *old_n_clone;
-	  vlib_node_t *new_n, *new_n_clone;
+	  vlib_node_t *new_n;
 
 	  new_n = nm->nodes[j];
 	  old_n_clone = old_nodes_clone[j];
 
-	  new_n_clone = clib_mem_alloc_no_fail (sizeof (*new_n_clone));
 	  clib_memcpy (new_n_clone, new_n, sizeof (*new_n));
 	  /* none of the copied nodes have enqueue rights given out */
 	  new_n_clone->owner_node_index = VLIB_INVALID_NODE_INDEX;
@@ -908,10 +926,11 @@ vlib_worker_thread_node_runtime_update (void)
 	      new_n_clone->state = old_n_clone->state;
 	    }
 	  vec_add1 (nm_clone->nodes, new_n_clone);
+	  new_n_clone++;
 	}
-      /* Free the old node clone */
-      for (j = 0; j < vec_len (old_nodes_clone); j++)
-	clib_mem_free (old_nodes_clone[j]);
+      /* Free the old node clones */
+      clib_mem_free (old_nodes_clone[0]);
+
       vec_free (old_nodes_clone);
 
 
@@ -1179,6 +1198,7 @@ vlib_worker_thread_barrier_sync (vlib_main_t * vm)
     return;
 
   vlib_worker_threads[0].barrier_sync_count++;
+  update_needed = 0;
 
   ASSERT (vlib_get_thread_index () == 0);
 
@@ -1205,6 +1225,12 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
   if (--vlib_worker_threads[0].recursion_level > 0)
     return;
+
+  if (update_needed)
+    {
+      update_needed = -1;
+      vlib_worker_thread_node_runtime_update ();
+    }
 
   deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
 
