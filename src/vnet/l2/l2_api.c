@@ -284,7 +284,7 @@ vl_api_want_l2_macs_events_t_handler (vl_api_want_l2_macs_events_t * mp)
     {
       lm->client_pid = 0;
       lm->client_index = 0;
-      if (learn_limit)
+      if (learn_limit && (learn_limit < L2LEARN_DEFAULT_LIMIT))
 	lm->global_learn_limit = learn_limit;
       else
 	lm->global_learn_limit = L2LEARN_DEFAULT_LIMIT;
