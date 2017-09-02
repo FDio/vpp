@@ -78,7 +78,7 @@ _(MISS,              "L2 learn misses")			\
 _(MAC_MOVE,          "L2 mac moves")			\
 _(MAC_MOVE_VIOLATE,  "L2 mac move violations")		\
 _(LIMIT,             "L2 not learned due to limit")	\
-_(HIT,               "L2 learn hits")			\
+_(HIT_UPDATE,        "L2 learn hit updates")		\
 _(FILTER_DROP,       "L2 filter mac drops")
 
 typedef enum
@@ -113,7 +113,7 @@ l2learn_process (vlib_node_runtime_t * node,
 		 u32 sw_if_index0,
 		 l2fib_entry_key_t * key0,
 		 l2fib_entry_key_t * cached_key,
-		 u32 * bucket0,
+		 u32 * count,
 		 l2fib_entry_result_t * result0, u32 * next0, u8 timestamp)
 {
   /* Set up the default next node (typically L2FWD) */
@@ -124,15 +124,24 @@ l2learn_process (vlib_node_runtime_t * node,
   if (PREDICT_TRUE (result0->fields.sw_if_index == sw_if_index0))
     {
       /* Entry in L2FIB with matching sw_if_index matched - normal fast path */
-      counter_base[L2LEARN_ERROR_HIT] += 1;
-      int update = !result0->fields.age_not &&	/* static_mac always age_not */
-	(result0->fields.timestamp != timestamp ||
-	 result0->fields.sn.as_u16 != vnet_buffer (b0)->l2.l2fib_sn);
+      u32 dtime = timestamp - result0->fields.timestamp;
+      u32 dsn = result0->fields.sn.as_u16 - vnet_buffer (b0)->l2.l2fib_sn;
+      u32 check = dtime | dsn;
 
-      if (PREDICT_TRUE (!update))
-	return;
-      else if (msm->global_learn_count > msm->global_learn_limit)
+      if (PREDICT_TRUE (check == 0))
+	return;			/* MAC entry up to date */
+      if (result0->fields.age_not)
+	return;			/* Static MAC always age_not */
+      if (msm->global_learn_count > msm->global_learn_limit)
 	return;			/* Above learn limit - do not update */
+
+      /* Limit updates per l2-learn node call to avoid prolonged update burst
+       * as dtime advance over 1 minute mark, unless more than 1 min behind */
+      if ((*count > 2) && (dtime == 1))
+	return;
+
+      counter_base[L2LEARN_ERROR_HIT_UPDATE] += 1;
+      *count += 1;
     }
   else if (result0->raw == ~0)
     {
@@ -160,7 +169,6 @@ l2learn_process (vlib_node_runtime_t * node,
       result0->raw = 0;		/* clear all fields */
       result0->fields.sw_if_index = sw_if_index0;
       result0->fields.lrn_evt = (msm->client_pid != 0);
-      cached_key->raw = ~0;	/* invalidate the cache */
     }
   else
     {
@@ -207,6 +215,9 @@ l2learn_process (vlib_node_runtime_t * node,
   kv.key = key0->raw;
   kv.value = result0->raw;
   BV (clib_bihash_add_del) (msm->mac_table, &kv, 1 /* is_add */ );
+
+  /* Invalidate the cache */
+  cached_key->raw = ~0;
 }
 
 
@@ -223,6 +234,7 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   l2fib_entry_key_t cached_key;
   l2fib_entry_result_t cached_result;
   u8 timestamp = (u8) (vlib_time_now (vm) / 60);
+  u32 count = 0;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
@@ -358,19 +370,19 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b0, sw_if_index0, &key0, &cached_key,
-			   &bucket0, &result0, &next0, timestamp);
+			   &count, &result0, &next0, timestamp);
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b1, sw_if_index1, &key1, &cached_key,
-			   &bucket1, &result1, &next1, timestamp);
+			   &count, &result1, &next1, timestamp);
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b2, sw_if_index2, &key2, &cached_key,
-			   &bucket2, &result2, &next2, timestamp);
+			   &count, &result2, &next2, timestamp);
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b3, sw_if_index3, &key3, &cached_key,
-			   &bucket3, &result3, &next3, timestamp);
+			   &count, &result3, &next3, timestamp);
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
@@ -425,7 +437,7 @@ l2learn_node_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  l2learn_process (node, msm, &em->counters[node_counter_base_index],
 			   b0, sw_if_index0, &key0, &cached_key,
-			   &bucket0, &result0, &next0, timestamp);
+			   &count, &result0, &next0, timestamp);
 
 	  /* verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

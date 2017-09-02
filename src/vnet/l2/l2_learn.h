@@ -46,7 +46,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } l2learn_main_t;
 
-#define L2LEARN_DEFAULT_LIMIT (L2FIB_NUM_BUCKETS * 128)
+#define L2LEARN_DEFAULT_LIMIT (L2FIB_NUM_BUCKETS * 64)
 
 l2learn_main_t l2learn_main;
 

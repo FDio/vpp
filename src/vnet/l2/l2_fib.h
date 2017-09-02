@@ -25,7 +25,7 @@
  * The size of the hash table
  */
 #define L2FIB_NUM_BUCKETS (64 * 1024)
-#define L2FIB_MEMORY_SIZE (256<<20)
+#define L2FIB_MEMORY_SIZE (512<<20)
 
 /* Ager scan interval is 1 minute for aging */
 #define L2FIB_AGE_SCAN_INTERVAL		(60.0)
