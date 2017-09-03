@@ -165,6 +165,7 @@ BASIC_ARCH = \
 # x86_64 can be either 32/64.  set BIACH=32 to get 32 bit libraries.
 BIARCH = 64
 
+aarch64_libdir = 64
 x86_64_libdir = $(BIARCH)
 native_libdir = $($(NATIVE_ARCH)_libdir)
 
