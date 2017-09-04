@@ -15,6 +15,7 @@ from scapy.packet import bind_layers
 from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
+from util import ip4_range
 
 
 class MethodHolder(VppTestCase):
@@ -633,6 +634,15 @@ class TestNAT44(MethodHolder):
                 protocol=sm.protocol,
                 is_add=0)
 
+        lb_static_mappings = self.vapi.nat44_lb_static_mapping_dump()
+        for lb_sm in lb_static_mappings:
+            self.vapi.nat44_add_del_lb_static_mapping(
+                lb_sm.external_addr,
+                lb_sm.external_port,
+                lb_sm.protocol,
+                lb_sm.vrf_id,
+                is_add=0)
+
         adresses = self.vapi.nat44_address_dump()
         for addr in adresses:
             self.vapi.nat44_add_del_address_range(addr.ip_address,
@@ -1036,6 +1046,97 @@ class TestNAT44(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg3.assert_nothing_captured()
+
+    def test_static_lb(self):
+        """ NAT44 local service load balancing """
+        external_addr_n = socket.inet_pton(socket.AF_INET, self.nat_addr)
+        external_port = 80
+        local_port = 8080
+        server1 = self.pg0.remote_hosts[0]
+        server2 = self.pg0.remote_hosts[1]
+
+        locals = [{'addr': server1.ip4n,
+                   'port': local_port,
+                   'probability': 70},
+                  {'addr': server2.ip4n,
+                   'port': local_port,
+                   'probability': 30}]
+
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_add_del_lb_static_mapping(external_addr_n,
+                                                  external_port,
+                                                  IP_PROTOS.tcp,
+                                                  local_num=len(locals),
+                                                  locals=locals)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+
+        # from client to service
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.nat_addr) /
+             TCP(sport=12345, dport=external_port))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        server = None
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertIn(ip.dst, [server1.ip4, server2.ip4])
+            if ip.dst == server1.ip4:
+                server = server1
+            else:
+                server = server2
+            self.assertEqual(tcp.dport, local_port)
+            self.check_tcp_checksum(p)
+            self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # from service back to client
+        p = (Ether(src=server.mac, dst=self.pg0.local_mac) /
+             IP(src=server.ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=local_port, dport=12345))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.src, self.nat_addr)
+            self.assertEqual(tcp.sport, external_port)
+            self.check_tcp_checksum(p)
+            self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
+        # multiple clients
+        server1_n = 0
+        server2_n = 0
+        clients = ip4_range(self.pg1.remote_ip4, 10, 20)
+        pkts = []
+        for client in clients:
+            p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+                 IP(src=client, dst=self.nat_addr) /
+                 TCP(sport=12345, dport=external_port))
+            pkts.append(p)
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        for p in capture:
+            if p[IP].dst == server1.ip4:
+                server1_n += 1
+            else:
+                server2_n += 1
+        self.assertTrue(server1_n > server2_n)
 
     def test_multiple_inside_interfaces(self):
         """ NAT44 multiple non-overlapping address space inside interfaces """

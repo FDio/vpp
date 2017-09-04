@@ -27,6 +27,10 @@
 #include <nat/nat_msg_enum.h>
 #include <vnet/fib/fib_table.h>
 
+#define vl_api_nat44_lb_addr_port_t_endian vl_noop_handler
+#define vl_api_nat44_add_del_lb_static_mapping_t_endian vl_noop_handler
+#define vl_api_nat44_nat44_lb_static_mapping_details_t_endian vl_noop_handler
+
 /* define message structures */
 #define vl_typedefs
 #include <nat/nat_all_api_h.h>
@@ -465,7 +469,8 @@ static void
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
-      send_snat_static_mapping_details (m, q, mp->context);
+      if (!vec_len(m->locals))
+        send_snat_static_mapping_details (m, q, mp->context);
   }));
   /* *INDENT-ON* */
 
@@ -1888,7 +1893,8 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
-      send_nat44_static_mapping_details (m, q, mp->context);
+      if (!vec_len(m->locals))
+        send_nat44_static_mapping_details (m, q, mp->context);
   }));
   /* *INDENT-ON* */
 
@@ -2132,6 +2138,131 @@ vl_api_nat44_user_session_dump_t_print (vl_api_nat44_user_session_dump_t * mp,
   s = format (s, "ip_address %U vrf_id %d\n",
 	      format_ip4_address, mp->ip_address,
 	      clib_net_to_host_u32 (mp->vrf_id));
+
+  FINISH;
+}
+
+static nat44_lb_addr_port_t *
+unformat_nat44_lb_addr_port (vl_api_nat44_lb_addr_port_t * addr_port_pairs,
+			     u8 addr_port_pair_num)
+{
+  u8 i;
+  nat44_lb_addr_port_t *lb_addr_port_pairs = 0, lb_addr_port;
+  vl_api_nat44_lb_addr_port_t *ap;
+
+  for (i = 0; i < addr_port_pair_num; i++)
+    {
+      ap = &addr_port_pairs[i];
+      memset (&lb_addr_port, 0, sizeof (lb_addr_port));
+      clib_memcpy (&lb_addr_port.addr, ap->addr, 4);
+      lb_addr_port.port = clib_net_to_host_u16 (ap->port);
+      lb_addr_port.probability = ap->probability;
+      vec_add1 (lb_addr_port_pairs, lb_addr_port);
+    }
+
+  return lb_addr_port_pairs;
+}
+
+static void
+  vl_api_nat44_add_del_lb_static_mapping_t_handler
+  (vl_api_nat44_add_del_lb_static_mapping_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_add_del_lb_static_mapping_reply_t *rmp;
+  int rv = 0;
+  nat44_lb_addr_port_t *locals = 0;
+  ip4_address_t e_addr;
+  snat_protocol_t proto;
+
+  locals = unformat_nat44_lb_addr_port (mp->locals, mp->local_num);
+  clib_memcpy (&e_addr, mp->external_addr, 4);
+  proto = ip_proto_to_snat_proto (mp->protocol);
+
+  rv =
+    nat44_add_del_lb_static_mapping (e_addr,
+				     clib_net_to_host_u16 (mp->external_port),
+				     proto, clib_net_to_host_u32 (mp->vrf_id),
+				     locals, mp->is_add);
+
+  vec_free (locals);
+
+  REPLY_MACRO (VL_API_NAT44_ADD_DEL_LB_STATIC_MAPPING_REPLY);
+}
+
+static void *vl_api_nat44_add_del_lb_static_mapping_t_print
+  (vl_api_nat44_add_del_lb_static_mapping_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_add_del_lb_static_mapping ");
+  s = format (s, "is_add %d\n", mp->is_add);
+
+  FINISH;
+}
+
+static void
+send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
+				      unix_shared_memory_queue_t * q,
+				      u32 context)
+{
+  vl_api_nat44_lb_static_mapping_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+  nat44_lb_addr_port_t *ap;
+  vl_api_nat44_lb_addr_port_t *locals;
+
+  rmp =
+    vl_msg_api_alloc (sizeof (*rmp) +
+		      (vec_len (m->locals) * sizeof (nat44_lb_addr_port_t)));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_NAT44_LB_STATIC_MAPPING_DETAILS + sm->msg_id_base);
+
+  clib_memcpy (rmp->external_addr, &(m->external_addr), 4);
+  rmp->external_port = ntohs (m->external_port);
+  rmp->protocol = snat_proto_to_ip_proto (m->proto);
+  rmp->vrf_id = ntohl (m->vrf_id);
+  rmp->context = context;
+
+  locals = (vl_api_nat44_lb_addr_port_t *) rmp->locals;
+  vec_foreach (ap, m->locals)
+  {
+    clib_memcpy (locals->addr, &(ap->addr), 4);
+    locals->port = htons (ap->port);
+    locals->probability = ap->probability;
+    locals++;
+    rmp->local_num++;
+  }
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+  vl_api_nat44_lb_static_mapping_dump_t_handler
+  (vl_api_nat44_lb_static_mapping_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t *sm = &snat_main;
+  snat_static_mapping_t *m;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  /* *INDENT-OFF* */
+  pool_foreach (m, sm->static_mappings,
+  ({
+      if (vec_len(m->locals))
+        send_nat44_lb_static_mapping_details (m, q, mp->context);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void *vl_api_nat44_lb_static_mapping_dump_t_print
+  (vl_api_nat44_lb_static_mapping_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_lb_static_mapping_dump ");
 
   FINISH;
 }
@@ -3159,6 +3290,8 @@ _(NAT44_INTERFACE_ADD_DEL_OUTPUT_FEATURE,                               \
   nat44_interface_add_del_output_feature)                               \
 _(NAT44_INTERFACE_OUTPUT_FEATURE_DUMP,                                  \
   nat44_interface_output_feature_dump)                                  \
+_(NAT44_ADD_DEL_LB_STATIC_MAPPING, nat44_add_del_lb_static_mapping)     \
+_(NAT44_LB_STATIC_MAPPING_DUMP, nat44_lb_static_mapping_dump)           \
 _(NAT_DET_ADD_DEL_MAP, nat_det_add_del_map)                             \
 _(NAT_DET_FORWARD, nat_det_forward)                                     \
 _(NAT_DET_REVERSE, nat_det_reverse)                                     \

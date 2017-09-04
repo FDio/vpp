@@ -62,12 +62,13 @@ typedef struct {
       ip4_address_t l_addr;
       ip4_address_t r_addr;
       u32 fib_index;
+      u16 l_port;
       u8 proto;
-      u8 rsvd[3];
+      u8 rsvd;
     };
     u64 as_u64[2];
   };
-} snat_unk_proto_ses_key_t;
+} nat_ed_ses_key_t;
 
 typedef struct {
   union
@@ -139,6 +140,7 @@ typedef enum {
 
 #define SNAT_SESSION_FLAG_STATIC_MAPPING 1
 #define SNAT_SESSION_FLAG_UNKNOWN_PROTO  2
+#define SNAT_SESSION_FLAG_LOAD_BALANCING 4
 
 typedef CLIB_PACKED(struct {
   snat_session_key_t out2in;    /* 0-15 */
@@ -206,6 +208,13 @@ typedef struct {
 } snat_det_map_t;
 
 typedef struct {
+  ip4_address_t addr;
+  u16 port;
+  u8 probability;
+  u8 prefix;
+} nat44_lb_addr_port_t;
+
+typedef struct {
   ip4_address_t local_addr;
   ip4_address_t external_addr;
   u16 local_port;
@@ -214,6 +223,7 @@ typedef struct {
   u32 vrf_id;
   u32 fib_index;
   snat_protocol_t proto;
+  nat44_lb_addr_port_t *locals;
 } snat_static_mapping_t;
 
 typedef struct {
@@ -264,9 +274,9 @@ typedef struct snat_main_s {
   clib_bihash_8_8_t out2in;
   clib_bihash_8_8_t in2out;
 
-  /* Unknown protocol sessions lookup tables */
-  clib_bihash_16_8_t out2in_unk_proto;
-  clib_bihash_16_8_t in2out_unk_proto;
+  /* Endpoint address dependent sessions lookup tables */
+  clib_bihash_16_8_t out2in_ed;
+  clib_bihash_16_8_t in2out_ed;
 
   /* Find-a-user => src address lookup */
   clib_bihash_8_8_t user_hash;
@@ -496,6 +506,9 @@ int snat_interface_add_del_output_feature(u32 sw_if_index, u8 is_inside,
 int snat_add_interface_address(snat_main_t *sm, u32 sw_if_index, int is_del);
 uword unformat_snat_protocol(unformat_input_t * input, va_list * args);
 u8 * format_snat_protocol(u8 * s, va_list * args);
+int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
+                                     snat_protocol_t proto, u32 vrf_id,
+                                     nat44_lb_addr_port_t *locals, u8 is_add);
 
 static_always_inline u8
 icmp_is_error_message (icmp46_header_t * icmp)

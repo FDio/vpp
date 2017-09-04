@@ -506,15 +506,16 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                       if (snat_is_unk_proto_session (s))
                         {
                           clib_bihash_kv_16_8_t up_kv;
-                          snat_unk_proto_ses_key_t up_key;
+                          nat_ed_ses_key_t up_key;
                           up_key.l_addr = s->in2out.addr;
                           up_key.r_addr = s->ext_host_addr;
                           up_key.fib_index = s->in2out.fib_index;
                           up_key.proto = s->in2out.port;
-                          up_key.rsvd[0] = up_key.rsvd[1] = up_key.rsvd[2] = 0;
+                          up_key.rsvd = 0;
+                          up_key.l_port = 0;
                           up_kv.key[0] = up_key.as_u64[0];
                           up_kv.key[1] = up_key.as_u64[1];
-                          if (clib_bihash_add_del_16_8 (&sm->in2out_unk_proto,
+                          if (clib_bihash_add_del_16_8 (&sm->in2out_ed,
                                                         &up_kv, 0))
                             clib_warning ("in2out key del failed");
 
@@ -522,7 +523,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                           up_key.fib_index = s->out2in.fib_index;
                           up_kv.key[0] = up_key.as_u64[0];
                           up_kv.key[1] = up_key.as_u64[1];
-                          if (clib_bihash_add_del_16_8 (&sm->out2in_unk_proto,
+                          if (clib_bihash_add_del_16_8 (&sm->out2in_ed,
                                                         &up_kv, 0))
                             clib_warning ("out2in key del failed");
 
@@ -589,6 +590,243 @@ delete:
   return 0;
 }
 
+int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
+                                     snat_protocol_t proto, u32 vrf_id,
+                                     nat44_lb_addr_port_t *locals, u8 is_add)
+{
+  snat_main_t * sm = &snat_main;
+  snat_static_mapping_t *m;
+  snat_session_key_t m_key;
+  clib_bihash_kv_8_8_t kv, value;
+  u32 fib_index;
+  snat_address_t *a = 0;
+  int i;
+  nat44_lb_addr_port_t *local;
+  snat_user_key_t w_key0;
+  snat_worker_key_t w_key1;
+  u32 worker_index = 0;
+
+  m_key.addr = e_addr;
+  m_key.port = e_port;
+  m_key.protocol = proto;
+  m_key.fib_index = sm->outside_fib_index;
+  kv.key = m_key.as_u64;
+  if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+    m = 0;
+  else
+    m = pool_elt_at_index (sm->static_mappings, value.value);
+
+  if (is_add)
+    {
+      if (m)
+        return VNET_API_ERROR_VALUE_EXIST;
+
+      if (vec_len (locals) < 2)
+        return VNET_API_ERROR_INVALID_VALUE;
+
+      fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
+                                                     vrf_id);
+
+      /* Find external address in allocated addresses and reserve port for
+         address and port pair mapping when dynamic translations enabled */
+      if (!sm->static_mapping_only)
+        {
+          for (i = 0; i < vec_len (sm->addresses); i++)
+            {
+              if (sm->addresses[i].addr.as_u32 == e_addr.as_u32)
+                {
+                  a = sm->addresses + i;
+                  /* External port must be unused */
+                  switch (proto)
+                    {
+#define _(N, j, n, s) \
+                    case SNAT_PROTOCOL_##N: \
+                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, e_port)) \
+                        return VNET_API_ERROR_INVALID_VALUE; \
+                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 1); \
+                      if (e_port > 1024) \
+                        a->busy_##n##_ports++; \
+                      break;
+                      foreach_snat_protocol
+#undef _
+                    default:
+                      clib_warning("unknown_protocol");
+                      return VNET_API_ERROR_INVALID_VALUE_2;
+                    }
+                  break;
+                }
+            }
+          /* External address must be allocated */
+          if (!a)
+            return VNET_API_ERROR_NO_SUCH_ENTRY;
+        }
+
+      pool_get (sm->static_mappings, m);
+      memset (m, 0, sizeof (*m));
+      m->external_addr = e_addr;
+      m->addr_only = 0;
+      m->vrf_id = vrf_id;
+      m->fib_index = fib_index;
+      m->external_port = e_port;
+      m->proto = proto;
+
+      m_key.addr = m->external_addr;
+      m_key.port = m->external_port;
+      m_key.protocol = m->proto;
+      m_key.fib_index = sm->outside_fib_index;
+      kv.key = m_key.as_u64;
+      kv.value = m - sm->static_mappings;
+      if (clib_bihash_add_del_8_8(&sm->static_mapping_by_external, &kv, 1))
+        {
+          clib_warning ("static_mapping_by_external key add failed");
+          return VNET_API_ERROR_UNSPECIFIED;
+        }
+      m_key.port = clib_host_to_net_u16 (m->external_port);
+      kv.key = m_key.as_u64;
+      kv.value = ~0ULL;
+      if (clib_bihash_add_del_8_8(&sm->out2in, &kv, 1))
+        {
+          clib_warning ("static_mapping_by_local key add failed");
+          return VNET_API_ERROR_UNSPECIFIED;
+        }
+
+      m_key.fib_index = m->fib_index;
+
+      /* Assign worker */
+      if (sm->workers)
+        {
+          w_key0.addr = locals[0].addr;
+          w_key0.fib_index = fib_index;
+          kv.key = w_key0.as_u64;
+
+          if (clib_bihash_search_8_8 (&sm->worker_by_in, &kv, &value))
+            worker_index = sm->first_worker_index +
+              sm->workers[sm->next_worker++ % vec_len (sm->workers)];
+          else
+            worker_index = value.value;
+
+          w_key1.addr = m->external_addr;
+          w_key1.port = clib_host_to_net_u16 (m->external_port);
+          w_key1.fib_index = sm->outside_fib_index;
+          kv.key = w_key1.as_u64;
+          kv.value = worker_index;
+          if (clib_bihash_add_del_8_8 (&sm->worker_by_out, &kv, 1))
+            {
+              clib_warning ("worker-by-out add key failed");
+              return VNET_API_ERROR_UNSPECIFIED;
+            }
+        }
+
+      for (i = 0; i < vec_len (locals); i++)
+        {
+          m_key.addr = locals[i].addr;
+          m_key.port = locals[i].port;
+          kv.key = m_key.as_u64;
+          kv.value = m - sm->static_mappings;
+          clib_bihash_add_del_8_8(&sm->static_mapping_by_local, &kv, 1);
+          locals[i].prefix = locals[i - 1].prefix + locals[i].probability;
+          vec_add1 (m->locals, locals[i]);
+          m_key.port = clib_host_to_net_u16 (locals[i].port);
+          kv.key = m_key.as_u64;
+          kv.value = ~0ULL;
+          if (clib_bihash_add_del_8_8(&sm->in2out, &kv, 1))
+            {
+              clib_warning ("in2out key add failed");
+              return VNET_API_ERROR_UNSPECIFIED;
+            }
+          /* Assign worker */
+          if (sm->workers)
+            {
+              w_key0.addr = locals[i].addr;
+              w_key0.fib_index = fib_index;
+              kv.key = w_key0.as_u64;
+              kv.value = worker_index;
+              if (clib_bihash_add_del_8_8 (&sm->worker_by_in, &kv, 1))
+                {
+                  clib_warning ("worker-by-in key add failed");
+                  return VNET_API_ERROR_UNSPECIFIED;
+                }
+            }
+        }
+    }
+  else
+    {
+      if (!m)
+        return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+      fib_table_unlock (m->fib_index, FIB_PROTOCOL_IP4);
+
+      /* Free external address port */
+      if (!sm->static_mapping_only)
+        {
+          for (i = 0; i < vec_len (sm->addresses); i++)
+            {
+              if (sm->addresses[i].addr.as_u32 == e_addr.as_u32)
+                {
+                  a = sm->addresses + i;
+                  switch (proto)
+                    {
+#define _(N, j, n, s) \
+                    case SNAT_PROTOCOL_##N: \
+                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 0); \
+                      if (e_port > 1024) \
+                        a->busy_##n##_ports--; \
+                      break;
+                      foreach_snat_protocol
+#undef _
+                    default:
+                      clib_warning("unknown_protocol");
+                      return VNET_API_ERROR_INVALID_VALUE_2;
+                    }
+                  break;
+                }
+            }
+        }
+
+      m_key.addr = m->external_addr;
+      m_key.port = m->external_port;
+      m_key.protocol = m->proto;
+      m_key.fib_index = sm->outside_fib_index;
+      kv.key = m_key.as_u64;
+      if (clib_bihash_add_del_8_8(&sm->static_mapping_by_external, &kv, 0))
+        {
+          clib_warning ("static_mapping_by_external key del failed");
+          return VNET_API_ERROR_UNSPECIFIED;
+        }
+      m_key.port = clib_host_to_net_u16 (m->external_port);
+      kv.key = m_key.as_u64;
+      if (clib_bihash_add_del_8_8(&sm->out2in, &kv, 0))
+        {
+          clib_warning ("outi2in key del failed");
+          return VNET_API_ERROR_UNSPECIFIED;
+        }
+
+      vec_foreach (local, m->locals)
+        {
+          m_key.addr = local->addr;
+          m_key.port = local->port;
+          m_key.fib_index = m->fib_index;
+          kv.key = m_key.as_u64;
+          if (clib_bihash_add_del_8_8(&sm->static_mapping_by_local, &kv, 0))
+            {
+              clib_warning ("static_mapping_by_local key del failed");
+              return VNET_API_ERROR_UNSPECIFIED;
+            }
+          m_key.port = clib_host_to_net_u16 (local->port);
+          kv.key = m_key.as_u64;
+          if (clib_bihash_add_del_8_8(&sm->in2out, &kv, 0))
+            {
+              clib_warning ("in2out key del failed");
+              return VNET_API_ERROR_UNSPECIFIED;
+            }
+        }
+
+      pool_put (sm->static_mappings, m);
+    }
+
+  return 0;
+}
+
 int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
 {
   snat_address_t *a = 0;
@@ -649,15 +887,16 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
                 if (snat_is_unk_proto_session (ses))
                   {
                     clib_bihash_kv_16_8_t up_kv;
-                    snat_unk_proto_ses_key_t up_key;
+                    nat_ed_ses_key_t up_key;
                     up_key.l_addr = ses->in2out.addr;
                     up_key.r_addr = ses->ext_host_addr;
                     up_key.fib_index = ses->in2out.fib_index;
                     up_key.proto = ses->in2out.port;
-                    up_key.rsvd[0] = up_key.rsvd[1] = up_key.rsvd[2] = 0;
+                    up_key.rsvd = 0;
+                    up_key.l_port = 0;
                     up_kv.key[0] = up_key.as_u64[0];
                     up_kv.key[1] = up_key.as_u64[1];
-                    if (clib_bihash_add_del_16_8 (&sm->in2out_unk_proto,
+                    if (clib_bihash_add_del_16_8 (&sm->in2out_ed,
                                                   &up_kv, 0))
                       clib_warning ("in2out key del failed");
 
@@ -665,7 +904,7 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
                     up_key.fib_index = ses->out2in.fib_index;
                     up_kv.key[0] = up_key.as_u64[0];
                     up_kv.key[1] = up_key.as_u64[1];
-                    if (clib_bihash_add_del_16_8 (&sm->out2in_unk_proto,
+                    if (clib_bihash_add_del_16_8 (&sm->out2in_ed,
                                                   &up_kv, 0))
                       clib_warning ("out2in key del failed");
                   }
@@ -1048,6 +1287,7 @@ int snat_static_mapping_match (snat_main_t * sm,
   snat_static_mapping_t *m;
   snat_session_key_t m_key;
   clib_bihash_8_8_t *mapping_hash = &sm->static_mapping_by_local;
+  u32 rand, lo = 0, hi, mid;
 
   if (by_external)
     mapping_hash = &sm->static_mapping_by_external;
@@ -1073,11 +1313,29 @@ int snat_static_mapping_match (snat_main_t * sm,
 
   if (by_external)
     {
-      mapping->addr = m->local_addr;
-      /* Address only mapping doesn't change port */
-      mapping->port = m->addr_only ? match.port
-        : clib_host_to_net_u16 (m->local_port);
+      if (vec_len (m->locals))
+        {
+          hi = vec_len (m->locals) - 1;
+          rand = 1 + (random_u32 (&sm->random_seed) % m->locals[hi].prefix);
+          while (lo < hi)
+            {
+              mid = ((hi - 1) >> 1) + lo;
+              (rand > m->locals[mid].prefix) ? (lo = mid + 1) : (hi = mid);
+            }
+          if (!(m->locals[lo].prefix >= rand))
+            return 1;
+          mapping->addr = m->locals[lo].addr;
+          mapping->port = clib_host_to_net_u16 (m->locals[lo].port);
+        }
+      else
+        {
+          mapping->addr = m->local_addr;
+          /* Address only mapping doesn't change port */
+          mapping->port = m->addr_only ? match.port
+            : clib_host_to_net_u16 (m->local_port);
+        }
       mapping->fib_index = m->fib_index;
+      mapping->protocol = m->proto;
     }
   else
     {
@@ -1518,6 +1776,101 @@ VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
 };
 
 static clib_error_t *
+add_lb_static_mapping_command_fn (vlib_main_t * vm,
+                                  unformat_input_t * input,
+                                  vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t * error = 0;
+  ip4_address_t l_addr, e_addr;
+  u32 l_port = 0, e_port = 0, vrf_id = 0, probability = 0;
+  int is_add = 1;
+  int rv;
+  snat_protocol_t proto;
+  u8 proto_set = 0;
+  nat44_lb_addr_port_t *locals = 0, local;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "local %U:%u probability %u",
+                    unformat_ip4_address, &l_addr, &l_port, &probability))
+        {
+          memset (&local, 0, sizeof (local));
+          local.addr = l_addr;
+          local.port = (u16) l_port;
+          local.probability = (u8) probability;
+          vec_add1 (locals, local);
+        }
+      else if (unformat (line_input, "external %U:%u", unformat_ip4_address,
+                         &e_addr, &e_port))
+        ;
+      else if (unformat (line_input, "vrf %u", &vrf_id))
+        ;
+      else if (unformat (line_input, "protocol %U", unformat_snat_protocol,
+                         &proto))
+        proto_set = 1;
+      else if (unformat (line_input, "del"))
+        is_add = 0;
+      else
+        {
+          error = clib_error_return (0, "unknown input: '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  if (vec_len (locals) < 2)
+    {
+      error = clib_error_return (0, "at least two local must be set");
+      goto done;
+    }
+
+  if (!proto_set)
+    {
+      error = clib_error_return (0, "missing protocol");
+      goto done;
+    }
+
+  rv = nat44_add_del_lb_static_mapping (e_addr, (u16) e_port, proto, vrf_id,
+                                        locals, is_add);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_INVALID_VALUE:
+      error = clib_error_return (0, "External port already in use.");
+      goto done;
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+      if (is_add)
+        error = clib_error_return (0, "External addres must be allocated.");
+      else
+        error = clib_error_return (0, "Mapping not exist.");
+      goto done;
+    case VNET_API_ERROR_VALUE_EXIST:
+      error = clib_error_return (0, "Mapping already exist.");
+      goto done;
+    default:
+      break;
+    }
+
+done:
+  unformat_free (line_input);
+  vec_free (locals);
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (add_lb_static_mapping_command, static) = {
+  .path = "nat44 add load-balancing static mapping",
+  .function = add_lb_static_mapping_command_fn,
+  .short_help =
+    "nat44 add load-balancing static mapping protocol tcp|udp external <addr>:<port> local <addr>:<port> probability <n> [vrf <table-id>] [del]",
+};
+
+static clib_error_t *
 set_workers_command_fn (vlib_main_t * vm,
                         unformat_input_t * input,
                         vlib_cli_command_t * cmd)
@@ -1839,10 +2192,10 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
           clib_bihash_init_8_8 (&sm->user_hash, "users", user_buckets,
                                 user_memory_size);
 
-          clib_bihash_init_16_8 (&sm->in2out_unk_proto, "in2out-unk-proto",
+          clib_bihash_init_16_8 (&sm->in2out_ed, "in2out-ed",
                                  translation_buckets, translation_memory_size);
 
-          clib_bihash_init_16_8 (&sm->out2in_unk_proto, "out2in-unk-proto",
+          clib_bihash_init_16_8 (&sm->out2in_ed, "out2in-ed",
                                  translation_buckets, translation_memory_size);
         }
       else
@@ -1884,18 +2237,10 @@ u8 * format_snat_session_state (u8 * s, va_list * args)
 u8 * format_snat_key (u8 * s, va_list * args)
 {
   snat_session_key_t * key = va_arg (*args, snat_session_key_t *);
-  char * protocol_string = "unknown";
-  static char *protocol_strings[] = {
-      "UDP",
-      "TCP",
-      "ICMP",
-  };
 
-  if (key->protocol < ARRAY_LEN(protocol_strings))
-      protocol_string = protocol_strings[key->protocol];
-
-  s = format (s, "%U proto %s port %d fib %d",
-              format_ip4_address, &key->addr, protocol_string,
+  s = format (s, "%U proto %U port %d fib %d",
+              format_ip4_address, &key->addr,
+              format_snat_protocol, key->protocol,
               clib_net_to_host_u16 (key->port), key->fib_index);
   return s;
 }
@@ -1919,6 +2264,9 @@ u8 * format_snat_session (u8 * s, va_list * args)
       s = format (s, "  i2o %U\n", format_snat_key, &sess->in2out);
       s = format (s, "    o2i %U\n", format_snat_key, &sess->out2in);
     }
+  if (sess->ext_host_addr.as_u32)
+      s = format (s, "       external host %U\n",
+                  format_ip4_address, &sess->ext_host_addr);
   s = format (s, "       last heard %.2f\n", sess->last_heard);
   s = format (s, "       total pkts %d, total bytes %lld\n",
               sess->total_pkts, sess->total_bytes);
@@ -1926,6 +2274,8 @@ u8 * format_snat_session (u8 * s, va_list * args)
     s = format (s, "       static translation\n");
   else
     s = format (s, "       dynamic translation\n");
+  if (sess->flags & SNAT_SESSION_FLAG_LOAD_BALANCING)
+    s = format (s, "       load-balancing\n");
 
   return s;
 }
@@ -1973,6 +2323,7 @@ u8 * format_snat_user (u8 * s, va_list * args)
 u8 * format_snat_static_mapping (u8 * s, va_list * args)
 {
   snat_static_mapping_t *m = va_arg (*args, snat_static_mapping_t *);
+  nat44_lb_addr_port_t *local;
 
   if (m->addr_only)
       s = format (s, "local %U external %U vrf %d",
@@ -1980,12 +2331,25 @@ u8 * format_snat_static_mapping (u8 * s, va_list * args)
                   format_ip4_address, &m->external_addr,
                   m->vrf_id);
   else
-      s = format (s, "%U local %U:%d external %U:%d vrf %d",
-                  format_snat_protocol, m->proto,
-                  format_ip4_address, &m->local_addr, m->local_port,
-                  format_ip4_address, &m->external_addr, m->external_port,
-                  m->vrf_id);
-
+   {
+      if (vec_len (m->locals))
+        {
+          s = format (s, "%U vrf %d external %U:%d",
+                      format_snat_protocol, m->proto,
+                      m->vrf_id,
+                      format_ip4_address, &m->external_addr, m->external_port);
+          vec_foreach (local, m->locals)
+            s = format (s, "\n  local %U:%d probability %d\%",
+                        format_ip4_address, &local->addr, local->port,
+                        local->probability);
+        }
+      else
+        s = format (s, "%U local %U:%d external %U:%d vrf %d",
+                    format_snat_protocol, m->proto,
+                    format_ip4_address, &m->local_addr, m->local_port,
+                    format_ip4_address, &m->external_addr, m->external_port,
+                    m->vrf_id);
+   }
   return s;
 }
 
@@ -2207,6 +2571,10 @@ show_snat_command_fn (vlib_main_t * vm,
               vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->in2out,
                                verbose - 1);
               vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->out2in,
+                               verbose - 1);
+              vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->in2out_ed,
+                               verbose - 1);
+              vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->out2in_ed,
                                verbose - 1);
               vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->worker_by_in,
                                verbose - 1);
