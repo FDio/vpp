@@ -181,6 +181,12 @@ typedef struct vlib_main_t
   /* Attempt to do a post-mortem elog dump */
   int elog_post_mortem_dump;
 
+  /*
+   * Need to call vlib_worker_thread_node_runtime_update before
+   * releasing worker thread barrier. Only valid in vlib_global_main.
+   */
+  int need_vlib_worker_thread_node_runtime_update;
+
 } vlib_main_t;
 
 /* Global main structure. */

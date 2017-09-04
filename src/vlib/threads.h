@@ -102,6 +102,7 @@ typedef struct
   vlib_thread_registration_t *registration;
   u8 *name;
   u64 barrier_sync_count;
+  volatile u32 *node_reforks_required;
 
   long lwp;
   int lcore_id;
@@ -180,6 +181,7 @@ u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
 
 void vlib_worker_thread_barrier_sync (vlib_main_t * vm);
 void vlib_worker_thread_barrier_release (vlib_main_t * vm);
+void vlib_worker_thread_node_refork (void);
 
 static_always_inline uword
 vlib_get_thread_index (void)
@@ -369,6 +371,15 @@ vlib_worker_thread_barrier_check (void)
       if (CLIB_DEBUG > 0)
 	vm->parked_at_barrier = 0;
       clib_smp_atomic_add (vlib_worker_threads->workers_at_barrier, -1);
+
+      if (PREDICT_FALSE (*vlib_worker_threads->node_reforks_required))
+	{
+	  vlib_worker_thread_node_refork ();
+	  clib_smp_atomic_add (vlib_worker_threads->node_reforks_required,
+			       -1);
+	  while (*vlib_worker_threads->node_reforks_required)
+	    ;
+	}
     }
 }
 
