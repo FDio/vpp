@@ -1238,6 +1238,36 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.nat44_user_dump, {})
 
+    def nat44_add_del_lb_static_mapping(
+            self,
+            external_addr,
+            external_port,
+            protocol,
+            vrf_id=0,
+            local_num=0,
+            locals=None,
+            is_add=1):
+        """Add/delete NAT44 load balancing static mapping
+
+        :param is_add - 1 if add, 0 if delete
+        """
+        return self.api(
+            self.papi.nat44_add_del_lb_static_mapping,
+            {'is_add': is_add,
+             'external_addr': external_addr,
+             'external_port': external_port,
+             'protocol': protocol,
+             'vrf_id': vrf_id,
+             'local_num': local_num,
+             'locals': locals})
+
+    def nat44_lb_static_mapping_dump(self):
+        """Dump NAT44 load balancing static mappings
+
+        :return: Dictionary of NAT44 load balancing static mapping
+        """
+        return self.api(self.papi.nat44_lb_static_mapping_dump, {})
+
     def nat_det_add_del_map(
             self,
             in_addr,

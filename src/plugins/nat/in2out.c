@@ -314,23 +314,25 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
       if (snat_is_unk_proto_session (s))
         {
           clib_bihash_kv_16_8_t up_kv;
-          snat_unk_proto_ses_key_t key;
+          nat_ed_ses_key_t key;
 
           /* Remove from lookup tables */
           key.l_addr = s->in2out.addr;
           key.r_addr = s->ext_host_addr;
           key.fib_index = s->in2out.fib_index;
           key.proto = s->in2out.port;
+          key.rsvd = 0;
+          key.l_port = 0;
           up_kv.key[0] = key.as_u64[0];
           up_kv.key[1] = key.as_u64[1];
-          if (clib_bihash_add_del_16_8 (&sm->in2out_unk_proto, &up_kv, 0))
+          if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &up_kv, 0))
             clib_warning ("in2out key del failed");
 
           key.l_addr = s->out2in.addr;
           key.fib_index = s->out2in.fib_index;
           up_kv.key[0] = key.as_u64[0];
           up_kv.key[1] = key.as_u64[1];
-          if (clib_bihash_add_del_16_8 (&sm->out2in_unk_proto, &up_kv, 0))
+          if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &up_kv, 0))
             clib_warning ("out2in key del failed");
         }
       else
@@ -1033,7 +1035,7 @@ snat_hairpinning_unknown_proto (snat_main_t *sm,
   u32 old_addr, new_addr = 0, ti = 0;
   clib_bihash_kv_8_8_t kv, value;
   clib_bihash_kv_16_8_t s_kv, s_value;
-  snat_unk_proto_ses_key_t key;
+  nat_ed_ses_key_t key;
   snat_session_key_t m_key;
   snat_worker_key_t w_key;
   snat_static_mapping_t *m;
@@ -1045,10 +1047,11 @@ snat_hairpinning_unknown_proto (snat_main_t *sm,
   key.r_addr.as_u32 = ip->src_address.as_u32;
   key.fib_index = sm->outside_fib_index;
   key.proto = ip->protocol;
-  key.rsvd[0] = key.rsvd[1] = key.rsvd[2] = 0;
+  key.rsvd = 0;
+  key.l_port = 0;
   s_kv.key[0] = key.as_u64[0];
   s_kv.key[1] = key.as_u64[1];
-  if (clib_bihash_search_16_8 (&sm->out2in_unk_proto, &s_kv, &s_value))
+  if (clib_bihash_search_16_8 (&sm->out2in_ed, &s_kv, &s_value))
     {
       m_key.addr = ip->dst_address;
       m_key.fib_index = sm->outside_fib_index;
@@ -1110,7 +1113,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
   u32 elt_index, head_index, ses_index, oldest_index;
   snat_session_t * s;
-  snat_unk_proto_ses_key_t key;
+  nat_ed_ses_key_t key;
   u32 address_index = ~0;
   int i;
   u8 is_sm = 0;
@@ -1121,11 +1124,12 @@ snat_in2out_unknown_proto (snat_main_t *sm,
   key.r_addr = ip->dst_address;
   key.fib_index = rx_fib_index;
   key.proto = ip->protocol;
-  key.rsvd[0] = key.rsvd[1] = key.rsvd[2] = 0;
+  key.rsvd = 0;
+  key.l_port = 0;
   s_kv.key[0] = key.as_u64[0];
   s_kv.key[1] = key.as_u64[1];
 
-  if (!clib_bihash_search_16_8 (&sm->in2out_unk_proto, &s_kv, &s_value))
+  if (!clib_bihash_search_16_8 (&sm->in2out_ed, &s_kv, &s_value))
     {
       s = pool_elt_at_index (tsm->sessions, s_value.value);
       new_addr = ip->src_address.as_u32 = s->out2in.addr.as_u32;
@@ -1202,7 +1206,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
                       key.l_addr.as_u32 = new_addr;
                       s_kv.key[0] = key.as_u64[0];
                       s_kv.key[1] = key.as_u64[1];
-                      if (clib_bihash_search_16_8 (&sm->out2in_unk_proto, &s_kv, &s_value))
+                      if (clib_bihash_search_16_8 (&sm->out2in_ed, &s_kv, &s_value))
                         break;
 
                       goto create_ses;
@@ -1215,7 +1219,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
               key.l_addr.as_u32 = sm->addresses[i].addr.as_u32;
               s_kv.key[0] = key.as_u64[0];
               s_kv.key[1] = key.as_u64[1];
-              if (clib_bihash_search_16_8 (&sm->out2in_unk_proto, &s_kv, &s_value))
+              if (clib_bihash_search_16_8 (&sm->out2in_ed, &s_kv, &s_value))
                 {
                   new_addr = ip->src_address.as_u32 = key.l_addr.as_u32;
                   address_index = i;
@@ -1259,14 +1263,14 @@ create_ses:
               key.proto = s->in2out.port;
               s_kv.key[0] = key.as_u64[0];
               s_kv.key[1] = key.as_u64[1];
-              if (clib_bihash_add_del_16_8 (&sm->in2out_unk_proto, &s_kv, 0))
+              if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &s_kv, 0))
                 clib_warning ("in2out key del failed");
 
               key.l_addr = s->out2in.addr;
               key.fib_index = s->out2in.fib_index;
               s_kv.key[0] = key.as_u64[0];
               s_kv.key[1] = key.as_u64[1];
-              if (clib_bihash_add_del_16_8 (&sm->out2in_unk_proto, &s_kv, 0))
+              if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &s_kv, 0))
                 clib_warning ("out2in key del failed");
             }
           else
@@ -1333,14 +1337,14 @@ create_ses:
       s_kv.key[0] = key.as_u64[0];
       s_kv.key[1] = key.as_u64[1];
       s_kv.value = s - tsm->sessions;
-      if (clib_bihash_add_del_16_8 (&sm->in2out_unk_proto, &s_kv, 1))
+      if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &s_kv, 1))
         clib_warning ("in2out key add failed");
 
       key.l_addr.as_u32 = new_addr;
       key.fib_index = sm->outside_fib_index;
       s_kv.key[0] = key.as_u64[0];
       s_kv.key[1] = key.as_u64[1];
-      if (clib_bihash_add_del_16_8 (&sm->out2in_unk_proto, &s_kv, 1))
+      if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &s_kv, 1))
         clib_warning ("out2in key add failed");
   }
 
@@ -1364,6 +1368,153 @@ create_ses:
 
   if (vnet_buffer(b)->sw_if_index[VLIB_TX] == ~0)
     vnet_buffer(b)->sw_if_index[VLIB_TX] = sm->outside_fib_index;
+}
+
+static void
+snat_in2out_lb (snat_main_t *sm,
+                vlib_buffer_t * b,
+                ip4_header_t * ip,
+                u32 rx_fib_index,
+                u32 thread_index,
+                f64 now,
+                vlib_main_t * vm)
+{
+  nat_ed_ses_key_t key;
+  clib_bihash_kv_16_8_t s_kv, s_value;
+  udp_header_t *udp = ip4_next_header (ip);
+  tcp_header_t *tcp = (tcp_header_t *) udp;
+  snat_session_t *s = 0;
+  snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
+  u32 old_addr, new_addr;
+  u16 new_port, old_port;
+  ip_csum_t sum;
+  u32 proto = ip_proto_to_snat_proto (ip->protocol);
+  snat_session_key_t e_key, l_key;
+  clib_bihash_kv_8_8_t kv, value;
+  snat_user_key_t u_key;
+  snat_user_t *u;
+  dlist_elt_t *head, *elt;
+
+  old_addr = ip->src_address.as_u32;
+
+  key.l_addr = ip->src_address;
+  key.r_addr = ip->dst_address;
+  key.fib_index = rx_fib_index;
+  key.proto = ip->protocol;
+  key.rsvd = 0;
+  key.l_port = udp->src_port;
+  s_kv.key[0] = key.as_u64[0];
+  s_kv.key[1] = key.as_u64[1];
+
+  if (!clib_bihash_search_16_8 (&sm->in2out_ed, &s_kv, &s_value))
+    {
+      s = pool_elt_at_index (tsm->sessions, s_value.value);
+    }
+  else
+    {
+      l_key.addr = ip->src_address;
+      l_key.port = udp->src_port;
+      l_key.protocol = proto;
+      l_key.fib_index = rx_fib_index;
+      if (snat_static_mapping_match(sm, l_key, &e_key, 0, 0))
+        return;
+
+      u_key.addr = ip->src_address;
+      u_key.fib_index = rx_fib_index;
+      kv.key = u_key.as_u64;
+
+      /* Ever heard of the "user" = src ip4 address before? */
+      if (clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+        {
+          /* no, make a new one */
+          pool_get (tsm->users, u);
+          memset (u, 0, sizeof (*u));
+          u->addr = ip->src_address;
+          u->fib_index = rx_fib_index;
+
+          pool_get (tsm->list_pool, head);
+          u->sessions_per_user_list_head_index = head - tsm->list_pool;
+
+          clib_dlist_init (tsm->list_pool,
+                           u->sessions_per_user_list_head_index);
+
+          kv.value = u - tsm->users;
+
+          /* add user */
+          if (clib_bihash_add_del_8_8 (&sm->user_hash, &kv, 1))
+            clib_warning ("user key add failed");
+        }
+      else
+        {
+          u = pool_elt_at_index (tsm->users, value.value);
+        }
+
+      /* Create a new session */
+      pool_get (tsm->sessions, s);
+      memset (s, 0, sizeof (*s));
+
+      s->ext_host_addr.as_u32 = ip->dst_address.as_u32;
+      s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
+      s->flags |= SNAT_SESSION_FLAG_LOAD_BALANCING;
+      s->outside_address_index = ~0;
+      s->in2out = l_key;
+      s->out2in = e_key;
+      u->nstaticsessions++;
+
+      /* Create list elts */
+      pool_get (tsm->list_pool, elt);
+      clib_dlist_init (tsm->list_pool, elt - tsm->list_pool);
+      elt->value = s - tsm->sessions;
+      s->per_user_index = elt - tsm->list_pool;
+      s->per_user_list_head_index = u->sessions_per_user_list_head_index;
+      clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
+                          s->per_user_index);
+
+      /* Add to lookup tables */
+      s_kv.value = s - tsm->sessions;
+      if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &s_kv, 1))
+        clib_warning ("in2out-ed key add failed");
+
+      key.l_addr = e_key.addr;
+      key.fib_index = e_key.fib_index;
+      key.l_port = e_key.port;
+      s_kv.key[0] = key.as_u64[0];
+      s_kv.key[1] = key.as_u64[1];
+      if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &s_kv, 1))
+        clib_warning ("out2in-ed key add failed");
+    }
+
+  new_addr = ip->src_address.as_u32 = s->out2in.addr.as_u32;
+
+  /* Update IP checksum */
+  sum = ip->checksum;
+  sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, src_address);
+  ip->checksum = ip_csum_fold (sum);
+
+  if (PREDICT_TRUE(proto == SNAT_PROTOCOL_TCP))
+    {
+      old_port = tcp->src_port;
+      tcp->src_port = s->out2in.port;
+      new_port = tcp->src_port;
+
+      sum = tcp->checksum;
+      sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, src_address);
+      sum = ip_csum_update (sum, old_port, new_port, ip4_header_t, length);
+      tcp->checksum = ip_csum_fold(sum);
+    }
+  else
+    {
+      udp->src_port = s->out2in.port;
+      udp->checksum = 0;
+    }
+
+  if (vnet_buffer(b)->sw_if_index[VLIB_TX] == ~0)
+    vnet_buffer(b)->sw_if_index[VLIB_TX] = sm->outside_fib_index;
+
+  /* Accounting */
+  s->last_heard = now;
+  s->total_pkts++;
+  s->total_bytes += vlib_buffer_length_in_chain (vm, b);
 }
 
 static inline uword
@@ -1521,8 +1672,28 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 }
             }
           else
-            s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-                                    value0.value);
+            {
+              if (PREDICT_FALSE (value0.value == ~0ULL))
+                {
+                  if (is_slow_path)
+                    {
+                      snat_in2out_lb(sm, b0, ip0, rx_fib_index0, thread_index,
+                                     now, vm);
+                      goto trace00;
+                    }
+                  else
+                    {
+                      next0 = SNAT_IN2OUT_NEXT_SLOW_PATH;
+                      goto trace00;
+                    }
+                }
+              else
+                {
+                  s0 = pool_elt_at_index (
+                    sm->per_thread_data[thread_index].sessions,
+                    value0.value);
+                }
+            }
 
           old_addr0 = ip0->src_address.as_u32;
           ip0->src_address = s0->out2in.addr;
@@ -1672,8 +1843,28 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 }
             }
           else
-            s1 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-                                    value1.value);
+            {
+              if (PREDICT_FALSE (value1.value == ~0ULL))
+                {
+                  if (is_slow_path)
+                    {
+                      snat_in2out_lb(sm, b1, ip1, rx_fib_index1, thread_index,
+                                     now, vm);
+                      goto trace01;
+                    }
+                  else
+                    {
+                      next1 = SNAT_IN2OUT_NEXT_SLOW_PATH;
+                      goto trace01;
+                    }
+                }
+              else
+                {
+                  s1 = pool_elt_at_index (
+                    sm->per_thread_data[thread_index].sessions,
+                    value1.value);
+                }
+            }
 
           old_addr1 = ip1->src_address.as_u32;
           ip1->src_address = s1->out2in.addr;
@@ -1860,8 +2051,28 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 }
             }
           else
-            s0 = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-                                    value0.value);
+            {
+              if (PREDICT_FALSE (value0.value == ~0ULL))
+                {
+                  if (is_slow_path)
+                    {
+                      snat_in2out_lb(sm, b0, ip0, rx_fib_index0, thread_index,
+                                     now, vm);
+                      goto trace0;
+                    }
+                  else
+                    {
+                      next0 = SNAT_IN2OUT_NEXT_SLOW_PATH;
+                      goto trace0;
+                    }
+                }
+              else
+                {
+                  s0 = pool_elt_at_index (
+                    sm->per_thread_data[thread_index].sessions,
+                    value0.value);
+                }
+            }
 
           old_addr0 = ip0->src_address.as_u32;
           ip0->src_address = s0->out2in.addr;
