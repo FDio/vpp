@@ -47,6 +47,11 @@
 #define vl_api_one_add_del_l2_arp_entry vl_noop_handler
 #define vl_api_one_l2_arp_bd_get vl_noop_handler
 
+#define vl_api_one_ndp_entry_t_endian vl_noop_handler
+#define vl_api_one_ndp_entry_t_print vl_noop_handler
+#define vl_api_one_ndp_entries_get_reply_t_endian vl_noop_handler
+#define vl_api_one_ndp_entries_get_reply_t_print vl_noop_handler
+
 #define vl_typedefs		/* define message structures */
 #include <vnet/vnet_all_api_h.h>
 #undef vl_typedefs
