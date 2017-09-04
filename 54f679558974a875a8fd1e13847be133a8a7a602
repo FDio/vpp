@@ -91,6 +91,30 @@
       "revId": "54f679558974a875a8fd1e13847be133a8a7a602",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_e5316d0c",
+        "filename": "src/vnet/lisp-gpe/lisp_gpe_fwd_entry.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 370,
+      "author": {
+        "id": 189
+      },
+      "writtenOn": "2017-09-04T09:51:20Z",
+      "side": 1,
+      "message": "It should in theory, but with current LISP stats implementation we don\u0027t track negative mapping stats. I\u0027ll add the code for negative mapping branch, but it won\u0027t work for now",
+      "parentUuid": "3a4b7175_8709ab2e",
+      "range": {
+        "startLine": 370,
+        "startChar": 6,
+        "endLine": 370,
+        "endChar": 25
+      },
+      "revId": "54f679558974a875a8fd1e13847be133a8a7a602",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
