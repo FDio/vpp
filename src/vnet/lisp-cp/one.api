@@ -452,6 +452,87 @@ manual_print manual_endian define one_l2_arp_entries_get_reply
   vl_api_one_l2_arp_entry_t entries[count];
 };
 
+autoreply define one_add_del_ndp_entry
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 mac[6];
+  u32 bd;
+  u8 ip6[16];
+};
+
+define one_ndp_entries_get
+{
+  u32 client_index;
+  u32 context;
+  u32 bd;
+};
+
+typeonly manual_print manual_endian define one_ndp_entry
+{
+  u8 mac[6];
+  u8 ip6[16];
+};
+
+manual_print manual_endian define one_ndp_entries_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  vl_api_one_ndp_entry_t entries[count];
+};
+
+/** \brief Set ONE transport protocol
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param protocol - supported vaules:
+      1: UDP based LISP (default)
+      2: binary API
+*/
+autoreply define one_set_transport_protocol
+{
+  u32 client_index;
+  u32 context;
+  u8 protocol;
+};
+
+define one_get_transport_protocol
+{
+  u32 client_index;
+  u32 context;
+};
+
+define one_get_transport_protocol_reply
+{
+  u32 context;
+  i32 retval;
+  u8 protocol;
+};
+
+/** \brief Request for list of bridge domains used by neighbor discovery
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define one_ndp_bd_get
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply with list of bridge domains used by neighbor discovery
+    @param context - sender context, to match reply w/ request
+    @param count - number of elements in the list
+    @param bridge_domains - list of BDs
+*/
+manual_print manual_endian define one_ndp_bd_get_reply
+{
+  u32 context;
+  i32 retval;
+  u32 count;
+  u32 bridge_domains[count];
+};
+
 /** \brief Request for list of bridge domains used by L2 ARP table
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
