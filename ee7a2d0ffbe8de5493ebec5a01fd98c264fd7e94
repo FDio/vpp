@@ -2,6 +2,57 @@
   "comments": [
     {
       "key": {
+        "uuid": "3a4b7175_88465022",
+        "filename": "src/uri.am",
+        "patchSetId": 18
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-04T14:23:06Z",
+      "side": 1,
+      "message": "Hmm. What is this?",
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_085260dd",
+        "filename": "src/vpp/stats/stats.api",
+        "patchSetId": 18
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-04T14:23:06Z",
+      "side": 1,
+      "message": "Please fix date",
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_c86328b0",
+        "filename": "src/vpp/stats/stats.api",
+        "patchSetId": 18
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-04T14:23:06Z",
+      "side": 1,
+      "message": "Some temptation to introduce a want_stats2 API, which adds a u32 flags field. Bits in the field control the individual APIs.",
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_e5ff2d00",
         "filename": "src/vpp/stats/stats.c",
         "patchSetId": 18
@@ -13,6 +64,30 @@
       "writtenOn": "2017-09-01T18:37:13Z",
       "side": 1,
       "message": "This should be defined as static, otherwise you\u0027ll be leaking memory...",
+      "range": {
+        "startLine": 587,
+        "startChar": 0,
+        "endLine": 587,
+        "endChar": 25
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_c8d56844",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-04T14:23:06Z",
+      "side": 1,
+      "message": "Please move static variables to the stats_main_t.",
+      "parentUuid": "3a4b7175_e5ff2d00",
       "range": {
         "startLine": 587,
         "startChar": 0,
@@ -48,6 +123,30 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_a8ca2c9f",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-04T14:23:06Z",
+      "side": 1,
+      "message": "+1",
+      "parentUuid": "3a4b7175_f2181186",
+      "range": {
+        "startLine": 596,
+        "startChar": 0,
+        "endLine": 596,
+        "endChar": 6
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_52092530",
         "filename": "src/vpp/stats/stats.c",
         "patchSetId": 18
@@ -59,6 +158,30 @@
       "writtenOn": "2017-09-01T18:37:13Z",
       "side": 1,
       "message": "This should be defined as static, otherwise you\u0027ll be leaking memory...",
+      "range": {
+        "startLine": 971,
+        "startChar": 0,
+        "endLine": 971,
+        "endChar": 45
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_08e4a039",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 971,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-04T14:23:06Z",
+      "side": 1,
+      "message": "Please move static variables to the stats_main_t...",
+      "parentUuid": "3a4b7175_52092530",
       "range": {
         "startLine": 971,
         "startChar": 0,
@@ -88,6 +211,47 @@
         "endLine": 984,
         "endChar": 0
       },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_88cf70b0",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 984,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-04T14:23:06Z",
+      "side": 1,
+      "message": "+1",
+      "parentUuid": "3a4b7175_3206a921",
+      "range": {
+        "startLine": 984,
+        "startChar": 0,
+        "endLine": 984,
+        "endChar": 0
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_c83c4896",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1010,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-04T14:23:06Z",
+      "side": 1,
+      "message": "This code should move to a format_...simple_counters_t function if you intend to commit it. Then:\n\n#if STATS_DEBUG \u003e 0\nfformat (stdout, \"%U\\n\", format_...simple_counters_t, mp);\n#endif",
       "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
