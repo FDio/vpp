@@ -582,37 +582,25 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   u8 tcp_opts_len, tcp_hdr_opts_len;
   tcp_header_t *th;
   u16 initial_wnd;
-  u32 time_now;
 
   memset (snd_opts, 0, sizeof (*snd_opts));
-
   tcp_reuse_buffer (vm, b);
 
-  /* Set random initial sequence */
-  time_now = tcp_time_now ();
-
-  tc->iss = random_u32 (&time_now);
-  tc->snd_una = tc->iss;
-  tc->snd_nxt = tc->iss + 1;
-  tc->snd_una_max = tc->snd_nxt;
-
   initial_wnd = tcp_initial_window_to_advertise (tc);
-
-  /* Make and write options */
   tcp_opts_len = tcp_make_synack_options (tc, snd_opts);
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
 
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->iss,
 			     tc->rcv_nxt, tcp_hdr_opts_len,
 			     TCP_FLAG_SYN | TCP_FLAG_ACK, initial_wnd);
-
   tcp_options_write ((u8 *) (th + 1), snd_opts);
 
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
   vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_ACK;
 
-  /* Init retransmit timer */
-  tcp_retransmit_timer_set (tc);
+  /* Init retransmit timer. Use update instead of set because of
+   * retransmissions */
+  tcp_retransmit_timer_update (tc);
   TCP_EVT_DBG (TCP_EVT_SYNACK_SENT, tc);
 }
 
@@ -1146,6 +1134,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
    * Make sure we can retransmit something
    */
   available_bytes = stream_session_tx_fifo_max_dequeue (&tc->connection);
+  ASSERT (available_bytes >= offset);
   available_bytes -= offset;
   if (!available_bytes)
     return 0;
@@ -1209,6 +1198,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 				    VLIB_FRAME_SIZE - available_bufs))
 	    {
 	      tcp_return_buffer (tm);
+	      *b = 0;
 	      return 0;
 	    }
 	}
@@ -1310,19 +1300,6 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       tc->timers[TCP_TIMER_RETRANSMIT] = TCP_TIMER_HANDLE_INVALID;
     }
 
-  if (!tcp_in_recovery (tc) && tc->rto_boff > 0
-      && tc->state >= TCP_STATE_ESTABLISHED)
-    {
-      tc->rto_boff = 0;
-      tcp_update_rto (tc);
-    }
-
-  /* Increment RTO backoff (also equal to number of retries) */
-  tc->rto_boff += 1;
-
-  /* Go back to first un-acked byte */
-  tc->snd_nxt = tc->snd_una;
-
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
       /* Lost FIN, retransmit and return */
@@ -1331,6 +1308,18 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	  tcp_send_fin (tc);
 	  return;
 	}
+
+      /* We're not in recovery so make sure rto_boff is 0*/
+      if (!tcp_in_recovery (tc) && tc->rto_boff > 0)
+        {
+          tc->rto_boff = 0;
+          tcp_update_rto (tc);
+        }
+
+      /* Increment RTO backoff (also equal to number of retries) and go back
+       * to first un-acked byte  */
+      tc->rto_boff += 1;
+      tc->snd_nxt = tc->snd_una;
 
       /* First retransmit timeout */
       if (tc->rto_boff == 1)
@@ -1349,12 +1338,11 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       if (n_bytes == 0)
 	{
-	  if (b)
-	    {
-	      clib_warning ("retransmit fail: %U", format_tcp_connection, tc,
-			    2);
-	      ASSERT (tc->rto_boff > 1 && tc->snd_una == tc->snd_congestion);
-	    }
+	  ASSERT (!b);
+	  if (tc->snd_una == tc->snd_una_max)
+	    return;
+	  ASSERT(tc->rto_boff > 1 && tc->snd_una == tc->snd_congestion);
+	  clib_warning("retransmit fail: %U", format_tcp_connection, tc, 2);
 	  /* Try again eventually */
 	  tcp_retransmit_timer_set (tc);
 	  return;
@@ -1365,16 +1353,18 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       /* For first retransmit, record timestamp (Eifel detection RFC3522) */
       if (tc->rto_boff == 1)
 	tc->snd_rxt_ts = tcp_time_now ();
+
+      tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
+      tcp_retransmit_timer_update (tc);
     }
-  /* Retransmit for SYN/SYNACK */
-  else if (tc->state == TCP_STATE_SYN_RCVD || tc->state == TCP_STATE_SYN_SENT)
+  /* Retransmit for SYN */
+  else if (tc->state == TCP_STATE_SYN_SENT)
     {
       /* Half-open connection actually moved to established but we were
        * waiting for syn retransmit to pop to call cleanup from the right
        * thread. */
       if (tc->flags & TCP_CONN_HALF_OPEN_DONE)
 	{
-	  ASSERT (tc->state == TCP_STATE_SYN_SENT);
 	  if (tcp_half_open_connection_cleanup (tc))
 	    {
 	      clib_warning ("could not remove half-open connection");
@@ -1382,6 +1372,9 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	    }
 	  return;
 	}
+
+      tc->rto_boff += 1;
+      tc->snd_nxt = tc->snd_una;
 
       /* Try without increasing RTO a number of times. If this fails,
        * start growing RTO exponentially */
@@ -1400,26 +1393,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       /* Account for the SYN */
       tc->snd_nxt += 1;
       tc->rtt_ts = 0;
-      TCP_EVT_DBG (TCP_EVT_SYN_RXT, tc,
-		   (tc->state == TCP_STATE_SYN_SENT ? 0 : 1));
-    }
-  else
-    {
-      ASSERT (tc->state == TCP_STATE_CLOSED);
-      clib_warning ("connection closed ...");
-      return;
-    }
-
-  if (!is_syn)
-    {
-      tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
-
-      /* Re-enable retransmit timer */
-      tcp_retransmit_timer_set (tc);
-    }
-  else
-    {
-      ASSERT (tc->state == TCP_STATE_SYN_SENT);
+      TCP_EVT_DBG (TCP_EVT_SYN_RXT, tc, 0);
 
       /* This goes straight to ipx_lookup */
       tcp_push_ip_hdr (tm, tc, b);
@@ -1428,6 +1402,28 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       /* Re-enable retransmit timer */
       tcp_timer_set (tc, TCP_TIMER_RETRANSMIT_SYN,
 		     tc->rto * TCP_TO_TIMER_TICK);
+    }
+  /* Retransmit SYN-ACK */
+  else if (tc->state == TCP_STATE_SYN_RCVD)
+    {
+      tc->rto_boff += 1;
+      tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
+
+      if (PREDICT_FALSE(tcp_get_free_buffer_index (tm, &bi)))
+	return;
+
+      b = vlib_get_buffer (vm, bi);
+      tcp_make_synack (tc, b);
+      TCP_EVT_DBG (TCP_EVT_SYN_RXT, tc, 1);
+
+      /* Retransmit timer already updated, just enqueue to output */
+      tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
+    }
+  else
+    {
+      ASSERT (tc->state == TCP_STATE_CLOSED);
+      clib_warning ("connection closed ...");
+      return;
     }
 }
 
@@ -1778,8 +1774,9 @@ tcp46_output_inline (vlib_main_t * vm,
 	  /* Set the retransmit timer if not set already and not
 	   * doing a pure ACK */
 	  if (!tcp_timer_is_active (tc0, TCP_TIMER_RETRANSMIT)
-	      && tc0->snd_nxt != tc0->snd_una)
+	      && tc0->snd_nxt != tc0->snd_una && !(tc0->snd_nxt == tc0->iss + 1))
 	    {
+	      ASSERT(0);
 	      tcp_retransmit_timer_set (tc0);
 	      tc0->rto_boff = 0;
 	    }
