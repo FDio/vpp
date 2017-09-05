@@ -22,6 +22,30 @@
       "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_c8c1e8e5",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2017-09-05T05:24:18Z",
+      "side": 1,
+      "message": "Thanks for your relpy. So what is the \"else\" case use for? In my opinion, if the flow get into this case, that will incur a empty tarball which is useless. Do you have tested this case? You can note the \"if\" case and see the result.I explain my reseason in jira(vpp-962)",
+      "parentUuid": "3a4b7175_488618bb",
+      "range": {
+        "startLine": 284,
+        "startChar": 0,
+        "endLine": 289,
+        "endChar": 45
+      },
+      "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
