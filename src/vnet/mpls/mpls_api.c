@@ -68,9 +68,6 @@ vl_api_mpls_table_add_del_t_handler (vl_api_mpls_table_add_del_t * mp)
   vnm = vnet_get_main ();
   vnm->api_errno = 0;
 
-
-  rv = (rv == 0) ? vnm->api_errno : rv;
-
   REPLY_MACRO (VL_API_MPLS_TABLE_ADD_DEL_REPLY);
 }
 
