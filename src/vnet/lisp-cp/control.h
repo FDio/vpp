@@ -103,6 +103,12 @@ typedef struct
   u32 ip4;
 } lisp_api_l2_arp_entry_t;
 
+typedef struct
+{
+  u8 mac[6];
+  u8 ip6[16];
+} lisp_api_ndp_entry_t;
+
 typedef enum
 {
   MR_MODE_DST_ONLY = 0,
@@ -395,6 +401,8 @@ int vnet_lisp_map_register_set_ttl (u32 ttl);
 u32 vnet_lisp_map_register_get_ttl (void);
 int vnet_lisp_map_register_fallback_threshold_set (u32 value);
 u32 vnet_lisp_map_register_fallback_threshold_get (void);
+u32 *vnet_lisp_ndp_bds_get (void);
+lisp_api_ndp_entry_t *vnet_lisp_ndp_entries_get_by_bd (u32 bd);
 
 map_records_arg_t *parse_map_reply (vlib_buffer_t * b);
 

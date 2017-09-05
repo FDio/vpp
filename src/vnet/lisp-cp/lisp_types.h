@@ -91,6 +91,7 @@ typedef enum
   GID_ADDR_SRC_DST,
   GID_ADDR_NSH,
   GID_ADDR_ARP,
+  GID_ADDR_NDP,
   GID_ADDR_NO_ADDRESS,
   GID_ADDR_TYPES
 } gid_address_type_t;
@@ -172,12 +173,15 @@ typedef struct
 
 typedef struct
 {
-  ip4_address_t addr;
+  ip_address_t addr;
   u32 bd;
-} lcaf_arp_t;
+} lcaf_arp_ndp_t;
 
-#define lcaf_arp_ip4(_a) (_a)->addr
-#define lcaf_arp_bd(_a) (_a)->bd
+#define lcaf_arp_ndp_ip(_a) (_a)->addr
+#define lcaf_arp_ndp_ip_ver(_a) ip_addr_version(&lcaf_arp_ndp_ip(_a))
+#define lcaf_arp_ndp_ip4(_a) ip_addr_v4(&lcaf_arp_ndp_ip(_a))
+#define lcaf_arp_ndp_ip6(_a) ip_addr_v6(&lcaf_arp_ndp_ip(_a))
+#define lcaf_arp_ndp_bd(_a) (_a)->bd
 
 typedef struct
 {
@@ -185,7 +189,7 @@ typedef struct
   union
   {
     source_dest_t sd;
-    lcaf_arp_t arp;
+    lcaf_arp_ndp_t arp_ndp;
     vni_t uni;
   };
   u8 type;
@@ -204,7 +208,7 @@ typedef struct _gid_address_t
     lcaf_t lcaf;
     u8 mac[6];
     source_dest_t sd;
-    lcaf_arp_t arp;
+    lcaf_arp_ndp_t arp_ndp;
     nsh_t nsh;
   };
   u8 type;
@@ -275,9 +279,13 @@ void gid_address_ip_set (gid_address_t * dst, void *src, u8 version);
 #define gid_address_sd_dst(_a) sd_dst(&gid_address_sd(_a))
 #define gid_address_sd_src_type(_a) sd_src_type(&gid_address_sd(_a))
 #define gid_address_sd_dst_type(_a) sd_dst_type(&gid_address_sd(_a))
-#define gid_address_arp(_a) (_a)->arp
-#define gid_address_arp_ip4(_a) lcaf_arp_ip4(&gid_address_arp (_a))
-#define gid_address_arp_bd(_a) lcaf_arp_bd(&gid_address_arp (_a))
+#define gid_address_arp_ndp(_a) (_a)->arp_ndp
+#define gid_address_arp_ndp_bd(_a) lcaf_arp_ndp_bd(&gid_address_arp_ndp(_a))
+#define gid_address_arp_ndp_ip(_a) lcaf_arp_ndp_ip(&gid_address_arp_ndp(_a))
+#define gid_address_arp_ip4(_a) lcaf_arp_ndp_ip4(&gid_address_arp_ndp(_a))
+#define gid_address_ndp_ip6(_a) lcaf_arp_ndp_ip6(&gid_address_arp_ndp(_a))
+#define gid_address_ndp_bd gid_address_arp_ndp_bd
+#define gid_address_arp_bd gid_address_arp_ndp_bd
 
 /* 'sub'address functions */
 #define foreach_gid_address_type_fcns  \
