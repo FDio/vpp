@@ -19,7 +19,7 @@
 #include <vlib/vlib.h>
 
 #define TCP_DEBUG (1)
-#define TCP_DEBUG_SM (0)
+#define TCP_DEBUG_SM (2)
 #define TCP_DEBUG_CC (1)
 #define TCP_DEBUG_CC_STAT (1)
 
@@ -414,7 +414,7 @@ typedef enum _tcp_dbg_evt
   ed->data[0] = _tc->rcv_nxt - _tc->irs;				\
   ed->data[1] = _tc->rcv_wnd;						\
   ed->data[2] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[3] = tcp_available_wnd(_tc);					\
+  ed->data[3] = tcp_available_snd_wnd(_tc);				\
   ed->data[4] = _tc->snd_wnd;						\
 }
 
@@ -422,7 +422,7 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "acked: %u snd_una %u snd_wnd %u cwnd %u inflight %u",	\
+    .format = "ack-rx: %u snd_una %u snd_wnd %u cwnd %u inflight %u",	\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
@@ -452,13 +452,13 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "pktize: una %u snd_nxt %u space %u flight %u rcv_wnd %u",\
+    .format = "tx: una %u snd_nxt %u space %u flight %u rcv_wnd %u",\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _tc->snd_una - _tc->iss;				\
   ed->data[1] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[2] = tcp_available_snd_space (_tc);				\
+  ed->data[2] = tcp_available_output_snd_space (_tc);			\
   ed->data[3] = tcp_flight_size (_tc);					\
   ed->data[4] = _tc->rcv_wnd;						\
 }
