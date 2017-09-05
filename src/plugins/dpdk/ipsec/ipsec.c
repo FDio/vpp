@@ -276,13 +276,14 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   vec_alloc (dcm->workers_main, tm->n_vlib_mains);
   _vec_len (dcm->workers_main) = tm->n_vlib_mains;
 
+  skip_master = vlib_num_workers () > 0;
+
   fprintf (stdout, "DPDK Cryptodevs info:\n");
   fprintf (stdout, "dev_id\tn_qp\tnb_obj\tcache_size\n");
   /* HW cryptodevs have higher dev_id, use HW first */
   for (dev_id = rte_cryptodev_count () - 1; dev_id >= 0; dev_id--)
     {
       u16 max_nb_qp, qp = 0;
-      skip_master = vlib_num_workers () > 0;
 
       rte_cryptodev_info_get (dev_id, &cdev_info);
 
@@ -460,7 +461,7 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   im->cb.check_support_cb = dpdk_ipsec_check_support;
   im->cb.add_del_sa_sess_cb = add_del_sa_sess;
 
-  for (i = 1; i < tm->n_vlib_mains; i++)
+  for (i = skip_master; i < tm->n_vlib_mains; i++)
     vlib_node_set_state (vlib_mains[i], dpdk_crypto_input_node.index,
 			 VLIB_NODE_STATE_POLLING);
 
