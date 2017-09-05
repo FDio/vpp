@@ -88,6 +88,9 @@ typedef struct
   /* sequence number for bridge domain based flush of MACs */
   u8 seq_num;
 
+  /* Bridge domain tag (C string NULL terminated) */
+  u8 *bd_tag;
+
 } l2_bridge_domain_t;
 
 /* Limit Bridge Domain ID to 24 bits to match 24-bit VNI range */
@@ -102,6 +105,7 @@ typedef struct
   u8 learn;
   u8 arp_term;
   u8 mac_age;
+  u8 *bd_tag;
   u8 is_add;
 } l2_bridge_domain_add_del_args_t;
 
@@ -130,6 +134,7 @@ u32 bd_remove_member (l2_bridge_domain_t * bd_config, u32 sw_if_index);
 
 u32 bd_set_flags (vlib_main_t * vm, u32 bd_index, u32 flags, u32 enable);
 void bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age);
+void bd_set_bd_tag (vlib_main_t * vm, u32 bd_index, u8 * bd_tag);
 int bd_add_del (l2_bridge_domain_add_del_args_t * args);
 
 /**
