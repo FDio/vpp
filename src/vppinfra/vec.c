@@ -81,6 +81,10 @@ vec_resize_allocate_memory (void *v,
   if (new_alloc_bytes < data_bytes)
     new_alloc_bytes = data_bytes;
 
+  if (new_alloc_bytes > 20 << 20)
+    {
+      clib_warning ("big realloc");
+    }
   new =
     clib_mem_alloc_aligned_at_offset (new_alloc_bytes, data_align,
 				      header_bytes,
