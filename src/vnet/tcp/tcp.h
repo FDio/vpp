@@ -97,7 +97,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 						 * ticks to timer units */
 #define TCP_DELACK_TIME         1	/* 0.1s */
 #define TCP_ESTABLISH_TIME      750	/* 75s */
-#define TCP_SYN_RCVD_TIME	100	/* 10s */
+#define TCP_SYN_RCVD_TIME	300	/* 10s */
 #define TCP_2MSL_TIME           300	/* 30s */
 #define TCP_CLOSEWAIT_TIME	20	/* 0.1s */
 #define TCP_CLEANUP_TIME	5	/* 0.5s Time to wait before cleanup */
@@ -676,6 +676,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 
 void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);
+void tcp_init_snd_vars (tcp_connection_t *tc);
 void tcp_connection_init_vars (tcp_connection_t * tc);
 
 always_inline void

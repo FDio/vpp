@@ -27,21 +27,24 @@
 #define TCP_BUILTIN_CLIENT_DBG (0)
 
 static void
-signal_evt_to_cli_i (int *code)
+signal_evt_to_cli_i (u8 *code)
 {
   tclient_main_t *tm = &tclient_main;
   ASSERT (vlib_get_thread_index () == 0);
   vlib_process_signal_event (tm->vlib_main, tm->cli_node_index, *code, 0);
+  clib_mem_free (code);
 }
 
 static void
 signal_evt_to_cli (int code)
 {
+  u8 *code_to_snd = clib_mem_alloc(sizeof(u8));
+  *code_to_snd = code;
   if (vlib_get_thread_index () != 0)
-    vl_api_rpc_call_main_thread (signal_evt_to_cli_i, (u8 *) & code,
-				 sizeof (code));
+    vl_api_rpc_call_main_thread (signal_evt_to_cli_i, code_to_snd,
+				 sizeof (*code_to_snd));
   else
-    signal_evt_to_cli_i (&code);
+    signal_evt_to_cli_i (code_to_snd);
 }
 
 static void

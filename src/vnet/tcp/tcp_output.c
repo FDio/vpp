@@ -582,37 +582,25 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
   u8 tcp_opts_len, tcp_hdr_opts_len;
   tcp_header_t *th;
   u16 initial_wnd;
-  u32 time_now;
 
   memset (snd_opts, 0, sizeof (*snd_opts));
-
   tcp_reuse_buffer (vm, b);
 
-  /* Set random initial sequence */
-  time_now = tcp_time_now ();
-
-  tc->iss = random_u32 (&time_now);
-  tc->snd_una = tc->iss;
-  tc->snd_nxt = tc->iss + 1;
-  tc->snd_una_max = tc->snd_nxt;
-
   initial_wnd = tcp_initial_window_to_advertise (tc);
-
-  /* Make and write options */
   tcp_opts_len = tcp_make_synack_options (tc, snd_opts);
   tcp_hdr_opts_len = tcp_opts_len + sizeof (tcp_header_t);
 
   th = vlib_buffer_push_tcp (b, tc->c_lcl_port, tc->c_rmt_port, tc->iss,
 			     tc->rcv_nxt, tcp_hdr_opts_len,
 			     TCP_FLAG_SYN | TCP_FLAG_ACK, initial_wnd);
-
   tcp_options_write ((u8 *) (th + 1), snd_opts);
 
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
   vnet_buffer (b)->tcp.flags = TCP_BUF_FLAG_ACK;
 
-  /* Init retransmit timer */
-  tcp_retransmit_timer_set (tc);
+  /* Init retransmit timer. Use update instead of set because of
+   * retransmissions */
+  tcp_retransmit_timer_update (tc);
   TCP_EVT_DBG (TCP_EVT_SYNACK_SENT, tc);
 }
 
