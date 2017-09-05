@@ -69,7 +69,7 @@ from scapy.packet import Raw
 from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, running_extended_tests
 from util import Host, ppp
 
 
@@ -460,6 +460,7 @@ class TestL2bdMultiInst(VppTestCase):
         # self.vapi.cli("clear trace")
         self.run_verify_test()
 
+    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_l2bd_inst_05(self):
         """ L2BD Multi-instance test 5 - delete 5 BDs
         """
