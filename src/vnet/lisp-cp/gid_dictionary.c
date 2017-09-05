@@ -338,11 +338,19 @@ ip_sd_lookup (gid_dictionary_t * db, u32 vni, ip_prefix_t * dst,
 }
 
 static void
-make_arp_key (BVT (clib_bihash_kv) * kv, u32 bd, ip4_address_t * addr)
+make_arp_key (BVT (clib_bihash_kv) * kv, u32 bd, ip_address_t * addr)
 {
-  kv->key[0] = (u64) bd;
-  kv->key[1] = (u64) addr->as_u32;
-  kv->key[2] = (u64) 0;
+  kv->key[0] = ((u64) bd << 32) | (u32) ip_addr_version (addr);
+  if (ip_addr_version (addr) == IP4)
+    {
+      kv->key[1] = (u64) addr->ip.v4.as_u32;
+      kv->key[2] = (u64) 0;
+    }
+  else
+    {
+      kv->key[1] = (u64) addr->ip.v6.as_u64[0];
+      kv->key[2] = (u64) addr->ip.v6.as_u64[1];
+    }
 }
 
 static void
@@ -354,7 +362,7 @@ make_nsh_key (BVT (clib_bihash_kv) * kv, u32 vni, u32 spi, u8 si)
 }
 
 static u64
-arp_lookup (gid_l2_arp_table_t * db, u32 bd, ip4_address_t * key)
+arp_lookup (gid_l2_arp_table_t * db, u32 bd, ip_address_t * key)
 {
   int rv;
   BVT (clib_bihash_kv) kv, value;
@@ -415,7 +423,7 @@ gid_dictionary_lookup (gid_dictionary_t * db, gid_address_t * key)
       break;
     case GID_ADDR_ARP:
       return arp_lookup (&db->arp_table, gid_address_arp_bd (key),
-			 &gid_address_arp_ip4 (key));
+			 &gid_address_arp_ip (key));
     case GID_ADDR_NSH:
       return nsh_lookup (&db->nsh_table, gid_address_vni (key),
 			 gid_address_nsh_spi (key), gid_address_nsh_si (key));
@@ -890,7 +898,7 @@ add_del_sd (gid_dictionary_t * db, u32 vni, source_dest_t * key, u32 value,
 }
 
 static u64
-add_del_arp (gid_l2_arp_table_t * db, u32 bd, ip4_address_t * key, u64 value,
+add_del_arp (gid_l2_arp_table_t * db, u32 bd, ip_address_t * key, u64 value,
 	     u8 is_add)
 {
   BVT (clib_bihash_kv) kv, result;
@@ -955,8 +963,9 @@ gid_dictionary_add_del (gid_dictionary_t * db, gid_address_t * key, u64 value,
       return add_del_sd (db, gid_address_vni (key), &gid_address_sd (key),
 			 (u32) value, is_add);
     case GID_ADDR_ARP:
+    case GID_ADDR_NDP:
       return add_del_arp (&db->arp_table, gid_address_arp_bd (key),
-			  &gid_address_arp_ip4 (key), value, is_add);
+			  &gid_address_arp_ip (key), value, is_add);
     case GID_ADDR_NSH:
       return add_del_nsh (&db->nsh_table, gid_address_vni (key),
 			  gid_address_nsh_spi (key), gid_address_nsh_si (key),

@@ -389,6 +389,7 @@ int vnet_lisp_map_register_set_ttl (u32 ttl);
 u32 vnet_lisp_map_register_get_ttl (void);
 int vnet_lisp_map_register_fallback_threshold_set (u32 value);
 u32 vnet_lisp_map_register_fallback_threshold_get (void);
+u32 *vnet_lisp_ndp_bds_get (void);
 
 map_records_arg_t *parse_map_reply (vlib_buffer_t * b);
 
