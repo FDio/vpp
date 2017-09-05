@@ -420,6 +420,7 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
     .arp_term = mp->arp_term,
     .mac_age = mp->mac_age,
     .bd_id = ntohl (mp->bd_id),
+    .bd_tag = mp->bd_tag
   };
 
   int rv = bd_add_del (&a);
@@ -451,6 +452,13 @@ send_bridge_domain_details (l2input_main_t * l2im,
   mp->arp_term = bd_feature_arp_term (bd_config);
   mp->bvi_sw_if_index = ntohl (bd_config->bvi_sw_if_index);
   mp->mac_age = bd_config->mac_age;
+  if (bd_config->bd_tag)
+    {
+      strncpy ((char *) mp->bd_tag, (char *) bd_config->bd_tag,
+	       ARRAY_LEN (mp->bd_tag) - 1);
+      mp->bd_tag[ARRAY_LEN (mp->bd_tag) - 1] = 0;
+    }
+
   mp->context = context;
 
   sw_ifs = (vl_api_bridge_domain_sw_if_t *) mp->sw_if_details;
