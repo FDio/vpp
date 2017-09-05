@@ -69,6 +69,8 @@ typedef struct vnet_main_t
 
   uword *interface_tag_by_sw_if_index;
 
+  uword *bd_tag_by_bd_id;
+
   /*
    * Last "api" error, preserved so we can issue reasonable diagnostics
    * at or near the top of the food chain
