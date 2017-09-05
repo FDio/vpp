@@ -725,7 +725,7 @@ static inline
 	  next_index = t->next;
 	  vec_add1 (callback_vector, t->user_handle);
 #if TW_START_STOP_TRACE_SIZE > 0
-	  TW (tw_timer_trace) (tw, 0xfe, ~0, t - tw->timers);
+	  TW (tw_timer_trace) (tw, 0xfe, t->user_handle, t - tw->timers);
 #endif
 	  pool_put (tw->timers, t);
 	}
