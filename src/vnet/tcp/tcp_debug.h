@@ -414,7 +414,7 @@ typedef enum _tcp_dbg_evt
   ed->data[0] = _tc->rcv_nxt - _tc->irs;				\
   ed->data[1] = _tc->rcv_wnd;						\
   ed->data[2] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[3] = tcp_available_wnd(_tc);					\
+  ed->data[3] = tcp_available_snd_wnd(_tc);				\
   ed->data[4] = _tc->snd_wnd;						\
 }
 
@@ -422,7 +422,7 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "acked: %u snd_una %u snd_wnd %u cwnd %u inflight %u",	\
+    .format = "ack-rx: %u snd_una %u snd_wnd %u cwnd %u inflight %u",	\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
@@ -452,7 +452,7 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "pktize: una %u snd_nxt %u space %u flight %u rcv_wnd %u",\
+    .format = "tx: una %u snd_nxt %u space %u flight %u rcv_wnd %u",\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\

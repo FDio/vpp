@@ -39,6 +39,8 @@
 #define TW_FAST_WHEEL_BITMAP 0
 #define TW_TIMER_ALLOW_DUPLICATE_STOP 1
 
+#define TW_START_STOP_TRACE_SIZE 1000000
+
 #include <vppinfra/tw_timer_template.h>
 
 #endif /* __included_tw_timer_16t_2w_512sl_h__ */

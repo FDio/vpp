@@ -27,18 +27,18 @@
 #define TCP_BUILTIN_CLIENT_DBG (0)
 
 static void
-signal_evt_to_cli_i (int *code)
+signal_evt_to_cli_i (int *data)
 {
   tclient_main_t *tm = &tclient_main;
   ASSERT (vlib_get_thread_index () == 0);
-  vlib_process_signal_event (tm->vlib_main, tm->cli_node_index, *code, 0);
+  vlib_process_signal_event (tm->vlib_main, tm->cli_node_index, *data, 0);
 }
 
 static void
 signal_evt_to_cli (int code)
 {
   if (vlib_get_thread_index () != 0)
-    vl_api_rpc_call_main_thread (signal_evt_to_cli_i, (u8 *) & code,
+    vl_api_rpc_call_main_thread (signal_evt_to_cli_i, (u8 *) &code,
 				 sizeof (code));
   else
     signal_evt_to_cli_i (&code);
@@ -509,6 +509,11 @@ clients_connect (vlib_main_t * vm, u8 * uri, u32 n_clients)
       /* Crude pacing for call setups  */
       if ((i % 4) == 0)
 	vlib_process_suspend (vm, 10e-6);
+      ASSERT (i + 1 >= tm->ready_connections);
+      while (i + 1 - tm->ready_connections > 8000)
+	{
+	  vlib_process_suspend (vm, 100e-6);
+	}
     }
 }
 
