@@ -456,13 +456,16 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
 						   st);
   if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
-      clib_warning ("This can't be good!");
+      clib_warning ("half-open was removed!");
       return -1;
     }
 
+  /* Cleanup half-open table */
+  stream_session_half_open_table_del (tc);
+
   /* Get the app's index from the handle we stored when opening connection
    * and the opaque (api_context for external apps) from transport session
-   * index*/
+   * index */
   app = application_get_if_valid (handle >> 32);
   if (!app)
     return -1;
@@ -499,9 +502,6 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
 	new_s->session_state = SESSION_STATE_READY;
     }
 
-  /* Cleanup session lookup */
-  stream_session_half_open_table_del (tc);
-
   return error;
 }
 
@@ -535,7 +535,7 @@ stream_session_disconnect_notify (transport_connection_t * tc)
 }
 
 /**
- * Cleans up session and associated app if needed.
+ * Cleans up session and lookup table.
  */
 void
 stream_session_delete (stream_session_t * s)
@@ -559,9 +559,10 @@ stream_session_delete (stream_session_t * s)
 /**
  * Notification from transport that connection is being deleted
  *
- * This should be called only on previously fully established sessions. For
- * instance failed connects should call stream_session_connect_notify and
- * indicate that the connect has failed.
+ * This removes the session if it is still valid. It should be called only on
+ * previously fully established sessions. For instance failed connects should
+ * call stream_session_connect_notify and indicate that the connect has
+ * failed.
  */
 void
 stream_session_delete_notify (transport_connection_t * tc)
@@ -748,7 +749,7 @@ session_send_session_evt_to_thread (u64 session_handle,
   if (PREDICT_TRUE (q->cursize < q->maxsize))
     {
       if (unix_shared_memory_queue_add (q, (u8 *) & evt,
-					1 /* do wait for mutex */ ))
+					0 /* do wait for mutex */ ))
 	{
 	  clib_warning ("failed to enqueue evt");
 	}
