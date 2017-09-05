@@ -46,6 +46,30 @@
       "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_68b0b48b",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-05T05:29:48Z",
+      "side": 1,
+      "message": "AFAICT, the else case is never taken.  Thus my question is why does it exist at all?\n\nI agree that if it is required, then the existing code is broken, but I don\u0027t understand where the requirement for the else statement comes from.  It would appear this comes from a build that is outside of the git tree, which is I believe is an unsupported use-case as far as this Makefile is concerned (per another email thread on vpp-dev@lists.fd.io).",
+      "parentUuid": "3a4b7175_c8c1e8e5",
+      "range": {
+        "startLine": 284,
+        "startChar": 0,
+        "endLine": 289,
+        "endChar": 45
+      },
+      "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
