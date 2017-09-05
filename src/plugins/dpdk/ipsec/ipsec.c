@@ -460,7 +460,7 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   im->cb.check_support_cb = dpdk_ipsec_check_support;
   im->cb.add_del_sa_sess_cb = add_del_sa_sess;
 
-  for (i = 1; i < tm->n_vlib_mains; i++)
+  for (i = skip_master; i < tm->n_vlib_mains; i++)
     vlib_node_set_state (vlib_mains[i], dpdk_crypto_input_node.index,
 			 VLIB_NODE_STATE_POLLING);
 
