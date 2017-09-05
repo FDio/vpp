@@ -36,9 +36,9 @@
 #define MAC_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
 #define MAC_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
 
-/* Default size of the ARP hash table */
-#define ARP_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
-#define ARP_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
+/* Default size of the ARP/NDP hash table */
+#define ARP_NDP_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
+#define ARP_NDP_LOOKUP_DEFAULT_HASH_MEMORY_SIZE (32<<20)
 
 /* Default size of the NSH hash table */
 #define NSH_LOOKUP_DEFAULT_HASH_NUM_BUCKETS (64 * 1024)
@@ -100,16 +100,16 @@ typedef struct gid_nsh_table
 
 typedef struct
 {
-  BVT (clib_bihash) arp_lookup_table;
-  u32 arp_lookup_table_nbuckets;
-  uword arp_lookup_table_size;
+  BVT (clib_bihash) arp_ndp_lookup_table;
+  u32 arp_ndp_lookup_table_nbuckets;
+  uword arp_ndp_lookup_table_size;
   u64 count;
-} gid_l2_arp_table_t;
+} gid_l2_arp_ndp_table_t;
 
 typedef struct
 {
-  /** L2 ARP table */
-  gid_l2_arp_table_t arp_table;
+  /** L2 ARP/NDP table */
+  gid_l2_arp_ndp_table_t arp_ndp_table;
 
   /** NSH lookup table */
   gid_nsh_table_t nsh_table;
@@ -146,9 +146,9 @@ gid_dict_foreach_subprefix (gid_dictionary_t * db, gid_address_t * eid,
 			    foreach_subprefix_match_cb_t cb, void *arg);
 
 void
-gid_dict_foreach_l2_arp_entry (gid_dictionary_t * db, void (*cb)
-			       (BVT (clib_bihash_kv) * kvp, void *arg),
-			       void *ht);
+gid_dict_foreach_l2_arp_ndp_entry (gid_dictionary_t * db, void (*cb)
+				   (BVT (clib_bihash_kv) * kvp, void *arg),
+				   void *ht);
 
 #endif /* VNET_LISP_GPE_GID_DICTIONARY_H_ */
 
