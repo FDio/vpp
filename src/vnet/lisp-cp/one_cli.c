@@ -376,6 +376,42 @@ VLIB_CLI_COMMAND (one_show_l2_arp_entries_command) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+lisp_show_ndp_entries_command_fn (vlib_main_t * vm,
+				  unformat_input_t * input,
+				  vlib_cli_command_t * cmd)
+{
+  u32 *ht = vnet_lisp_ndp_bds_get ();
+  lisp_api_ndp_entry_t *entries, *e;
+  hash_pair_t *p;
+
+  /* *INDENT-OFF* */
+  hash_foreach_pair (p, ht,
+  ({
+    entries = vnet_lisp_ndp_entries_get_by_bd (p->key);
+    vlib_cli_output (vm, "Table: %d", p->key);
+
+    vec_foreach (e, entries)
+      {
+        vlib_cli_output (vm, "\t%U -> %U", format_ip6_address, &e->ip6,
+                         format_mac_address, e->mac);
+      }
+    vec_free (entries);
+  }));
+  /* *INDENT-ON* */
+
+  hash_free (ht);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_show_ndp_entries_command) = {
+    .path = "show one ndp entries",
+    .short_help = "Show ONE NDP entries",
+    .function = lisp_show_ndp_entries_command_fn,
+};
+/* *INDENT-ON* */
+
 /**
  * Handler for add/del remote mapping CLI.
  *

@@ -3393,6 +3393,71 @@ end:
 }
 
 static void
+  vl_api_one_ndp_entries_get_reply_t_handler
+  (vl_api_one_ndp_entries_get_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  u32 i, n;
+  int retval = clib_net_to_host_u32 (mp->retval);
+
+  if (retval)
+    goto end;
+
+  n = clib_net_to_host_u32 (mp->count);
+
+  for (i = 0; i < n; i++)
+    print (vam->ofp, "%U -> %U", format_ip6_address, &mp->entries[i].ip6,
+	   format_ethernet_address, mp->entries[i].mac);
+
+end:
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_one_ndp_entries_get_reply_t_handler_json
+  (vl_api_one_ndp_entries_get_reply_t * mp)
+{
+  u8 *s = 0;
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *e = 0, root;
+  u32 i, n;
+  int retval = clib_net_to_host_u32 (mp->retval);
+  vl_api_one_ndp_entry_t *arp_entry;
+
+  if (retval)
+    goto end;
+
+  n = clib_net_to_host_u32 (mp->count);
+  vat_json_init_array (&root);
+
+  for (i = 0; i < n; i++)
+    {
+      e = vat_json_array_add (&root);
+      arp_entry = &mp->entries[i];
+
+      vat_json_init_object (e);
+      s = format (0, "%U", format_ethernet_address, arp_entry->mac);
+      vec_add1 (s, 0);
+
+      vat_json_object_add_string_copy (e, "mac", s);
+      vec_free (s);
+
+      s = format (0, "%U", format_ip6_address, &arp_entry->ip6);
+      vec_add1 (s, 0);
+      vat_json_object_add_string_copy (e, "ip6", s);
+      vec_free (s);
+    }
+
+  vat_json_print (vam->ofp, &root);
+  vat_json_free (&root);
+
+end:
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
   vl_api_one_l2_arp_entries_get_reply_t_handler
   (vl_api_one_l2_arp_entries_get_reply_t * mp)
 {
@@ -3447,6 +3512,57 @@ static void
       vec_add1 (s, 0);
       vat_json_object_add_string_copy (e, "ip4", s);
       vec_free (s);
+    }
+
+  vat_json_print (vam->ofp, &root);
+  vat_json_free (&root);
+
+end:
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+vl_api_one_ndp_bd_get_reply_t_handler (vl_api_one_ndp_bd_get_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  u32 i, n;
+  int retval = clib_net_to_host_u32 (mp->retval);
+
+  if (retval)
+    goto end;
+
+  n = clib_net_to_host_u32 (mp->count);
+
+  for (i = 0; i < n; i++)
+    {
+      print (vam->ofp, "%d", clib_net_to_host_u32 (mp->bridge_domains[i]));
+    }
+
+end:
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_one_ndp_bd_get_reply_t_handler_json
+  (vl_api_one_ndp_bd_get_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t root;
+  u32 i, n;
+  int retval = clib_net_to_host_u32 (mp->retval);
+
+  if (retval)
+    goto end;
+
+  n = clib_net_to_host_u32 (mp->count);
+  vat_json_init_array (&root);
+
+  for (i = 0; i < n; i++)
+    {
+      vat_json_array_add_uint (&root,
+			       clib_net_to_host_u32 (mp->bridge_domains[i]));
     }
 
   vat_json_print (vam->ofp, &root);
@@ -4590,6 +4706,10 @@ static void vl_api_flow_classify_details_t_handler_json
 #define vl_api_one_l2_arp_entries_get_reply_t_endian vl_noop_handler
 #define vl_api_one_l2_arp_entries_get_reply_t_print vl_noop_handler
 #define vl_api_one_l2_arp_bd_get_reply_t_endian vl_noop_handler
+#define vl_api_one_ndp_bd_get_reply_t_endian vl_noop_handler
+#define vl_api_one_ndp_bd_get_reply_t_print vl_noop_handler
+#define vl_api_one_ndp_entries_get_reply_t_print vl_noop_handler
+#define vl_api_one_ndp_entries_get_reply_t_endian vl_noop_handler
 
 /*
  * Generate boilerplate reply handlers, which
@@ -4706,6 +4826,7 @@ _(one_eid_table_add_del_map_reply)                      \
 _(one_use_petr_reply)                                   \
 _(one_stats_enable_disable_reply)                       \
 _(one_add_del_l2_arp_entry_reply)                       \
+_(one_add_del_ndp_entry_reply)                          \
 _(one_stats_flush_reply)                                \
 _(gpe_enable_disable_reply)                             \
 _(gpe_set_encap_mode_reply)                             \
@@ -4950,6 +5071,9 @@ _(ONE_STATS_FLUSH_REPLY, one_stats_flush_reply)                         \
 _(ONE_STATS_ENABLE_DISABLE_REPLY, one_stats_enable_disable_reply)       \
 _(SHOW_ONE_STATS_ENABLE_DISABLE_REPLY,                                  \
   show_one_stats_enable_disable_reply)                                  \
+_(ONE_ADD_DEL_NDP_ENTRY_REPLY, one_add_del_ndp_entry_reply)             \
+_(ONE_NDP_BD_GET_REPLY, one_ndp_bd_get_reply)                           \
+_(ONE_NDP_ENTRIES_GET_REPLY, one_ndp_entries_get_reply)                 \
 _(ONE_ADD_DEL_L2_ARP_ENTRY_REPLY, one_add_del_l2_arp_entry_reply)       \
 _(ONE_L2_ARP_BD_GET_REPLY, one_l2_arp_bd_get_reply)                     \
 _(ONE_L2_ARP_ENTRIES_GET_REPLY, one_l2_arp_entries_get_reply)           \
@@ -15397,6 +15521,58 @@ api_show_one_rloc_probe_state (vat_main_t * vam)
 #define api_show_lisp_rloc_probe_state api_show_one_rloc_probe_state
 
 static int
+api_one_add_del_ndp_entry (vat_main_t * vam)
+{
+  vl_api_one_add_del_ndp_entry_t *mp;
+  unformat_input_t *input = vam->input;
+  u8 is_add = 1;
+  u8 mac_set = 0;
+  u8 bd_set = 0;
+  u8 ip_set = 0;
+  u8 mac[6] = { 0, };
+  u8 ip6[16] = { 0, };
+  u32 bd = ~0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+	is_add = 0;
+      else if (unformat (input, "mac %U", unformat_ethernet_address, mac))
+	mac_set = 1;
+      else if (unformat (input, "ip %U", unformat_ip6_address, ip6))
+	ip_set = 1;
+      else if (unformat (input, "bd %d", &bd))
+	bd_set = 1;
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, input);
+	  return -99;
+	}
+    }
+
+  if (!bd_set || !ip_set || (!mac_set && is_add))
+    {
+      errmsg ("Missing BD, IP or MAC!");
+      return -99;
+    }
+
+  M (ONE_ADD_DEL_NDP_ENTRY, mp);
+  mp->is_add = is_add;
+  clib_memcpy (mp->mac, mac, 6);
+  mp->bd = clib_host_to_net_u32 (bd);
+  clib_memcpy (mp->ip6, ip6, sizeof (mp->ip6));
+
+  /* send */
+  S (mp);
+
+  /* wait for reply */
+  W (ret);
+  return ret;
+}
+
+static int
 api_one_add_del_l2_arp_entry (vat_main_t * vam)
 {
   vl_api_one_add_del_l2_arp_entry_t *mp;
@@ -15438,6 +15614,60 @@ api_one_add_del_l2_arp_entry (vat_main_t * vam)
   clib_memcpy (mp->mac, mac, 6);
   mp->bd = clib_host_to_net_u32 (bd);
   mp->ip4 = ip4;
+
+  /* send */
+  S (mp);
+
+  /* wait for reply */
+  W (ret);
+  return ret;
+}
+
+static int
+api_one_ndp_bd_get (vat_main_t * vam)
+{
+  vl_api_one_ndp_bd_get_t *mp;
+  int ret;
+
+  M (ONE_NDP_BD_GET, mp);
+
+  /* send */
+  S (mp);
+
+  /* wait for reply */
+  W (ret);
+  return ret;
+}
+
+static int
+api_one_ndp_entries_get (vat_main_t * vam)
+{
+  vl_api_one_ndp_entries_get_t *mp;
+  unformat_input_t *input = vam->input;
+  u8 bd_set = 0;
+  u32 bd = ~0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "bd %d", &bd))
+	bd_set = 1;
+      else
+	{
+	  errmsg ("parse error '%U'", format_unformat_error, input);
+	  return -99;
+	}
+    }
+
+  if (!bd_set)
+    {
+      errmsg ("Expected bridge domain!");
+      return -99;
+    }
+
+  M (ONE_NDP_ENTRIES_GET, mp);
+  mp->bd = clib_host_to_net_u32 (bd);
 
   /* send */
   S (mp);
@@ -20394,6 +20624,9 @@ _(one_locator_set_dump, "[local | remote]")                             \
 _(one_locator_dump, "ls_index <index> | ls_name <name>")                \
 _(one_eid_table_dump, "[eid <ipv4|ipv6>/<prefix> | <mac>] [vni] "       \
                        "[local] | [remote]")                            \
+_(one_add_del_ndp_entry, "[del] mac <mac> bd <bd> ip6 <ip6>")           \
+_(one_ndp_bd_get, "")                                                   \
+_(one_ndp_entries_get, "bd <bridge-domain>")                            \
 _(one_add_del_l2_arp_entry, "[del] mac <mac> bd <bd> ip4 <ip4>")        \
 _(one_l2_arp_bd_get, "")                                                \
 _(one_l2_arp_entries_get, "bd <bridge-domain>")                         \

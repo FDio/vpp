@@ -130,7 +130,9 @@ _(ONE_STATS_FLUSH, one_stats_flush)                                     \
 _(ONE_L2_ARP_BD_GET, one_l2_arp_bd_get)                                 \
 _(ONE_L2_ARP_ENTRIES_GET, one_l2_arp_entries_get)                       \
 _(ONE_ADD_DEL_L2_ARP_ENTRY, one_add_del_l2_arp_entry)                   \
-
+_(ONE_ADD_DEL_NDP_ENTRY, one_add_del_ndp_entry)                         \
+_(ONE_NDP_BD_GET, one_ndp_bd_get)                                       \
+_(ONE_NDP_ENTRIES_GET, one_ndp_entries_get)                             \
 
 static locator_t *
 unformat_one_locs (vl_api_one_remote_locator_t * rmt_locs, u32 rloc_num)
@@ -1563,11 +1565,53 @@ static void
   gid_address_arp_bd (arp) = clib_net_to_host_u32 (mp->bd);
 
   /* vpp keeps ip4 addresses in network byte order */
-  clib_memcpy (&gid_address_arp_ip4 (arp), &mp->ip4, 4);
+  ip_address_set (&gid_address_arp_ndp_ip (arp), &mp->ip4, IP4);
 
   rv = vnet_lisp_add_del_l2_arp_entry (arp, mp->mac, mp->is_add);
 
   REPLY_MACRO (VL_API_ONE_ADD_DEL_L2_ARP_ENTRY_REPLY);
+}
+
+static void
+vl_api_one_add_del_ndp_entry_t_handler (vl_api_one_add_del_ndp_entry_t * mp)
+{
+  vl_api_one_add_del_ndp_entry_reply_t *rmp;
+  int rv = 0;
+  gid_address_t _g, *g = &_g;
+  memset (g, 0, sizeof (*g));
+
+  gid_address_type (g) = GID_ADDR_NDP;
+  gid_address_ndp_bd (g) = clib_net_to_host_u32 (mp->bd);
+  ip_address_set (&gid_address_arp_ndp_ip (g), mp->ip6, IP6);
+
+  rv = vnet_lisp_add_del_l2_arp_entry (g, mp->mac, mp->is_add);
+
+  REPLY_MACRO (VL_API_ONE_ADD_DEL_NDP_ENTRY_REPLY);
+}
+
+static void
+vl_api_one_ndp_bd_get_t_handler (vl_api_one_ndp_bd_get_t * mp)
+{
+  vl_api_one_ndp_bd_get_reply_t *rmp;
+  int rv = 0;
+  u32 i = 0;
+  hash_pair_t *p;
+
+  u32 *bds = vnet_lisp_ndp_bds_get ();
+  u32 size = hash_elts (bds) * sizeof (u32);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO4 (VL_API_ONE_NDP_BD_GET_REPLY, size,
+  {
+    rmp->count = clib_host_to_net_u32 (hash_elts (bds));
+    hash_foreach_pair (p, bds,
+    ({
+      rmp->bridge_domains[i++] = clib_host_to_net_u32 (p->key);
+    }));
+  });
+  /* *INDENT-ON* */
+
+  hash_free (bds);
 }
 
 static void
@@ -1651,6 +1695,35 @@ static void
     rmp->value = clib_host_to_net_u32 (value);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_one_ndp_entries_get_t_handler (vl_api_one_ndp_entries_get_t * mp)
+{
+  vl_api_one_ndp_entries_get_reply_t *rmp = 0;
+  lisp_api_ndp_entry_t *entries = 0, *e;
+  u32 i = 0;
+  int rv = 0;
+
+  u32 bd = clib_net_to_host_u32 (mp->bd);
+
+  entries = vnet_lisp_ndp_entries_get_by_bd (bd);
+  u32 size = vec_len (entries) * sizeof (vl_api_one_ndp_entry_t);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO4 (VL_API_ONE_NDP_ENTRIES_GET_REPLY, size,
+  {
+    rmp->count = clib_host_to_net_u32 (vec_len (entries));
+    vec_foreach (e, entries)
+      {
+        mac_copy (rmp->entries[i].mac, e->mac);
+        clib_memcpy (rmp->entries[i].ip6, e->ip6, 16);
+        i++;
+      }
+  });
+  /* *INDENT-ON* */
+
+  vec_free (entries);
 }
 
 /*

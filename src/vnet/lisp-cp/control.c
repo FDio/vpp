@@ -854,7 +854,11 @@ static void
 add_l2_arp_bd (BVT (clib_bihash_kv) * kvp, void *arg)
 {
   u32 **ht = arg;
-  u32 bd = (u32) kvp->key[0];
+  u32 version = (u32) kvp->key[0];
+  if (IP6 == version)
+    return;
+
+  u32 bd = (u32) (kvp->key[0] >> 32);
   hash_set (ht[0], bd, 0);
 }
 
@@ -864,8 +868,31 @@ vnet_lisp_l2_arp_bds_get (void)
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 *bds = 0;
 
-  gid_dict_foreach_l2_arp_entry (&lcm->mapping_index_by_gid,
-				 add_l2_arp_bd, &bds);
+  gid_dict_foreach_l2_arp_ndp_entry (&lcm->mapping_index_by_gid,
+				     add_l2_arp_bd, &bds);
+  return bds;
+}
+
+static void
+add_ndp_bd (BVT (clib_bihash_kv) * kvp, void *arg)
+{
+  u32 **ht = arg;
+  u32 version = (u32) kvp->key[0];
+  if (IP4 == version)
+    return;
+
+  u32 bd = (u32) (kvp->key[0] >> 32);
+  hash_set (ht[0], bd, 0);
+}
+
+u32 *
+vnet_lisp_ndp_bds_get (void)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  u32 *bds = 0;
+
+  gid_dict_foreach_l2_arp_ndp_entry (&lcm->mapping_index_by_gid,
+				     add_ndp_bd, &bds);
   return bds;
 }
 
@@ -873,15 +900,21 @@ typedef struct
 {
   void *vector;
   u32 bd;
-} lisp_add_l2_arp_args_t;
+} lisp_add_l2_arp_ndp_args_t;
 
 static void
 add_l2_arp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
 {
-  lisp_add_l2_arp_args_t *a = arg;
+  lisp_add_l2_arp_ndp_args_t *a = arg;
   lisp_api_l2_arp_entry_t **vector = a->vector, e;
 
-  if ((u32) kvp->key[0] == a->bd)
+  u32 version = (u32) kvp->key[0];
+  if (IP6 == version)
+    return;
+
+  u32 bd = (u32) (kvp->key[0] >> 32);
+
+  if (bd == a->bd)
     {
       mac_copy (e.mac, (void *) &kvp->value);
       e.ip4 = (u32) kvp->key[1];
@@ -894,13 +927,48 @@ vnet_lisp_l2_arp_entries_get_by_bd (u32 bd)
 {
   lisp_api_l2_arp_entry_t *entries = 0;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  lisp_add_l2_arp_args_t a;
+  lisp_add_l2_arp_ndp_args_t a;
 
   a.vector = &entries;
   a.bd = bd;
 
-  gid_dict_foreach_l2_arp_entry (&lcm->mapping_index_by_gid,
-				 add_l2_arp_entry, &a);
+  gid_dict_foreach_l2_arp_ndp_entry (&lcm->mapping_index_by_gid,
+				     add_l2_arp_entry, &a);
+  return entries;
+}
+
+static void
+add_ndp_entry (BVT (clib_bihash_kv) * kvp, void *arg)
+{
+  lisp_add_l2_arp_ndp_args_t *a = arg;
+  lisp_api_ndp_entry_t **vector = a->vector, e;
+
+  u32 version = (u32) kvp->key[0];
+  if (IP4 == version)
+    return;
+
+  u32 bd = (u32) (kvp->key[0] >> 32);
+
+  if (bd == a->bd)
+    {
+      mac_copy (e.mac, (void *) &kvp->value);
+      clib_memcpy (e.ip6, &kvp->key[1], 16);
+      vec_add1 (vector[0], e);
+    }
+}
+
+lisp_api_ndp_entry_t *
+vnet_lisp_ndp_entries_get_by_bd (u32 bd)
+{
+  lisp_api_ndp_entry_t *entries = 0;
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  lisp_add_l2_arp_ndp_args_t a;
+
+  a.vector = &entries;
+  a.bd = bd;
+
+  gid_dict_foreach_l2_arp_ndp_entry (&lcm->mapping_index_by_gid,
+				     add_ndp_entry, &a);
   return entries;
 }
 
@@ -2173,7 +2241,9 @@ vnet_lisp_add_del_mreq_itr_rlocs (vnet_lisp_add_del_mreq_itr_rloc_args_t * a)
 #define foreach_lisp_cp_lookup_error           \
 _(DROP, "drop")                                \
 _(MAP_REQUESTS_SENT, "map-request sent")       \
-_(ARP_REPLY_TX, "ARP replies sent")
+_(ARP_REPLY_TX, "ARP replies sent")            \
+_(NDP_NEIGHBOR_ADVERTISEMENT_TX,               \
+  "neighbor advertisement sent")
 
 static char *lisp_cp_lookup_error_strings[] = {
 #define _(sym,string) string,
@@ -2192,7 +2262,7 @@ typedef enum
 typedef enum
 {
   LISP_CP_LOOKUP_NEXT_DROP,
-  LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX,
+  LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX,
   LISP_CP_LOOKUP_N_NEXT,
 } lisp_cp_lookup_next_t;
 
@@ -3006,6 +3076,7 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 {
   ethernet_header_t *eh;
   u32 vni = 0;
+  icmp6_neighbor_discovery_ethernet_link_layer_address_option_t *opt;
 
   memset (src, 0, sizeof (*src));
   memset (dst, 0, sizeof (*dst));
@@ -3053,6 +3124,33 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 	}
       else
 	{
+	  if (clib_net_to_host_u16 (eh->type) == ETHERNET_TYPE_IP6)
+	    {
+	      ip6_header_t *ip;
+	      ip = (ip6_header_t *) (eh + 1);
+
+	      if (IP_PROTOCOL_ICMP6 == ip->protocol)
+		{
+		  icmp6_neighbor_solicitation_or_advertisement_header_t *ndh;
+		  ndh = ip6_next_header (ip);
+		  if (ndh->icmp.type == ICMP6_neighbor_solicitation)
+		    {
+		      opt = (void *) (ndh + 1);
+		      if ((opt->header.type !=
+			   ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address)
+			  || (opt->header.n_data_u64s != 1))
+			return;	/* source link layer address option not present */
+
+		      gid_address_type (dst) = GID_ADDR_NDP;
+		      gid_address_ndp_bd (dst) =
+			lisp_get_bd_from_buffer_eth (b);
+		      ip_address_set (&gid_address_arp_ndp_ip (dst),
+				      &ndh->target_address, IP6);
+		      return;
+		    }
+		}
+	    }
+
 	  gid_address_type (src) = GID_ADDR_MAC;
 	  gid_address_type (dst) = GID_ADDR_MAC;
 	  mac_copy (&gid_address_mac (src), eh->src_address);
@@ -3088,6 +3186,7 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
 		       vlib_frame_t * from_frame, int overlay)
 {
+  icmp6_neighbor_discovery_ethernet_link_layer_address_option_t *opt;
   u32 *from, *to_next, di, si;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   u32 pkts_mapped = 0, next_index;
@@ -3111,6 +3210,9 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	  ethernet_arp_header_t *arp0;
 	  ethernet_header_t *eth0;
 	  vnet_hw_interface_t *hw_if0;
+	  ethernet_header_t *eh0;
+	  icmp6_neighbor_solicitation_or_advertisement_header_t *ndh;
+	  ip6_header_t *ip0;
 
 	  pi0 = from[0];
 	  from += 1;
@@ -3127,41 +3229,70 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	  if (gid_address_type (&dst) == GID_ADDR_ARP)
 	    {
 	      mac0 = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &dst);
-	      if (GID_LOOKUP_MISS_L2 != mac0)
-		{
-		  /* send ARP reply */
+	      if (GID_LOOKUP_MISS_L2 == mac0)
+		goto drop;
 
-		  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
-		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index0;
+	      /* send ARP reply */
+	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index0;
 
-		  hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
+	      hw_if0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 
-		  eth0 = vlib_buffer_get_current (b0);
-		  arp0 = (ethernet_arp_header_t *) (((u8 *) eth0)
-						    + sizeof (*eth0));
-		  arp0->opcode =
-		    clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
-		  arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
-		  clib_memcpy (arp0->ip4_over_ethernet[0].ethernet,
-			       (u8 *) & mac0, 6);
-		  clib_memcpy (&arp0->ip4_over_ethernet[0].ip4,
-			       &gid_address_arp_ip4 (&dst), 4);
+	      eth0 = vlib_buffer_get_current (b0);
+	      arp0 = (ethernet_arp_header_t *) (((u8 *) eth0)
+						+ sizeof (*eth0));
+	      arp0->opcode = clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_reply);
+	      arp0->ip4_over_ethernet[1] = arp0->ip4_over_ethernet[0];
+	      clib_memcpy (arp0->ip4_over_ethernet[0].ethernet,
+			   (u8 *) & mac0, 6);
+	      clib_memcpy (&arp0->ip4_over_ethernet[0].ip4,
+			   &gid_address_arp_ip4 (&dst), 4);
 
-		  /* Hardware must be ethernet-like. */
-		  ASSERT (vec_len (hw_if0->hw_address) == 6);
+	      /* Hardware must be ethernet-like. */
+	      ASSERT (vec_len (hw_if0->hw_address) == 6);
 
-		  clib_memcpy (eth0->dst_address, eth0->src_address, 6);
-		  clib_memcpy (eth0->src_address, hw_if0->hw_address, 6);
+	      clib_memcpy (eth0->dst_address, eth0->src_address, 6);
+	      clib_memcpy (eth0->src_address, hw_if0->hw_address, 6);
 
-		  b0->error = node->errors[LISP_CP_LOOKUP_ERROR_ARP_REPLY_TX];
-		  next0 = LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX;
-		  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
-						   to_next,
-						   n_left_to_next, pi0,
-						   next0);
-		  continue;
-		}
-	      goto done;
+	      b0->error = node->errors[LISP_CP_LOOKUP_ERROR_ARP_REPLY_TX];
+	      next0 = LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX;
+	      goto enqueue;
+	    }
+	  else if (gid_address_type (&dst) == GID_ADDR_NDP)
+	    {
+	      mac0 = gid_dictionary_lookup (&lcm->mapping_index_by_gid, &dst);
+	      if (GID_LOOKUP_MISS_L2 == mac0)
+		goto drop;
+
+	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
+	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index0;
+
+	      eh0 = vlib_buffer_get_current (b0);
+	      ip0 = (ip6_header_t *) (eh0 + 1);
+	      ndh = ip6_next_header (ip0);
+	      int bogus_length;
+	      ip0->dst_address = ip0->src_address;
+	      ip0->src_address = ndh->target_address;
+	      ip0->hop_limit = 255;
+	      opt = (void *) (ndh + 1);
+	      opt->header.type =
+		ICMP6_NEIGHBOR_DISCOVERY_OPTION_target_link_layer_address;
+	      clib_memcpy (opt->ethernet_address, (u8 *) & mac0, 6);
+	      ndh->icmp.type = ICMP6_neighbor_advertisement;
+	      ndh->advertisement_flags = clib_host_to_net_u32
+		(ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_SOLICITED |
+		 ICMP6_NEIGHBOR_ADVERTISEMENT_FLAG_OVERRIDE);
+	      ndh->icmp.checksum = 0;
+	      ndh->icmp.checksum =
+		ip6_tcp_udp_icmp_compute_checksum (vm, b0, ip0,
+						   &bogus_length);
+	      clib_memcpy (eh0->dst_address, eh0->src_address, 6);
+	      clib_memcpy (eh0->src_address, (u8 *) & mac0, 6);
+	      b0->error =
+		node->errors
+		[LISP_CP_LOOKUP_ERROR_NDP_NEIGHBOR_ADVERTISEMENT_TX];
+	      next0 = LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX;
+	      goto enqueue;
 	    }
 
 	  /* if we have remote mapping for destination already in map-chache
@@ -3204,8 +3335,10 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	      pkts_mapped++;
 	    }
 
-	done:
+	drop:
 	  b0->error = node->errors[LISP_CP_LOOKUP_ERROR_DROP];
+	  next0 = LISP_CP_LOOKUP_NEXT_DROP;
+	enqueue:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
 	      lisp_cp_lookup_trace_t *tr = vlib_add_trace (vm, node, b0,
@@ -3218,7 +3351,6 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	    }
 	  gid_address_free (&dst);
 	  gid_address_free (&src);
-	  next0 = LISP_CP_LOOKUP_NEXT_DROP;
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next,
 					   n_left_to_next, pi0, next0);
@@ -3276,7 +3408,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_ip4_node) = {
 
   .next_nodes = {
       [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
-      [LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX] = "interface-output",
+      [LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX] = "interface-output",
   },
 };
 /* *INDENT-ON* */
@@ -3296,7 +3428,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_ip6_node) = {
 
   .next_nodes = {
       [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
-      [LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX] = "interface-output",
+      [LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX] = "interface-output",
   },
 };
 /* *INDENT-ON* */
@@ -3316,7 +3448,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_l2_node) = {
 
   .next_nodes = {
       [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
-      [LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX] = "interface-output",
+      [LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX] = "interface-output",
   },
 };
 /* *INDENT-ON* */
@@ -3336,7 +3468,7 @@ VLIB_REGISTER_NODE (lisp_cp_lookup_nsh_node) = {
 
   .next_nodes = {
       [LISP_CP_LOOKUP_NEXT_DROP] = "error-drop",
-      [LISP_CP_LOOKUP_NEXT_ARP_REPLY_TX] = "interface-output",
+      [LISP_CP_LOOKUP_NEXT_ARP_NDP_REPLY_TX] = "interface-output",
   },
 };
 /* *INDENT-ON* */

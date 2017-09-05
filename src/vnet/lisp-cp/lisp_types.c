@@ -279,8 +279,9 @@ format_gid_address (u8 * s, va_list * args)
       return format (s, "[%d] %U", gid_address_vni (a), format_mac_address,
 		     &gid_address_mac (a));
     case GID_ADDR_ARP:
-      return format (s, "[%d, %U]", gid_address_arp_bd (a),
-		     format_ip4_address, &gid_address_arp_ip4 (a));
+    case GID_ADDR_NDP:
+      return format (s, "[%d, %U]", gid_address_arp_ndp_bd (a),
+		     format_ip_address, &gid_address_arp_ndp_ip (a));
     case GID_ADDR_NSH:
       return format (s, "%U", format_nsh_address, &gid_address_nsh (a));
 
