@@ -267,7 +267,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b0->error = 0;
-	  b0->flags = VNET_BUFFER_F_LOCALLY_ORIGINATED;
+	  b0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  b0->current_data = 0;
 	  b0->total_length_not_including_first_buffer = 0;
 
