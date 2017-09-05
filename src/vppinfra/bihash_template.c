@@ -509,10 +509,11 @@ u8 *BV (format_bihash_lru) (u8 * s, va_list * args)
 
   for (i = 0; i < BIHASH_KVP_CACHE_SIZE; i++)
     s = format (s, "[%d] ", ((cache_lru >> (3 * i)) & 7));
+
+  return (s);
 #else
   return format (s, "cache not configured");
 #endif
-  return (s);
 }
 
 void
