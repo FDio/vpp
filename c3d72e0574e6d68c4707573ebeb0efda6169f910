@@ -94,6 +94,30 @@
       "revId": "c3d72e0574e6d68c4707573ebeb0efda6169f910",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_a85a2c81",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2017-09-05T01:31:57Z",
+      "side": 1,
+      "message": "Hello, Wallace. I have updated the code with your advice, please check up it, thanks a lot for your help.",
+      "parentUuid": "3a4b7175_f7d80655",
+      "range": {
+        "startLine": 289,
+        "startChar": 39,
+        "endLine": 289,
+        "endChar": 74
+      },
+      "revId": "c3d72e0574e6d68c4707573ebeb0efda6169f910",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
