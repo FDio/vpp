@@ -509,6 +509,11 @@ clients_connect (vlib_main_t * vm, u8 * uri, u32 n_clients)
       /* Crude pacing for call setups  */
       if ((i % 4) == 0)
 	vlib_process_suspend (vm, 10e-6);
+      ASSERT (i + 1 >= tm->ready_connections);
+      while (i + 1 - tm->ready_connections > 8000)
+	{
+	  vlib_process_suspend (vm, 100e-6);
+	}
     }
 }
 

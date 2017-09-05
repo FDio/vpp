@@ -160,6 +160,7 @@ tcp_half_open_connection_new (void)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_connection_t *tc = 0;
+  ASSERT (vlib_get_thread_index () == 0);
   pool_get (tm->half_open_connections, tc);
   memset (tc, 0, sizeof (*tc));
   tc->c_c_index = tc - tm->half_open_connections;
@@ -561,6 +562,22 @@ tcp_connection_fib_attach (tcp_connection_t * tc)
 }
 #endif /* 0 */
 
+/**
+ * Initialize connection send variables.
+ */
+void
+tcp_init_snd_vars (tcp_connection_t * tc)
+{
+  u32 time_now;
+
+  /* Set random initial sequence */
+  time_now = tcp_time_now ();
+  tc->iss = random_u32 (&time_now);
+  tc->snd_una = tc->iss;
+  tc->snd_nxt = tc->iss + 1;
+  tc->snd_una_max = tc->snd_nxt;
+}
+
 /** Initialize tcp connection variables
  *
  * Should be called after having received a msg from the peer, i.e., a SYN or
@@ -572,6 +589,9 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   tcp_init_mss (tc);
   scoreboard_init (&tc->sack_sb);
   tcp_cc_init (tc);
+  if (tc->state == TCP_STATE_SYN_RCVD)
+    tcp_init_snd_vars (tc);
+
   //  tcp_connection_fib_attach (tc);
 }
 
@@ -691,6 +711,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
 
   TCP_EVT_DBG (TCP_EVT_OPEN, tc);
   tc->state = TCP_STATE_SYN_SENT;
+  tcp_init_snd_vars (tc);
   tcp_send_syn (tc);
   clib_spinlock_unlock_if_init (&tm->half_open_lock);
 
@@ -1155,6 +1176,9 @@ tcp_timer_establish_handler (u32 conn_index)
 	return;
 
       ASSERT (tc->state == TCP_STATE_SYN_RCVD);
+      /* Start cleanup. App wasn't notified yet so use delete notify as
+       * opposed to delete to cleanup session layer state. */
+      stream_session_delete_notify (&tc->connection);
     }
   tc->timers[TCP_TIMER_ESTABLISH] = TCP_TIMER_HANDLE_INVALID;
   tcp_connection_cleanup (tc);
