@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_e3360503",
+        "filename": "src/uri.am",
+        "patchSetId": 18
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-09-05T14:57:25Z",
+      "side": 1,
+      "message": "I inadvertently cleaned up the trailing whitespace on line61, else its \"how I found it\"... I can clean up the date tho whilst I\u0027m at it.",
+      "parentUuid": "3a4b7175_88465022",
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_085260dd",
         "filename": "src/vpp/stats/stats.api",
         "patchSetId": 18
@@ -36,6 +54,24 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_23553d1d",
+        "filename": "src/vpp/stats/stats.api",
+        "patchSetId": 18
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-09-05T14:57:25Z",
+      "side": 1,
+      "message": "Will fix",
+      "parentUuid": "3a4b7175_085260dd",
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_c86328b0",
         "filename": "src/vpp/stats/stats.api",
         "patchSetId": 18
@@ -47,6 +83,24 @@
       "writtenOn": "2017-09-04T14:23:06Z",
       "side": 1,
       "message": "Some temptation to introduce a want_stats2 API, which adds a u32 flags field. Bits in the field control the individual APIs.",
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_43583956",
+        "filename": "src/vpp/stats/stats.api",
+        "patchSetId": 18
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-09-05T14:57:25Z",
+      "side": 1,
+      "message": "Would prefer not to as the next phase is to extend the individual stats calls introduced to allow per instance requests (ie want_interface with sw_if_index, want_ip4_fib with fib index) etc. Using a flags field may complicate things ... ideally I would deprecate want_stats in future releases and only allow individual want_foo_stats calls.",
+      "parentUuid": "3a4b7175_c86328b0",
       "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -100,6 +154,30 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_43aa791a",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 587,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-09-05T14:57:25Z",
+      "side": 1,
+      "message": "Do this include all static variables that are already there like *routes?",
+      "parentUuid": "3a4b7175_c8d56844",
+      "range": {
+        "startLine": 587,
+        "startChar": 0,
+        "endLine": 587,
+        "endChar": 25
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_f2181186",
         "filename": "src/vpp/stats/stats.c",
         "patchSetId": 18
@@ -135,6 +213,30 @@
       "side": 1,
       "message": "+1",
       "parentUuid": "3a4b7175_f2181186",
+      "range": {
+        "startLine": 596,
+        "startChar": 0,
+        "endLine": 596,
+        "endChar": 6
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_23a77d51",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 596,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-09-05T14:57:25Z",
+      "side": 1,
+      "message": "Will fix.",
+      "parentUuid": "3a4b7175_a8ca2c9f",
       "range": {
         "startLine": 596,
         "startChar": 0,
@@ -258,6 +360,24 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_832511c4",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1010,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-09-05T14:57:25Z",
+      "side": 1,
+      "message": "Agreed, will apply same to other places that have STATS_DEBUG",
+      "parentUuid": "3a4b7175_c83c4896",
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_1203ad10",
         "filename": "src/vpp/stats/stats.c",
         "patchSetId": 18
@@ -269,6 +389,30 @@
       "writtenOn": "2017-09-01T18:37:13Z",
       "side": 1,
       "message": "IMHO, 0 is sufficient.  \n\nIf the state is already what is being requested, then there\u0027s no need to be pedantic and force the control plane app to figure out that it is clueless about the current state.  Just declare victory and move on.\n\nOtherwise, there will need to be an excessive amount of state synchronization and extra code to maintain in the control plane app.  This can rapidly get out of hand in high availability test cases (e.g. VPP restart, control plane app restart, multiple control plane apps, etc)",
+      "range": {
+        "startLine": 1400,
+        "startChar": 0,
+        "endLine": 1403,
+        "endChar": 1
+      },
+      "revId": "ee7a2d0ffbe8de5493ebec5a01fd98c264fd7e94",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_03648120",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 18
+      },
+      "lineNbr": 1403,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-09-05T14:57:25Z",
+      "side": 1,
+      "message": "Agreed. Operationally during testing this was quite a nice way of handling things. It allows for a global enable_all then to turn off individual stats, or to turn on individual stats and globally disable them.",
+      "parentUuid": "3a4b7175_1203ad10",
       "range": {
         "startLine": 1400,
         "startChar": 0,
