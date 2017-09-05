@@ -186,10 +186,10 @@ api_memif_create (vat_main_t * vam)
       strncpy ((char *) mp->socket_filename, (char *) socket_filename, 127);
       vec_free (socket_filename);
     }
-  if (socket_filename != 0)
+  if (secret != 0)
     {
       strncpy ((char *) mp->secret, (char *) secret, 16);
-      vec_free (socket_filename);
+      vec_free (secret);
     }
   memcpy (mp->hw_addr, hw_addr, 6);
   mp->rx_queues = rx_queues;
