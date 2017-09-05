@@ -97,7 +97,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 						 * ticks to timer units */
 #define TCP_DELACK_TIME         1	/* 0.1s */
 #define TCP_ESTABLISH_TIME      750	/* 75s */
-#define TCP_SYN_RCVD_TIME	100	/* 10s */
+#define TCP_SYN_RCVD_TIME	600	/* 10s */
 #define TCP_2MSL_TIME           300	/* 30s */
 #define TCP_CLOSEWAIT_TIME	20	/* 0.1s */
 #define TCP_CLEANUP_TIME	5	/* 0.5s Time to wait before cleanup */
@@ -676,6 +676,7 @@ tcp_prepare_retransmit_segment (tcp_connection_t * tc, u32 offset,
 
 void tcp_connection_timers_init (tcp_connection_t * tc);
 void tcp_connection_timers_reset (tcp_connection_t * tc);
+void tcp_init_snd_vars (tcp_connection_t *tc);
 void tcp_connection_init_vars (tcp_connection_t * tc);
 
 always_inline void
@@ -690,6 +691,7 @@ always_inline void
 tcp_timer_set (tcp_connection_t * tc, u8 timer_id, u32 interval)
 {
   ASSERT (tc->c_thread_index == vlib_get_thread_index ());
+  ASSERT (tc->timers[timer_id] == TCP_TIMER_HANDLE_INVALID);
   tc->timers[timer_id]
     = tw_timer_start_16t_2w_512sl (&tcp_main.timer_wheels[tc->c_thread_index],
 				   tc->c_c_index, timer_id, interval);
@@ -722,6 +724,7 @@ tcp_timer_update (tcp_connection_t * tc, u8 timer_id, u32 interval)
 always_inline void
 tcp_retransmit_timer_set (tcp_connection_t * tc)
 {
+  ASSERT (tc->snd_una != tc->snd_una_max);
   tcp_timer_set (tc, TCP_TIMER_RETRANSMIT,
 		 clib_max (tc->rto * TCP_TO_TIMER_TICK, 1));
 }
@@ -769,7 +772,7 @@ tcp_retransmit_timer_update (tcp_connection_t * tc)
     {
       tcp_retransmit_timer_reset (tc);
       if (tc->snd_wnd < tc->snd_mss)
-	tcp_persist_timer_set (tc);
+	tcp_persist_timer_update (tc);
     }
   else
     tcp_timer_update (tc, TCP_TIMER_RETRANSMIT,

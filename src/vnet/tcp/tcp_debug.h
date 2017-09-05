@@ -19,7 +19,7 @@
 #include <vlib/vlib.h>
 
 #define TCP_DEBUG (1)
-#define TCP_DEBUG_SM (0)
+#define TCP_DEBUG_SM (2)
 #define TCP_DEBUG_CC (1)
 #define TCP_DEBUG_CC_STAT (1)
 
@@ -197,9 +197,10 @@ typedef enum _tcp_dbg_evt
   ed->data[0] = _tc->c_c_index;						\
 }
 
-#define TCP_EVT_SYN_RCVD_HANDLER(_tc, ...)				\
+#define TCP_EVT_SYN_RCVD_HANDLER(_tc,_init, ...)				\
 {									\
-  TCP_EVT_INIT_HANDLER(_tc, 0);						\
+  if (_init)								\
+    TCP_EVT_INIT_HANDLER(_tc, 0);					\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
     .format = "syn-rx: irs %u",						\
@@ -275,11 +276,14 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "syn-tx: iss %u",						\
-    .format_args = "i4",						\
+    .format = "syn-tx: iss %u snd_una %u snd_una_max %u snd_nxt %u",	\
+    .format_args = "i4i4i4i4",						\
   };									\
-  DECLARE_ETD(_tc, _e, 1);						\
+  DECLARE_ETD(_tc, _e, 4);						\
   ed->data[0] = _tc->iss;						\
+  ed->data[1] = _tc->snd_una - _tc->iss;					\
+  ed->data[2] = _tc->snd_una_max - _tc->iss;				\
+  ed->data[3] = _tc->snd_nxt - _tc->iss;					\
   TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
 }
 
@@ -287,24 +291,30 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "synack-tx: iss %u irs %u",				\
-    .format_args = "i4i4",						\
+    .format = "synack-tx: iss %u irs %u snd_una %u snd_nxt %u rcv_nxt %u",\
+    .format_args = "i4i4i4i4i4",						\
   };									\
-  DECLARE_ETD(_tc, _e, 2);						\
+  DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _tc->iss;						\
   ed->data[1] = _tc->irs;						\
+  ed->data[2] = _tc->snd_una - _tc->iss;					\
+  ed->data[3] = _tc->snd_nxt - _tc->iss;					\
+  ed->data[4] = _tc->rcv_nxt - _tc->irs;					\
 }
 
 #define TCP_EVT_SYNACK_RCVD_HANDLER(_tc, ...)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "synack-rx: iss %u irs %u",				\
-    .format_args = "i4i4",						\
+    .format = "synack-rx: iss %u irs %u snd_una %u snd_nxt %u rcv_nxt %u",\
+    .format_args = "i4i4i4i4i4",						\
   };									\
-  DECLARE_ETD(_tc, _e, 2);						\
+  DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _tc->iss;						\
   ed->data[1] = _tc->irs;						\
+  ed->data[2] = _tc->snd_una - _tc->iss;					\
+  ed->data[3] = _tc->snd_nxt - _tc->iss;					\
+  ed->data[4] = _tc->rcv_nxt - _tc->irs;					\
   TCP_EVT_STATE_CHANGE_HANDLER(_tc);					\
 }
 
@@ -361,17 +371,20 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "%s-rxt: iss %u",						\
-    .format_args = "t4i4",						\
+    .format = "%s-rxt: iss %u irs %u snd_nxt %u rcv_nxt %u",		\
+    .format_args = "t4i4i4i4i4",						\
     .n_enum_strings = 2,						\
     .enum_strings = {                                           	\
 	"syn",	                                             		\
         "syn-ack",							\
     },  								\
   };									\
-  DECLARE_ETD(_tc, _e, 2);						\
+  DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _type;							\
   ed->data[1] = _tc->iss;						\
+  ed->data[2] = _tc->irs;						\
+  ed->data[3] = _tc->snd_nxt - _tc->iss;					\
+  ed->data[4] = _tc->rcv_nxt - _tc->irs;					\
 }
 
 #else
@@ -414,7 +427,7 @@ typedef enum _tcp_dbg_evt
   ed->data[0] = _tc->rcv_nxt - _tc->irs;				\
   ed->data[1] = _tc->rcv_wnd;						\
   ed->data[2] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[3] = tcp_available_wnd(_tc);					\
+  ed->data[3] = tcp_available_snd_wnd(_tc);				\
   ed->data[4] = _tc->snd_wnd;						\
 }
 
@@ -422,7 +435,7 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "acked: %u snd_una %u snd_wnd %u cwnd %u inflight %u",	\
+    .format = "ack-rx: %u snd_una %u snd_wnd %u cwnd %u inflight %u",	\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
@@ -452,13 +465,13 @@ typedef enum _tcp_dbg_evt
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "pktize: una %u snd_nxt %u space %u flight %u rcv_wnd %u",\
+    .format = "tx: una %u snd_nxt %u space %u flight %u rcv_wnd %u",\
     .format_args = "i4i4i4i4i4",					\
   };									\
   DECLARE_ETD(_tc, _e, 5);						\
   ed->data[0] = _tc->snd_una - _tc->iss;				\
   ed->data[1] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[2] = tcp_available_snd_space (_tc);				\
+  ed->data[2] = tcp_available_output_snd_space (_tc);			\
   ed->data[3] = tcp_flight_size (_tc);					\
   ed->data[4] = _tc->rcv_wnd;						\
 }
