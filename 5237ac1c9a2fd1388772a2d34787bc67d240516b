@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_5ee48e0c",
+        "filename": "src/vnet/vnet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 72,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-09-05T23:05:20Z",
+      "side": 1,
+      "message": "Is this used anywhere?",
+      "range": {
+        "startLine": 72,
+        "startChar": 9,
+        "endLine": 72,
+        "endChar": 24
+      },
+      "revId": "5237ac1c9a2fd1388772a2d34787bc67d240516b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
