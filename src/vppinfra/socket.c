@@ -200,7 +200,8 @@ default_socket_write (clib_socket_t * s)
   /* A "real" error occurred. */
   if (written < 0)
     {
-      err = clib_error_return_unix (0, "write %wd bytes", tx_len);
+      err = clib_error_return_unix (0, "write %wd bytes (fd %d, '%s')",
+				    tx_len, s->fd, s->config);
       vec_free (s->tx_buffer);
       goto done;
     }
@@ -248,7 +249,8 @@ default_socket_read (clib_socket_t * sock, int n_bytes)
       if (!unix_error_is_fatal (errno))
 	goto non_fatal;
 
-      return clib_error_return_unix (0, "read %d bytes", n_bytes);
+      return clib_error_return_unix (0, "read %d bytes (fd %d, '%s')",
+				     n_bytes, sock->fd, sock->config);
     }
 
   /* Other side closed the socket. */
@@ -265,7 +267,7 @@ static clib_error_t *
 default_socket_close (clib_socket_t * s)
 {
   if (close (s->fd) < 0)
-    return clib_error_return_unix (0, "close");
+    return clib_error_return_unix (0, "close (fd %d, %s)", s->fd, s->config);
   return 0;
 }
 
@@ -303,7 +305,8 @@ clib_socket_init (clib_socket_t * s)
   s->fd = socket (addr.sa.sa_family, SOCK_STREAM, 0);
   if (s->fd < 0)
     {
-      error = clib_error_return_unix (0, "socket");
+      error = clib_error_return_unix (0, "socket (fd %d, '%s')",
+				      s->fd, s->config);
       goto done;
     }
 
@@ -322,7 +325,8 @@ clib_socket_init (clib_socket_t * s)
 	      port = find_free_port (s->fd);
 	      if (port < 0)
 		{
-		  error = clib_error_return (0, "no free port");
+		  error = clib_error_return (0, "no free port (fd %d, '%s')",
+					     s->fd, s->config);
 		  goto done;
 		}
 	      need_bind = 0;
@@ -340,13 +344,15 @@ clib_socket_init (clib_socket_t * s)
 
       if (need_bind && bind (s->fd, &addr.sa, addr_len) < 0)
 	{
-	  error = clib_error_return_unix (0, "bind");
+	  error = clib_error_return_unix (0, "bind (fd %d, '%s')",
+					  s->fd, s->config);
 	  goto done;
 	}
 
       if (listen (s->fd, 5) < 0)
 	{
-	  error = clib_error_return_unix (0, "listen");
+	  error = clib_error_return_unix (0, "listen (fd %d, '%s')",
+					  s->fd, s->config);
 	  goto done;
 	}
       if (addr.sa.sa_family == PF_LOCAL
@@ -363,7 +369,8 @@ clib_socket_init (clib_socket_t * s)
       if ((s->flags & SOCKET_NON_BLOCKING_CONNECT)
 	  && fcntl (s->fd, F_SETFL, O_NONBLOCK) < 0)
 	{
-	  error = clib_error_return_unix (0, "fcntl NONBLOCK");
+	  error = clib_error_return_unix (0, "fcntl NONBLOCK (fd %d, '%s')",
+					  s->fd, s->config);
 	  goto done;
 	}
 
@@ -371,7 +378,8 @@ clib_socket_init (clib_socket_t * s)
 	  && !((s->flags & SOCKET_NON_BLOCKING_CONNECT) &&
 	       errno == EINPROGRESS))
 	{
-	  error = clib_error_return_unix (0, "connect");
+	  error = clib_error_return_unix (0, "connect (fd %d, '%s')",
+					  s->fd, s->config);
 	  goto done;
 	}
     }
@@ -395,12 +403,14 @@ clib_socket_accept (clib_socket_t * server, clib_socket_t * client)
   /* Accept the new socket connection. */
   client->fd = accept (server->fd, 0, 0);
   if (client->fd < 0)
-    return clib_error_return_unix (0, "accept");
+    return clib_error_return_unix (0, "accept (fd %d, '%s')",
+				   server->fd, server->config);
 
   /* Set the new socket to be non-blocking. */
   if (fcntl (client->fd, F_SETFL, O_NONBLOCK) < 0)
     {
-      err = clib_error_return_unix (0, "fcntl O_NONBLOCK");
+      err = clib_error_return_unix (0, "fcntl O_NONBLOCK (fd %d)",
+				    client->fd);
       goto close_client;
     }
 
@@ -408,7 +418,7 @@ clib_socket_accept (clib_socket_t * server, clib_socket_t * client)
   len = sizeof (client->peer);
   if (getpeername (client->fd, (struct sockaddr *) &client->peer, &len) < 0)
     {
-      err = clib_error_return_unix (0, "getpeername");
+      err = clib_error_return_unix (0, "getpeername (fd %d)", client->fd);
       goto close_client;
     }
 
