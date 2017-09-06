@@ -105,37 +105,12 @@ autoreply define unbind_uri {
     @param client_queue_address - binary API client queue address. Used by 
     							  local server when connect was redirected.
 */
-define connect_uri {
+autoreply define connect_uri {
   u32 client_index;
   u32 context;
   u8 uri[128];
   u64 client_queue_address;
   u64 options[16];
-};
-
-/** \brief vpp->client, connect reply
-    @param context - sender context, to match reply w/ request
-    @param retval - return code for the request
-    @param handle - session handle
-    @param server_rx_fifo - rx (vpp -> vpp-client) fifo address 
-    @param server_tx_fifo - tx (vpp-client -> vpp) fifo address 
-    @param vpp_event_queue_address - vpp's event queue address
-    @param segment_size - size of segment to be attached. Only for redirects.
-    @param segment_name_length - non-zero if the client needs to attach to 
-                                 the fifo segment. This should only happen 
-                                 if session was redirected.
-    @param segment_name - set if the client needs to attach to the segment
-*/
-define connect_uri_reply {
-  u32 context;
-  i32 retval;
-  u64 handle;
-  u64 server_rx_fifo;
-  u64 server_tx_fifo;
-  u64 vpp_event_queue_address;
-  u32 segment_size;
-  u8 segment_name_length;
-  u8 segment_name[128];
 };
 
 /** \brief vpp->client, accept this session
@@ -273,10 +248,9 @@ autoreply define unbind_sock {
                                   used to perform redirects
     @param options - socket options, fifo sizes, etc. when doing redirects
 */
-define connect_sock {
+autoreply define connect_sock {
   u32 client_index;
   u32 context;
-  u32 app_connect;
   u32 vrf;
   u8 is_ip4;
   u8 ip[16];
@@ -305,11 +279,19 @@ define bind_sock_reply {
   u8 segment_name[128];
 };
 
-/** \brief vpp/server->client, connect reply
+/* Dummy connect message -- needed to satisfy api generators
+*
+*  NEVER USED, doxygen tags elided on purpose.
+*/
+define connect_session {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief vpp/server->client, connect reply -- used for all connect_* messages
     @param context - sender context, to match reply w/ request
     @param retval - return code for the request
     @param handle - connection handle
-    @param app_connect - application connection id from connect msg
     @param server_rx_fifo - rx (vpp -> vpp-client) fifo address 
     @param server_tx_fifo - tx (vpp-client -> vpp) fifo address 
     @param vpp_event_queue_address - vpp's event queue address
@@ -318,11 +300,10 @@ define bind_sock_reply {
                                  the fifo segment
     @param segment_name - set if the client needs to attach to the segment
 */
-define connect_sock_reply {
+define connect_session_reply {
   u32 context;
   i32 retval;
   u64 handle;
-  u32 app_connect;
   u64 server_rx_fifo;
   u64 server_tx_fifo;
   u64 vpp_event_queue_address;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Copyright (c) 2017 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this
  * You may obtain a copy of the License at:
@@ -76,7 +76,7 @@ typedef struct
   svm_fifo_t *server_tx_fifo;
   u32 sm_seg_index;
   u64 vpp_session_handle;
-  unix_shared_memory_queue_t *event_queue;
+  unix_shared_memory_queue_t *vpp_event_queue;
 
   /* Socket configuration state */
   u8 is_server;
@@ -682,7 +682,7 @@ vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
 }
 
 static void
-vl_api_connect_sock_reply_t_handler (vl_api_connect_sock_reply_t * mp)
+vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
 {
   vppcom_main_t *vcm = &vppcom_main;
   session_t *session;
@@ -698,9 +698,9 @@ vl_api_connect_sock_reply_t_handler (vl_api_connect_sock_reply_t * mp)
       return;
     }
 
-  session_index = ntohl (mp->app_connect);
+  session_index = mp->context;
   if (VPPCOM_DEBUG > 1)
-    clib_warning ("[%d] app_connect = %d 0x%08x", vcm->my_pid,
+    clib_warning ("[%d] session_index = %d 0x%08x", vcm->my_pid,
 		  session_index, session_index);
 
   clib_spinlock_lock (&vcm->sessions_lockp);
@@ -743,8 +743,8 @@ vl_api_connect_sock_reply_t_handler (vl_api_connect_sock_reply_t * mp)
 
   session = pool_elt_at_index (vcm->sessions, session_index);
   session->is_cut_thru = is_cut_thru;
-  session->event_queue = uword_to_pointer (mp->vpp_event_queue_address,
-					   unix_shared_memory_queue_t *);
+  session->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
+					       unix_shared_memory_queue_t *);
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
@@ -773,13 +773,11 @@ vppcom_send_connect_sock (session_t * session, u32 session_index)
   memset (cmp, 0, sizeof (*cmp));
   cmp->_vl_msg_id = ntohs (VL_API_CONNECT_SOCK);
   cmp->client_index = vcm->my_client_index;
-  cmp->context = htonl (0xfeedface);
-  cmp->app_connect = session_index;
+  cmp->context = session_index;
 
   if (VPPCOM_DEBUG > 1)
-    clib_warning ("[%d] session_index = %d 0x%08x, app_connect = %d 0x%08x",
-		  vcm->my_pid, session_index, session_index,
-		  cmp->app_connect, cmp->app_connect);
+    clib_warning ("[%d] session_index = %d 0x%08x",
+		  vcm->my_pid, session_index, session_index);
 
   cmp->vrf = session->vrf;
   cmp->is_ip4 = session->is_ip4;
@@ -991,8 +989,8 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 
   session->server_rx_fifo = rx_fifo;
   session->server_tx_fifo = tx_fifo;
-  session->event_queue = uword_to_pointer (mp->vpp_event_queue_address,
-					   unix_shared_memory_queue_t *);
+  session->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
+					       unix_shared_memory_queue_t *);
   session->state = STATE_ACCEPT;
   session->is_cut_thru = 0;
   session->port = ntohs (mp->port);
@@ -1029,7 +1027,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   u32 session_index;
   svm_fifo_segment_private_t *seg;
   unix_shared_memory_queue_t *client_q;
-  vl_api_connect_sock_reply_t *rmp;
+  vl_api_connect_session_reply_t *rmp;
   session_t *session = 0;
   int rv = 0;
   svm_fifo_t *rx_fifo;
@@ -1119,7 +1117,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 
     ssvm_lock_non_recursive (sh, 1);
     oldheap = ssvm_push_heap (sh);
-    event_q = session->event_queue =
+    event_q = session->vpp_event_queue =
       unix_shared_memory_queue_init (vcm->cfg.event_queue_size,
 				     sizeof (session_fifo_event_t),
 				     vcm->my_pid, 0 /* signal not sent */ );
@@ -1139,9 +1137,8 @@ send_reply:
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
 
-  rmp->_vl_msg_id = ntohs (VL_API_CONNECT_SOCK_REPLY);
+  rmp->_vl_msg_id = ntohs (VL_API_CONNECT_SESSION_REPLY);
   rmp->context = mp->context;
-  rmp->app_connect = htonl (mp->app_connect);
   rmp->retval = htonl (rv);
   rmp->segment_name_length = vec_len (a->segment_name);
   clib_memcpy (rmp->segment_name, a->segment_name, vec_len (a->segment_name));
@@ -1293,7 +1290,7 @@ _(BIND_SOCK_REPLY, bind_sock_reply)                             \
 _(UNBIND_SOCK_REPLY, unbind_sock_reply)                         \
 _(ACCEPT_SESSION, accept_session)                               \
 _(CONNECT_SOCK, connect_sock)                                   \
-_(CONNECT_SOCK_REPLY, connect_sock_reply)                       \
+_(CONNECT_SESSION_REPLY, connect_session_reply)                 \
 _(DISCONNECT_SESSION, disconnect_session)                       \
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)           \
 _(RESET_SESSION, reset_session)                                 \
@@ -1878,6 +1875,7 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
   vppcom_main_t *vcm = &vppcom_main;
   session_t *session = 0;
   int rv;
+  ip46_address_t *ip46;
 
   if (!ep || !ep->ip)
     return VPPCOM_EINVAL;
@@ -1898,8 +1896,9 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
 
   session->vrf = ep->vrf;
   session->is_ip4 = ep->is_ip4;
-  memset (session->ip, 0, sizeof (*session->ip));
-  clib_memcpy (session->ip, ep->ip, sizeof (session->ip));
+  memset (session->ip, 0, sizeof (session->ip));
+  ip46 = (ip46_address_t *) session->ip;
+  *ip46 = to_ip46 (!ep->is_ip4, ep->ip);
   session->port = ep->port;
 
   clib_spinlock_unlock (&vcm->sessions_lockp);
@@ -1907,32 +1906,33 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
 }
 
 int
-vppcom_session_listen (uint32_t session_index, uint32_t q_len)
+vppcom_session_listen (uint32_t listen_session_index, uint32_t q_len)
 {
   vppcom_main_t *vcm = &vppcom_main;
-  session_t *session = 0;
+  session_t *listen_session = 0;
   int rv;
 
   clib_spinlock_lock (&vcm->sessions_lockp);
-  rv = vppcom_session_at_index (session_index, &session);
+  rv = vppcom_session_at_index (listen_session_index, &listen_session);
   if (PREDICT_FALSE (rv))
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
 	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
-		      vcm->my_pid, session_index);
+		      vcm->my_pid, listen_session_index);
       return rv;
     }
 
   if (VPPCOM_DEBUG > 0)
-    clib_warning ("[%d] sid %d", vcm->my_pid, session_index);
+    clib_warning ("[%d] sid %d", vcm->my_pid, listen_session_index);
 
   ASSERT (vcm->bind_session_index == ~0);
-  vcm->bind_session_index = session_index;
-  vppcom_send_bind_sock (session);
+  vcm->bind_session_index = listen_session_index;
+  vppcom_send_bind_sock (listen_session);
   clib_spinlock_unlock (&vcm->sessions_lockp);
-  rv = vppcom_wait_for_session_state_change (session_index, STATE_LISTEN,
-					     vcm->cfg.session_timeout);
+  rv =
+    vppcom_wait_for_session_state_change (listen_session_index, STATE_LISTEN,
+					  vcm->cfg.session_timeout);
   if (PREDICT_FALSE (rv))
     {
       vcm->bind_session_index = ~0;
@@ -1943,16 +1943,16 @@ vppcom_session_listen (uint32_t session_index, uint32_t q_len)
     }
 
   clib_spinlock_lock (&vcm->sessions_lockp);
-  rv = vppcom_session_at_index (session_index, &session);
+  rv = vppcom_session_at_index (listen_session_index, &listen_session);
   if (PREDICT_FALSE (rv))
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
 	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
-		      vcm->my_pid, session_index);
+		      vcm->my_pid, listen_session_index);
       return rv;
     }
-  session->is_listen = 1;
+  listen_session->is_listen = 1;
   clib_spinlock_unlock (&vcm->sessions_lockp);
   clib_fifo_validate (vcm->client_session_index_fifo, q_len);
 
@@ -1964,13 +1964,14 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 		       double wait_for_time)
 {
   vppcom_main_t *vcm = &vppcom_main;
-  session_t *session = 0;
+  session_t *listen_session = 0;
+  session_t *client_session = 0;
   u32 client_session_index;
   int rv;
   f64 wait_for;
 
   clib_spinlock_lock (&vcm->sessions_lockp);
-  rv = vppcom_session_at_index (listen_session_index, &session);
+  rv = vppcom_session_at_index (listen_session_index, &listen_session);
   if (PREDICT_FALSE (rv))
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
@@ -1980,21 +1981,23 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
       return rv;
     }
 
-  if (session->state != STATE_LISTEN)
+  if (listen_session->state != STATE_LISTEN)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
 	clib_warning ("[%d] session not in listen state, state = %s",
-		      vcm->my_pid, vppcom_session_state_str (session->state));
+		      vcm->my_pid,
+		      vppcom_session_state_str (listen_session->state));
       return VPPCOM_EBADFD;
     }
-  wait_for = session->is_nonblocking ? 0 :
+  wait_for = listen_session->is_nonblocking ? 0 :
     (wait_for_time < 0) ? vcm->cfg.accept_timeout : wait_for_time;
 
   if (VPPCOM_DEBUG > 0)
-    clib_warning ("[%d] sid %d, state %s (%d)", vcm->my_pid,
+    clib_warning ("[%d] sid %d: %s (%d)", vcm->my_pid,
 		  listen_session_index,
-		  vppcom_session_state_str (session->state), session->state);
+		  vppcom_session_state_str (listen_session->state),
+		  listen_session->state);
   clib_spinlock_unlock (&vcm->sessions_lockp);
 
   while (1)
@@ -2015,23 +2018,23 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 
   clib_fifo_sub1 (vcm->client_session_index_fifo, client_session_index);
 
-  session = 0;
   clib_spinlock_lock (&vcm->sessions_lockp);
-  rv = vppcom_session_at_index (client_session_index, &session);
+  rv = vppcom_session_at_index (client_session_index, &client_session);
   ASSERT (rv == VPPCOM_OK);
-  ASSERT (session->is_server);
+  ASSERT (client_session->is_ip4 == listen_session->is_ip4);
 
   if (VPPCOM_DEBUG > 0)
     clib_warning ("[%d] Got a request: client sid %d", vcm->my_pid,
 		  client_session_index);
 
-  ep->vrf = session->vrf;
-  ep->is_cut_thru = session->is_cut_thru;
-  ep->is_ip4 = session->is_ip4;
-  ep->port = session->port;
-  memset (ep->ip, 0, sizeof (ip6_address_t));
-  clib_memcpy (ep->ip, session->ip, sizeof (ip6_address_t));
-  session->state = STATE_LISTEN;
+  ep->vrf = client_session->vrf;
+  ep->is_cut_thru = client_session->is_cut_thru;
+  ep->is_ip4 = client_session->is_ip4;
+  ep->port = client_session->port;
+  if (client_session->is_ip4)
+    clib_memcpy (ep->ip, client_session->ip, sizeof (ip4_address_t));
+  else
+    clib_memcpy (ep->ip, client_session->ip, sizeof (ip6_address_t));
   clib_spinlock_unlock (&vcm->sessions_lockp);
   return (int) client_session_index;
 }
@@ -2066,6 +2069,7 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
 
   session->vrf = server_ep->vrf;
   session->is_ip4 = server_ep->is_ip4;
+  memset (session->ip, 0, sizeof (session->ip));
   ip46 = (ip46_address_t *) session->ip;
   *ip46 = to_ip46 (!server_ep->is_ip4, server_ep->ip);
   session->port = server_ep->port;
@@ -2097,12 +2101,12 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
 int
 vppcom_session_read (uint32_t session_index, void *buf, int n)
 {
-  session_fifo_event_t _e, *e = &_e;
   vppcom_main_t *vcm = &vppcom_main;
   session_t *session = 0;
   svm_fifo_t *rx_fifo;
   int n_read = 0;
   int rv;
+  int max_dequeue;
   char *fifo_str;
 
   ASSERT (buf);
@@ -2118,100 +2122,62 @@ vppcom_session_read (uint32_t session_index, void *buf, int n)
       return rv;
     }
 
-  if (session->is_cut_thru)
+  if (session->state == STATE_DISCONNECT)
     {
-      rx_fifo = session->is_server ? session->server_rx_fifo :
-	session->server_tx_fifo;
-      fifo_str = session->is_server ? "server_rx_fifo" : "server_tx_fifo";
       clib_spinlock_unlock (&vcm->sessions_lockp);
-
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, n, buf);
-
-      if (n_read <= 0)
-	return VPPCOM_EAGAIN;
-
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("[%d] sid (%d) has been closed by remote peer!",
+		      vcm->my_pid, session_index);
+      return VPPCOM_ECONNRESET;
     }
-  else
-    {
-      rv = unix_shared_memory_queue_sub (session->event_queue, (u8 *) e,
-					 1 /* nowait */ );
-      clib_spinlock_unlock (&vcm->sessions_lockp);
-      if (rv < 0)
-	return VPPCOM_EAGAIN;
 
-      switch (e->event_type)
-	{
-	case FIFO_EVENT_APP_RX:
-	  rx_fifo = e->fifo;
-	  fifo_str = "app_rx_fifo";
-	  n_read = svm_fifo_dequeue_nowait (rx_fifo, n, buf);
-	  break;
+  rx_fifo = ((!session->is_cut_thru || session->is_server) ?
+	     session->server_rx_fifo : session->server_tx_fifo);
+  fifo_str = ((!session->is_cut_thru || session->is_server) ?
+	      "server_rx_fifo" : "server_tx_fifo");
+  clib_spinlock_unlock (&vcm->sessions_lockp);
 
-	case FIFO_EVENT_DISCONNECT:
-	  return VPPCOM_ECONNRESET;
-
-	default:
-	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("[%d] unknown event type %d", vcm->my_pid,
-			  e->event_type);
-	  return VPPCOM_EAGAIN;
-	}
-    }
+  max_dequeue = (int) svm_fifo_max_dequeue (rx_fifo);
+  n_read = svm_fifo_dequeue_nowait (rx_fifo, clib_min (n, max_dequeue), buf);
 
   if (VPPCOM_DEBUG > 2)
     clib_warning ("[%d] sid %d, read %d bytes from %s (%p)", vcm->my_pid,
 		  session_index, n_read, fifo_str, rx_fifo);
-  return n_read;
+
+  return (n_read <= 0) ? VPPCOM_EAGAIN : n_read;
 }
 
 static inline int
 vppcom_session_read_ready (session_t * session, u32 session_index)
 {
-  session_fifo_event_t _e, *e = &_e;
   vppcom_main_t *vcm = &vppcom_main;
   svm_fifo_t *rx_fifo;
-  int rv;
   int ready = 0;
 
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
-  if (session->is_cut_thru)
+  if (session->state == STATE_DISCONNECT)
     {
-      rx_fifo = session->is_server ? session->server_rx_fifo :
-	session->server_tx_fifo;
-
-      ready = svm_fifo_max_dequeue (rx_fifo);
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("[%d] sid (%d) has been closed by remote peer!",
+		      vcm->my_pid, session_index);
+      return VPPCOM_ECONNRESET;
     }
-  else if (session->is_listen)
+
+  if (session->is_listen)
     ready = clib_fifo_elts (vcm->client_session_index_fifo);
   else
     {
-      rv = unix_shared_memory_queue_sub (vcm->app_event_queue, (u8 *) e,
-					 1 /* nowait */ );
-      if (rv >= 0)
-	{
-	  switch (e->event_type)
-	    {
-	    case FIFO_EVENT_APP_RX:
-	      rx_fifo = e->fifo;
-	      ready = svm_fifo_max_dequeue (rx_fifo);
-	      break;
+      rx_fifo = ((!session->is_cut_thru || session->is_server) ?
+		 session->server_rx_fifo : session->server_tx_fifo);
 
-	    case FIFO_EVENT_DISCONNECT:
-	      return VPPCOM_ECONNRESET;
-
-	    default:
-	      clib_warning ("[%d] unknown event type %d", vcm->my_pid,
-			    e->event_type);
-	    }
-	}
+      ready = svm_fifo_max_dequeue (rx_fifo);
     }
 
-  if (VPPCOM_DEBUG > 2)
+  if (VPPCOM_DEBUG > 3)
     clib_warning ("[%d] sid %d, peek %s (%p), ready = %d", vcm->my_pid,
 		  session_index,
 		  session->is_server ? "server_rx_fifo" : "server_tx_fifo",
 		  rx_fifo, ready);
-
   return ready;
 }
 
@@ -2240,10 +2206,20 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
       return rv;
     }
 
+  if (session->state == STATE_DISCONNECT)
+    {
+      clib_spinlock_unlock (&vcm->sessions_lockp);
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("[%d] sid (%d) has been closed by remote peer!",
+		      vcm->my_pid, session_index);
+      return VPPCOM_ECONNRESET;
+    }
+
   tx_fifo = ((!session->is_cut_thru || session->is_server) ?
 	     session->server_tx_fifo : session->server_rx_fifo);
   fifo_str = ((!session->is_cut_thru || session->is_server) ?
 	      "server_tx_fifo" : "server_rx_fifo");
+
   is_nonblocking = session->is_nonblocking;
   clib_spinlock_unlock (&vcm->sessions_lockp);
 
@@ -2254,7 +2230,7 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
   while (!is_nonblocking && (rv <= 0));
 
   /* If event wasn't set, add one */
-  if ((rv > 0) && svm_fifo_set_event (tx_fifo))
+  if (!session->is_cut_thru && (rv > 0) && svm_fifo_set_event (tx_fifo))
     {
       int rval;
 
@@ -2273,7 +2249,7 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
 			  vcm->my_pid, session_index);
 	  return rval;
 	}
-      q = session->event_queue;
+      q = session->vpp_event_queue;
       clib_spinlock_unlock (&vcm->sessions_lockp);
       ASSERT (q);
       unix_shared_memory_queue_add (q, (u8 *) & evt,
@@ -2292,19 +2268,28 @@ vppcom_session_write_ready (session_t * session, u32 session_index)
 {
   vppcom_main_t *vcm = &vppcom_main;
   svm_fifo_t *tx_fifo;
+  char *fifo_str;
   int rv;
 
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
+  if (session->state == STATE_DISCONNECT)
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("[%d] sid (%d) has been closed by remote peer!",
+		      vcm->my_pid, session_index);
+      return VPPCOM_ECONNRESET;
+    }
+
   tx_fifo = ((!session->is_cut_thru || session->is_server) ?
 	     session->server_tx_fifo : session->server_rx_fifo);
+  fifo_str = ((!session->is_cut_thru || session->is_server) ?
+	      "server_tx_fifo" : "server_rx_fifo");
 
   rv = svm_fifo_max_enqueue (tx_fifo);
 
-  if (VPPCOM_DEBUG > 2)
+  if (VPPCOM_DEBUG > 3)
     clib_warning ("[%d] sid %d, peek %s (%p), ready = %d", vcm->my_pid,
-		  session_index,
-		  session->is_server ? "server_tx_fifo" : "server_rx_fifo",
-		  tx_fifo, rv);
+		  session_index, fifo_str, tx_fifo, rv);
   return rv;
 }
 
