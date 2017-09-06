@@ -155,7 +155,7 @@ int
 send_session_connected_callback (u32 app_index, u32 api_context,
 				 stream_session_t * s, u8 is_fail)
 {
-  vl_api_connect_uri_reply_t *mp;
+  vl_api_connect_session_reply_t *mp;
   unix_shared_memory_queue_t *q;
   application_t *app;
   unix_shared_memory_queue_t *vpp_queue;
@@ -167,7 +167,7 @@ send_session_connected_callback (u32 app_index, u32 api_context,
     return -1;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
-  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_CONNECT_URI_REPLY);
+  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_CONNECT_SESSION_REPLY);
   mp->context = api_context;
   if (!is_fail)
     {
@@ -415,7 +415,7 @@ done:
 static void
 vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
 {
-  vl_api_connect_uri_reply_t *rmp;
+  vl_api_connect_session_reply_t *rmp;
   vnet_connect_args_t _a, *a = &_a;
   application_t *app;
   int rv;
@@ -447,7 +447,7 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
 
 done:
   /* *INDENT-OFF* */
-  REPLY_MACRO (VL_API_CONNECT_URI_REPLY);
+  REPLY_MACRO (VL_API_CONNECT_SESSION_REPLY);
   /* *INDENT-ON* */
 }
 
@@ -593,11 +593,11 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   app = application_lookup (mp->client_index);
   if (app)
     {
+      ip46_address_t *ip46 = (ip46_address_t *) mp->ip;
+
       memset (a, 0, sizeof (*a));
-      clib_memcpy (&a->tep.ip, mp->ip, (mp->is_ip4 ?
-					sizeof (ip4_address_t) :
-					sizeof (ip6_address_t)));
       a->tep.is_ip4 = mp->is_ip4;
+      a->tep.ip = *ip46;
       a->tep.port = mp->port;
       a->tep.vrf = mp->vrf;
       a->app_index = app->index;
@@ -637,7 +637,7 @@ done:
 static void
 vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 {
-  vl_api_connect_sock_reply_t *rmp;
+  vl_api_connect_session_reply_t *rmp;
   vnet_connect_args_t _a, *a = &_a;
   application_t *app;
   int rv;
@@ -652,16 +652,14 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   if (app)
     {
       unix_shared_memory_queue_t *client_q;
-      u8 *ip = mp->is_ip4 ? (u8 *) & a->tep.ip.ip4 : (u8 *) & a->tep.ip;
+      ip46_address_t *ip46 = (ip46_address_t *) mp->ip;
 
       client_q = vl_api_client_index_to_input_queue (mp->client_index);
       mp->client_queue_address = pointer_to_uword (client_q);
       a->tep.is_ip4 = mp->is_ip4;
+      a->tep.ip = *ip46;
       a->tep.port = mp->port;
-
-      clib_memcpy (ip, mp->ip,
-		   (mp->is_ip4 ? sizeof (ip4_address_t) :
-		    sizeof (ip6_address_t)));
+      a->tep.vrf = mp->vrf;
       a->api_context = mp->context;
       a->app_index = app->index;
       a->proto = mp->proto;
@@ -679,7 +677,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   /* Got some error, relay it */
 
 done:
-  REPLY_MACRO (VL_API_CONNECT_SOCK_REPLY);
+  REPLY_MACRO (VL_API_CONNECT_SESSION_REPLY);
 }
 
 static clib_error_t *

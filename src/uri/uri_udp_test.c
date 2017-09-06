@@ -518,7 +518,7 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   svm_fifo_segment_create_args_t _a, *a = &_a;
   svm_fifo_segment_private_t *seg;
   unix_shared_memory_queue_t *client_q;
-  vl_api_connect_uri_reply_t *rmp;
+  vl_api_connect_session_reply_t *rmp;
   session_t *session = 0;
   int rv = 0;
 
@@ -566,7 +566,7 @@ send_reply:
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
 
-  rmp->_vl_msg_id = ntohs (VL_API_CONNECT_URI_REPLY);
+  rmp->_vl_msg_id = ntohs (VL_API_CONNECT_SESSION_REPLY);
   rmp->context = mp->context;
   rmp->retval = ntohl (rv);
   rmp->segment_name_length = vec_len (a->segment_name);
@@ -674,7 +674,7 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
 }
 
 static void
-vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
+vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
 {
   uri_udp_test_main_t *utm = &uri_udp_test_main;
 
@@ -727,7 +727,7 @@ vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
 #define foreach_uri_msg                         	\
 _(BIND_URI_REPLY, bind_uri_reply)               	\
 _(CONNECT_URI, connect_uri)                     	\
-_(CONNECT_URI_REPLY, connect_uri_reply)         	\
+_(CONNECT_SESSION_REPLY, connect_session_reply)       	\
 _(UNBIND_URI_REPLY, unbind_uri_reply)           	\
 _(ACCEPT_SESSION, accept_session)			\
 _(DISCONNECT_SESSION, disconnect_session)		\

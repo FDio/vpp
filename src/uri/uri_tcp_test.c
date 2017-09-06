@@ -526,7 +526,7 @@ client_rx_thread_fn (void *arg)
 
 
 static void
-vl_api_connect_uri_reply_t_handler (vl_api_connect_uri_reply_t * mp)
+vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
 {
   uri_tcp_test_main_t *utm = &uri_tcp_test_main;
   session_t *session;
@@ -1122,7 +1122,7 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 _(BIND_URI_REPLY, bind_uri_reply)                       \
 _(UNBIND_URI_REPLY, unbind_uri_reply)                   \
 _(ACCEPT_SESSION, accept_session)                       \
-_(CONNECT_URI_REPLY, connect_uri_reply)                 \
+_(CONNECT_SESSION_REPLY, connect_session_reply)         \
 _(DISCONNECT_SESSION, disconnect_session)               \
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)   \
 _(RESET_SESSION, reset_session)                         \
