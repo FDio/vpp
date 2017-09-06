@@ -75,29 +75,64 @@ ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
 DPDK_TARGET           ?= $(MACHINE)-native-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= nhm
 DPDK_TUNE             ?= core-avx2
+
+##############################################################################
+# ARM64
+##############################################################################
 else ifeq ($(MACHINE),aarch64)
 export CROSS=""
-ifneq (,$(findstring thunder,$(shell [[ -f /sys/bus/pci/devices/0000:00:01.0/uevent ]] && cat /sys/bus/pci/devices/0000:00:01.0/uevent | grep cavium)))
-##############################################################################
-# Cavium ThunderX
-##############################################################################
-DPDK_TARGET           ?= arm64-thunderx-linuxapp-$(DPDK_CC)
-DPDK_MACHINE          ?= thunderx
-DPDK_TUNE             ?= generic
-else
-##############################################################################
-# Generic ARM64
-##############################################################################
 DPDK_TARGET           ?= arm64-armv8a-linuxapp-$(DPDK_CC)
 DPDK_MACHINE          ?= armv8a
 DPDK_TUNE             ?= generic
+
+CPU_IMP_ARM                     = 0x41
+CPU_IMP_CAVIUM                  = 0x43
+
+CPU_PART_ARM_CORTEX_A53         = 0xd03
+CPU_PART_ARM_CORTEX_A57         = 0xd07
+CPU_PART_ARM_CORTEX_A72         = 0xd08
+CPU_PART_ARM_CORTEX_A73         = 0xd09
+
+CPU_PART_CAVIUM_THUNDERX        = 0x0a1
+CPU_PART_CAVIUM_THUNDERX_81XX   = 0x0a2
+CPU_PART_CAVIUM_THUNDERX_83XX   = 0x0a3
+
+MIDR_IMPLEMENTER=$(shell awk '/implementer/ {print $$4;exit}' /proc/cpuinfo)
+MIDR_PARTNUM=$(shell awk '/part/ {print $$4;exit}' /proc/cpuinfo)
+
+ifeq ($(MIDR_IMPLEMENTER),$(CPU_IMP_ARM))
+##############################################################################
+# Arm Cortex
+##############################################################################
+CPU_PART_ARM_TUNE := $(CPU_PART_ARM_CORTEX_A53)/cortex-a53 \
+		     $(CPU_PART_ARM_CORTEX_A57)/cortex-a57 \
+		     $(CPU_PART_ARM_CORTEX_A72)/cortex-a72 \
+		     $(CPU_PART_ARM_CORTEX_A73)/cortex-a73
+CPU_TUNE = $(notdir $(filter $(MIDR_PARTNUM)/%,$(CPU_PART_ARM_TUNE)))
+ifneq ($(CPU_TUNE),)
+DPDK_TUNE             = $(CPU_TUNE)
+else
+$(warning Unknown Arm CPU)
+endif
+
+else ifeq ($(MIDR_IMPLEMENTER),$(CPU_IMP_CAVIUM))
+##############################################################################
+# Cavium ThunderX
+##############################################################################
+ifneq (,$(findstring $(MIDR_PARTNUM),$(CPU_PART_CAVIUM_THUNDERX) \
+	$(CPU_PART_CAVIUM_THUNDERX_81XX) $(CPU_PART_CAVIUM_THUNDERX_83XX)))
+DPDK_TARGET           = arm64-thunderx-linuxapp-$(DPDK_CC)
+DPDK_MACHINE          = thunderx
+else
+$(warning Unknown Cavium CPU)
+endif
 endif
 
 ##############################################################################
-# Unknown platofrm
+# Unknown platform
 ##############################################################################
 else
-$(error unknown platform)
+$(error Unknown platform)
 endif
 
 # /proc/cpuinfo does not exist on platforms without a /proc and on some
