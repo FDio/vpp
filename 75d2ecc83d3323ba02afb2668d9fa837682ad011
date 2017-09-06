@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_7ab6333f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 22
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2017-09-06T20:35:35Z",
+      "side": 1,
+      "message": "When using OpenStack, I need to know precisely how many hugepages of what type VPP is going to use, so that (a) I can preallocate them and (b) I can stop OpenStack trying to give them to VMs, which always ends badly.  How do I determine this number?  (Is this documented somewhere, which is really the more important question; not that I know my way around the VPP codebase but there\u0027s no doc change I see in the patch)\n\nDoes this make the \u0027find hugepages to use\u0027 code faster?  On a large machine with many hugepages (hello again OpenStack) hugepage allocation with 2M pages is, at present, very slow, resulting in a long period with no forwarding when I upgrade or restart VPP.",
+      "revId": "75d2ecc83d3323ba02afb2668d9fa837682ad011",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
