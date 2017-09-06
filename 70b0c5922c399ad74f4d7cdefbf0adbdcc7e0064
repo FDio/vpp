@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_940e6533",
+        "filename": "src/vnet/session/session.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-06T12:13:09Z",
+      "side": 1,
+      "message": "How about adding the \"autoreply\" keyword to the connect_uri message definition? I think that\u0027ll satisfy the cash customers...",
+      "revId": "70b0c5922c399ad74f4d7cdefbf0adbdcc7e0064",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
