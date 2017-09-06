@@ -118,6 +118,30 @@
       "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_b97cbc73",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-06T05:50:36Z",
+      "side": 1,
+      "message": "In today\u0027s VPP meeting, I asked Tom Herbert to comment/verify this patch.",
+      "parentUuid": "3a4b7175_191ab06e",
+      "range": {
+        "startLine": 284,
+        "startChar": 0,
+        "endLine": 289,
+        "endChar": 45
+      },
+      "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
