@@ -6,13 +6,16 @@ script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 vpp_dir="$WS_ROOT/build-root/install-vpp-native/vpp/bin/"
 vpp_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/bin/"
 vpp_shm_dir="/dev/shm/"
+vpp_run_dir="/run/vpp"
 lib64_dir="$WS_ROOT/build-root/install-vpp-native/vpp/lib64/"
 lib64_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/lib64/"
+dpdk_devbind="$WS_ROOT/build-root/install-vpp-native/dpdk/share/dpdk/usertools/dpdk-devbind.py"
 docker_vpp_dir="/vpp/"
 docker_app_dir="/vpp/"
 docker_lib64_dir="/vpp-lib64/"
 docker_os="ubuntu"
 vcl_ldpreload_lib="libvcl_ldpreload.so.0.0.0"
+user_gid="$(id -g)"
 vpp_app="vpp"
 sock_srvr_app="sock_test_server"
 sock_clnt_app="sock_test_client"
@@ -30,6 +33,7 @@ tmp_cmdfile_prefix="/tmp/socket_test_cmd"
 cmd1_file="${tmp_cmdfile_prefix}1.$$"
 cmd2_file="${tmp_cmdfile_prefix}2.$$"
 cmd3_file="${tmp_cmdfile_prefix}3.$$"
+tmp_vpp_exec_file="/tmp/vpp_config.$$"
 tmp_gdb_cmdfile_prefix="/tmp/gdb_cmdfile"
 def_gdb_cmdfile_prefix="$WS_ROOT/extras/gdb/gdb_cmdfile"
 tmp_gdb_cmdfile_vpp="${tmp_gdb_cmdfile_prefix}_vpp.$$"
@@ -64,6 +68,8 @@ OPTIONS:
   -d                  Run the vpp_debug version of all apps.
   -c                  Set VPPCOM_CONF to use the vppcom_test.conf file.
   -i                  Run iperf3 for client/server app in native tests.
+  -m c[lient]         Run client in multi-host cfg (server on remote host)
+     s[erver]         Run server in multi-host cfg (client on remote host)
   -e a[ll]            Run all in emacs+gdb.
      c[lient]         Run client in emacs+gdb.
      s[erver]         Run server in emacs+gdb.
@@ -109,7 +115,7 @@ declare -i leave_tmp_files=0
 declare -i bash_after_exit=0
 declare -i iperf3=0
 
-while getopts ":hitlbcde:g:p:E:I:N:P:R:S:T:UBVX" opt; do
+while getopts ":hitlbcdm:e:g:p:E:I:N:P:R:S:T:UBVX" opt; do
     case $opt in
         h) usage ;;
         l) leave_tmp_files=1
@@ -144,6 +150,15 @@ while getopts ":hitlbcde:g:p:E:I:N:P:R:S:T:UBVX" opt; do
            title_dbg="-DEBUG"
            vpp_dir=$vpp_debug_dir
            lib64_dir=$lib64_debug_dir
+           ;;
+        m) if [ $OPTARG = "c" ] || [ $OPTARG = "client" ] ; then
+               multi_host="client"
+           elif [ $OPTARG = "s" ] || [ $OPTARG = "server" ] ; then
+               multi_host="server"
+           else
+               echo "ERROR: Option -e unknown argument \'$OPTARG\'" >&2
+               usage
+           fi
            ;;
         g) if [ $OPTARG = "a" ] || [ $OPTARG = "all" ] ; then
                gdb_client=1
@@ -227,7 +242,7 @@ done
 if [ -z "$WS_ROOT" ] ; then
     echo "ERROR: WS_ROOT environment variable not set!" >&2
     echo "       Please set WS_ROOT to VPP workspace root directory." >&2
-    env_test_failed="true"
+    exit 1
 fi
 
 if [ ! -d $vpp_dir ] ; then
@@ -296,10 +311,17 @@ if [ -f "$VPPCOM_CONF" ] ; then
     vppcom_conf_dir="$(dirname $VPPCOM_CONF)/"
     api_prefix="$(egrep -s '^\s*api-prefix \w+' $VPPCOM_CONF | awk -e '{print $2}')"
     if [ -n "$api_prefix" ] ; then
-        api_segment=" api-segment { prefix $api_prefix }"
+        api_segment=" api-segment { gid $user_gid prefix $api_prefix }"
     fi
 fi
-vpp_args="unix { interactive }${api_segment}"
+if [ -z "$api_segment" ] ; then
+    api_segment=" api-segment { gid $user_gid }"
+fi
+if [ -n "$multi_host" ] ; then
+    vpp_args="unix { interactive exec $tmp_vpp_exec_file}${api_segment}"
+else
+    vpp_args="unix { interactive }${api_segment}"
+fi
 
 if [ $iperf3 -eq 1 ] ; then
     app_dir="$(dirname $(which iperf3))/"
@@ -335,6 +357,57 @@ verify_no_vpp() {
             echo "  $file"
         done
         exit 1
+    fi
+    if [ ! -d "$vpp_run_dir" ] ; then
+        sudo mkdir $vpp_run_dir
+        sudo chown root:$USER $vpp_run_dir
+    fi
+    if [ -n "$multi_host" ] ; then
+        vpp_eth_name="enp0s8"
+        vpp_eth_pci_id="$(ls -ld /sys/class/net/$vpp_eth_name/device | awk '{print $11}' | cut -d/ -f4)"
+        if [ -z "$vpp_eth_pci_id" ] ; then
+            echo "ERROR: Missing ethernet interface $vpp_eth_name!"
+            usage
+        fi
+        printf -v bus "%x" "0x$(echo $vpp_eth_pci_id | cut -d: -f2)"
+        printf -v slot "%x" "0x$(echo $vpp_eth_pci_id | cut -d: -f3 | cut -d. -f1)"
+        printf -v func "%x" "0x$(echo $vpp_eth_pci_id | cut -d. -f2)"
+
+        vpp_eth_kernel_driver="$(basename $(ls -l /sys/bus/pci/devices/$vpp_eth_pci_id/driver | awk '{print $11}'))"
+        if [ -z "$vpp_eth_kernel_driver" ] ; then
+            echo "ERROR: Missing kernel driver for $vpp_eth_name!"
+            usage
+        fi
+        case $vpp_eth_kernel_driver in
+            e1000)
+                vpp_eth_ifname="GigabitEthernet$bus/$slot/$func" ;;
+            ixgbe)
+                vpp_eth_ifname="TenGigabitEthernet$bus/$slot/$func" ;;
+            *)
+                echo "ERROR: Unknown ethernet kernel driver $vpp_eth_kernel_driver!"
+                usage ;;
+        esac
+        
+        vpp_eth_ip4_addr="$(ip -4 -br addr show $vpp_eth_name | awk '{print $3}')"
+        if [ -z "$vpp_eth_ip4_addr" ] ; then
+            echo "ERROR: No inet address configured for $vpp_eth_name!"
+            usage
+        fi
+        vpp_eth_ip6_addr="$(ip -6 -br addr show $vpp_eth_name | awk '{print $3}')"
+        if [ -z "$vpp_eth_ip6_addr" ] ; then
+            echo "ERROR: No inet6 address configured for $vpp_eth_name!"
+            usage
+        fi
+        vpp_args="$vpp_args plugins { path $lib64_dir/vpp_plugins } dpdk { dev $vpp_eth_pci_id }"
+                
+        sudo ifdown $vpp_eth_name 2> /dev/null
+        echo "Configuring VPP to use $vpp_eth_name ($vpp_eth_pci_id), inet addr $vpp_eth_ip4_addr"
+
+        cat <<EOF >> $tmp_vpp_exec_file
+set int state $vpp_eth_ifname up
+set int ip addr $vpp_eth_ifname $vpp_eth_ip4_addr
+EOF
+
     fi
 }
 
@@ -385,15 +458,27 @@ write_script_header() {
     echo "$bash_header" > $1
     echo -e "#\n# $1 generated on $(date)\n#" >> $1
     if [ $leave_tmp_files -eq 0 ] ; then
-        echo "trap \"rm -f $1 $2\" $trap_signals" >> $1
+        if [ -n "$multi_host" ] ; then
+            echo "trap \"rm -f $1 $2 $tmp_vpp_exec_file; sudo $dpdk_devbind -e $vpp_eth_kernel_driver $vpp_eth_pci_id; sudo ifup $vpp_eth_name\" $trap_signals" >> $1
+        else
+            echo "trap \"rm -f $1 $2 $tmp_vpp_exec_file\" $trap_signals" >> $1
+        fi
     fi
     echo "export VPPCOM_CONF=${vppcom_conf_dir}${vppcom_conf}" >> $1
     if [ "$pre_cmd" = "$gdb_in_emacs " ] ; then
-        cat <<EOF >> $1
+        if [ -n "$multi_host" ] ; then
+            cat <<EOF >> $1
+$gdb_in_emacs() {
+    sudo emacs --eval "(gdb \"gdb -x $2 -i=mi --args \$*\")" --eval "(setq frame-title-format \"$3\")"
+}
+EOF
+        else
+            cat <<EOF >> $1
 $gdb_in_emacs() {
     emacs --eval "(gdb \"gdb -x $2 -i=mi --args \$*\")" --eval "(setq frame-title-format \"$3\")"
 }
 EOF
+        fi
     fi
     if [ -n "$4" ] ; then
         echo "$4" >> $1
@@ -437,25 +522,29 @@ write_gdb_cmdfile() {
 
 native_kernel() {
     banner="Running NATIVE-KERNEL socket test"
+    if [ -z "$multi_host" ] || [ "$multi_host" = "server" ] ; then
+        title1="SERVER$title_dbg (Native-Kernel Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
+        gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
+        set_pre_cmd $emacs_server $gdb_server
+        write_script_header $cmd1_file $tmp_gdb_cmdfile "$title1"
+        echo "${pre_cmd}${app_dir}${srvr_app}" >> $cmd1_file
+        write_script_footer $cmd1_file $perf_server
+        chmod +x $cmd1_file
+    fi
     
-    title1="SERVER$title_dbg (Native-Kernel Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
-    gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
-    set_pre_cmd $emacs_server $gdb_server
-    write_script_header $cmd1_file $tmp_gdb_cmdfile "$title1"
-    echo "${pre_cmd}${app_dir}${srvr_app}" >> $cmd1_file
-    write_script_footer $cmd1_file $perf_server
-    
-    title2="CLIENT$title_dbg (Native-Kernel Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
-    gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
-    set_pre_cmd $emacs_client $gdb_client
-    write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
-    echo "srvr_addr=\"$sock_srvr_addr\"" >> $cmd2_file
-    echo "${pre_cmd}${app_dir}${clnt_app}" >> $cmd2_file
-    write_script_footer $cmd2_file $perf_client
+    if [ -z "$multi_host" ] || [ "$multi_host" = "client" ] ; then
+        title2="CLIENT$title_dbg (Native-Kernel Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
+        gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
+        set_pre_cmd $emacs_client $gdb_client
+        write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
+        echo "srvr_addr=\"$sock_srvr_addr\"" >> $cmd2_file
+        echo "${pre_cmd}${app_dir}${clnt_app}" >> $cmd2_file
+        write_script_footer $cmd2_file $perf_client
+        chmod +x $cmd2_file
 
-    chmod +x $cmd1_file $cmd2_file
+    fi
 }
 
 native_preload() {
@@ -468,29 +557,37 @@ native_preload() {
     gdb_cmdfile=$VPP_GDB_CMDFILE
     set_pre_cmd $emacs_vpp $gdb_vpp
     write_script_header $cmd1_file $tmp_gdb_cmdfile "$title1"
+    if [ -n "$multi_host" ] && [ $emacs_vpp -eq 0 ] ; then
+        echo -n "sudo " >> $cmd1_file
+    fi
     echo "${pre_cmd}$vpp_dir$vpp_app $vpp_args " >> $cmd1_file
     write_script_footer $cmd1_file $perf_vpp
+    chmod +x $cmd1_file
 
-    title2="SERVER$title_dbg (Native-Preload Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
-    gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
-    set_pre_cmd $emacs_server $gdb_server $ld_preload
-    write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
-    echo "export LD_LIBRARY_PATH=\"$lib64_dir:$VCL_LDPRELOAD_LIB_DIR:$LD_LIBRARY_PATH\"" >> $cmd2_file
-    echo "${pre_cmd}${app_dir}${srvr_app}" >> $cmd2_file
-    write_script_footer $cmd2_file $perf_server
+    if [ -z "$multi_host" ] || [ "$multi_host" = "server" ] ; then
+        title2="SERVER$title_dbg (Native-Preload Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
+        gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
+        set_pre_cmd $emacs_server $gdb_server $ld_preload
+        write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
+        echo "export LD_LIBRARY_PATH=\"$lib64_dir:$VCL_LDPRELOAD_LIB_DIR:$LD_LIBRARY_PATH\"" >> $cmd2_file
+        echo "${pre_cmd}${app_dir}${srvr_app}" >> $cmd2_file
+        write_script_footer $cmd2_file $perf_server
+        chmod +x $cmd2_file
+    fi
 
-    title3="CLIENT$title_dbg (Native-Preload Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
-    gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
-    set_pre_cmd $emacs_client $gdb_client $ld_preload
-    write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
-    echo "export LD_LIBRARY_PATH=\"$lib64_dir:$VCL_LDPRELOAD_LIB_DIR:$LD_LIBRARY_PATH\"" >> $cmd3_file
-    echo "srvr_addr=\"$sock_srvr_addr\"" >> $cmd3_file
-    echo "${pre_cmd}${app_dir}${clnt_app}" >> $cmd3_file
-    write_script_footer $cmd3_file $perf_client
-    
-    chmod +x $cmd1_file $cmd2_file $cmd3_file
+    if [ -z "$multi_host" ] || [ "$multi_host" = "client" ] ; then
+        title3="CLIENT$title_dbg (Native-Preload Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
+        gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
+        set_pre_cmd $emacs_client $gdb_client $ld_preload
+        write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
+        echo "export LD_LIBRARY_PATH=\"$lib64_dir:$VCL_LDPRELOAD_LIB_DIR:$LD_LIBRARY_PATH\"" >> $cmd3_file
+        echo "srvr_addr=\"$sock_srvr_addr\"" >> $cmd3_file
+        echo "${pre_cmd}${app_dir}${clnt_app}" >> $cmd3_file
+        write_script_footer $cmd3_file $perf_client
+        chmod +x $cmd3_file
+    fi
 }
 
 native_vcl() {
@@ -502,53 +599,65 @@ native_vcl() {
     gdb_cmdfile=$VPP_GDB_CMDFILE
     set_pre_cmd $emacs_vpp $gdb_vpp
     write_script_header $cmd1_file $tmp_gdb_cmdfile "$title1"
+    if [ -n "$multi_host" ] && [ $emacs_vpp -eq 0 ] ; then
+        echo -n "sudo " >> $cmd1_file
+    fi
     echo "${pre_cmd}$vpp_dir$vpp_app $vpp_args " >> $cmd1_file
     write_script_footer $cmd1_file $perf_vpp
+    chmod +x $cmd1_file
 
-    title2="SERVER$title_dbg (Native-VCL Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
-    gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
-    set_pre_cmd $emacs_server $gdb_server
-    write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
-    echo "export LD_LIBRARY_PATH=\"$lib64_dir:$LD_LIBRARY_PATH\"" >> $cmd2_file
-    echo "${pre_cmd}${app_dir}${srvr_app}" >> $cmd2_file
-    write_script_footer $cmd2_file $perf_server
+    if [ -z "$multi_host" ] || [ "$multi_host" = "server" ] ; then
+        title2="SERVER$title_dbg (Native-VCL Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
+        gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
+        set_pre_cmd $emacs_server $gdb_server
+        write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
+        echo "export LD_LIBRARY_PATH=\"$lib64_dir:$LD_LIBRARY_PATH\"" >> $cmd2_file
+        echo "${pre_cmd}${app_dir}${srvr_app}" >> $cmd2_file
+        write_script_footer $cmd2_file $perf_server
+        chmod +x $cmd2_file
+    fi
 
-    title3="CLIENT$title_dbg (Native-VCL Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
-    gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
-    set_pre_cmd $emacs_client $gdb_client
-    write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
-    echo "export LD_LIBRARY_PATH=\"$lib64_dir:$LD_LIBRARY_PATH\"" >> $cmd3_file
-    echo "srvr_addr=\"$sock_srvr_addr\"" >> $cmd3_file
-    echo "${pre_cmd}${app_dir}${clnt_app}" >> $cmd3_file
-    write_script_footer $cmd3_file $perf_client
-    
-    chmod +x $cmd1_file $cmd2_file $cmd3_file
+    if [ -z "$multi_host" ] || [ "$multi_host" = "client" ] ; then
+        title3="CLIENT$title_dbg (Native-VCL Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
+        gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
+        set_pre_cmd $emacs_client $gdb_client
+        write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
+        echo "export LD_LIBRARY_PATH=\"$lib64_dir:$LD_LIBRARY_PATH\"" >> $cmd3_file
+        echo "srvr_addr=\"$sock_srvr_addr\"" >> $cmd3_file
+        echo "${pre_cmd}${app_dir}${clnt_app}" >> $cmd3_file
+        write_script_footer $cmd3_file $perf_client
+        chmod +x $cmd3_file
+    fi
 }
 
 docker_kernel() {
     verify_no_docker_containers
     banner="Running DOCKER-KERNEL socket test"
     
-    title1="SERVER$title_dbg (Docker-Native Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
-    gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
-    set_pre_cmd $emacs_server $gdb_server
-    write_script_header $cmd1_file $tmp_gdb_cmdfile "$title1"
-    echo "docker run -it --cpuset-cpus='4-7' -v $vpp_dir:$docker_vpp_dir -p $sock_srvr_port:$sock_srvr_port $docker_os ${docker_app_dir}${srvr_app}" >> $cmd1_file
-    write_script_footer $cmd1_file $perf_server
+    if [ -z "$multi_host" ] || [ "$multi_host" = "server" ] ; then
+        title1="SERVER$title_dbg (Docker-Native Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
+        gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
+        set_pre_cmd $emacs_server $gdb_server
+        write_script_header $cmd1_file $tmp_gdb_cmdfile "$title1"
+        echo "docker run -it --cpuset-cpus='4-7' --cpuset-cpus='4-7' -v $vpp_dir:$docker_vpp_dir -p $sock_srvr_port:$sock_srvr_port $docker_os ${docker_app_dir}${srvr_app}" >> $cmd1_file
+        write_script_footer $cmd1_file $perf_server
+        chmod +x $cmd1_file
+    fi
     
-    title2="CLIENT$title_dbg (Docker-Native Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
-    gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
-    set_pre_cmd $emacs_client $gdb_client
-    write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
-    echo "$get_docker_server_ip4addr" >> $cmd2_file
-    echo "docker run -it --cpuset-cpus='4-7' -v $vpp_dir:$docker_vpp_dir $docker_os ${docker_app_dir}${clnt_app}" >> $cmd2_file
-    write_script_footer $cmd2_file $perf_client
-    
-    chmod +x $cmd1_file $cmd2_file
+    if [ -z "$multi_host" ] || [ "$multi_host" = "client" ] ; then
+        title2="CLIENT$title_dbg (Docker-Native Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
+        gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
+        set_pre_cmd $emacs_client $gdb_client
+        write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
+        echo "$get_docker_server_ip4addr" >> $cmd2_file
+        echo "docker run -it --cpuset-cpus='4-7' -v $vpp_dir:$docker_vpp_dir $docker_os ${docker_app_dir}${clnt_app}" >> $cmd2_file
+        write_script_footer $cmd2_file $perf_client
+        chmod +x $cmd2_file
+    fi
 }
 
 docker_preload() {
@@ -565,27 +674,35 @@ docker_preload() {
     gdb_cmdfile=$VPP_GDB_CMDFILE
     set_pre_cmd $emacs_vpp $gdb_vpp
     write_script_header $cmd1_file $tmp_gdb_cmdfile "$title1"
+    if [ -n "$multi_host" ] ; then
+        echo -n "sudo " >> $cmd1_file
+    fi
     echo "${pre_cmd}$vpp_dir$vpp_app $vpp_args" >> $cmd1_file
     write_script_footer $cmd1_file $perf_vpp
-    
-    title2="SERVER$title_dbg (Docker-Preload Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
-    gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
-    set_pre_cmd $emacs_server $gdb_server $docker_ld_preload_lib
-    write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
-    echo "docker run -it --cpuset-cpus='4-7' -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $ld_preload_dir:$docker_ld_preload_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -p $sock_srvr_port:$sock_srvr_port -e VPPCOM_CONF=${docker_vppcom_conf_dir}$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir:$docker_ld_preload_dir ${docker_ld_preload}$docker_os ${docker_app_dir}${srvr_app}" >> $cmd2_file
-    write_script_footer $cmd2_file $perf_server
+    chmod +x $cmd1_file
 
-    title3="CLIENT$title_dbg (Docker-Preload Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
-    gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
-    set_pre_cmd $emacs_client $gdb_client $docker_ld_preload_lib
-    write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
-    echo "$get_docker_server_ip4addr" >> $cmd3_file
-    echo "docker run -it --cpuset-cpus='4-7' -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir  -v $ld_preload_dir:$docker_ld_preload_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -e VPPCOM_CONF=${docker_vppcom_conf_dir}$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir ${docker_ld_preload}$docker_os ${docker_app_dir}${clnt_app}" >> $cmd3_file
-    write_script_footer $cmd3_file $perf_client
+    if [ -z "$multi_host" ] || [ "$multi_host" = "server" ] ; then
+        title2="SERVER$title_dbg (Docker-Preload Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
+        gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
+        set_pre_cmd $emacs_server $gdb_server $docker_ld_preload_lib
+        write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
+        echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $ld_preload_dir:$docker_ld_preload_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -p $sock_srvr_port:$sock_srvr_port -e VPPCOM_CONF=${docker_vppcom_conf_dir}$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir:$docker_ld_preload_dir ${docker_ld_preload}$docker_os ${docker_app_dir}${srvr_app}" >> $cmd2_file
+        write_script_footer $cmd2_file $perf_server
+        chmod +x $cmd2_file
+    fi
 
-    chmod +x $cmd1_file $cmd2_file $cmd3_file
+    if [ -z "$multi_host" ] || [ "$multi_host" = "client" ] ; then
+        title3="CLIENT$title_dbg (Docker-Preload Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
+        gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
+        set_pre_cmd $emacs_client $gdb_client $docker_ld_preload_lib
+        write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
+        echo "$get_docker_server_ip4addr" >> $cmd3_file
+        echo "docker run -it --cpuset-cpus='4-7' -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir  -v $ld_preload_dir:$docker_ld_preload_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -e VPPCOM_CONF=${docker_vppcom_conf_dir}$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir ${docker_ld_preload}$docker_os ${docker_app_dir}${clnt_app}" >> $cmd3_file
+        write_script_footer $cmd3_file $perf_client
+        chmod +x $cmd3_file
+    fi
 }
 
 docker_vcl() {
@@ -598,27 +715,35 @@ docker_vcl() {
     gdb_cmdfile=$VPP_GDB_CMDFILE
     set_pre_cmd $emacs_vpp $gdb_vpp
     write_script_header $cmd1_file $tmp_gdb_cmdfile "$title1"
+    if [ -n "$multi_host" ] ; then
+        echo -n "sudo " >> $cmd1_file
+    fi
     echo "${pre_cmd}$vpp_dir$vpp_app $vpp_args" >> $cmd1_file
     write_script_footer $cmd1_file $perf_vpp
-    
-    title2="SERVER$title_dbg (Docker-VCL Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
-    gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
-    set_pre_cmd $emacs_server $gdb_server
-    write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
-    echo "docker run -it --cpuset-cpus='4-7' -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -p $sock_srvr_port:$sock_srvr_port -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir $docker_os ${docker_app_dir}${srvr_app}" >> $cmd2_file
-    write_script_footer $cmd2_file $perf_server
+    chmod +x $cmd1_file
 
-    title3="CLIENT$title_dbg (Docker-VCL Socket Test)"
-    tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
-    gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
-    set_pre_cmd $emacs_client $gdb_client
-    write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
-    echo "$get_docker_server_ip4addr" >> $cmd3_file
-    echo "docker run -it --cpuset-cpus='4-7' -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir $docker_os ${docker_app_dir}${clnt_app}" >> $cmd3_file
-    write_script_footer $cmd3_file $perf_client
+    if [ -z "$multi_host" ] || [ "$multi_host" = "server" ] ; then
+        title2="SERVER$title_dbg (Docker-VCL Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
+        gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
+        set_pre_cmd $emacs_server $gdb_server
+        write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
+        echo "docker run -it --cpuset-cpus='4-7' -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -p $sock_srvr_port:$sock_srvr_port -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir $docker_os ${docker_app_dir}${srvr_app}" >> $cmd2_file
+        write_script_footer $cmd2_file $perf_server
+        chmod +x $cmd2_file
+    fi
 
-    chmod +x $cmd1_file $cmd2_file $cmd3_file
+    if [ -z "$multi_host" ] || [ "$multi_host" = "client" ] ; then
+        title3="CLIENT$title_dbg (Docker-VCL Socket Test)"
+        tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
+        gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
+        set_pre_cmd $emacs_client $gdb_client
+        write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
+        echo "$get_docker_server_ip4addr" >> $cmd3_file
+        echo "docker run -it --cpuset-cpus='4-7' -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $vppcom_conf_dir:$docker_vppcom_conf_dir -e VPPCOM_CONF=${docker_vppcom_conf_dir}/$vppcom_conf -e LD_LIBRARY_PATH=$docker_lib64_dir $docker_os ${docker_app_dir}${clnt_app}" >> $cmd3_file
+        write_script_footer $cmd3_file $perf_client
+        chmod +x $cmd3_file
+    fi
 }
 
 if [[ $run_test ]] ; then
@@ -631,14 +756,41 @@ fi
 if (( $(which xfce4-terminal | wc -l) > 0 )) ; then
     xterm_cmd="xfce4-terminal --geometry $xterm_geom"
     if [[ $use_tabs ]] ; then
-        if [ -x "$cmd3_file" ] ; then
-            $xterm_cmd  --title "$title1" --command "$cmd1_file" --tab --title "$title2" --command "$cmd2_file" --tab --title "$title3" --command "$cmd3_file"
-        else
-            $xterm_cmd --title "$title1" --command "$cmd1_file" --tab --title "$title2" --command "$cmd2_file"
+        declare -a tab_cmd_files
+        declare -a tab_titles
+        declare -i i=0
+
+        if [ -x "$cmd1_file" ] ; then
+            tab_cmd_files[$i]="$cmd1_file"
+            tab_titles[$i]="$title1"
+            (( i++ ))
         fi
+        if [ -x "$cmd2_file" ] ; then
+            tab_cmd_files[$i]="$cmd2_file"
+            tab_titles[$i]="$title2"
+            (( i++ ))
+        fi
+        if [ -x "$cmd3_file" ] ; then
+            tab_cmd_files[$i]="$cmd3_file"
+            tab_titles[$i]="$title3"
+        fi
+
+        if [ -n "${tab_cmd_files[2]}" ] ; then
+            $xterm_cmd  --title "${tab_titles[0]}" --command "${tab_cmd_files[0]}" --tab --title "${tab_titles[1]}" --command "${tab_cmd_files[1]}" --tab --title "${tab_titles[2]}" --command "${tab_cmd_files[2]}"
+        elif [ -n "${tab_cmd_files[1]}" ] ; then
+            $xterm_cmd --title "${tab_titles[0]}" --command "${tab_cmd_files[0]}" --tab --title "${tab_titles[1]}" --command "${tab_cmd_files[1]}"
+
+        else
+            $xterm_cmd --title "${tab_titles[0]}" --command "${tab_cmd_files[0]}"
+        fi
+        
     else
-        ($xterm_cmd --title "$title1" --command "$cmd1_file" &)
-        ($xterm_cmd --title "$title2" --command "$cmd2_file" &)
+        if [ -x "$cmd1_file" ] ; then
+            ($xterm_cmd --title "$title1" --command "$cmd1_file" &)
+        fi
+        if [ -x "$cmd2_file" ] ; then
+            ($xterm_cmd --title "$title2" --command "$cmd2_file" &)
+        fi
         if [ -x "$cmd3_file" ] ; then
             ($xterm_cmd --title "$title3" --command "$cmd3_file" &)
         fi
@@ -649,8 +801,12 @@ else
         echo "Sorry, plain ol' xterm doesn't support tabs."
     fi
     xterm_cmd="xterm -fs 10 -geometry $xterm_geom"
-    ($xterm_cmd -title "$title1" -e "$cmd1_file" &)
-    ($xterm_cmd -title "$title2" -e "$cmd2_file" &)
+    if [ -x "$cmd1_file" ] ; then
+        ($xterm_cmd -title "$title1" -e "$cmd1_file" &)
+    fi
+    if [ -x "$cmd2_file" ] ; then
+        ($xterm_cmd -title "$title2" -e "$cmd2_file" &)
+    fi
     if [ -x "$cmd3_file" ] ; then
         ($xterm_cmd -title "$title3" -e "$cmd3_file" &)
     fi
