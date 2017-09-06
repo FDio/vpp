@@ -38,6 +38,28 @@ typedef enum
   FIFO_EVENT_RPC,
 } fifo_event_type_t;
 
+static inline const char *
+fifo_event_type_str (fifo_event_type_t et)
+{
+  switch (et)
+    {
+    case FIFO_EVENT_APP_RX:
+      return "FIFO_EVENT_APP_RX";
+    case FIFO_EVENT_APP_TX:
+      return "FIFO_EVENT_APP_TX";
+    case FIFO_EVENT_TIMEOUT:
+      return "FIFO_EVENT_TIMEOUT";
+    case FIFO_EVENT_DISCONNECT:
+      return "FIFO_EVENT_DISCONNECT";
+    case FIFO_EVENT_BUILTIN_RX:
+      return "FIFO_EVENT_BUILTIN_RX";
+    case FIFO_EVENT_RPC:
+      return "FIFO_EVENT_RPC";
+    default:
+      return "UNKNOWN FIFO EVENT";
+    }
+}
+
 #define foreach_session_input_error                                    	\
 _(NO_SESSION, "No session drops")                                       \
 _(NO_LISTENER, "No listener for dst port drops")                        \
