@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_593708e4",
+        "filename": "build-data/packages/vpp.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2017-09-06T05:28:20Z",
+      "side": 1,
+      "message": "Does the vpp/master branch have this bug? This branch is stable, so I dont known whether it is enable to merge.",
+      "range": {
+        "startLine": 30,
+        "startChar": 0,
+        "endLine": 30,
+        "endChar": 43
+      },
+      "revId": "839fa732c1a769d3aa9699192a0f06a969ddbda2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
