@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_1a7dff6e",
+        "filename": "src/plugins/acl/acl.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 465,
+      "author": {
+        "id": 79
+      },
+      "writtenOn": "2017-09-06T21:09:10Z",
+      "side": 1,
+      "message": "I don\u0027t actually know what n_input_hitcounts means even with your explanation.  And I don\u0027t know how to relate the hitcount information to my ACL rules unless you tell me here, so write a description as well as documentation of the value meanings.",
+      "revId": "82a50fad8f3e88b8bafa70bb4711ea8f23f63f5f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
