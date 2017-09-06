@@ -558,6 +558,10 @@ start_workers (vlib_main_t * vm)
       *vlib_worker_threads->node_reforks_required = 0;
       vm->need_vlib_worker_thread_node_runtime_update = 0;
 
+      /* init timing */
+      vm->barrier_epoch = 0;
+      vm->barrier_no_close_before = 0;
+
       worker_thread_index = 1;
 
       for (i = 0; i < vec_len (tm->registrations); i++)
@@ -790,6 +794,7 @@ start_workers (vlib_main_t * vm)
 
 VLIB_MAIN_LOOP_ENTER_FUNCTION (start_workers);
 
+
 static inline void
 worker_thread_node_runtime_update_internal (void)
 {
@@ -993,7 +998,6 @@ vlib_worker_thread_node_refork (void)
   nm_clone->processes = vec_dup (nm->processes);
 }
 
-
 void
 vlib_worker_thread_node_runtime_update (void)
 {
@@ -1196,6 +1200,7 @@ void
 vlib_worker_thread_barrier_sync (vlib_main_t * vm)
 {
   f64 deadline;
+  f64 now;
   u32 count;
 
   if (vec_len (vlib_mains) < 2)
@@ -1205,29 +1210,44 @@ vlib_worker_thread_barrier_sync (vlib_main_t * vm)
 
   count = vec_len (vlib_mains) - 1;
 
+  now = vlib_time_now (vm);
+
   /* Tolerate recursive calls */
   if (++vlib_worker_threads[0].recursion_level > 1)
-    return;
+    {
+      return;
+    }
 
   vlib_worker_threads[0].barrier_sync_count++;
 
-  deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
+  /* Enforce minimum barrier open time to minimize packet loss */
+  while ((now = vlib_time_now (vm)) < vm->barrier_no_close_before)
+    ;
+
+  /* Record barrier epoch (used for debug whilst barrier held) */
+  vm->barrier_epoch = now;
+
+  deadline = now + BARRIER_SYNC_TIMEOUT;
 
   *vlib_worker_threads->wait_at_barrier = 1;
   while (*vlib_worker_threads->workers_at_barrier != count)
     {
-      if (vlib_time_now (vm) > deadline)
+
+      if ((now = vlib_time_now (vm)) > deadline)
 	{
 	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
 	  os_panic ();
 	}
     }
+
 }
 
 void
 vlib_worker_thread_barrier_release (vlib_main_t * vm)
 {
   f64 deadline;
+  f64 now;
+  f64 minimum_open;
   int refork_needed = 0;
 
   if (vec_len (vlib_mains) < 2)
@@ -1235,8 +1255,12 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
   ASSERT (vlib_get_thread_index () == 0);
 
+  now = vlib_time_now (vm);
+
   if (--vlib_worker_threads[0].recursion_level > 0)
-    return;
+    {
+      return;
+    }
 
   /* Update (all) node runtimes before releasing the barrier, if needed */
   if (vm->need_vlib_worker_thread_node_runtime_update)
@@ -1249,15 +1273,17 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
       refork_needed = 1;
       clib_smp_atomic_add (vlib_worker_threads->node_reforks_required,
 			   (vec_len (vlib_mains) - 1));
+      now = vlib_time_now (vm);
     }
 
-  deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
+
+  deadline = now + BARRIER_SYNC_TIMEOUT;
 
   *vlib_worker_threads->wait_at_barrier = 0;
 
   while (*vlib_worker_threads->workers_at_barrier > 0)
     {
-      if (vlib_time_now (vm) > deadline)
+      if ((now = vlib_time_now (vm)) > deadline)
 	{
 	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
 	  os_panic ();
@@ -1267,18 +1293,47 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
   /* Wait for reforks before continuing */
   if (refork_needed)
     {
-      deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
+      now = vlib_time_now (vm);
+      deadline = now + BARRIER_SYNC_TIMEOUT;
 
       while (*vlib_worker_threads->node_reforks_required > 0)
 	{
-	  if (vlib_time_now (vm) > deadline)
+	  if ((now = vlib_time_now (vm)) > deadline)
 	    {
 	      fformat (stderr, "%s: worker thread refork deadlock\n",
 		       __FUNCTION__);
 	      os_panic ();
 	    }
 	}
+
     }
+
+  /*
+   * Enforce minimum open time to minimize packet loss due to Rx overflow,
+   * based on a test based heuristic that barrier should be open for at least
+   * 3 time as long as it is closed (with an upper bound of 1ms because by that
+   *  point it is probably too late to make a difference)
+   */
+
+#ifndef BARRIER_MINIMUM_OPEN_LIMIT
+#define BARRIER_MINIMUM_OPEN_LIMIT 0.001
+#endif
+
+#ifndef BARRIER_MINIMUM_OPEN_FACTOR
+#define BARRIER_MINIMUM_OPEN_FACTOR 3
+#endif
+
+  minimum_open = (now - vm->barrier_epoch) * BARRIER_MINIMUM_OPEN_FACTOR;
+
+  if (minimum_open > BARRIER_MINIMUM_OPEN_LIMIT)
+    {
+      minimum_open = BARRIER_MINIMUM_OPEN_LIMIT;
+    }
+
+  vm->barrier_no_close_before = now + minimum_open;
+
+  /* Record barrier epoch (used to enforce minimum open time) */
+  vm->barrier_epoch = now;
 }
 
 /*
