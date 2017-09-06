@@ -1462,6 +1462,7 @@ _(TRACE_PLUGIN_MSG_IDS,trace_plugin_msg_ids)
 static clib_error_t *
 rpc_api_hookup (vlib_main_t * vm)
 {
+  api_main_t *am = &api_main;
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
                            vl_api_##n##_t_handler,              \
@@ -1481,6 +1482,10 @@ rpc_api_hookup (vlib_main_t * vm)
                            sizeof(vl_api_##n##_t), 1 /* do trace */);
   foreach_plugin_trace_msg;
 #undef _
+
+  /* No reason to halt the parade to create a trace record... */
+  am->is_mp_safe[VL_API_TRACE_PLUGIN_MSG_IDS] = 1;
+
   return 0;
 }
 
