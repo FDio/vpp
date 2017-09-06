@@ -962,6 +962,66 @@ define show_one_map_register_fallback_threshold_reply
   u32 value;
 };
 
+autoreply define one_enable_disable_xtr_mode
+{
+  u32 client_index;
+  u32 context;
+  u8 is_en;
+};
+
+define one_show_xtr_mode
+{
+  u32 client_index;
+  u32 context;
+};
+
+define one_show_xtr_mode_reply
+{
+  u32 context;
+  i32 retval;
+  u8 is_en;
+};
+
+autoreply define one_enable_disable_petr_mode
+{
+  u32 client_index;
+  u32 context;
+  u8 is_en;
+};
+
+define one_show_petr_mode
+{
+  u32 client_index;
+  u32 context;
+};
+
+define one_show_petr_mode_reply
+{
+  u32 context;
+  i32 retval;
+  u8 is_en;
+};
+
+autoreply define one_enable_disable_pitr_mode
+{
+  u32 client_index;
+  u32 context;
+  u8 is_en;
+};
+
+define one_show_pitr_mode
+{
+  u32 client_index;
+  u32 context;
+};
+
+define one_show_pitr_mode_reply
+{
+  u32 context;
+  i32 retval;
+  u8 is_en;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
