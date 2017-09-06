@@ -8,8 +8,6 @@ Vagrant.configure(2) do |config|
   if distro == 'centos7'
     config.vm.box = "puppetlabs/centos-7.2-64-nocm"
     config.ssh.insert_key = false
-  elsif distro == 'ubuntu1404'
-    config.vm.box = "puppetlabs/ubuntu-14.04-64-nocm"
   else
     config.vm.box = "puppetlabs/ubuntu-16.04-64-nocm"
   end
@@ -25,6 +23,8 @@ Vagrant.configure(2) do |config|
     config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"install.sh"), :args => "/vpp"
     config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"clearinterfaces.sh")
     config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"run.sh")
+  elsif post_build == "vcl-test"
+    config.vm.provision :shell, :path => File.join(File.dirname(__FILE__),"vcl_test.sh"), :args => "/vpp vagrant"
   end
 
   # Add .gnupg dir in so folks can sign patches
