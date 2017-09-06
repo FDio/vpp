@@ -294,6 +294,14 @@ os_exit (int code)
   exit (code);
 }
 
+#ifdef BARRIER_TRACING
+void
+vl_msg_api_barrier_trace_context (const char *context)
+{
+  vlib_worker_threads[0].barrier_context = context;
+}
+#endif
+
 void
 vl_msg_api_barrier_sync (void)
 {

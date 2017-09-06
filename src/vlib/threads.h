@@ -18,6 +18,22 @@
 #include <vlib/main.h>
 #include <linux/sched.h>
 
+/*
+ * To enable detailed tracing of barrier usage, including call stacks and
+ * timings, define BARRIER_TRACING here or in relevant TAGS.  If also used
+ * with CLIB_DEBUG, timing will _not_ be representative of normal code
+ * execution.
+ *
+ */
+
+// #define BARRIER_TRACING 1
+
+/*
+ * Two options for barrier tracing output: syslog & elog.
+ */
+
+// #define BARRIER_TRACING_ELOG 1
+
 extern vlib_main_t **vlib_mains;
 
 void vlib_set_thread_name (char *name);
@@ -102,6 +118,10 @@ typedef struct
   vlib_thread_registration_t *registration;
   u8 *name;
   u64 barrier_sync_count;
+#ifdef BARRIER_TRACING
+  const char *barrier_caller;
+  const char *barrier_context;
+#endif
   volatile u32 *node_reforks_required;
 
   long lwp;
@@ -179,7 +199,14 @@ u32 vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts);
 #define BARRIER_SYNC_TIMEOUT (1.0)
 #endif
 
-void vlib_worker_thread_barrier_sync (vlib_main_t * vm);
+#ifdef BARRIER_TRACING
+#define vlib_worker_thread_barrier_sync(X) {vlib_worker_threads[0].barrier_caller=__FUNCTION__;vlib_worker_thread_barrier_sync_int(X);}
+#else
+#define vlib_worker_thread_barrier_sync(X) vlib_worker_thread_barrier_sync_int(X)
+#endif
+
+
+void vlib_worker_thread_barrier_sync_int (vlib_main_t * vm);
 void vlib_worker_thread_barrier_release (vlib_main_t * vm);
 void vlib_worker_thread_node_refork (void);
 

@@ -144,6 +144,12 @@ void vl_msg_api_queue_handler (unix_shared_memory_queue_t * q);
 
 void vl_msg_api_barrier_sync (void) __attribute__ ((weak));
 void vl_msg_api_barrier_release (void) __attribute__ ((weak));
+#ifdef BARRIER_TRACING
+void vl_msg_api_barrier_trace_context (const char *context)
+  __attribute__ ((weak));
+#else
+#define vl_msg_api_barrier_trace_context(X)
+#endif
 void vl_msg_api_free (void *);
 void vl_noop_handler (void *mp);
 void vl_msg_api_increment_missing_client_counter (void);

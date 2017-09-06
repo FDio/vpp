@@ -199,6 +199,15 @@ typedef struct vlib_main_t
    */
   int need_vlib_worker_thread_node_runtime_update;
 
+  /*
+   * Barrier epoch - Set to current time, each time barrier_sync or
+   * barrier_release is called with zero recursion.
+   */
+  f64 barrier_epoch;
+
+  /* Earliest barrier can be closed again */
+  f64 barrier_no_close_before;
+
 } vlib_main_t;
 
 /* Global main structure. */
