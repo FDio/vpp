@@ -94,6 +94,30 @@
       "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_191ab06e",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2017-09-06T05:18:20Z",
+      "side": 1,
+      "message": "Although copying the entire code tree is unnecessary, but \"mkdir -p $(DIST_SUBDIR);\" is necessary, otherwise \"tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude\u003d*.tar) \" can not run.Do you think so?Thank you!",
+      "parentUuid": "3a4b7175_68b0b48b",
+      "range": {
+        "startLine": 284,
+        "startChar": 0,
+        "endLine": 289,
+        "endChar": 45
+      },
+      "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
