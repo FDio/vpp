@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_5aea5710",
+        "filename": "src/vnet/l2/l2_bd.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1074,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-09-06T21:56:27Z",
+      "side": 1,
+      "message": "Can we have 2 spaces before \"BD-Tag\" and a \":\" after so it will line up with the \"BD-ID\" heading, please? Something like \"\\n  BD-Tag: %s\".",
+      "range": {
+        "startLine": 1074,
+        "startChar": 30,
+        "endLine": 1074,
+        "endChar": 33
+      },
+      "revId": "cfc4a98ddefbf6d30a7e46110373f50c81d0c154",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
