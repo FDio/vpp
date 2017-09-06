@@ -35,6 +35,106 @@ vl (void *p)
 vlib_worker_thread_t *vlib_worker_threads;
 vlib_thread_main_t vlib_thread_main;
 
+/*
+ * Barrier tracing can be enabled on a normal build to collect information
+ * on barrier use, including timings and call stacks.  Deliberately not
+ * keyed off CLIB_DEBUG, because that can add significant overhead which
+ * imapacts observed timings.
+ */
+
+#ifdef BARRIER_TRACING
+ /*
+  * Currently, barrier tracing runs to syslog, but it has been refactored such
+  * that conversion to elog would be simple
+  */
+
+char barrier_trace[65536];
+char *btp = barrier_trace;
+
+  /*
+   * Barrier trace functions, which are nulled out if BARRIER_TRACING isn't
+   * defined
+   */
+
+
+static inline void
+barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
+{
+  btp += sprintf (btp, "<%u#%s",
+		  (unsigned int) vlib_worker_threads[0].barrier_sync_count,
+		  vlib_worker_threads[0].barrier_caller);
+
+  if (vlib_worker_threads[0].barrier_context)
+    {
+      btp += sprintf (btp, "[%s]", vlib_worker_threads[0].barrier_context);
+
+    }
+
+  btp += sprintf (btp, "(O:%dus:%dus)(%dus):",
+		  (int) (1000000.0 * t_entry),
+		  (int) (1000000.0 * t_open), (int) (1000000.0 * t_closed));
+
+}
+
+static inline void
+barrier_trace_sync_rec (f64 t_entry)
+{
+  btp += sprintf (btp, "<%u(%dus)%s:",
+		  (int) vlib_worker_threads[0].recursion_level - 1,
+		  (int) (1000000.0 * t_entry),
+		  vlib_worker_threads[0].barrier_caller);
+}
+
+static inline void
+barrier_trace_release_rec (f64 t_entry)
+{
+  btp += sprintf (btp, ":(%dus)%u>", (int) (1000000.0 * t_entry),
+		  (int) vlib_worker_threads[0].recursion_level);
+}
+
+static inline void
+barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
+{
+
+  btp += sprintf (btp, ":(%dus)", (int) (1000000.0 * t_entry));
+  if (t_update_main > 0)
+    {
+      btp += sprintf (btp, "{%dus}", (int) (1000000.0 * t_update_main));
+    }
+
+  btp += sprintf (btp, "(C:%dus)#%u>",
+		  (int) (1000000.0 * t_closed_total),
+		  (int) vlib_worker_threads[0].barrier_sync_count);
+
+  /* Dump buffer to syslog, and reset for next trace */
+  fformat (stderr, "BTRC %s\n", barrier_trace);
+  btp = barrier_trace;
+  vlib_worker_threads[0].barrier_context = NULL;
+}
+#else
+
+  /* Null functions for default case where barrier tracing isn't used */
+static inline void
+barrier_trace_sync (f64 t_entry, f64 t_open, f64 t_closed)
+{
+}
+
+static inline void
+barrier_trace_sync_rec (f64 t_entry)
+{
+}
+
+static inline void
+barrier_trace_release_rec (f64 t_entry)
+{
+}
+
+static inline void
+barrier_trace_release (f64 t_entry, f64 t_closed_total, f64 t_update_main)
+{
+}
+#endif
+
 uword
 os_get_nthreads (void)
 {
@@ -558,6 +658,10 @@ start_workers (vlib_main_t * vm)
       *vlib_worker_threads->node_reforks_required = 0;
       vm->need_vlib_worker_thread_node_runtime_update = 0;
 
+      /* init timing */
+      vm->barrier_epoch = 0;
+      vm->barrier_no_close_before = 0;
+
       worker_thread_index = 1;
 
       for (i = 0; i < vec_len (tm->registrations); i++)
@@ -790,6 +894,7 @@ start_workers (vlib_main_t * vm)
 
 VLIB_MAIN_LOOP_ENTER_FUNCTION (start_workers);
 
+
 static inline void
 worker_thread_node_runtime_update_internal (void)
 {
@@ -993,7 +1098,6 @@ vlib_worker_thread_node_refork (void)
   nm_clone->processes = vec_dup (nm->processes);
 }
 
-
 void
 vlib_worker_thread_node_runtime_update (void)
 {
@@ -1192,10 +1296,29 @@ vlib_worker_thread_fork_fixup (vlib_fork_fixup_t which)
   vlib_worker_thread_barrier_release (vm);
 }
 
+  /*
+   * Enforce minimum open time to minimize packet loss due to Rx overflow,
+   * based on a test based heuristic that barrier should be open for at least
+   * 3 time as long as it is closed (with an upper bound of 1ms because by that
+   *  point it is probably too late to make a difference)
+   */
+
+#ifndef BARRIER_MINIMUM_OPEN_LIMIT
+#define BARRIER_MINIMUM_OPEN_LIMIT 0.001
+#endif
+
+#ifndef BARRIER_MINIMUM_OPEN_FACTOR
+#define BARRIER_MINIMUM_OPEN_FACTOR 3
+#endif
+
 void
-vlib_worker_thread_barrier_sync (vlib_main_t * vm)
+vlib_worker_thread_barrier_sync_int (vlib_main_t * vm)
 {
   f64 deadline;
+  f64 now;
+  f64 t_entry;
+  f64 t_open;
+  f64 t_closed;
   u32 count;
 
   if (vec_len (vlib_mains) < 2)
@@ -1205,29 +1328,55 @@ vlib_worker_thread_barrier_sync (vlib_main_t * vm)
 
   count = vec_len (vlib_mains) - 1;
 
+  /* Record entry relative to last close */
+  now = vlib_time_now (vm);
+  t_entry = now - vm->barrier_epoch;
+
   /* Tolerate recursive calls */
   if (++vlib_worker_threads[0].recursion_level > 1)
-    return;
+    {
+      barrier_trace_sync_rec (t_entry);
+      return;
+    }
 
   vlib_worker_threads[0].barrier_sync_count++;
 
-  deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
+  /* Enforce minimum barrier open time to minimize packet loss */
+  ASSERT (vm->barrier_no_close_before <= (now + BARRIER_MINIMUM_OPEN_LIMIT));
+  while ((now = vlib_time_now (vm)) < vm->barrier_no_close_before)
+    ;
+
+  /* Record time of closure */
+  t_open = now - vm->barrier_epoch;
+  vm->barrier_epoch = now;
+
+  deadline = now + BARRIER_SYNC_TIMEOUT;
 
   *vlib_worker_threads->wait_at_barrier = 1;
   while (*vlib_worker_threads->workers_at_barrier != count)
     {
-      if (vlib_time_now (vm) > deadline)
+      if ((now = vlib_time_now (vm)) > deadline)
 	{
 	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
 	  os_panic ();
 	}
     }
+
+  t_closed = now - vm->barrier_epoch;
+
+  barrier_trace_sync (t_entry, t_open, t_closed);
+
 }
 
 void
 vlib_worker_thread_barrier_release (vlib_main_t * vm)
 {
   f64 deadline;
+  f64 now;
+  f64 minimum_open;
+  f64 t_entry;
+  f64 t_closed_total;
+  f64 t_update_main = 0.0;
   int refork_needed = 0;
 
   if (vec_len (vlib_mains) < 2)
@@ -1235,8 +1384,15 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 
   ASSERT (vlib_get_thread_index () == 0);
 
+
+  now = vlib_time_now (vm);
+  t_entry = now - vm->barrier_epoch;
+
   if (--vlib_worker_threads[0].recursion_level > 0)
-    return;
+    {
+      barrier_trace_release_rec (t_entry);
+      return;
+    }
 
   /* Update (all) node runtimes before releasing the barrier, if needed */
   if (vm->need_vlib_worker_thread_node_runtime_update)
@@ -1249,15 +1405,17 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
       refork_needed = 1;
       clib_smp_atomic_add (vlib_worker_threads->node_reforks_required,
 			   (vec_len (vlib_mains) - 1));
+      now = vlib_time_now (vm);
+      t_update_main = now - vm->barrier_epoch;
     }
 
-  deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
+  deadline = now + BARRIER_SYNC_TIMEOUT;
 
   *vlib_worker_threads->wait_at_barrier = 0;
 
   while (*vlib_worker_threads->workers_at_barrier > 0)
     {
-      if (vlib_time_now (vm) > deadline)
+      if ((now = vlib_time_now (vm)) > deadline)
 	{
 	  fformat (stderr, "%s: worker thread deadlock\n", __FUNCTION__);
 	  os_panic ();
@@ -1267,11 +1425,13 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
   /* Wait for reforks before continuing */
   if (refork_needed)
     {
-      deadline = vlib_time_now (vm) + BARRIER_SYNC_TIMEOUT;
+      now = vlib_time_now (vm);
+
+      deadline = now + BARRIER_SYNC_TIMEOUT;
 
       while (*vlib_worker_threads->node_reforks_required > 0)
 	{
-	  if (vlib_time_now (vm) > deadline)
+	  if ((now = vlib_time_now (vm)) > deadline)
 	    {
 	      fformat (stderr, "%s: worker thread refork deadlock\n",
 		       __FUNCTION__);
@@ -1279,6 +1439,23 @@ vlib_worker_thread_barrier_release (vlib_main_t * vm)
 	    }
 	}
     }
+
+  t_closed_total = now - vm->barrier_epoch;
+
+  minimum_open = t_closed_total * BARRIER_MINIMUM_OPEN_FACTOR;
+
+  if (minimum_open > BARRIER_MINIMUM_OPEN_LIMIT)
+    {
+      minimum_open = BARRIER_MINIMUM_OPEN_LIMIT;
+    }
+
+  vm->barrier_no_close_before = now + minimum_open;
+
+  /* Record barrier epoch (used to enforce minimum open time) */
+  vm->barrier_epoch = now;
+
+  barrier_trace_release (t_entry, t_closed_total, t_update_main);
+
 }
 
 /*

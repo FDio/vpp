@@ -417,6 +417,7 @@ msg_handler_internal (api_main_t * am,
 
       if (do_it)
 	{
+	  vl_msg_api_barrier_trace_context (am->msg_names[id]);
 	  if (!am->is_mp_safe[id])
 	    vl_msg_api_barrier_sync ();
 	  (*am->msg_handlers[id]) (the_msg);
@@ -497,6 +498,7 @@ vl_msg_api_handler_with_vm_node (api_main_t * am,
       if (am->rx_trace && am->rx_trace->enabled)
 	vl_msg_api_trace (am, am->rx_trace, the_msg);
 
+      vl_msg_api_barrier_trace_context (am->msg_names[id]);
       if (!am->is_mp_safe[id])
 	vl_msg_api_barrier_sync ();
       (*handler) (the_msg, vm, node);
