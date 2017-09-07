@@ -16,6 +16,24 @@
       "revId": "70b0c5922c399ad74f4d7cdefbf0adbdcc7e0064",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_fab583cd",
+        "filename": "src/vnet/session/session.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-07T00:42:12Z",
+      "side": 1,
+      "message": "Will do and connect_sock message too.",
+      "parentUuid": "3a4b7175_940e6533",
+      "revId": "70b0c5922c399ad74f4d7cdefbf0adbdcc7e0064",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
