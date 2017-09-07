@@ -13,6 +13,7 @@ from scapy.layers.inet6 import ICMPv6EchoReply, IPv6ExtHdrRouting
 from scapy.layers.inet6 import IPv6ExtHdrFragment
 from pprint import pprint
 from random import randint
+from util import L4_Conn
 
 
 def to_acl_rule(self, is_permit, wildcard_sport=False):
@@ -68,37 +69,7 @@ class IterateWithSleep():
             self.testcase.sleep(self.sleep_sec)
 
 
-class Conn():
-    def __init__(self, testcase, if1, if2, af, l4proto, port1, port2):
-        self.testcase = testcase
-        self.ifs = [None, None]
-        self.ifs[0] = if1
-        self.ifs[1] = if2
-        self.address_family = af
-        self.l4proto = l4proto
-        self.ports = [None, None]
-        self.ports[0] = port1
-        self.ports[1] = port2
-        self
-
-    def pkt(self, side, flags=None):
-        is_ip6 = 1 if self.address_family == AF_INET6 else 0
-        s0 = side
-        s1 = 1-side
-        src_if = self.ifs[s0]
-        dst_if = self.ifs[s1]
-        layer_3 = [IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4),
-                   IPv6(src=src_if.remote_ip6, dst=dst_if.remote_ip6)]
-        payload = "x"
-        l4args = {'sport': self.ports[s0], 'dport': self.ports[s1]}
-        if flags is not None:
-            l4args['flags'] = flags
-        p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-             layer_3[is_ip6] /
-             self.l4proto(**l4args) /
-             Raw(payload))
-        return p
-
+class Conn(L4_Conn):
     def apply_acls(self, reflect_side, acl_side):
         pkts = []
         pkts.append(self.pkt(0))
@@ -151,25 +122,6 @@ class Conn():
               'proto': 0,
              }
         return new_rule
-
-    def send(self, side, flags=None):
-        self.ifs[side].add_stream(self.pkt(side, flags))
-        self.ifs[1-side].enable_capture()
-        self.testcase.pg_start()
-
-    def recv(self, side):
-        p = self.ifs[side].wait_for_packet(1)
-        return p
-
-    def send_through(self, side, flags=None):
-        self.send(side, flags)
-        p = self.recv(1-side)
-        return p
-
-    def send_pingpong(self, side, flags1=None, flags2=None):
-        p1 = self.send_through(side, flags1)
-        p2 = self.send_through(1-side, flags2)
-        return [p1, p2]
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")
