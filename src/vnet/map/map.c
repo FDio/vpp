@@ -2241,6 +2241,7 @@ map_init (vlib_main_t * vm)
   mm->ip4_reass_pool = 0;
   mm->ip4_reass_lock =
     clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+  *mm->ip4_reass_lock = 0;
   mm->ip4_reass_conf_ht_ratio = MAP_IP4_REASS_HT_RATIO_DEFAULT;
   mm->ip4_reass_conf_lifetime_ms = MAP_IP4_REASS_LIFETIME_DEFAULT;
   mm->ip4_reass_conf_pool_size = MAP_IP4_REASS_POOL_SIZE_DEFAULT;
@@ -2256,6 +2257,7 @@ map_init (vlib_main_t * vm)
   mm->ip6_reass_pool = 0;
   mm->ip6_reass_lock =
     clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+  *mm->ip6_reass_lock = 0;
   mm->ip6_reass_conf_ht_ratio = MAP_IP6_REASS_HT_RATIO_DEFAULT;
   mm->ip6_reass_conf_lifetime_ms = MAP_IP6_REASS_LIFETIME_DEFAULT;
   mm->ip6_reass_conf_pool_size = MAP_IP6_REASS_POOL_SIZE_DEFAULT;
