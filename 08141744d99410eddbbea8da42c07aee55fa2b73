@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_2ec2bde9",
+        "filename": "src/uri/vppcom.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1373,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-09-07T21:39:34Z",
+      "side": 1,
+      "message": "Aha, oops. Will do.",
+      "parentUuid": "3a4b7175_ae510d64",
+      "range": {
+        "startLine": 1373,
+        "startChar": 0,
+        "endLine": 1373,
+        "endChar": 19
+      },
+      "revId": "08141744d99410eddbbea8da42c07aee55fa2b73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_8e4e51c0",
         "filename": "src/uri/vppcom.c",
         "patchSetId": 3
