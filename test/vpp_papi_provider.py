@@ -2243,3 +2243,58 @@ class VppPapiProvider(object):
              'sw_if_index': sw_if_index,
              'traffic_type': traffic_type
              })
+
+    def macip_acl_add_replace(self, rules, acl_index=0xFFFFFFFF, tag=""):
+        """ Add MACIP acl
+
+        :param rules: list of rules for given acl
+        :param tag: acl tag
+        """
+
+        # return self.api(self.papi.macip_acl_add_replace,
+        #                 {'acl_index': acl_index,
+        #                  'r': rules,
+        #                  'count': len(rules),
+        #                  'tag': tag})
+        return self.api(self.papi.macip_acl_add,
+                        {'r': rules,
+                         'count': len(rules),
+                         'tag': tag})
+
+    def macip_acl_del(self, acl_index):
+        """
+
+        :param acl_index:
+        :return:
+        """
+        return self.api(self.papi.macip_acl_del,
+                        {'acl_index': acl_index})
+
+    def macip_acl_interface_add_del(self,
+                                    sw_if_index,
+                                    acl_index,
+                                    is_add=1):
+        """ Add MACIP acl to interface
+
+        :param sw_if_index:
+        :param acl_index:
+        :param is_add:  (Default value = 1)
+        """
+
+        return self.api(self.papi.macip_acl_interface_add_del,
+                        {'is_add': is_add,
+                         'sw_if_index': sw_if_index,
+                         'acl_index': acl_index})
+
+    def macip_acl_interface_get(self):
+        """ Return interface acls dump
+        """
+        return self.api(
+            self.papi.macip_acl_interface_get, {})
+
+    def macip_acl_dump(self, acl_index=4294967295):
+        """ Return MACIP acl dump
+        """
+
+        return self.api(
+            self.papi.macip_acl_dump, {'acl_index': acl_index})

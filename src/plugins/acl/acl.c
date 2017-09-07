@@ -949,8 +949,22 @@ macip_find_match_type (macip_match_type_t * mv, u8 * mac_mask, u8 prefix_len,
 static int
 match_type_metric (macip_match_type_t * m)
 {
-  /* FIXME: count the ones in the MAC mask as well, check how well this heuristic works in real life */
-  return m->prefix_len + m->is_ipv6 + 10 * m->count;
+   unsigned int mac_bits_set = 0;
+   unsigned int mac_byte;
+   int i;
+   for (i=0; i<6; i++)
+     {
+       mac_byte = m->mac_mask[i];
+       for (; mac_byte; mac_byte >>= 1)
+         mac_bits_set += mac_byte & 1;
+     }
+   /*
+    * Attempt to place the more specific and the more used rules on top.
+    * There are obvious caveat corner cases to this, but they do not
+    * seem to be sensible in real world (e.g. specific IPv4 with wildcard MAC
+    * going with a wildcard IPv4 with a specific MAC).
+    */
+   return m->prefix_len + mac_bits_set + m->is_ipv6 + 10 * m->count;
 }
 
 static int

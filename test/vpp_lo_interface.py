@@ -20,7 +20,7 @@ class VppLoInterface(VppInterface, VppObject):
         self.test.vapi.delete_loopback(self.sw_if_index)
 
     def query_vpp_config(self):
-        dump = self.vapi.sw_interface_dump()
+        dump = self.test.vapi.sw_interface_dump()
         return self.is_interface_config_in_dump(dump)
 
     def is_interface_config_in_dump(self, dump):
