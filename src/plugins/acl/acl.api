@@ -305,7 +305,7 @@ define acl_interface_list_details
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param tag - descriptive value for this MACIP ACL
-    @param count - number of rules in this ACL
+    @param count - number of rules in this MACIP ACL
     @param r - vector of MACIP ACL rules
 */
 
@@ -320,11 +320,43 @@ manual_endian manual_print define macip_acl_add
 
 /** \brief Reply to add MACIP ACL
     @param context - returned sender context, to match reply w/ request
-    @param acl_index - index of the newly created ACL
+    @param acl_index - index of the newly created MACIP ACL
     @param retval 0 - no error
 */
 
 define macip_acl_add_reply
+{
+  u32 context;
+  u32 acl_index;
+  i32 retval;
+};
+
+/** \brief Add/Replace a MACIP ACL
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - an existing MACIP ACL entry (0..0xfffffffe) to replace, or 0xffffffff to make new MACIP ACL
+    @param tag - descriptive value for this MACIP ACL
+    @param count - number of rules in this MACIP ACL
+    @param r - vector of MACIP ACL rules
+*/
+
+manual_endian manual_print define macip_acl_add_replace
+{
+  u32 client_index;
+  u32 context;
+  u32 acl_index; /* ~0 to add, existing MACIP ACL# to replace */
+  u8 tag[64];
+  u32 count;
+  vl_api_macip_acl_rule_t r[count];
+};
+
+/** \brief Reply to add/replace MACIP ACL
+    @param context - returned sender context, to match reply w/ request
+    @param acl_index - index of the newly created MACIP ACL
+    @param retval 0 - no error
+*/
+
+define macip_acl_add_replace_reply
 {
   u32 context;
   u32 acl_index;
@@ -347,7 +379,7 @@ autoreply manual_print define macip_acl_del
 /** \brief Add or delete a MACIP ACL to/from interface
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param is_add - add (1) or delete (0) ACL from being used on an interface
+    @param is_add - add (1) or delete (0) MACIP ACL from being used on an interface
     @param sw_if_index - interface to apply the action to
     @param acl_index - MACIP ACL index
 */
@@ -357,7 +389,7 @@ autoreply manual_print define macip_acl_interface_add_del
   u32 client_index;
   u32 context;
   u8 is_add;
-  /* macip ACLs are always input */
+  /* MACIP ACLs are always input */
   u32 sw_if_index;
   u32 acl_index;
 };
@@ -365,7 +397,7 @@ autoreply manual_print define macip_acl_interface_add_del
 /** \brief Dump one or all defined MACIP ACLs
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param acl_index - MACIP ACL index or ~0 to dump all ACLs
+    @param acl_index - MACIP ACL index or ~0 to dump all MACIP ACLs
 */
 
 define macip_acl_dump
@@ -380,7 +412,7 @@ define macip_acl_dump
     @param acl_index - index of this MACIP ACL
     @param tag - descriptive tag which was supplied during the creation
     @param count - length of the vector of MACIP ACL rules
-    @param r - rules comprising this ACL
+    @param r - rules comprising this MACIP ACL
 */
 
 manual_endian manual_print define macip_acl_details
@@ -406,7 +438,7 @@ define macip_acl_interface_get
 /** \brief Reply with the vector of MACIP ACLs by sw_if_index
     @param context - returned sender context, to match reply w/ request
     @param count - total number of elements in the vector
-    @param acls - the vector of active MACACL indices per sw_if_index
+    @param acls - the vector of active MACIP ACL indices per sw_if_index
 */
 
 define macip_acl_interface_get_reply
@@ -419,7 +451,7 @@ define macip_acl_interface_get_reply
 /** \brief Dump the list(s) of MACIP ACLs applied to specific or all interfaces
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param sw_if_index - interface to dump the ACL list for
+    @param sw_if_index - interface to dump the MACIP ACL list for
 */
 
 define macip_acl_interface_list_dump
@@ -431,9 +463,9 @@ define macip_acl_interface_list_dump
 
 /** \brief Details about a single MACIP ACL contents
     @param context - returned sender context, to match reply w/ request
-    @param sw_if_index - interface for which the list of ACLs is applied
+    @param sw_if_index - interface for which the list of MACIP ACLs is applied
     @param count - total length of acl indices vector
-    @param acls - the vector of ACL indices
+    @param acls - the vector of MACIP ACL indices
 */
 
 define macip_acl_interface_list_details
