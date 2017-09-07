@@ -611,8 +611,11 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	    }
 	  else
 	    {
-	      ret = VNET_API_ERROR_SYSCALL_ERROR_3;
-	      goto error;
+	      error = clib_error_return (0, "File exists for %s",
+					 socket_filename);
+	      clib_error_report (error);
+	      rv = VNET_API_ERROR_VALUE_EXIST;
+	      goto done;
 	    }
 	}
       pool_get (mm->socket_files, msf);

@@ -31,7 +31,8 @@
 #define foreach_memif_tx_func_error	       \
 _(NO_FREE_SLOTS, "no free tx slots")           \
 _(TRUNC_PACKET, "packet > buffer size -- truncated in tx ring") \
-_(PENDING_MSGS, "pending msgs in tx ring")
+_(PENDING_MSGS, "pending msgs in tx ring") \
+_(NO_TX_QUEUES, "no tx queues")
 
 typedef enum
 {
@@ -169,6 +170,13 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u8 tx_queues = vec_len (mif->tx_queues);
   memif_queue_t *mq;
 
+  if (PREDICT_FALSE (tx_queues == 0))
+    {
+      vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_TX_QUEUES,
+			n_left);
+      goto error;
+    }
+
   if (tx_queues < vec_len (vlib_mains))
     {
       qid = thread_index % tx_queues;
@@ -249,13 +257,15 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			n_left);
     }
 
-  vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
   if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0 && mq->int_fd > -1)
     {
       u64 b = 1;
       CLIB_UNUSED (int r) = write (mq->int_fd, &b, sizeof (b));
       mq->int_count++;
     }
+
+error:
+  vlib_buffer_free (vm, vlib_frame_args (frame), frame->n_vectors);
 
   return frame->n_vectors;
 }
