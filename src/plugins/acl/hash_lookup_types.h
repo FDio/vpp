@@ -65,6 +65,10 @@ typedef struct {
    */
   u32 tail_applied_entry_index;
   /*
+   * number of hits on this entry
+   */
+  u64 hitcount;
+  /*
    * Action of this applied ACE
    */
   u8 action;

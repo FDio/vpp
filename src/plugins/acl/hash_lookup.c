@@ -371,6 +371,7 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
     pae->acl_index = acl_index;
     pae->ace_index = ha->rules[i].ace_index;
     pae->action = ha->rules[i].action;
+    pae->hitcount = 0;
     pae->hash_ace_info_index = i;
     /* we might link it in later */
     pae->next_applied_entry_index = ~0;
@@ -876,6 +877,7 @@ hash_multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l
   u32 match_index = multi_acl_match_get_applied_ace_index(am, pkt_5tuple);
   if (match_index < vec_len((*applied_hash_aces))) {
     applied_hash_ace_entry_t *pae = vec_elt_at_index((*applied_hash_aces), match_index);
+    pae->hitcount++;
     *acl_match_p = pae->acl_index;
     *rule_match_p = pae->ace_index;
     return pae->action;
