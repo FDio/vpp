@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_ae510d64",
+        "filename": "src/uri/vppcom.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1373,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-07T21:12:21Z",
+      "side": 1,
+      "message": "Please delete this line since the file pointer will be closed when it goes to \u0027defaulted\u0027.",
+      "range": {
+        "startLine": 1373,
+        "startChar": 0,
+        "endLine": 1373,
+        "endChar": 19
+      },
+      "revId": "08141744d99410eddbbea8da42c07aee55fa2b73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_8e4e51c0",
+        "filename": "src/uri/vppcom.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1380,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-07T21:12:21Z",
+      "side": 1,
+      "message": "Please delete this line since the file pointer will be closed when it goes to \u0027defaulted\u0027.",
+      "range": {
+        "startLine": 1380,
+        "startChar": 0,
+        "endLine": 1380,
+        "endChar": 19
+      },
+      "revId": "08141744d99410eddbbea8da42c07aee55fa2b73",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
