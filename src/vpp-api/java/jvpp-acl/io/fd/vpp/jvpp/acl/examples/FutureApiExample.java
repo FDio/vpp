@@ -25,7 +25,7 @@ import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendAclDumpRequest;
 import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendAclInterfaceDeleteList;
 import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendAclInterfaceListDumpRequest;
 import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendAclInterfaceSetAclList;
-import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendMacIpAddRequest;
+import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendMacIpAddReplaceRequest;
 import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendMacIpDelRequest;
 import static io.fd.vpp.jvpp.acl.examples.AclTestRequests.sendMacIpDumpRequest;
 
@@ -42,11 +42,11 @@ public class FutureApiExample {
 
     private static void testCallbackApi() throws Exception {
         System.out.println("Testing Java callback API for acl plugin");
-        try (final JVppRegistry registry = new JVppRegistryImpl("macipAclAddTest");
+        try (final JVppRegistry registry = new JVppRegistryImpl("macipAclAddReplaceTest");
              final FutureJVppAclFacade jvpp = new FutureJVppAclFacade(registry, new JVppAclImpl())) {
 
             // adds,dump and verifies  Mac-Ip acl
-            sendMacIpAddRequest(jvpp);
+            sendMacIpAddReplaceRequest(jvpp);
             verifyMacIpDump(sendMacIpDumpRequest(jvpp).macipAclDetails.get(0));
 
             // adds,dumps and verifies Acl acl

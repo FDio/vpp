@@ -79,11 +79,12 @@ vl_api_acl_add_replace_t_endian (vl_api_acl_add_replace_t * a)
 }
 
 static inline void
-vl_api_macip_acl_add_t_endian (vl_api_macip_acl_add_t * a)
+vl_api_macip_acl_add_replace_t_endian (vl_api_macip_acl_add_replace_t * a)
 {
   a->_vl_msg_id = clib_net_to_host_u16 (a->_vl_msg_id);
   a->client_index = clib_net_to_host_u32 (a->client_index);
   a->context = clib_net_to_host_u32 (a->context);
+  a->acl_index = clib_net_to_host_u32 (a->acl_index);
   /* a->tag[0..63] = a->tag[0..63] (no-op) */
   a->count = clib_net_to_host_u32 (a->count);
   vl_api_macip_acl_rule_t_array_endian (a->r, a->count);
@@ -264,18 +265,20 @@ vl_api_macip_acl_details_t_print (vl_api_macip_acl_details_t * a,
 }
 
 static inline void *
-vl_api_macip_acl_add_t_print (vl_api_macip_acl_add_t * a, void *handle)
+vl_api_macip_acl_add_replace_t_print (vl_api_macip_acl_add_replace_t * a, void *handle)
 {
   u8 *s = 0;
   int i;
+  u32 acl_index = clib_net_to_host_u32 (a->acl_index);
   u32 count = clib_net_to_host_u32 (a->count);
   if (count > 0x100000)
     {
-      s = format (s, "WARN: macip_acl_add count endianness wrong? Fixup to avoid long loop.\n");
+      s = format (s, "WARN: macip_acl_add_replace count endianness wrong? Fixup to avoid long loop.\n");
       count = a->count;
     }
 
-  s = format (s, "SCRIPT: macip_acl_add ");
+  s = format (s, "SCRIPT: macip_acl_add_replace %d count %d ",
+        acl_index, count);
   if (a->tag[0])
     s = format (s, "tag %s ", a->tag);
 

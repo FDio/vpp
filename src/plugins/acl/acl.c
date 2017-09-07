@@ -70,7 +70,7 @@ _(ACL_INTERFACE_ADD_DEL, acl_interface_add_del)	\
 _(ACL_INTERFACE_SET_ACL_LIST, acl_interface_set_acl_list)	\
 _(ACL_DUMP, acl_dump)  \
 _(ACL_INTERFACE_LIST_DUMP, acl_interface_list_dump) \
-_(MACIP_ACL_ADD, macip_acl_add) \
+_(MACIP_ACL_ADD_REPLACE, macip_acl_add_replace) \
 _(MACIP_ACL_DEL, macip_acl_del) \
 _(MACIP_ACL_INTERFACE_ADD_DEL, macip_acl_interface_add_del) \
 _(MACIP_ACL_DUMP, macip_acl_dump) \
@@ -1144,6 +1144,18 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
   macip_acl_rule_t *r;
   macip_acl_rule_t *acl_new_rules = 0;
   int i;
+
+  if (*acl_list_index != ~0)
+    {
+      /* They supplied some number, let's see if this MACIP ACL exists */
+      if (pool_is_free_index (am->macip_acls, *acl_list_index))
+  {
+    /* tried to replace a non-existent ACL, no point doing anything */
+          clib_warning("acl-plugin-error: Trying to replace nonexistent MACIP ACL %d (tag %s)", *acl_list_index, tag);
+    return -1;
+  }
+    }
+
   if (0 == count) {
     clib_warning("acl-plugin-warning: Trying to create empty MACIP ACL (tag %s)", tag);
   }
@@ -1166,11 +1178,19 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
       r->src_prefixlen = rules[i].src_ip_prefix_len;
     }
 
-  /* Get ACL index */
-  pool_get_aligned (am->macip_acls, a, CLIB_CACHE_LINE_BYTES);
-  memset (a, 0, sizeof (*a));
-  /* Will return the newly allocated ACL index */
-  *acl_list_index = a - am->macip_acls;
+  if (~0 == *acl_list_index)
+    {
+      /* Get ACL index */
+      pool_get_aligned (am->macip_acls, a, CLIB_CACHE_LINE_BYTES);
+      memset (a, 0, sizeof (*a));
+      /* Will return the newly allocated ACL index */
+      *acl_list_index = a - am->macip_acls;
+    }
+  else
+    {
+      a = &am->macip_acls[*acl_list_index];
+      macip_destroy_classify_tables (am, *acl_list_index);
+    }
 
   a->rules = acl_new_rules;
   a->count = count;
@@ -1596,23 +1616,23 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
 /* MACIP ACL API handlers */
 
 static void
-vl_api_macip_acl_add_t_handler (vl_api_macip_acl_add_t * mp)
+vl_api_macip_acl_add_replace_t_handler (vl_api_macip_acl_add_replace_t * mp)
 {
-  vl_api_macip_acl_add_reply_t *rmp;
+  vl_api_macip_acl_add_replace_reply_t *rmp;
   acl_main_t *am = &acl_main;
   int rv;
-  u32 acl_list_index = ~0;
+  u32 acl_list_index = ntohl (mp->acl_index);
   u32 acl_count = ntohl (mp->count);
   u32 expected_len = sizeof(*mp) + acl_count*sizeof(mp->r[0]);
 
-  if (verify_message_len(mp, expected_len, "macip_acl_add")) {
+  if (verify_message_len(mp, expected_len, "macip_acl_add_replace")) {
       rv = macip_acl_add_list (acl_count, mp->r, &acl_list_index, mp->tag);
   } else {
       rv = VNET_API_ERROR_INVALID_VALUE;
   }
 
   /* *INDENT-OFF* */
-  REPLY_MACRO2(VL_API_MACIP_ACL_ADD_REPLY,
+  REPLY_MACRO2(VL_API_MACIP_ACL_ADD_REPLACE_REPLY,
   ({
     rmp->acl_index = htonl(acl_list_index);
   }));
