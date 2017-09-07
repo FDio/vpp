@@ -115,7 +115,7 @@ memif_msg_enq_hello (int fd)
   h->max_region = MEMIF_MAX_REGION;
   h->max_log2_ring_size = MEMIF_MAX_LOG2_RING_SIZE;
   s = format (0, "VPP %s%c", VPP_BUILD_VER, 0);
-  strncpy ((char *) h->name, (char *) s, sizeof (h->name));
+  strncpy ((char *) h->name, (char *) s, sizeof (h->name) - 1);
   vec_free (s);
   return memif_msg_send (fd, &msg, -1);
 }
@@ -134,9 +134,10 @@ memif_msg_enq_init (memif_if_t * mif)
   i->id = mif->id;
   i->mode = mif->mode;
   s = format (0, "VPP %s%c", VPP_BUILD_VER, 0);
-  strncpy ((char *) i->name, (char *) s, sizeof (i->name));
+  strncpy ((char *) i->name, (char *) s, sizeof (i->name) - 1);
   if (mif->secret)
-    strncpy ((char *) i->secret, (char *) mif->secret, sizeof (i->secret));
+    strncpy ((char *) i->secret, (char *) mif->secret,
+	     sizeof (i->secret) - 1);
   vec_free (s);
 }
 
@@ -189,7 +190,7 @@ memif_msg_enq_connect (memif_if_t * mif)
   e->msg.type = MEMIF_MSG_TYPE_CONNECT;
   e->fd = -1;
   s = format (0, "%U%c", format_memif_device_name, mif->dev_instance, 0);
-  strncpy ((char *) c->if_name, (char *) s, sizeof (c->if_name));
+  strncpy ((char *) c->if_name, (char *) s, sizeof (c->if_name) - 1);
   vec_free (s);
 }
 
@@ -204,7 +205,7 @@ memif_msg_enq_connected (memif_if_t * mif)
   e->msg.type = MEMIF_MSG_TYPE_CONNECTED;
   e->fd = -1;
   s = format (0, "%U%c", format_memif_device_name, mif->dev_instance, 0);
-  strncpy ((char *) c->if_name, (char *) s, sizeof (c->if_name));
+  strncpy ((char *) c->if_name, (char *) s, sizeof (c->if_name) - 1);
   vec_free (s);
 }
 
@@ -216,7 +217,7 @@ memif_msg_send_disconnect (memif_if_t * mif, clib_error_t * err)
   memif_msg_disconnect_t *d = &msg.disconnect;
 
   d->code = err->code;
-  strncpy ((char *) d->string, (char *) err->what, sizeof (d->string));
+  strncpy ((char *) d->string, (char *) err->what, sizeof (d->string) - 1);
 
   return memif_msg_send (mif->conn_fd, &msg, -1);
 }
