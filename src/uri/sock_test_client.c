@@ -895,6 +895,8 @@ main (int argc, char **argv)
 	  case 'w':
 	    fprintf (stderr, "ERROR: Option -%c requires an argument.\n",
 		     optopt);
+	    break;
+
 	  default:
 	    if (isprint (optopt))
 	      fprintf (stderr, "ERROR: Unknown option `-%c'.\n", optopt);

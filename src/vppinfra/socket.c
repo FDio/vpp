@@ -359,9 +359,21 @@ clib_socket_init (clib_socket_t * s)
 	  && s->flags & SOCKET_ALLOW_GROUP_WRITE)
 	{
 	  struct stat st = { 0 };
-	  stat (((struct sockaddr_un *) &addr)->sun_path, &st);
+	  if (stat (((struct sockaddr_un *) &addr)->sun_path, &st) < 0)
+	    {
+	      error = clib_error_return_unix (0, "stat (fd %d, '%s')",
+					      s->fd, s->config);
+	      goto done;
+	    }
 	  st.st_mode |= S_IWGRP;
-	  chmod (((struct sockaddr_un *) &addr)->sun_path, st.st_mode);
+	  if (chmod (((struct sockaddr_un *) &addr)->sun_path, st.st_mode) <
+	      0)
+	    {
+	      error =
+		clib_error_return_unix (0, "chmod (fd %d, '%s', mode %o)",
+					s->fd, s->config, st.st_mode);
+	      goto done;
+	    }
 	}
     }
   else

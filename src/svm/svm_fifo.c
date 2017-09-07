@@ -443,7 +443,7 @@ ooo_segment_try_collect (svm_fifo_t * f, u32 n_bytes_enqueued)
 	}
     }
 
-  ASSERT (bytes >= 0 && bytes <= f->nitems);
+  ASSERT (bytes <= f->nitems);
   return bytes;
 }
 
