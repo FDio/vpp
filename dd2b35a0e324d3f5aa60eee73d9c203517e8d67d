@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_c392e256",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 692,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-07T17:10:57Z",
+      "side": 1,
+      "message": "This does not work the way you think it will, because most of the vec_* \"functions\" are actually macros.  See .../vpp/src/vppinfra/vec.h and vec_bootstrap.h for details.  vec_add1() is a good example which can \u0026 will modify the location of the underlying memory where the vector lives.  Thus you need to pass a reference to the vector pointer, not the address that it contains.  Otherwise you will be leaking memory every time the function is called because the pointers in sm-\u003edo_ip46_fib_statics will never get updated and always be 0.\n\nI would code this without the do_ip46_fib_statics_t structure (per my previous comment), which follows the typical VPP \u003cfeature\u003e_main_t design pattern:\n---- %\u003c ----\nvec_reset_length (sm-\u003efibs);\n  ...\nvec_add1 (sm-\u003efibs, fib);\n  ...\n---- %\u003c ----\n\n\nIf you\u0027re going to keep the structure def, then I\u0027d code this as:\n---- %\u003c ----\ndo_ip46_fib_statics_t *fs \u003d \u0026sm-\u003edo_ip46_fib_statics;\n  ...\nvec_reset_length (fs-\u003efibs);\n  ...\nvec_add1 (fs-\u003efibs,fib);\n  ...\n---- %\u003c----",
+      "range": {
+        "startLine": 690,
+        "startChar": 0,
+        "endLine": 692,
+        "endChar": 44
+      },
+      "revId": "dd2b35a0e324d3f5aa60eee73d9c203517e8d67d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_63b7aed9",
+        "filename": "src/vpp/stats/stats.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-07T17:10:57Z",
+      "side": 1,
+      "message": "I dont think making this a structure adds much value.  By definition stats_main is static.  I would just include these in stats_main_t and group them together with a comment that they\u0027re used for ip46 fib stats.",
+      "range": {
+        "startLine": 68,
+        "startChar": 0,
+        "endLine": 74,
+        "endChar": 25
+      },
+      "revId": "dd2b35a0e324d3f5aa60eee73d9c203517e8d67d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_03b6bad9",
+        "filename": "src/vpp/stats/stats.h",
+        "patchSetId": 19
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-07T17:10:57Z",
+      "side": 1,
+      "message": "Move this above line 95 as it is not a convenience element.  I\u0027m also not sure the comment is necessary.",
+      "range": {
+        "startLine": 96,
+        "startChar": 0,
+        "endLine": 100,
+        "endChar": 45
+      },
+      "revId": "dd2b35a0e324d3f5aa60eee73d9c203517e8d67d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
