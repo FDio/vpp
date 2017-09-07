@@ -2081,6 +2081,8 @@ snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0)
         }
 
       /* Add to translated packets worker lookup */
+      key0.port = udp0->dst_port;
+      kv0.key = key0.as_u64;
       kv0.value = next_worker_index;
       clib_bihash_add_del_8_8 (&sm->worker_by_out, &kv0, 1);
     }
