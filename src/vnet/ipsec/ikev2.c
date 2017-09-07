@@ -17,6 +17,7 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
+#include <vppinfra/random.h>
 #include <vnet/udp/udp.h>
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
@@ -1595,8 +1596,16 @@ ikev2_create_tunnel_interface (vnet_main_t * vnm, ikev2_sa_t * sa,
 	+ sa->profile->lifetime;
       if (sa->profile->lifetime_jitter)
 	{
+	  // This is not much better than rand(3), which Coverity warns
+	  // is unsuitable for security applications; random_u32 is
+	  // however fast. If this perturbance to the expiration time
+	  // needs to use a better RNG then we may need to use something
+	  // like /dev/urandom which has significant overhead.
+	  u32 rnd = (u32) (vlib_time_now (vnm->vlib_main) * 1e6);
+	  rnd = random_u32 (&rnd);
+
 	  child->time_to_expiration +=
-	    1 + (rand () % sa->profile->lifetime_jitter);
+	    1 + (rnd % sa->profile->lifetime_jitter);
 	}
     }
 

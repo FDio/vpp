@@ -514,9 +514,15 @@ main (int argc, char **argv)
 		      continue;
 		    }
 
-		  else if (strlen ((char *) conn->buf))
-		    printf ("\nSERVER (fd %d): RX (%d bytes) - '%s'\n",
-			    conn->fd, rx_bytes, conn->buf);
+		  else if (((char *) conn->buf)[0] != 0)
+		    {
+		      // If it looks vaguely like a string, make sure it's terminated
+		      ((char *) conn->buf)[rx_bytes <
+					   conn->buf_size ? rx_bytes :
+					   conn->buf_size - 1] = 0;
+		      printf ("\nSERVER (fd %d): RX (%d bytes) - '%s'\n",
+			      conn->fd, rx_bytes, conn->buf);
+		    }
 		}
 	      else		// rx_bytes < 0
 		{

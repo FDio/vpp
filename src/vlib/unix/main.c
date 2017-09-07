@@ -434,6 +434,10 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 				  vlib_default_runtime_dir, 0);
     }
 
+  error = setup_signal_handlers (um);
+  if (error)
+    return error;
+
   if (um->pidfile)
     {
       if ((error = vlib_unix_validate_runtime_file (um,
@@ -447,10 +451,6 @@ unix_config (vlib_main_t * vm, unformat_input_t * input)
 	  return clib_error_return_unix (0, "open");
 	}
     }
-
-  error = setup_signal_handlers (um);
-  if (error)
-    return error;
 
   if (!(um->flags & UNIX_FLAG_INTERACTIVE))
     {
