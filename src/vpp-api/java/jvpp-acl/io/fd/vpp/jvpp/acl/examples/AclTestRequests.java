@@ -32,6 +32,8 @@ import io.fd.vpp.jvpp.acl.dto.AclInterfaceSetAclList;
 import io.fd.vpp.jvpp.acl.dto.AclInterfaceSetAclListReply;
 import io.fd.vpp.jvpp.acl.dto.MacipAclAdd;
 import io.fd.vpp.jvpp.acl.dto.MacipAclAddReply;
+import io.fd.vpp.jvpp.acl.dto.MacipAclAddReplace;
+import io.fd.vpp.jvpp.acl.dto.MacipAclAddReplaceReply;
 import io.fd.vpp.jvpp.acl.dto.MacipAclDel;
 import io.fd.vpp.jvpp.acl.dto.MacipAclDelReply;
 import io.fd.vpp.jvpp.acl.dto.MacipAclDetailsReplyDump;
@@ -54,6 +56,13 @@ class AclTestRequests {
         System.out.printf("Sending MacipAclAdd request %s%n", request.toString());
         final MacipAclAddReply reply = jvpp.macipAclAdd(createMacIpAddRequest()).toCompletableFuture().get();
         System.out.printf("MacipAclAdd send result = %s%n", reply);
+    }
+
+    static void sendMacIpAddReplaceRequest(final FutureJVppAclFacade jvpp) throws InterruptedException, ExecutionException {
+        final MacipAclAddReplace request = createMacIpAddReplaceRequest();
+        System.out.printf("Sending MacipAclAddReplace request %s%n", request.toString());
+        final MacipAclAddReplaceReply reply = jvpp.macipAclAddReplace(createMacIpAddReplaceRequest()).toCompletableFuture().get();
+        System.out.printf("MacipAclAddReplace send result = %s%n", reply);
     }
 
     static void sendMacIpDelRequest(final FutureJVppAclFacade jvpp) throws InterruptedException, ExecutionException {
@@ -126,6 +135,15 @@ class AclTestRequests {
         MacipAclAdd request = new MacipAclAdd();
 
         request.count = 2;
+        request.r = createMacipRules();
+        return request;
+    }
+
+    private static MacipAclAddReplace createMacIpAddReplaceRequest() {
+        MacipAclAddReplace request = new MacipAclAddReplace();
+
+        request.count = 2;
+        request.aclIndex = 0;
         request.r = createMacipRules();
         return request;
     }

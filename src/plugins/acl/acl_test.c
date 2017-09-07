@@ -72,7 +72,8 @@ _(macip_acl_del_reply)
 
 #define foreach_reply_retval_aclindex_handler  \
 _(acl_add_replace_reply) \
-_(macip_acl_add_reply)
+_(macip_acl_add_reply) \
+_(macip_acl_add_replace_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -272,6 +273,7 @@ _(ACL_INTERFACE_SET_ACL_LIST_REPLY, acl_interface_set_acl_list_reply) \
 _(ACL_INTERFACE_LIST_DETAILS, acl_interface_list_details)  \
 _(ACL_DETAILS, acl_details)  \
 _(MACIP_ACL_ADD_REPLY, macip_acl_add_reply) \
+_(MACIP_ACL_ADD_REPLACE_REPLY, macip_acl_add_replace_reply) \
 _(MACIP_ACL_DEL_REPLY, macip_acl_del_reply) \
 _(MACIP_ACL_DETAILS, macip_acl_details)  \
 _(MACIP_ACL_INTERFACE_ADD_DEL_REPLY, macip_acl_interface_add_del_reply)  \
@@ -965,8 +967,6 @@ static int api_macip_acl_add (vat_main_t * vam)
 
     if(rules)
       n_rules = vec_len(rules);
-    else
-      n_rules = 0;
 
     if (n_rules_override >= 0)
       n_rules = n_rules_override;
@@ -1000,6 +1000,159 @@ static int api_macip_acl_add (vat_main_t * vam)
     return ret;
 }
 
+static int api_macip_acl_add_replace (vat_main_t * vam)
+{
+    acl_test_main_t * sm = &acl_test_main;
+    unformat_input_t * i = vam->input;
+    vl_api_macip_acl_add_replace_t * mp;
+    u32 acl_index = ~0;
+    u32 msg_size = sizeof (*mp); /* without the rules */
+
+    vl_api_macip_acl_rule_t *rules = 0;
+    int rule_idx = 0;
+    int n_rules = 0;
+    int n_rules_override = -1;
+    u32 src_prefix_length = 0;
+    u32 action = 0;
+    ip4_address_t src_v4address;
+    ip6_address_t src_v6address;
+    u8 src_mac[6];
+    u8 *tag = 0;
+    u8 mac_mask_all_1[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+    int ret;
+
+    if (!unformat (i, "%d", &acl_index)) {
+        /* Just assume -1 */
+    }
+
+    while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+        if (unformat (i, "ipv6"))
+          {
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            rules[rule_idx].is_ipv6 = 1;
+          }
+        else if (unformat (i, "ipv4"))
+          {
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            rules[rule_idx].is_ipv6 = 0;
+          }
+        else if (unformat (i, "permit"))
+          {
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            rules[rule_idx].is_permit = 1;
+          }
+        else if (unformat (i, "deny"))
+          {
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            rules[rule_idx].is_permit = 0;
+          }
+        else if (unformat (i, "count %d", &n_rules_override))
+          {
+            /* we will use this later */
+          }
+        else if (unformat (i, "action %d", &action))
+          {
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            rules[rule_idx].is_permit = action;
+          }
+        else if (unformat (i, "ip %U/%d",
+         unformat_ip4_address, &src_v4address, &src_prefix_length) ||
+                 unformat (i, "ip %U",
+         unformat_ip4_address, &src_v4address))
+          {
+            if (src_prefix_length == 0)
+              src_prefix_length = 32;
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            memcpy (rules[rule_idx].src_ip_addr, &src_v4address, 4);
+            rules[rule_idx].src_ip_prefix_len = src_prefix_length;
+            rules[rule_idx].is_ipv6 = 0;
+          }
+        else if (unformat (i, "src"))
+          {
+            /* Everything in MACIP is "source" but allow this verbosity */
+          }
+        else if (unformat (i, "ip %U/%d",
+         unformat_ip6_address, &src_v6address, &src_prefix_length) ||
+                 unformat (i, "ip %U",
+         unformat_ip6_address, &src_v6address))
+          {
+            if (src_prefix_length == 0)
+              src_prefix_length = 128;
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            memcpy (rules[rule_idx].src_ip_addr, &src_v6address, 16);
+            rules[rule_idx].src_ip_prefix_len = src_prefix_length;
+            rules[rule_idx].is_ipv6 = 1;
+          }
+        else if (unformat (i, "mac %U",
+         my_unformat_mac_address, &src_mac))
+          {
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            memcpy (rules[rule_idx].src_mac, &src_mac, 6);
+            memcpy (rules[rule_idx].src_mac_mask, &mac_mask_all_1, 6);
+          }
+        else if (unformat (i, "mask %U",
+         my_unformat_mac_address, &src_mac))
+          {
+            vec_validate_macip_acl_rules(rules, rule_idx);
+            memcpy (rules[rule_idx].src_mac_mask, &src_mac, 6);
+          }
+        else if (unformat (i, "tag %s", &tag))
+          {
+          }
+        else if (unformat (i, ","))
+          {
+            rule_idx++;
+            vec_validate_macip_acl_rules(rules, rule_idx);
+          }
+        else
+    break;
+    }
+
+    if (!rules)
+      {
+      errmsg ("rule/s required\n");
+      return -99;
+      }
+    /* Construct the API message */
+    vam->result_ready = 0;
+
+    if(rules)
+      n_rules = vec_len(rules);
+
+    if (n_rules_override >= 0)
+      n_rules = n_rules_override;
+
+    msg_size += n_rules*sizeof(rules[0]);
+
+    mp = vl_msg_api_alloc_as_if_client(msg_size);
+    memset (mp, 0, msg_size);
+    mp->_vl_msg_id = ntohs (VL_API_MACIP_ACL_ADD_REPLACE + sm->msg_id_base);
+    mp->client_index = vam->my_client_index;
+    if ((n_rules > 0) && rules)
+      clib_memcpy(mp->r, rules, n_rules*sizeof (mp->r[0]));
+    if (tag)
+      {
+        if (vec_len(tag) >= sizeof(mp->tag))
+          {
+            tag[sizeof(mp->tag)-1] = 0;
+            _vec_len(tag) = sizeof(mp->tag);
+          }
+        clib_memcpy(mp->tag, tag, vec_len(tag));
+        vec_free(tag);
+      }
+
+    mp->acl_index = ntohl(acl_index);
+    mp->count = htonl(n_rules);
+
+    /* send it... */
+    S(mp);
+
+    /* Wait for a reply... */
+    W (ret);
+    return ret;
+}
+
 /*
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
@@ -1013,6 +1166,7 @@ _(acl_interface_add_del, "<intfc> | sw_if_index <if-idx> [add|del] [input|output
 _(acl_interface_set_acl_list, "<intfc> | sw_if_index <if-idx> input [acl-idx list] output [acl-idx list]") \
 _(acl_interface_list_dump, "[<intfc> | sw_if_index <if-idx>]") \
 _(macip_acl_add, "...") \
+_(macip_acl_add_replace, "<acl-idx> [<ipv4|ipv6> <permit|deny|action N> [count <count>] [src] ip <ipaddress/[plen]> mac <mac> mask <mac_mask>, ... , ...") \
 _(macip_acl_del, "<acl-idx>")\
 _(macip_acl_dump, "[<acl-idx>]") \
 _(macip_acl_interface_add_del, "<intfc> | sw_if_index <if-idx> [add|del] acl <acl-idx>") \
