@@ -2244,6 +2244,18 @@ class VppPapiProvider(object):
              'traffic_type': traffic_type
              })
 
+    def macip_acl_add(self, rules, tag=""):
+        """ Add MACIP acl
+
+        :param rules: list of rules for given acl
+        :param tag: acl tag
+        """
+
+        return self.api(self.papi.macip_acl_add,
+                        {'r': rules,
+                         'count': len(rules),
+                         'tag': tag})
+
     def macip_acl_add_replace(self, rules, acl_index=0xFFFFFFFF, tag=""):
         """ Add MACIP acl
 
@@ -2251,13 +2263,9 @@ class VppPapiProvider(object):
         :param tag: acl tag
         """
 
-        # return self.api(self.papi.macip_acl_add_replace,
-        #                 {'acl_index': acl_index,
-        #                  'r': rules,
-        #                  'count': len(rules),
-        #                  'tag': tag})
-        return self.api(self.papi.macip_acl_add,
-                        {'r': rules,
+        return self.api(self.papi.macip_acl_add_replace,
+                        {'acl_index': acl_index,
+                         'r': rules,
                          'count': len(rules),
                          'tag': tag})
 
