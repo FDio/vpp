@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_23a65611",
+        "filename": "src/vlib/buffer.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-07T15:46:33Z",
+      "side": 1,
+      "message": "Configurable?",
+      "revId": "43bba71139c76658917d01bc9ae8bf53c933cffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_43a152f7",
+        "filename": "src/vlib/unix/physmem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-07T15:46:33Z",
+      "side": 1,
+      "message": "Mother of God, why isn\u0027t this in glibc?",
+      "revId": "43bba71139c76658917d01bc9ae8bf53c933cffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_639c4ec1",
+        "filename": "src/vlib/unix/physmem.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 188,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-07T15:46:33Z",
+      "side": 1,
+      "message": "I assume this is to match the DPDK MAX_MEMSEGS setting...",
+      "revId": "43bba71139c76658917d01bc9ae8bf53c933cffe",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
