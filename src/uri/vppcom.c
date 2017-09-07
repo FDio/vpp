@@ -1369,23 +1369,18 @@ vppcom_cfg_heapsize (char *conf_fname)
 	  argc++;
 	  char **tmp = realloc (argv, argc * sizeof (char *));
 	  if (tmp == NULL)
-	    {
-	      fclose (fp);
-	      goto defaulted;
-	    }
+	    goto defaulted;
 	  argv = tmp;
 	  arg = strndup (p, 1024);
 	  if (arg == NULL)
-	    {
-	      fclose (fp);
-	      goto defaulted;
-	    }
+	    goto defaulted;
 	  argv[argc - 1] = arg;
 	  p = strtok (NULL, " \t\n");
 	}
     }
 
   fclose (fp);
+  fp = NULL;
 
   char **tmp = realloc (argv, (argc + 1) * sizeof (char *));
   if (tmp == NULL)
@@ -1438,6 +1433,10 @@ vppcom_cfg_heapsize (char *conf_fname)
     }
 
 defaulted:
+  if (fp != NULL)
+    fclose (fp);
+  if (argv != NULL)
+    free (argv);
   if (!clib_mem_init (0, vcl_cfg->heapsize))
     clib_warning ("[%d] vppcom heap allocation failure!", vcm->my_pid);
   else if (VPPCOM_DEBUG > 0)
@@ -1687,7 +1686,7 @@ input_done:
   unformat_free (input);
 
 file_done:
-  if (fd > 0)
+  if (fd >= 0)
     close (fd);
 }
 
