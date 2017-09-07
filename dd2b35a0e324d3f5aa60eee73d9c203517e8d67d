@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_03a59a52",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 692,
+      "author": {
+        "id": 15
+      },
+      "writtenOn": "2017-09-07T18:20:24Z",
+      "side": 1,
+      "message": "Ok so the thing that was confusing me was more \"why statics\" at all since I\u0027m not maintaining state, and true without statics I was missing vec_free() ... doh! ... but this is more about not having to manage memory explicitly by allowing the memory manager to do it once (static) and letting the underlying vec_add1() and vec_reset_length() grow and shrink the library without having to re-alloc a new vector each call. So its more a performance thing than a \"static scoping thing\".\n\nI\u0027m not married to \"do_ip46_fib_statics_t\" per se, but its more that ultimately I want to create a more modular structure for new things we may want to count, without having to put a heap of \"stuff\" into stats_main_t.\n\nNew patch coming.",
+      "parentUuid": "3a4b7175_c392e256",
+      "range": {
+        "startLine": 690,
+        "startChar": 0,
+        "endLine": 692,
+        "endChar": 44
+      },
+      "revId": "dd2b35a0e324d3f5aa60eee73d9c203517e8d67d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_63b7aed9",
         "filename": "src/vpp/stats/stats.h",
         "patchSetId": 19
