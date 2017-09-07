@@ -88,6 +88,7 @@ extern vlib_node_registration_t l2output_node;
  _(CFM,               "feature-bitmap-drop")        \
  _(QOS,               "feature-bitmap-drop")        \
  _(ACL,               "l2-output-acl")              \
+ _(ACL_PLUGIN,        "l2-output-acl-plugin")        \
  _(L2PT,              "feature-bitmap-drop")        \
  _(EFP_FILTER,        "l2-efp-filter")              \
  _(IPIW,              "feature-bitmap-drop")        \

@@ -196,8 +196,10 @@ typedef struct {
   /* next node indices for L2 dispatch */
   u32 fa_acl_in_ip4_l2_node_feat_next_node_index[32];
   u32 fa_acl_in_ip6_l2_node_feat_next_node_index[32];
+  u32 fa_acl_in_l2_node_feat_next_node_index[32];
   u32 fa_acl_out_ip4_l2_node_feat_next_node_index[32];
   u32 fa_acl_out_ip6_l2_node_feat_next_node_index[32];
+  u32 fa_acl_out_l2_node_feat_next_node_index[32];
 
   /* EH values that we can skip over */
   uword *fa_ipv6_known_eh_bitmap;

@@ -459,7 +459,8 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 
   /* switch to global heap while calling vnet_* functions */
   clib_mem_set_heap (cm->vlib_main->heap_base);
-  vnet_l2_input_classify_enable_disable (sw_if_index, 0);
+  // vnet_l2_input_classify_enable_disable (sw_if_index, 0);
+  l2input_intf_bitmap_enable(sw_if_index, L2INPUT_FEAT_ACL_PLUGIN, 0);
 
   if (am->acl_ip4_input_classify_table_by_sw_if_index[sw_if_index] != ~0)
     {
@@ -501,7 +502,8 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   /* switch to global heap while calling vnet_* functions */
   clib_mem_set_heap (cm->vlib_main->heap_base);
 
-  vnet_l2_output_classify_enable_disable (sw_if_index, 0);
+  // vnet_l2_output_classify_enable_disable (sw_if_index, 0);
+  l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_ACL_PLUGIN, 0);
 
   if (am->acl_ip4_output_classify_table_by_sw_if_index[sw_if_index] != ~0)
     {
@@ -583,7 +585,8 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   am->acl_ip6_input_classify_table_by_sw_if_index[sw_if_index] =
     ip6_table_index;
 
-  vnet_l2_input_classify_enable_disable (sw_if_index, 1);
+  // vnet_l2_input_classify_enable_disable (sw_if_index, 1);
+  l2input_intf_bitmap_enable(sw_if_index, L2INPUT_FEAT_ACL_PLUGIN, 1);
 done:
   clib_mem_set_heap (prevheap);
   return rv;
@@ -645,7 +648,8 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   am->acl_ip6_output_classify_table_by_sw_if_index[sw_if_index] =
     ip6_table_index;
 
-  vnet_l2_output_classify_enable_disable (sw_if_index, 1);
+  // vnet_l2_output_classify_enable_disable (sw_if_index, 1);
+  l2output_intf_bitmap_enable (sw_if_index, L2OUTPUT_FEAT_ACL_PLUGIN, 1);
 done:
   clib_mem_set_heap (prevheap);
   return rv;
@@ -1865,11 +1869,12 @@ acl_setup_fa_nodes (void)
 {
   vlib_main_t *vm = vlib_get_main ();
   acl_main_t *am = &acl_main;
-  vlib_node_t *n, *n4, *n6;
+  vlib_node_t *n, *n4, *n6, *n2;
 
   n = vlib_get_node_by_name (vm, (u8 *) "l2-input-classify");
   n4 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-in-ip4-l2");
   n6 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-in-ip6-l2");
+  n2 = vlib_get_node_by_name (vm, (u8 *) "l2-input-acl-plugin");
 
 
   am->l2_input_classify_next_acl_ip4 =
@@ -1885,10 +1890,15 @@ acl_setup_fa_nodes (void)
                                l2input_get_feat_names (),
                                am->fa_acl_in_ip6_l2_node_feat_next_node_index);
 
+  feat_bitmap_init_next_nodes (vm, n2->index, L2INPUT_N_FEAT,
+                               l2input_get_feat_names (),
+                               am->fa_acl_in_l2_node_feat_next_node_index);
+
 
   n = vlib_get_node_by_name (vm, (u8 *) "l2-output-classify");
   n4 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-out-ip4-l2");
   n6 = vlib_get_node_by_name (vm, (u8 *) "acl-plugin-out-ip6-l2");
+  n2 = vlib_get_node_by_name (vm, (u8 *) "l2-output-acl-plugin");
 
   am->l2_output_classify_next_acl_ip4 =
     vlib_node_add_next_with_slot (vm, n->index, n4->index, ~0);
@@ -1902,6 +1912,10 @@ acl_setup_fa_nodes (void)
   feat_bitmap_init_next_nodes (vm, n6->index, L2OUTPUT_N_FEAT,
                                l2output_get_feat_names (),
                                am->fa_acl_out_ip6_l2_node_feat_next_node_index);
+
+  feat_bitmap_init_next_nodes (vm, n2->index, L2OUTPUT_N_FEAT,
+                               l2output_get_feat_names (),
+                               am->fa_acl_out_l2_node_feat_next_node_index);
 }
 
 static void

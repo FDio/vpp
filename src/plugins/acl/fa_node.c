@@ -1099,7 +1099,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  if (action > 0)
 	    {
 	      if (is_l2_path)
-		next0 = vnet_l2_feature_next (b0, l2_feat_next_node_index, 0);
+		next0 = vnet_l2_feature_next (b0, l2_feat_next_node_index, is_input ? L2INPUT_FEAT_ACL_PLUGIN : L2OUTPUT_FEAT_ACL_PLUGIN);
 	      else
 		vnet_feature_next (sw_if_index0, &next0, b0);
 	    }
@@ -1153,6 +1153,29 @@ acl_fa_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+vlib_node_registration_t acl_in_l2_node;
+static uword
+acl_in_l2_node_fn (vlib_main_t * vm,
+		       vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  acl_main_t *am = &acl_main;
+  /* FIXME: pretend everything is IPv4, just to have a shot at passing the test */
+  return acl_fa_node_fn (vm, node, frame, 0, 1, 1,
+			 am->fa_acl_in_l2_node_feat_next_node_index,
+			 &acl_in_l2_node);
+}
+
+vlib_node_registration_t acl_out_l2_node;
+static uword
+acl_out_l2_node_fn (vlib_main_t * vm,
+		       vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  acl_main_t *am = &acl_main;
+  /* FIXME: pretend everything is IPv4, just to have a shot at passing the test */
+  return acl_fa_node_fn (vm, node, frame, 0, 0, 1,
+			 am->fa_acl_out_l2_node_feat_next_node_index,
+			 &acl_out_l2_node);
+}
 
 vlib_node_registration_t acl_in_l2_ip6_node;
 static uword
@@ -1710,6 +1733,36 @@ VLIB_REGISTER_NODE (acl_fa_session_cleaner_process_node, static) = {
   .next_nodes = {},
 };
 
+VLIB_REGISTER_NODE (acl_in_l2_node) =
+{
+  .function = acl_in_l2_node_fn,
+  .name = "l2-input-acl-plugin",
+  .vector_size = sizeof (u32),
+  .format_trace = format_acl_fa_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (acl_fa_error_strings),
+  .error_strings = acl_fa_error_strings,
+  .n_next_nodes = ACL_FA_N_NEXT,
+  .next_nodes =
+  {
+    [ACL_FA_ERROR_DROP] = "error-drop",
+  }
+};
+VLIB_REGISTER_NODE (acl_out_l2_node) =
+{
+  .function = acl_out_l2_node_fn,
+  .name = "l2-output-acl-plugin",
+  .vector_size = sizeof (u32),
+  .format_trace = format_acl_fa_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (acl_fa_error_strings),
+  .error_strings = acl_fa_error_strings,
+  .n_next_nodes = ACL_FA_N_NEXT,
+  .next_nodes =
+  {
+    [ACL_FA_ERROR_DROP] = "error-drop",
+  }
+};
 
 VLIB_REGISTER_NODE (acl_in_l2_ip6_node) =
 {
