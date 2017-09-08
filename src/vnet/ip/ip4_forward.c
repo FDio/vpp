@@ -2032,11 +2032,12 @@ ip4_arp_inline (vlib_main_t * vm,
 	    }
 	  b0 ^= sw_if_index0;
 
+	  hash_v3_mix32 (a0, b0, c0);
 	  hash_v3_finalize32 (a0, b0, c0);
 
 	  c0 &= BITS (hash_bitmap) - 1;
-	  c0 = c0 / BITS (uword);
 	  m0 = (uword) 1 << (c0 % BITS (uword));
+	  c0 = c0 / BITS (uword);
 
 	  bm0 = hash_bitmap[c0];
 	  drop0 = (bm0 & m0) != 0;
