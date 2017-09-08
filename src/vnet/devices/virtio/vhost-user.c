@@ -89,7 +89,7 @@
 
 #define UNIX_GET_FD(unixfd_idx) \
     (unixfd_idx != ~0) ? \
-	pool_elt_at_index (unix_main.file_pool, \
+	pool_elt_at_index (file_main.file_pool, \
 			   unixfd_idx)->file_descriptor : -1;
 
 #define foreach_virtio_trace_flags \
@@ -477,7 +477,7 @@ vhost_user_set_interrupt_pending (vhost_user_intf_t * vui, u32 ifq)
 }
 
 static clib_error_t *
-vhost_user_callfd_read_ready (unix_file_t * uf)
+vhost_user_callfd_read_ready (clib_file_t * uf)
 {
   __attribute__ ((unused)) int n;
   u8 buff[8];
@@ -488,7 +488,7 @@ vhost_user_callfd_read_ready (unix_file_t * uf)
 }
 
 static clib_error_t *
-vhost_user_kickfd_read_ready (unix_file_t * uf)
+vhost_user_kickfd_read_ready (clib_file_t * uf)
 {
   __attribute__ ((unused)) int n;
   u8 buff[8];
@@ -569,16 +569,16 @@ vhost_user_vring_close (vhost_user_intf_t * vui, u32 qid)
   vhost_user_vring_t *vring = &vui->vrings[qid];
   if (vring->kickfd_idx != ~0)
     {
-      unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+      clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
 					   vring->kickfd_idx);
-      unix_file_del (&unix_main, uf);
+      clib_file_del (&file_main, uf);
       vring->kickfd_idx = ~0;
     }
   if (vring->callfd_idx != ~0)
     {
-      unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+      clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
 					   vring->callfd_idx);
-      unix_file_del (&unix_main, uf);
+      clib_file_del (&file_main, uf);
       vring->callfd_idx = ~0;
     }
   if (vring->errfd != -1)
@@ -597,10 +597,10 @@ vhost_user_if_disconnect (vhost_user_intf_t * vui)
 
   vnet_hw_interface_set_flags (vnm, vui->hw_if_index, 0);
 
-  if (vui->unix_file_index != ~0)
+  if (vui->clib_file_index != ~0)
     {
-      unix_file_del (&unix_main, unix_main.file_pool + vui->unix_file_index);
-      vui->unix_file_index = ~0;
+      clib_file_del (&file_main, file_main.file_pool + vui->clib_file_index);
+      vui->clib_file_index = ~0;
     }
 
   vui->is_up = 0;
@@ -654,7 +654,7 @@ vhost_user_log_dirty_pages (vhost_user_intf_t * vui, u64 addr, u64 len)
   }
 
 static clib_error_t *
-vhost_user_socket_read (unix_file_t * uf)
+vhost_user_socket_read (clib_file_t * uf)
 {
   int n, i;
   int fd, number_of_fds = 0;
@@ -666,7 +666,7 @@ vhost_user_socket_read (unix_file_t * uf)
   vhost_user_intf_t *vui;
   struct cmsghdr *cmsg;
   u8 q;
-  unix_file_t template = { 0 };
+  clib_file_t template = { 0 };
   vnet_main_t *vnm = vnet_get_main ();
 
   vui = pool_elt_at_index (vum->vhost_user_interfaces, uf->private_data);
@@ -927,9 +927,9 @@ vhost_user_socket_read (unix_file_t * uf)
       /* if there is old fd, delete and close it */
       if (vui->vrings[q].callfd_idx != ~0)
 	{
-	  unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+	  clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
 					       vui->vrings[q].callfd_idx);
-	  unix_file_del (&unix_main, uf);
+	  clib_file_del (&file_main, uf);
 	  vui->vrings[q].callfd_idx = ~0;
 	}
 
@@ -945,7 +945,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	  template.file_descriptor = fds[0];
 	  template.private_data =
 	    ((vui - vhost_user_main.vhost_user_interfaces) << 8) + q;
-	  vui->vrings[q].callfd_idx = unix_file_add (&unix_main, &template);
+	  vui->vrings[q].callfd_idx = clib_file_add (&file_main, &template);
 	}
       else
 	vui->vrings[q].callfd_idx = ~0;
@@ -959,9 +959,9 @@ vhost_user_socket_read (unix_file_t * uf)
 
       if (vui->vrings[q].kickfd_idx != ~0)
 	{
-	  unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+	  clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
 					       vui->vrings[q].kickfd_idx);
-	  unix_file_del (&unix_main, uf);
+	  clib_file_del (&file_main, uf);
 	  vui->vrings[q].kickfd_idx = ~0;
 	}
 
@@ -978,7 +978,7 @@ vhost_user_socket_read (unix_file_t * uf)
 	  template.private_data =
 	    (((uword) (vui - vhost_user_main.vhost_user_interfaces)) << 8) +
 	    q;
-	  vui->vrings[q].kickfd_idx = unix_file_add (&unix_main, &template);
+	  vui->vrings[q].kickfd_idx = clib_file_add (&file_main, &template);
 	}
       else
 	{
@@ -1168,7 +1168,7 @@ close_socket:
 }
 
 static clib_error_t *
-vhost_user_socket_error (unix_file_t * uf)
+vhost_user_socket_error (clib_file_t * uf)
 {
   vlib_main_t *vm = vlib_get_main ();
   vhost_user_main_t *vum = &vhost_user_main;
@@ -1184,11 +1184,11 @@ vhost_user_socket_error (unix_file_t * uf)
 }
 
 static clib_error_t *
-vhost_user_socksvr_accept_ready (unix_file_t * uf)
+vhost_user_socksvr_accept_ready (clib_file_t * uf)
 {
   int client_fd, client_len;
   struct sockaddr_un client;
-  unix_file_t template = { 0 };
+  clib_file_t template = { 0 };
   vhost_user_main_t *vum = &vhost_user_main;
   vhost_user_intf_t *vui;
 
@@ -1207,7 +1207,7 @@ vhost_user_socksvr_accept_ready (unix_file_t * uf)
   template.error_function = vhost_user_socket_error;
   template.file_descriptor = client_fd;
   template.private_data = vui - vhost_user_main.vhost_user_interfaces;
-  vui->unix_file_index = unix_file_add (&unix_main, &template);
+  vui->clib_file_index = clib_file_add (&file_main, &template);
   return 0;
 }
 
@@ -2475,7 +2475,7 @@ vhost_user_process (vlib_main_t * vm,
   vhost_user_intf_t *vui;
   struct sockaddr_un sun;
   int sockfd;
-  unix_file_t template = { 0 };
+  clib_file_t template = { 0 };
   f64 timeout = 3153600000.0 /* 100 years */ ;
   uword *event_data = 0;
 
@@ -2496,7 +2496,7 @@ vhost_user_process (vlib_main_t * vm,
       pool_foreach (vui, vum->vhost_user_interfaces, {
 
 	  if (vui->unix_server_index == ~0) { //Nothing to do for server sockets
-	      if (vui->unix_file_index == ~0)
+	      if (vui->clib_file_index == ~0)
 		{
 		  if ((sockfd < 0) &&
 		      ((sockfd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0))
@@ -2534,7 +2534,7 @@ vhost_user_process (vlib_main_t * vm,
 		      template.file_descriptor = sockfd;
 		      template.private_data =
 			  vui - vhost_user_main.vhost_user_interfaces;
-		      vui->unix_file_index = unix_file_add (&unix_main, &template);
+		      vui->clib_file_index = clib_file_add (&file_main, &template);
 
 		      /* This sockfd is considered consumed */
 		      sockfd = -1;
@@ -2549,7 +2549,7 @@ vhost_user_process (vlib_main_t * vm,
 		  /* check if socket is alive */
 		  int error = 0;
 		  socklen_t len = sizeof (error);
-		  int fd = UNIX_GET_FD(vui->unix_file_index);
+		  int fd = UNIX_GET_FD(vui->clib_file_index);
 		  int retval =
 		      getsockopt (fd, SOL_SOCKET, SO_ERROR, &error, &len);
 
@@ -2596,9 +2596,9 @@ vhost_user_term_if (vhost_user_intf_t * vui)
   if (vui->unix_server_index != ~0)
     {
       //Close server socket
-      unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
+      clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
 					   vui->unix_server_index);
-      unix_file_del (&unix_main, uf);
+      clib_file_del (&file_main, uf);
       vui->unix_server_index = ~0;
       unlink (vui->sock_filename);
     }
@@ -2780,11 +2780,11 @@ vhost_user_vui_init (vnet_main_t * vnm,
   sw = vnet_get_hw_sw_interface (vnm, vui->hw_if_index);
   if (server_sock_fd != -1)
     {
-      unix_file_t template = { 0 };
+      clib_file_t template = { 0 };
       template.read_function = vhost_user_socksvr_accept_ready;
       template.file_descriptor = server_sock_fd;
       template.private_data = vui - vum->vhost_user_interfaces;	//hw index
-      vui->unix_server_index = unix_file_add (&unix_main, &template);
+      vui->unix_server_index = clib_file_add (&file_main, &template);
     }
   else
     {
@@ -2797,7 +2797,7 @@ vhost_user_vui_init (vnet_main_t * vnm,
   vui->sock_errno = 0;
   vui->is_up = 0;
   vui->feature_mask = feature_mask;
-  vui->unix_file_index = ~0;
+  vui->clib_file_index = ~0;
   vui->log_base_addr = 0;
   vui->if_index = vui - vum->vhost_user_interfaces;
   mhash_set_mem (&vum->if_index_by_sock_name, vui->sock_filename,

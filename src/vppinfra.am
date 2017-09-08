@@ -183,6 +183,7 @@ nobase_include_HEADERS = \
   vppinfra/error.h \
   vppinfra/error_bootstrap.h \
   vppinfra/fifo.h \
+  vppinfra/file.h \
   vppinfra/format.h \
   vppinfra/graph.h \
   vppinfra/hash.h \

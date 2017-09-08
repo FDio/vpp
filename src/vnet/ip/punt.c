@@ -550,7 +550,7 @@ VLIB_REGISTER_NODE (punt_socket_rx_node, static) =
     format_punt_trace,};
 
 static clib_error_t *
-punt_socket_read_ready (unix_file_t * uf)
+punt_socket_read_ready (clib_file_t * uf)
 {
   vlib_main_t *vm = vlib_get_main ();
   punt_main_t *pm = &punt_main;
@@ -790,11 +790,11 @@ punt_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   /* Register socket */
-  unix_main_t *um = &unix_main;
-  unix_file_t template = { 0 };
+  clib_file_main_t *fm = &file_main;
+  clib_file_t template = { 0 };
   template.read_function = punt_socket_read_ready;
   template.file_descriptor = pm->socket_fd;
-  pm->unix_file_index = unix_file_add (um, &template);
+  pm->clib_file_index = clib_file_add (fm, &template);
 
   pm->is_configured = true;
 

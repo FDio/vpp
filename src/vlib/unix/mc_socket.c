@@ -243,7 +243,7 @@ recvmsg_helper (mc_socket_main_t * msm,
 }
 
 static clib_error_t *
-mastership_socket_read_ready (unix_file_t * uf)
+mastership_socket_read_ready (clib_file_t * uf)
 {
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_main_t *mcm = &msm->mc_main;
@@ -263,7 +263,7 @@ mastership_socket_read_ready (unix_file_t * uf)
 }
 
 static clib_error_t *
-to_relay_socket_read_ready (unix_file_t * uf)
+to_relay_socket_read_ready (clib_file_t * uf)
 {
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_main_t *mcm = &msm->mc_main;
@@ -297,7 +297,7 @@ to_relay_socket_read_ready (unix_file_t * uf)
 }
 
 static clib_error_t *
-from_relay_socket_read_ready (unix_file_t * uf)
+from_relay_socket_read_ready (clib_file_t * uf)
 {
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_main_t *mcm = &msm->mc_main;
@@ -317,7 +317,7 @@ from_relay_socket_read_ready (unix_file_t * uf)
 }
 
 static clib_error_t *
-join_socket_read_ready (unix_file_t * uf)
+join_socket_read_ready (clib_file_t * uf)
 {
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_main_t *mcm = &msm->mc_main;
@@ -354,7 +354,7 @@ join_socket_read_ready (unix_file_t * uf)
 }
 
 static clib_error_t *
-ack_socket_read_ready (unix_file_t * uf)
+ack_socket_read_ready (clib_file_t * uf)
 {
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_main_t *mcm = &msm->mc_main;
@@ -371,10 +371,11 @@ ack_socket_read_ready (unix_file_t * uf)
 
 static void
 catchup_cleanup (mc_socket_main_t * msm,
-		 mc_socket_catchup_t * c, unix_main_t * um, unix_file_t * uf)
+		 mc_socket_catchup_t * c, clib_file_main_t * um,
+		 clib_file_t * uf)
 {
   hash_unset (msm->catchup_index_by_file_descriptor, uf->file_descriptor);
-  unix_file_del (um, uf);
+  clib_file_del (um, uf);
   vec_free (c->input_vector);
   vec_free (c->output_vector);
   pool_put (msm->catchups, c);
@@ -390,9 +391,9 @@ find_catchup_from_file_descriptor (mc_socket_main_t * msm,
 }
 
 static clib_error_t *
-catchup_socket_read_ready (unix_file_t * uf, int is_server)
+catchup_socket_read_ready (clib_file_t * uf, int is_server)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *um = &file_main;
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_main_t *mcm = &msm->mc_main;
   mc_socket_catchup_t *c =
@@ -440,13 +441,13 @@ catchup_socket_read_ready (unix_file_t * uf, int is_server)
 }
 
 static clib_error_t *
-catchup_server_read_ready (unix_file_t * uf)
+catchup_server_read_ready (clib_file_t * uf)
 {
   return catchup_socket_read_ready (uf, /* is_server */ 1);
 }
 
 static clib_error_t *
-catchup_client_read_ready (unix_file_t * uf)
+catchup_client_read_ready (clib_file_t * uf)
 {
   if (MC_EVENT_LOGGING)
     {
@@ -460,9 +461,9 @@ catchup_client_read_ready (unix_file_t * uf)
 }
 
 static clib_error_t *
-catchup_socket_write_ready (unix_file_t * uf, int is_server)
+catchup_socket_write_ready (clib_file_t * uf, int is_server)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *um = &file_main;
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_socket_catchup_t *c =
     find_catchup_from_file_descriptor (msm, uf->file_descriptor);
@@ -522,7 +523,7 @@ catchup_socket_write_ready (unix_file_t * uf, int is_server)
       if (!is_server)
 	{
 	  uf->flags &= ~UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
-	  unix_main.file_update (uf, UNIX_FILE_UPDATE_MODIFY);
+	  file_main.file_update (uf, UNIX_FILE_UPDATE_MODIFY);
 	  /* Send EOF to other side. */
 	  shutdown (uf->file_descriptor, SHUT_WR);
 	  return error;
@@ -537,21 +538,21 @@ catchup_socket_write_ready (unix_file_t * uf, int is_server)
 }
 
 static clib_error_t *
-catchup_server_write_ready (unix_file_t * uf)
+catchup_server_write_ready (clib_file_t * uf)
 {
   return catchup_socket_write_ready (uf, /* is_server */ 1);
 }
 
 static clib_error_t *
-catchup_client_write_ready (unix_file_t * uf)
+catchup_client_write_ready (clib_file_t * uf)
 {
   return catchup_socket_write_ready (uf, /* is_server */ 0);
 }
 
 static clib_error_t *
-catchup_socket_error_ready (unix_file_t * uf)
+catchup_socket_error_ready (clib_file_t * uf)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *um = &file_main;
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   mc_socket_catchup_t *c =
     find_catchup_from_file_descriptor (msm, uf->file_descriptor);
@@ -560,13 +561,13 @@ catchup_socket_error_ready (unix_file_t * uf)
 }
 
 static clib_error_t *
-catchup_listen_read_ready (unix_file_t * uf)
+catchup_listen_read_ready (clib_file_t * uf)
 {
   mc_socket_main_t *msm = (mc_socket_main_t *) uf->private_data;
   struct sockaddr_in client_addr;
   int client_len;
   mc_socket_catchup_t *c;
-  unix_file_t template = { 0 };
+  clib_file_t template = { 0 };
 
   pool_get (msm->catchups, c);
   memset (c, 0, sizeof (c[0]));
@@ -616,7 +617,7 @@ catchup_listen_read_ready (unix_file_t * uf)
   template.error_function = catchup_socket_error_ready;
   template.file_descriptor = c->socket;
   template.private_data = pointer_to_uword (msm);
-  c->unix_file_index = unix_file_add (&unix_main, &template);
+  c->clib_file_index = clib_file_add (&file_main, &template);
   hash_set (msm->catchup_index_by_file_descriptor, c->socket,
 	    c - msm->catchups);
 
@@ -772,45 +773,45 @@ socket_setup (mc_socket_main_t * msm)
 
   /* epoll setup for multicast mastership socket */
   {
-    unix_file_t template = { 0 };
+    clib_file_t template = { 0 };
 
     template.read_function = mastership_socket_read_ready;
     template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_MASTERSHIP].socket;
     template.private_data = (uword) msm;
-    unix_file_add (&unix_main, &template);
+    clib_file_add (&file_main, &template);
 
     /* epoll setup for multicast to_relay socket */
     template.read_function = to_relay_socket_read_ready;
     template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_TO_RELAY].socket;
     template.private_data = (uword) msm;
-    unix_file_add (&unix_main, &template);
+    clib_file_add (&file_main, &template);
 
     /* epoll setup for multicast from_relay socket */
     template.read_function = from_relay_socket_read_ready;
     template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_USER_REQUEST_FROM_RELAY].socket;
     template.private_data = (uword) msm;
-    unix_file_add (&unix_main, &template);
+    clib_file_add (&file_main, &template);
 
     template.read_function = join_socket_read_ready;
     template.file_descriptor =
       msm->multicast_sockets[MC_TRANSPORT_JOIN].socket;
     template.private_data = (uword) msm;
-    unix_file_add (&unix_main, &template);
+    clib_file_add (&file_main, &template);
 
     /* epoll setup for ack rx socket */
     template.read_function = ack_socket_read_ready;
     template.file_descriptor = msm->ack_socket;
     template.private_data = (uword) msm;
-    unix_file_add (&unix_main, &template);
+    clib_file_add (&file_main, &template);
 
     /* epoll setup for TCP catchup server */
     template.read_function = catchup_listen_read_ready;
     template.file_descriptor = msm->catchup_server_socket;
     template.private_data = (uword) msm;
-    unix_file_add (&unix_main, &template);
+    clib_file_add (&file_main, &template);
   }
 
   return 0;
@@ -820,8 +821,8 @@ static void *
 catchup_add_pending_output (mc_socket_catchup_t * c, uword n_bytes,
 			    u8 * set_output_vector)
 {
-  unix_file_t *uf = pool_elt_at_index (unix_main.file_pool,
-				       c->unix_file_index);
+  clib_file_t *uf = pool_elt_at_index (file_main.file_pool,
+				       c->clib_file_index);
   u8 *result = 0;
 
   if (set_output_vector)
@@ -833,7 +834,7 @@ catchup_add_pending_output (mc_socket_catchup_t * c, uword n_bytes,
       int skip_update = 0 != (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
       uf->flags |= UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
       if (!skip_update)
-	unix_main.file_update (uf, UNIX_FILE_UPDATE_MODIFY);
+	file_main.file_update (uf, UNIX_FILE_UPDATE_MODIFY);
     }
   return result;
 }
@@ -847,7 +848,7 @@ catchup_request_fun (void *transport_main,
   vlib_main_t *vm = mcm->vlib_main;
   mc_socket_catchup_t *c;
   struct sockaddr_in addr;
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *um = &file_main;
   int one = 1;
 
   pool_get (msm->catchups, c);
@@ -895,14 +896,14 @@ catchup_request_fun (void *transport_main,
     }
 
   {
-    unix_file_t template = { 0 };
+    clib_file_t template = { 0 };
 
     template.read_function = catchup_client_read_ready;
     template.write_function = catchup_client_write_ready;
     template.error_function = catchup_socket_error_ready;
     template.file_descriptor = c->socket;
     template.private_data = (uword) msm;
-    c->unix_file_index = unix_file_add (um, &template);
+    c->clib_file_index = clib_file_add (um, &template);
 
     hash_set (msm->catchup_index_by_file_descriptor, c->socket,
 	      c - msm->catchups);

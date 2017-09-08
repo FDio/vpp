@@ -40,41 +40,15 @@
 #ifndef included_unix_unix_h
 #define included_unix_unix_h
 
+#include <vppinfra/file.h>
 #include <vppinfra/socket.h>
 #include <termios.h>
-
-
-struct unix_file;
-typedef clib_error_t *(unix_file_function_t) (struct unix_file * f);
-
-typedef struct unix_file
-{
-  /* Unix file descriptor from open/socket. */
-  u32 file_descriptor;
-
-  u32 flags;
-#define UNIX_FILE_DATA_AVAILABLE_TO_WRITE (1 << 0)
-#define UNIX_FILE_EVENT_EDGE_TRIGGERED   (1 << 1)
-
-  /* Data available for function's use. */
-  uword private_data;
-
-  /* Functions to be called when read/write data becomes ready. */
-  unix_file_function_t *read_function, *write_function, *error_function;
-} unix_file_t;
 
 typedef struct
 {
   f64 time;
   clib_error_t *error;
 } unix_error_history_t;
-
-typedef enum
-{
-  UNIX_FILE_UPDATE_ADD,
-  UNIX_FILE_UPDATE_MODIFY,
-  UNIX_FILE_UPDATE_DELETE,
-} unix_file_update_type_t;
 
 typedef struct
 {
@@ -86,14 +60,8 @@ typedef struct
 #define UNIX_FLAG_INTERACTIVE (1 << 0)
 #define UNIX_FLAG_NODAEMON (1 << 1)
 
-  /* Pool of files to poll for input/output. */
-  unix_file_t *file_pool;
-
   /* CLI listen socket. */
   clib_socket_t cli_listen_socket;
-
-  void (*file_update) (unix_file_t * file,
-		       unix_file_update_type_t update_type);
 
   /* Circular buffer of last unix errors. */
   unix_error_history_t error_history[128];
@@ -138,47 +106,7 @@ typedef struct
 
 /* Global main structure. */
 extern unix_main_t unix_main;
-
-always_inline uword
-unix_file_add (unix_main_t * um, unix_file_t * template)
-{
-  unix_file_t *f;
-  pool_get (um->file_pool, f);
-  f[0] = template[0];
-  um->file_update (f, UNIX_FILE_UPDATE_ADD);
-  return f - um->file_pool;
-}
-
-always_inline void
-unix_file_del (unix_main_t * um, unix_file_t * f)
-{
-  um->file_update (f, UNIX_FILE_UPDATE_DELETE);
-  close (f->file_descriptor);
-  f->file_descriptor = ~0;
-  pool_put (um->file_pool, f);
-}
-
-always_inline void
-unix_file_del_by_index (unix_main_t * um, uword index)
-{
-  unix_file_t *uf;
-  uf = pool_elt_at_index (um->file_pool, index);
-  unix_file_del (um, uf);
-}
-
-always_inline uword
-unix_file_set_data_available_to_write (u32 unix_file_index,
-				       uword is_available)
-{
-  unix_file_t *uf = pool_elt_at_index (unix_main.file_pool, unix_file_index);
-  uword was_available = (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
-  if ((was_available != 0) != (is_available != 0))
-    {
-      uf->flags ^= UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
-      unix_main.file_update (uf, UNIX_FILE_UPDATE_MODIFY);
-    }
-  return was_available != 0;
-}
+extern clib_file_main_t file_main;
 
 always_inline void
 unix_save_error (unix_main_t * um, clib_error_t * error)

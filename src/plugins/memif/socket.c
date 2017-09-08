@@ -246,7 +246,7 @@ memif_msg_receive_hello (memif_if_t * mif, memif_msg_t * msg)
 
 static clib_error_t *
 memif_msg_receive_init (memif_if_t ** mifp, memif_msg_t * msg,
-			unix_file_t * uf)
+			clib_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
   memif_socket_file_t *msf =
@@ -258,7 +258,7 @@ memif_msg_receive_init (memif_if_t ** mifp, memif_msg_t * msg,
 
   if (i->version != MEMIF_VERSION)
     {
-      memif_file_del_by_index (uf - unix_main.file_pool);
+      memif_file_del_by_index (uf - file_main.file_pool);
       return clib_error_return (0, "unsupported version");
     }
 
@@ -291,7 +291,7 @@ memif_msg_receive_init (memif_if_t ** mifp, memif_msg_t * msg,
     }
 
   mif->conn_fd = uf->file_descriptor;
-  mif->conn_unix_file_index = uf - unix_main.file_pool;
+  mif->conn_clib_file_index = uf - file_main.file_pool;
   hash_set (msf->dev_instance_by_fd, mif->conn_fd, mif->dev_instance);
   mif->remote_name = memif_str2vec (i->name, sizeof (i->name));
   *mifp = mif;
@@ -316,7 +316,7 @@ memif_msg_receive_init (memif_if_t ** mifp, memif_msg_t * msg,
 error:
   tmp.conn_fd = uf->file_descriptor;
   memif_msg_send_disconnect (&tmp, err);
-  memif_file_del_by_index (uf - unix_main.file_pool);
+  memif_file_del_by_index (uf - file_main.file_pool);
   return err;
 }
 
@@ -377,7 +377,7 @@ memif_msg_receive_add_ring (memif_if_t * mif, memif_msg_t * msg, int fd)
     }
 
   mq->int_fd = fd;
-  mq->int_unix_file_index = ~0;
+  mq->int_clib_file_index = ~0;
   mq->log2_ring_size = ar->log2_ring_size;
   mq->region = ar->region;
   mq->offset = ar->offset;
@@ -422,7 +422,7 @@ memif_msg_receive_disconnect (memif_if_t * mif, memif_msg_t * msg)
 }
 
 static clib_error_t *
-memif_msg_receive (memif_if_t ** mifp, unix_file_t * uf)
+memif_msg_receive (memif_if_t ** mifp, clib_file_t * uf)
 {
   char ctl[CMSG_SPACE (sizeof (int)) +
 	   CMSG_SPACE (sizeof (struct ucred))] = { 0 };
@@ -544,20 +544,21 @@ memif_msg_receive (memif_if_t ** mifp, unix_file_t * uf)
       return err;
     }
 
-  if (clib_fifo_elts (mif->msg_queue) && mif->conn_unix_file_index != ~0)
-    unix_file_set_data_available_to_write (mif->conn_unix_file_index, 1);
+  if (clib_fifo_elts (mif->msg_queue) && mif->conn_clib_file_index != ~0)
+    clib_file_set_data_available_to_write (&file_main,
+					   mif->conn_clib_file_index, 1);
   return 0;
 }
 
 clib_error_t *
-memif_master_conn_fd_read_ready (unix_file_t * uf)
+memif_master_conn_fd_read_ready (clib_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
   memif_socket_file_t *msf =
     pool_elt_at_index (mm->socket_files, uf->private_data);
   uword *p;
   memif_if_t *mif = 0;
-  uword conn_unix_file_index = ~0;
+  uword conn_clib_file_index = ~0;
   clib_error_t *err = 0;
 
   p = hash_get (msf->dev_instance_by_fd, uf->file_descriptor);
@@ -570,13 +571,13 @@ memif_master_conn_fd_read_ready (unix_file_t * uf)
       /* This is new connection, remove index from pending vector */
       int i;
       vec_foreach_index (i, msf->pending_file_indices)
-	if (msf->pending_file_indices[i] == uf - unix_main.file_pool)
+	if (msf->pending_file_indices[i] == uf - file_main.file_pool)
 	{
-	  conn_unix_file_index = msf->pending_file_indices[i];
+	  conn_clib_file_index = msf->pending_file_indices[i];
 	  vec_del1 (msf->pending_file_indices, i);
 	  break;
 	}
-      ASSERT (conn_unix_file_index != ~0);
+      ASSERT (conn_clib_file_index != ~0);
     }
   err = memif_msg_receive (&mif, uf);
   if (err)
@@ -588,7 +589,7 @@ memif_master_conn_fd_read_ready (unix_file_t * uf)
 }
 
 clib_error_t *
-memif_slave_conn_fd_read_ready (unix_file_t * uf)
+memif_slave_conn_fd_read_ready (clib_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
   clib_error_t *err;
@@ -603,17 +604,18 @@ memif_slave_conn_fd_read_ready (unix_file_t * uf)
 }
 
 static clib_error_t *
-memif_conn_fd_write_ready (unix_file_t * uf, memif_if_t * mif)
+memif_conn_fd_write_ready (clib_file_t * uf, memif_if_t * mif)
 {
   memif_msg_fifo_elt_t *e;
   clib_fifo_sub2 (mif->msg_queue, e);
-  unix_file_set_data_available_to_write (mif->conn_unix_file_index, 0);
+  clib_file_set_data_available_to_write (&file_main,
+					 mif->conn_clib_file_index, 0);
   memif_msg_send (mif->conn_fd, &e->msg, e->fd);
   return 0;
 }
 
 clib_error_t *
-memif_master_conn_fd_write_ready (unix_file_t * uf)
+memif_master_conn_fd_write_ready (clib_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
   memif_socket_file_t *msf =
@@ -630,7 +632,7 @@ memif_master_conn_fd_write_ready (unix_file_t * uf)
 }
 
 clib_error_t *
-memif_slave_conn_fd_write_ready (unix_file_t * uf)
+memif_slave_conn_fd_write_ready (clib_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
   memif_if_t *mif = vec_elt_at_index (mm->interfaces, uf->private_data);
@@ -638,7 +640,7 @@ memif_slave_conn_fd_write_ready (unix_file_t * uf)
 }
 
 clib_error_t *
-memif_slave_conn_fd_error (unix_file_t * uf)
+memif_slave_conn_fd_error (clib_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
   memif_if_t *mif = vec_elt_at_index (mm->interfaces, uf->private_data);
@@ -652,7 +654,7 @@ memif_slave_conn_fd_error (unix_file_t * uf)
 }
 
 clib_error_t *
-memif_master_conn_fd_error (unix_file_t * uf)
+memif_master_conn_fd_error (clib_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
   memif_socket_file_t *msf =
@@ -674,7 +676,7 @@ memif_master_conn_fd_error (unix_file_t * uf)
     {
       int i;
       vec_foreach_index (i, msf->pending_file_indices)
-	if (msf->pending_file_indices[i] == uf - unix_main.file_pool)
+	if (msf->pending_file_indices[i] == uf - file_main.file_pool)
 	{
 	  vec_del1 (msf->pending_file_indices, i);
 	  memif_file_del (uf);
@@ -689,7 +691,7 @@ memif_master_conn_fd_error (unix_file_t * uf)
 
 
 clib_error_t *
-memif_conn_fd_accept_ready (unix_file_t * uf)
+memif_conn_fd_accept_ready (clib_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
   memif_socket_file_t *msf =
@@ -697,8 +699,8 @@ memif_conn_fd_accept_ready (unix_file_t * uf)
   int addr_len;
   struct sockaddr_un client;
   int conn_fd;
-  unix_file_t template = { 0 };
-  uword unix_file_index = ~0;
+  clib_file_t template = { 0 };
+  uword clib_file_index = ~0;
   clib_error_t *err;
 
 
@@ -715,16 +717,16 @@ memif_conn_fd_accept_ready (unix_file_t * uf)
   template.file_descriptor = conn_fd;
   template.private_data = uf->private_data;
 
-  memif_file_add (&unix_file_index, &template);
+  memif_file_add (&clib_file_index, &template);
 
   err = memif_msg_enq_hello (conn_fd);
   if (err)
     {
       clib_error_report (err);
-      memif_file_del_by_index (unix_file_index);
+      memif_file_del_by_index (clib_file_index);
     }
   else
-    vec_add1 (msf->pending_file_indices, unix_file_index);
+    vec_add1 (msf->pending_file_indices, clib_file_index);
 
   return 0;
 }

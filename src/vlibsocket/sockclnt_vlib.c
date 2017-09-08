@@ -60,11 +60,11 @@ vl_api_sockclnt_create_reply_t_handler (vl_api_sockclnt_create_reply_t * mp)
 static void
 vl_api_sockclnt_delete_reply_t_handler (vl_api_sockclnt_delete_reply_t * mp)
 {
-  unix_main_t *um = &unix_main;
-  unix_file_t *uf = socket_main.current_uf;
+  clib_file_main_t *fm = &file_main;
+  clib_file_t *uf = socket_main.current_uf;
   vl_api_registration_t *rp = socket_main.current_rp;
 
-  unix_file_del (um, uf);
+  clib_file_del (fm, uf);
   vl_free_socket_registration_index (rp->vl_api_registration_pool_index);
 }
 
@@ -72,8 +72,8 @@ u32
 sockclnt_open_index (char *client_name, char *hostname, int port)
 {
   vl_api_registration_t *rp;
-  unix_main_t *um = &unix_main;
-  unix_file_t template = { 0 };
+  clib_file_main_t *fm = &file_main;
+  clib_file_t template = { 0 };
   int sockfd;
   int one = 1;
   int rv;
@@ -129,7 +129,7 @@ sockclnt_open_index (char *client_name, char *hostname, int port)
   template.file_descriptor = sockfd;
   template.private_data = rp - socket_main.registration_pool;
 
-  rp->unix_file_index = unix_file_add (um, &template);
+  rp->clib_file_index = clib_file_add (fm, &template);
   rp->name = format (0, "%s:%d", hostname, port);
 
   mp = vl_msg_api_alloc (sizeof (*mp));

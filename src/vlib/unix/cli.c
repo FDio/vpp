@@ -141,7 +141,7 @@ typedef struct
 typedef struct
 {
   /** The file index held by unix.c */
-  u32 unix_file_index;
+  u32 clib_file_index;
 
   /** Vector of output pending write to file descriptor. */
   u8 *output_vector;
@@ -502,11 +502,11 @@ unix_cli_match_action (unix_cli_parse_actions_t * a,
  * are available to be sent.
  */
 static void
-unix_cli_add_pending_output (unix_file_t * uf,
+unix_cli_add_pending_output (clib_file_t * uf,
 			     unix_cli_file_t * cf,
 			     u8 * buffer, uword buffer_bytes)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
 
   vec_add (cf->output_vector, buffer, buffer_bytes);
   if (vec_len (cf->output_vector) > 0)
@@ -514,7 +514,7 @@ unix_cli_add_pending_output (unix_file_t * uf,
       int skip_update = 0 != (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
       uf->flags |= UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
       if (!skip_update)
-	um->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
+	fm->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
     }
 }
 
@@ -522,10 +522,10 @@ unix_cli_add_pending_output (unix_file_t * uf,
  * that no more bytes are available to be sent.
  */
 static void
-unix_cli_del_pending_output (unix_file_t * uf,
+unix_cli_del_pending_output (clib_file_t * uf,
 			     unix_cli_file_t * cf, uword n_bytes)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
 
   vec_delete (cf->output_vector, n_bytes, 0);
   if (vec_len (cf->output_vector) <= 0)
@@ -533,7 +533,7 @@ unix_cli_del_pending_output (unix_file_t * uf,
       int skip_update = 0 == (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
       uf->flags &= ~UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
       if (!skip_update)
-	um->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
+	fm->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
     }
 }
 
@@ -580,7 +580,7 @@ unix_vlib_findchr (u8 chr, u8 * str, word len)
  */
 static void
 unix_vlib_cli_output_raw (unix_cli_file_t * cf,
-			  unix_file_t * uf, u8 * buffer, uword buffer_bytes)
+			  clib_file_t * uf, u8 * buffer, uword buffer_bytes)
 {
   int n = 0;
 
@@ -610,7 +610,7 @@ unix_vlib_cli_output_raw (unix_cli_file_t * cf,
  */
 static void
 unix_vlib_cli_output_cooked (unix_cli_file_t * cf,
-			     unix_file_t * uf,
+			     clib_file_t * uf,
 			     u8 * buffer, uword buffer_bytes)
 {
   word end = 0, start = 0;
@@ -646,7 +646,7 @@ unix_vlib_cli_output_cooked (unix_cli_file_t * cf,
 
 /** @brief Output the CLI prompt */
 static void
-unix_cli_cli_prompt (unix_cli_file_t * cf, unix_file_t * uf)
+unix_cli_cli_prompt (unix_cli_file_t * cf, clib_file_t * uf)
 {
   unix_cli_main_t *cm = &unix_cli_main;
 
@@ -655,7 +655,7 @@ unix_cli_cli_prompt (unix_cli_file_t * cf, unix_file_t * uf)
 
 /** @brief Output a pager prompt and show number of buffered lines */
 static void
-unix_cli_pager_prompt (unix_cli_file_t * cf, unix_file_t * uf)
+unix_cli_pager_prompt (unix_cli_file_t * cf, clib_file_t * uf)
 {
   u8 *prompt;
   u32 h;
@@ -678,7 +678,7 @@ unix_cli_pager_prompt (unix_cli_file_t * cf, unix_file_t * uf)
 
 /** @brief Output a pager "skipping" message */
 static void
-unix_cli_pager_message (unix_cli_file_t * cf, unix_file_t * uf,
+unix_cli_pager_message (unix_cli_file_t * cf, clib_file_t * uf,
 			char *message, char *postfix)
 {
   u8 *prompt;
@@ -694,7 +694,7 @@ unix_cli_pager_message (unix_cli_file_t * cf, unix_file_t * uf,
 
 /** @brief Erase the printed pager prompt */
 static void
-unix_cli_pager_prompt_erase (unix_cli_file_t * cf, unix_file_t * uf)
+unix_cli_pager_prompt_erase (unix_cli_file_t * cf, clib_file_t * uf)
 {
   if (cf->ansi_capable)
     {
@@ -716,7 +716,7 @@ unix_cli_pager_prompt_erase (unix_cli_file_t * cf, unix_file_t * uf)
 
 /** @brief Uses an ANSI escape sequence to move the cursor */
 static void
-unix_cli_ansi_cursor (unix_cli_file_t * cf, unix_file_t * uf, u16 x, u16 y)
+unix_cli_ansi_cursor (unix_cli_file_t * cf, clib_file_t * uf, u16 x, u16 y)
 {
   u8 *str;
 
@@ -732,7 +732,7 @@ unix_cli_ansi_cursor (unix_cli_file_t * cf, unix_file_t * uf, u16 x, u16 y)
  * @param uf Unix file of the CLI session.
  */
 static void
-unix_cli_pager_redraw (unix_cli_file_t * cf, unix_file_t * uf)
+unix_cli_pager_redraw (unix_cli_file_t * cf, clib_file_t * uf)
 {
   unix_cli_pager_index_t *pi = NULL;
   u8 *line = NULL;
@@ -930,12 +930,13 @@ static void
 unix_vlib_cli_output (uword cli_file_index, u8 * buffer, uword buffer_bytes)
 {
   unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
-  unix_file_t *uf;
+  clib_file_t *uf;
 
   cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
-  uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
+  uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
 
   if (cf->no_pager || um->cli_pager_buffer_limit == 0 || cf->height == 0)
     {
@@ -1037,7 +1038,8 @@ static void
 unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
 {
   unix_main_t *um = &unix_main;
-  unix_file_t *uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
+  clib_file_main_t *fm = &file_main;
+  clib_file_t *uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
   unix_cli_banner_t *banner;
   int i, len;
 
@@ -1104,7 +1106,7 @@ unix_cli_file_welcome_timer (any arg, f64 delay)
 static i32
 unix_cli_process_telnet (unix_main_t * um,
 			 unix_cli_file_t * cf,
-			 unix_file_t * uf, u8 * input_vector, uword len)
+			 clib_file_t * uf, u8 * input_vector, uword len)
 {
   /* Input_vector starts at IAC byte.
    * See if we have a complete message; if not, return -1 so we wait for more.
@@ -1229,7 +1231,7 @@ static int
 unix_cli_line_process_one (unix_cli_main_t * cm,
 			   unix_main_t * um,
 			   unix_cli_file_t * cf,
-			   unix_file_t * uf,
+			   clib_file_t * uf,
 			   u8 input, unix_cli_parse_action_t action)
 {
   u8 *prev;
@@ -2059,10 +2061,10 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 /** @brief Process input bytes on a stream to provide line editing and
  * command history in the CLI. */
 static int
-unix_cli_line_edit (unix_cli_main_t * cm,
-		    unix_main_t * um, unix_cli_file_t * cf)
+unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
+		    clib_file_main_t * fm, unix_cli_file_t * cf)
 {
-  unix_file_t *uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
+  clib_file_t *uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
   int i;
 
   for (i = 0; i < vec_len (cf->input_vector); i++)
@@ -2139,7 +2141,8 @@ static void
 unix_cli_process_input (unix_cli_main_t * cm, uword cli_file_index)
 {
   unix_main_t *um = &unix_main;
-  unix_file_t *uf;
+  clib_file_main_t *fm = &file_main;
+  clib_file_t *uf;
   unix_cli_file_t *cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
   unformat_input_t input;
   int vlib_parse_eval (u8 *);
@@ -2157,7 +2160,7 @@ more:
   else
     {
       /* Line edit, echo, etc. */
-      if (unix_cli_line_edit (cm, um, cf))
+      if (unix_cli_line_edit (cm, um, fm, cf))
 	/* want more input */
 	return;
     }
@@ -2196,7 +2199,7 @@ more:
 
   /* Re-fetch pointer since pool may have moved. */
   cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
-  uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
+  uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
 
 done:
   /* reset vector; we'll re-use it later  */
@@ -2240,12 +2243,13 @@ static void
 unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
 {
   unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   unix_cli_file_t *cf;
-  unix_file_t *uf;
+  clib_file_t *uf;
   int i;
 
   cf = pool_elt_at_index (cm->cli_file_pool, cli_file_index);
-  uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
+  uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
 
   /* Quit/EOF on stdin means quit program. */
   if (uf->file_descriptor == UNIX_CLI_STDIN_FD)
@@ -2259,7 +2263,7 @@ unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
 
   vec_free (cf->command_history);
 
-  unix_file_del (um, uf);
+  clib_file_del (fm, uf);
 
   unix_cli_file_free (cf);
   pool_put (cm->cli_file_pool, cf);
@@ -2311,7 +2315,7 @@ done:
 /** Called when a CLI session file descriptor can be written to without
  * blocking. */
 static clib_error_t *
-unix_cli_write_ready (unix_file_t * uf)
+unix_cli_write_ready (clib_file_t * uf)
 {
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf;
@@ -2334,7 +2338,7 @@ unix_cli_write_ready (unix_file_t * uf)
 
 /** Called when a CLI session file descriptor has data to be read. */
 static clib_error_t *
-unix_cli_read_ready (unix_file_t * uf)
+unix_cli_read_ready (clib_file_t * uf)
 {
   unix_main_t *um = &unix_main;
   unix_cli_main_t *cm = &unix_cli_main;
@@ -2380,8 +2384,9 @@ static u32
 unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
 {
   unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   unix_cli_file_t *cf;
-  unix_file_t template = { 0 };
+  clib_file_t template = { 0 };
   vlib_main_t *vm = um->vlib_main;
   vlib_node_t *n;
 
@@ -2424,7 +2429,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
   template.private_data = cf - cm->cli_file_pool;
 
   cf->process_node_index = n->index;
-  cf->unix_file_index = unix_file_add (um, &template);
+  cf->clib_file_index = clib_file_add (fm, &template);
   cf->output_vector = 0;
   cf->input_vector = 0;
 
@@ -2439,9 +2444,10 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
 
 /** Telnet listening socket has a new connection. */
 static clib_error_t *
-unix_cli_listen_read_ready (unix_file_t * uf)
+unix_cli_listen_read_ready (clib_file_t * uf)
 {
   unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   unix_cli_main_t *cm = &unix_cli_main;
   clib_socket_t *s = &um->cli_listen_socket;
   clib_socket_t client;
@@ -2497,7 +2503,7 @@ unix_cli_listen_read_ready (unix_file_t * uf)
       /* Setup the pager */
       cf->no_pager = um->cli_no_pager;
 
-      uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
+      uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
 
       /* Send the telnet options */
       unix_vlib_cli_output_raw (cf, uf, charmode_option,
@@ -2517,11 +2523,11 @@ unix_cli_listen_read_ready (unix_file_t * uf)
 static void
 unix_cli_resize_interrupt (int signum)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   unix_cli_main_t *cm = &unix_cli_main;
   unix_cli_file_t *cf = pool_elt_at_index (cm->cli_file_pool,
 					   cm->stdin_cli_file_index);
-  unix_file_t *uf = pool_elt_at_index (um->file_pool, cf->unix_file_index);
+  clib_file_t *uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
   struct winsize ws;
   (void) signum;
 
@@ -2548,6 +2554,7 @@ static clib_error_t *
 unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 {
   unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   unix_cli_main_t *cm = &unix_cli_main;
   int flags;
   clib_error_t *error = 0;
@@ -2640,7 +2647,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
   if (s->config && s->config[0] != 0)
     {
       /* CLI listen. */
-      unix_file_t template = { 0 };
+      clib_file_t template = { 0 };
 
       /* mkdir of file socketu, only under /run  */
       if (strncmp (s->config, "/run", 4) == 0)
@@ -2667,7 +2674,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
       template.read_function = unix_cli_listen_read_ready;
       template.file_descriptor = s->fd;
 
-      unix_file_add (um, &template);
+      clib_file_add (fm, &template);
     }
 
   /* Set CLI prompt. */

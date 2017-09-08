@@ -51,7 +51,7 @@ typedef struct vl_api_registration_
   unix_shared_memory_queue_t *vl_input_queue;
 
   /* socket server and client */
-  u32 unix_file_index;
+  u32 clib_file_index;
   i8 *unprocessed_input;
   u32 unprocessed_msg_length;
   u8 *output_vector;

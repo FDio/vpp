@@ -68,8 +68,8 @@ typedef struct
   /* Minor device for uio device. */
   u32 uio_minor;
 
-  /* Index given by unix_file_add. */
-  u32 unix_file_index;
+  /* Index given by clib_file_add. */
+  u32 clib_file_index;
 
 } linux_pci_device_t;
 
@@ -237,7 +237,7 @@ scan_uio_dir (void *arg, u8 * path_name, u8 * file_name)
 }
 
 static clib_error_t *
-linux_pci_uio_read_ready (unix_file_t * uf)
+linux_pci_uio_read_ready (clib_file_t * uf)
 {
   vlib_pci_main_t *pm = &pci_main;
   vlib_pci_device_t *d;
@@ -257,7 +257,7 @@ linux_pci_uio_read_ready (unix_file_t * uf)
 }
 
 static clib_error_t *
-linux_pci_uio_error_ready (unix_file_t * uf)
+linux_pci_uio_error_ready (clib_file_t * uf)
 {
   u32 error_index = (u32) uf->private_data;
 
@@ -294,15 +294,14 @@ add_device (vlib_pci_device_t * dev, linux_pci_device_t * pdev)
   }
 
   {
-    unix_file_t template = { 0 };
-    unix_main_t *um = &unix_main;
+    clib_file_t template = { 0 };
 
     template.read_function = linux_pci_uio_read_ready;
     template.file_descriptor = l->uio_fd;
     template.error_function = linux_pci_uio_error_ready;
     template.private_data = dev - pm->pci_devs;
 
-    l->unix_file_index = unix_file_add (um, &template);
+    l->clib_file_index = clib_file_add (&file_main, &template);
   }
 }
 
