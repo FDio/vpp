@@ -109,8 +109,8 @@ VLIB_CLI_COMMAND (memif_create_command, static) = {
   .path = "create memif",
   .short_help = "create memif [id <id>] [socket <path>] "
                 "[ring-size <size>] [buffer-size <size>] [hw-addr <mac-address>] "
-		"<master|slave> [rx-queues <number>] [tx-queues <number>]"
-		"[mode ip]",
+		"<master|slave> [rx-queues <number>] [tx-queues <number>] "
+		"[mode ip] [secret <string>]",
   .function = memif_create_command_fn,
 };
 /* *INDENT-ON* */

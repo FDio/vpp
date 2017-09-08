@@ -133,6 +133,9 @@ vl_api_memif_create_t_handler (vl_api_memif_create_t * mp)
   /* role */
   args.is_master = (mp->role == 0);
 
+  /* mode */
+  args.mode = mp->mode;
+
   /* rx/tx queues */
   if (args.is_master == 0)
     {

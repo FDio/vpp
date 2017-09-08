@@ -129,7 +129,7 @@ api_memif_create (vat_main_t * vam)
   u32 rx_queues = MEMIF_DEFAULT_RX_QUEUES;
   u32 tx_queues = MEMIF_DEFAULT_TX_QUEUES;
   int ret;
-
+  u8 mode = MEMIF_INTERFACE_MODE_ETHERNET;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -148,6 +148,8 @@ api_memif_create (vat_main_t * vam)
       else if (unformat (i, "slave %U",
 			 unformat_memif_queues, &rx_queues, &tx_queues))
 	role = 1;
+      else if (unformat (i, "mode ip"))
+	mode = MEMIF_INTERFACE_MODE_IP;
       else if (unformat (i, "hw_addr %U", unformat_ethernet_address, hw_addr))
 	;
       else
@@ -177,6 +179,7 @@ api_memif_create (vat_main_t * vam)
 
   M (MEMIF_CREATE, mp);
 
+  mp->mode = mode;
   mp->id = clib_host_to_net_u32 (id);
   mp->role = role;
   mp->ring_size = clib_host_to_net_u32 (ring_size);
@@ -309,7 +312,7 @@ static void vl_api_memif_details_t_handler (vl_api_memif_details_t * mp)
 #define foreach_vpe_api_msg					  \
 _(memif_create, "[id <id>] [socket <path>] [ring_size <size>] " \
 		"[buffer_size <size>] [hw_addr <mac_address>] "   \
-		"<master|slave>")				  \
+		"[secret <string>] [mode ip] <master|slave>")	  \
 _(memif_delete, "<sw_if_index>")                                  \
 _(memif_dump, "")
 
