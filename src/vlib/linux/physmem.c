@@ -170,8 +170,13 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
   if (get_mempolicy (&old_mpol, old_mask->maskp, old_mask->size + 1, NULL, 0)
       == -1)
     {
-      error = clib_error_return_unix (0, "get_mempolicy");
-      goto error;
+      if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
+	{
+	  error = clib_error_return_unix (0, "get_mempolicy");
+	  goto error;
+	}
+      else
+	old_mpol = -1;
     }
 
   if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
@@ -246,7 +251,8 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 	goto error;
     }
 
-  numa_set_preferred (numa_node);
+  if (old_mpol != -1)
+    numa_set_preferred (numa_node);
 
   pr->mem = mmap (0, size, (PROT_READ | PROT_WRITE), mmap_flags, pr->fd, 0);
 
@@ -257,7 +263,8 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
       goto error;
     }
 
-  if (set_mempolicy (old_mpol, old_mask->maskp, old_mask->size + 1) == -1)
+  if (old_mpol != -1 &&
+      set_mempolicy (old_mpol, old_mask->maskp, old_mask->size + 1) == -1)
     {
       error = clib_error_return_unix (0, "set_mempolicy");
       goto error;
