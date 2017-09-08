@@ -26,6 +26,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <vlib/linux/sysfs.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
