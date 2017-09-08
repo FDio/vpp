@@ -51,7 +51,6 @@ ltmain.sh
 ylwrap
 test-driver
 
-.cproject
 *.iml
 .bootstrap.ok
 .settings
@@ -62,6 +61,8 @@ test-driver
 .DS_Store
 .idea/
 .project
+.cproject
+.vscode/
 
 # cscope and ctags
 /cscope.*
