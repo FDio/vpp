@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_ef0edf33",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 797,
+      "author": {
+        "id": 408
+      },
+      "writtenOn": "2017-09-08T15:27:56Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3a4b7175_894beb58",
+      "range": {
+        "startLine": 797,
+        "startChar": 0,
+        "endLine": 797,
+        "endChar": 0
+      },
+      "revId": "6be06ef30f90353dd7cba9ac713d8e495c63ab15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_494e1371",
         "filename": "src/vlib/threads.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2017-09-08T02:58:27Z",
       "side": 1,
       "message": "Please remove.  This is essentially a nop given the update of \u0027now\u0027 at line 1224.",
+      "range": {
+        "startLine": 1213,
+        "startChar": 0,
+        "endLine": 1214,
+        "endChar": 0
+      },
+      "revId": "6be06ef30f90353dd7cba9ac713d8e495c63ab15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_2f051711",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1214,
+      "author": {
+        "id": 408
+      },
+      "writtenOn": "2017-09-08T15:27:56Z",
+      "side": 1,
+      "message": "Agree that the use of \"now\" in this function appears to make no sense in the given patch.  However, when the diags are added back in, it should make more sense. \n\nDave and I had agreed to split because I was refactoring the trace code.  This is now done, so I think it is probably best if I submit an update to this patch which contains the diags code, at which point it should all seem a little more sensible...",
+      "parentUuid": "3a4b7175_494e1371",
       "range": {
         "startLine": 1213,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_0f0a5b21",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1222,
+      "author": {
+        "id": 408
+      },
+      "writtenOn": "2017-09-08T15:27:56Z",
+      "side": 1,
+      "message": "Good idea.  Included in updated patch.",
+      "parentUuid": "3a4b7175_a93ea7b6",
+      "range": {
+        "startLine": 1222,
+        "startChar": 0,
+        "endLine": 1222,
+        "endChar": 0
+      },
+      "revId": "6be06ef30f90353dd7cba9ac713d8e495c63ab15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_6948af5b",
         "filename": "src/vlib/threads.c",
         "patchSetId": 1
@@ -82,6 +154,30 @@
       "writtenOn": "2017-09-08T02:58:27Z",
       "side": 1,
       "message": "Please remove -- unnecessary whitespace.",
+      "range": {
+        "startLine": 1235,
+        "startChar": 0,
+        "endLine": 1235,
+        "endChar": 0
+      },
+      "revId": "6be06ef30f90353dd7cba9ac713d8e495c63ab15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_cf13235b",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1235,
+      "author": {
+        "id": 408
+      },
+      "writtenOn": "2017-09-08T15:27:56Z",
+      "side": 1,
+      "message": "Sorry about the extra whitespace.  Again, almost all from where the diags code was trimmed out.",
+      "parentUuid": "3a4b7175_6948af5b",
       "range": {
         "startLine": 1235,
         "startChar": 0,
@@ -163,6 +259,30 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_af10e74e",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1258,
+      "author": {
+        "id": 408
+      },
+      "writtenOn": "2017-09-08T15:27:56Z",
+      "side": 1,
+      "message": "Again related to diags",
+      "parentUuid": "3a4b7175_2953d718",
+      "range": {
+        "startLine": 1258,
+        "startChar": 0,
+        "endLine": 1258,
+        "endChar": 27
+      },
+      "revId": "6be06ef30f90353dd7cba9ac713d8e495c63ab15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_e95c9f27",
         "filename": "src/vlib/threads.c",
         "patchSetId": 1
@@ -174,6 +294,30 @@
       "writtenOn": "2017-09-08T02:58:27Z",
       "side": 1,
       "message": "Please delete per previous comment.",
+      "range": {
+        "startLine": 1276,
+        "startChar": 0,
+        "endLine": 1276,
+        "endChar": 31
+      },
+      "revId": "6be06ef30f90353dd7cba9ac713d8e495c63ab15",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_8f1d2b69",
+        "filename": "src/vlib/threads.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1276,
+      "author": {
+        "id": 408
+      },
+      "writtenOn": "2017-09-08T15:27:56Z",
+      "side": 1,
+      "message": "Again related to diags",
+      "parentUuid": "3a4b7175_e95c9f27",
       "range": {
         "startLine": 1276,
         "startChar": 0,
