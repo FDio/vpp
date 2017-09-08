@@ -17,6 +17,7 @@
 #include <vppinfra/error.h>
 #include <vppinfra/format.h>
 #include <vppinfra/bitmap.h>
+#include <vlib/linux/sysfs.h>
 #include <vlib/unix/unix.h>
 
 #include <vnet/ethernet/ethernet.h>

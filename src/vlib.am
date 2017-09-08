@@ -32,13 +32,15 @@ libvlib_la_SOURCES =				\
   vlib/format.c					\
   vlib/i2c.c					\
   vlib/init.c					\
+  vlib/linux/pci.c				\
+  vlib/linux/physmem.c				\
+  vlib/linux/sysfs.c				\
   vlib/main.c					\
   vlib/mc.c					\
   vlib/node.c					\
   vlib/node_cli.c				\
   vlib/node_format.c				\
   vlib/pci/pci.c				\
-  vlib/pci/linux_pci.c				\
   vlib/threads.c				\
   vlib/threads_cli.c				\
   vlib/trace.c
@@ -58,6 +60,8 @@ nobase_include_HEADERS +=			\
   vlib/global_funcs.h				\
   vlib/i2c.h					\
   vlib/init.h					\
+  vlib/linux/sysfs.h				\
+  vlib/linux/syscall.h				\
   vlib/main.h					\
   vlib/mc.h					\
   vlib/node_funcs.h				\
@@ -79,7 +83,6 @@ libvlib_la_SOURCES +=				\
   vlib/unix/mc_socket.c				\
   vlib/unix/plugin.c				\
   vlib/unix/plugin.h				\
-  vlib/unix/physmem.c				\
   vlib/unix/util.c
 
 nobase_include_HEADERS +=			\

@@ -40,6 +40,7 @@
 #include <vlib/vlib.h>
 #include <vlib/pci/pci.h>
 #include <vlib/unix/unix.h>
+#include <vlib/linux/sysfs.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>

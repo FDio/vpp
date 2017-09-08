@@ -228,42 +228,12 @@ int memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args);
 int memif_delete_if (vlib_main_t * vm, memif_if_t * mif);
 clib_error_t *memif_plugin_api_hookup (vlib_main_t * vm);
 
-#ifndef __NR_memfd_create
-#if defined __x86_64__
-#define __NR_memfd_create 319
-#elif defined __arm__
-#define __NR_memfd_create 385
-#elif defined __aarch64__
-#define __NR_memfd_create 279
-#else
-#error "__NR_memfd_create unknown for this architecture"
-#endif
-#endif
-
-static inline int
-memfd_create (const char *name, unsigned int flags)
-{
-  return syscall (__NR_memfd_create, name, flags);
-}
-
 static_always_inline void *
 memif_get_buffer (memif_if_t * mif, memif_ring_t * ring, u16 slot)
 {
   u16 region = ring->desc[slot].region;
   return mif->regions[region].shm + ring->desc[slot].offset;
 }
-
-#ifndef F_LINUX_SPECIFIC_BASE
-#define F_LINUX_SPECIFIC_BASE 1024
-#endif
-#define MFD_ALLOW_SEALING       0x0002U
-#define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
-#define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
-
-#define F_SEAL_SEAL     0x0001	/* prevent further seals from being set */
-#define F_SEAL_SHRINK   0x0002	/* prevent file from shrinking */
-#define F_SEAL_GROW     0x0004	/* prevent file from growing */
-#define F_SEAL_WRITE    0x0008	/* prevent writes */
 
 /* memif.c */
 clib_error_t *memif_init_regions_and_queues (memif_if_t * mif);
