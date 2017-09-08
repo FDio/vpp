@@ -31,7 +31,7 @@ typedef struct
 typedef struct
 {
   int socket;
-  u32 unix_file_index;
+  u32 clib_file_index;
 
   u8 *input_vector;
   u8 *output_vector;

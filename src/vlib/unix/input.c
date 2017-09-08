@@ -62,9 +62,9 @@ typedef struct
 static linux_epoll_main_t linux_epoll_main;
 
 static void
-linux_epoll_file_update (unix_file_t * f, unix_file_update_type_t update_type)
+linux_epoll_file_update (clib_file_t * f, unix_file_update_type_t update_type)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   linux_epoll_main_t *em = &linux_epoll_main;
   struct epoll_event e;
   int op;
@@ -76,7 +76,7 @@ linux_epoll_file_update (unix_file_t * f, unix_file_update_type_t update_type)
     e.events |= EPOLLOUT;
   if (f->flags & UNIX_FILE_EVENT_EDGE_TRIGGERED)
     e.events |= EPOLLET;
-  e.data.u32 = f - um->file_pool;
+  e.data.u32 = f - fm->file_pool;
 
   op = -1;
 
@@ -108,6 +108,7 @@ linux_epoll_input (vlib_main_t * vm,
 		   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
   unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   linux_epoll_main_t *em = &linux_epoll_main;
   struct epoll_event *e;
   int n_fds_ready;
@@ -186,7 +187,7 @@ linux_epoll_input (vlib_main_t * vm,
   for (e = em->epoll_events; e < em->epoll_events + n_fds_ready; e++)
     {
       u32 i = e->data.u32;
-      unix_file_t *f = pool_elt_at_index (um->file_pool, i);
+      clib_file_t *f = pool_elt_at_index (fm->file_pool, i);
       clib_error_t *errors[4];
       int n_errors = 0;
 
@@ -236,7 +237,7 @@ clib_error_t *
 linux_epoll_input_init (vlib_main_t * vm)
 {
   linux_epoll_main_t *em = &linux_epoll_main;
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
 
   /* Allocate some events. */
   vec_resize (em->epoll_events, VLIB_FRAME_SIZE);
@@ -245,7 +246,7 @@ linux_epoll_input_init (vlib_main_t * vm)
   if (em->epoll_fd < 0)
     return clib_error_return_unix (0, "epoll_create");
 
-  um->file_update = linux_epoll_file_update;
+  fm->file_update = linux_epoll_file_update;
 
   return 0;
 }

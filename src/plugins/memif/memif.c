@@ -52,10 +52,10 @@ memif_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
 static void
 memif_queue_intfd_close (memif_queue_t * mq)
 {
-  if (mq->int_unix_file_index != ~0)
+  if (mq->int_clib_file_index != ~0)
     {
-      memif_file_del_by_index (mq->int_unix_file_index);
-      mq->int_unix_file_index = ~0;
+      memif_file_del_by_index (mq->int_clib_file_index);
+      mq->int_clib_file_index = ~0;
       mq->int_fd = -1;
     }
   else if (mq->int_fd > -1)
@@ -94,13 +94,13 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
     vnet_hw_interface_set_flags (vnm, mif->hw_if_index, 0);
 
   /* close connection socket */
-  if (mif->conn_unix_file_index != ~0)
+  if (mif->conn_clib_file_index != ~0)
     {
       memif_socket_file_t *msf = vec_elt_at_index (mm->socket_files,
 						   mif->socket_file_index);
       hash_unset (msf->dev_instance_by_fd, mif->conn_fd);
-      memif_file_del_by_index (mif->conn_unix_file_index);
-      mif->conn_unix_file_index = ~0;
+      memif_file_del_by_index (mif->conn_clib_file_index);
+      mif->conn_clib_file_index = ~0;
     }
   else if (mif->conn_fd > -1)
     close (mif->conn_fd);
@@ -145,7 +145,7 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
 }
 
 static clib_error_t *
-memif_int_fd_read_ready (unix_file_t * uf)
+memif_int_fd_read_ready (clib_file_t * uf)
 {
   memif_main_t *mm = &memif_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -173,7 +173,7 @@ clib_error_t *
 memif_connect (memif_if_t * mif)
 {
   vnet_main_t *vnm = vnet_get_main ();
-  unix_file_t template = { 0 };
+  clib_file_t template = { 0 };
   memif_region_t *mr;
   int i;
 
@@ -219,7 +219,7 @@ memif_connect (memif_if_t * mif)
       {
 	template.file_descriptor = mq->int_fd;
 	template.private_data = (mif->dev_instance << 16) | (i & 0xFFFF);
-	memif_file_add (&mq->int_unix_file_index, &template);
+	memif_file_add (&mq->int_clib_file_index, &template);
       }
     vnet_hw_interface_assign_rx_thread (vnm, mif->hw_if_index, i, ~0);
     rv = vnet_hw_interface_set_rx_mode (vnm, mif->hw_if_index, i,
@@ -330,7 +330,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
     memif_queue_t *mq = vec_elt_at_index (mif->tx_queues, i);
     if ((mq->int_fd = eventfd (0, EFD_NONBLOCK)) < 0)
       return clib_error_return_unix (0, "eventfd[tx queue %u]", i);
-    mq->int_unix_file_index = ~0;
+    mq->int_clib_file_index = ~0;
     mq->ring = memif_get_ring (mif, MEMIF_RING_S2M, i);
     mq->log2_ring_size = mif->cfg.log2_ring_size;
     mq->region = 0;
@@ -346,7 +346,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
     memif_queue_t *mq = vec_elt_at_index (mif->rx_queues, i);
     if ((mq->int_fd = eventfd (0, EFD_NONBLOCK)) < 0)
       return clib_error_return_unix (0, "eventfd[rx queue %u]", i);
-    mq->int_unix_file_index = ~0;
+    mq->int_clib_file_index = ~0;
     mq->ring = memif_get_ring (mif, MEMIF_RING_M2S, i);
     mq->log2_ring_size = mif->cfg.log2_ring_size;
     mq->region = 0;
@@ -432,7 +432,7 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		  (sockfd, (struct sockaddr *) &sun,
 		   sizeof (struct sockaddr_un)) == 0)
 	        {
-		  unix_file_t t = { 0 };
+		  clib_file_t t = { 0 };
 
 		  mif->conn_fd = sockfd;
 		  t.read_function = memif_slave_conn_fd_read_ready;
@@ -440,7 +440,7 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 		  t.error_function = memif_slave_conn_fd_error;
 		  t.file_descriptor = mif->conn_fd;
 		  t.private_data = mif->dev_instance;
-		  memif_file_add (&mif->conn_unix_file_index, &t);
+		  memif_file_add (&mif->conn_clib_file_index, &t);
 		  hash_set (msf->dev_instance_by_fd, mif->conn_fd, mif->dev_instance);
 
 		  mif->flags |= MEMIF_IF_FLAG_CONNECTING;
@@ -507,7 +507,7 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
       if (msf->is_listener)
 	{
 	  uword *x;
-	  memif_file_del_by_index (msf->unix_file_index);
+	  memif_file_del_by_index (msf->clib_file_index);
 	  vec_foreach (x, msf->pending_file_indices)
 	  {
 	    memif_file_del_by_index (*x);
@@ -639,7 +639,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   mif->socket_file_index = msf - mm->socket_files;
   mif->id = args->id;
   mif->sw_if_index = mif->hw_if_index = mif->per_interface_next_index = ~0;
-  mif->conn_unix_file_index = ~0;
+  mif->conn_clib_file_index = ~0;
   mif->conn_fd = -1;
   mif->mode = args->mode;
   if (args->secret)
@@ -737,12 +737,12 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	  goto error;
 	}
 
-      msf->unix_file_index = ~0;
-      unix_file_t template = { 0 };
+      msf->clib_file_index = ~0;
+      clib_file_t template = { 0 };
       template.read_function = memif_conn_fd_accept_ready;
       template.file_descriptor = msf->fd;
       template.private_data = mif->socket_file_index;
-      memif_file_add (&msf->unix_file_index, &template);
+      memif_file_add (&msf->clib_file_index, &template);
     }
 
   msf->ref_cnt++;

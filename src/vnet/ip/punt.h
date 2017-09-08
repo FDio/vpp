@@ -72,7 +72,7 @@ typedef struct
   char sun_path[sizeof (struct sockaddr_un)];
   punt_client_t *clients_by_dst_port4;
   punt_client_t *clients_by_dst_port6;
-  u32 unix_file_index;
+  u32 clib_file_index;
   bool is_configured;
   vlib_node_t *interface_output_node;
   u32 *ready_fds;

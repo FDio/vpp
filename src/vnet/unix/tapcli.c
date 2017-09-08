@@ -56,7 +56,7 @@ static void tapcli_nopunt_frame (vlib_main_t * vm,
  */
 typedef struct {
   u32 unix_fd;
-  u32 unix_file_index;
+  u32 clib_file_index;
   u32 provision_fd;
   /** For counters */
   u32 sw_if_index;
@@ -137,8 +137,6 @@ typedef struct {
   vlib_main_t * vlib_main;
   /** convenience - vnet_main_t */
   vnet_main_t * vnet_main;
-  /** convenience - unix_main_t */
-  unix_main_t * unix_main;
 } tapcli_main_t;
 
 static tapcli_main_t tapcli_main;
@@ -453,12 +451,12 @@ VLIB_REGISTER_NODE (tapcli_rx_node, static) = {
 /**
  * @brief Gets called when file descriptor is ready from epoll.
  *
- * @param *uf - unix_file_t
+ * @param *uf - clib_file_t
  *
  * @return error - clib_error_t
  *
  */
-static clib_error_t * tapcli_read_ready (unix_file_t * uf)
+static clib_error_t * tapcli_read_ready (clib_file_t * uf)
 {
   vlib_main_t * vm = vlib_get_main();
   tapcli_main_t * tm = &tapcli_main;
@@ -999,10 +997,10 @@ int vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t *ap)
     }
 
   {
-    unix_file_t template = {0};
+    clib_file_t template = {0};
     template.read_function = tapcli_read_ready;
     template.file_descriptor = dev_net_tun_fd;
-    ti->unix_file_index = unix_file_add (&unix_main, &template);
+    ti->clib_file_index = clib_file_add (&file_main, &template);
     ti->unix_fd = dev_net_tun_fd;
     ti->provision_fd = dev_tap_fd;
     clib_memcpy (&ti->ifr, &ifr, sizeof (ifr));
@@ -1079,9 +1077,9 @@ static int tapcli_tap_disconnect (tapcli_interface_t *ti)
   // bring interface down
   vnet_sw_interface_set_flags (vnm, sw_if_index, 0);
 
-  if (ti->unix_file_index != ~0) {
-    unix_file_del (&unix_main, unix_main.file_pool + ti->unix_file_index);
-    ti->unix_file_index = ~0;
+  if (ti->clib_file_index != ~0) {
+    clib_file_del (&file_main, file_main.file_pool + ti->clib_file_index);
+    ti->clib_file_index = ~0;
   }
   else
     close(ti->unix_fd);
@@ -1455,7 +1453,6 @@ tapcli_init (vlib_main_t * vm)
 
   tm->vlib_main = vm;
   tm->vnet_main = vnet_get_main();
-  tm->unix_main = &unix_main;
   tm->mtu_bytes = TAP_MTU_DEFAULT;
   tm->tapcli_interface_index_by_sw_if_index = hash_create (0, sizeof(uword));
   tm->tapcli_interface_index_by_unix_fd = hash_create (0, sizeof (uword));

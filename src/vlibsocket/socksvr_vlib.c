@@ -53,8 +53,8 @@ dump_socket_clients (vlib_main_t * vm, api_main_t * am)
 {
   vl_api_registration_t *reg;
   socket_main_t *sm = &socket_main;
-  unix_main_t *um = &unix_main;
-  unix_file_t *f;
+  clib_file_main_t *fm = &file_main;
+  clib_file_t *f;
 
   /*
    * Must have at least one active client, not counting the
@@ -69,7 +69,7 @@ dump_socket_clients (vlib_main_t * vm, api_main_t * am)
     pool_foreach (reg, sm->registration_pool,
     ({
         if (reg->registration_type == REGISTRATION_TYPE_SOCKET_SERVER) {
-            f = pool_elt_at_index (um->file_pool, reg->unix_file_index);
+            f = pool_elt_at_index (fm->file_pool, reg->clib_file_index);
             vlib_cli_output (vm, "%16s %8d",
                              reg->name, f->file_descriptor);
         }
@@ -99,13 +99,13 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   nbytes += msg_length;
   tmp = clib_host_to_net_u32 (nbytes);
 
-  vl_socket_add_pending_output (rp->unix_file_index
-				+ unix_main.file_pool,
+  vl_socket_add_pending_output (rp->clib_file_index
+				+ file_main.file_pool,
 				rp->vl_api_registration_pool_index
 				+ socket_main.registration_pool,
 				(u8 *) & tmp, sizeof (tmp));
-  vl_socket_add_pending_output (rp->unix_file_index
-				+ unix_main.file_pool,
+  vl_socket_add_pending_output (rp->clib_file_index
+				+ file_main.file_pool,
 				rp->vl_api_registration_pool_index
 				+ socket_main.registration_pool,
 				elem, msg_length);
@@ -139,18 +139,18 @@ vl_socket_api_send_with_data (vl_api_registration_t * rp,
   /* Length in network byte order */
   tmp = clib_host_to_net_u32 (nbytes);
 
-  vl_socket_add_pending_output (rp->unix_file_index
-				+ unix_main.file_pool,
+  vl_socket_add_pending_output (rp->clib_file_index
+				+ file_main.file_pool,
 				rp->vl_api_registration_pool_index
 				+ socket_main.registration_pool,
 				(u8 *) & tmp, sizeof (tmp));
-  vl_socket_add_pending_output (rp->unix_file_index
-				+ unix_main.file_pool,
+  vl_socket_add_pending_output (rp->clib_file_index
+				+ file_main.file_pool,
 				rp->vl_api_registration_pool_index
 				+ socket_main.registration_pool,
 				elem, msg_length);
-  vl_socket_add_pending_output (rp->unix_file_index
-				+ unix_main.file_pool,
+  vl_socket_add_pending_output (rp->clib_file_index
+				+ file_main.file_pool,
 				rp->vl_api_registration_pool_index
 				+ socket_main.registration_pool,
 				data_vector, vec_len (data_vector));
@@ -181,13 +181,13 @@ vl_socket_api_send_with_length_internal (vl_api_registration_t * rp,
   /* Length in network byte order */
   tmp = clib_host_to_net_u32 (nbytes);
 
-  vl_socket_add_pending_output (rp->unix_file_index
-				+ unix_main.file_pool,
+  vl_socket_add_pending_output (rp->clib_file_index
+				+ file_main.file_pool,
 				rp->vl_api_registration_pool_index
 				+ socket_main.registration_pool,
 				(u8 *) & tmp, sizeof (tmp));
-  vl_socket_add_pending_output (rp->unix_file_index
-				+ unix_main.file_pool,
+  vl_socket_add_pending_output (rp->clib_file_index
+				+ file_main.file_pool,
 				rp->vl_api_registration_pool_index
 				+ socket_main.registration_pool,
 				elem, msg_length);
@@ -231,7 +231,7 @@ vl_free_socket_registration_index (u32 pool_index)
 }
 
 static inline void
-socket_process_msg (unix_file_t * uf, vl_api_registration_t * rp,
+socket_process_msg (clib_file_t * uf, vl_api_registration_t * rp,
 		    i8 * input_v)
 {
   u8 *the_msg = (u8 *) (input_v + sizeof (u32));
@@ -243,9 +243,9 @@ socket_process_msg (unix_file_t * uf, vl_api_registration_t * rp,
 }
 
 clib_error_t *
-vl_socket_read_ready (unix_file_t * uf)
+vl_socket_read_ready (clib_file_t * uf)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   vl_api_registration_t *rp;
   int n;
   i8 *msg_buffer = 0;
@@ -259,7 +259,7 @@ vl_socket_read_ready (unix_file_t * uf)
 
   if (n <= 0 && errno != EAGAIN)
     {
-      unix_file_del (um, uf);
+      clib_file_del (fm, uf);
 
       if (!pool_is_free (socket_main.registration_pool, rp))
 	{
@@ -352,11 +352,11 @@ turf_it:
 }
 
 void
-vl_socket_add_pending_output (unix_file_t * uf,
+vl_socket_add_pending_output (clib_file_t * uf,
 			      vl_api_registration_t * rp,
 			      u8 * buffer, uword buffer_bytes)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
 
   vec_add (rp->output_vector, buffer, buffer_bytes);
   if (vec_len (rp->output_vector) > 0)
@@ -364,15 +364,15 @@ vl_socket_add_pending_output (unix_file_t * uf,
       int skip_update = 0 != (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
       uf->flags |= UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
       if (!skip_update)
-	um->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
+	fm->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
     }
 }
 
 static void
-socket_del_pending_output (unix_file_t * uf,
+socket_del_pending_output (clib_file_t * uf,
 			   vl_api_registration_t * rp, uword n_bytes)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
 
   vec_delete (rp->output_vector, n_bytes, 0);
   if (vec_len (rp->output_vector) <= 0)
@@ -380,14 +380,14 @@ socket_del_pending_output (unix_file_t * uf,
       int skip_update = 0 == (uf->flags & UNIX_FILE_DATA_AVAILABLE_TO_WRITE);
       uf->flags &= ~UNIX_FILE_DATA_AVAILABLE_TO_WRITE;
       if (!skip_update)
-	um->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
+	fm->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
     }
 }
 
 clib_error_t *
-vl_socket_write_ready (unix_file_t * uf)
+vl_socket_write_ready (clib_file_t * uf)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   vl_api_registration_t *rp;
   int n;
 
@@ -402,7 +402,7 @@ vl_socket_write_ready (unix_file_t * uf)
 #if DEBUG > 2
       clib_warning ("write error, close the file...\n");
 #endif
-      unix_file_del (um, uf);
+      clib_file_del (fm, uf);
 
       vl_free_socket_registration_index (rp - socket_main.registration_pool);
       return 0;
@@ -415,23 +415,23 @@ vl_socket_write_ready (unix_file_t * uf)
 }
 
 clib_error_t *
-vl_socket_error_ready (unix_file_t * uf)
+vl_socket_error_ready (clib_file_t * uf)
 {
   vl_api_registration_t *rp;
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
 
   rp = pool_elt_at_index (socket_main.registration_pool, uf->private_data);
-  unix_file_del (um, uf);
+  clib_file_del (fm, uf);
   vl_free_socket_registration_index (rp - socket_main.registration_pool);
 
   return 0;
 }
 
 void
-socksvr_file_add (unix_main_t * um, int fd)
+socksvr_file_add (clib_file_main_t * fm, int fd)
 {
   vl_api_registration_t *rp;
-  unix_file_t template = { 0 };
+  clib_file_t template = { 0 };
 
   pool_get (socket_main.registration_pool, rp);
   memset (rp, 0, sizeof (*rp));
@@ -444,13 +444,13 @@ socksvr_file_add (unix_main_t * um, int fd)
 
   rp->registration_type = REGISTRATION_TYPE_SOCKET_SERVER;
   rp->vl_api_registration_pool_index = rp - socket_main.registration_pool;
-  rp->unix_file_index = unix_file_add (um, &template);
+  rp->clib_file_index = clib_file_add (fm, &template);
 }
 
 static clib_error_t *
-socksvr_accept_ready (unix_file_t * uf)
+socksvr_accept_ready (clib_file_t * uf)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   struct sockaddr_in client_addr;
   int client_fd;
   int client_len;
@@ -468,12 +468,12 @@ socksvr_accept_ready (unix_file_t * uf)
   if (client_fd < 0)
     return clib_error_return_unix (0, "socksvr_accept_ready: accept");
 
-  socksvr_file_add (um, client_fd);
+  socksvr_file_add (fm, client_fd);
   return 0;
 }
 
 static clib_error_t *
-socksvr_bogus_write (unix_file_t * uf)
+socksvr_bogus_write (clib_file_t * uf)
 {
   clib_warning ("why am I here?");
   return 0;
@@ -525,7 +525,7 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
 
       vl_msg_api_send (regp, (u8 *) rp);
 
-      unix_file_del (&unix_main, unix_main.file_pool + regp->unix_file_index);
+      clib_file_del (&file_main, file_main.file_pool + regp->clib_file_index);
 
       vl_free_socket_registration_index (mp->index);
     }
@@ -542,8 +542,8 @@ _(SOCKCLNT_DELETE, sockclnt_delete)
 static clib_error_t *
 socksvr_api_init (vlib_main_t * vm)
 {
-  unix_main_t *um = &unix_main;
-  unix_file_t template = { 0 };
+  clib_file_main_t *fm = &file_main;
+  clib_file_t template = { 0 };
   int sockfd;
   int one = 1;
   int rv;
@@ -625,14 +625,14 @@ socksvr_api_init (vlib_main_t * vm)
   template.file_descriptor = sockfd;
   template.private_data = rp - socket_main.registration_pool;
 
-  rp->unix_file_index = unix_file_add (um, &template);
+  rp->clib_file_index = clib_file_add (fm, &template);
   return 0;
 }
 
 static clib_error_t *
 socket_exit (vlib_main_t * vm)
 {
-  unix_main_t *um = &unix_main;
+  clib_file_main_t *fm = &file_main;
   vl_api_registration_t *rp;
 
   /* Defensive driving in case something wipes out early */
@@ -641,7 +641,7 @@ socket_exit (vlib_main_t * vm)
       u32 index;
         /* *INDENT-OFF* */
         pool_foreach (rp, socket_main.registration_pool, ({
-            unix_file_del (um, um->file_pool + rp->unix_file_index);
+            clib_file_del (fm, fm->file_pool + rp->clib_file_index);
             index = rp->vl_api_registration_pool_index;
             vl_free_socket_registration_index (index);
         }));

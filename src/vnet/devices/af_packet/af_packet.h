@@ -32,7 +32,7 @@ typedef struct
   u8 *tx_ring;
   u32 hw_if_index;
   u32 sw_if_index;
-  u32 unix_file_index;
+  u32 clib_file_index;
 
   u32 next_rx_frame;
   u32 next_tx_frame;

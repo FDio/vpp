@@ -60,6 +60,7 @@ char *vlib_default_runtime_dir __attribute__ ((weak));
 char *vlib_default_runtime_dir = "vlib";
 
 unix_main_t unix_main;
+clib_file_main_t file_main;
 
 static clib_error_t *
 unix_main_init (vlib_main_t * vm)

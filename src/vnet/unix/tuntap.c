@@ -104,7 +104,7 @@ typedef struct {
   mhash_t subif_mhash;
 
   /** Unix file index */
-  u32 unix_file_index;
+  u32 clib_file_index;
 
   /** For the "normal" interface, if configured */
   u32 hw_if_index, sw_if_index;
@@ -388,11 +388,11 @@ VLIB_REGISTER_NODE (tuntap_rx_node,static) = {
 /**
  * @brief Gets called when file descriptor is ready from epoll.
  *
- * @param *uf - unix_file_t
+ * @param *uf - clib_file_t
  *
  * @return error - clib_error_t
  */
-static clib_error_t * tuntap_read_ready (unix_file_t * uf)
+static clib_error_t * tuntap_read_ready (clib_file_t * uf)
 {
   vlib_main_t * vm = vlib_get_main();
   vlib_node_set_interrupt_pending (vm, tuntap_rx_node.index);
@@ -645,10 +645,10 @@ tuntap_config (vlib_main_t * vm, unformat_input_t * input)
     }
 
   {
-    unix_file_t template = {0};
+    clib_file_t template = {0};
     template.read_function = tuntap_read_ready;
     template.file_descriptor = tm->dev_net_tun_fd;
-    tm->unix_file_index = unix_file_add (&unix_main, &template);
+    tm->clib_file_index = clib_file_add (&file_main, &template);
   }
 
  done:

@@ -89,7 +89,7 @@ af_packet_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 }
 
 static clib_error_t *
-af_packet_fd_read_ready (unix_file_t * uf)
+af_packet_fd_read_ready (clib_file_t * uf)
 {
   af_packet_main_t *apm = &af_packet_main;
   vnet_main_t *vnm = vnet_get_main ();
@@ -281,12 +281,12 @@ af_packet_create_if (vlib_main_t * vm, u8 * host_if_name, u8 * hw_addr_set,
     clib_spinlock_init (&apif->lockp);
 
   {
-    unix_file_t template = { 0 };
+    clib_file_t template = { 0 };
     template.read_function = af_packet_fd_read_ready;
     template.file_descriptor = fd;
     template.private_data = if_index;
     template.flags = UNIX_FILE_EVENT_EDGE_TRIGGERED;
-    apif->unix_file_index = unix_file_add (&unix_main, &template);
+    apif->clib_file_index = clib_file_add (&file_main, &template);
   }
 
   /*use configured or generate random MAC address */
@@ -371,10 +371,10 @@ af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name)
   vnet_hw_interface_unassign_rx_thread (vnm, apif->hw_if_index, 0);
 
   /* clean up */
-  if (apif->unix_file_index != ~0)
+  if (apif->clib_file_index != ~0)
     {
-      unix_file_del (&unix_main, unix_main.file_pool + apif->unix_file_index);
-      apif->unix_file_index = ~0;
+      clib_file_del (&file_main, file_main.file_pool + apif->clib_file_index);
+      apif->clib_file_index = ~0;
     }
   else
     close (apif->fd);

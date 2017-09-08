@@ -223,7 +223,7 @@ typedef struct
   u32 is_up;
   u32 admin_up;
   u32 unix_server_index;
-  u32 unix_file_index;
+  u32 clib_file_index;
   char sock_filename[256];
   int sock_errno;
   uword if_index;

@@ -36,7 +36,7 @@ netmap_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 }
 
 static clib_error_t *
-netmap_fd_read_ready (unix_file_t * uf)
+netmap_fd_read_ready (clib_file_t * uf)
 {
   vlib_main_t *vm = vlib_get_main ();
   netmap_main_t *nm = &netmap_main;
@@ -54,10 +54,10 @@ netmap_fd_read_ready (unix_file_t * uf)
 static void
 close_netmap_if (netmap_main_t * nm, netmap_if_t * nif)
 {
-  if (nif->unix_file_index != ~0)
+  if (nif->clib_file_index != ~0)
     {
-      unix_file_del (&unix_main, unix_main.file_pool + nif->unix_file_index);
-      nif->unix_file_index = ~0;
+      clib_file_del (&file_main, file_main.file_pool + nif->clib_file_index);
+      nif->clib_file_index = ~0;
     }
   else if (nif->fd > -1)
     close (nif->fd);
@@ -137,7 +137,7 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
   pool_get (nm->interfaces, nif);
   nif->if_index = nif - nm->interfaces;
   nif->fd = fd;
-  nif->unix_file_index = ~0;
+  nif->clib_file_index = ~0;
 
   vec_validate (req, 0);
   nif->req = req;
@@ -188,11 +188,11 @@ netmap_create_if (vlib_main_t * vm, u8 * if_name, u8 * hw_addr_set,
     clib_spinlock_init (&nif->lockp);
 
   {
-    unix_file_t template = { 0 };
+    clib_file_t template = { 0 };
     template.read_function = netmap_fd_read_ready;
     template.file_descriptor = nif->fd;
     template.private_data = nif->if_index;
-    nif->unix_file_index = unix_file_add (&unix_main, &template);
+    nif->clib_file_index = clib_file_add (&file_main, &template);
   }
 
   /*use configured or generate random MAC address */

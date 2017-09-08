@@ -41,34 +41,34 @@
 #if MEMIF_DEBUG == 1
 #define memif_file_add(a, b) do {					\
   ASSERT (*a == ~0);							\
-  *a = unix_file_add (&unix_main, b);					\
-  clib_warning ("unix_file_add fd %d private_data %u idx %u",		\
+  *a = clib_file_add (&file_main, b);					\
+  clib_warning ("clib_file_add fd %d private_data %u idx %u",		\
 		(b)->file_descriptor, (b)->private_data, *a);		\
 } while (0)
 
 #define memif_file_del(a) do {						\
-  clib_warning ("unix_file_del idx %u",a - unix_main.file_pool);	\
-  unix_file_del (&unix_main, a);					\
+  clib_warning ("clib_file_del idx %u",a - file_main.file_pool);	\
+  clib_file_del (&file_main, a);					\
 } while (0)
 
 #define memif_file_del_by_index(a) do {					\
-  clib_warning ("unix_file_del idx %u", a);				\
-  unix_file_del_by_index (&unix_main, a);				\
+  clib_warning ("clib_file_del idx %u", a);				\
+  clib_file_del_by_index (&file_main, a);				\
 } while (0)
 #else
 #define memif_file_add(a, b) do {					\
   ASSERT (*a == ~0);							\
-  *a = unix_file_add (&unix_main, b);					\
+  *a = clib_file_add (&file_main, b);					\
 } while (0)
-#define memif_file_del(a) unix_file_del(&unix_main, a)
-#define memif_file_del_by_index(a) unix_file_del_by_index(&unix_main, a)
+#define memif_file_del(a) clib_file_del(&file_main, a)
+#define memif_file_del_by_index(a) clib_file_del_by_index(&file_main, a)
 #endif
 
 typedef struct
 {
   u8 *filename;
   int fd;
-  uword unix_file_index;
+  uword clib_file_index;
   uword *pending_file_indices;
   int ref_cnt;
   int is_listener;
@@ -106,7 +106,7 @@ typedef struct
 
   /* interrupts */
   int int_fd;
-  uword int_unix_file_index;
+  uword int_clib_file_index;
   u64 int_count;
 } memif_queue_t;
 
@@ -140,7 +140,7 @@ typedef struct
   /* socket connection */
   uword socket_file_index;
   int conn_fd;
-  uword conn_unix_file_index;
+  uword conn_clib_file_index;
   memif_msg_fifo_elt_t *msg_queue;
   u8 *secret;
 
@@ -241,13 +241,13 @@ clib_error_t *memif_connect (memif_if_t * mif);
 void memif_disconnect (memif_if_t * mif, clib_error_t * err);
 
 /* socket.c */
-clib_error_t *memif_conn_fd_accept_ready (unix_file_t * uf);
-clib_error_t *memif_master_conn_fd_read_ready (unix_file_t * uf);
-clib_error_t *memif_slave_conn_fd_read_ready (unix_file_t * uf);
-clib_error_t *memif_master_conn_fd_write_ready (unix_file_t * uf);
-clib_error_t *memif_slave_conn_fd_write_ready (unix_file_t * uf);
-clib_error_t *memif_master_conn_fd_error (unix_file_t * uf);
-clib_error_t *memif_slave_conn_fd_error (unix_file_t * uf);
+clib_error_t *memif_conn_fd_accept_ready (clib_file_t * uf);
+clib_error_t *memif_master_conn_fd_read_ready (clib_file_t * uf);
+clib_error_t *memif_slave_conn_fd_read_ready (clib_file_t * uf);
+clib_error_t *memif_master_conn_fd_write_ready (clib_file_t * uf);
+clib_error_t *memif_slave_conn_fd_write_ready (clib_file_t * uf);
+clib_error_t *memif_master_conn_fd_error (clib_file_t * uf);
+clib_error_t *memif_slave_conn_fd_error (clib_file_t * uf);
 clib_error_t *memif_msg_send_disconnect (memif_if_t * mif,
 					 clib_error_t * err);
 u8 *format_memif_device_name (u8 * s, va_list * args);
