@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_efcfffae",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 3095,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-09-08T16:08:28Z",
+      "side": 1,
+      "message": "This should be MAC type since L2 GPE asked for it. So I guess the code should be on an else branch like the ARP one lower.",
+      "range": {
+        "startLine": 3095,
+        "startChar": 4,
+        "endLine": 3095,
+        "endChar": 31
+      },
+      "revId": "c115f456e117eb9d64d8d1216efce133e3202636",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
