@@ -67,6 +67,11 @@ typedef struct fib_table_t_
      * Table description
      */
     u8* ft_desc;
+
+    /**
+     * Table description
+     */
+    u8* ft_tag;
 } fib_table_t;
 
 /**
@@ -649,6 +654,31 @@ extern u32 fib_table_find_or_create_and_lock(fib_protocol_t proto,
 extern u32 fib_table_create_and_lock(fib_protocol_t proto,
                                      const char *const fmt,
                                      ...);
+
+
+
+
+/**
+ * @brief
+ * Set a tag to a VRF table. If table doesn't exist, it creates and locks it
+ * added to the hash-table and so can only be found by using the index returned.
+ *
+ * @paran proto
+ *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @param table-id
+ *  The Table-ID
+ *
+ * @param tag
+ *  A string to describe the table
+ *
+ * @return fib_index
+ *  The index of the FIB
+ */
+
+extern u32 fib_table_set_tag(fib_protocol_t proto,
+                            u32 table_id,
+                            u8 *tag);
 
 /**
  * @brief

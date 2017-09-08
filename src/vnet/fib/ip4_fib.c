@@ -531,11 +531,21 @@ ip4_show_fib (vlib_main_t * vm,
 	if (fib_index != ~0 && fib_index != (int)fib->index)
 	    continue;
 
-	vlib_cli_output (vm, "%U, fib_index:%d, flow hash:[%U] locks:%d", 
+
+	if(!fib_table->ft_tag) {
+		vlib_cli_output (vm, "%U, fib_index:%d, flow hash:[%U] locks:%d", 
 			 format_fib_table_name, fib->index, FIB_PROTOCOL_IP4,
 			 fib->index,
 			 format_ip_flow_hash_config, fib_table->ft_flow_hash_config,
                          fib_table->ft_locks);
+        } else {
+		vlib_cli_output (vm, "%U, fib_index:%d, flow hash:[%U], locks:%d, fib-tag: %s", 
+			 format_fib_table_name, fib->index, FIB_PROTOCOL_IP4,
+			 fib->index,
+			 format_ip_flow_hash_config, fib_table->ft_flow_hash_config,
+                         fib_table->ft_locks,
+			 fib_table->ft_tag);
+	}
 
 	/* Show summary? */
 	if (! verbose)
@@ -720,4 +730,41 @@ VLIB_CLI_COMMAND (ip4_show_fib_command, static) = {
     .short_help = "show ip fib [summary] [table <table-id>] [index <fib-id>] [<ip4-addr>[/<mask>]] [mtrie] [detail]",
     .function = ip4_show_fib,
 };
+
+
+static clib_error_t *
+ip4_set_fib(vlib_main_t * vm,
+	      unformat_input_t * input,
+	      vlib_cli_command_t * cmd)
+{
+    int  table_id = -1;
+    u8 *fib_tag = NULL;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+
+	if (unformat (input, "table %d", &table_id))
+	    ;
+	else if (unformat (input, "fib-tag %s", &fib_tag))
+	    ;
+	else {
+	    vec_free(fib_tag);
+            return clib_error_return(0, "Unknown parameter");
+        }
+    }
+
+    if(table_id >= 0) 
+	    fib_table_set_tag(FIB_PROTOCOL_IP4, table_id, fib_tag);
+
+    vec_free(fib_tag);
+    return 0;
+}
+
+
+VLIB_CLI_COMMAND (ip4_set_fib_tag_command, static) = {
+    .path = "set ip fib",
+    .short_help = "set ip fib table <table-id> [fib-tag <fib-tag>]",
+    .function = ip4_set_fib,
+};
+
 /* *INDENT-ON* */

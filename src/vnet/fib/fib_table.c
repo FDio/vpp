@@ -1102,10 +1102,40 @@ fib_table_create_and_lock (fib_protocol_t proto,
     return (fi);
 }
 
+
+u32
+fib_table_set_tag(fib_protocol_t proto,
+                    u32 table_id,
+                    u8 *tag)
+{
+    fib_table_t *fib_table;
+    fib_node_index_t fi;
+    u8 *old;
+
+    fi = fib_table_find(proto, table_id);
+    if(fi == ~0) {
+    	fi = fib_table_find_or_create_and_lock(proto, table_id);
+    }
+ 
+    fib_table = fib_table_get(fi, proto);
+
+    old = fib_table->ft_tag;
+
+    if(tag) 
+	    fib_table->ft_tag = format(NULL, "%0.63s%c", tag, 0); 
+    else
+	    fib_table->ft_tag = NULL;
+
+    vec_free (old);
+    return (fi);
+}
+ 
 static void
 fib_table_destroy (fib_table_t *fib_table)
 {
     vec_free(fib_table->ft_desc);
+
+    vec_free(fib_table->ft_tag);
 
     switch (fib_table->ft_proto)
     {
