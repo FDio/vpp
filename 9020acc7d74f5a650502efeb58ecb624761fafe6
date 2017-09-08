@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_6f52efde",
+        "filename": "maintainer.config",
+        "patchSetId": 3
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2017-09-08T16:47:32Z",
+      "side": 1,
+      "message": "Wait... what happens here if a patch comes in for stable/1704 , do we look for the maintainer file in stable/1707 ?",
+      "revId": "9020acc7d74f5a650502efeb58ecb624761fafe6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
