@@ -33,7 +33,7 @@ lb_vip_command_fn (vlib_main_t * vm,
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
 
-  if (!unformat(line_input, "%U", unformat_ip46_prefix, &prefix, &plen, IP46_TYPE_ANY, &plen)) {
+  if (!unformat(line_input, "%U", unformat_ip46_prefix, &prefix, &plen, IP46_TYPE_ANY)) {
     error = clib_error_return (0, "invalid vip prefix: '%U'",
                                format_unformat_error, line_input);
     goto done;
