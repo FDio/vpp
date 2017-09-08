@@ -18,6 +18,7 @@
 #include <vlib/vlib.h>
 
 #include <vlib/threads.h>
+#include <vlib/linux/sysfs.h>
 #include <vlib/unix/unix.h>
 
 static u8 *
