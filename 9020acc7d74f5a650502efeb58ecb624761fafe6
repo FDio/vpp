@@ -16,6 +16,24 @@
       "revId": "9020acc7d74f5a650502efeb58ecb624761fafe6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_c14bf729",
+        "filename": "maintainer.config",
+        "patchSetId": 3
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 529
+      },
+      "writtenOn": "2017-09-09T09:59:12Z",
+      "side": 1,
+      "message": "if you look at other options , this is basically to turn maintaner off for every branch other that master. So the 1707 , was put there to just have it as valid configuration(wildcarded branch + fileref must for valid name of branch). But it does not matter in this case , because every option is disabled, so maintainer file wont be even searched.",
+      "parentUuid": "3a4b7175_6f52efde",
+      "revId": "9020acc7d74f5a650502efeb58ecb624761fafe6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
