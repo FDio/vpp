@@ -20,7 +20,6 @@
 #include <vat/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 #include <vnet/ip/ip.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2tp/l2tp.h>
