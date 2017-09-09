@@ -265,7 +265,7 @@ dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_l2, u8 is_add)
 }
 
 static void
-dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
+dp_del_fwd_entry (lisp_cp_main_t * lcm, u32 dst_map_index)
 {
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
   fwd_entry_t *fe = 0;
@@ -438,8 +438,8 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   vnet_lisp_gpe_add_del_fwd_entry_args_t _a, *a = &_a;
   gid_address_t *rmt_eid, *lcl_eid;
   mapping_t *lcl_map, *rmt_map;
-  u32 sw_if_index;
-  uword *feip = 0, *dpid;
+  u32 sw_if_index, **rmts, rmts_pos;
+  uword *feip = 0, *dpid, *rmts_stored_pos = 0;
   fwd_entry_t *fe;
   u8 type, is_src_dst = 0;
   int rv;
@@ -449,7 +449,7 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   /* remove entry if it already exists */
   feip = hash_get (lcm->fwd_entry_by_mapping_index, dst_map_index);
   if (feip)
-    dp_del_fwd_entry (lcm, src_map_index, dst_map_index);
+    dp_del_fwd_entry (lcm, dst_map_index);
 
   /*
    * Determine local mapping and eid
@@ -557,6 +557,26 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   fe->is_src_dst = is_src_dst;
   hash_set (lcm->fwd_entry_by_mapping_index, dst_map_index,
 	    fe - lcm->fwd_entry_pool);
+
+  /* Add rmt mapping to the vector of adjacent mappings to lcl mapping*/
+
+  rmts_stored_pos = hash_get(lcm->rmts_pos_in_rmts_per_lcl_pool_by_lcl_idx,src_map_index);
+  if (!rmts_stored_pos)
+    {
+      pool_get (lcm->rmts_per_lcl_pool, rmts);
+      memset (rmts, 0, sizeof (*rmts));
+      rmts_pos = rmts - lcm->rmts_per_lcl_pool;
+      hash_set(lcm->rmts_pos_in_rmts_per_lcl_pool_by_lcl_idx,src_map_index,rmts_pos);
+    }
+  else
+    {
+      rmts_pos = (u32)(*rmts_stored_pos);
+      rmts = pool_elt_at_index(lcm->rmts_per_lcl_pool,rmts_pos);
+    }
+
+  vec_add1(rmts[0],dst_map_index);
+
+
 }
 
 typedef struct
@@ -706,7 +726,8 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
 			     u32 * map_index_result)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  u32 mi, *map_indexp, map_index, i;
+  u32 mi, *map_indexp, map_index, i, **rmts = 0, *rmt_map;
+  uword *rmts_pos;
   mapping_t *m, *old_map;
   u32 **eid_indexes;
 
@@ -794,6 +815,20 @@ vnet_lisp_map_cache_add_del (vnet_lisp_add_del_mapping_args_t * a,
       m = pool_elt_at_index (lcm->mapping_pool, mi);
       if (m->local)
 	{
+	  /* Remove adjacencies associated with the local mapping */
+	  rmts_pos = hash_get(lcm->rmts_pos_in_rmts_per_lcl_pool_by_lcl_idx,mi);
+	  if (rmts_pos)
+	    {
+	      rmts = pool_elt_at_index(lcm->rmts_per_lcl_pool,rmts_pos[0]);
+	      vec_foreach(rmt_map,rmts[0])
+	      {
+		dp_del_fwd_entry(lcm,rmt_map[0]);
+	      }
+	      vec_free(rmts[0]);
+	      pool_put(lcm->rmts_per_lcl_pool,rmts);
+	      hash_unset(lcm->rmts_pos_in_rmts_per_lcl_pool_by_lcl_idx,mi);
+	    }
+
 	  u32 k, *lm_indexp;
 	  for (k = 0; k < vec_len (lcm->local_mappings_indexes); k++)
 	    {
@@ -1318,7 +1353,7 @@ vnet_lisp_clear_all_remote_adjacencies (void)
     mapping_t *map = pool_elt_at_index (lcm->mapping_pool, map_indexp[0]);
     if (!map->local)
       {
-	dp_del_fwd_entry (lcm, 0, map_indexp[0]);
+	dp_del_fwd_entry (lcm, map_indexp[0]);
 
 	dm_args->is_add = 0;
 	gid_address_copy (&dm_args->eid, &map->eid);
@@ -1404,7 +1439,7 @@ vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a)
       dp_add_fwd_entry (lcm, local_mi, remote_mi);
     }
   else
-    dp_del_fwd_entry (lcm, 0, remote_mi);
+    dp_del_fwd_entry (lcm, remote_mi);
 
   return 0;
 }
@@ -2029,7 +2064,7 @@ vnet_lisp_map_register_enable_disable (u8 is_enable)
 clib_error_t *
 vnet_lisp_enable_disable (u8 is_enable)
 {
-  u32 vni, dp_table;
+  u32 vni, dp_table, **rmts;
   clib_error_t *error = 0;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   vnet_lisp_gpe_enable_disable_args_t _a, *a = &_a;
@@ -2060,6 +2095,14 @@ vnet_lisp_enable_disable (u8 is_enable)
       /* clear interface table */
       hash_free (lcm->fwd_entry_by_mapping_index);
       pool_free (lcm->fwd_entry_pool);
+      /* Clear state tracking rmt-lcl fwd entries */
+      /* *INDENT-OFF* */
+      pool_foreach(rmts, lcm->rmts_per_lcl_pool,
+      {
+        vec_free(rmts[0]);
+      });
+      /* *INDENT-ON* */
+      hash_free(lcm->rmts_pos_in_rmts_per_lcl_pool_by_lcl_idx);
     }
 
   /* update global flag */

@@ -180,6 +180,12 @@ typedef struct
   /* hash map of forwarding entries by mapping index */
   u32 *fwd_entry_by_mapping_index;
 
+  /* pool of vectors of rmts per lcl mapping in adjacencies */
+  u32 **rmts_per_lcl_pool;
+
+  /* hash of pool positions of vectors of rmts by lcl mapping index */
+  u32 *rmts_pos_in_rmts_per_lcl_pool_by_lcl_idx;
+
   /* forwarding entries pool */
   fwd_entry_t *fwd_entry_pool;
 
