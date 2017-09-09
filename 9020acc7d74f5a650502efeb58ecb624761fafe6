@@ -34,6 +34,24 @@
       "revId": "9020acc7d74f5a650502efeb58ecb624761fafe6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_c1e77711",
+        "filename": "maintainer.config",
+        "patchSetId": 3
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 2
+      },
+      "writtenOn": "2017-09-09T18:55:44Z",
+      "side": 1,
+      "message": "I confused.  Why do we need this at all.  Branches with no matching [branch ...] should be off by default anyway...",
+      "parentUuid": "3a4b7175_c14bf729",
+      "revId": "9020acc7d74f5a650502efeb58ecb624761fafe6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
