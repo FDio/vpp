@@ -78,6 +78,7 @@ VPP_BUILD_HOST ?= $$(hostname)
 
 bin_vpp_LDADD = \
   libvlibmemory.la \
+  libvlibsocket.la \
   libvlib.la \
   libvnet.la \
   libsvm.la \

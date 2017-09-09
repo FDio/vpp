@@ -29,21 +29,21 @@
 #include <vlibsocket/api.h>
 #include <vlibmemory/api.h>
 
-#include <vlibsocket/vl_socket_msg_enum.h>	/* enumerate all vlib messages */
+#include <vlibmemory/vl_memory_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
-#include <vlibsocket/vl_socket_api_h.h>
+#include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vlibsocket/vl_socket_api_h.h>
+#include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
 
 /* instantiate all the endian swap functions we know about */
 #define vl_endianfun
-#include <vlibsocket/vl_socket_api_h.h>
+#include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
 socket_main_t socket_main;
@@ -85,6 +85,7 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   u32 msg_length;
   u32 tmp;
   api_main_t *am = &api_main;
+  msgbuf_t *mb = (msgbuf_t *) (elem - offsetof (msgbuf_t, data));
 
   ASSERT (rp->registration_type > REGISTRATION_TYPE_SHMEM);
 
@@ -95,7 +96,7 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
       return;
     }
 
-  msg_length = am->api_trace_cfg[msg_id].size;
+  msg_length = ntohl(mb->data_len);
   nbytes += msg_length;
   tmp = clib_host_to_net_u32 (nbytes);
 
@@ -539,7 +540,7 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
 _(SOCKCLNT_CREATE, sockclnt_create)             \
 _(SOCKCLNT_DELETE, sockclnt_delete)
 
-static clib_error_t *
+clib_error_t *
 socksvr_api_init (vlib_main_t * vm)
 {
   unix_main_t *um = &unix_main;
@@ -551,14 +552,22 @@ socksvr_api_init (vlib_main_t * vm)
   vl_api_registration_t *rp;
   u16 portno;
   u32 bind_address;
+  vl_msg_api_msg_config_t cfg;
+  vl_msg_api_msg_config_t *c = &cfg;
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+#define _(N,n) do {                                             \
+    c->id = VL_API_##N;                                         \
+    c->name = #n;                                               \
+    c->handler = vl_api_##n##_t_handler;                        \
+    c->cleanup = vl_noop_handler;                               \
+    c->endian = vl_api_##n##_t_endian;                          \
+    c->print = vl_api_##n##_t_print;                            \
+    c->size = sizeof(vl_api_##n##_t);                           \
+    c->traced = 1; /* trace, so these msgs print */             \
+    c->replay = 0; /* don't replay client create/delete msgs */ \
+    c->message_bounce = 0; /* don't bounce this message */	\
+    vl_msg_api_config(c);} while (0);
+
   foreach_vlib_api_msg;
 #undef _
 
@@ -670,7 +679,7 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
 				    format_unformat_error, input);
 	}
     }
-  return socksvr_api_init (vm);
+  return 0;
 }
 
 VLIB_CONFIG_FUNCTION (socksvr_config, "socksvr");

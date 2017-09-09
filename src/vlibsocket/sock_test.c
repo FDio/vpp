@@ -103,7 +103,7 @@ main (int argc, char *argv[])
       memset (buffer, 0, sizeof (buffer));
 
       mp = (vl_api_sockclnt_create_t *) buffer;
-      mp->_vl_msg_id = ntohs (8);	/* VL_API_SOCKCLNT_CREATE */
+      mp->_vl_msg_id = ntohs (13);	/* VL_API_SOCKCLNT_CREATE */
       strncpy ((char *) mp->name, "socket-test", sizeof (mp->name) - 1);
       mp->name[sizeof (mp->name) - 1] = 0;
       mp->context = 0xfeedface;
@@ -134,7 +134,7 @@ main (int argc, char *argv[])
 
       rp = (vl_api_sockclnt_create_reply_t *) (buffer + 4);
       /* VL_API_SOCKCLNT_CREATE_REPLY */
-      if (ntohs (rp->_vl_msg_id) != 9)
+      if (ntohs (rp->_vl_msg_id) != 14)
 	{
 	  printf ("WARNING: msg id %d\n", ntohs (rp->_vl_msg_id));
 	}
