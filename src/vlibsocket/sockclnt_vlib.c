@@ -31,21 +31,21 @@
 #include <vlibmemory/api.h>
 #include <vlibsocket/api.h>
 
-#include <vlibsocket/vl_socket_msg_enum.h>
+#include <vlibmemory/vl_memory_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
-#include <vlibsocket/vl_socket_api_h.h>
+#include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vlibsocket/vl_socket_api_h.h>
+#include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
 
 /* instantiate all the endian swap functions we know about */
 #define vl_endianfun
-#include <vlibsocket/vl_socket_api_h.h>
+#include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
 static void

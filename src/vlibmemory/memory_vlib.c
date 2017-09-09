@@ -88,17 +88,8 @@ vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
-void vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
-  __attribute__ ((weak));
-
-void
-vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
-{
-  static int count;
-
-  if (count++ < 5)
-    clib_warning ("need to link against -lvlibsocket, msg not sent!");
-}
+extern void
+vl_socket_api_send (vl_api_registration_t * rp, u8 * elem);
 
 void
 vl_msg_api_send (vl_api_registration_t * rp, u8 * elem)
@@ -486,6 +477,8 @@ memclnt_process (vlib_main_t * vm,
   f64 dead_client_scan_time;
   f64 sleep_time, start_time;
   f64 vector_rate;
+  clib_error_t * socksvr_api_init (vlib_main_t * vm);
+  clib_error_t *error;
   int i;
 
   vlib_set_queue_signal_callback (vm, memclnt_queue_callback);
@@ -493,6 +486,13 @@ memclnt_process (vlib_main_t * vm,
   if ((rv = memory_api_init (am->region_name)) < 0)
     {
       clib_warning ("memory_api_init returned %d, wait for godot...", rv);
+      vlib_process_suspend (vm, 1e70);
+    }
+
+  if ((error = socksvr_api_init (vm)))
+    {
+      clib_error_report (error);
+      clib_warning ("socksvr_api_init failed, wait for godot...");
       vlib_process_suspend (vm, 1e70);
     }
 
@@ -1220,6 +1220,7 @@ vlibmemory_init (vlib_main_t * vm)
 {
   api_main_t *am = &api_main;
   svm_map_region_args_t _a, *a = &_a;
+  clib_error_t * error;
 
   memset (a, 0, sizeof (*a));
   a->root_path = am->root_path;
@@ -1235,7 +1236,10 @@ vlibmemory_init (vlib_main_t * vm)
      0) ? am->global_pvt_heap_size : SVM_PVT_MHEAP_SIZE;
 
   svm_region_init_args (a);
-  return 0;
+
+  error = vlib_call_init_function (vm, vlibsocket_init);
+
+  return error;
 }
 
 VLIB_INIT_FUNCTION (vlibmemory_init);
