@@ -53,7 +53,6 @@ typedef struct vl_api_registration_
   /* socket server and client */
   u32 clib_file_index;
   i8 *unprocessed_input;
-  u32 unprocessed_msg_length;
   u8 *output_vector;
 
   /* socket client only */
