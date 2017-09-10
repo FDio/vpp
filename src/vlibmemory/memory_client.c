@@ -325,15 +325,9 @@ _(MEMCLNT_CREATE_REPLY, memclnt_create_reply)   \
 _(MEMCLNT_DELETE_REPLY, memclnt_delete_reply)
 
 
-int
-vl_client_api_map (const char *region_name)
+void
+vl_client_install_client_message_handlers (void)
 {
-  int rv;
-
-  if ((rv = vl_map_shmem (region_name, 0 /* is_vlib */ )) < 0)
-    {
-      return rv;
-    }
 
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
@@ -344,6 +338,17 @@ vl_client_api_map (const char *region_name)
                             sizeof(vl_api_##n##_t), 1);
   foreach_api_msg;
 #undef _
+}
+
+
+int
+vl_client_api_map (const char *region_name)
+{
+  int rv;
+
+  if ((rv = vl_map_shmem (region_name, 0 /* is_vlib */ )) < 0)
+    return rv;
+
   return 0;
 }
 
@@ -356,12 +361,12 @@ vl_client_api_unmap (void)
 static int
 connect_to_vlib_internal (const char *svm_name,
 			  const char *client_name,
-			  int rx_queue_size, int want_pthread)
+			  int rx_queue_size, int want_pthread, int do_map)
 {
   int rv = 0;
   memory_client_main_t *mm = &memory_client_main;
 
-  if ((rv = vl_client_api_map (svm_name)))
+  if (do_map && (rv = vl_client_api_map (svm_name)))
     {
       clib_warning ("vl_client_api map rv %d", rv);
       return rv;
@@ -393,7 +398,8 @@ vl_client_connect_to_vlib (const char *svm_name,
 			   const char *client_name, int rx_queue_size)
 {
   return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
-				   1 /* want pthread */ );
+				   1 /* want pthread */ ,
+				   1 /* do map */ );
 }
 
 int
@@ -402,7 +408,17 @@ vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
 					 int rx_queue_size)
 {
   return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
-				   0 /* want pthread */ );
+				   0 /* want pthread */ ,
+				   1 /* do map */ );
+}
+
+int
+vl_client_connect_to_vlib_no_map (const char *svm_name,
+				  const char *client_name, int rx_queue_size)
+{
+  return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
+				   1 /* want pthread */ ,
+				   0 /* dont map */ );
 }
 
 void

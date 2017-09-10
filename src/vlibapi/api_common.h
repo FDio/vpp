@@ -53,7 +53,6 @@ typedef struct vl_api_registration_
   /* socket server and client */
   u32 clib_file_index;
   i8 *unprocessed_input;
-  u32 unprocessed_msg_length;
   u8 *output_vector;
 
   /* socket client only */
@@ -191,11 +190,10 @@ typedef struct
   trace_cfg_t *api_trace_cfg;
   int our_pid;
   svm_region_t *vlib_rp;
+  svm_region_t **vlib_private_rps;
   svm_region_t **mapped_shmem_regions;
   struct vl_shmem_hdr_ *shmem_hdr;
   vl_api_registration_t **vl_clients;
-
-  u8 *serialized_message_table_in_shmem;
 
   /* For plugin msg allocator */
   u16 first_available_msg_id;
