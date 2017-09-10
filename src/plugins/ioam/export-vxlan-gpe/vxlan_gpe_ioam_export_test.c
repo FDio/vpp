@@ -21,7 +21,6 @@
 #include <vat/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 #include <vppinfra/error.h>
 
 #define __plugin_msg_base export_test_main.msg_id_base

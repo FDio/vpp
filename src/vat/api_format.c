@@ -20,7 +20,6 @@
 #include <vat/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 #include <vnet/ip/ip.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2tp/l2tp.h>
@@ -72,6 +71,172 @@
 
 #define __plugin_msg_base 0
 #include <vlibapi/vat_helper_macros.h>
+
+#if VPP_API_TEST_BUILTIN == 0
+#include <netdb.h>
+
+u32
+vl (void *p)
+{
+  return vec_len (p);
+}
+
+void
+vat_socket_read_reply (vat_main_t * vam)
+{
+  int n, current_rx_index;
+  msgbuf_t *mbp;
+  int mbp_set;
+
+  if (vam->socket_fd == 0)
+    return;
+
+  mbp_set = 0;
+
+  while (1)
+    {
+      current_rx_index = vec_len (vam->socket_rx_buffer);
+      while (vec_len (vam->socket_rx_buffer) <
+	     sizeof (*mbp) + 2 /* msg id */ )
+	{
+	  vec_validate (vam->socket_rx_buffer, current_rx_index + 8191);
+	  _vec_len (vam->socket_rx_buffer) = current_rx_index;
+	  n = read (vam->socket_fd, vam->socket_rx_buffer + current_rx_index,
+		    8192);
+	  if (n < 0)
+	    {
+	      clib_unix_warning ("socket_read");
+	      vam->result_ready = 1;
+	      vam->retval = -99;
+	      return;
+	    }
+	  _vec_len (vam->socket_rx_buffer) += n;
+	}
+
+      if (mbp_set == 0)
+	{
+	  mbp = (msgbuf_t *) (vam->socket_rx_buffer);
+	  mbp_set = 1;
+	}
+
+      if (vec_len (vam->socket_rx_buffer) >= ntohl (mbp->data_len)
+	  + sizeof (*mbp))
+	{
+	  vl_msg_api_socket_handler ((void *) (mbp->data));
+
+	  if (vec_len (vam->socket_rx_buffer) == ntohl (mbp->data_len)
+	      + sizeof (*mbp))
+	    _vec_len (vam->socket_rx_buffer) = 0;
+	  else
+	    vec_delete (vam->socket_rx_buffer, ntohl (mbp->data_len)
+			+ sizeof (*mbp), 0);
+	  mbp_set = 0;
+
+	  if (vec_len (vam->socket_rx_buffer) == 0)
+	    break;
+	}
+    }
+}
+
+int
+vat_socket_connect (vat_main_t * vam)
+{
+  struct hostent *server;
+  struct sockaddr_in serv_addr;
+  char buffer[256];
+  char *rdptr;
+  int n, total_bytes;
+  vl_api_sockclnt_create_reply_t *rp;
+  vl_api_sockclnt_create_t *mp;
+  msgbuf_t *mbp;
+
+  vam->socket_fd = socket (AF_INET, SOCK_STREAM, 0);
+  if (vam->socket_fd < 0)
+    {
+      clib_unix_warning ("socket");
+      return (1);
+    }
+  server = gethostbyname ("localhost");
+  if (server == NULL)
+    {
+      clib_unix_warning ("localhost");
+      return (1);
+    }
+
+  bzero ((char *) &serv_addr, sizeof (serv_addr));
+  serv_addr.sin_family = AF_INET;
+  bcopy ((char *) server->h_addr,
+	 (char *) &serv_addr.sin_addr.s_addr, server->h_length);
+  serv_addr.sin_port = vam->socket_port;
+  if (connect (vam->socket_fd, (const void *) &serv_addr,
+	       sizeof (serv_addr)) < 0)
+    {
+      clib_unix_warning ("connect");
+      return (1);
+    }
+
+  mbp = (msgbuf_t *) buffer;
+  mbp->q = 0;
+  mbp->data_len = ntohl (sizeof (*mp));
+  mbp->gc_mark_timestamp = 0;
+
+  mp = (vl_api_sockclnt_create_t *) mbp->data;
+  mp->_vl_msg_id = ntohs (VL_API_SOCKCLNT_CREATE);
+  strncpy ((char *) mp->name, "vpp_api_test", sizeof (mp->name) - 1);
+  mp->name[sizeof (mp->name) - 1] = 0;
+  mp->context = 0xfeedface;
+
+  n = write (vam->socket_fd, mbp, sizeof (*mbp) + ntohl (mbp->data_len));
+  if (n < 0)
+    {
+      clib_unix_warning ("socket write (msg)");
+      return (1);
+    }
+
+  memset (buffer, 0, sizeof (buffer));
+
+  total_bytes = 0;
+  rdptr = buffer;
+  do
+    {
+      n = read (vam->socket_fd, rdptr, sizeof (buffer) - (rdptr - buffer));
+      if (n < 0)
+	{
+	  clib_unix_warning ("socket read");
+	}
+      total_bytes += n;
+      rdptr += n;
+    }
+  while (total_bytes < sizeof (vl_api_sockclnt_create_reply_t)
+	 + sizeof (msgbuf_t));
+
+  rp = (vl_api_sockclnt_create_reply_t *) (buffer + sizeof (msgbuf_t));
+  if (ntohs (rp->_vl_msg_id) != VL_API_SOCKCLNT_CREATE_REPLY)
+    {
+      clib_warning ("connect reply got msg id %d\n", ntohs (rp->_vl_msg_id));
+      return (1);
+    }
+
+  /* allocate a large tx buffer, vs. vl_msg_api_alloc_as_if_client... */
+  vec_validate (vam->socket_tx_buffer, 8191);
+  vec_validate (vam->socket_rx_buffer, 8191);
+  _vec_len (vam->socket_rx_buffer) = 0;
+
+  return (0);
+}
+#else
+int
+vat_socket_connect (vat_main_t * vam)
+{
+  return 0;
+}
+
+void
+vat_socket_read_reply (vat_main_t * vam)
+{
+}
+#endif
+
 
 f64
 vat_time_now (vat_main_t * vam)

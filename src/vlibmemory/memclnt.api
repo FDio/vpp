@@ -112,3 +112,31 @@ manual_print define trace_plugin_msg_ids
     u16 first_msg_id;
     u16 last_msg_id;
 };
+
+/*
+ * Create a socket client registration. 
+ */
+define sockclnt_create {
+    u8 name[64];                /* for show, find by name, whatever */
+    u32 context;                /* opaque value to be returned in the reply */
+};
+
+define sockclnt_create_reply {
+    i32 response;               /* Non-negative = success */
+    u64 handle;           	/* handle by which vlib knows this client */
+    u32 index;                  /* index, used e.g. by API trace replay */
+    u32 context;                /* opaque value from the create request */
+};
+
+/*
+ * Delete a client registration 
+ */
+define sockclnt_delete {
+    u32 index;                  /* index, used e.g. by API trace replay */
+    u64 handle;               	/* handle by which vlib knows this client */
+};
+
+define sockclnt_delete_reply {
+    i32 response;               /* Non-negative = success */
+    u64 handle;               	/* in case the client wonders */
+};

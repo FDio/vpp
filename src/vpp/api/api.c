@@ -1030,14 +1030,9 @@ vl_api_cli_inband_t_handler (vl_api_cli_inband_t * mp)
 {
   vl_api_cli_inband_reply_t *rmp;
   int rv = 0;
-  unix_shared_memory_queue_t *q;
   vlib_main_t *vm = vlib_get_main ();
   unformat_input_t input;
   u8 *out_vec = 0;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
 
   unformat_init_string (&input, (char *) mp->cmd, ntohl (mp->length));
   vlib_cli_input (vm, &input, inband_cli_output, (uword) & out_vec);
@@ -1172,12 +1167,6 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
   char *vpe_api_get_build_directory (void);
   char *vpe_api_get_version (void);
   char *vpe_api_get_build_date (void);
-
-  unix_shared_memory_queue_t *q =
-    vl_api_client_index_to_input_queue (mp->client_index);
-
-  if (!q)
-    return;
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_SHOW_VERSION_REPLY,
