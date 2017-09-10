@@ -23,7 +23,6 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 
 /* define message IDs */
 #include <sample/sample_msg_enum.h>

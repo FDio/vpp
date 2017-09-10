@@ -26,27 +26,24 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#include <vlibsocket/api.h>
 #include <vlibmemory/api.h>
 
-#include <vlibsocket/vl_socket_msg_enum.h>	/* enumerate all vlib messages */
+#include <vlibmemory/vl_memory_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
-#include <vlibsocket/vl_socket_api_h.h>
+#include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <vlibsocket/vl_socket_api_h.h>
+#include <vlibmemory/vl_memory_api_h.h>
 #undef vl_printfun
 
 /* instantiate all the endian swap functions we know about */
 #define vl_endianfun
-#include <vlibsocket/vl_socket_api_h.h>
+#include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
-
-socket_main_t socket_main;
 
 void
 dump_socket_clients (vlib_main_t * vm, api_main_t * am)
@@ -63,7 +60,7 @@ dump_socket_clients (vlib_main_t * vm, api_main_t * am)
   if (pool_elts (sm->registration_pool) < 2)
     return;
 
-  vlib_cli_output (vm, "TCP socket clients");
+  vlib_cli_output (vm, "Socket clients");
   vlib_cli_output (vm, "%16s %8s", "Name", "Fildesc");
     /* *INDENT-OFF* */
     pool_foreach (reg, sm->registration_pool,
@@ -80,11 +77,9 @@ dump_socket_clients (vlib_main_t * vm, api_main_t * am)
 void
 vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
 {
-  u32 nbytes = 4;		/* for the length... */
   u16 msg_id = ntohs (*(u16 *) elem);
-  u32 msg_length;
-  u32 tmp;
   api_main_t *am = &api_main;
+  msgbuf_t *mb = (msgbuf_t *) (elem - offsetof (msgbuf_t, data));
 
   ASSERT (rp->registration_type > REGISTRATION_TYPE_SHMEM);
 
@@ -95,120 +90,19 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
       return;
     }
 
-  msg_length = am->api_trace_cfg[msg_id].size;
-  nbytes += msg_length;
-  tmp = clib_host_to_net_u32 (nbytes);
-
+  /* Add the msgbuf_t to the output vector */
+  vl_socket_add_pending_output_no_flush (rp->clib_file_index
+					 + file_main.file_pool,
+					 rp->vl_api_registration_pool_index
+					 + socket_main.registration_pool,
+					 (u8 *) mb, sizeof (*mb));
+  /* Send the message */
   vl_socket_add_pending_output (rp->clib_file_index
 				+ file_main.file_pool,
 				rp->vl_api_registration_pool_index
 				+ socket_main.registration_pool,
-				(u8 *) & tmp, sizeof (tmp));
-  vl_socket_add_pending_output (rp->clib_file_index
-				+ file_main.file_pool,
-				rp->vl_api_registration_pool_index
-				+ socket_main.registration_pool,
-				elem, msg_length);
+				elem, ntohl (mb->data_len));
   vl_msg_api_free ((void *) elem);
-}
-
-void
-vl_socket_api_send_with_data (vl_api_registration_t * rp,
-			      u8 * elem, u8 * data_vector)
-{
-  u32 nbytes = 4;		/* for the length... */
-  u16 msg_id = ntohs (*(u16 *) elem);
-  u32 msg_length;
-  u32 tmp;
-  api_main_t *am = &api_main;
-
-  ASSERT (rp->registration_type > REGISTRATION_TYPE_SHMEM);
-
-  if (msg_id >= vec_len (am->api_trace_cfg))
-    {
-      clib_warning ("id out of range: %d", msg_id);
-      vec_free (data_vector);
-      vl_msg_api_free ((void *) elem);
-      return;
-    }
-
-  msg_length = am->api_trace_cfg[msg_id].size;
-  nbytes += msg_length;
-  nbytes += vec_len (data_vector);
-
-  /* Length in network byte order */
-  tmp = clib_host_to_net_u32 (nbytes);
-
-  vl_socket_add_pending_output (rp->clib_file_index
-				+ file_main.file_pool,
-				rp->vl_api_registration_pool_index
-				+ socket_main.registration_pool,
-				(u8 *) & tmp, sizeof (tmp));
-  vl_socket_add_pending_output (rp->clib_file_index
-				+ file_main.file_pool,
-				rp->vl_api_registration_pool_index
-				+ socket_main.registration_pool,
-				elem, msg_length);
-  vl_socket_add_pending_output (rp->clib_file_index
-				+ file_main.file_pool,
-				rp->vl_api_registration_pool_index
-				+ socket_main.registration_pool,
-				data_vector, vec_len (data_vector));
-  vl_msg_api_free ((void *) elem);
-}
-
-static inline void
-vl_socket_api_send_with_length_internal (vl_api_registration_t * rp,
-					 u8 * elem, u32 msg_length, int free)
-{
-  u32 nbytes = 4;		/* for the length... */
-  u16 msg_id = ntohs (*(u16 *) elem);
-  u32 tmp;
-  api_main_t *am = &api_main;
-
-  ASSERT (rp->registration_type > REGISTRATION_TYPE_SHMEM);
-
-  if (msg_id >= vec_len (am->api_trace_cfg))
-    {
-      clib_warning ("id out of range: %d", msg_id);
-      if (free)
-	vl_msg_api_free ((void *) elem);
-      return;
-    }
-
-  nbytes += msg_length;
-
-  /* Length in network byte order */
-  tmp = clib_host_to_net_u32 (nbytes);
-
-  vl_socket_add_pending_output (rp->clib_file_index
-				+ file_main.file_pool,
-				rp->vl_api_registration_pool_index
-				+ socket_main.registration_pool,
-				(u8 *) & tmp, sizeof (tmp));
-  vl_socket_add_pending_output (rp->clib_file_index
-				+ file_main.file_pool,
-				rp->vl_api_registration_pool_index
-				+ socket_main.registration_pool,
-				elem, msg_length);
-  if (free)
-    vl_msg_api_free ((void *) elem);
-}
-
-void
-vl_socket_api_send_with_length (vl_api_registration_t * rp,
-				u8 * elem, u32 msg_length)
-{
-  vl_socket_api_send_with_length_internal (rp, elem, msg_length,
-					   1 /* free */ );
-}
-
-void
-vl_socket_api_send_with_length_no_free (vl_api_registration_t * rp,
-					u8 * elem, u32 msg_length)
-{
-  vl_socket_api_send_with_length_internal (rp, elem, msg_length,
-					   0 /* free */ );
 }
 
 void
@@ -230,11 +124,13 @@ vl_free_socket_registration_index (u32 pool_index)
   pool_put (socket_main.registration_pool, rp);
 }
 
-static inline void
-socket_process_msg (clib_file_t * uf, vl_api_registration_t * rp,
-		    i8 * input_v)
+void
+vl_api_socket_process_msg (clib_file_t * uf, vl_api_registration_t * rp,
+			   i8 * input_v)
 {
-  u8 *the_msg = (u8 *) (input_v + sizeof (u32));
+  msgbuf_t *mbp = (msgbuf_t *) input_v;
+
+  u8 *the_msg = (u8 *) (mbp->data);
   socket_main.current_uf = uf;
   socket_main.current_rp = rp;
   vl_msg_api_socket_handler (the_msg);
@@ -246,11 +142,16 @@ clib_error_t *
 vl_socket_read_ready (clib_file_t * uf)
 {
   clib_file_main_t *fm = &file_main;
+  vlib_main_t *vm = vlib_get_main ();
   vl_api_registration_t *rp;
   int n;
   i8 *msg_buffer = 0;
+  u8 *data_for_process;
   u32 msg_len;
   u32 save_input_buffer_length = vec_len (socket_main.input_buffer);
+  vl_socket_args_for_process_t *a;
+  msgbuf_t *mbp;
+  int mbp_set = 0;
 
   rp = pool_elt_at_index (socket_main.registration_pool, uf->private_data);
 
@@ -278,7 +179,7 @@ vl_socket_read_ready (clib_file_t * uf)
 
   /*
    * Look for bugs here. This code is tricky because
-   * data read from a stream socket does honor message
+   * data read from a stream socket does not honor message
    * boundaries. In the case of a long message (>4K bytes)
    * we have to do (at least) 2 reads, etc.
    */
@@ -288,39 +189,30 @@ vl_socket_read_ready (clib_file_t * uf)
 	{
 	  vec_append (rp->unprocessed_input, socket_main.input_buffer);
 	  msg_buffer = rp->unprocessed_input;
-	  msg_len = rp->unprocessed_msg_length;
 	}
       else
 	{
 	  msg_buffer = socket_main.input_buffer;
-	  msg_len = 0;
+	  mbp_set = 0;
 	}
 
-      if (msg_len == 0)
+      if (mbp_set == 0)
 	{
-	  /* Length may be split across two reads */
-	  if (vec_len (msg_buffer) < sizeof (u32))
+	  /* Any chance that we have a complete message? */
+	  if (vec_len (msg_buffer) <= sizeof (msgbuf_t))
 	    goto save_and_split;
 
-	  /* total length, including msg_len itself, in network byte order */
-	  msg_len = clib_net_to_host_u32 (*((u32 *) msg_buffer));
-	}
-
-      /* Happens if the client sent msg_len == 0 */
-      if (msg_len == 0)
-	{
-	  clib_warning ("msg_len == 0");
-	  goto turf_it;
+	  mbp = (msgbuf_t *) msg_buffer;
+	  msg_len = ntohl (mbp->data_len);
+	  mbp_set = 1;
 	}
 
       /* We don't have the entire message yet. */
-      if (msg_len > vec_len (msg_buffer))
+      if (mbp_set == 0
+	  || (msg_len + sizeof (msgbuf_t)) > vec_len (msg_buffer))
 	{
 	save_and_split:
-	  /*
-	   * if we were using the shared input buffer,
-	   * save the fragment.
-	   */
+	  /* if we were using the input buffer save the fragment */
 	  if (msg_buffer == socket_main.input_buffer)
 	    {
 	      ASSERT (vec_len (rp->unprocessed_input) == 0);
@@ -330,22 +222,29 @@ vl_socket_read_ready (clib_file_t * uf)
 	      _vec_len (rp->unprocessed_input) = vec_len (msg_buffer);
 	    }
 	  _vec_len (socket_main.input_buffer) = save_input_buffer_length;
-	  rp->unprocessed_msg_length = msg_len;
 	  return 0;
 	}
 
-      socket_process_msg (uf, rp, msg_buffer);
-      if (n > msg_len)
-	vec_delete (msg_buffer, msg_len, 0);
+      data_for_process = (u8 *) vec_dup (msg_buffer);
+      _vec_len (data_for_process) = (msg_len + sizeof (msgbuf_t));
+      pool_get (socket_main.process_args, a);
+      a->clib_file = uf;
+      a->regp = rp;
+      a->data = data_for_process;
+
+      vlib_process_signal_event (vm, memclnt_node.index,
+				 SOCKET_READ_EVENT,
+				 a - socket_main.process_args);
+      if (n > (msg_len + sizeof (*mbp)))
+	vec_delete (msg_buffer, msg_len + sizeof (*mbp), 0);
       else
 	_vec_len (msg_buffer) = 0;
-      n -= msg_len;
+      n -= msg_len + sizeof (msgbuf_t);
       msg_len = 0;
-      rp->unprocessed_msg_length = 0;
+      mbp_set = 0;
     }
   while (n > 0);
 
-turf_it:
   _vec_len (socket_main.input_buffer) = save_input_buffer_length;
 
   return 0;
@@ -366,6 +265,14 @@ vl_socket_add_pending_output (clib_file_t * uf,
       if (!skip_update)
 	fm->file_update (uf, UNIX_FILE_UPDATE_MODIFY);
     }
+}
+
+void
+vl_socket_add_pending_output_no_flush (clib_file_t * uf,
+				       vl_api_registration_t * rp,
+				       u8 * buffer, uword buffer_bytes)
+{
+  vec_add (rp->output_vector, buffer, buffer_bytes);
 }
 
 static void
@@ -451,24 +358,17 @@ static clib_error_t *
 socksvr_accept_ready (clib_file_t * uf)
 {
   clib_file_main_t *fm = &file_main;
-  struct sockaddr_in client_addr;
-  int client_fd;
-  int client_len;
+  socket_main_t *sm = &socket_main;
+  clib_socket_t *sock = &sm->socksvr_listen_socket;
+  clib_socket_t client;
+  clib_error_t *error;
 
-  client_len = sizeof (client_addr);
+  error = clib_socket_accept (sock, &client);
 
-  /*
-   * Supposedly acquires the non-blocking attrib from the
-   * server socket.
-   */
-  client_fd = accept (uf->file_descriptor,
-		      (struct sockaddr *) &client_addr,
-		      (socklen_t *) & client_len);
+  if (error)
+    return error;
 
-  if (client_fd < 0)
-    return clib_error_return_unix (0, "socksvr_accept_ready: accept");
-
-  socksvr_file_add (fm, client_fd);
+  socksvr_file_add (fm, client.fd);
   return 0;
 }
 
@@ -539,7 +439,7 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
 _(SOCKCLNT_CREATE, sockclnt_create)             \
 _(SOCKCLNT_DELETE, sockclnt_delete)
 
-static clib_error_t *
+clib_error_t *
 socksvr_api_init (vlib_main_t * vm)
 {
   clib_file_main_t *fm = &file_main;
@@ -551,79 +451,119 @@ socksvr_api_init (vlib_main_t * vm)
   vl_api_registration_t *rp;
   u16 portno;
   u32 bind_address;
+  vl_msg_api_msg_config_t cfg;
+  vl_msg_api_msg_config_t *c = &cfg;
+  socket_main_t *sm = &socket_main;
+  clib_socket_t *sock = &sm->socksvr_listen_socket;
+  clib_error_t *error;
 
-#define _(N,n)                                                  \
-    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
-                           vl_api_##n##_t_handler,              \
-                           vl_noop_handler,                     \
-                           vl_api_##n##_t_endian,               \
-                           vl_api_##n##_t_print,                \
-                           sizeof(vl_api_##n##_t), 1);
+  /* If not explicitly configured, do not bind/enable, etc. */
+  /* $$$ FIXME */
+  if ((portno = sm->portno) == 0)
+    return 0;
+
+#define _(N,n) do {                                             \
+    c->id = VL_API_##N;                                         \
+    c->name = #n;                                               \
+    c->handler = vl_api_##n##_t_handler;                        \
+    c->cleanup = vl_noop_handler;                               \
+    c->endian = vl_api_##n##_t_endian;                          \
+    c->print = vl_api_##n##_t_print;                            \
+    c->size = sizeof(vl_api_##n##_t);                           \
+    c->traced = 1; /* trace, so these msgs print */             \
+    c->replay = 0; /* don't replay client create/delete msgs */ \
+    c->message_bounce = 0; /* don't bounce this message */	\
+    vl_msg_api_config(c);} while (0);
+
   foreach_vlib_api_msg;
 #undef _
 
-  vec_resize (socket_main.input_buffer, 4096);
+  vec_resize (sm->input_buffer, 4096);
 
-  /* Set up non-blocking server socket on CLIENT_API_SERVER_PORT */
-  sockfd = socket (AF_INET, SOCK_STREAM, 0);
-
-  if (sockfd < 0)
+  if (1)
     {
-      return clib_error_return_unix (0, "socket");
+      sock->config = API_SOCKET_FILE;
+
+      /* mkdir of file socket, only under /run  */
+      if (strncmp (sock->config, "/run", 4) == 0)
+	{
+	  u8 *tmp = format (0, "%s", sock->config);
+	  int i = vec_len (tmp);
+	  while (i && tmp[--i] != '/')
+	    ;
+
+	  tmp[i] = 0;
+
+	  if (i)
+	    vlib_unix_recursive_mkdir ((char *) tmp);
+	  vec_free (tmp);
+	}
+
+      sock->flags = CLIB_SOCKET_F_IS_SERVER | CLIB_SOCKET_F_SEQPACKET |
+	CLIB_SOCKET_F_ALLOW_GROUP_WRITE;
+      error = clib_socket_init (sock);
+      if (error)
+	return error;
     }
-
-  rv = ioctl (sockfd, FIONBIO, &one);
-  if (rv < 0)
-    {
-      close (sockfd);
-      return clib_error_return_unix (0, "FIONBIO");
-    }
-
-  rv = setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one));
-  if (rv < 0)
-    {
-      close (sockfd);
-      return clib_error_return_unix (0, "SO_REUSEADDR");
-    }
-
-  bzero ((char *) &serv_addr, sizeof (serv_addr));
-  serv_addr.sin_family = AF_INET;
-
-  if (socket_main.bind_address)
-    bind_address = socket_main.bind_address;
   else
-    bind_address = INADDR_LOOPBACK;
-
-  if (socket_main.portno)
-    portno = socket_main.portno;
-  else
-    portno = SOCKSVR_DEFAULT_PORT;
-
-  serv_addr.sin_port = clib_host_to_net_u16 (portno);
-  serv_addr.sin_addr.s_addr = clib_host_to_net_u32 (bind_address);
-
-  if (bind (sockfd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) < 0)
     {
-      close (sockfd);
-      return clib_error_return_unix (0, "bind");
+      /* Set up non-blocking server socket on CLIENT_API_SERVER_PORT */
+      sockfd = socket (AF_INET, SOCK_STREAM, 0);
+
+      if (sockfd < 0)
+	{
+	  return clib_error_return_unix (0, "socket");
+	}
+
+      rv = ioctl (sockfd, FIONBIO, &one);
+      if (rv < 0)
+	{
+	  close (sockfd);
+	  return clib_error_return_unix (0, "FIONBIO");
+	}
+
+      rv = setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one));
+      if (rv < 0)
+	{
+	  close (sockfd);
+	  return clib_error_return_unix (0, "SO_REUSEADDR");
+	}
+
+      bzero ((char *) &serv_addr, sizeof (serv_addr));
+      serv_addr.sin_family = AF_INET;
+
+      if (sm->bind_address)
+	bind_address = sm->bind_address;
+      else
+	bind_address = INADDR_LOOPBACK;
+
+      serv_addr.sin_port = clib_host_to_net_u16 (portno);
+      serv_addr.sin_addr.s_addr = clib_host_to_net_u32 (bind_address);
+
+      if (bind (sockfd, (struct sockaddr *) &serv_addr, sizeof (serv_addr)) <
+	  0)
+	{
+	  close (sockfd);
+	  return clib_error_return_unix (0, "bind");
+	}
+
+      rv = listen (sockfd, 5);
+      if (rv < 0)
+	{
+	  close (sockfd);
+	  return clib_error_return_unix (0, "listen");
+	}
     }
 
-  rv = listen (sockfd, 5);
-  if (rv < 0)
-    {
-      close (sockfd);
-      return clib_error_return_unix (0, "listen");
-    }
-
-  pool_get (socket_main.registration_pool, rp);
+  pool_get (sm->registration_pool, rp);
   memset (rp, 0, sizeof (*rp));
 
   rp->registration_type = REGISTRATION_TYPE_SOCKET_LISTEN;
 
   template.read_function = socksvr_accept_ready;
   template.write_function = socksvr_bogus_write;
-  template.file_descriptor = sockfd;
-  template.private_data = rp - socket_main.registration_pool;
+  template.file_descriptor = sock->fd;
+  template.private_data = rp - sm->registration_pool;
 
   rp->clib_file_index = clib_file_add (fm, &template);
   return 0;
@@ -633,14 +573,15 @@ static clib_error_t *
 socket_exit (vlib_main_t * vm)
 {
   clib_file_main_t *fm = &file_main;
+  socket_main_t *sm = &socket_main;
   vl_api_registration_t *rp;
 
   /* Defensive driving in case something wipes out early */
-  if (socket_main.registration_pool)
+  if (sm->registration_pool)
     {
       u32 index;
         /* *INDENT-OFF* */
-        pool_foreach (rp, socket_main.registration_pool, ({
+        pool_foreach (rp, sm->registration_pool, ({
             clib_file_del (fm, fm->file_pool + rp->clib_file_index);
             index = rp->vl_api_registration_pool_index;
             vl_free_socket_registration_index (index);
@@ -670,7 +611,7 @@ socksvr_config (vlib_main_t * vm, unformat_input_t * input)
 				    format_unformat_error, input);
 	}
     }
-  return socksvr_api_init (vm);
+  return 0;
 }
 
 VLIB_CONFIG_FUNCTION (socksvr_config, "socksvr");
