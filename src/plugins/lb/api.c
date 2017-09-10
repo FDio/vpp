@@ -19,7 +19,7 @@
 #include <vlibapi/api.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+
 
 #define vl_msg_id(n,h) n,
 typedef enum {
