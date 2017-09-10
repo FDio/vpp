@@ -48,7 +48,7 @@
 __thread uword __os_thread_index = 0;
 
 clib_error_t *
-unix_file_n_bytes (char *file, uword * result)
+clib_file_n_bytes (char *file, uword * result)
 {
   struct stat s;
 
@@ -64,7 +64,7 @@ unix_file_n_bytes (char *file, uword * result)
 }
 
 clib_error_t *
-unix_file_read_contents (char *file, u8 * result, uword n_bytes)
+clib_file_read_contents (char *file, u8 * result, uword n_bytes)
 {
   int fd = -1;
   uword n_done, n_left;
@@ -108,19 +108,19 @@ done:
 }
 
 clib_error_t *
-unix_file_contents (char *file, u8 ** result)
+clib_file_contents (char *file, u8 ** result)
 {
   uword n_bytes;
   clib_error_t *error = 0;
   u8 *v;
 
-  if ((error = unix_file_n_bytes (file, &n_bytes)))
+  if ((error = clib_file_n_bytes (file, &n_bytes)))
     return error;
 
   v = 0;
   vec_resize (v, n_bytes);
 
-  error = unix_file_read_contents (file, v, n_bytes);
+  error = clib_file_read_contents (file, v, n_bytes);
 
   if (error)
     vec_free (v);
