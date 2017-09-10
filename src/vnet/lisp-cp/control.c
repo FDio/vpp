@@ -1380,6 +1380,7 @@ vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
   mapping_t *old_map;
   u32 mi;
 
+  memset (ls_args, 0, sizeof (ls_args[0]));
   memset (m_args, 0, sizeof (m_args[0]));
   if (res_map_index)
     res_map_index[0] = ~0;
@@ -1784,6 +1785,7 @@ get_locator_set_index (vnet_lisp_add_del_locator_set_args_t * a, uword * p)
   /* find locator-set */
   if (a->local)
     {
+      ASSERT (a->name);
       p = hash_get_mem (lcm->locator_set_index_by_name, a->name);
     }
   else

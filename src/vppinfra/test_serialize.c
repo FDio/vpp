@@ -184,7 +184,7 @@ test_serialize_main (unformat_input_t * input)
 
 #ifdef CLIB_UNIX
   if (tm->dump_file)
-    serialize_open_unix_file (sm, tm->dump_file);
+    serialize_open_clib_file (sm, tm->dump_file);
   else
 #endif
     serialize_open_vector (sm, 0);
@@ -217,7 +217,7 @@ test_serialize_main (unformat_input_t * input)
 #ifdef CLIB_UNIX
   if (tm->dump_file)
     {
-      if ((error = unserialize_open_unix_file (um, tm->dump_file)))
+      if ((error = unserialize_open_clib_file (um, tm->dump_file)))
 	goto done;
     }
   else

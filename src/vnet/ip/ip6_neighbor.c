@@ -723,7 +723,7 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
        */
       if (0 == memcmp (n->link_layer_address,
 		       link_layer_address, n_bytes_link_layer_address))
-	return -1;
+	goto check_customers;
 
       clib_memcpy (n->link_layer_address,
 		   link_layer_address, n_bytes_link_layer_address);
@@ -739,6 +739,7 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
   adj_nbr_walk_nh6 (sw_if_index,
 		    &n->key.ip6_address, ip6_nd_mk_complete_walk, n);
 
+check_customers:
   /* Customer(s) waiting for this address to be resolved? */
   p = mhash_get (&nm->pending_resolutions_by_address, a);
   if (p)
