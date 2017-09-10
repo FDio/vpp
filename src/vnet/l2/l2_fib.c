@@ -1030,8 +1030,10 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		    }
 		  else
 		    {
-		      clib_warning ("MAC event to pid %d queue stuffed!"
-				    " %d MAC entries lost", client, evt_idx);
+		      if (q)
+			clib_warning ("MAC event to pid %d queue stuffed!"
+				      " %d MAC entries lost", client,
+				      evt_idx);
 		    }
 		  evt_idx = 0;
 		}
@@ -1114,8 +1116,9 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	    }
 	  else
 	    {
-	      clib_warning ("MAC event to pid %d queue stuffed!"
-			    " %d MAC entries lost", client, evt_idx);
+	      if (q)
+		clib_warning ("MAC event to pid %d queue stuffed!"
+			      " %d MAC entries lost", client, evt_idx);
 	      vl_msg_api_free (mp);
 	    }
 	}

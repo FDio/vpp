@@ -19,6 +19,7 @@
 #define included_vlibmemory_api_common_h
 
 #include <svm/svm_common.h>
+#include <vppinfra/file.h>
 #include <vlibapi/api_common.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
 
@@ -44,18 +45,17 @@ typedef struct ring_alloc_
 
 /*
  * Initializers for the (shared-memory) rings
- * _(size, n). Note: each msg has an 8 byte header.
- * Might want to change that to an index sometime.
+ * _(size, n). Note: each msg has space for a header.
  */
 #define foreach_vl_aring_size                   \
-_(64+8, 1024)                                   \
-_(256+8, 128)                                   \
-_(1024+8, 64)
+_(64+sizeof(ring_alloc_t), 1024)                \
+_(256+sizeof(ring_alloc_t), 128)                \
+_(1024+sizeof(ring_alloc_t), 64)
 
 #define foreach_clnt_aring_size                 \
-_(1024+8, 1024)                                 \
-_(2048+8, 128)                                  \
-_(4096+8, 8)
+ _(1024+sizeof(ring_alloc_t), 1024)             \
+ _(2048+sizeof(ring_alloc_t), 128)              \
+ _(4096+sizeof(ring_alloc_t), 8)
 
 typedef struct vl_shmem_hdr_
 {
@@ -83,7 +83,6 @@ typedef struct vl_shmem_hdr_
 
   /* Number of garbage-collected messages */
   u32 garbage_collects;
-
 } vl_shmem_hdr_t;
 
 #define VL_SHM_VERSION 2
@@ -123,10 +122,114 @@ int vl_client_connect_to_vlib (const char *svm_name, const char *client_name,
 int vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
 					     const char *client_name,
 					     int rx_queue_size);
+int vl_client_connect_to_vlib_no_map (const char *svm_name,
+				      const char *client_name,
+				      int rx_queue_size);
 u16 vl_client_get_first_plugin_msg_id (const char *plugin_name);
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 u32 vl_api_memclnt_create_internal (char *, unix_shared_memory_queue_t *);
+void vl_init_shmem (svm_region_t * vlib_rp, int is_vlib,
+		    int is_private_region);
+void vl_client_install_client_message_handlers (void);
+
+/* API messages over sockets */
+
+extern vlib_node_registration_t memclnt_node;
+extern volatile int **vl_api_queue_cursizes;
+
+/* Events sent to the memclnt process */
+#define QUEUE_SIGNAL_EVENT 1
+#define SOCKET_READ_EVENT 2
+
+#define API_SOCKET_FILE "/run/vpp-api.sock"
+
+typedef struct
+{
+  clib_file_t *clib_file;
+  vl_api_registration_t *regp;
+  u8 *data;
+} vl_socket_args_for_process_t;
+
+typedef struct
+{
+  /* Server port number */
+  u8 *socket_name;
+
+  /* By default, localhost... */
+  u32 bind_address;
+
+  /*
+   * (listen, server, client) registrations. Shared memory
+   * registrations are in shared memory
+   */
+  vl_api_registration_t *registration_pool;
+  /*
+   * Chain-drag variables, so message API handlers
+   * (generally) don't know whether they're talking to a socket
+   * or to a shared-memory connection.
+   */
+  vl_api_registration_t *current_rp;
+  clib_file_t *current_uf;
+  /* One input buffer, shared across all sockets */
+  i8 *input_buffer;
+
+  /* pool of process args for socket clients */
+  vl_socket_args_for_process_t *process_args;
+
+  /* Listen for API connections here */
+  clib_socket_t socksvr_listen_socket;
+} socket_main_t;
+
+extern socket_main_t socket_main;
+
+typedef struct
+{
+  int socket_fd;
+  /* Temporarily disable the connection, so we can keep it around... */
+  int socket_enable;
+
+  clib_socket_t client_socket;
+
+  u32 socket_buffer_size;
+  u8 *socket_tx_buffer;
+  u8 *socket_rx_buffer;
+  u32 socket_tx_nbytes;
+  int control_pings_outstanding;
+} socket_client_main_t;
+
+extern socket_client_main_t socket_client_main;
+
+#define SOCKET_CLIENT_DEFAULT_BUFFER_SIZE 4096
+
+void socksvr_add_pending_output (struct clib_file *uf,
+				 struct vl_api_registration_ *cf,
+				 u8 * buffer, uword buffer_bytes);
+
+void vl_free_socket_registration_index (u32 pool_index);
+void vl_socket_process_msg (struct clib_file *uf,
+			    struct vl_api_registration_ *rp, i8 * input_v);
+clib_error_t *vl_socket_read_ready (struct clib_file *uf);
+void vl_socket_add_pending_output (struct clib_file *uf,
+				   struct vl_api_registration_ *rp,
+				   u8 * buffer, uword buffer_bytes);
+void vl_socket_add_pending_output_no_flush (struct clib_file *uf,
+					    struct vl_api_registration_ *rp,
+					    u8 * buffer, uword buffer_bytes);
+clib_error_t *vl_socket_write_ready (struct clib_file *uf);
+void vl_socket_api_send (vl_api_registration_t * rp, u8 * elem);
+u32 sockclnt_open_index (char *client_name, char *hostname, int port);
+void sockclnt_close_index (u32 index);
+void vl_client_msg_api_send (vl_api_registration_t * cm, u8 * elem);
+vl_api_registration_t *sockclnt_get_registration (u32 index);
+void vl_api_socket_process_msg (clib_file_t * uf, vl_api_registration_t * rp,
+				i8 * input_v);
+
+int
+vl_socket_client_connect (socket_client_main_t * scm, char *socket_path,
+			  char *client_name, u32 socket_buffer_size);
+void vl_socket_client_read_reply (socket_client_main_t * scm);
+void vl_socket_client_enable_disable (socket_client_main_t * scm, int enable);
 
 #endif /* included_vlibmemory_api_common_h */
 

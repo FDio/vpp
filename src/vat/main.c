@@ -326,6 +326,12 @@ main (int argc, char **argv)
 	interactive = 0;
       else if (unformat (a, "json"))
 	json_output = 1;
+      else if (unformat (a, "socket-name %s", &vam->socket_name))
+	;
+      else if (unformat (a, "default-socket"))
+	{
+	  vam->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
+	}
       else if (unformat (a, "plugin_path %s", (u8 *) & vat_plugin_path))
 	vec_add1 (vat_plugin_path, 0);
       else if (unformat (a, "plugin_name_filter %s",
@@ -337,8 +343,12 @@ main (int argc, char **argv)
 	}
       else
 	{
-	  fformat (stderr,
-		   "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n");
+	  fformat
+	    (stderr,
+	     "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n"
+	     "[plugin_path <path>][default-socket][socket-name <name>]\n"
+	     "[plugin_name_filter <filter>][chroot prefix <path>]\n",
+	     argv[0]);
 	  exit (1);
 	}
     }
@@ -362,7 +372,11 @@ main (int argc, char **argv)
 
   setup_signal_handlers ();
 
-  if (connect_to_vpe ("vpp_api_test") < 0)
+  if (vam->socket_name && vat_socket_connect (vam))
+    fformat (stderr, "WARNING: socket connection failed");
+
+  if (vam->socket_client_main.socket_fd == 0
+      && connect_to_vpe ("vpp_api_test") < 0)
     {
       svm_region_exit ();
       fformat (stderr, "Couldn't connect to vpe, exiting...\n");
@@ -372,9 +386,7 @@ main (int argc, char **argv)
   vam->json_output = json_output;
 
   if (!json_output)
-    {
-      api_sw_interface_dump (vam);
-    }
+    api_sw_interface_dump (vam);
 
   vec_validate (vam->inbuf, 4096);
 
