@@ -1710,6 +1710,16 @@ static void *vl_api_memclnt_create_t_print
   FINISH;
 }
 
+static void *vl_api_sockclnt_create_t_print
+  (vl_api_sockclnt_create_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sockclnt_create name %s ", mp->name);
+
+  FINISH;
+}
+
 static void *vl_api_show_version_t_print
   (vl_api_show_version_t * mp, void *handle)
 {
@@ -3122,6 +3132,7 @@ _(WANT_INTERFACE_EVENTS, want_interface_events)				\
 _(CLI, cli)								\
 _(CLI_INBAND, cli_inband)						\
 _(MEMCLNT_CREATE, memclnt_create)					\
+_(SOCKCLNT_CREATE, sockclnt_create)					\
 _(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)           \
 _(SHOW_VERSION, show_version)                                           \
 _(L2_FIB_TABLE_DUMP, l2_fib_table_dump)                                 \
