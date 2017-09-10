@@ -525,12 +525,12 @@ void elog_alloc (elog_main_t * em, u32 n_events);
 
 #ifdef CLIB_UNIX
 always_inline clib_error_t *
-elog_write_file (elog_main_t * em, char *unix_file, int flush_ring)
+elog_write_file (elog_main_t * em, char *clib_file, int flush_ring)
 {
   serialize_main_t m;
   clib_error_t *error;
 
-  error = serialize_open_unix_file (&m, unix_file);
+  error = serialize_open_clib_file (&m, clib_file);
   if (error)
     return error;
   error = serialize (&m, serialize_elog_main, em, flush_ring);
@@ -540,12 +540,12 @@ elog_write_file (elog_main_t * em, char *unix_file, int flush_ring)
 }
 
 always_inline clib_error_t *
-elog_read_file (elog_main_t * em, char *unix_file)
+elog_read_file (elog_main_t * em, char *clib_file)
 {
   serialize_main_t m;
   clib_error_t *error;
 
-  error = unserialize_open_unix_file (&m, unix_file);
+  error = unserialize_open_clib_file (&m, clib_file);
   if (error)
     return error;
   error = unserialize (&m, unserialize_elog_main, em);
