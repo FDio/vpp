@@ -14,6 +14,8 @@
  */
 #include <stddef.h>
 #include <netinet/in.h>
+#include <netinet/ip_icmp.h>
+#include <linux/icmpv6.h>
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
@@ -27,6 +29,36 @@
 
 #include "fa_node.h"
 #include "hash_lookup.h"
+ 
+static const u_int8_t icmp4_invmap[] = {
+    [ICMP_TIMESTAMP] = ICMP_TIMESTAMPREPLY,
+    [ICMP_TIMESTAMPREPLY] = ICMP_TIMESTAMP,
+    [ICMP_INFO_REQUEST] = ICMP_INFO_REPLY,
+    [ICMP_INFO_REPLY] = ICMP_INFO_REQUEST,
+    [ICMP_ADDRESS] = ICMP_ADDRESSREPLY,
+    [ICMP_ADDRESSREPLY] = ICMP_ADDRESS
+};
+/*to validate new icmp4 session creation*/
+static const u_int8_t icmp4_valid_new[] = {
+	[ICMP_ECHO] = 1,
+	[ICMP_TIMESTAMP] = 1,
+	[ICMP_INFO_REQUEST] = 1,
+	[ICMP_ADDRESS] = 1
+};
+
+static const u_int8_t icmp6_invmap[] = {
+    [ICMPV6_ECHO_REQUEST - 128] = ICMPV6_ECHO_REPLY,
+    [ICMPV6_ECHO_REPLY - 128]   = ICMPV6_ECHO_REQUEST,
+    [ICMPV6_NI_QUERY - 128]     = ICMPV6_NI_REPLY,
+    [ICMPV6_NI_REPLY - 128]     = ICMPV6_NI_QUERY
+};
+/*to validate new icmp6 session creation*/
+static const u_int8_t icmp6_valid_new[] = {
+	[ICMPV6_ECHO_REQUEST - 128] = 1,
+};
+
+/* IP4 and IP6 protocol numbers of ICMP */
+static const u8 icmp_protos[] = { IP_PROTOCOL_ICMP, IP_PROTOCOL_ICMP6};
 
 typedef struct
 {
@@ -248,7 +280,7 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
 #ifdef FA_NODE_VERBOSE_DEBUG
       clib_warning ("ACL_FA_NODE_DBG acl %d rule %d FULL-MATCH, action %d",
 		    acl_index, i, r->is_permit);
-#endif
+#endif 
       *r_action = r->is_permit;
       if (r_acl_match_p)
 	*r_acl_match_p = acl_index;
@@ -334,9 +366,6 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
   int l4_offset;
   u16 ports[2];
   u16 proto;
-  /* IP4 and IP6 protocol numbers of ICMP */
-  static u8 icmp_protos[] = { IP_PROTOCOL_ICMP, IP_PROTOCOL_ICMP6 };
-
   if (is_input && !(is_l2_path))
     {
       l3_offset = 0;
@@ -494,7 +523,7 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 
 /* Session keys match the packets received, and mirror the packets sent */
 static void
-acl_make_5tuple_session_key (int is_input, fa_5tuple_t * p5tuple_pkt,
+acl_make_5tuple_session_key (int is_input, int is_ip6, fa_5tuple_t * p5tuple_pkt,
 			     fa_5tuple_t * p5tuple_sess)
 {
   int src_index = is_input ? 0 : 1;
@@ -504,6 +533,25 @@ acl_make_5tuple_session_key (int is_input, fa_5tuple_t * p5tuple_pkt,
   p5tuple_sess->l4.as_u64 = p5tuple_pkt->l4.as_u64;
   p5tuple_sess->l4.port[src_index] = p5tuple_pkt->l4.port[0];
   p5tuple_sess->l4.port[dst_index] = p5tuple_pkt->l4.port[1];
+
+  if(!is_input){
+	  u16 proto = p5tuple_pkt->l4.proto;
+	  if(proto == icmp_protos[is_ip6])
+	  {
+		  const u_int8_t * icmp_invmap = 0;
+		  //invert type for reverse icmp packet
+		  u16 type = p5tuple_pkt->l4.port[0];
+		  if(is_ip6){
+			  type = type - 128;
+			  icmp_invmap = icmp6_invmap;
+		  }else
+			  icmp_invmap = icmp4_invmap;
+		  if(type >= 0 && type <= sizeof(icmp_invmap) && icmp_invmap[type]){
+			  p5tuple_sess->l4.port[0] = icmp_invmap[type];
+			  p5tuple_sess->l4.port[1] = p5tuple_pkt->l4.port[1];
+		  }
+	  }
+  }
 }
 
 
@@ -927,6 +975,23 @@ acl_fa_find_session (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
 	   pvalue_sess) == 0);
 }
 
+static int
+acl_fa_can_add_icmp46_session(fa_5tuple_t * p5tuple, int is_ip6)
+{
+	if(p5tuple->l4.proto == icmp_protos[is_ip6])
+	{
+		const u_int8_t * icmp_valid_new = 0;
+		int type = p5tuple->l4.port[0];
+		if(is_ip6){
+			type = type - 128;
+			icmp_valid_new = icmp6_valid_new;
+		}else
+			icmp_valid_new = icmp4_valid_new;
+		if(type < 0 || type > sizeof(icmp_valid_new) || !icmp_valid_new[type])
+			return 0;
+	}
+	return 1;
+}
 
 always_inline uword
 acl_fa_node_fn (vlib_main_t * vm,
@@ -996,7 +1061,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 	  acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
           fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
-	  acl_make_5tuple_session_key (is_input, &fa_5tuple, &kv_sess);
+	  acl_make_5tuple_session_key (is_input, is_ip6, &fa_5tuple, &kv_sess);
 	  fa_5tuple.pkt.sw_if_index = sw_if_index0;
           fa_5tuple.pkt.is_ip6 = is_ip6;
           fa_5tuple.pkt.is_input = is_input;
@@ -1080,11 +1145,17 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 		  if (acl_fa_can_add_session (am, is_input, sw_if_index0))
 		    {
+				if(acl_fa_can_add_icmp46_session(&kv_sess, is_ip6))
+				{
                       fa_session_t *sess = acl_fa_add_session (am, is_input, sw_if_index0, now,
 					                       &kv_sess);
                       acl_fa_track_session (am, is_input, sw_if_index0, now,
                                             sess, &fa_5tuple);
 		      pkts_new_session += 1;
+				}else{
+					action = 1;
+					pkts_acl_permit += 1;
+				}
 		    }
 		  else
 		    {
