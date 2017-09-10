@@ -50,14 +50,22 @@ typedef struct vl_api_registration_
 
   u8 *name;			/**< Client name */
 
+  /* Zombie apocalypse checking */
+  f64 last_heard;
+  int last_queue_head;
+  int unanswered_pings;
+
   /** shared memory only: pointer to client input queue */
   unix_shared_memory_queue_t *vl_input_queue;
+  svm_region_t *vlib_rp;
+  void *shmem_hdr;
 
   /* socket server and client */
   u32 clib_file_index;		/**< Socket only: file index */
   i8 *unprocessed_input;	/**< Socket only: pending input */
   u32 unprocessed_msg_length;	/**< Socket only: unprocssed length */
   u8 *output_vector;		/**< Socket only: output vecto  */
+  int *additional_fds_to_close;
 
   /* socket client only */
   u32 server_handle;		/**< Socket client only: server handle */
@@ -235,6 +243,7 @@ typedef struct
   svm_region_t *vlib_rp;
 
   /** Vector of all mapped shared-VM segments */
+  svm_region_t **vlib_private_rps;
   svm_region_t **mapped_shmem_regions;
 
   /** Binary API shared-memory segment header pointer */
