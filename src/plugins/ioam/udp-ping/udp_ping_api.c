@@ -25,7 +25,7 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+
 
 /* define message IDs */
 #include <ioam/udp-ping/udp_ping_msg_enum.h>
