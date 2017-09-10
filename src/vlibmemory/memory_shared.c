@@ -39,6 +39,8 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
 
+socket_main_t socket_main;
+
 static inline void *
 vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
 {
@@ -329,17 +331,89 @@ vl_set_api_pvt_heap_size (u64 size)
   am->api_pvt_heap_size = size;
 }
 
+void
+vl_init_shmem (svm_region_t * vlib_rp, int is_vlib, int is_private_region)
+{
+  api_main_t *am = &api_main;
+  vl_shmem_hdr_t *shmem_hdr = 0;
+  u32 vlib_input_queue_length;
+  void *oldheap;
+  ASSERT (vlib_rp);
+
+  /* $$$$ need private region config parameters */
+
+  oldheap = svm_push_data_heap (vlib_rp);
+
+  vec_validate (shmem_hdr, 0);
+  shmem_hdr->version = VL_SHM_VERSION;
+
+  /* vlib main input queue */
+  vlib_input_queue_length = 1024;
+  if (am->vlib_input_queue_length)
+    vlib_input_queue_length = am->vlib_input_queue_length;
+
+  shmem_hdr->vl_input_queue =
+    unix_shared_memory_queue_init (vlib_input_queue_length, sizeof (uword),
+				   getpid (), am->vlib_signal);
+
+  /* Set up the msg ring allocator */
+#define _(sz,n)                                                 \
+    do {                                                        \
+        ring_alloc_t _rp;                                       \
+        _rp.rp = unix_shared_memory_queue_init ((n), (sz), 0, 0); \
+        _rp.size = (sz);                                        \
+        _rp.nitems = n;                                         \
+        _rp.hits = 0;                                           \
+        _rp.misses = 0;                                         \
+        vec_add1(shmem_hdr->vl_rings, _rp);                     \
+    } while (0);
+
+  foreach_vl_aring_size;
+#undef _
+
+#define _(sz,n)                                                 \
+    do {                                                        \
+        ring_alloc_t _rp;                                       \
+        _rp.rp = unix_shared_memory_queue_init ((n), (sz), 0, 0); \
+        _rp.size = (sz);                                        \
+        _rp.nitems = n;                                         \
+        _rp.hits = 0;                                           \
+        _rp.misses = 0;                                         \
+        vec_add1(shmem_hdr->client_rings, _rp);                 \
+    } while (0);
+
+  foreach_clnt_aring_size;
+#undef _
+
+  if (is_private_region == 0)
+    {
+      am->shmem_hdr = shmem_hdr;
+      am->vlib_rp = vlib_rp;
+      am->our_pid = getpid ();
+      if (is_vlib)
+	am->shmem_hdr->vl_pid = am->our_pid;
+    }
+
+  svm_pop_heap (oldheap);
+
+  /*
+   * After absolutely everything that a client might see is set up,
+   * declare the shmem region valid
+   */
+  vlib_rp->user_ctx = shmem_hdr;
+
+  pthread_mutex_unlock (&vlib_rp->mutex);
+}
+
+
 int
 vl_map_shmem (const char *region_name, int is_vlib)
 {
   svm_map_region_args_t _a, *a = &_a;
   svm_region_t *vlib_rp, *root_rp;
-  void *oldheap;
-  vl_shmem_hdr_t *shmem_hdr = 0;
   api_main_t *am = &api_main;
   int i, rv;
   struct timespec ts, tsrem;
-  u32 vlib_input_queue_length;
   char *vpe_api_region_suffix = "-vpe-api";
 
   memset (a, 0, sizeof (*a));
@@ -472,65 +546,8 @@ vl_map_shmem (const char *region_name, int is_vlib)
     }
 
   /* Nope, it's our problem... */
+  vl_init_shmem (vlib_rp, 1 /* is vlib */ , 0 /* is_private_region */ );
 
-  oldheap = svm_push_data_heap (vlib_rp);
-
-  vec_validate (shmem_hdr, 0);
-  shmem_hdr->version = VL_SHM_VERSION;
-
-  /* vlib main input queue */
-  vlib_input_queue_length = 1024;
-  if (am->vlib_input_queue_length)
-    vlib_input_queue_length = am->vlib_input_queue_length;
-
-  shmem_hdr->vl_input_queue =
-    unix_shared_memory_queue_init (vlib_input_queue_length, sizeof (uword),
-				   getpid (), am->vlib_signal);
-
-  /* Set up the msg ring allocator */
-#define _(sz,n)                                                 \
-    do {                                                        \
-        ring_alloc_t _rp;                                       \
-        _rp.rp = unix_shared_memory_queue_init ((n), (sz), 0, 0); \
-        _rp.size = (sz);                                        \
-        _rp.nitems = n;                                         \
-        _rp.hits = 0;                                           \
-        _rp.misses = 0;                                         \
-        vec_add1(shmem_hdr->vl_rings, _rp);                     \
-    } while (0);
-
-  foreach_vl_aring_size;
-#undef _
-
-#define _(sz,n)                                                 \
-    do {                                                        \
-        ring_alloc_t _rp;                                       \
-        _rp.rp = unix_shared_memory_queue_init ((n), (sz), 0, 0); \
-        _rp.size = (sz);                                        \
-        _rp.nitems = n;                                         \
-        _rp.hits = 0;                                           \
-        _rp.misses = 0;                                         \
-        vec_add1(shmem_hdr->client_rings, _rp);                 \
-    } while (0);
-
-  foreach_clnt_aring_size;
-#undef _
-
-  am->shmem_hdr = shmem_hdr;
-  am->vlib_rp = vlib_rp;
-  am->our_pid = getpid ();
-  if (is_vlib)
-    am->shmem_hdr->vl_pid = am->our_pid;
-
-  svm_pop_heap (oldheap);
-
-  /*
-   * After absolutely everything that a client might see is set up,
-   * declare the shmem region valid
-   */
-  vlib_rp->user_ctx = shmem_hdr;
-
-  pthread_mutex_unlock (&vlib_rp->mutex);
   vec_add1 (am->mapped_shmem_regions, vlib_rp);
   return 0;
 }
@@ -638,6 +655,9 @@ vl_api_client_index_to_registration_internal (u32 handle)
 vl_api_registration_t *
 vl_api_client_index_to_registration (u32 index)
 {
+  if (PREDICT_FALSE (socket_main.current_rp != 0))
+    return socket_main.current_rp;
+
   return (vl_api_client_index_to_registration_internal (index));
 }
 
