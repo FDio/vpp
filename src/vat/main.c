@@ -295,6 +295,7 @@ main (int argc, char **argv)
   u8 interactive = 1;
   u8 json_output = 0;
   u8 *heap;
+  u32 port;
   mheap_t *h;
   int i;
 
@@ -326,6 +327,15 @@ main (int argc, char **argv)
 	interactive = 0;
       else if (unformat (a, "json"))
 	json_output = 1;
+      else if (unformat (a, "socket-port %u", &port))
+	{
+	  if (port > 0xFFFF)
+	    {
+	      fformat (stderr, "port number %u out of range\n", port);
+	      exit (1);
+	    }
+	  vam->socket_port = clib_host_to_net_u16 ((u16) port);
+	}
       else if (unformat (a, "plugin_path %s", (u8 *) & vat_plugin_path))
 	vec_add1 (vat_plugin_path, 0);
       else if (unformat (a, "plugin_name_filter %s",
@@ -337,8 +347,9 @@ main (int argc, char **argv)
 	}
       else
 	{
-	  fformat (stderr,
-		   "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n");
+	  fformat
+	    (stderr,
+	     "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n");
 	  exit (1);
 	}
     }
@@ -362,7 +373,14 @@ main (int argc, char **argv)
 
   setup_signal_handlers ();
 
-  if (connect_to_vpe ("vpp_api_test") < 0)
+  if (vam->socket_port && vat_socket_connect (vam))
+    {
+      fformat (stderr, "WARNING: socket connection failed");
+      (void) close (vam->socket_fd);
+      vam->socket_fd = 0;
+    }
+
+  if (vam->socket_fd == 0 && connect_to_vpe ("vpp_api_test") < 0)
     {
       svm_region_exit ();
       fformat (stderr, "Couldn't connect to vpe, exiting...\n");
@@ -372,9 +390,7 @@ main (int argc, char **argv)
   vam->json_output = json_output;
 
   if (!json_output)
-    {
-      api_sw_interface_dump (vam);
-    }
+    api_sw_interface_dump (vam);
 
   vec_validate (vam->inbuf, 4096);
 

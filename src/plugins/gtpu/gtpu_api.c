@@ -24,7 +24,6 @@
 
 #include <vppinfra/byte_order.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 
 #include <gtpu/gtpu.h>
 

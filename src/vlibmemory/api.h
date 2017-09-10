@@ -50,6 +50,7 @@ vl_msg_api_handle_from_index_and_epoch (u32 index, u32 epoch)
 }
 
 void vl_enable_disable_memory_api (vlib_main_t * vm, int yesno);
+
 #endif /* included_vlibmemory_api_h */
 
 /*

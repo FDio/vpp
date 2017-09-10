@@ -39,6 +39,8 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_typedefs
 
+socket_main_t socket_main;
+
 static inline void *
 vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
 {
@@ -638,6 +640,9 @@ vl_api_client_index_to_registration_internal (u32 handle)
 vl_api_registration_t *
 vl_api_client_index_to_registration (u32 index)
 {
+  if (PREDICT_FALSE (socket_main.current_rp != 0))
+    return socket_main.current_rp;
+
   return (vl_api_client_index_to_registration_internal (index));
 }
 

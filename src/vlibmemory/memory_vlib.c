@@ -88,17 +88,7 @@ vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
-void vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
-  __attribute__ ((weak));
-
-void
-vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
-{
-  static int count;
-
-  if (count++ < 5)
-    clib_warning ("need to link against -lvlibsocket, msg not sent!");
-}
+extern void vl_socket_api_send (vl_api_registration_t * rp, u8 * elem);
 
 void
 vl_msg_api_send (vl_api_registration_t * rp, u8 * elem)
@@ -109,7 +99,7 @@ vl_msg_api_send (vl_api_registration_t * rp, u8 * elem)
     }
   else
     {
-      vl_msg_api_send_shmem (rp->vl_input_queue, elem);
+      vl_msg_api_send_shmem (rp->vl_input_queue, (u8 *) & elem);
     }
 }
 
@@ -486,13 +476,23 @@ memclnt_process (vlib_main_t * vm,
   f64 dead_client_scan_time;
   f64 sleep_time, start_time;
   f64 vector_rate;
+  clib_error_t *socksvr_api_init (vlib_main_t * vm);
+  clib_error_t *error;
   int i;
+  vl_socket_args_for_process_t *a;
 
   vlib_set_queue_signal_callback (vm, memclnt_queue_callback);
 
   if ((rv = memory_api_init (am->region_name)) < 0)
     {
       clib_warning ("memory_api_init returned %d, wait for godot...", rv);
+      vlib_process_suspend (vm, 1e70);
+    }
+
+  if ((error = socksvr_api_init (vm)))
+    {
+      clib_error_report (error);
+      clib_warning ("socksvr_api_init failed, wait for godot...");
       vlib_process_suspend (vm, 1e70);
     }
 
@@ -522,7 +522,8 @@ memclnt_process (vlib_main_t * vm,
   /* $$$ pay attention to frame size, control CPU usage */
   while (1)
     {
-      uword event_type __attribute__ ((unused));
+      uword event_type;
+      uword *event_data;
       i8 *headp;
       int need_broadcast;
 
@@ -607,9 +608,35 @@ memclnt_process (vlib_main_t * vm,
 	    }
 	}
 
-      event_type = vlib_process_wait_for_event_or_clock (vm, sleep_time);
-      vm->queue_signal_pending = 0;
-      vlib_process_get_events (vm, 0 /* event_data */ );
+      vlib_process_wait_for_event_or_clock (vm, sleep_time);
+      vec_reset_length (event_data);
+      event_type = vlib_process_get_events (vm, &event_data);
+
+      switch (event_type)
+	{
+	case QUEUE_SIGNAL_EVENT:
+	  vm->queue_signal_pending = 0;
+	  break;
+
+	case SOCKET_READ_EVENT:
+	  for (i = 0; i < vec_len (event_data); i++)
+	    {
+	      a = pool_elt_at_index (socket_main.process_args, event_data[i]);
+	      vl_api_socket_process_msg (a->clib_file, a->regp,
+					 (i8 *) a->data);
+	      vec_free (a->data);
+	      pool_put (socket_main.process_args, a);
+	    }
+	  break;
+
+	  /* Timeout... */
+	case -1:
+	  break;
+
+	default:
+	  clib_warning ("unknown event type %d", event_type);
+	  break;
+	}
 
       if (vlib_time_now (vm) > dead_client_scan_time)
 	{
@@ -792,7 +819,7 @@ VLIB_CLI_COMMAND (cli_clear_api_histogram_command, static) = {
 
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (memclnt_node,static) = {
+VLIB_REGISTER_NODE (memclnt_node) = {
     .function = memclnt_process,
     .type = VLIB_NODE_TYPE_PROCESS,
     .name = "api-rx-from-ring",
@@ -825,7 +852,8 @@ memclnt_queue_callback (vlib_main_t * vm)
       vm->queue_signal_pending = 1;
       vm->api_queue_nonempty = 1;
       vlib_process_signal_event (vm, memclnt_node.index,
-				 /* event_type */ 0, /* event_data */ 0);
+				 /* event_type */ QUEUE_SIGNAL_EVENT,
+				 /* event_data */ 0);
     }
 }
 
@@ -1220,6 +1248,7 @@ vlibmemory_init (vlib_main_t * vm)
 {
   api_main_t *am = &api_main;
   svm_map_region_args_t _a, *a = &_a;
+  clib_error_t *error;
 
   memset (a, 0, sizeof (*a));
   a->root_path = am->root_path;
@@ -1235,7 +1264,10 @@ vlibmemory_init (vlib_main_t * vm)
      0) ? am->global_pvt_heap_size : SVM_PVT_MHEAP_SIZE;
 
   svm_region_init_args (a);
-  return 0;
+
+  error = vlib_call_init_function (vm, vlibsocket_init);
+
+  return error;
 }
 
 VLIB_INIT_FUNCTION (vlibmemory_init);
