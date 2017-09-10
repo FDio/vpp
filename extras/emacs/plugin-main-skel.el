@@ -45,7 +45,6 @@ nil
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 #include <vpp/app/version.h>
 
 /* define message IDs */

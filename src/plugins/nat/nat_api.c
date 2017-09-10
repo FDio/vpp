@@ -23,7 +23,7 @@
 #include <nat/nat64.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+
 #include <nat/nat_msg_enum.h>
 #include <vnet/fib/fib_table.h>
 
