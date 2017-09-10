@@ -14,6 +14,7 @@
  */
 #include <stddef.h>
 #include <netinet/in.h>
+#include <netinet/ip_icmp.h>
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
@@ -27,6 +28,21 @@
 
 #include "fa_node.h"
 #include "hash_lookup.h"
+
+/*
+ * from netfilter codes
+ *  Add 1; spaces filled with 0.
+ */
+static const u_int8_t icmp_invmap[] = {
+		[ICMP_ECHO] = ICMP_ECHOREPLY + 1,
+		[ICMP_ECHOREPLY] = ICMP_ECHO + 1,
+		[ICMP_TIMESTAMP] = ICMP_TIMESTAMPREPLY + 1,
+		[ICMP_TIMESTAMPREPLY] = ICMP_TIMESTAMP + 1,
+		[ICMP_INFO_REQUEST] = ICMP_INFO_REPLY + 1,
+		[ICMP_INFO_REPLY] = ICMP_INFO_REQUEST + 1,
+		[ICMP_ADDRESS] = ICMP_ADDRESSREPLY + 1,
+		[ICMP_ADDRESSREPLY] = ICMP_ADDRESS + 1
+};
 
 typedef struct
 {
@@ -504,6 +520,15 @@ acl_make_5tuple_session_key (int is_input, fa_5tuple_t * p5tuple_pkt,
   p5tuple_sess->l4.as_u64 = p5tuple_pkt->l4.as_u64;
   p5tuple_sess->l4.port[src_index] = p5tuple_pkt->l4.port[0];
   p5tuple_sess->l4.port[dst_index] = p5tuple_pkt->l4.port[1];
+
+  if(!is_input){
+            if(p5tuple_pkt->l4.proto == IPPROTO_ICMP)
+            {
+                    //invert type for reverse icmp packet
+                    p5tuple_sess->l4.port[0] = icmp_invmap[p5tuple_pkt->l4.port[0]] - 1;
+                    p5tuple_sess->l4.port[1] = p5tuple_pkt->l4.port[1];
+            }
+    }
 }
 
 
