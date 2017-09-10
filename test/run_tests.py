@@ -62,6 +62,7 @@ def run_forked(suite):
                 if os.path.isfile(core_path):
                     global_logger.error("Core-file exists in test temporary "
                                         "directory: %s!" % core_path)
+                    self.symlink_failed(last_test)
                     if d and d.lower() == "core":
                         spawn_gdb(last_test_vpp_binary, core_path,
                                   global_logger)

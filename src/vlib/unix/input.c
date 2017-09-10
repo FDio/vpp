@@ -62,7 +62,7 @@ typedef struct
 static linux_epoll_main_t linux_epoll_main;
 
 static void
-linux_epoll_file_update (clib_file_t * f, unix_file_update_type_t update_type)
+linux_epoll_file_update (clib_file_t * f, clib_file_update_type_t update_type)
 {
   clib_file_main_t *fm = &file_main;
   linux_epoll_main_t *em = &linux_epoll_main;

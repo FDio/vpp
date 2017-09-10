@@ -456,7 +456,7 @@ svmdb_local_serialize_strings (svmdb_client_t * client, char *filename)
       goto out;
     }
 
-  serialize_open_unix_file_descriptor (sm, fd);
+  serialize_open_clib_file_descriptor (sm, fd);
 
   region_lock (client->db_rp, 20);
 
@@ -512,7 +512,7 @@ svmdb_local_unserialize_strings (svmdb_client_t * client, char *filename)
       goto out;
     }
 
-  unserialize_open_unix_file_descriptor (sm, fd);
+  unserialize_open_clib_file_descriptor (sm, fd);
 
   region_lock (client->db_rp, 21);
   oldheap = svm_push_data_heap (client->db_rp);
