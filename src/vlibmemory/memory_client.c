@@ -319,21 +319,37 @@ vl_client_disconnect (void)
     }
 }
 
+/**
+ * Stave off the binary API dead client reaper
+ * Only sent to inactive clients
+ */
+static void
+vl_api_memclnt_ping_t_handler (vl_api_memclnt_ping_t * mp)
+{
+  vl_api_memclnt_ping_reply_t *rmp;
+  api_main_t *am;
+  vl_shmem_hdr_t *shmem_hdr;
+
+  am = &api_main;
+  shmem_hdr = am->shmem_hdr;
+
+  rmp = vl_msg_api_alloc_as_if_client (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_MEMCLNT_PING_REPLY);
+  rmp->context = mp->context;
+  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & rmp);
+}
+
 #define foreach_api_msg                         \
 _(RX_THREAD_EXIT, rx_thread_exit)               \
 _(MEMCLNT_CREATE_REPLY, memclnt_create_reply)   \
-_(MEMCLNT_DELETE_REPLY, memclnt_delete_reply)
+_(MEMCLNT_DELETE_REPLY, memclnt_delete_reply)	\
+_(MEMCLNT_PING, memclnt_ping)
 
 
-int
-vl_client_api_map (const char *region_name)
+void
+vl_client_install_client_message_handlers (void)
 {
-  int rv;
-
-  if ((rv = vl_map_shmem (region_name, 0 /* is_vlib */ )) < 0)
-    {
-      return rv;
-    }
 
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
@@ -344,6 +360,18 @@ vl_client_api_map (const char *region_name)
                             sizeof(vl_api_##n##_t), 1);
   foreach_api_msg;
 #undef _
+}
+
+
+int
+vl_client_api_map (const char *region_name)
+{
+  int rv;
+
+  if ((rv = vl_map_shmem (region_name, 0 /* is_vlib */ )) < 0)
+    return rv;
+
+  vl_client_install_client_message_handlers ();
   return 0;
 }
 
@@ -356,12 +384,12 @@ vl_client_api_unmap (void)
 static int
 connect_to_vlib_internal (const char *svm_name,
 			  const char *client_name,
-			  int rx_queue_size, int want_pthread)
+			  int rx_queue_size, int want_pthread, int do_map)
 {
   int rv = 0;
   memory_client_main_t *mm = &memory_client_main;
 
-  if ((rv = vl_client_api_map (svm_name)))
+  if (do_map && (rv = vl_client_api_map (svm_name)))
     {
       clib_warning ("vl_client_api map rv %d", rv);
       return rv;
@@ -393,7 +421,8 @@ vl_client_connect_to_vlib (const char *svm_name,
 			   const char *client_name, int rx_queue_size)
 {
   return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
-				   1 /* want pthread */ );
+				   1 /* want pthread */ ,
+				   1 /* do map */ );
 }
 
 int
@@ -402,7 +431,17 @@ vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
 					 int rx_queue_size)
 {
   return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
-				   0 /* want pthread */ );
+				   0 /* want pthread */ ,
+				   1 /* do map */ );
+}
+
+int
+vl_client_connect_to_vlib_no_map (const char *svm_name,
+				  const char *client_name, int rx_queue_size)
+{
+  return connect_to_vlib_internal (svm_name, client_name, rx_queue_size,
+				   1 /* want pthread */ ,
+				   0 /* dont map */ );
 }
 
 void
