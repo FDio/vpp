@@ -17,7 +17,7 @@
 #include <vlib/vlib.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+
 #include <vnet/ip/ip.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 #include <ioam/encap/ip6_ioam_trace.h>

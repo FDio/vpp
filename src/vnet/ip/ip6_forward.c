@@ -2041,6 +2041,14 @@ ip6_probe_neighbor (vlib_main_t * vm, ip6_address_t * dst, u32 sw_if_index)
 			    VNET_LINK_IP6, &nh, sw_if_index);
   adj = adj_get (ai);
 
+  /* Peer has been previously resolved, retrieve glean adj instead */
+  if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
+    {
+      adj_unlock (ai);
+      ai = adj_glean_add_or_lock (FIB_PROTOCOL_IP6, sw_if_index, &nh);
+      adj = adj_get (ai);
+    }
+
   vnet_rewrite_one_header (adj[0], h, sizeof (ethernet_header_t));
   vlib_buffer_advance (b, -adj->rewrite_header.data_bytes);
 
