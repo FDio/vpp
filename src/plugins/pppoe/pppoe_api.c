@@ -24,7 +24,7 @@
 
 #include <vppinfra/byte_order.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+
 
 #include <pppoe/pppoe.h>
 

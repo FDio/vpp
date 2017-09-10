@@ -20,7 +20,6 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
