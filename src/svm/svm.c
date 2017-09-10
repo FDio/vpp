@@ -434,6 +434,107 @@ shm_name_from_svm_map_region_args (svm_map_region_args_t * a)
   return (shm_name);
 }
 
+void
+svm_region_init_mapped_region (svm_map_region_args_t * a, svm_region_t * rp)
+{
+  pthread_mutexattr_t attr;
+  pthread_condattr_t cattr;
+  int nbits, words, bit;
+  int overhead_space;
+  void *oldheap;
+  uword data_base;
+  ASSERT (rp);
+  int rv;
+
+  memset (rp, 0, sizeof (*rp));
+
+  if (pthread_mutexattr_init (&attr))
+    clib_unix_warning ("mutexattr_init");
+
+  if (pthread_mutexattr_setpshared (&attr, PTHREAD_PROCESS_SHARED))
+    clib_unix_warning ("mutexattr_setpshared");
+
+  if (pthread_mutex_init (&rp->mutex, &attr))
+    clib_unix_warning ("mutex_init");
+
+  if (pthread_mutexattr_destroy (&attr))
+    clib_unix_warning ("mutexattr_destroy");
+
+  if (pthread_condattr_init (&cattr))
+    clib_unix_warning ("condattr_init");
+
+  if (pthread_condattr_setpshared (&cattr, PTHREAD_PROCESS_SHARED))
+    clib_unix_warning ("condattr_setpshared");
+
+  if (pthread_cond_init (&rp->condvar, &cattr))
+    clib_unix_warning ("cond_init");
+
+  if (pthread_condattr_destroy (&cattr))
+    clib_unix_warning ("condattr_destroy");
+
+  region_lock (rp, 1);
+
+  rp->virtual_base = a->baseva;
+  rp->virtual_size = a->size;
+
+  rp->region_heap =
+    mheap_alloc_with_flags (uword_to_pointer
+			    (a->baseva + MMAP_PAGESIZE, void *),
+			    (a->pvt_heap_size !=
+			     0) ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE,
+			    MHEAP_FLAG_DISABLE_VM);
+  oldheap = svm_push_pvt_heap (rp);
+
+  rp->region_name = (char *) format (0, "%s%c", a->name, 0);
+  vec_add1 (rp->client_pids, getpid ());
+
+  nbits = rp->virtual_size / MMAP_PAGESIZE;
+
+  ASSERT (nbits > 0);
+  rp->bitmap_size = nbits;
+  words = (nbits + BITS (uword) - 1) / BITS (uword);
+  vec_validate (rp->bitmap, words - 1);
+
+  overhead_space = MMAP_PAGESIZE /* header */  +
+    ((a->pvt_heap_size != 0) ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE);
+
+  bit = 0;
+  data_base = (uword) rp->virtual_base;
+
+  if (a->flags & SVM_FLAGS_NODATA)
+    rp->flags |= SVM_FLAGS_NEED_DATA_INIT;
+
+  do
+    {
+      clib_bitmap_set_no_check (rp->bitmap, bit, 1);
+      bit++;
+      overhead_space -= MMAP_PAGESIZE;
+      data_base += MMAP_PAGESIZE;
+    }
+  while (overhead_space > 0);
+
+  rp->data_base = (void *) data_base;
+
+  /*
+   * Note: although the POSIX spec guarantees that only one
+   * process enters this block, we have to play games
+   * to hold off clients until e.g. the mutex is ready
+   */
+  rp->version = SVM_VERSION;
+
+  /* setup the data portion of the region */
+
+  rv = svm_data_region_create (a, rp);
+  if (rv)
+    {
+      clib_warning ("data_region_create: %d", rv);
+    }
+
+  region_unlock (rp);
+
+  svm_pop_heap (oldheap);
+}
+
 /*
  * svm_map_region
  */
@@ -442,15 +543,10 @@ svm_map_region (svm_map_region_args_t * a)
 {
   int svm_fd;
   svm_region_t *rp;
-  pthread_mutexattr_t attr;
-  pthread_condattr_t cattr;
   int deadman = 0;
   u8 junk = 0;
   void *oldheap;
-  int overhead_space;
   int rv;
-  uword data_base;
-  int nbits, words, bit;
   int pid_holding_region_lock;
   u8 *shm_name;
   int dead_region_recovery = 0;
@@ -502,93 +598,8 @@ svm_map_region (svm_map_region_args_t * a)
 	  return (0);
 	}
       close (svm_fd);
-      memset (rp, 0, sizeof (*rp));
 
-      if (pthread_mutexattr_init (&attr))
-	clib_unix_warning ("mutexattr_init");
-
-      if (pthread_mutexattr_setpshared (&attr, PTHREAD_PROCESS_SHARED))
-	clib_unix_warning ("mutexattr_setpshared");
-
-      if (pthread_mutex_init (&rp->mutex, &attr))
-	clib_unix_warning ("mutex_init");
-
-      if (pthread_mutexattr_destroy (&attr))
-	clib_unix_warning ("mutexattr_destroy");
-
-      if (pthread_condattr_init (&cattr))
-	clib_unix_warning ("condattr_init");
-
-      if (pthread_condattr_setpshared (&cattr, PTHREAD_PROCESS_SHARED))
-	clib_unix_warning ("condattr_setpshared");
-
-      if (pthread_cond_init (&rp->condvar, &cattr))
-	clib_unix_warning ("cond_init");
-
-      if (pthread_condattr_destroy (&cattr))
-	clib_unix_warning ("condattr_destroy");
-
-      region_lock (rp, 1);
-
-      rp->virtual_base = a->baseva;
-      rp->virtual_size = a->size;
-
-      rp->region_heap =
-	mheap_alloc_with_flags (uword_to_pointer
-				(a->baseva + MMAP_PAGESIZE, void *),
-				(a->pvt_heap_size !=
-				 0) ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE,
-				MHEAP_FLAG_DISABLE_VM);
-      oldheap = svm_push_pvt_heap (rp);
-
-      rp->region_name = (char *) format (0, "%s%c", a->name, 0);
-      vec_add1 (rp->client_pids, getpid ());
-
-      nbits = rp->virtual_size / MMAP_PAGESIZE;
-
-      ASSERT (nbits > 0);
-      rp->bitmap_size = nbits;
-      words = (nbits + BITS (uword) - 1) / BITS (uword);
-      vec_validate (rp->bitmap, words - 1);
-
-      overhead_space = MMAP_PAGESIZE /* header */  +
-	((a->pvt_heap_size != 0) ? a->pvt_heap_size : SVM_PVT_MHEAP_SIZE);
-
-      bit = 0;
-      data_base = (uword) rp->virtual_base;
-
-      if (a->flags & SVM_FLAGS_NODATA)
-	rp->flags |= SVM_FLAGS_NEED_DATA_INIT;
-
-      do
-	{
-	  clib_bitmap_set_no_check (rp->bitmap, bit, 1);
-	  bit++;
-	  overhead_space -= MMAP_PAGESIZE;
-	  data_base += MMAP_PAGESIZE;
-	}
-      while (overhead_space > 0);
-
-      rp->data_base = (void *) data_base;
-
-      /*
-       * Note: although the POSIX spec guarantees that only one
-       * process enters this block, we have to play games
-       * to hold off clients until e.g. the mutex is ready
-       */
-      rp->version = SVM_VERSION;
-
-      /* setup the data portion of the region */
-
-      rv = svm_data_region_create (a, rp);
-      if (rv)
-	{
-	  clib_warning ("data_region_create: %d", rv);
-	}
-
-      region_unlock (rp);
-
-      svm_pop_heap (oldheap);
+      svm_region_init_mapped_region (a, rp);
 
       return ((void *) rp);
     }

@@ -47,14 +47,20 @@ typedef struct vl_api_registration_
    * going to be sore enough.
    */
 
+  /* Zombie apocalypse checking */
+  f64 last_heard;
+  int unanswered_pings;
+
   /* shared memory only */
   unix_shared_memory_queue_t *vl_input_queue;
+  svm_region_t *vlib_rp;
+  void *shmem_hdr;
 
   /* socket server and client */
   u32 clib_file_index;
   i8 *unprocessed_input;
-  u32 unprocessed_msg_length;
   u8 *output_vector;
+  int *additional_fds_to_close;
 
   /* socket client only */
   u32 server_handle;
@@ -191,11 +197,10 @@ typedef struct
   trace_cfg_t *api_trace_cfg;
   int our_pid;
   svm_region_t *vlib_rp;
+  svm_region_t **vlib_private_rps;
   svm_region_t **mapped_shmem_regions;
   struct vl_shmem_hdr_ *shmem_hdr;
   vl_api_registration_t **vl_clients;
-
-  u8 *serialized_message_table_in_shmem;
 
   /* For plugin msg allocator */
   u16 first_available_msg_id;

@@ -26,6 +26,8 @@
 #include <vpp-api/vapi/vapi.h>
 #include <vpp-api/vapi/vapi_internal.h>
 #include <vppinfra/types.h>
+#include <vppinfra/pool.h>
+#include <vlib/vlib.h>
 #include <vlibapi/api_common.h>
 #include <vlibmemory/api_common.h>
 

@@ -16,7 +16,7 @@
 #include <vat/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+
 #include <vppinfra/error.h>
 #include <pppoe/pppoe.h>
 
