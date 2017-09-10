@@ -25,7 +25,7 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
+
 
 /* define message IDs */
 #include <memif/memif_msg_enum.h>

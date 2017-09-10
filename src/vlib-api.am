@@ -11,8 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-lib_LTLIBRARIES += libvlibmemory.la libvlibmemoryclient.la \
-	           libvlibsocket.la
+lib_LTLIBRARIES += libvlibmemory.la libvlibmemoryclient.la
 
 libvlibmemory_la_DEPENDENCIES = libvppinfra.la libsvm.la libvlib.la
 libvlibmemory_la_LIBADD = $(libvlibmemory_la_DEPENDENCIES) -lpthread
@@ -25,6 +24,7 @@ libvlibmemory_la_SOURCES =			\
 	vlibmemory/memclnt.api			\
 	vlibmemory/memory_shared.c		\
 	vlibmemory/memory_vlib.c		\
+	vlibmemory/socksvr_vlib.c		\
 	vlibmemory/unix_shared_memory_queue.c	\
 	vlibmemory/unix_shared_memory_queue.h	\
 	vlibmemory/vl_memory_api_h.h		\
@@ -45,6 +45,7 @@ libvlibmemoryclient_la_SOURCES = 		\
 	vlibmemory/memclnt.api			\
 	vlibmemory/memory_client.c		\
 	vlibmemory/memory_shared.c		\
+	vlibmemory/socket_client.c		\
 	vlibmemory/unix_shared_memory_queue.c	\
 	vlibmemory/unix_shared_memory_queue.h	\
 	vlibmemory/vl_memory_api_h.h		\
@@ -58,27 +59,14 @@ nobase_include_HEADERS +=			\
 	vlibmemory/unix_shared_memory_queue.h 	\
 	vlibmemory/memclnt.api.h
 
-libvlibsocket_la_DEPENDENCIES = libvppinfra.la libvlib.la libvlibmemory.la
-libvlibsocket_la_LIBADD = $(libvlibsocket_la_DEPENDENCIES)
-libvlibsocket_la_SOURCES =			\
-	vlibsocket/api.h			\
-	vlibsocket/sockclnt.api			\
-	vlibsocket/sockclnt_vlib.c		\
-	vlibsocket/socksvr_vlib.c		\
-	vlibsocket/vl_socket_api_h.h		\
-	vlibsocket/vl_socket_msg_enum.h
-
-nobase_include_HEADERS +=			\
-	vlibsocket/api.h			\
-	vlibsocket/vl_socket_api_h.h		\
-	vlibsocket/vl_socket_msg_enum.h		\
-	vlibsocket/sockclnt.api.h
-
 BUILT_SOURCES +=				\
-	vlibsocket/sockclnt.api.h		\
 	vlibmemory/memclnt.api.h		\
 	vlibmemory/memclnt.api.json
 
-API_FILES += vlibmemory/memclnt.api
+bin_PROGRAMS += sock_test
+
+sock_test_SOURCES = vlibsocket/sock_test.c
+
+API_FILES += vlibmemory/memclnt.api 
 
 # vi:syntax=automake
