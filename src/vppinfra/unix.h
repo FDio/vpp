@@ -41,14 +41,14 @@
 #include <vppinfra/error.h>
 
 /* Number of bytes in a Unix file. */
-clib_error_t *unix_file_n_bytes (char *file, uword * result);
+clib_error_t *clib_file_n_bytes (char *file, uword * result);
 
 /* Read file contents into given buffer. */
-clib_error_t *unix_file_read_contents (char *file, u8 * result,
+clib_error_t *clib_file_read_contents (char *file, u8 * result,
 				       uword n_bytes);
 
 /* Read and return contents of Unix file. */
-clib_error_t *unix_file_contents (char *file, u8 ** result);
+clib_error_t *clib_file_contents (char *file, u8 ** result);
 
 /* As above but for /proc file system on Linux. */
 clib_error_t *unix_proc_file_contents (char *file, u8 ** result);
