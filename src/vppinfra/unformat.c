@@ -1037,7 +1037,7 @@ unformat_init_vector (unformat_input_t * input, u8 * vector_string)
 #ifdef CLIB_UNIX
 
 static uword
-unix_file_fill_buffer (unformat_input_t * input)
+clib_file_fill_buffer (unformat_input_t * input)
 {
   int fd = pointer_to_uword (input->fill_buffer_arg);
   uword l, n;
@@ -1055,9 +1055,9 @@ unix_file_fill_buffer (unformat_input_t * input)
 }
 
 void
-unformat_init_unix_file (unformat_input_t * input, int file_descriptor)
+unformat_init_clib_file (unformat_input_t * input, int file_descriptor)
 {
-  unformat_init (input, unix_file_fill_buffer,
+  unformat_init (input, clib_file_fill_buffer,
 		 uword_to_pointer (file_descriptor, void *));
 }
 
