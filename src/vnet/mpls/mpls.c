@@ -536,6 +536,78 @@ VLIB_CLI_COMMAND (mpls_local_label_command, static) = {
   .short_help = "Create/Delete MPL local labels",
 };
 
+clib_error_t *
+vnet_mpls_table_cmd (vlib_main_t * vm,
+                     unformat_input_t * main_input,
+                     vlib_cli_command_t * cmdo)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+  u32 table_id, is_add;
+
+  is_add = 1;
+  table_id = ~0;
+
+  /* Get a line of input. */
+  if (!unformat_user (main_input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%d", &table_id))
+	;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else if (unformat (line_input, "add"))
+	is_add = 1;
+      else
+	{
+	  error = unformat_parse_error (line_input);
+	  goto done;
+	}
+    }
+
+  if (~0 == table_id)
+    {
+      error = clib_error_return (0, "No table id");
+      goto done;
+    }
+  else if (0 == table_id)
+    {
+      error = clib_error_return (0, "Can't change the default table");
+      goto done;
+    }
+  else
+    {
+      if (is_add)
+        {
+          mpls_table_create (table_id, 0);
+        }
+      else
+        {
+          mpls_table_delete (table_id, 0);
+        }
+    }
+
+ done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-ON* */
+/*?
+ * This command is used to add or delete MPLS Tables. All
+ * Tables must be explicitly added before that can be used,
+ * Including the default table.
+ ?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (ip6_table_command, static) = {
+  .path = "mpla table",
+  .short_help = "mpls table [add|del] <table-id>",
+  .function = vnet_mpls_table_cmd,
+  .is_mp_safe = 1,
+};
+
 int
 mpls_fib_reset_labels (u32 fib_id)
 {
@@ -546,11 +618,7 @@ mpls_fib_reset_labels (u32 fib_id)
 static clib_error_t *
 mpls_init (vlib_main_t * vm)
 {
-  mpls_main_t * mm = &mpls_main;
   clib_error_t * error;
-
-  mm->vlib_main = vm;
-  mm->vnet_main = vnet_get_main();
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;

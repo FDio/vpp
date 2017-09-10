@@ -250,6 +250,26 @@ format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
   return s;
 }
 
+static void
+ip6_neighbor_adj_fib_remove (ip6_neighbor_t * n, uint32_t fib_index)
+{
+  if (FIB_NODE_INDEX_INVALID != n->fib_entry_index)
+    {
+      fib_prefix_t pfx = {
+	.fp_len = 128,
+	.fp_proto = FIB_PROTOCOL_IP6,
+	.fp_addr.ip6 = n->key.ip6_address,
+      };
+      fib_table_entry_path_remove (fib_index,
+				   &pfx,
+				   FIB_SOURCE_ADJ,
+				   DPO_PROTO_IP6,
+				   &pfx.fp_addr,
+				   n->key.sw_if_index, ~0,
+				   1, FIB_ROUTE_PATH_FLAG_NONE);
+    }
+}
+
 static clib_error_t *
 ip6_neighbor_sw_interface_up_down (vnet_main_t * vnm,
 				   u32 sw_if_index, u32 flags)
@@ -273,22 +293,10 @@ ip6_neighbor_sw_interface_up_down (vnet_main_t * vnm,
 	{
 	  n = pool_elt_at_index (nm->neighbor_pool, to_delete[i]);
 	  mhash_unset (&nm->neighbor_index_by_key, &n->key, 0);
-	  if (FIB_NODE_INDEX_INVALID != n->fib_entry_index)
-	    {
-	      fib_prefix_t pfx = {
-		.fp_len = 128,
-		.fp_proto = FIB_PROTOCOL_IP6,
-		.fp_addr.ip6 = n->key.ip6_address,
-	      };
-	      fib_table_entry_path_remove
-		(ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index),
-		 &pfx,
-		 FIB_SOURCE_ADJ,
-		 DPO_PROTO_IP6,
-		 &pfx.fp_addr,
-		 n->key.sw_if_index, ~0, 1, FIB_ROUTE_PATH_FLAG_NONE);
-	      pool_put (nm->neighbor_pool, n);
-	    }
+	  ip6_neighbor_adj_fib_remove (n,
+				       ip6_fib_table_get_index_for_sw_if_index
+				       (n->key.sw_if_index));
+	  pool_put (nm->neighbor_pool, n);
 	}
       vec_free (to_delete);
     }
@@ -579,6 +587,24 @@ ip6_ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
     }
 }
 
+
+static void
+ip6_neighbor_adj_fib_add (ip6_neighbor_t * n, uint32_t fib_index)
+{
+  fib_prefix_t pfx = {
+    .fp_len = 128,
+    .fp_proto = FIB_PROTOCOL_IP6,
+    .fp_addr.ip6 = n->key.ip6_address,
+  };
+
+  n->fib_entry_index =
+    fib_table_entry_path_add (fib_index, &pfx, FIB_SOURCE_ADJ,
+			      FIB_ENTRY_FLAG_ATTACHED,
+			      DPO_PROTO_IP6, &pfx.fp_addr,
+			      n->key.sw_if_index, ~0, 1, NULL,
+			      FIB_ROUTE_PATH_FLAG_NONE);
+}
+
 int
 vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
 				u32 sw_if_index,
@@ -633,21 +659,9 @@ vnet_set_ip6_ethernet_neighbor (vlib_main_t * vm,
        */
       if (!is_no_fib_entry)
 	{
-	  fib_prefix_t pfx = {
-	    .fp_len = 128,
-	    .fp_proto = FIB_PROTOCOL_IP6,
-	    .fp_addr.ip6 = k.ip6_address,
-	  };
-	  u32 fib_index;
-
-	  fib_index =
-	    ip6_fib_table_get_index_for_sw_if_index (n->key.sw_if_index);
-	  n->fib_entry_index =
-	    fib_table_entry_path_add (fib_index, &pfx, FIB_SOURCE_ADJ,
-				      FIB_ENTRY_FLAG_ATTACHED,
-				      DPO_PROTO_IP6, &pfx.fp_addr,
-				      n->key.sw_if_index, ~0, 1, NULL,
-				      FIB_ROUTE_PATH_FLAG_NONE);
+	  ip6_neighbor_adj_fib_add (n,
+				    ip6_fib_table_get_index_for_sw_if_index
+				    (n->key.sw_if_index));
 	}
       else
 	{
@@ -3843,6 +3857,33 @@ ip6_set_neighbor_limit (u32 neighbor_limit)
   return 0;
 }
 
+static void
+ip6_neighbor_table_bind (ip6_main_t * im,
+			 uword opaque,
+			 u32 sw_if_index,
+			 u32 new_fib_index, u32 old_fib_index)
+{
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  ip6_neighbor_t *n = NULL;
+  u32 i, *to_re_add = 0;
+
+  /* *INDENT-OFF* */
+  pool_foreach (n, nm->neighbor_pool,
+  ({
+    if (n->key.sw_if_index == sw_if_index)
+      vec_add1 (to_re_add, n - nm->neighbor_pool);
+  }));
+  /* *INDENT-ON* */
+
+  for (i = 0; i < vec_len (to_re_add); i++)
+    {
+      n = pool_elt_at_index (nm->neighbor_pool, to_re_add[i]);
+      ip6_neighbor_adj_fib_remove (n, old_fib_index);
+      ip6_neighbor_adj_fib_add (n, new_fib_index);
+    }
+  vec_free (to_re_add);
+}
+
 static clib_error_t *
 ip6_neighbor_init (vlib_main_t * vm)
 {
@@ -3873,6 +3914,11 @@ ip6_neighbor_init (vlib_main_t * vm)
   cb.function = ip6_neighbor_add_del_interface_address;
   cb.function_opaque = 0;
   vec_add1 (im->add_del_interface_address_callbacks, cb);
+
+  ip6_table_bind_callback_t cbt;
+  cbt.function = ip6_neighbor_table_bind;
+  cbt.function_opaque = 0;
+  vec_add1 (im->table_bind_callbacks, cbt);
 
   mhash_init (&nm->pending_resolutions_by_address,
 	      /* value size */ sizeof (uword),

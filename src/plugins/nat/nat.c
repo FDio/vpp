@@ -167,7 +167,8 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id)
   ap->addr = *addr;
   if (vrf_id != ~0)
     ap->fib_index =
-      fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id);
+      fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4, vrf_id,
+                                         FIB_SOURCE_PLUGIN_HI);
   else
     ap->fib_index = ~0;
 #define _(N, i, n, s) \
@@ -625,7 +626,8 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
         return VNET_API_ERROR_INVALID_VALUE;
 
       fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
-                                                     vrf_id);
+                                                     vrf_id,
+                                                     FIB_SOURCE_PLUGIN_HI);
 
       /* Find external address in allocated addresses and reserve port for
          address and port pair mapping when dynamic translations enabled */
@@ -754,7 +756,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       if (!m)
         return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      fib_table_unlock (m->fib_index, FIB_PROTOCOL_IP4);
+      fib_table_unlock (m->fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_PLUGIN_HI);
 
       /* Free external address port */
       if (!sm->static_mapping_only)
@@ -874,7 +876,8 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
     }
 
   if (a->fib_index != ~0)
-    fib_table_unlock(a->fib_index, FIB_PROTOCOL_IP4);
+    fib_table_unlock(a->fib_index, FIB_PROTOCOL_IP4,
+                     FIB_SOURCE_PLUGIN_HI);
 
   /* Delete sessions using address */
   if (a->busy_tcp_ports || a->busy_udp_ports || a->busy_icmp_ports)
@@ -2151,10 +2154,12 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   sm->max_translations_per_user = max_translations_per_user;
   sm->outside_vrf_id = outside_vrf_id;
   sm->outside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
-                                                             outside_vrf_id);
+                                                             outside_vrf_id,
+                                                             FIB_SOURCE_PLUGIN_HI);
   sm->inside_vrf_id = inside_vrf_id;
   sm->inside_fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP4,
-                                                            inside_vrf_id);
+                                                            inside_vrf_id,
+                                                            FIB_SOURCE_PLUGIN_HI);
   sm->static_mapping_only = static_mapping_only;
   sm->static_mapping_connection_tracking = static_mapping_connection_tracking;
 

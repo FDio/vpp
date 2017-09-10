@@ -90,6 +90,17 @@ fib_entry_get_default_chain_type (const fib_entry_t *fib_entry)
 }
 
 u8 *
+format_fib_source (u8 * s, va_list * args)
+{
+    fib_source_t source = va_arg (*args, int);
+
+    s = format (s, "\n  src:%s ",
+                fib_source_names[source]);
+
+    return (s);
+}
+
+u8 *
 format_fib_entry (u8 * s, va_list * args)
 {
     fib_forward_chain_type_t fct;
@@ -114,8 +125,8 @@ format_fib_entry (u8 * s, va_list * args)
 
 	FOR_EACH_SRC_ADDED(fib_entry, src, source,
         ({
-	    s = format (s, "\n  src:%s ",
-			fib_source_names[source]);
+	    s = format (s, "\n  src:%U ",
+			format_fib_source, source);
 	    s = fib_entry_src_format(fib_entry, source, s);
 	    s = format (s, " refs:%d ", src->fes_ref_count);
 	    if (FIB_ENTRY_FLAG_NONE != src->fes_entry_flags) {

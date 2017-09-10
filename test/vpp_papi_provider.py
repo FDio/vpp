@@ -652,6 +652,24 @@ class VppPapiProvider(object):
         return self.api(self.papi.delete_loopback,
                         {'sw_if_index': sw_if_index, })
 
+    def ip_table_add_del(self,
+                         table_id,
+                         is_add=1,
+                         is_ipv6=0):
+        """
+
+        :param table_id
+        :param is_add:  (Default value = 1)
+        :param is_ipv6:  (Default value = 0)
+
+        """
+
+        return self.api(
+            self.papi.ip_table_add_del,
+            {'table_id': table_id,
+             'is_add': is_add,
+             'is_ipv6': is_ipv6})
+
     def ip_add_del_route(
             self,
             dst_address,
@@ -664,7 +682,6 @@ class VppPapiProvider(object):
             next_hop_n_out_labels=0,
             next_hop_out_label_stack=[],
             next_hop_via_label=MPLS_LABEL_INVALID,
-            create_vrf_if_needed=0,
             is_resolve_host=0,
             is_resolve_attached=0,
             classify_table_index=0xFFFFFFFF,
@@ -687,7 +704,6 @@ class VppPapiProvider(object):
         :param vrf_id:  (Default value = 0)
         :param lookup_in_vrf:  (Default value = 0)
         :param classify_table_index:  (Default value = 0xFFFFFFFF)
-        :param create_vrf_if_needed:  (Default value = 0)
         :param is_add:  (Default value = 1)
         :param is_drop:  (Default value = 0)
         :param is_ipv6:  (Default value = 0)
@@ -707,7 +723,6 @@ class VppPapiProvider(object):
              'table_id': table_id,
              'classify_table_index': classify_table_index,
              'next_hop_table_id': next_hop_table_id,
-             'create_vrf_if_needed': create_vrf_if_needed,
              'is_add': is_add,
              'is_drop': is_drop,
              'is_unreach': is_unreach,
@@ -912,6 +927,22 @@ class VppPapiProvider(object):
     def mpls_fib_dump(self):
         return self.api(self.papi.mpls_fib_dump, {})
 
+    def mpls_table_add_del(
+            self,
+            table_id,
+            is_add=1):
+        """
+
+        :param table_id
+        :param is_add:  (Default value = 1)
+
+        """
+
+        return self.api(
+            self.papi.mpls_table_add_del,
+            {'mt_table_id': table_id,
+             'mt_is_add': is_add})
+
     def mpls_route_add_del(
             self,
             label,
@@ -925,7 +956,6 @@ class VppPapiProvider(object):
             next_hop_n_out_labels=0,
             next_hop_out_label_stack=[],
             next_hop_via_label=MPLS_LABEL_INVALID,
-            create_vrf_if_needed=0,
             is_resolve_host=0,
             is_resolve_attached=0,
             is_interface_rx=0,
@@ -947,7 +977,6 @@ class VppPapiProvider(object):
         :param vrf_id:  (Default value = 0)
         :param lookup_in_vrf:  (Default value = 0)
         :param classify_table_index:  (Default value = 0xFFFFFFFF)
-        :param create_vrf_if_needed:  (Default value = 0)
         :param is_add:  (Default value = 1)
         :param is_drop:  (Default value = 0)
         :param is_ipv6:  (Default value = 0)
@@ -968,7 +997,6 @@ class VppPapiProvider(object):
              'mr_eos': eos,
              'mr_table_id': table_id,
              'mr_classify_table_index': classify_table_index,
-             'mr_create_table_if_needed': create_vrf_if_needed,
              'mr_is_add': is_add,
              'mr_is_classify': is_classify,
              'mr_is_multipath': is_multipath,
@@ -994,7 +1022,6 @@ class VppPapiProvider(object):
             table_id=0,
             ip_table_id=0,
             is_ip4=1,
-            create_vrf_if_needed=0,
             is_bind=1):
         """
         """
@@ -1003,7 +1030,6 @@ class VppPapiProvider(object):
             {'mb_mpls_table_id': table_id,
              'mb_label': label,
              'mb_ip_table_id': ip_table_id,
-             'mb_create_table_if_needed': create_vrf_if_needed,
              'mb_is_bind': is_bind,
              'mb_is_ip4': is_ip4,
              'mb_address_length': dst_address_length,
@@ -1020,7 +1046,6 @@ class VppPapiProvider(object):
             next_hop_n_out_labels=0,
             next_hop_out_label_stack=[],
             next_hop_via_label=MPLS_LABEL_INVALID,
-            create_vrf_if_needed=0,
             is_add=1,
             l2_only=0,
             is_multicast=0):
@@ -1034,7 +1059,6 @@ class VppPapiProvider(object):
         :param vrf_id:  (Default value = 0)
         :param lookup_in_vrf:  (Default value = 0)
         :param classify_table_index:  (Default value = 0xFFFFFFFF)
-        :param create_vrf_if_needed:  (Default value = 0)
         :param is_add:  (Default value = 1)
         :param is_drop:  (Default value = 0)
         :param is_ipv6:  (Default value = 0)
@@ -1844,7 +1868,6 @@ class VppPapiProvider(object):
                           i_flags,
                           rpf_id=0,
                           table_id=0,
-                          create_vrf_if_needed=0,
                           is_add=1,
                           is_ipv6=0,
                           is_local=0):
@@ -1857,7 +1880,6 @@ class VppPapiProvider(object):
              'itf_flags': i_flags,
              'table_id': table_id,
              'rpf_id': rpf_id,
-             'create_vrf_if_needed': create_vrf_if_needed,
              'is_add': is_add,
              'is_ipv6': is_ipv6,
              'is_local': is_local,

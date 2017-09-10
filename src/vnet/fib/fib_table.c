@@ -1039,7 +1039,8 @@ fib_table_find (fib_protocol_t proto,
 
 u32
 fib_table_find_or_create_and_lock (fib_protocol_t proto,
-				   u32 table_id)
+				   u32 table_id,
+                                   fib_source_t src)
 {
     fib_table_t *fib_table;
     fib_node_index_t fi;
@@ -1047,13 +1048,13 @@ fib_table_find_or_create_and_lock (fib_protocol_t proto,
     switch (proto)
     {
     case FIB_PROTOCOL_IP4:
-	fi = ip4_fib_table_find_or_create_and_lock(table_id);
+	fi = ip4_fib_table_find_or_create_and_lock(table_id, src);
         break;
     case FIB_PROTOCOL_IP6:
-	fi = ip6_fib_table_find_or_create_and_lock(table_id);
+	fi = ip6_fib_table_find_or_create_and_lock(table_id, src);
         break;
     case FIB_PROTOCOL_MPLS:
-	fi = mpls_fib_table_find_or_create_and_lock(table_id);
+	fi = mpls_fib_table_find_or_create_and_lock(table_id, src);
         break;
     default:
         return (~0);        
@@ -1070,6 +1071,7 @@ fib_table_find_or_create_and_lock (fib_protocol_t proto,
 
 u32
 fib_table_create_and_lock (fib_protocol_t proto,
+                           fib_source_t src,
                            const char *const fmt,
                            ...)
 {
@@ -1082,13 +1084,13 @@ fib_table_create_and_lock (fib_protocol_t proto,
     switch (proto)
     {
     case FIB_PROTOCOL_IP4:
-	fi = ip4_fib_table_create_and_lock();
+	fi = ip4_fib_table_create_and_lock(src);
         break;
     case FIB_PROTOCOL_IP6:
-	fi = ip6_fib_table_create_and_lock();
+	fi = ip6_fib_table_create_and_lock(src);
         break;
      case FIB_PROTOCOL_MPLS:
-	fi = mpls_fib_table_create_and_lock();
+	fi = mpls_fib_table_create_and_lock(src);
         break;
    default:
         return (~0);        
@@ -1143,26 +1145,43 @@ fib_table_walk (u32 fib_index,
 
 void
 fib_table_unlock (u32 fib_index,
-		  fib_protocol_t proto)
+		  fib_protocol_t proto,
+                  fib_source_t source)
 {
     fib_table_t *fib_table;
 
     fib_table = fib_table_get(fib_index, proto);
-    fib_table->ft_locks--;
+    fib_table->ft_locks[source]--;
+    fib_table->ft_locks[FIB_TABLE_TOTAL_LOCKS]--;
 
-    if (0 == fib_table->ft_locks)
+    if (0 == fib_table->ft_locks[source])
     {
+        /*
+         * The source no longer needs the table. flush any routes
+         * from it just in case
+         */
+        fib_table_flush(fib_index, proto, source);
+    }
+
+    if (0 == fib_table->ft_locks[FIB_TABLE_TOTAL_LOCKS])
+    {
+        /*
+         * no more locak from any source - kill it
+         */
 	fib_table_destroy(fib_table);
     }
 }
+
 void
 fib_table_lock (u32 fib_index,
-		fib_protocol_t proto)
+		fib_protocol_t proto,
+                fib_source_t source)
 {
     fib_table_t *fib_table;
 
     fib_table = fib_table_get(fib_index, proto);
-    fib_table->ft_locks++;
+    fib_table->ft_locks[source]++;
+    fib_table->ft_locks[FIB_TABLE_TOTAL_LOCKS]++;
 }
 
 u32

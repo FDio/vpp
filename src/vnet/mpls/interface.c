@@ -35,14 +35,21 @@ mpls_sw_interface_is_enabled (u32 sw_if_index)
     return (mm->mpls_enabled_by_sw_if_index[sw_if_index]);
 }
 
-void
+int
 mpls_sw_interface_enable_disable (mpls_main_t * mm,
                                   u32 sw_if_index,
-                                  u8 is_enable)
+                                  u8 is_enable,
+                                  u8 is_api)
 {
   fib_node_index_t lfib_index;
 
   vec_validate_init_empty (mm->mpls_enabled_by_sw_if_index, sw_if_index, 0);
+
+  lfib_index = fib_table_find(FIB_PROTOCOL_MPLS,
+                              MPLS_FIB_DEFAULT_TABLE_ID);
+
+  if (~0 == lfib_index)
+       return VNET_API_ERROR_NO_SUCH_FIB;
 
   /*
    * enable/disable only on the 1<->0 transition
@@ -50,10 +57,11 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
   if (is_enable)
     {
       if (1 != ++mm->mpls_enabled_by_sw_if_index[sw_if_index])
-        return;
+          return (0);
 
-      lfib_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_MPLS,
-						     MPLS_FIB_DEFAULT_TABLE_ID);
+      fib_table_lock(lfib_index, FIB_PROTOCOL_MPLS,
+                     (is_api? FIB_SOURCE_API: FIB_SOURCE_CLI));
+
       vec_validate(mm->fib_index_by_sw_if_index, 0);
       mm->fib_index_by_sw_if_index[sw_if_index] = lfib_index;
     }
@@ -61,15 +69,17 @@ mpls_sw_interface_enable_disable (mpls_main_t * mm,
     {
       ASSERT(mm->mpls_enabled_by_sw_if_index[sw_if_index] > 0);
       if (0 != --mm->mpls_enabled_by_sw_if_index[sw_if_index])
-        return;
+          return (0);
 
       fib_table_unlock(mm->fib_index_by_sw_if_index[sw_if_index],
-		       FIB_PROTOCOL_MPLS);
+		       FIB_PROTOCOL_MPLS,
+                       (is_api? FIB_SOURCE_API: FIB_SOURCE_CLI));
     }
 
   vnet_feature_enable_disable ("mpls-input", "mpls-not-enabled",
                                sw_if_index, !is_enable, 0, 0);
 
+  return (0);
 }
 
 static clib_error_t *
@@ -101,7 +111,7 @@ mpls_interface_enable_disable (vlib_main_t * vm,
       goto done;
     }
 
-  mpls_sw_interface_enable_disable(&mpls_main, sw_if_index, enable);
+  mpls_sw_interface_enable_disable(&mpls_main, sw_if_index, enable, 0);
 
  done:
   return error;

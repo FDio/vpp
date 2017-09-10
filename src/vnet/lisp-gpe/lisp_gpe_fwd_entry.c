@@ -66,6 +66,7 @@ ip_dst_fib_add_route (u32 dst_fib_index, const ip_prefix_t * dst_prefix)
       /* create a new src FIB.  */
       src_fib_index =
 	fib_table_create_and_lock (dst_fib_prefix.fp_proto,
+				   FIB_SOURCE_LISP,
 				   "LISP-src for [%d,%U]",
 				   dst_fib_index,
 				   format_fib_prefix, &dst_fib_prefix);
@@ -180,7 +181,8 @@ ip_src_dst_fib_del_route (u32 src_fib_index,
        */
       fib_table_entry_special_remove (dst_fib_index,
 				      &dst_fib_prefix, FIB_SOURCE_LISP);
-      fib_table_unlock (src_fib_index, src_fib_prefix.fp_proto);
+      fib_table_unlock (src_fib_index, src_fib_prefix.fp_proto,
+			FIB_SOURCE_LISP);
     }
 }
 
@@ -544,7 +546,8 @@ add_ip_fwd_entry (lisp_gpe_main_t * lgm,
   lfe->tenant = lisp_gpe_tenant_find_or_create (lfe->key->vni);
   lfe->eid_table_id = a->table_id;
   lfe->eid_fib_index = fib_table_find_or_create_and_lock (fproto,
-							  lfe->eid_table_id);
+							  lfe->eid_table_id,
+							  FIB_SOURCE_LISP);
   lfe->is_src_dst = a->is_src_dst;
 
   if (LISP_GPE_FWD_ENTRY_TYPE_NEGATIVE != lfe->type)
@@ -578,7 +581,7 @@ del_ip_fwd_entry_i (lisp_gpe_main_t * lgm, lisp_gpe_fwd_entry_t * lfe)
 
   fproto = (IP4 == ip_prefix_version (&fid_addr_ippref (&lfe->key->rmt)) ?
 	    FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6);
-  fib_table_unlock (lfe->eid_fib_index, fproto);
+  fib_table_unlock (lfe->eid_fib_index, fproto, FIB_SOURCE_LISP);
 
   hash_unset_mem (lgm->lisp_gpe_fwd_entries, lfe->key);
   clib_mem_free (lfe->key);

@@ -431,6 +431,7 @@ typedef struct fib_entry_t_ {
 #define FIB_ENTRY_FORMAT_DETAIL2 (0x2)
 
 extern u8 *format_fib_entry (u8 * s, va_list * args);
+extern u8 *format_fib_source (u8 * s, va_list * args);
 
 extern fib_node_index_t fib_entry_create_special(u32 fib_index,
 						 const fib_prefix_t *prefix,
