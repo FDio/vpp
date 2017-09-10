@@ -15,13 +15,18 @@
 #ifndef __included_vat_h__
 #define __included_vat_h__
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <setjmp.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <vppinfra/clib.h>
 #include <vppinfra/format.h>
 #include <vppinfra/error.h>
 #include <vppinfra/time.h>
 #include <vppinfra/macros.h>
+#include <vppinfra/socket.h>
 #include <vnet/vnet.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -204,6 +209,17 @@ typedef struct
   ip4_nbr_counter_t **ip4_nbr_counters;
   ip6_nbr_counter_t **ip6_nbr_counters;
 
+  /* socket port, fd */
+  u8 *socket_name;
+  int socket_fd;
+  clib_socket_t client_socket;
+
+  /* Fortunately, the test tool is single-threaded, etc. */
+  u8 *socket_tx_buffer;
+  u8 *socket_rx_buffer;
+  u32 socket_tx_nbytes;
+  int control_pings_outstanding;
+
   /* Convenience */
   vlib_main_t *vlib_main;
 } vat_main_t;
@@ -232,6 +248,8 @@ u8 *format_ip4_address (u8 * s, va_list * args);
 u8 *format_ip6_address (u8 * s, va_list * args);
 u8 *format_ip46_address (u8 * s, va_list * args);
 u8 *format_ethernet_address (u8 * s, va_list * args);
+
+int vat_socket_connect (vat_main_t * vam);
 
 #if VPP_API_TEST_BUILTIN
 #define print api_cli_output
