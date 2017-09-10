@@ -1474,7 +1474,7 @@ vppcom_cfg_read (char *conf_fname)
       goto file_done;
     }
 
-  unformat_init_unix_file (input, fd);
+  unformat_init_clib_file (input, fd);
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
