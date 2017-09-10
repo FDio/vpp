@@ -1147,7 +1147,7 @@ unserialize_multiple_4 (serialize_main_t * m,
 #include <fcntl.h>
 
 static void
-unix_file_write (serialize_main_header_t * m, serialize_stream_t * s)
+clib_file_write (serialize_main_header_t * m, serialize_stream_t * s)
 {
   int fd, n;
 
@@ -1168,7 +1168,7 @@ unix_file_write (serialize_main_header_t * m, serialize_stream_t * s)
 }
 
 static void
-unix_file_read (serialize_main_header_t * m, serialize_stream_t * s)
+clib_file_read (serialize_main_header_t * m, serialize_stream_t * s)
 {
   int fd, n;
 
@@ -1188,7 +1188,7 @@ unix_file_read (serialize_main_header_t * m, serialize_stream_t * s)
 }
 
 static void
-serialize_open_unix_file_descriptor_helper (serialize_main_t * m, int fd,
+serialize_open_clib_file_descriptor_helper (serialize_main_t * m, int fd,
 					    uword is_read)
 {
   memset (m, 0, sizeof (m[0]));
@@ -1200,24 +1200,24 @@ serialize_open_unix_file_descriptor_helper (serialize_main_t * m, int fd,
       _vec_len (m->stream.buffer) = 0;
     }
 
-  m->header.data_function = is_read ? unix_file_read : unix_file_write;
+  m->header.data_function = is_read ? clib_file_read : clib_file_write;
   m->stream.data_function_opaque = fd;
 }
 
 void
-serialize_open_unix_file_descriptor (serialize_main_t * m, int fd)
+serialize_open_clib_file_descriptor (serialize_main_t * m, int fd)
 {
-  serialize_open_unix_file_descriptor_helper (m, fd, /* is_read */ 0);
+  serialize_open_clib_file_descriptor_helper (m, fd, /* is_read */ 0);
 }
 
 void
-unserialize_open_unix_file_descriptor (serialize_main_t * m, int fd)
+unserialize_open_clib_file_descriptor (serialize_main_t * m, int fd)
 {
-  serialize_open_unix_file_descriptor_helper (m, fd, /* is_read */ 1);
+  serialize_open_clib_file_descriptor_helper (m, fd, /* is_read */ 1);
 }
 
 static clib_error_t *
-serialize_open_unix_file_helper (serialize_main_t * m, char *file,
+serialize_open_clib_file_helper (serialize_main_t * m, char *file,
 				 uword is_read)
 {
   int fd, mode;
@@ -1227,20 +1227,20 @@ serialize_open_unix_file_helper (serialize_main_t * m, char *file,
   if (fd < 0)
     return clib_error_return_unix (0, "open `%s'", file);
 
-  serialize_open_unix_file_descriptor_helper (m, fd, is_read);
+  serialize_open_clib_file_descriptor_helper (m, fd, is_read);
   return 0;
 }
 
 clib_error_t *
-serialize_open_unix_file (serialize_main_t * m, char *file)
+serialize_open_clib_file (serialize_main_t * m, char *file)
 {
-  return serialize_open_unix_file_helper (m, file, /* is_read */ 0);
+  return serialize_open_clib_file_helper (m, file, /* is_read */ 0);
 }
 
 clib_error_t *
-unserialize_open_unix_file (serialize_main_t * m, char *file)
+unserialize_open_clib_file (serialize_main_t * m, char *file)
 {
-  return serialize_open_unix_file_helper (m, file, /* is_read */ 1);
+  return serialize_open_clib_file_helper (m, file, /* is_read */ 1);
 }
 
 #endif /* CLIB_UNIX */

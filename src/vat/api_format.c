@@ -18,9 +18,10 @@
  */
 
 #include <vat/vat.h>
+#include <vppinfra/socket.h>
+#include <svm/memfd.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 #include <vnet/ip/ip.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2tp/l2tp.h>
@@ -72,6 +73,36 @@
 
 #define __plugin_msg_base 0
 #include <vlibapi/vat_helper_macros.h>
+
+#if VPP_API_TEST_BUILTIN == 0
+#include <netdb.h>
+
+u32
+vl (void *p)
+{
+  return vec_len (p);
+}
+
+int
+vat_socket_connect (vat_main_t * vam)
+{
+  return vl_socket_client_connect
+    (&vam->socket_client_main, (char *) vam->socket_name,
+     "vpp_api_test(s)", 0 /* default socket rx, tx buffer */ );
+}
+#else /* vpp built-in case, we don't do sockets... */
+int
+vat_socket_connect (vat_main_t * vam)
+{
+  return 0;
+}
+
+void
+vl_socket_client_read_reply (socket_client_main_t * scm)
+{
+};
+#endif
+
 
 f64
 vat_time_now (vat_main_t * vam)
@@ -1036,9 +1067,17 @@ vl_api_cli_inband_reply_t_handler (vl_api_cli_inband_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
+  u32 length = ntohl (mp->length);
+
+  vec_reset_length (vam->cmd_reply);
 
   vam->retval = retval;
-  vam->cmd_reply = mp->reply;
+  if (retval == 0)
+    {
+      vec_validate (vam->cmd_reply, length);
+      clib_memcpy ((char *) (vam->cmd_reply), mp->reply, length);
+      vam->cmd_reply[length] = 0;
+    }
   vam->result_ready = 1;
 }
 
@@ -1047,6 +1086,8 @@ vl_api_cli_inband_reply_t_handler_json (vl_api_cli_inband_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t node;
+
+  vec_reset_length (vam->cmd_reply);
 
   vat_json_init_object (&node);
   vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
@@ -1421,6 +1462,7 @@ static void vl_api_control_ping_reply_t_handler
       vam->retval = retval;
       vam->result_ready = 1;
     }
+  vam->socket_client_main.control_pings_outstanding--;
 }
 
 static void vl_api_control_ping_reply_t_handler_json
@@ -1978,6 +2020,130 @@ static void vl_api_create_vhost_user_if_reply_t_handler_json
   vam->retval = ntohl (mp->retval);
   vam->result_ready = 1;
 }
+
+static clib_error_t *
+receive_fd_msg (int socket_fd, int *my_fd)
+{
+  char msgbuf[16];
+  char ctl[CMSG_SPACE (sizeof (int)) + CMSG_SPACE (sizeof (struct ucred))];
+  struct msghdr mh = { 0 };
+  struct iovec iov[1];
+  ssize_t size;
+  struct ucred *cr = 0;
+  struct cmsghdr *cmsg;
+  pid_t pid __attribute__ ((unused));
+  uid_t uid __attribute__ ((unused));
+  gid_t gid __attribute__ ((unused));
+
+  iov[0].iov_base = msgbuf;
+  iov[0].iov_len = 5;
+  mh.msg_iov = iov;
+  mh.msg_iovlen = 1;
+  mh.msg_control = ctl;
+  mh.msg_controllen = sizeof (ctl);
+
+  memset (ctl, 0, sizeof (ctl));
+
+  /* receive the incoming message */
+  size = recvmsg (socket_fd, &mh, 0);
+  if (size != 5)
+    {
+      return (size == 0) ? clib_error_return (0, "disconnected") :
+	clib_error_return_unix (0, "recvmsg: malformed message (fd %d)",
+				socket_fd);
+    }
+
+  cmsg = CMSG_FIRSTHDR (&mh);
+  while (cmsg)
+    {
+      if (cmsg->cmsg_level == SOL_SOCKET)
+	{
+	  if (cmsg->cmsg_type == SCM_CREDENTIALS)
+	    {
+	      cr = (struct ucred *) CMSG_DATA (cmsg);
+	      uid = cr->uid;
+	      gid = cr->gid;
+	      pid = cr->pid;
+	    }
+	  else if (cmsg->cmsg_type == SCM_RIGHTS)
+	    {
+	      clib_memcpy (my_fd, CMSG_DATA (cmsg), sizeof (int));
+	    }
+	}
+      cmsg = CMSG_NXTHDR (&mh, cmsg);
+    }
+  return 0;
+}
+
+static void vl_api_memfd_segment_create_reply_t_handler
+  (vl_api_memfd_segment_create_reply_t * mp)
+{
+  /* Dont bother in the builtin version */
+#if VPP_API_TEST_BUILTIN == 0
+  vat_main_t *vam = &vat_main;
+  api_main_t *am = &api_main;
+  socket_client_main_t *scm = &vam->socket_client_main;
+  int my_fd = -1;
+  clib_error_t *error;
+  memfd_private_t memfd;
+  i32 retval = ntohl (mp->retval);
+
+  if (retval == 0)
+    {
+      error = receive_fd_msg (scm->socket_fd, &my_fd);
+      if (error)
+	{
+	  retval = -99;
+	  goto out;
+	}
+
+      memset (&memfd, 0, sizeof (memfd));
+      memfd.fd = my_fd;
+
+      vam->client_index_invalid = 1;
+
+      retval = memfd_slave_init (&memfd);
+      if (retval)
+	clib_warning ("WARNING: segment map returned %d", retval);
+
+      /* Pivot to the memory client segment that vpp just created */
+
+      am->vlib_rp = (void *) (memfd.requested_va + MMAP_PAGESIZE);
+
+      am->shmem_hdr = (void *) am->vlib_rp->user_ctx;
+
+      vl_client_install_client_message_handlers ();
+
+      vl_client_connect_to_vlib_no_map ("pvt",
+					"vpp_api_test(p)",
+					32 /* input_queue_length */ );
+      if (close (my_fd) < 0)
+	clib_unix_warning ("close memfd fd pivot");
+      vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
+
+      vl_socket_client_enable_disable (&vam->socket_client_main,
+				       0 /* disable socket */ );
+    }
+
+out:
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+#endif
+}
+
+static void vl_api_memfd_segment_create_reply_t_handler_json
+  (vl_api_memfd_segment_create_reply_t * mp)
+{
+  clib_warning ("no");
+}
+
 
 static void vl_api_ip_address_details_t_handler
   (vl_api_ip_address_details_t * mp)
@@ -5223,7 +5389,8 @@ _(VNET_INTERFACE_COMBINED_COUNTERS, vnet_interface_combined_counters)   \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
 _(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)                         \
-_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)
+_(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)				\
+_(MEMFD_SEGMENT_CREATE_REPLY, memfd_segment_create_reply)
 
 typedef struct
 {
@@ -5597,76 +5764,9 @@ dump_stats_table (vat_main_t * vam)
   return 0;
 }
 
-int
-exec (vat_main_t * vam)
-{
-  api_main_t *am = &api_main;
-  vl_api_cli_t *mp;
-  f64 timeout;
-  void *oldheap;
-  u8 *cmd = 0;
-  unformat_input_t *i = vam->input;
-
-  if (vec_len (i->buffer) == 0)
-    return -1;
-
-  if (vam->exec_mode == 0 && unformat (i, "mode"))
-    {
-      vam->exec_mode = 1;
-      return 0;
-    }
-  if (vam->exec_mode == 1 && (unformat (i, "exit") || unformat (i, "quit")))
-    {
-      vam->exec_mode = 0;
-      return 0;
-    }
-
-
-  M (CLI, mp);
-
-  /*
-   * Copy cmd into shared memory.
-   * In order for the CLI command to work, it
-   * must be a vector ending in \n, not a C-string ending
-   * in \n\0.
-   */
-  pthread_mutex_lock (&am->vlib_rp->mutex);
-  oldheap = svm_push_data_heap (am->vlib_rp);
-
-  vec_validate (cmd, vec_len (vam->input->buffer) - 1);
-  clib_memcpy (cmd, vam->input->buffer, vec_len (vam->input->buffer));
-
-  svm_pop_heap (oldheap);
-  pthread_mutex_unlock (&am->vlib_rp->mutex);
-
-  mp->cmd_in_shmem = pointer_to_uword (cmd);
-  S (mp);
-  timeout = vat_time_now (vam) + 10.0;
-
-  while (vat_time_now (vam) < timeout)
-    {
-      if (vam->result_ready == 1)
-	{
-	  u8 *free_me;
-	  if (vam->shmem_result != NULL)
-	    print (vam->ofp, "%s", vam->shmem_result);
-	  pthread_mutex_lock (&am->vlib_rp->mutex);
-	  oldheap = svm_push_data_heap (am->vlib_rp);
-
-	  free_me = (u8 *) vam->shmem_result;
-	  vec_free (free_me);
-
-	  svm_pop_heap (oldheap);
-	  pthread_mutex_unlock (&am->vlib_rp->mutex);
-	  return 0;
-	}
-    }
-  return -99;
-}
-
 /*
- * Future replacement of exec() that passes CLI buffers directly in
- * the API messages instead of an additional shared memory area.
+ * Pass CLI buffers directly in the CLI_INBAND API message,
+ * instead of an additional shared memory area.
  */
 static int
 exec_inband (vat_main_t * vam)
@@ -5700,8 +5800,17 @@ exec_inband (vat_main_t * vam)
   mp->length = htonl (len);
 
   S (mp);
-  W2 (ret, print (vam->ofp, "%s", vam->cmd_reply));
+  W (ret);
+  /* json responses may or may not include a useful reply... */
+  if (vec_len (vam->cmd_reply))
+    print (vam->ofp, (char *) (vam->cmd_reply));
   return ret;
+}
+
+int
+exec (vat_main_t * vam)
+{
+  return exec_inband (vam);
 }
 
 static int
@@ -5949,7 +6058,7 @@ api_sw_interface_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -6526,7 +6635,7 @@ api_bridge_domain_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -6793,7 +6902,7 @@ api_l2fib_add_del (vat_main_t * vam)
       /* Shut off async mode */
       vam->async_mode = 0;
 
-      M (CONTROL_PING, mp_ping);
+      MPING (CONTROL_PING, mp_ping);
       S (mp_ping);
 
       timeout = vat_time_now (vam) + 1.0;
@@ -7565,7 +7674,7 @@ api_ip_add_del_route (vat_main_t * vam)
       /* Shut off async mode */
       vam->async_mode = 0;
 
-      M (CONTROL_PING, mp_ping);
+      MPING (CONTROL_PING, mp_ping);
       S (mp_ping);
 
       timeout = vat_time_now (vam) + 1.0;
@@ -7954,7 +8063,7 @@ api_mpls_route_add_del (vat_main_t * vam)
       /* Shut off async mode */
       vam->async_mode = 0;
 
-      M (CONTROL_PING, mp_ping);
+      MPING (CONTROL_PING, mp_ping);
       S (mp_ping);
 
       timeout = vat_time_now (vam) + 1.0;
@@ -8864,7 +8973,7 @@ api_dhcp_proxy_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -9216,7 +9325,7 @@ api_ip6nd_proxy_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -11552,7 +11661,7 @@ api_sw_if_l2tpv3_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -11600,7 +11709,7 @@ api_sw_interface_tap_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -11875,7 +11984,7 @@ api_vxlan_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -12066,7 +12175,7 @@ api_gre_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -12422,7 +12531,7 @@ api_sw_interface_vhost_user_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -12697,7 +12806,7 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -12782,7 +12891,7 @@ api_l2_fib_table_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -13050,7 +13159,7 @@ api_ip_address_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -13106,7 +13215,7 @@ api_ip_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -14485,7 +14594,7 @@ api_map_domain_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -14524,7 +14633,7 @@ api_map_rule_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -16920,7 +17029,7 @@ api_one_locator_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -16970,7 +17079,7 @@ api_one_locator_set_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -17028,7 +17137,7 @@ api_one_eid_table_map_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -17056,7 +17165,7 @@ api_one_eid_table_vni_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -17164,7 +17273,7 @@ api_one_eid_table_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -17431,7 +17540,7 @@ api_one_map_server_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -17458,7 +17567,7 @@ api_one_map_resolver_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -17492,7 +17601,7 @@ api_one_stats_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -17554,7 +17663,7 @@ api_lisp_gpe_fwd_entry_path_dump (vat_main_t * vam)
   /* send it... */
   S (mp);
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -17803,7 +17912,7 @@ api_policer_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -17892,7 +18001,7 @@ api_policer_classify_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -18118,7 +18227,7 @@ api_mpls_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -18188,7 +18297,7 @@ api_mpls_fib_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -18289,7 +18398,7 @@ api_ip_fib_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -18307,7 +18416,7 @@ api_ip_mfib_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -18398,7 +18507,7 @@ api_ip_neighbor_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -18499,7 +18608,7 @@ api_ip6_fib_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -18517,7 +18626,7 @@ api_ip6_mfib_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -18632,7 +18741,7 @@ api_classify_session_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -18766,7 +18875,7 @@ api_ipfix_classify_table_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -18957,7 +19066,7 @@ api_sw_interface_span_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -19458,7 +19567,7 @@ api_ipsec_gre_tunnel_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -19665,7 +19774,7 @@ api_flow_classify_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   /* Wait for a reply... */
@@ -19836,7 +19945,7 @@ api_l2_xconnect_dump (vat_main_t * vam)
   S (mp);
 
   /* Use a control ping for synchronization */
-  M (CONTROL_PING, mp_ping);
+  MPING (CONTROL_PING, mp_ping);
   S (mp_ping);
 
   W (ret);
@@ -20135,6 +20244,34 @@ api_tcp_configure_src_addresses (vat_main_t * vam)
       clib_memcpy (mp->first_address, &v4first, sizeof (v4first));
       clib_memcpy (mp->last_address, &v4last, sizeof (v4last));
     }
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_memfd_segment_create (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_memfd_segment_create_t *mp;
+  u64 size = 64 << 20;
+  int ret;
+
+#if VPP_API_TEST_BUILTIN == 1
+  errmsg ("memfd_segment_create (builtin) not supported");
+  return -99;
+#endif
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "size %U", unformat_memory_size, &size))
+	;
+      else
+	break;
+    }
+
+  M (MEMFD_SEGMENT_CREATE, mp);
+  mp->requested_size = size;
   S (mp);
   W (ret);
   return ret;
@@ -20919,7 +21056,8 @@ _(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address> sub_id 
 _(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
 _(lldp_config, "system-name <name> tx-hold <nn> tx-interval <nn>") \
 _(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>] [disable]") \
-_(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")
+_(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
+_(memfd_segment_create,"size <nnn>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

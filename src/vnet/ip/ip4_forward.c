@@ -2257,14 +2257,6 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
 	 sw_if_index);
     }
 
-  ip46_address_t nh = {
-    .ip4 = *dst,
-  };
-
-  ai = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
-			    VNET_LINK_IP4, &nh, sw_if_index);
-  adj = adj_get (ai);
-
   h = vlib_packet_template_get_packet (vm,
 				       &im->ip4_arp_request_packet_template,
 				       &bi);
@@ -2287,6 +2279,22 @@ ip4_probe_neighbor (vlib_main_t * vm, ip4_address_t * dst, u32 sw_if_index)
   b = vlib_get_buffer (vm, bi);
   vnet_buffer (b)->sw_if_index[VLIB_RX] =
     vnet_buffer (b)->sw_if_index[VLIB_TX] = sw_if_index;
+
+  ip46_address_t nh = {
+    .ip4 = *dst,
+  };
+
+  ai = adj_nbr_add_or_lock (FIB_PROTOCOL_IP4,
+			    VNET_LINK_IP4, &nh, sw_if_index);
+  adj = adj_get (ai);
+
+  /* Peer has been previously resolved, retrieve glean adj instead */
+  if (adj->lookup_next_index == IP_LOOKUP_NEXT_REWRITE)
+    {
+      adj_unlock (ai);
+      ai = adj_glean_add_or_lock (FIB_PROTOCOL_IP4, sw_if_index, &nh);
+      adj = adj_get (ai);
+    }
 
   /* Add encapsulation string for software interface (e.g. ethernet header). */
   vnet_rewrite_one_header (adj[0], h, sizeof (ethernet_header_t));

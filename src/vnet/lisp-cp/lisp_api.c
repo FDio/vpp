@@ -128,6 +128,7 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
 
   memset (a, 0, sizeof (a[0]));
 
+  mp->locator_set_name[63] = 0;
   locator_name = format (0, "%s", mp->locator_set_name);
 
   a->name = locator_name;
@@ -182,6 +183,7 @@ vl_api_lisp_add_del_locator_t_handler (vl_api_lisp_add_del_locator_t * mp)
   locator.local = 1;
   vec_add1 (locators, locator);
 
+  mp->locator_set_name[63] = 0;
   locator_name = format (0, "%s", mp->locator_set_name);
 
   a->name = locator_name;
@@ -248,6 +250,7 @@ vl_api_lisp_add_del_local_eid_t_handler (vl_api_lisp_add_del_local_eid_t * mp)
   if (rv)
     goto out;
 
+  mp->locator_set_name[63] = 0;
   name = format (0, "%s", mp->locator_set_name);
   p = hash_get_mem (lcm->locator_set_index_by_name, name);
   if (!p)
@@ -476,6 +479,7 @@ static void
   u8 *locator_set_name = NULL;
   vnet_lisp_add_del_mreq_itr_rloc_args_t _a, *a = &_a;
 
+  mp->locator_set_name[63] = 0;
   locator_set_name = format (0, "%s", mp->locator_set_name);
 
   a->is_add = mp->is_add;
@@ -510,6 +514,7 @@ static void
   if (!mp->is_add)
     {
       vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
+      memset (a, 0, sizeof (*a));
       gid_address_copy (&a->reid, eid);
       a->is_add = 0;
       rv = vnet_lisp_add_del_adjacency (a);
@@ -533,7 +538,9 @@ static void
       rv = vnet_lisp_add_mapping (m_args, rlocs, NULL, NULL);
     }
   else
-    rv = vnet_lisp_del_mapping (eid, NULL);
+    {
+      rv = vnet_lisp_del_mapping (eid, NULL);
+    }
 
   if (mp->del_all)
     vnet_lisp_clear_all_remote_adjacencies ();

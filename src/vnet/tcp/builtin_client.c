@@ -21,7 +21,6 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 #include <vpp/app/version.h>
 
 #define TCP_BUILTIN_CLIENT_DBG (0)
