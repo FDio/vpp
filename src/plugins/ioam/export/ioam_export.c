@@ -24,7 +24,6 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
 
 

@@ -25,7 +25,6 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 
 #include <ioam/lib-vxlan-gpe/vxlan_gpe_ioam.h>
 

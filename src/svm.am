@@ -13,12 +13,24 @@
 
 bin_PROGRAMS += svmtool svmdbtool
 
-nobase_include_HEADERS += svm/svm.h svm/svm_common.h svm/ssvm.h svm/svmdb.h \
-	svm/svm_fifo.h svm/svm_fifo_segment.h
+nobase_include_HEADERS += 			\
+  svm/memfd.h					\
+  svm/ssvm.h 					\
+  svm/svm_common.h 				\
+  svm/svmdb.h 					\
+  svm/svm_fifo.h 				\
+  svm/svm_fifo_segment.h			\
+  svm/svm.h 
 
 lib_LTLIBRARIES += libsvm.la libsvmdb.la
 
-libsvm_la_SOURCES = svm/svm.c svm/ssvm.c svm/svm_fifo.c svm/svm_fifo_segment.c
+libsvm_la_SOURCES =				\
+  svm/svm.c 					\
+  svm/ssvm.c 					\
+  svm/svm_fifo.c 				\
+  svm/svm_fifo_segment.c			\
+  svm/memfd.c
+
 libsvm_la_LIBADD = libvppinfra.la -lrt -lpthread
 libsvm_la_DEPENDENCIES = libvppinfra.la
 
