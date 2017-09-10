@@ -23,7 +23,6 @@ add_del_route_check (fib_protocol_t table_proto,
 		     u32 next_hop_sw_if_index,
 		     dpo_proto_t next_hop_table_proto,
 		     u32 next_hop_table_id,
-		     u8 create_missing_tables,
                      u8 is_rpf_id,
 		     u32 * fib_index, u32 * next_hop_fib_index);
 

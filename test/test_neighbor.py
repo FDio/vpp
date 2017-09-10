@@ -5,7 +5,8 @@ from socket import AF_INET, AF_INET6, inet_pton
 
 from framework import VppTestCase, VppTestRunner
 from vpp_neighbor import VppNeighbor, find_nbr
-from vpp_ip_route import VppIpRoute, VppRoutePath, find_route
+from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, \
+    VppIpTable
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP, Dot1Q
@@ -39,11 +40,13 @@ class ARPTestCase(VppTestCase):
         self.pg1.config_ip6()
 
         # pg3 in a different VRF
+        self.tbl = VppIpTable(self, 1)
+        self.tbl.add_vpp_config()
+
         self.pg3.set_table_ip4(1)
         self.pg3.config_ip4()
 
     def tearDown(self):
-        super(ARPTestCase, self).tearDown()
         self.pg0.unconfig_ip4()
         self.pg0.unconfig_ip6()
 
@@ -51,9 +54,12 @@ class ARPTestCase(VppTestCase):
         self.pg1.unconfig_ip6()
 
         self.pg3.unconfig_ip4()
+        self.pg3.set_table_ip4(0)
 
         for i in self.pg_interfaces:
             i.admin_down()
+
+        super(ARPTestCase, self).tearDown()
 
     def verify_arp_req(self, rx, smac, sip, dip):
         ether = rx[Ether]
@@ -1079,6 +1085,62 @@ class ARPTestCase(VppTestCase):
                        self.pg1.remote_hosts[1].mac,
                        self.pg0.remote_ip4,
                        self.pg1.remote_hosts[1].ip4)
+
+    def test_arp_static(self):
+        """ ARP Static"""
+        self.pg2.generate_remote_hosts(3)
+
+        #
+        # Add a static ARP entry
+        #
+        static_arp = VppNeighbor(self,
+                                 self.pg2.sw_if_index,
+                                 self.pg2.remote_hosts[1].mac,
+                                 self.pg2.remote_hosts[1].ip4,
+                                 is_static=1)
+        static_arp.add_vpp_config()
+
+        #
+        # Add the connected prefix to the interface
+        #
+        self.pg2.config_ip4()
+
+        #
+        # We should now find the adj-fib
+        #
+        self.assertTrue(find_nbr(self,
+                                 self.pg2.sw_if_index,
+                                 self.pg2.remote_hosts[1].ip4,
+                                 is_static=1))
+        self.assertTrue(find_route(self,
+                                   self.pg2.remote_hosts[1].ip4,
+                                   32))
+
+        #
+        # remove the connected
+        #
+        self.pg2.unconfig_ip4()
+
+        #
+        # put the interface into table 1
+        #
+        self.pg2.set_table_ip4(1)
+
+        #
+        # configure the same connected and expect to find the
+        # adj fib in the new table
+        #
+        self.pg2.config_ip4()
+        self.assertTrue(find_route(self,
+                                   self.pg2.remote_hosts[1].ip4,
+                                   32,
+                                   table_id=1))
+
+        #
+        # clean-up
+        #
+        self.pg2.unconfig_ip4()
+        self.pg2.set_table_ip4(0)
 
 
 if __name__ == '__main__':

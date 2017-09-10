@@ -72,8 +72,9 @@ ip4_mfib_get (u32 index)
  * @returns A pointer to the retrieved or created fib.
  *
  */
-extern u32 ip4_mfib_table_find_or_create_and_lock(u32 table_id);
-extern u32 ip4_mfib_table_create_and_lock(void);
+extern u32 ip4_mfib_table_find_or_create_and_lock(u32 table_id,
+                                                  mfib_source_t src);
+extern u32 ip4_mfib_table_create_and_lock(mfib_source_t src);
 
 static inline
 u32 ip4_mfib_index_from_table_id (u32 table_id)

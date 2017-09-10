@@ -334,6 +334,17 @@ mfib_entry_get_best_src (const mfib_entry_t *mfib_entry)
     return (bsrc);
 }
 
+int
+mfib_entry_is_sourced (fib_node_index_t mfib_entry_index,
+                       mfib_source_t source)
+{
+    mfib_entry_t *mfib_entry;
+
+    mfib_entry = mfib_entry_get(mfib_entry_index);
+
+    return (NULL != mfib_entry_src_find(mfib_entry, source, NULL));
+}
+
 static void
 mfib_entry_src_flush (mfib_entry_src_t *msrc)
 {

@@ -127,8 +127,9 @@ ip4_fib_lookup (ip4_main_t * im, u32 sw_if_index, ip4_address_t * dst)
  * @returns A pointer to the retrieved or created fib.
  *
  */
-extern u32 ip4_fib_table_find_or_create_and_lock(u32 table_id);
-extern u32 ip4_fib_table_create_and_lock(void);
+extern u32 ip4_fib_table_find_or_create_and_lock(u32 table_id,
+                                                 fib_source_t src);
+extern u32 ip4_fib_table_create_and_lock(fib_source_t src);
 
 
 static inline 

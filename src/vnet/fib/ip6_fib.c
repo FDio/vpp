@@ -50,7 +50,8 @@ vnet_ip6_fib_init (u32 fib_index)
 }
 
 static u32
-create_fib_with_table_id (u32 table_id)
+create_fib_with_table_id (u32 table_id,
+                          fib_source_t src)
 {
     fib_table_t *fib_table;
     ip6_fib_t *v6_fib;
@@ -77,29 +78,30 @@ create_fib_with_table_id (u32 table_id)
     fib_table->ft_flow_hash_config = IP_FLOW_HASH_DEFAULT;
 
     vnet_ip6_fib_init(fib_table->ft_index);
-    fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP6);
+    fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP6, src);
 
     return (fib_table->ft_index);
 }
 
 u32
-ip6_fib_table_find_or_create_and_lock (u32 table_id)
+ip6_fib_table_find_or_create_and_lock (u32 table_id,
+                                       fib_source_t src)
 {
     uword * p;
 
     p = hash_get (ip6_main.fib_index_by_table_id, table_id);
     if (NULL == p)
-	return create_fib_with_table_id(table_id);
+	return create_fib_with_table_id(table_id, src);
     
-    fib_table_lock(p[0], FIB_PROTOCOL_IP6);
+    fib_table_lock(p[0], FIB_PROTOCOL_IP6, src);
 
     return (p[0]);
 }
 
 u32
-ip6_fib_table_create_and_lock (void)
+ip6_fib_table_create_and_lock (fib_source_t src)
 {
-    return (create_fib_with_table_id(~0));
+    return (create_fib_with_table_id(~0, src));
 }
 
 void
@@ -588,16 +590,33 @@ ip6_show_fib (vlib_main_t * vm,
 
     pool_foreach (fib_table, im6->fibs,
     ({
+        fib_source_t source;
+        u8 *s = NULL;
+
 	fib = pool_elt_at_index(im6->v6_fibs, fib_table->ft_index);
 	if (table_id >= 0 && table_id != (int)fib->table_id)
 	    continue;
 	if (fib_index != ~0 && fib_index != (int)fib->index)
 	    continue;
 
-	vlib_cli_output (vm, "%s, fib_index:%d, flow hash:[%U] locks:%d", 
-			 fib_table->ft_desc, fib->index,
-			 format_ip_flow_hash_config, fib_table->ft_flow_hash_config,
-                         fib_table->ft_locks);
+	s = format(s, "%U, fib_index:%d, flow hash:[%U] locks:[",
+                   format_fib_table_name, fib->index,
+                   FIB_PROTOCOL_IP6,
+                   fib->index,
+                   format_ip_flow_hash_config,
+                   fib_table->ft_flow_hash_config);
+	FOR_EACH_FIB_SOURCE(source)
+        {
+            if (0 != fib_table->ft_locks[source])
+            {
+                s = format(s, "%U:%d, ",
+                           format_fib_source, source,
+                           fib_table->ft_locks[source]);
+            }
+        }
+        s = format (s, "]");
+        vlib_cli_output (vm, "%V", s);
+        vec_free(s);
 
 	/* Show summary? */
 	if (! verbose)

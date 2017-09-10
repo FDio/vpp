@@ -59,6 +59,29 @@ extern void stats_dslock_with_hint (int hint, int tag);
 extern void stats_dsunlock (void);
 
 void
+mpls_table_delete (u32 table_id, u8 is_api)
+{
+  u32 fib_index;
+
+  /*
+   * The MPLS defult table must also be explicitly created via the API.
+   * So in contrast to IP, it gets no special treatment here.
+   *
+   * The API holds only one lock on the table.
+   * i.e. it can be added many times via the API but needs to be
+   * deleted only once.
+   */
+  fib_index = fib_table_find (FIB_PROTOCOL_MPLS, table_id);
+
+  if (~0 != fib_index)
+    {
+      fib_table_unlock (fib_index,
+			FIB_PROTOCOL_MPLS,
+			(is_api ? FIB_SOURCE_API : FIB_SOURCE_CLI));
+    }
+}
+
+void
 vl_api_mpls_table_add_del_t_handler (vl_api_mpls_table_add_del_t * mp)
 {
   vl_api_mpls_table_add_del_reply_t *rmp;
@@ -67,6 +90,13 @@ vl_api_mpls_table_add_del_t_handler (vl_api_mpls_table_add_del_t * mp)
 
   vnm = vnet_get_main ();
   vnm->api_errno = 0;
+
+  if (mp->mt_is_add)
+    mpls_table_create (ntohl (mp->mt_table_id), 1);
+  else
+    mpls_table_delete (ntohl (mp->mt_table_id), 1);
+
+  rv = (rv == 0) ? vnm->api_errno : rv;
 
   REPLY_MACRO (VL_API_MPLS_TABLE_ADD_DEL_REPLY);
 }
@@ -82,14 +112,7 @@ mpls_ip_bind_unbind_handler (vnet_main_t * vnm,
 
   if (~0 == mpls_fib_index)
     {
-      if (mp->mb_create_table_if_needed)
-	{
-	  mpls_fib_index =
-	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_MPLS,
-					       ntohl (mp->mb_mpls_table_id));
-	}
-      else
-	return VNET_API_ERROR_NO_SUCH_FIB;
+      return VNET_API_ERROR_NO_SUCH_FIB;
     }
 
   ip_fib_index = fib_table_find ((mp->mb_is_ip4 ?
@@ -170,7 +193,6 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
 			    mp->mr_next_hop_sw_if_index,
 			    pfx.fp_payload_proto,
 			    mp->mr_next_hop_table_id,
-			    mp->mr_create_table_if_needed,
 			    mp->mr_is_rpf_id,
 			    &fib_index, &next_hop_fib_index);
 
@@ -233,6 +255,32 @@ vl_api_mpls_route_add_del_t_handler (vl_api_mpls_route_add_del_t * mp)
   rv = (rv == 0) ? vnm->api_errno : rv;
 
   REPLY_MACRO (VL_API_MPLS_ROUTE_ADD_DEL_REPLY);
+}
+
+void
+mpls_table_create (u32 table_id, u8 is_api)
+{
+  u32 fib_index;
+
+  /*
+   * The MPLS defult table must also be explicitly created via the API.
+   * So in contrast to IP, it gets no special treatment here.
+   */
+
+  /*
+   * The API holds only one lock on the table.
+   * i.e. it can be added many times via the API but needs to be
+   * deleted only once.
+   */
+  fib_index = fib_table_find (FIB_PROTOCOL_MPLS, table_id);
+
+  if (~0 == fib_index)
+    {
+      fib_table_find_or_create_and_lock (FIB_PROTOCOL_MPLS,
+					 table_id,
+					 (is_api ?
+					  FIB_SOURCE_API : FIB_SOURCE_CLI));
+    }
 }
 
 static void

@@ -29,9 +29,9 @@ dhcp_proxy_rx_table_lock (fib_protocol_t proto,
                           u32 fib_index)
 {
     if (FIB_PROTOCOL_IP4 == proto)
-        fib_table_lock(fib_index, proto);
+        fib_table_lock(fib_index, proto, FIB_SOURCE_DHCP);
     else
-        mfib_table_lock(fib_index, proto);
+        mfib_table_lock(fib_index, proto, MFIB_SOURCE_DHCP);
 }
 
 static void
@@ -39,9 +39,9 @@ dhcp_proxy_rx_table_unlock (fib_protocol_t proto,
                             u32 fib_index)
 {
     if (FIB_PROTOCOL_IP4 == proto)
-        fib_table_unlock(fib_index, proto);
+        fib_table_unlock(fib_index, proto, FIB_SOURCE_DHCP);
     else
-        mfib_table_unlock(fib_index, proto);
+        mfib_table_unlock(fib_index, proto, MFIB_SOURCE_DHCP);
 }
 
  u32
@@ -169,7 +169,7 @@ dhcp_proxy_server_del (fib_protocol_t proto,
       if (~0 != index)
       {
           server = &proxy->dhcp_servers[index];
-          fib_table_unlock (server->server_fib_index, proto);
+          fib_table_unlock (server->server_fib_index, proto, FIB_SOURCE_DHCP);
 
           vec_del1(proxy->dhcp_servers, index);
 
@@ -228,7 +228,8 @@ dhcp_proxy_server_add (fib_protocol_t proto,
   dhcp_server_t server = {
       .dhcp_server = *addr,
       .server_fib_index = fib_table_find_or_create_and_lock(proto,
-                                                            server_table_id),
+                                                            server_table_id,
+                                                            FIB_SOURCE_DHCP),
   };
 
   vec_add1(proxy->dhcp_servers, server);
@@ -297,9 +298,11 @@ int dhcp_proxy_set_vss (fib_protocol_t proto,
   int rc = 0;
   
   if (proto == FIB_PROTOCOL_IP4)
-      rx_fib_index = fib_table_find_or_create_and_lock(proto, tbl_id);
+      rx_fib_index = fib_table_find_or_create_and_lock(proto, tbl_id,
+                                                       FIB_SOURCE_DHCP);
   else
-      rx_fib_index = mfib_table_find_or_create_and_lock(proto, tbl_id);
+      rx_fib_index = mfib_table_find_or_create_and_lock(proto, tbl_id,
+                                                        MFIB_SOURCE_DHCP);
   v = dhcp_get_vss_info(dm, rx_fib_index, proto);
 
   if (NULL != v)

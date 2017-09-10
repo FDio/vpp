@@ -699,8 +699,9 @@ static void
 
   VALIDATE_SW_IF_INDEX (mp);
 
-  mpls_sw_interface_enable_disable (&mpls_main,
-				    ntohl (mp->sw_if_index), mp->enable);
+  rv = mpls_sw_interface_enable_disable (&mpls_main,
+					 ntohl (mp->sw_if_index),
+					 mp->enable, 1);
 
   BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_MPLS_ENABLE_REPLY);

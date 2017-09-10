@@ -700,10 +700,56 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 }
 
 void
+ip_table_delete (fib_protocol_t fproto, u32 table_id, u8 is_api)
+{
+  u32 fib_index, mfib_index;
+
+  /*
+   * ignore action on the default table - this is always present
+   * and cannot be added nor deleted from the API
+   */
+  if (0 != table_id)
+    {
+      /*
+       * The API holds only one lock on the table.
+       * i.e. it can be added many times via the API but needs to be
+       * deleted only once.
+       * The FIB index for unicast and multicast is not necessarily the
+       * same, since internal VPP systesm (like LISP and SR) create
+       * their own unicast tables.
+       */
+      fib_index = fib_table_find (fproto, table_id);
+      mfib_index = mfib_table_find (fproto, table_id);
+
+      if (~0 != fib_index)
+	{
+	  fib_table_unlock (fib_index, fproto,
+			    (is_api ? FIB_SOURCE_API : FIB_SOURCE_CLI));
+	}
+      if (~0 != mfib_index)
+	{
+	  mfib_table_unlock (mfib_index, fproto,
+			     (is_api ? MFIB_SOURCE_API : MFIB_SOURCE_CLI));
+	}
+    }
+}
+
+void
 vl_api_ip_table_add_del_t_handler (vl_api_ip_table_add_del_t * mp)
 {
   vl_api_ip_table_add_del_reply_t *rmp;
+  fib_protocol_t fproto = (mp->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  u32 table_id = ntohl (mp->table_id);
   int rv = 0;
+
+  if (mp->is_add)
+    {
+      ip_table_create (fproto, table_id, 1);
+    }
+  else
+    {
+      ip_table_delete (fproto, table_id, 1);
+    }
 
   REPLY_MACRO (VL_API_IP_TABLE_ADD_DEL_REPLY);
 }
@@ -866,10 +912,12 @@ add_del_route_check (fib_protocol_t table_proto,
 		     u32 next_hop_sw_if_index,
 		     dpo_proto_t next_hop_table_proto,
 		     u32 next_hop_table_id,
-		     u8 create_missing_tables,
 		     u8 is_rpf_id, u32 * fib_index, u32 * next_hop_fib_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
+
+  /* Temporaray whilst I do the CSIT dance */
+  u8 create_missing_tables = 1;
 
   *fib_index = fib_table_find (table_proto, ntohl (table_id));
   if (~0 == *fib_index)
@@ -877,7 +925,8 @@ add_del_route_check (fib_protocol_t table_proto,
       if (create_missing_tables)
 	{
 	  *fib_index = fib_table_find_or_create_and_lock (table_proto,
-							  ntohl (table_id));
+							  ntohl (table_id),
+							  FIB_SOURCE_API);
 	}
       else
 	{
@@ -918,12 +967,14 @@ add_del_route_check (fib_protocol_t table_proto,
 		*next_hop_fib_index =
 		  mfib_table_find_or_create_and_lock (fib_nh_proto,
 						      ntohl
-						      (next_hop_table_id));
+						      (next_hop_table_id),
+						      MFIB_SOURCE_API);
 	      else
 		*next_hop_fib_index =
 		  fib_table_find_or_create_and_lock (fib_nh_proto,
 						     ntohl
-						     (next_hop_table_id));
+						     (next_hop_table_id),
+						     FIB_SOURCE_API);
 	    }
 	  else
 	    {
@@ -948,8 +999,7 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 			    mp->next_hop_sw_if_index,
 			    DPO_PROTO_IP4,
 			    mp->next_hop_table_id,
-			    mp->create_vrf_if_needed, 0,
-			    &fib_index, &next_hop_fib_index);
+			    0, &fib_index, &next_hop_fib_index);
 
   if (0 != rv)
     return (rv);
@@ -1008,8 +1058,7 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 			    mp->next_hop_sw_if_index,
 			    DPO_PROTO_IP6,
 			    mp->next_hop_table_id,
-			    mp->create_vrf_if_needed, 0,
-			    &fib_index, &next_hop_fib_index);
+			    0, &fib_index, &next_hop_fib_index);
 
   if (0 != rv)
     return (rv);
@@ -1074,27 +1123,57 @@ vl_api_ip_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
   REPLY_MACRO (VL_API_IP_ADD_DEL_ROUTE_REPLY);
 }
 
+void
+ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api)
+{
+  u32 fib_index, mfib_index;
+
+  /*
+   * ignore action on the default table - this is always present
+   * and cannot be added nor deleted from the API
+   */
+  if (0 != table_id)
+    {
+      /*
+       * The API holds only one lock on the table.
+       * i.e. it can be added many times via the API but needs to be
+       * deleted only once.
+       * The FIB index for unicast and multicast is not necessarily the
+       * same, since internal VPP systesm (like LISP and SR) create
+       * their own unicast tables.
+       */
+      fib_index = fib_table_find (fproto, table_id);
+      mfib_index = mfib_table_find (fproto, table_id);
+
+      if (~0 == fib_index)
+	{
+	  fib_table_find_or_create_and_lock (fproto, table_id,
+					     (is_api ?
+					      FIB_SOURCE_API :
+					      FIB_SOURCE_CLI));
+	}
+      if (~0 == mfib_index)
+	{
+	  mfib_table_find_or_create_and_lock (fproto, table_id,
+					      (is_api ?
+					       MFIB_SOURCE_API :
+					       MFIB_SOURCE_CLI));
+	}
+    }
+}
+
 static int
 add_del_mroute_check (fib_protocol_t table_proto,
 		      u32 table_id,
-		      u32 next_hop_sw_if_index,
-		      u8 is_local, u8 create_missing_tables, u32 * fib_index)
+		      u32 next_hop_sw_if_index, u8 is_local, u32 * fib_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
 
   *fib_index = mfib_table_find (table_proto, ntohl (table_id));
   if (~0 == *fib_index)
     {
-      if (create_missing_tables)
-	{
-	  *fib_index = mfib_table_find_or_create_and_lock (table_proto,
-							   ntohl (table_id));
-	}
-      else
-	{
-	  /* No such VRF, and we weren't asked to create one */
-	  return VNET_API_ERROR_NO_SUCH_FIB;
-	}
+      /* No such table */
+      return VNET_API_ERROR_NO_SUCH_FIB;
     }
 
   if (~0 != ntohl (next_hop_sw_if_index))
@@ -1163,8 +1242,7 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
   rv = add_del_mroute_check (fproto,
 			     mp->table_id,
 			     mp->next_hop_sw_if_index,
-			     mp->is_local,
-			     mp->create_vrf_if_needed, &fib_index);
+			     mp->is_local, &fib_index);
 
   if (0 != rv)
     return (rv);

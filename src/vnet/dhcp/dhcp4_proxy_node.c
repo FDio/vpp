@@ -785,7 +785,8 @@ dhcp4_proxy_set_server (ip46_address_t *addr,
     return VNET_API_ERROR_INVALID_SRC_ADDRESS;
 
   rx_fib_index = fib_table_find_or_create_and_lock(FIB_PROTOCOL_IP4,
-                                                   rx_table_id);
+                                                   rx_table_id,
+                                                   FIB_SOURCE_DHCP);
 
   if (is_del)
     {
@@ -795,7 +796,7 @@ dhcp4_proxy_set_server (ip46_address_t *addr,
           fib_table_entry_special_remove(rx_fib_index,
                                          &all_1s,
                                          FIB_SOURCE_DHCP);
-          fib_table_unlock (rx_fib_index, FIB_PROTOCOL_IP4);
+          fib_table_unlock (rx_fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_DHCP);
       }
     }
   else
@@ -808,10 +809,10 @@ dhcp4_proxy_set_server (ip46_address_t *addr,
                                       &all_1s,
                                       FIB_SOURCE_DHCP,
                                       FIB_ENTRY_FLAG_LOCAL);
-          fib_table_lock (rx_fib_index, FIB_PROTOCOL_IP4);
+          fib_table_lock (rx_fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_DHCP);
       }
   }
-  fib_table_unlock (rx_fib_index, FIB_PROTOCOL_IP4);
+  fib_table_unlock (rx_fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_DHCP);
 
   return (rc);
 }

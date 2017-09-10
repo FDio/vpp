@@ -101,7 +101,8 @@ static const ip4_fib_table_special_prefix_t ip4_specials[] = {
 
 
 static u32
-ip4_create_fib_with_table_id (u32 table_id)
+ip4_create_fib_with_table_id (u32 table_id,
+                              fib_source_t src)
 {
     fib_table_t *fib_table;
     ip4_fib_t *v4_fib;
@@ -128,7 +129,7 @@ ip4_create_fib_with_table_id (u32 table_id)
     v4_fib->fwd_classify_table_index = ~0;
     v4_fib->rev_classify_table_index = ~0;
     
-    fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP4);
+    fib_table_lock(fib_table->ft_index, FIB_PROTOCOL_IP4, src);
 
     ip4_mtrie_init(&v4_fib->mtrie);
 
@@ -198,23 +199,24 @@ ip4_fib_table_destroy (u32 fib_index)
 
 
 u32
-ip4_fib_table_find_or_create_and_lock (u32 table_id)
+ip4_fib_table_find_or_create_and_lock (u32 table_id,
+                                       fib_source_t src)
 {
     u32 index;
 
     index = ip4_fib_index_from_table_id(table_id);
     if (~0 == index)
-	return ip4_create_fib_with_table_id(table_id);
+	return ip4_create_fib_with_table_id(table_id, src);
 
-    fib_table_lock(index, FIB_PROTOCOL_IP4);
+    fib_table_lock(index, FIB_PROTOCOL_IP4, src);
 
     return (index);
 }
 
 u32
-ip4_fib_table_create_and_lock (void)
+ip4_fib_table_create_and_lock (fib_source_t src)
 {
-    return (ip4_create_fib_with_table_id(~0));
+    return (ip4_create_fib_with_table_id(~0, src));
 }
 
 u32
@@ -525,17 +527,32 @@ ip4_show_fib (vlib_main_t * vm,
     pool_foreach (fib_table, im4->fibs,
     ({
 	ip4_fib_t *fib = pool_elt_at_index(im4->v4_fibs, fib_table->ft_index);
+        fib_source_t source;
+        u8 *s = NULL;
 
 	if (table_id >= 0 && table_id != (int)fib->table_id)
 	    continue;
 	if (fib_index != ~0 && fib_index != (int)fib->index)
 	    continue;
 
-	vlib_cli_output (vm, "%U, fib_index:%d, flow hash:[%U] locks:%d", 
-			 format_fib_table_name, fib->index, FIB_PROTOCOL_IP4,
-			 fib->index,
-			 format_ip_flow_hash_config, fib_table->ft_flow_hash_config,
-                         fib_table->ft_locks);
+	s = format(s, "%U, fib_index:%d, flow hash:[%U] locks:[",
+                   format_fib_table_name, fib->index,
+                   FIB_PROTOCOL_IP4,
+                   fib->index,
+                   format_ip_flow_hash_config,
+                   fib_table->ft_flow_hash_config);
+	FOR_EACH_FIB_SOURCE(source)
+        {
+            if (0 != fib_table->ft_locks[source])
+            {
+                s = format(s, "%U:%d, ",
+                           format_fib_source, source,
+                           fib_table->ft_locks[source]);
+            }
+        }
+        s = format (s, "]");
+        vlib_cli_output (vm, "%V", s);
+        vec_free(s);
 
 	/* Show summary? */
 	if (! verbose)
