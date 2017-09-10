@@ -20,7 +20,6 @@
 #include <vat/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 #include <vnet/ip/ip.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2tp/l2tp.h>
@@ -72,6 +71,108 @@
 
 #define __plugin_msg_base 0
 #include <vlibapi/vat_helper_macros.h>
+
+#if VPP_API_TEST_BUILTIN == 0
+#include <netdb.h>
+int
+vat_socket_connect (vat_main_t * vam)
+{
+  struct hostent *server;
+  struct sockaddr_in serv_addr;
+  char buffer[256];
+  char *rdptr;
+  int n, total_bytes;
+  u32 nbytes;
+  vl_api_sockclnt_create_reply_t *rp;
+  vl_api_sockclnt_create_t *mp;
+
+  vam->socket_fd = socket (AF_INET, SOCK_STREAM, 0);
+  if (vam->socket_fd < 0)
+    {
+      clib_unix_warning ("socket");
+      return (1);
+    }
+  server = gethostbyname ("localhost");
+  if (server == NULL)
+    {
+      clib_unix_warning ("localhost");
+      return (1);
+    }
+
+  bzero ((char *) &serv_addr, sizeof (serv_addr));
+  serv_addr.sin_family = AF_INET;
+  bcopy ((char *) server->h_addr,
+	 (char *) &serv_addr.sin_addr.s_addr, server->h_length);
+  serv_addr.sin_port = vam->socket_port;
+  if (connect (vam->socket_fd, (const void *) &serv_addr,
+	       sizeof (serv_addr)) < 0)
+    {
+      clib_unix_warning ("connect");
+      return (1);
+    }
+
+  mp = (vl_api_sockclnt_create_t *) buffer;
+  mp->_vl_msg_id = ntohs (VL_API_SOCKCLNT_CREATE);
+  strncpy ((char *) mp->name, "vpp_api_test", sizeof (mp->name) - 1);
+  mp->name[sizeof (mp->name) - 1] = 0;
+  mp->context = 0xfeedface;
+  /* length of the message, including the length itself */
+  nbytes = sizeof (*mp) + sizeof (nbytes);
+  nbytes = ntohl (nbytes);
+  n = write (vam->socket_fd, &nbytes, sizeof (nbytes));
+  if (n < 0)
+    {
+      clib_unix_warning ("socket write (len)");
+      return (1);
+    }
+
+  n = write (vam->socket_fd, mp, sizeof (*mp));
+  if (n < 0)
+    {
+      clib_unix_warning ("socket write (msg)");
+      return (1);
+    }
+
+  memset (buffer, 0, sizeof (buffer));
+
+  total_bytes = 0;
+  rdptr = buffer;
+  do
+    {
+      n = read (vam->socket_fd, rdptr, sizeof (buffer) - (rdptr - buffer));
+      if (n < 0)
+	{
+	  clib_unix_warning ("socket read");
+	}
+      total_bytes += n;
+      rdptr += n;
+    }
+  while (total_bytes < sizeof (vl_api_sockclnt_create_reply_t) + 4);
+
+  rp = (vl_api_sockclnt_create_reply_t *) (buffer + 4);
+  if (ntohs (rp->_vl_msg_id) != VL_API_SOCKCLNT_CREATE_REPLY)
+    {
+      clib_warning ("connect reply got msg id %d\n", ntohs (rp->_vl_msg_id));
+      return (1);
+    }
+
+  fformat (stdout,
+	   "connect reply %d, handle 0x%llx, index %d, context 0x%x\n",
+	   ntohl (rp->response), rp->handle, rp->index, rp->context);
+
+  /* allocate a large tx buffer, vs. vl_msg_api_alloc_as_if_client... */
+  vec_validate (vam->socket_tx_buffer, 8191);
+
+  return (0);
+}
+#else
+int
+vat_socket_connect (vat_main_t * vam)
+{
+  return 0;
+}
+#endif
+
 
 f64
 vat_time_now (vat_main_t * vam)

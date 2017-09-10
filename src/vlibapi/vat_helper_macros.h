@@ -23,7 +23,13 @@
 #define M(T, mp)                                                \
 do {                                                            \
     vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc_as_if_client(sizeof(*mp));            \
+    if (vam->socket_tx_buffer)                                  \
+      {                                                         \
+        mp = (void *)vam->socket_tx_buffer;                     \
+        vam->socket_tx_nbytes = ntohl (4 + sizeof (*mp));       \
+      }                                                         \
+    else                                                        \
+      mp = vl_msg_api_alloc_as_if_client(sizeof(*mp));          \
     memset (mp, 0, sizeof (*mp));                               \
     mp->_vl_msg_id = ntohs (VL_API_##T+__plugin_msg_base);      \
     mp->client_index = vam->my_client_index;                    \
@@ -32,14 +38,36 @@ do {                                                            \
 #define M2(T, mp, n)                                            \
 do {                                                            \
     vam->result_ready = 0;                                      \
-    mp = vl_msg_api_alloc_as_if_client(sizeof(*mp)+(n));        \
+    if (vam->socket_tx_buffer)                                  \
+      {                                                         \
+        mp = (void *)vam->socket_tx_buffer;                     \
+        vam->socket_tx_nbytes = ntohl (4 + sizeof (*mp) + n);   \
+      }                                                         \
+    else                                                        \
+      mp = vl_msg_api_alloc_as_if_client(sizeof(*mp) + n);      \
     memset (mp, 0, sizeof (*mp));                               \
     mp->_vl_msg_id = ntohs (VL_API_##T+__plugin_msg_base);      \
     mp->client_index = vam->my_client_index;                    \
 } while(0);
 
 /* S: send a message */
-#define S(mp) (vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp))
+#define S(mp)                                                   \
+do {                                                            \
+    int n;                                                      \
+    if (vam->socket_tx_buffer)                                  \
+      {                                                         \
+        n = write (vam->socket_fd, &vam->socket_tx_nbytes,      \
+                   sizeof (u32));                               \
+        if (n < 0)                                              \
+          clib_unix_warning ("socket write (nbytes)");          \
+        n = write (vam->socket_fd, vam->socket_tx_buffer,       \
+                   ntohl (vam->socket_tx_nbytes) - 4);          \
+        if (n < 0)                                              \
+            clib_unix_warning ("socket write (msg)");           \
+      }                                                         \
+    else                                                        \
+      vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp);   \
+} while (0);
 
 /* W: wait for results, with timeout */
 #define W(ret)					\
