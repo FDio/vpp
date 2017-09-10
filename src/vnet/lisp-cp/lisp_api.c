@@ -128,6 +128,7 @@ vl_api_lisp_add_del_locator_set_t_handler (vl_api_lisp_add_del_locator_set_t *
 
   memset (a, 0, sizeof (a[0]));
 
+  mp->locator_set_name[63] = 0;
   locator_name = format (0, "%s", mp->locator_set_name);
 
   a->name = locator_name;
@@ -182,6 +183,7 @@ vl_api_lisp_add_del_locator_t_handler (vl_api_lisp_add_del_locator_t * mp)
   locator.local = 1;
   vec_add1 (locators, locator);
 
+  mp->locator_set_name[63] = 0;
   locator_name = format (0, "%s", mp->locator_set_name);
 
   a->name = locator_name;
@@ -248,6 +250,7 @@ vl_api_lisp_add_del_local_eid_t_handler (vl_api_lisp_add_del_local_eid_t * mp)
   if (rv)
     goto out;
 
+  mp->locator_set_name[63] = 0;
   name = format (0, "%s", mp->locator_set_name);
   p = hash_get_mem (lcm->locator_set_index_by_name, name);
   if (!p)
@@ -476,6 +479,7 @@ static void
   u8 *locator_set_name = NULL;
   vnet_lisp_add_del_mreq_itr_rloc_args_t _a, *a = &_a;
 
+  mp->locator_set_name[63] = 0;
   locator_set_name = format (0, "%s", mp->locator_set_name);
 
   a->is_add = mp->is_add;
@@ -488,6 +492,8 @@ static void
   REPLY_MACRO (VL_API_LISP_ADD_DEL_MAP_REQUEST_ITR_RLOCS_REPLY);
 }
 
+int lisp_fuckage_finder;
+
 static void
   vl_api_lisp_add_del_remote_mapping_t_handler
   (vl_api_lisp_add_del_remote_mapping_t * mp)
@@ -497,6 +503,8 @@ static void
   int rv = 0;
   gid_address_t _eid, *eid = &_eid;
   u32 rloc_num = clib_net_to_host_u32 (mp->rloc_num);
+
+  lisp_fuckage_finder = 0;
 
   memset (eid, 0, sizeof (eid[0]));
 
@@ -510,9 +518,12 @@ static void
   if (!mp->is_add)
     {
       vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
+      memset (a, 0, sizeof (*a));
+      lisp_fuckage_finder = 1;
       gid_address_copy (&a->reid, eid);
       a->is_add = 0;
       rv = vnet_lisp_add_del_adjacency (a);
+      lisp_fuckage_finder = 2;
       if (rv)
 	{
 	  goto out;
@@ -523,6 +534,7 @@ static void
    * not authoritative and ttl infinite. */
   if (mp->is_add)
     {
+      lisp_fuckage_finder = 3;
       vnet_lisp_add_del_mapping_args_t _m_args, *m_args = &_m_args;
       memset (m_args, 0, sizeof (m_args[0]));
       gid_address_copy (&m_args->eid, eid);
@@ -531,17 +543,26 @@ static void
       m_args->ttl = ~0;
       m_args->authoritative = 0;
       rv = vnet_lisp_add_mapping (m_args, rlocs, NULL, NULL);
+      lisp_fuckage_finder = 4;
     }
   else
-    rv = vnet_lisp_del_mapping (eid, NULL);
+    {
+      lisp_fuckage_finder = 5;
+      rv = vnet_lisp_del_mapping (eid, NULL);
+      lisp_fuckage_finder = 6;
+    }
 
   if (mp->del_all)
     vnet_lisp_clear_all_remote_adjacencies ();
 
 out:
+  lisp_fuckage_finder = 7;
   vec_free (rlocs);
+  lisp_fuckage_finder = 8;
 send_reply:
+  lisp_fuckage_finder = 9;
   REPLY_MACRO (VL_API_LISP_ADD_DEL_REMOTE_MAPPING_REPLY);
+  lisp_fuckage_finder = 10;
 }
 
 static void

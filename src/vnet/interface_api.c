@@ -138,7 +138,7 @@ vl_api_sw_interface_set_mtu_t_handler (vl_api_sw_interface_set_mtu_t * mp)
 
 static void
 send_sw_interface_details (vpe_api_main_t * am,
-			   unix_shared_memory_queue_t * q,
+			   vl_api_registration_t * rp,
 			   vnet_sw_interface_t * swif,
 			   u8 * interface_name, u32 context)
 {
@@ -233,7 +233,7 @@ send_sw_interface_details (vpe_api_main_t * am,
   if (tag)
     strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_msg_api_send (rp, (u8 *) mp);
 }
 
 static void
@@ -242,11 +242,15 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
   vpe_api_main_t *am = &vpe_api_main;
   vnet_sw_interface_t *swif;
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
+  vl_api_registration_t *rp;
 
-  unix_shared_memory_queue_t *q =
-    vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    return;
+  rp = vl_api_client_index_to_registration (mp->client_index);
+
+  if (rp == 0)
+    {
+      clib_warning ("Client %d AWOL", mp->client_index);
+      return;
+    }
 
   u8 *filter = 0, *name = 0;
   if (mp->name_filter_valid)
@@ -268,7 +272,7 @@ vl_api_sw_interface_dump_t_handler (vl_api_sw_interface_dump_t * mp)
     if (filter && !strcasestr((char *) name, (char *) filter))
 	continue;
 
-    send_sw_interface_details (am, q, swif, name, mp->context);
+    send_sw_interface_details (am, rp, swif, name, mp->context);
   }));
   /* *INDENT-ON* */
 

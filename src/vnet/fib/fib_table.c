@@ -846,7 +846,8 @@ fib_table_entry_delete (u32 fib_index,
 	 * removing an etry that does not exist.
 	 * i'll allow it, but i won't like it.
 	 */
-	clib_warning("%U not in FIB", format_fib_prefix, prefix);
+        if (0)
+            clib_warning("%U not in FIB", format_fib_prefix, prefix);
     }
     else
     {
