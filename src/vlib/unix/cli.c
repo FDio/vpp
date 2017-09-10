@@ -2827,7 +2827,7 @@ unix_cli_exec (vlib_main_t * vm,
       }
   }
 
-  unformat_init_unix_file (&sub_input, fd);
+  unformat_init_clib_file (&sub_input, fd);
 
   vlib_cli_input (vm, &sub_input, 0, 0);
   unformat_free (&sub_input);
