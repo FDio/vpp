@@ -41,7 +41,6 @@ nil
 #include <vat/vat.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 #include <vppinfra/error.h>
 
 uword unformat_sw_if_index (unformat_input_t * input, va_list * args);

@@ -305,7 +305,7 @@ u8 *format_hexdump (u8 * s, va_list * va);
 /* Unix specific formats. */
 #ifdef CLIB_UNIX
 /* Setup input from Unix file. */
-void unformat_init_unix_file (unformat_input_t * input, int file_descriptor);
+void unformat_init_clib_file (unformat_input_t * input, int file_descriptor);
 
 /* Take input from Unix environment variable; returns
    1 if variable exists zero otherwise. */
