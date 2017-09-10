@@ -62,6 +62,13 @@ def run_forked(suite):
                 if os.path.isfile(core_path):
                     global_logger.error("Core-file exists in test temporary "
                                         "directory: %s!" % core_path)
+                    failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
+                    lttd = last_test_temp_dir.split("/")[-1]
+                    link_path = '%s%s-FAILED' % (failed_dir, lttd)
+                    global_logger.error("Creating a link to the failed " +
+                                        "test: %s -> %s" %
+                                        (link_path, lttd))
+                    os.symlink(last_test_temp_dir, link_path)
                     if d and d.lower() == "core":
                         spawn_gdb(last_test_vpp_binary, core_path,
                                   global_logger)
