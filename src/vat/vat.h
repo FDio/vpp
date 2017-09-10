@@ -204,6 +204,14 @@ typedef struct
   ip4_nbr_counter_t **ip4_nbr_counters;
   ip6_nbr_counter_t **ip6_nbr_counters;
 
+  /* socket port, fd */
+  u16 socket_port;		/* net byte order */
+  int socket_fd;
+  /* Fortunately, the test tool is single-threaded, etc. */
+  u8 *socket_tx_buffer;
+  u8 *socket_rx_buffer;
+  u32 socket_tx_nbytes;
+
   /* Convenience */
   vlib_main_t *vlib_main;
 } vat_main_t;
@@ -232,6 +240,8 @@ u8 *format_ip4_address (u8 * s, va_list * args);
 u8 *format_ip6_address (u8 * s, va_list * args);
 u8 *format_ip46_address (u8 * s, va_list * args);
 u8 *format_ethernet_address (u8 * s, va_list * args);
+
+int vat_socket_connect (vat_main_t * vam);
 
 #if VPP_API_TEST_BUILTIN
 #define print api_cli_output

@@ -24,7 +24,6 @@
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
-#include <vlibsocket/api.h>
 
 unsigned char srv6_localsid_name[32] = "Sample-SRv6-LocalSID-plugin";
 unsigned char keyword_str[32] = "new_srv6_localsid";
