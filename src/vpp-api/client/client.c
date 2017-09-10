@@ -133,8 +133,11 @@ static void *
 vac_rx_thread_fn (void *arg)
 {
   unix_shared_memory_queue_t *q;
+  vl_api_memclnt_ping_t *mp;
+  vl_api_memclnt_ping_reply_t *rmp;
   vac_main_t *pm = &vac_main;
   api_main_t *am = &api_main;
+  vl_shmem_hdr_t *shmem_hdr;
   uword msg;
 
   q = am->vl_input_queue;
@@ -167,6 +170,17 @@ vac_rx_thread_fn (void *arg)
 	case VL_API_MEMCLNT_READ_TIMEOUT:
 	  clib_warning("Received read timeout in async thread\n");
 	  vl_msg_api_free((void *) msg);
+	  break;
+
+        case VL_API_MEMCLNT_PING:
+          mp = (void *)msg;
+          rmp = vl_msg_api_alloc (sizeof (*rmp));
+          memset (rmp, 0, sizeof (*rmp));
+          rmp->_vl_msg_id = ntohs(VL_API_MEMCLNT_PING_REPLY);
+          rmp->context = mp->context;
+          shmem_hdr = am->shmem_hdr;
+          vl_msg_api_send_shmem(shmem_hdr->vl_input_queue, (u8 *)&rmp);
+          vl_msg_api_free((void *) msg);
 	  break;
 
 	default:
@@ -370,8 +384,12 @@ vac_read (char **p, int *l, u16 timeout)
   unix_shared_memory_queue_t *q;
   api_main_t *am = &api_main;
   vac_main_t *pm = &vac_main;
+  vl_api_memclnt_ping_t *mp;
+  vl_api_memclnt_ping_reply_t *rmp;
   uword msg;
   msgbuf_t *msgbuf;
+  int rv;
+  vl_shmem_hdr_t *shmem_hdr;
 
   if (!pm->connected_to_vlib) return -1;
 
@@ -384,7 +402,9 @@ vac_read (char **p, int *l, u16 timeout)
     set_timeout(timeout);
 
   q = am->vl_input_queue;
-  int rv = unix_shared_memory_queue_sub(q, (u8 *)&msg, 0);
+
+ again:
+  rv = unix_shared_memory_queue_sub(q, (u8 *)&msg, 0);
   if (rv == 0) {
     u16 msg_id = ntohs(*((u16 *)msg));
     switch (msg_id) {
@@ -397,6 +417,21 @@ vac_read (char **p, int *l, u16 timeout)
     case VL_API_MEMCLNT_READ_TIMEOUT:
       printf("Received read timeout %ds\n", timeout);
       goto error;
+    case VL_API_MEMCLNT_PING:
+      /* Handle an alive-check ping from vpp. */
+      mp = (void *)msg;
+      rmp = vl_msg_api_alloc (sizeof (*rmp));
+      memset (rmp, 0, sizeof (*rmp));
+      rmp->_vl_msg_id = ntohs(VL_API_MEMCLNT_PING_REPLY);
+      rmp->context = mp->context;
+      shmem_hdr = am->shmem_hdr;
+      vl_msg_api_send_shmem(shmem_hdr->vl_input_queue, (u8 *)&rmp);
+      vl_msg_api_free((void *) msg);
+      /* 
+       * Python code is blissfully unaware of these pings, so
+       * act as if it never happened...
+       */
+      goto again;
 
     default:
       msgbuf = (msgbuf_t *)(((u8 *)msg) - offsetof(msgbuf_t, data));
