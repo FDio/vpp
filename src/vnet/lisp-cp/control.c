@@ -1371,6 +1371,8 @@ vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
  * @param res_map_index index of the removed mapping
  * @return return code
  */
+int lisp_del_mapping_fuckage_finder;
+
 int
 vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
 {
@@ -1380,17 +1382,23 @@ vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
   mapping_t *old_map;
   u32 mi;
 
+  lisp_del_mapping_fuckage_finder = 1;
+
   memset (m_args, 0, sizeof (m_args[0]));
   if (res_map_index)
     res_map_index[0] = ~0;
 
+  lisp_del_mapping_fuckage_finder = 2;
   mi = gid_dictionary_lookup (&lcm->mapping_index_by_gid, eid);
   old_map = ((u32) ~ 0 != mi) ? pool_elt_at_index (lcm->mapping_pool, mi) : 0;
+
+  lisp_del_mapping_fuckage_finder = 3;
 
   if (old_map == 0 || gid_address_cmp (&old_map->eid, eid) != 0)
     {
       clib_warning ("cannot delete mapping for eid %U",
 		    format_gid_address, eid);
+      lisp_del_mapping_fuckage_finder = 8;
       return -1;
     }
 
@@ -1399,23 +1407,28 @@ vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
   m_args->locator_set_index = old_map->locator_set_index;
 
   /* delete mapping associated from map-cache */
+  lisp_del_mapping_fuckage_finder = 4;
   vnet_lisp_map_cache_add_del (m_args, 0);
+  lisp_del_mapping_fuckage_finder = 5;
 
   ls_args->is_add = 0;
   ls_args->index = old_map->locator_set_index;
 
   /* delete locator set */
   vnet_lisp_add_del_locator_set (ls_args, 0);
+  lisp_del_mapping_fuckage_finder = 6;
 
   /* delete timer associated to the mapping if any */
   if (old_map->timer_set)
     mapping_delete_timer (lcm, mi);
 
+  lisp_del_mapping_fuckage_finder = 7;
   /* return old mapping index */
   if (res_map_index)
     res_map_index[0] = mi;
 
   /* success */
+  lisp_del_mapping_fuckage_finder = 9;
   return 0;
 }
 
@@ -1990,6 +2003,10 @@ vnet_lisp_add_del_locator (vnet_lisp_add_del_locator_set_args_t * a,
   return 0;
 }
 
+int vnet_lisp_add_del_locator_set_fuckage_finder;
+u8 *vnet_lisp_last_ls_name;
+u32 vnet_lisp_last_ls_name_vec_len;
+
 int
 vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 			       u32 * ls_result)
@@ -2006,6 +2023,8 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
       clib_warning ("LISP is disabled!");
       return VNET_API_ERROR_LISP_DISABLED;
     }
+
+  vnet_lisp_add_del_locator_set_fuckage_finder = 1;
 
   if (a->is_add)
     {
@@ -2080,6 +2099,7 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 	  return -1;
 	}
 
+      vnet_lisp_add_del_locator_set_fuckage_finder = 2;
       ls = pool_elt_at_index (lcm->locator_set_pool, p[0]);
       if (!ls)
 	{
@@ -2106,6 +2126,7 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 	}
 
       /* clean locator to locator-sets data */
+      vnet_lisp_add_del_locator_set_fuckage_finder = 3;
       clean_locator_to_locator_set (lcm, p[0]);
 
       if (ls->local)
@@ -2121,12 +2142,19 @@ vnet_lisp_add_del_locator_set (vnet_lisp_add_del_locator_set_args_t * a,
 		break;
 	      }
 	  }
+	  vnet_lisp_add_del_locator_set_fuckage_finder = 4;
+	  vnet_lisp_last_ls_name = ls->name;
+	  vnet_lisp_last_ls_name_vec_len = vec_len (ls->name);
+
 	  hash_unset_mem (lcm->locator_set_index_by_name, ls->name);
+
+	  vnet_lisp_add_del_locator_set_fuckage_finder = 5;
 	}
       vec_free (ls->name);
       vec_free (ls->locator_indices);
       pool_put (lcm->locator_set_pool, ls);
     }
+  vnet_lisp_add_del_locator_set_fuckage_finder = 6;
   return 0;
 }
 
