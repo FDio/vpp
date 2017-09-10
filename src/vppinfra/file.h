@@ -68,7 +68,7 @@ typedef enum
   UNIX_FILE_UPDATE_ADD,
   UNIX_FILE_UPDATE_MODIFY,
   UNIX_FILE_UPDATE_DELETE,
-} unix_file_update_type_t;
+} clib_file_update_type_t;
 
 typedef struct
 {
@@ -76,7 +76,7 @@ typedef struct
   clib_file_t *file_pool;
 
   void (*file_update) (clib_file_t * file,
-		       unix_file_update_type_t update_type);
+		       clib_file_update_type_t update_type);
 
 } clib_file_main_t;
 
