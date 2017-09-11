@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_57e4653a",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 816,
+      "author": {
+        "id": 1017
+      },
+      "writtenOn": "2017-09-11T18:51:55Z",
+      "side": 1,
+      "message": "Right, good catch!",
+      "parentUuid": "3a4b7175_774be159",
+      "range": {
+        "startLine": 816,
+        "startChar": 6,
+        "endLine": 816,
+        "endChar": 19
+      },
+      "revId": "6bc1a36c83919d73ec929411e03792c11d84eca3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_f76eb1c8",
         "filename": "src/vnet/lisp-cp/control.h",
         "patchSetId": 1
@@ -48,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "3a4b7175_37d1e957",
+        "filename": "src/vnet/lisp-cp/control.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 1017
+      },
+      "writtenOn": "2017-09-11T18:51:55Z",
+      "side": 1,
+      "message": "Sounds good, will update.",
+      "parentUuid": "3a4b7175_f76eb1c8",
+      "range": {
+        "startLine": 184,
+        "startChar": 8,
+        "endLine": 184,
+        "endChar": 25
+      },
+      "revId": "6bc1a36c83919d73ec929411e03792c11d84eca3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "3a4b7175_b76839bb",
         "filename": "src/vnet/lisp-cp/control.h",
         "patchSetId": 1
@@ -59,6 +107,30 @@
       "writtenOn": "2017-09-11T17:21:18Z",
       "side": 1,
       "message": "You probably expected the comment: can we change this name? :-)\n\nMaybe something like lcl_to_rmt_adjs_by_lcl_index",
+      "range": {
+        "startLine": 187,
+        "startChar": 7,
+        "endLine": 187,
+        "endChar": 47
+      },
+      "revId": "6bc1a36c83919d73ec929411e03792c11d84eca3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_17d6ed4f",
+        "filename": "src/vnet/lisp-cp/control.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 1017
+      },
+      "writtenOn": "2017-09-11T18:51:55Z",
+      "side": 1,
+      "message": "I did expect the comment :)",
+      "parentUuid": "3a4b7175_b76839bb",
       "range": {
         "startLine": 187,
         "startChar": 7,
