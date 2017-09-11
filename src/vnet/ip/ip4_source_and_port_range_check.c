@@ -1126,7 +1126,7 @@ ip6_source_and_port_range_check_add_del (ip6_address_t * address,
 					 u16 * low_ports,
 					 u16 * high_ports, int is_add)
 {
-  uint32_t fib_index;
+  u32 fib_index;
 
   fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
 

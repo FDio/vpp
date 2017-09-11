@@ -251,7 +251,7 @@ format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
 }
 
 static void
-ip6_neighbor_adj_fib_remove (ip6_neighbor_t * n, uint32_t fib_index)
+ip6_neighbor_adj_fib_remove (ip6_neighbor_t * n, u32 fib_index)
 {
   if (FIB_NODE_INDEX_INVALID != n->fib_entry_index)
     {
@@ -589,7 +589,7 @@ ip6_ethernet_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 
 
 static void
-ip6_neighbor_adj_fib_add (ip6_neighbor_t * n, uint32_t fib_index)
+ip6_neighbor_adj_fib_add (ip6_neighbor_t * n, u32 fib_index)
 {
   fib_prefix_t pfx = {
     .fp_len = 128,

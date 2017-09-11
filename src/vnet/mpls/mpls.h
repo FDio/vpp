@@ -98,7 +98,7 @@ mpls_fib_index_cmp(void * a1, void * a2);
 int
 mpls_label_cmp(void * a1, void * a2);
 
-void mpls_table_create(uint32_t table_id, u8 is_api);
-void mpls_table_delete(uint32_t table_id, u8 is_api);
+void mpls_table_create(u32 table_id, u8 is_api);
+void mpls_table_delete(u32 table_id, u8 is_api);
 
 #endif /* included_vnet_mpls_h */
