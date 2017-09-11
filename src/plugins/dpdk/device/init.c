@@ -686,6 +686,9 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
     /* Chelsio T4/T5 */
     else if (d->vendor_id == 0x1425 && (d->device_id & 0xe000) == 0x4000)
       ;
+    /* Mellanox  */
+    else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1013 && d->device_id <= 0x101a)
+      ;
     else
       {
         clib_warning ("Unsupported PCI device 0x%04x:0x%04x found "
