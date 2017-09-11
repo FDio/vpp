@@ -158,7 +158,7 @@ main (int argc, char *argv[])
   while (argc--)
     cmd = format (cmd, "%s%c", (argv++)[0], argc ? ' ' : 0);
 
-  s->flags = SOCKET_IS_CLIENT;
+  s->flags = CLIB_SOCKET_F_IS_CLIENT;
 
   error = clib_socket_init (s);
   if (error)
