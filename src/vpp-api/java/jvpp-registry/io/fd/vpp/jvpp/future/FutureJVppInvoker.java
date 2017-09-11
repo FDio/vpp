@@ -22,12 +22,12 @@ import io.fd.vpp.jvpp.dto.JVppReplyDump;
 import io.fd.vpp.jvpp.dto.JVppRequest;
 
 import java.util.concurrent.CompletionStage;
-import io.fd.vpp.jvpp.notification.NotificationRegistryProvider;
+import io.fd.vpp.jvpp.notification.EventRegistryProvider;
 
 /**
 * Future facade on top of JVpp
 */
-public interface FutureJVppInvoker extends NotificationRegistryProvider, AutoCloseable {
+public interface FutureJVppInvoker extends EventRegistryProvider, AutoCloseable {
 
     /**
      * Invoke asynchronous operation on VPP

@@ -19,10 +19,10 @@ package io.fd.vpp.jvpp.notification;
 /**
  * Provides notification registry
  */
-public interface NotificationRegistryProvider {
+public interface EventRegistryProvider {
 
     /**
      * Get current notification registry instance
      */
-    NotificationRegistry getNotificationRegistry();
+    EventRegistry getEventRegistry();
 }
