@@ -95,7 +95,7 @@ def generate_dtos(func_list, base_package, plugin_package, plugin_name, dto_pack
         if util.is_notification(func["name"]):
             base_type = "JVppNotification"
             description = "notification DTO"
-            camel_case_dto_name = util.add_notification_suffix(camel_case_dto_name)
+            #camel_case_dto_name = util.add_notification_suffix(camel_case_dto_name)
             dto_path = os.path.join(dto_package, camel_case_dto_name + ".java")
             methods = generate_dto_base_methods(camel_case_dto_name, func)
             write_dto_file(base_package, plugin_package, base_type, camel_case_dto_name, description, dto_package,

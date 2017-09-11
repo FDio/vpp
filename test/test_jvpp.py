@@ -39,11 +39,11 @@ class TestJVpp(TestJVppConnection):
                                   test_class_name="io.fd.vpp.jvpp.ioamexport."
                                                   "test.CallbackApiTest")
 
-    def test_vpp_ioamexport_future_api(self):
-        """JVPP Ioamexport Future Api Test Case"""
-        self.invoke_for_jvpp_core(api_jar_name="jvpp-ioamexport",
-                                  test_class_name="io.fd.vpp.jvpp.ioamexport."
-                                                  "test.FutureApiTest")
+#    def test_vpp_ioamexport_future_api(self):
+#        """JVPP Ioamexport Future Api Test Case"""
+#        self.invoke_for_jvpp_core(api_jar_name="jvpp-ioamexport",
+#                                  test_class_name="io.fd.vpp.jvpp.ioamexport."
+#                                                  "test.FutureApiTest")
 
     def test_vpp_ioampot_callback_api(self):
         """ JVPP Ioampot Callback Api Test Case """

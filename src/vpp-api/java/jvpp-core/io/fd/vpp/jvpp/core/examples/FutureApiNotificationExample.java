@@ -24,6 +24,9 @@ import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
 import io.fd.vpp.jvpp.core.future.FutureJVppCoreFacade;
+import io.fd.vpp.jvpp.core.callback.SwInterfaceEventCallback;
+import io.fd.vpp.jvpp.core.dto.SwInterfaceEvent;
+import io.fd.vpp.jvpp.VppCallbackException;
 
 public class FutureApiNotificationExample {
 
@@ -33,7 +36,16 @@ public class FutureApiNotificationExample {
              final FutureJVppCoreFacade jvppFacade = new FutureJVppCoreFacade(registry, new JVppCoreImpl());
              final AutoCloseable notificationListenerReg =
                  jvppFacade.getNotificationRegistry()
-                     .registerSwInterfaceEventNotificationCallback(NotificationUtils::printNotification)) {
+                     .registerSwInterfaceEventCallback(new SwInterfaceEventCallback() {
+                         public void onSwInterfaceEvent(SwInterfaceEvent reply) {
+                             System.out.printf("Received interface notification: ifc: %s%n", reply);
+                         }
+
+                         public void onError (VppCallbackException ex) {
+                             System.out.printf("Received onError exception: call=%s, context=%d, retval=%d%n",
+                                     ex.getMethodName(), ex.getCtxId(), ex.getErrorCode());
+                         }
+                     })) {
             System.out.println("Successfully connected to VPP");
             jvppFacade.wantInterfaceEvents(getEnableInterfaceNotificationsReq()).toCompletableFuture().get();
             System.out.println("Interface events started");

@@ -65,27 +65,25 @@ def generate_callbacks(func_list, base_package, plugin_package, plugin_name, cal
 
         if util.is_ignored(func['name']) or util.is_control_ping(camel_case_name_with_suffix):
             continue
-        if not util.is_reply(camel_case_name_with_suffix) and not util.is_notification(func['name']):
+        if not util.is_reply(camel_case_name_with_suffix) and not util.is_details(func['name']) and not util.is_notification(func['name']):
             continue
 
-        if util.is_reply(camel_case_name_with_suffix):
-            camel_case_name = util.remove_reply_suffix(camel_case_name_with_suffix)
-            callback_type = "JVppCallback"
-        else:
-            camel_case_name_with_suffix = util.add_notification_suffix(camel_case_name_with_suffix)
-            camel_case_name = camel_case_name_with_suffix
-            callback_type = "JVppNotificationCallback"
 
-        callbacks.append("{0}.{1}.{2}".format(plugin_package, callback_package, camel_case_name + callback_suffix))
-        callback_path = os.path.join(callback_package, camel_case_name + callback_suffix + ".java")
+        camel_case_name = util.remove_reply_suffix(camel_case_name_with_suffix)
+        if util.is_details(camel_case_name_with_suffix):
+            camel_case_name += "Dump"
+
+        callback_type = "JVppCallback"
+        callbacks.append("{0}.{1}.{2}".format(plugin_package, callback_package, camel_case_name_with_suffix + callback_suffix))
+        callback_path = os.path.join(callback_package, camel_case_name_with_suffix + callback_suffix + ".java")
         callback_file = open(callback_path, 'w')
 
         reply_type = "%s.%s.%s" % (plugin_package, dto_package, camel_case_name_with_suffix)
-        method = "void on{0}({1} reply);".format(camel_case_name_with_suffix, reply_type)
+        method = "void on{0}({1} reply);".format(camel_case_name, reply_type)
         callback_file.write(
             callback_template.substitute(inputfile=inputfile,
                                          docs=util.api_message_to_javadoc(func),
-                                         cls_name=camel_case_name + callback_suffix,
+                                         cls_name=camel_case_name_with_suffix + callback_suffix,
                                          callback_method=method,
                                          base_package=base_package,
                                          plugin_package=plugin_package,

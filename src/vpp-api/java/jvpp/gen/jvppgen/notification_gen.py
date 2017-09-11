@@ -60,7 +60,7 @@ package $plugin_package.$notification_package;
 public final class ${plugin_name}NotificationRegistryImpl implements ${plugin_name}NotificationRegistry, Global${plugin_name}NotificationCallback {
 
     // TODO add a special NotificationCallback interface and only allow those to be registered
-    private final java.util.concurrent.ConcurrentMap<Class<? extends $base_package.$dto_package.JVppNotification>, $base_package.$callback_package.JVppNotificationCallback> registeredCallbacks =
+    private final java.util.concurrent.ConcurrentMap<Class<?>, $base_package.$callback_package.JVppCallback> registeredCallbacks =
         new java.util.concurrent.ConcurrentHashMap<>();
 
     $register_callback_methods
@@ -69,6 +69,13 @@ public final class ${plugin_name}NotificationRegistryImpl implements ${plugin_na
     @Override
     public void close() {
         registeredCallbacks.clear();
+    }
+
+    @Override
+    public void onError(io.fd.vpp.jvpp.VppCallbackException ex) {
+        java.util.logging.Logger LOG = java.util.logging.Logger.getLogger(${plugin_name}NotificationRegistryImpl.class.getName());
+        LOG.log(java.util.logging.Level.WARNING, String.format("Received onError exception: call=%s, context=%d, retval=%d%n", ex.getMethodName(),
+            ex.getCtxId(), ex.getErrorCode()), ex);
     }
 }
 """)
@@ -86,9 +93,9 @@ register_callback_impl_template = Template("""
 handler_impl_template = Template("""
     @Override
     public void on$notification(
-        final $plugin_package.$dto_package.$notification notification) {
-        final $base_package.$callback_package.JVppNotificationCallback jVppNotificationCallback = registeredCallbacks.get($plugin_package.$dto_package.$notification.class);
-        if (null != jVppNotificationCallback) {
+        final $plugin_package.$dto_package.$notification_reply notification) {
+        final $base_package.$callback_package.JVppCallback jVppCallback = registeredCallbacks.get($plugin_package.$dto_package.$notification.class);
+        if (null != jVppCallback) {
             (($plugin_package.$callback_package.$callback) registeredCallbacks
                 .get($plugin_package.$dto_package.$notification.class))
                 .on$notification(notification);
@@ -125,12 +132,16 @@ def generate_notification_registry(func_list, base_package, plugin_package, plug
     handler_methods = []
     for func in func_list:
 
-        if not util.is_notification(func['name']):
+        if not util.is_reply(func['name']) and not util.is_details(func['name']) and not util.is_notification(func['name']):
             continue
 
         camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
-        notification_dto = util.add_notification_suffix(camel_case_name_with_suffix)
-        callback_ifc = notification_dto + callback_gen.callback_suffix
+        if util.is_control_ping(camel_case_name_with_suffix):
+            continue
+        notification_dto = util.remove_reply_suffix(camel_case_name_with_suffix)
+        if util.is_details(camel_case_name_with_suffix):
+            notification_dto += "Dump"
+        callback_ifc = camel_case_name_with_suffix + callback_gen.callback_suffix
         fully_qualified_callback_ifc = "{0}.{1}.{2}".format(plugin_package, callback_package, callback_ifc)
         callbacks.append(fully_qualified_callback_ifc)
 
@@ -141,13 +152,14 @@ def generate_notification_registry(func_list, base_package, plugin_package, plug
         register_callback_methods_impl.append(register_callback_impl_template.substitute(plugin_package=plugin_package,
                                                                                          callback_package=callback_package,
                                                                                          dto_package=dto_package,
-                                                                                         notification=notification_dto,
+                                                                                         notification=camel_case_name_with_suffix,
                                                                                          callback=callback_ifc))
         handler_methods.append(handler_impl_template.substitute(base_package=base_package,
                                                                 plugin_package=plugin_package,
                                                                 callback_package=callback_package,
                                                                 dto_package=dto_package,
                                                                 notification=notification_dto,
+                                                                notification_reply=camel_case_name_with_suffix,
                                                                 callback=callback_ifc))
 
 

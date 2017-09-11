@@ -26,9 +26,9 @@ import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
-import io.fd.vpp.jvpp.core.callback.SwInterfaceEventNotificationCallback;
-import io.fd.vpp.jvpp.core.callback.WantInterfaceEventsCallback;
-import io.fd.vpp.jvpp.core.dto.SwInterfaceEventNotification;
+import io.fd.vpp.jvpp.core.callback.SwInterfaceEventCallback;
+import io.fd.vpp.jvpp.core.callback.WantInterfaceEventsReplyCallback;
+import io.fd.vpp.jvpp.core.dto.SwInterfaceEvent;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceSetFlagsReply;
 import io.fd.vpp.jvpp.core.dto.WantInterfaceEventsReply;
 
@@ -64,17 +64,17 @@ public class CallbackNotificationApiExample {
         testCallbackApi();
     }
 
-    private static class TestCallback implements SwInterfaceEventNotificationCallback,
-        WantInterfaceEventsCallback {
+    private static class TestCallback implements SwInterfaceEventCallback,
+            WantInterfaceEventsReplyCallback {
 
         @Override
-        public void onSwInterfaceEventNotification(
-            final SwInterfaceEventNotification msg) {
+        public void onSwInterfaceEvent(
+            final SwInterfaceEvent msg) {
             printNotification(msg);
         }
 
         @Override
-        public void onWantInterfaceEventsReply(final WantInterfaceEventsReply wantInterfaceEventsReply) {
+        public void onWantInterfaceEvents(final WantInterfaceEventsReply wantInterfaceEventsReply) {
             System.out.println("Interface notification stream updated");
         }
 

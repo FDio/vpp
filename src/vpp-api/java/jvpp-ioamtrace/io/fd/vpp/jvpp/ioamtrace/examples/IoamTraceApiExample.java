@@ -22,7 +22,7 @@ import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
 import io.fd.vpp.jvpp.ioamtrace.future.FutureJVppIoamtraceFacade;
 import io.fd.vpp.jvpp.ioamtrace.JVppIoamtraceImpl;
-import io.fd.vpp.jvpp.ioamtrace.callback.TraceProfileAddCallback;
+import io.fd.vpp.jvpp.ioamtrace.callback.TraceProfileAddReplyCallback;
 import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileAdd;
 import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileAddReply;
 import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileShowConfig;
@@ -30,10 +30,10 @@ import io.fd.vpp.jvpp.ioamtrace.dto.TraceProfileShowConfigReply;
 
 public class IoamTraceApiExample {
 
-    static class IoamTraceTestCallback implements TraceProfileAddCallback {
+    static class IoamTraceTestCallback implements TraceProfileAddReplyCallback {
 
         @Override
-        public void onTraceProfileAddReply(final TraceProfileAddReply reply) {
+        public void onTraceProfileAdd(final TraceProfileAddReply reply) {
             System.out.printf("Received TraceProfileAddReply reply: context=%d%n",
                 reply.context);
         }
