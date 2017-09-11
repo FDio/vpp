@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_774be159",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 816,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-09-11T17:21:18Z",
+      "side": 1,
+      "message": "For remote mappings that are removed, don\u0027t you need to find all the adjacencies they have with local mappings and remove from \nrmts_per_lcl_pool the remote\u0027s index?",
+      "range": {
+        "startLine": 816,
+        "startChar": 6,
+        "endLine": 816,
+        "endChar": 19
+      },
+      "revId": "6bc1a36c83919d73ec929411e03792c11d84eca3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_f76eb1c8",
+        "filename": "src/vnet/lisp-cp/control.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-09-11T17:21:18Z",
+      "side": 1,
+      "message": "How about calling this lcl_to_rmt_adjacencies. I know we\u0027re not saving adjacency indexes but what you\u0027re saving is all lcl-to-rmt pairs for which we have established lisp level adjacencies.",
+      "range": {
+        "startLine": 184,
+        "startChar": 8,
+        "endLine": 184,
+        "endChar": 25
+      },
+      "revId": "6bc1a36c83919d73ec929411e03792c11d84eca3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_b76839bb",
+        "filename": "src/vnet/lisp-cp/control.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 187,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-09-11T17:21:18Z",
+      "side": 1,
+      "message": "You probably expected the comment: can we change this name? :-)\n\nMaybe something like lcl_to_rmt_adjs_by_lcl_index",
+      "range": {
+        "startLine": 187,
+        "startChar": 7,
+        "endLine": 187,
+        "endChar": 47
+      },
+      "revId": "6bc1a36c83919d73ec929411e03792c11d84eca3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
