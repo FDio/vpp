@@ -55,10 +55,12 @@ typedef struct _socket_t
   char *config;
 
   u32 flags;
-#define SOCKET_IS_SERVER (1 << 0)
-#define SOCKET_IS_CLIENT (0 << 0)
-#define SOCKET_NON_BLOCKING_CONNECT (1 << 1)
-#define SOCKET_ALLOW_GROUP_WRITE (1 << 2)
+#define CLIB_SOCKET_F_IS_SERVER (1 << 0)
+#define CLIB_SOCKET_F_IS_CLIENT (0 << 0)
+#define CLIB_SOCKET_F_NON_BLOCKING_CONNECT (1 << 1)
+#define CLIB_SOCKET_F_ALLOW_GROUP_WRITE (1 << 2)
+#define CLIB_SOCKET_F_SEQPACKET (1 << 3)
+#define CLIB_SOCKET_F_PASSCRED  (1 << 4)
 
   /* Read returned end-of-file. */
 #define SOCKET_RX_END_OF_FILE (1 << 2)
@@ -72,9 +74,18 @@ typedef struct _socket_t
   /* Peer socket we are connected to. */
   struct sockaddr_in peer;
 
+  /* Credentials, populated if CLIB_SOCKET_F_PASSCRED is set */
+  pid_t pid;
+  uid_t uid;
+  gid_t gid;
+
   clib_error_t *(*write_func) (struct _socket_t * sock);
   clib_error_t *(*read_func) (struct _socket_t * sock, int min_bytes);
   clib_error_t *(*close_func) (struct _socket_t * sock);
+  clib_error_t *(*recvmsg_func) (struct _socket_t * s, void *msg, int msglen,
+				 int fds[], int num_fds);
+  clib_error_t *(*sendmsg_func) (struct _socket_t * s, void *msg, int msglen,
+				 int fds[], int num_fds);
   void *private_data;
 } clib_socket_t;
 
@@ -89,7 +100,7 @@ clib_error_t *clib_socket_accept (clib_socket_t * server,
 always_inline uword
 clib_socket_is_server (clib_socket_t * sock)
 {
-  return (sock->flags & SOCKET_IS_SERVER) != 0;
+  return (sock->flags & CLIB_SOCKET_F_IS_SERVER) != 0;
 }
 
 always_inline uword
@@ -128,6 +139,20 @@ always_inline clib_error_t *
 clib_socket_rx (clib_socket_t * s, int n_bytes)
 {
   return s->read_func (s, n_bytes);
+}
+
+always_inline clib_error_t *
+clib_socket_sendmsg (clib_socket_t * s, void *msg, int msglen,
+		     int fds[], int num_fds)
+{
+  return s->sendmsg_func (s, msg, msglen, fds, num_fds);
+}
+
+always_inline clib_error_t *
+clib_socket_recvmsg (clib_socket_t * s, void *msg, int msglen,
+		     int fds[], int num_fds)
+{
+  return s->recvmsg_func (s, msg, msglen, fds, num_fds);
 }
 
 always_inline void

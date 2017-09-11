@@ -67,7 +67,8 @@
 typedef struct
 {
   u8 *filename;
-  int fd;
+  //int fd;
+  clib_socket_t socket;
   uword clib_file_index;
   uword *pending_file_indices;
   int ref_cnt;

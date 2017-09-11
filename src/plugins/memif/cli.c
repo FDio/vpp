@@ -306,7 +306,7 @@ memif_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
       vlib_cli_output (vm, "  id %d mode %U file %s", mif->id,
 		       format_memif_if_mode, mif, msf->filename);
       vlib_cli_output (vm, "  flags%U", format_memif_if_flags, mif->flags);
-      vlib_cli_output (vm, "  listener-fd %d conn-fd %d", msf->fd,
+      vlib_cli_output (vm, "  listener-fd %d conn-fd %d", msf->socket.fd,
 		       mif->conn_fd);
       vlib_cli_output (vm,
 		       "  num-s2m-rings %u num-m2s-rings %u buffer-size %u",

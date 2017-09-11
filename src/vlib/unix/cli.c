@@ -2664,8 +2664,8 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	  vec_free (tmp);
 	}
 
-      s->flags = SOCKET_IS_SERVER |	/* listen, don't connect */
-	SOCKET_ALLOW_GROUP_WRITE;	/* PF_LOCAL socket only */
+      s->flags = CLIB_SOCKET_F_IS_SERVER |	/* listen, don't connect */
+	CLIB_SOCKET_F_ALLOW_GROUP_WRITE;	/* PF_LOCAL socket only */
       error = clib_socket_init (s);
 
       if (error)

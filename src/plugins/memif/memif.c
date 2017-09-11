@@ -625,7 +625,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 		  sizeof (memif_interface_id_t));
       msf->dev_instance_by_fd = hash_create (0, sizeof (uword));
       msf->filename = socket_filename;
-      msf->fd = -1;
       msf->is_listener = (args->is_master != 0);
       socket_filename = 0;
       mhash_set (&mm->socket_file_index_by_filename, msf->filename,
@@ -701,33 +700,18 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   /* If this is new one, start listening */
   if (msf->is_listener && msf->ref_cnt == 0)
     {
-      struct sockaddr_un un = { 0 };
       struct stat file_stat;
-      int on = 1;
+      clib_socket_t *s = &msf->socket;
 
-      if ((msf->fd = socket (AF_UNIX, SOCK_SEQPACKET, 0)) < 0)
+      s->config = (char *) msf->filename;
+      s->flags = CLIB_SOCKET_F_IS_SERVER |
+	CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
+	CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
+
+      if ((error = clib_socket_init (s)))
 	{
+	  clib_error_report (error);
 	  ret = VNET_API_ERROR_SYSCALL_ERROR_4;
-	  goto error;
-	}
-
-      un.sun_family = AF_UNIX;
-      strncpy ((char *) un.sun_path, (char *) msf->filename,
-	       sizeof (un.sun_path) - 1);
-
-      if (setsockopt (msf->fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on)) < 0)
-	{
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_5;
-	  goto error;
-	}
-      if (bind (msf->fd, (struct sockaddr *) &un, sizeof (un)) == -1)
-	{
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_6;
-	  goto error;
-	}
-      if (listen (msf->fd, 1) == -1)
-	{
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_7;
 	  goto error;
 	}
 
@@ -740,7 +724,7 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
       msf->clib_file_index = ~0;
       clib_file_t template = { 0 };
       template.read_function = memif_conn_fd_accept_ready;
-      template.file_descriptor = msf->fd;
+      template.file_descriptor = msf->socket.fd;
       template.private_data = mif->socket_file_index;
       memif_file_add (&msf->clib_file_index, &template);
     }

@@ -50,15 +50,15 @@ test_socket_main (unformat_input_t * input)
   clib_error_t *error;
 
   s->config = "localhost:22";
-  s->flags = SOCKET_IS_CLIENT;
+  s->flags = CLIB_SOCKET_F_IS_CLIENT;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "server %s %=", &config,
-		    &s->flags, SOCKET_IS_SERVER))
+		    &s->flags, CLIB_SOCKET_F_IS_SERVER))
 	;
       else if (unformat (input, "client %s %=", &config,
-			 &s->flags, SOCKET_IS_CLIENT))
+			 &s->flags, CLIB_SOCKET_F_IS_CLIENT))
 	;
       else
 	{

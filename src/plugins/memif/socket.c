@@ -102,7 +102,7 @@ memif_msg_enq_ack (memif_if_t * mif)
 }
 
 static clib_error_t *
-memif_msg_enq_hello (int fd)
+memif_msg_enq_hello (clib_socket_t * sock)
 {
   u8 *s;
   memif_msg_t msg = { 0 };
@@ -117,7 +117,7 @@ memif_msg_enq_hello (int fd)
   s = format (0, "VPP %s%c", VPP_BUILD_VER, 0);
   strncpy ((char *) h->name, (char *) s, sizeof (h->name) - 1);
   vec_free (s);
-  return memif_msg_send (fd, &msg, -1);
+  return clib_socket_sendmsg (sock, &msg, sizeof (memif_msg_t), 0, 0);
 }
 
 static void
@@ -424,60 +424,24 @@ memif_msg_receive_disconnect (memif_if_t * mif, memif_msg_t * msg)
 static clib_error_t *
 memif_msg_receive (memif_if_t ** mifp, clib_file_t * uf)
 {
-  char ctl[CMSG_SPACE (sizeof (int)) +
-	   CMSG_SPACE (sizeof (struct ucred))] = { 0 };
-  struct msghdr mh = { 0 };
-  struct iovec iov[1];
   memif_msg_t msg = { 0 };
-  ssize_t size;
   clib_error_t *err = 0;
   int fd = -1;
   int i;
   memif_if_t *mif = *mifp;
 
-  iov[0].iov_base = (void *) &msg;
-  iov[0].iov_len = sizeof (memif_msg_t);
-  mh.msg_iov = iov;
-  mh.msg_iovlen = 1;
-  mh.msg_control = ctl;
-  mh.msg_controllen = sizeof (ctl);
+  clib_socket_t clnt;
 
-  /* receive the incoming message */
-  size = recvmsg (uf->file_descriptor, &mh, 0);
-  if (size != sizeof (memif_msg_t))
-    {
-      return (size == 0) ? clib_error_return (0, "disconnected") :
-	clib_error_return_unix (0,
-				"recvmsg: malformed message received on fd %d",
-				uf->file_descriptor);
-    }
+  clnt.fd = uf->file_descriptor;
+
+  err = clib_socket_recvmsg (&clnt, &msg, sizeof (memif_msg_t), &fd, 1);
+  if (err)
+    return err;
 
   if (mif == 0 && msg.type != MEMIF_MSG_TYPE_INIT)
     {
       memif_file_del (uf);
       return clib_error_return (0, "unexpected message received");
-    }
-
-  /* process anciliary data */
-  struct ucred *cr = 0;
-  struct cmsghdr *cmsg;
-
-  cmsg = CMSG_FIRSTHDR (&mh);
-  while (cmsg)
-    {
-      if (cmsg->cmsg_level == SOL_SOCKET)
-	{
-	  if (cmsg->cmsg_type == SCM_CREDENTIALS)
-	    {
-	      cr = (struct ucred *) CMSG_DATA (cmsg);
-	    }
-	  else if (cmsg->cmsg_type == SCM_RIGHTS)
-	    {
-	      int *fdp = (int *) CMSG_DATA (cmsg);
-	      fd = *fdp;
-	    }
-	}
-      cmsg = CMSG_NXTHDR (&mh, cmsg);
     }
 
   DBG ("Message type %u received", msg.type);
@@ -505,9 +469,9 @@ memif_msg_receive (memif_if_t ** mifp, clib_file_t * uf)
       if ((err = memif_msg_receive_init (mifp, &msg, uf)))
 	return err;
       mif = *mifp;
-      mif->remote_pid = cr->pid;
-      mif->remote_uid = cr->uid;
-      mif->remote_gid = cr->gid;
+      mif->remote_pid = clnt.pid;
+      mif->remote_uid = clnt.uid;
+      mif->remote_gid = clnt.gid;
       memif_msg_enq_ack (mif);
       break;
 
@@ -696,37 +660,35 @@ memif_conn_fd_accept_ready (clib_file_t * uf)
   memif_main_t *mm = &memif_main;
   memif_socket_file_t *msf =
     pool_elt_at_index (mm->socket_files, uf->private_data);
-  int addr_len;
-  struct sockaddr_un client;
-  int conn_fd;
   clib_file_t template = { 0 };
   uword clib_file_index = ~0;
   clib_error_t *err;
+  clib_socket_t client;
 
-
-  addr_len = sizeof (client);
-  conn_fd = accept (uf->file_descriptor,
-		    (struct sockaddr *) &client, (socklen_t *) & addr_len);
-
-  if (conn_fd < 0)
-    return clib_error_return_unix (0, "accept fd %d", uf->file_descriptor);
+  err = clib_socket_accept (&msf->socket, &client);
+  if (err)
+    return err;
 
   template.read_function = memif_master_conn_fd_read_ready;
   template.write_function = memif_master_conn_fd_write_ready;
   template.error_function = memif_master_conn_fd_error;
-  template.file_descriptor = conn_fd;
+  template.file_descriptor = client.fd;
   template.private_data = uf->private_data;
 
   memif_file_add (&clib_file_index, &template);
 
-  err = memif_msg_enq_hello (conn_fd);
+  err = memif_msg_enq_hello (&client);
   if (err)
     {
       clib_error_report (err);
       memif_file_del_by_index (clib_file_index);
+      clib_socket_close (&client);
     }
   else
-    vec_add1 (msf->pending_file_indices, clib_file_index);
+    {
+      vec_add1 (msf->pending_file_indices, clib_file_index);
+      clib_socket_free (&client);
+    }
 
   return 0;
 }
