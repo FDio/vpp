@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_a15b5b53",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-09-11T01:37:17Z",
+      "side": 1,
+      "message": "You have dropped the line \"DPDK_TUNE\u003dgeneric\"; any reason?",
+      "range": {
+        "startLine": 124,
+        "startChar": 0,
+        "endLine": 125,
+        "endChar": 32
+      },
+      "revId": "e73e835e0805e8757a70eade11e86cb895e8ebc6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
