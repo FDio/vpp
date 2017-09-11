@@ -22,6 +22,30 @@
       "revId": "e73e835e0805e8757a70eade11e86cb895e8ebc6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_21376b01",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 125,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2017-09-11T02:16:33Z",
+      "side": 1,
+      "message": "It\u0027s still defined on line 86.\n\nLines 84-86 are the initial ARM64 defines. If we can detect the Arm implementer and part number, we\u0027ll override those variables. E.g. DPDK_TUNE is overridden for Arm CPUs and DPDK_TARGET/DPDK_MACHINE for Cavium CPUs.",
+      "parentUuid": "3a4b7175_a15b5b53",
+      "range": {
+        "startLine": 124,
+        "startChar": 0,
+        "endLine": 125,
+        "endChar": 32
+      },
+      "revId": "e73e835e0805e8757a70eade11e86cb895e8ebc6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
