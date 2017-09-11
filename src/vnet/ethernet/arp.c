@@ -523,7 +523,7 @@ arp_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
 }
 
 static void
-arp_adj_fib_add (ethernet_arp_ip4_entry_t * e, uint32_t fib_index)
+arp_adj_fib_add (ethernet_arp_ip4_entry_t * e, u32 fib_index)
 {
   fib_prefix_t pfx = {
     .fp_len = 32,
@@ -1568,7 +1568,7 @@ arp_add_del_interface_address (ip4_main_t * im,
 }
 
 void
-arp_adj_fib_remove (ethernet_arp_ip4_entry_t * e, uint32_t fib_index)
+arp_adj_fib_remove (ethernet_arp_ip4_entry_t * e, u32 fib_index)
 {
   if (FIB_NODE_INDEX_INVALID != e->fib_entry_index)
     {

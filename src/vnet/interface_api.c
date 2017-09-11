@@ -343,7 +343,7 @@ vl_api_sw_interface_set_table_t_handler (vl_api_sw_interface_set_table_t * mp)
 
 int
 ip_table_bind (fib_protocol_t fproto,
-	       uint32_t sw_if_index, uint32_t table_id, u8 is_api)
+	       u32 sw_if_index, u32 table_id, u8 is_api)
 {
   CLIB_UNUSED (ip_interface_address_t * ia);
   u32 fib_index, mfib_index;
