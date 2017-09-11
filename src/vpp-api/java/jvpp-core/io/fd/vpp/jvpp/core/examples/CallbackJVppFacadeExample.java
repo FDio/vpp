@@ -20,8 +20,8 @@ import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
-import io.fd.vpp.jvpp.core.callback.GetNodeIndexCallback;
-import io.fd.vpp.jvpp.core.callback.ShowVersionCallback;
+import io.fd.vpp.jvpp.core.callback.GetNodeIndexReplyCallback;
+import io.fd.vpp.jvpp.core.callback.ShowVersionReplyCallback;
 import io.fd.vpp.jvpp.core.callfacade.CallbackJVppCoreFacade;
 import io.fd.vpp.jvpp.core.dto.GetNodeIndex;
 import io.fd.vpp.jvpp.core.dto.GetNodeIndexReply;
@@ -34,7 +34,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class CallbackJVppFacadeExample {
 
-    private static ShowVersionCallback showVersionCallback1 = new ShowVersionCallback() {
+    private static ShowVersionReplyCallback showVersionCallback1 = new ShowVersionReplyCallback() {
         @Override
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("ShowVersionCallback1 received ShowVersionReply: context=%d, program=%s,"
@@ -52,7 +52,7 @@ public class CallbackJVppFacadeExample {
         }
     };
 
-    private static ShowVersionCallback showVersionCallback2 = new ShowVersionCallback() {
+    private static ShowVersionReplyCallback showVersionCallback2 = new ShowVersionReplyCallback() {
         @Override
         public void onShowVersionReply(final ShowVersionReply msg) {
             System.out.printf("ShowVersionCallback2 received ShowVersionReply: context=%d, program=%s,"
@@ -71,7 +71,7 @@ public class CallbackJVppFacadeExample {
 
     };
 
-    private static GetNodeIndexCallback getNodeIndexCallback = new GetNodeIndexCallback() {
+    private static GetNodeIndexReplyCallback getNodeIndexCallback = new GetNodeIndexReplyCallback() {
         @Override
         public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
             System.out.printf("Received GetNodeIndexReply: %s%n", msg);
