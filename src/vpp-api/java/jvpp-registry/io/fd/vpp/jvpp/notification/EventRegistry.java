@@ -19,7 +19,7 @@ package io.fd.vpp.jvpp.notification;
 /**
  * Base registry for notification callbacks.
  */
-public interface NotificationRegistry extends AutoCloseable {
+public interface EventRegistry extends AutoCloseable {
 
     void close();
 }

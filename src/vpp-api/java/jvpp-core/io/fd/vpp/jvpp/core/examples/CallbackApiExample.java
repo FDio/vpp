@@ -21,9 +21,9 @@ import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
-import io.fd.vpp.jvpp.core.callback.GetNodeIndexCallback;
-import io.fd.vpp.jvpp.core.callback.ShowVersionCallback;
-import io.fd.vpp.jvpp.core.callback.SwInterfaceCallback;
+import io.fd.vpp.jvpp.core.callback.GetNodeIndexReplyCallback;
+import io.fd.vpp.jvpp.core.callback.ShowVersionReplyCallback;
+import io.fd.vpp.jvpp.core.callback.SwInterfaceDetailsCallback;
 import io.fd.vpp.jvpp.core.dto.GetNodeIndex;
 import io.fd.vpp.jvpp.core.dto.GetNodeIndexReply;
 import io.fd.vpp.jvpp.core.dto.ShowVersion;
@@ -65,7 +65,7 @@ public class CallbackApiExample {
         Thread.sleep(1000);
     }
 
-    static class TestCallback implements GetNodeIndexCallback, ShowVersionCallback, SwInterfaceCallback {
+    static class TestCallback implements GetNodeIndexReplyCallback, ShowVersionReplyCallback, SwInterfaceDetailsCallback {
 
         @Override
         public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
