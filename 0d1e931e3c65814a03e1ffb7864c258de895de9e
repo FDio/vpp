@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_a47489cf",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-11T15:05:07Z",
+      "side": 1,
+      "message": "the ACLs can be applied with two combinations: inbound permit+reflect and outbound deny, inbound deny and outbound permit+reflect. It looks to me this conditional takes care of only one scenario ?",
+      "range": {
+        "startLine": 524,
+        "startChar": 2,
+        "endLine": 524,
+        "endChar": 16
+      },
+      "revId": "0d1e931e3c65814a03e1ffb7864c258de895de9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_64a7b150",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 525,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-11T15:05:07Z",
+      "side": 1,
+      "message": "Worth putting a hint for the branch predictor here ?",
+      "range": {
+        "startLine": 525,
+        "startChar": 31,
+        "endLine": 525,
+        "endChar": 36
+      },
+      "revId": "0d1e931e3c65814a03e1ffb7864c258de895de9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_046ebd01",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 527,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-11T15:05:07Z",
+      "side": 1,
+      "message": "This logic allows one e.g. to send out echo reply, and it will statefully permit echo back. Why would this be useful ?",
+      "range": {
+        "startLine": 527,
+        "startChar": 38,
+        "endLine": 527,
+        "endChar": 45
+      },
+      "revId": "0d1e931e3c65814a03e1ffb7864c258de895de9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_4464b521",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-11T15:05:07Z",
+      "side": 1,
+      "message": "Why do we first add +1 in the definitions of icmp_invmap and then remove the -1 here ?",
+      "range": {
+        "startLine": 528,
+        "startChar": 83,
+        "endLine": 528,
+        "endChar": 88
+      },
+      "revId": "0d1e931e3c65814a03e1ffb7864c258de895de9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_444b9587",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 528,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-11T15:05:07Z",
+      "side": 1,
+      "message": "It seems like the ICMP types not covered by this table will get overwritten with zero for the purposes of session matching, I think this might be a problem. Also, the ICMP types are IPv4 ones - note that this function at present is address family agnostic, so must work for both IPv4 and IPv6.",
+      "range": {
+        "startLine": 528,
+        "startChar": 47,
+        "endLine": 528,
+        "endChar": 58
+      },
+      "revId": "0d1e931e3c65814a03e1ffb7864c258de895de9e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
