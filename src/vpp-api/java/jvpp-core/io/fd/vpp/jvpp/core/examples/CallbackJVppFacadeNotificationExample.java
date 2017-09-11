@@ -21,9 +21,11 @@ import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
 import io.fd.vpp.jvpp.core.JVppCore;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
-import io.fd.vpp.jvpp.core.callback.WantInterfaceEventsCallback;
+import io.fd.vpp.jvpp.core.callback.WantInterfaceEventsReplyCallback;
+import io.fd.vpp.jvpp.core.callback.SwInterfaceEventCallback;
 import io.fd.vpp.jvpp.core.callfacade.CallbackJVppCoreFacade;
 import io.fd.vpp.jvpp.core.dto.WantInterfaceEventsReply;
+import io.fd.vpp.jvpp.core.dto.SwInterfaceEvent;
 
 public class CallbackJVppFacadeNotificationExample {
 
@@ -36,14 +38,22 @@ public class CallbackJVppFacadeNotificationExample {
             System.out.println("Successfully connected to VPP");
 
             final AutoCloseable notificationListenerReg =
-                jvppCallbackFacade.getNotificationRegistry().registerSwInterfaceEventNotificationCallback(
-                    NotificationUtils::printNotification
-                );
+                jvppCallbackFacade.getNotificationRegistry().registerSwInterfaceEventCallback(
+                        new SwInterfaceEventCallback() {
+                            public void onSwInterfaceEvent(SwInterfaceEvent reply) {
+                                System.out.printf("Received interface notification: ifc: %s%n", reply);
+                            }
+
+                            public void onError (VppCallbackException ex) {
+                                System.out.printf("Received onError exception: call=%s, context=%d, retval=%d%n",
+                                        ex.getMethodName(), ex.getCtxId(), ex.getErrorCode());
+                            }
+                        });
 
             jvppCallbackFacade.wantInterfaceEvents(NotificationUtils.getEnableInterfaceNotificationsReq(),
-                new WantInterfaceEventsCallback() {
+                new WantInterfaceEventsReplyCallback() {
                     @Override
-                    public void onWantInterfaceEventsReply(final WantInterfaceEventsReply reply) {
+                    public void onWantInterfaceEvents(final WantInterfaceEventsReply reply) {
                         System.out.println("Interface events started");
                     }
 
@@ -60,9 +70,9 @@ public class CallbackJVppFacadeNotificationExample {
             Thread.sleep(1000);
 
             jvppCallbackFacade.wantInterfaceEvents(NotificationUtils.getDisableInterfaceNotificationsReq(),
-                new WantInterfaceEventsCallback() {
+                new WantInterfaceEventsReplyCallback() {
                     @Override
-                    public void onWantInterfaceEventsReply(final WantInterfaceEventsReply reply) {
+                    public void onWantInterfaceEvents(final WantInterfaceEventsReply reply) {
                         System.out.println("Interface events stopped");
                     }
 

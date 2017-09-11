@@ -80,13 +80,13 @@ def generate_class_cache(func_list, plugin_name):
             delete_class_invocations.append(delete_class_invocation_template.substitute(ref_name=ref_name))
         elif util.is_notification(c_name):
             class_references.append(class_reference_template.substitute(
-                ref_name=util.add_notification_suffix(ref_name)))
+                ref_name=ref_name))
             find_class_invocations.append(find_class_invocation_template.substitute(
                 plugin_name=plugin_name,
-                ref_name=util.add_notification_suffix(ref_name),
-                class_name=util.add_notification_suffix(class_name)))
+                ref_name=ref_name,
+                class_name=class_name))
             delete_class_invocations.append(delete_class_invocation_template.substitute(
-                ref_name=util.add_notification_suffix(ref_name)))
+                ref_name=ref_name))
 
     # add exception class to class cache
     ref_name = 'callbackException'
@@ -234,7 +234,7 @@ static void vl_api_${handler_name}_t_handler (vl_api_${handler_name}_t * mp)
     // User does not have to provide callbacks for all VPP messages.
     // We are ignoring messages that are not supported by user.
     (*env)->ExceptionClear(env); // just in case exception occurred in different place and was not properly cleared
-    jmethodID callbackMethod = (*env)->GetMethodID(env, plugin_main->callbackClass, "on${dto_name}", "(Lio/fd/vpp/jvpp/${plugin_name}/dto/${dto_name};)V");
+    jmethodID callbackMethod = (*env)->GetMethodID(env, plugin_main->callbackClass, "on${request_dto_name}", "(Lio/fd/vpp/jvpp/${plugin_name}/dto/${dto_name};)V");
     exc = (*env)->ExceptionOccurred(env);
     if (exc) {
         clib_warning("Unable to extract on${dto_name} method reference from ${plugin_name} plugin's callbackClass. Ignoring message.\\n");
@@ -265,9 +265,14 @@ def generate_msg_handlers(func_list, plugin_name, inputfile):
         if not util.is_reply(dto_name) and not util.is_notification(handler_name):
             continue
 
-        if util.is_notification(handler_name):
-            dto_name = util.add_notification_suffix(dto_name)
-            ref_name = util.add_notification_suffix(ref_name)
+        #if util.is_notification(handler_name):
+        #    dto_name = util.add_notification_suffix(dto_name)
+        #    ref_name = util.add_notification_suffix(ref_name)
+
+        if util.is_reply(dto_name):
+            request_dto_name = util.remove_reply_suffix(dto_name)
+        if util.is_details(dto_name):
+            request_dto_name += "Dump"
 
         dto_setters = ''
         err_handler = ''
@@ -300,6 +305,7 @@ def generate_msg_handlers(func_list, plugin_name, inputfile):
             handler_name=handler_name,
             plugin_name=plugin_name,
             dto_name=dto_name,
+            request_dto_name=request_dto_name,
             class_ref_name=ref_name,
             dto_setters=dto_setters,
             err_handler=err_handler))

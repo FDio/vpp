@@ -21,16 +21,16 @@ import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
 import io.fd.vpp.jvpp.nat.JVppNatImpl;
-import io.fd.vpp.jvpp.nat.callback.Nat44InterfaceAddDelFeatureCallback;
+import io.fd.vpp.jvpp.nat.callback.Nat44InterfaceAddDelFeatureReplyCallback;
 import io.fd.vpp.jvpp.nat.dto.Nat44InterfaceAddDelFeature;
 import io.fd.vpp.jvpp.nat.dto.Nat44InterfaceAddDelFeatureReply;
 
 public class CallbackApiExample {
 
-    static class TestCallback implements Nat44InterfaceAddDelFeatureCallback {
+    static class TestCallback implements Nat44InterfaceAddDelFeatureReplyCallback {
 
         @Override
-        public void onNat44InterfaceAddDelFeatureReply(final Nat44InterfaceAddDelFeatureReply msg) {
+        public void onNat44InterfaceAddDelFeature(final Nat44InterfaceAddDelFeatureReply msg) {
             System.out.printf("Received Nat44InterfaceAddDelFeatureReply: context=%d%n",
                 msg.context);
         }

@@ -91,7 +91,7 @@ $methods
 jvpp_facade_callback_method_template = Template("""
     @Override
     @SuppressWarnings("unchecked")
-    public void on$callback_dto(final $plugin_package.$dto_package.$callback_dto reply) {
+    public void on$callback_dto(final $plugin_package.$dto_package.$reply reply) {
         final java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>> completableFuture;
         final int replyId = reply.context;
         synchronized(requests) {
@@ -118,7 +118,7 @@ jvpp_facade_callback_notification_method_template = Template("""
 jvpp_facade_details_callback_method_template = Template("""
     @Override
     @SuppressWarnings("unchecked")
-    public void on$callback_dto(final $plugin_package.$dto_package.$callback_dto reply) {
+    public void on$callback_dto(final $plugin_package.$dto_package.$reply reply) {
         final $base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture<$plugin_package.$dto_package.$callback_dto_reply_dump> completableFuture;
         final int replyId = reply.context;
         synchronized(requests) {
@@ -148,20 +148,22 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
         if util.is_ignored(func['name']) or util.is_control_ping(camel_case_name_with_suffix):
             continue
 
-        if not util.is_reply(camel_case_name_with_suffix) and not util.is_notification(func['name']):
+        if not util.is_reply(camel_case_name_with_suffix) and not util.is_notification(camel_case_name_with_suffix):
             continue
 
         camel_case_method_name = util.underscore_to_camelcase(func['name'])
 
         if not util.is_notification(func["name"]):
             camel_case_request_method_name = util.remove_reply_suffix(util.underscore_to_camelcase(func['name']))
+            camel_case_request_method_name_upper = util.remove_reply_suffix(util.underscore_to_camelcase_upper(func['name']))
             if util.is_details(camel_case_name_with_suffix):
                 camel_case_reply_name = get_standard_dump_reply_name(util.underscore_to_camelcase_upper(func['name']),
                                                                      func['name'])
                 callbacks.append(jvpp_facade_details_callback_method_template.substitute(base_package=base_package,
                                                                                          plugin_package=plugin_package,
                                                                                          dto_package=dto_package,
-                                                                                         callback_dto=camel_case_name_with_suffix,
+                                                                                         callback_dto=camel_case_request_method_name_upper + "Dump",
+                                                                                         reply=camel_case_name_with_suffix,
                                                                                          callback_dto_field=camel_case_method_name,
                                                                                          callback_dto_reply_dump=camel_case_reply_name + dto_gen.dump_dto_suffix,
                                                                                          future_package=future_facade_package))
@@ -198,12 +200,13 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
                 callbacks.append(jvpp_facade_callback_method_template.substitute(base_package=base_package,
                                                                                  plugin_package=plugin_package,
                                                                                  dto_package=dto_package,
-                                                                                 callback_dto=camel_case_name_with_suffix))
+                                                                                 callback_dto=camel_case_request_method_name_upper,
+                                                                                 reply=camel_case_name_with_suffix))
 
         if util.is_notification(func["name"]):
             callbacks.append(jvpp_facade_callback_notification_method_template.substitute(plugin_package=plugin_package,
                                                                                           dto_package=dto_package,
-                                                                                          callback_dto=util.add_notification_suffix(camel_case_name_with_suffix)))
+                                                                                          callback_dto=camel_case_name_with_suffix))
 
     jvpp_file = open(os.path.join(future_facade_package, "FutureJVpp%sFacadeCallback.java" % plugin_name), 'w')
     jvpp_file.write(jvpp_facade_callback_template.substitute(inputfile=inputfile,

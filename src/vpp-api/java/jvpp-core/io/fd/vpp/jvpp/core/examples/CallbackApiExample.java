@@ -21,9 +21,9 @@ import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
 import io.fd.vpp.jvpp.core.JVppCoreImpl;
-import io.fd.vpp.jvpp.core.callback.GetNodeIndexCallback;
-import io.fd.vpp.jvpp.core.callback.ShowVersionCallback;
-import io.fd.vpp.jvpp.core.callback.SwInterfaceCallback;
+import io.fd.vpp.jvpp.core.callback.GetNodeIndexReplyCallback;
+import io.fd.vpp.jvpp.core.callback.ShowVersionReplyCallback;
+import io.fd.vpp.jvpp.core.callback.SwInterfaceDetailsCallback;
 import io.fd.vpp.jvpp.core.dto.GetNodeIndex;
 import io.fd.vpp.jvpp.core.dto.GetNodeIndexReply;
 import io.fd.vpp.jvpp.core.dto.ShowVersion;
@@ -65,15 +65,15 @@ public class CallbackApiExample {
         Thread.sleep(1000);
     }
 
-    static class TestCallback implements GetNodeIndexCallback, ShowVersionCallback, SwInterfaceCallback {
+    static class TestCallback implements GetNodeIndexReplyCallback, ShowVersionReplyCallback, SwInterfaceDetailsCallback {
 
         @Override
-        public void onGetNodeIndexReply(final GetNodeIndexReply msg) {
+        public void onGetNodeIndex(final GetNodeIndexReply msg) {
             System.out.printf("Received GetNodeIndexReply: %s%n", msg);
         }
 
         @Override
-        public void onShowVersionReply(final ShowVersionReply msg) {
+        public void onShowVersion(final ShowVersionReply msg) {
             System.out.printf("Received ShowVersionReply: context=%d, program=%s, version=%s, "
                     + "buildDate=%s, buildDirectory=%s%n",
                 msg.context,
@@ -84,7 +84,7 @@ public class CallbackApiExample {
         }
 
         @Override
-        public void onSwInterfaceDetails(final SwInterfaceDetails msg) {
+        public void onSwInterfaceDump(final SwInterfaceDetails msg) {
             System.out.printf("Received SwInterfaceDetails: interfaceName=%s, l2AddressLength=%d, adminUpDown=%d, "
                     + "linkUpDown=%d, linkSpeed=%d, linkMtu=%d%n",
                 new String(msg.interfaceName, StandardCharsets.UTF_8), msg.l2AddressLength, msg.adminUpDown,
