@@ -3412,6 +3412,8 @@ snat_hairpin_src_fn (vlib_main_t * vm,
           u32 bi0;
 	  vlib_buffer_t * b0;
           u32 next0;
+          snat_interface_t *i;
+          u32 sw_if_index0;
 
           /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -3422,15 +3424,25 @@ snat_hairpin_src_fn (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
+          sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
           next0 = SNAT_HAIRPIN_SRC_NEXT_INTERFACE_OUTPUT;
 
-          if (PREDICT_FALSE ((vnet_buffer (b0)->snat.flags) & SNAT_FLAG_HAIRPINNING))
-            {
-              if (PREDICT_TRUE (sm->num_workers > 1))
-                next0 = SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT_WH;
-              else
-                next0 = SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT;
-            }
+          pool_foreach (i, sm->output_feature_interfaces,
+          ({
+            /* Only packets from NAT inside interface */
+            if ((i->is_inside == 1) && (sw_if_index0 == i->sw_if_index))
+              {
+                if (PREDICT_FALSE ((vnet_buffer (b0)->snat.flags) &
+                                    SNAT_FLAG_HAIRPINNING))
+                  {
+                    if (PREDICT_TRUE (sm->num_workers > 1))
+                      next0 = SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT_WH;
+                    else
+                      next0 = SNAT_HAIRPIN_SRC_NEXT_SNAT_IN2OUT;
+                  }
+                break;
+              }
+          }));
 
           pkts_processed += next0 != SNAT_IN2OUT_NEXT_DROP;
 

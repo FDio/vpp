@@ -2221,24 +2221,33 @@ class TestNAT44(MethodHolder):
         """ NAT44 interface output feature (in2out postrouting) """
         self.nat44_add_address(self.nat_addr)
         self.vapi.nat44_interface_add_del_output_feature(self.pg0.sw_if_index)
-        self.vapi.nat44_interface_add_del_output_feature(self.pg1.sw_if_index,
+        self.vapi.nat44_interface_add_del_output_feature(self.pg1.sw_if_index)
+        self.vapi.nat44_interface_add_del_output_feature(self.pg3.sw_if_index,
                                                          is_inside=0)
 
         # in2out
-        pkts = self.create_stream_in(self.pg0, self.pg1)
+        pkts = self.create_stream_in(self.pg0, self.pg3)
         self.pg0.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-        capture = self.pg1.get_capture(len(pkts))
+        capture = self.pg3.get_capture(len(pkts))
         self.verify_capture_out(capture)
 
         # out2in
-        pkts = self.create_stream_out(self.pg1)
-        self.pg1.add_stream(pkts)
+        pkts = self.create_stream_out(self.pg3)
+        self.pg3.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
+
+        # from non-NAT interface to NAT inside interface
+        pkts = self.create_stream_in(self.pg2, self.pg0)
+        self.pg2.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        self.verify_capture_no_translation(capture, self.pg2, self.pg0)
 
     def test_output_feature_vrf_aware(self):
         """ NAT44 interface output feature VRF aware (in2out postrouting) """
