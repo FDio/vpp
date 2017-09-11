@@ -91,7 +91,7 @@ static void *
 acl_set_heap(acl_main_t *am)
 {
   if (0 == am->acl_mheap) {
-    am->acl_mheap = mheap_alloc (0 /* use VM */ , 2 << 29);
+    am->acl_mheap = mheap_alloc (0 /* use VM */ , am->acl_mheap_size);
     mheap_t *h = mheap_header (am->acl_mheap);
     h->flags |= MHEAP_FLAG_THREAD_SAFE;
   }
@@ -2596,7 +2596,47 @@ VLIB_CLI_COMMAND (aclplugin_clear_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  acl_main_t *am = &acl_main;
+  u32 conn_table_hash_buckets;
+  u32 conn_table_hash_memory_size;
+  u32 conn_table_max_entries;
+  u32 main_heap_size;
+  u32 hash_heap_size;
+  u32 hash_lookup_hash_buckets;
+  u32 hash_lookup_hash_memory;
 
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "connection hash buckets %d", &conn_table_hash_buckets))
+        am->fa_conn_table_hash_num_buckets = conn_table_hash_buckets;
+      else if (unformat (input, "connection hash memory %d",
+                         &conn_table_hash_memory_size))
+        am->fa_conn_table_hash_memory_size = conn_table_hash_memory_size;
+      else if (unformat (input, "connection count max %d",
+                         &conn_table_max_entries))
+        am->fa_conn_table_max_entries = conn_table_max_entries;
+      else if (unformat (input, "main heap size %d",
+                         &main_heap_size))
+        am->acl_mheap_size = main_heap_size;
+      else if (unformat (input, "hash lookup heap size %d",
+                         &hash_heap_size))
+        am->hash_lookup_mheap_size = hash_heap_size;
+      else if (unformat (input, "hash lookup hash buckets %d",
+                         &hash_lookup_hash_buckets))
+        am->hash_lookup_hash_buckets = hash_lookup_hash_buckets;
+      else if (unformat (input, "hash lookup hash memory %d",
+                         &hash_lookup_hash_memory))
+        am->hash_lookup_hash_memory = hash_lookup_hash_memory;
+      else
+        return clib_error_return (0, "unknown input '%U'",
+                                  format_unformat_error, input);
+    }
+  return 0;
+}
+VLIB_CONFIG_FUNCTION (acl_plugin_config, "acl-plugin");
 
 static clib_error_t *
 acl_init (vlib_main_t * vm)
@@ -2621,6 +2661,12 @@ acl_init (vlib_main_t * vm)
   vec_free (name);
 
   acl_setup_fa_nodes();
+
+  am->acl_mheap_size = ACL_FA_DEFAULT_HEAP_SIZE;
+  am->hash_lookup_mheap_size = ACL_PLUGIN_HASH_LOOKUP_HEAP_SIZE;
+
+  am->hash_lookup_hash_buckets = ACL_PLUGIN_HASH_LOOKUP_HASH_BUCKETS;
+  am->hash_lookup_hash_memory = ACL_PLUGIN_HASH_LOOKUP_HASH_MEMORY;
 
   am->session_timeout_sec[ACL_TIMEOUT_TCP_TRANSIENT] = TCP_SESSION_TRANSIENT_TIMEOUT_SEC;
   am->session_timeout_sec[ACL_TIMEOUT_TCP_IDLE] = TCP_SESSION_IDLE_TIMEOUT_SEC;

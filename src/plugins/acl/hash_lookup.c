@@ -264,7 +264,7 @@ static void *
 hash_acl_set_heap(acl_main_t *am)
 {
   if (0 == am->hash_lookup_mheap) {
-    am->hash_lookup_mheap = mheap_alloc (0 /* use VM */ , 2 << 25);
+    am->hash_lookup_mheap = mheap_alloc (0 /* use VM */ , am->hash_lookup_mheap_size);
     mheap_t *h = mheap_header (am->hash_lookup_mheap);
     h->flags |= MHEAP_FLAG_THREAD_SAFE;
   }
@@ -307,7 +307,7 @@ hash_acl_apply(acl_main_t *am, u32 sw_if_index, u8 is_input, int acl_index)
   DBG0("HASH ACL apply: sw_if_index %d is_input %d acl %d", sw_if_index, is_input, acl_index);
   if (!am->acl_lookup_hash_initialized) {
     BV (clib_bihash_init) (&am->acl_lookup_hash, "ACL plugin rule lookup bihash",
-                           65536, 2 << 25);
+                           am->hash_lookup_hash_buckets, am->hash_lookup_hash_memory);
     am->acl_lookup_hash_initialized = 1;
   }
 
