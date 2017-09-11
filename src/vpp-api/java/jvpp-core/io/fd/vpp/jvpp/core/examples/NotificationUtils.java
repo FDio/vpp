@@ -18,14 +18,14 @@ package io.fd.vpp.jvpp.core.examples;
 
 import java.io.PrintStream;
 import io.fd.vpp.jvpp.core.dto.SwInterfaceSetFlags;
-import io.fd.vpp.jvpp.core.dto.SwInterfaceEventNotification;
+import io.fd.vpp.jvpp.core.dto.SwInterfaceEvent;
 import io.fd.vpp.jvpp.core.dto.WantInterfaceEvents;
 
 final class NotificationUtils {
 
     private NotificationUtils() {}
 
-    static PrintStream printNotification(final SwInterfaceEventNotification msg) {
+    static PrintStream printNotification(final SwInterfaceEvent msg) {
         return System.out.printf("Received interface notification: ifc: %s%n", msg);
     }
 

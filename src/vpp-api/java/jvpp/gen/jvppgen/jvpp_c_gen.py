@@ -70,23 +70,13 @@ def generate_class_cache(func_list, plugin_name):
         if util.is_ignored(c_name) or util.is_control_ping(class_name):
             continue
 
-        if util.is_reply(class_name):
-            class_references.append(class_reference_template.substitute(
-                ref_name=ref_name))
-            find_class_invocations.append(find_class_invocation_template.substitute(
-                plugin_name=plugin_name,
-                ref_name=ref_name,
-                class_name=class_name))
-            delete_class_invocations.append(delete_class_invocation_template.substitute(ref_name=ref_name))
-        elif util.is_notification(c_name):
-            class_references.append(class_reference_template.substitute(
-                ref_name=util.add_notification_suffix(ref_name)))
-            find_class_invocations.append(find_class_invocation_template.substitute(
-                plugin_name=plugin_name,
-                ref_name=util.add_notification_suffix(ref_name),
-                class_name=util.add_notification_suffix(class_name)))
-            delete_class_invocations.append(delete_class_invocation_template.substitute(
-                ref_name=util.add_notification_suffix(ref_name)))
+        class_references.append(class_reference_template.substitute(
+            ref_name=ref_name))
+        find_class_invocations.append(find_class_invocation_template.substitute(
+            plugin_name=plugin_name,
+            ref_name=ref_name,
+            class_name=class_name))
+        delete_class_invocations.append(delete_class_invocation_template.substitute(ref_name=ref_name))
 
     # add exception class to class cache
     ref_name = 'callbackException'
@@ -269,10 +259,6 @@ def generate_msg_handlers(func_list, plugin_name, inputfile):
 
         if not util.is_reply(dto_name) and not util.is_notification(handler_name):
             continue
-
-        if util.is_notification(handler_name):
-            dto_name = util.add_notification_suffix(dto_name)
-            ref_name = util.add_notification_suffix(ref_name)
 
         dto_setters = ''
         err_handler = ''
