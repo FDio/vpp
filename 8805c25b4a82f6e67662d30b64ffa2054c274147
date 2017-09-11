@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_645211df",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1210,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-11T09:03:38Z",
+      "side": 1,
+      "message": "This will leak the old content of a-\u003erules in case we are replacing an existing ACL.",
+      "range": {
+        "startLine": 1210,
+        "startChar": 0,
+        "endLine": 1210,
+        "endChar": 27
+      },
+      "revId": "8805c25b4a82f6e67662d30b64ffa2054c274147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_246419b8",
+        "filename": "src/plugins/acl/acl_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 965,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-11T09:03:38Z",
+      "side": 1,
+      "message": "This makes it impossible to test the addition of ACL with no rules... I think from the VAT one should be able to test all the corner cases which are possible in the API calls.",
+      "revId": "8805c25b4a82f6e67662d30b64ffa2054c274147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_c472e57b",
+        "filename": "test/test_acl_plugin_macip.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 744,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-11T09:03:38Z",
+      "side": 1,
+      "message": "We should have a symmetric test for IPv6 as well. The tables are different, so there is a potential for an escape if we don\u0027t test it explicitly....",
+      "range": {
+        "startLine": 744,
+        "startChar": 0,
+        "endLine": 744,
+        "endChar": 46
+      },
+      "revId": "8805c25b4a82f6e67662d30b64ffa2054c274147",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
