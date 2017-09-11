@@ -168,7 +168,7 @@ fill_free_list (vlib_main_t * vm,
   dpdk_main_t *dm = &dpdk_main;
   vlib_buffer_t *b0, *b1, *b2, *b3;
   int n, i;
-  u32 bi0, bi1, bi2, bi3;
+  u32 bi0, bi1, bi2, bi3, n_free_buffers;
   unsigned socket_id = rte_socket_id ();
   struct rte_mempool *rmp = dm->pktmbuf_pools[socket_id];
   struct rte_mbuf *mb0, *mb1, *mb2, *mb3;
@@ -178,7 +178,8 @@ fill_free_list (vlib_main_t * vm,
     return 0;
 
   /* Already have enough free buffers on free list? */
-  n = min_free_buffers - vec_len (fl->buffers);
+  n_free_buffers = vec_len (fl->buffers);
+  n = min_free_buffers - n_free_buffers;
   if (n <= 0)
     return min_free_buffers;
 
@@ -191,7 +192,10 @@ fill_free_list (vlib_main_t * vm,
   vec_validate (vm->mbuf_alloc_list, n - 1);
 
   if (rte_mempool_get_bulk (rmp, vm->mbuf_alloc_list, n) < 0)
-    return 0;
+    {
+      _vec_len (vm->mbuf_alloc_list) = n_free_buffers;
+      return 0;
+    }
 
   _vec_len (vm->mbuf_alloc_list) = n;
 
