@@ -724,7 +724,8 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
           kv.key = m_key.as_u64;
           kv.value = m - sm->static_mappings;
           clib_bihash_add_del_8_8(&sm->static_mapping_by_local, &kv, 1);
-          locals[i].prefix = locals[i - 1].prefix + locals[i].probability;
+          locals[i].prefix = (i == 0) ? locals[i].probability :\
+            (locals[i - 1].prefix + locals[i].probability);
           vec_add1 (m->locals, locals[i]);
           m_key.port = clib_host_to_net_u16 (locals[i].port);
           kv.key = m_key.as_u64;
