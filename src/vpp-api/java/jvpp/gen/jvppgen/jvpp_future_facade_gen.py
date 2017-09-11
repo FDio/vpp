@@ -30,11 +30,11 @@ package $plugin_package.$future_package;
 public final class FutureJVpp${plugin_name}FacadeCallback implements $plugin_package.$callback_package.JVpp${plugin_name}GlobalCallback {
 
     private final java.util.Map<java.lang.Integer, java.util.concurrent.CompletableFuture<? extends $base_package.$dto_package.JVppReply<?>>> requests;
-    private final $plugin_package.$notification_package.Global${plugin_name}NotificationCallback notificationCallback;
+    private final $plugin_package.$notification_package.Global${plugin_name}EventCallback notificationCallback;
 
     public FutureJVpp${plugin_name}FacadeCallback(
         final java.util.Map<java.lang.Integer, java.util.concurrent.CompletableFuture<? extends $base_package.$dto_package.JVppReply<?>>> requestMap,
-        final $plugin_package.$notification_package.Global${plugin_name}NotificationCallback notificationCallback) {
+        final $plugin_package.$notification_package.Global${plugin_name}EventCallback notificationCallback) {
         this.requests = requestMap;
         this.notificationCallback = notificationCallback;
     }
@@ -203,7 +203,7 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
         if util.is_notification(func["name"]):
             callbacks.append(jvpp_facade_callback_notification_method_template.substitute(plugin_package=plugin_package,
                                                                                           dto_package=dto_package,
-                                                                                          callback_dto=util.add_notification_suffix(camel_case_name_with_suffix)))
+                                                                                          callback_dto=camel_case_name_with_suffix))
 
     jvpp_file = open(os.path.join(future_facade_package, "FutureJVpp%sFacadeCallback.java" % plugin_name), 'w')
     jvpp_file.write(jvpp_facade_callback_template.substitute(inputfile=inputfile,
@@ -254,7 +254,7 @@ public interface FutureJVpp${plugin_name} extends $base_package.$future_package.
 $methods
 
     @Override
-    public $plugin_package.$notification_package.${plugin_name}NotificationRegistry getNotificationRegistry();
+    public $plugin_package.$notification_package.${plugin_name}EventRegistry getEventRegistry();
 
 }
 ''')
@@ -274,7 +274,7 @@ package $plugin_package.$future_package;
  */
 public class FutureJVpp${plugin_name}Facade extends $base_package.$future_package.AbstractFutureJVppInvoker implements FutureJVpp${plugin_name} {
 
-    private final $plugin_package.$notification_package.${plugin_name}NotificationRegistryImpl notificationRegistry = new $plugin_package.$notification_package.${plugin_name}NotificationRegistryImpl();
+    private final $plugin_package.$notification_package.${plugin_name}EventRegistryImpl eventRegistry = new $plugin_package.$notification_package.${plugin_name}EventRegistryImpl();
 
     /**
      * <p>Create FutureJVpp${plugin_name}Facade object for provided JVpp instance.
@@ -288,12 +288,12 @@ public class FutureJVpp${plugin_name}Facade extends $base_package.$future_packag
     public FutureJVpp${plugin_name}Facade(final $base_package.JVppRegistry registry, final $base_package.JVpp jvpp) throws java.io.IOException {
         super(jvpp, registry, new java.util.HashMap<>());
         java.util.Objects.requireNonNull(registry, "JVppRegistry should not be null");
-        registry.register(jvpp, new FutureJVpp${plugin_name}FacadeCallback(getRequests(), notificationRegistry));
+        registry.register(jvpp, new FutureJVpp${plugin_name}FacadeCallback(getRequests(), eventRegistry));
     }
 
     @Override
-    public $plugin_package.$notification_package.${plugin_name}NotificationRegistry getNotificationRegistry() {
-        return notificationRegistry;
+    public $plugin_package.$notification_package.${plugin_name}EventRegistry getEventRegistry() {
+        return eventRegistry;
     }
 
 $methods

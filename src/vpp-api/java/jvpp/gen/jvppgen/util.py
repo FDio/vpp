@@ -41,6 +41,7 @@ reply_suffixes = ("reply", "details", "l2fibtableentry")
 def is_reply(name):
     return name.lower().endswith(reply_suffixes)
 
+details_suffix = "details"
 
 def is_details(name):
     return name.lower().endswith(reply_suffixes[1]) or name.lower().endswith(reply_suffixes[2])
@@ -186,6 +187,8 @@ def remove_reply_suffix(camel_case_name_with_suffix):
 
 
 def remove_suffix(camel_case_name_with_suffix, suffix):
+    if not suffix:
+        return camel_case_name_with_suffix
     suffix_length = len(suffix)
     return camel_case_name_with_suffix[:-suffix_length] if suffix_length != 0 else camel_case_name_with_suffix
 
@@ -210,3 +213,6 @@ def add_notification_suffix(camel_case_dto_name):
 
 def is_array(java_type_as_string):
     return java_type_as_string.endswith("[]")
+
+def is_want(name):
+    return name.startswith("want_")

@@ -21,14 +21,14 @@ import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.VppCallbackException;
 import io.fd.vpp.jvpp.ioampot.JVppIoampotImpl;
-import io.fd.vpp.jvpp.ioampot.callback.PotProfileAddCallback;
+import io.fd.vpp.jvpp.ioampot.callback.PotProfileAddReplyCallback;
 import io.fd.vpp.jvpp.ioampot.dto.PotProfileAdd;
 import io.fd.vpp.jvpp.ioampot.dto.PotProfileAddReply;
 import java.nio.charset.StandardCharsets;
 
 public class IoamPotApiExample {
 
-    static class IoamPotTestCallback implements PotProfileAddCallback {
+    static class IoamPotTestCallback implements PotProfileAddReplyCallback {
 
         @Override
         public void onPotProfileAddReply(final PotProfileAddReply reply) {
