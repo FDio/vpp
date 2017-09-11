@@ -30,16 +30,19 @@ Version: %{_version}
 Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd, chrpath
-BuildRequires: libffi-devel, openssl-devel
 %if 0%{?fedora} >= 26
+BuildRequires: compat-openssl10-devel
 BuildRequires: python2-devel, python2-virtualenv
 %else
 %if 0%{?fedora} == 25
+BuildRequires: openssl-devel
 BuildRequires: python-devel, python2-virtualenv
 %else
+BuildREquires: openssl-devel
 BuildRequires: python-devel, python-virtualenv
 %endif
 %endif
+BuildRequires: libffi-devel
 BuildRequires: glibc-static, java-1.8.0-openjdk, java-1.8.0-openjdk-devel yum-utils, redhat-lsb
 BuildRequires: apr-devel
 %if %{with aesni}
