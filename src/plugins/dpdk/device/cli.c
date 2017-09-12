@@ -357,7 +357,6 @@ show_dpdk_buffer (vlib_main_t * vm, unformat_input_t * input,
 			   "name=\"%s\"  available = %7d allocated = %7d total = %7d\n",
 			   rmp->name, (u32) count, (u32) free_count,
 			   (u32) (count + free_count));
-	  rte_mempool_dump (stderr, rmp);
 	}
       else
 	{

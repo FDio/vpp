@@ -300,7 +300,6 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 					 /* Don't want mheap mmap/munmap with IO memory. */
 					 MHEAP_FLAG_DISABLE_VM |
 					 MHEAP_FLAG_THREAD_SAFE);
-      fformat (stdout, "%U", format_mheap, pr->heap, /* verbose */ 1);
     }
 
   if (flags & VLIB_PHYSMEM_F_HAVE_BUFFERS)
