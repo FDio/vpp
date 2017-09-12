@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_95a09591",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1391,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-09-12T20:34:50Z",
+      "side": 1,
+      "message": "If you\u0027re trying to fix a tainted type issue, this may not do that. You need to actually validate the value before you use it; ie, range checking.",
+      "range": {
+        "startLine": 1391,
+        "startChar": 2,
+        "endLine": 1391,
+        "endChar": 40
+      },
+      "revId": "897ea72f64fe73bd14a05c937318859e9f1054e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
