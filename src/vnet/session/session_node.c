@@ -150,7 +150,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   u8 *data0;
   int i, n_bytes_read;
   u32 n_bytes_per_buf, deq_per_buf, deq_per_first_buf;
-  u32 buffers_allocated, buffers_allocated_this_call;
+  u32 buffers_allocated, buffs_alloc_this_call;
 
   next_index = next0 = session_type_to_next[s0->session_type];
 
@@ -222,17 +222,16 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  buffers_allocated = 0;
 	  do
 	    {
-	      buffers_allocated_this_call = vlib_buffer_alloc (vm,
-							       &smm->tx_buffers
-							       [thread_index]
-							       [n_bufs +
-								buffers_allocated],
-							       n_bufs_per_frame
-							       -
-							       buffers_allocated);
-	      buffers_allocated += buffers_allocated_this_call;
+	      buffs_alloc_this_call = vlib_buffer_alloc (vm,
+							 &smm->tx_buffers
+							 [thread_index][n_bufs
+									+
+									buffers_allocated],
+							 n_bufs_per_frame -
+							 buffers_allocated);
+	      buffers_allocated += buffs_alloc_this_call;
 	    }
-	  while (buffers_allocated_this_call > 0
+	  while (buffs_alloc_this_call > 0
 		 && ((buffers_allocated + n_bufs < n_bufs_per_frame)));
 
 	  n_bufs += buffers_allocated;

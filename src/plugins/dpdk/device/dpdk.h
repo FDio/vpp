@@ -466,6 +466,8 @@ admin_up_down_process (vlib_main_t * vm,
 
 clib_error_t *dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 				       unsigned socket_id);
+int dpdk_buffer_validate_trajectory_all (u32 * uninitialized);
+void dpdk_buffer_poison_trajectory_all (void);
 
 #endif /* __included_dpdk_h__ */
 
