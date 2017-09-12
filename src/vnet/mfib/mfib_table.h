@@ -322,6 +322,31 @@ extern u32 mfib_table_find_or_create_and_lock(fib_protocol_t proto,
                                               u32 table_id,
                                               mfib_source_t source);
 
+/**
+ * @brief
+ *  Get the index of the FIB for a Table-ID. This DOES create the
+ * FIB if it does not exist.
+ *
+ * @paran proto
+ *  The protocol of the FIB (and thus the entries therein)
+ *
+ * @param table-id
+ *  The Table-ID
+ *
+ * @return fib_index
+ *  The index of the FIB
+ *
+ * @param source
+ *  The ID of the client/source.
+ *
+ * @param name
+ *  The client is choosing the name they want the table to have
+ */
+extern u32 mfib_table_find_or_create_and_lock_w_name(fib_protocol_t proto,
+                                                     u32 table_id,
+                                                     mfib_source_t source,
+                                                     const u8 *name);
+
 
 /**
  * @brief

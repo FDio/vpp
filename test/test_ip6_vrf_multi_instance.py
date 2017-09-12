@@ -316,10 +316,10 @@ class TestIP6VrfMultiInst(VppTestCase):
         vrf_exist = False
         vrf_count = 0
         for ip6_fib_details in ip6_fib_dump:
-            if ip6_fib_details[2] == vrf_id:
+            if ip6_fib_details.table_id == vrf_id:
                 if not vrf_exist:
                     vrf_exist = True
-                addr = inet_ntop(socket.AF_INET6, ip6_fib_details[4])
+                addr = inet_ntop(socket.AF_INET6, ip6_fib_details.address)
                 addrtype = in6_getAddrType(addr)
                 vrf_count += 1 if addrtype == IPV6_ADDR_UNICAST else 0
         if not vrf_exist and vrf_count == 0:
