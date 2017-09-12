@@ -1388,9 +1388,10 @@ vl_api_acl_del_t_handler (vl_api_acl_del_t * mp)
 {
   acl_main_t *am = &acl_main;
   vl_api_acl_del_reply_t *rmp;
+  u32 acl_index = ntohl (mp->acl_index);
   int rv;
 
-  rv = acl_del_list (ntohl (mp->acl_index));
+  rv = acl_del_list (acl_index);
 
   REPLY_MACRO (VL_API_ACL_DEL_REPLY);
 }
@@ -1539,10 +1540,10 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
     {
       acl_index = ntohl (mp->acl_index);
       if (!pool_is_free_index (am->acls, acl_index))
-	{
-	  acl = &am->acls[acl_index];
-	  send_acl_details (am, q, acl, mp->context);
-	}
+       {
+         acl = pool_elt_at_index (am->acls, acl_index);
+         send_acl_details (am, q, acl, mp->context);
+       }
     }
 
   if (rv == -1)
@@ -1687,9 +1688,10 @@ vl_api_macip_acl_del_t_handler (vl_api_macip_acl_del_t * mp)
 {
   acl_main_t *am = &acl_main;
   vl_api_macip_acl_del_reply_t *rmp;
+  u32 acl_index = ntohl (mp->acl_index);
   int rv;
 
-  rv = macip_acl_del_list (ntohl (mp->acl_index));
+  rv = macip_acl_del_list (acl_index);
 
   REPLY_MACRO (VL_API_MACIP_ACL_DEL_REPLY);
 }
@@ -1793,10 +1795,10 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
     {
       u32 acl_index = ntohl (mp->acl_index);
       if (!pool_is_free_index (am->macip_acls, acl_index))
-	{
-	  acl = &am->macip_acls[acl_index];
-	  send_macip_acl_details (am, q, acl, mp->context);
-	}
+       {
+         acl = pool_elt_at_index (am->macip_acls, acl_index);
+         send_macip_acl_details (am, q, acl, mp->context);
+       }
     }
 }
 
