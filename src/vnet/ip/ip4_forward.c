@@ -2131,6 +2131,7 @@ ip4_arp_inline (vlib_main_t * vm,
 
 	      vlib_buffer_copy_trace_flag (vm, p0, bi0);
 	      b0 = vlib_get_buffer (vm, bi0);
+	      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 	      vnet_buffer (b0)->sw_if_index[VLIB_TX] = sw_if_index0;
 
 	      vlib_buffer_advance (b0, -adj0->rewrite_header.data_bytes);

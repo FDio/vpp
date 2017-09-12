@@ -439,14 +439,16 @@ tcp_init_mss (tcp_connection_t * tc)
 always_inline int
 tcp_alloc_tx_buffers (tcp_main_t * tm, u8 thread_index, u32 n_free_buffers)
 {
+  vlib_main_t *vm = vlib_get_main ();
   u32 current_length = vec_len (tm->tx_buffers[thread_index]);
+  u32 n_allocated;
 
   vec_validate (tm->tx_buffers[thread_index],
 		current_length + n_free_buffers - 1);
-  _vec_len (tm->tx_buffers[thread_index]) = current_length
-    + vlib_buffer_alloc (vlib_get_main (),
-			 &tm->tx_buffers[thread_index][current_length],
-			 n_free_buffers);
+  n_allocated =
+    vlib_buffer_alloc (vm, &tm->tx_buffers[thread_index][current_length],
+		       n_free_buffers);
+  _vec_len (tm->tx_buffers[thread_index]) = current_length + n_allocated;
   /* buffer shortage, report failure */
   if (vec_len (tm->tx_buffers[thread_index]) == 0)
     {
