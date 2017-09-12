@@ -152,6 +152,7 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id)
 {
   snat_address_t * ap;
   snat_interface_t *i;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
 
   if (vrf_id != ~0)
     sm->vrf_mode = 1;
@@ -172,7 +173,9 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id)
   else
     ap->fib_index = ~0;
 #define _(N, i, n, s) \
-  clib_bitmap_alloc (ap->busy_##n##_port_bitmap, 65535);
+  clib_bitmap_alloc (ap->busy_##n##_port_bitmap, 65535); \
+  ap->busy_##n##_ports = 0; \
+  vec_validate_init_empty (ap->busy_##n##_ports_per_thread, tm->n_vlib_mains - 1, 0);
   foreach_snat_protocol
 #undef _
 
@@ -339,7 +342,10 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                         return VNET_API_ERROR_INVALID_VALUE; \
                       clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 1); \
                       if (e_port > 1024) \
-                        a->busy_##n##_ports++; \
+                        { \
+                          a->busy_##n##_ports++; \
+                          a->busy_##n##_ports_per_thread[e_port / sm->port_per_thread]++; \
+                        } \
                       break;
                       foreach_snat_protocol
 #undef _
@@ -432,7 +438,10 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                     case SNAT_PROTOCOL_##N: \
                       clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 0); \
                       if (e_port > 1024) \
-                        a->busy_##n##_ports--; \
+                        { \
+                          a->busy_##n##_ports--; \
+                          a->busy_##n##_ports_per_thread[e_port / sm->port_per_thread]--; \
+                        } \
                       break;
                       foreach_snat_protocol
 #undef _
@@ -647,7 +656,10 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                         return VNET_API_ERROR_INVALID_VALUE; \
                       clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 1); \
                       if (e_port > 1024) \
-                        a->busy_##n##_ports++; \
+                        { \
+                          a->busy_##n##_ports++; \
+                          a->busy_##n##_ports_per_thread[e_port / sm->port_per_thread]++; \
+                        } \
                       break;
                       foreach_snat_protocol
 #undef _
@@ -773,7 +785,10 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                     case SNAT_PROTOCOL_##N: \
                       clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, e_port, 0); \
                       if (e_port > 1024) \
-                        a->busy_##n##_ports--; \
+                        { \
+                          a->busy_##n##_ports--; \
+                          a->busy_##n##_ports_per_thread[e_port / sm->port_per_thread]--; \
+                        } \
                       break;
                       foreach_snat_protocol
 #undef _
@@ -1241,6 +1256,7 @@ static clib_error_t * snat_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (snat_init);
 
 void snat_free_outside_address_and_port (snat_main_t * sm,
+                                         u32 thread_index,
                                          snat_session_key_t * k,
                                          u32 address_index)
 {
@@ -1260,6 +1276,7 @@ void snat_free_outside_address_and_port (snat_main_t * sm,
       clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, \
         port_host_byte_order, 0); \
       a->busy_##n##_ports--; \
+      a->busy_##n##_ports_per_thread[thread_index]--; \
       break;
       foreach_snat_protocol
 #undef _
@@ -1382,7 +1399,7 @@ int snat_alloc_outside_address_and_port (snat_main_t * sm,
         {
 #define _(N, j, n, s) \
         case SNAT_PROTOCOL_##N: \
-          if (a->busy_##n##_ports < (sm->port_per_thread * sm->num_snat_thread)) \
+          if (a->busy_##n##_ports_per_thread[thread_index] < sm->port_per_thread) \
             { \
               while (1) \
                 { \
@@ -1392,6 +1409,7 @@ int snat_alloc_outside_address_and_port (snat_main_t * sm,
                   if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
                     continue; \
                   clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+                  a->busy_##n##_ports_per_thread[thread_index]++; \
                   a->busy_##n##_ports++; \
                   k->addr = a->addr; \
                   k->port = clib_host_to_net_u16(portnum); \
