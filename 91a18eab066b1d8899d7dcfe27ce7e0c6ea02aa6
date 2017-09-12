@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_75e75941",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-09-12T14:03:42Z",
+      "side": 1,
+      "message": "Can we really assume that presence of this file means that we are running on debian/ubuntu?\n\nCan we reuse OS detection from the toplevel Makefile?",
+      "range": {
+        "startLine": 41,
+        "startChar": 8,
+        "endLine": 41,
+        "endChar": 27
+      },
+      "revId": "91a18eab066b1d8899d7dcfe27ce7e0c6ea02aa6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_95dad576",
+        "filename": "dpdk/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-09-12T14:03:42Z",
+      "side": 1,
+      "message": "Please linewrap",
+      "range": {
+        "startLine": 184,
+        "startChar": 0,
+        "endLine": 184,
+        "endChar": 135
+      },
+      "revId": "91a18eab066b1d8899d7dcfe27ce7e0c6ea02aa6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
