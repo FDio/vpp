@@ -1885,6 +1885,55 @@ VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+dpdk_validate_buffers_fn (vlib_main_t * vm, unformat_input_t * input,
+			  vlib_cli_command_t * cmd_arg)
+{
+  u32 n_invalid_bufs = 0, uninitialized = 0;
+  u32 is_poison = 0, is_test = 0;
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "poison"))
+	is_poison = 1;
+      else if (unformat (input, "trajectory"))
+	is_test = 1;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (VLIB_BUFFER_TRACE_TRAJECTORY == 0)
+    {
+      vlib_cli_output (vm, "Trajectory not enabled. Recompile with "
+		       "VLIB_BUFFER_TRACE_TRAJECTORY 1");
+      return 0;
+    }
+  if (is_poison)
+    {
+      dpdk_buffer_poison_trajectory_all ();
+    }
+  if (is_test)
+    {
+      n_invalid_bufs = dpdk_buffer_validate_trajectory_all (&uninitialized);
+      if (!n_invalid_bufs)
+	vlib_cli_output (vm, "All buffers are valid %d uninitialized",
+			 uninitialized);
+      else
+	vlib_cli_output (vm, "Found %d invalid buffers and %d uninitialized",
+			 n_invalid_bufs, uninitialized);
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_dpdk_buffers_command, static) =
+{
+  .path = "test dpdk buffers",
+  .short_help = "test dpdk buffers [poison] [trajectory]",
+  .function = dpdk_validate_buffers_fn,
+};
+/* *INDENT-ON* */
+
 clib_error_t *
 dpdk_cli_init (vlib_main_t * vm)
 {
