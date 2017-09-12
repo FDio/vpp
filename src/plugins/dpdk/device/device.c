@@ -462,6 +462,11 @@ dpdk_interface_tx (vlib_main_t * vm,
 
       or_flags = b0->flags | b1->flags | b2->flags | b3->flags;
 
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b1);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b2);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b3);
+
       if (or_flags & VLIB_BUFFER_NEXT_PRESENT)
 	{
 	  dpdk_validate_rte_mbuf (vm, b0, 1);
@@ -556,6 +561,7 @@ dpdk_interface_tx (vlib_main_t * vm,
       from++;
 
       b0 = vlib_get_buffer (vm, bi0);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
 
       dpdk_validate_rte_mbuf (vm, b0, 1);
 
