@@ -551,7 +551,7 @@ ip4_show_fib (vlib_main_t * vm,
             }
         }
         s = format (s, "]");
-        vlib_cli_output (vm, "%V", s);
+        vlib_cli_output (vm, "%v", s);
         vec_free(s);
 
 	/* Show summary? */

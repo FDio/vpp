@@ -180,7 +180,8 @@ copy_fib_next_hop (fib_route_path_encode_t * api_rpath, void *fp_arg)
 static void
 send_ip_fib_details (vpe_api_main_t * am,
 		     unix_shared_memory_queue_t * q,
-		     u32 table_id, fib_prefix_t * pfx,
+		     const fib_table_t * table,
+		     const fib_prefix_t * pfx,
 		     fib_route_path_encode_t * api_rpaths, u32 context)
 {
   vl_api_ip_fib_details_t *mp;
@@ -196,7 +197,9 @@ send_ip_fib_details (vpe_api_main_t * am,
   mp->_vl_msg_id = ntohs (VL_API_IP_FIB_DETAILS);
   mp->context = context;
 
-  mp->table_id = htonl (table_id);
+  mp->table_id = htonl (table->ft_table_id);
+  memcpy (mp->table_name, table->ft_desc,
+	  clib_min (vec_len (table->ft_desc), sizeof (mp->table_name)));
   mp->address_length = pfx->fp_len;
   memcpy (mp->address, &pfx->fp_addr.ip4, sizeof (pfx->fp_addr.ip4));
 
@@ -295,9 +298,7 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
     fib_table = fib_table_get (fib_index, pfx.fp_proto);
     api_rpaths = NULL;
     fib_entry_encode (*lfeip, &api_rpaths);
-    send_ip_fib_details (am, q,
-			 fib_table->ft_table_id, &pfx, api_rpaths,
-			 mp->context);
+    send_ip_fib_details (am, q, fib_table, &pfx, api_rpaths, mp->context);
     vec_free (api_rpaths);
   }
 
@@ -744,7 +745,7 @@ vl_api_ip_table_add_del_t_handler (vl_api_ip_table_add_del_t * mp)
 
   if (mp->is_add)
     {
-      ip_table_create (fproto, table_id, 1);
+      ip_table_create (fproto, table_id, 1, mp->name);
     }
   else
     {
@@ -1124,7 +1125,8 @@ vl_api_ip_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 }
 
 void
-ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api)
+ip_table_create (fib_protocol_t fproto,
+		 u32 table_id, u8 is_api, const u8 * name)
 {
   u32 fib_index, mfib_index;
 
@@ -1147,17 +1149,17 @@ ip_table_create (fib_protocol_t fproto, u32 table_id, u8 is_api)
 
       if (~0 == fib_index)
 	{
-	  fib_table_find_or_create_and_lock (fproto, table_id,
-					     (is_api ?
-					      FIB_SOURCE_API :
-					      FIB_SOURCE_CLI));
+	  fib_table_find_or_create_and_lock_w_name (fproto, table_id,
+						    (is_api ?
+						     FIB_SOURCE_API :
+						     FIB_SOURCE_CLI), name);
 	}
       if (~0 == mfib_index)
 	{
-	  mfib_table_find_or_create_and_lock (fproto, table_id,
-					      (is_api ?
-					       MFIB_SOURCE_API :
-					       MFIB_SOURCE_CLI));
+	  mfib_table_find_or_create_and_lock_w_name (fproto, table_id,
+						     (is_api ?
+						      MFIB_SOURCE_API :
+						      MFIB_SOURCE_CLI), name);
 	}
     }
 }

@@ -544,6 +544,7 @@ vnet_mpls_table_cmd (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = NULL;
   u32 table_id, is_add;
+  u8 *name = NULL;
 
   is_add = 1;
   table_id = ~0;
@@ -560,6 +561,8 @@ vnet_mpls_table_cmd (vlib_main_t * vm,
 	is_add = 0;
       else if (unformat (line_input, "add"))
 	is_add = 1;
+      else if (unformat (line_input, "name %s", &name))
+	;
       else
 	{
 	  error = unformat_parse_error (line_input);
@@ -581,7 +584,7 @@ vnet_mpls_table_cmd (vlib_main_t * vm,
     {
       if (is_add)
         {
-          mpls_table_create (table_id, 0);
+            mpls_table_create (table_id, 0, name);
         }
       else
         {

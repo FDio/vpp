@@ -27,6 +27,9 @@
     @param table_id - table ID associated with the route
                       This table ID will apply to both the unicats
 		      and mlticast FIBs
+    @param name - A client provided name/tag for the table. If this is
+                  not set by the client, then VPP will generate something
+		  meaningfull.
 */
 autoreply define ip_table_add_del
 {
@@ -35,6 +38,7 @@ autoreply define ip_table_add_del
   u32 table_id;
   u8 is_ipv6;
   u8 is_add;
+  u8 name[64];
 };
 
 /** \brief Dump IP fib table
@@ -83,6 +87,7 @@ manual_endian manual_print define ip_fib_details
 {
   u32 context;
   u32 table_id;
+  u8  table_name[64];
   u8  address_length;
   u8  address[4];
   u32 count;
@@ -98,10 +103,10 @@ define ip6_fib_dump
   u32 context;
 };
 
-/** \brief IP6 FIB table response
+/** \brief IP6 FIB table entry response
     @param table_id - IP6 fib table id
-    @address_length - mask length
-    @address - ip6 prefix
+    @param address_length - mask length
+    @param address - ip6 prefix
     @param count - the number of fib_path in path
     @param path  - array of of fib_path structures
 */
@@ -109,6 +114,7 @@ manual_endian manual_print define ip6_fib_details
 {
   u32 context;
   u32 table_id;
+  u8  table_name[64];
   u8  address_length;
   u8  address[16];
   u32 count;

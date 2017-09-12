@@ -141,6 +141,9 @@ manual_endian manual_print define mpls_tunnel_details
     @param context - sender context, to match reply w/ request
     @param mt_table_id - The MPLS table-id the route is added in
     @param mt_is_add - Is this a route add or delete
+    @param mt_name - A client provided name/tag for the table. If this
+                     is not set by the client, then VPP will generate
+		     something meaningfull.
 */
 autoreply define mpls_table_add_del
 {
@@ -148,6 +151,7 @@ autoreply define mpls_table_add_del
   u32 context;
   u32 mt_table_id;
   u8  mt_is_add;
+  u8  mt_name[64];
 };
 
 /** \brief MPLS Route Add / del route
@@ -227,6 +231,7 @@ manual_endian manual_print define mpls_fib_details
 {
   u32 context;
   u32 table_id;
+  u8  table_name[64];
   u8  eos_bit;
   u32 label;
   u32 count;

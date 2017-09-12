@@ -1037,10 +1037,11 @@ fib_table_find (fib_protocol_t proto,
     return (~0);
 }
 
-u32
-fib_table_find_or_create_and_lock (fib_protocol_t proto,
-				   u32 table_id,
-                                   fib_source_t src)
+static u32
+fib_table_find_or_create_and_lock_i (fib_protocol_t proto,
+                                     u32 table_id,
+                                     fib_source_t src,
+                                     const u8 *name)
 {
     fib_table_t *fib_table;
     fib_node_index_t fi;
@@ -1062,11 +1063,40 @@ fib_table_find_or_create_and_lock (fib_protocol_t proto,
 
     fib_table = fib_table_get(fi, proto);
 
-    fib_table->ft_desc = format(NULL, "%U-VRF:%d",
-                                format_fib_protocol, proto,
-                                table_id);
+    if (NULL == fib_table->ft_desc)
+    {
+        if (name && name[0])
+        {
+            fib_table->ft_desc = format(NULL, "%s", name);
+        }
+        else
+        {
+            fib_table->ft_desc = format(NULL, "%U-VRF:%d",
+                                        format_fib_protocol, proto,
+                                        table_id);
+        }
+    }
 
     return (fi);
+}
+
+u32
+fib_table_find_or_create_and_lock (fib_protocol_t proto,
+				   u32 table_id,
+                                   fib_source_t src)
+{
+    return (fib_table_find_or_create_and_lock_i(proto, table_id,
+                                                src, NULL));
+}
+
+u32
+fib_table_find_or_create_and_lock_w_name (fib_protocol_t proto,
+                                          u32 table_id,
+                                          fib_source_t src,
+                                          const u8 *name)
+{
+    return (fib_table_find_or_create_and_lock_i(proto, table_id,
+                                                src, name));
 }
 
 u32
