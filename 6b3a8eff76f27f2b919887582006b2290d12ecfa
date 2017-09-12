@@ -22,6 +22,30 @@
       "revId": "6b3a8eff76f27f2b919887582006b2290d12ecfa",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_17e38dda",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 459,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-09-12T00:53:58Z",
+      "side": 0,
+      "message": "LOL!",
+      "parentUuid": "3a4b7175_17d94d57",
+      "range": {
+        "startLine": 459,
+        "startChar": 21,
+        "endLine": 459,
+        "endChar": 40
+      },
+      "revId": "6b3a8eff76f27f2b919887582006b2290d12ecfa",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }

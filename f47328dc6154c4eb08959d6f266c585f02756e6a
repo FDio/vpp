@@ -22,6 +22,30 @@
       "revId": "f47328dc6154c4eb08959d6f266c585f02756e6a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_37de8912",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 16
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-09-12T00:53:58Z",
+      "side": 1,
+      "message": "Yup, thanks! I\u0027ll fix it in next patch set :-)",
+      "parentUuid": "3a4b7175_37d4491f",
+      "range": {
+        "startLine": 100,
+        "startChar": 33,
+        "endLine": 100,
+        "endChar": 37
+      },
+      "revId": "f47328dc6154c4eb08959d6f266c585f02756e6a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
