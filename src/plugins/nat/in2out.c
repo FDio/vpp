@@ -354,7 +354,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
                                               s->in2out.fib_index);
 
           snat_free_outside_address_and_port
-            (sm, &s->out2in, s->outside_address_index);
+            (sm, thread_index, &s->out2in, s->outside_address_index);
         }
       s->outside_address_index = ~0;
 
@@ -1283,7 +1283,7 @@ create_ses:
                                                   s->out2in.port,
                                                   s->in2out.fib_index);
 
-              snat_free_outside_address_and_port (sm, &s->out2in,
+              snat_free_outside_address_and_port (sm, thread_index, &s->out2in,
                                                   s->outside_address_index);
 
               /* Remove in2out, out2in keys */

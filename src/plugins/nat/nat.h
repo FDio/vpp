@@ -182,7 +182,8 @@ typedef struct {
   ip4_address_t addr;
   u32 fib_index;
 #define _(N, i, n, s) \
-  u32 busy_##n##_ports; \
+  u16 busy_##n##_ports; \
+  u16 * busy_##n##_ports_per_thread; \
   uword * busy_##n##_port_bitmap;
   foreach_snat_protocol
 #undef _
@@ -389,6 +390,7 @@ extern vlib_node_registration_t snat_hairpin_dst_node;
 extern vlib_node_registration_t snat_hairpin_src_node;
 
 void snat_free_outside_address_and_port (snat_main_t * sm,
+                                         u32 thread_index,
                                          snat_session_key_t * k,
                                          u32 address_index);
 
