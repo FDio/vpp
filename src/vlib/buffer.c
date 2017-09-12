@@ -686,7 +686,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
       u32 bi = buffers[i];
 
       b = vlib_get_buffer (vm, bi);
-
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       fl = vlib_buffer_get_buffer_free_list (vm, b, &fi);
 
       /* The only current use of this callback: multicast recycle */
