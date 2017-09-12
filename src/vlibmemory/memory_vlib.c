@@ -188,7 +188,6 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   int rv = 0;
   void *oldheap;
   api_main_t *am = &api_main;
-  u8 *serialized_message_table = 0;
 
   /*
    * This is tortured. Maintain a vlib-address-space private
@@ -220,9 +219,6 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
 
   svm = am->vlib_rp;
 
-  if (am->serialized_message_table_in_shmem == 0)
-    serialized_message_table = vl_api_serialize_message_table (am, 0);
-
   pthread_mutex_lock (&svm->mutex);
   oldheap = svm_push_data_heap (svm);
   *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
@@ -237,14 +233,11 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
 
   regp->name = format (0, "%s", mp->name);
   vec_add1 (regp->name, 0);
-  if (serialized_message_table)
-    am->serialized_message_table_in_shmem =
-      vec_dup (serialized_message_table);
 
   pthread_mutex_unlock (&svm->mutex);
   svm_pop_heap (oldheap);
 
-  vec_free (serialized_message_table);
+  ASSERT (am->serialized_message_table_in_shmem);
 
   rp = vl_msg_api_alloc (sizeof (*rp));
   rp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE_REPLY);
@@ -487,6 +480,9 @@ memclnt_process (vlib_main_t * vm,
   f64 sleep_time, start_time;
   f64 vector_rate;
   int i;
+  u8 *serialized_message_table = 0;
+  svm_region_t *svm;
+  void *oldheap;
 
   vlib_set_queue_signal_callback (vm, memclnt_queue_callback);
 
@@ -518,6 +514,60 @@ memclnt_process (vlib_main_t * vm,
       send_one_plugin_msg_ids_msg (rp->name, rp->first_msg_id,
 				   rp->last_msg_id);
     }
+
+  /*
+   * Snapshoot the api message table.
+   */
+  serialized_message_table = vl_api_serialize_message_table (am, 0);
+
+  svm = am->vlib_rp;
+  pthread_mutex_lock (&svm->mutex);
+  oldheap = svm_push_data_heap (svm);
+
+  am->serialized_message_table_in_shmem = vec_dup (serialized_message_table);
+
+  pthread_mutex_unlock (&svm->mutex);
+  svm_pop_heap (oldheap);
+
+  /*
+   * Save the api message table snapshot, if configured
+   */
+  if (am->save_msg_table_filename)
+    {
+      int fd, rv;
+      u8 *chroot_file;
+      if (strstr ((char *) am->save_msg_table_filename, "..")
+	  || index ((char *) am->save_msg_table_filename, '/'))
+	{
+	  clib_warning ("illegal save-message-table filename '%s'",
+			am->save_msg_table_filename);
+	  goto skip_save;
+	}
+
+      chroot_file = format (0, "/tmp/%s%c", am->save_msg_table_filename, 0);
+
+      fd = creat ((char *) chroot_file, 0644);
+
+      if (fd < 0)
+	{
+	  clib_unix_warning ("creat");
+	  goto skip_save;
+	}
+      rv = write (fd, serialized_message_table,
+		  vec_len (serialized_message_table));
+
+      if (rv != vec_len (serialized_message_table))
+	clib_unix_warning ("write");
+
+      rv = close (fd);
+      if (rv < 0)
+	clib_unix_warning ("close");
+
+      vec_free (chroot_file);
+    }
+
+skip_save:
+  vec_free (serialized_message_table);
 
   /* $$$ pay attention to frame size, control CPU usage */
   while (1)
@@ -1265,9 +1315,9 @@ format_api_msg_range (u8 * s, va_list * args)
   vl_api_msg_range_t *rp = va_arg (*args, vl_api_msg_range_t *);
 
   if (rp == 0)
-    s = format (s, "%-20s%9s%9s", "Name", "First-ID", "Last-ID");
+    s = format (s, "%-50s%9s%9s", "Name", "First-ID", "Last-ID");
   else
-    s = format (s, "%-20s%9d%9d", rp->name, rp->first_msg_id,
+    s = format (s, "%-50s%9d%9d", rp->name, rp->first_msg_id,
 		rp->last_msg_id);
 
   return s;
@@ -1951,6 +2001,9 @@ api_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	  vl_msg_api_trace_onoff (am, which, 1 /* on */ );
 	  vl_msg_api_post_mortem_dump_enable_disable (1 /* enable */ );
 	}
+      else if (unformat (input, "save-api-table %s",
+			 &am->save_msg_table_filename))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -1985,6 +2038,220 @@ api_queue_config_fn (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (api_queue_config_fn, "api-queue");
+
+static u8 *
+extract_name (u8 * s)
+{
+  u8 *rv;
+
+  rv = vec_dup (s);
+
+  while (vec_len (rv) && rv[vec_len (rv)] != '_')
+    _vec_len (rv)--;
+
+  rv[vec_len (rv)] = 0;
+
+  return rv;
+}
+
+static u8 *
+extract_crc (u8 * s)
+{
+  int i;
+  u8 *rv;
+
+  rv = vec_dup (s);
+
+  for (i = vec_len (rv) - 1; i >= 0; i--)
+    {
+      if (rv[i] == '_')
+	{
+	  vec_delete (rv, i + 1, 0);
+	  break;
+	}
+    }
+  return rv;
+}
+
+typedef struct
+{
+  u8 *name_and_crc;
+  u8 *name;
+  u8 *crc;
+  u32 msg_index;
+  int which;
+} msg_table_unserialize_t;
+
+static int
+table_elt_cmp (void *a1, void *a2)
+{
+  msg_table_unserialize_t *n1 = a1;
+  msg_table_unserialize_t *n2 = a2;
+
+  return strcmp ((char *) n1->name_and_crc, (char *) n2->name_and_crc);
+}
+
+static clib_error_t *
+dump_api_table_file_command_fn (vlib_main_t * vm,
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  u8 *filename = 0;
+  api_main_t *am = &api_main;
+  serialize_main_t _sm, *sm = &_sm;
+  clib_error_t *error;
+  u32 nmsgs;
+  u32 msg_index;
+  u8 *name_and_crc;
+  u8 *version_tag = 0;
+  int compare_current = 0;
+  msg_table_unserialize_t *table = 0, *item;
+  u32 i;
+  u32 ndifferences = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "file %s", &filename))
+	;
+      else if (unformat (input, "tag %s", &version_tag))
+	;
+      else if (unformat (input, "compare-current"))
+	compare_current = 1;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (filename == 0)
+    return clib_error_return (0, "File not specified");
+
+  error = unserialize_open_unix_file (sm, (char *) filename);
+
+  if (error)
+    return error;
+
+  /* Recreate the vnet-side API message handler table */
+
+  unserialize_integer (sm, &nmsgs, sizeof (u32));
+
+  for (i = 0; i < nmsgs; i++)
+    {
+      msg_index = unserialize_likely_small_unsigned_integer (sm);
+      unserialize_cstring (sm, (char **) &name_and_crc);
+      vec_add2 (table, item, 1);
+      item->msg_index = msg_index;
+      item->name_and_crc = name_and_crc;
+      item->name = extract_name (name_and_crc);
+      item->crc = extract_crc (name_and_crc);
+      item->which = 0;		/* file */
+    }
+  serialize_close (sm);
+
+  /* Compare with current? */
+
+  if (compare_current)
+    {
+      u8 *tblv = vec_dup (am->serialized_message_table_in_shmem);
+
+      serialize_open_vector (sm, tblv);
+      unserialize_integer (sm, &nmsgs, sizeof (u32));
+
+      for (i = 0; i < nmsgs; i++)
+	{
+	  msg_index = unserialize_likely_small_unsigned_integer (sm);
+	  unserialize_cstring (sm, (char **) &name_and_crc);
+
+	  vec_add2 (table, item, 1);
+	  item->msg_index = msg_index;
+	  item->name_and_crc = name_and_crc;
+	  item->name = extract_name (name_and_crc);
+	  item->crc = extract_crc (name_and_crc);
+	  item->which = 1;	/* current_image */
+	}
+    }
+
+  vec_sort_with_function (table, table_elt_cmp);
+
+  if (compare_current)
+    {
+      ndifferences = 0;
+
+      for (i = 0; i < vec_len (table) - 1;)
+	{
+	  /* Identical pair? */
+	  if (!strncmp
+	      ((char *) table[i].name_and_crc,
+	       (char *) table[i + 1].name_and_crc,
+	       vec_len (table[i].name_and_crc)))
+	    {
+	      i += 2;
+	      continue;
+	    }
+
+	  ndifferences++;
+
+	  /* Only in one of two tables? */
+	  if (strncmp ((char *) table[i].name, (char *) table[i + 1].name,
+		       vec_len (table[i].name)))
+	    {
+	      vlib_cli_output (vm, "%s only in %s",
+			       table[i].name, table[i].which ?
+			       "current image" : "file snapshot");
+	      i++;
+	      continue;
+	    }
+	  /* In both tables, but with different signatures */
+	  vlib_cli_output
+	    (vm,
+	     "%s: current signature %s, file signature %s",
+	     table[i].name, table[i].crc, table[i + 1].crc);
+	  i += 2;
+	}
+      if (ndifferences == 0)
+	vlib_cli_output (vm, "No api message signature differences found.");
+      else
+	vlib_cli_output (vm, "Found %u api message signature differences",
+			 ndifferences);
+      goto cleanup;
+    }
+
+
+  if (version_tag)
+    vlib_cli_output (vm, "%-70s %s", "Message name CRC", "Version");
+  else
+    vlib_cli_output (vm, "%-70s %s", "Message name CRC", "MsgID");
+
+  for (i = 0; i < vec_len (table); i++)
+    {
+      item = table + i;
+      if (version_tag)
+	vlib_cli_output (vm, "%-70s %s", item->name_and_crc, version_tag);
+      else
+	vlib_cli_output (vm, "%-70s %u", item->name_and_crc, item->msg_index);
+    }
+
+cleanup:
+  for (i = 0; i < vec_len (table); i++)
+    {
+      vec_free (table[i].name_and_crc);
+      vec_free (table[i].name);
+      vec_free (table[i].crc);
+    }
+
+  vec_free (table);
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (dump_api_table_file, static) =
+{
+  .path = "dump api table",
+  .short_help = "dump api table file <filename> [tag <string>]",
+  .function = dump_api_table_file_command_fn,
+};
+/* *INDENT-ON* */
+
 
 /*
  * fd.io coding-style-patch-verification: ON
