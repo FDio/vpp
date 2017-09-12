@@ -22,6 +22,30 @@
       "revId": "e027ce39f957f05987a8923698943a97ab48b8e7",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_956f7592",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-12T15:49:12Z",
+      "side": 1,
+      "message": "The idea is to grow the socket RX buffer until it\u0027s \"large enough.\" My guess is that it will never exceed vec_len(8192), but you never know.",
+      "parentUuid": "3a4b7175_d7d615c5",
+      "range": {
+        "startLine": 102,
+        "startChar": 59,
+        "endLine": 102,
+        "endChar": 63
+      },
+      "revId": "e027ce39f957f05987a8923698943a97ab48b8e7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
