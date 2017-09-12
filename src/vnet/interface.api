@@ -227,16 +227,40 @@ typeonly manual_print manual_endian define vlib_counter
   u64 bytes;			/**< byte counter  */
 };
 
+typeonly manual_print manual_endian define vnet_combined_counter
+{
+  u32 sw_if_index;
+  u64 rx_packets;			/**< packet counter */
+  u64 rx_bytes;			/**< byte counter  */
+  u64 tx_packets;			/**< packet counter */
+  u64 tx_bytes;			/**< byte counter  */
+};
+
+typeonly manual_print manual_endian define vnet_simple_counter
+{
+  u32 sw_if_index;
+  u64 drop;
+  u64 punt;
+  u64 rx_ip4;
+  u64 rx_ip6;
+  u64 rx_no_buffer;
+  u64 rx_miss;
+  u64 rx_error;
+  u64 tx_error;
+  u64 rx_mpls;
+};
+
 /** \brief Simple stats counters structure
     @param vnet_counter_type- such as ip4, ip6, punts, etc
     @param first_sw_if_index - first sw index in block of index, counts
     @param count - number of counters, equal to the number of interfaces in
       this stats block
     @param data - contiguous block of u64 counters
+
+    vnet_counter_type defined in enums - plural - in vnet/interface.h
 */
 manual_print manual_endian define vnet_interface_simple_counters
 {
-  /* enums - plural - in vnet/interface.h */
   u8 vnet_counter_type;
   u32 first_sw_if_index;
   u32 count;
@@ -249,14 +273,54 @@ manual_print manual_endian define vnet_interface_simple_counters
     @param count - number of counters, equal to the number of interfaces in
       this stats block
     @param data - contiguous block of vlib_counter_t structures
+
+    vnet_counter_type defined in enums - plural - in vnet/interface.h
 */
 manual_print manual_endian define vnet_interface_combined_counters
 {
-  /* enums - plural - in vnet/interface.h */
   u8 vnet_counter_type;
   u32 first_sw_if_index;
   u32 count;
   vl_api_vlib_counter_t data[count];
+};
+
+
+/** \brief Simple per interface stats counters structure
+    @param count - number of elements in message
+    @param sw_if_index[count] - interface indexes for counters
+    @param timestamp - u32 vlib timestamp for control plane
+    @param drop[count] - RX or TX drops due to buffer starvation
+    @param punt[count] - used with VNET "punt" disposition
+    @param rx_ip4[count] - received IP4 packets
+    @param rx_ip6[count] - received IP6 packets
+    @param rx_no_buffer[count] - no RX buffers available
+    @param rx_miss[count] - receive misses
+    @param rx_error[count] - receive errors
+    @param tx_error[count] - transmit errors
+    @param rx_mpls[count] - received MPLS packets
+
+    Counter types defined in enums - plural - in vnet/interface.h
+
+*/
+manual_print manual_endian define vnet_per_interface_simple_counters
+{
+  u32 count;
+  u32 timestamp;
+  vl_api_vnet_simple_counter_t data[count];
+};
+
+/** \brief Combined stats counters structure per interface
+    @param count - number of elements in message
+    @param sw_if_index[count] - interface indexes for counters
+    @param timestamp - u32 vlib timestamp for control plane
+    @param rx[count] - vlib_counter_t (packets, bytes) for received
+    @param tx[count] - vlib_counter_t (packets, bytes) for transmitted 
+*/
+manual_print manual_endian define vnet_per_interface_combined_counters
+{
+  u32 count;
+  u32 timestamp;
+  vl_api_vnet_combined_counter_t data[count];
 };
 
 /** \brief Set unnumbered interface add / del request

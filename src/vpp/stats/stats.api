@@ -38,6 +38,8 @@ autoreply define want_stats
     @param context - sender context, to match reply w/ request
     @param enable_disable - 1 = enable stats, 0 = disable
     @param pid - pid of process requesting stats updates
+
+    Please consider using want_per_interface_simple_stats with sw_if_index=~0
 */
 autoreply define want_interface_simple_stats
 {
@@ -47,11 +49,33 @@ autoreply define want_interface_simple_stats
   u32 pid;
 };
 
+/** \brief Want Per Interface simple Stats, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+    @param num - number of sw_if_indexes
+    @param sw_ifs - array of sw_if_index
+*/
+autoreply define want_per_interface_simple_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+  u32 num;
+  u32 sw_ifs[num];
+
+};
+
 /** \brief Want Interface Combined Stats, register for continuous stats
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param enable_disable - 1 = enable stats, 0 = disable
     @param pid - pid of process requesting stats updates
+
+    Please consider using want_per_interface_combined_stats with sw_if_index=~0
+
 */
 autoreply define want_interface_combined_stats
 {
@@ -59,6 +83,25 @@ autoreply define want_interface_combined_stats
   u32 context;
   u32 enable_disable;
   u32 pid;
+};
+
+/** \brief Want Per Interface Combined Stats, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+    @param num - number of sw_if_indexes
+    @param sw_ifs - array of sw_if_index
+*/
+autoreply define want_per_interface_combined_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+  u32 num;
+  u32 sw_ifs[num];
+
 };
 
 /** \brief Want IP4 FIB Stats, register for continuous stats

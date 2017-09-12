@@ -36,19 +36,10 @@ typedef struct
   int tag;
 } data_structure_lock_t;
 
-typedef struct
-{
-  vpe_client_registration_t client;
-  u8 stats_registrations;
-#define INTERFACE_SIMPLE_COUNTERS (1 << 0)
-#define INTERFACE_COMBINED_COUNTERS (1 << 1)
-#define IP4_FIB_COUNTERS (1 << 2)
-#define IP4_NBR_COUNTERS (1 << 3)
-#define IP6_FIB_COUNTERS (1 << 4)
-#define IP6_NBR_COUNTERS (1 << 5)
-
-} vpe_client_stats_registration_t;
-
+/**
+ * @brief stats request registration indexes
+ *
+ */
 /* from .../vnet/vnet/ip/lookup.c. Yuck */
 typedef CLIB_PACKED (struct
 		     {
@@ -56,6 +47,30 @@ typedef CLIB_PACKED (struct
 u32 address_length: 6;
 u32 index:	     26;
 		     }) ip4_route_t;
+
+/* see interface.api */
+typedef struct
+{
+  u32 sw_if_index;
+  u64 drop;
+  u64 punt;
+  u64 rx_ip4;
+  u64 rx_ip6;
+  u64 rx_no_buffer;
+  u64 rx_miss;
+  u64 rx_error;
+  u64 tx_error;
+  u64 rx_mpls;
+} vnet_simple_counter_t;
+
+typedef struct
+{
+  u32 sw_if_index;
+  u64 rx_packets;			/**< packet counter */
+  u64 rx_bytes;			/**< byte counter  */
+  u64 tx_packets;			/**< packet counter */
+  u64 tx_bytes;			/**< byte counter  */
+} vnet_combined_counter_t;
 
 typedef struct
 {
@@ -76,6 +91,33 @@ typedef struct
 
 typedef struct
 {
+  u16 msg_id;
+  u32 size;
+  u32 client_index;
+  u32 context;
+  i32 retval;
+} client_registration_reply_t;
+
+typedef enum
+  {
+#define stats_reg(n) IDX_##n,
+#include <vpp/stats/stats.reg>
+#undef stats_reg
+    STATS_REG_N_IDX,
+  } stats_reg_index_t;
+
+typedef struct
+{
+  //Standard client information
+  uword *client_hash;
+  vpe_client_registration_t *clients;
+  u32 item;
+
+} vpe_client_stats_registration_t;
+
+
+typedef struct
+{
   void *mheap;
   pthread_t thread_self;
   pthread_t thread_handle;
@@ -83,9 +125,41 @@ typedef struct
   u32 stats_poll_interval_in_seconds;
   u32 enable_poller;
 
-  uword *stats_registration_hash;
-  vpe_client_stats_registration_t *stats_registrations;
-  vpe_client_stats_registration_t **regs;
+  /*
+   * stats_registrations is a vector, indexed by
+   * IDX_xxxx_COUNTER generated for each streaming
+   * stat a client can register for. (see stats.reg)
+   *
+   * The values in the vector refer to pools.
+   *
+   * The pool is of type vpe_client_stats_registration_t
+   *
+   * This typedef consists of:
+   *
+   * u32 item: This is the instance of the IDX_xxxx_COUNTER a
+   *           client is interested in.
+   * vpe_client_registration_t *clients: The list of clients interested.
+   *
+   * e.g.
+   * stats_registrations[IDX_INTERFACE_SIMPLE_COUNTERS] refers to a pool
+   * containing elements:
+   *
+   * u32 item = sw_if_index1
+   * clients = ["clienta","clientb"]
+   *
+   * When clients == NULL the pool element is freed. When the pool is empty
+   *
+   * ie
+   * 0 == pool_elts(stats_registrations[IDX_INTERFACE_SIMPLE_COUNTERS]
+   *
+   * then there is no need to process INTERFACE_SIMPLE_COUNTERS
+   *
+   * Note that u32 item = ~0 is the simple case for ALL interfaces or fibs.
+   *
+   */
+
+  uword **stats_registration_hash;
+  vpe_client_stats_registration_t **stats_registrations;
 
   /* control-plane data structure lock */
   data_structure_lock_t *data_structure_lock;
@@ -95,6 +169,13 @@ typedef struct
 
   /* Vectors for Distribution funcs: do_ip4_fibs and do_ip6_fibs. */
   do_ip46_fibs_t do_ip46_fibs;
+
+  /*
+    Working vector vars so as to not thrash memory allocator.
+    Has effect of making "static"
+  */
+  vpe_client_stats_registration_t **regs_tmp;
+  vpe_client_registration_t **clients_tmp;
 
   /* convenience */
   vlib_main_t *vlib_main;

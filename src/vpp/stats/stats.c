@@ -49,6 +49,8 @@ _(VNET_INTERFACE_SIMPLE_COUNTERS, vnet_interface_simple_counters)	\
 _(WANT_INTERFACE_SIMPLE_STATS, want_interface_simple_stats)	\
 _(VNET_INTERFACE_COMBINED_COUNTERS, vnet_interface_combined_counters)	\
 _(WANT_INTERFACE_COMBINED_STATS, want_interface_combined_stats)	\
+_(WANT_PER_INTERFACE_COMBINED_STATS, want_per_interface_combined_stats)	\
+_(WANT_PER_INTERFACE_SIMPLE_STATS, want_per_interface_simple_stats) \
 _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)				\
 _(WANT_IP4_FIB_STATS, want_ip4_fib_stats)            \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)				\
@@ -248,6 +250,188 @@ stats_dsunlock (int hint, int tag)
   dsunlock (sm);
 }
 
+static vpe_client_registration_t *
+get_client_for_stat(u32 reg, u32 item, u32 client_index)
+{
+  stats_main_t *sm = &stats_main;
+  vpe_client_stats_registration_t *registration;
+  uword *p;
+
+  /* Is there anything listening for item in that reg */
+  p = hash_get(sm->stats_registration_hash[reg], item);
+
+  if (!p)
+    return 0; // Fail
+
+  /* If there is, is our client_index one of them */
+  registration = pool_elt_at_index(sm->stats_registrations[reg], p[0]);
+  p = hash_get(registration->client_hash, client_index);
+
+  if (!p)
+    return 0; // Fail
+
+  return pool_elt_at_index(registration->clients, p[0]);
+
+}
+
+static int
+set_client_for_stat(u32 reg, u32 item, vpe_client_registration_t *client)
+{
+  stats_main_t *sm = &stats_main;
+  vpe_client_stats_registration_t *registration;
+  vpe_client_registration_t *cr;
+  uword *p;
+
+  /* Is there anything listening for item in that reg */
+  p = hash_get(sm->stats_registration_hash[reg], item);
+
+  if (!p)
+    {
+      pool_get (sm->stats_registrations[reg], registration);
+      registration->item = item;
+      hash_set (sm->stats_registration_hash[reg], item,
+                registration - sm->stats_registrations[reg]);
+    }
+  else
+    {
+      registration = pool_elt_at_index (sm->stats_registrations[reg], p[0]);
+    }
+
+  p = hash_get(registration->client_hash, client->client_index);
+
+  if (!p)
+    {
+      pool_get (registration->clients, cr);
+      cr->client_index = client->client_index;
+      cr->client_pid = client->client_pid;
+      hash_set (registration->client_hash, cr->client_index, cr - registration->clients);
+    }
+
+  return 1; //At least one client is doing something ... poll
+}
+
+int
+clear_client_for_stat(u32 reg, u32 item, u32 client_index)
+{
+  stats_main_t *sm = &stats_main;
+  vpe_client_stats_registration_t *registration;
+  vpe_client_registration_t *client;
+  uword *p;
+  int i, elts;
+
+  /* Clear the client first */
+  /* Is there anything listening for item in that reg */
+  p = hash_get (sm->stats_registration_hash[reg], item);
+
+  if (!p)
+    goto exit;
+
+  /* If there is, is our client_index one of them */
+  registration = pool_elt_at_index (sm->stats_registrations[reg], p[0]);
+  p = hash_get (registration->client_hash, client_index);
+
+  if (!p)
+    goto exit;
+
+  client = pool_elt_at_index (registration->clients, p[0]);
+  hash_unset (registration->client_hash, client->client_index);
+  pool_put (registration->clients, client);
+
+  /* Now check if that was the last client for that item */
+  if (0 == pool_elts(registration->clients))
+    {
+      hash_unset (sm->stats_registration_hash[reg], item);
+      pool_put (sm->stats_registrations[reg], registration);
+    }
+
+ exit:
+  elts = 0;
+  /* Now check if that was the last item in any of the listened to stats */
+  for (i = 0; i < STATS_REG_N_IDX; i++)
+    {
+      elts += pool_elts (sm->stats_registrations[i]);
+    }
+  return elts;
+}
+
+vpe_client_registration_t *
+get_clients_for_stat(u32 reg, u32 item)
+{
+  stats_main_t *sm = &stats_main;
+  vpe_client_registration_t *client, *clients = 0;
+  vpe_client_stats_registration_t *registration;
+  uword *p;
+
+  /* Is there anything listening for item in that reg */
+  p = hash_get(sm->stats_registration_hash[reg], item);
+
+  if (!p)
+    return 0; // Fail
+
+  /* If there is, is our client_index one of them */
+  registration = pool_elt_at_index(sm->stats_registrations[reg], p[0]);
+
+  vec_reset_length (clients);
+  pool_foreach(client, registration->clients, ({vec_add1(clients, *client);}));
+  return clients;
+}
+
+
+static void
+clear_client_reg (u32 **registrations)
+{
+  /* When registrations[x] is a vector of pool indices
+     here is a good place to clean up the pools
+  */
+#define stats_reg(n) vec_free(registrations[IDX_##n]);
+#include <vpp/stats/stats.reg>
+#undef stats_reg
+
+  vec_free(registrations);
+}
+
+u32 **
+init_client_reg (u32 **registrations)
+{
+
+  /*
+    Initialise the stats registrations for each
+    type of stat a client can register for as well as
+    a vector of "interested" indexes.
+    Initially this is a u32 of either sw_if_index or fib_index
+    but eventually this should migrate to a pool_index (u32)
+    with a type specific pool that can include more complex things
+    such as timing and structured events.
+   */
+  vec_validate(registrations, STATS_REG_N_IDX);
+#define stats_reg(n) \
+  vec_reset_length(registrations[IDX_##n]);
+#include <vpp/stats/stats.reg>
+#undef stats_reg
+
+  /*
+    When registrations[x] is a vector of pool indices, here
+    is a good place to init the pools.
+   */
+  return registrations;
+}
+
+u32 **
+enable_all_client_reg (u32 **registrations)
+{
+
+  /*
+    Enable all stats known by adding
+    ~0 to the index vector. Eventually this
+    should be deprecated.
+   */
+#define stats_reg(n)                            \
+  vec_add1(registrations[IDX_##n], ~0);
+#include <vpp/stats/stats.reg>
+#undef stats_reg
+  return registrations;
+}
+
 static void
 do_simple_interface_counters (stats_main_t * sm)
 {
@@ -302,6 +486,124 @@ do_simple_interface_counters (stats_main_t * sm)
   vnet_interface_counter_unlock (im);
 }
 
+void
+handle_client_registration (vpe_client_registration_t *client, u32 stat, u32 item, int enable_disable)
+{
+  stats_main_t *sm = &stats_main;
+  vpe_client_registration_t *rp, _rp;
+
+  rp = get_client_for_stat (stat, item, client->client_index);
+
+  /* Disable case */
+  if (enable_disable == 0)
+    {
+      if (!rp)			// No client to disable
+        {
+          clib_warning ("pid %d: already disabled for stats...", client->client_pid);
+          return;
+        }
+      sm->enable_poller = clear_client_for_stat (stat, item, client->client_index);
+      return;
+    }
+  /* Enable case */
+  if (!rp)
+    {
+      rp = &_rp;
+      rp->client_index = client->client_index;
+      rp->client_pid = client->client_pid;
+      sm->enable_poller = set_client_for_stat (stat, item, rp);
+    }
+}
+
+
+/**********************************
+ * ALL Interface Combined stats - to be deprecated
+ **********************************/
+
+/*
+ * This API should be deprecated as _per_interface_ works with ~0 as sw_if_index.
+ */
+static void
+  vl_api_want_interface_combined_stats_t_handler
+  (vl_api_want_interface_combined_stats_t * mp)
+{
+  stats_main_t *sm = &stats_main;
+  vpe_client_registration_t rp;
+  vl_api_want_interface_combined_stats_reply_t *rmp;
+  uword *p;
+  i32 retval = 0;
+  unix_shared_memory_queue_t *q;
+  u32 swif;
+
+  swif = ~0; //Using same mechanism as _per_interface_
+  rp.client_index = mp->client_index;
+  rp.client_pid = mp->pid;
+
+  handle_client_registration (&rp, IDX_PER_INTERFACE_COMBINED_COUNTERS, swif, mp->enable_disable);
+
+ reply:
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+
+  if (!q)
+    {
+      sm->enable_poller = clear_client_for_stat (IDX_PER_INTERFACE_COMBINED_COUNTERS,
+                                                 swif, mp->client_index);
+      return;
+    }
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_WANT_INTERFACE_COMBINED_STATS_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = retval;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+  vl_api_vnet_interface_combined_counters_t_handler
+  (vl_api_vnet_interface_combined_counters_t * mp)
+{
+  vpe_client_registration_t *clients, client;
+  stats_main_t *sm = &stats_main;
+  unix_shared_memory_queue_t *q, *q_prev = NULL;
+  vl_api_vnet_interface_combined_counters_t *mp_copy = NULL;
+  u32 mp_size;
+  int i;
+
+  mp_size = sizeof (*mp) + (ntohl (mp->count) * sizeof (vlib_counter_t));
+
+  clients = get_clients_for_stat(IDX_PER_INTERFACE_COMBINED_COUNTERS, ~0 /*flag for all*/);
+
+  for (i = 0; i < vec_len (clients); i++)
+    {
+      client = clients[i];
+      q = vl_api_client_index_to_input_queue (client.client_index);
+      if (q)
+        {
+          if (q_prev && (q_prev->cursize < q_prev->maxsize))
+            {
+              mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
+              clib_memcpy(mp_copy, mp, mp_size);
+              vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
+              mp = mp_copy;
+            }
+          q_prev = q;
+        }
+    }
+#if STATS_DEBUG > 0
+  fformat (stdout, "%U\n", format_vnet_combined_counters, mp);
+#endif
+
+  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+    {
+      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+    }
+  else
+    {
+      vl_msg_api_free (mp);
+    }
+}
+
 static void
 do_combined_interface_counters (stats_main_t * sm)
 {
@@ -353,6 +655,408 @@ do_combined_interface_counters (stats_main_t * sm)
   }
   vnet_interface_counter_unlock (im);
 }
+
+/**********************************
+ * Per Interface Combined stats
+ **********************************/
+
+/* Request from client registering interfaces it wants */
+static void
+vl_api_want_per_interface_combined_stats_t_handler
+(vl_api_want_per_interface_combined_stats_t * mp)
+{
+  stats_main_t *sm = &stats_main;
+  vpe_client_registration_t rp;
+  vl_api_want_per_interface_combined_stats_reply_t *rmp;
+  vlib_combined_counter_main_t *cm;
+  uword *p;
+  i32 retval = 0;
+  unix_shared_memory_queue_t *q;
+  int i;
+  u32 swif;
+
+  // Validate we have good sw_if_indexes before registering
+  for (i = 0; i < mp->num; i++)
+    {
+      swif = mp->sw_ifs[i];
+
+      /* Check its a real sw_if_index that the client is allowed to see */
+      if (swif != ~0)
+        {
+          if (pool_is_free_index (sm->interface_main->sw_interfaces, swif))
+            {
+              retval = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+              goto reply;
+            }
+        }
+    }
+
+  for (i = 0; i < mp->num; i++)
+    {
+      swif = mp->sw_ifs[i];
+
+      rp.client_index = mp->client_index;
+      rp.client_pid = mp->pid;
+      handle_client_registration (&rp, IDX_PER_INTERFACE_COMBINED_COUNTERS, swif, mp->enable_disable);
+    }
+
+ reply:
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+
+  if (!q)
+    {
+      for (i = 0; i < mp->num; i++)
+        {
+          swif = mp->sw_ifs[i];
+          sm->enable_poller = clear_client_for_stat (IDX_PER_INTERFACE_COMBINED_COUNTERS,
+                                                     swif, mp->client_index);
+        }
+      return;
+    }
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_WANT_PER_INTERFACE_COMBINED_STATS_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = retval;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+/* Per Interface Combined distribution to client */
+static void
+do_combined_per_interface_counters (stats_main_t * sm)
+{
+  vl_api_vnet_per_interface_combined_counters_t *mp = 0;
+  vnet_interface_main_t *im = sm->interface_main;
+  api_main_t *am = sm->api_main;
+  vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
+  unix_shared_memory_queue_t *q = NULL;
+  vlib_combined_counter_main_t *cm;
+  /*
+   * items_this_message will eventually be used to optimise the batching
+   * of per client messages for each stat. For now setting this to 1 then
+   * iterate. This will not affect API.
+   *
+   * FIXME instead of enqueueing here, this should be sent to a batch
+   * storer for per-client transmission. Each "mp" sent would be a single entry
+   * and if a client is listening to other sw_if_indexes for same, it would be
+   * appended to that *mp
+   */
+  u32 items_this_message = 1;
+  vnet_combined_counter_t *vp = 0;
+  vlib_counter_t v;
+  int i, j;
+  u32 timestamp;
+  vpe_client_stats_registration_t *reg;
+  vpe_client_registration_t *client;
+  u32 *sw_if_index = 0;
+
+  /*
+    FIXME(s):
+    - capturing the timestamp of the counters "when VPP knew them" is important.
+    Less so is that the timing of the delivery to the control plane be in the same
+    timescale.
+
+    i.e. As long as the control plane can delta messages from VPP and work out
+    velocity etc based on the timestamp, it can do so in a more "batch mode".
+
+    It would be beneficial to keep a "per-client" message queue, and then
+    batch all the stat messages for a client into one message, with
+    discrete timestamps.
+
+    Given this particular API is for "per interface" one assumes that the scale
+    is less than the ~0 case, which the prior API is suited for.
+  */
+  vnet_interface_counter_lock (im);
+
+  timestamp = vlib_time_now (sm->vlib_main);
+
+  vec_reset_length (sm->regs_tmp);
+  pool_foreach(reg, sm->stats_registrations[IDX_PER_INTERFACE_COMBINED_COUNTERS],
+               ({vec_add1(sm->regs_tmp, reg);}));
+
+  for(i = 0; i < vec_len (sm->regs_tmp); i++)
+    {
+      reg = sm->regs_tmp[i];
+      if (reg->item == ~0)
+        {
+          vnet_interface_counter_unlock (im);
+          do_combined_interface_counters (sm);
+          vnet_interface_counter_lock (im);
+          continue;
+        }
+      vec_reset_length (sm->clients_tmp);
+      pool_foreach(client, reg->clients,
+                   ({vec_add1(sm->clients_tmp, client);}));
+
+      //FIXME - should be doing non-variant part of mp here and managing
+      // any alloc per client in that vec_foreach
+      for (j = 0; j < vec_len (sm->clients_tmp); j++)
+        {
+          client = sm->clients_tmp[j];
+          q = vl_api_client_index_to_input_queue (client->client_index);
+
+          //Client may have disconnected abrubtly, clean up so we don't poll nothing.
+          if (!q)
+            {
+              sm->enable_poller = clear_client_for_stat (IDX_PER_INTERFACE_COMBINED_COUNTERS,
+                                                         reg->item, client->client_index);
+              continue;
+            }
+
+          mp = vl_msg_api_alloc (sizeof (*mp) +
+                                 (items_this_message * (sizeof(*vp) /* rx */)));
+
+          // FIXME when optimising for items_this_message > 1 need to include a
+          // SIMPLE_INTERFACE_BATCH_SIZE check.
+          mp->_vl_msg_id = ntohs (VL_API_VNET_PER_INTERFACE_COMBINED_COUNTERS);
+
+          mp->count = items_this_message;
+          mp->timestamp = timestamp;
+          vp = (vnet_combined_counter_t *) mp->data;
+
+          vp->sw_if_index = htonl (reg->item);
+
+          cm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX;
+          vlib_get_combined_counter (cm, reg->item, &v);
+          clib_mem_unaligned (&vp->rx_packets, u64)
+            = clib_host_to_net_u64 (v.packets);
+          clib_mem_unaligned (&vp->rx_bytes, u64) = clib_host_to_net_u64 (v.bytes);
+
+
+          /* TX vlib_counter_t packets/bytes */
+          cm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
+          vlib_get_combined_counter (cm, reg->item, &v);
+          clib_mem_unaligned (&vp->tx_packets, u64)
+            = clib_host_to_net_u64 (v.packets);
+          clib_mem_unaligned (&vp->tx_bytes, u64) = clib_host_to_net_u64 (v.bytes);
+
+          vl_msg_api_send_shmem (q, (u8 *) & mp);
+        }
+    }
+
+  vnet_interface_counter_unlock (im);
+}
+
+/**********************************
+ * Per Interface simple stats
+ **********************************/
+
+/* Request from client registering interfaces it wants */
+static void
+vl_api_want_per_interface_simple_stats_t_handler
+(vl_api_want_per_interface_simple_stats_t * mp)
+{
+  stats_main_t *sm = &stats_main;
+  vpe_client_registration_t rp;
+  vl_api_want_per_interface_simple_stats_reply_t *rmp;
+  vlib_simple_counter_main_t *cm;
+  uword *p;
+  i32 retval = 0;
+  unix_shared_memory_queue_t *q;
+  int i;
+  u32 swif;
+
+  for (i = 0; i < mp->num; i++)
+    {
+      swif = mp->sw_ifs[i];
+
+      /* Check its a real sw_if_index that the client is allowed to see */
+      if (swif != ~0)
+        {
+          if (pool_is_free_index (sm->interface_main->sw_interfaces, swif))
+            {
+              retval = VNET_API_ERROR_INVALID_SW_IF_INDEX;
+              goto reply;
+            }
+        }
+    }
+
+  for (i = 0; i < mp->num; i++)
+    {
+      swif = mp->sw_ifs[i];
+
+      rp.client_index = mp->client_index;
+      rp.client_pid = mp->pid;
+      handle_client_registration (&rp, IDX_PER_INTERFACE_SIMPLE_COUNTERS, swif, mp->enable_disable);
+    }
+
+ reply:
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+
+  //Client may have disconnected abrubtly, clean up so we don't poll nothing.
+  if (!q)
+    {
+      for (i = 0; i < mp->num; i++)
+        {
+          swif = mp->sw_ifs[i];
+          sm->enable_poller = clear_client_for_stat (IDX_PER_INTERFACE_SIMPLE_COUNTERS,
+                                                     swif, mp->client_index);
+        }
+
+      return;
+    }
+
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_WANT_PER_INTERFACE_SIMPLE_STATS_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = retval;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+/* Per Interface Simple distribution to client */
+static void
+do_simple_per_interface_counters (stats_main_t * sm)
+{
+  vl_api_vnet_per_interface_simple_counters_t *mp = 0;
+  vnet_interface_main_t *im = sm->interface_main;
+  api_main_t *am = sm->api_main;
+  vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
+  unix_shared_memory_queue_t *q = NULL;
+  vlib_simple_counter_main_t *cm;
+  /*
+   * items_this_message will eventually be used to optimise the batching
+   * of per client messages for each stat. For now setting this to 1 then
+   * iterate. This will not affect API.
+   *
+   * FIXME instead of enqueueing here, this should be sent to a batch
+   * storer for per-client transmission. Each "mp" sent would be a single entry
+   * and if a client is listening to other sw_if_indexes for same, it would be
+   * appended to that *mp
+   */
+  u32 items_this_message = 1;
+  int i, j, size;
+  vpe_client_stats_registration_t *reg;
+  vpe_client_registration_t *client;
+  u32 timestamp;
+  u32 count;
+  vnet_simple_counter_t *vp = 0;
+  counter_t v;
+
+  /*
+    FIXME(s):
+    - capturing the timestamp of the counters "when VPP knew them" is important.
+    Less so is that the timing of the delivery to the control plane be in the same
+    timescale.
+
+    i.e. As long as the control plane can delta messages from VPP and work out
+    velocity etc based on the timestamp, it can do so in a more "batch mode".
+
+    It would be beneficial to keep a "per-client" message queue, and then
+    batch all the stat messages for a client into one message, with
+    discrete timestamps.
+
+    Given this particular API is for "per interface" one assumes that the scale
+    is less than the ~0 case, which the prior API is suited for.
+  */
+  vnet_interface_counter_lock (im);
+
+  timestamp = vlib_time_now (sm->vlib_main);
+
+  vec_reset_length (sm->regs_tmp);
+  pool_foreach(reg, sm->stats_registrations[IDX_PER_INTERFACE_SIMPLE_COUNTERS],
+               ({vec_add1(sm->regs_tmp, reg);}));
+
+  for(i = 0; i < vec_len (sm->regs_tmp); i++)
+    {
+      reg = sm->regs_tmp[i];
+      if (reg->item == ~0)
+        {
+          vnet_interface_counter_unlock (im);
+          do_simple_interface_counters (sm);
+          vnet_interface_counter_lock (im);
+          continue;
+        }
+      vec_reset_length (sm->clients_tmp);
+      pool_foreach(client, reg->clients,
+                   ({vec_add1(sm->clients_tmp, client);}));
+
+      //FIXME - should be doing non-variant part of mp here and managing
+      // any alloc per client in that vec_foreach
+      for (j = 0; j < vec_len (sm->clients_tmp); j++)
+        {
+          client = sm->clients_tmp[j];
+          q = vl_api_client_index_to_input_queue (client->client_index);
+
+          //Client may have disconnected abrubtly, clean up so we don't poll nothing.
+          if (!q)
+            {
+              sm->enable_poller = clear_client_for_stat (IDX_PER_INTERFACE_SIMPLE_COUNTERS,
+                                                         reg->item, client->client_index);
+              continue;
+            }
+
+          size = (sizeof (*mp) +
+                  (items_this_message * (sizeof(u64) * 10)));
+          mp = vl_msg_api_alloc(size);
+          // FIXME when optimising for items_this_message > 1 need to include a
+          // SIMPLE_INTERFACE_BATCH_SIZE check.
+          mp->_vl_msg_id = ntohs (VL_API_VNET_PER_INTERFACE_SIMPLE_COUNTERS);
+
+          mp->count = items_this_message;
+          mp->timestamp = timestamp;
+          vp = (vnet_simple_counter_t *) mp->data;
+
+          vp->sw_if_index = htonl (reg->item);
+
+          //FIXME will be simpler with a preprocessor macro
+          // VNET_INTERFACE_COUNTER_DROP
+          cm = im->sw_if_counters + VNET_INTERFACE_COUNTER_DROP;
+          v = vlib_get_simple_counter (cm, reg->item);
+          clib_mem_unaligned (&vp->drop, u64) = clib_host_to_net_u64 (v);
+
+          // VNET_INTERFACE_COUNTER_PUNT
+          cm = im->sw_if_counters + VNET_INTERFACE_COUNTER_PUNT;
+          v = vlib_get_simple_counter (cm, reg->item);
+          clib_mem_unaligned (&vp->punt, u64) = clib_host_to_net_u64 (v);
+
+          // VNET_INTERFACE_COUNTER_IP4
+          cm = im->sw_if_counters + VNET_INTERFACE_COUNTER_IP4;
+          v = vlib_get_simple_counter (cm, reg->item);
+          clib_mem_unaligned (&vp->rx_ip4, u64) = clib_host_to_net_u64 (v);
+
+          //VNET_INTERFACE_COUNTER_IP6
+          cm = im->sw_if_counters + VNET_INTERFACE_COUNTER_IP6;
+          v = vlib_get_simple_counter (cm, reg->item);
+          clib_mem_unaligned (&vp->rx_ip6, u64) = clib_host_to_net_u64 (v);
+
+          //VNET_INTERFACE_COUNTER_RX_NO_BUF
+          cm = im->sw_if_counters + VNET_INTERFACE_COUNTER_RX_NO_BUF;
+          v = vlib_get_simple_counter (cm, reg->item);
+          clib_mem_unaligned (&vp->rx_no_buffer, u64) = clib_host_to_net_u64 (v);
+
+          //VNET_INTERFACE_COUNTER_RX_MISS
+          cm = im->sw_if_counters + VNET_INTERFACE_COUNTER_RX_MISS;
+          v = vlib_get_simple_counter (cm, reg->item);
+          clib_mem_unaligned (&vp->rx_miss, u64) = clib_host_to_net_u64 (v);
+
+          //VNET_INTERFACE_COUNTER_RX_ERROR
+          cm = im->sw_if_counters + VNET_INTERFACE_COUNTER_RX_ERROR;
+          v = vlib_get_simple_counter (cm, reg->item);
+          clib_mem_unaligned (&vp->rx_error, u64) = clib_host_to_net_u64 (v);
+
+          //VNET_INTERFACE_COUNTER_TX_ERROR
+          cm = im->sw_if_counters + VNET_INTERFACE_COUNTER_TX_ERROR;
+          v = vlib_get_simple_counter (cm, reg->item);
+          clib_mem_unaligned (&vp->tx_error, u64) = clib_host_to_net_u64 (v);
+
+          //VNET_INTERFACE_COUNTER_MPLS
+          cm = im->sw_if_counters + VNET_INTERFACE_COUNTER_MPLS;
+          v = vlib_get_simple_counter (cm, reg->item);
+          clib_mem_unaligned (&vp->rx_mpls, u64) = clib_host_to_net_u64 (v);
+
+          vl_msg_api_send_shmem (q, (u8 *) & mp);
+        }
+    }
+
+  vnet_interface_counter_unlock (im);
+}
+
+/**********************************
+ * Per FIB IP4 stats
+ **********************************/
 
 static void
 ip46_fib_stats_delay (stats_main_t * sm, u32 sec, u32 nsec)
@@ -475,7 +1179,7 @@ ip4_nbr_ship (stats_main_t * sm, ip4_nbr_stats_ctx_t * ctx)
 }
 
 static void
-do_ip4_nbrs (stats_main_t * sm)
+do_ip4_nbr_counters (stats_main_t * sm)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
@@ -630,7 +1334,7 @@ ip6_nbr_ship (stats_main_t * sm,
 }
 
 static void
-do_ip6_nbrs (stats_main_t * sm)
+do_ip6_nbr_counters (stats_main_t * sm)
 {
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
@@ -682,7 +1386,7 @@ do_ip6_nbrs (stats_main_t * sm)
 }
 
 static void
-do_ip4_fibs (stats_main_t * sm)
+do_ip4_fib_counters (stats_main_t * sm)
 {
   ip4_main_t *im4 = &ip4_main;
   api_main_t *am = sm->api_main;
@@ -713,27 +1417,27 @@ again:
       fib = do_fibs->fibs[j];
       /* We may have bailed out due to control-plane activity */
       while ((fib - im4->fibs) < start_at_fib_index)
-	continue;
+        continue;
 
       v4_fib = pool_elt_at_index (im4->v4_fibs, fib->ft_index);
 
       if (mp == 0)
-	{
-	  items_this_message = IP4_FIB_COUNTER_BATCH_SIZE;
-	  mp = vl_msg_api_alloc_as_if_client
-	    (sizeof (*mp) +
-	     items_this_message * sizeof (vl_api_ip4_fib_counter_t));
-	  mp->_vl_msg_id = ntohs (VL_API_VNET_IP4_FIB_COUNTERS);
-	  mp->count = 0;
-	  mp->vrf_id = ntohl (fib->ft_table_id);
-	  ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
-	}
+        {
+          items_this_message = IP4_FIB_COUNTER_BATCH_SIZE;
+          mp = vl_msg_api_alloc_as_if_client
+            (sizeof (*mp) +
+             items_this_message * sizeof (vl_api_ip4_fib_counter_t));
+          mp->_vl_msg_id = ntohs (VL_API_VNET_IP4_FIB_COUNTERS);
+          mp->count = 0;
+          mp->vrf_id = ntohl (fib->ft_table_id);
+          ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
+        }
       else
-	{
-	  /* happens if the last FIB was empty... */
-	  ASSERT (mp->count == 0);
-	  mp->vrf_id = ntohl (fib->ft_table_id);
-	}
+        {
+          /* happens if the last FIB was empty... */
+          ASSERT (mp->count == 0);
+          mp->vrf_id = ntohl (fib->ft_table_id);
+        }
 
       dslock (sm, 0 /* release hint */ , 1 /* tag */ );
 
@@ -741,117 +1445,117 @@ again:
       vec_reset_length (do_fibs->results);
 
       for (i = 0; i < ARRAY_LEN (v4_fib->fib_entry_by_dst_address); i++)
-	{
-	  uword *hash = v4_fib->fib_entry_by_dst_address[i];
-	  hash_pair_t *p;
-	  ip4_route_t x;
+        {
+          uword *hash = v4_fib->fib_entry_by_dst_address[i];
+          hash_pair_t *p;
+          ip4_route_t x;
 
-	  vec_reset_length (do_fibs->pvec);
+          vec_reset_length (do_fibs->pvec);
 
-	  x.address_length = i;
+          x.address_length = i;
 
-	  hash_foreach_pair (p, hash, (
-					{
-					vec_add1 (do_fibs->pvec, p);}
-			     ));
-	  for (k = 0; k < vec_len (do_fibs->pvec); k++)
-	    {
-	      p = do_fibs->pvec[k];
-	      x.address.data_u32 = p->key;
-	      x.index = p->value[0];
+          hash_foreach_pair (p, hash, (
+            {
+              vec_add1 (do_fibs->pvec, p);}
+              ));
+          for (k = 0; k < vec_len (do_fibs->pvec); k++)
+            {
+              p = do_fibs->pvec[k];
+              x.address.data_u32 = p->key;
+              x.index = p->value[0];
 
-	      vec_add1 (do_fibs->ip4routes, x);
-	      if (sm->data_structure_lock->release_hint)
-		{
-		  start_at_fib_index = fib - im4->fibs;
-		  dsunlock (sm);
-		  ip46_fib_stats_delay (sm, 0 /* sec */ ,
-					STATS_RELEASE_DELAY_NS);
-		  mp->count = 0;
-		  ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
-		  goto again;
-		}
-	    }
-	}
+              vec_add1 (do_fibs->ip4routes, x);
+              if (sm->data_structure_lock->release_hint)
+                {
+                  start_at_fib_index = fib - im4->fibs;
+                  dsunlock (sm);
+                  ip46_fib_stats_delay (sm, 0 /* sec */ ,
+                                        STATS_RELEASE_DELAY_NS);
+                  mp->count = 0;
+                  ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
+                  goto again;
+                }
+            }
+        }
 
       vec_foreach (r, do_fibs->ip4routes)
-      {
-	vlib_counter_t c;
-	const dpo_id_t *dpo_id;
-	u32 index;
+        {
+          vlib_counter_t c;
+          const dpo_id_t *dpo_id;
+          u32 index;
 
-	dpo_id = fib_entry_contribute_ip_forwarding (r->index);
-	index = (u32) dpo_id->dpoi_index;
+          dpo_id = fib_entry_contribute_ip_forwarding (r->index);
+          index = (u32) dpo_id->dpoi_index;
 
-	vlib_get_combined_counter (&load_balance_main.lbm_to_counters,
-				   index, &c);
-	/*
-	 * If it has actually
-	 * seen at least one packet, send it.
-	 */
-	if (c.packets > 0)
-	  {
+          vlib_get_combined_counter (&load_balance_main.lbm_to_counters,
+                                     index, &c);
+          /*
+           * If it has actually
+           * seen at least one packet, send it.
+           */
+          if (c.packets > 0)
+            {
 
-	    /* already in net byte order */
-	    ctrp->address = r->address.as_u32;
-	    ctrp->address_length = r->address_length;
-	    ctrp->packets = clib_host_to_net_u64 (c.packets);
-	    ctrp->bytes = clib_host_to_net_u64 (c.bytes);
-	    mp->count++;
-	    ctrp++;
+              /* already in net byte order */
+              ctrp->address = r->address.as_u32;
+              ctrp->address_length = r->address_length;
+              ctrp->packets = clib_host_to_net_u64 (c.packets);
+              ctrp->bytes = clib_host_to_net_u64 (c.bytes);
+              mp->count++;
+              ctrp++;
 
-	    if (mp->count == items_this_message)
-	      {
-		mp->count = htonl (items_this_message);
-		/*
-		 * If the main thread's input queue is stuffed,
-		 * drop the data structure lock (which the main thread
-		 * may want), and take a pause.
-		 */
-		unix_shared_memory_queue_lock (q);
-		if (unix_shared_memory_queue_is_full (q))
-		  {
-		    dsunlock (sm);
-		    vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		    unix_shared_memory_queue_unlock (q);
-		    mp = 0;
-		    ip46_fib_stats_delay (sm, 0 /* sec */ ,
-					  STATS_RELEASE_DELAY_NS);
-		    goto again;
-		  }
-		vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		unix_shared_memory_queue_unlock (q);
+              if (mp->count == items_this_message)
+                {
+                  mp->count = htonl (items_this_message);
+                  /*
+                   * If the main thread's input queue is stuffed,
+                   * drop the data structure lock (which the main thread
+                   * may want), and take a pause.
+                   */
+                  unix_shared_memory_queue_lock (q);
+                  if (unix_shared_memory_queue_is_full (q))
+                    {
+                      dsunlock (sm);
+                      vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
+                      unix_shared_memory_queue_unlock (q);
+                      mp = 0;
+                      ip46_fib_stats_delay (sm, 0 /* sec */ ,
+                                            STATS_RELEASE_DELAY_NS);
+                      goto again;
+                    }
+                  vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
+                  unix_shared_memory_queue_unlock (q);
 
-		items_this_message = IP4_FIB_COUNTER_BATCH_SIZE;
-		mp = vl_msg_api_alloc_as_if_client
-		  (sizeof (*mp) +
-		   items_this_message * sizeof (vl_api_ip4_fib_counter_t));
-		mp->_vl_msg_id = ntohs (VL_API_VNET_IP4_FIB_COUNTERS);
-		mp->count = 0;
-		mp->vrf_id = ntohl (fib->ft_table_id);
-		ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
-	      }
-	  }			/* for each (mp or single) adj */
-	if (sm->data_structure_lock->release_hint)
-	  {
-	    start_at_fib_index = fib - im4->fibs;
-	    dsunlock (sm);
-	    ip46_fib_stats_delay (sm, 0 /* sec */ , STATS_RELEASE_DELAY_NS);
-	    mp->count = 0;
-	    ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
-	    goto again;
-	  }
-      }				/* vec_foreach (routes) */
+                  items_this_message = IP4_FIB_COUNTER_BATCH_SIZE;
+                  mp = vl_msg_api_alloc_as_if_client
+                    (sizeof (*mp) +
+                     items_this_message * sizeof (vl_api_ip4_fib_counter_t));
+                  mp->_vl_msg_id = ntohs (VL_API_VNET_IP4_FIB_COUNTERS);
+                  mp->count = 0;
+                  mp->vrf_id = ntohl (fib->ft_table_id);
+                  ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
+                }
+            }			/* for each (mp or single) adj */
+          if (sm->data_structure_lock->release_hint)
+            {
+              start_at_fib_index = fib - im4->fibs;
+              dsunlock (sm);
+              ip46_fib_stats_delay (sm, 0 /* sec */ , STATS_RELEASE_DELAY_NS);
+              mp->count = 0;
+              ctrp = (vl_api_ip4_fib_counter_t *) mp->c;
+              goto again;
+            }
+        }				/* vec_foreach (routes) */
 
       dsunlock (sm);
 
       /* Flush any data from this fib */
       if (mp->count)
-	{
-	  mp->count = htonl (mp->count);
-	  vl_msg_api_send_shmem (q, (u8 *) & mp);
-	  mp = 0;
-	}
+        {
+          mp->count = htonl (mp->count);
+          vl_msg_api_send_shmem (q, (u8 *) & mp);
+          mp = 0;
+        }
     }
 
   /* If e.g. the last FIB had no reportable routes, free the buffer */
@@ -888,7 +1592,7 @@ add_routes_in_fib (BVT (clib_bihash_kv) * kvp, void *arg)
 }
 
 static void
-do_ip6_fibs (stats_main_t * sm)
+do_ip6_fib_counters (stats_main_t * sm)
 {
   ip6_main_t *im6 = &ip6_main;
   api_main_t *am = sm->api_main;
@@ -1064,13 +1768,26 @@ stats_thread_fn (void *arg)
       ip46_fib_stats_delay (sm, 10 /* secs */ , 0 /* nsec */ );
 
       if (!(sm->enable_poller))
-	continue;
-      do_simple_interface_counters (sm);
-      do_combined_interface_counters (sm);
-      do_ip4_fibs (sm);
-      do_ip6_fibs (sm);
-      do_ip4_nbrs (sm);
-      do_ip6_nbrs (sm);
+        {
+          continue;
+        }
+      if (pool_elts(sm->stats_registrations[IDX_PER_INTERFACE_COMBINED_COUNTERS]))
+        do_combined_per_interface_counters (sm);
+
+      if (pool_elts(sm->stats_registrations[IDX_PER_INTERFACE_SIMPLE_COUNTERS]))
+        do_simple_per_interface_counters (sm);
+
+      if (pool_elts(sm->stats_registrations[IDX_IP4_FIB_COUNTERS]))
+        do_ip4_fib_counters (sm);
+
+      if (pool_elts(sm->stats_registrations[IDX_IP6_FIB_COUNTERS]))
+        do_ip6_fib_counters (sm);
+
+      if (pool_elts(sm->stats_registrations[IDX_IP4_NBR_COUNTERS]))
+        do_ip4_nbr_counters (sm);
+
+      if (pool_elts(sm->stats_registrations[IDX_IP6_NBR_COUNTERS]))
+        do_ip6_nbr_counters (sm);
     }
 }
 
@@ -1078,7 +1795,7 @@ static void
   vl_api_vnet_interface_simple_counters_t_handler
   (vl_api_vnet_interface_simple_counters_t * mp)
 {
-  vpe_client_stats_registration_t *reg;
+  vpe_client_registration_t *clients, client;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_interface_simple_counters_t *mp_copy = NULL;
@@ -1087,32 +1804,31 @@ static void
 
   mp_size = sizeof (*mp) + (ntohl (mp->count) * sizeof (u64));
 
-  /* *INDENT-OFF* */
-  vec_reset_length(sm->regs);
-  pool_foreach(reg, sm->stats_registrations,
-	       ({
-             vec_add1(sm->regs,reg);
-	       }));
-  /* *INDENT-ON* */
-  for (i = 0; i < vec_len (sm->regs); i++)
+  clients = get_clients_for_stat(IDX_PER_INTERFACE_SIMPLE_COUNTERS, ~0 /*flag for all*/);
+
+  for (i = 0; i < vec_len (clients); i++)
     {
-      reg = sm->regs[i];
-      if (reg->stats_registrations & INTERFACE_SIMPLE_COUNTERS)
-	{
-	  q = vl_api_client_index_to_input_queue (reg->client.client_index);
-	  if (q)
-	    {
-	      if (q_prev && (q_prev->cursize < q_prev->maxsize))
-		{
-		  mp_copy = vl_msg_api_alloc_as_if_client (mp_size);
-		  clib_memcpy (mp_copy, mp, mp_size);
-		  vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
-		  mp = mp_copy;
-		}
-	      q_prev = q;
-	    }
-	}
+      client = clients[i];
+      q = vl_api_client_index_to_input_queue (client.client_index);
+      if (q)
+        {
+          if (q_prev && (q_prev->cursize < q_prev->maxsize))
+            {
+              mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
+              clib_memcpy(mp_copy, mp, mp_size);
+              vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
+              mp = mp_copy;
+            }
+          q_prev = q;
+        }
+      else
+        {
+          sm->enable_poller = clear_client_for_stat (IDX_PER_INTERFACE_SIMPLE_COUNTERS,
+                                                     ~0, client.client_index);
+          continue;
+        }
     }
+
 #if STATS_DEBUG > 0
   fformat (stdout, "%U\n", format_vnet_simple_counters, mp);
 #endif
@@ -1127,85 +1843,48 @@ static void
     }
 }
 
-static void
-  vl_api_vnet_interface_combined_counters_t_handler
-  (vl_api_vnet_interface_combined_counters_t * mp)
-{
-  vpe_client_stats_registration_t *reg;
-  stats_main_t *sm = &stats_main;
-  unix_shared_memory_queue_t *q, *q_prev = NULL;
-  vl_api_vnet_interface_combined_counters_t *mp_copy = NULL;
-  u32 mp_size;
 
-  mp_size = sizeof (*mp) + (ntohl (mp->count) * sizeof (vlib_counter_t));
 
-  /* *INDENT-OFF* */
-  pool_foreach(reg, sm->stats_registrations,
-	       ({
-             if (reg->stats_registrations & INTERFACE_COMBINED_COUNTERS)
-               {
-                 q = vl_api_client_index_to_input_queue (reg->client.client_index);
-                 if (q)
-                   {
-                     if (q_prev && (q_prev->cursize < q_prev->maxsize))
-                       {
-                         mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
-                         clib_memcpy(mp_copy, mp, mp_size);
-                         vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
-                         mp = mp_copy;
-                       }
-                     q_prev = q;
-                   }
-               }
-	       }));
-  /* *INDENT-ON* */
 
-#if STATS_DEBUG > 0
-  fformat (stdout, "%U\n", format_vnet_combined_counters, mp);
-#endif
-
-  if (q_prev && (q_prev->cursize < q_prev->maxsize))
-    {
-      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
-    }
-  else
-    {
-      vl_msg_api_free (mp);
-    }
-}
 
 static void
 vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 {
-  vpe_client_stats_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip4_fib_counters_t *mp_copy = NULL;
   u32 mp_size;
+  vpe_client_registration_t *clients, client;
+  int i;
 
   mp_size = sizeof (*mp_copy) +
     ntohl (mp->count) * sizeof (vl_api_ip4_fib_counter_t);
 
-  /* *INDENT-OFF* */
-  pool_foreach(reg, sm->stats_registrations,
-  ({
-    if (reg->stats_registrations & IP4_FIB_COUNTERS)
-      {
-        q = vl_api_client_index_to_input_queue (reg->client.client_index);
-        if (q)
-          {
-            if (q_prev && (q_prev->cursize < q_prev->maxsize))
-              {
-                mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
-                clib_memcpy(mp_copy, mp, mp_size);
-                vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
-                mp = mp_copy;
-              }
-            q_prev = q;
-          }
-      }
-  }));
-  /* *INDENT-ON* */
+  clients = get_clients_for_stat(IDX_IP4_FIB_COUNTERS, ~0 /*flag for all*/);
+
+  for (i = 0; i < vec_len (clients); i++)
+    {
+      client = clients[i];
+      q = vl_api_client_index_to_input_queue (client.client_index);
+      if (q)
+        {
+          if (q_prev && (q_prev->cursize < q_prev->maxsize))
+            {
+              mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
+              clib_memcpy(mp_copy, mp, mp_size);
+              vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
+              mp = mp_copy;
+            }
+          q_prev = q;
+        }
+      else
+        {
+          sm->enable_poller = clear_client_for_stat (IDX_IP4_FIB_COUNTERS,
+                                                     ~0, client.client_index);
+          continue;
+        }
+    }
+
   if (q_prev && (q_prev->cursize < q_prev->maxsize))
     {
       vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
@@ -1219,34 +1898,41 @@ vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 static void
 vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
 {
-  vpe_client_stats_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip4_nbr_counters_t *mp_copy = NULL;
   u32 mp_size;
+  vpe_client_registration_t *clients, client;
+  int i;
 
   mp_size = sizeof (*mp_copy) +
     ntohl (mp->count) * sizeof (vl_api_ip4_nbr_counter_t);
 
-  /* *INDENT-OFF* */
-  pool_foreach(reg, sm->stats_registrations,
-  ({
-    if (reg->stats_registrations & IP4_NBR_COUNTERS)
-      {
-        q = vl_api_client_index_to_input_queue (reg->client.client_index);
-        if (q)
-          {
-            if (q_prev && (q_prev->cursize < q_prev->maxsize))
-              {
-                mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
-                clib_memcpy(mp_copy, mp, mp_size);
-                vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
-                mp = mp_copy;
-              }
-            q_prev = q;
-          }
-      }
-  }));
+  clients = get_clients_for_stat(IDX_IP4_NBR_COUNTERS, ~0 /*flag for all*/);
+
+  for (i = 0; i < vec_len (clients); i++)
+    {
+      client = clients[i];
+      q = vl_api_client_index_to_input_queue (client.client_index);
+      if (q)
+        {
+          if (q_prev && (q_prev->cursize < q_prev->maxsize))
+            {
+              mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
+              clib_memcpy(mp_copy, mp, mp_size);
+              vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
+              mp = mp_copy;
+            }
+          q_prev = q;
+        }
+      else
+        {
+          sm->enable_poller = clear_client_for_stat (IDX_IP4_NBR_COUNTERS,
+                                                     ~0, client.client_index);
+          continue;
+        }
+    }
+
   /* *INDENT-ON* */
   if (q_prev && (q_prev->cursize < q_prev->maxsize))
     {
@@ -1261,34 +1947,40 @@ vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
 static void
 vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 {
-  vpe_client_stats_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip6_fib_counters_t *mp_copy = NULL;
   u32 mp_size;
+  vpe_client_registration_t *clients, client;
+  int i;
 
   mp_size = sizeof (*mp_copy) +
     ntohl (mp->count) * sizeof (vl_api_ip6_fib_counter_t);
 
-  /* *INDENT-OFF* */
-  pool_foreach(reg, sm->stats_registrations,
-  ({
-    if (reg->stats_registrations & IP6_FIB_COUNTERS)
-      {
-        q = vl_api_client_index_to_input_queue (reg->client.client_index);
-        if (q)
-          {
-            if (q_prev && (q_prev->cursize < q_prev->maxsize))
-              {
-                mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
-                clib_memcpy(mp_copy, mp, mp_size);
-                vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
-                mp = mp_copy;
-              }
-            q_prev = q;
-          }
-      }
-      }));
+  clients = get_clients_for_stat(IDX_IP6_FIB_COUNTERS, ~0 /*flag for all*/);
+
+  for (i = 0; i < vec_len (clients); i++)
+    {
+      client = clients[i];
+      q = vl_api_client_index_to_input_queue (client.client_index);
+      if (q)
+        {
+          if (q_prev && (q_prev->cursize < q_prev->maxsize))
+            {
+              mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
+              clib_memcpy(mp_copy, mp, mp_size);
+              vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
+              mp = mp_copy;
+            }
+          q_prev = q;
+        }
+      else
+        {
+          sm->enable_poller = clear_client_for_stat (IDX_IP6_FIB_COUNTERS,
+                                                     ~0, client.client_index);
+          continue;
+        }
+    }
   /* *INDENT-ON* */
   if (q_prev && (q_prev->cursize < q_prev->maxsize))
     {
@@ -1303,34 +1995,40 @@ vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 static void
 vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
 {
-  vpe_client_stats_registration_t *reg;
   stats_main_t *sm = &stats_main;
   unix_shared_memory_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip6_nbr_counters_t *mp_copy = NULL;
   u32 mp_size;
+  vpe_client_registration_t *clients, client;
+  int i;
 
   mp_size = sizeof (*mp_copy) +
     ntohl (mp->count) * sizeof (vl_api_ip6_nbr_counter_t);
 
-  /* *INDENT-OFF* */
-  pool_foreach(reg, sm->stats_registrations,
-  ({
-    if (reg->stats_registrations & IP6_NBR_COUNTERS)
-      {
-        q = vl_api_client_index_to_input_queue (reg->client.client_index);
-        if (q)
-          {
-            if (q_prev && (q_prev->cursize < q_prev->maxsize))
-              {
-                mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
-                clib_memcpy(mp_copy, mp, mp_size);
-                vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
-                mp = mp_copy;
-              }
-            q_prev = q;
-          }
-      }
-  }));
+  clients = get_clients_for_stat(IDX_IP6_NBR_COUNTERS, ~0 /*flag for all*/);
+
+  for (i = 0; i < vec_len (clients); i++)
+    {
+      client = clients[i];
+      q = vl_api_client_index_to_input_queue (client.client_index);
+      if (q)
+        {
+          if (q_prev && (q_prev->cursize < q_prev->maxsize))
+            {
+              mp_copy = vl_msg_api_alloc_as_if_client(mp_size);
+              clib_memcpy(mp_copy, mp, mp_size);
+              vl_msg_api_send_shmem (q_prev, (u8 *)&mp);
+              mp = mp_copy;
+            }
+          q_prev = q;
+        }
+      else
+        {
+          sm->enable_poller = clear_client_for_stat (IDX_IP6_NBR_COUNTERS,
+                                                     ~0, client.client_index);
+          continue;
+        }
+    }
   /* *INDENT-ON* */
   if (q_prev && (q_prev->cursize < q_prev->maxsize))
     {
@@ -1339,61 +2037,42 @@ vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
   else
     {
       vl_msg_api_free (mp);
-    }
-}
+    }}
 
 static void
 vl_api_want_stats_t_handler (vl_api_want_stats_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  vpe_client_stats_registration_t *rp;
+  vpe_client_registration_t rp;
   vl_api_want_stats_reply_t *rmp;
   uword *p;
   i32 retval = 0;
+  u32 item;
   unix_shared_memory_queue_t *q;
 
-  p = hash_get (sm->stats_registration_hash, mp->client_index);
-  if (p)
-    {
-      if (mp->enable_disable)
-	{
-	  clib_warning ("pid %d: already enabled...", mp->pid);
-	  retval = -2;
-	  goto reply;
-	}
-      else
-	{
-	  rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-	  pool_put (sm->stats_registrations, rp);
-	  hash_unset (sm->stats_registration_hash, mp->client_index);
-	  goto reply;
-	}
-    }
-  if (mp->enable_disable == 0)
-    {
-      clib_warning ("pid %d: already disabled...", mp->pid);
-      retval = -3;
-      goto reply;
-    }
-  pool_get (sm->stats_registrations, rp);
-  rp->client.client_index = mp->client_index;
-  rp->client.client_pid = mp->pid;
-  rp->stats_registrations |= INTERFACE_SIMPLE_COUNTERS;
-  rp->stats_registrations |= INTERFACE_COMBINED_COUNTERS;
-  rp->stats_registrations |= IP4_FIB_COUNTERS;
-  rp->stats_registrations |= IP4_NBR_COUNTERS;
-  rp->stats_registrations |= IP6_FIB_COUNTERS;
-  rp->stats_registrations |= IP6_NBR_COUNTERS;
+  item = ~0; //"ALL THE THINGS IN THE THINGS
+  rp.client_index = mp->client_index;
+  rp.client_pid = mp->pid;
 
-  hash_set (sm->stats_registration_hash, rp->client.client_index,
-	    rp - sm->stats_registrations);
+  handle_client_registration (&rp, IDX_PER_INTERFACE_SIMPLE_COUNTERS,
+                              item, mp->enable_disable);
 
-reply:
-  if (pool_elts (sm->stats_registrations))
-    sm->enable_poller = 1;
-  else
-    sm->enable_poller = 0;
+  handle_client_registration (&rp, IDX_PER_INTERFACE_COMBINED_COUNTERS,
+                              item, mp->enable_disable);
 
+  handle_client_registration (&rp, IDX_IP4_FIB_COUNTERS,
+                              item, mp->enable_disable);
+
+  handle_client_registration (&rp, IDX_IP4_NBR_COUNTERS,
+                              item, mp->enable_disable);
+
+  handle_client_registration (&rp, IDX_IP6_FIB_COUNTERS,
+                              item, mp->enable_disable);
+
+  handle_client_registration (&rp, IDX_IP6_NBR_COUNTERS,
+                              item, mp->enable_disable);
+
+ reply:
   q = vl_api_client_index_to_input_queue (mp->client_index);
 
   if (!q)
@@ -1412,69 +2091,28 @@ static void
   (vl_api_want_interface_simple_stats_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  vpe_client_stats_registration_t *rp;
+  vpe_client_registration_t rp;
   vl_api_want_interface_simple_stats_reply_t *rmp;
   uword *p;
   i32 retval = 0;
+  u32 swif;
   unix_shared_memory_queue_t *q;
 
-  p = hash_get (sm->stats_registration_hash, mp->client_index);
+  swif = ~0; //Using same mechanism as _per_interface_
+  rp.client_index = mp->client_index;
+  rp.client_pid = mp->pid;
 
-  /* Disable case */
-  if (mp->enable_disable == 0)
-    {
-      if (!p)			// No client to disable
-	{
-	  clib_warning ("pid %d: already disabled for stats...", mp->pid);
-	  retval = 0;
-	  goto reply;
-	}
+  handle_client_registration (&rp, IDX_PER_INTERFACE_SIMPLE_COUNTERS, swif, mp->enable_disable);
 
-      rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-      if (!rp->stats_registrations & INTERFACE_SIMPLE_COUNTERS)	// Client but doesn't want this.
-	{
-	  clib_warning
-	    ("pid %d: already disabled for interface simple stats...",
-	     mp->pid);
-	  retval = 0;
-	  goto reply;
-	}
-      else
-	{
-	  rp->stats_registrations &= ~(INTERFACE_SIMPLE_COUNTERS);	// Clear flag
-	  if (rp->stats_registrations == 0)	// Client isn't listening to anything else
-	    {
-	      pool_put (sm->stats_registrations, rp);
-	      hash_unset (sm->stats_registration_hash, mp->client_index);
-	    }
-	  goto reply;
-	}
-    }
-  /* Enable case */
-  /* Get client from pool */
-  if (p)
-    rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-
-  if (!p || !rp)		// Doesn't exist, make a new entry
-    {
-      pool_get (sm->stats_registrations, rp);
-      rp->client.client_index = mp->client_index;
-      rp->client.client_pid = mp->pid;
-    }
-  rp->stats_registrations |= INTERFACE_SIMPLE_COUNTERS;
-  hash_set (sm->stats_registration_hash, rp->client.client_index,
-	    rp - sm->stats_registrations);
-
-reply:
-  if (pool_elts (sm->stats_registrations))	// Someone wants something, somewhere so enable globally for now.
-    sm->enable_poller = 1;
-  else
-    sm->enable_poller = 0;
-
+ reply:
   q = vl_api_client_index_to_input_queue (mp->client_index);
 
   if (!q)
-    return;
+    {
+      sm->enable_poller = clear_client_for_stat (IDX_PER_INTERFACE_SIMPLE_COUNTERS,
+                                                 swif, mp->client_index);
+      return;
+    }
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_WANT_INTERFACE_SIMPLE_STATS_REPLY);
@@ -1484,154 +2122,33 @@ reply:
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
-static void
-  vl_api_want_interface_combined_stats_t_handler
-  (vl_api_want_interface_combined_stats_t * mp)
-{
-  stats_main_t *sm = &stats_main;
-  vpe_client_stats_registration_t *rp;
-  vl_api_want_interface_combined_stats_reply_t *rmp;
-  uword *p;
-  i32 retval = 0;
-  unix_shared_memory_queue_t *q;
-
-  p = hash_get (sm->stats_registration_hash, mp->client_index);
-
-  /* Disable case */
-  if (mp->enable_disable == 0)
-    {
-      if (!p)			// No client to disable
-	{
-	  clib_warning ("pid %d: already disabled for stats...", mp->pid);
-	  retval = 0;
-	  goto reply;
-	}
-
-      rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-      if (!(rp->stats_registrations & INTERFACE_COMBINED_COUNTERS))	// Client but doesn't want this.
-	{
-	  clib_warning
-	    ("pid %d: already disabled for interface COMBINED stats...",
-	     mp->pid);
-	  retval = 0;
-	  goto reply;
-	}
-      else
-	{
-	  rp->stats_registrations &= ~(INTERFACE_COMBINED_COUNTERS);	// Clear flag
-	  if (rp->stats_registrations == 0)	// Client isn't listening to anything else
-	    {
-	      pool_put (sm->stats_registrations, rp);
-	      hash_unset (sm->stats_registration_hash, mp->client_index);
-	    }
-	  goto reply;
-	}
-    }
-  /* Enable case */
-  /* Get client from pool */
-  if (p)
-    rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-
-  if (!p || !rp)		// Doesn't exist, make a new entry
-    {
-      pool_get (sm->stats_registrations, rp);
-      rp->client.client_index = mp->client_index;
-      rp->client.client_pid = mp->pid;
-    }
-  rp->stats_registrations |= INTERFACE_COMBINED_COUNTERS;
-  hash_set (sm->stats_registration_hash, rp->client.client_index,
-	    rp - sm->stats_registrations);
-
-reply:
-  if (pool_elts (sm->stats_registrations))	// Someone wants something, somewhere so enable globally for now.
-    sm->enable_poller = 1;
-  else
-    sm->enable_poller = 0;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-
-  if (!q)
-    return;
-
-  rmp = vl_msg_api_alloc (sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_WANT_INTERFACE_COMBINED_STATS_REPLY);
-  rmp->context = mp->context;
-  rmp->retval = retval;
-
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
-}
 
 static void
 vl_api_want_ip4_fib_stats_t_handler (vl_api_want_ip4_fib_stats_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  vpe_client_stats_registration_t *rp;
+  vpe_client_registration_t rp;
   vl_api_want_ip4_fib_stats_reply_t *rmp;
   uword *p;
   i32 retval = 0;
   unix_shared_memory_queue_t *q;
+  u32 fib;
 
-  p = hash_get (sm->stats_registration_hash, mp->client_index);
+  fib = ~0; //Using same mechanism as _per_interface_
+  rp.client_index = mp->client_index;
+  rp.client_pid = mp->pid;
 
-  /* Disable case */
-  /*
-     $$$ FIXME: need std return codes. Still undecided if enabling already
-     enabled (and similar for disabled) is really a -'ve error condition or
-     if 0 is sufficient
-   */
-  if (mp->enable_disable == 0)
-    {
-      if (!p)			// No client to disable
-	{
-	  clib_warning ("pid %d: already disabled for stats...", mp->pid);
-	  retval = -3;
-	  goto reply;
-	}
+  handle_client_registration (&rp, IDX_IP4_FIB_COUNTERS, fib, mp->enable_disable);
 
-      rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-      if (!(rp->stats_registrations & IP4_FIB_COUNTERS))	// Client but doesn't want this.
-	{
-	  clib_warning ("pid %d: already disabled for interface ip4 fib...",
-			mp->pid);
-	  retval = -2;
-	  goto reply;
-	}
-      else
-	{
-	  rp->stats_registrations &= ~(IP4_FIB_COUNTERS);	// Clear flag
-	  if (rp->stats_registrations == 0)	// Client isn't listening to anything else
-	    {
-	      pool_put (sm->stats_registrations, rp);
-	      hash_unset (sm->stats_registration_hash, mp->client_index);
-	    }
-	  goto reply;
-	}
-    }
-  /* Enable case */
-  /* Get client from pool */
-  if (p)
-    rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-
-  if (!p || !rp)		// Doesn't exist, make a new entry
-    {
-      pool_get (sm->stats_registrations, rp);
-      rp->client.client_index = mp->client_index;
-      rp->client.client_pid = mp->pid;
-    }
-  rp->stats_registrations |= IP4_FIB_COUNTERS;
-  hash_set (sm->stats_registration_hash, rp->client.client_index,
-	    rp - sm->stats_registrations);
-
-reply:
-  if (pool_elts (sm->stats_registrations))	// Someone wants something, somewhere so enable globally for now.
-    sm->enable_poller = 1;
-  else
-    sm->enable_poller = 0;
-
+ reply:
   q = vl_api_client_index_to_input_queue (mp->client_index);
 
   if (!q)
-    return;
+    {
+      sm->enable_poller = clear_client_for_stat (IDX_IP4_FIB_COUNTERS,
+                                                 fib, mp->client_index);
+      return;
+    }
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_WANT_IP4_FIB_STATS_REPLY);
@@ -1645,73 +2162,28 @@ static void
 vl_api_want_ip6_fib_stats_t_handler (vl_api_want_ip6_fib_stats_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  vpe_client_stats_registration_t *rp;
-  vl_api_want_ip6_fib_stats_reply_t *rmp;
+  vpe_client_registration_t rp;
+  vl_api_want_ip4_fib_stats_reply_t *rmp;
   uword *p;
   i32 retval = 0;
   unix_shared_memory_queue_t *q;
+  u32 fib;
 
-  p = hash_get (sm->stats_registration_hash, mp->client_index);
+  fib = ~0; //Using same mechanism as _per_interface_
+  rp.client_index = mp->client_index;
+  rp.client_pid = mp->pid;
 
-  /* Disable case */
-  /*
-     $$$ FIXME: need std return codes. Still undecided if enabling already
-     enabled (and similar for disabled) is really a -'ve error condition or
-     if 0 is sufficient
-   */
-  if (mp->enable_disable == 0)
-    {
-      if (!p)			// No client to disable
-	{
-	  clib_warning ("pid %d: already disabled for stats...", mp->pid);
-	  retval = -3;
-	  goto reply;
-	}
+  handle_client_registration (&rp, IDX_IP6_FIB_COUNTERS, fib, mp->enable_disable);
 
-      rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-      if (!(rp->stats_registrations & IP6_FIB_COUNTERS))	// Client but doesn't want this.
-	{
-	  clib_warning ("pid %d: already disabled for interface ip6 fib...",
-			mp->pid);
-	  retval = -2;
-	  goto reply;
-	}
-      else
-	{
-	  rp->stats_registrations &= ~(IP6_FIB_COUNTERS);	// Clear flag
-	  if (rp->stats_registrations == 0)	// Client isn't listening to anything else
-	    {
-	      pool_put (sm->stats_registrations, rp);
-	      hash_unset (sm->stats_registration_hash, mp->client_index);
-	    }
-	  goto reply;
-	}
-    }
-  /* Enable case */
-  /* Get client from pool */
-  if (p)
-    rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-
-  if (!p || !rp)		// Doesn't exist, make a new entry
-    {
-      pool_get (sm->stats_registrations, rp);
-      rp->client.client_index = mp->client_index;
-      rp->client.client_pid = mp->pid;
-    }
-  rp->stats_registrations |= IP6_FIB_COUNTERS;
-  hash_set (sm->stats_registration_hash, rp->client.client_index,
-	    rp - sm->stats_registrations);
-
-reply:
-  if (pool_elts (sm->stats_registrations))	// Someone wants something, somewhere so enable globally for now.
-    sm->enable_poller = 1;
-  else
-    sm->enable_poller = 0;
-
+ reply:
   q = vl_api_client_index_to_input_queue (mp->client_index);
 
   if (!q)
-    return;
+    {
+      sm->enable_poller = clear_client_for_stat (IDX_IP6_FIB_COUNTERS,
+                                                 fib, mp->client_index);
+      return;
+    }
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_WANT_IP6_FIB_STATS_REPLY);
@@ -1748,7 +2220,9 @@ vl_api_vnet_get_summary_stats_t_handler (vl_api_vnet_get_summary_stats_t * mp)
     vl_api_client_index_to_input_queue (mp->client_index);
 
   if (!q)
-    return;
+    {
+      return;
+    }
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_VNET_GET_SUMMARY_STATS_REPLY);
@@ -1790,13 +2264,14 @@ stats_memclnt_delete_callback (u32 client_index)
   stats_main_t *sm = &stats_main;
   uword *p;
 
-  p = hash_get (sm->stats_registration_hash, client_index);
-  if (p)
-    {
-      rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-      pool_put (sm->stats_registrations, rp);
-      hash_unset (sm->stats_registration_hash, client_index);
-    }
+  // FIXME
+  /* p = hash_get (sm->stats_registration_hash, client_index); */
+  /* if (p) */
+  /*   { */
+  /*     rp = pool_elt_at_index (sm->stats_registrations, p[0]); */
+  /*     pool_put (sm->stats_registrations, rp); */
+  /*     hash_unset (sm->stats_registration_hash, client_index); */
+  /*   } */
 
   return 0;
 }
@@ -1853,6 +2328,14 @@ stats_init (vlib_main_t * vm)
    * Set up the (msg_name, crc, message-id) table
    */
   setup_message_id_table (am);
+
+  vec_validate(sm->stats_registrations, STATS_REG_N_IDX);
+  vec_validate(sm->stats_registration_hash, STATS_REG_N_IDX);
+#define stats_reg(n)                            \
+  sm->stats_registrations[IDX_##n] = 0; \
+  sm->stats_registration_hash[IDX_##n] = 0;
+#include <vpp/stats/stats.reg>
+#undef stats_reg
 
   return 0;
 }
