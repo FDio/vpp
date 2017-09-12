@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_d7d615c5",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 102,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-12T03:02:06Z",
+      "side": 1,
+      "message": "Not a priority, but I\u0027d recommend putting the rx/tx buffer sizes in to vat_main_t.  Eventually both should be configurable...  I can add that to the patch or in a follow-up patch if you want me to.",
+      "range": {
+        "startLine": 102,
+        "startChar": 59,
+        "endLine": 102,
+        "endChar": 63
+      },
+      "revId": "e027ce39f957f05987a8923698943a97ab48b8e7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
