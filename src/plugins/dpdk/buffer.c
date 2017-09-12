@@ -340,7 +340,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
       vlib_buffer_t *b;
 
       b = vlib_get_buffer (vm, buffers[i]);
-
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
       fl = vlib_buffer_get_buffer_free_list (vm, b, &fi);
 
       /* The only current use of this callback: multicast recycle */
@@ -491,6 +491,67 @@ buffer_state_validation_init (vlib_main_t * vm)
 }
 
 VLIB_INIT_FUNCTION (buffer_state_validation_init);
+#endif
+
+#if CLI_DEBUG
+struct dpdk_validate_buf_result
+{
+  u32 invalid;
+  u32 uninitialized;
+};
+
+#define DPDK_TRAJECTORY_POISON 31
+
+static void
+dpdk_buffer_validate_trajectory (struct rte_mempool *mp, void *opaque,
+				 void *obj, unsigned obj_idx)
+{
+  vlib_buffer_t *b;
+  struct dpdk_validate_buf_result *counter = opaque;
+  b = vlib_buffer_from_rte_mbuf ((struct rte_mbuf *) obj);
+  if (b->pre_data[0] != 0)
+    {
+      if (b->pre_data[0] == DPDK_TRAJECTORY_POISON)
+	counter->uninitialized++;
+      else
+	counter->invalid++;
+    }
+}
+
+int
+dpdk_buffer_validate_trajectory_all (u32 * uninitialized)
+{
+  dpdk_main_t *dm = &dpdk_main;
+  struct dpdk_validate_buf_result counter = { 0 };
+  int i;
+
+  for (i = 0; i < vec_len (dm->pktmbuf_pools); i++)
+    rte_mempool_obj_iter (dm->pktmbuf_pools[i],
+			  dpdk_buffer_validate_trajectory, &counter);
+  if (uninitialized)
+    *uninitialized = counter.uninitialized;
+  return counter.invalid;
+}
+
+static void
+dpdk_buffer_poison_trajectory (struct rte_mempool *mp, void *opaque,
+			       void *obj, unsigned obj_idx)
+{
+  vlib_buffer_t *b;
+  b = vlib_buffer_from_rte_mbuf ((struct rte_mbuf *) obj);
+  b->pre_data[0] = DPDK_TRAJECTORY_POISON;
+}
+
+void
+dpdk_buffer_poison_trajectory_all (void)
+{
+  dpdk_main_t *dm = &dpdk_main;
+  int i;
+
+  for (i = 0; i < vec_len (dm->pktmbuf_pools); i++)
+    rte_mempool_obj_iter (dm->pktmbuf_pools[i], dpdk_buffer_poison_trajectory,
+			  0);
+}
 #endif
 
 /* *INDENT-OFF* */
