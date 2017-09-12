@@ -1322,7 +1322,7 @@ int snat_static_mapping_match (snat_main_t * sm,
           rand = 1 + (random_u32 (&sm->random_seed) % m->locals[hi].prefix);
           while (lo < hi)
             {
-              mid = ((hi - 1) >> 1) + lo;
+              mid = ((hi - lo) >> 1) + lo;
               (rand > m->locals[mid].prefix) ? (lo = mid + 1) : (hi = mid);
             }
           if (!(m->locals[lo].prefix >= rand))
