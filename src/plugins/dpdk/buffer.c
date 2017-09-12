@@ -493,6 +493,29 @@ buffer_state_validation_init (vlib_main_t * vm)
 VLIB_INIT_FUNCTION (buffer_state_validation_init);
 #endif
 
+void
+dpdk_buffer_validate_trajectory (struct rte_mempool *mp, void *opaque, void *obj,
+				  unsigned obj_idx)
+{
+  vlib_buffer_t *b;
+  b = vlib_buffer_from_rte_mbuf ((struct rte_mbuf *)obj);
+  if (b->pre_data[0] != 0)
+    obj_idx++;
+}
+
+int
+dpdk_buffer_validate_trajectory_all (void)
+{
+  dpdk_main_t *dm = &dpdk_main;
+  int i, invalid = 0;
+
+  for (i = 0; i < vec_len (dm->pktmbuf_pools); i++)
+    {
+      rte_mempool_obj_iter (dm->pktmbuf_pools[i], dpdk_buffer_validate_trajectory, &invalid);
+    }
+  return invalid;
+}
+
 /* *INDENT-OFF* */
 VLIB_BUFFER_REGISTER_CALLBACKS (dpdk, static) = {
   .vlib_buffer_alloc_cb = &dpdk_buffer_alloc,

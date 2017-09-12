@@ -1886,6 +1886,31 @@ VLIB_CLI_COMMAND (show_vpe_version_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+dpdk_validate_buffers_fn (vlib_main_t * vm, unformat_input_t * input,
+			  vlib_cli_command_t * cmd_arg)
+{
+  u32 n_invalid_bufs = 0;
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return(0, "unknown input `%U'", format_unformat_error,
+			     input);
+  n_invalid_bufs = dpdk_buffer_validate_trajectory_all ();
+  if (!n_invalid_bufs)
+    vlib_cli_output (vm, "All buffers are valid");
+  else
+    vlib_cli_output (vm, "Found %d invalid buffers", n_invalid_bufs);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (tcp_find_leaked_buffers_command, static) =
+{
+  .path = "dpdk validate buffers",
+  .short_help = "dpdk validate buffers",
+  .function = dpdk_validate_buffers_fn,
+};
+/* *INDENT-ON* */
+
 clib_error_t *
 dpdk_cli_init (vlib_main_t * vm)
 {
