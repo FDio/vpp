@@ -8173,7 +8173,7 @@ lfib_test (void)
     /*
      * MPLS enable an interface so we get the MPLS table created
      */
-    mpls_table_create(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API);
+    mpls_table_create(MPLS_FIB_DEFAULT_TABLE_ID, FIB_SOURCE_API, NULL);
     mpls_sw_interface_enable_disable(&mpls_main,
                                      tm->hw[0]->sw_if_index,
                                      1, 1);

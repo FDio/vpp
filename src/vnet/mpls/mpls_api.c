@@ -92,7 +92,7 @@ vl_api_mpls_table_add_del_t_handler (vl_api_mpls_table_add_del_t * mp)
   vnm->api_errno = 0;
 
   if (mp->mt_is_add)
-    mpls_table_create (ntohl (mp->mt_table_id), 1);
+    mpls_table_create (ntohl (mp->mt_table_id), 1, mp->mt_name);
   else
     mpls_table_delete (ntohl (mp->mt_table_id), 1);
 
@@ -258,7 +258,7 @@ vl_api_mpls_route_add_del_t_handler (vl_api_mpls_route_add_del_t * mp)
 }
 
 void
-mpls_table_create (u32 table_id, u8 is_api)
+mpls_table_create (u32 table_id, u8 is_api, const u8 * name)
 {
   u32 fib_index;
 
@@ -276,10 +276,11 @@ mpls_table_create (u32 table_id, u8 is_api)
 
   if (~0 == fib_index)
     {
-      fib_table_find_or_create_and_lock (FIB_PROTOCOL_MPLS,
-					 table_id,
-					 (is_api ?
-					  FIB_SOURCE_API : FIB_SOURCE_CLI));
+      fib_table_find_or_create_and_lock_w_name (FIB_PROTOCOL_MPLS,
+						table_id,
+						(is_api ?
+						 FIB_SOURCE_API :
+						 FIB_SOURCE_CLI), name);
     }
 }
 
@@ -424,7 +425,8 @@ vl_api_mpls_tunnel_dump_t_handler (vl_api_mpls_tunnel_dump_t * mp)
 static void
 send_mpls_fib_details (vpe_api_main_t * am,
 		       unix_shared_memory_queue_t * q,
-		       u32 table_id, u32 label, u32 eos,
+		       const fib_table_t * table,
+		       u32 label, u32 eos,
 		       fib_route_path_encode_t * api_rpaths, u32 context)
 {
   vl_api_mpls_fib_details_t *mp;
@@ -440,7 +442,9 @@ send_mpls_fib_details (vpe_api_main_t * am,
   mp->_vl_msg_id = ntohs (VL_API_MPLS_FIB_DETAILS);
   mp->context = context;
 
-  mp->table_id = htonl (table_id);
+  mp->table_id = htonl (table->ft_table_id);
+  memcpy (mp->table_name, table->ft_desc,
+	  clib_min (vec_len (table->ft_desc), sizeof (mp->table_name)));
   mp->eos_bit = eos;
   mp->label = htonl (label);
 
@@ -512,8 +516,8 @@ vl_api_mpls_fib_dump_t_handler (vl_api_mpls_fib_dump_t * mp)
     api_rpaths = NULL;
     fib_entry_encode (*lfeip, &api_rpaths);
     send_mpls_fib_details (am, q,
-			   fib_table->ft_table_id,
-			   pfx.fp_label, pfx.fp_eos, api_rpaths, mp->context);
+			   fib_table, pfx.fp_label,
+			   pfx.fp_eos, api_rpaths, mp->context);
     vec_free (api_rpaths);
   }
 
