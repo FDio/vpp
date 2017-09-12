@@ -38,6 +38,14 @@
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
+/**
+ * @file
+ * @brief Binary API messaging via shared memory
+ * Low-level, primary provisioning interface
+ */
+/*? %%clicmd:group_label Binary API CLI %% ?*/
+/*? %%syscfg:group_label Binary API configuration %% ?*/
+
 #define TRACE_VLIB_MEMORY_QUEUE 0
 
 #include <vlibmemory/vl_memory_msg_enum.h>	/* enumerate all vlib messages */
@@ -188,7 +196,6 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   int rv = 0;
   void *oldheap;
   api_main_t *am = &api_main;
-  u8 *serialized_message_table = 0;
 
   /*
    * This is tortured. Maintain a vlib-address-space private
@@ -220,9 +227,6 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
 
   svm = am->vlib_rp;
 
-  if (am->serialized_message_table_in_shmem == 0)
-    serialized_message_table = vl_api_serialize_message_table (am, 0);
-
   pthread_mutex_lock (&svm->mutex);
   oldheap = svm_push_data_heap (svm);
   *regpp = clib_mem_alloc (sizeof (vl_api_registration_t));
@@ -237,14 +241,11 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
 
   regp->name = format (0, "%s", mp->name);
   vec_add1 (regp->name, 0);
-  if (serialized_message_table)
-    am->serialized_message_table_in_shmem =
-      vec_dup (serialized_message_table);
 
   pthread_mutex_unlock (&svm->mutex);
   svm_pop_heap (oldheap);
 
-  vec_free (serialized_message_table);
+  ASSERT (am->serialized_message_table_in_shmem);
 
   rp = vl_msg_api_alloc (sizeof (*rp));
   rp->_vl_msg_id = ntohs (VL_API_MEMCLNT_CREATE_REPLY);
@@ -487,6 +488,9 @@ memclnt_process (vlib_main_t * vm,
   f64 sleep_time, start_time;
   f64 vector_rate;
   int i;
+  u8 *serialized_message_table = 0;
+  svm_region_t *svm;
+  void *oldheap;
 
   vlib_set_queue_signal_callback (vm, memclnt_queue_callback);
 
@@ -518,6 +522,60 @@ memclnt_process (vlib_main_t * vm,
       send_one_plugin_msg_ids_msg (rp->name, rp->first_msg_id,
 				   rp->last_msg_id);
     }
+
+  /*
+   * Snapshoot the api message table.
+   */
+  serialized_message_table = vl_api_serialize_message_table (am, 0);
+
+  svm = am->vlib_rp;
+  pthread_mutex_lock (&svm->mutex);
+  oldheap = svm_push_data_heap (svm);
+
+  am->serialized_message_table_in_shmem = vec_dup (serialized_message_table);
+
+  pthread_mutex_unlock (&svm->mutex);
+  svm_pop_heap (oldheap);
+
+  /*
+   * Save the api message table snapshot, if configured
+   */
+  if (am->save_msg_table_filename)
+    {
+      int fd, rv;
+      u8 *chroot_file;
+      if (strstr ((char *) am->save_msg_table_filename, "..")
+	  || index ((char *) am->save_msg_table_filename, '/'))
+	{
+	  clib_warning ("illegal save-message-table filename '%s'",
+			am->save_msg_table_filename);
+	  goto skip_save;
+	}
+
+      chroot_file = format (0, "/tmp/%s%c", am->save_msg_table_filename, 0);
+
+      fd = creat ((char *) chroot_file, 0644);
+
+      if (fd < 0)
+	{
+	  clib_unix_warning ("creat");
+	  goto skip_save;
+	}
+      rv = write (fd, serialized_message_table,
+		  vec_len (serialized_message_table));
+
+      if (rv != vec_len (serialized_message_table))
+	clib_unix_warning ("write");
+
+      rv = close (fd);
+      if (rv < 0)
+	clib_unix_warning ("close");
+
+      vec_free (chroot_file);
+    }
+
+skip_save:
+  vec_free (serialized_message_table);
 
   /* $$$ pay attention to frame size, control CPU usage */
   while (1)
@@ -726,6 +784,15 @@ memclnt_process (vlib_main_t * vm,
 
   return 0;
 }
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (memclnt_node,static) = {
+    .function = memclnt_process,
+    .type = VLIB_NODE_TYPE_PROCESS,
+    .name = "api-rx-from-ring",
+    .state = VLIB_NODE_STATE_DISABLED,
+};
+/* *INDENT-ON* */
+
 
 static clib_error_t *
 vl_api_show_histogram_command (vlib_main_t * vm,
@@ -762,11 +829,15 @@ vl_api_show_histogram_command (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Display the binary api sleep-time histogram
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cli_show_api_histogram_command, static) = {
-    .path = "show api histogram",
-    .short_help = "show api histogram",
-    .function = vl_api_show_histogram_command,
+VLIB_CLI_COMMAND (cli_show_api_histogram_command, static) =
+{
+  .path = "show api histogram",
+  .short_help = "show api histogram",
+  .function = vl_api_show_histogram_command,
 };
 /* *INDENT-ON* */
 
@@ -782,21 +853,15 @@ vl_api_clear_histogram_command (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Clear the binary api sleep-time histogram
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cli_clear_api_histogram_command, static) = {
-    .path = "clear api histogram",
-    .short_help = "clear api histogram",
-    .function = vl_api_clear_histogram_command,
-};
-/* *INDENT-ON* */
-
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (memclnt_node,static) = {
-    .function = memclnt_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "api-rx-from-ring",
-    .state = VLIB_NODE_STATE_DISABLED,
+VLIB_CLI_COMMAND (cli_clear_api_histogram_command, static) =
+{
+  .path = "clear api histogram",
+  .short_help = "clear api histogram",
+  .function = vl_api_clear_histogram_command,
 };
 /* *INDENT-ON* */
 
@@ -1064,33 +1129,46 @@ vl_api_status_command (vlib_main_t * vm,
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cli_show_api_command, static) = {
-    .path = "show api",
-    .short_help = "Show API information",
+VLIB_CLI_COMMAND (cli_show_api_command, static) =
+{
+  .path = "show api",
+  .short_help = "Show API information",
 };
 /* *INDENT-ON* */
 
+/*?
+ * Display binary api message allocation ring statistics
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cli_show_api_ring_command, static) = {
-    .path = "show api ring-stats",
-    .short_help = "Message ring statistics",
-    .function = vl_api_ring_command,
+VLIB_CLI_COMMAND (cli_show_api_ring_command, static) =
+{
+  .path = "show api ring-stats",
+  .short_help = "Message ring statistics",
+  .function = vl_api_ring_command,
 };
 /* *INDENT-ON* */
 
+/*?
+ * Display current api client connections
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cli_show_api_clients_command, static) = {
-    .path = "show api clients",
-    .short_help = "Client information",
-    .function = vl_api_client_command,
+VLIB_CLI_COMMAND (cli_show_api_clients_command, static) =
+{
+  .path = "show api clients",
+  .short_help = "Client information",
+  .function = vl_api_client_command,
 };
 /* *INDENT-ON* */
 
+/*?
+ * Display the current api message tracing status
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cli_show_api_status_command, static) = {
-    .path = "show api status",
-    .short_help = "Show API trace status",
-    .function = vl_api_status_command,
+VLIB_CLI_COMMAND (cli_show_api_status_command, static) =
+{
+  .path = "show api trace-status",
+  .short_help = "Display API trace status",
+  .function = vl_api_status_command,
 };
 /* *INDENT-ON* */
 
@@ -1133,11 +1211,15 @@ vl_api_message_table_command (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Display the current api message decode tables
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cli_show_api_message_table_command, static) = {
-    .path = "show api message-table",
-    .short_help = "Message Table",
-    .function = vl_api_message_table_command,
+VLIB_CLI_COMMAND (cli_show_api_message_table_command, static) =
+{
+  .path = "show api message-table",
+  .short_help = "Message Table",
+  .function = vl_api_message_table_command,
 };
 /* *INDENT-ON* */
 
@@ -1207,11 +1289,15 @@ configure:
   return 0;
 }
 
+/*?
+ * Control the binary API trace mechanism
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (trace, static) = {
-    .path = "set api-trace",
-    .short_help = "API trace",
-    .function = vl_api_trace_command,
+VLIB_CLI_COMMAND (trace, static) =
+{
+  .path = "set api-trace [on][on tx][on rx][off][free][debug on][debug off]",
+  .short_help = "API trace",
+  .function = vl_api_trace_command,
 };
 /* *INDENT-ON* */
 
@@ -1265,9 +1351,9 @@ format_api_msg_range (u8 * s, va_list * args)
   vl_api_msg_range_t *rp = va_arg (*args, vl_api_msg_range_t *);
 
   if (rp == 0)
-    s = format (s, "%-20s%9s%9s", "Name", "First-ID", "Last-ID");
+    s = format (s, "%-50s%9s%9s", "Name", "First-ID", "Last-ID");
   else
-    s = format (s, "%-20s%9d%9d", rp->name, rp->first_msg_id,
+    s = format (s, "%-50s%9d%9d", rp->name, rp->first_msg_id,
 		rp->last_msg_id);
 
   return s;
@@ -1303,11 +1389,15 @@ vl_api_show_plugin_command (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Display the plugin binary API message range table
+?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (cli_show_api_plugin_command, static) = {
-    .path = "show api plugin",
-    .short_help = "show api plugin",
-    .function = vl_api_show_plugin_command,
+VLIB_CLI_COMMAND (cli_show_api_plugin_command, static) =
+{
+  .path = "show api plugin",
+  .short_help = "show api plugin",
+  .function = vl_api_show_plugin_command,
 };
 /* *INDENT-ON* */
 
@@ -1925,12 +2015,17 @@ api_trace_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/*?
+ * Display, replay, or save a binary API trace
+?*/
+
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (api_trace_command, static) = {
-    .path = "api trace",
-    .short_help =
-    "api trace [on|off][dump|save|replay <file>][status][free][post-mortem-on]",
-    .function = api_trace_command_fn,
+VLIB_CLI_COMMAND (api_trace_command, static) =
+{
+  .path = "api trace",
+  .short_help =
+  "api trace [on|off][dump|save|replay <file>][status][free][post-mortem-on]",
+  .function = api_trace_command_fn,
 };
 /* *INDENT-ON* */
 
@@ -1951,6 +2046,9 @@ api_config_fn (vlib_main_t * vm, unformat_input_t * input)
 	  vl_msg_api_trace_onoff (am, which, 1 /* on */ );
 	  vl_msg_api_post_mortem_dump_enable_disable (1 /* enable */ );
 	}
+      else if (unformat (input, "save-api-table %s",
+			 &am->save_msg_table_filename))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -1958,6 +2056,12 @@ api_config_fn (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+/*?
+ * This module has three configuration parameters:
+ * "on" or "enable" - enables binary api tracing
+ * "nitems <nnn>" - sets the size of the circular buffer to <nnn>
+ * "save-api-table <filename>" - dumps the API message table to /tmp/<filename>
+?*/
 VLIB_CONFIG_FUNCTION (api_config_fn, "api-trace");
 
 static clib_error_t *
@@ -1985,6 +2089,275 @@ api_queue_config_fn (vlib_main_t * vm, unformat_input_t * input)
 }
 
 VLIB_CONFIG_FUNCTION (api_queue_config_fn, "api-queue");
+
+static u8 *
+extract_name (u8 * s)
+{
+  u8 *rv;
+
+  rv = vec_dup (s);
+
+  while (vec_len (rv) && rv[vec_len (rv)] != '_')
+    _vec_len (rv)--;
+
+  rv[vec_len (rv)] = 0;
+
+  return rv;
+}
+
+static u8 *
+extract_crc (u8 * s)
+{
+  int i;
+  u8 *rv;
+
+  rv = vec_dup (s);
+
+  for (i = vec_len (rv) - 1; i >= 0; i--)
+    {
+      if (rv[i] == '_')
+	{
+	  vec_delete (rv, i + 1, 0);
+	  break;
+	}
+    }
+  return rv;
+}
+
+typedef struct
+{
+  u8 *name_and_crc;
+  u8 *name;
+  u8 *crc;
+  u32 msg_index;
+  int which;
+} msg_table_unserialize_t;
+
+static int
+table_id_cmp (void *a1, void *a2)
+{
+  msg_table_unserialize_t *n1 = a1;
+  msg_table_unserialize_t *n2 = a2;
+
+  return (n1->msg_index - n2->msg_index);
+}
+
+static int
+table_name_and_crc_cmp (void *a1, void *a2)
+{
+  msg_table_unserialize_t *n1 = a1;
+  msg_table_unserialize_t *n2 = a2;
+
+  return strcmp ((char *) n1->name_and_crc, (char *) n2->name_and_crc);
+}
+
+static clib_error_t *
+dump_api_table_file_command_fn (vlib_main_t * vm,
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  u8 *filename = 0;
+  api_main_t *am = &api_main;
+  serialize_main_t _sm, *sm = &_sm;
+  clib_error_t *error;
+  u32 nmsgs;
+  u32 msg_index;
+  u8 *name_and_crc;
+  int compare_current = 0;
+  int numeric_sort = 0;
+  msg_table_unserialize_t *table = 0, *item;
+  u32 i;
+  u32 ndifferences = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "file %s", &filename))
+	;
+      else if (unformat (input, "compare-current")
+	       || unformat (input, "compare"))
+	compare_current = 1;
+      else if (unformat (input, "numeric"))
+	numeric_sort = 1;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (numeric_sort && compare_current)
+    return clib_error_return
+      (0, "Comparison and numeric sorting are incompatible");
+
+  if (filename == 0)
+    return clib_error_return (0, "File not specified");
+
+  /* Load the serialized message table from the table dump */
+
+  error = unserialize_open_unix_file (sm, (char *) filename);
+
+  if (error)
+    return error;
+
+  unserialize_integer (sm, &nmsgs, sizeof (u32));
+
+  for (i = 0; i < nmsgs; i++)
+    {
+      msg_index = unserialize_likely_small_unsigned_integer (sm);
+      unserialize_cstring (sm, (char **) &name_and_crc);
+      vec_add2 (table, item, 1);
+      item->msg_index = msg_index;
+      item->name_and_crc = name_and_crc;
+      item->name = extract_name (name_and_crc);
+      item->crc = extract_crc (name_and_crc);
+      item->which = 0;		/* file */
+    }
+  serialize_close (sm);
+
+  /* Compare with the current image? */
+  if (compare_current)
+    {
+      /* Append the current message table */
+      u8 *tblv = vec_dup (am->serialized_message_table_in_shmem);
+
+      serialize_open_vector (sm, tblv);
+      unserialize_integer (sm, &nmsgs, sizeof (u32));
+
+      for (i = 0; i < nmsgs; i++)
+	{
+	  msg_index = unserialize_likely_small_unsigned_integer (sm);
+	  unserialize_cstring (sm, (char **) &name_and_crc);
+
+	  vec_add2 (table, item, 1);
+	  item->msg_index = msg_index;
+	  item->name_and_crc = name_and_crc;
+	  item->name = extract_name (name_and_crc);
+	  item->crc = extract_crc (name_and_crc);
+	  item->which = 1;	/* current_image */
+	}
+    }
+
+  /* Sort the table. */
+  if (numeric_sort)
+    vec_sort_with_function (table, table_id_cmp);
+  else
+    vec_sort_with_function (table, table_name_and_crc_cmp);
+
+  if (compare_current)
+    {
+      ndifferences = 0;
+
+      /*
+       * In this case, the recovered table will have two entries per
+       * API message. So, if entries i and i+1 match, the message definitions
+       * are identical. Otherwise, the crc is different, or a message is
+       * present in only one of the tables.
+       */
+      vlib_cli_output (vm, "%=60s %s", "Message Name", "Result");
+
+      for (i = 0; i < vec_len (table);)
+	{
+	  /* Last message lonely? */
+	  if (i == vec_len (table) - 1)
+	    {
+	      ndifferences++;
+	      goto last_unique;
+	    }
+
+	  /* Identical pair? */
+	  if (!strncmp
+	      ((char *) table[i].name_and_crc,
+	       (char *) table[i + 1].name_and_crc,
+	       vec_len (table[i].name_and_crc)))
+	    {
+	      i += 2;
+	      continue;
+	    }
+
+	  ndifferences++;
+
+	  /* Only in one of two tables? */
+	  if (strncmp ((char *) table[i].name, (char *) table[i + 1].name,
+		       vec_len (table[i].name)))
+	    {
+	    last_unique:
+	      vlib_cli_output (vm, "%-60s only in %s",
+			       table[i].name, table[i].which ?
+			       "image" : "file");
+	      i++;
+	      continue;
+	    }
+	  /* In both tables, but with different signatures */
+	  vlib_cli_output (vm, "%-60s definition changed", table[i].name);
+	  i += 2;
+	}
+      if (ndifferences == 0)
+	vlib_cli_output (vm, "No api message signature differences found.");
+      else
+	vlib_cli_output (vm, "Found %u api message signature differences",
+			 ndifferences);
+      goto cleanup;
+    }
+
+  /* Dump the table, sorted as shown above */
+  vlib_cli_output (vm, "%=60s %=8s %=10s", "Message name", "MsgID", "CRC");
+
+  for (i = 0; i < vec_len (table); i++)
+    {
+      item = table + i;
+      vlib_cli_output (vm, "%-60s %8u %10s", item->name,
+		       item->msg_index, item->crc);
+    }
+
+cleanup:
+  for (i = 0; i < vec_len (table); i++)
+    {
+      vec_free (table[i].name_and_crc);
+      vec_free (table[i].name);
+      vec_free (table[i].crc);
+    }
+
+  vec_free (table);
+
+  return 0;
+}
+
+/*?
+ * Displays a serialized API message decode table, sorted by message name
+ *
+ * @cliexpar
+ * @cliexstart{show api dump file <filename>}
+ *                                                Message name    MsgID        CRC
+ * accept_session                                                    407   8e2a127e
+ * accept_session_reply                                              408   67d8c22a
+ * add_node_next                                                     549   e4202993
+ * add_node_next_reply                                               550   e89d6eed
+ * etc.
+ * @cliexend
+?*/
+
+/*?
+ * Compares a serialized API message decode table with the current image
+ *
+ * @cliexpar
+ * @cliexstart{show api dump file <filename> compare}
+ * ip_add_del_route                                             definition changed
+ * ip_table_add_del                                             definition changed
+ * l2_macs_event                                                only in image
+ * vnet_ip4_fib_counters                                        only in file
+ * vnet_ip4_nbr_counters                                        only in file
+ * @cliexend
+?*/
+
+/*?
+ * Display a serialized API message decode table
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (dump_api_table_file, static) =
+{
+  .path = "show api dump",
+  .short_help = "show api dump file <filename> [numeric | compare-current]",
+  .function = dump_api_table_file_command_fn,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

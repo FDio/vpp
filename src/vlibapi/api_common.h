@@ -255,6 +255,9 @@ typedef struct
   /* Replay in progress? */
   int replay_in_progress;
 
+  /* Dump (msg-name, crc) snapshot here at startup */
+  u8 *save_msg_table_filename;
+
   /* List of API client reaper functions */
   _vl_msg_api_function_list_elt_t *reaper_function_registrations;
 
