@@ -259,13 +259,13 @@ acl_del_list (u32 acl_list_index)
     }
 
   if (acl_list_index < vec_len(am->input_sw_if_index_vec_by_acl)) {
-    if (vec_len(am->input_sw_if_index_vec_by_acl[acl_list_index]) > 0) {
+    if (vec_len(pool_elt_at_index(am->input_sw_if_index_vec_by_acl, acl_list_index)) > 0) {
       /* ACL is applied somewhere inbound. Refuse to delete */
       return -1;
     }
   }
   if (acl_list_index < vec_len(am->output_sw_if_index_vec_by_acl)) {
-    if (vec_len(am->output_sw_if_index_vec_by_acl[acl_list_index]) > 0) {
+    if (vec_len(pool_elt_at_index(am->output_sw_if_index_vec_by_acl, acl_list_index)) > 0) {
       /* ACL is applied somewhere outbound. Refuse to delete */
       return -1;
     }
@@ -307,7 +307,7 @@ acl_del_list (u32 acl_list_index)
 
   hash_acl_delete(am, acl_list_index);
   /* now we can delete the ACL itself */
-  a = &am->acls[acl_list_index];
+  a = pool_elt_at_index (am->acls, acl_list_index);
   if (a->rules)
     vec_free (a->rules);
 
@@ -990,7 +990,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 {
   macip_match_type_t *mvec = NULL;
   macip_match_type_t *mt;
-  macip_acl_list_t *a = &am->macip_acls[macip_acl_index];
+  macip_acl_list_t *a = pool_elt_at_index (am->macip_acls, macip_acl_index);
   int i;
   u32 match_type_index;
   u32 last_table;
@@ -1131,7 +1131,7 @@ static void
 macip_destroy_classify_tables (acl_main_t * am, u32 macip_acl_index)
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
-  macip_acl_list_t *a = &am->macip_acls[macip_acl_index];
+  macip_acl_list_t *a = pool_elt_at_index (am->macip_acls, macip_acl_index);
 
   if (a->ip4_table_index != ~0)
     {
@@ -1203,7 +1203,7 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
     }
   else
     {
-      a = &am->macip_acls[*acl_list_index];
+      a = pool_elt_at_index (am->macip_acls, *acl_list_index);
       if (a->rules)
         {
           vec_free (a->rules);
@@ -1237,7 +1237,7 @@ macip_acl_interface_del_acl (acl_main_t * am, u32 sw_if_index)
   /* No point in deleting MACIP ACL which is not applied */
   if (~0 == macip_acl_index)
     return -1;
-  a = &am->macip_acls[macip_acl_index];
+  a = pool_elt_at_index (am->macip_acls, macip_acl_index);
   /* remove the classifier tables off the interface L2 ACL */
   rv =
     vnet_set_input_acl_intfc (am->vlib_main, sw_if_index, a->ip4_table_index,
@@ -1260,7 +1260,7 @@ macip_acl_interface_add_acl (acl_main_t * am, u32 sw_if_index,
       return -1;
     }
   void *oldheap = acl_set_heap(am);
-  a = &am->macip_acls[macip_acl_index];
+  a = pool_elt_at_index (am->macip_acls, macip_acl_index);
   vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
   /* If there already a MACIP ACL applied, unapply it */
   if (~0 != am->macip_acl_by_sw_if_index[sw_if_index])
@@ -1300,7 +1300,7 @@ macip_acl_del_list (u32 acl_list_index)
   macip_destroy_classify_tables (am, acl_list_index);
 
   /* now we can delete the ACL itself */
-  a = &am->macip_acls[acl_list_index];
+  a = pool_elt_at_index (am->macip_acls, acl_list_index);
   if (a->rules)
     {
       vec_free (a->rules);
@@ -1539,10 +1539,10 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
     {
       acl_index = ntohl (mp->acl_index);
       if (!pool_is_free_index (am->acls, acl_index))
-	{
-	  acl = &am->acls[acl_index];
-	  send_acl_details (am, q, acl, mp->context);
-	}
+       {
+         acl = pool_elt_at_index (am->acls, acl_index);
+         send_acl_details (am, q, acl, mp->context);
+       }
     }
 
   if (rv == -1)
@@ -1793,10 +1793,10 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
     {
       u32 acl_index = ntohl (mp->acl_index);
       if (!pool_is_free_index (am->macip_acls, acl_index))
-	{
-	  acl = &am->macip_acls[acl_index];
-	  send_macip_acl_details (am, q, acl, mp->context);
-	}
+       {
+         acl = pool_elt_at_index (am->macip_acls, acl_index);
+         send_macip_acl_details (am, q, acl, mp->context);
+       }
     }
 }
 
