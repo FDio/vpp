@@ -320,6 +320,7 @@ format_dpdk_device_type (u8 * s, va_list * args)
 
     case VNET_DPDK_PMD_THUNDERX:
       dev_type = "Cavium ThunderX";
+      break;
 
     case VNET_DPDK_PMD_VHOST_ETHER:
       dev_type = "VhostEthernet";
