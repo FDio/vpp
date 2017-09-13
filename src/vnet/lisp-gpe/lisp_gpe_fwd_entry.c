@@ -354,11 +354,12 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
 	  if (vec_len (lgm->native_fwd_rpath[ip_version]))
 	    {
 	      ip_prefix_to_fib_prefix (&lfe->key->rmt.ippref, &fib_prefix);
-	      fib_table_entry_update (lfe->eid_fib_index, &fib_prefix,
-				      FIB_SOURCE_LISP, FIB_ENTRY_FLAG_NONE,
-				      lgm->native_fwd_rpath[ip_version]);
+	      fi = fib_table_entry_update (lfe->eid_fib_index, &fib_prefix,
+					   FIB_SOURCE_LISP,
+					   FIB_ENTRY_FLAG_NONE,
+					   lgm->native_fwd_rpath[ip_version]);
 	      gpe_native_fwd_add_del_lfe (lfe, 1);
-	      break;
+	      goto done;
 	    }
 	case LISP_NO_ACTION:
 	  /* TODO update timers? */
@@ -378,6 +379,7 @@ create_fib_entries (lisp_gpe_fwd_entry_t * lfe)
     {
       fi = ip_src_fib_add_route (lfe->src_fib_index, &ippref, lfe->paths);
     }
+done:
   fe = fib_entry_get (fi);
   return fe->fe_lb.dpoi_index;
 }
