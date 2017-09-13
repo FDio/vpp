@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_905b0354",
+        "filename": "src/plugins/dpdk/buffer.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 502,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-13T12:58:20Z",
+      "side": 1,
+      "message": "Why 20 vs 0xFF, or 0xFE - neither of which could ever be valid?",
+      "revId": "1862b5b00b557ff983a2ee6bc2fb6451cd03e6db",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
