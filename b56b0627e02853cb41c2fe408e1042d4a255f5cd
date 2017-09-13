@@ -166,6 +166,102 @@
       "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_f0b6b789",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-09-13T13:21:23Z",
+      "side": 1,
+      "message": "Our build system is based on development packages which are built from the current git tree. However, we must also support getting VPP packages into downstream repos. This work is documented in JIRA 498.",
+      "parentUuid": "3a4b7175_68b0b48b",
+      "range": {
+        "startLine": 284,
+        "startChar": 0,
+        "endLine": 289,
+        "endChar": 45
+      },
+      "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_9022e3b7",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-09-13T13:21:23Z",
+      "side": 1,
+      "message": "There may be a way to accomplish the goal of supporting builds from a source rpm as specified in JIRA 498 however I don\u0027t think there is a way without making extensive changes to the build system and/or spec file.",
+      "parentUuid": "3a4b7175_b97cbc73",
+      "range": {
+        "startLine": 284,
+        "startChar": 0,
+        "endLine": 289,
+        "endChar": 45
+      },
+      "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_704e47c3",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-09-13T13:21:23Z",
+      "side": 1,
+      "message": "This code with this else clause introduced in commit 8d48722b documented by JIRA 498. Itis required to for downstream builds for RHEL, Centos and Fedora.\n\nThe else clause is taken by the following steps:\n1. make pkg-srpm\nThis results in a file, vpp/extras/rpm/vpp-17.10-rc0-xxx-g\u003ccommit\u003e.src.rpm\n2. On the same or a different system execute the following:\nrpm --rebuild \u003cpath to\u003e/vpp-17.10-rc0-xxx-g\u003ccommit\u003e.src.rpm",
+      "parentUuid": "3a4b7175_488618bb",
+      "range": {
+        "startLine": 284,
+        "startChar": 0,
+        "endLine": 289,
+        "endChar": 45
+      },
+      "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_502c6bab",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-09-13T13:21:23Z",
+      "side": 1,
+      "message": "No problem. Your comments are captured in this gerrit. I am sorry it took so long to respond to you and Dave.",
+      "parentUuid": "3a4b7175_99cfc0b0",
+      "range": {
+        "startLine": 284,
+        "startChar": 0,
+        "endLine": 289,
+        "endChar": 45
+      },
+      "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
