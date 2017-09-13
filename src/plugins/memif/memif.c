@@ -83,7 +83,7 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
     {
       clib_error_t *e = 0;
       mif->local_disc_string = vec_dup (err->what);
-      if (mif->conn_fd > -1)
+      if (mif->sock && clib_socket_is_connected (mif->sock))
 	e = memif_msg_send_disconnect (mif, err);
       clib_error_free (e);
     }
@@ -94,17 +94,21 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
     vnet_hw_interface_set_flags (vnm, mif->hw_if_index, 0);
 
   /* close connection socket */
-  if (mif->conn_clib_file_index != ~0)
+  if (mif->sock)
     {
       memif_socket_file_t *msf = vec_elt_at_index (mm->socket_files,
 						   mif->socket_file_index);
-      hash_unset (msf->dev_instance_by_fd, mif->conn_fd);
-      memif_file_del_by_index (mif->conn_clib_file_index);
-      mif->conn_clib_file_index = ~0;
+      hash_unset (msf->dev_instance_by_fd, mif->sock->fd);
+      memif_socket_close (&mif->sock);
     }
-  else if (mif->conn_fd > -1)
-    close (mif->conn_fd);
-  mif->conn_fd = -1;
+  else if (mif->sock)
+    {
+      clib_error_t *err;
+      err = clib_socket_close (mif->sock);
+      if (err)
+	clib_error_report (err);
+      clib_mem_free (mif->sock);
+    }
 
   vec_foreach_index (i, mif->rx_queues)
   {
@@ -137,8 +141,6 @@ memif_disconnect (memif_if_t * mif, clib_error_t * err)
       close (mr->fd);
   }
   vec_free (mif->regions);
-
-  mif->remote_pid = 0;
   vec_free (mif->remote_name);
   vec_free (mif->remote_if_name);
   clib_fifo_free (mif->msg_queue);
@@ -362,19 +364,14 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
   memif_main_t *mm = &memif_main;
   memif_if_t *mif;
-  struct sockaddr_un sun;
-  int sockfd;
+  clib_socket_t *sock;
   uword *event_data = 0, event_type;
   u8 enabled = 0;
   f64 start_time, last_run_duration = 0, now;
+  clib_error_t *err;
 
-  sockfd = socket (AF_UNIX, SOCK_SEQPACKET, 0);
-  if (sockfd < 0)
-    {
-      DBG_UNIX_LOG ("socket AF_UNIX");
-      return 0;
-    }
-  sun.sun_family = AF_UNIX;
+  sock = clib_mem_alloc (sizeof (clib_socket_t));
+  memset (sock, 0, sizeof (clib_socket_t));
 
   while (1)
     {
@@ -425,33 +422,29 @@ memif_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 
 	  if (mif->flags & MEMIF_IF_FLAG_IS_SLAVE)
 	    {
-	      strncpy (sun.sun_path, (char *) msf->filename,
-		       sizeof (sun.sun_path) - 1);
+              memset (sock, 0, sizeof(clib_socket_t));
+	      sock->config = (char *) msf->filename;
+              sock->flags = CLIB_SOCKET_F_IS_CLIENT| CLIB_SOCKET_F_SEQPACKET;
 
-	      if (connect
-		  (sockfd, (struct sockaddr *) &sun,
-		   sizeof (struct sockaddr_un)) == 0)
+              if ((err = clib_socket_init (sock)))
+		{
+	          clib_error_free (err);
+		}
+	      else
 	        {
 		  clib_file_t t = { 0 };
 
-		  mif->conn_fd = sockfd;
 		  t.read_function = memif_slave_conn_fd_read_ready;
 		  t.write_function = memif_slave_conn_fd_write_ready;
 		  t.error_function = memif_slave_conn_fd_error;
-		  t.file_descriptor = mif->conn_fd;
+		  t.file_descriptor = sock->fd;
 		  t.private_data = mif->dev_instance;
-		  memif_file_add (&mif->conn_clib_file_index, &t);
-		  hash_set (msf->dev_instance_by_fd, mif->conn_fd, mif->dev_instance);
+		  memif_file_add (&sock->private_data, &t);
+		  hash_set (msf->dev_instance_by_fd, sock->fd, mif->dev_instance);
 
 		  mif->flags |= MEMIF_IF_FLAG_CONNECTING;
-
-		  /* grab another fd */
-		  sockfd = socket (AF_UNIX, SOCK_SEQPACKET, 0);
-		  if (sockfd < 0)
-		    {
-		      DBG_UNIX_LOG ("socket AF_UNIX");
-		      return 0;
-		    }
+		  mif->sock = sock;
+                  sock = clib_mem_alloc (sizeof(clib_socket_t));
 	        }
 	    }
         }));
@@ -506,21 +499,29 @@ memif_delete_if (vlib_main_t * vm, memif_if_t * mif)
     {
       if (msf->is_listener)
 	{
-	  uword *x;
-	  memif_file_del_by_index (msf->clib_file_index);
-	  vec_foreach (x, msf->pending_file_indices)
+	  int i;
+	  vec_foreach_index (i, msf->pending_clients)
 	  {
-	    memif_file_del_by_index (*x);
+	    memif_socket_close (msf->pending_clients + i);
 	  }
-	  vec_free (msf->pending_file_indices);
+	  memif_socket_close (&msf->sock);
+	  vec_free (msf->pending_clients);
 	}
       mhash_free (&msf->dev_instance_by_id);
       hash_free (msf->dev_instance_by_fd);
       mhash_unset (&mm->socket_file_index_by_filename, msf->filename, 0);
       vec_free (msf->filename);
+      if (msf->sock)
+	{
+	  err = clib_socket_close (msf->sock);
+	  if (err)
+	    clib_error_report (err);
+	  clib_mem_free (msf->sock);
+	}
       pool_put (mm->socket_files, msf);
     }
 
+  memif_socket_close (&mif->sock);
   memset (mif, 0, sizeof (*mif));
   pool_put (mm->interfaces, mif);
 
@@ -625,7 +626,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 		  sizeof (memif_interface_id_t));
       msf->dev_instance_by_fd = hash_create (0, sizeof (uword));
       msf->filename = socket_filename;
-      msf->fd = -1;
       msf->is_listener = (args->is_master != 0);
       socket_filename = 0;
       mhash_set (&mm->socket_file_index_by_filename, msf->filename,
@@ -639,8 +639,6 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   mif->socket_file_index = msf - mm->socket_files;
   mif->id = args->id;
   mif->sw_if_index = mif->hw_if_index = mif->per_interface_next_index = ~0;
-  mif->conn_clib_file_index = ~0;
-  mif->conn_fd = -1;
   mif->mode = args->mode;
   if (args->secret)
     mif->secret = vec_dup (args->secret);
@@ -701,33 +699,22 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
   /* If this is new one, start listening */
   if (msf->is_listener && msf->ref_cnt == 0)
     {
-      struct sockaddr_un un = { 0 };
       struct stat file_stat;
-      int on = 1;
+      clib_socket_t *s = clib_mem_alloc (sizeof (clib_socket_t));
 
-      if ((msf->fd = socket (AF_UNIX, SOCK_SEQPACKET, 0)) < 0)
+      ASSERT (msf->sock == 0);
+      msf->sock = s;
+
+      memset (s, 0, sizeof (clib_socket_t));
+      s->config = (char *) msf->filename;
+      s->flags = CLIB_SOCKET_F_IS_SERVER |
+	CLIB_SOCKET_F_ALLOW_GROUP_WRITE |
+	CLIB_SOCKET_F_SEQPACKET | CLIB_SOCKET_F_PASSCRED;
+
+      if ((error = clib_socket_init (s)))
 	{
+	  clib_error_report (error);
 	  ret = VNET_API_ERROR_SYSCALL_ERROR_4;
-	  goto error;
-	}
-
-      un.sun_family = AF_UNIX;
-      strncpy ((char *) un.sun_path, (char *) msf->filename,
-	       sizeof (un.sun_path) - 1);
-
-      if (setsockopt (msf->fd, SOL_SOCKET, SO_PASSCRED, &on, sizeof (on)) < 0)
-	{
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_5;
-	  goto error;
-	}
-      if (bind (msf->fd, (struct sockaddr *) &un, sizeof (un)) == -1)
-	{
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_6;
-	  goto error;
-	}
-      if (listen (msf->fd, 1) == -1)
-	{
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_7;
 	  goto error;
 	}
 
@@ -737,12 +724,11 @@ memif_create_if (vlib_main_t * vm, memif_create_if_args_t * args)
 	  goto error;
 	}
 
-      msf->clib_file_index = ~0;
       clib_file_t template = { 0 };
       template.read_function = memif_conn_fd_accept_ready;
-      template.file_descriptor = msf->fd;
+      template.file_descriptor = msf->sock->fd;
       template.private_data = mif->socket_file_index;
-      memif_file_add (&msf->clib_file_index, &template);
+      memif_file_add (&msf->sock->private_data, &template);
     }
 
   msf->ref_cnt++;
