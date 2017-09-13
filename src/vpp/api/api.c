@@ -299,16 +299,15 @@ static uword
 resolver_process (vlib_main_t * vm,
 		  vlib_node_runtime_t * rt, vlib_frame_t * f)
 {
-  uword event_type;
-  uword *event_data = 0;
-  f64 timeout = 100.0;
-  int i;
+  volatile f64 timeout = 100.0;
+  volatile uword *event_data;
 
   while (1)
     {
       vlib_process_wait_for_event_or_clock (vm, timeout);
 
-      event_type = vlib_process_get_events (vm, &event_data);
+      uword event_type =
+	vlib_process_get_events (vm, (uword **) & event_data);
 
       switch (event_type)
 	{
@@ -321,12 +320,12 @@ resolver_process (vlib_main_t * vm,
 	  break;
 
 	case IP4_ARP_EVENT:
-	  for (i = 0; i < vec_len (event_data); i++)
+	  for (int i = 0; i < vec_len (event_data); i++)
 	    handle_ip4_arp_event (event_data[i]);
 	  break;
 
 	case IP6_ND_EVENT:
-	  for (i = 0; i < vec_len (event_data); i++)
+	  for (int i = 0; i < vec_len (event_data); i++)
 	    handle_ip6_nd_event (event_data[i]);
 	  break;
 
@@ -1352,26 +1351,15 @@ arp_change_data_callback (u32 pool_index, u8 * new_mac,
     return 1;
 
   event = pool_elt_at_index (am->arp_events, pool_index);
-  /* *INDENT-OFF* */
-  if (memcmp (&event->new_mac, new_mac, sizeof (event->new_mac)))
+  if (eth_mac_equal (event->new_mac, new_mac) &&
+      sw_if_index == ntohl (event->sw_if_index))
     {
-      clib_memcpy (event->new_mac, new_mac, sizeof (event->new_mac));
+      return 1;
     }
-  else
-    {				/* same mac */
-      if (sw_if_index == ntohl(event->sw_if_index) &&
-	  (!event->mac_ip ||
-	   /* for BD case, also check IP address with 10 sec timeout */
-	   (address == event->address &&
-	    (now - arp_event_last_time) < 10.0)))
-	return 1;
-    }
-  /* *INDENT-ON* */
 
-  arp_event_last_time = now;
+  clib_memcpy (event->new_mac, new_mac, sizeof (event->new_mac));
   event->sw_if_index = htonl (sw_if_index);
-  if (event->mac_ip)
-    event->address = address;
+  arp_event_last_time = now;
   return 0;
 }
 
@@ -1391,7 +1379,7 @@ nd_change_data_callback (u32 pool_index, u8 * new_mac,
   event = pool_elt_at_index (am->nd_events, pool_index);
 
   /* *INDENT-OFF* */
-  if (memcmp (&event->new_mac, new_mac, sizeof (event->new_mac)))
+  if (memcmp (event->new_mac, new_mac, sizeof (event->new_mac)))
     {
       clib_memcpy (event->new_mac, new_mac, sizeof (event->new_mac));
     }
@@ -1438,13 +1426,122 @@ nd_change_delete_callback (u32 pool_index, u8 * notused)
   return 0;
 }
 
+static vlib_node_registration_t wc_ip4_arp_process_node;
+
+static uword
+wc_ip4_arp_process (vlib_main_t * vm,
+		    vlib_node_runtime_t * rt, vlib_frame_t * f)
+{
+  /* These cross the longjmp  boundry (vlib_process_wait_for_event)
+   * and need to be volatile - to prevent them from being optimized into
+   * a register - which could change during suspension */
+
+  volatile wc_arp_report_t prev = { 0 };
+  volatile f64 last = vlib_time_now (vm);
+
+  while (1)
+    {
+      vlib_process_wait_for_event (vm);
+      uword event_type;
+      wc_arp_report_t *event_data =
+	vlib_process_get_event_data (vm, &event_type);
+
+      f64 now = vlib_time_now (vm);
+      for (int i = 0; i < vec_len (event_data); i++)
+	{
+	  /* discard dup event */
+	  if (prev.ip4 == event_data[i].ip4 &&
+	      eth_mac_equal ((u8 *) prev.mac, event_data[i].mac) &&
+	      prev.sw_if_index == event_data[i].sw_if_index &&
+	      (now - last) < 10.0)
+	    {
+	      continue;
+	    }
+	  prev = event_data[i];
+	  last = now;
+	  vpe_client_registration_t *reg;
+          /* *INDENT-OFF* */
+          pool_foreach(reg, vpe_api_main.wc_ip4_arp_events_registrations,
+          ({
+	    unix_shared_memory_queue_t *q;
+            q = vl_api_client_index_to_input_queue (reg->client_index);
+	    if (q && q->cursize < q->maxsize)
+	      {
+	        vl_api_ip4_arp_event_t * event = vl_msg_api_alloc (sizeof *event);
+	        memset (event, 0, sizeof *event);
+	        event->_vl_msg_id = htons (VL_API_IP4_ARP_EVENT);
+	        event->client_index = reg->client_index;
+	        event->pid = reg->client_pid;
+	        event->mac_ip = 1;
+	        event->address = event_data[i].ip4;
+	        event->sw_if_index = htonl(event_data[i].sw_if_index);
+	        memcpy(event->new_mac, event_data[i].mac, sizeof event->new_mac);
+	        vl_msg_api_send_shmem (q, (u8 *) &event);
+	      }
+          }));
+          /* *INDENT-ON* */
+	}
+      vlib_process_put_event_data (vm, event_data);
+    }
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (wc_ip4_arp_process_node,static) = {
+  .function = wc_ip4_arp_process,
+  .type = VLIB_NODE_TYPE_PROCESS,
+  .name = "wildcard-ip4-arp-publisher-process",
+};
+/* *INDENT-ON* */
+
 static void
 vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
   vnet_main_t *vnm = vnet_get_main ();
   vl_api_want_ip4_arp_events_reply_t *rmp;
-  int rv;
+  int rv = 0;
+
+  if (mp->address == 0)
+    {
+      uword *p =
+	hash_get (am->wc_ip4_arp_events_registration_hash, mp->client_index);
+      vpe_client_registration_t *rp;
+      if (p)
+	{
+	  if (mp->enable_disable)
+	    {
+	      clib_warning ("pid %d: already enabled...", mp->pid);
+	      rv = VNET_API_ERROR_INVALID_REGISTRATION;
+	      goto reply;
+	    }
+	  else
+	    {
+	      rp =
+		pool_elt_at_index (am->wc_ip4_arp_events_registrations, p[0]);
+	      pool_put (am->wc_ip4_arp_events_registrations, rp);
+	      hash_unset (am->wc_ip4_arp_events_registration_hash,
+			  mp->client_index);
+	      if (pool_elts (am->wc_ip4_arp_events_registrations) == 0)
+		wc_arp_set_publisher_node (~0);
+	      goto reply;
+	    }
+	}
+      if (mp->enable_disable == 0)
+	{
+	  clib_warning ("pid %d: already disabled...", mp->pid);
+	  rv = VNET_API_ERROR_INVALID_REGISTRATION;
+	  goto reply;
+	}
+      pool_get (am->wc_ip4_arp_events_registrations, rp);
+      rp->client_index = mp->client_index;
+      rp->client_pid = mp->pid;
+      hash_set (am->wc_ip4_arp_events_registration_hash, rp->client_index,
+		rp - am->wc_ip4_arp_events_registrations);
+      wc_arp_set_publisher_node (wc_ip4_arp_process_node.index);
+      goto reply;
+    }
 
   if (mp->enable_disable)
     {
@@ -1459,12 +1556,12 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
       if (rv)
 	{
 	  pool_put (am->arp_events, event);
-	  goto out;
+	  goto reply;
 	}
       memset (event, 0, sizeof (*event));
 
       /* Python API expects events to have no context */
-      event->_vl_msg_id = ntohs (VL_API_IP4_ARP_EVENT);
+      event->_vl_msg_id = htons (VL_API_IP4_ARP_EVENT);
       event->client_index = mp->client_index;
       event->address = mp->address;
       event->pid = mp->pid;
@@ -1479,7 +1576,7 @@ vl_api_want_ip4_arp_events_t_handler (vl_api_want_ip4_arp_events_t * mp)
 	 vpe_resolver_process_node.index,
 	 IP4_ARP_EVENT, ~0 /* pool index */ , 0 /* is_add */ );
     }
-out:
+reply:
   REPLY_MACRO (VL_API_WANT_IP4_ARP_EVENTS_REPLY);
 }
 
@@ -2072,13 +2169,10 @@ vpe_api_init (vlib_main_t * vm)
 
   am->vlib_main = vm;
   am->vnet_main = vnet_get_main ();
-  am->interface_events_registration_hash = hash_create (0, sizeof (uword));
-  am->to_netconf_server_registration_hash = hash_create (0, sizeof (uword));
-  am->from_netconf_server_registration_hash = hash_create (0, sizeof (uword));
-  am->to_netconf_client_registration_hash = hash_create (0, sizeof (uword));
-  am->from_netconf_client_registration_hash = hash_create (0, sizeof (uword));
-  am->oam_events_registration_hash = hash_create (0, sizeof (uword));
-  am->bfd_events_registration_hash = hash_create (0, sizeof (uword));
+#define _(a)                                                    \
+  am->a##_registration_hash = hash_create (0, sizeof (uword));
+  foreach_registration_hash;
+#undef _
 
   vl_set_memory_region_name ("/vpe-api");
   vl_enable_disable_memory_api (vm, 1 /* enable it */ );
@@ -2219,10 +2313,7 @@ format_arp_event (u8 * s, va_list * args)
   vl_api_ip4_arp_event_t *event = va_arg (*args, vl_api_ip4_arp_event_t *);
 
   s = format (s, "pid %d: ", ntohl (event->pid));
-  if (event->mac_ip)
-    s = format (s, "bd mac/ip4 binding events");
-  else
-    s = format (s, "resolution for %U", format_ip4_address, &event->address);
+  s = format (s, "resolution for %U", format_ip4_address, &event->address);
   return s;
 }
 
@@ -2257,6 +2348,13 @@ show_ip_arp_nd_events_fn (vlib_main_t * vm,
   pool_foreach (arp_event, am->arp_events,
   ({
     vlib_cli_output (vm, "%U", format_arp_event, arp_event);
+  }));
+
+  vpe_client_registration_t *reg;
+  pool_foreach(reg, am->wc_ip4_arp_events_registrations,
+  ({
+    vlib_cli_output (vm, "pid %d: bd mac/ip4 binding events",
+                     ntohl (reg->client_pid));
   }));
 
   pool_foreach (nd_event, am->nd_events,
