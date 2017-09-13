@@ -101,11 +101,11 @@ class VppPapiProvider(object):
     def wait_for_event(self, timeout, name=None):
         """ Wait for and return next event. """
         if name:
-            self.test_class.logger.debug("Expecting event within %ss",
-                                         timeout)
-        else:
             self.test_class.logger.debug("Expecting event '%s' within %ss",
                                          name, timeout)
+        else:
+            self.test_class.logger.debug("Expecting event within %ss",
+                                         timeout)
         if self._events:
             self.test_class.logger.debug("Not waiting, event already queued")
         limit = time.time() + timeout
@@ -418,6 +418,12 @@ class VppPapiProvider(object):
                          'is_ipv6': is_ipv6,
                          'ip_address': ip,
                          'mac_address': mac})
+
+    def want_ip4_arp_events(self, enable_disable=1, address=0):
+        return self.api(self.papi.want_ip4_arp_events,
+                        {'enable_disable': enable_disable,
+                         'address': address,
+                         'pid': os.getpid(), })
 
     def l2fib_add_del(self, mac, bd_id, sw_if_index, is_add=1, static_mac=0,
                       filter_mac=0, bvi_mac=0):

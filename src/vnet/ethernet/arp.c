@@ -92,6 +92,8 @@ typedef struct
 
   /* Proxy arp vector */
   ethernet_proxy_arp_t *proxy_arps;
+
+  uword wc_ip4_arp_publisher_node;
 } ethernet_arp_main_t;
 
 static ethernet_arp_main_t ethernet_arp_main;
@@ -106,6 +108,7 @@ typedef struct
 #define ETHERNET_ARP_ARGS_REMOVE (1<<0)
 #define ETHERNET_ARP_ARGS_FLUSH  (1<<1)
 #define ETHERNET_ARP_ARGS_POPULATE  (1<<2)
+#define ETHERNET_ARP_ARGS_WC_PUB  (1<<3)
 } vnet_arp_set_ip4_over_ethernet_rpc_args_t;
 
 static const u8 vrrp_prefix[] = { 0x00, 0x00, 0x5E, 0x00, 0x01 };
@@ -540,7 +543,7 @@ arp_adj_fib_add (ethernet_arp_ip4_entry_t * e, u32 fib_index)
   fib_table_lock (fib_index, FIB_PROTOCOL_IP4, FIB_SOURCE_ADJ);
 }
 
-int
+static int
 vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 					 vnet_arp_set_ip4_over_ethernet_rpc_args_t
 					 * args)
@@ -1507,6 +1510,49 @@ vnet_arp_populate_ip4_over_ethernet (vnet_main_t * vnm,
   return 0;
 }
 
+/**
+ * @brief publish wildcard arp event
+ * @param sw_if_index The interface on which the ARP entires are acted
+ */
+static int
+vnet_arp_wc_publish (u32 sw_if_index, void *a_arg)
+{
+  ethernet_arp_ip4_over_ethernet_address_t *a = a_arg;
+  vnet_arp_set_ip4_over_ethernet_rpc_args_t args = {
+    .flags = ETHERNET_ARP_ARGS_WC_PUB,
+    .sw_if_index = sw_if_index,
+    .a = *a
+  };
+
+  vl_api_rpc_call_main_thread (set_ip4_over_ethernet_rpc_callback,
+			       (u8 *) & args, sizeof (args));
+  return 0;
+}
+
+static void
+vnet_arp_wc_publish_internal (vnet_main_t * vnm,
+			      vnet_arp_set_ip4_over_ethernet_rpc_args_t *
+			      args)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  if (am->wc_ip4_arp_publisher_node == (uword) ~ 0)
+    return;
+  wc_arp_report_t *r =
+    vlib_process_signal_event_data (vm, am->wc_ip4_arp_publisher_node, 1, 1,
+				    sizeof *r);
+  r->ip4 = args->a.ip4.as_u32;
+  r->sw_if_index = args->sw_if_index;
+  memcpy (r->mac, args->a.ethernet, sizeof r->mac);
+}
+
+void
+wc_arp_set_publisher_node (uword node_index)
+{
+  ethernet_arp_main_t *am = &ethernet_arp_main;
+  am->wc_ip4_arp_publisher_node = node_index;
+}
+
 /*
  * arp_add_del_interface_address
  *
@@ -1652,6 +1698,7 @@ ethernet_arp_init (vlib_main_t * vm)
 
   am->pending_resolutions_by_address = hash_create (0, sizeof (uword));
   am->mac_changes_by_address = hash_create (0, sizeof (uword));
+  am->wc_ip4_arp_publisher_node = (uword) ~ 0;
 
   /* don't trace ARP error packets */
   {
@@ -1795,6 +1842,8 @@ set_ip4_over_ethernet_rpc_callback (vnet_arp_set_ip4_over_ethernet_rpc_args_t
     vnet_arp_flush_ip4_over_ethernet_internal (vm, a);
   else if (a->flags & ETHERNET_ARP_ARGS_POPULATE)
     vnet_arp_populate_ip4_over_ethernet_internal (vm, a);
+  else if (a->flags & ETHERNET_ARP_ARGS_WC_PUB)
+    vnet_arp_wc_publish_internal (vm, a);
   else
     vnet_arp_set_ip4_over_ethernet_internal (vm, a);
 }
@@ -2277,31 +2326,9 @@ arp_term_l2bd (vlib_main_t * vm,
 
 	  /* Check if anyone want ARP request events for L2 BDs */
 	  {
-	    pending_resolution_t *mc;
 	    ethernet_arp_main_t *am = &ethernet_arp_main;
-	    uword *p = hash_get (am->mac_changes_by_address, 0);
-	    if (p)
-	      {
-		u32 next_index = p[0];
-		while (next_index != (u32) ~ 0)
-		  {
-		    int (*fp) (u32, u8 *, u32, u32);
-		    int rv = 1;
-		    mc = pool_elt_at_index (am->mac_changes, next_index);
-		    fp = mc->data_callback;
-		    /* Call the callback, return 1 to suppress dup events */
-		    if (fp)
-		      rv = (*fp) (mc->data,
-				  arp0->ip4_over_ethernet[0].ethernet,
-				  sw_if_index0,
-				  arp0->ip4_over_ethernet[0].ip4.as_u32);
-		    /* Signal the resolver process */
-		    if (rv == 0)
-		      vlib_process_signal_event (vm, mc->node_index,
-						 mc->type_opaque, mc->data);
-		    next_index = mc->next_index;
-		  }
-	      }
+	    if (am->wc_ip4_arp_publisher_node != (uword) ~ 0)
+	      vnet_arp_wc_publish (sw_if_index0, &arp0->ip4_over_ethernet[0]);
 	  }
 
 	  /* lookup BD mac_by_ip4 hash table for MAC entry */
