@@ -1495,7 +1495,7 @@ static void
 	}
 
       rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-      if (!rp->stats_registrations & INTERFACE_COMBINED_COUNTERS)	// Client but doesn't want this.
+      if (!(rp->stats_registrations & INTERFACE_COMBINED_COUNTERS))	// Client but doesn't want this.
 	{
 	  clib_warning
 	    ("pid %d: already disabled for interface COMBINED stats...",
@@ -1576,7 +1576,7 @@ vl_api_want_ip4_fib_stats_t_handler (vl_api_want_ip4_fib_stats_t * mp)
 	}
 
       rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-      if (!rp->stats_registrations & IP4_FIB_COUNTERS)	// Client but doesn't want this.
+      if (!(rp->stats_registrations & IP4_FIB_COUNTERS))	// Client but doesn't want this.
 	{
 	  clib_warning ("pid %d: already disabled for interface ip4 fib...",
 			mp->pid);
@@ -1656,7 +1656,7 @@ vl_api_want_ip6_fib_stats_t_handler (vl_api_want_ip6_fib_stats_t * mp)
 	}
 
       rp = pool_elt_at_index (sm->stats_registrations, p[0]);
-      if (!rp->stats_registrations & IP6_FIB_COUNTERS)	// Client but doesn't want this.
+      if (!(rp->stats_registrations & IP6_FIB_COUNTERS))	// Client but doesn't want this.
 	{
 	  clib_warning ("pid %d: already disabled for interface ip6 fib...",
 			mp->pid);
