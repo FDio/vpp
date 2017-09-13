@@ -393,13 +393,6 @@ dpdk_buffer_free_no_next (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
 }
 
 static void
-dpdk_pktmbuf_pool_init (struct rte_mempool *mp, void *opaque_arg)
-{
-  rte_mempool_set_ops_byname (mp, RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL);
-  rte_pktmbuf_pool_init (mp, opaque_arg);
-}
-
-static void
 dpdk_packet_template_init (vlib_main_t * vm,
 			   void *vt,
 			   void *packet_data,
@@ -435,7 +428,7 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
   u8 *pool_name;
   unsigned elt_size;
   u32 size;
-  int i;
+  i32 i, ret;
 
   vec_validate_aligned (dm->pktmbuf_pools, socket_id, CLIB_CACHE_LINE_BYTES);
 
@@ -455,7 +448,6 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
   error =
     vlib_physmem_region_alloc (vm, (char *) pool_name, size, socket_id,
 			       VLIB_PHYSMEM_F_HAVE_BUFFERS, &pri);
-
   if (error)
     clib_error_report (error);
 
@@ -465,28 +457,47 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
     VLIB_BUFFER_DATA_SIZE;
   priv.mbp_priv.mbuf_priv_size = VLIB_BUFFER_HDR_SIZE;
 
-  rmp = rte_mempool_xmem_create ((char *) pool_name,	/* pool name */
-				 num_mbufs,	/* number of mbufs */
-				 elt_size, 512,	/* cache size */
-				 sizeof (dpdk_mempool_private_t),	/* private data size */
-				 dpdk_pktmbuf_pool_init,	/* mp init */
-				 &priv,	/* mp init arg */
-				 rte_pktmbuf_init,	/* obj init */
-				 0,	/* obj init arg */
-				 socket_id, 0,	/* flags */
-				 pr->mem,
-				 pr->page_table,
-				 pr->n_pages, pr->log2_page_size);
-
-  vec_free (pool_name);
-
+#if 0
+  /* Check that pg_shift parameter is valid. */
+  if (pg_shift > MEMPOOL_PG_SHIFT_MAX) {
+	  rte_errno = EINVAL;
+	  return NULL;
+  }
+#endif
+  rmp = rte_mempool_create_empty ((char *) pool_name,	  /* pool name */
+				  num_mbufs,		  /* number of mbufs */
+				  elt_size,
+				  512,			  /* cache size */
+				  sizeof (dpdk_mempool_private_t), /* private data size */
+				  socket_id,
+				  0);	/* flags */
   if (rmp)
     {
-      dpdk_mempool_private_t *privp = rte_mempool_get_priv (rmp);
-      privp->region_index = pri;
-      dm->pktmbuf_pools[socket_id] = rmp;
-      return 0;
+      rte_mempool_set_ops_byname (rmp, RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL);
+
+      /* call the mempool priv initializer */
+      rte_pktmbuf_pool_init (rmp, &priv);
+
+      ret = rte_mempool_populate_phys_tab(rmp, pr->mem, pr->page_table,
+					  pr->n_pages, pr->log2_page_size,
+					  NULL, NULL);
+      if (ret == (i32) rmp->size)
+	{
+	  /* call the object initializers */
+	  rte_mempool_obj_iter (rmp, rte_pktmbuf_init, 0);
+
+	  dpdk_mempool_private_t *privp = rte_mempool_get_priv (rmp);
+	  privp->region_index = pri;
+
+	  dm->pktmbuf_pools[socket_id] = rmp;
+
+	  return 0;
+	}
+
+      rte_mempool_free (rmp);
     }
+
+  vec_free (pool_name);
 
   /* no usable pool for this socket, try to use pool from another one */
   for (i = 0; i < vec_len (dm->pktmbuf_pools); i++)

@@ -23,6 +23,8 @@
 #include <dpdk/device/dpdk.h>
 #include <vlib/pci/pci.h>
 
+#include <rte_ring.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -1482,6 +1484,78 @@ VLIB_REGISTER_NODE (dpdk_process_node,static) = {
 };
 /* *INDENT-ON* */
 
+static struct rte_mempool_ops *
+get_ops_by_name (i8 *ops_name)
+{
+  u32 i;
+
+  for (i = 0; i < rte_mempool_ops_table.num_ops; i++)
+    {
+      if (!strcmp (ops_name, rte_mempool_ops_table.ops[i].name))
+	return &rte_mempool_ops_table.ops[i];
+    }
+
+  return 0;
+}
+
+static int
+dpdk_ring_alloc (struct rte_mempool *mp)
+{
+  u32 rg_flags = 0, count;
+  i32 ret;
+  i8 rg_name[RTE_RING_NAMESIZE];
+  struct rte_ring *r;
+
+  ret = snprintf (rg_name, sizeof (rg_name), RTE_MEMPOOL_MZ_FORMAT, mp->name);
+  if (ret < 0 || ret >= (i32) sizeof (rg_name))
+    return -ENAMETOOLONG;
+
+  /* ring flags */
+  if (mp->flags & MEMPOOL_F_SP_PUT)
+    rg_flags |= RING_F_SP_ENQ;
+  if (mp->flags & MEMPOOL_F_SC_GET)
+    rg_flags |= RING_F_SC_DEQ;
+
+  count = rte_align32pow2 (mp->size + 1);
+  /*
+   * Allocate the ring that will be used to store objects.
+   * Ring functions will return appropriate errors if we are
+   * running as a secondary process etc., so no checks made
+   * in this function for that condition.
+   */
+  /* XXX can we get memory from the right socket? */
+  r = clib_mem_alloc_aligned (rte_ring_get_memsize (count),
+			      CLIB_CACHE_LINE_BYTES);
+
+  /* XXX rte_ring_lookup will not work */
+
+  ret = rte_ring_init (r, rg_name, count, rg_flags);
+  if (ret)
+    return ret;
+
+  mp->pool_data = r;
+
+  return 0;
+}
+
+static void
+set_custom_mempool_ring_alloc (void)
+{
+  struct rte_mempool_ops *ops = NULL;
+
+  ops = get_ops_by_name ("ring_sp_sc");
+  ops->alloc = dpdk_ring_alloc;
+
+  ops = get_ops_by_name ("ring_mp_sc");
+  ops->alloc = dpdk_ring_alloc;
+
+  ops = get_ops_by_name ("ring_sp_mc");
+  ops->alloc = dpdk_ring_alloc;
+
+  ops = get_ops_by_name ("ring_mp_mc");
+  ops->alloc = dpdk_ring_alloc;
+}
+
 static clib_error_t *
 dpdk_init (vlib_main_t * vm)
 {
@@ -1523,6 +1597,8 @@ dpdk_init (vlib_main_t * vm)
 
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;
+
+  set_custom_mempool_ring_alloc ();
 
   /* init CLI */
   if ((error = vlib_call_init_function (vm, dpdk_cli_init)))
