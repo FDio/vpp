@@ -1,0 +1,142 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_9092e355",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/CallbackApiExample.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-09-13T11:45:07Z",
+      "side": 1,
+      "message": "shouldn\u0027t we have onShowVersionReply to be consistent with onSwInterfaceEvent?",
+      "range": {
+        "startLine": 76,
+        "startChar": 20,
+        "endLine": 76,
+        "endChar": 33
+      },
+      "revId": "a693bfa065a728c43389704e3c23f57e46109474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_f00fd7df",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/CallbackJVppFacadeNotificationExample.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-09-13T11:45:07Z",
+      "side": 1,
+      "message": "we should either update NotificationUtils or remove it",
+      "range": {
+        "startLine": 42,
+        "startChar": 23,
+        "endLine": 51,
+        "endChar": 27
+      },
+      "revId": "a693bfa065a728c43389704e3c23f57e46109474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_f0dd9743",
+        "filename": "src/vpp-api/java/jvpp/gen/jvppgen/callback_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-09-13T11:45:07Z",
+      "side": 1,
+      "message": "on Line 68 is_details is negated and used agains underscodered function name. Are you sure conditions are ok? And if they are, couldn\u0027t you simplify them.",
+      "range": {
+        "startLine": 73,
+        "startChar": 11,
+        "endLine": 73,
+        "endChar": 55
+      },
+      "revId": "a693bfa065a728c43389704e3c23f57e46109474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_d014dbf6",
+        "filename": "src/vpp-api/java/jvpp/gen/jvppgen/callback_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-09-13T11:45:07Z",
+      "side": 1,
+      "message": "perhaps we could document why we skip certain message types\nand what mapping we produce",
+      "range": {
+        "startLine": 68,
+        "startChar": 6,
+        "endLine": 74,
+        "endChar": 37
+      },
+      "revId": "a693bfa065a728c43389704e3c23f57e46109474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_90e4230e",
+        "filename": "src/vpp-api/java/jvpp/gen/jvppgen/dto_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 98,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-09-13T11:45:07Z",
+      "side": 1,
+      "message": "please remove if it is not used anymore",
+      "range": {
+        "startLine": 98,
+        "startChar": 11,
+        "endLine": 98,
+        "endChar": 83
+      },
+      "revId": "a693bfa065a728c43389704e3c23f57e46109474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_d0b97bea",
+        "filename": "src/vpp-api/java/jvpp/gen/jvppgen/jvpp_c_gen.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 81,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-09-13T11:45:07Z",
+      "side": 1,
+      "message": "Does we need notification special case here?\nPlease check other places as well, as this patch should make counters/event messages handled as other reply messages.",
+      "range": {
+        "startLine": 81,
+        "startChar": 12,
+        "endLine": 81,
+        "endChar": 42
+      },
+      "revId": "a693bfa065a728c43389704e3c23f57e46109474",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
