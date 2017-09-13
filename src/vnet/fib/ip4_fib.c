@@ -492,7 +492,7 @@ ip4_show_fib (vlib_main_t * vm,
     ip4_address_t matching_address;
     u32 matching_mask = 32;
     int i, table_id = -1, fib_index = ~0;
-    int detail = 0;
+    int detail = 0, once;
 
     verbose = 1;
     matching = 0;
@@ -541,17 +541,26 @@ ip4_show_fib (vlib_main_t * vm,
                    fib->index,
                    format_ip_flow_hash_config,
                    fib_table->ft_flow_hash_config);
+	once = 0;
 	FOR_EACH_FIB_SOURCE(source)
         {
             if (0 != fib_table->ft_locks[source])
             {
-                s = format(s, "%U:%d, ",
-                           format_fib_source, source,
-                           fib_table->ft_locks[source]);
+                if (!once)
+                {
+                    once = 1;
+                    s = format(s, "%U:%d", format_fib_source, source,
+                               fib_table->ft_locks[source]);
+                }
+                else
+                {
+                    s = format(s, ", %U:%d", format_fib_source, source,
+                       fib_table->ft_locks[source]);
+                }
             }
         }
         s = format (s, "]");
-        vlib_cli_output (vm, "%V", s);
+        vlib_cli_output (vm, "%v", s);
         vec_free(s);
 
 	/* Show summary? */
