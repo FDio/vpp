@@ -543,6 +543,8 @@ int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
 				       uword type_opaque,
 				       uword data, int is_add);
 
+void wc_arp_set_publisher_node (uword inode_index);
+
 void ethernet_arp_change_mac (u32 sw_if_index);
 void ethernet_ndp_change_mac (u32 sw_if_index);
 
@@ -556,6 +558,13 @@ const u8 *ethernet_ip4_mcast_dst_addr (void);
 const u8 *ethernet_ip6_mcast_dst_addr (void);
 
 extern vlib_node_registration_t ethernet_input_node;
+
+typedef struct
+{
+  u32 sw_if_index;
+  u32 ip4;
+  u8 mac[6];
+} wc_arp_report_t;
 
 #endif /* included_ethernet_h */
 
