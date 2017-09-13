@@ -838,6 +838,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
               return VNET_API_ERROR_UNSPECIFIED;
             }
         }
+      vec_free(m->locals);
 
       pool_put (sm->static_mappings, m);
     }
