@@ -60,6 +60,19 @@ _(WANT_IP6_NBR_STATS, want_ip6_nbr_stats) \
 _(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats)
 
 
+#define vl_msg_name_crc_list
+#include <vpp/stats/stats.api.h>
+#undef vl_msg_name_crc_list
+
+static void
+setup_message_id_table (api_main_t * am)
+{
+#define _(id,n,crc) \
+  vl_msg_api_add_msg_name_crc (am, #n "_" #crc, id);
+  foreach_vl_msg_name_crc_stats;
+#undef _
+}
+
 /* These constants ensure msg sizes <= 1024, aka ring allocation */
 #define SIMPLE_COUNTER_BATCH_SIZE	126
 #define COMBINED_COUNTER_BATCH_SIZE	63
@@ -1835,6 +1848,11 @@ stats_init (vlib_main_t * vm)
   am->message_bounce[VL_API_VNET_IP6_FIB_COUNTERS] = 1;
   am->message_bounce[VL_API_VNET_IP4_NBR_COUNTERS] = 1;
   am->message_bounce[VL_API_VNET_IP6_NBR_COUNTERS] = 1;
+
+  /*
+   * Set up the (msg_name, crc, message-id) table
+   */
+  setup_message_id_table (am);
 
   return 0;
 }
