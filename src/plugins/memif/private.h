@@ -40,7 +40,6 @@
 
 #if MEMIF_DEBUG == 1
 #define memif_file_add(a, b) do {					\
-  ASSERT (*a == ~0);							\
   *a = clib_file_add (&file_main, b);					\
   clib_warning ("clib_file_add fd %d private_data %u idx %u",		\
 		(b)->file_descriptor, (b)->private_data, *a);		\
@@ -57,7 +56,6 @@
 } while (0)
 #else
 #define memif_file_add(a, b) do {					\
-  ASSERT (*a == ~0);							\
   *a = clib_file_add (&file_main, b);					\
 } while (0)
 #define memif_file_del(a) clib_file_del(&file_main, a)
@@ -67,9 +65,8 @@
 typedef struct
 {
   u8 *filename;
-  int fd;
-  uword clib_file_index;
-  uword *pending_file_indices;
+  clib_socket_t *sock;
+  clib_socket_t **pending_clients;
   int ref_cnt;
   int is_listener;
 
@@ -138,9 +135,8 @@ typedef struct
   u32 per_interface_next_index;
 
   /* socket connection */
+  clib_socket_t *sock;
   uword socket_file_index;
-  int conn_fd;
-  uword conn_clib_file_index;
   memif_msg_fifo_elt_t *msg_queue;
   u8 *secret;
 
@@ -150,9 +146,6 @@ typedef struct
   memif_queue_t *tx_queues;
 
   /* remote info */
-  pid_t remote_pid;
-  uid_t remote_uid;
-  gid_t remote_gid;
   u8 *remote_name;
   u8 *remote_if_name;
 
@@ -241,6 +234,7 @@ clib_error_t *memif_connect (memif_if_t * mif);
 void memif_disconnect (memif_if_t * mif, clib_error_t * err);
 
 /* socket.c */
+void memif_socket_close (clib_socket_t ** sock);
 clib_error_t *memif_conn_fd_accept_ready (clib_file_t * uf);
 clib_error_t *memif_master_conn_fd_read_ready (clib_file_t * uf);
 clib_error_t *memif_slave_conn_fd_read_ready (clib_file_t * uf);
