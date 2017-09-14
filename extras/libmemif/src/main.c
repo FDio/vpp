@@ -512,8 +512,8 @@ memif_set_rx_mode (memif_conn_handle_t c, memif_rx_mode_t rx_mode,
   if (conn == NULL)
     return MEMIF_ERR_NOCONN;
   uint8_t num =
-    (conn->args.is_master) ? conn->run_args.num_s2m_rings : conn->run_args.
-    num_m2s_rings;
+    (conn->args.is_master) ? conn->run_args.num_s2m_rings : conn->
+    run_args.num_m2s_rings;
   if (qid >= num)
     return MEMIF_ERR_QID;
 
@@ -656,9 +656,9 @@ memif_create (memif_conn_handle_t * c, memif_conn_args_t * args,
 		}
 	      DBG ("creating socket file");
 	      ms = malloc (sizeof (memif_socket_t));
-	      ms->filename = malloc (strlen ((char *) conn->args.
-					     socket_filename) +
-				     sizeof (char));
+	      ms->filename =
+		malloc (strlen ((char *) conn->args.socket_filename) +
+			sizeof (char));
 	      memset (ms->filename, 0,
 		      strlen ((char *) conn->args.socket_filename) +
 		      sizeof (char));
@@ -842,17 +842,20 @@ memif_control_fd_handler (int fd, uint8_t events)
 	  if (((memif_connection_t *) e->data_struct)->on_interrupt != NULL)
 	    {
 	      num =
-		(((memif_connection_t *) e->data_struct)->args.
-		 is_master) ? ((memif_connection_t *) e->data_struct)->
-		run_args.num_s2m_rings : ((memif_connection_t *) e->
-					  data_struct)->run_args.
-		num_m2s_rings;
+		(((memif_connection_t *) e->data_struct)->
+		 args.is_master) ? ((memif_connection_t *) e->
+				    data_struct)->run_args.
+		num_s2m_rings : ((memif_connection_t *) e->data_struct)->
+		run_args.num_m2s_rings;
 	      for (i = 0; i < num; i++)
 		{
-		  if (((memif_connection_t *) e->data_struct)->rx_queues[i].
-		      int_fd == fd)
+		  if (((memif_connection_t *) e->data_struct)->
+		      rx_queues[i].int_fd == fd)
 		    {
-		      ((memif_connection_t *) e->data_struct)->on_interrupt ((void *) e->data_struct, ((memif_connection_t *) e->data_struct)->private_ctx, i);
+		      ((memif_connection_t *) e->data_struct)->
+			on_interrupt ((void *) e->data_struct,
+				      ((memif_connection_t *) e->
+				       data_struct)->private_ctx, i);
 		      return MEMIF_ERR_SUCCESS;
 		    }
 		}
@@ -879,24 +882,24 @@ memif_control_fd_handler (int fd, uint8_t events)
 	  if (events & MEMIF_FD_EVENT_READ)
 	    {
 	      err =
-		((memif_connection_t *) e->data_struct)->read_fn (e->
-								  data_struct);
+		((memif_connection_t *) e->data_struct)->
+		read_fn (e->data_struct);
 	      if (err != MEMIF_ERR_SUCCESS)
 		return err;
 	    }
 	  if (events & MEMIF_FD_EVENT_WRITE)
 	    {
 	      err =
-		((memif_connection_t *) e->data_struct)->write_fn (e->
-								   data_struct);
+		((memif_connection_t *) e->data_struct)->
+		write_fn (e->data_struct);
 	      if (err != MEMIF_ERR_SUCCESS)
 		return err;
 	    }
 	  if (events & MEMIF_FD_EVENT_ERROR)
 	    {
 	      err =
-		((memif_connection_t *) e->data_struct)->error_fn (e->
-								   data_struct);
+		((memif_connection_t *) e->data_struct)->
+		error_fn (e->data_struct);
 	      if (err != MEMIF_ERR_SUCCESS)
 		return err;
 	    }
@@ -990,8 +993,8 @@ memif_disconnect_internal (memif_connection_t * c)
   if (c->tx_queues != NULL)
     {
       num =
-	(c->args.is_master) ? c->run_args.num_m2s_rings : c->run_args.
-	num_s2m_rings;
+	(c->args.is_master) ? c->run_args.num_m2s_rings : c->
+	run_args.num_s2m_rings;
       for (i = 0; i < num; i++)
 	{
 	  mq = &c->tx_queues[i];
@@ -1011,8 +1014,8 @@ memif_disconnect_internal (memif_connection_t * c)
   if (c->rx_queues != NULL)
     {
       num =
-	(c->args.is_master) ? c->run_args.num_s2m_rings : c->run_args.
-	num_m2s_rings;
+	(c->args.is_master) ? c->run_args.num_s2m_rings : c->
+	run_args.num_m2s_rings;
       for (i = 0; i < num; i++)
 	{
 	  mq = &c->rx_queues[i];
@@ -1164,8 +1167,8 @@ memif_connect1 (memif_connection_t * c)
     }
 
   num =
-    (c->args.is_master) ? c->run_args.num_m2s_rings : c->run_args.
-    num_s2m_rings;
+    (c->args.is_master) ? c->run_args.num_m2s_rings : c->
+    run_args.num_s2m_rings;
   for (i = 0; i < num; i++)
     {
       mq = &c->tx_queues[i];
@@ -1182,8 +1185,8 @@ memif_connect1 (memif_connection_t * c)
 	}
     }
   num =
-    (c->args.is_master) ? c->run_args.num_s2m_rings : c->run_args.
-    num_m2s_rings;
+    (c->args.is_master) ? c->run_args.num_s2m_rings : c->
+    run_args.num_m2s_rings;
   for (i = 0; i < num; i++)
     {
       mq = &c->rx_queues[i];
@@ -1336,7 +1339,7 @@ memif_init_regions_and_queues (memif_connection_t * conn)
 int
 memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 		    memif_buffer_t * bufs, uint16_t count,
-		    uint16_t * count_out)
+		    uint16_t * count_out, uint16_t size)
 {
   memif_connection_t *c = (memif_connection_t *) conn;
   if (c == NULL)
@@ -1344,17 +1347,18 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
   if (c->fd < 0)
     return MEMIF_ERR_DISCONNECTED;
   uint8_t num =
-    (c->args.is_master) ? c->run_args.num_m2s_rings : c->run_args.
-    num_s2m_rings;
+    (c->args.is_master) ? c->run_args.num_m2s_rings : c->
+    run_args.num_s2m_rings;
   if (qid >= num)
     return MEMIF_ERR_QID;
   memif_queue_t *mq = &c->tx_queues[qid];
   memif_ring_t *ring = mq->ring;
   memif_buffer_t *b0, *b1;
+  uint8_t chain_buf0, chain_buf1;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
   uint16_t s0, s1, ns;
   *count_out = 0;
-  int err = MEMIF_ERR_SUCCESS;	/* 0 */
+  int i, err = MEMIF_ERR_SUCCESS;	/* 0 */
 
   if (ring->tail != ring->head)
     {
@@ -1374,39 +1378,86 @@ memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
       while ((count > 2) && (ns > 2))
 	{
 	  s0 = (ring->head + mq->alloc_bufs + *count_out) & mask;
-	  s1 = (ring->head + mq->alloc_bufs + *count_out + 1) & mask;
+	  chain_buf0 = size / ring->desc[s0].buffer_length;
+	  if (((size % ring->desc[s0].buffer_length) != 0) || (size == 0))
+	    chain_buf0++;
+
+	  if (chain_buf0 > ns)
+	    break;
+
+	  s1 = (ring->head + mq->alloc_bufs + *count_out + chain_buf0) & mask;
+	  chain_buf1 = size / ring->desc[s1].buffer_length;
+	  if (((size % ring->desc[s1].buffer_length) != 0) || (size == 0))
+	    chain_buf1++;
+
+	  if ((chain_buf0 + chain_buf1) > ns)
+	    break;
 
 	  b0 = (bufs + *count_out);
 	  b1 = (bufs + *count_out + 1);
 
 	  b0->desc_index = s0;
 	  b1->desc_index = s1;
-	  b0->buffer_len = ring->desc[s0].buffer_length;
-	  b1->buffer_len = ring->desc[s1].buffer_length;
+	  b0->buffer_len = ring->desc[s0].buffer_length * chain_buf0;
+	  b1->buffer_len = ring->desc[s1].buffer_length * chain_buf1;
 	  /* TODO: support multiple regions -> ring descriptor contains region index */
 	  b0->data = c->regions->shm + ring->desc[s0].offset;
 	  b1->data = c->regions->shm + ring->desc[s1].offset;
 
+	  for (i = 0; i < (memif_min (chain_buf0, chain_buf1) - 1); i++)
+	    {
+	      ring->desc[(s0 + i) & mask].flags |= MEMIF_DESC_FLAG_NEXT;
+	      ring->desc[(s1 + i) & mask].flags |= MEMIF_DESC_FLAG_NEXT;
+	      DBG ("allocating chained buffers");
+	    }
+
+	  if (chain_buf0 > chain_buf1)
+	    {
+	      for (; i < (chain_buf0 - 1); i++)
+		ring->desc[(s0 + i) & mask].flags |= MEMIF_DESC_FLAG_NEXT;
+	    }
+	  else
+	    {
+	      for (; i < (chain_buf1 - 1); i++)
+		ring->desc[(s1 + i) & mask].flags |= MEMIF_DESC_FLAG_NEXT;
+	    }
+
+	  mq->alloc_bufs += chain_buf0 + chain_buf1;
+
 	  DBG ("allocated ring slots %u, %u", s0, s1);
 	  count -= 2;
-	  ns -= 2;
+	  ns -= chain_buf0 + chain_buf1;
 	  *count_out += 2;
 	}
       s0 = (ring->head + mq->alloc_bufs + *count_out) & mask;
 
       b0 = (bufs + *count_out);
 
+      chain_buf0 = size / ring->desc[s0].buffer_length;
+      if (((size % ring->desc[s0].buffer_length) != 0) || (size == 0))
+	chain_buf0++;
+
+      if (chain_buf0 > ns)
+	break;
+
       b0->desc_index = s0;
-      b0->buffer_len = ring->desc[s0].buffer_length;
+      b0->buffer_len = ring->desc[s0].buffer_length * chain_buf0;
       b0->data = c->regions->shm + ring->desc[s0].offset;
+
+      for (i = 0; i < (chain_buf0 - 1); i++)
+	{
+	  ring->desc[(s0 + i) & mask].flags |= MEMIF_DESC_FLAG_NEXT;
+	  DBG ("allocating chained buffers");
+	}
+
+      mq->alloc_bufs += chain_buf0;
 
       DBG ("allocated ring slot %u", s0);
       count--;
-      ns--;
+      ns -= chain_buf0;
       *count_out += 1;
     }
 
-  mq->alloc_bufs += *count_out;
   DBG ("allocated: %u/%u bufs. Total %u allocated bufs", *count_out, count,
        mq->alloc_bufs);
 
@@ -1430,8 +1481,8 @@ memif_buffer_free (memif_conn_handle_t conn, uint16_t qid,
   if (c->fd < 0)
     return MEMIF_ERR_DISCONNECTED;
   uint8_t num =
-    (c->args.is_master) ? c->run_args.num_s2m_rings : c->run_args.
-    num_m2s_rings;
+    (c->args.is_master) ? c->run_args.num_s2m_rings : c->
+    run_args.num_m2s_rings;
   if (qid >= num)
     return MEMIF_ERR_QID;
   libmemif_main_t *lm = &libmemif_main;
@@ -1439,6 +1490,7 @@ memif_buffer_free (memif_conn_handle_t conn, uint16_t qid,
   memif_ring_t *ring = mq->ring;
   uint16_t tail = ring->tail;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
+  uint8_t chain_buf0, chain_buf1;
   memif_buffer_t *b0, *b1;
   *count_out = 0;
 
@@ -1451,22 +1503,35 @@ memif_buffer_free (memif_conn_handle_t conn, uint16_t qid,
 	{
 	  b0 = (bufs + *count_out);
 	  b1 = (bufs + *count_out + 1);
-	  tail = (b0->desc_index + 1) & mask;
-	  tail = (b1->desc_index + 1) & mask;
+	  chain_buf0 =
+	    b0->buffer_len / ring->desc[b0->desc_index].buffer_length;
+	  if ((b0->buffer_len % ring->desc[b0->desc_index].buffer_length) !=
+	      0)
+	    chain_buf0++;
+	  chain_buf1 =
+	    b1->buffer_len / ring->desc[b1->desc_index].buffer_length;
+	  if ((b1->buffer_len % ring->desc[b1->desc_index].buffer_length) !=
+	      0)
+	    chain_buf1++;
+	  tail = (b0->desc_index + chain_buf0) & mask;
+	  tail = (b1->desc_index + chain_buf1) & mask;
 	  b0->data = NULL;
 	  b1->data = NULL;
 
 	  count -= 2;
 	  *count_out += 2;
-	  mq->alloc_bufs -= 2;
+	  mq->alloc_bufs -= chain_buf0 + chain_buf1;
 	}
       b0 = (bufs + *count_out);
-      tail = (b0->desc_index + 1) & mask;
+      chain_buf0 = b0->buffer_len / ring->desc[b0->desc_index].buffer_length;
+      if ((b0->buffer_len % ring->desc[b0->desc_index].buffer_length) != 0)
+	chain_buf0++;
+      tail = (b0->desc_index + chain_buf0) & mask;
       b0->data = NULL;
 
       count--;
       *count_out += 1;
-      mq->alloc_bufs--;
+      mq->alloc_bufs -= chain_buf0;
     }
   MEMIF_MEORY_BARRIER ();
   ring->tail = tail;
@@ -1484,33 +1549,94 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
   if (c->fd < 0)
     return MEMIF_ERR_DISCONNECTED;
   uint8_t num =
-    (c->args.is_master) ? c->run_args.num_m2s_rings : c->run_args.
-    num_s2m_rings;
+    (c->args.is_master) ? c->run_args.num_m2s_rings : c->
+    run_args.num_s2m_rings;
   if (qid >= num)
     return MEMIF_ERR_QID;
   memif_queue_t *mq = &c->tx_queues[qid];
   memif_ring_t *ring = mq->ring;
   uint16_t head = ring->head;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
+  uint8_t chain_buf0, chain_buf1;
   *tx = 0;
+  uint16_t curr_buf = 0;
   memif_buffer_t *b0, *b1;
+  int i;
 
   while (count)
     {
       while (count > 2)
 	{
-	  b0 = (bufs + *tx);
-	  b1 = (bufs + *tx + 1);
-	  ring->desc[b0->desc_index].length = b0->data_len;
-	  ring->desc[b1->desc_index].length = b1->data_len;
+	  b0 = (bufs + curr_buf);
+	  b1 = (bufs + curr_buf + 1);
+	  chain_buf0 =
+	    b0->buffer_len / ring->desc[b0->desc_index].buffer_length;
+	  if ((b0->buffer_len % ring->desc[b0->desc_index].buffer_length) !=
+	      0)
+	    chain_buf0++;
 
+	  chain_buf1 =
+	    b1->buffer_len / ring->desc[b1->desc_index].buffer_length;
+	  if ((b1->buffer_len % ring->desc[b1->desc_index].buffer_length) !=
+	      0)
+	    chain_buf1++;
+
+	  for (i = 0; i < memif_min (chain_buf0, chain_buf1); i++)
+	    {
+	      ring->desc[(b0->desc_index + i) & mask].length = b0->data_len;
+	      ring->desc[(b1->desc_index + i) & mask].length = b1->data_len;
 #ifdef MEMIF_DBG_SHM
-	  print_bytes (b0->data, b0->data_len, DBG_TX_BUF);
-	  print_bytes (b1->data, b1->data_len, DBG_TX_BUF);
+	      print_bytes (b0->data +
+			   ring->desc[(b0->desc_index +
+				       i) & mask].buffer_length *
+			   (chain_buf0 - 1),
+			   ring->desc[(b0->desc_index +
+				       i) & mask].buffer_length, DBG_TX_BUF);
+	      print_bytes (b1->data +
+			   ring->desc[(b1->desc_index +
+				       i) & mask].buffer_length *
+			   (chain_buf1 - 1),
+			   ring->desc[(b1->desc_index +
+				       i) & mask].buffer_length, DBG_TX_BUF);
 #endif
+	    }
 
-	  head = (b0->desc_index + 1) & mask;
-	  head = (b1->desc_index + 1) & mask;
+	  if (chain_buf0 > chain_buf1)
+	    {
+	      for (; i < chain_buf0; i++)
+		{
+		  ring->desc[(b0->desc_index + i) & mask].length =
+		    b0->data_len;
+#ifdef MEMIF_DBG_SHM
+		  print_bytes (b0->data +
+			       ring->desc[(b0->desc_index +
+					   i) & mask].buffer_length *
+			       (chain_buf0 - 1),
+			       ring->desc[(b0->desc_index +
+					   i) & mask].buffer_length,
+			       DBG_TX_BUF);
+#endif
+		}
+	    }
+	  else
+	    {
+	      for (; i < chain_buf1; i++)
+		{
+		  ring->desc[b1->desc_index + i].length = b1->data_len;
+#ifdef MEMIF_DBG_SHM
+		  print_bytes (b1->data +
+			       ring->desc[(b1->desc_index +
+					   i) & mask].buffer_length *
+			       (chain_buf1 - 1),
+			       ring->desc[(b1->desc_index +
+					   i) & mask].buffer_length,
+			       DBG_TX_BUF);
+#endif
+		}
+	    }
+
+	  head = (b0->desc_index + chain_buf0) & mask;
+	  head = (b1->desc_index + chain_buf1) & mask;
 
 	  b0->data = NULL;
 	  b0->data_len = 0;
@@ -1518,28 +1644,43 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
 	  b1->data_len = 0;
 
 	  count -= 2;
-	  *tx += 2;
+	  *tx += chain_buf0 + chain_buf1;
+	  curr_buf += 2;
 	}
 
       b0 = (bufs + *tx);
-      ring->desc[b0->desc_index].length = b0->data_len;
+      chain_buf0 = b0->buffer_len / ring->desc[b0->desc_index].buffer_length;
+      if ((b0->buffer_len % ring->desc[b0->desc_index].buffer_length) != 0)
+	chain_buf0++;
 
+      for (i = 0; i < chain_buf0; i++)
+	{
+	  ring->desc[(b0->desc_index + i) & mask].length = b0->data_len;
 #ifdef MEMIF_DBG_SHM
-      print_bytes (b0->data, b0->data_len, DBG_TX_BUF);
+	  print_bytes (b0->data +
+		       ring->desc[(b0->desc_index + i) & mask].buffer_length *
+		       (chain_buf0 - 1),
+		       ring->desc[(b0->desc_index + i) & mask].buffer_length,
+		       DBG_TX_BUF);
 #endif
+	}
 
-      head = (b0->desc_index + 1) & mask;
+      head = (b0->desc_index + chain_buf0) & mask;
 
       b0->data = NULL;
       b0->data_len = 0;
 
       count--;
-      *tx += 1;
+      *tx += chain_buf0;
+      curr_buf++;
     }
   MEMIF_MEORY_BARRIER ();
   ring->head = head;
 
   mq->alloc_bufs -= *tx;
+
+  /* TODO: return num of buffers and packets */
+  *tx = curr_buf;
 
   if ((ring->flags & MEMIF_RING_FLAG_MASK_INT) == 0)
     {
@@ -1562,8 +1703,8 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
   if (c->fd < 0)
     return MEMIF_ERR_DISCONNECTED;
   uint8_t num =
-    (c->args.is_master) ? c->run_args.num_s2m_rings : c->run_args.
-    num_m2s_rings;
+    (c->args.is_master) ? c->run_args.num_s2m_rings : c->
+    run_args.num_m2s_rings;
   if (qid >= num)
     return MEMIF_ERR_QID;
   memif_queue_t *mq = &c->rx_queues[qid];
@@ -1572,7 +1713,9 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
   uint16_t ns;
   uint16_t mask = (1 << mq->log2_ring_size) - 1;
   memif_buffer_t *b0, *b1;
+  uint16_t curr_buf = 0;
   *rx = 0;
+  int i;
 
   uint64_t b;
   ssize_t r = read (mq->int_fd, &b, sizeof (b));
@@ -1591,48 +1734,78 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
     {
       while ((ns > 2) && (count > 2))
 	{
-	  b0 = (bufs + *rx);
-	  b1 = (bufs + *rx + 1);
+	  b0 = (bufs + curr_buf);
+	  b1 = (bufs + curr_buf + 1);
 
 	  b0->desc_index = mq->last_head;
-	  b1->desc_index = mq->last_head + 1;
-	  b0->data = memif_get_buffer (conn, ring, mq->last_head);
-	  b1->data = memif_get_buffer (conn, ring, mq->last_head + 1);
-	  b0->data_len = ring->desc[mq->last_head].length;
-	  b1->data_len = ring->desc[mq->last_head + 1].length;
-	  b0->buffer_len = ring->desc[mq->last_head].buffer_length;
-	  b1->buffer_len = ring->desc[mq->last_head + 1].buffer_length;
-
+	  i = 0;
+	  do
+	    {
+	      b0->data = memif_get_buffer (conn, ring, mq->last_head);
+	      b0->data_len = ring->desc[mq->last_head].length;
+	      b0->buffer_len = ring->desc[mq->last_head].buffer_length;
 #ifdef MEMIF_DBG_SHM
-	  print_bytes (b0->data, b0->data_len, DBG_RX_BUF);
-	  print_bytes (b1->data, b1->data_len, DBG_RX_BUF);
+	      print_bytes (b0->data +
+			   ring->desc[b0->desc_index].buffer_length * i++,
+			   ring->desc[b0->desc_index].buffer_length,
+			   DBG_TX_BUF);
 #endif
+	      mq->last_head = (mq->last_head + 1) & mask;
+	      ns--;
+	      *rx += 1;
+	    }
+	  while (ring->desc[mq->last_head].flags & MEMIF_DESC_FLAG_NEXT);
 
-	  mq->last_head = (mq->last_head + 2) & mask;
+	  b1->desc_index = mq->last_head;
+	  i = 0;
+	  do
+	    {
+	      b1->data = memif_get_buffer (conn, ring, mq->last_head);
+	      b1->data_len = ring->desc[mq->last_head].length;
+	      b1->buffer_len = ring->desc[mq->last_head].buffer_length;
+#ifdef MEMIF_DBG_SHM
+	      print_bytes (b1->data +
+			   ring->desc[b1->desc_index].buffer_length * i++,
+			   ring->desc[b1->desc_index].buffer_length,
+			   DBG_TX_BUF);
+#endif
+	      mq->last_head = (mq->last_head + 1) & mask;
+	      ns--;
+	      *rx += 1;
+	    }
+	  while (ring->desc[mq->last_head].flags & MEMIF_DESC_FLAG_NEXT);
 
-	  ns -= 2;
 	  count -= 2;
-	  *rx += 2;
+	  curr_buf += 2;
 	}
-      b0 = (bufs + *rx);
+      b0 = (bufs + curr_buf);
 
       b0->desc_index = mq->last_head;
-      b0->data = memif_get_buffer (conn, ring, mq->last_head);
-      b0->data_len = ring->desc[mq->last_head].length;
-      b0->buffer_len = ring->desc[mq->last_head].buffer_length;
-
+      i = 0;
+      do
+	{
+	  b0->data = memif_get_buffer (conn, ring, mq->last_head);
+	  b0->data_len = ring->desc[mq->last_head].length;
+	  b0->buffer_len = ring->desc[mq->last_head].buffer_length;
 #ifdef MEMIF_DBG_SHM
-      print_bytes (b0->data, b0->data_len, DBG_RX_BUF);
+	  print_bytes (b0->data +
+		       ring->desc[b0->desc_index].buffer_length * i++,
+		       ring->desc[b0->desc_index].buffer_length, DBG_TX_BUF);
 #endif
+	  mq->last_head = (mq->last_head + 1) & mask;
+	  ns--;
+	  *rx += 1;
+	}
+      while (ring->desc[mq->last_head].flags & MEMIF_DESC_FLAG_NEXT);
 
-      mq->last_head = (mq->last_head + 1) & mask;
-
-      ns--;
       count--;
-      *rx += 1;
+      curr_buf++;
     }
 
   mq->alloc_bufs += *rx;
+
+  /* TODO: return num of buffers and packets */
+  *rx = curr_buf;
 
   if (ns)
     {
@@ -1722,8 +1895,8 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
     err = MEMIF_ERR_NOBUF_DET;
 
   md->rx_queues_num =
-    (c->args.is_master) ? c->run_args.num_s2m_rings : c->run_args.
-    num_m2s_rings;
+    (c->args.is_master) ? c->run_args.num_s2m_rings : c->
+    run_args.num_m2s_rings;
 
   l1 = sizeof (memif_queue_details_t) * md->rx_queues_num;
   if (l0 + l1 <= buflen)
@@ -1742,8 +1915,8 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
     }
 
   md->tx_queues_num =
-    (c->args.is_master) ? c->run_args.num_m2s_rings : c->run_args.
-    num_s2m_rings;
+    (c->args.is_master) ? c->run_args.num_m2s_rings : c->
+    run_args.num_s2m_rings;
 
   l1 = sizeof (memif_queue_details_t) * md->tx_queues_num;
   if (l0 + l1 <= buflen)
@@ -1776,8 +1949,8 @@ memif_get_queue_efd (memif_conn_handle_t conn, uint16_t qid, int *efd)
   if (c->fd < 0)
     return MEMIF_ERR_DISCONNECTED;
   uint8_t num =
-    (c->args.is_master) ? c->run_args.num_s2m_rings : c->run_args.
-    num_m2s_rings;
+    (c->args.is_master) ? c->run_args.num_s2m_rings : c->
+    run_args.num_m2s_rings;
   if (qid >= num)
     return MEMIF_ERR_QID;
 

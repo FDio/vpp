@@ -33,8 +33,6 @@
 #include <socket.h>
 #include <memif.h>
 
-#define memif_min(a,b) ((a < b) ? (a) : (b))
-
 /* sends msg to socket */
 static_fn int
 memif_msg_send (int fd, memif_msg_t * msg, int afd)

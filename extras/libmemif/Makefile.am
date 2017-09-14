@@ -17,6 +17,9 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = -g -DMEMIF_DBG -DICMP_DBG
 
+SRCS_C := $(shell find . -name "*.c" )
+SRCS_H := $(shell find . -name "*.h" )
+
 .PHONY: release
 release:
 	$(MAKE) AM_CPPFLAGS="-O3"
@@ -26,6 +29,12 @@ doc:
 	@echo Building doxygen documentation...
 	doxygen doxygen.conf
 	@echo Doxygen documentation built in docs directory.
+
+.PHONY: fixstyle
+fixstyle:
+	@echo Fixing code style...
+	indent $(SRCS_C) $(SRCS_H)
+	@echo Code style fixed!
 
 #
 # unit_test
