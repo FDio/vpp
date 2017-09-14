@@ -99,8 +99,8 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_ESTABLISH_TIME      750	/* 75s */
 #define TCP_SYN_RCVD_TIME	600	/* 60s */
 #define TCP_2MSL_TIME           300	/* 30s */
-#define TCP_CLOSEWAIT_TIME	20	/* 0.1s */
-#define TCP_CLEANUP_TIME	5	/* 0.5s Time to wait before cleanup */
+#define TCP_CLOSEWAIT_TIME	10	/* 1s */
+#define TCP_CLEANUP_TIME	10	/* 1s Time to wait before cleanup */
 #define TCP_TIMER_PERSIST_MIN	2	/* 0.2s */
 
 #define TCP_RTO_MAX 60 * THZ	/* Min max RTO (60s) as per RFC6298 */

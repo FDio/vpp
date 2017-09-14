@@ -33,6 +33,7 @@ typedef enum
 
 #define FIFO_SEGMENT_F_IS_PRIVATE 	1 << 0	/* Private segment */
 #define FIFO_SEGMENT_F_IS_MAIN_HEAP	1 << 1	/* Segment is main heap */
+#define FIFO_SEGMENT_F_IS_PREALLOCATED	1 << 2 	/* Segment is preallocated */
 
 typedef struct
 {

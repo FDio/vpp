@@ -982,22 +982,28 @@ tcp_flush_frames_to_output (u8 thread_index)
 void
 tcp_send_fin (tcp_connection_t * tc)
 {
-  vlib_buffer_t *b;
-  u32 bi;
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_t *b;
+  u32 bi;
+  u8 fin_snt = 0;
+
 
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
     return;
   b = vlib_get_buffer (vm, bi);
-  /* buffer will be initialized by in tcp_make_fin */
+  fin_snt = tc->flags & TCP_CONN_FINSNT;
+  if (fin_snt)
+    tc->snd_nxt = tc->snd_una;
   tcp_make_fin (tc, b);
   tcp_enqueue_to_output_now (vm, b, bi, tc->c_is_ip4);
-  if (!(tc->flags & TCP_CONN_FINSNT))
+  if (!fin_snt)
     {
       tc->flags |= TCP_CONN_FINSNT;
       tc->flags &= ~TCP_CONN_FINPNDG;
-      tc->snd_nxt += 1;
+      /* Account for the FIN */
+      tc->snd_una_max += 1;
+      tc->snd_nxt = tc->snd_una_max;
     }
   tcp_retransmit_timer_force_update (tc);
   TCP_EVT_DBG (TCP_EVT_FIN_SENT, tc);
@@ -1412,7 +1418,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   else
     {
       ASSERT (tc->state == TCP_STATE_CLOSED);
-      clib_warning ("connection closed ...");
+      clib_warning ("connection state: %d", tc->state);
       return;
     }
 }

@@ -57,11 +57,12 @@ allocate_new_fifo_chunk (svm_fifo_segment_header_t * fsh,
 }
 
 static void
-preallocate_fifo_pairs (svm_fifo_segment_header_t * fsh,
+preallocate_fifo_pairs (svm_fifo_segment_private_t *s,
 			svm_fifo_segment_create_args_t * a)
 {
-  u32 rx_fifo_size, tx_fifo_size;
-  u32 rx_rounded_data_size, tx_rounded_data_size;
+  svm_fifo_segment_header_t * fsh = s->h;
+  u32 rx_fifo_size, tx_fifo_size, pairs_to_allocate;
+  u32 rx_rounded_data_size, tx_rounded_data_size, pair_size;
   svm_fifo_t *f;
   u8 *rx_fifo_space, *tx_fifo_space;
   int rx_freelist_index, tx_freelist_index;
@@ -97,10 +98,11 @@ preallocate_fifo_pairs (svm_fifo_segment_header_t * fsh,
     - max_log2 (FIFO_SEGMENT_MIN_FIFO_SIZE);
 
   /* Calculate space requirements */
-  rx_fifo_size = (sizeof (*f) + rx_rounded_data_size)
-    * a->preallocated_fifo_pairs;
-  tx_fifo_size = (sizeof (*f) + tx_rounded_data_size)
-    * a->preallocated_fifo_pairs;
+  pair_size = 2 * sizeof (*f) + rx_rounded_data_size + tx_rounded_data_size;
+  pairs_to_allocate = clib_min (s->ssvm.ssvm_size / pair_size,
+				a->preallocated_fifo_pairs);
+  rx_fifo_size = (sizeof(*f) + rx_rounded_data_size) * pairs_to_allocate;
+  tx_fifo_size = (sizeof(*f) + tx_rounded_data_size) * pairs_to_allocate;
 
   vec_validate_init_empty (fsh->free_fifos,
 			   clib_max (rx_freelist_index, tx_freelist_index),
@@ -139,7 +141,7 @@ preallocate_fifo_pairs (svm_fifo_segment_header_t * fsh,
 
   /* Carve rx fifo space */
   f = (svm_fifo_t *) rx_fifo_space;
-  for (i = 0; i < a->preallocated_fifo_pairs; i++)
+  for (i = 0; i < pairs_to_allocate; i++)
     {
       f->freelist_index = rx_freelist_index;
       f->next = fsh->free_fifos[rx_freelist_index];
@@ -149,7 +151,7 @@ preallocate_fifo_pairs (svm_fifo_segment_header_t * fsh,
     }
   /* Carve tx fifo space */
   f = (svm_fifo_t *) tx_fifo_space;
-  for (i = 0; i < a->preallocated_fifo_pairs; i++)
+  for (i = 0; i < pairs_to_allocate; i++)
     {
       f->freelist_index = tx_freelist_index;
       f->next = fsh->free_fifos[tx_freelist_index];
@@ -157,6 +159,9 @@ preallocate_fifo_pairs (svm_fifo_segment_header_t * fsh,
       tx_fifo_space += sizeof (*f) + tx_rounded_data_size;
       f = (svm_fifo_t *) tx_fifo_space;
     }
+
+  /* Account for the pairs allocated */
+  a->preallocated_fifo_pairs -= pairs_to_allocate;
 }
 
 /** (master) create an svm fifo segment */
@@ -200,7 +205,7 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
   sh->opaque[0] = fsh;
   s->h = fsh;
   fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
-  preallocate_fifo_pairs (fsh, a);
+  preallocate_fifo_pairs (s, a);
 
   ssvm_pop_heap (oldheap);
 
@@ -245,10 +250,6 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
       segment_count = a->private_segment_count;
     }
 
-  /* Spread preallocated fifo pairs across segments */
-  a->preallocated_fifo_pairs =
-    (a->preallocated_fifo_pairs + segment_count - 1) / segment_count;
-
   /* Allocate segments */
   for (i = 0; i < segment_count; i++)
     {
@@ -280,9 +281,11 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
 
       if (a->private_segment_count)
 	{
+	  if (i != 0)
+	    fsh->flags |= FIFO_SEGMENT_F_IS_PREALLOCATED;
 	  oldheap = clib_mem_get_heap ();
 	  clib_mem_set_heap (sh->heap);
-	  preallocate_fifo_pairs (fsh, a);
+	  preallocate_fifo_pairs (s, a);
 	  clib_mem_set_heap (oldheap);
 	}
       sh->ready = 1;
