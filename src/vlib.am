@@ -34,7 +34,6 @@ libvlib_la_SOURCES =				\
   vlib/init.c					\
   vlib/linux/pci.c				\
   vlib/linux/physmem.c				\
-  vlib/linux/sysfs.c				\
   vlib/main.c					\
   vlib/mc.c					\
   vlib/node.c					\
@@ -60,8 +59,6 @@ nobase_include_HEADERS +=			\
   vlib/global_funcs.h				\
   vlib/i2c.h					\
   vlib/init.h					\
-  vlib/linux/sysfs.h				\
-  vlib/linux/syscall.h				\
   vlib/main.h					\
   vlib/mc.h					\
   vlib/node_funcs.h				\

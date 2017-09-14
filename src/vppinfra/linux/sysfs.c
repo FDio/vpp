@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
+#include <vppinfra/clib.h>
+#include <vppinfra/clib_error.h>
+#include <vppinfra/format.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -22,7 +23,7 @@
 #include <dirent.h>
 
 clib_error_t *
-vlib_sysfs_write (char *file_name, char *fmt, ...)
+clib_sysfs_write (char *file_name, char *fmt, ...)
 {
   u8 *s;
   int fd;
@@ -46,7 +47,7 @@ vlib_sysfs_write (char *file_name, char *fmt, ...)
 }
 
 clib_error_t *
-vlib_sysfs_read (char *file_name, char *fmt, ...)
+clib_sysfs_read (char *file_name, char *fmt, ...)
 {
   unformat_input_t input;
   u8 *s = 0;
@@ -86,7 +87,7 @@ vlib_sysfs_read (char *file_name, char *fmt, ...)
 }
 
 u8 *
-vlib_sysfs_link_to_name (char *link)
+clib_sysfs_link_to_name (char *link)
 {
   char *p, buffer[64];
   unformat_input_t in;
@@ -113,7 +114,7 @@ vlib_sysfs_link_to_name (char *link)
 }
 
 clib_error_t *
-vlib_sysfs_set_nr_hugepages (unsigned int numa_node, int page_size, int nr)
+clib_sysfs_set_nr_hugepages (int numa_node, int page_size, int nr)
 {
   clib_error_t *error = 0;
   struct stat sb;
@@ -148,7 +149,7 @@ vlib_sysfs_set_nr_hugepages (unsigned int numa_node, int page_size, int nr)
 
   _vec_len (p) -= 1;
   p = format (p, "/hugepages/hugepages-%ukB/nr_hugepages%c", page_size, 0);
-  vlib_sysfs_write ((char *) p, "%d", nr);
+  clib_sysfs_write ((char *) p, "%d", nr);
 
 done:
   vec_free (p);
@@ -157,7 +158,7 @@ done:
 
 
 static clib_error_t *
-vlib_sysfs_get_xxx_hugepages (char *type, unsigned int numa_node,
+clib_sysfs_get_xxx_hugepages (char *type, int numa_node,
 			      int page_size, int *val)
 {
   clib_error_t *error = 0;
@@ -194,7 +195,7 @@ vlib_sysfs_get_xxx_hugepages (char *type, unsigned int numa_node,
   _vec_len (p) -= 1;
   p = format (p, "/hugepages/hugepages-%ukB/%s_hugepages%c", page_size,
 	      type, 0);
-  error = vlib_sysfs_read ((char *) p, "%d", val);
+  error = clib_sysfs_read ((char *) p, "%d", val);
 
 done:
   vec_free (p);
@@ -202,42 +203,41 @@ done:
 }
 
 clib_error_t *
-vlib_sysfs_get_free_hugepages (unsigned int numa_node, int page_size, int *v)
+clib_sysfs_get_free_hugepages (int numa_node, int page_size, int *v)
 {
-  return vlib_sysfs_get_xxx_hugepages ("free", numa_node, page_size, v);
+  return clib_sysfs_get_xxx_hugepages ("free", numa_node, page_size, v);
 }
 
 clib_error_t *
-vlib_sysfs_get_nr_hugepages (unsigned int numa_node, int page_size, int *v)
+clib_sysfs_get_nr_hugepages (int numa_node, int page_size, int *v)
 {
-  return vlib_sysfs_get_xxx_hugepages ("nr", numa_node, page_size, v);
+  return clib_sysfs_get_xxx_hugepages ("nr", numa_node, page_size, v);
 }
 
 clib_error_t *
-vlib_sysfs_get_surplus_hugepages (unsigned int numa_node, int page_size,
-				  int *v)
+clib_sysfs_get_surplus_hugepages (int numa_node, int page_size, int *v)
 {
-  return vlib_sysfs_get_xxx_hugepages ("surplus", numa_node, page_size, v);
+  return clib_sysfs_get_xxx_hugepages ("surplus", numa_node, page_size, v);
 }
 
 clib_error_t *
-vlib_sysfs_prealloc_hugepages (unsigned int numa_node, int page_size, int nr)
+clib_sysfs_prealloc_hugepages (int numa_node, int page_size, int nr)
 {
   clib_error_t *error = 0;
   int n, needed;
-  error = vlib_sysfs_get_free_hugepages (numa_node, page_size, &n);
+  error = clib_sysfs_get_free_hugepages (numa_node, page_size, &n);
   if (error)
     return error;
   needed = nr - n;
   if (needed <= 0)
     return 0;
 
-  error = vlib_sysfs_get_nr_hugepages (numa_node, page_size, &n);
+  error = clib_sysfs_get_nr_hugepages (numa_node, page_size, &n);
   if (error)
     return error;
   clib_warning ("pre-allocating %u additional %uK hugepages on numa node %u",
 		needed, page_size, numa_node);
-  return vlib_sysfs_set_nr_hugepages (numa_node, page_size, n + needed);
+  return clib_sysfs_set_nr_hugepages (numa_node, page_size, n + needed);
 }
 
 

@@ -33,7 +33,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
-#include <vlib/linux/syscall.h>
+#include <vppinfra/linux/syscall.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vpp/app/version.h>
