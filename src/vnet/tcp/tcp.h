@@ -99,8 +99,8 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_ESTABLISH_TIME      750	/* 75s */
 #define TCP_SYN_RCVD_TIME	600	/* 60s */
 #define TCP_2MSL_TIME           300	/* 30s */
-#define TCP_CLOSEWAIT_TIME	20	/* 0.1s */
-#define TCP_CLEANUP_TIME	5	/* 0.5s Time to wait before cleanup */
+#define TCP_CLOSEWAIT_TIME	10	/* 1s */
+#define TCP_CLEANUP_TIME	10	/* 1s Time to wait before cleanup */
 #define TCP_TIMER_PERSIST_MIN	2	/* 0.2s */
 
 #define TCP_RTO_MAX 60 * THZ	/* Min max RTO (60s) as per RFC6298 */
@@ -372,8 +372,10 @@ typedef struct _tcp_main
 
   /** per-worker tx buffer free lists */
   u32 **tx_buffers;
-  /** per-worker tx frames to 4/6 output nodes */
+  /** per-worker tx frames to tcp 4/6 output nodes */
   vlib_frame_t **tx_frames[2];
+  /** per-worker tx frames to ip 4/6 lookup nodes */
+  vlib_frame_t **ip_lookup_tx_frames[2];
 
   /* Per worker-thread timer wheel for connections timers */
   tw_timer_wheel_16t_2w_512sl_t *timer_wheels;

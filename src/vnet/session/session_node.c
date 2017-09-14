@@ -168,14 +168,18 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
       return 0;
     }
 
+  /* Check how much we can pull. */
+  max_dequeue0 = svm_fifo_max_dequeue (s0->server_tx_fifo);
+
   if (peek_data)
     {
-      /* Offset in rx fifo from where to peek data  */
+      /* Offset in rx fifo from where to peek data */
       tx_offset = transport_vft->tx_fifo_offset (tc0);
+      if (PREDICT_FALSE (tx_offset >= max_dequeue0))
+	max_dequeue0 = 0;
+      else
+	max_dequeue0 -= tx_offset;
     }
-
-  /* Check how much we can pull. If buffering, subtract the offset */
-  max_dequeue0 = svm_fifo_max_dequeue (s0->server_tx_fifo) - tx_offset;
 
   /* Nothing to read return */
   if (max_dequeue0 == 0)
@@ -276,7 +280,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (peek_data)
 	    {
 	      n_bytes_read = svm_fifo_peek (s0->server_tx_fifo, tx_offset,
-					    len_to_deq0, data0);
+		                            len_to_deq0, data0);
+	      if (n_bytes_read <= 0)
+		goto dequeue_fail;
 	      /* Keep track of progress locally, transport is also supposed to
 	       * increment it independently when pushing the header */
 	      tx_offset += n_bytes_read;
@@ -284,11 +290,10 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  else
 	    {
 	      n_bytes_read = svm_fifo_dequeue_nowait (s0->server_tx_fifo,
-						      len_to_deq0, data0);
+		                                      len_to_deq0, data0);
+	      if (n_bytes_read <= 0)
+		goto dequeue_fail;
 	    }
-
-	  if (n_bytes_read <= 0)
-	    goto dequeue_fail;
 
 	  b0->current_length = n_bytes_read;
 
@@ -616,7 +621,7 @@ skip_dequeue:
 	case FIFO_EVENT_APP_TX:
 	  s0 = session_event_get_session (e0, my_thread_index);
 
-	  if (CLIB_DEBUG && !s0)
+	  if (PREDICT_FALSE(!s0))
 	    {
 	      clib_warning ("It's dead, Jim!");
 	      continue;

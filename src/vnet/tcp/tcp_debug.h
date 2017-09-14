@@ -82,13 +82,7 @@ typedef enum _tcp_dbg_evt
  * Infra and evt track setup
  */
 
-#define TCP_DBG(_tc, _evt, _args...)					\
-{   		            						\
-    u8 *_tmp = 0;							\
-    _tmp = format(_tmp, "%U", format_tcp_connection_verbose, _tc);	\
-    clib_warning("%s", _tmp);						\
-    vec_free(_tmp);							\
-}
+#define TCP_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
 
 #define DECLARE_ETD(_tc, _e, _size)					\
   struct								\
@@ -240,6 +234,7 @@ typedef enum _tcp_dbg_evt
 #define TCP_EVT_DBG(_evt, _args...) CC(_evt, _HANDLER)(_args)
 #else
 #define TCP_EVT_DBG(_evt, _args...)
+#define TCP_DBG(_fmt, _args...)
 #endif
 
 /*

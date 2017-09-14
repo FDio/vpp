@@ -456,7 +456,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
 						   st);
   if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
-      clib_warning ("half-open was removed!");
+      //clib_warning ("half-open was removed!");
       return -1;
     }
 
@@ -735,6 +735,7 @@ session_send_session_evt_to_thread (u64 session_handle,
 				    u32 thread_index)
 {
   static u16 serial_number = 0;
+  u32 tries = 0;
   session_fifo_event_t evt;
   unix_shared_memory_queue_t *q;
 
@@ -744,20 +745,13 @@ session_send_session_evt_to_thread (u64 session_handle,
   evt.event_id = serial_number++;
 
   q = session_manager_get_vpp_event_queue (thread_index);
-
-  /* Based on request block (or not) for lack of space */
-  if (PREDICT_TRUE (q->cursize < q->maxsize))
+  while (unix_shared_memory_queue_add (q, (u8 *) &evt, 1))
     {
-      if (unix_shared_memory_queue_add (q, (u8 *) & evt,
-					0 /* do wait for mutex */ ))
+      if (tries++ == 3)
 	{
 	  clib_warning ("failed to enqueue evt");
+	  break;
 	}
-    }
-  else
-    {
-      clib_warning ("queue full");
-      return;
     }
 }
 

@@ -627,9 +627,11 @@ tcp_make_synack (tcp_connection_t * tc, vlib_buffer_t * b)
 }
 
 always_inline void
-tcp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
-			  u8 is_ip4)
+tcp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
+			  u8 is_ip4, u8 flush)
 {
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  u32 thread_index = vlib_get_thread_index ();
   u32 *to_next, next_index;
   vlib_frame_t *f;
 
@@ -641,13 +643,42 @@ tcp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 
   /* Send to IP lookup */
   next_index = is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
-  f = vlib_get_frame_to_node (vm, next_index);
+  if (VLIB_BUFFER_TRACE_TRAJECTORY > 0)
+    {
+      b->pre_data[0] = 2;
+      b->pre_data[1] = next_index;
+    }
 
-  /* Enqueue the packet */
+  f = tm->ip_lookup_tx_frames[!is_ip4][thread_index];
+  if (!f)
+    {
+      f = vlib_get_frame_to_node (vm, next_index);
+      ASSERT (f);
+      tm->ip_lookup_tx_frames[!is_ip4][thread_index] = f;
+    }
+
   to_next = vlib_frame_vector_args (f);
-  to_next[0] = bi;
-  f->n_vectors = 1;
-  vlib_put_frame_to_node (vm, next_index, f);
+  to_next[f->n_vectors] = bi;
+  f->n_vectors += 1;
+  if (flush || f->n_vectors == VLIB_FRAME_SIZE)
+    {
+      vlib_put_frame_to_node (vm, next_index, f);
+      tm->ip_lookup_tx_frames[!is_ip4][thread_index] = 0;
+    }
+}
+
+always_inline void
+tcp_enqueue_to_ip_lookup_now (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
+                              u8 is_ip4)
+{
+  tcp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, 1);
+}
+
+always_inline void
+tcp_enqueue_to_ip_lookup (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
+                          u8 is_ip4)
+{
+  tcp_enqueue_to_ip_lookup_i (vm, b, bi, is_ip4, 0);
 }
 
 always_inline void
@@ -664,8 +695,6 @@ tcp_enqueue_to_output_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 
   /* Decide where to send the packet */
   next_index = is_ip4 ? tcp4_output_node.index : tcp6_output_node.index;
-
-  /* Initialize the trajectory trace, if configured */
   if (VLIB_BUFFER_TRACE_TRAJECTORY > 0)
     {
       b->pre_data[0] = 1;
@@ -854,7 +883,7 @@ tcp_send_reset_w_pkt (tcp_connection_t * tc, vlib_buffer_t * pkt, u8 is_ip4)
       ASSERT (!bogus);
     }
 
-  tcp_enqueue_to_ip_lookup (vm, b, bi, is_ip4);
+  tcp_enqueue_to_ip_lookup_now (vm, b, bi, is_ip4);
   TCP_EVT_DBG (TCP_EVT_RST_SENT, tc);
 }
 
@@ -945,7 +974,7 @@ tcp_send_syn (tcp_connection_t * tc)
   tcp_timer_set (tc, TCP_TIMER_ESTABLISH, TCP_ESTABLISH_TIME);
 
   tcp_push_ip_hdr (tm, tc, b);
-  tcp_enqueue_to_ip_lookup (vm, b, bi, tc->c_is_ip4);
+  tcp_enqueue_to_ip_lookup_now (vm, b, bi, tc->c_is_ip4);
   TCP_EVT_DBG (TCP_EVT_SYN_SENT, tc);
 }
 
@@ -966,7 +995,23 @@ tcp_flush_frame_to_output (vlib_main_t * vm, u8 thread_index, u8 is_ip4)
 }
 
 /**
- * Flush both v4 and v6 tx frames for thread index
+ * Flush ip lookup tx frames populated by timer pops
+ */
+always_inline void
+tcp_flush_frame_to_ip_lookup (vlib_main_t * vm, u8 thread_index, u8 is_ip4)
+{
+  if (tcp_main.ip_lookup_tx_frames[!is_ip4][thread_index])
+    {
+      u32 next_index;
+      next_index = is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
+      vlib_put_frame_to_node (
+	  vm, next_index, tcp_main.ip_lookup_tx_frames[!is_ip4][thread_index]);
+      tcp_main.ip_lookup_tx_frames[!is_ip4][thread_index] = 0;
+    }
+}
+
+/**
+ * Flush v4 and v6 tcp and ip-lookup tx frames for thread index
  */
 void
 tcp_flush_frames_to_output (u8 thread_index)
@@ -974,6 +1019,8 @@ tcp_flush_frames_to_output (u8 thread_index)
   vlib_main_t *vm = vlib_get_main ();
   tcp_flush_frame_to_output (vm, thread_index, 1);
   tcp_flush_frame_to_output (vm, thread_index, 0);
+  tcp_flush_frame_to_ip_lookup (vm, thread_index, 1);
+  tcp_flush_frame_to_ip_lookup (vm, thread_index, 0);
 }
 
 /**
@@ -982,22 +1029,28 @@ tcp_flush_frames_to_output (u8 thread_index)
 void
 tcp_send_fin (tcp_connection_t * tc)
 {
-  vlib_buffer_t *b;
-  u32 bi;
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = vlib_get_main ();
+  vlib_buffer_t *b;
+  u32 bi;
+  u8 fin_snt = 0;
+
 
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
     return;
   b = vlib_get_buffer (vm, bi);
-  /* buffer will be initialized by in tcp_make_fin */
+  fin_snt = tc->flags & TCP_CONN_FINSNT;
+  if (fin_snt)
+    tc->snd_nxt = tc->snd_una;
   tcp_make_fin (tc, b);
   tcp_enqueue_to_output_now (vm, b, bi, tc->c_is_ip4);
-  if (!(tc->flags & TCP_CONN_FINSNT))
+  if (!fin_snt)
     {
       tc->flags |= TCP_CONN_FINSNT;
       tc->flags &= ~TCP_CONN_FINPNDG;
-      tc->snd_nxt += 1;
+      /* Account for the FIN */
+      tc->snd_una_max += 1;
+      tc->snd_nxt = tc->snd_una_max;
     }
   tcp_retransmit_timer_force_update (tc);
   TCP_EVT_DBG (TCP_EVT_FIN_SENT, tc);
@@ -1396,7 +1449,8 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   else if (tc->state == TCP_STATE_SYN_RCVD)
     {
       tc->rto_boff += 1;
-      tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
+      if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
+	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
       tc->rtt_ts = 0;
 
       if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
@@ -1412,7 +1466,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   else
     {
       ASSERT (tc->state == TCP_STATE_CLOSED);
-      clib_warning ("connection closed ...");
+      clib_warning ("connection state: %d", tc->state);
       return;
     }
 }
