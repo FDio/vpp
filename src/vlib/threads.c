@@ -289,7 +289,7 @@ sort_registrations_by_no_clone (void *a0, void *a1)
 }
 
 static uword *
-vlib_sysfs_list_to_bitmap (char *filename)
+clib_sysfs_list_to_bitmap (char *filename)
 {
   FILE *fp;
   uword *r = 0;
@@ -331,9 +331,9 @@ vlib_thread_init (vlib_main_t * vm)
 
   /* get bitmaps of active cpu cores and sockets */
   tm->cpu_core_bitmap =
-    vlib_sysfs_list_to_bitmap ("/sys/devices/system/cpu/online");
+    clib_sysfs_list_to_bitmap ("/sys/devices/system/cpu/online");
   tm->cpu_socket_bitmap =
-    vlib_sysfs_list_to_bitmap ("/sys/devices/system/node/online");
+    clib_sysfs_list_to_bitmap ("/sys/devices/system/node/online");
 
   avail_cpu = clib_bitmap_dup (tm->cpu_core_bitmap);
 

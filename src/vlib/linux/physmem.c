@@ -43,14 +43,12 @@
 #include <sys/mman.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
-#include <numa.h>
-#include <numaif.h>
 
+#include <vppinfra/linux/syscall.h>
+#include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 #include <vlib/physmem.h>
 #include <vlib/unix/unix.h>
-#include <vlib/linux/syscall.h>
-#include <vlib/linux/sysfs.h>
 
 static void *
 unix_physmem_alloc_aligned (vlib_main_t * vm, vlib_physmem_region_index_t idx,
@@ -111,31 +109,6 @@ unix_physmem_free (vlib_main_t * vm, vlib_physmem_region_index_t idx, void *x)
   mheap_put (pr->heap, x - pr->heap);
 }
 
-static u64
-get_page_paddr (int fd, uword addr)
-{
-  int pagesize = sysconf (_SC_PAGESIZE);
-  u64 seek, pagemap = 0;
-
-  seek = ((u64) addr / pagesize) * sizeof (u64);
-  if (lseek (fd, seek, SEEK_SET) != seek)
-    {
-      clib_unix_warning ("lseek to 0x%llx", seek);
-      return 0;
-    }
-  if (read (fd, &pagemap, sizeof (pagemap)) != (sizeof (pagemap)))
-    {
-      clib_unix_warning ("read ptbits");
-      return 0;
-    }
-  if ((pagemap & (1ULL << 63)) == 0)
-    return 0;
-
-  pagemap &= pow2_mask (55);
-
-  return pagemap * pagesize;
-}
-
 static clib_error_t *
 unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 			   u8 numa_node, u32 flags,
@@ -144,13 +117,8 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
   vlib_physmem_main_t *vpm = &vm->physmem_main;
   vlib_physmem_region_t *pr;
   clib_error_t *error = 0;
-  int pagemap_fd = -1;
-  u8 *mount_dir = 0;
-  u8 *filename = 0;
-  struct stat st;
-  int old_mpol;
-  int mmap_flags;
-  struct bitmask *old_mask = numa_allocate_nodemask ();
+  clib_mem_vm_alloc_t alloc = { 0 };
+
 
   if (geteuid () != 0 && (flags & VLIB_PHYSMEM_F_FAKE) == 0)
     return clib_error_return (0, "not allowed");
@@ -163,113 +131,32 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
       goto error;
     }
 
-  pr->index = pr - vpm->regions;
-  pr->fd = -1;
-  pr->flags = flags;
-
-  if (get_mempolicy (&old_mpol, old_mask->maskp, old_mask->size + 1, NULL, 0)
-      == -1)
-    {
-      if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
-	{
-	  error = clib_error_return_unix (0, "get_mempolicy");
-	  goto error;
-	}
-      else
-	old_mpol = -1;
-    }
+  alloc.name = name;
+  alloc.size = size;
+  alloc.numa_node = numa_node;
+  alloc.flags = CLIB_MEM_VM_F_SHARED;
 
   if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
     {
-      if ((pagemap_fd = open ((char *) "/proc/self/pagemap", O_RDONLY)) == -1)
-	{
-	  error = clib_error_return_unix (0, "open '/proc/self/pagemap'");
-	  goto error;
-	}
-
-      mount_dir = format (0, "%s/physmem_region%d%c",
-			  vlib_unix_get_runtime_dir (), pr->index, 0);
-      filename = format (0, "%s/mem%c", mount_dir, 0);
-
-      unlink ((char *) mount_dir);
-
-      error = vlib_unix_recursive_mkdir ((char *) mount_dir);
-      if (error)
-	goto error;
-
-      if (mount ("none", (char *) mount_dir, "hugetlbfs", 0, NULL))
-	{
-	  error = clib_error_return_unix (0, "mount hugetlb directory '%s'",
-					  mount_dir);
-	  goto error;
-	}
-
-      if ((pr->fd = open ((char *) filename, O_CREAT | O_RDWR, 0755)) == -1)
-	{
-	  error = clib_error_return_unix (0, "open");
-	  goto error;
-	}
-
-      mmap_flags = MAP_SHARED | MAP_HUGETLB | MAP_LOCKED;
+      alloc.flags |= CLIB_MEM_VM_F_HUGETLB;
+      alloc.flags |= CLIB_MEM_VM_F_HUGETLB_PREALLOC;
+      alloc.flags |= CLIB_MEM_VM_F_NUMA_FORCE;
     }
   else
     {
-      if ((pr->fd = memfd_create (name, MFD_ALLOW_SEALING)) == -1)
-	return clib_error_return_unix (0, "memfd_create");
-
-      if ((fcntl (pr->fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1)
-	{
-	  error =
-	    clib_error_return_unix (0, "fcntl (F_ADD_SEALS, F_SEAL_SHRINK)");
-	  goto error;
-	}
-      mmap_flags = MAP_SHARED;
+      alloc.flags |= CLIB_MEM_VM_F_NUMA_PREFER;
     }
 
-  if (fstat (pr->fd, &st))
-    {
-      error = clib_error_return_unix (0, "fstat");
-      goto error;
-    }
+  error = clib_mem_vm_ext_alloc (&alloc);
+  if (error)
+    goto error;
 
-  pr->log2_page_size = min_log2 (st.st_blksize);
-  pr->n_pages = ((size - 1) >> pr->log2_page_size) + 1;
-  size = pr->n_pages * (1 << pr->log2_page_size);
-
-  if ((ftruncate (pr->fd, size)) == -1)
-    {
-      error = clib_error_return_unix (0, "ftruncate length: %d", size);
-      goto error;
-    }
-
-  if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
-    {
-      error = vlib_sysfs_prealloc_hugepages (numa_node,
-					     1 << (pr->log2_page_size - 10),
-					     pr->n_pages);
-      if (error)
-	goto error;
-    }
-
-  if (old_mpol != -1)
-    numa_set_preferred (numa_node);
-
-  pr->mem = mmap (0, size, (PROT_READ | PROT_WRITE), mmap_flags, pr->fd, 0);
-
-  if (pr->mem == MAP_FAILED)
-    {
-      pr->mem = 0;
-      error = clib_error_return_unix (0, "mmap");
-      goto error;
-    }
-
-  if (old_mpol != -1 &&
-      set_mempolicy (old_mpol, old_mask->maskp, old_mask->size + 1) == -1)
-    {
-      error = clib_error_return_unix (0, "set_mempolicy");
-      goto error;
-    }
-
+  pr->index = pr - vpm->regions;
+  pr->flags = flags;
+  pr->fd = alloc.fd;
+  pr->mem = alloc.addr;
+  pr->log2_page_size = alloc.log2_page_size;
+  pr->n_pages = alloc.n_pages;
   pr->size = pr->n_pages << pr->log2_page_size;
   pr->page_mask = (1 << pr->log2_page_size) - 1;
   pr->numa_node = numa_node;
@@ -285,13 +172,14 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 	  move_pages (0, 1, &ptr, 0, &node, 0);
 	  if (numa_node != node)
 	    {
-	      clib_warning
-		("physmem page for region \'%s\' allocated on the wrong"
-		 " numa node (requested %u actual %u)", pr->name,
-		 pr->numa_node, node, i);
+	      clib_warning ("physmem page for region \'%s\' allocated on the"
+			    " wrong numa node (requested %u actual %u)",
+			    pr->name, pr->numa_node, node, i);
 	      break;
 	    }
 	}
+      pr->page_table = clib_mem_vm_get_paddr (pr->mem, pr->log2_page_size,
+					      pr->n_pages);
     }
 
   if (flags & VLIB_PHYSMEM_F_INIT_MHEAP)
@@ -309,41 +197,13 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 
   *idx = pr->index;
 
-  if ((flags & VLIB_PHYSMEM_F_FAKE) == 0)
-    {
-      int i;
-      for (i = 0; i < pr->n_pages; i++)
-	{
-	  uword vaddr =
-	    pointer_to_uword (pr->mem) + (((u64) i) << pr->log2_page_size);
-	  u64 page_paddr = get_page_paddr (pagemap_fd, vaddr);
-	  vec_add1 (pr->page_table, page_paddr);
-	}
-    }
-
   goto done;
 
 error:
-  if (pr->fd > -1)
-    close (pr->fd);
-
-  if (pr->mem)
-    munmap (pr->mem, size);
-
   memset (pr, 0, sizeof (*pr));
   pool_put (vpm->regions, pr);
 
 done:
-  if (mount_dir)
-    {
-      umount2 ((char *) mount_dir, MNT_DETACH);
-      rmdir ((char *) mount_dir);
-      vec_free (mount_dir);
-    }
-  numa_free_cpumask (old_mask);
-  vec_free (filename);
-  if (pagemap_fd > -1)
-    close (pagemap_fd);
   return error;
 }
 
