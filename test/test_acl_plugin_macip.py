@@ -275,17 +275,17 @@ class TestMACIP(VppTestCase):
                 denyMAC = True
             if not is_permit and mac_type == self.WILD_MAC:
                 denyIP = True
-            if bridged_routed:
+
+            if bridged_routed == self.BRIDGED:
                 if is_permit:
                     src_mac = remote_dst_host._mac
                     dst_mac = 'de:ad:00:00:00:00'
-                    dst_ip6 = src_ip_if.remote_ip6
-                    src_ip6 = remote_dst_host.ip6
-                    dst_ip4 = src_ip_if.remote_ip4
                     src_ip4 = remote_dst_host.ip4
+                    dst_ip4 = src_ip_if.remote_ip4
+                    src_ip6 = remote_dst_host.ip6
+                    dst_ip6 = src_ip_if.remote_ip6
                     ip_permit = src_ip6 if is_ip6 else src_ip4
                     mac_permit = src_mac
-
                 if denyMAC:
                     mac = src_mac.split(':')
                     mac[0] = format(int(mac[0], 16)+1, "02x")
@@ -297,17 +297,36 @@ class TestMACIP(VppTestCase):
                 if denyIP:
                     if ip_type != self.WILD_IP:
                         src_mac = mac_permit
-                    dst_ip6 = src_ip_if.remote_ip6
-                    src_ip6 = remote_dst_host.ip6
-                    dst_ip4 = src_ip_if.remote_ip4
                     src_ip4 = remote_dst_host.ip4
-            else:   # TODO
-                src_mac = src_ip_if.remote_mac
-                dst_mac = src_ip_if.local_mac
-                src_ip6 = src_ip_if.remote_ip6
-                dst_ip6 = remote_dst_host.ip6
-                src_ip4 = src_ip_if.remote_ip4
-                dst_ip4 = remote_dst_host.ip4
+                    dst_ip4 = src_ip_if.remote_ip4
+                    src_ip6 = remote_dst_host.ip6
+                    dst_ip6 = src_ip_if.remote_ip6
+            else:
+                if is_permit:
+                    src_mac = remote_dst_host._mac
+                    dst_mac = src_ip_if.local_mac
+                    src_ip4 = src_ip_if.remote_ip4
+                    dst_ip4 = remote_dst_host.ip4
+                    src_ip6 = src_ip_if.remote_ip6
+                    dst_ip6 = remote_dst_host.ip6
+                    ip_permit = src_ip6 if is_ip6 else src_ip4
+                    mac_permit = src_mac
+                if denyMAC:
+                    mac = src_mac.split(':')
+                    mac[0] = format(int(mac[0], 16) + 1, "02x")
+                    src_mac = ":".join(mac)
+                    if is_ip6:
+                        src_ip6 = ip_permit
+                    else:
+                        src_ip4 = ip_permit
+                if denyIP:
+                    src_mac = remote_dst_host._mac
+                    if ip_type != self.WILD_IP:
+                        src_mac = mac_permit
+                    src_ip4 = remote_dst_host.ip4
+                    dst_ip4 = src_ip_if.remote_ip4
+                    src_ip6 = remote_dst_host.ip6
+                    dst_ip6 = src_ip_if.remote_ip6
 
             if is_permit:
                 info = self.create_packet_info(src_ip_if, dst_ip_if)
@@ -323,10 +342,7 @@ class TestMACIP(VppTestCase):
 
             # create packet
             packet = Ether(src=src_mac, dst=dst_mac)
-            if bridged_routed:
-                ip_rule = src_ip6 if is_ip6 else src_ip4
-            else:
-                ip_rule = dst_ip6 if is_ip6 else dst_ip4
+            ip_rule = src_ip6 if is_ip6 else src_ip4
             if is_ip6:
                 if ip_type != self.EXACT_IP:
                     sub_ip = list(unpack('<16B', inet_pton(AF_INET6, ip_rule)))
@@ -340,10 +356,7 @@ class TestMACIP(VppTestCase):
                             sub_ip[2] = str(int(sub_ip[2]) + 1)
                         sub_ip[14] = random.randint(100, 199)
                         sub_ip[15] = random.randint(200, 255)
-                    if bridged_routed:
-                        src_ip6 = inet_ntop(AF_INET6, str(bytearray(sub_ip)))
-                    else:
-                        dst_ip6 = inet_ntop(AF_INET6, str(bytearray(sub_ip)))
+                    src_ip6 = inet_ntop(AF_INET6, str(bytearray(sub_ip)))
                 packet /= IPv6(src=src_ip6, dst=dst_ip6)
             else:
                 if ip_type != self.EXACT_IP:
@@ -358,11 +371,7 @@ class TestMACIP(VppTestCase):
                             sub_ip[1] = str(int(sub_ip[1])+1)
                         sub_ip[2] = str(random.randint(100, 199))
                         sub_ip[3] = str(random.randint(200, 255))
-                    if bridged_routed:
-                        src_ip4 = ".".join(sub_ip)
-                    else:
-                        # TODO
-                        dst_ip4 = ".".join(sub_ip)
+                    src_ip4 = ".".join(sub_ip)
                 packet /= IP(src=src_ip4, dst=dst_ip4, frag=0, flags=0)
 
             packet /= UDP(sport=src_port, dport=dst_port)/Raw(payload)
@@ -390,10 +399,7 @@ class TestMACIP(VppTestCase):
                 if ip_type == self.WILD_IP:
                     ip = "0::0"
                 else:
-                    if bridged_routed:
-                        ip = src_ip6
-                    else:
-                        ip = dst_ip6
+                    ip = src_ip6
                     if ip_type == self.SUBNET_IP:
                         sub_ip = list(unpack('<16B', inet_pton(AF_INET6, ip)))
                         for i in range(8, 16):
@@ -403,10 +409,7 @@ class TestMACIP(VppTestCase):
                 if ip_type == self.WILD_IP:
                     ip = "0.0.0.0"
                 else:
-                    if bridged_routed:
-                        ip = src_ip4
-                    else:
-                        ip = dst_ip4
+                    ip = src_ip4
                     if ip_type == self.SUBNET_IP:
                         sub_ip = ip.split('.')
                         sub_ip[2] = sub_ip[3] = '0'
@@ -469,12 +472,13 @@ class TestMACIP(VppTestCase):
                     do_not_expected_capture=False):
         self.reset_packet_infos()
 
-        tx_if = self.pg0 if bridged_routed else self.pg2
-        rx_if = self.pg2 if bridged_routed else self.pg0
+        tx_if = self.pg0 if bridged_routed == self.BRIDGED else self.pg2
+        rx_if = self.pg2 if bridged_routed == self.BRIDGED else self.pg0
 
         test_dict = self.create_stream(mac_type, ip_type, packets,
                                        self.pg2, self.loop0,
-                                       bridged_routed, is_ip6)
+                                       bridged_routed,
+                                       is_ip6)
 
         reply = self.vapi.macip_acl_add(test_dict['rules'])
         self.assertEqual(reply.retval, 0)
@@ -496,7 +500,7 @@ class TestMACIP(VppTestCase):
             packet_count = self.get_packet_count_for_if_idx(
                 self.loop0.sw_if_index)
             if mac_type == self.WILD_MAC and ip_type == self.WILD_IP:
-                packet_count = packets
+                packet_count = packets if bridged_routed else packet_count
             capture = rx_if.get_capture(packet_count)
             self.verify_capture(test_dict['stream'], capture, is_ip6)
 
@@ -509,130 +513,239 @@ class TestMACIP(VppTestCase):
         if traffic is not None:
             self.run_traffic(self.EXACT_MAC, self.EXACT_IP, traffic, ip, 9)
 
-    def test_acl_ip4_exactMAC_exactIP(self):
-        """ IP4 MACIP exactMAC|exactIP ACL
+    def test_acl_bridged_ip4_exactMAC_exactIP(self):
+        """ IP4 MACIP exactMAC|exactIP ACL bridged traffic
         """
         self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
                          self.BRIDGED, self.IS_IP4, 9)
 
-    def test_acl_ip6_exactMAC_exactIP(self):
-        """ IP6 MACIP exactMAC|exactIP ACL
+    def test_acl_bridged_ip6_exactMAC_exactIP(self):
+        """ IP6 MACIP exactMAC|exactIP ACL bridged traffic
         """
 
         self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
                          self.BRIDGED, self.IS_IP6, 9)
 
-    def test_acl_ip4_exactMAC_subnetIP(self):
-        """ IP4 MACIP exactMAC|subnetIP ACL
+    def test_acl_bridged_ip4_exactMAC_subnetIP(self):
+        """ IP4 MACIP exactMAC|subnetIP ACL bridged traffic
         """
 
         self.run_traffic(self.EXACT_MAC, self.SUBNET_IP,
                          self.BRIDGED, self.IS_IP4, 9)
 
-    def test_acl_ip6_exactMAC_subnetIP(self):
-        """ IP6 MACIP exactMAC|subnetIP ACL
+    def test_acl_bridged_ip6_exactMAC_subnetIP(self):
+        """ IP6 MACIP exactMAC|subnetIP ACL bridged traffic
         """
 
         self.run_traffic(self.EXACT_MAC, self.SUBNET_IP,
                          self.BRIDGED, self.IS_IP6, 9)
 
-    def test_acl_ip4_exactMAC_wildIP(self):
-        """ IP4 MACIP exactMAC|wildIP ACL
+    def test_acl_bridged_ip4_exactMAC_wildIP(self):
+        """ IP4 MACIP exactMAC|wildIP ACL bridged traffic
         """
 
         self.run_traffic(self.EXACT_MAC, self.WILD_IP,
                          self.BRIDGED, self.IS_IP4, 9)
 
-    def test_acl_ip6_exactMAC_wildIP(self):
-        """ IP6 MACIP exactMAC|wildIP ACL
+    def test_acl_bridged_ip6_exactMAC_wildIP(self):
+        """ IP6 MACIP exactMAC|wildIP ACL bridged traffic
         """
 
         self.run_traffic(self.EXACT_MAC, self.WILD_IP,
                          self.BRIDGED, self.IS_IP6, 9)
 
-    def test_acl_ip4_ouiMAC_exactIP(self):
-        """ IP4 MACIP ouiMAC|exactIP ACL
+    def test_acl_bridged_ip4_ouiMAC_exactIP(self):
+        """ IP4 MACIP ouiMAC|exactIP ACL bridged traffic
         """
 
         self.run_traffic(self.OUI_MAC, self.EXACT_IP,
                          self.BRIDGED, self.IS_IP4, 3)
 
-    def test_acl_ip6_ouiMAC_exactIP(self):
-        """ IP6 MACIP oui_MAC|exactIP ACL
+    def test_acl_bridged_ip6_ouiMAC_exactIP(self):
+        """ IP6 MACIP oui_MAC|exactIP ACL bridged traffic
         """
 
         self.run_traffic(self.OUI_MAC, self.EXACT_IP,
                          self.BRIDGED, self.IS_IP6, 9)
 
-    def test_acl_ip4_ouiMAC_subnetIP(self):
-        """ IP4 MACIP ouiMAC|subnetIP ACL
+    def test_acl_bridged_ip4_ouiMAC_subnetIP(self):
+        """ IP4 MACIP ouiMAC|subnetIP ACL bridged traffic
         """
 
         self.run_traffic(self.OUI_MAC, self.SUBNET_IP,
                          self.BRIDGED, self.IS_IP4, 9)
 
-    def test_acl_ip6_ouiMAC_subnetIP(self):
-        """ IP6 MACIP ouiMAC|subnetIP ACL
+    def test_acl_bridged_ip6_ouiMAC_subnetIP(self):
+        """ IP6 MACIP ouiMAC|subnetIP ACL bridged traffic
         """
 
         self.run_traffic(self.OUI_MAC, self.SUBNET_IP,
                          self.BRIDGED, self.IS_IP6, 9)
 
-    def test_acl_ip4_ouiMAC_wildIP(self):
-        """ IP4 MACIP ouiMAC|wildIP ACL
+    def test_acl_bridged_ip4_ouiMAC_wildIP(self):
+        """ IP4 MACIP ouiMAC|wildIP ACL bridged traffic
         """
 
         self.run_traffic(self.OUI_MAC, self.WILD_IP,
                          self.BRIDGED, self.IS_IP4, 9)
 
-    def test_acl_ip6_ouiMAC_wildIP(self):
-        """ IP6 MACIP ouiMAC|wildIP ACL
+    def test_acl_bridged_ip6_ouiMAC_wildIP(self):
+        """ IP6 MACIP ouiMAC|wildIP ACL bridged traffic
         """
 
         self.run_traffic(self.OUI_MAC, self.WILD_IP,
                          self.BRIDGED, self.IS_IP6, 9)
 
-    def test_acl_ip4_wildMAC_exactIP(self):
-        """ IP4 MACIP wildcardMAC|exactIP ACL
+    def test_ac_bridgedl_ip4_wildMAC_exactIP(self):
+        """ IP4 MACIP wildcardMAC|exactIP ACL bridged traffic
         """
 
         self.run_traffic(self.WILD_MAC, self.EXACT_IP,
                          self.BRIDGED, self.IS_IP4, 9)
 
-    def test_acl_ip6_wildMAC_exactIP(self):
-        """ IP6 MACIP wildcardMAC|exactIP ACL
+    def test_acl_bridged_ip6_wildMAC_exactIP(self):
+        """ IP6 MACIP wildcardMAC|exactIP ACL bridged traffic
         """
 
         self.run_traffic(self.WILD_MAC, self.EXACT_IP,
                          self.BRIDGED, self.IS_IP6, 9)
 
-    def test_acl_ip4_wildMAC_subnetIP(self):
-        """ IP4 MACIP wildcardMAC|subnetIP ACL
+    def test_acl_bridged_ip4_wildMAC_subnetIP(self):
+        """ IP4 MACIP wildcardMAC|subnetIP ACL bridged traffic
         """
 
         self.run_traffic(self.WILD_MAC, self.SUBNET_IP,
                          self.BRIDGED, self.IS_IP4, 9)
 
-    def test_acl_ip6_wildMAC_subnetIP(self):
-        """ IP6 MACIP wildcardMAC|subnetIP ACL
+    def test_acl_bridged_ip6_wildMAC_subnetIP(self):
+        """ IP6 MACIP wildcardMAC|subnetIP ACL bridged traffic
         """
 
         self.run_traffic(self.WILD_MAC, self.SUBNET_IP,
                          self.BRIDGED, self.IS_IP6, 9)
 
-    def test_acl_ip4_wildMAC_wildIP(self):
-        """ IP4 MACIP wildcardMAC|wildIP ACL
+    def test_acl_bridged_ip4_wildMAC_wildIP(self):
+        """ IP4 MACIP wildcardMAC|wildIP ACL bridged traffic
         """
 
         self.run_traffic(self.WILD_MAC, self.WILD_IP,
                          self.BRIDGED, self.IS_IP4, 9)
 
-    def test_acl_ip6_wildMAC_wildIP(self):
-        """ IP6 MACIP wildcardMAC|wildIP ACL
+    def test_acl_bridged_ip6_wildMAC_wildIP(self):
+        """ IP6 MACIP wildcardMAC|wildIP ACL bridged traffic
         """
 
         self.run_traffic(self.WILD_MAC, self.WILD_IP,
                          self.BRIDGED, self.IS_IP6, 9)
+
+    def test_acl_routed_ip4_exactMAC_exactIP(self):
+        """ IP4 MACIP exactMAC|exactIP ACL routed traffic
+        """
+        self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
+                         self.ROUTED, self.IS_IP4, 9)
+
+    def test_acl_routed_ip6_exactMAC_exactIP(self):
+        """ IP6 MACIP exactMAC|exactIP ACL routed traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
+                         self.ROUTED, self.IS_IP6, 9)
+
+    def test_acl_routed_ip4_exactMAC_subnetIP(self):
+        """ IP4 MACIP exactMAC|subnetIP ACL routed traffic
+        """
+        self.run_traffic(self.EXACT_MAC, self.SUBNET_IP,
+                         self.ROUTED, self.IS_IP4, 9)
+
+    def test_acl_routed_ip6_exactMAC_subnetIP(self):
+        """ IP6 MACIP exactMAC|subnetIP ACL routed traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.SUBNET_IP,
+                         self.ROUTED, self.IS_IP6, 9)
+
+    def test_acl_routed_ip4_exactMAC_wildIP(self):
+        """ IP4 MACIP exactMAC|wildIP ACL routed traffic
+        """
+        self.run_traffic(self.EXACT_MAC, self.WILD_IP,
+                         self.ROUTED, self.IS_IP4, 9)
+
+    def test_acl_routed_ip6_exactMAC_wildIP(self):
+        """ IP6 MACIP exactMAC|wildIP ACL routed traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.WILD_IP,
+                         self.ROUTED, self.IS_IP6, 9)
+
+    def test_acl_routed_ip4_ouiMAC_exactIP(self):
+        """ IP4 MACIP ouiMAC|exactIP ACL routed traffic
+        """
+
+        self.run_traffic(self.OUI_MAC, self.EXACT_IP,
+                         self.ROUTED, self.IS_IP4, 9)
+
+    def test_acl_routed_ip6_ouiMAC_exactIP(self):
+        """ IP6 MACIP ouiMAC|exactIP ACL routed traffic
+        """
+
+        self.run_traffic(self.OUI_MAC, self.EXACT_IP,
+                         self.ROUTED, self.IS_IP6, 9)
+
+    def test_acl_routed_ip4_ouiMAC_subnetIP(self):
+        """ IP4 MACIP ouiMAC|subnetIP ACL routed traffic
+        """
+
+        self.run_traffic(self.OUI_MAC, self.SUBNET_IP,
+                         self.ROUTED, self.IS_IP4, 9)
+
+    def test_acl_routed_ip6_ouiMAC_subnetIP(self):
+        """ IP6 MACIP ouiMAC|subnetIP ACL routed traffic
+        """
+
+        self.run_traffic(self.OUI_MAC, self.SUBNET_IP,
+                         self.ROUTED, self.IS_IP6, 9)
+
+    def test_acl_routed_ip4_ouiMAC_wildIP(self):
+        """ IP4 MACIP ouiMAC|wildIP ACL routed traffic
+        """
+
+        self.run_traffic(self.OUI_MAC, self.WILD_IP,
+                         self.ROUTED, self.IS_IP4, 9)
+
+    def test_acl_routed_ip6_ouiMAC_wildIP(self):
+        """ IP6 MACIP ouiMAC|wildIP ACL routed traffic
+        """
+
+        self.run_traffic(self.OUI_MAC, self.WILD_IP,
+                         self.ROUTED, self.IS_IP6, 9)
+
+    def test_acl_routed_ip4_wildMAC_exactIP(self):
+        """ IP4 MACIP wildcardMAC|exactIP ACL routed traffic
+        """
+
+        self.run_traffic(self.WILD_MAC, self.EXACT_IP,
+                         self.ROUTED, self.IS_IP4, 9)
+
+    def test_acl_routed_ip6_wildMAC_exactIP(self):
+        """ IP6 MACIP wildcardMAC|exactIP ACL routed traffic
+        """
+
+        self.run_traffic(self.WILD_MAC, self.EXACT_IP,
+                         self.ROUTED, self.IS_IP6, 9)
+
+    def test_acl_routed_ip4_wildMAC_subnetIP(self):
+        """ IP4 MACIP wildcardMAC|subnetIP ACL routed traffic
+        """
+
+        self.run_traffic(self.WILD_MAC, self.SUBNET_IP,
+                         self.ROUTED, self.IS_IP4, 9)
+
+    def test_acl_routed_ip6_wildMAC_subnetIP(self):
+        """ IP6 MACIP wildcardMAC|subnetIP ACL routed traffic
+        """
+
+        self.run_traffic(self.WILD_MAC, self.SUBNET_IP,
+                         self.ROUTED, self.IS_IP6, 9)
 
     def test_acl_1_2(self):
         """ MACIP ACL with 2 entries
@@ -829,13 +942,19 @@ class TestMACIP(VppTestCase):
 
         self.assertEqual(len([x for x in reply.acls if x != 4294967295]), 0)
 
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
-    def test_routed(self):
-        """ MACIP with routed traffic
+    def test_acl_routed_ip4_wildMAC_wildIP(self):
+        """ IP4 MACIP wildcardMAC|wildIP ACL
         """
-        # TODO: routed do not work yet !!!
-        # self.run_traffic(self.EXACT_IP, self.EXACT_MAC, False, False, 9)
-        # self.run_traffic(self.EXACT_IP, self.EXACT_MAC, False, True, 9)
+
+        self.run_traffic(self.WILD_MAC, self.WILD_IP,
+                         self.ROUTED, self.IS_IP4, 9)
+
+    def test_acl_routed_ip6_wildMAC_wildIP(self):
+        """ IP6 MACIP wildcardMAC|wildIP ACL
+        """
+
+        self.run_traffic(self.WILD_MAC, self.WILD_IP,
+                         self.ROUTED, self.IS_IP6, 9)
 
 
 if __name__ == '__main__':

@@ -894,7 +894,6 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
 {
   int rv = -1;
   acl_main_t *am = &acl_main;
-  void *oldheap = acl_set_heap(am);
   if (is_add)
     {
       rv =
@@ -910,7 +909,6 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
       rv =
 	acl_interface_del_inout_acl (sw_if_index, is_input, acl_list_index);
     }
-  clib_mem_set_heap (oldheap);
   return rv;
 }
 
@@ -1075,8 +1073,8 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 				1);
     last_table = mt->table_index;
   }
-  a->ip4_table_index = ~0;
-  a->ip6_table_index = ~0;
+  a->ip4_table_index = last_table;
+  a->ip6_table_index = last_table;
   a->l2_table_index = last_table;
 
   /* Populate the classifier tables with rules from the MACIP ACL */
@@ -1262,11 +1260,11 @@ macip_acl_interface_add_acl (acl_main_t * am, u32 sw_if_index,
   void *oldheap = acl_set_heap(am);
   a = &am->macip_acls[macip_acl_index];
   vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
+  clib_mem_set_heap (oldheap);
   /* If there already a MACIP ACL applied, unapply it */
   if (~0 != am->macip_acl_by_sw_if_index[sw_if_index])
     macip_acl_interface_del_acl(am, sw_if_index);
   am->macip_acl_by_sw_if_index[sw_if_index] = macip_acl_index;
-  clib_mem_set_heap (oldheap);
 
   /* Apply the classifier tables for L2 ACLs */
   rv =
@@ -1279,7 +1277,6 @@ static int
 macip_acl_del_list (u32 acl_list_index)
 {
   acl_main_t *am = &acl_main;
-  void *oldheap = acl_set_heap(am);
   macip_acl_list_t *a;
   int i;
   if (pool_is_free_index (am->macip_acls, acl_list_index))
@@ -1296,6 +1293,7 @@ macip_acl_del_list (u32 acl_list_index)
 	}
     }
 
+  void *oldheap = acl_set_heap(am);
   /* Now that classifier tables are detached, clean them up */
   macip_destroy_classify_tables (am, acl_list_index);
 
@@ -1316,7 +1314,6 @@ macip_acl_interface_add_del_acl (u32 sw_if_index, u8 is_add,
 				 u32 acl_list_index)
 {
   acl_main_t *am = &acl_main;
-  void *oldheap = acl_set_heap(am);
   int rv = -1;
   if (is_add)
     {
@@ -1326,7 +1323,6 @@ macip_acl_interface_add_del_acl (u32 sw_if_index, u8 is_add,
     {
       rv = macip_acl_interface_del_acl (am, sw_if_index);
     }
-  clib_mem_set_heap (oldheap);
   return rv;
 }
 
