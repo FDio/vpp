@@ -285,6 +285,7 @@ typeonly manual_print manual_endian define bridge_domain_sw_if
     @param learn - learning state on all interfaces in the bd
     @param arp_term - arp termination state on all interfaces in the bd
     @param mac_age - mac aging time in min, 0 for disabled
+    @param bd_tag - optional textual tag for the bridge domain
     @param n_sw_ifs - number of sw_if_index's in the domain
 */
 manual_print manual_endian define bridge_domain_details
