@@ -39,8 +39,11 @@
 #define _included_clib_mem_h
 
 #include <stdarg.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 #include <vppinfra/clib.h>	/* uword, etc */
+#include <vppinfra/clib_error.h>
 #include <vppinfra/mheap_bootstrap.h>
 #include <vppinfra/os.h>
 #include <vppinfra/string.h>	/* memcpy, memset */
@@ -264,19 +267,90 @@ void clib_mem_usage (clib_mem_usage_t * usage);
 
 u8 *format_clib_mem_usage (u8 * s, va_list * args);
 
-/* Include appropriate VM functions depending on whether
-   we are compiling for linux kernel, for Unix or standalone. */
-#ifdef CLIB_LINUX_KERNEL
-#include <vppinfra/vm_linux_kernel.h>
+/* Allocate virtual address space. */
+always_inline void *
+clib_mem_vm_alloc (uword size)
+{
+  void *mmap_addr;
+  uword flags = MAP_PRIVATE;
+
+#ifdef MAP_ANONYMOUS
+  flags |= MAP_ANONYMOUS;
 #endif
 
-#ifdef CLIB_UNIX
-#include <vppinfra/vm_unix.h>
-#endif
+  mmap_addr = mmap (0, size, PROT_READ | PROT_WRITE, flags, -1, 0);
+  if (mmap_addr == (void *) -1)
+    mmap_addr = 0;
 
-#ifdef CLIB_STANDALONE
-#include <vppinfra/vm_standalone.h>
-#endif
+  return mmap_addr;
+}
+
+always_inline void
+clib_mem_vm_free (void *addr, uword size)
+{
+  munmap (addr, size);
+}
+
+always_inline void *
+clib_mem_vm_unmap (void *addr, uword size)
+{
+  void *mmap_addr;
+  uword flags = MAP_PRIVATE | MAP_FIXED;
+
+  /* To unmap we "map" with no protection.  If we actually called
+     munmap then other callers could steal the address space.  By
+     changing to PROT_NONE the kernel can free up the pages which is
+     really what we want "unmap" to mean. */
+  mmap_addr = mmap (addr, size, PROT_NONE, flags, -1, 0);
+  if (mmap_addr == (void *) -1)
+    mmap_addr = 0;
+
+  return mmap_addr;
+}
+
+always_inline void *
+clib_mem_vm_map (void *addr, uword size)
+{
+  void *mmap_addr;
+  uword flags = MAP_PRIVATE | MAP_FIXED;
+
+  mmap_addr = mmap (addr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
+  if (mmap_addr == (void *) -1)
+    mmap_addr = 0;
+
+  return mmap_addr;
+}
+
+typedef struct
+{
+#define CLIB_MEM_VM_F_SHARED (1 << 0)
+#define CLIB_MEM_VM_F_HUGETLB (1 << 1)
+#define CLIB_MEM_VM_F_NUMA_PREFER (1 << 2)
+#define CLIB_MEM_VM_F_NUMA_FORCE (1 << 3)
+#define CLIB_MEM_VM_F_HUGETLB_PREALLOC (1 << 4)
+  u32 flags; /**< vm allocation flags:
+                <br> CLIB_MEM_VM_F_SHARED: request shared memory, file
+		destiptor will be provided on successful allocation.
+                <br> CLIB_MEM_VM_F_HUGETLB: request hugepages.
+		<br> CLIB_MEM_VM_F_NUMA_PREFER: numa_node field contains valid
+		numa node preference.
+		<br> CLIB_MEM_VM_F_NUMA_FORCE: fail if setting numa policy fails.
+		<br> CLIB_MEM_VM_F_HUGETLB_PREALLOC: pre-allocate hugepages if
+		number of available pages is not sufficient.
+             */
+  char *name; /**< Name for memory allocation, set by caller. */
+  uword size; /**< Allocation size, set by caller. */
+  int numa_node; /**< numa node preference. Valid if CLIB_MEM_VM_F_NUMA_PREFER set. */
+  void *addr; /**< Pointer to allocated memory, set on successful allocation. */
+  int fd; /**< File desriptor, set on successful allocation if CLIB_MEM_VM_F_SHARED is set. */
+  int log2_page_size;		/* Page size in log2 format, set on successful allocation. */
+  int n_pages;			/* Number of pages. */
+} clib_mem_vm_alloc_t;
+
+clib_error_t *clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a);
+int clib_mem_vm_get_log2_page_size (int fd);
+u64 *clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages);
+
 
 #include <vppinfra/error.h>	/* clib_panic */
 

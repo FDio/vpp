@@ -16,21 +16,23 @@
 #ifndef included_linux_sysfs_h
 #define included_linux_sysfs_h
 
-clib_error_t *vlib_sysfs_write (char *file_name, char *fmt, ...);
+#include <vppinfra/error.h>
 
-clib_error_t *vlib_sysfs_read (char *file_name, char *fmt, ...);
+clib_error_t *clib_sysfs_write (char *file_name, char *fmt, ...);
 
-u8 *vlib_sysfs_link_to_name (char *link);
+clib_error_t *clib_sysfs_read (char *file_name, char *fmt, ...);
 
-clib_error_t *vlib_sysfs_set_nr_hugepages (unsigned int numa_node,
+u8 *clib_sysfs_link_to_name (char *link);
+
+clib_error_t *clib_sysfs_set_nr_hugepages (int numa_node,
 					   int page_size, int nr);
-clib_error_t *vlib_sysfs_get_nr_hugepages (unsigned int numa_node,
+clib_error_t *clib_sysfs_get_nr_hugepages (int numa_node,
 					   int page_size, int *v);
-clib_error_t *vlib_sysfs_get_free_hugepages (unsigned int numa_node,
+clib_error_t *clib_sysfs_get_free_hugepages (int numa_node,
 					     int page_size, int *v);
-clib_error_t *vlib_sysfs_get_surplus_hugepages (unsigned int numa_node,
+clib_error_t *clib_sysfs_get_surplus_hugepages (int numa_node,
 						int page_size, int *v);
-clib_error_t *vlib_sysfs_prealloc_hugepages (unsigned int numa_node,
+clib_error_t *clib_sysfs_prealloc_hugepages (int numa_node,
 					     int page_size, int nr);
 
 #endif /* included_linux_sysfs_h */
