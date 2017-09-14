@@ -1406,7 +1406,7 @@ int snat_alloc_outside_address_and_port (snat_main_t * sm,
                 { \
                   portnum = (sm->port_per_thread * \
                     sm->per_thread_data[thread_index].snat_thread_index) + \
-                    snat_random_port(sm, 0, sm->port_per_thread) + 1024; \
+                    snat_random_port(sm, 1, sm->port_per_thread) + 1024; \
                   if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
                     continue; \
                   clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
