@@ -213,11 +213,18 @@ segment_manager_has_fifos (segment_manager_t * sm)
       for (i = 1; i < vec_len (sm->segment_indices); i++)
 	{
 	  segment = svm_fifo_segment_get_segment (sm->segment_indices[i]);
-	  if (!svm_fifo_segment_has_fifos (segment))
+	  if (!svm_fifo_segment_has_fifos (segment)
+	      && !(segment->h->flags & FIFO_SEGMENT_F_IS_PREALLOCATED))
 	    clib_warning ("segment has no fifos!");
 	}
     }
   return 1;
+}
+
+static u8
+segment_manager_app_detached (segment_manager_t *sm)
+{
+  return (sm->app_index == SEGMENT_MANAGER_INVALID_APP_INDEX);
 }
 
 static void
@@ -228,6 +235,12 @@ segment_manager_del_segment (segment_manager_t * sm, u32 segment_index)
   clib_spinlock_lock (&sm->lockp);
   svm_segment_index = sm->segment_indices[segment_index];
   fifo_segment = svm_fifo_segment_get_segment (svm_segment_index);
+  if ((fifo_segment->h->flags & FIFO_SEGMENT_F_IS_PREALLOCATED)
+      && !segment_manager_app_detached (sm))
+    {
+      clib_spinlock_unlock (&sm->lockp);
+      return;
+    }
   svm_fifo_segment_delete (fifo_segment);
   vec_del1 (sm->segment_indices, segment_index);
   clib_spinlock_unlock (&sm->lockp);
@@ -293,8 +306,22 @@ segment_manager_del_sessions (segment_manager_t * sm)
 void
 segment_manager_del (segment_manager_t * sm)
 {
+  int i;
 
-  ASSERT (vec_len (sm->segment_indices) <= 1);
+  ASSERT (!segment_manager_has_fifos (sm)
+	  && segment_manager_app_detached (sm));
+
+  /* If we have empty preallocated segments that haven't been removed */
+  for (i = vec_len (sm->segment_indices); i > 1; i--)
+    {
+      if (CLIB_DEBUG)
+	{
+	  svm_fifo_segment_private_t *seg;
+	  seg = svm_fifo_segment_get_segment (sm->segment_indices[i]);
+	  ASSERT(!svm_fifo_segment_has_fifos (seg));
+	}
+      segment_manager_del_segment (sm, i);
+    }
   if (vec_len (sm->segment_indices))
     {
       /* The first segment in the first segment manager is not removed when
@@ -322,8 +349,7 @@ segment_manager_init_del (segment_manager_t * sm)
     segment_manager_del_sessions (sm);
   else
     {
-      ASSERT (!sm->first_is_protected
-	      || sm->app_index == SEGMENT_MANAGER_INVALID_APP_INDEX);
+      ASSERT(!sm->first_is_protected || segment_manager_app_detached (sm));
       segment_manager_del (sm);
     }
 }
@@ -478,7 +504,8 @@ segment_manager_dealloc_fifos (u32 svm_segment_index, svm_fifo_t * rx_fifo,
 	}
 
       /* Remove segment manager if no sessions and detached from app */
-      if (sm->app_index == SEGMENT_MANAGER_INVALID_APP_INDEX && is_first)
+      if (segment_manager_app_detached (sm) && is_first
+	  && !segment_manager_has_fifos (sm))
 	segment_manager_del (sm);
     }
 }

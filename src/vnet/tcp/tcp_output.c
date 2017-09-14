@@ -1412,7 +1412,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   else
     {
       ASSERT (tc->state == TCP_STATE_CLOSED);
-      clib_warning ("connection closed ...");
+      clib_warning ("connection state: %d", tc->state);
       return;
     }
 }

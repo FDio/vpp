@@ -1973,6 +1973,12 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  seq0 = vnet_buffer (b0)->tcp.seq_number;
 	  tcp0 = tcp_buffer_hdr (b0);
 
+	  /* Crude check to see if the connection handle does not match
+	   * the packet. Probably connection just switched to established */
+	  if (PREDICT_FALSE(tcp0->dst_port != tc0->c_lcl_port
+			    || tcp0->src_port != tc0->c_rmt_port))
+	    goto drop;
+
 	  if (PREDICT_FALSE
 	      (!tcp_ack (tcp0) && !tcp_rst (tcp0) && !tcp_syn (tcp0)))
 	    goto drop;
