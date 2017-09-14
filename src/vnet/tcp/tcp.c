@@ -1035,7 +1035,7 @@ tcp_round_snd_space (tcp_connection_t * tc, u32 snd_space)
   /* If not snd_wnd constrained and we can't write at least a segment,
    * don't try at all */
   if (PREDICT_FALSE (snd_space < tc->snd_mss))
-    return 0;
+    return snd_space < tc->cwnd ? 0 : snd_space;
 
   /* round down to mss multiple */
   return snd_space - (snd_space % tc->snd_mss);
@@ -1167,6 +1167,7 @@ tcp_timer_establish_handler (u32 conn_index)
     {
       ASSERT (tc->state == TCP_STATE_SYN_SENT);
       stream_session_connect_notify (&tc->connection, 1 /* fail */ );
+      TCP_DBG ("establish pop: %U", format_tcp_connection, tc, 2);
     }
   else
     {
@@ -1174,7 +1175,7 @@ tcp_timer_establish_handler (u32 conn_index)
       /* note: the connection may have already disappeared */
       if (PREDICT_FALSE (tc == 0))
 	return;
-
+      TCP_DBG ("establish pop: %U", format_tcp_connection, tc, 2);
       ASSERT (tc->state == TCP_STATE_SYN_RCVD);
       /* Start cleanup. App wasn't notified yet so use delete notify as
        * opposed to delete to cleanup session layer state. */
@@ -1369,6 +1370,8 @@ tcp_main_enable (vlib_main_t * vm)
 
   vec_validate (tm->tx_frames[0], num_threads - 1);
   vec_validate (tm->tx_frames[1], num_threads - 1);
+  vec_validate (tm->ip_lookup_tx_frames[0], num_threads - 1);
+  vec_validate (tm->ip_lookup_tx_frames[1], num_threads - 1);
 
   tm->bytes_per_buffer = vlib_buffer_free_list_buffer_size
     (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
