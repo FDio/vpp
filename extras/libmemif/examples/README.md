@@ -11,6 +11,6 @@ Current WORKDIR is set to root repository directory. Example apps can be run fro
 
 Example app | Description
 ------------|------------
-[icmpr](../examples/icmp_responder/main.c) | Simplest implementaion. Event polling is handled by libmemif. Single memif conenction in slave mode is created (id 0). Use Ctrl + C to exit app.
-[icmpr-epoll](../examples/icmp_responder-epoll/main.c) (run in container by default) | Supports multiple connections and master mode. User can create/delete connections, set ip addresses, print connection information. [Example setup](ExampleSetup.md) contains instructions on basic connection use cases setups.
-[icmpr-mt](../examples/icmp_responder-mt/main.c) | Multi-thread example, very similar to icmpr-epoll. Packets are handled in threads assigned to specific queues. Slave mode only.
+[icmpr](../examples/icmp_responder/main.c) | Simplest implementaion. Event polling is handled by libmemif. Single memif conenction in slave mode is created (id 0). Use Ctrl + C to exit app. Memif receive mode: interrupt.
+[icmpr-epoll](../examples/icmp_responder-epoll/main.c) (run in container by default) | Supports multiple connections and master mode. User can create/delete connections, set ip addresses, print connection information. [Example setup](ExampleSetup.md) contains instructions on basic connection use cases setups. Memif receive mode: interrupt. App provides functionality to disable interrupts for specified queue/s for testing purposes. Polling mode is not implemented in this example.
+[icmpr-mt](../examples/icmp_responder-mt/main.c) | Multi-thread example, very similar to icmpr-epoll. Packets are handled in threads assigned to specific queues. Slave mode only. Memif receive mode: polling (memif_rx_poll function), interrupt (memif_rx_interrupt function). Receive modes differ per queue.

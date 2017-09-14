@@ -44,6 +44,7 @@
 
 #define MEMIF_MAX_FDS 512
 
+#define memif_min(a,b) (((a) < (b)) ? (a) : (b))
 
 #ifdef MEMIF_DBG
 #define DBG(...) do {                                                             \

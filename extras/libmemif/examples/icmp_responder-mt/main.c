@@ -309,7 +309,7 @@ memif_rx_poll (void *ptr)
 
       err =
 	memif_buffer_alloc (c->conn, data->qid, data->tx_bufs,
-			    data->rx_buf_num, &tx);
+			    data->rx_buf_num, &tx, 0);
       if (err != MEMIF_ERR_SUCCESS)
 	{
 	  INFO ("memif_buffer_alloc: %s", memif_strerror (err));
