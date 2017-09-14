@@ -37,10 +37,11 @@
  *  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <vppinfra/linux/sysfs.h>
+
 #include <vlib/vlib.h>
 #include <vlib/pci/pci.h>
 #include <vlib/unix/unix.h>
-#include <vlib/linux/sysfs.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -104,7 +105,7 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
 			     format_vlib_pci_addr, &d->bus_address);
 
   s = format (s, "%v/driver%c", dev_dir_name, 0);
-  driver_name = vlib_sysfs_link_to_name ((char *) s);
+  driver_name = clib_sysfs_link_to_name ((char *) s);
   vec_reset_length (s);
 
   if (driver_name &&
@@ -183,32 +184,32 @@ vlib_pci_bind_to_uio (vlib_pci_device_t * d, char *uio_driver_name)
   vec_reset_length (s);
 
   s = format (s, "%v/driver/unbind%c", dev_dir_name, 0);
-  vlib_sysfs_write ((char *) s, "%U", format_vlib_pci_addr, &d->bus_address);
+  clib_sysfs_write ((char *) s, "%U", format_vlib_pci_addr, &d->bus_address);
   vec_reset_length (s);
 
   s = format (s, "%v/driver_override%c", dev_dir_name, 0);
   if (access ((char *) s, F_OK) == 0)
     {
-      vlib_sysfs_write ((char *) s, "%s", uio_driver_name);
+      clib_sysfs_write ((char *) s, "%s", uio_driver_name);
       clear_driver_override = 1;
     }
   else
     {
       vec_reset_length (s);
       s = format (s, "/sys/bus/pci/drivers/%s/new_id%c", uio_driver_name, 0);
-      vlib_sysfs_write ((char *) s, "0x%04x 0x%04x", d->vendor_id,
+      clib_sysfs_write ((char *) s, "0x%04x 0x%04x", d->vendor_id,
 			d->device_id);
     }
   vec_reset_length (s);
 
   s = format (s, "/sys/bus/pci/drivers/%s/bind%c", uio_driver_name, 0);
-  vlib_sysfs_write ((char *) s, "%U", format_vlib_pci_addr, &d->bus_address);
+  clib_sysfs_write ((char *) s, "%U", format_vlib_pci_addr, &d->bus_address);
   vec_reset_length (s);
 
   if (clear_driver_override)
     {
       s = format (s, "%v/driver_override%c", dev_dir_name, 0);
-      vlib_sysfs_write ((char *) s, "%c", 0);
+      clib_sysfs_write ((char *) s, "%c", 0);
       vec_reset_length (s);
     }
 
@@ -602,28 +603,28 @@ scan_device (void *arg, u8 * dev_dir_name, u8 * ignored)
   dev->numa_node = -1;
   vec_reset_length (f);
   f = format (f, "%v/numa_node%c", dev_dir_name, 0);
-  vlib_sysfs_read ((char *) f, "%u", &dev->numa_node);
+  clib_sysfs_read ((char *) f, "%u", &dev->numa_node);
 
   vec_reset_length (f);
   f = format (f, "%v/class%c", dev_dir_name, 0);
-  vlib_sysfs_read ((char *) f, "0x%x", &tmp);
+  clib_sysfs_read ((char *) f, "0x%x", &tmp);
   dev->device_class = tmp >> 8;
 
   vec_reset_length (f);
   f = format (f, "%v/vendor%c", dev_dir_name, 0);
-  vlib_sysfs_read ((char *) f, "0x%x", &tmp);
+  clib_sysfs_read ((char *) f, "0x%x", &tmp);
   dev->vendor_id = tmp;
 
   vec_reset_length (f);
   f = format (f, "%v/device%c", dev_dir_name, 0);
-  vlib_sysfs_read ((char *) f, "0x%x", &tmp);
+  clib_sysfs_read ((char *) f, "0x%x", &tmp);
   dev->device_id = tmp;
 
   error = init_device (vm, dev, &pdev);
 
   vec_reset_length (f);
   f = format (f, "%v/driver%c", dev_dir_name, 0);
-  dev->driver_name = vlib_sysfs_link_to_name ((char *) f);
+  dev->driver_name = clib_sysfs_link_to_name ((char *) f);
 
 done:
   vec_free (f);

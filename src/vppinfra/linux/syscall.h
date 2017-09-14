@@ -16,6 +16,9 @@
 #ifndef included_linux_syscall_h
 #define included_linux_syscall_h
 
+#include <unistd.h>
+#include <sys/syscall.h>
+
 #ifndef __NR_memfd_create
 #if defined __x86_64__
 #define __NR_memfd_create 319
@@ -27,6 +30,26 @@
 #error "__NR_memfd_create unknown for this architecture"
 #endif
 #endif
+
+static inline long
+set_mempolicy (int mode, const unsigned long *nodemask, unsigned long maxnode)
+{
+  return syscall (__NR_set_mempolicy, mode, nodemask, maxnode);
+}
+
+static inline int
+get_mempolicy (int *mode, unsigned long *nodemask, unsigned long maxnode,
+	       void *addr, unsigned long flags)
+{
+  return syscall (__NR_get_mempolicy, mode, nodemask, maxnode, addr, flags);
+}
+
+static inline long
+move_pages (int pid, unsigned long count, void **pages, const int *nodes,
+	    int *status, int flags)
+{
+  return syscall (__NR_move_pages, pid, count, pages, nodes, status, flags);
+}
 
 static inline int
 memfd_create (const char *name, unsigned int flags)
