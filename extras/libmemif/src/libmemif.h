@@ -383,12 +383,13 @@ int memif_delete (memif_conn_handle_t * conn);
     @param bufs - memif buffers
     @param count - number of memif buffers to allocate
     @param count_out - returns number of allocated buffers
+    @param size - minimal buffer size, 0 = standard buffer size
 
     \return memif_err_t
 */
 int memif_buffer_alloc (memif_conn_handle_t conn, uint16_t qid,
 			memif_buffer_t * bufs, uint16_t count,
-			uint16_t * count_out);
+			uint16_t * count_out, uint16_t size);
 
 /** \brief Memif buffer free
     @param conn - memif conenction handle
