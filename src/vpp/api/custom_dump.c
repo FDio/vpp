@@ -279,6 +279,8 @@ static void *vl_api_bridge_domain_add_del_t_print
 
   if (mp->is_add)
     {
+      if (mp->bd_tag[0])
+	s = format (s, "bd_tag %s ", mp->bd_tag);
       s = format (s, "flood %d uu-flood %d ", mp->flood, mp->uu_flood);
       s = format (s, "forward %d learn %d ", mp->forward, mp->learn);
       s = format (s, "arp-term %d mac-age %d", mp->arp_term, mp->mac_age);
