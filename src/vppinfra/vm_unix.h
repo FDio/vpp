@@ -38,6 +38,7 @@
 #ifndef included_vm_unix_h
 #define included_vm_unix_h
 
+#include <vppinfra/clib_error.h>
 #include <unistd.h>
 #include <sys/mman.h>
 
@@ -94,6 +95,27 @@ clib_mem_vm_map (void *addr, uword size)
 
   return mmap_addr;
 }
+
+#define CLIB_MEM_VM_F_HUGETLB (1 << 0)
+#define CLIB_MEM_VM_F_NUMA_PREFER (1 << 1)
+#define CLIB_MEM_VM_F_NUMA_FORCE (1 << 2)
+#define CLIB_MEM_VM_F_HUGETLB_PREALLOC (1 << 3)
+
+typedef struct
+{
+  u32 flags;
+  char *name;
+  uword size;
+  int numa_node;
+  void *addr;
+  int fd;
+  int log2_page_size;
+  int n_pages;
+} clib_mem_vm_alloc_t;
+
+clib_error_t *clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a);
+int clib_mem_vm_get_log2_page_size (int fd);
+u64 *clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages);
 
 #endif /* included_vm_unix_h */
 

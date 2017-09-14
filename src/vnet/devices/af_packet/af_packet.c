@@ -24,9 +24,9 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
-#include <vlib/linux/sysfs.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
 
@@ -75,7 +75,7 @@ af_packet_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
     {
       s = format (0, "/sys/class/net/%s/mtu%c", apif->host_if_name, 0);
 
-      error = vlib_sysfs_write ((char *) s, "%d", hi->max_packet_bytes);
+      error = clib_sysfs_write ((char *) s, "%d", hi->max_packet_bytes);
       vec_free (s);
 
       if (error)
