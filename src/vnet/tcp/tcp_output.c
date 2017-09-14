@@ -997,7 +997,9 @@ tcp_send_fin (tcp_connection_t * tc)
     {
       tc->flags |= TCP_CONN_FINSNT;
       tc->flags &= ~TCP_CONN_FINPNDG;
-      tc->snd_nxt += 1;
+      /* Account for the FIN */
+      tc->snd_una_max += 1;
+      tc->snd_nxt = tc->snd_una_max;
     }
   tcp_retransmit_timer_force_update (tc);
   TCP_EVT_DBG (TCP_EVT_FIN_SENT, tc);
@@ -1412,7 +1414,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   else
     {
       ASSERT (tc->state == TCP_STATE_CLOSED);
-      clib_warning ("connection closed ...");
+      clib_warning ("connection state: %d", tc->state);
       return;
     }
 }

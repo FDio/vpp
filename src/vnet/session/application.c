@@ -111,6 +111,8 @@ application_del (application_t * app)
   hash_foreach (handle, index, app->listeners_table,
   ({
     vec_add1 (handles, handle);
+    sm = segment_manager_get (index);
+    sm->app_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
   }));
   /* *INDENT-ON* */
 

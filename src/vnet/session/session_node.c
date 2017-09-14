@@ -616,7 +616,7 @@ skip_dequeue:
 	case FIFO_EVENT_APP_TX:
 	  s0 = session_event_get_session (e0, my_thread_index);
 
-	  if (CLIB_DEBUG && !s0)
+	  if (PREDICT_FALSE(!s0))
 	    {
 	      clib_warning ("It's dead, Jim!");
 	      continue;

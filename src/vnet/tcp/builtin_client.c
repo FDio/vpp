@@ -387,6 +387,7 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
 static void
 builtin_session_reset_callback (stream_session_t * s)
 {
+  ASSERT(0);
   if (s->session_state == SESSION_STATE_READY)
     clib_warning ("Reset active connection %U", format_stream_session, s, 2);
   stream_session_cleanup (s);
