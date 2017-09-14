@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_efe7f53e",
+        "filename": "src/vat/api_format.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 20171,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-09-14T22:48:02Z",
+      "side": 1,
+      "message": "Please update this help string",
+      "range": {
+        "startLine": 20171,
+        "startChar": 2,
+        "endLine": 20171,
+        "endChar": 23
+      },
+      "revId": "a3ec8efa17e28fda61f33729aebb6298590f4696",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
