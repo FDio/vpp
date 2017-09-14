@@ -79,30 +79,30 @@ class Conn(L4_Conn):
         r = []
         r.append(pkt.to_acl_rule(2, wildcard_sport=True))
         r.append(self.wildcard_rule(0))
-        res = self.testcase.api_acl_add_replace(0xffffffff, r)
+        res = self.testcase.vapi.acl_add_replace(0xffffffff, r)
         self.testcase.assert_equal(res.retval, 0, "error adding ACL")
         reflect_acl_index = res.acl_index
 
         r = []
         r.append(self.wildcard_rule(0))
-        res = self.testcase.api_acl_add_replace(0xffffffff, r)
+        res = self.testcase.vapi.acl_add_replace(0xffffffff, r)
         self.testcase.assert_equal(res.retval, 0, "error adding deny ACL")
         deny_acl_index = res.acl_index
 
         if reflect_side == acl_side:
-            self.testcase.api_acl_interface_set_acl_list(
-                   self.ifs[acl_side].sw_if_index, 2, 1,
+            self.testcase.vapi.acl_interface_set_acl_list(
+                   self.ifs[acl_side].sw_if_index, 1,
                    [reflect_acl_index,
                     deny_acl_index])
-            self.testcase.api_acl_interface_set_acl_list(
-                   self.ifs[1-acl_side].sw_if_index, 0, 0, [])
+            self.testcase.vapi.acl_interface_set_acl_list(
+                   self.ifs[1-acl_side].sw_if_index, 0, [])
         else:
-            self.testcase.api_acl_interface_set_acl_list(
-                   self.ifs[acl_side].sw_if_index, 2, 1,
+            self.testcase.vapi.acl_interface_set_acl_list(
+                   self.ifs[acl_side].sw_if_index, 1,
                    [deny_acl_index,
                     reflect_acl_index])
-            self.testcase.api_acl_interface_set_acl_list(
-                   self.ifs[1-acl_side].sw_if_index, 0, 0, [])
+            self.testcase.vapi.acl_interface_set_acl_list(
+                   self.ifs[1-acl_side].sw_if_index, 0, [])
 
     def wildcard_rule(self, is_permit):
         any_addr = ["0.0.0.0", "::"]
@@ -151,38 +151,6 @@ class ACLPluginConnTestCase(VppTestCase):
             self.logger.info(self.vapi.cli("show acl-plugin acl"))
             self.logger.info(self.vapi.cli("show acl-plugin interface"))
             self.logger.info(self.vapi.cli("show acl-plugin tables"))
-
-    def api_acl_add_replace(self, acl_index, r, count=-1, tag="",
-                            expected_retval=0):
-        """Add/replace an ACL
-
-        :param int acl_index: ACL index to replace, 4294967295 to create new.
-        :param acl_rule r: ACL rules array.
-        :param str tag: symbolic tag (description) for this ACL.
-        :param int count: number of rules.
-        """
-        if (count < 0):
-            count = len(r)
-        return self.vapi.api(self.vapi.papi.acl_add_replace,
-                             {'acl_index': acl_index,
-                              'r': r,
-                              'count': count,
-                              'tag': tag
-                              }, expected_retval=expected_retval)
-
-    def api_acl_interface_set_acl_list(self, sw_if_index, count, n_input, acls,
-                                       expected_retval=0):
-        return self.vapi.api(self.vapi.papi.acl_interface_set_acl_list,
-                             {'sw_if_index': sw_if_index,
-                              'count': count,
-                              'n_input': n_input,
-                              'acls': acls
-                              }, expected_retval=expected_retval)
-
-    def api_acl_dump(self, acl_index, expected_retval=0):
-        return self.vapi.api(self.vapi.papi.acl_dump,
-                             {'acl_index': acl_index},
-                             expected_retval=expected_retval)
 
     def run_basic_conn_test(self, af, acl_side):
         """ Basic conn timeout test """

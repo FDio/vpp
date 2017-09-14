@@ -238,16 +238,15 @@ class TestACLplugin(VppTestCase):
         return rule
 
     def apply_rules(self, rules, tag=''):
-        reply = self.api_acl_add_replace(acl_index=4294967295, r=rules,
-                                         count=len(rules),
-                                         tag=tag)
+        reply = self.vapi.acl_add_replace(acl_index=4294967295, r=rules,
+                                          tag=tag)
         self.logger.info("Dumped ACL: " + str(
-            self.api_acl_dump(reply.acl_index)))
+            self.vapi.acl_dump(reply.acl_index)))
         # Apply a ACL on the interface as inbound
         for i in self.pg_interfaces:
-            self.api_acl_interface_set_acl_list(sw_if_index=i.sw_if_index,
-                                                count=1, n_input=1,
-                                                acls=[reply.acl_index])
+            self.vapi.acl_interface_set_acl_list(sw_if_index=i.sw_if_index,
+                                                 n_input=1,
+                                                 acls=[reply.acl_index])
         return
 
     def create_upper_layer(self, packet_index, proto, ports=0):
@@ -485,37 +484,6 @@ class TestACLplugin(VppTestCase):
                     capture = dst_if.get_capture(0)
                     self.assertEqual(len(capture), 0)
 
-    def api_acl_add_replace(self, acl_index, r, count, tag='',
-                            expected_retval=0):
-        """Add/replace an ACL
-
-        :param int acl_index: ACL index to replace,
-        4294967295 to create new ACL.
-        :param acl_rule r: ACL rules array.
-        :param str tag: symbolic tag (description) for this ACL.
-        :param int count: number of rules.
-        """
-        return self.vapi.api(self.vapi.papi.acl_add_replace,
-                             {'acl_index': acl_index,
-                              'r': r,
-                              'count': count,
-                              'tag': tag},
-                             expected_retval=expected_retval)
-
-    def api_acl_interface_set_acl_list(self, sw_if_index, count, n_input, acls,
-                                       expected_retval=0):
-        return self.vapi.api(self.vapi.papi.acl_interface_set_acl_list,
-                             {'sw_if_index': sw_if_index,
-                              'count': count,
-                              'n_input': n_input,
-                              'acls': acls},
-                             expected_retval=expected_retval)
-
-    def api_acl_dump(self, acl_index, expected_retval=0):
-        return self.vapi.api(self.vapi.papi.acl_dump,
-                             {'acl_index': acl_index},
-                             expected_retval=expected_retval)
-
     def test_0000_warmup_test(self):
         """ ACL plugin version check; learn MACs
         """
@@ -544,12 +512,12 @@ class TestACLplugin(VppTestCase):
               'dst_ip_addr': '\x00\x00\x00\x00',
               'dst_ip_prefix_len': 0}]
         # Test 1: add a new ACL
-        reply = self.api_acl_add_replace(acl_index=4294967295, r=r,
-                                         count=len(r), tag="permit 1234")
+        reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r,
+                                          tag="permit 1234")
         self.assertEqual(reply.retval, 0)
         # The very first ACL gets #0
         self.assertEqual(reply.acl_index, 0)
-        rr = self.api_acl_dump(reply.acl_index)
+        rr = self.vapi.acl_dump(reply.acl_index)
         self.logger.info("Dumped ACL: " + str(rr))
         self.assertEqual(len(rr), 1)
         # We should have the same number of ACL entries as we had asked
@@ -582,16 +550,15 @@ class TestACLplugin(VppTestCase):
                    'dst_ip_addr': '\x00\x00\x00\x00',
                    'dst_ip_prefix_len': 0})
 
-        reply = self.api_acl_add_replace(acl_index=4294967295, r=r_deny,
-                                         count=len(r_deny),
-                                         tag="deny 1234;permit all")
+        reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r_deny,
+                                          tag="deny 1234;permit all")
         self.assertEqual(reply.retval, 0)
         # The second ACL gets #1
         self.assertEqual(reply.acl_index, 1)
 
         # Test 2: try to modify a nonexistent ACL
-        reply = self.api_acl_add_replace(acl_index=432, r=r, count=len(r),
-                                         tag="FFFF:FFFF", expected_retval=-1)
+        reply = self.vapi.acl_add_replace(acl_index=432, r=r,
+                                          tag="FFFF:FFFF", expected_retval=-1)
         self.assertEqual(reply.retval, -1)
         # The ACL number should pass through
         self.assertEqual(reply.acl_index, 432)
@@ -881,9 +848,8 @@ class TestACLplugin(VppTestCase):
         for i in range(len(r)):
             rules.append(self.create_rule(r[i][0], r[i][1], r[i][2], r[i][3]))
 
-        reply = self.api_acl_add_replace(acl_index=4294967295, r=rules,
-                                         count=len(rules))
-        result = self.api_acl_dump(reply.acl_index)
+        reply = self.vapi.acl_add_replace(acl_index=4294967295, r=rules)
+        result = self.vapi.acl_dump(reply.acl_index)
 
         i = 0
         for drules in result:
