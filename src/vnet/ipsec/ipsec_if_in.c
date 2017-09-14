@@ -120,6 +120,7 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vnet_buffer (b0)->ipsec.flags = 0;
 		  hi = vnet_get_hw_interface (vnm, t->hw_if_index);
 		  sw_if_index0 = hi->sw_if_index;
+		  vnet_buffer (b0)->sw_if_index[VLIB_RX] = sw_if_index0;
 
 		  if (PREDICT_TRUE (sw_if_index0 == last_sw_if_index))
 		    {

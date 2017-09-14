@@ -370,6 +370,8 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 		next0 = ESP_DECRYPT_NEXT_IPSEC_GRE_INPUT;
 
 	      vnet_buffer (o_b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+	      vnet_buffer (o_b0)->sw_if_index[VLIB_RX] =
+		vnet_buffer (i_b0)->sw_if_index[VLIB_RX];
 	    }
 
 	trace:
