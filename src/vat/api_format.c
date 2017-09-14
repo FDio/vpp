@@ -6356,6 +6356,7 @@ api_bridge_domain_add_del (vat_main_t * vam)
   u32 bd_id = ~0;
   u8 is_add = 1;
   u32 flood = 1, forward = 1, learn = 1, uu_flood = 1, arp_term = 0;
+  u8 *bd_tag = NULL;
   u32 mac_age = 0;
   int ret;
 
@@ -6376,6 +6377,8 @@ api_bridge_domain_add_del (vat_main_t * vam)
 	;
       else if (unformat (i, "mac-age %d", &mac_age))
 	;
+      else if (unformat (i, "bd-tag %s", &bd_tag))
+	;
       else if (unformat (i, "del"))
 	{
 	  is_add = 0;
@@ -6388,13 +6391,22 @@ api_bridge_domain_add_del (vat_main_t * vam)
   if (bd_id == ~0)
     {
       errmsg ("missing bridge domain");
-      return -99;
+      ret = -99;
+      goto done;
     }
 
   if (mac_age > 255)
     {
       errmsg ("mac age must be less than 256 ");
-      return -99;
+      ret = -99;
+      goto done;
+    }
+
+  if ((bd_tag) && (strlen ((char *) bd_tag) > 63))
+    {
+      errmsg ("bd-tag cannot be longer than 63");
+      ret = -99;
+      goto done;
     }
 
   M (BRIDGE_DOMAIN_ADD_DEL, mp);
@@ -6407,9 +6419,14 @@ api_bridge_domain_add_del (vat_main_t * vam)
   mp->arp_term = arp_term;
   mp->is_add = is_add;
   mp->mac_age = (u8) mac_age;
+  if (bd_tag)
+    strcpy ((char *) mp->bd_tag, (char *) bd_tag);
 
   S (mp);
   W (ret);
+
+done:
+  vec_free (bd_tag);
   return ret;
 }
 
