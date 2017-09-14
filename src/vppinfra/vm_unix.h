@@ -38,6 +38,7 @@
 #ifndef included_vm_unix_h
 #define included_vm_unix_h
 
+#include <vppinfra/clib_error.h>
 #include <unistd.h>
 #include <sys/mman.h>
 
@@ -94,6 +95,36 @@ clib_mem_vm_map (void *addr, uword size)
 
   return mmap_addr;
 }
+
+typedef struct
+{
+#define CLIB_MEM_VM_F_SHARED (1 << 0)
+#define CLIB_MEM_VM_F_HUGETLB (1 << 1)
+#define CLIB_MEM_VM_F_NUMA_PREFER (1 << 2)
+#define CLIB_MEM_VM_F_NUMA_FORCE (1 << 3)
+#define CLIB_MEM_VM_F_HUGETLB_PREALLOC (1 << 4)
+  u32 flags; /**< vm allocation flags:
+                <br> CLIB_MEM_VM_F_SHARED: request shared memory, file
+		destiptor will be provided on successful allocation.
+                <br> CLIB_MEM_VM_F_HUGETLB: request hugepages.
+		<br> CLIB_MEM_VM_F_NUMA_PREFER: numa_node field contains valid
+		numa node preference.
+		<br> CLIB_MEM_VM_F_NUMA_FORCE: fail if setting numa policy fails.
+		<br> CLIB_MEM_VM_F_HUGETLB_PREALLOC: pre-allocate hugepages if
+		number of available pages is not sufficient.
+             */
+  char *name; /**< Name for memory allocation, set by caller. */
+  uword size; /**< Allocation size, set by caller. */
+  int numa_node; /**< numa node preference. Valid if CLIB_MEM_VM_F_NUMA_PREFER set. */
+  void *addr; /**< Pointer to allocated memory, set on successful allocation. */
+  int fd; /**< File desriptor, set on successful allocation if CLIB_MEM_VM_F_SHARED is set. */
+  int log2_page_size;		/* Page size in log2 format, set on successful allocation. */
+  int n_pages;			/* Number of pages. */
+} clib_mem_vm_alloc_t;
+
+clib_error_t *clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a);
+int clib_mem_vm_get_log2_page_size (int fd);
+u64 *clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages);
 
 #endif /* included_vm_unix_h */
 

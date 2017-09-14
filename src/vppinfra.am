@@ -12,6 +12,7 @@
 # limitations under the License.
 
 lib_LTLIBRARIES += libvppinfra.la
+libvppinfra_la_LIBADD = -lnuma
 
 TESTS =
 
@@ -188,6 +189,8 @@ nobase_include_HEADERS = \
   vppinfra/graph.h \
   vppinfra/hash.h \
   vppinfra/heap.h \
+  vppinfra/linux/sysfs.h \
+  vppinfra/linux/syscall.h \
   vppinfra/lock.h \
   vppinfra/longjmp.h \
   vppinfra/macros.h \
@@ -291,6 +294,8 @@ CLIB_CORE = \
 libvppinfra_la_SOURCES =			\
   $(CLIB_CORE)					\
   vppinfra/elf_clib.c				\
+  vppinfra/linux/mem.c				\
+  vppinfra/linux/sysfs.c			\
   vppinfra/socket.c				\
   vppinfra/timer.c				\
   vppinfra/unix-formats.c			\
