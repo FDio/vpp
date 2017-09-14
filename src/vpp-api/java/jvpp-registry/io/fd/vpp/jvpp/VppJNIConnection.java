@@ -135,11 +135,13 @@ public final class VppJNIConnection implements VppConnection {
         public final long queueAddress;
         public final int clientIndex;
         public final int status; // FIXME throw exception instead
+        public final int pid;
 
-        public ConnectionInfo(long queueAddress, int clientIndex, int status) {
+        public ConnectionInfo(long queueAddress, int clientIndex, int status, int pid) {
             this.queueAddress = queueAddress;
             this.clientIndex = clientIndex;
             this.status = status;
+            this.pid = pid;
         }
     }
 
