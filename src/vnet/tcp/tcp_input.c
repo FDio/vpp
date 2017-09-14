@@ -351,12 +351,17 @@ tcp_segment_validate (vlib_main_t * vm, tcp_connection_t * tc0,
   if (tcp_syn (th0))
     {
       /* TODO implement RFC 5961 */
-      if (tc0->state != TCP_STATE_SYN_RCVD)
-	tcp_make_ack (tc0, b0);
+      if (tc0->state == TCP_STATE_SYN_RCVD)
+	{
+	  tcp_make_synack (tc0, b0);
+	  TCP_EVT_DBG (TCP_EVT_SYN_RCVD, tc0, 0);
+	}
       else
-	tcp_make_synack (tc0, b0);
+	{
+	  tcp_make_ack (tc0, b0);
+	  TCP_EVT_DBG (TCP_EVT_SYNACK_RCVD, tc0);
+	}
       *next0 = tcp_next_output (tc0->c_is_ip4);
-      TCP_EVT_DBG (TCP_EVT_SYN_RCVD, tc0, 0);
       return -1;
     }
 
@@ -1747,18 +1752,17 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* 8: check the FIN bit */
 	  if (PREDICT_FALSE (is_fin))
 	    {
-	      /* Enter CLOSE-WAIT and notify session. Don't send ACK, instead
-	       * wait for session to call close. To avoid lingering
+	      /* Enter CLOSE-WAIT and notify session. To avoid lingering
 	       * in CLOSE-WAIT, set timer (reuse WAITCLOSE). */
-	      tc0->state = TCP_STATE_CLOSE_WAIT;
-	      TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc0);
+	      /* Account for the FIN if nothing else was received */
 	      if (vnet_buffer (b0)->tcp.data_len == 0)
-		{
-		  tc0->rcv_nxt += 1;
-		  next0 = TCP_ESTABLISHED_NEXT_DROP;
-		}
+		tc0->rcv_nxt += 1;
+	      tcp_make_ack (tc0, b0);
+	      next0 = tcp_next_output (tc0->c_is_ip4);
+	      tc0->state = TCP_STATE_CLOSE_WAIT;
 	      stream_session_disconnect_notify (&tc0->connection);
 	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+	      TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc0);
 	    }
 
 	done:
@@ -1972,6 +1976,12 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ack0 = vnet_buffer (b0)->tcp.ack_number;
 	  seq0 = vnet_buffer (b0)->tcp.seq_number;
 	  tcp0 = tcp_buffer_hdr (b0);
+
+	  /* Crude check to see if the connection handle does not match
+	   * the packet. Probably connection just switched to established */
+	  if (PREDICT_FALSE (tcp0->dst_port != tc0->c_lcl_port
+			     || tcp0->src_port != tc0->c_rmt_port))
+	    goto drop;
 
 	  if (PREDICT_FALSE
 	      (!tcp_ack (tcp0) && !tcp_rst (tcp0) && !tcp_syn (tcp0)))
@@ -2265,6 +2275,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_header_t *tcp0 = 0;
 	  tcp_connection_t *tc0;
 	  u32 next0 = TCP_RCV_PROCESS_NEXT_DROP, error0 = TCP_ERROR_ENQUEUED;
+	  u8 is_fin0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -2283,11 +2294,11 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  tcp0 = tcp_buffer_hdr (b0);
+	  is_fin0 = tcp_is_fin (tcp0);
 
 	  /* SYNs, FINs and data consume sequence numbers */
 	  vnet_buffer (b0)->tcp.seq_end = vnet_buffer (b0)->tcp.seq_number
-	    + tcp_is_syn (tcp0) + tcp_is_fin (tcp0)
-	    + vnet_buffer (b0)->tcp.data_len;
+	    + tcp_is_syn (tcp0) + is_fin0 + vnet_buffer (b0)->tcp.data_len;
 
 	  if (CLIB_DEBUG)
 	    {
@@ -2384,21 +2395,14 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* If FIN is ACKed */
 	      else if (tc0->snd_una == tc0->snd_una_max)
 		{
-		  tc0->rcv_nxt += 1;
 		  tc0->state = TCP_STATE_FIN_WAIT_2;
 		  TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
 
-		  if (tcp_fin (tcp0))
-		    {
-		      /* Stop all timers, 2MSL will be set lower */
-		      tcp_connection_timers_reset (tc0);
-		    }
-		  else
-		    {
-		      /* Wait for peer to finish sending its data */
-		      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE,
-					TCP_2MSL_TIME);
-		    }
+		  /* Stop all retransmit timers because we have nothing more
+		   * to send. Enable waitclose though because we're willing to
+		   * wait for peer's FIN but not indefinitely. */
+		  tcp_connection_timers_reset (tc0);
+		  tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 		}
 	      break;
 	    case TCP_STATE_FIN_WAIT_2:
@@ -2434,10 +2438,10 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      if (!tcp_rcv_ack_is_acceptable (tc0, b0))
 		goto drop;
 
+	      tc0->snd_una = vnet_buffer (b0)->tcp.ack_number;
 	      /* Apparently our FIN was lost */
-	      if (tcp_fin (tcp0))
+	      if (is_fin0)
 		{
-		  /* Don't "make" fin since that increments snd_nxt */
 		  tcp_send_fin (tc0);
 		  goto drop;
 		}
@@ -2450,8 +2454,6 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       * particular, this makes sure that we won't have dead sessions
 	       * when processing events on the tx path */
 	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
-
-	      /* Stop retransmit */
 	      tcp_retransmit_timer_reset (tc0);
 
 	      goto drop;
@@ -2466,8 +2468,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		goto drop;
 
 	      tcp_make_ack (tc0, b0);
-	      tcp_timer_reset (tc0, TCP_TIMER_WAITCLOSE);
-	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 
 	      goto drop;
 
@@ -2486,6 +2487,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    case TCP_STATE_FIN_WAIT_2:
 	      if (vnet_buffer (b0)->tcp.data_len)
 		error0 = tcp_segment_rcv (tm, tc0, b0, &next0);
+	      else if (is_fin0)
+		tc0->rcv_nxt += 1;
 	      break;
 	    case TCP_STATE_CLOSE_WAIT:
 	    case TCP_STATE_CLOSING:
@@ -2497,7 +2500,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* 8: check the FIN bit */
-	  if (!tcp_fin (tcp0))
+	  if (!is_fin0)
 	    goto drop;
 
 	  switch (tc0->state)
@@ -2527,19 +2530,19 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
 	      break;
 	    case TCP_STATE_FIN_WAIT_2:
-	      /* Got FIN, send ACK! */
+	      /* Got FIN, send ACK! Be more aggressive with resource cleanup */
 	      tc0->state = TCP_STATE_TIME_WAIT;
 	      tcp_connection_timers_reset (tc0);
-	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLOSEWAIT_TIME);
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
 	      tcp_make_ack (tc0, b0);
 	      next0 = tcp_next_output (is_ip4);
 	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
 	      break;
 	    case TCP_STATE_TIME_WAIT:
-	      /* Remain in the TIME-WAIT state. Restart the 2 MSL time-wait
+	      /* Remain in the TIME-WAIT state. Restart the time-wait
 	       * timeout.
 	       */
-	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
 	      break;
 	    }
 	  TCP_EVT_DBG (TCP_EVT_FIN_RCVD, tc0);
@@ -3162,9 +3165,9 @@ do {                                                       	\
     TCP_ERROR_NONE);
   _(TIME_WAIT, TCP_FLAG_RST, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
   _(TIME_WAIT, TCP_FLAG_ACK, TCP_INPUT_NEXT_RCV_PROCESS, TCP_ERROR_NONE);
-  _(CLOSED, TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET, TCP_ERROR_CONNECTION_CLOSED);
+  _(CLOSED, TCP_FLAG_ACK, TCP_INPUT_NEXT_DROP, TCP_ERROR_CONNECTION_CLOSED);
   _(CLOSED, TCP_FLAG_RST, TCP_INPUT_NEXT_DROP, TCP_ERROR_CONNECTION_CLOSED);
-  _(CLOSED, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_RESET,
+  _(CLOSED, TCP_FLAG_FIN | TCP_FLAG_ACK, TCP_INPUT_NEXT_DROP,
     TCP_ERROR_CONNECTION_CLOSED);
 #undef _
 }
