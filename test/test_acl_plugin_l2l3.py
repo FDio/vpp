@@ -119,36 +119,6 @@ class TestIpIrb(VppTestCase):
             self.logger.info(self.vapi.cli("show acl-plugin interface"))
             self.logger.info(self.vapi.cli("show acl-plugin tables"))
 
-    def api_acl_add_replace(self, acl_index, r, count, tag="",
-                            expected_retval=0):
-        """Add/replace an ACL
-
-        :param int acl_index: ACL index to replace, 4294967295 to create new.
-        :param acl_rule r: ACL rules array.
-        :param str tag: symbolic tag (description) for this ACL.
-        :param int count: number of rules.
-        """
-        return self.vapi.api(self.vapi.papi.acl_add_replace,
-                             {'acl_index': acl_index,
-                              'r': r,
-                              'count': count,
-                              'tag': tag
-                              }, expected_retval=expected_retval)
-
-    def api_acl_interface_set_acl_list(self, sw_if_index, count, n_input, acls,
-                                       expected_retval=0):
-        return self.vapi.api(self.vapi.papi.acl_interface_set_acl_list,
-                             {'sw_if_index': sw_if_index,
-                              'count': count,
-                              'n_input': n_input,
-                              'acls': acls
-                              }, expected_retval=expected_retval)
-
-    def api_acl_dump(self, acl_index, expected_retval=0):
-        return self.vapi.api(self.vapi.papi.acl_dump,
-                             {'acl_index': acl_index},
-                             expected_retval=expected_retval)
-
     def create_stream(self, src_ip_if, dst_ip_if, reverse, packet_sizes,
                       is_ip6, expect_blocked, expect_established,
                       add_extension_header):
@@ -367,10 +337,10 @@ class TestIpIrb(VppTestCase):
         r_permit = stream_dict['permit_rules']
         r_permit_reflect = stream_dict['permit_and_reflect_rules']
         r_action = r_permit_reflect if is_reflect else r
-        reply = self.api_acl_add_replace(acl_index=4294967295, r=r_action,
+        reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r_action,
                                          count=len(r_action), tag="action acl")
         action_acl_index = reply.acl_index
-        reply = self.api_acl_add_replace(acl_index=4294967295, r=r_permit,
+        reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r_permit,
                                          count=len(r_permit), tag="permit acl")
         permit_acl_index = reply.acl_index
         return {'L2': action_acl_index if test_l2_action else permit_acl_index,
@@ -392,15 +362,15 @@ class TestIpIrb(VppTestCase):
                                                 is_reflect)
         n_input_l3 = 0 if bridged_to_routed else 1
         n_input_l2 = 1 if bridged_to_routed else 0
-        self.api_acl_interface_set_acl_list(sw_if_index=self.pg2.sw_if_index,
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg2.sw_if_index,
                                             count=1,
                                             n_input=n_input_l3,
                                             acls=[acl_idx['L3']])
-        self.api_acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
                                             count=1,
                                             n_input=n_input_l2,
                                             acls=[acl_idx['L2']])
-        self.api_acl_interface_set_acl_list(sw_if_index=self.pg1.sw_if_index,
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg1.sw_if_index,
                                             count=1,
                                             n_input=n_input_l2,
                                             acls=[acl_idx['L2']])
@@ -445,17 +415,17 @@ class TestIpIrb(VppTestCase):
         else:
             outbound_l3_acl = acl_idx_rev['L3']
 
-        self.api_acl_interface_set_acl_list(sw_if_index=self.pg2.sw_if_index,
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg2.sw_if_index,
                                             count=2,
                                             n_input=1,
                                             acls=[inbound_l3_acl,
                                                   outbound_l3_acl])
-        self.api_acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
                                             count=2,
                                             n_input=1,
                                             acls=[inbound_l2_acl,
                                                   outbound_l2_acl])
-        self.api_acl_interface_set_acl_list(sw_if_index=self.pg1.sw_if_index,
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg1.sw_if_index,
                                             count=2,
                                             n_input=1,
                                             acls=[inbound_l2_acl,

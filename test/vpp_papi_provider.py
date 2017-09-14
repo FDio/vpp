@@ -2266,6 +2266,36 @@ class VppPapiProvider(object):
              'traffic_type': traffic_type
              })
 
+    def acl_add_replace(self, acl_index, r, count, tag='',
+                            expected_retval=0):
+        """Add/replace an ACL
+
+        :param int acl_index: ACL index to replace, 4294967295 to create new ACL.
+        :param acl_rule r: ACL rules array.
+        :param str tag: symbolic tag (description) for this ACL.
+        :param int count: number of rules.
+        """
+        return self.api(self.papi.acl_add_replace,
+                             {'acl_index': acl_index,
+                              'r': r,
+                              'count': count,
+                              'tag': tag},
+                             expected_retval=expected_retval)
+
+    def acl_interface_set_acl_list(self, sw_if_index, count, n_input, acls,
+                                       expected_retval=0):
+        return self.api(self.papi.acl_interface_set_acl_list,
+                             {'sw_if_index': sw_if_index,
+                              'count': count,
+                              'n_input': n_input,
+                              'acls': acls},
+                             expected_retval=expected_retval)
+
+    def acl_dump(self, acl_index, expected_retval=0):
+        return self.api(self.papi.acl_dump,
+                             {'acl_index': acl_index},
+                             expected_retval=expected_retval)
+
     def macip_acl_add(self, rules, tag=""):
         """ Add MACIP acl
 
