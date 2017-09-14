@@ -338,7 +338,7 @@ main (int argc, char **argv)
       else
 	{
 	  fformat (stderr,
-		   "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n");
+		   "%s: usage [in <f1> ... in <fn>] [out <fn>] [script] [json]\n", argv[0]);
 	  exit (1);
 	}
     }
