@@ -17,7 +17,7 @@
 #include <vppinfra/error.h>
 #include <vppinfra/format.h>
 #include <vppinfra/bitmap.h>
-#include <vlib/linux/sysfs.h>
+#include <vppinfra/linux/sysfs.h>
 #include <vlib/unix/unix.h>
 
 #include <vnet/ethernet/ethernet.h>
@@ -1040,7 +1040,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	  mem = mem_by_socket[c];
 
 	  page_size = 1024;
-	  e = vlib_sysfs_get_free_hugepages(c, page_size * 1024, &pages_avail);
+	  e = clib_sysfs_get_free_hugepages(c, page_size * 1024, &pages_avail);
 
 	  if (e != 0 || pages_avail < 0 || page_size * pages_avail < mem)
 	    use_1g = 0;
@@ -1049,7 +1049,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 	   clib_error_free (e);
 
 	  page_size = 2;
-	  e = vlib_sysfs_get_free_hugepages(c, page_size * 1024, &pages_avail);
+	  e = clib_sysfs_get_free_hugepages(c, page_size * 1024, &pages_avail);
 
 	  if (e != 0 || pages_avail < 0 || page_size * pages_avail < mem)
 	    use_2m = 0;
