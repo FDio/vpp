@@ -291,8 +291,11 @@ bd_set_mac_age (vlib_main_t * vm, u32 bd_index, u8 age)
 			     L2_MAC_AGE_PROCESS_EVENT_STOP, 0);
 }
 
+/**
+    Set the tag for the bridge domain.
+*/
 
-void
+static void
 bd_set_bd_tag (vlib_main_t * vm, u32 bd_index, u8 * bd_tag)
 {
   u8 *old;
@@ -1191,8 +1194,8 @@ bd_add_del (l2_bridge_domain_add_del_args_t * a)
 /**
    Create or delete bridge-domain.
    The CLI format:
-   create bridge-domain <bd_index> [learn <0|1>] [forward <0|1>] [uu-flood <0|1>]
-                                   [flood <0|1>] [arp-term <0|1>] [mac-age <nn>] [del]
+   create bridge-domain <bd_index> [learn <0|1>] [forward <0|1>] [uu-flood <0|1>] [flood <0|1>]
+					[arp-term <0|1>] [mac-age <nn>] [bd-tag <tag>] [del]
 */
 
 static clib_error_t *

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Cisco and/or its affiliates.
+ * Copyright (c) 2017 SUSE LLC.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -17,43 +17,43 @@
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
 #include <vnet/ethernet/ethernet.h>
-#include <vnet/vxlan/vxlan.h>
+#include <vnet/geneve/geneve.h>
 
 /* Statistics (not all errors) */
-#define foreach_vxlan_encap_error    \
+#define foreach_geneve_encap_error    \
 _(ENCAPSULATED, "good packets encapsulated")
 
-static char * vxlan_encap_error_strings[] = {
+static char * geneve_encap_error_strings[] = {
 #define _(sym,string) string,
-  foreach_vxlan_encap_error
+  foreach_geneve_encap_error
 #undef _
 };
 
 typedef enum {
-#define _(sym,str) VXLAN_ENCAP_ERROR_##sym,
-    foreach_vxlan_encap_error
+#define _(sym,str) GENEVE_ENCAP_ERROR_##sym,
+    foreach_geneve_encap_error
 #undef _
-    VXLAN_ENCAP_N_ERROR,
-} vxlan_encap_error_t;
+    GENEVE_ENCAP_N_ERROR,
+} geneve_encap_error_t;
 
 typedef enum {
-    VXLAN_ENCAP_NEXT_DROP,
-    VXLAN_ENCAP_N_NEXT,
-} vxlan_encap_next_t;
+    GENEVE_ENCAP_NEXT_DROP,
+    GENEVE_ENCAP_N_NEXT,
+} geneve_encap_next_t;
 
 typedef struct {
   u32 tunnel_index;
   u32 vni;
-} vxlan_encap_trace_t;
+} geneve_encap_trace_t;
 
-u8 * format_vxlan_encap_trace (u8 * s, va_list * args)
+u8 * format_geneve_encap_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  vxlan_encap_trace_t * t 
-      = va_arg (*args, vxlan_encap_trace_t *);
+  geneve_encap_trace_t * t 
+      = va_arg (*args, geneve_encap_trace_t *);
 
-  s = format (s, "VXLAN encap to vxlan_tunnel%d vni %d", 
+  s = format (s, "GENEVE encap to geneve_tunnel%d vni %d", 
 	      t->tunnel_index, t->vni);
   return s;
 }
@@ -66,13 +66,13 @@ u8 * format_vxlan_encap_trace (u8 * s, va_list * args)
     _(0) _(1) _(2) _(3) _(4) _(5) _(6)
 
 always_inline uword
-vxlan_encap_inline (vlib_main_t * vm,
+geneve_encap_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * from_frame,
-		    u8 is_ip4, u8 csum_offload)
+		    u32 is_ip4)
 {
   u32 n_left_from, next_index, * from, * to_next;
-  vxlan_main_t * vxm = &vxlan_main;
+  geneve_main_t * vxm = &geneve_main;
   vnet_main_t * vnm = vxm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
   u32 pkts_encapsulated = 0;
@@ -82,7 +82,7 @@ vxlan_encap_inline (vlib_main_t * vm,
   u32 sw_if_index0 = 0, sw_if_index1 = 0;
   u32 next0 = 0, next1 = 0;
   vnet_hw_interface_t * hi0, * hi1;
-  vxlan_tunnel_t * t0 = NULL, * t1 = NULL;
+  geneve_tunnel_t * t0 = NULL, * t1 = NULL;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -171,10 +171,10 @@ vxlan_encap_inline (vlib_main_t * vm,
 
 	  if (is_ip4)
 	    {
-	      /* IP4 VXLAN header should be 36 octects */
-              ASSERT(sizeof(ip4_vxlan_header_t) == 36);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip4_vxlan_header_t));
-	      ASSERT(vec_len(t1->rewrite) == sizeof(ip4_vxlan_header_t));
+	      /* IP4 GENEVE header should be 36 octects */
+              ASSERT(sizeof(ip4_geneve_header_t) == 36);
+              ASSERT(vec_len(t0->rewrite) == sizeof(ip4_geneve_header_t));
+	      ASSERT(vec_len(t1->rewrite) == sizeof(ip4_geneve_header_t));
 
 	      ip4_0 = vlib_buffer_get_current(b0);
 	      ip4_1 = vlib_buffer_get_current(b1);
@@ -200,36 +200,20 @@ vxlan_encap_inline (vlib_main_t * vm,
               copy_dst_last1[0] = copy_src_last1[0];
 
 	      /* Fix the IP4 checksum and length */
-	      if (csum_offload)
-	        {
-		  ip4_0->length = clib_host_to_net_u16 
-		      (vlib_buffer_length_in_chain (vm, b0));
-		  b0->flags |= 
-		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
-		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip4_0 - b0->data;
-		  ip4_1->length = clib_host_to_net_u16 
-		      (vlib_buffer_length_in_chain (vm, b1));
-		  b1->flags |= 
-		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
-		  vnet_buffer (b1)->l3_hdr_offset = (u8 *) ip4_1 - b1->data;
-	        }
-	      else
-	        {
-		  sum0 = ip4_0->checksum;
-		  new_l0 = /* old_l0 always 0, see the rewrite setup */ 
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-		  sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-					 length /* changed member */);
-		  ip4_0->checksum = ip_csum_fold (sum0);
-		  ip4_0->length = new_l0;
-		  sum1 = ip4_1->checksum;
-		  new_l1 = /* old_l1 always 0, see the rewrite setup */
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
-		  sum1 = ip_csum_update (sum1, old_l1, new_l1, ip4_header_t,
-					 length /* changed member */);
-		  ip4_1->checksum = ip_csum_fold (sum1);
-		  ip4_1->length = new_l1;
-	        }
+	      sum0 = ip4_0->checksum;
+	      new_l0 = /* old_l0 always 0, see the rewrite setup */ 
+                clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+              sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
+				     length /* changed member */);
+	      ip4_0->checksum = ip_csum_fold (sum0);
+	      ip4_0->length = new_l0;
+	      sum1 = ip4_1->checksum;
+	      new_l1 = /* old_l1 always 0, see the rewrite setup */
+                clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
+              sum1 = ip_csum_update (sum1, old_l1, new_l1, ip4_header_t,
+				     length /* changed member */);
+	      ip4_1->checksum = ip_csum_fold (sum1);
+	      ip4_1->length = new_l1;
 
 	      /* Fix UDP length and set source port */
 	      udp0 = (udp_header_t *)(ip4_0+1);
@@ -242,24 +226,15 @@ vxlan_encap_inline (vlib_main_t * vm,
 					     - sizeof (*ip4_1));
 	      udp1->length = new_l1;
 	      udp1->src_port = flow_hash1;
-
-	      /* UDP checksum only if checksum offload is used */
-	      if (csum_offload)
-	        {
-		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-		  b1->flags |=  VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b1)->l4_hdr_offset = (u8 *) udp1 - b1->data;
-		}
 	    }
 	  else /* ipv6 */
 	    {
               int bogus = 0;
 
-	      /* IP6 VXLAN header should be 56 octects */
-              ASSERT(sizeof(ip6_vxlan_header_t) == 56);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip6_vxlan_header_t));
-	      ASSERT(vec_len(t1->rewrite) == sizeof(ip6_vxlan_header_t));
+	      /* IP6 GENEVE header should be 56 octects */
+              ASSERT(sizeof(ip6_geneve_header_t) == 56);
+              ASSERT(vec_len(t0->rewrite) == sizeof(ip6_geneve_header_t));
+	      ASSERT(vec_len(t1->rewrite) == sizeof(ip6_geneve_header_t));
 	      ip6_0 = vlib_buffer_get_current(b0);
 	      ip6_1 = vlib_buffer_get_current(b1);
 
@@ -294,28 +269,16 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      udp1->src_port = flow_hash1;
 
 	      /* IPv6 UDP checksum is mandatory */
-	      if (csum_offload)
-	        {
-		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip6_0 - b0->data;
-		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-		  b1->flags |=  VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b1)->l3_hdr_offset = (u8 *) ip6_1 - b1->data;
-		  vnet_buffer (b1)->l4_hdr_offset = (u8 *) udp1 - b1->data;
-		}
-	      else
-	        {
-		  udp0->checksum = ip6_tcp_udp_icmp_compute_checksum
-		      (vm, b0, ip6_0, &bogus);
-		  ASSERT(bogus == 0);
-		  if (udp0->checksum == 0)
-		      udp0->checksum = 0xffff;
-		  udp1->checksum = ip6_tcp_udp_icmp_compute_checksum
-		      (vm, b1, ip6_1, &bogus);
-		  ASSERT(bogus == 0);
-		  if (udp1->checksum == 0)
-		      udp1->checksum = 0xffff;
-	        }
+	      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum(vm, b0,
+								 ip6_0, &bogus);
+	      ASSERT(bogus == 0);
+	      if (udp0->checksum == 0)
+		udp0->checksum = 0xffff;
+	      udp1->checksum = ip6_tcp_udp_icmp_compute_checksum(vm, b1,
+                                                        ip6_1, &bogus);
+	      ASSERT(bogus == 0);
+	      if (udp1->checksum == 0)
+		udp1->checksum = 0xffff;
 	    }
 
           pkts_encapsulated += 2;
@@ -324,7 +287,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  stats_n_packets += 2;
 	  stats_n_bytes += len0 + len1;
 
-	  /* Batch stats increment on the same vxlan tunnel so counter is not
+	  /* Batch stats increment on the same geneve tunnel so counter is not
 	     incremented per packet. Note stats are still incremented for deleted
 	     and admin-down tunnel where packets are dropped. It is not worthwhile
 	     to check for this rare case and affect normal path performance. */
@@ -357,7 +320,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 
 	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
             {
-              vxlan_encap_trace_t *tr = 
+              geneve_encap_trace_t *tr = 
                 vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->tunnel_index = t0 - vxm->tunnels;
               tr->vni = t0->vni;
@@ -365,7 +328,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 
           if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED)) 
             {
-              vxlan_encap_trace_t *tr = 
+              geneve_encap_trace_t *tr = 
                 vlib_add_trace (vm, node, b1, sizeof (*tr));
               tr->tunnel_index = t1 - vxm->tunnels;
               tr->vni = t1->vni;
@@ -417,9 +380,9 @@ vxlan_encap_inline (vlib_main_t * vm,
 
 	  if (is_ip4)
 	    {
-	      /* IP4 VXLAN header should be 36 octects */
-              ASSERT(sizeof(ip4_vxlan_header_t) == 36);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip4_vxlan_header_t));
+	      /* IP4 GENEVE header should be 36 octects */
+              ASSERT(sizeof(ip4_geneve_header_t) == 36);
+              ASSERT(vec_len(t0->rewrite) == sizeof(ip4_geneve_header_t));
 	      ip4_0 = vlib_buffer_get_current(b0);
 
 	      /* Copy the fixed header */
@@ -435,24 +398,13 @@ vxlan_encap_inline (vlib_main_t * vm,
               copy_dst_last0[0] = copy_src_last0[0];
 
 	      /* Fix the IP4 checksum and length */
-	      if (csum_offload)
-	        {
-		  ip4_0->length =
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-		  b0->flags |= 
-		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
-		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip4_0 - b0->data;
-	        }
-	      else
-	        {
-		  sum0 = ip4_0->checksum;
-		  new_l0 = /* old_l0 always 0, see the rewrite setup */ 
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-		  sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-					 length /* changed member */);
-		  ip4_0->checksum = ip_csum_fold (sum0);
-		  ip4_0->length = new_l0;
-	        }
+	      sum0 = ip4_0->checksum;
+	      new_l0 = /* old_l0 always 0, see the rewrite setup */ 
+                clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
+              sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
+				     length /* changed member */);
+	      ip4_0->checksum = ip_csum_fold (sum0);
+	      ip4_0->length = new_l0;
 
 	      /* Fix UDP length and set source port */
 	      udp0 = (udp_header_t *)(ip4_0+1);
@@ -460,22 +412,15 @@ vxlan_encap_inline (vlib_main_t * vm,
 					     - sizeof (*ip4_0));
 	      udp0->length = new_l0;
 	      udp0->src_port = flow_hash0;
-
-	      /* UDP checksum only if checksum offload is used */
-	      if (csum_offload)
-	        {
-		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-	        }
 	    }
 
 	  else /* ip6 path */
 	    {
               int bogus = 0;
 
-	      /* IP6 VXLAN header should be 56 octects */
-              ASSERT(sizeof(ip6_vxlan_header_t) == 56);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip6_vxlan_header_t));
+	      /* IP6 GENEVE header should be 56 octects */
+              ASSERT(sizeof(ip6_geneve_header_t) == 56);
+              ASSERT(vec_len(t0->rewrite) == sizeof(ip6_geneve_header_t));
 	      ip6_0 = vlib_buffer_get_current(b0);
 	      /* Copy the fixed header */
 	      copy_dst0 = (u64 *) ip6_0;
@@ -496,20 +441,11 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      udp0->src_port = flow_hash0;
 
 	      /* IPv6 UDP checksum is mandatory */
-	      if (csum_offload)
-	        {
-		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
-		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip6_0 - b0->data;
-		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-	        }
-	      else
-	        {
-		  udp0->checksum = ip6_tcp_udp_icmp_compute_checksum
-		    (vm, b0, ip6_0, &bogus);
-		  ASSERT(bogus == 0);
-		  if (udp0->checksum == 0)
-		    udp0->checksum = 0xffff;
-	        }
+	      udp0->checksum = ip6_tcp_udp_icmp_compute_checksum(vm, b0,
+								 ip6_0, &bogus);
+	      ASSERT(bogus == 0);
+	      if (udp0->checksum == 0)
+		udp0->checksum = 0xffff;
 	    }
 
           pkts_encapsulated ++;
@@ -517,7 +453,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  stats_n_packets += 1;
 	  stats_n_bytes += len0;
 
-	  /* Batch stats increment on the same vxlan tunnel so counter is not
+	  /* Batch stats increment on the same geneve tunnel so counter is not
 	     incremented per packet. Note stats are still incremented for deleted
 	     and admin-down tunnel where packets are dropped. It is not worthwhile
 	     to check for this rare case and affect normal path performance. */
@@ -537,7 +473,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
             {
-              vxlan_encap_trace_t *tr = 
+              geneve_encap_trace_t *tr = 
                 vlib_add_trace (vm, node, b0, sizeof (*tr));
               tr->tunnel_index = t0 - vxm->tunnels;
               tr->vni = t0->vni;
@@ -552,7 +488,7 @@ vxlan_encap_inline (vlib_main_t * vm,
 
   /* Do we still need this now that tunnel tx stats is kept? */
   vlib_node_increment_counter (vm, node->node_index, 
-                               VXLAN_ENCAP_ERROR_ENCAPSULATED, 
+                               GENEVE_ENCAP_ERROR_ENCAPSULATED, 
                                pkts_encapsulated);
 
   /* Increment any remaining batch stats */
@@ -568,55 +504,50 @@ vxlan_encap_inline (vlib_main_t * vm,
 }
 
 static uword
-vxlan4_encap (vlib_main_t * vm,
+geneve4_encap (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
 	      vlib_frame_t * from_frame)
 {
-  /* Disable chksum offload as setup overhead in tx node is not worthwhile
-     for ip4 header checksum only, unless udp checksum is also required */
-  return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 1, 
-			     /* csum_offload */ 0);
+  return geneve_encap_inline (vm, node, from_frame, /* is_ip4 */ 1);
 }
 
 static uword
-vxlan6_encap (vlib_main_t * vm,
+geneve6_encap (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
 	      vlib_frame_t * from_frame)
 {
-  /* Enable checksum offload for ip6 as udp checksum is mandatory, */
-  return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 0, 
-			     /* csum_offload */ 1);
+  return geneve_encap_inline (vm, node, from_frame, /* is_ip4 */ 0);
 }
 
-VLIB_REGISTER_NODE (vxlan4_encap_node) = {
-  .function = vxlan4_encap,
-  .name = "vxlan4-encap",
+VLIB_REGISTER_NODE (geneve4_encap_node) = {
+  .function = geneve4_encap,
+  .name = "geneve4-encap",
   .vector_size = sizeof (u32),
-  .format_trace = format_vxlan_encap_trace,
+  .format_trace = format_geneve_encap_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(vxlan_encap_error_strings),
-  .error_strings = vxlan_encap_error_strings,
-  .n_next_nodes = VXLAN_ENCAP_N_NEXT,
+  .n_errors = ARRAY_LEN(geneve_encap_error_strings),
+  .error_strings = geneve_encap_error_strings,
+  .n_next_nodes = GENEVE_ENCAP_N_NEXT,
   .next_nodes = {
-        [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
+        [GENEVE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan4_encap_node, vxlan4_encap)
+VLIB_NODE_FUNCTION_MULTIARCH (geneve4_encap_node, geneve4_encap)
 
-VLIB_REGISTER_NODE (vxlan6_encap_node) = {
-  .function = vxlan6_encap,
-  .name = "vxlan6-encap",
+VLIB_REGISTER_NODE (geneve6_encap_node) = {
+  .function = geneve6_encap,
+  .name = "geneve6-encap",
   .vector_size = sizeof (u32),
-  .format_trace = format_vxlan_encap_trace,
+  .format_trace = format_geneve_encap_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(vxlan_encap_error_strings),
-  .error_strings = vxlan_encap_error_strings,
-  .n_next_nodes = VXLAN_ENCAP_N_NEXT,
+  .n_errors = ARRAY_LEN(geneve_encap_error_strings),
+  .error_strings = geneve_encap_error_strings,
+  .n_next_nodes = GENEVE_ENCAP_N_NEXT,
   .next_nodes = {
-        [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
+        [GENEVE_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_encap_node, vxlan6_encap)
+VLIB_NODE_FUNCTION_MULTIARCH (geneve6_encap_node, geneve6_encap)
 

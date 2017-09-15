@@ -188,6 +188,8 @@ nobase_include_HEADERS = \
   vppinfra/graph.h \
   vppinfra/hash.h \
   vppinfra/heap.h \
+  vppinfra/linux/sysfs.h \
+  vppinfra/linux/syscall.h \
   vppinfra/lock.h \
   vppinfra/longjmp.h \
   vppinfra/macros.h \
@@ -233,7 +235,6 @@ nobase_include_HEADERS = \
   vppinfra/vector_neon.h \
   vppinfra/vector_sse2.h \
   vppinfra/valgrind.h \
-  vppinfra/vm_unix.h \
   vppinfra/xxhash.h \
   vppinfra/xy.h \
   vppinfra/zvec.h
@@ -291,6 +292,8 @@ CLIB_CORE = \
 libvppinfra_la_SOURCES =			\
   $(CLIB_CORE)					\
   vppinfra/elf_clib.c				\
+  vppinfra/linux/mem.c				\
+  vppinfra/linux/sysfs.c			\
   vppinfra/socket.c				\
   vppinfra/timer.c				\
   vppinfra/unix-formats.c			\

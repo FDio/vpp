@@ -852,19 +852,15 @@ vl_api_unbind_sock_reply_t_handler (vl_api_unbind_sock_reply_t * mp)
 
   clib_spinlock_lock (&vcm->sessions_lockp);
   rv = vppcom_session_at_index (vcm->bind_session_index, &session);
-  if (PREDICT_FALSE (rv))
+  if (rv == VPPCOM_OK)
     {
-      if (VPPCOM_DEBUG > 1)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
-		      vcm->my_pid, vcm->bind_session_index);
+      if ((VPPCOM_DEBUG > 1) && (mp->retval))
+	clib_warning ("[%d] unbind failed: %U", vcm->my_pid, format_api_error,
+		      ntohl (mp->retval));
+
+      vcm->bind_session_index = ~0;
+      session->state = STATE_START;
     }
-
-  if (mp->retval)
-    clib_warning ("[%d] unbind failed: %U", vcm->my_pid, format_api_error,
-		  ntohl (mp->retval));
-
-  vcm->bind_session_index = ~0;
-  session->state = STATE_START;
   clib_spinlock_unlock (&vcm->sessions_lockp);
 }
 
@@ -993,6 +989,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 					       unix_shared_memory_queue_t *);
   session->state = STATE_ACCEPT;
   session->is_cut_thru = 0;
+  session->is_server = 1;
   session->port = ntohs (mp->port);
   session->is_ip4 = mp->is_ip4;
   clib_memcpy (session->ip, mp->ip, sizeof (session->ip));
@@ -1277,10 +1274,6 @@ vppcom_session_disconnect (u32 session_index)
 		      vcm->my_pid, vppcom_retval_str (rv), rv);
       return rv;
     }
-
-  clib_spinlock_lock (&vcm->sessions_lockp);
-  pool_put_index (vcm->sessions, session_index);
-  clib_spinlock_unlock (&vcm->sessions_lockp);
   return VPPCOM_OK;
 }
 
@@ -1485,7 +1478,7 @@ vppcom_cfg_read (char *conf_fname)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      unformat_user (input, unformat_line_input, line_input);
+      (void) unformat_user (input, unformat_line_input, line_input);
       unformat_skip_white_space (line_input);
 
       if (unformat (line_input, "vppcom {"))
@@ -1853,14 +1846,31 @@ vppcom_session_close (uint32_t session_index)
   if (session->is_cut_thru)
     {
       if (session->is_server)
-	rv = vppcom_session_unbind_cut_thru (session);
+	{
+	  rv = vppcom_session_unbind_cut_thru (session);
+	  if ((VPPCOM_DEBUG > 0) && (rv < 0))
+	    clib_warning ("[%d] unbind cut-thru (session %d) failed, "
+			  "rv = %s (%d)",
+			  vcm->my_pid, session_index,
+			  vppcom_retval_str (rv), rv);
+	}
+    }
+  else if (session->is_server)
+    {
+      rv = vppcom_session_unbind (session_index);
+      if ((VPPCOM_DEBUG > 0) && (rv < 0))
+	clib_warning ("[%d] unbind (session %d) failed, rv = %s (%d)",
+		      vcm->my_pid, session_index, vppcom_retval_str (rv), rv);
     }
   else
     {
-      rv = (session->is_server) ?
-	vppcom_session_unbind (session_index) :
-	vppcom_session_disconnect (session_index);
+      rv = vppcom_session_disconnect (session_index);
+      if ((VPPCOM_DEBUG > 0) && (rv < 0))
+	clib_warning ("[%d] disconnect (session %d) failed, rv = %s (%d)",
+		      vcm->my_pid, session_index, vppcom_retval_str (rv), rv);
     }
+  if (rv < 0)
+    return rv;
 
   clib_spinlock_lock (&vcm->sessions_lockp);
   pool_put_index (vcm->sessions, session_index);
@@ -2349,12 +2359,14 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
               clib_bitmap_get (vcm->ex_bitmap, session_index) && (rv < 0))
             {
               // TBD: clib_warning
+              /* coverity[FORWARD_NULL] */
               clib_bitmap_set_no_check (except_map, session_index, 1);
               bits_set++;
             }
           else if (rv > 0)
             {
               // TBD: clib_warning
+              /* coverity[FORWARD_NULL] */
               clib_bitmap_set_no_check (read_map, session_index, 1);
               bits_set++;
             }
@@ -2377,9 +2389,10 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
 
           rv = vppcom_session_write_ready (session, session_index);
           clib_spinlock_unlock (&vcm->sessions_lockp);
-          if (rv > 0)
+          if (rv > 0 )
             {
               // TBD: clib_warning
+              /* coverity[FORWARD_NULL] */
               clib_bitmap_set_no_check (write_map, session_index, 1);
               bits_set++;
             }
@@ -2405,6 +2418,7 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
           if (rv < 0)
             {
               // TBD: clib_warning
+              /* coverity[FORWARD_NULL] */
               clib_bitmap_set_no_check (except_map, session_index, 1);
               bits_set++;
             }

@@ -33,7 +33,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
-#include <vlib/linux/syscall.h>
+#include <vppinfra/linux/syscall.h>
 #include <vnet/plugin/plugin.h>
 #include <vnet/ethernet/ethernet.h>
 #include <vpp/app/version.h>
@@ -267,6 +267,8 @@ memif_init_regions_and_queues (memif_if_t * mif)
   int i, j;
   u64 buffer_offset;
   memif_region_t *r;
+  clib_mem_vm_alloc_t alloc = { 0 };
+  clib_error_t *err;
 
   vec_validate_aligned (mif->regions, 0, CLIB_CACHE_LINE_BYTES);
   r = vec_elt_at_index (mif->regions, 0);
@@ -279,18 +281,15 @@ memif_init_regions_and_queues (memif_if_t * mif)
     mif->run.buffer_size * (1 << mif->run.log2_ring_size) *
     (mif->run.num_s2m_rings + mif->run.num_m2s_rings);
 
-  if ((r->fd = memfd_create ("memif region 0", MFD_ALLOW_SEALING)) == -1)
-    return clib_error_return_unix (0, "memfd_create");
+  alloc.name = "memif region";
+  alloc.size = r->region_size;
+  alloc.flags = CLIB_MEM_VM_F_SHARED;
 
-  if ((fcntl (r->fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1)
-    return clib_error_return_unix (0, "fcntl (F_ADD_SEALS, F_SEAL_SHRINK)");
+  err = clib_mem_vm_ext_alloc (&alloc);
+  if (err)
+    return err;
 
-  if ((ftruncate (r->fd, r->region_size)) == -1)
-    return clib_error_return_unix (0, "ftruncate");
-
-  if ((r->shm = mmap (NULL, r->region_size, PROT_READ | PROT_WRITE,
-		      MAP_SHARED, r->fd, 0)) == MAP_FAILED)
-    return clib_error_return_unix (0, "mmap");
+  r->fd = alloc.fd;
 
   for (i = 0; i < mif->run.num_s2m_rings; i++)
     {

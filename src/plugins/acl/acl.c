@@ -259,13 +259,13 @@ acl_del_list (u32 acl_list_index)
     }
 
   if (acl_list_index < vec_len(am->input_sw_if_index_vec_by_acl)) {
-    if (vec_len(am->input_sw_if_index_vec_by_acl[acl_list_index]) > 0) {
+    if (vec_len(pool_elt_at_index(am->input_sw_if_index_vec_by_acl, acl_list_index)) > 0) {
       /* ACL is applied somewhere inbound. Refuse to delete */
       return -1;
     }
   }
   if (acl_list_index < vec_len(am->output_sw_if_index_vec_by_acl)) {
-    if (vec_len(am->output_sw_if_index_vec_by_acl[acl_list_index]) > 0) {
+    if (vec_len(pool_elt_at_index(am->output_sw_if_index_vec_by_acl, acl_list_index)) > 0) {
       /* ACL is applied somewhere outbound. Refuse to delete */
       return -1;
     }
@@ -307,7 +307,7 @@ acl_del_list (u32 acl_list_index)
 
   hash_acl_delete(am, acl_list_index);
   /* now we can delete the ACL itself */
-  a = &am->acls[acl_list_index];
+  a = pool_elt_at_index (am->acls, acl_list_index);
   if (a->rules)
     vec_free (a->rules);
 
@@ -894,7 +894,6 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
 {
   int rv = -1;
   acl_main_t *am = &acl_main;
-  void *oldheap = acl_set_heap(am);
   if (is_add)
     {
       rv =
@@ -910,7 +909,6 @@ acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
       rv =
 	acl_interface_del_inout_acl (sw_if_index, is_input, acl_list_index);
     }
-  clib_mem_set_heap (oldheap);
   return rv;
 }
 
@@ -990,7 +988,7 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 {
   macip_match_type_t *mvec = NULL;
   macip_match_type_t *mt;
-  macip_acl_list_t *a = &am->macip_acls[macip_acl_index];
+  macip_acl_list_t *a = pool_elt_at_index (am->macip_acls, macip_acl_index);
   int i;
   u32 match_type_index;
   u32 last_table;
@@ -1075,8 +1073,8 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 				1);
     last_table = mt->table_index;
   }
-  a->ip4_table_index = ~0;
-  a->ip6_table_index = ~0;
+  a->ip4_table_index = last_table;
+  a->ip6_table_index = last_table;
   a->l2_table_index = last_table;
 
   /* Populate the classifier tables with rules from the MACIP ACL */
@@ -1131,7 +1129,7 @@ static void
 macip_destroy_classify_tables (acl_main_t * am, u32 macip_acl_index)
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
-  macip_acl_list_t *a = &am->macip_acls[macip_acl_index];
+  macip_acl_list_t *a = pool_elt_at_index (am->macip_acls, macip_acl_index);
 
   if (a->ip4_table_index != ~0)
     {
@@ -1203,7 +1201,7 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
     }
   else
     {
-      a = &am->macip_acls[*acl_list_index];
+      a = pool_elt_at_index (am->macip_acls, *acl_list_index);
       if (a->rules)
         {
           vec_free (a->rules);
@@ -1237,7 +1235,7 @@ macip_acl_interface_del_acl (acl_main_t * am, u32 sw_if_index)
   /* No point in deleting MACIP ACL which is not applied */
   if (~0 == macip_acl_index)
     return -1;
-  a = &am->macip_acls[macip_acl_index];
+  a = pool_elt_at_index (am->macip_acls, macip_acl_index);
   /* remove the classifier tables off the interface L2 ACL */
   rv =
     vnet_set_input_acl_intfc (am->vlib_main, sw_if_index, a->ip4_table_index,
@@ -1260,13 +1258,13 @@ macip_acl_interface_add_acl (acl_main_t * am, u32 sw_if_index,
       return -1;
     }
   void *oldheap = acl_set_heap(am);
-  a = &am->macip_acls[macip_acl_index];
+  a = pool_elt_at_index (am->macip_acls, macip_acl_index);
   vec_validate_init_empty (am->macip_acl_by_sw_if_index, sw_if_index, ~0);
+  clib_mem_set_heap (oldheap);
   /* If there already a MACIP ACL applied, unapply it */
   if (~0 != am->macip_acl_by_sw_if_index[sw_if_index])
     macip_acl_interface_del_acl(am, sw_if_index);
   am->macip_acl_by_sw_if_index[sw_if_index] = macip_acl_index;
-  clib_mem_set_heap (oldheap);
 
   /* Apply the classifier tables for L2 ACLs */
   rv =
@@ -1279,7 +1277,6 @@ static int
 macip_acl_del_list (u32 acl_list_index)
 {
   acl_main_t *am = &acl_main;
-  void *oldheap = acl_set_heap(am);
   macip_acl_list_t *a;
   int i;
   if (pool_is_free_index (am->macip_acls, acl_list_index))
@@ -1296,11 +1293,12 @@ macip_acl_del_list (u32 acl_list_index)
 	}
     }
 
+  void *oldheap = acl_set_heap(am);
   /* Now that classifier tables are detached, clean them up */
   macip_destroy_classify_tables (am, acl_list_index);
 
   /* now we can delete the ACL itself */
-  a = &am->macip_acls[acl_list_index];
+  a = pool_elt_at_index (am->macip_acls, acl_list_index);
   if (a->rules)
     {
       vec_free (a->rules);
@@ -1316,7 +1314,6 @@ macip_acl_interface_add_del_acl (u32 sw_if_index, u8 is_add,
 				 u32 acl_list_index)
 {
   acl_main_t *am = &acl_main;
-  void *oldheap = acl_set_heap(am);
   int rv = -1;
   if (is_add)
     {
@@ -1326,7 +1323,6 @@ macip_acl_interface_add_del_acl (u32 sw_if_index, u8 is_add,
     {
       rv = macip_acl_interface_del_acl (am, sw_if_index);
     }
-  clib_mem_set_heap (oldheap);
   return rv;
 }
 
@@ -1539,10 +1535,10 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
     {
       acl_index = ntohl (mp->acl_index);
       if (!pool_is_free_index (am->acls, acl_index))
-	{
-	  acl = &am->acls[acl_index];
-	  send_acl_details (am, q, acl, mp->context);
-	}
+       {
+         acl = pool_elt_at_index (am->acls, acl_index);
+         send_acl_details (am, q, acl, mp->context);
+       }
     }
 
   if (rv == -1)
@@ -1793,10 +1789,10 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
     {
       u32 acl_index = ntohl (mp->acl_index);
       if (!pool_is_free_index (am->macip_acls, acl_index))
-	{
-	  acl = &am->macip_acls[acl_index];
-	  send_macip_acl_details (am, q, acl, mp->context);
-	}
+       {
+         acl = pool_elt_at_index (am->macip_acls, acl_index);
+         send_macip_acl_details (am, q, acl, mp->context);
+       }
     }
 }
 

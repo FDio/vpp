@@ -73,6 +73,7 @@ typedef struct {
 
     /* Connected indication */
     volatile u8 is_connected;
+    u32 vpe_pid;
 } jvpp_registry_main_t;
 
 jvpp_registry_main_t jvpp_registry_main __attribute__((aligned (64)));
@@ -170,7 +171,8 @@ static void vl_api_control_ping_reply_t_handler(
         }
     }
 
-    out: rm->control_ping_result_ready = 1;
+    out: rm->vpe_pid = clib_net_to_host_u32(mp->vpe_pid);
+    rm->control_ping_result_ready = 1;
 }
 
 static int find_ping_id() {
@@ -239,7 +241,6 @@ static int send_initial_control_ping() {
     if (rv != 0) {
         clib_warning("first control ping failed: %d", rv);
     }
-
     return rv;
 }
 
@@ -283,12 +284,12 @@ JNIEXPORT jobject JNICALL Java_io_fd_vpp_jvpp_VppJNIConnection_clientConnect(
     jclass connectionInfoClass = (*env)->FindClass(env,
             "io/fd/vpp/jvpp/VppJNIConnection$ConnectionInfo");
     jmethodID connectionInfoConstructor = (*env)->GetMethodID(env,
-            connectionInfoClass, "<init>", "(JII)V");
+            connectionInfoClass, "<init>", "(JIII)V");
 
     if (rm->is_connected) {
         return (*env)->NewObject(env, connectionInfoClass,
                 connectionInfoConstructor, 0, 0,
-                VNET_API_ERROR_ALREADY_CONNECTED);
+                VNET_API_ERROR_ALREADY_CONNECTED, 0);
     }
 
     client_name = (*env)->GetStringUTFChars(env, clientName, 0);
@@ -296,12 +297,12 @@ JNIEXPORT jobject JNICALL Java_io_fd_vpp_jvpp_VppJNIConnection_clientConnect(
 
     if (!client_name) {
         return (*env)->NewObject(env, connectionInfoClass,
-                connectionInfoConstructor, 0, 0, VNET_API_ERROR_INVALID_VALUE, shmPrefix);
+                connectionInfoConstructor, 0, 0, VNET_API_ERROR_INVALID_VALUE, 0, shmPrefix);
     }
 
     if (!shm_prefix) {
         return (*env)->NewObject(env, connectionInfoClass,
-                connectionInfoConstructor, 0, 0, VNET_API_ERROR_INVALID_VALUE, shmPrefix);
+                connectionInfoConstructor, 0, 0, VNET_API_ERROR_INVALID_VALUE, 0, shmPrefix);
     }
 
     rv = connect_to_vpe((char *) shm_prefix, (char *) client_name);
@@ -314,7 +315,7 @@ JNIEXPORT jobject JNICALL Java_io_fd_vpp_jvpp_VppJNIConnection_clientConnect(
 
     return (*env)->NewObject(env, connectionInfoClass,
             connectionInfoConstructor, (jlong) pointer_to_uword (jm->vl_input_queue),
-            (jint) jm->my_client_index, (jint) rv);
+            (jint) jm->my_client_index, (jint) rv, (jint) rm->vpe_pid);
 }
 
 JNIEXPORT jint JNICALL Java_io_fd_vpp_jvpp_JVppRegistryImpl_controlPing0(

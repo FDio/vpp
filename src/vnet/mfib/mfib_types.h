@@ -169,6 +169,7 @@ typedef enum mfib_source_t_
     MFIB_SOURCE_GTPU,
     MFIB_SOURCE_VXLAN_GPE,
     MFIB_SOURCE_RR,
+    MFIB_SOURCE_GENEVE,
     MFIB_SOURCE_DEFAULT_ROUTE,
 } mfib_source_t;
 
@@ -182,6 +183,7 @@ typedef enum mfib_source_t_
     [MFIB_SOURCE_GTPU] = "GTPU",                   \
     [MFIB_SOURCE_VXLAN_GPE] = "VXLAN-GPE",         \
     [MFIB_SOURCE_RR] = "Recursive-resolution",     \
+    [MFIB_SOURCE_GENEVE] = "Geneve",               \
     [MFIB_SOURCE_DEFAULT_ROUTE] = "Default Route", \
 }
 

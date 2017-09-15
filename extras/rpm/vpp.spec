@@ -294,8 +294,8 @@ fi
 /usr/bin/vpp*
 /usr/bin/svm*
 /usr/bin/elftool
-%config /etc/sysctl.d/80-vpp.conf
-%config /etc/vpp/startup.conf
+%config(noreplace) /etc/sysctl.d/80-vpp.conf
+%config(noreplace) /etc/vpp/startup.conf
 /usr/share/vpp/api/*
 
 %files lib

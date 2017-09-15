@@ -225,7 +225,7 @@ icmpr_buffer_alloc (long n, uint16_t qid)
   int err;
   uint16_t r;
   /* set data pointer to shared memory and set buffer_len to shared mmeory buffer len */
-  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r);
+  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r, 0);
   if (err != MEMIF_ERR_SUCCESS)
     {
       INFO ("memif_buffer_alloc: %s", memif_strerror (err));

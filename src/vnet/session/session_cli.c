@@ -127,13 +127,8 @@ unformat_stream_session_id (unformat_input_t * input, va_list * args)
       *is_ip4 = 0;
       tuple_is_set = 1;
     }
-  else
-    return 0;
 
-  if (tuple_is_set)
-    return 1;
-
-  return 0;
+  return tuple_is_set;
 }
 
 uword
@@ -144,20 +139,11 @@ unformat_stream_session (unformat_input_t * input, va_list * args)
   u8 proto = ~0;
   ip46_address_t lcl, rmt;
   u32 lcl_port = 0, rmt_port = 0;
-  u8 is_ip4 = 0, s_type = ~0, id_is_set = 0;
+  u8 is_ip4 = 0, s_type = ~0;
 
-  if (unformat (input, "%U", unformat_stream_session_id, &proto, &lcl, &rmt,
-		&lcl_port, &rmt_port, &is_ip4))
-    {
-      id_is_set = 1;
-    }
-  else
+  if (!unformat (input, "%U", unformat_stream_session_id, &proto, &lcl, &rmt,
+		 &lcl_port, &rmt_port, &is_ip4))
     return 0;
-
-  if (!id_is_set)
-    {
-      return 0;
-    }
 
   s_type = session_type_from_proto_and_ip (proto, is_ip4);
   if (is_ip4)
@@ -185,20 +171,11 @@ unformat_transport_connection (unformat_input_t * input, va_list * args)
   u8 proto = ~0;
   ip46_address_t lcl, rmt;
   u32 lcl_port = 0, rmt_port = 0;
-  u8 is_ip4 = 0, s_type = ~0, id_is_set = 0;
+  u8 is_ip4 = 0, s_type = ~0;
 
-  if (unformat (input, "%U", unformat_stream_session_id, &proto, &lcl, &rmt,
-		&lcl_port, &rmt_port, &is_ip4))
-    {
-      id_is_set = 1;
-    }
-  else
+  if (!unformat (input, "%U", unformat_stream_session_id, &proto, &lcl, &rmt,
+		 &lcl_port, &rmt_port, &is_ip4))
     return 0;
-
-  if (!id_is_set)
-    {
-      return 0;
-    }
 
   proto = (proto == (u8) ~ 0) ? suggested_proto : proto;
   if (proto == (u8) ~ 0)

@@ -9,7 +9,7 @@ vpp_shm_dir="/dev/shm/"
 vpp_run_dir="/run/vpp"
 lib64_dir="$WS_ROOT/build-root/install-vpp-native/vpp/lib64/"
 lib64_debug_dir="$WS_ROOT/build-root/install-vpp_debug-native/vpp/lib64/"
-dpdk_devbind="$WS_ROOT/build-root/install-vpp-native/dpdk/share/dpdk/usertools/dpdk-devbind.py"
+dpdk_devbind="/usr/share/dpdk/usertools/dpdk-devbind.py"
 docker_vpp_dir="/vpp/"
 docker_app_dir="/vpp/"
 docker_lib64_dir="/vpp-lib64/"
@@ -302,6 +302,13 @@ if [[ $run_test =~ .*"_vcl" ]] && [ $iperf3 -eq 1 ] ; then
     env_test_failed="true"
 fi
 
+if [ -n "$mult_host"] && [ ! -f "$dpdk_devbind" ] ; then
+    echo "ERROR: Can't find dpdk-devbind.py!"
+    echo "       Run \"cd \$WS_ROOT; make dpdk-install-dev\" to install it."
+    echo
+    env_test_failed="true"
+fi
+
 if [ -n "$env_test_failed" ] ; then
     exit 1
 fi
@@ -458,8 +465,8 @@ write_script_header() {
     echo "$bash_header" > $1
     echo -e "#\n# $1 generated on $(date)\n#" >> $1
     if [ $leave_tmp_files -eq 0 ] ; then
-        if [ -n "$multi_host" ] ; then
-            echo "trap \"rm -f $1 $2 $tmp_vpp_exec_file; sudo $dpdk_devbind -e $vpp_eth_kernel_driver $vpp_eth_pci_id; sudo ifup $vpp_eth_name\" $trap_signals" >> $1
+        if [ -n "$multi_host" ] && [[ "$3" == VPP* ]] ; then
+            echo "trap \"rm -f $1 $2 $tmp_vpp_exec_file; sudo $dpdk_devbind -b $vpp_eth_kernel_driver $vpp_eth_pci_id; sudo ifup $vpp_eth_name\" $trap_signals" >> $1
         else
             echo "trap \"rm -f $1 $2 $tmp_vpp_exec_file\" $trap_signals" >> $1
         fi

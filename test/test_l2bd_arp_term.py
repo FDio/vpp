@@ -5,7 +5,7 @@ import unittest
 import random
 import copy
 
-from socket import AF_INET6
+from socket import AF_INET, AF_INET6
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, ARP
@@ -117,7 +117,7 @@ class TestL2bdArpTerm(VppTestCase):
             self.vapi.bridge_domain_add_del(bd_id=bd_id, is_add=is_add)
 
     @classmethod
-    def arp(cls, src_host, host):
+    def arp_req(cls, src_host, host):
         return (Ether(dst="ff:ff:ff:ff:ff:ff", src=src_host.mac) /
                 ARP(op="who-has",
                     hwsrc=src_host.bin_mac,
@@ -126,7 +126,15 @@ class TestL2bdArpTerm(VppTestCase):
 
     @classmethod
     def arp_reqs(cls, src_host, entries):
-        return [cls.arp(src_host, e) for e in entries]
+        return [cls.arp_req(src_host, e) for e in entries]
+
+    @classmethod
+    def garp_req(cls, host):
+        return cls.arp_req(host, host)
+
+    @classmethod
+    def garp_reqs(cls, entries):
+        return [cls.garp_req(e) for e in entries]
 
     def arp_resp_host(self, src_host, arp_resp):
         ether = arp_resp[Ether]
@@ -145,6 +153,20 @@ class TestL2bdArpTerm(VppTestCase):
 
     def arp_resp_hosts(self, src_host, pkts):
         return {self.arp_resp_host(src_host, p) for p in pkts}
+
+    def inttoip4(self, ip):
+        o1 = int(ip / 16777216) % 256
+        o2 = int(ip / 65536) % 256
+        o3 = int(ip / 256) % 256
+        o4 = int(ip) % 256
+        return '%(o1)s.%(o2)s.%(o3)s.%(o4)s' % locals()
+
+    def arp_event_host(self, e):
+        return Host(mac=':'.join(['%02x' % ord(char) for char in e.new_mac]),
+                    ip4=self.inttoip4(e.address))
+
+    def arp_event_hosts(self, evs):
+        return {self.arp_event_host(e) for e in evs}
 
     @classmethod
     def ns_req(cls, src_host, host):
@@ -345,6 +367,60 @@ class TestL2bdArpTerm(VppTestCase):
         updated = self.ip6_hosts(5, 1, macs2)
         self.add_del_arp_term_hosts(updated, is_add=1, is_ipv6=1)
         self.verify_nd(src_host, hosts, updated)
+        self.bd_add_del(1, is_add=0)
+
+    def test_l2bd_arp_term_09(self):
+        """ L2BD arp term - send garps, verify arp event reports
+        """
+        self.vapi.want_ip4_arp_events()
+        self.bd_add_del(1, is_add=1)
+        self.set_bd_flags(1, arp_term=True, flood=False,
+                          uu_flood=False, learn=False)
+        macs = self.mac_list(range(90, 95))
+        hosts = self.ip4_hosts(5, 1, macs)
+
+        garps = self.garp_reqs(hosts)
+        self.bd_swifs(1)[0].add_stream(garps)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        evs = [self.vapi.wait_for_event(1, "ip4_arp_event")
+               for i in range(len(hosts))]
+        ev_hosts = self.arp_event_hosts(evs)
+        self.assertEqual(len(ev_hosts ^ hosts), 0)
+
+    def test_l2bd_arp_term_10(self):
+        """ L2BD arp term - send duplicate garps, verify suppression
+        """
+        macs = self.mac_list(range(70, 71))
+        hosts = self.ip4_hosts(6, 1, macs)
+
+        """ send the packet 5 times expect one event
+        """
+        garps = self.garp_reqs(hosts) * 5
+        self.bd_swifs(1)[0].add_stream(garps)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        evs = [self.vapi.wait_for_event(1, "ip4_arp_event")
+               for i in range(len(hosts))]
+        ev_hosts = self.arp_event_hosts(evs)
+        self.assertEqual(len(ev_hosts ^ hosts), 0)
+
+    def test_l2bd_arp_term_11(self):
+        """ L2BD arp term - disable ip4 arp events,send garps, verify no events
+        """
+        self.vapi.want_ip4_arp_events(enable_disable=0)
+        macs = self.mac_list(range(90, 95))
+        hosts = self.ip4_hosts(5, 1, macs)
+
+        garps = self.garp_reqs(hosts)
+        self.bd_swifs(1)[0].add_stream(garps)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.sleep(1)
+        self.assertEqual(len(self.vapi.collect_events()), 0)
         self.bd_add_del(1, is_add=0)
 
 
