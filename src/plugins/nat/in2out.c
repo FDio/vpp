@@ -1370,7 +1370,7 @@ create_ses:
     vnet_buffer(b)->sw_if_index[VLIB_TX] = sm->outside_fib_index;
 }
 
-static void
+static snat_session_t *
 snat_in2out_lb (snat_main_t *sm,
                 vlib_buffer_t * b,
                 ip4_header_t * ip,
@@ -1417,7 +1417,7 @@ snat_in2out_lb (snat_main_t *sm,
       l_key.protocol = proto;
       l_key.fib_index = rx_fib_index;
       if (snat_static_mapping_match(sm, l_key, &e_key, 0, 0))
-        return;
+        return 0;
 
       u_key.addr = ip->src_address;
       u_key.fib_index = rx_fib_index;
@@ -1515,6 +1515,7 @@ snat_in2out_lb (snat_main_t *sm,
   s->last_heard = now;
   s->total_pkts++;
   s->total_bytes += vlib_buffer_length_in_chain (vm, b);
+  return s;
 }
 
 static inline uword
@@ -1677,7 +1678,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 {
                   if (is_slow_path)
                     {
-                      snat_in2out_lb(sm, b0, ip0, rx_fib_index0, thread_index,
+                      s0 = snat_in2out_lb(sm, b0, ip0, rx_fib_index0, thread_index,
                                      now, vm);
                       goto trace00;
                     }
@@ -1848,7 +1849,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 {
                   if (is_slow_path)
                     {
-                      snat_in2out_lb(sm, b1, ip1, rx_fib_index1, thread_index,
+                      s1 = snat_in2out_lb(sm, b1, ip1, rx_fib_index1, thread_index,
                                      now, vm);
                       goto trace01;
                     }
@@ -2056,7 +2057,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 {
                   if (is_slow_path)
                     {
-                      snat_in2out_lb(sm, b0, ip0, rx_fib_index0, thread_index,
+                      s0 = snat_in2out_lb(sm, b0, ip0, rx_fib_index0, thread_index,
                                      now, vm);
                       goto trace0;
                     }

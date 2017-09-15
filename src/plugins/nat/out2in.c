@@ -750,7 +750,7 @@ snat_out2in_unknown_proto (snat_main_t *sm,
                       s->per_user_index);
 }
 
-static void
+static snat_session_t *
 snat_out2in_lb (snat_main_t *sm,
                 vlib_buffer_t * b,
                 ip4_header_t * ip,
@@ -797,7 +797,7 @@ snat_out2in_lb (snat_main_t *sm,
       e_key.protocol = proto;
       e_key.fib_index = rx_fib_index;
       if (snat_static_mapping_match(sm, e_key, &l_key, 1, 0))
-        return;
+        return 0;
 
       u_key.addr = l_key.addr;
       u_key.fib_index = l_key.fib_index;
@@ -894,6 +894,7 @@ snat_out2in_lb (snat_main_t *sm,
   s->last_heard = now;
   s->total_pkts++;
   s->total_bytes += vlib_buffer_length_in_chain (vm, b);
+  return s;
 }
 
 static uword
@@ -1044,7 +1045,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               if (PREDICT_FALSE (value0.value == ~0ULL))
                 {
-                  snat_out2in_lb(sm, b0, ip0, rx_fib_index0, thread_index, now,
+                  s0 = snat_out2in_lb(sm, b0, ip0, rx_fib_index0, thread_index, now,
                                  vm);
                   goto trace0;
                 }
@@ -1195,7 +1196,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               if (PREDICT_FALSE (value1.value == ~0ULL))
                 {
-                  snat_out2in_lb(sm, b1, ip1, rx_fib_index1, thread_index, now,
+                  s1 = snat_out2in_lb(sm, b1, ip1, rx_fib_index1, thread_index, now,
                                  vm);
                   goto trace1;
                 }
@@ -1383,7 +1384,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               if (PREDICT_FALSE (value0.value == ~0ULL))
                 {
-                  snat_out2in_lb(sm, b0, ip0, rx_fib_index0, thread_index, now,
+                  s0 = snat_out2in_lb(sm, b0, ip0, rx_fib_index0, thread_index, now,
                                  vm);
                   goto trace00;
                 }
