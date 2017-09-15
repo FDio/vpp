@@ -173,12 +173,35 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* copy data */
 	      u32 bytes_to_copy =
 		data_len > n_buffer_bytes ? n_buffer_bytes : data_len;
+	      u32 vlan_len = 0;
+	      u32 bytes_copied = 0;
 	      b0->current_data = 0;
-	      clib_memcpy (vlib_buffer_get_current (b0),
-			   (u8 *) tph + tph->tp_mac + offset, bytes_to_copy);
+	      /* Kernel removes VLAN headers, so reconstruct VLAN */
+	      if (PREDICT_FALSE (tph->tp_status & TP_STATUS_VLAN_VALID))
+		{
+		  if (PREDICT_TRUE (offset == 0))
+		    {
+		      clib_memcpy (vlib_buffer_get_current (b0),
+				   (u8 *) tph + tph->tp_mac,
+				   sizeof (ethernet_header_t));
+		      ethernet_header_t *eth = vlib_buffer_get_current (b0);
+		      ethernet_vlan_header_t *vlan =
+			(ethernet_vlan_header_t *) (eth + 1);
+		      vlan->priority_cfi_and_id =
+			clib_host_to_net_u16 (tph->tp_vlan_tci);
+		      vlan->type = eth->type;
+		      eth->type = clib_host_to_net_u16 (ETHERNET_TYPE_VLAN);
+		      vlan_len = sizeof (ethernet_vlan_header_t);
+		      bytes_copied = sizeof (ethernet_header_t);
+		    }
+		}
+	      clib_memcpy (((u8 *) vlib_buffer_get_current (b0)) +
+			   bytes_copied + vlan_len,
+			   (u8 *) tph + tph->tp_mac + offset + bytes_copied,
+			   (bytes_to_copy - bytes_copied));
 
 	      /* fill buffer header */
-	      b0->current_length = bytes_to_copy;
+	      b0->current_length = bytes_to_copy + vlan_len;
 
 	      if (offset == 0)
 		{
