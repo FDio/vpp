@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_12f4b485",
+        "filename": "src/vppinfra/linux/mem.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-15T16:34:48Z",
+      "side": 1,
+      "message": "Hopefully this cut-\u0027n-paste job is for a good reason...",
+      "revId": "b34dcbcca28ab0aedd9a4b971b92194582a821a8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
