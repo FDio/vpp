@@ -1210,6 +1210,7 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
     conf->eal_init_args_str = format (conf->eal_init_args_str, "%s ",
 				      conf->eal_init_args[i]);
 
+  clib_warning ("EAL init args: %s", conf->eal_init_args_str);
   ret =
     rte_eal_init (vec_len (conf->eal_init_args),
 		  (char **) conf->eal_init_args);
