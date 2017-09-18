@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_95088e92",
+        "filename": "test/vpp_papi_provider.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2269,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-09-18T08:13:57Z",
+      "side": 1,
+      "message": "would it be a good idea to drop \u0027count\u0027 in these APIs and use len(\u003cappropriate array\u003e) in the internal call (self.api(...)) instead to \n\na.) make it more foolproof\nb.) decrease amount of code in test cases\n\nif there are tests which pass wrong count value on purpose, I\u0027d suggest to default it to None (allowing override) and if set to default, then set it to len(\u003cappropriate array\u003e) inside function\n\nthis applies to acl_interface_set_acl_list too",
+      "range": {
+        "startLine": 2269,
+        "startChar": 44,
+        "endLine": 2269,
+        "endChar": 49
+      },
+      "revId": "6040469233edd396f422d39ace0b51e00184c6df",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
