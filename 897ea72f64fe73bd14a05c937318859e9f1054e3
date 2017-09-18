@@ -22,6 +22,30 @@
       "revId": "897ea72f64fe73bd14a05c937318859e9f1054e3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_a078ea8f",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1391,
+      "author": {
+        "id": 164
+      },
+      "writtenOn": "2017-09-18T12:41:52Z",
+      "side": 1,
+      "message": "Changed access to arrays using pool_at function",
+      "parentUuid": "3a4b7175_95a09591",
+      "range": {
+        "startLine": 1391,
+        "startChar": 2,
+        "endLine": 1391,
+        "endChar": 40
+      },
+      "revId": "897ea72f64fe73bd14a05c937318859e9f1054e3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
