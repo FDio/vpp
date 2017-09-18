@@ -44,6 +44,7 @@
 #include <vnet/ip/lookup.h>
 #include <vnet/buffer.h>
 #include <vnet/feature/feature.h>
+#include <vnet/ip/icmp46_packet.h>
 
 typedef struct ip4_mfib_t
 {
