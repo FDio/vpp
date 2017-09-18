@@ -414,6 +414,8 @@ typedef struct _tcp_main
 
   /** vlib buffer size */
   u32 bytes_per_buffer;
+
+  u8 punt_is_enabled;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
@@ -904,6 +906,7 @@ tcp_cc_algo_get (tcp_cc_algorithm_type_e type)
 }
 
 void tcp_cc_init (tcp_connection_t * tc);
+void tcp_punt_enable_disable (u8 is_enable);
 
 /**
  * Push TCP header to buffer

@@ -1890,6 +1890,34 @@ VLIB_CLI_COMMAND (tcp_replay_scoreboard_command, static) =
 };
 /* *INDENT-ON* */
 
+void
+tcp_punt_enable_disable (u8 is_enable)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  tm->punt_is_enabled = is_enable;
+}
+
+static clib_error_t *
+show_tcp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
+		  vlib_cli_command_t * cmd_arg)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+  vlib_cli_output (vm, "TCP punt is: %s",
+		   tm->punt_is_enabled ? "enabled" : "disabled");
+  return 0;
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
+{
+  .path = "show tcp punt",
+  .short_help = "show tcp punt",
+  .function = show_tcp_punt_fn,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
