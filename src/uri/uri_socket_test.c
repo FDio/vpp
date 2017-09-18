@@ -36,14 +36,34 @@ main (int argc, char *argv[])
 
   if (argc >= 3)
     {
-      bytes = ((long) atoi (argv[4])) << 20;
-      no_echo = atoi (argv[3]);
       portno = atoi (argv[2]);
       server = gethostbyname (argv[1]);
       if (server == NULL)
 	{
 	  clib_unix_warning ("gethostbyname");
 	  exit (1);
+	}
+
+      argc -= 3;
+      argv += 3;
+
+      if (argc)
+	{
+	  bytes = ((long) atoi (argv[0])) << 20;
+	  argc--;
+	  argv++;
+	}
+      if (argc)
+	{
+	  no_echo = atoi (argv[0]);
+	  argc--;
+	  argv++;
+	}
+      if (argc)
+	{
+	  test_bytes = atoi (argv[0]);
+	  argc--;
+	  argv++;
 	}
     }
   else

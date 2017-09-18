@@ -91,6 +91,15 @@
  * protocol message. This is a saftey measure. */
 #define UNIX_CLI_MAX_DEPTH_TELNET 24
 
+/** Minimum terminal width we will accept */
+#define UNIX_CLI_MIN_TERMINAL_WIDTH 1
+/** Maximum terminal width we will accept */
+#define UNIX_CLI_MAX_TERMINAL_WIDTH 512
+/** Minimum terminal height we will accept */
+#define UNIX_CLI_MIN_TERMINAL_HEIGHT 1
+/** Maximum terminal height we will accept */
+#define UNIX_CLI_MAX_TERMINAL_HEIGHT 512
+
 /** Unix standard in */
 #define UNIX_CLI_STDIN_FD 0
 
@@ -1164,10 +1173,21 @@ unix_cli_process_telnet (unix_main_t * um,
 		    /* Window size */
 		    if (i != 8)	/* check message is correct size */
 		      break;
+
 		    cf->width =
 		      clib_net_to_host_u16 (*((u16 *) (input_vector + 3)));
+		    if (cf->width > UNIX_CLI_MAX_TERMINAL_WIDTH)
+		      cf->width = UNIX_CLI_MAX_TERMINAL_WIDTH;
+		    if (cf->width < UNIX_CLI_MIN_TERMINAL_WIDTH)
+		      cf->width = UNIX_CLI_MIN_TERMINAL_WIDTH;
+
 		    cf->height =
 		      clib_net_to_host_u16 (*((u16 *) (input_vector + 5)));
+		    if (cf->height > UNIX_CLI_MAX_TERMINAL_HEIGHT)
+		      cf->height = UNIX_CLI_MAX_TERMINAL_HEIGHT;
+		    if (cf->height < UNIX_CLI_MIN_TERMINAL_HEIGHT)
+		      cf->height = UNIX_CLI_MIN_TERMINAL_HEIGHT;
+
 		    /* reindex pager buffer */
 		    unix_cli_pager_reindex (cf);
 		    /* redraw page */
@@ -2539,8 +2559,18 @@ unix_cli_resize_interrupt (int signum)
       /* We can't trust ws.XXX... */
       return;
     }
+
   cf->width = ws.ws_col;
+  if (cf->width > UNIX_CLI_MAX_TERMINAL_WIDTH)
+    cf->width = UNIX_CLI_MAX_TERMINAL_WIDTH;
+  if (cf->width < UNIX_CLI_MIN_TERMINAL_WIDTH)
+    cf->width = UNIX_CLI_MIN_TERMINAL_WIDTH;
+
   cf->height = ws.ws_row;
+  if (cf->height > UNIX_CLI_MAX_TERMINAL_HEIGHT)
+    cf->height = UNIX_CLI_MAX_TERMINAL_HEIGHT;
+  if (cf->height < UNIX_CLI_MIN_TERMINAL_HEIGHT)
+    cf->height = UNIX_CLI_MIN_TERMINAL_HEIGHT;
 
   /* Reindex the pager buffer */
   unix_cli_pager_reindex (cf);

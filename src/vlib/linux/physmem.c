@@ -157,7 +157,7 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
   pr->mem = alloc.addr;
   pr->log2_page_size = alloc.log2_page_size;
   pr->n_pages = alloc.n_pages;
-  pr->size = pr->n_pages << pr->log2_page_size;
+  pr->size = (u64) pr->n_pages << (u64) pr->log2_page_size;
   pr->page_mask = (1 << pr->log2_page_size) - 1;
   pr->numa_node = numa_node;
   pr->name = format (0, "%s", name);

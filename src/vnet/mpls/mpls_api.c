@@ -96,7 +96,7 @@ vl_api_mpls_table_add_del_t_handler (vl_api_mpls_table_add_del_t * mp)
   else
     mpls_table_delete (ntohl (mp->mt_table_id), 1);
 
-  rv = (rv == 0) ? vnm->api_errno : rv;
+  // NB: Nothing sets rv; none of the above returns an error
 
   REPLY_MACRO (VL_API_MPLS_TABLE_ADD_DEL_REPLY);
 }
