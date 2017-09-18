@@ -1922,7 +1922,13 @@ show_ip_local_command_fn (vlib_main_t * vm,
   for (i = 0; i < ARRAY_LEN (lm->local_next_by_ip_protocol); i++)
     {
       if (lm->local_next_by_ip_protocol[i] != IP_LOCAL_NEXT_PUNT)
-	vlib_cli_output (vm, "%d", i);
+	{
+	  u32 node_index = vlib_get_node (vm,
+					  ip4_local_node.index)->
+	    next_nodes[lm->local_next_by_ip_protocol[i]];
+	  vlib_cli_output (vm, "%d: %U", i, format_vlib_node_name, vm,
+			   node_index);
+	}
     }
   return 0;
 }

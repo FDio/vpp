@@ -441,7 +441,8 @@ done:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (set_interface_feature_command, static) = {
   .path = "set interface feature",
-  .short_help = "set interface feature <intfc> <feature_name> arc <arc_name>",
+  .short_help = "set interface feature <intfc> <feature_name> arc <arc_name> "
+      "[disable]",
   .function = set_interface_features_command_fn,
 };
 /* *INDENT-ON* */

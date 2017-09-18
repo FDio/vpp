@@ -1337,8 +1337,17 @@ ip6_next_proto_is_tcp_udp (vlib_buffer_t * p0, ip6_header_t * ip0,
   return proto0;
 }
 
+/* *INDENT-OFF* */
+VNET_FEATURE_ARC_INIT (ip6_local) =
+{
+  .arc_name  = "ip6-local",
+  .start_nodes = VNET_FEATURES ("ip6-local"),
+};
+/* *INDENT-ON* */
+
 static uword
-ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+		  vlib_frame_t * frame, int head_of_feature_arc)
 {
   ip6_main_t *im = &ip6_main;
   ip_lookup_main_t *lm = &im->lookup_main;
@@ -1346,6 +1355,7 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
   u32 *from, *to_next, n_left_from, n_left_to_next;
   vlib_node_runtime_t *error_node =
     vlib_node_get_runtime (vm, ip6_input_node.index);
+  u8 arc_index = vnet_feat_arc_ip6_local.feature_arc_index;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -1377,20 +1387,22 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  to_next += 2;
 	  n_left_to_next -= 2;
 
+	  error0 = error1 = IP6_ERROR_UNKNOWN_PROTOCOL;
+
 	  p0 = vlib_get_buffer (vm, pi0);
 	  p1 = vlib_get_buffer (vm, pi1);
 
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
 
+	  if (head_of_feature_arc == 0)
+	    goto skip_checks;
+
 	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
 	  vnet_buffer (p1)->l3_hdr_offset = p1->current_data;
 
 	  type0 = lm->builtin_protocol_by_ip_protocol[ip0->protocol];
 	  type1 = lm->builtin_protocol_by_ip_protocol[ip1->protocol];
-
-	  next0 = lm->local_next_by_ip_protocol[ip0->protocol];
-	  next1 = lm->local_next_by_ip_protocol[ip1->protocol];
 
 	  flags0 = p0->flags;
 	  flags1 = p1->flags;
@@ -1485,6 +1497,11 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 			? IP6_ERROR_SRC_LOOKUP_MISS : error1);
 	    }
 
+	skip_checks:
+
+	  next0 = lm->local_next_by_ip_protocol[ip0->protocol];
+	  next1 = lm->local_next_by_ip_protocol[ip1->protocol];
+
 	  next0 =
 	    error0 != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
 	  next1 =
@@ -1492,6 +1509,18 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  p0->error = error_node->errors[error0];
 	  p1->error = error_node->errors[error1];
+
+	  if (head_of_feature_arc)
+	    {
+	      if (PREDICT_TRUE (error0 == (u8) IP6_ERROR_UNKNOWN_PROTOCOL))
+		vnet_feature_arc_start (arc_index,
+					vnet_buffer (p0)->sw_if_index
+					[VLIB_RX], &next0, p0);
+	      if (PREDICT_TRUE (error1 == (u8) IP6_ERROR_UNKNOWN_PROTOCOL))
+		vnet_feature_arc_start (arc_index,
+					vnet_buffer (p1)->sw_if_index
+					[VLIB_RX], &next1, p1);
+	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -1515,12 +1544,17 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  to_next += 1;
 	  n_left_to_next -= 1;
 
+	  error0 = IP6_ERROR_UNKNOWN_PROTOCOL;
+
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip0 = vlib_buffer_get_current (p0);
+
+	  if (head_of_feature_arc == 0)
+	    goto skip_check;
+
 	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
 
 	  type0 = lm->builtin_protocol_by_ip_protocol[ip0->protocol];
-	  next0 = lm->local_next_by_ip_protocol[ip0->protocol];
 	  flags0 = p0->flags;
 	  is_tcp_udp0 = ip6_next_proto_is_tcp_udp (p0, ip0, &udp_offset0);
 	  good_l4_csum0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
@@ -1573,9 +1607,20 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 			? IP6_ERROR_SRC_LOOKUP_MISS : error0);
 	    }
 
+	skip_check:
+
+	  next0 = lm->local_next_by_ip_protocol[ip0->protocol];
 	  next0 =
 	    error0 != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
 	  p0->error = error_node->errors[error0];
+
+	  if (head_of_feature_arc)
+	    {
+	      if (PREDICT_TRUE (error0 == (u8) IP6_ERROR_UNKNOWN_PROTOCOL))
+		vnet_feature_arc_start (arc_index,
+					vnet_buffer (p0)->sw_if_index
+					[VLIB_RX], &next0, p0);
+	    }
 
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -1586,6 +1631,12 @@ ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     }
 
   return frame->n_vectors;
+}
+
+static uword
+ip6_local (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return ip6_local_inline (vm, node, frame, 1 /* head of feature arc */ );
 }
 
 /* *INDENT-OFF* */
@@ -1607,6 +1658,33 @@ VLIB_REGISTER_NODE (ip6_local_node, static) =
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_local_node, ip6_local);
+
+
+static uword
+ip6_local_end_of_arc (vlib_main_t * vm,
+		      vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  return ip6_local_inline (vm, node, frame, 0 /* head of feature arc */ );
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip6_local_end_of_arc_node,static) = {
+  .function = ip6_local_end_of_arc,
+  .name = "ip6-local-end-of-arc",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_ip6_forward_next_trace,
+  .sibling_of = "ip6-local",
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_local_end_of_arc_node, ip6_local_end_of_arc)
+
+VNET_FEATURE_INIT (ip6_local_end_of_arc, static) = {
+  .arc_name = "ip6-local",
+  .node_name = "ip6-local-end-of-arc",
+  .runs_before = 0, /* not before any other features */
+};
+/* *INDENT-ON* */
 
 void
 ip6_register_protocol (u32 protocol, u32 node_index)
@@ -3271,7 +3349,14 @@ show_ip6_local_command_fn (vlib_main_t * vm,
   for (i = 0; i < ARRAY_LEN (lm->local_next_by_ip_protocol); i++)
     {
       if (lm->local_next_by_ip_protocol[i] != IP_LOCAL_NEXT_PUNT)
-	vlib_cli_output (vm, "%d", i);
+	{
+
+	  u32 node_index = vlib_get_node (vm,
+					  ip6_local_node.index)->
+	    next_nodes[lm->local_next_by_ip_protocol[i]];
+	  vlib_cli_output (vm, "%d: %U", i, format_vlib_node_name, vm,
+			   node_index);
+	}
     }
   return 0;
 }
