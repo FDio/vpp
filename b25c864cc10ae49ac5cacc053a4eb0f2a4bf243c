@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_a016aaa5",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2017-09-18T20:23:54Z",
+      "side": 1,
+      "message": "Fixed *what* usage string?\n\nJust imagine reading this one line commit description at some later\ndate without context.",
+      "range": {
+        "startLine": 7,
+        "startChar": 4,
+        "endLine": 7,
+        "endChar": 7
+      },
+      "revId": "b25c864cc10ae49ac5cacc053a4eb0f2a4bf243c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
