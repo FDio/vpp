@@ -6,7 +6,7 @@ RUN rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/JakubGrajciar/libmemif.git /libmemif
 WORKDIR /libmemif
-RUN git checkout dev
+RUN git checkout master
 RUN ./bootstrap
 RUN ./configure
 RUN make
