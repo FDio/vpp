@@ -414,6 +414,8 @@ typedef struct _tcp_main
 
   /** vlib buffer size */
   u32 bytes_per_buffer;
+
+  u8 punt_is_enabled;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;

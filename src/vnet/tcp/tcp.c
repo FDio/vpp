@@ -1890,6 +1890,58 @@ VLIB_CLI_COMMAND (tcp_replay_scoreboard_command, static) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+tcp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
+	     vlib_cli_command_t * cmd_arg)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  i8 is_enabled = -1;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+	is_enabled = 1;
+      else if (unformat (input, "disable"))
+	is_enabled = 0;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+  if (is_enabled >= 0)
+    tm->punt_is_enabled = is_enabled;
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (tcp_punt_command, static) =
+{
+  .path = "tcp punt",
+  .short_help = "tcp punt [enable][disable]",
+  .function = tcp_punt_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_tcp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
+		  vlib_cli_command_t * cmd_arg)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+  vlib_cli_output (vm, "TCP punt is: %s",
+		   tm->punt_is_enabled ? "enabled" : "disabled");
+  return 0;
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
+{
+  .path = "show tcp punt",
+  .short_help = "show tcp punt",
+  .function = show_tcp_punt_fn,
+};
+/* *INDENT-ON* */
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
