@@ -267,10 +267,7 @@ stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
 	}
     }
 
-  if (is_in_order)
-    return enqueued;
-
-  return 0;
+  return enqueued;
 }
 
 /** Check if we have space in rx fifo to push more bytes */

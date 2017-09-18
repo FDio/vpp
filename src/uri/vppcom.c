@@ -1478,7 +1478,7 @@ vppcom_cfg_read (char *conf_fname)
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      unformat_user (input, unformat_line_input, line_input);
+      (void) unformat_user (input, unformat_line_input, line_input);
       unformat_skip_white_space (line_input);
 
       if (unformat (line_input, "vppcom {"))
@@ -2359,12 +2359,14 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
               clib_bitmap_get (vcm->ex_bitmap, session_index) && (rv < 0))
             {
               // TBD: clib_warning
+              /* coverity[FORWARD_NULL] */
               clib_bitmap_set_no_check (except_map, session_index, 1);
               bits_set++;
             }
           else if (rv > 0)
             {
               // TBD: clib_warning
+              /* coverity[FORWARD_NULL] */
               clib_bitmap_set_no_check (read_map, session_index, 1);
               bits_set++;
             }
@@ -2387,9 +2389,10 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
 
           rv = vppcom_session_write_ready (session, session_index);
           clib_spinlock_unlock (&vcm->sessions_lockp);
-          if (rv > 0)
+          if (rv > 0 )
             {
               // TBD: clib_warning
+              /* coverity[FORWARD_NULL] */
               clib_bitmap_set_no_check (write_map, session_index, 1);
               bits_set++;
             }
@@ -2415,6 +2418,7 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
           if (rv < 0)
             {
               // TBD: clib_warning
+              /* coverity[FORWARD_NULL] */
               clib_bitmap_set_no_check (except_map, session_index, 1);
               bits_set++;
             }

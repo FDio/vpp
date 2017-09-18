@@ -49,7 +49,7 @@ int
 clib_mem_vm_get_log2_page_size (int fd)
 {
   struct stat st = { 0 };
-  if (fstat (fd, &st))
+  if (fstat (fd, &st) == -1)
     return 0;
   return min_log2 (st.st_blksize);
 }

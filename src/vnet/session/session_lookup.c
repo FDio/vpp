@@ -233,15 +233,15 @@ stream_session_half_open_table_add (transport_connection_t * tc, u64 value)
     {
       make_v4_ss_kv_from_tc (&kv4, tc);
       kv4.value = value;
-      clib_bihash_add_del_16_8 (&sl->v4_half_open_hash, &kv4,
-				1 /* is_add */ );
+      (void) clib_bihash_add_del_16_8 (&sl->v4_half_open_hash, &kv4,
+				       1 /* is_add */ );
     }
   else
     {
       make_v6_ss_kv_from_tc (&kv6, tc);
       kv6.value = value;
-      clib_bihash_add_del_48_8 (&sl->v6_half_open_hash, &kv6,
-				1 /* is_add */ );
+      (void) clib_bihash_add_del_48_8 (&sl->v6_half_open_hash, &kv6,
+				       1 /* is_add */ );
     }
 }
 

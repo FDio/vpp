@@ -429,6 +429,7 @@ exit_client (void)
       tsock = &scm->test_socket[i];
       tsock->cfg.test = SOCK_TEST_TYPE_EXIT;
 
+      /* coverity[COPY_PASTE_ERROR] */
       if (ctrl->cfg.verbose)
 	{
 	  printf ("\nCLIENT (fd %d): Sending exit cfg to server...\n",
