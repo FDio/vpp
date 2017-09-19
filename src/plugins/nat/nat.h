@@ -244,6 +244,13 @@ typedef struct {
 } snat_static_map_resolve_t;
 
 typedef struct {
+  /* Main lookup tables */
+  clib_bihash_8_8_t out2in;
+  clib_bihash_8_8_t in2out;
+
+  /* Find-a-user => src address lookup */
+  clib_bihash_8_8_t user_hash;
+
   /* User pool */
   snat_user_t * users;
 
@@ -271,16 +278,9 @@ typedef u32 snat_icmp_match_function_t (struct snat_main_s *sm,
 typedef u32 (snat_get_worker_function_t) (ip4_header_t * ip, u32 rx_fib_index);
 
 typedef struct snat_main_s {
-  /* Main lookup tables */
-  clib_bihash_8_8_t out2in;
-  clib_bihash_8_8_t in2out;
-
   /* Endpoint address dependent sessions lookup tables */
   clib_bihash_16_8_t out2in_ed;
   clib_bihash_16_8_t in2out_ed;
-
-  /* Find-a-user => src address lookup */
-  clib_bihash_8_8_t user_hash;
 
   /* Non-translated packets worker lookup => src address + VRF */
   clib_bihash_8_8_t worker_by_in;
