@@ -231,6 +231,7 @@ u8 * format_sockaddr (u8 * s, va_list * args)
 {
   void * v = va_arg (*args, void *);
   struct sockaddr * sa = v;
+  static u32 local_counter;
 
   switch (sa->sa_family)
     {
@@ -240,6 +241,17 @@ u8 * format_sockaddr (u8 * s, va_list * args)
 	s = format (s, "%U:%U",
 		    format_network_address, AF_INET, &i->sin_addr.s_addr,
 		    format_network_port, IPPROTO_TCP, ntohs (i->sin_port));
+      }
+      break;
+
+    case AF_LOCAL:
+      {
+        /* 
+         * There isn't anything useful to print.
+         * The unix cli world uses the output to make a node name,
+         * so we need to return a unique name. 
+         */
+        s = format (s, "local:%u", local_counter++);
       }
       break;
 
