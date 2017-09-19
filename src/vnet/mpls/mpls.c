@@ -575,11 +575,6 @@ vnet_mpls_table_cmd (vlib_main_t * vm,
       error = clib_error_return (0, "No table id");
       goto done;
     }
-  else if (0 == table_id)
-    {
-      error = clib_error_return (0, "Can't change the default table");
-      goto done;
-    }
   else
     {
       if (is_add)
@@ -604,8 +599,8 @@ vnet_mpls_table_cmd (vlib_main_t * vm,
  * Including the default table.
  ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (ip6_table_command, static) = {
-  .path = "mpla table",
+VLIB_CLI_COMMAND (mpls_table_command, static) = {
+  .path = "mpls table",
   .short_help = "mpls table [add|del] <table-id>",
   .function = vnet_mpls_table_cmd,
   .is_mp_safe = 1,
