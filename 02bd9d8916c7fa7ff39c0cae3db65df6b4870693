@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_e07ca2b7",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 579,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-09-19T01:12:38Z",
+      "side": 1,
+      "message": "Empty lines",
+      "range": {
+        "startLine": 579,
+        "startChar": 0,
+        "endLine": 579,
+        "endChar": 0
+      },
+      "revId": "02bd9d8916c7fa7ff39c0cae3db65df6b4870693",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_4026d6cf",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2125,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-09-19T01:12:38Z",
+      "side": 1,
+      "message": "You still need to pool_put rmts.",
+      "revId": "02bd9d8916c7fa7ff39c0cae3db65df6b4870693",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_c019a689",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2128,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-09-19T01:12:38Z",
+      "side": 1,
+      "message": ".. and pool_free (lcm-\u003elcl_to_rmt_adjs_by_lcl_idx);",
+      "revId": "02bd9d8916c7fa7ff39c0cae3db65df6b4870693",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
