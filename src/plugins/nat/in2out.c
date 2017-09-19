@@ -191,7 +191,7 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t *node,
 static inline int
 snat_not_translate (snat_main_t * sm, vlib_node_runtime_t *node,
                     u32 sw_if_index0, ip4_header_t * ip0, u32 proto0,
-                    u32 rx_fib_index0)
+                    u32 rx_fib_index0, u32 thread_index)
 {
   udp_header_t * udp0 = ip4_next_header (ip0);
   snat_session_key_t key0, sm0;
@@ -205,7 +205,8 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t *node,
 
   /* NAT packet aimed at external address if */
   /* has active sessions */
-  if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+  if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].out2in, &kv0,
+                              &value0))
     {
       /* or is static mappings */
       if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
@@ -256,7 +257,8 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   kv0.key = user_key.as_u64;
 
   /* Ever heard of the "user" = src ip4 address before? */
-  if (clib_bihash_search_8_8 (&sm->user_hash, &kv0, &value0))
+  if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].user_hash,
+                              &kv0, &value0))
     {
       /* no, make a new one */
       pool_get (sm->per_thread_data[thread_index].users, u);
@@ -275,7 +277,8 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
       kv0.value = u - sm->per_thread_data[thread_index].users;
 
       /* add user */
-      clib_bihash_add_del_8_8 (&sm->user_hash, &kv0, 1 /* is_add */);
+      clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].user_hash,
+                               &kv0, 1 /* is_add */);
     }
   else
     {
@@ -339,10 +342,12 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
         {
           /* Remove in2out, out2in keys */
           kv0.key = s->in2out.as_u64;
-          if (clib_bihash_add_del_8_8 (&sm->in2out, &kv0, 0 /* is_add */))
+          if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].in2out,
+                                       &kv0, 0 /* is_add */))
               clib_warning ("in2out key delete failed");
           kv0.key = s->out2in.as_u64;
-          if (clib_bihash_add_del_8_8 (&sm->out2in, &kv0, 0 /* is_add */))
+          if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].out2in,
+                                       &kv0, 0 /* is_add */))
               clib_warning ("out2in key delete failed");
 
           /* log NAT event */
@@ -431,13 +436,15 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   /* Add to translation hashes */
   kv0.key = s->in2out.as_u64;
   kv0.value = s - sm->per_thread_data[thread_index].sessions;
-  if (clib_bihash_add_del_8_8 (&sm->in2out, &kv0, 1 /* is_add */))
+  if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].in2out, &kv0,
+                               1 /* is_add */))
       clib_warning ("in2out key add failed");
 
   kv0.key = s->out2in.as_u64;
   kv0.value = s - sm->per_thread_data[thread_index].sessions;
 
-  if (clib_bihash_add_del_8_8 (&sm->out2in, &kv0, 1 /* is_add */))
+  if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].out2in, &kv0,
+                               1 /* is_add */))
       clib_warning ("out2in key add failed");
 
   /* Add to translated packets worker lookup */
@@ -554,10 +561,11 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
 
   kv0.key = key0.as_u64;
 
-  if (clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0))
+  if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].in2out, &kv0,
+                              &value0))
     {
       if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0, ip0,
-          IP_PROTOCOL_ICMP, rx_fib_index0) &&
+          IP_PROTOCOL_ICMP, rx_fib_index0, thread_index) &&
           vnet_buffer(b0)->sw_if_index[VLIB_TX] == ~0))
         {
           dont_translate = 1;
@@ -841,8 +849,22 @@ snat_hairpinning (snat_main_t *sm,
   key0.fib_index = sm->outside_fib_index;
   kv0.key = key0.as_u64;
 
+  if (sm->num_workers > 1)
+    {
+      k0.addr = ip0->dst_address;
+      k0.port = udp0->dst_port;
+      k0.fib_index = sm->outside_fib_index;
+      kv0.key = k0.as_u64;
+      if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
+        return;
+      else
+        ti = value0.value;
+    }
+  else
+    ti = sm->num_workers;
+
   /* Check if destination is in active sessions */
-  if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+  if (clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0, &value0))
     {
       /* or static mappings */
       if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
@@ -855,19 +877,6 @@ snat_hairpinning (snat_main_t *sm,
   else
     {
       si = value0.value;
-      if (sm->num_workers > 1)
-        {
-          k0.addr = ip0->dst_address;
-          k0.port = udp0->dst_port;
-          k0.fib_index = sm->outside_fib_index;
-          kv0.key = k0.as_u64;
-          if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
-            ASSERT(0);
-          else
-            ti = value0.value;
-        }
-      else
-        ti = sm->num_workers;
 
       s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
       new_dst_addr0 = s0->in2out.addr.as_u32;
@@ -940,8 +949,23 @@ snat_icmp_hairpinning (snat_main_t *sm,
       key0.fib_index = sm->outside_fib_index;
       kv0.key = key0.as_u64;
 
+      if (sm->num_workers > 1)
+        {
+          k0.addr = ip0->dst_address;
+          k0.port = icmp_id0;
+          k0.fib_index = sm->outside_fib_index;
+          kv0.key = k0.as_u64;
+          if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
+            return;
+          else
+            ti = value0.value;
+        }
+      else
+        ti = sm->num_workers;
+
       /* Check if destination is in active sessions */
-      if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+      if (clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0,
+                                  &value0))
         {
           /* or static mappings */
           if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
@@ -953,19 +977,6 @@ snat_icmp_hairpinning (snat_main_t *sm,
       else
         {
           si = value0.value;
-          if (sm->num_workers > 1)
-            {
-              k0.addr = ip0->dst_address;
-              k0.port = icmp_id0;
-              k0.fib_index = sm->outside_fib_index;
-              kv0.key = k0.as_u64;
-              if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
-                ASSERT(0);
-              else
-                ti = value0.value;
-            }
-          else
-            ti = sm->num_workers;
 
           s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
           new_dst_addr0 = s0->in2out.addr.as_u32;
@@ -1141,7 +1152,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
       kv.key = u_key.as_u64;
 
       /* Ever heard of the "user" = src ip4 address before? */
-      if (clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+      if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
         {
           /* no, make a new one */
           pool_get (tsm->users, u);
@@ -1158,7 +1169,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
           kv.value = u - tsm->users;
 
           /* add user */
-          clib_bihash_add_del_8_8 (&sm->user_hash, &kv, 1);
+          clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 1);
         }
       else
         {
@@ -1183,7 +1194,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
       else
         {
           /* Choose same out address as for TCP/UDP session to same destination */
-          if (!clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+          if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
             {
               head_index = u->sessions_per_user_list_head_index;
               head = pool_elt_at_index (tsm->list_pool, head_index);
@@ -1288,10 +1299,12 @@ create_ses:
 
               /* Remove in2out, out2in keys */
               kv.key = s->in2out.as_u64;
-              if (clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0))
+              if (clib_bihash_add_del_8_8 (
+                    &sm->per_thread_data[thread_index].in2out, &kv, 0))
                 clib_warning ("in2out key del failed");
               kv.key = s->out2in.as_u64;
-              if (clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0))
+              if (clib_bihash_add_del_8_8 (
+                    &sm->per_thread_data[thread_index].out2in, &kv, 0))
                 clib_warning ("out2in key del failed");
             }
         }
@@ -1424,7 +1437,7 @@ snat_in2out_lb (snat_main_t *sm,
       kv.key = u_key.as_u64;
 
       /* Ever heard of the "user" = src ip4 address before? */
-      if (clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+      if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
         {
           /* no, make a new one */
           pool_get (tsm->users, u);
@@ -1441,7 +1454,7 @@ snat_in2out_lb (snat_main_t *sm,
           kv.value = u - tsm->users;
 
           /* add user */
-          if (clib_bihash_add_del_8_8 (&sm->user_hash, &kv, 1))
+          if (clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 1))
             clib_warning ("user key add failed");
         }
       else
@@ -1653,12 +1666,13 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           kv0.key = key0.as_u64;
 
-          if (PREDICT_FALSE (clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0) != 0))
+          if (PREDICT_FALSE (clib_bihash_search_8_8 (
+              &sm->per_thread_data[thread_index].in2out, &kv0, &value0) != 0))
             {
               if (is_slow_path)
                 {
                   if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
-                      ip0, proto0, rx_fib_index0)) && !is_output_feature)
+                      ip0, proto0, rx_fib_index0, thread_index)) && !is_output_feature)
                     goto trace00;
 
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,
@@ -1824,12 +1838,13 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           kv1.key = key1.as_u64;
 
-            if (PREDICT_FALSE(clib_bihash_search_8_8 (&sm->in2out, &kv1, &value1) != 0))
+            if (PREDICT_FALSE(clib_bihash_search_8_8 (
+                &sm->per_thread_data[thread_index].in2out, &kv1, &value1) != 0))
             {
               if (is_slow_path)
                 {
                   if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index1,
-                      ip1, proto1, rx_fib_index1)) && !is_output_feature)
+                      ip1, proto1, rx_fib_index1, thread_index)) && !is_output_feature)
                     goto trace01;
 
                   next1 = slow_path (sm, b1, ip1, rx_fib_index1, &key1,
@@ -2031,12 +2046,13 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
           kv0.key = key0.as_u64;
 
-          if (clib_bihash_search_8_8 (&sm->in2out, &kv0, &value0))
+          if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].in2out,
+                                      &kv0, &value0))
             {
               if (is_slow_path)
                 {
                   if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
-                      ip0, proto0, rx_fib_index0)) && !is_output_feature)
+                      ip0, proto0, rx_fib_index0, thread_index)) && !is_output_feature)
                     goto trace0;
 
                   next0 = slow_path (sm, b0, ip0, rx_fib_index0, &key0,

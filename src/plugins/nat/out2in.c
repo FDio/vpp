@@ -146,7 +146,8 @@ create_session_for_static_mapping (snat_main_t *sm,
   kv0.key = user_key.as_u64;
 
   /* Ever heard of the "user" = inside ip4 address before? */
-  if (clib_bihash_search_8_8 (&sm->user_hash, &kv0, &value0))
+  if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].user_hash,
+                              &kv0, &value0))
     {
       /* no, make a new one */
       pool_get (sm->per_thread_data[thread_index].users, u);
@@ -166,7 +167,8 @@ create_session_for_static_mapping (snat_main_t *sm,
       kv0.value = u - sm->per_thread_data[thread_index].users;
 
       /* add user */
-      clib_bihash_add_del_8_8 (&sm->user_hash, &kv0, 1 /* is_add */);
+      clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].user_hash,
+                               &kv0, 1 /* is_add */);
 
       /* add non-traslated packets worker lookup */
       kv0.value = thread_index;
@@ -211,13 +213,15 @@ create_session_for_static_mapping (snat_main_t *sm,
   /* Add to translation hashes */
   kv0.key = s->in2out.as_u64;
   kv0.value = s - sm->per_thread_data[thread_index].sessions;
-  if (clib_bihash_add_del_8_8 (&sm->in2out, &kv0, 1 /* is_add */))
+  if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].in2out, &kv0,
+                               1 /* is_add */))
       clib_warning ("in2out key add failed");
 
   kv0.key = s->out2in.as_u64;
   kv0.value = s - sm->per_thread_data[thread_index].sessions;
 
-  if (clib_bihash_add_del_8_8 (&sm->out2in, &kv0, 1 /* is_add */))
+  if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].out2in, &kv0,
+                               1 /* is_add */))
       clib_warning ("out2in key add failed");
 
   /* log NAT event */
@@ -325,7 +329,8 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
 
   kv0.key = key0.as_u64;
 
-  if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+  if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].out2in, &kv0,
+                              &value0))
     {
       /* Try to match static mapping by external address and port,
          destination address and port in packet */
@@ -672,7 +677,7 @@ snat_out2in_unknown_proto (snat_main_t *sm,
       kv.key = u_key.as_u64;
 
       /* Ever heard of the "user" = src ip4 address before? */
-      if (clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+      if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
         {
           /* no, make a new one */
           pool_get (tsm->users, u);
@@ -689,7 +694,7 @@ snat_out2in_unknown_proto (snat_main_t *sm,
           kv.value = u - tsm->users;
 
           /* add user */
-          clib_bihash_add_del_8_8 (&sm->user_hash, &kv, 1);
+          clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 1);
         }
       else
         {
@@ -804,7 +809,7 @@ snat_out2in_lb (snat_main_t *sm,
       kv.key = u_key.as_u64;
 
       /* Ever heard of the "user" = src ip4 address before? */
-      if (clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+      if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
         {
           /* no, make a new one */
           pool_get (tsm->users, u);
@@ -821,7 +826,7 @@ snat_out2in_lb (snat_main_t *sm,
           kv.value = u - tsm->users;
 
           /* add user */
-          if (clib_bihash_add_del_8_8 (&sm->user_hash, &kv, 1))
+          if (clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 1))
             clib_warning ("user key add failed");
         }
       else
@@ -1013,7 +1018,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           kv0.key = key0.as_u64;
 
-          if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+          if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].out2in,
+                                      &kv0, &value0))
             {
               /* Try to match static mapping by external address and port,
                  destination address and port in packet */
@@ -1164,7 +1170,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           kv1.key = key1.as_u64;
 
-          if (clib_bihash_search_8_8 (&sm->out2in, &kv1, &value1))
+          if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].out2in,
+                                      &kv1, &value1))
             {
               /* Try to match static mapping by external address and port,
                  destination address and port in packet */
@@ -1351,7 +1358,8 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           kv0.key = key0.as_u64;
 
-          if (clib_bihash_search_8_8 (&sm->out2in, &kv0, &value0))
+          if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].out2in,
+                                      &kv0, &value0))
             {
               /* Try to match static mapping by external address and port,
                  destination address and port in packet */
