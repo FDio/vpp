@@ -41,6 +41,7 @@
 #include <vnet/ip/ip.api.h>
 #include <vnet/unix/tap.api.h>
 #include <vnet/vxlan/vxlan.api.h>
+#include <vnet/geneve/geneve.api.h>
 #include <vnet/lldp/lldp.api.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.api.h>
 #include <vnet/bfd/bfd.api.h>

@@ -26,6 +26,7 @@
 #include <vnet/l2/l2_input.h>
 #include <vnet/srv6/sr.h>
 #include <vnet/vxlan-gpe/vxlan_gpe.h>
+#include <vnet/geneve/geneve.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/policer/xlate.h>
 #include <vnet/policer/policer.h>
@@ -215,6 +216,26 @@ static void *vl_api_sw_interface_set_vxlan_bypass_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: sw_interface_set_vxlan_bypass ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  if (mp->is_ipv6)
+    s = format (s, "ip6 ");
+
+  if (mp->enable)
+    s = format (s, "enable ");
+  else
+    s = format (s, "disable ");
+
+  FINISH;
+}
+
+static void *vl_api_sw_interface_set_geneve_bypass_t_print
+  (vl_api_sw_interface_set_geneve_bypass_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_set_geneve_bypass ");
 
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
@@ -1489,6 +1510,50 @@ static void *vl_api_vxlan_tunnel_dump_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: vxlan_tunnel_dump ");
+
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  FINISH;
+}
+
+static void *vl_api_geneve_add_del_tunnel_t_print
+  (vl_api_geneve_add_del_tunnel_t * mp, void *handle)
+{
+  u8 *s;
+  s = format (0, "SCRIPT: geneve_add_del_tunnel ");
+
+  ip46_address_t local = to_ip46 (mp->is_ipv6, mp->local_address);
+  ip46_address_t remote = to_ip46 (mp->is_ipv6, mp->remote_address);
+
+  u8 is_grp = ip46_address_is_multicast (&remote);
+  char *remote_name = is_grp ? "group" : "dst";
+
+  s = format (s, "src %U ", format_ip46_address, &local, IP46_TYPE_ANY);
+  s = format (s, "%s %U ", remote_name, format_ip46_address,
+	      &remote, IP46_TYPE_ANY);
+
+  if (is_grp)
+    s = format (s, "mcast_sw_if_index %d ", ntohl (mp->mcast_sw_if_index));
+
+  if (mp->encap_vrf_id)
+    s = format (s, "encap-vrf-id %d ", ntohl (mp->encap_vrf_id));
+
+  s = format (s, "decap-next %d ", ntohl (mp->decap_next_index));
+
+  s = format (s, "vni %d ", ntohl (mp->vni));
+
+  if (mp->is_add == 0)
+    s = format (s, "del ");
+
+  FINISH;
+}
+
+static void *vl_api_geneve_tunnel_dump_t_print
+  (vl_api_geneve_tunnel_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: geneve_tunnel_dump ");
 
   s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
@@ -3065,6 +3130,7 @@ _(SW_INTERFACE_SET_TABLE, sw_interface_set_table)                       \
 _(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable)           \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)                       \
 _(SW_INTERFACE_SET_VXLAN_BYPASS, sw_interface_set_vxlan_bypass)         \
+_(SW_INTERFACE_SET_GENEVE_BYPASS, sw_interface_set_geneve_bypass)       \
 _(TAP_CONNECT, tap_connect)                                             \
 _(TAP_MODIFY, tap_modify)                                               \
 _(TAP_DELETE, tap_delete)                                               \
@@ -3118,6 +3184,8 @@ _(L2TPV3_SET_LOOKUP_KEY, l2tpv3_set_lookup_key)                         \
 _(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)                   \
 _(VXLAN_ADD_DEL_TUNNEL, vxlan_add_del_tunnel)                           \
 _(VXLAN_TUNNEL_DUMP, vxlan_tunnel_dump)                                 \
+_(GENEVE_ADD_DEL_TUNNEL, geneve_add_del_tunnel)                         \
+_(GENEVE_TUNNEL_DUMP, geneve_tunnel_dump)                               \
 _(GRE_ADD_DEL_TUNNEL, gre_add_del_tunnel)                               \
 _(GRE_TUNNEL_DUMP, gre_tunnel_dump)                                     \
 _(L2_FIB_CLEAR_TABLE, l2_fib_clear_table)                               \

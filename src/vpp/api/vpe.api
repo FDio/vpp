@@ -26,6 +26,7 @@
  * IP APIs: see .../src/vnet/ip/{ip.api, ip_api.c}
  * TAP APIs: see .../src/vnet/unix/{tap.api, tap_api.c}
  * VXLAN APIs: see .../src/vnet/vxlan/{vxlan.api, vxlan_api.c}
+ * GENEVE APIs: see .../src/vnet/geneve/{geneve.api, geneve_api.c}
  * LLDP APIs: see .../src/vnet/lldp/{lldp.api, lldp_api.c}
  * AF-PACKET APIs: see ... /vnet/devices/af_packet/{af_packet.api, af_packet_api.c}
  * NETMAP APIs: see ... /src/vnet/devices/netmap/{netmap.api, netmap_api.c}

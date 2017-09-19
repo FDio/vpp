@@ -1,0 +1,13 @@
+diff --git a/scapy/config.py b/scapy/config.py
+index cc97c6d..887b639 100755
+--- a/scapy/config.py
++++ b/scapy/config.py
+@@ -439,7 +439,7 @@ debug_tls:When 1, print some TLS session secrets when they are computed.
+                    "mobileip", "netbios", "netflow", "ntp", "ppp", "pptp",
+                    "radius", "rip", "rtp", "skinny", "smb", "snmp",
+                    "tftp", "x509", "bluetooth", "dhcp6", "llmnr",
+-                   "sctp", "vrrp", "ipsec", "lltd", "vxlan", "eap"]
++                   "sctp", "vrrp", "ipsec", "lltd", "vxlan", "eap", "geneve"]
+     contribs = dict()
+     crypto_valid = isCryptographyValid()
+     crypto_valid_advanced = isCryptographyAdvanced()
