@@ -483,13 +483,13 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           u_key.addr = m->local_addr;
           u_key.fib_index = m->fib_index;
           kv.key = u_key.as_u64;
-          if (!clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+          if (!clib_bihash_search_8_8 (&sm->worker_by_in, &kv, &value))
+            tsm = vec_elt_at_index (sm->per_thread_data, value.value);
+          else
+            tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+          if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
             {
               user_index = value.value;
-              if (!clib_bihash_search_8_8 (&sm->worker_by_in, &kv, &value))
-                tsm = vec_elt_at_index (sm->per_thread_data, value.value);
-              else
-                tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
               u = pool_elt_at_index (tsm->users, user_index);
               if (u->nstaticsessions)
                 {
@@ -548,10 +548,10 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                                                           s->in2out.fib_index);
 
                       value.key = s->in2out.as_u64;
-                      if (clib_bihash_add_del_8_8 (&sm->in2out, &value, 0))
+                      if (clib_bihash_add_del_8_8 (&tsm->in2out, &value, 0))
                         clib_warning ("in2out key del failed");
                       value.key = s->out2in.as_u64;
-                      if (clib_bihash_add_del_8_8 (&sm->out2in, &value, 0))
+                      if (clib_bihash_add_del_8_8 (&tsm->out2in, &value, 0))
                         clib_warning ("out2in key del failed");
 delete:
                       pool_put (tsm->sessions, s);
@@ -566,7 +566,7 @@ delete:
                   if (addr_only)
                     {
                       pool_put (tsm->users, u);
-                      clib_bihash_add_del_8_8 (&sm->user_hash, &kv, 0);
+                      clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 0);
                     }
                 }
             }
@@ -615,6 +615,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
   snat_user_key_t w_key0;
   snat_worker_key_t w_key1;
   u32 worker_index = 0;
+  snat_main_per_thread_data_t *tsm;
 
   m_key.addr = e_addr;
   m_key.port = e_port;
@@ -695,16 +696,6 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
           clib_warning ("static_mapping_by_external key add failed");
           return VNET_API_ERROR_UNSPECIFIED;
         }
-      m_key.port = clib_host_to_net_u16 (m->external_port);
-      kv.key = m_key.as_u64;
-      kv.value = ~0ULL;
-      if (clib_bihash_add_del_8_8(&sm->out2in, &kv, 1))
-        {
-          clib_warning ("static_mapping_by_local key add failed");
-          return VNET_API_ERROR_UNSPECIFIED;
-        }
-
-      m_key.fib_index = m->fib_index;
 
       /* Assign worker */
       if (sm->workers)
@@ -729,8 +720,21 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
               clib_warning ("worker-by-out add key failed");
               return VNET_API_ERROR_UNSPECIFIED;
             }
+          tsm = vec_elt_at_index (sm->per_thread_data, worker_index);
+        }
+      else
+        tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+
+      m_key.port = clib_host_to_net_u16 (m->external_port);
+      kv.key = m_key.as_u64;
+      kv.value = ~0ULL;
+      if (clib_bihash_add_del_8_8(&tsm->out2in, &kv, 1))
+        {
+          clib_warning ("static_mapping_by_local key add failed");
+          return VNET_API_ERROR_UNSPECIFIED;
         }
 
+      m_key.fib_index = m->fib_index;
       for (i = 0; i < vec_len (locals); i++)
         {
           m_key.addr = locals[i].addr;
@@ -744,7 +748,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
           m_key.port = clib_host_to_net_u16 (locals[i].port);
           kv.key = m_key.as_u64;
           kv.value = ~0ULL;
-          if (clib_bihash_add_del_8_8(&sm->in2out, &kv, 1))
+          if (clib_bihash_add_del_8_8(&tsm->in2out, &kv, 1))
             {
               clib_warning ("in2out key add failed");
               return VNET_API_ERROR_UNSPECIFIED;
@@ -801,6 +805,15 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
             }
         }
 
+      w_key1.addr = m->external_addr;
+      w_key1.port = clib_host_to_net_u16 (m->external_port);
+      w_key1.fib_index = sm->outside_fib_index;
+      kv.key = w_key1.as_u64;
+      if (!clib_bihash_search_8_8 (&sm->worker_by_out, &kv, &value))
+        tsm = vec_elt_at_index (sm->per_thread_data, value.value);
+      else
+        tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+
       m_key.addr = m->external_addr;
       m_key.port = m->external_port;
       m_key.protocol = m->proto;
@@ -813,7 +826,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
         }
       m_key.port = clib_host_to_net_u16 (m->external_port);
       kv.key = m_key.as_u64;
-      if (clib_bihash_add_del_8_8(&sm->out2in, &kv, 0))
+      if (clib_bihash_add_del_8_8(&tsm->out2in, &kv, 0))
         {
           clib_warning ("outi2in key del failed");
           return VNET_API_ERROR_UNSPECIFIED;
@@ -832,7 +845,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
             }
           m_key.port = clib_host_to_net_u16 (local->port);
           kv.key = m_key.as_u64;
-          if (clib_bihash_add_del_8_8(&sm->in2out, &kv, 0))
+          if (clib_bihash_add_del_8_8(&tsm->in2out, &kv, 0))
             {
               clib_warning ("in2out key del failed");
               return VNET_API_ERROR_UNSPECIFIED;
@@ -938,16 +951,16 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
                                                         ses->out2in.port,
                                                         ses->in2out.fib_index);
                     kv.key = ses->in2out.as_u64;
-                    clib_bihash_add_del_8_8 (&sm->in2out, &kv, 0);
+                    clib_bihash_add_del_8_8 (&tsm->in2out, &kv, 0);
                     kv.key = ses->out2in.as_u64;
-                    clib_bihash_add_del_8_8 (&sm->out2in, &kv, 0);
+                    clib_bihash_add_del_8_8 (&tsm->out2in, &kv, 0);
                   }
                 vec_add1 (ses_to_be_removed, ses - tsm->sessions);
                 clib_dlist_remove (tsm->list_pool, ses->per_user_index);
                 user_key.addr = ses->in2out.addr;
                 user_key.fib_index = ses->in2out.fib_index;
                 kv.key = user_key.as_u64;
-                if (!clib_bihash_search_8_8 (&sm->user_hash, &kv, &value))
+                if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
                   {
                     u = pool_elt_at_index (tsm->users, value.value);
                     u->nsessions--;
@@ -2130,6 +2143,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u32 static_mapping_memory_size = 64<<20;
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
+  snat_main_per_thread_data_t *tsm;
 
   sm->deterministic = 0;
 
@@ -2204,20 +2218,23 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
           sm->icmp_match_in2out_cb = icmp_match_in2out_slow;
           sm->icmp_match_out2in_cb = icmp_match_out2in_slow;
 
+          vec_foreach (tsm, sm->per_thread_data)
+            {
+              clib_bihash_init_8_8 (&tsm->in2out, "in2out", translation_buckets,
+                                    translation_memory_size);
+
+              clib_bihash_init_8_8 (&tsm->out2in, "out2in", translation_buckets,
+                                    translation_memory_size);
+
+              clib_bihash_init_8_8 (&tsm->user_hash, "users", user_buckets,
+                                    user_memory_size);
+            }
+
           clib_bihash_init_8_8 (&sm->worker_by_in, "worker-by-in", user_buckets,
                                 user_memory_size);
 
-          clib_bihash_init_8_8 (&sm->worker_by_out, "worker-by-out", user_buckets,
-                                user_memory_size);
-
-          clib_bihash_init_8_8 (&sm->in2out, "in2out", translation_buckets,
-                                translation_memory_size);
-
-          clib_bihash_init_8_8 (&sm->out2in, "out2in", translation_buckets,
-                                translation_memory_size);
-
-          clib_bihash_init_8_8 (&sm->user_hash, "users", user_buckets,
-                                user_memory_size);
+          clib_bihash_init_8_8 (&sm->worker_by_out, "worker-by-out",
+                                translation_buckets, translation_memory_size);
 
           clib_bihash_init_16_8 (&sm->in2out_ed, "in2out-ed",
                                  translation_buckets, translation_memory_size);
@@ -2595,10 +2612,6 @@ show_snat_command_fn (vlib_main_t * vm,
 
           if (verbose > 0)
             {
-              vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->in2out,
-                               verbose - 1);
-              vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->out2in,
-                               verbose - 1);
               vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->in2out_ed,
                                verbose - 1);
               vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->out2in_ed,
@@ -2617,6 +2630,10 @@ show_snat_command_fn (vlib_main_t * vm,
                   vlib_worker_thread_t *w = vlib_worker_threads + j;
                   vlib_cli_output (vm, "Thread %d (%s at lcore %u):", j, w->name,
                                    w->lcore_id);
+                  vlib_cli_output (vm, "  %U", format_bihash_8_8, &tsm->in2out,
+                                   verbose - 1);
+                  vlib_cli_output (vm, "  %U", format_bihash_8_8, &tsm->out2in,
+                                   verbose - 1);
                   vlib_cli_output (vm, "  %d list pool elements",
                                    pool_elts (tsm->list_pool));
 
