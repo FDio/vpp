@@ -253,6 +253,23 @@ nobase_include_HEADERS +=			\
 API_FILES += vnet/vxlan/vxlan.api
 
 ########################################
+# Layer 2 / Geneve
+########################################
+libvnet_la_SOURCES +=				\
+  vnet/geneve/geneve.c				\
+  vnet/geneve/encap.c				\
+  vnet/geneve/decap.c				\
+  vnet/geneve/geneve_api.c
+
+nobase_include_HEADERS +=			\
+  vnet/geneve/geneve.h				\
+  vnet/geneve/geneve_packet.h			\
+  vnet/geneve/geneve_error.def			\
+  vnet/geneve/geneve.api.h
+
+API_FILES += vnet/geneve/geneve.api
+
+########################################
 # Layer 2 / CDP
 ########################################
 libvnet_la_SOURCES +=				\
