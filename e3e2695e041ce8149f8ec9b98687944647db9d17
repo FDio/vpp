@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_e6015a07",
+        "filename": "src/vppinfra/unix-formats.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 234,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-09-19T19:13:25Z",
+      "side": 1,
+      "message": "I would probably explicitly initialize this to 0",
+      "revId": "e3e2695e041ce8149f8ec9b98687944647db9d17",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
