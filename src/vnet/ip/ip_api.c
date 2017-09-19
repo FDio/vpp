@@ -794,7 +794,14 @@ add_del_route_t_handler (u8 is_multipath,
   fib_route_path_t *paths = NULL;
   fib_entry_flag_t entry_flags = FIB_ENTRY_FLAG_NONE;
 
-  if (MPLS_LABEL_INVALID != next_hop_via_label)
+  /*
+   * the special INVALID label meams we are not recursing via a
+   * label. Exp-null value is never a valid via-label so that
+   * also means it's not a via-label and means clients that set
+   * it to 0 by default get the expected behaviour
+   */
+  if ((MPLS_LABEL_INVALID != next_hop_via_label) &&
+      (0 != next_hop_via_label))
     {
       path.frp_proto = DPO_PROTO_MPLS;
       path.frp_local_label = next_hop_via_label;
