@@ -43,6 +43,7 @@ typedef enum fib_node_type_t_ {
     FIB_NODE_TYPE_VXLAN_TUNNEL,
     FIB_NODE_TYPE_MAP_E,
     FIB_NODE_TYPE_VXLAN_GPE_TUNNEL,
+    FIB_NODE_TYPE_GENEVE_TUNNEL,
     /**
      * Marker. New types before this one. leave the test last.
      */
