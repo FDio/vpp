@@ -149,6 +149,7 @@
   _ (parameter_problem, 0, erroneous_header_field)			\
   _ (parameter_problem, 1, unrecognized_next_header)			\
   _ (parameter_problem, 2, unrecognized_option)				\
+  _ (parameter_problem, 3, first_fragment_has_incomplete_header_chain)  \
   _ (router_renumbering, 0, command)					\
   _ (router_renumbering, 1, result)					\
   _ (node_information_request, 0, data_contains_ip6_address)		\

@@ -519,6 +519,9 @@ typedef CLIB_PACKED (struct {
 #define ip6_frag_hdr_offset(hdr) \
   (clib_net_to_host_u16((hdr)->fragment_offset_and_more) >> 3)
 
+#define ip6_frag_hdr_offset_bytes(hdr) \
+  (8 * ip6_frag_hdr_offset(hdr))
+
 #define ip6_frag_hdr_more(hdr) \
   (clib_net_to_host_u16((hdr)->fragment_offset_and_more) & 0x1)
 

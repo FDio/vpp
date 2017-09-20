@@ -19,17 +19,5 @@ class VppLoInterface(VppInterface, VppObject):
     def remove_vpp_config(self):
         self.test.vapi.delete_loopback(self.sw_if_index)
 
-    def query_vpp_config(self):
-        dump = self.test.vapi.sw_interface_dump()
-        return self.is_interface_config_in_dump(dump)
-
-    def is_interface_config_in_dump(self, dump):
-        for i in dump:
-            if i.interface_name.rstrip(' \t\r\n\0') == self.name and \
-               i.sw_if_index == self.sw_if_index:
-                return True
-        else:
-            return False
-
     def object_id(self):
         return "loopback-%d" % self._sw_if_index

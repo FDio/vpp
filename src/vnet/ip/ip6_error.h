@@ -71,7 +71,14 @@
                                                                         \
  /* Erros singalled by ip6-inacl */                                     \
   _ (INACL_TABLE_MISS, "input ACL table-miss drops")                    \
-  _ (INACL_SESSION_DENY, "input ACL session deny drops")
+  _ (INACL_SESSION_DENY, "input ACL session deny drops")                \
+                                                                        \
+  /* Errors signalled by ip6-reassembly */                              \
+  _ (REASS_MISSING_UPPER, "missing-upper layer drops")                  \
+  _ (REASS_DUPLICATE_FRAGMENT, "duplicate fragments")                   \
+  _ (REASS_OVERLAPPING_FRAGMENT, "overlapping fragments")               \
+  _ (REASS_LIMIT_REACHED, "drops due to concurrent reassemblies limit") \
+  _ (REASS_TIMEOUT, "fragments dropped due to reassembly timeout")
 
 typedef enum
 {

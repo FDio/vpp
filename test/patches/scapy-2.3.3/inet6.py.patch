@@ -1,7 +1,8 @@
 diff --git a/scapy/layers/inet6.py b/scapy/layers/inet6.py
---- a/scapy/layers/inet6.py	2017-06-01 14:04:18.160881034 +0200
-+++ b/scapy/layers/inet6.py	2017-06-02 09:08:40.133800208 +0200
-@@ -369,6 +369,8 @@
+index 03b80ec..06ef27f 100644
+--- a/scapy/layers/inet6.py
++++ b/scapy/layers/inet6.py
+@@ -369,6 +369,8 @@ class _IPv6GuessPayload:
              return Raw
          elif self.nh == 135 and len(p) > 3: # Mobile IPv6
              return _mip6_mhtype2cls.get(ord(p[2]), MIP6MH_Generic)
@@ -9,11 +10,11 @@ diff --git a/scapy/layers/inet6.py b/scapy/layers/inet6.py
 +            return IPv6ExtHdrSegmentRouting
          else:
              return get_cls(ipv6nhcls.get(self.nh,"Raw"), "Raw")
-
-@@ -430,6 +432,14 @@
+ 
+@@ -430,6 +432,14 @@ class IPv6(_IPv6GuessPayload, Packet, IPTools):
                      sd = strxor(sd, a)
                  sd = inet_ntop(socket.AF_INET6, sd)
-
+ 
 +        if self.nh == 43 and isinstance(self.payload, IPv6ExtHdrSegmentRouting):
 +            # With segment routing header (rh == 4), the destination is
 +            # the first address of the IPv6 addresses list
@@ -23,10 +24,10 @@ diff --git a/scapy/layers/inet6.py b/scapy/layers/inet6.py
 +                sd = self.dst
 +
          if self.nh == 44 and isinstance(self.payload, IPv6ExtHdrFragment):
-             nh = self.payload.nh
-
-@@ -489,6 +499,8 @@
-             return self.payload.answers(other.payload.payload)
+             nh = self.payload.nh 
+ 
+@@ -489,6 +499,8 @@ class IPv6(_IPv6GuessPayload, Packet, IPTools):
+             return self.payload.answers(other.payload.payload) 
          elif other.nh == 43 and isinstance(other.payload, IPv6ExtHdrRouting):
              return self.payload.answers(other.payload.payload) # Buggy if self.payload is a IPv6ExtHdrRouting
 +        elif other.nh == 43 and isinstance(other.payload, IPv6ExtHdrSegmentRouting):
@@ -34,10 +35,10 @@ diff --git a/scapy/layers/inet6.py b/scapy/layers/inet6.py
          elif other.nh == 60 and isinstance(other.payload, IPv6ExtHdrDestOpt):
              return self.payload.payload.answers(other.payload.payload)
          elif self.nh == 60 and isinstance(self.payload, IPv6ExtHdrDestOpt): # BU in reply to BRR, for instance
-@@ -919,6 +931,148 @@
+@@ -919,6 +931,148 @@ class IPv6ExtHdrRouting(_IPv6ExtHdr):
              pkt = pkt[:3]+struct.pack("B", len(self.addresses))+pkt[4:]
          return _IPv6ExtHdr.post_build(self, pkt, pay)
-
+ 
 +######################### Segment Routing Header ############################
 +
 +# This implementation is based on draft 06, available at:

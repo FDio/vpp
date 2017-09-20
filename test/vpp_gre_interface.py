@@ -26,14 +26,21 @@ class VppGreInterface(VppInterface):
                                               is_teb=self.t_is_teb)
         self._sw_if_index = r.sw_if_index
         self.generate_remote_hosts()
+        self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         s = socket.inet_pton(socket.AF_INET, self.t_src)
         d = socket.inet_pton(socket.AF_INET, self.t_dst)
         self.unconfig()
-        r = self.test.vapi.gre_tunnel_add_del(s, d,
-                                              outer_fib_id=self.t_outer_fib,
-                                              is_add=0)
+        self.test.vapi.gre_tunnel_add_del(s, d,
+                                          outer_fib_id=self.t_outer_fib,
+                                          is_add=0)
+
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return "gre-%d" % self._sw_if_index
 
 
 class VppGre6Interface(VppInterface):
@@ -60,12 +67,19 @@ class VppGre6Interface(VppInterface):
                                               is_ip6=1)
         self._sw_if_index = r.sw_if_index
         self.generate_remote_hosts()
+        self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
         s = socket.inet_pton(socket.AF_INET6, self.t_src)
         d = socket.inet_pton(socket.AF_INET6, self.t_dst)
         self.unconfig()
-        r = self.test.vapi.gre_tunnel_add_del(s, d,
-                                              outer_fib_id=self.t_outer_fib,
-                                              is_add=0,
-                                              is_ip6=1)
+        self.test.vapi.gre_tunnel_add_del(s, d,
+                                          outer_fib_id=self.t_outer_fib,
+                                          is_add=0,
+                                          is_ip6=1)
+
+    def __str__(self):
+        return self.object_id()
+
+    def object_id(self):
+        return "gre-%d" % self._sw_if_index

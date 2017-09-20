@@ -1554,8 +1554,8 @@ ip4_local_inline (vlib_main_t * vm,
 	  const load_balance_t *lb0, *lb1;
 	  u32 pi0, next0, fib_index0, lbi0;
 	  u32 pi1, next1, fib_index1, lbi1;
-	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
-	  u8 error1, is_udp1, is_tcp_udp1, good_tcp_udp1, proto1;
+	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0, is_frag0;
+	  u8 error1, is_udp1, is_tcp_udp1, good_tcp_udp1, proto1, is_frag1;
 	  u32 sw_if_index0, sw_if_index1;
 
 	  pi0 = to_next[0] = from[0];
@@ -1580,10 +1580,13 @@ ip4_local_inline (vlib_main_t * vm,
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 	  sw_if_index1 = vnet_buffer (p1)->sw_if_index[VLIB_RX];
 
-	  /* Treat IP frag packets as "experimental" protocol for now
-	     until support of IP frag reassembly is implemented */
-	  proto0 = ip4_is_fragment (ip0) ? 0xfe : ip0->protocol;
-	  proto1 = ip4_is_fragment (ip1) ? 0xfe : ip1->protocol;
+	  is_frag0 = ip4_is_fragment (ip0)
+	    || ip4_get_fragment_offset (ip0) > 0;
+	  is_frag1 = ip4_is_fragment (ip1)
+	    || ip4_get_fragment_offset (ip1) > 0;
+
+	  proto0 = ip0->protocol;
+	  proto1 = ip1->protocol;
 
 	  if (head_of_feature_arc == 0)
 	    goto skip_checks;
@@ -1593,7 +1596,7 @@ ip4_local_inline (vlib_main_t * vm,
 	  is_tcp_udp0 = is_udp0 || proto0 == IP_PROTOCOL_TCP;
 	  is_tcp_udp1 = is_udp1 || proto1 == IP_PROTOCOL_TCP;
 
-	  good_tcp_udp0 =
+	  good_tcp_udp0 = is_frag0 ||
 	    (p0->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
 	     || (p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
 		 || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) != 0;
@@ -1606,10 +1609,10 @@ ip4_local_inline (vlib_main_t * vm,
 			     || ip4_local_do_l4_check (is_tcp_udp1,
 						       p1->flags)))
 	    {
-	      if (is_tcp_udp0)
+	      if (is_tcp_udp0 && !is_frag0)
 		ip4_local_validate_l4 (vm, p0, ip0, is_udp0, &error0,
 				       &good_tcp_udp0);
-	      if (is_tcp_udp1)
+	      if (is_tcp_udp1 && !is_frag1)
 		ip4_local_validate_l4 (vm, p1, ip1, is_udp1, &error1,
 				       &good_tcp_udp1);
 	    }
@@ -1696,16 +1699,23 @@ ip4_local_inline (vlib_main_t * vm,
 
 	skip_checks:
 
-	  next0 = lm->local_next_by_ip_protocol[proto0];
-	  next1 = lm->local_next_by_ip_protocol[proto1];
+	  next0 =
+	    is_frag0 ? IP_LOCAL_NEXT_REASSEMBLY :
+	    lm->local_next_by_ip_protocol[proto0];
+	  next1 =
+	    is_frag1 ? IP_LOCAL_NEXT_REASSEMBLY :
+	    lm->local_next_by_ip_protocol[proto1];
 
 	  next0 =
-	    error0 != IP4_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
-	  next1 =
-	    error1 != IP4_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next1;
+	    !is_frag0
+	    && error0 !=
+	    IP4_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
+	  next1 = !is_frag1
+	    && error1 !=
+	    IP4_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next1;
 
-	  p0->error = error0 ? error_node->errors[error0] : 0;
-	  p1->error = error1 ? error_node->errors[error1] : 0;
+	  p0->error = !is_frag0 && error0 ? error_node->errors[error0] : 0;
+	  p1->error = !is_frag1 && error1 ? error_node->errors[error1] : 0;
 
 	  if (head_of_feature_arc)
 	    {
@@ -1727,7 +1737,7 @@ ip4_local_inline (vlib_main_t * vm,
 	  ip4_fib_mtrie_t *mtrie0;
 	  ip4_fib_mtrie_leaf_t leaf0;
 	  u32 pi0, next0, fib_index0, lbi0;
-	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0;
+	  u8 error0, is_udp0, is_tcp_udp0, good_tcp_udp0, proto0, is_frag0;
 	  load_balance_t *lb0;
 	  const dpo_id_t *dpo0;
 	  u32 sw_if_index0;
@@ -1746,9 +1756,9 @@ ip4_local_inline (vlib_main_t * vm,
 	  vnet_buffer (p0)->l3_hdr_offset = p0->current_data;
 	  sw_if_index0 = vnet_buffer (p0)->sw_if_index[VLIB_RX];
 
-	  /* Treat IP frag packets as "experimental" protocol for now
-	     until support of IP frag reassembly is implemented */
-	  proto0 = ip4_is_fragment (ip0) ? 0xfe : ip0->protocol;
+	  is_frag0 = ip4_is_fragment (ip0)
+	    || ip4_get_fragment_offset (ip0) > 0;
+	  proto0 = ip0->protocol;
 
 	  if (head_of_feature_arc == 0 || p0->flags & VNET_BUFFER_F_IS_NATED)
 	    goto skip_check;
@@ -1756,15 +1766,18 @@ ip4_local_inline (vlib_main_t * vm,
 	  is_udp0 = proto0 == IP_PROTOCOL_UDP;
 	  is_tcp_udp0 = is_udp0 || proto0 == IP_PROTOCOL_TCP;
 
-	  good_tcp_udp0 =
+	  good_tcp_udp0 = is_frag0 ||
 	    (p0->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
 	     || (p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
 		 || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) != 0;
 
 	  if (PREDICT_FALSE (ip4_local_do_l4_check (is_tcp_udp0, p0->flags)))
 	    {
-	      ip4_local_validate_l4 (vm, p0, ip0, is_udp0, &error0,
-				     &good_tcp_udp0);
+	      if (!is_frag0)
+		{
+		  ip4_local_validate_l4 (vm, p0, ip0, is_udp0, &error0,
+					 &good_tcp_udp0);
+		}
 	    }
 
 	  ASSERT (IP4_ERROR_TCP_CHECKSUM + 1 == IP4_ERROR_UDP_CHECKSUM);
@@ -1798,11 +1811,14 @@ ip4_local_inline (vlib_main_t * vm,
 		    ? IP4_ERROR_SRC_LOOKUP_MISS : error0);
 
 	skip_check:
-	  next0 = lm->local_next_by_ip_protocol[proto0];
 	  next0 =
-	    error0 != IP4_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
+	    is_frag0 ? IP_LOCAL_NEXT_REASSEMBLY :
+	    lm->local_next_by_ip_protocol[proto0];
+	  next0 = !is_frag0
+	    && error0 !=
+	    IP4_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
 
-	  p0->error = error0 ? error_node->errors[error0] : 0;
+	  p0->error = !is_frag0 && error0 ? error_node->errors[error0] : 0;
 
 	  if (head_of_feature_arc)
 	    {
@@ -1839,6 +1855,7 @@ VLIB_REGISTER_NODE (ip4_local_node) =
     [IP_LOCAL_NEXT_PUNT] = "ip4-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip4-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",
+    [IP_LOCAL_NEXT_REASSEMBLY] = "ip4-reassembly",
   },
 };
 /* *INDENT-ON* */
