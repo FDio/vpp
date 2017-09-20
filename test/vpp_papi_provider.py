@@ -425,6 +425,12 @@ class VppPapiProvider(object):
                          'address': address,
                          'pid': os.getpid(), })
 
+    def want_ip6_nd_events(self, enable_disable=1, address=0):
+        return self.api(self.papi.want_ip6_nd_events,
+                        {'enable_disable': enable_disable,
+                         'address': address,
+                         'pid': os.getpid(), })
+
     def l2fib_add_del(self, mac, bd_id, sw_if_index, is_add=1, static_mac=0,
                       filter_mac=0, bvi_mac=0):
         """Create/delete L2 FIB entry.

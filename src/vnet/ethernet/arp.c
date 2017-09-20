@@ -94,6 +94,7 @@ typedef struct
   ethernet_proxy_arp_t *proxy_arps;
 
   uword wc_ip4_arp_publisher_node;
+  uword wc_ip4_arp_publisher_et;
 } ethernet_arp_main_t;
 
 static ethernet_arp_main_t ethernet_arp_main;
@@ -1536,21 +1537,24 @@ vnet_arp_wc_publish_internal (vnet_main_t * vnm,
 {
   vlib_main_t *vm = vlib_get_main ();
   ethernet_arp_main_t *am = &ethernet_arp_main;
-  if (am->wc_ip4_arp_publisher_node == (uword) ~ 0)
+  uword ni = am->wc_ip4_arp_publisher_node;
+  uword et = am->wc_ip4_arp_publisher_et;
+
+  if (ni == (uword) ~ 0)
     return;
   wc_arp_report_t *r =
-    vlib_process_signal_event_data (vm, am->wc_ip4_arp_publisher_node, 1, 1,
-				    sizeof *r);
+    vlib_process_signal_event_data (vm, ni, et, 1, sizeof *r);
   r->ip4 = args->a.ip4.as_u32;
   r->sw_if_index = args->sw_if_index;
   memcpy (r->mac, args->a.ethernet, sizeof r->mac);
 }
 
 void
-wc_arp_set_publisher_node (uword node_index)
+wc_arp_set_publisher_node (uword node_index, uword event_type)
 {
   ethernet_arp_main_t *am = &ethernet_arp_main;
   am->wc_ip4_arp_publisher_node = node_index;
+  am->wc_ip4_arp_publisher_et = event_type;
 }
 
 /*

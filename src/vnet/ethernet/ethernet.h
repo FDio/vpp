@@ -543,7 +543,7 @@ int vnet_add_del_ip4_arp_change_event (vnet_main_t * vnm,
 				       uword type_opaque,
 				       uword data, int is_add);
 
-void wc_arp_set_publisher_node (uword inode_index);
+void wc_arp_set_publisher_node (uword inode_index, uword event_type);
 
 void ethernet_arp_change_mac (u32 sw_if_index);
 void ethernet_ndp_change_mac (u32 sw_if_index);
