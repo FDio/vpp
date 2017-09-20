@@ -2443,7 +2443,7 @@ vhost_user_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index,
 
   vui->admin_up = is_up;
 
-  if (is_up)
+  if (is_up && vui->is_up)
     vnet_hw_interface_set_flags (vnm, vui->hw_if_index,
 				 VNET_HW_INTERFACE_FLAG_LINK_UP);
 
