@@ -671,9 +671,11 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
   foreach_msg_api_vector;
 #undef _
 
-  if (am->msg_names[c->id])
-    clib_warning ("BUG: multiple registrations of 'vl_api_%s_t_handler'",
-		  c->name);
+  if (am->msg_handlers[c->id] && am->msg_handlers[c->id] != c->handler)
+    clib_warning
+      ("BUG: re-registering 'vl_api_%s_t_handler'."
+       "Handler was %llx, replaced by %llx",
+       c->name, am->msg_handlers[c->id], c->handler);
 
   am->msg_names[c->id] = c->name;
   am->msg_handlers[c->id] = c->handler;
