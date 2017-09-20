@@ -1406,10 +1406,8 @@ unix_cli_line_process_one (unix_cli_main_t * cm,
 	      unix_vlib_cli_output_cooked (cf, uf, cf->current_command,
 					   vec_len (cf->current_command));
 	    }
-	  cf->cursor = vec_len (cf->current_command);
-
-	  break;
 	}
+      cf->cursor = vec_len (cf->current_command);
       break;
 
     case UNIX_CLI_PARSE_ACTION_HOME:
