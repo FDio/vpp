@@ -120,6 +120,17 @@ set_l2_rewrite (dhcp_client_main_t * dcm, dhcp_client_t * c)
 		      0 /* broadcast */);
 }
 
+void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+
+static void
+dhcp_client_proc_callback (uword * client_index)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  ASSERT (vlib_get_thread_index () == 0);
+  vlib_process_signal_event (vm, dhcp_client_process_node.index, 
+			     EVENT_DHCP_CLIENT_WAKEUP, *client_index);
+}
+
 /* 
  * dhcp_client_for_us - server-to-client callback.
  * Called from proxy_node.c:dhcp_proxy_to_client_input().
@@ -251,8 +262,9 @@ int dhcp_client_for_us (u32 bi, vlib_buffer_t * b,
       c->retry_count = 0;
       c->next_transmit = 0;     /* send right now... */
       /* Poke the client process, which will send the request */
-      vlib_process_signal_event (vm, dhcp_client_process_node.index, 
-                                 EVENT_DHCP_CLIENT_WAKEUP, c - dcm->clients);
+      uword client_id =  c - dcm->clients;
+      vl_api_rpc_call_main_thread (dhcp_client_proc_callback,
+			       (u8 *) &client_id, sizeof (uword));
       break;
 
     case DHCP_BOUND:
