@@ -1647,7 +1647,7 @@ tcp_src_address (vlib_main_t * vm,
 	v6set = 1;
       else if (unformat (input, "%U", unformat_ip6_address, &v6start))
 	{
-	  memcpy (&v6end, &v6start, sizeof (v4start));
+	  memcpy (&v6end, &v6start, sizeof (v6start));
 	  v6set = 1;
 	}
       else if (unformat (input, "fib-table %d", &table_id))
