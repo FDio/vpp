@@ -32,11 +32,11 @@ udp_session_bind_ip4 (u32 session_index, transport_endpoint_t * lcl)
 
   pool_get (um->udp_listeners, listener);
   memset (listener, 0, sizeof (udp_connection_t));
-  listener->c_lcl_port = clib_host_to_net_u16 (lcl->port);
+  listener->c_lcl_port = lcl->port;
   listener->c_lcl_ip4.as_u32 = lcl->ip.ip4.as_u32;
   listener->c_transport_proto = TRANSPORT_PROTO_UDP;
-  udp_register_dst_port (um->vlib_main, lcl->port, udp4_uri_input_node.index,
-			 1 /* is_ipv4 */ );
+  udp_register_dst_port (um->vlib_main, clib_net_to_host_u16 (lcl->port),
+			 udp4_uri_input_node.index, 1 /* is_ipv4 */ );
   return 0;
 }
 
@@ -47,10 +47,10 @@ udp_session_bind_ip6 (u32 session_index, transport_endpoint_t * lcl)
   udp_connection_t *listener;
 
   pool_get (um->udp_listeners, listener);
-  listener->c_lcl_port = clib_host_to_net_u16 (lcl->port);
+  listener->c_lcl_port = lcl->port;
   clib_memcpy (&listener->c_lcl_ip6, &lcl->ip.ip6, sizeof (ip6_address_t));
   listener->c_transport_proto = TRANSPORT_PROTO_UDP;
-  udp_register_dst_port (um->vlib_main, lcl->port,
+  udp_register_dst_port (um->vlib_main, clib_net_to_host_u16 (lcl->port),
 			 udp4_uri_input_node.index, 0 /* is_ipv4 */ );
   return 0;
 }

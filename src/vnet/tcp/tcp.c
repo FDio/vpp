@@ -38,7 +38,7 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
   memset (listener, 0, sizeof (*listener));
 
   listener->c_c_index = listener - tm->listener_pool;
-  listener->c_lcl_port = clib_host_to_net_u16 (lcl->port);
+  listener->c_lcl_port = lcl->port;
 
   if (lcl->is_ip4)
     {
@@ -701,7 +701,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
   tc = tcp_half_open_connection_new ();
   clib_memcpy (&tc->c_rmt_ip, &rmt->ip, sizeof (ip46_address_t));
   clib_memcpy (&tc->c_lcl_ip, &lcl_addr, sizeof (ip46_address_t));
-  tc->c_rmt_port = clib_host_to_net_u16 (rmt->port);
+  tc->c_rmt_port = rmt->port;
   tc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
   tc->c_is_ip4 = rmt->is_ip4;
   tc->c_transport_proto = TRANSPORT_PROTO_TCP;
