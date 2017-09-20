@@ -1,0 +1,966 @@
+#!/usr/bin/env python
+import unittest
+from random import shuffle
+
+from framework import VppTestCase, VppTestRunner
+
+from scapy.packet import Raw
+from scapy.layers.l2 import Ether, GRE
+from scapy.layers.inet import IP, UDP
+from util import ppp, fragment_rfc791, fragment_rfc8200
+from vpp_punt_socket import VppUDSPuntSocket
+from scapy.layers.inet6 import IPv6, IPv6ExtHdrFragment, ICMPv6ParamProblem,\
+    ICMPv6TimeExceeded
+from vpp_gre_interface import VppGreInterface, VppGre6Interface
+from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+
+test_packet_count = 257
+
+
+class TestIPv4Reassembly(VppTestCase):
+    """ IPv4 Reassembly """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv4Reassembly, cls).setUpClass()
+
+        cls.create_pg_interfaces([0])
+        cls.pg_if = cls.pg0
+
+        # setup all interfaces
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+        cls.punt_port = 9999
+        cls.punt_socket = VppUDSPuntSocket(cls, cls.punt_port)
+
+        # packet sizes
+        cls.packet_sizes = [64, 512, 1518, 9018]
+        cls.padding = " abcdefghijklmn"
+        cls.create_stream(cls.packet_sizes)
+        cls.create_fragments()
+
+    def setUp(self):
+        """ Test setup - force timeout on existing reassemblies """
+        super(TestIPv4Reassembly, self).setUp()
+        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10)
+        self.sleep(.25)
+        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10000)
+
+    def tearDown(self):
+        super(TestIPv4Reassembly, self).tearDown()
+        self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+
+    @classmethod
+    def create_stream(cls, packet_sizes, packet_count=test_packet_count):
+        """Create input packet stream for defined interface.
+
+        :param list packet_sizes: Required packet sizes.
+        """
+        for i in range(0, packet_count):
+            info = cls.create_packet_info(cls.pg_if, cls.pg_if)
+            payload = cls.info_to_payload(info)
+            p = (Ether(dst=cls.pg_if.local_mac, src=cls.pg_if.remote_mac) /
+                 IP(id=info.index, src=cls.pg_if.remote_ip4,
+                    dst=cls.pg_if.local_ip4) /
+                 UDP(sport=1234, dport=cls.punt_port) /
+                 Raw(payload))
+            size = packet_sizes[(i // 2) % len(packet_sizes)]
+            cls.extend_packet(p, size, cls.padding)
+            info.data = p
+
+    @classmethod
+    def create_fragments(cls):
+        infos = cls._packet_infos
+        cls.pkt_infos = []
+        for index, info in infos.iteritems():
+            p = info.data
+            # self.logger.debug(ppp("Packet:", p.__class__(str(p))))
+            fragments_400 = fragment_rfc791(p, 400)
+            fragments_300 = fragment_rfc791(p, 300)
+            fragments_200 = [
+                x for f in fragments_400 for x in fragment_rfc791(f, 200)]
+            cls.pkt_infos.append(
+                (index, fragments_400, fragments_300, fragments_200))
+        cls.fragments_400 = [
+            x for (_, frags, _, _) in cls.pkt_infos for x in frags]
+        cls.fragments_300 = [
+            x for (_, _, frags, _) in cls.pkt_infos for x in frags]
+        cls.fragments_200 = [
+            x for (_, _, _, frags) in cls.pkt_infos for x in frags]
+        cls.logger.debug("Fragmented %s packets into %s 400-byte fragments, "
+                         "%s 300-byte fragments and %s 200-byte fragments" %
+                         (len(infos), len(cls.fragments_400),
+                             len(cls.fragments_300), len(cls.fragments_200)))
+
+    def verify_capture(self, capture, dropped_packet_indexes=[]):
+        """Verify captured packet stream.
+
+        :param list capture: Captured packet stream.
+        """
+        info = None
+        seen = set()
+        for packet in capture:
+            try:
+                sw_if_index = packet['sw_if_index']
+                punt_action = packet['punt_action']
+                packet = Ether(packet['packet'])
+                self.logger.debug(ppp("Got packet from %s, action %s" %
+                                      (sw_if_index, punt_action), packet))
+                ip = packet[IP]
+                udp = packet[UDP]
+                payload_info = self.payload_to_info(str(packet[Raw]))
+                packet_index = payload_info.index
+                self.assertTrue(
+                    packet_index not in dropped_packet_indexes,
+                    ppp("Packet received, but should be dropped:", packet))
+                if packet_index in seen:
+                    raise Exception(ppp("Duplicate packet received", packet))
+                seen.add(packet_index)
+                self.assertEqual(payload_info.dst, self.pg_if.sw_if_index)
+                info = self._packet_infos[packet_index]
+                self.assertTrue(info is not None)
+                self.assertEqual(packet_index, info.index)
+                saved_packet = info.data
+                self.assertEqual(ip.src, saved_packet[IP].src)
+                self.assertEqual(ip.dst, saved_packet[IP].dst)
+                self.assertEqual(udp.payload, saved_packet[UDP].payload)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+        for index in self._packet_infos:
+            self.assertTrue(index in seen or index in dropped_packet_indexes,
+                            "Packet with packet_index %d not received" % index)
+
+    def test_reassembly(self):
+        """ basic reassembly """
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(self.fragments_200)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.pg_if.add_stream(self.fragments_200)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+    def test_reversed(self):
+        """ reverse order reassembly """
+
+        fragments = list(self.fragments_200)
+        fragments.reverse()
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.packet_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.packet_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+    def test_random(self):
+        """ random order reassembly """
+
+        fragments = list(self.fragments_200)
+        shuffle(fragments)
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.packet_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.packet_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+    def test_duplicates(self):
+        """ duplicate fragments """
+
+        fragments = [
+            x for (_, frags, _, _) in self.pkt_infos
+            for x in frags
+            for _ in range(0, min(2, len(frags)))
+        ]
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+    def test_overlap1(self):
+        """ overlapping fragments case #1 """
+
+        fragments = []
+        for _, _, frags_300, frags_200 in self.pkt_infos:
+            if len(frags_300) == 1:
+                fragments.extend(frags_300)
+            else:
+                for i, j in zip(frags_200, frags_300):
+                    fragments.extend(i)
+                    fragments.extend(j)
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+        # run it all to verify correctness
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+    def test_overlap2(self):
+        """ overlapping fragments case #2 """
+
+        fragments = []
+        for _, _, frags_300, frags_200 in self.pkt_infos:
+            if len(frags_300) == 1:
+                fragments.extend(frags_300)
+            else:
+                # care must be taken here so that there are no fragments
+                # received by vpp after reassembly is finished, otherwise
+                # new reassemblies will be started and packet generator will
+                # freak out when it detects unfreed buffers
+                zipped = zip(frags_300, frags_200)
+                for i, j in zipped[:-1]:
+                    fragments.extend(i)
+                    fragments.extend(j)
+                fragments.append(zipped[-1][0])
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+        # run it all to verify correctness
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+    def test_timeout_inline(self):
+        """ timeout (inline) """
+
+        dropped_packet_indexes = set(
+            index for (index, frags, _, _) in self.pkt_infos if len(frags) > 1
+        )
+
+        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10000)
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(
+            len(self.pkt_infos) - len(dropped_packet_indexes))
+        self.verify_capture(packets, dropped_packet_indexes)
+        self.pg_if.assert_nothing_captured()
+
+    def test_timeout_cleanup(self):
+        """ timeout (cleanup) """
+
+        # whole packets + fragmented packets sans last fragment
+        fragments = [
+            x for (_, frags_400, _, _) in self.pkt_infos
+            for x in frags_400[:-1 if len(frags_400) > 1 else None]
+        ]
+
+        # last fragments for fragmented packets
+        fragments2 = [frags_400[-1]
+                      for (_, frags_400, _, _) in self.pkt_infos
+                      if len(frags_400) > 1]
+
+        dropped_packet_indexes = set(
+            index for (index, frags_400, _, _) in self.pkt_infos
+            if len(frags_400) > 1)
+
+        self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                    expire_walk_interval_ms=50)
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        self.sleep(.25, "wait before sending rest of fragments")
+
+        self.pg_if.add_stream(fragments2)
+        self.pg_start()
+        self.sleep(.25, "wait for vpp to process packets")
+
+        packets = self.punt_socket.wait_for_packets(
+            len(self.pkt_infos) - len(dropped_packet_indexes))
+        self.verify_capture(packets, dropped_packet_indexes)
+        self.pg_if.assert_nothing_captured()
+
+    def test_disabled(self):
+        """ reassembly disabled """
+
+        dropped_packet_indexes = set(
+            index for (index, frags_400, _, _) in self.pkt_infos
+            if len(frags_400) > 1)
+
+        self.vapi.ip_reassembly_set(timeout_ms=1000, max_reassemblies=0,
+                                    expire_walk_interval_ms=10000)
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(
+            len(self.pkt_infos) - len(dropped_packet_indexes))
+        self.verify_capture(packets, dropped_packet_indexes)
+        self.pg_if.assert_nothing_captured()
+
+
+class TestIPv6Reassembly(VppTestCase):
+    """ IPv6 Reassembly """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv6Reassembly, cls).setUpClass()
+
+        cls.create_pg_interfaces([0])
+        cls.pg_if = cls.pg0
+
+        # setup all interfaces
+        for i in cls.pg_interfaces:
+            i.admin_up()
+            i.config_ip6()
+            i.resolve_ndp()
+
+        cls.punt_port = 9999
+        cls.punt_socket = VppUDSPuntSocket(cls, cls.punt_port, is_ip4=0)
+
+        # packet sizes
+        cls.packet_sizes = [64, 512, 1518, 9018]
+        cls.padding = " abcdefghijklmn"
+        cls.create_stream(cls.packet_sizes)
+        cls.create_fragments()
+
+    def setUp(self):
+        """ Test setup - force timeout on existing reassemblies """
+        super(TestIPv6Reassembly, self).setUp()
+        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10, is_ip6=1)
+        self.sleep(.25)
+        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10000, is_ip6=1)
+
+    def tearDown(self):
+        super(TestIPv6Reassembly, self).tearDown()
+        self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
+
+    @classmethod
+    def create_stream(cls, packet_sizes, packet_count=test_packet_count):
+        """Create input packet stream for defined interface.
+
+        :param list packet_sizes: Required packet sizes.
+        """
+        for i in range(0, packet_count):
+            info = cls.create_packet_info(cls.pg_if, cls.pg_if)
+            payload = cls.info_to_payload(info)
+            p = (Ether(dst=cls.pg_if.local_mac, src=cls.pg_if.remote_mac) /
+                 IPv6(src=cls.pg_if.remote_ip6,
+                      dst=cls.pg_if.local_ip6) /
+                 UDP(sport=1234, dport=cls.punt_port) /
+                 Raw(payload))
+            size = packet_sizes[(i // 2) % len(packet_sizes)]
+            cls.extend_packet(p, size, cls.padding)
+            info.data = p
+
+    @classmethod
+    def create_fragments(cls):
+        infos = cls._packet_infos
+        cls.pkt_infos = []
+        for index, info in infos.iteritems():
+            p = info.data
+            # self.logger.debug(ppp("Packet:", p.__class__(str(p))))
+            fragments_400 = fragment_rfc8200(p, info.index, 400)
+            fragments_300 = fragment_rfc8200(p, info.index, 300)
+            cls.pkt_infos.append((index, fragments_400, fragments_300))
+        cls.fragments_400 = [
+            x for _, frags, _ in cls.pkt_infos for x in frags]
+        cls.fragments_300 = [
+            x for _, _, frags in cls.pkt_infos for x in frags]
+        cls.logger.debug("Fragmented %s packets into %s 400-byte fragments, "
+                         "and %s 300-byte fragments" %
+                         (len(infos), len(cls.fragments_400),
+                             len(cls.fragments_300)))
+
+    def verify_capture(self, capture, dropped_packet_indexes=[]):
+        """Verify captured packet strea .
+
+        :param list capture: Captured packet stream.
+        """
+        info = None
+        seen = set()
+        for packet in capture:
+            try:
+                sw_if_index = packet['sw_if_index']
+                punt_action = packet['punt_action']
+                packet = Ether(packet['packet'])
+                self.logger.debug(ppp("Got packet from %s, action %s" %
+                                      (sw_if_index, punt_action), packet))
+                ip = packet[IPv6]
+                udp = packet[UDP]
+                payload_info = self.payload_to_info(str(packet[Raw]))
+                packet_index = payload_info.index
+                self.assertTrue(
+                    packet_index not in dropped_packet_indexes,
+                    ppp("Packet received, but should be dropped:", packet))
+                if packet_index in seen:
+                    raise Exception(ppp("Duplicate packet received", packet))
+                seen.add(packet_index)
+                self.assertEqual(payload_info.dst, self.pg_if.sw_if_index)
+                info = self._packet_infos[packet_index]
+                self.assertTrue(info is not None)
+                self.assertEqual(packet_index, info.index)
+                saved_packet = info.data
+                self.assertEqual(ip.src, saved_packet[IPv6].src)
+                self.assertEqual(ip.dst, saved_packet[IPv6].dst)
+                self.assertEqual(udp.payload, saved_packet[UDP].payload)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+        for index in self._packet_infos:
+            self.assertTrue(index in seen or index in dropped_packet_indexes,
+                            "Packet with packet_index %d not received" % index)
+
+    def test_reassembly(self):
+        """ basic reassembly """
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.pg_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+    def test_reversed(self):
+        """ reverse order reassembly """
+
+        fragments = list(self.fragments_400)
+        fragments.reverse()
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+    def test_random(self):
+        """ random order reassembly """
+
+        fragments = list(self.fragments_400)
+        shuffle(fragments)
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+        # run it all again to verify correctness
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+    def test_duplicates(self):
+        """ duplicate fragments """
+
+        fragments = [
+            x for (_, frags, _) in self.pkt_infos
+            for x in frags
+            for _ in range(0, min(2, len(frags)))
+        ]
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(len(self.pkt_infos))
+        self.verify_capture(packets)
+        self.pg_if.assert_nothing_captured()
+
+    def test_overlap1(self):
+        """ overlapping fragments case #1 """
+
+        fragments = []
+        for _, frags_400, frags_300 in self.pkt_infos:
+            if len(frags_300) == 1:
+                fragments.extend(frags_400)
+            else:
+                for i, j in zip(frags_300, frags_400):
+                    fragments.extend(i)
+                    fragments.extend(j)
+
+        dropped_packet_indexes = set(
+            index for (index, _, frags) in self.pkt_infos if len(frags) > 1
+        )
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        self.sleep(.1, "wait for vpp to process packets")
+        packets = self.punt_socket.wait_for_packets(
+            len(self.pkt_infos) - len(dropped_packet_indexes))
+        self.verify_capture(packets, dropped_packet_indexes)
+        self.pg_if.assert_nothing_captured()
+
+    def test_overlap2(self):
+        """ overlapping fragments case #2 """
+
+        fragments = []
+        for _, frags_400, frags_30 in self.pkt_infos:
+            if len(frags_400) == 1:
+                fragments.extend(frags_400)
+            else:
+                # care must be taken here so that there are no fragments
+                # received by vpp after reassembly is finished, otherwise
+                # new reassemblies will be started and packet generator will
+                # freak out when it detects unfreed buffers
+                zipped = zip(frags_400, frags_30)
+                for i, j in zipped[:-1]:
+                    fragments.extend(i)
+                    fragments.extend(j)
+                fragments.append(zipped[-1][0])
+
+        dropped_packet_indexes = set(
+            index for (index, _, frags) in self.pkt_infos if len(frags) > 1
+        )
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        self.sleep(.1, "wait for vpp to process packets")
+        packets = self.punt_socket.wait_for_packets(
+            len(self.pkt_infos) - len(dropped_packet_indexes))
+        self.verify_capture(packets, dropped_packet_indexes)
+        self.pg_if.assert_nothing_captured()
+
+    def test_timeout_inline(self):
+        """ timeout (inline) """
+
+        dropped_packet_indexes = set(
+            index for (index, frags, _) in self.pkt_infos if len(frags) > 1
+        )
+
+        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10000, is_ip6=1)
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(
+            len(self.pkt_infos) - len(dropped_packet_indexes))
+        self.verify_capture(packets, dropped_packet_indexes)
+        pkts = self.pg_if.get_capture(
+            expected_count=len(dropped_packet_indexes))
+        for icmp in pkts:
+            self.assertIn(ICMPv6TimeExceeded, icmp)
+            self.assertIn(IPv6ExtHdrFragment, icmp)
+            self.assertIn(icmp[IPv6ExtHdrFragment].id, dropped_packet_indexes)
+            dropped_packet_indexes.remove(icmp[IPv6ExtHdrFragment].id)
+
+    def test_timeout_cleanup(self):
+        """ timeout (cleanup) """
+
+        # whole packets + fragmented packets sans last fragment
+        fragments = [
+            x for (_, frags_400, _) in self.pkt_infos
+            for x in frags_400[:-1 if len(frags_400) > 1 else None]
+        ]
+
+        # last fragments for fragmented packets
+        fragments2 = [frags_400[-1]
+                      for (_, frags_400, _) in self.pkt_infos
+                      if len(frags_400) > 1]
+
+        dropped_packet_indexes = set(
+            index for (index, frags_400, _) in self.pkt_infos
+            if len(frags_400) > 1)
+
+        self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                    expire_walk_interval_ms=50)
+
+        self.vapi.ip_reassembly_set(timeout_ms=100, max_reassemblies=1000,
+                                    expire_walk_interval_ms=50, is_ip6=1)
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(fragments)
+        self.pg_start()
+
+        self.sleep(.25, "wait before sending rest of fragments")
+
+        self.pg_if.add_stream(fragments2)
+        self.pg_start()
+        self.sleep(.25, "wait for vpp to process packets")
+
+        packets = self.punt_socket.wait_for_packets(
+            len(self.pkt_infos) - len(dropped_packet_indexes))
+        self.verify_capture(packets, dropped_packet_indexes)
+        pkts = self.pg_if.get_capture(
+            expected_count=len(dropped_packet_indexes))
+        for icmp in pkts:
+            self.assertIn(ICMPv6TimeExceeded, icmp)
+            self.assertIn(IPv6ExtHdrFragment, icmp)
+            self.assertIn(icmp[IPv6ExtHdrFragment].id, dropped_packet_indexes)
+            dropped_packet_indexes.remove(icmp[IPv6ExtHdrFragment].id)
+
+    def test_disabled(self):
+        """ reassembly disabled """
+
+        dropped_packet_indexes = set(
+            index for (index, frags_400, _) in self.pkt_infos
+            if len(frags_400) > 1)
+
+        self.vapi.ip_reassembly_set(timeout_ms=1000, max_reassemblies=0,
+                                    expire_walk_interval_ms=10000, is_ip6=1)
+
+        self.pg_enable_capture()
+        self.pg_if.add_stream(self.fragments_400)
+        self.pg_start()
+
+        packets = self.punt_socket.wait_for_packets(
+            len(self.pkt_infos) - len(dropped_packet_indexes))
+        self.verify_capture(packets, dropped_packet_indexes)
+        self.pg_if.assert_nothing_captured()
+
+    def test_missing_upper(self):
+        """ missing upper layer """
+        p = (Ether(dst=self.pg_if.local_mac, src=self.pg_if.remote_mac) /
+             IPv6(src=self.pg_if.remote_ip6,
+                  dst=self.pg_if.local_ip6) /
+             UDP(sport=1234, dport=self.punt_port) /
+             Raw())
+        self.extend_packet(p, 1000, self.padding)
+        fragments = fragment_rfc8200(p, 1, 500)
+        bad_fragment = p.__class__(str(fragments[1]))
+        bad_fragment[IPv6ExtHdrFragment].nh = 59
+        bad_fragment[IPv6ExtHdrFragment].offset = 0
+        self.pg_enable_capture()
+        self.pg_if.add_stream([bad_fragment])
+        self.pg_start()
+        pkts = self.pg_if.get_capture(expected_count=1)
+        icmp = pkts[0]
+        self.assertIn(ICMPv6ParamProblem, icmp)
+        self.assert_equal(icmp[ICMPv6ParamProblem].code, 3, "ICMP code")
+
+    def test_invalid_frag_size(self):
+        """ fragment size not a multiple of 8 """
+        p = (Ether(dst=self.pg_if.local_mac, src=self.pg_if.remote_mac) /
+             IPv6(src=self.pg_if.remote_ip6,
+                  dst=self.pg_if.local_ip6) /
+             UDP(sport=1234, dport=self.punt_port) /
+             Raw())
+        self.extend_packet(p, 1000, self.padding)
+        fragments = fragment_rfc8200(p, 1, 500)
+        bad_fragment = fragments[0]
+        self.extend_packet(bad_fragment, len(bad_fragment) + 5)
+        self.pg_enable_capture()
+        self.pg_if.add_stream([bad_fragment])
+        self.pg_start()
+        pkts = self.pg_if.get_capture(expected_count=1)
+        icmp = pkts[0]
+        self.assertIn(ICMPv6ParamProblem, icmp)
+        self.assert_equal(icmp[ICMPv6ParamProblem].code, 0, "ICMP code")
+
+    def test_invalid_packet_size(self):
+        """ total packet size > 65535 """
+        p = (Ether(dst=self.pg_if.local_mac, src=self.pg_if.remote_mac) /
+             IPv6(src=self.pg_if.remote_ip6,
+                  dst=self.pg_if.local_ip6) /
+             UDP(sport=1234, dport=self.punt_port) /
+             Raw())
+        self.extend_packet(p, 1000, self.padding)
+        fragments = fragment_rfc8200(p, 1, 500)
+        bad_fragment = fragments[1]
+        bad_fragment[IPv6ExtHdrFragment].offset = 65500
+        self.pg_enable_capture()
+        self.pg_if.add_stream([bad_fragment])
+        self.pg_start()
+        pkts = self.pg_if.get_capture(expected_count=1)
+        icmp = pkts[0]
+        self.assertIn(ICMPv6ParamProblem, icmp)
+        self.assert_equal(icmp[ICMPv6ParamProblem].code, 0, "ICMP code")
+
+
+class TestFIFReassembly(VppTestCase):
+    """ Fragments in fragments reassembly """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestFIFReassembly, cls).setUpClass()
+
+        cls.create_pg_interfaces([0])
+        cls.pg_if = cls.pg0
+        cls.pg_if.admin_up()
+        cls.pg_if.config_ip4()
+        cls.pg_if.resolve_arp()
+        cls.pg_if.config_ip6()
+        cls.pg_if.resolve_ndp()
+
+        cls.punt_port = 9999
+        cls.punt4_socket = VppUDSPuntSocket(cls, cls.punt_port)
+        cls.punt6_socket = VppUDSPuntSocket(cls, cls.punt_port, is_ip4=0)
+        cls.packet_sizes = [64, 512, 1518, 9018]
+        cls.padding = " abcdefghijklmn"
+
+    def setUp(self):
+        """ Test setup - force timeout on existing reassemblies """
+        super(TestFIFReassembly, self).setUp()
+        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10)
+        self.vapi.ip_reassembly_set(timeout_ms=0, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10, is_ip6=1)
+        self.sleep(.25)
+        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10000)
+        self.vapi.ip_reassembly_set(timeout_ms=1000000, max_reassemblies=1000,
+                                    expire_walk_interval_ms=10000, is_ip6=1)
+
+    def tearDown(self):
+        self.logger.debug(self.vapi.ppcli("show ip4-reassembly details"))
+        self.logger.debug(self.vapi.ppcli("show ip6-reassembly details"))
+        super(TestFIFReassembly, self).tearDown()
+
+    def verify_capture(self, capture, ip_class, dropped_packet_indexes=[]):
+        """Verify captured packet stream.
+
+        :param list capture: Captured packet stream.
+        """
+        info = None
+        seen = set()
+        for packet in capture:
+            try:
+                sw_if_index = packet['sw_if_index']
+                punt_action = packet['punt_action']
+                packet = Ether(packet['packet'])
+                self.logger.debug(ppp("Got packet from %s, action %s" %
+                                      (sw_if_index, punt_action), packet))
+                ip = packet[ip_class]
+                udp = packet[UDP]
+                payload_info = self.payload_to_info(str(packet[Raw]))
+                packet_index = payload_info.index
+                self.assertTrue(
+                    packet_index not in dropped_packet_indexes,
+                    ppp("Packet received, but should be dropped:", packet))
+                if packet_index in seen:
+                    raise Exception(ppp("Duplicate packet received", packet))
+                seen.add(packet_index)
+                self.assertEqual(payload_info.dst, self.pg_if.sw_if_index)
+                info = self._packet_infos[packet_index]
+                self.assertTrue(info is not None)
+                self.assertEqual(packet_index, info.index)
+                saved_packet = info.data
+                self.assertEqual(ip.src, saved_packet[ip_class].src)
+                self.assertEqual(ip.dst, saved_packet[ip_class].dst)
+                self.assertEqual(udp.payload, saved_packet[UDP].payload)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet:", packet))
+                raise
+        for index in self._packet_infos:
+            self.assertTrue(index in seen or index in dropped_packet_indexes,
+                            "Packet with packet_index %d not received" % index)
+
+    def test_fif4(self):
+        """ Fragments in fragments (4o4) """
+
+        # TODO this should be ideally in setUpClass, but then we hit a bug
+        # with VppIpRoute incorrectly reporting it's present when it's not
+        # so we need to manually remove the vpp config, thus we cannot have
+        # it shared for multiple test cases
+        self.tun_ip4 = "1.1.1.2"
+
+        self.gre4 = VppGreInterface(self, self.pg0.local_ip4, self.tun_ip4)
+        self.gre4.add_vpp_config()
+        self.gre4.admin_up()
+        self.gre4.config_ip4()
+
+        self.route4 = VppIpRoute(self, self.tun_ip4, 32,
+                                 [VppRoutePath(self.pg0.remote_ip4,
+                                               self.pg0.sw_if_index)])
+        self.route4.add_vpp_config()
+
+        self.reset_packet_infos()
+        for i in range(test_packet_count):
+            info = self.create_packet_info(self.pg0, self.pg0)
+            payload = self.info_to_payload(info)
+            p = (IP(id=i, src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
+                 UDP(sport=1234, dport=self.punt_port) /
+                 Raw(payload))
+            size = self.packet_sizes[(i // 2) % len(self.packet_sizes)]
+            self.extend_packet(p, size, self.padding)
+            info.data = p
+
+        fragments = [x for _, p in self._packet_infos.iteritems()
+                     for x in fragment_rfc791(p.data, 400)]
+
+        encapped_fragments = \
+            [Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=self.tun_ip4, dst=self.pg0.local_ip4) /
+                GRE() /
+                p
+                for p in fragments]
+
+        fragmented_encapped_fragments = \
+            [x for p in encapped_fragments
+             for x in fragment_rfc791(p, 200)]
+
+        self.pg0.add_stream(fragmented_encapped_fragments)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg0.assert_nothing_captured()
+        packets = self.punt4_socket.wait_for_packets(len(self._packet_infos))
+        self.verify_capture(packets, IP)
+
+        # TODO remove gre vpp config by hand until VppIpRoute gets fixed
+        # so that it's query_vpp_config() works as it should
+        self.gre4.remove_vpp_config()
+
+    def test_fif6(self):
+        """ Fragments in fragments (6o6) """
+        # TODO this should be ideally in setUpClass, but then we hit a bug
+        # with VppIpRoute incorrectly reporting it's present when it's not
+        # so we need to manually remove the vpp config, thus we cannot have
+        # it shared for multiple test cases
+        self.tun_ip6 = "1002::1"
+
+        self.gre6 = VppGre6Interface(self, self.pg0.local_ip6, self.tun_ip6)
+        self.gre6.add_vpp_config()
+        self.gre6.admin_up()
+        self.gre6.config_ip6()
+
+        self.route6 = VppIpRoute(self, self.tun_ip6, 128,
+                                 [VppRoutePath(self.pg0.remote_ip6,
+                                               self.pg0.sw_if_index,
+                                               proto=DpoProto.DPO_PROTO_IP6)],
+                                 is_ip6=1)
+        self.route6.add_vpp_config()
+
+        self.reset_packet_infos()
+        for i in range(test_packet_count):
+            info = self.create_packet_info(self.pg0, self.pg0)
+            payload = self.info_to_payload(info)
+            p = (IPv6(src=self.pg0.remote_ip6, dst=self.pg0.local_ip6) /
+                 UDP(sport=1234, dport=self.punt_port) /
+                 Raw(payload))
+            size = self.packet_sizes[(i // 2) % len(self.packet_sizes)]
+            self.extend_packet(p, size, self.padding)
+            info.data = p
+
+        fragments = [x for _, i in self._packet_infos.iteritems()
+                     for x in fragment_rfc8200(
+                         i.data, i.index, 400)]
+
+        encapped_fragments = \
+            [Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IPv6(src=self.tun_ip6, dst=self.pg0.local_ip6) /
+                GRE() /
+                p
+                for p in fragments]
+
+        fragmented_encapped_fragments = \
+            [x for p in encapped_fragments for x in (
+                fragment_rfc8200(
+                    p,
+                    2 * len(self._packet_infos) + p[IPv6ExtHdrFragment].id,
+                    200)
+                if IPv6ExtHdrFragment in p else [p]
+            )
+            ]
+
+        self.pg0.add_stream(fragmented_encapped_fragments)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        self.pg0.assert_nothing_captured()
+        packets = self.punt6_socket.wait_for_packets(len(self._packet_infos))
+        self.verify_capture(packets, IPv6)
+
+        # TODO remove gre vpp config by hand until VppIpRoute gets fixed
+        # so that it's query_vpp_config() works as it should
+        self.gre6.remove_vpp_config()
+
+
+if __name__ == '__main__':
+    unittest.main(testRunner=VppTestRunner)
