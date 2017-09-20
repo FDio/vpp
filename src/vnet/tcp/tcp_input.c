@@ -2866,6 +2866,7 @@ typedef enum _tcp_input_next
   TCP_INPUT_NEXT_SYN_SENT,
   TCP_INPUT_NEXT_ESTABLISHED,
   TCP_INPUT_NEXT_RESET,
+  TCP_INPUT_NEXT_PUNT,
   TCP_INPUT_N_NEXT
 } tcp_input_next_t;
 
@@ -2875,7 +2876,8 @@ typedef enum _tcp_input_next
   _ (RCV_PROCESS, "tcp4-rcv-process")           \
   _ (SYN_SENT, "tcp4-syn-sent")                 \
   _ (ESTABLISHED, "tcp4-established")		\
-  _ (RESET, "tcp4-reset")
+  _ (RESET, "tcp4-reset")			\
+  _ (PUNT, "error-punt")
 
 #define foreach_tcp6_input_next                 \
   _ (DROP, "error-drop")                        \
@@ -2883,7 +2885,8 @@ typedef enum _tcp_input_next
   _ (RCV_PROCESS, "tcp6-rcv-process")           \
   _ (SYN_SENT, "tcp6-syn-sent")                 \
   _ (ESTABLISHED, "tcp6-established")		\
-  _ (RESET, "tcp6-reset")
+  _ (RESET, "tcp6-reset")			\
+  _ (PUNT, "error-punt")
 
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
 
@@ -3007,9 +3010,18 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      /* Send reset */
-	      next0 = TCP_INPUT_NEXT_RESET;
-	      error0 = TCP_ERROR_NO_LISTENER;
+	      if ((is_ip4 && tm->punt_unknown4) ||
+		  (!is_ip4 && tm->punt_unknown6))
+		{
+		  next0 = TCP_INPUT_NEXT_PUNT;
+		  error0 = TCP_ERROR_PUNT;
+		}
+	      else
+		{
+		  /* Send reset */
+		  next0 = TCP_INPUT_NEXT_RESET;
+		  error0 = TCP_ERROR_NO_LISTENER;
+		}
 	    }
 
 	done:
