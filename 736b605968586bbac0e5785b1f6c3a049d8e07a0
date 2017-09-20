@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3a4b7175_9359c300",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-20T11:40:22Z",
+      "side": 1,
+      "message": "non-significant trailing space...",
+      "range": {
+        "startLine": 32,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 1
+      },
+      "revId": "736b605968586bbac0e5785b1f6c3a049d8e07a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_b3627fab",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 283,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-20T11:40:22Z",
+      "side": 1,
+      "message": "non-significant trailing space...",
+      "range": {
+        "startLine": 283,
+        "startChar": 6,
+        "endLine": 283,
+        "endChar": 7
+      },
+      "revId": "736b605968586bbac0e5785b1f6c3a049d8e07a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_53734b80",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 554,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-20T11:40:22Z",
+      "side": 1,
+      "message": "I will be very curious about the performance implications of three nested conditionals here. Also, there should be unit tests covering each of the new conditionals. You can take a look at test_acl_plugin_* for the example.\nalso, at a minimum, I think the top level and the second-level conditionals should be swapped. Also, how will this code behave if an IPv4 packet is received with the ICMPv6 protocol type ?",
+      "range": {
+        "startLine": 536,
+        "startChar": 0,
+        "endLine": 554,
+        "endChar": 3
+      },
+      "revId": "736b605968586bbac0e5785b1f6c3a049d8e07a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_f367d7b5",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 994,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-20T11:40:22Z",
+      "side": 1,
+      "message": "the \"can add session\" checks the capacity of the hash table - whether we can insert one more session. This code seems to check whether the packet is ICMP and can be handled state fully. Different semantics, so the name should be different. Also, what is its behaviour if there is an IPv4 packet with ICMPv6 L4 protocol type ? Is that the intended one ?",
+      "range": {
+        "startLine": 978,
+        "startChar": 0,
+        "endLine": 994,
+        "endChar": 1
+      },
+      "revId": "736b605968586bbac0e5785b1f6c3a049d8e07a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_136dd398",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1158,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-09-20T11:40:22Z",
+      "side": 1,
+      "message": "we permit the packet if we can\u0027t add the ICMP session ?? The logic here **really** wants some comments. Just from reading the code i am tempted to say it is not very correct, but maybe I am missing something.",
+      "range": {
+        "startLine": 1155,
+        "startChar": 0,
+        "endLine": 1158,
+        "endChar": 5
+      },
+      "revId": "736b605968586bbac0e5785b1f6c3a049d8e07a0",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
