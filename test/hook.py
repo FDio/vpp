@@ -2,7 +2,7 @@ import signal
 import os
 import traceback
 from log import RED, single_line_delim, double_line_delim
-from debug import spawn_gdb, gdb_path
+from debug import spawn_gdb
 
 
 class Hook(object):
@@ -62,14 +62,10 @@ class PollHook(Hook):
 
     def on_crash(self, core_path):
         if self.testcase.debug_core:
-            if not spawn_gdb(self.testcase.vpp_bin, core_path, self.logger):
-                self.logger.error(
-                    "Debugger '%s' does not exist or is not an executable.." %
-                    gdb_path)
-            else:
-                return
-        self.logger.critical("Core file present, debug with: gdb %s %s" %
-                             (self.testcase.vpp_bin, core_path))
+            spawn_gdb(self.testcase.vpp_bin, core_path, self.logger)
+        else:
+            self.logger.critical("Core file present, debug with: gdb %s %s" %
+                                 (self.testcase.vpp_bin, core_path))
 
     def poll_vpp(self):
         """
