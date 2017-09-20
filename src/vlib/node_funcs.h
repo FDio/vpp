@@ -851,6 +851,9 @@ vlib_process_signal_event_data (vlib_main_t * vm,
   vlib_process_t *p = vec_elt (nm->processes, n->runtime_index);
   uword *h, t;
 
+  /* Must be in main thread */
+  ASSERT (vlib_get_thread_index () == 0);
+
   h = hash_get (p->event_type_index_by_type_opaque, type_opaque);
   if (!h)
     {
