@@ -393,7 +393,8 @@ int vnet_lisp_rloc_probe_enable_disable (u8 is_enable);
 int vnet_lisp_map_register_enable_disable (u8 is_enable);
 u8 vnet_lisp_map_register_state_get (void);
 u8 vnet_lisp_rloc_probe_state_get (void);
-int vnet_lisp_add_del_l2_arp_entry (gid_address_t * key, u8 * mac, u8 is_add);
+int vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t * key, u8 * mac,
+					u8 is_add);
 u32 *vnet_lisp_l2_arp_bds_get (void);
 lisp_api_l2_arp_entry_t *vnet_lisp_l2_arp_entries_get_by_bd (u32 bd);
 int vnet_lisp_nsh_set_locator_set (u8 * locator_set_name, u8 is_add);
