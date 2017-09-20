@@ -195,6 +195,9 @@ typedef struct
   u32 limit_neighbor_cache_size;
   u32 neighbor_delete_rotor;
 
+  /* Wildcard nd report publisher */
+  uword wc_ip6_nd_publisher_node;
+  uword wc_ip6_nd_publisher_et;
 } ip6_neighbor_main_t;
 
 /* ipv6 neighbor discovery - timer/event types */
@@ -215,6 +218,50 @@ typedef union
 
 static ip6_neighbor_main_t ip6_neighbor_main;
 static ip6_address_t ip6a_zero;	/* ip6 address 0 */
+
+static void wc_nd_signal_report (wc_nd_report_t * r);
+
+/**
+ * @brief publish wildcard arp event
+ * @param sw_if_index The interface on which the ARP entires are acted
+ */
+static int
+vnet_nd_wc_publish (u32 sw_if_index, u8 * mac, ip6_address_t * ip6)
+{
+  wc_nd_report_t r = {
+    .sw_if_index = sw_if_index,
+    .ip6 = *ip6,
+  };
+  memcpy (r.mac, mac, sizeof r.mac);
+
+  void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+  vl_api_rpc_call_main_thread (wc_nd_signal_report, (u8 *) & r, sizeof r);
+  return 0;
+}
+
+static void
+wc_nd_signal_report (wc_nd_report_t * r)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  uword ni = nm->wc_ip6_nd_publisher_node;
+  uword et = nm->wc_ip6_nd_publisher_et;
+
+  if (ni == (uword) ~ 0)
+    return;
+  wc_nd_report_t *q =
+    vlib_process_signal_event_data (vm, ni, et, 1, sizeof *q);
+
+  *q = *r;
+}
+
+void
+wc_nd_set_publisher_node (uword node_index, uword event_type)
+{
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  nm->wc_ip6_nd_publisher_node = node_index;
+  nm->wc_ip6_nd_publisher_et = event_type;
+}
 
 static u8 *
 format_ip6_neighbor_ip6_entry (u8 * s, va_list * va)
@@ -3931,6 +3978,8 @@ ip6_neighbor_init (vlib_main_t * vm)
   /* default, configurable */
   nm->limit_neighbor_cache_size = 50000;
 
+  nm->wc_ip6_nd_publisher_node = (uword) ~ 0;
+
 #if 0
   /* $$$$ Hack fix for today */
   vec_validate_init_empty
@@ -4047,7 +4096,6 @@ vnet_ip6_nd_term (vlib_main_t * vm,
 {
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   icmp6_neighbor_solicitation_or_advertisement_header_t *ndh;
-  pending_resolution_t *mc;
 
   ndh = ip6_next_header (ip);
   if (ndh->icmp.type != ICMP6_neighbor_solicitation &&
@@ -4063,26 +4111,11 @@ vnet_ip6_nd_term (vlib_main_t * vm,
     }
 
   /* Check if anyone want ND events for L2 BDs */
-  uword *p = mhash_get (&nm->mac_changes_by_address, &ip6a_zero);
-  if (p && !ip6_address_is_link_local_unicast (&ip->src_address))
+  if (PREDICT_FALSE
+      (nm->wc_ip6_nd_publisher_node != (uword) ~ 0
+       && !ip6_address_is_link_local_unicast (&ip->src_address)))
     {
-      u32 next_index = p[0];
-      while (next_index != (u32) ~ 0)
-	{
-	  int (*fp) (u32, u8 *, u32, ip6_address_t *);
-	  int rv = 1;
-	  mc = pool_elt_at_index (nm->mac_changes, next_index);
-	  fp = mc->data_callback;
-	  /* Call the callback, return 1 to suppress dup events */
-	  if (fp)
-	    rv = (*fp) (mc->data,
-			eth->src_address, sw_if_index, &ip->src_address);
-	  /* Signal the resolver process */
-	  if (rv == 0)
-	    vlib_process_signal_event (vm, mc->node_index,
-				       mc->type_opaque, mc->data);
-	  next_index = mc->next_index;
-	}
+      vnet_nd_wc_publish (sw_if_index, eth->src_address, &ip->src_address);
     }
 
   /* Check if MAC entry exsist for solicited target IP */
