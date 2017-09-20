@@ -22,6 +22,30 @@
       "revId": "9c2eeabb2dad618846425f827fcbfa3800987d5a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a4b7175_735e4778",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-09-20T13:51:17Z",
+      "side": 1,
+      "message": "Jon, Thanks for the reminder.  It is still on my todo list and I\u0027ll try to get to it this week.\n-daw-",
+      "parentUuid": "3a4b7175_6010b2a8",
+      "range": {
+        "startLine": 7,
+        "startChar": 0,
+        "endLine": 7,
+        "endChar": 56
+      },
+      "revId": "9c2eeabb2dad618846425f827fcbfa3800987d5a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
