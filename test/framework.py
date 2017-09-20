@@ -24,6 +24,7 @@ from vpp_lo_interface import VppLoInterface
 from vpp_papi_provider import VppPapiProvider
 from log import *
 from vpp_object import VppObjectRegistry
+from vpp_punt_socket import vpp_uds_socket_name
 if os.name == 'posix' and sys.version_info[0] < 3:
     # using subprocess32 is recommended by python official documentation
     # @ https://docs.python.org/2/library/subprocess.html
@@ -255,7 +256,8 @@ class VppTestCase(unittest.TestCase):
                            coredump_size, "}", "api-trace", "{", "on", "}",
                            "api-segment", "{", "prefix", cls.shm_prefix, "}",
                            "plugins", "{", "plugin", "dpdk_plugin.so", "{",
-                           "disable", "}", "}"]
+                           "disable", "}", "}",
+                           "punt", "{", "socket", cls.punt_socket_path, "}"]
         if plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", plugin_path])
         cls.logger.info("vpp_cmdline: %s" % cls.vpp_cmdline)
@@ -317,7 +319,7 @@ class VppTestCase(unittest.TestCase):
         Remove shared memory files, start vpp and connect the vpp-api
         """
         gc.collect()  # run garbage collection first
-        random.seed()
+        random.seed(1)
         cls.logger = getLogger(cls.__name__)
         cls.tempdir = tempfile.mkdtemp(
             prefix='vpp-unittest-%s-' % cls.__name__)
@@ -328,6 +330,7 @@ class VppTestCase(unittest.TestCase):
         cls.file_handler.setLevel(DEBUG)
         cls.logger.addHandler(cls.file_handler)
         cls.shm_prefix = cls.tempdir.split("/")[-1]
+        cls.punt_socket_path = '%s/%s' % (cls.tempdir, vpp_uds_socket_name)
         os.chdir(cls.tempdir)
         cls.logger.info("Temporary dir is %s, shm prefix is %s",
                         cls.tempdir, cls.shm_prefix)
@@ -499,13 +502,16 @@ class VppTestCase(unittest.TestCase):
         type(self).test_instance = self
 
     @classmethod
-    def pg_enable_capture(cls, interfaces):
+    def pg_enable_capture(cls, interfaces=None):
         """
         Enable capture on packet-generator interfaces
 
-        :param interfaces: iterable interface indexes
+        :param interfaces: iterable interface indexes (if None,
+                           use self.pg_interfaces)
 
         """
+        if interfaces is None:
+            interfaces = cls.pg_interfaces
         for i in interfaces:
             i.enable_capture()
 
@@ -573,19 +579,21 @@ class VppTestCase(unittest.TestCase):
         return result
 
     @staticmethod
-    def extend_packet(packet, size):
+    def extend_packet(packet, size, padding=' '):
         """
-        Extend packet to given size by padding with spaces
+        Extend packet to given size by padding with spaces or custom padding
         NOTE: Currently works only when Raw layer is present.
 
         :param packet: packet
         :param size: target size
+        :param padding: padding used to extend the payload
 
         """
         packet_len = len(packet) + 4
         extend = size - packet_len
         if extend > 0:
-            packet[Raw].load += ' ' * extend
+            num = (extend / len(padding)) + 1
+            packet[Raw].load += (padding * num)[:extend]
 
     @classmethod
     def reset_packet_infos(cls):

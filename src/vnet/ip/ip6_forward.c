@@ -1310,6 +1310,8 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u8 error0, type0, good_l4_csum0, is_tcp_udp0;
 	  u8 error1, type1, good_l4_csum1, is_tcp_udp1;
 	  u32 udp_offset0, udp_offset1;
+	  ip6_ext_header_t *prev_hdr0, *frag_hdr0 =
+	    NULL, *prev_hdr1, *frag_hdr1 = NULL;
 
 	  pi0 = to_next[0] = from[0];
 	  pi1 = to_next[1] = from[1];
@@ -1325,6 +1327,28 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  ip0 = vlib_buffer_get_current (p0);
 	  ip1 = vlib_buffer_get_current (p1);
+
+	  if (PREDICT_FALSE (ip6_ext_hdr (ip0->protocol)))
+	    {
+	      ip6_ext_header_find_t (ip0, prev_hdr0, frag_hdr0,
+				     IP_PROTOCOL_IPV6_FRAGMENTATION);
+	      if (frag_hdr0)
+		{
+		  vnet_buffer (p0)->ip.reass.ip6_frag_hdr_offset =
+		    (u8 *) frag_hdr0 - (u8 *) ip0;
+		}
+	    }
+	  if (PREDICT_FALSE (ip6_ext_hdr (ip1->protocol)))
+	    {
+	      ip6_ext_header_find_t (ip1, prev_hdr1, frag_hdr1,
+				     IP_PROTOCOL_IPV6_FRAGMENTATION);
+	      if (frag_hdr1)
+		{
+		  vnet_buffer (p1)->ip.reass.ip6_frag_hdr_offset =
+		    (u8 *) frag_hdr1 - (u8 *) ip1;
+		}
+	    }
+
 
 	  if (head_of_feature_arc == 0)
 	    goto skip_checks;
@@ -1462,6 +1486,18 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  next1 =
 	    error1 != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next1;
 
+	  if (PREDICT_FALSE (frag_hdr0 != NULL))
+	    {
+	      next0 = IP_LOCAL_NEXT_REASSEMBLY;
+	      error0 = IP6_ERROR_NONE;
+	    }
+
+	  if (PREDICT_FALSE (frag_hdr1 != NULL))
+	    {
+	      next1 = IP_LOCAL_NEXT_REASSEMBLY;
+	      error1 = IP6_ERROR_NONE;
+	    }
+
 	  p0->error = error_node->errors[error0];
 	  p1->error = error_node->errors[error1];
 
@@ -1492,6 +1528,7 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u8 error0, type0, good_l4_csum0;
 	  u32 udp_offset0;
 	  u8 is_tcp_udp0;
+	  ip6_ext_header_t *prev_hdr0, *frag_hdr0 = NULL;
 
 	  pi0 = to_next[0] = from[0];
 	  from += 1;
@@ -1503,6 +1540,17 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip0 = vlib_buffer_get_current (p0);
+
+	  if (PREDICT_FALSE (ip6_ext_hdr (ip0->protocol)))
+	    {
+	      ip6_ext_header_find_t (ip0, prev_hdr0, frag_hdr0,
+				     IP_PROTOCOL_IPV6_FRAGMENTATION);
+	      if (frag_hdr0)
+		{
+		  vnet_buffer (p0)->ip.reass.ip6_frag_hdr_offset =
+		    (u8 *) frag_hdr0 - (u8 *) ip0;
+		}
+	    }
 
 	  if (head_of_feature_arc == 0)
 	    goto skip_check;
@@ -1578,6 +1626,13 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  next0 = lm->local_next_by_ip_protocol[ip0->protocol];
 	  next0 =
 	    error0 != IP6_ERROR_UNKNOWN_PROTOCOL ? IP_LOCAL_NEXT_DROP : next0;
+
+	  if (PREDICT_FALSE (frag_hdr0 != NULL))
+	    {
+	      next0 = IP_LOCAL_NEXT_REASSEMBLY;
+	      error0 = IP6_ERROR_NONE;
+	    }
+
 	  p0->error = error_node->errors[error0];
 
 	  if (head_of_feature_arc)
@@ -1619,6 +1674,7 @@ VLIB_REGISTER_NODE (ip6_local_node, static) =
     [IP_LOCAL_NEXT_PUNT] = "ip6-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip6-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip6-icmp-input",
+    [IP_LOCAL_NEXT_REASSEMBLY] = "ip6-reassembly",
   },
 };
 /* *INDENT-ON* */

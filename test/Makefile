@@ -88,7 +88,7 @@ $(PAPI_INSTALL_DONE): $(PIP_PATCH_DONE)
 	@touch $@
 
 define retest-func
-	@env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
+@env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) scripts/setsid_wrapper.sh $(FORCE_FOREGROUND) $(PYTHON_VENV_PATH)/bin/activate python run_tests.py -d $(TEST_DIR) $(UNITTEST_EXTRA_OPTS) || env VPP_TEST_FAILED_DIR=$(VPP_TEST_FAILED_DIR) COMPRESS_FAILED_TEST_LOGS=$(COMPRESS_FAILED_TEST_LOGS) scripts/compress_failed.sh
 endef
 
 .PHONY: sanity
@@ -121,6 +121,7 @@ ext:
 	make -C ext
 
 test: verify-python-path $(PAPI_INSTALL_DONE) ext sanity reset
+	@scripts/set_system_parameters.sh system_requirements
 	$(call retest-func)
 
 retest: verify-python-path sanity reset
