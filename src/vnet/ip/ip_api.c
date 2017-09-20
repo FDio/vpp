@@ -42,6 +42,8 @@
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/ip/ip6_hop_by_hop.h>
+#include <vnet/ip/ip4_reassembly.h>
+#include <vnet/ip/ip6_reassembly.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -97,7 +99,9 @@ _(IOAM_DISABLE, ioam_disable)                                           \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_ADD_DEL,                               \
   ip_source_and_port_range_check_add_del)                               \
 _(IP_SOURCE_AND_PORT_RANGE_CHECK_INTERFACE_ADD_DEL,                     \
-  ip_source_and_port_range_check_interface_add_del)
+  ip_source_and_port_range_check_interface_add_del)                     \
+_(IP_REASSEMBLY_SET, ip_reassembly_set)                                 \
+_(IP_REASSEMBLY_GET, ip_reassembly_get)
 
 extern void stats_dslock_with_hint (int hint, int tag);
 extern void stats_dsunlock (void);
@@ -2784,6 +2788,61 @@ vl_api_set_arp_neighbor_limit_t_handler (vl_api_set_arp_neighbor_limit_t * mp)
     }
 
   REPLY_MACRO (VL_API_SET_ARP_NEIGHBOR_LIMIT_REPLY);
+}
+
+void
+vl_api_ip_reassembly_set_t_handler (vl_api_ip_reassembly_set_t * mp)
+{
+  vl_api_ip_reassembly_set_reply_t *rmp;
+  int rv = 0;
+  if (mp->is_ip6)
+    {
+      rv = ip6_reass_set (clib_net_to_host_u32 (mp->timeout_ms),
+			  clib_net_to_host_u32 (mp->max_reassemblies),
+			  clib_net_to_host_u32 (mp->expire_walk_interval_ms));
+    }
+  else
+    {
+      rv = ip4_reass_set (clib_net_to_host_u32 (mp->timeout_ms),
+			  clib_net_to_host_u32 (mp->max_reassemblies),
+			  clib_net_to_host_u32 (mp->expire_walk_interval_ms));
+    }
+
+  REPLY_MACRO (VL_API_IP_REASSEMBLY_SET_REPLY);
+}
+
+void
+vl_api_ip_reassembly_get_t_handler (vl_api_ip_reassembly_get_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+
+  if (q == 0)
+    return;
+
+  vl_api_ip_reassembly_get_reply_t *rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_IP_REASSEMBLY_GET_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = 0;
+  if (mp->is_ip6)
+    {
+      rmp->is_ip6 = 1;
+      ip6_reass_get (&rmp->timeout_ms, &rmp->max_reassemblies,
+		     &rmp->expire_walk_interval_ms);
+    }
+  else
+    {
+      rmp->is_ip6 = 0;
+      ip4_reass_get (&rmp->timeout_ms, &rmp->max_reassemblies,
+		     &rmp->expire_walk_interval_ms);
+    }
+  rmp->timeout_ms = clib_host_to_net_u32 (rmp->timeout_ms);
+  rmp->max_reassemblies = clib_host_to_net_u32 (rmp->max_reassemblies);
+  rmp->expire_walk_interval_ms =
+    clib_host_to_net_u32 (rmp->expire_walk_interval_ms);
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
 #define vl_msg_name_crc_list

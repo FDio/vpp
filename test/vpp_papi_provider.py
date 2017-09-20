@@ -3102,3 +3102,26 @@ class VppPapiProvider(object):
              'ip6_fib_id': ip6_fib_id,
              'namespace_id': namespace_id,
              'namespace_id_len': len(namespace_id)})
+
+    def punt_socket_register(self, l4_port, pathname, header_version=1,
+                             is_ip4=1, l4_protocol=0x11):
+        """ Punt to socket """
+        return self.api(self.papi.punt_socket_register,
+                        {'is_ip4': is_ip4,
+                         'l4_protocol': l4_protocol,
+                         'l4_port': l4_port,
+                         'pathname': pathname,
+                         'header_version': header_version})
+
+    def ip_reassembly_set(self, timeout_ms, max_reassemblies,
+                          expire_walk_interval_ms, is_ip6=0):
+        """ Set IP reassembly parameters """
+        return self.api(self.papi.ip_reassembly_set,
+                        {'is_ip6': is_ip6,
+                         'timeout_ms': timeout_ms,
+                         'expire_walk_interval_ms': expire_walk_interval_ms,
+                         'max_reassemblies': max_reassemblies})
+
+    def ip_reassembly_get(self, is_ip6=0):
+        """ Get IP reassembly parameters """
+        return self.api(self.papi.ip_reassembly_get, {'is_ip6': is_ip6})

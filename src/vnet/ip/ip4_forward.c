@@ -1582,8 +1582,12 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  /* Treat IP frag packets as "experimental" protocol for now
 	     until support of IP frag reassembly is implemented */
-	  proto0 = ip4_is_fragment (ip0) ? 0xfe : ip0->protocol;
-	  proto1 = ip4_is_fragment (ip1) ? 0xfe : ip1->protocol;
+	  proto0 =
+	    ip4_is_fragment (ip0) ? IP_PROTOCOL_VPP_FRAGMENTATION :
+	    ip0->protocol;
+	  proto1 =
+	    ip4_is_fragment (ip1) ? IP_PROTOCOL_VPP_FRAGMENTATION :
+	    ip1->protocol;
 
 	  if (head_of_feature_arc == 0)
 	    goto skip_checks;
@@ -1748,7 +1752,9 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  /* Treat IP frag packets as "experimental" protocol for now
 	     until support of IP frag reassembly is implemented */
-	  proto0 = ip4_is_fragment (ip0) ? 0xfe : ip0->protocol;
+	  proto0 =
+	    ip4_is_fragment (ip0) ? IP_PROTOCOL_VPP_FRAGMENTATION :
+	    ip0->protocol;
 
 	  if (head_of_feature_arc == 0 || p0->flags & VNET_BUFFER_F_IS_NATED)
 	    goto skip_check;
@@ -1839,6 +1845,7 @@ VLIB_REGISTER_NODE (ip4_local_node) =
     [IP_LOCAL_NEXT_PUNT] = "ip4-punt",
     [IP_LOCAL_NEXT_UDP_LOOKUP] = "ip4-udp-lookup",
     [IP_LOCAL_NEXT_ICMP] = "ip4-icmp-input",
+    [IP_LOCAL_NEXT_REASSEMBLY] = "ip4-reassembly",
   },
 };
 /* *INDENT-ON* */

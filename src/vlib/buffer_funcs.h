@@ -1004,6 +1004,68 @@ vlib_validate_buffer_set_in_use (vlib_buffer_t * b, u32 expected)
 #endif
 }
 
+/** minimum data size of first buffer in a buffer chain */
+#define VLIB_BUFFER_CHAIN_MIN_FIRST_DATA_SIZE (256)
+
+/**
+ * @brief compress buffer chain in a way where the first buffer is at least
+ * VLIB_BUFFER_CHAIN_MIN_FIRST_DATA_SIZE long
+ *
+ * @param[in] vm - vlib_main
+ * @param[in,out] first - first buffer in chain
+ * @param[in,out] discard_vector - vector of buffer indexes which were removed
+ * from the chain
+ */
+always_inline void
+vlib_buffer_chain_compress (vlib_main_t * vm,
+			    vlib_buffer_t * first, u32 ** discard_vector)
+{
+  if (first->current_length >= VLIB_BUFFER_CHAIN_MIN_FIRST_DATA_SIZE ||
+      !(first->flags & VLIB_BUFFER_NEXT_PRESENT))
+    {
+      /* this is already big enough or not a chain */
+      return;
+    }
+  /* probe free list to find allocated buffer size to avoid overfill */
+  u32 index;
+  vlib_buffer_free_list_t *free_list =
+    vlib_buffer_get_buffer_free_list (vm, first, &index);
+
+  u32 want_first_size = clib_min (VLIB_BUFFER_CHAIN_MIN_FIRST_DATA_SIZE,
+				  free_list->n_data_bytes -
+				  first->current_data);
+  do
+    {
+      vlib_buffer_t *second = vlib_get_buffer (vm, first->next_buffer);
+      u32 need = want_first_size - first->current_length;
+      u32 amount_to_copy = clib_min (need, second->current_length);
+      clib_memcpy (((u8 *) vlib_buffer_get_current (first)) +
+		   first->current_length,
+		   vlib_buffer_get_current (second), amount_to_copy);
+      first->current_length += amount_to_copy;
+      vlib_buffer_advance (second, amount_to_copy);
+      if (first->flags & VLIB_BUFFER_TOTAL_LENGTH_VALID)
+	{
+	  first->total_length_not_including_first_buffer -= amount_to_copy;
+	}
+      if (!second->current_length)
+	{
+	  vec_add1 (*discard_vector, first->next_buffer);
+	  if (second->flags & VLIB_BUFFER_NEXT_PRESENT)
+	    {
+	      first->next_buffer = second->next_buffer;
+	    }
+	  else
+	    {
+	      first->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+	    }
+	  second->flags &= ~VLIB_BUFFER_NEXT_PRESENT;
+	}
+    }
+  while ((first->current_length < want_first_size) &&
+	 (first->flags & VLIB_BUFFER_NEXT_PRESENT));
+}
+
 #endif /* included_vlib_buffer_funcs_h */
 
 /*
