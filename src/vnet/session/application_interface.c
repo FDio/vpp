@@ -92,9 +92,7 @@ vnet_bind_i (u32 app_index, session_type_t sst,
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
-  listener = stream_session_lookup_listener (&tep->ip,
-					     clib_host_to_net_u16 (tep->port),
-					     sst);
+  listener = stream_session_lookup_listener (&tep->ip, tep->port, sst);
   if (listener)
     return VNET_API_ERROR_ADDRESS_IN_USE;
 
@@ -131,9 +129,7 @@ vnet_connect_i (u32 app_index, u32 api_context, session_type_t sst,
   /*
    * Figure out if connecting to a local server
    */
-  listener = stream_session_lookup_listener (&tep->ip,
-					     clib_host_to_net_u16 (tep->port),
-					     sst);
+  listener = stream_session_lookup_listener (&tep->ip, tep->port, sst);
   if (listener)
     {
       server = application_get (listener->app_index);
@@ -181,6 +177,7 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
 		&tep->port))
     {
       *sst = SESSION_TYPE_IP4_TCP;
+      tep->port = clib_host_to_net_u16 (tep->port);
       tep->is_ip4 = 1;
       return 1;
     }
@@ -188,6 +185,7 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
 		&tep->port))
     {
       *sst = SESSION_TYPE_IP4_UDP;
+      tep->port = clib_host_to_net_u16 (tep->port);
       tep->is_ip4 = 1;
       return 1;
     }
@@ -195,12 +193,14 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
 		&tep->port))
     {
       *sst = SESSION_TYPE_IP6_UDP;
+      tep->port = clib_host_to_net_u16 (tep->port);
       return 1;
     }
   if (unformat (input, "tcp://%U/%d", unformat_ip6_address, &tep->ip.ip6,
 		&tep->port))
     {
       *sst = SESSION_TYPE_IP6_TCP;
+      tep->port = clib_host_to_net_u16 (tep->port);
       return 1;
     }
 

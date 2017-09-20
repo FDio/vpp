@@ -78,7 +78,7 @@ typedef enum _transport_proto
 typedef struct _transport_endpoint
 {
   ip46_address_t ip;	/** ip address */
-  u16 port;		/** port in host order */
+  u16 port;		/** port in net order */
   u8 is_ip4;		/** 1 if ip4 */
   u32 vrf;		/** fib table the endpoint is associated with */
 } transport_endpoint_t;
