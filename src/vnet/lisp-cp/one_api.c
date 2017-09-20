@@ -1567,7 +1567,7 @@ static void
   /* vpp keeps ip4 addresses in network byte order */
   ip_address_set (&gid_address_arp_ndp_ip (arp), &mp->ip4, IP4);
 
-  rv = vnet_lisp_add_del_l2_arp_entry (arp, mp->mac, mp->is_add);
+  rv = vnet_lisp_add_del_l2_arp_ndp_entry (arp, mp->mac, mp->is_add);
 
   REPLY_MACRO (VL_API_ONE_ADD_DEL_L2_ARP_ENTRY_REPLY);
 }
@@ -1584,7 +1584,7 @@ vl_api_one_add_del_ndp_entry_t_handler (vl_api_one_add_del_ndp_entry_t * mp)
   gid_address_ndp_bd (g) = clib_net_to_host_u32 (mp->bd);
   ip_address_set (&gid_address_arp_ndp_ip (g), mp->ip6, IP6);
 
-  rv = vnet_lisp_add_del_l2_arp_entry (g, mp->mac, mp->is_add);
+  rv = vnet_lisp_add_del_l2_arp_ndp_entry (g, mp->mac, mp->is_add);
 
   REPLY_MACRO (VL_API_ONE_ADD_DEL_NDP_ENTRY_REPLY);
 }

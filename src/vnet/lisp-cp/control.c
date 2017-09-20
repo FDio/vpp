@@ -1027,7 +1027,7 @@ vnet_lisp_ndp_entries_get_by_bd (u32 bd)
 }
 
 int
-vnet_lisp_add_del_l2_arp_entry (gid_address_t * key, u8 * mac, u8 is_add)
+vnet_lisp_add_del_l2_arp_ndp_entry (gid_address_t * key, u8 * mac, u8 is_add)
 {
   if (vnet_lisp_enable_disable_status () == 0)
     {
@@ -1054,7 +1054,7 @@ vnet_lisp_add_del_l2_arp_entry (gid_address_t * key, u8 * mac, u8 is_add)
     {
       if (res == GID_LOOKUP_MISS_L2)
 	{
-	  clib_warning ("ONE ARP entry %U not found - cannot delete!",
+	  clib_warning ("ONE entry %U not found - cannot delete!",
 			format_gid_address, key);
 	  return -1;
 	}
