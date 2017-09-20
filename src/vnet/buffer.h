@@ -177,6 +177,18 @@ typedef struct
 	  u8 code;
 	  u32 data;
 	} icmp;
+
+	/* reassembly */
+	struct
+	{
+	  u16 fragment_first;
+	  u16 fragment_last;
+	  u16 range_first;
+	  u16 range_last;
+	  u32 next_range_bi;
+	  u16 ip6_frag_hdr_offset;
+	  u16 estimated_mtu;
+	} reass;
       };
 
     } ip;
