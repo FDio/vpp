@@ -158,5 +158,10 @@ ip_protocol (134, RSVP_E2E_IGNORE)
 ip_protocol (135, MOBILITY)
 ip_protocol (136, UDP_LITE)
 ip_protocol (137, MPLS_IN_IP)
+/*
+ * VPPs way of dealing with fragments is to mark them as 0xfe, to be picked
+ * by the corresponding nodes based on this protocol
+ */
+ip_protocol (0xfe, VPP_FRAGMENTATION)
 ip_protocol (255, RESERVED)
 

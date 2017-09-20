@@ -372,3 +372,15 @@ class VppInterface(object):
         self.test.vapi.proxy_arp_intfc_enable_disable(
             self.sw_if_index,
             enable)
+
+    def query_vpp_config(self):
+        dump = self.test.vapi.sw_interface_dump()
+        return self.is_interface_config_in_dump(dump)
+
+    def is_interface_config_in_dump(self, dump):
+        for i in dump:
+            if i.interface_name.rstrip(' \t\r\n\0') == self.name and \
+               i.sw_if_index == self.sw_if_index:
+                return True
+        else:
+            return False
