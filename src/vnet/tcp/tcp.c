@@ -1398,6 +1398,16 @@ vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en)
   return 0;
 }
 
+void
+tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add)
+{
+  tcp_main_t *tm = &tcp_main;
+  if (is_ip4)
+    tm->punt_unknown4 = is_add;
+  else
+    tm->punt_unknown6 = is_add;
+}
+
 clib_error_t *
 tcp_init (vlib_main_t * vm)
 {
@@ -1890,6 +1900,29 @@ VLIB_CLI_COMMAND (tcp_replay_scoreboard_command, static) =
   .path = "tcp replay scoreboard",
   .short_help = "tcp replay scoreboard <connection>",
   .function = tcp_scoreboard_trace_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_tcp_punt_fn (vlib_main_t * vm, unformat_input_t * input,
+		  vlib_cli_command_t * cmd_arg)
+{
+  tcp_main_t *tm = vnet_get_tcp_main ();
+  if (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    return clib_error_return (0, "unknown input `%U'", format_unformat_error,
+			      input);
+  vlib_cli_output (vm, "IPv4 TCP punt: %s",
+		   tm->punt_unknown4 ? "enabled" : "disabled");
+  vlib_cli_output (vm, "IPv6 TCP punt: %s",
+		   tm->punt_unknown6 ? "enabled" : "disabled");
+  return 0;
+}
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_tcp_punt_command, static) =
+{
+  .path = "show tcp punt",
+  .short_help = "show tcp punt",
+  .function = show_tcp_punt_fn,
 };
 /* *INDENT-ON* */
 

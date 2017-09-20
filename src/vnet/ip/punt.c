@@ -26,6 +26,7 @@
 #include <vlib/vlib.h>
 #include <vnet/pg/pg.h>
 #include <vnet/udp/udp.h>
+#include <vnet/tcp/tcp.h>
 #include <vnet/ip/punt.h>
 #include <vppinfra/sparse_vec.h>
 #include <vlib/unix/unix.h>
@@ -613,16 +614,15 @@ vnet_punt_socket_del (vlib_main_t * vm, bool is_ip4, u8 l4_protocol, u16 port)
  * @brief Request IP traffic punt to the local TCP/IP stack.
  *
  * @em Note
- * - UDP is the only protocol supported in the current implementation
- * - When requesting UDP punt port number(s) must be specified
- * - All TCP traffic is currently punted to the host by default
+ * - UDP and TCP are the only protocols supported in the current implementation
  *
  * @param vm       vlib_main_t corresponding to the current thread
  * @param ipv      IP protcol version.
  *                 4 - IPv4, 6 - IPv6, ~0 for both IPv6 and IPv4
  * @param protocol 8-bits L4 protocol value
- *                 Only value of 17 (UDP) is currently supported
- * @param port     16-bits L4 (TCP/IP) port number when applicable
+ *                 UDP is 17
+ *                 TCP is 1
+ * @param port     16-bits L4 (TCP/IP) port number when applicable (UDP only)
  *
  * @returns 0 on success, non-zero value otherwise
  */
@@ -630,28 +630,42 @@ clib_error_t *
 vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
 		   bool is_add)
 {
+
   /* For now we only support UDP punt */
-  if (protocol != IP_PROTOCOL_UDP)
+  if (protocol != IP_PROTOCOL_UDP && protocol != IP_PROTOCOL_TCP)
     return clib_error_return (0,
-			      "only UDP protocol (%d) is supported, got %d",
-			      IP_PROTOCOL_UDP, protocol);
+			      "only UDP (%d) and TCP (%d) protocols are supported, got %d",
+			      IP_PROTOCOL_UDP, IP_PROTOCOL_TCP, protocol);
 
   if (ipv != (u8) ~ 0 && ipv != 4 && ipv != 6)
     return clib_error_return (0, "IP version must be 4 or 6, got %d", ipv);
 
   if (port == (u16) ~ 0)
     {
-      if (ipv == 4 || ipv == (u8) ~ 0)
-	udp_punt_unknown (vm, 1, is_add);
+      if ((ipv == 4) || (ipv == (u8) ~ 0))
+	{
+	  if (protocol == IP_PROTOCOL_UDP)
+	    udp_punt_unknown (vm, 1, is_add);
+	  else if (protocol == IP_PROTOCOL_TCP)
+	    tcp_punt_unknown (vm, 1, is_add);
+	}
 
-      if (ipv == 6 || ipv == (u8) ~ 0)
-	udp_punt_unknown (vm, 0, is_add);
+      if ((ipv == 6) || (ipv == (u8) ~ 0))
+	{
+	  if (protocol == IP_PROTOCOL_UDP)
+	    udp_punt_unknown (vm, 0, is_add);
+	  else if (protocol == IP_PROTOCOL_TCP)
+	    tcp_punt_unknown (vm, 0, is_add);
+	}
 
       return 0;
     }
 
   else if (is_add)
     {
+      if (protocol == IP_PROTOCOL_TCP)
+	return clib_error_return (0, "punt TCP ports is not supported yet");
+
       if (ipv == 4 || ipv == (u8) ~ 0)
 	udp_register_dst_port (vm, port, udp4_punt_node.index, 1);
 
@@ -665,32 +679,36 @@ vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
 }
 
 static clib_error_t *
-udp_punt_cli (vlib_main_t * vm,
-	      unformat_input_t * input, vlib_cli_command_t * cmd)
+punt_cli (vlib_main_t * vm,
+	  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
-  u32 udp_port;
+  u32 port;
   bool is_add = true;
+  u32 protocol = ~0;
   clib_error_t *error;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "del"))
 	is_add = false;
-      if (unformat (input, "all"))
+      else if (unformat (input, "all"))
 	{
 	  /* punt both IPv6 and IPv4 when used in CLI */
-	  error = vnet_punt_add_del (vm, ~0, IP_PROTOCOL_UDP, ~0, is_add);
+	  error = vnet_punt_add_del (vm, ~0, protocol, ~0, is_add);
 	  if (error)
 	    clib_error_report (error);
 	}
-      else if (unformat (input, "%d", &udp_port))
+      else if (unformat (input, "%d", &port))
 	{
 	  /* punt both IPv6 and IPv4 when used in CLI */
-	  error =
-	    vnet_punt_add_del (vm, ~0, IP_PROTOCOL_UDP, udp_port, is_add);
+	  error = vnet_punt_add_del (vm, ~0, protocol, port, is_add);
 	  if (error)
 	    clib_error_report (error);
 	}
+      else if (unformat (input, "udp"))
+	protocol = IP_PROTOCOL_UDP;
+      else if (unformat (input, "tcp"))
+	protocol = IP_PROTOCOL_TCP;
     }
 
   return 0;
@@ -717,10 +735,10 @@ udp_punt_cli (vlib_main_t * vm,
  * @endparblock
 ?*/
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (punt_udp_command, static) = {
-  .path = "set punt udp",
-  .short_help = "set punt udp [del] <all | port-num1 [port-num2 ...]>",
-  .function = udp_punt_cli,
+VLIB_CLI_COMMAND (punt_command, static) = {
+  .path = "set punt",
+  .short_help = "set punt [udp|tcp] [del] <all | port-num1 [port-num2 ...]>",
+  .function = punt_cli,
 };
 /* *INDENT-ON* */
 

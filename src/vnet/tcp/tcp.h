@@ -417,6 +417,9 @@ typedef struct _tcp_main
 
   /** vlib buffer size */
   u32 bytes_per_buffer;
+
+  u8 punt_unknown4;
+  u8 punt_unknown6;
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
@@ -440,6 +443,8 @@ tcp_buffer_hdr (vlib_buffer_t * b)
 }
 
 clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
+
+void tcp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
 
 always_inline tcp_connection_t *
 tcp_connection_get (u32 conn_index, u32 thread_index)
