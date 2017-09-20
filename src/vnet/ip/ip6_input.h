@@ -41,6 +41,7 @@
 #define included_ip6_input_h
 
 #include <vnet/ip/ip.h>
+#include <vnet/ip/icmp6.h>
 
 extern char *ip6_error_strings[];
 

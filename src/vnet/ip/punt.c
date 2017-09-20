@@ -360,10 +360,7 @@ udp46_punt_socket_inline (vlib_main_t * vm,
       punt_client_t *c = NULL;
       if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
 	{
-	  if (!c)
-	    {
-	      c = punt_client_get (is_ip4, port);
-	    }
+	  c = punt_client_get (is_ip4, port);
 	  udp_punt_trace_t *t;
 	  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
 	  clib_memcpy (&t->client, c, sizeof (t->client));
@@ -393,6 +390,10 @@ udp46_punt_socket_inline (vlib_main_t * vm,
 	      b = vlib_get_buffer (vm, b->next_buffer);
 	      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
 		{
+		  if (PREDICT_FALSE (!c))
+		    {
+		      c = punt_client_get (is_ip4, port);
+		    }
 		  udp_punt_trace_t *t;
 		  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
 		  clib_memcpy (&t->client, c, sizeof (t->client));

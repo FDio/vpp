@@ -1,0 +1,18 @@
+# test framework system requirements
+# format of this file is
+# <path> <operator> <comparison-value> <set-value>
+#
+# path - path to value e.g. in /proc which needs to be checked
+# operator - test operator (e.g. -gt)
+# comparison-value - value, against which the value read from <path> is compared
+# set-value - value, to which the path is set if the test fails
+#
+# the comparison is done using `test' command
+
+
+# test_reassembly.py
+# needed by test_reassembly which uses udp punt via unix domain sockets
+# to ensure that all data which vpp might produce in a burst fits into
+# the socket send buffer
+/proc/sys/net/core/wmem_max -ge 4636252 4636252
+/proc/sys/net/core/wmem_default -ge 4636252 4636252
