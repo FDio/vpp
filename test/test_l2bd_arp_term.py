@@ -168,6 +168,13 @@ class TestL2bdArpTerm(VppTestCase):
     def arp_event_hosts(self, evs):
         return {self.arp_event_host(e) for e in evs}
 
+    def nd_event_host(self, e):
+        return Host(mac=':'.join(['%02x' % ord(char) for char in e.new_mac]),
+                    ip6=inet_ntop(AF_INET6, e.address))
+
+    def nd_event_hosts(self, evs):
+        return {self.nd_event_host(e) for e in evs}
+
     @classmethod
     def ns_req(cls, src_host, host):
         nsma = in6_getnsma(inet_pton(AF_INET6, "fd10::ffff"))
@@ -178,7 +185,11 @@ class TestL2bdArpTerm(VppTestCase):
                 ICMPv6NDOptSrcLLAddr(lladdr=src_host.mac))
 
     @classmethod
-    def ns_reqs(cls, src_host, entries):
+    def ns_reqs_dst(cls, entries, dst_host):
+        return [cls.ns_req(e, dst_host) for e in entries]
+
+    @classmethod
+    def ns_reqs_src(cls, src_host, entries):
         return [cls.ns_req(src_host, e) for e in entries]
 
     def na_resp_host(self, src_host, rx):
@@ -237,7 +248,7 @@ class TestL2bdArpTerm(VppTestCase):
             self.assertEqual(len(resps ^ resp_hosts), 0)
 
     def verify_nd(self, src_host, req_hosts, resp_hosts, bd_id=1):
-        reqs = self.ns_reqs(src_host, req_hosts)
+        reqs = self.ns_reqs_src(src_host, req_hosts)
 
         for swif in self.bd_swifs(bd_id):
             swif.add_stream(reqs)
@@ -416,6 +427,59 @@ class TestL2bdArpTerm(VppTestCase):
 
         garps = self.garp_reqs(hosts)
         self.bd_swifs(1)[0].add_stream(garps)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.sleep(1)
+        self.assertEqual(len(self.vapi.collect_events()), 0)
+        self.bd_add_del(1, is_add=0)
+
+    def test_l2bd_arp_term_12(self):
+        """ L2BD ND term - send NS packets verify reports
+        """
+        self.vapi.want_ip6_nd_events(address=inet_pton(AF_INET6, "::0"))
+        dst_host = self.ip6_host(50, 50, "00:00:11:22:33:44")
+        self.bd_add_del(1, is_add=1)
+        self.set_bd_flags(1, arp_term=True, flood=False,
+                          uu_flood=False, learn=False)
+        macs = self.mac_list(range(10, 15))
+        hosts = self.ip6_hosts(5, 1, macs)
+        reqs = self.ns_reqs_dst(hosts, dst_host)
+        self.bd_swifs(1)[0].add_stream(reqs)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        evs = [self.vapi.wait_for_event(2, "ip6_nd_event")
+               for i in range(len(hosts))]
+        ev_hosts = self.nd_event_hosts(evs)
+        self.assertEqual(len(ev_hosts ^ hosts), 0)
+
+    def test_l2bd_arp_term_13(self):
+        """ L2BD ND term - send duplicate ns, verify suppression
+        """
+        dst_host = self.ip6_host(50, 50, "00:00:11:22:33:44")
+        macs = self.mac_list(range(10, 11))
+        hosts = self.ip6_hosts(5, 1, macs)
+        reqs = self.ns_reqs_dst(hosts, dst_host) * 5
+        self.bd_swifs(1)[0].add_stream(reqs)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        evs = [self.vapi.wait_for_event(2, "ip6_nd_event")
+               for i in range(len(hosts))]
+        ev_hosts = self.nd_event_hosts(evs)
+        self.assertEqual(len(ev_hosts ^ hosts), 0)
+
+    def test_l2bd_arp_term_14(self):
+        """ L2BD ND term - disable ip4 arp events,send ns, verify no events
+        """
+        self.vapi.want_ip6_nd_events(enable_disable=0,
+                                     address=inet_pton(AF_INET6, "::0"))
+        dst_host = self.ip6_host(50, 50, "00:00:11:22:33:44")
+        macs = self.mac_list(range(10, 15))
+        hosts = self.ip6_hosts(5, 1, macs)
+        reqs = self.ns_reqs_dst(hosts, dst_host)
+        self.bd_swifs(1)[0].add_stream(reqs)
 
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
