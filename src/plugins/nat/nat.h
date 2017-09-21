@@ -224,6 +224,7 @@ typedef struct {
   u32 vrf_id;
   u32 fib_index;
   snat_protocol_t proto;
+  u32 worker_index;
   nat44_lb_addr_port_t *locals;
 } snat_static_mapping_t;
 
@@ -284,9 +285,6 @@ typedef struct snat_main_s {
 
   /* Non-translated packets worker lookup => src address + VRF */
   clib_bihash_8_8_t worker_by_in;
-
-  /* Translated packets worker lookup => IP address + port number */
-  clib_bihash_8_8_t worker_by_out;
 
   snat_icmp_match_function_t * icmp_match_in2out_cb;
   snat_icmp_match_function_t * icmp_match_out2in_cb;

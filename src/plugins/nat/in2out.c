@@ -241,7 +241,6 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   u32 address_index = ~0;
   u32 outside_fib_index;
   uword * p;
-  snat_worker_key_t worker_by_out_key;
 
   p = hash_get (sm->ip4_main->fib_index_by_table_id, sm->outside_vrf_id);
   if (! p)
@@ -446,14 +445,6 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].out2in, &kv0,
                                1 /* is_add */))
       clib_warning ("out2in key add failed");
-
-  /* Add to translated packets worker lookup */
-  worker_by_out_key.addr = s->out2in.addr;
-  worker_by_out_key.port = s->out2in.port;
-  worker_by_out_key.fib_index = s->out2in.fib_index;
-  kv0.key = worker_by_out_key.as_u64;
-  kv0.value = thread_index;
-  clib_bihash_add_del_8_8 (&sm->worker_by_out, &kv0, 1);
 
   /* log NAT event */
   snat_ipfix_logging_nat44_ses_create(s->in2out.addr.as_u32,
@@ -836,7 +827,6 @@ snat_hairpinning (snat_main_t *sm,
                   u32 proto0)
 {
   snat_session_key_t key0, sm0;
-  snat_worker_key_t k0;
   snat_session_t * s0;
   clib_bihash_kv_8_8_t kv0, value0;
   ip_csum_t sum0;
@@ -849,39 +839,30 @@ snat_hairpinning (snat_main_t *sm,
   key0.fib_index = sm->outside_fib_index;
   kv0.key = key0.as_u64;
 
-  if (sm->num_workers > 1)
+  /* Check if destination is static mappings */
+  if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
     {
-      k0.addr = ip0->dst_address;
-      k0.port = udp0->dst_port;
-      k0.fib_index = sm->outside_fib_index;
-      kv0.key = k0.as_u64;
-      if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
-        return;
+      new_dst_addr0 = sm0.addr.as_u32;
+      new_dst_port0 = sm0.port;
+      vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
+    }
+  /* or active session */
+  else
+    {
+      if (sm->num_workers > 1)
+        ti = (clib_net_to_host_u16 (udp0->dst_port) - 1024) / sm->port_per_thread;
       else
-        ti = value0.value;
-    }
-  else
-    ti = sm->num_workers;
+        ti = sm->num_workers;
 
-  /* Check if destination is in active sessions */
-  if (clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0, &value0))
-    {
-      /* or static mappings */
-      if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
+      if (!clib_bihash_search_8_8 (&sm->per_thread_data[ti].out2in, &kv0, &value0))
         {
-          new_dst_addr0 = sm0.addr.as_u32;
-          new_dst_port0 = sm0.port;
-          vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
-        }
-    }
-  else
-    {
-      si = value0.value;
+          si = value0.value;
 
-      s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
-      new_dst_addr0 = s0->in2out.addr.as_u32;
-      new_dst_port0 = s0->in2out.port;
-      vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+          s0 = pool_elt_at_index (sm->per_thread_data[ti].sessions, si);
+          new_dst_addr0 = s0->in2out.addr.as_u32;
+          new_dst_port0 = s0->in2out.port;
+          vnet_buffer(b0)->sw_if_index[VLIB_TX] = s0->in2out.fib_index;
+        }
     }
 
   /* Destination is behind the same NAT, use internal address and port */
@@ -934,7 +915,6 @@ snat_icmp_hairpinning (snat_main_t *sm,
 {
   snat_session_key_t key0, sm0;
   clib_bihash_kv_8_8_t kv0, value0;
-  snat_worker_key_t k0;
   u32 new_dst_addr0 = 0, old_dst_addr0, si, ti = 0;
   ip_csum_t sum0;
   snat_session_t *s0;
@@ -950,16 +930,7 @@ snat_icmp_hairpinning (snat_main_t *sm,
       kv0.key = key0.as_u64;
 
       if (sm->num_workers > 1)
-        {
-          k0.addr = ip0->dst_address;
-          k0.port = icmp_id0;
-          k0.fib_index = sm->outside_fib_index;
-          kv0.key = k0.as_u64;
-          if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
-            return;
-          else
-            ti = value0.value;
-        }
+        ti = (clib_net_to_host_u16 (icmp_id0) - 1024) / sm->port_per_thread;
       else
         ti = sm->num_workers;
 
@@ -1048,7 +1019,6 @@ snat_hairpinning_unknown_proto (snat_main_t *sm,
   clib_bihash_kv_16_8_t s_kv, s_value;
   nat_ed_ses_key_t key;
   snat_session_key_t m_key;
-  snat_worker_key_t w_key;
   snat_static_mapping_t *m;
   ip_csum_t sum;
   snat_session_t *s;
@@ -1080,16 +1050,7 @@ snat_hairpinning_unknown_proto (snat_main_t *sm,
   else
     {
       if (sm->num_workers > 1)
-        {
-          w_key.addr = ip->dst_address;
-          w_key.port = 0;
-          w_key.fib_index = sm->outside_fib_index;
-          kv.key = w_key.as_u64;
-          if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv, &value))
-            return;
-          else
-            ti = value.value;
-        }
+        ti = sm->worker_out2in_cb (ip, sm->outside_fib_index);
       else
         ti = sm->num_workers;
 
