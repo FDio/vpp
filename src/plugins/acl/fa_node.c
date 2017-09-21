@@ -1609,7 +1609,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
         /* they need more interrupts, do less waiting around next time */
         am->fa_current_cleaner_timer_wait_interval /= 2;
         /* never go into zero-wait either though - we need to give the space to others */
-        am->fa_current_cleaner_timer_wait_interval += 1; 
+        am->fa_current_cleaner_timer_wait_interval += 1;
       } else if (interrupts_unwanted) {
         /* slowly increase the amount of sleep up to a limit */
         if (am->fa_current_cleaner_timer_wait_interval < max_timer_wait_interval)
