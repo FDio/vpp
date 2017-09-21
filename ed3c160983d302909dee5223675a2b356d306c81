@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_06115cac",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1502,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-21T22:59:28Z",
+      "side": 0,
+      "message": "Please remove this one as well...",
+      "revId": "ed3c160983d302909dee5223675a2b356d306c81",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
