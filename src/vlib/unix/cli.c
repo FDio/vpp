@@ -100,9 +100,6 @@
 /** Maximum terminal height we will accept */
 #define UNIX_CLI_MAX_TERMINAL_HEIGHT 512
 
-/** Unix standard in */
-#define UNIX_CLI_STDIN_FD 0
-
 
 /** A CLI banner line. */
 typedef struct
@@ -199,6 +196,18 @@ typedef struct
 
   /** Disable the pager? */
   u8 no_pager;
+
+  /** Whether the session is interactive or not.
+   * Controls things like initial banner, the CLI prompt etc.  */
+  u8 is_interactive;
+
+  /** Whether the session is attached to a socket. */
+  u8 is_socket;
+
+  /** If EPIPE has been detected, prevent further write-related
+   * activity on the descriptor.
+   */
+  u8 has_epipe;
 
   /** Pager buffer */
   u8 **pager_vector;
@@ -593,12 +602,33 @@ unix_vlib_cli_output_raw (unix_cli_file_t * cf,
 {
   int n = 0;
 
+  if (cf->has_epipe)		/* don't try writing anything */
+    return;
+
   if (vec_len (cf->output_vector) == 0)
-    n = write (uf->file_descriptor, buffer, buffer_bytes);
+    {
+      if (cf->is_socket)
+	/* If it's a socket we use MSG_NOSIGNAL to prevent SIGPIPE */
+	n = send (uf->file_descriptor, buffer, buffer_bytes, MSG_NOSIGNAL);
+      else
+	n = write (uf->file_descriptor, buffer, buffer_bytes);
+    }
 
   if (n < 0 && errno != EAGAIN)
     {
-      clib_unix_warning ("write");
+      if (errno == EPIPE)
+	{
+	  /* connection closed on us */
+	  unix_main_t *um = &unix_main;
+	  cf->has_epipe = 1;
+	  vlib_process_signal_event (um->vlib_main, cf->process_node_index,
+				     UNIX_CLI_PROCESS_EVENT_QUIT,
+				     uf->private_data);
+	}
+      else
+	{
+	  clib_unix_warning ("write");
+	}
     }
   else if ((word) n < (word) buffer_bytes)
     {
@@ -659,7 +689,9 @@ unix_cli_cli_prompt (unix_cli_file_t * cf, clib_file_t * uf)
 {
   unix_cli_main_t *cm = &unix_cli_main;
 
-  unix_vlib_cli_output_raw (cf, uf, cm->cli_prompt, vec_len (cm->cli_prompt));
+  if (cf->is_interactive)	/* Only interactive sessions get a prompt */
+    unix_vlib_cli_output_raw (cf, uf, cm->cli_prompt,
+			      vec_len (cm->cli_prompt));
 }
 
 /** @brief Output a pager prompt and show number of buffered lines */
@@ -1024,7 +1056,7 @@ unix_vlib_cli_output (uword cli_file_index, u8 * buffer, uword buffer_bytes)
  *         terminal sequences; @c 0 otherwise.
  */
 static u8
-unix_cli_terminal_type (u8 * term, uword len)
+unix_cli_terminal_type_ansi (u8 * term, uword len)
 {
   /* This may later be better done as a hash of some sort. */
 #define _(a) do { \
@@ -1042,6 +1074,45 @@ unix_cli_terminal_type (u8 * term, uword len)
   return 0;
 }
 
+/** Identify whether a terminal type is non-interactive.
+ *
+ * Compares the string given in @c term with a list of terminal types known
+ * to be non-interactive, as send by tools such as @c vppctl .
+ *
+ * This list contains, for example, @c vppctl.
+ *
+ * @param term A string with a terminal type in it.
+ * @param len The length of the string in @c term.
+ *
+ * @return @c 1 if the terminal type is recognized as being non-interactive;
+ *         @c 0 otherwise.
+ */
+static u8
+unix_cli_terminal_type_noninteractive (u8 * term, uword len)
+{
+  /* This may later be better done as a hash of some sort. */
+#define _(a) do { \
+    if (strncasecmp(a, (char *)term, (size_t)len) == 0) return 1; \
+  } while(0)
+
+  _("vppctl");
+#undef _
+
+  return 0;
+}
+
+/** Set a session to be non-interactive. */
+static void
+unix_cli_set_session_noninteractive (unix_cli_file_t * cf)
+{
+  /* Non-interactive sessions don't get these */
+  cf->is_interactive = 0;
+  cf->no_pager = 1;
+  cf->history_limit = 0;
+  cf->has_history = 0;
+  cf->line_mode = 1;
+}
+
 /** @brief Emit initial welcome banner and prompt on a connection. */
 static void
 unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
@@ -1051,6 +1122,12 @@ unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
   clib_file_t *uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
   unix_cli_banner_t *banner;
   int i, len;
+
+  /* Mark the session as started if we get here */
+  cf->started = 1;
+
+  if (!(cf->is_interactive))	/* No banner for non-interactive sessions */
+    return;
 
   /*
    * Put the first bytes directly into the buffer so that further output is
@@ -1082,7 +1159,6 @@ unix_cli_file_welcome (unix_cli_main_t * cm, unix_cli_file_t * cf)
   /* Prompt. */
   unix_cli_cli_prompt (cf, uf);
 
-  cf->started = 1;
 }
 
 /** @brief A failsafe triggered on a timer to ensure we send the prompt
@@ -1160,9 +1236,20 @@ unix_cli_process_telnet (unix_main_t * um,
 		  case TELOPT_TTYPE:
 		    if (input_vector[3] != 0)
 		      break;
-		    /* See if the terminal type is ANSI capable */
-		    cf->ansi_capable =
-		      unix_cli_terminal_type (input_vector + 4, i - 5);
+		    {
+		      /* See if the the terminal type is recognized */
+		      u8 *term = input_vector + 4;
+		      uword len = i - 5;
+
+		      /* See if the terminal type is ANSI capable */
+		      cf->ansi_capable =
+			unix_cli_terminal_type_ansi (term, len);
+
+		      /* See if the terminal type indicates non-interactive */
+		      if (unix_cli_terminal_type_noninteractive (term, len))
+			unix_cli_set_session_noninteractive (cf);
+		    }
+
 		    /* If session not started, we can release the pause */
 		    if (!cf->started)
 		      /* Send the welcome banner and initial prompt */
@@ -2122,10 +2209,12 @@ unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
 					     vec_len (cf->input_vector) - i);
 	  if (matched < 0)
 	    {
+	      /* There was a partial match which means we need more bytes
+	       * than the input buffer currently has.
+	       */
 	      if (i)
 		{
-		  /* There was a partial match which means we need more bytes
-		   * than the input buffer currently has.
+		  /*
 		   * Since the bytes before here have been processed, shift
 		   * the remaining contents to the start of the input buffer.
 		   */
@@ -2136,6 +2225,16 @@ unix_cli_line_edit (unix_cli_main_t * cm, unix_main_t * um,
 	  break;
 
 	default:
+	  /* If telnet option processing switched us to line mode, get us
+	   * out of here!
+	   */
+	  if (cf->line_mode)
+	    {
+	      vec_delete (cf->input_vector, i, 0);
+	      cf->current_command = cf->input_vector;
+	      return 0;
+	    }
+
 	  /* process the action */
 	  if (!unix_cli_line_process_one (cm, um, cf, uf,
 					  cf->input_vector[i], action))
@@ -2165,10 +2264,13 @@ unix_cli_process_input (unix_cli_main_t * cm, uword cli_file_index)
   unformat_input_t input;
   int vlib_parse_eval (u8 *);
 
+  cm->current_input_file_index = cli_file_index;
+
 more:
   /* Try vlibplex first.  Someday... */
   if (0 && vlib_parse_eval (cf->input_vector) == 0)
     goto done;
+
 
   if (cf->line_mode)
     {
@@ -2190,20 +2292,16 @@ more:
       lv = format (lv, "%U[%d]: %v",
 		   format_timeval, 0 /* current bat-time */ ,
 		   0 /* current bat-format */ ,
-		   cli_file_index, cf->input_vector);
-      {
-	int rv __attribute__ ((unused)) =
-	  write (um->log_fd, lv, vec_len (lv));
-      }
+		   cli_file_index, cf->current_command);
+      int rv __attribute__ ((unused)) = write (um->log_fd, lv, vec_len (lv));
     }
 
-  /* Copy our input command to a new string */
+  /* Build an unformat structure around our command */
   unformat_init_vector (&input, cf->current_command);
 
   /* Remove leading white space from input. */
   (void) unformat (&input, "");
 
-  cm->current_input_file_index = cli_file_index;
   cf->pager_start = 0;		/* start a new pager session */
 
   if (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
@@ -2222,9 +2320,14 @@ more:
 done:
   /* reset vector; we'll re-use it later  */
   if (cf->line_mode)
-    vec_reset_length (cf->input_vector);
+    {
+      vec_reset_length (cf->input_vector);
+      cf->current_command = 0;
+    }
   else
-    vec_reset_length (cf->current_command);
+    {
+      vec_reset_length (cf->current_command);
+    }
 
   if (cf->no_pager == 2)
     {
@@ -2251,6 +2354,15 @@ done:
   /* Any residual data in the input vector? */
   if (vec_len (cf->input_vector))
     goto more;
+
+  /* For non-interactive sessions send a NUL byte.
+   * Specifically this is because vppctl needs to see some traffic in
+   * order to move on to closing the session. Commands with no output
+   * would thus cause vppctl to hang indefinitely in non-interactive mode
+   * since there is also no prompt sent after the command completes.
+   */
+  if (!cf->is_interactive)
+    unix_vlib_cli_output_raw (cf, uf, (u8 *) "\0", 1);
 }
 
 /** Destroy a CLI session.
@@ -2270,7 +2382,7 @@ unix_cli_kill (unix_cli_main_t * cm, uword cli_file_index)
   uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
 
   /* Quit/EOF on stdin means quit program. */
-  if (uf->file_descriptor == UNIX_CLI_STDIN_FD)
+  if (uf->file_descriptor == STDIN_FILENO)
     clib_longjmp (&um->vlib_main->main_loop_exit, VLIB_MAIN_LOOP_EXIT_CLI);
 
   vec_free (cf->current_command);
@@ -2342,11 +2454,30 @@ unix_cli_write_ready (clib_file_t * uf)
   cf = pool_elt_at_index (cm->cli_file_pool, uf->private_data);
 
   /* Flush output vector. */
-  n = write (uf->file_descriptor,
-	     cf->output_vector, vec_len (cf->output_vector));
+  if (cf->is_socket)
+    /* If it's a socket we use MSG_NOSIGNAL to prevent SIGPIPE */
+    n = send (uf->file_descriptor,
+	      cf->output_vector, vec_len (cf->output_vector), MSG_NOSIGNAL);
+  else
+    n = write (uf->file_descriptor,
+	       cf->output_vector, vec_len (cf->output_vector));
 
   if (n < 0 && errno != EAGAIN)
-    return clib_error_return_unix (0, "write");
+    {
+      if (errno == EPIPE)
+	{
+	  /* connection closed on us */
+	  unix_main_t *um = &unix_main;
+	  cf->has_epipe = 1;
+	  vlib_process_signal_event (um->vlib_main, cf->process_node_index,
+				     UNIX_CLI_PROCESS_EVENT_QUIT,
+				     uf->private_data);
+	}
+      else
+	{
+	  return clib_error_return_unix (0, "write");
+	}
+    }
 
   else if (n > 0)
     unix_cli_del_pending_output (uf, cf, n);
@@ -2389,6 +2520,24 @@ unix_cli_read_ready (clib_file_t * uf)
 				? UNIX_CLI_PROCESS_EVENT_QUIT
 				: UNIX_CLI_PROCESS_EVENT_READ_READY),
 			       /* event data */ uf->private_data);
+
+  return /* no error */ 0;
+}
+
+/** Called when a CLI session file descriptor has an error condition. */
+static clib_error_t *
+unix_cli_error_detected (clib_file_t * uf)
+{
+  unix_main_t *um = &unix_main;
+  unix_cli_main_t *cm = &unix_cli_main;
+  unix_cli_file_t *cf;
+
+  cf = pool_elt_at_index (cm->cli_file_pool, uf->private_data);
+  cf->has_epipe = 1;		/* prevent writes while the close is pending */
+  vlib_process_signal_event (um->vlib_main,
+			     cf->process_node_index,
+			     UNIX_CLI_PROCESS_EVENT_QUIT,
+			     /* event data */ uf->private_data);
 
   return /* no error */ 0;
 }
@@ -2443,6 +2592,7 @@ unix_cli_file_add (unix_cli_main_t * cm, char *name, int fd)
 
   template.read_function = unix_cli_read_ready;
   template.write_function = unix_cli_write_ready;
+  template.error_function = unix_cli_error_detected;
   template.file_descriptor = fd;
   template.private_data = cf - cm->cli_file_pool;
 
@@ -2482,10 +2632,10 @@ unix_cli_listen_read_ready (clib_file_t * uf)
 
   cf_index = unix_cli_file_add (cm, client_name, client.fd);
   cf = pool_elt_at_index (cm->cli_file_pool, cf_index);
+  cf->is_socket = 1;
 
   /* No longer need CLIB version of socket. */
   clib_socket_free (&client);
-
   vec_free (client_name);
 
   /* if we're supposed to run telnet session in character mode (default) */
@@ -2512,6 +2662,9 @@ unix_cli_listen_read_ready (clib_file_t * uf)
       cf->history_limit = um->cli_history_limit;
       cf->has_history = cf->history_limit != 0;
 
+      /* This is an interactive session until we decide otherwise */
+      cf->is_interactive = 1;
+
       /* Make sure this session is in line mode */
       cf->line_mode = 0;
 
@@ -2521,9 +2674,8 @@ unix_cli_listen_read_ready (clib_file_t * uf)
       /* Setup the pager */
       cf->no_pager = um->cli_no_pager;
 
-      uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
-
       /* Send the telnet options */
+      uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
       unix_vlib_cli_output_raw (cf, uf, charmode_option,
 				ARRAY_LEN (charmode_option));
 
@@ -2550,7 +2702,7 @@ unix_cli_resize_interrupt (int signum)
   (void) signum;
 
   /* Terminal resized, fetch the new size */
-  if (ioctl (UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws) < 0)
+  if (ioctl (STDIN_FILENO, TIOCGWINSZ, &ws) < 0)
     {
       /* "Should never happen..." */
       clib_unix_warning ("TIOCGWINSZ");
@@ -2600,17 +2752,17 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
   if (um->flags & UNIX_FLAG_INTERACTIVE)
     {
       /* Set stdin to be non-blocking. */
-      if ((flags = fcntl (UNIX_CLI_STDIN_FD, F_GETFL, 0)) < 0)
+      if ((flags = fcntl (STDIN_FILENO, F_GETFL, 0)) < 0)
 	flags = 0;
-      (void) fcntl (UNIX_CLI_STDIN_FD, F_SETFL, flags | O_NONBLOCK);
+      (void) fcntl (STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
 
-      cf_index = unix_cli_file_add (cm, "stdin", UNIX_CLI_STDIN_FD);
+      cf_index = unix_cli_file_add (cm, "stdin", STDIN_FILENO);
       cf = pool_elt_at_index (cm->cli_file_pool, cf_index);
       cm->stdin_cli_file_index = cf_index;
 
       /* If stdin is a tty and we are using chacracter mode, enable
        * history on the CLI and set the tty line discipline accordingly. */
-      if (isatty (UNIX_CLI_STDIN_FD) && um->cli_line_mode == 0)
+      if (isatty (STDIN_FILENO) && um->cli_line_mode == 0)
 	{
 	  /* Capture terminal resize events */
 	  memset (&sa, 0, sizeof (sa));
@@ -2619,7 +2771,7 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	    clib_panic ("sigaction");
 
 	  /* Retrieve the current terminal size */
-	  ioctl (UNIX_CLI_STDIN_FD, TIOCGWINSZ, &ws);
+	  ioctl (STDIN_FILENO, TIOCGWINSZ, &ws);
 	  cf->width = ws.ws_col;
 	  cf->height = ws.ws_row;
 
@@ -2634,11 +2786,14 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	  /* Setup the pager */
 	  cf->no_pager = um->cli_no_pager;
 
+	  /* This is an interactive session until we decide otherwise */
+	  cf->is_interactive = 1;
+
 	  /* We're going to be in char by char mode */
 	  cf->line_mode = 0;
 
 	  /* Save the original tty state so we can restore it later */
-	  tcgetattr (UNIX_CLI_STDIN_FD, &um->tio_stdin);
+	  tcgetattr (STDIN_FILENO, &um->tio_stdin);
 	  um->tio_isset = 1;
 
 	  /* Tweak the tty settings */
@@ -2647,23 +2802,23 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	  tio.c_lflag &= ~(ECHO | ICANON | IEXTEN);
 	  tio.c_cc[VMIN] = 1;	/* 1 byte at a time */
 	  tio.c_cc[VTIME] = 0;	/* no timer */
-	  tcsetattr (UNIX_CLI_STDIN_FD, TCSAFLUSH, &tio);
+	  tcsetattr (STDIN_FILENO, TCSAFLUSH, &tio);
 
 	  /* See if we can do ANSI/VT100 output */
 	  term = (u8 *) getenv ("TERM");
 	  if (term != NULL)
-	    cf->ansi_capable = unix_cli_terminal_type (term,
-						       strlen ((char *)
-							       term));
+	    {
+	      int len = strlen ((char *) term);
+	      cf->ansi_capable = unix_cli_terminal_type_ansi (term, len);
+	      if (unix_cli_terminal_type_noninteractive (term, len))
+		unix_cli_set_session_noninteractive (cf);
+	    }
 	}
       else
 	{
 	notty:
-	  /* No tty, so make sure these things are off */
-	  cf->no_pager = 1;
-	  cf->history_limit = 0;
-	  cf->has_history = 0;
-	  cf->line_mode = 1;
+	  /* No tty, so make sure the session doesn't have tty-like features */
+	  unix_cli_set_session_noninteractive (cf);
 	}
 
       /* Send banner and initial prompt */
@@ -2726,8 +2881,8 @@ unix_cli_exit (vlib_main_t * vm)
   unix_main_t *um = &unix_main;
 
   /* If stdin is a tty and we saved the tty state, reset the tty state */
-  if (isatty (UNIX_CLI_STDIN_FD) && um->tio_isset)
-    tcsetattr (UNIX_CLI_STDIN_FD, TCSAFLUSH, &um->tio_stdin);
+  if (isatty (STDIN_FILENO) && um->tio_isset)
+    tcsetattr (STDIN_FILENO, TCSAFLUSH, &um->tio_stdin);
 
   return 0;
 }
@@ -2758,6 +2913,12 @@ unix_cli_quit (vlib_main_t * vm,
 	       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   unix_cli_main_t *cm = &unix_cli_main;
+  unix_cli_file_t *cf = pool_elt_at_index (cm->cli_file_pool,
+					   cm->current_input_file_index);
+
+  /* Cosmetic: suppress the final prompt from appearing before we die */
+  cf->is_interactive = 0;
+  cf->started = 1;
 
   vlib_process_signal_event (vm,
 			     vlib_current_process (vm),
@@ -2940,6 +3101,9 @@ unix_cli_show_history (vlib_main_t * vm,
 
   cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
 
+  if (!cf->is_interactive)
+    return clib_error_return (0, "invalid for non-interactive sessions");
+
   if (cf->has_history && cf->history_limit)
     {
       i = 1 + cf->command_number - vec_len (cf->command_history);
@@ -2985,6 +3149,8 @@ unix_cli_show_terminal (vlib_main_t * vm,
   vlib_cli_output (vm, "Terminal height: %d\n", cf->height);
   vlib_cli_output (vm, "ANSI capable:    %s\n",
 		   cf->ansi_capable ? "yes" : "no");
+  vlib_cli_output (vm, "Interactive:     %s\n",
+		   cf->is_interactive ? "yes" : "no");
   vlib_cli_output (vm, "History enabled: %s%s\n",
 		   cf->has_history ? "yes" : "no", !cf->has_history
 		   || cf->history_limit ? "" :
@@ -3017,6 +3183,7 @@ unix_cli_show_terminal (vlib_main_t * vm,
  * Terminal width:  123
  * Terminal height: 48
  * ANSI capable:    yes
+ * Interactive:     yes
  * History enabled: yes
  * History limit:   50
  * Pager enabled:   yes
@@ -3032,6 +3199,87 @@ VLIB_CLI_COMMAND (cli_unix_cli_show_terminal, static) = {
 };
 /* *INDENT-ON* */
 
+/** CLI command to display a list of CLI sessions. */
+static clib_error_t *
+unix_cli_show_cli_sessions (vlib_main_t * vm,
+			    unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  //unix_main_t *um = &unix_main;
+  unix_cli_main_t *cm = &unix_cli_main;
+  clib_file_main_t *fm = &file_main;
+  unix_cli_file_t *cf;
+  clib_file_t *uf;
+  vlib_node_t *n;
+
+  vlib_cli_output (vm, "%-5s %-5s %-20s %s", "PNI", "FD", "Name", "Flags");
+
+#define fl(x, y) ( (x) ? toupper((y)) : tolower((y)) )
+  /* *INDENT-OFF* */
+  pool_foreach (cf, cm->cli_file_pool, ({
+    uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
+    n = vlib_get_node (vm, cf->process_node_index);
+    vlib_cli_output (vm,
+		     "%-5d %-5d %-20v %c%c%c%c%c\n",
+		     cf->process_node_index,
+		     uf->file_descriptor,
+		     n->name,
+		     fl (cf->is_interactive, 'i'),
+		     fl (cf->is_socket, 's'),
+		     fl (cf->line_mode, 'l'),
+		     fl (cf->has_epipe, 'p'),
+		     fl (cf->ansi_capable, 'a'));
+  }));
+  /* *INDENT-ON* */
+#undef fl
+
+  return 0;
+}
+
+/*?
+ * Displays a summary of all the current CLI sessions.
+ *
+ * Typically used to diagnose connection issues with the CLI
+ * socket.
+ *
+ * @cliexpar
+ * @cliexstart{show cli-sessions}
+ * PNI   FD    Name                 Flags
+ * 343   0     unix-cli-stdin       IslpA
+ * 344   7     unix-cli-local:20    ISlpA
+ * 346   8     unix-cli-local:21    iSLpa
+ * @cliexend
+
+ * In this example we have the debug console of the running process
+ * on stdin/out, we have an interactive socket session and we also
+ * have a non-interactive socket session.
+ *
+ * Fields:
+ *
+ * - @em PNI: Process node index.
+ * - @em FD: Unix file descriptor.
+ * - @em Name: Name of the session.
+ * - @em Flags: Various flags that describe the state of the session.
+ *
+ * @em Flags have the following meanings; lower-case typically negates
+ * upper-case:
+ *
+ * - @em I Interactive session.
+ * - @em S Connected by socket.
+ * - @em s Not a socket, likely stdin.
+ * - @em L Line-by-line mode.
+ * - @em l Char-by-char mode.
+ * - @em P EPIPE detected on connection; it will close soon.
+ * - @em A ANSI-capable terminal.
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (cli_unix_cli_show_cli_sessions, static) = {
+  .path = "show cli-sessions",
+  .short_help = "Show current CLI sessions",
+  .function = unix_cli_show_cli_sessions,
+};
+/* *INDENT-ON* */
+
 /** CLI command to set terminal pager settings. */
 static clib_error_t *
 unix_cli_set_terminal_pager (vlib_main_t * vm,
@@ -3044,10 +3292,13 @@ unix_cli_set_terminal_pager (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
 
+  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+
+  if (!cf->is_interactive)
+    return clib_error_return (0, "invalid for non-interactive sessions");
+
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
-
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -3100,10 +3351,13 @@ unix_cli_set_terminal_history (vlib_main_t * vm,
   u32 limit;
   clib_error_t *error = 0;
 
+  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+
+  if (!cf->is_interactive)
+    return clib_error_return (0, "invalid for non-interactive sessions");
+
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
-
-  cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -3161,6 +3415,9 @@ unix_cli_set_terminal_ansi (vlib_main_t * vm,
   unix_cli_file_t *cf;
 
   cf = pool_elt_at_index (cm->cli_file_pool, cm->current_input_file_index);
+
+  if (!cf->is_interactive)
+    return clib_error_return (0, "invalid for non-interactive sessions");
 
   if (unformat (input, "on"))
     cf->ansi_capable = 1;

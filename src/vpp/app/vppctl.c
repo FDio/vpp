@@ -41,12 +41,16 @@ volatile int window_resized = 0;
 struct termios orig_tio;
 
 static void
-send_ttype (clib_socket_t * s, int is_dumb)
+send_ttype (clib_socket_t * s, int is_interactive)
 {
+  char *term;
+
+  term = is_interactive ? getenv ("TERM") : "vppctl";
+  if (term == NULL)
+    term = "dumb";
+
   clib_socket_tx_add_formatted (s, "%c%c%c" "%c%s" "%c%c",
-				IAC, SB, TELOPT_TTYPE,
-				0, is_dumb ? "dumb" : getenv ("TERM"),
-				IAC, SE);
+				IAC, SB, TELOPT_TTYPE, 0, term, IAC, SE);
   clib_socket_tx (s);
 }
 
@@ -81,7 +85,8 @@ signal_handler_term (int signum)
 }
 
 static u8 *
-process_input (u8 * str, clib_socket_t * s, int is_interactive)
+process_input (u8 * str, clib_socket_t * s, int is_interactive,
+	       int *sent_ttype)
 {
   int i = 0;
 
@@ -104,7 +109,10 @@ process_input (u8 * str, clib_socket_t * s, int is_interactive)
 	      vec_free (sb);
 	      i += 2;
 	      if (opt == TELOPT_TTYPE)
-		send_ttype (s, !is_interactive);
+		{
+		  send_ttype (s, is_interactive);
+		  *sent_ttype = 1;
+		}
 	      else if (is_interactive && opt == TELOPT_NAWS)
 		send_naws (s);
 	    }
@@ -138,6 +146,8 @@ main (int argc, char *argv[])
   u8 *str = 0;
   u8 *cmd = 0;
   int do_quit = 0;
+  int is_interactive = 0;
+  int sent_ttype = 0;
 
 
   clib_mem_init (0, 64ULL << 10);
@@ -164,33 +174,47 @@ main (int argc, char *argv[])
   if (error)
     goto done;
 
-  /* Capture terminal resize events */
-  memset (&sa, 0, sizeof (struct sigaction));
-  sa.sa_handler = signal_handler_winch;
+  is_interactive = isatty (STDIN_FILENO) && cmd == 0;
 
-  if (sigaction (SIGWINCH, &sa, 0) < 0)
+  if (is_interactive)
     {
-      error = clib_error_return_unix (0, "sigaction");
-      goto done;
+      /* Capture terminal resize events */
+      memset (&sa, 0, sizeof (struct sigaction));
+      sa.sa_handler = signal_handler_winch;
+      if (sigaction (SIGWINCH, &sa, 0) < 0)
+	{
+	  error = clib_error_return_unix (0, "sigaction");
+	  goto done;
+	}
+
+      /* Capture SIGTERM to reset tty settings */
+      sa.sa_handler = signal_handler_term;
+      if (sigaction (SIGTERM, &sa, 0) < 0)
+	{
+	  error = clib_error_return_unix (0, "sigaction");
+	  goto done;
+	}
+
+      /* Save the original tty state so we can restore it later */
+      if (tcgetattr (STDIN_FILENO, &orig_tio) < 0)
+	{
+	  error = clib_error_return_unix (0, "tcgetattr");
+	  goto done;
+	}
+
+      /* Tweak the tty settings */
+      tio = orig_tio;
+      /* echo off, canonical mode off, ext'd input processing off */
+      tio.c_lflag &= ~(ECHO | ICANON | IEXTEN);
+      tio.c_cc[VMIN] = 1;	/* 1 byte at a time */
+      tio.c_cc[VTIME] = 0;	/* no timer */
+
+      if (tcsetattr (STDIN_FILENO, TCSAFLUSH, &tio) < 0)
+	{
+	  error = clib_error_return_unix (0, "tcsetattr");
+	  goto done;
+	}
     }
-
-  sa.sa_handler = signal_handler_term;
-  if (sigaction (SIGTERM, &sa, 0) < 0)
-    {
-      error = clib_error_return_unix (0, "sigaction");
-      goto done;
-    }
-
-  /* Save the original tty state so we can restore it later */
-  tcgetattr (STDIN_FILENO, &orig_tio);
-
-  /* Tweak the tty settings */
-  tio = orig_tio;
-  /* echo off, canonical mode off, ext'd input processing off */
-  tio.c_lflag &= ~(ECHO | ICANON | IEXTEN);
-  tio.c_cc[VMIN] = 1;		/* 1 byte at a time */
-  tio.c_cc[VTIME] = 0;		/* no timer */
-  tcsetattr (STDIN_FILENO, TCSAFLUSH, &tio);
 
   efd = epoll_create1 (0);
 
@@ -199,8 +223,12 @@ main (int argc, char *argv[])
   event.data.fd = STDIN_FILENO;
   if (epoll_ctl (efd, EPOLL_CTL_ADD, STDIN_FILENO, &event) != 0)
     {
-      error = clib_error_return_unix (0, "epoll_ctl[%d]", STDIN_FILENO);
-      goto done;
+      /* ignore EPERM; it means stdin is something like /dev/null */
+      if (errno != EPERM)
+	{
+	  error = clib_error_return_unix (0, "epoll_ctl[%d]", STDIN_FILENO);
+	  goto done;
+	}
     }
 
   /* register socket */
@@ -240,6 +268,9 @@ main (int argc, char *argv[])
 	  int n;
 	  char c[100];
 
+	  if (!sent_ttype)
+	    continue;		/* not ready for this yet */
+
 	  n = read (STDIN_FILENO, c, sizeof (c));
 	  if (n > 0)
 	    {
@@ -250,6 +281,8 @@ main (int argc, char *argv[])
 	    }
 	  else if (n < 0)
 	    clib_warning ("read rv=%d", n);
+	  else			/* EOF */
+	    do_quit = 1;
 	}
       else if (event.data.fd == s->fd)
 	{
@@ -260,27 +293,49 @@ main (int argc, char *argv[])
 	  if (clib_socket_rx_end_of_file (s))
 	    break;
 
-	  str = process_input (str, s, cmd == 0);
+	  str = process_input (str, s, is_interactive, &sent_ttype);
 
 	  if (vec_len (str) > 0)
 	    {
-	      n = write (STDOUT_FILENO, str, vec_len (str));
-	      if (n < 0)
+	      int len = vec_len (str);
+	      u8 *p = str, *q = str;
+
+	      while (len)
 		{
-		  error = clib_error_return_unix (0, "write");
-		  goto done;
+		  /* Search for and skip NUL bytes */
+		  while (q < (p + len) && *q)
+		    q++;
+
+		  n = write (STDOUT_FILENO, p, q - p);
+		  if (n < 0)
+		    {
+		      error = clib_error_return_unix (0, "write");
+		      goto done;
+		    }
+
+		  while (q < (p + len) && !*q)
+		    q++;
+		  len -= q - p;
+		  p = q;
 		}
+
 	      vec_reset_length (str);
 	    }
 
 	  if (do_quit)
 	    {
-	      clib_socket_tx_add_formatted (s, "q\n");
+	      /* Ask the other end to close the connection */
+	      clib_socket_tx_add_formatted (s, "quit\n");
 	      clib_socket_tx (s);
 	      do_quit = 0;
 	    }
-	  if (cmd)
+	  if (cmd && sent_ttype)
 	    {
+	      /* We wait until after the TELNET TTYPE option has been sent.
+	       * That is to make sure the session at the VPP end has switched
+	       * to line-by-line mode, and thus avoid prompts and echoing.
+	       * Note that it does also disable further TELNET option processing.
+	       */
 	      clib_socket_tx_add_formatted (s, "%s\n", cmd);
 	      clib_socket_tx (s);
 	      vec_free (cmd);
@@ -302,12 +357,15 @@ done:
   if (efd > -1)
     close (efd);
 
+  if (is_interactive)
+    tcsetattr (STDIN_FILENO, TCSAFLUSH, &orig_tio);
+
   if (error)
     {
       clib_error_report (error);
       return 1;
     }
-  tcsetattr (STDIN_FILENO, TCSAFLUSH, &orig_tio);
+
   return 0;
 }
 
