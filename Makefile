@@ -58,18 +58,21 @@ endif
 
 # +libganglia1-dev if building the gmond plugin
 
-DEB_DEPENDS  = curl build-essential autoconf automake bison libssl-dev ccache
+DEB_DEPENDS  = curl build-essential autoconf automake bison ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf nasm indent libnuma-dev
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
+	DEB_DEPENDS += libssl-dev
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
 	DEB_DEPENDS += openjdk-8-jdk-headless
+	DEB_DEPENDS += libssl-dev
 	APT_ARGS = -t jessie-backports
-else
+else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-9)
 	DEB_DEPENDS += default-jdk-headless
+	DEB_DEPENDS += libssl1.0-dev
 endif
 
 RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
