@@ -319,17 +319,19 @@ multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
   }
 }
 
-static int
+always_inline int
 offset_within_packet (vlib_buffer_t * b0, int offset)
 {
   /* For the purposes of this code, "within" means we have at least 8 bytes after it */
   return (offset <= (b0->current_length - 8));
 }
 
-static void
-acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
-		 int is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt)
+always_inline void
+acl_fill_5tuple_and_session_key (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
+		 int is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt, fa_5tuple_t * p5tuple_sess)
 {
+  int sess_src_index = is_input ? 0 : 1;
+  int sess_dst_index = is_input ? 1 : 0;
   int l3_offset = ethernet_buffer_header_size(b0);
   int l4_offset;
   u16 ports[2];
@@ -346,6 +348,8 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
   /* Remainder of the key and per-packet non-key data */
   p5tuple_pkt->kv.key[4] = 0;
   p5tuple_pkt->kv.value = 0;
+  /* clean up the session key L4 */
+  p5tuple_sess->l4.as_u64 = 0;
 
   if (is_ip6)
     {
@@ -354,6 +358,10 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 				      offsetof (ip6_header_t,
 						src_address) + l3_offset),
 		   sizeof (p5tuple_pkt->addr));
+      /* fill in the session key addresses appropriately */
+      p5tuple_sess->addr[sess_src_index] = p5tuple_pkt->addr[0];
+      p5tuple_sess->addr[sess_dst_index] = p5tuple_pkt->addr[1];
+
       proto =
 	*(u8 *) get_ptr_to_offset (b0,
 				   offsetof (ip6_header_t,
@@ -409,27 +417,26 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
       p5tuple_pkt->kv.key[1] = 0;
       p5tuple_pkt->kv.key[2] = 0;
       p5tuple_pkt->kv.key[3] = 0;
-      clib_memcpy (&p5tuple_pkt->addr[0].ip4,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr[0].ip4));
-      clib_memcpy (&p5tuple_pkt->addr[1].ip4,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						dst_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr[1].ip4));
+
+      p5tuple_sess->kv.key[0] = 0;
+      p5tuple_sess->kv.key[1] = 0;
+      p5tuple_sess->kv.key[2] = 0;
+      p5tuple_sess->kv.key[3] = 0;
+
+      u32 *p_addr = get_ptr_to_offset (b0, offsetof (ip4_header_t, src_address) + l3_offset);
+      /*
+      p5tuple_pkt->addr[0].ip4.as_u32 = *(u32 *) get_ptr_to_offset (b0, offsetof (ip4_header_t, src_address) + l3_offset);
+      p5tuple_pkt->addr[1].ip4.as_u32 = *(u32 *) get_ptr_to_offset (b0, offsetof (ip4_header_t, dst_address) + l3_offset);
+      */
+      p5tuple_sess->addr[sess_src_index].ip4.as_u32 = p5tuple_pkt->addr[0].ip4.as_u32 = *p_addr++;
+      p5tuple_sess->addr[sess_dst_index].ip4.as_u32 = p5tuple_pkt->addr[1].ip4.as_u32 = *p_addr;
       proto =
 	*(u8 *) get_ptr_to_offset (b0,
 				   offsetof (ip4_header_t,
 					     protocol) + l3_offset);
       l4_offset = l3_offset + sizeof (ip4_header_t);
       u16 flags_and_fragment_offset;
-      clib_memcpy (&flags_and_fragment_offset,
-                   get_ptr_to_offset (b0,
-                                      offsetof (ip4_header_t,
-                                                flags_and_fragment_offset)) + l3_offset,
-                                                sizeof(flags_and_fragment_offset));
+      flags_and_fragment_offset = *(u16 *) get_ptr_to_offset (b0, offsetof (ip4_header_t, flags_and_fragment_offset) + l3_offset);
       flags_and_fragment_offset = ntohs (flags_and_fragment_offset);
 
       /* non-initial fragments have non-zero offset */
@@ -441,7 +448,8 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
         }
 
     }
-  p5tuple_pkt->l4.proto = proto;
+
+  p5tuple_sess->l4.proto = p5tuple_pkt->l4.proto = proto;
   if (PREDICT_TRUE (offset_within_packet (b0, l4_offset)))
     {
       p5tuple_pkt->pkt.l4_valid = 1;
@@ -474,6 +482,9 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 							     flags));
 	  p5tuple_pkt->pkt.tcp_flags_valid = (proto == IPPROTO_TCP);
 	}
+      p5tuple_sess->l4.port[sess_src_index] = p5tuple_pkt->l4.port[0];
+      p5tuple_sess->l4.port[sess_dst_index] = p5tuple_pkt->l4.port[1];
+
       /*
        * FIXME: rather than the above conditional, here could
        * be a nice generic mechanism to extract two L4 values:
@@ -493,6 +504,7 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 
 
 /* Session keys match the packets received, and mirror the packets sent */
+/*
 static void
 acl_make_5tuple_session_key (int is_input, fa_5tuple_t * p5tuple_pkt,
 			     fa_5tuple_t * p5tuple_sess)
@@ -505,6 +517,7 @@ acl_make_5tuple_session_key (int is_input, fa_5tuple_t * p5tuple_pkt,
   p5tuple_sess->l4.port[src_index] = p5tuple_pkt->l4.port[0];
   p5tuple_sess->l4.port[dst_index] = p5tuple_pkt->l4.port[1];
 }
+*/
 
 
 static int
@@ -531,9 +544,9 @@ acl_fa_ifc_has_out_acl (acl_main_t * am, int sw_if_index0)
 static int
 fa_session_get_timeout_type (acl_main_t * am, fa_session_t * sess)
 {
-  /* seen both SYNs and ACKs but not FINs means we are in establshed state */
-  u16 masked_flags =
-    sess->tcp_flags_seen.as_u16 & ((TCP_FLAGS_RSTFINACKSYN << 8) +
+  u16 masked_flags = 0;
+      /* seen both SYNs and ACKs but not FINs means we are in establshed state */
+      masked_flags = sess->tcp_flags_seen.as_u16 & ((TCP_FLAGS_RSTFINACKSYN << 8) +
 				   TCP_FLAGS_RSTFINACKSYN);
   switch (sess->info.l4.proto)
     {
@@ -622,6 +635,7 @@ static inline fa_session_t *get_session_ptr(acl_main_t *am, u16 thread_index, u3
 {
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
   fa_session_t *sess = pool_is_free_index (pw->fa_sessions_pool, session_index) ? 0 : pool_elt_at_index(pw->fa_sessions_pool, session_index);
+  CLIB_PREFETCH(sess, 2*CLIB_CACHE_LINE_BYTES, STORE);
   return sess;
 }
 
@@ -988,15 +1002,30 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  else
 	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
+          /*
+           * Kick off the prefetch for the next packet
+           */
+          if (PREDICT_TRUE(n_left_from > 2)) {
+            u32 biX;
+	    vlib_buffer_t *bX; // future block
+            biX = from[2];
+            bX = vlib_get_buffer (vm, biX);
+            CLIB_PREFETCH(&bX->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+          }
+          if (PREDICT_TRUE(n_left_from > 1)) {
+            CLIB_PREFETCH(vnet_buffer(vlib_get_buffer(vm, from[1])), 2*CLIB_CACHE_LINE_BYTES, LOAD);
+          }
+
 	  /*
 	   * Extract the L3/L4 matching info into a 5-tuple structure,
 	   * then create a session key whose layout is independent on forward or reverse
 	   * direction of the packet.
 	   */
 
-	  acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
+	  // acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
+	  acl_fill_5tuple_and_session_key (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple, &kv_sess);
           fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
-	  acl_make_5tuple_session_key (is_input, &fa_5tuple, &kv_sess);
+	  // acl_make_5tuple_session_key (is_input, &fa_5tuple, &kv_sess);
 	  fa_5tuple.pkt.sw_if_index = sw_if_index0;
           fa_5tuple.pkt.is_ip6 = is_ip6;
           fa_5tuple.pkt.is_input = is_input;
@@ -1609,7 +1638,7 @@ acl_fa_session_cleaner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
         /* they need more interrupts, do less waiting around next time */
         am->fa_current_cleaner_timer_wait_interval /= 2;
         /* never go into zero-wait either though - we need to give the space to others */
-        am->fa_current_cleaner_timer_wait_interval += 1; 
+        am->fa_current_cleaner_timer_wait_interval += 1;
       } else if (interrupts_unwanted) {
         /* slowly increase the amount of sleep up to a limit */
         if (am->fa_current_cleaner_timer_wait_interval < max_timer_wait_interval)
