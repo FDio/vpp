@@ -563,9 +563,6 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   rv =
     vnet_l2_input_classify_set_tables (sw_if_index, ip4_table_index,
 				       ip6_table_index, ~0);
-  clib_warning
-    ("ACL enabling on interface sw_if_index %d, setting tables to the following: ip4: %d ip6: %d\n",
-     sw_if_index, ip4_table_index, ip6_table_index);
   if (rv)
     {
       acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
@@ -1499,7 +1496,6 @@ send_acl_details (acl_main_t * am, unix_shared_memory_queue_t * q,
       copy_acl_rule_to_api_rule (&rules[i], &acl->rules[i]);
     }
 
-  clib_warning("Sending acl details for ACL index %d", ntohl(mp->acl_index));
   clib_mem_set_heap (oldheap);
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
