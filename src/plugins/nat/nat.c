@@ -344,7 +344,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports++; \
-                          a->busy_##n##_ports_per_thread[e_port / sm->port_per_thread]++; \
+                          a->busy_##n##_ports_per_thread[(e_port - 1024) / sm->port_per_thread]++; \
                         } \
                       break;
                       foreach_snat_protocol
@@ -394,7 +394,6 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
       if (sm->workers)
         {
           snat_user_key_t w_key0;
-          snat_worker_key_t w_key1;
 
           w_key0.addr = m->local_addr;
           w_key0.fib_index = m->fib_index;
@@ -412,11 +411,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
               kv.value = value.value;
             }
 
-          w_key1.addr = m->external_addr;
-          w_key1.port = clib_host_to_net_u16 (m->external_port);
-          w_key1.fib_index = sm->outside_fib_index;
-          kv.key = w_key1.as_u64;
-          clib_bihash_add_del_8_8 (&sm->worker_by_out, &kv, 1);
+          m->worker_index = kv.value;
         }
     }
   else
@@ -440,7 +435,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports--; \
-                          a->busy_##n##_ports_per_thread[e_port / sm->port_per_thread]--; \
+                          a->busy_##n##_ports_per_thread[(e_port - 1024) / sm->port_per_thread]--; \
                         } \
                       break;
                       foreach_snat_protocol
@@ -613,7 +608,6 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
   int i;
   nat44_lb_addr_port_t *local;
   snat_user_key_t w_key0;
-  snat_worker_key_t w_key1;
   u32 worker_index = 0;
   snat_main_per_thread_data_t *tsm;
 
@@ -659,7 +653,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports++; \
-                          a->busy_##n##_ports_per_thread[e_port / sm->port_per_thread]++; \
+                          a->busy_##n##_ports_per_thread[(e_port - 1024) / sm->port_per_thread]++; \
                         } \
                       break;
                       foreach_snat_protocol
@@ -710,17 +704,8 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
           else
             worker_index = value.value;
 
-          w_key1.addr = m->external_addr;
-          w_key1.port = clib_host_to_net_u16 (m->external_port);
-          w_key1.fib_index = sm->outside_fib_index;
-          kv.key = w_key1.as_u64;
-          kv.value = worker_index;
-          if (clib_bihash_add_del_8_8 (&sm->worker_by_out, &kv, 1))
-            {
-              clib_warning ("worker-by-out add key failed");
-              return VNET_API_ERROR_UNSPECIFIED;
-            }
           tsm = vec_elt_at_index (sm->per_thread_data, worker_index);
+          m->worker_index = worker_index;
         }
       else
         tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
@@ -791,7 +776,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                       if (e_port > 1024) \
                         { \
                           a->busy_##n##_ports--; \
-                          a->busy_##n##_ports_per_thread[e_port / sm->port_per_thread]--; \
+                          a->busy_##n##_ports_per_thread[(e_port - 1024) / sm->port_per_thread]--; \
                         } \
                       break;
                       foreach_snat_protocol
@@ -805,15 +790,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
             }
         }
 
-      w_key1.addr = m->external_addr;
-      w_key1.port = clib_host_to_net_u16 (m->external_port);
-      w_key1.fib_index = sm->outside_fib_index;
-      kv.key = w_key1.as_u64;
-      if (!clib_bihash_search_8_8 (&sm->worker_by_out, &kv, &value))
-        tsm = vec_elt_at_index (sm->per_thread_data, value.value);
-      else
-        tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
-
+      tsm = vec_elt_at_index (sm->per_thread_data, m->worker_index);
       m_key.addr = m->external_addr;
       m_key.port = m->external_port;
       m_key.protocol = m->proto;
@@ -2074,58 +2051,114 @@ static u32
 snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0)
 {
   snat_main_t *sm = &snat_main;
-  snat_worker_key_t key0;
-  clib_bihash_kv_8_8_t kv0, value0;
-  udp_header_t * udp0;
-  u32 next_worker_index = 0;
+  udp_header_t *udp;
+  u16 port;
+  snat_session_key_t m_key;
+  clib_bihash_kv_8_8_t kv, value;
+  snat_static_mapping_t *m;
+  nat_ed_ses_key_t key;
+  clib_bihash_kv_16_8_t s_kv, s_value;
+  snat_main_per_thread_data_t *tsm;
+  snat_session_t *s;
+  int i;
+  u32 proto;
 
-  udp0 = ip4_next_header (ip0);
-
-  key0.addr = ip0->dst_address;
-  key0.port = udp0->dst_port;
-  key0.fib_index = rx_fib_index0;
-
-  if (PREDICT_FALSE(ip0->protocol == IP_PROTOCOL_ICMP))
+  /* first try static mappings without port */
+  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
     {
-      icmp46_header_t * icmp0 = (icmp46_header_t *) udp0;
-      icmp_echo_header_t *echo0 = (icmp_echo_header_t *)(icmp0+1);
-      key0.port = echo0->identifier;
+      m_key.addr = ip0->dst_address;
+      m_key.port = 0;
+      m_key.protocol = 0;
+      m_key.fib_index = rx_fib_index0;
+      kv.key = m_key.as_u64;
+      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+        {
+          m = pool_elt_at_index (sm->static_mappings, value.value);
+          return m->worker_index;
+        }
     }
 
-  kv0.key = key0.as_u64;
+  proto = ip_proto_to_snat_proto (ip0->protocol);
+  udp = ip4_next_header (ip0);
+  port = udp->dst_port;
 
-  /* Ever heard of of the "user" before? */
-  if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
+  /* unknown protocol */
+  if (PREDICT_FALSE (proto == ~0))
     {
-      key0.port = 0;
-      kv0.key = key0.as_u64;
+      key.l_addr = ip0->dst_address;
+      key.r_addr = ip0->src_address;
+      key.fib_index = rx_fib_index0;
+      key.proto = ip0->protocol;
+      key.rsvd = 0;
+      key.l_port = 0;
+      s_kv.key[0] = key.as_u64[0];
+      s_kv.key[1] = key.as_u64[1];
 
-      if (clib_bihash_search_8_8 (&sm->worker_by_out, &kv0, &value0))
+      if (!clib_bihash_search_16_8 (&sm->out2in_ed, &s_kv, &s_value))
         {
-          /* No, assign next available worker (RR) */
-          next_worker_index = sm->first_worker_index;
-          if (vec_len (sm->workers))
+          for (i = 0; i < _vec_len (sm->per_thread_data); i++)
             {
-              next_worker_index +=
-                sm->workers[sm->next_worker++ % _vec_len (sm->workers)];
+              tsm = vec_elt_at_index (sm->per_thread_data, i);
+              if (!pool_is_free_index(tsm->sessions, s_value.value))
+                {
+                  s = pool_elt_at_index (tsm->sessions, s_value.value);
+                  if (s->out2in.addr.as_u32 == ip0->dst_address.as_u32 &&
+                      s->out2in.port == ip0->protocol &&
+                      snat_is_unk_proto_session (s))
+                    return i;
+                }
             }
-        }
+         }
+
+      /* if no session use current thread */
+      return vlib_get_thread_index ();
+    }
+
+  if (PREDICT_FALSE (ip0->protocol == IP_PROTOCOL_ICMP))
+    {
+      icmp46_header_t * icmp = (icmp46_header_t *) udp;
+      icmp_echo_header_t *echo = (icmp_echo_header_t *)(icmp + 1);
+      if (!icmp_is_error_message (icmp))
+        port = echo->identifier;
       else
         {
-          /* Static mapping without port */
-          next_worker_index = value0.value;
+          ip4_header_t *inner_ip = (ip4_header_t *)(echo + 1);
+          proto = ip_proto_to_snat_proto (inner_ip->protocol);
+          void *l4_header = ip4_next_header (inner_ip);
+          switch (proto)
+            {
+            case SNAT_PROTOCOL_ICMP:
+              icmp = (icmp46_header_t*)l4_header;
+              echo = (icmp_echo_header_t *)(icmp + 1);
+              port = echo->identifier;
+              break;
+            case SNAT_PROTOCOL_UDP:
+            case SNAT_PROTOCOL_TCP:
+              port = ((tcp_udp_header_t*)l4_header)->src_port;
+              break;
+            default:
+              return vlib_get_thread_index ();
+            }
         }
-
-      /* Add to translated packets worker lookup */
-      key0.port = udp0->dst_port;
-      kv0.key = key0.as_u64;
-      kv0.value = next_worker_index;
-      clib_bihash_add_del_8_8 (&sm->worker_by_out, &kv0, 1);
     }
-  else
-    next_worker_index = value0.value;
 
-  return next_worker_index;
+  /* try static mappings with port */
+  if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
+    {
+      m_key.addr = ip0->dst_address;
+      m_key.port = clib_net_to_host_u16 (port);
+      m_key.protocol = proto;
+      m_key.fib_index = rx_fib_index0;
+      kv.key = m_key.as_u64;
+      if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
+        {
+          m = pool_elt_at_index (sm->static_mappings, value.value);
+          return m->worker_index;
+        }
+    }
+
+  /* worker by outside port */
+  return (u32) ((clib_net_to_host_u16 (port) - 1024) / sm->port_per_thread);
 }
 
 static clib_error_t *
@@ -2232,9 +2265,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
 
           clib_bihash_init_8_8 (&sm->worker_by_in, "worker-by-in", user_buckets,
                                 user_memory_size);
-
-          clib_bihash_init_8_8 (&sm->worker_by_out, "worker-by-out",
-                                translation_buckets, translation_memory_size);
 
           clib_bihash_init_16_8 (&sm->in2out_ed, "in2out-ed",
                                  translation_buckets, translation_memory_size);
@@ -2617,8 +2647,6 @@ show_snat_command_fn (vlib_main_t * vm,
               vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->out2in_ed,
                                verbose - 1);
               vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->worker_by_in,
-                               verbose - 1);
-              vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->worker_by_out,
                                verbose - 1);
               vec_foreach_index (j, sm->per_thread_data)
                 {
