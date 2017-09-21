@@ -239,6 +239,7 @@ static int send_initial_control_ping() {
     }
 
     if (rv != 0) {
+        vl_msg_api_clean_handlers(rm->control_ping_reply_msg_id);
         clib_warning("first control ping failed: %d", rv);
     }
     return rv;

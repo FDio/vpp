@@ -717,6 +717,18 @@ vl_msg_api_set_handlers (int id, char *name, void *handler, void *cleanup,
 }
 
 void
+vl_msg_api_clean_handlers (int msg_id)
+{
+  vl_msg_api_msg_config_t cfg;
+  vl_msg_api_msg_config_t *c = &cfg;
+
+  memset (c, 0, sizeof (*c));
+
+  c->id = msg_id;
+  vl_msg_api_config (c);
+}
+
+void
 vl_msg_api_set_cleanup_handler (int msg_id, void *fp)
 {
   api_main_t *am = &api_main;
