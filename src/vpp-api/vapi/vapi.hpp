@@ -58,7 +58,7 @@ template <typename M> class Event_registration;
 class Unexpected_msg_id_exception : public std::exception
 {
 public:
-  virtual const char *what () const throw ()
+  virtual const char *what () const
   {
     return "unexpected message id";
   }
@@ -67,7 +67,7 @@ public:
 class Msg_not_available_exception : public std::exception
 {
 public:
-  virtual const char *what () const throw ()
+  virtual const char *what () const
   {
     return "message unavailable";
   }
@@ -587,8 +587,7 @@ private:
     return &my_id;
   }
 
-  Msg (Connection &con, void *shm_data) throw (Msg_not_available_exception)
-      : con{con}
+  Msg (Connection &con, void *shm_data) : con{con}
   {
     if (!con.is_msg_available (get_msg_id ()))
       {
@@ -599,8 +598,7 @@ private:
               this, shm_data);
   }
 
-  void assign_response (vapi_msg_id_t resp_id,
-                        void *shm_data) throw (Unexpected_msg_id_exception)
+  void assign_response (vapi_msg_id_t resp_id, void *shm_data)
   {
     assert (nullptr == this->shm_data);
     if (resp_id != get_msg_id ())
@@ -745,8 +743,7 @@ private:
     complete = true;
   }
 
-  void assign_response (vapi_msg_id_t resp_id,
-                        void *shm_data) throw (Unexpected_msg_id_exception)
+  void assign_response (vapi_msg_id_t resp_id, void *shm_data)
   {
     if (resp_id != Msg<M>::get_msg_id ())
       {
@@ -852,8 +849,7 @@ template <typename M> class Event_registration : public Common_req
 public:
   Event_registration (
       Connection &con,
-      std::function<vapi_error_e (Event_registration<M> &)> callback =
-          nullptr) throw (Msg_not_available_exception)
+      std::function<vapi_error_e (Event_registration<M> &)> callback = nullptr)
       : Common_req{con}, result_set{con}, callback{callback}
   {
     if (!con.is_msg_available (M::get_msg_id ()))
