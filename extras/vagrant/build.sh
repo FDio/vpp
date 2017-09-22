@@ -72,12 +72,14 @@ fi
 # Build and install packaging
 $SUDOCMD make bootstrap
 
-if [ $DISTRIB_ID == "Ubuntu" ]; then
+if [ "$DISTRIB_ID" == "Ubuntu" ]; then
     $SUDOCMD make pkg-deb
-elif [ $DISTRIB_ID == "debian" ]; then
+elif [ "$DISTRIB_ID" == "debian" ]; then
     $SUDOCMD make pkg-deb
-elif [ $DISTRIB_ID == "CentOS" ]; then
+elif [ "$DISTRIB_ID" == "CentOS" ]; then
     (cd $VPP_DIR/vnet ;$SUDOCMD aclocal;$SUDOCMD automake -a)
     $SUDOCMD make pkg-rpm
+elif [ "$DISTRIB_ID" == "opensuse" ]; then
+    $SUDOCMD make build-release
 fi
 
