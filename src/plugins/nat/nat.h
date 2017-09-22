@@ -345,6 +345,7 @@ typedef struct snat_main_s {
   u8 deterministic;
   u32 translation_buckets;
   u32 translation_memory_size;
+  u32 max_translations;
   u32 user_buckets;
   u32 user_memory_size;
   u32 max_translations_per_user;
@@ -549,6 +550,15 @@ is_interface_addr(snat_main_t *sm, vlib_node_runtime_t *node, u32 sw_if_index0,
     return 1;
   else
     return 0;
+}
+
+always_inline u8
+maximum_sessions_exceeded (snat_main_t *sm, u32 thread_index)
+{
+  if (pool_elts (sm->per_thread_data[thread_index].sessions) >= sm->max_translations)
+    return 1;
+
+  return 0;
 }
 
 #endif /* __included_nat_h__ */

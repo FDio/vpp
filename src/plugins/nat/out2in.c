@@ -87,7 +87,8 @@ vlib_node_registration_t snat_det_out2in_node;
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")         \
 _(OUT2IN_PACKETS, "Good out2in packets processed")      \
 _(BAD_ICMP_TYPE, "unsupported ICMP type")               \
-_(NO_TRANSLATION, "No translation")
+_(NO_TRANSLATION, "No translation")                     \
+_(MAX_SESSIONS_EXCEEDED, "Maximum sessions exceeded")
 
 typedef enum {
 #define _(sym,str) SNAT_OUT2IN_ERROR_##sym,
@@ -138,6 +139,12 @@ create_session_for_static_mapping (snat_main_t *sm,
   dlist_elt_t * per_user_translation_list_elt;
   dlist_elt_t * per_user_list_head_elt;
   ip4_header_t *ip0;
+
+  if (PREDICT_FALSE (maximum_sessions_exceeded(sm, thread_index)))
+    {
+      b0->error = node->errors[SNAT_OUT2IN_ERROR_MAX_SESSIONS_EXCEEDED];
+      return 0;
+    }
 
   ip0 = vlib_buffer_get_current (b0);
 
@@ -620,14 +627,15 @@ static inline u32 icmp_out2in_slow_path (snat_main_t *sm,
   return next0;
 }
 
-static void
+static snat_session_t *
 snat_out2in_unknown_proto (snat_main_t *sm,
                            vlib_buffer_t * b,
                            ip4_header_t * ip,
                            u32 rx_fib_index,
                            u32 thread_index,
                            f64 now,
-                           vlib_main_t * vm)
+                           vlib_main_t * vm,
+                           vlib_node_runtime_t * node)
 {
   clib_bihash_kv_8_8_t kv, value;
   clib_bihash_kv_16_8_t s_kv, s_value;
@@ -660,13 +668,22 @@ snat_out2in_unknown_proto (snat_main_t *sm,
     }
   else
     {
+      if (PREDICT_FALSE (maximum_sessions_exceeded(sm, thread_index)))
+        {
+          b->error = node->errors[SNAT_OUT2IN_ERROR_MAX_SESSIONS_EXCEEDED];
+          return 0;
+        }
+
       m_key.addr = ip->dst_address;
       m_key.port = 0;
       m_key.protocol = 0;
       m_key.fib_index = rx_fib_index;
       kv.key = m_key.as_u64;
       if (clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv, &value))
-        return;
+        {
+          b->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
+          return 0;
+        }
 
       m = pool_elt_at_index (sm->static_mappings, value.value);
 
@@ -753,6 +770,8 @@ snat_out2in_unknown_proto (snat_main_t *sm,
   clib_dlist_remove (tsm->list_pool, s->per_user_index);
   clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
                       s->per_user_index);
+
+  return s;
 }
 
 static snat_session_t *
@@ -762,7 +781,8 @@ snat_out2in_lb (snat_main_t *sm,
                 u32 rx_fib_index,
                 u32 thread_index,
                 f64 now,
-                vlib_main_t * vm)
+                vlib_main_t * vm,
+                vlib_node_runtime_t * node)
 {
   nat_ed_ses_key_t key;
   clib_bihash_kv_16_8_t s_kv, s_value;
@@ -797,6 +817,12 @@ snat_out2in_lb (snat_main_t *sm,
     }
   else
     {
+      if (PREDICT_FALSE (maximum_sessions_exceeded(sm, thread_index)))
+        {
+          b->error = node->errors[SNAT_OUT2IN_ERROR_MAX_SESSIONS_EXCEEDED];
+          return 0;
+        }
+
       e_key.addr = ip->dst_address;
       e_key.port = udp->dst_port;
       e_key.protocol = proto;
@@ -998,8 +1024,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE (proto0 == ~0))
             {
-              snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0,
-                                        thread_index, now, vm);
+              s0 = snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0,
+                                             thread_index, now, vm, node);
+              if (!s0)
+                next0 = SNAT_OUT2IN_NEXT_DROP;
               goto trace0;
             }
 
@@ -1042,7 +1070,6 @@ snat_out2in_node_fn (vlib_main_t * vm,
                                                      thread_index);
               if (!s0)
                 {
-                  b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
                   next0 = SNAT_OUT2IN_NEXT_DROP;
                   goto trace0;
                 }
@@ -1051,8 +1078,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               if (PREDICT_FALSE (value0.value == ~0ULL))
                 {
-                  s0 = snat_out2in_lb(sm, b0, ip0, rx_fib_index0, thread_index, now,
-                                 vm);
+                  s0 = snat_out2in_lb(sm, b0, ip0, rx_fib_index0, thread_index,
+                                      now, vm, node);
+                  if (!s0)
+                    next0 = SNAT_OUT2IN_NEXT_DROP;
                   goto trace0;
                 }
               else
@@ -1150,8 +1179,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE (proto1 == ~0))
             {
-              snat_out2in_unknown_proto(sm, b1, ip1, rx_fib_index1,
-                                        thread_index, now, vm);
+              s1 = snat_out2in_unknown_proto(sm, b1, ip1, rx_fib_index1,
+                                             thread_index, now, vm, node);
+              if (!s1)
+                next1 = SNAT_OUT2IN_NEXT_DROP;
               goto trace1;
             }
 
@@ -1194,7 +1225,6 @@ snat_out2in_node_fn (vlib_main_t * vm,
                                                      thread_index);
               if (!s1)
                 {
-                  b1->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
                   next1 = SNAT_OUT2IN_NEXT_DROP;
                   goto trace1;
                 }
@@ -1203,8 +1233,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               if (PREDICT_FALSE (value1.value == ~0ULL))
                 {
-                  s1 = snat_out2in_lb(sm, b1, ip1, rx_fib_index1, thread_index, now,
-                                 vm);
+                  s1 = snat_out2in_lb(sm, b1, ip1, rx_fib_index1, thread_index,
+                                      now, vm, node);
+                  if (!s1)
+                    next1 = SNAT_OUT2IN_NEXT_DROP;
                   goto trace1;
                 }
               else
@@ -1328,8 +1360,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
 
           if (PREDICT_FALSE (proto0 == ~0))
             {
-              snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0,
-                                        thread_index, now, vm);
+              s0 = snat_out2in_unknown_proto(sm, b0, ip0, rx_fib_index0,
+                                             thread_index, now, vm, node);
+              if (!s0)
+                next0 = SNAT_OUT2IN_NEXT_DROP;
               goto trace00;
             }
 
@@ -1383,8 +1417,7 @@ snat_out2in_node_fn (vlib_main_t * vm,
                                                      thread_index);
               if (!s0)
                 {
-                  b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
-                    next0 = SNAT_OUT2IN_NEXT_DROP;
+                  next0 = SNAT_OUT2IN_NEXT_DROP;
                   goto trace00;
                 }
             }
@@ -1392,8 +1425,10 @@ snat_out2in_node_fn (vlib_main_t * vm,
             {
               if (PREDICT_FALSE (value0.value == ~0ULL))
                 {
-                  s0 = snat_out2in_lb(sm, b0, ip0, rx_fib_index0, thread_index, now,
-                                 vm);
+                  s0 = snat_out2in_lb(sm, b0, ip0, rx_fib_index0, thread_index,
+                                      now, vm, node);
+                  if (!s0)
+                    next0 = SNAT_OUT2IN_NEXT_DROP;
                   goto trace00;
                 }
               else
