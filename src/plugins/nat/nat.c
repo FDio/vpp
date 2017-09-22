@@ -2216,6 +2216,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   /* for show commands, etc. */
   sm->translation_buckets = translation_buckets;
   sm->translation_memory_size = translation_memory_size;
+  /* do not exceed load factor 10 */
+  sm->max_translations = 10 * translation_buckets;
   sm->user_buckets = user_buckets;
   sm->user_memory_size = user_memory_size;
   sm->max_translations_per_user = max_translations_per_user;
