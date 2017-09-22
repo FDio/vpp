@@ -17,7 +17,13 @@ CCACHE_DIR?=$(BR)/.ccache
 GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
+MACHINE=$(shell uname -m)
+
+ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
 export AESNI?=y
+else
+export AESNI?=N
+endif
 
 ,:=,
 define disable_plugins
