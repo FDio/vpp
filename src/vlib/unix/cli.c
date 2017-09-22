@@ -2776,8 +2776,14 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	  cf->height = ws.ws_row;
 
 	  if (cf->width == 0 || cf->height == 0)
-	    /* We have a tty, but no size. Stick to line mode. */
-	    goto notty;
+	    {
+	      /*
+	       * We have a tty, but no size. Use defaults.
+	       * vpp "unix interactive" inside emacs + gdb ends up here.
+	       */
+	      cf->width = 80;
+	      cf->height = 24;
+	    }
 
 	  /* Setup the history */
 	  cf->history_limit = um->cli_history_limit;
@@ -2816,7 +2822,6 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	}
       else
 	{
-	notty:
 	  /* No tty, so make sure the session doesn't have tty-like features */
 	  unix_cli_set_session_noninteractive (cf);
 	}
