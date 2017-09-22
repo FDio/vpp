@@ -846,7 +846,7 @@ static int api_snat_det_reverse (vat_main_t * vam)
   unformat_input_t * i = vam->input;
   vl_api_snat_det_reverse_t * mp;
   ip4_address_t out_addr;
-  u16 out_port;
+  u32 out_port;
   int ret;
 
   if (unformat (i, "%U %d", unformat_ip4_address, &out_addr, &out_port))
@@ -859,7 +859,7 @@ static int api_snat_det_reverse (vat_main_t * vam)
 
   M(SNAT_DET_REVERSE, mp);
   clib_memcpy(mp->out_addr, &out_addr, 4);
-  mp->out_port = htons(out_port);
+  mp->out_port = htons((u16)out_port);
 
   S(mp);
   W(ret);
@@ -981,7 +981,7 @@ static int api_snat_det_close_session_out (vat_main_t * vam)
   unformat_input_t * i = vam->input;
   vl_api_snat_det_close_session_out_t * mp;
   ip4_address_t out_addr, ext_addr;
-  u16 out_port, ext_port;
+  u32 out_port, ext_port;
   int ret;
 
   if (unformat (i, "%U:%d %U:%d",
@@ -996,9 +996,9 @@ static int api_snat_det_close_session_out (vat_main_t * vam)
 
   M(SNAT_DET_CLOSE_SESSION_OUT, mp);
   clib_memcpy(mp->out_addr, &out_addr, 4);
-  mp->out_port = ntohs(out_port);
+  mp->out_port = ntohs((u16)out_port);
   clib_memcpy(mp->ext_addr, &ext_addr, 4);
-  mp->ext_port = ntohs(ext_port);
+  mp->ext_port = ntohs((u16)ext_port);
 
   S(mp);
   W (ret);
@@ -1010,7 +1010,7 @@ static int api_snat_det_close_session_in (vat_main_t * vam)
   unformat_input_t * i = vam->input;
   vl_api_snat_det_close_session_in_t * mp;
   ip4_address_t in_addr, ext_addr;
-  u16 in_port, ext_port;
+  u32 in_port, ext_port;
   int ret;
 
   if (unformat (i, "%U:%d %U:%d",
@@ -1025,9 +1025,9 @@ static int api_snat_det_close_session_in (vat_main_t * vam)
 
   M(SNAT_DET_CLOSE_SESSION_IN, mp);
   clib_memcpy(mp->in_addr, &in_addr, 4);
-  mp->in_port = ntohs(in_port);
+  mp->in_port = ntohs((u16)in_port);
   clib_memcpy(mp->ext_addr, &ext_addr, 4);
-  mp->ext_port = ntohs(ext_port);
+  mp->ext_port = ntohs((u16)ext_port);
 
   S(mp);
   W (ret);

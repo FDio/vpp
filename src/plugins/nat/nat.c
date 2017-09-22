@@ -3149,7 +3149,7 @@ snat_det_close_session_out_fn (vlib_main_t *vm,
   snat_main_t *sm = &snat_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t out_addr, ext_addr, in_addr;
-  u16 out_port, ext_port;
+  u32 out_port, ext_port;
   snat_det_map_t * dm;
   snat_det_session_t * ses;
   snat_det_out_key_t key;
@@ -3180,10 +3180,10 @@ snat_det_close_session_out_fn (vlib_main_t *vm,
     vlib_cli_output (vm, "no match");
   else
     {
-      snat_det_reverse(dm, &ext_addr, out_port, &in_addr);
+      snat_det_reverse(dm, &ext_addr, (u16)out_port, &in_addr);
       key.ext_host_addr = out_addr;
-      key.ext_host_port = ntohs(ext_port);
-      key.out_port = ntohs(out_port);
+      key.ext_host_port = ntohs((u16)ext_port);
+      key.out_port = ntohs((u16)out_port);
       ses = snat_det_get_ses_by_out(dm, &out_addr, key.as_u64);
       if (!ses)
         vlib_cli_output (vm, "no match");
@@ -3220,7 +3220,7 @@ snat_det_close_session_in_fn (vlib_main_t *vm,
   snat_main_t *sm = &snat_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t in_addr, ext_addr;
-  u16 in_port, ext_port;
+  u32 in_port, ext_port;
   snat_det_map_t * dm;
   snat_det_session_t * ses;
   snat_det_out_key_t key;
@@ -3252,8 +3252,8 @@ snat_det_close_session_in_fn (vlib_main_t *vm,
   else
     {
       key.ext_host_addr = ext_addr;
-      key.ext_host_port = ntohs (ext_port);
-      ses = snat_det_find_ses_by_in (dm, &in_addr, ntohs(in_port), key);
+      key.ext_host_port = ntohs ((u16)ext_port);
+      ses = snat_det_find_ses_by_in (dm, &in_addr, ntohs((u16)in_port), key);
       if (!ses)
         vlib_cli_output (vm, "no match");
       else
