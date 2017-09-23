@@ -181,12 +181,68 @@ dpdk_device_stop (dpdk_device_t * xd)
     }
 }
 
+/* Even type for send_garp_na_process */
+enum
+{
+  SEND_GARP_NA = 1,
+} dpdk_send_garp_na_process_event_t;
+
+static vlib_node_registration_t send_garp_na_proc_node;
+
+static uword
+send_garp_na_process (vlib_main_t * vm,
+		      vlib_node_runtime_t * rt, vlib_frame_t * f)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  uword event_type, *event_data = 0;
+
+  while (1)
+    {
+      uword dpdk_port = ~0;
+      vlib_process_wait_for_event (vm);
+      event_type = vlib_process_get_events (vm, &event_data);
+      if ((event_type == SEND_GARP_NA) && (vec_len (event_data) >= 1))
+	dpdk_port = event_data[0];
+      vec_reset_length (event_data);
+
+      if (dpdk_port != ~0)
+	{
+	  dpdk_device_t *xd = &dpdk_main.devices[dpdk_port];
+	  u32 hw_if_index = xd->hw_if_index;
+	  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
+	  vlib_process_suspend (vm, 0.2);	/* wait 0.2 sec for link to settle */
+	  dpdk_update_link_state (xd, vlib_time_now (vm));
+	  send_ip4_garp (vm, hi);
+	  send_ip6_na (vm, hi);
+	}
+    }
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (send_garp_na_proc_node, static) = {
+    .function = send_garp_na_process,
+    .type = VLIB_NODE_TYPE_PROCESS,
+    .name = "send-garp-na-process",
+};
+/* *INDENT-ON* */
+
+void vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+
+static void
+garp_na_proc_callback (uword * dpdk_port)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  ASSERT (vlib_get_thread_index () == 0);
+  vlib_process_signal_event
+    (vm, send_garp_na_proc_node.index, SEND_GARP_NA, *dpdk_port);
+}
+
 always_inline int
 dpdk_port_state_callback_inline (uint8_t port_id,
 				 enum rte_eth_event_type type, void *param)
 {
   struct rte_eth_link link;
-  vlib_main_t *vm = vlib_get_main ();
   dpdk_device_t *xd = &dpdk_main.devices[port_id];
 
   RTE_SET_USED (param);
@@ -201,32 +257,19 @@ dpdk_port_state_callback_inline (uint8_t port_id,
 
   if (xd->flags & DPDK_DEVICE_FLAG_BOND_SLAVE)
     {
-      u8 bd_port = xd->bond_port;
+      uword bd_port = xd->bond_port;
       int bd_mode = rte_eth_bond_mode_get (bd_port);
-
-      if ((link_up && !(xd->flags & DPDK_DEVICE_FLAG_BOND_SLAVE_UP)) ||
-	  (!link_up && (xd->flags & DPDK_DEVICE_FLAG_BOND_SLAVE_UP)))
+      clib_warning ("Port %d state to %s, "
+		    "slave of port %d BondEthernet%d in mode %d",
+		    port_id, (link_up) ? "UP" : "DOWN",
+		    bd_port, xd->port_id, bd_mode);
+      if (bd_mode == BONDING_MODE_ACTIVE_BACKUP)
 	{
-	  clib_warning ("Port %d state to %s, "
-			"slave of port %d BondEthernet%d in mode %d",
-			port_id, (link_up) ? "UP" : "DOWN",
-			bd_port, xd->port_id, bd_mode);
-	  if (bd_mode == BONDING_MODE_ACTIVE_BACKUP)
-	    {
-	      rte_eth_link_get_nowait (bd_port, &link);
-	      if (link.link_status)	/* bonded interface up */
-		{
-		  u32 hw_if_index = dpdk_main.devices[bd_port].hw_if_index;
-		  vlib_process_signal_event
-		    (vm, send_garp_na_process_node_index, SEND_GARP_NA,
-		     hw_if_index);
-		}
-	    }
+	  vl_api_force_rpc_call_main_thread
+	    (garp_na_proc_callback, (u8 *) & bd_port, sizeof (uword));
 	}
-      if (link_up)		/* Update slave link status */
-	xd->flags |= DPDK_DEVICE_FLAG_BOND_SLAVE_UP;
-      else
-	xd->flags &= ~DPDK_DEVICE_FLAG_BOND_SLAVE_UP;
+      xd->flags |= link_up ?
+	DPDK_DEVICE_FLAG_BOND_SLAVE_UP : ~DPDK_DEVICE_FLAG_BOND_SLAVE_UP;
     }
   else				/* Should not happen as callback not setup for "normal" links */
     {
