@@ -661,6 +661,8 @@ dpdk_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * f)
   foreach_device_and_queue (dq, rt->devices_and_queues)
     {
       xd = vec_elt_at_index(dm->devices, dq->dev_instance);
+      if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_BOND_SLAVE))
+	continue; 	/* Do not poll slave to a bonded interface */
       if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
         n_rx_packets += dpdk_device_input (dm, xd, node, thread_index, dq->queue_id, /* maybe_multiseg */ 1);
       else
