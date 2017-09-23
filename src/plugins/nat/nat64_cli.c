@@ -301,8 +301,8 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
   u8 is_add = 1;
   ip6_address_t in_addr;
   ip4_address_t out_addr;
-  u16 in_port = 0;
-  u16 out_port = 0;
+  u32 in_port = 0;
+  u32 out_port = 0;
   u32 vrf_id = 0, protocol;
   snat_protocol_t proto = 0;
   u8 p = 0;
@@ -362,8 +362,8 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
     }
 
   rv =
-    nat64_add_del_static_bib_entry (&in_addr, &out_addr, in_port, out_port, p,
-				    vrf_id, is_add);
+    nat64_add_del_static_bib_entry (&in_addr, &out_addr, (u16) in_port,
+				    (u16) out_port, p, vrf_id, is_add);
 
   switch (rv)
     {
