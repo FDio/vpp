@@ -2482,7 +2482,7 @@ ethernet_arp_change_mac (u32 sw_if_index)
   /* *INDENT-ON* */
 }
 
-void static
+void
 send_ip4_garp (vlib_main_t * vm, vnet_hw_interface_t * hi)
 {
   ip4_main_t *i4m = &ip4_main;
@@ -2525,42 +2525,6 @@ send_ip4_garp (vlib_main_t * vm, vnet_hw_interface_t * hi)
       vlib_put_frame_to_node (vm, hi->output_node_index, f);
     }
 }
-
-static vlib_node_registration_t send_garp_na_proc_node;
-
-static uword
-send_garp_na_process (vlib_main_t * vm,
-		      vlib_node_runtime_t * rt, vlib_frame_t * f)
-{
-  vnet_main_t *vnm = vnet_get_main ();
-  uword event_type, *event_data = 0;
-
-  send_garp_na_process_node_index = send_garp_na_proc_node.index;
-
-  while (1)
-    {
-      vlib_process_wait_for_event (vm);
-      event_type = vlib_process_get_events (vm, &event_data);
-      if ((event_type == SEND_GARP_NA) && (vec_len (event_data) >= 1))
-	{
-	  u32 hw_if_index = event_data[0];
-	  vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
-	  send_ip4_garp (vm, hi);
-	  send_ip6_na (vm, hi);
-	}
-      vec_reset_length (event_data);
-    }
-  return 0;
-}
-
-
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (send_garp_na_proc_node, static) = {
-    .function = send_garp_na_process,
-    .type = VLIB_NODE_TYPE_PROCESS,
-    .name = "send-garp-na-process",
-};
-/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

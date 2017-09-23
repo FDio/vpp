@@ -1452,8 +1452,9 @@ vl_api_rpc_call_reply_t_handler (vl_api_rpc_call_reply_t * mp)
   clib_warning ("unimplemented");
 }
 
-void
-vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
+always_inline void
+vl_api_rpc_call_main_thread_inline (void *fp, u8 * data, u32 data_length,
+				    u8 force_rpc)
 {
   vl_api_rpc_call_t *mp;
   api_main_t *am = &api_main;
@@ -1461,7 +1462,7 @@ vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
   unix_shared_memory_queue_t *q;
 
   /* Main thread: call the function directly */
-  if (vlib_get_thread_index () == 0)
+  if ((force_rpc == 0) && (vlib_get_thread_index () == 0))
     {
       vlib_main_t *vm = vlib_get_main ();
       void (*call_fp) (void *);
@@ -1505,6 +1506,29 @@ vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
   vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
 
   pthread_mutex_unlock (&q->mutex);
+}
+
+/*
+ * Check if called from worker threads.
+ * If so, make rpc call of fp through shmem.
+ * Otherwise, call fp directly
+ */
+void
+vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
+{
+  vl_api_rpc_call_main_thread_inline (fp, data, data_length,	/*force_rpc */
+				      0);
+}
+
+/*
+ * Always make rpc call of fp through shmem, useful for calling from threads
+ * not setup as worker threads, such as DPDK callback thread
+ */
+void
+vl_api_force_rpc_call_main_thread (void *fp, u8 * data, u32 data_length)
+{
+  vl_api_rpc_call_main_thread_inline (fp, data, data_length,	/*force_rpc */
+				      1);
 }
 
 static void
