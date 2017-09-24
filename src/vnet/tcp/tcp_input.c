@@ -248,8 +248,8 @@ tcp_update_timestamp (tcp_connection_t * tc, u32 seq, u32 seq_end)
    * then the TSval from the segment is copied to TS.Recent;
    * otherwise, the TSval is ignored.
    */
-  if (tcp_opts_tstamp (&tc->rcv_opts) && tc->tsval_recent
-      && seq_leq (seq, tc->rcv_las) && seq_leq (tc->rcv_las, seq_end))
+  if (tcp_opts_tstamp (&tc->rcv_opts) && seq_leq (seq, tc->rcv_las)
+      && seq_leq (tc->rcv_las, seq_end))
     {
       ASSERT (timestamp_leq (tc->tsval_recent, tc->rcv_opts.tsval));
       tc->tsval_recent = tc->rcv_opts.tsval;
@@ -418,11 +418,14 @@ tcp_update_rto (tcp_connection_t * tc)
   tc->rto = clib_max (tc->rto, TCP_RTO_MIN);
 }
 
-/** Update RTT estimate and RTO timer
+/**
+ * Update RTT estimate and RTO timer
  *
  * Measure RTT: We have two sources of RTT measurements: TSOPT and ACK
  * timing. Middle boxes are known to fiddle with TCP options so we
  * should give higher priority to ACK timing.
+ *
+ * This should be called only if previously sent bytes have been acked.
  *
  * return 1 if valid rtt 0 otherwise
  */
@@ -430,39 +433,38 @@ static int
 tcp_update_rtt (tcp_connection_t * tc, u32 ack)
 {
   u32 mrtt = 0;
-  u8 rtx_acked;
-
-  /* Determine if only rtx bytes are acked. */
-  rtx_acked = tcp_in_cong_recovery (tc) || !tc->bytes_acked;
 
   /* Karn's rule, part 1. Don't use retransmitted segments to estimate
    * RTT because they're ambiguous. */
-  if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq) && !rtx_acked)
+  if (tcp_in_cong_recovery (tc) || tc->sack_sb.sacked_bytes)
+    goto done;
+
+  if (tc->rtt_ts && seq_geq (ack, tc->rtt_seq))
     {
       mrtt = tcp_time_now () - tc->rtt_ts;
     }
   /* As per RFC7323 TSecr can be used for RTTM only if the segment advances
    * snd_una, i.e., the left side of the send window:
-   * seq_lt (tc->snd_una, ack). */
-  else if (tcp_opts_tstamp (&tc->rcv_opts) && tc->rcv_opts.tsecr
-	   && tc->bytes_acked)
+   * seq_lt (tc->snd_una, ack). This is a condition for calling update_rtt */
+  else if (tcp_opts_tstamp (&tc->rcv_opts) && tc->rcv_opts.tsecr)
     {
       mrtt = tcp_time_now () - tc->rcv_opts.tsecr;
     }
 
+  /* Ignore dubious measurements */
+  if (mrtt == 0 || mrtt > TCP_RTT_MAX)
+    goto done;
+
+  tcp_estimate_rtt (tc, mrtt);
+
+done:
+
   /* Allow measuring of a new RTT */
   tc->rtt_ts = 0;
 
-  /* If ACK moves left side of the wnd make sure boff is 0, even if mrtt is
-   * not valid */
-  if (tc->bytes_acked)
-    tc->rto_boff = 0;
-
-  /* Ignore dubious measurements */
-  if (mrtt == 0 || mrtt > TCP_RTT_MAX)
-    return 0;
-
-  tcp_estimate_rtt (tc, mrtt);
+  /* If we got here something must've been ACKed so make sure boff is 0,
+   * even if mrrt is not valid since we update the rto lower */
+  tc->rto_boff = 0;
   tcp_update_rto (tc);
 
   return 0;
@@ -932,10 +934,11 @@ static void
 tcp_cc_recovery_exit (tcp_connection_t * tc)
 {
   /* Deflate rto */
-  tcp_update_rto (tc);
   tc->rto_boff = 0;
+  tcp_update_rto (tc);
   tc->snd_rxt_ts = 0;
   tcp_recovery_off (tc);
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
 
 void
@@ -946,6 +949,7 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
   tc->rcv_dupacks = 0;
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_1_smss_off (tc);
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
 
 static void
@@ -958,13 +962,14 @@ tcp_cc_congestion_undo (tcp_connection_t * tc)
   if (tcp_in_recovery (tc))
     tcp_cc_recovery_exit (tc);
   ASSERT (tc->rto_boff == 0);
+  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 5);
   /* TODO extend for fastrecovery */
 }
 
 static u8
 tcp_cc_is_spurious_retransmit (tcp_connection_t * tc)
 {
-  return (tcp_in_recovery (tc)
+  return (tcp_in_recovery (tc) && tc->rto_boff == 1
 	  && tc->snd_rxt_ts
 	  && tcp_opts_tstamp (&tc->rcv_opts)
 	  && timestamp_lt (tc->rcv_opts.tsecr, tc->snd_rxt_ts));
@@ -988,7 +993,6 @@ tcp_cc_recover (tcp_connection_t * tc)
   ASSERT (tc->rto_boff == 0);
   ASSERT (!tcp_in_cong_recovery (tc));
   ASSERT (tcp_scoreboard_is_sane_post_recovery (tc));
-  TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
   return 0;
 }
 
@@ -2115,7 +2119,6 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      new_tc0->flags |= TCP_CONN_SNDACK;
 
 	      /* Update rtt with the syn-ack sample */
-	      new_tc0->bytes_acked = 1;
 	      tcp_update_rtt (new_tc0, vnet_buffer (b0)->tcp.ack_number);
 	      TCP_EVT_DBG (TCP_EVT_SYNACK_RCVD, new_tc0);
 	    }
@@ -2352,7 +2355,6 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		}
 
 	      /* Update rtt and rto */
-	      tc0->bytes_acked = 1;
 	      tcp_update_rtt (tc0, vnet_buffer (b0)->tcp.ack_number);
 
 	      /* Switch state to ESTABLISHED */
