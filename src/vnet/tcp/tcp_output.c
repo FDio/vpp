@@ -918,7 +918,24 @@ tcp_send_reset (tcp_connection_t * tc)
   opts_write_len = tcp_options_write ((u8 *) (th + 1), &tc->snd_opts);
   ASSERT (opts_write_len == tc->snd_opts_len);
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
-  tcp_enqueue_to_output_now (vm, b, bi, tc->c_is_ip4);
+  if (tc->c_is_ip4)
+    {
+      ip4_header_t *ih4;
+      ih4 = vlib_buffer_push_ip4 (vm, b, &tc->c_lcl_ip.ip4,
+				  &tc->c_rmt_ip.ip4, IP_PROTOCOL_TCP, 0);
+      th->checksum = ip4_tcp_udp_compute_checksum (vm, b, ih4);
+    }
+  else
+    {
+      int bogus = ~0;
+      ip6_header_t *ih6;
+      ih6 = vlib_buffer_push_ip6 (vm, b, &tc->c_lcl_ip.ip6,
+				  &tc->c_rmt_ip.ip6, IP_PROTOCOL_TCP);
+      th->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ih6, &bogus);
+      ASSERT (!bogus);
+    }
+  tcp_enqueue_to_ip_lookup_now (vm, b, bi, tc->c_is_ip4);
+  TCP_EVT_DBG (TCP_EVT_RST_SENT, tc);
 }
 
 void
@@ -1324,7 +1341,7 @@ tcp_rtx_timeout_cc (tcp_connection_t * tc)
   tc->ssthresh = clib_max (tcp_flight_size (tc) / 2, 2 * tc->snd_mss);
   tc->cwnd = tcp_loss_wnd (tc);
   tc->snd_congestion = tc->snd_una_max;
-
+  tc->rtt_ts = 0;
   tcp_recovery_on (tc);
 }
 

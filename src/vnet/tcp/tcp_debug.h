@@ -20,7 +20,7 @@
 
 #define TCP_DEBUG (1)
 #define TCP_DEBUG_SM (0)
-#define TCP_DEBUG_CC (1)
+#define TCP_DEBUG_CC (0)
 #define TCP_DEBUG_CC_STAT (1)
 
 #define foreach_tcp_dbg_evt		\
@@ -411,21 +411,6 @@ typedef enum _tcp_dbg_evt
   ed->data[4] = _tc->snd_wnd;						\
 }
 
-#define TCP_EVT_DUPACK_SENT_HANDLER(_tc, ...)				\
-{									\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "dack-tx: rcv_nxt %u rcv_wnd %u snd_nxt %u av_wnd %u snd_wnd %u",\
-    .format_args = "i4i4i4i4i4",					\
-  };									\
-  DECLARE_ETD(_tc, _e, 5);						\
-  ed->data[0] = _tc->rcv_nxt - _tc->irs;				\
-  ed->data[1] = _tc->rcv_wnd;						\
-  ed->data[2] = _tc->snd_nxt - _tc->iss;				\
-  ed->data[3] = tcp_available_snd_wnd(_tc);				\
-  ed->data[4] = _tc->snd_wnd;						\
-}
-
 #define TCP_EVT_ACK_RCVD_HANDLER(_tc, ...)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
@@ -439,21 +424,6 @@ typedef enum _tcp_dbg_evt
   ed->data[2] = _tc->snd_wnd;						\
   ed->data[3] = _tc->cwnd;						\
   ed->data[4] = tcp_flight_size(_tc);					\
-}
-
-#define TCP_EVT_DUPACK_RCVD_HANDLER(_tc, ...)				\
-{									\
-  ELOG_TYPE_DECLARE (_e) =						\
-  {									\
-    .format = "dack-rx: snd_una %u cwnd %u snd_wnd %u flight %u rcv_wnd %u",\
-    .format_args = "i4i4i4i4i4",					\
-  };									\
-  DECLARE_ETD(_tc, _e, 5);						\
-  ed->data[0] = _tc->snd_una - _tc->iss;				\
-  ed->data[1] = _tc->cwnd;						\
-  ed->data[2] = _tc->snd_wnd;						\
-  ed->data[3] = tcp_flight_size(_tc);					\
-  ed->data[4] = _tc->rcv_wnd;						\
 }
 
 #define TCP_EVT_PKTIZE_HANDLER(_tc, ...)				\
@@ -601,9 +571,7 @@ if (_av > 0) 								\
 }
 #else
 #define TCP_EVT_ACK_SENT_HANDLER(_tc, ...)
-#define TCP_EVT_DUPACK_SENT_HANDLER(_tc, ...)
 #define TCP_EVT_ACK_RCVD_HANDLER(_tc, ...)
-#define TCP_EVT_DUPACK_RCVD_HANDLER(_tc, ...)
 #define TCP_EVT_PKTIZE_HANDLER(_tc, ...)
 #define TCP_EVT_INPUT_HANDLER(_tc, _type, _len, _written, ...)
 #define TCP_EVT_TIMER_POP_HANDLER(_tc_index, _timer_id, ...)
@@ -649,6 +617,30 @@ if (_av > 0) 								\
  */
 
 #if TCP_DEBUG_CC
+
+#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)			\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "cc: %s wnd %u snd_cong %u rxt_bytes %u",			\
+    .format_args = "t4i4i4i4",						\
+    .n_enum_strings = 6,						\
+    .enum_strings = {                                           	\
+      "fast-rxt",	                                             	\
+      "rxt-timeout",                                                 	\
+      "first-rxt",                                                 	\
+      "recovered",							\
+      "congestion",							\
+      "undo",								\
+    },  								\
+  };									\
+  DECLARE_ETD(_tc, _e, 4);						\
+  ed->data[0] = _sub_evt;						\
+  ed->data[1] = tcp_available_snd_space (_tc);				\
+  ed->data[2] = _tc->snd_congestion - _tc->iss;				\
+  ed->data[3] = _tc->snd_rxt_bytes;					\
+}
+
 #define TCP_EVT_CC_RTX_HANDLER(_tc, offset, n_bytes, ...)		\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
@@ -663,26 +655,34 @@ if (_av > 0) 								\
   ed->data[3] = _tc->snd_rxt_bytes;					\
 }
 
-#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)			\
+#define TCP_EVT_DUPACK_SENT_HANDLER(_tc, ...)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
   {									\
-    .format = "cc: %s wnd %u snd_cong %u rxt_bytes %u",			\
-    .format_args = "t4i4i4i4",						\
-    .n_enum_strings = 5,						\
-    .enum_strings = {                                           	\
-      "fast-rxt",	                                             	\
-      "rxt-timeout",                                                 	\
-      "first-rxt",                                                 	\
-      "recovered",							\
-      "congestion",							\
-    },  								\
+    .format = "dack-tx: rcv_nxt %u rcv_wnd %u snd_nxt %u av_wnd %u snd_wnd %u",\
+    .format_args = "i4i4i4i4i4",					\
   };									\
-  DECLARE_ETD(_tc, _e, 4);						\
-  ed->data[0] = _sub_evt;						\
-  ed->data[1] = tcp_available_snd_space (_tc);				\
-  ed->data[2] = _tc->snd_congestion - _tc->iss;				\
-  ed->data[3] = _tc->snd_rxt_bytes;					\
+  DECLARE_ETD(_tc, _e, 5);						\
+  ed->data[0] = _tc->rcv_nxt - _tc->irs;				\
+  ed->data[1] = _tc->rcv_wnd;						\
+  ed->data[2] = _tc->snd_nxt - _tc->iss;				\
+  ed->data[3] = tcp_available_snd_wnd(_tc);				\
+  ed->data[4] = _tc->snd_wnd;						\
+}
+
+#define TCP_EVT_DUPACK_RCVD_HANDLER(_tc, ...)				\
+{									\
+  ELOG_TYPE_DECLARE (_e) =						\
+  {									\
+    .format = "dack-rx: snd_una %u cwnd %u snd_wnd %u flight %u rcv_wnd %u",\
+    .format_args = "i4i4i4i4i4",					\
+  };									\
+  DECLARE_ETD(_tc, _e, 5);						\
+  ed->data[0] = _tc->snd_una - _tc->iss;				\
+  ed->data[1] = _tc->cwnd;						\
+  ed->data[2] = _tc->snd_wnd;						\
+  ed->data[3] = tcp_flight_size(_tc);					\
+  ed->data[4] = _tc->rcv_wnd;						\
 }
 
 #define TCP_EVT_CC_PACK_HANDLER(_tc, ...)				\
@@ -696,6 +696,13 @@ if (_av > 0) 								\
   ed->data[0] = _tc->snd_una - _tc->iss;				\
   ed->data[1] = _tc->snd_una_max - _tc->iss;				\
 }
+#else
+#define TCP_EVT_CC_RTX_HANDLER(_tc, offset, n_bytes, ...)
+#define TCP_EVT_DUPACK_SENT_HANDLER(_tc, ...)
+#define TCP_EVT_DUPACK_RCVD_HANDLER(_tc, ...)
+#define TCP_EVT_CC_PACK_HANDLER(_tc, ...)
+#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)
+#endif
 
 /*
  * Congestion control stats
@@ -741,13 +748,6 @@ if (_tc->c_cc_stat_tstamp + STATS_INTERVAL < tcp_time_now())		\
 }
 
 #else
-#define TCP_EVT_CC_STAT_HANDLER(_tc, ...)
-#endif
-
-#else
-#define TCP_EVT_CC_RTX_HANDLER(_tc, offset, n_bytes, ...)
-#define TCP_EVT_CC_EVT_HANDLER(_tc, _sub_evt, ...)
-#define TCP_EVT_CC_PACK_HANDLER(_tc, ...)
 #define TCP_EVT_CC_STAT_HANDLER(_tc, ...)
 #endif
 
