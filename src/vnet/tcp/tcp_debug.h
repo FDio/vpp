@@ -19,9 +19,9 @@
 #include <vlib/vlib.h>
 
 #define TCP_DEBUG (1)
-#define TCP_DEBUG_SM (0)
+#define TCP_DEBUG_SM (1)
 #define TCP_DEBUG_CC (1)
-#define TCP_DEBUG_CC_STAT (1)
+#define TCP_DEBUG_CC_STAT (0)
 
 #define foreach_tcp_dbg_evt		\
   _(INIT, "")				\
@@ -669,13 +669,14 @@ if (_av > 0) 								\
   {									\
     .format = "cc: %s wnd %u snd_cong %u rxt_bytes %u",			\
     .format_args = "t4i4i4i4",						\
-    .n_enum_strings = 5,						\
+    .n_enum_strings = 6,						\
     .enum_strings = {                                           	\
       "fast-rxt",	                                             	\
       "rxt-timeout",                                                 	\
       "first-rxt",                                                 	\
       "recovered",							\
       "congestion",							\
+      "undo",								\
     },  								\
   };									\
   DECLARE_ETD(_tc, _e, 4);						\
