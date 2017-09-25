@@ -175,9 +175,17 @@ typedef struct {
    * and serving as the 5-tuple session tables at the same time
    */
   u32 *acl_ip4_input_classify_table_by_sw_if_index;
+  u32 *acl_ip4_input_dot1q_classify_table_by_sw_if_index;
+  u32 *acl_ip4_input_dot1ad_classify_table_by_sw_if_index;
   u32 *acl_ip6_input_classify_table_by_sw_if_index;
+  u32 *acl_ip6_input_dot1q_classify_table_by_sw_if_index;
+  u32 *acl_ip6_input_dot1ad_classify_table_by_sw_if_index;
   u32 *acl_ip4_output_classify_table_by_sw_if_index;
+  u32 *acl_ip4_output_dot1q_classify_table_by_sw_if_index;
+  u32 *acl_ip4_output_dot1ad_classify_table_by_sw_if_index;
   u32 *acl_ip6_output_classify_table_by_sw_if_index;
+  u32 *acl_ip6_output_dot1q_classify_table_by_sw_if_index;
+  u32 *acl_ip6_output_dot1ad_classify_table_by_sw_if_index;
 
   /* MACIP (input) ACLs associated with the interfaces */
   u32 *macip_acl_by_sw_if_index;
