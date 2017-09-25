@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_92546222",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-25T11:45:45Z",
+      "side": 1,
+      "message": "How about:\n\n    uword dpdk_port;\n    vec_reset_length (event_data);\n    event_type \u003d vlib_process_get_events (vm, \u0026event_data);\n    ASSERT (event_type \u003d\u003d SEND_GARP_NA);\n    for (i \u003d 0; i \u003c vec_len(event_data); i++)\n        {\n             dpdk_port \u003d event_data[i];\n             \u003cdeal with one port\u003e\n        }\n\nParticularly in view of the 0.2s delay, there\u0027s every chance that you might get \u003e 1 event per wakeup; if you don\u0027t processes all of them, the event_data vector will grow, and so forth.",
+      "revId": "c948ac546c99ba4f4e84f509572f38b029d1801d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_d25ada4f",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 208,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-25T11:45:45Z",
+      "side": 1,
+      "message": "Is there a realistic chance that dpdk_port will be ~0?",
+      "range": {
+        "startLine": 208,
+        "startChar": 6,
+        "endLine": 208,
+        "endChar": 26
+      },
+      "revId": "c948ac546c99ba4f4e84f509572f38b029d1801d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_f25dd649",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 262,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-09-25T11:45:45Z",
+      "side": 1,
+      "message": "Please don\u0027t leave active clib_warnings(...) in the code base, unless you\u0027re trying to report a serious error...",
+      "revId": "c948ac546c99ba4f4e84f509572f38b029d1801d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
