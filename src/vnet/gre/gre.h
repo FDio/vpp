@@ -24,6 +24,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/ip/format.h>
 #include <vnet/adj/adj_types.h>
+#include <vnet/tunnel/tunnel.h>
 
 extern vnet_hw_interface_class_t gre_hw_interface_class;
 
@@ -99,19 +100,6 @@ typedef struct {
   gre_tunnel_type_t type;
 
   /**
-   * The FIB entry sourced by the tunnel for its destination prefix
-   */
-  fib_node_index_t fib_entry_index;
-
-  /**
-   * The tunnel is a child of the FIB entry for its desintion. This is
-   * so it receives updates when the forwarding information for that entry
-   * changes.
-   * The tunnels sibling index on the FIB entry's dependency list.
-   */
-  u32 sibling_index;
-
-  /**
    * on a L2 tunnel this is the VLIB arc from the L2-tx to the l2-midchain
    */
   u32 l2_tx_arc;
@@ -120,6 +108,16 @@ typedef struct {
    * an L2 tunnel always rquires an L2 midchain. cache here for DP.
    */
   adj_index_t l2_adj_index;
+
+  /**
+   * The tunnel that is our parent
+   */
+  index_t gt_parent;
+
+  /**
+   * The sibling on the parent
+   */
+  u32 gt_sibling;
 } gre_tunnel_t;
 
 /**
@@ -142,14 +140,9 @@ typedef struct {
   uword * protocol_info_by_name, * protocol_info_by_protocol;
 
   /**
-   * Hash mapping ipv4 src/dst addr pair to tunnel
+   * Hash mapping ip src/dst addr pair to tunnel
    */
-  uword * tunnel_by_key4;
-
-  /**
-     * Hash mapping ipv6 src/dst addr pair to tunnel
-     */
-    uword * tunnel_by_key6;
+  uword * tunnel_by_key;
 
   /**
    * Free vlib hw_if_indices.

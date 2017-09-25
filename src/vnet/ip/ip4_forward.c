@@ -1689,11 +1689,11 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = lbi0 =
 	    ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbi0;
+	  //vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbi0;
 
 	  vnet_buffer (p1)->ip.adj_index[VLIB_RX] = lbi1 =
 	    ip4_fib_mtrie_leaf_get_adj_index (leaf1);
-	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] = lbi1;
+	  //vnet_buffer (p1)->ip.adj_index[VLIB_TX] = lbi1;
 
 	  lb0 = load_balance_get (lbi0);
 	  lb1 = load_balance_get (lbi1);
@@ -1810,7 +1810,7 @@ ip4_local_inline (vlib_main_t * vm,
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address,
 					     3);
 	  lbi0 = ip4_fib_mtrie_leaf_get_adj_index (leaf0);
-	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbi0;
+	  // vnet_buffer (p0)->ip.adj_index[VLIB_TX] = lbi0;
 	  vnet_buffer (p0)->ip.adj_index[VLIB_RX] = lbi0;
 
 	  lb0 = load_balance_get (lbi0);

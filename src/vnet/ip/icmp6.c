@@ -393,6 +393,10 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	    = vnet_main.local_interface_sw_if_index;
 	  vnet_buffer (p1)->sw_if_index[VLIB_RX]
 	    = vnet_main.local_interface_sw_if_index;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+            vnet_buffer (p0)->ip.adj_index[VLIB_RX];
+	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] =
+            vnet_buffer (p1)->ip.adj_index[VLIB_RX];
 
 	  /* verify speculative enqueues, maybe switch current next frame */
 	  /* if next0==next1==next_index then nothing special needs to be done */
@@ -465,6 +469,8 @@ ip6_icmp_echo_request (vlib_main_t * vm,
 	    }
 	  vnet_buffer (p0)->sw_if_index[VLIB_RX]
 	    = vnet_main.local_interface_sw_if_index;
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+            vnet_buffer (p0)->ip.adj_index[VLIB_RX];
 
 	  /* Verify speculative enqueue, maybe switch current next frame */
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,

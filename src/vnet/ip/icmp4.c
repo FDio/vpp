@@ -338,6 +338,11 @@ ip4_icmp_echo_request (vlib_main_t * vm,
 
 	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
 	  p1->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+            vnet_buffer (p0)->ip.adj_index[VLIB_RX];
+	  vnet_buffer (p1)->ip.adj_index[VLIB_TX] =
+            vnet_buffer (p1)->ip.adj_index[VLIB_RX];
 	}
 
       while (n_left_from > 0 && n_left_to_next > 0)
@@ -393,6 +398,9 @@ ip4_icmp_echo_request (vlib_main_t * vm,
 	  ASSERT (ip0->checksum == ip4_header_checksum (ip0));
 
 	  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+	  vnet_buffer (p0)->ip.adj_index[VLIB_TX] =
+            vnet_buffer (p0)->ip.adj_index[VLIB_RX];
 	}
 
       vlib_put_next_frame (vm, node, next, n_left_to_next);
