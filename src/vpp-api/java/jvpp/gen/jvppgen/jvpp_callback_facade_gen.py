@@ -246,6 +246,9 @@ jvpp_facade_callback_method_template = Template("""
 
         $plugin_package.$callback_package.$callback callback;
         final int replyId = reply.context;
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.fine(String.format("Received $callback_dto event message: %s", reply));
+        }
         synchronized(requests) {
             callback = ($plugin_package.$callback_package.$callback) requests.remove(replyId);
         }
@@ -260,6 +263,9 @@ jvpp_facade_callback_notification_method_template = Template("""
     @Override
     @SuppressWarnings("unchecked")
     public void on$callback_dto($plugin_package.$dto_package.$callback_dto notification) {
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.fine(String.format("Received $callback_dto event message: %s", notification));
+        }
         notificationCallback.on$callback_dto(notification);
     }
 """)
