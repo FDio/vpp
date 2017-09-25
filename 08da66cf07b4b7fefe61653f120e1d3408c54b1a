@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_ddd9cb84",
+        "filename": "src/vpp-api/java/jvpp/gen/jvppgen/jvpp_c_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 144,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-09-25T14:01:32Z",
+      "side": 1,
+      "message": "I think logging data sent/received via shm would be useful.",
+      "range": {
+        "startLine": 144,
+        "startChar": 7,
+        "endLine": 144,
+        "endChar": 61
+      },
+      "revId": "08da66cf07b4b7fefe61653f120e1d3408c54b1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_3df33f0c",
+        "filename": "src/vpp-api/java/jvpp/gen/jvppgen/notification_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-09-25T14:01:32Z",
+      "side": 1,
+      "message": "why public?",
+      "range": {
+        "startLine": 65,
+        "startChar": 4,
+        "endLine": 65,
+        "endChar": 18
+      },
+      "revId": "08da66cf07b4b7fefe61653f120e1d3408c54b1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_fddc8776",
+        "filename": "src/vpp-api/java/jvpp/gen/jvppgen/notification_gen.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-09-25T14:01:32Z",
+      "side": 1,
+      "message": "This would decrease performance.\nString.format is invoked regardless of log level.\nPlease use isLoggable.",
+      "range": {
+        "startLine": 91,
+        "startChar": 8,
+        "endLine": 91,
+        "endChar": 90
+      },
+      "revId": "08da66cf07b4b7fefe61653f120e1d3408c54b1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
