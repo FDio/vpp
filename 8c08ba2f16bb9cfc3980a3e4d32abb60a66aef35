@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_bd196f24",
+        "filename": "test/test_jvpp.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 134,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-09-25T15:14:04Z",
+      "side": 1,
+      "message": "we need to handle the possible non-existence of self.process here. tearDown() could get called if things go wrong before self.process is set.",
+      "revId": "8c08ba2f16bb9cfc3980a3e4d32abb60a66aef35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
