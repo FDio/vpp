@@ -140,6 +140,8 @@ JNIEXPORT jint JNICALL Java_io_fd_vpp_jvpp_${plugin_name}_JVpp${java_plugin_name
     $msg_initialization
 
     // send message:
+    if (CLIB_DEBUG > 1)
+        clib_warning ("Sending ${field_name} event message");
     vl_msg_api_send_shmem (plugin_main->vl_input_queue, (u8 *)&mp);
     if ((*env)->ExceptionCheck(env)) {
         return JNI_ERR;
@@ -228,6 +230,9 @@ static void vl_api_${handler_name}_t_handler (vl_api_${handler_name}_t * mp)
     JNIEnv *env = jvpp_main.jenv;
     jthrowable exc;
     $err_handler
+
+    if (CLIB_DEBUG > 1)
+        clib_warning ("Received ${handler_name} event message");
 
     jmethodID constructor = (*env)->GetMethodID(env, ${class_ref_name}Class, "<init>", "()V");
 
