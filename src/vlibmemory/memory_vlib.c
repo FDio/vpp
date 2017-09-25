@@ -2348,7 +2348,9 @@ cleanup:
 ?*/
 
 /*?
- * Display a serialized API message decode table
+ * Display a serialized API message decode table, compare a saved
+ * decode table with the current image, to establish API differences.
+ *
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (dump_api_table_file, static) =

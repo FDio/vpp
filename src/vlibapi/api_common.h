@@ -20,71 +20,74 @@
 #ifndef included_api_common_h
 #define included_api_common_h
 
+/** \file API common definitions
+ * See api_doc.md for more info
+ */
+
 #include <vppinfra/clib_error.h>
 #include <svm/svm_common.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
 
+/** API registration types
+ */
 typedef enum
 {
   REGISTRATION_TYPE_FREE = 0,
-  REGISTRATION_TYPE_SHMEM,
-  REGISTRATION_TYPE_SOCKET_LISTEN,
-  REGISTRATION_TYPE_SOCKET_SERVER,
-  REGISTRATION_TYPE_SOCKET_CLIENT,
+  REGISTRATION_TYPE_SHMEM,	/**< Shared memory connection */
+  REGISTRATION_TYPE_SOCKET_LISTEN, /**< Socket listener  */
+  REGISTRATION_TYPE_SOCKET_SERVER, /**< Socket server */
+  REGISTRATION_TYPE_SOCKET_CLIENT, /**< Socket client */
 } vl_registration_type_t;
+
+/** An API client registration, only in vpp/vlib */
 
 typedef struct vl_api_registration_
 {
-  vl_registration_type_t registration_type;
+  vl_registration_type_t registration_type; /**< type */
 
-  /* Index in VLIB's brain (not shared memory). */
+  /** Index in VLIB's brain (not shared memory). */
   u32 vl_api_registration_pool_index;
 
-  u8 *name;
+  u8 *name;			/**< Client name */
 
-  /*
-   * The following groups of data could be unioned, but my fingers are
-   * going to be sore enough.
-   */
-
-  /* shared memory only */
+  /** shared memory only: pointer to client input queue */
   unix_shared_memory_queue_t *vl_input_queue;
 
   /* socket server and client */
-  u32 clib_file_index;
-  i8 *unprocessed_input;
-  u32 unprocessed_msg_length;
-  u8 *output_vector;
+  u32 clib_file_index;		/**< Socket only: file index */
+  i8 *unprocessed_input;	/**< Socket only: pending input */
+  u32 unprocessed_msg_length;	/**< Socket only: unprocssed length */
+  u8 *output_vector;		/**< Socket only: output vecto  */
 
   /* socket client only */
-  u32 server_handle;
-  u32 server_index;
-
+  u32 server_handle;		/**< Socket client only: server handle */
+  u32 server_index;		/**< Socket client only: server index */
 } vl_api_registration_t;
 
 
-/* Trace configuration for a single message */
+/** Trace configuration for a single message */
 typedef struct
 {
-  int size;
-  int trace_enable;
-  int replay_enable;
+  int size;			/**< for sanity checking */
+  int trace_enable;		/**< trace this message  */
+  int replay_enable;		/**< This message can be replayed  */
 } trace_cfg_t;
 
-/*
- * API recording
+/**
+ * API trace state
  */
 typedef struct
 {
-  u8 endian;
-  u8 enabled;
-  u8 wrapped;
+  u8 endian;			/**< trace endianness */
+  u8 enabled;			/**< trace is enabled  */
+  u8 wrapped;			/**< trace has wrapped */
   u8 pad;
-  u32 nitems;
-  u32 curindex;
-  u8 **traces;
+  u32 nitems;			/**< Number of trace records */
+  u32 curindex;			/**< Current index in circular buffer  */
+  u8 **traces;			/**< Trace ring */
 } vl_api_trace_t;
 
+/** Trace RX / TX enum */
 typedef enum
 {
   VL_API_TRACE_TX,
@@ -94,35 +97,38 @@ typedef enum
 #define VL_API_LITTLE_ENDIAN 0x00
 #define VL_API_BIG_ENDIAN 0x01
 
+/** Message range (belonging to a plugin) */
 typedef struct
 {
-  u8 *name;
-  u16 first_msg_id;
-  u16 last_msg_id;
+  u8 *name;			/**< name of the plugin  */
+  u16 first_msg_id;		/**< first assigned message ID */
+  u16 last_msg_id;		/**< last assigned message ID */
 } vl_api_msg_range_t;
 
+/** Message configuration definition */
 typedef struct
 {
-  int id;
-  char *name;
-  u32 crc;
-  void *handler;
-  void *cleanup;
-  void *endian;
-  void *print;
-  int size;
-  int traced;
-  int replay;
-  int message_bounce;
-  int is_mp_safe;
+  int id;			/**< the message ID */
+  char *name;			/**< the message name */
+  u32 crc;			/**< message definition CRC  */
+  void *handler;		/**< the message handler  */
+  void *cleanup;		/**< non-default message cleanup handler */
+  void *endian;			/**< message endian function  */
+  void *print;			/**< message print function  */
+  int size;			/**< message size  */
+  int traced;			/**< is this message to be traced?  */
+  int replay;			/**< is this message to be replayed?  */
+  int message_bounce;		/**< do not free message after processing */
+  int is_mp_safe;		/**< worker thread barrier required?  */
 } vl_msg_api_msg_config_t;
 
+/** Message header structure */
 typedef struct msgbuf_
 {
-  unix_shared_memory_queue_t *q;
-  u32 data_len;
-  u32 gc_mark_timestamp;
-  u8 data[0];
+  unix_shared_memory_queue_t *q; /**< message allocated in this shmem ring  */
+  u32 data_len;			 /**< message length not including header  */
+  u32 gc_mark_timestamp;	 /**< message garbage collector mark TS  */
+  u8 data[0];			 /**< actual message begins here  */
 } msgbuf_t;
 
 /* api_shared.c prototypes */
@@ -171,100 +177,146 @@ typedef struct _vl_msg_api_init_function_list_elt
   vl_msg_api_init_function_t *f;
 } _vl_msg_api_function_list_elt_t;
 
+/** API main structure, used by both vpp and binary API clients */
 typedef struct
 {
+  /** Message handler vector  */
   void (**msg_handlers) (void *);
+  /** Plaform-dependent (aka hardware) message handler vector */
   int (**pd_msg_handlers) (void *, int);
+
+  /** non-default message cleanup handler vector */
   void (**msg_cleanup_handlers) (void *);
+
+  /** Message endian handler vector */
   void (**msg_endian_handlers) (void *);
+
+  /** Message print function vector */
   void (**msg_print_handlers) (void *, void *);
+
+  /** Message name vector */
   const char **msg_names;
+
+  /** Don't automatically free message buffer vetor */
   u8 *message_bounce;
+
+  /** Message is mp safe vector */
   u8 *is_mp_safe;
+
+  /** Allocator ring vectors (in shared memory) */
   struct ring_alloc_ *arings;
+
+  /** Number of times that the ring allocator failed */
   u32 ring_misses;
+
+  /** Number of garbage-collected message buffers */
   u32 garbage_collects;
+
+  /** Number of missing clients / failed message sends */
   u32 missing_clients;
+
+  /** Received message trace configuration */
   vl_api_trace_t *rx_trace;
+
+  /** Sent message trace configuration */
   vl_api_trace_t *tx_trace;
+
+  /** Print every received message */
   int msg_print_flag;
+
+  /** Current trace configuration */
   trace_cfg_t *api_trace_cfg;
+
+  /** Current process PID */
   int our_pid;
+
+  /** Binary api segment descriptor */
   svm_region_t *vlib_rp;
+
+  /** Vector of all mapped shared-VM segments */
   svm_region_t **mapped_shmem_regions;
+
+  /** Binary API shared-memory segment header pointer */
   struct vl_shmem_hdr_ *shmem_hdr;
+
+  /** vlib/vpp only: vector of client registrations */
   vl_api_registration_t **vl_clients;
 
+  /** vlib/vpp only: serialized (message, name, crc) table */
   u8 *serialized_message_table_in_shmem;
 
-  /* For plugin msg allocator */
+  /** First available message ID, for theplugin msg allocator */
   u16 first_available_msg_id;
 
-  /* message range by name hash */
+  /** Message range by name hash */
   uword *msg_range_by_name;
 
-  /* vector of message ranges */
+  /** vector of message ranges */
   vl_api_msg_range_t *msg_ranges;
 
-  /* uid for the api shared memory region */
+  /** uid for the api shared memory region */
   int api_uid;
-  /* gid for the api shared memory region */
+
+  /** gid for the api shared memory region */
   int api_gid;
 
-  /* base virtual address for global VM region */
+  /** base virtual address for global VM region */
   u64 global_baseva;
 
-  /* size of the global VM region */
+  /** size of the global VM region */
   u64 global_size;
 
-  /* size of the API region */
+  /** size of the API region */
   u64 api_size;
 
-  /* size of the global VM private mheap */
+  /** size of the global VM private mheap */
   u64 global_pvt_heap_size;
 
-  /* size of the api private mheap */
+  /** size of the api private mheap */
   u64 api_pvt_heap_size;
 
-  /* Client-only data structures */
+  /** Peer input queue pointer */
   unix_shared_memory_queue_t *vl_input_queue;
 
-  /*
+  /**
    * All VLIB-side message handlers use my_client_index to identify
    * the queue / client. This works in sim replay.
    */
   int my_client_index;
-  /*
+  /**
    * This is the (shared VM) address of the registration,
    * don't use it to id the connection since it can't possibly
    * work in simulator replay.
    */
   vl_api_registration_t *my_registration;
 
+  /** (Historical) signal-based queue non-empty signal, to be removed */
   i32 vlib_signal;
 
-  /* vlib input queue length */
+  /** vpp/vlib input queue length */
   u32 vlib_input_queue_length;
 
-  /* client side message index hash table */
+  /** client message index hash table */
   uword *msg_index_by_name_and_crc;
 
+  /** Shared VM binary API region name */
   const char *region_name;
+
+  /** Chroot path to the shared memory API files */
   const char *root_path;
 
-  /* Replay in progress? */
+  /** Replay in progress? */
   int replay_in_progress;
 
-  /* Dump (msg-name, crc) snapshot here at startup */
+  /** Dump (msg-name, crc) snapshot here at startup */
   u8 *save_msg_table_filename;
 
-  /* List of API client reaper functions */
+  /** List of API client reaper functions */
   _vl_msg_api_function_list_elt_t *reaper_function_registrations;
 
 } api_main_t;
 
 extern api_main_t api_main;
-
 
 #endif /* included_api_common_h */
 
