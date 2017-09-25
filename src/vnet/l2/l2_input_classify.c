@@ -146,6 +146,8 @@ static uword
 l2_input_classify_node_fn (vlib_main_t * vm,
 			   vlib_node_runtime_t * node, vlib_frame_t * frame)
 {
+#define get_u16(addr) ( *((u16 *)(addr)) )
+
   u32 n_left_from, *from, *to_next;
   l2_input_classify_next_t next_index;
   l2_input_classify_main_t *cm = &l2_input_classify_main;
@@ -174,7 +176,7 @@ l2_input_classify_node_fn (vlib_main_t * vm,
       ethernet_header_t *h0, *h1;
       u32 sw_if_index0, sw_if_index1;
       u16 type0, type1;
-      int type_index0, type_index1;
+      u32 type_index0, type_index1;
       vnet_classify_table_t *t0, *t1;
       u32 table_index0, table_index1;
       u64 hash0, hash1;
@@ -215,11 +217,25 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 	? L2_INPUT_CLASSIFY_TABLE_IP4 : L2_INPUT_CLASSIFY_TABLE_OTHER;
       type_index0 = (type0 == ETHERNET_TYPE_IP6)
 	? L2_INPUT_CLASSIFY_TABLE_IP6 : type_index0;
+      if (PREDICT_FALSE
+	  (type0 == ETHERNET_TYPE_VLAN || type0 == ETHERNET_TYPE_DOT1AD))
+	{
+	  vnet_l2_classify_vlans_type_index ((u8 *) h0 +
+					     vnet_buffer (b0)->l2.l2_len,
+					     &type_index0);
+	}
 
       type_index1 = (type1 == ETHERNET_TYPE_IP4)
 	? L2_INPUT_CLASSIFY_TABLE_IP4 : L2_INPUT_CLASSIFY_TABLE_OTHER;
       type_index1 = (type1 == ETHERNET_TYPE_IP6)
 	? L2_INPUT_CLASSIFY_TABLE_IP6 : type_index1;
+      if (PREDICT_FALSE
+	  (type1 == ETHERNET_TYPE_VLAN || type1 == ETHERNET_TYPE_DOT1AD))
+	{
+	  vnet_l2_classify_vlans_type_index ((u8 *) h1 +
+					     vnet_buffer (b1)->l2.l2_len,
+					     &type_index1);
+	}
 
       vnet_buffer (b0)->l2_classify.table_index =
 	table_index0 =
@@ -279,6 +295,13 @@ l2_input_classify_node_fn (vlib_main_t * vm,
 	? L2_INPUT_CLASSIFY_TABLE_IP4 : L2_INPUT_CLASSIFY_TABLE_OTHER;
       type_index0 = (type0 == ETHERNET_TYPE_IP6)
 	? L2_INPUT_CLASSIFY_TABLE_IP6 : type_index0;
+      if (PREDICT_FALSE
+	  (type0 == ETHERNET_TYPE_VLAN || type0 == ETHERNET_TYPE_DOT1AD))
+	{
+	  vnet_l2_classify_vlans_type_index ((u8 *) h0 +
+					     vnet_buffer (b0)->l2.l2_len,
+					     &type_index0);
+	}
 
       vnet_buffer (b0)->l2_classify.table_index =
 	table_index0 = rt->l2cm->classify_table_index_by_sw_if_index
@@ -534,8 +557,10 @@ vnet_l2_input_classify_enable_disable (u32 sw_if_index, int enable_disable)
 
 int
 vnet_l2_input_classify_set_tables (u32 sw_if_index,
-				   u32 ip4_table_index,
-				   u32 ip6_table_index, u32 other_table_index)
+				   u32 ip4_table_index, u32 ip6_table_index,
+				   u32 other_table_index,
+				   u32 ip4_tagged_table_index,
+				   u32 ip6_tagged_table_index)
 {
   l2_input_classify_main_t *cm = &l2_input_classify_main;
   vnet_classify_main_t *vcm = cm->vnet_classify_main;
@@ -563,6 +588,14 @@ vnet_l2_input_classify_set_tables (u32 sw_if_index,
      sw_if_index);
 
   vec_validate
+    (cm->classify_table_index_by_sw_if_index
+     [L2_INPUT_CLASSIFY_TABLE_IP4_TAGGED], sw_if_index);
+
+  vec_validate
+    (cm->classify_table_index_by_sw_if_index
+     [L2_INPUT_CLASSIFY_TABLE_IP6_TAGGED], sw_if_index);
+
+  vec_validate
     (cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_OTHER],
      sw_if_index);
 
@@ -571,6 +604,12 @@ vnet_l2_input_classify_set_tables (u32 sw_if_index,
 
   cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP6]
     [sw_if_index] = ip6_table_index;
+
+  cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP4_TAGGED]
+    [sw_if_index] = ip4_tagged_table_index;
+
+  cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_IP6_TAGGED]
+    [sw_if_index] = ip6_tagged_table_index;
 
   cm->classify_table_index_by_sw_if_index[L2_INPUT_CLASSIFY_TABLE_OTHER]
     [sw_if_index] = other_table_index;
@@ -618,7 +657,8 @@ int_l2_input_classify_command_fn (vlib_main_t * vm,
     }
 
   rv = vnet_l2_input_classify_set_tables (sw_if_index, ip4_table_index,
-					  ip6_table_index, other_table_index);
+					  ip6_table_index, other_table_index,
+					  ~0, ~0);
   switch (rv)
     {
     case 0:

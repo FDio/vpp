@@ -48,6 +48,8 @@ typedef enum
 {
   L2_INPUT_CLASSIFY_TABLE_IP4,
   L2_INPUT_CLASSIFY_TABLE_IP6,
+  L2_INPUT_CLASSIFY_TABLE_IP4_TAGGED,
+  L2_INPUT_CLASSIFY_TABLE_IP6_TAGGED,
   L2_INPUT_CLASSIFY_TABLE_OTHER,
   L2_INPUT_CLASSIFY_N_TABLES,
 } l2_input_classify_table_id_t;
@@ -62,6 +64,8 @@ typedef enum
 {
   L2_OUTPUT_CLASSIFY_TABLE_IP4,
   L2_OUTPUT_CLASSIFY_TABLE_IP6,
+  L2_OUTPUT_CLASSIFY_TABLE_IP4_TAGGED,
+  L2_OUTPUT_CLASSIFY_TABLE_IP6_TAGGED,
   L2_OUTPUT_CLASSIFY_TABLE_OTHER,
   L2_OUTPUT_CLASSIFY_N_TABLES,
 } l2_output_classify_table_id_t;
@@ -94,14 +98,29 @@ void vnet_l2_input_classify_enable_disable (u32 sw_if_index,
 
 int vnet_l2_input_classify_set_tables (u32 sw_if_index, u32 ip4_table_index,
 				       u32 ip6_table_index,
-				       u32 other_table_index);
+				       u32 other_table_index,
+				       u32 ip4_tagged_table_index,
+				       u32 ip6_tagged_table_index);
 
 void vnet_l2_output_classify_enable_disable (u32 sw_if_index,
 					     int enable_disable);
 
 int vnet_l2_output_classify_set_tables (u32 sw_if_index, u32 ip4_table_index,
 					u32 ip6_table_index,
-					u32 other_table_index);
+					u32 other_table_index,
+					u32 ip4_tagged_table_index,
+					u32 ip6_tagged_table_index);
+
+static inline void
+vnet_l2_classify_vlans_type_index (u8 * l3h, u32 * type_index)
+{
+  u16 ethertype;
+  ethertype = clib_net_to_host_u16 (*((u16 *) (l3h - 2)));
+  if (ethertype == ETHERNET_TYPE_IP4)
+    *type_index = L2_INPUT_CLASSIFY_TABLE_IP4_TAGGED;
+  else if (ethertype == ETHERNET_TYPE_IP6)
+    *type_index = L2_INPUT_CLASSIFY_TABLE_IP6_TAGGED;
+}
 
 #endif /* __included_vnet_l2_input_classify_h__ */
 

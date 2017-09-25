@@ -1117,11 +1117,11 @@ static void vl_api_classify_set_interface_l2_tables_t_handler
   if (mp->is_input)
     rv = vnet_l2_input_classify_set_tables (sw_if_index, ip4_table_index,
 					    ip6_table_index,
-					    other_table_index);
+					    other_table_index, ~0, ~0);
   else
     rv = vnet_l2_output_classify_set_tables (sw_if_index, ip4_table_index,
 					     ip6_table_index,
-					     other_table_index);
+					     other_table_index, ~0, ~0);
 
   if (rv == 0)
     {
