@@ -62,6 +62,7 @@ public final class ${plugin_name}NotificationRegistryImpl implements ${plugin_na
     // TODO add a special NotificationCallback interface and only allow those to be registered
     private final java.util.concurrent.ConcurrentMap<Class<? extends $base_package.$dto_package.JVppNotification>, $base_package.$callback_package.JVppNotificationCallback> registeredCallbacks =
         new java.util.concurrent.ConcurrentHashMap<>();
+    private static java.util.logging.Logger LOG = java.util.logging.Logger.getLogger(${plugin_name}NotificationRegistryImpl.class.getName());
 
     $register_callback_methods
     $handler_methods
@@ -87,6 +88,9 @@ handler_impl_template = Template("""
     @Override
     public void on$notification(
         final $plugin_package.$dto_package.$notification notification) {
+        if (LOG.isLoggable(java.util.logging.Level.FINE)) {
+            LOG.fine(String.format("Received $notification event message: %s", notification));
+        }
         final $base_package.$callback_package.JVppNotificationCallback jVppNotificationCallback = registeredCallbacks.get($plugin_package.$dto_package.$notification.class);
         if (null != jVppNotificationCallback) {
             (($plugin_package.$callback_package.$callback) registeredCallbacks
