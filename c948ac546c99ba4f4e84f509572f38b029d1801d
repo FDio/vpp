@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "1a486d77_9d30f3e9",
+        "filename": "src/plugins/dpdk/device/common.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 207,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-09-25T13:00:39Z",
+      "side": 1,
+      "message": "Why are we calling vec_reset_length(event_data) before calling vlib_process_get_events() instead of after the for loop? Isn\u0027t there a possibility a call to signal_event() may occur during the 0.2s delay which mat get cleared with this call sequence?",
+      "parentUuid": "1a486d77_92546222",
+      "revId": "c948ac546c99ba4f4e84f509572f38b029d1801d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a486d77_d25ada4f",
         "filename": "src/plugins/dpdk/device/common.c",
         "patchSetId": 1
