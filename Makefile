@@ -74,6 +74,7 @@ else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-9)
 	DEB_DEPENDS += default-jdk-headless
 	DEB_DEPENDS += libssl1.0-dev
 else 
+	DEB_DEPENDS += default-jdk-headless
 	DEB_DEPENDS += libssl-dev
 endif
 
