@@ -2493,6 +2493,23 @@ class VppPapiProvider(object):
                          'acls': acls},
                         expected_retval=expected_retval)
 
+    def acl_interface_add_del(self,
+                              sw_if_index,
+                              acl_index,
+                              is_add=1):
+        """ Add/Delete ACL to/from interface
+
+        :param sw_if_index:
+        :param acl_index:
+        :param is_add:  (Default value = 1)
+        """
+
+        return self.api(self.papi.acl_interface_add_del,
+                        {'is_add': is_add,
+                         'is_input': 1,
+                         'sw_if_index': sw_if_index,
+                         'acl_index': acl_index})
+
     def acl_dump(self, acl_index, expected_retval=0):
         return self.api(self.papi.acl_dump,
                         {'acl_index': acl_index},

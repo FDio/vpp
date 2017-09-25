@@ -318,12 +318,14 @@ acl_del_list (u32 acl_list_index)
 /* Some aids in ASCII graphing the content */
 #define XX "\377"
 #define __ "\000"
+#define DOT1AD "\210\250"
+#define DOT1Q "\201\00"
 #define _(x)
 #define v
 
 u8 ip4_5tuple_mask[] =
-_("             dmac               smac            etype ")
-_(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v __ __ v
+  _("             dmac               smac            etype ")
+  _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v __ __ v
   _("        v ihl totlen   ")
   _(0x0000)
   __ __ __ __
@@ -349,8 +351,8 @@ _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v __ __ v
   _(padeth)
   __ __;
 
-     u8 ip6_5tuple_mask[] =
-       _("             dmac               smac            etype ")
+ u8 ip6_5tuple_mask[] =
+  _("             dmac               smac            etype ")
   _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v __ __ v
   _("        v  tc + flow ")
   _(0x0000) __ __ __ __
@@ -369,12 +371,29 @@ _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v __ __ v
   _("L4T/U  sport dport   ")
   _(tcpudp) XX XX XX XX _(padpad) __ __ __ __ _(padeth) __ __;
 
+ u8 dot1q_5tuple_mask[] =
+   _("             dmac               smac          dot1q         etype ")
+   _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v DOT1Q __ __ v XX XX v
+   _(padpad) __ __ __ __
+   _(padpad) __ __ __ __
+   _(padpad) __ __ __ __
+   _(padeth) __ __;
+
+ u8 dot1ad_5tuple_mask[] =
+   _("             dmac               smac          dot1ad                     etype ")
+   _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v DOT1AD __ __ DOT1Q __ __ v XX XX v
+   _(padpad) __ __ __ __
+   _(padpad) __ __ __ __
+   _(padeth) __ __;
+
 #undef XX
 #undef __
+#undef DOT1AD
+#undef DOT1Q
 #undef _
 #undef v
 
-     static int count_skip (u8 * p, u32 size)
+static int count_skip (u8 * p, u32 size)
 {
   u64 *p64 = (u64 *) p;
   /* Be tolerant to null pointer */
@@ -443,19 +462,24 @@ acl_classify_add_del_table_small (vnet_classify_main_t * cm, u8 * mask,
   return ret;
 }
 
-
 static int
 acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  u32 dot1q_table_index = ~0;
+  u32 dot1ad_table_index = ~0;
   void *oldheap = acl_set_heap(am);
 
   vec_validate_init_empty (am->acl_ip4_input_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
   vec_validate_init_empty (am->acl_ip6_input_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
+  vec_validate_init_empty (am->acl_dot1q_input_classify_table_by_sw_if_index,
+         sw_if_index, ~0);
+  vec_validate_init_empty (am->acl_dot1ad_input_classify_table_by_sw_if_index,
+         sw_if_index, ~0);
 
   /* switch to global heap while calling vnet_* functions */
   clib_mem_set_heap (cm->vlib_main->heap_base);
@@ -481,6 +505,26 @@ acl_unhook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 				  am->l2_input_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
     }
+  if (am->acl_dot1q_input_classify_table_by_sw_if_index[sw_if_index] != ~0)
+    {
+      dot1q_table_index =
+  am->acl_dot1q_input_classify_table_by_sw_if_index[sw_if_index];
+      am->acl_dot1q_input_classify_table_by_sw_if_index[sw_if_index] = ~0;
+      acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
+          sizeof (ip6_5tuple_mask) - 1, ~0,
+          ~0,
+          &dot1q_table_index, 0);
+    }
+  if (am->acl_dot1ad_input_classify_table_by_sw_if_index[sw_if_index] != ~0)
+    {
+      dot1ad_table_index =
+  am->acl_dot1ad_input_classify_table_by_sw_if_index[sw_if_index];
+      am->acl_dot1ad_input_classify_table_by_sw_if_index[sw_if_index] = ~0;
+      acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
+          sizeof (dot1ad_5tuple_mask) - 1, ~0,
+          ~0,
+          &dot1ad_table_index, 0);
+    }
   clib_mem_set_heap (oldheap);
   return 0;
 }
@@ -491,12 +535,18 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   vnet_classify_main_t *cm = &vnet_classify_main;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  u32 dot1q_table_index = ~0;
+  u32 dot1ad_table_index = ~0;
   void *oldheap = acl_set_heap(am);
 
   vec_validate_init_empty (am->acl_ip4_output_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
   vec_validate_init_empty (am->acl_ip6_output_classify_table_by_sw_if_index,
 			   sw_if_index, ~0);
+  vec_validate_init_empty (am->acl_dot1q_output_classify_table_by_sw_if_index,
+         sw_if_index, ~0);
+  vec_validate_init_empty (am->acl_dot1ad_output_classify_table_by_sw_if_index,
+         sw_if_index, ~0);
 
   /* switch to global heap while calling vnet_* functions */
   clib_mem_set_heap (cm->vlib_main->heap_base);
@@ -523,8 +573,66 @@ acl_unhook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
 				  am->l2_output_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
     }
+  if (am->acl_dot1q_output_classify_table_by_sw_if_index[sw_if_index] != ~0)
+    {
+      dot1q_table_index =
+  am->acl_dot1q_output_classify_table_by_sw_if_index[sw_if_index];
+      am->acl_dot1q_output_classify_table_by_sw_if_index[sw_if_index] = ~0;
+      acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
+          sizeof (ip6_5tuple_mask) - 1, ~0,
+          ~0,
+          &dot1q_table_index, 0);
+    }
+  if (am->acl_dot1ad_output_classify_table_by_sw_if_index[sw_if_index] != ~0)
+    {
+      dot1ad_table_index =
+  am->acl_dot1ad_output_classify_table_by_sw_if_index[sw_if_index];
+      am->acl_dot1ad_output_classify_table_by_sw_if_index[sw_if_index] = ~0;
+      acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
+          sizeof (dot1ad_5tuple_mask) - 1, ~0,
+          ~0,
+          &dot1ad_table_index, 0);
+    }
   clib_mem_set_heap (oldheap);
   return 0;
+}
+
+static void
+acl_add_vlan_session(acl_main_t * am, u32 table_index, u8 is_output, u8 is_dot1ad, u8 is_ip6)
+{
+  vnet_classify_main_t *cm = &vnet_classify_main;
+  u8 *match;
+  u32 next_acl;
+  u8 idx;
+  u8 session_idx;
+
+  if (is_ip6)
+    {
+  next_acl = (is_output)?am->l2_output_classify_next_acl_ip6:am->l2_input_classify_next_acl_ip6;
+    }
+  else
+    {
+  next_acl = (is_output)?am->l2_output_classify_next_acl_ip4:am->l2_input_classify_next_acl_ip4;
+    }
+  match = (is_dot1ad)?dot1ad_5tuple_mask:dot1q_5tuple_mask;
+  idx = (is_dot1ad)?20:16;
+
+  /* add sessions to vlan tables per ethernet_type */
+  if (is_ip6)
+    {
+  match[idx] = 0x86;
+  match[idx+1] = 0xdd;
+  session_idx = 1;
+    }
+  else
+    {
+  match[idx] = 0x08;
+  match[idx+1] = 0x00;
+  session_idx = 0;
+    }
+  vnet_classify_add_del_session (cm, table_index, match, next_acl,
+                                 session_idx, 0, 0, 0, 1);
+  memset (&match[idx], 0x00, 2);
 }
 
 static int
@@ -533,6 +641,8 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
   vnet_classify_main_t *cm = &vnet_classify_main;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  u32 dot1q_table_index = ~0;
+  u32 dot1ad_table_index = ~0;
   int rv;
 
   void *prevheap = clib_mem_set_heap (cm->vlib_main->heap_base);
@@ -546,6 +656,7 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 				&ip4_table_index, 1);
   if (rv)
     goto done;
+
   rv =
     acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
 				sizeof (ip6_5tuple_mask) - 1, ~0,
@@ -559,26 +670,68 @@ acl_hook_l2_input_classify (acl_main_t * am, u32 sw_if_index)
 				  &ip4_table_index, 0);
       goto done;
     }
+
   rv =
-    vnet_l2_input_classify_set_tables (sw_if_index, ip4_table_index,
-				       ip6_table_index, ~0);
+    acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
+        sizeof (dot1ad_5tuple_mask) - 1, ~0,
+        ~0, &dot1ad_table_index, 1);
+  rv =
+    acl_classify_add_del_table_tiny (cm, dot1q_5tuple_mask,
+        sizeof (dot1q_5tuple_mask) - 1, dot1ad_table_index,
+        ~0, &dot1q_table_index, 1);
   if (rv)
     {
+      acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
+          sizeof (dot1ad_5tuple_mask) - 1, ~0,
+          ~0, &dot1ad_table_index, 0);
+      acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
+          sizeof (ip6_5tuple_mask) - 1, ~0,
+          am->l2_input_classify_next_acl_ip6,
+          &ip6_table_index, 0);
+      acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
+          sizeof (ip4_5tuple_mask) - 1, ~0,
+          am->l2_input_classify_next_acl_ip4,
+          &ip4_table_index, 0);
+      goto done;
+    }
+
+  rv =
+    vnet_l2_input_classify_set_tables (sw_if_index, ip4_table_index,
+                                      ip6_table_index, dot1q_table_index);
+
+  if (rv)
+    {
+      acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
+          sizeof (ip4_5tuple_mask) - 1, ~0,
+          am->l2_input_classify_next_acl_ip4,
+          &ip4_table_index, 0);
       acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
 				  sizeof (ip6_5tuple_mask) - 1, ~0,
 				  am->l2_input_classify_next_acl_ip6,
 				  &ip6_table_index, 0);
-      acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
-				  sizeof (ip4_5tuple_mask) - 1, ~0,
-				  am->l2_input_classify_next_acl_ip4,
-				  &ip4_table_index, 0);
+      acl_classify_add_del_table_tiny (cm, dot1q_5tuple_mask,
+          sizeof (dot1q_5tuple_mask) - 1, ~0,
+          ~0, &dot1q_table_index, 0);
+      acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
+          sizeof (dot1ad_5tuple_mask) - 1, ~0,
+          ~0, &dot1ad_table_index, 0);
       goto done;
     }
+
+  /* add sessions to vlan tables per ethernet_type */
+  acl_add_vlan_session(am, dot1q_table_index, 0, 0, 0);
+  acl_add_vlan_session(am, dot1q_table_index, 0, 0, 1);
+  acl_add_vlan_session(am, dot1ad_table_index, 0, 1, 0);
+  acl_add_vlan_session(am, dot1ad_table_index, 0, 1, 1);
 
   am->acl_ip4_input_classify_table_by_sw_if_index[sw_if_index] =
     ip4_table_index;
   am->acl_ip6_input_classify_table_by_sw_if_index[sw_if_index] =
     ip6_table_index;
+  am->acl_dot1q_input_classify_table_by_sw_if_index[sw_if_index] =
+    dot1q_table_index;
+  am->acl_dot1ad_input_classify_table_by_sw_if_index[sw_if_index] =
+    dot1ad_table_index;
 
   vnet_l2_input_classify_enable_disable (sw_if_index, 1);
 done:
@@ -592,6 +745,8 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
   vnet_classify_main_t *cm = &vnet_classify_main;
   u32 ip4_table_index = ~0;
   u32 ip6_table_index = ~0;
+  u32 dot1q_table_index = ~0;
+  u32 dot1ad_table_index = ~0;
   int rv;
 
   void *prevheap = clib_mem_set_heap (cm->vlib_main->heap_base);
@@ -618,9 +773,35 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
 				  &ip4_table_index, 0);
       goto done;
     }
+
+  rv =
+    acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
+        sizeof (dot1ad_5tuple_mask) - 1, ~0,
+        ~0, &dot1ad_table_index, 1);
+  rv =
+    acl_classify_add_del_table_tiny (cm, dot1q_5tuple_mask,
+        sizeof (dot1q_5tuple_mask) - 1, dot1ad_table_index,
+        ~0, &dot1q_table_index, 1);
+  if (rv)
+    {
+      acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
+          sizeof (dot1ad_5tuple_mask) - 1, ~0,
+          ~0, &dot1ad_table_index, 0);
+      acl_classify_add_del_table_tiny (cm, ip6_5tuple_mask,
+          sizeof (ip6_5tuple_mask) - 1, ~0,
+          am->l2_output_classify_next_acl_ip6,
+          &ip6_table_index, 0);
+      acl_classify_add_del_table_tiny (cm, ip4_5tuple_mask,
+          sizeof (ip4_5tuple_mask) - 1, ~0,
+          am->l2_output_classify_next_acl_ip4,
+          &ip4_table_index, 0);
+      goto done;
+    }
+
   rv =
     vnet_l2_output_classify_set_tables (sw_if_index, ip4_table_index,
-					ip6_table_index, ~0);
+					ip6_table_index, dot1q_table_index);
+
   clib_warning
     ("ACL enabling on interface sw_if_index %d, setting tables to the following: ip4: %d ip6: %d\n",
      sw_if_index, ip4_table_index, ip6_table_index);
@@ -634,21 +815,37 @@ acl_hook_l2_output_classify (acl_main_t * am, u32 sw_if_index)
 				  sizeof (ip4_5tuple_mask) - 1, ~0,
 				  am->l2_output_classify_next_acl_ip4,
 				  &ip4_table_index, 0);
+      acl_classify_add_del_table_tiny (cm, dot1q_5tuple_mask,
+          sizeof (dot1q_5tuple_mask) - 1, ~0,
+          ~0,
+          &dot1q_table_index, 0);
+      acl_classify_add_del_table_tiny (cm, dot1ad_5tuple_mask,
+          sizeof (dot1ad_5tuple_mask) - 1, ~0,
+          ~0,
+          &dot1ad_table_index, 0);
       goto done;
     }
+
+  /* add sessions to vlan tables per ethernet_type */
+  acl_add_vlan_session(am, dot1q_table_index, 1, 0, 0);
+  acl_add_vlan_session(am, dot1q_table_index, 1, 0, 1);
+  acl_add_vlan_session(am, dot1ad_table_index, 1, 1, 0);
+  acl_add_vlan_session(am, dot1ad_table_index, 1, 1, 1);
 
   am->acl_ip4_output_classify_table_by_sw_if_index[sw_if_index] =
     ip4_table_index;
   am->acl_ip6_output_classify_table_by_sw_if_index[sw_if_index] =
     ip6_table_index;
+  am->acl_dot1q_output_classify_table_by_sw_if_index[sw_if_index] =
+    dot1q_table_index;
+  am->acl_dot1ad_output_classify_table_by_sw_if_index[sw_if_index] =
+    dot1ad_table_index;
 
   vnet_l2_output_classify_enable_disable (sw_if_index, 1);
 done:
   clib_mem_set_heap (prevheap);
   return rv;
 }
-
-
 
 int
 acl_interface_in_enable_disable (acl_main_t * am, u32 sw_if_index,
@@ -917,6 +1114,8 @@ typedef struct
   u32 count;
   u32 table_index;
   u32 arp_table_index;
+  u32 dot1q_table_index;
+  u32 dot1ad_table_index;
 } macip_match_type_t;
 
 static u32
@@ -1007,6 +1206,8 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
 	  mvec[match_type_index].prefix_len = a->rules[i].src_prefixlen;
 	  mvec[match_type_index].is_ipv6 = a->rules[i].is_ipv6;
 	  mvec[match_type_index].table_index = ~0;
+    mvec[match_type_index].dot1q_table_index = ~0;
+    mvec[match_type_index].dot1ad_table_index = ~0;
 	}
       mvec[match_type_index].count++;
     }
@@ -1047,8 +1248,36 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
     int mask_len;
     int is6 = mt->is_ipv6;
     int l3_src_offs = get_l3_src_offset(is6);
-    memset (mask, 0, sizeof (mask));
-    memcpy (&mask[6], mt->mac_mask, 6);
+    int tags;
+    u32 *last_tag_table;
+
+    /*
+     * create chained tables for VLAN (no-tags, dot1q and dot1ad) packets
+     */
+    l3_src_offs += 8;
+    for (tags = 2; tags >= 0; tags--)
+      {
+        memset (mask, 0, sizeof (mask));
+        memcpy (&mask[6], mt->mac_mask, 6);
+        switch (tags)
+          {
+          case 0:
+          default:
+            memset (&mask[12], 0xff, 2); /* ethernet protocol */
+            last_tag_table = &mt->table_index;
+            break;
+          case 1:
+            memset (&mask[12], 0xff, 2); /* VLAN tag1 */
+            memset (&mask[16], 0xff, 2); /* ethernet protocol */
+            last_tag_table = &mt->dot1q_table_index;
+            break;
+          case 2:
+            memset (&mask[12], 0xff, 2); /* VLAN tag1 */
+            memset (&mask[16], 0xff, 2); /* VLAN tag2 */
+            memset (&mask[20], 0xff, 2); /* ethernet protocol */
+            last_tag_table = &mt->dot1ad_table_index;
+            break;
+          }
     for (i = 0; i < (mt->prefix_len / 8); i++)
       {
 	mask[l3_src_offs + i] = 0xff;
@@ -1065,9 +1294,13 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
     mask_len = ((l3_src_offs + ((mt->prefix_len+7) / 8) +
                 (sizeof (u32x4)-1))/sizeof(u32x4)) * sizeof (u32x4);
     acl_classify_add_del_table_small (cm, mask, mask_len, last_table,
-				(~0 == last_table) ? 0 : ~0, &mt->table_index,
+				(~0 == last_table) ? 0 : ~0, last_tag_table,
 				1);
-    last_table = mt->table_index;
+    last_table = *last_tag_table;
+
+    memset (&mask[12], 0, sizeof (mask)-12);
+    l3_src_offs -= 4;
+      }
   }
   a->ip4_table_index = last_table;
   a->ip6_table_index = last_table;
@@ -1080,30 +1313,63 @@ macip_create_classify_tables (acl_main_t * am, u32 macip_acl_index)
       u32 metadata = 0;
       int is6 = a->rules[i].is_ipv6;
       int l3_src_offs = get_l3_src_offset(is6);
-      memset (mask, 0, sizeof (mask));
-      memcpy (&mask[6], a->rules[i].src_mac, 6);
-      memset (&mask[12], 0xff, 2); /* ethernet protocol */
-      if (is6)
-	{
-	  memcpy (&mask[l3_src_offs], &a->rules[i].src_ip_addr.ip6, 16);
-	  mask[12] = 0x86;
-	  mask[13] = 0xdd;
-	}
-      else
-	{
-	  memcpy (&mask[l3_src_offs], &a->rules[i].src_ip_addr.ip4, 4);
-	  mask[12] = 0x08;
-	  mask[13] = 0x00;
-	}
+      u32 tag_table;
+      int tags, eth;
+
       match_type_index =
-	macip_find_match_type (mvec, a->rules[i].src_mac_mask,
-			       a->rules[i].src_prefixlen,
-			       a->rules[i].is_ipv6);
+  macip_find_match_type (mvec, a->rules[i].src_mac_mask,
+             a->rules[i].src_prefixlen,
+             a->rules[i].is_ipv6);
       ASSERT(match_type_index != ~0);
-      /* add session to table mvec[match_type_index].table_index; */
-      vnet_classify_add_del_session (cm, mvec[match_type_index].table_index,
-				     mask, a->rules[i].is_permit ? ~0 : 0, i,
-				     0, action, metadata, 1);
+
+      l3_src_offs += 8;
+      for (tags = 2; tags >= 0; tags--)
+        {
+          memset (mask, 0, sizeof (mask));
+          memcpy (&mask[6], a->rules[i].src_mac, 6);
+          switch (tags)
+            {
+            case 0:
+            default:
+              tag_table = mvec[match_type_index].table_index;
+              eth = 12;
+              break;
+            case 1:
+              tag_table = mvec[match_type_index].dot1q_table_index;
+              mask[12] = 0x81;
+              mask[13] = 0x00;
+              eth = 16;
+              break;
+            case 2:
+              tag_table = mvec[match_type_index].dot1ad_table_index;
+              mask[12] = 0x88;
+              mask[13] = 0xa8;
+              mask[16] = 0x81;
+              mask[17] = 0x00;
+              eth = 20;
+              break;
+            }
+          if (is6)
+      {
+        memcpy (&mask[l3_src_offs], &a->rules[i].src_ip_addr.ip6, 16);
+        mask[eth] = 0x86;
+        mask[eth+1] = 0xdd;
+      }
+          else
+      {
+        memcpy (&mask[l3_src_offs], &a->rules[i].src_ip_addr.ip4, 4);
+        mask[eth] = 0x08;
+        mask[eth+1] = 0x00;
+      }
+
+          /* add session to table mvec[match_type_index].table_index; */
+          vnet_classify_add_del_session (cm, tag_table,
+                 mask, a->rules[i].is_permit ? ~0 : 0, i,
+                 0, action, metadata, 1);
+          memset (&mask[12], 0, sizeof (mask)-12);
+          l3_src_offs -= 4;
+        }
+
       /* add ARP table entry too */
       if (!is6 && (mvec[match_type_index].arp_table_index != ~0))
         {
