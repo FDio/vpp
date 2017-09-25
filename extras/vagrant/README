@@ -4,21 +4,21 @@ This is a vagrant environment for VPP.
 
 VPP currently works under Linux and has support for:
 
-- Ubuntu 14.04, Ubuntu 16.04 and Centos7.2
+- Ubuntu 16.04 and Centos7.2
 
 The VM builds VPP from source which can be located at /vpp
 
 VM PARTICULARS:
 This vagrant environment creates a VM based on environment variables found in ./env.sh
-To use, edit env.sh then
+To customize the vm for your use case, edit env.sh then
   source ./env.sh
   vagrant up
 
 By default, the VM created is/has:
-- Ubuntu 14.04
+- Ubuntu 16.04
 - 2 vCPUs
 - 4G of RAM
-- 2 NICs (1 x NAT - host access, 1 x VPP DPDK enabled)
+- 3 NICs (1 x NAT - host access, 2 x VPP DPDK enabled)
 
 PROVIDERS:
 
@@ -26,3 +26,18 @@ Supported vagrant providers are:
 
 - Virtualbox, VMware Fusion/Workstation, Libvirt
 
+ALTERNATE CONFIGURATIONS
+
+The following Vagrantfiles provide alternate configurations for specific testing purposes.  To use them,
+
+1. Copy the desired configuration to Vagrantfile
+2. Run "vagrant up"
+3. vagrant ssh <vm name>
+
+When testing is complete
+4. Run "vagrant destroy" to stop the VM's and delete files.
+5. Run "git checkout -- Vagrantfile" to restore the default configuration
+
+Available Vagrantfiles:
+
+Vagrantfile.vcl_test  - Create two vm's for multi-host VppCommLib testing
