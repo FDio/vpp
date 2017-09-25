@@ -33,6 +33,7 @@ tmp_cmdfile_prefix="/tmp/socket_test_cmd"
 cmd1_file="${tmp_cmdfile_prefix}1.$$"
 cmd2_file="${tmp_cmdfile_prefix}2.$$"
 cmd3_file="${tmp_cmdfile_prefix}3.$$"
+vpp_eth_name="enp0s8"
 tmp_vpp_exec_file="/tmp/vpp_config.$$"
 tmp_gdb_cmdfile_prefix="/tmp/gdb_cmdfile"
 def_gdb_cmdfile_prefix="$WS_ROOT/extras/gdb/gdb_cmdfile"
@@ -68,6 +69,8 @@ OPTIONS:
   -d                  Run the vpp_debug version of all apps.
   -c                  Set VPPCOM_CONF to use the vppcom_test.conf file.
   -i                  Run iperf3 for client/server app in native tests.
+  -n                  Name of ethernet for VPP to use in multi-host cfg.
+  -6                  Use ipv6 addressing.
   -m c[lient]         Run client in multi-host cfg (server on remote host)
      s[erver]         Run server in multi-host cfg (client on remote host)
   -e a[ll]            Run all in emacs+gdb.
@@ -114,8 +117,9 @@ declare -i perf_server=0
 declare -i leave_tmp_files=0
 declare -i bash_after_exit=0
 declare -i iperf3=0
+declare -i use_ipv6=0
 
-while getopts ":hitlbcdm:e:g:p:E:I:N:P:R:S:T:UBVX" opt; do
+while getopts ":hitlbcd6n:m:e:g:p:E:I:N:P:R:S:T:UBVX" opt; do
     case $opt in
         h) usage ;;
         l) leave_tmp_files=1
@@ -124,12 +128,15 @@ while getopts ":hitlbcdm:e:g:p:E:I:N:P:R:S:T:UBVX" opt; do
            ;;
         i) iperf3=1
            ;;
+        6) use_ipv6=1
+           ;;
         t) xterm_geom="180x40"
            use_tabs="true"
            ;;
         c) VPPCOM_CONF="${vppcom_conf_dir}vppcom_test.conf"
            ;;
         d) title_dbg="-DEBUG"
+           _debug="_debug"
            vpp_dir=$vpp_debug_dir
            lib64_dir=$lib64_debug_dir
            ;;
@@ -150,6 +157,8 @@ while getopts ":hitlbcdm:e:g:p:E:I:N:P:R:S:T:UBVX" opt; do
            title_dbg="-DEBUG"
            vpp_dir=$vpp_debug_dir
            lib64_dir=$lib64_debug_dir
+           ;;
+        n) vpp_eth_name="$OPTARG"
            ;;
         m) if [ $OPTARG = "c" ] || [ $OPTARG = "client" ] ; then
                multi_host="client"
@@ -245,6 +254,11 @@ if [ -z "$WS_ROOT" ] ; then
     exit 1
 fi
 
+if [[ "$(grep bin_PROGRAMS $WS_ROOT/src/uri.am)" = "" ]] ; then
+    $WS_ROOT/extras/vagrant/vcl_test.sh $WS_ROOT $USER
+    (cd $WS_ROOT; make build)
+fi
+
 if [ ! -d $vpp_dir ] ; then
     echo "ERROR: Missing VPP$DEBUG bin directory!" >&2
     echo "       $vpp_dir" >&2
@@ -325,6 +339,7 @@ if [ -z "$api_segment" ] ; then
     api_segment=" api-segment { gid $user_gid }"
 fi
 if [ -n "$multi_host" ] ; then
+    sudo modprobe uio_pci_generic
     vpp_args="unix { interactive exec $tmp_vpp_exec_file}${api_segment}"
 else
     vpp_args="unix { interactive }${api_segment}"
@@ -347,16 +362,21 @@ else
 fi
 
 verify_no_vpp() {
-    local running_vpp="ps -eaf|grep -v grep|grep \"bin/vpp\""
-    if [ "$(eval $running_vpp)" != "" ] ; then
-        echo "ERROR: Please kill all running vpp instances:"
+    local grep_for_vpp="ps -eaf|grep -v grep|grep \"bin/vpp\""
+    
+    if [ -n "$api_prefix" ] ; then
+        grep_for_vpp="$grep_for_vpp|grep \"prefix $api_prefix\""
+    fi
+    local running_vpp="$(eval $grep_for_vpp)"
+    if [ -n "$running_vpp" ] ; then
+        echo "ERROR: Please kill the following vpp instance(s):"
         echo
-        eval $running_vpp
+        echo $running_vpp
         echo
         exit 1
     fi
     clean_devshm="$vpp_shm_dir*db $vpp_shm_dir*global_vm $vpp_shm_dir*vpe-api $vpp_shm_dir[0-9]*-[0-9]* $vpp_shm_dir*:segment[0-9]*"
-    rm -f $clean_devshm
+    sudo rm -f $clean_devshm
     devshm_files="$(ls -l $clean_devshm 2>/dev/null | grep $(whoami))"
     if [ "$devshm_files" != "" ] ; then
         echo "ERROR: Please remove the following $vpp_shm_dir files:"
@@ -370,7 +390,6 @@ verify_no_vpp() {
         sudo chown root:$USER $vpp_run_dir
     fi
     if [ -n "$multi_host" ] ; then
-        vpp_eth_name="enp0s8"
         vpp_eth_pci_id="$(ls -ld /sys/class/net/$vpp_eth_name/device | awk '{print $11}' | cut -d/ -f4)"
         if [ -z "$vpp_eth_pci_id" ] ; then
             echo "ERROR: Missing ethernet interface $vpp_eth_name!"
@@ -390,6 +409,8 @@ verify_no_vpp() {
                 vpp_eth_ifname="GigabitEthernet$bus/$slot/$func" ;;
             ixgbe)
                 vpp_eth_ifname="TenGigabitEthernet$bus/$slot/$func" ;;
+            i40e)
+                vpp_eth_ifname="FortyGigabitEthernet$bus/$slot/$func" ;;
             *)
                 echo "ERROR: Unknown ethernet kernel driver $vpp_eth_kernel_driver!"
                 usage ;;
@@ -397,17 +418,19 @@ verify_no_vpp() {
         
         vpp_eth_ip4_addr="$(ip -4 -br addr show $vpp_eth_name | awk '{print $3}')"
         if [ -z "$vpp_eth_ip4_addr" ] ; then
-            echo "ERROR: No inet address configured for $vpp_eth_name!"
-            usage
+            if [ "$multi_host" = "server" ] ; then
+                vpp_eth_ip4_addr="10.10.10.10/24"
+            else
+                vpp_eth_ip4_addr="10.10.10.11/24"
+            fi
         fi
-        vpp_eth_ip6_addr="$(ip -6 -br addr show $vpp_eth_name | awk '{print $3}')"
-        if [ -z "$vpp_eth_ip6_addr" ] ; then
+        if [ $use_ipv6 -eq 1 ] && [ -z "$vpp_eth_ip6_addr" ] ; then
             echo "ERROR: No inet6 address configured for $vpp_eth_name!"
             usage
         fi
-        vpp_args="$vpp_args plugins { path $lib64_dir/vpp_plugins } dpdk { dev $vpp_eth_pci_id }"
+        vpp_args="$vpp_args plugins { path ${lib64_dir}vpp_plugins } dpdk { dev $vpp_eth_pci_id }"
                 
-        sudo ifdown $vpp_eth_name 2> /dev/null
+        sudo ifconfig $vpp_eth_name down 2> /dev/null
         echo "Configuring VPP to use $vpp_eth_name ($vpp_eth_pci_id), inet addr $vpp_eth_ip4_addr"
 
         cat <<EOF >> $tmp_vpp_exec_file
@@ -465,15 +488,15 @@ write_script_header() {
     echo "$bash_header" > $1
     echo -e "#\n# $1 generated on $(date)\n#" >> $1
     if [ $leave_tmp_files -eq 0 ] ; then
-        if [ -n "$multi_host" ] && [[ "$3" == VPP* ]] ; then
-            echo "trap \"rm -f $1 $2 $tmp_vpp_exec_file; sudo $dpdk_devbind -b $vpp_eth_kernel_driver $vpp_eth_pci_id; sudo ifup $vpp_eth_name\" $trap_signals" >> $1
+        if [ -n "$multi_host" ] ; then
+            echo "trap \"rm -f $1 $2 $tmp_vpp_exec_file; sudo $dpdk_devbind -b $vpp_eth_kernel_driver $vpp_eth_pci_id; sudo ifconfig $vpp_eth_name up\" $trap_signals" >> $1
         else
             echo "trap \"rm -f $1 $2 $tmp_vpp_exec_file\" $trap_signals" >> $1
         fi
     fi
     echo "export VPPCOM_CONF=${vppcom_conf_dir}${vppcom_conf}" >> $1
     if [ "$pre_cmd" = "$gdb_in_emacs " ] ; then
-        if [ -n "$multi_host" ] ; then
+        if [ -n "$multi_host" ] && [[ $3 =~ "VPP".* ]] ; then
             cat <<EOF >> $1
 $gdb_in_emacs() {
     sudo emacs --eval "(gdb \"gdb -x $2 -i=mi --args \$*\")" --eval "(setq frame-title-format \"$3\")"
@@ -618,7 +641,12 @@ native_vcl() {
         tmp_gdb_cmdfile=$tmp_gdb_cmdfile_server
         gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
         set_pre_cmd $emacs_server $gdb_server
-        write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
+        if [ "$multi_host" = "server" ] ; then
+            delay="sleep 10"
+        else
+            delay="sleep 3"
+        fi
+        write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "$delay"
         echo "export LD_LIBRARY_PATH=\"$lib64_dir:$LD_LIBRARY_PATH\"" >> $cmd2_file
         echo "${pre_cmd}${app_dir}${srvr_app}" >> $cmd2_file
         write_script_footer $cmd2_file $perf_server
@@ -630,7 +658,12 @@ native_vcl() {
         tmp_gdb_cmdfile=$tmp_gdb_cmdfile_client
         gdb_cmdfile=$VPPCOM_CLIENT_GDB_CMDFILE
         set_pre_cmd $emacs_client $gdb_client
-        write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 3"
+        if [ "$multi_host" = "client" ] ; then
+            delay="sleep 10"
+        else
+            delay="sleep 3"
+        fi
+        write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "$delay"
         echo "export LD_LIBRARY_PATH=\"$lib64_dir:$LD_LIBRARY_PATH\"" >> $cmd3_file
         echo "srvr_addr=\"$sock_srvr_addr\"" >> $cmd3_file
         echo "${pre_cmd}${app_dir}${clnt_app}" >> $cmd3_file
