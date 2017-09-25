@@ -1,7 +1,18 @@
-from jvpp_connection import TestJVppConnection
+#!/usr/bin/env python
+
+import os
+import subprocess
+
+from framework import VppTestCase
+
+# Api files path
+API_FILES_PATH = "vpp/vpp-api/java"
+
+# Registry jar file name prefix
+REGISTRY_JAR_PREFIX = "jvpp-registry"
 
 
-class TestJVpp(TestJVppConnection):
+class TestJVpp(VppTestCase):
     """ JVPP Core Test Case """
 
     def invoke_for_jvpp_core(self, api_jar_name, test_class_name):
@@ -80,3 +91,45 @@ class TestJVpp(TestJVppConnection):
         self.invoke_for_jvpp_core(api_jar_name="jvpp-nat",
                                   test_class_name="io.fd.vpp.jvpp.nat.test."
                                                   "FutureApiTest")
+
+    def full_jar_name(self, install_dir, jar_name, version):
+        return os.path.join(install_dir, API_FILES_PATH,
+                            "{0}-{1}.jar".format(jar_name, version))
+
+    def jvpp_connection_test(self, api_jar_name, test_class_name, timeout):
+        install_dir = os.getenv('VPP_TEST_BUILD_DIR')
+        self.logger.info("Install directory : {0}".format(install_dir))
+
+        version_reply = self.vapi.show_version()
+        version = version_reply.version.split("-")[0]
+        registry_jar_path = self.full_jar_name(install_dir,
+                                               REGISTRY_JAR_PREFIX, version)
+        self.logger.info("JVpp Registry jar path : {0}"
+                         .format(registry_jar_path))
+
+        api_jar_path = self.full_jar_name(install_dir, api_jar_name, version)
+        self.logger.info("Api jar path : {0}".format(api_jar_path))
+
+        # passes shm prefix as parameter to create connection with same value
+        command = ["java", "-cp",
+                   "{0}:{1}".format(registry_jar_path, api_jar_path),
+                   test_class_name, "/{0}-vpe-api".format(self.shm_prefix)]
+        self.logger.info("Test Command : {0}, Timeout : {1}".
+                         format(command, timeout))
+
+        self.process = subprocess.Popen(command, shell=False,
+                                        stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE, bufsize=1,
+                                        universal_newlines=True)
+
+        out, err = self.process.communicate()
+        self.logger.info("Process output : {0}{1}".format(os.linesep, out))
+        self.logger.info("Process error output : {0}{1}"
+                         .format(os.linesep, err))
+        self.assert_equal(self.process.returncode, 0, "process return code")
+
+    def tearDown(self):
+        self.logger.info("Tearing down jvpp test")
+        super(TestJVpp, self).tearDown()
+        if hasattr(self, 'process') and self.process.poll() is None:
+            self.process.kill()
