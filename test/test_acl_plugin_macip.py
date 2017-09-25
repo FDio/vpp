@@ -14,6 +14,8 @@ from scapy.layers.inet6 import IPv6
 
 from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_lo_interface import VppLoInterface
+from vpp_papi_provider import L2_VTR_OP
+from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 
 
 class TestMACIP(VppTestCase):
@@ -23,6 +25,9 @@ class TestMACIP(VppTestCase):
 
     BRIDGED = True
     ROUTED = False
+
+    DOT1AD = "dot1ad"
+    DOT1Q = "dot1q"
 
     IS_IP4 = False
     IS_IP6 = True
@@ -52,16 +57,32 @@ class TestMACIP(VppTestCase):
         super(TestMACIP, cls).setUpClass()
 
         cls.pg_if_packet_sizes = [64, 512, 1518, 9018]  # packet sizes
-        cls.bd_id = 10
-        cls.remote_hosts_count = 250
+        cls.bd_id = 111
+        cls.hosts = 200
 
         try:
-            # create 3 pg interfaces, 1 loopback interface
-            cls.create_pg_interfaces(range(3))
+            # create 4 pg interfaces, 1 loopback interface
+            cls.create_pg_interfaces(range(4))
             cls.create_loopback_interfaces(range(1))
+            # create 2 subinterfaces
+            cls.subifs = [
+                 VppDot1QSubint(cls, cls.pg1, 10),
+                 VppDot1ADSubint(cls, cls.pg2, 20, 300, 400),
+                 VppDot1QSubint(cls, cls.pg3, 30),
+                 VppDot1ADSubint(cls, cls.pg3, 40, 600, 700)]
+
+            cls.subifs[0].set_vtr(L2_VTR_OP.L2_POP_1,
+                                  inner=10, push1q=1)
+            cls.subifs[1].set_vtr(L2_VTR_OP.L2_POP_2,
+                                  outer=300, inner=400, push1q=1)
+            cls.subifs[2].set_vtr(L2_VTR_OP.L2_POP_1,
+                                  inner=30, push1q=1)
+            cls.subifs[3].set_vtr(L2_VTR_OP.L2_POP_2,
+                                  outer=600, inner=700, push1q=1)
 
             cls.interfaces = list(cls.pg_interfaces)
             cls.interfaces.extend(cls.lo_interfaces)
+            cls.interfaces.extend(cls.subifs)
 
             for i in cls.interfaces:
                 i.admin_up()
@@ -72,33 +93,43 @@ class TestMACIP(VppTestCase):
             cls.vapi.sw_interface_set_l2_bridge(
                 cls.pg0.sw_if_index, bd_id=cls.bd_id)
             cls.vapi.sw_interface_set_l2_bridge(
-                cls.pg1.sw_if_index, bd_id=cls.bd_id)
+                cls.subifs[0].sw_if_index, bd_id=cls.bd_id)
+            cls.vapi.sw_interface_set_l2_bridge(
+                cls.subifs[1].sw_if_index, bd_id=cls.bd_id)
 
-            # Configure IPv4 addresses on loop interface and routed interface
+            # Configure IPv4/6 addresses on loop and routed interface
             cls.loop0.config_ip4()
             cls.loop0.config_ip6()
-            cls.pg2.config_ip4()
-            cls.pg2.config_ip6()
+            cls.pg3.config_ip4()
+            cls.pg3.config_ip6()
 
-            # Configure MAC address binding to IPv4 neighbors on loop0
-            cls.loop0.generate_remote_hosts(cls.remote_hosts_count)
+            # Configure MAC address binding to neighbors on loop0
+            cls.loop0.generate_remote_hosts(200)
             # Modify host mac addresses to have different OUI parts
-            for i in range(2, cls.remote_hosts_count + 2):
+            for i in range(2, 200 + 2):
                 mac = cls.loop0.remote_hosts[i-2]._mac.split(':')
                 mac[2] = format(int(mac[2], 16) + i, "02x")
                 cls.loop0.remote_hosts[i - 2]._mac = ":".join(mac)
-
             cls.loop0.configure_ipv4_neighbors()
             cls.loop0.configure_ipv6_neighbors()
-            # configure MAC address on pg2
-            cls.pg2.resolve_arp()
-            cls.pg2.resolve_ndp()
+
+            # configure MAC address on pg3
+            cls.pg3.resolve_arp()
+            cls.pg3.resolve_ndp()
+
+            # configure MAC address on subifs
+            for i in cls.subifs:
+                i.config_ip4()
+                i.resolve_arp()
+                i.config_ip6()
 
             # Loopback BVI interface has remote hosts
-            # one half of hosts are behind pg0 second behind pg1
-            half = cls.remote_hosts_count // 2
-            cls.pg0.remote_hosts = cls.loop0.remote_hosts[:half]
-            cls.pg1.remote_hosts = cls.loop0.remote_hosts[half:]
+            # one half of hosts are behind pg0 second behind pg1,pg2,pg3 subifs
+            cls.pg0.remote_hosts = cls.loop0.remote_hosts[:100]
+            cls.subifs[0].remote_hosts = cls.loop0.remote_hosts[100:125]
+            cls.subifs[1].remote_hosts = cls.loop0.remote_hosts[125:150]
+            cls.subifs[2].remote_hosts = cls.loop0.remote_hosts[150:175]
+            cls.subifs[3].remote_hosts = cls.loop0.remote_hosts[175:]
 
         except Exception:
             super(TestMACIP, cls).tearDownClass()
@@ -115,15 +146,12 @@ class TestMACIP(VppTestCase):
         """
         super(TestMACIP, self).tearDown()
         if not self.vpp_dead:
-            self.logger.info(self.vapi.ppcli("show interface address"))
-            self.logger.info(self.vapi.ppcli("show hardware"))
+            self.logger.info(self.vapi.ppcli("sh interface"))
+            self.logger.info(self.vapi.ppcli("sh interface address"))
+            self.logger.info(self.vapi.ppcli("sh hardware"))
             self.logger.info(self.vapi.ppcli("sh acl-plugin macip acl"))
             self.logger.info(self.vapi.ppcli("sh acl-plugin macip interface"))
             self.logger.info(self.vapi.ppcli("sh classify tables verbose"))
-            # print self.vapi.ppcli("show interface address")
-            # print self.vapi.ppcli("show hardware")
-            # print self.vapi.ppcli("sh acl-plugin macip interface")
-            # print self.vapi.ppcli("sh acl-plugin macip acl")
         self.delete_acls()
 
     def macip_acl_dump_debug(self):
@@ -244,7 +272,7 @@ class TestMACIP(VppTestCase):
         self.assertEqual(len(reply), 0)
 
     def create_stream(self, mac_type, ip_type, packet_count,
-                      src_ip_if, dst_ip_if, bridged_routed, is_ip6):
+                      src_if, dst_if, traffic, is_ip6):
         # exact MAC and exact IP
         # exact MAC and subnet of IPs
         # exact MAC and wildcard IP
@@ -263,8 +291,8 @@ class TestMACIP(VppTestCase):
         mac_rule = "00:00:00:00:00:00"
         mac_mask = "00:00:00:00:00:00"
         for p in range(0, packet_count):
-            remote_dst_index = p % len(dst_ip_if.remote_hosts)
-            remote_dst_host = dst_ip_if.remote_hosts[remote_dst_index]
+            remote_dst_index = p % len(dst_if.remote_hosts)
+            remote_dst_host = dst_if.remote_hosts[remote_dst_index]
 
             dst_port = 1234 + p
             src_port = 4321 + p
@@ -276,14 +304,14 @@ class TestMACIP(VppTestCase):
             if not is_permit and mac_type == self.WILD_MAC:
                 denyIP = True
 
-            if bridged_routed == self.BRIDGED:
+            if traffic == self.BRIDGED:
                 if is_permit:
                     src_mac = remote_dst_host._mac
                     dst_mac = 'de:ad:00:00:00:00'
                     src_ip4 = remote_dst_host.ip4
-                    dst_ip4 = src_ip_if.remote_ip4
+                    dst_ip4 = src_if.remote_ip4
                     src_ip6 = remote_dst_host.ip6
-                    dst_ip6 = src_ip_if.remote_ip6
+                    dst_ip6 = src_if.remote_ip6
                     ip_permit = src_ip6 if is_ip6 else src_ip4
                     mac_permit = src_mac
                 if denyMAC:
@@ -298,16 +326,16 @@ class TestMACIP(VppTestCase):
                     if ip_type != self.WILD_IP:
                         src_mac = mac_permit
                     src_ip4 = remote_dst_host.ip4
-                    dst_ip4 = src_ip_if.remote_ip4
+                    dst_ip4 = src_if.remote_ip4
                     src_ip6 = remote_dst_host.ip6
-                    dst_ip6 = src_ip_if.remote_ip6
+                    dst_ip6 = src_if.remote_ip6
             else:
                 if is_permit:
                     src_mac = remote_dst_host._mac
-                    dst_mac = src_ip_if.local_mac
-                    src_ip4 = src_ip_if.remote_ip4
+                    dst_mac = src_if.local_mac
+                    src_ip4 = src_if.remote_ip4
                     dst_ip4 = remote_dst_host.ip4
-                    src_ip6 = src_ip_if.remote_ip6
+                    src_ip6 = src_if.remote_ip6
                     dst_ip6 = remote_dst_host.ip6
                     ip_permit = src_ip6 if is_ip6 else src_ip4
                     mac_permit = src_mac
@@ -324,12 +352,12 @@ class TestMACIP(VppTestCase):
                     if ip_type != self.WILD_IP:
                         src_mac = mac_permit
                     src_ip4 = remote_dst_host.ip4
-                    dst_ip4 = src_ip_if.remote_ip4
+                    dst_ip4 = src_if.remote_ip4
                     src_ip6 = remote_dst_host.ip6
-                    dst_ip6 = src_ip_if.remote_ip6
+                    dst_ip6 = src_if.remote_ip6
 
             if is_permit:
-                info = self.create_packet_info(src_ip_if, dst_ip_if)
+                info = self.create_packet_info(src_if, dst_if)
                 payload = self.info_to_payload(info)
             else:
                 payload = "to be blocked"
@@ -379,6 +407,19 @@ class TestMACIP(VppTestCase):
             packet[Raw].load += " mac:"+src_mac
 
             size = self.pg_if_packet_sizes[p % len(self.pg_if_packet_sizes)]
+            if isinstance(src_if, VppSubInterface):
+                size = size + 4
+                if isinstance(src_if, VppDot1QSubint):
+                    if src_if is self.subifs[0]:
+                        packet = src_if.add_dot1q_layer(packet, 10)
+                    else:
+                        packet = src_if.add_dot1q_layer(packet, 30)
+                elif isinstance(src_if, VppDot1ADSubint):
+                    if src_if is self.subifs[1]:
+                        packet = src_if.add_dot1ad_layer(packet, 300, 400)
+                    else:
+                        packet = src_if.add_dot1ad_layer(packet, 600, 700)
+
             self.extend_packet(packet, size)
             packets.append(packet)
 
@@ -448,14 +489,19 @@ class TestMACIP(VppTestCase):
         return {'stream': packets, 'rules': rules}
 
     def verify_capture(self, stream, capture, is_ip6):
-        p_l3 = IPv6 if is_ip6 else IP
-        if self.DEBUG:
-            for p in stream:
-                print p[Ether].src, p[Ether].dst, p[p_l3].src, p[p_l3].dst
-
-        acls = self.macip_acl_dump_debug()
-
+        """
+        :param stream:
+        :param capture:
+        :param is_ip6:
+        :return:
+        """
         # TODO : verify
+        # p_l3 = IPv6 if is_ip6 else IP
+        # if self.DEBUG:
+        #     for p in stream:
+        #         print p[Ether].src, p[Ether].dst, p[p_l3].src, p[p_l3].dst
+        #
+        # acls = self.macip_acl_dump_debug()
         # for acl in acls:
         #     for r in acl.r:
         #         print r.src_mac.encode('hex'), \
@@ -468,16 +514,44 @@ class TestMACIP(VppTestCase):
         #     data = p[Raw].load.split(':',1)[1]
         #     print p[p_l3].src, data
 
-    def run_traffic(self, mac_type, ip_type, bridged_routed, is_ip6, packets,
-                    do_not_expected_capture=False):
+    def run_traffic(self, mac_type, ip_type, traffic, is_ip6, packets,
+                    do_not_expected_capture=False, tags=None):
         self.reset_packet_infos()
 
-        tx_if = self.pg0 if bridged_routed == self.BRIDGED else self.pg2
-        rx_if = self.pg2 if bridged_routed == self.BRIDGED else self.pg0
+        if tags is None:
+            tx_if = self.pg0 if traffic == self.BRIDGED else self.pg3
+            rx_if = self.pg3 if traffic == self.BRIDGED else self.pg0
+            src_if = self.pg3
+            dst_if = self.loop0
+        else:
+            if tags == self.DOT1Q:
+                if traffic == self.BRIDGED:
+                    tx_if = self.subifs[0]
+                    rx_if = self.pg0
+                    src_if = self.subifs[0]
+                    dst_if = self.loop0
+                else:
+                    tx_if = self.subifs[2]
+                    rx_if = self.pg0
+                    src_if = self.subifs[2]
+                    dst_if = self.loop0
+            elif tags == self.DOT1AD:
+                if traffic == self.BRIDGED:
+                    tx_if = self.subifs[1]
+                    rx_if = self.pg0
+                    src_if = self.subifs[1]
+                    dst_if = self.loop0
+                else:
+                    tx_if = self.subifs[3]
+                    rx_if = self.pg0
+                    src_if = self.subifs[3]
+                    dst_if = self.loop0
+            else:
+                return
 
         test_dict = self.create_stream(mac_type, ip_type, packets,
-                                       self.pg2, self.loop0,
-                                       bridged_routed,
+                                       src_if, dst_if,
+                                       traffic,
                                        is_ip6)
 
         reply = self.vapi.macip_acl_add(test_dict['rules'])
@@ -490,18 +564,23 @@ class TestMACIP(VppTestCase):
         self.assertEqual(reply.acls[tx_if.sw_if_index], acl_index)
         self.ACLS.append(reply.acls[tx_if.sw_if_index])
 
-        tx_if.add_stream(test_dict['stream'])
+        if not isinstance(src_if, VppSubInterface):
+            tx_if.add_stream(test_dict['stream'])
+        else:
+            tx_if.parent.add_stream(test_dict['stream'])
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         if do_not_expected_capture:
             rx_if.get_capture(0)
         else:
-            packet_count = self.get_packet_count_for_if_idx(
-                self.loop0.sw_if_index)
-            if mac_type == self.WILD_MAC and ip_type == self.WILD_IP:
-                packet_count = packets if bridged_routed else packet_count
-            capture = rx_if.get_capture(packet_count)
+            if traffic == self.BRIDGED and mac_type == self.WILD_MAC and \
+                    ip_type == self.WILD_IP:
+                capture = rx_if.get_capture(packets)
+            else:
+                capture = rx_if.get_capture(
+                    self.get_packet_count_for_if_idx(dst_if.sw_if_index))
+
             self.verify_capture(test_dict['stream'], capture, is_ip6)
 
     def run_test_acls(self, mac_type, ip_type, acl_count,
@@ -562,7 +641,7 @@ class TestMACIP(VppTestCase):
                          self.BRIDGED, self.IS_IP4, 3)
 
     def test_acl_bridged_ip6_ouiMAC_exactIP(self):
-        """ IP6 MACIP oui_MAC|exactIP ACL bridged traffic
+        """ IP6 MACIP ouiMAC|exactIP ACL bridged traffic
         """
 
         self.run_traffic(self.OUI_MAC, self.EXACT_IP,
@@ -596,7 +675,7 @@ class TestMACIP(VppTestCase):
         self.run_traffic(self.OUI_MAC, self.WILD_IP,
                          self.BRIDGED, self.IS_IP6, 9)
 
-    def test_ac_bridgedl_ip4_wildMAC_exactIP(self):
+    def test_acl_bridged_ip4_wildMAC_exactIP(self):
         """ IP4 MACIP wildcardMAC|exactIP ACL bridged traffic
         """
 
@@ -955,6 +1034,62 @@ class TestMACIP(VppTestCase):
 
         self.run_traffic(self.WILD_MAC, self.WILD_IP,
                          self.ROUTED, self.IS_IP6, 9)
+
+    def test_acl_bridged_ip4_subif_dot1q(self):
+        """ IP4 SubIf Dot1Q MACIP exactMAC|exactIP ACL bridged traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
+                         self.BRIDGED, self.IS_IP4, 9, tags=self.DOT1Q)
+
+    def test_acl_bridged_ip4_subif_dot1ad(self):
+        """ IP4 SubIf Dot1AD MACIP exactMAC|exactIP ACL bridged traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
+                         self.BRIDGED, self.IS_IP4, 9, tags=self.DOT1AD)
+
+    def test_acl_bridged_ip6_subif_dot1q(self):
+        """ IP6 SubIf Dot1Q MACIP exactMAC|exactIP ACL bridged traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
+                         self.BRIDGED, self.IS_IP6, 9, tags=self.DOT1Q)
+
+    def test_acl_bridged_ip6_subif_dot1ad(self):
+        """ IP6 SubIf Dot1AD MACIP exactMAC|exactIP ACL bridged traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
+                         self.BRIDGED, self.IS_IP6, 9, tags=self.DOT1AD)
+
+    def test_acl_routed_ip4_subif_dot1q(self):
+        """ IP4 SubIf Dot1Q MACIP exactMAC|exactIP ACL routed traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
+                         self.ROUTED, self.IS_IP4, 9, tags=self.DOT1Q)
+
+    def test_acl_routed_ip4_subif_dot1ad(self):
+        """ IP4 SubIf Dot1AD MACIP exactMAC|exactIP ACL routed traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
+                         self.ROUTED, self.IS_IP4, 9, tags=self.DOT1AD)
+
+    def test_acl_routed_ip6_subif_dot1q(self):
+        """ IP6 SubIf Dot1Q MACIP exactMAC|exactIP ACL routed traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
+                         self.ROUTED, self.IS_IP6, 9, tags=self.DOT1Q)
+
+    def test_acl_routed_ip6_subif_dot1ad(self):
+        """ IP6 SubIf Dot1AD MACIP exactMAC|exactIP ACL routed traffic
+        """
+
+        self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
+                         self.ROUTED, self.IS_IP6, 9, tags=self.DOT1AD)
 
 
 if __name__ == '__main__':
