@@ -1391,13 +1391,12 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       /* Increment RTO backoff (also equal to number of retries) and go back
        * to first un-acked byte  */
       tc->rto_boff += 1;
-      tc->snd_nxt = tc->snd_una;
 
       /* First retransmit timeout */
       if (tc->rto_boff == 1)
 	tcp_rtx_timeout_cc (tc);
 
-      /* Exponential backoff */
+      tc->snd_nxt = tc->snd_una;
       tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
       TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 1);
@@ -1515,7 +1514,7 @@ tcp_timer_persist_handler (u32 index)
   u32 thread_index = vlib_get_thread_index ();
   tcp_connection_t *tc;
   vlib_buffer_t *b;
-  u32 bi, old_snd_nxt, max_snd_bytes, available_bytes, offset;
+  u32 bi, max_snd_bytes, available_bytes, offset;
   int n_bytes = 0;
   u8 *data;
 
@@ -1567,14 +1566,11 @@ tcp_timer_persist_handler (u32 index)
   n_bytes = stream_session_peek_bytes (&tc->connection, data, offset,
 				       max_snd_bytes);
   b->current_length = n_bytes;
-  ASSERT (n_bytes != 0 && (tc->snd_nxt == tc->snd_una_max || tc->rto_boff > 1
-			   || tcp_timer_is_active (tc,
-						   TCP_TIMER_RETRANSMIT)));
+  ASSERT (n_bytes != 0 && (tcp_timer_is_active (tc, TCP_TIMER_RETRANSMIT)
+			   || tc->snd_nxt == tc->snd_una_max
+			   || tc->rto_boff > 1));
 
-  /* Allow updating of snd_una_max but don't update snd_nxt */
-  old_snd_nxt = tc->snd_nxt;
   tcp_push_hdr_i (tc, b, tc->state, 0);
-  tc->snd_nxt = old_snd_nxt;
   tcp_enqueue_to_output (vm, b, bi, tc->c_is_ip4);
 
   /* Just sent new data, enable retransmit */

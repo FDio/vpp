@@ -937,6 +937,7 @@ tcp_cc_recovery_exit (tcp_connection_t * tc)
   tc->rto_boff = 0;
   tcp_update_rto (tc);
   tc->snd_rxt_ts = 0;
+  tc->snd_nxt = tc->snd_una_max;
   tcp_recovery_off (tc);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
 }
@@ -947,6 +948,7 @@ tcp_cc_fastrecovery_exit (tcp_connection_t * tc)
   tc->cc_algo->recovered (tc);
   tc->snd_rxt_bytes = 0;
   tc->rcv_dupacks = 0;
+  tc->snd_nxt = tc->snd_una_max;
   tcp_fastrecovery_off (tc);
   tcp_fastrecovery_1_smss_off (tc);
   TCP_EVT_DBG (TCP_EVT_CC_EVT, tc, 3);
