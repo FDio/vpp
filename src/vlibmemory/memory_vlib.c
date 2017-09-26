@@ -1573,6 +1573,23 @@ _(RPC_CALL_REPLY,rpc_call_reply)
 #define foreach_plugin_trace_msg		\
 _(TRACE_PLUGIN_MSG_IDS,trace_plugin_msg_ids)
 
+/*
+ * Set the rpc callback at our earliest possible convenience.
+ * This avoids ordering issues between thread_init() -> start_workers and
+ * an init function which we could define here. If we ever intend to use
+ * vlib all by itself, we can't create a link-time dependency on
+ * an init function here and a typical "call foo_init first"
+ * guitar lick.
+ */
+
+static void set_rpc_callback (void) __attribute__ ((constructor));
+
+static void
+set_rpc_callback (void)
+{
+  vlib_global_main.rpc_call_main_thread_cb_fn = vl_api_rpc_call_main_thread;
+}
+
 static clib_error_t *
 rpc_api_hookup (vlib_main_t * vm)
 {

@@ -208,6 +208,9 @@ typedef struct vlib_main_t
   /* Earliest barrier can be closed again */
   f64 barrier_no_close_before;
 
+  /* Callback to send a main thread RPC */
+  void (*rpc_call_main_thread_cb_fn) (void *cb, u8 * args, u32 arg_size);
+
 } vlib_main_t;
 
 /* Global main structure. */
