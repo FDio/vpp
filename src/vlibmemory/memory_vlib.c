@@ -1600,6 +1600,7 @@ rpc_api_hookup (vlib_main_t * vm)
   /* No reason to halt the parade to create a trace record... */
   am->is_mp_safe[VL_API_TRACE_PLUGIN_MSG_IDS] = 1;
 
+  vm->rpc_call_main_thread_cb_fn = vl_api_rpc_call_main_thread;
   return 0;
 }
 
