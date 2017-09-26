@@ -171,6 +171,13 @@ typedef struct
   frame_queue_nelt_counter_t *frame_queue_histogram;
 } vlib_frame_queue_main_t;
 
+typedef struct
+{
+  uword node_index;
+  uword type_opaque;
+  uword data;
+} vlib_process_signal_event_mt_args_t;
+
 /* Called early, in thread 0's context */
 clib_error_t *vlib_thread_init (vlib_main_t * vm);
 
@@ -510,9 +517,14 @@ vlib_get_worker_handoff_queue_elt (u32 frame_queue_index,
 }
 
 u8 *vlib_thread_stack_init (uword thread_index);
-
 int vlib_thread_cb_register (struct vlib_main_t *vm,
 			     vlib_thread_callbacks_t * cb);
+extern void *rpc_call_main_thread_cb_fn;
+
+void
+vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
+				     args);
+void vlib_rpc_call_main_thread (void *function, u8 * args, u32 size);
 
 #endif /* included_vlib_threads_h */
 

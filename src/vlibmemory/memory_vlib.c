@@ -1573,6 +1573,17 @@ _(RPC_CALL_REPLY,rpc_call_reply)
 #define foreach_plugin_trace_msg		\
 _(TRACE_PLUGIN_MSG_IDS,trace_plugin_msg_ids)
 
+/*
+ * Set the rpc callback at our earliest possible convenience.
+ * This avoids ordering issues between thread_init() -> start_workers and
+ * an init function which we could define here. If we ever intend to use
+ * vlib all by itself, we can't create a link-time dependency on
+ * an init function here and a typical "call foo_init first"
+ * guitar lick.
+ */
+
+extern void *rpc_call_main_thread_cb_fn;
+
 static clib_error_t *
 rpc_api_hookup (vlib_main_t * vm)
 {
@@ -1599,7 +1610,7 @@ rpc_api_hookup (vlib_main_t * vm)
 
   /* No reason to halt the parade to create a trace record... */
   am->is_mp_safe[VL_API_TRACE_PLUGIN_MSG_IDS] = 1;
-
+  rpc_call_main_thread_cb_fn = vl_api_rpc_call_main_thread;
   return 0;
 }
 
