@@ -1767,7 +1767,6 @@ vlib_frame_queue_main_init (u32 node_index, u32 frame_queue_nelts)
   return (fqm - tm->frame_queue_mains);
 }
 
-
 int
 vlib_thread_cb_register (struct vlib_main_t *vm, vlib_thread_callbacks_t * cb)
 {
@@ -1779,6 +1778,29 @@ vlib_thread_cb_register (struct vlib_main_t *vm, vlib_thread_callbacks_t * cb)
   tm->cb.vlib_launch_thread_cb = cb->vlib_launch_thread_cb;
   tm->extern_thread_mgmt = 1;
   return 0;
+}
+
+void
+vlib_process_signal_event_mt_helper (vlib_process_signal_event_mt_args_t *
+				     args)
+{
+  ASSERT (vlib_get_thread_index () == 0);
+  vlib_process_signal_event (vlib_get_main (), args->node_index,
+			     args->type_opaque, args->data);
+}
+
+void *rpc_call_main_thread_cb_fn;
+
+void
+vlib_rpc_call_main_thread (void *callback, u8 * args, u32 arg_size)
+{
+  if (rpc_call_main_thread_cb_fn)
+    {
+      void (*fp) (void *, u8 *, u32) = rpc_call_main_thread_cb_fn;
+      (*fp) (callback, args, arg_size);
+    }
+  else
+    clib_warning ("BUG: rpc_call_main_thread_cb_fn NULL!");
 }
 
 clib_error_t *
