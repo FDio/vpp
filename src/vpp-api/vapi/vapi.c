@@ -305,6 +305,7 @@ vapi_connect (vapi_ctx_t ctx, const char *name,
     }
   ctx->requests = tmp;
   memset (ctx->requests, 0, size);
+  /* coverity[MISSING_LOCK] - 177211 requests_mutex is not needed here */
   ctx->requests_start = ctx->requests_count = 0;
   if (chroot_prefix)
     {

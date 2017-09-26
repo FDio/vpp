@@ -2163,7 +2163,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	drop:
 
 	  b0->error = error0 ? node->errors[error0] : 0;
-	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	  if (PREDICT_FALSE
+	      ((b0->flags & VLIB_BUFFER_IS_TRACED) && tcp0 != 0))
 	    {
 	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
 	      clib_memcpy (&t0->tcp_header, tcp0, sizeof (t0->tcp_header));

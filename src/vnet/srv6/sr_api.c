@@ -60,6 +60,9 @@ static void vl_api_sr_localsid_add_del_t_handler
  *  char end_psp, u8 behavior, u32 sw_if_index, u32 vlan_index, u32 fib_table,
  *  ip46_address_t *nh_addr, void *ls_plugin_mem)
  */
+
+  VALIDATE_SW_IF_INDEX (mp);
+
   rv = sr_cli_localsid (mp->is_del,
 			(ip6_address_t *) & mp->localsid_addr,
 			mp->end_psp,
@@ -68,6 +71,8 @@ static void vl_api_sr_localsid_add_del_t_handler
 			ntohl (mp->vlan_index),
 			ntohl (mp->fib_table),
 			(ip46_address_t *) & mp->nh_addr, NULL);
+
+  BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SR_LOCALSID_ADD_DEL_REPLY);
 }
@@ -158,6 +163,9 @@ static void vl_api_sr_steering_add_del_t_handler
  *  u32 table_id, ip46_address_t *prefix, u32 mask_width, u32 sw_if_index,
  *  u8 traffic_type)
  */
+
+  VALIDATE_SW_IF_INDEX (mp);
+
   rv = sr_steering_policy (mp->is_del,
 			   (ip6_address_t *) & mp->bsid_addr,
 			   ntohl (mp->sr_policy_index),
@@ -165,6 +173,8 @@ static void vl_api_sr_steering_add_del_t_handler
 			   (ip46_address_t *) & mp->prefix_addr,
 			   ntohl (mp->mask_width),
 			   ntohl (mp->sw_if_index), mp->traffic_type);
+
+  BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_SR_STEERING_ADD_DEL_REPLY);
 }
