@@ -40,12 +40,19 @@ indent --version
 # Check to make sure we have clang-format.  Exit if we don't with an error message, but
 # don't *fail*.
 command -v clang-format > /dev/null
+HAVE_CLANG_FORMAT=0
 if [ $? != 0 ]; then
     echo "Could not find command \"clang-format\". Checking C++ files will cause abort"
-    HAVE_CLANG_FORMAT=0
 else
-    HAVE_CLANG_FORMAT=1
     clang-format --version
+    x=$(echo "" | clang-format 2>&1)
+    if [[ "$x" == "" ]]; then
+        HAVE_CLANG_FORMAT=1
+    else
+	echo "Output produced while formatting empty file (expected empty string):"
+	echo "$x"
+        echo "Could not find working \"clang-format\". Checking C++ files will cause abort"
+    fi
 fi
 
 cd ${VPP_DIR}
