@@ -514,7 +514,7 @@ main (int argc, char **argv)
 		      continue;
 		    }
 
-		  else if (((char *) conn->buf)[0] != 0)
+		  else if (isascii (conn->buf[0]))
 		    {
 		      // If it looks vaguely like a string, make sure it's terminated
 		      ((char *) conn->buf)[rx_bytes <
@@ -536,8 +536,12 @@ main (int argc, char **argv)
 		    continue;
 		}
 
-	      if (isascii (conn->buf[0]) && strlen ((const char *) conn->buf))
+	      if (isascii (conn->buf[0]))
 		{
+		  // If it looks vaguely like a string, make sure it's terminated
+		  ((char *) conn->buf)[rx_bytes <
+				       conn->buf_size ? rx_bytes :
+				       conn->buf_size - 1] = 0;
 		  if (xtra)
 		    fprintf (stderr,
 			     "ERROR: FIFO not drained in previous test!\n"

@@ -132,6 +132,12 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 	    }
 	}
       log2_page_size = clib_mem_vm_get_log2_page_size (fd);
+
+      if (log2_page_size == 0)
+	{
+	  err = clib_error_return_unix (0, "cannot determine page size");
+	  goto error;
+	}
     }
   else				/* not CLIB_MEM_VM_F_SHARED */
     {
