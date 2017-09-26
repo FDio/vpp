@@ -71,8 +71,11 @@ typedef struct {
  * @brief TUNTAP node main state
  */
 typedef struct {
-  /** Vector of iovecs for readv/writev calls. */
-  struct iovec * iovecs;
+  /** Vector of iovecs for readv calls. */
+  struct iovec * rd_iovecs;
+
+  /** Vector of iovecs for writev calls. */
+  struct iovec * wr_iovecs;
 
   /** Vector of VLIB rx buffers to use.  We allocate them in blocks
      of VLIB_FRAME_SIZE (256). */
@@ -160,11 +163,11 @@ tuntap_tx (vlib_main_t * vm,
         }
 
       /* Re-set iovecs if present. */
-      if (tm->iovecs)
-	_vec_len (tm->iovecs) = 0;
+      if (tm->wr_iovecs)
+	_vec_len (tm->wr_iovecs) = 0;
 
       /** VLIB buffer chain -> Unix iovec(s). */
-      vec_add2 (tm->iovecs, iov, 1);
+      vec_add2 (tm->wr_iovecs, iov, 1);
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
 
@@ -173,7 +176,7 @@ tuntap_tx (vlib_main_t * vm,
 	  do {
 	    b = vlib_get_buffer (vm, b->next_buffer);
 
-	    vec_add2 (tm->iovecs, iov, 1);
+	    vec_add2 (tm->wr_iovecs, iov, 1);
 
 	    iov->iov_base = b->data + b->current_data;
 	    iov->iov_len = b->current_length;
@@ -181,7 +184,8 @@ tuntap_tx (vlib_main_t * vm,
 	  } while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
 	}
 
-      if (writev (tm->dev_net_tun_fd, tm->iovecs, vec_len (tm->iovecs)) < l)
+      if (writev (tm->dev_net_tun_fd, tm->wr_iovecs,
+		  vec_len (tm->wr_iovecs)) < l)
 	clib_unix_warning ("writev");
 
       n_bytes += l;
@@ -256,15 +260,15 @@ tuntap_rx (vlib_main_t * vm,
     /** We should have enough buffers left for an MTU sized packet. */
     ASSERT (vec_len (tm->rx_buffers) >= tm->mtu_buffers);
 
-    vec_validate (tm->iovecs, tm->mtu_buffers - 1);
+    vec_validate (tm->rd_iovecs, tm->mtu_buffers - 1);
     for (i = 0; i < tm->mtu_buffers; i++)
       {
 	b = vlib_get_buffer (vm, tm->rx_buffers[i_rx - i]);
-	tm->iovecs[i].iov_base = b->data;
-	tm->iovecs[i].iov_len = buffer_size;
+	tm->rd_iovecs[i].iov_base = b->data;
+	tm->rd_iovecs[i].iov_len = buffer_size;
       }
 
-    n_bytes_left = readv (tm->dev_net_tun_fd, tm->iovecs, tm->mtu_buffers);
+    n_bytes_left = readv (tm->dev_net_tun_fd, tm->rd_iovecs, tm->mtu_buffers);
     n_bytes_in_packet = n_bytes_left;
     if (n_bytes_left <= 0)
       {
