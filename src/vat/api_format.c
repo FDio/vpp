@@ -5232,6 +5232,7 @@ _(IPSEC_SPD_ADD_DEL_REPLY, ipsec_spd_add_del_reply)                     \
 _(IPSEC_INTERFACE_ADD_DEL_SPD_REPLY, ipsec_interface_add_del_spd_reply) \
 _(IPSEC_SPD_ADD_DEL_ENTRY_REPLY, ipsec_spd_add_del_entry_reply)         \
 _(IPSEC_SAD_ADD_DEL_ENTRY_REPLY, ipsec_sad_add_del_entry_reply)         \
+_(IPSEC_SA_DETAILS, ipsec_sa_details)                                   \
 _(IPSEC_SA_SET_KEY_REPLY, ipsec_sa_set_key_reply)                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL_REPLY, ipsec_tunnel_if_add_del_reply)         \
 _(IKEV2_PROFILE_ADD_DEL_REPLY, ikev2_profile_add_del_reply)             \
@@ -13774,6 +13775,121 @@ api_ipsec_tunnel_if_add_del (vat_main_t * vam)
   return ret;
 }
 
+static void
+vl_api_ipsec_sa_details_t_handler (vl_api_ipsec_sa_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  print (vam->ofp, "sa_id %u sw_if_index %u spi %u proto %u crypto_alg %u "
+	 "crypto_key %U integ_alg %u integ_key %U use_esn %u "
+	 "use_anti_replay %u is_tunnel %u is_tunnel_ip6 %u "
+	 "tunnel_src_addr %U tunnel_dst_addr %U "
+	 "salt %u seq_outbound %lu last_seq_inbound %lu "
+	 "replay_window %lu total_data_size %lu\n",
+	 ntohl (mp->sa_id), ntohl (mp->sw_if_index), ntohl (mp->spi),
+	 mp->protocol,
+	 mp->crypto_alg, format_hex_bytes, mp->crypto_key, mp->crypto_key_len,
+	 mp->integ_alg, format_hex_bytes, mp->integ_key, mp->integ_key_len,
+	 mp->use_esn, mp->use_anti_replay, mp->is_tunnel, mp->is_tunnel_ip6,
+	 (mp->is_tunnel_ip6) ? format_ip6_address : format_ip4_address,
+	 mp->tunnel_src_addr,
+	 (mp->is_tunnel_ip6) ? format_ip6_address : format_ip4_address,
+	 mp->tunnel_dst_addr,
+	 ntohl (mp->salt),
+	 clib_net_to_host_u64 (mp->seq_outbound),
+	 clib_net_to_host_u64 (mp->last_seq_inbound),
+	 clib_net_to_host_u64 (mp->replay_window),
+	 clib_net_to_host_u64 (mp->total_data_size));
+}
+
+#define vl_api_ipsec_sa_details_t_endian vl_noop_handler
+#define vl_api_ipsec_sa_details_t_print vl_noop_handler
+
+static void vl_api_ipsec_sa_details_t_handler_json
+  (vl_api_ipsec_sa_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+  struct in_addr src_ip4, dst_ip4;
+  struct in6_addr src_ip6, dst_ip6;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "sa_id", ntohl (mp->sa_id));
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_uint (node, "spi", ntohl (mp->spi));
+  vat_json_object_add_uint (node, "proto", mp->protocol);
+  vat_json_object_add_uint (node, "crypto_alg", mp->crypto_alg);
+  vat_json_object_add_uint (node, "integ_alg", mp->integ_alg);
+  vat_json_object_add_uint (node, "use_esn", mp->use_esn);
+  vat_json_object_add_uint (node, "use_anti_replay", mp->use_anti_replay);
+  vat_json_object_add_uint (node, "is_tunnel", mp->is_tunnel);
+  vat_json_object_add_uint (node, "is_tunnel_ip6", mp->is_tunnel_ip6);
+  vat_json_object_add_bytes (node, "crypto_key", mp->crypto_key,
+			     mp->crypto_key_len);
+  vat_json_object_add_bytes (node, "integ_key", mp->integ_key,
+			     mp->integ_key_len);
+  if (mp->is_tunnel_ip6)
+    {
+      clib_memcpy (&src_ip6, mp->tunnel_src_addr, sizeof (src_ip6));
+      vat_json_object_add_ip6 (node, "tunnel_src_addr", src_ip6);
+      clib_memcpy (&dst_ip6, mp->tunnel_dst_addr, sizeof (dst_ip6));
+      vat_json_object_add_ip6 (node, "tunnel_dst_addr", dst_ip6);
+    }
+  else
+    {
+      clib_memcpy (&src_ip4, mp->tunnel_src_addr, sizeof (src_ip4));
+      vat_json_object_add_ip4 (node, "tunnel_src_addr", src_ip4);
+      clib_memcpy (&dst_ip4, mp->tunnel_dst_addr, sizeof (dst_ip4));
+      vat_json_object_add_ip4 (node, "tunnel_dst_addr", dst_ip4);
+    }
+  vat_json_object_add_uint (node, "replay_window",
+			    clib_net_to_host_u64 (mp->replay_window));
+  vat_json_object_add_uint (node, "total_data_size",
+			    clib_net_to_host_u64 (mp->total_data_size));
+
+}
+
+static int
+api_ipsec_sa_dump (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_sa_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  u32 sa_id = ~0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "sa_id %d", &sa_id))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  M (IPSEC_SA_DUMP, mp);
+
+  mp->sa_id = ntohl (sa_id);
+
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  M (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
 static int
 api_ikev2_profile_add_del (vat_main_t * vam)
 {
@@ -20838,6 +20954,7 @@ _(ipsec_tunnel_if_add_del, "local_spi <n> remote_spi <n>\n"             \
   "  crypto_alg <alg> local_crypto_key <hex> remote_crypto_key <hex>\n" \
   "  integ_alg <alg> local_integ_key <hex> remote_integ_key <hex>\n"    \
   "  local_ip <addr> remote_ip <addr> [esn] [anti_replay] [del]\n")     \
+_(ipsec_sa_dump, "[sa_id <n>]")                                         \
 _(ikev2_profile_add_del, "name <profile_name> [del]")                   \
 _(ikev2_profile_set_auth, "name <profile_name> auth_method <method>\n"  \
   "(auth_data 0x<data> | auth_data <data>)")                            \
