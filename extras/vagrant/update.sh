@@ -42,6 +42,11 @@ if [ $DISTRIB_ID == "Ubuntu" ]; then
     # Install useful but non-mandatory tools
     apt-get install -y emacs x11-utils git-review gdb gdbserver xfce4-terminal iperf3
 elif [ $DISTRIB_ID == "CentOS" ]; then
+    if [ "$(echo $DISTRIB_RELEASE | cut -d'.' -f1)" == "7" ]; then
+        rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+        yum groupinstall "X Window system" -y
+        yum groupinstall xfce -y
+    fi
     # Standard update + upgrade dance
     yum check-update
     yum update -y
