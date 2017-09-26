@@ -692,7 +692,9 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       ;
     /* Mellanox  */
     else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1013 && d->device_id <= 0x101a)
-      ;
+      {
+        continue;
+      }
     else
       {
         clib_warning ("Unsupported PCI device 0x%04x:0x%04x found "
