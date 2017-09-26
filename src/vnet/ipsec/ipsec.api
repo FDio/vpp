@@ -544,6 +544,75 @@ define ipsec_tunnel_if_add_del_reply {
   u32 sw_if_index;
 };
 
+/** \brief Dump IPsec security association
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sa_id - optional ID of an SA to dump, if ~0 dump all SAs in SAD
+*/
+define ipsec_sa_dump {
+  u32 client_index;
+  u32 context;
+  u32 sa_id;
+};
+
+/** \brief IPsec security association database response
+    @param context - sender context which was passed in the request
+    @param sa_id - SA ID, policy-based SAs >=0, tunnel interface SAs = 0 
+    @param sw_if_index - sw_if_index of tunnel interface, policy-based SAs = ~0
+    @param spi - security parameter index
+    @param protocol - IPsec protocol (value from ipsec_protocol_t)
+    @param crypto_alg - crypto algorithm (value from ipsec_crypto_alg_t)
+    @param crypto_key_len - length of crypto_key in bytes
+    @param crypto_key - crypto keying material
+    @param integ_alg - integrity algorithm (value from ipsec_integ_alg_t)
+    @param integ_key_len - length of integ_key in bytes
+    @param integ_key - integrity keying material
+    @param use_esn - using extended sequence numbers when non-zero
+    @param use_anti_replay - using anti-replay window when non-zero
+    @param is_tunnel - IPsec tunnel mode when non-zero, else transport mode
+    @param is_tunnel_ipv6 - If using tunnel mode, endpoints are IPv6
+    @param tunnel_src_addr - Tunnel source address if using tunnel mode
+    @param tunnel_dst_addr - Tunnel destination address is using tunnel mode
+    @param salt - 4 byte salt 
+    @param seq - current sequence number for outbound
+    @param seq_hi - high 32 bits of ESN for outbound 
+    @param last_seq - highest sequence number received inbound
+    @param last_seq_hi - high 32 bits of highest ESN received inbound
+    @param replay_window - bit map of seq nums received relative to last_seq if using anti-replay
+    @param total_data_size - total bytes sent or received
+*/
+define ipsec_sa_details {
+  u32 context;
+  u32 sa_id;
+  u32 sw_if_index;
+
+  u32 spi;
+  u8 protocol;
+
+  u8 crypto_alg;
+  u8 crypto_key_len;
+  u8 crypto_key[128];
+
+  u8 integ_alg;
+  u8 integ_key_len;
+  u8 integ_key[128];
+
+  u8 use_esn;
+  u8 use_anti_replay;
+
+  u8 is_tunnel;
+  u8 is_tunnel_ip6;
+  u8 tunnel_src_addr[16];
+  u8 tunnel_dst_addr[16];
+
+  u32 salt;
+  u64 seq_outbound;
+  u64 last_seq_inbound;
+  u64 replay_window;
+
+  u64 total_data_size;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
