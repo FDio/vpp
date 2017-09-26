@@ -99,8 +99,11 @@ u8 * format_tapcli_rx_trace (u8 * s, va_list * va)
  * @brief TAPCLI main state struct
  */
 typedef struct {
-  /** Vector of iovecs for readv/writev calls. */
-  struct iovec * iovecs;
+  /** Vector of iovecs for readv calls. */
+  struct iovec * rd_iovecs;
+
+  /** Vector of iovecs for writev calls. */
+  struct iovec * wr_iovecs;
 
   /** Vector of VLIB rx buffers to use.  We allocate them in blocks
      of VLIB_FRAME_SIZE (256). */
@@ -199,11 +202,11 @@ tapcli_tx (vlib_main_t * vm,
         ti = vec_elt_at_index (tm->tapcli_interfaces, p[0]);
 
       /* Re-set iovecs if present. */
-      if (tm->iovecs)
-	_vec_len (tm->iovecs) = 0;
+      if (tm->wr_iovecs)
+	_vec_len (tm->wr_iovecs) = 0;
 
       /* VLIB buffer chain -> Unix iovec(s). */
-      vec_add2 (tm->iovecs, iov, 1);
+      vec_add2 (tm->wr_iovecs, iov, 1);
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
 
@@ -212,7 +215,7 @@ tapcli_tx (vlib_main_t * vm,
 	  do {
 	    b = vlib_get_buffer (vm, b->next_buffer);
 
-	    vec_add2 (tm->iovecs, iov, 1);
+	    vec_add2 (tm->wr_iovecs, iov, 1);
 
 	    iov->iov_base = b->data + b->current_data;
 	    iov->iov_len = b->current_length;
@@ -220,7 +223,7 @@ tapcli_tx (vlib_main_t * vm,
 	  } while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
 	}
 
-      if (writev (ti->unix_fd, tm->iovecs, vec_len (tm->iovecs)) < l)
+      if (writev (ti->unix_fd, tm->wr_iovecs, vec_len (tm->wr_iovecs)) < l)
 	clib_unix_warning ("writev");
     }
 
@@ -292,14 +295,14 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
 
     /* Allocate RX buffers from end of rx_buffers.
            Turn them into iovecs to pass to readv. */
-    vec_validate (tm->iovecs, tm->mtu_buffers - 1);
+    vec_validate (tm->rd_iovecs, tm->mtu_buffers - 1);
     for (j = 0; j < tm->mtu_buffers; j++) {
       b = vlib_get_buffer (vm, tm->rx_buffers[i_rx - j]);
-      tm->iovecs[j].iov_base = b->data;
-      tm->iovecs[j].iov_len = buffer_size;
+      tm->rd_iovecs[j].iov_base = b->data;
+      tm->rd_iovecs[j].iov_len = buffer_size;
     }
 
-    n_bytes_left = readv (ti->unix_fd, tm->iovecs, tm->mtu_buffers);
+    n_bytes_left = readv (ti->unix_fd, tm->rd_iovecs, tm->mtu_buffers);
     n_bytes_in_packet = n_bytes_left;
     if (n_bytes_left <= 0) {
       if (errno != EAGAIN) {
