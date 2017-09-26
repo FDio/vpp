@@ -95,19 +95,6 @@ typedef struct {
   };
 } snat_user_key_t;
 
-typedef struct {
-  union
-  {
-    struct
-    {
-      ip4_address_t addr;
-      u16 port;
-      u16 fib_index;
-    };
-    u64 as_u64;
-  };
-} snat_worker_key_t;
-
 
 #define foreach_snat_protocol \
   _(UDP, 0, udp, "udp")       \
@@ -282,9 +269,6 @@ typedef struct snat_main_s {
   /* Endpoint address dependent sessions lookup tables */
   clib_bihash_16_8_t out2in_ed;
   clib_bihash_16_8_t in2out_ed;
-
-  /* Non-translated packets worker lookup => src address + VRF */
-  clib_bihash_8_8_t worker_by_in;
 
   snat_icmp_match_function_t * icmp_match_in2out_cb;
   snat_icmp_match_function_t * icmp_match_out2in_cb;

@@ -176,10 +176,6 @@ create_session_for_static_mapping (snat_main_t *sm,
       /* add user */
       clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].user_hash,
                                &kv0, 1 /* is_add */);
-
-      /* add non-traslated packets worker lookup */
-      kv0.value = thread_index;
-      clib_bihash_add_del_8_8 (&sm->worker_by_in, &kv0, 1);
     }
   else
     {

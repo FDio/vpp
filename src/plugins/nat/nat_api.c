@@ -856,6 +856,7 @@ static void
   snat_user_t *u;
   u32 session_index, head_index, elt_index;
   dlist_elt_t *head, *elt;
+  ip4_header_t ip;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -864,10 +865,13 @@ static void
     return;
 
   clib_memcpy (&ukey.addr, mp->ip_address, 4);
+  ip.src_address.as_u32 = ukey.addr.as_u32;
   ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
   key.key = ukey.as_u64;
-  if (!clib_bihash_search_8_8 (&sm->worker_by_in, &key, &value))
-    tsm = vec_elt_at_index (sm->per_thread_data, value.value);
+  if (sm->num_workers)
+    tsm =
+      vec_elt_at_index (sm->per_thread_data,
+			sm->worker_in2out_cb (&ip, ukey.fib_index));
   else
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
   if (clib_bihash_search_8_8 (&tsm->user_hash, &key, &value))
@@ -2093,16 +2097,20 @@ vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
   snat_user_t *u;
   u32 session_index, head_index, elt_index;
   dlist_elt_t *head, *elt;
+  ip4_header_t ip;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
     return;
 
   clib_memcpy (&ukey.addr, mp->ip_address, 4);
+  ip.src_address.as_u32 = ukey.addr.as_u32;
   ukey.fib_index = fib_table_find (FIB_PROTOCOL_IP4, ntohl (mp->vrf_id));
   key.key = ukey.as_u64;
-  if (!clib_bihash_search_8_8 (&sm->worker_by_in, &key, &value))
-    tsm = vec_elt_at_index (sm->per_thread_data, value.value);
+  if (sm->num_workers)
+    tsm =
+      vec_elt_at_index (sm->per_thread_data,
+			sm->worker_in2out_cb (&ip, ukey.fib_index));
   else
     tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
   if (clib_bihash_search_8_8 (&tsm->user_hash, &key, &value))

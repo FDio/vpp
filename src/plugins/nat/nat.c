@@ -390,28 +390,12 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
       kv.value = m - sm->static_mappings;
       clib_bihash_add_del_8_8(&sm->static_mapping_by_external, &kv, 1);
 
-      /* Assign worker */
       if (sm->workers)
         {
-          snat_user_key_t w_key0;
-
-          w_key0.addr = m->local_addr;
-          w_key0.fib_index = m->fib_index;
-          kv.key = w_key0.as_u64;
-
-          if (clib_bihash_search_8_8 (&sm->worker_by_in, &kv, &value))
-            {
-              kv.value = sm->first_worker_index +
-                sm->workers[sm->next_worker++ % vec_len (sm->workers)];
-
-              clib_bihash_add_del_8_8 (&sm->worker_by_in, &kv, 1);
-            }
-          else
-            {
-              kv.value = value.value;
-            }
-
-          m->worker_index = kv.value;
+          ip4_header_t ip = {
+            .src_address = m->local_addr,
+          };
+          m->worker_index = sm->worker_in2out_cb (&ip, m->fib_index);
         }
     }
   else
@@ -478,8 +462,8 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           u_key.addr = m->local_addr;
           u_key.fib_index = m->fib_index;
           kv.key = u_key.as_u64;
-          if (!clib_bihash_search_8_8 (&sm->worker_by_in, &kv, &value))
-            tsm = vec_elt_at_index (sm->per_thread_data, value.value);
+          if (sm->num_workers)
+            tsm = vec_elt_at_index (sm->per_thread_data, m->worker_index);
           else
             tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
           if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
@@ -607,7 +591,6 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
   snat_address_t *a = 0;
   int i;
   nat44_lb_addr_port_t *local;
-  snat_user_key_t w_key0;
   u32 worker_index = 0;
   snat_main_per_thread_data_t *tsm;
 
@@ -694,16 +677,8 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
       /* Assign worker */
       if (sm->workers)
         {
-          w_key0.addr = locals[0].addr;
-          w_key0.fib_index = fib_index;
-          kv.key = w_key0.as_u64;
-
-          if (clib_bihash_search_8_8 (&sm->worker_by_in, &kv, &value))
-            worker_index = sm->first_worker_index +
-              sm->workers[sm->next_worker++ % vec_len (sm->workers)];
-          else
-            worker_index = value.value;
-
+          worker_index = sm->first_worker_index +
+            sm->workers[sm->next_worker++ % vec_len (sm->workers)];
           tsm = vec_elt_at_index (sm->per_thread_data, worker_index);
           m->worker_index = worker_index;
         }
@@ -730,6 +705,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
           locals[i].prefix = (i == 0) ? locals[i].probability :\
             (locals[i - 1].prefix + locals[i].probability);
           vec_add1 (m->locals, locals[i]);
+
           m_key.port = clib_host_to_net_u16 (locals[i].port);
           kv.key = m_key.as_u64;
           kv.value = ~0ULL;
@@ -737,19 +713,6 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
             {
               clib_warning ("in2out key add failed");
               return VNET_API_ERROR_UNSPECIFIED;
-            }
-          /* Assign worker */
-          if (sm->workers)
-            {
-              w_key0.addr = locals[i].addr;
-              w_key0.fib_index = fib_index;
-              kv.key = w_key0.as_u64;
-              kv.value = worker_index;
-              if (clib_bihash_add_del_8_8 (&sm->worker_by_in, &kv, 1))
-                {
-                  clib_warning ("worker-by-in key add failed");
-                  return VNET_API_ERROR_UNSPECIFIED;
-                }
             }
         }
     }
@@ -801,6 +764,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
           clib_warning ("static_mapping_by_external key del failed");
           return VNET_API_ERROR_UNSPECIFIED;
         }
+
       m_key.port = clib_host_to_net_u16 (m->external_port);
       kv.key = m_key.as_u64;
       if (clib_bihash_add_del_8_8(&tsm->out2in, &kv, 0))
@@ -820,6 +784,7 @@ int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
               clib_warning ("static_mapping_by_local key del failed");
               return VNET_API_ERROR_UNSPECIFIED;
             }
+
           m_key.port = clib_host_to_net_u16 (local->port);
           kv.key = m_key.as_u64;
           if (clib_bihash_add_del_8_8(&tsm->in2out, &kv, 0))
@@ -2017,32 +1982,17 @@ static u32
 snat_get_worker_in2out_cb (ip4_header_t * ip0, u32 rx_fib_index0)
 {
   snat_main_t *sm = &snat_main;
-  snat_user_key_t key0;
-  clib_bihash_kv_8_8_t kv0, value0;
   u32 next_worker_index = 0;
+  u32 hash;
 
-  key0.addr = ip0->src_address;
-  key0.fib_index = rx_fib_index0;
+  next_worker_index = sm->first_worker_index;
+  hash = ip0->src_address.as_u32 + (ip0->src_address.as_u32 >> 8) +
+         (ip0->src_address.as_u32 >> 16) + (ip0->src_address.as_u32 >>24);
 
-  kv0.key = key0.as_u64;
-
-  /* Ever heard of of the "user" before? */
-  if (clib_bihash_search_8_8 (&sm->worker_by_in, &kv0, &value0))
-    {
-      /* No, assign next available worker (RR) */
-      next_worker_index = sm->first_worker_index;
-      if (vec_len (sm->workers))
-        {
-          next_worker_index +=
-            sm->workers[sm->next_worker++ % _vec_len (sm->workers)];
-        }
-
-      /* add non-traslated packets worker lookup */
-      kv0.value = next_worker_index;
-      clib_bihash_add_del_8_8 (&sm->worker_by_in, &kv0, 1);
-    }
+  if (PREDICT_TRUE (is_pow2 (_vec_len (sm->workers))))
+    next_worker_index += sm->workers[hash & (_vec_len (sm->workers) - 1)];
   else
-    next_worker_index = value0.value;
+    next_worker_index += sm->workers[hash % _vec_len (sm->workers)];
 
   return next_worker_index;
 }
@@ -2264,9 +2214,6 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
               clib_bihash_init_8_8 (&tsm->user_hash, "users", user_buckets,
                                     user_memory_size);
             }
-
-          clib_bihash_init_8_8 (&sm->worker_by_in, "worker-by-in", user_buckets,
-                                user_memory_size);
 
           clib_bihash_init_16_8 (&sm->in2out_ed, "in2out-ed",
                                  translation_buckets, translation_memory_size);
@@ -2647,8 +2594,6 @@ show_snat_command_fn (vlib_main_t * vm,
               vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->in2out_ed,
                                verbose - 1);
               vlib_cli_output (vm, "%U", format_bihash_16_8, &sm->out2in_ed,
-                               verbose - 1);
-              vlib_cli_output (vm, "%U", format_bihash_8_8, &sm->worker_by_in,
                                verbose - 1);
               vec_foreach_index (j, sm->per_thread_data)
                 {
