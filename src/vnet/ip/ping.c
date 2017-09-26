@@ -97,7 +97,7 @@ signal_ip46_icmp_reply_event (u8 event_type, vlib_buffer_t * b0)
   clib_memcpy (vnet_buffer
 	       (vlib_get_buffer
 		(vm, bi0_copy))->unused, &nowts, sizeof (nowts));
-  vlib_process_signal_event (vm, pr->cli_process_id, event_type, bi0_copy);
+  vlib_process_signal_event_mt (vm, pr->cli_process_id, event_type, bi0_copy);
   return 1;
 }
 
@@ -646,7 +646,7 @@ run_ping_ip46_address (vlib_main_t * vm, u32 table_id, ip4_address_t * pa4,
 	      i = 1 + ping_repeat;
 	      break;
 	    }
-      vec_free(event_data);
+	  vec_free (event_data);
 	}
     }
   vlib_cli_output (vm, "\n");
