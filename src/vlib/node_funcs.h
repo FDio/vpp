@@ -47,6 +47,7 @@
 
 #include <vppinfra/fifo.h>
 #include <vppinfra/tw_timer_1t_3w_1024sl_ov.h>
+#include <vlibmemory/api_common.h>
 
 /** \brief Get vlib node by index.
  @warning This function will ASSERT if @c i is out of range.
@@ -963,6 +964,45 @@ vlib_process_signal_event_pointer (vlib_main_t * vm,
   void **d = vlib_process_signal_event_data (vm, node_index, type_opaque,
 					     1 /* elts */ , sizeof (data));
   d[0] = data;
+}
+
+typedef struct
+{
+  uword node_index;
+  uword type_opaque;
+  uword data;
+} vlib_process_signal_event_safe_args_t;
+
+always_inline void
+vlib_process_signal_event_mt_helper (vlib_process_signal_event_safe_args_t *
+				     args)
+{
+  ASSERT (vlib_get_thread_index () == 0);
+  vlib_process_signal_event (vlib_get_main (), args->node_index,
+			     args->type_opaque, args->data);
+}
+
+/**
+ * Signal event to process from any thread.
+ *
+ * When in doubt, use this.
+ */
+always_inline void
+vlib_process_signal_event_mt (vlib_main_t * vm,
+			      uword node_index, uword type_opaque, uword data)
+{
+  if (vlib_get_thread_index () != 0)
+    {
+      vlib_process_signal_event_safe_args_t args = {
+	.node_index = node_index,
+	.type_opaque = type_opaque,
+	.data = data,
+      };
+      vl_api_rpc_call_main_thread (vlib_process_signal_event_mt_helper,
+				   (u8 *) & args, sizeof (args));
+    }
+  else
+    vlib_process_signal_event (vm, node_index, type_opaque, data);
 }
 
 always_inline void
