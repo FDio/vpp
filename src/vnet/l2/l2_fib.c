@@ -756,17 +756,21 @@ VLIB_CLI_COMMAND (l2fib_del_cli, static) = {
 void
 l2fib_start_ager_scan (vlib_main_t * vm)
 {
-  l2_bridge_domain_t *bd_config;
-  int enable = 0;
+  uword evt = L2_MAC_AGE_PROCESS_EVENT_ONE_PASS;
 
   /* check if there is at least one bd with mac aging enabled */
+  l2_bridge_domain_t *bd_config;
   vec_foreach (bd_config, l2input_main.bd_configs)
+  {
     if (bd_config->bd_id != ~0 && bd_config->mac_age != 0)
-    enable = 1;
+      {
+	evt = L2_MAC_AGE_PROCESS_EVENT_START;
+	break;
+      }
+  }
 
   vlib_process_signal_event (vm, l2fib_mac_age_scanner_process_node.index,
-			     enable ? L2_MAC_AGE_PROCESS_EVENT_START :
-			     L2_MAC_AGE_PROCESS_EVENT_ONE_PASS, 0);
+			     evt, 0);
 }
 
 /**
@@ -1019,25 +1023,26 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 	      if (result.fields.age_not == 0)
 		learn_count++;
 
-	      if (PREDICT_FALSE (evt_idx >= fm->max_macs_in_event))
-		{
-		  /* event message full, send it and start a new one */
-		  if (q && (q->cursize < q->maxsize))
-		    {
-		      mp->n_macs = htonl (evt_idx);
-		      vl_msg_api_send_shmem (q, (u8 *) & mp);
-		      mp = allocate_mac_evt_buf (client, cl_idx);
-		    }
-		  else
-		    {
-		      clib_warning ("MAC event to pid %d queue stuffed!"
-				    " %d MAC entries lost", client, evt_idx);
-		    }
-		  evt_idx = 0;
-		}
-
 	      if (client)
 		{
+		  if (PREDICT_FALSE (evt_idx >= fm->max_macs_in_event))
+		    {
+		      /* event message full, send it and start a new one */
+		      if (q && (q->cursize < q->maxsize))
+			{
+			  mp->n_macs = htonl (evt_idx);
+			  vl_msg_api_send_shmem (q, (u8 *) & mp);
+			  mp = allocate_mac_evt_buf (client, cl_idx);
+			}
+		      else
+			{
+			  clib_warning ("MAC event to pid %d queue stuffed!"
+					" %d MAC entries lost", client,
+					evt_idx);
+			}
+		      evt_idx = 0;
+		    }
+
 		  if (result.fields.lrn_evt)
 		    {
 		      /* copy mac entry to event msg */
@@ -1125,10 +1130,6 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
   return delta_t + accum_t;
 }
 
-/* Type of scan */
-#define SCAN_MAC_AGE   0
-#define SCAN_MAC_EVENT 1
-
 /* Maximum f64 value */
 #define TIME_MAX (1.7976931348623157e+308)
 
@@ -1140,22 +1141,16 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
   l2fib_main_t *fm = &l2fib_main;
   l2learn_main_t *lm = &l2learn_main;
   bool enabled = 0;
-  bool scan = SCAN_MAC_AGE;	/* SCAN_FOR_AGE or SCAN_FOR_EVENT */
   f64 start_time, next_age_scan_time = TIME_MAX;
 
   while (1)
     {
-      if (enabled)
+      if (lm->client_pid)
+	vlib_process_wait_for_event_or_clock (vm, fm->event_scan_delay);
+      else if (enabled)
 	{
-	  if (lm->client_pid)	/* mac event client waiting */
-	    vlib_process_wait_for_event_or_clock (vm, fm->event_scan_delay);
-	  else			/* agin only */
-	    {
-	      f64 t = next_age_scan_time - vlib_time_now (vm);
-	      if (t < fm->event_scan_delay)
-		t = fm->event_scan_delay;
-	      vlib_process_wait_for_event_or_clock (vm, t);
-	    }
+	  f64 t = next_age_scan_time - vlib_time_now (vm);
+	  vlib_process_wait_for_event_or_clock (vm, t);
 	}
       else
 	vlib_process_wait_for_event (vm);
@@ -1164,41 +1159,26 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       vec_reset_length (event_data);
 
       start_time = vlib_time_now (vm);
+      enum
+      { SCAN_MAC_AGE, SCAN_MAC_EVENT, SCAN_DISABLE } scan = SCAN_MAC_AGE;
 
       switch (event_type)
 	{
 	case ~0:		/* timer expired */
-	  if ((lm->client_pid == 0) || (start_time >= next_age_scan_time))
-	    {
-	      scan = SCAN_MAC_AGE;
-	      if (enabled)
-		next_age_scan_time = start_time + L2FIB_AGE_SCAN_INTERVAL;
-	      else
-		next_age_scan_time = TIME_MAX;
-	    }
-	  else
+	  if (lm->client_pid != 0 && start_time < next_age_scan_time)
 	    scan = SCAN_MAC_EVENT;
 	  break;
 
 	case L2_MAC_AGE_PROCESS_EVENT_START:
-	  scan = SCAN_MAC_AGE;
-	  next_age_scan_time = start_time + L2FIB_AGE_SCAN_INTERVAL;
 	  enabled = 1;
 	  break;
 
 	case L2_MAC_AGE_PROCESS_EVENT_STOP:
 	  enabled = 0;
-	  next_age_scan_time = TIME_MAX;
-	  l2fib_main.age_scan_duration = 0;
-	  l2fib_main.evt_scan_duration = 0;
-	  continue;
+	  scan = SCAN_DISABLE;
+	  break;
 
 	case L2_MAC_AGE_PROCESS_EVENT_ONE_PASS:
-	  scan = SCAN_MAC_AGE;
-	  if (enabled)
-	    next_age_scan_time = start_time + L2FIB_AGE_SCAN_INTERVAL;
-	  else
-	    next_age_scan_time = TIME_MAX;
 	  break;
 
 	default:
@@ -1208,7 +1188,20 @@ l2fib_mac_age_scanner_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       if (scan == SCAN_MAC_EVENT)
 	l2fib_main.evt_scan_duration = l2fib_scan (vm, start_time, 1);
       else
-	l2fib_main.age_scan_duration = l2fib_scan (vm, start_time, 0);
+	{
+	  if (scan == SCAN_MAC_AGE)
+	    l2fib_main.age_scan_duration = l2fib_scan (vm, start_time, 0);
+	  if (scan == SCAN_DISABLE)
+	    {
+	      l2fib_main.age_scan_duration = 0;
+	      l2fib_main.evt_scan_duration = 0;
+	    }
+	  /* schedule next scan */
+	  if (enabled)
+	    next_age_scan_time = start_time + L2FIB_AGE_SCAN_INTERVAL;
+	  else
+	    next_age_scan_time = TIME_MAX;
+	}
     }
   return 0;
 }
