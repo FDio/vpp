@@ -519,6 +519,24 @@ class TestL2fib(VppTestCase):
         self.run_verify_negat_test(bd_id=1, dst_hosts=flushed)
         self.run_verify_negat_test(bd_id=2, dst_hosts=flushed)
 
+    def test_l2_fib_09(self):
+        """ L2 FIB test 9 - mac learning events
+        """
+        self.create_hosts(10, subnet=39)
+
+        self.vapi.want_macs_learn_events()
+        self.learn_hosts(bd_id=1, n_hosts_per_if=10)
+
+        self.sleep(1)
+        self.logger.info(self.vapi.ppcli("show l2fib"))
+        evs = self.vapi.collect_events()
+        learned_macs = {
+            e.mac[i].mac_addr for e in evs for i in range(e.n_macs)}
+        macs = {h.bin_mac for swif_hs in self.learned_hosts.itervalues()
+                for h in swif_hs}
+        self.vapi.want_macs_learn_events(enable_disable=0)
+        self.assertEqual(len(learned_macs ^ macs), 0)
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
