@@ -1,0 +1,573 @@
+#!/usr/bin/python
+
+# Copyright (c) 2016 Cisco and/or its affiliates.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""VPP Configuration Main Entry"""
+
+import re
+import os
+import sys
+import logging
+
+from vpplib.AutoConfig import AutoConfig
+from vpplib.VPPUtil import VPPUtil
+
+VPP_DRYRUNDIR = '/vpp/vpp-config/dryrun'
+VPP_AUTO_CONFIGURATION_FILE = '/vpp/vpp-config/configs/auto-config.yaml'
+VPP_HUGE_PAGE_FILE = '/vpp/vpp-config/dryrun/sysctl.d/80-vpp.conf'
+VPP_STARTUP_FILE = '/vpp/vpp-config/dryrun/vpp/startup.conf'
+VPP_GRUB_FILE = '/vpp/vpp-config/dryrun/default/grub'
+VPP_REAL_HUGE_PAGE_FILE = '/etc/sysctl.d/80-vpp.conf'
+VPP_REAL_STARTUP_FILE = '/etc/vpp/startup.conf'
+VPP_REAL_GRUB_FILE = '/etc/default/grub'
+
+rootdir = ''
+
+
+def autoconfig_yn(question, default):
+    """
+    Ask the user a yes or no question.
+
+    :param question: The text of the question
+    :param default: Value to be returned if '\n' is entered
+    :type question: string
+    :type default: string
+    :returns: The Answer
+    :rtype: string
+    """
+    input_valid = False
+    default = default.lower()
+    answer = ''
+    while not input_valid:
+        answer = raw_input(question)
+        if len(answer) == 0:
+            answer = default
+        if re.findall(r'[YyNn]', answer):
+            input_valid = True
+            answer = answer[0].lower()
+        else:
+            print "Please answer Y, N or Return."
+
+    return answer
+
+
+def autoconfig_cp(node, src, dst):
+    """
+    Copies a file, saving the original if needed.
+
+    :param node: Node dictionary with cpuinfo.
+    :param src: Source File
+    :param dst: Destination file
+    :type node: dict
+    :type src: string
+    :type dst: string
+    :raises RuntimeError: If command fails
+    """
+
+    # If the destination file exist, create a copy if one does not already
+    # exist
+    ofile = dst + '.orig'
+    (ret, stdout, stderr) = VPPUtil.exec_command('ls {}'.format(dst))
+    if ret == 0:
+        cmd = 'cp {} {}'.format(dst, ofile)
+        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {} {}'.
+                               format(cmd,
+                                      node['host'],
+                                      stdout,
+                                      stderr))
+
+    # Copy the source file
+    cmd = 'cp {} {}'.format(src, os.path.dirname(dst))
+    (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+    if ret != 0:
+        raise RuntimeError('{} failed on node {} {}'.
+                           format(cmd, node['host'], stderr))
+
+
+def autoconfig_diff(node, src, dst):
+    """
+    Returns the diffs of 2 files.
+
+    :param node: Node dictionary with cpuinfo.
+    :param src: Source File
+    :param dst: Destination file
+    :type node: dict
+    :type src: string
+    :type dst: string
+    :returns: The Answer
+    :rtype: string
+    :raises RuntimeError: If command fails
+    """
+
+    # Diff the files and return the output
+    cmd = "diff {} {}".format(src, dst)
+    (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+    if stderr != '':
+        raise RuntimeError('{} failed on node {} {} {}'.
+                           format(cmd,
+                                  node['host'],
+                                  ret,
+                                  stderr))
+
+    return stdout
+
+
+def autoconfig_show_system():
+    """
+    Shows the system information.
+
+    """
+
+    acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
+
+    acfg.discover()
+
+    acfg.sys_info()
+
+
+def autoconfig_hugepage_apply(node):
+    """
+    Apply the huge page configuration.
+    :param node: The node structure
+    :type node: dict
+    :returns: -1 if the caller should return, 0 if not
+    :rtype: int
+
+    """
+
+    diffs = autoconfig_diff(node, VPP_REAL_HUGE_PAGE_FILE, rootdir + VPP_HUGE_PAGE_FILE)
+    if diffs != '':
+        print "These are the changes we will apply to"
+        print "the huge page file ({}).\n".format(VPP_REAL_HUGE_PAGE_FILE)
+        print diffs
+        answer = autoconfig_yn(
+            "\nAre you sure you want to apply these changes [Y/n]? ",
+            'y')
+        if answer == 'n':
+            return -1
+
+        # Copy and sysctl
+        autoconfig_cp(node, rootdir + VPP_HUGE_PAGE_FILE, VPP_REAL_HUGE_PAGE_FILE)
+        cmd = "sysctl -p {}".format(VPP_REAL_HUGE_PAGE_FILE)
+        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {} {}'.
+                               format(cmd, node['host'], stdout, stderr))
+    else:
+        print '\nThere are no changes to the huge page configuration.'
+
+    return 0
+
+
+def autoconfig_vpp_apply(node):
+    """
+    Apply the vpp configuration.
+
+    :param node: The node structure
+    :type node: dict
+    :returns: -1 if the caller should return, 0 if not
+    :rtype: int
+
+    """
+
+    cmd = "service vpp stop"
+    (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+    if ret != 0:
+        raise RuntimeError('{} failed on node {} {} {}'.
+                           format(cmd, node['host'], stdout, stderr))
+
+    diffs = autoconfig_diff(node, VPP_REAL_STARTUP_FILE, rootdir + VPP_STARTUP_FILE)
+    if diffs != '':
+        print "These are the changes we will apply to"
+        print "the VPP startup file ({}).\n".format(VPP_REAL_STARTUP_FILE)
+        print diffs
+        answer = autoconfig_yn(
+            "\nAre you sure you want to apply these changes [Y/n]? ",
+            'y')
+        if answer == 'n':
+            return -1
+
+        # Copy the VPP startup
+        autoconfig_cp(node, rootdir + VPP_STARTUP_FILE, VPP_REAL_STARTUP_FILE)
+    else:
+        print '\nThere are no changes to VPP startup.'
+
+    return 0
+
+
+def autoconfig_grub_apply(node):
+    """
+    Apply the grub configuration.
+
+    :param node: The node structure
+    :type node: dict
+    :returns: -1 if the caller should return, 0 if not
+    :rtype: int
+
+    """
+    print "\nThe configured grub cmdline looks like this:"
+    configured_cmdline = node['grub']['default_cmdline']
+    current_cmdline = node['grub']['current_cmdline']
+    print configured_cmdline
+    print "\nThe current boot cmdline looks like this:"
+    print current_cmdline
+    question = "\nDo you want to keep the current boot cmdline [Y/n]? "
+    answer = autoconfig_yn(question, 'y')
+    if answer == 'n':
+        node['grub']['keep_cmdline'] = False
+
+        # Diff the file
+        diffs = autoconfig_diff(node, VPP_REAL_GRUB_FILE, rootdir + VPP_GRUB_FILE)
+        if diffs != '':
+            print "These are the changes we will apply to"
+            print "the GRUB file ({}).\n".format(VPP_REAL_GRUB_FILE)
+            print diffs
+            answer = autoconfig_yn(
+                "\nAre you sure you want to apply these changes [y/N]? ",
+                'n')
+            if answer == 'n':
+                return -1
+
+            # Copy and update grub
+            autoconfig_cp(node, rootdir + VPP_GRUB_FILE, VPP_REAL_GRUB_FILE)
+            distro = VPPUtil.get_linux_distro()
+            if distro[0] == 'Ubuntu':
+                cmd = "update-grub"
+            else:
+                cmd = "grub2-mkconfig -o /boot/grub2/grub.cfg"
+            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            if ret != 0:
+                raise RuntimeError('{} failed on node {} {} {}'.
+                                   format(cmd,
+                                          node['host'],
+                                          stdout,
+                                          stderr))
+            print "There have been changes to the GRUB config a",
+            print "reboot will be required."
+            return -1
+        else:
+            print '\nThere are no changes to the GRUB config.'
+
+    return 0
+
+
+def autoconfig_apply():
+    """
+    Apply the configuration.
+
+    Show the diff of the dryrun file and the actual configuration file
+    Copy the files from the dryrun directory to the actual file.
+    Peform the system function
+
+    """
+
+    vutil = VPPUtil()
+    pkgs = vutil.get_installed_vpp_pkgs()
+    if len(pkgs) == 0:
+        print "\nVPP is not installed, Install VPP with option 4."
+        return
+
+    acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
+
+    print "\nWe are now going to configure your system(s).\n"
+    answer = autoconfig_yn("Are you sure you want to do this [Y/n]? ", 'y')
+    if answer == 'n':
+        return
+
+    nodes = acfg.get_nodes()
+    for i in nodes.items():
+        node = i[1]
+
+        # Check the system resources
+        if not acfg.min_system_resources(node):
+            return
+
+        # Huge Pages
+        ret = autoconfig_hugepage_apply(node)
+        if ret != 0:
+            return
+
+        # VPP
+        ret = autoconfig_vpp_apply(node)
+        if ret != 0:
+            return
+
+        # Grub
+        ret = autoconfig_grub_apply(node)
+        if ret != 0:
+            return
+
+        # Everything is configured start vpp
+        cmd = "service vpp start"
+        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {} {}'.
+                               format(cmd, node['host'], stdout, stderr))
+
+
+def autoconfig_dryrun():
+    """
+    Execute the dryrun function.
+
+    """
+
+    vutil = VPPUtil()
+    pkgs = vutil.get_installed_vpp_pkgs()
+    if len(pkgs) == 0:
+        print "\nVPP is not installed, install VPP with option 4."
+        return
+
+    acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
+
+    # Stop VPP on each node
+    nodes = acfg.get_nodes()
+    for i in nodes.items():
+        node = i[1]
+        VPPUtil.stop(node)
+
+    # Discover
+    acfg.discover()
+
+    # Check the system resources
+    nodes = acfg.get_nodes()
+    for i in nodes.items():
+        node = i[1]
+        if not acfg.min_system_resources(node):
+            return
+
+    # Modify the devices
+    acfg.modify_devices()
+
+    # Modify CPU
+    acfg.modify_cpu()
+
+    # Calculate the cpu parameters
+    acfg.calculate_cpu_parameters()
+
+    # Acquire TCP stack parameters
+    acfg.acquire_tcp_params()
+
+    # Apply the startup
+    acfg.apply_vpp_startup()
+
+    # Apply the grub configuration
+    acfg.apply_grub_cmdline()
+
+    # Huge Pages
+    acfg.modify_huge_pages()
+    acfg.apply_huge_pages()
+
+
+def autoconfig_install():
+    """
+    Install or Uninstall VPP.
+
+    """
+
+    # Since these commands will take a while, we
+    # want to see the progress
+    logger = logging.getLogger()
+
+    acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
+    vutil = VPPUtil()
+
+    nodes = acfg.get_nodes()
+    for i in nodes.items():
+        node = i[1]
+
+        pkgs = vutil.get_installed_vpp_pkgs()
+
+        if len(pkgs) > 0:
+            print "\nThese packages are installed on node {}" \
+                .format(node['host'])
+            print "{:25} {}".format("Name", "Version")
+            for pkg in pkgs:
+                if 'version' in pkg:
+                    print "{:25} {}".format(
+                        pkg['name'], pkg['version'])
+                else:
+                    print "{}".format(pkg['name'])
+
+            question = "\nDo you want to uninstall these "
+            question += "packages [y/N]? "
+            answer = autoconfig_yn(question, 'n')
+            if answer == 'y':
+                logger.setLevel(logging.INFO)
+                vutil.uninstall_vpp(node)
+        else:
+            print "\nThere are no VPP packages on node {}." \
+                .format(node['host'])
+            question = "Do you want to install VPP [Y/n]? "
+            answer = autoconfig_yn(question, 'y')
+            if answer == 'y':
+                logger.setLevel(logging.INFO)
+                vutil.install_vpp(node)
+
+    # Set the logging level back
+    logger.setLevel(logging.ERROR)
+
+
+def autoconfig_patch_qemu():
+    """
+    Patch the correct qemu version that is needed for openstack
+
+    """
+
+    # Since these commands will take a while, we
+    # want to see the progress
+    logger = logging.getLogger()
+
+    acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
+
+    nodes = acfg.get_nodes()
+    for i in nodes.items():
+        node = i[1]
+
+        logger.setLevel(logging.INFO)
+        acfg.patch_qemu(node)
+
+
+def autoconfig_not_implemented():
+    """
+    This feature is not implemented
+
+    """
+
+    print "\nThis Feature is not implemented yet...."
+
+
+def autoconfig_main_menu():
+    """
+    The auto configuration main menu
+
+    """
+
+    main_menu_text = '\nWhat would you like to do?\n\n\
+1) Show basic system information\n\
+2) Dry Run (Will save the configuration files in {}/vpp/vpp-config/dryrun for inspection)\n\
+       and user input in {}/vpp/vpp-config/configs/auto-config.yaml\n\
+3) Full configuration (WARNING: This will change the system configuration)\n\
+4) List/Install/Uninstall VPP.\n\
+9 or q) Quit'.format(rootdir, rootdir)
+
+    # 5) Dry Run from {}/vpp/vpp-config/auto-config.yaml (will not ask questions).\n\
+    # 6) Install QEMU patch (Needed when running openstack).\n\
+
+    print "{}".format(main_menu_text)
+
+    input_valid = False
+    answer = ''
+    while not input_valid:
+        answer = raw_input("\nCommand: ")
+        if len(answer) > 1:
+            print "Please enter only 1 character."
+            continue
+        if re.findall(r'[Qq1-79]', answer):
+            input_valid = True
+            answer = answer[0].lower()
+        else:
+            print "Please enter a character between 1 and 7 or 9."
+
+    if answer == '9':
+        answer = 'q'
+    return answer
+
+
+def autoconfig_main():
+    """
+    The auto configuration main entry point
+
+    """
+
+    answer = ''
+    while answer != 'q':
+        answer = autoconfig_main_menu()
+        if answer == '1':
+            autoconfig_show_system()
+        elif answer == '2':
+            autoconfig_dryrun()
+        elif answer == '3':
+            autoconfig_apply()
+        elif answer == '4':
+            autoconfig_install()
+        elif answer == '9' or answer == 'q':
+            return
+        else:
+            autoconfig_not_implemented()
+
+
+def autoconfig_setup():
+    """
+    The auto configuration setup function.
+
+    We will copy the configuration files to the dryrun directory.
+
+    """
+
+    global rootdir
+
+    logging.basicConfig(level=logging.ERROR)
+
+    distro = VPPUtil.get_linux_distro()
+    if distro[0] == 'Ubuntu':
+        rootdir = '/usr/local'
+    else:
+        rootdir = '/usr'
+
+    # If there is a system configuration file use that, if not use the initial auto-config file
+    filename = rootdir + VPP_AUTO_CONFIGURATION_FILE
+    if os.path.isfile(filename) is True:
+        acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
+    else:
+        raise RuntimeError('The Auto configuration file does not exist {}'.
+                           format(filename))
+
+    print "\nWelcome to the VPP system configuration utility"
+
+    print "\nThese are the files we will modify:"
+    print "    /etc/vpp/startup.conf"
+    print "    /etc/sysctl.d/80-vpp.conf"
+    print "    /etc/default/grub"
+
+    print "\nBefore we change them, we'll create working copies in {}".format(rootdir + VPP_DRYRUNDIR)
+    print "Please inspect them carefully before applying the actual configuration (option 3)!"
+
+    nodes = acfg.get_nodes()
+    for i in nodes.items():
+        node = i[1]
+
+        if (os.path.isfile(rootdir + VPP_STARTUP_FILE) is not True) and \
+                (os.path.isfile(VPP_REAL_STARTUP_FILE) is True):
+            autoconfig_cp(node, VPP_REAL_STARTUP_FILE, '{}'.format(rootdir + VPP_STARTUP_FILE))
+        if (os.path.isfile(rootdir + VPP_HUGE_PAGE_FILE) is not True) and \
+                (os.path.isfile(VPP_REAL_HUGE_PAGE_FILE) is True):
+            autoconfig_cp(node, VPP_REAL_HUGE_PAGE_FILE, '{}'.format(rootdir + VPP_HUGE_PAGE_FILE))
+        if (os.path.isfile(rootdir + VPP_GRUB_FILE) is not True) and \
+                (os.path.isfile(VPP_REAL_GRUB_FILE) is True):
+            autoconfig_cp(node, VPP_REAL_GRUB_FILE, '{}'.format(rootdir + VPP_GRUB_FILE))
+
+
+if __name__ == '__main__':
+
+    # Check for root
+    if not os.geteuid() == 0:
+        sys.exit('\nPlease run the VPP Configuration Utility as root.')
+
+    # Setup
+    autoconfig_setup()
+
+    # Main menu
+    autoconfig_main()
