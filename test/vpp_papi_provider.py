@@ -2293,6 +2293,16 @@ class VppPapiProvider(object):
                          'tag': tag},
                         expected_retval=expected_retval)
 
+    def acl_del(self, acl_index, expected_retval=0):
+        """
+
+        :param acl_index:
+        :return:
+        """
+        return self.api(self.papi.acl_del,
+                        {'acl_index': acl_index},
+                        expected_retval=expected_retval)
+
     def acl_interface_set_acl_list(self, sw_if_index, n_input, acls,
                                    expected_retval=0):
         return self.api(self.papi.acl_interface_set_acl_list,
