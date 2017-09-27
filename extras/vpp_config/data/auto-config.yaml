@@ -1,0 +1,23 @@
+metadata:
+  system_config_file: /vpp/vpp-config/configs/system-config.yaml
+  version: 0.1
+nodes:
+  DUT1:
+    cpu:
+      grub_config_file: /vpp/vpp-config/dryrun/default/grub
+      reserve_vpp_main_core: true
+      total_other_cpus: 0
+      total_vpp_cpus: 2
+    host: localhost
+    hugepages:
+      hugepage_config_file: /vpp/vpp-config/dryrun/sysctl.d/80-vpp.conf
+      total: '1024'
+    interfaces:
+    tcp:
+      active_open_sessions: 0
+      passive_open_sessions: 0      
+    type: DUT
+    vpp:
+      startup_config_file: /vpp/vpp-config/dryrun/vpp/startup.conf
+      unix:
+        interactive: false
