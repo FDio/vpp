@@ -1,8 +1,8 @@
-## Getting started
+## Getting started    {#libmemif_gettingstarted_doc}
 
 #### Concept (Connecting to VPP)
 
-For detailed information on api calls and structures please refer to [libmemif.h](../src/libmemif.h)
+For detailed information on api calls and structures please refer to @ref libmemif.h.
 
 1. Initialize memif
    - Declare callback function handling file descriptor event polling.
@@ -152,7 +152,8 @@ if (err != MEMIF_ERR_SUCCESS)
 
 #### Example app (libmemif fd event polling):
 
-- [ICMP Responder](../examples/icmp_responder/main.c)
+- @ref extras/libmemif/examples/icmp_responder
+
 > Optional argument: transmit queue id.
 ```
 icmpr 1
@@ -162,11 +163,14 @@ icmpr 1
 
 #### Example app:
 
-- [ICMP Responder custom fd event polling](../examples/icmp_responder-epoll/main.c)
+ICMP Responder custom fd event polling.
+
+- @ref extras/libmemif/examples/icmp_responder-epoll
 
 #### Example app (multi-thread queue polling)
 
-- [ICMP Responder multi-thread](../examples/icmp_responder-mt/main.c)
+ICMP Responder multi-thread.
+- @ref extras/libmemif/examples/icmp_responder-mt
 
 > Simple example of libmemif multi-thread usage. Connection establishment is handled by main thread. There are two rx queues in this example. One in polling mode and second in interrupt mode.
 

@@ -62,7 +62,8 @@ DOXY_INPUT ?= \
 	$(wildcard $(WS_ROOT)/*.md) \
 	$(wildcard $(DOXY_DIR)/*.md) \
 	$(DOXY_SRC_DIRECTORIES) \
-	$(DOXY_SRC)/plugins
+	$(DOXY_SRC)/plugins \
+	extras
 
 # Strip leading workspace path from input names
 DOXY_INPUT := $(subst $(WS_ROOT)/,,$(DOXY_INPUT))
@@ -73,7 +74,6 @@ DOXY_INPUT := $(subst $(WS_ROOT)/,,$(DOXY_INPUT))
 # there's a DPDK equivalent that conflicts.
 # These must be left-anchored paths for the regexp below to work.
 DOXY_EXCLUDE ?= \
-	$(DOXY_SRC)/vlib/buffer.c \
 	$(DOXY_SRC)/vpp-api/lua
 
 # Generate a regexp for filenames to exclude
