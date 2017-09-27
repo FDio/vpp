@@ -431,6 +431,15 @@ class VppPapiProvider(object):
                          'address': address,
                          'pid': os.getpid(), })
 
+    def want_macs_learn_events(self, enable_disable=1, scan_delay=0,
+                               max_macs_in_event=0, learn_limit=0):
+        return self.api(self.papi.want_l2_macs_events,
+                        {'enable_disable': enable_disable,
+                         'scan_delay': scan_delay,
+                         'max_macs_in_event': max_macs_in_event,
+                         'learn_limit': learn_limit,
+                         'pid': os.getpid(), })
+
     def l2fib_add_del(self, mac, bd_id, sw_if_index, is_add=1, static_mac=0,
                       filter_mac=0, bvi_mac=0):
         """Create/delete L2 FIB entry.
