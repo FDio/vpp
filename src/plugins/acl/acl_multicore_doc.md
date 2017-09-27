@@ -1,4 +1,4 @@
-Multicore support for ACL plugin
+Multicore support for ACL plugin    {#acl_multicore}
 ================================
 
 This captures some considerations and design decisions that I have made,
@@ -20,16 +20,18 @@ at the time of replacing the old ACL being checked, with
 the new ACL.
 
 In case an acl_add_replace is being used to replace the rules
-within the existing entry, a reallocation of am->acls[X].rules
+within the existing entry, a reallocation of `am->acls[X].rules`
 vector will happen and potentially a change in count.
 
 acl_match_5tuple() has the following code:
 
+```{.c}
   a = am->acls + acl_index;
   for (i = 0; i < a->count; i++)
     {
       r = a->rules + i;
      . . .
+```
 
 Ideally we should be immune from a->rules changing,
 but the problem arises if the count changes in flight,

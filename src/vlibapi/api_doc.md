@@ -6,12 +6,12 @@ APIs.
 
 Messages are defined in `*.api` files. Today, there are about 50 api files,
 with more arriving as folks add programmable features.  The API file compiler
-sources reside in @ref src/tools/vppapigen .
+sources reside in @ref src/tools/vppapigen.
 
-Here's a typical request/response message definition, from
-@ref src/vnet/interface.api :
+From @ref src/vnet/interface.api, here's a typical request/response message
+definition:
 
-```
+```{.c}
      autoreply define sw_interface_set_flags
      {
        u32 client_index;
@@ -22,10 +22,10 @@ Here's a typical request/response message definition, from
      };
 ```
 
-To a first approximation, the API compiler renders this definition  as
-follows:
+To a first approximation, the API compiler renders this definition into
+`build-root/.../vpp/include/vnet/interface.api.h` as follows:
 
-```
+```{.c}
     /****** Message ID / handler enum ******/
     #ifdef vl_msg_id
     vl_msg_id(VL_API_SW_INTERFACE_SET_FLAGS, vl_api_sw_interface_set_flags_t_handler)
@@ -60,10 +60,13 @@ follows:
         u32 context;
         i32 retval;
     }) vl_api_sw_interface_set_flags_reply_t;
+
+    ...
+    #endif /* vl_typedefs */
 ```
 
 To change the admin state of an interface, a binary api client sends a
-@ref vl_api_sw_interface_set_flags_t to vpp, which will respond  with a
+@ref vl_api_sw_interface_set_flags_t to VPP, which will respond  with a
 @ref vl_api_sw_interface_set_flags_reply_t message.
 
 Multiple layers of software, transport types, and shared libraries
@@ -76,7 +79,7 @@ implement a variety of features:
   message handlers.
     
 Correctly-coded message handlers know nothing about the transport used to
-deliver messages to/from vpp. It's reasonably straighforward to use multiple
+deliver messages to/from VPP. It's reasonably straighforward to use multiple
 API message transport types simultaneously.
 
 For historical reasons, binary api messages are (putatively) sent in network
@@ -90,12 +93,12 @@ Since binary API messages are always processed in order, we allocate messages
 using a ring allocator whenever possible. This scheme is extremely fast when
 compared with a traditional memory allocator, and doesn't cause heap
 fragmentation. See
-@ref src/vlibmemory/memory_shared.c @ref vl_msg_api_alloc_internal() .
+@ref src/vlibmemory/memory_shared.c @ref vl_msg_api_alloc_internal().
 
 Regardless of transport, binary api messages always follow a @ref msgbuf_t
 header:
 
-```
+```{.c}
     typedef struct msgbuf_
     {
       unix_shared_memory_queue_t *q;
@@ -109,7 +112,7 @@ This structure makes it easy to trace messages without having to
 decode them - simply save data_len bytes - and allows
 @ref vl_msg_api_free() to rapidly dispose of message buffers:
 
-```
+```{.c}
     void
     vl_msg_api_free (void *a)
     {
@@ -130,34 +133,34 @@ decode them - simply save data_len bytes - and allows
           return;
         }
       <snip>
-     }
+    }
 ```
 
 ## Message Tracing and Replay
 
-It's extremely important that vpp can capture and replay sizeable binary API
+It's extremely important that VPP can capture and replay sizeable binary API
 traces. System-level issues involving hundreds of thousands of API
 transactions can be re-run in a second or less. Partial replay allows one to
 binary-search for the point where the wheels fall off. One can add scaffolding
 to the data plane, to trigger when complex conditions obtain.
 
 With binary API trace, print, and replay, system-level bug reports of the form
-"after 300,000 API transactions, the vpp data-plane stopped forwarding
+"after 300,000 API transactions, the VPP data-plane stopped forwarding
 traffic, FIX IT!" can be solved offline.
 
 More often than not, one discovers that a control-plane client
 misprograms the data plane after a long time or under complex
 circumstances. Without direct evidence, "it's a data-plane problem!"
 
-See @ref src/vlibmemory/memory_vlib.c @ref vl_msg_api_process_file() ,
-and @ref src/vlibapi/api_shared.c . See also the debug CLI command "api trace"
+See @ref src/vlibmemory/memory_vlib.c @ref vl_msg_api_process_file(),
+and @ref src/vlibapi/api_shared.c. See also the debug CLI command "api trace"
 
 ## Client connection details
 
-Establishing a binary API connection to vpp from a C-language client
+Establishing a binary API connection to VPP from a C-language client
 is easy:
 
-```
+```{.c}
         int
         connect_to_vpe (char *client_name, int client_message_queue_length)
         {
@@ -176,9 +179,9 @@ is easy:
         }       
 ```
 
-32 is a typical value for client_message_queue_length. Vpp cannot
+32 is a typical value for client_message_queue_length. VPP cannot
 block when it needs to send an API message to a binary API client, and
-the vpp-side binary API message handlers are very fast. When sending
+the VPP-side binary API message handlers are very fast. When sending
 asynchronous messages, make sure to scrape the binary API rx ring with
 some enthusiasm.
 
@@ -187,7 +190,7 @@ some enthusiasm.
 Calling @ref vl_client_connect_to_vlib spins up a binary API message RX
 pthread:
 
-```
+```{.c}
         static void *
         rx_thread_fn (void *arg)
         {
@@ -214,31 +217,31 @@ To handle the binary API message queue yourself, use
 @ref vl_client_connect_to_vlib_no_rx_pthread.
 
 In turn, vl_msg_api_queue_handler(...) uses mutex/condvar signalling
-to wake up, process vpp -> client traffic, then sleep. Vpp supplies a
-condvar broadcast when the vpp -> client API message queue transitions
+to wake up, process VPP -> client traffic, then sleep. VPP supplies a
+condvar broadcast when the VPP -> client API message queue transitions
 from empty to nonempty.
 
-Vpp checks its own binary API input queue at a very high rate.  Vpp
+VPP checks its own binary API input queue at a very high rate.  VPP
 invokes message handlers in "process" context [aka cooperative
 multitasking thread context] at a variable rate, depending on
 data-plane packet processing requirements.
 
 ## Client disconnection details
 
-To disconnect from vpp, call @ref vl_client_disconnect_from_vlib
-. Please arrange to call this function if the client application
-terminates abnormally. Vpp makes every effort to hold a decent funeral
-for dead clients, but vpp can't guarantee to free leaked memory in the
+To disconnect from VPP, call @ref vl_client_disconnect_from_vlib.
+Please arrange to call this function if the client application
+terminates abnormally. VPP makes every effort to hold a decent funeral
+for dead clients, but VPP can't guarantee to free leaked memory in the
 shared binary API segment.
 
-## Sending binary API messages to vpp
+## Sending binary API messages to VPP
 
-The point of the exercise is to send binary API messages to vpp, and
-to receive replies from vpp. Many vpp binary APIs comprise a client
+The point of the exercise is to send binary API messages to VPP, and
+to receive replies from VPP. Many VPP binary APIs comprise a client
 request message, and a simple status reply. For example, to
 set the admin status of an interface, one codes:
 
-```
+```{.c}
     vl_api_sw_interface_set_flags_t *mp;
 
     mp = vl_msg_api_alloc (sizeof (*mp));
@@ -262,9 +265,9 @@ Key points:
   network byte order
 
 * The client-library global data structure @ref api_main keeps track
-  of sufficient pointers and handles used to communicate with vpp
+  of sufficient pointers and handles used to communicate with VPP
 
-## Receiving binary API messages from vpp
+## Receiving binary API messages from VPP
 
 Unless you've made other arrangements (see @ref
 vl_client_connect_to_vlib_no_rx_pthread), *messages are received on a
@@ -273,7 +276,7 @@ thread is the responsibility of the application!
 
 Set up message handlers about as follows:
 
-```
+```{.c}
     #define vl_typedefs		/* define message structures */
     #include <vpp/api/vpe_all_api_h.h>
     #undef vl_typedefs
@@ -319,7 +322,7 @@ vectors in the @ref api_main_t structure. As of this writing: not all
 vector element values can be set through the API. You'll see sporadic
 API message registrations followed by minor adjustments of this form:
 
-```
+```{.c}
     /*
      * Thread-safe API messages
      */

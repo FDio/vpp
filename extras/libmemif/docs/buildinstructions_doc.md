@@ -1,4 +1,4 @@
-## Build Instructions
+## Build Instructions    {#libmemif_build_doc}
 
 Install dependencies
 ```
@@ -49,6 +49,7 @@ commands:
 	ip-set <index> <ip-addr> - set interface ip address
 	rx-mode <index> <qid> <polling|interrupt> - set queue rx mode
 ```
+
 #### Examples
 
-Once the library is build/installed, refer to [Examples](../examples/README.md) and [Getting started](GettingStarted.md) for additional information on basic use cases and API usage.
+Once the library is built/installed, refer to @ref libmemif_examples_doc and @ref libmemif_gettingstarted_doc for additional information on basic use cases and API usage.
