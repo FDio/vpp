@@ -1,11 +1,12 @@
-## Example setup
+## Example setup    {#libmemif_example_setup_doc}
 
 #### VPP-memif master icmp_responder slave
 
-> Libmemif example app(s) use memif default socket file: /run/vpp/memif.sock.
+> Libmemif example app(s) use memif default socket file: `/run/vpp/memif.sock`.
 
 Run VPP and icmpr-epoll example (default example when running in container).
-> Other examples work similar to icmpr-epoll. Brief explanation can be found in [Examples readme](README.md) file.
+
+> Other examples work similar to icmpr-epoll. Brief explanation can be found in @ref libmemif_examples_doc .
 
 VPP-side config:
 ```
