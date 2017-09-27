@@ -24,7 +24,7 @@ elif [ -f /etc/redhat-release ];then
 fi
 
 # Do initial setup for the system
-if [ $DISTRIB_ID == "Ubuntu" ]; then
+if [ "$DISTRIB_ID" == "Ubuntu" ]; then
 
     export DEBIAN_PRIORITY=critical
     export DEBIAN_FRONTEND=noninteractive
@@ -41,8 +41,12 @@ if [ $DISTRIB_ID == "Ubuntu" ]; then
 
     # Install useful but non-mandatory tools
     apt-get install -y emacs x11-utils git-review gdb gdbserver xfce4-terminal iperf3
-elif [ $DISTRIB_ID == "CentOS" ]; then
+elif [ "$DISTRIB_ID" == "CentOS" ]; then
     # Standard update + upgrade dance
     yum check-update
     yum update -y
+elif [ "$DISTRIB_ID" == "openSUSE" ]; then
+    zypper update -y
+    # The following is required on Leap 42.3 since VPP/DPDK requires NASM 2.12 or higher
+    zypper install -y https://download.opensuse.org/tumbleweed/repo/oss/suse/x86_64/nasm-2.13.01-2.1.x86_64.rpm
 fi
