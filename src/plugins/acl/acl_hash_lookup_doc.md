@@ -1,4 +1,4 @@
-ACL plugin constant-time lookup design
+ACL plugin constant-time lookup design    {#acl_hash_lookup}
 ======================================
 
 The initial implementation of ACL plugin performs a trivial for() cycle,

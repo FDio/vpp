@@ -1,5 +1,6 @@
-Shared Memory Packet Interface (memif) Library
+Shared Memory Packet Interface (memif) Library    {#libmemif_doc}
 ==============================================
+
 ## Introduction
 
 Shared memory packet interface (memif) provides high performance packet transmit and receive between user application and Vector Packet Processing (VPP) or multiple user applications. Using libmemif, user application can create shared memory interface in master or slave mode and connect to VPP or another application using libmemif. Once the connection is established, user application can receive or transmit packets using libmemif API.
@@ -63,10 +64,11 @@ commands:
 	rx-mode <index> <qid> <polling|interrupt> - set queue rx mode
 ```
 
-Continue with [Example setup](examples/ExampleSetup.md) which contains instructions on how to set up conenction between icmpr-epoll example app and VPP-memif.
+Continue with @ref libmemif_example_setup which contains instructions on how to set up conenction between icmpr-epoll example app and VPP-memif.
 
 #### Next steps
 
-- [Build instructions](docs/BuildInstructions.md) Instructions on how to build/install libmemif.
-- [Examples](examples/README.md) More example apps presenting different features.
-- [Getting started](docs/GettingStarted.md) Introduction to libmemif API. Explaining library usage in custom app.
+- @subpage libmemif_build_doc
+- @subpage libmemif_examples_doc
+- @subpage libmemif_example_setup_doc
+- @subpage libmemif_gettingstarted_doc
