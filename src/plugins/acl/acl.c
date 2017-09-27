@@ -259,13 +259,13 @@ acl_del_list (u32 acl_list_index)
     }
 
   if (acl_list_index < vec_len(am->input_sw_if_index_vec_by_acl)) {
-    if (vec_len(vec_elt_at_index(am->input_sw_if_index_vec_by_acl, acl_list_index)) > 0) {
+    if (vec_len(vec_elt(am->input_sw_if_index_vec_by_acl, acl_list_index)) > 0) {
       /* ACL is applied somewhere inbound. Refuse to delete */
       return -1;
     }
   }
   if (acl_list_index < vec_len(am->output_sw_if_index_vec_by_acl)) {
-    if (vec_len(vec_elt_at_index(am->output_sw_if_index_vec_by_acl, acl_list_index)) > 0) {
+    if (vec_len(vec_elt(am->output_sw_if_index_vec_by_acl, acl_list_index)) > 0) {
       /* ACL is applied somewhere outbound. Refuse to delete */
       return -1;
     }

@@ -497,7 +497,7 @@ class TestACLplugin(VppTestCase):
         # self.assertEqual(reply.minor, 0)
 
     def test_0001_acl_create(self):
-        """ ACL create test
+        """ ACL create/delete test
         """
 
         self.logger.info("ACLP_TEST_START_0001")
@@ -517,6 +517,7 @@ class TestACLplugin(VppTestCase):
         self.assertEqual(reply.retval, 0)
         # The very first ACL gets #0
         self.assertEqual(reply.acl_index, 0)
+        first_acl = reply.acl_index
         rr = self.vapi.acl_dump(reply.acl_index)
         self.logger.info("Dumped ACL: " + str(rr))
         self.assertEqual(len(rr), 1)
@@ -555,6 +556,7 @@ class TestACLplugin(VppTestCase):
         self.assertEqual(reply.retval, 0)
         # The second ACL gets #1
         self.assertEqual(reply.acl_index, 1)
+        second_acl = reply.acl_index
 
         # Test 2: try to modify a nonexistent ACL
         reply = self.vapi.acl_add_replace(acl_index=432, r=r,
@@ -562,6 +564,33 @@ class TestACLplugin(VppTestCase):
         self.assertEqual(reply.retval, -1)
         # The ACL number should pass through
         self.assertEqual(reply.acl_index, 432)
+        # apply an ACL on an interface inbound, try to delete ACL, must fail
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
+                                             n_input=1,
+                                             acls=[first_acl])
+        reply = self.vapi.acl_del(acl_index=first_acl, expected_retval=-1)
+        # Unapply an ACL and then try to delete it - must be ok
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
+                                             n_input=0,
+                                             acls=[])
+        reply = self.vapi.acl_del(acl_index=first_acl, expected_retval=0)
+
+        # apply an ACL on an interface outbound, try to delete ACL, must fail
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
+                                             n_input=0,
+                                             acls=[second_acl])
+        reply = self.vapi.acl_del(acl_index=second_acl, expected_retval=-1)
+        # Unapply the ACL and then try to delete it - must be ok
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
+                                             n_input=0,
+                                             acls=[])
+        reply = self.vapi.acl_del(acl_index=second_acl, expected_retval=0)
+
+        # try to apply a nonexistent ACL - must fail
+        self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
+                                             n_input=1,
+                                             acls=[first_acl],
+                                             expected_retval=-1)
 
         self.logger.info("ACLP_TEST_FINISH_0001")
 
