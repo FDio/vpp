@@ -133,6 +133,8 @@ _(ONE_ADD_DEL_L2_ARP_ENTRY, one_add_del_l2_arp_entry)                   \
 _(ONE_ADD_DEL_NDP_ENTRY, one_add_del_ndp_entry)                         \
 _(ONE_NDP_BD_GET, one_ndp_bd_get)                                       \
 _(ONE_NDP_ENTRIES_GET, one_ndp_entries_get)                             \
+_(ONE_SET_TRANSPORT_PROTOCOL, one_set_transport_protocol)               \
+_(ONE_GET_TRANSPORT_PROTOCOL, one_get_transport_protocol)
 
 static locator_t *
 unformat_one_locs (vl_api_one_remote_locator_t * rmt_locs, u32 rloc_num)
@@ -1693,6 +1695,34 @@ static void
   REPLY_MACRO2 (VL_API_SHOW_ONE_MAP_REGISTER_FALLBACK_THRESHOLD_REPLY,
   ({
     rmp->value = clib_host_to_net_u32 (value);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+  vl_api_one_set_transport_protocol_t_handler
+  (vl_api_one_set_transport_protocol_t * mp)
+{
+  vl_api_one_set_transport_protocol_reply_t *rmp;
+  int rv = 0;
+
+  rv = vnet_lisp_set_transport_protocol (mp->protocol);
+
+  REPLY_MACRO (VL_API_ONE_SET_TRANSPORT_PROTOCOL_REPLY);
+}
+
+static void
+  vl_api_one_get_transport_protocol_t_handler
+  (vl_api_one_get_transport_protocol_t * mp)
+{
+  vl_api_one_get_transport_protocol_reply_t *rmp;
+  int rv = 0;
+  u8 proto = (u8) vnet_lisp_get_transport_protocol ();
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_ONE_GET_TRANSPORT_PROTOCOL_REPLY,
+  ({
+    rmp->protocol = proto;
   }));
   /* *INDENT-ON* */
 }
