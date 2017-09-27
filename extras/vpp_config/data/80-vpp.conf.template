@@ -1,0 +1,15 @@
+# Number of 2MB hugepages desired
+vm.nr_hugepages=1024
+
+# Must be greater than or equal to (2 * vm.nr_hugepages).
+vm.max_map_count=3096
+
+# All groups allowed to access hugepages
+vm.hugetlb_shm_group=0
+
+# Shared Memory Max must be greator or equal to the total size of hugepages.
+# For 2MB pages, TotalHugepageSize = vm.nr_hugepages * 2 * 1024 * 1024
+# If the existing kernel.shmmax setting  (cat /sys/proc/kernel/shmmax)
+# is greater than the calculated TotalHugepageSize then set this parameter
+# to current shmmax value.
+kernel.shmmax=2147483648

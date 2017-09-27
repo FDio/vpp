@@ -1,0 +1,123 @@
+
+unix {{
+{unix}
+  log /tmp/vpp.log
+  full-coredump
+  cli-listen /run/vpp/cli.sock
+}}
+
+api-trace {{
+  on
+}}
+
+cpu {{
+{cpu}
+  scheduler-policy fifo
+  scheduler-priority 50
+
+        ## In the VPP there is one main thread and optionally the user can create worker(s)
+	## The main thread and worker thread(s) can be pinned to CPU core(s) manually or automatically
+
+	## Manual pinning of thread(s) to CPU core(s)
+
+	## Set logical CPU core where main thread runs
+	# main-core 1
+
+	## Set logical CPU core(s) where worker threads are running
+	# corelist-workers 2-3,18-19
+
+	## Automatic pinning of thread(s) to CPU core(s)
+
+	## Sets number of CPU core(s) to be skipped (1 ... N-1)
+	## Skipped CPU core(s) are not used for pinning main thread and working thread(s).
+	## The main thread is automatically pinned to the first available CPU core and worker(s)
+	## are pinned to next free CPU core(s) after core assigned to main thread
+	# skip-cores 4
+
+	## Specify a number of workers to be created
+	## Workers are pinned to N consecutive CPU cores while skipping "skip-cores" CPU core(s)
+	## and main thread's CPU core
+	# workers 2
+
+	## Set scheduling policy and priority of main and worker threads
+
+	## Scheduling policy options are: other (SCHED_OTHER), batch (SCHED_BATCH)
+	## idle (SCHED_IDLE), fifo (SCHED_FIFO), rr (SCHED_RR)
+	# scheduler-policy fifo
+
+	## Scheduling priority is used only for "real-time policies (fifo and rr),
+	## and has to be in the range of priorities supported for a particular policy
+	# scheduler-priority 50
+}}
+
+dpdk {{
+{devices}
+
+        ## Change default settings for all intefaces
+	# dev default {{
+		## Number of receive queues, enables RSS
+		## Default is 1
+		# num-rx-queues 3
+
+		## Number of transmit queues, Default is equal
+		## to number of worker threads or 1 if no workers treads
+		# num-tx-queues 3
+
+		## Number of descriptors in transmit and receive rings
+		## increasing or reducing number can impact performance
+		## Default is 1024 for both rx and tx
+		# num-rx-desc 512
+		# num-tx-desc 512
+
+		## VLAN strip offload mode for interface
+		## Default is off
+		# vlan-strip-offload on
+	# }}
+
+	## Whitelist specific interface by specifying PCI address
+	# dev 0000:02:00.0
+
+	## Whitelist specific interface by specifying PCI address and in
+	## addition specify custom parameters for this interface
+	# dev 0000:02:00.1 {{
+	#	num-rx-queues 2
+	# }}
+
+	## Specify bonded interface and its slaves via PCI addresses
+	## 
+        ## Bonded interface in XOR load balance mode (mode 2) with L3 and L4 headers 
+	# vdev eth_bond0,mode=2,slave=0000:02:00.0,slave=0000:03:00.0,xmit_policy=l34
+	# vdev eth_bond1,mode=2,slave=0000:02:00.1,slave=0000:03:00.1,xmit_policy=l34
+	##
+	## Bonded interface in Active-Back up mode (mode 1)
+	# vdev eth_bond0,mode=1,slave=0000:02:00.0,slave=0000:03:00.0
+	# vdev eth_bond1,mode=1,slave=0000:02:00.1,slave=0000:03:00.1
+
+	## Change UIO driver used by VPP, Options are: igb_uio, vfio-pci
+	## and uio_pci_generic (default)
+	# uio-driver vfio-pci
+
+	## Disable mutli-segment buffers, improves performance but
+	## disables Jumbo MTU support
+	# no-multi-seg
+
+	## Increase number of buffers allocated, needed only in scenarios with
+	## large number of interfaces and worker threads. Value is per CPU socket.
+	## Default is 16384
+	# num-mbufs 128000
+
+	## Change hugepages allocation per-socket, needed only if there is need for
+	## larger number of mbufs. Default is 256M on each detected CPU socket
+	# socket-mem 2048,2048
+}}
+
+# Adjusting the plugin path depending on where the VPP plugins are:
+#plugins
+#{{
+#	path /home/bms/vpp/build-root/install-vpp-native/vpp/lib64/vpp_plugins
+#}}
+
+# Alternate syntax to choose plugin path
+#plugin_path /home/bms/vpp/build-root/install-vpp-native/vpp/lib64/vpp_plugins
+
+{tcp}
