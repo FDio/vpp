@@ -1752,6 +1752,64 @@ static void vl_api_gpe_add_del_fwd_entry_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+u8 *
+format_lisp_transport_protocol (u8 * s, va_list * args)
+{
+  u32 proto = va_arg (*args, u32);
+
+  switch (proto)
+    {
+    case 1:
+      return format (s, "udp");
+    case 2:
+      return format (s, "api");
+    default:
+      return 0;
+    }
+  return 0;
+}
+
+static void vl_api_one_get_transport_protocol_reply_t_handler
+  (vl_api_one_get_transport_protocol_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      u32 proto = mp->protocol;
+      print (vam->ofp, "Transport protocol: %U",
+	     format_lisp_transport_protocol, proto);
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_one_get_transport_protocol_reply_t_handler_json
+  (vl_api_one_get_transport_protocol_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+  u8 *s;
+
+  s = format (0, "%U", format_lisp_transport_protocol, mp->protocol);
+  vec_add1 (s, 0);
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_string_copy (&node, "transport-protocol", s);
+
+  vec_free (s);
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
 static void vl_api_one_add_del_locator_set_reply_t_handler
   (vl_api_one_add_del_locator_set_reply_t * mp)
 {
@@ -4818,6 +4876,7 @@ _(one_enable_disable_reply)                             \
 _(one_rloc_probe_enable_disable_reply)                  \
 _(one_map_register_enable_disable_reply)                \
 _(one_map_register_set_ttl_reply)                       \
+_(one_set_transport_protocol_reply)                     \
 _(one_map_register_fallback_threshold_reply)            \
 _(one_pitr_set_locator_set_reply)                       \
 _(one_map_request_mode_reply)                           \
@@ -5050,6 +5109,8 @@ _(ONE_ENABLE_DISABLE_REPLY, one_enable_disable_reply)                   \
 _(ONE_MAP_REGISTER_ENABLE_DISABLE_REPLY,                                \
   one_map_register_enable_disable_reply)                                \
 _(ONE_MAP_REGISTER_SET_TTL_REPLY, one_map_register_set_ttl_reply)       \
+_(ONE_SET_TRANSPORT_PROTOCOL_REPLY, one_set_transport_protocol_reply)   \
+_(ONE_GET_TRANSPORT_PROTOCOL_REPLY, one_get_transport_protocol_reply)   \
 _(ONE_MAP_REGISTER_FALLBACK_THRESHOLD_REPLY,                            \
   one_map_register_fallback_threshold_reply)                            \
 _(ONE_RLOC_PROBE_ENABLE_DISABLE_REPLY,                                  \
@@ -16598,6 +16659,75 @@ api_show_one_map_register_fallback_threshold (vat_main_t * vam)
   return ret;
 }
 
+uword
+unformat_lisp_transport_protocol (unformat_input_t * input, va_list * args)
+{
+  u32 *proto = va_arg (*args, u32 *);
+
+  if (unformat (input, "udp"))
+    *proto = 1;
+  else if (unformat (input, "api"))
+    *proto = 2;
+  else
+    return 0;
+
+  return 1;
+}
+
+static int
+api_one_set_transport_protocol (vat_main_t * vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_one_set_transport_protocol_t *mp;
+  u8 is_set = 0;
+  u32 protocol = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_lisp_transport_protocol, &protocol))
+	is_set = 1;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, input);
+	  return -99;
+	}
+    }
+
+  if (!is_set)
+    {
+      errmsg ("Transport protocol missing!");
+      return -99;
+    }
+
+  M (ONE_SET_TRANSPORT_PROTOCOL, mp);
+  mp->protocol = (u8) protocol;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_one_get_transport_protocol (vat_main_t * vam)
+{
+  vl_api_one_get_transport_protocol_t *mp;
+  int ret;
+
+  M (ONE_GET_TRANSPORT_PROTOCOL, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
 static int
 api_one_map_register_set_ttl (vat_main_t * vam)
 {
@@ -20662,6 +20792,8 @@ _(one_stats_dump, "")                                                   \
 _(one_stats_flush, "")                                                  \
 _(one_get_map_request_itr_rlocs, "")                                    \
 _(one_map_register_set_ttl, "<ttl>")                                    \
+_(one_set_transport_protocol, "udp|api")                                \
+_(one_get_transport_protocol, "")                                       \
 _(show_one_nsh_mapping, "")                                             \
 _(show_one_pitr, "")                                                    \
 _(show_one_use_petr, "")                                                \

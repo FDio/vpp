@@ -4351,6 +4351,7 @@ lisp_cp_init (vlib_main_t * vm)
   lcm->map_register_ttl = MAP_REGISTER_DEFAULT_TTL;
   lcm->max_expired_map_registers = MAX_EXPIRED_MAP_REGISTERS_DEFAULT;
   lcm->expired_map_registers = 0;
+  lcm->transport_protocol = LISP_TRANSPORT_PROTOCOL_UDP;
   return 0;
 }
 
@@ -4719,6 +4720,26 @@ VLIB_REGISTER_NODE (lisp_retry_service_node,static) = {
     .process_log2_n_stack_bytes = 16,
 };
 /* *INDENT-ON* */
+
+u32
+vnet_lisp_set_transport_protocol (u8 protocol)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+
+  if (protocol < LISP_TRANSPORT_PROTOCOL_UDP ||
+      protocol > LISP_TRANSPORT_PROTOCOL_API)
+    return VNET_API_ERROR_INVALID_ARGUMENT;
+
+  lcm->transport_protocol = protocol;
+  return 0;
+}
+
+lisp_transport_protocol_t
+vnet_lisp_get_transport_protocol (void)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  return lcm->transport_protocol;
+}
 
 VLIB_INIT_FUNCTION (lisp_cp_init);
 

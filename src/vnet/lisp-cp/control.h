@@ -140,6 +140,12 @@ typedef struct
   u32 bd;
 } lisp_l2_arp_key_t;
 
+typedef enum
+{
+  LISP_TRANSPORT_PROTOCOL_UDP = 1,
+  LISP_TRANSPORT_PROTOCOL_API
+} lisp_transport_protocol_t;
+
 typedef struct
 {
   u64 nonce;
@@ -270,6 +276,9 @@ typedef struct
   /* control variables for map server election */
   u32 max_expired_map_registers;
   u32 expired_map_registers;
+
+  /** either UDP based or binary API. Default is UDP */
+  lisp_transport_protocol_t transport_protocol;
 
   /* commodity */
   ip4_main_t *im4;
@@ -404,6 +413,8 @@ int vnet_lisp_map_register_fallback_threshold_set (u32 value);
 u32 vnet_lisp_map_register_fallback_threshold_get (void);
 u32 *vnet_lisp_ndp_bds_get (void);
 lisp_api_ndp_entry_t *vnet_lisp_ndp_entries_get_by_bd (u32 bd);
+u32 vnet_lisp_set_transport_protocol (u8 protocol);
+lisp_transport_protocol_t vnet_lisp_get_transport_protocol (void);
 
 map_records_arg_t *parse_map_reply (vlib_buffer_t * b);
 
