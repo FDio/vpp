@@ -140,6 +140,7 @@ reset:
 	@mkdir $(VPP_TEST_FAILED_DIR)
 
 wipe: reset
+	@make -C ext clean
 	@rm -rf $(PYTHON_VENV_PATH)
 	@rm -f $(PAPI_INSTALL_FLAGS)
 
