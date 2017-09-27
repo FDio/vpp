@@ -45,3 +45,9 @@ pre {
 a.el {
 	font-family: Consolas, Courier, monospace;
 }
+
+div.fragment {
+	padding: 2px;
+	margin-left: 8px;
+}
+

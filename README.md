@@ -30,10 +30,11 @@ Directory name         | Description
      build-root        | Build output directory
      doxygen           | Documentation generator configuration
      dpdk              | DPDK patches and build infrastructure
-@ref src               | VPP source code
+@ref extras/libmemif   | Client library for memif
+@ref src/examples      | VPP example code
 @ref src/plugins       | VPP bundled plugins directory
 @ref src/svm           | Shared virtual memory allocation library
-     src/tests         | Unit tests
+     src/tests         | Standalone tests (not part of test harness)
      src/vat           | VPP API test program
 @ref src/vlib          | VPP application library
 @ref src/vlibapi       | VPP API library
@@ -43,9 +44,8 @@ Directory name         | Description
 @ref src/vpp           | VPP application
 @ref src/vpp-api       | VPP application API bindings
 @ref src/vppinfra      | VPP core library
-     test              | Unit tests
 @ref src/vpp/api       | Not-yet-relocated API bindings
-@ref src/examples      | VPP example code
+     test              | Unit tests and Python test harness
 
 ## Getting started
 
@@ -95,12 +95,13 @@ for this can be found [on the Setting up Vagrant wiki page]
 ## More information
 
 Several modules provide documentation, see @subpage user_doc for more
-information.
+end-user-oriented information. Also see @subpage dev_doc for developer notes.
 
 Visit the [VPP wiki](https://wiki.fd.io/view/VPP) for details on more
-advanced building strategies and development notes.
+advanced building strategies and other development notes.
 
 
 ## Test Framework
 
-There is PyDoc generated documentation available for the VPP test framework. See @subpage test_framework_doc for details.
+There is PyDoc generated documentation available for the VPP test framework.
+See @ref test_framework_doc for details.
