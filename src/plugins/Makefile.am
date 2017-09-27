@@ -78,6 +78,10 @@ if ENABLE_NAT_PLUGIN
 include nat.am
 endif
 
+if ENABLE_STN_PLUGIN
+include stn.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
