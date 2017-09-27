@@ -1,0 +1,33 @@
+NAT44 performance testing with TRex
+
+Setup:
+
+        TRex host                             VPP host
+----------------------------      ---------------------------------------------
+|                          |      |                                           |
+| 04:00.0/172.16.1.2/port 0|<---->|04:00.1/172.16.1.1/TenGigabitEthernet4/0/1 |
+|                          |      |                                           |
+| 04:00.1/172.16.2.2/port 1|<---->|04:00.0/172.16.2.2/TenGigabitEthernet4/0/0 |
+|                          |      |                                           |
+----------------------------      ---------------------------------------------
+
+How to use TRex:
+1) Copy configuration file to /etc/trex_cfg.yaml or use --cfg option in next step
+2) Start TRex as a server 'sudo ./t-rex-64 -i'
+3) Connect with console './trex-console'
+4) Resolve destination addresses 'reset ; service ; arp ; service --off'
+5) Start traffic to open sessions in2out 'start -f stl/nat_10ks.py -m 10mbps -p 1' or out2in 'start -f stl/nat_out2in_10ks.py -m 10mbps -p 0'
+6) After all sessions are opened update stream rate to 100% 'update -a -m 100%'
+7) Show dynamic statistic 'tui'
+8) Exit dynamic statistic 'q'
+9) Stop traffic 'stop -a'
+10) Sessions per second (slowpath) test 'reset ; service ; arp ; service --off; start -f stl/nat_ses_open.py -m 100% -p 1 -d 1' and 'show nat44' in VPP CLI to see number of opened sessions
+
+VPP config files:
+in2out testing nat_dynamic
+for out2in testing generate config using 'nat_static_gen_cfg.py N'
+
+References:
+https://github.com/cisco-system-traffic-generator/trex-core/blob/master/doc/trex_stateless.asciidoc
+https://github.com/cisco-system-traffic-generator/trex-core/blob/master/doc/trex_console.asciidoc
+https://wiki.fd.io/view/VPP/NAT#NAT44
