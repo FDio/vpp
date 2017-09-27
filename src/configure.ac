@@ -191,6 +191,7 @@ PLUGIN_ENABLED(memif)
 PLUGIN_ENABLED(pppoe)
 PLUGIN_ENABLED(sixrd)
 PLUGIN_ENABLED(nat)
+PLUGIN_ENABLED(stn)
 
 ###############################################################################
 # Dependency checks
