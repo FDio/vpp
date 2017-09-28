@@ -581,6 +581,9 @@ static int yylex_1 (void)
         case ',':
             return (COMMA);
 
+        case '.':
+            return (DOT);
+
         case '"':
             nameidx = 0;
             the_lexer_state = STRING_STATE;
@@ -937,6 +940,8 @@ int yylex (void)
     case TYPEONLY:           code = 278; break;
     case DONT_TRACE:         code = 279; break;
     case AUTOREPLY:          code = 280; break;
+    case DOT:                code = 281; break;
+    case VL_API_VERSION:     code = 282; break;
         
     case EOF: code = ~0; break; /* hysterical compatibility */
 
@@ -996,6 +1001,7 @@ static struct keytab {
     {"u8", 		NODE_U8},
     {"union",           NODE_UNION},
     {"uword",           NODE_UWORD},
+    {"vl_api_version", 	NODE_VERSION},
 };
  
 static int name_check (const char *s, YYSTYPE *token_value)
@@ -1060,6 +1066,9 @@ static int name_check (const char *s, YYSTYPE *token_value)
 
             case NODE_NOVERSION:
                 return(NOVERSION);
+
+            case NODE_VERSION:
+                return(VL_API_VERSION);
 
             case NODE_UNION:
                 return(UNION);
