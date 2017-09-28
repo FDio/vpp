@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
 import json
 
@@ -22,7 +22,7 @@ def remove_magic(what):
     return what
 
 
-class Field:
+class Field(object):
 
     def __init__(
             self,
@@ -46,7 +46,7 @@ class Field:
                     (self.name, self.type, self.nelem_field))
 
 
-class Type:
+class Type(object):
     def __init__(self, name):
         self.name = name
 
@@ -54,7 +54,7 @@ class Type:
 class SimpleType (Type):
 
     def __init__(self, name):
-        super().__init__(name)
+        super(SimpleType, self).__init__(name)
 
     def __str__(self):
         return self.name
@@ -78,7 +78,7 @@ def get_msg_header_defs(struct_type_class, field_class, typedict):
     ]
 
 
-class Struct:
+class Struct(object):
 
     def __init__(self, name, fields):
         self.name = name
@@ -86,7 +86,7 @@ class Struct:
         self.field_names = [n.name for n in self.fields]
 
 
-class Message:
+class Message(object):
 
     def __init__(self, logger, definition, typedict,
                  struct_type_class, simple_type_class, field_class):
@@ -217,7 +217,7 @@ class StructType (Type, Struct):
         return True
 
 
-class JsonParser:
+class JsonParser(object):
     def __init__(self, logger, files, simple_type_class=SimpleType,
                  struct_type_class=StructType, field_class=Field,
                  message_class=Message):

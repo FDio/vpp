@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
 import argparse
 import os
@@ -16,30 +16,31 @@ class CppField(CField):
             field_type,
             array_len=None,
             nelem_field=None):
-        super().__init__(field_name, field_type, array_len, nelem_field)
+        super(CppField, self).__init__(
+            field_name, field_type, array_len, nelem_field)
 
 
 class CppStruct(CStruct):
     def __init__(self, name, fields):
-        super().__init__(name, fields)
+        super(CppStruct, self).__init__(name, fields)
 
 
 class CppSimpleType (CSimpleType):
-
     def __init__(self, name):
-        super().__init__(name)
+        super(CppSimpleType, self).__init__(name)
 
 
 class CppStructType (CStructType, CppStruct):
     def __init__(self, definition, typedict, field_class):
-        super().__init__(definition, typedict, field_class)
+        super(CppStructType, self).__init__(definition, typedict, field_class)
 
 
 class CppMessage (CMessage):
     def __init__(self, logger, definition, typedict,
                  struct_type_class, simple_type_class, field_class):
-        super().__init__(logger, definition, typedict, struct_type_class,
-                         simple_type_class, field_class)
+        super(CppMessage, self).__init__(
+            logger, definition, typedict, struct_type_class,
+            simple_type_class, field_class)
 
     def get_swap_to_be_template_instantiation(self):
         return "\n".join([

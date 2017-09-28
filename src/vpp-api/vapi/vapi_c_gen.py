@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 
 import argparse
 import os
@@ -15,7 +15,8 @@ class CField(Field):
             field_type,
             array_len=None,
             nelem_field=None):
-        super().__init__(field_name, field_type, array_len, nelem_field)
+        super(CField, self).__init__(
+            field_name, field_type, array_len, nelem_field)
 
     def get_c_def(self):
         if self.len is not None:
@@ -67,7 +68,7 @@ class CField(Field):
 
 class CStruct(Struct):
     def __init__(self, name, fields):
-        super().__init__(name, fields)
+        super(CStruct, self).__init__(name, fields)
 
     def get_c_def(self):
         return "\n".join([
@@ -92,7 +93,7 @@ class CSimpleType (SimpleType):
     }
 
     def __init__(self, name):
-        super().__init__(name)
+        super(CSimpleType, self).__init__(name)
 
     def get_c_name(self):
         return self.name
@@ -122,7 +123,7 @@ class CSimpleType (SimpleType):
 
 class CStructType (StructType, CStruct):
     def __init__(self, definition, typedict, field_class):
-        super().__init__(definition, typedict, field_class)
+        super(CStructType, self).__init__(definition, typedict, field_class)
 
     def get_c_name(self):
         return "vapi_type_%s" % self.name
@@ -173,8 +174,9 @@ class CStructType (StructType, CStruct):
 class CMessage (Message):
     def __init__(self, logger, definition, typedict,
                  struct_type_class, simple_type_class, field_class):
-        super().__init__(logger, definition, typedict, struct_type_class,
-                         simple_type_class, field_class)
+        super(CMessage, self).__init__(logger, definition, typedict,
+                                       struct_type_class, simple_type_class,
+                                       field_class)
         self.payload_members = [
             "  %s" % p.get_c_def()
             for p in self.fields
