@@ -18,6 +18,7 @@
     This file defines the stats API 
 */
 
+vl_api_version 1.0.0
 
 /** \brief Want Stats, enable/disable ALL stats updates
     @param client_index - opaque cookie to identify the sender

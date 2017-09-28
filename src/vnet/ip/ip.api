@@ -19,6 +19,8 @@
     called through a shared memory interface. 
 */
 
+vl_api_version 1.0.0
+
 /** \brief Add / del table request
            A table can be added multiple times, but need be deleted only once.
     @param client_index - opaque cookie to identify the sender

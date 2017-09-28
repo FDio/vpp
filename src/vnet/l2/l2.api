@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
+
 /** \brief Reply to l2_xconnect_dump 
     @param context - sender context which was passed in the request
     @param rx_sw_if_index - Receive interface index

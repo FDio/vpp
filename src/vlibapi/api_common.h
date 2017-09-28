@@ -186,6 +186,14 @@ typedef struct _vl_msg_api_init_function_list_elt
   vl_msg_api_init_function_t *f;
 } _vl_msg_api_function_list_elt_t;
 
+typedef struct
+{
+  u32 major;
+  u32 minor;
+  u32 patch;
+  char name[64];
+} api_version_t;
+
 /** API main structure, used by both vpp and binary API clients */
 typedef struct
 {
@@ -311,6 +319,9 @@ typedef struct
 
   /** client message index hash table */
   uword *msg_index_by_name_and_crc;
+
+  /** api version list */
+  api_version_t *api_version_list;
 
   /** Shared VM binary API region name */
   const char *region_name;

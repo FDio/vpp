@@ -44,6 +44,7 @@ enum node_subclass {  /* WARNING: indices must match the vft... */
     NODE_VECTOR,
     NODE_COMPLEX,
     NODE_NOVERSION,
+    NODE_VERSION,
     NODE_UWORD,
     NODE_N_TYPES,  /* number of node types with VFT's */
 
@@ -77,9 +78,14 @@ typedef struct node_ {
 
 /* To shut up gcc-4.2.x warnings */
 #define CDATA0 ((char *)(this->data[0]))
-#define IDATA1 ((int)(uword)(this->data[1]))
+#define CDATA1 ((char *)(this->data[0]))
 #define CDATA2 ((char *)(this->data[2]))
 #define CDATA3 ((char *)(this->data[3]))
+
+#define IDATA0 ((int)(uword)(this->data[0]))
+#define IDATA1 ((int)(uword)(this->data[1]))
+#define IDATA2 ((int)(uword)(this->data[2]))
+#define IDATA3 ((int)(uword)(this->data[3]))
 
 #define NODE_FLAG_MANUAL_PRINT (1<<0)
 #define NODE_FLAG_MANUAL_ENDIAN (1<<1)

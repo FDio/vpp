@@ -1,3 +1,5 @@
+vl_api_version 1.0.0
+
 /** \brief Configure Load-Balancer global parameters
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

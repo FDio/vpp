@@ -470,12 +470,48 @@ vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
   vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & rmp);
 }
 
+void
+vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
+{
+  api_main_t *am = &api_main;
+  vl_api_api_versions_reply_t *rmp;
+  unix_shared_memory_queue_t *q;
+  u32 nmsg = vec_len (am->api_version_list);
+  int msg_size = sizeof (*rmp) + sizeof (rmp->api_versions[0]) * nmsg;
+  int i;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  rmp = vl_msg_api_alloc (msg_size);
+  memset (rmp, 0, msg_size);
+  rmp->_vl_msg_id = ntohs (VL_API_API_VERSIONS_REPLY);
+
+  /* fill in the message */
+  rmp->context = mp->context;
+  rmp->count = htonl (nmsg);
+
+  for (i = 0; i < nmsg; ++i)
+    {
+      api_version_t *vl = &am->api_version_list[i];
+      rmp->api_versions[i].major = htonl (vl->major);
+      rmp->api_versions[i].minor = htonl (vl->minor);
+      rmp->api_versions[i].patch = htonl (vl->patch);
+      strncpy ((char *) rmp->api_versions[i].name, vl->name, 64);
+    }
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+
+}
+
 #define foreach_vlib_api_msg                            \
 _(MEMCLNT_CREATE, memclnt_create)                       \
 _(MEMCLNT_DELETE, memclnt_delete)                       \
 _(GET_FIRST_MSG_ID, get_first_msg_id)                   \
 _(MEMCLNT_KEEPALIVE, memclnt_keepalive)                 \
-_(MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply)
+_(MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply)	\
+_(API_VERSIONS, api_versions)
 
 /*
  * vl_api_init

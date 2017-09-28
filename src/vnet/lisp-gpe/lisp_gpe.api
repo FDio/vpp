@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
+
 /** \brief GPE locator structure
     @param is_ip4 - whether addr is IPv4 or v6
     @param weight - locator weight
