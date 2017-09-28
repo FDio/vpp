@@ -165,10 +165,20 @@ ip_interface_address_add_del (ip_lookup_main_t * lm,
     }
   else
     {
+      if (sw_if_index != a->sw_if_index)
+	{
+	  if (result_if_address_index)
+	    *result_if_address_index = ~0;
+	  vnm->api_errno = VNET_API_ERROR_DUPLICATE_IF_ADDRESS;
+	  return clib_error_create
+	    ("Prefix %U already found on interface %U",
+	     lm->format_address_and_length, addr_fib, address_length,
+	     format_vnet_sw_if_index_name, vnm, a->sw_if_index);
+	}
+
       if (result_if_address_index)
 	*result_if_address_index = a - lm->if_address_pool;
     }
-
 
   return /* no error */ 0;
 }

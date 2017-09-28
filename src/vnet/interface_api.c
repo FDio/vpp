@@ -281,27 +281,38 @@ static void
   (vl_api_sw_interface_add_del_address_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
   vl_api_sw_interface_add_del_address_reply_t *rmp;
   int rv = 0;
   u32 is_del;
+  clib_error_t *error = 0;
 
   VALIDATE_SW_IF_INDEX (mp);
 
   is_del = mp->is_add == 0;
+  vnm->api_errno = 0;
 
   if (mp->del_all)
     ip_del_all_interface_addresses (vm, ntohl (mp->sw_if_index));
   else if (mp->is_ipv6)
-    ip6_add_del_interface_address (vm, ntohl (mp->sw_if_index),
-				   (void *) mp->address,
-				   mp->address_length, is_del);
+    error = ip6_add_del_interface_address (vm, ntohl (mp->sw_if_index),
+					   (void *) mp->address,
+					   mp->address_length, is_del);
   else
-    ip4_add_del_interface_address (vm, ntohl (mp->sw_if_index),
-				   (void *) mp->address,
-				   mp->address_length, is_del);
+    error = ip4_add_del_interface_address (vm, ntohl (mp->sw_if_index),
+					   (void *) mp->address,
+					   mp->address_length, is_del);
+
+  if (error)
+    {
+      rv = vnm->api_errno;
+      clib_error_report (error);
+      goto done;
+    }
 
   BAD_SW_IF_INDEX_LABEL;
 
+done:
   REPLY_MACRO (VL_API_SW_INTERFACE_ADD_DEL_ADDRESS_REPLY);
 }
 
