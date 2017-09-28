@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
 
 /** \brief Add MAP domains
     @param client_index - opaque cookie to identify the sender

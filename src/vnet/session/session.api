@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
+vl_api_version 1.0.0
+
 /** \brief client->vpp, attach application to session layer
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request

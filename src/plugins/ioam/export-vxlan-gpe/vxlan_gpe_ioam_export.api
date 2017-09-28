@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
+
 /* Define a simple binary API to control the feature */
 
 autoreply define vxlan_gpe_ioam_export_enable_disable {

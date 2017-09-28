@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
+
 define p2p_ethernet_add
 {
   u32 client_index;
