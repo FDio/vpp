@@ -99,6 +99,27 @@ define get_first_msg_id_reply {
 };
 
 /*
+ * Get API version table (includes built-in and plugins)
+ */
+typeonly define module_version {
+  u32 major;
+  u32 minor;
+  u32 patch;
+  u8 name[64];
+};
+define api_versions {
+  u32 client_index;
+  u32 context;
+};
+define api_versions_reply {
+  u32 client_index;
+  u32 context;
+  i32 retval;
+  u32 count;
+  vl_api_module_version_t api_versions[count];
+};
+
+/*
  * Trace the plugin message-id allocator
  * so we stand a chance of dealing with different sets of plugins
  * at api trace replay time

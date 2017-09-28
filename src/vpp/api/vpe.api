@@ -19,6 +19,8 @@
     called through a shared memory interface. 
 */
 
+vl_api_version 1.0.0
+
 /* 
  * Note: API placement cleanup in progress
  * If you're looking for interface APIs, please
