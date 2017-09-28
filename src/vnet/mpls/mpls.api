@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
+
 /** \brief Bind/Unbind an MPLS local label to an IP prefix. i.e. create
            a per-prefix label entry.
     @param client_index - opaque cookie to identify the sender

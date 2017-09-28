@@ -12,6 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+vl_api_version 1.0.0
+
 /**
  * @file nat.api
  * @brief VPP control-plane API messages.
