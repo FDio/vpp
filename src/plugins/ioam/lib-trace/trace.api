@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
 
 /** \brief iOAM6 Trace - Set the iOAM6 trace profile
     @param trace_type - Type of trace requested

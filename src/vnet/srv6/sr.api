@@ -1,3 +1,4 @@
+/* Hey Emacs use -*- mode: C -*- */
 /*
  * Copyright (c) 2015-2016 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +14,8 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
+
 /** \brief IPv6 SR LocalSID add/del request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -20,7 +23,8 @@
     @param localsid_addr IPv6 address of the localsid
     @param end_psp Boolean of whether decapsulation is allowed in this function
     @param behavior Type of behavior (function) for this localsid
-    @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the fib_table.
+    @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the
+     fib_table.
     @param vlan_index Only for L2 xconnect. Outgoing VLAN tag.
     @param fib_table  FIB table in which we should install the localsid entry
     @param nh_addr Next Hop IPv4/IPv6 address. Only for L2/L3 xconnect.
@@ -161,7 +165,7 @@ autoreply define sr_steering_add_del
 };*/
 
 /*
- * fd.io coding-style-patch-verification: ON
+ * fd.io coding-style-patch-verification: OFF
  * Local Variables:
  * eval: (c-set-style "gnu")
  * End:

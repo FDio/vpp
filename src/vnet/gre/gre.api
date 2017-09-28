@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
+
 define gre_add_del_tunnel
 {
   u32 client_index;

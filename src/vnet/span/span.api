@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
+
  /** \brief Enable/Disable span to mirror traffic from one interface to another
     @param client_index - opaque cookie to identify the sender
     @param context - sender context which was passed in the request

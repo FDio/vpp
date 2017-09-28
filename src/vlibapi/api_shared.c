@@ -915,6 +915,15 @@ vl_msg_api_add_msg_name_crc (api_main_t * am, const char *string, u32 id)
   hash_set_mem (am->msg_index_by_name_and_crc, string, id);
 }
 
+void
+vl_msg_api_add_version (api_main_t * am, const char *string,
+			u32 major, u32 minor, u32 patch)
+{
+  api_version_t version = {.major = major,.minor = minor,.patch = patch };
+  ASSERT (strlen (string) < 64);
+  strncpy (version.name, string, 64);
+  vec_add1 (am->api_version_list, version);
+}
 
 /*
  * fd.io coding-style-patch-verification: ON

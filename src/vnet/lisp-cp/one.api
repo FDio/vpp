@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
+
 typeonly manual_print manual_endian define one_local_locator
 {
   u32 sw_if_index;

@@ -428,54 +428,46 @@ out:
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
-/**
- * client answered a ping, stave off the grim reaper...
- */
-
 void
-  vl_api_memclnt_keepalive_reply_t_handler
-  (vl_api_memclnt_keepalive_reply_t * mp)
+vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
 {
-  vl_api_registration_t *regp;
-  vlib_main_t *vm = vlib_get_main ();
+  api_main_t *am = &api_main;
+  vl_api_api_versions_reply_t *rmp;
+  unix_shared_memory_queue_t *q;
+  u32 nmsg = vec_len (am->api_version_list);
+  int msg_size = sizeof (*rmp) + sizeof (rmp->api_versions[0]) * nmsg;
+  int i;
 
-  regp = vl_api_client_index_to_registration (mp->context);
-  if (regp)
-    {
-      regp->last_heard = vlib_time_now (vm);
-      regp->unanswered_pings = 0;
-    }
-  else
-    clib_warning ("BUG: anonymous memclnt_keepalive_reply");
-}
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
 
-/**
- * We can send ourselves these messages if someone uses the
- * builtin binary api test tool...
- */
-static void
-vl_api_memclnt_keepalive_t_handler (vl_api_memclnt_keepalive_t * mp)
-{
-  vl_api_memclnt_keepalive_reply_t *rmp;
-  api_main_t *am;
-  vl_shmem_hdr_t *shmem_hdr;
+  rmp = vl_msg_api_alloc (msg_size);
+  memset (rmp, 0, msg_size);
+  rmp->_vl_msg_id = ntohs (VL_API_API_VERSIONS_REPLY);
 
-  am = &api_main;
-  shmem_hdr = am->shmem_hdr;
-
-  rmp = vl_msg_api_alloc_as_if_client (sizeof (*rmp));
-  memset (rmp, 0, sizeof (*rmp));
-  rmp->_vl_msg_id = ntohs (VL_API_MEMCLNT_KEEPALIVE_REPLY);
+  /* fill in the message */
   rmp->context = mp->context;
-  vl_msg_api_send_shmem (shmem_hdr->vl_input_queue, (u8 *) & rmp);
+  rmp->count = htonl (nmsg);
+
+  for (i = 0; i < nmsg; ++i)
+    {
+      api_version_t *vl = &am->api_version_list[i];
+      rmp->api_versions[i].major = htonl (vl->major);
+      rmp->api_versions[i].minor = htonl (vl->minor);
+      rmp->api_versions[i].patch = htonl (vl->patch);
+      strncpy ((char *) rmp->api_versions[i].name, vl->name, 64);
+    }
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+
 }
 
-#define foreach_vlib_api_msg                            \
-_(MEMCLNT_CREATE, memclnt_create)                       \
-_(MEMCLNT_DELETE, memclnt_delete)                       \
-_(GET_FIRST_MSG_ID, get_first_msg_id)                   \
-_(MEMCLNT_KEEPALIVE, memclnt_keepalive)                 \
-_(MEMCLNT_KEEPALIVE_REPLY, memclnt_keepalive_reply)
+#define foreach_vlib_api_msg                    \
+_(MEMCLNT_CREATE, memclnt_create)               \
+_(MEMCLNT_DELETE, memclnt_delete)               \
+_(GET_FIRST_MSG_ID, get_first_msg_id)		\
+_(API_VERSIONS, api_versions)
 
 /*
  * vl_api_init

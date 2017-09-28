@@ -832,6 +832,22 @@ node_vft_t node_noversion_vft = {
     0,
 };
 
+void node_version_print (node_t *this)
+{
+    primtype_recursive_print (this, "version ");
+}
+
+void node_version_generate (node_t *this, enum passid which, FILE *ofp)
+{
+    fprintf(stderr, "node_version_generate called...\n");
+}
+
+node_vft_t node_version_vft = {
+    node_version_print,
+    node_version_generate,
+    0,
+};
+
 void node_uword_print (node_t *this)
 {
     primtype_recursive_print(this, "uword ");
@@ -866,6 +882,7 @@ node_vft_t *the_vft[NODE_N_TYPES] = {
     &node_vector_vft,
     &node_complex_vft,
     &node_noversion_vft,
+    &node_version_vft,
     &node_uword_vft,
 };
 
@@ -1133,7 +1150,8 @@ void generate_top_boilerplate(FILE *fp)
     fprintf (fp, "#if defined(vl_msg_id)||defined(vl_union_id)||");
     fprintf (fp, "defined(vl_printfun) \\\n ||defined(vl_endianfun)||");
     fprintf (fp, " defined(vl_api_version)||defined(vl_typedefs) \\\n");
-    fprintf (fp, " ||defined(vl_msg_name)||defined(vl_msg_name_crc_list)\n");
+    fprintf (fp, " ||defined(vl_msg_name)||defined(vl_msg_name_crc_list) \\\n");
+    fprintf (fp, " ||defined(vl_api_version_tuple)\n");
     fprintf (fp, "/* ok, something was selected */\n");
     fprintf (fp, "#else\n");
     fprintf (fp, "#warning no content included from %s\n", input_filename);
@@ -1144,7 +1162,8 @@ void generate_top_boilerplate(FILE *fp)
 void generate_bottom_boilerplate(FILE *fp)
 
 {
-    fprintf (fp, "\n#ifdef vl_api_version\n");
+    fprintf(fp, "/****** API CRC (whole file) *****/\n\n");
+    fprintf (fp, "#ifdef vl_api_version\n");
 
     if (dont_output_version) {
         fprintf (fp, "/* WARNING: API FILE VERSION CHECK DISABLED */\n");
@@ -1153,6 +1172,7 @@ void generate_bottom_boilerplate(FILE *fp)
 
     fprintf (fp, "vl_api_version(%s, 0x%08x)\n\n", 
              fixed_name, (unsigned int)input_crc);
+
     fprintf (fp, "#endif\n\n");
 }
 
@@ -1416,6 +1436,20 @@ void add_msg_ids(YYSTYPE a1)
     }
 }
 
+/*
+ * add_scalar_vbl (char *name)
+ */
+YYSTYPE add_version (YYSTYPE a1, YYSTYPE a2, YYSTYPE a3)
+{
+    node_t *np;
+
+    np = make_node(NODE_VERSION);
+    np->data[0] = (void *) a1;
+    np->data[1] = (void *) a2;
+    np->data[2] = (void *) a3;
+    return ((YYSTYPE) np);
+}
+
 void generate_python_msg_definitions(YYSTYPE a1, FILE *fp)
 {
     node_t *np = (node_t *)a1;
@@ -1517,6 +1551,26 @@ void generate_json(YYSTYPE a1, FILE *fp)
     fprintf (fp, "}\n");
 }
 
+void generate_version_tuple(YYSTYPE a1, FILE *fp)
+{
+    node_t *this = (node_t *)a1;
+
+    fprintf(fp, "/****** Version tuple *****/\n\n");
+
+    fprintf(fp, "#ifdef vl_api_version_tuple\n\n");
+
+    /* Walk the top-level node-list */
+    while (this) {
+        if (this->type == NODE_VERSION) {
+            fprintf (fp, "vl_api_version_tuple(%s, %d, %d, %d)\n",
+                     fixed_name, IDATA0, IDATA1, IDATA2);
+        }
+        this = this->peer;
+    }
+
+    fprintf(fp, "\n#endif /* vl_api_version_tuple */\n\n");
+}
+
 void generate(YYSTYPE a1)
 {
     if (dump_tree) {
@@ -1535,6 +1589,7 @@ void generate(YYSTYPE a1)
         generate_uniondefs(a1, ofp);
         generate_printfun(a1, ofp);
         generate_endianfun(a1, ofp);
+        generate_version_tuple(a1, ofp);
         
         generate_bottom_boilerplate(ofp);
     }

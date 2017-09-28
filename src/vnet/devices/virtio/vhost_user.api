@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+vl_api_version 1.0.0
+
 /** \brief vhost-user interface create request
     @param client_index - opaque cookie to identify the sender
     @param is_server - our side is socket server

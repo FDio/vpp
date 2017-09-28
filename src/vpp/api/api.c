@@ -2445,6 +2445,11 @@ setup_message_id_table (api_main_t * am)
   foreach_vl_msg_name_crc_memclnt;
   foreach_vl_msg_name_crc_vpe;
 #undef _
+
+#define vl_api_version_tuple(n,mj, mi, p) \
+  vl_msg_api_add_version (am, #n, mj, mi, p);
+#include <vpp/api/vpe_all_api_h.h>
+#undef vl_api_version_tuple
 }
 
 
