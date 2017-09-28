@@ -145,6 +145,9 @@ lldp_send_ethernet (lldp_main_t * lm, lldp_intf_t * n, int shutdown)
    */
   h0 = vlib_packet_template_get_packet (vm, &lm->packet_template, &bi0);
 
+  if (!h0)
+    return;
+
   /* Add the interface's ethernet source address */
   hw = vnet_get_hw_interface (vnm, n->hw_if_index);
 
