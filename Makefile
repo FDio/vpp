@@ -493,6 +493,7 @@ define banner
 endef
 
 verify: install-dep $(BR)/.bootstrap.ok dpdk-install-dev
+	@touch core
 	$(call banner,"Building for PLATFORM=vpp using gcc")
 	@make -C build-root PLATFORM=vpp TAG=vpp wipe-all install-packages
 ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
