@@ -280,10 +280,9 @@ int vnet_pppoe_add_del_session
       pfx.fp_proto = FIB_PROTOCOL_IP6;
     }
 
-  /* Get encap_if_index and local mac address */
-  pppoe_lookup_1 (&pem->session_table, &cached_key, &cached_result,
-		  a->client_mac, clib_host_to_net_u16 (a->session_id),
-		  &key, &bucket, &result);
+  /* Get encap_if_index and local mac address from link_table */
+  pppoe_lookup_1 (&pem->link_table, &cached_key, &cached_result,
+		  a->client_mac, 0, &key, &bucket, &result);
   a->encap_if_index = result.fields.sw_if_index;
 
   if (a->encap_if_index == ~0)
@@ -292,6 +291,14 @@ int vnet_pppoe_add_del_session
   si = vnet_get_sw_interface (vnm, a->encap_if_index);
   hi = vnet_get_hw_interface (vnm, si->hw_if_index);
 
+  /* lookup session_table */
+  pppoe_lookup_1 (&pem->session_table, &cached_key, &cached_result,
+		  a->client_mac, clib_host_to_net_u16 (a->session_id),
+		  &key, &bucket, &result);
+
+  /* learn client session */
+  pppoe_learn_process (&pem->session_table, a->encap_if_index,
+		       &key, &cached_key, &bucket, &result);
 
   if (a->is_add)
     {
@@ -709,6 +716,9 @@ pppoe_init (vlib_main_t * vm)
   pem->vlib_main = vm;
 
   /* Create the hash table  */
+  BV (clib_bihash_init) (&pem->link_table, "pppoe link table",
+			 PPPOE_NUM_BUCKETS, PPPOE_MEMORY_SIZE);
+
   BV (clib_bihash_init) (&pem->session_table, "pppoe session table",
 			 PPPOE_NUM_BUCKETS, PPPOE_MEMORY_SIZE);
 
