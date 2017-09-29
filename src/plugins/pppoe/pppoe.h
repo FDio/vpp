@@ -99,8 +99,8 @@ typedef enum
 /*
  * The size of pppoe session table
  */
-#define PPPOE_NUM_BUCKETS (128 * 1024)
-#define PPPOE_MEMORY_SIZE (16<<20)
+#define PPPOE_NUM_BUCKETS (64 * 1024)
+#define PPPOE_MEMORY_SIZE (8<<20)
 
 /* *INDENT-OFF* */
 /*
@@ -147,10 +147,13 @@ typedef struct
 
 typedef struct
 {
-  /* For DP: vector of encap session instances, */
+  /* Vector of encap session instances, */
   pppoe_session_t *sessions;
 
   /* For CP:  vector of CP path */
+    BVT (clib_bihash) link_table;
+
+  /* For DP:  vector of DP path */
     BVT (clib_bihash) session_table;
 
   /* Free vlib hw_if_indices */
@@ -226,8 +229,46 @@ pppoe_make_key (u8 * mac_address, u16 session_id)
   return temp;
 }
 
+/**
+ * Perform learning on one packet based on the mac table lookup result.
+ * */
 static_always_inline void
-pppoe_lookup_1 (BVT (clib_bihash) * session_table,
+pppoe_learn_process (BVT (clib_bihash) * table,
+		     u32 sw_if_index0,
+		     pppoe_entry_key_t * key0,
+		     pppoe_entry_key_t * cached_key,
+		     u32 * bucket0, pppoe_entry_result_t * result0)
+{
+  /* Check mac table lookup result */
+  if (PREDICT_TRUE (result0->fields.sw_if_index == sw_if_index0))
+    {
+      /*
+       * The entry was in the table, and the sw_if_index matched, the normal case
+       */
+      return;
+    }
+  else if (result0->fields.sw_if_index == ~0)
+    {
+      /* The entry was not in table, so add it  */
+      result0->fields.sw_if_index = sw_if_index0;
+      result0->fields.session_index = ~0;
+      cached_key->raw = ~0;	/* invalidate the cache */
+    }
+  else
+    {
+      /* The entry was in the table, but with the wrong sw_if_index mapping (mac move) */
+      result0->fields.sw_if_index = sw_if_index0;
+    }
+
+  /* Update the entry */
+  BVT (clib_bihash_kv) kv;
+  kv.key = key0->raw;
+  kv.value = result0->raw;
+  BV (clib_bihash_add_del) (table, &kv, 1 /* is_add */ );
+}
+
+static_always_inline void
+pppoe_lookup_1 (BVT (clib_bihash) * table,
 		pppoe_entry_key_t * cached_key,
 		pppoe_entry_result_t * cached_result,
 		u8 * mac0,
@@ -251,7 +292,7 @@ pppoe_lookup_1 (BVT (clib_bihash) * session_table,
 
       kv.key = key0->raw;
       kv.value = ~0ULL;
-      BV (clib_bihash_search_inline) (session_table, &kv);
+      BV (clib_bihash_search_inline) (table, &kv);
       result0->raw = kv.value;
 
       /* Update one-entry cache */
@@ -261,7 +302,7 @@ pppoe_lookup_1 (BVT (clib_bihash) * session_table,
 }
 
 static_always_inline void
-pppoe_update_1 (BVT (clib_bihash) * session_table,
+pppoe_update_1 (BVT (clib_bihash) * table,
 		u8 * mac0,
 		u16 session_id0,
 		pppoe_entry_key_t * key0,
@@ -275,7 +316,7 @@ pppoe_update_1 (BVT (clib_bihash) * session_table,
   BVT (clib_bihash_kv) kv;
   kv.key = key0->raw;
   kv.value = result0->raw;
-  BV (clib_bihash_add_del) (session_table, &kv, 1 /* is_add */ );
+  BV (clib_bihash_add_del) (table, &kv, 1 /* is_add */ );
 
 }
 #endif /* _PPPOE_H */

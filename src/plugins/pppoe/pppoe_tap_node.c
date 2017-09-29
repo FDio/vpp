@@ -67,47 +67,6 @@ static u8 * format_pppoe_tap_trace (u8 * s, va_list * args)
   return s;
 }
 
-/**
- * Perform learning on one packet based on the mac table lookup result.
- * */
-static_always_inline void
-pppoe_learn_process (vlib_node_runtime_t * node,
-		     pppoe_main_t * pem,
-		     vlib_buffer_t * b0,
-		     u32 sw_if_index0,
-		     pppoe_entry_key_t * key0,
-		     pppoe_entry_key_t * cached_key,
-		     u32 * bucket0,
-		     pppoe_entry_result_t * result0)
-{
-  /* Check mac table lookup result */
-  if (PREDICT_TRUE (result0->fields.sw_if_index == sw_if_index0))
-    {
-      /*
-       * The entry was in the table, and the sw_if_index matched, the normal case
-       */
-      return;
-    }
-  else if (result0->fields.sw_if_index == ~0)
-    {
-      /* The entry was not in table, so add it  */
-      result0->fields.sw_if_index = sw_if_index0;
-      result0->fields.session_index = ~0;
-      cached_key->raw = ~0;	/* invalidate the cache */
-    }
-  else
-    {
-      /* The entry was in the table, but with the wrong sw_if_index mapping (mac move) */
-      result0->fields.sw_if_index = sw_if_index0;
-    }
-
-  /* Update the entry */
-  BVT (clib_bihash_kv) kv;
-  kv.key = key0->raw;
-  kv.value = result0->raw;
-  BV (clib_bihash_add_del) (&pem->session_table, &kv, 1 /* is_add */ );
-}
-
 static uword
 pppoe_tap_dispatch (vlib_main_t * vm,
                     vlib_node_runtime_t * node,
@@ -181,7 +140,7 @@ pppoe_tap_dispatch (vlib_main_t * vm,
 
           if(rx_sw_if_index0 == pem->tap_if_index)
             {
-    	      pppoe_lookup_1 (&pem->session_table, &cached_key, &cached_result,
+    	      pppoe_lookup_1 (&pem->link_table, &cached_key, &cached_result,
     			      h0->dst_address, 0,
     			      &key0, &bucket0, &result0);
     	      tx_sw_if_index0 = result0.fields.sw_if_index;
@@ -203,13 +162,13 @@ pppoe_tap_dispatch (vlib_main_t * vm,
             }
           else
             {
-    	      pppoe_lookup_1 (&pem->session_table, &cached_key, &cached_result,
-    			      h0->src_address, pppoe0->session_id,
+    	      pppoe_lookup_1 (&pem->link_table, &cached_key, &cached_result,
+    			      h0->src_address, 0,
     			      &key0, &bucket0, &result0);
     	      tx_sw_if_index0 = result0.fields.sw_if_index;
 
               /* learn client session */
-    	      pppoe_learn_process (node, pem, b0, rx_sw_if_index0,
+    	      pppoe_learn_process (&pem->link_table, rx_sw_if_index0,
 				   &key0, &cached_key,
     			           &bucket0, &result0);
 
