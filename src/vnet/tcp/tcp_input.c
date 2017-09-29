@@ -2352,7 +2352,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       */
 	      if (!tcp_rcv_ack_is_acceptable (tc0, b0))
 		{
-		  clib_warning ("connection not accepted");
+		  TCP_DBG ("connection not accepted");
 		  tcp_send_reset_w_pkt (tc0, b0, is_ip4);
 		  goto drop;
 		}
@@ -2431,7 +2431,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      tc0->state = TCP_STATE_TIME_WAIT;
 	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
-	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
 	      goto drop;
 
 	      break;
@@ -2441,11 +2441,14 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	       * delete the TCB, enter the CLOSED state, and return. */
 
 	      if (!tcp_rcv_ack_is_acceptable (tc0, b0))
-		goto drop;
+		{
+		  error0 = TCP_ERROR_ACK_INVALID;
+		  goto drop;
+		}
 
 	      tc0->snd_una = vnet_buffer (b0)->tcp.ack_number;
-	      /* Apparently our FIN was lost */
-	      if (is_fin0)
+	      /* Apparently our ACK for the peer's FIN was lost */
+	      if (is_fin0 && tc0->snd_una != tc0->snd_una_max)
 		{
 		  tcp_send_fin (tc0);
 		  goto drop;
@@ -2453,13 +2456,13 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      tc0->state = TCP_STATE_CLOSED;
 	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
+	      tcp_connection_timers_reset (tc0);
 
 	      /* Don't delete the connection/session yet. Instead, wait a
 	       * reasonable amount of time until the pipes are cleared. In
 	       * particular, this makes sure that we won't have dead sessions
 	       * when processing events on the tx path */
-	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
-	      tcp_retransmit_timer_reset (tc0);
+	      tcp_timer_set (tc0, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 
 	      goto drop;
 
@@ -2473,7 +2476,8 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		goto drop;
 
 	      tcp_make_ack (tc0, b0);
-	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
+	      next0 = tcp_next_output (is_ip4);
+	      tcp_timer_update (tc0, TCP_TIMER_WAITCLOSE, TCP_TIMEWAIT_TIME);
 
 	      goto drop;
 

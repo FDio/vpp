@@ -100,7 +100,7 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define TCP_SYN_RCVD_TIME	600	/* 60s */
 #define TCP_2MSL_TIME           300	/* 30s */
 #define TCP_CLOSEWAIT_TIME	20	/* 2s */
-#define TCP_TIMEWAIT_TIME	20	/* 2s */
+#define TCP_TIMEWAIT_TIME	100	/* 10s */
 #define TCP_CLEANUP_TIME	10	/* 1s Time to wait before cleanup */
 #define TCP_TIMER_PERSIST_MIN	2	/* 0.2s */
 
@@ -114,9 +114,9 @@ extern timer_expiration_handler tcp_timer_retransmit_syn_handler;
 #define foreach_tcp_connection_flag             \
   _(SNDACK, "Send ACK")                         \
   _(FINSNT, "FIN sent")				\
-  _(SENT_RCV_WND0, "Sent 0 receive window")     \
-  _(RECOVERY, "Recovery on")                    \
-  _(FAST_RECOVERY, "Fast Recovery on")		\
+  _(SENT_RCV_WND0, "Sent 0 rcv_wnd")     	\
+  _(RECOVERY, "Recovery")                    	\
+  _(FAST_RECOVERY, "Fast Recovery")		\
   _(FR_1_SMSS, "Sent 1 SMSS")			\
   _(HALF_OPEN_DONE, "Half-open completed")	\
   _(FINPNDG, "FIN pending")
