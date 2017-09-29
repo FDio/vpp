@@ -2,6 +2,10 @@ BINDIR = $(BR)/vapi_test/
 CBIN = $(addprefix $(BINDIR), vapi_c_test)
 CPPBIN = $(addprefix $(BINDIR), vapi_cpp_test)
 
+ifeq ($(filter centos,$(OS_ID)),$(OS_ID))
+CPPBIN=
+endif
+
 LIBS = -L$(VPP_TEST_BUILD_DIR)/vpp/.libs/ -L$(VPP_TEST_BUILD_DIR)/vpp/vpp-api/vapi/.libs/ -lvppinfra -lvlibmemoryclient -lsvm -lpthread -lcheck -lsubunit -lrt -lm -lvapiclient
 CFLAGS = -std=gnu99 -g -Wall -pthread -I$(WS_ROOT)/src -I$(VPP_TEST_INSTALL_PATH)/vpp/include -I$(BINDIR)
 CPPFLAGS = -std=c++11 -g -Wall -pthread -I$(WS_ROOT)/src -I$(VPP_TEST_INSTALL_PATH)/vpp/include -I$(BINDIR)

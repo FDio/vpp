@@ -40,6 +40,16 @@ static char *api_prefix = NULL;
 static const int max_outstanding_requests = 64;
 static const int response_queue_size = 32;
 
+/* centos has ancient check so we hack our way around here
+ * to make it work somehow */
+#ifndef ck_assert_ptr_eq
+#define ck_assert_ptr_eq(X,Y) ck_assert_int_eq((long)X, (long)Y)
+#endif
+
+#ifndef ck_assert_ptr_ne
+#define ck_assert_ptr_ne(X,Y) ck_assert_int_ne((long)X, (long)Y)
+#endif
+
 START_TEST (test_invalid_values)
 {
   vapi_ctx_t ctx;
@@ -571,7 +581,7 @@ sw_interface_dump_cb (struct vapi_ctx_s *ctx, void *callback_ctx,
     }
   else
     {
-      ck_assert (reply);
+      ck_assert (NULL != reply);
       printf ("Interface dump entry: [%u]: %s\n", reply->sw_if_index,
 	      reply->interface_name);
       size_t i = 0;

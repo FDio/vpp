@@ -82,6 +82,11 @@ RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += apr-devel
 RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check
+
+ifeq ($(filter centos,$(OS_ID)),$(OS_ID))
+	RPM_DEPENDS += check-devel subunit subunit-devel
+endif
+
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS += openssl-devel
 	RPM_DEPENDS += python-devel
@@ -339,6 +344,7 @@ define test
 	  LD_LIBRARY_PATH=$(call libexpand,$(libs),$(2),) \
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
 	  PYTHON=$(PYTHON) \
+	  OS_ID=$(OS_ID) \
 	  $(3)
 endef
 

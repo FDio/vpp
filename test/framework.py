@@ -92,6 +92,15 @@ def running_extended_tests():
     return False
 
 
+def running_on_centos():
+    try:
+        os_id = os.getenv("OS_ID")
+        return True if "centos" in os_id.lower() else False
+    except:
+        return False
+    return False
+
+
 class KeepAliveReporter(object):
     """
     Singleton object which reports test start to parent process
