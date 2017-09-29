@@ -314,19 +314,22 @@ tcp_connection_close (tcp_connection_t * tc)
       tc->state = TCP_STATE_FIN_WAIT_1;
       break;
     case TCP_STATE_CLOSE_WAIT:
+      tcp_connection_timers_reset (tc);
       tcp_send_fin (tc);
       tc->state = TCP_STATE_LAST_ACK;
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
       break;
     case TCP_STATE_FIN_WAIT_1:
+      tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_2MSL_TIME);
       break;
     default:
-      clib_warning ("state: %u", tc->state);
+      TCP_DBG ("state: %u", tc->state);
     }
 
   TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
 
   /* If in CLOSED and WAITCLOSE timer is not set, delete connection now */
-  if (tc->timers[TCP_TIMER_WAITCLOSE] == TCP_TIMER_HANDLE_INVALID
+  if (!tcp_timer_is_active (tc, TCP_TIMER_WAITCLOSE)
       && tc->state == TCP_STATE_CLOSED)
     tcp_connection_del (tc);
 }
@@ -344,6 +347,7 @@ tcp_session_cleanup (u32 conn_index, u32 thread_index)
 {
   tcp_connection_t *tc;
   tc = tcp_connection_get (conn_index, thread_index);
+  tcp_connection_timers_reset (tc);
 
   /* Wait for the session tx events to clear */
   tc->state = TCP_STATE_CLOSED;
@@ -748,6 +752,31 @@ format_tcp_state (u8 * s, va_list * args)
   return s;
 }
 
+const char *tcp_connection_flags_str[] = {
+#define _(sym, str) str,
+  foreach_tcp_connection_flag
+#undef _
+};
+
+u8 *
+format_tcp_connection_flags (u8 * s, va_list * args)
+{
+  tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  int i, last = -1;
+
+  for (i = 0; i < TCP_CONN_N_FLAG_BITS; i++)
+    if (tc->flags & (1 << i))
+      last = i;
+  for (i = 0; i < last; i++)
+    {
+      if (tc->flags & (1 << i))
+	s = format (s, "%s, ", tcp_connection_flags_str[i]);
+    }
+  if (last >= 0)
+    s = format (s, "%s", tcp_connection_flags_str[last]);
+  return s;
+}
+
 const char *tcp_conn_timers[] = {
 #define _(sym, str) str,
   foreach_tcp_timer
@@ -796,6 +825,8 @@ u8 *
 format_tcp_vars (u8 * s, va_list * args)
 {
   tcp_connection_t *tc = va_arg (*args, tcp_connection_t *);
+  s = format (s, " flags: %U timers: %U\n", format_tcp_connection_flags, tc,
+	      format_tcp_timers, tc);
   s = format (s, " snd_una %u snd_nxt %u snd_una_max %u",
 	      tc->snd_una - tc->iss, tc->snd_nxt - tc->iss,
 	      tc->snd_una_max - tc->iss);
@@ -866,7 +897,7 @@ format_tcp_connection (u8 * s, va_list * args)
     {
       s = format (s, "%-15U", format_tcp_state, tc->state);
       if (verbose > 1)
-	s = format (s, " %U\n%U", format_tcp_timers, tc, format_tcp_vars, tc);
+	s = format (s, "\n%U", format_tcp_vars, tc);
     }
 
   return s;

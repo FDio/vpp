@@ -1055,7 +1055,6 @@ tcp_send_fin (tcp_connection_t * tc)
   u32 bi;
   u8 fin_snt = 0;
 
-
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
     return;
   b = vlib_get_buffer (vm, bi);
@@ -1070,6 +1069,10 @@ tcp_send_fin (tcp_connection_t * tc)
       tc->flags &= ~TCP_CONN_FINPNDG;
       /* Account for the FIN */
       tc->snd_una_max += 1;
+      tc->snd_nxt = tc->snd_una_max;
+    }
+  else
+    {
       tc->snd_nxt = tc->snd_una_max;
     }
   tcp_retransmit_timer_force_update (tc);
@@ -1381,6 +1384,13 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 	  return;
 	}
 
+      /* Shouldn't be here */
+      if (tc->snd_una == tc->snd_una_max)
+	{
+	  tcp_recovery_off (tc);
+	  return;
+	}
+
       /* We're not in recovery so make sure rto_boff is 0 */
       if (!tcp_in_recovery (tc) && tc->rto_boff > 0)
 	{
@@ -1485,7 +1495,8 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   else
     {
       ASSERT (tc->state == TCP_STATE_CLOSED);
-      TCP_DBG ("connection state: %d", tc->state);
+      if (CLIB_DEBUG)
+	TCP_DBG ("connection state: %U", format_tcp_connection, tc, 2);
       return;
     }
 }
