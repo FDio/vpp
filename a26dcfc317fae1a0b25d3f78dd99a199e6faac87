@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_51b49ff1",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1153,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-09-29T22:55:03Z",
+      "side": 1,
+      "message": "Do you know what is the behavior if t is 0 or negative? May be it is best to have a check to make t a minimum delay of some sort? The original code make it at least event_scan_delay. It would be fine if we make it some smaller value.",
+      "range": {
+        "startLine": 1153,
+        "startChar": 3,
+        "endLine": 1153,
+        "endChar": 39
+      },
+      "revId": "a26dcfc317fae1a0b25d3f78dd99a199e6faac87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
