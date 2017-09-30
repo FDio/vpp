@@ -290,6 +290,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
     return err;
 
   r->fd = alloc.fd;
+  r->shm = alloc.addr;
 
   for (i = 0; i < mif->run.num_s2m_rings; i++)
     {
