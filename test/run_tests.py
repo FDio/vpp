@@ -57,6 +57,12 @@ def run_forked(suite):
                                    "runner process (last test running was "
                                    "`%s' in `%s')!" %
                                    (last_test, last_test_temp_dir))
+            failed_dir = os.getenv('VPP_TEST_FAILED_DIR')
+            lttd = last_test_temp_dir.split("/")[-1]
+            link_path = '%s%s-FAILED' % (failed_dir, lttd)
+            global_logger.error("Creating a link to the failed " +
+                                "test: %s -> %s" % (link_path, lttd))
+            os.symlink(last_test_temp_dir, link_path)
             if last_test_temp_dir and last_test_vpp_binary:
                 core_path = "%s/core" % last_test_temp_dir
                 if os.path.isfile(core_path):

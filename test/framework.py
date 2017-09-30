@@ -214,7 +214,7 @@ class VppTestCase(unittest.TestCase):
         except:
             pass
         if coredump_size is None:
-            coredump_size = "coredump-size unlimited"
+            coredump_size = "full-coredump"
         cls.vpp_cmdline = [cls.vpp_bin, "unix",
                            "{", "nodaemon", debug_cli, coredump_size, "}",
                            "api-trace", "{", "on", "}",
