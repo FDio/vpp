@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import shutil
 import os
 import select
 import unittest
@@ -50,8 +51,8 @@ def run_forked(suite):
             result = result_parent_end.recv()
         elif keep_alive_parent_end.fileno() in readable:
             while keep_alive_parent_end.poll():
-                last_test, last_test_vpp_binary, last_test_temp_dir =\
-                    keep_alive_parent_end.recv()
+                last_test, last_test_vpp_binary,\
+                    last_test_temp_dir, vpp_pid = keep_alive_parent_end.recv()
         else:
             global_logger.critical("Timeout while waiting for child test "
                                    "runner process (last test running was "
@@ -63,6 +64,11 @@ def run_forked(suite):
             global_logger.error("Creating a link to the failed " +
                                 "test: %s -> %s" % (link_path, lttd))
             os.symlink(last_test_temp_dir, link_path)
+            api_post_mortem_path = "/tmp/api_post_mortem.%d" % vpp_pid
+            if os.path.isfile(api_post_mortem_path):
+                global_logger.error("Copying api_post_mortem.%d to %s" %
+                                    (vpp_pid, last_test_temp_dir))
+                shutil.copy2(api_post_mortem_path, last_test_temp_dir)
             if last_test_temp_dir and last_test_vpp_binary:
                 core_path = "%s/core" % last_test_temp_dir
                 if os.path.isfile(core_path):
