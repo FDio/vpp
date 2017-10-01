@@ -135,7 +135,7 @@ class KeepAliveReporter(object):
             if not desc:
                 desc = str(test)
 
-        self.pipe.send((desc, test.vpp_bin, test.tempdir))
+        self.pipe.send((desc, test.vpp_bin, test.tempdir, test.vpp.pid))
 
 
 class VppTestCase(unittest.TestCase):
@@ -304,11 +304,11 @@ class VppTestCase(unittest.TestCase):
         cls.registry = VppObjectRegistry()
         cls.vpp_startup_failed = False
         cls.reporter = KeepAliveReporter()
-        cls.reporter.send_keep_alive(cls)
         # need to catch exceptions here because if we raise, then the cleanup
         # doesn't get called and we might end with a zombie vpp
         try:
             cls.run_vpp()
+            cls.reporter.send_keep_alive(cls)
             cls.vpp_stdout_deque = deque()
             cls.vpp_stderr_deque = deque()
             cls.pump_thread_stop_flag = Event()
