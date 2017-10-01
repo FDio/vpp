@@ -22,6 +22,30 @@
       "revId": "a26dcfc317fae1a0b25d3f78dd99a199e6faac87",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_f54db6c5",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1153,
+      "author": {
+        "id": 612
+      },
+      "writtenOn": "2017-10-01T06:32:30Z",
+      "side": 1,
+      "message": "wait for event returns immediately if given a negative time (or any value less than a micro sec.). \nwaiting for event scan delay in the original code was a mistake since its not initialized unless the user calls want_l2_events",
+      "parentUuid": "1a486d77_51b49ff1",
+      "range": {
+        "startLine": 1153,
+        "startChar": 3,
+        "endLine": 1153,
+        "endChar": 39
+      },
+      "revId": "a26dcfc317fae1a0b25d3f78dd99a199e6faac87",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
