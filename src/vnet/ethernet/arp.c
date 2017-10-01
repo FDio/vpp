@@ -615,7 +615,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
        */
       if (0 == memcmp (e->ethernet_address,
 		       a->ethernet, sizeof (e->ethernet_address)))
-	return -1;
+	goto check_customers;
 
       /* Update time stamp and ethernet address. */
       clib_memcpy (e->ethernet_address, a->ethernet,
@@ -630,6 +630,7 @@ vnet_arp_set_ip4_over_ethernet_internal (vnet_main_t * vnm,
 
   adj_nbr_walk_nh4 (sw_if_index, &e->ip4_address, arp_mk_complete_walk, e);
 
+check_customers:
   /* Customer(s) waiting for this address to be resolved? */
   p = hash_get (am->pending_resolutions_by_address, a->ip4.as_u32);
   if (p)
