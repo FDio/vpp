@@ -135,7 +135,7 @@ class KeepAliveReporter(object):
             if not desc:
                 desc = str(test)
 
-        self.pipe.send((desc, test.vpp_bin, test.tempdir))
+        self.pipe.send((desc, test.vpp_bin, test.tempdir, test.vpp.pid))
 
 
 class VppTestCase(unittest.TestCase):
@@ -214,10 +214,10 @@ class VppTestCase(unittest.TestCase):
         except:
             pass
         if coredump_size is None:
-            coredump_size = "full-coredump"
+            coredump_size = "coredump-size unlimited"
         cls.vpp_cmdline = [cls.vpp_bin, "unix",
-                           "{", "nodaemon", debug_cli, coredump_size, "}",
-                           "api-trace", "{", "on", "}",
+                           "{", "nodaemon", debug_cli, "full-coredump",
+                           coredump_size, "}", "api-trace", "{", "on", "}",
                            "api-segment", "{", "prefix", cls.shm_prefix, "}",
                            "plugins", "{", "plugin", "dpdk_plugin.so", "{",
                            "disable", "}", "}"]
@@ -304,11 +304,11 @@ class VppTestCase(unittest.TestCase):
         cls.registry = VppObjectRegistry()
         cls.vpp_startup_failed = False
         cls.reporter = KeepAliveReporter()
-        cls.reporter.send_keep_alive(cls)
         # need to catch exceptions here because if we raise, then the cleanup
         # doesn't get called and we might end with a zombie vpp
         try:
             cls.run_vpp()
+            cls.reporter.send_keep_alive(cls)
             cls.vpp_stdout_deque = deque()
             cls.vpp_stderr_deque = deque()
             cls.pump_thread_stop_flag = Event()
