@@ -55,7 +55,7 @@ format_stream_session (u8 * s, va_list * args)
   int verbose = va_arg (*args, int);
   transport_proto_vft_t *tp_vft;
   u8 *str = 0;
-  tp_vft = session_get_transport_vft (ss->session_type);
+  tp_vft = transport_protocol_get_vft (ss->session_type);
 
   if (verbose == 1 && ss->session_state >= SESSION_STATE_ACCEPTING)
     str = format (0, "%-10u%-10u%-10lld",
@@ -63,9 +63,7 @@ format_stream_session (u8 * s, va_list * args)
 		  svm_fifo_max_enqueue (ss->server_tx_fifo),
 		  stream_session_get_index (ss));
 
-  if (ss->session_state == SESSION_STATE_READY
-      || ss->session_state == SESSION_STATE_ACCEPTING
-      || ss->session_state == SESSION_STATE_CLOSED)
+  if (ss->session_state >= SESSION_STATE_ACCEPTING)
     {
       s = format (s, "%U", tp_vft->format_connection, ss->connection_index,
 		  ss->thread_index, verbose);
@@ -146,16 +144,17 @@ unformat_stream_session (unformat_input_t * input, va_list * args)
     return 0;
 
   if (is_ip4)
-    s = session_lookup4 (fib_index, &lcl.ip4, &rmt.ip4,
-			 clib_host_to_net_u16 (lcl_port),
-			 clib_host_to_net_u16 (rmt_port), proto);
+    s = session_lookup_safe4 (fib_index, &lcl.ip4, &rmt.ip4,
+			      clib_host_to_net_u16 (lcl_port),
+			      clib_host_to_net_u16 (rmt_port), proto);
   else
-    s = session_lookup6 (fib_index, &lcl.ip6, &rmt.ip6,
-			 clib_host_to_net_u16 (lcl_port),
-			 clib_host_to_net_u16 (rmt_port), proto);
+    s = session_lookup_safe6 (fib_index, &lcl.ip6, &rmt.ip6,
+			      clib_host_to_net_u16 (lcl_port),
+			      clib_host_to_net_u16 (rmt_port), proto);
   if (s)
     {
       *result = s;
+      session_pool_remove_peeker (s->thread_index);
       return 1;
     }
   return 0;
@@ -324,7 +323,7 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (session_index != ~0)
     {
-      session = stream_session_get_if_valid (session_index, thread_index);
+      session = session_get_if_valid (session_index, thread_index);
       if (!session)
 	return clib_error_return (0, "no session %d on thread %d",
 				  session_index, thread_index);

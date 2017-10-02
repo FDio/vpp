@@ -385,13 +385,6 @@ typedef struct _tcp_main
   tcp_connection_t *half_open_connections;
   clib_spinlock_t half_open_lock;
 
-  /* Pool of local TCP endpoints */
-  transport_endpoint_t *local_endpoints;
-
-  /* Local endpoints lookup table */
-  transport_endpoint_table_t local_endpoints_table;
-  clib_spinlock_t local_endpoints_lock;
-
   /* Congestion control algorithms registered */
   tcp_cc_algorithm_t *cc_algos;
 
@@ -411,9 +404,6 @@ typedef struct _tcp_main
   u32 last_v4_address_rotor;
   u32 last_v6_address_rotor;
   ip6_address_t *ip6_src_addresses;
-
-  /** Port allocator random number generator seed */
-  u32 port_allocator_seed;
 
   /** vlib buffer size */
   u32 bytes_per_buffer;

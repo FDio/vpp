@@ -29,7 +29,7 @@ typedef struct _transport_connection
   ip46_address_t lcl_ip;	/**< Local IP */
   u16 lcl_port;			/**< Local port */
   u16 rmt_port;			/**< Remote port */
-  u8 transport_proto;		/**< Protocol id */
+  u8 proto;			/**< Protocol id */
   u8 is_ip4;			/**< Flag if IP4 connection */
   u32 fib_index;			/**< Network namespace */
 
@@ -54,7 +54,7 @@ typedef struct _transport_connection
 #define c_rmt_ip6 connection.rmt_ip.ip6
 #define c_lcl_port connection.lcl_port
 #define c_rmt_port connection.rmt_port
-#define c_transport_proto connection.transport_proto
+#define c_proto connection.proto
 #define c_fib_index connection.fib_index
 #define c_s_index connection.s_index
 #define c_c_index connection.c_index
@@ -69,7 +69,8 @@ typedef struct _transport_connection
 typedef enum _transport_proto
 {
   TRANSPORT_PROTO_TCP,
-  TRANSPORT_PROTO_UDP
+  TRANSPORT_PROTO_UDP,
+  TRANSPORT_N_PROTO
 } transport_proto_t;
 
 #define foreach_transport_connection_fields				\
@@ -86,6 +87,8 @@ typedef struct _transport_endpoint
 #undef _
 } transport_endpoint_t;
 
+typedef clib_bihash_24_8_t transport_endpoint_table_t;
+
 #define ENDPOINT_INVALID_INDEX ((u32)~0)
 
 always_inline u8
@@ -93,6 +96,31 @@ transport_connection_fib_proto (transport_connection_t * tc)
 {
   return tc->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
 }
+
+always_inline u8
+transport_endpoint_fib_proto (transport_endpoint_t * tep)
+{
+  return tep->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+}
+
+always_inline u8
+transport_is_stream (u8 proto)
+{
+  return (proto == TRANSPORT_PROTO_TCP);
+}
+
+always_inline u8
+transport_is_dgram (u8 proto)
+{
+  return (proto == TRANSPORT_PROTO_UDP);
+}
+
+int transport_alloc_local_port (u8 proto, ip46_address_t * ip);
+int transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
+				    ip46_address_t * lcl_addr,
+				    u16 * lcl_port);
+void transport_endpoint_cleanup (u8 proto, ip46_address_t * lcl_ip, u16 port);
+void transport_init (void);
 
 #endif /* VNET_VNET_URI_TRANSPORT_H_ */
 
