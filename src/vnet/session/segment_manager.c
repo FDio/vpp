@@ -273,7 +273,7 @@ segment_manager_del_sessions (segment_manager_t * sm)
 	  if (session->session_state != SESSION_STATE_CLOSED)
 	    {
 	      session->session_state = SESSION_STATE_CLOSED;
-	      session_send_session_evt_to_thread (stream_session_handle
+	      session_send_session_evt_to_thread (session_handle
 						  (session),
 						  FIFO_EVENT_DISCONNECT,
 						  thread_index);

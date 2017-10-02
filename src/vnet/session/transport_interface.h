@@ -56,20 +56,10 @@ typedef struct _transport_proto_vft
   u8 *(*format_half_open) (u8 * s, va_list * args);
 } transport_proto_vft_t;
 
-typedef clib_bihash_24_8_t transport_endpoint_table_t;
-
-#define TRANSPORT_ENDPOINT_INVALID_INDEX ((u32)~0)
-
-u32 transport_endpoint_lookup (transport_endpoint_table_t * ht,
-			       ip46_address_t * ip, u16 port);
-void transport_endpoint_table_add (transport_endpoint_table_t * ht,
-				   transport_endpoint_t * te, u32 value);
-void transport_endpoint_table_del (transport_endpoint_table_t * ht,
-				   transport_endpoint_t * te);
-
-void session_register_transport (transport_proto_t transport_proto, u8 is_ip4,
-				 const transport_proto_vft_t * vft);
-transport_proto_vft_t *session_get_transport_vft (u8 session_type);
+void transport_register_protocol (transport_proto_t transport_proto,
+				  u8 is_ip4,
+				  const transport_proto_vft_t * vft);
+transport_proto_vft_t *transport_protocol_get_vft (u8 session_type);
 
 #endif /* SRC_VNET_SESSION_TRANSPORT_INTERFACE_H_ */
 
