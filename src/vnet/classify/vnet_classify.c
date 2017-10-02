@@ -373,6 +373,8 @@ vnet_classify_entry_claim_resource (vnet_classify_entry_t *e)
     case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
         fib_table_lock (e->metadata, FIB_PROTOCOL_IP6, FIB_SOURCE_CLASSIFY);
         break;
+    case CLASSIFY_ACTION_SET_SR_POLICY_INDEX:
+        break;
     }
 }
 
@@ -386,6 +388,8 @@ vnet_classify_entry_release_resource (vnet_classify_entry_t *e)
         break;
     case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
         fib_table_unlock (e->metadata, FIB_PROTOCOL_IP6, FIB_SOURCE_CLASSIFY);
+        break;
+    case CLASSIFY_ACTION_SET_SR_POLICY_INDEX:
         break;
     }
 }
@@ -2104,6 +2108,8 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
     e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
                                                      metadata,
                                                      FIB_SOURCE_CLASSIFY);
+  else if (e->action == CLASSIFY_ACTION_SET_SR_POLICY_INDEX)
+    e->metadata = metadata;
   else
     e->metadata = 0;
 
@@ -2172,6 +2178,8 @@ classify_session_command_fn (vlib_main_t * vm,
         action = 1;
       else if (unformat (input, "action set-ip6-fib-id %d", &metadata))
         action = 2;
+      else if (unformat (input, "action set-sr-policy-index %d", &metadata))
+        action = 3;
       else
         {
           /* Try registered opaque-index unformat fns */
@@ -2217,7 +2225,7 @@ VLIB_CLI_COMMAND (classify_session_command, static) = {
     "classify session [hit-next|l2-hit-next|"
     "acl-hit-next <next_index>|policer-hit-next <policer_name>]"
     "\n table-index <nn> match [hex] [l2] [l3 ip4] [opaque-index <index>]"
-    "\n [action set-ip4-fib-id <n>] [action set-ip6-fib-id <n>] [del]",
+    "\n [action set-ip4-fib-id|set-ip6-fib-id|set-sr-policy-index <n>] [del]",
     .function = classify_session_command_fn,
 };
 

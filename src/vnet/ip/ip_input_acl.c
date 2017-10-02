@@ -288,6 +288,8 @@ ip_inacl_inline (vlib_main_t * vm,
 		  if (e0->action == CLASSIFY_ACTION_SET_IP4_FIB_INDEX ||
 		      e0->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
 		    vnet_buffer (b0)->sw_if_index[VLIB_TX] = e0->metadata;
+		  else if (e0->action == CLASSIFY_ACTION_SET_SR_POLICY_INDEX)
+		    vnet_buffer (b0)->ip.adj_index[VLIB_TX] = e0->metadata;
 		}
 	      else
 		{
