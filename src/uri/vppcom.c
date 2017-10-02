@@ -136,7 +136,6 @@ typedef struct vppcom_main_t_
   u8 init;
   u32 *client_session_index_fifo;
   volatile u32 bind_session_index;
-  u32 tx_event_id;
   int main_cpu;
 
   /* vpe input queue */
@@ -2328,7 +2327,6 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
       /* Fabricate TX event, send to vpp */
       evt.fifo = tx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
-      evt.event_id = vcm->tx_event_id++;
 
       rval = vppcom_session_at_index (session_index, &session);
       if (PREDICT_FALSE (rval))

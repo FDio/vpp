@@ -92,7 +92,8 @@ static int
 vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
 {
   application_t *app;
-  u32 table_index, listener_index;
+  u32 table_index;
+  u64 listener;
   int rv, have_local = 0;
 
   app = application_get_if_valid (app_index);
@@ -108,8 +109,8 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
 
   table_index = application_session_table (app,
 					   session_endpoint_fib_proto (sep));
-  listener_index = session_lookup_session_endpoint (table_index, sep);
-  if (listener_index != SESSION_INVALID_INDEX)
+  listener = session_lookup_session_endpoint (table_index, sep);
+  if (listener != SESSION_INVALID_HANDLE)
     return VNET_API_ERROR_ADDRESS_IN_USE;
 
   /*
@@ -119,8 +120,8 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
   if (application_has_local_scope (app) && session_endpoint_is_zero (sep))
     {
       table_index = application_local_session_table (app);
-      listener_index = session_lookup_session_endpoint (table_index, sep);
-      if (listener_index != SESSION_INVALID_INDEX)
+      listener = session_lookup_session_endpoint (table_index, sep);
+      if (listener != SESSION_INVALID_HANDLE)
 	return VNET_API_ERROR_ADDRESS_IN_USE;
       session_lookup_add_session_endpoint (table_index, sep, app->index);
       *handle = session_lookup_local_listener_make_handle (sep);
@@ -206,6 +207,7 @@ vnet_connect_i (u32 app_index, u32 api_context, session_endpoint_t * sep,
 {
   application_t *server, *app;
   u32 table_index;
+  stream_session_t *listener;
 
   if (session_endpoint_is_zero (sep))
     return VNET_API_ERROR_INVALID_VALUE;
@@ -243,10 +245,13 @@ vnet_connect_i (u32 app_index, u32 api_context, session_endpoint_t * sep,
 
   table_index = application_session_table (app,
 					   session_endpoint_fib_proto (sep));
-  app_index = session_lookup_session_endpoint (table_index, sep);
-  server = application_get (app_index);
-  if (server && (server->flags & APP_OPTIONS_FLAGS_ACCEPT_REDIRECT))
-    return app_connect_redirect (server, mp);
+  listener = session_lookup_listener (table_index, sep);
+  if (listener)
+    {
+      server = application_get (listener->app_index);
+      if (server && (server->flags & APP_OPTIONS_FLAGS_ACCEPT_REDIRECT))
+	return app_connect_redirect (server, mp);
+    }
 
   /*
    * Not connecting to a local server, propagate to transport
@@ -470,14 +475,15 @@ vnet_unbind_uri (vnet_unbind_args_t * a)
 clib_error_t *
 vnet_connect_uri (vnet_connect_args_t * a)
 {
-  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+  session_endpoint_t sep_null = SESSION_ENDPOINT_NULL;
   int rv;
 
   /* Parse uri */
-  rv = parse_uri (a->uri, &sep);
+  a->sep = sep_null;
+  rv = parse_uri (a->uri, &a->sep);
   if (rv)
     return clib_error_return_code (0, rv, 0, "app init: %d", rv);
-  if ((rv = vnet_connect_i (a->app_index, a->api_context, &sep, a->mp)))
+  if ((rv = vnet_connect_i (a->app_index, a->api_context, &a->sep, a->mp)))
     return clib_error_return_code (0, rv, 0, "connect failed");
   return 0;
 }
@@ -489,7 +495,7 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
   stream_session_t *s;
 
   session_parse_handle (a->handle, &index, &thread_index);
-  s = stream_session_get_if_valid (index, thread_index);
+  s = session_get_if_valid (index, thread_index);
 
   if (!s || s->app_index != a->app_index)
     return VNET_API_ERROR_INVALID_VALUE;
