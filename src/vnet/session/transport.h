@@ -33,7 +33,7 @@ typedef struct _transport_connection
   u16 rmt_port;			/**< Remote port */
   u8 transport_proto;		/**< Protocol id */
   u8 is_ip4;			/**< Flag if IP4 connection */
-  u32 vrf;			/**< FIB table id */
+  u32 fib_index;			/**< Network namespace */
 
   u32 s_index;			/**< Parent session index */
   u32 c_index;			/**< Connection index in transport pool */
@@ -75,13 +75,38 @@ typedef enum _transport_proto
   TRANSPORT_PROTO_UDP
 } transport_proto_t;
 
-typedef struct _transport_endpoint
+typedef struct _session_endpoint
 {
-  ip46_address_t ip;	/** ip address */
-  u16 port;		/** port in net order */
-  u8 is_ip4;		/** 1 if ip4 */
-  u32 vrf;		/** fib table the endpoint is associated with */
-} transport_endpoint_t;
+  /*
+   * Network specific
+   */
+  u32 sw_if_index; 	/**< interfaces the connection is attached to */
+  ip46_address_t ip; 	/**< ip address */
+  u32 fib_index;		/**< fib table the endpoint is associated with */
+  u8 is_ip4;		/**< 1 if ip4 */
+
+  /*
+   * Transport specific
+   */
+  u16 port;		/**< port in net order */
+
+  /*
+   * Session specific
+   */
+  u8 transport_proto;	/**< transport protocol for session */
+} session_endpoint_t;
+
+#define SEP_INVALID_INDEX ((u32)~0)
+#define SESSION_ENDPOINT_NULL 		\
+{					\
+  .sw_if_index = SEP_INVALID_INDEX,	\
+  .ip = {0},				\
+  .fib_index = SEP_INVALID_INDEX,	\
+  .is_ip4 = 0,				\
+  .flags = 0,				\
+  .port = 0,				\
+  .transport_proto = 0,			\
+}
 
 #endif /* VNET_VNET_URI_TRANSPORT_H_ */
 

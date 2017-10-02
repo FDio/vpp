@@ -58,7 +58,7 @@ typedef struct _vnet_bind_args_t
     char *uri;
     struct
     {
-      transport_endpoint_t tep;
+      session_endpoint_t sep;
       transport_proto_t proto;
     };
   };
@@ -91,7 +91,7 @@ typedef struct _vnet_connect_args
     char *uri;
     struct
     {
-      transport_endpoint_t tep;
+      session_endpoint_t sep;
       transport_proto_t proto;
     };
   };
@@ -129,10 +129,12 @@ typedef enum
 } app_attach_options_index_t;
 
 #define foreach_app_options_flags				\
-  _(USE_FIFO, "Use FIFO with redirects")			\
+  _(ACCEPT_REDIRECT, "Use FIFO with redirects")			\
   _(ADD_SEGMENT, "Add segment and signal app if needed")	\
   _(BUILTIN_APP, "Application is builtin")			\
-  _(IS_PROXY, "Application is proxying")
+  _(IS_PROXY, "Application is proxying")				\
+  _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
+  _(USE_LOCAL_SCOPE, "App can use local session scope")
 
 typedef enum _app_options
 {
@@ -147,12 +149,6 @@ typedef enum _app_options_flags
   foreach_app_options_flags
 #undef _
 } app_options_flags_t;
-
-///** Server can handle delegated connect requests from local clients */
-//#define APP_OPTIONS_FLAGS_USE_FIFO    (1<<0)
-//
-///** Server wants vpp to add segments when out of memory for fifos */
-//#define APP_OPTIONS_FLAGS_ADD_SEGMENT   (1<<1)
 
 #define VNET_CONNECT_REDIRECTED	123
 

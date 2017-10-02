@@ -32,7 +32,7 @@ ip_is_zero (ip46_address_t * ip46_address, u8 is_ip4)
     return (ip46_address->as_u64[0] == 0 && ip46_address->as_u64[1] == 0);
 }
 
-static u8
+u8
 ip_is_local (ip46_address_t * ip46_address, u8 is_ip4)
 {
   fib_node_index_t fei;
@@ -58,6 +58,62 @@ ip_is_local (ip46_address_t * ip46_address, u8 is_ip4)
   return (flags & FIB_ENTRY_FLAG_LOCAL);
 }
 
+u8
+ip_interface_has_address (u32 sw_if_index, ip46_address_t *ip, u8 is_ip4)
+{
+  ip_interface_address_t *ia = 0;
+
+  if (is_ip4)
+    {
+      ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
+      ip4_address_t *ip4;
+      /* *INDENT-OFF* */
+      foreach_ip_interface_address (lm4, ia, sw_if_index, 1 /* unnumbered */ ,
+      ({
+        ip4 = ip_interface_address_get_address (lm4, ia);
+        if (ip4_address_compare (ip4, ip->ip4) == 0)
+          return 1;
+      }));
+      /* *INDENT-ON* */
+    }
+  else
+    {
+      ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
+      ip6_address_t *ip6;
+      /* *INDENT-OFF* */
+      foreach_ip_interface_address (lm6, ia, sw_if_index, 1 /* unnumbered */ ,
+      ({
+        ip6 = ip_interface_address_get_address (lm6, ia);
+        if (ip6_address_compare (ip6, ip->ip6) == 0)
+          return 1;
+      }));
+      /* *INDENT-ON* */
+    }
+  return 0;
+}
+
+static u8
+session_endpoint_is_local (session_endpoint_t *sep)
+{
+  return ip_is_zero (sep->ip, sep->is_ip4);
+}
+
+static u8
+session_endpoint_is_zero (session_endpoint_t *sep)
+{
+  return ip_is_zero (sep->ip, sep->is_ip4);
+}
+
+static u8
+session_endpoint_in_ns (session_endpoint_t *sep, app_namespace_t *app_ns)
+{
+  if (ip_is_zero (&sep->ip, sep->is_ip4))
+    return 1;
+  if (app_ns)
+    return ip_interface_has_address (app_ns->sw_if_index, &sep->ip, sep->is_ip4);
+  return ip_is_local (sep->ip, sep->is_ip4);
+}
+
 int
 api_parse_session_handle (u64 handle, u32 * session_index, u32 * thread_index)
 {
@@ -78,76 +134,151 @@ api_parse_session_handle (u64 handle, u32 * session_index, u32 * thread_index)
   return 0;
 }
 
-int
-vnet_bind_i (u32 app_index, session_type_t sst,
-	     transport_endpoint_t * tep, u64 * handle)
+static int
+vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
 {
   application_t *app;
-  stream_session_t *listener;
+  u32 table_index, listener_index;
+  app_namespace_t *app_ns;
+  int rv, have_local = 0;
 
   app = application_get_if_valid (app_index);
   if (!app)
     {
-      clib_warning ("app not attached");
+      SESSION_DBG ("app not attached");
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
-  listener = stream_session_lookup_listener (&tep->ip, tep->port, sst);
-  if (listener)
-    return VNET_API_ERROR_ADDRESS_IN_USE;
-
-  if (!ip_is_zero (&tep->ip, tep->is_ip4)
-      && !ip_is_local (&tep->ip, tep->is_ip4))
+  app_ns = app_namespace_get (app);
+  if (!session_endpoint_is_local (sep)
+      && !session_endpoint_in_ns (sep, app_ns))
     return VNET_API_ERROR_INVALID_VALUE_2;
 
+  table_index = application_session_table (app);
+  listener_index = session_lookup_session_endpoint (table_index, sep);
+  if (listener_index != SESSION_INVALID_INDEX)
+    return VNET_API_ERROR_ADDRESS_IN_USE;
+
+  /*
+   * Add session endpoint to local session table
+   */
+  if (application_has_local_scope (app) && session_endpoint_is_zero (sep))
+    {
+      table_index = application_local_session_table (app);
+      listener_index = session_lookup_session_endpoint (table_index, sep);
+      if (listener_index != SESSION_INVALID_INDEX)
+	return VNET_API_ERROR_ADDRESS_IN_USE;
+      session_table_add_session_endpoint (table_index, sep, app->index);
+      *handle = SESSION_LOCAL_TABLE << 32 | (u32) sep->port << 8;
+      *handle |= sep->transport_proto;
+      have_local = 1;
+    }
+
+  /*
+   * Add session endpoint to global session table
+   */
+  if (app_ns)
+    {
+      /* Ask transport and network to bind to local interface that
+       * "supports" app's namespace */
+      sep->sw_if_index = app_ns->sw_if_index;
+      sep->fib_index = app_ns->nns_index;
+    }
+
   /* Setup listen path down to transport */
-  return application_start_listen (app, sst, tep, handle);
+  rv = application_start_listen (app, sep, handle);
+  return (have_local || rv);
 }
 
 int
 vnet_unbind_i (u32 app_index, u64 handle)
 {
   application_t *app = application_get_if_valid (app_index);
-
+  stream_session_t *listener;
+  u32 port, table_index;
   if (!app)
     {
-      clib_warning ("app (%d) not attached", app_index);
+      SESSION_DBG ("app (%d) not attached", app_index);
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
-  /* Clear the listener */
+  listener = listen_session_get_from_handle (handle);
+  if (listener)
+     port = listen_session_get_port (listener);
+
+  if (application_has_local_scope (app))
+    {
+      session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+
+      if (port == valid)
+	{
+      sep.transport_proto = port & 0xff;
+      sep.port = port >> 8;
+	}
+      else if (upper_part_is_valid)
+	{
+	  sep.transport_proto = handle
+	}
+      else
+	{
+	  return -1;
+	}
+      table_index = application_session_table (app);
+      session_del_session_endpoint (table_index, sep);
+    }
+
+  /* Clear the global scope table of the listener */
   return application_stop_listen (app, handle);
 }
 
 int
-vnet_connect_i (u32 app_index, u32 api_context, session_type_t sst,
-		transport_endpoint_t * tep, void *mp)
+vnet_connect_i (u32 app_index, u32 api_context, session_endpoint_t * sep,
+                void *mp)
 {
   stream_session_t *listener;
   application_t *server, *app;
+  u32 table_index;
+
+  app = application_get (app_index);
 
   /*
-   * Figure out if connecting to a local server
+   * First check the the local scope for locally attached destinations.
    */
-  listener = stream_session_lookup_listener (&tep->ip, tep->port, sst);
-  if (listener)
+  if (application_has_local_scope (app))
     {
-      server = application_get (listener->app_index);
-
+      table_index = application_local_session_table (app);
+      app_index = session_lookup_session_endpoint (table_index, sep);
+      server = application_get (app_index);
       /*
        * Server is willing to have a direct fifo connection created
        * instead of going through the state machine, etc.
        */
-      if (server->flags & APP_OPTIONS_FLAGS_USE_FIFO)
+      if (server->flags & APP_OPTIONS_FLAGS_ACCEPT_REDIRECT)
 	return server->cb_fns.
 	  redirect_connect_callback (server->api_client_index, mp);
     }
 
   /*
-   * Not connecting to a local server. Create regular session
+   * If nothing found, check the global scope for locally attached
+   * destinations.
    */
-  app = application_get (app_index);
-  return application_open_session (app, sst, tep, api_context);
+  if (session_endpoint_is_local (sep) || !application_has_global_scope (app))
+    {
+      clib_warning("connect failed because of scope");
+      return -1;
+    }
+
+  table_index = application_session_table (app);
+  app_index = session_lookup_session_endpoint (table_index, sep);
+  server = application_get (app_index);
+  if (server->flags & APP_OPTIONS_FLAGS_ACCEPT_REDIRECT)
+    return server->cb_fns.redirect_connect_callback (server->api_client_index,
+	                                             mp);
+
+  /*
+   * Not connecting to a local server, propagate to transport
+   */
+  return application_open_session (app, sep, api_context);
 }
 
 /**
@@ -170,37 +301,36 @@ vnet_connect_i (u32 app_index, u32 api_context, session_type_t sst,
 uword
 unformat_vnet_uri (unformat_input_t * input, va_list * args)
 {
-  session_type_t *sst = va_arg (*args, session_type_t *);
-  transport_endpoint_t *tep = va_arg (*args, transport_endpoint_t *);
+  session_endpoint_t *sep = va_arg (*args, session_endpoint_t *);
 
-  if (unformat (input, "tcp://%U/%d", unformat_ip4_address, &tep->ip.ip4,
-		&tep->port))
+  if (unformat (input, "tcp://%U/%d", unformat_ip4_address, &sep->ip.ip4,
+		&sep->port))
     {
-      *sst = SESSION_TYPE_IP4_TCP;
-      tep->port = clib_host_to_net_u16 (tep->port);
-      tep->is_ip4 = 1;
+      sep->transport_proto = TRANSPORT_PROTO_TCP;
+      sep->port = clib_host_to_net_u16 (sep->port);
+      sep->is_ip4 = 1;
       return 1;
     }
-  if (unformat (input, "udp://%U/%d", unformat_ip4_address, &tep->ip.ip4,
-		&tep->port))
+  if (unformat (input, "udp://%U/%d", unformat_ip4_address, &sep->ip.ip4,
+		&sep->port))
     {
-      *sst = SESSION_TYPE_IP4_UDP;
-      tep->port = clib_host_to_net_u16 (tep->port);
-      tep->is_ip4 = 1;
+      sep->transport_proto = TRANSPORT_PROTO_UDP;
+      sep->port = clib_host_to_net_u16 (sep->port);
+      sep->is_ip4 = 1;
       return 1;
     }
-  if (unformat (input, "udp://%U/%d", unformat_ip6_address, &tep->ip.ip6,
-		&tep->port))
+  if (unformat (input, "udp://%U/%d", unformat_ip6_address, &sep->ip.ip6,
+		&sep->port))
     {
-      *sst = SESSION_TYPE_IP6_UDP;
-      tep->port = clib_host_to_net_u16 (tep->port);
+      sep->transport_proto = TRANSPORT_PROTO_UDP;
+      sep->port = clib_host_to_net_u16 (sep->port);
       return 1;
     }
-  if (unformat (input, "tcp://%U/%d", unformat_ip6_address, &tep->ip.ip6,
-		&tep->port))
+  if (unformat (input, "tcp://%U/%d", unformat_ip6_address, &sep->ip.ip6,
+		&sep->port))
     {
-      *sst = SESSION_TYPE_IP6_TCP;
-      tep->port = clib_host_to_net_u16 (tep->port);
+      sep->transport_proto = TRANSPORT_PROTO_TCP;
+      sep->port = clib_host_to_net_u16 (sep->port);
       return 1;
     }
 
@@ -208,18 +338,16 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
 }
 
 static u8 *cache_uri;
-static session_type_t cache_sst;
-static transport_endpoint_t *cache_tep;
+static session_endpoint_t *cache_sep;
 
 int
-parse_uri (char *uri, session_type_t * sst, transport_endpoint_t * tep)
+parse_uri (char *uri, session_endpoint_t * sep)
 {
   unformat_input_t _input, *input = &_input;
 
   if (cache_uri && !strncmp (uri, (char *) cache_uri, vec_len (cache_uri)))
     {
-      *sst = cache_sst;
-      *tep = *cache_tep;
+      *sep = *cache_sep;
       return 0;
     }
 
@@ -228,7 +356,7 @@ parse_uri (char *uri, session_type_t * sst, transport_endpoint_t * tep)
 
   /* Parse uri */
   unformat_init_string (input, uri, strlen (uri));
-  if (!unformat (input, "%U", unformat_vnet_uri, sst, tep))
+  if (!unformat (input, "%U", unformat_vnet_uri, sep))
     {
       unformat_free (input);
       return VNET_API_ERROR_INVALID_VALUE;
@@ -237,11 +365,10 @@ parse_uri (char *uri, session_type_t * sst, transport_endpoint_t * tep)
 
   vec_free (cache_uri);
   cache_uri = (u8 *) uri;
-  cache_sst = *sst;
-  if (cache_tep)
-    clib_mem_free (cache_tep);
-  cache_tep = clib_mem_alloc (sizeof (*tep));
-  *cache_tep = *tep;
+  if (cache_sep)
+    clib_mem_free (cache_sep);
+  cache_sep = clib_mem_alloc (sizeof (*sep));
+  *cache_sep = *sep;
 
   return 0;
 }
@@ -298,15 +425,15 @@ int
 vnet_bind_uri (vnet_bind_args_t * a)
 {
   session_type_t sst = SESSION_N_TYPES;
-  transport_endpoint_t tep;
+  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
   int rv;
 
-  memset (&tep, 0, sizeof (tep));
-  rv = parse_uri (a->uri, &sst, &tep);
+  memset (&sep, 0, sizeof (sep));
+  rv = parse_uri (a->uri, &sep);
   if (rv)
     return rv;
 
-  if ((rv = vnet_bind_i (a->app_index, sst, &tep, &a->handle)))
+  if ((rv = vnet_bind_i (a->app_index, sst, &sep, &a->handle)))
     return rv;
 
   return 0;
@@ -317,16 +444,14 @@ vnet_unbind_uri (vnet_unbind_args_t * a)
 {
   session_type_t sst = SESSION_N_TYPES;
   stream_session_t *listener;
-  transport_endpoint_t tep;
+  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
   int rv;
 
-  rv = parse_uri (a->uri, &sst, &tep);
+  rv = parse_uri (a->uri, &sep);
   if (rv)
     return rv;
 
-  listener = stream_session_lookup_listener (&tep.ip,
-					     clib_host_to_net_u16 (tep.port),
-					     sst);
+  listener = session_lookup_listener (&sep);
   if (!listener)
     return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
 
@@ -336,17 +461,16 @@ vnet_unbind_uri (vnet_unbind_args_t * a)
 int
 vnet_connect_uri (vnet_connect_args_t * a)
 {
-  transport_endpoint_t tep;
-  session_type_t sst;
+  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
   int rv;
 
   /* Parse uri */
-  memset (&tep, 0, sizeof (tep));
-  rv = parse_uri (a->uri, &sst, &tep);
+  memset (&sep, 0, sizeof (sep));
+  rv = parse_uri (a->uri, &sep);
   if (rv)
     return rv;
 
-  return vnet_connect_i (a->app_index, a->api_context, sst, &tep, a->mp);
+  return vnet_connect_i (a->app_index, a->api_context, &sep, a->mp);
 }
 
 int
@@ -355,7 +479,7 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
   u32 index, thread_index;
   stream_session_t *s;
 
-  stream_session_parse_handle (a->handle, &index, &thread_index);
+  session_parse_handle (a->handle, &index, &thread_index);
   s = stream_session_get_if_valid (index, thread_index);
 
   if (!s || s->app_index != a->app_index)
@@ -372,11 +496,9 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
 int
 vnet_bind (vnet_bind_args_t * a)
 {
-  session_type_t sst = SESSION_N_TYPES;
   int rv;
 
-  sst = session_type_from_proto_and_ip (a->proto, a->tep.is_ip4);
-  if ((rv = vnet_bind_i (a->app_index, sst, &a->tep, &a->handle)))
+  if ((rv = vnet_bind_i (a->app_index, &a->sep, &a->handle)))
     return rv;
 
   return 0;
@@ -393,8 +515,8 @@ vnet_connect (vnet_connect_args_t * a)
 {
   session_type_t sst;
 
-  sst = session_type_from_proto_and_ip (a->proto, a->tep.is_ip4);
-  return vnet_connect_i (a->app_index, a->api_context, sst, &a->tep, a->mp);
+  sst = session_type_from_proto_and_ip (a->proto, a->sep.is_ip4);
+  return vnet_connect_i (a->app_index, a->api_context, sst, &a->sep, a->mp);
 }
 
 /*
