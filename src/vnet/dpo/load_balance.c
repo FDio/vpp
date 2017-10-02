@@ -158,7 +158,7 @@ static u8*
 format_load_balance_dpo (u8 * s, va_list * args)
 {
     index_t lbi = va_arg(*args, index_t);
-    u32 indent = va_arg(*args, u32);
+    u32 indent = va_arg (*args, u32);
 
     return (load_balance_format(lbi, LOAD_BALANCE_FORMAT_DETAIL, indent, s));
 }

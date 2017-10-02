@@ -45,7 +45,7 @@ format_udp_header (u8 * s, va_list * args)
 {
   udp_header_t *udp = va_arg (*args, udp_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
-  uword indent;
+  u32 indent;
   u32 header_bytes = sizeof (udp[0]);
 
   /* Nothing to do. */

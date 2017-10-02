@@ -261,8 +261,8 @@ typedef enum fib_special_type_t_ {
     for (_item = FIB_TYPE_SPEICAL_FIRST;		\
 	 _item <= FIB_SPEICAL_TYPE_LAST; _item++)
 
-extern u8 * format_fib_protocol(u8 * s, va_list ap);
-extern u8 * format_vnet_link(u8 *s, va_list ap);
+extern u8 * format_fib_protocol(u8 * s, va_list *ap);
+extern u8 * format_vnet_link(u8 *s, va_list *ap);
 
 /**
  * Path flags from the control plane

@@ -203,7 +203,7 @@ format_ethernet_arp_header (u8 * s, va_list * va)
 {
   ethernet_arp_header_t *a = va_arg (*va, ethernet_arp_header_t *);
   u32 max_header_bytes = va_arg (*va, u32);
-  uword indent;
+  u32 indent;
   u16 l2_type, l3_type;
 
   if (max_header_bytes != 0 && sizeof (a[0]) > max_header_bytes)

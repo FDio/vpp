@@ -583,7 +583,7 @@ u8*
 format_adj_midchain (u8* s, va_list *ap)
 {
     index_t index = va_arg(*ap, index_t);
-    u32 indent = va_arg(*ap, u32);
+    u32 indent = va_arg (*ap, u32);
     ip_adjacency_t * adj = adj_get(index);
 
     s = format (s, "%U", format_vnet_link, adj->ia_link);

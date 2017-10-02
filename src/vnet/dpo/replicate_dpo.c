@@ -137,7 +137,7 @@ static u8*
 format_replicate_dpo (u8 * s, va_list * args)
 {
     index_t repi = va_arg(*args, index_t);
-    u32 indent = va_arg(*args, u32);
+    u32 indent = va_arg (*args, u32);
 
     return (replicate_format(repi, REPLICATE_FORMAT_DETAIL, indent, s));
 }

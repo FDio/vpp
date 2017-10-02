@@ -64,7 +64,7 @@ u8*
 format_sixrd_dpo (u8 *s, va_list *args)
 {
     index_t index = va_arg (*args, index_t);
-    CLIB_UNUSED(u32 indent) = va_arg (*args, u32);
+    CLIB_UNUSED(u32 indent) = va_arg(*args, u32);
     sixrd_dpo_t *sd;
 
     sd = sixrd_dpo_get(index);

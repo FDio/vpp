@@ -831,7 +831,7 @@ VLIB_PLUGIN_REGISTER () = {
 u8 *format_ila_dpo (u8 * s, va_list * va)
 {
   index_t index = va_arg (*va, index_t);
-  CLIB_UNUSED(u32 indent) = va_arg (*va, u32);
+  CLIB_UNUSED(u32 indent) = va_arg(*va, u32);
   ila_main_t *ilm = &ila_main;
   ila_entry_t *ie = pool_elt_at_index (ilm->entries, index);
   return format(s, "ILA: idx:%d sir:%U",

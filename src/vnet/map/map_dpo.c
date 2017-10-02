@@ -49,7 +49,7 @@ u8*
 format_map_dpo (u8 *s, va_list *args)
 {
     index_t index = va_arg (*args, index_t);
-    CLIB_UNUSED(u32 indent) = va_arg (*args, u32);
+    CLIB_UNUSED(u32 indent) = va_arg(*args, u32);
 
     return (format(s, "map: domain:%d", index));
 }
@@ -58,7 +58,7 @@ u8*
 format_map_t_dpo (u8 *s, va_list *args)
 {
     index_t index = va_arg (*args, index_t);
-    CLIB_UNUSED(u32 indent) = va_arg (*args, u32);
+    CLIB_UNUSED(u32 indent) = va_arg(*args, u32);
 
     return (format(s, "map-t: domain:%d", index));
 }

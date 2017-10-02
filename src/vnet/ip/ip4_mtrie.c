@@ -740,7 +740,7 @@ format_ip4_fib_mtrie_ply (u8 * s, va_list * va)
   u32 base_address = va_arg (*va, u32);
   u32 ply_index = va_arg (*va, u32);
   ip4_fib_mtrie_8_ply_t *p;
-  uword indent;
+  u32 indent;
   int i;
 
   p = pool_elt_at_index (ip4_ply_pool, ply_index);

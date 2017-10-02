@@ -84,7 +84,7 @@ format_ip4_header (u8 * s, va_list * args)
   ip4_header_t *ip = va_arg (*args, ip4_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   u32 ip_version, header_bytes;
-  uword indent;
+  u32 indent;
 
   /* Nothing to do. */
   if (max_header_bytes < sizeof (ip[0]))

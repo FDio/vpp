@@ -56,7 +56,7 @@ u8*
 format_classify_dpo (u8 *s, va_list *args)
 {
     index_t index = va_arg (*args, index_t);
-    CLIB_UNUSED(u32 indent) = va_arg (*args, u32);
+    CLIB_UNUSED(u32 indent) = va_arg(*args, u32);
     classify_dpo_t *cd;
 
     cd = classify_dpo_get(index);

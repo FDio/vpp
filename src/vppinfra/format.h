@@ -71,7 +71,7 @@ word fdformat (int fd, char *fmt, ...);
 always_inline uword
 format_get_indent (u8 * s)
 {
-  uword indent = 0;
+  u32 indent = 0;
   u8 *nl;
 
   if (!s)

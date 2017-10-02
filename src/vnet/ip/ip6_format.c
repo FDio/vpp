@@ -219,7 +219,7 @@ format_ip6_header (u8 * s, va_list * args)
   ip6_header_t *ip = va_arg (*args, ip6_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   u32 i, ip_version, traffic_class, flow_label;
-  uword indent;
+  u32 indent;
 
   /* Nothing to do. */
   if (max_header_bytes < sizeof (ip[0]))

@@ -1257,7 +1257,7 @@ format_vhost_trace (u8 * s, va_list * va)
 
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, vui->sw_if_index);
 
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "%U %U queue %d\n", format_white_space, indent,
 	      format_vnet_sw_interface_name, vnm, sw, t->qid);

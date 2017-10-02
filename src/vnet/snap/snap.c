@@ -91,7 +91,7 @@ format_snap_header_with_length (u8 * s, va_list * args)
   snap_header_t *h = va_arg (*args, snap_header_t *);
   snap_protocol_info_t *pi = snap_get_protocol_info (sm, h);
   u32 max_header_bytes = va_arg (*args, u32);
-  uword indent, header_bytes;
+  u32 indent, header_bytes;
 
   header_bytes = sizeof (h[0]);
   if (max_header_bytes != 0 && header_bytes > max_header_bytes)

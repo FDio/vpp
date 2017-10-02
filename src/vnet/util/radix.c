@@ -1,4 +1,4 @@
-/*	$NetBSD: radix.c,v 1.47 2016/12/12 03:55:57 ozaki-r Exp $	*/
+/*	$netbsd: radix.c,v 1.47 2016/12/12 03:55:57 ozaki-r exp $	*/
 
 /*
  * Copyright (c) 1988, 1989, 1993

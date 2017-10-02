@@ -100,7 +100,7 @@ format_ethernet_header_with_length (u8 * s, va_list * args)
   ethernet_type_t type = clib_net_to_host_u16 (e->type);
   ethernet_type_t vlan_type[ARRAY_LEN (m->vlan)];
   u32 n_vlan = 0, i, header_bytes;
-  uword indent;
+  u32 indent;
 
   while ((type == ETHERNET_TYPE_VLAN || type == ETHERNET_TYPE_DOT1AD
 	  || type == ETHERNET_TYPE_DOT1AH) && n_vlan < ARRAY_LEN (m->vlan))

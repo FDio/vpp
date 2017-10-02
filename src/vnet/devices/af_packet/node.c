@@ -58,7 +58,7 @@ format_af_packet_input_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   af_packet_input_trace_t *t = va_arg (*args, af_packet_input_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "af_packet: hw_if_index %d next-index %d",
 	      t->hw_if_index, t->next_index);
