@@ -99,10 +99,10 @@ send_session_accept_callback (stream_session_t * s)
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_ACCEPT_SESSION);
   mp->context = server->index;
   listener = listen_session_get (s->session_type, s->listener_index);
-  tp_vft = session_get_transport_vft (s->session_type);
+  tp_vft = transport_protocol_get_vft (s->session_type);
   tc = tp_vft->get_connection (s->connection_index, s->thread_index);
   mp->listener_handle = listen_session_get_handle (listener);
-  mp->handle = stream_session_handle (s);
+  mp->handle = session_handle (s);
   mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
   mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
   mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
@@ -129,7 +129,7 @@ send_session_disconnect_callback (stream_session_t * s)
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_DISCONNECT_SESSION);
-  mp->handle = stream_session_handle (s);
+  mp->handle = session_handle (s);
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
@@ -148,7 +148,7 @@ send_session_reset_callback (stream_session_t * s)
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_RESET_SESSION);
-  mp->handle = stream_session_handle (s);
+  mp->handle = session_handle (s);
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
@@ -175,7 +175,7 @@ send_session_connected_callback (u32 app_index, u32 api_context,
       vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
       mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
       mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
-      mp->handle = stream_session_handle (s);
+      mp->handle = session_handle (s);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
       mp->retval = 0;
     }
@@ -463,10 +463,13 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
       rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
+  /*
+   * Don't reply to stream (tcp) connects. The reply will come once
+   * the connection is established. In case of the redirects, the reply
+   * will come from the server app.
+   */
   if (rv == 0 || rv == VNET_API_ERROR_SESSION_REDIRECT)
     return;
-
-  /* Got some error, relay it */
 
 done:
   /* *INDENT-OFF* */
@@ -540,7 +543,7 @@ vl_api_reset_session_reply_t_handler (vl_api_reset_session_reply_t * mp)
     return;
 
   session_parse_handle (mp->handle, &index, &thread_index);
-  s = stream_session_get_if_valid (index, thread_index);
+  s = session_get_if_valid (index, thread_index);
   if (s == 0 || app->index != s->app_index)
     {
       clib_warning ("Invalid session!");
@@ -576,7 +579,7 @@ vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
   else
     {
       session_parse_handle (mp->handle, &session_index, &thread_index);
-      s = stream_session_get_if_valid (session_index, thread_index);
+      s = session_get_if_valid (session_index, thread_index);
       if (!s)
 	{
 	  clib_warning ("session doesn't exist");
@@ -623,8 +626,8 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
       a->sep.port = mp->port;
       a->sep.fib_index = mp->vrf;
       a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
+      a->sep.transport_proto = mp->proto;
       a->app_index = app->index;
-      a->proto = mp->proto;
 
       if ((error = vnet_bind (a)))
 	{

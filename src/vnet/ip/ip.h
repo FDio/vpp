@@ -198,6 +198,7 @@ u8 ip_is_local (u32 fib_index, ip46_address_t * ip46_address, u8 is_ip4);
 u8 ip_interface_has_address (u32 sw_if_index, ip46_address_t * ip, u8 is_ip4);
 void ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4);
 void ip_set (ip46_address_t * dst, void *src, u8 is_ip4);
+void *ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4);
 
 #endif /* included_ip_main_h */
 

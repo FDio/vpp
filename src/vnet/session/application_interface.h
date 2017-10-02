@@ -56,11 +56,7 @@ typedef struct _vnet_bind_args_t
   union
   {
     char *uri;
-    struct
-    {
-      session_endpoint_t sep;
-      transport_proto_t proto;
-    };
+    session_endpoint_t sep;
   };
 
   u32 app_index;
@@ -86,23 +82,14 @@ typedef struct _vnet_unbind_args_t
 
 typedef struct _vnet_connect_args
 {
-  union
-  {
-    char *uri;
-    struct
-    {
-      session_endpoint_t sep;
-      transport_proto_t proto;
-    };
-  };
+  char *uri;
+  session_endpoint_t sep;
   u32 app_index;
   u32 api_context;
 
   /* Used for redirects */
   void *mp;
-
-  /* used for proxy connections */
-  u64 server_handle;
+  u64 session_handle;
 } vnet_connect_args_t;
 
 typedef struct _vnet_disconnect_args_t
