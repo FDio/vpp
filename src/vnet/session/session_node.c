@@ -154,7 +154,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   next_index = next0 = session_type_to_next[s0->session_type];
 
-  transport_vft = session_get_transport_vft (s0->session_type);
+  transport_vft = transport_protocol_get_vft (s0->session_type);
   tc0 = transport_vft->get_connection (s0->connection_index, thread_index);
 
   /* Make sure we have space to send and there's something to dequeue */
@@ -401,7 +401,7 @@ session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 always_inline stream_session_t *
 session_event_get_session (session_fifo_event_t * e, u8 thread_index)
 {
-  return stream_session_get_if_valid (e->fifo->master_session_index,
+  return session_get_if_valid (e->fifo->master_session_index,
 				      thread_index);
 }
 
