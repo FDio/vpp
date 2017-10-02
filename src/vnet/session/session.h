@@ -214,7 +214,7 @@ stream_session_is_valid (u32 si, u8 thread_index)
 }
 
 always_inline stream_session_t *
-stream_session_get (u32 si, u32 thread_index)
+session_get (u32 si, u32 thread_index)
 {
   ASSERT (stream_session_is_valid (si, thread_index));
   return pool_elt_at_index (session_manager_main.sessions[thread_index], si);
@@ -240,31 +240,31 @@ stream_session_handle (stream_session_t * s)
 }
 
 always_inline u32
-stream_session_index_from_handle (u64 handle)
+session_index_from_handle (u64 handle)
 {
   return handle & 0xFFFFFFFF;
 }
 
 always_inline u32
-stream_session_thread_from_handle (u64 handle)
+session_thread_from_handle (u64 handle)
 {
   return handle >> 32;
 }
 
 always_inline void
-stream_session_parse_handle (u64 handle, u32 * index, u32 * thread_index)
+session_parse_handle (u64 handle, u32 * index, u32 * thread_index)
 {
-  *index = stream_session_index_from_handle (handle);
-  *thread_index = stream_session_thread_from_handle (handle);
+  *index = session_index_from_handle (handle);
+  *thread_index = session_thread_from_handle (handle);
 }
 
 always_inline stream_session_t *
-stream_session_get_from_handle (u64 handle)
+session_get_from_handle (u64 handle)
 {
   session_manager_main_t *smm = &session_manager_main;
-  return pool_elt_at_index (smm->sessions[stream_session_thread_from_handle
-					  (handle)],
-			    stream_session_index_from_handle (handle));
+  return
+    pool_elt_at_index (smm->sessions[session_thread_from_handle (handle)],
+		       session_index_from_handle (handle));
 }
 
 always_inline stream_session_t *
@@ -285,14 +285,14 @@ stream_session_get_index (stream_session_t * s)
 always_inline u32
 stream_session_max_rx_enqueue (transport_connection_t * tc)
 {
-  stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
+  stream_session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_max_enqueue (s->server_rx_fifo);
 }
 
 always_inline u32
 stream_session_rx_fifo_size (transport_connection_t * tc)
 {
-  stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
+  stream_session_t *s = session_get (tc->s_index, tc->thread_index);
   return s->server_rx_fifo->nitems;
 }
 
@@ -316,12 +316,11 @@ void stream_session_delete_notify (transport_connection_t * tc);
 void stream_session_reset_notify (transport_connection_t * tc);
 int
 stream_session_accept (transport_connection_t * tc, u32 listener_index,
-		       u8 sst, u8 notify);
+		       u8 notify);
 int
-stream_session_open (u32 app_index, session_type_t st,
-		     transport_endpoint_t * tep,
+stream_session_open (u32 app_index, session_endpoint_t * tep,
 		     transport_connection_t ** tc);
-int stream_session_listen (stream_session_t * s, transport_endpoint_t * tep);
+int stream_session_listen (stream_session_t * s, session_endpoint_t * tep);
 int stream_session_stop_listen (stream_session_t * s);
 void stream_session_disconnect (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);
@@ -401,6 +400,10 @@ listen_session_del (stream_session_t * s)
   pool_put (session_manager_main.listen_sessions[s->session_type], s);
 }
 
+int
+listen_session_get_local_session_endpoint (stream_session_t * listener,
+					   session_endpoint_t * sep);
+
 always_inline stream_session_t *
 session_manager_get_listener (u8 type, u32 index)
 {
@@ -424,6 +427,12 @@ session_manager_is_enabled ()
 {
   return session_manager_main.is_enabled == 1;
 }
+
+#define session_cli_return_if_not_enabled()				\
+do {									\
+    if (!session_manager_main.is_enabled)				\
+      return clib_error_return(0, "session layer is not enabled");	\
+} while (0)
 
 #endif /* __included_session_h__ */
 
