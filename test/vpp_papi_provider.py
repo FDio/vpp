@@ -2753,3 +2753,13 @@ class VppPapiProvider(object):
         return self.api(
             self.papi.bier_disp_entry_dump,
             {'bde_tbl_id': bdti})
+
+    def add_node_next(self, node_name, next_name):
+        """ Set the next node for a given node request
+
+        :param node_name:
+        :param next_name:
+        """
+        return self.api(self.papi.add_node_next,
+                        {'node_name': node_name,
+                         'next_name': next_name})
