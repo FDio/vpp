@@ -115,7 +115,9 @@ attach_builtin_uri_server ()
 
   a->options = options;
 
-  return vnet_application_attach (a);
+  if (vnet_application_attach (a))
+    return -1;
+  return 0;
 }
 
 static int
