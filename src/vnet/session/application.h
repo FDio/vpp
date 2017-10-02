@@ -19,7 +19,7 @@
 #include <vnet/vnet.h>
 #include <vnet/session/session.h>
 #include <vnet/session/segment_manager.h>
-
+#include <vnet/session/application_namespace.h>
 typedef enum
 {
   APP_SERVER,
@@ -36,7 +36,7 @@ typedef struct _stream_session_cb_vft
   /** Notify server of newly accepted session */
   int (*session_accept_callback) (stream_session_t * new_session);
 
-  /* Connection request callback */
+  /** Connection request callback */
   int (*session_connected_callback) (u32 app_index, u32 opaque,
 				     stream_session_t * s, u8 code);
 
@@ -46,10 +46,10 @@ typedef struct _stream_session_cb_vft
   /** Notify app that session was reset */
   void (*session_reset_callback) (stream_session_t * s);
 
-  /* Direct RX callback, for built-in servers */
+  /** Direct RX callback, for built-in servers */
   int (*builtin_server_rx_callback) (stream_session_t * session);
 
-  /* Redirect connection to local server */
+  /** Redirect connection to local server */
   int (*redirect_connect_callback) (u32 api_client_index, void *mp);
 } session_cb_vft_t;
 
@@ -67,6 +67,9 @@ typedef struct _application
 
   /** Binary API connection index, ~0 if internal */
   u32 api_client_index;
+
+  /** Namespace the application belongs to */
+  u32 ns_index;
 
   /** Application listens for events on this svm queue */
   unix_shared_memory_queue_t *event_queue;
@@ -95,25 +98,24 @@ typedef struct _application
   segment_manager_properties_t sm_properties;
 } application_t;
 
+#define APP_INVALID_INDEX ((u32)~0)
+#define APP_NS_INVALID_INDEX ((u32)~0)
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
 
 application_t *application_new ();
-int
-application_init (application_t * app, u32 api_client_index, u64 * options,
-		  session_cb_vft_t * cb_fns);
+int application_init (application_t * app, u32 api_client_index,
+		      u64 * options, session_cb_vft_t * cb_fns);
 void application_del (application_t * app);
 application_t *application_get (u32 index);
 application_t *application_get_if_valid (u32 index);
 application_t *application_lookup (u32 api_client_index);
 u32 application_get_index (application_t * app);
 
-int
-application_start_listen (application_t * app, session_type_t session_type,
-			  transport_endpoint_t * tep, u64 * handle);
+int application_start_listen (application_t * app,
+			      session_endpoint_t * tep, u64 * handle);
 int application_stop_listen (application_t * srv, u64 handle);
-int
-application_open_session (application_t * app, session_type_t sst,
-			  transport_endpoint_t * tep, u32 api_context);
+int application_open_session (application_t * app, session_endpoint_t * tep,
+			      u32 api_context);
 int application_api_queue_is_full (application_t * app);
 
 segment_manager_t *application_get_listen_segment_manager (application_t *
@@ -124,6 +126,12 @@ segment_manager_t *application_get_connect_segment_manager (application_t *
 							    app);
 int application_is_proxy (application_t * app);
 int application_add_segment_notify (u32 app_index, u32 fifo_segment_index);
+u32 application_session_table (application_t * app, u8 fib_proto);
+u32 application_local_session_table (application_t * app);
+u8 *application_name_from_index (u32 app_index);
+
+u8 application_has_local_scope (application_t * app);
+u8 application_has_global_scope (application_t * app);
 
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 

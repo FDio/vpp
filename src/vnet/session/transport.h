@@ -18,8 +18,6 @@
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
-#include <vppinfra/bihash_16_8.h>
-#include <vppinfra/bihash_48_8.h>
 #include <vnet/tcp/tcp_debug.h>
 
 /*
@@ -33,7 +31,7 @@ typedef struct _transport_connection
   u16 rmt_port;			/**< Remote port */
   u8 transport_proto;		/**< Protocol id */
   u8 is_ip4;			/**< Flag if IP4 connection */
-  u32 vrf;			/**< FIB table id */
+  u32 fib_index;			/**< Network namespace */
 
   u32 s_index;			/**< Parent session index */
   u32 c_index;			/**< Connection index in transport pool */
@@ -57,8 +55,7 @@ typedef struct _transport_connection
 #define c_lcl_port connection.lcl_port
 #define c_rmt_port connection.rmt_port
 #define c_transport_proto connection.transport_proto
-#define c_vrf connection.vrf
-#define c_state connection.state
+#define c_fib_index connection.fib_index
 #define c_s_index connection.s_index
 #define c_c_index connection.c_index
 #define c_is_ip4 connection.is_ip4
@@ -75,13 +72,27 @@ typedef enum _transport_proto
   TRANSPORT_PROTO_UDP
 } transport_proto_t;
 
+#define foreach_transport_connection_fields				\
+  _(u32, sw_if_index) 	/**< interface endpoint is associated with  */	\
+  _(ip46_address_t, ip) /**< ip address */				\
+  _(u32, fib_index)	/**< fib table endpoint is associated with */	\
+  _(u8, is_ip4)	/**< 1 if ip4 */					\
+  _(u16, port)		/**< port in net order */			\
+
 typedef struct _transport_endpoint
 {
-  ip46_address_t ip;	/** ip address */
-  u16 port;		/** port in net order */
-  u8 is_ip4;		/** 1 if ip4 */
-  u32 vrf;		/** fib table the endpoint is associated with */
+#define _(type, name) type name;
+  foreach_transport_connection_fields
+#undef _
 } transport_endpoint_t;
+
+#define ENDPOINT_INVALID_INDEX ((u32)~0)
+
+always_inline u8
+transport_connection_fib_proto (transport_connection_t * tc)
+{
+  return tc->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+}
 
 #endif /* VNET_VNET_URI_TRANSPORT_H_ */
 

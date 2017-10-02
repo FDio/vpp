@@ -3102,6 +3102,22 @@ static void *vl_api_tcp_configure_src_addresses_t_print
   FINISH;
 }
 
+static void *vl_api_app_namespace_add_del_t_print
+  (vl_api_app_namespace_add_del_t * mp, void *handle)
+{
+  u8 *s, *ns_id = 0;
+  u8 len = clib_min (mp->namespace_id_len,
+		     ARRAY_LEN (mp->namespace_id) - 1);
+  mp->namespace_id[len] = 0;
+  s = format (0, "SCRIPT: app_namespace_add_del ");
+  s = format (s, "ns-id %s secret %lu sw_if_index %d ipv4_fib_id %d "
+	      "ipv6_fib_id %d", (char *) mp->namespace_id, mp->secret,
+	      clib_net_to_host_u32 (mp->sw_if_index),
+	      clib_net_to_host_u32 (mp->ip4_fib_id),
+	      clib_net_to_host_u32 (mp->ip6_fib_id));
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -3291,7 +3307,8 @@ _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)			\
 _(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                           \
 _(P2P_ETHERNET_ADD, p2p_ethernet_add)                                   \
 _(P2P_ETHERNET_DEL, p2p_ethernet_del)					\
-_(TCP_CONFIGURE_SRC_ADDRESSES, tcp_configure_src_addresses)
+_(TCP_CONFIGURE_SRC_ADDRESSES, tcp_configure_src_addresses)		\
+_(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
