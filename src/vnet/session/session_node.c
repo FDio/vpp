@@ -154,7 +154,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   next_index = next0 = session_type_to_next[s0->session_type];
 
-  transport_vft = session_get_transport_vft (s0->session_type);
+  transport_vft = transport_protocol_get_vft (s0->session_type);
   tc0 = transport_vft->get_connection (s0->connection_index, thread_index);
 
   /* Make sure we have space to send and there's something to dequeue */
@@ -401,8 +401,7 @@ session_tx_fifo_dequeue_and_snd (vlib_main_t * vm, vlib_node_runtime_t * node,
 always_inline stream_session_t *
 session_event_get_session (session_fifo_event_t * e, u8 thread_index)
 {
-  return stream_session_get_if_valid (e->fifo->master_session_index,
-				      thread_index);
+  return session_get_if_valid (e->fifo->master_session_index, thread_index);
 }
 
 void
@@ -540,7 +539,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		       vlib_frame_t * frame)
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
-  session_fifo_event_t *my_pending_event_vector, *e;
+  session_fifo_event_t *my_pending_event_vector, *pending_disconnects, *e;
   session_fifo_event_t *my_fifo_events;
   u32 n_to_dequeue, n_events;
   unix_shared_memory_queue_t *q;
@@ -570,8 +569,10 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   /* min number of events we can dequeue without blocking */
   n_to_dequeue = q->cursize;
   my_pending_event_vector = smm->pending_event_vector[my_thread_index];
+  pending_disconnects = smm->pending_disconnects[my_thread_index];
 
-  if (n_to_dequeue == 0 && vec_len (my_pending_event_vector) == 0)
+  if (!n_to_dequeue && !vec_len (my_pending_event_vector)
+      && !vec_len (pending_disconnects))
     return 0;
 
   SESSION_EVT_DBG (SESSION_EVT_DEQ_NODE, 0);
@@ -603,9 +604,11 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   pthread_mutex_unlock (&q->mutex);
 
   vec_append (my_fifo_events, my_pending_event_vector);
+  vec_append (my_fifo_events, smm->pending_disconnects[my_thread_index]);
 
   _vec_len (my_pending_event_vector) = 0;
   smm->pending_event_vector[my_thread_index] = my_pending_event_vector;
+  _vec_len (smm->pending_disconnects[my_thread_index]) = 0;
 
 skip_dequeue:
   n_events = vec_len (my_fifo_events);
@@ -644,6 +647,13 @@ skip_dequeue:
 	    }
 	  break;
 	case FIFO_EVENT_DISCONNECT:
+	  /* Make sure disconnects run after the pending list is drained */
+	  if (!e0->postponed)
+	    {
+	      e0->postponed = 1;
+	      vec_add1 (smm->pending_disconnects[my_thread_index], *e0);
+	      continue;
+	    }
 	  s0 = session_get_from_handle (e0->session_handle);
 	  stream_session_disconnect (s0);
 	  break;
