@@ -844,6 +844,7 @@ libvnet_la_SOURCES +=				\
   vnet/session/application.c			\
   vnet/session/session_cli.c			\
   vnet/session/application_interface.c		\
+  vnet/session/application_namespace.c		\
   vnet/session/segment_manager.c		\
   vnet/session/session_api.c
 
@@ -855,6 +856,7 @@ nobase_include_HEADERS +=			\
   vnet/session/transport.h			\
   vnet/session/transport_interface.h		\
   vnet/session/application_interface.h		\
+  vnet/session/application_namespace.h		\
   vnet/session/session_debug.h			\
   vnet/session/segment_manager.h		\
   vnet/session/session.api.h

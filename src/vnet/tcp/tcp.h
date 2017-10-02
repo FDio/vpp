@@ -386,7 +386,7 @@ typedef struct _tcp_main
   clib_spinlock_t half_open_lock;
 
   /* Pool of local TCP endpoints */
-  transport_endpoint_t *local_endpoints;
+  session_endpoint_t *local_endpoints;
 
   /* Local endpoints lookup table */
   transport_endpoint_table_t local_endpoints_table;

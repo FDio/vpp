@@ -41,7 +41,7 @@ transport_endpoint_lookup (transport_endpoint_table_t * ht,
 
 void
 transport_endpoint_table_add (transport_endpoint_table_t * ht,
-			      transport_endpoint_t * te, u32 value)
+			      session_endpoint_t * te, u32 value)
 {
   clib_bihash_kv_24_8_t kv;
 
@@ -55,7 +55,7 @@ transport_endpoint_table_add (transport_endpoint_table_t * ht,
 
 void
 transport_endpoint_table_del (transport_endpoint_table_t * ht,
-			      transport_endpoint_t * te)
+			      session_endpoint_t * te)
 {
   clib_bihash_kv_24_8_t kv;
 

@@ -246,7 +246,7 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  __sync_fetch_and_add (&tm->tx_total, sp->bytes_sent);
 	  __sync_fetch_and_add (&tm->rx_total, sp->bytes_received);
 
-	  stream_session_parse_handle (sp->vpp_session_handle,
+	  session_parse_handle (sp->vpp_session_handle,
 				       &index, &thread_index);
 	  s = stream_session_get_if_valid (index, thread_index);
 
