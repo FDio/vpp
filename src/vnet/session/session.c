@@ -28,67 +28,151 @@
 session_manager_main_t session_manager_main;
 extern transport_proto_vft_t *tp_vfts;
 
-int
-stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
-			 u8 alloc_fifos, stream_session_t ** ret_s)
+static void
+session_send_evt_to_thread (u64 session_handle, fifo_event_type_t evt_type,
+			    u32 thread_index, void *fp, void *rpc_args)
+{
+  u32 tries = 0;
+  session_fifo_event_t evt = { {0}, };
+  unix_shared_memory_queue_t *q;
+
+  evt.event_type = evt_type;
+  if (evt_type == FIFO_EVENT_RPC)
+    {
+      evt.rpc_args.fp = fp;
+      evt.rpc_args.arg = rpc_args;
+    }
+  else
+    evt.session_handle = session_handle;
+
+  q = session_manager_get_vpp_event_queue (thread_index);
+  while (unix_shared_memory_queue_add (q, (u8 *) & evt, 1))
+    {
+      if (tries++ == 3)
+	{
+	  SESSION_DBG ("failed to enqueue evt");
+	  break;
+	}
+    }
+}
+
+void
+session_send_session_evt_to_thread (u64 session_handle,
+				    fifo_event_type_t evt_type,
+				    u32 thread_index)
+{
+  session_send_evt_to_thread (session_handle, evt_type, thread_index, 0, 0);
+}
+
+void
+session_send_rpc_evt_to_thread (u32 thread_index, void *fp, void *rpc_args)
+{
+  if (thread_index != vlib_get_thread_index ())
+    session_send_evt_to_thread (0, FIFO_EVENT_RPC, thread_index, fp,
+				rpc_args);
+  else
+    {
+      void (*fnp) (void *) = fp;
+      fnp (rpc_args);
+    }
+}
+
+stream_session_t *
+session_alloc (u32 thread_index)
 {
   session_manager_main_t *smm = &session_manager_main;
+  stream_session_t *s;
+  u8 will_expand = 0;
+  pool_get_aligned_will_expand (smm->sessions[thread_index], will_expand,
+				CLIB_CACHE_LINE_BYTES);
+  /* If we have peekers, let them finish */
+  if (PREDICT_FALSE (will_expand))
+    {
+      clib_spinlock_lock_if_init (&smm->peekers_write_locks[thread_index]);
+      pool_get_aligned (session_manager_main.sessions[thread_index], s,
+			CLIB_CACHE_LINE_BYTES);
+      clib_spinlock_unlock_if_init (&smm->peekers_write_locks[thread_index]);
+    }
+  else
+    {
+      pool_get_aligned (session_manager_main.sessions[thread_index], s,
+			CLIB_CACHE_LINE_BYTES);
+    }
+  memset (s, 0, sizeof (*s));
+  s->session_index = s - session_manager_main.sessions[thread_index];
+  s->thread_index = thread_index;
+  return s;
+}
+
+static void
+session_free (stream_session_t * s)
+{
+  pool_put (session_manager_main.sessions[s->thread_index], s);
+  if (CLIB_DEBUG)
+    memset (s, 0xFA, sizeof (*s));
+}
+
+static int
+session_alloc_fifos (segment_manager_t * sm, stream_session_t * s)
+{
   svm_fifo_t *server_rx_fifo = 0, *server_tx_fifo = 0;
   u32 fifo_segment_index;
-  u32 pool_index;
-  stream_session_t *s;
-  u64 value;
-  u32 thread_index = tc->thread_index;
   int rv;
+
+  if ((rv = segment_manager_alloc_session_fifos (sm, &server_rx_fifo,
+						 &server_tx_fifo,
+						 &fifo_segment_index)))
+    return rv;
+  /* Initialize backpointers */
+  server_rx_fifo->master_session_index = s->session_index;
+  server_rx_fifo->master_thread_index = s->thread_index;
+
+  server_tx_fifo->master_session_index = s->session_index;
+  server_tx_fifo->master_thread_index = s->thread_index;
+
+  s->server_rx_fifo = server_rx_fifo;
+  s->server_tx_fifo = server_tx_fifo;
+  s->svm_segment_index = fifo_segment_index;
+  return 0;
+}
+
+static stream_session_t *
+session_alloc_for_connection (transport_connection_t * tc)
+{
+  stream_session_t *s;
+  u32 thread_index = tc->thread_index;
 
   ASSERT (thread_index == vlib_get_thread_index ());
 
-  /* Create the session */
-  pool_get_aligned (smm->sessions[thread_index], s, CLIB_CACHE_LINE_BYTES);
-  memset (s, 0, sizeof (*s));
-  pool_index = s - smm->sessions[thread_index];
-
-  /* Allocate fifos */
-  if (alloc_fifos)
-    {
-      if ((rv = segment_manager_alloc_session_fifos (sm, &server_rx_fifo,
-						     &server_tx_fifo,
-						     &fifo_segment_index)))
-	{
-	  pool_put (smm->sessions[thread_index], s);
-	  return rv;
-	}
-      /* Initialize backpointers */
-      server_rx_fifo->master_session_index = pool_index;
-      server_rx_fifo->master_thread_index = thread_index;
-
-      server_tx_fifo->master_session_index = pool_index;
-      server_tx_fifo->master_thread_index = thread_index;
-
-      s->server_rx_fifo = server_rx_fifo;
-      s->server_tx_fifo = server_tx_fifo;
-      s->svm_segment_index = fifo_segment_index;
-    }
-
-  /* Initialize state machine, such as it is... */
-  s->session_type = session_type_from_proto_and_ip (tc->transport_proto,
-						    tc->is_ip4);
+  s = session_alloc (thread_index);
+  s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
   s->session_state = SESSION_STATE_CONNECTING;
   s->thread_index = thread_index;
-  s->session_index = pool_index;
 
-  /* Attach transport to session */
+  /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
-
-  /* Attach session to transport */
   tc->s_index = s->session_index;
+  return s;
+}
+
+static int
+session_alloc_and_init (segment_manager_t * sm, transport_connection_t * tc,
+			u8 alloc_fifos, stream_session_t ** ret_s)
+{
+  stream_session_t *s;
+  int rv;
+
+  s = session_alloc_for_connection (tc);
+  if (alloc_fifos && (rv = session_alloc_fifos (sm, s)))
+    {
+      session_free (s);
+      return rv;
+    }
 
   /* Add to the main lookup table */
-  value = stream_session_handle (s);
-  session_lookup_add_connection (tc, value);
+  session_lookup_add_connection (tc, session_handle (s));
 
   *ret_s = s;
-
   return 0;
 }
 
@@ -217,8 +301,9 @@ session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
  * @return Number of bytes enqueued or a negative value if enqueueing failed.
  */
 int
-stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
-			     u32 offset, u8 queue_event, u8 is_in_order)
+session_enqueue_stream_connection (transport_connection_t * tc,
+				   vlib_buffer_t * b, u32 offset,
+				   u8 queue_event, u8 is_in_order)
 {
   stream_session_t *s;
   int enqueued = 0, rv, in_order_off;
@@ -257,16 +342,51 @@ stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
        * by calling stream_server_flush_enqueue_events () */
       session_manager_main_t *smm = vnet_get_session_manager_main ();
       u32 thread_index = s->thread_index;
-      u32 my_enqueue_epoch = smm->current_enqueue_epoch[thread_index];
+      u32 enqueue_epoch = smm->current_enqueue_epoch[tc->proto][thread_index];
 
-      if (s->enqueue_epoch != my_enqueue_epoch)
+      if (s->enqueue_epoch != enqueue_epoch)
 	{
-	  s->enqueue_epoch = my_enqueue_epoch;
-	  vec_add1 (smm->session_indices_to_enqueue_by_thread[thread_index],
+	  s->enqueue_epoch = enqueue_epoch;
+	  vec_add1 (smm->session_to_enqueue[tc->proto][thread_index],
 		    s - smm->sessions[thread_index]);
 	}
     }
 
+  return enqueued;
+}
+
+int
+session_enqueue_dgram_connection (stream_session_t * s, vlib_buffer_t * b,
+				  u8 proto, u8 queue_event)
+{
+  int enqueued = 0, rv, in_order_off;
+
+  if (svm_fifo_max_enqueue (s->server_rx_fifo) < b->current_length)
+    return -1;
+  enqueued = svm_fifo_enqueue_nowait (s->server_rx_fifo, b->current_length,
+				      vlib_buffer_get_current (b));
+  if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
+    {
+      in_order_off = enqueued > b->current_length ? enqueued : 0;
+      rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
+      if (rv > 0)
+	enqueued += rv;
+    }
+  if (queue_event)
+    {
+      /* Queue RX event on this fifo. Eventually these will need to be flushed
+       * by calling stream_server_flush_enqueue_events () */
+      session_manager_main_t *smm = vnet_get_session_manager_main ();
+      u32 thread_index = s->thread_index;
+      u32 enqueue_epoch = smm->current_enqueue_epoch[proto][thread_index];
+
+      if (s->enqueue_epoch != enqueue_epoch)
+	{
+	  s->enqueue_epoch = enqueue_epoch;
+	  vec_add1 (smm->session_to_enqueue[proto][thread_index],
+		    s - smm->sessions[thread_index]);
+	}
+    }
   return enqueued;
 }
 
@@ -319,12 +439,11 @@ stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
  * @return 0 on succes or negative number if failed to send notification.
  */
 static int
-stream_session_enqueue_notify (stream_session_t * s, u8 block)
+session_enqueue_notify (stream_session_t * s, u8 block)
 {
   application_t *app;
   session_fifo_event_t evt;
   unix_shared_memory_queue_t *q;
-  static u32 serial_number;
 
   if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
     {
@@ -354,7 +473,6 @@ stream_session_enqueue_notify (stream_session_t * s, u8 block)
       /* Fabricate event */
       evt.fifo = s->server_rx_fifo;
       evt.event_type = FIFO_EVENT_APP_RX;
-      evt.event_id = serial_number++;
 
       /* Add event to server's event queue */
       q = app->event_queue;
@@ -389,35 +507,25 @@ stream_session_enqueue_notify (stream_session_t * s, u8 block)
  *         failures due to API queue being full.
  */
 int
-session_manager_flush_enqueue_events (u32 thread_index)
+session_manager_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 {
   session_manager_main_t *smm = &session_manager_main;
-  u32 *session_indices_to_enqueue;
+  u32 *indices;
+  stream_session_t *s;
   int i, errors = 0;
 
-  session_indices_to_enqueue =
-    smm->session_indices_to_enqueue_by_thread[thread_index];
+  indices = smm->session_to_enqueue[transport_proto][thread_index];
 
-  for (i = 0; i < vec_len (session_indices_to_enqueue); i++)
+  for (i = 0; i < vec_len (indices); i++)
     {
-      stream_session_t *s0;
-
-      /* Get session */
-      s0 = stream_session_get_if_valid (session_indices_to_enqueue[i],
-					thread_index);
-      if (s0 == 0 || stream_session_enqueue_notify (s0, 0 /* don't block */ ))
-	{
-	  errors++;
-	}
+      s = session_get_if_valid (indices[i], thread_index);
+      if (s == 0 || session_enqueue_notify (s, 0 /* don't block */ ))
+	errors++;
     }
 
-  vec_reset_length (session_indices_to_enqueue);
-
-  smm->session_indices_to_enqueue_by_thread[thread_index] =
-    session_indices_to_enqueue;
-
-  /* Increment enqueue epoch for next round */
-  smm->current_enqueue_epoch[thread_index]++;
+  vec_reset_length (indices);
+  smm->session_to_enqueue[transport_proto][thread_index] = indices;
+  smm->current_enqueue_epoch[transport_proto][thread_index]++;
 
   return errors;
 }
@@ -438,22 +546,25 @@ stream_session_init_fifos_pointers (transport_connection_t * tc,
 }
 
 int
-stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
+session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
 {
   application_t *app;
   stream_session_t *new_s = 0;
   u64 handle;
   u32 opaque = 0;
   int error = 0;
+  segment_manager_t *sm;
+  u8 alloc_fifos;
 
+  /*
+   * Find connection handle and cleanup half-open table
+   */
   handle = session_lookup_half_open_handle (tc);
   if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
       SESSION_DBG ("half-open was removed!");
       return -1;
     }
-
-  /* Cleanup half-open table */
   session_lookup_del_half_open (tc);
 
   /* Get the app's index from the handle we stored when opening connection
@@ -462,17 +573,16 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
   app = application_get_if_valid (handle >> 32);
   if (!app)
     return -1;
-
   opaque = tc->s_index;
 
+  /*
+   * Allocate new session with fifos (svm segments are allocated if needed)
+   */
   if (!is_fail)
     {
-      segment_manager_t *sm;
-      u8 alloc_fifos;
       sm = application_get_connect_segment_manager (app);
       alloc_fifos = application_is_proxy (app);
-      /* Create new session (svm segments are allocated if needed) */
-      if (stream_session_create_i (sm, tc, alloc_fifos, &new_s))
+      if (session_alloc_and_init (sm, tc, alloc_fifos, &new_s))
 	{
 	  is_fail = 1;
 	  error = -1;
@@ -481,7 +591,9 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
 	new_s->app_index = app->index;
     }
 
-  /* Notify client application */
+  /*
+   * Notify client application
+   */
   if (app->cb_fns.session_connected_callback (app->index, opaque, new_s,
 					      is_fail))
     {
@@ -496,6 +608,67 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
     }
 
   return error;
+}
+
+typedef struct _session_switch_pool_args
+{
+  u32 session_index;
+  u32 thread_index;
+  u32 new_thread_index;
+  u32 new_session_index;
+} session_switch_pool_args_t;
+
+static void
+session_switch_pool (void *cb_args)
+{
+  session_switch_pool_args_t *args = (session_switch_pool_args_t *) cb_args;
+  stream_session_t *s;
+  ASSERT (args->thread_index == vlib_get_thread_index ());
+  s = session_get (args->session_index, args->thread_index);
+  s->server_tx_fifo->master_session_index = args->new_session_index;
+  s->server_tx_fifo->master_thread_index = args->new_thread_index;
+  tp_vfts[s->session_type].cleanup (s->connection_index, s->thread_index);
+  session_free (s);
+  clib_mem_free (cb_args);
+}
+
+/**
+ * Move dgram session to the right thread
+ */
+int
+session_dgram_connect_notify (transport_connection_t * tc,
+			      u32 old_thread_index,
+			      stream_session_t ** new_session)
+{
+  stream_session_t *new_s;
+  session_switch_pool_args_t *rpc_args;
+
+  /*
+   * Clone half-open session to the right thread.
+   */
+  new_s = session_clone_safe (tc->s_index, old_thread_index);
+  new_s->connection_index = tc->c_index;
+  new_s->server_rx_fifo->master_session_index = new_s->session_index;
+  new_s->server_rx_fifo->master_thread_index = new_s->thread_index;
+  new_s->session_state = SESSION_STATE_READY;
+  session_lookup_add_connection (tc, session_handle (new_s));
+
+  /*
+   * Ask thread owning the old session to clean it up and make us the tx
+   * fifo owner
+   */
+  rpc_args = clib_mem_alloc (sizeof (*rpc_args));
+  rpc_args->new_session_index = new_s->session_index;
+  rpc_args->new_thread_index = new_s->thread_index;
+  rpc_args->session_index = tc->s_index;
+  rpc_args->thread_index = old_thread_index;
+  session_send_rpc_evt_to_thread (rpc_args->thread_index, session_switch_pool,
+				  rpc_args);
+
+  tc->s_index = new_s->session_index;
+  new_s->connection_index = tc->c_index;
+  *new_session = new_s;
+  return 0;
 }
 
 void
@@ -533,7 +706,6 @@ stream_session_disconnect_notify (transport_connection_t * tc)
 void
 stream_session_delete (stream_session_t * s)
 {
-  session_manager_main_t *smm = vnet_get_session_manager_main ();
   int rv;
 
   /* Delete from the main lookup table. */
@@ -543,10 +715,7 @@ stream_session_delete (stream_session_t * s)
   /* Cleanup fifo segments */
   segment_manager_dealloc_fifos (s->svm_segment_index, s->server_rx_fifo,
 				 s->server_tx_fifo);
-
-  pool_put (smm->sessions[s->thread_index], s);
-  if (CLIB_DEBUG)
-    memset (s, 0xFA, sizeof (*s));
+  session_free (s);
 }
 
 /**
@@ -563,7 +732,7 @@ stream_session_delete_notify (transport_connection_t * tc)
   stream_session_t *s;
 
   /* App might've been removed already */
-  s = stream_session_get_if_valid (tc->s_index, tc->thread_index);
+  s = session_get_if_valid (tc->s_index, tc->thread_index);
   if (!s)
     return;
   stream_session_delete (s);
@@ -596,14 +765,14 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
   session_type_t sst;
   int rv;
 
-  sst = session_type_from_proto_and_ip (tc->transport_proto, tc->is_ip4);
+  sst = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
 
   /* Find the server */
   listener = listen_session_get (sst, listener_index);
   server = application_get (listener->app_index);
 
   sm = application_get_listen_segment_manager (server, listener);
-  if ((rv = stream_session_create_i (sm, tc, 1, &s)))
+  if ((rv = session_alloc_and_init (sm, tc, 1, &s)))
     return rv;
 
   s->app_index = server->index;
@@ -629,14 +798,17 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
  * @param app_index Index of the application requesting the connect
  * @param st Session type requested.
  * @param tep Remote transport endpoint
- * @param res Resulting transport connection .
+ * @param opaque Opaque data (typically, api_context) the application expects
+ * 		 on open completion.
  */
 int
-stream_session_open (u32 app_index, session_endpoint_t * rmt,
-		     transport_connection_t ** res)
+session_open (u32 app_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
   session_type_t sst;
+  segment_manager_t *sm;
+  stream_session_t *s;
+  application_t *app;
   int rv;
   u64 handle;
 
@@ -644,22 +816,45 @@ stream_session_open (u32 app_index, session_endpoint_t * rmt,
   rv = tp_vfts[sst].open (session_endpoint_to_transport (rmt));
   if (rv < 0)
     {
-      clib_warning ("Transport failed to open connection.");
+      SESSION_DBG ("Transport failed to open connection.");
       return VNET_API_ERROR_SESSION_CONNECT;
     }
 
   tc = tp_vfts[sst].get_half_open ((u32) rv);
 
-  /* Save app and tc index. The latter is needed to help establish the
-   * connection while the former is needed when the connect notify comes
-   * and we have to notify the external app */
-  handle = (((u64) app_index) << 32) | (u64) tc->c_index;
+  /* If transport offers a stream service, only allocate session once the
+   * connection has been established.
+   */
+  if (transport_is_stream (rmt->transport_proto))
+    {
+      /* Add connection to half-open table and save app and tc index. The
+       * latter is needed to help establish the connection while the former
+       * is needed when the connect notify comes and we have to notify the
+       * external app
+       */
+      handle = (((u64) app_index) << 32) | (u64) tc->c_index;
+      session_lookup_add_half_open (tc, handle);
 
-  /* Add to the half-open lookup table */
-  session_lookup_add_half_open (tc, handle);
+      /* Store api_context (opaque) for when the reply comes. Not the nicest
+       * thing but better than allocating a separate half-open pool.
+       */
+      tc->s_index = opaque;
+    }
+  /* For dgram type of service, allocate session and fifos now.
+   */
+  else
+    {
+      app = application_get (app_index);
+      sm = application_get_connect_segment_manager (app);
 
-  *res = tc;
+      if (session_alloc_and_init (sm, tc, 1, &s))
+	return -1;
+      s->app_index = app->index;
+      s->session_state = SESSION_STATE_CONNECTING_READY;
 
+      /* Tell the app about the new event fifo for this session */
+      app->cb_fns.session_connected_callback (app->index, opaque, s, 0);
+    }
   return 0;
 }
 
@@ -672,14 +867,14 @@ stream_session_open (u32 app_index, session_endpoint_t * rmt,
  * @param tep Local endpoint to be listened on.
  */
 int
-stream_session_listen (stream_session_t * s, session_endpoint_t * tep)
+stream_session_listen (stream_session_t * s, session_endpoint_t * sep)
 {
   transport_connection_t *tc;
   u32 tci;
 
   /* Transport bind/listen  */
   tci = tp_vfts[s->session_type].bind (s->session_index,
-				       session_endpoint_to_transport (tep));
+				       session_endpoint_to_transport (sep));
 
   if (tci == (u32) ~ 0)
     return -1;
@@ -694,7 +889,6 @@ stream_session_listen (stream_session_t * s, session_endpoint_t * tep)
 
   /* Add to the main lookup table */
   session_lookup_add_connection (tc, s->session_index);
-
   return 0;
 }
 
@@ -724,32 +918,6 @@ stream_session_stop_listen (stream_session_t * s)
   session_lookup_del_connection (tc);
   tp_vfts[s->session_type].unbind (s->connection_index);
   return 0;
-}
-
-void
-session_send_session_evt_to_thread (u64 session_handle,
-				    fifo_event_type_t evt_type,
-				    u32 thread_index)
-{
-  static u16 serial_number = 0;
-  u32 tries = 0;
-  session_fifo_event_t evt;
-  unix_shared_memory_queue_t *q;
-
-  /* Fabricate event */
-  evt.session_handle = session_handle;
-  evt.event_type = evt_type;
-  evt.event_id = serial_number++;
-
-  q = session_manager_get_vpp_event_queue (thread_index);
-  while (unix_shared_memory_queue_add (q, (u8 *) & evt, 1))
-    {
-      if (tries++ == 3)
-	{
-	  TCP_DBG ("failed to enqueue evt");
-	  break;
-	}
-    }
 }
 
 /**
@@ -837,6 +1005,21 @@ session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
   return SESSION_N_TYPES;
 }
 
+transport_connection_t *
+session_get_transport (stream_session_t * s)
+{
+  if (s->session_state >= SESSION_STATE_READY)
+    return tp_vfts[s->session_type].get_connection (s->connection_index,
+						    s->thread_index);
+  return 0;
+}
+
+transport_connection_t *
+listen_session_get_transport (stream_session_t * s)
+{
+  return tp_vfts[s->session_type].get_listener (s->connection_index);
+}
+
 int
 listen_session_get_local_session_endpoint (stream_session_t * listener,
 					   session_endpoint_t * sep)
@@ -852,7 +1035,7 @@ listen_session_get_local_session_endpoint (stream_session_t * listener,
 
   /* N.B. The ip should not be copied because this is the local endpoint */
   sep->port = tc->lcl_port;
-  sep->transport_proto = tc->transport_proto;
+  sep->transport_proto = tc->proto;
   sep->is_ip4 = tc->is_ip4;
   return 0;
 }
@@ -864,7 +1047,7 @@ session_manager_main_enable (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
   u32 preallocated_sessions_per_worker;
-  int i;
+  int i, j;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -877,12 +1060,21 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* configure per-thread ** vectors */
   vec_validate (smm->sessions, num_threads - 1);
-  vec_validate (smm->session_indices_to_enqueue_by_thread, num_threads - 1);
   vec_validate (smm->tx_buffers, num_threads - 1);
   vec_validate (smm->pending_event_vector, num_threads - 1);
+  vec_validate (smm->pending_disconnects, num_threads - 1);
   vec_validate (smm->free_event_vector, num_threads - 1);
-  vec_validate (smm->current_enqueue_epoch, num_threads - 1);
   vec_validate (smm->vpp_event_queues, num_threads - 1);
+  vec_validate (smm->session_peekers, num_threads - 1);
+  vec_validate (smm->peekers_readers_locks, num_threads - 1);
+  vec_validate (smm->peekers_write_locks, num_threads - 1);
+
+  for (i = 0; i < TRANSPORT_N_PROTO; i++)
+    for (j = 0; j < num_threads; j++)
+      {
+	vec_validate (smm->session_to_enqueue[i], num_threads - 1);
+	vec_validate (smm->current_enqueue_epoch[i], num_threads - 1);
+      }
 
   for (i = 0; i < num_threads; i++)
     {
@@ -890,6 +1082,8 @@ session_manager_main_enable (vlib_main_t * vm)
       _vec_len (smm->free_event_vector[i]) = 0;
       vec_validate (smm->pending_event_vector[i], 0);
       _vec_len (smm->pending_event_vector[i]) = 0;
+      vec_validate (smm->pending_disconnects[i], 0);
+      _vec_len (smm->pending_disconnects[i]) = 0;
     }
 
 #if SESSION_DBG
@@ -924,6 +1118,7 @@ session_manager_main_enable (vlib_main_t * vm)
 
   session_lookup_init ();
   app_namespaces_init ();
+  transport_init ();
 
   smm->is_enabled = 1;
 
