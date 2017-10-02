@@ -28,11 +28,45 @@
 
 tcp_main_t tcp_main;
 
+void *
+ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
+{
+  ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
+  ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
+  ip_interface_address_t *ia = 0;
+
+  if (is_ip4)
+    {
+      /* *INDENT-OFF* */
+      foreach_ip_interface_address (lm4, ia, sw_if_index, 1 /* unnumbered */ ,
+      ({
+        return ip_interface_address_get_address (lm4, ia);
+      }));
+      /* *INDENT-ON* */
+    }
+  else
+    {
+      /* *INDENT-OFF* */
+      foreach_ip_interface_address (lm6, ia, sw_if_index, 1 /* unnumbered */ ,
+      ({
+        ip6_address_t *rv;
+        rv = ip_interface_address_get_address (lm6, ia);
+        /* Trying to use a link-local ip6 src address is a fool's errand */
+        if (!ip6_address_is_link_local_unicast (rv))
+          return rv;
+      }));
+      /* *INDENT-ON* */
+    }
+
+  return 0;
+}
+
 static u32
 tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
 {
   tcp_main_t *tm = &tcp_main;
   tcp_connection_t *listener;
+  void *iface_ip;
 
   pool_get (tm->listener_pool, listener);
   memset (listener, 0, sizeof (*listener));
@@ -40,19 +74,18 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
   listener->c_c_index = listener - tm->listener_pool;
   listener->c_lcl_port = lcl->port;
 
-  if (lcl->is_ip4)
+  /* If we are provided a sw_if_index, bind using one of its ips */
+  if (ip_is_zero (&lcl->ip, 1) && lcl->sw_if_index != ENDPOINT_INVALID_INDEX)
     {
-      listener->c_lcl_ip4.as_u32 = lcl->ip.ip4.as_u32;
-      listener->c_is_ip4 = 1;
+      if ((iface_ip = ip_interface_get_first_ip (lcl->sw_if_index,
+						 lcl->is_ip4)))
+	ip_set (&lcl->ip, iface_ip, lcl->is_ip4);
     }
-  else
-    {
-      clib_memcpy (&listener->c_lcl_ip6, &lcl->ip.ip6,
-		   sizeof (ip6_address_t));
-
-    }
+  ip_copy (&listener->c_lcl_ip, &lcl->ip, lcl->is_ip4);
+  listener->c_is_ip4 = lcl->is_ip4;
   listener->c_transport_proto = TRANSPORT_PROTO_TCP;
   listener->c_s_index = session_index;
+  listener->c_fib_index = lcl->fib_index;
   listener->state = TCP_STATE_LISTEN;
 
   tcp_connection_timers_init (listener);
@@ -355,39 +388,6 @@ tcp_session_cleanup (u32 conn_index, u32 thread_index)
   tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
 }
 
-void *
-ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
-{
-  ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
-  ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
-  ip_interface_address_t *ia = 0;
-
-  if (is_ip4)
-    {
-      /* *INDENT-OFF* */
-      foreach_ip_interface_address (lm4, ia, sw_if_index, 1 /* unnumbered */ ,
-      ({
-        return ip_interface_address_get_address (lm4, ia);
-      }));
-      /* *INDENT-ON* */
-    }
-  else
-    {
-      /* *INDENT-OFF* */
-      foreach_ip_interface_address (lm6, ia, sw_if_index, 1 /* unnumbered */ ,
-      ({
-        ip6_address_t *rv;
-        rv = ip_interface_address_get_address (lm6, ia);
-        /* Trying to use a link-local ip6 src address is a fool's errand */
-        if (!ip6_address_is_link_local_unicast (rv))
-          return rv;
-      }));
-      /* *INDENT-ON* */
-    }
-
-  return 0;
-}
-
 #define PORT_MASK ((1 << 16)- 1)
 /**
  * Allocate local port and add if successful add entry to local endpoint
@@ -528,7 +528,7 @@ tcp_lookup_rmt_in_fib (tcp_connection_t * tc)
   clib_memcpy (&prefix.fp_addr, &tc->c_rmt_ip, sizeof (prefix.fp_addr));
   prefix.fp_proto = tc->c_is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   prefix.fp_len = tc->c_is_ip4 ? 32 : 128;
-  fib_index = fib_table_find (prefix.fp_proto, tc->c_vrf);
+  fib_index = fib_table_find (prefix.fp_proto, tc->c_fib_index);
   return fib_table_lookup (fib_index, &prefix);
 }
 
@@ -575,6 +575,7 @@ tcp_init_snd_vars (tcp_connection_t * tc)
   u32 time_now;
 
   /* Set random initial sequence */
+  tcp_set_time_now (0);
   time_now = tcp_time_now ();
   tc->iss = random_u32 (&time_now);
   tc->snd_una = tc->iss;
@@ -606,7 +607,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
   tcp_connection_t *tc;
   fib_prefix_t prefix;
   fib_node_index_t fei;
-  u32 sw_if_index, fib_index;
+  u32 sw_if_index;
   ip46_address_t lcl_addr;
   int lcl_port;
 
@@ -620,14 +621,8 @@ tcp_connection_open (transport_endpoint_t * rmt)
   prefix.fp_proto = rmt->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   prefix.fp_len = rmt->is_ip4 ? 32 : 128;
 
-  fib_index = fib_table_find (prefix.fp_proto, rmt->vrf);
-  if (fib_index == (u32) ~ 0)
-    {
-      clib_warning ("no fib table");
-      return -1;
-    }
-
-  fei = fib_table_lookup (fib_index, &prefix);
+  ASSERT (rmt->fib_index != ENDPOINT_INVALID_INDEX);
+  fei = fib_table_lookup (rmt->fib_index, &prefix);
 
   /* Couldn't find route to destination. Bail out. */
   if (fei == FIB_NODE_INDEX_INVALID)
@@ -636,12 +631,14 @@ tcp_connection_open (transport_endpoint_t * rmt)
       return -1;
     }
 
-  sw_if_index = fib_entry_get_resolving_interface (fei);
+  sw_if_index = rmt->sw_if_index;
+  if (sw_if_index == ENDPOINT_INVALID_INDEX)
+    sw_if_index = fib_entry_get_resolving_interface (fei);
 
-  if (sw_if_index == (u32) ~ 0)
+  if (sw_if_index == ENDPOINT_INVALID_INDEX)
     {
       clib_warning ("no resolving interface for %U", format_ip46_address,
-		    &rmt->ip, IP46_TYPE_IP4);
+		    &rmt->ip, (rmt->is_ip4 == 0) + 1);
       return -1;
     }
 
@@ -709,7 +706,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
   tc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
   tc->c_is_ip4 = rmt->is_ip4;
   tc->c_transport_proto = TRANSPORT_PROTO_TCP;
-  tc->c_vrf = rmt->vrf;
+  tc->c_fib_index = rmt->fib_index;
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
 

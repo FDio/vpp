@@ -5116,7 +5116,8 @@ _(p2p_ethernet_add_reply)                               \
 _(p2p_ethernet_del_reply)                               \
 _(lldp_config_reply)                                    \
 _(sw_interface_set_lldp_reply)				\
-_(tcp_configure_src_addresses_reply)
+_(tcp_configure_src_addresses_reply)			\
+_(app_namespace_add_del_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -5420,7 +5421,8 @@ _(P2P_ETHERNET_ADD_REPLY, p2p_ethernet_add_reply)                       \
 _(P2P_ETHERNET_DEL_REPLY, p2p_ethernet_del_reply)                       \
 _(LLDP_CONFIG_REPLY, lldp_config_reply)                                 \
 _(SW_INTERFACE_SET_LLDP_REPLY, sw_interface_set_lldp_reply)		\
-_(TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)
+_(TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)	\
+_(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)                               \
@@ -20736,6 +20738,55 @@ api_tcp_configure_src_addresses (vat_main_t * vam)
 }
 
 static int
+api_app_namespace_add_del (vat_main_t * vam)
+{
+  vl_api_app_namespace_add_del_t *mp;
+  unformat_input_t *i = vam->input;
+  u8 *ns_id = 0, secret_set = 0, sw_if_index_set = 0;
+  u32 sw_if_index, ip4_fib_id, ip6_fib_id;
+  u64 secret;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "id %_%v%_", &ns_id))
+	;
+      else if (unformat (i, "secret %lu", &secret))
+	secret_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "ip4_fib_id %d", &ip4_fib_id))
+	;
+      else if (unformat (i, "ip6_fib_id %d", &ip6_fib_id))
+	;
+      else
+	break;
+    }
+  if (!ns_id || !secret_set || !sw_if_index_set)
+    {
+      errmsg ("namespace id, secret and sw_if_index must be set");
+      return -99;
+    }
+  if (vec_len (ns_id) > 64)
+    {
+      errmsg ("namespace id too long");
+      return -99;
+    }
+  M (APP_NAMESPACE_ADD_DEL, mp);
+
+  clib_memcpy (mp->namespace_id, ns_id, vec_len (ns_id));
+  mp->namespace_id_len = vec_len (ns_id);
+  mp->secret = secret;
+  mp->sw_if_index = clib_host_to_net_u32 (sw_if_index);
+  mp->ip4_fib_id = clib_host_to_net_u32 (ip4_fib_id);
+  mp->ip6_fib_id = clib_host_to_net_u32 (ip6_fib_id);
+  vec_free (ns_id);
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
 api_memfd_segment_create (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -21551,7 +21602,8 @@ _(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
 _(lldp_config, "system-name <name> tx-hold <nn> tx-interval <nn>") \
 _(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>] [disable]") \
 _(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
-_(memfd_segment_create,"size <nnn>")
+_(memfd_segment_create,"size <nnn>")					\
+_(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

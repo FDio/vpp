@@ -267,7 +267,7 @@ segment_manager_del_sessions (segment_manager_t * sm)
 
 	  session_index = fifo->master_session_index;
 	  thread_index = fifo->master_thread_index;
-	  session = stream_session_get (session_index, thread_index);
+	  session = session_get (session_index, thread_index);
 
 	  /* Instead of directly removing the session call disconnect */
 	  if (session->session_state != SESSION_STATE_CLOSED)

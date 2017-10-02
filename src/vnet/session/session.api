@@ -21,12 +21,16 @@ vl_api_version 1.0.0
     @param initial_segment_size - size of the initial shm segment to be 
     							  allocated
     @param options - segment size, fifo sizes, etc.
+    @param namespace_id_len - length of the namespace id c-string
+    @param namespace_id - 0 terminted c-string
 */
  define application_attach {
     u32 client_index;
     u32 context;
     u32 initial_segment_size;
     u64 options[16];
+    u8 namespace_id_len;
+    u8 namespace_id [64];
  };
  
  /** \brief Application attach reply
@@ -99,20 +103,19 @@ autoreply define unbind_uri {
 /** \brief Connect to a given URI
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param accept_cookie - sender accept cookie, to identify this bind flavor
-    @param uri - a URI, e.g. "tcp4://0.0.0.0/0/80"
-                 "tcp6://::/0/80" [ipv6], etc.
-    @param options - socket options, fifo sizes, etc. passed by vpp to the
-    				 server when redirecting connects 
     @param client_queue_address - binary API client queue address. Used by 
     							  local server when connect was redirected.
+    @param options - socket options, fifo sizes, etc. passed by vpp to the
+    				 server when redirecting connects 
+    @param uri - a URI, e.g. "tcp4://0.0.0.0/0/80"
+                 "tcp6://::/0/80" [ipv6], etc.
 */
 autoreply define connect_uri {
   u32 client_index;
   u32 context;
-  u8 uri[128];
   u64 client_queue_address;
   u64 options[16];
+  u8 uri[128];
 };
 
 /** \brief vpp->client, accept this session
@@ -240,26 +243,25 @@ autoreply define unbind_sock {
 /** \brief Connect to a remote peer
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param app_connect - application connection id to be returned in reply
+    @param client_queue_address - client's API queue address. Non-zero when 
+                                  used to perform redirects
+    @param options - socket options, fifo sizes, etc. when doing redirects
     @param vrf - connection namespace
     @param is_ip4 - flag that is 1 if ip address family is IPv4
     @param ip - ip address
     @param port - port 
     @param proto - protocol 0 - TCP 1 - UDP
-    @param client_queue_address - client's API queue address. Non-zero when 
-                                  used to perform redirects
-    @param options - socket options, fifo sizes, etc. when doing redirects
 */
 autoreply define connect_sock {
   u32 client_index;
   u32 context;
+  u64 client_queue_address;
+  u64 options[16];
   u32 vrf;
   u8 is_ip4;
   u8 ip[16];
   u16 port;
   u8 proto;
-  u64 client_queue_address;
-  u64 options[16];
 };
 
 /** \brief Bind reply
@@ -324,6 +326,31 @@ autoreply define session_enable_disable {
   u32 client_index;
   u32 context;
   u8 is_enable;
+};
+
+/** \brief add/del application namespace
+    @param client_index - opaque cookie to identify the sender
+                          client to vpp direction only
+    @param context - sender context, to match reply w/ request
+    @param secret - secret shared between app and vpp 
+    @param sw_if_index - local interface that "supports" namespace. Set to
+    						~0 if no preference
+    @param ip4_fib_id - id of ip4 fib that "supports" the namespace. Ignored 
+    						if sw_if_index set.
+    @param ip6_fib_id - id of ip6 fib that "supports" the namespace. Ignored 
+    						if sw_if_index set.
+    @param namespace_id_len - length of namespace id lower
+    @param namespace_id - namespace id
+*/
+autoreply define app_namespace_add_del {
+  u32 client_index;
+  u32 context;
+  u64 secret;
+  u32 sw_if_index;
+  u32 ip4_fib_id;
+  u32 ip6_fib_id;
+  u8 namespace_id_len;
+  u8 namespace_id[64];
 };
 
 /*

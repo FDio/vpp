@@ -50,8 +50,7 @@ delete_proxy_session (stream_session_t * s, int is_active_open)
 	{
 	  ps = pool_elt_at_index (bpm->sessions, p[0]);
 	  if (ps->vpp_server_handle != ~0)
-	    server_session = stream_session_get_from_handle
-	      (ps->vpp_server_handle);
+	    server_session = session_get_from_handle (ps->vpp_server_handle);
 	  else
 	    server_session = 0;
 	}
@@ -71,7 +70,7 @@ delete_proxy_session (stream_session_t * s, int is_active_open)
 	{
 	  ps = pool_elt_at_index (bpm->sessions, p[0]);
 	  if (ps->vpp_server_handle != ~0)
-	    active_open_session = stream_session_get_from_handle
+	    active_open_session = session_get_from_handle
 	      (ps->vpp_server_handle);
 	  else
 	    active_open_session = 0;

@@ -246,8 +246,8 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  __sync_fetch_and_add (&tm->tx_total, sp->bytes_sent);
 	  __sync_fetch_and_add (&tm->rx_total, sp->bytes_received);
 
-	  stream_session_parse_handle (sp->vpp_session_handle,
-				       &index, &thread_index);
+	  session_parse_handle (sp->vpp_session_handle,
+				&index, &thread_index);
 	  s = stream_session_get_if_valid (index, thread_index);
 
 	  if (s)
@@ -425,14 +425,16 @@ static session_cb_vft_t builtin_clients = {
 };
 /* *INDENT-ON* */
 
-static int
-attach_builtin_test_clients_app (void)
+static clib_error_t *
+attach_builtin_test_clients_app (u8 * appns_id, u64 appns_flags,
+				 u64 appns_secret)
 {
   tclient_main_t *tm = &tclient_main;
   vnet_app_attach_args_t _a, *a = &_a;
   u8 segment_name[128];
   u32 segment_name_length, prealloc_fifos;
   u64 options[16];
+  clib_error_t *error = 0;
 
   segment_name_length = ARRAY_LEN (segment_name);
 
@@ -455,11 +457,16 @@ attach_builtin_test_clients_app (void)
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
 
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
-
+  if (appns_id)
+    {
+      options[APP_OPTIONS_FLAGS] |= appns_flags;
+      options[APP_OPTIONS_NAMESPACE_SECRET] = appns_secret;
+    }
   a->options = options;
+  a->namespace_id = appns_id;
 
-  if (vnet_application_attach (a))
-    return -1;
+  if ((error = vnet_application_attach (a)))
+    return error;
 
   tm->app_index = a->app_index;
   return 0;
@@ -489,11 +496,12 @@ start_tx_pthread (tclient_main_t * tm)
   return 0;
 }
 
-void
+clib_error_t *
 clients_connect (vlib_main_t * vm, u8 * uri, u32 n_clients)
 {
   tclient_main_t *tm = &tclient_main;
   vnet_connect_args_t _a, *a = &_a;
+  clib_error_t *error = 0;
   int i;
   for (i = 0; i < n_clients; i++)
     {
@@ -503,7 +511,10 @@ clients_connect (vlib_main_t * vm, u8 * uri, u32 n_clients)
       a->api_context = i;
       a->app_index = tm->app_index;
       a->mp = 0;
-      vnet_connect_uri (a);
+
+      if ((error = vnet_connect_uri (a)))
+	return error;
+
 
       /* Crude pacing for call setups  */
       if ((i % 4) == 0)
@@ -514,6 +525,7 @@ clients_connect (vlib_main_t * vm, u8 * uri, u32 n_clients)
 	  vlib_process_suspend (vm, 100e-6);
 	}
     }
+  return 0;
 }
 
 static clib_error_t *
@@ -524,13 +536,14 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   tclient_main_t *tm = &tclient_main;
   vlib_thread_main_t *thread_main = vlib_get_thread_main ();
   uword *event_data = 0, event_type;
-  u8 *default_connect_uri = (u8 *) "tcp://6.0.1.1/1234", *uri;
-  u64 tmp, total_bytes;
+  u8 *default_connect_uri = (u8 *) "tcp://6.0.1.1/1234", *uri, *appns_id;
+  u64 tmp, total_bytes, appns_flags = 0, appns_secret = 0;
   f64 test_timeout = 20.0, syn_timeout = 20.0, delta;
   f64 time_before_connects;
   u32 n_clients = 1;
   int preallocate_sessions = 0;
   char *transfer_type;
+  clib_error_t *error = 0;
   int i;
 
   tm->bytes_to_send = 8192;
@@ -582,6 +595,17 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
       else
 	if (unformat (input, "client-batch %d", &tm->connections_per_batch))
 	;
+      else if (unformat (input, "appns %_%v%_", &appns_id))
+	;
+      else if (unformat (input, "all-scope"))
+	appns_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE
+			| APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
+      else if (unformat (input, "local-scope"))
+	appns_flags = APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+      else if (unformat (input, "global-scope"))
+	appns_flags = APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+      else if (unformat (input, "secret %lu", &appns_secret))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -616,10 +640,14 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 
   if (tm->test_client_attached == 0)
     {
-      if (attach_builtin_test_clients_app ())
+      if ((error = attach_builtin_test_clients_app (appns_id, appns_flags,
+						    appns_secret)))
 	{
-	  return clib_error_return (0, "app attach failed");
+	  vec_free (appns_id);
+	  clib_error_report (error);
+	  return error;
 	}
+      vec_free (appns_id);
     }
   tm->test_client_attached = 1;
 
@@ -639,7 +667,8 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 
   /* Fire off connect requests */
   time_before_connects = vlib_time_now (vm);
-  clients_connect (vm, uri, n_clients);
+  if ((error = clients_connect (vm, uri, n_clients)))
+    return error;
 
   /* Park until the sessions come up, or ten seconds elapse... */
   vlib_process_wait_for_event_or_clock (vm, syn_timeout);

@@ -1606,6 +1606,10 @@ ip4_local_inline (vlib_main_t * vm,
 	    (vnet_buffer (p1)->sw_if_index[VLIB_TX] ==
 	     (u32) ~ 0) ? fib_index1 : vnet_buffer (p1)->sw_if_index[VLIB_TX];
 
+	  /* TODO maybe move to lookup? */
+	  vnet_buffer (p0)->ip.fib_index = fib_index0;
+	  vnet_buffer (p1)->ip.fib_index = fib_index1;
+
 	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 	  mtrie1 = &ip4_fib_get (fib_index1)->mtrie;
 
@@ -1744,6 +1748,7 @@ ip4_local_inline (vlib_main_t * vm,
 	  fib_index0 =
 	    (vnet_buffer (p0)->sw_if_index[VLIB_TX] ==
 	     (u32) ~ 0) ? fib_index0 : vnet_buffer (p0)->sw_if_index[VLIB_TX];
+	  vnet_buffer (p0)->ip.fib_index = fib_index0;
 	  mtrie0 = &ip4_fib_get (fib_index0)->mtrie;
 	  leaf0 = ip4_fib_mtrie_lookup_step_one (mtrie0, &ip0->src_address);
 	  leaf0 = ip4_fib_mtrie_lookup_step (mtrie0, leaf0, &ip0->src_address,

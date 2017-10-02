@@ -1469,7 +1469,7 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
       ooo_segment_t *newest;
       u32 start, end;
 
-      s0 = stream_session_get (tc->c_s_index, tc->c_thread_index);
+      s0 = session_get (tc->c_s_index, tc->c_thread_index);
 
       /* Get the newest segment from the fifo */
       newest = svm_fifo_newest_ooo_segment (s0->server_rx_fifo);
@@ -1859,7 +1859,9 @@ vlib_node_registration_t tcp6_syn_sent_node;
 static u8
 tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
 {
-  transport_connection_t *tmp;
+  transport_connection_t *tmp = 0;
+  u64 handle;
+
   if (!tc)
     return 1;
 
@@ -1869,15 +1871,17 @@ tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
 
   if (!is_valid)
     {
-      if ((tmp =
-	   stream_session_half_open_lookup (&tc->c_lcl_ip, &tc->c_rmt_ip,
-					    tc->c_lcl_port, tc->c_rmt_port,
-					    tc->c_transport_proto)))
+      handle = session_lookup_half_open_handle (&tc->connection);
+      tmp = session_lookup_half_open_connection (handle & 0xFFFFFFFF,
+						 tc->c_transport_proto,
+						 tc->c_is_ip4);
+
+      if (tmp)
 	{
 	  if (tmp->lcl_port == hdr->dst_port
 	      && tmp->rmt_port == hdr->src_port)
 	    {
-	      clib_warning ("half-open is valid!");
+	      TCP_DBG ("half-open is valid!");
 	    }
 	}
     }
@@ -1888,7 +1892,8 @@ tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
  * Lookup transport connection
  */
 static tcp_connection_t *
-tcp_lookup_connection (vlib_buffer_t * b, u8 thread_index, u8 is_ip4)
+tcp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
+		       u8 is_ip4)
 {
   tcp_header_t *tcp;
   transport_connection_t *tconn;
@@ -1898,12 +1903,13 @@ tcp_lookup_connection (vlib_buffer_t * b, u8 thread_index, u8 is_ip4)
       ip4_header_t *ip4;
       ip4 = vlib_buffer_get_current (b);
       tcp = ip4_next_header (ip4);
-      tconn = stream_session_lookup_transport_wt4 (&ip4->dst_address,
-						   &ip4->src_address,
-						   tcp->dst_port,
-						   tcp->src_port,
-						   SESSION_TYPE_IP4_TCP,
-						   thread_index);
+      tconn = session_lookup_connection_wt4 (fib_index,
+					     &ip4->dst_address,
+					     &ip4->src_address,
+					     tcp->dst_port,
+					     tcp->src_port,
+					     TRANSPORT_PROTO_TCP,
+					     thread_index);
       tc = tcp_get_connection_from_transport (tconn);
       ASSERT (tcp_lookup_is_valid (tc, tcp));
     }
@@ -1912,12 +1918,13 @@ tcp_lookup_connection (vlib_buffer_t * b, u8 thread_index, u8 is_ip4)
       ip6_header_t *ip6;
       ip6 = vlib_buffer_get_current (b);
       tcp = ip6_next_header (ip6);
-      tconn = stream_session_lookup_transport_wt6 (&ip6->dst_address,
-						   &ip6->src_address,
-						   tcp->dst_port,
-						   tcp->src_port,
-						   SESSION_TYPE_IP6_TCP,
-						   thread_index);
+      tconn = session_lookup_connection_wt6 (fib_index,
+					     &ip6->dst_address,
+					     &ip6->src_address,
+					     tcp->dst_port,
+					     tcp->src_port,
+					     TRANSPORT_PROTO_TCP,
+					     thread_index);
       tc = tcp_get_connection_from_transport (tconn);
       ASSERT (tcp_lookup_is_valid (tc, tcp));
     }
@@ -1975,7 +1982,8 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (PREDICT_FALSE (tc0->flags & TCP_CONN_HALF_OPEN_DONE))
 	    {
 	      /* Make sure the connection actually exists */
-	      ASSERT (tcp_lookup_connection (b0, my_thread_index, is_ip4));
+	      ASSERT (tcp_lookup_connection (tc0->c_fib_index, b0,
+					     my_thread_index, is_ip4));
 	      goto drop;
 	    }
 
@@ -2309,7 +2317,9 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  if (CLIB_DEBUG)
 	    {
 	      tcp_connection_t *tmp;
-	      tmp = tcp_lookup_connection (b0, my_thread_index, is_ip4);
+	      tmp =
+		tcp_lookup_connection (tc0->c_fib_index, b0, my_thread_index,
+				       is_ip4);
 	      if (tmp->state != tc0->state)
 		{
 		  clib_warning ("state changed");
@@ -2657,7 +2667,6 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 {
   u32 n_left_from, next_index, *from, *to_next;
   u32 my_thread_index = vm->thread_index;
-  u8 sst = is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -2719,7 +2728,9 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* 3. check for a SYN (did that already) */
 
 	  /* Make sure connection wasn't just created */
-	  child0 = tcp_lookup_connection (b0, my_thread_index, is_ip4);
+	  child0 =
+	    tcp_lookup_connection (lc0->c_fib_index, b0, my_thread_index,
+				   is_ip4);
 	  if (PREDICT_FALSE (child0->state != TCP_STATE_LISTEN))
 	    {
 	      error0 = TCP_ERROR_CREATE_EXISTS;
@@ -2746,7 +2757,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   sizeof (ip6_address_t));
 	    }
 
-	  if (stream_session_accept (&child0->connection, lc0->c_s_index, sst,
+	  if (stream_session_accept (&child0->connection, lc0->c_s_index,
 				     0 /* notify */ ))
 	    {
 	      clib_warning ("session accept fail");
@@ -2924,7 +2935,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  int n_advance_bytes0, n_data_bytes0;
-	  u32 bi0;
+	  u32 bi0, fib_index0;
 	  vlib_buffer_t *b0;
 	  tcp_header_t *tcp0 = 0;
 	  tcp_connection_t *tc0;
@@ -2943,6 +2954,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  vnet_buffer (b0)->tcp.flags = 0;
+	  fib_index0 = vnet_buffer (b0)->ip.fib_index;
 
 	  /* Checksum computed by ipx_local no need to compute again */
 
@@ -2954,12 +2966,12 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 				  + tcp_header_bytes (tcp0));
 	      n_data_bytes0 = clib_net_to_host_u16 (ip40->length)
 		- n_advance_bytes0;
-	      tconn = stream_session_lookup_transport_wt4 (&ip40->dst_address,
-							   &ip40->src_address,
-							   tcp0->dst_port,
-							   tcp0->src_port,
-							   SESSION_TYPE_IP4_TCP,
-							   my_thread_index);
+	      tconn =
+		session_lookup_connection_wt4 (fib_index0, &ip40->dst_address,
+					       &ip40->src_address,
+					       tcp0->dst_port, tcp0->src_port,
+					       TRANSPORT_PROTO_TCP,
+					       my_thread_index);
 	      tc0 = tcp_get_connection_from_transport (tconn);
 	      ASSERT (tcp_lookup_is_valid (tc0, tcp0));
 	    }
@@ -2971,12 +2983,12 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      n_data_bytes0 = clib_net_to_host_u16 (ip60->payload_length)
 		- n_advance_bytes0;
 	      n_advance_bytes0 += sizeof (ip60[0]);
-	      tconn = stream_session_lookup_transport_wt6 (&ip60->dst_address,
-							   &ip60->src_address,
-							   tcp0->dst_port,
-							   tcp0->src_port,
-							   SESSION_TYPE_IP6_TCP,
-							   my_thread_index);
+	      tconn =
+		session_lookup_connection_wt6 (fib_index0, &ip60->dst_address,
+					       &ip60->src_address,
+					       tcp0->dst_port, tcp0->src_port,
+					       TRANSPORT_PROTO_TCP,
+					       my_thread_index);
 	      tc0 = tcp_get_connection_from_transport (tconn);
 	      ASSERT (tcp_lookup_is_valid (tc0, tcp0));
 	    }

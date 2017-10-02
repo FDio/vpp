@@ -349,7 +349,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip_api.c				\
  vnet/ip/ip_checksum.c				\
  vnet/ip/ip_frag.c				\
- vnet/ip/ip.h					\
+ vnet/ip/ip.c					\
  vnet/ip/ip_init.c				\
  vnet/ip/ip_input_acl.c				\
  vnet/ip/lookup.c				\
@@ -858,23 +858,28 @@ nobase_include_HEADERS +=			\
 
 libvnet_la_SOURCES +=				\
   vnet/session/session.c			\
+  vnet/session/session_table.c			\
   vnet/session/session_lookup.c			\
   vnet/session/session_node.c			\
   vnet/session/transport_interface.c		\
   vnet/session/application.c			\
   vnet/session/session_cli.c			\
   vnet/session/application_interface.c		\
+  vnet/session/application_namespace.c		\
   vnet/session/segment_manager.c		\
+  vnet/session/session_test.c			\
   vnet/session/session_api.c
 
 nobase_include_HEADERS +=			\
   vnet/session/session.h			\
+  vnet/session/session_table.h			\
   vnet/session/stream_session.h			\
   vnet/session/session_lookup.h			\
   vnet/session/application.h			\
   vnet/session/transport.h			\
   vnet/session/transport_interface.h		\
   vnet/session/application_interface.h		\
+  vnet/session/application_namespace.h		\
   vnet/session/session_debug.h			\
   vnet/session/segment_manager.h		\
   vnet/session/session.api.h

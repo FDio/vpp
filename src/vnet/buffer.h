@@ -126,8 +126,14 @@ typedef struct
 	     protocol and ports. */
 	  u32 flow_hash;
 
-	  /* next protocol */
-	  u32 save_protocol;
+	  union
+	  {
+	    /* next protocol */
+	    u32 save_protocol;
+
+	    /* Hint for transport protocols */
+	    u32 fib_index;
+	  };
 
 	  /* Rewrite length */
 	  u32 save_rewrite_length;
