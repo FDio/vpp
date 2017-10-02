@@ -73,7 +73,6 @@ builtin_server_rx_callback (stream_session_t * s)
       /* Fabricate TX event, send to ourselves */
       evt.fifo = tx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
-      evt.event_id = 0;
       q = session_manager_get_vpp_event_queue (s->thread_index);
       unix_shared_memory_queue_add (q, (u8 *) & evt,
 				    0 /* do wait for mutex */ );

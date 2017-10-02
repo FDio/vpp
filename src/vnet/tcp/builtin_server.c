@@ -73,7 +73,7 @@ builtin_session_disconnect_callback (stream_session_t * s)
   builtin_server_main_t *bsm = &builtin_server_main;
   vnet_disconnect_args_t _a, *a = &_a;
 
-  a->handle = stream_session_handle (s);
+  a->handle = session_handle (s);
   a->app_index = bsm->app_index;
   vnet_disconnect_session (a);
 }
@@ -158,7 +158,6 @@ builtin_server_rx_callback (stream_session_t * s)
   svm_fifo_t *tx_fifo, *rx_fifo;
   builtin_server_main_t *bsm = &builtin_server_main;
   session_fifo_event_t evt;
-  static int serial_number = 0;
   u32 thread_index = vlib_get_thread_index ();
 
   ASSERT (s->thread_index == thread_index);
@@ -190,7 +189,6 @@ builtin_server_rx_callback (stream_session_t * s)
 	  unix_shared_memory_queue_t *q;
 	  evt.fifo = rx_fifo;
 	  evt.event_type = FIFO_EVENT_BUILTIN_RX;
-	  evt.event_id = 0;
 
 	  q = bsm->vpp_queue[thread_index];
 	  if (PREDICT_FALSE (q->cursize == q->maxsize))
@@ -232,7 +230,6 @@ builtin_server_rx_callback (stream_session_t * s)
       /* Fabricate TX event, send to vpp */
       evt.fifo = tx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
-      evt.event_id = serial_number++;
 
       if (unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
 					(u8 *) & evt,

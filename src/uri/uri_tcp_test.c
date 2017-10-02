@@ -327,6 +327,7 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
   svm_fifo_segment_create_args_t _a, *a = &_a;
   int rv;
 
+  memset (a, 0, sizeof (*a));
   a->segment_name = (char *) mp->segment_name;
   a->segment_size = mp->segment_size;
   /* Attach to the segment vpp created */
@@ -590,7 +591,6 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
   u32 bytes_to_snd;
   u32 queue_max_chunk = 128 << 10, actual_write;
   session_fifo_event_t evt;
-  static int serial_number = 0;
   int rv;
 
   bytes_to_snd = (bytes == 0) ? vec_len (test_data) : bytes;
@@ -615,7 +615,6 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
 	      /* Fabricate TX event, send to vpp */
 	      evt.fifo = tx_fifo;
 	      evt.event_type = FIFO_EVENT_APP_TX;
-	      evt.event_id = serial_number++;
 
 	      unix_shared_memory_queue_add (utm->vpp_event_queue,
 					    (u8 *) & evt,
@@ -918,6 +917,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_ACCEPT_SESSION_REPLY);
   rmp->handle = mp->handle;
+  rmp->context = mp->context;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & rmp);
 
   session->bytes_received = 0;
@@ -983,7 +983,6 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	      /* Fabricate TX event, send to vpp */
 	      evt.fifo = tx_fifo;
 	      evt.event_type = FIFO_EVENT_APP_TX;
-	      evt.event_id = e->event_id;
 
 	      q = utm->vpp_event_queue;
 	      unix_shared_memory_queue_add (q, (u8 *) & evt,
@@ -997,7 +996,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 void
 server_handle_event_queue (uri_tcp_test_main_t * utm)
 {
-  session_fifo_event_t _e, *e = &_e;;
+  session_fifo_event_t _e, *e = &_e;
 
   while (1)
     {
