@@ -272,9 +272,9 @@ lisp_gpe_tenant_flush (void)
  * @brif Show/display one tenant
  */
 static u8 *
-format_lisp_gpe_tenant (u8 * s, va_list ap)
+format_lisp_gpe_tenant (u8 * s, va_list * ap)
 {
-  const lisp_gpe_tenant_t *lt = va_arg (ap, lisp_gpe_tenant_t *);
+  const lisp_gpe_tenant_t *lt = va_arg (*ap, lisp_gpe_tenant_t *);
 
   s = format (s, "VNI:%d ", lt->lt_vni);
 

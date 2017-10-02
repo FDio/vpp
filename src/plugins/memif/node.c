@@ -60,7 +60,7 @@ format_memif_input_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   memif_input_trace_t *t = va_arg (*args, memif_input_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "memif: hw_if_index %d next-index %d",
 	      t->hw_if_index, t->next_index);

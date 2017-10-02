@@ -374,7 +374,7 @@ format_dpdk_rss_hf_name (u8 * s, va_list * args)
 {
   u64 bitmap = va_arg (*args, u64);
   int next_split = _line_len;
-  int indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   if (!bitmap)
     return format (s, "none");
@@ -387,7 +387,7 @@ format_dpdk_rx_offload_caps (u8 * s, va_list * args)
 {
   u32 bitmap = va_arg (*args, u32);
   int next_split = _line_len;
-  int indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   if (!bitmap)
     return format (s, "none");
@@ -400,7 +400,7 @@ format_dpdk_tx_offload_caps (u8 * s, va_list * args)
 {
   u32 bitmap = va_arg (*args, u32);
   int next_split = _line_len;
-  int indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   if (!bitmap)
     return format (s, "none");
 
@@ -415,7 +415,7 @@ format_dpdk_device_errors (u8 * s, va_list * args)
 {
   dpdk_device_t *xd = va_arg (*args, dpdk_device_t *);
   clib_error_t *e;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   vec_foreach (e, xd->errors)
   {
@@ -431,7 +431,7 @@ format_dpdk_device (u8 * s, va_list * args)
   int verbose = va_arg (*args, int);
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, dev_instance);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   f64 now = vlib_time_now (dm->vlib_main);
   struct rte_eth_dev_info di;
 
@@ -577,7 +577,7 @@ format_dpdk_tx_dma_trace (u8 * s, va_list * va)
   dpdk_tx_dma_trace_t *t = va_arg (*va, dpdk_tx_dma_trace_t *);
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, t->device_index);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->vlib_sw_if_index);
 
   s = format (s, "%U tx queue %d",
@@ -604,7 +604,7 @@ format_dpdk_rx_dma_trace (u8 * s, va_list * va)
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd = vec_elt_at_index (dm->devices, t->device_index);
   format_function_t *f;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, xd->vlib_sw_if_index);
 
   s = format (s, "%U rx queue %d",
@@ -641,7 +641,7 @@ static inline u8 *
 format_dpdk_pkt_types (u8 * s, va_list * va)
 {
   u32 *pkt_types = va_arg (*va, u32 *);
-  uword indent __attribute__ ((unused)) = format_get_indent (s) + 2;
+  u32 indent __attribute__ ((unused)) = format_get_indent (s) + 2;
 
   if (!*pkt_types)
     return s;
@@ -664,7 +664,7 @@ static inline u8 *
 format_dpdk_pkt_offload_flags (u8 * s, va_list * va)
 {
   u64 *ol_flags = va_arg (*va, u64 *);
-  uword indent = format_get_indent (s) + 2;
+  u32 indent = format_get_indent (s) + 2;
 
   if (!*ol_flags)
     return s;
@@ -709,7 +709,7 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
 {
   struct rte_mbuf *mb = va_arg (*va, struct rte_mbuf *);
   ethernet_header_t *eth_hdr = va_arg (*va, ethernet_header_t *);
-  uword indent = format_get_indent (s) + 2;
+  u32 indent = format_get_indent (s) + 2;
 
   s = format (s, "PKT MBUF: port %d, nb_segs %d, pkt_len %d"
 	      "\n%Ubuf_len %d, data_len %d, ol_flags 0x%x, data_off %d, phys_addr 0x%x"

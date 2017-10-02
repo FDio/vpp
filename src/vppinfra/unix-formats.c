@@ -712,7 +712,7 @@ u8 * format_ethernet_packet (u8 * s, va_list * args)
   struct ethhdr * h = va_arg (*args, struct ethhdr *);
   uword proto = h->h_proto;
   u8 * payload = (void *) (h + 1);
-  uword indent;
+  u32 indent;
 
   /* Check for 802.2/802.3 encapsulation. */
   if (proto < ETH_DATA_LEN)

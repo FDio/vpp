@@ -615,10 +615,10 @@ mfib_table_walk (u32 fib_index,
 }
 
 u8*
-format_mfib_table_name (u8* s, va_list ap)
+format_mfib_table_name (u8* s, va_list *ap)
 {
-    fib_node_index_t fib_index = va_arg(ap, fib_node_index_t);
-    fib_protocol_t proto = va_arg(ap, int); // int promotion
+    fib_node_index_t fib_index = va_arg(*ap, fib_node_index_t);
+    fib_protocol_t proto = va_arg(*ap, int); // int promotion
     mfib_table_t *mfib_table;
 
     mfib_table = mfib_table_get(fib_index, proto);

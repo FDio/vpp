@@ -194,7 +194,7 @@ format_memif_queue (u8 * s, va_list * args)
   memif_if_t *mif = va_arg (*args, memif_if_t *);
   memif_queue_t *mq = va_arg (*args, memif_queue_t *);
   uword i = va_arg (*args, uword);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "%U%s ring %u:\n",
 	      format_white_space, indent,
@@ -218,7 +218,7 @@ format_memif_descriptor (u8 * s, va_list * args)
 {
   memif_if_t *mif = va_arg (*args, memif_if_t *);
   memif_queue_t *mq = va_arg (*args, memif_queue_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   memif_ring_t *ring;
   u16 ring_size;
   u16 slot;

@@ -1371,9 +1371,9 @@ vnet_lisp_gpe_fwd_entry_flush (void)
 }
 
 static u8 *
-format_lisp_fwd_path (u8 * s, va_list ap)
+format_lisp_fwd_path (u8 * s, va_list * ap)
 {
-  lisp_fwd_path_t *lfp = va_arg (ap, lisp_fwd_path_t *);
+  lisp_fwd_path_t *lfp = va_arg (*ap, lisp_fwd_path_t *);
 
   s = format (s, "weight:%d ", lfp->weight);
   s = format (s, "adj:[%U]\n",
@@ -1392,12 +1392,12 @@ typedef enum lisp_gpe_fwd_entry_format_flag_t_
 
 
 static u8 *
-format_lisp_gpe_fwd_entry (u8 * s, va_list ap)
+format_lisp_gpe_fwd_entry (u8 * s, va_list * ap)
 {
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
-  lisp_gpe_fwd_entry_t *lfe = va_arg (ap, lisp_gpe_fwd_entry_t *);
+  lisp_gpe_fwd_entry_t *lfe = va_arg (*ap, lisp_gpe_fwd_entry_t *);
   lisp_gpe_fwd_entry_format_flag_t flags =
-    va_arg (ap, lisp_gpe_fwd_entry_format_flag_t);
+    va_arg (*ap, lisp_gpe_fwd_entry_format_flag_t);
 
   s = format (s, "VNI:%d VRF:%d EID: %U -> %U  [index:%d]",
 	      lfe->key->vni, lfe->eid_table_id,

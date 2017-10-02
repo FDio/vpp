@@ -1388,7 +1388,7 @@ format_pg_input_trace (u8 * s, va_list * va)
   pg_main_t *pg = &pg_main;
   pg_stream_t *stream;
   vlib_node_t *n;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   stream = 0;
   if (!pool_is_free_index (pg->streams, t->stream_index))

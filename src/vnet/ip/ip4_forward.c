@@ -1258,7 +1258,7 @@ format_ip4_forward_next_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_forward_next_trace_t *t = va_arg (*args, ip4_forward_next_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   s = format (s, "%U%U",
 	      format_white_space, indent,
 	      format_ip4_header, t->packet_data, sizeof (t->packet_data));
@@ -1271,7 +1271,7 @@ format_ip4_lookup_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_forward_next_trace_t *t = va_arg (*args, ip4_forward_next_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "fib %d dpo-idx %d flow hash: 0x%08x",
 	      t->fib_index, t->dpo_index, t->flow_hash);
@@ -1287,7 +1287,7 @@ format_ip4_rewrite_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   ip4_forward_next_trace_t *t = va_arg (*args, ip4_forward_next_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "tx_sw_if_index %d dpo-idx %d : %U flow hash: 0x%08x",
 	      t->fib_index, t->dpo_index, format_ip_adjacency,

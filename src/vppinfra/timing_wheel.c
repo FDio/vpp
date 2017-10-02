@@ -720,7 +720,7 @@ format_timing_wheel (u8 * s, va_list * va)
 {
   timing_wheel_t *w = va_arg (*va, timing_wheel_t *);
   int verbose = va_arg (*va, int);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "level 0: %.4e - %.4e secs, 2^%d - 2^%d clocks",
 	      (f64) (1 << w->log2_clocks_per_bin) / w->cpu_clocks_per_second,

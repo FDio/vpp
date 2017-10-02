@@ -97,11 +97,11 @@ typedef struct fib_test_rep_bucket_t_ {
 
 extern int fib_test_validate_rep_v(const replicate_t *rep,
                                    u16 n_buckets,
-                                   va_list ap);
+                                   va_list *ap);
 
 extern int fib_test_validate_lb_v(const load_balance_t *lb,
                                   u16 n_buckets,
-                                  va_list ap);
+                                  va_list *ap);
 
 extern int fib_test_validate_entry(fib_node_index_t fei,
                                    fib_forward_chain_type_t fct,

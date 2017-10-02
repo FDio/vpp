@@ -171,7 +171,7 @@ format_vlib_pci_vpd (u8 * s, va_list * args)
 {
   u8 *data = va_arg (*args, u8 *);
   u8 *id = va_arg (*args, u8 *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   char *string_types[] = { "PN", "EC", "SN", "MN", 0 };
   uword p = 0;
   int first_line = 1;

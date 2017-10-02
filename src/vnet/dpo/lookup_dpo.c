@@ -595,7 +595,7 @@ format_lookup_trace (u8 * s, va_list * args)
     CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
     CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
     lookup_trace_t * t = va_arg (*args, lookup_trace_t *);
-    uword indent = format_get_indent (s);
+    u32 indent = format_get_indent (s);
     s = format (s, "%U fib-index:%d addr:%U load-balance:%d",
                 format_white_space, indent,
                 t->fib_index,
@@ -1113,7 +1113,7 @@ format_lookup_mpls_trace (u8 * s, va_list * args)
     CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
     CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
     lookup_trace_t * t = va_arg (*args, lookup_trace_t *);
-    uword indent = format_get_indent (s);
+    u32 indent = format_get_indent (s);
     mpls_unicast_header_t hdr;
 
     hdr.label_exp_s_ttl = clib_net_to_host_u32(t->hdr.label_exp_s_ttl);

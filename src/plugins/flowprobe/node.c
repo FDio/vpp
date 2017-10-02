@@ -73,7 +73,7 @@ format_flowprobe_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   flowprobe_trace_t *t = va_arg (*args, flowprobe_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s,
 	      "FLOWPROBE[%s]: rx_sw_if_index %d, tx_sw_if_index %d, "

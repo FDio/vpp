@@ -604,7 +604,7 @@ format_svm_fifo_segment (u8 * s, va_list * args)
   svm_fifo_t *f;
   int i;
   u32 count;
-  uword indent = format_get_indent (s) + 2;
+  u32 indent = format_get_indent (s) + 2;
 
   sh = sp->ssvm.sh;
   fsh = (svm_fifo_segment_header_t *) sh->opaque[0];

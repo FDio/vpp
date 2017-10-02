@@ -59,7 +59,7 @@ extern void load_balance_map_unlock(index_t lbmi);
 
 extern void load_balance_map_path_state_change(fib_node_index_t path_index);
 
-extern u8* format_load_balance_map(u8 *s, va_list ap);
+extern u8* format_load_balance_map(u8 *s, va_list *ap);
 extern void load_balance_map_show_mem(void);
 
 /**
