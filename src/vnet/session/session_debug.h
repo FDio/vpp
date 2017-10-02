@@ -31,11 +31,13 @@ typedef enum _session_evt_dbg
 #undef _
 } session_evt_dbg_e;
 
-#define SESSION_DBG (0)
+#define SESSION_DEBUG (0 && TRANSPORT_DEBUG)
 #define SESSION_DEQ_NODE_EVTS (0)
 #define SESSION_EVT_POLL_DBG (1)
 
-#if TRANSPORT_DEBUG && SESSION_DBG
+#if SESSION_DEBUG
+
+#define SESSION_DBG(_fmt, _args...) clib_warning (_fmt, ##_args)
 
 #define DEC_SESSION_ETD(_s, _e, _size)					\
   struct								\
@@ -78,7 +80,7 @@ typedef enum _session_evt_dbg
   do { _body; } while (0);						\
 }
 
-#if SESSION_DEQ_NODE_EVTS
+#if SESSION_DEQ_NODE_EVTS && SESSION_DEBUG > 1
 #define SESSION_EVT_DEQ_NODE_HANDLER(_node_evt)				\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
@@ -96,9 +98,9 @@ typedef enum _session_evt_dbg
 }
 #else
 #define SESSION_EVT_DEQ_NODE_HANDLER(_node_evt)
-#endif
+#endif /* SESSION_DEQ_NODE_EVTS */
 
-#if SESSION_DBG && SESSION_EVT_POLL_DBG
+#if SESSION_EVT_POLL_DBG && SESSION_DEBUG > 1
 #define SESSION_EVT_POLL_GAP(_smm, _my_thread_index)			\
 {									\
   ELOG_TYPE_DECLARE (_e) =						\
@@ -122,7 +124,7 @@ typedef enum _session_evt_dbg
 #else
 #define SESSION_EVT_POLL_GAP(_smm, _my_thread_index)
 #define SESSION_EVT_POLL_GAP_TRACK_HANDLER(_smm, _my_thread_index)
-#endif
+#endif /* SESSION_EVT_POLL_DBG */
 
 #define CONCAT_HELPER(_a, _b) _a##_b
 #define CC(_a, _b) CONCAT_HELPER(_a, _b)
@@ -130,7 +132,8 @@ typedef enum _session_evt_dbg
 
 #else
 #define SESSION_EVT_DBG(_evt, _args...)
-#endif
+#define SESSION_DBG(_fmt, _args...)
+#endif /* SESSION_DEBUG */
 
 #endif /* SRC_VNET_SESSION_SESSION_DEBUG_H_ */
 /*

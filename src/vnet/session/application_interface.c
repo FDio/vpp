@@ -80,28 +80,38 @@ api_parse_session_handle (u64 handle, u32 * session_index, u32 * thread_index)
 
 int
 vnet_bind_i (u32 app_index, session_type_t sst,
-	     transport_endpoint_t * tep, u64 * handle)
+	     session_endpoint_t * sep, u64 * handle)
 {
   application_t *app;
   stream_session_t *listener;
+  u32 table_index = 0;
 
   app = application_get_if_valid (app_index);
   if (!app)
     {
-      clib_warning ("app not attached");
+      SESSION_DBG ("app not attached");
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
-  listener = stream_session_lookup_listener (&tep->ip, tep->port, sst);
+  /* TODO local vs global table */
+  if (scope == global)
+    {
+      table_index = application_session_table (app);
+    }
+  else
+    {
+      table_index = application_local_session_table (app);
+    }
+  listener = session_lookup_listener (table_index, sep);
   if (listener)
     return VNET_API_ERROR_ADDRESS_IN_USE;
 
-  if (!ip_is_zero (&tep->ip, tep->is_ip4)
-      && !ip_is_local (&tep->ip, tep->is_ip4))
+  if (!ip_is_zero (&sep->ip, sep->is_ip4)
+      && !ip_is_local (&sep->ip, sep->is_ip4))
     return VNET_API_ERROR_INVALID_VALUE_2;
 
   /* Setup listen path down to transport */
-  return application_start_listen (app, sst, tep, handle);
+  return application_start_listen (app, sst, sep, handle);
 }
 
 int
@@ -111,7 +121,7 @@ vnet_unbind_i (u32 app_index, u64 handle)
 
   if (!app)
     {
-      clib_warning ("app (%d) not attached", app_index);
+      SESSION_DBG ("app (%d) not attached", app_index);
       return VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
     }
 
@@ -121,7 +131,7 @@ vnet_unbind_i (u32 app_index, u64 handle)
 
 int
 vnet_connect_i (u32 app_index, u32 api_context, session_type_t sst,
-		transport_endpoint_t * tep, void *mp)
+		session_endpoint_t * tep, void *mp)
 {
   stream_session_t *listener;
   application_t *server, *app;
@@ -129,7 +139,7 @@ vnet_connect_i (u32 app_index, u32 api_context, session_type_t sst,
   /*
    * Figure out if connecting to a local server
    */
-  listener = stream_session_lookup_listener (&tep->ip, tep->port, sst);
+  listener = session_lookup_listener (&tep->ip, tep->port, sst);
   if (listener)
     {
       server = application_get (listener->app_index);
@@ -171,36 +181,36 @@ uword
 unformat_vnet_uri (unformat_input_t * input, va_list * args)
 {
   session_type_t *sst = va_arg (*args, session_type_t *);
-  transport_endpoint_t *tep = va_arg (*args, transport_endpoint_t *);
+  session_endpoint_t *sep = va_arg (*args, session_endpoint_t *);
 
-  if (unformat (input, "tcp://%U/%d", unformat_ip4_address, &tep->ip.ip4,
-		&tep->port))
+  if (unformat (input, "tcp://%U/%d", unformat_ip4_address, &sep->ip.ip4,
+		&sep->port))
     {
       *sst = SESSION_TYPE_IP4_TCP;
-      tep->port = clib_host_to_net_u16 (tep->port);
-      tep->is_ip4 = 1;
+      sep->port = clib_host_to_net_u16 (sep->port);
+      sep->is_ip4 = 1;
       return 1;
     }
-  if (unformat (input, "udp://%U/%d", unformat_ip4_address, &tep->ip.ip4,
-		&tep->port))
+  if (unformat (input, "udp://%U/%d", unformat_ip4_address, &sep->ip.ip4,
+		&sep->port))
     {
       *sst = SESSION_TYPE_IP4_UDP;
-      tep->port = clib_host_to_net_u16 (tep->port);
-      tep->is_ip4 = 1;
+      sep->port = clib_host_to_net_u16 (sep->port);
+      sep->is_ip4 = 1;
       return 1;
     }
-  if (unformat (input, "udp://%U/%d", unformat_ip6_address, &tep->ip.ip6,
-		&tep->port))
+  if (unformat (input, "udp://%U/%d", unformat_ip6_address, &sep->ip.ip6,
+		&sep->port))
     {
       *sst = SESSION_TYPE_IP6_UDP;
-      tep->port = clib_host_to_net_u16 (tep->port);
+      sep->port = clib_host_to_net_u16 (sep->port);
       return 1;
     }
-  if (unformat (input, "tcp://%U/%d", unformat_ip6_address, &tep->ip.ip6,
-		&tep->port))
+  if (unformat (input, "tcp://%U/%d", unformat_ip6_address, &sep->ip.ip6,
+		&sep->port))
     {
       *sst = SESSION_TYPE_IP6_TCP;
-      tep->port = clib_host_to_net_u16 (tep->port);
+      sep->port = clib_host_to_net_u16 (sep->port);
       return 1;
     }
 
@@ -209,10 +219,10 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
 
 static u8 *cache_uri;
 static session_type_t cache_sst;
-static transport_endpoint_t *cache_tep;
+static session_endpoint_t *cache_tep;
 
 int
-parse_uri (char *uri, session_type_t * sst, transport_endpoint_t * tep)
+parse_uri (char *uri, session_type_t * sst, session_endpoint_t * tep)
 {
   unformat_input_t _input, *input = &_input;
 
@@ -298,7 +308,7 @@ int
 vnet_bind_uri (vnet_bind_args_t * a)
 {
   session_type_t sst = SESSION_N_TYPES;
-  transport_endpoint_t tep;
+  session_endpoint_t tep;
   int rv;
 
   memset (&tep, 0, sizeof (tep));
@@ -317,14 +327,14 @@ vnet_unbind_uri (vnet_unbind_args_t * a)
 {
   session_type_t sst = SESSION_N_TYPES;
   stream_session_t *listener;
-  transport_endpoint_t tep;
+  session_endpoint_t tep;
   int rv;
 
   rv = parse_uri (a->uri, &sst, &tep);
   if (rv)
     return rv;
 
-  listener = stream_session_lookup_listener (&tep.ip,
+  listener = session_lookup_listener (&tep.ip,
 					     clib_host_to_net_u16 (tep.port),
 					     sst);
   if (!listener)
@@ -336,17 +346,17 @@ vnet_unbind_uri (vnet_unbind_args_t * a)
 int
 vnet_connect_uri (vnet_connect_args_t * a)
 {
-  transport_endpoint_t tep;
+  session_endpoint_t sep;
   session_type_t sst;
   int rv;
 
   /* Parse uri */
-  memset (&tep, 0, sizeof (tep));
-  rv = parse_uri (a->uri, &sst, &tep);
+  memset (&sep, 0, sizeof (sep));
+  rv = parse_uri (a->uri, &sst, &sep);
   if (rv)
     return rv;
 
-  return vnet_connect_i (a->app_index, a->api_context, sst, &tep, a->mp);
+  return vnet_connect_i (a->app_index, a->api_context, sst, &sep, a->mp);
 }
 
 int
@@ -355,7 +365,7 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
   u32 index, thread_index;
   stream_session_t *s;
 
-  stream_session_parse_handle (a->handle, &index, &thread_index);
+  session_parse_handle (a->handle, &index, &thread_index);
   s = stream_session_get_if_valid (index, thread_index);
 
   if (!s || s->app_index != a->app_index)
@@ -393,8 +403,8 @@ vnet_connect (vnet_connect_args_t * a)
 {
   session_type_t sst;
 
-  sst = session_type_from_proto_and_ip (a->proto, a->tep.is_ip4);
-  return vnet_connect_i (a->app_index, a->api_context, sst, &a->tep, a->mp);
+  sst = session_type_from_proto_and_ip (a->proto, a->sep.is_ip4);
+  return vnet_connect_i (a->app_index, a->api_context, sst, &a->sep, a->mp);
 }
 
 /*

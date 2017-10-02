@@ -1597,8 +1597,8 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
    * Confirm that connection lookup works
    */
 
-  stream_session_table_add_for_tc (tc1, tc1->s_index);
-  tconn = stream_session_lookup_transport_wt4 (&tc1->lcl_ip.ip4,
+  session_table_add_connection (tc1, tc1->s_index);
+  tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4,
 					       &tc1->rmt_ip.ip4,
 					       tc1->lcl_port, tc1->rmt_port,
 					       tc1->transport_proto, 0);
@@ -1611,7 +1611,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
    * Non-existing connection lookup should not work
    */
 
-  tconn = stream_session_lookup_transport_wt4 (&tc2->lcl_ip.ip4,
+  tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4,
 					       &tc2->rmt_ip.ip4,
 					       tc2->lcl_port, tc2->rmt_port,
 					       tc2->transport_proto, 0);
@@ -1620,13 +1620,13 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Delete and lookup again
    */
-  stream_session_table_del_for_tc (tc1);
-  tconn = stream_session_lookup_transport_wt4 (&tc1->lcl_ip.ip4,
+  session_table_del_connection (tc1);
+  tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4,
 					       &tc1->rmt_ip.ip4,
 					       tc1->lcl_port, tc1->rmt_port,
 					       tc1->transport_proto, 0);
   TCP_TEST ((tconn == 0), "lookup result should be null");
-  tconn = stream_session_lookup_transport_wt4 (&tc2->lcl_ip.ip4,
+  tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4,
 					       &tc2->rmt_ip.ip4,
 					       tc2->lcl_port, tc2->rmt_port,
 					       tc2->transport_proto, 0);
@@ -1635,8 +1635,8 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Re-add and lookup tc2
    */
-  stream_session_table_add_for_tc (tc1, tc1->s_index);
-  tconn = stream_session_lookup_transport_wt4 (&tc2->lcl_ip.ip4,
+  session_table_add_connection (tc1, tc1->s_index);
+  tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4,
 					       &tc2->rmt_ip.ip4,
 					       tc2->lcl_port, tc2->rmt_port,
 					       tc2->transport_proto, 0);

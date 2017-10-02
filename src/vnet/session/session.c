@@ -85,7 +85,7 @@ stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
 
   /* Add to the main lookup table */
   value = stream_session_handle (s);
-  stream_session_table_add_for_tc (tc, value);
+  session_table_add_connection (tc, value);
 
   *ret_s = s;
 
@@ -223,7 +223,7 @@ stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
   stream_session_t *s;
   int enqueued = 0, rv, in_order_off;
 
-  s = stream_session_get (tc->s_index, tc->thread_index);
+  s = session_get (tc->s_index, tc->thread_index);
 
   if (is_in_order)
     {
@@ -275,7 +275,7 @@ u8
 stream_session_no_space (transport_connection_t * tc, u32 thread_index,
 			 u16 data_len)
 {
-  stream_session_t *s = stream_session_get (tc->s_index, thread_index);
+  stream_session_t *s = session_get (tc->s_index, thread_index);
 
   if (PREDICT_FALSE (s->session_state != SESSION_STATE_READY))
     return 1;
@@ -289,7 +289,7 @@ stream_session_no_space (transport_connection_t * tc, u32 thread_index,
 u32
 stream_session_tx_fifo_max_dequeue (transport_connection_t * tc)
 {
-  stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
+  stream_session_t *s = session_get (tc->s_index, tc->thread_index);
   if (!s->server_tx_fifo)
     return 0;
   return svm_fifo_max_dequeue (s->server_tx_fifo);
@@ -299,14 +299,14 @@ int
 stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
 			   u32 offset, u32 max_bytes)
 {
-  stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
+  stream_session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_peek (s->server_tx_fifo, offset, max_bytes, buffer);
 }
 
 u32
 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
 {
-  stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
+  stream_session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_dequeue_drop (s->server_tx_fifo, max_bytes);
 }
 
@@ -432,7 +432,7 @@ stream_session_init_fifos_pointers (transport_connection_t * tc,
 				    u32 rx_pointer, u32 tx_pointer)
 {
   stream_session_t *s;
-  s = stream_session_get (tc->s_index, tc->thread_index);
+  s = session_get (tc->s_index, tc->thread_index);
   svm_fifo_init_pointers (s->server_rx_fifo, rx_pointer);
   svm_fifo_init_pointers (s->server_tx_fifo, tx_pointer);
 }
@@ -448,17 +448,15 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
   u8 st;
 
   st = session_type_from_proto_and_ip (tc->transport_proto, tc->is_ip4);
-  handle = stream_session_half_open_lookup_handle (&tc->lcl_ip, &tc->rmt_ip,
-						   tc->lcl_port, tc->rmt_port,
-						   st);
+  handle = session_lookup_half_open_handle (tc);
   if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
-      TCP_DBG ("half-open was removed!");
+      SESSION_DBG ("half-open was removed!");
       return -1;
     }
 
   /* Cleanup half-open table */
-  stream_session_half_open_table_del (tc);
+  session_table_del_half_open (tc);
 
   /* Get the app's index from the handle we stored when opening connection
    * and the opaque (api_context for external apps) from transport session
@@ -489,7 +487,7 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
   if (app->cb_fns.session_connected_callback (app->index, opaque, new_s,
 					      is_fail))
     {
-      clib_warning ("failed to notify app");
+      SESSION_DBG ("failed to notify app");
       if (!is_fail)
 	stream_session_disconnect (new_s);
     }
@@ -508,7 +506,7 @@ stream_session_accept_notify (transport_connection_t * tc)
   application_t *server;
   stream_session_t *s;
 
-  s = stream_session_get (tc->s_index, tc->thread_index);
+  s = session_get (tc->s_index, tc->thread_index);
   server = application_get (s->app_index);
   server->cb_fns.session_accept_callback (s);
 }
@@ -526,7 +524,7 @@ stream_session_disconnect_notify (transport_connection_t * tc)
   application_t *server;
   stream_session_t *s;
 
-  s = stream_session_get (tc->s_index, tc->thread_index);
+  s = session_get (tc->s_index, tc->thread_index);
   server = application_get (s->app_index);
   server->cb_fns.session_disconnect_callback (s);
 }
@@ -541,7 +539,7 @@ stream_session_delete (stream_session_t * s)
   int rv;
 
   /* Delete from the main lookup table. */
-  if ((rv = stream_session_table_del (s)))
+  if ((rv = session_table_del_session (s)))
     clib_warning ("hash delete error, rv %d", rv);
 
   /* Cleanup fifo segments */
@@ -581,7 +579,7 @@ stream_session_reset_notify (transport_connection_t * tc)
 {
   stream_session_t *s;
   application_t *app;
-  s = stream_session_get (tc->s_index, tc->thread_index);
+  s = session_get (tc->s_index, tc->thread_index);
 
   app = application_get (s->app_index);
   app->cb_fns.session_reset_callback (s);
@@ -635,7 +633,7 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
  */
 int
 stream_session_open (u32 app_index, session_type_t st,
-		     transport_endpoint_t * rmt,
+		     session_endpoint_t * rmt,
 		     transport_connection_t ** res)
 {
   transport_connection_t *tc;
@@ -657,7 +655,7 @@ stream_session_open (u32 app_index, session_type_t st,
   handle = (((u64) app_index) << 32) | (u64) tc->c_index;
 
   /* Add to the half-open lookup table */
-  stream_session_half_open_table_add (tc, handle);
+  session_table_add_half_open (tc, handle);
 
   *res = tc;
 
@@ -673,7 +671,7 @@ stream_session_open (u32 app_index, session_type_t st,
  * @param tep Local endpoint to be listened on.
  */
 int
-stream_session_listen (stream_session_t * s, transport_endpoint_t * tep)
+stream_session_listen (stream_session_t * s, session_endpoint_t * tep)
 {
   transport_connection_t *tc;
   u32 tci;
@@ -693,7 +691,7 @@ stream_session_listen (stream_session_t * s, transport_endpoint_t * tep)
     return -1;
 
   /* Add to the main lookup table */
-  stream_session_table_add_for_tc (tc, s->session_index);
+  session_table_add_connection (tc, s->session_index);
 
   return 0;
 }
@@ -721,7 +719,7 @@ stream_session_stop_listen (stream_session_t * s)
       return VNET_API_ERROR_ADDRESS_NOT_IN_USE;
     }
 
-  stream_session_table_del_for_tc (tc);
+  session_table_del_connection (tc);
   tp_vfts[s->session_type].unbind (s->connection_index);
   return 0;
 }
@@ -780,7 +778,7 @@ stream_session_cleanup (stream_session_t * s)
   s->session_state = SESSION_STATE_CLOSED;
 
   /* Delete from the main lookup table to avoid more enqueues */
-  rv = stream_session_table_del (s);
+  rv = session_table_del_session (s);
   if (rv)
     clib_warning ("hash delete error, rv %d", rv);
 

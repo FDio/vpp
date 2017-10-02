@@ -58,7 +58,7 @@ typedef struct _vnet_bind_args_t
     char *uri;
     struct
     {
-      transport_endpoint_t tep;
+      session_endpoint_t tep;
       transport_proto_t proto;
     };
   };
@@ -91,7 +91,7 @@ typedef struct _vnet_connect_args
     char *uri;
     struct
     {
-      transport_endpoint_t tep;
+      session_endpoint_t sep;
       transport_proto_t proto;
     };
   };

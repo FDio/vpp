@@ -33,7 +33,7 @@ typedef struct _transport_connection
   u16 rmt_port;			/**< Remote port */
   u8 transport_proto;		/**< Protocol id */
   u8 is_ip4;			/**< Flag if IP4 connection */
-  u32 vrf;			/**< FIB table id */
+  u32 fib_index;			/**< FIB table id */
 
   u32 s_index;			/**< Parent session index */
   u32 c_index;			/**< Connection index in transport pool */
@@ -75,13 +75,16 @@ typedef enum _transport_proto
   TRANSPORT_PROTO_UDP
 } transport_proto_t;
 
+/** TODO split into transport and session endpoint */
 typedef struct _transport_endpoint
 {
-  ip46_address_t ip;	/** ip address */
-  u16 port;		/** port in net order */
-  u8 is_ip4;		/** 1 if ip4 */
-  u32 vrf;		/** fib table the endpoint is associated with */
-} transport_endpoint_t;
+  ip46_address_t ip;	/**< ip address */
+  u16 port;		/**< port in net order */
+  u8 is_ip4;		/**< 1 if ip4 */
+  u32 vrf;		/**< fib table the endpoint is associated with */
+
+  u8 transport_proto;
+} session_endpoint_t;
 
 #endif /* VNET_VNET_URI_TRANSPORT_H_ */
 

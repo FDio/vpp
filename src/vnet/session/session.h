@@ -214,10 +214,10 @@ stream_session_is_valid (u32 si, u8 thread_index)
 }
 
 always_inline stream_session_t *
-stream_session_get (u32 si, u32 thread_index)
+session_get (u32 index, u32 thread_index)
 {
-  ASSERT (stream_session_is_valid (si, thread_index));
-  return pool_elt_at_index (session_manager_main.sessions[thread_index], si);
+  ASSERT (stream_session_is_valid (index, thread_index));
+  return pool_elt_at_index (session_manager_main.sessions[thread_index], index);
 }
 
 always_inline stream_session_t *
@@ -252,19 +252,19 @@ stream_session_thread_from_handle (u64 handle)
 }
 
 always_inline void
-stream_session_parse_handle (u64 handle, u32 * index, u32 * thread_index)
+session_parse_handle (u64 handle, u32 * index, u32 * thread_index)
 {
   *index = stream_session_index_from_handle (handle);
   *thread_index = stream_session_thread_from_handle (handle);
 }
 
 always_inline stream_session_t *
-stream_session_get_from_handle (u64 handle)
+session_get_from_handle (u64 handle)
 {
   session_manager_main_t *smm = &session_manager_main;
-  return pool_elt_at_index (smm->sessions[stream_session_thread_from_handle
-					  (handle)],
-			    stream_session_index_from_handle (handle));
+  u32 index = 0, thread_index = 0;
+  stream_sesison_parse_handle (handle, &index, &thread_index);
+  return session_get (index, thread_index);
 }
 
 always_inline stream_session_t *
@@ -285,14 +285,14 @@ stream_session_get_index (stream_session_t * s)
 always_inline u32
 stream_session_max_rx_enqueue (transport_connection_t * tc)
 {
-  stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
+  stream_session_t *s = session_get (tc->s_index, tc->thread_index);
   return svm_fifo_max_enqueue (s->server_rx_fifo);
 }
 
 always_inline u32
 stream_session_rx_fifo_size (transport_connection_t * tc)
 {
-  stream_session_t *s = stream_session_get (tc->s_index, tc->thread_index);
+  stream_session_t *s = session_get (tc->s_index, tc->thread_index);
   return s->server_rx_fifo->nitems;
 }
 
@@ -319,9 +319,9 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
 		       u8 sst, u8 notify);
 int
 stream_session_open (u32 app_index, session_type_t st,
-		     transport_endpoint_t * tep,
+		     session_endpoint_t * tep,
 		     transport_connection_t ** tc);
-int stream_session_listen (stream_session_t * s, transport_endpoint_t * tep);
+int stream_session_listen (stream_session_t * s, session_endpoint_t * tep);
 int stream_session_stop_listen (stream_session_t * s);
 void stream_session_disconnect (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);
