@@ -528,7 +528,7 @@ tcp_lookup_rmt_in_fib (tcp_connection_t * tc)
   clib_memcpy (&prefix.fp_addr, &tc->c_rmt_ip, sizeof (prefix.fp_addr));
   prefix.fp_proto = tc->c_is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   prefix.fp_len = tc->c_is_ip4 ? 32 : 128;
-  fib_index = fib_table_find (prefix.fp_proto, tc->c_vrf);
+  fib_index = fib_table_find (prefix.fp_proto, tc->c_fib_index);
   return fib_table_lookup (fib_index, &prefix);
 }
 
@@ -606,7 +606,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
   tcp_connection_t *tc;
   fib_prefix_t prefix;
   fib_node_index_t fei;
-  u32 sw_if_index, fib_index;
+  u32 sw_if_index;
   ip46_address_t lcl_addr;
   int lcl_port;
 
@@ -620,14 +620,8 @@ tcp_connection_open (transport_endpoint_t * rmt)
   prefix.fp_proto = rmt->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   prefix.fp_len = rmt->is_ip4 ? 32 : 128;
 
-  fib_index = fib_table_find (prefix.fp_proto, rmt->vrf);
-  if (fib_index == (u32) ~ 0)
-    {
-      clib_warning ("no fib table");
-      return -1;
-    }
-
-  fei = fib_table_lookup (fib_index, &prefix);
+  ASSERT (rmt->fib_index != ENDPOINT_INVALID_INDEX);
+  fei = fib_table_lookup (rmt->fib_index, &prefix);
 
   /* Couldn't find route to destination. Bail out. */
   if (fei == FIB_NODE_INDEX_INVALID)
@@ -636,12 +630,14 @@ tcp_connection_open (transport_endpoint_t * rmt)
       return -1;
     }
 
-  sw_if_index = fib_entry_get_resolving_interface (fei);
+  sw_if_index = rmt->sw_if_index;
+  if (sw_if_index == ENDPOINT_INVALID_INDEX)
+    sw_if_index = fib_entry_get_resolving_interface (fei);
 
-  if (sw_if_index == (u32) ~ 0)
+  if (sw_if_index == ENDPOINT_INVALID_INDEX)
     {
       clib_warning ("no resolving interface for %U", format_ip46_address,
-		    &rmt->ip, IP46_TYPE_IP4);
+		    &rmt->ip, (rmt->is_ip4 == 0) + 1);
       return -1;
     }
 
@@ -709,7 +705,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
   tc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
   tc->c_is_ip4 = rmt->is_ip4;
   tc->c_transport_proto = TRANSPORT_PROTO_TCP;
-  tc->c_vrf = rmt->vrf;
+  tc->c_fib_index = rmt->fib_index;
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
 
