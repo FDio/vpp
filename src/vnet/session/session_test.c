@@ -260,8 +260,9 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((s->app_index == server_index), "app_index should be that of "
 		"the server");
   server_local_st_index = application_local_session_table (server);
-  local_listener = session_lookup_session_endpoint (server_local_st_index,
-						    &server_sep);
+  local_listener =
+    session_lookup_local_session_endpoint (server_local_st_index,
+					   &server_sep);
   SESSION_TEST ((local_listener != SESSION_INVALID_INDEX),
 		"listener should exist in local table");
 
@@ -312,8 +313,9 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s == 0), "listener should not exist in global table");
-  local_listener = session_lookup_session_endpoint (server_local_st_index,
-						    &server_sep);
+  local_listener =
+    session_lookup_local_session_endpoint (server_local_st_index,
+					   &server_sep);
   SESSION_TEST ((s == 0), "listener should not exist in local table");
 
   detach_args.app_index = server_index;
@@ -337,8 +339,9 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   s = session_lookup_listener (server_st_index, &server_sep);
   SESSION_TEST ((s == 0), "listener should not exist in global table");
   server_local_st_index = application_local_session_table (server);
-  local_listener = session_lookup_session_endpoint (server_local_st_index,
-						    &server_sep);
+  local_listener =
+    session_lookup_local_session_endpoint (server_local_st_index,
+					   &server_sep);
   SESSION_TEST ((local_listener != SESSION_INVALID_INDEX),
 		"listener should exist in local table");
 
@@ -346,8 +349,9 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   error = vnet_unbind (&unbind_args);
   SESSION_TEST ((error == 0), "unbind should work");
 
-  local_listener = session_lookup_session_endpoint (server_local_st_index,
-						    &server_sep);
+  local_listener =
+    session_lookup_local_session_endpoint (server_local_st_index,
+					   &server_sep);
   SESSION_TEST ((local_listener == SESSION_INVALID_INDEX),
 		"listener should not exist in local table");
 
@@ -417,8 +421,9 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((s->app_index == server_index), "app_index should be that of "
 		"the server");
   server_local_st_index = application_local_session_table (server);
-  local_listener = session_lookup_session_endpoint (server_local_st_index,
-						    &server_sep);
+  local_listener =
+    session_lookup_local_session_endpoint (server_local_st_index,
+					   &server_sep);
   SESSION_TEST ((local_listener != SESSION_INVALID_INDEX),
 		"zero listener should exist in local table");
   detach_args.app_index = server_index;
