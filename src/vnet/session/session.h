@@ -373,6 +373,19 @@ listen_session_get_from_handle (u64 handle)
   return s;
 }
 
+always_inline u32
+listen_session_get_port_and_proto (stream_session_t *listener)
+{
+  transport_connection_t *tc;
+  tc = tp_vfts[listener->session_type].get_listener (listener->connection_index);
+  if (!tc)
+    {
+      clib_warning("no transport");
+      return ((u32)~0);
+    }
+  return (tc->lcl_port << 8 | tc->transport_proto);
+}
+
 always_inline stream_session_t *
 listen_session_new (session_type_t type)
 {
@@ -424,6 +437,12 @@ session_manager_is_enabled ()
 {
   return session_manager_main.is_enabled == 1;
 }
+
+#define session_cli_return_if_not_enabled()				\
+do {									\
+    if (!session_manager_main.is_enabled)				\
+      return clib_error_return(0, "session layer is not enabled");	\
+} while (0)
 
 #endif /* __included_session_h__ */
 

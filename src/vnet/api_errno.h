@@ -116,7 +116,9 @@ _(SUBIF_DOESNT_EXIST, -123, "Subinterface doesn't exist")               \
 _(L2_MACS_EVENT_CLINET_PRESENT, -124, "Client already exist for L2 MACs events") \
 _(INVALID_QUEUE, -125, "Invalid queue")                 		\
 _(UNSUPPORTED, -126, "Unsupported")					\
-_(DUPLICATE_IF_ADDRESS, -127, "Address already present on another interface")
+_(DUPLICATE_IF_ADDRESS, -127, "Address already present on another interface")	\
+_(APP_INVALID_NS, -128, "Invalid application namespace")			\
+_(APP_WRONG_NS_SECRET, -129, "Wrong app namespace secret")
 
 typedef enum
 {
