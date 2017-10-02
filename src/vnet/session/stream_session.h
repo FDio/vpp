@@ -18,6 +18,7 @@
 
 #include <vnet/vnet.h>
 #include <svm/svm_fifo.h>
+#include <vnet/session/transport.h>
 
 #define foreach_session_type                    \
   _(IP4_TCP, ip4_tcp)                           \
@@ -80,6 +81,44 @@ typedef struct _stream_session_t
 
     CLIB_CACHE_LINE_ALIGN_MARK (pad);
 } stream_session_t;
+
+typedef struct _session_endpoint
+{
+  /*
+   * Network specific
+   */
+#define _(type, name) type name;
+  foreach_transport_connection_fields
+#undef _
+    /*
+     * Session specific
+     */
+  u8 transport_proto;	/**< transport protocol for session */
+} session_endpoint_t;
+
+#define SESSION_IP46_ZERO		\
+{					\
+    .ip6 = {				\
+	{ 0, 0, },			\
+    },					\
+}
+#define SESSION_ENDPOINT_NULL 		\
+{					\
+  .sw_if_index = ENDPOINT_INVALID_INDEX,	\
+  .ip = SESSION_IP46_ZERO,		\
+  .fib_index = ENDPOINT_INVALID_INDEX,	\
+  .is_ip4 = 0,				\
+  .port = 0,				\
+  .transport_proto = 0,			\
+}
+
+#define session_endpoint_to_transport(_sep) ((transport_endpoint_t *)_sep)
+
+always_inline u8
+session_endpoint_fib_proto (session_endpoint_t * sep)
+{
+  return sep->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+}
 
 #endif /* SRC_VNET_SESSION_STREAM_SESSION_H_ */
 

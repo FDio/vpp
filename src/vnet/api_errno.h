@@ -104,7 +104,7 @@ _(BFD_EAGAIN, -111, "BFD object cannot be manipulated at this time")	\
 _(INVALID_GPE_MODE, -112, "Invalid GPE mode")                           \
 _(LISP_GPE_ENTRIES_PRESENT, -113, "LISP GPE entries are present")       \
 _(ADDRESS_FOUND_FOR_INTERFACE, -114, "Address found for interface")	\
-_(SESSION_CONNECT_FAIL, -115, "Session failed to connect")              \
+_(SESSION_CONNECT, -115, "Session failed to connect")              	\
 _(ENTRY_ALREADY_EXISTS, -116, "Entry already exists")			\
 _(SVM_SEGMENT_CREATE_FAIL, -117, "svm segment create fail")		\
 _(APPLICATION_NOT_ATTACHED, -118, "application not attached")           \
@@ -116,7 +116,12 @@ _(SUBIF_DOESNT_EXIST, -123, "Subinterface doesn't exist")               \
 _(L2_MACS_EVENT_CLINET_PRESENT, -124, "Client already exist for L2 MACs events") \
 _(INVALID_QUEUE, -125, "Invalid queue")                 		\
 _(UNSUPPORTED, -126, "Unsupported")					\
-_(DUPLICATE_IF_ADDRESS, -127, "Address already present on another interface")
+_(DUPLICATE_IF_ADDRESS, -127, "Address already present on another interface")	\
+_(APP_INVALID_NS, -128, "Invalid application namespace")			\
+_(APP_WRONG_NS_SECRET, -129, "Wrong app namespace secret")		\
+_(APP_CONNECT_SCOPE, -130, "Connect scope")				\
+_(APP_ALREADY_ATTACHED, -131, "App already attached")			\
+_(SESSION_REDIRECT, -132, "Redirect failed")				\
 
 typedef enum
 {
