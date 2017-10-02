@@ -1,0 +1,165 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_d872ef48",
+        "filename": "src/vnet/geneve/encap.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 110,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-02T03:09:39Z",
+      "side": 1,
+      "message": "The conversion from src/dst to local/remote is not appropriate in this encap.c file, as it did not refer to source and destination IP addresses of the tunnel. Rather \"src\" is that of the tunnel encap string while \"dst\" is the IP/TUNNEL header of the current packet. Can we restore the previous src/dst names, please?",
+      "range": {
+        "startLine": 110,
+        "startChar": 16,
+        "endLine": 110,
+        "endChar": 27
+      },
+      "revId": "c99fa2da522f843bfddedf064ab961d789182c12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_7899bb6d",
+        "filename": "src/vnet/geneve/geneve.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 390,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-02T03:09:39Z",
+      "side": 1,
+      "message": "This should be key4.remote and hence the comment should be removed now as we are using proper names now.",
+      "range": {
+        "startLine": 390,
+        "startChar": 11,
+        "endLine": 390,
+        "endChar": 16
+      },
+      "revId": "c99fa2da522f843bfddedf064ab961d789182c12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_589eff57",
+        "filename": "src/vnet/geneve/geneve.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 396,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-02T03:09:39Z",
+      "side": 1,
+      "message": "key6.remote",
+      "range": {
+        "startLine": 396,
+        "startChar": 11,
+        "endLine": 396,
+        "endChar": 16
+      },
+      "revId": "c99fa2da522f843bfddedf064ab961d789182c12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_7882db01",
+        "filename": "src/vnet/geneve/geneve.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 49,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-02T03:09:39Z",
+      "side": 1,
+      "message": "Comment for \"local\" is not correct and should remain as \"source\" ip of the incoming packet. We are using it and vni as the key for tunnel look up.",
+      "range": {
+        "startLine": 49,
+        "startChar": 20,
+        "endLine": 49,
+        "endChar": 25
+      },
+      "revId": "c99fa2da522f843bfddedf064ab961d789182c12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_988d9734",
+        "filename": "src/vnet/geneve/geneve.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-02T03:09:39Z",
+      "side": 1,
+      "message": "This should be remote, as it is the source IP of the incoming packet.",
+      "range": {
+        "startLine": 54,
+        "startChar": 10,
+        "endLine": 54,
+        "endChar": 15
+      },
+      "revId": "c99fa2da522f843bfddedf064ab961d789182c12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_58871f10",
+        "filename": "src/vnet/geneve/geneve.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-02T03:09:39Z",
+      "side": 1,
+      "message": "Same as above, should be source instead of local",
+      "range": {
+        "startLine": 63,
+        "startChar": 20,
+        "endLine": 63,
+        "endChar": 25
+      },
+      "revId": "c99fa2da522f843bfddedf064ab961d789182c12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_387c6320",
+        "filename": "src/vnet/geneve/geneve.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 66,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-02T03:09:39Z",
+      "side": 1,
+      "message": "Should be remote instead of local.",
+      "range": {
+        "startLine": 66,
+        "startChar": 16,
+        "endLine": 66,
+        "endChar": 21
+      },
+      "revId": "c99fa2da522f843bfddedf064ab961d789182c12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
