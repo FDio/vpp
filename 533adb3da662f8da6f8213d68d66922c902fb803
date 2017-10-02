@@ -16,6 +16,24 @@
       "revId": "533adb3da662f8da6f8213d68d66922c902fb803",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_1eacefec",
+        "filename": "src/vnet/ip/lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2017-10-02T18:58:58Z",
+      "side": 1,
+      "message": "Yes.\n\nWith my patch:\n\nDifferent FIB tables -- should be OK.\n\nvpp# ip table add 100\nvpp# set int ip table TenGigabitEthernet6/0/0 100\nvpp# set int ip address TenGigabitEthernet6/0/0 1.2.3.4/32\nvpp#\nvpp# ip table add 200\nvpp# set int ip table TenGigabitEthernet6/0/1 200\nvpp# set int ip address TenGigabitEthernet6/0/1 1.2.3.4/32\nvpp#\n\n\nSame FIB table (default 0) -- should be an error:\n\nvpp# set int ip address TenGigabitEthernet6/0/2 1.2.3.4/32\nvpp# set int ip address TenGigabitEthernet6/0/3 1.2.3.4/32\nset interface ip address: Prefix 1.2.3.4/32 already found on interface TenGigabitEthernet6/0/2\nvpp#",
+      "parentUuid": "1a486d77_de47774a",
+      "revId": "533adb3da662f8da6f8213d68d66922c902fb803",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
