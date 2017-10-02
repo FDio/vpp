@@ -489,7 +489,7 @@ vnet_disconnect_session (vnet_disconnect_args_t * a)
   stream_session_t *s;
 
   session_parse_handle (a->handle, &index, &thread_index);
-  s = stream_session_get_if_valid (index, thread_index);
+  s = session_get_if_valid (index, thread_index);
 
   if (!s || s->app_index != a->app_index)
     return VNET_API_ERROR_INVALID_VALUE;
