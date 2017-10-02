@@ -1,6 +1,12 @@
 loop create
 set int ip address loop0 6.0.0.1/32
 set int state loop0 up
+set int state GigabitEthernet1b/0/0 up
+set int ip address GigabitEthernet1b/0/0 192.168.1.1/24
+
+create host-interface name vpp1
+set int state host-vpp1 up
+set int ip address host-vpp1 6.0.1.1/24
 
 packet-generator new {
   name udp

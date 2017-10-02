@@ -32,7 +32,7 @@ delete_proxy_session (stream_session_t * s, int is_active_open)
   uword *p;
   u64 handle;
 
-  handle = stream_session_handle (s);
+  handle = session_handle (s);
 
   clib_spinlock_lock_if_init (&bpm->sessions_lock);
   if (is_active_open)
@@ -88,19 +88,19 @@ delete_proxy_session (stream_session_t * s, int is_active_open)
 
   if (active_open_session)
     {
-      a->handle = stream_session_handle (active_open_session);
+      a->handle = session_handle (active_open_session);
       a->app_index = bpm->active_open_app_index;
       hash_unset (bpm->proxy_session_by_active_open_handle,
-		  stream_session_handle (active_open_session));
+		  session_handle (active_open_session));
       vnet_disconnect_session (a);
     }
 
   if (server_session)
     {
-      a->handle = stream_session_handle (server_session);
+      a->handle = session_handle (server_session);
       a->app_index = bpm->server_app_index;
       hash_unset (bpm->proxy_session_by_server_handle,
-		  stream_session_handle (server_session));
+		  session_handle (server_session));
       vnet_disconnect_session (a);
     }
 }
@@ -171,8 +171,7 @@ server_rx_callback (stream_session_t * s)
   ASSERT (s->thread_index == thread_index);
 
   clib_spinlock_lock_if_init (&bpm->sessions_lock);
-  p =
-    hash_get (bpm->proxy_session_by_server_handle, stream_session_handle (s));
+  p = hash_get (bpm->proxy_session_by_server_handle, session_handle (s));
 
   if (PREDICT_TRUE (p != 0))
     {
@@ -218,7 +217,7 @@ server_rx_callback (stream_session_t * s)
       memset (ps, 0, sizeof (*ps));
       ps->server_rx_fifo = rx_fifo;
       ps->server_tx_fifo = tx_fifo;
-      ps->vpp_server_handle = stream_session_handle (s);
+      ps->vpp_server_handle = session_handle (s);
 
       proxy_index = ps - bpm->sessions;
 
@@ -268,7 +267,7 @@ active_open_connected_callback (u32 app_index, u32 opaque,
   clib_spinlock_lock_if_init (&bpm->sessions_lock);
 
   ps = pool_elt_at_index (bpm->sessions, opaque);
-  ps->vpp_active_open_handle = stream_session_handle (s);
+  ps->vpp_active_open_handle = session_handle (s);
 
   s->server_tx_fifo = ps->server_rx_fifo;
   s->server_rx_fifo = ps->server_tx_fifo;
