@@ -25,6 +25,52 @@
     },
     {
       "key": {
+        "uuid": "1a486d77_98bb57c4",
+        "filename": "src/vnet/geneve/encap.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 192,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-02T03:50:26Z",
+      "side": 1,
+      "message": "Is the GENEVE header with IP4 36 byte total?",
+      "range": {
+        "startLine": 192,
+        "startChar": 20,
+        "endLine": 192,
+        "endChar": 21
+      },
+      "revId": "c99fa2da522f843bfddedf064ab961d789182c12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_78b09bdd",
+        "filename": "src/vnet/geneve/encap.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 257,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-02T03:50:26Z",
+      "side": 1,
+      "message": "Is GENEVE header with IP6 56 bytes?",
+      "range": {
+        "startLine": 257,
+        "startChar": 21,
+        "endLine": 257,
+        "endChar": 23
+      },
+      "revId": "c99fa2da522f843bfddedf064ab961d789182c12",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a486d77_7899bb6d",
         "filename": "src/vnet/geneve/geneve.c",
         "patchSetId": 12
