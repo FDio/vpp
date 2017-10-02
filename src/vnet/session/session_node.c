@@ -434,7 +434,7 @@ dump_thread_0_event_queue (void)
 	  break;
 
 	case FIFO_EVENT_DISCONNECT:
-	  s0 = stream_session_get_from_handle (e->session_handle);
+	  s0 = session_get_from_handle (e->session_handle);
 	  fformat (stdout, "[%04d] disconnect session %d\n", i,
 		   s0->session_index);
 	  break;
@@ -477,7 +477,7 @@ session_node_cmp_event (session_fifo_event_t * e, svm_fifo_t * f)
     case FIFO_EVENT_DISCONNECT:
       break;
     case FIFO_EVENT_RPC:
-      s = stream_session_get_from_handle (e->session_handle);
+      s = session_get_from_handle (e->session_handle);
       if (!s)
 	{
 	  clib_warning ("session has event but doesn't exist!");
@@ -644,7 +644,7 @@ skip_dequeue:
 	    }
 	  break;
 	case FIFO_EVENT_DISCONNECT:
-	  s0 = stream_session_get_from_handle (e0->session_handle);
+	  s0 = session_get_from_handle (e0->session_handle);
 	  stream_session_disconnect (s0);
 	  break;
 	case FIFO_EVENT_BUILTIN_RX:

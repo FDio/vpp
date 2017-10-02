@@ -129,7 +129,7 @@ send_data (builtin_http_server_args * args, u8 * data)
   f64 last_sent_timer = vlib_time_now (vm);
   stream_session_t *s;
 
-  s = stream_session_get_from_handle (args->session_handle);
+  s = session_get_from_handle (args->session_handle);
   ASSERT (s);
   bytes_to_send = vec_len (data);
   offset = 0;

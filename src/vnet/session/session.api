@@ -19,12 +19,16 @@
     @param initial_segment_size - size of the initial shm segment to be 
     							  allocated
     @param options - segment size, fifo sizes, etc.
+    @param namespace_id_len - length of the namespace id c-string
+    @param namespace_id - 0 terminted c-string
 */
  define application_attach {
     u32 client_index;
     u32 context;
     u32 initial_segment_size;
     u64 options[16];
+    u8 namespace_id_len;
+    u8 namespace_id [64];
  };
  
  /** \brief Application attach reply
@@ -322,6 +326,24 @@ autoreply define session_enable_disable {
   u32 client_index;
   u32 context;
   u8 is_enable;
+};
+
+/** \brief add/del application namespace
+    @param client_index - opaque cookie to identify the sender
+                          client to vpp direction only
+    @param context - sender context, to match reply w/ request
+    @param namespace_id_len - length of namespace id lower
+    @param namespace_id - namespace id
+    @param secret - secret shared between app and vpp 
+    @param sw_if_index - local interface that "supports" namespace
+*/
+autoreply define app_namespace_add_del {
+  u32 client_index;
+  u32 context;
+  u8 namespace_id_len;
+  u8 namespace_id[64];
+  u64 secret;
+  u32 sw_if_index;
 };
 
 /*

@@ -15,6 +15,7 @@
 
 #include <vnet/session/application.h>
 #include <vnet/session/application_interface.h>
+#include <vnet/session/application_namespace.h>
 #include <vnet/session/session.h>
 
 /**
@@ -31,6 +32,22 @@ static uword *app_by_api_client_index;
  * Default application event queue size
  */
 static u32 default_app_evt_queue_size = 128;
+
+u32
+application_session_table (application_t *app)
+{
+  app_namespace_t *app_ns;
+  app_ns = app_namespace_get (app->ns_index);
+  return session_table_get_index_for_nns (app_ns->nns_index);
+}
+
+u32
+application_local_session_table (application_t *app)
+{
+  app_namespace_t *app_ns;
+  app_ns = app_namespace_get (app->ns_index);
+  return app_ns->local_table_index;
+}
 
 int
 application_api_queue_is_full (application_t * app)
@@ -175,12 +192,15 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   segment_manager_properties_t *props;
   u32 app_evt_queue_size, first_seg_size;
   u32 default_rx_fifo_size = 16 << 10, default_tx_fifo_size = 16 << 10;
+  app_namespace_t *app_ns;
   int rv;
 
   app_evt_queue_size = options[APP_EVT_QUEUE_SIZE] > 0 ?
     options[APP_EVT_QUEUE_SIZE] : default_app_evt_queue_size;
 
-  /* Setup segment manager */
+  /*
+   * Setup segment manager
+   */
   sm = segment_manager_new ();
   sm->app_index = app->index;
   props = &app->sm_properties;
@@ -203,10 +223,14 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
     return rv;
   sm->first_is_protected = 1;
 
+  /*
+   * Setup application
+   */
   app->first_segment_manager = segment_manager_index (sm);
   app->api_client_index = api_client_index;
   app->flags = options[APP_OPTIONS_FLAGS];
   app->cb_fns = *cb_fns;
+  app->ns_index = options[APP_OPTIONS_NAMESPACE];
 
   /* Allocate app event queue in the first shared-memory segment */
   app->event_queue = segment_manager_alloc_queue (sm, app_evt_queue_size);
@@ -269,17 +293,19 @@ application_alloc_segment_manager (application_t * app)
  * it's own specific listening connection.
  */
 int
-application_start_listen (application_t * srv, session_type_t session_type,
-			  transport_endpoint_t * tep, u64 * res)
+application_start_listen (application_t * srv, session_endpoint_t * sep,
+                          u64 * res)
 {
   segment_manager_t *sm;
   stream_session_t *s;
   u64 handle;
+  session_type_t sst;
 
-  s = listen_session_new (session_type);
+  sst = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
+  s = listen_session_new (sst);
   s->app_index = srv->index;
 
-  if (stream_session_listen (s, tep))
+  if (stream_session_listen (s, sep))
     goto err;
 
   /* Allocate segment manager. All sessions derived out of a listen session
@@ -341,15 +367,15 @@ application_stop_listen (application_t * srv, u64 handle)
 }
 
 int
-application_open_session (application_t * app, session_type_t sst,
-			  transport_endpoint_t * tep, u32 api_context)
+application_open_session (application_t * app, session_endpoint_t * sep,
+                          u32 api_context)
 {
   segment_manager_t *sm;
   transport_connection_t *tc = 0;
   int rv;
 
   /* Make sure we have a segment manager for connects */
-  if (app->connects_seg_manager == (u32) ~ 0)
+  if (app->connects_seg_manager == APP_INVALID_SEGMENT_MANAGER_INDEX)
     {
       sm = application_alloc_segment_manager (app);
       if (sm == 0)
@@ -357,7 +383,7 @@ application_open_session (application_t * app, session_type_t sst,
       app->connects_seg_manager = segment_manager_index (sm);
     }
 
-  if ((rv = stream_session_open (app->index, sst, tep, &tc)))
+  if ((rv = stream_session_open (app->index, sep, &tc)))
     return rv;
 
   /* Store api_context for when the reply comes. Not the nicest thing
@@ -500,7 +526,7 @@ application_format_connects (application_t * app, int verbose)
 	  session_index = fifo->master_session_index;
 	  thread_index = fifo->master_thread_index;
 
-	  session = stream_session_get (session_index, thread_index);
+	  session = session_get (session_index, thread_index);
 	  str = format (0, "%U", format_stream_session, session, verbose);
 
 	  if (verbose)
@@ -526,27 +552,29 @@ format_application (u8 * s, va_list * args)
 {
   application_t *app = va_arg (*args, application_t *);
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
-  u8 *app_name;
+  u8 *app_name, app_ns_name;
 
   if (app == 0)
     {
       if (verbose)
-	s = format (s, "%-10s%-20s%-15s%-15s%-15s%-15s", "Index", "Name",
-		    "API Client", "Add seg size", "Rx fifo size",
+	s = format (s, "%-10s%-20s%-15s%-15s%-15s%-15s%-15s", "Index", "Name",
+	            "Namespace", "API Client", "Add seg size", "Rx fifo size",
 		    "Tx fifo size");
       else
-	s = format (s, "%-10s%-20s%-20s", "Index", "Name", "API Client");
+	s = format (s, "%-10s%-20s%-15s%-20s", "Index", "Name", "Namespace", "API Client");
       return s;
     }
 
   app_name = app_get_name_from_reg_index (app);
+  app_ns_name = app_namespace_id (app->ns_index);
   if (verbose)
-    s = format (s, "%-10d%-20s%-15d%-15d%-15d%-15d", app->index, app_name,
-		app->api_client_index, app->sm_properties.add_segment_size,
-		app->sm_properties.rx_fifo_size,
+    s = format (s, "%-10d%-20s%-15s%-15d%-15d%-15d%-15d", app->index, app_name,
+                app_ns_name, app->api_client_index,
+                app->sm_properties.add_segment_size,
+                app->sm_properties.rx_fifo_size,
 		app->sm_properties.tx_fifo_size);
   else
-    s = format (s, "%-10d%-20s%-20d", app->index, app_name,
+    s = format (s, "%-10d%-20s%-15s%-20d", app->index, app_name, app_ns_name,
 		app->api_client_index);
   return s;
 }
@@ -560,10 +588,7 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
   int do_client = 0;
   int verbose = 0;
 
-  if (!session_manager_is_enabled ())
-    {
-      clib_error_return (0, "session layer is not enabled");
-    }
+  session_cli_return_if_not_enabled ();
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -627,13 +652,11 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!do_server && !do_client)
     {
       vlib_cli_output (vm, "%U", format_application, 0, verbose);
-      pool_foreach (app, app_pool, (
-				     {
-				     vlib_cli_output (vm, "%U",
-						      format_application, app,
-						      verbose);
-				     }
-		    ));
+      /* *INDENT-OFF* */
+      pool_foreach (app, app_pool, ({
+	vlib_cli_output (vm, "%U", format_application, app, verbose);
+      }));
+      /* *INDENT-ON* */
     }
 
   return 0;
