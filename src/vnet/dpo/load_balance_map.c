@@ -88,10 +88,10 @@ load_balance_map_get_index (load_balance_map_t *lbm)
 }
 
 u8*
-format_load_balance_map (u8 *s, va_list ap)
+format_load_balance_map (u8 *s, va_list * ap)
 {
-    index_t lbmi = va_arg(ap, index_t);
-    u32 indent = va_arg(ap, u32);
+    index_t lbmi = va_arg(*ap, index_t);
+    u32 indent = va_arg(*ap, u32);
     load_balance_map_t *lbm;
     u32 n_buckets, ii;
 

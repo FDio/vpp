@@ -156,7 +156,7 @@ format_graph (u8 * s, va_list * args)
   graph_t *g = va_arg (*args, graph_t *);
   graph_node_t *n;
   graph_link_t *l;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "graph %d nodes", pool_elts (g->nodes));
   /* *INDENT-OFF* */

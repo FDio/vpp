@@ -4687,7 +4687,7 @@ format_hex_bytes (u8 * s, va_list * va)
 
   /* Print short or long form depending on byte count. */
   uword short_form = n_bytes <= 32;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   if (n_bytes == 0)
     return s;

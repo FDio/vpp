@@ -80,7 +80,7 @@ typedef struct mfib_table_t_
  * @brief
  *  Format the description/name of the table
  */
-extern u8* format_mfib_table_name(u8* s, va_list ap);
+extern u8* format_mfib_table_name(u8* s, va_list *ap);
 
 /**
  * @brief

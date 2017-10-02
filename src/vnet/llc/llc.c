@@ -65,7 +65,7 @@ format_llc_header_with_length (u8 * s, va_list * args)
   llc_header_t *h = va_arg (*args, llc_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   llc_protocol_t p = h->dst_sap;
-  uword indent, header_bytes;
+  u32 indent, header_bytes;
 
   header_bytes = llc_header_length (h);
   if (max_header_bytes != 0 && header_bytes > max_header_bytes)

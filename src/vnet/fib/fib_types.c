@@ -27,17 +27,17 @@ static const char* vnet_link_names[] = VNET_LINKS;
 static const char* fib_forw_chain_names[] = FIB_FORW_CHAINS;
 
 u8 *
-format_fib_protocol (u8 * s, va_list ap)
+format_fib_protocol (u8 * s, va_list * ap)
 {
-    fib_protocol_t proto = va_arg(ap, int); // fib_protocol_t promotion
+    fib_protocol_t proto = va_arg(*ap, int); // fib_protocol_t promotion
 
     return (format (s, "%s", fib_protocol_names[proto]));
 }
 
 u8 *
-format_vnet_link (u8 * s, va_list ap)
+format_vnet_link (u8 * s, va_list * ap)
 {
-    vnet_link_t link = va_arg(ap, int); // vnet_link_t promotion
+    vnet_link_t link = va_arg(*ap, int); // vnet_link_t promotion
 
     return (format (s, "%s", vnet_link_names[link]));
 }

@@ -353,7 +353,7 @@ typedef struct fib_test_rep_bucket_t_ {
 int
 fib_test_validate_rep_v (const replicate_t *rep,
                          u16 n_buckets,
-                         va_list ap)
+                         va_list *ap)
 {
     const fib_test_rep_bucket_t *exp;
     const dpo_id_t *dpo;
@@ -364,7 +364,7 @@ fib_test_validate_rep_v (const replicate_t *rep,
 
     for (bucket = 0; bucket < n_buckets; bucket++)
     {
-	exp = va_arg(ap, fib_test_rep_bucket_t*);
+	exp = va_arg(*ap, fib_test_rep_bucket_t*);
 
         dpo = replicate_get_bucket_i(rep, bucket);
 
@@ -429,7 +429,7 @@ fib_test_validate_rep_v (const replicate_t *rep,
 int
 fib_test_validate_lb_v (const load_balance_t *lb,
 			u16 n_buckets,
-			va_list ap)
+			va_list *ap)
 {
     const dpo_id_t *dpo;
     int bucket;
@@ -440,7 +440,7 @@ fib_test_validate_lb_v (const load_balance_t *lb,
     {
 	const fib_test_lb_bucket_t *exp;
 
-	exp = va_arg(ap, fib_test_lb_bucket_t*);
+	exp = va_arg(*ap, fib_test_lb_bucket_t*);
 	dpo = load_balance_get_bucket_i(lb, bucket);
 
 	switch (exp->type)
@@ -648,7 +648,7 @@ fib_test_validate_entry (fib_node_index_t fei,
         const replicate_t *rep;
 
         rep = replicate_get(dpo.dpoi_index);
-        res = fib_test_validate_rep_v(rep, n_buckets, ap);
+        res = fib_test_validate_rep_v(rep, n_buckets, &ap);
     }
     else
     {
@@ -659,7 +659,7 @@ fib_test_validate_entry (fib_node_index_t fei,
                     format_dpo_type, dpo.dpoi_type);
 
         lb = load_balance_get(dpo.dpoi_index);
-        res = fib_test_validate_lb_v(lb, n_buckets, ap);
+        res = fib_test_validate_lb_v(lb, n_buckets, &ap);
 
         /*
          * ensure that the LB contributed by the entry is the

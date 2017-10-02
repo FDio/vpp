@@ -185,18 +185,18 @@ typedef struct fib_walk_history_t_ {
 static fib_walk_history_t fib_walk_history[HISTORY_N_WALKS];
 
 u8*
-format_fib_walk_priority (u8 *s, va_list ap)
+format_fib_walk_priority (u8 *s, va_list *ap)
 {
-    fib_walk_priority_t prio = va_arg(ap, fib_walk_priority_t);
+    fib_walk_priority_t prio = va_arg(*ap, fib_walk_priority_t);
 
     ASSERT(prio < FIB_WALK_PRIORITY_NUM);
 
     return (format(s, "%s", fib_walk_priority_names[prio]));
 }
 static u8*
-format_fib_walk_queue_stats (u8 *s, va_list ap)
+format_fib_walk_queue_stats (u8 *s, va_list *ap)
 {
-    fib_walk_queue_stats_t wqs = va_arg(ap, fib_walk_queue_stats_t);
+    fib_walk_queue_stats_t wqs = va_arg(*ap, fib_walk_queue_stats_t);
 
     ASSERT(wqs < FIB_WALK_QUEUE_STATS_NUM);
 
@@ -927,9 +927,9 @@ fib_walk_module_init (void)
 }
 
 static u8*
-format_fib_walk (u8* s, va_list ap)
+format_fib_walk (u8* s, va_list *ap)
 {
-    fib_node_index_t fwi = va_arg(ap, fib_node_index_t);
+    fib_node_index_t fwi = va_arg(*ap, fib_node_index_t);
     fib_walk_t *fwalk;
 
     fwalk = fib_walk_get(fwi);

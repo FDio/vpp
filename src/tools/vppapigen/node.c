@@ -39,7 +39,7 @@ time_t starttime;
 char *vlib_app_name;
 char *input_filename;
 node_vft_t *the_vft[NODE_N_TYPES];
-static int indent;
+static u32 indent;
 static int dont_output_version;
 int dump_tree;
 static char *fixed_name;

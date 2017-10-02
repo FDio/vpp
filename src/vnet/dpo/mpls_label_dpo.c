@@ -550,7 +550,7 @@ format_mpls_label_imposition_trace (u8 * s, va_list * args)
     CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
     mpls_label_imposition_trace_t * t;
     mpls_unicast_header_t hdr;
-    uword indent;
+    u32 indent;
 
     t = va_arg (*args, mpls_label_imposition_trace_t *);
     indent = format_get_indent (s);

@@ -45,7 +45,7 @@ format_vlib_node_graph (u8 * s, va_list * va)
   vlib_node_main_t *nm = va_arg (*va, vlib_node_main_t *);
   vlib_node_t *n = va_arg (*va, vlib_node_t *);
   int i, j;
-  uword indent;
+  u32 indent;
   typedef struct
   {
     u32 next_node;

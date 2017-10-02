@@ -70,7 +70,7 @@ u8 *
 format_vlib_buffer (u8 * s, va_list * args)
 {
   vlib_buffer_t *b = va_arg (*args, vlib_buffer_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "current data %d, length %d, free-list %d, clone-count %u",
 	      b->current_data, b->current_length,
