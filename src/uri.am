@@ -30,7 +30,7 @@ libvppcom_la_SOURCES +=				\
 nobase_include_HEADERS +=			\
   uri/vppcom.h
 
-noinst_PROGRAMS +=				\
+bin_PROGRAMS +=				\
 	uri_udp_test				\
 	uri_tcp_test				\
 	uri_socket_test				\

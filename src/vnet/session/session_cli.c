@@ -55,7 +55,7 @@ format_stream_session (u8 * s, va_list * args)
   int verbose = va_arg (*args, int);
   transport_proto_vft_t *tp_vft;
   u8 *str = 0;
-  tp_vft = session_get_transport_vft (ss->session_type);
+  tp_vft = transport_protocol_get_vft (ss->session_type);
 
   if (verbose == 1 && ss->session_state >= SESSION_STATE_ACCEPTING)
     str = format (0, "%-10u%-10u%-10lld",
@@ -324,7 +324,7 @@ clear_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   if (session_index != ~0)
     {
-      session = stream_session_get_if_valid (session_index, thread_index);
+      session = session_get_if_valid (session_index, thread_index);
       if (!session)
 	return clib_error_return (0, "no session %d on thread %d",
 				  session_index, thread_index);

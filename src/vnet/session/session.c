@@ -28,16 +28,16 @@
 session_manager_main_t session_manager_main;
 extern transport_proto_vft_t *tp_vfts;
 
-int
-stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
-			 u8 alloc_fifos, stream_session_t ** ret_s)
+static int
+session_alloc_for_connection (segment_manager_t * sm,
+                              transport_connection_t * tc, u8 alloc_fifos,
+                              stream_session_t ** ret_s)
 {
   session_manager_main_t *smm = &session_manager_main;
   svm_fifo_t *server_rx_fifo = 0, *server_tx_fifo = 0;
   u32 fifo_segment_index;
   u32 pool_index;
   stream_session_t *s;
-  u64 value;
   u32 thread_index = tc->thread_index;
   int rv;
 
@@ -70,24 +70,28 @@ stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
       s->svm_segment_index = fifo_segment_index;
     }
 
-  /* Initialize state machine, such as it is... */
-  s->session_type = session_type_from_proto_and_ip (tc->transport_proto,
-						    tc->is_ip4);
+  s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
   s->session_state = SESSION_STATE_CONNECTING;
   s->thread_index = thread_index;
   s->session_index = pool_index;
 
-  /* Attach transport to session */
+  /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
-
-  /* Attach session to transport */
   tc->s_index = s->session_index;
 
-  /* Add to the main lookup table */
-  value = stream_session_handle (s);
-  session_lookup_add_connection (tc, value);
+  return 0;
+}
+static int
+session_alloc_and_init (segment_manager_t * sm, transport_connection_t * tc,
+                        u8 alloc_fifos, stream_session_t ** ret_s)
+{
+  int rv;
 
-  *ret_s = s;
+  if ((rv = session_alloc_for_connection (sm, tc, alloc_fifos, ret_s)))
+    return rv;
+
+  /* Add to the main lookup table */
+  session_lookup_add_connection (tc, session_handle (*ret_s));
 
   return 0;
 }
@@ -217,8 +221,9 @@ session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
  * @return Number of bytes enqueued or a negative value if enqueueing failed.
  */
 int
-stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
-			     u32 offset, u8 queue_event, u8 is_in_order)
+session_enqueue_stream_connection (transport_connection_t * tc,
+				   vlib_buffer_t * b, u32 offset,
+				   u8 queue_event, u8 is_in_order)
 {
   stream_session_t *s;
   int enqueued = 0, rv, in_order_off;
@@ -257,16 +262,51 @@ stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
        * by calling stream_server_flush_enqueue_events () */
       session_manager_main_t *smm = vnet_get_session_manager_main ();
       u32 thread_index = s->thread_index;
-      u32 my_enqueue_epoch = smm->current_enqueue_epoch[thread_index];
+      u32 enqueue_epoch = smm->current_enqueue_epoch[tc->proto][thread_index];
 
-      if (s->enqueue_epoch != my_enqueue_epoch)
+      if (s->enqueue_epoch != enqueue_epoch)
 	{
-	  s->enqueue_epoch = my_enqueue_epoch;
-	  vec_add1 (smm->session_indices_to_enqueue_by_thread[thread_index],
+	  s->enqueue_epoch = enqueue_epoch;
+	  vec_add1 (smm->session_to_enqueue[tc->proto][thread_index],
 		    s - smm->sessions[thread_index]);
 	}
     }
 
+  return enqueued;
+}
+
+int
+session_enqueue_dgram_connection (stream_session_t * s, vlib_buffer_t * b,
+				  u8 proto, u8 queue_event)
+{
+  int enqueued = 0, rv, in_order_off;
+
+  if (svm_fifo_max_enqueue (s->server_rx_fifo) < b->current_length)
+    return -1;
+  enqueued = svm_fifo_enqueue_nowait (s->server_rx_fifo, b->current_length,
+				      vlib_buffer_get_current (b));
+  if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
+    {
+      in_order_off = enqueued > b->current_length ? enqueued : 0;
+      rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
+      if (rv > 0)
+	enqueued += rv;
+    }
+  if (queue_event)
+    {
+      /* Queue RX event on this fifo. Eventually these will need to be flushed
+       * by calling stream_server_flush_enqueue_events () */
+      session_manager_main_t *smm = vnet_get_session_manager_main ();
+      u32 thread_index = s->thread_index;
+      u32 enqueue_epoch = smm->current_enqueue_epoch[proto][thread_index];
+
+      if (s->enqueue_epoch != enqueue_epoch)
+	{
+	  s->enqueue_epoch = enqueue_epoch;
+	  vec_add1 (smm->session_to_enqueue[proto][thread_index],
+		    s - smm->sessions[thread_index]);
+	}
+    }
   return enqueued;
 }
 
@@ -319,7 +359,7 @@ stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
  * @return 0 on succes or negative number if failed to send notification.
  */
 static int
-stream_session_enqueue_notify (stream_session_t * s, u8 block)
+session_enqueue_notify (stream_session_t * s, u8 block)
 {
   application_t *app;
   session_fifo_event_t evt;
@@ -389,35 +429,25 @@ stream_session_enqueue_notify (stream_session_t * s, u8 block)
  *         failures due to API queue being full.
  */
 int
-session_manager_flush_enqueue_events (u32 thread_index)
+session_manager_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 {
   session_manager_main_t *smm = &session_manager_main;
-  u32 *session_indices_to_enqueue;
+  u32 *indices;
+  stream_session_t *s;
   int i, errors = 0;
 
-  session_indices_to_enqueue =
-    smm->session_indices_to_enqueue_by_thread[thread_index];
+  indices = smm->session_to_enqueue[transport_proto][thread_index];
 
-  for (i = 0; i < vec_len (session_indices_to_enqueue); i++)
+  for (i = 0; i < vec_len (indices); i++)
     {
-      stream_session_t *s0;
-
-      /* Get session */
-      s0 = stream_session_get_if_valid (session_indices_to_enqueue[i],
-					thread_index);
-      if (s0 == 0 || stream_session_enqueue_notify (s0, 0 /* don't block */ ))
-	{
-	  errors++;
-	}
+      s = session_get_if_valid (indices[i], thread_index);
+      if (s == 0 || session_enqueue_notify (s, 0 /* don't block */ ))
+	errors++;
     }
 
-  vec_reset_length (session_indices_to_enqueue);
-
-  smm->session_indices_to_enqueue_by_thread[thread_index] =
-    session_indices_to_enqueue;
-
-  /* Increment enqueue epoch for next round */
-  smm->current_enqueue_epoch[thread_index]++;
+  vec_reset_length (indices);
+  smm->session_to_enqueue[transport_proto][thread_index] = indices;
+  smm->current_enqueue_epoch[transport_proto][thread_index]++;
 
   return errors;
 }
@@ -445,15 +475,18 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
   u64 handle;
   u32 opaque = 0;
   int error = 0;
+  segment_manager_t *sm;
+  u8 alloc_fifos;
 
+  /*
+   * Find connection handle and cleanup half-open table
+   */
   handle = session_lookup_half_open_handle (tc);
   if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
     {
       SESSION_DBG ("half-open was removed!");
       return -1;
     }
-
-  /* Cleanup half-open table */
   session_lookup_del_half_open (tc);
 
   /* Get the app's index from the handle we stored when opening connection
@@ -462,17 +495,16 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
   app = application_get_if_valid (handle >> 32);
   if (!app)
     return -1;
-
   opaque = tc->s_index;
 
+  /*
+   * Allocate new session with fifos (svm segments are allocated if needed)
+   */
   if (!is_fail)
     {
-      segment_manager_t *sm;
-      u8 alloc_fifos;
       sm = application_get_connect_segment_manager (app);
       alloc_fifos = application_is_proxy (app);
-      /* Create new session (svm segments are allocated if needed) */
-      if (stream_session_create_i (sm, tc, alloc_fifos, &new_s))
+      if (session_alloc_and_init (sm, tc, alloc_fifos, &new_s))
 	{
 	  is_fail = 1;
 	  error = -1;
@@ -481,7 +513,9 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
 	new_s->app_index = app->index;
     }
 
-  /* Notify client application */
+  /*
+   * Notify client application
+   */
   if (app->cb_fns.session_connected_callback (app->index, opaque, new_s,
 					      is_fail))
     {
@@ -496,6 +530,47 @@ stream_session_connect_notify (transport_connection_t * tc, u8 is_fail)
     }
 
   return error;
+}
+
+/**
+ * Move dgram connect to the right thread
+ *
+ * It also cleans the half-open lookup table for the connection.
+ */
+int
+session_dgram_connect_notify (transport_connection_t *tc)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  u32 thread_index = vlib_get_thread_index ();
+  stream_session_t *old_s, *new_s;
+  u64 handle;
+
+  /*
+   * Find connection handle and cleanup half-open table
+   */
+  handle = session_lookup_half_open_handle (tc);
+  if (handle == HALF_OPEN_LOOKUP_INVALID_VALUE)
+    {
+      SESSION_DBG ("half-open was removed!");
+      return -1;
+    }
+  session_lookup_del_half_open (tc);
+  old_s = session_get (tc->s_index, tc->thread_index);
+
+  pool_get_aligned (smm->sessions[thread_index], new_s,
+                    CLIB_CACHE_LINE_BYTES);
+  clib_memcpy (new_s, old_s, sizeof (*new_s));
+  new_s->session_index = new_s - smm->sessions[thread_index];
+  new_s->thread_index = thread_index;
+  new_s->connection_index = tc->c_index;
+
+  pool_put_index (smm->sessions[tc->thread_index], tc->s_index);
+  tc->s_index = new_s->session_index;
+  tc->thread_index = thread_index;
+
+  new_s->session_state = SESSION_STATE_READY;
+  session_lookup_add_connection (tc, session_handle (new_s));
+  return 0;
 }
 
 void
@@ -563,7 +638,7 @@ stream_session_delete_notify (transport_connection_t * tc)
   stream_session_t *s;
 
   /* App might've been removed already */
-  s = stream_session_get_if_valid (tc->s_index, tc->thread_index);
+  s = session_get_if_valid (tc->s_index, tc->thread_index);
   if (!s)
     return;
   stream_session_delete (s);
@@ -596,14 +671,14 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
   session_type_t sst;
   int rv;
 
-  sst = session_type_from_proto_and_ip (tc->transport_proto, tc->is_ip4);
+  sst = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
 
   /* Find the server */
   listener = listen_session_get (sst, listener_index);
   server = application_get (listener->app_index);
 
   sm = application_get_listen_segment_manager (server, listener);
-  if ((rv = stream_session_create_i (sm, tc, 1, &s)))
+  if ((rv = session_alloc_and_init (sm, tc, 1, &s)))
     return rv;
 
   s->app_index = server->index;
@@ -629,14 +704,17 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
  * @param app_index Index of the application requesting the connect
  * @param st Session type requested.
  * @param tep Remote transport endpoint
- * @param res Resulting transport connection .
+ * @param opaque Opaque data (typically, api_context) the application expects
+ * 		 on open completion.
  */
 int
-stream_session_open (u32 app_index, session_endpoint_t * rmt,
-		     transport_connection_t ** res)
+session_open (u32 app_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
   session_type_t sst;
+  segment_manager_t *sm;
+  stream_session_t *s;
+  application_t *app;
   int rv;
   u64 handle;
 
@@ -644,22 +722,46 @@ stream_session_open (u32 app_index, session_endpoint_t * rmt,
   rv = tp_vfts[sst].open (session_endpoint_to_transport (rmt));
   if (rv < 0)
     {
-      clib_warning ("Transport failed to open connection.");
+      SESSION_DBG ("Transport failed to open connection.");
       return VNET_API_ERROR_SESSION_CONNECT;
     }
 
   tc = tp_vfts[sst].get_half_open ((u32) rv);
 
-  /* Save app and tc index. The latter is needed to help establish the
-   * connection while the former is needed when the connect notify comes
-   * and we have to notify the external app */
-  handle = (((u64) app_index) << 32) | (u64) tc->c_index;
+  /* If transport offers a stream service, only allocate session once the
+   * connection has been established.
+   */
+  if (transport_is_stream (rmt->transport_proto))
+    {
+      /* Add connection to half-open table and save app and tc index. The
+       * latter is needed to help establish the connection while the former
+       * is needed when the connect notify comes and we have to notify the
+       * external app
+       */
+      handle = (((u64) app_index) << 32) | (u64) tc->c_index;
+      session_lookup_add_half_open (tc, handle);
 
-  /* Add to the half-open lookup table */
-  session_lookup_add_half_open (tc, handle);
-
-  *res = tc;
-
+      /* Store api_context (opaque) for when the reply comes. Not the nicest
+       * thing but better than allocating a separate half-open pool.
+       */
+      tc->s_index = opaque;
+    }
+  /* For dgram type of service, allocate session and fifos now.
+   */
+  else
+    {
+      app = application_get (app_index);
+      sm = application_get_connect_segment_manager (app);
+      if (session_alloc_for_connection (sm, tc, 1, &s))
+	{
+	  SESSION_DBG ("Failed to allocate session.");
+	  tp_vfts[sst].close (tc->c_index, tc->thread_index);
+	  return -1;
+	}
+      s->app_index = app->index;
+      s->session_state = SESSION_STATE_CONNECTING;
+      session_lookup_add_half_open (tc, session_handle (s));
+    }
   return 0;
 }
 
@@ -837,6 +939,23 @@ session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
   return SESSION_N_TYPES;
 }
 
+transport_connection_t *
+session_get_transport (stream_session_t * s)
+{
+  if (s->session_state == SESSION_STATE_READY)
+    return tp_vfts[s->session_type].get_connection (s->connection_index,
+						    s->thread_index);
+  return 0;
+}
+
+transport_connection_t *
+listen_session_get_transport (stream_session_t * s)
+{
+  if (s->session_state == SESSION_STATE_LISTENING)
+    return tp_vfts[s->session_type].get_listener (s->connection_index);
+  return 0;
+}
+
 int
 listen_session_get_local_session_endpoint (stream_session_t * listener,
 					   session_endpoint_t * sep)
@@ -852,7 +971,7 @@ listen_session_get_local_session_endpoint (stream_session_t * listener,
 
   /* N.B. The ip should not be copied because this is the local endpoint */
   sep->port = tc->lcl_port;
-  sep->transport_proto = tc->transport_proto;
+  sep->transport_proto = tc->proto;
   sep->is_ip4 = tc->is_ip4;
   return 0;
 }
@@ -864,7 +983,7 @@ session_manager_main_enable (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
   u32 preallocated_sessions_per_worker;
-  int i;
+  int i, j;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -877,12 +996,17 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* configure per-thread ** vectors */
   vec_validate (smm->sessions, num_threads - 1);
-  vec_validate (smm->session_indices_to_enqueue_by_thread, num_threads - 1);
   vec_validate (smm->tx_buffers, num_threads - 1);
   vec_validate (smm->pending_event_vector, num_threads - 1);
   vec_validate (smm->free_event_vector, num_threads - 1);
-  vec_validate (smm->current_enqueue_epoch, num_threads - 1);
   vec_validate (smm->vpp_event_queues, num_threads - 1);
+
+  for (i = 0; i < TRANSPORT_N_PROTO; i++)
+    for (j = 0; j < num_threads; j++)
+      {
+	vec_validate (smm->session_to_enqueue[i], num_threads - 1);
+	vec_validate (smm->current_enqueue_epoch[i], num_threads - 1);
+      }
 
   for (i = 0; i < num_threads; i++)
     {
@@ -924,6 +1048,7 @@ session_manager_main_enable (vlib_main_t * vm)
 
   session_lookup_init ();
   app_namespaces_init ();
+  transport_init ();
 
   smm->is_enabled = 1;
 

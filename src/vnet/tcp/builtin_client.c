@@ -248,12 +248,12 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  session_parse_handle (sp->vpp_session_handle,
 				&index, &thread_index);
-	  s = stream_session_get_if_valid (index, thread_index);
+	  s = session_get_if_valid (index, thread_index);
 
 	  if (s)
 	    {
 	      vnet_disconnect_args_t _a, *a = &_a;
-	      a->handle = stream_session_handle (s);
+	      a->handle = session_handle (s);
 	      a->app_index = tm->app_index;
 	      vnet_disconnect_session (a);
 
@@ -369,7 +369,7 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
   session->server_rx_fifo->client_session_index = session_index;
   session->server_tx_fifo = s->server_tx_fifo;
   session->server_tx_fifo->client_session_index = session_index;
-  session->vpp_session_handle = stream_session_handle (s);
+  session->vpp_session_handle = session_handle (s);
 
   vec_add1 (tm->connection_index_by_thread[thread_index], session_index);
   __sync_fetch_and_add (&tm->ready_connections, 1);
@@ -403,7 +403,7 @@ builtin_session_disconnect_callback (stream_session_t * s)
 {
   tclient_main_t *tm = &tclient_main;
   vnet_disconnect_args_t _a, *a = &_a;
-  a->handle = stream_session_handle (s);
+  a->handle = session_handle (s);
   a->app_index = tm->app_index;
   vnet_disconnect_session (a);
   return;

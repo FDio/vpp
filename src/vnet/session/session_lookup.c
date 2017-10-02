@@ -116,7 +116,7 @@ always_inline void
 make_v4_ss_kv_from_tc (session_kv4_t * kv, transport_connection_t * t)
 {
   make_v4_ss_kv (kv, &t->lcl_ip.ip4, &t->rmt_ip.ip4, t->lcl_port, t->rmt_port,
-		 session_type_from_proto_and_ip (t->transport_proto, 1));
+		 session_type_from_proto_and_ip (t->proto, 1));
 }
 
 always_inline void
@@ -159,7 +159,7 @@ always_inline void
 make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * t)
 {
   make_v6_ss_kv (kv, &t->lcl_ip.ip6, &t->rmt_ip.ip6, t->lcl_port, t->rmt_port,
-		 session_type_from_proto_and_ip (t->transport_proto, 0));
+		 session_type_from_proto_and_ip (t->proto, 0));
 }
 
 
@@ -562,7 +562,7 @@ session_lookup_half_open_handle (transport_connection_t * tc)
   if (tc->is_ip4)
     {
       make_v4_ss_kv (&kv4, &tc->lcl_ip.ip4, &tc->rmt_ip.ip4, tc->lcl_port,
-		     tc->rmt_port, tc->transport_proto);
+		     tc->rmt_port, tc->proto);
       rv = clib_bihash_search_inline_16_8 (&st->v4_half_open_hash, &kv4);
       if (rv == 0)
 	return kv4.value;
@@ -570,7 +570,7 @@ session_lookup_half_open_handle (transport_connection_t * tc)
   else
     {
       make_v6_ss_kv (&kv6, &tc->lcl_ip.ip6, &tc->rmt_ip.ip6, tc->lcl_port,
-		     tc->rmt_port, tc->transport_proto);
+		     tc->rmt_port, tc->proto);
       rv = clib_bihash_search_inline_48_8 (&st->v6_half_open_hash, &kv6);
       if (rv == 0)
 	return kv6.value;
@@ -739,7 +739,7 @@ session_lookup4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
   if ((s = session_lookup_listener4_i (st, lcl, lcl_port, proto)))
     return s;
 
-  /* Finally, try half-open connections */
+  /* Finally, try half-open connections. Works only for dgrams */
   rv = clib_bihash_search_inline_16_8 (&st->v4_half_open_hash, &kv4);
   if (rv == 0)
     return session_get_from_handle (kv4.value);

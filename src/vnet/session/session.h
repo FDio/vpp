@@ -131,14 +131,11 @@ struct _session_manager_main
   /** Pool of listen sessions. Same type as stream sessions to ease lookups */
   stream_session_t *listen_sessions[SESSION_N_TYPES];
 
-  /** Sparse vector to map dst port to stream server  */
-  u16 *stream_server_by_dst_port[SESSION_N_TYPES];
+  /** Per-proto, per-worker enqueue epoch counters */
+  u8 *current_enqueue_epoch[TRANSPORT_N_PROTO];
 
-  /** per-worker enqueue epoch counters */
-  u8 *current_enqueue_epoch;
-
-  /** Per-worker thread vector of sessions to enqueue */
-  u32 **session_indices_to_enqueue_by_thread;
+  /** Per-proto, per-worker thread vector of sessions to enqueue */
+  u32 **session_to_enqueue[TRANSPORT_N_PROTO];
 
   /** per-worker tx buffer free lists */
   u32 **tx_buffers;
@@ -221,7 +218,7 @@ session_get (u32 si, u32 thread_index)
 }
 
 always_inline stream_session_t *
-stream_session_get_if_valid (u64 si, u32 thread_index)
+session_get_if_valid (u64 si, u32 thread_index)
 {
   if (thread_index >= vec_len (session_manager_main.sessions))
     return 0;
@@ -234,7 +231,7 @@ stream_session_get_if_valid (u64 si, u32 thread_index)
 }
 
 always_inline u64
-stream_session_handle (stream_session_t * s)
+session_handle (stream_session_t * s)
 {
   return ((u64) s->thread_index << 32) | (u64) s->session_index;
 }
@@ -296,17 +293,22 @@ stream_session_rx_fifo_size (transport_connection_t * tc)
   return s->server_rx_fifo->nitems;
 }
 
+transport_connection_t *session_get_transport (stream_session_t * s);
+
 u32 stream_session_tx_fifo_max_dequeue (transport_connection_t * tc);
 
 int
-stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
-			     u32 offset, u8 queue_event, u8 is_in_order);
-int
-stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
-			   u32 offset, u32 max_bytes);
+session_enqueue_stream_connection (transport_connection_t * tc,
+				   vlib_buffer_t * b, u32 offset,
+				   u8 queue_event, u8 is_in_order);
+int session_enqueue_dgram_connection (stream_session_t * s, vlib_buffer_t * b,
+				      u8 proto, u8 queue_event);
+int stream_session_peek_bytes (transport_connection_t * tc, u8 * buffer,
+			       u32 offset, u32 max_bytes);
 u32 stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes);
 
 int stream_session_connect_notify (transport_connection_t * tc, u8 is_fail);
+int session_dgram_connect_notify (transport_connection_t *tc);
 void stream_session_init_fifos_pointers (transport_connection_t * tc,
 					 u32 rx_pointer, u32 tx_pointer);
 
@@ -314,12 +316,9 @@ void stream_session_accept_notify (transport_connection_t * tc);
 void stream_session_disconnect_notify (transport_connection_t * tc);
 void stream_session_delete_notify (transport_connection_t * tc);
 void stream_session_reset_notify (transport_connection_t * tc);
-int
-stream_session_accept (transport_connection_t * tc, u32 listener_index,
-		       u8 notify);
-int
-stream_session_open (u32 app_index, session_endpoint_t * tep,
-		     transport_connection_t ** tc);
+int stream_session_accept (transport_connection_t * tc, u32 listener_index,
+			   u8 notify);
+int session_open (u32 app_index, session_endpoint_t * tep, u32 opaque);
 int stream_session_listen (stream_session_t * s, session_endpoint_t * tep);
 int stream_session_stop_listen (stream_session_t * s);
 void stream_session_disconnect (stream_session_t * s);
@@ -346,7 +345,7 @@ session_manager_get_vpp_event_queue (u32 thread_index)
   return session_manager_main.vpp_event_queues[thread_index];
 }
 
-int session_manager_flush_enqueue_events (u32 thread_index);
+int session_manager_flush_enqueue_events (u8 proto, u32 thread_index);
 
 always_inline u64
 listen_session_get_handle (stream_session_t * s)
@@ -399,6 +398,8 @@ listen_session_del (stream_session_t * s)
 {
   pool_put (session_manager_main.listen_sessions[s->session_type], s);
 }
+
+transport_connection_t *listen_session_get_transport (stream_session_t * s);
 
 int
 listen_session_get_local_session_endpoint (stream_session_t * listener,

@@ -346,7 +346,7 @@ http_server_rx_callback (stream_session_t * s)
   /* send the command to a new/recycled vlib process */
   args = clib_mem_alloc (sizeof (*args));
   args->data = vec_dup (hsm->rx_buf);
-  args->session_handle = stream_session_handle (s);
+  args->session_handle = session_handle (s);
 
   /* Send an RPC request via the thread-0 input node */
   if (vlib_get_thread_index () != 0)
@@ -382,7 +382,7 @@ builtin_session_disconnect_callback (stream_session_t * s)
   http_server_main_t *bsm = &http_server_main;
   vnet_disconnect_args_t _a, *a = &_a;
 
-  a->handle = stream_session_handle (s);
+  a->handle = session_handle (s);
   a->app_index = bsm->app_index;
   vnet_disconnect_session (a);
 }

@@ -73,7 +73,7 @@ builtin_session_disconnect_callback (stream_session_t * s)
   builtin_server_main_t *bsm = &builtin_server_main;
   vnet_disconnect_args_t _a, *a = &_a;
 
-  a->handle = stream_session_handle (s);
+  a->handle = session_handle (s);
   a->app_index = bsm->app_index;
   vnet_disconnect_session (a);
 }
