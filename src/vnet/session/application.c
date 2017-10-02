@@ -17,6 +17,39 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/session.h>
 
+typedef struct _app_namespace
+{
+  /**
+   * Local sw_if_index that supports transport connections for this namespace
+   */
+  u32 an_sw_if_index;
+
+  /**
+   * VRF associated to the sw_if_index
+   */
+  u32 vrf;
+
+  /**
+   * Secret apps need to provide to authorize attachment to the namespace
+   */
+  u64 an_secret;
+
+  /**
+   * Application namespace id as opposed to app ns index
+   */
+  u32 an_id;
+} app_namespace_t;
+
+/**
+ * Hash table of application namespaces by app ns ids
+ */
+uword *app_namspace_lookup_table;
+
+/**
+ * Pool of application namespaces
+ */
+app_namespace_t *app_namespace_pool;
+
 /**
  * Pool from which we allocate all applications
  */
@@ -270,7 +303,7 @@ application_alloc_segment_manager (application_t * app)
  */
 int
 application_start_listen (application_t * srv, session_type_t session_type,
-			  transport_endpoint_t * tep, u64 * res)
+			  session_endpoint_t * tep, u64 * res)
 {
   segment_manager_t *sm;
   stream_session_t *s;
@@ -342,7 +375,7 @@ application_stop_listen (application_t * srv, u64 handle)
 
 int
 application_open_session (application_t * app, session_type_t sst,
-			  transport_endpoint_t * tep, u32 api_context)
+			  session_endpoint_t * tep, u32 api_context)
 {
   segment_manager_t *sm;
   transport_connection_t *tc = 0;
@@ -627,13 +660,11 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!do_server && !do_client)
     {
       vlib_cli_output (vm, "%U", format_application, 0, verbose);
-      pool_foreach (app, app_pool, (
-				     {
-				     vlib_cli_output (vm, "%U",
-						      format_application, app,
-						      verbose);
-				     }
-		    ));
+      /* *INDENT-OFF* */
+      pool_foreach (app, app_pool, ({
+	vlib_cli_output (vm, "%U", format_application, app, verbose);
+      }));
+      /* *INDENT-ON* */
     }
 
   return 0;

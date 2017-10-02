@@ -19,16 +19,20 @@
 #include <vnet/session/stream_session.h>
 #include <vnet/session/transport.h>
 
-typedef struct _session_lookup
+typedef struct _session_lookup_table
 {
-  /** Lookup tables for established sessions and listeners */
+  /**
+   * Lookup tables for established sessions and listeners
+   */
   clib_bihash_16_8_t v4_session_hash;
   clib_bihash_48_8_t v6_session_hash;
 
-  /** Lookup tables for half-open sessions */
+  /**
+   * Lookup tables for half-open sessions
+   */
   clib_bihash_16_8_t v4_half_open_hash;
   clib_bihash_48_8_t v6_half_open_hash;
-} session_lookup_t;
+} session_lookup_table_t;
 
 stream_session_t *stream_session_lookup_listener4 (ip4_address_t * lcl,
 						   u16 lcl_port, u8 proto);
@@ -80,8 +84,8 @@ transport_connection_t *stream_session_half_open_lookup (ip46_address_t * lcl,
 							 u16 lcl_port,
 							 u16 rmt_port,
 							 u8 proto);
-void stream_session_table_add_for_tc (transport_connection_t * tc, u64 value);
-int stream_session_table_del_for_tc (transport_connection_t * tc);
+void stream_session_table_add_for_tc (u32 table_index, transport_connection_t * tc, u64 value);
+int stream_session_table_del_for_tc (u32 table_index, transport_connection_t * tc);
 int stream_session_table_del (stream_session_t * s);
 void stream_session_half_open_table_del (transport_connection_t * tc);
 void stream_session_half_open_table_add (transport_connection_t * tc,

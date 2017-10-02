@@ -635,7 +635,7 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
  */
 int
 stream_session_open (u32 app_index, session_type_t st,
-		     transport_endpoint_t * rmt,
+		     session_endpoint_t * rmt,
 		     transport_connection_t ** res)
 {
   transport_connection_t *tc;
@@ -673,7 +673,7 @@ stream_session_open (u32 app_index, session_type_t st,
  * @param tep Local endpoint to be listened on.
  */
 int
-stream_session_listen (stream_session_t * s, transport_endpoint_t * tep)
+stream_session_listen (stream_session_t * s, session_endpoint_t * tep)
 {
   transport_connection_t *tc;
   u32 tci;

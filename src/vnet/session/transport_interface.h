@@ -27,9 +27,9 @@ typedef struct _transport_proto_vft
   /*
    * Setup
    */
-  u32 (*bind) (u32 session_index, transport_endpoint_t * lcl);
+  u32 (*bind) (u32 session_index, session_endpoint_t * lcl);
   u32 (*unbind) (u32);
-  int (*open) (transport_endpoint_t * rmt);
+  int (*open) (session_endpoint_t * rmt);
   void (*close) (u32 conn_index, u32 thread_index);
   void (*cleanup) (u32 conn_index, u32 thread_index);
 
@@ -63,9 +63,9 @@ typedef clib_bihash_24_8_t transport_endpoint_table_t;
 u32 transport_endpoint_lookup (transport_endpoint_table_t * ht,
 			       ip46_address_t * ip, u16 port);
 void transport_endpoint_table_add (transport_endpoint_table_t * ht,
-				   transport_endpoint_t * te, u32 value);
+				   session_endpoint_t * te, u32 value);
 void transport_endpoint_table_del (transport_endpoint_table_t * ht,
-				   transport_endpoint_t * te);
+				   session_endpoint_t * te);
 
 void session_register_transport (transport_proto_t transport_proto, u8 is_ip4,
 				 const transport_proto_vft_t * vft);

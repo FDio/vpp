@@ -75,13 +75,18 @@ typedef enum _transport_proto
   TRANSPORT_PROTO_UDP
 } transport_proto_t;
 
+/** TODO split into transport and session endpoint */
 typedef struct _transport_endpoint
 {
-  ip46_address_t ip;	/** ip address */
-  u16 port;		/** port in net order */
-  u8 is_ip4;		/** 1 if ip4 */
-  u32 vrf;		/** fib table the endpoint is associated with */
-} transport_endpoint_t;
+  ip46_address_t ip;	/**< ip address */
+  u16 port;		/**< port in net order */
+  u8 is_ip4;		/**< 1 if ip4 */
+  u32 vrf;		/**< fib table the endpoint is associated with */
+
+  /* session part */
+  u32 app_ns;
+  u8 transport_proto;
+} session_endpoint_t;
 
 #endif /* VNET_VNET_URI_TRANSPORT_H_ */
 

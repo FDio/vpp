@@ -656,10 +656,10 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 
       client_q = vl_api_client_index_to_input_queue (mp->client_index);
       mp->client_queue_address = pointer_to_uword (client_q);
-      a->tep.is_ip4 = mp->is_ip4;
-      a->tep.ip = *ip46;
-      a->tep.port = mp->port;
-      a->tep.vrf = mp->vrf;
+      a->sep.is_ip4 = mp->is_ip4;
+      a->sep.ip = *ip46;
+      a->sep.port = mp->port;
+      a->sep.vrf = mp->vrf;
       a->api_context = mp->context;
       a->app_index = app->index;
       a->proto = mp->proto;

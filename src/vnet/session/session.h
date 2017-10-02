@@ -319,9 +319,9 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
 		       u8 sst, u8 notify);
 int
 stream_session_open (u32 app_index, session_type_t st,
-		     transport_endpoint_t * tep,
+		     session_endpoint_t * tep,
 		     transport_connection_t ** tc);
-int stream_session_listen (stream_session_t * s, transport_endpoint_t * tep);
+int stream_session_listen (stream_session_t * s, session_endpoint_t * tep);
 int stream_session_stop_listen (stream_session_t * s);
 void stream_session_disconnect (stream_session_t * s);
 void stream_session_cleanup (stream_session_t * s);

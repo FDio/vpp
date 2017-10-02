@@ -28,7 +28,15 @@
 #include <vnet/session/session_lookup.h>
 #include <vnet/session/session.h>
 
-static session_lookup_t session_lookup;
+static session_lookup_table_t session_lookup;
+/**
+ * Pool of lookup tables
+ */
+static session_lookup_table_t *lookup_tables;
+
+/**
+ * External vector of per transport virtual functions table
+ */
 extern transport_proto_vft_t *tp_vfts;
 
 /* *INDENT-OFF* */
@@ -158,55 +166,56 @@ make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * t)
  * Value: (owner thread index << 32 | session_index);
  */
 void
-stream_session_table_add_for_tc (transport_connection_t * tc, u64 value)
+stream_session_table_add_for_tc (u32 table_index, transport_connection_t * tc,
+                                 u64 value)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *slt;
   session_kv4_t kv4;
   session_kv6_t kv6;
 
   if (tc->is_ip4)
     {
+      slt = &lookup_tables[table_index]->v4_session_hash;
       make_v4_ss_kv_from_tc (&kv4, tc);
       kv4.value = value;
-      clib_bihash_add_del_16_8 (&sl->v4_session_hash, &kv4, 1 /* is_add */ );
+      clib_bihash_add_del_16_8 (slt, &kv4, 1 /* is_add */);
     }
   else
     {
+      slt = &lookup_tables[table_index]->v6_session_hash;
       make_v6_ss_kv_from_tc (&kv6, tc);
       kv6.value = value;
-      clib_bihash_add_del_48_8 (&sl->v6_session_hash, &kv6, 1 /* is_add */ );
+      clib_bihash_add_del_48_8 (slt, &kv6, 1 /* is_add */);
     }
 }
 
 void
-stream_session_table_add (session_manager_main_t * smm, stream_session_t * s,
-			  u64 value)
+stream_session_table_add (stream_session_t * s, u64 value)
 {
   transport_connection_t *tc;
-
   tc = tp_vfts[s->session_type].get_connection (s->connection_index,
 						s->thread_index);
   stream_session_table_add_for_tc (tc, value);
 }
 
 int
-stream_session_table_del_for_tc (transport_connection_t * tc)
+stream_session_table_del_for_tc (u32 table_index, transport_connection_t * tc)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *slt;
   session_kv4_t kv4;
   session_kv6_t kv6;
 
   if (tc->is_ip4)
     {
+      slt = &lookup_tables[table_index]->v4_session_hash;
       make_v4_ss_kv_from_tc (&kv4, tc);
-      return clib_bihash_add_del_16_8 (&sl->v4_session_hash, &kv4,
-				       0 /* is_add */ );
+      return clib_bihash_add_del_16_8 (slt, &kv4, 0 /* is_add */);
     }
   else
     {
+      slt = &lookup_tables[table_index]->v6_session_hash;
       make_v6_ss_kv_from_tc (&kv6, tc);
-      return clib_bihash_add_del_48_8 (&sl->v6_session_hash, &kv6,
-				       0 /* is_add */ );
+      return clib_bihash_add_del_48_8 (&slt, &kv6, 0 /* is_add */);
     }
 
   return 0;
@@ -225,7 +234,7 @@ stream_session_table_del (stream_session_t * s)
 void
 stream_session_half_open_table_add (transport_connection_t * tc, u64 value)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   session_kv4_t kv4;
   session_kv6_t kv6;
 
@@ -248,7 +257,7 @@ stream_session_half_open_table_add (transport_connection_t * tc, u64 value)
 void
 stream_session_half_open_table_del (transport_connection_t * tc)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   session_kv4_t kv4;
   session_kv6_t kv6;
 
@@ -269,7 +278,7 @@ stream_session_half_open_table_del (transport_connection_t * tc)
 stream_session_t *
 stream_session_lookup_listener4 (ip4_address_t * lcl, u16 lcl_port, u8 proto)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   session_kv4_t kv4;
   int rv;
 
@@ -297,7 +306,7 @@ stream_session_t *
 stream_session_lookup4 (ip4_address_t * lcl, ip4_address_t * rmt,
 			u16 lcl_port, u16 rmt_port, u8 proto)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   session_kv4_t kv4;
   stream_session_t *s;
   int rv;
@@ -322,7 +331,7 @@ stream_session_lookup4 (ip4_address_t * lcl, ip4_address_t * rmt,
 stream_session_t *
 stream_session_lookup_listener6 (ip6_address_t * lcl, u16 lcl_port, u8 proto)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   session_kv6_t kv6;
   int rv;
 
@@ -348,7 +357,7 @@ stream_session_t *
 stream_session_lookup6 (ip6_address_t * lcl, ip6_address_t * rmt,
 			u16 lcl_port, u16 rmt_port, u8 proto)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   session_kv6_t kv6;
   stream_session_t *s;
   int rv;
@@ -391,7 +400,7 @@ stream_session_half_open_lookup_handle (ip46_address_t * lcl,
 					ip46_address_t * rmt, u16 lcl_port,
 					u16 rmt_port, u8 proto)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   session_kv4_t kv4;
   session_kv6_t kv6;
   int rv;
@@ -448,7 +457,7 @@ stream_session_lookup_transport_wt4 (ip4_address_t * lcl, ip4_address_t * rmt,
 				     u16 lcl_port, u16 rmt_port, u8 proto,
 				     u32 my_thread_index)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   session_kv4_t kv4;
   stream_session_t *s;
   int rv;
@@ -479,7 +488,7 @@ transport_connection_t *
 stream_session_lookup_transport4 (ip4_address_t * lcl, ip4_address_t * rmt,
 				  u16 lcl_port, u16 rmt_port, u8 proto)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   session_kv4_t kv4;
   stream_session_t *s;
   int rv;
@@ -511,7 +520,7 @@ stream_session_lookup_transport_wt6 (ip6_address_t * lcl, ip6_address_t * rmt,
 				     u16 lcl_port, u16 rmt_port, u8 proto,
 				     u32 my_thread_index)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   stream_session_t *s;
   session_kv6_t kv6;
   int rv;
@@ -542,7 +551,7 @@ transport_connection_t *
 stream_session_lookup_transport6 (ip6_address_t * lcl, ip6_address_t * rmt,
 				  u16 lcl_port, u16 rmt_port, u8 proto)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
   stream_session_t *s;
   session_kv6_t kv6;
   int rv;
@@ -582,7 +591,7 @@ stream_session_lookup_transport6 (ip6_address_t * lcl, ip6_address_t * rmt,
 void
 session_lookup_init (void)
 {
-  session_lookup_t *sl = &session_lookup;
+  session_lookup_table_t *sl = &session_lookup;
 
 #define _(af,table,parm,value) \
   u32 configured_##af##_##table##_table_##parm = value;
