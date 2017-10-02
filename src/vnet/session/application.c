@@ -415,7 +415,6 @@ application_open_session (application_t * app, session_endpoint_t * sep,
 			  u32 api_context)
 {
   segment_manager_t *sm;
-  transport_connection_t *tc = 0;
   int rv;
 
   /* Make sure we have a segment manager for connects */
@@ -427,12 +426,8 @@ application_open_session (application_t * app, session_endpoint_t * sep,
       app->connects_seg_manager = segment_manager_index (sm);
     }
 
-  if ((rv = stream_session_open (app->index, sep, &tc)))
+  if ((rv = session_open (app->index, sep, api_context)))
     return rv;
-
-  /* Store api_context for when the reply comes. Not the nicest thing
-   * but better than allocating a separate half-open pool. */
-  tc->s_index = api_context;
 
   return 0;
 }

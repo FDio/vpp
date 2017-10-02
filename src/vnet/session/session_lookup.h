@@ -20,7 +20,7 @@
 #include <vnet/session/stream_session.h>
 #include <vnet/session/transport.h>
 
-stream_session_t *session_lookup4 (u32 fib_index, ip4_address_t * lcl,
+stream_session_t *session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl,
 				   ip4_address_t * rmt, u16 lcl_port,
 				   u16 rmt_port, u8 proto);
 stream_session_t *session_lookup6 (u32 fib_index, ip6_address_t * lcl,
@@ -58,10 +58,12 @@ stream_session_t *session_lookup_listener (u32 table_index,
 					   session_endpoint_t * sep);
 int session_lookup_add_connection (transport_connection_t * tc, u64 value);
 int session_lookup_del_connection (transport_connection_t * tc);
-u32 session_lookup_session_endpoint (u32 table_index,
+u64 session_lookup_session_endpoint (u32 table_index,
 				     session_endpoint_t * sep);
 u32 session_lookup_local_session_endpoint (u32 table_index,
 					   session_endpoint_t * sep);
+stream_session_t *
+session_lookup_global_session_endpoint (session_endpoint_t *);
 int session_lookup_add_session_endpoint (u32 table_index,
 					 session_endpoint_t * sep, u64 value);
 int session_lookup_del_session_endpoint (u32 table_index,
