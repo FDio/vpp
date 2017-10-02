@@ -1742,7 +1742,7 @@ always_inline u32
 tcp_session_has_ooo_data (tcp_connection_t * tc)
 {
   stream_session_t *s =
-    stream_session_get (tc->c_s_index, tc->c_thread_index);
+    session_get (tc->c_s_index, tc->c_thread_index);
   return svm_fifo_has_ooo_data (s->server_rx_fifo);
 }
 

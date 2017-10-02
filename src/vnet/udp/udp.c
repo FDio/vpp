@@ -25,7 +25,7 @@
 udp_uri_main_t udp_uri_main;
 
 u32
-udp_session_bind_ip4 (u32 session_index, transport_endpoint_t * lcl)
+udp_session_bind_ip4 (u32 session_index, session_endpoint_t * lcl)
 {
   udp_uri_main_t *um = vnet_get_udp_main ();
   udp_connection_t *listener;
@@ -41,7 +41,7 @@ udp_session_bind_ip4 (u32 session_index, transport_endpoint_t * lcl)
 }
 
 u32
-udp_session_bind_ip6 (u32 session_index, transport_endpoint_t * lcl)
+udp_session_bind_ip6 (u32 session_index, session_endpoint_t * lcl)
 {
   udp_uri_main_t *um = vnet_get_udp_main ();
   udp_connection_t *listener;
@@ -249,7 +249,7 @@ udp_send_space_uri (transport_connection_t * t)
 }
 
 int
-udp_open_connection (transport_endpoint_t * tep)
+udp_open_connection (session_endpoint_t * tep)
 {
   clib_warning ("Not implemented");
   return 0;

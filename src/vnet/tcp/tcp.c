@@ -29,7 +29,7 @@
 tcp_main_t tcp_main;
 
 static u32
-tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
+tcp_connection_bind (u32 session_index, session_endpoint_t * lcl)
 {
   tcp_main_t *tm = &tcp_main;
   tcp_connection_t *listener;
@@ -63,7 +63,7 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
 }
 
 u32
-tcp_session_bind (u32 session_index, transport_endpoint_t * tep)
+tcp_session_bind (u32 session_index, session_endpoint_t * tep)
 {
   return tcp_connection_bind (session_index, tep);
 }
@@ -110,11 +110,11 @@ transport_endpoint_del (u32 tepi)
   clib_spinlock_unlock_if_init (&tm->local_endpoints_lock);
 }
 
-always_inline transport_endpoint_t *
+always_inline session_endpoint_t *
 transport_endpoint_new (void)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
-  transport_endpoint_t *tep;
+  session_endpoint_t *tep;
   pool_get (tm->local_endpoints, tep);
   return tep;
 }
@@ -177,7 +177,7 @@ tcp_connection_cleanup (tcp_connection_t * tc)
 {
   tcp_main_t *tm = &tcp_main;
   u32 tepi;
-  transport_endpoint_t *tep;
+  session_endpoint_t *tep;
 
   /* Cleanup local endpoint if this was an active connect */
   tepi = transport_endpoint_lookup (&tm->local_endpoints_table, &tc->c_lcl_ip,
@@ -397,7 +397,7 @@ int
 tcp_allocate_local_port (ip46_address_t * ip)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
-  transport_endpoint_t *tep;
+  session_endpoint_t *tep;
   u32 tei;
   u16 min = 1024, max = 65535;	/* XXX configurable ? */
   int tries, limit;
@@ -600,7 +600,7 @@ tcp_connection_init_vars (tcp_connection_t * tc)
 }
 
 int
-tcp_connection_open (transport_endpoint_t * rmt)
+tcp_connection_open (session_endpoint_t * rmt)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_connection_t *tc;
@@ -620,7 +620,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
   prefix.fp_proto = rmt->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   prefix.fp_len = rmt->is_ip4 ? 32 : 128;
 
-  fib_index = fib_table_find (prefix.fp_proto, rmt->vrf);
+  fib_index = fib_table_find (prefix.fp_proto, rmt->fib_index);
   if (fib_index == (u32) ~ 0)
     {
       clib_warning ("no fib table");
@@ -709,7 +709,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
   tc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
   tc->c_is_ip4 = rmt->is_ip4;
   tc->c_transport_proto = TRANSPORT_PROTO_TCP;
-  tc->c_vrf = rmt->vrf;
+  tc->c_vrf = rmt->fib_index;
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
 
@@ -723,7 +723,7 @@ tcp_connection_open (transport_endpoint_t * rmt)
 }
 
 int
-tcp_session_open (transport_endpoint_t * tep)
+tcp_session_open (session_endpoint_t * tep)
 {
   return tcp_connection_open (tep);
 }

@@ -18,6 +18,16 @@
 #include <vnet/session/session.h>
 
 /**
+ * Hash table of application namespaces by app ns ids
+ */
+uword *app_namspace_lookup_table;
+
+/**
+ * Pool of application namespaces
+ */
+app_namespace_t *app_namespace_pool;
+
+/**
  * Pool from which we allocate all applications
  */
 static application_t *app_pool;
@@ -31,6 +41,34 @@ static uword *app_by_api_client_index;
  * Default application event queue size
  */
 static u32 default_app_evt_queue_size = 128;
+
+app_namespace_t *
+app_namespace_get (u32 index)
+{
+  return pool_elt_at_index (app_namespace_pool, index);
+}
+
+u32
+app_namespace_index (app_namespace_t *app_ns)
+{
+  return (app_ns - app_namespace_pool);
+}
+
+u32
+application_session_table (application_t *app)
+{
+  app_namespace_t *app_ns;
+  app_ns = app_namespace_get (app->ns_index);
+  return session_table_get_index_for_nns (app_ns->nns_index);
+}
+
+u32
+application_local_session_table (application_t *app)
+{
+  app_namespace_t *app_ns;
+  app_ns = app_namespace_get (app->ns_index);
+  return app_ns->local_table_index;
+}
 
 int
 application_api_queue_is_full (application_t * app)
@@ -175,12 +213,24 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   segment_manager_properties_t *props;
   u32 app_evt_queue_size, first_seg_size;
   u32 default_rx_fifo_size = 16 << 10, default_tx_fifo_size = 16 << 10;
+  app_namespace_t *app_ns;
   int rv;
+
+  /*
+   * Should we be here?
+   */
+  app_ns = app_namespace_get (options[APP_OPTIONS_NAMESPACE]);
+  if (!app_ns)
+    return VNET_API_ERROR_APP_INVALID_NS;
+  if (app_ns->ns_secret != options[APP_OPTIONS_NAMESPACE_SECRET])
+    return VNET_API_ERROR_APP_WRONG_NS_SECRET;
 
   app_evt_queue_size = options[APP_EVT_QUEUE_SIZE] > 0 ?
     options[APP_EVT_QUEUE_SIZE] : default_app_evt_queue_size;
 
-  /* Setup segment manager */
+  /*
+   * Setup segment manager
+   */
   sm = segment_manager_new ();
   sm->app_index = app->index;
   props = &app->sm_properties;
@@ -203,10 +253,14 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
     return rv;
   sm->first_is_protected = 1;
 
+  /*
+   * Setup application
+   */
   app->first_segment_manager = segment_manager_index (sm);
   app->api_client_index = api_client_index;
   app->flags = options[APP_OPTIONS_FLAGS];
   app->cb_fns = *cb_fns;
+  app->ns_index = app_namespace_index (app_ns);
 
   /* Allocate app event queue in the first shared-memory segment */
   app->event_queue = segment_manager_alloc_queue (sm, app_evt_queue_size);
@@ -269,17 +323,19 @@ application_alloc_segment_manager (application_t * app)
  * it's own specific listening connection.
  */
 int
-application_start_listen (application_t * srv, session_type_t session_type,
-			  transport_endpoint_t * tep, u64 * res)
+application_start_listen (application_t * srv, session_endpoint_t * sep,
+                          u64 * res)
 {
   segment_manager_t *sm;
   stream_session_t *s;
   u64 handle;
+  session_type_t sst;
 
-  s = listen_session_new (session_type);
+  sst = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
+  s = listen_session_new (sst);
   s->app_index = srv->index;
 
-  if (stream_session_listen (s, tep))
+  if (stream_session_listen (s, sep))
     goto err;
 
   /* Allocate segment manager. All sessions derived out of a listen session
@@ -341,15 +397,15 @@ application_stop_listen (application_t * srv, u64 handle)
 }
 
 int
-application_open_session (application_t * app, session_type_t sst,
-			  transport_endpoint_t * tep, u32 api_context)
+application_open_session (application_t * app, session_endpoint_t * sep,
+                          u32 api_context)
 {
   segment_manager_t *sm;
   transport_connection_t *tc = 0;
   int rv;
 
   /* Make sure we have a segment manager for connects */
-  if (app->connects_seg_manager == (u32) ~ 0)
+  if (app->connects_seg_manager == APP_INVALID_SEGMENT_MANAGER_INDEX)
     {
       sm = application_alloc_segment_manager (app);
       if (sm == 0)
@@ -357,7 +413,7 @@ application_open_session (application_t * app, session_type_t sst,
       app->connects_seg_manager = segment_manager_index (sm);
     }
 
-  if ((rv = stream_session_open (app->index, sst, tep, &tc)))
+  if ((rv = stream_session_open (app->index, sep, &tc)))
     return rv;
 
   /* Store api_context for when the reply comes. Not the nicest thing
@@ -500,7 +556,7 @@ application_format_connects (application_t * app, int verbose)
 	  session_index = fifo->master_session_index;
 	  thread_index = fifo->master_thread_index;
 
-	  session = stream_session_get (session_index, thread_index);
+	  session = session_get (session_index, thread_index);
 	  str = format (0, "%U", format_stream_session, session, verbose);
 
 	  if (verbose)
@@ -627,13 +683,11 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!do_server && !do_client)
     {
       vlib_cli_output (vm, "%U", format_application, 0, verbose);
-      pool_foreach (app, app_pool, (
-				     {
-				     vlib_cli_output (vm, "%U",
-						      format_application, app,
-						      verbose);
-				     }
-		    ));
+      /* *INDENT-OFF* */
+      pool_foreach (app, app_pool, ({
+	vlib_cli_output (vm, "%U", format_application, app, verbose);
+      }));
+      /* *INDENT-ON* */
     }
 
   return 0;
