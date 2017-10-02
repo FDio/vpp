@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import unittest
+import binascii
 from socket import AF_INET6
 
 from framework import VppTestCase, VppTestRunner
@@ -1161,6 +1162,150 @@ class TestSRv6(VppTestCase):
 
         # remove SRv6 localSIDs
         localsid.remove_vpp_config()
+
+        # cleanup interfaces
+        self.teardown_interfaces()
+
+    def test_SRv6_T_Insert_Classifier(self):
+        """ Test SRv6 Transit.Insert behavior (IPv6 only).
+            steer packets using the classifier
+        """
+        # send traffic to one destination interface
+        # source and destination are IPv6 only
+        self.setup_interfaces(ipv6=[False, False, False, True, True])
+
+        # configure FIB entries
+        route = VppIpRoute(self, "a4::", 64,
+                           [VppRoutePath(self.pg4.remote_ip6,
+                                         self.pg4.sw_if_index,
+                                         proto=DpoProto.DPO_PROTO_IP6)],
+                           is_ip6=1)
+        route.add_vpp_config()
+
+        # configure encaps IPv6 source address
+        # needs to be done before SR Policy config
+        # TODO: API?
+        self.vapi.cli("set sr encaps source addr a3::")
+
+        bsid = 'a3::9999:1'
+        # configure SRv6 Policy
+        # Note: segment list order: first -> last
+        sr_policy = VppSRv6Policy(
+            self, bsid=bsid,
+            is_encap=0,
+            sr_type=SRv6PolicyType.SR_POLICY_TYPE_DEFAULT,
+            weight=1, fib_table=0,
+            segments=['a4::', 'a5::', 'a6::c7'],
+            source='a3::')
+        sr_policy.add_vpp_config()
+        self.sr_policy = sr_policy
+
+        # log the sr policies
+        self.logger.info(self.vapi.cli("show sr policies"))
+
+        # add classify table
+        # mask on dst ip address prefix a7::/8
+        mask = '{:0<16}'.format('ff')
+        r = self.vapi.classify_add_del_table(
+            1,
+            binascii.unhexlify(mask),
+            match_n_vectors=(len(mask) - 1) // 32 + 1,
+            current_data_flag=1,
+            skip_n_vectors=2)  # data offset
+        self.assertIsNotNone(r, msg='No response msg for add_del_table')
+        table_index = r.new_table_index
+
+        # add the source routign node as a ip6 inacl netxt node
+        r = self.vapi.add_node_next('ip6-inacl',
+                                    'sr-pl-rewrite-insert')
+        inacl_next_node_index = r.node_index
+
+        match = '{:0<16}'.format('a7')
+        r = self.vapi.classify_add_del_session(
+            1,
+            table_index,
+            binascii.unhexlify(match),
+            hit_next_index=inacl_next_node_index,
+            action=3,
+            metadata=0)  # sr policy index
+        self.assertIsNotNone(r, msg='No response msg for add_del_session')
+
+        # log the classify table used in the steering policy
+        self.logger.info(self.vapi.cli("show classify table"))
+
+        r = self.vapi.input_acl_set_interface(
+            is_add=1,
+            sw_if_index=self.pg3.sw_if_index,
+            ip6_table_index=table_index)
+        self.assertIsNotNone(r,
+                             msg='No response msg for input_acl_set_interface')
+
+        # log the ip6 inacl
+        self.logger.info(self.vapi.cli("show inacl type ip6"))
+
+        # create packets
+        count = len(self.pg_packet_sizes)
+        dst_inner = 'a7::1234'
+        pkts = []
+
+        # create IPv6 packets without SRH
+        packet_header = self.create_packet_header_IPv6(dst_inner)
+        # create traffic stream pg3->pg4
+        pkts.extend(self.create_stream(self.pg3, self.pg4, packet_header,
+                                       self.pg_packet_sizes, count))
+
+        # create IPv6 packets with SRH
+        # packets with segments-left 1, active segment a7::
+        packet_header = self.create_packet_header_IPv6_SRH(
+            sidlist=['a8::', 'a7::', 'a6::'],
+            segleft=1)
+        # create traffic stream pg3->pg4
+        pkts.extend(self.create_stream(self.pg3, self.pg4, packet_header,
+                                       self.pg_packet_sizes, count))
+
+        # send packets and verify received packets
+        self.send_and_verify_pkts(self.pg3, pkts, self.pg4,
+                                  self.compare_rx_tx_packet_T_Insert)
+
+        # remove the interface l2 input feature
+        r = self.vapi.input_acl_set_interface(
+            is_add=0,
+            sw_if_index=self.pg3.sw_if_index,
+            ip6_table_index=table_index)
+        self.assertIsNotNone(r,
+                             msg='No response msg for input_acl_set_interface')
+
+        # log the ip6 inacl after cleaning
+        self.logger.info(self.vapi.cli("show inacl type ip6"))
+
+        # log the localsid counters
+        self.logger.info(self.vapi.cli("show sr localsid"))
+
+        # remove classifier SR steering
+        # classifier_steering.remove_vpp_config()
+        self.logger.info(self.vapi.cli("show sr steering policies"))
+
+        # remove SR Policies
+        self.sr_policy.remove_vpp_config()
+        self.logger.info(self.vapi.cli("show sr policies"))
+
+        # remove classify session and table
+        r = self.vapi.classify_add_del_session(
+            0,
+            table_index,
+            binascii.unhexlify(match))
+        self.assertIsNotNone(r, msg='No response msg for add_del_session')
+
+        r = self.vapi.classify_add_del_table(
+            0,
+            binascii.unhexlify(mask),
+            table_index=table_index)
+        self.assertIsNotNone(r, msg='No response msg for add_del_table')
+
+        self.logger.info(self.vapi.cli("show classify table"))
+
+        # remove FIB entries
+        # done by tearDown
 
         # cleanup interfaces
         self.teardown_interfaces()
