@@ -116,7 +116,7 @@ always_inline void
 make_v4_ss_kv_from_tc (session_kv4_t * kv, transport_connection_t * t)
 {
   make_v4_ss_kv (kv, &t->lcl_ip.ip4, &t->rmt_ip.ip4, t->lcl_port, t->rmt_port,
-		 session_type_from_proto_and_ip (t->transport_proto, 1));
+		 session_type_from_proto_and_ip (t->proto, 1));
 }
 
 always_inline void
@@ -159,7 +159,7 @@ always_inline void
 make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * t)
 {
   make_v6_ss_kv (kv, &t->lcl_ip.ip6, &t->rmt_ip.ip6, t->lcl_port, t->rmt_port,
-		 session_type_from_proto_and_ip (t->transport_proto, 0));
+		 session_type_from_proto_and_ip (t->proto, 0));
 }
 
 
@@ -339,7 +339,7 @@ session_lookup_del_session (stream_session_t * s)
   return session_lookup_del_connection (ts);
 }
 
-u32
+u64
 session_lookup_session_endpoint (u32 table_index, session_endpoint_t * sep)
 {
   session_table_t *st;
@@ -349,14 +349,14 @@ session_lookup_session_endpoint (u32 table_index, session_endpoint_t * sep)
 
   st = session_table_get (table_index);
   if (!st)
-    return SESSION_INVALID_INDEX;
+    return SESSION_INVALID_HANDLE;
   if (sep->is_ip4)
     {
       make_v4_listener_kv (&kv4, &sep->ip.ip4, sep->port,
 			   sep->transport_proto);
       rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
       if (rv == 0)
-	return (u32) kv4.value;
+	return kv4.value;
     }
   else
     {
@@ -364,9 +364,43 @@ session_lookup_session_endpoint (u32 table_index, session_endpoint_t * sep)
 			   sep->transport_proto);
       rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
       if (rv == 0)
-	return (u32) kv6.value;
+	return kv6.value;
     }
-  return SESSION_INVALID_INDEX;
+  return SESSION_INVALID_HANDLE;
+}
+
+stream_session_t *
+session_lookup_global_session_endpoint (session_endpoint_t * sep)
+{
+  session_table_t *st;
+  session_kv4_t kv4;
+  session_kv6_t kv6;
+  u8 fib_proto;
+  u32 table_index;
+  int rv;
+
+  fib_proto = session_endpoint_fib_proto (sep);
+  table_index = session_lookup_get_index_for_fib (fib_proto, sep->fib_index);
+  st = session_table_get (table_index);
+  if (!st)
+    return 0;
+  if (sep->is_ip4)
+    {
+      make_v4_listener_kv (&kv4, &sep->ip.ip4, sep->port,
+			   sep->transport_proto);
+      rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
+      if (rv == 0)
+	return session_get_from_handle (kv4.value);
+    }
+  else
+    {
+      make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port,
+			   sep->transport_proto);
+      rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
+      if (rv == 0)
+	return session_get_from_handle (kv6.value);
+    }
+  return 0;
 }
 
 u32
@@ -562,7 +596,7 @@ session_lookup_half_open_handle (transport_connection_t * tc)
   if (tc->is_ip4)
     {
       make_v4_ss_kv (&kv4, &tc->lcl_ip.ip4, &tc->rmt_ip.ip4, tc->lcl_port,
-		     tc->rmt_port, tc->transport_proto);
+		     tc->rmt_port, tc->proto);
       rv = clib_bihash_search_inline_16_8 (&st->v4_half_open_hash, &kv4);
       if (rv == 0)
 	return kv4.value;
@@ -570,7 +604,7 @@ session_lookup_half_open_handle (transport_connection_t * tc)
   else
     {
       make_v6_ss_kv (&kv6, &tc->lcl_ip.ip6, &tc->rmt_ip.ip6, tc->lcl_port,
-		     tc->rmt_port, tc->transport_proto);
+		     tc->rmt_port, tc->proto);
       rv = clib_bihash_search_inline_48_8 (&st->v6_half_open_hash, &kv6);
       if (rv == 0)
 	return kv6.value;
@@ -713,12 +747,19 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
 /**
  * Lookup session with ip4 and transport layer information
  *
- * Lookup logic is identical to that of @ref session_lookup_connection_wt4 but
- * this returns a session as opposed to a transport connection;
+ * Important note: this may look into another thread's pool table and
+ * register as 'peeker'. Caller should call @ref session_pool_remove_peeker as
+ * if needed as soon as possible.
+ *
+ * Lookup logic is similar to that of @ref session_lookup_connection_wt4 but
+ * this returns a session as opposed to a transport connection and it does not
+ * try to lookup half-open sessions.
+ *
+ * Typically used by dgram connections
  */
 stream_session_t *
-session_lookup4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
-		 u16 lcl_port, u16 rmt_port, u8 proto)
+session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
+		      u16 lcl_port, u16 rmt_port, u8 proto)
 {
   session_table_t *st;
   session_kv4_t kv4;
@@ -733,16 +774,11 @@ session_lookup4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
   make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
-    return session_get_from_handle (kv4.value);
+    return session_get_from_handle_safe (kv4.value);
 
   /* If nothing is found, check if any listener is available */
   if ((s = session_lookup_listener4_i (st, lcl, lcl_port, proto)))
     return s;
-
-  /* Finally, try half-open connections */
-  rv = clib_bihash_search_inline_16_8 (&st->v4_half_open_hash, &kv4);
-  if (rv == 0)
-    return session_get_from_handle (kv4.value);
   return 0;
 }
 
@@ -868,12 +904,19 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
 /**
  * Lookup session with ip6 and transport layer information
  *
- * Lookup logic is identical to that of @ref session_lookup_connection_wt6 but
- * this returns a session as opposed to a transport connection;
+ * Important note: this may look into another thread's pool table and
+ * register as 'peeker'. Caller should call @ref session_pool_remove_peeker as
+ * if needed as soon as possible.
+ *
+ * Lookup logic is similar to that of @ref session_lookup_connection_wt6 but
+ * this returns a session as opposed to a transport connection and it does not
+ * try to lookup half-open sessions.
+ *
+ * Typically used by dgram connections
  */
 stream_session_t *
-session_lookup6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
-		 u16 lcl_port, u16 rmt_port, u8 proto)
+session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
+		      u16 lcl_port, u16 rmt_port, u8 proto)
 {
   session_table_t *st;
   session_kv6_t kv6;
@@ -887,16 +930,11 @@ session_lookup6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
   make_v6_ss_kv (&kv6, lcl, rmt, lcl_port, rmt_port, proto);
   rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
   if (rv == 0)
-    return session_get_from_handle (kv6.value);
+    return session_get_from_handle_safe (kv6.value);
 
   /* If nothing is found, check if any listener is available */
   if ((s = session_lookup_listener6_i (st, lcl, lcl_port, proto)))
     return s;
-
-  /* Finally, try half-open connections */
-  rv = clib_bihash_search_inline_48_8 (&st->v6_half_open_hash, &kv6);
-  if (rv == 0)
-    return session_get_from_handle (kv6.value);
   return 0;
 }
 

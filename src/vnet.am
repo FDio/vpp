@@ -877,7 +877,7 @@ libvnet_la_SOURCES +=				\
   vnet/session/session_table.c			\
   vnet/session/session_lookup.c			\
   vnet/session/session_node.c			\
-  vnet/session/transport_interface.c		\
+  vnet/session/transport.c			\
   vnet/session/application.c			\
   vnet/session/session_cli.c			\
   vnet/session/application_interface.c		\

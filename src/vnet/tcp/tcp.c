@@ -28,39 +28,6 @@
 
 tcp_main_t tcp_main;
 
-void *
-ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
-{
-  ip_lookup_main_t *lm4 = &ip4_main.lookup_main;
-  ip_lookup_main_t *lm6 = &ip6_main.lookup_main;
-  ip_interface_address_t *ia = 0;
-
-  if (is_ip4)
-    {
-      /* *INDENT-OFF* */
-      foreach_ip_interface_address (lm4, ia, sw_if_index, 1 /* unnumbered */ ,
-      ({
-        return ip_interface_address_get_address (lm4, ia);
-      }));
-      /* *INDENT-ON* */
-    }
-  else
-    {
-      /* *INDENT-OFF* */
-      foreach_ip_interface_address (lm6, ia, sw_if_index, 1 /* unnumbered */ ,
-      ({
-        ip6_address_t *rv;
-        rv = ip_interface_address_get_address (lm6, ia);
-        /* Trying to use a link-local ip6 src address is a fool's errand */
-        if (!ip6_address_is_link_local_unicast (rv))
-          return rv;
-      }));
-      /* *INDENT-ON* */
-    }
-
-  return 0;
-}
-
 static u32
 tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
 {
@@ -83,7 +50,7 @@ tcp_connection_bind (u32 session_index, transport_endpoint_t * lcl)
     }
   ip_copy (&listener->c_lcl_ip, &lcl->ip, lcl->is_ip4);
   listener->c_is_ip4 = lcl->is_ip4;
-  listener->c_transport_proto = TRANSPORT_PROTO_TCP;
+  listener->c_proto = TRANSPORT_PROTO_TCP;
   listener->c_s_index = session_index;
   listener->c_fib_index = lcl->fib_index;
   listener->state = TCP_STATE_LISTEN;
@@ -132,24 +99,6 @@ tcp_session_get_listener (u32 listener_index)
   tcp_connection_t *tc;
   tc = pool_elt_at_index (tm->listener_pool, listener_index);
   return &tc->connection;
-}
-
-always_inline void
-transport_endpoint_del (u32 tepi)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  clib_spinlock_lock_if_init (&tm->local_endpoints_lock);
-  pool_put_index (tm->local_endpoints, tepi);
-  clib_spinlock_unlock_if_init (&tm->local_endpoints_lock);
-}
-
-always_inline transport_endpoint_t *
-transport_endpoint_new (void)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  transport_endpoint_t *tep;
-  pool_get (tm->local_endpoints, tep);
-  return tep;
 }
 
 /**
@@ -209,18 +158,10 @@ void
 tcp_connection_cleanup (tcp_connection_t * tc)
 {
   tcp_main_t *tm = &tcp_main;
-  u32 tepi;
-  transport_endpoint_t *tep;
 
   /* Cleanup local endpoint if this was an active connect */
-  tepi = transport_endpoint_lookup (&tm->local_endpoints_table, &tc->c_lcl_ip,
-				    clib_net_to_host_u16 (tc->c_lcl_port));
-  if (tepi != TRANSPORT_ENDPOINT_INVALID_INDEX)
-    {
-      tep = pool_elt_at_index (tm->local_endpoints, tepi);
-      transport_endpoint_table_del (&tm->local_endpoints_table, tep);
-      transport_endpoint_del (tepi);
-    }
+  transport_endpoint_cleanup (TRANSPORT_PROTO_TCP, &tc->c_lcl_ip,
+			      tc->c_lcl_port);
 
   /* Check if connection is not yet fully established */
   if (tc->state == TCP_STATE_SYN_SENT)
@@ -288,7 +229,7 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_SYN_SENT:
-      stream_session_connect_notify (&tc->connection, 1 /* fail */ );
+      session_stream_connect_notify (&tc->connection, 1 /* fail */ );
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_ESTABLISHED:
@@ -386,57 +327,6 @@ tcp_session_cleanup (u32 conn_index, u32 thread_index)
   tc->state = TCP_STATE_CLOSED;
   TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc);
   tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
-}
-
-#define PORT_MASK ((1 << 16)- 1)
-/**
- * Allocate local port and add if successful add entry to local endpoint
- * table to mark the pair as used.
- */
-int
-tcp_allocate_local_port (ip46_address_t * ip)
-{
-  tcp_main_t *tm = vnet_get_tcp_main ();
-  transport_endpoint_t *tep;
-  u32 tei;
-  u16 min = 1024, max = 65535;	/* XXX configurable ? */
-  int tries, limit;
-
-  limit = max - min;
-
-  /* Only support active opens from thread 0 */
-  ASSERT (vlib_get_thread_index () == 0);
-
-  /* Search for first free slot */
-  for (tries = 0; tries < limit; tries++)
-    {
-      u16 port = 0;
-
-      /* Find a port in the specified range */
-      while (1)
-	{
-	  port = random_u32 (&tm->port_allocator_seed) & PORT_MASK;
-	  if (PREDICT_TRUE (port >= min && port < max))
-	    break;
-	}
-
-      /* Look it up */
-      tei = transport_endpoint_lookup (&tm->local_endpoints_table, ip, port);
-      /* If not found, we're done */
-      if (tei == TRANSPORT_ENDPOINT_INVALID_INDEX)
-	{
-	  clib_spinlock_lock_if_init (&tm->local_endpoints_lock);
-	  tep = transport_endpoint_new ();
-	  clib_memcpy (&tep->ip, ip, sizeof (*ip));
-	  tep->port = port;
-	  transport_endpoint_table_add (&tm->local_endpoints_table, tep,
-					tep - tm->local_endpoints);
-	  clib_spinlock_unlock_if_init (&tm->local_endpoints_lock);
-
-	  return tep->port;
-	}
-    }
-  return -1;
 }
 
 /**
@@ -574,9 +464,15 @@ tcp_init_snd_vars (tcp_connection_t * tc)
 {
   u32 time_now;
 
-  /* Set random initial sequence */
-  tcp_set_time_now (0);
+  /*
+   * We use the time to randomize iss and for setting up the initial
+   * timestamp. Make sure it's updated otherwise syn and ack in the
+   * handshake may make it look as if time has flown in the opposite
+   * direction for us.
+   */
+  tcp_set_time_now (vlib_get_thread_index ());
   time_now = tcp_time_now ();
+
   tc->iss = random_u32 (&time_now);
   tc->snd_una = tc->iss;
   tc->snd_nxt = tc->iss + 1;
@@ -600,112 +496,70 @@ tcp_connection_init_vars (tcp_connection_t * tc)
   //  tcp_connection_fib_attach (tc);
 }
 
+static int
+tcp_alloc_custom_local_endpoint (tcp_main_t * tm, ip46_address_t * lcl_addr,
+				 u16 * lcl_port, u8 is_ip4)
+{
+  int index, port;
+  if (is_ip4)
+    {
+      index = tm->last_v4_address_rotor++;
+      if (tm->last_v4_address_rotor >= vec_len (tm->ip4_src_addresses))
+	tm->last_v4_address_rotor = 0;
+      lcl_addr->ip4.as_u32 = tm->ip4_src_addresses[index].as_u32;
+    }
+  else
+    {
+      index = tm->last_v6_address_rotor++;
+      if (tm->last_v6_address_rotor >= vec_len (tm->ip6_src_addresses))
+	tm->last_v6_address_rotor = 0;
+      clib_memcpy (&lcl_addr->ip6, &tm->ip6_src_addresses[index],
+		   sizeof (ip6_address_t));
+    }
+  port = transport_alloc_local_port (TRANSPORT_PROTO_TCP, lcl_addr);
+  if (port < 1)
+    {
+      clib_warning ("Failed to allocate src port");
+      return -1;
+    }
+  *lcl_port = port;
+  return 0;
+}
+
 int
 tcp_connection_open (transport_endpoint_t * rmt)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
   tcp_connection_t *tc;
-  fib_prefix_t prefix;
-  fib_node_index_t fei;
-  u32 sw_if_index;
   ip46_address_t lcl_addr;
-  int lcl_port;
+  u16 lcl_port;
+  int rv;
 
   /*
-   * Find the local address and allocate port
+   * Allocate local endpoint
    */
-  memset (&lcl_addr, 0, sizeof (lcl_addr));
-
-  /* Find a FIB path to the destination */
-  clib_memcpy (&prefix.fp_addr, &rmt->ip, sizeof (rmt->ip));
-  prefix.fp_proto = rmt->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
-  prefix.fp_len = rmt->is_ip4 ? 32 : 128;
-
-  ASSERT (rmt->fib_index != ENDPOINT_INVALID_INDEX);
-  fei = fib_table_lookup (rmt->fib_index, &prefix);
-
-  /* Couldn't find route to destination. Bail out. */
-  if (fei == FIB_NODE_INDEX_INVALID)
-    {
-      clib_warning ("no route to destination");
-      return -1;
-    }
-
-  sw_if_index = rmt->sw_if_index;
-  if (sw_if_index == ENDPOINT_INVALID_INDEX)
-    sw_if_index = fib_entry_get_resolving_interface (fei);
-
-  if (sw_if_index == ENDPOINT_INVALID_INDEX)
-    {
-      clib_warning ("no resolving interface for %U", format_ip46_address,
-		    &rmt->ip, (rmt->is_ip4 == 0) + 1);
-      return -1;
-    }
-
-  if (rmt->is_ip4)
-    {
-      ip4_address_t *ip4;
-      int index;
-      if (vec_len (tm->ip4_src_addresses))
-	{
-	  index = tm->last_v4_address_rotor++;
-	  if (tm->last_v4_address_rotor >= vec_len (tm->ip4_src_addresses))
-	    tm->last_v4_address_rotor = 0;
-	  lcl_addr.ip4.as_u32 = tm->ip4_src_addresses[index].as_u32;
-	}
-      else
-	{
-	  ip4 = ip_interface_get_first_ip (sw_if_index, 1);
-	  lcl_addr.ip4.as_u32 = ip4->as_u32;
-	}
-    }
+  if ((rmt->is_ip4 && vec_len (tm->ip4_src_addresses))
+      || (!rmt->is_ip4 && vec_len (tm->ip6_src_addresses)))
+    rv = tcp_alloc_custom_local_endpoint (tm, &lcl_addr, &lcl_port,
+					  rmt->is_ip4);
   else
-    {
-      ip6_address_t *ip6;
-      int index;
+    rv = transport_alloc_local_endpoint (TRANSPORT_PROTO_TCP,
+					 rmt, &lcl_addr, &lcl_port);
 
-      if (vec_len (tm->ip6_src_addresses))
-	{
-	  index = tm->last_v6_address_rotor++;
-	  if (tm->last_v6_address_rotor >= vec_len (tm->ip6_src_addresses))
-	    tm->last_v6_address_rotor = 0;
-	  clib_memcpy (&lcl_addr.ip6, &tm->ip6_src_addresses[index],
-		       sizeof (*ip6));
-	}
-      else
-	{
-	  ip6 = ip_interface_get_first_ip (sw_if_index, 0);
-	  if (ip6 == 0)
-	    {
-	      clib_warning ("no routable ip6 addresses on %U",
-			    format_vnet_sw_if_index_name, vnet_get_main (),
-			    sw_if_index);
-	      return -1;
-	    }
-
-	  clib_memcpy (&lcl_addr.ip6, ip6, sizeof (*ip6));
-	}
-    }
-
-  /* Allocate source port */
-  lcl_port = tcp_allocate_local_port (&lcl_addr);
-  if (lcl_port < 1)
-    {
-      clib_warning ("Failed to allocate src port");
-      return -1;
-    }
+  if (rv)
+    return -1;
 
   /*
    * Create connection and send SYN
    */
   clib_spinlock_lock_if_init (&tm->half_open_lock);
   tc = tcp_half_open_connection_new ();
-  clib_memcpy (&tc->c_rmt_ip, &rmt->ip, sizeof (ip46_address_t));
-  clib_memcpy (&tc->c_lcl_ip, &lcl_addr, sizeof (ip46_address_t));
+  ip_copy (&tc->c_rmt_ip, &rmt->ip, rmt->is_ip4);
+  ip_copy (&tc->c_lcl_ip, &lcl_addr, rmt->is_ip4);
   tc->c_rmt_port = rmt->port;
   tc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
   tc->c_is_ip4 = rmt->is_ip4;
-  tc->c_transport_proto = TRANSPORT_PROTO_TCP;
+  tc->c_proto = TRANSPORT_PROTO_TCP;
   tc->c_fib_index = rmt->fib_index;
   /* The other connection vars will be initialized after SYN ACK */
   tcp_connection_timers_init (tc);
@@ -1195,7 +1049,7 @@ tcp_timer_establish_handler (u32 conn_index)
   if (tc)
     {
       ASSERT (tc->state == TCP_STATE_SYN_SENT);
-      stream_session_connect_notify (&tc->connection, 1 /* fail */ );
+      session_stream_connect_notify (&tc->connection, 1 /* fail */ );
       TCP_DBG ("establish pop: %U", format_tcp_connection, tc, 2);
     }
   else
@@ -1328,8 +1182,8 @@ tcp_main_enable (vlib_main_t * vm)
   ip6_register_protocol (IP_PROTOCOL_TCP, tcp6_input_node.index);
 
   /* Register as transport with session layer */
-  session_register_transport (TRANSPORT_PROTO_TCP, 1, &tcp_proto);
-  session_register_transport (TRANSPORT_PROTO_TCP, 0, &tcp_proto);
+  transport_register_protocol (TRANSPORT_PROTO_TCP, 1, &tcp_proto);
+  transport_register_protocol (TRANSPORT_PROTO_TCP, 0, &tcp_proto);
 
   /*
    * Initialize data structures
@@ -1379,22 +1233,9 @@ tcp_main_enable (vlib_main_t * vm)
   tm->tstamp_ticks_per_clock = vm->clib_time.seconds_per_clock
     / TCP_TSTAMP_RESOLUTION;
 
-  if (tm->local_endpoints_table_buckets == 0)
-    tm->local_endpoints_table_buckets = 250000;
-  if (tm->local_endpoints_table_memory == 0)
-    tm->local_endpoints_table_memory = 512 << 20;
-
-  clib_bihash_init_24_8 (&tm->local_endpoints_table, "local endpoint table",
-			 tm->local_endpoints_table_buckets,
-			 tm->local_endpoints_table_memory);
-
-  /* Initialize [port-allocator] random number seed */
-  tm->port_allocator_seed = (u32) clib_cpu_time_now ();
-
   if (num_threads > 1)
     {
       clib_spinlock_init (&tm->half_open_lock);
-      clib_spinlock_init (&tm->local_endpoints_lock);
     }
 
   vec_validate (tm->tx_frames[0], num_threads - 1);

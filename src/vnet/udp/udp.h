@@ -26,49 +26,6 @@
 #include <vnet/ip/ip.h>
 #include <vnet/session/transport.h>
 
-typedef struct
-{
-  transport_connection_t connection;	      /** must be first */
-
-  /** ersatz MTU to limit fifo pushes to test data size */
-  u32 mtu;
-} udp_connection_t;
-
-typedef struct _udp_uri_main
-{
-  /* Per-worker thread udp connection pools */
-  udp_connection_t **udp_sessions;
-  udp_connection_t *udp_listeners;
-
-  /* convenience */
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-  ip4_main_t *ip4_main;
-  ip6_main_t *ip6_main;
-} udp_uri_main_t;
-
-extern udp_uri_main_t udp_uri_main;
-extern vlib_node_registration_t udp4_uri_input_node;
-
-always_inline udp_uri_main_t *
-vnet_get_udp_main ()
-{
-  return &udp_uri_main;
-}
-
-always_inline udp_connection_t *
-udp_connection_get (u32 conn_index, u32 thread_index)
-{
-  return pool_elt_at_index (udp_uri_main.udp_sessions[thread_index],
-			    conn_index);
-}
-
-always_inline udp_connection_t *
-udp_listener_get (u32 conn_index)
-{
-  return pool_elt_at_index (udp_uri_main.udp_listeners, conn_index);
-}
-
 typedef enum
 {
 #define udp_error(n,s) UDP_ERROR_##n,
@@ -76,6 +33,13 @@ typedef enum
 #undef udp_error
   UDP_N_ERROR,
 } udp_error_t;
+
+typedef struct
+{
+  transport_connection_t connection;	      /** must be first */
+  /** ersatz MTU to limit fifo pushes to test data size */
+  u32 mtu;
+} udp_connection_t;
 
 #define foreach_udp4_dst_port			\
 _ (53, dns)					\
@@ -161,9 +125,107 @@ typedef struct
   u8 punt_unknown4;
   u8 punt_unknown6;
 
-  /* convenience */
-  vlib_main_t *vlib_main;
+  /*
+   * Per-worker thread udp connection pools used with session layer
+   */
+  udp_connection_t **connections;
+  u32 *connection_peekers;
+  clib_spinlock_t *peekers_readers_locks;
+  clib_spinlock_t *peekers_write_locks;
+  udp_connection_t *listener_pool;
+
 } udp_main_t;
+
+extern udp_main_t udp_main;
+extern vlib_node_registration_t udp4_input_node;
+extern vlib_node_registration_t udp6_input_node;
+
+always_inline udp_connection_t *
+udp_connection_get (u32 conn_index, u32 thread_index)
+{
+  if (pool_is_free_index (udp_main.connections[thread_index], conn_index))
+    return 0;
+  return pool_elt_at_index (udp_main.connections[thread_index], conn_index);
+}
+
+always_inline udp_connection_t *
+udp_listener_get (u32 conn_index)
+{
+  return pool_elt_at_index (udp_main.listener_pool, conn_index);
+}
+
+always_inline udp_main_t *
+vnet_get_udp_main ()
+{
+  return &udp_main;
+}
+
+always_inline udp_connection_t *
+udp_get_connection_from_transport (transport_connection_t * tc)
+{
+  return ((udp_connection_t *) tc);
+}
+
+always_inline u32
+udp_connection_index (udp_connection_t * uc)
+{
+  return (uc - udp_main.connections[uc->c_thread_index]);
+}
+
+udp_connection_t *udp_connection_alloc (u32 thread_index);
+
+/**
+ * Acquires a lock that blocks a connection pool from expanding.
+ */
+always_inline void
+udp_pool_add_peeker (u32 thread_index)
+{
+  if (thread_index != vlib_get_thread_index ())
+    return;
+  clib_spinlock_lock_if_init (&udp_main.peekers_readers_locks[thread_index]);
+  udp_main.connection_peekers[thread_index] += 1;
+  if (udp_main.connection_peekers[thread_index] == 1)
+    clib_spinlock_lock_if_init (&udp_main.peekers_write_locks[thread_index]);
+  clib_spinlock_unlock_if_init (&udp_main.peekers_readers_locks
+				[thread_index]);
+}
+
+always_inline void
+udp_pool_remove_peeker (u32 thread_index)
+{
+  if (thread_index != vlib_get_thread_index ())
+    return;
+  ASSERT (udp_main.connection_peekers[thread_index] > 0);
+  clib_spinlock_lock_if_init (&udp_main.peekers_readers_locks[thread_index]);
+  udp_main.connection_peekers[thread_index] -= 1;
+  if (udp_main.connection_peekers[thread_index] == 0)
+    clib_spinlock_unlock_if_init (&udp_main.peekers_write_locks
+				  [thread_index]);
+  clib_spinlock_unlock_if_init (&udp_main.peekers_readers_locks
+				[thread_index]);
+}
+
+always_inline udp_connection_t *
+udp_conenction_clone_safe (u32 connection_index, u32 thread_index)
+{
+  udp_connection_t *old_c, *new_c;
+  u32 current_thread_index = vlib_get_thread_index ();
+  new_c = udp_connection_alloc (current_thread_index);
+
+  /* If during the memcpy pool is reallocated AND the memory allocator
+   * decides to give the old chunk of memory to somebody in a hurry to
+   * scribble something on it, we have a problem. So add this thread as
+   * a session pool peeker.
+   */
+  udp_pool_add_peeker (thread_index);
+  old_c = udp_main.connections[thread_index] + connection_index;
+  clib_memcpy (new_c, old_c, sizeof (*new_c));
+  udp_pool_remove_peeker (thread_index);
+  new_c->c_thread_index = current_thread_index;
+  new_c->c_c_index = udp_connection_index (new_c);
+  return new_c;
+}
+
 
 always_inline udp_dst_port_info_t *
 udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
@@ -174,18 +236,33 @@ udp_get_dst_port_info (udp_main_t * um, udp_dst_port_t dst_port, u8 is_ip4)
 
 format_function_t format_udp_header;
 format_function_t format_udp_rx_trace;
-
 unformat_function_t unformat_udp_header;
 
 void udp_register_dst_port (vlib_main_t * vm,
 			    udp_dst_port_t dst_port,
 			    u32 node_index, u8 is_ip4);
-
-void
-udp_unregister_dst_port (vlib_main_t * vm,
-			 udp_dst_port_t dst_port, u8 is_ip4);
+void udp_unregister_dst_port (vlib_main_t * vm,
+			      udp_dst_port_t dst_port, u8 is_ip4);
 
 void udp_punt_unknown (vlib_main_t * vm, u8 is_ip4, u8 is_add);
+
+always_inline void *
+vlib_buffer_push_udp (vlib_buffer_t * b, u16 sp, u16 dp, u8 offload_csum)
+{
+  udp_header_t *uh;
+
+  uh = vlib_buffer_push_uninit (b, sizeof (udp_header_t));
+  uh->src_port = sp;
+  uh->dst_port = dp;
+  uh->checksum = 0;
+  uh->length = clib_host_to_net_u16 (b->current_length);
+  if (offload_csum)
+    {
+      b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+      vnet_buffer (b)->l4_hdr_offset = (u8 *) uh - b->data;
+    }
+  return uh;
+}
 
 always_inline void
 ip_udp_fixup_one (vlib_main_t * vm, vlib_buffer_t * b0, u8 is_ip4)
