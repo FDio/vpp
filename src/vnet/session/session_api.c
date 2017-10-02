@@ -47,10 +47,11 @@ _(DISCONNECT_SESSION, disconnect_session)                               \
 _(DISCONNECT_SESSION_REPLY, disconnect_session_reply)                   \
 _(ACCEPT_SESSION_REPLY, accept_session_reply)                           \
 _(RESET_SESSION_REPLY, reset_session_reply)                   		\
-_(BIND_SOCK, bind_sock) 		                                \
+_(BIND_SOCK, bind_sock)							\
 _(UNBIND_SOCK, unbind_sock)                                             \
 _(CONNECT_SOCK, connect_sock)                                          	\
 _(SESSION_ENABLE_DISABLE, session_enable_disable)                   	\
+_(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)				\
 
 static int
 send_add_segment_callback (u32 api_client_index, const u8 * segment_name,
@@ -180,7 +181,7 @@ send_session_connected_callback (u32 app_index, u32 api_context,
     }
   else
     {
-      mp->retval = clib_host_to_net_u32 (VNET_API_ERROR_SESSION_CONNECT_FAIL);
+      mp->retval = clib_host_to_net_u32 (VNET_API_ERROR_SESSION_CONNECT);
     }
 
   vl_msg_api_send_shmem (q, (u8 *) & mp);
@@ -285,6 +286,7 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
 {
   vl_api_application_attach_reply_t *rmp;
   vnet_app_attach_args_t _a, *a = &_a;
+  clib_error_t *error = 0;
   int rv;
 
   if (session_manager_is_enabled () == 0)
@@ -298,12 +300,25 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
 		 "Out of options, fix api message definition");
 
   memset (a, 0, sizeof (*a));
-
   a->api_client_index = mp->client_index;
   a->options = mp->options;
   a->session_cb_vft = &uri_session_cb_vft;
 
-  rv = vnet_application_attach (a);
+  if (mp->namespace_id_len > 64)
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+  vec_validate (a->namespace_id, mp->namespace_id_len);
+  clib_memcpy (a->namespace_id, mp->namespace_id, mp->namespace_id_len);
+  a->namespace_id[vec_len (a->namespace_id) - 1] = 0;
+
+  if ((error = vnet_application_attach (a)))
+    {
+      rv = clib_error_get_code (error);
+      clib_error_report (error);
+    }
+  vec_free (a->namespace_id);
 
 done:
 
@@ -312,7 +327,6 @@ done:
     if (!rv)
       {
 	rmp->segment_name_length = 0;
-	/* $$$$ policy? */
 	rmp->segment_size = a->segment_size;
 	if (a->segment_name_length)
 	  {
@@ -418,7 +432,8 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   vl_api_connect_session_reply_t *rmp;
   vnet_connect_args_t _a, *a = &_a;
   application_t *app;
-  int rv;
+  clib_error_t *error = 0;
+  int rv = 0;
 
   if (session_manager_is_enabled () == 0)
     {
@@ -433,7 +448,11 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
       a->api_context = mp->context;
       a->app_index = app->index;
       a->mp = mp;
-      rv = vnet_connect_uri (a);
+      if ((error = vnet_connect_uri (a)))
+	{
+	  rv = clib_error_get_code (error);
+	  clib_error_report (error);
+	}
     }
   else
     {
@@ -516,7 +535,7 @@ vl_api_reset_session_reply_t_handler (vl_api_reset_session_reply_t * mp)
   if (!app)
     return;
 
-  stream_session_parse_handle (mp->handle, &index, &thread_index);
+  session_parse_handle (mp->handle, &index, &thread_index);
   s = stream_session_get_if_valid (index, thread_index);
   if (s == 0 || app->index != s->app_index)
     {
@@ -552,7 +571,7 @@ vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
     }
   else
     {
-      stream_session_parse_handle (mp->handle, &session_index, &thread_index);
+      session_parse_handle (mp->handle, &session_index, &thread_index);
       s = stream_session_get_if_valid (session_index, thread_index);
       if (!s)
 	{
@@ -564,7 +583,6 @@ vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
 	  clib_warning ("app doesn't own session");
 	  return;
 	}
-      /* XXX volatile? */
       s->session_state = SESSION_STATE_READY;
     }
 }
@@ -594,18 +612,24 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   if (app)
     {
       ip46_address_t *ip46 = (ip46_address_t *) mp->ip;
-
       memset (a, 0, sizeof (*a));
-      a->tep.is_ip4 = mp->is_ip4;
-      a->tep.ip = *ip46;
-      a->tep.port = mp->port;
-      a->tep.vrf = mp->vrf;
+      a->sep.is_ip4 = mp->is_ip4;
+      a->sep.ip = *ip46;
+      a->sep.port = mp->port;
+      a->sep.fib_index = mp->vrf;
+      a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
       a->app_index = app->index;
+      a->proto = mp->proto;
 
       rv = vnet_bind (a);
     }
 done:
-  REPLY_MACRO (VL_API_BIND_SOCK_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_BIND_SOCK_REPLY,({
+    if (!rv)
+      rmp->handle = a->handle;
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
@@ -640,7 +664,8 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   vl_api_connect_session_reply_t *rmp;
   vnet_connect_args_t _a, *a = &_a;
   application_t *app;
-  int rv;
+  clib_error_t *error = 0;
+  int rv = 0;
 
   if (session_manager_is_enabled () == 0)
     {
@@ -656,15 +681,20 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 
       client_q = vl_api_client_index_to_input_queue (mp->client_index);
       mp->client_queue_address = pointer_to_uword (client_q);
-      a->tep.is_ip4 = mp->is_ip4;
-      a->tep.ip = *ip46;
-      a->tep.port = mp->port;
-      a->tep.vrf = mp->vrf;
+      a->sep.is_ip4 = mp->is_ip4;
+      a->sep.ip = *ip46;
+      a->sep.port = mp->port;
+      a->sep.fib_index = mp->vrf;
+      a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
       a->api_context = mp->context;
       a->app_index = app->index;
       a->proto = mp->proto;
       a->mp = mp;
-      rv = vnet_connect (a);
+      if ((error = vnet_connect (a)))
+	{
+	  rv = clib_error_get_code (error);
+	  clib_error_report (error);
+	}
     }
   else
     {
@@ -678,6 +708,44 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
 
 done:
   REPLY_MACRO (VL_API_CONNECT_SESSION_REPLY);
+}
+
+static void
+vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
+{
+  vl_api_app_namespace_add_del_reply_t *rmp;
+  u8 *ns_id = 0;
+  clib_error_t *error = 0;
+  int rv;
+  if (!session_manager_is_enabled ())
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto done;
+    }
+
+  if (mp->namespace_id_len > ARRAY_LEN (mp->namespace_id))
+    {
+      rv = VNET_API_ERROR_INVALID_VALUE;
+      goto done;
+    }
+
+  vec_validate (ns_id, mp->namespace_id_len - 1);
+  clib_memcpy (ns_id, mp->namespace_id, mp->namespace_id_len);
+  vnet_app_namespace_add_del_args_t args = {
+    .ns_id = ns_id,
+    .secret = mp->secret,
+    .sw_if_index = clib_net_to_host_u32 (mp->sw_if_index),
+    .is_add = 1
+  };
+  error = vnet_app_namespace_add_del (&args);
+  if (error)
+    {
+      rv = clib_error_get_code (error);
+      clib_error_report (error);
+    }
+  vec_free (ns_id);
+done:
+  REPLY_MACRO (VL_API_APP_NAMESPACE_ADD_DEL_REPLY);
 }
 
 static clib_error_t *

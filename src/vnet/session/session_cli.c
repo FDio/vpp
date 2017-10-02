@@ -138,22 +138,21 @@ unformat_stream_session (unformat_input_t * input, va_list * args)
   stream_session_t *s;
   u8 proto = ~0;
   ip46_address_t lcl, rmt;
-  u32 lcl_port = 0, rmt_port = 0;
-  u8 is_ip4 = 0, s_type = ~0;
+  u32 lcl_port = 0, rmt_port = 0, fib_index = 0;
+  u8 is_ip4 = 0;
 
   if (!unformat (input, "%U", unformat_stream_session_id, &proto, &lcl, &rmt,
 		 &lcl_port, &rmt_port, &is_ip4))
     return 0;
 
-  s_type = session_type_from_proto_and_ip (proto, is_ip4);
   if (is_ip4)
-    s = stream_session_lookup4 (&lcl.ip4, &rmt.ip4,
-				clib_host_to_net_u16 (lcl_port),
-				clib_host_to_net_u16 (rmt_port), s_type);
+    s = session_lookup4 (fib_index, &lcl.ip4, &rmt.ip4,
+			 clib_host_to_net_u16 (lcl_port),
+			 clib_host_to_net_u16 (rmt_port), proto);
   else
-    s = stream_session_lookup6 (&lcl.ip6, &rmt.ip6,
-				clib_host_to_net_u16 (lcl_port),
-				clib_host_to_net_u16 (rmt_port), s_type);
+    s = session_lookup6 (fib_index, &lcl.ip6, &rmt.ip6,
+			 clib_host_to_net_u16 (lcl_port),
+			 clib_host_to_net_u16 (rmt_port), proto);
   if (s)
     {
       *result = s;
@@ -170,8 +169,8 @@ unformat_transport_connection (unformat_input_t * input, va_list * args)
   transport_connection_t *tc;
   u8 proto = ~0;
   ip46_address_t lcl, rmt;
-  u32 lcl_port = 0, rmt_port = 0;
-  u8 is_ip4 = 0, s_type = ~0;
+  u32 lcl_port = 0, rmt_port = 0, fib_index = 0;
+  u8 is_ip4 = 0;
 
   if (!unformat (input, "%U", unformat_stream_session_id, &proto, &lcl, &rmt,
 		 &lcl_port, &rmt_port, &is_ip4))
@@ -180,17 +179,14 @@ unformat_transport_connection (unformat_input_t * input, va_list * args)
   proto = (proto == (u8) ~ 0) ? suggested_proto : proto;
   if (proto == (u8) ~ 0)
     return 0;
-  s_type = session_type_from_proto_and_ip (proto, is_ip4);
   if (is_ip4)
-    tc = stream_session_lookup_transport4 (&lcl.ip4, &rmt.ip4,
-					   clib_host_to_net_u16 (lcl_port),
-					   clib_host_to_net_u16 (rmt_port),
-					   s_type);
+    tc = session_lookup_connection4 (fib_index, &lcl.ip4, &rmt.ip4,
+				     clib_host_to_net_u16 (lcl_port),
+				     clib_host_to_net_u16 (rmt_port), proto);
   else
-    tc = stream_session_lookup_transport6 (&lcl.ip6, &rmt.ip6,
-					   clib_host_to_net_u16 (lcl_port),
-					   clib_host_to_net_u16 (rmt_port),
-					   s_type);
+    tc = session_lookup_connection6 (fib_index, &lcl.ip6, &rmt.ip6,
+				     clib_host_to_net_u16 (lcl_port),
+				     clib_host_to_net_u16 (rmt_port), proto);
 
   if (tc)
     {

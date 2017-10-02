@@ -272,7 +272,7 @@ create_api_loopback (vlib_main_t * vm)
 }
 
 static int
-server_attach ()
+server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
   builtin_server_main_t *bsm = &builtin_server_main;
   u8 segment_name[128];
@@ -300,7 +300,12 @@ server_attach ()
     bsm->prealloc_fifos ? bsm->prealloc_fifos : 1;
 
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
-
+  if (appns_id)
+    {
+      a->namespace_id = appns_id;
+      a->options[APP_OPTIONS_FLAGS] |= appns_flags;
+      a->options[APP_OPTIONS_NAMESPACE_SECRET] = appns_secret;
+    }
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
@@ -325,7 +330,8 @@ server_listen ()
 }
 
 static int
-server_create (vlib_main_t * vm)
+server_create (vlib_main_t * vm, u8 * appns_id, u64 appns_flags,
+	       u64 appns_secret)
 {
   builtin_server_main_t *bsm = &builtin_server_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
@@ -349,7 +355,7 @@ server_create (vlib_main_t * vm)
   for (i = 0; i < num_threads; i++)
     vec_validate (bsm->rx_buf[i], bsm->rcv_buffer_size);
 
-  if (server_attach ())
+  if (server_attach (appns_id, appns_flags, appns_secret))
     {
       clib_warning ("failed to attach server");
       return -1;
@@ -367,9 +373,9 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			  vlib_cli_command_t * cmd)
 {
   builtin_server_main_t *bsm = &builtin_server_main;
-  u8 server_uri_set = 0;
+  u8 server_uri_set = 0, *appns_id = 0;
+  u64 tmp, appns_flags = 0, appns_secret = 0;
   int rv;
-  u64 tmp;
 
   bsm->no_echo = 0;
   bsm->fifo_size = 64 << 10;
@@ -402,6 +408,17 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	}
       else if (unformat (input, "uri %s", &bsm->server_uri))
 	server_uri_set = 1;
+      else if (unformat (input, "appns %_%v%_", &appns_id))
+	;
+      else if (unformat (input, "all-scope"))
+	appns_flags |= (APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE
+			| APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE);
+      else if (unformat (input, "local-scope"))
+	appns_flags |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+      else if (unformat (input, "global-scope"))
+	appns_flags |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+      else if (unformat (input, "secret %lu", &appns_secret))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -412,7 +429,8 @@ server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!server_uri_set)
     bsm->server_uri = (char *) format (0, "tcp://0.0.0.0/1234%c", 0);
 
-  rv = server_create (vm);
+  rv = server_create (vm, appns_id, appns_flags, appns_secret);
+  vec_free (appns_id);
   switch (rv)
     {
     case 0:
