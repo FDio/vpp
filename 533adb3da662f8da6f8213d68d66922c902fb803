@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_de47774a",
+        "filename": "src/vnet/ip/lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 168,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-10-02T17:56:49Z",
+      "side": 1,
+      "message": "they are allowed to have the same prefix if they are in different tables.",
+      "revId": "533adb3da662f8da6f8213d68d66922c902fb803",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
