@@ -50,6 +50,7 @@
 typedef enum
 {
   STATE_START,
+  STATE_BOUND,
   STATE_READY,
   STATE_FAILED,
   STATE_DISCONNECTING,
@@ -163,7 +164,7 @@ void
 application_send_attach (uri_udp_test_main_t * utm)
 {
   vl_api_application_attach_t *bmp;
-  u32 fifo_size = 3 << 20;
+  u32 fifo_size = 1 << 20;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
@@ -172,11 +173,12 @@ application_send_attach (uri_udp_test_main_t * utm)
   bmp->context = ntohl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] =
     APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT;
-  bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 16;
+  bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 2;
   bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = fifo_size;
   bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   bmp->options[SESSION_OPTIONS_SEGMENT_SIZE] = 256 << 20;
+  bmp->options[APP_EVT_QUEUE_SIZE] = 16768;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
 }
 
@@ -483,7 +485,7 @@ vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
       return;
     }
 
-  utm->state = STATE_READY;
+  utm->state = STATE_BOUND;
 }
 
 static void
@@ -492,6 +494,7 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
   svm_fifo_segment_create_args_t _a, *a = &_a;
   int rv;
 
+  memset (a, 0, sizeof (*a));
   a->segment_name = (char *) mp->segment_name;
   a->segment_size = mp->segment_size;
   /* Attach to the segment vpp created */
@@ -625,8 +628,6 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   hash_set (utm->session_index_by_vpp_handles, mp->handle,
 	    session - utm->sessions);
 
-  utm->state = STATE_READY;
-
   if (pool_elts (utm->sessions) && (pool_elts (utm->sessions) % 20000) == 0)
     {
       f64 now = clib_time_now (&utm->clib_time);
@@ -639,7 +640,11 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_ACCEPT_SESSION_REPLY);
   rmp->handle = mp->handle;
+  rmp->context = mp->context;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & rmp);
+
+  CLIB_MEMORY_BARRIER ();
+  utm->state = STATE_READY;
 }
 
 static void
@@ -789,13 +794,13 @@ server_handle_fifo_event_rx (uri_udp_test_main_t * utm,
 {
   svm_fifo_t *rx_fifo, *tx_fifo;
   int nbytes;
-
   session_fifo_event_t evt;
   unix_shared_memory_queue_t *q;
   int rv;
 
   rx_fifo = e->fifo;
   tx_fifo = utm->sessions[rx_fifo->client_session_index].server_tx_fifo;
+  svm_fifo_unset_event (rx_fifo);
 
   do
     {
@@ -809,13 +814,12 @@ server_handle_fifo_event_rx (uri_udp_test_main_t * utm,
     }
   while (rv == -2);
 
-  /* Fabricate TX event, send to vpp */
-  evt.fifo = tx_fifo;
-  evt.event_type = FIFO_EVENT_APP_TX;
-  evt.event_id = e->event_id;
-
   if (svm_fifo_set_event (tx_fifo))
     {
+      /* Fabricate TX event, send to vpp */
+      evt.fifo = tx_fifo;
+      evt.event_type = FIFO_EVENT_APP_TX;
+      evt.event_id = e->event_id;
       q = utm->vpp_event_queue;
       unix_shared_memory_queue_add (q, (u8 *) & evt,
 				    0 /* do wait for mutex */ );
@@ -826,6 +830,9 @@ void
 server_handle_event_queue (uri_udp_test_main_t * utm)
 {
   session_fifo_event_t _e, *e = &_e;
+
+  while (utm->state != STATE_READY)
+    sleep (5);
 
   while (1)
     {
@@ -869,7 +876,7 @@ server_unbind (uri_udp_test_main_t * utm)
 }
 
 static void
-server_listen (uri_udp_test_main_t * utm)
+server_bind (uri_udp_test_main_t * utm)
 {
   vl_api_bind_uri_t *bmp;
 
@@ -890,11 +897,11 @@ udp_server_test (uri_udp_test_main_t * utm)
   application_send_attach (utm);
 
   /* Bind to uri */
-  server_listen (utm);
+  server_bind (utm);
 
-  if (wait_for_state_change (utm, STATE_READY))
+  if (wait_for_state_change (utm, STATE_BOUND))
     {
-      clib_warning ("timeout waiting for STATE_READY");
+      clib_warning ("timeout waiting for STATE_BOUND");
       return;
     }
 

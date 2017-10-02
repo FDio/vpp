@@ -248,7 +248,7 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  session_parse_handle (sp->vpp_session_handle,
 				&index, &thread_index);
-	  s = stream_session_get_if_valid (index, thread_index);
+	  s = session_get_if_valid (index, thread_index);
 
 	  if (s)
 	    {

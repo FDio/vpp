@@ -99,7 +99,7 @@ send_session_accept_callback (stream_session_t * s)
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_ACCEPT_SESSION);
   mp->context = server->index;
   listener = listen_session_get (s->session_type, s->listener_index);
-  tp_vft = session_get_transport_vft (s->session_type);
+  tp_vft = transport_protocol_get_vft (s->session_type);
   tc = tp_vft->get_connection (s->connection_index, s->thread_index);
   mp->listener_handle = listen_session_get_handle (listener);
   mp->handle = stream_session_handle (s);
@@ -540,7 +540,7 @@ vl_api_reset_session_reply_t_handler (vl_api_reset_session_reply_t * mp)
     return;
 
   session_parse_handle (mp->handle, &index, &thread_index);
-  s = stream_session_get_if_valid (index, thread_index);
+  s = session_get_if_valid (index, thread_index);
   if (s == 0 || app->index != s->app_index)
     {
       clib_warning ("Invalid session!");
@@ -576,7 +576,7 @@ vl_api_accept_session_reply_t_handler (vl_api_accept_session_reply_t * mp)
   else
     {
       session_parse_handle (mp->handle, &session_index, &thread_index);
-      s = stream_session_get_if_valid (session_index, thread_index);
+      s = session_get_if_valid (session_index, thread_index);
       if (!s)
 	{
 	  clib_warning ("session doesn't exist");
@@ -623,8 +623,8 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
       a->sep.port = mp->port;
       a->sep.fib_index = mp->vrf;
       a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
+      a->sep.transport_proto = mp->proto;
       a->app_index = app->index;
-      a->proto = mp->proto;
 
       if ((error = vnet_bind (a)))
 	{
