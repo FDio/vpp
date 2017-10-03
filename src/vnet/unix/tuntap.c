@@ -71,12 +71,6 @@ typedef struct {
  * @brief TUNTAP node main state
  */
 typedef struct {
-  /** Vector of iovecs for readv calls. */
-  struct iovec * rd_iovecs;
-
-  /** Vector of iovecs for writev calls. */
-  struct iovec * wr_iovecs;
-
   /** Vector of VLIB rx buffers to use.  We allocate them in blocks
      of VLIB_FRAME_SIZE (256). */
   u32 * rx_buffers;
@@ -147,6 +141,7 @@ tuntap_tx (vlib_main_t * vm,
   vnet_interface_main_t *im = &vnm->interface_main;
   u32 n_bytes = 0;
   int i;
+  struct iovec * wr_iovecs = 0;
 
   for (i = 0; i < n_packets; i++)
     {
@@ -163,11 +158,11 @@ tuntap_tx (vlib_main_t * vm,
         }
 
       /* Re-set iovecs if present. */
-      if (tm->wr_iovecs)
-	_vec_len (tm->wr_iovecs) = 0;
+      if (wr_iovecs)
+	_vec_len (wr_iovecs) = 0;
 
       /** VLIB buffer chain -> Unix iovec(s). */
-      vec_add2 (tm->wr_iovecs, iov, 1);
+      vec_add2 (wr_iovecs, iov, 1);
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
 
@@ -176,7 +171,7 @@ tuntap_tx (vlib_main_t * vm,
 	  do {
 	    b = vlib_get_buffer (vm, b->next_buffer);
 
-	    vec_add2 (tm->wr_iovecs, iov, 1);
+	    vec_add2 (wr_iovecs, iov, 1);
 
 	    iov->iov_base = b->data + b->current_data;
 	    iov->iov_len = b->current_length;
@@ -184,8 +179,8 @@ tuntap_tx (vlib_main_t * vm,
 	  } while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
 	}
 
-      if (writev (tm->dev_net_tun_fd, tm->wr_iovecs,
-		  vec_len (tm->wr_iovecs)) < l)
+      if (writev (tm->dev_net_tun_fd, wr_iovecs,
+		  vec_len (wr_iovecs)) < l)
 	clib_unix_warning ("writev");
 
       n_bytes += l;
@@ -204,6 +199,7 @@ tuntap_tx (vlib_main_t * vm,
   else
     vlib_buffer_free (vm, buffers, n_packets);
 
+  vec_free (wr_iovecs);
   return n_packets;
 }
 
@@ -234,6 +230,7 @@ tuntap_rx (vlib_main_t * vm,
   vlib_buffer_t * b;
   u32 bi;
   const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
+  struct iovec * rd_iovecs = 0;
 
   /** Make sure we have some RX buffers. */
   {
@@ -260,20 +257,21 @@ tuntap_rx (vlib_main_t * vm,
     /** We should have enough buffers left for an MTU sized packet. */
     ASSERT (vec_len (tm->rx_buffers) >= tm->mtu_buffers);
 
-    vec_validate (tm->rd_iovecs, tm->mtu_buffers - 1);
+    vec_validate (rd_iovecs, tm->mtu_buffers - 1);
     for (i = 0; i < tm->mtu_buffers; i++)
       {
 	b = vlib_get_buffer (vm, tm->rx_buffers[i_rx - i]);
-	tm->rd_iovecs[i].iov_base = b->data;
-	tm->rd_iovecs[i].iov_len = buffer_size;
+	rd_iovecs[i].iov_base = b->data;
+	rd_iovecs[i].iov_len = buffer_size;
       }
 
-    n_bytes_left = readv (tm->dev_net_tun_fd, tm->rd_iovecs, tm->mtu_buffers);
+    n_bytes_left = readv (tm->dev_net_tun_fd, rd_iovecs, tm->mtu_buffers);
     n_bytes_in_packet = n_bytes_left;
     if (n_bytes_left <= 0)
       {
         if (errno != EAGAIN)
           clib_unix_warning ("readv %d", n_bytes_left);
+	vec_free (rd_iovecs);
 	return 0;
       }
 
@@ -368,6 +366,7 @@ tuntap_rx (vlib_main_t * vm,
       }
   }
 
+  vec_free (rd_iovecs);
   return 1;
 }
 

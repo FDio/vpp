@@ -99,12 +99,6 @@ u8 * format_tapcli_rx_trace (u8 * s, va_list * va)
  * @brief TAPCLI main state struct
  */
 typedef struct {
-  /** Vector of iovecs for readv calls. */
-  struct iovec * rd_iovecs;
-
-  /** Vector of iovecs for writev calls. */
-  struct iovec * wr_iovecs;
-
   /** Vector of VLIB rx buffers to use.  We allocate them in blocks
      of VLIB_FRAME_SIZE (256). */
   u32 * rx_buffers;
@@ -168,6 +162,7 @@ tapcli_tx (vlib_main_t * vm,
   tapcli_main_t * tm = &tapcli_main;
   tapcli_interface_t * ti;
   int i;
+  struct iovec * wr_iovecs = 0;
 
   for (i = 0; i < n_packets; i++)
     {
@@ -202,11 +197,11 @@ tapcli_tx (vlib_main_t * vm,
         ti = vec_elt_at_index (tm->tapcli_interfaces, p[0]);
 
       /* Re-set iovecs if present. */
-      if (tm->wr_iovecs)
-	_vec_len (tm->wr_iovecs) = 0;
+      if (wr_iovecs)
+	_vec_len (wr_iovecs) = 0;
 
       /* VLIB buffer chain -> Unix iovec(s). */
-      vec_add2 (tm->wr_iovecs, iov, 1);
+      vec_add2 (wr_iovecs, iov, 1);
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
 
@@ -215,7 +210,7 @@ tapcli_tx (vlib_main_t * vm,
 	  do {
 	    b = vlib_get_buffer (vm, b->next_buffer);
 
-	    vec_add2 (tm->wr_iovecs, iov, 1);
+	    vec_add2 (wr_iovecs, iov, 1);
 
 	    iov->iov_base = b->data + b->current_data;
 	    iov->iov_len = b->current_length;
@@ -223,11 +218,12 @@ tapcli_tx (vlib_main_t * vm,
 	  } while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
 	}
 
-      if (writev (ti->unix_fd, tm->wr_iovecs, vec_len (tm->wr_iovecs)) < l)
+      if (writev (ti->unix_fd, wr_iovecs, vec_len (wr_iovecs)) < l)
 	clib_unix_warning ("writev");
     }
 
   vlib_buffer_free(vm, vlib_frame_vector_args(frame), frame->n_vectors);
+  vec_free (wr_iovecs);
 
   return n_packets;
 }
@@ -265,6 +261,7 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
   u32 next = node->cached_next_index;
   u32 n_left_to_next, next_index;
   u32 *to_next;
+  struct iovec * rd_iovecs = 0;
 
   vnm = vnet_get_main();
   si = vnet_get_sw_interface (vnm, ti->sw_if_index);
@@ -295,14 +292,14 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
 
     /* Allocate RX buffers from end of rx_buffers.
            Turn them into iovecs to pass to readv. */
-    vec_validate (tm->rd_iovecs, tm->mtu_buffers - 1);
+    vec_validate (rd_iovecs, tm->mtu_buffers - 1);
     for (j = 0; j < tm->mtu_buffers; j++) {
       b = vlib_get_buffer (vm, tm->rx_buffers[i_rx - j]);
-      tm->rd_iovecs[j].iov_base = b->data;
-      tm->rd_iovecs[j].iov_len = buffer_size;
+      rd_iovecs[j].iov_base = b->data;
+      rd_iovecs[j].iov_len = buffer_size;
     }
 
-    n_bytes_left = readv (ti->unix_fd, tm->rd_iovecs, tm->mtu_buffers);
+    n_bytes_left = readv (ti->unix_fd, rd_iovecs, tm->mtu_buffers);
     n_bytes_in_packet = n_bytes_left;
     if (n_bytes_left <= 0) {
       if (errno != EAGAIN) {
@@ -383,6 +380,7 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
   vlib_put_next_frame (vm, node, next, n_left_to_next);
   if (set_trace)
     vlib_set_trace_count (vm, node, n_trace);
+  vec_free (rd_iovecs);
   return VLIB_FRAME_SIZE - n_left_to_next;
 }
 
