@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "1a486d77_8930ab57",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 1031
+      },
+      "writtenOn": "2017-10-03T11:18:50Z",
+      "side": 1,
+      "message": "In theory it can, in practice it is better to have it global because there is no suitable metadata on buffers to mix IO with VNET and without VNET. For example - Linux has a whole raft on options on skbuf and helper functions to allow this. \n\nIf your system supports VNET you have to switch to it as reading without VNET gives you broken TSO/GSO and broken checksums.",
+      "parentUuid": "1a486d77_e9acbf8e",
+      "range": {
+        "startLine": 60,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 40
+      },
+      "revId": "828a3f944ee19c14b6cdf331ecf502867479e362",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a486d77_c9a9037d",
         "filename": "src/vnet/devices/af_packet/af_packet.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2017-10-03T11:01:00Z",
       "side": 1,
       "message": "no trailing whitespace please.",
+      "range": {
+        "startLine": 151,
+        "startChar": 65,
+        "endLine": 151,
+        "endChar": 66
+      },
+      "revId": "828a3f944ee19c14b6cdf331ecf502867479e362",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_69356f45",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 1031
+      },
+      "writtenOn": "2017-10-03T11:18:50Z",
+      "side": 1,
+      "message": "Ack. Sorry, missed it.",
+      "parentUuid": "1a486d77_c9a9037d",
       "range": {
         "startLine": 151,
         "startChar": 65,
