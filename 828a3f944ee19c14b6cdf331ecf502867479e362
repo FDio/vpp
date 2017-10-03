@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "1a486d77_293f7727",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-10-03T11:31:43Z",
+      "side": 1,
+      "message": "af_packet_main is already global...",
+      "parentUuid": "1a486d77_8930ab57",
+      "range": {
+        "startLine": 60,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 40
+      },
+      "revId": "828a3f944ee19c14b6cdf331ecf502867479e362",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a486d77_c9a9037d",
         "filename": "src/vnet/devices/af_packet/af_packet.c",
         "patchSetId": 1
