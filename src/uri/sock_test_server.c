@@ -23,6 +23,12 @@
 #include <ctype.h>
 #include <uri/sock_test.h>
 
+#define SOCK_SERVER_USE_EPOLL 1
+
+#if SOCK_SERVER_USE_EPOLL
+#include <sys/epoll.h>
+#endif
+
 typedef struct
 {
   uint8_t is_alloc;
@@ -38,9 +44,15 @@ typedef struct
 } sock_server_conn_t;
 
 #define SOCK_SERVER_MAX_TEST_CONN  10
+#define SOCK_SERVER_MAX_EPOLL_EVENTS 10
 typedef struct
 {
   int listen_fd;
+#if SOCK_SERVER_USE_EPOLL
+  int epfd;
+  struct epoll_event listen_ev;
+  struct epoll_event wait_events[SOCK_SERVER_MAX_EPOLL_EVENTS];
+#endif
   size_t num_conn;
   size_t conn_pool_size;
   sock_server_conn_t *conn_pool;
@@ -52,6 +64,7 @@ typedef struct
 
 sock_server_main_t sock_server_main;
 
+#if ! SOCK_SERVER_USE_EPOLL
 static inline int
 get_nfds (void)
 {
@@ -83,6 +96,7 @@ conn_fdset_clr (sock_server_conn_t * conn, fd_set * fdset)
   FD_CLR (conn->fd, fdset);
   ssm->nfds = get_nfds ();
 }
+#endif
 
 static inline void
 conn_pool_expand (size_t expand_size)
@@ -141,10 +155,12 @@ conn_pool_alloc (void)
 static inline void
 conn_pool_free (sock_server_conn_t * conn)
 {
+#if ! SOCK_SERVER_USE_EPOLL
   sock_server_main_t *ssm = &sock_server_main;
 
   conn_fdset_clr (conn, &ssm->rd_fdset);
   conn_fdset_clr (conn, &ssm->wr_fdset);
+#endif
   conn->fd = 0;
   conn->is_alloc = 0;
 }
@@ -274,6 +290,8 @@ new_client (void)
 #ifdef VCL_TEST
   client_fd = vppcom_session_accept (ssm->listen_fd, &conn->endpt,
 				     -1.0 /* wait forever */ );
+  if (client_fd < 0)
+    errno = -client_fd;
 #else
   client_fd = accept (ssm->listen_fd, (struct sockaddr *) NULL, NULL);
 #endif
@@ -281,7 +299,7 @@ new_client (void)
     {
       int errno_val;
       errno_val = errno;
-      perror ("ERROR in main()");
+      perror ("ERROR in new_client()");
       fprintf (stderr, "ERROR: accept failed (errno = %d)!\n", errno_val);
     }
 
@@ -289,7 +307,36 @@ new_client (void)
 	  client_fd, client_fd);
 
   conn->fd = client_fd;
+
+#if ! SOCK_SERVER_USE_EPOLL
   conn_fdset_set (conn, &ssm->rd_fdset);
+  ssm->nfds++;
+#else
+  {
+    struct epoll_event ev;
+    int rv;
+
+    ev.events = EPOLLIN;
+    ev.data.u64 = conn - ssm->conn_pool;
+#ifdef VCL_TEST
+    rv = vppcom_epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, client_fd, &ev);
+    if (rv)
+      errno = -rv;
+#else
+    rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, client_fd, &ev);
+#endif
+    if (rv < 0)
+      {
+	int errno_val;
+	errno_val = errno;
+	perror ("ERROR in new_client()");
+	fprintf (stderr, "ERROR: epoll_ctl failed (errno = %d)!\n",
+		 errno_val);
+      }
+    else
+      ssm->nfds++;
+  }
+#endif
 }
 
 int
@@ -306,11 +353,15 @@ main (int argc, char **argv)
   int errno_val;
   int v, i;
   uint16_t port = SOCK_TEST_SERVER_PORT;
+#if ! SOCK_SERVER_USE_EPOLL
   fd_set _rfdset, *rfdset = &_rfdset;
+#endif
 #ifdef VCL_TEST
   vppcom_endpt_t endpt;
 #else
+#if ! SOCK_SERVER_USE_EPOLL
   fd_set _wfdset, *wfdset = &_wfdset;
+#endif
 #endif
 
   if ((argc == 2) && (sscanf (argv[1], "%d", &v) == 1))
@@ -390,16 +441,55 @@ main (int argc, char **argv)
       return rv;
     }
 
+  printf ("\nSERVER: Waiting for a client to connect on port %d...\n", port);
+
+#if ! SOCK_SERVER_USE_EPOLL
+
   FD_ZERO (&ssm->wr_fdset);
   FD_ZERO (&ssm->rd_fdset);
 
   FD_SET (ssm->listen_fd, &ssm->rd_fdset);
   ssm->nfds = ssm->listen_fd + 1;
 
-  printf ("\nSERVER: Waiting for a client to connect on port %d...\n", port);
+#else
+#ifdef VCL_TEST
+  ssm->epfd = vppcom_epoll_create ();
+  if (ssm->epfd < 0)
+    errno = -ssm->epfd;
+#else
+  ssm->epfd = epoll_create (1);
+#endif
+  if (ssm->epfd < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main()");
+      fprintf (stderr, "ERROR: epoll_create failed (errno = %d)!\n",
+	       errno_val);
+      return ssm->epfd;
+    }
+
+  ssm->listen_ev.events = EPOLLIN;
+  ssm->listen_ev.data.u32 = ~0;
+#ifdef VCL_TEST
+  rv = vppcom_epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd,
+			 &ssm->listen_ev);
+  if (rv < 0)
+    errno = -rv;
+#else
+  rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd, &ssm->listen_ev);
+#endif
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main()");
+      fprintf (stderr, "ERROR: epoll_ctl failed (errno = %d)!\n", errno_val);
+      return rv;
+    }
+#endif
 
   while (1)
     {
+#if ! SOCK_SERVER_USE_EPOLL
       _rfdset = ssm->rd_fdset;
 
 #ifdef VCL_TEST
@@ -431,9 +521,45 @@ main (int argc, char **argv)
 	    continue;
 
 	  conn = &ssm->conn_pool[i];
+#else
+      int num_ev;
+#ifdef VCL_TEST
+      num_ev = vppcom_epoll_wait (ssm->epfd, ssm->wait_events,
+				  SOCK_SERVER_MAX_EPOLL_EVENTS, 60.0);
+      if (rv < 0)
+	errno = -rv;
+#else
+      num_ev = epoll_wait (ssm->epfd, ssm->wait_events,
+			   SOCK_SERVER_MAX_EPOLL_EVENTS, 60000);
+#endif
+      if (num_ev < 0)
+	{
+	  perror ("epoll_wait()");
+	  fprintf (stderr, "\nERROR: epoll_wait() failed -- aborting!\n");
+	  main_rv = -1;
+	  goto done;
+	}
+      if (num_ev == 0)
+	{
+	  fprintf (stderr, "\nepoll_wait() timeout!\n");
+	  continue;
+	}
+      for (i = 0; i < num_ev; i++)
+	{
+	  if (ssm->wait_events[i].data.u32 == ~0)
+	    {
+	      new_client ();
+	      continue;
+	    }
+	  conn = &ssm->conn_pool[ssm->wait_events[i].data.u32];
+#endif
 	  client_fd = conn->fd;
 
+#if ! SOCK_SERVER_USE_EPOLL
 	  if (FD_ISSET (client_fd, rfdset))
+#else
+	  if (EPOLLIN & ssm->wait_events[i].events)
+#endif
 	    {
 	      rx_bytes = sock_test_read (client_fd, conn->buf,
 					 conn->buf_size, &conn->stats);
@@ -489,8 +615,12 @@ main (int argc, char **argv)
 			  close (client_fd);
 #endif
 			  conn_pool_free (conn);
-
+#if ! SOCK_SERVER_USE_EPOLL
 			  if (ssm->nfds == (ssm->listen_fd + 1))
+#else
+			  ssm->nfds--;
+			  if (!ssm->nfds)
+#endif
 			    {
 			      printf ("SERVER: All client connections "
 				      "closed.\n\nSERVER: "
@@ -520,7 +650,7 @@ main (int argc, char **argv)
 		      ((char *) conn->buf)[rx_bytes <
 					   conn->buf_size ? rx_bytes :
 					   conn->buf_size - 1] = 0;
-		      printf ("\nSERVER (fd %d): RX (%d bytes) - '%s'\n",
+		      printf ("SERVER (fd %d): RX (%d bytes) - '%s'\n",
 			      conn->fd, rx_bytes, conn->buf);
 		    }
 		}

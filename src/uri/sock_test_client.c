@@ -505,7 +505,7 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 #ifdef VCL_TEST
 	  tsock->fd =
 	    vppcom_session_create (VPPCOM_VRF_DEFAULT, VPPCOM_PROTO_TCP,
-				   0 /* is_nonblocking */ );
+				   1 /* is_nonblocking */ );
 	  if (tsock->fd < 0)
 	    {
 	      errno = -tsock->fd;
