@@ -136,7 +136,7 @@ l2learn_process (vlib_node_runtime_t * node,
       /* Entry in L2FIB with matching sw_if_index matched - normal fast path */
       u32 dtime = timestamp - result0->fields.timestamp;
       u32 dsn = result0->fields.sn.as_u16 - vnet_buffer (b0)->l2.l2fib_sn;
-      u32 check = dtime | dsn;
+      u32 check = (dtime && vnet_buffer (b0)->l2.bd_age) || dsn;
 
       if (PREDICT_TRUE (check == 0))
 	return;
