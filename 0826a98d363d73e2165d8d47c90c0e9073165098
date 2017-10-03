@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_6f7c4f73",
+        "filename": "src/vnet/unix/tapcli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 264,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-10-03T19:03:09Z",
+      "side": 1,
+      "message": "If multithreading is the goal, why not have vectors of these (one per thread) in tapcli_main?\n\nThe vec_validate lower would then most often do nothing.",
+      "range": {
+        "startLine": 264,
+        "startChar": 17,
+        "endLine": 264,
+        "endChar": 26
+      },
+      "revId": "0826a98d363d73e2165d8d47c90c0e9073165098",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
