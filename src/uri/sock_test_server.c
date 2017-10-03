@@ -16,12 +16,15 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <sys/epoll.h>
 #include <sys/socket.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
 #include <uri/sock_test.h>
+
+#define SOCK_SERVER_USE_EPOLL 1
 
 typedef struct
 {
@@ -38,9 +41,13 @@ typedef struct
 } sock_server_conn_t;
 
 #define SOCK_SERVER_MAX_TEST_CONN  10
+#define SOCK_SERVER_MAX_EPOLL_EVENTS 10
 typedef struct
 {
   int listen_fd;
+  int epfd;
+  struct epoll_event listen_ev;
+  struct epoll_event wait_events[SOCK_SERVER_MAX_EPOLL_EVENTS];
   size_t num_conn;
   size_t conn_pool_size;
   sock_server_conn_t *conn_pool;
@@ -260,6 +267,8 @@ new_client (void)
   sock_server_main_t *ssm = &sock_server_main;
   int client_fd;
   sock_server_conn_t *conn;
+  struct epoll_event ev;
+  int rv;
 
   if (ssm->conn_pool_size < (ssm->num_conn + SOCK_SERVER_MAX_TEST_CONN + 1))
     conn_pool_expand (SOCK_SERVER_MAX_TEST_CONN + 1);
@@ -274,6 +283,8 @@ new_client (void)
 #ifdef VCL_TEST
   client_fd = vppcom_session_accept (ssm->listen_fd, &conn->endpt,
 				     -1.0 /* wait forever */ );
+  if (client_fd < 0)
+    errno = -client_fd;
 #else
   client_fd = accept (ssm->listen_fd, (struct sockaddr *) NULL, NULL);
 #endif
@@ -281,7 +292,7 @@ new_client (void)
     {
       int errno_val;
       errno_val = errno;
-      perror ("ERROR in main()");
+      perror ("ERROR in new_client()");
       fprintf (stderr, "ERROR: accept failed (errno = %d)!\n", errno_val);
     }
 
@@ -290,6 +301,22 @@ new_client (void)
 
   conn->fd = client_fd;
   conn_fdset_set (conn, &ssm->rd_fdset);
+  ev.data.u32 = conn - ssm->conn_pool;
+  ev.events = EPOLLIN;
+#ifdef VCL_TEST
+  rv = vppcom_epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, client_fd, &ev);
+  if (rv)
+    errno = -rv;
+#else
+  rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, client_fd, &ev);
+#endif
+  if (rv < 0)
+    {
+      int errno_val;
+      errno_val = errno;
+      perror ("ERROR in new_client()");
+      fprintf (stderr, "ERROR: epoll_ctl failed (errno = %d)!\n", errno_val);
+    }
 }
 
 int
@@ -306,11 +333,15 @@ main (int argc, char **argv)
   int errno_val;
   int v, i;
   uint16_t port = SOCK_TEST_SERVER_PORT;
+#ifndef SOCK_SERVER_USE_EPOLL
   fd_set _rfdset, *rfdset = &_rfdset;
+#endif
 #ifdef VCL_TEST
   vppcom_endpt_t endpt;
 #else
+#ifndef SOCK_SERVER_USE_EPOLL
   fd_set _wfdset, *wfdset = &_wfdset;
+#endif
 #endif
 
   if ((argc == 2) && (sscanf (argv[1], "%d", &v) == 1))
@@ -329,7 +360,7 @@ main (int argc, char **argv)
     {
       ssm->listen_fd =
 	vppcom_session_create (VPPCOM_VRF_DEFAULT, VPPCOM_PROTO_TCP,
-			       0 /* is_nonblocking */ );
+			       1 /* is_nonblocking */ );
     }
 #else
   ssm->listen_fd = socket (AF_INET, SOCK_STREAM, 0);
@@ -397,9 +428,41 @@ main (int argc, char **argv)
   ssm->nfds = ssm->listen_fd + 1;
 
   printf ("\nSERVER: Waiting for a client to connect on port %d...\n", port);
+#ifdef VCL_TEST
+  ssm->epfd = vppcom_epoll_create ();
+  if (ssm->epfd < 0)
+    errno = -ssm->epfd;
+#else
+  ssm->epfd = epoll_create (1);
+#endif
+  if (ssm->epfd < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main()");
+      fprintf (stderr, "ERROR: epoll_create failed (errno = %d)!\n",
+	       errno_val);
+      return ssm->epfd;
+    }
+
+#ifdef VCL_TEST
+  rv = vppcom_epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd,
+			 &ssm->listen_ev);
+  if (rv < 0)
+    errno = -rv;
+#else
+  rv = epoll_ctl (ssm->epfd, EPOLL_CTL_ADD, ssm->listen_fd, &ssm->listen_ev);
+#endif
+  if (rv < 0)
+    {
+      errno_val = errno;
+      perror ("ERROR in main()");
+      fprintf (stderr, "ERROR: epoll_ctl failed (errno = %d)!\n", errno_val);
+      return rv;
+    }
 
   while (1)
     {
+#ifndef SOCK_SERVER_USE_EPOLL
       _rfdset = ssm->rd_fdset;
 
 #ifdef VCL_TEST
@@ -431,9 +494,41 @@ main (int argc, char **argv)
 	    continue;
 
 	  conn = &ssm->conn_pool[i];
+#else
+      int num_ev;
+#ifdef VCL_TEST
+      num_ev = vppcom_epoll_wait (ssm->epfd, ssm->wait_events,
+				  SOCK_SERVER_MAX_EPOLL_EVENTS, 60.0);
+      if (rv < 0)
+	errno = -rv;
+#else
+      num_ev = epoll_wait (ssm->epfd, ssm->wait_events,
+			   SOCK_SERVER_MAX_EPOLL_EVENTS, 600000);
+#endif
+      if (num_ev < 0)
+	{
+	  perror ("epoll_wait()");
+	  fprintf (stderr, "\nERROR: epoll_wait() failed -- aborting!\n");
+	  main_rv = -1;
+	  goto done;
+	}
+      for (i = 0; i < rv; i++)
+	{
+	  conn = &ssm->conn_pool[ssm->wait_events[i].data.u32];
+
+	  if (conn->fd == ssm->listen_fd)
+	    {
+	      new_client ();
+	      continue;
+	    }
+#endif
 	  client_fd = conn->fd;
 
+#ifndef SOCK_SERVER_USE_EPOLL
 	  if (FD_ISSET (client_fd, rfdset))
+#else
+	  if (EPOLLIN & ssm->wait_events[i].events)
+#endif
 	    {
 	      rx_bytes = sock_test_read (client_fd, conn->buf,
 					 conn->buf_size, &conn->stats);
