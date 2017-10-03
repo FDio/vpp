@@ -173,6 +173,7 @@ typedef struct
       u8 l2_len;		/* ethernet header length */
       u8 shg;			/* split-horizon group */
       u16 l2fib_sn;		/* l2fib bd/int seq_num */
+      u8 bd_age;		/* aging enabled */
     } l2;
 
     /* l2tpv3 softwire encap, only valid there */
