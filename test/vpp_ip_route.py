@@ -193,6 +193,8 @@ class VppIpRoute(VppObject):
                     next_hop_via_label=path.nh_via_label,
                     next_hop_table_id=path.nh_table_id,
                     is_ipv6=self.is_ip6,
+                    is_l2_bridged=1
+                    if path.proto == DpoProto.DPO_PROTO_ETHERNET else 0,
                     is_resolve_host=path.is_resolve_host,
                     is_resolve_attached=path.is_resolve_attached,
                     is_multipath=1 if len(self.paths) > 1 else 0)

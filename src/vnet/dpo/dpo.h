@@ -114,6 +114,7 @@ typedef enum dpo_type_t_ {
     DPO_MFIB_ENTRY,
     DPO_INTERFACE_RX,
     DPO_INTERFACE_TX,
+    DPO_L2_BRIDGE,
     DPO_LAST,
 } __attribute__((packed)) dpo_type_t;
 
@@ -140,7 +141,8 @@ typedef enum dpo_type_t_ {
     [DPO_MPLS_DISPOSITION] = "dpo-mpls-diposition", \
     [DPO_MFIB_ENTRY] = "dpo-mfib_entry", \
     [DPO_INTERFACE_RX] = "dpo-interface-rx",	\
-    [DPO_INTERFACE_TX] = "dpo-interface-tx"	\
+    [DPO_INTERFACE_TX] = "dpo-interface-tx",	\
+    [DPO_L2_BRIDGE] = "dpo-l2-bridge"	\
 }
 
 /**

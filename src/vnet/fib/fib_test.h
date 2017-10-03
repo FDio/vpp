@@ -26,6 +26,7 @@ typedef enum fib_test_lb_bucket_type_t_ {
     FT_LB_SPECIAL,
     FT_LB_ADJ,
     FT_LB_INTF,
+    FT_LB_L2,
 } fib_test_lb_bucket_type_t;
 
 typedef struct fib_test_lb_bucket_t_ {
@@ -72,6 +73,7 @@ typedef struct fib_test_lb_bucket_t_ {
 
 typedef enum fib_test_rep_bucket_type_t_ {
     FT_REP_LABEL_O_ADJ,
+    FT_REP_DISP_MFIB_LOOKUP,
     FT_REP_INTF,
 } fib_test_rep_bucket_type_t;
 
