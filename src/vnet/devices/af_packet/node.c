@@ -1,5 +1,4 @@
-/*
- *------------------------------------------------------------------
+/*------------------------------------------------------------------
  * af_packet.c - linux kernel packet interface
  *
  * Copyright (c) 2016 Cisco and/or its affiliates.
@@ -18,6 +17,7 @@
  */
 
 #include <linux/if_packet.h>
+#include <linux/virtio_net.h>
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
@@ -155,9 +155,18 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       while ((tph->tp_status & TP_STATUS_USER) && (n_free_bufs > min_bufs) &&
 	     n_left_to_next)
 	{
+
+	  struct virtio_net_hdr *vh =
+	    (struct virtio_net_hdr *) (((u8 *) tph) + tph->tp_mac -
+				       sizeof (struct virtio_net_hdr));
 	  u32 data_len = tph->tp_snaplen;
 	  u32 offset = 0;
 	  u32 bi0 = 0, first_bi0 = 0, prev_bi0;
+	  u32 vlan_len = 0;
+	  ip_csum_t wsum = 0;
+	  u16 *wsum_addr = NULL;
+	  u32 do_vnet = apm->flags & AF_PACKET_USES_VNET_HEADERS;
+	  u32 do_csum = tph->tp_status & TP_STATUS_CSUMNOTREADY;
 
 	  while (data_len)
 	    {
@@ -173,7 +182,6 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      /* copy data */
 	      u32 bytes_to_copy =
 		data_len > n_buffer_bytes ? n_buffer_bytes : data_len;
-	      u32 vlan_len = 0;
 	      u32 bytes_copied = 0;
 	      b0->current_data = 0;
 	      /* Kernel removes VLAN headers, so reconstruct VLAN */
@@ -195,10 +203,50 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      bytes_copied = sizeof (ethernet_header_t);
 		    }
 		}
-	      clib_memcpy (((u8 *) vlib_buffer_get_current (b0)) +
-			   bytes_copied + vlan_len,
-			   (u8 *) tph + tph->tp_mac + offset + bytes_copied,
-			   (bytes_to_copy - bytes_copied));
+	      /* Check if the incoming skb is marked as CSUM_PARTIAL,
+	       * If VNET Headers are enabled TP_STATUS_CSUMNOTREADY is
+	       * equivalent to the vnet csum flag.
+	       **/
+	      if (PREDICT_TRUE ((do_vnet != 0) && (do_csum != 0)))
+		{
+		  wsum_addr = (u16 *) (((u8 *) vlib_buffer_get_current (b0)) +
+				       vlan_len + vh->csum_start +
+				       vh->csum_offset);
+		  if (bytes_copied <= vh->csum_start)
+		    {
+		      clib_memcpy (((u8 *) vlib_buffer_get_current (b0)) +
+				   bytes_copied + vlan_len,
+				   (u8 *) tph + tph->tp_mac + offset +
+				   bytes_copied,
+				   (vh->csum_start - bytes_copied));
+		      wsum =
+			ip_csum_and_memcpy (wsum,
+					    ((u8 *)
+					     vlib_buffer_get_current (b0)) +
+					    vh->csum_start + vlan_len,
+					    (u8 *) tph + tph->tp_mac +
+					    offset + vh->csum_start,
+					    (bytes_to_copy - vh->csum_start));
+		    }
+		  else
+		    {
+		      wsum =
+			ip_csum_and_memcpy (wsum,
+					    ((u8 *)
+					     vlib_buffer_get_current (b0)) +
+					    bytes_copied + vlan_len,
+					    (u8 *) tph + tph->tp_mac +
+					    offset + bytes_copied,
+					    (bytes_to_copy - bytes_copied));
+		    }
+		}
+	      else
+		{
+		  clib_memcpy (((u8 *) vlib_buffer_get_current (b0)) +
+			       bytes_copied + vlan_len,
+			       (u8 *) tph + tph->tp_mac + offset +
+			       bytes_copied, (bytes_to_copy - bytes_copied));
+		}
 
 	      /* fill buffer header */
 	      b0->current_length = bytes_to_copy + vlan_len;
@@ -217,6 +265,10 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      offset += bytes_to_copy;
 	      data_len -= bytes_to_copy;
+	    }
+	  if (PREDICT_TRUE ((do_vnet != 0) && (do_csum != 0)))
+	    {
+	      *wsum_addr = ~ip_csum_fold (wsum);
 	    }
 	  n_rx_packets++;
 	  n_rx_bytes += tph->tp_snaplen;
