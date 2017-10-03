@@ -18,6 +18,7 @@
 
 #include <netdb.h>
 #include <errno.h>
+#include <sys/epoll.h>
 
 /*
  * VPPCOM Public API Definitions, Enums, and Data Structures
@@ -140,6 +141,13 @@ extern int vppcom_select (unsigned long n_bits,
 			  unsigned long *read_map,
 			  unsigned long *write_map,
 			  unsigned long *except_map, double wait_for_time);
+
+extern int vppcom_epoll_create (void);
+extern int vppcom_epoll_ctl (uint32_t vep_idx, int op,
+			     uint32_t session_index,
+			     struct epoll_event *event);
+extern int vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
+			      int maxevents, double wait_for_time);
 
 #endif /* included_vppcom_h */
 
