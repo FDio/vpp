@@ -1843,8 +1843,8 @@ memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
 
 	  b1->desc_index = mq->last_head;
 	  i = 0;
-	  b0->data_len = 0;
-	  b0->buffer_len = 0;
+	  b1->data_len = 0;
+	  b1->buffer_len = 0;
 
 	  b1->data = memif_get_buffer (conn, ring, mq->last_head);
 	  b1->data_len += ring->desc[mq->last_head].length;

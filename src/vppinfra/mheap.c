@@ -1120,7 +1120,7 @@ format_mheap_stats (u8 * s, va_list * va)
 {
   mheap_t *h = va_arg (*va, mheap_t *);
   mheap_stats_t *st = &h->stats;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s =
     format (s,
@@ -1236,7 +1236,7 @@ format_mheap (u8 * s, va_list * va)
     {
       /* Make a copy of traces since we'll be sorting them. */
       mheap_trace_t *t, *traces_copy;
-      uword indent, total_objects_traced;
+      u32 indent, total_objects_traced;
 
       traces_copy = vec_dup (h->trace_main.traces);
       qsort (traces_copy, vec_len (traces_copy), sizeof (traces_copy[0]),

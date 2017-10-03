@@ -217,9 +217,9 @@ lisp_gpe_sub_interface_get (index_t l3si)
 }
 
 u8 *
-format_lisp_gpe_sub_interface (u8 * s, va_list ap)
+format_lisp_gpe_sub_interface (u8 * s, va_list * ap)
 {
-  lisp_gpe_sub_interface_t *l3s = va_arg (ap, lisp_gpe_sub_interface_t *);
+  lisp_gpe_sub_interface_t *l3s = va_arg (*ap, lisp_gpe_sub_interface_t *);
   vnet_main_t *vnm = vnet_get_main ();
 
   s = format (s, "%-16U",

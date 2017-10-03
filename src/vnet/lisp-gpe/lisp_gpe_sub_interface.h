@@ -87,7 +87,7 @@ extern index_t lisp_gpe_sub_interface_find_or_create_and_lock (const
 							       eid_table_id,
 							       u32 vni);
 
-extern u8 *format_lisp_gpe_sub_interface (u8 * s, va_list ap);
+extern u8 *format_lisp_gpe_sub_interface (u8 * s, va_list * ap);
 
 extern void lisp_gpe_sub_interface_unlock (index_t itf);
 

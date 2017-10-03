@@ -81,7 +81,7 @@ u8 *
 format_sfp_eeprom (u8 * s, va_list * args)
 {
   sfp_eeprom_t *e = va_arg (*args, sfp_eeprom_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   int i;
 
   if (e->id != SFP_ID_sfp)

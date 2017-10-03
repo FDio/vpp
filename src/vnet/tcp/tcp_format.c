@@ -59,7 +59,7 @@ format_tcp_header (u8 * s, va_list * args)
   tcp_header_t *tcp = va_arg (*args, tcp_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   u32 header_bytes;
-  uword indent;
+  u32 indent;
 
   /* Nothing to do. */
   if (max_header_bytes < sizeof (tcp[0]))

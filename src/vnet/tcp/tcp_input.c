@@ -1628,7 +1628,7 @@ format_tcp_rx_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   tcp_rx_trace_t *t = va_arg (*args, tcp_rx_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "%U\n%U%U",
 	      format_tcp_header, &t->tcp_header, 128,

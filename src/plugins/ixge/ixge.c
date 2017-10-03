@@ -448,7 +448,7 @@ format_ixge_rx_from_hw_descriptor (u8 * s, va_list * va)
     va_arg (*va, ixge_rx_from_hw_descriptor_t *);
   u32 s0 = d->status[0], s2 = d->status[2];
   u32 is_ip4, is_ip6, is_ip, is_tcp, is_udp;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "%s-owned",
 	      (s2 & IXGE_RX_DESCRIPTOR_STATUS2_IS_OWNED_BY_SOFTWARE) ? "sw" :
@@ -517,7 +517,7 @@ format_ixge_tx_descriptor (u8 * s, va_list * va)
 {
   ixge_tx_descriptor_t *d = va_arg (*va, ixge_tx_descriptor_t *);
   u32 s0 = d->status0, s1 = d->status1;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   u32 v;
 
   s = format (s, "buffer 0x%Lx, %d packet bytes, %d bytes this buffer",
@@ -582,7 +582,7 @@ format_ixge_rx_dma_trace (u8 * s, va_list * va)
   ixge_main_t *xm = &ixge_main;
   ixge_device_t *xd = vec_elt_at_index (xm->devices, t->device_index);
   format_function_t *f;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   {
     vnet_sw_interface_t *sw =
@@ -869,7 +869,7 @@ format_ixge_tx_dma_trace (u8 * s, va_list * va)
   ixge_main_t *xm = &ixge_main;
   ixge_device_t *xd = vec_elt_at_index (xm->devices, t->device_index);
   format_function_t *f;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   {
     vnet_sw_interface_t *sw =
@@ -2344,7 +2344,7 @@ format_ixge_device (u8 * s, va_list * args)
   ixge_main_t *xm = &ixge_main;
   ixge_device_t *xd = vec_elt_at_index (xm->devices, dev_instance);
   ixge_phy_t *phy = xd->phys + xd->phy_index;
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   ixge_update_counters (xd);
   xd->link_status_at_last_link_change = xd->regs->xge_mac.link_status;

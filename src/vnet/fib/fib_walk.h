@@ -52,7 +52,7 @@ extern void fib_walk_sync(fib_node_type_t parent_type,
                           fib_node_index_t parent_index,
                           fib_node_back_walk_ctx_t *ctx);
 
-extern u8* format_fib_walk_priority(u8 *s, va_list ap);
+extern u8* format_fib_walk_priority(u8 *s, va_list *ap);
 
 extern void fib_walk_process_enable(void);
 extern void fib_walk_process_disable(void);

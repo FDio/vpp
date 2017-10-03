@@ -128,7 +128,7 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
 {
   lb_main_t *lbm = &lb_main;
   lb_vip_t *vip = va_arg (*args, lb_vip_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format(s, "%U %U [%u] %U%s\n"
                    "%U  new_size:%u\n",

@@ -59,7 +59,7 @@ format_vnet_interface_output_trace (u8 * s, va_list * va)
   interface_output_trace_t *t = va_arg (*va, interface_output_trace_t *);
   vnet_main_t *vnm = vnet_get_main ();
   vnet_sw_interface_t *si;
-  uword indent;
+  u32 indent;
 
   if (t->sw_if_index != (u32) ~ 0)
     {

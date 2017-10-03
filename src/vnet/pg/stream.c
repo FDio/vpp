@@ -100,7 +100,7 @@ format_pg_output_trace (u8 * s, va_list * va)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*va, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*va, vlib_node_t *);
   pg_output_trace_t *t = va_arg (*va, pg_output_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "%Ubuffer 0x%x: %U",
 	      format_white_space, indent,

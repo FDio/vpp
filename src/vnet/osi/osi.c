@@ -65,7 +65,7 @@ format_osi_header_with_length (u8 * s, va_list * args)
   osi_header_t *h = va_arg (*args, osi_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   osi_protocol_t p = h->protocol;
-  uword indent, header_bytes;
+  u32 indent, header_bytes;
 
   header_bytes = sizeof (h[0]);
   if (max_header_bytes != 0 && header_bytes > max_header_bytes)

@@ -65,7 +65,7 @@ u8 * format_srp_header_with_length (u8 * s, va_list * args)
   srp_and_ethernet_header_t * h = va_arg (*args, srp_and_ethernet_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   ethernet_main_t * em = &ethernet_main;
-  uword indent, header_bytes;
+  u32 indent, header_bytes;
 
   header_bytes = sizeof (h[0]);
   if (max_header_bytes != 0 && header_bytes > max_header_bytes)

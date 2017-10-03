@@ -39,8 +39,8 @@ indent --version
 
 # Check to make sure we have clang-format.  Exit if we don't with an error message, but
 # don't *fail*.
-command -v clang-format > /dev/null
 HAVE_CLANG_FORMAT=0
+command -v clang-format > /dev/null
 if [ $? != 0 ]; then
     echo "Could not find command \"clang-format\". Checking C++ files will cause abort"
 else

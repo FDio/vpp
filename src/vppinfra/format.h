@@ -68,10 +68,10 @@ word va_fformat (FILE * f, char *fmt, va_list * va);
 word fformat (FILE * f, char *fmt, ...);
 word fdformat (int fd, char *fmt, ...);
 
-always_inline uword
+always_inline u32
 format_get_indent (u8 * s)
 {
-  uword indent = 0;
+  u32 indent = 0;
   u8 *nl;
 
   if (!s)

@@ -102,7 +102,7 @@ format_vlib_node_stats (u8 * s, va_list * va)
   f64 x;
   f64 maxc, maxcn;
   u32 maxn;
-  uword indent;
+  u32 indent;
 
   if (!n)
     {

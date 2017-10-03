@@ -317,9 +317,9 @@ map_pre_resolve_init (map_main_pre_resolved_t * pr)
 }
 
 static u8 *
-format_map_pre_resolve (u8 * s, va_list ap)
+format_map_pre_resolve (u8 * s, va_list * ap)
 {
-  map_main_pre_resolved_t *pr = va_arg (ap, map_main_pre_resolved_t *);
+  map_main_pre_resolved_t *pr = va_arg (*ap, map_main_pre_resolved_t *);
 
   if (FIB_NODE_INDEX_INVALID != pr->fei)
     {

@@ -63,7 +63,7 @@ format_netmap_device (u8 * s, va_list * args)
   int verbose = va_arg (*args, int);
   netmap_main_t *nm = &netmap_main;
   netmap_if_t *nif = vec_elt_at_index (nm->interfaces, dev_instance);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "NETMAP interface");
   if (verbose)

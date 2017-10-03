@@ -1768,7 +1768,7 @@ u8 *
 format_bfd_session (u8 * s, va_list * args)
 {
   const bfd_session_t *bs = va_arg (*args, bfd_session_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   s = format (s, "bs_idx=%u local-state=%s remote-state=%s\n"
 	      "%Ulocal-discriminator=%u remote-discriminator=%u\n"
 	      "%Ulocal-diag=%s echo-active=%s\n"

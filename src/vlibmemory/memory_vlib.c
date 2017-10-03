@@ -160,6 +160,8 @@ vl_api_memclnt_create_internal (char *name, unix_shared_memory_queue_t * q)
   memset (regp, 0, sizeof (*regp));
   regp->registration_type = REGISTRATION_TYPE_SHMEM;
   regp->vl_api_registration_pool_index = regpp - am->vl_clients;
+  regp->vlib_rp = svm;
+  regp->shmem_hdr = am->shmem_hdr;
 
   regp->vl_input_queue = q;
   regp->name = format (0, "%s%c", name, 0);

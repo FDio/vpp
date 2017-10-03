@@ -2168,6 +2168,8 @@ fib_path_encode (fib_node_index_t path_list_index,
       case FIB_PATH_TYPE_SPECIAL:
         break;
       case FIB_PATH_TYPE_DEAG:
+        api_rpath->rpath.frp_fib_index = path->deag.fp_tbl_id;
+        api_rpath->dpo = path->fp_dpo;
         break;
       case FIB_PATH_TYPE_RECURSIVE:
         api_rpath->rpath.frp_addr = path->recursive.fp_nh.fp_ip;

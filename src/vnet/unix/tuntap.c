@@ -68,18 +68,24 @@ typedef struct {
 } subif_address_t;
 
 /**
- * @brief TUNTAP node main state
+ * @brief TUNTAP per thread struct
  */
-typedef struct {
-  /** Vector of iovecs for readv calls. */
-  struct iovec * rd_iovecs;
-
-  /** Vector of iovecs for writev calls. */
-  struct iovec * wr_iovecs;
-
+typedef struct
+{
   /** Vector of VLIB rx buffers to use.  We allocate them in blocks
      of VLIB_FRAME_SIZE (256). */
   u32 * rx_buffers;
+
+  /** Vector of iovecs for readv/writev calls. */
+  struct iovec * iovecs;  
+} tuntap_per_thread_t;
+
+/**
+ * @brief TUNTAP node main state
+ */
+typedef struct {
+  /** per thread variables */
+  tuntap_per_thread_t * threads;
 
   /** File descriptors for /dev/net/tun and provisioning socket. */
   int dev_net_tun_fd, dev_tap_fd;
@@ -147,6 +153,7 @@ tuntap_tx (vlib_main_t * vm,
   vnet_interface_main_t *im = &vnm->interface_main;
   u32 n_bytes = 0;
   int i;
+  u16 thread_index = vlib_get_thread_index ();
 
   for (i = 0; i < n_packets; i++)
     {
@@ -163,11 +170,11 @@ tuntap_tx (vlib_main_t * vm,
         }
 
       /* Re-set iovecs if present. */
-      if (tm->wr_iovecs)
-	_vec_len (tm->wr_iovecs) = 0;
+      if (tm->threads[thread_index].iovecs)
+	_vec_len (tm->threads[thread_index].iovecs) = 0;
 
       /** VLIB buffer chain -> Unix iovec(s). */
-      vec_add2 (tm->wr_iovecs, iov, 1);
+      vec_add2 (tm->threads[thread_index].iovecs, iov, 1);
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
 
@@ -176,7 +183,7 @@ tuntap_tx (vlib_main_t * vm,
 	  do {
 	    b = vlib_get_buffer (vm, b->next_buffer);
 
-	    vec_add2 (tm->wr_iovecs, iov, 1);
+	    vec_add2 (tm->threads[thread_index].iovecs, iov, 1);
 
 	    iov->iov_base = b->data + b->current_data;
 	    iov->iov_len = b->current_length;
@@ -184,8 +191,8 @@ tuntap_tx (vlib_main_t * vm,
 	  } while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
 	}
 
-      if (writev (tm->dev_net_tun_fd, tm->wr_iovecs,
-		  vec_len (tm->wr_iovecs)) < l)
+      if (writev (tm->dev_net_tun_fd, tm->threads[thread_index].iovecs,
+		  vec_len (tm->threads[thread_index].iovecs)) < l)
 	clib_unix_warning ("writev");
 
       n_bytes += l;
@@ -234,41 +241,43 @@ tuntap_rx (vlib_main_t * vm,
   vlib_buffer_t * b;
   u32 bi;
   const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
+  u16 thread_index = vlib_get_thread_index ();
 
   /** Make sure we have some RX buffers. */
   {
-    uword n_left = vec_len (tm->rx_buffers);
+    uword n_left = vec_len (tm->threads[thread_index].rx_buffers);
     uword n_alloc;
 
     if (n_left < VLIB_FRAME_SIZE / 2)
       {
-	if (! tm->rx_buffers)
-	  vec_alloc (tm->rx_buffers, VLIB_FRAME_SIZE);
+	if (! tm->threads[thread_index].rx_buffers)
+	  vec_alloc (tm->threads[thread_index].rx_buffers, VLIB_FRAME_SIZE);
 
-	n_alloc = vlib_buffer_alloc (vm, tm->rx_buffers + n_left, VLIB_FRAME_SIZE - n_left);
-	_vec_len (tm->rx_buffers) = n_left + n_alloc;
+	n_alloc = vlib_buffer_alloc (vm, tm->threads[thread_index].rx_buffers + n_left, VLIB_FRAME_SIZE - n_left);
+	_vec_len (tm->threads[thread_index].rx_buffers) = n_left + n_alloc;
       }
   }
 
   /** Allocate RX buffers from end of rx_buffers.
      Turn them into iovecs to pass to readv. */
   {
-    uword i_rx = vec_len (tm->rx_buffers) - 1;
+    uword i_rx = vec_len (tm->threads[thread_index].rx_buffers) - 1;
     vlib_buffer_t * b;
     word i, n_bytes_left, n_bytes_in_packet;
 
     /** We should have enough buffers left for an MTU sized packet. */
-    ASSERT (vec_len (tm->rx_buffers) >= tm->mtu_buffers);
+    ASSERT (vec_len (tm->threads[thread_index].rx_buffers) >= tm->mtu_buffers);
 
-    vec_validate (tm->rd_iovecs, tm->mtu_buffers - 1);
+    vec_validate (tm->threads[thread_index].iovecs, tm->mtu_buffers - 1);
     for (i = 0; i < tm->mtu_buffers; i++)
       {
-	b = vlib_get_buffer (vm, tm->rx_buffers[i_rx - i]);
-	tm->rd_iovecs[i].iov_base = b->data;
-	tm->rd_iovecs[i].iov_len = buffer_size;
+	b = vlib_get_buffer (vm, tm->threads[thread_index].rx_buffers[i_rx - i]);
+	tm->threads[thread_index].iovecs[i].iov_base = b->data;
+	tm->threads[thread_index].iovecs[i].iov_len = buffer_size;
       }
 
-    n_bytes_left = readv (tm->dev_net_tun_fd, tm->rd_iovecs, tm->mtu_buffers);
+    n_bytes_left = readv (tm->dev_net_tun_fd, tm->threads[thread_index].iovecs,
+			  tm->mtu_buffers);
     n_bytes_in_packet = n_bytes_left;
     if (n_bytes_left <= 0)
       {
@@ -277,11 +286,11 @@ tuntap_rx (vlib_main_t * vm,
 	return 0;
       }
 
-    bi = tm->rx_buffers[i_rx];
+    bi = tm->threads[thread_index].rx_buffers[i_rx];
 
     while (1)
       {
-	b = vlib_get_buffer (vm, tm->rx_buffers[i_rx]);
+	b = vlib_get_buffer (vm, tm->threads[thread_index].rx_buffers[i_rx]);
 	b->flags = 0;
 	b->current_data = 0;
 	b->current_length = n_bytes_left < buffer_size ? n_bytes_left : buffer_size;
@@ -295,18 +304,18 @@ tuntap_rx (vlib_main_t * vm,
 
 	i_rx--;
 	b->flags |= VLIB_BUFFER_NEXT_PRESENT;
-	b->next_buffer = tm->rx_buffers[i_rx];
+	b->next_buffer = tm->threads[thread_index].rx_buffers[i_rx];
       }
 
     /** Interface counters for tuntap interface. */
     vlib_increment_combined_counter
         (vnet_main.interface_main.combined_sw_if_counters
          + VNET_INTERFACE_COUNTER_RX,
-         vlib_get_thread_index(),
+         thread_index,
          tm->sw_if_index,
          1, n_bytes_in_packet);
 
-    _vec_len (tm->rx_buffers) = i_rx;
+    _vec_len (tm->threads[thread_index].rx_buffers) = i_rx;
   }
 
   b = vlib_get_buffer (vm, bi);
@@ -1004,6 +1013,7 @@ tuntap_init (vlib_main_t * vm)
   ip4_add_del_interface_address_callback_t cb4;
   ip6_add_del_interface_address_callback_t cb6;
   tuntap_main_t * tm = &tuntap_main;
+  vlib_thread_main_t * m = vlib_get_thread_main ();
 
   error = vlib_call_init_function (vm, ip4_init);
   if (error)
@@ -1018,6 +1028,8 @@ tuntap_init (vlib_main_t * vm)
   cb6.function = tuntap_ip6_add_del_interface_address;
   cb6.function_opaque = 0;
   vec_add1 (im6->add_del_interface_address_callbacks, cb6);
+  vec_validate_aligned (tm->threads, m->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
 
   return 0;
 }

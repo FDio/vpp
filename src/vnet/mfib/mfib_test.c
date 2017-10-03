@@ -180,7 +180,7 @@ mfib_test_mk_intf (u32 ninterfaces)
 static int
 mfib_test_validate_rep_v (const replicate_t *rep,
                           u16 n_buckets,
-                          va_list ap)
+                          va_list *ap)
 {
     const dpo_id_t *dpo;
     adj_index_t ai;
@@ -192,8 +192,8 @@ mfib_test_validate_rep_v (const replicate_t *rep,
 
     for (bucket = 0; bucket < n_buckets; bucket++)
     {
-        dt = va_arg(ap, int);  // type promotion
-        ai = va_arg(ap, adj_index_t);
+        dt = va_arg(*ap, int);  // type promotion
+        ai = va_arg(*ap, adj_index_t);
         dpo = replicate_get_bucket_i(rep, bucket);
 
         MFIB_TEST_REP((dt == dpo->dpoi_type),
@@ -275,7 +275,7 @@ mfib_test_entry (fib_node_index_t fei,
                       format_mfib_prefix, &pfx,
                       format_dpo_type, tmp.dpoi_type);
 
-        res = mfib_test_validate_rep_v(rep, n_buckets, ap);
+        res = mfib_test_validate_rep_v(rep, n_buckets, &ap);
 
         dpo_reset(&tmp);
     }

@@ -69,7 +69,7 @@ format_vnet_rewrite (u8 * s, va_list * args)
 {
   vnet_rewrite_header_t *rw = va_arg (*args, vnet_rewrite_header_t *);
   u32 max_data_bytes = va_arg (*args, u32);
-  CLIB_UNUSED (uword indent) = va_arg (*args, u32);
+  CLIB_UNUSED (u32 indent) = va_arg (*args, u32);
   vnet_main_t *vnm = vnet_get_main ();
 
   if (rw->sw_if_index != ~0)

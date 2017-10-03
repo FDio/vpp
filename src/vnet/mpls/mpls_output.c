@@ -45,7 +45,7 @@ format_mpls_output_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   mpls_output_trace_t * t = va_arg (*args, mpls_output_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "adj-idx %d : %U flow hash: 0x%08x",
               t->adj_index,
@@ -466,7 +466,7 @@ format_mpls_adj_incomplete_trace (u8 * s, va_list * args)
     CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
     CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
     mpls_adj_incomplete_trace_t * t;
-    uword indent;
+    u32 indent;
 
     t = va_arg (*args, mpls_adj_incomplete_trace_t *);
     indent = format_get_indent (s);

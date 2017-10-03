@@ -96,18 +96,24 @@ u8 * format_tapcli_rx_trace (u8 * s, va_list * va)
 }
 
 /**
- * @brief TAPCLI main state struct
+ * @brief TAPCLI per thread struct
  */
-typedef struct {
-  /** Vector of iovecs for readv calls. */
-  struct iovec * rd_iovecs;
-
-  /** Vector of iovecs for writev calls. */
-  struct iovec * wr_iovecs;
-
+typedef struct
+{
   /** Vector of VLIB rx buffers to use.  We allocate them in blocks
      of VLIB_FRAME_SIZE (256). */
   u32 * rx_buffers;
+
+  /** Vector of iovecs for readv/writev calls. */
+  struct iovec * iovecs;  
+} tapcli_per_thread_t;
+
+/**
+ * @brief TAPCLI main state struct
+ */
+typedef struct {
+  /** per thread variables */
+  tapcli_per_thread_t * threads;
 
   /** tap device destination MAC address. Required, or Linux drops pkts */
   u8 ether_dst_mac[6];
@@ -168,6 +174,7 @@ tapcli_tx (vlib_main_t * vm,
   tapcli_main_t * tm = &tapcli_main;
   tapcli_interface_t * ti;
   int i;
+  u16 thread_index = vlib_get_thread_index ();
 
   for (i = 0; i < n_packets; i++)
     {
@@ -202,11 +209,11 @@ tapcli_tx (vlib_main_t * vm,
         ti = vec_elt_at_index (tm->tapcli_interfaces, p[0]);
 
       /* Re-set iovecs if present. */
-      if (tm->wr_iovecs)
-	_vec_len (tm->wr_iovecs) = 0;
+      if (tm->threads[thread_index].iovecs)
+	_vec_len (tm->threads[thread_index].iovecs) = 0;
 
       /* VLIB buffer chain -> Unix iovec(s). */
-      vec_add2 (tm->wr_iovecs, iov, 1);
+      vec_add2 (tm->threads[thread_index].iovecs, iov, 1);
       iov->iov_base = b->data + b->current_data;
       iov->iov_len = l = b->current_length;
 
@@ -215,7 +222,7 @@ tapcli_tx (vlib_main_t * vm,
 	  do {
 	    b = vlib_get_buffer (vm, b->next_buffer);
 
-	    vec_add2 (tm->wr_iovecs, iov, 1);
+	    vec_add2 (tm->threads[thread_index].iovecs, iov, 1);
 
 	    iov->iov_base = b->data + b->current_data;
 	    iov->iov_len = b->current_length;
@@ -223,7 +230,8 @@ tapcli_tx (vlib_main_t * vm,
 	  } while (b->flags & VLIB_BUFFER_NEXT_PRESENT);
 	}
 
-      if (writev (ti->unix_fd, tm->wr_iovecs, vec_len (tm->wr_iovecs)) < l)
+      if (writev (ti->unix_fd, tm->threads[thread_index].iovecs,
+		  vec_len (tm->threads[thread_index].iovecs)) < l)
 	clib_unix_warning ("writev");
     }
 
@@ -258,7 +266,7 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
   const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
   u32 n_trace = vlib_get_trace_count (vm, node);
   u8 set_trace = 0;
-
+  u16 thread_index = vlib_get_thread_index ();
   vnet_main_t *vnm;
   vnet_sw_interface_t * si;
   u8 admin_down;
@@ -278,31 +286,35 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
     word n_bytes_in_packet;
     int j, n_bytes_left;
 
-    if (PREDICT_FALSE(vec_len(tm->rx_buffers) < tm->mtu_buffers)) {
-      uword len = vec_len(tm->rx_buffers);
-      _vec_len(tm->rx_buffers) +=
-          vlib_buffer_alloc_from_free_list(vm, &tm->rx_buffers[len],
+    if (PREDICT_FALSE(vec_len(tm->threads[thread_index].rx_buffers) <
+		      tm->mtu_buffers)) {
+      uword len = vec_len(tm->threads[thread_index].rx_buffers);
+      _vec_len(tm->threads[thread_index].rx_buffers) +=
+          vlib_buffer_alloc_from_free_list(vm, &tm->threads[thread_index].rx_buffers[len],
                             VLIB_FRAME_SIZE - len, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
-      if (PREDICT_FALSE(vec_len(tm->rx_buffers) < tm->mtu_buffers)) {
+      if (PREDICT_FALSE(vec_len(tm->threads[thread_index].rx_buffers) <
+			tm->mtu_buffers)) {
           vlib_node_increment_counter(vm, tapcli_rx_node.index,
                                       TAPCLI_ERROR_BUFFER_ALLOC,
-                                      tm->mtu_buffers - vec_len(tm->rx_buffers));
+                                      tm->mtu_buffers -
+				      vec_len(tm->threads[thread_index].rx_buffers));
         break;
       }
     }
 
-    uword i_rx = vec_len (tm->rx_buffers) - 1;
+    uword i_rx = vec_len (tm->threads[thread_index].rx_buffers) - 1;
 
     /* Allocate RX buffers from end of rx_buffers.
            Turn them into iovecs to pass to readv. */
-    vec_validate (tm->rd_iovecs, tm->mtu_buffers - 1);
+    vec_validate (tm->threads[thread_index].iovecs, tm->mtu_buffers - 1);
     for (j = 0; j < tm->mtu_buffers; j++) {
-      b = vlib_get_buffer (vm, tm->rx_buffers[i_rx - j]);
-      tm->rd_iovecs[j].iov_base = b->data;
-      tm->rd_iovecs[j].iov_len = buffer_size;
+      b = vlib_get_buffer (vm, tm->threads[thread_index].rx_buffers[i_rx - j]);
+      tm->threads[thread_index].iovecs[j].iov_base = b->data;
+      tm->threads[thread_index].iovecs[j].iov_len = buffer_size;
     }
 
-    n_bytes_left = readv (ti->unix_fd, tm->rd_iovecs, tm->mtu_buffers);
+    n_bytes_left = readv (ti->unix_fd, tm->threads[thread_index].iovecs,
+			  tm->mtu_buffers);
     n_bytes_in_packet = n_bytes_left;
     if (n_bytes_left <= 0) {
       if (errno != EAGAIN) {
@@ -312,8 +324,9 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
       break;
     }
 
-    bi_first = tm->rx_buffers[i_rx];
-    b = b_first = vlib_get_buffer (vm, tm->rx_buffers[i_rx]);
+    bi_first = tm->threads[thread_index].rx_buffers[i_rx];
+    b = b_first = vlib_get_buffer (vm,
+				   tm->threads[thread_index].rx_buffers[i_rx]);
     prev = NULL;
 
     while (1) {
@@ -331,11 +344,11 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
         break;
 
       i_rx--;
-      bi = tm->rx_buffers[i_rx];
+      bi = tm->threads[thread_index].rx_buffers[i_rx];
       b = vlib_get_buffer (vm, bi);
     }
 
-    _vec_len (tm->rx_buffers) = i_rx;
+    _vec_len (tm->threads[thread_index].rx_buffers) = i_rx;
 
     b_first->total_length_not_including_first_buffer =
         (n_bytes_in_packet > buffer_size) ? n_bytes_in_packet - buffer_size : 0;
@@ -367,7 +380,7 @@ static uword tapcli_rx_iface(vlib_main_t * vm,
       vlib_increment_combined_counter (
           vnet_main.interface_main.combined_sw_if_counters
           + VNET_INTERFACE_COUNTER_RX,
-          vlib_get_thread_index(), ti->sw_if_index,
+          thread_index, ti->sw_if_index,
           1, n_bytes_in_packet);
 
       if (PREDICT_FALSE(n_trace > 0)) {
@@ -1453,16 +1466,25 @@ clib_error_t *
 tapcli_init (vlib_main_t * vm)
 {
   tapcli_main_t * tm = &tapcli_main;
+  vlib_thread_main_t * m = vlib_get_thread_main ();
+  tapcli_per_thread_t * thread;
 
   tm->vlib_main = vm;
   tm->vnet_main = vnet_get_main();
   tm->mtu_bytes = TAP_MTU_DEFAULT;
   tm->tapcli_interface_index_by_sw_if_index = hash_create (0, sizeof(uword));
   tm->tapcli_interface_index_by_unix_fd = hash_create (0, sizeof (uword));
-  tm->rx_buffers = 0;
-  vec_alloc(tm->rx_buffers, VLIB_FRAME_SIZE);
-  vec_reset_length(tm->rx_buffers);
   vm->os_punt_frame = tapcli_nopunt_frame;
+  vec_validate_aligned (tm->threads, m->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  vec_foreach (thread, tm->threads)
+    {
+      thread->iovecs = 0;
+      thread->rx_buffers = 0;
+      vec_alloc(thread->rx_buffers, VLIB_FRAME_SIZE);
+      vec_reset_length(thread->rx_buffers);
+    }
+
   return 0;
 }
 

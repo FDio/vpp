@@ -64,7 +64,7 @@ format_memif_device (u8 * s, va_list * args)
 {
   u32 dev_instance = va_arg (*args, u32);
   int verbose = va_arg (*args, int);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "MEMIF interface");
   if (verbose)
