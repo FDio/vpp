@@ -644,7 +644,7 @@ native_vcl() {
         if [ "$multi_host" = "server" ] ; then
             delay="sleep 10"
         else
-            delay="sleep 3"
+            delay="sleep 2"
         fi
         write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "$delay"
         echo "export LD_LIBRARY_PATH=\"$lib64_dir:$LD_LIBRARY_PATH\"" >> $cmd2_file
@@ -661,7 +661,7 @@ native_vcl() {
         if [ "$multi_host" = "client" ] ; then
             delay="sleep 10"
         else
-            delay="sleep 3"
+            delay="sleep 2"
         fi
         write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "$delay"
         echo "export LD_LIBRARY_PATH=\"$lib64_dir:$LD_LIBRARY_PATH\"" >> $cmd3_file

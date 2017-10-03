@@ -68,6 +68,19 @@ typedef enum
   STATE_FAILED
 } session_state_t;
 
+typedef struct epoll_event vppcom_epoll_event_t;
+
+typedef struct
+{
+  u32 next_sid;
+  u32 prev_sid;
+  u32 vep_idx;
+  vppcom_epoll_event_t ev;
+#define VEP_DEFAULT_ET_MASK  (EPOLLIN|EPOLLOUT)
+  u32 et_mask;
+  u32 wait_cont_idx;
+} vppcom_epoll_t;
+
 typedef struct
 {
   volatile session_state_t state;
@@ -79,10 +92,14 @@ typedef struct
   unix_shared_memory_queue_t *vpp_event_queue;
 
   /* Socket configuration state */
+  /* TBD: covert 'is_*' vars to bit in u8 flags; */
   u8 is_server;
   u8 is_listen;
   u8 is_cut_thru;
   u8 is_nonblocking;
+  u8 is_vep;
+  u8 is_vep_session;
+  vppcom_epoll_t vep;
   u32 vrf;
   u8 is_ip4;
   u8 ip[16];
@@ -238,7 +255,7 @@ vppcom_session_at_index (u32 session_index, session_t * volatile *sess)
   if (PREDICT_FALSE ((session_index == ~0) ||
 		     pool_is_free_index (vcm->sessions, session_index)))
     {
-      clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+      clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		    vcm->my_pid, session_index);
       return VPPCOM_EBADFD;
     }
@@ -554,7 +571,7 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
       if (PREDICT_FALSE (rv))
 	{
 	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	    clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 			  vcm->my_pid, p[0]);
 	}
       hash_unset (vcm->session_index_by_vpp_handles, mp->handle);
@@ -616,7 +633,7 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
       if (PREDICT_FALSE (rval))
 	{
 	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	    clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 			  vcm->my_pid, p[0]);
 	}
       else
@@ -658,7 +675,7 @@ vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
       if (PREDICT_FALSE (rval))
 	{
 	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	    clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 			  vcm->my_pid, p[0]);
 	}
       else
@@ -729,6 +746,7 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
       vec_reset_length (a->new_segment_indices);
       if (PREDICT_FALSE (rv))
 	{
+	  clib_spinlock_unlock (&vcm->sessions_lockp);
 	  clib_warning ("[%d] sm_fifo_segment_attach ('%s') failed",
 			vcm->my_pid, a->segment_name);
 	  return;
@@ -802,7 +820,7 @@ vppcom_send_disconnect (u32 session_index)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 1)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, session_index);
       return rv;
     }
@@ -993,12 +1011,12 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->port = ntohs (mp->port);
   session->is_ip4 = mp->is_ip4;
   clib_memcpy (session->ip, mp->ip, sizeof (session->ip));
-  clib_spinlock_unlock (&vcm->sessions_lockp);
 
   /* Add it to lookup table */
   hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
 
   clib_fifo_add1 (vcm->client_session_index_fifo, session_index);
+  clib_spinlock_unlock (&vcm->sessions_lockp);
 
   /*
    * Send accept reply to vpp
@@ -1031,11 +1049,13 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   svm_fifo_t *tx_fifo;
   unix_shared_memory_queue_t *event_q = 0;
 
+  clib_spinlock_lock (&vcm->sessions_lockp);
   if (!clib_fifo_free_elts (vcm->client_session_index_fifo))
     {
       if (VPPCOM_DEBUG > 1)
 	clib_warning ("[%d] client session queue is full!", vcm->my_pid);
       rv = VNET_API_ERROR_QUEUE_FULL;
+      clib_spinlock_unlock (&vcm->sessions_lockp);
       goto send_reply;
     }
 
@@ -1063,7 +1083,6 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   if (VPPCOM_DEBUG > 1)
     clib_warning ("[%d] created segment '%s'", vcm->my_pid, a->segment_name);
 
-  clib_spinlock_lock (&vcm->sessions_lockp);
   pool_get (vcm->sessions, session);
   memset (session, 0, sizeof (*session));
   session_index = session - vcm->sessions;
@@ -1127,8 +1146,8 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   if (VPPCOM_DEBUG > 1)
     clib_warning ("[%d] Connected cut-thru to client: sid %d",
 		  vcm->my_pid, session_index);
-  clib_spinlock_unlock (&vcm->sessions_lockp);
   clib_fifo_add1 (vcm->client_session_index_fifo, session_index);
+  clib_spinlock_unlock (&vcm->sessions_lockp);
 
 send_reply:
   rmp = vl_msg_api_alloc (sizeof (*rmp));
@@ -1191,7 +1210,7 @@ vppcom_send_unbind_sock (u32 session_index)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, session_index);
       return;
     }
@@ -1234,7 +1253,7 @@ vppcom_session_unbind (u32 session_index)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 1)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, session_index);
       return VPPCOM_EBADFD;
     }
@@ -1807,6 +1826,7 @@ vppcom_session_create (u32 vrf, u8 proto, u8 is_nonblocking)
 
   clib_spinlock_lock (&vcm->sessions_lockp);
   pool_get (vcm->sessions, session);
+  memset (session, 0, sizeof (*session));
   session_index = session - vcm->sessions;
 
   session->vrf = vrf;
@@ -1832,49 +1852,101 @@ vppcom_session_close (uint32_t session_index)
   rv = vppcom_session_at_index (session_index, &session);
   if (PREDICT_FALSE (rv))
     {
-      clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, session_index);
-      return rv;
+      clib_spinlock_unlock (&vcm->sessions_lockp);
+      goto done;
     }
   clib_spinlock_unlock (&vcm->sessions_lockp);
 
   if (VPPCOM_DEBUG > 0)
     clib_warning ("[%d] sid %d", vcm->my_pid, session_index);
 
-  if (session->is_cut_thru)
+  if (session->is_vep)
     {
-      if (session->is_server)
+      u32 next_sid;
+      for (next_sid = session->vep.next_sid; next_sid != ~0;
+	   next_sid = session->vep.next_sid)
 	{
-	  rv = vppcom_session_unbind_cut_thru (session);
+	  rv = vppcom_epoll_ctl (session_index, EPOLL_CTL_DEL, next_sid, 0);
 	  if ((VPPCOM_DEBUG > 0) && (rv < 0))
-	    clib_warning ("[%d] unbind cut-thru (session %d) failed, "
-			  "rv = %s (%d)",
+	    clib_warning ("[%d] EPOLL_CTL_DEL vep_idx %u, sid %u failed, "
+			  "rv = %s (%d)", session_index, next_sid,
+			  vcm->my_pid, session_index,
+			  vppcom_retval_str (rv), rv);
+
+	  clib_spinlock_lock (&vcm->sessions_lockp);
+	  rv = vppcom_session_at_index (session_index, &session);
+	  if (PREDICT_FALSE (rv))
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning
+		  ("[%d] invalid session, sid (%u) has been closed!",
+		   vcm->my_pid, session_index);
+	      clib_spinlock_unlock (&vcm->sessions_lockp);
+	      goto done;
+	    }
+	  clib_spinlock_unlock (&vcm->sessions_lockp);
+	}
+    }
+  else
+    {
+      if (session->is_vep_session)
+	{
+	  u32 vep_idx = session->vep.vep_idx;
+	  rv = vppcom_epoll_ctl (vep_idx, EPOLL_CTL_DEL, session_index, 0);
+	  if ((VPPCOM_DEBUG > 0) && (rv < 0))
+	    clib_warning ("[%d] EPOLL_CTL_DEL vep_idx %u, sid %u failed, "
+			  "rv = %s (%d)", vep_idx, session_index,
+			  vcm->my_pid, session_index,
+			  vppcom_retval_str (rv), rv);
+
+	  clib_spinlock_lock (&vcm->sessions_lockp);
+	  rv = vppcom_session_at_index (session_index, &session);
+	  if (PREDICT_FALSE (rv))
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning
+		  ("[%d] invalid session, sid (%u) has been closed!",
+		   vcm->my_pid, session_index);
+	      clib_spinlock_unlock (&vcm->sessions_lockp);
+	      goto done;
+	    }
+	  clib_spinlock_unlock (&vcm->sessions_lockp);
+	}
+
+      if (session->is_cut_thru)
+	{
+	  if (session->is_server)
+	    {
+	      rv = vppcom_session_unbind_cut_thru (session);
+	      if ((VPPCOM_DEBUG > 0) && (rv < 0))
+		clib_warning ("[%d] unbind cut-thru (session %d) failed, "
+			      "rv = %s (%d)",
+			      vcm->my_pid, session_index,
+			      vppcom_retval_str (rv), rv);
+	    }
+	}
+      else if (session->is_server)
+	{
+	  rv = vppcom_session_unbind (session_index);
+	  if ((VPPCOM_DEBUG > 0) && (rv < 0))
+	    clib_warning ("[%d] unbind (session %d) failed, rv = %s (%d)",
+			  vcm->my_pid, session_index,
+			  vppcom_retval_str (rv), rv);
+	}
+      else
+	{
+	  rv = vppcom_session_disconnect (session_index);
+	  if ((VPPCOM_DEBUG > 0) && (rv < 0))
+	    clib_warning ("[%d] disconnect (session %d) failed, rv = %s (%d)",
 			  vcm->my_pid, session_index,
 			  vppcom_retval_str (rv), rv);
 	}
     }
-  else if (session->is_server)
-    {
-      rv = vppcom_session_unbind (session_index);
-      if ((VPPCOM_DEBUG > 0) && (rv < 0))
-	clib_warning ("[%d] unbind (session %d) failed, rv = %s (%d)",
-		      vcm->my_pid, session_index, vppcom_retval_str (rv), rv);
-    }
-  else
-    {
-      rv = vppcom_session_disconnect (session_index);
-      if ((VPPCOM_DEBUG > 0) && (rv < 0))
-	clib_warning ("[%d] disconnect (session %d) failed, rv = %s (%d)",
-		      vcm->my_pid, session_index, vppcom_retval_str (rv), rv);
-    }
-  if (rv < 0)
-    return rv;
-
-  clib_spinlock_lock (&vcm->sessions_lockp);
   pool_put_index (vcm->sessions, session_index);
-  clib_spinlock_unlock (&vcm->sessions_lockp);
+done:
   return rv;
 }
 
@@ -1895,7 +1967,7 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, session_index);
       return rv;
     }
@@ -1927,7 +1999,7 @@ vppcom_session_listen (uint32_t listen_session_index, uint32_t q_len)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, listen_session_index);
       return rv;
     }
@@ -1957,13 +2029,13 @@ vppcom_session_listen (uint32_t listen_session_index, uint32_t q_len)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, listen_session_index);
       return rv;
     }
   listen_session->is_listen = 1;
-  clib_spinlock_unlock (&vcm->sessions_lockp);
   clib_fifo_validate (vcm->client_session_index_fifo, q_len);
+  clib_spinlock_unlock (&vcm->sessions_lockp);
 
   return VPPCOM_OK;
 }
@@ -1985,7 +2057,7 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, listen_session_index);
       return rv;
     }
@@ -2025,9 +2097,8 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 	break;
     }
 
-  clib_fifo_sub1 (vcm->client_session_index_fifo, client_session_index);
-
   clib_spinlock_lock (&vcm->sessions_lockp);
+  clib_fifo_sub1 (vcm->client_session_index_fifo, client_session_index);
   rv = vppcom_session_at_index (client_session_index, &client_session);
   ASSERT (rv == VPPCOM_OK);
   ASSERT (client_session->is_ip4 == listen_session->is_ip4);
@@ -2062,7 +2133,7 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, session_index);
       return rv;
     }
@@ -2071,7 +2142,7 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] session, sid (%d) already connected!",
+	clib_warning ("[%d] session, sid (%u) already connected!",
 		      vcm->my_pid, session_index);
       return VPPCOM_OK;
     }
@@ -2115,7 +2186,6 @@ vppcom_session_read (uint32_t session_index, void *buf, int n)
   svm_fifo_t *rx_fifo;
   int n_read = 0;
   int rv;
-  int max_dequeue;
   char *fifo_str;
 
   ASSERT (buf);
@@ -2126,7 +2196,7 @@ vppcom_session_read (uint32_t session_index, void *buf, int n)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, session_index);
       return rv;
     }
@@ -2135,7 +2205,7 @@ vppcom_session_read (uint32_t session_index, void *buf, int n)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] sid (%d) has been closed by remote peer!",
+	clib_warning ("[%d] sid (%u) has been closed by remote peer!",
 		      vcm->my_pid, session_index);
       return VPPCOM_ECONNRESET;
     }
@@ -2144,10 +2214,17 @@ vppcom_session_read (uint32_t session_index, void *buf, int n)
 	     session->server_rx_fifo : session->server_tx_fifo);
   fifo_str = ((!session->is_cut_thru || session->is_server) ?
 	      "server_rx_fifo" : "server_tx_fifo");
-  clib_spinlock_unlock (&vcm->sessions_lockp);
 
-  max_dequeue = (int) svm_fifo_max_dequeue (rx_fifo);
-  n_read = svm_fifo_dequeue_nowait (rx_fifo, clib_min (n, max_dequeue), buf);
+  do
+    {
+      n_read = svm_fifo_dequeue_nowait (rx_fifo, n, buf);
+    }
+  while (!session->is_nonblocking && (n_read <= 0));
+
+  if (n_read <= 0)
+    session->vep.et_mask |= EPOLLIN;
+
+  clib_spinlock_unlock (&vcm->sessions_lockp);
 
   if (VPPCOM_DEBUG > 2)
     clib_warning ("[%d] sid %d, read %d bytes from %s (%p)", vcm->my_pid,
@@ -2167,7 +2244,7 @@ vppcom_session_read_ready (session_t * session, u32 session_index)
   if (session->state == STATE_DISCONNECT)
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] sid (%d) has been closed by remote peer!",
+	clib_warning ("[%d] sid (%u) has been closed by remote peer!",
 		      vcm->my_pid, session_index);
       return VPPCOM_ECONNRESET;
     }
@@ -2187,6 +2264,9 @@ vppcom_session_read_ready (session_t * session, u32 session_index)
 		  session_index,
 		  session->is_server ? "server_rx_fifo" : "server_tx_fifo",
 		  rx_fifo, ready);
+  if (ready == 0)
+    session->vep.et_mask |= EPOLLIN;
+
   return ready;
 }
 
@@ -2198,9 +2278,8 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
   svm_fifo_t *tx_fifo;
   unix_shared_memory_queue_t *q;
   session_fifo_event_t evt;
-  int rv;
+  int rv, n_write;
   char *fifo_str;
-  u8 is_nonblocking;
 
   ASSERT (buf);
 
@@ -2210,7 +2289,7 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 		      vcm->my_pid, session_index);
       return rv;
     }
@@ -2219,7 +2298,7 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
     {
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] sid (%d) has been closed by remote peer!",
+	clib_warning ("[%d] sid (%u) has been closed by remote peer!",
 		      vcm->my_pid, session_index);
       return VPPCOM_ECONNRESET;
     }
@@ -2228,18 +2307,14 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
 	     session->server_tx_fifo : session->server_rx_fifo);
   fifo_str = ((!session->is_cut_thru || session->is_server) ?
 	      "server_tx_fifo" : "server_rx_fifo");
-
-  is_nonblocking = session->is_nonblocking;
-  clib_spinlock_unlock (&vcm->sessions_lockp);
-
   do
     {
-      rv = svm_fifo_enqueue_nowait (tx_fifo, n, buf);
+      n_write = svm_fifo_enqueue_nowait (tx_fifo, n, buf);
     }
-  while (!is_nonblocking && (rv <= 0));
+  while (!session->is_nonblocking && (n_write <= 0));
 
   /* If event wasn't set, add one */
-  if (!session->is_cut_thru && (rv > 0) && svm_fifo_set_event (tx_fifo))
+  if (!session->is_cut_thru && (n_write > 0) && svm_fifo_set_event (tx_fifo))
     {
       int rval;
 
@@ -2248,28 +2323,30 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
       evt.event_type = FIFO_EVENT_APP_TX;
       evt.event_id = vcm->tx_event_id++;
 
-      clib_spinlock_lock (&vcm->sessions_lockp);
       rval = vppcom_session_at_index (session_index, &session);
       if (PREDICT_FALSE (rval))
 	{
 	  clib_spinlock_unlock (&vcm->sessions_lockp);
 	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("[%d] invalid session, sid (%d) has been closed!",
+	    clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 			  vcm->my_pid, session_index);
 	  return rval;
 	}
       q = session->vpp_event_queue;
-      clib_spinlock_unlock (&vcm->sessions_lockp);
       ASSERT (q);
       unix_shared_memory_queue_add (q, (u8 *) & evt,
 				    0 /* do wait for mutex */ );
     }
 
+  if (n_write <= 0)
+    session->vep.et_mask |= EPOLLOUT;
+
+  clib_spinlock_unlock (&vcm->sessions_lockp);
+
   if (VPPCOM_DEBUG > 2)
     clib_warning ("[%d] sid %d, wrote %d bytes to %s (%p)", vcm->my_pid,
-		  session_index, rv, fifo_str, tx_fifo);
-
-  return rv;
+		  session_index, n_write, fifo_str, tx_fifo);
+  return n_write;
 }
 
 static inline int
@@ -2278,13 +2355,13 @@ vppcom_session_write_ready (session_t * session, u32 session_index)
   vppcom_main_t *vcm = &vppcom_main;
   svm_fifo_t *tx_fifo;
   char *fifo_str;
-  int rv;
+  int ready;
 
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
   if (session->state == STATE_DISCONNECT)
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] sid (%d) has been closed by remote peer!",
+	clib_warning ("[%d] sid (%u) has been closed by remote peer!",
 		      vcm->my_pid, session_index);
       return VPPCOM_ECONNRESET;
     }
@@ -2294,12 +2371,15 @@ vppcom_session_write_ready (session_t * session, u32 session_index)
   fifo_str = ((!session->is_cut_thru || session->is_server) ?
 	      "server_tx_fifo" : "server_rx_fifo");
 
-  rv = svm_fifo_max_enqueue (tx_fifo);
+  ready = svm_fifo_max_enqueue (tx_fifo);
 
   if (VPPCOM_DEBUG > 3)
     clib_warning ("[%d] sid %d, peek %s (%p), ready = %d", vcm->my_pid,
-		  session_index, fifo_str, tx_fifo, rv);
-  return rv;
+		  session_index, fifo_str, tx_fifo, ready);
+  if (ready == 0)
+    session->vep.et_mask |= EPOLLOUT;
+
+  return ready;
 }
 
 int
@@ -2429,6 +2509,407 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
 
 select_done:
   return (bits_set);
+}
+
+int
+vppcom_epoll_create (void)
+{
+  vppcom_main_t *vcm = &vppcom_main;
+  session_t *vep_session;
+  u32 vep_idx;
+
+  clib_spinlock_lock (&vcm->sessions_lockp);
+  pool_get (vcm->sessions, vep_session);
+  memset (vep_session, 0, sizeof (*vep_session));
+  vep_idx = vep_session - vcm->sessions;
+
+  vep_session->is_vep = 1;
+  vep_session->vep.vep_idx = ~0;
+  vep_session->vep.next_sid = ~0;
+  vep_session->vep.prev_sid = ~0;
+  vep_session->vep.wait_cont_idx = ~0;
+  clib_spinlock_unlock (&vcm->sessions_lockp);
+
+  if (VPPCOM_DEBUG > 0)
+    clib_warning ("Created vep_idx %u!", vep_idx);
+
+  return (vep_idx);
+}
+
+int
+vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
+		  struct epoll_event *event)
+{
+  vppcom_main_t *vcm = &vppcom_main;
+  session_t *vep_session;
+  session_t *session;
+  int rv;
+
+  if (vep_idx == session_index)
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("ERROR: vep_idx == session_index (%u)!", vep_idx);
+      return VPPCOM_EINVAL;
+    }
+
+  clib_spinlock_lock (&vcm->sessions_lockp);
+  rv = vppcom_session_at_index (vep_idx, &vep_session);
+  if (PREDICT_FALSE (rv))
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("ERROR: Invalid vep_idx (%u)!", vep_idx);
+      goto done;
+    }
+  if (PREDICT_FALSE (!vep_session->is_vep))
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("ERROR: vep_idx (%u) is not a vep!", vep_idx);
+      rv = VPPCOM_EINVAL;
+      goto done;
+    }
+
+  ASSERT (vep_session->vep.vep_idx == ~0);
+  ASSERT (vep_session->vep.prev_sid == ~0);
+
+  rv = vppcom_session_at_index (session_index, &session);
+  if (PREDICT_FALSE (rv))
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("ERROR: Invalid session_index (%u)!", session_index);
+      goto done;
+    }
+  if (PREDICT_FALSE (session->is_vep))
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("ERROR: session_index (%u) is a vep!", vep_idx);
+      rv = VPPCOM_EINVAL;
+      goto done;
+    }
+
+  switch (op)
+    {
+    case EPOLL_CTL_ADD:
+      if (PREDICT_FALSE (!event))
+	{
+	  clib_warning ("NULL pointer to epoll_event structure!");
+	  rv = VPPCOM_EINVAL;
+	  goto done;
+	}
+      if (vep_session->vep.next_sid != ~0)
+	{
+	  session_t *next_session;
+	  rv = vppcom_session_at_index (vep_session->vep.next_sid,
+					&next_session);
+	  if (PREDICT_FALSE (rv))
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("EPOLL_CTL_ADD: Invalid vep.next_sid (%u) on"
+			      " vep_idx (%u)!", vep_session->vep.next_sid,
+			      vep_idx);
+	      goto done;
+	    }
+	  ASSERT (next_session->vep.prev_sid == vep_idx);
+	  next_session->vep.prev_sid = session_index;
+	}
+      session->vep.next_sid = vep_session->vep.next_sid;
+      session->vep.prev_sid = vep_idx;
+      session->vep.vep_idx = vep_idx;
+      session->vep.et_mask = VEP_DEFAULT_ET_MASK;
+      session->vep.ev = *event;
+      session->is_vep_session = 1;
+      vep_session->vep.next_sid = session_index;
+      if (VPPCOM_DEBUG > 1)
+	clib_warning ("EPOLL_CTL_ADD: vep_idx %u, sid %u, events 0x%x,"
+		      " data 0x%llx!", vep_idx, session_index,
+		      event->events, event->data.u64);
+      break;
+
+    case EPOLL_CTL_MOD:
+      if (PREDICT_FALSE (!event))
+	{
+	  clib_warning ("NULL pointer to epoll_event structure!");
+	  rv = VPPCOM_EINVAL;
+	  goto done;
+	}
+      if (PREDICT_FALSE (!session->is_vep_session &&
+			 (session->vep.vep_idx != vep_idx)))
+	{
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      if (!session->is_vep_session)
+		clib_warning ("EPOLL_CTL_MOD: session (%u) is not "
+			      "a vep session!", session_index);
+	      else
+		clib_warning ("EPOLL_CTL_MOD: session (%u) vep_idx (%u) != "
+			      "vep_idx (%u)!", session_index,
+			      session->vep.vep_idx, vep_idx);
+	    }
+	  rv = VPPCOM_EINVAL;
+	  goto done;
+	}
+      session->vep.et_mask = VEP_DEFAULT_ET_MASK;
+      session->vep.ev = *event;
+      if (VPPCOM_DEBUG > 1)
+	clib_warning ("EPOLL_CTL_MOD: vep_idx %u, sid %u, events 0x%x,"
+		      " data 0x%llx!", vep_idx, session_index,
+		      event->events, event->data.u64);
+      break;
+
+    case EPOLL_CTL_DEL:
+      if (PREDICT_FALSE (!session->is_vep_session &&
+			 (session->vep.vep_idx != vep_idx)))
+	{
+	  if (VPPCOM_DEBUG > 0)
+	    {
+	      if (!session->is_vep_session)
+		clib_warning ("EPOLL_CTL_DEL: session (%u) is not "
+			      "a vep session!", session_index);
+	      else
+		clib_warning ("EPOLL_CTL_DEL: session (%u) vep_idx (%u) != "
+			      "vep_idx (%u)!", session_index,
+			      session->vep.vep_idx, vep_idx);
+	    }
+	  rv = VPPCOM_EINVAL;
+	  goto done;
+	}
+
+      vep_session->vep.wait_cont_idx =
+	(vep_session->vep.wait_cont_idx == session_index) ?
+	session->vep.next_sid : vep_session->vep.wait_cont_idx;
+
+      if (session->vep.prev_sid == vep_idx)
+	vep_session->vep.next_sid = session->vep.next_sid;
+      else
+	{
+	  session_t *prev_session;
+	  rv = vppcom_session_at_index (session->vep.prev_sid, &prev_session);
+	  if (PREDICT_FALSE (rv))
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("EPOLL_CTL_DEL: Invalid vep.prev_sid (%u) on"
+			      " sid (%u)!", session->vep.prev_sid,
+			      session_index);
+	      goto done;
+	    }
+	  ASSERT (prev_session->vep.next_sid == session_index);
+	  prev_session->vep.next_sid = session->vep.next_sid;
+	}
+      if (session->vep.next_sid != ~0)
+	{
+	  session_t *next_session;
+	  rv = vppcom_session_at_index (session->vep.next_sid, &next_session);
+	  if (PREDICT_FALSE (rv))
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("EPOLL_CTL_DEL: Invalid vep.next_sid (%u) on"
+			      " sid (%u)!", session->vep.next_sid,
+			      session_index);
+	      goto done;
+	    }
+	  ASSERT (next_session->vep.prev_sid == session_index);
+	  next_session->vep.prev_sid = session->vep.prev_sid;
+	}
+
+      memset (&session->vep, 0, sizeof (session->vep));
+      session->vep.next_sid = ~0;
+      session->vep.prev_sid = ~0;
+      session->vep.vep_idx = ~0;
+      session->is_vep_session = 0;
+      if (VPPCOM_DEBUG > 1)
+	clib_warning ("EPOLL_CTL_DEL: vep_idx %u, sid %u!", vep_idx,
+		      session_index);
+      break;
+
+    default:
+      clib_warning ("Invalid operation (%d)!", op);
+      rv = VPPCOM_EINVAL;
+    }
+
+done:
+  if (VPPCOM_DEBUG > 1)
+    clib_warning ("TBD: dump vpe_idx chain");
+  clib_spinlock_unlock (&vcm->sessions_lockp);
+  return rv;
+}
+
+int
+vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
+		   int maxevents, double wait_for_time)
+{
+  vppcom_main_t *vcm = &vppcom_main;
+  session_t *vep_session;
+  int rv;
+  f64 timeout = clib_time_now (&vcm->clib_time) + wait_for_time;
+  int num_ev = 0;
+
+  if (PREDICT_FALSE (maxevents <= 0))
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("ERROR: Invalid maxevents (%d)!", maxevents);
+      return VPPCOM_EINVAL;
+    }
+  if (PREDICT_FALSE (wait_for_time < 0))
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("ERROR: Invalid wait_for_time (%f)!", wait_for_time);
+      return VPPCOM_EINVAL;
+    }
+
+  clib_spinlock_lock (&vcm->sessions_lockp);
+  rv = vppcom_session_at_index (vep_idx, &vep_session);
+  if (PREDICT_FALSE (rv))
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("ERROR: Invalid vep_idx (%u)!", vep_idx);
+      goto done;
+    }
+  if (PREDICT_FALSE (!vep_session->is_vep))
+    {
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("ERROR: vep_idx (%u) is not a vep!", vep_idx);
+      rv = VPPCOM_EINVAL;
+      goto done;
+    }
+  if ((VPPCOM_DEBUG > 0) && (PREDICT_FALSE (vep_session->vep.next_sid == ~0)))
+    clib_warning ("WARNING: vep_idx (%u) is empty!", vep_idx);
+  clib_spinlock_unlock (&vcm->sessions_lockp);
+
+  memset (events, 0, sizeof (*events) * maxevents);
+  do
+    {
+      u32 sid, wait_cont_idx;
+      u32 next_sid = ~0;
+      session_t *session;
+
+      clib_spinlock_lock (&vcm->sessions_lockp);
+      rv = vppcom_session_at_index (vep_idx, &vep_session);
+      if (PREDICT_FALSE (rv))
+	{
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("ERROR: Invalid vep_idx (%u)!", vep_idx);
+	  goto done;
+	}
+      wait_cont_idx = vep_session->vep.wait_cont_idx =
+	(vep_session->vep.wait_cont_idx == ~0) ?
+	vep_session->vep.next_sid : vep_session->vep.wait_cont_idx;
+      clib_spinlock_unlock (&vcm->sessions_lockp);
+
+      for (sid = wait_cont_idx; sid != ~0; sid = next_sid)
+	{
+	  vppcom_epoll_t *vep;
+	  u8 add_event;
+	  int ready;
+
+	  clib_spinlock_lock (&vcm->sessions_lockp);
+	  rv = vppcom_session_at_index (sid, &session);
+	  if (PREDICT_FALSE (rv))
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("ERROR: Invalid sid (%u)!", sid);
+	      goto done;
+	    }
+	  if (PREDICT_FALSE (session->is_vep))
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("ERROR: sid (%u) is a vep!", vep_idx);
+	      rv = VPPCOM_EINVAL;
+	      goto done;
+	    }
+	  if (PREDICT_FALSE (!session->is_vep_session &&
+			     (session->vep.vep_idx != vep_idx)))
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		{
+		  if (!session->is_vep_session)
+		    clib_warning ("EPOLL_CTL_MOD: session (%u) is not "
+				  "a vep session!", sid);
+		  else
+		    {
+		      clib_warning ("EPOLL_CTL_MOD: session (%u) "
+				    "vep_idx (%u) != vep_idx (%u)!",
+				    sid, session->vep.vep_idx, vep_idx);
+		    }
+		}
+	      rv = VPPCOM_EINVAL;
+	      goto done;
+	    }
+	  next_sid = session->vep.next_sid;
+	  vep = &session->vep;
+	  add_event = 0;
+
+	  if ((EPOLLIN & vep->ev.events) && (EPOLLIN & vep->et_mask))
+	    {
+	      ready = vppcom_session_read_ready (session, sid);
+	      if (ready > 0)
+		{
+		  add_event = 1;
+		  events[num_ev].events |= EPOLLIN;
+		}
+	      else if (ready < 0)
+		{
+		  add_event = 1;
+		  switch (ready)
+		    {
+		    case VPPCOM_ECONNRESET:
+		      events[num_ev].events |= EPOLLHUP | EPOLLRDHUP;
+		      break;
+
+		    default:
+		      events[num_ev].events |= EPOLLERR;
+		      break;
+		    }
+		}
+	      if (add_event && (EPOLLET & vep->ev.events))
+		vep->et_mask &= ~EPOLLIN;
+
+	    }
+	  if ((EPOLLOUT & vep->ev.events) && (EPOLLOUT & vep->et_mask))
+	    {
+	      ready = vppcom_session_write_ready (session, sid);
+	      if (ready > 0)
+		{
+		  add_event = 1;
+		  events[num_ev].events |= EPOLLOUT;
+		  if (EPOLLET & vep->ev.events)
+		    vep->et_mask &= ~EPOLLOUT;
+		}
+	      else if (ready < 0)
+		{
+		  add_event = 1;
+		  switch (ready)
+		    {
+		    case VPPCOM_ECONNRESET:
+		      events[num_ev].events |= EPOLLHUP;
+		      break;
+
+		    default:
+		      events[num_ev].events |= EPOLLERR;
+		      break;
+		    }
+		}
+	      if (add_event && (EPOLLET & vep->ev.events))
+		vep->et_mask &= ~EPOLLOUT;
+	    }
+
+	  vep_session->vep.wait_cont_idx = session->vep.next_sid;
+	  clib_spinlock_unlock (&vcm->sessions_lockp);
+
+	  if (add_event)
+	    {
+	      events[num_ev].data = vep->ev.data;
+	      if (EPOLLONESHOT & vep->ev.events)
+		vep->ev.events = 0;
+	      num_ev++;
+	      if (num_ev == maxevents)
+		goto done;
+	    }
+	}
+    }
+  while ((num_ev == 0) && (clib_time_now (&vcm->clib_time) <= timeout));
+
+done:
+  clib_spinlock_unlock (&vcm->sessions_lockp);
+  return (rv != VPPCOM_OK) ? rv : num_ev;
 }
 
 /*
