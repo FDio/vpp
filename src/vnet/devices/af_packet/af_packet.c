@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <linux/virtio_net.h>
 
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
@@ -55,6 +56,8 @@
 #else
 #define DBG_SOCK(args...)
 #endif
+
+unsigned int af_packet_global_flags = 0;
 
 /*defined in net/if.h but clashes with dpdk headers */
 unsigned int if_nametoindex (const char *ifname);
@@ -141,7 +144,23 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
-
+  int opt = 1;
+  if (setsockopt(*fd, SOL_PACKET, PACKET_VNET_HDR, &opt, sizeof(opt)) != 0) {
+      DBG_SOCK ("Failed to enable vnet headers on the socket");
+      if ((af_packet_global_flags & AF_PACKET_USES_VNET_HEADERS) !=0) {
+          /* Should never happen - vnet was already enabled once, 
+           * but we fail to reenable it on a new interface
+           **/
+          ret = VNET_API_ERROR_SYSCALL_ERROR_1;
+          goto error;
+      }
+  } else {
+      af_packet_global_flags |= AF_PACKET_USES_VNET_HEADERS;
+  }
+  opt = 1;
+  if (setsockopt(*fd, SOL_PACKET, PACKET_QDISC_BYPASS, &opt, sizeof(opt)) != 0) {
+      DBG_SOCK ("Failed to bypass Linux QDISC");
+  } 
   if ((err =
        setsockopt (*fd, SOL_PACKET, PACKET_VERSION, &ver, sizeof (ver))) < 0)
     {
@@ -150,7 +169,7 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
       goto error;
     }
 
-  int opt = 1;
+  opt = 1;
   if ((err =
        setsockopt (*fd, SOL_PACKET, PACKET_LOSS, &opt, sizeof (opt))) < 0)
     {

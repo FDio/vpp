@@ -19,6 +19,8 @@
 
 #include <vppinfra/lock.h>
 
+#define AF_PACKET_USES_VNET_HEADERS 1
+
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
@@ -59,6 +61,7 @@ typedef struct
 af_packet_main_t af_packet_main;
 extern vnet_device_class_t af_packet_device_class;
 extern vlib_node_registration_t af_packet_input_node;
+extern unsigned int af_packet_global_flags;
 
 int af_packet_create_if (vlib_main_t * vm, u8 * host_if_name,
 			 u8 * hw_addr_set, u32 * sw_if_index);
