@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_e9acbf8e",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 60,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-10-03T11:01:00Z",
+      "side": 1,
+      "message": "Why this cannot be part of af_packet_main_t ?",
+      "range": {
+        "startLine": 60,
+        "startChar": 0,
+        "endLine": 60,
+        "endChar": 40
+      },
+      "revId": "828a3f944ee19c14b6cdf331ecf502867479e362",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_c9a9037d",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-10-03T11:01:00Z",
+      "side": 1,
+      "message": "no trailing whitespace please.",
+      "range": {
+        "startLine": 151,
+        "startChar": 65,
+        "endLine": 151,
+        "endChar": 66
+      },
+      "revId": "828a3f944ee19c14b6cdf331ecf502867479e362",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_a9b6c7da",
+        "filename": "src/vnet/devices/af_packet/device.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-10-03T11:01:00Z",
+      "side": 1,
+      "message": "Why new empty line here?",
+      "revId": "828a3f944ee19c14b6cdf331ecf502867479e362",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
