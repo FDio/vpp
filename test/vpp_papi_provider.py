@@ -714,6 +714,7 @@ class VppPapiProvider(object):
             is_local=0,
             is_classify=0,
             is_multipath=0,
+            is_l2_bridged=0,
             not_last=0):
         """
 
@@ -754,6 +755,7 @@ class VppPapiProvider(object):
              'is_multipath': is_multipath,
              'is_resolve_host': is_resolve_host,
              'is_resolve_attached': is_resolve_attached,
+             'is_l2_bridged': is_l2_bridged,
              'not_last': not_last,
              'next_hop_weight': next_hop_weight,
              'dst_address_length': dst_address_length,

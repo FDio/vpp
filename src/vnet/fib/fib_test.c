@@ -27,9 +27,11 @@
 #include <vnet/bfd/bfd_main.h>
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/replicate_dpo.h>
+#include <vnet/dpo/l2_bridge_dpo.h>
 
 #include <vnet/mpls/mpls.h>
 
+#include <vnet/fib/fib_test.h>
 #include <vnet/fib/fib_path_list.h>
 #include <vnet/fib/fib_entry_src.h>
 #include <vnet/fib/fib_walk.h>
@@ -265,83 +267,6 @@ fib_test_build_rewrite (u8 *eth_addr)
 
     return (rewrite);
 }
-
-typedef enum fib_test_lb_bucket_type_t_ {
-    FT_LB_LABEL_O_ADJ,
-    FT_LB_LABEL_STACK_O_ADJ,
-    FT_LB_LABEL_O_LB,
-    FT_LB_O_LB,
-    FT_LB_SPECIAL,
-    FT_LB_ADJ,
-    FT_LB_INTF,
-} fib_test_lb_bucket_type_t;
-
-typedef struct fib_test_lb_bucket_t_ {
-    fib_test_lb_bucket_type_t type;
-
-    union
-    {
-	struct
-	{
-	    mpls_eos_bit_t eos;
-	    mpls_label_t label;
-	    u8 ttl;
-	    adj_index_t adj;
-	} label_o_adj;
-	struct
-	{
-	    mpls_eos_bit_t eos;
-	    mpls_label_t label_stack[8];
-	    u8 label_stack_size;
-	    u8 ttl;
-	    adj_index_t adj;
-	} label_stack_o_adj;
-	struct
-	{
-	    mpls_eos_bit_t eos;
-	    mpls_label_t label;
-	    u8 ttl;
-	    index_t lb;
-	} label_o_lb;
-	struct
-	{
-	    index_t adj;
-	} adj;
-	struct
-	{
-	    index_t lb;
-	} lb;
-	struct
-	{
-	    index_t adj;
-	} special;
-    };
-} fib_test_lb_bucket_t;
-
-typedef enum fib_test_rep_bucket_type_t_ {
-    FT_REP_LABEL_O_ADJ,
-    FT_REP_DISP_MFIB_LOOKUP,
-    FT_REP_INTF,
-} fib_test_rep_bucket_type_t;
-
-typedef struct fib_test_rep_bucket_t_ {
-    fib_test_rep_bucket_type_t type;
-
-    union
-    {
-	struct
-	{
-	    mpls_eos_bit_t eos;
-	    mpls_label_t label;
-	    u8 ttl;
-	    adj_index_t adj;
-	} label_o_adj;
- 	struct
-	{
-	    adj_index_t adj;
-	} adj;
-   };
-} fib_test_rep_bucket_t;
 
 #define FIB_TEST_LB(_cond, _comment, _args...)			\
 {								\
@@ -590,6 +515,16 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 	    break;
 	case FT_LB_INTF:
 	    FIB_TEST_I((DPO_INTERFACE_RX == dpo->dpoi_type),
+		       "bucket %d stacks on %U",
+		       bucket,
+		       format_dpo_type, dpo->dpoi_type);
+	    FIB_TEST_LB((exp->adj.adj == dpo->dpoi_index),
+			"bucket %d stacks on adj %d",
+			bucket,
+			exp->adj.adj);
+	    break;
+	case FT_LB_L2:
+	    FIB_TEST_I((DPO_L2_BRIDGE == dpo->dpoi_type),
 		       "bucket %d stacks on %U",
 		       bucket,
 		       format_dpo_type, dpo->dpoi_type);
@@ -4067,6 +4002,45 @@ fib_test_v4 (void)
              format_ip_flow_hash_config, lb->lb_hash_config);
 
     /*
+     * A route via an L2 Bridge
+     */
+    fei = fib_table_entry_path_add(fib_index,
+                                   &pfx_10_10_10_3_s_32,
+                                   FIB_SOURCE_API,
+                                   FIB_ENTRY_FLAG_NONE,
+                                   DPO_PROTO_ETHERNET,
+                                   &zero_addr,
+                                   tm->hw[0]->sw_if_index,
+                                   ~0,
+                                   1,
+                                   NULL,
+                                   FIB_ROUTE_PATH_FLAG_NONE);
+    dpo_id_t l2_dpo = DPO_INVALID;
+    l2_bridge_dpo_add_or_lock(tm->hw[0]->sw_if_index, &l2_dpo);
+    fib_test_lb_bucket_t ip_o_l2 = {
+        .type = FT_LB_L2,
+        .adj = {
+            .adj = l2_dpo.dpoi_index,
+        },
+    };
+
+    FIB_TEST(fib_test_validate_entry(fei,
+                                     FIB_FORW_CHAIN_TYPE_UNICAST_IP4,
+                                     1,
+                                     &ip_o_l2),
+             "10.10.10.3 via L2 on Eth0");
+    fib_table_entry_path_remove(fib_index,
+                                &pfx_10_10_10_3_s_32,
+                                FIB_SOURCE_API,
+                                DPO_PROTO_ETHERNET,
+                                &zero_addr,
+                                tm->hw[0]->sw_if_index,
+                                fib_index,
+                                1,
+                                FIB_ROUTE_PATH_FLAG_NONE);
+    dpo_reset(&l2_dpo);
+
+    /*
      * CLEANUP
      *    remove adj-fibs: 
      */
@@ -4165,6 +4139,8 @@ fib_test_v4 (void)
     	     pool_elts(load_balance_map_pool));
     FIB_TEST((lb_count == pool_elts(load_balance_pool)), "LB pool size is %d",
              pool_elts(load_balance_pool));
+    FIB_TEST((0 == pool_elts(l2_bridge_dpo_pool)), "L2 DPO pool size is %d",
+             pool_elts(l2_bridge_dpo_pool));
 
     return 0;
 }

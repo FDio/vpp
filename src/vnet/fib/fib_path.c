@@ -23,6 +23,7 @@
 #include <vnet/dpo/lookup_dpo.h>
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/mpls_disposition.h>
+#include <vnet/dpo/l2_bridge_dpo.h>
 
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
@@ -771,10 +772,17 @@ fib_path_unresolve (fib_path_t *path)
 	}
 	break;
     case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
-    case FIB_PATH_TYPE_ATTACHED:
 	adj_child_remove(path->fp_dpo.dpoi_index,
 			 path->fp_sibling);
         adj_unlock(path->fp_dpo.dpoi_index);
+        break;
+    case FIB_PATH_TYPE_ATTACHED:
+        if (DPO_PROTO_ETHERNET != path->fp_nh_proto)
+        {
+            adj_child_remove(path->fp_dpo.dpoi_index,
+                             path->fp_sibling);
+            adj_unlock(path->fp_dpo.dpoi_index);
+        }
         break;
     case FIB_PATH_TYPE_EXCLUSIVE:
 	dpo_reset(&path->exclusive.fp_ex_dpo);
@@ -1594,28 +1602,35 @@ fib_path_resolve (fib_node_index_t path_index)
 	fib_path_attached_next_hop_set(path);
 	break;
     case FIB_PATH_TYPE_ATTACHED:
-	/*
-	 * path->attached.fp_interface
-	 */
-	if (!vnet_sw_interface_is_admin_up(vnet_get_main(),
-					   path->attached.fp_interface))
-	{
-	    path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
-	}
-        dpo_set(&path->fp_dpo,
-                DPO_ADJACENCY,
-                path->fp_nh_proto,
-                fib_path_attached_get_adj(path,
-                                          dpo_proto_to_link(path->fp_nh_proto)));
+        if (DPO_PROTO_ETHERNET == path->fp_nh_proto)
+        {
+            l2_bridge_dpo_add_or_lock(path->attached.fp_interface,
+                                      &path->fp_dpo);
+        }
+        else
+        {
+            /*
+             * path->attached.fp_interface
+             */
+            if (!vnet_sw_interface_is_admin_up(vnet_get_main(),
+                                               path->attached.fp_interface))
+            {
+                path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
+            }
+            dpo_set(&path->fp_dpo,
+                    DPO_ADJACENCY,
+                    path->fp_nh_proto,
+                    fib_path_attached_get_adj(path,
+                                              dpo_proto_to_link(path->fp_nh_proto)));
 
-	/*
-	 * become a child of the adjacency so we receive updates
-	 * when the interface state changes
-	 */
-	path->fp_sibling = adj_child_add(path->fp_dpo.dpoi_index,
-					 FIB_NODE_TYPE_PATH,
-					 fib_path_get_index(path));
-
+            /*
+             * become a child of the adjacency so we receive updates
+             * when the interface state changes
+             */
+            path->fp_sibling = adj_child_add(path->fp_dpo.dpoi_index,
+                                             FIB_NODE_TYPE_PATH,
+                                             fib_path_get_index(path));
+        }
 	break;
     case FIB_PATH_TYPE_RECURSIVE:
     {
@@ -1996,6 +2011,11 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    dpo_copy(dpo, &path->exclusive.fp_ex_dpo);
 	    break;
         case FIB_PATH_TYPE_ATTACHED:
+            if (DPO_PROTO_ETHERNET == path->fp_nh_proto)
+            {
+                dpo_copy(dpo, &path->fp_dpo);
+                break;
+            }
 	    switch (fct)
 	    {
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
