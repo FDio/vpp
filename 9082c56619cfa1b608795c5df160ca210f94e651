@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "1a486d77_e46bc683",
+        "filename": "src/vnet/devices/af_packet/af_packet.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 161,
+      "author": {
+        "id": 1031
+      },
+      "writtenOn": "2017-10-03T14:39:36Z",
+      "side": 1,
+      "message": "Fair point. Once it is folded into the structure it can lose the descriptive verbiage needed for a global variable.",
+      "parentUuid": "1a486d77_6458f6fa",
+      "range": {
+        "startLine": 161,
+        "startChar": 11,
+        "endLine": 161,
+        "endChar": 33
+      },
+      "revId": "9082c56619cfa1b608795c5df160ca210f94e651",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a486d77_445dfae8",
         "filename": "src/vnet/devices/af_packet/device.c",
         "patchSetId": 6
@@ -36,6 +60,30 @@
       "writtenOn": "2017-10-03T14:35:20Z",
       "side": 1,
       "message": "please try to break this into multiple lines by defining local variables...",
+      "range": {
+        "startLine": 149,
+        "startChar": 0,
+        "endLine": 155,
+        "endChar": 24
+      },
+      "revId": "9082c56619cfa1b608795c5df160ca210f94e651",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_c468ca89",
+        "filename": "src/vnet/devices/af_packet/device.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 1031
+      },
+      "writtenOn": "2017-10-03T14:39:36Z",
+      "side": 1,
+      "message": "This is just indent + checkstyle --fix being stupid. I will sort it out after I get through all the old OS-es corner cases.",
+      "parentUuid": "1a486d77_445dfae8",
       "range": {
         "startLine": 149,
         "startChar": 0,
