@@ -225,6 +225,7 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
       };
       /* *INDENT-ON* */
       vnet_buffer (b0)->l2.l2fib_sn = sn.as_u16;;
+      vnet_buffer (b0)->l2.bd_age = bd_config->mac_age;
 
       /*
        * Process bridge domain feature enables.
