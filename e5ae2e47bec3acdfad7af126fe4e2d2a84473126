@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_09371be5",
+        "filename": "src/vnet/devices/virtio/vhost-user.c",
+        "patchSetId": 16
+      },
+      "lineNbr": 2247,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-10-03T06:41:22Z",
+      "side": 1,
+      "message": "This is likely wrong.\nImagine a 256 frames vectors. With an intermediate copy, you will add 256 - n_left.\nAt the end of the call, you will add 256 again. So you will have added some packets twice.\nI think it is not necessary to deal with interrupt handling here. Doing it only once at the end of the node call is fine.",
+      "range": {
+        "startLine": 2247,
+        "startChar": 33,
+        "endLine": 2247,
+        "endChar": 59
+      },
+      "revId": "e5ae2e47bec3acdfad7af126fe4e2d2a84473126",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
