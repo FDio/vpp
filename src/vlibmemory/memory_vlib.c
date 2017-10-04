@@ -801,6 +801,8 @@ memclnt_process (vlib_main_t * vm,
   ASSERT (shm);
   q = shm->vl_input_queue;
   ASSERT (q);
+  /* Make a note so we can always find the primary region easily */
+  am->vlib_primary_rp = am->vlib_rp;
 
   e = vlib_call_init_exit_functions
     (vm, vm->api_init_function_registrations, 1 /* call_once */ );
@@ -1317,13 +1319,15 @@ vl_api_ring_command (vlib_main_t * vm,
   vl_shmem_hdr_t *shmem_hdr;
   api_main_t *am = &api_main;
 
-  shmem_hdr = am->shmem_hdr;
+  /* First, dump the primary region rings.. */
 
-  if (shmem_hdr == 0)
+  if (am->vlib_primary_rp == 0 || am->vlib_primary_rp->user_ctx == 0)
     {
       vlib_cli_output (vm, "Shared memory segment not initialized...\n");
       return 0;
     }
+
+  shmem_hdr = (void *) am->vlib_primary_rp->user_ctx;
 
   vlib_cli_output (vm, "Main API segment rings:");
 
@@ -1338,7 +1342,7 @@ vl_api_ring_command (vlib_main_t * vm,
       svm_region_t *vlib_rp = am->vlib_private_rps[i];
       shmem_hdr = (void *) vlib_rp->user_ctx;
       vl_api_registration_t **regpp;
-      vl_api_registration_t *regp;
+      vl_api_registration_t *regp = 0;
 
       /* For horizontal scaling, add a hash table... */
       /* *INDENT-OFF* */
@@ -1351,8 +1355,12 @@ vl_api_ring_command (vlib_main_t * vm,
             goto found;
           }
       }));
+      vlib_cli_output (vm, "regp %llx not found?", regp);
+      continue;
       /* *INDENT-ON* */
     found:
+      vlib_cli_output (vm, "%U", format_api_message_rings, am,
+		       0 /* print header */ , 0 /* notused */ );
       vlib_cli_output (vm, "%U", format_api_message_rings, am,
 		       shmem_hdr, 0 /* main segment */ );
     }
