@@ -54,7 +54,8 @@
   _( 9, IS_IP6)						\
   _(10, OFFLOAD_IP_CKSUM)				\
   _(11, OFFLOAD_TCP_CKSUM)				\
-  _(12, OFFLOAD_UDP_CKSUM)
+  _(12, OFFLOAD_UDP_CKSUM)                              \
+  _(13, IS_NATED)
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)

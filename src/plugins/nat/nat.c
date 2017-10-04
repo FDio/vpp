@@ -95,6 +95,14 @@ VNET_FEATURE_INIT (ip4_snat_hairpin_src, static) = {
   .runs_before = VNET_FEATURES ("interface-output"),
 };
 
+/* Hook up ip4-local features */
+VNET_FEATURE_INIT (ip4_nat_hairpinning, static) =
+{
+  .arc_name = "ip4-local",
+  .node_name = "nat44-hairpinning",
+  .runs_before = VNET_FEATURES("ip4-local-end-of-arc"),
+};
+
 
 /* *INDENT-OFF* */
 VLIB_PLUGIN_REGISTER () = {
@@ -993,7 +1001,11 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
   /* Add/delete external addresses to FIB */
 fib:
   if (is_inside)
-    return 0;
+    {
+      vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
+                                   sw_if_index, !is_del, 0, 0);
+      return 0;
+    }
 
   vec_foreach (ap, sm->addresses)
     snat_add_del_addr_to_fib(&ap->addr, 32, sw_if_index, !is_del);
