@@ -605,7 +605,12 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
       rv = vnet_bind (a);
     }
 done:
-  REPLY_MACRO (VL_API_BIND_SOCK_REPLY);
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_BIND_SOCK_REPLY,({
+    if (!rv)
+      rmp->handle = a->handle;
+  }));
+  /* *INDENT-ONF* */
 }
 
 static void
