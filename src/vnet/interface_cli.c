@@ -1198,6 +1198,7 @@ set_interface_mac_address (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
   vnet_main_t *vnm = vnet_get_main ();
+  vnet_sw_interface_t *si = NULL;
   clib_error_t *error = 0;
   u32 sw_if_index = ~0;
   u64 mac = 0;
@@ -1214,7 +1215,8 @@ set_interface_mac_address (vlib_main_t * vm, unformat_input_t * input,
 				 format_unformat_error, input);
       goto done;
     }
-  error = vnet_hw_interface_change_mac_address (vnm, sw_if_index, mac);
+  si = vnet_get_sw_interface (vnm, sw_if_index);
+  error = vnet_hw_interface_change_mac_address (vnm, si->hw_if_index, mac);
 done:
   return error;
 }
