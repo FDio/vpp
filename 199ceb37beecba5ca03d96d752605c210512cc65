@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "1a486d77_5e3f0226",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/CallbackJVppFacadeNotificationExample.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 50,
+      "author": {
+        "id": 916
+      },
+      "writtenOn": "2017-10-04T17:01:34Z",
+      "side": 1,
+      "message": "all methods from NotificationUtils are still used, JVppNotifiation type is still present in \"notification\" types generated in dto_gen.py, tried to switch to JVppReply but does not work since doesn not match reply requrements",
+      "parentUuid": "1a486d77_9bbc766e",
+      "range": {
+        "startLine": 47,
+        "startChar": 28,
+        "endLine": 50,
+        "endChar": 29
+      },
+      "revId": "199ceb37beecba5ca03d96d752605c210512cc65",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a486d77_7bc1bae3",
         "filename": "src/vpp-api/java/jvpp/gen/jvppgen/jvpp_c_gen.py",
         "patchSetId": 3
