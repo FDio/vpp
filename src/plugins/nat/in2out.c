@@ -93,6 +93,7 @@ vlib_node_registration_t snat_in2out_output_slowpath_node;
 vlib_node_registration_t snat_in2out_output_worker_handoff_node;
 vlib_node_registration_t snat_hairpin_dst_node;
 vlib_node_registration_t snat_hairpin_src_node;
+vlib_node_registration_t nat44_hairpinning_node;
 
 
 #define foreach_snat_in2out_error                       \
@@ -818,7 +819,7 @@ out:
  * @param tcp0   TCP header.
  * @param proto0 NAT protocol.
  */
-static inline void
+static inline int
 snat_hairpinning (snat_main_t *sm,
                   vlib_buffer_t * b0,
                   ip4_header_t * ip0,
@@ -904,7 +905,9 @@ snat_hairpinning (snat_main_t *sm,
               tcp0->checksum = ip_csum_fold(sum0);
             }
         }
+      return 1;
     }
+  return 0;
 }
 
 static inline void
@@ -1691,6 +1694,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 }
             }
 
+          b0->flags |= VNET_BUFFER_F_IS_NATED;
+
           old_addr0 = ip0->src_address.as_u32;
           ip0->src_address = s0->out2in.addr;
           new_addr0 = ip0->src_address.as_u32;
@@ -1724,10 +1729,6 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               udp0->src_port = s0->out2in.port;
               udp0->checksum = 0;
             }
-
-          /* Hairpinning */
-          if (!is_output_feature)
-            snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
 
           /* Accounting */
           s0->last_heard = now;
@@ -1813,6 +1814,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                   goto trace01;
                 }
             }
+
+          b1->flags |= VNET_BUFFER_F_IS_NATED;
 
           key1.addr = ip1->src_address;
           key1.port = udp1->src_port;
@@ -1900,10 +1903,6 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               udp1->src_port = s1->out2in.port;
               udp1->checksum = 0;
             }
-
-          /* Hairpinning */
-          if (!is_output_feature)
-            snat_hairpinning (sm, b1, ip1, udp1, tcp1, proto1);
 
           /* Accounting */
           s1->last_heard = now;
@@ -2080,6 +2079,8 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
                 }
             }
 
+          b0->flags |= VNET_BUFFER_F_IS_NATED;
+
           old_addr0 = ip0->src_address.as_u32;
           ip0->src_address = s0->out2in.addr;
           new_addr0 = ip0->src_address.as_u32;
@@ -2113,10 +2114,6 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
               udp0->src_port = s0->out2in.port;
               udp0->checksum = 0;
             }
-
-          /* Hairpinning */
-          if (!is_output_feature)
-            snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0);
 
           /* Accounting */
           s0->last_heard = now;
@@ -2297,6 +2294,97 @@ VLIB_REGISTER_NODE (snat_in2out_output_slowpath_node) = {
 
 VLIB_NODE_FUNCTION_MULTIARCH (snat_in2out_output_slowpath_node,
                               snat_in2out_output_slow_path_fn);
+
+extern vnet_feature_arc_registration_t vnet_feat_arc_ip4_local;
+
+static uword
+nat44_hairpinning_fn (vlib_main_t * vm,
+                      vlib_node_runtime_t * node,
+                      vlib_frame_t * frame)
+{
+  u32 n_left_from, * from, * to_next;
+  snat_in2out_next_t next_index;
+  u32 pkts_processed = 0;
+  snat_main_t * sm = &snat_main;
+  vnet_feature_main_t *fm = &feature_main;
+  u8 arc_index = vnet_feat_arc_ip4_local.feature_arc_index;
+  vnet_feature_config_main_t *cm = &fm->feature_config_mains[arc_index];
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index,
+			   to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+          u32 bi0;
+	  vlib_buffer_t * b0;
+          u32 next0;
+          ip4_header_t * ip0;
+          u32 proto0;
+          udp_header_t * udp0;
+          tcp_header_t * tcp0;
+
+          /* speculatively enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+          ip0 = vlib_buffer_get_current (b0);
+          udp0 = ip4_next_header (ip0);
+          tcp0 = (tcp_header_t *) udp0;
+
+          proto0 = ip_proto_to_snat_proto (ip0->protocol);
+
+          vnet_get_config_data (&cm->config_main, &b0->current_config_index,
+                                &next0, 0);
+
+          if (snat_hairpinning (sm, b0, ip0, udp0, tcp0, proto0))
+            next0 = SNAT_IN2OUT_NEXT_LOOKUP;
+
+          pkts_processed += next0 != SNAT_IN2OUT_NEXT_DROP;
+
+          /* verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+         }
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  vlib_node_increment_counter (vm, nat44_hairpinning_node.index,
+                               SNAT_IN2OUT_ERROR_IN2OUT_PACKETS,
+                               pkts_processed);
+  return frame->n_vectors;
+}
+
+VLIB_REGISTER_NODE (nat44_hairpinning_node) = {
+  .function = nat44_hairpinning_fn,
+  .name = "nat44-hairpinning",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN(snat_in2out_error_strings),
+  .error_strings = snat_in2out_error_strings,
+  .n_next_nodes = 2,
+  .next_nodes = {
+    [SNAT_IN2OUT_NEXT_DROP] = "error-drop",
+    [SNAT_IN2OUT_NEXT_LOOKUP] = "ip4-lookup",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (nat44_hairpinning_node,
+                              nat44_hairpinning_fn);
 
 /**************************/
 /*** deterministic mode ***/

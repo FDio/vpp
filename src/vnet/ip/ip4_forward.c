@@ -1710,6 +1710,9 @@ ip4_local_inline (vlib_main_t * vm,
 	   *  - uRPF check for any route to source - accept if passes.
 	   *  - allow packets destined to the broadcast address from unknown sources
 	   */
+	  if (p0->flags & VNET_BUFFER_F_IS_NATED)
+	    goto skip_check0;
+
 	  error0 = ((error0 == IP4_ERROR_UNKNOWN_PROTOCOL &&
 		     dpo0->dpoi_type == DPO_RECEIVE) ?
 		    IP4_ERROR_SPOOFED_LOCAL_PACKETS : error0);
@@ -1717,6 +1720,11 @@ ip4_local_inline (vlib_main_t * vm,
 		     !fib_urpf_check_size (lb0->lb_urpf) &&
 		     ip0->dst_address.as_u32 != 0xFFFFFFFF)
 		    ? IP4_ERROR_SRC_LOOKUP_MISS : error0);
+
+	skip_check0:
+	  if (p1->flags & VNET_BUFFER_F_IS_NATED)
+	    goto skip_checks;
+
 	  error1 = ((error1 == IP4_ERROR_UNKNOWN_PROTOCOL &&
 		     dpo1->dpoi_type == DPO_RECEIVE) ?
 		    IP4_ERROR_SPOOFED_LOCAL_PACKETS : error1);
@@ -1781,7 +1789,7 @@ ip4_local_inline (vlib_main_t * vm,
 	     until support of IP frag reassembly is implemented */
 	  proto0 = ip4_is_fragment (ip0) ? 0xfe : ip0->protocol;
 
-	  if (head_of_feature_arc == 0)
+	  if (head_of_feature_arc == 0 || p0->flags & VNET_BUFFER_F_IS_NATED)
 	    goto skip_check;
 
 	  is_udp0 = proto0 == IP_PROTOCOL_UDP;
