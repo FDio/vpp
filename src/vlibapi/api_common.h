@@ -239,8 +239,11 @@ typedef struct
   /** Current process PID */
   int our_pid;
 
-  /** Binary api segment descriptor */
+  /** Current binary api segment descriptor */
   svm_region_t *vlib_rp;
+
+  /** Primary api segment descriptor */
+  svm_region_t *vlib_primary_rp;
 
   /** Vector of all mapped shared-VM segments */
   svm_region_t **vlib_private_rps;
