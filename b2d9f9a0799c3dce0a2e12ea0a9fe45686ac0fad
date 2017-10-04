@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_bebb96c3",
+        "filename": "src/vnet/geneve/decap.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 812,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-04T16:39:11Z",
+      "side": 1,
+      "message": "Please restore the original good init blocks indentation and use /* *INDENT-OFF* */ followed by /* *INDENT-ON* */ around these init blocks of code to prevent auto indent from messing up proper formatted init block.",
+      "range": {
+        "startLine": 812,
+        "startChar": 20,
+        "endLine": 812,
+        "endChar": 38
+      },
+      "revId": "b2d9f9a0799c3dce0a2e12ea0a9fe45686ac0fad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_7eb51ecc",
+        "filename": "src/vnet/geneve/decap.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 1261,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-04T16:39:11Z",
+      "side": 1,
+      "message": "Please restore the original good init block indentation and use /* *INDENT-OFF* */ followed by /* *INDENT-ON* */ around these init blocks of code to prevent auto indent from messing up proper formatted init block.",
+      "range": {
+        "startLine": 1261,
+        "startChar": 20,
+        "endLine": 1261,
+        "endChar": 42
+      },
+      "revId": "b2d9f9a0799c3dce0a2e12ea0a9fe45686ac0fad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_5eca6250",
+        "filename": "src/vnet/geneve/decap.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 1287,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-04T16:39:11Z",
+      "side": 1,
+      "message": "Please restore the original good init block indentation and use /* *INDENT-OFF* */ followed by /* *INDENT-ON* */ around these init blocks of code to prevent auto indent from messing up proper formatted init block.",
+      "range": {
+        "startLine": 1287,
+        "startChar": 20,
+        "endLine": 1287,
+        "endChar": 42
+      },
+      "revId": "b2d9f9a0799c3dce0a2e12ea0a9fe45686ac0fad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_3ec7a647",
+        "filename": "src/vnet/geneve/encap.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 554,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-04T16:39:11Z",
+      "side": 1,
+      "message": "Please restore the original good init block indentation and use /* *INDENT-OFF* */ followed by /* *INDENT-ON* */ around these init blocks of code to prevent auto indent from messing up proper formatted init block.",
+      "range": {
+        "startLine": 554,
+        "startChar": 20,
+        "endLine": 554,
+        "endChar": 38
+      },
+      "revId": "b2d9f9a0799c3dce0a2e12ea0a9fe45686ac0fad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_deb652dc",
+        "filename": "src/vnet/geneve/geneve.c",
+        "patchSetId": 19
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-04T16:39:11Z",
+      "side": 1,
+      "message": "Please restore the original good init block indentation and use /* *INDENT-OFF* */ followed by /* *INDENT-ON* */ around these init blocks of code to prevent auto indent from messing up proper formatted init block.",
+      "range": {
+        "startLine": 106,
+        "startChar": 19,
+        "endLine": 106,
+        "endChar": 38
+      },
+      "revId": "b2d9f9a0799c3dce0a2e12ea0a9fe45686ac0fad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
