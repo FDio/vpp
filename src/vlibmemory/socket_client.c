@@ -166,16 +166,16 @@ vl_socket_client_connect (socket_client_main_t * scm, char *socket_path,
 
   mbp = (msgbuf_t *) buffer;
   mbp->q = 0;
-  mbp->data_len = ntohl (sizeof (*mp));
+  mbp->data_len = htonl (sizeof (*mp));
   mbp->gc_mark_timestamp = 0;
 
   mp = (vl_api_sockclnt_create_t *) mbp->data;
-  mp->_vl_msg_id = ntohs (VL_API_SOCKCLNT_CREATE);
+  mp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE);
   strncpy ((char *) mp->name, client_name, sizeof (mp->name) - 1);
   mp->name[sizeof (mp->name) - 1] = 0;
   mp->context = 0xfeedface;
 
-  n = write (scm->socket_fd, mbp, sizeof (*mbp) + ntohl (mbp->data_len));
+  n = write (scm->socket_fd, mbp, sizeof (*mbp) + sizeof (*mp));
   if (n < 0)
     {
       clib_unix_warning ("socket write (msg)");

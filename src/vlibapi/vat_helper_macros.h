@@ -77,12 +77,14 @@ do {                                                            \
   socket_client_main_t *scm = &vam->socket_client_main;         \
   if (scm->socket_enable)                                       \
     {                                                           \
-      msgbuf_t msgbuf;                                          \
+      msgbuf_t msgbuf =                                         \
+        {                                                       \
+          .q = 0,                                               \
+          .gc_mark_timestamp = 0,                               \
+          .data_len = htonl(scm->socket_tx_nbytes),             \
+        };                                                      \
                                                                 \
-      msgbuf.q = 0;                                             \
-      msgbuf.gc_mark_timestamp = 0;                             \
-      msgbuf.data_len = ntohl(scm->socket_tx_nbytes);           \
-                                                                \
+      /* coverity[UNINIT] */                                    \
       n = write (scm->socket_fd, &msgbuf, sizeof (msgbuf));     \
       if (n < sizeof (msgbuf))                                  \
         clib_unix_warning ("socket write (msgbuf)");            \
