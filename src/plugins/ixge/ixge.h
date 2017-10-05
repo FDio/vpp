@@ -1208,7 +1208,7 @@ typedef struct
   u32 per_interface_next_index;
 
   /* PCI bus info. */
-  vlib_pci_device_t pci_device;
+  vlib_pci_dev_handle_t pci_dev_handle;
 
   /* From PCI config space header. */
   ixge_pci_device_id_t device_id;
@@ -1252,8 +1252,6 @@ typedef struct
   u32 n_bytes_in_rx_buffer;
 
   u32 n_descriptors_per_cache_line;
-
-  u32 vlib_buffer_free_list_index;
 
   u32 process_node_index;
 
