@@ -18,11 +18,13 @@ GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
 MACHINE=$(shell uname -m)
+DPDK_CONFIG?=no-pci
 
 ,:=,
 define disable_plugins
 $(if $(1), \
   "plugins {" \
+  "plugin ixge_plugin.so { enable } " \
   $(patsubst %,"plugin %_plugin.so { disable }",$(subst $(,), ,$(1))) \
   " }" \
   ,)
@@ -35,8 +37,10 @@ unix { 									\
 	gid $(shell id -g)						\
 	$(if $(wildcard startup.vpp),"exec startup.vpp",)		\
 }									\
+cpu { main-core 28 } 				\
 $(if $(DPDK_CONFIG), "dpdk { $(DPDK_CONFIG) }",)			\
 $(call disable_plugins,$(DISABLED_PLUGINS))				\
+plugins { plugin ixge_plugin.so { enable } }				\
 "
 
 GDB_ARGS= -ex "handle SIGUSR1 noprint nostop"
