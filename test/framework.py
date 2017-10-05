@@ -808,6 +808,12 @@ class VppTestResult(unittest.TestResult):
                 if logger:
                     logger.error(e)
 
+    def send_failure_through_pipe(self, test):
+        if hasattr(self, 'test_framework_failed_pipe'):
+            pipe = self.test_framework_failed_pipe
+            if pipe:
+                pipe.send(test.__class__)
+
     def addFailure(self, test, err):
         """
         Record a test failed result
@@ -831,6 +837,8 @@ class VppTestResult(unittest.TestResult):
         else:
             self.result_string = colorize("FAIL", RED) + ' [no temp dir]'
 
+        self.send_failure_through_pipe(test)
+
     def addError(self, test, err):
         """
         Record a test error result
@@ -853,6 +861,8 @@ class VppTestResult(unittest.TestResult):
             self.symlink_failed(test)
         else:
             self.result_string = colorize("ERROR", RED) + ' [no temp dir]'
+
+        self.send_failure_through_pipe(test)
 
     def getDescription(self, test):
         """
@@ -925,6 +935,22 @@ class VppTestResult(unittest.TestResult):
             self.stream.writeln("%s" % err)
 
 
+class Filter_by_test_option:
+    def __init__(self, filter_file_name, filter_class_name, filter_func_name):
+        self.filter_file_name = filter_file_name
+        self.filter_class_name = filter_class_name
+        self.filter_func_name = filter_func_name
+
+    def __call__(self, file_name, class_name, func_name):
+        if self.filter_file_name and file_name != self.filter_file_name:
+            return False
+        if self.filter_class_name and class_name != self.filter_class_name:
+            return False
+        if self.filter_func_name and func_name != self.filter_func_name:
+            return False
+        return True
+
+
 class VppTestRunner(unittest.TextTestRunner):
     """
     A basic test runner implementation which prints results to standard error.
@@ -934,7 +960,8 @@ class VppTestRunner(unittest.TextTestRunner):
         """Class maintaining the results of the tests"""
         return VppTestResult
 
-    def __init__(self, pipe=None, stream=sys.stderr, descriptions=True,
+    def __init__(self, keep_alive_pipe=None, failed_pipe=None,
+                 stream=sys.stderr, descriptions=True,
                  verbosity=1, failfast=False, buffer=False, resultclass=None):
         # ignore stream setting here, use hard-coded stdout to be in sync
         # with prints from VppTestCase methods ...
@@ -942,7 +969,10 @@ class VppTestRunner(unittest.TextTestRunner):
                                             verbosity, failfast, buffer,
                                             resultclass)
         reporter = KeepAliveReporter()
-        reporter.pipe = pipe
+        reporter.pipe = keep_alive_pipe
+        # this is super-ugly, but very simple to implement and works as long
+        # as we run only one test at the same time
+        VppTestResult.test_framework_failed_pipe = failed_pipe
 
     test_option = "TEST"
 
@@ -977,13 +1007,13 @@ class VppTestRunner(unittest.TextTestRunner):
                     filter_file_name = 'test_%s' % f
         return filter_file_name, filter_class_name, filter_func_name
 
-    def filter_tests(self, tests, filter_file, filter_class, filter_func):
+    @staticmethod
+    def filter_tests(tests, filter_cb):
         result = unittest.suite.TestSuite()
         for t in tests:
             if isinstance(t, unittest.suite.TestSuite):
                 # this is a bunch of tests, recursively filter...
-                x = self.filter_tests(t, filter_file, filter_class,
-                                      filter_func)
+                x = filter_tests(t, filter_cb)
                 if x.countTestCases() > 0:
                     result.addTest(x)
             elif isinstance(t, unittest.TestCase):
@@ -993,11 +1023,7 @@ class VppTestRunner(unittest.TextTestRunner):
                 # test_classifier.TestClassifier.test_acl_ip
                 # apply filtering only if it is so
                 if len(parts) == 3:
-                    if filter_file and filter_file != parts[0]:
-                        continue
-                    if filter_class and filter_class != parts[1]:
-                        continue
-                    if filter_func and filter_func != parts[2]:
+                    if not filter_cb(parts[0], parts[1], parts[2]):
                         continue
                 result.addTest(t)
             else:
@@ -1017,8 +1043,9 @@ class VppTestRunner(unittest.TextTestRunner):
         filter_file, filter_class, filter_func = self.parse_test_option()
         print("Active filters: file=%s, class=%s, function=%s" % (
             filter_file, filter_class, filter_func))
-        filtered = self.filter_tests(test, filter_file, filter_class,
-                                     filter_func)
+        filter_cb = Filter_by_test_option(
+            filter_file, filter_class, filter_func)
+        filtered = self.filter_tests(test, filter_cb)
         print("%s out of %s tests match specified filters" % (
             filtered.countTestCases(), test.countTestCases()))
         if not running_extended_tests():

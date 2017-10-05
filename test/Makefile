@@ -202,6 +202,7 @@ help:
 	@echo " V=[0|1|2]            - set test verbosity level"
 	@echo " FAILFAST=[0|1]       - fail fast if 1, complete all tests if 0"
 	@echo " TIMEOUT=<timeout>    - fail test suite if any single test takes longer than <timeout> to finish"
+	@echo " RETRIES=<n>          - retry failed tests <n> times"
 	@echo " DEBUG=<type>         - set VPP debugging kind"
 	@echo "    DEBUG=core        - detect coredump and load it in gdb on crash"
 	@echo "    DEBUG=gdb         - allow easy debugging by printing VPP PID "
