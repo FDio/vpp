@@ -63,6 +63,23 @@ vlib_get_buffer (vlib_main_t * vm, u32 buffer_index)
   return uword_to_pointer (bm->buffer_mem_start + offset, void *);
 }
 
+/** \brief Translate buffer index into buffer physical address
+
+    @param vm - (vlib_main_t *) vlib main data structure pointer
+    @param buffer_index - (u32) buffer index
+    @return - (uword) buffer physical address
+*/
+always_inline uword
+vlib_get_buffer_data_pa (vlib_main_t * vm, u32 buffer_index)
+{
+  vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
+  vlib_buffer_pool_t *pool = vec_elt_at_index (bm->buffer_pools,
+					       b->buffer_pool_index);
+
+  return vlib_physmem_virtual_to_physical (vm, pool->physmem_region, b->data);
+}
+
 /** \brief Translate buffer pointer into buffer index
 
     @param vm - (vlib_main_t *) vlib main data structure pointer
