@@ -1208,7 +1208,7 @@ typedef struct
   u32 per_interface_next_index;
 
   /* PCI bus info. */
-  vlib_pci_device_t pci_device;
+  vlib_pci_dev_handle_t pci_dev_handle;
 
   /* From PCI config space header. */
   ixge_pci_device_id_t device_id;
@@ -1253,8 +1253,6 @@ typedef struct
 
   u32 n_descriptors_per_cache_line;
 
-  u32 vlib_buffer_free_list_index;
-
   u32 process_node_index;
 
   /* Template and mask for initializing/validating TX descriptors. */
@@ -1268,6 +1266,7 @@ typedef struct
   f64 time_last_stats_update;
 
   vlib_physmem_region_index_t physmem_region;
+  int physmem_region_allocated;
 } ixge_main_t;
 
 extern ixge_main_t ixge_main;

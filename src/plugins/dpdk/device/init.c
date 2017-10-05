@@ -677,24 +677,37 @@ dpdk_lib_init (dpdk_main_t * dm)
 static void
 dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
 {
-  vlib_pci_main_t *pm = &pci_main;
   clib_error_t *error;
-  vlib_pci_device_t *d;
   u8 *pci_addr = 0;
   int num_whitelisted = vec_len (conf->dev_confs);
+  vlib_pci_device_info_t *d = 0;
+  vlib_pci_addr_t *addr = 0, *addrs;
 
+  addrs = vlib_pci_get_all_dev_addrs ();
   /* *INDENT-OFF* */
-  pool_foreach (d, pm->pci_devs, ({
+  vec_foreach (addr, addrs)
+    {
     dpdk_device_config_t * devconf = 0;
     vec_reset_length (pci_addr);
-    pci_addr = format (pci_addr, "%U%c", format_vlib_pci_addr, &d->bus_address, 0);
+    pci_addr = format (pci_addr, "%U%c", format_vlib_pci_addr, addr, 0);
+    if (d)
+    {
+      vlib_pci_free_device_info (d);
+      d = 0;
+      }
+    d = vlib_pci_get_device_info (addr, &error);
+    if (error)
+    {
+      clib_error_report (error);
+      continue;
+    }
 
     if (d->device_class != PCI_CLASS_NETWORK_ETHERNET && d->device_class != PCI_CLASS_PROCESSOR_CO)
       continue;
 
     if (num_whitelisted)
       {
-	uword * p = hash_get (conf->device_config_index_by_pci_addr, d->bus_address.as_u32);
+	uword * p = hash_get (conf->device_config_index_by_pci_addr, addr->as_u32);
 
 	if (!p)
 	  continue;
@@ -736,23 +749,24 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
         continue;
       }
 
-    error = vlib_pci_bind_to_uio (d, (char *) conf->uio_driver_name);
+    error = vlib_pci_bind_to_uio (addr, (char *) conf->uio_driver_name);
 
     if (error)
       {
 	if (devconf == 0)
 	  {
 	    pool_get (conf->dev_confs, devconf);
-	    hash_set (conf->device_config_index_by_pci_addr, d->bus_address.as_u32,
+	    hash_set (conf->device_config_index_by_pci_addr, addr->as_u32,
 		      devconf - conf->dev_confs);
-	    devconf->pci_addr.as_u32 = d->bus_address.as_u32;
+	    devconf->pci_addr.as_u32 = addr->as_u32;
 	  }
 	devconf->is_blacklisted = 1;
 	clib_error_report (error);
       }
-  }));
+  }
   /* *INDENT-ON* */
   vec_free (pci_addr);
+  vlib_pci_free_device_info (d);
 }
 
 static clib_error_t *
