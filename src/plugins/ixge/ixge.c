@@ -1395,9 +1395,8 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 	vec_resize (xm->rx_buffers_to_add, n_to_alloc);
 
 	_vec_len (xm->rx_buffers_to_add) = l;
-	n_allocated = vlib_buffer_alloc_from_free_list
-	  (vm, xm->rx_buffers_to_add + l, n_to_alloc,
-	   xm->vlib_buffer_free_list_index);
+	n_allocated =
+	  vlib_buffer_alloc (vm, xm->rx_buffers_to_add + l, n_to_alloc);
 	_vec_len (xm->rx_buffers_to_add) += n_allocated;
 
 	/* Handle transient allocation failure */
@@ -1462,6 +1461,7 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 	  to_rx += 2;
 	  to_add -= 2;
 
+#if 0
 	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
 		  vlib_buffer_is_known (vm, bi0));
 	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
@@ -1470,6 +1470,7 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 		  vlib_buffer_is_known (vm, fi0));
 	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
 		  vlib_buffer_is_known (vm, fi1));
+#endif
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
@@ -1678,10 +1679,12 @@ ixge_rx_queue_no_wrap (ixge_main_t * xm,
 	  to_rx += 1;
 	  to_add -= 1;
 
+#if 0
 	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
 		  vlib_buffer_is_known (vm, bi0));
 	  ASSERT (VLIB_BUFFER_KNOWN_ALLOCATED ==
 		  vlib_buffer_is_known (vm, fi0));
+#endif
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
@@ -2253,8 +2256,9 @@ format_ixge_device_name (u8 * s, va_list * args)
   u32 i = va_arg (*args, u32);
   ixge_main_t *xm = &ixge_main;
   ixge_device_t *xd = vec_elt_at_index (xm->devices, i);
-  return format (s, "TenGigabitEthernet%U",
-		 format_vlib_pci_handle, &xd->pci_device.bus_address);
+  vlib_pci_addr_t *addr = vlib_pci_get_addr (xd->pci_dev_handle);
+  return format (s, "TenGigabitEthernet%x/%x/%x/%x",
+		 addr->domain, addr->bus, addr->slot, addr->function);
 }
 
 #define IXGE_COUNTER_IS_64_BIT (1 << 0)
@@ -2355,8 +2359,12 @@ format_ixge_device (u8 * s, va_list * args)
 
   {
 
-    s = format (s, "\n%UPCIe %U", format_white_space, indent + 2,
-		format_vlib_pci_link_speed, &xd->pci_device);
+    vlib_pci_addr_t *addr = vlib_pci_get_addr (xd->pci_dev_handle);
+    vlib_pci_device_info_t *d = vlib_pci_get_device_info (addr, 0);
+
+    if (d)
+      s = format (s, "\n%UPCIe %U", format_white_space, indent + 2,
+		  format_vlib_pci_link_speed, d);
   }
 
   s = format (s, "\n%U", format_white_space, indent + 2);
@@ -2477,13 +2485,6 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
   if (!xm->n_bytes_in_rx_buffer)
     xm->n_bytes_in_rx_buffer = IXGE_N_BYTES_IN_RX_BUFFER;
   xm->n_bytes_in_rx_buffer = round_pow2 (xm->n_bytes_in_rx_buffer, 1024);
-  if (!xm->vlib_buffer_free_list_index)
-    {
-      xm->vlib_buffer_free_list_index =
-	vlib_buffer_get_or_create_free_list (vm, xm->n_bytes_in_rx_buffer,
-					     "ixge rx");
-      ASSERT (xm->vlib_buffer_free_list_index != 0);
-    }
 
   if (!xm->n_descriptors[rt])
     xm->n_descriptors[rt] = 4 * VLIB_FRAME_SIZE;
@@ -2509,28 +2510,25 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
     {
       u32 n_alloc, i;
 
-      n_alloc = vlib_buffer_alloc_from_free_list
-	(vm, dq->descriptor_buffer_indices,
-	 vec_len (dq->descriptor_buffer_indices),
-	 xm->vlib_buffer_free_list_index);
+      n_alloc = vlib_buffer_alloc (vm, dq->descriptor_buffer_indices,
+				   vec_len (dq->descriptor_buffer_indices));
       ASSERT (n_alloc == vec_len (dq->descriptor_buffer_indices));
       for (i = 0; i < n_alloc; i++)
 	{
-	  vlib_buffer_t *b =
-	    vlib_get_buffer (vm, dq->descriptor_buffer_indices[i]);
 	  dq->descriptors[i].rx_to_hw.tail_address =
-	    vlib_physmem_virtual_to_physical (vm, xm->physmem_region,
-					      b->data);
+	    vlib_get_buffer_data_physical_address (vm,
+						   dq->descriptor_buffer_indices
+						   [i]);
 	}
     }
   else
     {
       u32 i;
 
-      dq->tx.head_index_write_back =
-	vlib_physmem_alloc (vm,
-			    vm->buffer_main->buffer_pools[0].physmem_region,
-			    &error, CLIB_CACHE_LINE_BYTES);
+      dq->tx.head_index_write_back = vlib_physmem_alloc (vm,
+							 xm->physmem_region,
+							 &error,
+							 CLIB_CACHE_LINE_BYTES);
 
       for (i = 0; i < dq->n_descriptors; i++)
 	dq->descriptors[i].tx = xm->tx_descriptor_template;
@@ -2543,9 +2541,7 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
     u64 a;
 
     a =
-      vlib_physmem_virtual_to_physical (vm,
-					vm->buffer_main->
-					buffer_pools[0].physmem_region,
+      vlib_physmem_virtual_to_physical (vm, xm->physmem_region,
 					dq->descriptors);
     dr->descriptor_address[0] = a & 0xFFFFFFFF;
     dr->descriptor_address[1] = a >> (u64) 32;
@@ -2571,11 +2567,8 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
 	/* Make sure its initialized before hardware can get to it. */
 	dq->tx.head_index_write_back[0] = dq->head_index;
 
-	a =
-	  vlib_physmem_virtual_to_physical (vm,
-					    vm->buffer_main->
-					    buffer_pools[0].physmem_region,
-					    dq->tx.head_index_write_back);
+	a = vlib_physmem_virtual_to_physical (vm, xm->physmem_region,
+					      dq->tx.head_index_write_back);
 	dr->tx.head_index_write_back_address[0] = /* enable bit */ 1 | a;
 	dr->tx.head_index_write_back_address[1] = (u64) a >> (u64) 32;
       }
@@ -2838,10 +2831,11 @@ VLIB_INIT_FUNCTION (ixge_init);
 
 
 static void
-ixge_pci_intr_handler (vlib_pci_device_t * dev)
+ixge_pci_intr_handler (vlib_pci_dev_handle_t h)
 {
   ixge_main_t *xm = &ixge_main;
   vlib_main_t *vm = xm->vlib_main;
+  uword private_data = vlib_pci_get_private_data (h);
 
   vlib_node_set_interrupt_pending (vm, ixge_input_node.index);
 
@@ -2849,26 +2843,32 @@ ixge_pci_intr_handler (vlib_pci_device_t * dev)
   {
     vlib_node_runtime_t *rt =
       vlib_node_get_runtime (vm, ixge_input_node.index);
-    rt->runtime_data[0] |= 1 << dev->private_data;
+    rt->runtime_data[0] |= 1 << private_data;
   }
 }
 
 static clib_error_t *
-ixge_pci_init (vlib_main_t * vm, vlib_pci_device_t * dev)
+ixge_pci_init (vlib_main_t * vm, vlib_pci_dev_handle_t h)
 {
   ixge_main_t *xm = &ixge_main;
-  clib_error_t *error;
+  clib_error_t *error = 0;
   void *r;
   ixge_device_t *xd;
+  vlib_pci_addr_t *addr = vlib_pci_get_addr (h);
+  vlib_pci_device_info_t *d = vlib_pci_get_device_info (addr, 0);
 
   /* Allocate physmem region for DMA buffers */
-  error = vlib_physmem_region_alloc (vm, "ixge decriptors", 2 << 20, 0,
-				     VLIB_PHYSMEM_F_INIT_MHEAP,
-				     &xm->physmem_region);
+  if (xm->physmem_region_allocated == 0)
+    {
+      error = vlib_physmem_region_alloc (vm, "ixge decriptors", 2 << 20, 0,
+					 VLIB_PHYSMEM_F_INIT_MHEAP,
+					 &xm->physmem_region);
+      xm->physmem_region_allocated = 1;
+    }
   if (error)
     return error;
 
-  error = vlib_pci_map_resource (dev, 0, &r);
+  error = vlib_pci_map_resource (h, 0, &r);
   if (error)
     return error;
 
@@ -2879,13 +2879,14 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_device_t * dev)
       ixge_input_node.function = ixge_input_multiarch_select ();
     }
 
-  xd->pci_device = dev[0];
-  xd->device_id = xd->pci_device.config0.header.device_id;
+  xd->pci_dev_handle = h;
+  xd->device_id = d->device_id;
   xd->regs = r;
   xd->device_index = xd - xm->devices;
-  xd->pci_function = dev->bus_address.function;
+  xd->pci_function = addr->function;
   xd->per_interface_next_index = ~0;
 
+  vlib_pci_set_private_data (h, xd->device_index);
 
   /* Chip found so enable node. */
   {
@@ -2894,7 +2895,7 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_device_t * dev)
 			  ? VLIB_NODE_STATE_POLLING
 			  : VLIB_NODE_STATE_INTERRUPT));
 
-    dev->private_data = xd->device_index;
+    //dev->private_data = xd->device_index;
   }
 
   if (vec_len (xm->devices) == 1)
@@ -2903,12 +2904,12 @@ ixge_pci_init (vlib_main_t * vm, vlib_pci_device_t * dev)
       xm->process_node_index = ixge_process_node.index;
     }
 
-  error = vlib_pci_bus_master_enable (dev);
+  error = vlib_pci_bus_master_enable (h);
 
   if (error)
     return error;
 
-  return vlib_pci_intr_enable (dev);
+  return vlib_pci_intr_enable (h);
 }
 
 /* *INDENT-OFF* */

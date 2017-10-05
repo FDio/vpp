@@ -162,14 +162,12 @@ vlib_buffer_contents (vlib_main_t * vm, u32 buffer_index, u8 * contents)
 always_inline u64
 vlib_get_buffer_data_physical_address (vlib_main_t * vm, u32 buffer_index)
 {
-  vlib_physmem_region_index_t pri;
+  vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
-  pri = vm->buffer_main->buffer_pools[b->buffer_pool_index].physmem_region;
-  return vlib_physmem_offset_to_physical (vm, pri,
-					  (((uword) buffer_index) <<
-					   CLIB_LOG2_CACHE_LINE_BYTES) +
-					  STRUCT_OFFSET_OF (vlib_buffer_t,
-							    data));
+  vlib_buffer_pool_t *pool = vec_elt_at_index (bm->buffer_pools,
+					       b->buffer_pool_index);
+
+  return vlib_physmem_virtual_to_physical (vm, pool->physmem_region, b->data);
 }
 
 /** \brief Prefetch buffer metadata by buffer index
