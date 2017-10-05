@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_61ca2351",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-05T06:26:58Z",
+      "side": 1,
+      "message": "I think is not very informative. In the previous verson callbacks were generated based on request-replay naming conventions. It turned out they were too strict in case of events (e.g. BFD sends Details messages as notifications). So now we generate callback for all messages,\nallowing to receive any message as notification.",
+      "range": {
+        "startLine": 9,
+        "startChar": 3,
+        "endLine": 11,
+        "endChar": 22
+      },
+      "revId": "ed562a821cc501551785003b268efbff8567925c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_41c72746",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-05T06:26:58Z",
+      "side": 1,
+      "message": "You meant we just don\u0027t add notification suffix anymore, just leave original name, because event/couter messages are not spoecial cases any more, right?",
+      "range": {
+        "startLine": 12,
+        "startChar": 3,
+        "endLine": 13,
+        "endChar": 68
+      },
+      "revId": "ed562a821cc501551785003b268efbff8567925c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_21ad4b89",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 18,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-05T06:26:58Z",
+      "side": 1,
+      "message": "I think this can be misleading. There is only one change in callback facade and future apis: name of property that holds notifications/events.\nIn case of eventRegistry, right, all the onXXX methods have changed.",
+      "range": {
+        "startLine": 15,
+        "startChar": 2,
+        "endLine": 18,
+        "endChar": 38
+      },
+      "revId": "ed562a821cc501551785003b268efbff8567925c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_21c42b3f",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 4
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-05T06:26:58Z",
+      "side": 1,
+      "message": "if it is not used, why it was not deleted?",
+      "range": {
+        "startLine": 19,
+        "startChar": 2,
+        "endLine": 20,
+        "endChar": 39
+      },
+      "revId": "ed562a821cc501551785003b268efbff8567925c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
