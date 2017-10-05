@@ -43,33 +43,24 @@
 #include <vlib/vlib.h>
 #include <vlib/pci/pci_config.h>
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (union
-		     {
-		     struct
-		     {
-u16 domain; u8 bus; u8 slot: 5; u8 function:3;};
-		     u32 as_u32;}) vlib_pci_addr_t;
-
-typedef struct vlib_pci_device
 {
-  /* Operating system handle for this device. */
-  uword os_handle;
+  struct
+    {
+      u16 domain;
+      u8 bus;
+      u8 slot: 5;
+      u8 function:3;
+    };
+  u32 as_u32;
+}) vlib_pci_addr_t;
+/* *INDENT-ON* */
 
-  vlib_pci_addr_t bus_address;
-
-  /* First 64 bytes of configuration space. */
-  union
-  {
-    pci_config_type0_regs_t config0;
-    pci_config_type1_regs_t config1;
-    u8 config_data[256];
-  };
-
-  /* Interrupt handler */
-  void (*interrupt_handler) (struct vlib_pci_device * dev);
-
-  /* Driver name */
-  u8 *driver_name;
+typedef struct vlib_pci_device_info
+{
+  /* addr */
+  vlib_pci_addr_t addr;
 
   /* Numa Node */
   int numa_node;
@@ -84,10 +75,42 @@ typedef struct vlib_pci_device
   u8 *vpd_r;
   u8 *vpd_w;
 
-  /* Private data */
-  uword private_data;
+  /* Driver name */
+  u8 *driver_name;
 
-} vlib_pci_device_t;
+  /* First 64 bytes of configuration space. */
+  union
+  {
+    pci_config_type0_regs_t config0;
+    pci_config_type1_regs_t config1;
+    u8 config_data[256];
+  };
+
+  /* IOMMU Group */
+  int iommu_group;
+
+} vlib_pci_device_info_t;
+
+typedef u32 vlib_pci_dev_handle_t;
+
+vlib_pci_device_info_t *vlib_pci_get_device_info (vlib_pci_addr_t * addr,
+						  clib_error_t ** error);
+vlib_pci_addr_t *vlib_pci_get_all_dev_addrs ();
+vlib_pci_addr_t *vlib_pci_get_addr (vlib_pci_dev_handle_t h);
+uword vlib_pci_get_private_data (vlib_pci_dev_handle_t h);
+void vlib_pci_set_private_data (vlib_pci_dev_handle_t h, uword private_data);
+
+static inline void
+vlib_pci_free_device_info (vlib_pci_device_info_t * di)
+{
+  if (!di)
+    return;
+  vec_free (di->product_name);
+  vec_free (di->vpd_r);
+  vec_free (di->vpd_w);
+  vec_free (di->driver_name);
+  clib_mem_free (di);
+}
 
 typedef struct
 {
@@ -97,10 +120,11 @@ typedef struct
 typedef struct _pci_device_registration
 {
   /* Driver init function. */
-  clib_error_t *(*init_function) (vlib_main_t * vm, vlib_pci_device_t * dev);
+  clib_error_t *(*init_function) (vlib_main_t * vm,
+				  vlib_pci_dev_handle_t handle);
 
   /* Interrupt handler */
-  void (*interrupt_handler) (vlib_pci_device_t * dev);
+  void (*interrupt_handler) (vlib_pci_dev_handle_t handle);
 
   /* List of registrations */
   struct _pci_device_registration *next_registration;
@@ -113,9 +137,7 @@ typedef struct _pci_device_registration
 typedef struct
 {
   vlib_main_t *vlib_main;
-  vlib_pci_device_t *pci_devs;
   pci_device_registration_t *pci_device_registrations;
-  uword *pci_dev_index_by_pci_addr;
 } vlib_pci_main_t;
 
 extern vlib_pci_main_t pci_main;
@@ -132,21 +154,21 @@ static void __vlib_add_pci_device_registration_##x (void)       \
 }                                                               \
 __VA_ARGS__ pci_device_registration_t x
 
-clib_error_t *vlib_pci_bind_to_uio (vlib_pci_device_t * d,
+clib_error_t *vlib_pci_bind_to_uio (vlib_pci_addr_t * addr,
 				    char *uio_driver_name);
 
 /* Configuration space read/write. */
-clib_error_t *vlib_pci_read_write_config (vlib_pci_device_t * dev,
+clib_error_t *vlib_pci_read_write_config (vlib_pci_dev_handle_t handle,
 					  vlib_read_or_write_t read_or_write,
 					  uword address,
 					  void *data, u32 n_bytes);
 
 #define _(t)								\
 static inline clib_error_t *						\
-vlib_pci_read_config_##t (vlib_pci_device_t * dev,			\
+vlib_pci_read_config_##t (vlib_pci_dev_handle_t h,			\
 			  uword address, t * data)			\
 {									\
-  return vlib_pci_read_write_config (dev, VLIB_READ,address, data,	\
+  return vlib_pci_read_write_config (h, VLIB_READ,address, data,	\
 				     sizeof (data[0]));			\
 }
 
@@ -158,10 +180,10 @@ _(u8);
 
 #define _(t)								\
 static inline clib_error_t *						\
-vlib_pci_write_config_##t (vlib_pci_device_t * dev, uword address,	\
+vlib_pci_write_config_##t (vlib_pci_dev_handle_t h, uword address,	\
 			   t * data)					\
 {									\
-  return vlib_pci_read_write_config (dev, VLIB_WRITE,			\
+  return vlib_pci_read_write_config (h, VLIB_WRITE,			\
 				   address, data, sizeof (data[0]));	\
 }
 
@@ -172,45 +194,45 @@ _(u8);
 #undef _
 
 static inline clib_error_t *
-vlib_pci_intr_enable (vlib_pci_device_t * dev)
+vlib_pci_intr_enable (vlib_pci_dev_handle_t h)
 {
   u16 command;
   clib_error_t *err;
 
-  err = vlib_pci_read_config_u16 (dev, 4, &command);
+  err = vlib_pci_read_config_u16 (h, 4, &command);
 
   if (err)
     return err;
 
   command &= ~PCI_COMMAND_INTX_DISABLE;
 
-  return vlib_pci_write_config_u16 (dev, 4, &command);
+  return vlib_pci_write_config_u16 (h, 4, &command);
 }
 
 static inline clib_error_t *
-vlib_pci_intr_disable (vlib_pci_device_t * dev)
+vlib_pci_intr_disable (vlib_pci_dev_handle_t h)
 {
   u16 command;
   clib_error_t *err;
 
-  err = vlib_pci_read_config_u16 (dev, 4, &command);
+  err = vlib_pci_read_config_u16 (h, 4, &command);
 
   if (err)
     return err;
 
   command |= PCI_COMMAND_INTX_DISABLE;
 
-  return vlib_pci_write_config_u16 (dev, 4, &command);
+  return vlib_pci_write_config_u16 (h, 4, &command);
 }
 
 static inline clib_error_t *
-vlib_pci_bus_master_enable (vlib_pci_device_t * dev)
+vlib_pci_bus_master_enable (vlib_pci_dev_handle_t h)
 {
   clib_error_t *err;
   u16 command;
 
   /* Set bus master enable (BME) */
-  err = vlib_pci_read_config_u16 (dev, 4, &command);
+  err = vlib_pci_read_config_u16 (h, 4, &command);
 
   if (err)
     return err;
@@ -220,23 +242,18 @@ vlib_pci_bus_master_enable (vlib_pci_device_t * dev)
 
   command |= PCI_COMMAND_BUS_MASTER;
 
-  return vlib_pci_write_config_u16 (dev, 4, &command);
+  return vlib_pci_write_config_u16 (h, 4, &command);
 }
 
-clib_error_t *vlib_pci_map_resource (vlib_pci_device_t * dev, u32 resource,
+clib_error_t *vlib_pci_map_resource (vlib_pci_dev_handle_t h, u32 resource,
 				     void **result);
 
-clib_error_t *vlib_pci_map_resource_fixed (vlib_pci_device_t * dev,
+clib_error_t *vlib_pci_map_resource_fixed (vlib_pci_dev_handle_t h,
 					   u32 resource, u8 * addr,
 					   void **result);
 
-vlib_pci_device_t *vlib_get_pci_device (vlib_pci_addr_t * addr);
-/* Free's device. */
-void vlib_pci_free_device (vlib_pci_device_t * dev);
-
 unformat_function_t unformat_vlib_pci_addr;
 format_function_t format_vlib_pci_addr;
-format_function_t format_vlib_pci_handle;
 format_function_t format_vlib_pci_link_speed;
 format_function_t format_vlib_pci_vpd;
 
