@@ -1545,8 +1545,10 @@ vhost_user_if_input (vlib_main_t * vm,
    * per packet. In case packets are bigger, we will just yeld at some point
    * in the loop and come back later. This is not an issue as for big packet,
    * processing cost really comes from the memory copy.
+   * The assumption is that big packets will fit in 40 buffers.
    */
-  if (PREDICT_FALSE (vum->cpus[thread_index].rx_buffers_len < n_left + 1))
+  if (PREDICT_FALSE (vum->cpus[thread_index].rx_buffers_len < n_left + 1 ||
+		     vum->cpus[thread_index].rx_buffers_len < 40))
     {
       u32 curr_len = vum->cpus[thread_index].rx_buffers_len;
       vum->cpus[thread_index].rx_buffers_len +=
