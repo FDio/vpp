@@ -297,11 +297,11 @@ snat_out2in_error_t icmp_get_key(ip4_header_t *ip0,
  * @param e                      optional parameter
  */
 u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                           u32 thread_index, vlib_buffer_t *b0,
+                           ip4_header_t *ip0, u8 *p_proto,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d, void *e)
 {
-  ip4_header_t *ip0;
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
   u32 rx_fib_index0;
@@ -314,7 +314,6 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
   u32 next0 = ~0;
   int err;
 
-  ip0 = vlib_buffer_get_current (b0);
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
   rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
@@ -408,11 +407,11 @@ out:
  * @param e                      optional parameter
  */
 u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                           u32 thread_index, vlib_buffer_t *b0,
+                           ip4_header_t *ip0, u8 *p_proto,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d, void *e)
 {
-  ip4_header_t *ip0;
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
   u32 rx_fib_index0;
@@ -423,7 +422,6 @@ u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
   u32 next0 = ~0;
   int err;
 
-  ip0 = vlib_buffer_get_current (b0);
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];
   rx_fib_index0 = ip4_fib_table_get_index_for_sw_if_index (sw_if_index0);
@@ -494,7 +492,7 @@ static inline u32 icmp_out2in (snat_main_t *sm,
 
   echo0 = (icmp_echo_header_t *)(icmp0+1);
 
-  next0_tmp = sm->icmp_match_out2in_cb(sm, node, thread_index, b0,
+  next0_tmp = sm->icmp_match_out2in_cb(sm, node, thread_index, b0, ip0,
                                        &protocol, &sm0, &dont_translate, d, e);
   if (next0_tmp != ~0)
     next0 = next0_tmp;
@@ -2038,11 +2036,11 @@ VLIB_NODE_FUNCTION_MULTIARCH (snat_det_out2in_node, snat_det_out2in_node_fn);
  * @param e                      optional parameter
  */
 u32 icmp_match_out2in_det(snat_main_t *sm, vlib_node_runtime_t *node,
-                          u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                          u32 thread_index, vlib_buffer_t *b0,
+                          ip4_header_t *ip0, u8 *p_proto,
                           snat_session_key_t *p_value,
                           u8 *p_dont_translate, void *d, void *e)
 {
-  ip4_header_t *ip0;
   icmp46_header_t *icmp0;
   u32 sw_if_index0;
   u8 protocol;
@@ -2058,7 +2056,6 @@ u32 icmp_match_out2in_det(snat_main_t *sm, vlib_node_runtime_t *node,
   snat_det_session_t * ses0 = 0;
   ip4_address_t out_addr;
 
-  ip0 = vlib_buffer_get_current (b0);
   icmp0 = (icmp46_header_t *) ip4_next_header (ip0);
   echo0 = (icmp_echo_header_t *)(icmp0+1);
   sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_RX];

@@ -257,6 +257,7 @@ typedef u32 snat_icmp_match_function_t (struct snat_main_s *sm,
                                         vlib_node_runtime_t *node,
                                         u32 thread_index,
                                         vlib_buffer_t *b0,
+                                        ip4_header_t *ip0,
                                         u8 *p_proto,
                                         snat_session_key_t *p_value,
                                         u8 *p_dont_translate,
@@ -454,27 +455,33 @@ typedef struct {
 } tcp_udp_header_t;
 
 u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                           u32 thread_index, vlib_buffer_t *b0,
+                           ip4_header_t *ip0, u8 *p_proto,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d, void *e);
 u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                           u32 thread_index, vlib_buffer_t *b0,
+                           ip4_header_t *ip0, u8 *p_proto,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d, void *e);
 u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
-                          u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                          u32 thread_index, vlib_buffer_t *b0,
+                          ip4_header_t *ip0, u8 *p_proto,
                           snat_session_key_t *p_value,
                           u8 *p_dont_translate, void *d, void *e);
 u32 icmp_match_out2in_fast(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                           u32 thread_index, vlib_buffer_t *b0,
+                           ip4_header_t *ip0, u8 *p_proto,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d, void *e);
 u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
-                           u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                           u32 thread_index, vlib_buffer_t *b0,
+                           ip4_header_t *ip0, u8 *p_proto,
                            snat_session_key_t *p_value,
                            u8 *p_dont_translate, void *d, void *e);
 u32 icmp_match_out2in_det(snat_main_t *sm, vlib_node_runtime_t *node,
-                          u32 thread_index, vlib_buffer_t *b0, u8 *p_proto,
+                          u32 thread_index, vlib_buffer_t *b0,
+                          ip4_header_t *ip0, u8 *p_proto,
                           snat_session_key_t *p_value,
                           u8 *p_dont_translate, void *d, void *e);
 void increment_v4_address(ip4_address_t * a);
