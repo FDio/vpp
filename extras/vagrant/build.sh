@@ -17,22 +17,11 @@ echo 2:$2
 echo VPP_DIR: $VPP_DIR
 echo SUDOCMD: $SUDOCMD
 
-# Figure out what system we are running on
-if [ -f /etc/lsb-release ];then
-    . /etc/lsb-release
-elif [ -f /etc/redhat-release ];then
-    sudo yum install -y redhat-lsb
-    DISTRIB_ID=`lsb_release -si`
-    DISTRIB_RELEASE=`lsb_release -sr`
-    DISTRIB_CODENAME=`lsb_release -sc`
-    DISTRIB_DESCRIPTION=`lsb_release -sd`
-elif [ -f /etc/os-release ];then
-   . /etc/os-release
-   DISTRIB_ID=$ID
-   DISTRIB_RELEASE=$VERSION_ID
-   DISTRIB_CODENAME=$VERSION
-   DISTRIB_DESCRIPTION=$PRETTY_NAME
+if [ "$(uname)" <> "Darwin" ]; then
+    OS_ID=$(grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+    OS_VERSION_ID=$(grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 fi
+
 KERNEL_OS=`uname -o`
 KERNEL_MACHINE=`uname -m`
 KERNEL_RELEASE=`uname -r`
@@ -42,10 +31,8 @@ echo KERNEL_OS: $KERNEL_OS
 echo KERNEL_MACHINE: $KERNEL_MACHINE
 echo KERNEL_RELEASE: $KERNEL_RELEASE
 echo KERNEL_VERSION: $KERNEL_VERSION
-echo DISTRIB_ID: $DISTRIB_ID
-echo DISTRIB_RELEASE: $DISTRIB_RELEASE
-echo DISTRIB_CODENAME: $DISTRIB_CODENAME
-echo DISTRIB_DESCRIPTION: $DISTRIB_DESCRIPTION
+echo OS_ID: $OS_ID
+echo OS_VERSION_ID: $OS_ID
 
 # Install dependencies
 cd $VPP_DIR
@@ -57,7 +44,7 @@ $SUDOCMD make wipe
 (cd build-root/;$SUDOCMD make distclean)
 rm -f build-root/.bootstrap.ok
 
-if [ $DISTRIB_ID == "CentOS" ]; then
+if [ $OS_ID == "centos" ]; then
     echo rpm -V apr-devel
     rpm -V apr-devel
     if [ $? != 0 ]; then sudo yum reinstall -y apr-devel;fi
@@ -72,14 +59,14 @@ fi
 # Build and install packaging
 $SUDOCMD make bootstrap
 
-if [ "$DISTRIB_ID" == "Ubuntu" ]; then
+if [ "$OS_ID" == "ubuntu" ]; then
     $SUDOCMD make pkg-deb
-elif [ "$DISTRIB_ID" == "debian" ]; then
+elif [ "$OS_ID" == "debian" ]; then
     $SUDOCMD make pkg-deb
-elif [ "$DISTRIB_ID" == "CentOS" ]; then
+elif [ "$OS_ID" == "centos" ]; then
     (cd $VPP_DIR/vnet ;$SUDOCMD aclocal;$SUDOCMD automake -a)
     $SUDOCMD make pkg-rpm
-elif [ "$DISTRIB_ID" == "opensuse" ]; then
+elif [ "$OS_ID" == "opensuse" ]; then
     $SUDOCMD make build-release
 fi
 
