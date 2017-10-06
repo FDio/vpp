@@ -20,7 +20,7 @@ do
     break
   fi
 
-  for dir in $(find /usr/lib/jvm/* -maxdepth 0 -type d); do
+  for dir in $(find /usr/lib*/jvm/* -maxdepth 0 -type d); do
     AC_MSG_CHECKING([${dir} for Java 8 compiler])
     JAVA_VERSION=$(${dir}/bin/javac -source 8 -version 2>&1)
     if test 0 -eq "$?"; then
