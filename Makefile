@@ -311,7 +311,7 @@ dist:
 	@ln -rs $(DIST_FILE).xz $(BR)/vpp-latest.tar.xz
 
 build: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM)_debug,$(addsuffix -install,$(TARGETS)))
+	+$(call make,$(PLATFORM)_debug,$(addsuffix -install,$(TARGETS)))
 
 wipedist:
 	@$(RM) $(BR)/*.tar.xz
@@ -322,7 +322,7 @@ wipe: wipedist $(BR)/.bootstrap.ok
 rebuild: wipe build
 
 build-release: $(BR)/.bootstrap.ok
-	$(call make,$(PLATFORM),$(addsuffix -install,$(TARGETS)))
+	+$(call make,$(PLATFORM),$(addsuffix -install,$(TARGETS)))
 
 wipe-release: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM),$(addsuffix -wipe,$(TARGETS)))
