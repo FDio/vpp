@@ -615,6 +615,25 @@ define ipsec_sa_details {
   u64 total_data_size;
 };
 
+/** \brief Set key on IPsec interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of tunnel interface
+    @param key_type - type of key being set
+    @param alg - algorithm used with key
+    @param key_len - length key in bytes
+    @param key - key
+*/
+autoreply define ipsec_tunnel_if_set_key {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 key_type;
+  u8 alg;
+  u8 key_len;
+  u8 key[128];
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
