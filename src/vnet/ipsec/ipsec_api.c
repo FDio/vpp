@@ -56,6 +56,7 @@ _(IPSEC_SA_SET_KEY, ipsec_sa_set_key)                                   \
 _(IPSEC_SA_DUMP, ipsec_sa_dump)                                         \
 _(IPSEC_SPD_DUMP, ipsec_spd_dump)                                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)                     \
+_(IPSEC_TUNNEL_IF_SET_KEY, ipsec_tunnel_if_set_key)                     \
 _(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del)                         \
 _(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth)                       \
 _(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id)                           \
@@ -506,6 +507,61 @@ vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
 #else
   clib_warning ("unimplemented");
 #endif
+}
+
+
+static void
+vl_api_ipsec_tunnel_if_set_key_t_handler (vl_api_ipsec_tunnel_if_set_key_t *
+					  mp)
+{
+  vl_api_ipsec_tunnel_if_set_key_reply_t *rmp;
+  ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  vnet_sw_interface_t *sw;
+  u8 *key = 0;
+  int rv;
+
+#if WITH_LIBSSL > 0
+  sw = vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
+
+  switch (mp->key_type)
+    {
+    case IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO:
+    case IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO:
+      if (mp->alg < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
+	  mp->alg > IPSEC_CRYPTO_N_ALG)
+	{
+	  rv = VNET_API_ERROR_UNIMPLEMENTED;
+	  goto out;
+	}
+      break;
+    case IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG:
+    case IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG:
+      if (mp->alg > IPSEC_INTEG_N_ALG)
+	{
+	  rv = VNET_API_ERROR_UNIMPLEMENTED;
+	  goto out;
+	}
+      break;
+    case IPSEC_IF_SET_KEY_TYPE_NONE:
+    default:
+      rv = VNET_API_ERROR_UNIMPLEMENTED;
+      goto out;
+      break;
+    }
+
+  key = vec_new (u8, mp->key_len);
+  clib_memcpy (key, mp->key, mp->key_len);
+
+  rv = ipsec_set_interface_key (vnm, sw->hw_if_index, mp->key_type, mp->alg,
+				key);
+  vec_free (key);
+#else
+  clib_warning ("unimplemented");
+#endif
+
+out:
+  REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_KEY_REPLY);
 }
 
 

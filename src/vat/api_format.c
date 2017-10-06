@@ -5077,6 +5077,7 @@ _(ipsec_spd_add_del_entry_reply)                        \
 _(ipsec_sad_add_del_entry_reply)                        \
 _(ipsec_sa_set_key_reply)                               \
 _(ipsec_tunnel_if_add_del_reply)                        \
+_(ipsec_tunnel_if_set_key_reply)                        \
 _(ikev2_profile_add_del_reply)                          \
 _(ikev2_profile_set_auth_reply)                         \
 _(ikev2_profile_set_id_reply)                           \
@@ -5310,6 +5311,7 @@ _(IPSEC_SAD_ADD_DEL_ENTRY_REPLY, ipsec_sad_add_del_entry_reply)         \
 _(IPSEC_SA_DETAILS, ipsec_sa_details)                                   \
 _(IPSEC_SA_SET_KEY_REPLY, ipsec_sa_set_key_reply)                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL_REPLY, ipsec_tunnel_if_add_del_reply)         \
+_(IPSEC_TUNNEL_IF_SET_KEY_REPLY, ipsec_tunnel_if_set_key_reply)         \
 _(IKEV2_PROFILE_ADD_DEL_REPLY, ikev2_profile_add_del_reply)             \
 _(IKEV2_PROFILE_SET_AUTH_REPLY, ikev2_profile_set_auth_reply)           \
 _(IKEV2_PROFILE_SET_ID_REPLY, ikev2_profile_set_id_reply)               \
@@ -14285,6 +14287,79 @@ api_ipsec_sa_dump (vat_main_t * vam)
 }
 
 static int
+api_ipsec_tunnel_if_set_key (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_tunnel_if_set_key_t *mp;
+  u32 sw_if_index = ~0;
+  u8 key_type = IPSEC_IF_SET_KEY_TYPE_NONE;
+  u8 *key = 0;
+  u32 alg = ~0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else
+	if (unformat (i, "local crypto %U", unformat_ipsec_crypto_alg, &alg))
+	key_type = IPSEC_IF_SET_KEY_TYPE_LOCAL_CRYPTO;
+      else
+	if (unformat (i, "remote crypto %U", unformat_ipsec_crypto_alg, &alg))
+	key_type = IPSEC_IF_SET_KEY_TYPE_REMOTE_CRYPTO;
+      else if (unformat (i, "local integ %U", unformat_ipsec_integ_alg, &alg))
+	key_type = IPSEC_IF_SET_KEY_TYPE_LOCAL_INTEG;
+      else
+	if (unformat (i, "remote integ %U", unformat_ipsec_integ_alg, &alg))
+	key_type = IPSEC_IF_SET_KEY_TYPE_REMOTE_INTEG;
+      else if (unformat (i, "%U", unformat_hex_string, &key))
+	;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("interface must be specified");
+      return -99;
+    }
+
+  if (key_type == IPSEC_IF_SET_KEY_TYPE_NONE)
+    {
+      errmsg ("key type must be specified");
+      return -99;
+    }
+
+  if (alg == ~0)
+    {
+      errmsg ("algorithm must be specified");
+      return -99;
+    }
+
+  if (vec_len (key) == 0)
+    {
+      errmsg ("key must be specified");
+      return -99;
+    }
+
+  M (IPSEC_TUNNEL_IF_SET_KEY, mp);
+
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->alg = alg;
+  mp->key_type = key_type;
+  mp->key_len = vec_len (key);
+  clib_memcpy (mp->key, key, vec_len (key));
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+static int
 api_ikev2_profile_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -21547,6 +21622,8 @@ _(ipsec_tunnel_if_add_del, "local_spi <n> remote_spi <n>\n"             \
   "  integ_alg <alg> local_integ_key <hex> remote_integ_key <hex>\n"    \
   "  local_ip <addr> remote_ip <addr> [esn] [anti_replay] [del]\n")     \
 _(ipsec_sa_dump, "[sa_id <n>]")                                         \
+_(ipsec_tunnel_if_set_key, "<intfc> <local|remote> <crypto|integ>\n"    \
+  "  <alg> <hex>\n")                                                    \
 _(ikev2_profile_add_del, "name <profile_name> [del]")                   \
 _(ikev2_profile_set_auth, "name <profile_name> auth_method <method>\n"  \
   "(auth_data 0x<data> | auth_data <data>)")                            \
