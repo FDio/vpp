@@ -12,19 +12,13 @@ if [ $HUGEPAGES != 1024 ]; then
     exit
 fi
 
-# Figure out what system we are running on
-if [ -f /etc/lsb-release ];then
-    . /etc/lsb-release
-elif [ -f /etc/redhat-release ];then
-    yum install -y redhat-lsb
-    DISTRIB_ID=`lsb_release -si`
-    DISTRIB_RELEASE=`lsb_release -sr`
-    DISTRIB_CODENAME=`lsb_release -sc`
-    DISTRIB_DESCRIPTION=`lsb_release -sd`
+if [ "$(uname)" <> "Darwin" ]; then
+    OS_ID=$(grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
+    OS_VERSION_ID=$(grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 fi
 
 # Do initial setup for the system
-if [ $DISTRIB_ID == "Ubuntu" ]; then
+if [ "$OS_ID" == "ubuntu" ]; then
 
     export DEBIAN_PRIORITY=critical
     export DEBIAN_FRONTEND=noninteractive
@@ -41,7 +35,7 @@ if [ $DISTRIB_ID == "Ubuntu" ]; then
 
     # Install useful but non-mandatory tools
     apt-get install -y emacs x11-utils git-review gdb gdbserver xfce4-terminal iperf3
-elif [ $DISTRIB_ID == "CentOS" ]; then
+elif [ "$OS_ID" == "centos" ]; then
     if [ "$(echo $DISTRIB_RELEASE | cut -d'.' -f1)" == "7" ]; then
         rpm -ivh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
         yum groupinstall "X Window system" -y
@@ -50,4 +44,8 @@ elif [ $DISTRIB_ID == "CentOS" ]; then
     # Standard update + upgrade dance
     yum check-update
     yum update -y
+elif [ "$OS_ID" == "opensuse" ]; then
+    zypper update -y
+    # NASM >= 2.12 is not available in previous openSUSE release; need to install it from TW
+    zypper install -y https://download.opensuse.org/tumbleweed/repo/oss/suse/x86_64/nasm-2.13.01-2.1.x86_64.rpm
 fi
