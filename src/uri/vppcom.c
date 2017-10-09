@@ -3021,6 +3021,50 @@ done:
   return (rv != VPPCOM_OK) ? rv : num_ev;
 }
 
+int
+vppcom_session_attr (uint32_t session_index, uint32_t op,
+		     void *buffer, uint32_t * buflen)
+{
+  vppcom_main_t *vcm = &vppcom_main;
+  session_t *session;
+  int rv = VPPCOM_OK;
+  u32 *flags = buffer;
+
+  VCL_LOCK_AND_GET_SESSION (session_index, &session);
+  switch (op)
+    {
+    case VPPCOM_ATTR_GET_NREAD:
+      rv = vppcom_session_read_ready (session, session_index);
+      break;
+
+    case VPPCOM_ATTR_PEEK_NREAD:
+      break;
+
+    case VPPCOM_ATTR_GET_FLAGS:
+      if (buffer && buflen && (*buflen >= sizeof (*flags)))
+	{
+	  *flags = O_RDWR | ((session->is_nonblocking) ? O_NONBLOCK : 0);
+	  *buflen = sizeof (*flags);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_SET_FLAGS:
+      break;
+
+    case VPPCOM_ATTR_GET_PEER_ADDR:
+      break;
+
+    case VPPCOM_ATTR_GET_LCL_ADDR:
+      break;
+    }
+
+done:
+  clib_spinlock_unlock (&vcm->sessions_lockp);
+  return rv;
+}
+
   /*
    * fd.io coding-style-patch-verification: ON
    *

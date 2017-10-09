@@ -61,6 +61,16 @@ typedef enum
   VPPCOM_ETIMEDOUT = -ETIMEDOUT,
 } vppcom_error_t;
 
+typedef enum
+{
+  VPPCOM_ATTR_GET_NREAD,
+  VPPCOM_ATTR_PEEK_NREAD,
+  VPPCOM_ATTR_GET_FLAGS,
+  VPPCOM_ATTR_SET_FLAGS,
+  VPPCOM_ATTR_GET_LCL_ADDR,
+  VPPCOM_ATTR_GET_PEER_ADDR,
+} vppcom_attr_op_t;
+
 /*
  * VPPCOM Public API Functions
  */
@@ -148,6 +158,8 @@ extern int vppcom_epoll_ctl (uint32_t vep_idx, int op,
 			     struct epoll_event *event);
 extern int vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 			      int maxevents, double wait_for_time);
+extern int vppcom_session_attr (uint32_t session_index, uint32_t op,
+				void *buffer, uint32_t * buflen);
 
 #endif /* included_vppcom_h */
 
