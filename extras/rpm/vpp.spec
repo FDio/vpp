@@ -126,7 +126,7 @@ This package contains the python bindings for the vpp api
 %prep
 # Unpack into dir with longer name as work around of debugedit bug in in rpm-build 4.13
 rm -rf %{name}-%{_version}
-rm -rf %{_tmpbuild_dir}
+rm -rf %{_tmp_build_dir}
 /usr/bin/xz -dc '%{_sourcedir}/%{name}-%{_version}-%{_release}.tar.xz' | /usr/bin/tar -xf -
 mv %{name}-%{_version} %{_tmp_build_dir}
 cd '%{_tmp_build_dir}'
