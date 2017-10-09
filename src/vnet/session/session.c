@@ -71,7 +71,7 @@ stream_session_create_i (segment_manager_t * sm, transport_connection_t * tc,
     }
 
   /* Initialize state machine, such as it is... */
-  s->session_type = session_type_from_proto_and_ip (tc->transport_proto,
+  s->session_type = session_type_from_proto_and_ip (tc->proto,
 						    tc->is_ip4);
   s->session_state = SESSION_STATE_CONNECTING;
   s->thread_index = thread_index;
@@ -217,8 +217,9 @@ session_enqueue_chain_tail (stream_session_t * s, vlib_buffer_t * b,
  * @return Number of bytes enqueued or a negative value if enqueueing failed.
  */
 int
-stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
-			     u32 offset, u8 queue_event, u8 is_in_order)
+session_enqueue_stream_connection (transport_connection_t * tc,
+                                   vlib_buffer_t * b, u32 offset,
+                                   u8 queue_event, u8 is_in_order)
 {
   stream_session_t *s;
   int enqueued = 0, rv, in_order_off;
@@ -257,16 +258,53 @@ stream_session_enqueue_data (transport_connection_t * tc, vlib_buffer_t * b,
        * by calling stream_server_flush_enqueue_events () */
       session_manager_main_t *smm = vnet_get_session_manager_main ();
       u32 thread_index = s->thread_index;
-      u32 my_enqueue_epoch = smm->current_enqueue_epoch[thread_index];
+      u32 enqueue_epoch = smm->current_enqueue_epoch[tc->proto][thread_index];
 
-      if (s->enqueue_epoch != my_enqueue_epoch)
+      if (s->enqueue_epoch != enqueue_epoch)
 	{
-	  s->enqueue_epoch = my_enqueue_epoch;
-	  vec_add1 (smm->session_indices_to_enqueue_by_thread[thread_index],
+	  s->enqueue_epoch = enqueue_epoch;
+	  vec_add1 (smm->session_to_enqueue[tc->proto][thread_index],
 		    s - smm->sessions[thread_index]);
 	}
     }
 
+  return enqueued;
+}
+
+int
+session_enqueue_dgram_connection (transport_connection_t * tc,
+                                  vlib_buffer_t * b, u8 queue_event)
+{
+  stream_session_t *s;
+  int enqueued = 0, rv, in_order_off;
+
+  s = session_get (tc->s_index, tc->thread_index);
+  if (svm_fifo_max_enqueue (s->server_rx_fifo) < b->current_length)
+    return -1;
+  enqueued = svm_fifo_enqueue_nowait (s->server_rx_fifo, b->current_length,
+	                              vlib_buffer_get_current (b));
+  if (PREDICT_FALSE ((b->flags & VLIB_BUFFER_NEXT_PRESENT) && enqueued >= 0))
+    {
+      in_order_off = enqueued > b->current_length ? enqueued : 0;
+      rv = session_enqueue_chain_tail (s, b, in_order_off, 1);
+      if (rv > 0)
+	enqueued += rv;
+    }
+  if (queue_event)
+    {
+      /* Queue RX event on this fifo. Eventually these will need to be flushed
+       * by calling stream_server_flush_enqueue_events () */
+      session_manager_main_t *smm = vnet_get_session_manager_main ();
+      u32 thread_index = s->thread_index;
+      u32 enqueue_epoch = smm->current_enqueue_epoch[tc->proto][thread_index];
+
+      if (s->enqueue_epoch != enqueue_epoch)
+	{
+	  s->enqueue_epoch = enqueue_epoch;
+	  vec_add1 (smm->session_to_enqueue[tc->proto][thread_index],
+		    s - smm->sessions[thread_index]);
+	}
+    }
   return enqueued;
 }
 
@@ -319,7 +357,7 @@ stream_session_dequeue_drop (transport_connection_t * tc, u32 max_bytes)
  * @return 0 on succes or negative number if failed to send notification.
  */
 static int
-stream_session_enqueue_notify (stream_session_t * s, u8 block)
+session_enqueue_notify (stream_session_t * s, u8 block)
 {
   application_t *app;
   session_fifo_event_t evt;
@@ -389,35 +427,25 @@ stream_session_enqueue_notify (stream_session_t * s, u8 block)
  *         failures due to API queue being full.
  */
 int
-session_manager_flush_enqueue_events (u32 thread_index)
+session_manager_flush_enqueue_events (u8 transport_proto, u32 thread_index)
 {
   session_manager_main_t *smm = &session_manager_main;
-  u32 *session_indices_to_enqueue;
+  u32 *indices;
+  stream_session_t *s;
   int i, errors = 0;
 
-  session_indices_to_enqueue =
-    smm->session_indices_to_enqueue_by_thread[thread_index];
+  indices = smm->session_to_enqueue[transport_proto][thread_index];
 
-  for (i = 0; i < vec_len (session_indices_to_enqueue); i++)
+  for (i = 0; i < vec_len (indices); i++)
     {
-      stream_session_t *s0;
-
-      /* Get session */
-      s0 = stream_session_get_if_valid (session_indices_to_enqueue[i],
-					thread_index);
-      if (s0 == 0 || stream_session_enqueue_notify (s0, 0 /* don't block */ ))
-	{
-	  errors++;
-	}
+      s = stream_session_get_if_valid (indices[i], thread_index);
+      if (s == 0 || session_enqueue_notify (s, 0 /* don't block */))
+	errors++;
     }
 
-  vec_reset_length (session_indices_to_enqueue);
-
-  smm->session_indices_to_enqueue_by_thread[thread_index] =
-    session_indices_to_enqueue;
-
-  /* Increment enqueue epoch for next round */
-  smm->current_enqueue_epoch[thread_index]++;
+  vec_reset_length(indices);
+  smm->session_to_enqueue[transport_proto][thread_index] = indices;
+  smm->current_enqueue_epoch[transport_proto][thread_index]++;
 
   return errors;
 }
@@ -596,7 +624,7 @@ stream_session_accept (transport_connection_t * tc, u32 listener_index,
   session_type_t sst;
   int rv;
 
-  sst = session_type_from_proto_and_ip (tc->transport_proto, tc->is_ip4);
+  sst = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
 
   /* Find the server */
   listener = listen_session_get (sst, listener_index);
@@ -787,6 +815,14 @@ stream_session_cleanup (stream_session_t * s)
   tp_vfts[s->session_type].cleanup (s->connection_index, s->thread_index);
 }
 
+u8
+session_state_for_connection (transport_connection_t *tc)
+{
+  stream_session_t *s;
+  s = session_get (tc->s_index, tc->thread_index);
+  return s->session_state;
+}
+
 /**
  * Allocate vpp event queue (once) per worker thread
  */
@@ -852,7 +888,7 @@ listen_session_get_local_session_endpoint (stream_session_t * listener,
 
   /* N.B. The ip should not be copied because this is the local endpoint */
   sep->port = tc->lcl_port;
-  sep->transport_proto = tc->transport_proto;
+  sep->transport_proto = tc->proto;
   sep->is_ip4 = tc->is_ip4;
   return 0;
 }
@@ -864,7 +900,7 @@ session_manager_main_enable (vlib_main_t * vm)
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   u32 num_threads;
   u32 preallocated_sessions_per_worker;
-  int i;
+  int i, j;
 
   num_threads = 1 /* main thread */  + vtm->n_threads;
 
@@ -877,12 +913,17 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* configure per-thread ** vectors */
   vec_validate (smm->sessions, num_threads - 1);
-  vec_validate (smm->session_indices_to_enqueue_by_thread, num_threads - 1);
   vec_validate (smm->tx_buffers, num_threads - 1);
   vec_validate (smm->pending_event_vector, num_threads - 1);
   vec_validate (smm->free_event_vector, num_threads - 1);
-  vec_validate (smm->current_enqueue_epoch, num_threads - 1);
   vec_validate (smm->vpp_event_queues, num_threads - 1);
+
+  for (i = 0; i < TRANSPORT_N_PROTO; i++)
+    for (j = 0; j < num_threads; j++)
+      {
+	vec_validate (smm->session_to_enqueue[i], num_threads - 1);
+	vec_validate (smm->current_enqueue_epoch[i], num_threads - 1);
+      }
 
   for (i = 0; i < num_threads; i++)
     {
@@ -924,6 +965,7 @@ session_manager_main_enable (vlib_main_t * vm)
 
   session_lookup_init ();
   app_namespaces_init ();
+  transport_init ();
 
   smm->is_enabled = 1;
 

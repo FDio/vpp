@@ -1388,7 +1388,7 @@ tcp_session_enqueue_data (tcp_connection_t * tc, vlib_buffer_t * b,
       return TCP_ERROR_PURE_ACK;
     }
 
-  written = stream_session_enqueue_data (&tc->connection, b, 0,
+  written = session_enqueue_stream_connection (&tc->connection, b, 0,
 					 1 /* queue event */ , 1);
 
   TCP_EVT_DBG (TCP_EVT_INPUT, tc, 0, data_len, written);
@@ -1450,7 +1450,7 @@ tcp_session_enqueue_ooo (tcp_connection_t * tc, vlib_buffer_t * b,
     }
 
   /* Enqueue out-of-order data with relative offset */
-  rv = stream_session_enqueue_data (&tc->connection, b,
+  rv = session_enqueue_stream_connection (&tc->connection, b,
 				    vnet_buffer (b)->tcp.seq_number -
 				    tc->rcv_nxt, 0 /* queue event */ , 0);
 
@@ -1669,15 +1669,16 @@ tcp_set_rx_trace_data (tcp_rx_trace_t * t0, tcp_connection_t * tc0,
 }
 
 always_inline void
-tcp_established_inc_counter (vlib_main_t * vm, u8 is_ip4, u8 evt, u8 val)
+tcp_node_inc_counter (vlib_main_t * vm, u32 tcp4_node, u32 tcp6_node,
+                      u8 is_ip4, u8 evt, u8 val)
 {
   if (PREDICT_TRUE (!val))
     return;
 
   if (is_ip4)
-    vlib_node_increment_counter (vm, tcp4_established_node.index, evt, val);
+    vlib_node_increment_counter (vm, tcp4_node, evt, val);
   else
-    vlib_node_increment_counter (vm, tcp6_established_node.index, evt, val);
+    vlib_node_increment_counter (vm, tcp6_node, evt, val);
 }
 
 always_inline uword
@@ -1787,8 +1788,11 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  errors = session_manager_flush_enqueue_events (my_thread_index);
-  tcp_established_inc_counter (vm, is_ip4, TCP_ERROR_EVENT_FIFO_FULL, errors);
+  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
+                                                 my_thread_index);
+  tcp_node_inc_counter (vm, is_ip4, tcp4_established_node.index,
+                        tcp6_established_node.index,
+                        TCP_ERROR_EVENT_FIFO_FULL, errors);
   tcp_flush_frame_to_output (vm, my_thread_index, is_ip4);
 
   return from_frame->n_vectors;
@@ -1873,7 +1877,7 @@ tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
     {
       handle = session_lookup_half_open_handle (&tc->connection);
       tmp = session_lookup_half_open_connection (handle & 0xFFFFFFFF,
-						 tc->c_transport_proto,
+						 tc->c_proto,
 						 tc->c_is_ip4);
 
       if (tmp)
@@ -2187,17 +2191,11 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  errors = session_manager_flush_enqueue_events (my_thread_index);
-  if (errors)
-    {
-      if (is_ip4)
-	vlib_node_increment_counter (vm, tcp4_established_node.index,
-				     TCP_ERROR_EVENT_FIFO_FULL, errors);
-      else
-	vlib_node_increment_counter (vm, tcp6_established_node.index,
-				     TCP_ERROR_EVENT_FIFO_FULL, errors);
-    }
-
+  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
+                                                 my_thread_index);
+  tcp_node_inc_counter (vm, is_ip4, tcp4_syn_sent_node.index,
+                        tcp6_syn_sent_node.index,
+                        TCP_ERROR_EVENT_FIFO_FULL, errors);
   return from_frame->n_vectors;
 }
 
@@ -2258,6 +2256,9 @@ VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
 /* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (tcp6_syn_sent_node, tcp6_syn_sent_rcv);
+
+vlib_node_registration_t tcp4_rcv_process_node;
+vlib_node_registration_t tcp6_rcv_process_node;
 
 /**
  * Handles reception for all states except LISTEN, SYN-SENT and ESTABLISHED
@@ -2583,16 +2584,11 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  errors = session_manager_flush_enqueue_events (my_thread_index);
-  if (errors)
-    {
-      if (is_ip4)
-	vlib_node_increment_counter (vm, tcp4_established_node.index,
-				     TCP_ERROR_EVENT_FIFO_FULL, errors);
-      else
-	vlib_node_increment_counter (vm, tcp6_established_node.index,
-				     TCP_ERROR_EVENT_FIFO_FULL, errors);
-    }
+  errors = session_manager_flush_enqueue_events (TRANSPORT_PROTO_TCP,
+                                                 my_thread_index);
+  tcp_node_inc_counter (vm, is_ip4, tcp4_rcv_process_node.index,
+                        tcp6_rcv_process_node.index,
+                        TCP_ERROR_EVENT_FIFO_FULL, errors);
 
   return from_frame->n_vectors;
 }

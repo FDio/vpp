@@ -22,61 +22,33 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
 
-udp_uri_main_t udp_uri_main;
-
 u32
-udp_session_bind_ip4 (u32 session_index, transport_endpoint_t * lcl)
+udp_session_bind (u32 session_index, transport_endpoint_t * lcl)
 {
-  udp_uri_main_t *um = vnet_get_udp_main ();
+  udp_main_t *um = vnet_get_udp_main ();
+  vlib_main_t *vm = vlib_get_main ();
   udp_connection_t *listener;
+  u32 node_index;
 
-  pool_get (um->udp_listeners, listener);
+  pool_get (um->listeners, listener);
   memset (listener, 0, sizeof (udp_connection_t));
   listener->c_lcl_port = lcl->port;
-  listener->c_lcl_ip4.as_u32 = lcl->ip.ip4.as_u32;
-  listener->c_transport_proto = TRANSPORT_PROTO_UDP;
-  udp_register_dst_port (um->vlib_main, clib_net_to_host_u16 (lcl->port),
-			 udp4_uri_input_node.index, 1 /* is_ipv4 */ );
+  ip_copy (&listener->c_lcl_ip, &lcl->ip, lcl->is_ip4);
+  listener->c_proto = TRANSPORT_PROTO_UDP;
+  node_index = lcl->is_ip4 ? udp4_input_node.index : udp6_input_node.index;
+  udp_register_dst_port (vm, clib_net_to_host_u16 (lcl->port), node_index,
+	                 1 /* is_ipv4 */);
   return 0;
 }
 
 u32
-udp_session_bind_ip6 (u32 session_index, transport_endpoint_t * lcl)
-{
-  udp_uri_main_t *um = vnet_get_udp_main ();
-  udp_connection_t *listener;
-
-  pool_get (um->udp_listeners, listener);
-  listener->c_lcl_port = lcl->port;
-  clib_memcpy (&listener->c_lcl_ip6, &lcl->ip.ip6, sizeof (ip6_address_t));
-  listener->c_transport_proto = TRANSPORT_PROTO_UDP;
-  udp_register_dst_port (um->vlib_main, clib_net_to_host_u16 (lcl->port),
-			 udp4_uri_input_node.index, 0 /* is_ipv4 */ );
-  return 0;
-}
-
-u32
-udp_session_unbind_ip4 (u32 listener_index)
+udp_session_unbind (u32 listener_index)
 {
   vlib_main_t *vm = vlib_get_main ();
+
   udp_connection_t *listener;
   listener = udp_listener_get (listener_index);
-
-  /* deregister the udp_local mapping */
-  udp_unregister_dst_port (vm, listener->c_lcl_port, 1 /* is_ipv4 */ );
-  return 0;
-}
-
-u32
-udp_session_unbind_ip6 (u32 listener_index)
-{
-  vlib_main_t *vm = vlib_get_main ();
-  udp_connection_t *listener;
-
-  listener = udp_listener_get (listener_index);
-
-  /* deregister the udp_local mapping */
-  udp_unregister_dst_port (vm, listener->c_lcl_port, 0 /* is_ipv4 */ );
+  udp_unregister_dst_port (vm, listener->c_lcl_port, listener->c_is_ip4);
   return 0;
 }
 
@@ -90,15 +62,15 @@ udp_session_get_listener (u32 listener_index)
 }
 
 u32
-udp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
+udp_push_header (transport_connection_t * tc, vlib_buffer_t * b)
 {
-  udp_connection_t *us;
+  udp_connection_t *uc;
   u8 *data;
   udp_header_t *udp;
 
-  us = (udp_connection_t *) tconn;
+  uc = udp_get_connection_from_transport (tc);
 
-  if (tconn->is_ip4)
+  if (tc->is_ip4)
     {
       ip4_header_t *ip;
 
@@ -107,21 +79,20 @@ udp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
       ip = (ip4_header_t *) ((u8 *) udp - sizeof (ip4_header_t));
 
       /* Build packet header, swap rx key src + dst fields */
-      ip->src_address.as_u32 = us->c_lcl_ip4.as_u32;
-      ip->dst_address.as_u32 = us->c_rmt_ip4.as_u32;
+      ip->src_address.as_u32 = uc->c_lcl_ip4.as_u32;
+      ip->dst_address.as_u32 = uc->c_rmt_ip4.as_u32;
       ip->ip_version_and_header_length = 0x45;
       ip->ttl = 254;
       ip->protocol = IP_PROTOCOL_UDP;
       ip->length = clib_host_to_net_u16 (b->current_length + sizeof (*udp));
       ip->checksum = ip4_header_checksum (ip);
 
-      udp->src_port = us->c_lcl_port;
-      udp->dst_port = us->c_rmt_port;
+      udp->src_port = uc->c_lcl_port;
+      udp->dst_port = uc->c_rmt_port;
       udp->length = clib_host_to_net_u16 (b->current_length);
       udp->checksum = 0;
 
       b->current_length = sizeof (*ip) + sizeof (*udp);
-      return SESSION_QUEUE_NEXT_IP4_LOOKUP;
     }
   else
     {
@@ -135,8 +106,8 @@ udp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
       ip = (ip6_header_t *) ((u8 *) udp - sizeof (ip6_header_t));
 
       /* Build packet header, swap rx key src + dst fields */
-      clib_memcpy (&ip->src_address, &us->c_lcl_ip6, sizeof (ip6_address_t));
-      clib_memcpy (&ip->dst_address, &us->c_rmt_ip6, sizeof (ip6_address_t));
+      clib_memcpy (&ip->src_address, &uc->c_lcl_ip6, sizeof (ip6_address_t));
+      clib_memcpy (&ip->dst_address, &uc->c_rmt_ip6, sizeof (ip6_address_t));
 
       ip->ip_version_traffic_class_and_flow_label =
 	clib_host_to_net_u32 (0x6 << 28);
@@ -152,151 +123,147 @@ udp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
       udp->checksum = ip6_tcp_udp_icmp_compute_checksum (vm, b, ip, &bogus);
       ASSERT (!bogus);
 
-      udp->src_port = us->c_lcl_port;
-      udp->dst_port = us->c_rmt_port;
+      udp->src_port = uc->c_lcl_port;
+      udp->dst_port = uc->c_rmt_port;
       udp->length = clib_host_to_net_u16 (b->current_length);
       udp->checksum = 0;
 
       b->current_length = sizeof (*ip) + sizeof (*udp);
-
-      return SESSION_QUEUE_NEXT_IP6_LOOKUP;
     }
+  return 0;
 }
 
 transport_connection_t *
 udp_session_get (u32 connection_index, u32 my_thread_index)
 {
-  udp_uri_main_t *um = vnet_get_udp_main ();
-
+  udp_main_t *um = vnet_get_udp_main ();
   udp_connection_t *us;
-  us =
-    pool_elt_at_index (um->udp_sessions[my_thread_index], connection_index);
+  us = pool_elt_at_index(um->connections[my_thread_index], connection_index);
   return &us->connection;
 }
 
 void
 udp_session_close (u32 connection_index, u32 my_thread_index)
 {
-  udp_uri_main_t *um = vnet_get_udp_main ();
-  pool_put_index (um->udp_sessions[my_thread_index], connection_index);
+  udp_main_t *um = vnet_get_udp_main ();
+  pool_put_index (um->connections[my_thread_index], connection_index);
 }
 
 u8 *
-format_udp_session_ip4 (u8 * s, va_list * args)
+format_udp_session (u8 * s, va_list * args)
 {
   u32 uci = va_arg (*args, u32);
   u32 thread_index = va_arg (*args, u32);
-  udp_connection_t *u4;
+  udp_connection_t *uc;
 
-  u4 = udp_connection_get (uci, thread_index);
+  uc = udp_connection_get (uci, thread_index);
 
-  s = format (s, "[%s] %U:%d->%U:%d", "udp", format_ip4_address,
-	      &u4->c_lcl_ip4, clib_net_to_host_u16 (u4->c_lcl_port),
-	      format_ip4_address, &u4->c_rmt_ip4,
-	      clib_net_to_host_u16 (u4->c_rmt_port));
+  if (uc->c_is_ip4)
+    s = format (s, "[%s] %U:%d->%U:%d", "udp", format_ip4_address,
+	        &uc->c_lcl_ip4, clib_net_to_host_u16 (uc->c_lcl_port),
+	        format_ip4_address, &uc->c_rmt_ip4,
+	        clib_net_to_host_u16 (uc->c_rmt_port));
+  else
+    s = format (s, "[%s] %U:%d->%U:%d", "udp", format_ip6_address,
+	        &uc->c_lcl_ip6, clib_net_to_host_u16 (uc->c_lcl_port),
+	        format_ip6_address, &uc->c_rmt_ip6,
+	        clib_net_to_host_u16 (uc->c_rmt_port));
   return s;
 }
 
 u8 *
-format_udp_session_ip6 (u8 * s, va_list * args)
-{
-  u32 uci = va_arg (*args, u32);
-  u32 thread_index = va_arg (*args, u32);
-  udp_connection_t *tc = udp_connection_get (uci, thread_index);
-  s = format (s, "[%s] %U:%d->%U:%d", "udp", format_ip6_address,
-	      &tc->c_lcl_ip6, clib_net_to_host_u16 (tc->c_lcl_port),
-	      format_ip6_address, &tc->c_rmt_ip6,
-	      clib_net_to_host_u16 (tc->c_rmt_port));
-  return s;
-}
-
-u8 *
-format_udp_listener_session_ip4 (u8 * s, va_list * args)
+format_udp_listener_session (u8 * s, va_list * args)
 {
   u32 tci = va_arg (*args, u32);
-  udp_connection_t *tc = udp_listener_get (tci);
-  s = format (s, "[%s] %U:%d->%U:%d", "udp", format_ip4_address,
-	      &tc->c_lcl_ip4, clib_net_to_host_u16 (tc->c_lcl_port),
-	      format_ip4_address, &tc->c_rmt_ip4,
-	      clib_net_to_host_u16 (tc->c_rmt_port));
-  return s;
-}
-
-u8 *
-format_udp_listener_session_ip6 (u8 * s, va_list * args)
-{
-  u32 tci = va_arg (*args, u32);
-  udp_connection_t *tc = udp_listener_get (tci);
-  s = format (s, "[%s] %U:%d->%U:%d", "udp", format_ip6_address,
-	      &tc->c_lcl_ip6, clib_net_to_host_u16 (tc->c_lcl_port),
-	      format_ip6_address, &tc->c_rmt_ip6,
-	      clib_net_to_host_u16 (tc->c_rmt_port));
+  udp_connection_t *uc = udp_listener_get (tci);
+  if (uc->c_is_ip4)
+    s = format (s, "[%s] %U:%d->%U:%d", "udp", format_ip4_address,
+	        &uc->c_lcl_ip4, clib_net_to_host_u16 (uc->c_lcl_port),
+	        format_ip4_address, &uc->c_rmt_ip4,
+	        clib_net_to_host_u16 (uc->c_rmt_port));
+  else
+    s = format (s, "[%s] %U:%d->%U:%d", "udp", format_ip6_address,
+	        &uc->c_lcl_ip6, clib_net_to_host_u16 (uc->c_lcl_port),
+	        format_ip6_address, &uc->c_rmt_ip6,
+	        clib_net_to_host_u16 (uc->c_rmt_port));
   return s;
 }
 
 u16
-udp_send_mss_uri (transport_connection_t * t)
+udp_send_mss (transport_connection_t * t)
 {
   /* TODO figure out MTU of output interface */
-  return 400;
+  return 1460;
 }
 
 u32
-udp_send_space_uri (transport_connection_t * t)
+udp_send_space (transport_connection_t * t)
 {
   /* No constraint on TX window */
   return ~0;
 }
 
-int
-udp_open_connection (transport_endpoint_t * tep)
+udp_connection_t *
+udp_half_open_connection_new (void)
 {
-  clib_warning ("Not implemented");
+  udp_main_t *um = vnet_get_udp_main ();
+  udp_connection_t *tc = 0;
+  ASSERT (vlib_get_thread_index () == 0);
+  pool_get (um->half_open_connections, tc);
+  memset (tc, 0, sizeof (*tc));
+  tc->c_c_index = tc - um->half_open_connections;
+  return tc;
+}
+
+int
+udp_open_connection (transport_endpoint_t * rmt)
+{
+  udp_main_t *um = vnet_get_udp_main ();
+  udp_connection_t *uc;
+  ip46_address_t lcl_addr;
+  u16 lcl_port;
+
+  if (transport_alloc_local_endpoint (TRANSPORT_PROTO_UDP, rmt, &lcl_addr,
+	                              &lcl_port))
+    return -1;
+
+  clib_spinlock_lock_if_init (&um->half_open_lock);
+  uc = udp_half_open_connection_new ();
+  ip_copy (&uc->c_rmt_ip, &rmt->ip, rmt->is_ip4);
+  uc->c_rmt_port = rmt->port;
+  uc->c_lcl_port = clib_host_to_net_u16 (lcl_port);
+  uc->c_is_ip4 = rmt->is_ip4;
+  uc->c_proto = TRANSPORT_PROTO_UDP;
+  uc->c_fib_index = rmt->fib_index;
+  clib_spinlock_unlock_if_init (&um->half_open_lock);
   return 0;
 }
 
 /* *INDENT-OFF* */
-const static transport_proto_vft_t udp4_proto = {
-  .bind = udp_session_bind_ip4,
+const static transport_proto_vft_t udp_proto = {
+  .bind = udp_session_bind,
   .open = udp_open_connection,
-  .unbind = udp_session_unbind_ip4,
+  .unbind = udp_session_unbind,
   .push_header = udp_push_header,
   .get_connection = udp_session_get,
   .get_listener = udp_session_get_listener,
   .close = udp_session_close,
-  .send_mss = udp_send_mss_uri,
-  .send_space = udp_send_space_uri,
-  .format_connection = format_udp_session_ip4,
-  .format_listener = format_udp_listener_session_ip4
-};
-
-const static transport_proto_vft_t udp6_proto = {
-  .bind = udp_session_bind_ip6,
-  .open = udp_open_connection,
-  .unbind = udp_session_unbind_ip6,
-  .push_header = udp_push_header,
-  .get_connection = udp_session_get,
-  .get_listener = udp_session_get_listener,
-  .close = udp_session_close,
-  .send_mss = udp_send_mss_uri,
-  .send_space = udp_send_space_uri,
-  .format_connection = format_udp_session_ip6,
-  .format_listener = format_udp_listener_session_ip6
+  .send_mss = udp_send_mss,
+  .send_space = udp_send_space,
+  .format_connection = format_udp_session,
+  .format_listener = format_udp_listener_session
 };
 /* *INDENT-ON* */
 
 static clib_error_t *
 udp_init (vlib_main_t * vm)
 {
-  udp_uri_main_t *um = vnet_get_udp_main ();
+  udp_main_t *um = vnet_get_udp_main ();
   ip_main_t *im = &ip_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   u32 num_threads;
   clib_error_t *error = 0;
   ip_protocol_info_t *pi;
-
-  um->vlib_main = vm;
-  um->vnet_main = vnet_get_main ();
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
@@ -318,16 +285,18 @@ udp_init (vlib_main_t * vm)
 
 
   /* Register as transport with URI */
-  session_register_transport (TRANSPORT_PROTO_UDP, 1, &udp4_proto);
-  session_register_transport (TRANSPORT_PROTO_UDP, 0, &udp6_proto);
+  transport_register_protocol (TRANSPORT_PROTO_UDP, 1, &udp_proto);
+  transport_register_protocol (TRANSPORT_PROTO_UDP, 0, &udp_proto);
 
   /*
    * Initialize data structures
    */
 
   num_threads = 1 /* main thread */  + tm->n_threads;
-  vec_validate (um->udp_sessions, num_threads - 1);
+  vec_validate (um->connections, num_threads - 1);
 
+  if (num_threads > 1)
+    clib_spinlock_init (&um->half_open_lock);
   return error;
 }
 
