@@ -694,9 +694,9 @@ vl_api_ip_neighbor_add_del_t_handler (vl_api_ip_neighbor_add_del_t * mp,
 	  vnet_arp_unset_ip4_over_ethernet (vnm, ntohl (mp->sw_if_index), &a);
     }
 
-  BAD_SW_IF_INDEX_LABEL;
-
   stats_dsunlock ();
+
+  BAD_SW_IF_INDEX_LABEL;
   REPLY_MACRO (VL_API_IP_NEIGHBOR_ADD_DEL_REPLY);
 }
 
