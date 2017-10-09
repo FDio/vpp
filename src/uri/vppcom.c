@@ -82,6 +82,12 @@ typedef struct
 
 typedef struct
 {
+  u8 is_ip4;
+  ip46_address_t ip46;
+} vppcom_ip46_t;
+
+typedef struct
+{
   volatile session_state_t state;
 
   svm_fifo_t *server_rx_fifo;
@@ -101,8 +107,8 @@ typedef struct
   u32 wait_cont_idx;
   vppcom_epoll_t vep;
   u32 vrf;
-  u8 is_ip4;
-  u8 ip[16];
+  vppcom_ip46_t lcl_addr;
+  vppcom_ip46_t peer_addr;
   u16 port;
   u8 proto;
   u64 client_queue_address;
@@ -799,8 +805,8 @@ vppcom_send_connect_sock (session_t * session, u32 session_index)
 		  vcm->my_pid, session_index, session_index);
 
   cmp->vrf = session->vrf;
-  cmp->is_ip4 = session->is_ip4;
-  clib_memcpy (cmp->ip, session->ip, sizeof (cmp->ip));
+  cmp->is_ip4 = session->peer_addr.is_ip4;
+  clib_memcpy (cmp->ip, &session->peer_addr.ip46, sizeof (cmp->ip));
   cmp->port = session->port;
   cmp->proto = session->proto;
   clib_memcpy (cmp->options, session->options, sizeof (cmp->options));
@@ -1010,8 +1016,9 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->is_cut_thru = 0;
   session->is_server = 1;
   session->port = ntohs (mp->port);
-  session->is_ip4 = mp->is_ip4;
-  clib_memcpy (session->ip, mp->ip, sizeof (session->ip));
+  session->peer_addr.is_ip4 = mp->is_ip4;
+  clib_memcpy (&session->peer_addr.ip46, mp->ip,
+	       sizeof (session->peer_addr.ip46));
 
   /* Add it to lookup table */
   hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
@@ -1126,8 +1133,10 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   session->client_queue_address = mp->client_queue_address;
   session->is_cut_thru = 1;
   session->is_server = 1;
-  session->is_ip4 = mp->is_ip4;
   session->port = mp->port;
+  session->peer_addr.is_ip4 = mp->is_ip4;
+  clib_memcpy (&session->peer_addr.ip46, mp->ip,
+	       sizeof (session->peer_addr.ip46));
   {
     void *oldheap;
     ssvm_shared_header_t *sh = seg->ssvm.sh;
@@ -1141,7 +1150,6 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
     ssvm_pop_heap (oldheap);
     ssvm_unlock_non_recursive (sh);
   }
-  clib_memcpy (session->ip, mp->ip, sizeof (session->ip));
 
   session->state = STATE_ACCEPT;
   if (VPPCOM_DEBUG > 1)
@@ -1189,8 +1197,8 @@ vppcom_send_bind_sock (session_t * session)
   bmp->client_index = vcm->my_client_index;
   bmp->context = htonl (0xfeedface);
   bmp->vrf = session->vrf;
-  bmp->is_ip4 = session->is_ip4;
-  clib_memcpy (bmp->ip, session->ip, sizeof (bmp->ip));
+  bmp->is_ip4 = session->lcl_addr.is_ip4;
+  clib_memcpy (bmp->ip, &session->lcl_addr.ip46, sizeof (bmp->ip));
   bmp->port = session->port;
   bmp->proto = session->proto;
   clib_memcpy (bmp->options, session->options, sizeof (bmp->options));
@@ -1957,7 +1965,6 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
   vppcom_main_t *vcm = &vppcom_main;
   session_t *session = 0;
   int rv;
-  ip46_address_t *ip46;
 
   if (!ep || !ep->ip)
     return VPPCOM_EINVAL;
@@ -1977,10 +1984,8 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
     clib_warning ("[%d] sid %d", vcm->my_pid, session_index);
 
   session->vrf = ep->vrf;
-  session->is_ip4 = ep->is_ip4;
-  memset (session->ip, 0, sizeof (session->ip));
-  ip46 = (ip46_address_t *) session->ip;
-  *ip46 = to_ip46 (!ep->is_ip4, ep->ip);
+  session->lcl_addr.is_ip4 = ep->is_ip4;
+  session->lcl_addr.ip46 = to_ip46 (!ep->is_ip4, ep->ip);
   session->port = ep->port;
 
   clib_spinlock_unlock (&vcm->sessions_lockp);
@@ -2102,7 +2107,8 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
   clib_fifo_sub1 (vcm->client_session_index_fifo, client_session_index);
   rv = vppcom_session_at_index (client_session_index, &client_session);
   ASSERT (rv == VPPCOM_OK);
-  ASSERT (client_session->is_ip4 == listen_session->is_ip4);
+  ASSERT (client_session->peer_addr.is_ip4 ==
+	  listen_session->lcl_addr.is_ip4);
 
   if (VPPCOM_DEBUG > 0)
     clib_warning ("[%d] Got a request: client sid %d", vcm->my_pid,
@@ -2110,12 +2116,14 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 
   ep->vrf = client_session->vrf;
   ep->is_cut_thru = client_session->is_cut_thru;
-  ep->is_ip4 = client_session->is_ip4;
+  ep->is_ip4 = client_session->peer_addr.is_ip4;
   ep->port = client_session->port;
-  if (client_session->is_ip4)
-    clib_memcpy (ep->ip, client_session->ip, sizeof (ip4_address_t));
+  if (client_session->peer_addr.is_ip4)
+    clib_memcpy (ep->ip, &client_session->peer_addr.ip46.ip4,
+		 sizeof (ip4_address_t));
   else
-    clib_memcpy (ep->ip, client_session->ip, sizeof (ip6_address_t));
+    clib_memcpy (ep->ip, &client_session->peer_addr.ip46.ip6,
+		 sizeof (ip6_address_t));
   clib_spinlock_unlock (&vcm->sessions_lockp);
   return (int) client_session_index;
 }
@@ -2126,7 +2134,6 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
   vppcom_main_t *vcm = &vppcom_main;
   session_t *session = 0;
   int rv;
-  ip46_address_t *ip46;
 
   clib_spinlock_lock (&vcm->sessions_lockp);
   rv = vppcom_session_at_index (session_index, &session);
@@ -2149,16 +2156,15 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
     }
 
   session->vrf = server_ep->vrf;
-  session->is_ip4 = server_ep->is_ip4;
-  memset (session->ip, 0, sizeof (session->ip));
-  ip46 = (ip46_address_t *) session->ip;
-  *ip46 = to_ip46 (!server_ep->is_ip4, server_ep->ip);
+  session->peer_addr.is_ip4 = server_ep->is_ip4;
+  session->peer_addr.ip46 = to_ip46 (!server_ep->is_ip4, server_ep->ip);
   session->port = server_ep->port;
 
   if (VPPCOM_DEBUG > 0)
     {
       u8 *ip_str = format (0, "%U", format_ip46_address,
-			   &session->ip, session->is_ip4);
+			   &session->peer_addr.ip46,
+			   session->peer_addr.is_ip4);
       clib_warning ("[%d] connect sid %d to %s server port %d",
 		    vcm->my_pid, session_index, ip_str,
 		    clib_net_to_host_u16 (session->port));
@@ -3020,6 +3026,91 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
     }
 done:
   return (rv != VPPCOM_OK) ? rv : num_ev;
+}
+
+int
+vppcom_session_attr (uint32_t session_index, uint32_t op,
+		     void *buffer, uint32_t * buflen)
+{
+  vppcom_main_t *vcm = &vppcom_main;
+  session_t *session;
+  int rv = VPPCOM_OK;
+  u32 *flags = buffer;
+  vppcom_ip46_t *vcl_addr = buffer;
+
+  VCL_LOCK_AND_GET_SESSION (session_index, &session);
+  switch (op)
+    {
+    case VPPCOM_ATTR_GET_NREAD:
+      rv = vppcom_session_read_ready (session, session_index);
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("VPPCOM_ATTR_GET_NREAD: nread = %d", rv);
+
+      break;
+
+    case VPPCOM_ATTR_PEEK_NREAD:
+      /* TBD */
+      break;
+
+    case VPPCOM_ATTR_GET_FLAGS:
+      if (buffer && buflen && (*buflen >= sizeof (*flags)))
+	{
+	  *flags = O_RDWR | ((session->is_nonblocking) ? O_NONBLOCK : 0);
+	  *buflen = sizeof (*flags);
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("VPPCOM_ATTR_GET_FLAGS: flags = 0x%08x, "
+			  "is_nonblocking = %u", *flags,
+			  session->is_nonblocking);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_SET_FLAGS:
+      if (buffer && buflen && (*buflen >= sizeof (*flags)))
+	{
+	  session->is_nonblocking = (*flags & O_NONBLOCK) ? 1 : 0;
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("VPPCOM_ATTR_SET_FLAGS: flags = 0x%08x, "
+			  "is_nonblocking = %u", *flags,
+			  session->is_nonblocking);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_GET_PEER_ADDR:
+      if (buffer && buflen && (*buflen >= sizeof (*vcl_addr)))
+	{
+	  *vcl_addr = session->peer_addr;
+	  *buflen = sizeof (*vcl_addr);
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("VPPCOM_ATTR_GET_PEER_ADDR: is_ip4 = %u, "
+			  "addr = %U", vcl_addr->is_ip4, format_ip46_address,
+			  &vcl_addr->ip46, vcl_addr->is_ip4);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_GET_LCL_ADDR:
+      if (buffer && buflen && (*buflen >= sizeof (*vcl_addr)))
+	{
+	  *vcl_addr = session->lcl_addr;
+	  *buflen = sizeof (*vcl_addr);
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("VPPCOM_ATTR_GET_LCL_ADDR: is_ip4 = %u, "
+			  "addr = %U", vcl_addr->is_ip4, format_ip46_address,
+			  &vcl_addr->ip46, vcl_addr->is_ip4);
+	}
+      else
+	rv = VPPCOM_EINVAL;
+      break;
+    }
+
+done:
+  clib_spinlock_unlock (&vcm->sessions_lockp);
+  return rv;
 }
 
   /*
