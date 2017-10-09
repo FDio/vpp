@@ -1,0 +1,17 @@
+*.m4
+autom4te.cache
+compile
+config.*
+configure
+depcomp
+install-sh
+ltmain.sh
+missing
+Makefile.in
+Makefile
+*.o
+*.l[oa]*
+*.Plo
+*.dirstamp
+*.so*
+libtool

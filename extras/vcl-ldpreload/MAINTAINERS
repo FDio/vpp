@@ -1,0 +1,30 @@
+Descriptions of section entries:
+
+	M: Maintainer Full name and E-mail address: Full Name <address@domain>
+	   One maintainer per line.  Multiple M: lines acceptable.
+	F: Files and directories with wildcard patterns.
+	   A trailing slash includes all files and subdirectory files.
+	   F:	drivers/net/	all files in and below drivers/net
+	   F:	drivers/net/*	all files in drivers/net, but not below
+	   One pattern per line.  Multiple F: lines acceptable.
+	C: Single line comment related to current section.
+
+		-----------------------------------
+
+Build System
+M:	Shrinivasan Ganapathy <shganapa@cisco.com>
+F:	Makefile
+F:	src/*.ac
+F:	src/*.am
+F:	src/*.mk
+F:	src/m4/
+
+VCL-LDPRELOAD Library
+M:	Shrinivasan Ganapathy <shganapa@cisco.com>
+F:	src/libvcl-ldpreload/
+
+
+THE REST
+C:	Contact vppsb-dev Mailing List <vppsb-dev@lists.fd.io>
+F:	*
+F:	*/
