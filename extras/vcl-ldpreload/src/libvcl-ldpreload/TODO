@@ -1,0 +1,7 @@
+VCL-LDPRELOAD Library project plan.
+
+1. [shganapa] LD_PRELOAD iperf3 application. 
+
+
+NOTES:
+1. Not all POSIX socket API's are LD_PRELOADED.
