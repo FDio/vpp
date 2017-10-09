@@ -82,6 +82,7 @@ RPM_DEPENDS  = redhat-lsb glibc-static java-1.8.0-openjdk-devel yum-utils
 RPM_DEPENDS += apr-devel
 RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check
+RPM_DEPENDS += check-devel subunit subunit-devel
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS += openssl-devel
 	RPM_DEPENDS += python-devel
