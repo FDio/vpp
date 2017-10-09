@@ -22,11 +22,23 @@
 #include <time.h>
 #include <ctype.h>
 #include <uri/sock_test.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define SOCK_SERVER_USE_EPOLL 1
+#define VPPCOM_SESSION_ATTR_UNIT_TEST 0
 
 #if SOCK_SERVER_USE_EPOLL
 #include <sys/epoll.h>
+#endif
+
+#ifdef VCL_TEST
+#if VPPCOM_SESSION_ATTR_UNIT_TEST
+#define BUFLEN  sizeof (uint64_t) * 16
+uint64_t buffer[16];
+uint32_t buflen = BUFLEN;
+uint32_t *flags = (uint32_t *) buffer;
+#endif
 #endif
 
 typedef struct
@@ -411,6 +423,40 @@ main (int argc, char **argv)
       errno = -rv;
       rv = -1;
     }
+
+#if VPPCOM_SESSION_ATTR_UNIT_TEST
+  buflen = BUFLEN;
+  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_FLAGS,
+			   buffer, &buflen) != VPPCOM_OK)
+    printf ("\nGET_FLAGS0: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
+  buflen = BUFLEN;
+  *flags = O_RDWR | O_NONBLOCK;
+  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_SET_FLAGS,
+			   buffer, &buflen) != VPPCOM_OK)
+    printf ("\nSET_FLAGS1: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
+  buflen = BUFLEN;
+  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_FLAGS,
+			   buffer, &buflen) != VPPCOM_OK)
+    printf ("\nGET_FLAGS1:Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
+  *flags = O_RDWR;
+  buflen = BUFLEN;
+  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_SET_FLAGS,
+			   buffer, &buflen) != VPPCOM_OK)
+    printf ("\nSET_FLAGS2: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
+  buflen = BUFLEN;
+  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_FLAGS,
+			   buffer, &buflen) != VPPCOM_OK)
+    printf ("\nGET_FLAGS2:Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
+
+  buflen = BUFLEN;
+  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_PEER_ADDR,
+			   buffer, &buflen) != VPPCOM_OK)
+    printf ("\nGET_PEER_ADDR: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
+  buflen = BUFLEN;
+  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_LCL_ADDR,
+			   buffer, &buflen) != VPPCOM_OK)
+    printf ("\nGET_LCL_ADDR: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
+#endif
 #else
   rv =
     bind (ssm->listen_fd, (struct sockaddr *) &servaddr, sizeof (servaddr));
@@ -561,6 +607,24 @@ main (int argc, char **argv)
 	  if (EPOLLIN & ssm->wait_events[i].events)
 #endif
 	    {
+#ifdef VCL_TEST
+#if VPPCOM_SESSION_ATTR_UNIT_TEST
+	      buflen = BUFLEN;
+	      if (vppcom_session_attr (client_fd, VPPCOM_ATTR_GET_NREAD,
+				       buffer, &buflen) < VPPCOM_OK)
+		printf ("\nNREAD: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
+	      if (vppcom_session_attr (client_fd,
+				       VPPCOM_ATTR_GET_PEER_ADDR,
+				       buffer, &buflen) != VPPCOM_OK)
+		printf ("\nGET_PEER_ADDR: Oh no, Mr. "
+			"Biiiiiiiiiiiilllllll ! ! ! !\n");
+	      buflen = BUFLEN;
+	      if (vppcom_session_attr (client_fd, VPPCOM_ATTR_GET_LCL_ADDR,
+				       buffer, &buflen) != VPPCOM_OK)
+		printf ("\nGET_LCL_ADDR: Oh no, Mr. "
+			"Biiiiiiiiiiiilllllll ! ! ! !\n");
+#endif
+#endif
 	      rx_bytes = sock_test_read (client_fd, conn->buf,
 					 conn->buf_size, &conn->stats);
 	      if (rx_bytes > 0)
