@@ -46,6 +46,14 @@ typedef struct lldp_intf
   /* Local info */
   u8 *port_desc;
 
+  /* management ipv4 address */
+  u8 *mgmt_ip4;
+
+  /* management ipv6 address */
+  u8 *mgmt_ip6;
+
+  /* management object identifier */
+  u8 *mgmt_oid;
 } lldp_intf_t;
 
 typedef struct
