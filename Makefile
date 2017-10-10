@@ -272,7 +272,7 @@ else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
 	@sudo -E zypper -n update -y
 	@sudo -E zypper -n install -y $(RPM_SUSE_DEPENDS)
 else
-	$(error "This option currently works only on Ubuntu, Debian or Centos systems")
+	$(error "This option currently works only on Ubuntu, Debian, Centos or openSUSE systems")
 endif
 
 define make
