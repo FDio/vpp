@@ -427,7 +427,7 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
   vlib_physmem_region_index_t pri;
   u8 *pool_name;
   unsigned elt_size;
-  u32 size;
+  u32 size, obj_size;
   i32 i, ret;
 
   vec_validate_aligned (dm->pktmbuf_pools, socket_id, CLIB_CACHE_LINE_BYTES);
@@ -442,7 +442,8 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
     VLIB_BUFFER_HDR_SIZE /* priv size */  +
     VLIB_BUFFER_PRE_DATA_SIZE + VLIB_BUFFER_DATA_SIZE;	/*data room size */
 
-  size = rte_mempool_xmem_size (num_mbufs, elt_size, 21);
+  obj_size = rte_mempool_calc_obj_size (elt_size, 0, 0);
+  size = rte_mempool_xmem_size (num_mbufs, obj_size, 21);
 
   clib_error_t *error = 0;
   error =
