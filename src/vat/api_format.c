@@ -2179,6 +2179,39 @@ static void vl_api_memfd_segment_create_reply_t_handler_json
   clib_warning ("no");
 }
 
+static void vl_api_dns_resolve_name_reply_t_handler
+  (vl_api_dns_resolve_name_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+
+      if (retval == 0)
+	{
+	  if (mp->ip4_set)
+	    clib_warning ("ip4 address %U", format_ip4_address,
+			  (ip4_address_t *) mp->ip4_address);
+	  if (mp->ip6_set)
+	    clib_warning ("ip6 address %U", format_ip6_address,
+			  (ip6_address_t *) mp->ip6_address);
+	}
+      else
+	clib_warning ("retval %d", retval);
+    }
+}
+
+static void vl_api_dns_resolve_name_reply_t_handler_json
+  (vl_api_dns_resolve_name_reply_t * mp)
+{
+  clib_warning ("no");
+}
 
 static void vl_api_ip_address_details_t_handler
   (vl_api_ip_address_details_t * mp)
@@ -5066,8 +5099,8 @@ _(want_stats_reply)					\
 _(cop_interface_enable_disable_reply)			\
 _(cop_whitelist_enable_disable_reply)                   \
 _(sw_interface_clear_stats_reply)                       \
-_(ioam_enable_reply)                              \
-_(ioam_disable_reply)                              \
+_(ioam_enable_reply)                                    \
+_(ioam_disable_reply)                                   \
 _(one_add_del_locator_reply)                            \
 _(one_add_del_local_eid_reply)                          \
 _(one_add_del_remote_mapping_reply)                     \
@@ -5117,7 +5150,9 @@ _(p2p_ethernet_del_reply)                               \
 _(lldp_config_reply)                                    \
 _(sw_interface_set_lldp_reply)				\
 _(tcp_configure_src_addresses_reply)			\
-_(app_namespace_add_del_reply)
+_(app_namespace_add_del_reply)                          \
+_(dns_enable_disable_reply)                             \
+_(dns_name_server_add_del_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -5422,7 +5457,10 @@ _(P2P_ETHERNET_DEL_REPLY, p2p_ethernet_del_reply)                       \
 _(LLDP_CONFIG_REPLY, lldp_config_reply)                                 \
 _(SW_INTERFACE_SET_LLDP_REPLY, sw_interface_set_lldp_reply)		\
 _(TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)	\
-_(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)
+_(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
+_(DNS_ENABLE_DISABLE_REPLY, dns_enable_disable_reply)                   \
+_(DNS_NAME_SERVER_ADD_DEL_REPLY, dns_name_server_add_del_reply)		\
+_(DNS_RESOLVE_NAME_REPLY, dns_resolve_name_reply)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)                               \
@@ -5432,7 +5470,7 @@ _(VNET_IP4_FIB_COUNTERS, vnet_ip4_fib_counters)                         \
 _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
 _(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)                         \
 _(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters)				\
-_(MEMFD_SEGMENT_CREATE_REPLY, memfd_segment_create_reply)
+_(MEMFD_SEGMENT_CREATE_REPLY, memfd_segment_create_reply)               \
 
 typedef struct
 {
@@ -20831,6 +20869,132 @@ api_memfd_segment_create (vat_main_t * vam)
 }
 
 static int
+api_dns_enable_disable (vat_main_t * vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_dns_enable_disable_t *mp;
+  u8 enable_disable = 1;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "disable"))
+	enable_disable = 0;
+      if (unformat (line_input, "enable"))
+	enable_disable = 1;
+      else
+	break;
+    }
+
+  /* Construct the API message */
+  M (DNS_ENABLE_DISABLE, mp);
+  mp->enable = enable_disable;
+
+  /* send it... */
+  S (mp);
+  /* Wait for the reply */
+  W (ret);
+  return ret;
+}
+
+static int
+api_dns_resolve_name (vat_main_t * vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_dns_resolve_name_t *mp;
+  u8 *name = 0;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%s", &name))
+	;
+      else
+	break;
+    }
+
+  if (vec_len (name) > 127)
+    {
+      errmsg ("name too long");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (DNS_RESOLVE_NAME, mp);
+  memcpy (mp->name, name, vec_len (name));
+  vec_free (name);
+
+  /* send it... */
+  S (mp);
+  /* Wait for the reply */
+  W (ret);
+  return ret;
+}
+
+static int
+api_dns_name_server_add_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_dns_name_server_add_del_t *mp;
+  u8 is_add = 1;
+  ip6_address_t ip6_server;
+  ip4_address_t ip4_server;
+  int ip6_set = 0;
+  int ip4_set = 0;
+  int ret = 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", unformat_ip6_address, &ip6_server))
+	ip6_set = 1;
+      else if (unformat (i, "%U", unformat_ip4_address, &ip4_server))
+	ip4_set = 1;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (ip4_set && ip6_set)
+    {
+      errmsg ("Only one server address allowed per message");
+      return -99;
+    }
+  if ((ip4_set + ip6_set) == 0)
+    {
+      errmsg ("Server address required");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (DNS_NAME_SERVER_ADD_DEL, mp);
+
+  if (ip6_set)
+    {
+      memcpy (mp->server_address, &ip6_server, sizeof (ip6_address_t));
+      mp->is_ip6 = 1;
+    }
+  else
+    {
+      memcpy (mp->server_address, &ip4_server, sizeof (ip4_address_t));
+      mp->is_ip6 = 0;
+    }
+
+  mp->is_add = is_add;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply, return good/bad news  */
+  W (ret);
+  return ret;
+}
+
+
+static int
 q_or_quit (vat_main_t * vam)
 {
 #if VPP_API_TEST_BUILTIN == 0
@@ -21621,6 +21785,9 @@ _(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>]\n
 _(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
 _(memfd_segment_create,"size <nnn>")					\
 _(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
+_(dns_enable_disable, "[enable][disable]")				\
+_(dns_name_server_add_del, "<ip-address> [del]")			\
+_(dns_resolve_name, "<hostname>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
