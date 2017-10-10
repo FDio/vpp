@@ -113,9 +113,9 @@ else ifeq ($(findstring y,$(AESNI)),y)
 	RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
 endif
 
-RPM_SUSE_DEPENDS = autoconf automake bison ccache chrpath clang3_8 distribution-release gcc6 glibc-devel-static
+RPM_SUSE_DEPENDS = autoconf automake bison ccache chrpath clang distribution-release gcc6 glibc-devel-static
 RPM_SUSE_DEPENDS += java-1_8_0-openjdk-devel indent libopenssl-devel libtool make openssl-devel
-RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow nasm libnuma-devel
+RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow nasm libnuma-devel rpm-build
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
@@ -269,10 +269,10 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
 else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
-	@sudo -E zypper -n update -y
-	@sudo -E zypper -n install -y $(RPM_SUSE_DEPENDS)
+	@sudo -E zypper refresh
+	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
 else
-	$(error "This option currently works only on Ubuntu, Debian or Centos systems")
+	$(error "This option currently works only on Ubuntu, Debian, Centos or openSUSE systems")
 endif
 
 define make
