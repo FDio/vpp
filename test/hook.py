@@ -62,7 +62,7 @@ class PollHook(Hook):
 
     def on_crash(self, core_path):
         if self.testcase.debug_core:
-            if not spawn_gdb(self.testcase.vpp_bin, core_path):
+            if not spawn_gdb(self.testcase.vpp_bin, core_path, self.logger):
                 self.logger.error(
                     "Debugger '%s' does not exist or is not an executable.." %
                     gdb_path)

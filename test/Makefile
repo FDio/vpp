@@ -19,6 +19,8 @@ ifeq ($(DEBUG),gdb)
 FORCE_FOREGROUND=1
 else ifeq ($(DEBUG),gdbserver)
 FORCE_FOREGROUND=1
+else ifeq ($(DEBUG),core)
+FORCE_FOREGROUND=1
 else
 FORCE_FOREGROUND=0
 endif
