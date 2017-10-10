@@ -113,7 +113,7 @@ else ifeq ($(findstring y,$(AESNI)),y)
 	RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
 endif
 
-RPM_SUSE_DEPENDS = autoconf automake bison ccache chrpath clang distribution-release gcc6 glibc-devel-static
+RPM_SUSE_DEPENDS = autoconf automake bison ccache check-devel chrpath clang distribution-release gcc6 glibc-devel-static
 RPM_SUSE_DEPENDS += java-1_8_0-openjdk-devel indent libopenssl-devel libtool make openssl-devel
 RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow nasm libnuma-devel rpm-build
 
