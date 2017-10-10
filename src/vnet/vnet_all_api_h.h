@@ -60,6 +60,7 @@
 #include <vnet/policer/policer.api.h>
 #include <vnet/ethernet/p2p_ethernet.api.h>
 #include <vnet/tcp/tcp.api.h>
+#include <vnet/dns/dns.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON
