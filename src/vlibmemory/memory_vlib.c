@@ -498,7 +498,7 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
       rmp->api_versions[i].major = htonl (vl->major);
       rmp->api_versions[i].minor = htonl (vl->minor);
       rmp->api_versions[i].patch = htonl (vl->patch);
-      strncpy ((char *) rmp->api_versions[i].name, vl->name, 64);
+      strncpy ((char *) rmp->api_versions[i].name, vl->name, 64 - 1);
     }
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);

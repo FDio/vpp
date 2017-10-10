@@ -921,7 +921,7 @@ vl_msg_api_add_version (api_main_t * am, const char *string,
 {
   api_version_t version = {.major = major,.minor = minor,.patch = patch };
   ASSERT (strlen (string) < 64);
-  strncpy (version.name, string, 64);
+  strncpy (version.name, string, 64 - 1);
   vec_add1 (am->api_version_list, version);
 }
 
