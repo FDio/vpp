@@ -56,8 +56,8 @@ vl_api_lldp_config_t_handler (vl_api_lldp_config_t * mp)
   vec_validate (sys_name, strlen ((char *) mp->system_name) - 1);
   strncpy ((char *) sys_name, (char *) mp->system_name, vec_len (sys_name));
 
-  if (lldp_cfg_set (&sys_name, ntohl (mp->tx_hold),
-		    ntohl (mp->tx_interval)) != lldp_ok)
+  if (lldp_cfg_set (&sys_name, ntohl (mp->tx_hold), ntohl (mp->tx_interval))
+      != lldp_ok)
     {
       vec_free (sys_name);
       rv = VNET_API_ERROR_INVALID_VALUE;
@@ -71,17 +71,46 @@ vl_api_sw_interface_set_lldp_t_handler (vl_api_sw_interface_set_lldp_t * mp)
 {
   vl_api_sw_interface_set_lldp_reply_t *rmp;
   int rv = 0;
-  u8 *port_desc = 0;
+  u8 *port_desc = 0, *mgmt_ip4 = 0, *mgmt_ip6 = 0, *mgmt_oid = 0;
+  u8 no_data[256];
 
-  vec_validate (port_desc, strlen ((char *) mp->port_desc) - 1);
-  strncpy ((char *) port_desc, (char *) mp->port_desc, vec_len (port_desc));
+  memset (no_data, 0, 256);
+
+  if (memcmp (mp->port_desc, no_data, strlen ((char *) mp->port_desc)) != 0)
+    {
+      vec_validate (port_desc, strlen ((char *) mp->port_desc) - 1);
+      strncpy ((char *) port_desc, (char *) mp->port_desc,
+	       vec_len (port_desc));
+    }
+
+  if (memcmp (mp->mgmt_ip4, no_data, sizeof (mp->mgmt_ip4)) != 0)
+    {
+      vec_validate (mgmt_ip4, sizeof (mp->mgmt_ip4) - 1);
+      clib_memcpy (mgmt_ip4, mp->mgmt_ip4, vec_len (mgmt_ip4));
+    }
+
+  if (memcmp (mp->mgmt_ip6, no_data, sizeof (mp->mgmt_ip6)) != 0)
+    {
+      vec_validate (mgmt_ip6, sizeof (mp->mgmt_ip6) - 1);
+      clib_memcpy (mgmt_ip6, mp->mgmt_ip6, vec_len (mgmt_ip6));
+    }
+
+  if (memcmp (mp->mgmt_oid, no_data, strlen ((char *) mp->mgmt_oid)) != 0)
+    {
+      vec_validate (mgmt_oid, strlen ((char *) mp->mgmt_oid) - 1);
+      strncpy ((char *) mgmt_oid, (char *) mp->mgmt_oid, vec_len (mgmt_oid));
+    }
 
   VALIDATE_SW_IF_INDEX (mp);
 
   if (lldp_cfg_intf_set (ntohl (mp->sw_if_index), &port_desc,
+			 &mgmt_ip4, &mgmt_ip6, &mgmt_oid,
 			 mp->enable) != lldp_ok)
     {
       vec_free (port_desc);
+      vec_free (mgmt_ip4);
+      vec_free (mgmt_ip6);
+      vec_free (mgmt_oid);
       rv = VNET_API_ERROR_INVALID_VALUE;
     }
 
