@@ -269,10 +269,10 @@ else ifneq ("$(wildcard /etc/redhat-release)","")
 	@sudo -E yum install $(CONFIRM) $(RPM_DEPENDS)
 	@sudo -E debuginfo-install $(CONFIRM) glibc openssl-libs zlib
 else ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
-	@sudo -E zypper -n update -y
-	@sudo -E zypper -n install -y $(RPM_SUSE_DEPENDS)
+	@sudo -E zypper update -y
+	@sudo -E zypper install -y $(RPM_SUSE_DEPENDS)
 else
-	$(error "This option currently works only on Ubuntu, Debian or Centos systems")
+	$(error "This option currently works only on Ubuntu, Debian, Centos or openSUSE systems")
 endif
 
 define make
