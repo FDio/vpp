@@ -122,6 +122,14 @@ _(APP_WRONG_NS_SECRET, -129, "Wrong app namespace secret")		\
 _(APP_CONNECT_SCOPE, -130, "Connect scope")				\
 _(APP_ALREADY_ATTACHED, -131, "App already attached")			\
 _(SESSION_REDIRECT, -132, "Redirect failed")				\
+_(ILLEGAL_NAME, -133, "Illegal name")					\
+_(NO_NAME_SERVERS, -134, "No name servers configured")			\
+_(NAME_SERVER_NOT_FOUND, -135, "Name server not found")			\
+_(NAME_RESOLUTION_NOT_ENABLED, -136, "Name resolution not enabled")	\
+_(NAME_SERVER_FORMAT_ERROR, -137, "Server format error (bug!)")		\
+_(NAME_SERVER_NO_SUCH_NAME, -138, "No such name")                       \
+_(NAME_SERVER_NO_ADDRESSES, -139, "No addresses available")		\
+_(NAME_SERVER_NEXT_SERVER, -140, "Retry with new server")
 
 typedef enum
 {

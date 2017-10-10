@@ -665,7 +665,22 @@ vl_msg_api_config (vl_msg_api_msg_config_t * c)
 {
   api_main_t *am = &api_main;
 
-  ASSERT (c->id > 0);
+  /*
+   * This happens during the java core tests if the message
+   * dictionary is missing newly added xxx_reply_t messages.
+   * Should never happen, but since I shot myself in the foot once
+   * this way, I thought I'd make it easy to debug if I ever do
+   * it again... (;-)...
+   */
+  if (c->id == 0)
+    {
+      if (c->name)
+	clib_warning ("Trying to register %s with a NULL msg id!", c->name);
+      else
+	clib_warning ("Trying to register a NULL msg with a NULL msg id!");
+      clib_warning ("Did you forget to call setup_message_id_table?");
+      return;
+    }
 
 #define _(a) vec_validate (am->a, c->id);
   foreach_msg_api_vector;
