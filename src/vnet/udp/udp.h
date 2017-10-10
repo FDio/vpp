@@ -78,6 +78,7 @@ typedef enum
 } udp_error_t;
 
 #define foreach_udp4_dst_port			\
+_ (53, dns)					\
 _ (67, dhcp_to_server)                          \
 _ (68, dhcp_to_client)                          \
 _ (500, ikev2)                                  \
@@ -91,10 +92,12 @@ _ (4789, vxlan)					\
 _ (4789, vxlan6)				\
 _ (4790, VXLAN_GPE)				\
 _ (6633, vpath_3)				\
-_ (6081, geneve)
+_ (6081, geneve)				\
+_ (53053, dns_reply)
 
 
 #define foreach_udp6_dst_port                   \
+_ (53, dns6)					\
 _ (547, dhcpv6_to_server)                       \
 _ (546, dhcpv6_to_client)			\
 _ (2152, GTPU6)					\
@@ -104,7 +107,8 @@ _ (4341, lisp_gpe6)                             \
 _ (4342, lisp_cp6)                          	\
 _ (4790, VXLAN6_GPE)                            \
 _ (6633, vpath6_3)				\
-_ (6081, geneve6)
+_ (6081, geneve6)				\
+_ (53053, dns_reply6)
 
 typedef enum
 {

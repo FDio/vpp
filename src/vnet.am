@@ -813,6 +813,22 @@ nobase_include_HEADERS += 			\
 API_FILES += vnet/span/span.api
 
 ########################################
+# DNS proxy, API
+########################################
+libvnet_la_SOURCES +=				\
+ vnet/dns/dns.c					\
+ vnet/dns/dns.h					\
+ vnet/dns/dns_packet.h				\
+ vnet/dns/reply_node.c				\
+ vnet/dns/resolver_process.c
+
+nobase_include_HEADERS +=			\
+ vnet/dns/dns.api.h				\
+ vnet/dns/dns.h
+
+API_FILES += vnet/dns/dns.api
+
+########################################
 # Packet generator
 ########################################
 
