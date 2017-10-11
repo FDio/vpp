@@ -849,8 +849,9 @@ format_tcp_vars (u8 * s, va_list * args)
   s = format (s, "rtt_seq %u\n", tc->rtt_seq);
   s = format (s, " tsval_recent %u tsval_recent_age %u\n", tc->tsval_recent,
 	      tcp_time_now () - tc->tsval_recent_age);
-  s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
-	      tc);
+  if (tc->state >= TCP_STATE_ESTABLISHED)
+    s = format (s, " scoreboard: %U\n", format_tcp_scoreboard, &tc->sack_sb,
+		tc);
   if (vec_len (tc->snd_sacks))
     s = format (s, " sacks tx: %U\n", format_tcp_sacks, tc);
 
