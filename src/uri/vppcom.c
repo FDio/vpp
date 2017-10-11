@@ -1766,7 +1766,7 @@ vppcom_app_create (char *app_name)
       rv = vppcom_connect_to_vpp (app_name);
       if (rv)
 	{
-	  clib_warning ("[%s] couldn't connect to VPP.", vcm->my_pid);
+	  clib_warning ("[%d] couldn't connect to VPP.", vcm->my_pid);
 	  return rv;
 	}
 
@@ -3105,6 +3105,15 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	}
       else
 	rv = VPPCOM_EINVAL;
+      break;
+
+    case VPPCOM_ATTR_SET_REUSEADDR:
+      break;
+
+    case VPPCOM_ATTR_SET_BROADCAST:
+      break;
+
+    case VPPCOM_ATTR_SET_V6ONLY:
       break;
     }
 
