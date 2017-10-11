@@ -570,8 +570,15 @@ tcp_init_snd_vars (tcp_connection_t * tc)
 {
   u32 time_now;
 
-  /* Set random initial sequence */
+  /*
+   * We use the time to randomize iss and for setting up the initial
+   * timestamp. Make sure it's updated otherwise syn and ack in the
+   * handshake may make it look as if time has flown in the opposite
+   * direction for us.
+   */
+  tcp_set_time_now (vlib_get_thread_index ());
   time_now = tcp_time_now ();
+
   tc->iss = random_u32 (&time_now);
   tc->snd_una = tc->iss;
   tc->snd_nxt = tc->iss + 1;
