@@ -23,8 +23,6 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 
-#include <linux/virtio_net.h>
-
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ip/ip.h>
@@ -52,6 +50,7 @@ static char *af_packet_tx_func_error_strings[] = {
 #undef _
 };
 
+
 static u8 *
 format_af_packet_device_name (u8 * s, va_list * args)
 {
@@ -76,23 +75,6 @@ format_af_packet_tx_trace (u8 * s, va_list * args)
   s = format (s, "Unimplemented...");
   return s;
 }
-
-
-static_always_inline void
-af_packet_buffer_tx_offload (vlib_buffer_t * b, struct virtio_net_hdr *vhdr)
-{
-  /* For now - just mark the data as valid,
-   * DPDK csums on input, tap presently operates in legacy
-   * compatibility mode where the kernel checksums CSUM_PARTIAL
-   * for it and we have fixed the af_packet input
-   *
-   * In the future, locally originated frames, etc can be made
-   * to fit this convention so that they are not checksummed
-   * unless needed.
-   **/
-  vhdr->flags = VIRTIO_NET_HDR_F_DATA_VALID;
-}
-
 
 static uword
 af_packet_interface_tx (vlib_main_t * vm,
@@ -120,10 +102,6 @@ af_packet_interface_tx (vlib_main_t * vm,
     {
       u32 len;
       u32 offset = 0;
-      if (PREDICT_TRUE ((apm->flags & AF_PACKET_USES_VNET_HEADERS) != 0))
-	{
-	  offset = sizeof (struct virtio_net_hdr);
-	}
       vlib_buffer_t *b0;
       n_left--;
       u32 bi = buffers[0];
@@ -141,12 +119,6 @@ af_packet_interface_tx (vlib_main_t * vm,
       do
 	{
 	  b0 = vlib_get_buffer (vm, bi);
-	  if (PREDICT_TRUE ((apm->flags & AF_PACKET_USES_VNET_HEADERS) != 0))
-	    {
-	      u8 *vh =
-		(u8 *) tph + TPACKET_ALIGN (sizeof (struct tpacket2_hdr));
-	      af_packet_buffer_tx_offload (b0, (struct virtio_net_hdr *) vh);
-	    }
 	  len = b0->current_length;
 	  clib_memcpy ((u8 *) tph +
 		       TPACKET_ALIGN (sizeof (struct tpacket2_hdr)) + offset,
