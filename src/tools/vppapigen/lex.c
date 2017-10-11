@@ -31,6 +31,7 @@
 #include <vppinfra/fifo.h>
 #include <vppinfra/format.h>
 
+extern FILE *yyin;
 FILE *ifp, *ofp, *pythonfp, *jsonfp;
 char *vlib_app_name = "vpp";
 int dump_tree;
@@ -51,13 +52,13 @@ char have_ungetc_char;
 
 static const char *version = "0.1";
 static int the_lexer_linenumber = 1;
-static enum lex_state the_lexer_state = START_STATE;
+//static enum lex_state the_lexer_state = START_STATE;
 
 /*
  * private prototypes
  */
 static void usage (char *);
-static int name_check (const char *, YYSTYPE *);
+int name_check (const char *, YYSTYPE *);
 static int name_compare (const char *, const char *);
 extern int yydebug;
 extern YYSTYPE yylval;
@@ -409,6 +410,7 @@ int main (int argc, char **argv)
     if (show_name) {
         input_filename = show_name;
     }
+    yyin=ifp;
 
     starttime = time (0);
 
@@ -489,6 +491,14 @@ getc_char (FILE *ifp)
     return ((char)(getc(ifp) & 0x7f));
 }
 
+int lex_input_char(FILE* ifp) 
+{
+  char c = getc_char (ifp);
+  if (feof (ifp))
+    return (EOF);
+  return c;
+}
+
 u32 fe (char *fifo)
 {
     return clib_fifo_elts (fifo);
@@ -519,6 +529,9 @@ void autoreply (void *np_arg)
         clib_fifo_add1 (push_input_fifo, s[i]);
 }
 
+extern int yylex_1 (void);
+
+#if 0
 /*
  * yylex (well, yylex_1: The real yylex below does crc-hackery)
  */
@@ -888,6 +901,7 @@ static int yylex_1 (void)
     /* NOTREACHED */
     return (0);
 }
+#endif
 
 /*
  * Parse a token and side-effect input_crc
@@ -1004,7 +1018,7 @@ static struct keytab {
     {"vl_api_version", 	NODE_VERSION},
 };
  
-static int name_check (const char *s, YYSTYPE *token_value)
+int name_check (const char *s, YYSTYPE *token_value)
 {
     enum node_subclass subclass_id;
     int top, bot, mid;
@@ -1081,6 +1095,10 @@ static int name_check (const char *s, YYSTYPE *token_value)
     }
     *token_value = (YYSTYPE) sxerox (s);
     return (NAME);
+}
+
+void set_name_buf(const char* s) {
+  strcpy(namebuf, s);
 }
 
 /*
