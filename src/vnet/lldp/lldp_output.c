@@ -19,6 +19,30 @@
 #include <vnet/lldp/lldp_node.h>
 
 static void
+lldp_build_mgmt_addr_tlv (u8 ** t0p, u8 subtype, u8 addr_len, u8 * addr,
+			  u32 if_index, u8 oid_len, u8 * oid)
+{
+  lldp_tlv_t *t = (lldp_tlv_t *) * t0p;
+
+  lldp_tlv_set_code (t, LLDP_TLV_NAME (mgmt_addr));
+  t->v[0] = addr_len + 1;	/* address string length */
+  t->v[1] = subtype;		/* address subtype */
+  clib_memcpy (&(t->v[2]), addr, addr_len);	/* address */
+  t->v[addr_len + 2] = 2;	/* interface numbering subtype: ifIndex */
+  t->v[addr_len + 3] = (if_index >> 24) & 0xFF;	/* interface number */
+  t->v[addr_len + 4] = (if_index >> 16) & 0xFF;
+  t->v[addr_len + 5] = (if_index >> 8) & 0xFF;
+  t->v[addr_len + 6] = (if_index >> 0) & 0xFF;
+  t->v[addr_len + 7] = oid_len;	/* OID string length */
+
+  if (oid_len > 0)
+    clib_memcpy ((u8 *) & (t->v[addr_len + 8]), oid, oid_len);
+
+  lldp_tlv_set_length (t, addr_len + oid_len + 8);
+  *t0p += STRUCT_SIZE_OF (lldp_tlv_t, head) + addr_len + oid_len + 8;
+}
+
+static void
 lldp_add_chassis_id (const vnet_hw_interface_t * hw, u8 ** t0p)
 {
   lldp_chassis_id_tlv_t *t = (lldp_chassis_id_tlv_t *) * t0p;
@@ -103,6 +127,50 @@ lldp_add_sys_name (const lldp_main_t * lm, u8 ** t0p)
 }
 
 static void
+lldp_add_mgmt_addr (const lldp_intf_t * n, const vnet_hw_interface_t * hw,
+		    u8 ** t0p)
+{
+  const size_t len_ip4 = vec_len (n->mgmt_ip4);
+  const size_t len_ip6 = vec_len (n->mgmt_ip6);
+
+  if (!(len_ip4 | len_ip6))
+    {
+      /*
+         If no management address is configured, the interface port's MAC
+         addressis sent in one TLV.
+       */
+
+      lldp_build_mgmt_addr_tlv (t0p, 1,	/* address subtype: Ipv4 */
+				6,	/* address string lenth */
+				hw->hw_address,	/* address */
+				hw->hw_if_index,	/* if index */
+				vec_len (n->mgmt_oid),	/* OID length */
+				n->mgmt_oid);	/* OID */
+      return;
+    }
+
+  if (len_ip4)
+    {
+      lldp_build_mgmt_addr_tlv (t0p, 1,	/* address subtype: Ipv4 */
+				len_ip4,	/* address string lenth */
+				n->mgmt_ip4,	/* address */
+				hw->hw_if_index,	/* if index */
+				vec_len (n->mgmt_oid),	/* OID length */
+				n->mgmt_oid);	/* OID */
+    }
+
+  if (len_ip6)
+    {
+      lldp_build_mgmt_addr_tlv (t0p, 2,	/* address subtype: Ipv6 */
+				len_ip6,	/* address string lenth */
+				n->mgmt_ip6,	/* address */
+				hw->hw_if_index,	/* if index */
+				vec_len (n->mgmt_oid),	/* OID length */
+				n->mgmt_oid);	/* OID */
+    }
+}
+
+static void
 lldp_add_pdu_end (u8 ** t0p)
 {
   lldp_tlv_t *t = (lldp_tlv_t *) * t0p;
@@ -120,6 +188,7 @@ lldp_add_tlvs (lldp_main_t * lm, vnet_hw_interface_t * hw, u8 ** t0p,
   lldp_add_ttl (lm, t0p, shutdown);
   lldp_add_port_desc (lm, n, t0p);
   lldp_add_sys_name (lm, t0p);
+  lldp_add_mgmt_addr (n, hw, t0p);
   lldp_add_pdu_end (t0p);
 }
 
@@ -186,6 +255,9 @@ lldp_delete_intf (lldp_main_t * lm, lldp_intf_t * n)
       vec_free (n->chassis_id);
       vec_free (n->port_id);
       vec_free (n->port_desc);
+      vec_free (n->mgmt_ip4);
+      vec_free (n->mgmt_ip6);
+      vec_free (n->mgmt_oid);
       pool_put (lm->intfs, n);
     }
 }

@@ -20633,8 +20633,13 @@ api_sw_interface_set_lldp (vat_main_t * vam)
   vl_api_sw_interface_set_lldp_t *mp;
   u32 sw_if_index = ~0;
   u32 enable = 1;
-  u8 *port_desc = NULL;
+  u8 *port_desc = NULL, *mgmt_oid = NULL;
+  ip4_address_t ip4_addr;
+  ip6_address_t ip6_addr;
   int ret;
+
+  memset (&ip4_addr, 0, sizeof (ip4_addr));
+  memset (&ip6_addr, 0, sizeof (ip6_addr));
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -20646,6 +20651,12 @@ api_sw_interface_set_lldp (vat_main_t * vam)
       else if (unformat (i, "sw_if_index %d", &sw_if_index))
 	;
       else if (unformat (i, "port-desc %s", &port_desc))
+	;
+      else if (unformat (i, "mgmt-ip4 %U", unformat_ip4_address, &ip4_addr))
+	;
+      else if (unformat (i, "mgmt-ip6 %U", unformat_ip6_address, &ip6_addr))
+	;
+      else if (unformat (i, "mgmt-oid %s", &mgmt_oid))
 	;
       else
 	break;
@@ -20659,11 +20670,16 @@ api_sw_interface_set_lldp (vat_main_t * vam)
 
   /* Construct the API message */
   vec_add1 (port_desc, 0);
+  vec_add1 (mgmt_oid, 0);
   M (SW_INTERFACE_SET_LLDP, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->enable = enable;
   clib_memcpy (mp->port_desc, port_desc, vec_len (port_desc));
+  clib_memcpy (mp->mgmt_oid, mgmt_oid, vec_len (mgmt_oid));
+  clib_memcpy (mp->mgmt_ip4, &ip4_addr, sizeof (ip4_addr));
+  clib_memcpy (mp->mgmt_ip6, &ip6_addr, sizeof (ip6_addr));
   vec_free (port_desc);
+  vec_free (mgmt_oid);
 
   S (mp);
   W (ret);
@@ -21600,7 +21616,8 @@ _(sw_interface_get_table, "<intfc> | sw_if_index <id> [ipv6]")          \
 _(p2p_ethernet_add, "<intfc> | sw_if_index <nn> remote_mac <mac-address> sub_id <id>") \
 _(p2p_ethernet_del, "<intfc> | sw_if_index <nn> remote_mac <mac-address>") \
 _(lldp_config, "system-name <name> tx-hold <nn> tx-interval <nn>") \
-_(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>] [disable]") \
+_(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>]\n" \
+  " [mgmt-ip4 <ip4>] [mgmt-ip6 <ip6>] [mgmt-oid <object id>] [disable]") \
 _(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
 _(memfd_segment_create,"size <nnn>")					\
 _(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
