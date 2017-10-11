@@ -1380,6 +1380,7 @@ vnet_lisp_del_mapping (gid_address_t * eid, u32 * res_map_index)
   mapping_t *old_map;
   u32 mi;
 
+  memset (ls_args, 0, sizeof (ls_args[0]));
   memset (m_args, 0, sizeof (m_args[0]));
   if (res_map_index)
     res_map_index[0] = ~0;
