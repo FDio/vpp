@@ -3118,6 +3118,48 @@ static void *vl_api_app_namespace_add_del_t_print
   FINISH;
 }
 
+static void *vl_api_lldp_config_t_print
+  (vl_api_lldp_config_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: lldp_config ");
+  s = format (s, "system_name %s ", mp->system_name);
+  s = format (s, "tx_hold %d ", ntohl (mp->tx_hold));
+  s = format (s, "tx_interval %d ", ntohl (mp->tx_interval));
+
+  FINISH;
+}
+
+static void *vl_api_sw_interface_set_lldp_t_print
+  (vl_api_sw_interface_set_lldp_t * mp, void *handle)
+{
+  u8 *s;
+  u8 null_data[128];
+
+  memset (null_data, 0, sizeof (null_data));
+
+  s = format (0, "SCRIPT: sw_interface_set_lldp ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  if (memcmp (mp->port_desc, null_data, sizeof (mp->port_desc)))
+    s = format (s, "port_desc %s ", mp->port_desc);
+
+  if (memcmp (mp->mgmt_ip4, null_data, sizeof (mp->mgmt_ip4)))
+    s = format (s, "mgmt_ip4 %U ", format_ip4_address, mp->mgmt_ip4);
+
+  if (memcmp (mp->mgmt_ip6, null_data, sizeof (mp->mgmt_ip6)))
+    s = format (s, "mgmt_ip6 %U ", format_ip6_address, mp->mgmt_ip6);
+
+  if (memcmp (mp->mgmt_oid, null_data, sizeof (mp->mgmt_oid)))
+    s = format (s, "mgmt_oid %s ", mp->mgmt_oid);
+
+  if (mp->enable == 0)
+    s = format (s, "disable ");
+
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -3308,7 +3350,9 @@ _(SW_INTERFACE_SET_MTU, sw_interface_set_mtu)                           \
 _(P2P_ETHERNET_ADD, p2p_ethernet_add)                                   \
 _(P2P_ETHERNET_DEL, p2p_ethernet_del)					\
 _(TCP_CONFIGURE_SRC_ADDRESSES, tcp_configure_src_addresses)		\
-_(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)
+_(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)                         \
+_(LLDP_CONFIG, lldp_config)                                             \
+_(SW_INTERFACE_SET_LLDP, sw_interface_set_lldp)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
