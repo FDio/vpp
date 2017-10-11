@@ -43,7 +43,8 @@ lldp_cfg_err_to_clib_err (lldp_cfg_err_t e)
 }
 
 lldp_cfg_err_t
-lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, int enable)
+lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
+		   u8 ** mgmt_ip6, u8 ** mgmt_oid, int enable)
 {
   lldp_main_t *lm = &lldp_main;
   vnet_main_t *vnm = lm->vnet_main;
@@ -72,6 +73,24 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, int enable)
 	  *port_desc = NULL;
 	}
 
+      if (mgmt_ip4 && *mgmt_ip4)
+	{
+	  n->mgmt_ip4 = *mgmt_ip4;
+	  *mgmt_ip4 = NULL;
+	}
+
+      if (mgmt_ip6 && *mgmt_ip6)
+	{
+	  n->mgmt_ip6 = *mgmt_ip6;
+	  *mgmt_ip6 = NULL;
+	}
+
+      if (mgmt_oid && *mgmt_oid)
+	{
+	  n->mgmt_oid = *mgmt_oid;
+	  *mgmt_ip6 = NULL;
+	}
+
       const vnet_sw_interface_t *sw =
 	vnet_get_sw_interface (lm->vnet_main, hi->sw_if_index);
       if (sw->flags & (VNET_SW_INTERFACE_FLAG_ADMIN_UP |
@@ -98,6 +117,9 @@ lldp_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
   u32 sw_if_index = (u32) ~ 0;
   int enable = 1;
   u8 *port_desc = NULL;
+  u8 *mgmt_ip4 = NULL, *mgmt_ip6 = NULL, *mgmt_oid = NULL;
+  ip4_address_t ip4_addr;
+  ip6_address_t ip6_addr;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -111,6 +133,20 @@ lldp_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
       else if (unformat (input, "port-desc %s", &port_desc))
 	;
       else
+	if (unformat (input, "mgmt-ip4 %U", unformat_ip4_address, &ip4_addr))
+	{
+	  vec_validate (mgmt_ip4, sizeof (ip4_address_t) - 1);
+	  clib_memcpy (mgmt_ip4, &ip4_addr, vec_len (mgmt_ip4));
+	}
+      else
+	if (unformat (input, "mgmt-ip6 %U", unformat_ip6_address, &ip6_addr))
+	{
+	  vec_validate (mgmt_ip6, sizeof (ip6_address_t) - 1);
+	  clib_memcpy (mgmt_ip6, &ip6_addr, vec_len (mgmt_ip6));
+	}
+      else if (unformat (input, "mgmt-oid %s", &mgmt_oid))
+	;
+      else
 	break;
     }
 
@@ -118,7 +154,9 @@ lldp_intf_cmd (vlib_main_t * vm, unformat_input_t * input,
     return clib_error_return (0, "Interface name is invalid!");
 
   return lldp_cfg_err_to_clib_err (lldp_cfg_intf_set (sw_if_index,
-						      &port_desc, enable));
+						      &port_desc, &mgmt_ip4,
+						      &mgmt_ip6, &mgmt_oid,
+						      enable));
 }
 
 lldp_cfg_err_t
@@ -126,12 +164,14 @@ lldp_cfg_set (u8 ** host, int hold_time, int tx_interval)
 {
   lldp_main_t *lm = &lldp_main;
   int reschedule = 0;
+
   if (host && *host)
     {
       vec_free (lm->sys_name);
       lm->sys_name = *host;
       *host = NULL;
     }
+
   if (hold_time)
     {
       if (hold_time < LLDP_MIN_TX_HOLD || hold_time > LLDP_MAX_TX_HOLD)
@@ -144,6 +184,7 @@ lldp_cfg_set (u8 ** host, int hold_time, int tx_interval)
 	  reschedule = 1;
 	}
     }
+
   if (tx_interval)
     {
       if (tx_interval < LLDP_MIN_TX_INTERVAL ||
@@ -157,11 +198,13 @@ lldp_cfg_set (u8 ** host, int hold_time, int tx_interval)
 	  lm->msg_tx_interval = tx_interval;
 	}
     }
+
   if (reschedule)
     {
       vlib_process_signal_event (lm->vlib_main, lm->lldp_process_node_index,
 				 LLDP_EVENT_RESCHEDULE, 0);
     }
+
   return lldp_ok;
 }
 
@@ -220,7 +263,8 @@ out:
 VLIB_CLI_COMMAND(set_interface_lldp_cmd, static) = {
   .path = "set interface lldp",
   .short_help = "set interface lldp <interface> | sw_if_index <idx>"
-                " [port-desc <string>] [disable]",
+                " [port-desc <string>] [mgmt-ip4 <string>]"
+                " [mgmt-ip6 <string>] [mgmt-oid <string>] [disable]",
   .function = lldp_intf_cmd,
 };
 
@@ -491,6 +535,7 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
       s = format (s, "Configured system name: %U\n", format_ascii_bytes,
 		  lm->sys_name, vec_len (lm->sys_name));
     }
+
   s = format (s, "Configured tx-hold: %d\n", (int) lm->msg_tx_hold);
   s = format (s, "Configured tx-interval: %d\n", (int) lm->msg_tx_interval);
   s = format (s, "\nLLDP-enabled interface table:\n");
@@ -501,23 +546,44 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
       n, lm->intfs, ({
         hw = vnet_get_hw_interface(vnm, n->hw_if_index);
         sw = vnet_get_sw_interface(lm->vnet_main, hw->sw_if_index);
+
+        s = format(s, "\nLocal Interface name: %s\n"
+                      "Local Port Description: %s\n",
+                       hw->name, n->port_desc);
+        if (n->mgmt_ip4)
+          {
+            s = format (s, "Local Management address: %U\n",
+      	                format_ip4_address, n->mgmt_ip4, vec_len (n->mgmt_ip4));
+          }
+
+        if (n->mgmt_ip6)
+          {
+            s = format (s, "Local Management address IPV6: %U\n",
+                        format_ip6_address, n->mgmt_ip6, vec_len (n->mgmt_ip6));
+          }
+
+        if (n->mgmt_oid)
+          {
+            s = format (s, "Local Management address OID: %U\n",
+                        format_ascii_bytes, n->mgmt_oid, vec_len (n->mgmt_oid));
+          }
+
         /* Interface shutdown */
         if (!(sw->flags & (VNET_SW_INTERFACE_FLAG_ADMIN_UP |
                            VNET_SW_INTERFACE_FLAG_BOND_SLAVE)))
           {
-            s = format(s, "\nInterface name: %s\nInterface/peer state: "
-                          "interface down\nLast packet sent: %U\n",
-                       hw->name, format_time_ago, n->last_sent, now);
+            s = format(s, "Interface/peer state: interface down\n"
+                       "Last packet sent: %U\n",
+                       format_time_ago, n->last_sent, now);
           }
         else if (now < n->last_heard + n->ttl)
           {
             s = format(s,
-                       "\nInterface name: %s\nPort Desc: %s\nInterface/peer "
-                       "state: active\nPeer chassis ID: %U\nRemote port ID:"
-                       " %U\nLast packet sent: %U\nLast packet received: %U\n",
-                       hw->name, n->port_desc, format_lldp_chassis_id,
-                       n->chassis_id_subtype, n->chassis_id,
-                       vec_len(n->chassis_id), 1,
+                       "Interface/peer state: active\n"
+                       "Peer chassis ID: %U\nRemote port ID: %U\n"
+                       "Last packet sent: %U\nLast packet received: %U\n",
+                       format_lldp_chassis_id, n->chassis_id_subtype,
+                       n->chassis_id, vec_len(n->chassis_id), 1,
                        format_lldp_port_id, n->port_id_subtype, n->port_id,
                        vec_len(n->port_id), 1, format_time_ago, n->last_sent,
                        now, format_time_ago, n->last_heard, now);
@@ -525,13 +591,12 @@ format_lldp_intfs_detail (u8 * s, vlib_main_t * vm, const lldp_main_t * lm)
         else
           {
             s = format(s,
-                       "\nInterface name: %s\nPort Desc: %s\nInterface/peer "
-                       "state: inactive(timeout)\nLast known peer chassis ID:"
-                       "%U\nLast known peer port ID: %U\nLast packet sent: "
-                       "%U\nLast packet received: %U\n",
-                       hw->name, n->port_desc, format_lldp_chassis_id,
-                       n->chassis_id_subtype, n->chassis_id,
-                       vec_len(n->chassis_id), 1,
+                       "Interface/peer state: inactive(timeout)\n"
+                       "Last known peer chassis ID: %U\n"
+                       "Last known peer port ID: %U\nLast packet sent: %U\n"
+                       "Last packet received: %U\n",
+                       format_lldp_chassis_id, n->chassis_id_subtype,
+                       n->chassis_id, vec_len(n->chassis_id), 1,
                        format_lldp_port_id, n->port_id_subtype, n->port_id,
                        vec_len(n->port_id), 1, format_time_ago, n->last_sent,
                        now, format_time_ago, n->last_heard, now);
