@@ -130,11 +130,12 @@ u8 *format_lb_vip_detailed (u8 * s, va_list * args)
   lb_vip_t *vip = va_arg (*args, lb_vip_t *);
   u32 indent = format_get_indent (s);
 
-  s = format(s, "%U %U [%u] %U%s\n"
+  s = format(s, "%U %U [%lu] %U%s\n"
                    "%U  new_size:%u\n",
                   format_white_space, indent,
                   format_lb_vip_type, vip->type,
-                  vip - lbm->vips, format_ip46_prefix, &vip->prefix, vip->plen, IP46_TYPE_ANY,
+                  vip - lbm->vips,
+                  format_ip46_prefix, &vip->prefix, (u32) vip->plen, IP46_TYPE_ANY,
                   (vip->flags & LB_VIP_FLAGS_USED)?"":" removed",
                   format_white_space, indent,
                   vip->new_flow_table_mask + 1);
