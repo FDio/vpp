@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_2da77551",
+        "filename": "src/vnet/lldp/lldp_cli.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 577,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-10-11T08:14:57Z",
+      "side": 1,
+      "message": "this doesn\u0027t look right ... hw-\u003ename will be used as format function instead of format_time_ago, I think hw-\u003ename should be removed otherwise this\u0027ll crash...",
+      "range": {
+        "startLine": 575,
+        "startChar": 0,
+        "endLine": 577,
+        "endChar": 69
+      },
+      "revId": "4d46b3c799bcbee32db629089215405ca72f68bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_8d7789d4",
+        "filename": "src/vnet/lldp/lldp_output.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-10-11T08:14:57Z",
+      "side": 1,
+      "message": "this could be static no? what is the gain from having it always_inline?",
+      "range": {
+        "startLine": 21,
+        "startChar": 0,
+        "endLine": 21,
+        "endChar": 13
+      },
+      "revId": "4d46b3c799bcbee32db629089215405ca72f68bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
