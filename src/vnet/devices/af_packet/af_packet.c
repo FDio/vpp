@@ -23,7 +23,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <linux/virtio_net.h>
 
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
@@ -129,7 +128,6 @@ static int
 create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
 		       tpacket_req_t * tx_req, int *fd, u8 ** ring)
 {
-  af_packet_main_t *apm = &af_packet_main;
   int ret, err;
   struct sockaddr_ll sll;
   int ver = TPACKET_V2;
@@ -143,31 +141,7 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
-  int opt = 1;
-  if (setsockopt (*fd, SOL_PACKET, PACKET_VNET_HDR, &opt, sizeof (opt)) != 0)
-    {
-      DBG_SOCK ("Failed to enable vnet headers on the socket");
-      if ((apm->flags & AF_PACKET_USES_VNET_HEADERS) != 0)
-	{
-	  /* Should never happen - vnet was already enabled once,
-	   * but we fail to reenable it on a new interface
-	   **/
-	  ret = VNET_API_ERROR_SYSCALL_ERROR_1;
-	  goto error;
-	}
-    }
-  else
-    {
-      apm->flags |= AF_PACKET_USES_VNET_HEADERS;
-    }
-#ifdef PACKET_QDISC_BYPASS
-  opt = 1;
-  if (setsockopt (*fd, SOL_PACKET, PACKET_QDISC_BYPASS, &opt, sizeof (opt)) !=
-      0)
-    {
-      DBG_SOCK ("Failed to bypass Linux QDISC");
-    }
-#endif
+
   if ((err =
        setsockopt (*fd, SOL_PACKET, PACKET_VERSION, &ver, sizeof (ver))) < 0)
     {
@@ -176,7 +150,7 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
       goto error;
     }
 
-  opt = 1;
+  int opt = 1;
   if ((err =
        setsockopt (*fd, SOL_PACKET, PACKET_LOSS, &opt, sizeof (opt))) < 0)
     {
