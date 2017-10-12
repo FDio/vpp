@@ -470,7 +470,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           u_key.addr = m->local_addr;
           u_key.fib_index = m->fib_index;
           kv.key = u_key.as_u64;
-          if (sm->num_workers)
+          if (sm->num_workers > 1)
             tsm = vec_elt_at_index (sm->per_thread_data, m->worker_index);
           else
             tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
