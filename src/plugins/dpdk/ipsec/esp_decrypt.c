@@ -76,7 +76,7 @@ static u8 * format_esp_decrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_decrypt_trace_t * t = va_arg (*args, esp_decrypt_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "cipher %U auth %U\n",
 	      format_ipsec_crypto_alg, t->crypto_alg,
@@ -403,7 +403,7 @@ static u8 * format_esp_decrypt_post_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_decrypt_trace_t * t = va_arg (*args, esp_decrypt_trace_t *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
 
   s = format (s, "cipher %U auth %U\n",
 	      format_ipsec_crypto_alg, t->crypto_alg,

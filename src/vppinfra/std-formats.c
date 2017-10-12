@@ -112,7 +112,7 @@ format_hex_bytes (u8 * s, va_list * va)
 u8 *
 format_white_space (u8 * s, va_list * va)
 {
-  uword n = va_arg (*va, uword);
+  u32 n = va_arg (*va, u32);
   while (n-- > 0)
     vec_add1 (s, ' ');
   return s;
