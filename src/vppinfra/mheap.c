@@ -1165,7 +1165,8 @@ format_mheap (u8 * s, va_list * va)
   int verbose = va_arg (*va, int);
 
   mheap_t *h;
-  uword i, size, indent;
+  uword i, size;
+  u32 indent;
   clib_mem_usage_t usage;
   mheap_elt_t *first_corrupt;
 

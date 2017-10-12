@@ -79,7 +79,7 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
   esp_encrypt_trace_t *t = va_arg (*args, esp_encrypt_trace_t *);
   ip4_header_t *ih4 = (ip4_header_t *) t->packet_data;
-  uword indent = format_get_indent (s), offset;
+  u32 indent = format_get_indent (s), offset;
 
   s = format (s, "cipher %U auth %U\n",
 	      format_ipsec_crypto_alg, t->crypto_alg,
