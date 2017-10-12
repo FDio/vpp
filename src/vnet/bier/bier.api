@@ -18,7 +18,7 @@
     This file defines vpp BIER control-plane API messages which are generally
     called through a shared memory interface.
 */
-vl_api_version 1.0.0
+option version = "1.0.0";
 
 /** \brief BIER Table Indentifier
     @param bt_set - The BIER set

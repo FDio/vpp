@@ -367,7 +367,7 @@ CROSS_TOOLS_$(IS_LINUX) += glibc gcc
 NATIVE_TOOLS = findutils make
 
 # basic tools needed for build system
-NATIVE_TOOLS += git automake autoconf libtool texinfo bison flex tar
+NATIVE_TOOLS += git automake autoconf libtool texinfo tar
 
 # needed to compile gcc
 NATIVE_TOOLS += mpfr gmp mpc
