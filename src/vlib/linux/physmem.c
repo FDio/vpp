@@ -190,11 +190,6 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 					 MHEAP_FLAG_THREAD_SAFE);
     }
 
-  if (flags & VLIB_PHYSMEM_F_HAVE_BUFFERS)
-    {
-      vlib_buffer_add_mem_range (vm, pointer_to_uword (pr->mem), pr->size);
-    }
-
   *idx = pr->index;
 
   goto done;

@@ -462,7 +462,7 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
   u32 i;
 
   for (i = 0; i < vec_len (f->buffer_memory_allocated); i++)
-    vm->os_physmem_free (vm, vm->buffer_main->physmem_region,
+    vm->os_physmem_free (vm, vm->buffer_main->buffer_pools[0].physmem_region,
 			 f->buffer_memory_allocated[i]);
   vec_free (f->name);
   vec_free (f->buffer_memory_allocated);
@@ -555,8 +555,10 @@ fill_free_list (vlib_main_t * vm,
 
       /* drb: removed power-of-2 ASSERT */
       buffers =
-	vm->os_physmem_alloc_aligned (vm, vm->buffer_main->physmem_region,
-				      n_bytes, sizeof (vlib_buffer_t));
+	vm->os_physmem_alloc_aligned (vm,
+				      vm->buffer_main->
+				      buffer_pools[0].physmem_region, n_bytes,
+				      sizeof (vlib_buffer_t));
       if (!buffers)
 	return n_alloc;
 
@@ -960,10 +962,15 @@ vlib_buffer_chain_append_data_with_alloc (vlib_main_t * vm,
   return copied;
 }
 
-void
-vlib_buffer_add_mem_range (vlib_main_t * vm, uword start, uword size)
+u8
+vlib_buffer_add_physmem_region (vlib_main_t * vm,
+				vlib_physmem_region_index_t pri)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
+  vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, pri);
+  vlib_buffer_pool_t *p;
+  uword start = pointer_to_uword (pr->mem);
+  uword size = pr->size;
 
   if (bm->buffer_mem_size == 0)
     {
@@ -989,6 +996,12 @@ vlib_buffer_add_mem_range (vlib_main_t * vm, uword start, uword size)
     {
       clib_panic ("buffer memory size out of range!");
     }
+
+  vec_add2 (bm->buffer_pools, p, 1);
+  p->start = start;
+  p->size = size;
+  p->physmem_region = pri;
+  return p - bm->buffer_pools;
 }
 
 static u8 *
@@ -1057,6 +1070,7 @@ clib_error_t *
 vlib_buffer_main_init (struct vlib_main_t * vm)
 {
   vlib_buffer_main_t *bm;
+  vlib_physmem_region_index_t pri;
   clib_error_t *error;
 
   vec_validate (vm->buffer_main, 0);
@@ -1085,12 +1099,10 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   /* allocate default region */
   error = vlib_physmem_region_alloc (vm, "buffers",
 				     vlib_buffer_physmem_sz, 0,
-				     VLIB_PHYSMEM_F_INIT_MHEAP |
-				     VLIB_PHYSMEM_F_HAVE_BUFFERS,
-				     &bm->physmem_region);
+				     VLIB_PHYSMEM_F_INIT_MHEAP, &pri);
 
   if (error == 0)
-    return 0;
+    goto done;
 
   clib_error_free (error);
 
@@ -1098,9 +1110,9 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   error = vlib_physmem_region_alloc (vm, "buffers (fake)",
 				     vlib_buffer_physmem_sz, 0,
 				     VLIB_PHYSMEM_F_FAKE |
-				     VLIB_PHYSMEM_F_INIT_MHEAP |
-				     VLIB_PHYSMEM_F_HAVE_BUFFERS,
-				     &bm->physmem_region);
+				     VLIB_PHYSMEM_F_INIT_MHEAP, &pri);
+done:
+  vlib_buffer_add_physmem_region (vm, pri);
   return error;
 }
 
