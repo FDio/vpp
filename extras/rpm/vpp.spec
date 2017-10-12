@@ -337,6 +337,7 @@ fi
 %{_includedir}/*
 %{python2_sitelib}/jvppgen/*
 /usr/share/doc/vpp/examples/sample-plugin
+/usr/share/vpp
 
 %files plugins
 %defattr(-,bin,bin)
