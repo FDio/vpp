@@ -890,16 +890,18 @@ vlib_dump_context_trace (vlib_main_t * vm, u32 bi)
   vlib_node_main_t *vnm = &vm->node_main;
   vlib_buffer_t *b;
   u8 i, n;
+  u16 *trajectory;
 
   if (VLIB_BUFFER_TRACE_TRAJECTORY)
     {
       b = vlib_get_buffer (vm, bi);
-      n = b->pre_data[0];
+      trajectory = (u16 *) b->pre_data;
+      n = trajectory[0];
 
       fformat (stderr, "Context trace for bi %d b 0x%llx, visited %d\n",
 	       bi, b, n);
 
-      if (n == 0 || n > 20)
+      if (n == 0 || n > VLIB_BUFFER_TRACE_TRAJECTORY_DEPTH)
 	{
 	  fformat (stderr, "n is unreasonable\n");
 	  return;
@@ -910,7 +912,7 @@ vlib_dump_context_trace (vlib_main_t * vm, u32 bi)
 	{
 	  u32 node_index;
 
-	  node_index = b->pre_data[i + 1];
+	  node_index = trajectory[i + 1];
 
 	  if (node_index > vec_len (vnm->nodes))
 	    {
@@ -1001,9 +1003,10 @@ dispatch_node (vlib_main_t * vm,
 	  for (i = 0; i < frame->n_vectors; i++)
 	    {
 	      vlib_buffer_t *b = vlib_get_buffer (vm, from[i]);
-	      ASSERT (b->pre_data[0] < 32);
-	      log_index = b->pre_data[0]++ + 1;
-	      b->pre_data[log_index] = node->node_index;
+	      u16 *trajectory = (u16 *) b->pre_data;
+	      ASSERT (trajectory[0] < VLIB_BUFFER_TRACE_TRAJECTORY_DEPTH);
+	      log_index = trajectory[0]++ + 1;
+	      trajectory[log_index] = node->node_index;
 	    }
 	  n = node->function (vm, node, frame);
 	}
