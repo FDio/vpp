@@ -331,9 +331,8 @@ tuntap_rx (vlib_main_t * vm,
      * Turn this on if you run into
      * "bad monkey" contexts, and you want to know exactly
      * which nodes they've visited...
-     */
-    if (VLIB_BUFFER_TRACE_TRAJECTORY)
-        b->pre_data[0] = 0;
+     */    
+    VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
 
     b->error = node->errors[0];
 
