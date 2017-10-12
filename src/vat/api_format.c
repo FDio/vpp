@@ -5044,6 +5044,10 @@ _(ipsec_spd_add_del_entry_reply)                        \
 _(ipsec_sad_add_del_entry_reply)                        \
 _(ipsec_sa_set_key_reply)                               \
 _(ipsec_tunnel_if_add_del_reply)                        \
+_(ipsec_tunnel_if_set_esn_reply)                        \
+_(ipsec_tunnel_if_set_replay_reply)                     \
+_(ipsec_tunnel_if_set_addr_reply)                       \
+_(ipsec_tunnel_if_set_spi_reply)                        \
 _(ikev2_profile_add_del_reply)                          \
 _(ikev2_profile_set_auth_reply)                         \
 _(ikev2_profile_set_id_reply)                           \
@@ -5275,6 +5279,10 @@ _(IPSEC_SAD_ADD_DEL_ENTRY_REPLY, ipsec_sad_add_del_entry_reply)         \
 _(IPSEC_SA_DETAILS, ipsec_sa_details)                                   \
 _(IPSEC_SA_SET_KEY_REPLY, ipsec_sa_set_key_reply)                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL_REPLY, ipsec_tunnel_if_add_del_reply)         \
+_(IPSEC_TUNNEL_IF_SET_ADDR_REPLY, ipsec_tunnel_if_set_addr_reply)       \
+_(IPSEC_TUNNEL_IF_SET_ESN_REPLY, ipsec_tunnel_if_set_esn_reply)         \
+_(IPSEC_TUNNEL_IF_SET_REPLAY_REPLY, ipsec_tunnel_if_set_replay_reply)   \
+_(IPSEC_TUNNEL_IF_SET_SPI_REPLY, ipsec_tunnel_if_set_spi_reply)         \
 _(IKEV2_PROFILE_ADD_DEL_REPLY, ikev2_profile_add_del_reply)             \
 _(IKEV2_PROFILE_SET_AUTH_REPLY, ikev2_profile_set_auth_reply)           \
 _(IKEV2_PROFILE_SET_ID_REPLY, ikev2_profile_set_id_reply)               \
@@ -14263,6 +14271,192 @@ api_ipsec_sa_dump (vat_main_t * vam)
 }
 
 static int
+api_ipsec_tunnel_if_set_addr (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_tunnel_if_set_addr_t *mp;
+  ip4_address_t ip;
+  u8 is_local;
+  u32 sw_if_index = ~0;
+  int ret;
+
+  ip.as_u32 = ~0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "ip %U", unformat_ip4_address, &ip))
+	;
+      else if (unformat (i, "remote"))
+	is_local = 0;
+      else if (unformat (i, "local"))
+	is_local = 1;
+      else
+	{
+	  errmsg ("parse error '%U'\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("interface must be specified");
+      return -99;
+    }
+
+  if (ip.as_u32 == ~0)
+    {
+      errmsg ("IP address must be specified");
+      return -99;
+    }
+
+  M (IPSEC_TUNNEL_IF_SET_ADDR, mp);
+
+  mp->sw_if_index = htonl (sw_if_index);
+  clib_memcpy (mp->ip, &ip, 4);
+  mp->is_local = is_local;
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+static int
+api_ipsec_tunnel_if_set_esn (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_tunnel_if_set_esn_t *mp;
+  u32 sw_if_index = ~0;
+  u8 esn = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "enable"))
+	esn = 1;
+      else if (unformat (i, "disable"))
+	esn = 0;
+      else
+	{
+	  errmsg ("parse error '%U'\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("interface must be specified");
+      return -99;
+    }
+
+  M (IPSEC_TUNNEL_IF_SET_ESN, mp);
+
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->use_esn = esn;
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+static int
+api_ipsec_tunnel_if_set_replay (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_tunnel_if_set_replay_t *mp;
+  u32 sw_if_index = ~0;
+  u8 replay = 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "disable"))
+	replay = 0;
+      else if (unformat (i, "enable"))
+	replay = 1;
+      else
+	{
+	  errmsg ("parse error '%U'\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("interface must be specified");
+      return -99;
+    }
+
+  M (IPSEC_TUNNEL_IF_SET_REPLAY, mp);
+
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->use_anti_replay = replay;
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+static int
+api_ipsec_tunnel_if_set_spi (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_tunnel_if_set_spi_t *mp;
+  u32 spi = ~0;
+  u8 is_local;
+  u32 sw_if_index = ~0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "spi %d", &spi))
+	;
+      else if (unformat (i, "remote"))
+	is_local = 0;
+      else if (unformat (i, "local"))
+	is_local = 1;
+      else
+	{
+	  errmsg ("parse error '%U'\n", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("interface must be specified");
+      return -99;
+    }
+
+  if (spi == ~0)
+    {
+      errmsg ("SPI must be specified");
+      return -99;
+    }
+
+  M (IPSEC_TUNNEL_IF_SET_SPI, mp);
+
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->spi = htonl (spi);
+  mp->is_local = is_local;
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+static int
 api_ikev2_profile_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -21399,6 +21593,10 @@ _(ipsec_tunnel_if_add_del, "local_spi <n> remote_spi <n>\n"             \
   "  integ_alg <alg> local_integ_key <hex> remote_integ_key <hex>\n"    \
   "  local_ip <addr> remote_ip <addr> [esn] [anti_replay] [del]\n")     \
 _(ipsec_sa_dump, "[sa_id <n>]")                                         \
+_(ipsec_tunnel_if_set_addr, "<intfc> ip <ip4> (local|remote)")          \
+_(ipsec_tunnel_if_set_esn, "<intfc> (enable|disable)")                  \
+_(ipsec_tunnel_if_set_replay, "<intfc> (enable|disable)")               \
+_(ipsec_tunnel_if_set_spi, "<intfc> spi <n> (local|remote)")            \
 _(ikev2_profile_add_del, "name <profile_name> [del]")                   \
 _(ikev2_profile_set_auth, "name <profile_name> auth_method <method>\n"  \
   "(auth_data 0x<data> | auth_data <data>)")                            \

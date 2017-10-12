@@ -56,6 +56,10 @@ _(IPSEC_SA_SET_KEY, ipsec_sa_set_key)                                   \
 _(IPSEC_SA_DUMP, ipsec_sa_dump)                                         \
 _(IPSEC_SPD_DUMP, ipsec_spd_dump)                                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)                     \
+_(IPSEC_TUNNEL_IF_SET_ESN, ipsec_tunnel_if_set_esn)                     \
+_(IPSEC_TUNNEL_IF_SET_REPLAY, ipsec_tunnel_if_set_replay)               \
+_(IPSEC_TUNNEL_IF_SET_ADDR, ipsec_tunnel_if_set_addr)                   \
+_(IPSEC_TUNNEL_IF_SET_SPI, ipsec_tunnel_if_set_spi)                     \
 _(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del)                         \
 _(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth)                       \
 _(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id)                           \
@@ -506,6 +510,93 @@ vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
 #else
   clib_warning ("unimplemented");
 #endif
+}
+
+static void
+vl_api_ipsec_tunnel_if_set_esn_t_handler (vl_api_ipsec_tunnel_if_set_esn_t *
+					  mp)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  vnet_sw_interface_t *sw;
+  int rv = 0;
+  vl_api_ipsec_tunnel_if_set_esn_reply_t *rmp;
+
+#if WITH_LIBSSL > 0
+  sw = vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
+  rv = ipsec_set_interface_esn (vnm, sw->hw_if_index, mp->use_esn);
+
+#else
+  clib_warning ("unimplemented");
+#endif
+
+  REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_ESN_REPLY);
+}
+
+
+static void
+  vl_api_ipsec_tunnel_if_set_replay_t_handler
+  (vl_api_ipsec_tunnel_if_set_replay_t * mp)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  vnet_sw_interface_t *sw;
+  int rv = 0;
+  vl_api_ipsec_tunnel_if_set_replay_reply_t *rmp;
+
+#if WITH_LIBSSL > 0
+  sw = vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
+  rv = ipsec_set_interface_replay (vnm, sw->hw_if_index, mp->use_anti_replay);
+#else
+  clib_warning ("unimplemented");
+#endif
+
+  REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_REPLAY_REPLY);
+}
+
+
+
+static void
+vl_api_ipsec_tunnel_if_set_addr_t_handler (vl_api_ipsec_tunnel_if_set_addr_t *
+					   mp)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  vnet_sw_interface_t *sw;
+  int rv = 0;
+  vl_api_ipsec_tunnel_if_set_addr_reply_t *rmp;
+
+#if WITH_LIBSSL > 0
+  sw = vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
+  rv = ipsec_set_interface_addr (vnm, sw->hw_if_index, mp->is_local, mp->ip);
+
+#else
+  clib_warning ("unimplemented");
+#endif
+
+  REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_ADDR_REPLY);
+}
+
+
+static void
+vl_api_ipsec_tunnel_if_set_spi_t_handler (vl_api_ipsec_tunnel_if_set_spi_t *
+					  mp)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  vnet_sw_interface_t *sw;
+  int rv = 0;
+  vl_api_ipsec_tunnel_if_set_spi_reply_t *rmp;
+
+#if WITH_LIBSSL > 0
+  sw = vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
+  rv = ipsec_set_interface_spi (vnm, sw->hw_if_index, mp->is_local,
+				ntohl (mp->spi));
+#else
+  clib_warning ("unimplemented");
+#endif
+
+  REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_SPI_REPLY);
 }
 
 
