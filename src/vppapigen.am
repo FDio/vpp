@@ -11,19 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-bin_PROGRAMS += vppapigen
+dist_bin_SCRIPTS += tools/vppapigen/vppapigen
 
-tools/vppapigen/gram.h: tools/vppapigen/gram.y
-	@$(YACC) -d @srcdir@/tools/vppapigen/gram.y
-	@mv y.tab.h tools/vppapigen/gram.h
-	@rm y.tab.c
-
-tools/vppapigen/lex.o: tools/vppapigen/gram.h
-tools/vppapigen/node.o: tools/vppapigen/gram.h
-
-vppapigen_SOURCES = tools/vppapigen/gram.y tools/vppapigen/lex.c tools/vppapigen/node.c
-vppapigen_LDADD = libvppinfra.la
-vppapigen_LDFLAGS = -static
-
-CLEANFILES += tools/vppapigen/gram.c tools/vppapigen/gram.h
+dist_pkgdata_SCRIPTS = tools/vppapigen/C.py \
+                       tools/vppapigen/JSON.py
 # vi:syntax=automake
