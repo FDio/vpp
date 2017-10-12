@@ -82,7 +82,7 @@ noinst_PROGRAMS = icmpr icmpr-epoll icmpr-mt
 
 check_PROGRAMS = unit_test
 
-include_HEADERS = src/libmemif.h
+include_HEADERS = src/libmemif.h src/memif.h
 
 lib_LTLIBRARIES = libmemif.la
 
