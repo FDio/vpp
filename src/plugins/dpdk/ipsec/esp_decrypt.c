@@ -165,8 +165,6 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 
 	  if (sa_index0 != last_sa_index)
 	    {
-	      last_sa_index = sa_index0;
-
 	      sa0 = pool_elt_at_index (im->sad, sa_index0);
 
 	      cipher_alg = vec_elt_at_index (dcm->cipher_algs, sa0->crypto_alg);
@@ -207,6 +205,8 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 		  n_left_to_next -= 1;
 		  goto trace;
 		}
+
+	      last_sa_index = sa_index0;
 	    }
 
 	  /* anti-replay check */
@@ -283,7 +283,7 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 
           digest = vlib_buffer_get_tail (b0) - trunc_size;
 
-	  if (cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC)
+	  if (!is_aead && cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC)
 	    clib_memcpy(icb, iv, 16);
 	  else /* CTR/GCM */
 	    {
