@@ -58,12 +58,12 @@ endif
 
 # +libganglia1-dev if building the gmond plugin
 
-DEB_DEPENDS  = curl build-essential autoconf automake bison ccache
+DEB_DEPENDS  = curl build-essential autoconf automake ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
-DEB_DEPENDS += libboost-all-dev libffi-dev
+DEB_DEPENDS += libboost-all-dev libffi-dev python-ply
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 	DEB_DEPENDS += libssl-dev
@@ -108,8 +108,8 @@ endif
 RPM_DEPENDS += chrpath libffi-devel rpm-build
 
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
-RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake bison ccache check-devel chrpath
-RPM_SUSE_BUILDTOOLS_DEPS += clang indent libtool make
+RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake ccache check-devel chrpath
+RPM_SUSE_BUILDTOOLS_DEPS += clang indent libtool make python-ply
 
 RPM_SUSE_DEVEL_DEPS = glibc-devel-static java-1_8_0-openjdk-devel libnuma-devel
 RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-vl_api_version 2.0.0
+option version = "2.0.0";
 
 /** \brief UDP-Probe Add/Delete request 
     @param src_ip_address - Source ipv4/v6 address for the udp-ping flow
