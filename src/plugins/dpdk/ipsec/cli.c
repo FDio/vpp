@@ -501,7 +501,7 @@ u8 *
 format_dpdk_mempool (u8 * s, va_list * args)
 {
   struct rte_mempool *mp = va_arg (*args, struct rte_mempool *);
-  uword indent = format_get_indent (s);
+  u32 indent = format_get_indent (s);
   u32 count = rte_mempool_avail_count (mp);
 
   s = format (s, "%s\n%Uavailable %7d, allocated %7d total %7d\n",
