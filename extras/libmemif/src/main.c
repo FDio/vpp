@@ -54,17 +54,18 @@
 /* private structs and functions */
 #include <memif_private.h>
 
-#define ERRLIST_LEN 36
+#define ERRLIST_LEN 37
 #define MAX_ERRBUF_LEN 256
 
 #if __x86_x64__
 #define MEMIF_MEMORY_BARRIER() __builtin_ia32_sfence ()
 #else
-#define MEMIF_MEORY_BARRIER() __sync_synchronize ()
+#define MEMIF_MEMORY_BARRIER() __sync_synchronize ()
 #endif /* __x86_x64__ */
 
 libmemif_main_t libmemif_main;
 int memif_epfd;
+int poll_cancel_fd = -1;
 
 static char memif_buf[MAX_ERRBUF_LEN];
 
@@ -139,7 +140,9 @@ const char *memif_errlist[ERRLIST_LEN] = {	/* MEMIF_ERR_SUCCESS */
   /* MEMIF_ERR_DISCONNECTED */
   "Interface is disconnected.",
   /* MEMIF_ERR_UNKNOWN_MSG */
-  "Unknown message type received on control channel. (internal error)"
+  "Unknown message type received on control channel. (internal error)",
+  /* MEMIF_ERR_POLL_CANCEL */
+  "Memif event polling was canceled."
 };
 
 #define MEMIF_ERR_UNDEFINED "undefined error"
@@ -423,6 +426,13 @@ memif_init (memif_control_fd_update_t * on_control_fd_update, char *app_name)
     {
       memif_epfd = epoll_create (1);
       memif_control_fd_update_register (memif_control_fd_update);
+      if ((poll_cancel_fd = eventfd (0, EFD_NONBLOCK)) < 0)
+	{
+	  err = errno;
+	  DBG ("eventfd: %s", strerror (err));
+	  return memif_syscall_error_handler (err);
+	}
+      lm->control_fd_update (poll_cancel_fd, MEMIF_FD_EVENT_READ);
       DBG ("libmemif event polling initialized");
     }
 
@@ -925,6 +935,8 @@ memif_poll_event (int timeout)
   int en = 0, err = MEMIF_ERR_SUCCESS, i = 0;	/* 0 */
   uint16_t num;
   uint32_t events = 0;
+  uint64_t counter = 0;
+  ssize_t r = 0;
   memset (&evt, 0, sizeof (evt));
   evt.events = EPOLLIN | EPOLLOUT;
   sigset_t sigset;
@@ -932,11 +944,17 @@ memif_poll_event (int timeout)
   en = epoll_pwait (memif_epfd, &evt, 1, timeout, &sigset);
   if (en < 0)
     {
-      DBG ("epoll_pwait: %s", strerror (errno));
-      return -1;
+      err = errno;
+      DBG ("epoll_pwait: %s", strerror (err));
+      return memif_syscall_error_handler (err);
     }
   if (en > 0)
     {
+      if (evt.data.fd == poll_cancel_fd)
+	{
+	  r = read (evt.data.fd, &counter, sizeof (counter));
+	  return MEMIF_ERR_POLL_CANCEL;
+	}
       if (evt.events & EPOLLIN)
 	events |= MEMIF_FD_EVENT_READ;
       if (evt.events & EPOLLOUT)
@@ -946,6 +964,21 @@ memif_poll_event (int timeout)
       err = memif_control_fd_handler (evt.data.fd, events);
       return err;
     }
+  return 0;
+}
+
+int
+memif_cancel_poll_event ()
+{
+  uint64_t counter = 1;
+  ssize_t w = 0;
+
+  if (poll_cancel_fd == -1)
+    return 0;
+  w = write (poll_cancel_fd, &counter, sizeof (counter));
+  if (w < sizeof (counter))
+    return MEMIF_ERR_INT_WRITE;
+
   return 0;
 }
 
@@ -1536,7 +1569,7 @@ memif_buffer_free (memif_conn_handle_t conn, uint16_t qid,
       *count_out += 1;
       mq->alloc_bufs -= chain_buf0;
     }
-  MEMIF_MEORY_BARRIER ();
+  MEMIF_MEMORY_BARRIER ();
   ring->tail = tail;
   DBG ("tail: %u", ring->tail);
 
@@ -1745,7 +1778,7 @@ memif_tx_burst (memif_conn_handle_t conn, uint16_t qid,
       *tx += chain_buf0;
       curr_buf++;
     }
-  MEMIF_MEORY_BARRIER ();
+  MEMIF_MEMORY_BARRIER ();
   ring->head = head;
 
   mq->alloc_bufs -= *tx;
@@ -1941,40 +1974,36 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   l0 = 0;
 
   l1 = strlen ((char *) c->args.interface_name);
-  if (l0 + l1 <= buflen)
+  if (l0 + l1 < buflen)
     {
-      md->if_name = strncpy (buf + l0, (char *) c->args.interface_name, l1);
-      md->if_name[l0 + l1] = '\0';
+      md->if_name = strcpy (buf + l0, (char *) c->args.interface_name);
       l0 += l1 + 1;
     }
   else
     err = MEMIF_ERR_NOBUF_DET;
 
   l1 = strlen ((char *) c->args.instance_name);
-  if (l0 + l1 <= buflen)
+  if (l0 + l1 < buflen)
     {
-      md->inst_name = strncpy (buf + l0, (char *) c->args.instance_name, l1);
-      md->inst_name[l0 + l1] = '\0';
+      md->inst_name = strcpy (buf + l0, (char *) c->args.instance_name);
       l0 += l1 + 1;
     }
   else
     err = MEMIF_ERR_NOBUF_DET;
 
   l1 = strlen ((char *) c->remote_if_name);
-  if (l0 + l1 <= buflen)
+  if (l0 + l1 < buflen)
     {
-      md->remote_if_name = strncpy (buf + l0, (char *) c->remote_if_name, l1);
-      md->remote_if_name[l0 + l1] = '\0';
+      md->remote_if_name = strcpy (buf + l0, (char *) c->remote_if_name);
       l0 += l1 + 1;
     }
   else
     err = MEMIF_ERR_NOBUF_DET;
 
   l1 = strlen ((char *) c->remote_name);
-  if (l0 + l1 <= buflen)
+  if (l0 + l1 < buflen)
     {
-      md->remote_inst_name = strncpy (buf + l0, (char *) c->remote_name, l1);
-      md->remote_inst_name[l0 + l1] = '\0';
+      md->remote_inst_name = strcpy (buf + l0, (char *) c->remote_name);
       l0 += l1 + 1;
     }
   else
@@ -1985,22 +2014,23 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   if (c->args.secret)
     {
       l1 = strlen ((char *) c->args.secret);
-      md->secret = strncpy (buf + l0, (char *) c->args.secret, l1);
-      md->secret[l0 + l1] = '\0';
-      l0 += l1 + 1;
+      if (l0 + l1 < buflen)
+	{
+	  md->secret = strcpy (buf + l0, (char *) c->args.secret);
+	  l0 += l1 + 1;
+	}
+      else
+	err = MEMIF_ERR_NOBUF_DET;
     }
-  else
-    err = MEMIF_ERR_NOBUF_DET;
 
   md->role = (c->args.is_master) ? 0 : 1;
   md->mode = c->args.mode;
 
   l1 = strlen ((char *) c->args.socket_filename);
-  if (l0 + l1 <= buflen)
+  if (l0 + l1 < buflen)
     {
       md->socket_filename =
-	strncpy (buf + l0, (char *) c->args.socket_filename, l1);
-      md->socket_filename[l0 + l1] = '\0';
+	strcpy (buf + l0, (char *) c->args.socket_filename);
       l0 += l1 + 1;
     }
   else
@@ -2014,7 +2044,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   if (l0 + l1 <= buflen)
     {
       md->rx_queues = (memif_queue_details_t *) buf + l0;
-      l0 = l1 + 1;
+      l0 += l1;
     }
   else
     err = MEMIF_ERR_NOBUF_DET;
@@ -2034,7 +2064,7 @@ memif_get_details (memif_conn_handle_t conn, memif_details_t * md,
   if (l0 + l1 <= buflen)
     {
       md->tx_queues = (memif_queue_details_t *) buf + l0;
-      l0 = l1 + 1;
+      l0 += l1;
     }
   else
     err = MEMIF_ERR_NOBUF_DET;
@@ -2090,6 +2120,8 @@ memif_cleanup ()
   if (lm->pending_list)
     free (lm->pending_list);
   lm->pending_list = NULL;
+  if (poll_cancel_fd != -1)
+    close (poll_cancel_fd);
 
   return MEMIF_ERR_SUCCESS;	/* 0 */
 }
