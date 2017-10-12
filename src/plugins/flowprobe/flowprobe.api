@@ -5,7 +5,7 @@
     used to control the flowprobe plugin
 */
 
-vl_api_version 1.0.0
+option version = "1.0.0";
 
 /** \brief Enable / disable per-packet IPFIX recording on an interface
     @param client_index - opaque cookie to identify the sender
