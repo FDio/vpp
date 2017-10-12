@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_3c8d617c",
+        "filename": "src/plugins/dpdk/buffer.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-10-12T15:06:09Z",
+      "side": 1,
+      "message": "cosmetic, but I suspect you did not mean to introduce this whitespace noise",
+      "revId": "5e9a384ddb37919de3447b31a41ac9ad95622b71",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
