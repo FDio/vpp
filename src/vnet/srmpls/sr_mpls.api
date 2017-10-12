@@ -13,7 +13,8 @@
  * under the License.
  */
 
-vl_api_version 1.0 .0
+option version = "1.0.0";
+
 /** \brief MPLS SR policy add
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -22,7 +23,7 @@ vl_api_version 1.0 .0
     @param type is the type of the SR policy. (0.Default // 1.Spray)
     @param segments vector of labels (20bit) composing the segment list
 */
-  autoreply define sr_mpls_policy_add
+autoreply define sr_mpls_policy_add
 {
   u32 client_index;
   u32 context;
