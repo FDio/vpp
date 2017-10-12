@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-vl_api_version 1.0.0
+option version = "1.0.0";
 
  /** \brief cop: enable/disable junk filtration features on an interface
     @param client_index - opaque cookie to identify the sender

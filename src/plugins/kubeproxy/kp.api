@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
-vl_api_version 1.0.0
+
+option version = "1.0.0";
 
 /** \brief Configure Kube-proxy global parameters
     @param client_index - opaque cookie to identify the sender

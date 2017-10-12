@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-vl_api_version 1.0.0
+option version = "1.0.0";
 
 /** \brief iOAM Over VxLAN-GPE - Set iOAM transport for VxLAN-GPE
     @param client_index - opaque cookie to identify the sender
