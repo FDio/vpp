@@ -24,6 +24,7 @@ import json
 import threading
 import glob
 import atexit
+from enum import Enum
 from cffi import FFI
 
 if sys.version[0] == '2':
@@ -111,6 +112,15 @@ class VPP():
     provides a means to register a callback function to receive
     these messages in a background thread.
     """
+    def _make_enums(self, enums):
+        self._enum = Empty()
+        for name, e in vpp_iterator(enums):
+            h = {}
+            for i in enums[name]:
+                h[i[0]] = i[1]
+            e_class = Enum(name, h)
+            setattr(self._enum, name, Enum(name, h))
+
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
                  logger=logging.getLogger('vpp_papi'), loglevel='debug'):
         """Create a VPP API object.
@@ -127,6 +137,7 @@ class VPP():
         logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
         self.messages = {}
+        self.enums = {}
         self.id_names = []
         self.id_msgdef = []
         self.buffersize = 10000
@@ -155,11 +166,19 @@ class VPP():
 
                 for m in api['messages']:
                     self.add_message(m[0], m[1:])
+
+                if 'enums' in api:
+                    for e in api['enums']:
+                        self.add_enum(e[0], e[1:])
+
         self.apifiles = apifiles
 
         # Basic sanity check
         if len(self.messages) == 0 and not testmode:
             raise ValueError(1, 'Missing JSON message definitions')
+
+        # Register enums
+        self._make_enums(self.enums)
 
         # Make sure we allow VPP to clean up the message rings.
         atexit.register(vpp_atexit, self)
@@ -292,6 +311,7 @@ class VPP():
 
     def encode(self, msgdef, kwargs):
         # Make suitably large buffer
+        # FIXME
         buf = bytearray(self.buffersize)
         offset = 0
         size = self.__struct_type(True, msgdef, buf, offset, kwargs)
@@ -386,6 +406,11 @@ class VPP():
         return self.add_message('vl_api_' + name + '_t', typedef,
                                 typeonly=True)
 
+    def add_enum(self, name, enum):
+        if name in self.enums:
+            raise ValueError('Duplicate enum name: %s' % name)
+        self.enums[name] = enum
+
     def make_function(self, name, i, msgdef, multipart, async):
         if (async):
             f = lambda **kwargs: (self._call_vpp_async(i, msgdef, **kwargs))
@@ -404,6 +429,12 @@ class VPP():
         if not hasattr(self, "_api"):
             raise Exception("Not connected, api definitions not available")
         return self._api
+
+    @property
+    def enum(self):
+        if not hasattr(self, "_enum"):
+            raise Exception("Not connected, api definitions not available")
+        return self._enum
 
     def _register_functions(self, async=False):
         self.id_names = [None] * (self.vpp_dictionary_maxid + 1)
@@ -657,7 +688,7 @@ class VPP():
         self.event_callback = callback
 
     def thread_msg_handler(self):
-        """Python thread calling the user registerd message handler.
+        """Python thread calling the user registered message handler.
 
         This is to emulate the old style event callback scheme. Modern
         clients should provide their own thread to poll the event

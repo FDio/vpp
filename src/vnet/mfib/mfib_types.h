@@ -18,6 +18,10 @@
 
 #include <vnet/fib/fib_types.h>
 
+#define vl_typedefs             /* define message structures */
+#include <vnet/ip/ip.api.h>
+#undef vl_typedefs
+
 /**
  * Aggregrate type for a prefix
  */
@@ -145,15 +149,8 @@ typedef enum mfib_itf_attribute_t_
     [MFIB_ITF_DONT_PRESERVE] = "Don't-Preserve", \
 }
 
-typedef enum mfib_itf_flags_t_
-{
-    MFIB_ITF_FLAG_NONE,
-    MFIB_ITF_FLAG_NEGATE_SIGNAL = (1 << MFIB_ITF_NEGATE_SIGNAL),
-    MFIB_ITF_FLAG_ACCEPT = (1 << MFIB_ITF_ACCEPT),
-    MFIB_ITF_FLAG_FORWARD = (1 << MFIB_ITF_FORWARD),
-    MFIB_ITF_FLAG_SIGNAL_PRESENT = (1 << MFIB_ITF_SIGNAL_PRESENT),
-    MFIB_ITF_FLAG_DONT_PRESERVE = (1 << MFIB_ITF_DONT_PRESERVE),
-} mfib_itf_flags_t;
+/* alias from ip.api.h */
+typedef vl_api_mfib_itf_flags_t mfib_itf_flags_t;
 
 /**
  * Possible [control plane] sources of MFIB entries

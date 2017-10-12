@@ -412,6 +412,16 @@ autoreply define ip_add_del_route
   u32 next_hop_out_label_stack[next_hop_n_out_labels];
 };
 
+enum mfib_itf_flags
+{
+    MFIB_ITF_FLAG_NONE =           0x00,
+    MFIB_ITF_FLAG_NEGATE_SIGNAL =  0x01,
+    MFIB_ITF_FLAG_ACCEPT =         0x02,
+    MFIB_ITF_FLAG_FORWARD =        0x04,
+    MFIB_ITF_FLAG_SIGNAL_PRESENT = 0x08,
+    MFIB_ITF_FLAG_DONT_PRESERVE =  0x10,
+};
+
 /** \brief Add / del route request
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -427,7 +437,7 @@ autoreply define ip_mroute_add_del
   u32 next_hop_sw_if_index;
   u32 table_id;
   u32 entry_flags;
-  u32 itf_flags;
+  vl_api_mfib_itf_flags_t itf_flags;
   u32 rpf_id;
   u16 grp_address_length;
   u8 create_vrf_if_needed;
