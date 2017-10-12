@@ -51,6 +51,14 @@ _(proc-type)                                    \
 _(file-prefix)                                  \
 _(vdev)
 
+typedef struct
+{
+  /* must be first */
+  struct rte_pktmbuf_pool_private mbp_priv;
+  u8 buffer_pool_index;
+} dpdk_mempool_private_t;
+
+
 static inline void
 dpdk_get_xstats (dpdk_device_t * xd)
 {

@@ -55,7 +55,6 @@ typedef struct
   void *heap;
   u32 flags;
 #define VLIB_PHYSMEM_F_INIT_MHEAP (1<<0)
-#define VLIB_PHYSMEM_F_HAVE_BUFFERS (1<<1)
 #define VLIB_PHYSMEM_F_FAKE (1<<2)
 
   u8 numa_node;
