@@ -157,6 +157,7 @@ autoreply define ipsec_sad_add_del_entry
   u8 integrity_key[128];
 
   u8 use_extended_sequence_number;
+  u8 use_anti_replay;
 
   u8 is_tunnel;
   u8 is_tunnel_ipv6;
@@ -632,6 +633,21 @@ autoreply define ipsec_tunnel_if_set_key {
   u8 alg;
   u8 key_len;
   u8 key[128];
+};
+
+/** \brief Set new SA on IPsec interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of tunnel interface
+    @param sa_id - ID of SA to use
+    @param is_outbound - 1 if outbound (local) SA, 0 if inbound (remote)
+*/
+autoreply define ipsec_tunnel_if_set_sa {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 sa_id;
+  u8 is_outbound;
 };
 
 /*
