@@ -5107,6 +5107,7 @@ _(ipsec_sad_add_del_entry_reply)                        \
 _(ipsec_sa_set_key_reply)                               \
 _(ipsec_tunnel_if_add_del_reply)                        \
 _(ipsec_tunnel_if_set_key_reply)                        \
+_(ipsec_tunnel_if_set_sa_reply)                         \
 _(ikev2_profile_add_del_reply)                          \
 _(ikev2_profile_set_auth_reply)                         \
 _(ikev2_profile_set_id_reply)                           \
@@ -5341,6 +5342,7 @@ _(IPSEC_SA_DETAILS, ipsec_sa_details)                                   \
 _(IPSEC_SA_SET_KEY_REPLY, ipsec_sa_set_key_reply)                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL_REPLY, ipsec_tunnel_if_add_del_reply)         \
 _(IPSEC_TUNNEL_IF_SET_KEY_REPLY, ipsec_tunnel_if_set_key_reply)         \
+_(IPSEC_TUNNEL_IF_SET_SA_REPLY, ipsec_tunnel_if_set_sa_reply)           \
 _(IKEV2_PROFILE_ADD_DEL_REPLY, ikev2_profile_add_del_reply)             \
 _(IKEV2_PROFILE_SET_AUTH_REPLY, ikev2_profile_set_auth_reply)           \
 _(IKEV2_PROFILE_SET_ID_REPLY, ikev2_profile_set_id_reply)               \
@@ -14402,6 +14404,57 @@ api_ipsec_tunnel_if_set_key (vat_main_t * vam)
 }
 
 static int
+api_ipsec_tunnel_if_set_sa (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_ipsec_tunnel_if_set_sa_t *mp;
+  u32 sw_if_index = ~0;
+  u32 sa_id = ~0;
+  u8 is_outbound = (u8) ~ 0;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	;
+      else if (unformat (i, "sa_id %d", &sa_id))
+	;
+      else if (unformat (i, "outbound"))
+	is_outbound = 1;
+      else if (unformat (i, "inbound"))
+	is_outbound = 0;
+      else
+	{
+	  clib_warning ("parse error '%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (sw_if_index == ~0)
+    {
+      errmsg ("interface must be specified");
+      return -99;
+    }
+
+  if (sa_id == ~0)
+    {
+      errmsg ("SA ID must be specified");
+      return -99;
+    }
+
+  M (IPSEC_TUNNEL_IF_SET_SA, mp);
+
+  mp->sw_if_index = htonl (sw_if_index);
+  mp->sa_id = htonl (sa_id);
+  mp->is_outbound = is_outbound;
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+static int
 api_ikev2_profile_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -21708,6 +21761,7 @@ _(ipsec_tunnel_if_add_del, "local_spi <n> remote_spi <n>\n"             \
 _(ipsec_sa_dump, "[sa_id <n>]")                                         \
 _(ipsec_tunnel_if_set_key, "<intfc> <local|remote> <crypto|integ>\n"    \
   "  <alg> <hex>\n")                                                    \
+_(ipsec_tunnel_if_set_sa, "<intfc> sa_id <n> <inbound|outbound>\n")     \
 _(ikev2_profile_add_del, "name <profile_name> [del]")                   \
 _(ikev2_profile_set_auth, "name <profile_name> auth_method <method>\n"  \
   "(auth_data 0x<data> | auth_data <data>)")                            \

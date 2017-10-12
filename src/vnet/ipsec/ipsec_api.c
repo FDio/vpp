@@ -57,6 +57,7 @@ _(IPSEC_SA_DUMP, ipsec_sa_dump)                                         \
 _(IPSEC_SPD_DUMP, ipsec_spd_dump)                                       \
 _(IPSEC_TUNNEL_IF_ADD_DEL, ipsec_tunnel_if_add_del)                     \
 _(IPSEC_TUNNEL_IF_SET_KEY, ipsec_tunnel_if_set_key)                     \
+_(IPSEC_TUNNEL_IF_SET_SA, ipsec_tunnel_if_set_sa)                       \
 _(IKEV2_PROFILE_ADD_DEL, ikev2_profile_add_del)                         \
 _(IKEV2_PROFILE_SET_AUTH, ikev2_profile_set_auth)                       \
 _(IKEV2_PROFILE_SET_ID, ikev2_profile_set_id)                           \
@@ -236,6 +237,7 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
       clib_memcpy (&sa.tunnel_src_addr.ip4.data, mp->tunnel_src_address, 4);
       clib_memcpy (&sa.tunnel_dst_addr.ip4.data, mp->tunnel_dst_address, 4);
     }
+  sa.use_anti_replay = mp->use_anti_replay;
 
   ASSERT (im->cb.check_support_cb);
   clib_error_t *err = im->cb.check_support_cb (&sa);
@@ -562,6 +564,28 @@ vl_api_ipsec_tunnel_if_set_key_t_handler (vl_api_ipsec_tunnel_if_set_key_t *
 
 out:
   REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_KEY_REPLY);
+}
+
+
+static void
+vl_api_ipsec_tunnel_if_set_sa_t_handler (vl_api_ipsec_tunnel_if_set_sa_t * mp)
+{
+  vl_api_ipsec_tunnel_if_set_sa_reply_t *rmp;
+  ipsec_main_t *im = &ipsec_main;
+  vnet_main_t *vnm = im->vnet_main;
+  vnet_sw_interface_t *sw;
+  int rv;
+
+#if WITH_LIBSSL > 0
+  sw = vnet_get_sw_interface (vnm, ntohl (mp->sw_if_index));
+
+  rv = ipsec_set_interface_sa (vnm, sw->hw_if_index, ntohl (mp->sa_id),
+			       mp->is_outbound);
+#else
+  clib_warning ("unimplemented");
+#endif
+
+  REPLY_MACRO (VL_API_IPSEC_TUNNEL_IF_SET_SA_REPLY);
 }
 
 

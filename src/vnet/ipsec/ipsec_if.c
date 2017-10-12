@@ -399,6 +399,85 @@ ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 }
 
 
+int
+ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
+			u8 is_outbound)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vnet_hw_interface_t *hi;
+  ipsec_tunnel_if_t *t;
+  ipsec_sa_t *sa, *old_sa;
+  u32 sa_index, old_sa_index;
+  uword *p;
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  t = pool_elt_at_index (im->tunnel_interfaces, hi->dev_instance);
+
+  sa_index = ipsec_get_sa_index_by_sa_id (sa_id);
+  if (sa_index == ~0)
+    {
+      clib_warning ("SA with ID %u not found", sa_id);
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  if (ipsec_is_sa_used (sa_index))
+    {
+      clib_warning ("SA with ID %u is already in use", sa_id);
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
+
+  sa = pool_elt_at_index (im->sad, sa_index);
+  if (sa->is_tunnel_ip6)
+    {
+      clib_warning ("IPsec interface not supported with IPv6 endpoints");
+      return VNET_API_ERROR_UNIMPLEMENTED;
+    }
+
+  if (!is_outbound)
+    {
+      u64 key;
+
+      old_sa_index = t->input_sa_index;
+      old_sa = pool_elt_at_index (im->sad, old_sa_index);
+
+      /* unset old inbound hash entry. packets should stop arriving */
+      key =
+	(u64) old_sa->tunnel_dst_addr.ip4.as_u32 << 32 | (u64) old_sa->spi;
+      p = hash_get (im->ipsec_if_pool_index_by_key, key);
+      if (p)
+	hash_unset (im->ipsec_if_pool_index_by_key, key);
+
+      /* set new inbound SA, then set new hash entry */
+      t->input_sa_index = sa_index;
+      key = (u64) sa->tunnel_dst_addr.ip4.as_u32 << 32 | (u64) sa->spi;
+      hash_set (im->ipsec_if_pool_index_by_key, key, hi->dev_instance);
+    }
+  else
+    {
+      old_sa_index = t->output_sa_index;
+      old_sa = pool_elt_at_index (im->sad, old_sa_index);
+      t->output_sa_index = sa_index;
+    }
+
+  /* remove sa_id to sa_index mapping on old SA */
+  if (ipsec_get_sa_index_by_sa_id (old_sa->id) == old_sa_index)
+    hash_unset (im->sa_index_by_sa_id, old_sa->id);
+
+  if (im->cb.add_del_sa_sess_cb)
+    {
+      clib_error_t *err;
+
+      err = im->cb.add_del_sa_sess_cb (old_sa_index, 0);
+      if (err)
+	return VNET_API_ERROR_SYSCALL_ERROR_1;
+    }
+
+  pool_put (im->sad, old_sa);
+
+  return 0;
+}
+
+
 clib_error_t *
 ipsec_tunnel_if_init (vlib_main_t * vm)
 {

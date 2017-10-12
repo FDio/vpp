@@ -379,7 +379,7 @@ ipsec_add_del_policy (vlib_main_t * vm, ipsec_policy_t * policy, int is_add)
   return 0;
 }
 
-static u8
+u8
 ipsec_is_sa_used (u32 sa_index)
 {
   ipsec_main_t *im = &ipsec_main;
