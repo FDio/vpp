@@ -324,6 +324,13 @@ int ipsec_add_del_ipsec_gre_tunnel (vnet_main_t * vnm,
 				    args);
 int ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 			     ipsec_if_set_key_type_t type, u8 alg, u8 * key);
+int ipsec_set_interface_esn (vnet_main_t * vnm, u32 hw_if_index, u8 esn);
+int ipsec_set_interface_replay (vnet_main_t * vnm, u32 hw_if_index,
+				u8 replay);
+int ipsec_set_interface_addr (vnet_main_t * vnm, u32 hw_if_index, u8 is_local,
+			      u8 * addr);
+int ipsec_set_interface_spi (vnet_main_t * vnm, u32 hw_if_index, u8 is_local,
+			     u32 spi);
 
 
 /*

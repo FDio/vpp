@@ -399,6 +399,113 @@ ipsec_set_interface_key (vnet_main_t * vnm, u32 hw_if_index,
 }
 
 
+int
+ipsec_set_interface_addr (vnet_main_t * vnm, u32 hw_if_index, u8 is_local,
+			  u8 * addr)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vnet_hw_interface_t *hi;
+  ipsec_tunnel_if_t *t;
+  ipsec_sa_t *sa_out, *sa_in;
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  t = pool_elt_at_index (im->tunnel_interfaces, hi->dev_instance);
+
+  if (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
+    return VNET_API_ERROR_SYSCALL_ERROR_1;
+
+  sa_out = pool_elt_at_index (im->sad, t->output_sa_index);
+  sa_in = pool_elt_at_index (im->sad, t->input_sa_index);
+
+  if (is_local)
+    {
+      clib_memcpy (&sa_out->tunnel_src_addr.ip4, addr, 4);
+      clib_memcpy (&sa_in->tunnel_dst_addr.ip4, addr, 4);
+    }
+  else
+    {
+      clib_memcpy (&sa_out->tunnel_dst_addr.ip4, addr, 4);
+      clib_memcpy (&sa_in->tunnel_src_addr.ip4, addr, 4);
+    }
+
+  return 0;
+}
+
+
+int
+ipsec_set_interface_spi (vnet_main_t * vnm, u32 hw_if_index, u8 is_local,
+			 u32 spi)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vnet_hw_interface_t *hi;
+  ipsec_tunnel_if_t *t;
+  ipsec_sa_t *sa;
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  t = pool_elt_at_index (im->tunnel_interfaces, hi->dev_instance);
+
+  if (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
+    return VNET_API_ERROR_SYSCALL_ERROR_1;
+
+  if (is_local)
+    sa = pool_elt_at_index (im->sad, t->output_sa_index);
+  else
+    sa = pool_elt_at_index (im->sad, t->input_sa_index);
+
+  sa->spi = spi;
+
+  return 0;
+}
+
+
+int
+ipsec_set_interface_esn (vnet_main_t * vnm, u32 hw_if_index, u8 esn)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vnet_hw_interface_t *hi;
+  ipsec_tunnel_if_t *t;
+  ipsec_sa_t *sa_in, *sa_out;
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  t = pool_elt_at_index (im->tunnel_interfaces, hi->dev_instance);
+
+  if (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
+    return VNET_API_ERROR_SYSCALL_ERROR_1;
+
+  sa_out = pool_elt_at_index (im->sad, t->output_sa_index);
+  sa_in = pool_elt_at_index (im->sad, t->input_sa_index);
+
+  sa_out->use_esn = esn;
+  sa_in->use_esn = esn;
+
+  return 0;
+}
+
+
+int
+ipsec_set_interface_replay (vnet_main_t * vnm, u32 hw_if_index, u8 replay)
+{
+  ipsec_main_t *im = &ipsec_main;
+  vnet_hw_interface_t *hi;
+  ipsec_tunnel_if_t *t;
+  ipsec_sa_t *sa_in, *sa_out;
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  t = pool_elt_at_index (im->tunnel_interfaces, hi->dev_instance);
+
+  if (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP)
+    return VNET_API_ERROR_SYSCALL_ERROR_1;
+
+  sa_out = pool_elt_at_index (im->sad, t->output_sa_index);
+  sa_in = pool_elt_at_index (im->sad, t->input_sa_index);
+
+  sa_out->use_anti_replay = replay;
+  sa_in->use_anti_replay = replay;
+
+  return 0;
+}
+
+
 clib_error_t *
 ipsec_tunnel_if_init (vlib_main_t * vm)
 {

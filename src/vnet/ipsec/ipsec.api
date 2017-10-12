@@ -634,6 +634,62 @@ autoreply define ipsec_tunnel_if_set_key {
   u8 key[128];
 };
 
+/** \brief Enable/disable extended sequence numbers on IPsec tunnel interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of tunnel interface to modify
+    @param use_esn - Disable ESN if zero, else enable
+*/
+autoreply define ipsec_tunnel_if_set_esn {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 use_esn;
+};
+
+/** \brief Enable/disable anti replay window on IPsec tunnel interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of tunnel interface to modify
+    @param use_anti_replay - Disable anti replay window if zero, else enable
+*/
+autoreply define ipsec_tunnel_if_set_replay {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 use_anti_replay;
+};
+
+/** \brief Set peer IP address on IPsec tunnel interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of tunnel interface to modify
+    @param is_local - if nonzero update local peer, else remote peer
+    @param ip - IP address
+*/
+autoreply define ipsec_tunnel_if_set_addr {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_local;
+  u8 ip[4];
+};
+
+/** \brief Set peer SPI on IPsec tunnel interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of tunnel interface to modify
+    @param is_local - if nonzero update local peer, else remote peer
+    @param spi - SPI value
+*/
+autoreply define ipsec_tunnel_if_set_spi {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 is_local;
+  u32 spi;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
