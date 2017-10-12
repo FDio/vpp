@@ -191,8 +191,6 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 
 	  if (sa_index0 != last_sa_index)
 	    {
-	      last_sa_index = sa_index0;
-
 	      sa0 = pool_elt_at_index (im->sad, sa_index0);
 
 	      cipher_alg =
@@ -238,6 +236,8 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		  n_left_to_next -= 1;
 		  goto trace;
 		}
+
+	      last_sa_index = sa_index0;
 	    }
 
 	  if (PREDICT_FALSE (esp_seq_advance (sa0)))
@@ -375,7 +375,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 			   rewrite_len + ip4_header_bytes (&ih0->ip4));
 		  oh0->ip4.protocol = IP_PROTOCOL_IPSEC_ESP;
 		  esp0 =
-		    (esp_header_t *) (oh6_0 + ip4_header_bytes (&ih0->ip4));
+		    (esp_header_t *) (oh0 + ip4_header_bytes (&ih0->ip4));
 		}
 	      esp0->spi = clib_host_to_net_u32 (sa0->spi);
 	      esp0->seq = clib_host_to_net_u32 (sa0->seq);
@@ -421,7 +421,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  u32 *aad = NULL;
 	  u8 *digest = vlib_buffer_get_tail (b0) - trunc_size;
 
-	  if (cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC)
+	  if (!is_aead && cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC)
 	    {
 	      cipher_off = sizeof (esp_header_t);
 	      cipher_len = iv_size + pad_payload_len;

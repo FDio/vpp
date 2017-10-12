@@ -414,6 +414,7 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
   ipsec_sa_t *sa = 0;
   uword *p;
   u32 sa_index;
+  clib_error_t *err;
 
   clib_warning ("id %u spi %u", new_sa->id, new_sa->spi);
 
@@ -433,9 +434,12 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
 	  return VNET_API_ERROR_SYSCALL_ERROR_1;	/* sa used in policy */
 	}
       hash_unset (im->sa_index_by_sa_id, sa->id);
-      if (im->cb.add_del_sa_sess_cb &&
-	  im->cb.add_del_sa_sess_cb (sa_index, 0) < 0)
-	return VNET_API_ERROR_SYSCALL_ERROR_1;
+      if (im->cb.add_del_sa_sess_cb)
+	{
+	  err = im->cb.add_del_sa_sess_cb (sa_index, 0);
+	  if (err)
+	    return VNET_API_ERROR_SYSCALL_ERROR_1;
+	}
       pool_put (im->sad, sa);
     }
   else				/* create new SA */
@@ -444,9 +448,12 @@ ipsec_add_del_sa (vlib_main_t * vm, ipsec_sa_t * new_sa, int is_add)
       clib_memcpy (sa, new_sa, sizeof (*sa));
       sa_index = sa - im->sad;
       hash_set (im->sa_index_by_sa_id, sa->id, sa_index);
-      if (im->cb.add_del_sa_sess_cb &&
-	  im->cb.add_del_sa_sess_cb (sa_index, 1) < 0)
-	return VNET_API_ERROR_SYSCALL_ERROR_1;
+      if (im->cb.add_del_sa_sess_cb)
+	{
+	  err = im->cb.add_del_sa_sess_cb (sa_index, 1);
+	  if (err)
+	    return VNET_API_ERROR_SYSCALL_ERROR_1;
+	}
     }
   return 0;
 }
@@ -458,6 +465,7 @@ ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update)
   uword *p;
   u32 sa_index;
   ipsec_sa_t *sa = 0;
+  clib_error_t *err;
 
   p = hash_get (im->sa_index_by_sa_id, sa_update->id);
   if (!p)
@@ -484,9 +492,12 @@ ipsec_set_sa_key (vlib_main_t * vm, ipsec_sa_t * sa_update)
 
   if (0 < sa_update->crypto_key_len || 0 < sa_update->integ_key_len)
     {
-      if (im->cb.add_del_sa_sess_cb &&
-	  im->cb.add_del_sa_sess_cb (sa_index, 0) < 0)
-	return VNET_API_ERROR_SYSCALL_ERROR_1;
+      if (im->cb.add_del_sa_sess_cb)
+	{
+	  err = im->cb.add_del_sa_sess_cb (sa_index, 0);
+	  if (err)
+	    return VNET_API_ERROR_SYSCALL_ERROR_1;
+	}
     }
 
   return 0;

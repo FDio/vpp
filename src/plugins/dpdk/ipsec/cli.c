@@ -287,7 +287,7 @@ set_dpdk_crypto_placement_fn (vlib_main_t * vm,
   crypto_dev_t *dev;
   u32 thread_idx, i;
   u16 res_idx, *idx;
-  u8 dev_idx, auto_en;
+  u8 dev_idx, auto_en = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return clib_error_return (0, "invalid syntax");
