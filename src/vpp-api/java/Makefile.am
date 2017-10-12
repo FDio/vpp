@@ -80,7 +80,7 @@ define japigen
 	@echo "  JAPIGEN  $@"
 	@rm -rf jvpp-$(1)/target
 	@ @srcdir@/jvpp/gen/jvpp_gen.py --plugin_name $(1) --root_dir jvpp-$(1) \
-	  -i $(jvpp_$(1)_json_files) > /dev/null
+	  -i $(jvpp_$(1)_json_files)
 	@find jvpp-$(1)/target -name \*.java > jvpp-$(1).generated.files
 	@find @srcdir@/jvpp-$(1) -name \*.java > jvpp-$(1).static.files
 	@$(JAVAC) -classpath jvpp-registry/target \
