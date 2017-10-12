@@ -194,6 +194,7 @@ typedef struct
   u16 rx_q_used;
   u16 nb_rx_desc;
   u16 *cpu_socket_id_by_queue;
+  u8 *buffer_pool_for_queue;
   struct rte_eth_conf port_conf;
   struct rte_eth_txconf tx_conf;
 

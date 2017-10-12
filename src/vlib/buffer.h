@@ -123,7 +123,8 @@ typedef struct
 
   u8 n_add_refs; /**< Number of additional references to this buffer. */
 
-  u8 dont_waste_me[2]; /**< Available space in the (precious)
+  u8 buffer_pool_index;	/**< index of buffer pool this buffer belongs. */
+  u8 dont_waste_me[1]; /**< Available space in the (precious)
                           first 32 octets of buffer metadata
                           Before allocating any of it, discussion required!
                        */
@@ -405,11 +406,19 @@ extern vlib_buffer_callbacks_t *vlib_buffer_callbacks;
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+  uword start;
+  uword size;
+  vlib_physmem_region_index_t physmem_region;
+} vlib_buffer_pool_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   /* Virtual memory address and size of buffer memory, used for calculating
      buffer index */
   uword buffer_mem_start;
   uword buffer_mem_size;
-  vlib_physmem_region_index_t physmem_region;
+  vlib_buffer_pool_t *buffer_pools;
 
   /* Buffer free callback, for subversive activities */
     u32 (*buffer_free_callback) (struct vlib_main_t * vm,
@@ -442,8 +451,9 @@ typedef struct
   int callbacks_registered;
 } vlib_buffer_main_t;
 
-void vlib_buffer_add_mem_range (struct vlib_main_t *vm, uword start,
-				uword size);
+u8 vlib_buffer_add_physmem_region (struct vlib_main_t *vm,
+				   vlib_physmem_region_index_t region);
+
 clib_error_t *vlib_buffer_main_init (struct vlib_main_t *vm);
 
 typedef struct

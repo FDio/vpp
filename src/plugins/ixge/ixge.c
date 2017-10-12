@@ -2528,8 +2528,9 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
       u32 i;
 
       dq->tx.head_index_write_back =
-	vlib_physmem_alloc (vm, vm->buffer_main->physmem_region, &error,
-			    CLIB_CACHE_LINE_BYTES);
+	vlib_physmem_alloc (vm,
+			    vm->buffer_main->buffer_pools[0].physmem_region,
+			    &error, CLIB_CACHE_LINE_BYTES);
 
       for (i = 0; i < dq->n_descriptors; i++)
 	dq->descriptors[i].tx = xm->tx_descriptor_template;
@@ -2542,7 +2543,9 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
     u64 a;
 
     a =
-      vlib_physmem_virtual_to_physical (vm, vm->buffer_main->physmem_region,
+      vlib_physmem_virtual_to_physical (vm,
+					vm->buffer_main->
+					buffer_pools[0].physmem_region,
 					dq->descriptors);
     dr->descriptor_address[0] = a & 0xFFFFFFFF;
     dr->descriptor_address[1] = a >> (u64) 32;
@@ -2570,7 +2573,8 @@ ixge_dma_init (ixge_device_t * xd, vlib_rx_or_tx_t rt, u32 queue_index)
 
 	a =
 	  vlib_physmem_virtual_to_physical (vm,
-					    vm->buffer_main->physmem_region,
+					    vm->buffer_main->
+					    buffer_pools[0].physmem_region,
 					    dq->tx.head_index_write_back);
 	dr->tx.head_index_write_back_address[0] = /* enable bit */ 1 | a;
 	dr->tx.head_index_write_back_address[1] = (u64) a >> (u64) 32;

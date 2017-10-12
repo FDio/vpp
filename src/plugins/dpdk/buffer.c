@@ -193,6 +193,8 @@ fill_free_list (vlib_main_t * vm,
   if (rte_mempool_get_bulk (rmp, vm->mbuf_alloc_list, n) < 0)
     return 0;
 
+  dpdk_mempool_private_t *privp = rte_mempool_get_priv (rmp);
+
   _vec_len (vm->mbuf_alloc_list) = n;
 
   i = 0;
@@ -233,6 +235,11 @@ fill_free_list (vlib_main_t * vm,
       vlib_buffer_init_for_free_list (b2, fl);
       vlib_buffer_init_for_free_list (b3, fl);
 
+      b0->buffer_pool_index = privp->buffer_pool_index;
+      b1->buffer_pool_index = privp->buffer_pool_index;
+      b2->buffer_pool_index = privp->buffer_pool_index;
+      b3->buffer_pool_index = privp->buffer_pool_index;
+
       if (fl->buffer_init_function)
 	{
 	  fl->buffer_init_function (vm, fl, &bi0, 1);
@@ -253,6 +260,7 @@ fill_free_list (vlib_main_t * vm,
       vec_add1_aligned (fl->buffers, bi0, CLIB_CACHE_LINE_BYTES);
 
       vlib_buffer_init_for_free_list (b0, fl);
+      b0->buffer_pool_index = privp->buffer_pool_index;
 
       if (fl->buffer_init_function)
 	fl->buffer_init_function (vm, fl, &bi0, 1);
@@ -409,13 +417,6 @@ dpdk_packet_template_init (vlib_main_t * vm,
   vlib_worker_thread_barrier_release (vm);
 }
 
-typedef struct
-{
-  /* must be first */
-  struct rte_pktmbuf_pool_private mbp_priv;
-  vlib_physmem_region_index_t region_index;
-} dpdk_mempool_private_t;
-
 clib_error_t *
 dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 			 unsigned socket_id)
@@ -446,9 +447,8 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
   size = rte_mempool_xmem_size (num_mbufs, obj_size, 21);
 
   clib_error_t *error = 0;
-  error =
-    vlib_physmem_region_alloc (vm, (char *) pool_name, size, socket_id,
-			       VLIB_PHYSMEM_F_HAVE_BUFFERS, &pri);
+  error = vlib_physmem_region_alloc (vm, (char *) pool_name, size, socket_id,
+				     0, &pri);
   if (error)
     clib_error_report (error);
 
@@ -487,7 +487,7 @@ dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 	  rte_mempool_obj_iter (rmp, rte_pktmbuf_init, 0);
 
 	  dpdk_mempool_private_t *privp = rte_mempool_get_priv (rmp);
-	  privp->region_index = pri;
+	  privp->buffer_pool_index = vlib_buffer_add_physmem_region (vm, pri);
 
 	  dm->pktmbuf_pools[socket_id] = rmp;
 
