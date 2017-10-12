@@ -347,6 +347,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
   /* Update buffer template */
   vnet_buffer (bt)->sw_if_index[VLIB_RX] = xd->vlib_sw_if_index;
   bt->error = node->errors[DPDK_ERROR_NONE];
+  bt->buffer_pool = xd->buffer_pool_for_queue[queue_id];
 
   mb_index = 0;
 
