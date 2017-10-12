@@ -62,7 +62,8 @@ DEB_DEPENDS  = curl build-essential autoconf automake bison ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf nasm indent clang-format libnuma-dev
-DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
+DEB_DEPENDS += python-all python-dev python-virtualenv python-pip python-ply
+DEB_DEPENDS += libffi6 check
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 	DEB_DEPENDS += libssl-dev

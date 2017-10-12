@@ -33,13 +33,13 @@ include sample.am
 %.api.h: %.api
 	mkdir -p `dirname $@` ; \
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^ \
-	| vppapigen --input - --output $@ --show-name $@
+	| vppapigen --input - --output $@ --show-name $<
 
 %.api.json: %.api
 	@echo "  JSON APIGEN  " $@ ;				\
 	mkdir -p `dirname $@` ;					\
 	$(CC) $(CPPFLAGS) -E -P -C -x c $^			\
-	| vppapigen --input - --json $@
+	| vppapigen --input - JSON --output $@
 
 apidir = $(prefix)/api/plugins
 apiincludedir = ${includedir}/vpp_plugins
