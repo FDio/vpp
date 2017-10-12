@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-vl_api_version 1.0.0
+option version = "1.0.0";
 
 /** \brief Proof of Transit(POT): Set POT profile
     @param id - id of the profile 

@@ -12,6 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+option version = "1.0.0";
  
 /** \brief Configure TCP source addresses, for active-open TCP sessions
 
