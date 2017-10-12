@@ -72,6 +72,7 @@ typedef enum
   MEMIF_ERR_DISCONNECT,		/*!< disconenct received */
   MEMIF_ERR_DISCONNECTED,	/*!< peer interface disconnected */
   MEMIF_ERR_UNKNOWN_MSG,	/*!< unknown message type */
+  MEMIF_ERR_POLL_CANCEL,	/*!< memif_poll_event() was cancelled */
 } memif_err_t;
 
 /**
@@ -438,6 +439,21 @@ int memif_rx_burst (memif_conn_handle_t conn, uint16_t qid,
     \return memif_err_t
 */
 int memif_poll_event (int timeout);
+
+/** \brief Send signal to stop concurrently running memif_poll_event().
+
+    The function, however, does not wait for memif_poll_event() to stop.
+    memif_poll_event() may still return simply because an event has occured
+    or the timeout has elapsed, but if called repeatedly in an infinite loop,
+    a canceled memif_poll_event() is guaranted to return MEMIF_ERR_POLL_CANCEL
+    in the shortest possible time.
+    This feature was not available in the first release.
+    Use macro MEMIF_HAVE_CANCEL_POLL_EVENT to check if the feature is present.
+
+    \return memif_err_t
+*/
+#define MEMIF_HAVE_CANCEL_POLL_EVENT 1
+int memif_cancel_poll_event ();
 /** @} */
 
 #endif /* _LIBMEMIF_H_ */
