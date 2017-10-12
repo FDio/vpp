@@ -1169,6 +1169,7 @@ vl_api_show_version_t_handler (vl_api_show_version_t * mp)
   char *vpe_api_get_version (void);
   char *vpe_api_get_build_date (void);
 
+  //clib_warning ("Sending showVersion event reply message");
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_SHOW_VERSION_REPLY,
   ({

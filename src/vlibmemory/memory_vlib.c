@@ -107,6 +107,7 @@ vl_msg_api_send (vl_api_registration_t * rp, u8 * elem)
     }
   else
     {
+	  //clib_warning ("Sending event message 2");
       vl_msg_api_send_shmem (rp->vl_input_queue, (u8 *) & elem);
     }
 }

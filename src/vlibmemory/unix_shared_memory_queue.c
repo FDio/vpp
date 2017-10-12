@@ -208,6 +208,7 @@ unix_shared_memory_queue_add (unix_shared_memory_queue_t * q,
 	}
       while (q->cursize == q->maxsize)
 	{
+      clib_warning ("queue full... waiting");
 	  (void) pthread_cond_wait (&q->condvar, &q->mutex);
 	}
     }
@@ -229,6 +230,7 @@ unix_shared_memory_queue_add (unix_shared_memory_queue_t * q,
       if (q->signal_when_queue_non_empty)
 	kill (q->consumer_pid, q->signal_when_queue_non_empty);
     }
+  //clib_warning ("releasing queue mutex");
   pthread_mutex_unlock (&q->mutex);
 
   return 0;

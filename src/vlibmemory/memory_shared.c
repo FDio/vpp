@@ -628,6 +628,7 @@ vl_msg_api_send_shmem (unix_shared_memory_queue_t * q, u8 * elem)
   if (am->tx_trace && am->tx_trace->enabled)
     vl_msg_api_trace (am, am->tx_trace, (void *) trace[0]);
 
+  //clib_warning ("Sending event message 3");
   (void) unix_shared_memory_queue_add (q, elem, 0 /* nowait */ );
 }
 
