@@ -342,7 +342,7 @@ format_l2_bridge_dpo_trace (u8 * s, va_list * args)
     CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
     CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
     l2_bridge_dpo_trace_t * t = va_arg (*args, l2_bridge_dpo_trace_t *);
-    uword indent = format_get_indent (s);
+    u32 indent = format_get_indent (s);
     s = format (s, "%U sw_if_index:%d",
                 format_white_space, indent,
                 t->sw_if_index);
