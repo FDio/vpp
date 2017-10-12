@@ -162,7 +162,10 @@ vlib_buffer_contents (vlib_main_t * vm, u32 buffer_index, u8 * contents)
 always_inline u64
 vlib_get_buffer_data_physical_address (vlib_main_t * vm, u32 buffer_index)
 {
-  return vlib_physmem_offset_to_physical (vm, vm->buffer_main->physmem_region,
+  vlib_physmem_region_index_t pri;
+  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
+  pri = vm->buffer_main->buffer_pools[b->buffer_pool_index].physmem_region;
+  return vlib_physmem_offset_to_physical (vm, pri,
 					  (((uword) buffer_index) <<
 					   CLIB_LOG2_CACHE_LINE_BYTES) +
 					  STRUCT_OFFSET_OF (vlib_buffer_t,
