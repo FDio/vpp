@@ -15,13 +15,11 @@
 # Please do not set "SUFFIXES = .api.h .api" here
 
 %.api.h: %.api @VPPAPIGEN@
-	@echo "  APIGEN  " $@ ;					\
-	mkdir -p `dirname $@` ;					\
-	$(CC) $(CPPFLAGS) -E -P -C -x c $<			\
-	| @VPPAPIGEN@ --input - --output $@ --show-name $@ > /dev/null
+	@echo "  APIGEN  " $@ ;				                     \
+	mkdir -p `dirname $@` ;						     \
+	@VPPAPIGEN@ --includedir $(top_srcdir) --input $< --output $@
 
-%.api.json: %.api @VPPAPIGEN@
-	@echo "  JSON API" $@ ;					\
-	mkdir -p `dirname $@` ;					\
-	$(CC) $(CPPFLAGS) -E -P -C -x c $<			\
-	| @VPPAPIGEN@ --input - --json $@ > /dev/null
+%.api.json: %.api
+	@echo "  JSON API" $@ ;						     \
+	mkdir -p `dirname $@` ;						     \
+	@VPPAPIGEN@ --includedir $(top_srcdir) --input $< JSON --output $@
