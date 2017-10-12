@@ -19,7 +19,7 @@
     the Linux kernel TAP device driver
 */
 
-vl_api_version 1.1.0
+option version = "1.1.0";
 
 /** \brief Initialize a new tap interface with the given paramters
     @param client_index - opaque cookie to identify the sender

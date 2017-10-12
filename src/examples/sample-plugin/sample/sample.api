@@ -16,7 +16,7 @@
 
 /* Define a simple binary API to control the feature */
 
-vl_api_version 0.1.0
+option version = "0.1.0";
 
 autoreply define sample_macswap_enable_disable {
     /* Client identifier, set from api_main.my_client_index */
