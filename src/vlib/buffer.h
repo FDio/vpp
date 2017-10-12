@@ -512,10 +512,12 @@ serialize_vlib_buffer_n_bytes (serialize_main_t * m)
 #define VLIB_BUFFER_TRACE_TRAJECTORY 0
 
 #if VLIB_BUFFER_TRACE_TRAJECTORY > 0
-#define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b) (b)->pre_data[0]=0
+#define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b) (*((u16 *)((b)->pre_data)))=0
 #else
 #define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b)
 #endif /* VLIB_BUFFER_TRACE_TRAJECTORY */
+
+#define VLIB_BUFFER_TRACE_TRAJECTORY_DEPTH 20
 
 #endif /* included_vlib_buffer_h */
 
