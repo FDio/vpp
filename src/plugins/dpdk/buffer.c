@@ -188,7 +188,7 @@ fill_free_list (vlib_main_t * vm,
   /* Always allocate new buffers in reasonably large sized chunks. */
   n = clib_max (n, fl->min_n_buffers_each_physmem_alloc);
 
-  vec_validate (vm->mbuf_alloc_list, n - 1);
+  vec_validate_aligned (vm->mbuf_alloc_list, n - 1, CLIB_CACHE_LINE_BYTES);
 
   if (rte_mempool_get_bulk (rmp, vm->mbuf_alloc_list, n) < 0)
     return 0;
