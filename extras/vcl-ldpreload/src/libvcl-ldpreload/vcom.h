@@ -56,6 +56,11 @@ extern ssize_t __wur vcom_writev (int __fd, const struct iovec *__iov,
 extern int vcom_fcntl (int __fd, int __cmd, ...);
 
 /*
+ * VPP implementation of glibc APIs ioctl
+ */
+extern int vcom_ioctl (int __fd, unsigned long int __cmd, ...);
+
+/*
  * vpp implementation of glibc APIs from <sys/select.h>
  */
 extern int

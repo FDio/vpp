@@ -347,6 +347,8 @@ ssize_t vcom_socket_writev (int __fd, const struct iovec *__iov,
 
 int vcom_socket_fcntl_va (int __fd, int __cmd, va_list __ap);
 
+int vcom_socket_ioctl_va (int __fd, unsigned long int __cmd, va_list __ap);
+
 int
 vcom_socket_select (int vcom_nfds, fd_set * __restrict vcom_readfds,
 		    fd_set * __restrict vcom_writefds,

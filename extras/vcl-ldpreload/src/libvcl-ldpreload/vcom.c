@@ -426,6 +426,61 @@ out:
   return rv;
 }
 
+int
+vcom_ioctl_va (int __fd, unsigned long int __cmd, va_list __ap)
+{
+  if (vcom_init () != 0)
+    {
+      return -1;
+    }
+
+  return vcom_socket_ioctl_va (__fd, __cmd, __ap);
+}
+
+int
+vcom_ioctl (int __fd, unsigned long int __cmd, ...)
+{
+  int rv = -1;
+  va_list ap;
+
+  if (is_vcom_socket_fd (__fd))
+    {
+      va_start (ap, __cmd);
+      rv = vcom_ioctl_va (__fd, __cmd, ap);
+      va_end (ap);
+    }
+  return rv;
+}
+
+int
+ioctl (int __fd, unsigned long int __cmd, ...)
+{
+  int rv;
+  va_list ap;
+  pid_t pid = getpid ();
+
+  va_start (ap, __cmd);
+  if (is_vcom_socket_fd (__fd))
+    {
+      rv = vcom_ioctl_va (__fd, __cmd, ap);
+      if (VCOM_DEBUG > 0)
+	fprintf (stderr,
+		 "[%d] ioctl: "
+		 "'%04d'='%04d', '%04ld'\n", pid, rv, __fd, __cmd);
+      if (rv < 0)
+	{
+	  errno = -rv;
+	  rv = -1;
+	}
+      goto out;
+    }
+  rv = libc_vioctl (__fd, __cmd, ap);
+
+out:
+  va_end (ap);
+  return rv;
+}
+
 /*
  * Check the first NFDS descriptors each in READFDS (if not NULL) for
  *  read readiness, in WRITEFDS (if not NULL) for write readiness,

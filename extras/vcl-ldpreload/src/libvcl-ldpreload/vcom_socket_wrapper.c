@@ -555,6 +555,27 @@ libc_vfcntl (int fd, int cmd, va_list ap)
   return rc;
 }
 
+DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
+libc_vioctl (int fd, int cmd, va_list ap)
+{
+  long int args[4];
+  int rc;
+  int i;
+
+  swrap_bind_symbol_libc (ioctl);
+
+  for (i = 0; i < 4; i++)
+    {
+      args[i] = va_arg (ap, long int);
+    }
+
+  rc = swrap.libc.symbols._libc_ioctl.f (fd,
+					 cmd,
+					 args[0], args[1], args[2], args[3]);
+
+  return rc;
+}
+
 int
 libc_getpeername (int sockfd, struct sockaddr *addr, socklen_t * addrlen)
 {
