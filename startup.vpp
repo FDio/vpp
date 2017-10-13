@@ -1,0 +1,4 @@
+create tap name tap2
+set interface ip address tap-tap2 92.168.124.222/24 host-ns ns1:w
+set interface state tap-tap2 up
+
