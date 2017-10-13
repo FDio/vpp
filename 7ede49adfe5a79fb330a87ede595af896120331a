@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_bc171151",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/InvokeCounterExample.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-13T05:46:02Z",
+      "side": 1,
+      "message": "please use logger",
+      "range": {
+        "startLine": 52,
+        "startChar": 20,
+        "endLine": 52,
+        "endChar": 38
+      },
+      "revId": "7ede49adfe5a79fb330a87ede595af896120331a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_7013fd5c",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/InvokeCounterExample.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-13T05:46:02Z",
+      "side": 1,
+      "message": "please mark this method as not thread safe\nand mention we have only one RX thread in VPP that invokes callbacks, so it is fine",
+      "range": {
+        "startLine": 102,
+        "startChar": 12,
+        "endLine": 108,
+        "endChar": 13
+      },
+      "revId": "7ede49adfe5a79fb330a87ede595af896120331a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
