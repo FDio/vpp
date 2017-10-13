@@ -747,8 +747,7 @@ class VppPapiProvider(object):
             is_classify=0,
             is_multipath=0,
             is_l2_bridged=0,
-            is_source_lookup=0,
-            not_last=0):
+            is_source_lookup=0):
         """
 
         :param dst_address_length:
@@ -769,7 +768,6 @@ class VppPapiProvider(object):
         :param is_resolve_attached:  (Default value = 0)
         :param is_l2_bridged:  (Default value = 0)
         :param is_source_lookup:  (Default value = 0)
-        :param not_last:  (Default value = 0)
         :param next_hop_weight:  (Default value = 1)
 
         """
@@ -792,7 +790,6 @@ class VppPapiProvider(object):
              'is_resolve_attached': is_resolve_attached,
              'is_l2_bridged': is_l2_bridged,
              'is_source_lookup': is_source_lookup,
-             'not_last': not_last,
              'next_hop_weight': next_hop_weight,
              'dst_address_length': dst_address_length,
              'dst_address': dst_address,
@@ -1024,8 +1021,7 @@ class VppPapiProvider(object):
             is_drop=0,
             is_multipath=0,
             classify_table_index=0xFFFFFFFF,
-            is_classify=0,
-            not_last=0):
+            is_classify=0):
         """
 
         :param dst_address_length:
@@ -1045,7 +1041,6 @@ class VppPapiProvider(object):
         :param is_multicast:  (Default value = 0)
         :param is_resolve_host:  (Default value = 0)
         :param is_resolve_attached:  (Default value = 0)
-        :param not_last:  (Default value = 0)
         :param next_hop_weight:  (Default value = 1)
 
         """

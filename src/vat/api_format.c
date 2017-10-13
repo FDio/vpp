@@ -7564,7 +7564,6 @@ api_ip_add_del_route (vat_main_t * vam)
   u8 create_vrf_if_needed = 0;
   u8 is_add = 1;
   u32 next_hop_weight = 1;
-  u8 not_last = 0;
   u8 is_multipath = 0;
   u8 address_set = 0;
   u8 address_length_set = 0;
@@ -7648,8 +7647,6 @@ api_ip_add_del_route (vat_main_t * vam)
 	is_add = 0;
       else if (unformat (i, "add"))
 	is_add = 1;
-      else if (unformat (i, "not-last"))
-	not_last = 1;
       else if (unformat (i, "resolve-via-host"))
 	resolve_host = 1;
       else if (unformat (i, "resolve-via-attached"))
@@ -7758,7 +7755,6 @@ api_ip_add_del_route (vat_main_t * vam)
       mp->is_multipath = is_multipath;
       mp->is_resolve_host = resolve_host;
       mp->is_resolve_attached = resolve_attached;
-      mp->not_last = not_last;
       mp->next_hop_weight = next_hop_weight;
       mp->dst_address_length = dst_address_length;
       mp->next_hop_table_id = ntohl (next_hop_table_id);
