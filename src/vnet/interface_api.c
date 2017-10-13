@@ -365,6 +365,14 @@ ip_table_bind (fib_protocol_t fproto,
   fib_source_t src;
   mfib_source_t msrc;
 
+  fib_index = fib_table_find (fproto, table_id);
+  mfib_index = mfib_table_find (fproto, table_id);
+
+  if (~0 == fib_index || ~0 == mfib_index)
+    {
+      return (VNET_API_ERROR_NO_SUCH_FIB);
+    }
+
   if (is_api)
     {
       src = FIB_SOURCE_API;
@@ -375,32 +383,6 @@ ip_table_bind (fib_protocol_t fproto,
       src = FIB_SOURCE_CLI;
       msrc = MFIB_SOURCE_CLI;
     }
-
-  /*
-   * This is temporary whilst I do the song and dance with the CSIT version
-   */
-  if (0 != table_id)
-    {
-      fib_index = fib_table_find_or_create_and_lock (fproto, table_id, src);
-      mfib_index =
-	mfib_table_find_or_create_and_lock (fproto, table_id, msrc);
-    }
-  else
-    {
-      fib_index = 0;
-      mfib_index = 0;
-    }
-
-  /*
-   * This if table does not exist = error is what we want in the end.
-   */
-  /* fib_index = fib_table_find (fproto, table_id); */
-  /* mfib_index = mfib_table_find (fproto, table_id); */
-
-  /* if (~0 == fib_index || ~0 == mfib_index) */
-  /*   { */
-  /*     return (VNET_API_ERROR_NO_SUCH_FIB); */
-  /*   } */
 
   if (FIB_PROTOCOL_IP6 == fproto)
     {
@@ -506,15 +488,6 @@ ip_table_bind (fib_protocol_t fproto,
 
       ip4_main.fib_index_by_sw_if_index[sw_if_index] = fib_index;
       ip4_main.mfib_index_by_sw_if_index[sw_if_index] = mfib_index;
-    }
-
-  /*
-   * Temporary. undo the locks from the find and create at the staart
-   */
-  if (0 != table_id)
-    {
-      fib_table_unlock (fib_index, fproto, src);
-      mfib_table_unlock (mfib_index, fproto, msrc);
     }
 
   return (0);
