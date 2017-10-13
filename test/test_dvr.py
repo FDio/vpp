@@ -83,8 +83,6 @@ class TestDVR(VppTestCase):
                                                   L2_VTR_OP.L2_POP_1,
                                                   93)
 
-        self.logger.error(self.vapi.ppcli("show bridge-domain 1 detail"))
-
         #
         # Add routes to bridge the traffic via a tagged an nontagged interface
         #

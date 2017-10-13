@@ -4,7 +4,7 @@ import unittest
 from socket import AF_INET6
 
 from framework import VppTestCase, VppTestRunner
-from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
+from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto, VppIpTable
 from vpp_srv6 import SRv6LocalSIDBehaviors, VppSRv6LocalSID, VppSRv6Policy, \
     SRv6PolicyType, VppSRv6Steering, SRv6PolicySteeringTypes
 
@@ -100,6 +100,19 @@ class TestSRv6(VppTestCase):
         # create 'count' pg interfaces
         self.create_pg_interfaces(range(count))
 
+        # create all tables
+        self.tables = []
+        ids = sorted(set(ipv4_table_id))
+        for i in range(len(ids)):
+            if 0 != ids[i]:
+                self.tables.append(VppIpTable(self, ids[i]))
+        ids = sorted(set(ipv6_table_id))
+        for i in range(len(ids)):
+            if 0 != ids[i]:
+                self.tables.append(VppIpTable(self, ids[i], is_ip6=1))
+        for t in self.tables:
+            t.add_vpp_config()
+
         # setup all interfaces
         for i in range(count):
             intf = self.pg_interfaces[i]
@@ -124,8 +137,10 @@ class TestSRv6(VppTestCase):
         # AFAIK they cannot be deleted
         for i in self.pg_interfaces:
             self.logger.debug("Tear down interface %s" % (i.name))
-            i.admin_down()
             i.unconfig()
+            i.set_table_ip4(0)
+            i.set_table_ip6(0)
+            i.admin_down()
 
     def test_SRv6_T_Encaps(self):
         """ Test SRv6 Transit.Encaps behavior for IPv6.
