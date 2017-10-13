@@ -1913,31 +1913,49 @@ vppcom_session_setsockopt (int __sid, int __level, int __optname,
 
   switch (__level)
     {
+    case SOL_TCP:
+      switch (__optname)
+	{
+	case TCP_KEEPIDLE:
+	  rv =
+	    vppcom_session_attr (__sid, VPPCOM_ATTR_SET_TCP_KEEPIDLE, 0, 0);
+	  break;
+	case TCP_KEEPINTVL:
+	  rv =
+	    vppcom_session_attr (__sid, VPPCOM_ATTR_SET_TCP_KEEPINTVL, 0, 0);
+	  break;
+	default:
+	  break;
+	}
+      break;
     case SOL_IPV6:
       switch (__optname)
 	{
 	case IPV6_V6ONLY:
 	  rv = vppcom_session_attr (__sid, VPPCOM_ATTR_SET_V6ONLY, 0, 0);
-	  return rv;
+	  break;
 	default:
-	  return rv;
+	  break;
 	}
       break;
     case SOL_SOCKET:
       switch (__optname)
 	{
+	case SO_KEEPALIVE:
+	  rv = vppcom_session_attr (__sid, VPPCOM_ATTR_SET_KEEPALIVE, 0, 0);
+	  break;
 	case SO_REUSEADDR:
 	  rv = vppcom_session_attr (__sid, VPPCOM_ATTR_SET_REUSEADDR, 0, 0);
-	  return rv;
+	  break;
 	case SO_BROADCAST:
 	  rv = vppcom_session_attr (__sid, VPPCOM_ATTR_SET_BROADCAST, 0, 0);
-	  return rv;
+	  break;
 	default:
-	  return rv;
+	  break;
 	}
       break;
     default:
-      return rv;
+      break;
     }
 
   return rv;
@@ -1991,7 +2009,7 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
 	case IPV6_V6ONLY:
 	  rv = vppcom_session_setsockopt (vsock->sid, __level, __optname,
 					  __optval, __optlen);
-	  return rv;
+	  break;
 	default:
 	  return -EOPNOTSUPP;
 	}
@@ -2001,6 +2019,11 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
 	{
 	case TCP_NODELAY:
 	  return 0;
+	case TCP_KEEPIDLE:
+	case TCP_KEEPINTVL:
+	  rv = vppcom_session_setsockopt (vsock->sid, __level, __optname,
+					  __optval, __optlen);
+	  break;
 	default:
 	  return -EOPNOTSUPP;
 	}
@@ -2011,9 +2034,10 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
 	{
 	case SO_REUSEADDR:
 	case SO_BROADCAST:
+	case SO_KEEPALIVE:
 	  rv = vppcom_session_setsockopt (vsock->sid, __level, __optname,
 					  __optval, __optlen);
-	  return rv;
+	  break;
 
 	  /*
 	   * 1. for socket level options that are socket attributes,
@@ -2028,7 +2052,6 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
 	case SO_SNDBUF:
 	case SO_RCVBUF:
 	case SO_REUSEPORT:
-	case SO_KEEPALIVE:
 	case SO_TYPE:
 	case SO_PROTOCOL:
 	case SO_DOMAIN:
