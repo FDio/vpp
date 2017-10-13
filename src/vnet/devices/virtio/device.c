@@ -1,0 +1,263 @@
+/*
+ *------------------------------------------------------------------
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *------------------------------------------------------------------
+ */
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <linux/virtio_net.h>
+#include <linux/vhost.h>
+
+#include <vlib/vlib.h>
+#include <vlib/unix/unix.h>
+#include <vnet/ethernet/ethernet.h>
+#include <vnet/devices/virtio/virtio.h>
+
+#define foreach_virtio_tx_func_error	       \
+_(NO_FREE_SLOTS, "no free tx slots")           \
+_(TRUNC_PACKET, "packet > buffer size -- truncated in tx ring") \
+_(PENDING_MSGS, "pending msgs in tx ring") \
+_(NO_TX_QUEUES, "no tx queues")
+
+typedef enum
+{
+#define _(f,s) MEMIF_TX_ERROR_##f,
+  foreach_virtio_tx_func_error
+#undef _
+    MEMIF_TX_N_ERROR,
+} virtio_tx_func_error_t;
+
+static char *virtio_tx_func_error_strings[] = {
+#define _(n,s) s,
+  foreach_virtio_tx_func_error
+#undef _
+};
+
+u8 *
+format_virtio_device_name (u8 * s, va_list * args)
+{
+  u32 dev_instance = va_arg (*args, u32);
+  virtio_main_t *mm = &virtio_main;
+  virtio_if_t *mif = pool_elt_at_index (mm->interfaces, dev_instance);
+
+  s = format (s, "virtio%lu", mif->dev_instance);
+  return s;
+}
+
+static u8 *
+format_virtio_device (u8 * s, va_list * args)
+{
+  u32 dev_instance = va_arg (*args, u32);
+  int verbose = va_arg (*args, int);
+  u32 indent = format_get_indent (s);
+
+  s = format (s, "VIRTIO interface");
+  if (verbose)
+    {
+      s = format (s, "\n%U instance %u", format_white_space, indent + 2,
+		  dev_instance);
+    }
+  return s;
+}
+
+static u8 *
+format_virtio_tx_trace (u8 * s, va_list * args)
+{
+  s = format (s, "Unimplemented...");
+  return s;
+}
+
+static_always_inline void
+virtio_prefetch_buffer_and_data (vlib_main_t * vm, u32 bi)
+{
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  vlib_prefetch_buffer_header (b, LOAD);
+  CLIB_PREFETCH (b->data, CLIB_CACHE_LINE_BYTES, LOAD);
+}
+
+
+static_always_inline uword
+virtio_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+			    vlib_frame_t * frame, virtio_if_t * vif)
+{
+  const int hdr_sz = sizeof (struct virtio_net_hdr_v1);
+  u8 qid = 0;
+  u16 p = 0;
+  u16 free_slots;
+  u16 n_left = frame->n_vectors;
+  virtio_vring_t *vring = vec_elt_at_index (vif->vrings, (qid << 1) + 1);
+  u16 mask = vring->size - 1;
+  u32 *buffers = vlib_frame_args (frame);
+  u32 bi0;
+  vlib_buffer_t *b0;
+
+  /* free consumed buffers */
+  while (vring->used->idx != vring->last_used_idx)
+    {
+      u16 slot = vring->last_used_idx & mask;
+      vlib_buffer_free (vm, &vring->buffers[slot], 1);
+      vring->buffers[slot] = ~0;
+      vring->last_used_idx++;
+    }
+
+  free_slots = vring->size - vring->avail->idx + vring->used->idx;
+
+  p = vring->avail->idx;
+  while (n_left && free_slots)
+    {
+      u16 slot = p & mask;
+      bi0 = buffers[0];
+      b0 = vlib_get_buffer (vm, bi0);
+      vring->desc[slot].addr =
+	pointer_to_uword (vlib_buffer_get_current (b0)) - hdr_sz;
+      vring->desc[slot].len = b0->current_length + hdr_sz;
+      vring->buffers[slot] = bi0;
+      vring->avail->ring[slot] = slot;
+
+      p++;
+      buffers++;
+      n_left--;
+      free_slots--;
+    }
+
+  if (n_left != frame->n_vectors)
+    {
+      u64 x = 1;
+      CLIB_MEMORY_STORE_BARRIER ();
+      vring->avail->idx = p;
+      write (vring->kick_fd, &x, sizeof (x));
+    }
+
+  if (n_left)
+    {
+      vlib_error_count (vm, node->node_index, MEMIF_TX_ERROR_NO_FREE_SLOTS,
+			n_left);
+      vlib_buffer_free (vm, buffers, n_left);
+    }
+
+  return frame->n_vectors;
+}
+
+static uword
+virtio_interface_tx (vlib_main_t * vm,
+		     vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  virtio_main_t *nm = &virtio_main;
+  vnet_interface_output_runtime_t *rund = (void *) node->runtime_data;
+  virtio_if_t *vif = pool_elt_at_index (nm->interfaces, rund->dev_instance);
+
+  return virtio_interface_tx_inline (vm, node, frame, vif);
+  return 0;
+}
+
+static void
+virtio_set_interface_next_node (vnet_main_t * vnm, u32 hw_if_index,
+				u32 node_index)
+{
+  virtio_main_t *apm = &virtio_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  virtio_if_t *vif = pool_elt_at_index (apm->interfaces, hw->dev_instance);
+
+  /* Shut off redirection */
+  if (node_index == ~0)
+    {
+      vif->per_interface_next_index = node_index;
+      return;
+    }
+
+  vif->per_interface_next_index =
+    vlib_node_add_next (vlib_get_main (), virtio_input_node.index,
+			node_index);
+}
+
+static void
+virtio_clear_hw_interface_counters (u32 instance)
+{
+  /* Nothing for now */
+}
+
+static clib_error_t *
+virtio_interface_rx_mode_change (vnet_main_t * vnm, u32 hw_if_index, u32 qid,
+				 vnet_hw_interface_rx_mode mode)
+{
+#if 0
+  virtio_main_t *mm = &virtio_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  virtio_if_t *mif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
+  virtio_queue_t *mq = vec_elt_at_index (mif->rx_queues, qid);
+
+  if (mode == VNET_HW_INTERFACE_RX_MODE_POLLING)
+    mq->ring->flags |= MEMIF_RING_FLAG_MASK_INT;
+  else
+    mq->ring->flags &= ~MEMIF_RING_FLAG_MASK_INT;
+
+#endif
+  return 0;
+}
+
+static clib_error_t *
+virtio_interface_admin_up_down (vnet_main_t * vnm, u32 hw_if_index, u32 flags)
+{
+  virtio_main_t *mm = &virtio_main;
+  vnet_hw_interface_t *hw = vnet_get_hw_interface (vnm, hw_if_index);
+  virtio_if_t *vif = pool_elt_at_index (mm->interfaces, hw->dev_instance);
+  static clib_error_t *error = 0;
+
+  if (flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
+    vif->flags |= VIRTIO_IF_FLAG_ADMIN_UP;
+  else
+    vif->flags &= ~VIRTIO_IF_FLAG_ADMIN_UP;
+
+  return error;
+  return 0;
+}
+
+static clib_error_t *
+virtio_subif_add_del_function (vnet_main_t * vnm,
+			       u32 hw_if_index,
+			       struct vnet_sw_interface_t *st, int is_add)
+{
+  /* Nothing for now */
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VNET_DEVICE_CLASS (virtio_device_class) = {
+  .name = "virtio",
+  .tx_function = virtio_interface_tx,
+  .format_device_name = format_virtio_device_name,
+  .format_device = format_virtio_device,
+  .format_tx_trace = format_virtio_tx_trace,
+  .tx_function_n_errors = MEMIF_TX_N_ERROR,
+  .tx_function_error_strings = virtio_tx_func_error_strings,
+  .rx_redirect_to_node = virtio_set_interface_next_node,
+  .clear_counters = virtio_clear_hw_interface_counters,
+  .admin_up_down_function = virtio_interface_admin_up_down,
+  .subif_add_del_function = virtio_subif_add_del_function,
+  .rx_mode_change_function = virtio_interface_rx_mode_change,
+};
+
+VLIB_DEVICE_TX_FUNCTION_MULTIARCH(virtio_device_class,
+				  virtio_interface_tx)
+/* *INDENT-ON* */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
