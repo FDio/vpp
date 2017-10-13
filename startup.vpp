@@ -1,0 +1,4 @@
+create tap2 name tap0
+set interface ip address virtio0 192.168.122.222/24
+set interface state virtio0 up
+
