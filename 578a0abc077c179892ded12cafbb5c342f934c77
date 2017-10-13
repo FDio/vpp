@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_d3bf5bcf",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 938,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2017-10-13T16:20:17Z",
+      "side": 1,
+      "message": "Just before this return, I think you may need to also\n\nvnm-\u003eapi_errno \u003d VNET_API_ERROR_DUPLICATE_IF_ADDRESS;\n\nWhile the clib_error() is realized at, say, a vppct prompt, it doesn\u0027t\ncarry out to an API returned error.",
+      "range": {
+        "startLine": 938,
+        "startChar": 21,
+        "endLine": 938,
+        "endChar": 27
+      },
+      "revId": "578a0abc077c179892ded12cafbb5c342f934c77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
