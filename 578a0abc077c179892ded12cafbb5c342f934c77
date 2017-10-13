@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "1a486d77_b3b05fde",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 938,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-10-13T17:59:02Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1a486d77_d3bf5bcf",
+      "range": {
+        "startLine": 938,
+        "startChar": 21,
+        "endLine": 938,
+        "endChar": 27
+      },
+      "revId": "578a0abc077c179892ded12cafbb5c342f934c77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a486d77_3376af3f",
         "filename": "src/vnet/ip/ip4_forward.c",
         "patchSetId": 4
@@ -36,6 +60,30 @@
       "writtenOn": "2017-10-13T16:50:14Z",
       "side": 1,
       "message": "I also think this needs to propagate up a possible clib_error() return value here.",
+      "range": {
+        "startLine": 1161,
+        "startChar": 8,
+        "endLine": 1161,
+        "endChar": 37
+      },
+      "revId": "578a0abc077c179892ded12cafbb5c342f934c77",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_93b563cf",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1161,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-10-13T17:59:02Z",
+      "side": 1,
+      "message": "given the error checking when adding addresses, this loop through those addresses should find no conflicts.\nPlus, this is a address delete, during an interface delete.",
+      "parentUuid": "1a486d77_3376af3f",
       "range": {
         "startLine": 1161,
         "startChar": 8,
