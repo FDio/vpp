@@ -347,7 +347,6 @@ extern u32 mfib_table_find_or_create_and_lock_w_name(fib_protocol_t proto,
                                                      mfib_source_t source,
                                                      const u8 *name);
 
-
 /**
  * @brief
  * Take a reference counting lock on the table
