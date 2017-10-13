@@ -3115,6 +3115,15 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 
     case VPPCOM_ATTR_SET_V6ONLY:
       break;
+
+    case VPPCOM_ATTR_SET_KEEPALIVE:
+      break;
+
+    case VPPCOM_ATTR_SET_TCP_KEEPIDLE:
+      break;
+
+    case VPPCOM_ATTR_SET_TCP_KEEPINTVL:
+      break;
     }
 
 done:
