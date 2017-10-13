@@ -868,13 +868,23 @@ API_FILES += vnet/pg/pg.api
 ########################################
 
 libvnet_la_SOURCES +=       \
+  vnet/devices/virtio/cli.c		\
+  vnet/devices/virtio/device.c		\
+  vnet/devices/virtio/node.c		\
+  vnet/devices/virtio/tap.c		\
+  vnet/devices/virtio/tapv2_api.c  	\
   vnet/devices/virtio/vhost-user.c	\
-  vnet/devices/virtio/vhost_user_api.c
+  vnet/devices/virtio/vhost_user_api.c	\
+  vnet/devices/virtio/virtio.c
+
 
 nobase_include_HEADERS +=     \
+  vnet/devices/virtio/virtio.h		\
+  vnet/devices/virtio/tapv2.api.h \
   vnet/devices/virtio/vhost-user.h	\
   vnet/devices/virtio/vhost_user.api.h
 
+API_FILES += vnet/devices/virtio/tapv2.api
 API_FILES += vnet/devices/virtio/vhost_user.api
 
 ########################################
