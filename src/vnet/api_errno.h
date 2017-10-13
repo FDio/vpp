@@ -130,7 +130,9 @@ _(NAME_SERVER_FORMAT_ERROR, -137, "Server format error (bug!)")		\
 _(NAME_SERVER_NO_SUCH_NAME, -138, "No such name")                       \
 _(NAME_SERVER_NO_ADDRESSES, -139, "No addresses available")		\
 _(NAME_SERVER_NEXT_SERVER, -140, "Retry with new server")		\
-_(APP_CONNECT_FILTERED, -141, "Connect was filtered")
+_(APP_CONNECT_FILTERED, -141, "Connect was filtered")                   \
+_(NAMESPACE_CREATE, -142, "Failed to create netlink namespace")         \
+_(VIRTIO_INIT, -143, "Failed to init virtio ring")
 
 typedef enum
 {

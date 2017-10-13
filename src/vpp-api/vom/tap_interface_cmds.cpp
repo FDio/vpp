@@ -23,7 +23,7 @@ create_cmd::create_cmd(HW::item<handle_t>& item,
                        const std::string& name,
                        route::prefix_t& prefix,
                        const l2_address_t& l2_address)
-  : interface::create_cmd<vapi::Tap_connect>(item, name)
+  : interface::create_cmd<vapi::Tap_create>(item, name)
   , m_prefix(prefix)
   , m_l2_address(l2_address)
 {
@@ -38,16 +38,6 @@ create_cmd::issue(connection& con)
   memset(payload.tap_name, 0, sizeof(payload.tap_name));
   memcpy(payload.tap_name, m_name.c_str(),
          std::min(m_name.length(), sizeof(payload.tap_name)));
-  if (m_prefix != route::prefix_t::ZERO) {
-    if (m_prefix.address().is_v6()) {
-      m_prefix.to_vpp(&payload.ip6_address_set, payload.ip6_address,
-                      &payload.ip6_mask_width);
-    } else {
-      m_prefix.to_vpp(&payload.ip4_address_set, payload.ip4_address,
-                      &payload.ip4_mask_width);
-      payload.ip4_address_set = 1;
-    }
-  }
 
   if (m_l2_address != l2_address_t::ZERO) {
     m_l2_address.to_bytes(payload.mac_address, 6);

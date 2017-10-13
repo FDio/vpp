@@ -161,10 +161,8 @@ vl_api_sw_interface_details_t_handler (vl_api_sw_interface_details_t * mp)
 static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
 {
-  fformat (stdout, "set flags: sw_if_index %d, admin %s link %s\n",
-	   ntohl (mp->sw_if_index),
-	   mp->admin_up_down ? "up" : "down",
-	   mp->link_up_down ? "up" : "down");
+  fformat (stdout, "set flags: sw_if_index %d, admin %s\n",
+	   ntohl (mp->sw_if_index), mp->admin_up_down ? "up" : "down");
 }
 
 static void
@@ -213,9 +211,9 @@ static void
 }
 
 static void
-vl_api_tap_connect_reply_t_handler (vl_api_tap_connect_reply_t * mp)
+vl_api_tap_create_reply_t_handler (vl_api_tap_create_reply_t * mp)
 {
-  fformat (stdout, "tap connect reply %d, sw_if_index %d\n",
+  fformat (stdout, "tap create reply %d, sw_if_index %d\n",
 	   ntohl (mp->retval), ntohl (mp->sw_if_index));
 }
 
@@ -585,7 +583,7 @@ _(VNET_IP6_FIB_COUNTERS, vnet_ip6_fib_counters)                         \
 _(IP_ADD_DEL_ROUTE_REPLY, ip_add_del_route_reply)                       \
 _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY, sw_interface_add_del_address_reply) \
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply)           \
-_(TAP_CONNECT_REPLY, tap_connect_reply)                                 \
+_(TAP_CREATE_REPLY, tap_create_reply)                                 \
 _(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
 _(PROXY_ARP_ADD_DEL_REPLY, proxy_arp_add_del_reply)			\
 _(PROXY_ARP_INTFC_ENABLE_DISABLE_REPLY, proxy_arp_intfc_enable_disable_reply) \
@@ -864,11 +862,11 @@ set_interface_table (test_main_t * tm, int is_ipv6, u32 vrf_id)
 void
 connect_unix_tap (test_main_t * tm, char *name)
 {
-  vl_api_tap_connect_t *mp;
+  vl_api_tap_create_t *mp;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_TAP_CONNECT);
+  mp->_vl_msg_id = ntohs (VL_API_TAP_CREATE);
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
   strncpy ((char *) mp->tap_name, name, sizeof (mp->tap_name) - 1);
@@ -1352,7 +1350,7 @@ main (int argc, char **argv)
 	  break;
 
 	case 'c':
-	  connect_unix_tap (tm, "foo");
+	  connect_unix_tap (tm, "tap0");
 	  break;
 
 	case 'n':
