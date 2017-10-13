@@ -2164,7 +2164,8 @@ my_macip_acl_rule_t_pretty_format (u8 *out, va_list *args)
 
   out = format(out, "%s action %d ip %U/%d mac %U mask %U",
                      a->is_ipv6 ? "ipv6" : "ipv4", a->is_permit,
-                     format_ip46_address, &a->src_ip_addr, IP46_TYPE_ANY,
+                     format_ip46_address, &a->src_ip_addr,
+                     a->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4,
                      a->src_prefixlen,
                      my_format_mac_address, a->src_mac,
                      my_format_mac_address, a->src_mac_mask);
@@ -2232,8 +2233,10 @@ u8 *acl_format_acl(u8 *out0, acl_main_t *am, int acl_index)
     r = &am->acls[acl_index].rules[j];
     out0 = format(out0, "  %4d: %s ", j, r->is_ipv6 ? "ipv6" : "ipv4");
     out0 = format_acl_action(out0, r->is_permit);
-    out0 = format(out0, " src %U/%d", format_ip46_address, &r->src, IP46_TYPE_ANY, r->src_prefixlen);
-    out0 = format(out0, " dst %U/%d", format_ip46_address, &r->dst, IP46_TYPE_ANY, r->dst_prefixlen);
+    out0 = format(out0, " src %U/%d", format_ip46_address, &r->src,
+                  r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4, r->src_prefixlen);
+    out0 = format(out0, " dst %U/%d", format_ip46_address, &r->dst,
+                  r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4, r->dst_prefixlen);
     out0 = format(out0, " proto %d", r->proto);
     out0 = format(out0, " sport %d", r->src_port_or_type_first);
     if (r->src_port_or_type_first != r->src_port_or_type_last) {
