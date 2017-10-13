@@ -23,7 +23,6 @@ vlib_node_registration_t pppoe_tap_dispatch_node;
 
 #define foreach_pppoe_tap_next        \
 _(DROP, "error-drop")                  \
-_(TUNTAP, "tuntap-tx" )                \
 _(INTERFACE, "interface-output" )      \
 
 typedef enum
@@ -172,7 +171,8 @@ pppoe_tap_dispatch (vlib_main_t * vm,
 				   &key0, &cached_key,
     			           &bucket0, &result0);
 
-              next0 = PPPOE_TAP_NEXT_TUNTAP;
+	      // next0 = PPPOE_TAP_NEXT_TUNTAP; XXX
+	      next0 = PPPOE_TAP_NEXT_DROP;
               vnet_buffer(b0)->sw_if_index[VLIB_TX] = pem->tap_if_index;
             }
 

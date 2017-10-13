@@ -30,7 +30,7 @@ namespace tap_interface_cmds {
 /**
  * A functor class that creates an interface
  */
-class create_cmd : public interface::create_cmd<vapi::Tap_connect>
+class create_cmd : public interface::create_cmd<vapi::Tap_create>
 {
 public:
   create_cmd(HW::item<handle_t>& item,

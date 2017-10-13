@@ -32,6 +32,7 @@
 #include <vnet/devices/af_packet/af_packet.api.h>
 #include <vnet/devices/netmap/netmap.api.h>
 #include <vnet/devices/virtio/vhost_user.api.h>
+#include <vnet/devices/virtio/tap.api.h>
 #include <vnet/gre/gre.api.h>
 #include <vnet/interface.api.h>
 #include <vnet/map/map.api.h>
@@ -39,7 +40,6 @@
 #include <vnet/l2tp/l2tp.api.h>
 #include <vnet/span/span.api.h>
 #include <vnet/ip/ip.api.h>
-#include <vnet/unix/tap.api.h>
 #include <vnet/vxlan/vxlan.api.h>
 #include <vnet/geneve/geneve.api.h>
 #include <vnet/lldp/lldp.api.h>
