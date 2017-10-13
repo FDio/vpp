@@ -42,8 +42,8 @@ typedef enum lookup_table_t_ {
 } __attribute__ ((packed)) lookup_table_t;
 
 #define LOOKUP_TABLES {                                   \
-    [LOOKUP_INPUT_SRC_ADDR] = "table-input-interface",    \
-    [LOOKUP_INPUT_DST_ADDR] = "table-configured",         \
+    [LOOKUP_TABLE_FROM_INPUT_INTERFACE] = "table-input-interface",    \
+    [LOOKUP_TABLE_FROM_CONFIG] = "table-configured",         \
 }
 
 /**

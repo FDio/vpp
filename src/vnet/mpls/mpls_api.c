@@ -219,11 +219,21 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
 	label_stack[ii] = ntohl (mp->mr_next_hop_out_label_stack[ii]);
     }
 
-  return (add_del_route_t_handler (mp->mr_is_multipath, mp->mr_is_add, 0,	// mp->is_drop,
+  /* *INDENT-OFF* */
+  return (add_del_route_t_handler (mp->mr_is_multipath, mp->mr_is_add,
+                                   0,	// mp->is_drop,
 				   0,	// mp->is_unreach,
 				   0,	// mp->is_prohibit,
 				   0,	// mp->is_local,
-				   mp->mr_is_multicast, mp->mr_is_classify, mp->mr_classify_table_index, mp->mr_is_resolve_host, mp->mr_is_resolve_attached, mp->mr_is_interface_rx, mp->mr_is_rpf_id, 0,	// l2_bridged
+				   mp->mr_is_multicast,
+                                   mp->mr_is_classify,
+                                   mp->mr_classify_table_index,
+                                   mp->mr_is_resolve_host,
+                                   mp->mr_is_resolve_attached,
+                                   mp->mr_is_interface_rx,
+                                   mp->mr_is_rpf_id,
+                                   0,	// l2_bridged
+                                   0,   // is source_lookup
 				   fib_index, &pfx,
 				   mp->mr_next_hop_proto,
 				   &nh, ntohl (mp->mr_next_hop_sw_if_index),
@@ -232,6 +242,7 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
 				   mp->mr_next_hop_preference,
 				   ntohl (mp->mr_next_hop_via_label),
 				   label_stack));
+  /* *INDENT-ON* */
 }
 
 void

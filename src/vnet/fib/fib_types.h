@@ -303,6 +303,10 @@ typedef enum fib_route_path_flags_t_
      * A local path with a RPF-ID => multicast traffic
      */
     FIB_ROUTE_PATH_RPF_ID = (1 << 7),
+    /**
+     * A deag path using the packet's source not destination address.
+     */
+    FIB_ROUTE_PATH_SOURCE_LOOKUP = (1 << 8),
 } fib_route_path_flags_t;
 
 /**

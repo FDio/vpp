@@ -7,7 +7,7 @@ from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint, VppDot1ADSubint
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppIpMRoute, \
     VppMRoutePath, MRouteItfFlags, MRouteEntryFlags, VppMplsIpBind, \
-    VppMplsTable
+    VppMplsTable, VppIpTable
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether, Dot1Q, ARP
@@ -1117,6 +1117,114 @@ class TestIPPunt(VppTestCase):
                                    self.pg1.sw_if_index,
                                    nh_addr,
                                    is_add=0)
+
+
+class TestIPDeag(VppTestCase):
+    """ IPv4 Deaggregate Routes """
+
+    def setUp(self):
+        super(TestIPDeag, self).setUp()
+
+        self.create_pg_interfaces(range(3))
+
+        for i in self.pg_interfaces:
+            i.admin_up()
+            i.config_ip4()
+            i.resolve_arp()
+
+    def tearDown(self):
+        super(TestIPDeag, self).tearDown()
+        for i in self.pg_interfaces:
+            i.unconfig_ip4()
+            i.admin_down()
+
+    def send_and_expect(self, input, pkts, output):
+        self.vapi.cli("clear trace")
+        input.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = output.get_capture(len(pkts))
+        return rx
+
+    def send_and_assert_no_replies(self, intf, pkts, remark):
+        self.vapi.cli("clear trace")
+        intf.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        for i in self.pg_interfaces:
+            i.get_capture(0)
+            i.assert_nothing_captured(remark=remark)
+
+    def test_ip_deag(self):
+        """ IP Deag Routes """
+
+        #
+        # Create a table to be used for:
+        #  1 - another destination address lookup
+        #  2 - a source address lookup
+        #
+        table_dst = VppIpTable(self, 1)
+        table_src = VppIpTable(self, 2)
+        table_dst.add_vpp_config()
+        table_src.add_vpp_config()
+
+        #
+        # Add a route in the default table to point to a deag/
+        # second lookup in each of these tables
+        #
+        route_to_dst = VppIpRoute(self, "1.1.1.1", 32,
+                                  [VppRoutePath("0.0.0.0",
+                                                0xffffffff,
+                                                nh_table_id=1)])
+        route_to_src = VppIpRoute(self, "1.1.1.2", 32,
+                                  [VppRoutePath("0.0.0.0",
+                                                0xffffffff,
+                                                nh_table_id=2,
+                                                is_source_lookup=1)])
+        route_to_dst.add_vpp_config()
+        route_to_src.add_vpp_config()
+
+        #
+        # packets to these destination are dropped, since they'll
+        # hit the respective default routes in the second table
+        #
+        p_dst = (Ether(src=self.pg0.remote_mac,
+                       dst=self.pg0.local_mac) /
+                 IP(src="5.5.5.5", dst="1.1.1.1") /
+                 TCP(sport=1234, dport=1234) /
+                 Raw('\xa5' * 100))
+        p_src = (Ether(src=self.pg0.remote_mac,
+                       dst=self.pg0.local_mac) /
+                 IP(src="2.2.2.2", dst="1.1.1.2") /
+                 TCP(sport=1234, dport=1234) /
+                 Raw('\xa5' * 100))
+        pkts_dst = p_dst * 257
+        pkts_src = p_src * 257
+
+        self.send_and_assert_no_replies(self.pg0, pkts_dst,
+                                        "IP in dst table")
+        self.send_and_assert_no_replies(self.pg0, pkts_src,
+                                        "IP in src table")
+
+        #
+        # add a route in the dst table to forward via pg1
+        #
+        route_in_dst = VppIpRoute(self, "1.1.1.1", 32,
+                                  [VppRoutePath(self.pg1.remote_ip4,
+                                                self.pg1.sw_if_index)],
+                                  table_id=1)
+        route_in_dst.add_vpp_config()
+        self.send_and_expect(self.pg0, pkts_dst, self.pg1)
+
+        #
+        # add a route in the src table to forward via pg2
+        #
+        route_in_src = VppIpRoute(self, "2.2.2.2", 32,
+                                  [VppRoutePath(self.pg2.remote_ip4,
+                                                self.pg2.sw_if_index)],
+                                  table_id=2)
+        route_in_src.add_vpp_config()
+        self.send_and_expect(self.pg0, pkts_src, self.pg2)
 
 
 if __name__ == '__main__':
