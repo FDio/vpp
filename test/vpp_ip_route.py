@@ -107,6 +107,7 @@ class VppRoutePath(object):
             is_interface_rx=0,
             is_resolve_host=0,
             is_resolve_attached=0,
+            is_source_lookup=0,
             proto=DpoProto.DPO_PROTO_IP4):
         self.nh_itf = nh_sw_if_index
         self.nh_table_id = nh_table_id
@@ -124,6 +125,7 @@ class VppRoutePath(object):
         self.is_resolve_host = is_resolve_host
         self.is_resolve_attached = is_resolve_attached
         self.is_interface_rx = is_interface_rx
+        self.is_source_lookup = is_source_lookup
         self.is_rpf_id = 0
         if rpf_id != 0:
             self.is_rpf_id = 1
@@ -197,6 +199,7 @@ class VppIpRoute(VppObject):
                     if path.proto == DpoProto.DPO_PROTO_ETHERNET else 0,
                     is_resolve_host=path.is_resolve_host,
                     is_resolve_attached=path.is_resolve_attached,
+                    is_source_lookup=path.is_source_lookup,
                     is_multipath=1 if len(self.paths) > 1 else 0)
         self._test.registry.register(self, self._test.logger)
 

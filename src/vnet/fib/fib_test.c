@@ -3543,6 +3543,49 @@ fib_test_v4 (void)
 	     "4.4.4.4/32 is deag in %d %U",
              lkd->lkd_fib_index,
              format_dpo_id, dpo, 0);
+    FIB_TEST((LOOKUP_INPUT_DST_ADDR == lkd->lkd_input),
+	     "4.4.4.4/32 is source deag in %d %U",
+             lkd->lkd_input,
+             format_dpo_id, dpo, 0);
+
+    fib_table_entry_delete(fib_index,
+			   &pfx_4_4_4_4_s_32,
+			   FIB_SOURCE_API);
+    FIB_TEST(FIB_NODE_INDEX_INVALID ==
+	     fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32),
+	     "4.4.4.4/32 removed");
+    vec_free(r_paths);
+
+    /*
+     * A route deag route in a source lookup table
+     */
+    fib_table_entry_path_add(fib_index,
+			     &pfx_4_4_4_4_s_32,
+			     FIB_SOURCE_API,
+			     FIB_ENTRY_FLAG_NONE,
+			     DPO_PROTO_IP4,
+			     &zero_addr,
+			     ~0,
+			     fib_index,
+			     1,
+			     NULL,
+			     FIB_ROUTE_PATH_SOURCE_LOOKUP);
+
+    fei = fib_table_lookup_exact_match(fib_index, &pfx_4_4_4_4_s_32);
+    FIB_TEST((FIB_NODE_INDEX_INVALID != fei), "4.4.4.4/32 present");
+
+    dpo = fib_entry_contribute_ip_forwarding(fei);
+    dpo = load_balance_get_bucket(dpo->dpoi_index, 0);
+    lkd = lookup_dpo_get(dpo->dpoi_index);
+
+    FIB_TEST((fib_index == lkd->lkd_fib_index),
+	     "4.4.4.4/32 is deag in %d %U",
+             lkd->lkd_fib_index,
+             format_dpo_id, dpo, 0);
+    FIB_TEST((LOOKUP_INPUT_SRC_ADDR == lkd->lkd_input),
+	     "4.4.4.4/32 is source deag in %d %U",
+             lkd->lkd_input,
+             format_dpo_id, dpo, 0);
 
     fib_table_entry_delete(fib_index,
 			   &pfx_4_4_4_4_s_32,

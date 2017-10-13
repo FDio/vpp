@@ -1054,6 +1054,8 @@ fib_path_route_flags_to_cfg_flags (const fib_route_path_t *rpath)
 	cfg_flags |= FIB_PATH_CFG_FLAG_EXCLUSIVE;
     if (rpath->frp_flags & FIB_ROUTE_PATH_DROP)
 	cfg_flags |= FIB_PATH_CFG_FLAG_DROP;
+    if (rpath->frp_flags & FIB_ROUTE_PATH_SOURCE_LOOKUP)
+	cfg_flags |= FIB_PATH_CFG_FLAG_DEAG_SRC;
 
     return (cfg_flags);
 }
@@ -1695,16 +1697,20 @@ fib_path_resolve (fib_node_index_t path_index)
 	 * Resolve via a lookup DPO.
          * FIXME. control plane should add routes with a table ID
 	 */
+        lookup_input_t input;
         lookup_cast_t cast;
-        
+
         cast = (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_RPF_ID ?
                 LOOKUP_MULTICAST :
                 LOOKUP_UNICAST);
+        input = (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_DEAG_SRC ?
+                LOOKUP_INPUT_SRC_ADDR :
+                LOOKUP_INPUT_DST_ADDR);
 
         lookup_dpo_add_or_lock_w_fib_index(path->deag.fp_tbl_id,
                                            path->fp_nh_proto,
                                            cast,
-                                           LOOKUP_INPUT_DST_ADDR,
+                                           input,
                                            LOOKUP_TABLE_FROM_CONFIG,
                                            &path->fp_dpo);
 	break;

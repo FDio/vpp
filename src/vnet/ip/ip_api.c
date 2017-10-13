@@ -830,6 +830,7 @@ add_del_route_t_handler (u8 is_multipath,
 			 u8 is_interface_rx,
 			 u8 is_rpf_id,
 			 u8 is_l2_bridged,
+			 u8 is_source_lookup,
 			 u32 fib_index,
 			 const fib_prefix_t * prefix,
 			 dpo_proto_t next_hop_proto,
@@ -877,6 +878,8 @@ add_del_route_t_handler (u8 is_multipath,
     path_flags |= FIB_ROUTE_PATH_INTF_RX;
   if (is_rpf_id)
     path_flags |= FIB_ROUTE_PATH_RPF_ID;
+  if (is_source_lookup)
+    path_flags |= FIB_ROUTE_PATH_SOURCE_LOOKUP;
   if (is_multicast)
     entry_flags |= FIB_ENTRY_FLAG_MULTICAST;
 
@@ -1076,6 +1079,7 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   mp->is_resolve_host,
 				   mp->is_resolve_attached, 0, 0,
 				   mp->is_l2_bridged,
+				   mp->is_source_lookup,
 				   fib_index, &pfx, DPO_PROTO_IP4,
 				   &nh,
 				   ntohl (mp->next_hop_sw_if_index),
@@ -1136,6 +1140,7 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   mp->is_resolve_host,
 				   mp->is_resolve_attached, 0, 0,
 				   mp->is_l2_bridged,
+				   mp->is_source_lookup,
 				   fib_index, &pfx, DPO_PROTO_IP6,
 				   &nh, ntohl (mp->next_hop_sw_if_index),
 				   next_hop_fib_index,
