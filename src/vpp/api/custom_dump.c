@@ -586,9 +586,6 @@ static void *vl_api_ip_add_del_route_t_print
   if (mp->next_hop_weight != 1)
     s = format (s, "weight %d ", mp->next_hop_weight);
 
-  if (mp->not_last)
-    s = format (s, "not-last ");
-
   if (mp->is_multipath)
     s = format (s, "multipath ");
 
