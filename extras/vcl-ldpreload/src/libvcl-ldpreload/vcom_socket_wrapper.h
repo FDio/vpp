@@ -131,6 +131,9 @@ int libc_eventfd (int count, int flags);
 DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
 libc_vfcntl (int fd, int cmd, va_list ap);
 
+DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE int
+libc_vioctl (int fd, int cmd, va_list ap);
+
 int libc_getpeername (int sockfd, struct sockaddr *addr, socklen_t * addrlen);
 
 int libc_getsockname (int sockfd, struct sockaddr *addr, socklen_t * addrlen);

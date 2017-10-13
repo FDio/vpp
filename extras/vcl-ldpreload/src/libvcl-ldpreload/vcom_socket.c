@@ -18,6 +18,7 @@
 #include <limits.h>
 #define __need_IOV_MAX
 #include <bits/stdio_lim.h>
+#include <netinet/tcp.h>
 
 #include <vppinfra/types.h>
 #include <vppinfra/hash.h>
@@ -653,8 +654,6 @@ vcom_socket_check_fcntl_cmd (int __cmd)
       /* Fallthrough */
     case F_GETFD:
     case F_SETFD:
-    case F_GETFL:
-    case F_SETFL:
     case F_GETLK:
     case F_SETLK:
     case F_SETLKW:
@@ -662,25 +661,36 @@ vcom_socket_check_fcntl_cmd (int __cmd)
     case F_SETOWN:
       return 2;
 
-#if 0
-      /* cmd handled by vppcom */
-    case F_XXXXX:
+      /* cmd handled by vcom and vppcom */
+    case F_SETFL:
+    case F_GETFL:
       return 3;
-#endif
-      /* invalid cmd */
+
+      /* cmd not handled by vcom and vppcom */
     default:
-      return 0;
+      return 1;
     }
   return 0;
 }
 
-/* TBD: move it to vppcom */
 static int
-vppcom_session_fcntl_va (int __fd, int __cmd, va_list __ap)
+vppcom_session_fcntl_va (int __sid, int __cmd, va_list __ap)
 {
-  int rv;
+  int flags = va_arg (__ap, int);
+  int rv = -EOPNOTSUPP;
+  uint32_t size;
 
-  rv = -EINVAL;
+  size = sizeof (flags);
+  if (__cmd == F_SETFL)
+    {
+      rv = vppcom_session_attr (__sid, VPPCOM_ATTR_SET_FLAGS, &flags, &size);
+    }
+  else if (__cmd == F_GETFL)
+    {
+      rv = vppcom_session_attr (__sid, VPPCOM_ATTR_GET_FLAGS, &flags, &size);
+      if (rv == VPPCOM_OK)
+	rv = flags;
+    }
 
   return rv;
 }
@@ -712,7 +722,7 @@ vcom_socket_fcntl_va (int __fd, int __cmd, va_list __ap)
       break;
       /*cmd not handled by vcom and vppcom */
     case 1:
-      rv = -EBADF;
+      rv = libc_vfcntl (vsock->fd, __cmd, __ap);
       break;
       /* cmd handled by vcom socket resource */
     case 2:
@@ -721,6 +731,93 @@ vcom_socket_fcntl_va (int __fd, int __cmd, va_list __ap)
       /* cmd handled by vppcom */
     case 3:
       rv = vppcom_session_fcntl_va (vsock->sid, __cmd, __ap);
+      break;
+
+    default:
+      rv = -EINVAL;
+      break;
+    }
+
+  return rv;
+}
+
+/*
+ * RETURN:  0 - invalid cmd
+ *          1 - cmd not handled by vcom and vppcom
+ *          2 - cmd handled by vcom socket resource
+ *          3 - cmd handled by vppcom
+ */
+static int
+vcom_socket_check_ioctl_cmd (unsigned long int __cmd)
+{
+  int rc;
+
+  switch (__cmd)
+    {
+      /* cmd handled by vppcom */
+    case FIONREAD:
+      rc = 3;
+      break;
+
+      /* cmd not handled by vcom and vppcom */
+    default:
+      rc = 1;
+      break;
+    }
+  return rc;
+}
+
+static int
+vppcom_session_ioctl_va (int __sid, int __cmd, va_list __ap)
+{
+  int rv;
+
+  if (__cmd == FIONREAD)
+    rv = vppcom_session_attr (__sid, VPPCOM_ATTR_GET_NREAD, 0, 0);
+  else
+    rv = -EOPNOTSUPP;
+  return rv;
+}
+
+int
+vcom_socket_ioctl_va (int __fd, unsigned long int __cmd, va_list __ap)
+{
+  int rv = -EBADF;
+  vcom_socket_main_t *vsm = &vcom_socket_main;
+  uword *p;
+  vcom_socket_t *vsock;
+
+  p = hash_get (vsm->sockidx_by_fd, __fd);
+  if (!p)
+    return -EBADF;
+
+  vsock = pool_elt_at_index (vsm->vsockets, p[0]);
+  if (!vsock)
+    return -ENOTSOCK;
+
+  if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
+    return -EINVAL;
+
+  switch (vcom_socket_check_ioctl_cmd (__cmd))
+    {
+      /* Not supported cmd */
+    case 0:
+      rv = -EOPNOTSUPP;
+      break;
+
+      /* cmd not handled by vcom and vppcom */
+    case 1:
+      rv = libc_vioctl (vsock->fd, __cmd, __ap);
+      break;
+
+      /* cmd handled by vcom socket resource */
+    case 2:
+      rv = libc_vioctl (vsock->fd, __cmd, __ap);
+      break;
+
+      /* cmd handled by vppcom */
+    case 3:
+      rv = vppcom_session_ioctl_va (vsock->sid, __cmd, __ap);
       break;
 
     default:
@@ -1809,17 +1906,41 @@ vcom_socket_getsockopt (int __fd, int __level, int __optname,
 
 /* TBD: move it to vppcom */
 int
-vppcom_setsockopt (int __fd, int __level, int __optname,
-		   const void *__optval, socklen_t __optlen)
+vppcom_session_setsockopt (int __sid, int __level, int __optname,
+			   const void *__optval, socklen_t __optlen)
 {
-  /* 1. for socket level options that are NOT socket attributes
-   *    and that has corresponding vpp options set it from vppcom */
-#if 0
-  return 0;
-#endif
+  int rv = -EOPNOTSUPP;
 
-  /* 2. unhandled options */
-  return -ENOPROTOOPT;
+  switch (__level)
+    {
+    case SOL_IPV6:
+      switch (__optname)
+	{
+	case IPV6_V6ONLY:
+	  rv = vppcom_session_attr (__sid, VPPCOM_ATTR_SET_V6ONLY, 0, 0);
+	  return rv;
+	default:
+	  return rv;
+	}
+      break;
+    case SOL_SOCKET:
+      switch (__optname)
+	{
+	case SO_REUSEADDR:
+	  rv = vppcom_session_attr (__sid, VPPCOM_ATTR_SET_REUSEADDR, 0, 0);
+	  return rv;
+	case SO_BROADCAST:
+	  rv = vppcom_session_attr (__sid, VPPCOM_ATTR_SET_BROADCAST, 0, 0);
+	  return rv;
+	default:
+	  return rv;
+	}
+      break;
+    default:
+      return rv;
+    }
+
+  return rv;
 }
 
 int
@@ -1864,10 +1985,36 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
 
   switch (__level)
     {
+    case SOL_IPV6:
+      switch (__optname)
+	{
+	case IPV6_V6ONLY:
+	  rv = vppcom_session_setsockopt (vsock->sid, __level, __optname,
+					  __optval, __optlen);
+	  return rv;
+	default:
+	  return -EOPNOTSUPP;
+	}
+      break;
+    case SOL_TCP:
+      switch (__optname)
+	{
+	case TCP_NODELAY:
+	  return 0;
+	default:
+	  return -EOPNOTSUPP;
+	}
+      break;
       /* handle options at socket level */
     case SOL_SOCKET:
       switch (__optname)
 	{
+	case SO_REUSEADDR:
+	case SO_BROADCAST:
+	  rv = vppcom_session_setsockopt (vsock->sid, __level, __optname,
+					  __optval, __optlen);
+	  return rv;
+
 	  /*
 	   * 1. for socket level options that are socket attributes,
 	   *    set it from libc_getsockopt
@@ -1878,10 +2025,8 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
 	   *    return -ENOPROTOOPT */
 	case SO_DEBUG:
 	case SO_DONTROUTE:
-	case SO_BROADCAST:
 	case SO_SNDBUF:
 	case SO_RCVBUF:
-	case SO_REUSEADDR:
 	case SO_REUSEPORT:
 	case SO_KEEPALIVE:
 	case SO_TYPE:
@@ -1942,15 +2087,7 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
       break;
 
     default:
-      /* 1. handle options that are NOT socket level options,
-       *    but have corresponding vpp otions. */
-      rv = vppcom_setsockopt (vsock->sid, __level, __optname,
-			      __optval, __optlen);
-      return rv;
-#if 0
-      /* 2. unhandled options */
       return -ENOPROTOOPT;
-#endif
     }
 
   return rv;
