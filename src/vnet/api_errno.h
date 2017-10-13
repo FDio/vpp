@@ -132,7 +132,9 @@ _(NAME_SERVER_NO_ADDRESSES, -139, "No addresses available")		\
 _(NAME_SERVER_NEXT_SERVER, -140, "Retry with new server")		\
 _(APP_CONNECT_FILTERED, -141, "Connect was filtered")			\
 _(ACL_IN_USE_INBOUND, -142, "Inbound ACL in use")			\
-_(ACL_IN_USE_OUTBOUND, -143, "Outbound ACL in use")
+_(ACL_IN_USE_OUTBOUND, -143, "Outbound ACL in use")                     \
+_(NAMESPACE_CREATE, -144, "Failed to create netlink namespace")         \
+_(VIRTIO_INIT, -145, "Failed to init virtio ring")
 
 typedef enum
 {
