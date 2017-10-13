@@ -547,6 +547,47 @@ static void *vl_api_sw_interface_tap_dump_t_print
   FINISH;
 }
 
+static void *vl_api_tapv2_create_t_print
+  (vl_api_tapv2_create_t * mp, void *handle)
+{
+  u8 *s;
+  u8 null_mac[6];
+
+  memset (null_mac, 0, sizeof (null_mac));
+
+  s = format (0, "SCRIPT: tapv2_create ");
+  s = format (s, "name %s ", mp->tap_name);
+  if (memcmp (mp->mac_address, null_mac, 6))
+    s = format (s, "hw-addr %U ", format_ethernet_address, mp->mac_address);
+  if (mp->net_ns_set)
+    s = format (s, "host-ns %s ", mp->net_ns);
+  if (mp->tx_ring_sz)
+    s = format (s, "tx-ring-size %d ", mp->tx_ring_sz);
+  if (mp->rx_ring_sz)
+    s = format (s, "rx-ring-size %d ", mp->rx_ring_sz);
+  FINISH;
+}
+
+static void *vl_api_tapv2_delete_t_print
+  (vl_api_tapv2_delete_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: tapv2_delete ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  FINISH;
+}
+
+static void *vl_api_sw_interface_tapv2_dump_t_print
+  (vl_api_sw_interface_tapv2_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: sw_interface_tapv2_dump ");
+
+  FINISH;
+}
 
 static void *vl_api_ip_add_del_route_t_print
   (vl_api_ip_add_del_route_t * mp, void *handle)
@@ -3269,6 +3310,9 @@ _(TAP_CONNECT, tap_connect)                                             \
 _(TAP_MODIFY, tap_modify)                                               \
 _(TAP_DELETE, tap_delete)                                               \
 _(SW_INTERFACE_TAP_DUMP, sw_interface_tap_dump)                         \
+_(TAPV2_CREATE, tapv2_create)                                           \
+_(TAPV2_DELETE, tapv2_delete)                                           \
+_(SW_INTERFACE_TAPV2_DUMP, sw_interface_tapv2_dump)                     \
 _(IP_ADD_DEL_ROUTE, ip_add_del_route)                                   \
 _(PROXY_ARP_ADD_DEL, proxy_arp_add_del)                                 \
 _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
