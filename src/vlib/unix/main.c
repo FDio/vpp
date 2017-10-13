@@ -75,7 +75,7 @@ VLIB_INIT_FUNCTION (unix_main_init);
 static void
 unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
 {
-  uword fatal;
+  uword fatal = 0;
   u8 *msg = 0;
 
   msg = format (msg, "received signal %U, PC %U",
@@ -91,10 +91,9 @@ unix_signal_handler (int signum, siginfo_t * si, ucontext_t * uc)
       if (unix_main.vlib_main->main_loop_exit_set)
 	{
 	  syslog (LOG_ERR | LOG_DAEMON, "received SIGTERM, exiting...");
-
-	  clib_longjmp (&unix_main.vlib_main->main_loop_exit,
-			VLIB_MAIN_LOOP_EXIT_CLI);
+	  unix_main.vlib_main->main_loop_exit_now = 1;
 	}
+      break;
       /* fall through */
     case SIGQUIT:
     case SIGINT:
