@@ -1,0 +1,94 @@
+/*
+ * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+
+    This file defines vpe control-plane API messages for
+    the Linux kernel TAP device driver
+*/
+
+vl_api_version 1.0.0
+
+/** \brief Initialize a new tap interface with the given paramters
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param use_random_mac - let the system generate a unique mac address
+    @param tap_name - name to associate with the new interface
+    @param mac_address - mac addr to assign to the interface if use_radom not set
+    @param net_ns_set - net_ns is entered
+    @param net_ns - netlink name space
+    @param tx_ring_sz - the number of entries of TX ring
+    @param rx_ring_sz - the number of entries of RX ring
+*/
+define tap_create_v2
+{
+  u32 client_index;
+  u32 context;
+  u8 use_random_mac;
+  u8 tap_name[64];
+  u8 mac_address[6];
+  u8 net_ns_set;
+  u8 net_ns[64];
+  u16 tx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
+  u16 rx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
+};
+
+/** \brief Reply for tap create reply
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index allocated for the new tap interface
+*/
+define tap_create_v2_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Delete tap interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface index of existing tap interface
+*/
+autoreply define tap_delete_v2
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief Dump tap interfaces request */
+define sw_interface_tap_v2_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply for tap dump request
+    @param sw_if_index - software index of tap interface
+    @param dev_name - Linux tap device name
+*/
+define sw_interface_tap_v2_details
+{
+  u32 context;
+  u32 sw_if_index;
+  u8 dev_name[64];
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

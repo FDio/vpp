@@ -1694,6 +1694,74 @@ static void vl_api_tap_delete_reply_t_handler_json
   vam->result_ready = 1;
 }
 
+static void
+vl_api_tap_create_v2_reply_t_handler (vl_api_tap_create_v2_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
+      vam->result_ready = 1;
+    }
+
+}
+
+static void vl_api_tap_create_v2_reply_t_handler_json
+  (vl_api_tap_create_v2_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+
+}
+
+static void
+vl_api_tap_delete_v2_reply_t_handler (vl_api_tap_delete_v2_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_tap_delete_v2_reply_t_handler_json
+  (vl_api_tap_delete_v2_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
 static void vl_api_mpls_tunnel_add_del_reply_t_handler
   (vl_api_mpls_tunnel_add_del_reply_t * mp)
 {
@@ -5378,6 +5446,9 @@ _(TAP_CONNECT_REPLY, tap_connect_reply)					\
 _(TAP_MODIFY_REPLY, tap_modify_reply)					\
 _(TAP_DELETE_REPLY, tap_delete_reply)					\
 _(SW_INTERFACE_TAP_DETAILS, sw_interface_tap_details)                   \
+_(TAP_CREATE_V2_REPLY, tap_create_v2_reply)				\
+_(TAP_DELETE_V2_REPLY, tap_delete_v2_reply)				\
+_(SW_INTERFACE_TAP_V2_DETAILS, sw_interface_tap_v2_details)             \
 _(IP_ADD_DEL_ROUTE_REPLY, ip_add_del_route_reply)			\
 _(IP_TABLE_ADD_DEL_REPLY, ip_table_add_del_reply)			\
 _(IP_MROUTE_ADD_DEL_REPLY, ip_mroute_add_del_reply)			\
@@ -7721,6 +7792,142 @@ api_tap_delete (vat_main_t * vam)
 
   /* Construct the API message */
   M (TAP_DELETE, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_tap_create_v2 (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_tap_create_v2_t *mp;
+  u8 mac_address[6];
+  u8 random_mac = 1;
+  u8 name_set = 0;
+  u8 *tap_name;
+  u8 *net_ns;
+  u8 net_ns_set = 0;
+  int ret;
+  int rx_ring_sz = 0, tx_ring_sz = 0;
+
+  memset (mac_address, 0, sizeof (mac_address));
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "hw-addr %U", unformat_ethernet_address, mac_address))
+	{
+	  random_mac = 0;
+	}
+      else if (unformat (i, "name %s", &tap_name))
+	name_set = 1;
+      else if (unformat (i, "host-ns %s", &net_ns))
+	net_ns_set = 1;
+      else if (unformat (i, "rx-ring-size %d", &rx_ring_sz))
+	;
+      else if (unformat (i, "tx-ring-size %d", &tx_ring_sz))
+	;
+      else
+	break;
+    }
+
+  if (name_set == 0)
+    {
+      errmsg ("missing tap name. ");
+      return -99;
+    }
+  if (vec_len (tap_name) > 63)
+    {
+      errmsg ("tap name too long. ");
+      return -99;
+    }
+  if (vec_len (net_ns) > 63)
+    {
+      errmsg ("host name space too long. ");
+      return -99;
+    }
+  if (!is_pow2 (rx_ring_sz))
+    {
+      errmsg ("rx ring size must be power of 2. ");
+      return -99;
+    }
+  if (rx_ring_sz > 32768)
+    {
+      errmsg ("rx ring size must be 32768 or lower. ");
+      return -99;
+    }
+  if (!is_pow2 (tx_ring_sz))
+    {
+      errmsg ("tx ring size must be power of 2. ");
+      return -99;
+    }
+  if (tx_ring_sz > 32768)
+    {
+      errmsg ("tx ring size must be 32768 or lower. ");
+      return -99;
+    }
+
+  vec_add1 (tap_name, 0);
+  vec_add1 (net_ns, 0);
+
+  /* Construct the API message */
+  M (TAP_CREATE_V2, mp);
+
+  mp->use_random_mac = random_mac;
+  clib_memcpy (mp->mac_address, mac_address, 6);
+  clib_memcpy (mp->tap_name, tap_name, vec_len (tap_name));
+  mp->net_ns_set = net_ns_set;
+  mp->rx_ring_sz = rx_ring_sz;
+  mp->tx_ring_sz = tx_ring_sz;
+  if (net_ns)
+    clib_memcpy (mp->net_ns, net_ns, vec_len (net_ns));
+
+  vec_free (tap_name);
+  vec_free (net_ns);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_tap_delete_v2 (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_tap_delete_v2_t *mp;
+  u32 sw_if_index = ~0;
+  u8 sw_if_index_set = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing vpp interface name. ");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (TAP_DELETE_V2, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
 
@@ -12189,6 +12396,53 @@ api_sw_interface_tap_dump (vat_main_t * vam)
   print (vam->ofp, "\n%-16s %s", "dev_name", "sw_if_index");
   /* Get list of tap interfaces */
   M (SW_INTERFACE_TAP_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static void vl_api_sw_interface_tap_v2_details_t_handler
+  (vl_api_sw_interface_tap_v2_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  print (vam->ofp, "%-16s %d",
+	 mp->dev_name, clib_net_to_host_u32 (mp->sw_if_index));
+}
+
+static void vl_api_sw_interface_tap_v2_details_t_handler_json
+  (vl_api_sw_interface_tap_v2_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_string_copy (node, "dev_name", mp->dev_name);
+}
+
+static int
+api_sw_interface_tap_v2_dump (vat_main_t * vam)
+{
+  vl_api_sw_interface_tap_v2_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  print (vam->ofp, "\n%-16s %s", "dev_name", "sw_if_index");
+  /* Get list of tap interfaces */
+  M (SW_INTERFACE_TAP_V2_DUMP, mp);
   S (mp);
 
   /* Use a control ping for synchronization */
@@ -22375,6 +22629,11 @@ _(tap_modify,                                                           \
 _(tap_delete,                                                           \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_dump, "")                                            \
+_(tap_create_v2,                                                        \
+  "name <name> [hw-addr <mac-addr>] [host-ns <name>] [rx-ring-size <num> [tx-ring-size <num>]") \
+_(tap_delete_v2,                                                        \
+  "<vpp-if-name> | sw_if_index <id>")                                   \
+_(sw_interface_tap_v2_dump, "")                                         \
 _(ip_table_add_del,                                                     \
   "table-id <n> [ipv6]\n")                                              \
 _(ip_add_del_route,                                                     \
