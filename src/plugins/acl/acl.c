@@ -2217,6 +2217,34 @@ acl_show_aclplugin_macip_fn (vlib_main_t * vm,
   return error;
 }
 
+static
+u8 *acl_format_acl(u8 *out0, acl_main_t *am, int acl_index)
+{
+  out0 = format(out0, "acl-index %u count %u tag {%s}\n", acl_index, am->acls[acl_index].count, am->acls[acl_index].tag);
+  acl_rule_t *r;
+  int j;
+  for(j=0; j<am->acls[acl_index].count; j++) {
+    r = &am->acls[acl_index].rules[j];
+    out0 = format(out0, "  %4d: %s ", j, r->is_ipv6 ? "ipv6" : "ipv4");
+    out0 = format_acl_action(out0, r->is_permit);
+    out0 = format(out0, " src %U/%d", format_ip46_address, &r->src, IP46_TYPE_ANY, r->src_prefixlen);
+    out0 = format(out0, " dst %U/%d", format_ip46_address, &r->dst, IP46_TYPE_ANY, r->dst_prefixlen);
+    out0 = format(out0, " proto %d", r->proto);
+    out0 = format(out0, " sport %d", r->src_port_or_type_first);
+    if (r->src_port_or_type_first != r->src_port_or_type_last) {
+      out0 = format(out0, "-%d", r->src_port_or_type_last);
+    }
+    out0 = format(out0, " dport %d", r->dst_port_or_code_first);
+    if (r->dst_port_or_code_first != r->dst_port_or_code_last) {
+      out0 = format(out0, "-%d", r->dst_port_or_code_last);
+    }
+    if (r->tcp_flags_mask || r->tcp_flags_value) {
+      out0 = format(out0, " tcpflags %d mask %d", r->tcp_flags_value, r->tcp_flags_mask);
+    }
+    out0 = format(out0, "\n");
+  }
+  return out0;
+}
 
 static clib_error_t *
 acl_show_aclplugin_fn (vlib_main_t * vm,
@@ -2318,6 +2346,8 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
       u32 swi;
       u8 * out0 = format(0, "");
       unformat (input, "sw_if_index %u", &sw_if_index);
+      int show_acl = unformat(input, "acl");
+
       for(swi = 0; (swi < vec_len(am->input_acl_vec_by_sw_if_index)) ||
                    (swi < vec_len(am->output_acl_vec_by_sw_if_index)); swi++) {
         out0 = format(out0, "sw_if_index %d:\n", swi);
@@ -2329,6 +2359,11 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
             out0 = format(out0, "%d ", *pj);
           }
           out0 = format(out0, "\n");
+          if (show_acl) {
+            vec_foreach(pj, am->input_acl_vec_by_sw_if_index[swi]) {
+              out0 = acl_format_acl(out0, am, *pj);
+            }
+          }
         }
 
         if ((swi < vec_len(am->output_acl_vec_by_sw_if_index)) &&
@@ -2338,6 +2373,11 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
             out0 = format(out0, "%d ", *pj);
           }
           out0 = format(out0, "\n");
+          if (show_acl) {
+            vec_foreach(pj, am->input_acl_vec_by_sw_if_index[swi]) {
+              out0 = acl_format_acl(out0, am, *pj);
+            }
+          }
         }
 
       }
@@ -2349,7 +2389,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
     {
       u32 acl_index = ~0;
       u32 i;
-      u8 * out0 = format(0, "");
+      u8 * out0 = 0;
       unformat (input, "index %u", &acl_index);
       for(i=0; i<vec_len(am->acls); i++) {
         if (acl_is_not_defined(am, i)) {
@@ -2359,29 +2399,7 @@ acl_show_aclplugin_fn (vlib_main_t * vm,
         if ((acl_index != ~0) && (acl_index != i)) {
           continue;
         }
-        out0 = format(out0, "acl-index %u count %u tag {%s}\n", i, am->acls[i].count, am->acls[i].tag);
-        acl_rule_t *r;
-        int j;
-        for(j=0; j<am->acls[i].count; j++) {
-          r = &am->acls[i].rules[j];
-          out0 = format(out0, "  %4d: %s ", j, r->is_ipv6 ? "ipv6" : "ipv4");
-          out0 = format_acl_action(out0, r->is_permit);
-          out0 = format(out0, " src %U/%d", format_ip46_address, &r->src, IP46_TYPE_ANY, r->src_prefixlen);
-          out0 = format(out0, " dst %U/%d", format_ip46_address, &r->dst, IP46_TYPE_ANY, r->dst_prefixlen);
-          out0 = format(out0, " proto %d", r->proto);
-          out0 = format(out0, " sport %d", r->src_port_or_type_first);
-          if (r->src_port_or_type_first != r->src_port_or_type_last) {
-            out0 = format(out0, "-%d", r->src_port_or_type_last);
-          }
-          out0 = format(out0, " dport %d", r->dst_port_or_code_first);
-          if (r->dst_port_or_code_first != r->dst_port_or_code_last) {
-            out0 = format(out0, "-%d", r->dst_port_or_code_last);
-          }
-          if (r->tcp_flags_mask || r->tcp_flags_value) {
-            out0 = format(out0, " tcpflags %d mask %d", r->tcp_flags_value, r->tcp_flags_mask);
-          }
-          out0 = format(out0, "\n");
-        }
+        out0 = acl_format_acl(out0, am, i);
 
         if (i<vec_len(am->input_sw_if_index_vec_by_acl)) {
           out0 = format(out0, "  applied inbound on sw_if_index: ");
