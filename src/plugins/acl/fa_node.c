@@ -170,7 +170,8 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
       clib_warning
 	("ACL_FA_NODE_DBG acl %d rule %d pkt dst addr %U match rule addr %U/%d",
 	 acl_index, i, format_ip46_address, &pkt_5tuple->addr[1],
-	 IP46_TYPE_ANY, format_ip46_address, &r->dst, IP46_TYPE_ANY,
+	 r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4, format_ip46_address,
+         &r->dst, r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4,
 	 r->dst_prefixlen);
 #endif
 
@@ -182,7 +183,8 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
       clib_warning
 	("ACL_FA_NODE_DBG acl %d rule %d pkt src addr %U match rule addr %U/%d",
 	 acl_index, i, format_ip46_address, &pkt_5tuple->addr[0],
-	 IP46_TYPE_ANY, format_ip46_address, &r->src, IP46_TYPE_ANY,
+	 r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4, format_ip46_address,
+         &r->src, r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4,
 	 r->src_prefixlen);
       clib_warning
 	("ACL_FA_NODE_DBG acl %d rule %d trying to match pkt proto %d with rule %d",
