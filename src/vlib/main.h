@@ -85,6 +85,8 @@ typedef struct vlib_main_t
 
   /* Jump target to exit main loop with given code. */
   u32 main_loop_exit_set;
+  /* Set e.g. in the SIGTERM signal handler, checked in a safe place... */
+  volatile u32 main_loop_exit_now;
   clib_longjmp_t main_loop_exit;
 #define VLIB_MAIN_LOOP_EXIT_NONE 0
 #define VLIB_MAIN_LOOP_EXIT_PANIC 1
@@ -340,6 +342,9 @@ vlib_increment_main_loop_counter (vlib_main_t * vm)
   vm->main_loop_nodes_processed = 0;
   vm->vector_counts_per_main_loop[i] = v;
   vm->node_counts_per_main_loop[i] = n;
+
+  if (PREDICT_FALSE (vm->main_loop_exit_now))
+    clib_longjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_CLI);
 }
 
 always_inline void vlib_set_queue_signal_callback
