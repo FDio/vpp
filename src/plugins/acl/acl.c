@@ -2195,356 +2195,417 @@ macip_acl_print(acl_main_t *am, u32 macip_acl_index)
 }
 
 static clib_error_t *
-acl_show_aclplugin_macip_fn (vlib_main_t * vm,
+acl_show_aclplugin_macip_acl_fn (vlib_main_t * vm,
                               unformat_input_t * input,
                               vlib_cli_command_t * cmd)
 {
   clib_error_t *error = 0;
   acl_main_t *am = &acl_main;
   int i;
-  if (unformat (input, "interface"))
+  for(i=0; i < vec_len(am->macip_acls); i++)
+    macip_acl_print(am, i);
+  return error;
+}
+
+static clib_error_t *
+acl_show_aclplugin_macip_interface_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  acl_main_t *am = &acl_main;
+  int i;
+  for(i=0; i < vec_len(am->macip_acl_by_sw_if_index); i++)
     {
-      for(i=0; i < vec_len(am->macip_acl_by_sw_if_index); i++)
-        {
-          vlib_cli_output(vm, "  sw_if_index %d: %d\n", i, vec_elt(am->macip_acl_by_sw_if_index, i));
-        }
-    }
-  else if (unformat (input, "acl"))
-    {
-      for(i=0; i < vec_len(am->macip_acls); i++)
-        macip_acl_print(am, i);
+      vlib_cli_output(vm, "  sw_if_index %d: %d\n", i, vec_elt(am->macip_acl_by_sw_if_index, i));
     }
   return error;
 }
 
+static
+u8 *acl_format_acl(u8 *out0, acl_main_t *am, int acl_index)
+{
+  out0 = format(out0, "acl-index %u count %u tag {%s}\n", acl_index, am->acls[acl_index].count, am->acls[acl_index].tag);
+  acl_rule_t *r;
+  int j;
+  for(j=0; j<am->acls[acl_index].count; j++) {
+    r = &am->acls[acl_index].rules[j];
+    out0 = format(out0, "  %4d: %s ", j, r->is_ipv6 ? "ipv6" : "ipv4");
+    out0 = format_acl_action(out0, r->is_permit);
+    out0 = format(out0, " src %U/%d", format_ip46_address, &r->src, IP46_TYPE_ANY, r->src_prefixlen);
+    out0 = format(out0, " dst %U/%d", format_ip46_address, &r->dst, IP46_TYPE_ANY, r->dst_prefixlen);
+    out0 = format(out0, " proto %d", r->proto);
+    out0 = format(out0, " sport %d", r->src_port_or_type_first);
+    if (r->src_port_or_type_first != r->src_port_or_type_last) {
+      out0 = format(out0, "-%d", r->src_port_or_type_last);
+    }
+    out0 = format(out0, " dport %d", r->dst_port_or_code_first);
+    if (r->dst_port_or_code_first != r->dst_port_or_code_last) {
+      out0 = format(out0, "-%d", r->dst_port_or_code_last);
+    }
+    if (r->tcp_flags_mask || r->tcp_flags_value) {
+      out0 = format(out0, " tcpflags %d mask %d", r->tcp_flags_value, r->tcp_flags_mask);
+    }
+    out0 = format(out0, "\n");
+  }
+  return out0;
+}
 
 static clib_error_t *
-acl_show_aclplugin_fn (vlib_main_t * vm,
+acl_show_aclplugin_acl_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  acl_main_t *am = &acl_main;
+  u32 *pj;
+
+  u32 acl_index = ~0;
+  u32 i;
+  u8 * out0 = 0;
+  unformat (input, "index %u", &acl_index);
+  for(i=0; i<vec_len(am->acls); i++) {
+    if (acl_is_not_defined(am, i)) {
+      /* don't attempt to show the ACLs that do not exist */
+      continue;
+    }
+    if ((acl_index != ~0) && (acl_index != i)) {
+      continue;
+    }
+    out0 = acl_format_acl(out0, am, i);
+
+    if (i<vec_len(am->input_sw_if_index_vec_by_acl)) {
+      out0 = format(out0, "  applied inbound on sw_if_index: ");
+      vec_foreach(pj, am->input_sw_if_index_vec_by_acl[i]) {
+	out0 = format(out0, "%d ", *pj);
+      }
+      out0 = format(out0, "\n");
+    }
+    if (i<vec_len(am->output_sw_if_index_vec_by_acl)) {
+      out0 = format(out0, "  applied outbound on sw_if_index: ");
+      vec_foreach(pj, am->output_sw_if_index_vec_by_acl[i]) {
+	out0 = format(out0, "%d ", *pj);
+      }
+      out0 = format(out0, "\n");
+    }
+  }
+  vec_terminate_c_string(out0);
+  vlib_cli_output(vm, "\n%s\n", out0);
+  vec_free(out0);
+  return error;
+}
+
+static clib_error_t *
+acl_show_aclplugin_interface_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  acl_main_t *am = &acl_main;
+  u32 *pj;
+
+  u32 sw_if_index = ~0;
+  u32 swi;
+  u8 * out0 = format(0, "");
+  unformat (input, "sw_if_index %u", &sw_if_index);
+  int show_acl = unformat(input, "acl");
+
+  for(swi = 0; (swi < vec_len(am->input_acl_vec_by_sw_if_index)) ||
+	       (swi < vec_len(am->output_acl_vec_by_sw_if_index)); swi++) {
+    /* if we need a particular interface, skip all the others */
+    if ((sw_if_index != ~0) && (sw_if_index != swi))
+      continue;
+
+    out0 = format(out0, "sw_if_index %d:\n", swi);
+
+    if ((swi < vec_len(am->input_acl_vec_by_sw_if_index)) &&
+	(vec_len(am->input_acl_vec_by_sw_if_index[swi]) > 0)) {
+      out0 = format(out0, "  input acl(s): ");
+      vec_foreach(pj, am->input_acl_vec_by_sw_if_index[swi]) {
+	out0 = format(out0, "%d ", *pj);
+      }
+      out0 = format(out0, "\n");
+      if (show_acl) {
+        out0 = format(out0, "\n");
+	vec_foreach(pj, am->input_acl_vec_by_sw_if_index[swi]) {
+	  out0 = acl_format_acl(out0, am, *pj);
+	}
+        out0 = format(out0, "\n");
+      }
+    }
+
+    if ((swi < vec_len(am->output_acl_vec_by_sw_if_index)) &&
+	(vec_len(am->output_acl_vec_by_sw_if_index[swi]) > 0)) {
+      out0 = format(out0, "  output acl(s): ");
+      vec_foreach(pj, am->output_acl_vec_by_sw_if_index[swi]) {
+	out0 = format(out0, "%d ", *pj);
+      }
+      out0 = format(out0, "\n");
+      if (show_acl) {
+        out0 = format(out0, "\n");
+	vec_foreach(pj, am->output_acl_vec_by_sw_if_index[swi]) {
+	  out0 = acl_format_acl(out0, am, *pj);
+	}
+        out0 = format(out0, "\n");
+      }
+    }
+
+  }
+  vec_terminate_c_string(out0);
+  vlib_cli_output(vm, "\n%s\n", out0);
+  vec_free(out0);
+  return error;
+}
+
+static clib_error_t *
+acl_show_aclplugin_memory_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  acl_main_t *am = &acl_main;
+
+  vlib_cli_output (vm, "ACL plugin main heap statistics:\n");
+  if (am->acl_mheap) {
+    vlib_cli_output (vm, " %U\n", format_mheap, am->acl_mheap, 1);
+  } else {
+    vlib_cli_output (vm, " Not initialized\n");
+  }
+  vlib_cli_output (vm, "ACL hash lookup support heap statistics:\n");
+  if (am->hash_lookup_mheap) {
+    vlib_cli_output (vm, " %U\n", format_mheap, am->hash_lookup_mheap, 1);
+  } else {
+    vlib_cli_output (vm, " Not initialized\n");
+  }
+  return error;
+}
+
+static clib_error_t *
+acl_show_aclplugin_sessions_fn (vlib_main_t * vm,
                               unformat_input_t * input,
                               vlib_cli_command_t * cmd)
 {
   clib_error_t *error = 0;
   acl_main_t *am = &acl_main;
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
-  u32 *pj;
 
   vnet_sw_interface_t *swif;
 
-  if (unformat (input, "sessions"))
-    {
-      u8 * out0 = format(0, "");
-      u16 wk;
-      u32 show_bihash_verbose = 0;
-      u32 show_session_thread_id = ~0;
-      u32 show_session_session_index = ~0;
-      unformat (input, "thread %u index %u", &show_session_thread_id, &show_session_session_index);
-      unformat (input, "verbose %u", &show_bihash_verbose);
-      {
-        u64 n_adds = am->fa_session_total_adds;
-        u64 n_dels = am->fa_session_total_dels;
-        out0 = format(out0, "Sessions total: add %lu - del %lu = %lu\n", n_adds, n_dels, n_adds - n_dels);
-      }
-      out0 = format(out0, "\n\nPer-thread data:\n");
-      for (wk = 0; wk < vec_len (am->per_worker_data); wk++) {
-        acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
-	out0 = format(out0, "Thread #%d:\n", wk);
-        if (show_session_thread_id == wk && show_session_session_index < pool_len(pw->fa_sessions_pool)) {
-	  out0 = format(out0, "  session index %u:\n", show_session_session_index);
-          fa_session_t *sess = pw->fa_sessions_pool + show_session_session_index;
-          u64 *m =  (u64 *)&sess->info;
-          out0 = format(out0, "    info: %016llx %016llx %016llx %016llx %016llx %016llx\n", m[0], m[1], m[2], m[3], m[4], m[5]);
-	  out0 = format(out0, "    sw_if_index: %u\n", sess->sw_if_index);
-	  out0 = format(out0, "    tcp_flags_seen: %x\n", sess->tcp_flags_seen.as_u16);
-	  out0 = format(out0, "    last active time: %lu\n", sess->last_active_time);
-	  out0 = format(out0, "    thread index: %u\n", sess->thread_index);
-	  out0 = format(out0, "    link enqueue time: %lu\n", sess->link_enqueue_time);
-	  out0 = format(out0, "    link next index: %u\n", sess->link_next_idx);
-	  out0 = format(out0, "    link prev index: %u\n", sess->link_prev_idx);
-	  out0 = format(out0, "    link list id: %u\n", sess->link_list_id);
-        }
-	out0 = format(out0, "  connection add/del stats:\n", wk);
-        pool_foreach (swif, im->sw_interfaces,
-        ({
-          u32 sw_if_index =  swif->sw_if_index;
-          u64 n_adds = sw_if_index < vec_len(pw->fa_session_adds_by_sw_if_index) ? pw->fa_session_adds_by_sw_if_index[sw_if_index] : 0;
-          u64 n_dels = sw_if_index < vec_len(pw->fa_session_dels_by_sw_if_index) ? pw->fa_session_dels_by_sw_if_index[sw_if_index] : 0;
-          out0 = format(out0, "    sw_if_index %d: add %lu - del %lu = %lu\n", sw_if_index, n_adds, n_dels, n_adds - n_dels);
-        }));
+  u8 * out0 = format(0, "");
+  u16 wk;
+  u32 show_bihash_verbose = 0;
+  u32 show_session_thread_id = ~0;
+  u32 show_session_session_index = ~0;
+  unformat (input, "thread %u index %u", &show_session_thread_id, &show_session_session_index);
+  unformat (input, "verbose %u", &show_bihash_verbose);
+  {
+    u64 n_adds = am->fa_session_total_adds;
+    u64 n_dels = am->fa_session_total_dels;
+    out0 = format(out0, "Sessions total: add %lu - del %lu = %lu\n", n_adds, n_dels, n_adds - n_dels);
+  }
+  out0 = format(out0, "\n\nPer-thread data:\n");
+  for (wk = 0; wk < vec_len (am->per_worker_data); wk++) {
+    acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
+    out0 = format(out0, "Thread #%d:\n", wk);
+    if (show_session_thread_id == wk && show_session_session_index < pool_len(pw->fa_sessions_pool)) {
+      out0 = format(out0, "  session index %u:\n", show_session_session_index);
+      fa_session_t *sess = pw->fa_sessions_pool + show_session_session_index;
+      u64 *m =  (u64 *)&sess->info;
+      out0 = format(out0, "    info: %016llx %016llx %016llx %016llx %016llx %016llx\n", m[0], m[1], m[2], m[3], m[4], m[5]);
+      out0 = format(out0, "    sw_if_index: %u\n", sess->sw_if_index);
+      out0 = format(out0, "    tcp_flags_seen: %x\n", sess->tcp_flags_seen.as_u16);
+      out0 = format(out0, "    last active time: %lu\n", sess->last_active_time);
+      out0 = format(out0, "    thread index: %u\n", sess->thread_index);
+      out0 = format(out0, "    link enqueue time: %lu\n", sess->link_enqueue_time);
+      out0 = format(out0, "    link next index: %u\n", sess->link_next_idx);
+      out0 = format(out0, "    link prev index: %u\n", sess->link_prev_idx);
+      out0 = format(out0, "    link list id: %u\n", sess->link_list_id);
+    }
+    out0 = format(out0, "  connection add/del stats:\n", wk);
+    pool_foreach (swif, im->sw_interfaces,
+    ({
+      u32 sw_if_index =  swif->sw_if_index;
+      u64 n_adds = sw_if_index < vec_len(pw->fa_session_adds_by_sw_if_index) ? pw->fa_session_adds_by_sw_if_index[sw_if_index] : 0;
+      u64 n_dels = sw_if_index < vec_len(pw->fa_session_dels_by_sw_if_index) ? pw->fa_session_dels_by_sw_if_index[sw_if_index] : 0;
+      out0 = format(out0, "    sw_if_index %d: add %lu - del %lu = %lu\n", sw_if_index, n_adds, n_dels, n_adds - n_dels);
+    }));
 
-	out0 = format(out0, "  connection timeout type lists:\n", wk);
-        u8 tt = 0;
-        for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
-          u32 head_session_index = pw->fa_conn_list_head[tt];
-          out0 = format(out0, "  fa_conn_list_head[%d]: %d\n", tt, head_session_index);
-          if (~0 != head_session_index) {
-            fa_session_t *sess = pw->fa_sessions_pool + head_session_index;
-	    out0 = format(out0, "    last active time: %lu\n", sess->last_active_time);
-	    out0 = format(out0, "    link enqueue time: %lu\n", sess->link_enqueue_time);
-          }
-        }
-
-	out0 = format(out0, "  Next expiry time: %lu\n", pw->next_expiry_time);
-	out0 = format(out0, "  Requeue until time: %lu\n", pw->requeue_until_time);
-	out0 = format(out0, "  Current time wait interval: %lu\n", pw->current_time_wait_interval);
-	out0 = format(out0, "  Count of deleted sessions: %lu\n", pw->cnt_deleted_sessions);
-	out0 = format(out0, "  Delete already deleted: %lu\n", pw->cnt_already_deleted_sessions);
-	out0 = format(out0, "  Session timers restarted: %lu\n", pw->cnt_session_timer_restarted);
-	out0 = format(out0, "  Swipe until this time: %lu\n", pw->swipe_end_time);
-	out0 = format(out0, "  sw_if_index serviced bitmap: %U\n", format_bitmap_hex, pw->serviced_sw_if_index_bitmap);
-	out0 = format(out0, "  pending clear intfc bitmap : %U\n", format_bitmap_hex, pw->pending_clear_sw_if_index_bitmap);
-	out0 = format(out0, "  clear in progress: %u\n", pw->clear_in_process);
-	out0 = format(out0, "  interrupt is pending: %d\n", pw->interrupt_is_pending);
-	out0 = format(out0, "  interrupt is needed: %d\n", pw->interrupt_is_needed);
-	out0 = format(out0, "  interrupt is unwanted: %d\n", pw->interrupt_is_unwanted);
-	out0 = format(out0, "  interrupt generation: %d\n", pw->interrupt_generation);
+    out0 = format(out0, "  connection timeout type lists:\n", wk);
+    u8 tt = 0;
+    for(tt = 0; tt < ACL_N_TIMEOUTS; tt++) {
+      u32 head_session_index = pw->fa_conn_list_head[tt];
+      out0 = format(out0, "  fa_conn_list_head[%d]: %d\n", tt, head_session_index);
+      if (~0 != head_session_index) {
+	fa_session_t *sess = pw->fa_sessions_pool + head_session_index;
+	out0 = format(out0, "    last active time: %lu\n", sess->last_active_time);
+	out0 = format(out0, "    link enqueue time: %lu\n", sess->link_enqueue_time);
       }
-      out0 = format(out0, "\n\nConn cleaner thread counters:\n");
+    }
+
+    out0 = format(out0, "  Next expiry time: %lu\n", pw->next_expiry_time);
+    out0 = format(out0, "  Requeue until time: %lu\n", pw->requeue_until_time);
+    out0 = format(out0, "  Current time wait interval: %lu\n", pw->current_time_wait_interval);
+    out0 = format(out0, "  Count of deleted sessions: %lu\n", pw->cnt_deleted_sessions);
+    out0 = format(out0, "  Delete already deleted: %lu\n", pw->cnt_already_deleted_sessions);
+    out0 = format(out0, "  Session timers restarted: %lu\n", pw->cnt_session_timer_restarted);
+    out0 = format(out0, "  Swipe until this time: %lu\n", pw->swipe_end_time);
+    out0 = format(out0, "  sw_if_index serviced bitmap: %U\n", format_bitmap_hex, pw->serviced_sw_if_index_bitmap);
+    out0 = format(out0, "  pending clear intfc bitmap : %U\n", format_bitmap_hex, pw->pending_clear_sw_if_index_bitmap);
+    out0 = format(out0, "  clear in progress: %u\n", pw->clear_in_process);
+    out0 = format(out0, "  interrupt is pending: %d\n", pw->interrupt_is_pending);
+    out0 = format(out0, "  interrupt is needed: %d\n", pw->interrupt_is_needed);
+    out0 = format(out0, "  interrupt is unwanted: %d\n", pw->interrupt_is_unwanted);
+    out0 = format(out0, "  interrupt generation: %d\n", pw->interrupt_generation);
+  }
+  out0 = format(out0, "\n\nConn cleaner thread counters:\n");
 #define _(cnt, desc) out0 = format(out0, "             %20lu: %s\n", am->cnt, desc);
-      foreach_fa_cleaner_counter;
+  foreach_fa_cleaner_counter;
 #undef _
-      vec_terminate_c_string(out0);
-      vlib_cli_output(vm, "\n\n%s\n\n", out0);
-      vlib_cli_output(vm, "Interrupt generation: %d\n", am->fa_interrupt_generation);
-      vlib_cli_output(vm, "Sessions per interval: min %lu max %lu increment: %f ms current: %f ms",
-              am->fa_min_deleted_sessions_per_interval, am->fa_max_deleted_sessions_per_interval,
-              am->fa_cleaner_wait_time_increment * 1000.0, ((f64)am->fa_current_cleaner_timer_wait_interval) * 1000.0/(f64)vm->clib_time.clocks_per_second);
+  vec_terminate_c_string(out0);
+  vlib_cli_output(vm, "\n\n%s\n\n", out0);
+  vlib_cli_output(vm, "Interrupt generation: %d\n", am->fa_interrupt_generation);
+  vlib_cli_output(vm, "Sessions per interval: min %lu max %lu increment: %f ms current: %f ms",
+	  am->fa_min_deleted_sessions_per_interval, am->fa_max_deleted_sessions_per_interval,
+	  am->fa_cleaner_wait_time_increment * 1000.0, ((f64)am->fa_current_cleaner_timer_wait_interval) * 1000.0/(f64)vm->clib_time.clocks_per_second);
 
-      vec_free(out0);
-      show_fa_sessions_hash(vm, show_bihash_verbose);
-    }
-  else if (unformat (input, "interface"))
-    {
-      u32 sw_if_index = ~0;
-      u32 swi;
-      u8 * out0 = format(0, "");
-      unformat (input, "sw_if_index %u", &sw_if_index);
-      for(swi = 0; (swi < vec_len(am->input_acl_vec_by_sw_if_index)) ||
-                   (swi < vec_len(am->output_acl_vec_by_sw_if_index)); swi++) {
-        out0 = format(out0, "sw_if_index %d:\n", swi);
+  vec_free(out0);
+  show_fa_sessions_hash(vm, show_bihash_verbose);
+  return error;
+}
 
-        if ((swi < vec_len(am->input_acl_vec_by_sw_if_index)) &&
-            (vec_len(am->input_acl_vec_by_sw_if_index[swi]) > 0)) {
-          out0 = format(out0, "  input acl(s): ");
-          vec_foreach(pj, am->input_acl_vec_by_sw_if_index[swi]) {
-            out0 = format(out0, "%d ", *pj);
-          }
-          out0 = format(out0, "\n");
-        }
+static clib_error_t *
+acl_show_aclplugin_tables_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  acl_main_t *am = &acl_main;
 
-        if ((swi < vec_len(am->output_acl_vec_by_sw_if_index)) &&
-            (vec_len(am->output_acl_vec_by_sw_if_index[swi]) > 0)) {
-          out0 = format(out0, "  output acl(s): ");
-          vec_foreach(pj, am->output_acl_vec_by_sw_if_index[swi]) {
-            out0 = format(out0, "%d ", *pj);
-          }
-          out0 = format(out0, "\n");
-        }
+  ace_mask_type_entry_t *mte;
+  u32 acl_index = ~0;
+  u32 sw_if_index = ~0;
+  int show_acl_hash_info = 0;
+  int show_applied_info = 0;
+  int show_mask_type = 0;
+  int show_bihash = 0;
+  u32 show_bihash_verbose = 0;
 
+  if (unformat (input, "acl")) {
+    show_acl_hash_info = 1;
+    /* mask-type is handy to see as well right there */
+    show_mask_type = 1;
+    unformat (input, "index %u", &acl_index);
+  } else if (unformat (input, "applied")) {
+    show_applied_info = 1;
+    unformat (input, "sw_if_index %u", &sw_if_index);
+  } else if (unformat (input, "mask")) {
+    show_mask_type = 1;
+  } else if (unformat (input, "hash")) {
+    show_bihash = 1;
+    unformat (input, "verbose %u", &show_bihash_verbose);
+  }
+
+  if ( ! (show_mask_type || show_acl_hash_info || show_applied_info || show_bihash) ) {
+    /* if no qualifiers specified, show all */
+    show_mask_type = 1;
+    show_acl_hash_info = 1;
+    show_applied_info = 1;
+    show_bihash = 1;
+  }
+
+  if (show_mask_type) {
+    vlib_cli_output(vm, "Mask-type entries:");
+    /* *INDENT-OFF* */
+    pool_foreach(mte, am->ace_mask_type_pool,
+    ({
+      vlib_cli_output(vm, "     %3d: %016llx %016llx %016llx %016llx %016llx %016llx  refcount %d",
+		    mte - am->ace_mask_type_pool,
+		    mte->mask.kv.key[0], mte->mask.kv.key[1], mte->mask.kv.key[2],
+		    mte->mask.kv.key[3], mte->mask.kv.key[4], mte->mask.kv.value, mte->refcount);
+    }));
+    /* *INDENT-ON* */
+  }
+
+  if (show_acl_hash_info) {
+    u32 i,j;
+    u8 * out0 = format(0, "");
+    u64 *m;
+    out0 = format(out0, "Mask-ready ACL representations\n");
+    for (i=0; i< vec_len(am->hash_acl_infos); i++) {
+      if ((acl_index != ~0) && (acl_index != i)) {
+	continue;
       }
-      vec_terminate_c_string(out0);
-      vlib_cli_output(vm, "\n%s\n", out0);
-      vec_free(out0);
-    }
-  else if (unformat (input, "acl"))
-    {
-      u32 acl_index = ~0;
-      u32 i;
-      u8 * out0 = format(0, "");
-      unformat (input, "index %u", &acl_index);
-      for(i=0; i<vec_len(am->acls); i++) {
-        if (acl_is_not_defined(am, i)) {
-          /* don't attempt to show the ACLs that do not exist */
-          continue;
-        }
-        if ((acl_index != ~0) && (acl_index != i)) {
-          continue;
-        }
-        out0 = format(out0, "acl-index %u count %u tag {%s}\n", i, am->acls[i].count, am->acls[i].tag);
-        acl_rule_t *r;
-        int j;
-        for(j=0; j<am->acls[i].count; j++) {
-          r = &am->acls[i].rules[j];
-          out0 = format(out0, "  %4d: %s ", j, r->is_ipv6 ? "ipv6" : "ipv4");
-          out0 = format_acl_action(out0, r->is_permit);
-          out0 = format(out0, " src %U/%d", format_ip46_address, &r->src, IP46_TYPE_ANY, r->src_prefixlen);
-          out0 = format(out0, " dst %U/%d", format_ip46_address, &r->dst, IP46_TYPE_ANY, r->dst_prefixlen);
-          out0 = format(out0, " proto %d", r->proto);
-          out0 = format(out0, " sport %d", r->src_port_or_type_first);
-          if (r->src_port_or_type_first != r->src_port_or_type_last) {
-            out0 = format(out0, "-%d", r->src_port_or_type_last);
-          }
-          out0 = format(out0, " dport %d", r->dst_port_or_code_first);
-          if (r->dst_port_or_code_first != r->dst_port_or_code_last) {
-            out0 = format(out0, "-%d", r->dst_port_or_code_last);
-          }
-          if (r->tcp_flags_mask || r->tcp_flags_value) {
-            out0 = format(out0, " tcpflags %d mask %d", r->tcp_flags_value, r->tcp_flags_mask);
-          }
-          out0 = format(out0, "\n");
-        }
-
-        if (i<vec_len(am->input_sw_if_index_vec_by_acl)) {
-          out0 = format(out0, "  applied inbound on sw_if_index: ");
-          vec_foreach(pj, am->input_sw_if_index_vec_by_acl[i]) {
-            out0 = format(out0, "%d ", *pj);
-          }
-          out0 = format(out0, "\n");
-        }
-        if (i<vec_len(am->output_sw_if_index_vec_by_acl)) {
-          out0 = format(out0, "  applied outbound on sw_if_index: ");
-          vec_foreach(pj, am->output_sw_if_index_vec_by_acl[i]) {
-            out0 = format(out0, "%d ", *pj);
-          }
-          out0 = format(out0, "\n");
-        }
-      }
-      vec_terminate_c_string(out0);
-      vlib_cli_output(vm, "\n%s\n", out0);
-      vec_free(out0);
-    }
-  else if (unformat (input, "memory"))
-    {
-      vlib_cli_output (vm, "ACL plugin main heap statistics:\n");
-      if (am->acl_mheap) {
-        vlib_cli_output (vm, " %U\n", format_mheap, am->acl_mheap, 1);
-      } else {
-        vlib_cli_output (vm, " Not initialized\n");
-      }
-      vlib_cli_output (vm, "ACL hash lookup support heap statistics:\n");
-      if (am->hash_lookup_mheap) {
-        vlib_cli_output (vm, " %U\n", format_mheap, am->hash_lookup_mheap, 1);
-      } else {
-        vlib_cli_output (vm, " Not initialized\n");
+      hash_acl_info_t *ha = &am->hash_acl_infos[i];
+      out0 = format(out0, "acl-index %u bitmask-ready layout\n", i);
+      out0 = format(out0, "  applied  inbound on sw_if_index list: %U\n", format_vec32, ha->inbound_sw_if_index_list, "%d");
+      out0 = format(out0, "  applied outbound on sw_if_index list: %U\n", format_vec32, ha->outbound_sw_if_index_list, "%d");
+      out0 = format(out0, "  mask type index bitmap: %U\n", format_bitmap_hex, ha->mask_type_index_bitmap);
+      for(j=0; j<vec_len(ha->rules); j++) {
+	hash_ace_info_t *pa = &ha->rules[j];
+	m = (u64 *)&pa->match;
+	out0 = format(out0, "    %4d: %016llx %016llx %016llx %016llx %016llx %016llx mask index %d acl %d rule %d action %d src/dst portrange not ^2: %d,%d\n",
+			    j, m[0], m[1], m[2], m[3], m[4], m[5], pa->mask_type_index,
+			    pa->acl_index, pa->ace_index, pa->action,
+			    pa->src_portrange_not_powerof2, pa->dst_portrange_not_powerof2);
       }
     }
-  else if (unformat (input, "tables"))
-    {
-      ace_mask_type_entry_t *mte;
-      u32 acl_index = ~0;
-      u32 sw_if_index = ~0;
-      int show_acl_hash_info = 0;
-      int show_applied_info = 0;
-      int show_mask_type = 0;
-      int show_bihash = 0;
-      u32 show_bihash_verbose = 0;
+    vec_terminate_c_string(out0);
+    vlib_cli_output(vm, "\n%s\n", out0);
+    vec_free(out0);
+  }
 
-      if (unformat (input, "acl")) {
-        show_acl_hash_info = 1;
-        /* mask-type is handy to see as well right there */
-        show_mask_type = 1;
-        unformat (input, "index %u", &acl_index);
-      } else if (unformat (input, "applied")) {
-        show_applied_info = 1;
-        unformat (input, "sw_if_index %u", &sw_if_index);
-      } else if (unformat (input, "mask")) {
-        show_mask_type = 1;
-      } else if (unformat (input, "hash")) {
-        show_bihash = 1;
-        unformat (input, "verbose %u", &show_bihash_verbose);
+  if (show_applied_info) {
+    u32 swi, j;
+    u8 * out0 = format(0, "");
+    out0 = format(out0, "Applied lookup entries for interfaces\n");
+
+    for(swi = 0; (swi < vec_len(am->input_applied_hash_acl_info_by_sw_if_index)) ||
+	       (swi < vec_len(am->output_applied_hash_acl_info_by_sw_if_index)) ||
+	       (swi < vec_len(am->input_hash_entry_vec_by_sw_if_index)) ||
+	       (swi < vec_len(am->output_hash_entry_vec_by_sw_if_index)); swi++) {
+      if ((sw_if_index != ~0) && (sw_if_index != swi)) {
+	continue;
+      }
+      out0 = format(out0, "sw_if_index %d:\n", swi);
+      if (swi < vec_len(am->input_applied_hash_acl_info_by_sw_if_index)) {
+	applied_hash_acl_info_t *pal = &am->input_applied_hash_acl_info_by_sw_if_index[swi];
+	out0 = format(out0, "  input lookup mask_type_index_bitmap: %U\n", format_bitmap_hex, pal->mask_type_index_bitmap);
+	out0 = format(out0, "  input applied acls: %U\n", format_vec32, pal->applied_acls, "%d");
+      }
+      if (swi < vec_len(am->input_hash_entry_vec_by_sw_if_index)) {
+	out0 = format(out0, "  input lookup applied entries:\n");
+	for(j=0; j<vec_len(am->input_hash_entry_vec_by_sw_if_index[swi]); j++) {
+	  applied_hash_ace_entry_t *pae = &am->input_hash_entry_vec_by_sw_if_index[swi][j];
+	  out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d hitcount %lld\n",
+				   j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
+				   pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index, pae->hitcount);
+	}
       }
 
-      if ( ! (show_mask_type || show_acl_hash_info || show_applied_info || show_bihash) ) {
-        /* if no qualifiers specified, show all */
-        show_mask_type = 1;
-        show_acl_hash_info = 1;
-        show_applied_info = 1;
-        show_bihash = 1;
+      if (swi < vec_len(am->output_applied_hash_acl_info_by_sw_if_index)) {
+	applied_hash_acl_info_t *pal = &am->output_applied_hash_acl_info_by_sw_if_index[swi];
+	out0 = format(out0, "  output lookup mask_type_index_bitmap: %U\n", format_bitmap_hex, pal->mask_type_index_bitmap);
+	out0 = format(out0, "  output applied acls: %U\n", format_vec32, pal->applied_acls, "%d");
+      }
+      if (swi < vec_len(am->output_hash_entry_vec_by_sw_if_index)) {
+	out0 = format(out0, "  output lookup applied entries:\n");
+	for(j=0; j<vec_len(am->output_hash_entry_vec_by_sw_if_index[swi]); j++) {
+	  applied_hash_ace_entry_t *pae = &am->output_hash_entry_vec_by_sw_if_index[swi][j];
+	  out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d hitcount %lld\n",
+				   j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
+				   pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index, pae->hitcount);
+	}
       }
 
-      if (show_mask_type) {
-        vlib_cli_output(vm, "Mask-type entries:");
-        /* *INDENT-OFF* */
-        pool_foreach(mte, am->ace_mask_type_pool,
-        ({
-          vlib_cli_output(vm, "     %3d: %016llx %016llx %016llx %016llx %016llx %016llx  refcount %d",
-			mte - am->ace_mask_type_pool,
-                        mte->mask.kv.key[0], mte->mask.kv.key[1], mte->mask.kv.key[2],
-                        mte->mask.kv.key[3], mte->mask.kv.key[4], mte->mask.kv.value, mte->refcount);
-        }));
-        /* *INDENT-ON* */
-      }
-
-      if (show_acl_hash_info) {
-        u32 i,j;
-        u8 * out0 = format(0, "");
-        u64 *m;
-        out0 = format(out0, "Mask-ready ACL representations\n");
-        for (i=0; i< vec_len(am->hash_acl_infos); i++) {
-          if ((acl_index != ~0) && (acl_index != i)) {
-            continue;
-          }
-          hash_acl_info_t *ha = &am->hash_acl_infos[i];
-          out0 = format(out0, "acl-index %u bitmask-ready layout\n", i);
-          out0 = format(out0, "  applied  inbound on sw_if_index list: %U\n", format_vec32, ha->inbound_sw_if_index_list, "%d");
-          out0 = format(out0, "  applied outbound on sw_if_index list: %U\n", format_vec32, ha->outbound_sw_if_index_list, "%d");
-          out0 = format(out0, "  mask type index bitmap: %U\n", format_bitmap_hex, ha->mask_type_index_bitmap);
-          for(j=0; j<vec_len(ha->rules); j++) {
-            hash_ace_info_t *pa = &ha->rules[j];
-            m = (u64 *)&pa->match;
-            out0 = format(out0, "    %4d: %016llx %016llx %016llx %016llx %016llx %016llx mask index %d acl %d rule %d action %d src/dst portrange not ^2: %d,%d\n",
-                                j, m[0], m[1], m[2], m[3], m[4], m[5], pa->mask_type_index,
-				pa->acl_index, pa->ace_index, pa->action,
-                                pa->src_portrange_not_powerof2, pa->dst_portrange_not_powerof2);
-          }
-        }
-        vec_terminate_c_string(out0);
-        vlib_cli_output(vm, "\n%s\n", out0);
-        vec_free(out0);
-      }
-
-      if (show_applied_info) {
-        u32 swi, j;
-        u8 * out0 = format(0, "");
-        out0 = format(out0, "Applied lookup entries for interfaces\n");
-
-        for(swi = 0; (swi < vec_len(am->input_applied_hash_acl_info_by_sw_if_index)) ||
-                   (swi < vec_len(am->output_applied_hash_acl_info_by_sw_if_index)) ||
-                   (swi < vec_len(am->input_hash_entry_vec_by_sw_if_index)) ||
-                   (swi < vec_len(am->output_hash_entry_vec_by_sw_if_index)); swi++) {
-          if ((sw_if_index != ~0) && (sw_if_index != swi)) {
-            continue;
-          }
-          out0 = format(out0, "sw_if_index %d:\n", swi);
-          if (swi < vec_len(am->input_applied_hash_acl_info_by_sw_if_index)) {
-            applied_hash_acl_info_t *pal = &am->input_applied_hash_acl_info_by_sw_if_index[swi];
-            out0 = format(out0, "  input lookup mask_type_index_bitmap: %U\n", format_bitmap_hex, pal->mask_type_index_bitmap);
-            out0 = format(out0, "  input applied acls: %U\n", format_vec32, pal->applied_acls, "%d");
-          }
-          if (swi < vec_len(am->input_hash_entry_vec_by_sw_if_index)) {
-            out0 = format(out0, "  input lookup applied entries:\n");
-            for(j=0; j<vec_len(am->input_hash_entry_vec_by_sw_if_index[swi]); j++) {
-              applied_hash_ace_entry_t *pae = &am->input_hash_entry_vec_by_sw_if_index[swi][j];
-              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d hitcount %lld\n",
-                                       j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
-                                       pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index, pae->hitcount);
-            }
-          }
-
-          if (swi < vec_len(am->output_applied_hash_acl_info_by_sw_if_index)) {
-            applied_hash_acl_info_t *pal = &am->output_applied_hash_acl_info_by_sw_if_index[swi];
-            out0 = format(out0, "  output lookup mask_type_index_bitmap: %U\n", format_bitmap_hex, pal->mask_type_index_bitmap);
-            out0 = format(out0, "  output applied acls: %U\n", format_vec32, pal->applied_acls, "%d");
-          }
-          if (swi < vec_len(am->output_hash_entry_vec_by_sw_if_index)) {
-            out0 = format(out0, "  output lookup applied entries:\n");
-            for(j=0; j<vec_len(am->output_hash_entry_vec_by_sw_if_index[swi]); j++) {
-              applied_hash_ace_entry_t *pae = &am->output_hash_entry_vec_by_sw_if_index[swi][j];
-              out0 = format(out0, "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d hitcount %lld\n",
-                                       j, pae->acl_index, pae->ace_index, pae->action, pae->hash_ace_info_index,
-                                       pae->next_applied_entry_index, pae->prev_applied_entry_index, pae->tail_applied_entry_index, pae->hitcount);
-            }
-          }
-
-        }
-        vec_terminate_c_string(out0);
-        vlib_cli_output(vm, "\n%s\n", out0);
-        vec_free(out0);
-      }
-
-      if (show_bihash) {
-        show_hash_acl_hash(vm, am, show_bihash_verbose);
-      }
     }
+    vec_terminate_c_string(out0);
+    vlib_cli_output(vm, "\n%s\n", out0);
+    vec_free(out0);
+  }
+
+  if (show_bihash) {
+    show_hash_acl_hash(vm, am, show_bihash_verbose);
+  }
   return error;
 }
 
@@ -2567,18 +2628,47 @@ VLIB_CLI_COMMAND (aclplugin_set_command, static) = {
     .function = acl_set_aclplugin_fn,
 };
 
-VLIB_CLI_COMMAND (aclplugin_show_command, static) = {
-    .path = "show acl-plugin",
-    .short_help = "show acl-plugin {sessions|acl|interface|tables}",
-    .function = acl_show_aclplugin_fn,
+VLIB_CLI_COMMAND (aclplugin_show_acl_command, static) = {
+    .path = "show acl-plugin acl",
+    .short_help = "show acl-plugin acl [index N]",
+    .function = acl_show_aclplugin_acl_fn,
 };
 
-VLIB_CLI_COMMAND (aclplugin_show_macip_command, static) = {
-    .path = "show acl-plugin macip",
-    .short_help = "show acl-plugin macip {acl|interface}",
-    .function = acl_show_aclplugin_macip_fn,
+VLIB_CLI_COMMAND (aclplugin_show_interface_command, static) = {
+    .path = "show acl-plugin interface",
+    .short_help = "show acl-plugin interface [sw_if_index N] [acl]",
+    .function = acl_show_aclplugin_interface_fn,
 };
 
+VLIB_CLI_COMMAND (aclplugin_show_memory_command, static) = {
+    .path = "show acl-plugin memory",
+    .short_help = "show acl-plugin memory",
+    .function = acl_show_aclplugin_memory_fn,
+};
+
+VLIB_CLI_COMMAND (aclplugin_show_sessions_command, static) = {
+    .path = "show acl-plugin sessions",
+    .short_help = "show acl-plugin sessions",
+    .function = acl_show_aclplugin_sessions_fn,
+};
+
+VLIB_CLI_COMMAND (aclplugin_show_tables_command, static) = {
+    .path = "show acl-plugin tables",
+    .short_help = "show acl-plugin tables [ acl [index N] | applied [ sw_if_index N ] | mask | hash [verbose N] ]",
+    .function = acl_show_aclplugin_tables_fn,
+};
+
+VLIB_CLI_COMMAND (aclplugin_show_macip_acl_command, static) = {
+    .path = "show acl-plugin macip acl",
+    .short_help = "show acl-plugin macip acl",
+    .function = acl_show_aclplugin_macip_acl_fn,
+};
+
+VLIB_CLI_COMMAND (aclplugin_show_macip_interface_command, static) = {
+    .path = "show acl-plugin macip interface",
+    .short_help = "show acl-plugin macip interface",
+    .function = acl_show_aclplugin_macip_interface_fn,
+};
 
 VLIB_CLI_COMMAND (aclplugin_clear_command, static) = {
     .path = "clear acl-plugin sessions",
