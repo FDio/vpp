@@ -1592,44 +1592,8 @@ static void vl_api_bridge_flags_reply_t_handler_json
   vam->result_ready = 1;
 }
 
-static void vl_api_tap_connect_reply_t_handler
-  (vl_api_tap_connect_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  i32 retval = ntohl (mp->retval);
-  if (vam->async_mode)
-    {
-      vam->async_errors += (retval < 0);
-    }
-  else
-    {
-      vam->retval = retval;
-      vam->sw_if_index = ntohl (mp->sw_if_index);
-      vam->result_ready = 1;
-    }
-
-}
-
-static void vl_api_tap_connect_reply_t_handler_json
-  (vl_api_tap_connect_reply_t * mp)
-{
-  vat_main_t *vam = &vat_main;
-  vat_json_node_t node;
-
-  vat_json_init_object (&node);
-  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
-  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
-
-  vat_json_print (vam->ofp, &node);
-  vat_json_free (&node);
-
-  vam->retval = ntohl (mp->retval);
-  vam->result_ready = 1;
-
-}
-
 static void
-vl_api_tap_modify_reply_t_handler (vl_api_tap_modify_reply_t * mp)
+vl_api_tap_create_reply_t_handler (vl_api_tap_create_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
@@ -1643,10 +1607,11 @@ vl_api_tap_modify_reply_t_handler (vl_api_tap_modify_reply_t * mp)
       vam->sw_if_index = ntohl (mp->sw_if_index);
       vam->result_ready = 1;
     }
+
 }
 
-static void vl_api_tap_modify_reply_t_handler_json
-  (vl_api_tap_modify_reply_t * mp)
+static void vl_api_tap_create_reply_t_handler_json
+  (vl_api_tap_create_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   vat_json_node_t node;
@@ -1660,6 +1625,7 @@ static void vl_api_tap_modify_reply_t_handler_json
 
   vam->retval = ntohl (mp->retval);
   vam->result_ready = 1;
+
 }
 
 static void
@@ -5374,8 +5340,7 @@ _(L2FIB_FLUSH_INT_REPLY, l2fib_flush_int_reply)                         \
 _(L2FIB_FLUSH_BD_REPLY, l2fib_flush_bd_reply)                           \
 _(L2_FLAGS_REPLY, l2_flags_reply)                                       \
 _(BRIDGE_FLAGS_REPLY, bridge_flags_reply)                               \
-_(TAP_CONNECT_REPLY, tap_connect_reply)					\
-_(TAP_MODIFY_REPLY, tap_modify_reply)					\
+_(TAP_CREATE_REPLY, tap_create_reply)					\
 _(TAP_DELETE_REPLY, tap_delete_reply)					\
 _(SW_INTERFACE_TAP_DETAILS, sw_interface_tap_details)                   \
 _(IP_ADD_DEL_ROUTE_REPLY, ip_add_del_route_reply)			\
@@ -7533,157 +7498,72 @@ api_bd_ip_mac_add_del (vat_main_t * vam)
 }
 
 static int
-api_tap_connect (vat_main_t * vam)
+api_tap_create (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
-  vl_api_tap_connect_t *mp;
+  vl_api_tap_create_t *mp;
   u8 mac_address[6];
   u8 random_mac = 1;
   u8 name_set = 0;
   u8 *tap_name;
-  u8 *tag = 0;
-  ip4_address_t ip4_address;
-  u32 ip4_mask_width;
-  int ip4_address_set = 0;
-  ip6_address_t ip6_address;
-  u32 ip6_mask_width;
-  int ip6_address_set = 0;
+  u8 *net_ns;
+  u8 net_ns_set = 0;
   int ret;
+  int rx_ring_sz = 0, tx_ring_sz = 0;
 
   memset (mac_address, 0, sizeof (mac_address));
 
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "mac %U", unformat_ethernet_address, mac_address))
+      if (unformat (i, "hw-addr %U", unformat_ethernet_address, mac_address))
 	{
 	  random_mac = 0;
 	}
-      else if (unformat (i, "random-mac"))
-	random_mac = 1;
-      else if (unformat (i, "tapname %s", &tap_name))
+      else if (unformat (i, "name %s", &tap_name))
 	name_set = 1;
-      else if (unformat (i, "tag %s", &tag))
+      else if (unformat (i, "host-ns %s", &net_ns))
+	net_ns_set = 1;
+      else if (unformat (i, "rx-ring-size %d", &rx_ring_sz))
 	;
-      else if (unformat (i, "address %U/%d",
-			 unformat_ip4_address, &ip4_address, &ip4_mask_width))
-	ip4_address_set = 1;
-      else if (unformat (i, "address %U/%d",
-			 unformat_ip6_address, &ip6_address, &ip6_mask_width))
-	ip6_address_set = 1;
+      else if (unformat (i, "tx-ring-size %d", &tx_ring_sz))
+	;
       else
 	break;
     }
 
   if (name_set == 0)
     {
-      errmsg ("missing tap name");
+      errmsg ("missing tap name. ");
       return -99;
     }
   if (vec_len (tap_name) > 63)
     {
-      errmsg ("tap name too long");
+      errmsg ("tap name too long. ");
+      return -99;
+    }
+  if (vec_len (net_ns) > 63)
+    {
+      errmsg ("host name space too long. ");
       return -99;
     }
   vec_add1 (tap_name, 0);
-
-  if (vec_len (tag) > 63)
-    {
-      errmsg ("tag too long");
-      return -99;
-    }
+  vec_add1 (net_ns, 0);
 
   /* Construct the API message */
-  M (TAP_CONNECT, mp);
+  M (TAP_CREATE, mp);
 
   mp->use_random_mac = random_mac;
   clib_memcpy (mp->mac_address, mac_address, 6);
   clib_memcpy (mp->tap_name, tap_name, vec_len (tap_name));
-  if (tag)
-    clib_memcpy (mp->tag, tag, vec_len (tag));
-
-  if (ip4_address_set)
-    {
-      mp->ip4_address_set = 1;
-      clib_memcpy (mp->ip4_address, &ip4_address, sizeof (mp->ip4_address));
-      mp->ip4_mask_width = ip4_mask_width;
-    }
-  if (ip6_address_set)
-    {
-      mp->ip6_address_set = 1;
-      clib_memcpy (mp->ip6_address, &ip6_address, sizeof (mp->ip6_address));
-      mp->ip6_mask_width = ip6_mask_width;
-    }
+  mp->net_ns_set = net_ns_set;
+  mp->rx_ring_sz = rx_ring_sz;
+  mp->tx_ring_sz = tx_ring_sz;
+  if (net_ns)
+    clib_memcpy (mp->net_ns, net_ns, vec_len (net_ns));
 
   vec_free (tap_name);
-  vec_free (tag);
-
-  /* send it... */
-  S (mp);
-
-  /* Wait for a reply... */
-  W (ret);
-  return ret;
-}
-
-static int
-api_tap_modify (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_tap_modify_t *mp;
-  u8 mac_address[6];
-  u8 random_mac = 1;
-  u8 name_set = 0;
-  u8 *tap_name;
-  u32 sw_if_index = ~0;
-  u8 sw_if_index_set = 0;
-  int ret;
-
-  memset (mac_address, 0, sizeof (mac_address));
-
-  /* Parse args required to build the message */
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "sw_if_index %d", &sw_if_index))
-	sw_if_index_set = 1;
-      else if (unformat (i, "mac %U", unformat_ethernet_address, mac_address))
-	{
-	  random_mac = 0;
-	}
-      else if (unformat (i, "random-mac"))
-	random_mac = 1;
-      else if (unformat (i, "tapname %s", &tap_name))
-	name_set = 1;
-      else
-	break;
-    }
-
-  if (sw_if_index_set == 0)
-    {
-      errmsg ("missing vpp interface name");
-      return -99;
-    }
-  if (name_set == 0)
-    {
-      errmsg ("missing tap name");
-      return -99;
-    }
-  if (vec_len (tap_name) > 63)
-    {
-      errmsg ("tap name too long");
-    }
-  vec_add1 (tap_name, 0);
-
-  /* Construct the API message */
-  M (TAP_MODIFY, mp);
-
-  mp->use_random_mac = random_mac;
-  mp->sw_if_index = ntohl (sw_if_index);
-  clib_memcpy (mp->mac_address, mac_address, 6);
-  clib_memcpy (mp->tap_name, tap_name, vec_len (tap_name));
-  vec_free (tap_name);
+  vec_free (net_ns);
 
   /* send it... */
   S (mp);
@@ -7715,7 +7595,7 @@ api_tap_delete (vat_main_t * vam)
 
   if (sw_if_index_set == 0)
     {
-      errmsg ("missing vpp interface name");
+      errmsg ("missing vpp interface name. ");
       return -99;
     }
 
@@ -22368,10 +22248,8 @@ _(l2_flags,                                                             \
   "sw_if <intfc> | sw_if_index <id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
 _(bridge_flags,                                                         \
   "bd_id <bridge-domain-id> [learn] [forward] [uu-flood] [flood] [arp-term] [disable]\n") \
-_(tap_connect,                                                          \
-  "tapname <name> mac <mac-addr> | random-mac [tag <string>]")          \
-_(tap_modify,                                                           \
-  "<vpp-if-name> | sw_if_index <id> tapname <name> mac <mac-addr> | random-mac") \
+_(tap_create,                                                           \
+  "name <name> [hw-addr <mac-addr>] [host-ns <name>] [rx-ring-size <num> [tx-ring-size <num>]") \
 _(tap_delete,                                                           \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_dump, "")                                            \

@@ -88,7 +88,7 @@ public:
 /**
 * A command class to create TAP interfaces in VPP
 */
-class tap_create_cmd : public interface::create_cmd<vapi::Tap_connect>
+class tap_create_cmd : public interface::create_cmd<vapi::Tap_create>
 {
 public:
   /**
