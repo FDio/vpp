@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_862be32f",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2042,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-10-14T18:35:59Z",
+      "side": 1,
+      "message": "PREDICT_FALSE",
+      "revId": "50faed2e1df462e412821abc5d794ce05c6bea1e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
