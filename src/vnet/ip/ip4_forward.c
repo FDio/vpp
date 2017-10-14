@@ -2039,6 +2039,10 @@ ip4_arp_inline (vlib_main_t * vm,
 						 &im->ip4_arp_request_packet_template,
 						 &bi0);
 
+	      /* Seems we're out of buffers */
+	      if (PREDICT_FALSE (!h0))
+		continue;
+
 	      /* Add rewrite/encap string for ARP packet. */
 	      vnet_rewrite_one_header (adj0[0], h0,
 				       sizeof (ethernet_header_t));
