@@ -178,6 +178,12 @@ extern int
 vcom_epoll_pwait (int __epfd, struct epoll_event *__events,
 		  int __maxevents, int __timeout, const __sigset_t * __ss);
 
+/*
+ * NOTE: observed __nfds is less than 128 from kubecon strace files
+ * for the POC, it's fair to assume that nfds is less than 1024.
+ * TBD: make it thread safe and design to scale.
+ * */
+#define MAX_POLL_NFDS_DEFAULT   1024
 extern int vcom_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout);
 
 #ifdef __USE_GNU

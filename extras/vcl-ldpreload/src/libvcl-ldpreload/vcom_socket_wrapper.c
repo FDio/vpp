@@ -263,6 +263,15 @@ typedef int (*__libc_epoll_pwait) (int __epfd, struct epoll_event * __events,
 				   int __maxevents, int __timeout,
 				   const __sigset_t * __ss);
 
+typedef int (*__libc_poll) (struct pollfd * __fds, nfds_t __nfds,
+			    int __timeout);
+
+#ifdef __USE_GNU
+typedef int (*__libc_ppoll) (struct pollfd * __fds, nfds_t __nfds,
+			     const struct timespec * __timeout,
+			     const __sigset_t * __ss);
+#endif
+
 
 #define SWRAP_SYMBOL_ENTRY(i) \
         union { \
@@ -334,6 +343,10 @@ struct swrap_libc_symbols
   SWRAP_SYMBOL_ENTRY (epoll_ctl);
   SWRAP_SYMBOL_ENTRY (epoll_wait);
   SWRAP_SYMBOL_ENTRY (epoll_pwait);
+  SWRAP_SYMBOL_ENTRY (poll);
+#ifdef __USE_GNU
+  SWRAP_SYMBOL_ENTRY (ppoll);
+#endif
 };
 
 struct swrap
@@ -810,6 +823,25 @@ libc_epoll_pwait (int __epfd, struct epoll_event *__events,
 						 __maxevents, __timeout,
 						 __ss);
 }
+
+int
+libc_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
+{
+  swrap_bind_symbol_libc (poll);
+
+  return swrap.libc.symbols._libc_poll.f (__fds, __nfds, __timeout);
+}
+
+#ifdef __USE_GNU
+int
+libc_ppoll (struct pollfd *__fds, nfds_t __nfds,
+	    const struct timespec *__timeout, const __sigset_t * __ss)
+{
+  swrap_bind_symbol_libc (ppoll);
+
+  return swrap.libc.symbols._libc_ppoll.f (__fds, __nfds, __timeout, __ss);
+}
+#endif
 
 static void
 swrap_thread_prepare (void)

@@ -23,6 +23,8 @@
 #include <fcntl.h>
 
 #include <sys/epoll.h>
+
+#include <signal.h>
 #include <poll.h>
 
 /*
