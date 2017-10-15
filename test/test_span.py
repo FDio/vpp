@@ -26,7 +26,6 @@ class TestSpan(VppTestCase):
     def setUpClass(cls):
         super(TestSpan, cls).setUpClass()
         # Test variables
-        cls.hosts_nr = 10           # Number of hosts
         cls.pkts_per_burst = 257    # Number of packets per burst
         # create 3 pg interfaces
         cls.create_pg_interfaces(range(3))
@@ -38,16 +37,12 @@ class TestSpan(VppTestCase):
         # packet flows mapping pg0 -> pg1, pg2 -> pg3, etc.
         cls.flows = dict()
         cls.flows[cls.pg0] = [cls.pg1]
+        cls.flows[cls.pg1] = [cls.pg0]
 
         # packet sizes
         cls.pg_if_packet_sizes = [64, 512]  # , 1518, 9018]
 
         cls.interfaces = list(cls.pg_interfaces)
-
-        # Create host MAC and IPv4 lists
-        # cls.MY_MACS = dict()
-        # cls.MY_IP4S = dict()
-        cls.create_host_lists(cls.hosts_nr)
 
         # setup all interfaces
         for i in cls.interfaces:
@@ -117,109 +112,33 @@ class TestSpan(VppTestCase):
 
         return pkt[VXLAN].payload
 
-    @classmethod
-    def create_host_lists(self, count):
-        """ Method to create required number of MAC and IPv4 addresses.
-        Create required number of host MAC addresses and distribute them among
-        interfaces. Create host IPv4 address for every host MAC address too.
-
-        :param count: Number of hosts to create MAC and IPv4 addresses for.
-        """
-        # mapping between packet-generator index and lists of test hosts
-        self.hosts_by_pg_idx = dict()
-
-        for pg_if in self.pg_interfaces:
-            # self.MY_MACS[i.sw_if_index] = []
-            # self.MY_IP4S[i.sw_if_index] = []
-            self.hosts_by_pg_idx[pg_if.sw_if_index] = []
-            hosts = self.hosts_by_pg_idx[pg_if.sw_if_index]
-            for j in range(0, count):
-                host = Host(
-                    "00:00:00:ff:%02x:%02x" % (pg_if.sw_if_index, j),
-                    "172.17.1%02x.%u" % (pg_if.sw_if_index, j))
-                hosts.append(host)
-
     def create_stream(self, src_if, packet_sizes, do_dot1=False):
         pkts = []
+        dst_if = self.flows[src_if][0]
         for i in range(0, self.pkts_per_burst):
-            dst_if = self.flows[src_if][0]
             pkt_info = self.create_packet_info(src_if, dst_if)
             payload = self.info_to_payload(pkt_info)
+            size = packet_sizes[(i / 2) % len(packet_sizes)]
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  IP(src=src_if.remote_ip4, dst=dst_if.remote_ip4) /
-                 UDP(sport=1234, dport=1234) /
+                 UDP(sport=10000 + src_if.sw_if_index * 1000 + i, dport=1234) /
                  Raw(payload))
             if do_dot1:
                 p = self.sub_if.add_dot1_layer(p)
             pkt_info.data = p.copy()
-            size = packet_sizes[(i / 2) % len(packet_sizes)]
             self.extend_packet(p, size)
             pkts.append(p)
         return pkts
 
-    def verify_capture(self, dst_if, capture_pg1, capture_pg2):
-        last_info = dict()
-        for i in self.interfaces:
-            last_info[i.sw_if_index] = None
-        dst_sw_if_index = dst_if.sw_if_index
-        self.assertEqual(
-            len(capture_pg1),
-            len(capture_pg2),
-            "Different number of outgoing and mirrored packets : %u != %u" %
-            (len(capture_pg1),
-             len(capture_pg2)))
-        for pkt_pg1, pkt_pg2 in zip(capture_pg1, capture_pg2):
-            try:
-                ip1 = pkt_pg1[IP]
-                udp1 = pkt_pg1[UDP]
-                raw1 = pkt_pg1[Raw]
+    def verify_capture(self, cap1, cap2):
+        self.assertEqual(len(cap1), len(cap2),
+                         "Different number of sent and mirrored packets :"
+                         "%u != %u" % (len(cap1), len(cap2)))
 
-                if pkt_pg1[Ether] != pkt_pg2[Ether]:
-                    self.logger.error("Different ethernet header of "
-                                      "outgoing and mirrored packet")
-                    raise
-                if ip1 != pkt_pg2[IP]:
-                    self.logger.error(
-                        "Different ip header of outgoing and mirrored packet")
-                    raise
-                if udp1 != pkt_pg2[UDP]:
-                    self.logger.error(
-                        "Different udp header of outgoing and mirrored packet")
-                    raise
-                if raw1 != pkt_pg2[Raw]:
-                    self.logger.error(
-                        "Different raw data of outgoing and mirrored packet")
-                    raise
+        pkts1 = [(pkt[Ether] / pkt[IP] / pkt[UDP]) for pkt in cap1]
+        pkts2 = [(pkt[Ether] / pkt[IP] / pkt[UDP]) for pkt in cap2]
 
-                payload_info = self.payload_to_info(str(raw1))
-                packet_index = payload_info.index
-                self.assertEqual(payload_info.dst, dst_sw_if_index)
-                self.logger.debug(
-                    "Got packet on port %s: src=%u (id=%u)" %
-                    (dst_if.name, payload_info.src, packet_index))
-                next_info = self.get_next_packet_info_for_interface2(
-                    payload_info.src, dst_sw_if_index,
-                    last_info[payload_info.src])
-                last_info[payload_info.src] = next_info
-                self.assertTrue(next_info is not None)
-                self.assertEqual(packet_index, next_info.index)
-                saved_packet = next_info.data
-                # Check standard fields
-                self.assertEqual(ip1.src, saved_packet[IP].src)
-                self.assertEqual(ip1.dst, saved_packet[IP].dst)
-                self.assertEqual(udp1.sport, saved_packet[UDP].sport)
-                self.assertEqual(udp1.dport, saved_packet[UDP].dport)
-            except:
-                self.logger.error("Unexpected or invalid packets:")
-                self.logger.error(ppp("pg1 packet:", pkt_pg1))
-                self.logger.error(ppp("pg2 packet:", pkt_pg2))
-                raise
-        for i in self.interfaces:
-            remaining_packet = self.get_next_packet_info_for_interface2(
-                i, dst_sw_if_index, last_info[i.sw_if_index])
-            self.assertTrue(remaining_packet is None,
-                            "Port %u: Packet expected from source %u didn't"
-                            " arrive" % (dst_sw_if_index, i.sw_if_index))
+        self.assertEqual(pkts1.sort(), pkts2.sort())
 
     def test_device_span(self):
         """ SPAN device rx mirror test
@@ -251,16 +170,17 @@ class TestSpan(VppTestCase):
         # Verify packets outgoing packet streams on mirrored interface (pg2)
         self.logger.info("Verifying capture on interfaces %s and %s" %
                          (self.pg1.name, self.pg2.name))
-        pg2_expected = self.get_packet_count_for_if_idx(self.pg1.sw_if_index)
-        self.verify_capture(
-            self.pg1,
-            self.pg1.get_capture(),
-            self.pg2.get_capture(pg2_expected))
+
+        n_pkts = self.get_packet_count_for_if_idx(self.pg1.sw_if_index)
+        pg1_pkts = self.pg1.get_capture(n_pkts)
+        pg2_pkts = self.pg2.get_capture(n_pkts)
 
         # Disable SPAN on pg0 (mirrored to pg2)
         self.vapi.sw_interface_span_enable_disable(
             self.pg0.sw_if_index, self.pg2.sw_if_index, state=0)
         self.xconnect(self.pg0.sw_if_index, self.pg1.sw_if_index, is_add=0)
+
+        self.verify_capture(pg1_pkts, pg2_pkts)
 
     def test_span_l2_rx(self):
         """ SPAN l2 rx mirror test """
@@ -287,19 +207,17 @@ class TestSpan(VppTestCase):
         # Verify packets outgoing packet streams on mirrored interface (pg2)
         self.logger.info("Verifying capture on interfaces %s and %s" %
                          (self.pg1.name, self.pg2.name))
-        pg2_expected = self.get_packet_count_for_if_idx(self.pg1.sw_if_index)
-        pg1_pkts = self.pg1.get_capture()
+        pg2_expected = len(pkts)
+        pg1_pkts = self.pg1.get_capture(pg2_expected)
         pg2_pkts = self.pg2.get_capture(pg2_expected)
-        self.verify_capture(
-            self.pg1,
-            pg1_pkts,
-            pg2_pkts)
-
         self.bridge(self.pg2.sw_if_index, is_add=0)
+
         # Disable SPAN on pg0 (mirrored to pg2)
         self.vapi.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.pg2.sw_if_index, state=0, is_l2=1)
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
+
+        self.verify_capture(pg1_pkts, pg2_pkts)
 
     def test_span_l2_rx_dst_vxlan(self):
         """ SPAN l2 rx mirror into vxlan test """
@@ -332,16 +250,13 @@ class TestSpan(VppTestCase):
         pg1_pkts = self.pg1.get_capture()
         pg2_pkts = [self.decap_vxlan(p)
                     for p in self.pg2.get_capture(pg2_expected)]
-        self.verify_capture(
-            self.pg1,
-            pg1_pkts,
-            pg2_pkts)
 
         self.bridge(self.vxlan.sw_if_index, is_add=0)
         # Disable SPAN on pg0 sub if (mirrored to vxlan)
         self.vapi.sw_interface_span_enable_disable(
             self.sub_if.sw_if_index, self.vxlan.sw_if_index, state=0, is_l2=1)
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
+        self.verify_capture(pg1_pkts, pg2_pkts)
 
     def test_span_l2_rx_dst_gre_subif_vtr(self):
         """ SPAN l2 rx mirror into gre-subif+vtr """
@@ -383,18 +298,15 @@ class TestSpan(VppTestCase):
         pg2_pkts = self.pg2.get_capture(pg2_expected)
         pg2_decaped = [self.remove_tags(self.decap_gre(
             p), [Tag(dot1=DOT1Q, vlan=500)]) for p in pg2_pkts]
-        self.verify_capture(
-            self.pg1,
-            pg1_pkts,
-            pg2_decaped)
-
         self.bridge(gre_sub_if.sw_if_index, is_add=0)
+
         # Disable SPAN on pg0 sub if
         self.vapi.sw_interface_span_enable_disable(
-            self.sub_if.sw_if_index, gre_sub_if.sw_if_index, state=0,
-            is_l2=1)
+            self.sub_if.sw_if_index, gre_sub_if.sw_if_index, state=0, is_l2=1)
         gre_if.remove_vpp_config()
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
+
+        self.verify_capture(pg1_pkts, pg2_decaped)
 
     def test_span_l2_rx_dst_vtr(self):
         """ SPAN l2 rx mirror into subif+vtr """
@@ -426,10 +338,6 @@ class TestSpan(VppTestCase):
         pg2_pkts = self.pg2.get_capture(pg2_expected)
         pg2_untagged = [self.remove_tags(p, [Tag(dot1=DOT1Q, vlan=300)])
                         for p in pg2_pkts]
-        self.verify_capture(
-            self.pg1,
-            pg1_pkts,
-            pg2_untagged)
 
         self.bridge(self.dst_sub_if.sw_if_index, is_add=0)
         # Disable SPAN on pg0 sub if (mirrored to vxlan)
@@ -437,6 +345,8 @@ class TestSpan(VppTestCase):
             self.sub_if.sw_if_index, self.dst_sub_if.sw_if_index, state=0,
             is_l2=1)
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
+
+        self.verify_capture(pg1_pkts, pg2_untagged)
 
     def test_l2_tx_span(self):
         """ SPAN l2 tx mirror test """
@@ -450,7 +360,7 @@ class TestSpan(VppTestCase):
             self.pg0, self.pg_if_packet_sizes, do_dot1=True)
         self.pg0.add_stream(pkts)
 
-        # Enable SPAN on pg0 (mirrored to pg2)
+        # Enable SPAN on pg1 (mirrored to pg2)
         self.vapi.sw_interface_span_enable_disable(
             self.pg1.sw_if_index, self.pg2.sw_if_index, is_l2=1, state=2)
 
@@ -465,16 +375,57 @@ class TestSpan(VppTestCase):
         pg2_expected = self.get_packet_count_for_if_idx(self.pg1.sw_if_index)
         pg1_pkts = self.pg1.get_capture()
         pg2_pkts = self.pg2.get_capture(pg2_expected)
-        self.verify_capture(
-            self.pg1,
-            pg1_pkts,
-            pg2_pkts)
-
         self.bridge(self.pg2.sw_if_index, is_add=0)
         # Disable SPAN on pg0 (mirrored to pg2)
         self.vapi.sw_interface_span_enable_disable(
             self.pg1.sw_if_index, self.pg2.sw_if_index, state=0, is_l2=1)
         self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
+
+        self.verify_capture(pg1_pkts, pg2_pkts)
+
+    def test_l2_rx_tx_span(self):
+        """ SPAN l2 rx tx mirror test """
+
+        self.sub_if.admin_up()
+        self.bridge(self.pg2.sw_if_index)
+        # Create bi-directional cross-connects between pg0 and pg1
+        self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index)
+
+        # Create incoming packet streams for packet-generator interfaces
+        pg0_pkts = self.create_stream(
+            self.pg0, self.pg_if_packet_sizes, do_dot1=True)
+        self.pg0.add_stream(pg0_pkts)
+        pg1_pkts = self.create_stream(
+            self.pg1, self.pg_if_packet_sizes, do_dot1=False)
+        self.pg1.add_stream(pg1_pkts)
+
+        # Enable SPAN on pg0 (mirrored to pg2)
+        self.vapi.sw_interface_span_enable_disable(
+            self.sub_if.sw_if_index, self.pg2.sw_if_index, is_l2=1, state=3)
+        self.logger.info(self.vapi.ppcli("show interface span"))
+
+        # Enable packet capturing and start packet sending
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # Verify packets outgoing packet streams on mirrored interface (pg2)
+        self.logger.info("Verifying capture on interfaces %s and %s" %
+                         (self.pg1.name, self.pg2.name))
+        pg0_expected = self.get_packet_count_for_if_idx(self.pg0.sw_if_index)
+        pg1_expected = self.get_packet_count_for_if_idx(self.pg1.sw_if_index)
+        pg2_expected = pg0_expected + pg1_expected
+
+        pg0_pkts = self.pg0.get_capture(pg0_expected)
+        pg1_pkts = self.pg1.get_capture(pg1_expected)
+        pg2_pkts = self.pg2.get_capture(pg2_expected)
+
+        self.bridge(self.pg2.sw_if_index, is_add=0)
+        # Disable SPAN on pg0 (mirrored to pg2)
+        self.vapi.sw_interface_span_enable_disable(
+            self.sub_if.sw_if_index, self.pg2.sw_if_index, state=0, is_l2=1)
+        self.xconnect(self.sub_if.sw_if_index, self.pg1.sw_if_index, is_add=0)
+
+        self.verify_capture(pg0_pkts + pg1_pkts, pg2_pkts)
 
 
 if __name__ == '__main__':
