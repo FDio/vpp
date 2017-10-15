@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_8672c3e3",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 286,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-10-15T21:15:45Z",
+      "side": 1,
+      "message": "This doesn\u0027t need to be an atomic op. It\u0027s fully protected by the readers lock. smm-\u003esession_peekers[i]++ will do it.\n\nTo be honest, clib_spinlock_unlock(...) is not quite right. I\u0027ll push a patch to fix it.",
+      "revId": "8dc1cefdf4afd23f89aac6807103e6108b3115bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_6677c7d5",
+        "filename": "src/vnet/session/session.h",
+        "patchSetId": 12
+      },
+      "lineNbr": 300,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-10-15T21:15:45Z",
+      "side": 1,
+      "message": "Same comment here.",
+      "revId": "8dc1cefdf4afd23f89aac6807103e6108b3115bd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
