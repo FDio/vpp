@@ -1008,7 +1008,7 @@ session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
 transport_connection_t *
 session_get_transport (stream_session_t * s)
 {
-  if (s->session_state >= SESSION_STATE_READY)
+  if (s->session_state != SESSION_STATE_LISTENING)
     return tp_vfts[s->session_type].get_connection (s->connection_index,
 						    s->thread_index);
   return 0;
