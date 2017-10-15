@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_26f2ef9a",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-10-15T04:04:02Z",
+      "side": 1,
+      "message": "translating the old check to the new check, I think this should be\nif (mif-\u003esock \u0026\u0026 mif-\u003esock-\u003efd)",
+      "revId": "1761819f4f81c4fc3b1a1fd3324530ce973fde70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_46f5eb81",
+        "filename": "src/plugins/memif/memif.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 524,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-10-15T04:04:02Z",
+      "side": 1,
+      "message": "This call causes a crash when the memif interface is deleted. I think this line can be removed because memif_socket_close() is already invoked in the beginning of this routine via memif_disconnect()",
+      "revId": "1761819f4f81c4fc3b1a1fd3324530ce973fde70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_06eff3b1",
+        "filename": "src/plugins/memif/socket.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-10-15T04:04:02Z",
+      "side": 1,
+      "message": "I think this call, clib_socket_close, can be omitted because the file descriptor is already closed by the call immediately above it, namely memif_file_del_by_index which calls clib_file_del_by_index -\u003e clib_file_del -\u003e close.\n\nHaving this line clib_socket_close causes the error to be spit  due to calling close twice on the same file descriptor.",
+      "revId": "1761819f4f81c4fc3b1a1fd3324530ce973fde70",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
