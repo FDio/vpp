@@ -160,6 +160,7 @@ send_session_connected_callback (u32 app_index, u32 api_context,
   unix_shared_memory_queue_t *q;
   application_t *app;
   unix_shared_memory_queue_t *vpp_queue;
+  transport_connection_t *tc;
 
   app = application_get (app_index);
   q = vl_api_client_index_to_input_queue (app->api_client_index);
@@ -167,6 +168,9 @@ send_session_connected_callback (u32 app_index, u32 api_context,
   if (!q)
     return -1;
 
+  tc = session_get_transport (s);
+  if (!tc)
+    is_fail = 1;
   mp = vl_msg_api_alloc (sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_CONNECT_SESSION_REPLY);
   mp->context = api_context;
@@ -177,6 +181,9 @@ send_session_connected_callback (u32 app_index, u32 api_context,
       mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
       mp->handle = session_handle (s);
       mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+      clib_memcpy (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+      mp->is_ip4 = tc->is_ip4;
+      mp->lcl_port = tc->lcl_port;
       mp->retval = 0;
     }
   else
