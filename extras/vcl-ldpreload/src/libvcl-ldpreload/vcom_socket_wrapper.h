@@ -63,6 +63,7 @@
 #include <sys/ioctl.h>
 #include <sys/select.h>
 #include <sys/epoll.h>
+#include <poll.h>
 #include <sys/uio.h>
 #include <stdlib.h>
 
@@ -211,6 +212,13 @@ int libc_epoll_wait (int __epfd, struct epoll_event *__events,
 int libc_epoll_pwait (int __epfd, struct epoll_event *__events,
 		      int __maxevents, int __timeout,
 		      const __sigset_t * __ss);
+
+int libc_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout);
+
+#ifdef __USE_GNU
+int libc_ppoll (struct pollfd *__fds, nfds_t __nfds,
+		const struct timespec *__timeout, const __sigset_t * __ss);
+#endif
 
 void swrap_constructor (void);
 
