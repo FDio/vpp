@@ -989,11 +989,23 @@ add_del_route_check (fib_protocol_t table_proto,
 {
   vnet_main_t *vnm = vnet_get_main ();
 
+  /* Temporaray whilst I do the CSIT dance */
+  u8 create_missing_tables = 1;
+
   *fib_index = fib_table_find (table_proto, ntohl (table_id));
   if (~0 == *fib_index)
     {
-      /* No such VRF */
-      return VNET_API_ERROR_NO_SUCH_FIB;
+      if (create_missing_tables)
+	{
+	  *fib_index = fib_table_find_or_create_and_lock (table_proto,
+							  ntohl (table_id),
+							  FIB_SOURCE_API);
+	}
+      else
+	{
+	  /* No such VRF, and we weren't asked to create one */
+	  return VNET_API_ERROR_NO_SUCH_FIB;
+	}
     }
 
   if (!is_rpf_id && ~0 != ntohl (next_hop_sw_if_index))
@@ -1022,7 +1034,26 @@ add_del_route_check (fib_protocol_t table_proto,
 
       if (~0 == *next_hop_fib_index)
 	{
-	  return VNET_API_ERROR_NO_SUCH_FIB;
+	  if (create_missing_tables)
+	    {
+	      if (is_rpf_id)
+		*next_hop_fib_index =
+		  mfib_table_find_or_create_and_lock (fib_nh_proto,
+						      ntohl
+						      (next_hop_table_id),
+						      MFIB_SOURCE_API);
+	      else
+		*next_hop_fib_index =
+		  fib_table_find_or_create_and_lock (fib_nh_proto,
+						     ntohl
+						     (next_hop_table_id),
+						     FIB_SOURCE_API);
+	    }
+	  else
+	    {
+	      /* No such VRF, and we weren't asked to create one */
+	      return VNET_API_ERROR_NO_SUCH_FIB;
+	    }
 	}
     }
 
