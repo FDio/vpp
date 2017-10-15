@@ -448,6 +448,17 @@ vcom_socket_epoll_pwait (int __epfd, struct epoll_event *__events,
 			 int __maxevents, int __timeout,
 			 const __sigset_t * __ss);
 
+/*
+ * handle only vcom fds
+ */
+int vcom_socket_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout);
+
+#ifdef __USE_GNU
+int
+vcom_socket_ppoll (struct pollfd *__fds, nfds_t __nfds,
+		   const struct timespec *__timeout, const __sigset_t * __ss);
+#endif
+
 #endif /* included_vcom_socket_h */
 
 /*

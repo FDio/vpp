@@ -19,6 +19,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <stdarg.h>
+#include <sys/resource.h>
 
 #include <libvcl-ldpreload/vcom_socket_wrapper.h>
 #include <libvcl-ldpreload/vcom.h>
@@ -2940,24 +2941,319 @@ epoll_pwait (int __epfd, struct epoll_event *__events,
 
    This function is a cancellation point and therefore not marked with
    __THROW.  */
+
 int
 vcom_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
 {
-  if (vcom_init () != 0)
+  int rv = 0;
+  pid_t pid = getpid ();
+
+  struct rlimit nofile_limit;
+  struct pollfd vcom_fds[MAX_POLL_NFDS_DEFAULT];
+  nfds_t fds_idx = 0;
+
+  /* actual set of file descriptors to be monitored */
+  nfds_t libc_nfds = 0;
+  nfds_t vcom_nfds = 0;
+
+  /* ready file descriptors
+   *
+   * number of structures which have nonzero revents  fields
+   * in other words, descriptors  with events or errors reported.
+   * */
+  /* after call to libc_poll () */
+  int rlibc_nfds = 0;
+  /* after call to vcom_socket_poll () */
+  int rvcom_nfds = 0;
+
+
+  /* timeout value in units of timespec */
+  struct timespec timeout_ts;
+  struct timespec start_time, now, end_time;
+
+
+  /* get start_time */
+  rv = clock_gettime (CLOCK_MONOTONIC, &start_time);
+  if (rv == -1)
     {
-      return -1;
+      rv = -errno;
+      goto poll_done;
     }
 
-  return -EOPNOTSUPP;
+  /* set timeout_ts & end_time */
+  if (__timeout >= 0)
+    {
+      /* set timeout_ts */
+      timeout_ts.tv_sec = __timeout / MSEC_PER_SEC;
+      timeout_ts.tv_nsec = (__timeout % MSEC_PER_SEC) * NSEC_PER_MSEC;
+      set_normalized_timespec (&timeout_ts,
+			       timeout_ts.tv_sec, timeout_ts.tv_nsec);
+      /* set end_time */
+      if (__timeout)
+	{
+	  end_time = timespec_add (start_time, timeout_ts);
+	}
+      else
+	{
+	  end_time = start_time;
+	}
+    }
+
+  if (vcom_init () != 0)
+    {
+      rv = -1;
+      goto poll_done;
+    }
+
+  /* validate __fds */
+  if (!__fds)
+    {
+      rv = -EFAULT;
+      goto poll_done;
+    }
+
+  /* validate __nfds */
+  /*TBD: call getrlimit once when vcl-ldpreload library is init */
+  rv = getrlimit (RLIMIT_NOFILE, &nofile_limit);
+  if (rv != 0)
+    {
+      rv = -errno;
+      goto poll_done;
+    }
+  if (__nfds >= nofile_limit.rlim_cur || __nfds < 0)
+    {
+      rv = -EINVAL;
+      goto poll_done;
+    }
+
+  /*
+   * for the POC, it's fair to assume that nfds is less than 1024
+   * */
+  if (__nfds >= MAX_POLL_NFDS_DEFAULT)
+    {
+      rv = -EINVAL;
+      goto poll_done;
+    }
+
+  /* set revents field (output parameter)
+   * to zero
+   * */
+  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+    {
+      __fds[fds_idx].revents = 0;
+    }
+
+#if 0
+  /* set revents field (output parameter)
+   * to zero for user ignored fds
+   * */
+  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+    {
+      /*
+       * if negative fd, ignore events field
+       * and set output parameter (revents field) to zero */
+      if (__fds[fds_idx].fd < 0)
+	{
+	  __fds[fds_idx].revents = 0;
+	}
+    }
+#endif
+
+  /*
+   * 00. prepare __fds and vcom_fds for polling
+   *     copy __fds to vcom_fds
+   * 01. negate all except libc fds in __fds,
+   *     ignore user negated fds
+   * 02. negate all except vcom_fds in vocm fds,
+   *     ignore user negated fds
+   *     ignore fd 0 by setting it to negative number
+   * */
+  memcpy (vcom_fds, __fds, sizeof (*__fds) * __nfds);
+  libc_nfds = 0;
+  vcom_nfds = 0;
+  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+    {
+      /* ignore negative fds */
+      if (__fds[fds_idx].fd < 0)
+	{
+	  continue;
+	}
+
+      /*
+       * 00. ignore vcom fds in __fds
+       * 01. ignore libc fds in vcom_fds,
+       *     ignore fd 0 by setting it to negative number.
+       *     as fd 0 cannot be ignored.
+       */
+      if (is_vcom_socket_fd (__fds[fds_idx].fd) ||
+	  is_vcom_epfd (__fds[fds_idx].fd))
+	{
+	  __fds[fds_idx].fd = -__fds[fds_idx].fd;
+	  vcom_nfds++;
+	}
+      else
+	{
+	  libc_nfds++;
+	  /* ignore fd 0 by setting it to negative number */
+	  if (!vcom_fds[fds_idx].fd)
+	    {
+	      vcom_fds[fds_idx].fd = -1;
+	    }
+	  vcom_fds[fds_idx].fd = -vcom_fds[fds_idx].fd;
+	}
+    }
+
+  /*
+   * polling loop
+   *
+   * poll on libc fds and vcom fds
+   *
+   * specifying a timeout of zero causes libc_poll() and
+   * vcom_socket_poll() to return immediately, even if no
+   * file descriptors are ready
+   * */
+  do
+    {
+      rlibc_nfds = 0;
+      rvcom_nfds = 0;
+
+      /*
+       * timeout parameter for libc_poll () set to zero
+       * to poll on libc fds
+       * */
+
+      /* poll on libc fds */
+      if (libc_nfds)
+	{
+	  /*
+	   * a timeout of zero causes libc_poll()
+	   * to return immediately
+	   * */
+	  rlibc_nfds = libc_poll (__fds, __nfds, 0);
+	  if (VCOM_DEBUG > 0)
+	    fprintf (stderr,
+		     "[%d] poll libc: "
+		     "'%04d'='%08lu'\n", pid, rlibc_nfds, __nfds);
+
+	  if (rlibc_nfds < 0)
+	    {
+	      rv = -errno;
+	      goto poll_done_update_nfds;
+	    }
+	}
+
+      /*
+       * timeout parameter for vcom_socket_poll () set to zero
+       * to poll on vcom fds
+       * */
+
+      /* poll on vcom fds */
+      if (vcom_nfds)
+	{
+	  /*
+	   * a timeout of zero causes vcom_socket_poll()
+	   * to return immediately
+	   * */
+	  rvcom_nfds = vcom_socket_poll (vcom_fds, __nfds, 0);
+	  if (VCOM_DEBUG > 0)
+	    fprintf (stderr,
+		     "[%d] poll vcom: "
+		     "'%04d'='%08lu'\n", pid, rvcom_nfds, __nfds);
+	  if (rvcom_nfds < 0)
+	    {
+	      rv = rvcom_nfds;
+	      goto poll_done_update_nfds;
+	    }
+	}
+
+      /* check if any file descriptors changed status */
+      if ((libc_nfds && rlibc_nfds > 0) || (vcom_nfds && rvcom_nfds > 0))
+	{
+	  /* something interesting happened */
+	  rv = rlibc_nfds + rvcom_nfds;
+	  goto poll_done_update_nfds;
+	}
+
+      rv = clock_gettime (CLOCK_MONOTONIC, &now);
+      if (rv == -1)
+	{
+	  rv = -errno;
+	  goto poll_done_update_nfds;
+	}
+    }
+
+  /* block indefinitely || timeout elapsed  */
+  while ((__timeout < 0) || timespec_compare (&now, &end_time) < 0);
+
+  /* timeout expired before anything interesting happened */
+  rv = 0;
+
+poll_done_update_nfds:
+  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+    {
+      /* ignore negative fds in vcom_fds
+       * 00. user negated fds
+       * 01. libc fds
+       * */
+      if (vcom_fds[fds_idx].fd < 0)
+	{
+	  continue;
+	}
+
+      /* from here on handle positive vcom fds */
+      /*
+       * restore vcom fds to positive number in __fds
+       * and update revents in __fds with the events
+       * that actually occurred in vcom fds
+       * */
+      __fds[fds_idx].fd = -__fds[fds_idx].fd;
+      if (rvcom_nfds)
+	{
+	  __fds[fds_idx].revents = vcom_fds[fds_idx].revents;
+	}
+    }
+
+poll_done:
+  if (VCOM_DEBUG > 0)
+    fprintf (stderr, "[%d] vpoll: " "'%04d'='%08lu'\n", pid, rv, __nfds);
+  return rv;
 }
+
+/*
+ * 00. The  field  __fds[i].fd contains a file descriptor for an
+ *     open file.
+ *     If this field is negative, then the corresponding
+ *     events field is ignored and the revents field returns zero.
+ *     The field __fds[i].events is an input parameter.
+ *     The field __fds[i].revents is an output parameter.
+ * 01. Specifying a negative value in  timeout
+ *     means  an infinite timeout.
+ *     Specifying a timeout of zero causes poll() to return
+ *     immediately, even if no file descriptors are ready.
+ *
+ * NOTE: observed __nfds is less than 128 from kubecon strace files
+ */
+
 
 int
 poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
 {
   int rv = 0;
+  pid_t pid = getpid ();
 
-  errno = EOPNOTSUPP;
-  rv = -1;
+
+  if (VCOM_DEBUG > 0)
+    fprintf (stderr, "[%d] poll1: " "'%04d'='%08lu, %d, 0x%x'\n",
+	     pid, rv, __nfds, __fds[0].fd, __fds[0].events);
+  rv = vcom_poll (__fds, __nfds, __timeout);
+  if (VCOM_DEBUG > 0)
+    fprintf (stderr, "[%d] poll2: " "'%04d'='%08lu, %d, 0x%x'\n",
+	     pid, rv, __nfds, __fds[0].fd, __fds[0].revents);
+  if (rv < 0)
+    {
+      errno = -rv;
+      return -1;
+    }
   return rv;
 }
 
