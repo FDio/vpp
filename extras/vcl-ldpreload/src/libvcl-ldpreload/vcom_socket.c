@@ -2793,6 +2793,395 @@ out:
   return rv;
 }
 
+static inline void
+vcom_pollfds_2_selectfds (
+			   /* src */
+			   struct pollfd *__fds, nfds_t __nfds,
+			   /* dest */
+			   int vcom_nfds,
+			   fd_set * __restrict vcom_readfds,
+			   fd_set * __restrict vcom_writefds,
+			   fd_set * __restrict vcom_exceptfds)
+{
+  nfds_t fds_idx = 0;
+
+  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+    {
+      /* ignore negative fds */
+      if (__fds[fds_idx].fd < 0)
+	{
+	  continue;
+	}
+
+      /* for POLLRDHUP, POLLERR, POLLHUP and  POLLNVAL */
+      FD_SET (__fds[fds_idx].fd, vcom_exceptfds);
+
+      /* requested events */
+      if (__fds[fds_idx].events)
+	{
+	  if (__fds[fds_idx].events & POLLIN)
+	    {
+	      FD_SET (__fds[fds_idx].fd, vcom_readfds);
+	    }
+	  if (__fds[fds_idx].events & POLLPRI)
+	    {
+	      FD_SET (__fds[fds_idx].fd, vcom_readfds);
+	    }
+	  if (__fds[fds_idx].events & POLLOUT)
+	    {
+	      FD_SET (__fds[fds_idx].fd, vcom_writefds);
+	    }
+#if defined __USE_XOPEN || defined __USE_XOPEN2K8
+	  if (__fds[fds_idx].events & POLLRDNORM)
+	    {
+	      FD_SET (__fds[fds_idx].fd, vcom_readfds);
+	    }
+	  if (__fds[fds_idx].events & POLLRDBAND)
+	    {
+	      FD_SET (__fds[fds_idx].fd, vcom_readfds);
+	    }
+	  if (__fds[fds_idx].events & POLLWRNORM)
+	    {
+	      FD_SET (__fds[fds_idx].fd, vcom_writefds);
+	    }
+	  if (__fds[fds_idx].events & POLLWRBAND)
+	    {
+	      FD_SET (__fds[fds_idx].fd, vcom_writefds);
+	    }
+#endif
+	}
+    }				/* for (fds_idx = 0; fds_idx < __nfds; fds_idx++) */
+}
+
+static inline void
+vcom_selectfds_2_pollfds (
+			   /* dest */
+			   struct pollfd *__fds, nfds_t __nfds, int *nfd,
+			   /* src */
+			   int vcom_nfds,
+			   fd_set * __restrict vcom_readfds,
+			   fd_set * __restrict vcom_writefds,
+			   fd_set * __restrict vcom_exceptfds)
+{
+  nfds_t fds_idx = 0;
+
+
+  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+    {
+      /* ignore negative fds */
+      if (__fds[fds_idx].fd < 0)
+	{
+	  __fds[fds_idx].revents = 0;
+	}
+
+      /* for POLLRDHUP, POLLERR, POLLHUP and  POLLNVAL */
+      if (FD_ISSET (__fds[fds_idx].fd, vcom_exceptfds))
+	{
+	  /*
+	   * TBD: for now any select exception
+	   *      is flagged as POLLERR
+	   * */
+	  __fds[fds_idx].revents |= POLLERR;
+	}
+
+      /* requested events */
+      if (__fds[fds_idx].events & POLLIN)
+	{
+	  if (FD_ISSET (__fds[fds_idx].fd, vcom_readfds))
+	    {
+	      __fds[fds_idx].revents |= POLLIN;
+	    }
+	}
+      if (__fds[fds_idx].events & POLLPRI)
+	{
+	  if (FD_ISSET (__fds[fds_idx].fd, vcom_readfds))
+	    {
+	      __fds[fds_idx].revents |= POLLIN;
+	    }
+	}
+      if (__fds[fds_idx].events & POLLOUT)
+	{
+	  if (FD_ISSET (__fds[fds_idx].fd, vcom_writefds))
+	    {
+	      __fds[fds_idx].revents |= POLLOUT;
+	    }
+	}
+#if defined __USE_XOPEN || defined __USE_XOPEN2K8
+      if (__fds[fds_idx].events & POLLRDNORM)
+	{
+	  if (FD_ISSET (__fds[fds_idx].fd, vcom_readfds))
+	    {
+	      __fds[fds_idx].revents |= POLLRDNORM;
+	    }
+	}
+      if (__fds[fds_idx].events & POLLRDBAND)
+	{
+	  if (FD_ISSET (__fds[fds_idx].fd, vcom_readfds))
+	    {
+	      __fds[fds_idx].revents |= POLLRDBAND;
+	    }
+	}
+      if (__fds[fds_idx].events & POLLWRNORM)
+	{
+	  if (FD_ISSET (__fds[fds_idx].fd, vcom_writefds))
+	    {
+	      __fds[fds_idx].revents |= POLLWRNORM;
+	    }
+	}
+      if (__fds[fds_idx].events & POLLWRBAND)
+	{
+	  if (FD_ISSET (__fds[fds_idx].fd, vcom_writefds))
+	    {
+	      __fds[fds_idx].revents |= POLLWRBAND;
+	    }
+	}
+#endif
+    }				/* for (fds_idx = 0; fds_idx < __nfds; fds_idx++) */
+
+  /*
+   * nfd:
+   * the number of structures which have nonzero revents  fields
+   * (in  other  words,  those  descriptors  with events or
+   * errors reported)
+   * */
+  *nfd = 0;
+  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+    {
+      /* ignore negative fds */
+      if (__fds[fds_idx].fd < 0)
+	{
+	  continue;
+	}
+
+      if (__fds[fds_idx].revents)
+	{
+	  (*nfd)++;
+	}
+    }
+}
+
+/*
+ * PRE: parameters are validated,
+ *      vcom_socket_poll is always called with __timeout set to zero
+ *      hence returns immediately
+ *
+ * ACTION: handle non negative validated vcom fds and ignore rest
+ */
+
+/*
+ * implements vcom_socket_poll () interface
+ *
+ * internally uses vcom_socket_select ()
+ * to realize the behavior
+ * */
+int
+vcom_socket_poll_select_impl (struct pollfd *__fds, nfds_t __nfds,
+			      int __timeout)
+{
+  int rv;
+  pid_t pid = getpid ();
+
+  nfds_t fds_idx = 0;
+  int nfd = 0;
+
+  /* vcom */
+  int vcom_nfds = 0;
+  fd_set vcom_readfds;
+  fd_set vcom_writefds;
+  fd_set vcom_exceptfds;
+  int vcom_nfd = -1;
+  /* invalid max_vcom_fd is -1 */
+  int max_vcom_fd = -1;
+
+  /* __timeout is zero to get ready events and return immediately */
+  struct timeval tv = {.tv_sec = 0,.tv_usec = 0 };
+
+  /* validate __nfds from select perspective */
+  if (__nfds < 0 || __nfds > FD_SETSIZE)
+    {
+      rv = -EINVAL;
+      goto poll_done;
+    }
+
+  /* zero vcom fd sets */
+  /*
+   * V vcom fd set
+   */
+#define _(V)      \
+    FD_ZERO ((V))
+
+  _(&vcom_readfds);
+  _(&vcom_writefds);
+  _(&vcom_exceptfds);
+#undef _
+
+  vcom_nfds = 0;
+  vcom_nfd = -1;
+
+
+  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+    {
+      /* ignore negative fds */
+      if (__fds[fds_idx].fd < 0)
+	{
+	  continue;
+	}
+
+      /* non negative validated vcom fds */
+      if (__fds[fds_idx].fd > FD_SETSIZE)
+	{
+	  rv = -EINVAL;
+	  goto poll_done;
+	}
+
+      /* max_vcom_fd and vcom_nfd */
+      if (__fds[fds_idx].fd > max_vcom_fd)
+	{
+	  /* requested events */
+	  if (__fds[fds_idx].events)
+	    {
+	      max_vcom_fd = __fds[fds_idx].fd;
+	    }
+	}
+      ++vcom_nfd;
+    }
+
+  vcom_nfds = max_vcom_fd != -1 ? max_vcom_fd + 1 : 0;
+
+  if (!vcom_nfds)
+    {
+      rv = vcom_nfds;
+      goto poll_done;
+    }
+
+  vcom_pollfds_2_selectfds (
+			     /* src */
+			     __fds, __nfds,
+			     /* dest */
+			     vcom_nfds,
+			     &vcom_readfds, &vcom_writefds, &vcom_exceptfds);
+
+  /* select on vcom fds */
+  vcom_nfd = vcom_socket_select (vcom_nfds,
+				 &vcom_readfds,
+				 &vcom_writefds, &vcom_exceptfds, &tv);
+  if (VCOM_DEBUG > 0)
+    fprintf (stderr,
+	     "[%d] vcom_socket_select: "
+	     "'%04d'='%04d'\n", pid, vcom_nfd, vcom_nfds);
+
+  if (vcom_nfd < 0)
+    {
+      rv = vcom_nfd;
+      goto poll_done;
+    }
+
+  vcom_selectfds_2_pollfds (
+			     /* dest */
+			     __fds, __nfds, &nfd,
+			     /* src */
+			     vcom_nfds,
+			     &vcom_readfds, &vcom_writefds, &vcom_exceptfds);
+
+  rv = nfd;
+
+poll_done:
+  return rv;
+}
+
+/*
+ * TBD: remove this static function once vppcom
+ *      has an implementation in place
+ *
+ * ACTION:
+ */
+static int
+vppcom_poll (struct pollfd *__fds, nfds_t __nfds, double time_to_wait)
+{
+  return -EOPNOTSUPP;
+}
+
+int
+vcom_socket_poll_vppcom_impl (struct pollfd *__fds, nfds_t __nfds,
+			      int __timeout)
+{
+  nfds_t fds_idx = 0;
+
+  /* in seconds eg. 3.123456789 seconds */
+  double time_to_wait = (double) 0;
+
+  i32 sid;
+  i32 vep_idx;
+
+  /* replace vcom fd with session idx */
+  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+    {
+      /* ignore negative fds */
+      if (__fds[fds_idx].fd < 0)
+	{
+	  continue;
+	}
+
+      /* non negative validated vcom fds */
+      sid = vcom_socket_get_sid (__fds[fds_idx].fd);
+      if (sid != INVALID_SESSION_ID)
+	{
+	  __fds[fds_idx].fd = sid;
+	}
+      else
+	{
+	  /* get vep_idx */
+	  vep_idx = vcom_socket_get_vep_idx (__fds[fds_idx].fd);
+	  if (vep_idx != INVALID_VEP_IDX)
+	    {
+	      __fds[fds_idx].fd = vep_idx;
+	    }
+	  else
+	    {
+	      return -EBADF;
+	    }
+	}
+    }
+
+  /* validate __timeout */
+  if (__timeout > 0)
+    {
+      time_to_wait = (double) __timeout / (double) 1000;
+    }
+  else if (__timeout == 0)
+    {
+      time_to_wait = (double) 0;
+    }
+  else if (__timeout < 0)
+    {
+      time_to_wait = ~0;
+    }
+  else
+    {
+      return -EBADF;
+    }
+
+  return vppcom_poll (__fds, __nfds, time_to_wait);
+}
+
+int
+vcom_socket_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
+{
+  /* select an implementation */
+
+  /* return vcom_socket_poll_vppcom_impl (__fds, __nfds, __timeout); */
+  return vcom_socket_poll_select_impl (__fds, __nfds, __timeout);
+}
+
+#ifdef __USE_GNU
+int
+vcom_socket_ppoll (struct pollfd *__fds, nfds_t __nfds,
+		   const struct timespec *__timeout, const __sigset_t * __ss)
+{
+  return -EOPNOTSUPP;
+}
+#endif
+
 int
 vcom_socket_main_init (void)
 {
