@@ -71,12 +71,14 @@ clib_spinlock_lock_if_init (clib_spinlock_t * p)
 static_always_inline void
 clib_spinlock_unlock (clib_spinlock_t * p)
 {
-  (*p)->lock = 0;
 #if CLIB_DEBUG > 0
   (*p)->frame_address = 0;
   (*p)->pid = 0;
   (*p)->thread_index = 0;
 #endif
+  /* Make sure all writes are complete before releasing the lock */
+  CLIB_MEMORY_BARRIER ();
+  (*p)->lock = 0;
 }
 
 static_always_inline void
