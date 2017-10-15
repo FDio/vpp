@@ -542,6 +542,12 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
       utm->state = STATE_FAILED;
       return;
     }
+  else
+    {
+      clib_warning ("connected with local ip %U port %d", format_ip46_address,
+		    mp->lcl_ip, mp->is_ip4,
+		    clib_net_to_host_u16 (mp->lcl_port));
+    }
 
   utm->vpp_event_queue =
     uword_to_pointer (mp->vpp_event_queue_address,
