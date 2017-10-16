@@ -69,6 +69,7 @@ DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf nasm indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
+DEB_DEPENDS += libboost-all-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 	DEB_DEPENDS += libssl-dev
@@ -115,6 +116,7 @@ ifeq ($(OS_ID),fedora)
 	RPM_DEPENDS += nasm
 else ifeq ($(findstring y,$(AESNI)),y)
 	RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
+	RPM_DEPENDS += https://kojipkgs.fedoraproject.org/packages/boost/1.59.0/10.fc24/x86_64/boost-1.59.0-10.fc24.x86_64.rpm
 endif
 
 RPM_SUSE_DEPENDS = autoconf automake bison ccache check-devel chrpath clang distribution-release gcc6 glibc-devel-static
