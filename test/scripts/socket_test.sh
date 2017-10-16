@@ -49,7 +49,7 @@ trap_signals="SIGINT SIGTERM EXIT"
 VPP_GDB_CMDFILE="${VPP_GDB_CMDFILE:-${def_gdb_cmdfile_prefix}.vpp}"
 VPPCOM_CLIENT_GDB_CMDFILE="${VPPCOM_CLIENT_GDB_CMDFILE:-${def_gdb_cmdfile_prefix}.vppcom_client}"
 VPPCOM_SERVER_GDB_CMDFILE="${VPPCOM_SERVER_GDB_CMDFILE:-${def_gdb_cmdfile_prefix}.vppcom_server}"
-VCL_LDPRELOAD_LIB_DIR="${VCL_LDPRELOAD_LIB_DIR:-/usr/local/lib}"
+VCL_LDPRELOAD_LIB_DIR="${VCL_LDPRELOAD_LIB_DIR:-$WS_ROOT/extras/vcl-ldpreload/src/.libs}"
 
 usage() {
     cat <<EOF
