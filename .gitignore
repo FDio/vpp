@@ -18,6 +18,7 @@
 /build-root/test-cov/
 /build-root/python/
 /build-root/vapi_test/
+/build-root/vom_test/
 /build-config.mk
 /dpdk/*.tar.gz
 /dpdk/*.tar.xz
