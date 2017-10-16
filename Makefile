@@ -69,6 +69,7 @@ DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
 DEB_DEPENDS += lcov chrpath autoconf nasm indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
+DEB_DEPENDS += libboost-all-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 	DEB_DEPENDS += libssl-dev
@@ -90,18 +91,21 @@ RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check check-devel
 
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
+	RPM_DEPENDS += boost boost-devel
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += openssl-devel
 	RPM_DEPENDS += python-devel
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else ifeq ($(shell if [ "$(OS_ID)" = "fedora" ]; then test $(OS_VERSION_ID) -gt 25; echo $$?; fi),0)
+	RPM_DEPENDS += boost boost-devel
 	RPM_DEPENDS += subunit subunit-devel
 	RPM_DEPENDS += compat-openssl10-devel
 	RPM_DEPENDS += python2-devel
 	RPM_DEPENDS += python2-virtualenv
 	RPM_DEPENDS_GROUPS = 'C Development Tools and Libraries'
 else
+	RPM_DEPENDS += https://kojipkgs.fedoraproject.org/packages/boost/1.59.0/10.fc24/x86_64/boost-1.59.0-10.fc24.x86_64.rpm
 	RPM_DEPENDS += openssl-devel
 	RPM_DEPENDS += python-devel
 	RPM_DEPENDS += python-virtualenv
@@ -122,9 +126,11 @@ RPM_SUSE_DEPENDS += java-1_8_0-openjdk-devel indent libopenssl-devel libtool mak
 RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow libnuma-devel rpm-build
 
 ifeq ($(OS_ID),opensuse)
-ifeq ($(findstring y,$(AESNI)),y)
+ifneq ($(SUSE_NAME),Tumbleweed)
+	RPM_SUSE_DEPENDS += boost_1_61-devel
 	RPM_SUSE_DEPENDS += https://download.opensuse.org/tumbleweed/repo/oss/suse/x86_64/nasm-2.13.01-2.1.x86_64.rpm
 else
+	RPM_SUSE_DEPENDS += boost_1_65-devel
 	RPM_SUSE_DEPENDS += nasm
 endif
 endif

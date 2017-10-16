@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """ VAPI test """
 
-from __future__ import division
 import unittest
 import os
 import signal
@@ -9,37 +8,7 @@ import subprocess
 from threading import Thread
 from log import single_line_delim
 from framework import VppTestCase, running_extended_tests, \
-    running_on_centos, VppTestRunner
-
-
-class Worker(Thread):
-    def __init__(self, args, logger):
-        self.logger = logger
-        self.args = args
-        self.result = None
-        super(Worker, self).__init__()
-
-    def run(self):
-        executable = self.args[0]
-        self.logger.debug("Running executable w/args `%s'" % self.args)
-        env = os.environ.copy()
-        env["CK_LOG_FILE_NAME"] = "-"
-        self.process = subprocess.Popen(
-            self.args, shell=False, env=env, preexec_fn=os.setpgrp,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = self.process.communicate()
-        self.logger.debug("Finished running `%s'" % executable)
-        self.logger.info("Return code is `%s'" % self.process.returncode)
-        self.logger.info(single_line_delim)
-        self.logger.info("Executable `%s' wrote to stdout:" % executable)
-        self.logger.info(single_line_delim)
-        self.logger.info(out)
-        self.logger.info(single_line_delim)
-        self.logger.info("Executable `%s' wrote to stderr:" % executable)
-        self.logger.info(single_line_delim)
-        self.logger.error(err)
-        self.logger.info(single_line_delim)
-        self.result = self.process.returncode
+    running_on_centos, VppTestRunner, Worker
 
 
 @unittest.skipUnless(running_extended_tests(), "part of extended tests")
