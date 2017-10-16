@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_89b9b4eb",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-10-16T04:53:08Z",
+      "side": 1,
+      "message": "spelling?  s/thred/thread/g",
+      "range": {
+        "startLine": 32,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 25
+      },
+      "revId": "07d5be8bba61a4a9c768b065c4ee62dbd6c7b733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_69ce7885",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 393,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-10-16T04:53:08Z",
+      "side": 1,
+      "message": "Should these be deleted or were they commented out for debug purposes?",
+      "range": {
+        "startLine": 388,
+        "startChar": 0,
+        "endLine": 393,
+        "endChar": 41
+      },
+      "revId": "07d5be8bba61a4a9c768b065c4ee62dbd6c7b733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
