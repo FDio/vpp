@@ -32,6 +32,9 @@ typedef struct
   /** The name in "normal human being" notation, e.g. www.foobar.com */
   u8 *name;
 
+  /** For CNAME records, the "next name" to resolve */
+  u8 *cname;
+
   /** Expiration time */
   f64 expiration_time;
 
@@ -56,6 +59,7 @@ typedef struct
 
 #define DNS_CACHE_ENTRY_FLAG_VALID	(1<<0) /**< we have Actual Data */
 #define DNS_CACHE_ENTRY_FLAG_STATIC	(1<<1) /**< static entry */
+#define DNS_CACHE_ENTRY_FLAG_CNAME	(1<<2) /**< CNAME (indirect) entry */
 
 #define DNS_RETRIES_PER_SERVER 3
 
@@ -112,8 +116,9 @@ typedef enum
 } dns46_reply_error_t;
 
 void vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep);
-int vnet_dns_cname_indirection_nolock (dns_main_t * dm,
-				       dns_cache_entry_t * ep, u8 * reply);
+int
+vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply);
+
 int vnet_dns_delete_entry_by_index_nolock (dns_main_t * dm, u32 index);
 
 format_function_t format_dns_reply;
