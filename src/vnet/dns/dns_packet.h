@@ -131,7 +131,8 @@ _(ALL, 255)     /**< all available data */      \
 _(TEXT, 16)     /**< a text string */           \
 _(NAMESERVER, 2) /**< a nameserver */           \
 _(CNAME, 5)      /**< a CNAME (alias) */	\
-_(MAIL_EXCHANGE, 15) /**< a mail exchange  */
+_(MAIL_EXCHANGE, 15) /**< a mail exchange  */	\
+_(HINFO, 13)	/**< Host info */
 
 typedef enum
 {

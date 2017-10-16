@@ -81,7 +81,7 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
     vec_free (ep->dns_response);
 
   /* Handle [sic] recursion AKA CNAME indirection */
-  if (vnet_dns_cname_indirection_nolock (dm, ep, reply))
+  if (vnet_dns_cname_indirection_nolock (dm, pool_index, reply))
     {
       dns_cache_unlock (dm);
       return;
@@ -120,6 +120,8 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
   vec_free (ep->api_client_contexts);
 
   /* $$$ Add ip4/ip6 reply code */
+  vec_free (ep->ip4_peers_to_notify);
+  vec_free (ep->ip6_peers_to_notify);
 
   for (i = 0; i < vec_len (dm->unresolved_entries); i++)
     {
@@ -174,7 +176,6 @@ retry_scan (dns_main_t * dm, f64 now)
       ep = pool_elt_at_index (dm->entries, dm->unresolved_entries[i]);
 
       ASSERT ((ep->flags & DNS_CACHE_ENTRY_FLAG_VALID) == 0);
-
       vnet_send_dns_request (dm, ep);
       dns_cache_unlock (dm);
     }

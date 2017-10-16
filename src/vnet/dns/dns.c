@@ -523,6 +523,10 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
   u8 *request;
   u32 qp_offset;
 
+  /* This can easily happen if sitting in GDB, etc. */
+  if (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID)
+    return;
+
   /* Construct the dns request, if we haven't been here already */
   if (vec_len (ep->dns_request) == 0)
     {
@@ -628,7 +632,6 @@ vnet_dns_delete_entry_by_index_nolock (dns_main_t * dm, u32 index)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
 
   ep = pool_elt_at_index (dm->entries, index);
-
   if (!(ep->flags & DNS_CACHE_ENTRY_FLAG_VALID))
     {
       for (i = 0; i < vec_len (dm->unresolved_entries); i++)
@@ -772,6 +775,7 @@ dns_resolve_name (dns_main_t * dm,
   *retp = 0;
 
   dns_cache_lock (dm);
+search_again:
   p = hash_get_mem (dm->cache_entry_by_name, name);
   if (p)
     {
@@ -782,18 +786,70 @@ dns_resolve_name (dns_main_t * dm,
 	  if (((ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC) == 0)
 	      && (now > ep->expiration_time))
 	    {
-	      clib_warning ("Re-resolve %s", name);
+	      int i;
+	      u32 *indices_to_delete = 0;
+
+	      /*
+	       * Take out the rest of the resolution chain
+	       * This isn't optimal, but it won't happen very often.
+	       */
+	      while (ep)
+		{
+		  if ((ep->flags & DNS_CACHE_ENTRY_FLAG_CNAME))
+		    {
+		      vec_add1 (indices_to_delete, ep - dm->entries);
+
+		      p = hash_get_mem (dm->cache_entry_by_name, ep->cname);
+		      if (!p)
+			break;
+		      ep = pool_elt_at_index (dm->entries, p[0]);
+		    }
+		  else
+		    {
+		      vec_add1 (indices_to_delete, ep - dm->entries);
+		      break;
+		    }
+		}
+	      for (i = 0; i < vec_len (indices_to_delete); i++)
+		{
+		  /* Reenable to watch re-resolutions */
+		  if (0)
+		    {
+		      ep = pool_elt_at_index (dm->entries,
+					      indices_to_delete[i]);
+		      clib_warning ("Re-resolve %s", ep->name);
+		    }
+
+		  vnet_dns_delete_entry_by_index_nolock
+		    (dm, indices_to_delete[i]);
+		}
+	      vec_free (indices_to_delete);
 	      /* Yes, kill it... */
-	      vnet_dns_delete_entry_by_index_nolock (dm, p[0]);
 	      goto re_resolve;
+	    }
+
+	  if (ep->flags & DNS_CACHE_ENTRY_FLAG_CNAME)
+	    {
+	      name = ep->cname;
+	      goto search_again;
 	    }
 
 	  /* Note: caller must drop the lock! */
 	  *retp = ep;
 	  return (0);
 	}
+      else
+	{
+	  /*
+	   * Resolution pending. Add request to the pending vector(s) */
+	  vec_add1 (ep->api_clients_to_notify, client_index);
+	  vec_add1 (ep->api_client_contexts, client_context);
+	  dns_cache_unlock (dm);
+	  return (0);
+	}
     }
 
+re_resolve:
   if (pool_elts (dm->entries) == dm->name_cache_size)
     {
       /* Will only fail if the cache is totally filled w/ static entries... */
@@ -805,7 +861,6 @@ dns_resolve_name (dns_main_t * dm,
 	}
     }
 
-re_resolve:
   /* add new hash table entry */
   pool_get (dm->entries, ep);
   memset (ep, 0, sizeof (*ep));
@@ -820,9 +875,14 @@ re_resolve:
   vec_add1 (ep->api_client_contexts, client_context);
   vnet_send_dns_request (dm, ep);
   dns_cache_unlock (dm);
-
   return 0;
 }
+
+#define foreach_notification_to_move            \
+_(api_clients_to_notify)                        \
+_(api_client_contexts)                          \
+_(ip4_peers_to_notify)                          \
+_(ip6_peers_to_notify)
 
 /**
  * Handle cname indirection. JFC. Called with the cache locked.
@@ -830,8 +890,7 @@ re_resolve:
  */
 
 int
-vnet_dns_cname_indirection_nolock (dns_main_t * dm, dns_cache_entry_t * ep,
-				   u8 * reply)
+vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply)
 {
   dns_header_t *h;
   dns_query_t *qp;
@@ -844,6 +903,8 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, dns_cache_entry_t * ep,
   u32 qp_offset;
   u16 flags;
   u16 rcode;
+  dns_cache_entry_t *ep, *next_ep;
+  f64 now;
 
   h = (dns_header_t *) reply;
   flags = clib_net_to_host_u16 (h->flags);
@@ -891,11 +952,55 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, dns_cache_entry_t * ep,
   if (clib_net_to_host_u16 (rr->type) != DNS_TYPE_CNAME)
     return 0;
 
-  /* Crap. Chase the CNAME name chain. */
+  /* This is a CNAME record, chase the name chain. */
 
+  /* The last request is no longer pending.. */
+  for (i = 0; i < vec_len (dm->unresolved_entries); i++)
+    if (ep_index == dm->unresolved_entries[i])
+      {
+	vec_delete (dm->unresolved_entries, 1, i);
+	goto found_last_request;
+      }
+  clib_warning ("pool elt %d supposedly pending, but not found...", ep_index);
+
+found_last_request:
+
+  now = vlib_time_now (dm->vlib_main);
   cname = labels_to_name (rr->rdata, reply, &pos2);
+  /* Save the cname */
+  vec_add1 (cname, 0);
+  _vec_len (cname) -= 1;
+  ep = pool_elt_at_index (dm->entries, ep_index);
+  ep->cname = cname;
+  ep->flags |= (DNS_CACHE_ENTRY_FLAG_CNAME | DNS_CACHE_ENTRY_FLAG_VALID);
+  /* Save the response */
+  ep->dns_response = reply;
+  /* Set up expiration time */
+  ep->expiration_time = now + clib_net_to_host_u32 (rr->ttl);
+
+  pool_get (dm->entries, next_ep);
+
+  /* Need to recompute ep post pool-get */
+  ep = pool_elt_at_index (dm->entries, ep_index);
+
+  memset (next_ep, 0, sizeof (*next_ep));
+  next_ep->name = vec_dup (cname);
+  vec_add1 (next_ep->name, 0);
+  _vec_len (next_ep->name) -= 1;
+
+  hash_set_mem (dm->cache_entry_by_name, next_ep->name,
+		next_ep - dm->entries);
+
+  /* Use the same server */
+  next_ep->server_rotor = ep->server_rotor;
+  next_ep->server_af = ep->server_af;
+
+  /* Move notification data to the next name in the chain */
+#define _(a) next_ep->a = ep->a; ep->a = 0;
+  foreach_notification_to_move;
+#undef _
+
   request = name_to_labels (cname);
-  vec_free (cname);
 
   qp_offset = vec_len (request);
 
@@ -913,7 +1018,7 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, dns_cache_entry_t * ep,
   h = (dns_header_t *) request;
 
   /* Transaction ID = pool index */
-  h->id = clib_host_to_net_u16 (ep - dm->entries);
+  h->id = clib_host_to_net_u16 (next_ep - dm->entries);
 
   /* Ask for a recursive lookup */
   h->flags = clib_host_to_net_u16 (DNS_RD | DNS_OPCODE_QUERY);
@@ -921,22 +1026,17 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, dns_cache_entry_t * ep,
   h->nscount = 0;
   h->arcount = 0;
 
-  vec_free (ep->dns_request);
-  ep->dns_request = request;
-  ep->retry_timer = vlib_time_now (dm->vlib_main) + 2.0;
-  ep->retry_count = 0;
+  next_ep->dns_request = request;
+  next_ep->retry_timer = now + 2.0;
+  next_ep->retry_count = 0;
 
   /*
    * Enable this to watch recursive resolution happen...
    * fformat (stdout, "%U", format_dns_reply, request, 2);
    */
 
-  if (ep->server_af == 1 /* ip6 */ )
-    send_dns6_request (dm, ep, dm->ip6_name_servers + ep->server_rotor);
-  else
-    send_dns4_request (dm, ep, dm->ip4_name_servers + ep->server_rotor);
-
-  vec_free (reply);
+  vec_add1 (dm->unresolved_entries, next_ep - dm->entries);
+  vnet_send_dns_request (dm, next_ep);
   return (1);
 }
 
@@ -1461,6 +1561,31 @@ format_dns_reply_data (u8 * s, va_list * args)
       pos += sizeof (*rr) + clib_net_to_host_u16 (rr->rdlength);
       break;
 
+    case DNS_TYPE_HINFO:
+      {
+	/* Two counted strings. DGMS */
+	u8 *len;
+	u8 *curpos;
+	int i;
+	if (verbose > 1)
+	  {
+	    s = format (s, "HINFO: ");
+	    len = rr->rdata;
+	    curpos = len + 1;
+	    for (i = 0; i < *len; i++)
+	      vec_add1 (s, *curpos++);
+
+	    vec_add1 (s, ' ');
+	    len = curpos++;
+	    for (i = 0; i < *len; i++)
+	      vec_add1 (s, *curpos++);
+
+	    vec_add1 (s, '\n');
+	  }
+      }
+      pos += sizeof (*rr) + clib_net_to_host_u16 (rr->rdlength);
+      break;
+
     case DNS_TYPE_NAMESERVER:
       if (verbose > 1)
 	{
@@ -1700,8 +1825,11 @@ format_dns_cache (u8 * s, va_list * args)
 	      else
 		ss = "    ";
 
-	      s = format (s, "%s%s -> %U", ss, ep->name,
-			  format_dns_reply, ep->dns_response, verbose);
+	      if (verbose < 2 && ep->flags & DNS_CACHE_ENTRY_FLAG_CNAME)
+		s = format (s, "%s%s -> %s", ss, ep->name, ep->cname);
+	      else
+		s = format (s, "%s%s -> %U", ss, ep->name,
+			    format_dns_reply, ep->dns_response, verbose);
 	      if (!(ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC))
 		{
 		  f64 time_left = ep->expiration_time - now;
@@ -1733,10 +1861,13 @@ format_dns_cache (u8 * s, va_list * args)
         else
           ss = "    ";
 
-        s = format (s, "%s%s -> %U", ss, ep->name,
-                    format_dns_reply,
-                    ep->dns_response,
-                    verbose);
+        if (verbose < 2 && ep->flags & DNS_CACHE_ENTRY_FLAG_CNAME)
+          s = format (s, "%s%s -> %s", ss, ep->name, ep->cname);
+        else
+          s = format (s, "%s%s -> %U", ss, ep->name,
+                      format_dns_reply,
+                      ep->dns_response,
+                      verbose);
         if (!(ep->flags & DNS_CACHE_ENTRY_FLAG_STATIC))
           {
             f64 time_left = ep->expiration_time - now;
@@ -1744,6 +1875,10 @@ format_dns_cache (u8 * s, va_list * args)
               s = format (s, "  TTL left %.1f", time_left);
             else
               s = format (s, "  EXPIRED");
+
+            if (verbose > 2)
+              s = format (s, "    %d client notifications pending\n",
+                          vec_len(ep->api_clients_to_notify));
           }
       }
     else
@@ -2101,6 +2236,50 @@ VLIB_CLI_COMMAND (test_dns_unfmt_command) =
   .path = "test dns unformat",
   .short_help = "test dns unformat <name> [ip4][ip6]",
   .function = test_dns_unfmt_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+test_dns_expire_command_fn (vlib_main_t * vm,
+			    unformat_input_t * input,
+			    vlib_cli_command_t * cmd)
+{
+  dns_main_t *dm = &dns_main;
+  u8 *name;
+  uword *p;
+  clib_error_t *e;
+  dns_cache_entry_t *ep;
+
+  if (unformat (input, "%v", &name))
+    {
+      vec_add1 (name, 0);
+      _vec_len (name) -= 1;
+    }
+
+  dns_cache_lock (dm);
+
+  p = hash_get_mem (dm->cache_entry_by_name, name);
+  if (!p)
+    {
+      dns_cache_unlock (dm);
+      e = clib_error_return (0, "%s is not in the cache...", name);
+      vec_free (name);
+      return e;
+    }
+
+  ep = pool_elt_at_index (dm->entries, p[0]);
+
+  ep->expiration_time = 0;
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (test_dns_expire_command) =
+{
+  .path = "test dns expire",
+  .short_help = "test dns expire <name>",
+  .function = test_dns_expire_command_fn,
 };
 /* *INDENT-ON* */
 #endif
