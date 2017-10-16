@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "1a486d77_49ff3c35",
+        "filename": "src/vnet/session/session.c",
+        "patchSetId": 17
+      },
+      "lineNbr": 32,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-10-16T08:08:43Z",
+      "side": 1,
+      "message": "Yup, no idea how that got in. Fixed.",
+      "parentUuid": "1a486d77_89b9b4eb",
+      "range": {
+        "startLine": 32,
+        "startChar": 0,
+        "endLine": 32,
+        "endChar": 25
+      },
+      "revId": "07d5be8bba61a4a9c768b065c4ee62dbd6c7b733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a486d77_69ce7885",
         "filename": "src/vnet/tcp/tcp.h",
         "patchSetId": 17
@@ -36,6 +60,30 @@
       "writtenOn": "2017-10-16T04:53:08Z",
       "side": 1,
       "message": "Should these be deleted or were they commented out for debug purposes?",
+      "range": {
+        "startLine": 388,
+        "startChar": 0,
+        "endLine": 393,
+        "endChar": 41
+      },
+      "revId": "07d5be8bba61a4a9c768b065c4ee62dbd6c7b733",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_29fc003e",
+        "filename": "src/vnet/tcp/tcp.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 393,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-10-16T08:08:43Z",
+      "side": 1,
+      "message": "Good catch. Refactor leftovers. Fixed.",
+      "parentUuid": "1a486d77_69ce7885",
       "range": {
         "startLine": 388,
         "startChar": 0,
