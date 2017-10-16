@@ -1,5 +1,3 @@
-export VCL_BASE=$PWD/../../..
-export VPP_DIR=$VCL_BASE/vpp
-export LDP_DIR=$VCL_BASE/vpp/extras
-export WS_ROOT=$VCL_BASE/vpp
-export VCL_LDPRELOAD_LIB_DIR=$LDP_DIR/vcl-ldpreload/src/.libs
+export VPP_DIR=$WS_ROOT
+export LDP_DIR=$WS_ROOT/extras/vcl-ldpreload
+export VCL_LDPRELOAD_LIB_DIR=$LDP_DIR/src/.libs
