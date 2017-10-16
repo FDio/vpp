@@ -83,11 +83,14 @@ u32 get_message_id(JNIEnv *env, const char *key) {
     uword *p = hash_get(jvpp_main.messages_hash, key);
     if (!p) {
         jclass exClass = (*env)->FindClass(env, "java/lang/IllegalStateException");
-        char *msgBuf  = clib_mem_alloc(strlen(key) + 40);
+        char *msgBuf  = clib_mem_alloc(strlen(key) + 70);
         strcpy(msgBuf, "API mismatch detected: ");
         strcat(msgBuf, key);
-        strcat(msgBuf, " is missing");
-        DEBUG_LOG("get_message_id : %s\n", msgBuf);
+        strcat(msgBuf, " is missing in global name_crc hash table.");
+        DEBUG_LOG("%s", msgBuf);
+        DEBUG_LOG("Possible reasons:");
+        DEBUG_LOG("1) incompatible VPP version used");
+        DEBUG_LOG("2) message present in JSON file but not in global name_crc table");
         (*env)->ThrowNew(env, exClass, msgBuf);
         clib_mem_free(msgBuf);
         return 0;

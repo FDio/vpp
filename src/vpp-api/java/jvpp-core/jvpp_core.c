@@ -55,9 +55,9 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_core_JVppCoreImpl_init0
     plugin_main->callbackObject = (*env)->NewGlobalRef(env, callback);
     plugin_main->callbackClass = (jclass)(*env)->NewGlobalRef(env, (*env)->GetObjectClass(env, callback));
 
-    // verify API has not changed since jar generation
+    // verify API has not changed since jar generation (exit on mismatch)
     #define _(N)             \
-        get_message_id(env, #N);  \
+        if (get_message_id(env, #N) == 0) return;
         foreach_supported_api_message;
     #undef _
 
