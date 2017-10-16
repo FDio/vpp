@@ -20,6 +20,7 @@ ACLOCAL_AMFLAGS = -I m4
 AM_LIBTOOLFLAGS = --quiet
 
 AM_CFLAGS = -Wall
+AM_CXXFLAGS = -Wall -std=gnu++11
 
 SUBDIRS = .
 SUFFIXES = .api.h .api .api.json
@@ -82,6 +83,7 @@ SUBDIRS += vpp-api/java
 endif
 
 SUBDIRS += vpp-api/vapi
+SUBDIRS += vpp-api/vom
 
 ###############################################################################
 # API
