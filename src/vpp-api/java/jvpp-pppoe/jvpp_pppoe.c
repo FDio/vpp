@@ -54,7 +54,7 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_pppoe_JVppPppoeImpl_init0
 
   // verify API has not changed since jar generation
   #define _(N)             \
-      get_message_id(env, #N);  \
+      if (get_message_id(env, #N) == 0) return;
       foreach_supported_api_message;
   #undef _
 
