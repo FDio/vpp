@@ -1420,20 +1420,6 @@ vcom_socket_getpeername (int __fd, __SOCKADDR_ARG __addr,
       return -EINVAL;
     }
 
-  /* DAW: hack to allow iperf3 to be happy w/ getpeername output */
-  {
-    uint8_t *a;
-    ((struct sockaddr_in *) __addr)->sin_family = AF_INET;
-    ((struct sockaddr_in *) __addr)->sin_port = 0x1000;
-    a = (uint8_t *) & ((struct sockaddr_in *) __addr)->sin_addr;
-    a[0] = 0x7f;
-    a[1] = 0x00;
-    a[2] = 0x00;
-    a[3] = 0x01;
-    *__len = sizeof (struct sockaddr_in);
-    return 0;
-  }
-
   vppcom_endpt_t ep;
   ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
   rv = vppcom_session_getpeername (vsock->sid, &ep);
