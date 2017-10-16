@@ -1273,7 +1273,10 @@ vl_api_show_lisp_pitr_t_handler (vl_api_show_lisp_pitr_t * mp)
       return;
     }
 
-  if (!lcm->lisp_pitr)
+  u8 is_enabled = (lcm->flags & LISP_FLAG_PITR_MODE)
+    && lcm->pitr_map_index != ~0;
+
+  if (!is_enabled)
     {
       tmp_str = format (0, "N/A");
     }
@@ -1296,7 +1299,7 @@ vl_api_show_lisp_pitr_t_handler (vl_api_show_lisp_pitr_t * mp)
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_SHOW_LISP_PITR_REPLY,
   ({
-    rmp->status = lcm->lisp_pitr;
+    rmp->status = lcm->flags & LISP_FLAG_PITR_MODE;
     strncpy((char *) rmp->locator_set_name, (char *) tmp_str,
             ARRAY_LEN(rmp->locator_set_name) - 1);
   }));

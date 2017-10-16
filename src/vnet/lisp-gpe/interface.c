@@ -575,7 +575,8 @@ lisp_gpe_tenant_add_default_routes (u32 table_id)
  * @return number of vectors in frame.
  */
 u32
-lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 table_id)
+lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 table_id,
+		       u8 with_default_routes)
 {
   vnet_main_t *vnm = lgm->vnet_main;
   tunnel_lookup_t *l3_ifaces = &lgm->l3_ifaces;
@@ -603,7 +604,8 @@ lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 table_id)
 
   /* insert default routes that point to lisp-cp lookup */
   lisp_gpe_iface_set_table (hi->sw_if_index, table_id);
-  lisp_gpe_tenant_add_default_routes (table_id);
+  if (with_default_routes)
+    lisp_gpe_tenant_add_default_routes (table_id);
 
   /* enable interface */
   vnet_sw_interface_set_flags (vnm, hi->sw_if_index,
@@ -908,7 +910,9 @@ lisp_gpe_add_del_iface_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (is_add)
 	{
-	  if (~0 == lisp_gpe_tenant_l3_iface_add_or_lock (vni, table_id))
+	  if (~0 == lisp_gpe_tenant_l3_iface_add_or_lock (vni, table_id, 1
+							  /* with_default_route */
+	      ))
 	    {
 	      error = clib_error_return (0, "L3 interface not created");
 	      goto done;

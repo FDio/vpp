@@ -705,11 +705,11 @@ lisp_show_pitr_command_fn (vlib_main_t * vm,
   mapping_t *m;
   locator_set_t *ls;
   u8 *tmp_str = 0;
+  u8 status = lcm->flags & LISP_FLAG_PITR_MODE;
 
-  vlib_cli_output (vm, "%=20s%=16s",
-		   "pitr", lcm->lisp_pitr ? "locator-set" : "");
+  vlib_cli_output (vm, "%=20s%=16s", "pitr", status ? "locator-set" : "");
 
-  if (!lcm->lisp_pitr)
+  if (!status)
     {
       vlib_cli_output (vm, "%=20s", "disable");
       return 0;

@@ -4239,6 +4239,123 @@ static void
 }
 
 static void
+  vl_api_one_show_xtr_mode_reply_t_handler
+  (vl_api_one_show_xtr_mode_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (0 <= retval)
+    {
+      print (vam->ofp, "%s\n", mp->is_en ? "enabled" : "disabled");
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_one_show_xtr_mode_reply_t_handler_json
+  (vl_api_one_show_xtr_mode_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+  u8 *status = 0;
+
+  status = format (0, "%s", mp->is_en ? "enabled" : "disabled");
+  vec_add1 (status, 0);
+
+  vat_json_init_object (&node);
+  vat_json_object_add_string_copy (&node, "status", status);
+
+  vec_free (status);
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_one_show_pitr_mode_reply_t_handler
+  (vl_api_one_show_pitr_mode_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (0 <= retval)
+    {
+      print (vam->ofp, "%s\n", mp->is_en ? "enabled" : "disabled");
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_one_show_pitr_mode_reply_t_handler_json
+  (vl_api_one_show_pitr_mode_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+  u8 *status = 0;
+
+  status = format (0, "%s", mp->is_en ? "enabled" : "disabled");
+  vec_add1 (status, 0);
+
+  vat_json_init_object (&node);
+  vat_json_object_add_string_copy (&node, "status", status);
+
+  vec_free (status);
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_one_show_petr_mode_reply_t_handler
+  (vl_api_one_show_petr_mode_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (0 <= retval)
+    {
+      print (vam->ofp, "%s\n", mp->is_en ? "enabled" : "disabled");
+    }
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+}
+
+static void
+  vl_api_one_show_petr_mode_reply_t_handler_json
+  (vl_api_one_show_petr_mode_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+  u8 *status = 0;
+
+  status = format (0, "%s", mp->is_en ? "enabled" : "disabled");
+  vec_add1 (status, 0);
+
+  vat_json_init_object (&node);
+  vat_json_object_add_string_copy (&node, "status", status);
+
+  vec_free (status);
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
   vl_api_show_one_use_petr_reply_t_handler
   (vl_api_show_one_use_petr_reply_t * mp)
 {
@@ -5154,6 +5271,9 @@ _(one_stats_enable_disable_reply)                       \
 _(one_add_del_l2_arp_entry_reply)                       \
 _(one_add_del_ndp_entry_reply)                          \
 _(one_stats_flush_reply)                                \
+_(one_enable_disable_xtr_mode_reply)                    \
+_(one_enable_disable_pitr_mode_reply)                   \
+_(one_enable_disable_petr_mode_reply)                   \
 _(gpe_enable_disable_reply)                             \
 _(gpe_set_encap_mode_reply)                             \
 _(gpe_add_del_iface_reply)                              \
@@ -5416,6 +5536,14 @@ _(ONE_NDP_ENTRIES_GET_REPLY, one_ndp_entries_get_reply)                 \
 _(ONE_ADD_DEL_L2_ARP_ENTRY_REPLY, one_add_del_l2_arp_entry_reply)       \
 _(ONE_L2_ARP_BD_GET_REPLY, one_l2_arp_bd_get_reply)                     \
 _(ONE_L2_ARP_ENTRIES_GET_REPLY, one_l2_arp_entries_get_reply)           \
+_(ONE_ENABLE_DISABLE_XTR_MODE_REPLY, one_enable_disable_xtr_mode_reply) \
+_(ONE_ENABLE_DISABLE_PITR_MODE_REPLY,                                   \
+  one_enable_disable_pitr_mode_reply)                                   \
+_(ONE_ENABLE_DISABLE_PETR_MODE_REPLY,                                   \
+  one_enable_disable_petr_mode_reply)                                   \
+_(ONE_SHOW_XTR_MODE_REPLY, one_show_xtr_mode_reply)                     \
+_(ONE_SHOW_PITR_MODE_REPLY, one_show_pitr_mode_reply)                   \
+_(ONE_SHOW_PETR_MODE_REPLY, one_show_petr_mode_reply)                   \
 _(GPE_SET_ENCAP_MODE_REPLY, gpe_set_encap_mode_reply)                   \
 _(GPE_GET_ENCAP_MODE_REPLY, gpe_get_encap_mode_reply)                   \
 _(GPE_ADD_DEL_IFACE_REPLY, gpe_add_del_iface_reply)                     \
@@ -16404,6 +16532,189 @@ api_one_enable_disable (vat_main_t * vam)
 #define api_lisp_enable_disable api_one_enable_disable
 
 static int
+api_one_enable_disable_xtr_mode (vat_main_t * vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_one_enable_disable_xtr_mode_t *mp;
+  u8 is_set = 0;
+  u8 is_en = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+	{
+	  is_set = 1;
+	  is_en = 1;
+	}
+      else if (unformat (input, "disable"))
+	{
+	  is_set = 1;
+	}
+      else
+	break;
+    }
+
+  if (!is_set)
+    {
+      errmsg ("Value not set");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (ONE_ENABLE_DISABLE_XTR_MODE, mp);
+
+  mp->is_en = is_en;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_one_show_xtr_mode (vat_main_t * vam)
+{
+  vl_api_one_show_xtr_mode_t *mp;
+  int ret;
+
+  /* Construct the API message */
+  M (ONE_SHOW_XTR_MODE, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_one_enable_disable_pitr_mode (vat_main_t * vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_one_enable_disable_pitr_mode_t *mp;
+  u8 is_set = 0;
+  u8 is_en = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+	{
+	  is_set = 1;
+	  is_en = 1;
+	}
+      else if (unformat (input, "disable"))
+	{
+	  is_set = 1;
+	}
+      else
+	break;
+    }
+
+  if (!is_set)
+    {
+      errmsg ("Value not set");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (ONE_ENABLE_DISABLE_PITR_MODE, mp);
+
+  mp->is_en = is_en;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_one_show_pitr_mode (vat_main_t * vam)
+{
+  vl_api_one_show_pitr_mode_t *mp;
+  int ret;
+
+  /* Construct the API message */
+  M (ONE_SHOW_PITR_MODE, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_one_enable_disable_petr_mode (vat_main_t * vam)
+{
+  unformat_input_t *input = vam->input;
+  vl_api_one_enable_disable_petr_mode_t *mp;
+  u8 is_set = 0;
+  u8 is_en = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "enable"))
+	{
+	  is_set = 1;
+	  is_en = 1;
+	}
+      else if (unformat (input, "disable"))
+	{
+	  is_set = 1;
+	}
+      else
+	break;
+    }
+
+  if (!is_set)
+    {
+      errmsg ("Value not set");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (ONE_ENABLE_DISABLE_PETR_MODE, mp);
+
+  mp->is_en = is_en;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_one_show_petr_mode (vat_main_t * vam)
+{
+  vl_api_one_show_petr_mode_t *mp;
+  int ret;
+
+  /* Construct the API message */
+  M (ONE_SHOW_PETR_MODE, mp);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
 api_show_one_map_register_state (vat_main_t * vam)
 {
   vl_api_show_one_map_register_state_t *mp;
@@ -21996,6 +22307,12 @@ _(one_get_map_request_itr_rlocs, "")                                    \
 _(one_map_register_set_ttl, "<ttl>")                                    \
 _(one_set_transport_protocol, "udp|api")                                \
 _(one_get_transport_protocol, "")                                       \
+_(one_enable_disable_xtr_mode, "enable|disable")                        \
+_(one_show_xtr_mode, "")                                                \
+_(one_enable_disable_pitr_mode, "enable|disable")                       \
+_(one_show_pitr_mode, "")                                               \
+_(one_enable_disable_petr_mode, "enable|disable")                       \
+_(one_show_petr_mode, "")                                               \
 _(show_one_nsh_mapping, "")                                             \
 _(show_one_pitr, "")                                                    \
 _(show_one_use_petr, "")                                                \

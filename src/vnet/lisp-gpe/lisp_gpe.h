@@ -203,7 +203,8 @@ lisp_gpe_l3_iface_find_or_create (lisp_gpe_main_t * lgm,
 extern void lisp_gpe_del_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
 extern u32 lisp_gpe_add_l2_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
 extern void lisp_gpe_del_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
-extern u32 lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id);
+extern u32 lisp_gpe_add_l3_iface (lisp_gpe_main_t * lgm, u32 vni, u32 bd_id,
+				  u8 with_default_route);
 
 
 typedef struct

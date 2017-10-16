@@ -1020,11 +1020,11 @@ lisp_show_pitr_command_fn (vlib_main_t * vm,
   mapping_t *m;
   locator_set_t *ls;
   u8 *tmp_str = 0;
+  u8 status = lcm->flags & LISP_FLAG_PITR_MODE;
 
-  vlib_cli_output (vm, "%=20s%=16s",
-		   "pitr", lcm->lisp_pitr ? "locator-set" : "");
+  vlib_cli_output (vm, "%=20s%=16s", "pitr", status ? "locator-set" : "");
 
-  if (!lcm->lisp_pitr)
+  if (!status)
     {
       vlib_cli_output (vm, "%=20s", "disable");
       return 0;
@@ -1206,6 +1206,165 @@ VLIB_CLI_COMMAND (one_cp_show_eid_table_command) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+lisp_enable_disable_pitr_mode_command_fn (vlib_main_t * vm,
+					  unformat_input_t * input,
+					  vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 is_enabled = 0;
+  u8 is_set = 0;
+  clib_error_t *error = NULL;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "enable"))
+	{
+	  is_set = 1;
+	  is_enabled = 1;
+	}
+      else if (unformat (line_input, "disable"))
+	is_set = 1;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (!is_set)
+    {
+      error = clib_error_return (0, "state not set");
+      goto done;
+    }
+
+  vnet_lisp_enable_disable_pitr_mode (is_enabled);
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_cp_enable_disable_pitr_mode_command) = {
+    .path = "one pitr mode",
+    .short_help = "one pitr mode [enable|disable]",
+    .function = lisp_enable_disable_pitr_mode_command_fn,
+};
+/* *INDENT-ON* */
+
+
+static clib_error_t *
+lisp_enable_disable_petr_mode_command_fn (vlib_main_t * vm,
+					  unformat_input_t * input,
+					  vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 is_enabled = 0;
+  u8 is_set = 0;
+  clib_error_t *error = NULL;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "enable"))
+	{
+	  is_set = 1;
+	  is_enabled = 1;
+	}
+      else if (unformat (line_input, "disable"))
+	is_set = 1;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (!is_set)
+    {
+      error = clib_error_return (0, "state not set");
+      goto done;
+    }
+
+  vnet_lisp_enable_disable_petr_mode (is_enabled);
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_cp_enable_disable_petr_mode_command) = {
+    .path = "one petr mode",
+    .short_help = "one petr mode [enable|disable]",
+    .function = lisp_enable_disable_petr_mode_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+lisp_enable_disable_xtr_mode_command_fn (vlib_main_t * vm,
+					 unformat_input_t * input,
+					 vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 is_enabled = 0;
+  u8 is_set = 0;
+  clib_error_t *error = NULL;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "enable"))
+	{
+	  is_set = 1;
+	  is_enabled = 1;
+	}
+      else if (unformat (line_input, "disable"))
+	is_set = 1;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (!is_set)
+    {
+      error = clib_error_return (0, "state not set");
+      goto done;
+    }
+
+  vnet_lisp_enable_disable_xtr_mode (is_enabled);
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_cp_enable_disable_xtr_mode_command) = {
+    .path = "one xtr mode",
+    .short_help = "one xtr mode [enable|disable]",
+    .function = lisp_enable_disable_xtr_mode_command_fn,
+};
+/* *INDENT-ON* */
 
 static clib_error_t *
 lisp_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
@@ -2152,6 +2311,30 @@ VLIB_CLI_COMMAND (one_stats_flush_command) = {
     .path = "one statistics flush",
     .short_help = "Flush ONE statistics",
     .function = lisp_stats_flush_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+lisp_show_one_modes_command_fn (vlib_main_t * vm,
+				unformat_input_t * input,
+				vlib_cli_command_t * cmd)
+{
+  u8 pitr_mode = vnet_lisp_get_pitr_mode ();
+  u8 petr_mode = vnet_lisp_get_petr_mode ();
+  u8 xtr_mode = vnet_lisp_get_xtr_mode ();
+
+  vlib_cli_output (vm, "xTR: %s\n", xtr_mode ? "enabled" : "disabled");
+  vlib_cli_output (vm, "P-ITR: %s\n", pitr_mode ? "enabled" : "disabled");
+  vlib_cli_output (vm, "P-ETR: %s\n", petr_mode ? "enabled" : "disabled");
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (one_cp_show_one_modes_modes_command) = {
+    .path = "show one modes",
+    .short_help = "show one modes",
+    .function = lisp_show_one_modes_command_fn,
 };
 /* *INDENT-ON* */
 

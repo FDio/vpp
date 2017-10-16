@@ -221,7 +221,8 @@ ip_fib_get_first_egress_ip_for_dst (lisp_cp_main_t * lcm, ip_address_t * dst,
 }
 
 static int
-dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_l2, u8 is_add)
+dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_l2, u8 is_add,
+		  u8 with_default_route)
 {
   uword *dp_table;
 
@@ -251,7 +252,8 @@ dp_add_del_iface (lisp_cp_main_t * lcm, u32 vni, u8 is_l2, u8 is_add)
       if (is_l2)
 	lisp_gpe_tenant_l2_iface_add_or_lock (vni, dp_table[0]);
       else
-	lisp_gpe_tenant_l3_iface_add_or_lock (vni, dp_table[0]);
+	lisp_gpe_tenant_l3_iface_add_or_lock (vni, dp_table[0],
+					      with_default_route);
     }
   else
     {
@@ -454,8 +456,16 @@ dp_add_fwd_entry (lisp_cp_main_t * lcm, u32 src_map_index, u32 dst_map_index)
   /*
    * Determine local mapping and eid
    */
-  if (lcm->lisp_pitr)
-    lcl_map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+  if (lcm->flags & LISP_FLAG_PITR_MODE)
+    {
+      if (lcm->pitr_map_index != ~0)
+	lcl_map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+      else
+	{
+	  clib_warning ("no PITR mapping configured!");
+	  return;
+	}
+    }
   else
     lcl_map = pool_elt_at_index (lcm->mapping_pool, src_map_index);
   lcl_eid = &lcl_map->eid;
@@ -1101,7 +1111,8 @@ vnet_lisp_eid_table_map (u32 vni, u32 dp_id, u8 is_l2, u8 is_add)
       hash_set (vni_by_dp_table[0], dp_id, vni);
 
       /* create dp iface */
-      dp_add_del_iface (lcm, vni, is_l2, 1);
+      dp_add_del_iface (lcm, vni, is_l2, 1 /* is_add */ ,
+			1 /* with_default_route */ );
     }
   else
     {
@@ -1112,7 +1123,7 @@ vnet_lisp_eid_table_map (u32 vni, u32 dp_id, u8 is_l2, u8 is_add)
 	  return -1;
 	}
       /* remove dp iface */
-      dp_add_del_iface (lcm, vni, is_l2, 0);
+      dp_add_del_iface (lcm, vni, is_l2, 0 /* is_add */ , 0 /* unused */ );
 
       hash_unset (dp_table_by_vni[0], vni);
       hash_unset (vni_by_dp_table[0], dp_id);
@@ -1499,8 +1510,18 @@ vnet_lisp_add_del_adjacency (vnet_lisp_add_del_adjacency_args_t * a)
     {
       /* check if source eid has an associated mapping. If pitr mode is on,
        * just use the pitr's mapping */
-      if (lcm->lisp_pitr)
-	local_mi = lcm->pitr_map_index;
+      if (lcm->flags & LISP_FLAG_PITR_MODE)
+	{
+	  if (lcm->pitr_map_index != ~0)
+	    {
+	      local_mi = lcm->pitr_map_index;
+	    }
+	  else
+	    {
+	      /* PITR mode is on, but no mapping is configured */
+	      return -1;
+	    }
+	}
       else
 	{
 	  if (gid_address_type (&a->reid) == GID_ADDR_NSH)
@@ -1635,17 +1656,12 @@ vnet_lisp_pitr_set_locator_set (u8 * locator_set_name, u8 is_add)
       m->local = 1;
       m->pitr_set = 1;
       lcm->pitr_map_index = m - lcm->mapping_pool;
-
-      /* enable pitr mode */
-      lcm->lisp_pitr = 1;
     }
   else
     {
       /* remove pitr mapping */
       pool_put_index (lcm->mapping_pool, lcm->pitr_map_index);
-
-      /* disable pitr mode */
-      lcm->lisp_pitr = 0;
+      lcm->pitr_map_index = ~0;
     }
   return 0;
 }
@@ -1731,6 +1747,7 @@ vnet_lisp_use_petr (ip_address_t * ip, u8 is_add)
 
       /* Disable use-petr */
       lcm->flags &= ~LISP_FLAG_USE_PETR;
+      lcm->petr_map_index = ~0;
     }
   return 0;
 }
@@ -2182,10 +2199,66 @@ vnet_lisp_map_register_enable_disable (u8 is_enable)
   return 0;
 }
 
+static void
+lisp_cp_register_dst_port (vlib_main_t * vm)
+{
+  udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp,
+			 lisp_cp_input_node.index, 1 /* is_ip4 */ );
+  udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp6,
+			 lisp_cp_input_node.index, 0 /* is_ip4 */ );
+}
+
+static void
+lisp_cp_unregister_dst_port (vlib_main_t * vm)
+{
+  udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_cp, 0 /* is_ip4 */ );
+  udp_unregister_dst_port (vm, UDP_DST_PORT_lisp_cp6, 1 /* is_ip4 */ );
+}
+
+/**
+ * lisp_cp_enable_l2_l3_ifaces
+ *
+ * Enable all l2 and l3 ifaces
+ */
+static void
+lisp_cp_enable_l2_l3_ifaces (lisp_cp_main_t * lcm, u8 with_default_route)
+{
+  u32 vni, dp_table;
+
+  /* *INDENT-OFF* */
+  hash_foreach(vni, dp_table, lcm->table_id_by_vni, ({
+    dp_add_del_iface(lcm, vni, /* is_l2 */ 0, /* is_add */1,
+                     with_default_route);
+  }));
+  hash_foreach(vni, dp_table, lcm->bd_id_by_vni, ({
+    dp_add_del_iface(lcm, vni, /* is_l2 */ 1, 1,
+                     with_default_route);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+lisp_cp_disable_l2_l3_ifaces (lisp_cp_main_t * lcm)
+{
+  u32 **rmts;
+
+  /* clear interface table */
+  hash_free (lcm->fwd_entry_by_mapping_index);
+  pool_free (lcm->fwd_entry_pool);
+  /* Clear state tracking rmt-lcl fwd entries */
+  /* *INDENT-OFF* */
+  pool_foreach(rmts, lcm->lcl_to_rmt_adjacencies,
+  {
+    vec_free(rmts[0]);
+  });
+  /* *INDENT-ON* */
+  hash_free (lcm->lcl_to_rmt_adjs_by_lcl_idx);
+  pool_free (lcm->lcl_to_rmt_adjacencies);
+}
+
 clib_error_t *
 vnet_lisp_enable_disable (u8 is_enable)
 {
-  u32 vni, dp_table, **rmts;
   clib_error_t *error = 0;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   vnet_lisp_gpe_enable_disable_args_t _a, *a = &_a;
@@ -2198,33 +2271,45 @@ vnet_lisp_enable_disable (u8 is_enable)
 				a->is_en ? "enable" : "disable");
     }
 
-  if (is_enable)
-    {
-      /* enable all l2 and l3 ifaces */
+  /* decide what to do based on mode */
 
-      /* *INDENT-OFF* */
-      hash_foreach(vni, dp_table, lcm->table_id_by_vni, ({
-        dp_add_del_iface(lcm, vni, 0, 1);
-      }));
-      hash_foreach(vni, dp_table, lcm->bd_id_by_vni, ({
-        dp_add_del_iface(lcm, vni, /* is_l2 */ 1, 1);
-      }));
-      /* *INDENT-ON* */
-    }
-  else
+  if (lcm->flags & LISP_FLAG_XTR_MODE)
     {
-      /* clear interface table */
-      hash_free (lcm->fwd_entry_by_mapping_index);
-      pool_free (lcm->fwd_entry_pool);
-      /* Clear state tracking rmt-lcl fwd entries */
-      /* *INDENT-OFF* */
-      pool_foreach(rmts, lcm->lcl_to_rmt_adjacencies,
-      {
-        vec_free(rmts[0]);
-      });
-      /* *INDENT-ON* */
-      hash_free (lcm->lcl_to_rmt_adjs_by_lcl_idx);
-      pool_free (lcm->lcl_to_rmt_adjacencies);
+      if (is_enable)
+	{
+	  lisp_cp_register_dst_port (lcm->vlib_main);
+	  lisp_cp_enable_l2_l3_ifaces (lcm, 1 /* with_default_route */ );
+	}
+      else
+	{
+	  lisp_cp_unregister_dst_port (lcm->vlib_main);
+	  lisp_cp_disable_l2_l3_ifaces (lcm);
+	}
+    }
+
+  if (lcm->flags & LISP_FLAG_PETR_MODE)
+    {
+      /* if in xTR mode, the LISP ports were already (un)registered above */
+      if (!(lcm->flags & LISP_FLAG_XTR_MODE))
+	{
+	  if (is_enable)
+	    lisp_cp_register_dst_port (lcm->vlib_main);
+	  else
+	    lisp_cp_unregister_dst_port (lcm->vlib_main);
+	}
+    }
+
+  if (lcm->flags & LISP_FLAG_PITR_MODE)
+    {
+      if (is_enable)
+	{
+	  /* install interfaces, but no default routes */
+	  lisp_cp_enable_l2_l3_ifaces (lcm, 0 /* with_default_route */ );
+	}
+      else
+	{
+	  lisp_cp_disable_l2_l3_ifaces (lcm);
+	}
     }
 
   /* update global flag */
@@ -2980,8 +3065,10 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
       return 0;
     }
 
+  u8 pitr_mode = lcm->flags & LISP_FLAG_PITR_MODE;
+
   /* get locator-set for seid */
-  if (!lcm->lisp_pitr && gid_address_type (deid) != GID_ADDR_NSH)
+  if (!pitr_mode && gid_address_type (deid) != GID_ADDR_NSH)
     {
       map_index = gid_dictionary_lookup (&lcm->mapping_index_by_gid, seid);
       if (map_index == ~0)
@@ -3004,10 +3091,18 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
     }
   else
     {
-      if (lcm->lisp_pitr)
+      if (pitr_mode)
 	{
-	  map = pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
-	  ls_index = map->locator_set_index;
+	  if (lcm->pitr_map_index != ~0)
+	    {
+	      map =
+		pool_elt_at_index (lcm->mapping_pool, lcm->pitr_map_index);
+	      ls_index = map->locator_set_index;
+	    }
+	  else
+	    {
+	      return -1;
+	    }
 	}
       else
 	{
@@ -4357,8 +4452,9 @@ lisp_cp_init (vlib_main_t * vm)
   lcm->vlib_main = vm;
   lcm->vnet_main = vnet_get_main ();
   lcm->mreq_itr_rlocs = ~0;
-  lcm->lisp_pitr = 0;
   lcm->flags = 0;
+  lcm->pitr_map_index = ~0;
+  lcm->petr_map_index = ~0;
   memset (&lcm->active_map_resolver, 0, sizeof (lcm->active_map_resolver));
   memset (&lcm->active_map_server, 0, sizeof (lcm->active_map_server));
 
@@ -4374,10 +4470,7 @@ lisp_cp_init (vlib_main_t * vm)
   hash_set (lcm->table_id_by_vni, 0, 0);
   hash_set (lcm->vni_by_table_id, 0, 0);
 
-  udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp,
-			 lisp_cp_input_node.index, 1 /* is_ip4 */ );
-  udp_register_dst_port (vm, UDP_DST_PORT_lisp_cp6,
-			 lisp_cp_input_node.index, 0 /* is_ip4 */ );
+  lisp_cp_register_dst_port (vm);
 
   u64 now = clib_cpu_time_now ();
   timing_wheel_init (&lcm->wheel, now, vm->clib_time.clocks_per_second);
@@ -4386,6 +4479,7 @@ lisp_cp_init (vlib_main_t * vm)
   lcm->max_expired_map_registers = MAX_EXPIRED_MAP_REGISTERS_DEFAULT;
   lcm->expired_map_registers = 0;
   lcm->transport_protocol = LISP_TRANSPORT_PROTOCOL_UDP;
+  lcm->flags |= LISP_FLAG_XTR_MODE;
   return 0;
 }
 
@@ -4773,6 +4867,124 @@ vnet_lisp_get_transport_protocol (void)
 {
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   return lcm->transport_protocol;
+}
+
+int
+vnet_lisp_enable_disable_xtr_mode (u8 is_enabled)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  u8 pitr_mode = lcm->flags & LISP_FLAG_PITR_MODE;
+  u8 xtr_mode = lcm->flags & LISP_FLAG_XTR_MODE;
+  u8 petr_mode = lcm->flags & LISP_FLAG_PETR_MODE;
+
+  if (pitr_mode && is_enabled)
+    return VNET_API_ERROR_INVALID_ARGUMENT;
+
+  if (is_enabled && xtr_mode)
+    return 0;
+  if (!is_enabled && !xtr_mode)
+    return 0;
+
+  if (is_enabled)
+    {
+      if (!petr_mode)
+	{
+	  lisp_cp_register_dst_port (lcm->vlib_main);
+	}
+      lisp_cp_enable_l2_l3_ifaces (lcm, 1 /* with_default_route */ );
+      lcm->flags |= LISP_FLAG_XTR_MODE;
+    }
+  else
+    {
+      if (!petr_mode)
+	{
+	  lisp_cp_unregister_dst_port (lcm->vlib_main);
+	}
+      lisp_cp_disable_l2_l3_ifaces (lcm);
+      lcm->flags &= ~LISP_FLAG_XTR_MODE;
+    }
+  return 0;
+}
+
+int
+vnet_lisp_enable_disable_pitr_mode (u8 is_enabled)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  u8 xtr_mode = lcm->flags & LISP_FLAG_XTR_MODE;
+  u8 pitr_mode = lcm->flags & LISP_FLAG_PITR_MODE;
+
+  if (xtr_mode && is_enabled)
+    return VNET_API_ERROR_INVALID_VALUE;
+
+  if (is_enabled && pitr_mode)
+    return 0;
+  if (!is_enabled && !pitr_mode)
+    return 0;
+
+  if (is_enabled)
+    {
+      /* create iface, no default route */
+      lisp_cp_enable_l2_l3_ifaces (lcm, 0 /* with_default_route */ );
+      lcm->flags |= LISP_FLAG_PITR_MODE;
+    }
+  else
+    {
+      lisp_cp_disable_l2_l3_ifaces (lcm);
+      lcm->flags &= ~LISP_FLAG_PITR_MODE;
+    }
+  return 0;
+}
+
+int
+vnet_lisp_enable_disable_petr_mode (u8 is_enabled)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  u8 xtr_mode = lcm->flags & LISP_FLAG_XTR_MODE;
+  u8 petr_mode = lcm->flags & LISP_FLAG_PETR_MODE;
+
+  if (is_enabled && petr_mode)
+    return 0;
+  if (!is_enabled && !petr_mode)
+    return 0;
+
+  if (is_enabled)
+    {
+      if (!xtr_mode)
+	{
+	  lisp_cp_register_dst_port (lcm->vlib_main);
+	}
+      lcm->flags |= LISP_FLAG_PETR_MODE;
+    }
+  else
+    {
+      if (!xtr_mode)
+	{
+	  lisp_cp_unregister_dst_port (lcm->vlib_main);
+	}
+      lcm->flags &= ~LISP_FLAG_PETR_MODE;
+    }
+  return 0;
+}
+
+u8
+vnet_lisp_get_xtr_mode (void)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  return (lcm->flags & LISP_FLAG_XTR_MODE);
+}
+
+u8
+vnet_lisp_get_pitr_mode (void)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  return (lcm->flags & LISP_FLAG_PITR_MODE);
+}
+
+u8
+vnet_lisp_get_petr_mode (void)
+{
+  lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
+  return (lcm->flags & LISP_FLAG_PETR_MODE);
 }
 
 VLIB_INIT_FUNCTION (lisp_cp_init);

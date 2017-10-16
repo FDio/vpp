@@ -135,7 +135,8 @@ lisp_gpe_sub_interface_find_or_create_and_lock (const ip_address_t * lrloc,
        * find the main interface from the VNI
        */
       main_sw_if_index =
-	lisp_gpe_tenant_l3_iface_add_or_lock (vni, overlay_table_id);
+	lisp_gpe_tenant_l3_iface_add_or_lock (vni, overlay_table_id,
+					      1 /* with_default_route */ );
 
       vnet_sw_interface_t sub_itf_template = {
 	.type = VNET_SW_INTERFACE_TYPE_SUB,
