@@ -2702,6 +2702,7 @@ foreach_msmr
 /* CP output statistics */
 #define foreach_lisp_cp_output_error                  \
 _(MAP_REGISTERS_SENT, "map-registers sent")           \
+_(MAP_REQUESTS_SENT, "map-requests sent")             \
 _(RLOC_PROBES_SENT, "rloc-probes sent")
 static char *lisp_cp_output_error_strings[] = {
 #define _(sym,string) string,
@@ -3027,6 +3028,9 @@ _send_encapsulated_map_request (lisp_cp_main_t * lcm,
   f->n_vectors = 1;
   vlib_put_frame_to_node (lcm->vlib_main, next_index, f);
 
+  vlib_node_increment_counter (vlib_get_main (), lisp_cp_output_node.index,
+			       LISP_CP_OUTPUT_ERROR_MAP_REQUESTS_SENT, 1);
+
   if (duplicate_pmr)
     /* if there is a pending request already update it */
     {
@@ -3254,7 +3258,7 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
   icmp6_neighbor_discovery_ethernet_link_layer_address_option_t *opt;
   u32 *from, *to_next, di, si;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
-  u32 pkts_mapped = 0, next_index;
+  u32 next_index;
   uword n_left_from, n_left_to_next;
   vnet_main_t *vnm = vnet_get_main ();
 
@@ -3374,7 +3378,6 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 		  /* send map-request */
 		  queue_map_request (&src, &dst, 0 /* smr_invoked */ ,
 				     0 /* is_resend */ );
-		  pkts_mapped++;
 		}
 	      else
 		{
@@ -3397,7 +3400,6 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 	      /* send map-request */
 	      queue_map_request (&src, &dst, 0 /* smr_invoked */ ,
 				 0 /* is_resend */ );
-	      pkts_mapped++;
 	    }
 
 	drop:
@@ -3423,9 +3425,6 @@ lisp_cp_lookup_inline (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
-  vlib_node_increment_counter (vm, node->node_index,
-			       LISP_CP_LOOKUP_ERROR_MAP_REQUESTS_SENT,
-			       pkts_mapped);
   return from_frame->n_vectors;
 }
 
