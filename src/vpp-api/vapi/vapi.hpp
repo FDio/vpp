@@ -105,7 +105,7 @@ public:
 
 private:
   Connection &con;
-  Common_req (Connection &con) : con{con}, response_state{RESPONSE_NOT_READY}
+  Common_req (Connection &con) : con (con), response_state{RESPONSE_NOT_READY}
   {
   }
 
@@ -759,7 +759,7 @@ private:
       }
   }
 
-  Result_set (Connection &con) : con{con}, complete{false}
+  Result_set (Connection &con) : con (con), complete{false}
   {
   }
 
