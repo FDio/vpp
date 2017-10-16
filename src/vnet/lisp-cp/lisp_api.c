@@ -436,7 +436,7 @@ vl_api_show_lisp_use_petr_t_handler (vl_api_show_lisp_use_petr_t * mp)
     }
 
   memset (&addr, 0, sizeof (addr));
-  status = lcm->flags & LISP_FLAG_USE_PETR;
+  status = (lcm->flags & LISP_FLAG_PETR_MODE) && (lcm->petr_map_index != ~0);
   if (status)
     {
       m = pool_elt_at_index (lcm->mapping_pool, lcm->petr_map_index);
@@ -1272,7 +1272,10 @@ vl_api_show_lisp_pitr_t_handler (vl_api_show_lisp_pitr_t * mp)
       return;
     }
 
-  if (!lcm->lisp_pitr)
+  u8 is_enabled = (lcm->flags & LISP_FLAG_PITR_MODE)
+    && lcm->pitr_map_index != ~0;
+
+  if (!is_enabled)
     {
       tmp_str = format (0, "N/A");
     }
@@ -1295,7 +1298,7 @@ vl_api_show_lisp_pitr_t_handler (vl_api_show_lisp_pitr_t * mp)
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_SHOW_LISP_PITR_REPLY,
   ({
-    rmp->status = lcm->lisp_pitr;
+    rmp->status = lcm->flags & LISP_FLAG_PITR_MODE;
     strncpy((char *) rmp->locator_set_name, (char *) tmp_str,
             ARRAY_LEN(rmp->locator_set_name) - 1);
   }));

@@ -117,7 +117,9 @@ typedef enum
 } map_request_mode_t;
 
 #define foreach_lisp_flag_bit       \
-  _(USE_PETR, "Use Proxy-ETR")                  \
+  _(XTR_MODE, "ITR/ETR mode")                     \
+  _(PETR_MODE, "Use Proxy-ETR")                   \
+  _(PITR_MODE, "Proxy-ITR mode")                  \
   _(STATS_ENABLED, "Statistics enabled")
 
 typedef enum lisp_flag_bits
@@ -248,9 +250,6 @@ typedef struct
 
   /** Proxy ETR map index */
   u32 petr_map_index;
-
-  /* LISP PITR mode */
-  u8 lisp_pitr;
 
   /* mapping index for NSH */
   u32 nsh_map_index;
@@ -415,6 +414,13 @@ u32 *vnet_lisp_ndp_bds_get (void);
 lisp_api_ndp_entry_t *vnet_lisp_ndp_entries_get_by_bd (u32 bd);
 u32 vnet_lisp_set_transport_protocol (u8 protocol);
 lisp_transport_protocol_t vnet_lisp_get_transport_protocol (void);
+
+extern int vnet_lisp_enable_disable_xtr_mode (u8 is_enabled);
+extern int vnet_lisp_enable_disable_pitr_mode (u8 is_enabled);
+extern int vnet_lisp_enable_disable_petr_mode (u8 is_enabled);
+extern u8 vnet_lisp_get_xtr_mode (void);
+extern u8 vnet_lisp_get_pitr_mode (void);
+extern u8 vnet_lisp_get_petr_mode (void);
 
 map_records_arg_t *parse_map_reply (vlib_buffer_t * b);
 

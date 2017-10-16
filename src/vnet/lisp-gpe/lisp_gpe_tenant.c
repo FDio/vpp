@@ -102,11 +102,13 @@ lisp_gpe_tenant_delete_if_empty (lisp_gpe_tenant_t * lt)
  *
  * @paran vni The tenant's VNI
  * @param table_id the Tenant's L3 table ID.
+ * @param with_default_route Install default route for the interface
  *
  * @return the SW IF index of the L3 interface
  */
 u32
-lisp_gpe_tenant_l3_iface_add_or_lock (u32 vni, u32 table_id)
+lisp_gpe_tenant_l3_iface_add_or_lock (u32 vni, u32 table_id,
+				      u8 with_default_route)
 {
   lisp_gpe_tenant_t *lt;
 
@@ -121,7 +123,8 @@ lisp_gpe_tenant_l3_iface_add_or_lock (u32 vni, u32 table_id)
     {
       /* create the l3 interface since there are currently no users of it */
       lt->lt_l3_sw_if_index =
-	lisp_gpe_add_l3_iface (&lisp_gpe_main, vni, table_id);
+	lisp_gpe_add_l3_iface (&lisp_gpe_main, vni, table_id,
+			       with_default_route);
     }
 
   lt->lt_locks[LISP_GPE_TENANT_LOCK_L3_IFACE]++;

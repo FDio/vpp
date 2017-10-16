@@ -67,7 +67,8 @@ typedef struct lisp_gpe_tenant_t_
 
 extern u32 lisp_gpe_tenant_find_or_create (u32 vni);
 
-extern u32 lisp_gpe_tenant_l3_iface_add_or_lock (u32 vni, u32 vrf);
+extern u32 lisp_gpe_tenant_l3_iface_add_or_lock (u32 vni, u32 vrf,
+						 u8 with_default_route);
 extern void lisp_gpe_tenant_l3_iface_unlock (u32 vni);
 
 extern u32 lisp_gpe_tenant_l2_iface_add_or_lock (u32 vni, u32 vrf);

@@ -405,7 +405,7 @@ vl_api_gpe_add_del_iface_t_handler (vl_api_gpe_add_del_iface_t * mp)
     {
       if (mp->is_add)
 	{
-	  if (~0 == lisp_gpe_tenant_l3_iface_add_or_lock (vni, dp_table))
+	  if (~0 == lisp_gpe_tenant_l3_iface_add_or_lock (vni, dp_table, 1))
 	    rv = 1;
 	}
       else
