@@ -1272,8 +1272,11 @@ vcom_socket_bind (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
 int
 vppcom_session_getsockname (int sid, vppcom_endpt_t * ep)
 {
-  /* TBD: move it to vppcom */
-  return 0;
+  int rv;
+  uint32_t size = sizeof (*ep);
+
+  rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_LCL_ADDR, ep, &size);
+  return rv;
 }
 
 int
@@ -1305,18 +1308,6 @@ vcom_socket_getsockname (int __fd, __SOCKADDR_ARG __addr,
       return -EINVAL;
     }
 
-  /* TBD: remove libc_getsockname code snippet
-   * once vppcom implements vppcom_session_getsockname */
-  rv = libc_getsockname (__fd, __addr, __len);
-  if (rv != 0)
-    {
-      rv = -errno;
-      return rv;
-    }
-
-  /* TBD: use the below code snippet when vppcom
-   * implements vppcom_session_getsockname */
-#if 0
   vppcom_endpt_t ep;
   ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
   rv = vppcom_session_getsockname (vsock->sid, &ep);
@@ -1342,7 +1333,6 @@ vcom_socket_getsockname (int __fd, __SOCKADDR_ARG __addr,
 	    }
 	}
     }
-#endif
 
   return rv;
 }
@@ -1394,8 +1384,11 @@ vcom_socket_connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
 int
 vppcom_session_getpeername (int sid, vppcom_endpt_t * ep)
 {
-  /* TBD: move it to vppcom */
-  return 0;
+  int rv;
+  uint32_t size = sizeof (*ep);
+
+  rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_PEER_ADDR, ep, &size);
+  return rv;
 }
 
 int
@@ -1441,18 +1434,6 @@ vcom_socket_getpeername (int __fd, __SOCKADDR_ARG __addr,
     return 0;
   }
 
-  /* TBD: remove libc_getpeername code snippet
-   * once vppcom implements vppcom_session_getpeername */
-  rv = libc_getpeername (__fd, __addr, __len);
-  if (rv != 0)
-    {
-      rv = -errno;
-      return rv;
-    }
-
-  /* TBD: use the below code snippet when vppcom
-   * implements vppcom_session_getpeername */
-#if 0
   vppcom_endpt_t ep;
   ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
   rv = vppcom_session_getpeername (vsock->sid, &ep);
@@ -1478,7 +1459,6 @@ vcom_socket_getpeername (int __fd, __SOCKADDR_ARG __addr,
 	    }
 	}
     }
-#endif
 
   return rv;
 }

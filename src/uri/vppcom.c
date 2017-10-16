@@ -3036,7 +3036,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
   session_t *session;
   int rv = VPPCOM_OK;
   u32 *flags = buffer;
-  vppcom_ip46_t *vcl_addr = buffer;
+  vppcom_endpt_t *ep = buffer;
 
   VCL_LOCK_AND_GET_SESSION (session_index, &session);
   switch (op)
@@ -3080,28 +3080,45 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
       break;
 
     case VPPCOM_ATTR_GET_PEER_ADDR:
-      if (buffer && buflen && (*buflen >= sizeof (*vcl_addr)))
+      if (buffer && buflen && (*buflen >= sizeof (*ep)))
 	{
-	  *vcl_addr = session->peer_addr;
-	  *buflen = sizeof (*vcl_addr);
+	  ep->vrf = session->vrf;
+	  ep->is_ip4 = session->peer_addr.is_ip4;
+	  ep->port = session->port;
+	  if (session->peer_addr.is_ip4)
+	    clib_memcpy (ep->ip, &session->peer_addr.ip46.ip4,
+			 sizeof (ip4_address_t));
+	  else
+	    clib_memcpy (ep->ip, &session->peer_addr.ip46.ip6,
+			 sizeof (ip6_address_t));
+	  *buflen = sizeof (*ep);
 	  if (VPPCOM_DEBUG > 0)
 	    clib_warning ("VPPCOM_ATTR_GET_PEER_ADDR: is_ip4 = %u, "
-			  "addr = %U", vcl_addr->is_ip4, format_ip46_address,
-			  &vcl_addr->ip46, vcl_addr->is_ip4);
+			  "addr = %U", ep->is_ip4, format_ip46_address,
+			  &session->peer_addr.ip46, ep->is_ip4);
 	}
       else
 	rv = VPPCOM_EINVAL;
       break;
 
     case VPPCOM_ATTR_GET_LCL_ADDR:
-      if (buffer && buflen && (*buflen >= sizeof (*vcl_addr)))
+      if (buffer && buflen && (*buflen >= sizeof (*ep)))
 	{
-	  *vcl_addr = session->lcl_addr;
-	  *buflen = sizeof (*vcl_addr);
+	  ep->vrf = session->vrf;
+	  ep->is_ip4 = session->lcl_addr.is_ip4;
+	  ep->port = session->port;
+	  if (session->lcl_addr.is_ip4)
+	    clib_memcpy (ep->ip, &session->lcl_addr.ip46.ip4,
+			 sizeof (ip4_address_t));
+	  else
+	    clib_memcpy (ep->ip, &session->lcl_addr.ip46.ip6,
+			 sizeof (ip6_address_t));
+	  *buflen = sizeof (*ep);
 	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VPPCOM_ATTR_GET_LCL_ADDR: is_ip4 = %u, "
-			  "addr = %U", vcl_addr->is_ip4, format_ip46_address,
-			  &vcl_addr->ip46, vcl_addr->is_ip4);
+	    if (VPPCOM_DEBUG > 0)
+	      clib_warning ("VPPCOM_ATTR_GET_LCL_ADDR: is_ip4 = %u, "
+			    "addr = %U", ep->is_ip4, format_ip46_address,
+			    &session->lcl_addr.ip46, ep->is_ip4);
 	}
       else
 	rv = VPPCOM_EINVAL;
