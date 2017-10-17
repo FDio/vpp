@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_9fec42c9",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1105,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-10-17T09:10:24Z",
+      "side": 1,
+      "message": "So, if i get this right, this sequences the tables such that the untagged table will be matched only after there is no match in *two* tagged tables ? This needs to be reversed so that there is no performance impact to untagged lookups.",
+      "revId": "4cb8c79dcb71580fff138ef1510ef3bad94aaa06",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
