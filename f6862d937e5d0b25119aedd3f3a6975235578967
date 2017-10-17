@@ -16,6 +16,24 @@
       "revId": "f6862d937e5d0b25119aedd3f3a6975235578967",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_9a7330b1",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-10-17T14:38:06Z",
+      "side": 1,
+      "message": "you\u0027re right, cyrpto dependency was not what i what. I only wanted a Centos dependency.\nbut please note the build error. I did try to install, but failed.",
+      "parentUuid": "1a486d77_7f7746d5",
+      "revId": "f6862d937e5d0b25119aedd3f3a6975235578967",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
