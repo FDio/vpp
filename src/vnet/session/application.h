@@ -132,7 +132,8 @@ u8 *application_name_from_index (u32 app_index);
 
 u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
-
+u32 application_n_listeners (application_t * app);
+stream_session_t *application_first_listener (application_t * app);
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 
 /*

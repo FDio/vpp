@@ -148,6 +148,114 @@ ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
   return 0;
 }
 
+void
+ip4_address_normalize (ip4_address_t * ip4, u8 preflen)
+{
+  ASSERT (preflen <= 32);
+  if (preflen == 0)
+    ip4->data_u32 = 0;
+  else
+    ip4->data_u32 &= clib_net_to_host_u32 (0xffffffff << (32 - preflen));
+}
+
+void
+ip6_address_normalize (ip6_address_t * ip6, u8 preflen)
+{
+  ASSERT (preflen <= 128);
+  if (preflen == 0)
+    {
+      ip6->as_u64[0] = 0;
+      ip6->as_u64[1] = 0;
+    }
+  else if (preflen <= 64)
+    {
+      ip6->as_u64[0] &=
+	clib_host_to_net_u64 (0xffffffffffffffffL << (64 - preflen));
+      ip6->as_u64[1] = 0;
+    }
+  else
+    ip6->as_u64[1] &=
+      clib_host_to_net_u64 (0xffffffffffffffffL << (128 - preflen));
+}
+
+void
+ip4_preflen_to_mask (u8 pref_len, ip4_address_t * ip)
+{
+  if (pref_len == 0)
+    ip->as_u32 = 0;
+  else
+    ip->as_u32 = clib_host_to_net_u32 (~((1 << (32 - pref_len)) - 1));
+}
+
+u32
+ip4_mask_to_preflen (ip4_address_t * mask)
+{
+  return (32 - log2_first_set (clib_net_to_host_u32 (mask->as_u32)));
+}
+
+void
+ip4_prefix_max_address_host_order (ip4_address_t * ip, u8 plen,
+				   ip4_address_t * res)
+{
+  u32 not_mask;
+  not_mask = (1 << (32 - plen)) - 1;
+  res->as_u32 = clib_net_to_host_u32 (ip->as_u32) + not_mask;
+}
+
+void
+ip6_preflen_to_mask (u8 pref_len, ip6_address_t * mask)
+{
+  if (pref_len == 0)
+    {
+      mask->as_u64[0] = 0;
+      mask->as_u64[1] = 0;
+    }
+  else if (pref_len <= 64)
+    {
+      mask->as_u64[0] =
+	clib_host_to_net_u64 (0xffffffffffffffffL << (64 - pref_len));
+      mask->as_u64[1] = 0;
+    }
+  else
+    {
+      mask->as_u64[1] =
+	clib_host_to_net_u64 (0xffffffffffffffffL << (128 - pref_len));
+    }
+}
+
+void
+ip6_prefix_max_address_host_order (ip6_address_t * ip, u8 plen,
+				   ip6_address_t * res)
+{
+  u64 not_mask;
+  if (plen <= 64)
+    {
+      not_mask = (1 << (64 - plen)) - 1;
+      res->as_u64[0] = clib_net_to_host_u64 (ip->as_u64[0]) + not_mask;
+      res->as_u64[1] = 0xffffffffffffffffL;
+    }
+  else
+    {
+      not_mask = (1 << (128 - plen)) - 1;
+      res->as_u64[1] = clib_net_to_host_u64 (ip->as_u64[1]) + not_mask;
+    }
+}
+
+u32
+ip6_mask_to_preflen (ip6_address_t * mask)
+{
+  u8 first1, first0;
+  if (mask->as_u64[0] == 0 && mask->as_u64[1] == 0)
+    return 128;
+  first1 = log2_first_set (mask->as_u64[1]);
+  first0 = log2_first_set (mask->as_u64[0]);
+
+  if (first1 != 0)
+    return 128 - first1;
+  else
+    return 64 - first0;
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
