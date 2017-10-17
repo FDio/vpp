@@ -1,0 +1,84 @@
+#! /bin/bash
+#
+# nginx_test.sh
+#
+#   Run specified app using LD_PRELOAD to fetch a page from
+#   nginx running in vpp1 net-namespace.
+#
+# Specify the following environment variables:
+#
+# STRACE_ONLY - Run app with strace instead of LD_PRELOAD.
+# TEST_APP    - App to run (default: curl)
+# 
+
+# Configuration variables.
+#
+vpp_dk_name="VPP-TEST-NGINX"
+# Comment out the next line to run the VPP release version
+debug="_debug"
+vpp_app="$WS_ROOT/build-root/install-vpp${debug}-native/vpp/bin/vpp"
+
+check_for_vpp() {
+    local grep_for_vpp="ps -eaf|grep -v grep|grep \"bin/vpp\""
+    running_vpp="$(eval $grep_for_vpp)"
+}
+
+# Verify Environment.
+if [ -z "$WS_ROOT" ] ; then
+    echo "ERROR: WS_ROOT environment variable not set!" >&2
+    echo "       Please set WS_ROOT to VPP workspace root directory." >&2
+    exit 1
+fi
+if [ -z "$LDP_DIR" ] ; then
+    echo "WARNING: LDP_DIR environment variable is not set!"
+    echo "         Sourcing $WS_ROOT/extras/vcl-ldpreload/env.sh"
+    source $WS_ROOT/extras/vcl-ldpreload/env.sh
+fi
+
+TEST_APP="${TEST_APP:-curl}"
+LDP_TEST_DIR="${LDP_TEST_DIR:-${LDP_DIR}/test}"
+LDP_LIB="${LDP_LIB:-${VCL_LDPRELOAD_LIB_DIR}/libvcl_ldpreload.so.0.0.0}"
+
+if [ ! -f "$LDP_LIB" ] ; then
+    echo "ERROR: Missing VCL-LDPRELOAD Library: $LDP_LIB"
+    echo "       See $LDP_DIR/README.md for build instructions!"
+    exit 1
+fi
+
+if [ -z "$(docker ps -qf name=$vpp_dk_name)" ] ; then
+    echo "Starting NGINX in docker container ($vpp_dk_name)"
+    docker run --rm --name $vpp_dk_name -v $LDP_TEST_DIR/common/nginx_welcome.html:/usr/share/nginx/html/index.html:ro -d nginx
+
+    echo "Configuring network interfaces"
+    sudo ip link del dev vpp_dk
+    sudo ip link add name vpp_dk type veth peer name vpp1
+    sudo ip link set dev vpp_dk up
+    sudo ip link set dev vpp1 up
+    sudo ip link set dev lo up
+    sudo brctl addif docker0 vpp_dk
+fi
+
+export LD_LIBRARY_PATH="$WS_ROOT/build-root/install-vpp${debug}-native/vpp/lib64/:$LDP_DIR/src/.libs:"
+
+# Extract nginx IPv4 address from docker bridge
+#
+nginx_addr=$(docker network inspect bridge | grep IPv4Address | awk -e '{print $2}' | sed -e 's,/16,,' -e 's,",,g' -e 's/,//')
+
+if [ -z "$nginx_addr" ] ; then
+    echo "ERROR: Unable to determine docker container address!"
+    exit 1
+fi
+
+if [ -n "$STRACE_ONLY" ] ; then
+    echo "Running strace -tt $TEST_APP http://$nginx_addr"
+    strace -tt $TEST_APP http://$nginx_addr
+else
+    check_for_vpp
+    if [ -z "$running_vpp" ] ; then
+        echo "Starting VPP ('telnet 0 5002' to connect to cli)"
+        sudo $vpp_app unix { cli-listen localhost:5002 exec $LDP_TEST_DIR/common/vpp_docker.conf } api-segment { gid $(id -g) }
+        sleep 2
+    fi
+    echo "Running LD_PRELOAD=$LDP_LIB $TEST_APP http://$nginx_addr"
+    LD_PRELOAD=$LDP_LIB $TEST_APP http://$nginx_addr
+fi
