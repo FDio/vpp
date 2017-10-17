@@ -18,6 +18,7 @@
 
 #include <vppinfra/bihash_16_8.h>
 #include <vppinfra/bihash_48_8.h>
+#include <vnet/session/session_rules_table.h>
 
 typedef struct _session_lookup_table
 {
@@ -32,6 +33,11 @@ typedef struct _session_lookup_table
    */
   clib_bihash_16_8_t v4_half_open_hash;
   clib_bihash_48_8_t v6_half_open_hash;
+
+  /**
+   * Per fib proto and transport proto session rules tables
+   */
+  session_rules_table_t session_rules;
 } session_table_t;
 
 #define SESSION_TABLE_INVALID_INDEX ((u32)~0)

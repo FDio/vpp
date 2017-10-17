@@ -969,6 +969,23 @@ session_lookup_local_listener_parse_handle (u64 handle,
   return 0;
 }
 
+clib_error_t *
+vnet_session_rule_add_del (session_rule_add_del_args_t * args)
+{
+  app_namespace_t *app_ns = app_namespace_get (args->appns_index);
+  session_table_t *st;
+  u32 fib_index;
+  u8 fib_proto;
+
+  if (!app_ns)
+    return clib_error_return_code (0, VNET_API_ERROR_APP_INVALID_NS, 0,
+				   "invalid app ns");
+  fib_proto = args->table_args.rmt.fp_proto;
+  fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
+  st = session_table_get_for_fib_index (fib_proto, fib_index);
+  return session_rules_table_add_del (&st->session_rules, &args->table_args);
+}
+
 u8 *
 format_ip4_session_lookup_kvp (u8 * s, va_list * args)
 {
@@ -1038,6 +1055,185 @@ session_lookup_show_table_entries (vlib_main_t * vm, session_table_t * table,
       clib_warning ("not supported");
     }
 }
+
+static clib_error_t *
+session_rule_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			 vlib_cli_command_t * cmd)
+{
+  u32 proto = ~0, lcl_port, rmt_port, action = 0, lcl_plen, rmt_plen;
+  u32 appns_index;
+  ip46_address_t lcl_ip, rmt_ip;
+  u8 is_ip4 = 1, conn_set = 0;
+  u8 fib_proto, is_add = 1, *ns_id = 0;
+  app_namespace_t *app_ns;
+
+  memset (&lcl_ip, 0, sizeof (lcl_ip));
+  memset (&rmt_ip, 0, sizeof (rmt_ip));
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "del"))
+	is_add = 0;
+      else if (unformat (input, "add"))
+	;
+      else if (unformat (input, "appns %_%v%_", &ns_id))
+	;
+      else if (unformat (input, "proto %U", unformat_transport_proto, &proto))
+	;
+      else if (unformat (input, "%U/%d %d %U/%d %d", unformat_ip4_address,
+			 &lcl_ip.ip4, &lcl_plen, &lcl_port,
+			 unformat_ip4_address, &rmt_ip.ip4, &rmt_plen,
+			 &rmt_port))
+	{
+	  is_ip4 = 1;
+	  conn_set = 1;
+	}
+      else if (unformat (input, "%U/%d %d %U/%d %d", unformat_ip6_address,
+			 &lcl_ip.ip6, &lcl_plen, &lcl_port,
+			 unformat_ip6_address, &rmt_ip.ip6, &rmt_plen,
+			 &rmt_port))
+	{
+	  is_ip4 = 0;
+	  conn_set = 1;
+	}
+      else if (unformat (input, "action %d", &action))
+	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (proto == ~0 || !conn_set || action == ~0)
+    return clib_error_return (0, "proto, connection and action must be set");
+
+  if (ns_id)
+    {
+      app_ns = app_namespace_get_from_id (ns_id);
+      if (!app_ns)
+	return clib_error_return (0, "namespace %v does not exist", ns_id);
+    }
+  else
+    {
+      app_ns = app_namespace_get_default ();
+    }
+  appns_index = app_namespace_index (app_ns);
+
+  fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  session_rule_add_del_args_t args = {
+    .table_args.lcl.fp_addr = lcl_ip,
+    .table_args.lcl.fp_len = lcl_plen,
+    .table_args.lcl.fp_proto = fib_proto,
+    .table_args.rmt.fp_addr = rmt_ip,
+    .table_args.rmt.fp_len = rmt_plen,
+    .table_args.rmt.fp_proto = fib_proto,
+    .table_args.lcl_port = lcl_port,
+    .table_args.rmt_port = rmt_port,
+    .table_args.action_index = action,
+    .table_args.is_add = is_add,
+    .appns_index = appns_index,
+  };
+  return vnet_session_rule_add_del (&args);
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (session_rule_command, static) =
+{
+  .path = "session rule",
+  .short_help = "session rule [add|del] appns <ns_id> proto <proto> "
+      "<lcl-ip/plen> <lcl-port> <rmt-ip/plen> <rmt-port> action <action>",
+  .function = session_rule_command_fn,
+};
+/* *INDENT-ON* */
+
+static clib_error_t *
+show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,
+			       vlib_cli_command_t * cmd)
+{
+  u32 transport_proto = ~0, lcl_port, rmt_port, lcl_plen, rmt_plen;
+  u32 fib_index;
+  ip46_address_t lcl_ip, rmt_ip;
+  u8 is_ip4 = 1, show_one = 0;
+  app_namespace_t *app_ns;
+  session_table_t *st;
+  u8 *ns_id = 0, fib_proto;
+
+  memset (&lcl_ip, 0, sizeof (lcl_ip));
+  memset (&rmt_ip, 0, sizeof (rmt_ip));
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "%U", unformat_transport_proto, &transport_proto))
+	;
+      else if (unformat (input, "appns %_%v%_", &ns_id))
+	;
+      else if (unformat (input, "%U/%d %d %U/%d %d", unformat_ip4_address,
+			 &lcl_ip.ip4, &lcl_plen, &lcl_port,
+			 unformat_ip4_address, &rmt_ip.ip4, &rmt_plen,
+			 &rmt_port))
+	{
+	  is_ip4 = 1;
+	  show_one = 1;
+	}
+      else if (unformat (input, "%U/%d %d %U/%d %d", unformat_ip6_address,
+			 &lcl_ip.ip6, &lcl_plen, &lcl_port,
+			 unformat_ip6_address, &rmt_ip.ip6, &rmt_plen,
+			 &rmt_port))
+	{
+	  is_ip4 = 0;
+	  show_one = 1;
+	}
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
+
+  if (transport_proto == ~0)
+    {
+      vlib_cli_output (vm, "transport proto must be set");
+      return 0;
+    }
+
+  if (ns_id)
+    {
+      app_ns = app_namespace_get_from_id (ns_id);
+      if (!app_ns)
+	{
+	  vlib_cli_output (vm, "appns %v doesn't exist", ns_id);
+	  return 0;
+	}
+    }
+  else
+    {
+      app_ns = app_namespace_get_default ();
+    }
+  fib_proto = is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  fib_index = is_ip4 ? app_ns->ip4_fib_index : app_ns->ip6_fib_index;
+  st = session_table_get_for_fib_index (fib_proto, fib_index);
+
+  if (show_one)
+    {
+      session_rules_table_show_rule (vm, &st->session_rules, transport_proto,
+				     &lcl_ip, lcl_port, &rmt_ip, rmt_port,
+				     is_ip4);
+      return 0;
+    }
+
+  session_rules_table_cli_dump (vm, &st->session_rules, FIB_PROTOCOL_IP4,
+				transport_proto);
+  session_rules_table_cli_dump (vm, &st->session_rules, FIB_PROTOCOL_IP6,
+				transport_proto);
+
+  vec_free (ns_id);
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (show_session_rules_command, static) =
+{
+  .path = "show session rules",
+  .short_help = "show session rules [appns <id> proto <proto> <lcl-ip/plen>"
+      " <lcl-port> <rmt-ip/plen> <rmt-port>]",
+  .function = show_session_rules_command_fn,
+};
+/* *INDENT-ON* */
 
 void
 session_lookup_init (void)

@@ -2735,7 +2735,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* Create child session and send SYN-ACK */
 	  child0 = tcp_connection_new (my_thread_index);
-	  child0->c_lcl_port = lc0->c_lcl_port;
+	  child0->c_lcl_port = th0->dst_port;
 	  child0->c_rmt_port = th0->src_port;
 	  child0->c_is_ip4 = is_ip4;
 	  child0->state = TCP_STATE_SYN_RCVD;
