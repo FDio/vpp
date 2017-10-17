@@ -482,6 +482,27 @@ application_has_global_scope (application_t * app)
   return app->flags & APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
 }
 
+u32
+application_n_listeners (application_t * app)
+{
+  return hash_elts (app->listeners_table);
+}
+
+stream_session_t *
+application_first_listener (application_t * app)
+{
+  u64 handle;
+  u32 sm_index;
+
+  /* *INDENT-OFF* */
+   hash_foreach (handle, sm_index, app->listeners_table, ({
+     return listen_session_get_from_handle (handle);
+   }));
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
 u8 *
 format_application_listener (u8 * s, va_list * args)
 {
@@ -651,7 +672,7 @@ show_app_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	  vlib_cli_output (vm, "%U", format_application_listener,
 			   0 /* header */ , 0, 0,
 			   verbose);
-          /* *INDENT-OFF* */
+	  /* *INDENT-OFF* */
           pool_foreach (app, app_pool,
           ({
             /* App's listener sessions */

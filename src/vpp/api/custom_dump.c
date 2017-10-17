@@ -3209,6 +3209,27 @@ static void *vl_api_dns_resolve_ip_t_print
   FINISH;
 }
 
+static void *vl_api_session_rule_add_del_t_print
+  (vl_api_session_rule_add_del_t * mp, void *handle)
+{
+  u8 *s;
+  char *proto = mp->transport_proto == 0 ? "tcp" : "udp";
+  s = format (0, "SCRIPT: session_rule_add_del ");
+  if (mp->is_ip4)
+    s = format (s, "appns %d scope %d %s %U/%d %d %U/%d %d action %u",
+		mp->appns_index, mp->scope, proto, format_ip4_address,
+		(ip4_address_t *) mp->lcl_ip, mp->lcl_plen,
+		format_ip4_address, (ip4_address_t *) mp->rmt_ip,
+		mp->rmt_plen, mp->action_index);
+  else
+    s = format (s, "appns %d scope %d %s %U/%d %d %U/%d %d action %u",
+		mp->appns_index, mp->scope, proto, format_ip6_address,
+		(ip6_address_t *) mp->lcl_ip, mp->lcl_plen,
+		format_ip6_address, (ip6_address_t *) mp->rmt_ip,
+		mp->rmt_plen, mp->action_index);
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -3405,7 +3426,8 @@ _(SW_INTERFACE_SET_LLDP, sw_interface_set_lldp)				\
 _(DNS_ENABLE_DISABLE, dns_enable_disable)                               \
 _(DNS_NAME_SERVER_ADD_DEL, dns_name_server_add_del)                     \
 _(DNS_RESOLVE_NAME, dns_resolve_name)					\
-_(DNS_RESOLVE_IP, dns_resolve_ip)
+_(DNS_RESOLVE_IP, dns_resolve_ip)					\
+_(SESSION_RULE_ADD_DEL, session_rule_add_del)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {

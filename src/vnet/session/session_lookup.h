@@ -85,6 +85,32 @@ int session_lookup_local_listener_parse_handle (u64 handle,
 void session_lookup_show_table_entries (vlib_main_t * vm,
 					session_table_t * table, u8 type,
 					u8 is_local);
+
+enum _session_rule_scope
+{
+  SESSION_RULE_SCOPE_GLOBAL = 1,
+  SESSION_RULE_SCOPE_LOCAL = 2,
+} session_rule_scope_e;
+
+typedef struct _session_rule_add_del_args
+{
+  /**
+   * Actual arguments to adding the rule to a session rules table
+   */
+  session_rule_table_add_del_args_t table_args;
+  /**
+   * Application namespace where rule should be applied. If 0,
+   * default namespace is used.
+   */
+  u32 appns_index;
+  /**
+   * Rule scope flag.
+   */
+  u8 scope;
+} session_rule_add_del_args_t;
+
+clib_error_t *vnet_session_rule_add_del (session_rule_add_del_args_t * args);
+
 void session_lookup_init (void);
 
 #endif /* SRC_VNET_SESSION_SESSION_LOOKUP_H_ */
