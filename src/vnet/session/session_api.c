@@ -168,29 +168,32 @@ send_session_connected_callback (u32 app_index, u32 api_context,
   if (!q)
     return -1;
 
-  tc = session_get_transport (s);
-  if (!tc)
-    is_fail = 1;
   mp = vl_msg_api_alloc (sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_CONNECT_SESSION_REPLY);
   mp->context = api_context;
-  if (!is_fail)
+
+  if (is_fail)
+    goto done;
+
+  tc = session_get_transport (s);
+  if (!tc)
     {
-      vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
-      mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
-      mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
-      mp->handle = session_handle (s);
-      mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
-      clib_memcpy (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
-      mp->is_ip4 = tc->is_ip4;
-      mp->lcl_port = tc->lcl_port;
-      mp->retval = 0;
-    }
-  else
-    {
-      mp->retval = clib_host_to_net_u32 (VNET_API_ERROR_SESSION_CONNECT);
+      is_fail = 1;
+      goto done;
     }
 
+  vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
+  mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
+  mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
+  mp->handle = session_handle (s);
+  mp->vpp_event_queue_address = pointer_to_uword (vpp_queue);
+  clib_memcpy (mp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+  mp->is_ip4 = tc->is_ip4;
+  mp->lcl_port = tc->lcl_port;
+
+done:
+  mp->retval = is_fail ?
+    clib_host_to_net_u32 (VNET_API_ERROR_SESSION_CONNECT) : 0;
   vl_msg_api_send_shmem (q, (u8 *) & mp);
   return 0;
 }
