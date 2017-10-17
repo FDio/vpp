@@ -85,6 +85,15 @@ int session_lookup_local_listener_parse_handle (u64 handle,
 void session_lookup_show_table_entries (vlib_main_t * vm,
 					session_table_t * table, u8 type,
 					u8 is_local);
+
+typedef struct _session_rule_add_del_args
+{
+  session_rule_table_add_del_args_t table_args;
+  u32 appns_index;
+} session_rule_add_del_args_t;
+
+clib_error_t *vnet_session_rule_add_del (session_rule_add_del_args_t * args);
+
 void session_lookup_init (void);
 
 #endif /* SRC_VNET_SESSION_SESSION_LOOKUP_H_ */

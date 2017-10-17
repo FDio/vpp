@@ -71,6 +71,13 @@ u32 app_namespace_index_from_id (const u8 * ns_id);
 void app_namespaces_init (void);
 clib_error_t *vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t *
 					  a);
+u32 app_namespace_get_fib_index (app_namespace_t * app_ns, u8 fib_proto);
+
+always_inline app_namespace_t *
+app_namespace_get_default (void)
+{
+  return app_namespace_get (0);
+}
 
 #endif /* SRC_VNET_SESSION_APPLICATION_NAMESPACE_H_ */
 

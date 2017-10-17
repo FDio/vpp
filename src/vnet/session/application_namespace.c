@@ -136,6 +136,13 @@ app_namespace_id_from_index (u32 index)
   return app_namespace_id (app_ns);
 }
 
+u32
+app_namespace_get_fib_index (app_namespace_t * app_ns, u8 fib_proto)
+{
+  return fib_proto == FIB_PROTOCOL_IP4 ?
+    app_ns->ip4_fib_index : app_ns->ip6_fib_index;
+}
+
 void
 app_namespaces_init (void)
 {
