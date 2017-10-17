@@ -17,6 +17,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
+#include <vnet/session/session_rules_table.h>
 
 #define SESSION_TEST_I(_cond, _comment, _args...)		\
 ({								\
@@ -437,6 +438,137 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+session_test_rules (vlib_main_t * vm, unformat_input_t * input)
+{
+  u16 lcl_port = 1234, rmt_port = 4321;
+  clib_error_t *error;
+  u32 action_index = 1, res;
+  ip4_address_t lcl_lkup, rmt_lkup;
+
+  ip4_address_t lcl_ip = {
+      .as_u32 = clib_host_to_net_u32 (0x01020304),
+  };
+  ip4_address_t rmt_ip = {
+      .as_u32 = clib_host_to_net_u32 (0x05060708),
+  };
+  ip4_address_t lcl_ip2 = {
+      .as_u32 = clib_host_to_net_u32 (0x02020202),
+  };
+  ip4_address_t rmt_ip2 = {
+      .as_u32 = clib_host_to_net_u32 (0x06060606),
+  };
+  ip4_address_t lcl_ip3 = {
+      .as_u32 = clib_host_to_net_u32 (0x03030303),
+  };
+  ip4_address_t rmt_ip3 = {
+      .as_u32 = clib_host_to_net_u32 (0x07070707),
+  };
+  fib_prefix_t lcl_pref = {
+      .fp_addr.ip4.as_u32 = lcl_ip.as_u32,
+      .fp_len = 16,
+      .fp_proto = FIB_PROTOCOL_IP4,
+  };
+  fib_prefix_t rmt_pref = {
+      .fp_addr.ip4.as_u32 = rmt_ip.as_u32,
+      .fp_len = 16,
+      .fp_proto = FIB_PROTOCOL_IP4,
+  };
+
+  session_rule_add_del_args_t args = {
+      .lcl = lcl_pref,
+      .rmt = rmt_pref,
+      .lcl_port = lcl_port,
+      .rmt_port = rmt_port,
+      .action_index = action_index ++,
+      .is_add = 1,
+  };
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "rule addition should work");
+
+  res = session_rules_table_lookup4 (TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+	                             lcl_port, rmt_port);
+  SESSION_TEST((res == 1), "Action should be 1");
+
+  /*
+   * Add 1.2.3.4/24 1234 5.6.7.8/16 4321 and 1.2.3.4/24 1234 5.6.7.8/24 4321
+   */
+  args.lcl.fp_addr.ip4 = lcl_ip;
+  args.lcl.fp_len = 24;
+  args.action_index = action_index++;
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "rule addition should work");
+  args.rmt.fp_addr.ip4 = rmt_ip;
+  args.rmt.fp_len = 24;
+  args.action_index = action_index++;
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "rule addition should work");
+
+  /*
+   * Add 2.2.2.2/24 1234 6.6.6.6/16 4321 and 3.3.3.3/24 1234 7.7.7.7/16 4321
+   */
+  args.lcl.fp_addr.ip4 = lcl_ip2;
+  args.lcl.fp_len = 24;
+  args.rmt.fp_addr.ip4 = rmt_ip2;
+  args.rmt.fp_len = 16;
+  args.action_index = action_index++;
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "rule addition should work");
+  args.lcl.fp_addr.ip4 = lcl_ip3;
+  args.rmt.fp_addr.ip4 = rmt_ip3;
+  args.action_index = action_index++;
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "rule addition should work");
+
+  /*
+   * Add again 3.3.3.3/24 1234 7.7.7.7/16 4321
+   */
+  args.lcl.fp_addr.ip4 = lcl_ip3;
+  args.rmt.fp_addr.ip4 = rmt_ip3;
+  args.action_index = action_index++;
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "overwrite should work");
+
+  /*
+   * Lookup 1.2.3.4/32 1234 5.6.7.8/32 4321, 1.2.2.4/32 1234 5.6.7.9/32 4321
+   * and 1.2.3.4/24 1234 5.6.7.8/24 4321
+   */
+  res = session_rules_table_lookup4 (TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+	                             lcl_port, rmt_port);
+  SESSION_TEST((res == 3), "Action should be 3");
+
+  lcl_lkup.as_u32 = clib_host_to_net_u32 (0x01020204);
+  rmt_lkup.as_u32 = clib_host_to_net_u32 (0x05060709);
+  res = session_rules_table_lookup4 (TRANSPORT_PROTO_TCP, &lcl_lkup, &rmt_lkup,
+	                             lcl_port, rmt_port);
+  SESSION_TEST((res == 1), "Action should be 1");
+
+  res = session_rules_table_lookup4 (TRANSPORT_PROTO_TCP, &lcl_ip3, &rmt_ip3,
+	                             lcl_port, rmt_port);
+  SESSION_TEST((res == 6), "Action should be 6 (updated)");
+
+  /*
+   * 1.2.3.4/24 * 5.6.7.8/24 *
+   */
+  args.lcl.fp_addr.ip4 = lcl_ip;
+  args.rmt.fp_addr.ip4 = rmt_ip;
+  args.lcl.fp_len = 24;
+  args.rmt.fp_len = 24;
+  args.lcl_port = ~0;
+  args.rmt_port = ~0;
+  args.action_index = action_index++;
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "rule addition should work");
+  res = session_rules_table_lookup4 (TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+	                             lcl_port, rmt_port);
+  SESSION_TEST((res == 3), "Action should be 3");
+  res = session_rules_table_lookup4 (TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+	                             lcl_port + 1, rmt_port);
+  SESSION_TEST((res == 7), "Action should be 7");
+
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -451,6 +583,8 @@ session_test (vlib_main_t * vm,
 	{
 	  res = session_test_namespace (vm, input);
 	}
+      if (unformat (input, "rules"))
+	res = session_test_rules (vm, input);
       else
 	break;
     }
