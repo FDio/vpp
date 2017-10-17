@@ -263,10 +263,12 @@ unix_usage_now (void)
 always_inline void
 unix_sleep (f64 dt)
 {
-  struct timespec t;
-  t.tv_sec = dt;
-  t.tv_nsec = 1e9 * dt;
-  nanosleep (&t, 0);
+  struct timespec ts, tsrem;
+  ts.tv_sec = dt;
+  ts.tv_nsec = 1e9 * (dt - (f64) ts.tv_sec);
+
+  while (nanosleep (&ts, &tsrem) < 0)
+    ts = tsrem;
 }
 
 #else /* ! CLIB_UNIX */

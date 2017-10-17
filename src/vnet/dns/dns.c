@@ -690,6 +690,15 @@ delete_random_entry (dns_main_t * dm)
   if (dm->is_enabled == 0)
     return VNET_API_ERROR_NAME_RESOLUTION_NOT_ENABLED;
 
+  /*
+   * Silence spurious coverity warning. We know pool_elts >> 0, or
+   * we wouldn't be here...
+   */
+#ifdef __COVERITY__
+  if (pool_elts (dm->entries) == 0)
+    return VNET_API_ERROR_UNSPECIFIED;
+#endif
+
   dns_cache_lock (dm);
   limit = pool_elts (dm->entries);
   start_index = random_u32 (&dm->random_seed) % limit;
@@ -936,8 +945,7 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply)
 	  pos += len;
 	  len = *pos++;
 	}
-      qp = (dns_query_t *) pos;
-      pos += sizeof (*qp);
+      pos += sizeof (dns_query_t);
     }
   pos2 = pos;
   /* expect a pointer chase here for a CNAME record */
@@ -1122,7 +1130,7 @@ vnet_dns_response_to_reply (u8 * response,
 	      if ((pos[0] & 0xC0) == 0xC0)
 		{
 		  curpos = pos + 2;
-		  break;
+		  goto curpos_set;
 		}
 	      pos += len;
 	      len = *pos++;
@@ -1130,6 +1138,7 @@ vnet_dns_response_to_reply (u8 * response,
 	  curpos = pos;
 	}
 
+    curpos_set:
       rr = (dns_rr_t *) curpos;
 
       switch (clib_net_to_host_u16 (rr->type))

@@ -2137,6 +2137,7 @@ static void vl_api_memfd_segment_create_reply_t_handler
 
       vam->client_index_invalid = 1;
 
+      /* Note: this closes memfd.fd */
       retval = memfd_slave_init (&memfd);
       if (retval)
 	clib_warning ("WARNING: segment map returned %d", retval);
@@ -2152,8 +2153,6 @@ static void vl_api_memfd_segment_create_reply_t_handler
       vl_client_connect_to_vlib_no_map ("pvt",
 					"vpp_api_test(p)",
 					32 /* input_queue_length */ );
-      if (close (my_fd) < 0)
-	clib_unix_warning ("close memfd fd pivot");
       vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
 
       vl_socket_client_enable_disable (&vam->socket_client_main,
@@ -20918,15 +20917,11 @@ api_app_namespace_add_del (vat_main_t * vam)
 static int
 api_memfd_segment_create (vat_main_t * vam)
 {
+#if VPP_API_TEST_BUILTIN == 0
   unformat_input_t *i = vam->input;
   vl_api_memfd_segment_create_t *mp;
   u64 size = 64 << 20;
   int ret;
-
-#if VPP_API_TEST_BUILTIN == 1
-  errmsg ("memfd_segment_create (builtin) not supported");
-  return -99;
-#endif
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
@@ -20941,6 +20936,11 @@ api_memfd_segment_create (vat_main_t * vam)
   S (mp);
   W (ret);
   return ret;
+
+#else
+  errmsg ("memfd_segment_create (builtin) not supported");
+  return -99;
+#endif
 }
 
 static int
