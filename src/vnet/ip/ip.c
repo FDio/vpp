@@ -148,6 +148,33 @@ ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4)
   return 0;
 }
 
+void
+ip4_address_normalize (ip4_address_t * ip4, u8 preflen)
+{
+  ASSERT (ip4 && preflen <= 32);
+  ip4->data_u32 &= clib_net_to_host_u32 (0xffffffff << (32 - preflen));
+}
+
+void
+ip6_address_normalize (ip6_address_t * ip6, u8 preflen)
+{
+  ASSERT (ip6 && preflen <= 128);
+  if (preflen == 0)
+    {
+      ip6->as_u64[0] = 0;
+      ip6->as_u64[1] = 0;
+    }
+  else if (preflen <= 64)
+    {
+      ip6->as_u64[0] &= clib_host_to_net_u64 (
+	  0xffffffffffffffffL << (64 - preflen));
+      ip6->as_u64[1] = 0;
+    }
+  else
+    ip6->as_u64[1] &= clib_host_to_net_u64 (
+	0xffffffffffffffffL << (128 - preflen));
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
