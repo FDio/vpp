@@ -87,6 +87,8 @@ session_table_init (session_table_t * slt)
   clib_bihash_init_48_8 (&slt->v6_half_open_hash, "v6 half-open table",
 			 configured_v6_halfopen_table_buckets,
 			 configured_v6_halfopen_table_memory);
+
+  session_rules_table_init (&slt->session_rules);
 }
 
 typedef struct _ip4_session_table_walk_ctx_t
