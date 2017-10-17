@@ -5183,7 +5183,8 @@ _(sw_interface_set_lldp_reply)				\
 _(tcp_configure_src_addresses_reply)			\
 _(app_namespace_add_del_reply)                          \
 _(dns_enable_disable_reply)                             \
-_(dns_name_server_add_del_reply)
+_(dns_name_server_add_del_reply)			\
+_(session_rule_add_del_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -5494,7 +5495,8 @@ _(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
 _(DNS_ENABLE_DISABLE_REPLY, dns_enable_disable_reply)                   \
 _(DNS_NAME_SERVER_ADD_DEL_REPLY, dns_name_server_add_del_reply)		\
 _(DNS_RESOLVE_NAME_REPLY, dns_resolve_name_reply)			\
-_(DNS_RESOLVE_IP_REPLY, dns_resolve_ip_reply)
+_(DNS_RESOLVE_IP_REPLY, dns_resolve_ip_reply)				\
+_(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)                               \
@@ -21189,6 +21191,93 @@ api_dns_name_server_add_del (vat_main_t * vam)
   return ret;
 }
 
+static int
+api_session_rule_add_del (vat_main_t * vam)
+{
+  vl_api_session_rule_add_del_t *mp;
+  unformat_input_t *i = vam->input;
+  u32 proto = ~0, lcl_port, rmt_port, action = 0, lcl_plen, rmt_plen;
+  u32 appns_index = 0, scope = 0;
+  ip4_address_t lcl_ip4, rmt_ip4;
+  ip6_address_t lcl_ip6, rmt_ip6;
+  u8 is_ip4 = 1, conn_set = 0;
+  u8 is_add = 1;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	;
+      else if (unformat (i, "proto tcp"))
+	proto = 0;
+      else if (unformat (i, "proto udp"))
+	proto = 1;
+      else if (unformat (i, "appns %d", &appns_index))
+	;
+      else if (unformat (i, "scope %d", &scope))
+	;
+      else
+	if (unformat
+	    (i, "%U/%d %d %U/%d %d", unformat_ip4_address, &lcl_ip4,
+	     &lcl_plen, &lcl_port, unformat_ip4_address, &rmt_ip4, &rmt_plen,
+	     &rmt_port))
+	{
+	  is_ip4 = 1;
+	  conn_set = 1;
+	}
+      else
+	if (unformat
+	    (i, "%U/%d %d %U/%d %d", unformat_ip6_address, &lcl_ip6,
+	     &lcl_plen, &lcl_port, unformat_ip6_address, &rmt_ip6, &rmt_plen,
+	     &rmt_port))
+	{
+	  is_ip4 = 0;
+	  conn_set = 1;
+	}
+      else if (unformat (i, "action %d", &action))
+	;
+      else
+	break;
+    }
+  if (proto == ~0 || !conn_set || action == ~0)
+    {
+      errmsg ("transport proto, connection and action must be set");
+      return -99;
+    }
+
+  if (scope > 3)
+    {
+      errmsg ("scope should be 0-3");
+      return -99;
+    }
+
+  M (SESSION_RULE_ADD_DEL, mp);
+
+  mp->is_ip4 = is_ip4;
+  mp->transport_proto = proto;
+  mp->lcl_plen = clib_host_to_net_u16 (lcl_plen);
+  mp->rmt_plen = clib_host_to_net_u16 (rmt_plen);
+  mp->action_index = clib_host_to_net_u32 (action);
+  mp->appns_index = clib_host_to_net_u32 (appns_index);
+  mp->scope = scope;
+  mp->is_add = is_add;
+  if (is_ip4)
+    {
+      clib_memcpy (mp->lcl_ip, &lcl_ip4, sizeof (lcl_ip4));
+      clib_memcpy (mp->rmt_ip, &rmt_ip4, sizeof (rmt_ip4));
+    }
+  else
+    {
+      clib_memcpy (mp->lcl_ip, &lcl_ip6, sizeof (lcl_ip6));
+      clib_memcpy (mp->rmt_ip, &rmt_ip6, sizeof (rmt_ip6));
+    }
+
+  S (mp);
+  W (ret);
+  return ret;
+}
 
 static int
 q_or_quit (vat_main_t * vam)
@@ -21987,7 +22076,11 @@ _(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
 _(dns_enable_disable, "[enable][disable]")				\
 _(dns_name_server_add_del, "<ip-address> [del]")			\
 _(dns_resolve_name, "<hostname>")					\
-_(dns_resolve_ip, "<ip4|ip6>")
+_(dns_resolve_ip, "<ip4|ip6>")						\
+_(dns_name_server_add_del, "<ip-address> [del]")			\
+_(dns_resolve_name, "<hostname>")					\
+_(session_rule_add_del, "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "	\
+  "<lcl-port> <rmt-ip>/<plen> <rmt-port> action <nn>")			\
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

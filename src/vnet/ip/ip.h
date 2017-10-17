@@ -199,6 +199,16 @@ u8 ip_interface_has_address (u32 sw_if_index, ip46_address_t * ip, u8 is_ip4);
 void ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4);
 void ip_set (ip46_address_t * dst, void *src, u8 is_ip4);
 void *ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4);
+void ip4_address_normalize (ip4_address_t * ip4, u8 preflen);
+void ip6_address_normalize (ip6_address_t * ip6, u8 preflen);
+void ip4_preflen_to_mask (u8 pref_len, ip4_address_t * ip);
+u32 ip4_mask_to_preflen (ip4_address_t * mask);
+void ip4_prefix_max_address_host_order (ip4_address_t * ip, u8 plen,
+					ip4_address_t * res);
+void ip6_prefix_max_address_host_order (ip6_address_t * ip, u8 plen,
+					ip6_address_t * res);
+void ip6_preflen_to_mask (u8 pref_len, ip6_address_t * mask);
+u32 ip6_mask_to_preflen (ip6_address_t * mask);
 
 #endif /* included_ip_main_h */
 
