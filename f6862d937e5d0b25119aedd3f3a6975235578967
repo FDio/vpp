@@ -57,6 +57,30 @@
       "revId": "f6862d937e5d0b25119aedd3f3a6975235578967",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_1a52a0dd",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2017-10-17T16:00:37Z",
+      "side": 1,
+      "message": "Actually, not... that depends on the version of the distro.\nThe code I have in my local repo looks like this and works for both Tumbleweed and Leap42.3 (currently added to Jenkins).\n\nifeq ($(OS_ID),opensuse)\nifneq ($(SUSE_NAME),Tumbleweed)\n        RPM_SUSE_DEPENDS +\u003d boost_1_61-devel\n        RPM_SUSE_DEPENDS +\u003d https://download.opensuse.org/tumbleweed/repo/oss/suse/x86_64/nasm-2.13.01-2.1.x86_64.rpm\nelse\n        RPM_SUSE_DEPENDS +\u003d boost_1_65-devel\n        RPM_SUSE_DEPENDS +\u003d nasm\nendif\nendif",
+      "parentUuid": "1a486d77_1a8d007c",
+      "range": {
+        "startLine": 122,
+        "startChar": 37,
+        "endLine": 122,
+        "endChar": 42
+      },
+      "revId": "f6862d937e5d0b25119aedd3f3a6975235578967",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
