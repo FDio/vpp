@@ -1,0 +1,74 @@
+/*
+ * Copyright (c) 2017 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+
+#ifndef SRC_VNET_SESSION_SESSION_RULES_TABLE_H_
+#define SRC_VNET_SESSION_SESSION_RULES_TABLE_H_
+
+#include <vnet/vnet.h>
+#include <vnet/fib/fib.h>
+
+typedef CLIB_PACKED (struct {
+  union
+  {
+    struct
+    {
+      ip4_address_t rmt_ip;
+      ip4_address_t lcl_ip;
+      u16 rmt_port;
+      u16 lcl_port;
+    };
+    u64 as_u64[2];
+  };
+}) session_mask_or_match_16_t;
+
+typedef struct
+{
+  session_mask_or_match_16_t mask;
+  session_mask_or_match_16_t match;
+  u32 action_index;
+  /** N-ary tree of successors */
+  u32 *next_indices;
+} session_rule_t;
+
+typedef struct
+{
+  /** Rule pool */
+  session_rule_t *rules;
+
+  /** Root for table */
+  u32 root_index;
+} session_rules_table_t;
+
+#define SESSION_RULES_TABLE_INVALID_INDEX ((u32)~0)
+
+typedef struct _session_rule_add_del_args
+{
+  u8 transport_proto;
+  fib_prefix_t lcl;
+  fib_prefix_t rmt;
+  u16 lcl_port;
+  u16 rmt_port;
+  u32 action_index;
+  u8 is_add;
+} session_rule_add_del_args_t;
+
+#endif /* SRC_VNET_SESSION_SESSION_RULES_TABLE_H_ */
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
