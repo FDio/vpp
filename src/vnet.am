@@ -875,6 +875,7 @@ nobase_include_HEADERS +=			\
 libvnet_la_SOURCES +=				\
   vnet/session/session.c			\
   vnet/session/session_table.c			\
+  vnet/session/session_rules_table.c		\
   vnet/session/session_lookup.c			\
   vnet/session/session_node.c			\
   vnet/session/transport.c			\
@@ -889,6 +890,11 @@ libvnet_la_SOURCES +=				\
 nobase_include_HEADERS +=			\
   vnet/session/session.h			\
   vnet/session/session_table.h			\
+  vnet/session/session_rules_table_template.h	\
+  vnet/session/session_rules_table_template.c	\
+  vnet/session/session_rules_table_16.h		\
+  vnet/session/session_rules_table_40.h		\
+  vnet/session/session_rules_table.h		\
   vnet/session/stream_session.h			\
   vnet/session/session_lookup.h			\
   vnet/session/application.h			\

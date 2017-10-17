@@ -17,6 +17,7 @@
 #include <vnet/session/application_interface.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session.h>
+#include <vnet/session/session_rules_table.h>
 
 #define SESSION_TEST_I(_cond, _comment, _args...)		\
 ({								\
@@ -437,6 +438,272 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
+{
+  session_rules_table_t _srt, *srt = &_srt;
+  u16 lcl_port = 1234, rmt_port = 4321;
+  u32 action_index = 1, res;
+  ip4_address_t lcl_lkup, rmt_lkup;
+  clib_error_t *error;
+  int verbose = 1;
+
+  memset (srt, 0, sizeof (*srt));
+  session_rules_table_init (srt);
+
+  ip4_address_t lcl_ip = {
+    .as_u32 = clib_host_to_net_u32 (0x01020304),
+  };
+  ip4_address_t rmt_ip = {
+    .as_u32 = clib_host_to_net_u32 (0x05060708),
+  };
+  ip4_address_t lcl_ip2 = {
+    .as_u32 = clib_host_to_net_u32 (0x02020202),
+  };
+  ip4_address_t rmt_ip2 = {
+    .as_u32 = clib_host_to_net_u32 (0x06060606),
+  };
+  ip4_address_t lcl_ip3 = {
+    .as_u32 = clib_host_to_net_u32 (0x03030303),
+  };
+  ip4_address_t rmt_ip3 = {
+    .as_u32 = clib_host_to_net_u32 (0x07070707),
+  };
+  fib_prefix_t lcl_pref = {
+    .fp_addr.ip4.as_u32 = lcl_ip.as_u32,
+    .fp_len = 16,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+  fib_prefix_t rmt_pref = {
+    .fp_addr.ip4.as_u32 = rmt_ip.as_u32,
+    .fp_len = 16,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+
+  session_rule_table_add_del_args_t args = {
+    .lcl = lcl_pref,
+    .rmt = rmt_pref,
+    .lcl_port = lcl_port,
+    .rmt_port = rmt_port,
+    .action_index = action_index++,
+    .is_add = 1,
+  };
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add 1.2.3.4/16 1234 5.6.7.8/16 4321 action %d",
+		action_index - 1);
+
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+				 lcl_port, rmt_port);
+  SESSION_TEST ((res == 1),
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 1: %d",
+		res);
+
+  /*
+   * Add 1.2.3.4/24 1234 5.6.7.8/16 4321 and 1.2.3.4/24 1234 5.6.7.8/24 4321
+   */
+  args.lcl.fp_addr.ip4 = lcl_ip;
+  args.lcl.fp_len = 24;
+  args.action_index = action_index++;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add 1.2.3.4/24 1234 5.6.7.8/16 4321 action %d",
+		action_index - 1);
+  args.rmt.fp_addr.ip4 = rmt_ip;
+  args.rmt.fp_len = 24;
+  args.action_index = action_index++;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add 1.2.3.4/24 1234 5.6.7.8/24 4321 action %d",
+		action_index - 1);
+
+  /*
+   * Add 2.2.2.2/24 1234 6.6.6.6/16 4321 and 3.3.3.3/24 1234 7.7.7.7/16 4321
+   */
+  args.lcl.fp_addr.ip4 = lcl_ip2;
+  args.lcl.fp_len = 24;
+  args.rmt.fp_addr.ip4 = rmt_ip2;
+  args.rmt.fp_len = 16;
+  args.action_index = action_index++;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add 2.2.2.2/24 1234 6.6.6.6/16 4321 action %d",
+		action_index - 1);
+  args.lcl.fp_addr.ip4 = lcl_ip3;
+  args.rmt.fp_addr.ip4 = rmt_ip3;
+  args.action_index = action_index++;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add 3.3.3.3/24 1234 7.7.7.7/16 4321 action %d",
+		action_index - 1);
+
+  /*
+   * Add again 3.3.3.3/24 1234 7.7.7.7/16 4321
+   */
+  args.lcl.fp_addr.ip4 = lcl_ip3;
+  args.rmt.fp_addr.ip4 = rmt_ip3;
+  args.action_index = action_index++;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "overwrite 3.3.3.3/24 1234 7.7.7.7/16 4321 "
+		"action %d", action_index - 1);
+
+  /*
+   * Lookup 1.2.3.4/32 1234 5.6.7.8/32 4321, 1.2.2.4/32 1234 5.6.7.9/32 4321
+   * and  3.3.3.3 1234 7.7.7.7 4321
+   */
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+				 lcl_port, rmt_port);
+  SESSION_TEST ((res == 3),
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321 action " "should be 3: %d",
+		res);
+
+  lcl_lkup.as_u32 = clib_host_to_net_u32 (0x01020204);
+  rmt_lkup.as_u32 = clib_host_to_net_u32 (0x05060709);
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_lkup,
+				 &rmt_lkup, lcl_port, rmt_port);
+  SESSION_TEST ((res == 1),
+		"Lookup 1.2.2.4 1234 5.6.7.9 4321, action " "should be 1: %d",
+		res);
+
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip3, &rmt_ip3,
+				 lcl_port, rmt_port);
+  SESSION_TEST ((res == 6),
+		"Lookup 3.3.3.3 1234 7.7.7.7 4321, action "
+		"should be 6 (updated): %d", res);
+
+  /*
+   * Add 1.2.3.4/24 * 5.6.7.8/24 *
+   * Lookup 1.2.3.4 1234 5.6.7.8 4321 and 1.2.3.4 1235 5.6.7.8 4321
+   */
+  args.lcl.fp_addr.ip4 = lcl_ip;
+  args.rmt.fp_addr.ip4 = rmt_ip;
+  args.lcl.fp_len = 24;
+  args.rmt.fp_len = 24;
+  args.lcl_port = 0;
+  args.rmt_port = 0;
+  args.action_index = action_index++;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add 1.2.3.4/24 * 5.6.7.8/24 * action %d",
+		action_index - 1);
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+				 lcl_port, rmt_port);
+  SESSION_TEST ((res == 7),
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should"
+		" be 7 (lpm dst): %d", res);
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+				 lcl_port + 1, rmt_port);
+  SESSION_TEST ((res == 7),
+		"Lookup 1.2.3.4 1235 5.6.7.8 4321, action should " "be 7: %d",
+		res);
+
+  /*
+   * Del 1.2.3.4/24 * 5.6.7.8/24 *
+   * Add 1.2.3.4/16 * 5.6.7.8/16 * and 1.2.3.4/24 1235 5.6.7.8/24 4321
+   * Lookup 1.2.3.4 1234 5.6.7.8 4321, 1.2.3.4 1235 5.6.7.8 4321 and
+   * 1.2.3.4 1235 5.6.7.8 4322
+   */
+  args.is_add = 0;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Del 1.2.3.4/24 * 5.6.7.8/24 *");
+
+  args.lcl.fp_addr.ip4 = lcl_ip;
+  args.rmt.fp_addr.ip4 = rmt_ip;
+  args.lcl.fp_len = 16;
+  args.rmt.fp_len = 16;
+  args.lcl_port = 0;
+  args.rmt_port = 0;
+  args.action_index = action_index++;
+  args.is_add = 1;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add 1.2.3.4/16 * 5.6.7.8/16 * action %d",
+		action_index - 1);
+
+  args.lcl.fp_addr.ip4 = lcl_ip;
+  args.rmt.fp_addr.ip4 = rmt_ip;
+  args.lcl.fp_len = 24;
+  args.rmt.fp_len = 24;
+  args.lcl_port = lcl_port + 1;
+  args.rmt_port = rmt_port;
+  args.action_index = action_index++;
+  args.is_add = 1;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Add 1.2.3.4/24 1235 5.6.7.8/24 4321 action %d",
+		action_index - 1);
+
+  if (verbose)
+    session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP4,
+				  TRANSPORT_PROTO_TCP);
+
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+				 lcl_port, rmt_port);
+  SESSION_TEST ((res == 3),
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 3: %d",
+		res);
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+				 lcl_port + 1, rmt_port);
+  SESSION_TEST ((res == 9),
+		"Lookup 1.2.3.4 1235 5.6.7.8 4321, action should " "be 9: %d",
+		res);
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+				 lcl_port + 1, rmt_port + 1);
+  SESSION_TEST ((res == 8),
+		"Lookup 1.2.3.4 1235 5.6.7.8 4322, action should " "be 8: %d",
+		res);
+
+  /*
+   * Delete 1.2.0.0/16 1234 5.6.0.0/16 4321 and 1.2.0.0/16 * 5.6.0.0/16 *
+   * Lookup 1.2.3.4 1234 5.6.7.8 4321
+   */
+  args.lcl_port = 1234;
+  args.rmt_port = 4321;
+  args.lcl.fp_len = 16;
+  args.rmt.fp_len = 16;
+  args.is_add = 0;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Del 1.2.0.0/16 1234 5.6.0.0/16 4321");
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+				 lcl_port, rmt_port);
+  SESSION_TEST ((res == 3),
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 3: %d",
+		res);
+
+  args.lcl_port = 0;
+  args.rmt_port = 0;
+  args.is_add = 0;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Del 1.2.0.0/16 * 5.6.0.0/16 *");
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+				 lcl_port, rmt_port);
+  SESSION_TEST ((res == 3),
+		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 3: %d",
+		res);
+
+  /*
+   * Delete 1.2.3.4/24 1234 5.6.7.5/24
+   */
+  args.lcl.fp_addr.ip4 = lcl_ip;
+  args.rmt.fp_addr.ip4 = rmt_ip;
+  args.lcl.fp_len = 24;
+  args.rmt.fp_len = 24;
+  args.lcl_port = 1234;
+  args.rmt_port = 4321;
+  args.is_add = 0;
+  error = session_rules_table_add_del (srt, &args);
+  SESSION_TEST ((error == 0), "Del 1.2.3.4/24 1234 5.6.7.5/24");
+  res =
+    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+				 lcl_port, rmt_port);
+  SESSION_TEST ((res == 2), "Action should be 2: %d", res);
+
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -451,6 +718,8 @@ session_test (vlib_main_t * vm,
 	{
 	  res = session_test_namespace (vm, input);
 	}
+      if (unformat (input, "rules"))
+	res = session_test_rule_table (vm, input);
       else
 	break;
     }

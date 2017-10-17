@@ -42,6 +42,38 @@ static transport_endpoint_t *local_endpoints;
  */
 static clib_spinlock_t local_endpoints_lock;
 
+u8 *
+format_transport_proto (u8 * s, va_list * args)
+{
+  u32 transport_proto = va_arg (*args, u32);
+  switch (transport_proto)
+    {
+    case TRANSPORT_PROTO_TCP:
+      s = format (s, "TCP");
+      break;
+    case TRANSPORT_PROTO_UDP:
+      s = format (s, "UDP");
+      break;
+    }
+  return s;
+}
+
+uword
+unformat_transport_proto (unformat_input_t * input, va_list * args)
+{
+  u32 *proto = va_arg (*args, u32 *);
+  if (unformat (input, "tcp"))
+    *proto = TRANSPORT_PROTO_TCP;
+  else if (unformat (input, "TCP"))
+    *proto = TRANSPORT_PROTO_TCP;
+  else if (unformat (input, "udp"))
+    *proto = TRANSPORT_PROTO_UDP;
+  else if (unformat (input, "UDP"))
+    *proto = TRANSPORT_PROTO_UDP;
+  else
+    return 0;
+  return 1;
+}
 
 u32
 transport_endpoint_lookup (transport_endpoint_table_t * ht, u8 proto,

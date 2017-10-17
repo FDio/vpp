@@ -482,6 +482,25 @@ application_has_global_scope (application_t * app)
   return app->flags & APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
 }
 
+u32 application_n_listeners (application_t * app)
+{
+  return hash_elts (app->listeners_table);
+}
+
+stream_session_t *
+application_first_listener (application_t *app)
+{
+  u64 handle;
+  u32 sm_index;
+  /* *INDENT-OFF* */
+   hash_foreach (handle, sm_index, app->listeners_table, ({
+     break;
+   }));
+  /* *INDENT-OFF* */
+
+   return listen_session_get_from_handle (handle);
+}
+
 u8 *
 format_application_listener (u8 * s, va_list * args)
 {
