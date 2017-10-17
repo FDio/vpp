@@ -308,6 +308,7 @@ main (int argc, char **argv)
   u8 *heap;
   mheap_t *h;
   int i;
+  f64 timeout;
 
   clib_mem_init (0, 128 << 20);
 
@@ -431,6 +432,18 @@ main (int argc, char **argv)
       do_one_file (vam);
       fclose (vam->ifp);
     }
+
+  /*
+   * Particularly when running a script, don't be in a hurry to leave.
+   * A reply message queued to this process will end up constipating
+   * the allocation rings.
+   */
+  timeout = vat_time_now (vam) + 2.0;
+  while (vam->result_ready == 0 && vat_time_now (vam) < timeout)
+    ;
+
+  if (vat_time_now (vam) > timeout)
+    clib_warning ("BUG: message reply spin-wait timeout");
 
   vl_client_disconnect_from_vlib ();
   exit (0);
