@@ -91,8 +91,16 @@ endef
 
 .PHONY: sanity
 
+ifeq ($(SANITY),no)
+SANITY_IMPORT_VPP_PAPI_CMD=true
+SANITY_RUN_VPP_CMD=true
+else
+SANITY_IMPORT_VPP_PAPI_CMD=source $(PYTHON_VENV_PATH)/bin/activate && python sanity_import_vpp_papi.py
+SANITY_RUN_VPP_CMD=source $(PYTHON_VENV_PATH)/bin/activate && python sanity_run_vpp.py
+endif
+
 sanity: verify-no-running-vpp
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python sanity_import_vpp_papi.py ||\
+	@bash -c "$(SANITY_IMPORT_VPP_PAPI_CMD) ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Sanity check failed, cannot import vpp_papi\" &&\
 		 echo \"* to debug: \" &&\
@@ -100,7 +108,7 @@ sanity: verify-no-running-vpp
 		 echo \"* 2. execute debugger:   gdb python -ex 'run sanity_import_vpp_papi.py'\" &&\
 	         echo \"*******************************************************************\" &&\
 		 false)"
-	@bash -c "source $(PYTHON_VENV_PATH)/bin/activate && python sanity_run_vpp.py ||\
+	@bash -c "$(SANITY_RUN_VPP_CMD) ||\
 		(echo \"*******************************************************************\" &&\
 		 echo \"* Sanity check failed, cannot run vpp\" &&\
 	         echo \"*******************************************************************\" &&\
@@ -211,6 +219,7 @@ help:
 	@echo "    DEBUG=gdbserver   - run gdb inside a gdb server, otherwise "
 	@echo "                        same as above"
 	@echo " STEP=[yes|no]        - ease debugging by stepping through a testcase "
+	@echo " SANITY=[yes|no]      - perform sanity import of vpp-api/sanity vpp run before running tests (default: yes)"
 	@echo " TEST=<filter>        - filter the set of tests:"
 	@echo "    by file-name      - only run tests from specified file, e.g. TEST=test_bfd selects all tests from test_bfd.py"
 	@echo "    by file-suffix    - same as file-name, but 'test_' is omitted e.g. TEST=bfd selects all tests from test_bfd.py"
