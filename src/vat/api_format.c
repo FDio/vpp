@@ -5884,7 +5884,7 @@ exec_inband (vat_main_t * vam)
   W (ret);
   /* json responses may or may not include a useful reply... */
   if (vec_len (vam->cmd_reply))
-    print (vam->ofp, (char *) (vam->cmd_reply));
+    print (vam->ofp, "%v", (char *) (vam->cmd_reply));
   return ret;
 }
 

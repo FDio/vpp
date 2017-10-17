@@ -80,6 +80,7 @@ rx_thread_fn (void *arg)
   unix_shared_memory_queue_t *q;
   memory_client_main_t *mm = &memory_client_main;
   api_main_t *am = &api_main;
+  int i;
 
   q = am->vl_input_queue;
 
@@ -87,10 +88,27 @@ rx_thread_fn (void *arg)
   if (setjmp (mm->rx_thread_jmpbuf) == 0)
     {
       mm->rx_thread_jmpbuf_valid = 1;
-      while (1)
+      /*
+       * Find an unused slot in the per-cpu-mheaps array,
+       * and grab it for this thread. We need to be able to
+       * push/pop the thread heap without affecting other thread(s).
+       */
+      if (__os_thread_index == 0)
 	{
-	  vl_msg_api_queue_handler (q);
+	  for (i = 0; i < ARRAY_LEN (clib_per_cpu_mheaps); i++)
+	    {
+	      if (clib_per_cpu_mheaps[i] == 0)
+		{
+		  /* Copy the main thread mheap pointer */
+		  clib_per_cpu_mheaps[i] = clib_per_cpu_mheaps[0];
+		  __os_thread_index = i;
+		  break;
+		}
+	    }
+	  ASSERT (__os_thread_index > 0);
 	}
+      while (1)
+	vl_msg_api_queue_handler (q);
     }
   pthread_exit (0);
 }
@@ -138,7 +156,7 @@ vl_api_memclnt_create_reply_t_handler (vl_api_memclnt_create_reply_t * mp)
 
   /* Recreate the vnet-side API message handler table */
   tblv = uword_to_pointer (mp->message_table, u8 *);
-  serialize_open_vector (sm, tblv);
+  unserialize_open_data (sm, tblv, vec_len (tblv));
   unserialize_integer (sm, &nmsgs, sizeof (u32));
 
   for (i = 0; i < nmsgs; i++)
@@ -311,6 +329,7 @@ vl_client_disconnect (void)
       /* drain the queue */
       if (ntohs (rp->_vl_msg_id) != VL_API_MEMCLNT_DELETE_REPLY)
 	{
+	  clib_warning ("queue drain: %d", ntohs (rp->_vl_msg_id));
 	  vl_msg_api_handler ((void *) rp);
 	  continue;
 	}

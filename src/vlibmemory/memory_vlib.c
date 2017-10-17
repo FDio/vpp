@@ -188,7 +188,6 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   int rv = 0;
   void *oldheap;
   api_main_t *am = &api_main;
-  u8 *serialized_message_table_in_shmem;
 
   /*
    * This is tortured. Maintain a vlib-address-space private
@@ -237,7 +236,9 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   regp->name = format (0, "%s", mp->name);
   vec_add1 (regp->name, 0);
 
-  serialized_message_table_in_shmem = vl_api_serialize_message_table (am, 0);
+  if (am->serialized_message_table_in_shmem == 0)
+    am->serialized_message_table_in_shmem =
+      vl_api_serialize_message_table (am, 0);
 
   pthread_mutex_unlock (&svm->mutex);
   svm_pop_heap (oldheap);
@@ -250,7 +251,8 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
      am->shmem_hdr->application_restarts);
   rp->context = mp->context;
   rp->response = ntohl (rv);
-  rp->message_table = pointer_to_uword (serialized_message_table_in_shmem);
+  rp->message_table =
+    pointer_to_uword (am->serialized_message_table_in_shmem);
 
   vl_msg_api_send_shmem (q, (u8 *) & rp);
 }
