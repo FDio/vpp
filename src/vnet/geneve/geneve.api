@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
- define geneve_add_del_tunnel
+vl_api_version 1.0.0
+
+define geneve_add_del_tunnel
 {
   u32 client_index;
   u32 context;
