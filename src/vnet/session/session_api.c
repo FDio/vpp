@@ -16,9 +16,10 @@
 #include <vnet/vnet.h>
 #include <vlibmemory/api.h>
 #include <vnet/session/application.h>
+#include <vnet/session/application_interface.h>
+#include <vnet/session/session_rules_table.h>
 
 #include <vnet/vnet_msg_enum.h>
-#include "application_interface.h"
 
 #define vl_typedefs		/* define message structures */
 #include <vnet/vnet_all_api_h.h>
@@ -52,6 +53,7 @@ _(UNBIND_SOCK, unbind_sock)                                             \
 _(CONNECT_SOCK, connect_sock)                                          	\
 _(SESSION_ENABLE_DISABLE, session_enable_disable)                   	\
 _(APP_NAMESPACE_ADD_DEL, app_namespace_add_del)				\
+_(SESSION_RULE_ADD_DEL, session_rule_add_del)				\
 
 static int
 send_add_segment_callback (u32 api_client_index, const u8 * segment_name,
@@ -776,6 +778,38 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
   vec_free (ns_id);
 done:
   REPLY_MACRO (VL_API_APP_NAMESPACE_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
+{
+  vl_api_session_rule_add_del_reply_t *rmp;
+  clib_error_t *error;
+  u8 fib_proto;
+  int rv;
+
+  fib_proto = mp->is_ip4 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
+  session_rule_add_del_args_t args = {
+    .lcl.fp_len = mp->lcl_plen,
+    .lcl.fp_proto = fib_proto,
+    .rmt.fp_len = mp->rmt_plen,
+    .rmt.fp_proto = fib_proto,
+    .lcl_port = clib_net_to_host_u16 (mp->lcl_port),
+    .rmt_port = clib_net_to_host_u16 (mp->rmt_port),
+    .action_index = clib_net_to_host_u32 (mp->action_index),
+    .is_add = mp->is_add,
+  };
+  memset (&args.lcl.fp_addr, 0, sizeof (args.lcl.fp_addr));
+  memset (&args.rmt.fp_addr, 0, sizeof (args.rmt.fp_addr));
+  ip_set (&args.lcl.fp_addr, mp->lcl_ip, mp->is_ip4);
+  ip_set (&args.rmt.fp_addr, mp->rmt_ip, mp->is_ip4);
+  error = vnet_session_rule_add_del (&args);
+  if (error)
+    {
+      rv = clib_error_get_code (error);
+      clib_error_report (error);
+    }
+  REPLY_MACRO (VL_API_SESSION_RULE_ADD_DEL_REPLY);
 }
 
 static clib_error_t *

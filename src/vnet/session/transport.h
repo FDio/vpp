@@ -73,6 +73,9 @@ typedef enum _transport_proto
   TRANSPORT_N_PROTO
 } transport_proto_t;
 
+u8 *format_transport_proto (u8 * s, va_list * args);
+uword unformat_transport_proto (unformat_input_t * input, va_list * args);
+
 #define foreach_transport_connection_fields				\
   _(u32, sw_if_index) 	/**< interface endpoint is associated with  */	\
   _(ip46_address_t, ip) /**< ip address */				\
