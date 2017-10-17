@@ -319,7 +319,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  /* *INDENT-OFF* */
 	  SESSION_EVT_DBG(SESSION_EVT_DEQ, s0, ({
-	      ed->data[0] = e0->event_id;
+	      ed->data[0] = e0->event_type;
 	      ed->data[1] = max_dequeue0;
 	      ed->data[2] = len_to_deq0;
 	      ed->data[3] = left_to_snd0;

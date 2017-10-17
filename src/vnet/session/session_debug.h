@@ -45,7 +45,7 @@ typedef enum _session_evt_dbg
     u32 data[_size];							\
   } * ed;								\
   transport_proto_vft_t *vft = 						\
-      session_get_transport_vft (_s->session_type);			\
+      transport_protocol_get_vft (_s->session_type);			\
   transport_connection_t *_tc = 					\
       vft->get_connection (_s->connection_index, _s->thread_index);	\
   ed = ELOG_TRACK_DATA (&vlib_global_main.elog_main,			\

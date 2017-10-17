@@ -490,7 +490,7 @@ session_enqueue_notify (stream_session_t * s, u8 block)
 
   /* *INDENT-OFF* */
   SESSION_EVT_DBG(SESSION_EVT_ENQ, s, ({
-      ed->data[0] = evt.event_id;
+      ed->data[0] = evt.event_type;
       ed->data[1] = svm_fifo_max_dequeue (s->server_rx_fifo);
   }));
   /* *INDENT-ON* */
