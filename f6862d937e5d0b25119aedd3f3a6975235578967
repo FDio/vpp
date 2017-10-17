@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_7f7746d5",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-10-17T13:04:18Z",
+      "side": 1,
+      "message": "Neale you don\u0027t want the additional depends within the AESNI check. That makes the VOM dependent on accelerated crypto. I don\u0027t think that is what you want.\n\nJust add this DEPENDS to the general RPM depends above with a check for Centos. Fedora can use the standard package.\n\nAlso, if you are still having problems with version 1.59, let me try to find a more recent version for you from fedora.",
+      "revId": "f6862d937e5d0b25119aedd3f3a6975235578967",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
