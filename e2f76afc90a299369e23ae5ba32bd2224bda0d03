@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_7acab450",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-10-17T19:48:19Z",
+      "side": 1,
+      "message": "OK, where is \"mo.hpp?\" (:-)...\n\nWould you mind fixing the commit comment so it has more lines and fits in the gerrit gui [AYC, obviously]",
+      "revId": "e2f76afc90a299369e23ae5ba32bd2224bda0d03",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
