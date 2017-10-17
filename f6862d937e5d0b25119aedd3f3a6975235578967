@@ -34,6 +34,29 @@
       "revId": "f6862d937e5d0b25119aedd3f3a6975235578967",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_1a8d007c",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 122,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2017-10-17T15:02:30Z",
+      "side": 1,
+      "message": "If you can add the package \"boost_1_65-devel\" for RPM_SUSE_DEPENDS that will help in making this working on SUSE distros too.",
+      "range": {
+        "startLine": 122,
+        "startChar": 37,
+        "endLine": 122,
+        "endChar": 42
+      },
+      "revId": "f6862d937e5d0b25119aedd3f3a6975235578967",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
