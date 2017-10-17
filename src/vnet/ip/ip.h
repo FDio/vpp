@@ -199,6 +199,8 @@ u8 ip_interface_has_address (u32 sw_if_index, ip46_address_t * ip, u8 is_ip4);
 void ip_copy (ip46_address_t * dst, ip46_address_t * src, u8 is_ip4);
 void ip_set (ip46_address_t * dst, void *src, u8 is_ip4);
 void *ip_interface_get_first_ip (u32 sw_if_index, u8 is_ip4);
+void ip4_address_normalize (ip4_address_t * ip4, u8 preflen);
+void ip6_address_normalize (ip6_address_t * ip6, u8 preflen);
 
 #endif /* included_ip_main_h */
 
