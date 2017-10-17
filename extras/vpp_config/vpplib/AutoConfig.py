@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import yaml
+import ipaddress
 
 from vpplib.VPPUtil import VPPUtil
 from vpplib.VppPCIUtil import VppPCIUtil
@@ -82,6 +83,36 @@ class AutoConfig(object):
                 (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
                 if ret != 0:
                     logging.debug(stderr)
+
+    @staticmethod
+    def _ask_user_ipv4():
+        """
+        Asks the user for a number within a range.
+        default is returned if return is entered.
+
+        :returns: IP address and prefix len
+        :rtype: tuple
+        """
+
+        while True:
+            answer = raw_input("Please enter the IPv4 Address [n.n.n.n]: ")
+            try:
+                ipaddr = ipaddress.ip_address(u'{}'.format(answer))
+            except:
+                print "Please enter a valid IPv4 address."
+                continue
+
+            answer = raw_input("Please enter the netmask [n.n.n.n]: ")
+            try:
+                netmask = ipaddress.ip_address(u'{}'.format(answer))
+                pl = ipaddress.ip_network(u'0.0.0.0/{}'.format(netmask))
+                plen = pl.exploded.split('/')[1]
+                break
+            except:
+                print "Please enter a valid IPv4 address and netmask."
+                continue
+
+        return ipaddr, plen
 
     @staticmethod
     def _ask_user_range(question, first, last, default):
@@ -1150,7 +1181,7 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
             print "\nThere currently a total of {} huge pages.". \
                 format(total)
             question = \
-                "How many huge pages do you want [{} - {}][{}]? ".\
+                "How many huge pages do you want [{} - {}][{}]? ". \
                 format(MIN_TOTAL_HUGE_PAGES, maxpages, MIN_TOTAL_HUGE_PAGES)
             answer = self._ask_user_range(question, 1024, maxpages, 1024)
             node['hugepages']['total'] = str(answer)
@@ -1363,10 +1394,10 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
 
         # System Memory
         if 'free' in node['hugepages'] and \
-           'memfree' in node['hugepages'] and \
-           'size' in node['hugepages']:
-            free =  node['hugepages']['free']
-            memfree =  float(node['hugepages']['memfree'].split(' ')[0])
+                'memfree' in node['hugepages'] and \
+                'size' in node['hugepages']:
+            free = node['hugepages']['free']
+            memfree = float(node['hugepages']['memfree'].split(' ')[0])
             hugesize = float(node['hugepages']['size'].split(' ')[0])
 
             memhugepages = MIN_TOTAL_HUGE_PAGES * hugesize
@@ -1425,3 +1456,94 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
             self.min_system_resources(node)
 
             print "\n=============================="
+
+    def _ipv4_interface_setup_questions(self, node):
+        """
+        Ask the user some questions and get a list of interfaces
+        and IPv4 addresses associated with those interfaces
+
+        :param node: Node dictionary.
+        :type node: dict
+        :returns: A list or interfaces with ip addresses
+        :rtype: dict
+        """
+
+        vpputl = VPPUtil()
+        interfaces = vpputl.get_hardware(node)
+        if interfaces == {}:
+            return
+
+        interfaces_with_ip = []
+        for intf in sorted(interfaces.items()):
+            name = intf[0]
+            if name == 'local0':
+                continue
+
+            question = "Would you like an address to interface {} [Y/n]? ".format(name)
+            answer = self._ask_user_yn(question, 'y')
+            if answer == 'y':
+                address = {}
+                addr, plen = self._ask_user_ipv4()
+                address['name'] = name
+                address['addr'] = addr
+                address['plen'] = plen
+                interfaces_with_ip.append(address)
+
+        return interfaces_with_ip
+
+    def ipv4_interface_setup(self):
+        """
+        After asking the user some questions, get a list of interfaces
+        and IPv4 addresses associated with those interfaces
+
+        """
+
+        for i in self._nodes.items():
+            node = i[1]
+
+            # Show the current interfaces with IP addresses
+            current_ints = VPPUtil.get_int_ip(node)
+            if current_ints is not {}:
+                print ("\nThese are the current interfaces with IP addresses:")
+                for items in sorted(current_ints.items()):
+                    name = items[0]
+                    value = items[1]
+                    if 'address' not in value:
+                        address = 'Not Set'
+                    else:
+                        address = value['address']
+                    print ("{:30} {:20} {:10}".format(name, address, value['state']))
+                question = "\nWould you like to keep this configuration [Y/n]? "
+                answer = self._ask_user_yn(question, 'y')
+                if answer == 'y':
+                    continue
+            else:
+                print ("\nThere are currently no interfaces with IP addresses.")
+
+            # Create a script that add the ip addresses to the interfaces
+            # and brings the interfaces up
+            ints_with_addrs = self._ipv4_interface_setup_questions(node)
+            content = ''
+            for ints in ints_with_addrs:
+                name = ints['name']
+                addr = ints['addr']
+                plen = ints['plen']
+                setipstr = 'set int ip address {} {}/{}\n'.format(name, addr, plen)
+                setintupstr = 'set int state {} up\n'.format(name)
+                content += setipstr + setintupstr
+
+            # Write the content to the script
+            rootdir = node['rootdir']
+            filename = rootdir + '/vpp/vpp-config/scripts/set_int_ipv4_and_up'
+            with open(filename, 'w+') as sfile:
+                sfile.write(content)
+
+            # Execute the script
+            cmd = 'vppctl exec {}'.format(filename)
+            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            if ret != 0:
+                logging.debug(stderr)
+
+            print("\nA script as been created at {}".format(filename))
+            print("This script can be run using the following:")
+            print("vppctl exec {}\n".format(filename))

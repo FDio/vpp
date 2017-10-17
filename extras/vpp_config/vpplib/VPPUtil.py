@@ -373,6 +373,45 @@ class VPPUtil(object):
                     self.exec_command('vppctl sh {}'.format(value))
 
     @staticmethod
+    def get_int_ip(node):
+        """
+        Get the VPP interfaces and IP addresses
+
+        :param node: VPP node.
+        :type node: dict
+        :returns: Dictionary containing VPP interfaces and IP addresses
+        :rtype: dictionary
+        """
+        interfaces = {}
+        cmd = 'vppctl show int addr'
+        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        if ret != 0:
+            return interfaces
+
+        lines = stdout.split('\n')
+        if len(lines[0]) is not 0:
+            if lines[0].split(' ')[0] == 'FileNotFoundError':
+                return interfaces
+
+        for line in lines:
+            if len(line) is 0:
+                continue
+
+            # If the first character is not whitespace
+            # create a new interface
+            if len(re.findall(r'\s', line[0])) is 0:
+                spl = line.split()
+                name = spl[0]
+                if name == 'local0':
+                    continue
+                interfaces[name] = {}
+                interfaces[name]['state'] = spl[1].lstrip('(').rstrip('):\r')
+            else:
+                interfaces[name]['address'] = line.lstrip(' ').rstrip('\r')
+
+        return interfaces
+
+    @staticmethod
     def get_hardware(node):
         """
         Get the VPP hardware information and return it in a
@@ -380,7 +419,7 @@ class VPPUtil(object):
 
         :param node: VPP node.
         :type node: dict
-        :returns: Dictionary containing improtant VPP information
+        :returns: Dictionary containing VPP hardware information
         :rtype: dictionary
         """
 
