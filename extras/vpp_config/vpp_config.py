@@ -440,6 +440,16 @@ def autoconfig_patch_qemu():
         acfg.patch_qemu(node)
 
 
+def autoconfig_ipv4_setup():
+    """
+    Setup IPv4 interfaces
+
+    """
+
+    acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
+    acfg.ipv4_interface_setup()
+
+
 def autoconfig_not_implemented():
     """
     This feature is not implemented
@@ -447,6 +457,59 @@ def autoconfig_not_implemented():
     """
 
     print "\nThis Feature is not implemented yet...."
+
+
+def autoconfig_basic_test_menu():
+    """
+    The auto configuration basic test menu
+
+    """
+
+    basic_menu_text = '\nWhat would you like to do?\n\n\
+1) List/Create Simple IPv4 Setup\n\
+9 or q) Back to main menu.'
+
+    print "{}".format(basic_menu_text)
+
+    input_valid = False
+    answer = ''
+    while not input_valid:
+        answer = raw_input("\nCommand: ")
+        if len(answer) > 1:
+            print "Please enter only 1 character."
+            continue
+        if re.findall(r'[Qq1-29]', answer):
+            input_valid = True
+            answer = answer[0].lower()
+        else:
+            print "Please enter a character between 1 and 2 or 9."
+
+        if answer == '9':
+            answer = 'q'
+
+    return answer
+
+
+def autoconfig_basic_test():
+    """
+    The auto configuration basic test menu
+
+    """
+    vutil = VPPUtil()
+    pkgs = vutil.get_installed_vpp_pkgs()
+    if len(pkgs) == 0:
+        print "\nVPP is not installed, install VPP with option 4."
+        return
+
+    answer = ''
+    while answer != 'q':
+        answer = autoconfig_basic_test_menu()
+        if answer == '1':
+            autoconfig_ipv4_setup()
+        elif answer == '9' or answer == 'q':
+            return
+        else:
+            autoconfig_not_implemented()
 
 
 def autoconfig_main_menu():
@@ -461,6 +524,7 @@ def autoconfig_main_menu():
        and user input in {}/vpp/vpp-config/configs/auto-config.yaml\n\
 3) Full configuration (WARNING: This will change the system configuration)\n\
 4) List/Install/Uninstall VPP.\n\
+5) Execute some basic tests.\n\
 9 or q) Quit'.format(rootdir, rootdir)
 
     # 5) Dry Run from {}/vpp/vpp-config/auto-config.yaml (will not ask questions).\n\
@@ -479,7 +543,7 @@ def autoconfig_main_menu():
             input_valid = True
             answer = answer[0].lower()
         else:
-            print "Please enter a character between 1 and 7 or 9."
+            print "Please enter a character between 1 and 5 or 9."
 
     if answer == '9':
         answer = 'q'
@@ -503,6 +567,8 @@ def autoconfig_main():
             autoconfig_apply()
         elif answer == '4':
             autoconfig_install()
+        elif answer == '5':
+            autoconfig_basic_test()
         elif answer == '9' or answer == 'q':
             return
         else:
