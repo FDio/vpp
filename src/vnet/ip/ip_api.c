@@ -364,7 +364,7 @@ send_ip6_fib_details (vpe_api_main_t * am,
       }
     fp->weight = api_rpath->rpath.frp_weight;
     fp->preference = api_rpath->rpath.frp_preference;
-    fp->sw_if_index = api_rpath->rpath.frp_sw_if_index;
+    fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
     copy_fib_next_hop (api_rpath, fp);
     fp++;
   }
