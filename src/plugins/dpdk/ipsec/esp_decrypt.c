@@ -236,7 +236,7 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 	  u32 cipher_off, cipher_len;
 	  u32 auth_off = 0, auth_len = 0, aad_size = 0;
 	  u8 *aad = NULL, *digest = NULL;
-	  u64 digest_paddr = 0;
+	  u64 digest_paddr;
 
           u8 *iv = rte_pktmbuf_mtod_offset(mb0, void*, sizeof (esp_header_t));
           dpdk_cop_priv_t *priv = (dpdk_cop_priv_t *)(sym_cop + 1);
@@ -248,6 +248,8 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
           digest =
 	    vlib_buffer_get_current (b0) + sizeof(esp_header_t) +
 	    iv_size + payload_len;
+
+	  digest_paddr = mb0->buf_physaddr + (digest - (u8 *) mb0->buf_addr);
 
           if (is_aead)
             {
