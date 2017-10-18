@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_d504db16",
+        "filename": "Makefile",
+        "patchSetId": 4
+      },
+      "lineNbr": 132,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2017-10-18T07:27:11Z",
+      "side": 1,
+      "message": "Can you please update the URI to\nhttps://download.opensuse.org/tumbleweed/repo/oss/suse/x86_64/nasm-2.13.01-2.2.x86_64.rpm\n\nThanks.",
+      "range": {
+        "startLine": 132,
+        "startChar": 0,
+        "endLine": 132,
+        "endChar": 110
+      },
+      "revId": "1e8579dcacfe608ed4efe803705aaef746f299cb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
