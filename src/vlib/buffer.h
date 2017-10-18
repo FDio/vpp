@@ -142,7 +142,8 @@ typedef struct
   /**< Only valid for first buffer in chain. Current length plus
      total length given here give total number of bytes in buffer chain.
   */
-  u32 opaque2[13];  /**< More opaque data, currently unused */
+  u32 align_pad; /**< available */
+  u32 opaque2[12];  /**< More opaque data, see ../vnet/vnet/buffer.h */
 
   /***** end of second cache line */
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
@@ -512,7 +513,11 @@ serialize_vlib_buffer_n_bytes (serialize_main_t * m)
 #define VLIB_BUFFER_TRACE_TRAJECTORY 0
 
 #if VLIB_BUFFER_TRACE_TRAJECTORY > 0
-#define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b) (b)->pre_data[0]=0
+extern void (*vlib_buffer_trace_trajectory_cb) (vlib_buffer_t * b, u32 index);
+extern void (*vlib_buffer_trace_trajectory_init_cb) (vlib_buffer_t * b);
+extern void vlib_buffer_trace_trajectory_init (vlib_buffer_t * b);
+#define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b) \
+  vlib_buffer_trace_trajectory_init (b);
 #else
 #define VLIB_BUFFER_TRACE_TRAJECTORY_INIT(b)
 #endif /* VLIB_BUFFER_TRACE_TRAJECTORY */

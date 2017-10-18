@@ -190,6 +190,8 @@ show_gdb_command_fn (vlib_main_t * vm,
                      vlib_cli_command_t * cmd)
 {
   vlib_cli_output (vm, "vl(p) returns vec_len(p)");
+  vlib_cli_output (vm, "vb(b) returns vnet_buffer(b) [opaque]");
+  vlib_cli_output (vm, "vb2(b) returns vnet_buffer2(b) [opaque2]");
   vlib_cli_output (vm, "pe(p) returns pool_elts(p)");
   vlib_cli_output (vm, "pifi(p, i) returns pool_is_free_index(p, i)");
   vlib_cli_output (vm, "gdb_show_errors(0|1) dumps error counters");
@@ -216,6 +218,17 @@ vnet_buffer_opaque_t *vb (void *vb_arg)
 
     return rv;
 }
+
+vnet_buffer_opaque2_t *vb2 (void *vb_arg)
+{
+    vlib_buffer_t *b = (vlib_buffer_t *)vb_arg;
+    vnet_buffer_opaque2_t *rv;
+    
+    rv = vnet_buffer2(b);
+
+    return rv;
+}
+
 
 /* Cafeteria plan, maybe you don't want these functions */
 clib_error_t * 

@@ -1094,7 +1094,8 @@ nobase_include_HEADERS +=			\
 ########################################
 
 libvnet_la_SOURCES +=                    \
-  vnet/util/radix.c
+  vnet/util/radix.c			 \
+  vnet/util/trajectory.c
 
 ########################################
 # Plugin client library
