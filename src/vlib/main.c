@@ -884,51 +884,31 @@ vlib_elog_main_loop_event (vlib_main_t * vm,
 		/* data to log */ n_vectors);
 }
 
+#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
+void (*vlib_buffer_trace_trajectory_cb) (vlib_buffer_t * b, u32 node_index);
+void (*vlib_buffer_trace_trajectory_init_cb) (vlib_buffer_t * b);
+
 void
-vlib_dump_context_trace (vlib_main_t * vm, u32 bi)
+vlib_buffer_trace_trajectory_init (vlib_buffer_t * b)
 {
-  vlib_node_main_t *vnm = &vm->node_main;
-  vlib_buffer_t *b;
-  u8 i, n;
-
-  if (VLIB_BUFFER_TRACE_TRAJECTORY)
+  if (PREDICT_TRUE (vlib_buffer_trace_trajectory_init_cb != 0))
     {
-      b = vlib_get_buffer (vm, bi);
-      n = b->pre_data[0];
-
-      fformat (stderr, "Context trace for bi %d b 0x%llx, visited %d\n",
-	       bi, b, n);
-
-      if (n == 0 || n > 20)
-	{
-	  fformat (stderr, "n is unreasonable\n");
-	  return;
-	}
-
-
-      for (i = 0; i < n; i++)
-	{
-	  u32 node_index;
-
-	  node_index = b->pre_data[i + 1];
-
-	  if (node_index > vec_len (vnm->nodes))
-	    {
-	      fformat (stderr, "Skip bogus node index %d\n", node_index);
-	      continue;
-	    }
-
-	  fformat (stderr, "%v (%d)\n", vnm->nodes[node_index]->name,
-		   node_index);
-	}
-    }
-  else
-    {
-      fformat (stderr,
-	       "in vlib/buffers.h, #define VLIB_BUFFER_TRACE_TRAJECTORY 1\n");
+      (*vlib_buffer_trace_trajectory_init_cb) (b);
     }
 }
 
+#endif
+
+static inline void
+add_trajectory_trace (vlib_buffer_t * b, u32 node_index)
+{
+#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
+  if (PREDICT_TRUE (vlib_buffer_trace_trajectory_cb != 0))
+    {
+      (*vlib_buffer_trace_trajectory_cb) (b, node_index);
+    }
+#endif
+}
 
 static_always_inline u64
 dispatch_node (vlib_main_t * vm,
@@ -995,15 +975,12 @@ dispatch_node (vlib_main_t * vm,
       if (VLIB_BUFFER_TRACE_TRAJECTORY && frame)
 	{
 	  int i;
-	  int log_index;
 	  u32 *from;
 	  from = vlib_frame_vector_args (frame);
 	  for (i = 0; i < frame->n_vectors; i++)
 	    {
 	      vlib_buffer_t *b = vlib_get_buffer (vm, from[i]);
-	      ASSERT (b->pre_data[0] < 32);
-	      log_index = b->pre_data[0]++ + 1;
-	      b->pre_data[log_index] = node->node_index;
+	      add_trajectory_trace (b, node->node_index);
 	    }
 	  n = node->function (vm, node, frame);
 	}

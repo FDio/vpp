@@ -317,9 +317,26 @@ typedef struct
 {
   union
   {
+#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
+    /* buffer trajectory tracing */
+    struct
+    {
+      u16 *trajectory_trace;
+    };
+#endif
+    u32 unused[12];
   };
 } vnet_buffer_opaque2_t;
 
+#define vnet_buffer2(b) ((vnet_buffer_opaque2_t *) (b)->opaque2)
+
+/*
+ * The opaque2 field of the vlib_buffer_t is intepreted as a
+ * vnet_buffer_opaque2_t. Hence it should be big enough to accommodate one.
+ */
+STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
+	       STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
+	       "VNET buffer opaque2 meta-data too large for vlib_buffer");
 
 
 #endif /* included_vnet_buffer_h */

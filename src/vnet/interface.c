@@ -1170,6 +1170,7 @@ vnet_interface_init (vlib_main_t * vm)
   vnet_interface_main_t *im = &vnm->interface_main;
   vlib_buffer_t *b = 0;
   vnet_buffer_opaque_t *o = 0;
+  clib_error_t *error;
 
   /*
    * Keep people from shooting themselves in the foot.
@@ -1250,15 +1251,17 @@ vnet_interface_init (vlib_main_t * vm)
       }
   }
 
-  {
-    clib_error_t *error;
-
-    if ((error = vlib_call_init_function (vm, vnet_interface_cli_init)))
-      return error;
-
+  if ((error = vlib_call_init_function (vm, vnet_interface_cli_init)))
     return error;
-  }
+
   vnm->interface_tag_by_sw_if_index = hash_create (0, sizeof (uword));
+
+#if VLIB_BUFFER_TRACE_TRAJECTORY > 0
+  if ((error = vlib_call_init_function (vm, trajectory_trace_init)))
+    return error;
+#endif
+
+  return 0;
 }
 
 VLIB_INIT_FUNCTION (vnet_interface_init);
