@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a486d77_f5d35736",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/FutureInvokeCounterExample.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-18T10:51:53Z",
+      "side": 1,
+      "message": "it might be useful to add logs here as well to troubleshot the issue we are having",
+      "range": {
+        "startLine": 39,
+        "startChar": 8,
+        "endLine": 41,
+        "endChar": 9
+      },
+      "revId": "364318cc4dc66eada134a3a6492b04167fbcd5d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_551d8b0e",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/FutureInvokeCounterExample.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 46,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-18T10:51:53Z",
+      "side": 1,
+      "message": "also not thread safe, requires comment",
+      "range": {
+        "startLine": 38,
+        "startChar": 4,
+        "endLine": 46,
+        "endChar": 6
+      },
+      "revId": "364318cc4dc66eada134a3a6492b04167fbcd5d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_351a0f18",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/FutureInvokeCounterExample.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 76,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-18T10:51:53Z",
+      "side": 1,
+      "message": "I know it is just a draft but you could document this code a bit more to make it easier to analyse",
+      "range": {
+        "startLine": 76,
+        "startChar": 64,
+        "endLine": 76,
+        "endChar": 68
+      },
+      "revId": "364318cc4dc66eada134a3a6492b04167fbcd5d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_151713ef",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/FutureInvokeCounterExample.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 97,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-18T10:51:53Z",
+      "side": 1,
+      "message": "this is not thread safe and it is an issue because VPP uses different thread to call replyFc. Making currentCount volatile should be enough to fix that\n\n+ document that we do active wait to limit number of requests in the queue\n\nbtw. how many cores you have assigned to your VM?",
+      "range": {
+        "startLine": 97,
+        "startChar": 24,
+        "endLine": 97,
+        "endChar": 56
+      },
+      "revId": "364318cc4dc66eada134a3a6492b04167fbcd5d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a486d77_d5d85b55",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/FutureInvokeCounterExample.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 99,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-18T10:51:53Z",
+      "side": 1,
+      "message": "would it be cheating to use static instance here?",
+      "range": {
+        "startLine": 99,
+        "startChar": 91,
+        "endLine": 99,
+        "endChar": 108
+      },
+      "revId": "364318cc4dc66eada134a3a6492b04167fbcd5d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
