@@ -317,8 +317,8 @@ crypto_set_auth_xform (struct rte_crypto_sym_xform *xform,
   xform->auth.key.length = a->key_len;
   xform->auth.digest_length = a->trunc_size;
 #if DPDK_NO_AEAD
-  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128 |
-      sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192 |
+  if (sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128 ||
+      sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192 ||
       sa->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_256)
     xform->auth.algo = RTE_CRYPTO_AUTH_AES_GCM;
   xform->auth.add_auth_data_length = sa->use_esn ? 12 : 8;
