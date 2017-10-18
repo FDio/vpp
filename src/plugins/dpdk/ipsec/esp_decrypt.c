@@ -171,8 +171,8 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 	      auth_alg = vec_elt_at_index (dcm->auth_algs, sa0->integ_alg);
 
 #if DPDK_NO_AEAD
-	      is_aead = (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128 |
-			    sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192 |
+	      is_aead = (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128 ||
+			    sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192 ||
 			    sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_256);
 #else
 	      is_aead = (cipher_alg->type == RTE_CRYPTO_SYM_XFORM_AEAD);
@@ -470,8 +470,8 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
 	  cipher_alg = vec_elt_at_index (dcm->cipher_algs, sa0->crypto_alg);
 	  auth_alg = vec_elt_at_index (dcm->auth_algs, sa0->integ_alg);
 #if DPDK_NO_AEAD
-	  is_aead = (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128 |
-			sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192 |
+	  is_aead = (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128 ||
+			sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192 ||
 			sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_256);
 #else
 	  is_aead = cipher_alg->type == RTE_CRYPTO_SYM_XFORM_AEAD;
