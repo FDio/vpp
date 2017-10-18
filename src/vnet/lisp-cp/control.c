@@ -1344,6 +1344,8 @@ vnet_lisp_add_mapping (vnet_lisp_add_del_mapping_args_t * a,
   /* new mapping */
   else
     {
+      if (is_updated)
+	is_updated[0] = 1;
       remove_overlapping_sub_prefixes (lcm, &a->eid, 0 == ls_args->locators);
 
       ls_args->is_add = 1;
@@ -3246,6 +3248,7 @@ get_src_and_dst_eids_from_buffer (lisp_cp_main_t * lcm, vlib_buffer_t * b,
 	  gid_address_nsh_si (dst) = si;
 
 	  gid_address_type (dst) = GID_ADDR_NSH;
+	  gid_address_type (src) = GID_ADDR_NSH;
 	}
     }
 }
