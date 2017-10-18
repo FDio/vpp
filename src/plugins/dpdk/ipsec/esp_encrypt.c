@@ -358,6 +358,12 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  u32 cipher_off, cipher_len;
 	  u32 auth_off = 0, auth_len = 0, aad_size = 0;
 	  u8 *aad = NULL, *digest = NULL;
+	  u64 digest_paddr;
+
+	  digest =
+	    vlib_buffer_get_current (b0) + b0->current_length - trunc_size;
+
+	  digest_paddr = mb0->buf_physaddr + (digest - (u8 *) mb0->buf_addr);
 
 	  if (is_aead)
 	    {
@@ -380,10 +386,6 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		  *((u32 *) & aad[8]) = sa0->seq_hi;
 		  aad_size = 12;
 		}
-
-	      digest =
-		vlib_buffer_get_current (b0) + b0->current_length -
-		trunc_size;
 	    }
 	  else
 	    {
@@ -392,10 +394,6 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 
 	      auth_off = ip_hdr_size;
 	      auth_len = b0->current_length - ip_hdr_size - trunc_size;
-
-	      digest =
-		vlib_buffer_get_current (b0) + b0->current_length -
-		trunc_size;
 
 	      if (PREDICT_FALSE (sa0->use_esn))
 		{
@@ -407,7 +405,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  crypto_op_setup (is_aead, mb0, cop, sess,
 			   cipher_off, cipher_len, (u8 *) icb, iv_size,
 			   auth_off, auth_len, aad, aad_size,
-			   digest, 0, trunc_size);
+			   digest, digest_paddr, trunc_size);
 
 	  if (PREDICT_FALSE (is_ipv6))
 	    {

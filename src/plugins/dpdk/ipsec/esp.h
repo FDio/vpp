@@ -334,10 +334,6 @@ crypto_op_setup (u8 is_aead, struct rte_mbuf *mb0,
   sym_cop->m_src = mb0;
   rte_crypto_op_attach_sym_session (cop, session);
 
-  if (!digest_paddr)
-    digest_paddr =
-      rte_pktmbuf_mtophys_offset (mb0, (uintptr_t) digest - (uintptr_t) mb0);
-
 #if DPDK_NO_AEAD
   sym_cop->cipher.data.offset = cipher_off;
   sym_cop->cipher.data.length = cipher_len;
