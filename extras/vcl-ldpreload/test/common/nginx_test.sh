@@ -53,7 +53,9 @@ if [ -z "$(docker ps -qf name=$vpp_dk_name)" ] ; then
     sudo ip link del dev vpp_dk
     sudo ip link add name vpp_dk type veth peer name vpp1
     sudo ip link set dev vpp_dk up
+    sudo ethtool --offload vpp_dk rx off tx off
     sudo ip link set dev vpp1 up
+    sudo ethtool --offload vpp1 rx off tx off
     sudo ip link set dev lo up
     sudo brctl addif docker0 vpp_dk
 fi
