@@ -1014,7 +1014,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->state = STATE_ACCEPT;
   session->is_cut_thru = 0;
   session->is_server = 1;
-  session->port = ntohs (mp->port);
+  session->port = mp->port;
   session->peer_addr.is_ip4 = mp->is_ip4;
   clib_memcpy (&session->peer_addr.ip46, mp->ip,
 	       sizeof (session->peer_addr.ip46));
@@ -2198,9 +2198,10 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
       u8 *ip_str = format (0, "%U", format_ip46_address,
 			   &session->peer_addr.ip46,
 			   session->peer_addr.is_ip4);
-      clib_warning ("[%d] connect sid %d to %s server port %d",
+      clib_warning ("[%d] connect sid %d to %s server port %d proto %s",
 		    vcm->my_pid, session_index, ip_str,
-		    clib_net_to_host_u16 (session->port));
+		    clib_net_to_host_u16 (session->port),
+		    session->proto ? "UDP" : "TCP");
       vec_free (ip_str);
     }
 
@@ -2215,6 +2216,9 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
 		      vcm->my_pid, vppcom_retval_str (rv), rv);
       return rv;
     }
+  if (VPPCOM_DEBUG > 0)
+    clib_warning ("[%d] sid %d connected!", vcm->my_pid, session_index);
+
   return VPPCOM_OK;
 }
 
@@ -2487,19 +2491,19 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
 
   ASSERT (sizeof (clib_bitmap_t) == sizeof (long int));
 
-  if (read_map)
+  if (n_bits && read_map)
     {
       clib_bitmap_validate (vcm->rd_bitmap, minbits);
       clib_memcpy (vcm->rd_bitmap, read_map, vec_len (vcm->rd_bitmap));
       memset (read_map, 0, vec_len (vcm->rd_bitmap));
     }
-  if (write_map)
+  if (n_bits && write_map)
     {
       clib_bitmap_validate (vcm->wr_bitmap, minbits);
       clib_memcpy (vcm->wr_bitmap, write_map, vec_len (vcm->wr_bitmap));
       memset (write_map, 0, vec_len (vcm->wr_bitmap));
     }
-  if (except_map)
+  if (n_bits && except_map)
     {
       clib_bitmap_validate (vcm->ex_bitmap, minbits);
       clib_memcpy (vcm->ex_bitmap, except_map, vec_len (vcm->ex_bitmap));
