@@ -125,6 +125,10 @@ M:	Keith Burns <alagalah@gmail.com>
 M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/vnet/vxlan-gpe/
 
+VNET GENEVE
+M:	Marco Varlese <marco.varlese@suse.com>
+F:	src/vnet/geneve/
+
 Plugin - ACL
 M:	Andrew Yourtchenko <ayourtch@gmail.com>
 F:	src/plugins/acl/
