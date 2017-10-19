@@ -1256,16 +1256,6 @@ vcom_socket_bind (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
     }
 
   rv = vppcom_session_bind (vsock->sid, &ep);
-  /* TBD: remove libc_bind code snippet
-   * once vppcom implements vppcom_session_getsockname */
-  if (rv == 0)
-    {
-      rv = libc_bind (__fd, __addr, __len);
-      if (rv != 0)
-	{
-	  rv = -errno;
-	}
-    }
   return rv;
 }
 
@@ -1741,12 +1731,7 @@ vppcom_getsockopt (int __sid, int __level, int __optname,
 {
   /* 1. for socket level options that are NOT socket attributes
    *    and that has corresponding vpp options get from vppcom */
-#if 0
   return 0;
-#endif
-
-  /* 2. unhandled options */
-  return -ENOPROTOOPT;
 }
 
 int
