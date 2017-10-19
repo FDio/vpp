@@ -1805,6 +1805,7 @@ vl_api_pg_capture_t_handler (vl_api_pg_capture_t * mp)
   vnet_hw_interface_t *hi = 0;
 
   u8 *intf_name = format (0, "pg%d", ntohl (mp->interface_id), 0);
+  vec_terminate_c_string (intf_name);
   u32 hw_if_index = ~0;
   uword *p = hash_get_mem (im->hw_interface_by_name, intf_name);
   if (p)
@@ -2108,6 +2109,9 @@ vl_api_feature_enable_disable_t_handler (vl_api_feature_enable_disable_t * mp)
 
   u8 *arc_name = format (0, "%s%c", mp->arc_name, 0);
   u8 *feature_name = format (0, "%s%c", mp->feature_name, 0);
+
+  vec_terminate_c_string (arc_name);
+  vec_terminate_c_string (feature_name);
 
   vnet_feature_registration_t *reg =
     vnet_get_feature_reg ((const char *) arc_name,
