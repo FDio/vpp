@@ -58,6 +58,7 @@ vl_api_policer_add_del_t_handler (vl_api_policer_add_del_t * mp)
   u32 policer_index;
 
   name = format (0, "%s", mp->name);
+  vec_add1(name, 0);
 
   memset (&cfg, 0, sizeof (cfg));
   cfg.rfc = mp->type;
@@ -152,6 +153,7 @@ vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
   if (mp->match_name_valid)
     {
       match_name = format (0, "%s%c", mp->match_name, 0);
+      vec_add1(match_name, 0);
     }
 
   if (mp->match_name_valid)
