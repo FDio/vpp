@@ -203,6 +203,7 @@ vl_api_one_add_del_locator_set_t_handler (vl_api_one_add_del_locator_set_t *
   memset (a, 0, sizeof (a[0]));
 
   locator_name = format (0, "%s", mp->locator_set_name);
+  vec_terminate_c_string (locator_name);
 
   a->name = locator_name;
   a->is_add = mp->is_add;
@@ -257,6 +258,7 @@ vl_api_one_add_del_locator_t_handler (vl_api_one_add_del_locator_t * mp)
   vec_add1 (locators, locator);
 
   locator_name = format (0, "%s", mp->locator_set_name);
+  vec_terminate_c_string (locator_name);
 
   a->name = locator_name;
   a->locators = locators;
@@ -343,6 +345,7 @@ vl_api_one_add_del_local_eid_t_handler (vl_api_one_add_del_local_eid_t * mp)
     }
 
   name = format (0, "%s", mp->locator_set_name);
+  vec_terminate_c_string (name);
   p = hash_get_mem (lcm->locator_set_index_by_name, name);
   if (!p)
     {
@@ -483,6 +486,7 @@ vl_api_one_nsh_set_locator_set_t_handler (vl_api_one_nsh_set_locator_set_t
   u8 *ls_name = 0;
 
   ls_name = format (0, "%s", mp->ls_name);
+  vec_terminate_c_string (ls_name);
   rv = vnet_lisp_nsh_set_locator_set (ls_name, mp->is_add);
   vec_free (ls_name);
 
@@ -498,6 +502,7 @@ vl_api_one_pitr_set_locator_set_t_handler (vl_api_one_pitr_set_locator_set_t
   u8 *ls_name = 0;
 
   ls_name = format (0, "%s", mp->ls_name);
+  vec_terminate_c_string (ls_name);
   rv = vnet_lisp_pitr_set_locator_set (ls_name, mp->is_add);
   vec_free (ls_name);
 
@@ -585,6 +590,7 @@ static void
   vnet_lisp_add_del_mreq_itr_rloc_args_t _a, *a = &_a;
 
   locator_set_name = format (0, "%s", mp->locator_set_name);
+  vec_terminate_c_string (locator_set_name);
 
   a->is_add = mp->is_add;
   a->locator_set_name = locator_set_name;
@@ -728,6 +734,7 @@ vl_api_one_locator_dump_t_handler (vl_api_one_locator_dump_t * mp)
       /* make sure we get a proper C-string */
       mp->ls_name[sizeof (mp->ls_name) - 1] = 0;
       ls_name = format (0, "%s", mp->ls_name);
+      vec_terminate_c_string (ls_name);
       p = hash_get_mem (lcm->locator_set_index_by_name, ls_name);
       if (!p)
 	goto out;
