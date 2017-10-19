@@ -127,13 +127,6 @@ vppcom_retval_str (int retval)
   return st;
 }
 
-static inline int
-is_vcom_fd (int fd)
-{
-#define VPPCOM_FD_OFFSET (1 << 30)
-  return (fd >= VPPCOM_FD_OFFSET);
-}
-
 /* TBD: make these constructor/destructor function */
 extern int vppcom_app_create (char *app_name);
 extern void vppcom_app_destroy (void);
