@@ -1678,12 +1678,12 @@ class BFDFIBTestCase(VppTestCase):
         ip_2001_s_64 = VppIpRoute(self, "2001::", 64,
                                   [VppRoutePath(self.pg0.remote_ip6,
                                                 self.pg0.sw_if_index,
-                                                proto=DPO_PROTO_IP6)],
+                                                proto=DpoProto.DPO_PROTO_IP6)],
                                   is_ip6=1)
         ip_2002_s_64 = VppIpRoute(self, "2002::", 64,
                                   [VppRoutePath(self.pg0.remote_ip6,
                                                 0xffffffff,
-                                                proto=DPO_PROTO_IP6)],
+                                                proto=DpoProto.DPO_PROTO_IP6)],
                                   is_ip6=1)
         ip_2001_s_64.add_vpp_config()
         ip_2002_s_64.add_vpp_config()
