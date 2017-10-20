@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bdc9faba_6324457c",
+        "filename": "src/vppinfra/cuckoo_template.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 879,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-10-20T11:02:30Z",
+      "side": 1,
+      "message": "this goes far beyond 80chars",
+      "range": {
+        "startLine": 879,
+        "startChar": 2,
+        "endLine": 879,
+        "endChar": 287
+      },
+      "revId": "7d6c02f211841de4e3bebfaf06bd011181d610b8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
