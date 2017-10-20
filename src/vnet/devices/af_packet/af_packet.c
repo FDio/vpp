@@ -406,6 +406,33 @@ af_packet_delete_if (vlib_main_t * vm, u8 * host_if_name)
   return 0;
 }
 
+int
+af_packet_set_l4_cksum_offload (vlib_main_t * vm, u8 * host_if_name, u8 set)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  af_packet_main_t *apm = &af_packet_main;
+  af_packet_if_t *apif;
+  vnet_hw_interface_t *hw;
+  uword *p;
+
+  p = mhash_get (&apm->if_index_by_host_if_name, host_if_name);
+  if (p == NULL)
+    {
+      clib_warning ("Host interface %s does not exist", host_if_name);
+      return VNET_API_ERROR_SYSCALL_ERROR_1;
+    }
+  apif = pool_elt_at_index (apm->interfaces, p[0]);
+
+  hw = vnet_get_hw_interface (vnm, apif->hw_if_index);
+
+  if (set)
+    hw->flags &= ~VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+  else
+    hw->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+
+  return 0;
+}
+
 static clib_error_t *
 af_packet_init (vlib_main_t * vm)
 {

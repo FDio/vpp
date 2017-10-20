@@ -211,6 +211,73 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 		  first_bi0 = bi0;
 		  first_b0 = vlib_get_buffer (vm, first_bi0);
+
+		  if (tph->tp_status & TP_STATUS_CSUMNOTREADY)
+		    {
+		      /* mark tcp/udp packet for cksum calculation */
+		      ethernet_header_t *eth =
+			vlib_buffer_get_current (first_b0);
+		      if (clib_net_to_host_u16 (eth->type) == 0x0800)
+			{
+			  ip4_header_t *ip4 =
+			    (vlib_buffer_get_current (first_b0) +
+			     sizeof (ethernet_header_t));
+			  first_b0->flags |= VNET_BUFFER_F_IS_IP4;
+			  if (ip4->protocol == 0x06)
+			    {
+			      first_b0->flags |=
+				VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+			      ((tcp_header_t
+				*) (vlib_buffer_get_current (first_b0) +
+				    sizeof (ethernet_header_t) +
+				    sizeof (ip4_header_t)))->checksum = 0;
+			    }
+			  else if (ip4->protocol == 0x11)
+			    {
+			      first_b0->flags |=
+				VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+			      ((udp_header_t
+				*) (vlib_buffer_get_current (first_b0) +
+				    sizeof (ethernet_header_t) +
+				    sizeof (ip4_header_t)))->checksum = 0;
+			    }
+			  vnet_buffer (first_b0)->l3_hdr_offset =
+			    sizeof (ethernet_header_t);
+			  vnet_buffer (first_b0)->l4_hdr_offset =
+			    sizeof (ethernet_header_t) +
+			    sizeof (ip4_header_t);
+			}
+		      else if (clib_net_to_host_u16 (eth->type) == 0x86dd)
+			{
+			  ip6_header_t *ip6 =
+			    (vlib_buffer_get_current (first_b0) +
+			     sizeof (ethernet_header_t));
+			  first_b0->flags |= VNET_BUFFER_F_IS_IP6;
+			  if (ip6->protocol == 0x06)
+			    {
+			      first_b0->flags |=
+				VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+			      ((tcp_header_t
+				*) (vlib_buffer_get_current (first_b0) +
+				    sizeof (ethernet_header_t) +
+				    sizeof (ip6_header_t)))->checksum = 0;
+			    }
+			  else if (ip6->protocol == 0x11)
+			    {
+			      first_b0->flags |=
+				VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+			      ((udp_header_t
+				*) (vlib_buffer_get_current (first_b0) +
+				    sizeof (ethernet_header_t) +
+				    sizeof (ip6_header_t)))->checksum = 0;
+			    }
+			  vnet_buffer (first_b0)->l3_hdr_offset =
+			    sizeof (ethernet_header_t);
+			  vnet_buffer (first_b0)->l4_hdr_offset =
+			    sizeof (ethernet_header_t) +
+			    sizeof (ip6_header_t);
+			}
+		    }
 		}
 	      else
 		buffer_add_to_chain (vm, bi0, first_bi0, prev_bi0);
