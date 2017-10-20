@@ -2513,91 +2513,100 @@ vppcom_select (unsigned long n_bits, unsigned long *read_map,
   do
     {
       /* *INDENT-OFF* */
-      clib_bitmap_foreach (session_index, vcm->rd_bitmap,
-        ({
-          clib_spinlock_lock (&vcm->sessions_lockp);
-          rv = vppcom_session_at_index (session_index, &session);
-          if (rv < 0)
+      if (n_bits)
+        {
+          if (read_map)
             {
-              clib_spinlock_unlock (&vcm->sessions_lockp);
-              if (VPPCOM_DEBUG > 1)
-                clib_warning ("[%d] session %d specified in "
-                              "read_map is closed.", vcm->my_pid,
-                              session_index);
-              bits_set = VPPCOM_EBADFD;
-              goto select_done;
+              clib_bitmap_foreach (session_index, vcm->rd_bitmap,
+                ({
+                  clib_spinlock_lock (&vcm->sessions_lockp);
+                  rv = vppcom_session_at_index (session_index, &session);
+                  if (rv < 0)
+                    {
+                      clib_spinlock_unlock (&vcm->sessions_lockp);
+                      if (VPPCOM_DEBUG > 1)
+                        clib_warning ("[%d] session %d specified in "
+                                      "read_map is closed.", vcm->my_pid,
+                                      session_index);
+                      bits_set = VPPCOM_EBADFD;
+                      goto select_done;
+                    }
+
+                  rv = vppcom_session_read_ready (session, session_index);
+                  clib_spinlock_unlock (&vcm->sessions_lockp);
+                  if (except_map && vcm->ex_bitmap &&
+                      clib_bitmap_get (vcm->ex_bitmap, session_index) &&
+                      (rv < 0))
+                    {
+                      // TBD: clib_warning
+                      clib_bitmap_set_no_check (except_map, session_index, 1);
+                      bits_set++;
+                    }
+                  else if (rv > 0)
+                    {
+                      // TBD: clib_warning
+                      clib_bitmap_set_no_check (read_map, session_index, 1);
+                      bits_set++;
+                    }
+                }));
             }
 
-          rv = vppcom_session_read_ready (session, session_index);
-          clib_spinlock_unlock (&vcm->sessions_lockp);
-          if (vcm->ex_bitmap &&
-              clib_bitmap_get (vcm->ex_bitmap, session_index) && (rv < 0))
+          if (write_map)
             {
-              // TBD: clib_warning
-              /* coverity[FORWARD_NULL] */
-              clib_bitmap_set_no_check (except_map, session_index, 1);
-              bits_set++;
-            }
-          else if (rv > 0)
-            {
-              // TBD: clib_warning
-              /* coverity[FORWARD_NULL] */
-              clib_bitmap_set_no_check (read_map, session_index, 1);
-              bits_set++;
-            }
-        }));
+              clib_bitmap_foreach (session_index, vcm->wr_bitmap,
+                ({
+                  clib_spinlock_lock (&vcm->sessions_lockp);
+                  rv = vppcom_session_at_index (session_index, &session);
+                  if (rv < 0)
+                    {
+                      clib_spinlock_unlock (&vcm->sessions_lockp);
+                      if (VPPCOM_DEBUG > 0)
+                        clib_warning ("[%d] session %d specified in "
+                                      "write_map is closed.", vcm->my_pid,
+                                      session_index);
+                      bits_set = VPPCOM_EBADFD;
+                      goto select_done;
+                    }
 
-      clib_bitmap_foreach (session_index, vcm->wr_bitmap,
-        ({
-          clib_spinlock_lock (&vcm->sessions_lockp);
-          rv = vppcom_session_at_index (session_index, &session);
-          if (rv < 0)
-            {
-              clib_spinlock_unlock (&vcm->sessions_lockp);
-              if (VPPCOM_DEBUG > 0)
-                clib_warning ("[%d] session %d specified in "
-                              "write_map is closed.", vcm->my_pid,
-                              session_index);
-              bits_set = VPPCOM_EBADFD;
-              goto select_done;
+                  rv = vppcom_session_write_ready (session, session_index);
+                  clib_spinlock_unlock (&vcm->sessions_lockp);
+                  if (write_map && (rv > 0))
+                    {
+                      // TBD: clib_warning
+                      clib_bitmap_set_no_check (write_map, session_index, 1);
+                      bits_set++;
+                    }
+                }));
             }
 
-          rv = vppcom_session_write_ready (session, session_index);
-          clib_spinlock_unlock (&vcm->sessions_lockp);
-          if (rv > 0 )
+          if (except_map)
             {
-              // TBD: clib_warning
-              /* coverity[FORWARD_NULL] */
-              clib_bitmap_set_no_check (write_map, session_index, 1);
-              bits_set++;
-            }
-        }));
+              clib_bitmap_foreach (session_index, vcm->ex_bitmap,
+                ({
+                  clib_spinlock_lock (&vcm->sessions_lockp);
+                  rv = vppcom_session_at_index (session_index, &session);
+                  if (rv < 0)
+                    {
+                      clib_spinlock_unlock (&vcm->sessions_lockp);
+                      if (VPPCOM_DEBUG > 1)
+                        clib_warning ("[%d] session %d specified in "
+                                      "except_map is closed.", vcm->my_pid,
+                                      session_index);
+                      bits_set = VPPCOM_EBADFD;
+                      goto select_done;
+                    }
 
-      clib_bitmap_foreach (session_index, vcm->ex_bitmap,
-        ({
-          clib_spinlock_lock (&vcm->sessions_lockp);
-          rv = vppcom_session_at_index (session_index, &session);
-          if (rv < 0)
-            {
-              clib_spinlock_unlock (&vcm->sessions_lockp);
-              if (VPPCOM_DEBUG > 1)
-                clib_warning ("[%d] session %d specified in "
-                              "except_map is closed.", vcm->my_pid,
-                              session_index);
-              bits_set = VPPCOM_EBADFD;
-              goto select_done;
+                  rv = vppcom_session_read_ready (session, session_index);
+                  clib_spinlock_unlock (&vcm->sessions_lockp);
+                  if (rv < 0)
+                    {
+                      // TBD: clib_warning
+                      clib_bitmap_set_no_check (except_map, session_index, 1);
+                      bits_set++;
+                    }
+                }));
             }
-
-          rv = vppcom_session_read_ready (session, session_index);
-          clib_spinlock_unlock (&vcm->sessions_lockp);
-          if (rv < 0)
-            {
-              // TBD: clib_warning
-              /* coverity[FORWARD_NULL] */
-              clib_bitmap_set_no_check (except_map, session_index, 1);
-              bits_set++;
-            }
-        }));
+        }
       /* *INDENT-ON* */
     }
   while (clib_time_now (&vcm->clib_time) < timeout);
@@ -2641,6 +2650,7 @@ vep_verify_epoll_chain (u32 vep_idx)
   do
     {
       vep = &session->vep;
+      sid = vep->next_sid;
       if (session->is_vep_session)
 	{
 	  if (VPPCOM_DEBUG > 1)
@@ -2659,7 +2669,6 @@ vep_verify_epoll_chain (u32 vep_idx)
 			  vep->vep_idx, vep->vep_idx,
 			  vep->ev.events, vep->ev.data.u64, vep->et_mask);
 	}
-      sid = vep->next_sid;
       if (sid != ~0)
 	{
 	  rv = vppcom_session_at_index (sid, &session);
@@ -3229,6 +3238,10 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 
     case VPPCOM_ATTR_SET_TCP_KEEPINTVL:
       break;
+
+    default:
+      rv = VPPCOM_EINVAL;
+      break;
     }
 
 done:
@@ -3236,10 +3249,10 @@ done:
   return rv;
 }
 
-  /*
-   * fd.io coding-style-patch-verification: ON
-   *
-   * Local Variables:
-   * eval: (c-set-style "gnu")
-   * End:
-   */
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

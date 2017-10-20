@@ -673,8 +673,8 @@ vcom_socket_check_fcntl_cmd (int __cmd)
   return 0;
 }
 
-static int
-vppcom_session_fcntl_va (int __sid, int __cmd, va_list __ap)
+static inline int
+vcom_session_fcntl_va (int __sid, int __cmd, va_list __ap)
 {
   int flags = va_arg (__ap, int);
   int rv = -EOPNOTSUPP;
@@ -730,7 +730,7 @@ vcom_socket_fcntl_va (int __fd, int __cmd, va_list __ap)
       break;
       /* cmd handled by vppcom */
     case 3:
-      rv = vppcom_session_fcntl_va (vsock->sid, __cmd, __ap);
+      rv = vcom_session_fcntl_va (vsock->sid, __cmd, __ap);
       break;
 
     default:
@@ -767,8 +767,8 @@ vcom_socket_check_ioctl_cmd (unsigned long int __cmd)
   return rc;
 }
 
-static int
-vppcom_session_ioctl_va (int __sid, int __cmd, va_list __ap)
+static inline int
+vcom_session_ioctl_va (int __sid, int __cmd, va_list __ap)
 {
   int rv;
 
@@ -817,7 +817,7 @@ vcom_socket_ioctl_va (int __fd, unsigned long int __cmd, va_list __ap)
 
       /* cmd handled by vppcom */
     case 3:
-      rv = vppcom_session_ioctl_va (vsock->sid, __cmd, __ap);
+      rv = vcom_session_ioctl_va (vsock->sid, __cmd, __ap);
       break;
 
     default:
@@ -1005,6 +1005,8 @@ vcom_socket_select (int vcom_nfds, fd_set * __restrict vcom_readfds,
 		    fd_set * __restrict vcom_exceptfds,
 		    struct timeval *__restrict timeout)
 {
+  static unsigned long vcom_nsid_fds = 0;
+  int vcom_nsid = 0;
   int rv = -EBADF;
   pid_t pid = getpid ();
 
@@ -1015,8 +1017,6 @@ vcom_socket_select (int vcom_nfds, fd_set * __restrict vcom_readfds,
   fd_set vcom_rd_sid_fds;
   fd_set vcom_wr_sid_fds;
   fd_set vcom_ex_sid_fds;
-  unsigned long vcom_nsid_fds = 0;
-  int vcom_nsid = 0;
 
   /* in seconds eg. 3.123456789 seconds */
   double time_to_wait = (double) 0;
@@ -1070,6 +1070,24 @@ vcom_socket_select (int vcom_nfds, fd_set * __restrict vcom_readfds,
   _(&vcom_ex_sid_fds, vcom_exceptfds);
 #undef _
 
+  if (vcom_nfds == 0)
+    {
+      if (time_to_wait > 0)
+	{
+	  if (VCOM_DEBUG > 0)
+	    fprintf (stderr,
+		     "[%d] vcom_socket_select called to "
+		     "emulate delay_ns()!\n", pid);
+	  rv = vppcom_select (0, NULL, NULL, NULL, time_to_wait);
+	}
+      else
+	{
+	  fprintf (stderr, "[%d] vcom_socket_select called vcom_nfds = 0 "
+		   "and invalid time_to_wait (%f)!\n", pid, time_to_wait);
+	}
+      return 0;
+    }
+
   /* populate read, write and except sid_sets */
   vcom_nsid = vcom_socket_fds_2_sid_fds (
 					  /* dest */
@@ -1102,8 +1120,8 @@ vcom_socket_select (int vcom_nfds, fd_set * __restrict vcom_readfds,
 		      NULL,
 		      vcom_exceptfds ? (unsigned long *) &vcom_ex_sid_fds :
 		      NULL, time_to_wait);
-  if (VCOM_DEBUG > 0)
-    fprintf (stderr, "[%d] vppcom_select: "
+  if (VCOM_DEBUG > 2)
+    fprintf (stderr, "[%d] called vppcom_select(): "
 	     "'%04d'='%04d'\n", pid, rv, (int) vcom_nsid_fds);
 
   /* check if any file descriptors changed status */
@@ -1259,8 +1277,8 @@ vcom_socket_bind (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
   return rv;
 }
 
-int
-vppcom_session_getsockname (int sid, vppcom_endpt_t * ep)
+static inline int
+vcom_session_getsockname (int sid, vppcom_endpt_t * ep)
 {
   int rv;
   uint32_t size = sizeof (*ep);
@@ -1300,7 +1318,7 @@ vcom_socket_getsockname (int __fd, __SOCKADDR_ARG __addr,
 
   vppcom_endpt_t ep;
   ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
-  rv = vppcom_session_getsockname (vsock->sid, &ep);
+  rv = vcom_session_getsockname (vsock->sid, &ep);
   if (rv == 0)
     {
       if (ep.vrf == VPPCOM_VRF_DEFAULT)
@@ -1371,8 +1389,8 @@ vcom_socket_connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
   return rv;
 }
 
-int
-vppcom_session_getpeername (int sid, vppcom_endpt_t * ep)
+static inline int
+vcom_session_getpeername (int sid, vppcom_endpt_t * ep)
 {
   int rv;
   uint32_t size = sizeof (*ep);
@@ -1412,7 +1430,7 @@ vcom_socket_getpeername (int __fd, __SOCKADDR_ARG __addr,
 
   vppcom_endpt_t ep;
   ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
-  rv = vppcom_session_getpeername (vsock->sid, &ep);
+  rv = vcom_session_getpeername (vsock->sid, &ep);
   if (rv == 0)
     {
       if (ep.vrf == VPPCOM_VRF_DEFAULT)
@@ -1499,10 +1517,10 @@ vcom_socket_is_connection_mode_socket (int __fd)
   return 0;
 }
 
-ssize_t
-vvppcom_session_sendto (int __sid, const void *__buf, size_t __n,
-			int __flags, __CONST_SOCKADDR_ARG __addr,
-			socklen_t __addr_len)
+static inline ssize_t
+vcom_session_sendto (int __sid, void *__buf, size_t __n,
+		     int __flags, __CONST_SOCKADDR_ARG __addr,
+		     socklen_t __addr_len)
 {
   int rv = -1;
   /* TBD add new vpp api  */
@@ -1529,10 +1547,7 @@ vcom_socket_sendto (int __fd, const void *__buf, size_t __n,
   if (!vsock)
     return -ENOTSOCK;
 
-  if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
-    return -EINVAL;
-
-  if (!__buf || __n < 0)
+  if ((vsock->type != SOCKET_TYPE_VPPCOM_BOUND) || !__buf || __n < 0)
     {
       return -EINVAL;
     }
@@ -1559,16 +1574,15 @@ vcom_socket_sendto (int __fd, const void *__buf, size_t __n,
 	}
     }
 
-  rv = vvppcom_session_sendto (vsock->sid, (void *) __buf, (int) __n,
-			       __flags, __addr, __addr_len);
+  rv = vcom_session_sendto (vsock->sid, (void *) __buf, (int) __n,
+			    __flags, __addr, __addr_len);
   return rv;
 }
 
-/* TBD: move it to vppcom */
-static ssize_t
-vppcom_session_recvfrom (int __sid, void *__restrict __buf, size_t __n,
-			 int __flags, __SOCKADDR_ARG __addr,
-			 socklen_t * __restrict __addr_len)
+static inline ssize_t
+vcom_session_recvfrom (int __sid, void *__restrict __buf, size_t __n,
+		       int __flags, __SOCKADDR_ARG __addr,
+		       socklen_t * __restrict __addr_len)
 {
   int rv = -1;
 
@@ -1595,27 +1609,20 @@ vcom_socket_recvfrom (int __fd, void *__restrict __buf, size_t __n,
   if (!vsock)
     return -ENOTSOCK;
 
-  if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
-    return -EINVAL;
-
-  if (!__buf || __n < 0)
+  if ((vsock->type != SOCKET_TYPE_VPPCOM_BOUND) ||
+      !__buf || __n < 0 || !__addr || !__addr_len || (__addr_len < 0))
     {
       return -EINVAL;
     }
 
-  if (__addr || __addr_len < 0)
-    {
-      return -EINVAL;
-    }
-
-  rv = vppcom_session_recvfrom (vsock->sid, __buf, __n,
-				__flags, __addr, __addr_len);
+  rv = vcom_session_recvfrom (vsock->sid, __buf, __n,
+			      __flags, __addr, __addr_len);
   return rv;
 }
 
 /* TBD: move it to vppcom */
-static ssize_t
-vppcom_sendmsg (int __sid, const struct msghdr *__message, int __flags)
+static inline ssize_t
+vcom_session_sendmsg (int __sid, const struct msghdr *__message, int __flags)
 {
   int rv = -1;
   /* rv = vppcom_session_write (__sid, (void *) __message->__buf,
@@ -1656,7 +1663,7 @@ vcom_socket_sendmsg (int __fd, const struct msghdr * __message, int __flags)
       ;
     }
 
-  rv = vppcom_sendmsg (vsock->sid, __message, __flags);
+  rv = vcom_session_sendmsg (vsock->sid, __message, __flags);
 
   return rv;
 }
@@ -1673,8 +1680,8 @@ vcom_socket_sendmmsg (int __fd, struct mmsghdr *__vmessages,
 #endif
 
 /* TBD: move it to vppcom */
-static ssize_t
-vppcom_recvmsg (int __sid, struct msghdr *__message, int __flags)
+static inline ssize_t
+vcom_session_recvmsg (int __sid, struct msghdr *__message, int __flags)
 {
   int rv = -1;
   /* rv = vppcom_session_read (__sid, (void *) __message->__buf,
@@ -1709,7 +1716,7 @@ vcom_socket_recvmsg (int __fd, struct msghdr * __message, int __flags)
 
   /* validate __flags */
 
-  rv = vppcom_recvmsg (vsock->sid, __message, __flags);
+  rv = vcom_session_recvmsg (vsock->sid, __message, __flags);
   return rv;
 }
 
@@ -1725,9 +1732,10 @@ vcom_socket_recvmmsg (int __fd, struct mmsghdr *__vmessages,
 #endif
 
 /* TBD: move it to vppcom */
-static int
-vppcom_getsockopt (int __sid, int __level, int __optname,
-		   void *__restrict __optval, socklen_t * __restrict __optlen)
+static inline int
+vcom_session_get_sockopt (int __sid, int __level, int __optname,
+			  void *__restrict __optval,
+			  socklen_t * __restrict __optlen)
 {
   /* 1. for socket level options that are NOT socket attributes
    *    and that has corresponding vpp options get from vppcom */
@@ -1842,23 +1850,18 @@ vcom_socket_getsockopt (int __fd, int __level, int __optname,
     default:
       /* 1. handle options that are NOT socket level options,
        *    but have corresponding vpp otions. */
-      rv = vppcom_getsockopt (vsock->sid, __level, __optname,
-			      __optval, __optlen);
-
-      return rv;
-#if 0
-      /* 2. unhandled options */
-      return -ENOPROTOOPT;
-#endif
+      rv = vcom_session_get_sockopt (vsock->sid, __level, __optname,
+				     __optval, __optlen);
+      break;
     }
 
   return rv;
 }
 
 /* TBD: move it to vppcom */
-int
-vppcom_session_setsockopt (int __sid, int __level, int __optname,
-			   const void *__optval, socklen_t __optlen)
+static inline int
+vcom_session_setsockopt (int __sid, int __level, int __optname,
+			 const void *__optval, socklen_t __optlen)
 {
   int rv = -EOPNOTSUPP;
 
@@ -1958,8 +1961,8 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
       switch (__optname)
 	{
 	case IPV6_V6ONLY:
-	  rv = vppcom_session_setsockopt (vsock->sid, __level, __optname,
-					  __optval, __optlen);
+	  rv = vcom_session_setsockopt (vsock->sid, __level, __optname,
+					__optval, __optlen);
 	  break;
 	default:
 	  return -EOPNOTSUPP;
@@ -1972,8 +1975,8 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
 	  return 0;
 	case TCP_KEEPIDLE:
 	case TCP_KEEPINTVL:
-	  rv = vppcom_session_setsockopt (vsock->sid, __level, __optname,
-					  __optval, __optlen);
+	  rv = vcom_session_setsockopt (vsock->sid, __level, __optname,
+					__optval, __optlen);
 	  break;
 	default:
 	  return -EOPNOTSUPP;
@@ -1986,8 +1989,8 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
 	case SO_REUSEADDR:
 	case SO_BROADCAST:
 	case SO_KEEPALIVE:
-	  rv = vppcom_session_setsockopt (vsock->sid, __level, __optname,
-					  __optval, __optlen);
+	  rv = vcom_session_setsockopt (vsock->sid, __level, __optname,
+					__optval, __optlen);
 	  break;
 
 	  /*
@@ -2371,8 +2374,8 @@ vcom_socket_accept4 (int __fd, __SOCKADDR_ARG __addr,
 #endif
 
 /* TBD: move it to vppcom */
-int
-vppcom_session_shutdown (int __fd, int __how)
+static inline int
+vcom_session_shutdown (int __fd, int __how)
 {
   return 0;
 }
@@ -2394,7 +2397,7 @@ vcom_socket_shutdown (int __fd, int __how)
 	case SHUT_RD:
 	case SHUT_WR:
 	case SHUT_RDWR:
-	  rv = vppcom_session_shutdown (vsock->sid, __how);
+	  rv = vcom_session_shutdown (vsock->sid, __how);
 	  return rv;
 	  break;
 
@@ -3065,7 +3068,7 @@ vcom_socket_poll_select_impl (struct pollfd *__fds, nfds_t __nfds,
   vcom_nfd = vcom_socket_select (vcom_nfds,
 				 &vcom_readfds,
 				 &vcom_writefds, &vcom_exceptfds, &tv);
-  if (VCOM_DEBUG > 0)
+  if (VCOM_DEBUG > 2)
     fprintf (stderr,
 	     "[%d] vcom_socket_select: "
 	     "'%04d'='%04d'\n", pid, vcom_nfd, vcom_nfds);

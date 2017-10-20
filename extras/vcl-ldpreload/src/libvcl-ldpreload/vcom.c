@@ -237,14 +237,14 @@ read (int __fd, void *__buf, size_t __nbytes)
 
   if (is_vcom_socket_fd (__fd))
     {
-      if (VCOM_DEBUG > 0)
+      if (VCOM_DEBUG > 2)
 	fprintf (stderr,
 		 "[%d][%lu (0x%lx)] read:1 "
 		 "'%04d'='%04d', '%p', '%04d'\n",
 		 pid, (unsigned long) tid, (unsigned long) tid,
 		 (int) size, __fd, __buf, (int) __nbytes);
       size = vcom_read (__fd, __buf, __nbytes);
-      if (VCOM_DEBUG > 0)
+      if (VCOM_DEBUG > 2)
 	fprintf (stderr,
 		 "[%d][%lu (0x%lx)] read:2 "
 		 "'%04d'='%04d', '%p', '%04d'\n",
@@ -314,14 +314,14 @@ write (int __fd, const void *__buf, size_t __n)
 
   if (is_vcom_socket_fd (__fd))
     {
-      if (VCOM_DEBUG > 0)
+      if (VCOM_DEBUG > 2)
 	fprintf (stderr,
 		 "[%d][%lu (0x%lx)] write:1 "
 		 "'%04d'='%04d', '%p', '%04d'\n",
 		 pid, (unsigned long) tid, (unsigned long) tid,
 		 (int) size, __fd, __buf, (int) __n);
       size = vcom_write (__fd, __buf, __n);
-      if (VCOM_DEBUG > 0)
+      if (VCOM_DEBUG > 2)
 	fprintf (stderr,
 		 "[%d][%lu (0x%lx)] write:2 "
 		 "'%04d'='%04d', '%p', '%04d'\n",
@@ -1219,7 +1219,7 @@ vcom_select (int __nfds, fd_set * __restrict __readfds,
 				       __writefds ? &vcom_writefds : NULL,
 				       __exceptfds ? &vcom_exceptfds : NULL,
 				       &tv);
-	  if (VCOM_DEBUG > 0)
+	  if (VCOM_DEBUG > 2)
 	    fprintf (stderr,
 		     "[%d] select vcom: "
 		     "'%04d'='%04d'\n", pid, vcom_nfd, vcom_nfds);
@@ -1237,7 +1237,7 @@ vcom_select (int __nfds, fd_set * __restrict __readfds,
 				  __readfds ? &libc_readfds : NULL,
 				  __writefds ? &libc_writefds : NULL,
 				  __exceptfds ? &libc_exceptfds : NULL, &tv);
-	  if (VCOM_DEBUG > 0)
+	  if (VCOM_DEBUG > 2)
 	    fprintf (stderr,
 		     "[%d] select libc: "
 		     "'%04d'='%04d'\n", pid, libc_nfd, libc_nfds);
@@ -1328,7 +1328,7 @@ vcom_select (int __nfds, fd_set * __restrict __readfds,
   rv = 0;
 
 select_done:
-  if (VCOM_DEBUG > 0)
+  if (VCOM_DEBUG > 2)
     fprintf (stderr, "[%d] vselect1: " "'%04d'='%04d'\n", pid, rv, __nfds);
   /*
    * modify timeout parameter to reflect the amount of time not slept
@@ -1358,7 +1358,7 @@ select_done:
 	    }
 	}
     }
-  if (VCOM_DEBUG > 0)
+  if (VCOM_DEBUG > 2)
     fprintf (stderr, "[%d] vselect2: " "'%04d',='%04d'\n", pid, rv, __nfds);
 
   return rv;
@@ -1486,10 +1486,10 @@ select (int __nfds, fd_set * __restrict __readfds,
   int rv = 0;
   pid_t pid = getpid ();
 
-  if (VCOM_DEBUG > 0)
+  if (VCOM_DEBUG > 2)
     fprintf (stderr, "[%d] select1: " "'%04d'='%04d'\n", pid, rv, __nfds);
   rv = vcom_select (__nfds, __readfds, __writefds, __exceptfds, __timeout);
-  if (VCOM_DEBUG > 0)
+  if (VCOM_DEBUG > 2)
     fprintf (stderr, "[%d] select2: " "'%04d'='%04d'\n", pid, rv, __nfds);
   if (rv < 0)
     {
@@ -1656,7 +1656,7 @@ pselect (int __nfds, fd_set * __restrict __readfds,
       rv = nfd;
     }
 
-  if (VCOM_DEBUG > 0)
+  if (VCOM_DEBUG > 2)
     fprintf (stderr, "[%d] pselect: " "'%04d'='%04d'\n", pid, rv, __nfds);
   return rv;
 }
@@ -2413,7 +2413,7 @@ getsockopt (int __fd, int __level, int __optname,
   if (is_vcom_socket_fd (__fd))
     {
       rv = vcom_getsockopt (__fd, __level, __optname, __optval, __optlen);
-      if (VCOM_DEBUG > 0)
+      if (VCOM_DEBUG > 2)
 	fprintf (stderr,
 		 "[%d] getsockopt: "
 		 "'%04d'='%04d', '%04d', '%04d', "
@@ -3130,7 +3130,7 @@ vcom_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
 	   * to return immediately
 	   * */
 	  rlibc_nfds = libc_poll (__fds, __nfds, 0);
-	  if (VCOM_DEBUG > 0)
+	  if (VCOM_DEBUG > 2)
 	    fprintf (stderr,
 		     "[%d] poll libc: "
 		     "'%04d'='%08lu'\n", pid, rlibc_nfds, __nfds);
@@ -3155,7 +3155,7 @@ vcom_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
 	   * to return immediately
 	   * */
 	  rvcom_nfds = vcom_socket_poll (vcom_fds, __nfds, 0);
-	  if (VCOM_DEBUG > 0)
+	  if (VCOM_DEBUG > 2)
 	    fprintf (stderr,
 		     "[%d] poll vcom: "
 		     "'%04d'='%08lu'\n", pid, rvcom_nfds, __nfds);
@@ -3214,7 +3214,7 @@ poll_done_update_nfds:
     }
 
 poll_done:
-  if (VCOM_DEBUG > 0)
+  if (VCOM_DEBUG > 2)
     fprintf (stderr, "[%d] vpoll: " "'%04d'='%08lu'\n", pid, rv, __nfds);
   return rv;
 }
@@ -3242,11 +3242,11 @@ poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
   pid_t pid = getpid ();
 
 
-  if (VCOM_DEBUG > 0)
+  if (VCOM_DEBUG > 2)
     fprintf (stderr, "[%d] poll1: " "'%04d'='%08lu, %d, 0x%x'\n",
 	     pid, rv, __nfds, __fds[0].fd, __fds[0].events);
   rv = vcom_poll (__fds, __nfds, __timeout);
-  if (VCOM_DEBUG > 0)
+  if (VCOM_DEBUG > 2)
     fprintf (stderr, "[%d] poll2: " "'%04d'='%08lu, %d, 0x%x'\n",
 	     pid, rv, __nfds, __fds[0].fd, __fds[0].revents);
   if (rv < 0)
