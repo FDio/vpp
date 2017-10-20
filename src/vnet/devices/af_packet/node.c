@@ -25,6 +25,7 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/devices.h>
 #include <vnet/feature/feature.h>
+#include <vnet/ethernet/packet.h>
 
 #include <vnet/devices/af_packet/af_packet.h>
 
@@ -104,6 +105,71 @@ buffer_add_to_chain (vlib_main_t * vm, u32 bi, u32 first_bi, u32 prev_bi)
 
   /* update current buffer */
   b->next_buffer = 0;
+}
+
+static_always_inline void
+mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
+{
+  ethernet_header_t *eth = vlib_buffer_get_current (b);
+  if (clib_net_to_host_u16 (eth->type) == ETHERNET_TYPE_IP4)
+    {
+      ip4_header_t *ip4 =
+	(vlib_buffer_get_current (b) + sizeof (ethernet_header_t));
+      b->flags |= VNET_BUFFER_F_IS_IP4;
+      if (ip4->protocol == IP_PROTOCOL_TCP)
+	{
+	  b->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	  ((tcp_header_t
+	    *) (vlib_buffer_get_current (b) +
+		sizeof (ethernet_header_t) +
+		ip4_header_bytes (ip4)))->checksum = 0;
+	}
+      else if (ip4->protocol == IP_PROTOCOL_UDP)
+	{
+	  b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+	  ((udp_header_t
+	    *) (vlib_buffer_get_current (b) +
+		sizeof (ethernet_header_t) +
+		ip4_header_bytes (ip4)))->checksum = 0;
+	}
+      vnet_buffer (b)->l3_hdr_offset = sizeof (ethernet_header_t);
+      vnet_buffer (b)->l4_hdr_offset =
+	sizeof (ethernet_header_t) + ip4_header_bytes (ip4);
+    }
+  else if (clib_net_to_host_u16 (eth->type) == ETHERNET_TYPE_IP6)
+    {
+      ip6_header_t *ip6 =
+	(vlib_buffer_get_current (b) + sizeof (ethernet_header_t));
+      b->flags |= VNET_BUFFER_F_IS_IP6;
+      u16 ip6_hdr_len = sizeof (ip6_header_t);
+      if (ip6_ext_hdr (ip6->protocol))
+	{
+	  ip6_ext_header_t *p = (void *) (ip6 + 1);
+	  ip6_hdr_len += ip6_ext_header_len (p);
+	  while (ip6_ext_hdr (p->next_hdr))
+	    {
+	      ip6_hdr_len += ip6_ext_header_len (p);
+	      p = ip6_ext_next_header (p);
+	    }
+	}
+      if (ip6->protocol == IP_PROTOCOL_TCP)
+	{
+	  b->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	  ((tcp_header_t
+	    *) (vlib_buffer_get_current (b) +
+		sizeof (ethernet_header_t) + ip6_hdr_len))->checksum = 0;
+	}
+      else if (ip6->protocol == IP_PROTOCOL_UDP)
+	{
+	  b->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+	  ((udp_header_t
+	    *) (vlib_buffer_get_current (b) +
+		sizeof (ethernet_header_t) + ip6_hdr_len))->checksum = 0;
+	}
+      vnet_buffer (b)->l3_hdr_offset = sizeof (ethernet_header_t);
+      vnet_buffer (b)->l4_hdr_offset =
+	sizeof (ethernet_header_t) + ip6_hdr_len;
+    }
 }
 
 always_inline uword
@@ -211,6 +277,8 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  vnet_buffer (b0)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 		  first_bi0 = bi0;
 		  first_b0 = vlib_get_buffer (vm, first_bi0);
+		  if (tph->tp_status & TP_STATUS_CSUMNOTREADY)
+		    mark_tcp_udp_cksum_calc (first_b0);
 		}
 	      else
 		buffer_add_to_chain (vm, bi0, first_bi0, prev_bi0);

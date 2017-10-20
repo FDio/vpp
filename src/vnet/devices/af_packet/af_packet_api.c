@@ -42,9 +42,10 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define foreach_vpe_api_msg                             \
-_(AF_PACKET_CREATE, af_packet_create)                   \
-_(AF_PACKET_DELETE, af_packet_delete)
+#define foreach_vpe_api_msg                                          \
+_(AF_PACKET_CREATE, af_packet_create)                                \
+_(AF_PACKET_DELETE, af_packet_delete)                                \
+_(AF_PACKET_SET_L4_CKSUM_OFFLOAD, af_packet_set_l4_cksum_offload)
 
 static void
 vl_api_af_packet_create_t_handler (vl_api_af_packet_create_t * mp)
@@ -88,6 +89,18 @@ vl_api_af_packet_delete_t_handler (vl_api_af_packet_delete_t * mp)
   vec_free (host_if_name);
 
   REPLY_MACRO (VL_API_AF_PACKET_DELETE_REPLY);
+}
+
+static void
+  vl_api_af_packet_set_l4_cksum_offload_t_handler
+  (vl_api_af_packet_set_l4_cksum_offload_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_af_packet_delete_reply_t *rmp;
+  int rv = 0;
+
+  rv = af_packet_set_l4_cksum_offload (vm, mp->sw_if_index, mp->set);
+  REPLY_MACRO (VL_API_AF_PACKET_SET_L4_CKSUM_OFFLOAD_REPLY);
 }
 
 /*

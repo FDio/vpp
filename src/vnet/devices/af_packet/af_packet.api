@@ -56,6 +56,19 @@ autoreply define af_packet_delete
   u8 host_if_name[64];
 };
 
+/** \brief Set l4 offload ckecksum calculation
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+autoreply define af_packet_set_l4_cksum_offload
+{
+  u32 client_index;
+  u32 context;
+  
+  u8 sw_if_index;
+  u8 set;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
