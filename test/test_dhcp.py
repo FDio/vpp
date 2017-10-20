@@ -19,6 +19,7 @@ from scapy.layers.dhcp6 import DHCP6, DHCP6_Solicit, DHCP6_RelayForward, \
 from socket import AF_INET, AF_INET6
 from scapy.utils import inet_pton, inet_ntop
 from scapy.utils6 import in6_ptop
+from util import mactobinary
 
 DHCP4_CLIENT_PORT = 68
 DHCP4_SERVER_PORT = 67
@@ -1134,7 +1135,7 @@ class TestDHCP(VppTestCase):
 
         # remove the left over ARP entry
         self.vapi.ip_neighbor_add_del(self.pg2.sw_if_index,
-                                      self.pg2.remote_mac,
+                                      mactobinary(self.pg2.remote_mac),
                                       self.pg2.remote_ip4,
                                       is_add=0)
         #
