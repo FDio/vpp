@@ -2209,8 +2209,38 @@ static void vl_api_dns_resolve_name_reply_t_handler
 static void vl_api_dns_resolve_name_reply_t_handler_json
   (vl_api_dns_resolve_name_reply_t * mp)
 {
-  clib_warning ("no");
+  clib_warning ("not implemented");
 }
+
+static void vl_api_dns_resolve_ip_reply_t_handler
+  (vl_api_dns_resolve_ip_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+
+      if (retval == 0)
+	{
+	  clib_warning ("canonical name %s", mp->name);
+	}
+      else
+	clib_warning ("retval %d", retval);
+    }
+}
+
+static void vl_api_dns_resolve_ip_reply_t_handler_json
+  (vl_api_dns_resolve_ip_reply_t * mp)
+{
+  clib_warning ("not implemented");
+}
+
 
 static void vl_api_ip_address_details_t_handler
   (vl_api_ip_address_details_t * mp)
@@ -5461,7 +5491,8 @@ _(TCP_CONFIGURE_SRC_ADDRESSES_REPLY, tcp_configure_src_addresses_reply)	\
 _(APP_NAMESPACE_ADD_DEL_REPLY, app_namespace_add_del_reply)		\
 _(DNS_ENABLE_DISABLE_REPLY, dns_enable_disable_reply)                   \
 _(DNS_NAME_SERVER_ADD_DEL_REPLY, dns_name_server_add_del_reply)		\
-_(DNS_RESOLVE_NAME_REPLY, dns_resolve_name_reply)
+_(DNS_RESOLVE_NAME_REPLY, dns_resolve_name_reply)			\
+_(DNS_RESOLVE_IP_REPLY, dns_resolve_ip_reply)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)                               \
@@ -21003,6 +21034,47 @@ api_dns_resolve_name (vat_main_t * vam)
 }
 
 static int
+api_dns_resolve_ip (vat_main_t * vam)
+{
+  unformat_input_t *line_input = vam->input;
+  vl_api_dns_resolve_ip_t *mp;
+  int is_ip6 = -1;
+  ip4_address_t addr4;
+  ip6_address_t addr6;
+  int ret;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_ip6_address, &addr6))
+	is_ip6 = 1;
+      else if (unformat (line_input, "%U", unformat_ip4_address, &addr4))
+	is_ip6 = 0;
+      else
+	break;
+    }
+
+  if (is_ip6 == -1)
+    {
+      errmsg ("missing address");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (DNS_RESOLVE_IP, mp);
+  mp->is_ip6 = is_ip6;
+  if (is_ip6)
+    memcpy (mp->address, &addr6, sizeof (addr6));
+  else
+    memcpy (mp->address, &addr4, sizeof (addr4));
+
+  /* send it... */
+  S (mp);
+  /* Wait for the reply */
+  W (ret);
+  return ret;
+}
+
+static int
 api_dns_name_server_add_del (vat_main_t * vam)
 {
   unformat_input_t *i = vam->input;
@@ -21860,7 +21932,8 @@ _(memfd_segment_create,"size <nnn>")					\
 _(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
 _(dns_enable_disable, "[enable][disable]")				\
 _(dns_name_server_add_del, "<ip-address> [del]")			\
-_(dns_resolve_name, "<hostname>")
+_(dns_resolve_name, "<hostname>")					\
+_(dns_resolve_ip, "<ip4|ip6>")
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

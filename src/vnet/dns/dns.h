@@ -26,6 +26,16 @@
 
 typedef struct
 {
+  u32 request_type;
+  u32 client_index;
+  u32 client_context;
+} pending_api_request_t;
+
+#define DNS_API_PENDING_NAME_TO_IP 1
+#define DNS_API_PENDING_IP_TO_NAME 2
+
+typedef struct
+{
   /** flags */
   volatile u8 flags;
 
@@ -51,8 +61,7 @@ typedef struct
   u8 *dns_response;
 
   /** Clients awaiting responses */
-  u32 *api_clients_to_notify;
-  u32 *api_client_contexts;
+  pending_api_request_t *pending_api_requests;
   ip4_address_t *ip4_peers_to_notify;
   ip6_address_t *ip6_peers_to_notify;
 } dns_cache_entry_t;

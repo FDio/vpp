@@ -55,8 +55,7 @@ dns_cache_clear (dns_main_t * dm)
   pool_foreach (ep, dm->entries,
   ({
     vec_free (ep->name);
-    vec_free (ep->api_clients_to_notify);
-    vec_free (ep->api_client_contexts);
+    vec_free (ep->pending_api_requests);
     vec_free (ep->ip4_peers_to_notify);
     vec_free (ep->ip6_peers_to_notify);
   }));
@@ -647,8 +646,7 @@ vnet_dns_delete_entry_by_index_nolock (dns_main_t * dm, u32 index)
 found:
   hash_unset_mem (dm->cache_entry_by_name, ep->name);
   vec_free (ep->name);
-  vec_free (ep->api_clients_to_notify);
-  vec_free (ep->api_client_contexts);
+  vec_free (ep->pending_api_requests);
   vec_free (ep->ip4_peers_to_notify);
   vec_free (ep->ip6_peers_to_notify);
   pool_put (dm->entries, ep);
@@ -771,12 +769,13 @@ dns_add_static_entry (dns_main_t * dm, u8 * name, u8 * dns_reply_data)
 static int
 dns_resolve_name (dns_main_t * dm,
 		  u8 * name, u32 client_index, u32 client_context,
-		  dns_cache_entry_t ** retp)
+		  u32 request_type, dns_cache_entry_t ** retp)
 {
   dns_cache_entry_t *ep;
   int rv;
   f64 now;
   uword *p;
+  pending_api_request_t *pr;
 
   now = vlib_time_now (dm->vlib_main);
 
@@ -850,9 +849,12 @@ search_again:
       else
 	{
 	  /*
-	   * Resolution pending. Add request to the pending vector(s) */
-	  vec_add1 (ep->api_clients_to_notify, client_index);
-	  vec_add1 (ep->api_client_contexts, client_context);
+	   * Resolution pending. Add request to the pending vector
+	   */
+	  vec_add2 (ep->pending_api_requests, pr, 1);
+	  pr->request_type = request_type;
+	  pr->client_index = client_index;
+	  pr->client_context = client_context;
 	  dns_cache_unlock (dm);
 	  return (0);
 	}
@@ -880,16 +882,17 @@ re_resolve:
   hash_set_mem (dm->cache_entry_by_name, ep->name, ep - dm->entries);
 
   vec_add1 (dm->unresolved_entries, ep - dm->entries);
-  vec_add1 (ep->api_clients_to_notify, client_index);
-  vec_add1 (ep->api_client_contexts, client_context);
+  vec_add2 (ep->pending_api_requests, pr, 1);
+  pr->request_type = request_type;
+  pr->client_index = client_index;
+  pr->client_context = client_context;
   vnet_send_dns_request (dm, ep);
   dns_cache_unlock (dm);
   return 0;
 }
 
 #define foreach_notification_to_move            \
-_(api_clients_to_notify)                        \
-_(api_client_contexts)                          \
+_(pending_api_requests)				\
 _(ip4_peers_to_notify)                          \
 _(ip6_peers_to_notify)
 
@@ -1173,6 +1176,127 @@ vnet_dns_response_to_reply (u8 * response,
   return 0;
 }
 
+int
+vnet_dns_response_to_name (u8 * response,
+			   vl_api_dns_resolve_ip_reply_t * rmp,
+			   u32 * min_ttlp)
+{
+  dns_header_t *h;
+  dns_query_t *qp;
+  dns_rr_t *rr;
+  int i, limit;
+  u8 len;
+  u8 *curpos, *pos;
+  u16 flags;
+  u16 rcode;
+  u8 *name;
+  u32 ttl;
+  u8 *junk __attribute__ ((unused));
+  int name_set = 0;
+
+  h = (dns_header_t *) response;
+  flags = clib_net_to_host_u16 (h->flags);
+  rcode = flags & DNS_RCODE_MASK;
+
+  /* See if the response is OK, etc. */
+  switch (rcode)
+    {
+    default:
+    case DNS_RCODE_NO_ERROR:
+      break;
+
+    case DNS_RCODE_NAME_ERROR:
+    case DNS_RCODE_FORMAT_ERROR:
+      return VNET_API_ERROR_NAME_SERVER_NO_SUCH_NAME;
+
+    case DNS_RCODE_SERVER_FAILURE:
+    case DNS_RCODE_NOT_IMPLEMENTED:
+    case DNS_RCODE_REFUSED:
+      return VNET_API_ERROR_NAME_SERVER_NEXT_SERVER;
+    }
+
+  /* No answers? Loser... */
+  if (clib_net_to_host_u16 (h->anscount) < 1)
+    return VNET_API_ERROR_NAME_SERVER_NO_ADDRESSES;
+
+  curpos = (u8 *) (h + 1);
+
+  /* Skip the name we asked about */
+  pos = curpos;
+  len = *pos++;
+  /* Should never happen, but stil... */
+  if ((len & 0xC0) == 0xC0)
+    curpos += 2;
+  else
+    {
+      /* skip the name / label-set */
+      while (len)
+	{
+	  pos += len;
+	  len = *pos++;
+	}
+      curpos = pos;
+    }
+  /* Skip queries */
+  limit = clib_net_to_host_u16 (h->qdcount);
+  qp = (dns_query_t *) curpos;
+  qp += limit;
+  curpos = (u8 *) qp;
+
+  /* Parse answers */
+  limit = clib_net_to_host_u16 (h->anscount);
+
+  for (i = 0; i < limit; i++)
+    {
+      pos = curpos;
+
+      /* Expect pointer chases in the answer section... */
+      if ((pos[0] & 0xC0) == 0xC0)
+	curpos += 2;
+      else
+	{
+	  len = *pos++;
+	  while (len)
+	    {
+	      if ((pos[0] & 0xC0) == 0xC0)
+		{
+		  curpos = pos + 2;
+		  goto curpos_set;
+		}
+	      pos += len;
+	      len = *pos++;
+	    }
+	  curpos = pos;
+	}
+
+    curpos_set:
+      rr = (dns_rr_t *) curpos;
+
+      switch (clib_net_to_host_u16 (rr->type))
+	{
+	case DNS_TYPE_PTR:
+	  name = labels_to_name (rr->rdata, response, &junk);
+	  memcpy (rmp->name, name, vec_len (name));
+	  ttl = clib_net_to_host_u32 (rr->ttl);
+	  if (*min_ttlp)
+	    *min_ttlp = ttl;
+	  rmp->name[vec_len (name)] = 0;
+	  name_set = 1;
+	  break;
+	default:
+	  break;
+	}
+      /* Might as well stop ASAP */
+      if (name_set == 1)
+	break;
+      curpos += sizeof (*rr) + clib_net_to_host_u16 (rr->rdlength);
+    }
+
+  if (name_set == 0)
+    return VNET_API_ERROR_NAME_SERVER_NO_SUCH_NAME;
+  return 0;
+}
+
 static void
 vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
 {
@@ -1184,7 +1308,8 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   /* Sanitize the name slightly */
   mp->name[ARRAY_LEN (mp->name) - 1] = 0;
 
-  rv = dns_resolve_name (dm, mp->name, mp->client_index, mp->context, &ep);
+  rv = dns_resolve_name (dm, mp->name, mp->client_index, mp->context,
+			 DNS_API_PENDING_NAME_TO_IP, &ep);
 
   /* Error, e.g. not enabled? Tell the user */
   if (rv < 0)
@@ -1212,6 +1337,82 @@ vl_api_dns_resolve_name_t_handler (vl_api_dns_resolve_name_t * mp)
   dns_cache_unlock (dm);
 }
 
+static void
+vl_api_dns_resolve_ip_t_handler (vl_api_dns_resolve_ip_t * mp)
+{
+  dns_main_t *dm = &dns_main;
+  vl_api_dns_resolve_ip_reply_t *rmp;
+  dns_cache_entry_t *ep;
+  int rv;
+  int i, len;
+  u8 *lookup_name = 0;
+  u8 digit, nybble;
+
+  if (mp->is_ip6)
+    {
+      for (i = 15; i >= 0; i--)
+	{
+	  digit = mp->address[i];
+	  nybble = (digit & 0x0F);
+	  if (nybble > 9)
+	    vec_add1 (lookup_name, (nybble - 10) + 'a');
+	  else
+	    vec_add1 (lookup_name, nybble + '0');
+	  vec_add1 (lookup_name, '.');
+	  nybble = (digit & 0xF0) >> 4;
+	  if (nybble > 9)
+	    vec_add1 (lookup_name, (nybble - 10) + 'a');
+	  else
+	    vec_add1 (lookup_name, nybble + '0');
+	  vec_add1 (lookup_name, '.');
+	}
+      len = vec_len (lookup_name);
+      vec_validate (lookup_name, len + 8);
+      memcpy (lookup_name + len, "ip6.arpa", 8);
+    }
+  else
+    {
+      for (i = 3; i >= 0; i--)
+	{
+	  digit = mp->address[i];
+	  lookup_name = format (lookup_name, "%d.", digit);
+	}
+      lookup_name = format (lookup_name, "in-addr.arpa");
+    }
+
+  vec_add1 (lookup_name, 0);
+
+  rv = dns_resolve_name (dm, lookup_name, mp->client_index, mp->context,
+			 DNS_API_PENDING_IP_TO_NAME, &ep);
+
+  vec_free (lookup_name);
+
+  /* Error, e.g. not enabled? Tell the user */
+  if (rv < 0)
+    {
+      REPLY_MACRO (VL_API_DNS_RESOLVE_IP_REPLY);
+      return;
+    }
+
+  /* Resolution pending? Don't reply... */
+  if (ep == 0)
+    return;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_DNS_RESOLVE_IP_REPLY,
+  ({
+    rv = vnet_dns_response_to_name (ep->dns_response, rmp, 0 /* ttl-ptr */);
+    rmp->retval = clib_host_to_net_u32 (rv);
+  }));
+  /* *INDENT-ON* */
+
+  /*
+   * dns_resolve_name leaves the cache locked when it returns
+   * a cached result, so unlock it here.
+   */
+  dns_cache_unlock (dm);
+}
+
 #define vl_msg_name_crc_list
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_msg_name_crc_list
@@ -1227,7 +1428,8 @@ setup_message_id_table (api_main_t * am)
 #define foreach_dns_api_msg                             \
 _(DNS_ENABLE_DISABLE, dns_enable_disable)               \
 _(DNS_NAME_SERVER_ADD_DEL, dns_name_server_add_del)     \
-_(DNS_RESOLVE_NAME, dns_resolve_name)
+_(DNS_RESOLVE_NAME, dns_resolve_name)			\
+_(DNS_RESOLVE_IP, dns_resolve_ip)
 
 static clib_error_t *
 dns_api_hookup (vlib_main_t * vm)
@@ -1480,6 +1682,7 @@ format_dns_reply_data (u8 * s, va_list * args)
   int i;
   int initial_pointer_chase = 0;
   u16 *tp;
+  u16 rrtype_host_byte_order;
 
   pos = pos2 = *curpos;
 
@@ -1521,8 +1724,9 @@ format_dns_reply_data (u8 * s, va_list * args)
     pos = pos2;
 
   rr = (dns_rr_t *) pos;
+  rrtype_host_byte_order = clib_net_to_host_u16 (rr->type);
 
-  switch (clib_net_to_host_u16 (rr->type))
+  switch (rrtype_host_byte_order)
     {
     case DNS_TYPE_A:
       if (verbose > 1)
@@ -1662,12 +1866,16 @@ format_dns_reply_data (u8 * s, va_list * args)
       pos += sizeof (*rr) + clib_net_to_host_u16 (rr->rdlength);
       break;
 
+    case DNS_TYPE_PTR:
     case DNS_TYPE_CNAME:
       if (verbose > 1)
 	{
 	  tp = (u16 *) rr->rdata;
 
-	  s = format (s, "CNAME: ");
+	  if (rrtype_host_byte_order == DNS_TYPE_CNAME)
+	    s = format (s, "CNAME: ");
+	  else
+	    s = format (s, "PTR: ");
 
 	  pos2 = rr->rdata;
 
@@ -1887,7 +2095,7 @@ format_dns_cache (u8 * s, va_list * args)
 
             if (verbose > 2)
               s = format (s, "    %d client notifications pending\n",
-                          vec_len(ep->api_clients_to_notify));
+                          vec_len(ep->pending_api_requests));
           }
       }
     else

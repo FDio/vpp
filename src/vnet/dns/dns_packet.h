@@ -132,6 +132,7 @@ _(TEXT, 16)     /**< a text string */           \
 _(NAMESERVER, 2) /**< a nameserver */           \
 _(CNAME, 5)      /**< a CNAME (alias) */	\
 _(MAIL_EXCHANGE, 15) /**< a mail exchange  */	\
+_(PTR, 12)      /**< a PTR (pointer) record */	\
 _(HINFO, 13)	/**< Host info */
 
 typedef enum

@@ -3196,6 +3196,19 @@ static void *vl_api_dns_resolve_name_t_print
   FINISH;
 }
 
+static void *vl_api_dns_resolve_ip_t_print
+  (vl_api_dns_resolve_ip_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dns_resolve_ip ");
+  if (mp->is_ip6)
+    s = format (s, "%U ", format_ip6_address, mp->address);
+  else
+    s = format (s, "%U ", format_ip4_address, mp->address);
+  FINISH;
+}
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \
@@ -3391,7 +3404,8 @@ _(LLDP_CONFIG, lldp_config)                                             \
 _(SW_INTERFACE_SET_LLDP, sw_interface_set_lldp)				\
 _(DNS_ENABLE_DISABLE, dns_enable_disable)                               \
 _(DNS_NAME_SERVER_ADD_DEL, dns_name_server_add_del)                     \
-_(DNS_RESOLVE_NAME, dns_resolve_name)
+_(DNS_RESOLVE_NAME, dns_resolve_name)					\
+_(DNS_RESOLVE_IP, dns_resolve_ip)
   void
 vl_msg_api_custom_dump_configure (api_main_t * am)
 {
