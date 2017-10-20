@@ -129,7 +129,6 @@ class VPP():
         self.messages = {}
         self.id_names = []
         self.id_msgdef = []
-        self.buffersize = 10000
         self.connected = False
         self.header = struct.Struct('>HI')
         self.apifiles = []
@@ -199,35 +198,45 @@ class VPP():
             if not vl:
                 if e > 0 and t == 'u8':
                     # Fixed byte array
-                    return struct.Struct('>' + str(e) + 's')
+                    s = struct.Struct('>' + str(e) + 's')
+                    return s.size, s
                 if e > 0:
                     # Fixed array of base type
-                    return [e, struct.Struct('>' + base_types[t])]
+                    s = struct.Struct('>' + base_types[t])
+                    return s.size, [e, s]
                 elif e == 0:
                     # Old style variable array
-                    return [-1, struct.Struct('>' + base_types[t])]
+                    s = struct.Struct('>' + base_types[t])
+                    return s.size, [-1, s]
             else:
                 # Variable length array
-                return [vl, struct.Struct('>s')] if t == 'u8' else \
-                    [vl, struct.Struct('>' + base_types[t])]
+                if t == 'u8':
+                    s = struct.Struct('>s')
+                    return s.size, [vl, s]
+                else:
+                    s = struct.Struct('>' + base_types[t])
+                return s.size, [vl, s]
 
-            return struct.Struct('>' + base_types[t])
+            s = struct.Struct('>' + base_types[t])
+            return s.size, s
 
         if t in self.messages:
+            size = self.messages[t]['sizes'][0]
+
             # Return a list in case of array
             if e > 0 and not vl:
-                return [e, lambda self, encode, buf, offset, args: (
+                return size, [e, lambda self, encode, buf, offset, args: (
                     self.__struct_type(encode, self.messages[t], buf, offset,
                                        args))]
             if vl:
-                return [vl, lambda self, encode, buf, offset, args: (
+                return size, [vl, lambda self, encode, buf, offset, args: (
                     self.__struct_type(encode, self.messages[t], buf, offset,
                                        args))]
             elif e == 0:
                 # Old style VLA
                 raise NotImplementedError(1,
                                           'No support for compound types ' + t)
-            return lambda self, encode, buf, offset, args: (
+            return size, lambda self, encode, buf, offset, args: (
                 self.__struct_type(encode, self.messages[t], buf, offset, args)
             )
 
@@ -250,13 +259,14 @@ class VPP():
                                  ' used in call to: ' + \
                                  self.id_names[kwargs['_vl_msg_id']] + '()' )
 
-
         for k, v in vpp_iterator(msgdef['args']):
             off += size
             if k in kwargs:
                 if type(v) is list:
                     if callable(v[1]):
                         e = kwargs[v[0]] if v[0] in kwargs else v[0]
+                        if e != len(kwargs[k]):
+                            raise (ValueError(1, 'Input list length mismatch: %s (%s != %s)' %  (k, e, len(kwargs[k]))))
                         size = 0
                         for i in range(e):
                             size += v[1](self, True, buf, off + size,
@@ -264,6 +274,8 @@ class VPP():
                     else:
                         if v[0] in kwargs:
                             l = kwargs[v[0]]
+                            if l != len(kwargs[k]):
+                                raise ValueError(1, 'Input list length mistmatch: %s (%s != %s)' % (k, l, len(kwargs[k])))
                         else:
                             l = len(kwargs[k])
                         if v[1].size == 1:
@@ -278,6 +290,8 @@ class VPP():
                     if callable(v):
                         size = v(self, True, buf, off, kwargs[k])
                     else:
+                        if type(kwargs[k]) is str and v.size < len(kwargs[k]):
+                            raise ValueError(1, 'Input list length mistmatch: %s (%s < %s)' % (k, v.size, len(kwargs[k])))
                         v.pack_into(buf, off, kwargs[k])
                         size = v.size
             else:
@@ -290,9 +304,17 @@ class VPP():
             return self.messages[name]
         return None
 
+    def get_size(self, sizes, kwargs):
+        total_size = sizes[0]
+        for e in sizes[1]:
+            if e in kwargs and type(kwargs[e]) is list:
+                total_size += len(kwargs[e]) * sizes[1][e]
+        return total_size
+
     def encode(self, msgdef, kwargs):
         # Make suitably large buffer
-        buf = bytearray(self.buffersize)
+    	size = self.get_size(msgdef['sizes'], kwargs)
+        buf = bytearray(size)
         offset = 0
         size = self.__struct_type(True, msgdef, buf, offset, kwargs)
         return buf[:offset + size]
@@ -360,6 +382,8 @@ class VPP():
         argtypes = collections.OrderedDict()
         fields = []
         msg = {}
+        total_size = 0
+        sizes = {}
         for i, f in enumerate(msgdef):
             if type(f) is dict and 'crc' in f:
                 msg['crc'] = f['crc']
@@ -368,7 +392,18 @@ class VPP():
             field_name = f[1]
             if len(f) == 3 and f[2] == 0 and i != len(msgdef) - 2:
                 raise ValueError('Variable Length Array must be last: ' + name)
-            args[field_name] = self.__struct(*f)
+            size, s = self.__struct(*f)
+            args[field_name] = s
+            if type(s) == list and type(s[0]) == int and type(s[1]) == struct.Struct:
+                if s[0] < 0:
+                    sizes[field_name] = size
+                else:
+                    sizes[field_name] = size
+                    total_size += s[0] * size
+            else:
+                sizes[field_name] = size
+                total_size += size
+
             argtypes[field_name] = field_type
             if len(f) == 4:  # Find offset to # elements field
                 idx = list(args.keys()).index(f[3]) - i
@@ -380,6 +415,7 @@ class VPP():
         self.messages[name]['args'] = args
         self.messages[name]['argtypes'] = argtypes
         self.messages[name]['typeonly'] = typeonly
+        self.messages[name]['sizes'] = [total_size, sizes]
         return self.messages[name]
 
     def add_type(self, name, typedef):

@@ -532,7 +532,7 @@ class TestACLplugin(VppTestCase):
                                  r[i_rule][rule_key])
 
         # Add a deny-1234 ACL
-        r_deny = ({'is_permit': 0, 'is_ipv6': 0, 'proto': 17,
+        r_deny = [{'is_permit': 0, 'is_ipv6': 0, 'proto': 17,
                    'srcport_or_icmptype_first': 1234,
                    'srcport_or_icmptype_last': 1235,
                    'src_ip_prefix_len': 0,
@@ -549,7 +549,7 @@ class TestACLplugin(VppTestCase):
                    'dstport_or_icmpcode_first': 0,
                    'dstport_or_icmpcode_last': 0,
                    'dst_ip_addr': '\x00\x00\x00\x00',
-                   'dst_ip_prefix_len': 0})
+                   'dst_ip_prefix_len': 0}]
 
         reply = self.vapi.acl_add_replace(acl_index=4294967295, r=r_deny,
                                           tag="deny 1234;permit all")

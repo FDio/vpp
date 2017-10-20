@@ -16,6 +16,7 @@ from util import ppp
 from ipfix import IPFIX, Set, Template, Data, IPFIXDecoder
 from time import sleep
 from util import ip4_range
+from util import mactobinary
 
 
 class MethodHolder(VppTestCase):
@@ -643,7 +644,9 @@ class TestNAT44(MethodHolder):
                 lb_sm.external_port,
                 lb_sm.protocol,
                 lb_sm.vrf_id,
-                is_add=0)
+                is_add=0,
+                local_num=0,
+                locals=[])
 
         adresses = self.vapi.nat44_address_dump()
         for addr in adresses:
@@ -1869,11 +1872,11 @@ class TestNAT44(MethodHolder):
         """ NAT44 interfaces without configured IP address """
 
         self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      self.pg7.remote_mac,
+                                      mactobinary(self.pg7.remote_mac),
                                       self.pg7.remote_ip4n,
                                       is_static=1)
         self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      self.pg8.remote_mac,
+                                      mactobinary(self.pg8.remote_mac),
                                       self.pg8.remote_ip4n,
                                       is_static=1)
 
@@ -1911,11 +1914,11 @@ class TestNAT44(MethodHolder):
         """ NAT44 interfaces without configured IP address - 1:1 NAT """
 
         self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      self.pg7.remote_mac,
+                                      mactobinary(self.pg7.remote_mac),
                                       self.pg7.remote_ip4n,
                                       is_static=1)
         self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      self.pg8.remote_mac,
+                                      mactobinary(self.pg8.remote_mac),
                                       self.pg8.remote_ip4n,
                                       is_static=1)
 
@@ -1957,11 +1960,11 @@ class TestNAT44(MethodHolder):
         self.icmp_id_out = 30608
 
         self.vapi.ip_neighbor_add_del(self.pg7.sw_if_index,
-                                      self.pg7.remote_mac,
+                                      mactobinary(self.pg7.remote_mac),
                                       self.pg7.remote_ip4n,
                                       is_static=1)
         self.vapi.ip_neighbor_add_del(self.pg8.sw_if_index,
-                                      self.pg8.remote_mac,
+                                      mactobinary(self.pg8.remote_mac),
                                       self.pg8.remote_ip4n,
                                       is_static=1)
 
