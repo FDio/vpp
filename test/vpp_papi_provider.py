@@ -1323,7 +1323,7 @@ class VppPapiProvider(object):
             protocol,
             vrf_id=0,
             local_num=0,
-            locals=None,
+            locals=[],
             is_add=1):
         """Add/delete NAT44 load balancing static mapping
 
@@ -2037,7 +2037,7 @@ class VppPapiProvider(object):
                             eid,
                             eid_prefix_len=0,
                             vni=0,
-                            rlocs=None,
+                            rlocs=[],
                             rlocs_num=0,
                             is_src_dst=0,
                             is_add=1):
