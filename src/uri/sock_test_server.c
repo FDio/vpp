@@ -572,8 +572,8 @@ main (int argc, char **argv)
 #ifdef VCL_TEST
       num_ev = vppcom_epoll_wait (ssm->epfd, ssm->wait_events,
 				  SOCK_SERVER_MAX_EPOLL_EVENTS, 60.0);
-      if (rv < 0)
-	errno = -rv;
+      if (num_ev < 0)
+	errno = -num_ev;
 #else
       num_ev = epoll_wait (ssm->epfd, ssm->wait_events,
 			   SOCK_SERVER_MAX_EPOLL_EVENTS, 60000);
