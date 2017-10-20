@@ -194,6 +194,73 @@ VLIB_CLI_COMMAND (af_packet_delete_command, static) = {
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+af_packet_set_l4_cksum_offload_command_fn (vlib_main_t * vm,
+					   unformat_input_t * input,
+					   vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 *host_if_name = NULL;
+  u8 *s = NULL;
+  u8 set = 0;
+  clib_error_t *error = NULL;
+
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%s %s", &host_if_name, &s))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  if (host_if_name == NULL)
+    {
+      error = clib_error_return (0, "please specify host interface name");
+      goto done;
+    }
+  if (s == NULL)
+    {
+      error = clib_error_return (0, "please specify operation <on|off> ");
+      goto done;
+    }
+
+  set = strncmp ((char *) s, "on", 2) == 0 ? 1 : 0;
+  af_packet_set_l4_cksum_offload (vm, host_if_name, set);
+
+done:
+  vec_free (host_if_name);
+  vec_free (s);
+  unformat_free (line_input);
+  return error;
+}
+
+/*?
+ * Set TCP/UDP offload checksum calculation. Use host interface
+ * name to identify the interface to set TCP/UDP offload checksum
+ * calculation.In VPP, host interfaces are named as
+ * '<em>host-<ifname></em>', where '<em><ifname></em>' is the name
+ * of the linux interface.
+ *
+ * @cliexpar
+ * Example of how to set TCP/UDP offload checksum calculation on host-vpp0:
+ * @cliexcmd{set int l4-cksum-offload vpp0 off}
+ * @cliexcmd{set int l4-cksum-offload vpp0 on}
+?*/
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (af_packet_set_l4_cksum_offload_command, static) = {
+  .path = "set host-interface l4-cksum-offload",
+  .short_help = "set host-interface l4-cksum-offload <host-if-name> <on|off>",
+  .function = af_packet_set_l4_cksum_offload_command_fn,
+};
+/* *INDENT-ON* */
+
 clib_error_t *
 af_packet_cli_init (vlib_main_t * vm)
 {
