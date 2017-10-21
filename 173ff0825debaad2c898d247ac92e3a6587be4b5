@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1dcba9cf_454e53eb",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 271,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-21T16:49:54Z",
+      "side": 1,
+      "message": "It is even cleaner to do this:\n@line 263 above:\n u32 sw_if_index0 \u003d stats_t0-\u003esw_if_index;\n@line 271 here:\n vnet_buffer(b0)-\u003esw_if_index[VLIB_RX] \u003d t0-\u003esw_if_index;\nand remove line 272",
+      "range": {
+        "startLine": 271,
+        "startChar": 50,
+        "endLine": 271,
+        "endChar": 62
+      },
+      "revId": "173ff0825debaad2c898d247ac92e3a6587be4b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0a81a975_1b5eb82f",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 424,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-21T16:49:54Z",
+      "side": 1,
+      "message": "Similar comment as before for @line271.",
+      "range": {
+        "startLine": 424,
+        "startChar": 50,
+        "endLine": 424,
+        "endChar": 62
+      },
+      "revId": "173ff0825debaad2c898d247ac92e3a6587be4b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4ccf98ed_50860e11",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 472,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-21T16:49:54Z",
+      "side": 1,
+      "message": "\u003d NULL not needed now",
+      "range": {
+        "startLine": 472,
+        "startChar": 44,
+        "endLine": 472,
+        "endChar": 48
+      },
+      "revId": "173ff0825debaad2c898d247ac92e3a6587be4b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5346dcfb_029e490b",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 611,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-21T16:49:54Z",
+      "side": 1,
+      "message": "Similar comment as @line271",
+      "range": {
+        "startLine": 611,
+        "startChar": 50,
+        "endLine": 611,
+        "endChar": 62
+      },
+      "revId": "173ff0825debaad2c898d247ac92e3a6587be4b5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
