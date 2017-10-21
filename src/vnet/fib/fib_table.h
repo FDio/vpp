@@ -697,7 +697,7 @@ extern u32 fib_table_create_and_lock(fib_protocol_t proto,
  *  The index of the FIB
  *
  * @paran proto
- *  The protocol of the FIB (and thus the entries therein)
+ *  The protocol the packets the flow hash will be calculated for.
  *
  * @return The flow hash config
  */
