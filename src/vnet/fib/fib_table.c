@@ -945,7 +945,7 @@ fib_table_get_index_for_sw_if_index (fib_protocol_t proto,
 
 flow_hash_config_t
 fib_table_get_flow_hash_config (u32 fib_index,
-				fib_protocol_t proto)
+				dpo_proto_t proto)
 {
     fib_table_t *fib;
 
@@ -953,17 +953,23 @@ fib_table_get_flow_hash_config (u32 fib_index,
 
     return (fib->ft_flow_hash_config);
 }
+
 flow_hash_config_t
-fib_table_get_default_flow_hash_config (fib_protocol_t proto)
+fib_table_get_default_flow_hash_config (dpo_proto_t proto)
 {
     switch (proto)
     {
-    case FIB_PROTOCOL_IP4:
-    case FIB_PROTOCOL_IP6:
+    case DPO_PROTO_IP4:
+    case DPO_PROTO_IP6:
 	return (IP_FLOW_HASH_DEFAULT);
 
-    case FIB_PROTOCOL_MPLS:
+    case DPO_PROTO_MPLS:
 	return (MPLS_FLOW_HASH_DEFAULT);
+
+    case DPO_PROTO_BIER:
+    case DPO_PROTO_NSH:
+    case DPO_PROTO_ETHERNET:
+	return (0);
     }
 
     ASSERT(0);

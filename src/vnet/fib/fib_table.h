@@ -697,12 +697,12 @@ extern u32 fib_table_create_and_lock(fib_protocol_t proto,
  *  The index of the FIB
  *
  * @paran proto
- *  The protocol of the FIB (and thus the entries therein)
+ *  The protocol the packets the flow hash will be calculated for.
  *
  * @return The flow hash config
  */
 extern flow_hash_config_t fib_table_get_flow_hash_config(u32 fib_index,
-							 fib_protocol_t proto);
+							 dpo_proto_t proto);
 
 /**
  * @brief
@@ -713,7 +713,7 @@ extern flow_hash_config_t fib_table_get_flow_hash_config(u32 fib_index,
  *
  * @return The flow hash config
  */
-extern flow_hash_config_t fib_table_get_default_flow_hash_config(fib_protocol_t proto);
+extern flow_hash_config_t fib_table_get_default_flow_hash_config(dpo_proto_t proto);
 
 /**
  * @brief

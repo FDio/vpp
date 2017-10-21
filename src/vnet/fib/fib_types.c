@@ -272,6 +272,8 @@ fib_forw_chain_type_from_dpo_proto (dpo_proto_t proto)
 	return (FIB_FORW_CHAIN_TYPE_ETHERNET);
     case DPO_PROTO_NSH:
         return (FIB_FORW_CHAIN_TYPE_NSH);
+    case DPO_PROTO_BIER:
+	return (FIB_FORW_CHAIN_TYPE_BIER);
     }
     ASSERT(0);
     return (FIB_FORW_CHAIN_TYPE_UNICAST_IP4);
@@ -293,6 +295,7 @@ fib_forw_chain_type_to_link_type (fib_forward_chain_type_t fct)
     case FIB_FORW_CHAIN_TYPE_NSH:
         return (VNET_LINK_NSH);
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
+    case FIB_FORW_CHAIN_TYPE_BIER:
 	/*
 	 * insufficient information to to convert
 	 */
@@ -319,6 +322,8 @@ fib_forw_chain_type_to_dpo_proto (fib_forward_chain_type_t fct)
 	return (DPO_PROTO_ETHERNET);
     case FIB_FORW_CHAIN_TYPE_NSH:
         return (DPO_PROTO_NSH);
+    case FIB_FORW_CHAIN_TYPE_BIER:
+	return (DPO_PROTO_BIER);
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
     case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 	return (DPO_PROTO_MPLS);

@@ -122,6 +122,7 @@ fib_entry_chain_type_to_delegate_type (fib_forward_chain_type_t fct)
         return (FIB_ENTRY_DELEGATE_CHAIN_ETHERNET);
     case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
     case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
+    case FIB_FORW_CHAIN_TYPE_BIER:
         break;
     case FIB_FORW_CHAIN_TYPE_NSH:
         return (FIB_ENTRY_DELEGATE_CHAIN_NSH);

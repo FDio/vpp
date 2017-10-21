@@ -1,0 +1,99 @@
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+
+    This file defines vpp BIER control-plane API messages which are generally
+    called through a shared memory interface. 
+*/
+
+/** \brief BIER Table Add / del route
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bt_set
+    @param bt_sub_domain
+    @param bt_bit_header_length
+    @param bt_mpls_label - The MPLS label for the table
+    @param bt_is_add - Is this a route add or delete
+*/
+define bier_table_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 bt_label;
+  u8 bt_set;
+  u8 bt_sub_domain;
+  u8 bt_bit_header_length;
+  u8 bt_is_add;
+};
+
+/** \brief Reply for BIER Table add / del request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define bier_table_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/** \brief BIER Route Add / del route
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bt_bp - The Bit-position value
+    @param bt_set
+    @param bt_sub_domain
+    @param bt_bit_string_length
+
+    @param bt_table_id - The MPLS table-id the route is added in
+
+    @param bt_is_add - Is this a route add or delete
+
+    @param bt_is_multipath - Is this route update a multipath - i.e. is this
+                             a path addition to an existing route
+    @param bt_next_hop_proto_is_ip4 - The next-hop is IPV4
+    @param bt_next_hop[16] - the nextop address
+    @param bt_next_hop_out_label - the next-hop output label
+*/
+define bier_route_add_del
+{
+  u32 client_index;
+  u32 context;
+  u16 br_bp;
+  u8 br_set;
+  u8 br_sub_domain;
+  u8 br_bit_header_length;
+  u8 br_is_add;
+
+  u8 br_next_hop_proto_is_ip4;
+  u8 br_next_hop[16];
+  u32 br_next_hop_out_label;
+};
+
+/** \brief Reply for BIER route add / del request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+*/
+define bier_route_add_del_reply
+{
+  u32 context;
+  i32 retval;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
