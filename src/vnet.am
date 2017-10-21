@@ -1112,6 +1112,40 @@ libvnet_la_SOURCES +=                    \
   vnet/util/trajectory.c
 
 ########################################
+# BIER
+########################################
+
+libvnet_la_SOURCES +=                           \
+  vnet/bier/bier_bit_string.c                   \
+  vnet/bier/bier_entry.c                        \
+  vnet/bier/bier_fmask.c                        \
+  vnet/bier/bier_fmask_db.c                     \
+  vnet/bier/bier_input.c                   	\
+  vnet/bier/bier_lookup.c                  	\
+  vnet/bier/bier_output.c                  	\
+  vnet/bier/bier_table.c                        \
+  vnet/bier/bier_types.c                        \
+  vnet/bier/bier_test.c                         \
+  vnet/bier/bier_api.c                          \
+  vnet/bier/bier_drop.c                         \
+  vnet/bier/bier_update.c			\
+  vnet/bier/bier_imp_node.c			\
+  vnet/bier/bier_imp.c				\
+  vnet/bier/bier_disp_entry.c			\
+  vnet/bier/bier_disp_lookup_node.c		\
+  vnet/bier/bier_disp_dispatch_node.c		\
+  vnet/bier/bier_disp_table.c
+
+nobase_include_HEADERS +=			\
+  vnet/bier/bier_types.h                        \
+  vnet/bier/bier_entry.h                        \
+  vnet/bier/bier_update.h                       \
+  vnet/bier/bier.api.h                          \
+  vnet/bier/bier_table.h
+
+API_FILES += vnet/bier/bier.api
+
+########################################
 # Plugin client library
 ########################################
 

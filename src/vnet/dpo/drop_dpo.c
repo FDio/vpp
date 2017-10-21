@@ -96,6 +96,11 @@ const static char* const drop_nsh_nodes[] =
     "error-drop",
     NULL,
 };
+const static char* const drop_bier_nodes[] =
+{
+    "bier-drop",
+    NULL,
+};
 const static char* const * const drop_nodes[DPO_PROTO_NUM] =
 {
     [DPO_PROTO_IP4]  = drop_ip4_nodes,
@@ -103,6 +108,7 @@ const static char* const * const drop_nodes[DPO_PROTO_NUM] =
     [DPO_PROTO_MPLS] = drop_mpls_nodes,
     [DPO_PROTO_ETHERNET] = drop_ethernet_nodes,
     [DPO_PROTO_NSH] = drop_nsh_nodes,
+    [DPO_PROTO_BIER] = drop_bier_nodes,
 };
 
 void

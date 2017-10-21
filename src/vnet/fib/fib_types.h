@@ -20,6 +20,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/mpls/packet.h>
 #include <vnet/dpo/dpo.h>
+#include <vnet/bier/bier_types.h>
 
 /**
  * A typedef of a node index.
@@ -48,6 +49,12 @@ typedef enum fib_protocol_t_ {
  * switch statements
  */
 #define FIB_PROTOCOL_MAX (FIB_PROTOCOL_MPLS + 1)
+
+/**
+ * Definition outside of enum so it does not need to be included in non-defaulted
+ * switch statements
+ */
+#define FIB_PROTOCOL_IP_MAX (FIB_PROTOCOL_IP6 + 1)
 
 /**
  * Not part of the enum so it does not have to be handled in switch statements
@@ -89,6 +96,10 @@ typedef enum fib_forward_chain_type_t_ {
      */
     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
     /**
+     * Contribute an object that is to be used to forward BIER packets.
+     */
+    FIB_FORW_CHAIN_TYPE_BIER,
+    /**
      * Contribute an object that is to be used to forward end-of-stack
      * MPLS packets. This is a convenient ID for clients. A real EOS chain
      * must be pay-load protocol specific. This
@@ -117,6 +128,7 @@ typedef enum fib_forward_chain_type_t_ {
 
 #define FIB_FORW_CHAINS {					\
     [FIB_FORW_CHAIN_TYPE_ETHERNET]      = "ethernet",     	\
+    [FIB_FORW_CHAIN_TYPE_BIER]          = "bier",     	        \
     [FIB_FORW_CHAIN_TYPE_UNICAST_IP4]   = "unicast-ip4",	\
     [FIB_FORW_CHAIN_TYPE_UNICAST_IP6]   = "unicast-ip6",	\
     [FIB_FORW_CHAIN_TYPE_MCAST_IP4]     = "multicast-ip4",	\
@@ -231,6 +243,11 @@ extern dpo_proto_t fib_proto_to_dpo(fib_protocol_t fib_proto);
 extern fib_protocol_t dpo_proto_to_fib(dpo_proto_t dpo_proto);
 
 /**
+ * Convert from BIER next-hop proto to FIB proto
+ */
+extern fib_protocol_t bier_hdr_proto_to_fib(bier_hdr_proto_id_t bproto);
+
+/**
  * Enurmeration of special path/entry types
  */
 typedef enum fib_special_type_t_ {
@@ -311,6 +328,18 @@ typedef enum fib_route_path_flags_t_
      * A path via a UDP encap object.
      */
     FIB_ROUTE_PATH_UDP_ENCAP = (1 << 9),
+    /**
+     * A path that resolves via a BIER F-Mask
+     */
+    FIB_ROUTE_PATH_BIER_FMASK = (1 << 10),
+    /**
+     * A path that resolves via a BIER [ECMP] Table
+     */
+    FIB_ROUTE_PATH_BIER_TABLE = (1 << 11),
+    /**
+     * A path that resolves via a BIER impostion object
+     */
+    FIB_ROUTE_PATH_BIER_IMP = (1 << 12),
 } fib_route_path_flags_t;
 
 /**
@@ -349,46 +378,72 @@ typedef struct fib_route_path_t_ {
     dpo_proto_t frp_proto;
 
     union {
-	/**
-	 * The next-hop address.
-	 * Will be NULL for attached paths.
-	 * Will be all zeros for attached-next-hop paths on a p2p interface
-	 * Will be all zeros for a deag path.
-	 */
-	ip46_address_t frp_addr;
-
         struct {
+            union {
+                /**
+                 * The next-hop address.
+                 * Will be NULL for attached paths.
+                 * Will be all zeros for attached-next-hop paths on a p2p interface
+                 * Will be all zeros for a deag path.
+                 */
+                ip46_address_t frp_addr;
+
+                struct {
+                    /**
+                     * The MPLS local Label to reursively resolve through.
+                     * This is valid when the path type is MPLS.
+                     */
+                    mpls_label_t frp_local_label;
+                    /**
+                     * EOS bit for the resolving label
+                     */
+                    mpls_eos_bit_t frp_eos;
+                };
+            };
+            union {
+                /**
+                 * The interface.
+                 * Will be invalid for recursive paths.
+                 */
+                u32 frp_sw_if_index;
+                /**
+                 * The RPF-ID
+                 */
+                fib_rpf_id_t frp_rpf_id;
+            };
+            union {
+                /**
+                 * The FIB index to lookup the nexthop
+                 * Only valid for recursive paths.
+                 */
+                u32 frp_fib_index;
+                /**
+                 * The BIER table to resolve the fmask in
+                 */
+                u32 frp_bier_fib_index;
+            };
             /**
-             * The MPLS local Label to reursively resolve through.
-             * This is valid when the path type is MPLS.
+             * The outgoing MPLS label Stack. NULL implies no label.
              */
-            mpls_label_t frp_local_label;
-            /**
-             * EOS bit for the resolving label
-             */
-            mpls_eos_bit_t frp_eos;
+            mpls_label_t *frp_label_stack;
         };
-    };
-    union {
         /**
-         * The interface.
-         * Will be invalid for recursive paths.
+         * A path that resolves via a BIER Table.
+         * This would be for a MPLS label at a BIER midpoint or tail
          */
-        u32 frp_sw_if_index;
+        bier_table_id_t frp_bier_tbl;
+
         /**
-         * The RPF-ID
+         * A path via a BIER imposition object.
+         * Present in an mfib path list
          */
-        fib_rpf_id_t frp_rpf_id;
+        index_t frp_bier_imp;
+
         /**
          * UDP encap ID
          */
         u32 frp_udp_encap_id;
     };
-    /**
-     * The FIB index to lookup the nexthop
-     * Only valid for recursive paths.
-     */
-    u32 frp_fib_index;
     /**
      * [un]equal cost path weight
      */
@@ -403,10 +458,6 @@ typedef struct fib_route_path_t_ {
      * flags on the path
      */
     fib_route_path_flags_t frp_flags;
-    /**
-     * The outgoing MPLS label Stack. NULL implies no label.
-     */
-    mpls_label_t *frp_label_stack;
 } fib_route_path_t;
 
 /**

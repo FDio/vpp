@@ -63,6 +63,7 @@ typedef enum dpo_proto_t_
     DPO_PROTO_IP6,
     DPO_PROTO_MPLS,
     DPO_PROTO_ETHERNET,
+    DPO_PROTO_BIER,
     DPO_PROTO_NSH,
 } __attribute__((packed)) dpo_proto_t;
 
@@ -75,6 +76,7 @@ typedef enum dpo_proto_t_
     [DPO_PROTO_ETHERNET]  = "ethernet", \
     [DPO_PROTO_MPLS] = "mpls",	\
     [DPO_PROTO_NSH] = "nsh",    \
+    [DPO_PROTO_BIER] = "bier",	\
 }
 
 #define FOR_EACH_DPO_PROTO(_proto)    \
@@ -116,6 +118,11 @@ typedef enum dpo_type_t_ {
     DPO_INTERFACE_TX,
     DPO_L2_BRIDGE,
     DPO_L3_PROXY,
+    DPO_BIER_TABLE,
+    DPO_BIER_FMASK,
+    DPO_BIER_IMP,
+    DPO_BIER_DISP_TABLE,
+    DPO_BIER_DISP_ENTRY,
     DPO_LAST,
 } __attribute__((packed)) dpo_type_t;
 
@@ -145,6 +152,11 @@ typedef enum dpo_type_t_ {
     [DPO_INTERFACE_TX] = "dpo-interface-tx",	\
     [DPO_L2_BRIDGE] = "dpo-l2-bridge",	\
     [DPO_L3_PROXY] = "dpo-l3-proxy",	\
+    [DPO_BIER_TABLE] = "bier-table",	\
+    [DPO_BIER_FMASK] = "bier-fmask",	\
+    [DPO_BIER_IMP] = "bier-imposition",	\
+    [DPO_BIER_DISP_ENTRY] = "bier-disp-entry",	\
+    [DPO_BIER_DISP_TABLE] = "bier-disp-table",	\
 }
 
 /**

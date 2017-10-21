@@ -2057,14 +2057,17 @@ class VppPapiProvider(object):
                           grp_address,
                           grp_address_length,
                           e_flags,
+                          next_hop_afi,
                           next_hop_sw_if_index,
                           i_flags,
+                          bier_imp=0,
                           rpf_id=0,
                           table_id=0,
                           is_add=1,
                           is_ipv6=0,
                           is_local=0):
         """
+        IP Multicast Route add/del
         """
         return self.api(
             self.papi.ip_mroute_add_del,
@@ -2076,6 +2079,8 @@ class VppPapiProvider(object):
              'is_add': is_add,
              'is_ipv6': is_ipv6,
              'is_local': is_local,
+             'bier_imp': bier_imp,
+             'next_hop_afi': next_hop_afi,
              'grp_address_length': grp_address_length,
              'grp_address': grp_address,
              'src_address': src_address})
@@ -2085,6 +2090,9 @@ class VppPapiProvider(object):
 
     def ip_mfib_dump(self):
         return self.api(self.papi.ip_mfib_dump, {})
+
+    def ip6_mfib_dump(self):
+        return self.api(self.papi.ip6_mfib_dump, {})
 
     def lisp_enable_disable(self, is_enabled):
         return self.api(
@@ -2634,3 +2642,114 @@ class VppPapiProvider(object):
                          'nh': nh,
                          'is_add': is_add,
                          'is_ip6': is_ip6})
+
+    def bier_table_add_del(self,
+                           bti,
+                           mpls_label,
+                           is_add=1):
+        """ BIER Table add/del """
+        return self.api(
+            self.papi.bier_table_add_del,
+            {'bt_tbl_id': {"bt_set": bti.set_id,
+                           "bt_sub_domain": bti.sub_domain_id,
+                           "bt_hdr_len_id": bti.hdr_len_id},
+             'bt_label': mpls_label,
+             'bt_is_add': is_add})
+
+    def bier_table_dump(self):
+        return self.api(self.papi.bier_table_dump, {})
+
+    def bier_route_add_del(self,
+                           bti,
+                           bp,
+                           next_hop,
+                           next_hop_label,
+                           next_hop_table_id,
+                           next_hop_is_ip4=1,
+                           is_add=1):
+        """ BIER Route add/del """
+        return self.api(
+            self.papi.bier_route_add_del,
+            {'br_tbl_id': {"bt_set": bti.set_id,
+                           "bt_sub_domain": bti.sub_domain_id,
+                           "bt_hdr_len_id": bti.hdr_len_id},
+             'br_bp': bp,
+             'br_n_paths': 1,
+             'br_paths': [{'next_hop': next_hop,
+                           'afi': 0,
+                           'n_labels': 1,
+                           'table_id': next_hop_table_id,
+                           'label_stack': [next_hop_label]}],
+             'br_is_add': is_add})
+
+    def bier_route_dump(self, bti):
+        return self.api(
+            self.papi.bier_route_dump,
+            {'br_tbl_id': {"bt_set": bti.set_id,
+                           "bt_sub_domain": bti.sub_domain_id,
+                           "bt_hdr_len_id": bti.hdr_len_id}})
+
+    def bier_imp_add(self,
+                     bti,
+                     src,
+                     ibytes,
+                     is_add=1):
+        """ BIER Imposition Add """
+        return self.api(
+            self.papi.bier_imp_add,
+            {'bi_tbl_id': {"bt_set": bti.set_id,
+                           "bt_sub_domain": bti.sub_domain_id,
+                           "bt_hdr_len_id": bti.hdr_len_id},
+             'bi_src': src,
+             'bi_n_bytes': len(ibytes),
+             'bi_bytes': ibytes})
+
+    def bier_imp_del(self, bi_index):
+        """ BIER Imposition del """
+        return self.api(
+            self.papi.bier_imp_del,
+            {'bi_index': bi_index})
+
+    def bier_imp_dump(self):
+        return self.api(self.papi.bier_imp_dump, {})
+
+    def bier_disp_table_add_del(self,
+                                bdti,
+                                is_add=1):
+        """ BIER Disposition Table add/del """
+        return self.api(
+            self.papi.bier_disp_table_add_del,
+            {'bdt_tbl_id': bdti,
+             'bdt_is_add': is_add})
+
+    def bier_disp_table_dump(self):
+        return self.api(self.papi.bier_disp_table_dump, {})
+
+    def bier_disp_entry_add_del(self,
+                                bdti,
+                                bp,
+                                payload_proto,
+                                next_hop,
+                                next_hop_tbl_id=0,
+                                next_hop_rpf_id=~0,
+                                next_hop_is_ip4=1,
+                                is_add=1):
+        """ BIER Route add/del """
+        return self.api(
+            self.papi.bier_disp_entry_add_del,
+            {'bde_tbl_id': bdti,
+             'bde_bp': bp,
+             'bde_payload_proto': payload_proto,
+             'bde_n_paths': 1,
+             'bde_paths': [{'next_hop': next_hop,
+                            'table_id': next_hop_tbl_id,
+                            'afi': 0,
+                            'rpf_id': next_hop_rpf_id,
+                            'n_labels': 0,
+                            'label_stack': [0]}],
+             'bde_is_add': is_add})
+
+    def bier_disp_entry_dump(self, bdti):
+        return self.api(
+            self.papi.bier_disp_entry_dump,
+            {'bde_tbl_id': bdti})

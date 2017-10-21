@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <vnet/fib/fib_test.h>
 #include <vnet/fib/ip6_fib.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/fib/mpls_fib.h>
@@ -544,19 +545,58 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 			dpo->dpoi_index,
                         exp->lb.lb);
 	    break;
-	case FT_LB_SPECIAL:
-	    FIB_TEST_I((DPO_DROP == dpo->dpoi_type),
-		       "bucket %d stacks on %U",
-		       bucket,
-		       format_dpo_type, dpo->dpoi_type);
-	    FIB_TEST_LB((exp->special.adj == dpo->dpoi_index),
-			"bucket %d stacks on drop %d",
+	case FT_LB_BIER_TABLE:
+	    FIB_TEST_LB((DPO_BIER_TABLE == dpo->dpoi_type),
+                        "bucket %d stacks on %U",
+                        bucket,
+                        format_dpo_type, dpo->dpoi_type);
+	    FIB_TEST_LB((exp->bier.table == dpo->dpoi_index),
+			"bucket %d stacks on lb %d",
 			bucket,
-			exp->special.adj);
+			exp->bier.table);
+            break;
+	case FT_LB_BIER_FMASK:
+	    FIB_TEST_LB((DPO_BIER_FMASK == dpo->dpoi_type),
+                        "bucket %d stacks on %U",
+                        bucket,
+                        format_dpo_type, dpo->dpoi_type);
+	    FIB_TEST_LB((exp->bier.fmask == dpo->dpoi_index),
+			"bucket %d stacks on lb %d",
+			bucket,
+			exp->bier.fmask);
+            break;
+	case FT_LB_DROP:
+	    FIB_TEST_LB((DPO_DROP == dpo->dpoi_type),
+                        "bucket %d stacks on %U",
+                        bucket,
+                        format_dpo_type, dpo->dpoi_type);
 	    break;
 	}
     }
     return (!0);
+}
+
+int
+fib_test_validate_lb (const dpo_id_t *dpo,
+                     u16 n_buckets,
+                     ...)
+{
+    const load_balance_t *lb;
+    va_list ap;
+    int res;
+
+    va_start(ap, n_buckets);
+
+    FIB_TEST_LB((DPO_LOAD_BALANCE == dpo->dpoi_type),
+               "Entry links to %U",
+               format_dpo_type, dpo->dpoi_type);
+    lb = load_balance_get(dpo->dpoi_index);
+
+    res = fib_test_validate_lb_v(lb, n_buckets, &ap);
+
+    va_end(ap);
+
+    return (res);
 }
 
 int
@@ -6678,13 +6718,10 @@ fib_test_label (void)
      * remove the other path with a valid label
      */
     fib_test_lb_bucket_t bucket_drop = {
-	.type = FT_LB_SPECIAL,
-	.special = {
-	    .adj = DPO_PROTO_IP4,
-	},
+	.type = FT_LB_DROP,
     };
     fib_test_lb_bucket_t mpls_bucket_drop = {
-	.type = FT_LB_SPECIAL,
+	.type = FT_LB_DROP,
 	.special = {
 	    .adj = DPO_PROTO_MPLS,
 	},
@@ -8497,13 +8534,13 @@ lfib_test (void)
      * A recursive via a label that does not exist
      */
     fib_test_lb_bucket_t bucket_drop = {
-	.type = FT_LB_SPECIAL,
+	.type = FT_LB_DROP,
 	.special = {
 	    .adj = DPO_PROTO_IP4,
 	},
     };
     fib_test_lb_bucket_t mpls_bucket_drop = {
-	.type = FT_LB_SPECIAL,
+	.type = FT_LB_DROP,
 	.special = {
 	    .adj = DPO_PROTO_MPLS,
 	},

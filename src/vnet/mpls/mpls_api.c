@@ -366,7 +366,7 @@ typedef struct mpls_tunnel_send_walk_ctx_t_
 static void
 send_mpls_tunnel_entry (u32 mti, void *arg)
 {
-  fib_route_path_encode_t *api_rpaths, *api_rpath;
+  fib_route_path_encode_t *api_rpaths = NULL, *api_rpath;
   mpls_tunnel_send_walk_ctx_t *ctx;
   vl_api_mpls_tunnel_details_t *mp;
   const mpls_tunnel_t *mt;
