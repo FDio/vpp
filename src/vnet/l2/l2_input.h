@@ -112,6 +112,7 @@ l2input_bd_config (u32 bd_index)
  _(FWD,           "l2-fwd")                     \
  _(RW,            "l2-rw")                      \
  _(LEARN,         "l2-learn")                   \
+ _(L2_EMULATION,  "l2-emulation")               \
  _(VTR,           "l2-input-vtr")               \
  _(VPATH,         "vpath-input-l2")             \
  _(ACL,           "l2-input-acl")               \

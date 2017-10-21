@@ -67,7 +67,7 @@ bridge_domain::id() const
 bool
 bridge_domain::operator==(const bridge_domain& b) const
 {
-  return (id() == b.id());
+  return ((m_learning_mode == b.m_learning_mode) && id() == b.id());
 }
 
 void

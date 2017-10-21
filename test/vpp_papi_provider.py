@@ -603,6 +603,18 @@ class VppPapiProvider(object):
                          'tag1': tag1,
                          'tag2': tag2})
 
+    def sw_interface_set_l2_emulation(
+            self,
+            sw_if_index,
+            enable=1):
+        """L2 Emulation
+        :param sw_if_index - interface the operation is applied to
+
+        """
+        return self.api(self.papi.l2_emulation,
+                        {'sw_if_index': sw_if_index,
+                         'enable': enable})
+
     def sw_interface_set_flags(self, sw_if_index, admin_up_down):
         """
 

@@ -312,7 +312,7 @@ l2_bridge_dpo_inline (vlib_main_t * vm,
             vnet_buffer(b0)->sw_if_index[VLIB_TX] = l2b0->l2b_sw_if_index;
 
             /*
-             * take that, and rewind it back...
+             * take that, rewind it back...
              */
             len0 = ((u8*)vlib_buffer_get_current(b0) -
                     (u8*)ethernet_buffer_get_header(b0));
