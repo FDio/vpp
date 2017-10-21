@@ -2478,3 +2478,68 @@ class VppPapiProvider(object):
                          'nh': nh,
                          'is_add': is_add,
                          'is_ip6': is_ip6})
+
+    def bier_table_add_del(self,
+                           bti,
+                           mpls_label,
+                           is_add=1):
+        """ BIER Table add/del """
+        return self.api(
+            self.papi.bier_table_add_del,
+            {'bt_tbl_id': {"bt_set": bti.set_id,
+                           "bt_sub_domain": bti.sub_domain_id,
+                           "bt_hdr_len_id": bti.hdr_len_id},
+             'bt_label': mpls_label,
+             'bt_is_add': is_add})
+
+    def bier_table_dump(self):
+        return self.api(self.papi.bier_table_dump, {})
+
+    def bier_route_add_del(self,
+                           bti,
+                           bp,
+                           next_hop,
+                           next_hop_label,
+                           next_hop_is_ip4=1,
+                           is_add=1):
+        """ BIER Route add/del """
+        return self.api(
+            self.papi.bier_route_add_del,
+            {'br_tbl_id': {"bt_set": bti.set_id,
+                           "bt_sub_domain": bti.sub_domain_id,
+                           "bt_hdr_len_id": bti.hdr_len_id},
+             'br_bp': bp,
+             'br_n_paths': 1,
+             'br_paths': [{'next_hop': next_hop,
+                           'afi': 0,
+                           'n_labels': 1,
+                           'label_stack': [next_hop_label]}],
+             'br_is_add': is_add})
+
+    def bier_route_dump(self, bti):
+        return self.api(
+            self.papi.bier_route_dump,
+            {'br_tbl_id': {"bt_set": bti.set_id,
+                           "bt_sub_domain": bti.sub_domain_id,
+                           "bt_hdr_len_id": bti.hdr_len_id}})
+
+    def bier_imp_add(self,
+                     bti,
+                     src,
+                     ibytes,
+                     is_add=1):
+        """ BIER Imposition Add """
+        return self.api(
+            self.papi.bier_imp_add,
+            {'bi_tbl_id': {"bt_set": bti.set_id,
+                           "bt_sub_domain": bti.sub_domain_id,
+                           "bt_hdr_len_id": bti.hdr_len_id},
+             'bi_src': src,
+             'bi_n_bytes': len(ibytes),
+             'bi_bytes': ibytes})
+
+    def bier_imp_del(self, bi_index):
+        """ BIER Imposition del """
+        return self.api(
+            self.papi.bier_imp_del,
+            {'bi_index': bi_index})
