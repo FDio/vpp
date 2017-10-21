@@ -1,0 +1,45 @@
+diff --git a/scapy/contrib/bier.py b/scapy/contrib/bier.py
+new file mode 100644
+index 0000000..e173cdb
+--- /dev/null
++++ b/scapy/contrib/bier.py
+@@ -0,0 +1,39 @@
++# http://trac.secdev.org/scapy/ticket/31
++
++# scapy.contrib.description = MPLS
++# scapy.contrib.status = loads
++
++from scapy.packet import *
++from scapy.fields import *
++from scapy.layers.inet import IP
++from scapy.layers.inet6 import IPv6
++
++class BIERLength:
++   BIER_LEN_64 = 0
++   BIER_LEN_128 = 1
++   BIER_LEN_256 = 2
++
++
++
++BIERnhcls = {  1: "MPLS",
++               2: "MPLS",
++               4: "IPv4",
++               5: "IPv6" }
++
++class BIER(Packet):
++   name = "BIER"
++   fields_desc =  [ BitField("id", 5, 4),
++                    BitField("version", 0, 4),
++                    BitField("length", 0, 4),
++                    BitField("entropy", 0, 20),
++                    BitField("OAM", 0, 2),
++                    BitField("RSV", 0, 2),
++                    BitField("DSCP", 0, 6),
++                    BitEnumField("Proto", 2, 6, BIERnhcls),
++                    ShortField("BFRID", 0),
++                    StrFixedLenField("BitString",
++                                     chr(255)*32, 32) ]
++
++
++bind_layers(BIER, IP,   Proto=4)
++bind_layers(BIER, IPv6, Proto=5)
