@@ -953,6 +953,7 @@ fib_table_get_flow_hash_config (u32 fib_index,
 
     return (fib->ft_flow_hash_config);
 }
+
 flow_hash_config_t
 fib_table_get_default_flow_hash_config (fib_protocol_t proto)
 {
