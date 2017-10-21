@@ -157,7 +157,8 @@ libvnet_la_SOURCES +=				\
  vnet/l2/l2_patch.c				\
  vnet/l2/l2_rw.c				\
  vnet/l2/l2_vtr.c				\
- vnet/l2/l2_xcrw.c
+ vnet/l2/l2_xcrw.c				\
+ vnet/l2/l2_l3_extract.c
 
 nobase_include_HEADERS +=			\
  vnet/l2/feat_bitmap.h				\
