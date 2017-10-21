@@ -2478,3 +2478,54 @@ class VppPapiProvider(object):
                          'nh': nh,
                          'is_add': is_add,
                          'is_ip6': is_ip6})
+
+    def bier_table_add_del(self,
+                           bti,
+                           mpls_label,
+                           is_add=1):
+        """ BIER Table add/del """
+        return self.api(
+            self.papi.bier_table_add_del,
+             'bt_tbl_id': [{"bti_set_id": bti.set_id}],
+             'bt_label': mpls_label,
+             'bt_is_add': is_add})
+
+    def bier_route_add_del(self,
+                           set_id,
+                           sub_domain_id,
+                           length_id,
+                           bp,
+                           next_hop,
+                           next_hop_label,
+                           next_hop_is_ip4=1,
+                           is_add=1):
+        """ BIER Table add/del """
+        return self.api(
+            self.papi.bier_route_add_del,
+            {'br_set': set_id,
+             'br_sub_domain': sub_domain_id,
+             'br_bit_header_length': length_id,
+             'br_bp': bp,
+             'br_next_hop': next_hop,
+             'br_next_hop_out_label': next_hop_label,
+             'br_next_hop_proto_is_ip4': next_hop_is_ip4,
+             'br_is_add': is_add})
+
+    def bier_imp_add(self,
+                     set_id,
+                     sub_domain_id,
+                     length_id,
+                     src,
+                     ibytes,
+                     is_add=1):
+        """ BIER Table add/del """
+        return self.api(
+            self.papi.bier_route_add_del,
+            {'br_set': set_id,
+             'br_sub_domain': sub_domain_id,
+             'br_bit_header_length': length_id,
+             'br_bp': bp,
+             'br_next_hop': next_hop,
+             'br_next_hop_out_label': next_hop_label,
+             'br_next_hop_proto_is_ip4': next_hop_is_ip4,
+             'br_is_add': is_add})

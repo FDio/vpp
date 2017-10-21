@@ -261,7 +261,7 @@ replicate_fill_buckets (replicate_t *rep,
                         u32 n_buckets)
 {
     load_balance_path_t * nh;
-    u16 ii, bucket;
+    u16 bucket;
 
     bucket = 0;
 
@@ -271,11 +271,8 @@ replicate_fill_buckets (replicate_t *rep,
      */
     vec_foreach (nh, nhs)
     {
-        for (ii = 0; ii < nh->path_weight; ii++)
-        {
-            ASSERT(bucket < n_buckets);
-            replicate_set_bucket_i(rep, bucket++, buckets, &nh->path_dpo);
-        }
+        ASSERT(bucket < n_buckets);
+        replicate_set_bucket_i(rep, bucket++, buckets, &nh->path_dpo);
     }
 }
 
