@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include <vnet/ip/ip.h>
+#include <vnet/ip/ip4_input.h>
+#include <vnet/ip/ip6_input.h>
 #include <vnet/dpo/mpls_disposition.h>
 #include <vnet/mpls/mpls.h>
 
@@ -115,6 +116,9 @@ typedef struct mpls_label_disposition_trace_t_
     index_t mdd;
 } mpls_label_disposition_trace_t;
 
+extern vlib_node_registration_t ip4_mpls_label_disposition_node;
+extern vlib_node_registration_t ip6_mpls_label_disposition_node;
+
 always_inline uword
 mpls_label_disposition_inline (vlib_main_t * vm,
                               vlib_node_runtime_t * node,
@@ -123,6 +127,12 @@ mpls_label_disposition_inline (vlib_main_t * vm,
                               u8 payload_is_ip6)
 {
     u32 n_left_from, next_index, * from, * to_next;
+    vlib_node_runtime_t *error_node;
+
+    if (payload_is_ip4)
+        error_node = vlib_node_get_runtime (vm, ip4_mpls_label_disposition_node.index);
+    else
+        error_node = vlib_node_get_runtime (vm, ip6_mpls_label_disposition_node.index);
 
     from = vlib_frame_vector_args (from_frame);
     n_left_from = from_frame->n_vectors;
@@ -173,21 +183,39 @@ mpls_label_disposition_inline (vlib_main_t * vm,
             mdd0 = mpls_disp_dpo_get(mddi0);
             mdd1 = mpls_disp_dpo_get(mddi1);
 
+            next0 = mdd0->mdd_dpo.dpoi_next_node;
+            next1 = mdd1->mdd_dpo.dpoi_next_node;
+
             if (payload_is_ip4)
             {
+                ip4_header_t *ip0, *ip1;
+
+                ip0 = vlib_buffer_get_current (b0);
+                ip1 = vlib_buffer_get_current (b1);
+
                 /*
-                 * decrement the TTL on ingress to the LSP
+                 * IPv4 input checks on the exposed IP header
+                 * including checksum
                  */
+                ip4_input_check_x2 (vm, error_node,
+                                    b0, b1, ip0, ip1,
+                                    &next0, &next1, 1);
             }
             else if (payload_is_ip6)
             {
+                ip6_header_t *ip0, *ip1;
+
+                ip0 = vlib_buffer_get_current (b0);
+                ip1 = vlib_buffer_get_current (b1);
+
                 /*
-                 * decrement the TTL on ingress to the LSP
+                 * IPv6 input checks on the exposed IP header
                  */
+                ip6_input_check_x2 (vm, error_node,
+                                    b0, b1, ip0, ip1,
+                                    &next0, &next1);
             }
- 
-            next0 = mdd0->mdd_dpo.dpoi_next_node;
-            next1 = mdd1->mdd_dpo.dpoi_next_node;
+
             vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mdd0->mdd_dpo.dpoi_index;
             vnet_buffer(b1)->ip.adj_index[VLIB_TX] = mdd1->mdd_dpo.dpoi_index;
             vnet_buffer(b0)->ip.rpf_id = mdd0->mdd_rpf_id;
@@ -231,24 +259,32 @@ mpls_label_disposition_inline (vlib_main_t * vm,
             /* dst lookup was done by ip4 lookup */
             mddi0 = vnet_buffer(b0)->ip.adj_index[VLIB_TX];
             mdd0 = mpls_disp_dpo_get(mddi0);
+            next0 = mdd0->mdd_dpo.dpoi_next_node;
 
             if (payload_is_ip4)
             {
+                ip4_header_t *ip0;
+
+                ip0 = vlib_buffer_get_current (b0);
+
                 /*
-                 * decrement the TTL on ingress to the LSP
+                 * IPv4 input checks on the exposed IP header
+                 * including checksum
                  */
+                ip4_input_check_x1 (vm, error_node, b0, ip0, &next0, 1);
             }
             else if (payload_is_ip6)
             {
+                ip6_header_t *ip0;
+
+                ip0 = vlib_buffer_get_current (b0);
+
                 /*
-                 * decrement the TTL on ingress to the LSP
+                 * IPv6 input checks on the exposed IP header
                  */
-            }
-            else
-            {
+                ip6_input_check_x1 (vm, error_node, b0, ip0, &next0);
             }
 
-            next0 = mdd0->mdd_dpo.dpoi_next_node;
             vnet_buffer(b0)->ip.adj_index[VLIB_TX] = mdd0->mdd_dpo.dpoi_index;
             vnet_buffer(b0)->ip.rpf_id = mdd0->mdd_rpf_id;
 
@@ -294,10 +330,9 @@ VLIB_REGISTER_NODE (ip4_mpls_label_disposition_node) = {
     .vector_size = sizeof (u32),
 
     .format_trace = format_mpls_label_disposition_trace,
-    .n_next_nodes = 1,
-    .next_nodes = {
-        [0] = "ip4-drop",
-    }
+    .sibling_of = "ip4-input",
+    .n_errors = IP4_N_ERROR,
+    .error_strings = ip4_error_strings,
 };
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_mpls_label_disposition_node,
                               ip4_mpls_label_disposition)
@@ -316,10 +351,9 @@ VLIB_REGISTER_NODE (ip6_mpls_label_disposition_node) = {
     .vector_size = sizeof (u32),
 
     .format_trace = format_mpls_label_disposition_trace,
-    .n_next_nodes = 1,
-    .next_nodes = {
-        [0] = "ip6-drop",
-    }
+    .sibling_of = "ip6-input",
+    .n_errors = IP6_N_ERROR,
+    .error_strings = ip6_error_strings,
 };
 VLIB_NODE_FUNCTION_MULTIARCH (ip6_mpls_label_disposition_node,
                               ip6_mpls_label_disposition)
