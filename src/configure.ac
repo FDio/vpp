@@ -222,6 +222,7 @@ PLUGIN_ENABLED(pppoe)
 PLUGIN_ENABLED(sixrd)
 PLUGIN_ENABLED(nat)
 PLUGIN_ENABLED(stn)
+PLUGIN_ENABLED(l2e)
 
 ###############################################################################
 # Dependency checks

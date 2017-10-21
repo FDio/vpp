@@ -72,6 +72,8 @@ libvom_la_SOURCES = 			\
 	ip_unnumbered.cpp		\
 	l2_binding_cmds.cpp		\
 	l2_binding.cpp			\
+	l2_emulation_cmds.cpp		\
+	l2_emulation.cpp		\
 	l3_binding_cmds.cpp		\
 	l3_binding.cpp			\
 	lldp_binding_cmds.cpp		\
@@ -130,6 +132,7 @@ vominclude_HEADERS =			\
 	interface_span.hpp		\
 	ip_unnumbered.hpp		\
 	l2_binding.hpp			\
+	l2_emulation.hpp		\
 	l3_binding.hpp			\
 	lldp_binding.hpp		\
 	lldp_global.hpp			\
