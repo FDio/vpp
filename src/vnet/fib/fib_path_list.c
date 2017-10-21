@@ -583,6 +583,11 @@ fib_path_list_get_n_paths (fib_node_index_t path_list_index)
 {
     fib_path_list_t *path_list;
 
+    if (FIB_NODE_INDEX_INVALID == path_list_index)
+    {
+        return (0);
+    }
+
     path_list = fib_path_list_get(path_list_index);
 
     return (vec_len(path_list->fpl_paths));

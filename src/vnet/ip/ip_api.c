@@ -464,7 +464,7 @@ send_ip_mfib_details (unix_shared_memory_queue_t * q,
   if (!mp)
     return;
   memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IP_FIB_DETAILS);
+  mp->_vl_msg_id = ntohs (VL_API_IP_MFIB_DETAILS);
   mp->context = context;
 
   mp->rpf_id = mfib_entry->mfe_rpf_id;
@@ -563,7 +563,7 @@ send_ip6_mfib_details (vpe_api_main_t * am,
   if (!mp)
     return;
   memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_IP6_FIB_DETAILS);
+  mp->_vl_msg_id = ntohs (VL_API_IP6_MFIB_DETAILS);
   mp->context = context;
 
   mp->table_id = htonl (table_id);
@@ -1283,40 +1283,45 @@ mroute_add_del_handler (u8 is_add,
 			u8 is_local,
 			u32 fib_index,
 			const mfib_prefix_t * prefix,
+			dpo_proto_t nh_proto,
 			u32 entry_flags,
 			fib_rpf_id_t rpf_id,
-			u32 next_hop_sw_if_index, u32 itf_flags)
+			u32 next_hop_sw_if_index, u32 itf_flags, u32 bier_imp)
 {
   stats_dslock_with_hint (1 /* release hint */ , 2 /* tag */ );
 
   fib_route_path_t path = {
     .frp_sw_if_index = next_hop_sw_if_index,
-    .frp_proto = fib_proto_to_dpo (prefix->fp_proto),
+    .frp_proto = nh_proto,
   };
 
   if (is_local)
     path.frp_flags |= FIB_ROUTE_PATH_LOCAL;
 
-
-  if (!is_local && ~0 == next_hop_sw_if_index)
+  if (DPO_PROTO_BIER == nh_proto)
+    {
+      path.frp_bier_imp = bier_imp;
+      path.frp_flags = FIB_ROUTE_PATH_BIER_IMP;
+    }
+  else if (!is_local && ~0 == next_hop_sw_if_index)
     {
       mfib_table_entry_update (fib_index, prefix,
 			       MFIB_SOURCE_API, rpf_id, entry_flags);
+      goto done;
+    }
+
+  if (is_add)
+    {
+      mfib_table_entry_path_update (fib_index, prefix,
+				    MFIB_SOURCE_API, &path, itf_flags);
     }
   else
     {
-      if (is_add)
-	{
-	  mfib_table_entry_path_update (fib_index, prefix,
-					MFIB_SOURCE_API, &path, itf_flags);
-	}
-      else
-	{
-	  mfib_table_entry_path_remove (fib_index, prefix,
-					MFIB_SOURCE_API, &path);
-	}
+      mfib_table_entry_path_remove (fib_index, prefix,
+				    MFIB_SOURCE_API, &path);
     }
 
+done:
   stats_dsunlock ();
   return (0);
 }
@@ -1325,9 +1330,11 @@ static int
 api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 {
   fib_protocol_t fproto;
+  dpo_proto_t nh_proto;
   u32 fib_index;
   int rv;
 
+  nh_proto = mp->next_hop_afi;
   fproto = (mp->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
   rv = add_del_mroute_check (fproto,
 			     mp->table_id,
@@ -1360,10 +1367,12 @@ api_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
   return (mroute_add_del_handler (mp->is_add,
 				  mp->is_local,
 				  fib_index, &pfx,
+				  nh_proto,
 				  ntohl (mp->entry_flags),
 				  ntohl (mp->rpf_id),
 				  ntohl (mp->next_hop_sw_if_index),
-				  ntohl (mp->itf_flags)));
+				  ntohl (mp->itf_flags),
+				  ntohl (mp->bier_imp)));
 }
 
 void

@@ -394,6 +394,7 @@ fib_entry_chain_type_mcast_to_ucast (fib_forward_chain_type_t fct)
     case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
     case FIB_FORW_CHAIN_TYPE_ETHERNET:
     case FIB_FORW_CHAIN_TYPE_NSH:
+    case FIB_FORW_CHAIN_TYPE_BIER:
         break;
     }
 

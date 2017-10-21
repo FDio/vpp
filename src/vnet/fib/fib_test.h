@@ -17,16 +17,24 @@
 #define __FIB_TEST_H__
 
 #include <vnet/fib/fib_types.h>
+#include <vnet/mpls/mpls_types.h>
+#include <vnet/fib/fib_types.h>
+#include <vnet/mpls/packet.h>
+#include <vnet/dpo/load_balance.h>
+#include <vnet/adj/adj_types.h>
+#include <vnet/dpo/replicate_dpo.h>
 
 typedef enum fib_test_lb_bucket_type_t_ {
     FT_LB_LABEL_O_ADJ,
     FT_LB_LABEL_STACK_O_ADJ,
     FT_LB_LABEL_O_LB,
     FT_LB_O_LB,
-    FT_LB_SPECIAL,
-    FT_LB_ADJ,
     FT_LB_INTF,
     FT_LB_L2,
+    FT_LB_BIER_TABLE,
+    FT_LB_BIER_FMASK,
+    FT_LB_DROP,
+    FT_LB_ADJ,
 } fib_test_lb_bucket_type_t;
 
 typedef struct fib_test_lb_bucket_t_ {
@@ -68,6 +76,13 @@ typedef struct fib_test_lb_bucket_t_ {
 	{
 	    index_t adj;
 	} special;
+        struct
+        {
+            union {
+                index_t table;
+                index_t fmask;
+            };
+	} bier;
     };
 } fib_test_lb_bucket_t;
 
@@ -105,9 +120,14 @@ extern int fib_test_validate_lb_v(const load_balance_t *lb,
                                   u16 n_buckets,
                                   va_list *ap);
 
+extern int fib_test_validate_lb(const dpo_id_t *dpo,
+				u16 n_buckets,
+				...);
+
 extern int fib_test_validate_entry(fib_node_index_t fei,
                                    fib_forward_chain_type_t fct,
                                    int n_buckets,
                                    ...);
+
 
 #endif

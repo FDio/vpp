@@ -62,6 +62,7 @@
 #include <vnet/tcp/tcp.api.h>
 #include <vnet/dns/dns.api.h>
 #include <vnet/udp/udp.api.h>
+#include <vnet/bier/bier.api.h>
 
 /*
  * fd.io coding-style-patch-verification: ON

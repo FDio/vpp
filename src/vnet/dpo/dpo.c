@@ -122,6 +122,7 @@ dpo_proto_to_link (dpo_proto_t dp)
     case DPO_PROTO_IP4:
         return (VNET_LINK_IP4);
     case DPO_PROTO_MPLS:
+    case DPO_PROTO_BIER:
         return (VNET_LINK_MPLS);
     case DPO_PROTO_ETHERNET:
         return (VNET_LINK_ETHERNET);

@@ -87,6 +87,7 @@
 #include <vnet/dpo/lookup_dpo.h>
 #include <vnet/dpo/classify_dpo.h>
 #include <vnet/dpo/ip_null_dpo.h>
+
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs

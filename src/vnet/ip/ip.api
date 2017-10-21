@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-vl_api_version 1.0.0
+vl_api_version 1.0.1
 
 /** \brief Add / del table request
            A table can be added multiple times, but need be deleted only once.
@@ -68,6 +68,7 @@ define ip_fib_dump
 typeonly manual_print manual_endian define fib_path
 {
   u32 sw_if_index;
+  u32 table_id;
   u8 weight;
   u8 preference;
   u8 is_local;
@@ -426,7 +427,7 @@ autoreply define ip_add_del_route
     @param context - sender context, to match reply w/ request
     @param sw_if_index - software index of the new vlan's parent interface
     @param vrf_id - fib table /vrf associated with the route
-
+    @param next_hop_afi - Use dpo_proto_t
     FIXME
 */
 autoreply define ip_mroute_add_del
@@ -438,7 +439,9 @@ autoreply define ip_mroute_add_del
   u32 entry_flags;
   u32 itf_flags;
   u32 rpf_id;
+  u32 bier_imp;
   u16 grp_address_length;
+  u8 next_hop_afi;
   u8 create_vrf_if_needed;
   u8 is_add;
   u8 is_ipv6;

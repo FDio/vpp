@@ -24,6 +24,7 @@
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/mpls_disposition.h>
 #include <vnet/dpo/l2_bridge_dpo.h>
+#include <vnet/dpo/drop_dpo.h>
 
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_mcast.h>
@@ -37,6 +38,9 @@
 #include <vnet/fib/fib_urpf_list.h>
 #include <vnet/fib/mpls_fib.h>
 #include <vnet/udp/udp_encap.h>
+#include <vnet/bier/bier_fmask.h>
+#include <vnet/bier/bier_table.h>
+#include <vnet/bier/bier_imp.h>
 
 /**
  * Enurmeration of path types
@@ -83,9 +87,21 @@ typedef enum fib_path_type_t_ {
      */
     FIB_PATH_TYPE_RECEIVE,
     /**
+     * bier-imp. it's via a BIER imposition.
+     */
+    FIB_PATH_TYPE_BIER_IMP,
+    /**
+     * bier-fmask. it's via a BIER ECMP-table.
+     */
+    FIB_PATH_TYPE_BIER_TABLE,
+    /**
+     * bier-fmask. it's via a BIER f-mask.
+     */
+    FIB_PATH_TYPE_BIER_FMASK,
+    /**
      * Marker. Add new types before this one, then update it.
      */
-    FIB_PATH_TYPE_LAST = FIB_PATH_TYPE_RECEIVE,
+    FIB_PATH_TYPE_LAST = FIB_PATH_TYPE_BIER_FMASK,
 } __attribute__ ((packed)) fib_path_type_t;
 
 /**
@@ -103,10 +119,15 @@ typedef enum fib_path_type_t_ {
     [FIB_PATH_TYPE_INTF_RX]           = "intf-rx",	        \
     [FIB_PATH_TYPE_UDP_ENCAP]         = "udp-encap",	        \
     [FIB_PATH_TYPE_RECEIVE]           = "receive",	        \
+    [FIB_PATH_TYPE_BIER_IMP]          = "bier-imp",	        \
+    [FIB_PATH_TYPE_BIER_TABLE]        = "bier-table",	        \
+    [FIB_PATH_TYPE_BIER_FMASK]        = "bier-fmask",	        \
 }
 
-#define FOR_EACH_FIB_PATH_TYPE(_item) \
-    for (_item = FIB_PATH_TYPE_FIRST; _item <= FIB_PATH_TYPE_LAST; _item++)
+#define FOR_EACH_FIB_PATH_TYPE(_item)           \
+    for (_item = FIB_PATH_TYPE_FIRST;           \
+         _item <= FIB_PATH_TYPE_LAST;           \
+         _item++)
 
 /**
  * Enurmeration of path operational (i.e. derived) attributes
@@ -252,11 +273,41 @@ typedef struct fib_path_t_ {
                     mpls_eos_bit_t fp_eos;
                 };
 	    } fp_nh;
-	    /**
-	     * The FIB table index in which to find the next-hop.
-	     */
-	    fib_node_index_t fp_tbl_id;
+            union {
+                /**
+                 * The FIB table index in which to find the next-hop.
+                 */
+                fib_node_index_t fp_tbl_id;
+                /**
+                 * The BIER FIB the fmask is in
+                 */
+                index_t fp_bier_fib;
+            };
 	} recursive;
+	struct {
+            /**
+             * The next-hop
+             */
+            ip46_address_t fp_nh;
+            /**
+             * The BIER FIB the fmask is in
+             */
+            index_t fp_bier_fib;
+	} bier_fmask;
+	struct {
+            /**
+             * The BIER table's ID
+             */
+            bier_table_id_t fp_bier_tbl;
+	} bier_table;
+	struct {
+            /**
+             * The BIER imposition object
+             * this is part of the path's key, since the index_t
+             * of an imposition object is the object's key.
+             */
+            index_t fp_bier_imp;
+	} bier_imp;
 	struct {
 	    /**
 	     * The FIB index in which to perfom the next lookup
@@ -311,11 +362,21 @@ typedef struct fib_path_t_ {
      */
     fib_path_oper_flags_t fp_oper_flags;
 
-    /**
-     * the resolving via fib. not part of the union, since it it not part
-     * of the path's hash.
-     */
-    fib_node_index_t fp_via_fib;
+    union {
+        /**
+         * the resolving via fib. not part of the union, since it it not part
+         * of the path's hash.
+         */
+        fib_node_index_t fp_via_fib;
+        /**
+         * the resolving bier-fmask
+         */
+        index_t fp_via_bier_fmask;
+        /**
+         * the resolving bier-table
+         */
+        index_t fp_via_bier_tbl;
+    };
 
     /**
      * The Data-path objects through which this path resolves for IP.
@@ -493,6 +554,31 @@ format_fib_path (u8 * s, va_list * args)
 	break;
     case FIB_PATH_TYPE_UDP_ENCAP:
         s = format (s, " UDP-encap ID:%d", path->udp_encap.fp_udp_encap_id);
+        break;
+    case FIB_PATH_TYPE_BIER_TABLE:
+        s = format (s, "via bier-table:[%U}",
+                    format_bier_table_id,
+                    &path->bier_table.fp_bier_tbl);
+        s = format (s, " via-dpo:[%U:%d]",
+                    format_dpo_type, path->fp_dpo.dpoi_type,
+                    path->fp_dpo.dpoi_index);
+        break;
+    case FIB_PATH_TYPE_BIER_FMASK:
+        s = format (s, "via %U",
+                    format_ip46_address,
+                    &path->bier_fmask.fp_nh,
+                    IP46_TYPE_ANY);
+	s = format (s, " in BIER-fib:%d",
+		    path->bier_fmask.fp_bier_fib,
+		    path->fp_via_fib); 
+	s = format (s, " via-fmask:%d", path->fp_via_bier_fmask); 
+	s = format (s, " via-dpo:[%U:%d]",
+		    format_dpo_type, path->fp_dpo.dpoi_type, 
+		    path->fp_dpo.dpoi_index);
+	break;
+    case FIB_PATH_TYPE_BIER_IMP:
+        s = format (s, "via %U", format_bier_imp,
+                    path->bier_imp.fp_bier_imp, 0, BIER_SHOW_BRIEF);
         break;
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:
@@ -742,6 +828,28 @@ fib_path_recursive_adj_update (fib_path_t *path,
 }
 
 /*
+ * re-evaulate the forwarding state for a via fmask path
+ */
+static void
+fib_path_bier_fmask_update (fib_path_t *path,
+                            dpo_id_t *dpo)
+{
+    bier_fmask_contribute_forwarding(path->fp_via_bier_fmask, dpo);
+
+    /*
+     * if we are stakcing on the drop, then the path is not resolved
+     */
+    if (dpo_is_drop(dpo))
+    {
+        path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
+    }
+    else
+    {
+        path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RESOLVED;
+    }
+}
+
+/*
  * fib_path_is_permanent_drop
  *
  * Return !0 if the path is configured to permanently drop,
@@ -786,6 +894,20 @@ fib_path_unresolve (fib_path_t *path)
 	    path->fp_via_fib = FIB_NODE_INDEX_INVALID;
 	}
 	break;
+    case FIB_PATH_TYPE_BIER_FMASK:
+	if (FIB_NODE_INDEX_INVALID != path->fp_via_bier_fmask)
+	{
+	    bier_fmask_child_remove(path->fp_via_bier_fmask,
+                                    path->fp_sibling);
+	    path->fp_via_bier_fmask = FIB_NODE_INDEX_INVALID;
+	}
+	break;
+    case FIB_PATH_TYPE_BIER_IMP:
+        bier_imp_unlock(path->fp_dpo.dpoi_index);
+	break;
+    case FIB_PATH_TYPE_BIER_TABLE:
+        bier_table_ecmp_unlock(path->fp_via_bier_tbl);
+        break;
     case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
 	adj_child_remove(path->fp_dpo.dpoi_index,
 			 path->fp_sibling);
@@ -873,6 +995,30 @@ fib_path_back_walk_notify (fib_node_t *node,
 		path,
 		fib_path_to_chain_type(path),
 		&path->fp_dpo);
+	}
+	if ((FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason) ||
+            (FIB_NODE_BW_REASON_FLAG_ADJ_DOWN   & ctx->fnbw_reason))
+	{
+	    /*
+	     * ADJ updates (complete<->incomplete) do not need to propagate to
+	     * recursive entries.
+	     * The only reason its needed as far back as here, is that the adj
+	     * and the incomplete adj are a different DPO type, so the LBs need
+	     * to re-stack.
+	     * If this walk was quashed in the fib_entry, then any non-fib_path
+	     * children (like tunnels that collapse out the LB when they stack)
+	     * would not see the update.
+	     */
+	    return (FIB_NODE_BACK_WALK_CONTINUE);
+	}
+	break;
+    case FIB_PATH_TYPE_BIER_FMASK:
+	if (FIB_NODE_BW_REASON_FLAG_EVALUATE & ctx->fnbw_reason)
+	{
+	    /*
+	     * update to use the BIER fmask's new forwading
+	     */
+	    fib_path_bier_fmask_update(path, &path->fp_dpo);
 	}
 	if ((FIB_NODE_BW_REASON_FLAG_ADJ_UPDATE & ctx->fnbw_reason) ||
             (FIB_NODE_BW_REASON_FLAG_ADJ_DOWN   & ctx->fnbw_reason))
@@ -1043,6 +1189,8 @@ FIXME comment
     case FIB_PATH_TYPE_SPECIAL:
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_EXCLUSIVE:
+    case FIB_PATH_TYPE_BIER_TABLE:
+    case FIB_PATH_TYPE_BIER_IMP:
 	/*
 	 * these path types have no parents. so to be
 	 * walked from one is unexpected.
@@ -1164,6 +1312,22 @@ fib_path_create (fib_node_index_t pl_index,
         path->deag.fp_tbl_id = rpath->frp_fib_index;
         path->deag.fp_rpf_id = rpath->frp_rpf_id;
     }
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_BIER_FMASK)
+    {
+        path->fp_type = FIB_PATH_TYPE_BIER_FMASK;
+        path->bier_fmask.fp_nh = rpath->frp_addr;
+        path->bier_fmask.fp_bier_fib = rpath->frp_bier_fib_index;
+    }
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_BIER_IMP)
+    {
+        path->fp_type = FIB_PATH_TYPE_BIER_IMP;
+        path->bier_imp.fp_bier_imp = rpath->frp_bier_imp;
+    }
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_BIER_TABLE)
+    {
+        path->fp_type = FIB_PATH_TYPE_BIER_TABLE;
+        path->bier_table.fp_bier_tbl = rpath->frp_bier_tbl;
+    }
     else if (~0 != rpath->frp_sw_if_index)
     {
         if (ip46_address_is_zero(&rpath->frp_addr))
@@ -1204,7 +1368,7 @@ fib_path_create (fib_node_index_t pl_index,
 	    {
 		path->recursive.fp_nh.fp_ip = rpath->frp_addr;
 	    }
-	    path->recursive.fp_tbl_id = rpath->frp_fib_index;
+            path->recursive.fp_tbl_id = rpath->frp_fib_index;
 	}
     }
 
@@ -1386,6 +1550,24 @@ fib_path_cmp_i (const fib_path_t *path1,
 		res = (path1->recursive.fp_tbl_id - path2->recursive.fp_tbl_id);
 	    }
 	    break;
+	case FIB_PATH_TYPE_BIER_FMASK:
+	    res = ip46_address_cmp(&path1->bier_fmask.fp_nh,
+				   &path2->bier_fmask.fp_nh);
+ 
+	    if (0 == res)
+	    {
+		res = (path1->bier_fmask.fp_bier_fib -
+                       path2->bier_fmask.fp_bier_fib);
+	    }
+	    break;
+	case FIB_PATH_TYPE_BIER_IMP:
+            res = (path1->bier_imp.fp_bier_imp -
+                   path2->bier_imp.fp_bier_imp);
+	    break;
+        case FIB_PATH_TYPE_BIER_TABLE:
+            res = bier_table_id_cmp(&path1->bier_table.fp_bier_tbl,
+                                    &path2->bier_table.fp_bier_tbl);
+            break;
 	case FIB_PATH_TYPE_DEAG:
 	    res = (path1->deag.fp_tbl_id - path2->deag.fp_tbl_id);
 	    if (0 == res)
@@ -1510,6 +1692,22 @@ fib_path_cmp_w_route_path (fib_node_index_t path_index,
                 res = (path->recursive.fp_tbl_id - rpath->frp_fib_index);
             }
 	    break;
+	case FIB_PATH_TYPE_BIER_FMASK:
+            res = ip46_address_cmp(&path->bier_fmask.fp_nh,
+                                   &rpath->frp_addr);
+
+            if (0 == res)
+            {
+                res = (path->bier_fmask.fp_bier_fib - rpath->frp_bier_fib_index);
+            }
+	    break;
+	case FIB_PATH_TYPE_BIER_IMP:
+            res = (path->bier_imp.fp_bier_imp - rpath->frp_bier_imp);
+	    break;
+        case FIB_PATH_TYPE_BIER_TABLE:
+            res = bier_table_id_cmp(&path->bier_table.fp_bier_tbl,
+                                    &rpath->frp_bier_tbl);
+            break;
 	case FIB_PATH_TYPE_INTF_RX:
 	    res = (path->intf_rx.fp_interface - rpath->frp_sw_if_index);
             break;
@@ -1623,6 +1821,9 @@ fib_path_recursive_loop_detect (fib_node_index_t path_index,
     case FIB_PATH_TYPE_INTF_RX:
     case FIB_PATH_TYPE_UDP_ENCAP:
     case FIB_PATH_TYPE_EXCLUSIVE:
+    case FIB_PATH_TYPE_BIER_FMASK:
+    case FIB_PATH_TYPE_BIER_TABLE:
+    case FIB_PATH_TYPE_BIER_IMP:
 	/*
 	 * these path types cannot be part of a loop, since they are the leaves
 	 * of the graph.
@@ -1742,6 +1943,53 @@ fib_path_resolve (fib_node_index_t path_index)
 
 	break;
     }
+    case FIB_PATH_TYPE_BIER_FMASK:
+    {
+        /*
+         * Find the BIER f-mask to link to
+         */
+        bier_fmask_id_t fmid = {
+            .bfmi_nh = path->bier_fmask.fp_nh,
+            .bfmi_hdr_type = BIER_HDR_O_MPLS,
+        };
+
+        ASSERT(FIB_NODE_INDEX_INVALID == path->fp_via_bier_fmask);
+
+        path->fp_via_bier_fmask = bier_fmask_db_find(path->bier_fmask.fp_bier_fib,
+                                                &fmid);
+
+        /*
+         * become a dependent child of the entry so the path is
+         * informed when the forwarding for the entry changes.
+         */
+        path->fp_sibling = bier_fmask_child_add(path->fp_via_bier_fmask,
+                                                FIB_NODE_TYPE_PATH,
+                                                fib_path_get_index(path));
+
+        fib_path_bier_fmask_update(path, &path->fp_dpo);
+
+        break;
+    }
+    case FIB_PATH_TYPE_BIER_IMP:
+        bier_imp_lock(path->bier_imp.fp_bier_imp);
+        bier_imp_contribute_forwarding(path->bier_imp.fp_bier_imp,
+                                       DPO_PROTO_IP4,
+                                       &path->fp_dpo);
+        break;
+    case FIB_PATH_TYPE_BIER_TABLE:
+    {
+        /*
+         * Find/create the BIER table to link to
+         */
+        ASSERT(FIB_NODE_INDEX_INVALID == path->fp_via_bier_tbl);
+
+        path->fp_via_bier_tbl =
+            bier_table_ecmp_create_and_lock(&path->bier_table.fp_bier_tbl);
+
+        bier_table_contribute_forwarding(path->fp_via_bier_tbl,
+                                         &path->fp_dpo);
+        break;
+    }
     case FIB_PATH_TYPE_SPECIAL:
 	/*
 	 * Resolve via the drop
@@ -1833,7 +2081,41 @@ fib_path_get_resolving_interface (fib_node_index_t path_index)
     case FIB_PATH_TYPE_SPECIAL:
     case FIB_PATH_TYPE_DEAG:
     case FIB_PATH_TYPE_EXCLUSIVE:
+    case FIB_PATH_TYPE_BIER_FMASK:
+    case FIB_PATH_TYPE_BIER_TABLE:
+    case FIB_PATH_TYPE_BIER_IMP:
 	break;
+    }
+    return (~0);
+}
+
+index_t
+fib_path_get_resolving_index (fib_node_index_t path_index)
+{
+    fib_path_t *path;
+
+    path = fib_path_get(path_index);
+
+    switch (path->fp_type)
+    {
+    case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
+    case FIB_PATH_TYPE_ATTACHED:
+    case FIB_PATH_TYPE_RECEIVE:
+    case FIB_PATH_TYPE_INTF_RX:
+    case FIB_PATH_TYPE_SPECIAL:
+    case FIB_PATH_TYPE_DEAG:
+    case FIB_PATH_TYPE_EXCLUSIVE:
+        break;
+    case FIB_PATH_TYPE_UDP_ENCAP:
+	return (path->udp_encap.fp_udp_encap_id);
+    case FIB_PATH_TYPE_RECURSIVE:
+	return (path->fp_via_fib);
+    case FIB_PATH_TYPE_BIER_FMASK:
+ 	return (path->fp_via_bier_fmask);
+   case FIB_PATH_TYPE_BIER_TABLE:
+       return (path->fp_via_bier_tbl);
+   case FIB_PATH_TYPE_BIER_IMP:
+       return (path->bier_imp.fp_bier_imp);
     }
     return (~0);
 }
@@ -1875,6 +2157,23 @@ fib_path_get_preference (fib_node_index_t path_index)
     ASSERT(path);
 
     return (path->fp_preference);
+}
+
+u32
+fib_path_get_rpf_id (fib_node_index_t path_index)
+{
+    fib_path_t *path;
+
+    path = fib_path_get(path_index);
+
+    ASSERT(path);
+
+    if (FIB_PATH_CFG_FLAG_RPF_ID & path->fp_cfg_flags)
+    {
+        return (path->deag.fp_rpf_id);
+    }
+
+    return (~0);
 }
 
 /**
@@ -1937,6 +2236,9 @@ fib_path_contribute_urpf (fib_node_index_t path_index,
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:
     case FIB_PATH_TYPE_UDP_ENCAP:
+    case FIB_PATH_TYPE_BIER_FMASK:
+    case FIB_PATH_TYPE_BIER_TABLE:
+    case FIB_PATH_TYPE_BIER_IMP:
 	/*
 	 * these path types don't link to an adj
 	 */
@@ -1979,6 +2281,9 @@ fib_path_stack_mpls_disp (fib_node_index_t path_index,
     case FIB_PATH_TYPE_UDP_ENCAP:
     case FIB_PATH_TYPE_EXCLUSIVE:
     case FIB_PATH_TYPE_SPECIAL:
+    case FIB_PATH_TYPE_BIER_FMASK:
+    case FIB_PATH_TYPE_BIER_TABLE:
+    case FIB_PATH_TYPE_BIER_IMP:
         break;
     }
 }
@@ -2036,8 +2341,9 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    }
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
-	    break;
-            }
+	    case FIB_FORW_CHAIN_TYPE_BIER:
+		break;
+	    }
             break;
 	case FIB_PATH_TYPE_RECURSIVE:
 	    switch (fct)
@@ -2048,6 +2354,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
+	    case FIB_FORW_CHAIN_TYPE_BIER:
 		fib_path_recursive_adj_update(path, fct, dpo);
 		break;
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
@@ -2055,6 +2362,47 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 		ASSERT(0);
 		break;
 	    }
+	    break;
+        case FIB_PATH_TYPE_BIER_TABLE:
+            switch (fct)
+            {
+            case FIB_FORW_CHAIN_TYPE_BIER:
+                bier_table_contribute_forwarding(path->fp_via_bier_tbl, dpo);
+                break;
+            case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
+            case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
+            case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
+            case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
+            case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+            case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
+            case FIB_FORW_CHAIN_TYPE_ETHERNET:
+            case FIB_FORW_CHAIN_TYPE_NSH:
+                ASSERT(0);
+                break;
+            }
+            break;
+	case FIB_PATH_TYPE_BIER_FMASK:
+	    switch (fct)
+	    {
+	    case FIB_FORW_CHAIN_TYPE_BIER:
+		fib_path_bier_fmask_update(path, dpo);
+		break;
+	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
+	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP4:
+	    case FIB_FORW_CHAIN_TYPE_UNICAST_IP6:
+	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
+	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
+	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
+	    case FIB_FORW_CHAIN_TYPE_NSH:
+		ASSERT(0);
+		break;
+	    }
+	    break;
+	case FIB_PATH_TYPE_BIER_IMP:
+            bier_imp_contribute_forwarding(path->bier_imp.fp_bier_imp,
+                                           fib_forw_chain_type_to_dpo_proto(fct),
+                                           dpo);
 	    break;
 	case FIB_PATH_TYPE_DEAG:
             switch (fct)
@@ -2074,6 +2422,8 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 		break;
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP4:
 	    case FIB_FORW_CHAIN_TYPE_MCAST_IP6:
+	    case FIB_FORW_CHAIN_TYPE_BIER:
+		break;
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	    case FIB_FORW_CHAIN_TYPE_NSH:
 		ASSERT(0);
@@ -2097,6 +2447,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
 	    case FIB_FORW_CHAIN_TYPE_ETHERNET:
 	    case FIB_FORW_CHAIN_TYPE_NSH:
+            case FIB_FORW_CHAIN_TYPE_BIER:
                 {
                     adj_index_t ai;
 
@@ -2262,6 +2613,10 @@ fib_path_encode (fib_node_index_t path_list_index,
       case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
         api_rpath->rpath.frp_sw_if_index = path->attached_next_hop.fp_interface;
         api_rpath->rpath.frp_addr = path->attached_next_hop.fp_nh;
+        break;
+      case FIB_PATH_TYPE_BIER_FMASK:
+        api_rpath->rpath.frp_fib_index = path->bier_fmask.fp_bier_fib;
+        api_rpath->rpath.frp_addr = path->bier_fmask.fp_nh;
         break;
       case FIB_PATH_TYPE_SPECIAL:
         break;
