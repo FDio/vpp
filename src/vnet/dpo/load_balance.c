@@ -21,6 +21,7 @@
 #include <vnet/adj/adj.h>
 #include <vnet/adj/adj_internal.h>
 #include <vnet/fib/fib_urpf_list.h>
+#include <vnet/bier/bier_hdr_inlines.h>
 
 /*
  * distribution error tolerance for load-balancing
@@ -814,6 +815,10 @@ const static char* const load_balance_l2_nodes[] =
 const static char* const load_balance_nsh_nodes[] =
 {
     "nsh-load-balance",
+};
+const static char* const load_balance_bier_nodes[] =
+{
+    "bier-load-balance",
     NULL,
 };
 const static char* const * const load_balance_nodes[DPO_PROTO_NUM] =
@@ -823,6 +828,7 @@ const static char* const * const load_balance_nodes[DPO_PROTO_NUM] =
     [DPO_PROTO_MPLS] = load_balance_mpls_nodes,
     [DPO_PROTO_ETHERNET] = load_balance_l2_nodes,
     [DPO_PROTO_NSH] = load_balance_nsh_nodes,
+    [DPO_PROTO_BIER] = load_balance_bier_nodes,
 };
 
 void
@@ -935,10 +941,11 @@ typedef struct load_balance_trace_t_
     index_t lb_index;
 } load_balance_trace_t;
 
-static uword
-l2_load_balance (vlib_main_t * vm,
-		 vlib_node_runtime_t * node,
-		 vlib_frame_t * frame)
+always_inline uword
+load_balance_inline (vlib_main_t * vm,
+		     vlib_node_runtime_t * node,
+		     vlib_frame_t * frame,
+		     int is_l2)
 {
   u32 n_left_from, next_index, *from, *to_next;
 
@@ -973,7 +980,16 @@ l2_load_balance (vlib_main_t * vm,
 	  lbi0 =  vnet_buffer (b0)->ip.adj_index[VLIB_TX];
 	  lb0 = load_balance_get(lbi0);
 
-	  vnet_buffer(b0)->ip.flow_hash = l2_flow_hash(b0);
+	  if (is_l2)
+	  {
+	      vnet_buffer(b0)->ip.flow_hash = l2_flow_hash(b0);
+	  }
+	  else
+	  {
+	      /* it's BIER */
+	      const bier_hdr_t *bh0 = vlib_buffer_get_current(b0);
+	      vnet_buffer(b0)->ip.flow_hash = bier_hdr_get_entropy(bh0);
+	  }
 
 	  dpo0 = load_balance_get_bucket_i(lb0, 
 					   vnet_buffer(b0)->ip.flow_hash &
@@ -996,6 +1012,14 @@ l2_load_balance (vlib_main_t * vm,
     }
 
   return frame->n_vectors;
+}
+
+static uword
+l2_load_balance (vlib_main_t * vm,
+		 vlib_node_runtime_t * node,
+		 vlib_frame_t * frame)
+{
+    return (load_balance_inline(vm, node, frame, 1));
 }
 
 static u8 *
@@ -1112,4 +1136,35 @@ VLIB_REGISTER_NODE (nsh_load_balance_node) = {
   .next_nodes = {
       [0] = "error-drop",
   },
+};
+
+static u8 *
+format_bier_load_balance_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  load_balance_trace_t *t = va_arg (*args, load_balance_trace_t *);
+
+  s = format (s, "BIER-load-balance: index %d", t->lb_index);
+  return s;
+}
+
+static uword
+bier_load_balance (vlib_main_t * vm,
+		   vlib_node_runtime_t * node,
+		   vlib_frame_t * frame)
+{
+    return (load_balance_inline(vm, node, frame, 0));
+}
+
+/**
+ * @brief
+ */
+VLIB_REGISTER_NODE (bier_load_balance_node) = {
+  .function = bier_load_balance,
+  .name = "bier-load-balance",
+  .vector_size = sizeof (u32),
+
+  .format_trace = format_bier_load_balance_trace,
+  .sibling_of = "mpls-load-balance",
 };

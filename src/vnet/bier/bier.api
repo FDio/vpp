@@ -1,0 +1,268 @@
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+
+    This file defines vpp BIER control-plane API messages which are generally
+    called through a shared memory interface.
+*/
+vl_api_version 1.0.0
+
+/** \brief BIER Table Indentifier
+    @param bt_set
+    @param bt_sub_domain
+    @param bt_bit_header_length
+*/
+typeonly define bier_table_id
+{
+  u8 bt_set;
+  u8 bt_sub_domain;
+  u8 bt_hdr_len_id;
+};
+
+/** \brief BIER Table Add / del route
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bt_tbl_id - The BIER table-id the route is added in
+    @param bt_mpls_label - The MPLS label for the table
+    @param bt_is_add - Is this a route add or delete
+*/
+autoreply define bier_table_add_del
+{
+  u32 client_index;
+  u32 context;
+  vl_api_bier_table_id_t bt_tbl_id;
+  u32 bt_label;
+  u8 bt_is_add;
+};
+
+define bier_table_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define bier_table_details
+{
+  u32 context;
+  u32 bt_label;
+  vl_api_bier_table_id_t bt_tbl_id;
+};
+
+/** \brief FIB path
+    @param sw_if_index - index of the interface
+    @param weight - The weight, for UCMP
+    @param preference - The preference of the path. lowest preference is prefered
+    @param is_local - local if non-zero, else remote
+    @param is_drop - Drop the packet
+    @param is_unreach - Drop the packet and rate limit send ICMP unreachable
+    @param is_prohibit - Drop the packet and rate limit send ICMP prohibited
+    @param afi - the afi of the next hop, IP46_TYPE_IP4=1, IP46_TYPE_IP6=2
+    @param next_hop[16] - the next hop address
+
+    WARNING: this type is replicated, pending cleanup completion
+*/
+typeonly define fib_path3
+{
+  u32 sw_if_index;
+  u32 table_id;
+  u8 weight;
+  u8 preference;
+  u8 is_local;
+  u8 is_drop;
+  u8 is_unreach;
+  u8 is_prohibit;
+  u8 afi;
+  u8 next_hop[16];
+  u32 rpf_id;
+  u8 n_labels;
+  u32 label_stack[16];
+};
+
+/** \brief BIER Route Add / del route
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param br_bp - The Bit-position value
+    @param br_tbl_id - The BIER table-id the route is added in
+    @param br_is_add - Is this a route add or delete
+    @param br_is_replace - Are the paths specfied replacing those already
+                           present or are they to be combined.
+    @param br_n_paths - The number of paths
+    @param br_paths - The array of paths
+*/
+autoreply define bier_route_add_del
+{
+  u32 client_index;
+  u32 context;
+  u16 br_bp;
+  u8 br_is_add;
+  u8 br_is_replace;
+  vl_api_bier_table_id_t br_tbl_id;
+  u8 br_n_paths;
+  vl_api_fib_path3_t br_paths[br_n_paths];
+};
+
+define bier_route_dump
+{
+  u32 client_index;
+  u32 context;
+  vl_api_bier_table_id_t br_tbl_id;
+};
+
+define bier_route_details
+{
+  u32 client_index;
+  u32 context;
+  u16 br_bp;
+  vl_api_bier_table_id_t br_tbl_id;
+  u32 br_n_paths;
+  vl_api_fib_path3_t br_paths[br_n_paths];
+};
+
+/** \brief BIER Imposition Add
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bi_tbl_id - The BIER table-id used to forward post encap
+    @param bi_src - The source Bit-position in the encap.
+    @param bi_is_add - Is this a route add or delete
+    @param bi_n_bytes - The number of bytes in the following bit-string
+    @param bi_bytes - The bit-string represented as a byte array
+*/
+define bier_imp_add
+{
+  u32 client_index;
+  u32 context;
+  vl_api_bier_table_id_t bi_tbl_id;
+  u16 bi_src;
+  u8 bi_is_add;
+  u8 bi_n_bytes;
+  u8 bi_bytes[bi_n_bytes];
+};
+
+/** \brief Reply for BIER route add / del request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param bi_index - The index of the created imposition object.
+*/
+define bier_imp_add_reply
+{
+  u32 context;
+  i32 retval;
+  u32 bi_index;
+};
+
+/** \brief BIER Imposition Del
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bi_index - The index of the imposition object (as returned
+		      from the ADD)
+*/
+autoreply define bier_imp_del
+{
+  u32 client_index;
+  u32 context;
+  u32 bi_index;
+};
+
+define bier_imp_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define bier_imp_details
+{
+  u32 client_index;
+  u32 context;
+  vl_api_bier_table_id_t bi_tbl_id;
+  u16 bi_src;
+  u8 bi_n_bytes;
+  u8 bi_bytes[bi_n_bytes];
+};
+
+/** \brief BIER Disposition Table Add / del route
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bt_tbl_id - The BIER Disposition table-id.
+*/
+autoreply define bier_disp_table_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 bdt_tbl_id;
+  u8 bdt_is_add;
+};
+
+define bier_disp_table_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define bier_disp_table_details
+{
+  u32 context;
+  u32 bdt_tbl_id;
+};
+
+/** \brief BIER Disposition Entry Add / del
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bde_bp - The Bit-position value for the entry
+    @param bde_tbl_id - The BIER dispositiontable-id the route is added in
+    @param bde_next_hop_sw_if_index - the nextop interface
+    @param bde_is_add - Is this a route add or delete
+    @param bde_payload_proto - The payload protocol for which the next-hop
+			       is added
+    @param bde_next_hop_table_id - The table ID for the next-hop
+    @param bde_next_hop_proto_is_ip4 - The next-hop is IPV4
+    @param bde_next_hop[16] - the nextop address.
+                              Set this to all 0s for dispostion.
+*/
+autoreply define bier_disp_entry_add_del
+{
+  u32 client_index;
+  u32 context;
+  u16 bde_bp;
+  u32 bde_tbl_id;
+  u8 bde_is_add;
+  u8 bde_payload_proto;
+  u8 bde_n_paths;
+  vl_api_fib_path3_t bde_paths[bde_n_paths];
+};
+
+define bier_disp_entry_dump
+{
+  u32 client_index;
+  u32 context;
+  u32 bde_tbl_id;
+};
+
+define bier_disp_entry_details
+{
+  u32 context;
+  u16 bde_bp;
+  u32 bde_tbl_id;
+  u8 bde_is_add;
+  u8 bde_payload_proto;
+  u8 bde_n_paths;
+  vl_api_fib_path3_t bde_paths[bde_n_paths];
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
