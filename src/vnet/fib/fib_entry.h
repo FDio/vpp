@@ -57,6 +57,10 @@ typedef enum fib_source_t_ {
      */
     FIB_SOURCE_PLUGIN_HI,
     /**
+     * From the BIER subsystem
+     */
+    FIB_SOURCE_BIER,
+    /**
      * From the control plane API
      */
     FIB_SOURCE_API,
@@ -136,6 +140,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
 #define FIB_SOURCES {					\
     [FIB_SOURCE_SPECIAL] = "special",			\
     [FIB_SOURCE_INTERFACE] = "interface",		\
+    [FIB_SOURCE_BIER] = "BIER",			        \
     [FIB_SOURCE_API] = "API",			        \
     [FIB_SOURCE_CLI] = "CLI",			        \
     [FIB_SOURCE_ADJ] = "adjacency",			\
