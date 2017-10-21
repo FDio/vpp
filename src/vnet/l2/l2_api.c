@@ -26,6 +26,7 @@
 #include <vnet/l2/l2_fib.h>
 #include <vnet/l2/l2_vtr.h>
 #include <vnet/l2/l2_learn.h>
+#include <vnet/l2/l2_l3_extract.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -66,6 +67,7 @@ _(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)                         \
 _(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                 \
 _(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                       \
 _(BRIDGE_FLAGS, bridge_flags)                                   \
+_(L2_L3_EXTRACT, l2_l3_extract)                                 \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite) \
 _(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)   \
 _(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)         \
@@ -386,6 +388,28 @@ vl_api_l2_flags_t_handler (vl_api_l2_flags_t * mp)
     rmp->resulting_feature_bitmap = ntohl(rbm);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+vl_api_l2_l3_extract_t_handler (vl_api_l2_l3_extract_t * mp)
+{
+  vl_api_l2_l3_extract_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  fib_protocol_t proto = (mp->is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
+  if (mp->enable)
+    l2_l3_extract_enable (proto, sw_if_index,
+			  mp->include_multicast, mp->include_broadcast);
+  else
+    l2_l3_extract_disable (proto, sw_if_index,
+			   mp->include_multicast, mp->include_broadcast);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_L2_L3_EXTRACT_REPLY);
 }
 
 static void

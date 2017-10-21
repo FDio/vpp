@@ -603,6 +603,26 @@ class VppPapiProvider(object):
                          'tag1': tag1,
                          'tag2': tag2})
 
+    def sw_interface_set_l2_l3_extract(
+            self,
+            sw_if_index,
+            ip6=0,
+            enable=1,
+            mcast=1,
+            bcast=1):
+        """L2 interface L3 extraction
+        :param client_index - opaque cookie to identify the sender
+        :param context - sender context, to match reply w/ request
+        :param sw_if_index - interface the operation is applied to
+
+        """
+        return self.api(self.papi.l2_l3_extract,
+                        {'sw_if_index': sw_if_index,
+                         'is_ip6': ip6,
+                         'enable': enable,
+                         'include_multicast': mcast,
+                         'include_broadcast': bcast})
+
     def sw_interface_set_flags(self, sw_if_index, admin_up_down):
         """
 
