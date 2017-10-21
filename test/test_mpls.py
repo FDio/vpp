@@ -106,6 +106,7 @@ class TestMPLS(VppTestCase):
             ping=0,
             ip_itf=None,
             dst_ip=None,
+            chksum=None,
             n=257):
         self.reset_packet_infos()
         pkts = []
@@ -133,6 +134,8 @@ class TestMPLS(VppTestCase):
                             dst=ip_itf.local_ip4) /
                      ICMP())
 
+            if chksum:
+                p[IP].chksum = chksum
             info.data = p.copy()
             pkts.append(p)
         return pkts
@@ -152,7 +155,7 @@ class TestMPLS(VppTestCase):
         return pkts
 
     def create_stream_labelled_ip6(self, src_if, mpls_label, mpls_ttl,
-                                   dst_ip=None):
+                                   dst_ip=None, hlim=64):
         if dst_ip is None:
             dst_ip = src_if.remote_ip6
         self.reset_packet_infos()
@@ -162,7 +165,7 @@ class TestMPLS(VppTestCase):
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
                  MPLS(label=mpls_label, ttl=mpls_ttl) /
-                 IPv6(src=src_if.remote_ip6, dst=dst_ip) /
+                 IPv6(src=src_if.remote_ip6, dst=dst_ip, hlim=hlim) /
                  UDP(sport=1234, dport=1234) /
                  Raw(payload))
             info.data = p.copy()
@@ -1026,12 +1029,21 @@ class TestMPLS(VppTestCase):
         self.verify_capture_ip4(self.pg1, rx, tx)
 
         #
+        # disposed packets have an invalid IPv4 checkusm
+        #
+        tx = self.create_stream_labelled_ip4(self.pg0, [34],
+                                             dst_ip="232.1.1.1", n=65,
+                                             chksum=1)
+        self.send_and_assert_no_replies(self.pg0, tx, "Invalid Checksum")
+
+        #
         # set the RPF-ID of the enrtry to not match the input packet's
         #
         route_232_1_1_1.update_rpf_id(56)
         tx = self.create_stream_labelled_ip4(self.pg0, [34],
                                              dst_ip="232.1.1.1")
         self.send_and_assert_no_replies(self.pg0, tx, "RPF-ID drop 56")
+        self.logger.error(self.vapi.cli("sh error"))
 
     def test_mcast_ip6_tail(self):
         """ MPLS IPv6 Multicast Tail """
@@ -1090,6 +1102,13 @@ class TestMPLS(VppTestCase):
 
         rx = self.pg1.get_capture(257)
         self.verify_capture_ip6(self.pg1, rx, tx)
+
+        #
+        # disposed packets have hop-limit = 1
+        #
+        tx = self.create_stream_labelled_ip6(self.pg0, [34], 255,
+                                             dst_ip="ff01::1", hlim=1)
+        self.send_and_assert_no_replies(self.pg0, tx, "Hop Limt Expired")
 
         #
         # set the RPF-ID of the enrtry to not match the input packet's
