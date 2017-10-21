@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-vl_api_version 1.0.0
+vl_api_version 1.0.1
 
 /** \brief Add / del table request
            A table can be added multiple times, but need be deleted only once.
@@ -68,6 +68,7 @@ define ip_fib_dump
 typeonly manual_print manual_endian define fib_path
 {
   u32 sw_if_index;
+  u32 table_id;
   u8 weight;
   u8 preference;
   u8 is_local;

@@ -300,7 +300,7 @@ mfib_entry_src_find (const mfib_entry_t *mfib_entry,
 
 static mfib_entry_src_t *
 mfib_entry_src_find_or_create (mfib_entry_t *mfib_entry,
-                              mfib_source_t source)
+                               mfib_source_t source)
 {
     mfib_entry_src_t *esrc;
 
@@ -535,6 +535,7 @@ mfib_entry_src_collect_forwarding (fib_node_index_t pl_index,
     case FIB_FORW_CHAIN_TYPE_MPLS_EOS:
     case FIB_FORW_CHAIN_TYPE_ETHERNET:
     case FIB_FORW_CHAIN_TYPE_NSH:
+    case FIB_FORW_CHAIN_TYPE_BIER:
         ASSERT(0);
         break;
     }
