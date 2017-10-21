@@ -261,7 +261,7 @@ replicate_fill_buckets (replicate_t *rep,
                         u32 n_buckets)
 {
     load_balance_path_t * nh;
-    u16 ii, bucket;
+    u16 bucket;
 
     bucket = 0;
 
@@ -271,11 +271,8 @@ replicate_fill_buckets (replicate_t *rep,
      */
     vec_foreach (nh, nhs)
     {
-        for (ii = 0; ii < nh->path_weight; ii++)
-        {
-            ASSERT(bucket < n_buckets);
-            replicate_set_bucket_i(rep, bucket++, buckets, &nh->path_dpo);
-        }
+        ASSERT(bucket < n_buckets);
+        replicate_set_bucket_i(rep, bucket++, buckets, &nh->path_dpo);
     }
 }
 
@@ -694,7 +691,10 @@ replicate_inline (vlib_main_t * vm,
 
                 if (PREDICT_FALSE(c0->flags & VLIB_BUFFER_IS_TRACED))
                 {
-                    replicate_trace_t *t = vlib_add_trace (vm, node, c0, sizeof (*t));
+                    replicate_trace_t *t;
+
+                    vlib_trace_buffer (vm, node, next0, c0, 0);
+                    t = vlib_add_trace (vm, node, c0, sizeof (*t));
                     t->rep_index = repi0;
                     t->dpo = *dpo0;
                 }

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-vl_api_version 1.0.0
+vl_api_version 1.0.1
 
 /** \brief Bind/Unbind an MPLS local label to an IP prefix. i.e. create
            a per-prefix label entry.
@@ -114,6 +114,7 @@ define mpls_tunnel_dump
 typeonly manual_print manual_endian define fib_path2
 {
   u32 sw_if_index;
+  u32 table_id;
   u8 weight;
   u8 preference;
   u8 is_local;
