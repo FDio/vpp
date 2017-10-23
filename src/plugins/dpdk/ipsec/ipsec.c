@@ -293,17 +293,11 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
       max_nb_qp = cdev_info.max_nb_queue_pairs;
 
-      for (i = 0; i < tm->n_vlib_mains; i++)
+      for (i = skip_master; i < tm->n_vlib_mains; i++)
 	{
 	  u8 is_outbound;
 	  crypto_worker_main_t *cwm;
 	  uword *map;
-
-	  if (skip_master)
-	    {
-	      skip_master = 0;
-	      continue;
-	    }
 
 	  cwm = vec_elt_at_index (dcm->workers_main, i);
 	  map = cwm->algo_qp_map;
