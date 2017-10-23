@@ -1,11 +1,173 @@
 # Release Notes    {#release_notes}
 
+* @subpage release_notes_1710
 * @subpage release_notes_1707
 * @subpage release_notes_1704
 * @subpage release_notes_17011
 * @subpage release_notes_1701
 * @subpage release_notes_1609
 * @subpage release_notes_1606
+
+@page release_notes_1710 Release notes for VPP 17.10
+
+More than 400 commits since the 1707 release.
+
+## Features
+- Infrastructure
+  - DPDK 17.08
+  - IP reassembly
+  - Bounded-index extensible hash bucket-level LRU cache
+  - Templated timer wheel improvements
+
+- API
+  - C/C++ language binding
+  - API stats
+
+- Host stack
+  - VPP TCP stack scale/congestion improvements
+  - VPP Comms Library (VCL)
+  - Overall performance, scale and hardening
+
+- Network features
+  - IPSec rework - utilize new FIB
+  - VPLS and VPWS implementation
+
+  - SNAT
+    - Complete NAT64
+    - Performance / Scale
+    - Fragmentation support
+    - One-armed NAT (internal and external on same interface)
+
+  - Security Groups/ACLs
+    - "Replace" semantics for adding a new MacIP acl
+    - Test suite tests for MacIP ACLs
+
+  - ONE-LISP
+    - Map-server fallback support
+    - Preemptive re-fetch of active mappings that are about to expire
+    - ND termination
+
+  - PPPoE
+    - PPPoE Control Plane packet dispatch
+    - PPPoE decapsulation
+    - PPPoE encapsulation
+
+## Known issues
+
+For the full list of issues please reffer to fd.io [JIRA](https://jira.fd.io).
+
+## Issues fixed
+
+For the full list of fixed issues please reffer to:
+- fd.io [JIRA](https://jira.fd.io)
+- git [commit log](https://git.fd.io/vpp/log/?h=stable/1710)
+
+## API changes
+                         Message Name                         Result
+bridge_domain_add_del                                        definition changed
+bridge_domain_details                                        definition changed
+connect_session                                              definition changed
+connect_sock                                                 definition changed
+connect_sock_reply                                           definition changed
+connect_uri_reply                                            definition changed
+create_vhost_user_if                                         definition changed
+dhcp_client_config                                           definition changed
+ip4_arp_event                                                definition changed
+ip6_fib_details                                              definition changed
+ip6_nd_event                                                 definition changed
+ip_add_del_route                                             definition changed
+ip_fib_details                                               definition changed
+ip_table_add_del                                             definition changed
+l2_macs_event                                                only in image
+macip_acl_add_replace                                        definition changed
+macip_acl_interface_list_details                             only in image
+macip_acl_interface_list_dump                                only in image
+modify_vhost_user_if                                         definition changed
+mpls_fib_details                                             definition changed
+mpls_route_add_del                                           definition changed
+mpls_table_add_del                                           definition changed
+mpls_tunnel_add_del                                          definition changed
+nat44_add_del_address_range                                  definition changed
+nat44_add_del_interface_addr                                 definition changed
+nat44_add_del_lb_static_mapping                              definition changed
+nat44_add_del_static_mapping                                 definition changed
+nat44_address_details                                        only in image
+nat44_address_dump                                           only in image
+nat44_interface_add_del_feature                              definition changed
+nat44_interface_add_del_output_feature                       definition changed
+nat44_interface_addr_details                                 only in image
+nat44_interface_addr_dump                                    only in image
+nat44_interface_details                                      only in image
+nat44_interface_dump                                         only in image
+nat44_interface_output_feature_details                       only in image
+nat44_interface_output_feature_dump                          only in image
+nat44_lb_static_mapping_details                              only in image
+nat44_lb_static_mapping_dump                                 only in image
+nat44_static_mapping_details                                 only in image
+nat44_static_mapping_dump                                    only in image
+nat44_user_details                                           only in image
+nat44_user_dump                                              only in image
+nat44_user_session_details                                   only in image
+nat44_user_session_dump                                      only in image
+nat_control_ping                                             definition changed
+nat_det_add_del_map                                          definition changed
+nat_det_close_session_in                                     definition changed
+nat_det_close_session_out                                    definition changed
+nat_det_forward                                              definition changed
+nat_det_get_timeouts                                         definition changed
+nat_det_map_details                                          only in image
+nat_det_map_dump                                             only in image
+nat_det_reverse                                              definition changed
+nat_det_session_details                                      only in image
+nat_det_session_dump                                         only in image
+nat_det_set_timeouts                                         definition changed
+nat_ipfix_enable_disable                                     definition changed
+nat_set_workers                                              definition changed
+nat_show_config                                              definition changed
+nat_worker_details                                           only in image
+nat_worker_dump                                              only in image
+one_add_del_ndp_entry                                        definition changed
+one_enable_disable_petr_mode                                 definition changed
+one_enable_disable_pitr_mode                                 definition changed
+one_enable_disable_xtr_mode                                  definition changed
+one_get_transport_protocol                                   definition changed
+one_map_register_fallback_threshold                          definition changed
+one_map_register_set_ttl                                     definition changed
+one_ndp_bd_get                                               definition changed
+one_ndp_entries_get                                          definition changed
+one_set_transport_protocol                                   definition changed
+one_show_petr_mode                                           definition changed
+one_show_pitr_mode                                           definition changed
+one_show_xtr_mode                                            definition changed
+p2p_ethernet_add                                             definition changed
+pppoe_add_del_session                                        definition changed
+pppoe_session_details                                        only in image
+pppoe_session_dump                                           only in image
+punt_socket_deregister                                       definition changed
+punt_socket_register                                         definition changed
+show_one_map_register_fallback_threshold                     definition changed
+show_one_map_register_ttl                                    definition changed
+snat_interface_add_del_output_feature                        definition changed
+snat_interface_output_feature_details                        only in image
+snat_interface_output_feature_dump                           only in image
+sw_interface_event                                           only in image
+sw_interface_set_flags                                       definition changed
+sw_interface_span_dump                                       definition changed
+sw_interface_span_enable_disable                             definition changed
+sw_interface_vhost_user_details                              definition changed
+tcp_configure_src_addresses                                  definition changed
+vnet_per_interface_combined_counters                         only in image
+vnet_per_interface_simple_counters                           only in image
+want_interface_combined_stats                                definition changed
+want_interface_simple_stats                                  definition changed
+want_ip4_fib_stats                                           definition changed
+want_ip4_nbr_stats                                           definition changed
+want_ip6_fib_stats                                           definition changed
+want_ip6_nbr_stats                                           definition changed
+want_l2_macs_events                                          definition changed
+want_per_interface_combined_stats                            definition changed
+want_per_interface_simple_stats                              definition changed
+Found 103 api message signature differences
 
 @page release_notes_1707 Release notes for VPP 17.07
 
