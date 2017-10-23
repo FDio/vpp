@@ -99,15 +99,18 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
         final ControlPingCallback callback = (ControlPingCallback) pluginRegistry.get(clazz.getName());
         assertPluginWasRegistered(name, callback);
 
-        synchronized (pingCalls) {
-            int context = controlPing0();
-            if (context < 0) {
-                throw new VppInvocationException("controlPing", context);
-            }
-
-            pingCalls.put(context, callback);
-            return context;
+        // controlPing0 is sending function and can go to waiting in case of e. g. full queue
+        // because of that it cant be in same synchronization block as used by reply handler function
+        int context = controlPing0();
+        if (context < 0) {
+            throw new VppInvocationException("controlPing", context);
         }
+
+        synchronized (pingCalls) {
+            pingCalls.put(context, callback);
+        }
+
+        return context;
     }
 
     @Override

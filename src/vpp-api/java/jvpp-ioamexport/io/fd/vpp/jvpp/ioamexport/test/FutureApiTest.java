@@ -36,20 +36,21 @@ public class FutureApiTest {
         testCallbackApi(args);
     }
 
+    //TODO figure out why LOG.info does not work with make test
     private static void testCallbackApi(String[] args) throws Exception {
-        LOG.info("Testing Java callback API for ioamexport plugin");
+        System.out.printf("Testing Java callback API for ioamexport plugin");
         try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiTest", args[0]);
              final FutureJVppIoamexportFacade jvpp = new FutureJVppIoamexportFacade(registry, new JVppIoamexportImpl())) {
-            LOG.info("Successfully connected to VPP");
+            System.out.printf("Successfully connected to VPP");
 
             testIoamExportIp6EnableDisable(jvpp);
 
-            LOG.info("Disconnecting...");
+            System.out.printf("Disconnecting...");
         }
     }
 
     private static void testIoamExportIp6EnableDisable(FutureJVppIoamexportFacade jvpp) throws Exception {
-        LOG.info("Sending IoamExportIp6EnableDisable request...");
+        System.out.printf("Sending IoamExportIp6EnableDisable request...");
         final IoamExportIp6EnableDisable request = new IoamExportIp6EnableDisable();
 
         final Future<IoamExportIp6EnableDisableReply> replyFuture = jvpp.ioamExportIp6EnableDisable(request).toCompletableFuture();
