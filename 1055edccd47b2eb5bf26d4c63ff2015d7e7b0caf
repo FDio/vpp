@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8a533261_caf31f9f",
+        "filename": "src/vpp-api/java/jvpp-registry/io/fd/vpp/jvpp/future/AbstractFutureJVppInvoker.java",
+        "patchSetId": 3
+      },
+      "lineNbr": 112,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-10-23T15:17:39Z",
+      "side": 1,
+      "message": "That part will cause deadlock as well...\n\nAnother think, please doublecheck how dump messages are collected, as far as I remember, we might need to prevent sending messages between dump and ping...",
+      "range": {
+        "startLine": 112,
+        "startChar": 27,
+        "endLine": 112,
+        "endChar": 63
+      },
+      "revId": "1055edccd47b2eb5bf26d4c63ff2015d7e7b0caf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
