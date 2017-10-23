@@ -99,15 +99,24 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
         final ControlPingCallback callback = (ControlPingCallback) pluginRegistry.get(clazz.getName());
         assertPluginWasRegistered(name, callback);
 
-        synchronized (pingCalls) {
-            int context = controlPing0();
-            if (context < 0) {
-                throw new VppInvocationException("controlPing", context);
-            }
-
-            pingCalls.put(context, callback);
-            return context;
+        // controlPing0 is sending function and can go to waiting in case of e. g. full queue
+        // because of that it cant be in same synchronization block as used by reply handler function
+        int context = controlPing0();
+        if (context < 0) {
+            throw new VppInvocationException("controlPing", context);
         }
+
+        synchronized (pingCalls) {
+            // if callback is in map it's because reply was already received
+            EarlyControlPingReply earlyReplyCallback = (EarlyControlPingReply) pingCalls.remove(context);
+            if(earlyReplyCallback == null) {
+                pingCalls.put(context, callback);
+            } else {
+                callback.onControlPingReply(earlyReplyCallback.getReply());
+            }
+        }
+
+        return context;
     }
 
     @Override
@@ -116,8 +125,9 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
         synchronized (pingCalls) {
             callback = pingCalls.remove(reply.context);
             if (callback == null) {
-                LOG.log(Level.WARNING, "No callback was registered for reply context=" + reply.context + " Contexts waiting="
-                    + pingCalls.keySet());
+                // reply received early, because we don't know callback to call
+                // we wrap the reply and let the sender to call it
+                pingCalls.put(reply.context, new EarlyControlPingReply(reply));
                 return;
             }
         }
@@ -150,5 +160,28 @@ public final class JVppRegistryImpl implements JVppRegistry, ControlPingCallback
     @Override
     public void close() throws Exception {
         connection.close();
+    }
+
+    private static class EarlyControlPingReply implements ControlPingCallback {
+
+        private final ControlPingReply reply;
+
+        public EarlyControlPingReply(final ControlPingReply reply) {
+            this.reply = reply;
+        }
+
+        public ControlPingReply getReply() {
+            return reply;
+        }
+
+        @Override
+        public void onError(VppCallbackException ex) {
+            throw new IllegalStateException("Calling onError in EarlyControlPingReply");
+        }
+
+        @Override
+        public void onControlPingReply(ControlPingReply reply) {
+            throw new IllegalStateException("Calling onControlPingReply in EarlyControlPingReply");
+        }
     }
 }
