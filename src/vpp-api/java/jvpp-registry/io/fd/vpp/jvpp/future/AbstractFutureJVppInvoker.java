@@ -62,27 +62,31 @@ public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
     @Override
     @SuppressWarnings("unchecked")
     public <REQ extends JVppRequest, REPLY extends JVppReply<REQ>> CompletionStage<REPLY> send(REQ req) {
-        synchronized(requests) {
-            try {
-                final CompletableFuture<REPLY> replyCompletableFuture;
-                final int contextId = jvpp.send(req);
+        try {
+            // jvpp.send() can go to waiting state if sending queue is full, putting it into same
+            // synchronization block as used by receiving part (synchronized(requests)) can lead
+            // to deadlock between these two sides or at least slowing sending process by slow
+            // reader
+            final CompletableFuture<REPLY> replyCompletableFuture;
+            final int contextId = jvpp.send(req);
 
-                if(req instanceof JVppDump) {
-                    throw new IllegalArgumentException("Send with empty reply dump has to be used in case of dump calls");
-                }
-                replyCompletableFuture = new CompletableFuture<>();
-                requests.put(contextId, replyCompletableFuture);
-
-                // TODO in case of timeouts/missing replies, requests from the map are not removed
-                // consider adding cancel method, that would remove requests from the map and cancel
-                // associated replyCompletableFuture
-
-                return replyCompletableFuture;
-            } catch (VppInvocationException ex) {
-                final CompletableFuture<REPLY> replyCompletableFuture = new CompletableFuture<>();
-                replyCompletableFuture.completeExceptionally(ex);
-                return replyCompletableFuture;
+            if(req instanceof JVppDump) {
+                throw new IllegalArgumentException("Send with empty reply dump has to be used in case of dump calls");
             }
+            replyCompletableFuture = new CompletableFuture<>();
+            synchronized(requests) {
+                requests.put(contextId, replyCompletableFuture);
+            }
+
+            // TODO in case of timeouts/missing replies, requests from the map are not removed
+            // consider adding cancel method, that would remove requests from the map and cancel
+            // associated replyCompletableFuture
+
+            return replyCompletableFuture;
+        } catch (VppInvocationException ex) {
+            final CompletableFuture<REPLY> replyCompletableFuture = new CompletableFuture<>();
+            replyCompletableFuture.completeExceptionally(ex);
+            return replyCompletableFuture;
         }
     }
 
@@ -90,30 +94,34 @@ public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
     @SuppressWarnings("unchecked")
     public <REQ extends JVppRequest, REPLY extends JVppReply<REQ>, DUMP extends JVppReplyDump<REQ, REPLY>> CompletionStage<DUMP> send(
             REQ req, DUMP emptyReplyDump) {
-        synchronized(requests) {
-            try {
-                final CompletableDumpFuture<DUMP> replyCompletableFuture;
-                final int contextId = jvpp.send(req);
+      try {
+          // jvpp.send() and registry.controlPing() can go to waiting state if sending queue is full,
+          // putting it into same synchronization block as used by receiving part (synchronized(requests))
+          // can lead to deadlock between these two sides or at least slowing sending process by slow reader
+          final CompletableDumpFuture<DUMP> replyCompletableFuture;
+          final int contextId = jvpp.send(req);
 
-                if(!(req instanceof JVppDump)) {
-                    throw new IllegalArgumentException("Send without empty reply dump has to be used in case of regular calls");
-                }
-                replyCompletableFuture = new CompletableDumpFuture<>(contextId, emptyReplyDump);
+          if(!(req instanceof JVppDump)) {
+              throw new IllegalArgumentException("Send without empty reply dump has to be used in case of regular calls");
+          }
+          replyCompletableFuture = new CompletableDumpFuture<>(contextId, emptyReplyDump);
+          final int pingId = registry.controlPing(jvpp.getClass());
 
-                requests.put(contextId, replyCompletableFuture);
-                requests.put(registry.controlPing(jvpp.getClass()), replyCompletableFuture);
+          synchronized(requests) {
+              requests.put(contextId, replyCompletableFuture);
+              requests.put(pingId, replyCompletableFuture);
+          }
 
-                // TODO in case of timeouts/missing replies, requests from the map are not removed
-                // consider adding cancel method, that would remove requests from the map and cancel
-                // associated replyCompletableFuture
+          // TODO in case of timeouts/missing replies, requests from the map are not removed
+          // consider adding cancel method, that would remove requests from the map and cancel
+          // associated replyCompletableFuture
 
-                return replyCompletableFuture;
-            } catch (VppInvocationException ex) {
-                final CompletableFuture<DUMP> replyCompletableFuture = new CompletableFuture<>();
-                replyCompletableFuture.completeExceptionally(ex);
-                return replyCompletableFuture;
-            }
-        }
+          return replyCompletableFuture;
+      } catch (VppInvocationException ex) {
+          final CompletableFuture<DUMP> replyCompletableFuture = new CompletableFuture<>();
+          replyCompletableFuture.completeExceptionally(ex);
+          return replyCompletableFuture;
+      }
     }
 
     public static final class CompletableDumpFuture<T extends JVppReplyDump<?, ?>> extends CompletableFuture<T> {
