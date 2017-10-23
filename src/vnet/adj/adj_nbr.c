@@ -1047,11 +1047,13 @@ const static dpo_vft_t adj_nbr_dpo_vft = {
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_nbr,
     .dv_mem_show = adj_mem_show,
+    .dv_get_urpf = adj_dpo_get_urpf,
 };
 const static dpo_vft_t adj_nbr_incompl_dpo_vft = {
     .dv_lock = adj_dpo_lock,
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_nbr_incomplete,
+    .dv_get_urpf = adj_dpo_get_urpf,
 };
 
 /**

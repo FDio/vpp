@@ -115,6 +115,7 @@ typedef enum dpo_type_t_ {
     DPO_INTERFACE_RX,
     DPO_INTERFACE_TX,
     DPO_L2_BRIDGE,
+    DPO_L3_PROXY,
     DPO_LAST,
 } __attribute__((packed)) dpo_type_t;
 
@@ -142,7 +143,8 @@ typedef enum dpo_type_t_ {
     [DPO_MFIB_ENTRY] = "dpo-mfib_entry", \
     [DPO_INTERFACE_RX] = "dpo-interface-rx",	\
     [DPO_INTERFACE_TX] = "dpo-interface-tx",	\
-    [DPO_L2_BRIDGE] = "dpo-l2-bridge"	\
+    [DPO_L2_BRIDGE] = "dpo-l2-bridge",	\
+    [DPO_L3_PROXY] = "dpo-l3-proxy",	\
 }
 
 /**
@@ -310,15 +312,25 @@ extern void dpo_stack(dpo_type_t child_type,
  * @param child_node
  *  The VLIB grpah node index to create an arc from to the parent
  *
- * @parem dpo
+ * @param dpo
  *  This is the DPO to stack and set.
  *
- * @paren parent_dpo
+ * @param parent_dpo
  *  The parent DPO to stack onto.
  */ 
 extern void dpo_stack_from_node(u32 child_node,
                                 dpo_id_t *dpo,
                                 const dpo_id_t *parent);
+
+/**
+ * Get a uRPF interface for the DPO
+ *
+ * @param dpo
+ *  The DPO from which to get the uRPF interface
+ *
+ * @return valid SW interface index or ~0
+ */
+extern u32 dpo_get_urpf(const dpo_id_t *dpo);
 
 /**
  * @brief  A lock function registered for a DPO type
@@ -340,6 +352,12 @@ typedef void (*dpo_mem_show_t)(void);
  * the type/instance will use.
  */
 typedef u32* (*dpo_get_next_node_t)(const dpo_id_t *dpo);
+
+/**
+ * @brief Given a DPO instance return an interface that can
+ * be used in an uRPF check
+ */
+typedef u32 (*dpo_get_urpf_t)(const dpo_id_t *dpo);
 
 /**
  * @brief A virtual function table regisitered for a DPO type
@@ -369,6 +387,10 @@ typedef struct dpo_vft_t_
      * function
      */
     dpo_get_next_node_t dv_get_next_node;
+    /**
+     * Get uRPF interface
+     */
+    dpo_get_urpf_t dv_get_urpf;
 } dpo_vft_t;
 
 

@@ -43,6 +43,10 @@ typedef enum fib_source_t_ {
      */
     FIB_SOURCE_CLASSIFY,
     /**
+     * A route the is being 'proxied' on behalf of another device
+     */
+    FIB_SOURCE_PROXY,
+    /**
      * Route added as a result of interface configuration.
      * this will also come from the API/CLI, but the distinction is
      * that is from confiiguration on an interface, not a 'ip route' command
@@ -136,6 +140,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
 #define FIB_SOURCES {					\
     [FIB_SOURCE_SPECIAL] = "special",			\
     [FIB_SOURCE_INTERFACE] = "interface",		\
+    [FIB_SOURCE_PROXY] = "proxy",                       \
     [FIB_SOURCE_API] = "API",			        \
     [FIB_SOURCE_CLI] = "CLI",			        \
     [FIB_SOURCE_ADJ] = "adjacency",			\

@@ -67,4 +67,5 @@ fib_entry_src_special_register (void)
     fib_entry_src_register(FIB_SOURCE_SIXRD, &special_src_vft);
     fib_entry_src_register(FIB_SOURCE_CLASSIFY, &special_src_vft);
     fib_entry_src_register(FIB_SOURCE_AE, &special_src_vft);
+    fib_entry_src_register(FIB_SOURCE_PROXY, &special_src_vft);
 }
