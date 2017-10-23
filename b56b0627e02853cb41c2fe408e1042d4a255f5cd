@@ -262,6 +262,30 @@
       "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b079d5f0_9f389c4d",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 289,
+      "author": {
+        "id": 1004
+      },
+      "writtenOn": "2017-10-23T07:24:31Z",
+      "side": 1,
+      "message": "Thomas F Herbert, I am so sorry , I did not see your comments. My email did not get the message.OK, I will close the ticket soon, but I can not acknownledge you understand my intention. In my mind, I found that the path \"DIST_SUBDIR\" need to be created before running \"tar -cf $(DIST_FILE) $(DIST_SUBDIR) --exclude\u003d*.tar)\". The command \"tar\" can not decompress files into a non-existenting path. Do you think so?",
+      "parentUuid": "3a4b7175_9022e3b7",
+      "range": {
+        "startLine": 284,
+        "startChar": 0,
+        "endLine": 289,
+        "endChar": 45
+      },
+      "revId": "b56b0627e02853cb41c2fe408e1042d4a255f5cd",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
