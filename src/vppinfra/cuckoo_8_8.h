@@ -39,7 +39,9 @@
 #define CLIB_CUCKOO_OPTIMIZE_UNROLL 1
 #define CLIB_CUCKOO_OPTIMIZE_USE_COUNT_LIMITS_SEARCH 1
 
+#if __SSE4_2__ && !defined (__i386__)
 #include <x86intrin.h>
+#endif
 
 /** 8 octet key, 8 octet key value pair */
 typedef struct
