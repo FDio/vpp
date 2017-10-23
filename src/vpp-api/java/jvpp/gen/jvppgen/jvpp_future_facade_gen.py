@@ -61,26 +61,28 @@ public final class FutureJVpp${plugin_name}FacadeCallback implements $plugin_pac
     @Override
     @SuppressWarnings("unchecked")
     public void onControlPingReply(final $base_package.$dto_package.ControlPingReply reply) {
-        final java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>> completableFuture;
+        java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>> completableFuture;
 
         final int replyId = reply.context;
         synchronized(requests) {
             completableFuture = (java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>>) requests.get(replyId);
-        }
 
-        if(completableFuture != null) {
-            // Finish dump call
-            if (completableFuture instanceof $base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture) {
-                completableFuture.complete((($base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture) completableFuture).getReplyDump());
-                // Remove future mapped to dump call context id
-                synchronized(requests) {
+            if(completableFuture != null) {
+                // Finish dump call
+                if (completableFuture instanceof $base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture) {
+                    completableFuture.complete((($base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture) completableFuture).getReplyDump());
+                    // Remove future mapped to dump call context id
                     requests.remove((($base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture) completableFuture).getContextId());
+                } else {
+                    // reply to regular control ping, complete the future
+                    completableFuture.complete(reply);
                 }
-            } else {
-                completableFuture.complete(reply);
-            }
-            synchronized(requests) {
                 requests.remove(replyId);
+            } else {
+                // future not yet created by writer, create new future, complete it and put to map under ping id
+                completableFuture = new java.util.concurrent.CompletableFuture<>();
+                completableFuture.complete(reply);
+                requests.put(replyId, completableFuture);
             }
         }
     }
@@ -93,20 +95,26 @@ jvpp_facade_callback_method_template = Template("""
     @Override
     @SuppressWarnings("unchecked")
     public void on$callback_dto(final $plugin_package.$dto_package.$callback_dto reply) {
-        final java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>> completableFuture;
+        java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<$plugin_package.$dto_package.$request_dto>> completableFuture;
         final int replyId = reply.context;
         if (LOG.isLoggable(java.util.logging.Level.FINE)) {
             LOG.fine(String.format("Received $callback_dto event message: %s", reply));
         }
         synchronized(requests) {
-            completableFuture = (java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<?>>) requests.get(replyId);
-        }
+            completableFuture =
+            (java.util.concurrent.CompletableFuture<$base_package.$dto_package.JVppReply<$plugin_package.$dto_package.$request_dto>>) requests.get(replyId);
 
-        if(completableFuture != null) {
-            completableFuture.complete(reply);
-
-            synchronized(requests) {
+            if(completableFuture != null) {
+                // received reply on request, complete future created by sender and remove it from map
+                completableFuture.complete(reply);
                 requests.remove(replyId);
+            } else {
+                // reply received before writer created future,
+                // create new future, complete it and put into map to
+                // notify sender that reply is already received
+                completableFuture = new  java.util.concurrent.CompletableFuture<>();
+                completableFuture.complete(reply);
+                requests.put(replyId, completableFuture);
             }
         }
     }
@@ -126,16 +134,22 @@ jvpp_facade_details_callback_method_template = Template("""
     @Override
     @SuppressWarnings("unchecked")
     public void on$callback_dto(final $plugin_package.$dto_package.$callback_dto reply) {
-        final $base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture<$plugin_package.$dto_package.$callback_dto_reply_dump> completableFuture;
+        $base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture<$plugin_package.$dto_package.$callback_dto_reply_dump> completableFuture;
         final int replyId = reply.context;
         if (LOG.isLoggable(java.util.logging.Level.FINE)) {
             LOG.fine(String.format("Received $callback_dto event message: %s", reply));
         }
         synchronized(requests) {
             completableFuture = ($base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture<$plugin_package.$dto_package.$callback_dto_reply_dump>) requests.get(replyId);
-        }
 
-        if(completableFuture != null) {
+            if(completableFuture == null) {
+                // reply received before writer created future,
+                // create new future, and put into map to notify sender that reply is already received,
+                // following details replies will add information to this future
+                completableFuture = new $base_package.$future_package.AbstractFutureJVppInvoker.CompletableDumpFuture<>(replyId,
+                    new $plugin_package.$dto_package.$callback_dto_reply_dump());
+                requests.put(replyId, completableFuture);
+            }
             completableFuture.getReplyDump().$callback_dto_field.add(reply);
         }
     }
@@ -165,6 +179,7 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
 
         if not util.is_notification(func["name"]):
             camel_case_request_method_name = util.remove_reply_suffix(util.underscore_to_camelcase(func['name']))
+            request_dto = util.remove_reply_suffix(util.underscore_to_camelcase_upper(func['name']))
             if util.is_details(camel_case_name_with_suffix):
                 camel_case_reply_name = get_standard_dump_reply_name(util.underscore_to_camelcase_upper(func['name']),
                                                                      func['name'])
@@ -208,7 +223,8 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
                 callbacks.append(jvpp_facade_callback_method_template.substitute(base_package=base_package,
                                                                                  plugin_package=plugin_package,
                                                                                  dto_package=dto_package,
-                                                                                 callback_dto=camel_case_name_with_suffix))
+                                                                                 callback_dto=camel_case_name_with_suffix,
+                                                                                 request_dto=request_dto))
 
         if util.is_notification(func["name"]):
             callbacks.append(jvpp_facade_callback_notification_method_template.substitute(plugin_package=plugin_package,
