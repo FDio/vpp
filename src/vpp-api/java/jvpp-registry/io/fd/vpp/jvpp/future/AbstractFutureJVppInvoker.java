@@ -62,27 +62,27 @@ public abstract class AbstractFutureJVppInvoker implements FutureJVppInvoker {
     @Override
     @SuppressWarnings("unchecked")
     public <REQ extends JVppRequest, REPLY extends JVppReply<REQ>> CompletionStage<REPLY> send(REQ req) {
-        synchronized(requests) {
-            try {
-                final CompletableFuture<REPLY> replyCompletableFuture;
-                final int contextId = jvpp.send(req);
+        try {
+            final CompletableFuture<REPLY> replyCompletableFuture;
+            final int contextId = jvpp.send(req);
 
-                if(req instanceof JVppDump) {
-                    throw new IllegalArgumentException("Send with empty reply dump has to be used in case of dump calls");
-                }
-                replyCompletableFuture = new CompletableFuture<>();
-                requests.put(contextId, replyCompletableFuture);
-
-                // TODO in case of timeouts/missing replies, requests from the map are not removed
-                // consider adding cancel method, that would remove requests from the map and cancel
-                // associated replyCompletableFuture
-
-                return replyCompletableFuture;
-            } catch (VppInvocationException ex) {
-                final CompletableFuture<REPLY> replyCompletableFuture = new CompletableFuture<>();
-                replyCompletableFuture.completeExceptionally(ex);
-                return replyCompletableFuture;
+            if(req instanceof JVppDump) {
+                throw new IllegalArgumentException("Send with empty reply dump has to be used in case of dump calls");
             }
+            replyCompletableFuture = new CompletableFuture<>();
+            synchronized(requests) {
+                requests.put(contextId, replyCompletableFuture);
+            }
+
+            // TODO in case of timeouts/missing replies, requests from the map are not removed
+            // consider adding cancel method, that would remove requests from the map and cancel
+            // associated replyCompletableFuture
+
+            return replyCompletableFuture;
+        } catch (VppInvocationException ex) {
+            final CompletableFuture<REPLY> replyCompletableFuture = new CompletableFuture<>();
+            replyCompletableFuture.completeExceptionally(ex);
+            return replyCompletableFuture;
         }
     }
 
