@@ -11,34 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-lib_LTLIBRARIES += libvppcom.la
-
-libvppcom_la_SOURCES =
-libvppcom_la_DEPENDENCIES = 	\
-	libvppinfra.la		\
-	libvlib.la		\
-	libsvmdb.la		\
-	libsvm.la 		\
-	libvlibmemory.la 	\
-	libvlibmemoryclient.la
-
-libvppcom_la_LIBADD = $(libvppcom_la_DEPENDENCIES) -lpthread
-
-libvppcom_la_SOURCES +=				\
-  uri/vppcom.c
-
-nobase_include_HEADERS +=			\
-  uri/vppcom.h
-
 noinst_PROGRAMS +=				\
 	uri_udp_test				\
 	uri_tcp_test				\
 	uri_socket_test				\
-	uri_socket_server			\
-	vcl_test_server				\
-	vcl_test_client				\
-	sock_test_server			\
-	sock_test_client
+	uri_socket_server
 
 uri_udp_test_SOURCES = uri/uri_udp_test.c
 uri_udp_test_LDADD = libvlibmemoryclient.la libsvm.la \
@@ -49,19 +26,8 @@ uri_tcp_test_LDADD = libvlibmemoryclient.la libsvm.la \
 	libvppinfra.la -lpthread -lm -lrt
 
 uri_socket_test_SOURCES = uri/uri_socket_test.c
-uri_socket_test_LDADD = libvppinfra.la -lpthread -lm -lrt
+uri_socket_test_LDADD = libvppinfra.la libvcl_ldpreload.la -lpthread -lm -lrt
 
 uri_socket_server_SOURCES = uri/uri_socket_server.c
-uri_socket_server_LDADD = libvppinfra.la -lpthread -lm -lrt
+uri_socket_server_LDADD = libvppinfra.la libvcl_ldpreload.la -lpthread -lm -lrt
 
-vcl_test_server_SOURCES = uri/vcl_test_server.c
-vcl_test_server_LDADD = libvppcom.la
-
-vcl_test_client_SOURCES = uri/vcl_test_client.c
-vcl_test_client_LDADD = libvppcom.la
-
-sock_test_server_SOURCES = uri/sock_test_server.c
-sock_test_client_SOURCES = uri/sock_test_client.c
-
-nobase_include_HEADERS +=			\
-  uri/sock_test.h

@@ -21,12 +21,12 @@
 #include <stdarg.h>
 #include <sys/resource.h>
 
-#include <libvcl-ldpreload/vcom_socket_wrapper.h>
-#include <libvcl-ldpreload/vcom.h>
+#include <vcl/vcom_socket_wrapper.h>
+#include <vcl/vcom.h>
 #include <sys/time.h>
 
-#include <uri/vppcom.h>
-#include <libvcl-ldpreload/vcom_socket.h>
+#include <vcl/vppcom.h>
+#include <vcl/vcom_socket.h>
 
 /* GCC have printf type attribute check. */
 #ifdef HAVE_FUNCTION_ATTRIBUTE_FORMAT
@@ -889,11 +889,13 @@ typedef __u64 timeu64_t;
 
 #define TIME_T_MAX      (time_t)((1UL << ((sizeof(time_t) << 3) - 1)) - 1)
 
+#ifdef VCOM_USE_TIMESPEC_EQUAL
 static inline int
 timespec_equal (const struct timespec *a, const struct timespec *b)
 {
   return (a->tv_sec == b->tv_sec) && (a->tv_nsec == b->tv_nsec);
 }
+#endif
 
 /*
  * lhs < rhs:  return <0
@@ -910,6 +912,7 @@ timespec_compare (const struct timespec *lhs, const struct timespec *rhs)
   return lhs->tv_nsec - rhs->tv_nsec;
 }
 
+#ifdef VCOM_USE_TIMEVAL_COMPARE
 static inline int
 timeval_compare (const struct timeval *lhs, const struct timeval *rhs)
 {
@@ -919,10 +922,10 @@ timeval_compare (const struct timeval *lhs, const struct timeval *rhs)
     return 1;
   return lhs->tv_usec - rhs->tv_usec;
 }
+#endif
 
 extern void set_normalized_timespec (struct timespec *ts, time_t sec,
 				     s64 nsec);
-
 
 static inline struct timespec
 timespec_add (struct timespec lhs, struct timespec rhs)
@@ -3020,7 +3023,7 @@ vcom_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
       rv = -errno;
       goto poll_done;
     }
-  if (__nfds >= nofile_limit.rlim_cur || __nfds < 0)
+  if (__nfds >= nofile_limit.rlim_cur)
     {
       rv = -EINVAL;
       goto poll_done;
