@@ -24,11 +24,11 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/pool.h>
 
-#include <libvcl-ldpreload/vcom_socket.h>
-#include <libvcl-ldpreload/vcom_socket_wrapper.h>
-#include <libvcl-ldpreload/vcom.h>
+#include <vcl/vcom_socket.h>
+#include <vcl/vcom_socket_wrapper.h>
+#include <vcl/vcom.h>
 
-#include <uri/vppcom.h>
+#include <vcl/vppcom.h>
 
 
 /*
@@ -485,7 +485,8 @@ vcom_socket_readv (int __fd, const struct iovec * __iov, int __iovcnt)
   uword *p;
   vcom_socket_t *vsock;
   ssize_t total = 0, len = 0;
-
+  int i;
+  
   p = hash_get (vsm->sockidx_by_fd, __fd);
   if (!p)
     return -EBADF;
@@ -501,7 +502,7 @@ vcom_socket_readv (int __fd, const struct iovec * __iov, int __iovcnt)
     return -EINVAL;
 
   /* Sanity check */
-  for (int i = 0; i < __iovcnt; ++i)
+  for (i = 0; i < __iovcnt; ++i)
     {
       if (SSIZE_MAX - len < __iov[i].iov_len)
 	return -EINVAL;
@@ -519,7 +520,7 @@ vcom_socket_readv (int __fd, const struct iovec * __iov, int __iovcnt)
     {
       do
 	{
-	  for (int i = 0; i < __iovcnt; ++i)
+	  for (i = 0; i < __iovcnt; ++i)
 	    {
 	      rv = vppcom_session_read (vsock->sid, __iov[i].iov_base,
 					__iov[i].iov_len);
@@ -539,7 +540,7 @@ vcom_socket_readv (int __fd, const struct iovec * __iov, int __iovcnt)
     }
 
   /* is non blocking */
-  for (int i = 0; i < __iovcnt; ++i)
+  for (i = 0; i < __iovcnt; ++i)
     {
       rv = vppcom_session_read (vsock->sid, __iov[i].iov_base,
 				__iov[i].iov_len);
@@ -600,7 +601,8 @@ vcom_socket_writev (int __fd, const struct iovec * __iov, int __iovcnt)
   vcom_socket_main_t *vsm = &vcom_socket_main;
   uword *p;
   vcom_socket_t *vsock;
-
+  int i;
+  
   p = hash_get (vsm->sockidx_by_fd, __fd);
   if (!p)
     return -EBADF;
@@ -615,7 +617,7 @@ vcom_socket_writev (int __fd, const struct iovec * __iov, int __iovcnt)
   if (__iov == 0 || __iovcnt == 0 || __iovcnt > IOV_MAX)
     return -EINVAL;
 
-  for (int i = 0; i < __iovcnt; ++i)
+  for (i = 0; i < __iovcnt; ++i)
     {
       rv = vppcom_session_write (vsock->sid, __iov[i].iov_base,
 				 __iov[i].iov_len);

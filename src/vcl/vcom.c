@@ -21,12 +21,12 @@
 #include <stdarg.h>
 #include <sys/resource.h>
 
-#include <libvcl-ldpreload/vcom_socket_wrapper.h>
-#include <libvcl-ldpreload/vcom.h>
+#include <vcl/vcom_socket_wrapper.h>
+#include <vcl/vcom.h>
 #include <sys/time.h>
 
-#include <uri/vppcom.h>
-#include <libvcl-ldpreload/vcom_socket.h>
+#include <vcl/vppcom.h>
+#include <vcl/vcom_socket.h>
 
 /* GCC have printf type attribute check. */
 #ifdef HAVE_FUNCTION_ATTRIBUTE_FORMAT

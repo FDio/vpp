@@ -13,12 +13,10 @@ if [ -z "$WS_ROOT" ] ; then
     echo "       Please set WS_ROOT to VPP workspace root directory." >&2
     exit 1
 fi
-if [ -z "$LDP_DIR" ] ; then
-    echo "WARNING: LDP_DIR environment variable is not set!"
-    echo "         Sourcing $WS_ROOT/extras/vcl-ldpreload/env.sh"
-    source $WS_ROOT/extras/vcl-ldpreload/env.sh
-fi
+
+LDP_DIR="${WS_ROOT}/extras/vcl-ldpreload"
+LDP_TEST_DIR="${LDP_TEST_DIR:-${LDP_DIR}/test}"
+VCL_LDPRELOAD_LIB_DIR="${VCL_LDPRELOAD_LIB_DIR:-$WS_ROOT/build-root/install-vpp_debug-native/vpp/lib64}"
 
 TEST_APP="${TEST_APP:-wget}"
-LDP_TEST_DIR="${LDP_TEST_DIR:-${LDP_DIR}/test}"
 source $LDP_TEST_DIR/common/nginx_test.sh

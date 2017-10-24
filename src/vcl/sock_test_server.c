@@ -21,7 +21,7 @@
 #include <string.h>
 #include <time.h>
 #include <ctype.h>
-#include <uri/sock_test.h>
+#include <vcl/sock_test.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
