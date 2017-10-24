@@ -1221,7 +1221,7 @@ l2fib_init (vlib_main_t * vm)
 {
   l2fib_main_t *mp = &l2fib_main;
   l2fib_entry_key_t test_key;
-  u8 test_mac[6];
+  u8 test_mac[8];
 
   mp->vlib_main = vm;
   mp->vnet_main = vnet_get_main ();
