@@ -15,8 +15,8 @@
 
 #define VCL_TEST
 
-#include <uri/vppcom.h>
-#include <uri/sock_test_client.c>
+#include <vcl/vppcom.h>
+#include <vcl/sock_test_server.c>
 
 /*
  * fd.io coding-style-patch-verification: ON

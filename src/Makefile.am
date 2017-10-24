@@ -68,6 +68,7 @@ include vnet.am
 include vpp.am
 include vpp-api-test.am
 include uri.am
+include vcl.am
 
 SUBDIRS += plugins
 

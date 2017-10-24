@@ -24,11 +24,11 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/pool.h>
 
-#include <libvcl-ldpreload/vcom_socket.h>
-#include <libvcl-ldpreload/vcom_socket_wrapper.h>
-#include <libvcl-ldpreload/vcom.h>
+#include <vcl/vcom_socket.h>
+#include <vcl/vcom_socket_wrapper.h>
+#include <vcl/vcom.h>
 
-#include <uri/vppcom.h>
+#include <vcl/vppcom.h>
 
 
 /*
