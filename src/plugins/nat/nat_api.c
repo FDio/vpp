@@ -224,7 +224,7 @@ static void
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_SNAT_INTERFACE_DETAILS + sm->msg_id_base);
   rmp->sw_if_index = ntohl (i->sw_if_index);
-  rmp->is_inside = i->is_inside;
+  rmp->is_inside = nat_interface_is_inside (i);
   rmp->context = context;
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
@@ -306,7 +306,7 @@ send_snat_interface_output_feature_details (snat_interface_t * i,
     ntohs (VL_API_SNAT_INTERFACE_OUTPUT_FEATURE_DETAILS + sm->msg_id_base);
   rmp->sw_if_index = ntohl (i->sw_if_index);
   rmp->context = context;
-  rmp->is_inside = i->is_inside;
+  rmp->is_inside = nat_interface_is_inside (i);
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
@@ -1658,7 +1658,9 @@ send_nat44_interface_details (snat_interface_t * i,
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_NAT44_INTERFACE_DETAILS + sm->msg_id_base);
   rmp->sw_if_index = ntohl (i->sw_if_index);
-  rmp->is_inside = i->is_inside;
+  rmp->is_inside = (nat_interface_is_inside (i)
+		    && nat_interface_is_outside (i)) ? 2 :
+    nat_interface_is_inside (i);
   rmp->context = context;
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
@@ -1741,7 +1743,7 @@ send_nat44_interface_output_feature_details (snat_interface_t * i,
     ntohs (VL_API_NAT44_INTERFACE_OUTPUT_FEATURE_DETAILS + sm->msg_id_base);
   rmp->sw_if_index = ntohl (i->sw_if_index);
   rmp->context = context;
-  rmp->is_inside = i->is_inside;
+  rmp->is_inside = nat_interface_is_inside (i);
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
@@ -2867,7 +2869,9 @@ nat64_api_interface_walk (snat_interface_t * i, void *arg)
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_NAT64_INTERFACE_DETAILS + sm->msg_id_base);
   rmp->sw_if_index = ntohl (i->sw_if_index);
-  rmp->is_inside = i->is_inside;
+  rmp->is_inside = (nat_interface_is_inside (i)
+		    && nat_interface_is_outside (i)) ? 2 :
+    nat_interface_is_inside (i);
   rmp->context = ctx->context;
 
   vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);

@@ -827,7 +827,7 @@ define nat44_interface_dump {
 
 /** \brief NAT44 interface details response
     @param context - sender context, to match reply w/ request
-    @param is_inside - 1 if inside, 0 if outside
+    @param is_inside - 1 if inside, 0 if outside, 2 if inside and outside
     @param sw_if_index - software index of the interface
 */
 define nat44_interface_details {

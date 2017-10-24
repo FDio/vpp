@@ -268,7 +268,9 @@ nat64_cli_interface_walk (snat_interface_t * i, void *ctx)
 
   vlib_cli_output (vm, " %U %s", format_vnet_sw_interface_name, vnm,
 		   vnet_get_sw_interface (vnm, i->sw_if_index),
-		   i->is_inside ? "in" : "out");
+		   (nat_interface_is_inside (i)
+		    && nat_interface_is_outside (i)) ? "in out" :
+		   nat_interface_is_inside (i) ? "in" : "out");
   return 0;
 }
 

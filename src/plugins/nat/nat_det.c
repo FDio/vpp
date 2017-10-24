@@ -94,7 +94,7 @@ snat_det_add_map (snat_main_t * sm, ip4_address_t * in_addr, u8 in_plen,
   /* *INDENT-OFF* */
   pool_foreach (i, sm->interfaces,
   ({
-    if (i->is_inside)
+    if (nat_interface_is_inside(i))
       continue;
 
     snat_add_del_addr_to_fib(out_addr, out_plen, i->sw_if_index, is_add);
