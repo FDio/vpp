@@ -254,7 +254,7 @@ if [ -z "$WS_ROOT" ] ; then
     exit 1
 fi
 
-if [[ "$(grep bin_PROGRAMS $WS_ROOT/src/uri.am)" = "" ]] ; then
+if [[ "$(grep bin_PROGRAMS $WS_ROOT/src/vcl.am)" = "" ]] ; then
     $WS_ROOT/extras/vagrant/vcl_test.sh $WS_ROOT $USER
     (cd $WS_ROOT; make build)
 fi
