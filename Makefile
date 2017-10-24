@@ -117,17 +117,25 @@ else ifeq ($(findstring y,$(AESNI)),y)
 	RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
 endif
 
-RPM_SUSE_DEPENDS = autoconf automake bison ccache check-devel chrpath clang distribution-release gcc6 glibc-devel-static
-RPM_SUSE_DEPENDS += java-1_8_0-openjdk-devel indent libopenssl-devel libtool make openssl-devel
-RPM_SUSE_DEPENDS += python-devel python-pip python-rpm-macros shadow libnuma-devel rpm-build
+SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
+RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake bison ccache check-devel chrpath clang indent libtool make
+RPM_SUSE_DEVEL_DEPS = glibc-devel-static java-1_8_0-openjdk-devel libnuma-devel libopenssl-devel openssl-devel 
+RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip python-rpm-macros python3-rpm-macros 
+RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build
 
 ifeq ($(OS_ID),opensuse)
-ifeq ($(findstring y,$(AESNI)),y)
-	RPM_SUSE_DEPENDS += https://download.opensuse.org/tumbleweed/repo/oss/suse/x86_64/nasm-2.13.01-2.1.x86_64.rpm
+ifneq ($(SUSE_NAME),Tumbleweed)
+	RPM_SUSE_DEVEL_DEPS += boost_1_61-devel gcc6 
+	RPM_SUSE_PYTHON_DEPS += python-virtualenv
+	RPM_SUSE_BUILDTOOL_DEPS += https://download.opensuse.org/tumbleweed/repo/oss/suse/x86_64/nasm-2.13.01-2.2.x86_64.rpm
 else
-	RPM_SUSE_DEPENDS += nasm
+	RPM_SUSE_DEVEL_DEPS += boost_1_65-devel gcc
+	RPM_SUSE_PYTHON_DEPS += python2-virtualenv
+	RPM_SUSE_BUILDTOOL_DEPS += nasm
 endif
 endif
+
+RPM_SUSE_DEPENDS += $(RPM_SUSE_BUILDTOOLS_DEPS) $(RPM_SUSE_DEVEL_DEPS) $(RPM_SUSE_PYTHON_DEPS) $(RPM_SUSE_PLATFORM_DEPS)
 
 ifneq ($(wildcard $(STARTUP_DIR)/startup.conf),)
         STARTUP_CONF ?= $(STARTUP_DIR)/startup.conf
