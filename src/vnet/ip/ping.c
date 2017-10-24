@@ -20,6 +20,8 @@
 #include <vnet/fib/fib_entry.h>
 #include <vlib/vlib.h>
 
+ping_main_t ping_main;
+
 /**
  * @file
  * @brief IPv4 and IPv6 ICMP Ping.

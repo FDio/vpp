@@ -114,7 +114,7 @@ typedef struct
   u8 *token_buffer;
 } vlib_lex_main_t;
 
-vlib_lex_main_t vlib_lex_main;
+extern vlib_lex_main_t vlib_lex_main;
 
 always_inline void
 vlib_lex_cleanup_token (vlib_lex_token_t * t)

@@ -79,7 +79,7 @@ typedef struct {
   u32 sixrd_domain_index;
 } sixrd_trace_t;
 
-sixrd_main_t sixrd_main;
+extern sixrd_main_t sixrd_main;
 
 /*
  * sixrd_get_addr

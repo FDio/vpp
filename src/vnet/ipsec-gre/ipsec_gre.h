@@ -78,7 +78,7 @@ typedef struct
   vnet_main_t *vnet_main;  /**< convenience */
 } ipsec_gre_main_t;
 
-ipsec_gre_main_t ipsec_gre_main;
+extern ipsec_gre_main_t ipsec_gre_main;
 
 extern vlib_node_registration_t ipsec_gre_input_node;
 extern vnet_device_class_t ipsec_gre_device_class;

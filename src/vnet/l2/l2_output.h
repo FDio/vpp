@@ -75,7 +75,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } l2output_main_t;
 
-l2output_main_t l2output_main;
+extern l2output_main_t l2output_main;
 
 extern vlib_node_registration_t l2output_node;
 

@@ -18,6 +18,8 @@
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 
+source_range_check_main_t source_range_check_main;
+
 /**
  * @file
  * @brief IPv4 Source and Port Range Checking.

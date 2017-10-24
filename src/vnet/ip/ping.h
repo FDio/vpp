@@ -56,7 +56,7 @@ typedef struct ping_main_t
   ping_run_t *ping_run_by_icmp_id;
 } ping_main_t;
 
-ping_main_t ping_main;
+extern ping_main_t ping_main;
 
 #define PING_DEFAULT_DATA_LEN 60
 #define PING_DEFAULT_INTERVAL 1.0

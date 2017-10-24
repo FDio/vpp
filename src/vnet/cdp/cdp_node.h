@@ -95,7 +95,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } cdp_main_t;
 
-cdp_main_t cdp_main;
+extern cdp_main_t cdp_main;
 
 /* Packet counters */
 #define foreach_cdp_error                                       \

@@ -1270,8 +1270,8 @@ typedef struct
   vlib_physmem_region_index_t physmem_region;
 } ixge_main_t;
 
-ixge_main_t ixge_main;
-vnet_device_class_t ixge_device_class;
+extern ixge_main_t ixge_main;
+extern vnet_device_class_t ixge_device_class;
 
 typedef enum
 {

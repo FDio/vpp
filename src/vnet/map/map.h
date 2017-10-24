@@ -329,7 +329,7 @@ typedef struct {
   u16 port;
 } map_trace_t;
 
-map_main_t map_main;
+extern map_main_t map_main;
 
 extern vlib_node_registration_t ip4_map_node;
 extern vlib_node_registration_t ip6_map_node;

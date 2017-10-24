@@ -228,7 +228,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } gtpu_main_t;
 
-gtpu_main_t gtpu_main;
+extern gtpu_main_t gtpu_main;
 
 extern vlib_node_registration_t gtpu4_input_node;
 extern vlib_node_registration_t gtpu6_input_node;

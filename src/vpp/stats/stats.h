@@ -184,7 +184,7 @@ typedef struct
   api_main_t *api_main;
 } stats_main_t;
 
-stats_main_t stats_main;
+extern stats_main_t stats_main;
 
 void dslock (stats_main_t * sm, int release_hint, int tag);
 void dsunlock (stats_main_t * sm);

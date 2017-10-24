@@ -56,7 +56,7 @@ typedef struct
   mhash_t if_index_by_host_if_name;
 } af_packet_main_t;
 
-af_packet_main_t af_packet_main;
+extern af_packet_main_t af_packet_main;
 extern vnet_device_class_t af_packet_device_class;
 extern vlib_node_registration_t af_packet_input_node;
 

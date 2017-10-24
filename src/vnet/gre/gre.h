@@ -195,7 +195,7 @@ gre_get_protocol_info (gre_main_t * em, gre_protocol_t protocol)
   return p ? vec_elt_at_index (em->protocol_infos, p[0]) : 0;
 }
 
-gre_main_t gre_main;
+extern gre_main_t gre_main;
 
 /* Register given node index to take input for given gre type. */
 void

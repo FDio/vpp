@@ -46,7 +46,7 @@ typedef struct {
   vnet_config_main_t * vnet_config_main [POLICER_CLASSIFY_N_TABLES];
 } policer_classify_main_t;
 
-policer_classify_main_t policer_classify_main;
+extern policer_classify_main_t policer_classify_main;
 
 int vnet_set_policer_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
                                      u32 ip4_table_index, u32 ip6_table_index,

@@ -16,6 +16,8 @@
 #include <vnet/policer/policer.h>
 #include <vnet/classify/vnet_classify.h>
 
+vnet_policer_main_t vnet_policer_main;
+
 clib_error_t *
 policer_add_del (vlib_main_t * vm,
 		 u8 * name,

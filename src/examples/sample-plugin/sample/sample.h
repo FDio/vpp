@@ -31,7 +31,7 @@ typedef struct {
     vnet_main_t * vnet_main;
 } sample_main_t;
 
-sample_main_t sample_main;
+extern sample_main_t sample_main;
 
 extern vlib_node_registration_t sample_node;
 

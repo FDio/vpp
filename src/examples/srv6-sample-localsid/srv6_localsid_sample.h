@@ -48,7 +48,7 @@ typedef struct {
 	u32 fib_table;	/* Stupid index used as an example.. */
 } srv6_localsid_sample_per_sid_memory_t ;
 
-srv6_localsid_sample_main_t srv6_localsid_sample_main;
+extern srv6_localsid_sample_main_t srv6_localsid_sample_main;
 
 format_function_t format_srv6_localsid_sample;
 unformat_function_t unformat_srv6_localsid_sample;

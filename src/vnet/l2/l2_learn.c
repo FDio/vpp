@@ -29,6 +29,8 @@
 #include <vppinfra/error.h>
 #include <vppinfra/hash.h>
 
+l2learn_main_t l2learn_main;
+
 /**
  * @file
  * @brief Ethernet Bridge Learning.

@@ -177,7 +177,7 @@ typedef struct lisp_gpe_main
 } lisp_gpe_main_t;
 
 /** LISP-GPE global state*/
-lisp_gpe_main_t lisp_gpe_main;
+extern lisp_gpe_main_t lisp_gpe_main;
 
 always_inline lisp_gpe_main_t *
 vnet_lisp_gpe_get_main ()

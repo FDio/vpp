@@ -45,7 +45,7 @@ typedef struct
 
 } plugin_main_t;
 
-plugin_main_t vat_plugin_main;
+extern plugin_main_t vat_plugin_main;
 
 int vat_plugin_init (vat_main_t * vam);
 int vat_load_new_plugins (plugin_main_t * pm);

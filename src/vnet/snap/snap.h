@@ -165,7 +165,7 @@ snap_get_protocol_info (snap_main_t * sm, snap_header_t * h)
   return p ? vec_elt_at_index (sm->protocols, p[0]) : 0;
 }
 
-snap_main_t snap_main;
+extern snap_main_t snap_main;
 
 /* Register given node index to take input for given snap type. */
 void

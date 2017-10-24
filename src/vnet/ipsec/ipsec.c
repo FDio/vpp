@@ -24,6 +24,8 @@
 #include <vnet/ipsec/ikev2.h>
 #include <vnet/ipsec/esp.h>
 
+ipsec_main_t ipsec_main;
+
 u32
 ipsec_get_sa_index_by_sa_id (u32 sa_id)
 {

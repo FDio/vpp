@@ -100,7 +100,7 @@ typedef struct {
   void * event_callback;
 } dhcp_client_add_del_args_t;
 
-dhcp_client_main_t dhcp_client_main;
+extern dhcp_client_main_t dhcp_client_main;
 
 #define EVENT_DHCP_CLIENT_WAKEUP	1
 

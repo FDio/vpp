@@ -175,7 +175,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } geneve_main_t;
 
-geneve_main_t geneve_main;
+extern geneve_main_t geneve_main;
 
 extern vlib_node_registration_t geneve4_input_node;
 extern vlib_node_registration_t geneve6_input_node;

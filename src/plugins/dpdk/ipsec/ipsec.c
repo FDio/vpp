@@ -21,6 +21,8 @@
 #include <dpdk/device/dpdk.h>
 #include <dpdk/ipsec/ipsec.h>
 
+dpdk_crypto_main_t dpdk_crypto_main;
+
 #define EMPTY_STRUCT {0}
 
 static void

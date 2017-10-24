@@ -55,6 +55,8 @@
 #define REPLY_MSG_ID_BASE cm->msg_id_base
 #include <vlibapi/api_helper_macros.h>
 
+ioam_cache_main_t ioam_cache_main;
+
 /* List of message types that this plugin understands */
 #define foreach_ioam_cache_plugin_api_msg                        \
 _(IOAM_CACHE_IP6_ENABLE_DISABLE, ioam_cache_ip6_enable_disable)

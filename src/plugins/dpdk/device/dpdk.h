@@ -332,7 +332,7 @@ typedef struct
 
 } dpdk_config_main_t;
 
-dpdk_config_main_t dpdk_config_main;
+extern dpdk_config_main_t dpdk_config_main;
 
 typedef struct
 {

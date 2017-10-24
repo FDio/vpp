@@ -169,7 +169,7 @@ srp_ips_link_change (u32 sw_if_index, u32 link_is_up)
 void srp_interface_get_interface_config (u32 hw_if_index, srp_interface_config_t * c);
 void srp_interface_set_interface_config (u32 hw_if_index, srp_interface_config_t * c);
 
-srp_main_t srp_main;
+extern srp_main_t srp_main;
 
 always_inline srp_interface_t *
 srp_get_interface_from_vnet_hw_interface (u32 hw_if_index)

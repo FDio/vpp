@@ -106,7 +106,7 @@ typedef struct
   ethernet_main_t *ethernet_main;
 } tclient_main_t;
 
-tclient_main_t tclient_main;
+extern tclient_main_t tclient_main;
 
 vlib_node_registration_t tclient_node;
 

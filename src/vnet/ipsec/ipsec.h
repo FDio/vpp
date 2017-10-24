@@ -286,7 +286,7 @@ typedef struct
   ipsec_main_callbacks_t cb;
 } ipsec_main_t;
 
-ipsec_main_t ipsec_main;
+extern ipsec_main_t ipsec_main;
 
 extern vlib_node_registration_t esp_encrypt_node;
 extern vlib_node_registration_t esp_decrypt_node;

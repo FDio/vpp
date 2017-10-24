@@ -80,7 +80,7 @@ typedef struct
   esp_main_per_thread_data_t *per_thread_data;
 } esp_main_t;
 
-esp_main_t esp_main;
+extern esp_main_t esp_main;
 
 #define ESP_WINDOW_SIZE		(64)
 #define ESP_SEQ_MAX 		(4294967295UL)

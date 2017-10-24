@@ -48,7 +48,7 @@ typedef struct
 
 #define L2LEARN_DEFAULT_LIMIT (L2FIB_NUM_BUCKETS * 64)
 
-l2learn_main_t l2learn_main;
+extern l2learn_main_t l2learn_main;
 
 extern vlib_node_registration_t l2fib_mac_age_scanner_process_node;
 

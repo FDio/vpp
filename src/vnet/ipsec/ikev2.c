@@ -24,6 +24,8 @@
 #include <vnet/ipsec/ikev2_priv.h>
 #include <openssl/sha.h>
 
+ikev2_main_t ikev2_main;
+
 static int ikev2_delete_tunnel_interface (vnet_main_t * vnm,
 					  ikev2_sa_t * sa,
 					  ikev2_child_sa_t * child);

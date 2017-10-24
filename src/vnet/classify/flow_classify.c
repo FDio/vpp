@@ -14,6 +14,8 @@
  */
 #include <vnet/classify/flow_classify.h>
 
+flow_classify_main_t flow_classify_main;
+
 static void
 vnet_flow_classify_feature_enable (vlib_main_t * vnm,
                                    flow_classify_main_t * fcm,

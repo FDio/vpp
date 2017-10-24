@@ -78,8 +78,8 @@ typedef struct vnet_main_t
   vlib_main_t *vlib_main;
 } vnet_main_t;
 
-vnet_main_t vnet_main;
-vnet_main_t **vnet_mains;
+extern vnet_main_t vnet_main;
+extern vnet_main_t **vnet_mains;
 
 #include <vnet/interface_funcs.h>
 #include <vnet/global_funcs.h>

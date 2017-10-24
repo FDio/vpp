@@ -87,7 +87,7 @@ typedef struct
   ethernet_main_t *ethernet_main;
 } builtin_proxy_main_t;
 
-builtin_proxy_main_t builtin_proxy_main;
+extern builtin_proxy_main_t builtin_proxy_main;
 
 #endif /* __included_builtin_proxy_h__ */
 

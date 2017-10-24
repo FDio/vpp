@@ -33,7 +33,7 @@ typedef struct {
   vnet_main_t * vnet_main;
 } li_main_t;
 
-li_main_t li_main;
+extern li_main_t li_main;
 
 typedef CLIB_PACKED(struct {
   ip4_header_t ip4;

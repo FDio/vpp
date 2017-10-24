@@ -271,7 +271,7 @@ typedef struct
   uword *bm_loopback_instances;
 } ethernet_main_t;
 
-ethernet_main_t ethernet_main;
+extern ethernet_main_t ethernet_main;
 
 always_inline ethernet_type_info_t *
 ethernet_get_type_info (ethernet_main_t * em, ethernet_type_t type)

@@ -144,7 +144,7 @@ typedef struct
   u8 enabled;
 } dpdk_crypto_main_t;
 
-dpdk_crypto_main_t dpdk_crypto_main;
+extern dpdk_crypto_main_t dpdk_crypto_main;
 
 static const u8 pad_data[] =
   { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0 };

@@ -70,7 +70,7 @@ typedef struct {
   vnet_main_t * vnet_main;
 } cop_main_t;
 
-cop_main_t cop_main;
+extern cop_main_t cop_main;
 
 extern vlib_node_registration_t cop_input_node;
 

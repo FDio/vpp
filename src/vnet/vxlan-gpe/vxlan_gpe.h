@@ -209,7 +209,7 @@ typedef struct {
   uword decap_next_node_list[VXLAN_GPE_PROTOCOL_MAX];
 } vxlan_gpe_main_t;
 
-vxlan_gpe_main_t vxlan_gpe_main;
+extern vxlan_gpe_main_t vxlan_gpe_main;
 
 extern vlib_node_registration_t vxlan_gpe_encap_node;
 extern vlib_node_registration_t vxlan4_gpe_input_node;

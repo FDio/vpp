@@ -23,6 +23,8 @@
 
 #include "map.h"
 
+map_main_t map_main;
+
 /*
  * This code supports the following MAP modes:
  *

@@ -24,7 +24,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } source_range_check_main_t;
 
-source_range_check_main_t source_range_check_main;
+extern source_range_check_main_t source_range_check_main;
 
 typedef enum
 {

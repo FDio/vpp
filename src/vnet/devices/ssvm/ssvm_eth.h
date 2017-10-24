@@ -82,7 +82,7 @@ typedef struct
   elog_main_t *elog_main;
 } ssvm_eth_main_t;
 
-ssvm_eth_main_t ssvm_eth_main;
+extern ssvm_eth_main_t ssvm_eth_main;
 
 typedef enum
 {

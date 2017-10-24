@@ -14,6 +14,8 @@
  */
 #include <vnet/classify/policer_classify.h>
 
+policer_classify_main_t policer_classify_main;
+
 static void
 vnet_policer_classify_feature_enable (vlib_main_t * vnm,
                                       policer_classify_main_t * pcm,

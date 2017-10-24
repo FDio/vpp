@@ -55,7 +55,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } span_main_t;
 
-span_main_t span_main;
+extern span_main_t span_main;
 
 typedef struct
 {

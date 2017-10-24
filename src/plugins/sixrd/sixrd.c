@@ -32,6 +32,8 @@
  *   ea_bits_len = 0
  */
 
+sixrd_main_t sixrd_main;
+
 int
 sixrd_create_domain (ip6_address_t *ip6_prefix,
 		     u8 ip6_prefix_len,

@@ -42,7 +42,7 @@ typedef struct {
   vnet_config_main_t * vnet_config_main [FLOW_CLASSIFY_N_TABLES];
 } flow_classify_main_t;
 
-flow_classify_main_t flow_classify_main;
+extern flow_classify_main_t flow_classify_main;
 
 int vnet_set_flow_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
                                   u32 ip4_table_index, u32 ip6_table_index,

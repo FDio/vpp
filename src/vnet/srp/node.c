@@ -41,6 +41,8 @@
 #include <vnet/ip/ip_packet.h>	/* for ip_csum_fold */
 #include <vnet/srp/srp.h>
 
+srp_main_t srp_main;
+
 typedef struct {
   u8 packet_data[32];
 } srp_input_trace_t;

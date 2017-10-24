@@ -21,6 +21,8 @@
 
 #include <vnet/span/span.h>
 
+span_main_t span_main;
+
 typedef enum
 {
   SPAN_DISABLE = 0,

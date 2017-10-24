@@ -98,7 +98,7 @@ typedef struct
   u32 input_cpu_count;
 } netmap_main_t;
 
-netmap_main_t netmap_main;
+extern netmap_main_t netmap_main;
 extern vnet_device_class_t netmap_device_class;
 extern vlib_node_registration_t netmap_input_node;
 

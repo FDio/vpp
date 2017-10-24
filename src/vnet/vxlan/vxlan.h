@@ -158,7 +158,7 @@ typedef struct {
   vnet_main_t * vnet_main;
 } vxlan_main_t;
 
-vxlan_main_t vxlan_main;
+extern vxlan_main_t vxlan_main;
 
 extern vlib_node_registration_t vxlan4_input_node;
 extern vlib_node_registration_t vxlan6_input_node;

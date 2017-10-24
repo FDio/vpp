@@ -203,7 +203,7 @@ typedef struct
   u32 cleanup_process_node_index;
 } ioam_cache_main_t;
 
-ioam_cache_main_t ioam_cache_main;
+extern ioam_cache_main_t ioam_cache_main;
 
 extern vlib_node_registration_t ioam_cache_node;
 extern vlib_node_registration_t ioam_cache_ts_node;

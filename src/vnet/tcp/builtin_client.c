@@ -23,6 +23,8 @@
 #include <vlibmemory/api.h>
 #include <vpp/app/version.h>
 
+tclient_main_t tclient_main;
+
 #define TCP_BUILTIN_CLIENT_DBG (0)
 
 static void

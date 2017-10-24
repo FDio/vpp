@@ -32,6 +32,8 @@
 
 #include <vnet/devices/af_packet/af_packet.h>
 
+af_packet_main_t af_packet_main;
+
 #define AF_PACKET_DEBUG_SOCKET		0
 
 #define AF_PACKET_TX_FRAMES_PER_BLOCK	1024

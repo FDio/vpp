@@ -22,6 +22,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/esp.h>
 
+esp_main_t esp_main;
 
 #define foreach_esp_encrypt_next                   \
 _(DROP, "error-drop")                              \

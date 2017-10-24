@@ -15,6 +15,8 @@
 
 #include <vnet/lawful-intercept/lawful_intercept.h>
 
+li_main_t li_main;
+
 static clib_error_t *
 set_li_command_fn (vlib_main_t * vm,
 		 unformat_input_t * input,

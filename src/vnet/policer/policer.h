@@ -44,7 +44,7 @@ typedef struct
   vnet_main_t *vnet_main;
 } vnet_policer_main_t;
 
-vnet_policer_main_t vnet_policer_main;
+extern vnet_policer_main_t vnet_policer_main;
 
 typedef enum
 {

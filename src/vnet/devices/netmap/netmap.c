@@ -27,6 +27,8 @@
 #include <vnet/ethernet/ethernet.h>
 #include <vnet/devices/netmap/netmap.h>
 
+netmap_main_t netmap_main;
+
 static u32
 netmap_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 			u32 flags)
