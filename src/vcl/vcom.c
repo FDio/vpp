@@ -21,12 +21,12 @@
 #include <stdarg.h>
 #include <sys/resource.h>
 
-#include <libvcl-ldpreload/vcom_socket_wrapper.h>
-#include <libvcl-ldpreload/vcom.h>
+#include <vcl/vcom_socket_wrapper.h>
+#include <vcl/vcom.h>
 #include <sys/time.h>
 
-#include <uri/vppcom.h>
-#include <libvcl-ldpreload/vcom_socket.h>
+#include <vcl/vppcom.h>
+#include <vcl/vcom_socket.h>
 
 /* GCC have printf type attribute check. */
 #ifdef HAVE_FUNCTION_ATTRIBUTE_FORMAT
@@ -3020,7 +3020,7 @@ vcom_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
       rv = -errno;
       goto poll_done;
     }
-  if (__nfds >= nofile_limit.rlim_cur || __nfds < 0)
+  if (__nfds >= nofile_limit.rlim_cur)
     {
       rv = -EINVAL;
       goto poll_done;

@@ -24,11 +24,11 @@
 #include <vppinfra/hash.h>
 #include <vppinfra/pool.h>
 
-#include <libvcl-ldpreload/vcom_socket.h>
-#include <libvcl-ldpreload/vcom_socket_wrapper.h>
-#include <libvcl-ldpreload/vcom.h>
+#include <vcl/vcom_socket.h>
+#include <vcl/vcom_socket_wrapper.h>
+#include <vcl/vcom.h>
 
-#include <uri/vppcom.h>
+#include <vcl/vppcom.h>
 
 
 /*
@@ -446,7 +446,7 @@ vcom_socket_read (int __fd, void *__buf, size_t __nbytes)
   if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
     return -EINVAL;
 
-  if (!__buf || __nbytes < 0)
+  if (!__buf)
     {
       return -EINVAL;
     }
@@ -485,6 +485,7 @@ vcom_socket_readv (int __fd, const struct iovec * __iov, int __iovcnt)
   uword *p;
   vcom_socket_t *vsock;
   ssize_t total = 0, len = 0;
+  int i;
 
   p = hash_get (vsm->sockidx_by_fd, __fd);
   if (!p)
@@ -501,7 +502,7 @@ vcom_socket_readv (int __fd, const struct iovec * __iov, int __iovcnt)
     return -EINVAL;
 
   /* Sanity check */
-  for (int i = 0; i < __iovcnt; ++i)
+  for (i = 0; i < __iovcnt; ++i)
     {
       if (SSIZE_MAX - len < __iov[i].iov_len)
 	return -EINVAL;
@@ -519,7 +520,7 @@ vcom_socket_readv (int __fd, const struct iovec * __iov, int __iovcnt)
     {
       do
 	{
-	  for (int i = 0; i < __iovcnt; ++i)
+	  for (i = 0; i < __iovcnt; ++i)
 	    {
 	      rv = vppcom_session_read (vsock->sid, __iov[i].iov_base,
 					__iov[i].iov_len);
@@ -539,7 +540,7 @@ vcom_socket_readv (int __fd, const struct iovec * __iov, int __iovcnt)
     }
 
   /* is non blocking */
-  for (int i = 0; i < __iovcnt; ++i)
+  for (i = 0; i < __iovcnt; ++i)
     {
       rv = vppcom_session_read (vsock->sid, __iov[i].iov_base,
 				__iov[i].iov_len);
@@ -572,6 +573,11 @@ vcom_socket_write (int __fd, const void *__buf, size_t __n)
   uword *p;
   vcom_socket_t *vsock;
 
+  if (!__buf)
+    {
+      return -EINVAL;
+    }
+
   p = hash_get (vsm->sockidx_by_fd, __fd);
   if (!p)
     return -EBADF;
@@ -582,11 +588,6 @@ vcom_socket_write (int __fd, const void *__buf, size_t __n)
 
   if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
     return -EINVAL;
-
-  if (!__buf || __n < 0)
-    {
-      return -EINVAL;
-    }
 
   rv = vppcom_session_write (vsock->sid, (void *) __buf, __n);
   return rv;
@@ -600,6 +601,7 @@ vcom_socket_writev (int __fd, const struct iovec * __iov, int __iovcnt)
   vcom_socket_main_t *vsm = &vcom_socket_main;
   uword *p;
   vcom_socket_t *vsock;
+  int i;
 
   p = hash_get (vsm->sockidx_by_fd, __fd);
   if (!p)
@@ -615,7 +617,7 @@ vcom_socket_writev (int __fd, const struct iovec * __iov, int __iovcnt)
   if (__iov == 0 || __iovcnt == 0 || __iovcnt > IOV_MAX)
     return -EINVAL;
 
-  for (int i = 0; i < __iovcnt; ++i)
+  for (i = 0; i < __iovcnt; ++i)
     {
       rv = vppcom_session_write (vsock->sid, __iov[i].iov_base,
 				 __iov[i].iov_len);
@@ -1108,10 +1110,6 @@ vcom_socket_select (int vcom_nfds, fd_set * __restrict vcom_readfds,
     {
       return vcom_nsid;
     }
-  if (vcom_nsid_fds < 0)
-    {
-      return -EINVAL;
-    }
 
   rv = vppcom_select (vcom_nsid_fds,
 		      vcom_readfds ? (unsigned long *) &vcom_rd_sid_fds :
@@ -1311,11 +1309,6 @@ vcom_socket_getsockname (int __fd, __SOCKADDR_ARG __addr,
   if (!__addr || !__len)
     return -EFAULT;
 
-  if (*__len < 0)
-    {
-      return -EINVAL;
-    }
-
   vppcom_endpt_t ep;
   ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
   rv = vcom_session_getsockname (vsock->sid, &ep);
@@ -1422,11 +1415,6 @@ vcom_socket_getpeername (int __fd, __SOCKADDR_ARG __addr,
 
   if (!__addr || !__len)
     return -EFAULT;
-
-  if (*__len < 0)
-    {
-      return -EINVAL;
-    }
 
   vppcom_endpt_t ep;
   ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
@@ -1539,6 +1527,11 @@ vcom_socket_sendto (int __fd, const void *__buf, size_t __n,
   uword *p;
   vcom_socket_t *vsock;
 
+  if (!__buf)
+    {
+      return -EINVAL;
+    }
+
   p = hash_get (vsm->sockidx_by_fd, __fd);
   if (!p)
     return -EBADF;
@@ -1547,7 +1540,7 @@ vcom_socket_sendto (int __fd, const void *__buf, size_t __n,
   if (!vsock)
     return -ENOTSOCK;
 
-  if ((vsock->type != SOCKET_TYPE_VPPCOM_BOUND) || !__buf || __n < 0)
+  if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
     {
       return -EINVAL;
     }
@@ -1563,7 +1556,7 @@ vcom_socket_sendto (int __fd, const void *__buf, size_t __n,
     }
   else
     {
-      if (!__addr || __addr_len < 0)
+      if (!__addr)
 	{
 	  return -EDESTADDRREQ;
 	}
@@ -1601,6 +1594,11 @@ vcom_socket_recvfrom (int __fd, void *__restrict __buf, size_t __n,
   uword *p;
   vcom_socket_t *vsock;
 
+  if (!__buf || !__addr || !__addr_len)
+    {
+      return -EINVAL;
+    }
+
   p = hash_get (vsm->sockidx_by_fd, __fd);
   if (!p)
     return -EBADF;
@@ -1609,8 +1607,7 @@ vcom_socket_recvfrom (int __fd, void *__restrict __buf, size_t __n,
   if (!vsock)
     return -ENOTSOCK;
 
-  if ((vsock->type != SOCKET_TYPE_VPPCOM_BOUND) ||
-      !__buf || __n < 0 || !__addr || !__addr_len || (__addr_len < 0))
+  if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
     {
       return -EINVAL;
     }
@@ -1766,11 +1763,6 @@ vcom_socket_getsockopt (int __fd, int __level, int __optname,
   if (!__optval && !__optlen)
     return -EFAULT;
 
-  if (*__optlen < 0)
-    {
-      return -EINVAL;
-    }
-
   switch (__level)
     {
       /* handle options at socket level */
@@ -1829,7 +1821,9 @@ vcom_socket_getsockopt (int __fd, int __level, int __optname,
 	case SO_BUSY_POLL:
 #endif
 	case SO_MAX_PACING_RATE:
+#ifdef SO_INCOMING_CPU
 	case SO_INCOMING_CPU:
+#endif
 	  rv = libc_getsockopt (__fd, __level, __optname, __optval, __optlen);
 	  if (rv != 0)
 	    {
@@ -1952,7 +1946,7 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
   if (!__optval)
     return -EFAULT;
 
-  if ((__optlen < 0) || (__optlen < sizeof (int)))
+  if (__optlen < sizeof (int))
     return -EINVAL;
 
   switch (__level)
@@ -2045,7 +2039,9 @@ vcom_socket_setsockopt (int __fd, int __level, int __optname,
 	case SO_BUSY_POLL:
 #endif
 	case SO_MAX_PACING_RATE:
+#ifdef SO_INCOMING_CPU
 	case SO_INCOMING_CPU:
+#endif
 	  rv = libc_setsockopt (__fd, __level, __optname, __optval, __optlen);
 	  if (rv != 0)
 	    {
@@ -3000,7 +2996,7 @@ vcom_socket_poll_select_impl (struct pollfd *__fds, nfds_t __nfds,
   struct timeval tv = {.tv_sec = 0,.tv_usec = 0 };
 
   /* validate __nfds from select perspective */
-  if (__nfds < 0 || __nfds > FD_SETSIZE)
+  if (__nfds > FD_SETSIZE)
     {
       rv = -EINVAL;
       goto poll_done;
