@@ -136,7 +136,7 @@ nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add)
   /* *INDENT-OFF* */
   pool_foreach (interface, nm->interfaces,
   ({
-    if (interface->is_inside)
+    if (nat_interface_is_inside(interface))
       continue;
 
     snat_add_del_addr_to_fib (addr, 32, interface->sw_if_index, is_add);
@@ -170,7 +170,7 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
   snat_address_t *ap;
   const char *feature_name, *arc_name;
 
-  /* Check if address already exists */
+  /* Check if interface already exists */
   /* *INDENT-OFF* */
   pool_foreach (i, nm->interfaces,
   ({
@@ -185,19 +185,29 @@ nat64_add_del_interface (u32 sw_if_index, u8 is_inside, u8 is_add)
   if (is_add)
     {
       if (interface)
-	return VNET_API_ERROR_VALUE_EXIST;
+	goto set_flags;
 
       pool_get (nm->interfaces, interface);
       interface->sw_if_index = sw_if_index;
-      interface->is_inside = is_inside;
-
+      interface->flags = 0;
+    set_flags:
+      if (is_inside)
+	interface->flags |= NAT_INTERFACE_FLAG_IS_INSIDE;
+      else
+	interface->flags |= NAT_INTERFACE_FLAG_IS_OUTSIDE;
     }
   else
     {
       if (!interface)
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
-      pool_put (nm->interfaces, interface);
+      if ((nat_interface_is_inside (interface)
+	   && nat_interface_is_outside (interface)))
+	interface->flags &=
+	  is_inside ? ~NAT_INTERFACE_FLAG_IS_INSIDE :
+	  ~NAT_INTERFACE_FLAG_IS_OUTSIDE;
+      else
+	pool_put (nm->interfaces, interface);
     }
 
   if (!is_inside)

@@ -42,6 +42,11 @@ VNET_FEATURE_INIT (ip4_snat_out2in, static) = {
   .node_name = "nat44-out2in",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
+VNET_FEATURE_INIT (ip4_nat_classify, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat44-classify",
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
 VNET_FEATURE_INIT (ip4_snat_det_in2out, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-det-in2out",
@@ -52,6 +57,11 @@ VNET_FEATURE_INIT (ip4_snat_det_out2in, static) = {
   .node_name = "nat44-det-out2in",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
+VNET_FEATURE_INIT (ip4_nat_det_classify, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat44-det-classify",
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
 VNET_FEATURE_INIT (ip4_snat_in2out_worker_handoff, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-in2out-worker-handoff",
@@ -60,6 +70,11 @@ VNET_FEATURE_INIT (ip4_snat_in2out_worker_handoff, static) = {
 VNET_FEATURE_INIT (ip4_snat_out2in_worker_handoff, static) = {
   .arc_name = "ip4-unicast",
   .node_name = "nat44-out2in-worker-handoff",
+  .runs_before = VNET_FEATURES ("ip4-lookup"),
+};
+VNET_FEATURE_INIT (ip4_nat_handoff_classify, static) = {
+  .arc_name = "ip4-unicast",
+  .node_name = "nat44-handoff-classify",
   .runs_before = VNET_FEATURES ("ip4-lookup"),
 };
 VNET_FEATURE_INIT (ip4_snat_in2out_fast, static) = {
@@ -110,6 +125,159 @@ VLIB_PLUGIN_REGISTER () = {
     .description = "Network Address Translation",
 };
 /* *INDENT-ON* */
+
+vlib_node_registration_t nat44_classify_node;
+vlib_node_registration_t nat44_det_classify_node;
+vlib_node_registration_t nat44_handoff_classify_node;
+
+typedef enum {
+  NAT44_CLASSIFY_NEXT_IN2OUT,
+  NAT44_CLASSIFY_NEXT_OUT2IN,
+  NAT44_CLASSIFY_N_NEXT,
+} nat44_classify_next_t;
+
+static inline uword
+nat44_classify_node_fn_inline (vlib_main_t * vm,
+                               vlib_node_runtime_t * node,
+                               vlib_frame_t * frame)
+{
+  u32 n_left_from, * from, * to_next;
+  nat44_classify_next_t next_index;
+  snat_main_t *sm = &snat_main;
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+  next_index = node->cached_next_index;
+
+  while (n_left_from > 0)
+    {
+      u32 n_left_to_next;
+
+      vlib_get_next_frame (vm, node, next_index,
+			   to_next, n_left_to_next);
+
+      while (n_left_from > 0 && n_left_to_next > 0)
+	{
+          u32 bi0;
+	  vlib_buffer_t *b0;
+          u32 next0 = NAT44_CLASSIFY_NEXT_IN2OUT;
+          ip4_header_t *ip0;
+          snat_address_t *ap;
+          snat_session_key_t m_key0;
+          clib_bihash_kv_8_8_t kv0, value0;
+
+          /* speculatively enqueue b0 to the current next frame */
+	  bi0 = from[0];
+	  to_next[0] = bi0;
+	  from += 1;
+	  to_next += 1;
+	  n_left_from -= 1;
+	  n_left_to_next -= 1;
+
+	  b0 = vlib_get_buffer (vm, bi0);
+          ip0 = vlib_buffer_get_current (b0);
+
+          vec_foreach (ap, sm->addresses)
+            {
+              if (ip0->dst_address.as_u32 == ap->addr.as_u32)
+                {
+                  next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                  break;
+                }
+            }
+
+          if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
+            {
+              m_key0.addr = ip0->dst_address;
+              m_key0.port = 0;
+              m_key0.protocol = 0;
+              m_key0.fib_index = sm->outside_fib_index;
+              kv0.key = m_key0.as_u64;
+              if (!clib_bihash_search_8_8 (&sm->static_mapping_by_external, &kv0, &value0))
+                {
+                  next0 = NAT44_CLASSIFY_NEXT_OUT2IN;
+                }
+            }
+          /* verify speculative enqueue, maybe switch current next frame */
+	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
+					   to_next, n_left_to_next,
+					   bi0, next0);
+        }
+
+      vlib_put_next_frame (vm, node, next_index, n_left_to_next);
+    }
+
+  return frame->n_vectors;
+}
+
+static uword
+nat44_classify_node_fn (vlib_main_t * vm,
+                        vlib_node_runtime_t * node,
+                        vlib_frame_t * frame)
+{
+  return nat44_classify_node_fn_inline (vm, node, frame);
+};
+
+VLIB_REGISTER_NODE (nat44_classify_node) = {
+  .function = nat44_classify_node_fn,
+  .name = "nat44-classify",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_next_nodes = NAT44_CLASSIFY_N_NEXT,
+  .next_nodes = {
+    [NAT44_CLASSIFY_NEXT_IN2OUT] = "nat44-in2out",
+    [NAT44_CLASSIFY_NEXT_OUT2IN] = "nat44-out2in",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (nat44_classify_node,
+                              nat44_classify_node_fn);
+
+static uword
+nat44_det_classify_node_fn (vlib_main_t * vm,
+                            vlib_node_runtime_t * node,
+                            vlib_frame_t * frame)
+{
+  return nat44_classify_node_fn_inline (vm, node, frame);
+};
+
+VLIB_REGISTER_NODE (nat44_det_classify_node) = {
+  .function = nat44_det_classify_node_fn,
+  .name = "nat44-det-classify",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_next_nodes = NAT44_CLASSIFY_N_NEXT,
+  .next_nodes = {
+    [NAT44_CLASSIFY_NEXT_IN2OUT] = "nat44-det-in2out",
+    [NAT44_CLASSIFY_NEXT_OUT2IN] = "nat44-det-out2in",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (nat44_det_classify_node,
+                              nat44_det_classify_node_fn);
+
+static uword
+nat44_handoff_classify_node_fn (vlib_main_t * vm,
+                                vlib_node_runtime_t * node,
+                                vlib_frame_t * frame)
+{
+  return nat44_classify_node_fn_inline (vm, node, frame);
+};
+
+VLIB_REGISTER_NODE (nat44_handoff_classify_node) = {
+  .function = nat44_handoff_classify_node_fn,
+  .name = "nat44-handoff-classify",
+  .vector_size = sizeof (u32),
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_next_nodes = NAT44_CLASSIFY_N_NEXT,
+  .next_nodes = {
+    [NAT44_CLASSIFY_NEXT_IN2OUT] = "nat44-in2out-worker-handoff",
+    [NAT44_CLASSIFY_NEXT_OUT2IN] = "nat44-out2in-worker-handoff",
+  },
+};
+
+VLIB_NODE_FUNCTION_MULTIARCH (nat44_handoff_classify_node,
+                              nat44_handoff_classify_node_fn);
 
 /**
  * @brief Add/del NAT address to FIB.
@@ -190,7 +358,7 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id)
   /* Add external address to FIB */
   pool_foreach (i, sm->interfaces,
   ({
-    if (i->is_inside)
+    if (nat_interface_is_inside(i))
       continue;
 
     snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1);
@@ -198,7 +366,7 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id)
   }));
   pool_foreach (i, sm->output_feature_interfaces,
   ({
-    if (i->is_inside)
+    if (nat_interface_is_inside(i))
       continue;
 
     snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1);
@@ -569,7 +737,7 @@ delete:
   /* Add/delete external address to FIB */
   pool_foreach (interface, sm->interfaces,
   ({
-    if (interface->is_inside)
+    if (nat_interface_is_inside(interface))
       continue;
 
     snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
@@ -577,7 +745,7 @@ delete:
   }));
   pool_foreach (interface, sm->output_feature_interfaces,
   ({
-    if (interface->is_inside)
+    if (nat_interface_is_inside(interface))
       continue;
 
     snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
@@ -930,7 +1098,7 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
   /* Delete external address from FIB */
   pool_foreach (interface, sm->interfaces,
   ({
-    if (interface->is_inside)
+    if (nat_interface_is_inside(interface))
       continue;
 
     snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
@@ -938,7 +1106,7 @@ int snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm)
   }));
   pool_foreach (interface, sm->output_feature_interfaces,
   ({
-    if (interface->is_inside)
+    if (nat_interface_is_inside(interface))
       continue;
 
     snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
@@ -952,7 +1120,7 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 {
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
-  const char * feature_name;
+  const char * feature_name, *del_feature_name;
   snat_address_t * ap;
   snat_static_mapping_t * m;
   snat_det_map_t * dm;
@@ -969,9 +1137,6 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
         feature_name = is_inside ?  "nat44-in2out" : "nat44-out2in";
     }
 
-  vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index,
-			       !is_del, 0, 0);
-
   if (sm->fq_in2out_index == ~0 && !sm->deterministic && sm->num_workers > 1)
     sm->fq_in2out_index = vlib_frame_queue_main_init (sm->in2out_node_index, 0);
 
@@ -983,9 +1148,63 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
     if (i->sw_if_index == sw_if_index)
       {
         if (is_del)
-          pool_put (sm->interfaces, i);
+          {
+            if (nat_interface_is_inside(i) && nat_interface_is_outside(i))
+              {
+                if (is_inside)
+                  i->flags &= ~NAT_INTERFACE_FLAG_IS_INSIDE;
+                else
+                  i->flags &= ~NAT_INTERFACE_FLAG_IS_OUTSIDE;
+
+                if (sm->num_workers > 1 && !sm->deterministic)
+                  del_feature_name = "nat44-handoff-classify";
+                else if (sm->deterministic)
+                  del_feature_name = "nat44-det-classify";
+                else
+                  del_feature_name = "nat44-classify";
+
+                vnet_feature_enable_disable ("ip4-unicast", del_feature_name,
+                                             sw_if_index, 0, 0, 0);
+                vnet_feature_enable_disable ("ip4-unicast", feature_name,
+                                             sw_if_index, 1, 0, 0);
+              }
+            else
+              {
+                vnet_feature_enable_disable ("ip4-unicast", feature_name,
+                                             sw_if_index, 0, 0, 0);
+                pool_put (sm->interfaces, i);
+              }
+          }
         else
-          return VNET_API_ERROR_VALUE_EXIST;
+          {
+            if ((nat_interface_is_inside(i) && is_inside) ||
+                (nat_interface_is_outside(i) && !is_inside))
+              return 0;
+
+            if (sm->num_workers > 1 && !sm->deterministic)
+              {
+                del_feature_name = !is_inside ?  "nat44-in2out-worker-handoff" :
+                                                 "nat44-out2in-worker-handoff";
+                feature_name = "nat44-handoff-classify";
+              }
+            else if (sm->deterministic)
+              {
+                del_feature_name = !is_inside ?  "nat44-det-in2out" :
+                                                 "nat44-det-out2in";
+                feature_name = "nat44-det-classify";
+              }
+            else
+              {
+                del_feature_name = !is_inside ?  "nat44-in2out" : "nat44-out2in";
+                feature_name = "nat44-classify";
+              }
+
+            vnet_feature_enable_disable ("ip4-unicast", del_feature_name,
+                                         sw_if_index, 0, 0, 0);
+            vnet_feature_enable_disable ("ip4-unicast", feature_name,
+                                         sw_if_index, 1, 0, 0);
+            goto set_flags;
+          }
 
         goto fib;
       }
@@ -996,7 +1215,14 @@ int snat_interface_add_del (u32 sw_if_index, u8 is_inside, int is_del)
 
   pool_get (sm->interfaces, i);
   i->sw_if_index = sw_if_index;
-  i->is_inside = is_inside;
+  i->flags = 0;
+  vnet_feature_enable_disable ("ip4-unicast", feature_name, sw_if_index, 1, 0, 0);
+
+set_flags:
+  if (is_inside)
+    i->flags |= NAT_INTERFACE_FLAG_IS_INSIDE;
+  else
+    i->flags |= NAT_INTERFACE_FLAG_IS_OUTSIDE;
 
   /* Add/delete external addresses to FIB */
 fib:
@@ -1090,7 +1316,11 @@ fq:
 
   pool_get (sm->output_feature_interfaces, i);
   i->sw_if_index = sw_if_index;
-  i->is_inside = is_inside;
+  i->flags = 0;
+  if (is_inside)
+    i->flags |= NAT_INTERFACE_FLAG_IS_INSIDE;
+  else
+    i->flags |= NAT_INTERFACE_FLAG_IS_OUTSIDE;
 
   /* Add/delete external addresses to FIB */
 fib:
@@ -2486,7 +2716,9 @@ show_snat_command_fn (vlib_main_t * vm,
       ({
         vlib_cli_output (vm, "%U %s", format_vnet_sw_interface_name, vnm,
                          vnet_get_sw_interface (vnm, i->sw_if_index),
-                         i->is_inside ? "in" : "out");
+                         (nat_interface_is_inside(i) &&
+                          nat_interface_is_outside(i)) ? "in out" :
+                         (nat_interface_is_inside(i) ? "in" : "out"));
       }));
 
       pool_foreach (i, sm->output_feature_interfaces,
@@ -2494,7 +2726,9 @@ show_snat_command_fn (vlib_main_t * vm,
         vlib_cli_output (vm, "%U output-feature %s",
                          format_vnet_sw_interface_name, vnm,
                          vnet_get_sw_interface (vnm, i->sw_if_index),
-                         i->is_inside ? "in" : "out");
+                         (nat_interface_is_inside(i) &&
+                          nat_interface_is_outside(i)) ? "in out" :
+                         (nat_interface_is_inside(i) ? "in" : "out"));
       }));
 
       if (vec_len (sm->auto_add_sw_if_indices))

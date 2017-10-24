@@ -129,6 +129,9 @@ typedef enum {
 #define SNAT_SESSION_FLAG_UNKNOWN_PROTO  2
 #define SNAT_SESSION_FLAG_LOAD_BALANCING 4
 
+#define NAT_INTERFACE_FLAG_IS_INSIDE 1
+#define NAT_INTERFACE_FLAG_IS_OUTSIDE 2
+
 typedef CLIB_PACKED(struct {
   snat_session_key_t out2in;    /* 0-15 */
 
@@ -217,7 +220,7 @@ typedef struct {
 
 typedef struct {
   u32 sw_if_index;
-  u8 is_inside;
+  u8 flags;
 } snat_interface_t;
 
 typedef struct {
@@ -413,6 +416,9 @@ typedef struct {
     @return 1 if SNAT session for unknown protocol otherwise 0
 */
 #define snat_is_unk_proto_session(s) s->flags & SNAT_SESSION_FLAG_UNKNOWN_PROTO
+
+#define nat_interface_is_inside(i) i->flags & NAT_INTERFACE_FLAG_IS_INSIDE
+#define nat_interface_is_outside(i) i->flags & NAT_INTERFACE_FLAG_IS_OUTSIDE
 
 /*
  * Why is this here? Because we don't need to touch this layer to

@@ -182,7 +182,7 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t *node,
       pool_foreach (i, sm->interfaces,
       ({
         /* NAT packet aimed at outside interface */
-        if ((i->is_inside == 0) && (sw_if_index == i->sw_if_index))
+        if ((nat_interface_is_outside(i)) && (sw_if_index == i->sw_if_index))
           return 0;
       }));
     }
@@ -3523,7 +3523,7 @@ snat_hairpin_src_fn (vlib_main_t * vm,
           pool_foreach (i, sm->output_feature_interfaces,
           ({
             /* Only packets from NAT inside interface */
-            if ((i->is_inside == 1) && (sw_if_index0 == i->sw_if_index))
+            if ((nat_interface_is_inside(i)) && (sw_if_index0 == i->sw_if_index))
               {
                 if (PREDICT_FALSE ((vnet_buffer (b0)->snat.flags) &
                                     SNAT_FLAG_HAIRPINNING))
