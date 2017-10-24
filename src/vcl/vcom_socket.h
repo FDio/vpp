@@ -18,7 +18,7 @@
 
 #include <string.h>
 
-#include <libvcl-ldpreload/vcom_glibc_socket.h>
+#include <vcl/vcom_glibc_socket.h>
 #include <vppinfra/types.h>
 
 #define INVALID_SESSION_ID (~0)

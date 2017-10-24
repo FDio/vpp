@@ -22,7 +22,7 @@
 #define VCOM_DEBUG 0
 #endif
 
-#include <libvcl-ldpreload/vcom_glibc_socket.h>
+#include <vcl/vcom_glibc_socket.h>
 
 #define MAX_VCOM_APP_NAME  256
 

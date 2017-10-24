@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <arpa/inet.h>
-#include <uri/sock_test.h>
+#include <vcl/sock_test.h>
 
 typedef struct
 {

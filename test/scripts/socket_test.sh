@@ -49,7 +49,6 @@ trap_signals="SIGINT SIGTERM EXIT"
 VPP_GDB_CMDFILE="${VPP_GDB_CMDFILE:-${def_gdb_cmdfile_prefix}.vpp}"
 VPPCOM_CLIENT_GDB_CMDFILE="${VPPCOM_CLIENT_GDB_CMDFILE:-${def_gdb_cmdfile_prefix}.vppcom_client}"
 VPPCOM_SERVER_GDB_CMDFILE="${VPPCOM_SERVER_GDB_CMDFILE:-${def_gdb_cmdfile_prefix}.vppcom_server}"
-VCL_LDPRELOAD_LIB_DIR="${VCL_LDPRELOAD_LIB_DIR:-$WS_ROOT/extras/vcl-ldpreload/src/.libs}"
 
 usage() {
     cat <<EOF
@@ -136,7 +135,6 @@ while getopts ":hitlbcd6n:m:e:g:p:E:I:N:P:R:S:T:UBVX" opt; do
         c) VPPCOM_CONF="${vppcom_conf_dir}vppcom_test.conf"
            ;;
         d) title_dbg="-DEBUG"
-           _debug="_debug"
            vpp_dir=$vpp_debug_dir
            lib64_dir=$lib64_debug_dir
            ;;
@@ -248,6 +246,8 @@ while ! [[ $run_test ]] && (( $# > 0 )) ; do
     shift
 done
 
+VCL_LDPRELOAD_LIB_DIR="${VCL_LDPRELOAD_LIB_DIR:-$lib64_dir}"
+
 if [ -z "$WS_ROOT" ] ; then
     echo "ERROR: WS_ROOT environment variable not set!" >&2
     echo "       Please set WS_ROOT to VPP workspace root directory." >&2
@@ -260,14 +260,14 @@ if [[ "$(grep bin_PROGRAMS $WS_ROOT/src/uri.am)" = "" ]] ; then
 fi
 
 if [ ! -d $vpp_dir ] ; then
-    echo "ERROR: Missing VPP$DEBUG bin directory!" >&2
+    echo "ERROR: Missing VPP$title_dbg bin directory!" >&2
     echo "       $vpp_dir" >&2
     env_test_failed="true"
 fi
 
 if [[ $run_test =~ .*"_preload" ]] ; then
    if [ ! -d $lib64_dir ] ; then
-       echo "ERROR: Missing VPP$DEBUG lib64 directory!" >&2
+       echo "ERROR: Missing VPP$title_dbg lib64 directory!" >&2
        echo "       $lib64_dir" >&2
    elif [ ! -d $VCL_LDPRELOAD_LIB_DIR ] ; then
        echo "ERROR: Missing VCL LD_PRELOAD Library directory!" >&2
@@ -281,19 +281,19 @@ if [[ $run_test =~ .*"_preload" ]] ; then
 fi
 
 if [ ! -f $vpp_dir$vpp_app ] ; then
-    echo "ERROR: Missing VPP$DEBUG Application!" >&2
+    echo "ERROR: Missing VPP$title_dbg Application!" >&2
     echo "       $vpp_dir$vpp_app" >&2
     env_test_failed="true"
 fi
 
 if [ ! -f $vpp_dir$sock_srvr_app ] && [ ! $iperf3 -eq 1 ] ; then
-    echo "ERROR: Missing$DEBUG Socket Server Application!" >&2
+    echo "ERROR: Missing$title_dbg Socket Server Application!" >&2
     echo "       $vpp_dir$sock_srvr_app" >&2
     env_test_failed="true"
 fi
 
 if [ ! -f $vpp_dir$sock_clnt_app ] && [ ! $iperf3 -eq 1 ] ; then
-    echo "ERROR: Missing$DEBUG Socket Client Application!" >&2
+    echo "ERROR: Missing$title_dbg Socket Client Application!" >&2
     echo "       $vpp_dir$sock_clnt_app" >&2
     env_test_failed="true"
 fi
@@ -360,6 +360,7 @@ else
     srvr_app="$sock_srvr_app $sock_srvr_port"
     clnt_app="$sock_clnt_app${sock_clnt_options} \$srvr_addr $sock_srvr_port"
 fi
+
 
 verify_no_vpp() {
     local grep_for_vpp="ps -eaf|grep -v grep|grep \"bin/vpp\""

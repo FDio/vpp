@@ -29,19 +29,22 @@ if [ -z "$WS_ROOT" ] ; then
     echo "       Please set WS_ROOT to VPP workspace root directory." >&2
     exit 1
 fi
-if [ -z "$LDP_DIR" ] ; then
-    echo "WARNING: LDP_DIR environment variable is not set!"
-    echo "         Sourcing $WS_ROOT/extras/vcl-ldpreload/env.sh"
-    source $WS_ROOT/extras/vcl-ldpreload/env.sh
+
+if [ -z "$VCL_LDPRELOAD_LIB_DIR" ] ; then
+    echo "ERROR: VCL_LDPRELOAD_LIB_DIR environment variable not set!" >&2
+    echo "       Please set VCL_LDPRELOAD_LIB_DIR to " >&2
+    echo "       $WS_ROOT/build-root/install-vpp[_debug]-native/vpp/lib64." >&2
+    exit 1
 fi
 
 TEST_APP="${TEST_APP:-curl}"
+LDP_DIR="${WS_ROOT}/extras/vcl-ldpreload"
 LDP_TEST_DIR="${LDP_TEST_DIR:-${LDP_DIR}/test}"
 LDP_LIB="${LDP_LIB:-${VCL_LDPRELOAD_LIB_DIR}/libvcl_ldpreload.so.0.0.0}"
 
 if [ ! -f "$LDP_LIB" ] ; then
     echo "ERROR: Missing VCL-LDPRELOAD Library: $LDP_LIB"
-    echo "       See $LDP_DIR/README.md for build instructions!"
+    echo "       Run 'cd $WS_ROOT; make build[-release] ' !"
     exit 1
 fi
 

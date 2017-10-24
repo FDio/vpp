@@ -20,7 +20,7 @@
 #include <vlibmemory/api.h>
 #include <vpp/api/vpe_msg_enum.h>
 #include <vnet/session/application_interface.h>
-#include <uri/vppcom.h>
+#include <vcl/vppcom.h>
 #include <vlib/unix/unix.h>
 #include <vppinfra/vec_bootstrap.h>
 
