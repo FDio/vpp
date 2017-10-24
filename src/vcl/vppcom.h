@@ -159,6 +159,12 @@ extern int vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 			      int maxevents, double wait_for_time);
 extern int vppcom_session_attr (uint32_t session_index, uint32_t op,
 				void *buffer, uint32_t * buflen);
+extern int vppcom_session_recvfrom (uint32_t session_index, void *buffer,
+				    uint32_t buflen, int flags,
+				    vppcom_endpt_t * ep);
+extern int vppcom_session_sendto (uint32_t session_index, void *buffer,
+				  uint32_t buflen, int flags,
+				  vppcom_endpt_t * ep);
 
 #endif /* included_vppcom_h */
 

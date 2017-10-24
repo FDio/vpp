@@ -109,7 +109,8 @@ typedef struct
   u32 vrf;
   vppcom_ip46_t lcl_addr;
   vppcom_ip46_t peer_addr;
-  u16 port;
+  u16 lcl_port;			// network order
+  u16 peer_port;		// network order
   u8 proto;
   u64 client_queue_address;
   u64 options[16];
@@ -806,7 +807,7 @@ vppcom_send_connect_sock (session_t * session, u32 session_index)
   cmp->vrf = session->vrf;
   cmp->is_ip4 = session->peer_addr.is_ip4;
   clib_memcpy (cmp->ip, &session->peer_addr.ip46, sizeof (cmp->ip));
-  cmp->port = session->port;
+  cmp->port = session->peer_port;
   cmp->proto = session->proto;
   clib_memcpy (cmp->options, session->options, sizeof (cmp->options));
   vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & cmp);
@@ -1014,7 +1015,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->state = STATE_ACCEPT;
   session->is_cut_thru = 0;
   session->is_server = 1;
-  session->port = mp->port;
+  session->peer_port = mp->port;
   session->peer_addr.is_ip4 = mp->is_ip4;
   clib_memcpy (&session->peer_addr.ip46, mp->ip,
 	       sizeof (session->peer_addr.ip46));
@@ -1132,7 +1133,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   session->client_queue_address = mp->client_queue_address;
   session->is_cut_thru = 1;
   session->is_server = 1;
-  session->port = mp->port;
+  session->peer_port = mp->port;
   session->peer_addr.is_ip4 = mp->is_ip4;
   clib_memcpy (&session->peer_addr.ip46, mp->ip,
 	       sizeof (session->peer_addr.ip46));
@@ -1198,7 +1199,7 @@ vppcom_send_bind_sock (session_t * session)
   bmp->vrf = session->vrf;
   bmp->is_ip4 = session->lcl_addr.is_ip4;
   clib_memcpy (bmp->ip, &session->lcl_addr.ip46, sizeof (bmp->ip));
-  bmp->port = session->port;
+  bmp->port = session->lcl_port;
   bmp->proto = session->proto;
   clib_memcpy (bmp->options, session->options, sizeof (bmp->options));
   vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & bmp);
@@ -1986,13 +1987,16 @@ vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep)
       return VPPCOM_EBADFD;
     }
 
-  if (VPPCOM_DEBUG > 0)
-    clib_warning ("[%d] sid %d", vcm->my_pid, session_index);
-
   session->vrf = ep->vrf;
   session->lcl_addr.is_ip4 = ep->is_ip4;
   session->lcl_addr.ip46 = to_ip46 (!ep->is_ip4, ep->ip);
-  session->port = ep->port;
+  session->lcl_port = ep->port;
+
+  if (VPPCOM_DEBUG > 0)
+    clib_warning ("[%d] sid %d, bound to lcl address %U lcl port %u",
+		  vcm->my_pid, session_index, format_ip46_address,
+		  &session->lcl_addr.ip46, session->lcl_addr.is_ip4,
+		  clib_net_to_host_u16 (session->lcl_port));
 
   clib_spinlock_unlock (&vcm->sessions_lockp);
   return VPPCOM_OK;
@@ -2138,16 +2142,26 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
     clib_warning ("[%d] Got a request: client sid %d", vcm->my_pid,
 		  client_session_index);
 
+  // Copy the lcl information from the listening session to the client session
+  //  client_session->lcl_port = listen_session->lcl_port;
+  //  client_session->lcl_addr = listen_session->lcl_addr;
+
   ep->vrf = client_session->vrf;
   ep->is_cut_thru = client_session->is_cut_thru;
   ep->is_ip4 = client_session->peer_addr.is_ip4;
-  ep->port = client_session->port;
+  ep->port = client_session->peer_port;
   if (client_session->peer_addr.is_ip4)
     clib_memcpy (ep->ip, &client_session->peer_addr.ip46.ip4,
 		 sizeof (ip4_address_t));
   else
     clib_memcpy (ep->ip, &client_session->peer_addr.ip46.ip6,
 		 sizeof (ip6_address_t));
+  if (VPPCOM_DEBUG > 0)
+    clib_warning ("[%d] sid %d, accepted peer address %U peer port %u",
+		  vcm->my_pid, client_session_index, format_ip46_address,
+		  &client_session->peer_addr.ip46,
+		  client_session->peer_addr.is_ip4,
+		  clib_net_to_host_u16 (client_session->peer_port));
   clib_spinlock_unlock (&vcm->sessions_lockp);
   return (int) client_session_index;
 }
@@ -2191,7 +2205,7 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
   session->vrf = server_ep->vrf;
   session->peer_addr.is_ip4 = server_ep->is_ip4;
   session->peer_addr.ip46 = to_ip46 (!server_ep->is_ip4, server_ep->ip);
-  session->port = server_ep->port;
+  session->peer_port = server_ep->port;
 
   if (VPPCOM_DEBUG > 0)
     {
@@ -2200,7 +2214,7 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
 			   session->peer_addr.is_ip4);
       clib_warning ("[%d] connect sid %d to %s server port %d proto %s",
 		    vcm->my_pid, session_index, ip_str,
-		    clib_net_to_host_u16 (session->port),
+		    clib_net_to_host_u16 (session->peer_port),
 		    session->proto ? "UDP" : "TCP");
       vec_free (ip_str);
     }
@@ -3181,7 +3195,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	{
 	  ep->vrf = session->vrf;
 	  ep->is_ip4 = session->peer_addr.is_ip4;
-	  ep->port = session->port;
+	  ep->port = session->peer_port;
 	  if (session->peer_addr.is_ip4)
 	    clib_memcpy (ep->ip, &session->peer_addr.ip46.ip4,
 			 sizeof (ip4_address_t));
@@ -3190,9 +3204,11 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			 sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
 	  if (VPPCOM_DEBUG > 0)
-	    clib_warning ("VPPCOM_ATTR_GET_PEER_ADDR: is_ip4 = %u, "
-			  "addr = %U", ep->is_ip4, format_ip46_address,
-			  &session->peer_addr.ip46, ep->is_ip4);
+	    clib_warning ("VPPCOM_ATTR_GET_PEER_ADDR: sid %u is_ip4 = %u, "
+			  "addr = %U, port %u", session_index,
+			  ep->is_ip4, format_ip46_address,
+			  &session->peer_addr.ip46, ep->is_ip4,
+			  clib_net_to_host_u16 (ep->port));
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -3203,7 +3219,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	{
 	  ep->vrf = session->vrf;
 	  ep->is_ip4 = session->lcl_addr.is_ip4;
-	  ep->port = session->port;
+	  ep->port = session->lcl_port;
 	  if (session->lcl_addr.is_ip4)
 	    clib_memcpy (ep->ip, &session->lcl_addr.ip46.ip4,
 			 sizeof (ip4_address_t));
@@ -3212,10 +3228,11 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			 sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
 	  if (VPPCOM_DEBUG > 0)
-	    if (VPPCOM_DEBUG > 0)
-	      clib_warning ("VPPCOM_ATTR_GET_LCL_ADDR: is_ip4 = %u, "
-			    "addr = %U", ep->is_ip4, format_ip46_address,
-			    &session->lcl_addr.ip46, ep->is_ip4);
+	    clib_warning ("VPPCOM_ATTR_GET_LCL_ADDR: sid %u is_ip4 = %u, "
+			  "addr = %U port %d", session_index,
+			  ep->is_ip4, format_ip46_address,
+			  &session->lcl_addr.ip46, ep->is_ip4,
+			  clib_net_to_host_u16 (ep->port));
 	}
       else
 	rv = VPPCOM_EINVAL;
@@ -3247,6 +3264,71 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 done:
   clib_spinlock_unlock (&vcm->sessions_lockp);
   return rv;
+}
+
+int
+vppcom_session_recvfrom (uint32_t session_index, void *buffer,
+			 uint32_t buflen, int flags, vppcom_endpt_t * ep)
+{
+  vppcom_main_t *vcm = &vppcom_main;
+  int rv = VPPCOM_OK;
+  session_t *session = 0;
+
+  if (ep)
+    {
+      clib_spinlock_lock (&vcm->sessions_lockp);
+      rv = vppcom_session_at_index (session_index, &session);
+      if (PREDICT_FALSE (rv))
+	{
+	  clib_spinlock_unlock (&vcm->sessions_lockp);
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("[%d] invalid session, sid (%u) has been closed!",
+			  vcm->my_pid, session_index);
+	  rv = VPPCOM_EINVAL;
+	}
+      ep->vrf = session->vrf;
+      ep->is_ip4 = session->peer_addr.is_ip4;
+      ep->port = session->peer_port;
+      if (session->peer_addr.is_ip4)
+	clib_memcpy (ep->ip, &session->peer_addr.ip46.ip4,
+		     sizeof (ip4_address_t));
+      else
+	clib_memcpy (ep->ip, &session->peer_addr.ip46.ip6,
+		     sizeof (ip6_address_t));
+      clib_spinlock_unlock (&vcm->sessions_lockp);
+      rv = vppcom_session_read (session_index, buffer, buflen);
+    }
+  else if (flags == 0)
+    rv = vppcom_session_read (session_index, buffer, buflen);
+  else if (flags & MSG_PEEK)
+    {
+      rv = vppcom_session_attr (session_index, VPPCOM_ATTR_GET_NREAD, 0, 0);
+      if (rv > buflen)
+	rv = buflen;
+    }
+  else
+    {
+      clib_warning ("Unsupport flags for recvfro %d", flags);
+      rv = VPPCOM_EAFNOSUPPORT;
+    }
+
+  return rv;
+}
+
+int
+vppcom_session_sendto (uint32_t session_index, void *buffer,
+		       uint32_t buflen, int flags, vppcom_endpt_t * ep)
+{
+  if (ep)
+    // TBD
+    return -1;
+  else if (flags == 0)
+    return (vppcom_session_write (session_index, buffer, buflen));
+  else if (flags)
+    // TBD check the flags and do the right thing
+    return (vppcom_session_write (session_index, buffer, buflen));
+
+  return -1;
 }
 
 /*
