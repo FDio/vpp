@@ -80,20 +80,24 @@ static u8 *hash_format_pair_default (u8 * s, va_list * args);
 #if uword_bits == 64
 
 static inline u64
-zap64 (u64 x, word n)
+get_unaligned_as_u64 (void const *data, int n)
 {
-#define _(n) (((u64) 1 << (u64) (8*(n))) - (u64) 1)
-  static u64 masks_little_endian[] = {
-    0, _(1), _(2), _(3), _(4), _(5), _(6), _(7),
-  };
-  static u64 masks_big_endian[] = {
-    0, ~_(7), ~_(6), ~_(5), ~_(4), ~_(3), ~_(2), ~_(1),
-  };
-#undef _
+  int i;
+  u64 r = 0;
+  u8 const *p = (u8 const *) data;
+
   if (clib_arch_is_big_endian)
-    return x & masks_big_endian[n];
+    {
+      for (i = 0; i < n; i++)
+	r |= ((u64) ((*(p + i)) << (u8) (1 << (8 - i))));
+    }
   else
-    return x & masks_little_endian[n];
+    {
+      for (i = 0; i < n; i++)
+	r |= ((u64) ((*(p + i)) << (u8) (1 << i)));
+    }
+
+  return r;
 }
 
 static inline u64
@@ -122,19 +126,16 @@ hash_memory64 (void *p, word n_bytes, u64 state)
     case 2:
       a += clib_mem_unaligned (q + 0, u64);
       b += clib_mem_unaligned (q + 1, u64);
-      if (n % sizeof (u64))
-	c += zap64 (clib_mem_unaligned (q + 2, u64), n % sizeof (u64)) << 8;
+      c += get_unaligned_as_u64 (q + 2, n % sizeof (u64)) << 8;
       break;
 
     case 1:
       a += clib_mem_unaligned (q + 0, u64);
-      if (n % sizeof (u64))
-	b += zap64 (clib_mem_unaligned (q + 1, u64), n % sizeof (u64));
+      b += get_unaligned_as_u64 (q + 1, n % sizeof (u64));
       break;
 
     case 0:
-      if (n % sizeof (u64))
-	a += zap64 (clib_mem_unaligned (q + 0, u64), n % sizeof (u64));
+      a += get_unaligned_as_u64 (q + 0, n % sizeof (u64));
       break;
     }
 
