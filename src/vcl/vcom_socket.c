@@ -1511,9 +1511,29 @@ vcom_session_sendto (int __sid, void *__buf, size_t __n,
 		     socklen_t __addr_len)
 {
   int rv = -1;
-  /* TBD add new vpp api  */
-  /* TBD add flags parameter */
-  rv = vppcom_session_write (__sid, (void *) __buf, (int) __n);
+  vppcom_endpt_t ep;
+
+  ep.vrf = VPPCOM_VRF_DEFAULT;
+  switch (__addr->sa_family)
+    {
+    case AF_INET:
+      ep.is_ip4 = VPPCOM_IS_IP4;
+      ep.ip = (uint8_t *) & ((const struct sockaddr_in *) __addr)->sin_addr;
+      ep.port = (uint16_t) ((const struct sockaddr_in *) __addr)->sin_port;
+      break;
+
+    case AF_INET6:
+      ep.is_ip4 = VPPCOM_IS_IP6;
+      ep.ip = (uint8_t *) & ((const struct sockaddr_in6 *) __addr)->sin6_addr;
+      ep.port = (uint16_t) ((const struct sockaddr_in6 *) __addr)->sin6_port;
+      break;
+
+    default:
+      return -1;
+    }
+
+  rv = vppcom_session_sendto (__sid, __buf, __n, __flags, &ep);
+
   return rv;
 }
 
@@ -1577,10 +1597,44 @@ vcom_session_recvfrom (int __sid, void *__restrict __buf, size_t __n,
 		       int __flags, __SOCKADDR_ARG __addr,
 		       socklen_t * __restrict __addr_len)
 {
-  int rv = -1;
+  int rv;
+  vppcom_endpt_t ep;
 
-  /* TBD add flags parameter */
-  rv = vppcom_session_read (__sid, __buf, __n);
+  if (__addr)
+    {
+      ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
+      rv = vppcom_session_recvfrom (__sid, __buf, __n, __flags, &ep);
+
+      if (rv > 0)
+	{
+	  if (ep.vrf == VPPCOM_VRF_DEFAULT)
+	    {
+	      __addr->sa_family =
+		ep.is_ip4 == VPPCOM_IS_IP4 ? AF_INET : AF_INET6;
+	      switch (__addr->sa_family)
+		{
+		case AF_INET:
+		  ((struct sockaddr_in *) __addr)->sin_port = ep.port;
+		  *__addr_len = sizeof (struct sockaddr_in);
+		  break;
+
+		case AF_INET6:
+		  ((struct sockaddr_in6 *) __addr)->sin6_port = ep.port;
+		  *__addr_len = sizeof (struct sockaddr_in6);
+		  break;
+
+		default:
+		  rv = -1;
+		  break;
+		}
+	    }
+	  else
+	    rv = -1;
+	}
+    }
+  else
+    rv = vppcom_session_recvfrom (__sid, __buf, __n, __flags, NULL);
+
   return rv;
 }
 
@@ -1594,7 +1648,7 @@ vcom_socket_recvfrom (int __fd, void *__restrict __buf, size_t __n,
   uword *p;
   vcom_socket_t *vsock;
 
-  if (!__buf || !__addr || !__addr_len)
+  if (__addr && (!__addr_len || *__addr_len < 0))
     {
       return -EINVAL;
     }
@@ -1734,9 +1788,26 @@ vcom_session_get_sockopt (int __sid, int __level, int __optname,
 			  void *__restrict __optval,
 			  socklen_t * __restrict __optlen)
 {
+  int rv = 0;
+
   /* 1. for socket level options that are NOT socket attributes
    *    and that has corresponding vpp options get from vppcom */
-  return 0;
+  switch (__level)
+    {
+    case SOL_SOCKET:
+      switch (__optname)
+	{
+	case SO_ERROR:
+	  *(int *) __optval = 0;
+	  break;
+	default:
+	  break;
+	}
+    default:
+      break;
+    }
+  /* 2. unhandled options */
+  return rv;
 }
 
 int
@@ -1765,7 +1836,6 @@ vcom_socket_getsockopt (int __fd, int __level, int __optname,
 
   switch (__level)
     {
-      /* handle options at socket level */
     case SOL_SOCKET:
       switch (__optname)
 	{
@@ -1788,7 +1858,6 @@ vcom_socket_getsockopt (int __fd, int __level, int __optname,
 	case SO_TYPE:
 	case SO_PROTOCOL:
 	case SO_DOMAIN:
-	case SO_ERROR:
 	case SO_OOBINLINE:
 	case SO_NO_CHECK:
 	case SO_PRIORITY:
@@ -1830,6 +1899,11 @@ vcom_socket_getsockopt (int __fd, int __level, int __optname,
 	      rv = -errno;
 	      return rv;
 	    }
+	  break;
+
+	case SO_ERROR:
+	  rv = vcom_session_get_sockopt (vsock->sid, __level, __optname,
+					 __optval, __optlen);
 	  break;
 
 	default:
