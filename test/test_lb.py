@@ -195,7 +195,7 @@ class TestLB(VppTestCase):
             self.checkCapture(gre4=False, isv4=True)
         finally:
             for asid in self.ass:
-                self.vapi.cli("lb as 90.0.0.0/8 2002::%u" % (asid))
+                self.vapi.cli("lb as 90.0.0.0/8 2002::%u del" % (asid))
             self.vapi.cli("lb vip 90.0.0.0/8 encap gre6 del")
 
     def test_lb_ip6_gre6(self):
