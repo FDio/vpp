@@ -26,7 +26,7 @@ if WITH_ISA_L_CRYPTO_LIB
 dpdk_plugin_la_LDFLAGS += -Wl,--exclude-libs,libisal_crypto.a,-l:libisal_crypto.a
 endif
 if WITH_IBVERBS_LIB
-dpdk_plugin_la_LDFLAGS += -Wl,-libverbs
+dpdk_plugin_la_LDFLAGS += -Wl,-libverbs,-lmlx5
 endif
 if DPDK_IS_1702_OR_1705
 dpdk_plugin_la_CFLAGS = $(AM_CFLAGS) -DDPDK_VOID_CALLBACK=1 -DDPDK_NO_AEAD=1
