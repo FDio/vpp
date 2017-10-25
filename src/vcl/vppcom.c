@@ -2236,8 +2236,9 @@ vppcom_session_connect (uint32_t session_index, vppcom_endpt_t * server_ep)
   return VPPCOM_OK;
 }
 
-int
-vppcom_session_read (uint32_t session_index, void *buf, int n)
+static inline int
+vppcom_session_read_internal (uint32_t session_index, void *buf, int n,
+			      u8 peek)
 {
   vppcom_main_t *vcm = &vppcom_main;
   session_t *session = 0;
@@ -2287,7 +2288,10 @@ vppcom_session_read (uint32_t session_index, void *buf, int n)
 
   do
     {
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, n, buf);
+      if (peek)
+	n_read = svm_fifo_peek (rx_fifo, 0, n, buf);
+      else
+	n_read = svm_fifo_dequeue_nowait (rx_fifo, n, buf);
     }
   while (!session->is_nonblocking && (n_read <= 0));
 
@@ -2303,6 +2307,18 @@ vppcom_session_read (uint32_t session_index, void *buf, int n)
 		  session_index, n_read, fifo_str, rx_fifo);
 
   return (n_read <= 0) ? VPPCOM_EAGAIN : n_read;
+}
+
+int
+vppcom_session_read (uint32_t session_index, void *buf, int n)
+{
+  return (vppcom_session_read_internal (session_index, buf, n, 0));
+}
+
+static int
+vppcom_session_peek (uint32_t session_index, void *buf, int n)
+{
+  return (vppcom_session_read_internal (session_index, buf, n, 1));
 }
 
 static inline int
@@ -3296,19 +3312,15 @@ vppcom_session_recvfrom (uint32_t session_index, void *buffer,
 	clib_memcpy (ep->ip, &session->peer_addr.ip46.ip6,
 		     sizeof (ip6_address_t));
       clib_spinlock_unlock (&vcm->sessions_lockp);
-      rv = vppcom_session_read (session_index, buffer, buflen);
     }
-  else if (flags == 0)
+
+  if (flags == 0)
     rv = vppcom_session_read (session_index, buffer, buflen);
   else if (flags & MSG_PEEK)
-    {
-      rv = vppcom_session_attr (session_index, VPPCOM_ATTR_GET_NREAD, 0, 0);
-      if (rv > buflen)
-	rv = buflen;
-    }
+    rv = vppcom_session_peek (session_index, buffer, buflen);
   else
     {
-      clib_warning ("Unsupport flags for recvfro %d", flags);
+      clib_warning ("Unsupport flags for recvfrom %d", flags);
       rv = VPPCOM_EAFNOSUPPORT;
     }
 
