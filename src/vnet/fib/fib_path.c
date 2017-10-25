@@ -1854,20 +1854,21 @@ fib_path_contribute_urpf (fib_node_index_t path_index,
 
     case FIB_PATH_TYPE_EXCLUSIVE:
     case FIB_PATH_TYPE_SPECIAL:
-	/*
+    {
+        /*
 	 * these path types may link to an adj, if that's what
 	 * the clinet gave
 	 */
-	if (dpo_is_adj(&path->fp_dpo))
+        u32 rpf_sw_if_index;
+
+        rpf_sw_if_index = dpo_get_urpf(&path->fp_dpo);
+
+        if (~0 != rpf_sw_if_index)
 	{
-	    ip_adjacency_t *adj;
-
-	    adj = adj_get(path->fp_dpo.dpoi_index);
-
-	    fib_urpf_list_append(urpf, adj->rewrite_header.sw_if_index);
+	    fib_urpf_list_append(urpf, rpf_sw_if_index);
 	}
 	break;
-
+    }
     case FIB_PATH_TYPE_DEAG:
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:

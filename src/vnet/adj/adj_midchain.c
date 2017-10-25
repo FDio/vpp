@@ -615,6 +615,7 @@ const static dpo_vft_t adj_midchain_dpo_vft = {
     .dv_lock = adj_dpo_lock,
     .dv_unlock = adj_dpo_unlock,
     .dv_format = format_adj_midchain,
+    .dv_get_urpf = adj_dpo_get_urpf,
 };
 
 /**

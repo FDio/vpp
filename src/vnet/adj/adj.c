@@ -208,6 +208,16 @@ adj_last_lock_gone (ip_adjacency_t *adj)
     pool_put(adj_pool, adj);
 }
 
+u32
+adj_dpo_get_urpf (const dpo_id_t *dpo)
+{
+    ip_adjacency_t *adj;
+
+    adj = adj_get(dpo->dpoi_index);
+
+    return (adj->rewrite_header.sw_if_index);
+}
+
 void
 adj_lock (adj_index_t adj_index)
 {
