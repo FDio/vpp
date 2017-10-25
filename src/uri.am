@@ -26,8 +26,8 @@ uri_tcp_test_LDADD = libvlibmemoryclient.la libsvm.la \
 	libvppinfra.la -lpthread -lm -lrt
 
 uri_socket_test_SOURCES = uri/uri_socket_test.c
-uri_socket_test_LDADD = libvppinfra.la libvcl_ldpreload.la -lpthread -lm -lrt
+uri_socket_test_LDADD = libvppinfra.la -lpthread -lm -lrt
 
 uri_socket_server_SOURCES = uri/uri_socket_server.c
-uri_socket_server_LDADD = libvppinfra.la libvcl_ldpreload.la -lpthread -lm -lrt
+uri_socket_server_LDADD = libvppinfra.la -lpthread -lm -lrt
 
