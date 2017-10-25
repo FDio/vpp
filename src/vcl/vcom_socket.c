@@ -465,6 +465,7 @@ vcom_socket_read (int __fd, void *__buf, size_t __nbytes)
 	{
 	  rv = vppcom_session_read (vsock->sid, __buf, __nbytes);
 	}
+      /* coverity[CONSTANT_EXPRESSION_RESULT] */
       while (rv == -EAGAIN || rv == -EWOULDBLOCK);
       return rv;
     }
@@ -535,6 +536,7 @@ vcom_socket_readv (int __fd, const struct iovec * __iov, int __iovcnt)
 		}
 	    }
 	}
+      /* coverity[CONSTANT_EXPRESSION_RESULT] */
       while ((rv == -EAGAIN || rv == -EWOULDBLOCK) && total == 0);
       return total;
     }
@@ -1561,7 +1563,8 @@ vcom_socket_sendto (int __fd, const void *__buf, size_t __n,
 	  return -EDESTADDRREQ;
 	}
       /* not a vppcom supported address family */
-      if ((__addr->sa_family != AF_INET) || (__addr->sa_family != AF_INET6))
+      if (!((__addr->sa_family == AF_INET) ||
+	    (__addr->sa_family == AF_INET6)))
 	{
 	  return -EINVAL;
 	}
@@ -3151,13 +3154,9 @@ vcom_socket_poll_vppcom_impl (struct pollfd *__fds, nfds_t __nfds,
     {
       time_to_wait = (double) 0;
     }
-  else if (__timeout < 0)
-    {
-      time_to_wait = ~0;
-    }
   else
     {
-      return -EBADF;
+      time_to_wait = ~0;
     }
 
   return vppcom_poll (__fds, __nfds, time_to_wait);
@@ -3332,9 +3331,10 @@ vcom_socket_main_destroy (void)
       /* *INDENT-OFF* */
       pool_flush (vepitem, vsm->vepitems,
         ({
-          if (vepitem->type == FD_TYPE_EPOLL || FD_TYPE_VCOM_SOCKET)
+          if ((vepitem->type == FD_TYPE_EPOLL) ||
+              (vepitem->type == FD_TYPE_VCOM_SOCKET))
           {
-              vcom_socket_epoll_ctl1 (vepitem->epfd, EPOLL_CTL_DEL,
+             vcom_socket_epoll_ctl1 (vepitem->epfd, EPOLL_CTL_DEL,
                                      vepitem->fd, NULL);
              vepitem_init (vepitem);
           }

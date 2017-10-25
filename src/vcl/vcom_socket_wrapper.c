@@ -101,6 +101,8 @@ static pthread_mutex_t libc_symbol_binding_mutex = PTHREAD_MUTEX_INITIALIZER;
 #ifdef NDEBUG
 #define SWRAP_LOG(...)
 #else
+static unsigned int swrap_log_lvl = SWRAP_LOG_WARN;
+
 static void
 swrap_log (enum swrap_dbglvl_e dbglvl, const char *func,
 	   const char *format, ...)
@@ -113,13 +115,12 @@ PRINTF_ATTRIBUTE (3, 4);
 {
   char buffer[1024];
   va_list va;
-  unsigned int lvl = SWRAP_LOG_WARN;
 
   va_start (va, format);
   vsnprintf (buffer, sizeof (buffer), format, va);
   va_end (va);
 
-  if (lvl >= dbglvl)
+  if (dbglvl <= swrap_log_lvl)
     {
       switch (dbglvl)
 	{

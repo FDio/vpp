@@ -1282,8 +1282,7 @@ vcom_select (int __nfds, fd_set * __restrict __readfds,
 	   * */
 	  vcom_fd_set_merge (
 			      /* dest, select sets */
-			      __readfds || __writefds || __exceptfds ?
-			      &new_nfds : NULL,
+			      &new_nfds,
 			      __readfds,
 			      __writefds,
 			      __exceptfds,
