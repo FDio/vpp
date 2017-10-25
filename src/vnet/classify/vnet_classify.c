@@ -1546,6 +1546,7 @@ VLIB_CLI_COMMAND (classify_table, static) = {
   "classify table [miss-next|l2-miss_next|acl-miss-next <next_index>]"
   "\n mask <mask-value> buckets <nn> [skip <n>] [match <n>]"
   "\n [current-data-flag <n>] [current-data-offset <n>] [table <n>]"
+  "\n [memory-size <nn>[M][G]] [next-table <n>]"
   "\n [del] [del-chain]",
   .function = classify_table_command_fn,
 };
