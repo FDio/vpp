@@ -41,6 +41,7 @@
 #include <vnet/dpo/interface_tx_dpo.h>
 #include <vnet/dpo/mpls_disposition.h>
 #include <vnet/dpo/l2_bridge_dpo.h>
+#include <vnet/dpo/l3_proxy_dpo.h>
 
 /**
  * Array of char* names for the DPO types and protos
@@ -345,6 +346,17 @@ dpo_unlock (dpo_id_t *dpo)
     dpo_vfts[dpo->dpoi_type].dv_unlock(dpo);
 }
 
+u32
+dpo_get_urpf(const dpo_id_t *dpo)
+{
+    if (dpo_id_is_valid(dpo) &&
+        (NULL != dpo_vfts[dpo->dpoi_type].dv_get_urpf))
+    {
+        return (dpo_vfts[dpo->dpoi_type].dv_get_urpf(dpo));
+    }
+
+    return (~0);
+}
 
 static u32
 dpo_get_next_node (dpo_type_t child_type,
@@ -525,6 +537,7 @@ dpo_module_init (vlib_main_t * vm)
     interface_tx_dpo_module_init();
     mpls_disp_dpo_module_init();
     l2_bridge_dpo_module_init();
+    l3_proxy_dpo_module_init();
 
     return (NULL);
 }
