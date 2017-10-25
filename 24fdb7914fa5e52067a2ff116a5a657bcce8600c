@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "01648844_954404f2",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2239,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-10-25T20:02:03Z",
+      "side": 1,
+      "message": "Please make this an inline function.",
+      "range": {
+        "startLine": 2239,
+        "startChar": 0,
+        "endLine": 2239,
+        "endChar": 10
+      },
+      "revId": "24fdb7914fa5e52067a2ff116a5a657bcce8600c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
