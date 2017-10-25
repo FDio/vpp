@@ -49,9 +49,16 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
   lldp_main_t *lm = &lldp_main;
   vnet_main_t *vnm = lm->vnet_main;
   ethernet_main_t *em = &ethernet_main;
-  const vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
-  const ethernet_interface_t *eif = ethernet_get_interface (em, hw_if_index);
+  const vnet_hw_interface_t *hi;
+  const ethernet_interface_t *eif;
 
+  if (pool_is_free_index (vnm->interface_main.hw_interfaces, hw_if_index))
+    {
+      return lldp_invalid_arg;
+    }
+
+  hi = vnet_get_hw_interface (vnm, hw_if_index);
+  eif = ethernet_get_interface (em, hw_if_index);
   if (!eif)
     {
       return lldp_not_supported;
