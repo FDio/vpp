@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "32aaaafb_beae7449",
+        "filename": "src/vnet.am",
+        "patchSetId": 19
+      },
+      "lineNbr": 897,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-10-25T23:41:14Z",
+      "side": 1,
+      "message": "I know it will sound petty bat can this filenames be a little shorter, i.e. without session_ as that word is already in the directory namer...",
+      "range": {
+        "startLine": 893,
+        "startChar": 1,
+        "endLine": 897,
+        "endChar": 37
+      },
+      "revId": "c1288c304b42a6833d4e965155675fd8a9485d0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
