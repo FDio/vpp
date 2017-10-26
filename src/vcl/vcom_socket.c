@@ -1512,31 +1512,38 @@ vcom_session_sendto (int __sid, void *__buf, size_t __n,
 		     int __flags, __CONST_SOCKADDR_ARG __addr,
 		     socklen_t __addr_len)
 {
-  int rv = -1;
-  vppcom_endpt_t ep;
+  vppcom_endpt_t *ep = 0;
 
-  ep.vrf = VPPCOM_VRF_DEFAULT;
-  switch (__addr->sa_family)
+  if (__addr)
     {
-    case AF_INET:
-      ep.is_ip4 = VPPCOM_IS_IP4;
-      ep.ip = (uint8_t *) & ((const struct sockaddr_in *) __addr)->sin_addr;
-      ep.port = (uint16_t) ((const struct sockaddr_in *) __addr)->sin_port;
-      break;
+      vppcom_endpt_t _ep;
 
-    case AF_INET6:
-      ep.is_ip4 = VPPCOM_IS_IP6;
-      ep.ip = (uint8_t *) & ((const struct sockaddr_in6 *) __addr)->sin6_addr;
-      ep.port = (uint16_t) ((const struct sockaddr_in6 *) __addr)->sin6_port;
-      break;
+      ep = &_ep;
+      ep->vrf = VPPCOM_VRF_DEFAULT;
+      switch (__addr->sa_family)
+	{
+	case AF_INET:
+	  ep->is_ip4 = VPPCOM_IS_IP4;
+	  ep->ip =
+	    (uint8_t *) & ((const struct sockaddr_in *) __addr)->sin_addr;
+	  ep->port =
+	    (uint16_t) ((const struct sockaddr_in *) __addr)->sin_port;
+	  break;
 
-    default:
-      return -1;
+	case AF_INET6:
+	  ep->is_ip4 = VPPCOM_IS_IP6;
+	  ep->ip =
+	    (uint8_t *) & ((const struct sockaddr_in6 *) __addr)->sin6_addr;
+	  ep->port =
+	    (uint16_t) ((const struct sockaddr_in6 *) __addr)->sin6_port;
+	  break;
+
+	default:
+	  return -EAFNOSUPPORT;
+	}
     }
 
-  rv = vppcom_session_sendto (__sid, __buf, __n, __flags, &ep);
-
-  return rv;
+  return vppcom_session_sendto (__sid, __buf, __n, __flags, ep);;
 }
 
 ssize_t
@@ -1544,7 +1551,6 @@ vcom_socket_sendto (int __fd, const void *__buf, size_t __n,
 		    int __flags, __CONST_SOCKADDR_ARG __addr,
 		    socklen_t __addr_len)
 {
-  int rv = -1;
   vcom_socket_main_t *vsm = &vcom_socket_main;
   uword *p;
   vcom_socket_t *vsock;
@@ -1590,9 +1596,8 @@ vcom_socket_sendto (int __fd, const void *__buf, size_t __n,
 	}
     }
 
-  rv = vcom_session_sendto (vsock->sid, (void *) __buf, (int) __n,
-			    __flags, __addr, __addr_len);
-  return rv;
+  return vcom_session_sendto (vsock->sid, (void *) __buf, (int) __n,
+			      __flags, __addr, __addr_len);
 }
 
 static inline ssize_t
