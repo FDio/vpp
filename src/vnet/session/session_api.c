@@ -761,7 +761,7 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
   clib_memcpy (ns_id, mp->namespace_id, mp->namespace_id_len);
   vnet_app_namespace_add_del_args_t args = {
     .ns_id = ns_id,
-    .secret = mp->secret,
+    .secret = clib_net_to_host_u64 (mp->secret),
     .sw_if_index = clib_net_to_host_u32 (mp->sw_if_index),
     .ip4_fib_id = clib_net_to_host_u32 (mp->ip4_fib_id),
     .ip6_fib_id = clib_net_to_host_u32 (mp->ip6_fib_id),
