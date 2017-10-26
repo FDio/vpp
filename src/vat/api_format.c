@@ -20984,7 +20984,7 @@ api_app_namespace_add_del (vat_main_t * vam)
 
   clib_memcpy (mp->namespace_id, ns_id, vec_len (ns_id));
   mp->namespace_id_len = vec_len (ns_id);
-  mp->secret = secret;
+  mp->secret = clib_host_to_net_u64 (secret);
   mp->sw_if_index = clib_host_to_net_u32 (sw_if_index);
   mp->ip4_fib_id = clib_host_to_net_u32 (ip4_fib_id);
   mp->ip6_fib_id = clib_host_to_net_u32 (ip6_fib_id);
