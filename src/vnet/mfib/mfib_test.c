@@ -232,7 +232,7 @@ fib_forw_chain_type_from_fib_proto (fib_protocol_t proto)
 static int
 mfib_test_entry (fib_node_index_t fei,
                  mfib_entry_flags_t eflags,
-                 u16 n_buckets,
+                 int n_buckets,
                  ...)
 {
     const mfib_entry_t *mfe;
