@@ -1,5 +1,7 @@
 import socket
 
+from time import sleep
+
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
@@ -155,6 +157,7 @@ class TestLB(VppTestCase):
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
+            sleep(60)
             self.pg_start()
             self.checkCapture(gre4=True, isv4=True)
 
@@ -173,6 +176,7 @@ class TestLB(VppTestCase):
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
             self.pg_enable_capture(self.pg_interfaces)
+            sleep(60)
             self.pg_start()
 
             self.checkCapture(gre4=True, isv4=False)
@@ -190,6 +194,7 @@ class TestLB(VppTestCase):
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
+            sleep(60)
             self.pg_start()
 
             self.checkCapture(gre4=False, isv4=True)
@@ -207,6 +212,7 @@ class TestLB(VppTestCase):
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
             self.pg_enable_capture(self.pg_interfaces)
+            sleep(60)
             self.pg_start()
 
             self.checkCapture(gre4=False, isv4=False)
