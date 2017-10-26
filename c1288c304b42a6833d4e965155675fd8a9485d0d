@@ -22,6 +22,30 @@
       "revId": "c1288c304b42a6833d4e965155675fd8a9485d0d",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "31743b61_6fa46274",
+        "filename": "src/vnet.am",
+        "patchSetId": 19
+      },
+      "lineNbr": 897,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-10-26T01:36:54Z",
+      "side": 1,
+      "message": "I did think about changing the names for the rules_table_template because it solves a more generic problem. But for session_rules_table.h, if it doesn\u0027t hurt too much, I would like to keep the name. My logic is that we should have different names for all instances of rule tables.",
+      "parentUuid": "32aaaafb_beae7449",
+      "range": {
+        "startLine": 893,
+        "startChar": 1,
+        "endLine": 897,
+        "endChar": 37
+      },
+      "revId": "c1288c304b42a6833d4e965155675fd8a9485d0d",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
