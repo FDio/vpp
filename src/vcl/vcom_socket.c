@@ -1607,10 +1607,11 @@ vcom_session_recvfrom (int __sid, void *__restrict __buf, size_t __n,
 {
   int rv;
   vppcom_endpt_t ep;
+  u8 src_addr[sizeof (struct sockaddr_in6)];
 
   if (__addr)
     {
-      ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
+      ep.ip = src_addr;
       rv = vppcom_session_recvfrom (__sid, __buf, __n, __flags, &ep);
 
       if (rv > 0)
@@ -1623,16 +1624,22 @@ vcom_session_recvfrom (int __sid, void *__restrict __buf, size_t __n,
 		{
 		case AF_INET:
 		  ((struct sockaddr_in *) __addr)->sin_port = ep.port;
+		  memcpy (&((struct sockaddr_in *) __addr)->sin_addr,
+			  src_addr, sizeof (struct in_addr));
+
 		  *__addr_len = sizeof (struct sockaddr_in);
 		  break;
 
 		case AF_INET6:
 		  ((struct sockaddr_in6 *) __addr)->sin6_port = ep.port;
+		  memcpy (((struct sockaddr_in6 *) __addr)->sin6_addr.
+			  __in6_u.__u6_addr8, src_addr,
+			  sizeof (struct in6_addr));
 		  *__addr_len = sizeof (struct sockaddr_in6);
 		  break;
 
 		default:
-		  rv = -1;
+		  rv = -EAFNOSUPPORT;
 		  break;
 		}
 	    }
@@ -1826,6 +1833,9 @@ vcom_socket_getsockopt (int __fd, int __level, int __optname,
   uword *p;
   vcom_socket_t *vsock;
 
+  if (!__optval || !__optlen)
+    return -EINVAL;
+
   p = hash_get (vsm->sockidx_by_fd, __fd);
   if (!p)
     return -EBADF;
@@ -1836,9 +1846,6 @@ vcom_socket_getsockopt (int __fd, int __level, int __optname,
 
   if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
     return -EINVAL;
-
-  if (!__optval && !__optlen)
-    return -EFAULT;
 
   switch (__level)
     {
