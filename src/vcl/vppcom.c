@@ -3445,16 +3445,26 @@ int
 vppcom_session_sendto (uint32_t session_index, void *buffer,
 		       uint32_t buflen, int flags, vppcom_endpt_t * ep)
 {
-  if (ep)
-    // TBD
-    return -1;
-  else if (flags == 0)
-    return (vppcom_session_write (session_index, buffer, buflen));
-  else if (flags)
-    // TBD check the flags and do the right thing
-    return (vppcom_session_write (session_index, buffer, buflen));
+  vppcom_main_t *vcm = &vppcom_main;
 
-  return -1;
+  if (!buffer)
+    return VPPCOM_EINVAL;
+
+  if (ep)
+    {
+      // TBD
+      return VPPCOM_EINVAL;
+    }
+
+  if (flags)
+    {
+      // TBD check the flags and do the right thing
+      if (VPPCOM_DEBUG > 2)
+	clib_warning ("[%d] handling flags 0x%u (%d) not implemented yet.",
+		      vcm->my_pid, flags, flags);
+    }
+
+  return (vppcom_session_write (session_index, buffer, buflen));
 }
 
 /*
