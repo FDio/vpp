@@ -127,6 +127,10 @@ typedef struct vppcom_cfg_t_
   u32 tx_fifo_size;
   u32 event_queue_size;
   u32 listen_queue_size;
+  u8 session_scope_local;
+  u8 session_scope_global;
+  u8 *namespace_id;
+  u64 namespace_secret;
   f64 app_timeout;
   f64 session_timeout;
   f64 accept_timeout;
@@ -455,6 +459,8 @@ vppcom_app_send_attach (void)
 {
   vppcom_main_t *vcm = &vppcom_main;
   vl_api_application_attach_t *bmp;
+  u8 nsid_len = vec_len (vcm->cfg.namespace_id);
+
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
@@ -463,11 +469,18 @@ vppcom_app_send_attach (void)
   bmp->context = htonl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] =
     APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT |
-    APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE | APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+    (vcm->cfg.session_scope_local ? APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE : 0) |
+    (vcm->cfg.session_scope_global ? APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE : 0);
   bmp->options[SESSION_OPTIONS_SEGMENT_SIZE] = vcm->cfg.segment_size;
   bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = vcm->cfg.add_segment_size;
   bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = vcm->cfg.rx_fifo_size;
   bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = vcm->cfg.tx_fifo_size;
+  if (nsid_len)
+    {
+      bmp->namespace_id_len = nsid_len;
+      clib_memcpy (bmp->namespace_id, vcm->cfg.namespace_id, nsid_len);
+      bmp->options[APP_OPTIONS_NAMESPACE_SECRET] = vcm->cfg.namespace_secret;
+    }
   vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & bmp);
 }
 
@@ -1509,7 +1522,7 @@ vppcom_cfg_read (char *conf_fname)
       (void) unformat_user (input, unformat_line_input, line_input);
       unformat_skip_white_space (line_input);
 
-      if (unformat (line_input, "vppcom {"))
+      if (unformat (line_input, "vcl {"))
 	{
 	  vc_cfg_input = 1;
 	  continue;
@@ -1548,11 +1561,11 @@ vppcom_cfg_read (char *conf_fname)
 	      if (VPPCOM_DEBUG > 0)
 		clib_warning ("[%d] configured gid %d", vcm->my_pid, gid);
 	    }
-	  else if (unformat (line_input, "segment-baseva 0x%llx",
+	  else if (unformat (line_input, "segment-baseva 0x%lx",
 			     &vcl_cfg->segment_baseva))
 	    {
 	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("[%d] configured segment_baseva 0x%llx",
+		clib_warning ("[%d] configured segment_baseva 0x%lx",
 			      vcm->my_pid, vcl_cfg->segment_baseva);
 	    }
 	  else if (unformat (line_input, "segment-size 0x%lx",
@@ -1683,6 +1696,57 @@ vppcom_cfg_read (char *conf_fname)
 		clib_warning ("[%d] configured accept_timeout %f",
 			      vcm->my_pid, vcl_cfg->accept_timeout);
 	    }
+	  else if (unformat (line_input, "session-scope-local"))
+	    {
+	      vcl_cfg->session_scope_local = 1;
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("[%d] configured session_scope_local (%d)",
+			      vcm->my_pid, vcl_cfg->session_scope_local);
+	    }
+	  else if (unformat (line_input, "session-scope-global"))
+	    {
+	      vcl_cfg->session_scope_global = 1;
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("[%d] configured session_scope_global (%d)",
+			      vcm->my_pid, vcl_cfg->session_scope_global);
+	    }
+	  else if (unformat (line_input, "namespace-secret 0x%lx",
+			     &vcl_cfg->namespace_secret))
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning
+		  ("[%d] configured namespace_secret 0x%lx (%lu)",
+		   vcm->my_pid, vcl_cfg->namespace_secret,
+		   vcl_cfg->namespace_secret);
+	    }
+	  else if (unformat (line_input, "namespace-secret %lu",
+			     &vcl_cfg->namespace_secret))
+	    {
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning
+		  ("[%d] configured namespace_secret %lu (0x%lx)",
+		   vcm->my_pid, vcl_cfg->namespace_secret,
+		   vcl_cfg->namespace_secret);
+	    }
+	  else if (unformat (line_input, "namespace-id %v",
+			     &vcl_cfg->namespace_id))
+	    {
+	      vl_api_application_attach_t *mp;
+	      u32 max_nsid_vec_len = sizeof (mp->namespace_id) - 1;
+	      u32 nsid_vec_len = vec_len (vcl_cfg->namespace_id);
+	      if (nsid_vec_len > max_nsid_vec_len)
+		{
+		  _vec_len (vcl_cfg->namespace_id) = max_nsid_vec_len;
+		  if (VPPCOM_DEBUG > 0)
+		    clib_warning ("[%d] configured namespace_id is too long,"
+				  " truncated to %d characters!", vcm->my_pid,
+				  max_nsid_vec_len);
+		}
+
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("[%d] configured namespace_id %v",
+			      vcm->my_pid, vcl_cfg->namespace_id);
+	    }
 	  else if (unformat (line_input, "}"))
 	    {
 	      vc_cfg_input = 0;
@@ -1726,22 +1790,72 @@ vppcom_app_create (char *app_name)
   if (!vcm->init)
     {
       char *conf_fname;
+      char *env_var_str;
 
       vcm->init = 1;
       vcm->my_pid = getpid ();
       clib_fifo_validate (vcm->client_session_index_fifo,
 			  vcm->cfg.listen_queue_size);
       vppcom_cfg_init (vcl_cfg);
-      conf_fname = getenv (VPPCOM_CONF_ENV);
+      conf_fname = getenv (VPPCOM_ENV_CONF);
       if (!conf_fname)
 	{
 	  conf_fname = VPPCOM_CONF_DEFAULT;
 	  if (VPPCOM_DEBUG > 0)
 	    clib_warning ("[%d] getenv '%s' failed!", vcm->my_pid,
-			  VPPCOM_CONF_ENV);
+			  VPPCOM_ENV_CONF);
 	}
       vppcom_cfg_heapsize (conf_fname);
       vppcom_cfg_read (conf_fname);
+      env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_ID);
+      if (env_var_str)
+	{
+	  u32 ns_id_vec_len = strlen (env_var_str);
+
+	  vec_reset_length (vcm->cfg.namespace_id);
+	  vec_validate (vcm->cfg.namespace_id, ns_id_vec_len - 1);
+	  clib_memcpy (vcm->cfg.namespace_id, env_var_str, ns_id_vec_len);
+
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("[%d] configured namespace_id (%v) from "
+			  VPPCOM_ENV_APP_NAMESPACE_ID "!", vcm->my_pid,
+			  vcm->cfg.namespace_id);
+	}
+      env_var_str = getenv (VPPCOM_ENV_APP_NAMESPACE_SECRET);
+      if (env_var_str)
+	{
+	  u64 tmp;
+	  if (sscanf (env_var_str, "%lu", &tmp) != 1)
+	    clib_warning ("[%d] Invalid namespace secret specified in "
+			  "the environment variable "
+			  VPPCOM_ENV_APP_NAMESPACE_SECRET
+			  " (%s)!\n", vcm->my_pid, env_var_str);
+	  else
+	    {
+	      vcm->cfg.namespace_secret = tmp;
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("[%d] configured namespace secret (%lu) from "
+			      VPPCOM_ENV_APP_NAMESPACE_ID "!", vcm->my_pid,
+			      vcm->cfg.namespace_secret);
+	    }
+	}
+      if (getenv (VPPCOM_ENV_SESSION_SCOPE_LOCAL))
+	{
+	  vcm->cfg.session_scope_local = 1;
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("[%d] configured session_scope_local (%u) from "
+			  VPPCOM_ENV_SESSION_SCOPE_LOCAL "!", vcm->my_pid,
+			  vcm->cfg.session_scope_local);
+	}
+      if (getenv (VPPCOM_ENV_SESSION_SCOPE_GLOBAL))
+	{
+	  vcm->cfg.session_scope_global = 1;
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("[%d] configured session_scope_global (%u) from "
+			  VPPCOM_ENV_SESSION_SCOPE_GLOBAL "!", vcm->my_pid,
+			  vcm->cfg.session_scope_global);
+	}
+
       vcm->bind_session_index = ~0;
       vcm->main_cpu = os_get_thread_index ();
       heap = clib_mem_get_per_cpu_heap ();

@@ -455,19 +455,29 @@ static clib_error_t *
 session_enable_disable_fn (vlib_main_t * vm, unformat_input_t * input,
 			   vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_en = 1;
+  clib_error_t *error;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "enable"))
+      if (unformat (line_input, "enable"))
 	is_en = 1;
-      else if (unformat (input, "disable"))
+      else if (unformat (line_input, "disable"))
 	is_en = 0;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
     }
 
+  unformat_free (line_input);
   return vnet_session_enable_disable (vm, is_en);
 }
 

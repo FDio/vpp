@@ -322,7 +322,7 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
 
   if (mp->namespace_id_len)
     {
-      vec_validate (a->namespace_id, mp->namespace_id_len);
+      vec_validate (a->namespace_id, mp->namespace_id_len - 1);
       clib_memcpy (a->namespace_id, mp->namespace_id, mp->namespace_id_len);
     }
 
