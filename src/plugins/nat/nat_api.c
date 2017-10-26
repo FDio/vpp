@@ -2277,6 +2277,42 @@ static void *vl_api_nat44_lb_static_mapping_dump_t_print
   FINISH;
 }
 
+static void
+vl_api_nat44_del_session_t_handler (vl_api_nat44_del_session_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_del_session_reply_t *rmp;
+  ip4_address_t addr;
+  u16 port;
+  u32 vrf_id;
+  int rv = 0;
+  snat_protocol_t proto;
+
+  memcpy (&addr.as_u8, mp->address, 4);
+  port = clib_net_to_host_u16 (mp->port);
+  vrf_id = clib_net_to_host_u32 (mp->vrf_id);
+  proto = ip_proto_to_snat_proto (mp->protocol);
+
+  rv = nat44_del_session (sm, &addr, port, proto, vrf_id, mp->is_in);
+
+  REPLY_MACRO (VL_API_NAT44_DEL_SESSION_REPLY);
+}
+
+static void *
+vl_api_nat44_del_session_t_print (vl_api_nat44_del_session_t * mp,
+				  void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_add_del_static_mapping ");
+  s = format (s, "addr %U port %d protocol %d vrf_id %d is_in %d",
+	      format_ip4_address, mp->address,
+	      clib_net_to_host_u16 (mp->port),
+	      mp->protocol, clib_net_to_host_u32 (mp->vrf_id), mp->is_in);
+
+  FINISH;
+}
+
 /*******************************/
 /*** Deterministic NAT (CGN) ***/
 /*******************************/
@@ -3304,6 +3340,7 @@ _(NAT44_INTERFACE_OUTPUT_FEATURE_DUMP,                                  \
   nat44_interface_output_feature_dump)                                  \
 _(NAT44_ADD_DEL_LB_STATIC_MAPPING, nat44_add_del_lb_static_mapping)     \
 _(NAT44_LB_STATIC_MAPPING_DUMP, nat44_lb_static_mapping_dump)           \
+_(NAT44_DEL_SESSION, nat44_del_session)                                 \
 _(NAT_DET_ADD_DEL_MAP, nat_det_add_del_map)                             \
 _(NAT_DET_FORWARD, nat_det_forward)                                     \
 _(NAT_DET_REVERSE, nat_det_reverse)                                     \

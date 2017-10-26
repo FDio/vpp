@@ -1346,6 +1346,29 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.nat44_lb_static_mapping_dump, {})
 
+    def nat44_del_session(
+            self,
+            addr,
+            port,
+            protocol,
+            vrf_id=0,
+            is_in=1):
+        """Delete NAT44 session
+
+        :param addr: IPv4 address
+        :param por: port number
+        :param protocol: IP protocol number
+        :param vrf_id: VRF ID
+        :param is_in: 1 if inside network addres and port pari, 0 if outside
+        """
+        return self.api(
+            self.papi.nat44_del_session,
+            {'address': addr,
+             'port': port,
+             'protocol': protocol,
+             'vrf_id': vrf_id,
+             'is_in': is_in})
+
     def nat_det_add_del_map(
             self,
             in_addr,

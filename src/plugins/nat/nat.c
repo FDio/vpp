@@ -3075,6 +3075,119 @@ VLIB_CLI_COMMAND (snat_add_interface_address_command, static) = {
     .function = snat_add_interface_address_command_fn,
 };
 
+int
+nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
+                   snat_protocol_t proto, u32 vrf_id, int is_in)
+{
+  snat_main_per_thread_data_t *tsm;
+  clib_bihash_kv_8_8_t kv, value;
+  ip4_header_t ip;
+  u32 fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+  snat_session_key_t key;
+  snat_session_t *s;
+  clib_bihash_8_8_t *t;
+  snat_user_key_t u_key;
+  snat_user_t *u;
+
+  ip.dst_address.as_u32 = ip.src_address.as_u32 = addr->as_u32;
+  if (sm->num_workers)
+    tsm =
+      vec_elt_at_index (sm->per_thread_data,
+			sm->worker_in2out_cb (&ip, fib_index));
+  else
+    tsm = vec_elt_at_index (sm->per_thread_data, sm->num_workers);
+
+  key.addr.as_u32 = addr->as_u32;
+  key.port = clib_host_to_net_u16 (port);
+  key.protocol = proto;
+  key.fib_index = fib_index;
+  kv.key = key.as_u64;
+  t = is_in ? &tsm->in2out : &tsm->out2in;
+  if (!clib_bihash_search_8_8 (t, &kv, &value))
+    {
+      s = pool_elt_at_index (tsm->sessions, value.value);
+      kv.key = s->in2out.as_u64;
+      clib_bihash_add_del_8_8 (&tsm->in2out, &kv, 0);
+      kv.key = s->out2in.as_u64;
+      clib_bihash_add_del_8_8 (&tsm->out2in, &kv, 0);
+      u_key.addr = s->in2out.addr;
+      u_key.fib_index = s->in2out.fib_index;
+      kv.key = u_key.as_u64;
+      if (!clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+        {
+          u = pool_elt_at_index (tsm->users, value.value);
+          u->nsessions--;
+        }
+      clib_dlist_remove (tsm->list_pool, s->per_user_index);
+      pool_put (tsm->sessions, s);
+      return 0;
+    }
+
+  return VNET_API_ERROR_NO_SUCH_ENTRY;
+}
+
+static clib_error_t *
+nat44_del_session_command_fn (vlib_main_t * vm,
+                              unformat_input_t * input,
+                              vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  int is_in = 0;
+  clib_error_t *error = 0;
+  ip4_address_t addr;
+  u32 port = 0, vrf_id = sm->outside_vrf_id;
+  snat_protocol_t proto;
+  int rv;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U:%u %U", unformat_ip4_address, &addr, &port,
+          unformat_snat_protocol, &proto))
+        ;
+      else if (unformat (line_input, "in"))
+        {
+          is_in = 1;
+          vrf_id = sm->inside_vrf_id;
+        }
+      else if (unformat (line_input, "vrf %u", &vrf_id))
+        ;
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  rv = nat44_del_session(sm, &addr, port, proto, vrf_id, is_in);
+
+  switch (rv)
+    {
+    case 0:
+      break;
+
+    default:
+      error = clib_error_return (0, "nat44_del_session returned %d", rv);
+      goto done;
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+VLIB_CLI_COMMAND (nat44_del_session_command, static) = {
+    .path = "nat44 del session",
+    .short_help = "nat44 del session in|out <addr>:<port> tcp|udp|icmp [vrf <id>]",
+    .function = nat44_del_session_command_fn,
+};
+
 static clib_error_t *
 snat_det_map_command_fn (vlib_main_t * vm,
                          unformat_input_t * input,
