@@ -3284,7 +3284,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
     {
     case VPPCOM_ATTR_GET_NREAD:
       rv = vppcom_session_read_ready (session, session_index);
-      if (VPPCOM_DEBUG > 0)
+      if (VPPCOM_DEBUG > 1)
 	clib_warning ("VPPCOM_ATTR_GET_NREAD: nread = %d", rv);
 
       break;
@@ -3298,7 +3298,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	{
 	  *flags = O_RDWR | ((session->is_nonblocking) ? O_NONBLOCK : 0);
 	  *buflen = sizeof (*flags);
-	  if (VPPCOM_DEBUG > 0)
+	  if (VPPCOM_DEBUG > 1)
 	    clib_warning ("VPPCOM_ATTR_GET_FLAGS: flags = 0x%08x, "
 			  "is_nonblocking = %u", *flags,
 			  session->is_nonblocking);
@@ -3311,7 +3311,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
       if (buffer && buflen && (*buflen >= sizeof (*flags)))
 	{
 	  session->is_nonblocking = (*flags & O_NONBLOCK) ? 1 : 0;
-	  if (VPPCOM_DEBUG > 0)
+	  if (VPPCOM_DEBUG > 1)
 	    clib_warning ("VPPCOM_ATTR_SET_FLAGS: flags = 0x%08x, "
 			  "is_nonblocking = %u", *flags,
 			  session->is_nonblocking);
@@ -3333,7 +3333,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_memcpy (ep->ip, &session->peer_addr.ip46.ip6,
 			 sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
-	  if (VPPCOM_DEBUG > 0)
+	  if (VPPCOM_DEBUG > 1)
 	    clib_warning ("VPPCOM_ATTR_GET_PEER_ADDR: sid %u is_ip4 = %u, "
 			  "addr = %U, port %u", session_index,
 			  ep->is_ip4, format_ip46_address,
@@ -3357,7 +3357,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	    clib_memcpy (ep->ip, &session->lcl_addr.ip46.ip6,
 			 sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
-	  if (VPPCOM_DEBUG > 0)
+	  if (VPPCOM_DEBUG > 1)
 	    clib_warning ("VPPCOM_ATTR_GET_LCL_ADDR: sid %u is_ip4 = %u, "
 			  "addr = %U port %d", session_index,
 			  ep->is_ip4, format_ip46_address,
@@ -3414,7 +3414,9 @@ vppcom_session_recvfrom (uint32_t session_index, void *buffer,
 	  if (VPPCOM_DEBUG > 0)
 	    clib_warning ("[%d] invalid session, sid (%u) has been closed!",
 			  vcm->my_pid, session_index);
-	  rv = VPPCOM_EINVAL;
+	  rv = VPPCOM_EBADFD;
+	  clib_spinlock_unlock (&vcm->sessions_lockp);
+	  goto done;
 	}
       ep->vrf = session->vrf;
       ep->is_ip4 = session->peer_addr.is_ip4;
@@ -3438,6 +3440,7 @@ vppcom_session_recvfrom (uint32_t session_index, void *buffer,
       rv = VPPCOM_EAFNOSUPPORT;
     }
 
+done:
   return rv;
 }
 
