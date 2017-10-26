@@ -147,6 +147,7 @@ main (int argc, char *argv[])
   u8 *cmd = 0;
   int do_quit = 0;
   int is_interactive = 0;
+  int acked = 1;		/* counts messages from VPP; starts at 1 */
   int sent_ttype = 0;
 
 
@@ -314,7 +315,10 @@ main (int argc, char *argv[])
 		    }
 
 		  while (q < (p + len) && !*q)
-		    q++;
+		    {
+		      q++;
+		      acked++;	/* every NUL is an acknowledgement */
+		    }
 		  len -= q - p;
 		  p = q;
 		}
@@ -322,7 +326,7 @@ main (int argc, char *argv[])
 	      vec_reset_length (str);
 	    }
 
-	  if (do_quit)
+	  if (do_quit && do_quit < acked)
 	    {
 	      /* Ask the other end to close the connection */
 	      clib_socket_tx_add_formatted (s, "quit\n");
@@ -339,7 +343,7 @@ main (int argc, char *argv[])
 	      clib_socket_tx_add_formatted (s, "%s\n", cmd);
 	      clib_socket_tx (s);
 	      vec_free (cmd);
-	      do_quit = 1;
+	      do_quit = acked;	/* quit after the next response */
 	    }
 	}
       else
