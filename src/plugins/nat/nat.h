@@ -409,7 +409,7 @@ typedef struct {
     @param s SNAT session
     @return 1 if SNAT session is created from static mapping otherwise 0
 */
-#define snat_is_session_static(s) s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING
+#define snat_is_session_static(s) (s->flags & SNAT_SESSION_FLAG_STATIC_MAPPING)
 
 /** \brief Check if SNAT session for unknown protocol.
     @param s SNAT session
