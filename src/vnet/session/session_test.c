@@ -227,6 +227,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 		"server shouldn't have access to local table");
 
   unbind_args.app_index = server_index;
+  unbind_args.handle = bind_args.handle;
   error = vnet_unbind (&unbind_args);
   SESSION_TEST ((error == 0), "unbind should work");
 

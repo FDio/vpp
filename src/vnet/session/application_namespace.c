@@ -89,15 +89,16 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
 	return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
 				       "sw_if_index or fib_id must be "
 				       "configured");
-      st = session_table_alloc ();
-      session_table_init (st);
-
       app_ns = app_namespace_get_from_id (a->ns_id);
       if (!app_ns)
-	app_ns = app_namespace_alloc (a->ns_id);
+	{
+	  app_ns = app_namespace_alloc (a->ns_id);
+	  st = session_table_alloc ();
+	  session_table_init (st);
+	  app_ns->local_table_index = session_table_index (st);
+	}
       app_ns->ns_secret = a->secret;
       app_ns->sw_if_index = a->sw_if_index;
-      app_ns->local_table_index = session_table_index (st);
       app_ns->ip4_fib_index =
 	fib_table_find (FIB_PROTOCOL_IP4, a->ip4_fib_id);
       app_ns->ip6_fib_index =
@@ -140,8 +141,10 @@ void
 app_namespaces_init (void)
 {
   u8 *ns_id = format (0, "default");
-  app_namespace_lookup_table =
-    hash_create_vec (0, sizeof (u8), sizeof (uword));
+
+  if (!app_namespace_lookup_table)
+    app_namespace_lookup_table =
+      hash_create_vec (0, sizeof (u8), sizeof (uword));
 
   /*
    * Allocate default namespace
