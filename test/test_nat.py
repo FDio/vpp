@@ -2452,6 +2452,33 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
+    def test_del_session(self):
+        """ Delete NAT44 session """
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+
+        pkts = self.create_stream_in(self.pg0, self.pg1)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4n, 0)
+        nsessions = len(sessions)
+
+        self.vapi.nat44_del_session(sessions[0].inside_ip_address,
+                                    sessions[0].inside_port,
+                                    sessions[0].protocol)
+        self.vapi.nat44_del_session(sessions[1].outside_ip_address,
+                                    sessions[1].outside_port,
+                                    sessions[1].protocol,
+                                    is_in=0)
+
+        sessions = self.vapi.nat44_user_session_dump(self.pg0.remote_ip4n, 0)
+        self.assertEqual(nsessions - len(sessions), 2)
+
     def tearDown(self):
         super(TestNAT44, self).tearDown()
         if not self.vpp_dead:

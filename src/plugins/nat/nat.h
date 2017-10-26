@@ -507,6 +507,8 @@ u8 * format_snat_protocol(u8 * s, va_list * args);
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                                      snat_protocol_t proto, u32 vrf_id,
                                      nat44_lb_addr_port_t *locals, u8 is_add);
+int nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
+                       snat_protocol_t proto, u32 vrf_id, int is_in);
 
 static_always_inline u8
 icmp_is_error_message (icmp46_header_t * icmp)

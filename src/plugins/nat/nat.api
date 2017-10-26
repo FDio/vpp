@@ -1061,6 +1061,26 @@ manual_endian define nat44_lb_static_mapping_details {
   vl_api_nat44_lb_addr_port_t locals[local_num];
 };
 
+/** \brief Delete NAT44 session
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_in - 1 if inside network addres and port pari, 0 if outside
+    @param ip_address - IPv4 address
+    @param protocol - IP protocol
+    @param port - port number
+    @param vfr_id - VRF ID
+*/
+autoreply define nat44_del_session {
+  u32 client_index;
+  u32 context;
+  u8 is_in;
+  u8 address[4];
+  u8 protocol;
+  u16 port;
+  u32 vrf_id;
+};
+
+
 /*
  * Deterministic NAT (CGN) APIs
  */
