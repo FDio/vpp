@@ -1,5 +1,7 @@
 import socket
 
+from time import sleep
+
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 from scapy.layers.l2 import Ether, GRE
@@ -48,8 +50,8 @@ class TestLB(VppTestCase):
             dst6 = socket.inet_pton(socket.AF_INET6, "2002::")
             cls.vapi.ip_add_del_route(dst4, 24, cls.pg1.remote_ip4n)
             cls.vapi.ip_add_del_route(dst6, 16, cls.pg1.remote_ip6n, is_ipv6=1)
-            cls.vapi.cli("lb conf ip4-src-address 39.40.41.42")
-            cls.vapi.cli("lb conf ip6-src-address 2004::1")
+            cls.vapi.cli("lb conf ip4-src-address 39.40.41.42 timeout 5")
+            cls.vapi.cli("lb conf ip6-src-address 2004::1 timeout 5")
         except Exception:
             super(TestLB, cls).tearDownClass()
             raise
@@ -155,6 +157,7 @@ class TestLB(VppTestCase):
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
+            sleep(5)  # wait for flow-timeout seconds
             self.pg_start()
             self.checkCapture(gre4=True, isv4=True)
 
@@ -173,6 +176,7 @@ class TestLB(VppTestCase):
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
             self.pg_enable_capture(self.pg_interfaces)
+            sleep(5)  # wait for flow-timeout seconds
             self.pg_start()
 
             self.checkCapture(gre4=True, isv4=False)
@@ -190,6 +194,7 @@ class TestLB(VppTestCase):
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=True))
             self.pg_enable_capture(self.pg_interfaces)
+            sleep(5)  # wait for flow-timeout seconds
             self.pg_start()
 
             self.checkCapture(gre4=False, isv4=True)
@@ -207,6 +212,7 @@ class TestLB(VppTestCase):
 
             self.pg0.add_stream(self.generatePackets(self.pg0, isv4=False))
             self.pg_enable_capture(self.pg_interfaces)
+            sleep(5)  # wait for flow-timeout seconds
             self.pg_start()
 
             self.checkCapture(gre4=False, isv4=False)
