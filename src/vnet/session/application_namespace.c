@@ -160,6 +160,7 @@ static clib_error_t *
 app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
 	   vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_add = 0, *ns_id = 0, secret_set = 0, sw_if_index_set = 0;
   u32 sw_if_index, fib_id = APP_NAMESPACE_INVALID_INDEX;
   u64 secret;
@@ -167,22 +168,30 @@ app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
 
   session_cli_return_if_not_enabled ();
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "add"))
+      if (unformat (line_input, "add"))
 	is_add = 1;
-      else if (unformat (input, "id %_%v%_", &ns_id))
+      else if (unformat (line_input, "id %_%v%_", &ns_id))
 	;
-      else if (unformat (input, "secret %lu", &secret))
+      else if (unformat (line_input, "secret %lu", &secret))
 	secret_set = 1;
-      else if (unformat (input, "sw_if_index %u", &sw_if_index))
+      else if (unformat (line_input, "sw_if_index %u", &sw_if_index))
 	sw_if_index_set = 1;
-      else if (unformat (input, "fib_id", &fib_id))
+      else if (unformat (line_input, "fib_id", &fib_id))
 	;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  unformat_free (line_input);
+	  return error;
+	}
     }
+  unformat_free (line_input);
 
   if (!ns_id || !secret_set || !sw_if_index_set)
     {
@@ -235,13 +244,17 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
 
   session_cli_return_if_not_enabled ();
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  if (unformat_peek_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "table %_%v%_", &ns_id))
 	do_table = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  vlib_cli_output (vm, "unknown input [%U]",
+			   format_unformat_error, input);
+	  return clib_error_return (0, "unknown input `%U'",
+				    format_unformat_error, input);
+	}
     }
 
   if (do_table)

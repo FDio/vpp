@@ -23,10 +23,14 @@
 /*
  * VPPCOM Public API Definitions, Enums, and Data Structures
  */
-#define INVALID_SESSION_ID   (~0)
-#define VPPCOM_VRF_DEFAULT   0
-#define VPPCOM_CONF_ENV      "VPPCOM_CONF"
-#define VPPCOM_CONF_DEFAULT  "/etc/vpp/vppcom.conf"
+#define INVALID_SESSION_ID               (~0)
+#define VPPCOM_VRF_DEFAULT               0
+#define VPPCOM_CONF_DEFAULT              "/etc/vpp/vppcom.conf"
+#define VPPCOM_ENV_CONF                  "VCL_CONFIG"
+#define VPPCOM_ENV_APP_NAMESPACE_ID      "VCL_APP_NAMESPACE_ID"
+#define VPPCOM_ENV_APP_NAMESPACE_SECRET  "VCL_APP_NAMESPACE_SECRET"
+#define VPPCOM_ENV_SESSION_SCOPE_LOCAL   "VCL_SESSION_SCOPE_LOCAL"
+#define VPPCOM_ENV_SESSION_SCOPE_GLOBAL  "VCL_SESSION_SCOPE_GLOBAL"
 
 typedef enum
 {
