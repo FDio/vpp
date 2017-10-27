@@ -422,7 +422,7 @@ acl_classify_add_del_table_small (vnet_classify_main_t * cm, u8 * mask,
 			    int is_add)
 {
   u32 nbuckets = 32;
-  u32 memory_size = 2 << 20;
+  u32 memory_size = 2 << 22;
   u32 skip = count_skip (mask, mask_len);
   u32 match = (mask_len / 16) - skip;
   u8 *skip_mask_ptr = mask + 16 * skip;
