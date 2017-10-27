@@ -1828,30 +1828,61 @@ update_adjacencies_by_map_index (lisp_cp_main_t * lcm, u8 is_local,
 {
   fwd_entry_t *fwd;
   mapping_t *map;
+  uword *fei = 0, *rmts_idxp = 0;
+  u32 **rmts = 0, *remote_idxp = 0, *rmts_copy = 0;
   vnet_lisp_add_del_adjacency_args_t _a, *a = &_a;
+  memset (a, 0, sizeof (*a));
 
   map = pool_elt_at_index (lcm->mapping_pool, mapping_index);
 
-  /* *INDENT-OFF* */
-  pool_foreach(fwd, lcm->fwd_entry_pool,
-  ({
-    if ((is_local && 0 == gid_address_cmp (&map->eid, &fwd->leid)) ||
-        (!is_local && 0 == gid_address_cmp (&map->eid, &fwd->reid)))
-      {
-        a->is_add = 0;
-        gid_address_copy (&a->leid, &fwd->leid);
-        gid_address_copy (&a->reid, &fwd->reid);
+  if (map->local)
+    {
+      rmts_idxp = hash_get (lcm->lcl_to_rmt_adjs_by_lcl_idx, mapping_index);
+      if (rmts_idxp)
+	{
+	  rmts =
+	    pool_elt_at_index (lcm->lcl_to_rmt_adjacencies, rmts_idxp[0]);
+	  rmts_copy = vec_dup (rmts[0]);
 
-        vnet_lisp_add_del_adjacency (a);
+	  vec_foreach (remote_idxp, rmts_copy)
+	  {
+	    fei = hash_get (lcm->fwd_entry_by_mapping_index, remote_idxp[0]);
+	    if (!fei)
+	      continue;
 
-        if (!remove_only)
-          {
-            a->is_add = 1;
-            vnet_lisp_add_del_adjacency (a);
-          }
-      }
-    }));
-  /* *INDENT-ON* */
+	    fwd = pool_elt_at_index (lcm->fwd_entry_pool, fei[0]);
+	    a->is_add = 0;
+	    gid_address_copy (&a->leid, &fwd->leid);
+	    gid_address_copy (&a->reid, &fwd->reid);
+	    vnet_lisp_add_del_adjacency (a);
+
+	    if (!remove_only)
+	      {
+		a->is_add = 1;
+		vnet_lisp_add_del_adjacency (a);
+	      }
+	  }
+	  vec_free (rmts_copy);
+	}
+    }
+  else
+    {
+      fei = hash_get (lcm->fwd_entry_by_mapping_index, mapping_index);
+      if (!fei)
+	return;
+
+      fwd = pool_elt_at_index (lcm->fwd_entry_pool, fei[0]);
+      a->is_add = 0;
+      gid_address_copy (&a->leid, &fwd->leid);
+      gid_address_copy (&a->reid, &fwd->reid);
+      vnet_lisp_add_del_adjacency (a);
+
+      if (!remove_only)
+	{
+	  a->is_add = 1;
+	  vnet_lisp_add_del_adjacency (a);
+	}
+    }
 }
 
 static void
