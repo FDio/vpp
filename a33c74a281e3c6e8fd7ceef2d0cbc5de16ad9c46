@@ -1,0 +1,95 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9ae2c9ea_f3e3f0d2",
+        "filename": "src/vnet/l2/l2_input_classify.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 220,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-10-27T07:25:49Z",
+      "side": 1,
+      "message": "why do we need this addition ? at this point the type_index0 will be set to L2_INPUT_CLASSIFY_TABLE_OTHER. Why not simply add the tables to that existing index and use them ?",
+      "range": {
+        "startLine": 220,
+        "startChar": 0,
+        "endLine": 220,
+        "endChar": 6
+      },
+      "revId": "a33c74a281e3c6e8fd7ceef2d0cbc5de16ad9c46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da377366_89381c28",
+        "filename": "src/vnet/l2/l2_input_classify.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 232,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-10-27T07:25:49Z",
+      "side": 1,
+      "message": "Same here as above comment...",
+      "revId": "a33c74a281e3c6e8fd7ceef2d0cbc5de16ad9c46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "084cb360_4ad60f5a",
+        "filename": "src/vnet/l2/l2_input_classify.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 298,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-10-27T07:25:49Z",
+      "side": 1,
+      "message": "Again, the type_index0 should be L2_INPUT_CLASSIFY_TABLE_OTHER here, why are we simply not using those tables ?",
+      "revId": "a33c74a281e3c6e8fd7ceef2d0cbc5de16ad9c46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "09759bc0_afd6c311",
+        "filename": "src/vnet/l2/l2_input_classify.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 560,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-10-27T07:25:49Z",
+      "side": 1,
+      "message": "Pending on the above comments, this and below stuff in this file would not be needed...",
+      "revId": "a33c74a281e3c6e8fd7ceef2d0cbc5de16ad9c46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "45af3212_c96b84fb",
+        "filename": "src/vnet/l2/l2_output_classify.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 141,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-10-27T07:25:49Z",
+      "side": 1,
+      "message": "Same general comments about this file as about l2_input_classify.c",
+      "revId": "a33c74a281e3c6e8fd7ceef2d0cbc5de16ad9c46",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
