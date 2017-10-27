@@ -168,6 +168,7 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "locator-set %_%v%_", &locator_set_name))
 	{
+	  vec_terminate_c_string (locator_set_name);
 	  p = hash_get_mem (lcm->locator_set_index_by_name, locator_set_name);
 	  if (!p)
 	    {
@@ -867,6 +868,7 @@ lisp_nsh_set_locator_set_command_fn (vlib_main_t * vm,
       goto done;
     }
 
+  vec_terminate_c_string (locator_set_name);
   rv = vnet_lisp_nsh_set_locator_set (locator_set_name, is_add);
   if (0 != rv)
     {
@@ -987,6 +989,7 @@ lisp_pitr_set_locator_set_command_fn (vlib_main_t * vm,
       clib_warning ("No locator set specified!");
       goto done;
     }
+  vec_terminate_c_string (locator_set_name);
   rv = vnet_lisp_pitr_set_locator_set (locator_set_name, is_add);
   if (0 != rv)
     {
@@ -1566,6 +1569,7 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm,
 	}
     }
 
+  vec_terminate_c_string (locator_set_name);
   a->name = locator_set_name;
   a->locators = locators;
   a->is_add = is_add;
@@ -1647,6 +1651,7 @@ lisp_add_del_locator_in_set_command_fn (vlib_main_t * vm,
       goto done;
     }
 
+  vec_terminate_c_string (locator_set_name);
   a->name = locator_set_name;
   a->locators = locators;
   a->is_add = is_add;
@@ -1690,7 +1695,7 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
     int next_line = 0;
     if (lsit->local)
       {
-        msg = format (msg, "%v", lsit->name);
+        msg = format (msg, "%s", lsit->name);
       }
     else
       {
@@ -1817,6 +1822,7 @@ lisp_add_del_mreq_itr_rlocs_command_fn (vlib_main_t * vm,
 	}
     }
 
+  vec_terminate_c_string (locator_set_name);
   a->is_add = is_add;
   a->locator_set_name = locator_set_name;
   rv = vnet_lisp_add_del_mreq_itr_rlocs (a);
