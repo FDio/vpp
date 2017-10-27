@@ -133,7 +133,7 @@ send_l2fib_table_entry (vpe_api_main_t * am,
   mp->bd_id =
     ntohl (l2input_main.bd_configs[l2fe_key->fields.bd_index].bd_id);
 
-  mp->mac = l2fib_make_key (l2fe_key->fields.mac, 0);
+  clib_memcpy (mp->mac, l2fe_key->fields.mac, 6);
   mp->sw_if_index = ntohl (l2fe_res->fields.sw_if_index);
   mp->static_mac = l2fe_res->fields.static_mac;
   mp->filter_mac = l2fe_res->fields.filter;
@@ -199,7 +199,9 @@ vl_api_l2fib_add_del_t_handler (vl_api_l2fib_add_del_t * mp)
     }
   u32 bd_index = p[0];
 
-  u64 mac = mp->mac;
+  u8 mac[6];
+
+  clib_memcpy (mac, mp->mac, 6);
   if (mp->is_add)
     {
       if (mp->filter_mac)
