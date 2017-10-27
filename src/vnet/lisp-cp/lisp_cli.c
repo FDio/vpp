@@ -172,6 +172,7 @@ lisp_add_del_local_eid_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "locator-set %_%v%_", &locator_set_name))
 	{
+	  vec_terminate_c_string (locator_set_name);
 	  p = hash_get_mem (lcm->locator_set_index_by_name, locator_set_name);
 	  if (!p)
 	    {
