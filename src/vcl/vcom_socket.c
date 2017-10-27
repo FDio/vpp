@@ -1513,11 +1513,10 @@ vcom_session_sendto (int __sid, void *__buf, size_t __n,
 		     socklen_t __addr_len)
 {
   vppcom_endpt_t *ep = 0;
+  vppcom_endpt_t _ep;
 
   if (__addr)
     {
-      vppcom_endpt_t _ep;
-
       ep = &_ep;
       ep->vrf = VPPCOM_VRF_DEFAULT;
       switch (__addr->sa_family)
