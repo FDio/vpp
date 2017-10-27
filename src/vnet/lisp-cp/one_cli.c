@@ -1566,6 +1566,7 @@ lisp_add_del_locator_set_command_fn (vlib_main_t * vm,
 	}
     }
 
+  vec_terminate_c_string (locator_set_name);
   a->name = locator_set_name;
   a->locators = locators;
   a->is_add = is_add;
@@ -1647,6 +1648,7 @@ lisp_add_del_locator_in_set_command_fn (vlib_main_t * vm,
       goto done;
     }
 
+  vec_terminate_c_string (locator_set_name);
   a->name = locator_set_name;
   a->locators = locators;
   a->is_add = is_add;
@@ -1690,7 +1692,7 @@ lisp_cp_show_locator_sets_command_fn (vlib_main_t * vm,
     int next_line = 0;
     if (lsit->local)
       {
-        msg = format (msg, "%v", lsit->name);
+        msg = format (msg, "%s", lsit->name);
       }
     else
       {
