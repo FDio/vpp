@@ -34,6 +34,12 @@ DPDK_17.08_TARBALL_MD5_CKSUM := 0641f59ea8ea98afefa7cfa2699f6241
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 MACHINE=$(shell uname -m)
 
+NASM_BASE_URL := http://www.nasm.us/pub/nasm/releasebuilds
+NASM_VER := 2.13.01
+NASM_TARBALL := nasm-$(NASM_VER).tar.xz
+NASM_TAR_URL := $(NASM_BASE_URL)/$(NASM_VER)/$(NASM_TARBALL)
+NASM_SOURCE := $(B)/nasm-$(NASM_VER)
+
 ISA_L_CRYPTO_LIB := n
 
 IPSEC_MB_VER ?= 0.46
@@ -225,6 +231,12 @@ $(CURDIR)/$(DPDK_TARBALL):
 	fi
 	@rm -f $(B)/.download.ok
 
+$(CURDIR)/$(NASM_TARBALL):
+	@if [ -e $(DPDK_DOWNLOAD_DIR)/$(NASM_TARBALL) ] ; \
+		then cp $(DPDK_DOWNLOAD_DIR)/$(NASM_TARBALL) $(CURDIR) ; \
+		else curl -o $(CURDIR)/$(NASM_TARBALL) -LO $(NASM_TAR_URL) ; \
+	fi
+
 $(CURDIR)/$(AESNIMB_LIB_TARBALL):
 	@if [ -e $(DPDK_DOWNLOAD_DIR)/$(AESNIMB_LIB_TARBALL) ] ; \
 		then cp $(DPDK_DOWNLOAD_DIR)/$(AESNIMB_LIB_TARBALL) $(CURDIR) ; \
@@ -239,6 +251,7 @@ $(CURDIR)/$(ISA_L_CRYPTO_LIB_TARBALL):
 
 DPDK_DOWNLOADS = $(CURDIR)/$(DPDK_TARBALL)
 ifeq ($(AESNI),y)
+DPDK_DOWNLOADS += $(CURDIR)/$(NASM_TARBALL)
 DPDK_DOWNLOADS += $(CURDIR)/$(AESNIMB_LIB_TARBALL)
 endif
 ifeq ($(ISA_L_CRYPTO_LIB),y)
@@ -260,6 +273,8 @@ $(B)/.extract.ok: $(B)/.download.ok
 	@echo --- extracting $(DPDK_TARBALL) ---
 	@tar --directory $(B) --extract --file $(CURDIR)/$(DPDK_TARBALL)
 ifeq ($(AESNI),y)
+	@echo --- extracting $(NASM_TARBALL) ---
+	@tar --directory $(B) --extract --file $(CURDIR)/$(NASM_TARBALL)
 	@echo --- extracting $(AESNIMB_LIB_TARBALL) ---
 	@tar --directory $(B) --extract --file $(CURDIR)/$(AESNIMB_LIB_TARBALL)
 endif
@@ -292,12 +307,16 @@ $(B)/.config.ok: $(B)/.patch.ok $(B)/custom-config
 .PHONY: config
 config: $(B)/.config.ok
 
+.PHONY: build-nasm
+build-nasm:
+	cd $(NASM_SOURCE) && sh configure && make -j
+
 .PHONY: build-ipsec-mb
 build-ipsec-mb:
 	mkdir -p $(I)/lib/
 	# Do not build GCM stuff if we are building ISA_L
 	make -C $(AESNIMB_LIB_SOURCE) -j NO_GCM=$(ISA_L_CRYPTO_LIB) \
-	  DEBUG=$(DPDK_DEBUG) EXTRA_CFLAGS=-fPIC
+	  DEBUG=$(DPDK_DEBUG) EXTRA_CFLAGS=-fPIC NASM=$(NASM_SOURCE)/nasm
 	cp $(AESNIMB_LIB_SOURCE)/libIPSec_MB.a $(I)/lib/
 
 .PHONY: build-isal-crypto
@@ -316,6 +335,7 @@ build-dpdk:
 
 # Order matters
 ifeq ($(AESNI),y)
+BUILD_TARGETS += build-nasm
 BUILD_TARGETS += build-ipsec-mb
 endif
 ifeq ($(ISA_L_CRYPTO_LIB),y)
