@@ -44,8 +44,4 @@ elif [ "$OS_ID" == "centos" ]; then
     # Standard update + upgrade dance
     yum check-update
     yum update -y
-elif [ "$OS_ID" == "opensuse" ]; then
-    zypper update -y
-    # NASM >= 2.12 is not available in previous openSUSE release; need to install it from TW
-    zypper install -y https://download.opensuse.org/tumbleweed/repo/oss/suse/x86_64/nasm-2.13.01-2.1.x86_64.rpm
 fi

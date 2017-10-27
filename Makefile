@@ -19,12 +19,6 @@ PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
 MACHINE=$(shell uname -m)
 
-ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
-export AESNI?=y
-else
-export AESNI?=N
-endif
-
 ,:=,
 define disable_plugins
 $(if $(1), \
@@ -67,7 +61,7 @@ endif
 DEB_DEPENDS  = curl build-essential autoconf automake bison ccache
 DEB_DEPENDS += debhelper dkms git libtool libapr1-dev dh-systemd
 DEB_DEPENDS += libconfuse-dev git-review exuberant-ctags cscope pkg-config
-DEB_DEPENDS += lcov chrpath autoconf nasm indent clang-format libnuma-dev
+DEB_DEPENDS += lcov chrpath autoconf indent clang-format libnuma-dev
 DEB_DEPENDS += python-all python-dev python-virtualenv python-pip libffi6 check
 DEB_DEPENDS += libboost-all-dev
 ifeq ($(OS_VERSION_ID),14.04)
@@ -113,11 +107,6 @@ endif
 # +ganglia-devel if building the ganglia plugin
 
 RPM_DEPENDS += chrpath libffi-devel rpm-build
-ifeq ($(OS_ID),fedora)
-	RPM_DEPENDS += nasm
-else ifeq ($(findstring y,$(AESNI)),y)
-	RPM_DEPENDS += https://kojipkgs.fedoraproject.org//packages/nasm/2.12.02/2.fc26/x86_64/nasm-2.12.02-2.fc26.x86_64.rpm
-endif
 
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
 RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake bison ccache check-devel chrpath clang indent libtool make
@@ -129,11 +118,9 @@ ifeq ($(OS_ID),opensuse)
 ifneq ($(SUSE_NAME),Tumbleweed)
 	RPM_SUSE_DEVEL_DEPS += boost_1_61-devel gcc6 
 	RPM_SUSE_PYTHON_DEPS += python-virtualenv
-	RPM_SUSE_BUILDTOOL_DEPS += https://download.opensuse.org/tumbleweed/repo/oss/suse/x86_64/nasm-2.13.01-2.2.x86_64.rpm
 else
 	RPM_SUSE_DEVEL_DEPS += boost_1_65-devel gcc
 	RPM_SUSE_PYTHON_DEPS += python2-virtualenv
-	RPM_SUSE_BUILDTOOL_DEPS += nasm
 endif
 endif
 
