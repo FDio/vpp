@@ -550,7 +550,6 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
   l2_output_config_t *out_config;
   l2_input_config_t *config;
   l2_bridge_domain_t *bd_config;
-  u64 mac;
   i32 l2_if_adjust = 0;
   u32 slot;
 
@@ -572,8 +571,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	  config->bvi = 0;
 
 	  /* delete the l2fib entry for the bvi interface */
-	  mac = *((u64 *) hi->hw_address);
-	  l2fib_del_entry (mac, config->bd_index);
+	  l2fib_del_entry (hi->hw_address, config->bd_index);
 
 	  /* Make loop output node send packet back to ethernet-input node */
 	  slot =
@@ -672,8 +670,7 @@ set_int_l2_mode (vlib_main_t * vm, vnet_main_t * vnet_main,	/*           */
 	      config->bvi = 1;
 
 	      /* create the l2fib entry for the bvi interface */
-	      mac = *((u64 *) hi->hw_address);
-	      l2fib_add_fwd_entry (mac, bd_index, sw_if_index, 1, 1);	/* static + bvi */
+	      l2fib_add_fwd_entry (hi->hw_address, bd_index, sw_if_index, 1, 1);	/* static + bvi */
 
 	      /* Disable learning by default. no use since l2fib entry is static. */
 	      config->feature_bitmap &= ~L2INPUT_FEAT_LEARN;
