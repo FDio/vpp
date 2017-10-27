@@ -718,14 +718,14 @@ increment_v6_address (ip6_address_t * a)
 }
 
 static void
-increment_mac_address (u64 * mac)
+increment_mac_address (u8 * mac)
 {
-  u64 tmp = *mac;
-
+  u64 tmp = *((u64 *) mac);
   tmp = clib_net_to_host_u64 (tmp);
   tmp += 1 << 16;		/* skip unused (least significant) octets */
   tmp = clib_host_to_net_u64 (tmp);
-  *mac = tmp;
+
+  clib_memcpy (mac, &tmp, 6);
 }
 
 static void vl_api_create_loopback_reply_t_handler
@@ -7026,7 +7026,7 @@ api_l2fib_add_del (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_l2fib_add_del_t *mp;
   f64 timeout;
-  u64 mac = 0;
+  u8 mac[6] = { 0 };
   u8 mac_set = 0;
   u32 bd_id;
   u8 bd_id_set = 0;
@@ -7043,7 +7043,7 @@ api_l2fib_add_del (vat_main_t * vam)
   /* Parse args required to build the message */
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (i, "mac %U", unformat_ethernet_address, &mac))
+      if (unformat (i, "mac %U", unformat_ethernet_address, mac))
 	mac_set = 1;
       else if (unformat (i, "bd_id %d", &bd_id))
 	bd_id_set = 1;
@@ -7110,7 +7110,7 @@ api_l2fib_add_del (vat_main_t * vam)
     {
       M (L2FIB_ADD_DEL, mp);
 
-      mp->mac = mac;
+      clib_memcpy (mp->mac, mac, 6);
       mp->bd_id = ntohl (bd_id);
       mp->is_add = is_add;
 
@@ -7121,7 +7121,7 @@ api_l2fib_add_del (vat_main_t * vam)
 	  mp->filter_mac = filter_mac;
 	  mp->bvi_mac = bvi_mac;
 	}
-      increment_mac_address (&mac);
+      increment_mac_address (mac);
       /* send it... */
       S (mp);
     }
@@ -13316,16 +13316,6 @@ api_vxlan_gpe_tunnel_dump (vat_main_t * vam)
   return ret;
 }
 
-
-u8 *
-format_l2_fib_mac_address (u8 * s, va_list * args)
-{
-  u8 *a = va_arg (*args, u8 *);
-
-  return format (s, "%02x:%02x:%02x:%02x:%02x:%02x",
-		 a[2], a[3], a[4], a[5], a[6], a[7]);
-}
-
 static void vl_api_l2_fib_table_details_t_handler
   (vl_api_l2_fib_table_details_t * mp)
 {
@@ -13333,7 +13323,7 @@ static void vl_api_l2_fib_table_details_t_handler
 
   print (vam->ofp, "%3" PRIu32 "    %U    %3" PRIu32
 	 "       %d       %d     %d",
-	 ntohl (mp->bd_id), format_l2_fib_mac_address, &mp->mac,
+	 ntohl (mp->bd_id), format_ethernet_address, mp->mac,
 	 ntohl (mp->sw_if_index), mp->static_mac, mp->filter_mac,
 	 mp->bvi_mac);
 }
@@ -13353,7 +13343,7 @@ static void vl_api_l2_fib_table_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "bd_id", ntohl (mp->bd_id));
-  vat_json_object_add_uint (node, "mac", clib_net_to_host_u64 (mp->mac));
+  vat_json_object_add_bytes (node, "mac", mp->mac, 6);
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
   vat_json_object_add_uint (node, "static_mac", mp->static_mac);
   vat_json_object_add_uint (node, "filter_mac", mp->filter_mac);

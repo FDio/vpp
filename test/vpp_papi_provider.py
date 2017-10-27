@@ -195,7 +195,7 @@ class VppPapiProvider(object):
         return cli + "\n" + str(self.cli(cli))
 
     def _convert_mac(self, mac):
-        return int(mac.replace(":", ""), 16) << 16
+        return mac.replace(':', '').decode('hex')
 
     def show_version(self):
         """ """
