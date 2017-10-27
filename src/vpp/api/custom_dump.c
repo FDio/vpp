@@ -382,7 +382,7 @@ static void *vl_api_l2fib_add_del_t_print
 
   s = format (0, "SCRIPT: l2fib_add_del ");
 
-  s = format (s, "mac %U ", format_ethernet_address, &mp->mac);
+  s = format (s, "mac %U ", format_ethernet_address, mp->mac);
 
   s = format (s, "bd_id %d ", ntohl (mp->bd_id));
 

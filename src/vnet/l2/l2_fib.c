@@ -54,6 +54,17 @@
 
 l2fib_main_t l2fib_main;
 
+static void
+incr_mac_address (u8 * mac)
+{
+  u64 tmp = *((u64 *) mac);
+  tmp = clib_net_to_host_u64 (tmp);
+  tmp += 1 << 16;		/* skip unused (least significant) octets */
+  tmp = clib_host_to_net_u64 (tmp);
+
+  clib_memcpy (mac, &tmp, 6);
+}
+
 /** Format sw_if_index. If the value is ~0, use the text "N/A" */
 u8 *
 format_vnet_sw_if_index_name_with_NA (u8 * s, va_list * args)
@@ -342,7 +353,7 @@ l2fib_cur_seq_num (u32 bd_index, u32 sw_if_index)
  * If the entry already exists then overwrite it
  */
 void
-l2fib_add_entry (u64 mac, u32 bd_index,
+l2fib_add_entry (u8 * mac, u32 bd_index,
 		 u32 sw_if_index, u8 static_mac, u8 filter_mac, u8 bvi_mac)
 {
   l2fib_entry_key_t key;
@@ -353,7 +364,7 @@ l2fib_add_entry (u64 mac, u32 bd_index,
   BVT (clib_bihash_kv) kv;
 
   /* set up key */
-  key.raw = l2fib_make_key ((u8 *) & mac, bd_index);
+  key.raw = l2fib_make_key (mac, bd_index);
 
   /* check if entry alread exist */
   if (BV (clib_bihash_search) (&fm->mac_table, &kv, &kv))
@@ -392,7 +403,7 @@ l2fib_add (vlib_main_t * vm,
   bd_main_t *bdm = &bd_main;
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
-  u64 mac;
+  u8 mac[6];
   u32 bd_id;
   u32 bd_index;
   u32 sw_if_index = ~0;
@@ -401,7 +412,7 @@ l2fib_add (vlib_main_t * vm,
   u32 bvi_mac = 0;
   uword *p;
 
-  if (!unformat_user (input, unformat_ethernet_address, &mac))
+  if (!unformat (input, "%U", unformat_ethernet_address, mac))
     {
       error = clib_error_return (0, "expected mac address `%U'",
 				 format_unformat_error, input);
@@ -507,7 +518,7 @@ l2fib_test_command_fn (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   clib_error_t *error = 0;
-  u64 mac, save_mac;
+  u8 mac[6], save_mac[6];
   u32 bd_index = 0;
   u32 sw_if_index = 8;
   u32 bvi_mac = 0;
@@ -520,7 +531,7 @@ l2fib_test_command_fn (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "mac %U", unformat_ethernet_address, &mac))
+      if (unformat (input, "mac %U", unformat_ethernet_address, mac))
 	mac_set = 1;
       else if (unformat (input, "add"))
 	is_add = 1;
@@ -541,19 +552,14 @@ l2fib_test_command_fn (vlib_main_t * vm,
     return clib_error_return (0,
 			      "noop: pick at least one of (add,del,check)");
 
-  save_mac = mac;
+  clib_memcpy (save_mac, mac, 6);
 
   if (is_add)
     {
       for (i = 0; i < count; i++)
 	{
-	  u64 tmp;
-	  l2fib_add_fwd_entry (mac, bd_index, sw_if_index, mac, bvi_mac);
-	  tmp = clib_net_to_host_u64 (mac);
-	  tmp >>= 16;
-	  tmp++;
-	  tmp <<= 16;
-	  mac = clib_host_to_net_u64 (tmp);
+	  l2fib_add_fwd_entry (mac, bd_index, sw_if_index, *mac, bvi_mac);
+	  incr_mac_address (mac);
 	}
     }
 
@@ -562,38 +568,28 @@ l2fib_test_command_fn (vlib_main_t * vm,
       BVT (clib_bihash_kv) kv;
       l2fib_main_t *mp = &l2fib_main;
 
-      mac = save_mac;
+      clib_memcpy (mac, save_mac, 6);
 
       for (i = 0; i < count; i++)
 	{
-	  u64 tmp;
-	  kv.key = l2fib_make_key ((u8 *) & mac, bd_index);
+	  kv.key = l2fib_make_key (mac, bd_index);
 	  if (BV (clib_bihash_search) (&mp->mac_table, &kv, &kv))
 	    {
-	      clib_warning ("key %U AWOL", format_ethernet_address, &mac);
+	      clib_warning ("key %U AWOL", format_ethernet_address, mac);
 	      break;
 	    }
-	  tmp = clib_net_to_host_u64 (mac);
-	  tmp >>= 16;
-	  tmp++;
-	  tmp <<= 16;
-	  mac = clib_host_to_net_u64 (tmp);
+	  incr_mac_address (mac);
 	}
     }
 
   if (is_del)
     {
+      clib_memcpy (mac, save_mac, 6);
+
       for (i = 0; i < count; i++)
 	{
-	  u64 tmp;
-
 	  l2fib_del_entry (mac, bd_index);
-
-	  tmp = clib_net_to_host_u64 (mac);
-	  tmp >>= 16;
-	  tmp++;
-	  tmp <<= 16;
-	  mac = clib_host_to_net_u64 (tmp);
+	  incr_mac_address (mac);
 	}
     }
 
@@ -680,9 +676,9 @@ l2fib_del_entry_by_key (u64 raw_key)
  * Return 0 if the entry was deleted, or 1 if it was not found
  */
 u32
-l2fib_del_entry (u64 mac, u32 bd_index)
+l2fib_del_entry (u8 * mac, u32 bd_index)
 {
-  return l2fib_del_entry_by_key (l2fib_make_key ((u8 *) & mac, bd_index));
+  return l2fib_del_entry_by_key (l2fib_make_key (mac, bd_index));
 }
 
 /**
@@ -696,12 +692,12 @@ l2fib_del (vlib_main_t * vm,
 {
   bd_main_t *bdm = &bd_main;
   clib_error_t *error = 0;
-  u64 mac;
+  u8 mac[6];
   u32 bd_id;
   u32 bd_index;
   uword *p;
 
-  if (!unformat_user (input, unformat_ethernet_address, &mac))
+  if (!unformat (input, "%U", unformat_ethernet_address, mac))
     {
       error = clib_error_return (0, "expected mac address `%U'",
 				 format_unformat_error, input);
