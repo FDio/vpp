@@ -30,6 +30,9 @@
 
 #include <vcl/vppcom.h>
 
+#ifndef IOV_MAX
+#define IOV_MAX __IOV_MAX
+#endif
 
 /*
  * VCOM_SOCKET Private definitions and functions.
