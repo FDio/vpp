@@ -16,7 +16,6 @@
 #include <stdio.h>
 #include <sys/uio.h>
 #include <limits.h>
-#define __need_IOV_MAX
 #include <bits/stdio_lim.h>
 #include <netinet/tcp.h>
 
@@ -499,7 +498,7 @@ vcom_socket_readv (int __fd, const struct iovec * __iov, int __iovcnt)
   if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
     return -EINVAL;
 
-  if (__iov == 0 || __iovcnt == 0 || __iovcnt > IOV_MAX)
+  if (__iov == 0 || __iovcnt == 0 || __iovcnt > __IOV_MAX)
     return -EINVAL;
 
   /* Sanity check */
@@ -616,7 +615,7 @@ vcom_socket_writev (int __fd, const struct iovec * __iov, int __iovcnt)
   if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
     return -EINVAL;
 
-  if (__iov == 0 || __iovcnt == 0 || __iovcnt > IOV_MAX)
+  if (__iov == 0 || __iovcnt == 0 || __iovcnt > __IOV_MAX)
     return -EINVAL;
 
   for (i = 0; i < __iovcnt; ++i)
