@@ -228,15 +228,20 @@ ip6_prefix_max_address_host_order (ip6_address_t * ip, u8 plen,
 				   ip6_address_t * res)
 {
   u64 not_mask;
-  if (plen <= 64)
+  if (plen == 0)
     {
-      not_mask = (1 << (64 - plen)) - 1;
+      res->as_u64[0] = 0xffffffffffffffffL;
+      res->as_u64[1] = 0xffffffffffffffffL;
+    }
+  else if (plen <= 64)
+    {
+      not_mask = ((u64) 1 << (64 - plen)) - 1;
       res->as_u64[0] = clib_net_to_host_u64 (ip->as_u64[0]) + not_mask;
       res->as_u64[1] = 0xffffffffffffffffL;
     }
   else
     {
-      not_mask = (1 << (128 - plen)) - 1;
+      not_mask = ((u64) 1 << (128 - plen)) - 1;
       res->as_u64[1] = clib_net_to_host_u64 (ip->as_u64[1]) + not_mask;
     }
 }
