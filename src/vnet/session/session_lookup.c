@@ -1344,7 +1344,21 @@ format_ip4_session_lookup_kvp (u8 * s, va_list * args)
   stream_session_t *session;
   v4_connection_key_t *key = (v4_connection_key_t *) kvp->key;
 
-  char *proto = key->proto == TRANSPORT_PROTO_TCP ? "T" : "U";
+  char *proto = "";
+  switch (key->proto)
+    {
+    case TRANSPORT_PROTO_TCP:
+      proto = "T";
+      break;
+    case TRANSPORT_PROTO_UDP:
+      proto = "U";
+      break;
+    case TRANSPORT_PROTO_SCTP:
+      proto = "S";
+      break;
+    default:
+      break;
+    }
   if (!is_local)
     {
       session = session_get_from_handle (kvp->value);

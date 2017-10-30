@@ -17,6 +17,7 @@
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
 #include <vnet/tcp/tcp.h>
+#include <vnet/sctp/sctp.h>
 #include <vppinfra/elog.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session_debug.h>
@@ -66,8 +67,10 @@ static char *session_queue_error_strings[] = {
 
 static u32 session_type_to_next[] = {
   SESSION_QUEUE_NEXT_TCP_IP4_OUTPUT,
+  SESSION_QUEUE_NEXT_SCTP_IP4_OUTPUT,
   SESSION_QUEUE_NEXT_IP4_LOOKUP,
   SESSION_QUEUE_NEXT_TCP_IP6_OUTPUT,
+  SESSION_QUEUE_NEXT_SCTP_IP6_OUTPUT,
   SESSION_QUEUE_NEXT_IP6_LOOKUP,
 };
 
@@ -556,6 +559,11 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   tcp_update_time (now, my_thread_index);
 
   /*
+   *  Update SCTP time
+   */
+  sctp_update_time (now, my_thread_index);
+
+  /*
    * Get vpp queue events
    */
   q = smm->vpp_event_queues[my_thread_index];
@@ -702,6 +710,8 @@ VLIB_REGISTER_NODE (session_queue_node) =
       [SESSION_QUEUE_NEXT_IP6_LOOKUP] = "ip6-lookup",
       [SESSION_QUEUE_NEXT_TCP_IP4_OUTPUT] = "tcp4-output",
       [SESSION_QUEUE_NEXT_TCP_IP6_OUTPUT] = "tcp6-output",
+      [SESSION_QUEUE_NEXT_SCTP_IP4_OUTPUT] = "sctp4-output",
+      [SESSION_QUEUE_NEXT_SCTP_IP6_OUTPUT] = "sctp6-output",
   },
 };
 /* *INDENT-ON* */
