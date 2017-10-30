@@ -13,12 +13,13 @@
 
 lib_LTLIBRARIES += libvppinfra.la
 
-TESTS = test_cuckoo_template \
-        test_bihash_template \
-	test_cuckoo_bihash
+TESTS = 
 
 if ENABLE_TESTS
 TESTS  +=  test_bihash_template \
+           test_bihash_vec88 \
+	   test_cuckoo_bihash \
+	   test_cuckoo_template\
 	   test_dlist \
 	   test_elf \
 	   test_elog \
@@ -49,6 +50,7 @@ noinst_PROGRAMS = $(TESTS)
 check_PROGRAMS	= $(TESTS)
 
 test_bihash_template_SOURCES = vppinfra/test_bihash_template.c
+test_bihash_vec88_SOURCES = vppinfra/test_bihash_vec88.c
 test_cuckoo_template_SOURCES = vppinfra/test_cuckoo_template.c
 test_cuckoo_bihash_SOURCES = vppinfra/test_cuckoo_bihash.c
 test_dlist_SOURCES = vppinfra/test_dlist.c
@@ -79,6 +81,7 @@ test_zvec_SOURCES = vppinfra/test_zvec.c
 # All unit tests use ASSERT for failure
 # So we'll need -DDEBUG to enable ASSERTs
 test_bihash_template_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_bihash_vec88_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_cuckoo_template_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_cuckoo_bihash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_dlist_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -107,6 +110,7 @@ test_vec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_zvec_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 
 test_bihash_template_LDADD =	libvppinfra.la
+test_bihash_vec88_LDADD =	libvppinfra.la
 test_cuckoo_template_LDADD =	libvppinfra.la
 test_cuckoo_bihash_LDADD =	libvppinfra.la
 test_dlist_LDADD =	libvppinfra.la
@@ -135,6 +139,7 @@ test_vec_LDADD =	libvppinfra.la
 test_zvec_LDADD =	libvppinfra.la
 
 test_bihash_template_LDFLAGS = -static
+test_bihash_vec88_LDFLAGS = -static
 test_cuckoo_template_LDFLAGS = -static
 test_cuckoo_bihash_LDFLAGS = -static -lpthread
 test_dlist_LDFLAGS = -static
@@ -172,6 +177,7 @@ nobase_include_HEADERS = \
   vppinfra/asm_mips.h \
   vppinfra/asm_x86.h \
   vppinfra/bihash_8_8.h \
+  vppinfra/bihash_vec8_8.h \
   vppinfra/bihash_16_8.h \
   vppinfra/bihash_24_8.h \
   vppinfra/bihash_48_8.h \
@@ -253,6 +259,7 @@ CLIB_CORE = \
   vppinfra/asm_x86.c \
   vppinfra/backtrace.c \
   vppinfra/bihash_8_8.h \
+  vppinfra/bihash_vec8_8.h \
   vppinfra/bihash_24_8.h \
   vppinfra/bihash_template.h \
   vppinfra/cpu.c \
