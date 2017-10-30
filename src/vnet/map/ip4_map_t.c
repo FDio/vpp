@@ -21,7 +21,7 @@
 
 typedef enum
 {
-  IP4_MAPT_NEXT_MAPT_TCP_UDP,
+  IP4_MAPT_NEXT_MAPT_TCP_UDP_SCTP,
   IP4_MAPT_NEXT_MAPT_ICMP,
   IP4_MAPT_NEXT_MAPT_FRAGMENTED,
   IP4_MAPT_NEXT_DROP,
@@ -38,10 +38,10 @@ typedef enum
 
 typedef enum
 {
-  IP4_MAPT_TCP_UDP_NEXT_IP6_LOOKUP,
-  IP4_MAPT_TCP_UDP_NEXT_IP6_FRAG,
-  IP4_MAPT_TCP_UDP_NEXT_DROP,
-  IP4_MAPT_TCP_UDP_N_NEXT
+  IP4_MAPT_TCP_UDP_SCTP_NEXT_IP6_LOOKUP,
+  IP4_MAPT_TCP_UDP_SCTP_NEXT_IP6_FRAG,
+  IP4_MAPT_TCP_UDP_SCTP_NEXT_DROP,
+  IP4_MAPT_TCP_UDP_SCTP_N_NEXT
 } ip4_mapt_tcp_udp_next_t;
 
 typedef enum
@@ -337,8 +337,8 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 	  to_next += 2;
 	  n_left_to_next -= 2;
 
-	  next0 = IP4_MAPT_TCP_UDP_NEXT_IP6_LOOKUP;
-	  next1 = IP4_MAPT_TCP_UDP_NEXT_IP6_LOOKUP;
+	  next0 = IP4_MAPT_TCP_UDP_SCTP_NEXT_IP6_LOOKUP;
+	  next1 = IP4_MAPT_TCP_UDP_SCTP_NEXT_IP6_LOOKUP;
 	  p0 = vlib_get_buffer (vm, pi0);
 	  p1 = vlib_get_buffer (vm, pi1);
 
@@ -351,7 +351,7 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 	  if (ip4_to_ip6_tcp_udp (p0, ip4_to_ip6_set_cb, pheader0))
 	    {
 	      p0->error = error_node->errors[MAP_ERROR_UNKNOWN];
-	      next0 = IP4_MAPT_TCP_UDP_NEXT_DROP;
+	      next0 = IP4_MAPT_TCP_UDP_SCTP_NEXT_DROP;
 	    }
 	  else
 	    {
@@ -362,14 +362,14 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 		  vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
 		  vnet_buffer (p0)->ip_frag.next_index =
 		    IP6_FRAG_NEXT_IP6_LOOKUP;
-		  next0 = IP4_MAPT_TCP_UDP_NEXT_IP6_FRAG;
+		  next0 = IP4_MAPT_TCP_UDP_SCTP_NEXT_IP6_FRAG;
 		}
 	    }
 
 	  if (ip4_to_ip6_tcp_udp (p1, ip4_to_ip6_set_cb, pheader1))
 	    {
 	      p1->error = error_node->errors[MAP_ERROR_UNKNOWN];
-	      next1 = IP4_MAPT_TCP_UDP_NEXT_DROP;
+	      next1 = IP4_MAPT_TCP_UDP_SCTP_NEXT_DROP;
 	    }
 	  else
 	    {
@@ -380,7 +380,7 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 		  vnet_buffer (p1)->ip_frag.mtu = vnet_buffer (p1)->map_t.mtu;
 		  vnet_buffer (p1)->ip_frag.next_index =
 		    IP6_FRAG_NEXT_IP6_LOOKUP;
-		  next1 = IP4_MAPT_TCP_UDP_NEXT_IP6_FRAG;
+		  next1 = IP4_MAPT_TCP_UDP_SCTP_NEXT_IP6_FRAG;
 		}
 	    }
 
@@ -403,7 +403,7 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 	  to_next += 1;
 	  n_left_to_next -= 1;
 
-	  next0 = IP4_MAPT_TCP_UDP_NEXT_IP6_LOOKUP;
+	  next0 = IP4_MAPT_TCP_UDP_SCTP_NEXT_IP6_LOOKUP;
 	  p0 = vlib_get_buffer (vm, pi0);
 
 	  //Accessing pseudo header
@@ -413,7 +413,7 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 	  if (ip4_to_ip6_tcp_udp (p0, ip4_to_ip6_set_cb, pheader0))
 	    {
 	      p0->error = error_node->errors[MAP_ERROR_UNKNOWN];
-	      next0 = IP4_MAPT_TCP_UDP_NEXT_DROP;
+	      next0 = IP4_MAPT_TCP_UDP_SCTP_NEXT_DROP;
 	    }
 	  else
 	    {
@@ -424,7 +424,7 @@ ip4_map_t_tcp_udp (vlib_main_t * vm,
 		  vnet_buffer (p0)->ip_frag.mtu = vnet_buffer (p0)->map_t.mtu;
 		  vnet_buffer (p0)->ip_frag.next_index =
 		    IP6_FRAG_NEXT_IP6_LOOKUP;
-		  next0 = IP4_MAPT_TCP_UDP_NEXT_IP6_FRAG;
+		  next0 = IP4_MAPT_TCP_UDP_SCTP_NEXT_IP6_FRAG;
 		}
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
@@ -458,14 +458,14 @@ ip4_map_t_classify (vlib_buffer_t * p0, map_domain_t * d0,
   else if (PREDICT_TRUE (ip40->protocol == IP_PROTOCOL_TCP))
     {
       vnet_buffer (p0)->map_t.checksum_offset = 36;
-      *next0 = IP4_MAPT_NEXT_MAPT_TCP_UDP;
+      *next0 = IP4_MAPT_NEXT_MAPT_TCP_UDP_SCTP;
       *error0 = ip4_len0 < 40 ? MAP_ERROR_MALFORMED : *error0;
       *dst_port0 = (i32) * ((u16 *) u8_ptr_add (ip40, sizeof (*ip40) + 2));
     }
   else if (PREDICT_TRUE (ip40->protocol == IP_PROTOCOL_UDP))
     {
       vnet_buffer (p0)->map_t.checksum_offset = 26;
-      *next0 = IP4_MAPT_NEXT_MAPT_TCP_UDP;
+      *next0 = IP4_MAPT_NEXT_MAPT_TCP_UDP_SCTP;
       *error0 = ip4_len0 < 28 ? MAP_ERROR_MALFORMED : *error0;
       *dst_port0 = (i32) * ((u16 *) u8_ptr_add (ip40, sizeof (*ip40) + 2));
     }
@@ -773,11 +773,11 @@ VLIB_REGISTER_NODE(ip4_map_t_tcp_udp_node) = {
   .n_errors = MAP_N_ERROR,
   .error_strings = map_t_error_strings,
 
-  .n_next_nodes = IP4_MAPT_TCP_UDP_N_NEXT,
+  .n_next_nodes = IP4_MAPT_TCP_UDP_SCTP_N_NEXT,
   .next_nodes = {
-      [IP4_MAPT_TCP_UDP_NEXT_IP6_LOOKUP] = "ip6-lookup",
-      [IP4_MAPT_TCP_UDP_NEXT_IP6_FRAG] = IP6_FRAG_NODE_NAME,
-      [IP4_MAPT_TCP_UDP_NEXT_DROP] = "error-drop",
+      [IP4_MAPT_TCP_UDP_SCTP_NEXT_IP6_LOOKUP] = "ip6-lookup",
+      [IP4_MAPT_TCP_UDP_SCTP_NEXT_IP6_FRAG] = IP6_FRAG_NODE_NAME,
+      [IP4_MAPT_TCP_UDP_SCTP_NEXT_DROP] = "error-drop",
   },
 };
 /* *INDENT-ON* */
@@ -795,7 +795,7 @@ VLIB_REGISTER_NODE(ip4_map_t_node) = {
 
   .n_next_nodes = IP4_MAPT_N_NEXT,
   .next_nodes = {
-      [IP4_MAPT_NEXT_MAPT_TCP_UDP] = "ip4-map-t-tcp-udp",
+      [IP4_MAPT_NEXT_MAPT_TCP_UDP_SCTP] = "ip4-map-t-tcp-udp",
       [IP4_MAPT_NEXT_MAPT_ICMP] = "ip4-map-t-icmp",
       [IP4_MAPT_NEXT_MAPT_FRAGMENTED] = "ip4-map-t-fragmented",
       [IP4_MAPT_NEXT_DROP] = "error-drop",
