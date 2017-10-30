@@ -326,7 +326,22 @@ unformat_vnet_uri (unformat_input_t * input, va_list * args)
       sep->is_ip4 = 0;
       return 1;
     }
-
+  if (unformat (input, "sctp://%U/%d", unformat_ip4_address, &sep->ip.ip4,
+		&sep->port))
+    {
+      sep->transport_proto = TRANSPORT_PROTO_SCTP;
+      sep->port = clib_host_to_net_u16 (sep->port);
+      sep->is_ip4 = 1;
+      return 1;
+    }
+  if (unformat (input, "sctp://%U/%d", unformat_ip6_address, &sep->ip.ip6,
+		&sep->port))
+    {
+      sep->transport_proto = TRANSPORT_PROTO_SCTP;
+      sep->port = clib_host_to_net_u16 (sep->port);
+      sep->is_ip4 = 0;
+      return 1;
+    }
   return 0;
 }
 
