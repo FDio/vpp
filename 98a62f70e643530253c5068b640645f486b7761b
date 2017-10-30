@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0e4c07d5_59e72b6c",
+        "filename": "src/plugins/kp/kp.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-10-30T09:22:06Z",
+      "side": 1,
+      "message": "please remove trailing whitespace....",
+      "range": {
+        "startLine": 20,
+        "startChar": 64,
+        "endLine": 20,
+        "endChar": 65
+      },
+      "revId": "98a62f70e643530253c5068b640645f486b7761b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ac8a197f_efb08e67",
+        "filename": "src/plugins/kp/kp_cli.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-10-30T09:22:06Z",
+      "side": 1,
+      "message": "i would prefer a bit longer cli, i.e. \"kube-proxy\"...",
+      "range": {
+        "startLine": 104,
+        "startChar": 11,
+        "endLine": 104,
+        "endChar": 13
+      },
+      "revId": "98a62f70e643530253c5068b640645f486b7761b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a65461e3_9f1429bd",
+        "filename": "src/plugins/kp/kp_plugin_doc.md",
+        "patchSetId": 11
+      },
+      "lineNbr": 45,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-10-30T09:22:06Z",
+      "side": 1,
+      "message": "trailing whitespace....",
+      "range": {
+        "startLine": 45,
+        "startChar": 0,
+        "endLine": 45,
+        "endChar": 17
+      },
+      "revId": "98a62f70e643530253c5068b640645f486b7761b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aa0f2bb1_9cb0cd71",
+        "filename": "src/plugins/kp/kphash.h",
+        "patchSetId": 11
+      },
+      "lineNbr": 114,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-10-30T09:22:06Z",
+      "side": 1,
+      "message": "can you use stuff form vppinfra/crc32.h here?",
+      "range": {
+        "startLine": 108,
+        "startChar": 0,
+        "endLine": 114,
+        "endChar": 19
+      },
+      "revId": "98a62f70e643530253c5068b640645f486b7761b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
