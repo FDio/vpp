@@ -1,7 +1,5 @@
 /*
- * builtin_client.c - vpp built-in tcp client/connect code
- *
- * Copyright (c) 2017 by Cisco and/or its affiliates.
+ * Copyright (c) 2018 SUSE LLC.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -14,10 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <vnet/vnet.h>
 #include <vnet/plugin/plugin.h>
-#include <vnet/tcp/builtin_client.h>
+#include <vnet/sctp/builtin_client.h>
 
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
@@ -59,7 +56,6 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
 
   test_buf_offset = s->bytes_sent % vec_len (test_data);
   bytes_this_chunk = vec_len (test_data) - test_buf_offset;
-
   bytes_this_chunk = bytes_this_chunk < s->bytes_to_send
     ? bytes_this_chunk : s->bytes_to_send;
 
@@ -130,6 +126,9 @@ receive_test_chunk (tclient_main_t * tm, session_t * s)
       svm_fifo_dequeue_drop (rx_fifo, n_read);
     }
 
+  if (SCTP_BUILTIN_CLIENT_DBG)
+    clib_warning ("Receiving test chunk; n_read = %d", n_read);
+
   if (n_read > 0)
     {
       if (SCTP_BUILTIN_CLIENT_DBG)
@@ -164,8 +163,17 @@ receive_test_chunk (tclient_main_t * tm, session_t * s)
 		}
 	    }
 	}
-      s->bytes_to_receive -= n_read;
-      s->bytes_received += n_read;
+
+      if (s->bytes_to_receive < n_read)
+	{
+	  s->bytes_to_receive = 0;
+	  s->bytes_received += s->bytes_received;
+	}
+      else
+	{
+	  s->bytes_to_receive -= n_read;
+	  s->bytes_received += n_read;
+	}
     }
 }
 
@@ -233,6 +241,7 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  send_test_chunk (tm, sp);
 	  delete_session = 0;
 	}
+
       if (sp->bytes_to_receive > 0)
 	{
 	  receive_test_chunk (tm, sp);
@@ -279,10 +288,10 @@ builtin_client_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 }
 
 /* *INDENT-OFF* */
-VLIB_REGISTER_NODE (builtin_client_node) =
+VLIB_REGISTER_NODE (builtin_sctp_client_node) =
 {
   .function = builtin_client_node_fn,
-  .name = "builtin-tcp-client",
+  .name = "builtin-sctp-client",
   .type = VLIB_NODE_TYPE_INPUT,
   .state = VLIB_NODE_STATE_DISABLED,
 };
@@ -297,12 +306,12 @@ create_api_loopback (tclient_main_t * tm)
   shmem_hdr = am->shmem_hdr;
   tm->vl_input_queue = shmem_hdr->vl_input_queue;
   tm->my_client_index =
-    vl_api_memclnt_create_internal ("tcp_test_client", tm->vl_input_queue);
+    vl_api_memclnt_create_internal ("sctp_test_client", tm->vl_input_queue);
   return 0;
 }
 
 static int
-tcp_test_clients_init (vlib_main_t * vm)
+sctp_test_clients_init (vlib_main_t * vm)
 {
   tclient_main_t *tm = &tclient_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
@@ -482,7 +491,7 @@ tclient_thread_fn (void *arg)
 
 /** Start a transmit thread */
 int
-start_tx_pthread (tclient_main_t * tm)
+start_tx_pthread_sctp (tclient_main_t * tm)
 {
   if (tm->client_thread_handle == 0)
     {
@@ -499,7 +508,7 @@ start_tx_pthread (tclient_main_t * tm)
 }
 
 clib_error_t *
-clients_connect (vlib_main_t * vm, u8 * uri, u32 n_clients)
+clients_connect_sctp (vlib_main_t * vm, u8 * uri, u32 n_clients)
 {
   tclient_main_t *tm = &tclient_main;
   vnet_connect_args_t _a, *a = &_a;
@@ -535,14 +544,14 @@ clients_connect (vlib_main_t * vm, u8 * uri, u32 n_clients)
     vlib_cli_output(vm, _fmt, ##_args)
 
 static clib_error_t *
-test_tcp_clients_command_fn (vlib_main_t * vm,
-			     unformat_input_t * input,
-			     vlib_cli_command_t * cmd)
+test_sctp_clients_command_fn (vlib_main_t * vm,
+			      unformat_input_t * input,
+			      vlib_cli_command_t * cmd)
 {
   tclient_main_t *tm = &tclient_main;
   vlib_thread_main_t *thread_main = vlib_get_thread_main ();
   uword *event_data = 0, event_type;
-  u8 *default_connect_uri = (u8 *) "tcp://6.0.1.1/1234", *uri, *appns_id = 0;
+  u8 *default_connect_uri = (u8 *) "sctp://6.0.1.1/1234", *uri, *appns_id = 0;
   u64 tmp, total_bytes, appns_flags = 0, appns_secret = 0;
   f64 test_timeout = 20.0, syn_timeout = 20.0, delta;
   f64 time_before_connects;
@@ -629,10 +638,9 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 
   if (tm->is_init == 0)
     {
-      if (tcp_test_clients_init (vm))
+      if (sctp_test_clients_init (vm))
 	return clib_error_return (0, "failed init");
     }
-
 
   tm->ready_connections = 0;
   tm->expected_connections = n_clients;
@@ -648,7 +656,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 #endif
 
   vlib_worker_thread_barrier_sync (vm);
-  vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
+  vnet_session_enable_disable (vm, 1 /* turn on SCTP, etc. */ );
   vlib_worker_thread_barrier_release (vm);
 
   if (tm->test_client_attached == 0)
@@ -666,7 +674,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 
   /* Turn on the builtin client input nodes */
   for (i = 0; i < thread_main->n_vlib_mains; i++)
-    vlib_node_set_state (vlib_mains[i], builtin_client_node.index,
+    vlib_node_set_state (vlib_mains[i], builtin_sctp_client_node.index,
 			 VLIB_NODE_STATE_POLLING);
 
   if (preallocate_sessions)
@@ -680,19 +688,21 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 
   /* Fire off connect requests */
   time_before_connects = vlib_time_now (vm);
-  if ((error = clients_connect (vm, uri, n_clients)))
+  if ((error = clients_connect_sctp (vm, uri, n_clients)))
     return error;
 
   /* Park until the sessions come up, or ten seconds elapse... */
   vlib_process_wait_for_event_or_clock (vm, syn_timeout);
+
   event_type = vlib_process_get_events (vm, &event_data);
   switch (event_type)
     {
     case ~0:
       CLI_OUTPUT ("Timeout with only %d sessions active...",
 		  tm->ready_connections);
-      error = clib_error_return (0, "failed: syn timeout with %d sessions",
-				 tm->ready_connections);
+      error =
+	clib_error_return (0, "failed: syn timeout (%f) with %d sessions",
+			   syn_timeout, tm->ready_connections);
       goto cleanup;
 
     case 1:
@@ -794,26 +804,26 @@ cleanup:
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (test_clients_command, static) =
 {
-  .path = "test tcp clients",
-  .short_help = "test tcp clients [nclients %d] [[m|g]bytes <bytes>] "
+  .path = "test sctp clients",
+  .short_help = "test sctp clients [nclients %d] [[m|g]bytes <bytes>] "
       "[test-timeout <time>][syn-timeout <time>][no-return][fifo-size <size>]"
       "[private-segment-count <count>][private-segment-size <bytes>[m|g]]"
       "[preallocate-fifos][preallocate-sessions][client-batch <batch-size>]"
-      "[uri <tcp://ip/port>][test-bytes][no-output]",
-  .function = test_tcp_clients_command_fn,
+      "[uri <sctp://ip/port>][test-bytes][no-output]",
+  .function = test_sctp_clients_command_fn,
   .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
 
 clib_error_t *
-tcp_test_clients_main_init (vlib_main_t * vm)
+sctp_test_clients_main_init (vlib_main_t * vm)
 {
   tclient_main_t *tm = &tclient_main;
   tm->is_init = 0;
   return 0;
 }
 
-VLIB_INIT_FUNCTION (tcp_test_clients_main_init);
+VLIB_INIT_FUNCTION (sctp_test_clients_main_init);
 
 /*
  * fd.io coding-style-patch-verification: ON
