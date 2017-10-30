@@ -43,12 +43,16 @@
 #include <sys/mman.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
+#include <linux/vfio.h>
+#include <unistd.h>
 
 #include <vppinfra/linux/syscall.h>
 #include <vppinfra/linux/sysfs.h>
 #include <vlib/vlib.h>
 #include <vlib/physmem.h>
 #include <vlib/unix/unix.h>
+
+static int vfio_container_fd = -1;
 
 static void *
 unix_physmem_alloc_aligned (vlib_main_t * vm, vlib_physmem_region_index_t idx,
@@ -107,6 +111,56 @@ unix_physmem_free (vlib_main_t * vm, vlib_physmem_region_index_t idx, void *x)
   vlib_physmem_region_t *pr = vlib_physmem_get_region (vm, idx);
   /* Return object to region's heap. */
   mheap_put (pr->heap, x - pr->heap);
+}
+
+static clib_error_t *
+scan_vfio_fd (void *arg, u8 * path_name, u8 * file_name)
+{
+  const char fn[] = "/dev/vfio/vfio";
+  char buff[sizeof (fn)] = { 0 };
+
+  if (readlink ((char *) path_name, buff, sizeof (fn)) + 1 != sizeof (fn))
+    return 0;
+
+  if (strncmp (fn, buff, sizeof (fn)))
+    return 0;
+
+  vfio_container_fd = atoi ((char *) file_name);
+  return 0;
+}
+
+static clib_error_t *
+unix_physmem_region_iommu_register (vlib_physmem_region_t * pr)
+{
+  struct vfio_iommu_type1_dma_map dma_map = { 0 };
+  int i, fd;
+
+  if (vfio_container_fd == -1)
+    foreach_directory_file ("/proc/self/fd", scan_vfio_fd, 0, 0);
+
+  fd = vfio_container_fd;
+
+  if (fd < 0)
+    return 0;
+
+  if (ioctl (fd, VFIO_GET_API_VERSION) != VFIO_API_VERSION)
+    return 0;
+
+  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) == 0)
+    return 0;
+
+  dma_map.argsz = sizeof (struct vfio_iommu_type1_dma_map);
+  dma_map.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE;
+
+  vec_foreach_index (i, pr->page_table)
+  {
+    dma_map.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
+    dma_map.size = 1 << pr->log2_page_size;
+    dma_map.iova = pr->page_table[i];
+    if (ioctl (fd, VFIO_IOMMU_MAP_DMA, &dma_map) != 0)
+      return clib_error_return_unix (0, "ioctl (VFIO_IOMMU_MAP_DMA)");
+  }
+  return 0;
 }
 
 static clib_error_t *
@@ -180,6 +234,9 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 	}
       pr->page_table = clib_mem_vm_get_paddr (pr->mem, pr->log2_page_size,
 					      pr->n_pages);
+      error = unix_physmem_region_iommu_register (pr);
+      if (error)
+	clib_error_report (error);
     }
 
   if (flags & VLIB_PHYSMEM_F_INIT_MHEAP)
