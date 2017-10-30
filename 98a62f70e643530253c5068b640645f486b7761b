@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "ac546a49_4e5f0665",
+        "filename": "src/plugins/kp/kp.api",
+        "patchSetId": 11
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-10-30T12:16:05Z",
+      "side": 1,
+      "message": "Please define an API version. Ping Ole Troan (otroan@employees.org) for more info",
+      "revId": "98a62f70e643530253c5068b640645f486b7761b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "0e4c07d5_59e72b6c",
         "filename": "src/plugins/kp/kp.api",
         "patchSetId": 11
@@ -36,6 +53,30 @@
       "writtenOn": "2017-10-30T09:22:06Z",
       "side": 1,
       "message": "i would prefer a bit longer cli, i.e. \"kube-proxy\"...",
+      "range": {
+        "startLine": 104,
+        "startChar": 11,
+        "endLine": 104,
+        "endChar": 13
+      },
+      "revId": "98a62f70e643530253c5068b640645f486b7761b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1fca614e_b482f6de",
+        "filename": "src/plugins/kp/kp_cli.c",
+        "patchSetId": 11
+      },
+      "lineNbr": 104,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-10-30T12:16:05Z",
+      "side": 1,
+      "message": "Note that the debug CLI will let you abbreviate kube-proxy to \"ku\", depending on which other debug CLI commands might start with the letters \"ku...\"",
+      "parentUuid": "ac8a197f_efb08e67",
       "range": {
         "startLine": 104,
         "startChar": 11,
