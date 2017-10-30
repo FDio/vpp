@@ -1,0 +1,50 @@
+/*
+ * Copyright (c) 2017 SUSE LLC.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+sctp_error (NONE, "no error")
+sctp_error (PKTS_SENT, "Packets sent")
+sctp_error (INVALID_CONNECTION, "Invalid connection")
+sctp_error (INVALID_TAG, "Invalid verification tag")
+sctp_error (INVALID_TAG_FOR_INIT, "Invalid verification tag for INIT chunk")
+sctp_error (CONNECTION_CLOSED, "Connection closed")
+sctp_error (ENQUEUED, "Packets pushed into rx fifo")
+sctp_error (CREATE_EXISTS, "Connection already exists")
+sctp_error (INITS_RCVD, "INITs received")
+sctp_error (CREATE_SESSION_FAIL, "Sessions couldn't be allocated")
+sctp_error (NO_LISTENER, "no listener for dst port")
+sctp_error (LENGTH, "inconsistent ip/tcp lengths")
+sctp_error (DISPATCH, "Dispatch error")
+sctp_error (ACK_DUP, "Duplicate ACK")
+sctp_error (DATA_CHUNK_VIOLATION, "DATA chunk received in invalid state")
+sctp_error (INIT_CHUNK_VIOLATION, "INIT chunk received in the wrong state")
+sctp_error (INIT_ACK_CHUNK_VIOLATION, "INIT_ACK chunk received in the wrong state")
+sctp_error (SACK_CHUNK_VIOLATION, "SACK chunk received in invalid state")
+sctp_error (HEARTBEAT_CHUNK_VIOLATION, "HEARTBEAT chunk received in invalid state")
+sctp_error (HEARTBEAT_ACK_CHUNK_VIOLATION, "HEARTBEAT_ACK chunk received in invalid state")
+sctp_error (ABORT_CHUNK_VIOLATION, "ABORT_CHUNK chunk received in invalid state")
+sctp_error (SHUTDOWN_CHUNK_VIOLATION, "SHUTDOWN chunk received in invalid state")
+sctp_error (SHUTDOWN_ACK_CHUNK_VIOLATION, "SHUTDOWN_ACK chunk received in invalid state")
+sctp_error (OPERATION_ERROR_VIOLATION, "OPERATION_ERROR chunk received in invalid state")
+sctp_error (COOKIE_ECHO_VIOLATION, "COOKIE_ECHO chunk received in invalid state")
+sctp_error (COOKIE_ACK_VIOLATION, "COOKIE_ACK chunk received in invalid state")
+sctp_error (ECNE_VIOLATION, "ECNE chunk received in invalid state")
+sctp_error (CWR_VIOLATION, "CWR chunk received in invalid state")
+sctp_error (SHUTDOWN_COMPLETE_VIOLATION, "SHUTDOWN_COMPLETE chunk received in invalid state")
+sctp_error (FIFO_FULL, "Packets dropped for lack of rx fifo space") 
+sctp_error (PARTIALLY_ENQUEUED, "Packets partially pushed into rx fifo") 
+sctp_error (EVENT_FIFO_FULL, "Events not sent for lack of event fifo space") 
+sctp_error (UNKOWN_CHUNK, "Unrecognized / unknown chunk or chunk-state mismatch")
+sctp_error (BUNDLING_VIOLATION, "Bundling not allowed")
+sctp_error (PUNT, "Packets punted")
+sctp_error (FILTERED, "Packets filtered")
