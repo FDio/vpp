@@ -117,6 +117,10 @@ VNET TCP Stack
 M:	Florin Coras <fcoras@cisco.com>
 F:	src/vnet/tcp
 
+VNET SCTP Stack
+M:	Marco Varlese <mvarlese@suse.de>
+F:	src/vnet/sctp
+
 VNET VXLAN
 M:	John Lo <loj@cisco.com>
 F:	src/vnet/vxlan/
@@ -127,7 +131,7 @@ M:	Hongjun Ni <hongjun.ni@intel.com>
 F:	src/vnet/vxlan-gpe/
 
 VNET GENEVE
-M:	Marco Varlese <marco.varlese@suse.com>
+M:	Marco Varlese <mvarlese@suse.de>
 F:	src/vnet/geneve/
 
 Plugin - ACL
