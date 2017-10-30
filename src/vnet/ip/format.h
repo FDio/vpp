@@ -99,9 +99,10 @@ format_function_t format_ip6_header;
 unformat_function_t unformat_pg_ip6_header;
 
 /* Format a TCP/UDP headers. */
-format_function_t format_tcp_header, format_udp_header;
+format_function_t format_tcp_header, format_udp_header, format_sctp_header;
 
-unformat_function_t unformat_pg_tcp_header, unformat_pg_udp_header;
+unformat_function_t unformat_pg_tcp_header, unformat_pg_udp_header,
+  unformat_pg_sctp_header;
 
 #endif /* included_ip_format_h */
 
