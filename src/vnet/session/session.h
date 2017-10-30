@@ -80,6 +80,20 @@ typedef enum
     SESSION_N_ERROR,
 } session_error_t;
 
+/* Event queue input node static next indices */
+/*
+typedef enum
+{
+  SESSION_QUEUE_NEXT_DROP,
+  SESSION_QUEUE_NEXT_TCP_IP4_OUTPUT,
+  SESSION_QUEUE_NEXT_SCTP_IP4_OUTPUT,
+  SESSION_QUEUE_NEXT_IP4_LOOKUP,
+  SESSION_QUEUE_NEXT_TCP_IP6_OUTPUT,
+  SESSION_QUEUE_NEXT_SCTP_IP6_OUTPUT,
+  SESSION_QUEUE_NEXT_IP6_LOOKUP,
+  SESSION_QUEUE_N_NEXT,
+} session_queue_next_t;
+*/
 typedef struct
 {
   void *fp;

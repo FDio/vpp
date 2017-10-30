@@ -16,6 +16,8 @@
 #include <math.h>
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
+#include <vnet/tcp/tcp.h>
+#include <vnet/sctp/sctp.h>
 #include <vppinfra/elog.h>
 #include <vnet/session/transport.h>
 #include <vnet/session/application.h>
@@ -689,7 +691,7 @@ VLIB_REGISTER_NODE (session_queue_node) =
   .type = VLIB_NODE_TYPE_INPUT,
   .n_errors = ARRAY_LEN (session_queue_error_strings),
   .error_strings = session_queue_error_strings,
-  .state = VLIB_NODE_STATE_DISABLED,
+  .state = VLIB_NODE_STATE_DISABLED
 };
 /* *INDENT-ON* */
 

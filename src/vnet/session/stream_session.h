@@ -22,6 +22,7 @@
 
 typedef u8 session_type_t;
 
+
 /*
  * Application session state
  */
