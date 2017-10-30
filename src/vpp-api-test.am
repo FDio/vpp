@@ -57,6 +57,4 @@ vpp_restart_LDADD = \
   libvppinfra.la			\
   -lpthread -lrt
 
-dist_bin_SCRIPTS += scripts/vppctl
-
 # vi:syntax=automake
