@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a8036ab_24a65d8a",
+        "filename": "src/vnet/lisp-cp/control.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 251,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-10-30T04:22:28Z",
+      "side": 1,
+      "message": "maybe add a comment here that this is the mapping index for \"use-petr\" and not related to the lisp petr tunnel mode.",
+      "range": {
+        "startLine": 251,
+        "startChar": 12,
+        "endLine": 251,
+        "endChar": 25
+      },
+      "revId": "4eb358d8fd5ca39e2e4d83fb0cb7e0aae514f860",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "49d17129_3fa3dcb3",
+        "filename": "src/vnet/lisp-cp/lisp_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 439,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-10-30T04:22:28Z",
+      "side": 1,
+      "message": "PETR_MODE is not/should not be USE_PETR. Is this just a refactor issue?",
+      "range": {
+        "startLine": 439,
+        "startChar": 11,
+        "endLine": 439,
+        "endChar": 45
+      },
+      "revId": "4eb358d8fd5ca39e2e4d83fb0cb7e0aae514f860",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c81ee5dd_58b01242",
+        "filename": "src/vnet/lisp-cp/one_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2093,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-10-30T04:22:28Z",
+      "side": 1,
+      "message": "Ouch. I suspect this was in for showing PETRs that have been configured for use. Not the PETR mode :-)\n\nWe need another cli for showing PETR mode.",
+      "range": {
+        "startLine": 2093,
+        "startChar": 29,
+        "endLine": 2093,
+        "endChar": 48
+      },
+      "revId": "4eb358d8fd5ca39e2e4d83fb0cb7e0aae514f860",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
