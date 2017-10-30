@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0e23eee5_7f94c6fe",
+        "filename": "src/vnet/ip/ip4_forward.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1750,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-10-30T15:27:16Z",
+      "side": 1,
+      "message": "Is this meant to avoid dropping packets we don\u0027t want to compute checksums for? In that case, since I suspect this is needed for af_packet, wouldn\u0027t it be better to just set VNET_BUFFER_F_L4_CHECKSUM_CORRECT when the buffer is written?",
+      "range": {
+        "startLine": 1750,
+        "startChar": 23,
+        "endLine": 1750,
+        "endChar": 54
+      },
+      "revId": "9201eb40c2e476c2387947f2843006c2d71a9be2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
