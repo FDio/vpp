@@ -23,6 +23,24 @@
 typedef u8 session_type_t;
 
 /*
+#define foreach_session_type                    \
+  _(IP4_TCP, ip4_tcp)                           \
+  _(IP4_UDP, ip4_udp)                           \
+  _(IP4_SCTP, ip4_sctp)                         \
+  _(IP6_TCP, ip6_tcp)                           \
+  _(IP6_UDP, ip6_udp)							\
+  _(IP6_SCTP, ip6_sctp)
+
+typedef enum
+{
+#define _(A, a) SESSION_TYPE_##A,
+  foreach_session_type
+#undef _
+    SESSION_N_TYPES,
+} session_type_t;
+*/
+
+/*
  * Application session state
  */
 typedef enum

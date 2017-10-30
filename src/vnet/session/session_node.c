@@ -16,6 +16,8 @@
 #include <math.h>
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
+#include <vnet/tcp/tcp.h>
+#include <vnet/sctp/sctp.h>
 #include <vppinfra/elog.h>
 #include <vnet/session/transport.h>
 #include <vnet/session/application.h>
@@ -549,6 +551,11 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   transport_update_time (now, my_thread_index);
 
   /*
+   *  Update SCTP time
+   */
+  sctp_update_time (now, my_thread_index);
+
+  /*
    * Get vpp queue events
    */
   q = smm->vpp_event_queues[my_thread_index];
@@ -690,6 +697,16 @@ VLIB_REGISTER_NODE (session_queue_node) =
   .n_errors = ARRAY_LEN (session_queue_error_strings),
   .error_strings = session_queue_error_strings,
   .state = VLIB_NODE_STATE_DISABLED,
+  .next_nodes =
+  {
+      [SESSION_QUEUE_NEXT_DROP] = "error-drop",
+      [SESSION_QUEUE_NEXT_IP4_LOOKUP] = "ip4-lookup",
+      [SESSION_QUEUE_NEXT_IP6_LOOKUP] = "ip6-lookup",
+      [SESSION_QUEUE_NEXT_TCP_IP4_OUTPUT] = "tcp4-output",
+      [SESSION_QUEUE_NEXT_TCP_IP6_OUTPUT] = "tcp6-output",
+      [SESSION_QUEUE_NEXT_SCTP_IP4_OUTPUT] = "sctp4-output",
+      [SESSION_QUEUE_NEXT_SCTP_IP6_OUTPUT] = "sctp6-output",
+  },
 };
 /* *INDENT-ON* */
 

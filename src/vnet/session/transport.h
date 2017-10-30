@@ -70,6 +70,7 @@ typedef enum _transport_proto
 {
   TRANSPORT_PROTO_TCP,
   TRANSPORT_PROTO_UDP,
+  TRANSPORT_PROTO_SCTP,
   TRANSPORT_N_PROTO
 } transport_proto_t;
 
@@ -110,7 +111,7 @@ transport_endpoint_fib_proto (transport_endpoint_t * tep)
 always_inline u8
 transport_is_stream (u8 proto)
 {
-  return (proto == TRANSPORT_PROTO_TCP);
+  return ((proto == TRANSPORT_PROTO_TCP) || (proto == TRANSPORT_PROTO_SCTP));
 }
 
 always_inline u8

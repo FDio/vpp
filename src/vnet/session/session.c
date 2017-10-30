@@ -23,6 +23,8 @@
 #include <vlibmemory/api.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/tcp/tcp.h>
+#include <vnet/sctp/sctp.h>
 
 session_manager_main_t session_manager_main;
 extern transport_proto_vft_t *tp_vfts;
@@ -1151,6 +1153,9 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* Enable transports */
   transport_enable_disable (vm, 1);
+
+  /* Enable SCTP transport */
+  vnet_sctp_enable_disable (vm, 1);
 
   return 0;
 }
