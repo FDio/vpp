@@ -526,6 +526,18 @@ nobase_include_HEADERS +=			\
   vnet/udp/udp_packet.h
 
 ########################################
+# Layer 4 protocol: sctp
+########################################
+libvnet_la_SOURCES +=				\
+  vnet/sctp/sctp.c				\
+  vnet/sctp/sctp_input.c			\
+  vnet/sctp/sctp_output.c
+
+nobase_include_HEADERS +=			\
+  vnet/sctp/sctp_packet.h			\
+  vnet/sctp/sctp.h
+
+########################################
 # Tunnel protocol: gre
 ########################################
 libvnet_la_SOURCES +=				\

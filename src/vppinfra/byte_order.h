@@ -181,7 +181,7 @@ always_inline type					\
 clib_host_to_net_unaligned_mem_##type (type * x)	\
 { return clib_host_to_big_unaligned_mem_##type (x); }
 #ifndef __cplusplus
-  _(u16);
+_(u16);
 _(i16);
 _(u32);
 _(i32);
