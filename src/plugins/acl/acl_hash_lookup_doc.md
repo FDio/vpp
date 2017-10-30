@@ -24,20 +24,19 @@ parts of information related to that ACL, primarily the array of
 *hash_ace_info_t* structures - each of the members of that array
 corresponding to one of the rules (ACEs) in the original ACL,
 for this they have a pair of *(acl_index, ace_index)* to keep track,
-predominantly for the debugging.
+predominantly for debugging.
 
 Why do we need a whole separate structure, and are not adding new fields
-to the existing rile structure ? First, encapsulation, to minimize
+to the existing rule structure? First, encapsulation, to minimize
 the pollution of the main ACL code with the hash-based lookup artifacts.
-
 Second, one rule may correspond to more than one "hash-based" ACE.
 In fact, most of the rules do correspond to two of those. Why ?
 
 Consider that the current ACL lookup logic is that if a packet
 is not the initial fragment, and there is an L4 entry acting on the packet,
 the comparison will be made only on the L4 protocol field value rather
-than on the protocol and port values. This beaviour is governed by
-*l4_match_nonfirst_fragment* flag in the *acl_main*, and was needed to
+than on the protocol and port values. This behavior is governed by
+*l4_match_nonfirst_fragment* flag in the *acl_main*, and is needed to
 maintain the compatibility with the existing software switch implementation.
 
 While for the sequential check in *single_acl_match_5tuple()*
@@ -108,7 +107,7 @@ The future optimized per-packet lookup may be batched in three phases:
 2. Lookup the keys in the bihash in a batch manner, collecting the
    result with lowest u64 (acl index within vector, ACE index) from
    the hash lookup value, and performing the list walk if necessary
-   (for portranges)
+   (for portranges).
 3. Take the action from the ACL record as defined by (ACL#, ACE#) from the
    resulting lookup winner, or, if no match found, then perform default deny.
 
@@ -183,7 +182,7 @@ to have an effect, but for for the terminology sake we do not care).
 The more formal definition:
 
 ```
-shadowed(aceA, aceB) := !redundante(aceA, aceB) &&
+shadowed(aceA, aceB) := !redundant(aceA, aceB) &&
                         !independent(aceA, aceB) &&
                         is_after(aceA, aceB)
 ```
