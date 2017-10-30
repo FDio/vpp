@@ -147,7 +147,7 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
    * Load bridge domain struct
    * Parse ethernet header to determine unicast/mcast/broadcast
    * take L2 input stat
-   * classify packet as IP/UDP/TCP, control, other
+   * classify packet as IP/UDP/TCP/SCTP, control, other
    * mask feature bitmap
    * go to first node in bitmap
    * Later: optimize VTM

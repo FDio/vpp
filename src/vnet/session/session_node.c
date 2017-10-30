@@ -689,7 +689,7 @@ VLIB_REGISTER_NODE (session_queue_node) =
   .type = VLIB_NODE_TYPE_INPUT,
   .n_errors = ARRAY_LEN (session_queue_error_strings),
   .error_strings = session_queue_error_strings,
-  .state = VLIB_NODE_STATE_DISABLED,
+  .state = VLIB_NODE_STATE_DISABLED
 };
 /* *INDENT-ON* */
 
