@@ -55,7 +55,8 @@
   _(10, OFFLOAD_IP_CKSUM)				\
   _(11, OFFLOAD_TCP_CKSUM)				\
   _(12, OFFLOAD_UDP_CKSUM)                              \
-  _(13, IS_NATED)
+  _(13, OFFLOAD_SCTP_CKSUM)                              \
+  _(14, IS_NATED)
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -303,6 +304,19 @@ typedef struct
       u16 data_len;		/**< data len */
       u8 flags;
     } tcp;
+
+    /* SCTP */
+    struct
+    {
+      u32 connection_index;
+      u32 seq_number;
+      u32 seq_end;
+      u32 ack_number;
+      u16 hdr_offset;		/**< offset relative to ip hdr */
+      u16 data_offset;		/**< offset relative to ip hdr */
+      u16 data_len;		/**< data len */
+      u8 flags;
+    } sctp;
 
     /* SNAT */
     struct
