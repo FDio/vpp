@@ -27,6 +27,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/udp/udp.h>
 #include <vnet/tcp/tcp.h>
+#include <vnet/sctp/sctp.h>
 #include <vnet/ip/punt.h>
 #include <vppinfra/sparse_vec.h>
 #include <vlib/unix/unix.h>
@@ -689,11 +690,13 @@ vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
 		   bool is_add)
 {
 
-  /* For now we only support UDP punt */
-  if (protocol != IP_PROTOCOL_UDP && protocol != IP_PROTOCOL_TCP)
+  /* For now we only support TCP, UDP and SCTP punt */
+  if (protocol != IP_PROTOCOL_UDP &&
+      protocol != IP_PROTOCOL_TCP && protocol != IP_PROTOCOL_SCTP)
     return clib_error_return (0,
-			      "only UDP (%d) and TCP (%d) protocols are supported, got %d",
-			      IP_PROTOCOL_UDP, IP_PROTOCOL_TCP, protocol);
+			      "only UDP (%d), TCP (%d) and SCTP (%d) protocols are supported, got %d",
+			      IP_PROTOCOL_UDP, IP_PROTOCOL_TCP,
+			      IP_PROTOCOL_SCTP, protocol);
 
   if (ipv != (u8) ~ 0 && ipv != 4 && ipv != 6)
     return clib_error_return (0, "IP version must be 4 or 6, got %d", ipv);
@@ -706,6 +709,8 @@ vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
 	    udp_punt_unknown (vm, 1, is_add);
 	  else if (protocol == IP_PROTOCOL_TCP)
 	    tcp_punt_unknown (vm, 1, is_add);
+	  else if (protocol == IP_PROTOCOL_SCTP)
+	    sctp_punt_unknown (vm, 1, is_add);
 	}
 
       if ((ipv == 6) || (ipv == (u8) ~ 0))
@@ -714,6 +719,8 @@ vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
 	    udp_punt_unknown (vm, 0, is_add);
 	  else if (protocol == IP_PROTOCOL_TCP)
 	    tcp_punt_unknown (vm, 0, is_add);
+	  else if (protocol == IP_PROTOCOL_SCTP)
+	    sctp_punt_unknown (vm, 0, is_add);
 	}
 
       return 0;
@@ -721,8 +728,9 @@ vnet_punt_add_del (vlib_main_t * vm, u8 ipv, u8 protocol, u16 port,
 
   else if (is_add)
     {
-      if (protocol == IP_PROTOCOL_TCP)
-	return clib_error_return (0, "punt TCP ports is not supported yet");
+      if (protocol == IP_PROTOCOL_TCP || protocol == IP_PROTOCOL_SCTP)
+	return clib_error_return (0,
+				  "punt TCP/SCTP ports is not supported yet");
 
       if (ipv == 4 || ipv == (u8) ~ 0)
 	udp_register_dst_port (vm, port, udp4_punt_node.index, 1);
