@@ -5044,6 +5044,7 @@ static void vl_api_flow_classify_details_t_handler_json
 #define foreach_standard_reply_retval_handler           \
 _(sw_interface_set_flags_reply)                         \
 _(sw_interface_add_del_address_reply)                   \
+_(sw_interface_set_rx_mode_reply)                       \
 _(sw_interface_set_table_reply)                         \
 _(sw_interface_set_mpls_enable_reply)                   \
 _(sw_interface_set_vpath_reply)                         \
@@ -5232,6 +5233,7 @@ _(CLI_REPLY, cli_reply)                                                 \
 _(CLI_INBAND_REPLY, cli_inband_reply)                                   \
 _(SW_INTERFACE_ADD_DEL_ADDRESS_REPLY,                                   \
   sw_interface_add_del_address_reply)                                   \
+_(SW_INTERFACE_SET_RX_MODE_REPLY, sw_interface_set_rx_mode_reply)       \
 _(SW_INTERFACE_SET_TABLE_REPLY, sw_interface_set_table_reply) 		\
 _(SW_INTERFACE_SET_MPLS_ENABLE_REPLY, sw_interface_set_mpls_enable_reply) \
 _(SW_INTERFACE_SET_VPATH_REPLY, sw_interface_set_vpath_reply) 		\
@@ -6223,6 +6225,64 @@ api_sw_interface_set_flags (vat_main_t * vam)
   M (SW_INTERFACE_SET_FLAGS, mp);
   mp->sw_if_index = ntohl (sw_if_index);
   mp->admin_up_down = admin_up;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply, return the good/bad news... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_sw_interface_set_rx_mode (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_sw_interface_set_rx_mode_t *mp;
+  u32 sw_if_index;
+  u8 sw_if_index_set = 0;
+  int ret;
+  u8 queue_id_valid = 0;
+  u32 queue_id;
+  vnet_hw_interface_rx_mode mode = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "queue %d", &queue_id))
+	queue_id_valid = 1;
+      else if (unformat (i, "polling"))
+	mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
+      else if (unformat (i, "interrupt"))
+	mode = VNET_HW_INTERFACE_RX_MODE_INTERRUPT;
+      else if (unformat (i, "adaptive"))
+	mode = VNET_HW_INTERFACE_RX_MODE_ADAPTIVE;
+      else
+	if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing interface name or sw_if_index");
+      return -99;
+    }
+  if (mode == VNET_HW_INTERFACE_RX_MODE_UNKNOWN)
+    {
+      errmsg ("missing rx-mode");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (SW_INTERFACE_SET_RX_MODE, mp);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->mode = mode;
+  mp->queue_id_valid = queue_id_valid;
+  mp->queue_id = queue_id_valid ? ntohl (queue_id) : ~0;
 
   /* send it... */
   S (mp);
@@ -21651,6 +21711,8 @@ _(sw_interface_set_flags,                                               \
   "<intfc> | sw_if_index <id> admin-up | admin-down link-up | link down") \
 _(sw_interface_add_del_address,                                         \
   "<intfc> | sw_if_index <id> <ip4-address> | <ip6-address> [del] [del-all] ") \
+_(sw_interface_set_rx_mode,                                             \
+  "<intfc> | sw_if_index <id> [queue <id>] <polling | interrupt | adaptive>") \
 _(sw_interface_set_table,                                               \
   "<intfc> | sw_if_index <id> vrf <table-id> [ipv6]")                   \
 _(sw_interface_set_mpls_enable,                                         \

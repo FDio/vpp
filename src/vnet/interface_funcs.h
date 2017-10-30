@@ -276,6 +276,14 @@ clib_error_t *vnet_hw_interface_change_mac_address (vnet_main_t * vnm,
 						    u32 hw_if_index,
 						    u64 mac_address);
 
+/* Change rx-mode */
+clib_error_t *set_hw_interface_change_rx_mode (vnet_main_t * vnm,
+					       u32 hw_if_index,
+					       u8 queue_id_valid,
+					       u32 queue_id,
+					       vnet_hw_interface_rx_mode
+					       mode);
+
 /* Formats sw/hw interface. */
 format_function_t format_vnet_hw_interface;
 format_function_t format_vnet_hw_interface_rx_mode;

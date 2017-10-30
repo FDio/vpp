@@ -1347,6 +1347,33 @@ set_hw_interface_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
   return 0;
 }
 
+clib_error_t *
+set_hw_interface_change_rx_mode (vnet_main_t * vnm, u32 hw_if_index,
+				 u8 queue_id_valid, u32 queue_id,
+				 vnet_hw_interface_rx_mode mode)
+{
+  clib_error_t *error = 0;
+  vnet_hw_interface_t *hw;
+  int i;
+
+  hw = vnet_get_hw_interface (vnm, hw_if_index);
+
+  if (queue_id_valid == 0)
+    {
+      for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
+	{
+	  error = set_hw_interface_rx_mode (vnm, hw_if_index, i, mode);
+	  if (error)
+	    break;
+	}
+      hw->default_rx_mode = mode;
+    }
+  else
+    error = set_hw_interface_rx_mode (vnm, hw_if_index, queue_id, mode);
+
+  return (error);
+}
+
 static clib_error_t *
 set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
@@ -1354,12 +1381,10 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
-  vnet_hw_interface_t *hw;
   u32 hw_if_index = (u32) ~ 0;
   u32 queue_id = (u32) ~ 0;
   vnet_hw_interface_rx_mode mode = VNET_HW_INTERFACE_RX_MODE_UNKNOWN;
-  int i;
-  u8 input_queue_id = 0;
+  u8 queue_id_valid = 0;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -1370,7 +1395,7 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
 	  (line_input, "%U", unformat_vnet_hw_interface, vnm, &hw_if_index))
 	;
       else if (unformat (line_input, "queue %d", &queue_id))
-	input_queue_id = 1;
+	queue_id_valid = 1;
       else if (unformat (line_input, "polling"))
 	mode = VNET_HW_INTERFACE_RX_MODE_POLLING;
       else if (unformat (line_input, "interrupt"))
@@ -1394,20 +1419,8 @@ set_interface_rx_mode (vlib_main_t * vm, unformat_input_t * input,
   if (mode == VNET_HW_INTERFACE_RX_MODE_UNKNOWN)
     return clib_error_return (0, "please specify valid rx-mode");
 
-  hw = vnet_get_hw_interface (vnm, hw_if_index);
-
-  if (input_queue_id == 0)
-    {
-      for (i = 0; i < vec_len (hw->dq_runtime_index_by_queue); i++)
-	{
-	  error = set_hw_interface_rx_mode (vnm, hw_if_index, i, mode);
-	  if (error)
-	    break;
-	}
-      hw->default_rx_mode = mode;
-    }
-  else
-    error = set_hw_interface_rx_mode (vnm, hw_if_index, queue_id, mode);
+  error = set_hw_interface_change_rx_mode (vnm, hw_if_index, queue_id_valid,
+					   queue_id, mode);
 
   return (error);
 }

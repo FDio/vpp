@@ -391,6 +391,26 @@ autoreply define sw_interface_set_mac_address
     u8 mac_address[6];
 };
 
+/** \brief Set an interface's rx-mode
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - the interface whose rx-mode will be set
+    @param queue_id_valid - 1 = the queue_id field is valid. 0 means all
+      queue_id's
+    @param queue_id - the queue number whose rx-mode will be set. Only valid
+      if queue_id_valid is 1
+    @param mode - polling=1, interrupt=2, adaptive=3
+*/
+autoreply define sw_interface_set_rx_mode
+{
+    u32 client_index;
+    u32 context;
+    u32 sw_if_index;
+    u8 queue_id_valid;
+    u32 queue_id;
+    u8 mode;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
