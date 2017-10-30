@@ -610,6 +610,8 @@ application_setup_proxy (application_t * app)
     application_start_stop_proxy (app, TRANSPORT_PROTO_TCP, 1);
   if (transports & (1 << TRANSPORT_PROTO_UDP))
     application_start_stop_proxy (app, TRANSPORT_PROTO_UDP, 1);
+  if (transports & (1 << TRANSPORT_PROTO_SCTP))
+    application_start_stop_proxy (app, TRANSPORT_PROTO_SCTP, 1);
 }
 
 void
@@ -621,6 +623,8 @@ application_remove_proxy (application_t * app)
     application_start_stop_proxy (app, TRANSPORT_PROTO_TCP, 0);
   if (transports & (1 << TRANSPORT_PROTO_UDP))
     application_start_stop_proxy (app, TRANSPORT_PROTO_UDP, 0);
+  if (transports & (1 << TRANSPORT_PROTO_SCTP))
+    application_start_stop_proxy (app, TRANSPORT_PROTO_SCTP, 0);
 }
 
 u8 *

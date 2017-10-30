@@ -24,6 +24,7 @@
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
 #include <vnet/tcp/tcp.h>
+#include <vnet/sctp/sctp.h>
 
 session_manager_main_t session_manager_main;
 extern transport_proto_vft_t *tp_vfts;
@@ -984,25 +985,20 @@ session_vpp_event_queue_allocate (session_manager_main_t * smm,
     }
 }
 
-session_type_t
+inline session_type_t
 session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
 {
-  if (proto == TRANSPORT_PROTO_TCP)
+  switch (proto)
     {
-      if (is_ip4)
-	return SESSION_TYPE_IP4_TCP;
-      else
-	return SESSION_TYPE_IP6_TCP;
+    case TRANSPORT_PROTO_TCP:
+      return is_ip4 ? SESSION_TYPE_IP4_TCP : SESSION_TYPE_IP6_TCP;
+    case TRANSPORT_PROTO_UDP:
+      return is_ip4 ? SESSION_TYPE_IP4_UDP : SESSION_TYPE_IP6_UDP;
+    case TRANSPORT_PROTO_SCTP:
+      return is_ip4 ? SESSION_TYPE_IP4_SCTP : SESSION_TYPE_IP6_SCTP;
+    default:
+      return SESSION_N_TYPES;
     }
-  else
-    {
-      if (is_ip4)
-	return SESSION_TYPE_IP4_UDP;
-      else
-	return SESSION_TYPE_IP6_UDP;
-    }
-
-  return SESSION_N_TYPES;
 }
 
 transport_connection_t *
@@ -1129,6 +1125,9 @@ session_manager_main_enable (vlib_main_t * vm)
 
   /* Enable TCP transport */
   vnet_tcp_enable_disable (vm, 1);
+
+  /* Enable SCTP transport */
+  vnet_sctp_enable_disable (vm, 1);
 
   return 0;
 }
