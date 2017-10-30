@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "60a85a24_3bbbf3a9",
+        "filename": "src/vnet/lisp-cp/control.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 1826,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-10-30T04:00:13Z",
+      "side": 1,
+      "message": "I guess we can lose this now.",
+      "range": {
+        "startLine": 1826,
+        "startChar": 55,
+        "endLine": 1826,
+        "endChar": 66
+      },
+      "revId": "0d7284fe18663737c9e9cee6cc6a8686bab5c5ad",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
