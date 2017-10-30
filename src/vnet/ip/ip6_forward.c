@@ -1341,8 +1341,14 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  is_tcp_udp0 = ip6_next_proto_is_tcp_udp (p0, ip0, &udp_offset0);
 	  is_tcp_udp1 = ip6_next_proto_is_tcp_udp (p1, ip1, &udp_offset1);
 
-	  good_l4_csum0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
-	  good_l4_csum1 = (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
+	  good_l4_csum0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
+			   && !(flags0 & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+				|| flags0 & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+	    != 0;
+	  good_l4_csum1 = (flags1 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
+			   && !(flags1 & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+				|| flags1 & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+	    != 0;
 	  len_diff0 = 0;
 	  len_diff1 = 0;
 
@@ -1506,7 +1512,10 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  type0 = lm->builtin_protocol_by_ip_protocol[ip0->protocol];
 	  flags0 = p0->flags;
 	  is_tcp_udp0 = ip6_next_proto_is_tcp_udp (p0, ip0, &udp_offset0);
-	  good_l4_csum0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
+	  good_l4_csum0 = (flags0 & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
+			   && !(flags0 & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+				|| flags0 & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM))
+	    != 0;
 
 	  len_diff0 = 0;
 	  if (PREDICT_TRUE (is_tcp_udp0))
