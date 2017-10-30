@@ -1408,8 +1408,16 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  IP6_ERROR_UDP_CHECKSUM);
 	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_ICMP ==
 		  IP6_ERROR_ICMP_CHECKSUM);
-	  error0 = (!good_l4_csum0 ? IP6_ERROR_UDP_CHECKSUM + type0 : error0);
-	  error1 = (!good_l4_csum1 ? IP6_ERROR_UDP_CHECKSUM + type1 : error1);
+	  error0 =
+	    ((!good_l4_csum0
+	      && !(p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+		   || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) ?
+	     IP6_ERROR_UDP_CHECKSUM + type0 : error0);
+	  error1 =
+	    ((!good_l4_csum1
+	      && !(p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+		   || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) ?
+	     IP6_ERROR_UDP_CHECKSUM + type1 : error1);
 
 	  /* Drop packets from unroutable hosts. */
 	  /* If this is a neighbor solicitation (ICMP), skip source RPF check */
@@ -1545,7 +1553,11 @@ ip6_local_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  IP6_ERROR_UDP_CHECKSUM);
 	  ASSERT (IP6_ERROR_UDP_CHECKSUM + IP_BUILTIN_PROTOCOL_ICMP ==
 		  IP6_ERROR_ICMP_CHECKSUM);
-	  error0 = (!good_l4_csum0 ? IP6_ERROR_UDP_CHECKSUM + type0 : error0);
+	  error0 =
+	    ((!good_l4_csum0
+	      && !(p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+		   || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) ?
+	     IP6_ERROR_UDP_CHECKSUM + type0 : error0);
 
 	  /* If this is a neighbor solicitation (ICMP), skip src RPF check */
 	  if (error0 == IP6_ERROR_UNKNOWN_PROTOCOL &&

@@ -1592,9 +1592,13 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  ASSERT (IP4_ERROR_TCP_CHECKSUM + 1 == IP4_ERROR_UDP_CHECKSUM);
 	  error0 = (is_tcp_udp0 && !good_tcp_udp0
-		    ? IP4_ERROR_TCP_CHECKSUM + is_udp0 : error0);
+		    && !(p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+			 || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM) ?
+		    IP4_ERROR_TCP_CHECKSUM + is_udp0 : error0);
 	  error1 = (is_tcp_udp1 && !good_tcp_udp1
-		    ? IP4_ERROR_TCP_CHECKSUM + is_udp1 : error1);
+		    && !(p1->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+			 || p1->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM) ?
+		    IP4_ERROR_TCP_CHECKSUM + is_udp1 : error1);
 
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
 	  fib_index0 =
@@ -1731,6 +1735,7 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  is_udp0 = proto0 == IP_PROTOCOL_UDP;
 	  is_tcp_udp0 = is_udp0 || proto0 == IP_PROTOCOL_TCP;
+
 	  good_tcp_udp0 =
 	    (p0->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT) != 0;
 
@@ -1742,7 +1747,9 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  ASSERT (IP4_ERROR_TCP_CHECKSUM + 1 == IP4_ERROR_UDP_CHECKSUM);
 	  error0 = (is_tcp_udp0 && !good_tcp_udp0
-		    ? IP4_ERROR_TCP_CHECKSUM + is_udp0 : error0);
+		    && !(p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+			 || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM) ?
+		    IP4_ERROR_TCP_CHECKSUM + is_udp0 : error0);
 
 	  fib_index0 = vec_elt (im->fib_index_by_sw_if_index, sw_if_index0);
 	  fib_index0 =
