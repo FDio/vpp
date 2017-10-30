@@ -100,7 +100,9 @@ ipsec_output_policy_match (ipsec_spd_t * spd, u8 pr, u32 la, u32 ra, u16 lp,
     if (ra > clib_net_to_host_u32 (p->raddr.stop.ip4.as_u32))
       continue;
 
-    if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP)))
+    if (PREDICT_FALSE
+	((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP)
+	 && (pr != IP_PROTOCOL_SCTP)))
       return p;
 
     if (lp < p->lport.start)
@@ -153,7 +155,9 @@ ipsec_output_ip6_policy_match (ipsec_spd_t * spd,
     if (!ip6_addr_match_range (la, &p->laddr.start.ip6, &p->laddr.stop.ip6))
       continue;
 
-    if (PREDICT_FALSE ((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP)))
+    if (PREDICT_FALSE
+	((pr != IP_PROTOCOL_TCP) && (pr != IP_PROTOCOL_UDP)
+	 && (pr != IP_PROTOCOL_SCTP)))
       return p;
 
     if (lp < p->lport.start)
