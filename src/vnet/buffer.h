@@ -58,7 +58,8 @@
   _(13, IS_NATED, "nated")				\
   _(14, L2_HDR_OFFSET_VALID, 0)				\
   _(15, L3_HDR_OFFSET_VALID, 0)				\
-  _(16, L4_HDR_OFFSET_VALID, 0)
+  _(16, L4_HDR_OFFSET_VALID, 0)				\
+  _(17, OFFLOAD_SCTP_CKSUM, "offload-sctp-cksum")
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
@@ -304,6 +305,19 @@ typedef struct
       u16 data_len;		/**< data len */
       u8 flags;
     } tcp;
+
+    /* SCTP */
+    struct
+    {
+      u32 connection_index;
+      u16 sid; /**< Stream ID */
+      u16 ssn; /**< Stream Sequence Number */
+      u32 tsn; /**< Transmission Sequence Number */
+      u16 hdr_offset;		/**< offset relative to ip hdr */
+      u16 data_offset;		/**< offset relative to ip hdr */
+      u16 data_len;		/**< data len */
+      u8 flags;
+    } sctp;
 
     /* SNAT */
     struct
