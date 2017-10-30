@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4183c331_f9c4e8fe",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 555,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-30T21:31:40Z",
+      "side": 1,
+      "message": "Are you sure this will copy 6 bytes and not just one byte?",
+      "range": {
+        "startLine": 555,
+        "startChar": 15,
+        "endLine": 555,
+        "endChar": 18
+      },
+      "revId": "12f90968af53f466bf1489125c25afe9bd5458ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "110acb4d_37d02959",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 571,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-10-30T21:31:40Z",
+      "side": 1,
+      "message": "Same comment as my previous one.",
+      "range": {
+        "startLine": 571,
+        "startChar": 14,
+        "endLine": 571,
+        "endChar": 22
+      },
+      "revId": "12f90968af53f466bf1489125c25afe9bd5458ff",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
