@@ -273,3 +273,41 @@ VLIB_CLI_COMMAND (lb_show_vips_command, static) =
   .short_help = "show lb vips [verbose]",
   .function = lb_show_vips_command_fn,
 };
+
+static clib_error_t *
+lb_flowtable_flush_command_fn (vlib_main_t * vm,
+              unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  u32 thread_index;
+  vlib_thread_main_t *tm = vlib_get_thread_main();
+  lb_main_t *lbm = &lb_main;
+
+  for(thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++ ) {
+    lb_hash_t *h = lbm->per_cpu[thread_index].sticky_ht;
+    if (h != NULL) {
+        u32 i;
+        lb_hash_bucket_t *b;
+
+        lb_hash_foreach_entry(h, b, i) {
+            vlib_refcount_add(&lbm->as_refcount, thread_index, b->value[i], -1);
+            vlib_refcount_add(&lbm->as_refcount, thread_index, 0, 1);
+        }
+
+        lb_hash_free(h);
+        lbm->per_cpu[thread_index].sticky_ht = 0;
+    }
+  }
+
+  return NULL;
+}
+
+/*
+ * flush all lb flowtables
+ * This is indented for debug and unit-tests purposes only
+ */
+VLIB_CLI_COMMAND (lb_flowtable_flush_command, static) =
+{
+  .path = "test lb flowtable flush",
+  .short_help = "test lb flowtable flush",
+  .function = lb_flowtable_flush_command_fn,
+};

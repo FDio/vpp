@@ -162,6 +162,7 @@ class TestLB(VppTestCase):
             for asid in self.ass:
                 self.vapi.cli("lb as 90.0.0.0/8 10.0.0.%u del" % (asid))
             self.vapi.cli("lb vip 90.0.0.0/8 encap gre4 del")
+            self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip6_gre4(self):
         """ Load Balancer IP6 GRE4 """
@@ -180,6 +181,7 @@ class TestLB(VppTestCase):
             for asid in self.ass:
                 self.vapi.cli("lb as 2001::/16 10.0.0.%u del" % (asid))
             self.vapi.cli("lb vip 2001::/16 encap gre4 del")
+            self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip4_gre6(self):
         """ Load Balancer IP4 GRE6 """
@@ -197,6 +199,7 @@ class TestLB(VppTestCase):
             for asid in self.ass:
                 self.vapi.cli("lb as 90.0.0.0/8 2002::%u del" % (asid))
             self.vapi.cli("lb vip 90.0.0.0/8 encap gre6 del")
+            self.vapi.cli("test lb flowtable flush")
 
     def test_lb_ip6_gre6(self):
         """ Load Balancer IP6 GRE6 """
@@ -214,3 +217,4 @@ class TestLB(VppTestCase):
             for asid in self.ass:
                 self.vapi.cli("lb as 2001::/16 2002::%u del" % (asid))
             self.vapi.cli("lb vip 2001::/16 encap gre6 del")
+            self.vapi.cli("test lb flowtable flush")
