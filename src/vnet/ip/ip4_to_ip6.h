@@ -60,6 +60,11 @@ ip4_get_port (ip4_header_t * ip, u8 sender)
       udp_header_t *udp = (void *) (ip + 1);
       return (sender) ? udp->src_port : udp->dst_port;
     }
+  else if (PREDICT_TRUE (ip->protocol == IP_PROTOCOL_SCTP))
+    {
+      sctp_header_t *sctp = (void *) (ip + 1);
+      return (sender) ? sctp->src_port : sctp->dst_port;
+    }
   else if (ip->protocol == IP_PROTOCOL_ICMP)
     {
       icmp46_header_t *icmp = (void *) (ip + 1);
@@ -279,8 +284,8 @@ icmp_to_icmp6 (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx,
 	  inner_frag_id = frag_id_4to6 (inner_ip4->fragment_id);
 	  inner_frag_offset = ip4_get_fragment_offset (inner_ip4);
 	  inner_frag_more =
-	    ! !(inner_ip4->flags_and_fragment_offset &
-		clib_net_to_host_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS));
+	    !!(inner_ip4->flags_and_fragment_offset &
+	       clib_net_to_host_u16 (IP4_HEADER_FLAG_MORE_FRAGMENTS));
 	}
       else
 	{
