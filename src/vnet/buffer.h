@@ -329,6 +329,19 @@ typedef struct
       u8 flags;
     } tcp;
 
+    /* SCTP */
+    struct
+    {
+      u32 connection_index;
+      u16 sid; /**< Stream ID */
+      u16 ssn; /**< Stream Sequence Number */
+      u32 tsn; /**< Transmission Sequence Number */
+      u16 hdr_offset;		/**< offset relative to ip hdr */
+      u16 data_offset;		/**< offset relative to ip hdr */
+      u16 data_len;		/**< data len */
+      u8 flags;
+    } sctp;
+
     /* SNAT */
     struct
     {
