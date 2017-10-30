@@ -171,7 +171,6 @@ session_alloc_and_init (segment_manager_t * sm, transport_connection_t * tc,
 
   /* Add to the main lookup table */
   session_lookup_add_connection (tc, session_handle (s));
-
   *ret_s = s;
   return 0;
 }
