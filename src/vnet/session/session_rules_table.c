@@ -316,8 +316,14 @@ session_rules_table_add_del (session_rules_table_t * srt,
   u32 ri_from_tag, ri;
   int rv;
 
+<<<<<<< HEAD
   ri_from_tag = session_rules_table_rule_for_tag (srt, args->tag);
   if (args->is_add && ri_from_tag != SESSION_RULES_TABLE_INVALID_INDEX)
+=======
+  if (args->transport_proto != TRANSPORT_PROTO_TCP
+      && args->transport_proto != TRANSPORT_PROTO_UDP
+      && args->transport_proto != TRANSPORT_PROTO_SCTP)
+>>>>>>> bf6bcd50... DRAFT: SCTP implementation
     return clib_error_return_code (0, VNET_API_ERROR_INVALID_VALUE, 0,
 				   "tag exists");
 
