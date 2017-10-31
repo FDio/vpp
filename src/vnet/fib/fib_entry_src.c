@@ -259,6 +259,23 @@ fib_entry_chain_type_fixup (const fib_entry_t *entry,
     return (dfct);
 }
 
+static dpo_proto_t
+fib_prefix_get_payload_proto (const fib_prefix_t *pfx)
+{
+    switch (pfx->fp_proto)
+    {
+    case FIB_PROTOCOL_IP4:
+        return (DPO_PROTO_IP4);
+    case FIB_PROTOCOL_IP6:
+        return (DPO_PROTO_IP6);
+    case FIB_PROTOCOL_MPLS:
+        return (pfx->fp_payload_proto);
+    }
+
+    ASSERT(0);
+    return (DPO_PROTO_IP4);
+}
+
 static void
 fib_entry_src_get_path_forwarding (fib_node_index_t path_index,
                                    fib_entry_src_collect_forwarding_ctx_t *ctx)
@@ -313,7 +330,7 @@ fib_entry_src_get_path_forwarding (fib_node_index_t path_index,
                                                                       ctx->fct),
                                            &nh->path_dpo);
             fib_path_stack_mpls_disp(path_index,
-                                     ctx->fib_entry->fe_prefix.fp_payload_proto,
+                                     fib_prefix_get_payload_proto(&ctx->fib_entry->fe_prefix),
                                      &nh->path_dpo);
 
             break;

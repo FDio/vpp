@@ -255,6 +255,15 @@ fib_path_ext_stack (fib_path_ext_t *path_ext,
                     chain_proto,
                     mldi);
 	}
+        else if (child_fct == FIB_FORW_CHAIN_TYPE_MPLS_EOS)
+        {
+            /*
+             * MPLS EOS packets using an imp-null. Insert the disposition.
+             */
+            fib_path_stack_mpls_disp(nh->path_index,
+                                     fib_forw_chain_type_to_dpo_proto(parent_fct),
+                                     &nh->path_dpo);
+        }
     }
     dpo_reset(&via_dpo);
 
