@@ -1360,7 +1360,6 @@ class TestIPInput(VppTestCase):
         self.assertEqual(icmp.src, self.pg0.remote_ip4)
         self.assertEqual(icmp.dst, self.pg1.remote_ip4)
 
-        self.logger.error(self.vapi.cli("sh error"))
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

@@ -15,7 +15,7 @@ from util import ppp
 
 
 class TestDVR(VppTestCase):
-    """ IPv4 Load-Balancing """
+    """ Distributed Virtual Router """
 
     def setUp(self):
         super(TestDVR, self).setUp()
@@ -82,8 +82,6 @@ class TestDVR(VppTestCase):
         self.vapi.sw_interface_set_l2_tag_rewrite(sub_if_on_pg3.sw_if_index,
                                                   L2_VTR_OP.L2_POP_1,
                                                   93)
-
-        self.logger.error(self.vapi.ppcli("show bridge-domain 1 detail"))
 
         #
         # Add routes to bridge the traffic via a tagged an nontagged interface

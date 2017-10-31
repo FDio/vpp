@@ -1278,6 +1278,7 @@ class TestIP6LoadBalance(VppTestCase):
         super(TestIP6LoadBalance, self).tearDown()
 
     def send_and_expect_load_balancing(self, input, pkts, outputs):
+        self.vapi.cli("clear trace")
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1286,6 +1287,7 @@ class TestIP6LoadBalance(VppTestCase):
             self.assertNotEqual(0, len(rx))
 
     def send_and_expect_one_itf(self, input, pkts, itf):
+        self.vapi.cli("clear trace")
         input.add_stream(pkts)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
@@ -1690,8 +1692,6 @@ class TestIP6Input(VppTestCase):
         self.assertEqual(icmp.type, 3)
         # 0: "hop limit exceeded in transit",
         self.assertEqual(icmp.code, 0)
-
-        self.logger.error(self.vapi.cli("sh error"))
 
 
 if __name__ == '__main__':
