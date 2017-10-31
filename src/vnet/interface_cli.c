@@ -1201,7 +1201,7 @@ set_interface_mac_address (vlib_main_t * vm, unformat_input_t * input,
   vnet_sw_interface_t *si = NULL;
   clib_error_t *error = 0;
   u32 sw_if_index = ~0;
-  u64 mac = 0;
+  u8 mac[6] = { 0 };
 
   if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
     {
@@ -1209,7 +1209,7 @@ set_interface_mac_address (vlib_main_t * vm, unformat_input_t * input,
 				 format_unformat_error, input);
       goto done;
     }
-  if (!unformat_user (input, unformat_ethernet_address, &mac))
+  if (!unformat_user (input, unformat_ethernet_address, mac))
     {
       error = clib_error_return (0, "expected mac address `%U'",
 				 format_unformat_error, input);

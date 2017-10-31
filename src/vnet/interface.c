@@ -1334,7 +1334,8 @@ vnet_rename_interface (vnet_main_t * vnm, u32 hw_if_index, char *new_name)
 
 static clib_error_t *
 vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
-					     u32 hw_if_index, u64 mac_address)
+					     u32 hw_if_index,
+					     u8 * mac_address)
 {
   clib_error_t *error = 0;
   vnet_hw_interface_t *hi = vnet_get_hw_interface (vnm, hw_if_index);
@@ -1346,7 +1347,7 @@ vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
       if (dev_class->mac_addr_change_function)
 	{
 	  error =
-	    dev_class->mac_addr_change_function (hi, (char *) &mac_address);
+	    dev_class->mac_addr_change_function (hi, (char *) mac_address);
 	}
       if (!error)
 	{
@@ -1355,7 +1356,7 @@ vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
 	  hw_class = vnet_get_hw_interface_class (vnm, hi->hw_class_index);
 
 	  if (NULL != hw_class->mac_addr_change_function)
-	    hw_class->mac_addr_change_function (hi, (char *) &mac_address);
+	    hw_class->mac_addr_change_function (hi, (char *) mac_address);
 	}
       else
 	{
@@ -1376,7 +1377,7 @@ vnet_hw_interface_change_mac_address_helper (vnet_main_t * vnm,
 
 clib_error_t *
 vnet_hw_interface_change_mac_address (vnet_main_t * vnm, u32 hw_if_index,
-				      u64 mac_address)
+				      u8 * mac_address)
 {
   return vnet_hw_interface_change_mac_address_helper
     (vnm, hw_if_index, mac_address);
