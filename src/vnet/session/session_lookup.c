@@ -340,21 +340,15 @@ session_lookup_del_session (stream_session_t * s)
 }
 
 static stream_session_t *
-session_lookup_app_listen_session (u32 app_index)
+session_lookup_app_listen_session (u32 app_index, u8 fib_proto,
+				   u8 transport_proto)
 {
   application_t *app;
   app = application_get (app_index);
   if (!app)
     return 0;
 
-  if (application_n_listeners (app) != 1)
-    {
-      clib_warning ("there should be one and only one listener %d",
-		    hash_elts (app->listeners_table));
-      return 0;
-    }
-
-  return application_first_listener (app);
+  return application_first_listener (app, fib_proto, transport_proto);
 }
 
 stream_session_t *
@@ -366,7 +360,8 @@ session_lookup_rules_table4 (session_rules_table_t * srt, u8 proto,
   action_index = session_rules_table_lookup4 (srt, proto, lcl, rmt, lcl_port,
 					      rmt_port);
   /* Nothing sophisticated for now, action index is app index */
-  return session_lookup_app_listen_session (action_index);
+  return session_lookup_app_listen_session (action_index, FIB_PROTOCOL_IP4,
+					    proto);
 }
 
 stream_session_t *
@@ -377,7 +372,8 @@ session_lookup_rules_table6 (session_rules_table_t * srt, u8 proto,
   u32 action_index;
   action_index = session_rules_table_lookup6 (srt, proto, lcl, rmt, lcl_port,
 					      rmt_port);
-  return session_lookup_app_listen_session (action_index);
+  return session_lookup_app_listen_session (action_index, FIB_PROTOCOL_IP6,
+					    proto);
 }
 
 u64
@@ -1289,6 +1285,28 @@ VLIB_CLI_COMMAND (session_rule_command, static) =
   .function = session_rule_command_fn,
 };
 /* *INDENT-ON* */
+
+void
+session_lookup_dump_rules_table (u32 fib_index, u8 fib_proto,
+				 u8 transport_proto)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  session_table_t *st;
+  st = session_table_get_for_fib_index (fib_index, fib_proto);
+  session_rules_table_cli_dump (vm, &st->session_rules, fib_proto,
+				transport_proto);
+}
+
+void
+session_lookup_dump_local_rules_table (u32 table_index, u8 fib_proto,
+				       u8 transport_proto)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  session_table_t *st;
+  st = session_table_get (table_index);
+  session_rules_table_cli_dump (vm, &st->session_rules, fib_proto,
+				transport_proto);
+}
 
 static clib_error_t *
 show_session_rules_command_fn (vlib_main_t * vm, unformat_input_t * input,

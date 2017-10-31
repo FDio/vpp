@@ -296,7 +296,7 @@ server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     bsm->prealloc_fifos ? bsm->prealloc_fifos : 1;
 
-  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   if (appns_id)
     {
       a->namespace_id = appns_id;

@@ -190,6 +190,8 @@ ip4_preflen_to_mask (u8 pref_len, ip4_address_t * ip)
 u32
 ip4_mask_to_preflen (ip4_address_t * mask)
 {
+  if (mask->as_u32 == 0)
+    return 0;
   return (32 - log2_first_set (clib_net_to_host_u32 (mask->as_u32)));
 }
 
@@ -251,7 +253,7 @@ ip6_mask_to_preflen (ip6_address_t * mask)
 {
   u8 first1, first0;
   if (mask->as_u64[0] == 0 && mask->as_u64[1] == 0)
-    return 128;
+    return 0;
   first1 = log2_first_set (mask->as_u64[1]);
   first0 = log2_first_set (mask->as_u64[0]);
 

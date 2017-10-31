@@ -124,7 +124,7 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   memset (options, 0, sizeof (options));
   memset (intf_mac, 0, sizeof (intf_mac));
 
-  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   vnet_app_attach_args_t attach_args = {
     .api_client_index = ~0,
@@ -753,7 +753,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   /*
    * Attach server with global and local default scope
    */
-  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
   options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
@@ -896,6 +896,131 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   return 0;
 }
 
+static int
+session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
+{
+  u64 options[SESSION_OPTIONS_N_OPTIONS];
+  u32 server_index, app_index;
+  u32 dummy_server_api_index = ~0, sw_if_index = 0;
+  clib_error_t *error = 0;
+  u8 segment_name[128], intf_mac[6], sst;
+  stream_session_t *s;
+  transport_connection_t *tc;
+  u16 lcl_port = 1234, rmt_port = 4321;
+  app_namespace_t *app_ns;
+  int verbose = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
+
+  ip4_address_t lcl_ip = {
+    .as_u32 = clib_host_to_net_u32 (0x01020304),
+  };
+  ip4_address_t rmt_ip = {
+    .as_u32 = clib_host_to_net_u32 (0x05060708),
+  };
+  fib_prefix_t rmt_pref = {
+    .fp_addr.ip4.as_u32 = rmt_ip.as_u32,
+    .fp_len = 16,
+    .fp_proto = FIB_PROTOCOL_IP4,
+  };
+  session_endpoint_t sep = {
+    .ip = rmt_pref.fp_addr,
+    .is_ip4 = 1,
+    .port = rmt_port,
+    .transport_proto = TRANSPORT_PROTO_TCP,
+  };
+
+  /*
+   * Create loopback interface
+   */
+  memset (intf_mac, 0, sizeof (intf_mac));
+  if (vnet_create_loopback_interface (&sw_if_index, intf_mac, 0, 0))
+    {
+      clib_warning ("couldn't create loopback. stopping the test!");
+      return 0;
+    }
+  vnet_sw_interface_set_flags (vnet_get_main (), sw_if_index,
+			       VNET_SW_INTERFACE_FLAG_ADMIN_UP);
+  ip4_add_del_interface_address (vlib_get_main (), sw_if_index, &lcl_ip,
+				 24, 0);
+
+  app_ns = app_namespace_get_default ();
+  app_ns->sw_if_index = sw_if_index;
+
+  memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_IS_PROXY;
+  options[APP_OPTIONS_PROXY_TRANSPORT] = 1 << TRANSPORT_PROTO_TCP;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &dummy_session_cbs,
+    .segment_name = segment_name,
+  };
+
+  attach_args.api_client_index = dummy_server_api_index;
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "server attachment should work");
+  server_index = attach_args.app_index;
+
+  if (verbose)
+    session_lookup_dump_rules_table (0, FIB_PROTOCOL_IP4,
+				     TRANSPORT_PROTO_TCP);
+
+  tc = session_lookup_connection_wt4 (0, &lcl_ip, &rmt_ip, lcl_port, rmt_port,
+				      TRANSPORT_PROTO_TCP, 0);
+  SESSION_TEST ((tc != 0), "lookup 1.2.3.4 1234 5.6.7.8 4321 should be "
+		"successful");
+  sst = session_type_from_proto_and_ip (TRANSPORT_PROTO_TCP, 1);
+  s = listen_session_get (sst, tc->s_index);
+  SESSION_TEST ((s->app_index == server_index), "lookup should return the"
+		" server");
+
+  tc = session_lookup_connection_wt4 (0, &rmt_ip, &rmt_ip, lcl_port, rmt_port,
+				      TRANSPORT_PROTO_TCP, 0);
+  SESSION_TEST ((tc == 0), "lookup 5.6.7.8 1234 5.6.7.8 4321 should"
+		" not work");
+
+  if (verbose)
+    session_lookup_dump_local_rules_table (app_ns->local_table_index,
+					   FIB_PROTOCOL_IP4,
+					   TRANSPORT_PROTO_TCP);
+  app_index =
+    session_lookup_local_session_endpoint (app_ns->local_table_index, &sep);
+  SESSION_TEST ((app_index == server_index), "local session endpoint lookup"
+		" should work");
+
+  vnet_app_detach_args_t detach_args = {
+    .app_index = server_index,
+  };
+  vnet_application_detach (&detach_args);
+
+  if (verbose)
+    session_lookup_dump_local_rules_table (app_ns->local_table_index,
+					   FIB_PROTOCOL_IP4,
+					   TRANSPORT_PROTO_TCP);
+
+  app_index =
+    session_lookup_local_session_endpoint (app_ns->local_table_index, &sep);
+  SESSION_TEST ((app_index == SESSION_RULES_TABLE_INVALID_INDEX),
+		"local session endpoint lookup should not work after detach");
+
+  return 0;
+}
+
 static clib_error_t *
 session_test (vlib_main_t * vm,
 	      unformat_input_t * input, vlib_cli_command_t * cmd_arg)
@@ -914,6 +1039,8 @@ session_test (vlib_main_t * vm,
 	res = session_test_rule_table (vm, input);
       else if (unformat (input, "rules"))
 	res = session_test_rules (vm, input);
+      else if (unformat (input, "proxy"))
+	res = session_test_proxy (vm, input);
       else
 	break;
     }

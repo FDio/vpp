@@ -220,7 +220,11 @@ RT (mma_rules_table_del_rule) (RTT (mma_rules_table) * srt,
   if (!RT (rule_is_match_for_key) (&rule->match, rp))
     return ~0;
   if (RT (rule_is_exact_match) (rule, rp))
-    return 1;
+    {
+      if (rule_index == srt->root_index)
+	rp->action_index = SESSION_RULES_TABLE_INVALID_INDEX;
+      return 1;
+    }
   for (i = 0; i < vec_len (rp->next_indices); i++)
     {
       rv = RT (mma_rules_table_del_rule) (srt, rule, rp->next_indices[i]);
