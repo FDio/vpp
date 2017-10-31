@@ -1024,10 +1024,9 @@ skip_save:
 	      if (PREDICT_FALSE (q->head == q->maxsize))
 		q->head = 0;
 	      pthread_mutex_unlock (&q->mutex);
+
 	      if (need_broadcast)
 		(void) pthread_cond_broadcast (&q->condvar);
-
-	      pthread_mutex_unlock (&q->mutex);
 
 	      vl_msg_api_handler_with_vm_node (am, (void *) mp, vm, node);
 	    }
