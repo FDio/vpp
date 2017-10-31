@@ -400,7 +400,7 @@ server_attach ()
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     bpm->prealloc_fifos ? bpm->prealloc_fifos : 1;
 
-  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+  a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
 
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
@@ -443,7 +443,7 @@ active_open_attach (void)
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     bpm->prealloc_fifos ? bpm->prealloc_fifos : 1;
 
-  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN
     | APP_OPTIONS_FLAGS_IS_PROXY;
 
   a->options = options;

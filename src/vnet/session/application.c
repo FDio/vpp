@@ -251,7 +251,7 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   props->add_segment = props->add_segment_size != 0;
   props->preallocated_fifo_pairs = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
   props->use_private_segment = options[APP_OPTIONS_FLAGS]
-    & APP_OPTIONS_FLAGS_BUILTIN_APP;
+    & APP_OPTIONS_FLAGS_IS_BUILTIN;
   props->private_segment_count = options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT];
   props->private_segment_size = options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE];
 
@@ -452,7 +452,19 @@ application_get_listen_segment_manager (application_t * app,
 int
 application_is_proxy (application_t * app)
 {
-  return !(app->flags & APP_OPTIONS_FLAGS_IS_PROXY);
+  return (app->flags & APP_OPTIONS_FLAGS_IS_PROXY);
+}
+
+int
+application_is_builtin (application_t *app)
+{
+  return (app->flags & APP_OPTIONS_FLAGS_IS_BUILTIN);
+}
+
+int
+application_is_builtin_proxy (application_t *app)
+{
+  return (application_is_proxy (app) && application_is_builtin (app));
 }
 
 int
@@ -501,6 +513,105 @@ application_first_listener (application_t * app)
   /* *INDENT-ON* */
 
   return 0;
+}
+
+void
+application_init_proxy (application_t *app, u8 transport_proto)
+{
+  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+  app_namespace_t *app_ns = app_namespace_get (app->ns_index);
+  stream_session_t *s;
+  transport_connection_t *tc;
+  fib_prefix_t lcl_pref, rmt_pref;
+  session_rule_add_del_args_t args;
+  u64 handle;
+
+  sep.transport_proto = transport_proto;
+  if (application_has_local_scope (app))
+    {
+      memset (&lcl_pref.fp_addr, 0, sizeof (lcl_pref.fp_addr));
+      lcl_pref.fp_proto = FIB_PROTOCOL_IP4;
+      memset (&rmt_pref.fp_addr, 0, sizeof (rmt_pref.fp_addr));
+      rmt_pref.fp_proto = FIB_PROTOCOL_IP4;
+
+      args.table_args.lcl = lcl_pref;
+      args.table_args.rmt = rmt_pref;
+      args.table_args.lcl_port = 0;
+      args.table_args.rmt_port = 0;
+      args.table_args.action_index = app->index;
+      args.table_args.is_add = 1;
+      args.appns_index = app->ns_index;
+      args.scope = SESSION_RULE_SCOPE_LOCAL;
+      vnet_session_rule_add_del (&args);
+
+      args.table_args.lcl.fp_proto = FIB_PROTOCOL_IP6;
+      args.table_args.rmt.fp_proto = FIB_PROTOCOL_IP6;
+      vnet_session_rule_add_del (&args);
+    }
+
+  if (application_has_global_scope (app))
+    {
+      sep.is_ip4 = 1;
+      sep.fib_index = app_namespace_get_fib_index (app_ns, FIB_PROTOCOL_IP4);
+      application_start_listen (app, &sep, &handle);
+      s = listen_session_get_from_handle (handle);
+      tc = listen_session_get_transport (s);
+
+      if (!ip_is_zero (&tc->lcl_ip, 1))
+	{
+	  lcl_pref.fp_addr = tc->lcl_ip;
+	  lcl_pref.fp_len = 32;
+	  lcl_pref.fp_proto = FIB_PROTOCOL_IP4;
+	  rmt_pref.fp_addr.ip4.as_u32 = 0;
+	  rmt_pref.fp_len = 0;
+	  rmt_pref.fp_proto = FIB_PROTOCOL_IP4;
+
+	  args.table_args.lcl = lcl_pref;
+	  args.table_args.rmt = rmt_pref;
+	  args.table_args.lcl_port = 0;
+	  args.table_args.rmt_port = 0;
+	  args.table_args.action_index = app->index;
+	  args.table_args.is_add = 1;
+	  args.appns_index = app->ns_index;
+	  args.scope = SESSION_RULE_SCOPE_GLOBAL;
+	  vnet_session_rule_add_del (&args);
+	}
+
+      sep.is_ip4 = 0;
+      sep.fib_index = app_namespace_get_fib_index (app_ns, FIB_PROTOCOL_IP6);
+      application_start_listen (app, &sep, &handle);
+      if (!ip_is_zero (&tc->lcl_ip, 0))
+	{
+	  memset (&lcl_pref.fp_addr, 0, sizeof (lcl_pref.fp_addr));
+	  lcl_pref.fp_len = 128;
+	  lcl_pref.fp_proto = FIB_PROTOCOL_IP6;
+	  memset (&rmt_pref.fp_addr, 0, sizeof (rmt_pref.fp_addr));
+	  rmt_pref.fp_len = 0;
+	  rmt_pref.fp_proto = FIB_PROTOCOL_IP6;
+
+	  args.table_args.lcl = lcl_pref;
+	  args.table_args.rmt = rmt_pref;
+	  args.table_args.lcl_port = 0;
+	  args.table_args.rmt_port = 0;
+	  args.table_args.action_index = app->index;
+	  args.table_args.is_add = 1;
+	  args.appns_index = app->ns_index;
+	  args.scope = SESSION_RULE_SCOPE_GLOBAL;
+	  vnet_session_rule_add_del (&args);
+	}
+    }
+}
+
+void
+application_setup_proxy (application_t *app, u64 transports)
+{
+  ASSERT (application_is_proxy (app));
+  if (application_is_builtin (app))
+    return;
+  if (transports & (1 << TRANSPORT_PROTO_TCP))
+    application_init_proxy (app, TRANSPORT_PROTO_TCP);
+  if (transports & (1 << TRANSPORT_PROTO_UDP))
+    application_init_proxy (app, TRANSPORT_PROTO_UDP);
 }
 
 u8 *
