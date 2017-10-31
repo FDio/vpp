@@ -420,6 +420,8 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  u32 auth_len = 0, aad_size = 0;
 	  u32 *aad = NULL;
 	  u8 *digest = vlib_buffer_get_tail (b0) - trunc_size;
+	  u64 digest_paddr =
+	    mb0->buf_physaddr + digest - ((u8 *) mb0->buf_addr);
 
 	  if (!is_aead && cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC)
 	    {
@@ -466,7 +468,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  crypto_op_setup (is_aead, mb0, op, session,
 			   cipher_off, cipher_len, (u8 *) icb, iv_size,
 			   0, auth_len, (u8 *) aad, aad_size,
-			   digest, 0, trunc_size);
+			   digest, digest_paddr, trunc_size);
 
 	trace:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
