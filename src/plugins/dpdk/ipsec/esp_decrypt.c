@@ -271,8 +271,7 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 
 	  u32 cipher_off, cipher_len;
 	  u32 auth_len = 0, aad_size = 0;
-	  u8 *aad = NULL, *digest = NULL;
-	  u64 digest_paddr = 0;
+	  u8 *aad = NULL;
 
           u8 *iv = (u8 *) (esp0 + 1);
 
@@ -281,7 +280,9 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 	  cipher_off = sizeof (esp_header_t) + iv_size;
 	  cipher_len = payload_len;
 
-          digest = vlib_buffer_get_tail (b0) - trunc_size;
+          u8 *digest = vlib_buffer_get_tail (b0) - trunc_size;
+	  u64 digest_paddr =
+	    mb0->buf_physaddr + digest - ((u8 *) mb0->buf_addr);
 
 	  if (!is_aead && cipher_alg->alg == RTE_CRYPTO_CIPHER_AES_CBC)
 	    clib_memcpy(icb, iv, 16);
