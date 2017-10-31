@@ -360,6 +360,7 @@ class VPP():
                         size += v[1].size
             else:
                 if callable(v):
+                    size = 0
                     (s, l) = v(self, False, buf, off, None)
                     res.append(l)
                     size += s
