@@ -147,8 +147,8 @@ void
 application_del (application_t * app)
 {
   segment_manager_t *sm;
-  u64 handle;
-  u32 index, *handles = 0;
+  u64 handle, *handles = 0;
+  u32 index;
   int i;
   vnet_unbind_args_t _a, *a = &_a;
 
@@ -158,6 +158,9 @@ application_del (application_t * app)
    */
   if (CLIB_DEBUG > 1)
     clib_warning ("[%d] Delete app (%d)", getpid (), app->index);
+
+  if (application_is_proxy (app))
+    application_remove_proxy (app);
 
   /*
    *  Listener cleanup
@@ -251,7 +254,7 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   props->add_segment = props->add_segment_size != 0;
   props->preallocated_fifo_pairs = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
   props->use_private_segment = options[APP_OPTIONS_FLAGS]
-    & APP_OPTIONS_FLAGS_BUILTIN_APP;
+    & APP_OPTIONS_FLAGS_IS_BUILTIN;
   props->private_segment_count = options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT];
   props->private_segment_size = options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE];
 
@@ -268,6 +271,8 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   app->flags = options[APP_OPTIONS_FLAGS];
   app->cb_fns = *cb_fns;
   app->ns_index = options[APP_OPTIONS_NAMESPACE];
+  app->listeners_table = hash_create (0, sizeof (u64));
+  app->proxied_transports = options[APP_OPTIONS_PROXY_TRANSPORT];
 
   /* If no scope enabled, default to global */
   if (!application_has_global_scope (app)
@@ -452,7 +457,19 @@ application_get_listen_segment_manager (application_t * app,
 int
 application_is_proxy (application_t * app)
 {
-  return !(app->flags & APP_OPTIONS_FLAGS_IS_PROXY);
+  return (app->flags & APP_OPTIONS_FLAGS_IS_PROXY);
+}
+
+int
+application_is_builtin (application_t * app)
+{
+  return (app->flags & APP_OPTIONS_FLAGS_IS_BUILTIN);
+}
+
+int
+application_is_builtin_proxy (application_t * app)
+{
+  return (application_is_proxy (app) && application_is_builtin (app));
 }
 
 int
@@ -489,18 +506,135 @@ application_n_listeners (application_t * app)
 }
 
 stream_session_t *
-application_first_listener (application_t * app)
+application_first_listener (application_t * app, u8 fib_proto,
+			    u8 transport_proto)
 {
+  stream_session_t *listener;
   u64 handle;
   u32 sm_index;
+  u8 sst;
+
+  sst = session_type_from_proto_and_ip (transport_proto,
+					fib_proto == FIB_PROTOCOL_IP4);
 
   /* *INDENT-OFF* */
    hash_foreach (handle, sm_index, app->listeners_table, ({
-     return listen_session_get_from_handle (handle);
+     listener = listen_session_get_from_handle (handle);
+     if (listener->session_type == sst)
+       return listener;
    }));
   /* *INDENT-ON* */
 
   return 0;
+}
+
+static clib_error_t *
+application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
+					u8 transport_proto, u8 is_start)
+{
+  session_rule_add_del_args_t args;
+  fib_prefix_t lcl_pref, rmt_pref;
+  app_namespace_t *app_ns = app_namespace_get (app->ns_index);
+  u8 is_ip4 = (fib_proto == FIB_PROTOCOL_IP4);
+  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+  transport_connection_t *tc;
+  stream_session_t *s;
+  u64 handle;
+
+  if (is_start)
+    {
+      sep.is_ip4 = is_ip4;
+      sep.fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
+      sep.sw_if_index = app_ns->sw_if_index;
+      sep.transport_proto = transport_proto;
+      application_start_listen (app, &sep, &handle);
+      s = listen_session_get_from_handle (handle);
+    }
+  else
+    {
+      s = application_first_listener (app, fib_proto, transport_proto);
+    }
+  tc = listen_session_get_transport (s);
+
+  if (!ip_is_zero (&tc->lcl_ip, 1))
+    {
+      ip_copy (&lcl_pref.fp_addr, &tc->lcl_ip, is_ip4);
+      lcl_pref.fp_len = is_ip4 ? 32 : 128;
+      lcl_pref.fp_proto = fib_proto;
+      memset (&rmt_pref.fp_addr, 0, sizeof (rmt_pref.fp_addr));
+      rmt_pref.fp_len = 0;
+      rmt_pref.fp_proto = fib_proto;
+
+      args.table_args.lcl = lcl_pref;
+      args.table_args.rmt = rmt_pref;
+      args.table_args.lcl_port = 0;
+      args.table_args.rmt_port = 0;
+      args.table_args.action_index = app->index;
+      args.table_args.is_add = is_start;
+      args.table_args.transport_proto = transport_proto;
+      args.appns_index = app->ns_index;
+      args.scope = SESSION_RULE_SCOPE_GLOBAL;
+      return vnet_session_rule_add_del (&args);
+    }
+  return 0;
+}
+
+void
+application_start_stop_proxy (application_t * app, u8 transport_proto,
+			      u8 is_start)
+{
+  session_rule_add_del_args_t args;
+
+  if (application_has_local_scope (app))
+    {
+      memset (&args, 0, sizeof (args));
+      args.table_args.lcl.fp_proto = FIB_PROTOCOL_IP4;
+      args.table_args.rmt.fp_proto = FIB_PROTOCOL_IP4;
+      args.table_args.lcl_port = 0;
+      args.table_args.rmt_port = 0;
+      args.table_args.action_index = app->index;
+      args.table_args.is_add = is_start;
+      args.table_args.transport_proto = transport_proto;
+      args.appns_index = app->ns_index;
+      args.scope = SESSION_RULE_SCOPE_LOCAL;
+      vnet_session_rule_add_del (&args);
+
+      args.table_args.lcl.fp_proto = FIB_PROTOCOL_IP6;
+      args.table_args.rmt.fp_proto = FIB_PROTOCOL_IP6;
+      vnet_session_rule_add_del (&args);
+    }
+
+  if (application_has_global_scope (app))
+    {
+      application_start_stop_proxy_fib_proto (app, FIB_PROTOCOL_IP4,
+					      transport_proto, is_start);
+      application_start_stop_proxy_fib_proto (app, FIB_PROTOCOL_IP6,
+					      transport_proto, is_start);
+    }
+}
+
+void
+application_setup_proxy (application_t * app)
+{
+  u16 transports = app->proxied_transports;
+  ASSERT (application_is_proxy (app));
+  if (application_is_builtin (app))
+    return;
+  if (transports & (1 << TRANSPORT_PROTO_TCP))
+    application_start_stop_proxy (app, TRANSPORT_PROTO_TCP, 1);
+  if (transports & (1 << TRANSPORT_PROTO_UDP))
+    application_start_stop_proxy (app, TRANSPORT_PROTO_UDP, 1);
+}
+
+void
+application_remove_proxy (application_t * app)
+{
+  u16 transports = app->proxied_transports;
+  ASSERT (application_is_proxy (app));
+  if (transports & (1 << TRANSPORT_PROTO_TCP))
+    application_start_stop_proxy (app, TRANSPORT_PROTO_TCP, 0);
+  if (transports & (1 << TRANSPORT_PROTO_UDP))
+    application_start_stop_proxy (app, TRANSPORT_PROTO_UDP, 0);
 }
 
 u8 *

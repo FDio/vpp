@@ -108,6 +108,7 @@ typedef enum
   APP_OPTIONS_PRIVATE_SEGMENT_SIZE,
   APP_OPTIONS_NAMESPACE,
   APP_OPTIONS_NAMESPACE_SECRET,
+  APP_OPTIONS_PROXY_TRANSPORT,
   SESSION_OPTIONS_SEGMENT_SIZE,
   SESSION_OPTIONS_ADD_SEGMENT_SIZE,
   SESSION_OPTIONS_RX_FIFO_SIZE,
@@ -120,7 +121,7 @@ typedef enum
 #define foreach_app_options_flags				\
   _(ACCEPT_REDIRECT, "Use FIFO with redirects")			\
   _(ADD_SEGMENT, "Add segment and signal app if needed")	\
-  _(BUILTIN_APP, "Application is builtin")			\
+  _(IS_BUILTIN, "Application is builtin")			\
   _(IS_PROXY, "Application is proxying")				\
   _(USE_GLOBAL_SCOPE, "App can use global session scope")	\
   _(USE_LOCAL_SCOPE, "App can use local session scope")

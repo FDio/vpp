@@ -86,6 +86,11 @@ void session_lookup_show_table_entries (vlib_main_t * vm,
 					session_table_t * table, u8 type,
 					u8 is_local);
 
+void session_lookup_dump_rules_table (u32 fib_index, u8 fib_proto,
+				      u8 transport_proto);
+void session_lookup_dump_local_rules_table (u32 fib_index, u8 fib_proto,
+					    u8 transport_proto);
+
 enum _session_rule_scope
 {
   SESSION_RULE_SCOPE_GLOBAL = 1,

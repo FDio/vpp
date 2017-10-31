@@ -88,14 +88,18 @@ typedef struct _application
   /** Lookup tables for listeners. Value is segment manager index */
   uword *listeners_table;
 
-  /** First segment manager has in the the first segment the application's
+  /**
+   * First segment manager has in the the first segment the application's
    * event fifo. Depending on what the app does, it may be either used for
-   * a listener or for connects. */
+   * a listener or for connects.
+   */
   u32 first_segment_manager;
   u8 first_segment_manager_in_use;
 
   /** Segment manager properties. Shared by all segment managers */
   segment_manager_properties_t sm_properties;
+
+  u16 proxied_transports;
 } application_t;
 
 #define APP_INVALID_INDEX ((u32)~0)
@@ -125,6 +129,8 @@ segment_manager_t *application_get_listen_segment_manager (application_t *
 segment_manager_t *application_get_connect_segment_manager (application_t *
 							    app);
 int application_is_proxy (application_t * app);
+int application_is_builtin (application_t * app);
+int application_is_builtin_proxy (application_t * app);
 int application_add_segment_notify (u32 app_index, u32 fifo_segment_index);
 u32 application_session_table (application_t * app, u8 fib_proto);
 u32 application_local_session_table (application_t * app);
@@ -133,7 +139,12 @@ u8 *application_name_from_index (u32 app_index);
 u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
 u32 application_n_listeners (application_t * app);
-stream_session_t *application_first_listener (application_t * app);
+stream_session_t *application_first_listener (application_t * app,
+					      u8 fib_proto,
+					      u8 transport_proto);
+void application_setup_proxy (application_t * app);
+void application_remove_proxy (application_t * app);
+
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 
 /*

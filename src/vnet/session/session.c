@@ -581,7 +581,7 @@ session_stream_connect_notify (transport_connection_t * tc, u8 is_fail)
   if (!is_fail)
     {
       sm = application_get_connect_segment_manager (app);
-      alloc_fifos = application_is_proxy (app);
+      alloc_fifos = !application_is_builtin_proxy (app);
       if (session_alloc_and_init (sm, tc, alloc_fifos, &new_s))
 	{
 	  is_fail = 1;

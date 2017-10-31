@@ -456,7 +456,7 @@ attach_builtin_test_clients_app (u8 * appns_id, u64 appns_flags,
   options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE] = tm->private_segment_size;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = prealloc_fifos;
 
-  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_BUILTIN_APP;
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   if (appns_id)
     {
       options[APP_OPTIONS_FLAGS] |= appns_flags;
