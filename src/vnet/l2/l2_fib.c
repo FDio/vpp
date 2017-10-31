@@ -407,7 +407,6 @@ l2fib_add (vlib_main_t * vm,
   u32 bd_id;
   u32 bd_index;
   u32 sw_if_index = ~0;
-  u32 filter_mac = 0;
   u32 static_mac = 0;
   u32 bvi_mac = 0;
   uword *p;
@@ -436,29 +435,25 @@ l2fib_add (vlib_main_t * vm,
 
   if (unformat (input, "filter"))
     {
-      filter_mac = 1;
-      static_mac = 1;
-
+      l2fib_add_filter_entry (mac, bd_index);
+      return 0;
     }
-  else
-    {
 
-      if (!unformat_user
-	  (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
-	{
-	  error = clib_error_return (0, "unknown interface `%U'",
-				     format_unformat_error, input);
-	  goto done;
-	}
-      if (unformat (input, "static"))
-	{
-	  static_mac = 1;
-	}
-      else if (unformat (input, "bvi"))
-	{
-	  bvi_mac = 1;
-	  static_mac = 1;
-	}
+  if (!unformat_user (input, unformat_vnet_sw_interface, vnm, &sw_if_index))
+    {
+      error = clib_error_return (0, "unknown interface `%U'",
+				 format_unformat_error, input);
+      goto done;
+    }
+
+  if (unformat (input, "static"))
+    {
+      static_mac = 1;
+    }
+  else if (unformat (input, "bvi"))
+    {
+      bvi_mac = 1;
+      static_mac = 1;
     }
 
   if (vec_len (l2input_main.configs) <= sw_if_index)
@@ -468,10 +463,7 @@ l2fib_add (vlib_main_t * vm,
       goto done;
     }
 
-  if (filter_mac)
-    l2fib_add_filter_entry (mac, bd_index);
-  else
-    l2fib_add_fwd_entry (mac, bd_index, sw_if_index, static_mac, bvi_mac);
+  l2fib_add_fwd_entry (mac, bd_index, sw_if_index, static_mac, bvi_mac);
 
 done:
   return error;
