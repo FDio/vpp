@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "418d56a5_db27b08e",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-10-31T19:39:07Z",
+      "side": 0,
+      "message": "I would prefer to keep the AESNI option though, This option may still be needed to disable MB crypto because  there is an open question as to export license for crypto built with nasm in Centos and/or RHEL",
+      "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
