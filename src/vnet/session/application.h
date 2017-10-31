@@ -125,6 +125,8 @@ segment_manager_t *application_get_listen_segment_manager (application_t *
 segment_manager_t *application_get_connect_segment_manager (application_t *
 							    app);
 int application_is_proxy (application_t * app);
+int application_is_builtin (application_t * app);
+int application_is_builtin_proxy (application_t * app);
 int application_add_segment_notify (u32 app_index, u32 fifo_segment_index);
 u32 application_session_table (application_t * app, u8 fib_proto);
 u32 application_local_session_table (application_t * app);
@@ -133,7 +135,12 @@ u8 *application_name_from_index (u32 app_index);
 u8 application_has_local_scope (application_t * app);
 u8 application_has_global_scope (application_t * app);
 u32 application_n_listeners (application_t * app);
-stream_session_t *application_first_listener (application_t * app);
+stream_session_t *application_first_listener (application_t * app,
+                                              u8 fib_proto,
+                                              u8 transport_proto);
+void application_setup_proxy (application_t *app, u64 transports);
+void application_remove_proxy (application_t *app);
+
 #endif /* SRC_VNET_SESSION_APPLICATION_H_ */
 
 /*
