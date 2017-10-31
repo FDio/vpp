@@ -974,7 +974,7 @@ crypto_create_pools (void)
   /* *INDENT-OFF* */
   vec_foreach (dev, dcm->dev)
     {
-      vec_validate (dcm->data, dev->numa);
+      vec_validate_aligned (dcm->data, dev->numa, CLIB_CACHE_LINE_BYTES);
 
       error = crypto_create_crypto_op_pool (dev->numa);
       if (error)
@@ -1016,7 +1016,6 @@ crypto_disable (void)
   /* *INDENT-ON* */
 
   vec_free (dcm->data);
-
   vec_free (dcm->workers_main);
   vec_free (dcm->sa_session);
   vec_free (dcm->dev);
@@ -1050,12 +1049,15 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       return 0;
     }
 
-  vec_validate_init_empty (dcm->workers_main, n_mains - 1,
-			   (crypto_worker_main_t) EMPTY_STRUCT);
+  vec_validate_init_empty_aligned (dcm->workers_main, n_mains - 1,
+				   (crypto_worker_main_t) EMPTY_STRUCT,
+				   CLIB_CACHE_LINE_BYTES);
 
   /* *INDENT-OFF* */
   vec_foreach (cwm, dcm->workers_main)
     {
+      vec_validate_init_empty_aligned (cwm->ops, VLIB_FRAME_SIZE - 1, 0,
+				       CLIB_CACHE_LINE_BYTES);
       memset (cwm->cipher_resource_idx, ~0,
 	      IPSEC_CRYPTO_N_ALG * sizeof(*cwm->cipher_resource_idx));
       memset (cwm->auth_resource_idx, ~0,
