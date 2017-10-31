@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "42fc0393_970b1ea2",
+        "filename": "Makefile",
+        "patchSetId": 16
+      },
+      "lineNbr": 92,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-10-31T19:22:05Z",
+      "side": 1,
+      "message": "It os great that you have this working with the standard boost packages in Centos However, the spec file BuildRequires will need to be updated also. I will do that in a separate patch and test with Centos and Fedora.",
+      "revId": "ff073e191351c5e03fdc6e2a60f6618c59eeb9d8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
