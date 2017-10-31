@@ -364,6 +364,44 @@ class TestMPLS(VppTestCase):
         self.verify_capture_ip4(self.pg0, rx, tx)
 
         #
+        # disposed packets have an invalid IPv4 checkusm
+        #
+        tx = self.create_stream_labelled_ip4(self.pg0, [33],
+                                             dst_ip=self.pg0.remote_ip4,
+                                             n=65,
+                                             chksum=1)
+        self.send_and_assert_no_replies(self.pg0, tx, "Invalid Checksum")
+
+        #
+        # An MPLS xconnect - EOS label in IP out
+        #
+        route_333_eos = VppMplsRoute(
+            self, 333, 1,
+            [VppRoutePath(self.pg0.remote_ip6,
+                          self.pg0.sw_if_index,
+                          labels=[],
+                          proto=DpoProto.DPO_PROTO_IP6)])
+        route_333_eos.add_vpp_config()
+
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_labelled_ip6(self.pg0, [333], 64)
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture()
+        self.verify_capture_ip6(self.pg0, rx, tx)
+
+        #
+        # disposed packets have an TTL expired
+        #
+        tx = self.create_stream_labelled_ip6(self.pg0, [333], 64,
+                                             dst_ip=self.pg1.remote_ip6,
+                                             hlim=1)
+        self.send_and_assert_no_replies(self.pg0, tx, "TTL expired")
+
+        #
         # An MPLS xconnect - non-EOS label in IP out - an invalid configuration
         # so this traffic should be dropped.
         #
@@ -1043,7 +1081,6 @@ class TestMPLS(VppTestCase):
         tx = self.create_stream_labelled_ip4(self.pg0, [34],
                                              dst_ip="232.1.1.1")
         self.send_and_assert_no_replies(self.pg0, tx, "RPF-ID drop 56")
-        self.logger.error(self.vapi.cli("sh error"))
 
     def test_mcast_ip6_tail(self):
         """ MPLS IPv6 Multicast Tail """

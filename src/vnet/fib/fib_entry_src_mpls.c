@@ -170,7 +170,7 @@ static u8*
 fib_entry_src_mpls_format (fib_entry_src_t *src,
 			   u8* s)
 {
-    return (format(s, "MPLS local-label:%d", src->mpls.fesm_label));
+    return (format(s, " local-label:%d", src->mpls.fesm_label));
 }
 
 const static fib_entry_src_vft_t mpls_src_vft = {

@@ -29,6 +29,7 @@ typedef enum fib_test_lb_bucket_type_t_ {
     FT_LB_LABEL_STACK_O_ADJ,
     FT_LB_LABEL_O_LB,
     FT_LB_O_LB,
+    FT_LB_MPLS_DISP_O_ADJ,
     FT_LB_INTF,
     FT_LB_L2,
     FT_LB_BIER_TABLE,

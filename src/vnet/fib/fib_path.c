@@ -2259,6 +2259,18 @@ fib_path_stack_mpls_disp (fib_node_index_t path_index,
 
     switch (path->fp_type)
     {
+    case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
+    {
+        dpo_id_t tmp = DPO_INVALID;
+
+        dpo_copy(&tmp, dpo);
+        dpo_set(dpo,
+                DPO_MPLS_DISPOSITION,
+                payload_proto,
+                mpls_disp_dpo_create(payload_proto, ~0, &tmp));
+        dpo_reset(&tmp);
+        break;
+    }                
     case FIB_PATH_TYPE_DEAG:
     {
         dpo_id_t tmp = DPO_INVALID;
@@ -2275,7 +2287,6 @@ fib_path_stack_mpls_disp (fib_node_index_t path_index,
     }
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_ATTACHED:
-    case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
     case FIB_PATH_TYPE_RECURSIVE:
     case FIB_PATH_TYPE_INTF_RX:
     case FIB_PATH_TYPE_UDP_ENCAP:
