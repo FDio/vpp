@@ -25,6 +25,7 @@ import threading
 import glob
 import atexit
 from cffi import FFI
+import cffi
 
 if sys.version[0] == '2':
     import Queue as queue
@@ -53,7 +54,6 @@ void vac_set_error_handler(vac_error_callback_t);
 
 # Barfs on failure, no need to check success.
 vpp_api = ffi.dlopen('libvppapiclient.so')
-
 
 def vpp_atexit(self):
     """Clean up VPP connection on shutdown."""
@@ -165,6 +165,14 @@ class VPP():
 
         # Register error handler
         vpp_api.vac_set_error_handler(vac_error_handler)
+
+        # Support legacy CFFI
+        # from_buffer supported from 1.8.0
+        (major, minor, patch) = [int(s) for s in cffi.__version__.split('.', 3)]
+        if major >= 1 and minor >= 8:
+            self._write = self._write_new_cffi
+        else:
+            self._write = self._write_legacy_cffi
 
     class ContextId(object):
         """Thread-safe provider of unique context IDs."""
@@ -469,11 +477,17 @@ class VPP():
                 self.logger.debug(
                     'No such message type or failed CRC checksum: %s', n)
 
-    def _write(self, buf):
+    def _write_new_cffi(self, buf):
         """Send a binary-packed message to VPP."""
         if not self.connected:
             raise IOError(1, 'Not connected')
         return vpp_api.vac_write(ffi.from_buffer(buf), len(buf))
+
+    def _write_legacy_cffi(self, buf):
+        """Send a binary-packed message to VPP."""
+        if not self.connected:
+            raise IOError(1, 'Not connected')
+        return vpp_api.vac_write(str(buf), len(buf))
 
     def _read(self):
         if not self.connected:
