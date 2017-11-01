@@ -450,6 +450,16 @@ def autoconfig_ipv4_setup():
     acfg.ipv4_interface_setup()
 
 
+def autoconfig_create_vm():
+    """
+    Setup IPv4 interfaces
+
+    """
+
+    acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
+    acfg.create_and_bridge_virtual_interfaces()
+
+
 def autoconfig_not_implemented():
     """
     This feature is not implemented
@@ -465,10 +475,14 @@ def autoconfig_basic_test_menu():
 
     """
 
+#    basic_menu_text = '\nWhat would you like to do?\n\n\
+# 1) List/Create Simple IPv4 Setup\n\
+# 2) List/Create Create VM and Connect to VPP interfaces\n\
+# 9 or q) Back to main menu.'
+
     basic_menu_text = '\nWhat would you like to do?\n\n\
 1) List/Create Simple IPv4 Setup\n\
 9 or q) Back to main menu.'
-
     print "{}".format(basic_menu_text)
 
     input_valid = False
@@ -506,6 +520,8 @@ def autoconfig_basic_test():
         answer = autoconfig_basic_test_menu()
         if answer == '1':
             autoconfig_ipv4_setup()
+        # elif answer == '2':
+        #    autoconfig_create_vm()
         elif answer == '9' or answer == 'q':
             return
         else:

@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name="vpp_config",
-      version="17.10.3",
+      version="17.10.5",
       author="John DeNisco",
       author_email="jdenisco@cisco.com",
       description="VPP Configuration Utility",
@@ -9,7 +9,7 @@ setup(name="vpp_config",
       keywords="vppconfig",
       url = 'https://wiki.fd.io/view/VPP',
       py_modules=['vpp_config'],
-      install_requires=['pyyaml'],
+      install_requires=['pyyaml','netaddr'],
       packages=['vpplib'],
       scripts=['scripts/vpp-config'],
       data_files=[('vpp/vpp-config/scripts', ['scripts/dpdk-devbind.py']),

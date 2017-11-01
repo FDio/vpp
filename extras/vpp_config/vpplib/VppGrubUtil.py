@@ -101,12 +101,13 @@ class VppGrubUtil(object):
         value = cmdline.split('{}='.format(grubcmdline))[1]
         value = value.rstrip('"').lstrip('"')
 
-        iommu = re.findall(r'iommu=\w+', value)
-        pstate = re.findall(r'intel_pstate=\w+', value)
+        # jadfix intel_pstate=disable sometimes cause networks to hang on reboot
+        # iommu = re.findall(r'iommu=\w+', value)
+        # pstate = re.findall(r'intel_pstate=\w+', value)
         # If there is already some iommu commands set, leave them,
         # if not use ours
-        if iommu == [] and pstate == []:
-            value = '{} intel_pstate=disable'.format(value)
+        # if iommu == [] and pstate == []:
+        #    value = '{} intel_pstate=disable'.format(value)
 
         # Replace isolcpus with ours
         isolcpus = re.findall(r'isolcpus=[\w+\-,]+', value)

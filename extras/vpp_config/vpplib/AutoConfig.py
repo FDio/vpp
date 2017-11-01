@@ -17,7 +17,7 @@ import logging
 import os
 import re
 import yaml
-import ipaddress
+from netaddr import IPAddress
 
 from vpplib.VPPUtil import VPPUtil
 from vpplib.VppPCIUtil import VppPCIUtil
@@ -90,29 +90,24 @@ class AutoConfig(object):
         Asks the user for a number within a range.
         default is returned if return is entered.
 
-        :returns: IP address and prefix len
-        :rtype: tuple
+        :returns: IP address with cidr
+        :rtype: str
         """
 
         while True:
-            answer = raw_input("Please enter the IPv4 Address [n.n.n.n]: ")
+            answer = raw_input("Please enter the IPv4 Address [n.n.n.n/n]: ")
             try:
-                ipaddr = ipaddress.ip_address(u'{}'.format(answer))
+                ipinput = answer.split('/')
+                ipaddr = IPAddress(ipinput[0])
+                if len(ipinput) > 1:
+                    plen = answer.split('/')[1]
+                else:
+                    answer = raw_input("Please enter the netmask [n.n.n.n]: ")
+                    plen = IPAddress(answer).netmask_bits()
+                return '{}/{}'.format(ipaddr, plen)
             except:
                 print "Please enter a valid IPv4 address."
                 continue
-
-            answer = raw_input("Please enter the netmask [n.n.n.n]: ")
-            try:
-                netmask = ipaddress.ip_address(u'{}'.format(answer))
-                pl = ipaddress.ip_network(u'0.0.0.0/{}'.format(netmask))
-                plen = pl.exploded.split('/')[1]
-                break
-            except:
-                print "Please enter a valid IPv4 address and netmask."
-                continue
-
-        return ipaddr, plen
 
     @staticmethod
     def _ask_user_range(question, first, last, default):
@@ -1479,14 +1474,13 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
             if name == 'local0':
                 continue
 
-            question = "Would you like an address to interface {} [Y/n]? ".format(name)
+            question = "Would you like add address to interface {} [Y/n]? ".format(name)
             answer = self._ask_user_yn(question, 'y')
             if answer == 'y':
                 address = {}
-                addr, plen = self._ask_user_ipv4()
+                addr = self._ask_user_ipv4()
                 address['name'] = name
                 address['addr'] = addr
-                address['plen'] = plen
                 interfaces_with_ip.append(address)
 
         return interfaces_with_ip
@@ -1527,14 +1521,127 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
             for ints in ints_with_addrs:
                 name = ints['name']
                 addr = ints['addr']
-                plen = ints['plen']
-                setipstr = 'set int ip address {} {}/{}\n'.format(name, addr, plen)
+                setipstr = 'set int ip address {} {}\n'.format(name, addr)
                 setintupstr = 'set int state {} up\n'.format(name)
                 content += setipstr + setintupstr
 
             # Write the content to the script
             rootdir = node['rootdir']
             filename = rootdir + '/vpp/vpp-config/scripts/set_int_ipv4_and_up'
+            with open(filename, 'w+') as sfile:
+                sfile.write(content)
+
+            # Execute the script
+            cmd = 'vppctl exec {}'.format(filename)
+            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            if ret != 0:
+                logging.debug(stderr)
+
+            print("\nA script as been created at {}".format(filename))
+            print("This script can be run using the following:")
+            print("vppctl exec {}\n".format(filename))
+
+    def _create_vints_questions(self, node):
+        """
+        Ask the user some questions and get a list of interfaces
+        and IPv4 addresses associated with those interfaces
+
+        :param node: Node dictionary.
+        :type node: dict
+        :returns: A list or interfaces with ip addresses
+        :rtype: list
+        """
+
+        vpputl = VPPUtil()
+        interfaces = vpputl.get_hardware(node)
+        if interfaces == {}:
+            return []
+
+        # First delete all the Virtual interfaces
+        for intf in sorted(interfaces.items()):
+            name = intf[0]
+            if name[:7] == 'Virtual':
+                cmd = 'vppctl delete vhost-user {}'.format(name)
+                (ret, stdout, stderr) = vpputl.exec_command(cmd)
+                if ret != 0:
+                    logging.debug('{} failed on node {} {}'.format(
+                        cmd, node['host'], stderr))
+
+        # Create a virtual interface, for each interface the user wants to use
+        interfaces = vpputl.get_hardware(node)
+        if interfaces == {}:
+            return []
+        interfaces_with_virtual_interfaces = []
+        inum = 1
+        for intf in sorted(interfaces.items()):
+            name = intf[0]
+            if name == 'local0':
+                continue
+
+            question = "Would you like connect this interface {} to the VM [Y/n]? ".format(name)
+            answer = self._ask_user_yn(question, 'y')
+            if answer == 'y':
+                sockfilename = '/tmp/sock{}.sock'.format(inum)
+                if os.path.exists(sockfilename):
+                    os.remove(sockfilename)
+                cmd = 'vppctl create vhost-user socket {} server'.format(sockfilename)
+                (ret, stdout, stderr) = vpputl.exec_command(cmd)
+                if ret != 0:
+                    raise RuntimeError("Create vhost failed on node {} {}."
+                                       .format(node['host'], stderr))
+                vintname = stdout.rstrip('\r\n')
+
+                interface = {'name': name, 'virtualinterface': '{}'.format(vintname),
+                             'bridge': '{}'.format(inum)}
+                inum += 1
+                interfaces_with_virtual_interfaces.append(interface)
+
+        return interfaces_with_virtual_interfaces
+
+    def create_and_bridge_virtual_interfaces(self):
+        """
+        After asking the user some questions, create a VM and connect the interfaces
+        to VPP interfaces
+
+        """
+
+        for i in self._nodes.items():
+            node = i[1]
+
+            # Show the current bridge and interface configuration
+            print "\nThis the current bridge configuration:"
+            VPPUtil.show_bridge(node)
+            question = "\nWould you like to keep this configuration [Y/n]? "
+            answer = self._ask_user_yn(question, 'y')
+            if answer == 'y':
+                continue
+
+            # Create a script that builds a bridge configuration with physical interfaces
+            # and virtual interfaces
+            ints_with_vints = self._create_vints_questions(node)
+            content = ''
+            for intf in ints_with_vints:
+                vhoststr = 'comment { The following command creates the socket }\n'
+                vhoststr += 'comment { and returns a virtual interface }\n'
+                vhoststr += 'comment {{ create vhost-user socket /tmp/sock{}.sock server }}\n'. \
+                    format(intf['bridge'])
+
+                setintdnstr = 'set interface state {} down\n'.format(intf['name'])
+
+                setintbrstr = 'set interface l2 bridge {} {}\n'.format(intf['name'], intf['bridge'])
+                setvintbrstr = 'set interface l2 bridge {} {}\n'.format(intf['virtualinterface'], intf['bridge'])
+
+                # set interface state VirtualEthernet/0/0/0 up
+                setintvststr = 'set interface state {} up\n'.format(intf['virtualinterface'])
+
+                # set interface state VirtualEthernet/0/0/0 down
+                setintupstr = 'set interface state {} up\n'.format(intf['name'])
+
+                content += vhoststr + setintdnstr + setintbrstr + setvintbrstr + setintvststr + setintupstr
+
+            # Write the content to the script
+            rootdir = node['rootdir']
+            filename = rootdir + '/vpp/vpp-config/scripts/create_vms_and_connect_to_vpp'
             with open(filename, 'w+') as sfile:
                 sfile.write(content)
 

@@ -251,10 +251,11 @@ class VppPCIUtil(object):
 
         :param devices: A list of devices
         :param show_interfaces: show the kernel information
+        :param show_header: Display the header if true
         :type devices: dict
         :type show_interfaces: bool
+        :type show_header: bool
         """
-
 
         if show_interfaces:
             header = "{:15} {:25} {:50}".format("PCI ID",
@@ -265,8 +266,7 @@ class VppPCIUtil(object):
                                           "Description")
         dashseparator = ("-" * (len(header) - 2))
 
-
-        if show_header == True:
+        if show_header is True:
             print header
             print dashseparator
         for dit in devices.items():
@@ -297,7 +297,6 @@ class VppPCIUtil(object):
         :type node: dict
         :type device_id: string
         """
-
 
         rootdir = node['rootdir']
         dpdk_script = rootdir + DPDK_SCRIPT
