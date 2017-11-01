@@ -101,16 +101,6 @@ operator<<(std::ostream& os, const handle_t& h)
   return (os);
 }
 
-mac_address_t::mac_address_t(uint64_t address)
-{
-  uint8_t mac[6];
-
-  std::memcpy(mac, &address, 6);
-  for (int i = 0; i < 6; i++) {
-    bytes[i] = mac[5 - i];
-  }
-}
-
 mac_address_t::mac_address_t(uint8_t b[6])
 {
   std::copy(b, b + 6, std::begin(bytes));
@@ -131,23 +121,6 @@ mac_address_t::to_bytes(uint8_t* array, uint8_t len) const
   for (int i = 0; i < 6 && i < len; i++) {
     array[i] = bytes[i];
   }
-}
-
-uint64_t
-mac_address_t::to_u64() const
-{
-  uint64_t mac6 = 0;
-  uint8_t* b = reinterpret_cast<uint8_t*>(&mac6);
-
-  // whack hack. the vapi will byte swap.
-  b[2] = bytes[5];
-  b[3] = bytes[4];
-  b[4] = bytes[3];
-  b[5] = bytes[2];
-  b[6] = bytes[1];
-  b[7] = bytes[0];
-
-  return (mac6);
 }
 
 std::string

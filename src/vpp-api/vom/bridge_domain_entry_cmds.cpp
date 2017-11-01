@@ -42,7 +42,7 @@ bridge_domain_entry::create_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.bd_id = m_bd;
   payload.is_add = 1;
-  payload.mac = m_mac.to_u64();
+  m_mac.to_bytes(payload.mac, 6);
   payload.sw_if_index = m_tx_itf.value();
 
   VAPI_CALL(req.execute());
@@ -85,7 +85,7 @@ bridge_domain_entry::delete_cmd::issue(connection& con)
   auto& payload = req.get_request().get_payload();
   payload.bd_id = m_bd;
   payload.is_add = 1;
-  payload.mac = m_mac.to_u64();
+  m_mac.to_bytes(payload.mac, 6);
   payload.sw_if_index = ~0;
 
   VAPI_CALL(req.execute());

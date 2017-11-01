@@ -39,8 +39,8 @@ bridge_domain_entry::bridge_domain_entry(const mac_address_t& mac,
   , m_tx_itf(tx_itf.singular())
 {
   /*
- * the route goes in the default table
- */
+   * the entry goes in the default bridge-domain
+   */
   bridge_domain bd(bridge_domain::DEFAULT_TABLE);
 
   m_bd = bd.singular();
@@ -92,8 +92,8 @@ void
 bridge_domain_entry::update(const bridge_domain_entry& r)
 {
   /*
- * create the table if it is not yet created
- */
+   * create the table if it is not yet created
+   */
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new create_cmd(m_hw, m_mac, m_bd->id(), m_tx_itf->handle()));
   }
@@ -151,10 +151,10 @@ bridge_domain_entry::event_handler::handle_populate(const client_db::key_t& key)
                                 << mac.to_string() << itf->to_string();
 
     /*
- * Write each of the discovered interfaces into the OM,
- * but disable the HW Command q whilst we do, so that no
- * commands are sent to VPP
- */
+     * Write each of the discovered interfaces into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
     OM::commit(key, bd_e);
   }
 }
