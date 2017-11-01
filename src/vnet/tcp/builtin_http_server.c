@@ -31,7 +31,7 @@ typedef struct
 
 typedef struct
 {
-  u8 *rx_buf;
+  u8 **rx_buf;
   unix_shared_memory_queue_t **vpp_queue;
   u64 byte_index;
 
@@ -102,6 +102,13 @@ static const char
 
 static const char *html_footer = "</pre></body></html>\r\n";
 
+static const char
+  *html_header_static = "<html><head><title>static reply</title></head>"
+  "<link rel=\"icon\" href=\"data:,\"><body><pre>hello</pre></body>"
+  "</html>\r\n";
+
+static u8 *static_http;
+
 static void
 http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 {
@@ -119,7 +126,7 @@ http_cli_output (uword arg, u8 * buffer, uword buffer_bytes)
 }
 
 void
-send_data (builtin_http_server_args * args, u8 * data)
+send_data (stream_session_t * s, u8 * data)
 {
   session_fifo_event_t evt;
   u32 offset, bytes_to_send;
@@ -127,10 +134,7 @@ send_data (builtin_http_server_args * args, u8 * data)
   http_server_main_t *hsm = &http_server_main;
   vlib_main_t *vm = hsm->vlib_main;
   f64 last_sent_timer = vlib_time_now (vm);
-  stream_session_t *s;
 
-  s = session_get_from_handle (args->session_handle);
-  ASSERT (s);
   bytes_to_send = vec_len (data);
   offset = 0;
 
@@ -177,12 +181,12 @@ send_data (builtin_http_server_args * args, u8 * data)
 }
 
 static void
-send_error (builtin_http_server_args * args, char *str)
+send_error (stream_session_t * s, char *str)
 {
   u8 *data;
 
   data = format (0, http_error_template, str);
-  send_data (args, data);
+  send_data (s, data);
   vec_free (data);
 }
 
@@ -194,17 +198,20 @@ http_cli_process (vlib_main_t * vm,
   u8 *request = 0, *reply = 0;
   builtin_http_server_args **save_args;
   builtin_http_server_args *args;
+  stream_session_t *s;
   unformat_input_t input;
   int i;
   u8 *http = 0, *html = 0;
 
   save_args = vlib_node_get_runtime_data (hsm->vlib_main, rt->node_index);
   args = *save_args;
+  s = session_get_from_handle (args->session_handle);
+  ASSERT (s);
 
   request = (u8 *) (void *) (args->data);
   if (vec_len (request) < 7)
     {
-      send_error (args, "400 Bad Request");
+      send_error (s, "400 Bad Request");
       goto out;
     }
 
@@ -216,7 +223,7 @@ http_cli_process (vlib_main_t * vm,
 	goto found;
     }
 bad_request:
-  send_error (args, "400 Bad Request");
+  send_error (s, "400 Bad Request");
   goto out;
 
 found:
@@ -257,7 +264,7 @@ found:
   http = format (0, http_response, vec_len (html), html);
 
   /* Send it */
-  send_data (args, http);
+  send_data (s, http);
 
 out:
   /* Cleanup */
@@ -320,31 +327,40 @@ alloc_http_process_callback (void *cb_args)
 }
 
 static int
-http_server_rx_callback (stream_session_t * s)
+session_rx_request (stream_session_t * s)
 {
-  u32 max_dequeue;
-  int actual_transfer;
   http_server_main_t *hsm = &http_server_main;
   svm_fifo_t *rx_fifo;
-  builtin_http_server_args *args;
+  u32 max_dequeue;
+  int actual_transfer;
 
   rx_fifo = s->server_rx_fifo;
   max_dequeue = svm_fifo_max_dequeue (rx_fifo);
   svm_fifo_unset_event (rx_fifo);
   if (PREDICT_FALSE (max_dequeue == 0))
-    return 0;
+    return -1;
 
-  vec_validate (hsm->rx_buf, max_dequeue - 1);
-  _vec_len (hsm->rx_buf) = max_dequeue;
+  vec_validate (hsm->rx_buf[s->thread_index], max_dequeue - 1);
+  _vec_len (hsm->rx_buf[s->thread_index]) = max_dequeue;
 
   actual_transfer = svm_fifo_dequeue_nowait (rx_fifo, max_dequeue,
-					     hsm->rx_buf);
+					     hsm->rx_buf[s->thread_index]);
   ASSERT (actual_transfer > 0);
-  _vec_len (hsm->rx_buf) = actual_transfer;
+  _vec_len (hsm->rx_buf[s->thread_index]) = actual_transfer;
+  return 0;
+}
+
+static int
+http_server_rx_callback (stream_session_t * s)
+{
+  http_server_main_t *hsm = &http_server_main;
+  builtin_http_server_args *args;
+
+  session_rx_request (s);
 
   /* send the command to a new/recycled vlib process */
   args = clib_mem_alloc (sizeof (*args));
-  args->data = vec_dup (hsm->rx_buf);
+  args->data = vec_dup (hsm->rx_buf[s->thread_index]);
   args->session_handle = session_handle (s);
 
   /* Send an RPC request via the thread-0 input node */
@@ -360,6 +376,43 @@ http_server_rx_callback (stream_session_t * s)
     }
   else
     alloc_http_process (args);
+  return 0;
+}
+
+static int
+http_server_rx_callback_static (stream_session_t * s)
+{
+  http_server_main_t *hsm = &http_server_main;
+  u8 *request = 0;
+  int i;
+
+  session_rx_request (s);
+
+  request = hsm->rx_buf[s->thread_index];
+  if (vec_len (request) < 7)
+    {
+      send_error (s, "400 Bad Request");
+      goto out;
+    }
+
+  for (i = 0; i < vec_len (request) - 4; i++)
+    {
+      if (request[i] == 'G' &&
+	  request[i + 1] == 'E' &&
+	  request[i + 2] == 'T' && request[i + 3] == ' ')
+	goto found;
+    }
+  send_error (s, "400 Bad Request");
+  goto out;
+
+found:
+
+  /* Send it */
+  send_data (s, static_http);
+
+out:
+  /* Cleanup */
+  vec_free (request);
   return 0;
 }
 
@@ -438,7 +491,7 @@ create_api_loopback (vlib_main_t * vm)
   shmem_hdr = am->shmem_hdr;
   hsm->vl_input_queue = shmem_hdr->vl_input_queue;
   hsm->my_client_index =
-    vl_api_memclnt_create_internal ("tcp_test_client", hsm->vl_input_queue);
+    vl_api_memclnt_create_internal ("test_http_server", hsm->vl_input_queue);
   return 0;
 }
 
@@ -516,12 +569,29 @@ server_create_command_fn (vlib_main_t * vm,
 			  unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   http_server_main_t *hsm = &http_server_main;
-  int rv;
+  int rv, is_static = 0;
+  u8 *html;
 
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "static"))
+	is_static = 1;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
+    }
   if (hsm->my_client_index != (u32) ~ 0)
     return clib_error_return (0, "test http server is already running");
 
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
+
+  if (is_static)
+    {
+      builtin_session_cb_vft.builtin_server_rx_callback =
+	http_server_rx_callback_static;
+      html = format (0, html_header_static);
+      static_http = format (0, http_response, vec_len (html), html);
+    }
   rv = server_create (vm);
   switch (rv)
     {
@@ -546,9 +616,13 @@ static clib_error_t *
 builtin_http_server_main_init (vlib_main_t * vm)
 {
   http_server_main_t *hsm = &http_server_main;
+  vlib_thread_main_t *vtm = vlib_get_thread_main ();
+  u32 num_threads;
+
   hsm->my_client_index = ~0;
   hsm->vlib_main = vm;
-
+  num_threads = 1 /* main thread */  + vtm->n_threads;
+  vec_validate (hsm->rx_buf, num_threads - 1);
   return 0;
 }
 
