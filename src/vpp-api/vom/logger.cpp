@@ -15,6 +15,7 @@
 
 #include <chrono>
 #include <ctime>
+#include <vector>
 
 #include <boost/algorithm/string.hpp>
 
