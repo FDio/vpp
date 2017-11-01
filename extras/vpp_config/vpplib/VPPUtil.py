@@ -140,8 +140,11 @@ class VPPUtil(object):
                 stderr))
 
         reps = 'deb [trusted=yes] https://nexus.fd.io/content/'
-        reps += 'repositories/fd.io.stable.{}.ubuntu.{}.main/ ./\n' \
-            .format(fdio_release, ubuntu_version)
+        # When using a stable branch
+        # reps += 'repositories/fd.io.stable.{}.ubuntu.{}.main/ ./\n' \
+        #    .format(fdio_release, ubuntu_version)
+        reps += 'repositories/fd.io.ubuntu.{}.main/ ./\n' \
+            .format(ubuntu_version)
 
         cmd = 'echo "{0}" | sudo tee {1}'.format(reps, sfile)
         (ret, stdout, stderr) = self.exec_command(cmd)
@@ -201,8 +204,11 @@ class VPPUtil(object):
 
         reps = '[fdio-stable-{}]\n'.format(fdio_release)
         reps += 'name=fd.io stable/{} branch latest merge\n'.format(fdio_release)
-        reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.stable.{}.{}/\n'.\
-            format(fdio_release, centos_version)
+        # When using stable
+        # reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.stable.{}.{}/\n'.\
+        #     format(fdio_release, centos_version)
+        reps += 'baseurl=https://nexus.fd.io/content/repositories/fd.io.{}/\n'.\
+            format(centos_version)
         reps += 'enabled=1\n'
         reps += 'gpgcheck=0'
 
@@ -336,6 +342,10 @@ class VPPUtil(object):
         :param node: Node dictionary with cpuinfo.
         :type node: dict
         """
+
+        # First stop VPP
+        self.stop(node)
+
         distro = self.get_linux_distro()
         if distro[0] == 'Ubuntu':
             self._uninstall_vpp_ubuntu(node)
@@ -373,6 +383,23 @@ class VPPUtil(object):
                     self.exec_command('vppctl sh {}'.format(value))
 
     @staticmethod
+    def get_vms(node):
+        """
+        Get a list of VMs that are connected to VPP interfaces
+
+        :param node: VPP node.
+        :type node: dict
+        :returns: Dictionary containing a list of VMs and the interfaces that are connected to VPP
+        :rtype: dictionary
+        """
+
+        vmdict = {}
+
+        print "Need to implement get vms"
+        
+        return vmdict
+
+    @staticmethod
     def get_int_ip(node):
         """
         Get the VPP interfaces and IP addresses
@@ -393,6 +420,7 @@ class VPPUtil(object):
             if lines[0].split(' ')[0] == 'FileNotFoundError':
                 return interfaces
 
+        name = ''
         for line in lines:
             if len(line) is 0:
                 continue
@@ -583,6 +611,23 @@ class VPPUtil(object):
         return 0
 
     @staticmethod
+    def restart(node):
+        """
+
+        Starts vpp for a given node
+
+        :param node: VPP node.
+        :type node: dict
+        """
+
+        cmd = 'service vpp restart'
+        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {} {}'.
+                               format(cmd, node['host'],
+                                      stdout, stderr))
+
+    @staticmethod
     def start(node):
         """
 
@@ -699,3 +744,40 @@ class VPPUtil(object):
             version[dct[0]] = dct[1].lstrip(' ')
 
         return version
+
+    @staticmethod
+    def show_bridge(node):
+        """
+        Shows the current bridge configuration
+
+        :param node: VPP node.
+        :type node: dict
+        """
+
+        cmd = 'vppctl show bridge'
+        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {} {}'.
+                               format(cmd, node['host'],
+                                      stdout, stderr))
+        lines = stdout.split('\r\n')
+        bridges = []
+        for line in lines:
+            if line == 'no bridge-domains in use':
+                print line
+                return
+            if len(line) == 0:
+                continue
+
+            lspl = line.lstrip(' ').split()
+            if lspl[0] != 'BD-ID':
+                bridges.append(lspl[0])
+
+        for bridge in bridges:
+            cmd = 'vppctl show bridge {} detail'.format(bridge)
+            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+            if ret != 0:
+                raise RuntimeError('{} failed on node {} {} {}'.
+                                   format(cmd, node['host'],
+                                          stdout, stderr))
+            print stdout

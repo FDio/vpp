@@ -5,7 +5,7 @@ VPP in a simple and safe manner. The utility takes input from the user and
 then modifies the key configuration files. The user can then examine these files
 to be sure they are correct and then actually apply the configuration. The user
 can also install a released and stable version of VPP. This is currently
-released with release 17.07.
+released with release 17.10.
 
 Use:
 
@@ -23,9 +23,7 @@ apply the configuration and then inspect the system again and then repeat.
 
 Caveats:
 
-- Only supports Ubuntu, centos7 is coming shortly.
-- When Inspecting the system, you may see a Huge page error, inspect the system a
-few more times, if the error persists it is real.
+- Supports Ubuntu, centos7, RedHat is coming shortly.
 
 For Developers:
 
