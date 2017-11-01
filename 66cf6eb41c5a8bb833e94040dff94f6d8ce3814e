@@ -34,6 +34,24 @@
       "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c16d9ee1_afcbcec8",
+        "filename": "Makefile",
+        "patchSetId": 3
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-11-01T10:48:56Z",
+      "side": 0,
+      "message": "There is no need to to keep AESNI in the top-level makefile and I\u0027m very happy to get it removed.\nmake AESNI\u003dn will still work as dpdk/Makefile will know about it....",
+      "parentUuid": "c3e17238_bfca83cb",
+      "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
