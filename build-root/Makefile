@@ -579,7 +579,8 @@ configure_package_gnu =						\
            --libdir=$(PACKAGE_INSTALL_DIR)/$(arch_lib_dir)	\
            --prefix=$(PACKAGE_INSTALL_DIR))			\
       $($(PACKAGE)_configure_args) 				\
-      $($(PACKAGE)_configure_args_$(PLATFORM))
+      $($(PACKAGE)_configure_args_$(PLATFORM))                  \
+      $(CONFIGURE_ARGS)
 
 configure_package =							\
   $(call build_msg_fn,Configuring $(PACKAGE) in $(PACKAGE_BUILD_DIR)) ;	\
