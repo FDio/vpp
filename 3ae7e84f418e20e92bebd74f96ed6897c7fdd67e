@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "80e3e6fe_bfd30d5c",
+        "filename": "src/vnet/l2/l2_fib.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1224,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-11-01T09:34:26Z",
+      "side": 1,
+      "message": "Can you add short comment here why it is 8, not 6.....",
+      "range": {
+        "startLine": 1224,
+        "startChar": 2,
+        "endLine": 1224,
+        "endChar": 17
+      },
+      "revId": "3ae7e84f418e20e92bebd74f96ed6897c7fdd67e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
