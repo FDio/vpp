@@ -1074,6 +1074,7 @@ nobase_include_HEADERS +=			\
   vnet/dpo/classify_dpo.h			\
   vnet/dpo/receive_dpo.h			\
   vnet/dpo/ip_null_dpo.h			\
+  vnet/dpo/replicate_dpo.h   			\
   vnet/dpo/dpo.h
 
 ########################################
