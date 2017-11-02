@@ -1018,9 +1018,24 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
   vlib_buffer_main_t *bm;
   vlib_physmem_region_index_t pri;
   clib_error_t *error;
+  u32 default_free_free_list_index;
 
   vec_validate (vm->buffer_main, 0);
   bm = vm->buffer_main;
+
+  ASSERT (pool_elts (bm->buffer_free_list_pool) == 0);
+
+  /* *INDENT-OFF* */
+  default_free_free_list_index =
+    vlib_buffer_create_free_list_helper
+    (vm,
+     /* default buffer size */ VLIB_BUFFER_DEFAULT_FREE_LIST_BYTES,
+     /* is_public */ 1,
+     /* is_default */ 1,
+     (u8 *) "default");
+  /* *INDENT-ON* */
+  ASSERT (default_free_free_list_index ==
+	  VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
 
   if (vlib_buffer_callbacks)
     {

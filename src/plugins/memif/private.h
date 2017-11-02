@@ -173,6 +173,33 @@ typedef struct
 
 typedef struct
 {
+  u32 packet_len;
+  u16 first_buffer_vec_index;
+} memif_packet_op_t;
+
+typedef struct
+{
+  void *data;
+  u32 data_len;
+  u16 buffer_offset;
+  u16 buffer_vec_index;
+} memif_copy_op_t;
+
+typedef struct
+{
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+
+  /* copy vector */
+  memif_packet_op_t *packet_ops;
+  memif_copy_op_t *copy_ops;
+  u32 *buffers;
+
+  /* buffer template */
+  vlib_buffer_t buffer_template;
+} memif_per_thread_data_t;
+
+typedef struct
+{
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
 
   /** API message ID base */
@@ -185,8 +212,8 @@ typedef struct
   memif_socket_file_t *socket_files;
   uword *socket_file_index_by_sock_id;	/* map user socket id to pool idx */
 
-  /* rx buffer cache */
-  u32 **rx_buffers;
+  /* per thread data */
+  memif_per_thread_data_t *per_thread_data;
 
 } memif_main_t;
 

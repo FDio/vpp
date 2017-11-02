@@ -857,6 +857,8 @@ memif_init (vlib_main_t * vm)
   memif_main_t *mm = &memif_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   u8 *filename;
+  vlib_buffer_free_list_t *fl;
+  int i;
 
   memset (mm, 0, sizeof (memif_main_t));
 
@@ -873,8 +875,29 @@ memif_init (vlib_main_t * vm)
 		     MEMIF_DEFAULT_SOCKET_FILENAME, 0);
   memif_add_socket_file (0, filename);
 
-  vec_validate_aligned (mm->rx_buffers, tm->n_vlib_mains - 1,
+  vec_validate_aligned (mm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
+
+  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  for (i = 0; i < tm->n_vlib_mains; i++)
+    {
+      memif_per_thread_data_t *ptd =
+	vec_elt_at_index (mm->per_thread_data, i);
+      vlib_buffer_t *bt = &ptd->buffer_template;
+      vlib_buffer_init_for_free_list (bt, fl);
+      bt->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+      bt->total_length_not_including_first_buffer = 0;
+      vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+
+      /* initially prealloc copy_ops and packet_ops so we can use
+         _vec_len instead of vec_elen */
+      vec_validate_aligned (ptd->copy_ops, 0, CLIB_CACHE_LINE_BYTES);
+      vec_reset_length (ptd->copy_ops);
+      vec_validate_aligned (ptd->packet_ops, 0, CLIB_CACHE_LINE_BYTES);
+      vec_reset_length (ptd->packet_ops);
+      vec_validate_aligned (ptd->buffers, 0, CLIB_CACHE_LINE_BYTES);
+      vec_reset_length (ptd->buffers);
+    }
 
   return 0;
 }
