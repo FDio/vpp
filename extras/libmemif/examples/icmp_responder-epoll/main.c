@@ -43,6 +43,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <signal.h>
+#include <pthread.h>
+
+#include <time.h>
 
 #include <libmemif.h>
 #include <icmp_proto.h>
@@ -57,8 +60,16 @@
                     printf (__VA_ARGS__);                           \
                     printf ("\n");                                  \
                 } while (0)
+#define LOG(...) do {                                               \
+                    if (enable_log) {                               \
+                        dprintf (out_fd, __VA_ARGS__);              \
+                        dprintf (out_fd, "\n");                     \
+                    }                                               \
+                } while (0)
+#define LOG_FILE "/tmp/memif_time_test.txt"
 #else
 #define DBG(...)
+#define LOG(...)
 #endif
 
 #define INFO(...) do {                                              \
@@ -66,11 +77,14 @@
                     printf ("\n");                                  \
                 } while (0)
 
+
 /* maximum tx/rx memif buffers */
 #define MAX_MEMIF_BUFS  256
 #define MAX_CONNS       50
 
 int epfd;
+int out_fd;
+uint8_t enable_log;
 
 typedef struct
 {
@@ -89,9 +103,22 @@ typedef struct
   uint16_t rx_buf_num;
   /* interface ip address */
   uint8_t ip_addr[4];
+  uint16_t seq;
+  uint64_t tx_counter, rx_counter, tx_err_counter;
+  uint64_t t_sec, t_nsec;
 } memif_connection_t;
 
+typedef struct
+{
+  uint16_t index;
+  uint64_t packet_num;
+  uint8_t ip_daddr[4];
+  uint8_t hw_daddr[6];
+} icmpr_thread_data_t;
+
 memif_connection_t memif_connection[MAX_CONNS];
+icmpr_thread_data_t icmpr_thread_data[MAX_CONNS];
+pthread_t thread[MAX_CONNS];
 long ctx[MAX_CONNS];
 
 /* print details for all memif connections */
@@ -243,6 +270,7 @@ int
 on_connect (memif_conn_handle_t conn, void *private_ctx)
 {
   INFO ("memif connected!");
+  enable_log = 1;
   return 0;
 }
 
@@ -277,21 +305,20 @@ control_fd_update (int fd, uint8_t events)
 }
 
 int
-icmpr_buffer_alloc (long index, long n, uint16_t qid)
+icmpr_buffer_alloc (long index, long n, uint16_t * r, uint16_t i,
+		    uint16_t qid)
 {
   memif_connection_t *c = &memif_connection[index];
   int err;
-  uint16_t r;
   /* set data pointer to shared memory and set buffer_len to shared mmeory buffer len */
-  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, n, &r, 0);
-  if (err != MEMIF_ERR_SUCCESS)
+  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs + i, n, r, 0);
+  if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
     {
       INFO ("memif_buffer_alloc: %s", memif_strerror (err));
-      c->tx_buf_num += r;
       return -1;
     }
-  c->tx_buf_num += r;
-  DBG ("allocated %d/%ld buffers, %u free buffers", r, n,
+  c->tx_buf_num += *r;
+  DBG ("allocated %d/%ld buffers, %u free buffers", *r, n,
        MAX_MEMIF_BUFS - c->tx_buf_num);
   return 0;
 }
@@ -307,8 +334,8 @@ icmpr_tx_burst (long index, uint16_t qid)
   err = memif_tx_burst (c->conn, qid, c->tx_bufs, c->tx_buf_num, &r);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_tx_burst: %s", memif_strerror (err));
-  DBG ("tx: %d/%u", r, c->tx_buf_num);
   c->tx_buf_num -= r;
+  c->tx_counter += r;
   return 0;
 }
 
@@ -324,46 +351,267 @@ on_interrupt (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
       INFO ("invalid context: %ld/%u", index, c->index);
       return 0;
     }
-  int err;
-  uint16_t rx;
+
+  int err = MEMIF_ERR_SUCCESS, ret_val;
+  uint16_t rx, tx;
   uint16_t fb;
-  /* receive data from shared memory buffers */
-  err = memif_rx_burst (c->conn, qid, c->rx_bufs, MAX_MEMIF_BUFS, &rx);
-  if (err != MEMIF_ERR_SUCCESS)
-    {
-      INFO ("memif_rx_burst: %s", memif_strerror (err));
-      c->rx_buf_num += rx;
-      goto error;
-    }
-  c->rx_buf_num += rx;
+  int i;			/* rx buffer iterator */
+  int j;			/* tx bufferiterator */
 
-  DBG ("received %d buffers. %u/%u alloc/free buffers",
-       rx, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
-
-  if (icmpr_buffer_alloc (index, rx, qid) < 0)
+  /* loop while there are packets in shm */
+  do
     {
-      INFO ("buffer_alloc error");
-      goto error;
-    }
-  int i;
-  for (i = 0; i < rx; i++)
-    {
-      resolve_packet ((void *) (c->rx_bufs + i)->data,
-		      (c->rx_bufs + i)->data_len,
-		      (void *) (c->tx_bufs + i)->data,
-		      &(c->tx_bufs + i)->data_len, c->ip_addr);
-    }
+      /* receive data from shared memory buffers */
+      err = memif_rx_burst (c->conn, qid, c->rx_bufs, MAX_MEMIF_BUFS, &rx);
+      ret_val = err;
+      c->rx_counter += rx;
+      if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF))
+	{
+	  INFO ("memif_rx_burst: %s", memif_strerror (err));
+	  goto error;
+	}
 
-  /* mark memif buffers and shared memory buffers as free */
+      i = 0;
+
+      /* try to alloc required number of buffers buffers */
+      err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, rx, &tx, 0);
+      if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
+	{
+	  INFO ("memif_buffer_alloc: %s", memif_strerror (err));
+	  goto error;
+	}
+      j = 0;
+      c->tx_err_counter = rx - tx;
+
+      /* process bufers */
+      while (tx)
+	{
+	  while (tx > 2)
+	    {
+	      resolve_packet ((void *) (c->rx_bufs + i)->data,
+			      (c->rx_bufs + i)->data_len,
+			      (void *) (c->tx_bufs + j)->data,
+			      &(c->tx_bufs + j)->data_len, c->ip_addr);
+	      resolve_packet ((void *) (c->rx_bufs + i + 1)->data,
+			      (c->rx_bufs + i + 1)->data_len,
+			      (void *) (c->tx_bufs + j + 1)->data,
+			      &(c->tx_bufs + j + 1)->data_len, c->ip_addr);
+
+	      i += 2;
+	      j += 2;
+	      tx -= 2;
+	    }
+	  resolve_packet ((void *) (c->rx_bufs + i)->data,
+			  (c->rx_bufs + i)->data_len,
+			  (void *) (c->tx_bufs + j)->data,
+			  &(c->tx_bufs + j)->data_len, c->ip_addr);
+	  i++;
+	  j++;
+	  tx--;
+	}
+      /* mark memif buffers and shared memory buffers as free */
+      /* free processed buffers */
+      err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
+      if (err != MEMIF_ERR_SUCCESS)
+	INFO ("memif_buffer_free: %s", memif_strerror (err));
+      rx -= fb;
+
+      DBG ("freed %d buffers. %u/%u alloc/free buffers",
+	   fb, rx, MAX_MEMIF_BUFS - rx);
+
+      /* transmit allocated buffers */
+      err = memif_tx_burst (c->conn, qid, c->tx_bufs, j, &tx);
+      if (err != MEMIF_ERR_SUCCESS)
+	{
+	  INFO ("memif_tx_burst: %s", memif_strerror (err));
+	  goto error;
+	}
+      c->tx_counter += tx;
+
+    }
+  while (ret_val == MEMIF_ERR_NOBUF);
+
+  return 0;
+
+error:
   err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
   if (err != MEMIF_ERR_SUCCESS)
     INFO ("memif_buffer_free: %s", memif_strerror (err));
   c->rx_buf_num -= fb;
-
   DBG ("freed %d buffers. %u/%u alloc/free buffers",
        fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+  return 0;
+}
 
-  icmpr_tx_burst (index, qid);
+/* called when event is polled on interrupt file descriptor.
+    there are packets in shared memory ready to be received */
+/* dev test modification: loop until TX == RX (don't drop buffers) */
+int
+on_interrupt0 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
+{
+  long index = *((long *) private_ctx);
+  memif_connection_t *c = &memif_connection[index];
+  if (c->index != index)
+    {
+      INFO ("invalid context: %ld/%u", index, c->index);
+      return 0;
+    }
+
+  int err = MEMIF_ERR_SUCCESS, ret_val;
+  uint16_t rx, tx;
+  uint16_t fb;
+  int i;			/* rx buffer iterator */
+  int j;			/* tx bufferiterator */
+  int prev_i;			/* first allocated rx buffer */
+
+  /* loop while there are packets in shm */
+  do
+    {
+      /* receive data from shared memory buffers */
+      err = memif_rx_burst (c->conn, qid, c->rx_bufs, MAX_MEMIF_BUFS, &rx);
+      ret_val = err;
+      c->rx_counter += rx;
+      if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF))
+	{
+	  INFO ("memif_rx_burst: %s", memif_strerror (err));
+	  goto error;
+	}
+
+      prev_i = i = 0;
+
+      /* loop while there are RX buffers to be processed */
+      while (rx)
+	{
+
+	  /* try to alloc required number of buffers buffers */
+	  err = memif_buffer_alloc (c->conn, qid, c->tx_bufs, rx, &tx, 0);
+	  if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
+	    {
+	      INFO ("memif_buffer_alloc: %s", memif_strerror (err));
+	      goto error;
+	    }
+	  j = 0;
+
+	  /* process bufers */
+	  while (tx)
+	    {
+	      while (tx > 2)
+		{
+		  resolve_packet ((void *) (c->rx_bufs + i)->data,
+				  (c->rx_bufs + i)->data_len,
+				  (void *) (c->tx_bufs + j)->data,
+				  &(c->tx_bufs + j)->data_len, c->ip_addr);
+		  resolve_packet ((void *) (c->rx_bufs + i + 1)->data,
+				  (c->rx_bufs + i + 1)->data_len,
+				  (void *) (c->tx_bufs + j + 1)->data,
+				  &(c->tx_bufs + j + 1)->data_len,
+				  c->ip_addr);
+
+		  i += 2;
+		  j += 2;
+		  tx -= 2;
+		}
+	      resolve_packet ((void *) (c->rx_bufs + i)->data,
+			      (c->rx_bufs + i)->data_len,
+			      (void *) (c->tx_bufs + j)->data,
+			      &(c->tx_bufs + j)->data_len, c->ip_addr);
+	      i++;
+	      j++;
+	      tx--;
+	    }
+	  /* mark memif buffers and shared memory buffers as free */
+	  /* free processed buffers */
+	  err = memif_buffer_free (c->conn, qid, c->rx_bufs + prev_i, j, &fb);
+	  if (err != MEMIF_ERR_SUCCESS)
+	    INFO ("memif_buffer_free: %s", memif_strerror (err));
+	  rx -= fb;
+	  prev_i = i;
+
+	  DBG ("freed %d buffers. %u/%u alloc/free buffers",
+	       fb, rx, MAX_MEMIF_BUFS - rx);
+
+	  /* transmit allocated buffers */
+	  err = memif_tx_burst (c->conn, qid, c->tx_bufs, j, &tx);
+	  if (err != MEMIF_ERR_SUCCESS)
+	    {
+	      INFO ("memif_tx_burst: %s", memif_strerror (err));
+	      goto error;
+	    }
+	  c->tx_counter += tx;
+
+	}
+
+    }
+  while (ret_val == MEMIF_ERR_NOBUF);
+
+  return 0;
+
+error:
+  err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
+  if (err != MEMIF_ERR_SUCCESS)
+    INFO ("memif_buffer_free: %s", memif_strerror (err));
+  c->rx_buf_num -= fb;
+  DBG ("freed %d buffers. %u/%u alloc/free buffers",
+       fb, c->rx_buf_num, MAX_MEMIF_BUFS - c->rx_buf_num);
+  return 0;
+}
+
+/* called when event is polled on interrupt file descriptor.
+    there are packets in shared memory ready to be received */
+/* dev test modification: handle only ARP requests */
+int
+on_interrupt1 (memif_conn_handle_t conn, void *private_ctx, uint16_t qid)
+{
+  long index = *((long *) private_ctx);
+  memif_connection_t *c = &memif_connection[index];
+  if (c->index != index)
+    {
+      INFO ("invalid context: %ld/%u", index, c->index);
+      return 0;
+    }
+
+  int err = MEMIF_ERR_SUCCESS, ret_val;
+  int i;
+  uint16_t rx, tx;
+  uint16_t fb;
+  uint16_t pck_seq;
+
+  do
+    {
+      /* receive data from shared memory buffers */
+      err = memif_rx_burst (c->conn, qid, c->rx_bufs, MAX_MEMIF_BUFS, &rx);
+      ret_val = err;
+      if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF))
+	{
+	  INFO ("memif_rx_burst: %s", memif_strerror (err));
+	  goto error;
+	}
+      c->rx_buf_num += rx;
+      c->rx_counter += rx;
+
+      for (i = 0; i < rx; i++)
+	{
+	  if (((struct ether_header *) (c->rx_bufs + i)->data)->ether_type ==
+	      0x0608)
+	    {
+	      if (icmpr_buffer_alloc (c->index, 1, &tx, i, qid) < 0)
+		break;
+	      resolve_packet ((void *) (c->rx_bufs + i)->data,
+			      (c->rx_bufs + i)->data_len,
+			      (void *) (c->tx_bufs + i)->data,
+			      &(c->tx_bufs + i)->data_len, c->ip_addr);
+	      icmpr_tx_burst (c->index, qid);
+	    }
+	}
+
+      err = memif_buffer_free (c->conn, qid, c->rx_bufs, rx, &fb);
+      if (err != MEMIF_ERR_SUCCESS)
+	INFO ("memif_buffer_free: %s", memif_strerror (err));
+      c->rx_buf_num -= fb;
+
+
+    }
+  while (ret_val == MEMIF_ERR_NOBUF);
 
   return 0;
 
@@ -378,7 +626,7 @@ error:
 }
 
 int
-icmpr_memif_create (long index, long mode)
+icmpr_memif_create (long index, long mode, char *s)
 {
   if (index >= MAX_CONNS)
     {
@@ -397,7 +645,7 @@ icmpr_memif_create (long index, long mode)
   int fd = -1;
   memset (&args, 0, sizeof (args));
   args.is_master = mode;
-  args.log2_ring_size = 10;
+  args.log2_ring_size = 11;
   args.buffer_size = 2048;
   args.num_s2m_rings = 2;
   args.num_m2s_rings = 2;
@@ -411,13 +659,48 @@ icmpr_memif_create (long index, long mode)
   args.interface_id = index;
   /* last argument for memif_create (void * private_ctx) is used by user
      to identify connection. this context is returned with callbacks */
-  int err = memif_create (&c->conn,
+  int err;
+  /* default interrupt */
+  if (s == NULL)
+    {
+      err = memif_create (&c->conn,
 			  &args, on_connect, on_disconnect, on_interrupt,
 			  &ctx[index]);
-  if (err != MEMIF_ERR_SUCCESS)
+      if (err != MEMIF_ERR_SUCCESS)
+	{
+	  INFO ("memif_create: %s", memif_strerror (err));
+	  return 0;
+	}
+    }
+  else
     {
-      INFO ("memif_create: %s", memif_strerror (err));
-      return 0;
+      if (strncmp (s, "0", 1) == 0)
+	{
+	  err = memif_create (&c->conn,
+			      &args, on_connect, on_disconnect, on_interrupt0,
+			      &ctx[index]);
+	  if (err != MEMIF_ERR_SUCCESS)
+	    {
+	      INFO ("memif_create: %s", memif_strerror (err));
+	      return 0;
+	    }
+	}
+      else if (strncmp (s, "1", 1) == 0)
+	{
+	  err = memif_create (&c->conn,
+			      &args, on_connect, on_disconnect, on_interrupt1,
+			      &ctx[index]);
+	  if (err != MEMIF_ERR_SUCCESS)
+	    {
+	      INFO ("memif_create: %s", memif_strerror (err));
+	      return 0;
+	    }
+	}
+      else
+	{
+	  INFO ("Unknown interrupt descriptor");
+	  goto done;
+	}
     }
 
   c->index = index;
@@ -433,6 +716,10 @@ icmpr_memif_create (long index, long mode)
   c->ip_addr[1] = 168;
   c->ip_addr[2] = c->index + 1;
   c->ip_addr[3] = 2;
+
+  c->seq = c->tx_err_counter = c->tx_counter = c->rx_counter = 0;
+
+done:
   return 0;
 }
 
@@ -489,12 +776,15 @@ print_help ()
   printf ("\thelp - prints this help\n");
   printf ("\texit - exit app\n");
   printf
-    ("\tconn <index> <mode> - create memif. index is also used as interface id, mode 0 = slave 1 = master\n");
+    ("\tconn <index> <mode> [<interrupt-desc>] - create memif. index is also used as interface id, mode 0 = slave 1 = master, interrupt-desc none = default 0 = if ring is full wait 1 = handle only ARP requests\n");
   printf ("\tdel  <index> - delete memif\n");
   printf ("\tshow - show connection details\n");
   printf ("\tip-set <index> <ip-addr> - set interface ip address\n");
   printf
     ("\trx-mode <index> <qid> <polling|interrupt> - set queue rx mode\n");
+  printf ("\tsh-count - print counters\n");
+  printf ("\tcl-count - clear counters\n");
+  printf ("\tsend <index> <tx> <ip> <mac> - send icmp\n");
 }
 
 int
@@ -503,6 +793,9 @@ icmpr_free ()
   /* application cleanup */
   int err;
   long i;
+  if (out_fd > 0)
+    close (out_fd);
+  out_fd = -1;
   for (i = 0; i < MAX_CONNS; i++)
     {
       memif_connection_t *c = &memif_connection[i];
@@ -610,6 +903,209 @@ icmpr_set_rx_mode (long index, long qid, char *mode)
   return 0;
 }
 
+void
+icmpr_print_counters ()
+{
+  int i;
+  for (i = 0; i < MAX_CONNS; i++)
+    {
+      memif_connection_t *c = &memif_connection[i];
+      if (c->conn == NULL)
+	continue;
+      printf ("===============================\n");
+      printf ("interface index: %d\n", c->index);
+      printf ("\trx: %lu\n", c->rx_counter);
+      printf ("\ttx: %lu\n", c->tx_counter);
+      printf ("\ttx_err: %lu\n", c->tx_err_counter);
+      printf ("\tts: %lus %luns\n", c->t_sec, c->t_nsec);
+    }
+}
+
+void
+icmpr_reset_counters ()
+{
+  int i;
+  for (i = 0; i < MAX_CONNS; i++)
+    {
+      memif_connection_t *c = &memif_connection[i];
+      if (c->conn == NULL)
+	continue;
+      c->t_sec = c->t_nsec = c->tx_err_counter = c->tx_counter =
+	c->rx_counter = 0;
+    }
+}
+
+void *
+icmpr_send_proc (void *data)
+{
+  icmpr_thread_data_t *d = (icmpr_thread_data_t *) data;
+  int index = d->index;
+  uint64_t count = d->packet_num;
+  memif_connection_t *c = &memif_connection[index];
+  if (c->conn == NULL)
+    {
+      INFO ("No connection at index %d. Thread exiting...\n", index);
+      pthread_exit (NULL);
+    }
+  uint16_t tx, i;
+  int err = MEMIF_ERR_SUCCESS;
+  uint32_t seq = 0;
+  struct timespec start, end;
+  memset (&start, 0, sizeof (start));
+  memset (&end, 0, sizeof (end));
+
+  timespec_get (&start, TIME_UTC);
+  while (count)
+    {
+      i = 0;
+      err = memif_buffer_alloc (c->conn, 0, c->tx_bufs,
+				MAX_MEMIF_BUFS >
+				count ? count : MAX_MEMIF_BUFS, &tx, 0);
+      if ((err != MEMIF_ERR_SUCCESS) && (err != MEMIF_ERR_NOBUF_RING))
+	{
+	  INFO ("memif_buffer_alloc: %s Thread exiting...\n",
+		memif_strerror (err));
+	  pthread_exit (NULL);
+	}
+      c->tx_buf_num += tx;
+
+      while (tx)
+	{
+	  while (tx > 2)
+	    {
+	      generate_packet ((void *) c->tx_bufs[i].data,
+			       &c->tx_bufs[i].data_len, c->ip_addr,
+			       d->ip_daddr, d->hw_daddr, seq++);
+	      generate_packet ((void *) c->tx_bufs[i + 1].data,
+			       &c->tx_bufs[i + 1].data_len, c->ip_addr,
+			       d->ip_daddr, d->hw_daddr, seq++);
+	      i += 2;
+	      tx -= 2;
+	    }
+	  generate_packet ((void *) c->tx_bufs[i].data,
+			   &c->tx_bufs[i].data_len, c->ip_addr,
+			   d->ip_daddr, d->hw_daddr, seq++);
+	  i++;
+	  tx--;
+	}
+      err = memif_tx_burst (c->conn, 0, c->tx_bufs, c->tx_buf_num, &tx);
+      if (err != MEMIF_ERR_SUCCESS)
+	{
+	  INFO ("memif_tx_burst: %s Thread exiting...\n",
+		memif_strerror (err));
+	  pthread_exit (NULL);
+	}
+      c->tx_buf_num -= tx;
+      c->tx_counter += tx;
+      count -= tx;
+    }
+  timespec_get (&end, TIME_UTC);
+  INFO ("Pakcet sequence finished!");
+  INFO ("Seq len: %u", seq);
+  uint64_t t1 = end.tv_sec - start.tv_sec;
+  uint64_t t2;
+  if (end.tv_nsec > start.tv_nsec)
+    {
+      t2 = end.tv_nsec - start.tv_nsec;
+    }
+  else
+    {
+      t2 = start.tv_nsec - end.tv_nsec;
+      t1--;
+    }
+  c->t_sec = t1;
+  c->t_nsec = t2;
+  INFO ("Seq time: %lus %luns", t1, t2);
+  double tmp = t1;
+  tmp += t2 / 1e+9;
+  tmp = seq / tmp;
+  INFO ("Average pps: %f", tmp);
+  INFO ("Thread exiting...");
+  pthread_exit (NULL);
+}
+
+int
+icmpr_send (long index, long packet_num, char *hw, char *ip)
+{
+  memif_connection_t *c = &memif_connection[index];
+  char *end;
+  char *ui;
+  uint8_t tmp[6];
+  if (c->conn == NULL)
+    return -1;
+  c->seq = 0;
+  icmpr_thread_data_t *data = &icmpr_thread_data[index];
+  data->index = index;
+  data->packet_num = packet_num;
+  INFO ("PN: %lu", data->packet_num);
+  printf ("%s\n", ip);
+  printf ("%s\n", hw);
+
+  ui = strtok (ip, ".");
+  if (ui == NULL)
+    goto error;
+  tmp[0] = strtol (ui, &end, 10);
+
+  ui = strtok (NULL, ".");
+  if (ui == NULL)
+    goto error;
+  tmp[1] = strtol (ui, &end, 10);
+
+  ui = strtok (NULL, ".");
+  if (ui == NULL)
+    goto error;
+  tmp[2] = strtol (ui, &end, 10);
+
+  ui = strtok (NULL, ".");
+  if (ui == NULL)
+    goto error;
+  tmp[3] = strtol (ui, &end, 10);
+
+  data->ip_daddr[0] = tmp[0];
+  data->ip_daddr[1] = tmp[1];
+  data->ip_daddr[2] = tmp[2];
+  data->ip_daddr[3] = tmp[3];
+
+  ui = strtok (hw, ":");
+  if (ui == NULL)
+    goto error;
+  tmp[0] = strtol (ui, &end, 16);
+  ui = strtok (NULL, ":");
+  if (ui == NULL)
+    goto error;
+  tmp[1] = strtol (ui, &end, 16);
+  ui = strtok (NULL, ":");
+  if (ui == NULL)
+    goto error;
+  tmp[2] = strtol (ui, &end, 16);
+  ui = strtok (NULL, ":");
+  if (ui == NULL)
+    goto error;
+  tmp[3] = strtol (ui, &end, 16);
+  ui = strtok (NULL, ":");
+  if (ui == NULL)
+    goto error;
+  tmp[4] = strtol (ui, &end, 16);
+  ui = strtok (NULL, ":");
+  if (ui == NULL)
+    goto error;
+  tmp[5] = strtol (ui, &end, 16);
+
+  data->hw_daddr[0] = tmp[0];
+  data->hw_daddr[1] = tmp[1];
+  data->hw_daddr[2] = tmp[2];
+  data->hw_daddr[3] = tmp[3];
+  data->hw_daddr[4] = tmp[4];
+  data->hw_daddr[5] = tmp[5];
+
+  pthread_create (&thread[index], NULL, icmpr_send_proc, (void *) data);
+  return 0;
+
+error:
+  INFO ("Invalid input\n");
+  return 0;
+}
+
 int
 user_input_handler ()
 {
@@ -644,7 +1140,7 @@ user_input_handler ()
 	}
       ui = strtok (NULL, " ");
       if (ui != NULL)
-	icmpr_memif_create (a, strtol (ui, &end, 10));
+	icmpr_memif_create (a, strtol (ui, &end, 10), strtok (NULL, " "));
       else
 	INFO ("expected mode <0|1>");
       goto done;
@@ -689,6 +1185,32 @@ user_input_handler ()
 	INFO ("expected qid");
       goto done;
     }
+  else if (strncmp (ui, "sh-count", 8) == 0)
+    {
+      icmpr_print_counters ();
+    }
+  else if (strncmp (ui, "cl-count", 8) == 0)
+    {
+      icmpr_reset_counters ();
+    }
+  else if (strncmp (ui, "send", 4) == 0)
+    {
+      ui = strtok (NULL, " ");
+      if (ui != NULL)
+	a = strtol (ui, &end, 10);
+      else
+	{
+	  INFO ("expected id");
+	  goto done;
+	}
+      ui = strtok (NULL, " ");
+      if (ui != NULL)
+	icmpr_send (a, strtol (ui, &end, 10), strtok (NULL, " "),
+		    strtok (NULL, " "));
+      else
+	INFO ("expected count");
+      goto done;
+    }
   else
     {
       DBG ("unknown command: %s", ui);
@@ -708,11 +1230,14 @@ poll_event (int timeout)
   int app_err = 0, memif_err = 0, en = 0;
   int tmp, nfd;
   uint32_t events = 0;
+  struct timespec start, end;
   memset (&evt, 0, sizeof (evt));
   evt.events = EPOLLIN | EPOLLOUT;
   sigset_t sigset;
   sigemptyset (&sigset);
   en = epoll_pwait (epfd, &evt, 1, timeout, &sigset);
+  /* id event polled */
+  timespec_get (&start, TIME_UTC);
   if (en < 0)
     {
       DBG ("epoll_pwait: %s", strerror (errno));
@@ -745,6 +1270,9 @@ poll_event (int timeout)
 	}
     }
 
+  timespec_get (&end, TIME_UTC);
+  LOG ("interrupt: %ld", end.tv_nsec - start.tv_nsec);
+
   if ((app_err < 0) || (memif_err < 0))
     {
       if (app_err < 0)
@@ -762,6 +1290,15 @@ main ()
 {
   epfd = epoll_create (1);
   add_epoll_fd (0, EPOLLIN);
+
+#ifdef LOG_FILE
+  remove (LOG_FILE);
+  enable_log = 0;
+
+  out_fd = open (LOG_FILE, O_WRONLY | O_CREAT, S_IRWXO);
+  if (out_fd < 0)
+    INFO ("Error opening log file: %s", strerror (errno));
+#endif /* LOG_FILE */
 
   /* initialize memory interface */
   int err, i;
