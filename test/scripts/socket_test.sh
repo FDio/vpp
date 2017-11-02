@@ -66,7 +66,7 @@ OPTIONS:
   -l                  Leave ${tmp_cmdfile_prefix}* files after test run.
   -b                  Run bash after application exit.
   -d                  Run the vpp_debug version of all apps.
-  -c                  Set VCL_CONFIG to use the vppcom_test.conf file.
+  -c                  Set VCL_CONFIG to use the vcl_test.conf file.
   -i                  Run iperf3 for client/server app in native tests.
   -n                  Name of ethernet for VPP to use in multi-host cfg.
   -6                  Use ipv6 addressing.
