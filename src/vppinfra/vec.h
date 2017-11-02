@@ -145,14 +145,14 @@ _vec_resize (void *v,
 					       data_align));
 }
 
-/** \brief Low-level vector resize predicate
+/** \brief Determine if vector will resize with next allocation
 
     @param v pointer to a vector
     @param length_increment length increment in elements
     @param data_bytes requested size in bytes
     @param header_bytes header size in bytes (may be zero)
     @param data_align alignment (may be zero)
-    @return v_prime pointer to resized vector, may or may not equal v
+    @return 1 if vector will resize 0 otherwise
 */
 
 always_inline int
@@ -161,7 +161,6 @@ _vec_resize_will_expand (void *v,
 			 uword data_bytes, uword header_bytes,
 			 uword data_align)
 {
-  vec_header_t *vh = _vec_find (v);
   uword new_data_bytes, aligned_header_bytes;
 
   aligned_header_bytes = vec_header_bytes (header_bytes);
@@ -177,10 +176,7 @@ _vec_resize_will_expand (void *v,
 
       /* Typically we'll not need to resize. */
       if (new_data_bytes <= clib_mem_size (p))
-	{
-	  vh->len += length_increment;
-	  return 0;
-	}
+	return 0;
     }
   return 1;
 }
