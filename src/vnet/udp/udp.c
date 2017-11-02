@@ -334,6 +334,7 @@ udp_init (vlib_main_t * vm)
   u32 num_threads;
   clib_error_t *error = 0;
   ip_protocol_info_t *pi;
+  int i;
 
   if ((error = vlib_call_init_function (vm, ip_main_init)))
     return error;
@@ -367,6 +368,13 @@ udp_init (vlib_main_t * vm)
   vec_validate (um->connection_peekers, num_threads - 1);
   vec_validate (um->peekers_readers_locks, num_threads - 1);
   vec_validate (um->peekers_write_locks, num_threads - 1);
+
+  if (num_threads > 1)
+    for (i = 0; i < num_threads; i++)
+      {
+	clib_spinlock_init (&um->peekers_readers_locks[i]);
+	clib_spinlock_init (&um->peekers_write_locks[i]);
+      }
   return error;
 }
 

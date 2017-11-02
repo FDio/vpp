@@ -147,7 +147,6 @@ session_alloc_for_connection (transport_connection_t * tc)
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
   s->session_state = SESSION_STATE_CONNECTING;
-  s->thread_index = thread_index;
 
   /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
@@ -166,6 +165,7 @@ session_alloc_and_init (segment_manager_t * sm, transport_connection_t * tc,
   if (alloc_fifos && (rv = session_alloc_fifos (sm, s)))
     {
       session_free (s);
+      *ret_s = 0;
       return rv;
     }
 
@@ -1084,6 +1084,11 @@ session_manager_main_enable (vlib_main_t * vm)
       _vec_len (smm->pending_event_vector[i]) = 0;
       vec_validate (smm->pending_disconnects[i], 0);
       _vec_len (smm->pending_disconnects[i]) = 0;
+      if (num_threads > 1)
+	{
+	  clib_spinlock_init (&smm->peekers_readers_locks[i]);
+	  clib_spinlock_init (&smm->peekers_write_locks[i]);
+	}
     }
 
 #if SESSION_DBG
