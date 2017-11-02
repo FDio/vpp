@@ -3872,7 +3872,8 @@ process_map_reply (map_records_arg_t * a)
       }
 
     if ((u32) ~ 0 != m->ttl)
-      mapping_start_expiration_timer (lcm, dst_map_index, MAPPING_TIMEOUT);
+      mapping_start_expiration_timer (lcm, dst_map_index,
+				      (m->ttl == 0) ? 0 : MAPPING_TIMEOUT);
   }
 
   /* remove pending map request entry */
