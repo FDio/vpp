@@ -1,0 +1,135 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1d814020_04d3f179",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2017-11-02T10:09:36Z",
+      "side": 1,
+      "message": "Why do we need 2 TLV types? \nEither we only allow one TLV type on the SR policy or we allow several. In case of the latter please have a vector of TLV types, instead of only two hardcoded.",
+      "range": {
+        "startLine": 115,
+        "startChar": 0,
+        "endLine": 116,
+        "endChar": 15
+      },
+      "revId": "331fe56bcc39ce6fdc4f0fb5bae6dcad672a5550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4f3cdeb3_fbbabd69",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 148,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2017-11-02T10:09:36Z",
+      "side": 1,
+      "message": "Please rename to make generic to TLV callback, not OAM.",
+      "revId": "331fe56bcc39ce6fdc4f0fb5bae6dcad672a5550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c3d61d8a_965316c5",
+        "filename": "src/vnet/srv6/sr.h",
+        "patchSetId": 9
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2017-11-02T10:09:36Z",
+      "side": 1,
+      "message": "Same comment as above. One TLV or many. Not two hardcoded please.",
+      "range": {
+        "startLine": 320,
+        "startChar": 7,
+        "endLine": 320,
+        "endChar": 34
+      },
+      "revId": "331fe56bcc39ce6fdc4f0fb5bae6dcad672a5550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c53a8fd0_4711585a",
+        "filename": "src/vnet/srv6/sr_localsid.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 775,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2017-11-02T10:09:36Z",
+      "side": 1,
+      "message": "Discussed over the phone. TLV triggered based on Argument bit, O-bit or specific SR localSID function.",
+      "revId": "331fe56bcc39ce6fdc4f0fb5bae6dcad672a5550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "83b8bc49_b06da2c9",
+        "filename": "src/vnet/srv6/sr_policy_rewrite.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 908,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2017-11-02T10:09:36Z",
+      "side": 1,
+      "message": "Can we make this flexible via the TLV registration instead of hardcoded?",
+      "revId": "331fe56bcc39ce6fdc4f0fb5bae6dcad672a5550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4ce78334_b062c70d",
+        "filename": "src/vnet/srv6/sr_policy_rewrite.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 1317,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2017-11-02T10:09:36Z",
+      "side": 1,
+      "message": "Wouldn\u0027t it be more performant to do the TLV check based on the information stored in the SR policy object that you have just applied rather than looking into the packet bits?\nJust wondering here...",
+      "revId": "331fe56bcc39ce6fdc4f0fb5bae6dcad672a5550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f25ad3e9_c1203748",
+        "filename": "src/vnet/srv6/sr_policy_rewrite.c",
+        "patchSetId": 9
+      },
+      "lineNbr": 3390,
+      "author": {
+        "id": 206
+      },
+      "writtenOn": "2017-11-02T10:09:36Z",
+      "side": 1,
+      "message": "Can you please rename it to TLV policy function rather than TLV?",
+      "revId": "331fe56bcc39ce6fdc4f0fb5bae6dcad672a5550",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
