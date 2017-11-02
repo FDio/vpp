@@ -22,8 +22,8 @@
 #define MEMIF_CACHELINE_SIZE 64
 #endif
 
-#define MEMIF_COOKIE		0x3E31F10
-#define MEMIF_VERSION_MAJOR	1
+#define MEMIF_COOKIE		0x3E31F20
+#define MEMIF_VERSION_MAJOR	2
 #define MEMIF_VERSION_MINOR	0
 #define MEMIF_VERSION		((MEMIF_VERSION_MAJOR << 8) | MEMIF_VERSION_MINOR)
 
@@ -150,7 +150,8 @@ typedef struct __attribute__ ((packed))
   memif_region_index_t region;
   uint32_t buffer_length;
   uint32_t length;
-  uint8_t reserved[4];
+  uint8_t num_segments[1];
+  uint8_t reserved[3];
   memif_region_offset_t offset;
   uint64_t metadata;
 } memif_desc_t;
