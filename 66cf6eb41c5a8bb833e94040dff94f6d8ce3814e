@@ -52,6 +52,23 @@
       "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5612e090_bb0f471b",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 3
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-11-02T13:42:18Z",
+      "side": 0,
+      "message": "I think Damjan is right about the definition of the definition of AESNI in the top level make.\nHowever, this is definitely needed here because I need this option defined. I reverse it in the release SRPM for RHEL and Centos to allow builds where there is no up to date version of nasm assembler.",
+      "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
