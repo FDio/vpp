@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+-include .config
+
 export WS_ROOT=$(CURDIR)
 export BR=$(WS_ROOT)/build-root
 CCACHE_DIR?=$(BR)/.ccache
@@ -24,6 +26,17 @@ export AESNI?=y
 else
 export AESNI?=N
 endif
+
+ifeq ($(JAPI),no)
+vpp_configure_args_vpp+=--disable-japi
+endif
+ifeq ($(PAPI),no)
+vpp_configure_args_vpp+=--disable-papi
+endif
+ifeq ($(VOM),no)
+vpp_configure_args_vpp+=--disable-vom
+endif
+export vpp_configure_args_vpp
 
 ,:=,
 define disable_plugins
@@ -491,6 +504,10 @@ checkstyle:
 
 fixstyle:
 	@build-root/scripts/checkstyle.sh --fix
+
+config:
+	@extras/scripts/config
+	@touch build-root/config.site
 
 #
 # Build the documentation

@@ -1,0 +1,115 @@
+#!/bin/bash
+! type -ap dialog > /dev/null && echo "Please install dialog (apt install dialog)" && exit
+tmpfile=$(mktemp)
+
+declare -A conf
+
+function print_conf() {
+	echo
+	echo "config:"
+	for i in "${!conf[@]}"
+	do
+		echo "$i = ${conf[$i]}"
+	done
+	echo "done"
+	echo
+}
+
+function load_conf() {
+	cfg=$(sed -Ene "s/([^[:space:]]*)[[:space:]]*=[[:space:]]*(yes|no)/\1=\2/p" .config)
+	for line in $cfg; do
+		param=$(echo $line | cut -d'=' -f1)
+		val=$(echo $line | cut -d'=' -f2)
+		conf["${param}"]="${val}"
+	done
+}
+
+function save_conf() {
+	rm .config
+	for i in "${!conf[@]}"
+	do
+		echo "$i = ${conf[$i]}" >> .config
+	done
+}
+
+function compile_options() {
+	a=()
+	# Parameter, Description, Default Value
+	a+=("AESNI" "Compile DPDK with AESNI libraries (x86 only)" "on")
+	a+=("JAPI" "Compile VPP with Java API bindings" "on")
+	a+=("PAPI" "Compile VPP with Python API bindings" "on")
+	a+=("VOM" "Compile VPP with C++ VPP Object Model (VOM)" "on")
+
+	# adjust checkbox state based on config
+	for ((i=0;i<${#a[@]};i+=3)); do
+		param=${a[i]}
+		val=${conf[$param]}
+		if [ -z "${val}" ]; then
+			# no config, use default
+			continue
+		fi
+		if [ "${val}" = "yes" ]; then
+			a[$(($i+2))]="on"
+		else
+			a[$(($i+2))]="off"
+		fi
+	done
+
+	dialog --backtitle "Compile options" \
+		--title "TITLE" \
+		--checklist "Select VPP Compile Options" 18 100 12 \
+		"${a[@]}" 2> $tmpfile
+
+	retval=$?
+	selection=$(cat $tmpfile)
+	rm $tmpfile
+	if [ $retval -ne 0 ]; then
+		exit
+	fi
+	#first set everything to "no"
+	for ((i=0;i<${#a[@]};i+=3)); do
+		conf[${a[$i]}]="no"
+	done
+	# then set selected options to "yes"
+	for s in $selection; do
+		conf[$s]="yes"
+		echo "s:$s"
+	done
+}
+
+function main_menu() {
+	a=()
+	a+=("1" "Compile Options")
+	a+=("s" "Save")
+	a+=("x" "Exit")
+	dialog --backtitle "Main menu" \
+		--clear \
+		--nocancel \
+		--menu "Main Menu" 18 40 23 \
+		"${a[@]}" 2> $tmpfile
+
+	retval=$?
+	selection=$(cat $tmpfile)
+	rm $tmpfile
+	if [ $retval -ne 0 ]; then
+		exit
+	fi
+
+	case $selection in
+		1)
+			compile_options
+			;;
+		s)
+			save_conf
+			;;
+		x)
+			exit
+			;;
+	esac
+}
+
+load_conf
+while true; do
+	main_menu
+done
+

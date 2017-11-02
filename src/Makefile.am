@@ -83,7 +83,9 @@ SUBDIRS += vpp-api/java
 endif
 
 SUBDIRS += vpp-api/vapi
+if ENABLE_VOM
 SUBDIRS += vpp-api/vom
+endif
 
 ###############################################################################
 # API
