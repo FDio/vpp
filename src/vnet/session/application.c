@@ -558,10 +558,11 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 
   if (!ip_is_zero (&tc->lcl_ip, 1))
     {
+      memset (&lcl_pref, 0, sizeof (lcl_pref));
       ip_copy (&lcl_pref.fp_addr, &tc->lcl_ip, is_ip4);
       lcl_pref.fp_len = is_ip4 ? 32 : 128;
       lcl_pref.fp_proto = fib_proto;
-      memset (&rmt_pref.fp_addr, 0, sizeof (rmt_pref.fp_addr));
+      memset (&rmt_pref, 0, sizeof (rmt_pref));
       rmt_pref.fp_len = 0;
       rmt_pref.fp_proto = fib_proto;
 
