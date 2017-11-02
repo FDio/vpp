@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "26188358_f29d9f81",
+        "filename": "src/vcl/vppcom.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-11-02T02:30:13Z",
+      "side": 1,
+      "message": "Apart from this, you also need to set the  APP_OPTIONS_PROXY_TRANSPORT option. This is just list of flags that indicates what transports are enabled: 1 \u003c\u003c TRANSPORT_PROTO_TCP | 1 \u003c\u003c TRANSPORT_PROTO_UDP if both tcp and udp proxying is enabled.",
+      "range": {
+        "startLine": 30,
+        "startChar": 42,
+        "endLine": 30,
+        "endChar": 58
+      },
+      "revId": "5d56e11f5168434f33e6d750ca920e8a9572578e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
