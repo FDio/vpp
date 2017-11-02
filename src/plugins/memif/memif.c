@@ -240,6 +240,8 @@ memif_connect (memif_if_t * mif)
 
 	if (rxmode == VNET_HW_INTERFACE_RX_MODE_POLLING)
 	  mq->ring->flags |= MEMIF_RING_FLAG_MASK_INT;
+	else
+	  vnet_device_input_set_interrupt_pending (vnm, mif->hw_if_index, i);
       }
   }
 
@@ -308,7 +310,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
 	  ring->desc[j].region = 0;
 	  ring->desc[j].offset =
 	    buffer_offset + (u32) (slot * mif->run.buffer_size);
-	  ring->desc[j].buffer_length = mif->run.buffer_size;
+	  ring->desc[j].length = mif->run.buffer_size;
 	}
     }
   for (i = 0; i < mif->run.num_m2s_rings; i++)
@@ -323,7 +325,7 @@ memif_init_regions_and_queues (memif_if_t * mif)
 	  ring->desc[j].region = 0;
 	  ring->desc[j].offset =
 	    buffer_offset + (u32) (slot * mif->run.buffer_size);
-	  ring->desc[j].buffer_length = mif->run.buffer_size;
+	  ring->desc[j].length = mif->run.buffer_size;
 	}
     }
 
@@ -862,6 +864,8 @@ memif_init (vlib_main_t * vm)
   memif_main_t *mm = &memif_main;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   u8 *filename;
+  vlib_buffer_free_list_t *fl;
+  int i;
 
   memset (mm, 0, sizeof (memif_main_t));
 
@@ -878,8 +882,27 @@ memif_init (vlib_main_t * vm)
 		     MEMIF_DEFAULT_SOCKET_FILENAME, 0);
   memif_add_socket_file (0, filename);
 
-  vec_validate_aligned (mm->rx_buffers, tm->n_vlib_mains - 1,
+  vec_validate_aligned (mm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
+
+  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  for (i = 0; i < tm->n_vlib_mains; i++)
+    {
+      memif_per_thread_data_t *ptd =
+	vec_elt_at_index (mm->per_thread_data, i);
+      vlib_buffer_t *bt = &ptd->buffer_template;
+      vlib_buffer_init_for_free_list (bt, fl);
+      bt->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
+      bt->total_length_not_including_first_buffer = 0;
+      vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;
+
+      /* initially prealloc copy_ops so we can use
+         _vec_len instead of vec_elen */
+      vec_validate_aligned (ptd->copy_ops, 0, CLIB_CACHE_LINE_BYTES);
+      vec_reset_length (ptd->copy_ops);
+      vec_validate_aligned (ptd->buffers, 0, CLIB_CACHE_LINE_BYTES);
+      vec_reset_length (ptd->buffers);
+    }
 
   return 0;
 }
