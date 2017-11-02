@@ -52,7 +52,9 @@ typedef enum
   VAPI_WAIT_FOR_READ_WRITE,  /**< wait until a read or write can be done */
 } vapi_wait_mode_e;
 
-typedef int vapi_msg_id_t;
+typedef unsigned int vapi_msg_id_t;
+
+#define INVALID_MSG_ID ((vapi_msg_id_t)(~0))
 
 #ifdef __cplusplus
 }

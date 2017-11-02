@@ -54,7 +54,8 @@ public:
      * Constructor
      */
     item()
-      : item_rc(rc_t::UNSET)
+      : item_data()
+      , item_rc(rc_t::UNSET)
     {
     }
 
@@ -62,7 +63,8 @@ public:
      * Constructor
      */
     item(rc_t rc)
-      : item_rc(rc)
+      : item_data()
+      , item_rc(rc)
     {
     }
 
