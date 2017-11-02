@@ -127,6 +127,7 @@ typedef struct vppcom_cfg_t_
   u32 tx_fifo_size;
   u32 event_queue_size;
   u32 listen_queue_size;
+  u8 app_is_proxy;
   u8 session_scope_local;
   u8 session_scope_global;
   u8 *namespace_id;
@@ -470,7 +471,8 @@ vppcom_app_send_attach (void)
   bmp->options[APP_OPTIONS_FLAGS] =
     APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT |
     (vcm->cfg.session_scope_local ? APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE : 0) |
-    (vcm->cfg.session_scope_global ? APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE : 0);
+    (vcm->cfg.session_scope_global ? APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE : 0) |
+    (vcm->cfg.app_is_proxy ? APP_OPTIONS_FLAGS_IS_PROXY : 0);
   bmp->options[SESSION_OPTIONS_SEGMENT_SIZE] = vcm->cfg.segment_size;
   bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = vcm->cfg.add_segment_size;
   bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = vcm->cfg.rx_fifo_size;
@@ -1695,6 +1697,13 @@ vppcom_cfg_read (char *conf_fname)
 		clib_warning ("[%d] configured accept_timeout %f",
 			      vcm->my_pid, vcl_cfg->accept_timeout);
 	    }
+	  else if (unformat (line_input, "app-is-proxy"))
+	    {
+	      vcl_cfg->app_is_proxy = 1;
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("[%d] configured app_is_proxy (%d)",
+			      vcm->my_pid, vcl_cfg->app_is_proxy);
+	    }
 	  else if (unformat (line_input, "session-scope-local"))
 	    {
 	      vcl_cfg->session_scope_local = 1;
@@ -1837,6 +1846,14 @@ vppcom_app_create (char *app_name)
 			      VPPCOM_ENV_APP_NAMESPACE_ID "!", vcm->my_pid,
 			      vcm->cfg.namespace_secret);
 	    }
+	}
+      if (getenv (VPPCOM_ENV_APP_IS_PROXY))
+	{
+	  vcm->cfg.app_is_proxy = 1;
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("[%d] configured app_is_proxy (%u) from "
+			  VPPCOM_ENV_APP_IS_PROXY "!", vcm->my_pid,
+			  vcm->cfg.app_is_proxy);
 	}
       if (getenv (VPPCOM_ENV_SESSION_SCOPE_LOCAL))
 	{

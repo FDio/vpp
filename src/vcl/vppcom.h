@@ -25,8 +25,9 @@
  */
 #define INVALID_SESSION_ID               (~0)
 #define VPPCOM_VRF_DEFAULT               0
-#define VPPCOM_CONF_DEFAULT              "/etc/vpp/vppcom.conf"
+#define VPPCOM_CONF_DEFAULT              "/etc/vpp/vcl.conf"
 #define VPPCOM_ENV_CONF                  "VCL_CONFIG"
+#define VPPCOM_ENV_APP_IS_PROXY          "VCL_APP_IS_PROXY"
 #define VPPCOM_ENV_APP_NAMESPACE_ID      "VCL_APP_NAMESPACE_ID"
 #define VPPCOM_ENV_APP_NAMESPACE_SECRET  "VCL_APP_NAMESPACE_SECRET"
 #define VPPCOM_ENV_SESSION_SCOPE_LOCAL   "VCL_SESSION_SCOPE_LOCAL"
