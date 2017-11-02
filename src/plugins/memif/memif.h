@@ -22,8 +22,8 @@
 #define MEMIF_CACHELINE_SIZE 64
 #endif
 
-#define MEMIF_COOKIE		0x3E31F10
-#define MEMIF_VERSION_MAJOR	1
+#define MEMIF_COOKIE		0x3E31F20
+#define MEMIF_VERSION_MAJOR	2
 #define MEMIF_VERSION_MINOR	0
 #define MEMIF_VERSION		((MEMIF_VERSION_MAJOR << 8) | MEMIF_VERSION_MINOR)
 
@@ -58,7 +58,7 @@ typedef enum
 } memif_interface_mode_t;
 
 typedef uint16_t memif_region_index_t;
-typedef uint64_t memif_region_offset_t;
+typedef uint32_t memif_region_offset_t;
 typedef uint64_t memif_region_size_t;
 typedef uint16_t memif_ring_index_t;
 typedef uint32_t memif_interface_id_t;
@@ -148,15 +148,13 @@ typedef struct __attribute__ ((packed))
   uint16_t flags;
 #define MEMIF_DESC_FLAG_NEXT (1 << 0)
   memif_region_index_t region;
-  uint32_t buffer_length;
   uint32_t length;
-  uint8_t reserved[4];
   memif_region_offset_t offset;
-  uint64_t metadata;
+  uint32_t metadata;
 } memif_desc_t;
 
-_Static_assert (sizeof (memif_desc_t) == 32,
-		"Size of memif_dsct_t must be 32");
+_Static_assert (sizeof (memif_desc_t) == 16,
+		"Size of memif_dsct_t must be 16 bytes");
 
 #define MEMIF_CACHELINE_ALIGN_MARK(mark) \
   uint8_t mark[0] __attribute__((aligned(MEMIF_CACHELINE_SIZE)))
