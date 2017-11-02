@@ -87,6 +87,24 @@
       "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0901a1da_ab377fde",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 3
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-11-02T21:35:20Z",
+      "side": 0,
+      "message": "Good question. This is here because for 17.10 release, we bundle dpdk in the srpm. Don\u0027t know whether we will have this fixed yet by 18.01.\n\nIf the consensus is that this option should be deleted from the spec file, that is OK because we can carry it as a local patch for the downstream distros for 18.01.",
+      "parentUuid": "367b5621_0643a132",
+      "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
