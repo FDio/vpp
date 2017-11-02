@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e3adda14_e9c3a1d2",
+        "filename": "build-root/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 583,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-11-02T20:09:19Z",
+      "side": 1,
+      "message": "not needed, you can simply set vpp_configure_args_vpp from shell",
+      "range": {
+        "startLine": 583,
+        "startChar": 8,
+        "endLine": 583,
+        "endChar": 22
+      },
+      "revId": "916fc413175a50accbb1723b11133a61f9fd8e1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
