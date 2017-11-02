@@ -187,7 +187,7 @@ Statistics: 5 sent, 4 received, 20% packet loss
 
 #### icmp_responder master icmp_responder slave
 
-> Example apps can only repond to ping. This setup creates connection between two applications using libmemif. Traffic functionality is the same as when connection to VPP. App can receive ARP/ICMP request and transmit response, but can not send ARP/ICMP request.
+> This setup creates connection between two applications using libmemif. Traffic functionality is the same as when connection to VPP. App can receive ARP/ICMP request and transmit response.
 
 Run two instances of icmpr-epoll example.
 > If not running in container, make sure folder /run/vpp/ exists before creating memif master.

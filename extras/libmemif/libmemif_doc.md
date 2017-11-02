@@ -72,3 +72,4 @@ Continue with @ref libmemif_example_setup which contains instructions on how to 
 - @subpage libmemif_examples_doc
 - @subpage libmemif_example_setup_doc
 - @subpage libmemif_gettingstarted_doc
+- @subpage libmemif_devperftest_doc
