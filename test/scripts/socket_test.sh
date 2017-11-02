@@ -66,7 +66,7 @@ OPTIONS:
   -l                  Leave ${tmp_cmdfile_prefix}* files after test run.
   -b                  Run bash after application exit.
   -d                  Run the vpp_debug version of all apps.
-  -c                  Set VCL_CONFIG to use the vppcom_test.conf file.
+  -c                  Set VCL_CONFIG to use the vcl_test.conf file.
   -i                  Run iperf3 for client/server app in native tests.
   -n                  Name of ethernet for VPP to use in multi-host cfg.
   -6                  Use ipv6 addressing.
@@ -340,8 +340,6 @@ if [ -f "$VCL_CONFIG" ] ; then
     if [ -n "$api_prefix" ] ; then
         api_segment=" api-segment { gid $user_gid prefix $api_prefix }"
     fi
-    namespace_id="$(egrep -s '^\s*namespace-id \w+' $VCL_CONFIG | tail -1 | awk -e '{print $2}')"
-    namespace_secret="$(egrep -s '^\s*namespace-secret \w+' $VCL_CONFIG | tail -1 | awk -e '{print $2}')"
 fi
 if [ -n "$VCL_APP_NAMESPACE_ID" ] && [ -n "$VCL_APP_NAMESPACE_SECRET" ] ; then
     namespace_id="$VCL_APP_NAMESPACE_ID"
@@ -522,11 +520,17 @@ write_script_header() {
         echo "export VCL_APP_NAMESPACE_ID=\"$namespace_id\"" >> $1
         echo "export VCL_APP_NAMESPACE_SECRET=\"$namespace_secret\"" >> $1
     fi
-    if [ -n "$VCL_SESSION_SCOPE_LOCAL" ] ; then
-        echo "export VCL_SESSION_SCOPE_LOCAL=true" >> $1
+    if [ -n "$VCL_APP_SCOPE_LOCAL" ] ; then
+        echo "export VCL_APP_SCOPE_LOCAL=true" >> $1
     fi
-    if [ -n "$VCL_SESSION_SCOPE_GLOBAL" ] ; then
-        echo "export VCL_SESSION_SCOPE_GLOBAL=true" >> $1
+    if [ -n "$VCL_APP_SCOPE_GLOBAL" ] ; then
+        echo "export VCL_APP_SCOPE_GLOBAL=true" >> $1
+    fi
+    if [ -n "$VCL_APP_PROXY_TRANSPORT_TCP" ] ; then
+        echo "export VCL_APP_PROXY_TRANSPORT_TCP=true" >> $1
+    fi
+    if [ -n "$VCL_APP_PROXY_TRANSPORT_UDP" ] ; then
+        echo "export VCL_APP_PROXY_TRANSPORT_UDP=true" >> $1
     fi
     if [ "$pre_cmd" = "$gdb_in_emacs " ] ; then
         if [ -n "$multi_host" ] && [[ $3 =~ "VPP".* ]] ; then
