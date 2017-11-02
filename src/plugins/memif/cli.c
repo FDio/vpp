@@ -392,17 +392,17 @@ format_memif_descriptor (u8 * s, va_list * args)
       s = format (s, "%Udescriptor table:\n", format_white_space, indent);
       s =
 	format (s,
-		"%Uid    flags buf len desc len      address       offset    user address\n",
+		"%Uid    flags   len         address       offset    user address\n",
 		format_white_space, indent);
       s =
 	format (s,
-		"%U===== ===== ======= ======== ================== ====== ==================\n",
+		"%U===== ===== ======== ================== ====== ==================\n",
 		format_white_space, indent);
       for (slot = 0; slot < ring_size; slot++)
 	{
-	  s = format (s, "%U%-5d %-5d %-7d %-7d  0x%016lx %-6d 0x%016lx\n",
+	  s = format (s, "%U%-5d %-5d %-7d  0x%016lx %-6d 0x%016lx\n",
 		      format_white_space, indent, slot,
-		      ring->desc[slot].flags, ring->desc[slot].buffer_length,
+		      ring->desc[slot].flags,
 		      ring->desc[slot].length,
 		      mif->regions[ring->desc[slot].region].shm,
 		      ring->desc[slot].offset, memif_get_buffer (mif, ring,
