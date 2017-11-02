@@ -127,6 +127,9 @@ typedef struct vppcom_cfg_t_
   u32 tx_fifo_size;
   u32 event_queue_size;
   u32 listen_queue_size;
+  u8 app_is_proxy;
+  u8 app_proxy_transport_tcp;
+  u8 app_proxy_transport_udp;
   u8 session_scope_local;
   u8 session_scope_global;
   u8 *namespace_id;
@@ -470,7 +473,23 @@ vppcom_app_send_attach (void)
   bmp->options[APP_OPTIONS_FLAGS] =
     APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT |
     (vcm->cfg.session_scope_local ? APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE : 0) |
-    (vcm->cfg.session_scope_global ? APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE : 0);
+    (vcm->cfg.session_scope_global ? APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE : 0) |
+    (vcm->cfg.app_is_proxy ? APP_OPTIONS_FLAGS_IS_PROXY : 0);
+  if (vcm->cfg.app_is_proxy)
+    {
+      if (vcm->cfg.app_proxy_transport_tcp ||
+	  vcm->cfg.app_proxy_transport_tcp)
+	{
+	  bmp->options[APP_OPTIONS_PROXY_TRANSPORT] =
+	    (vcm->cfg.app_proxy_transport_tcp ?
+	     1 << TRANSPORT_PROTO_TCP : 0) |
+	    (vcm->cfg.app_proxy_transport_udp ? 1 << TRANSPORT_PROTO_UDP : 0);
+	}
+      else
+	clib_warning ("[%d] ERROR: No application proxy transport "
+		      "specified with app_is_proxy configured!\n",
+		      vcm->my_pid);
+    }
   bmp->options[SESSION_OPTIONS_SEGMENT_SIZE] = vcm->cfg.segment_size;
   bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = vcm->cfg.add_segment_size;
   bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = vcm->cfg.rx_fifo_size;
@@ -1695,6 +1714,27 @@ vppcom_cfg_read (char *conf_fname)
 		clib_warning ("[%d] configured accept_timeout %f",
 			      vcm->my_pid, vcl_cfg->accept_timeout);
 	    }
+	  else if (unformat (line_input, "app-is-proxy"))
+	    {
+	      vcl_cfg->app_is_proxy = 1;
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("[%d] configured app_is_proxy (%d)",
+			      vcm->my_pid, vcl_cfg->app_is_proxy);
+	    }
+	  else if (unformat (line_input, "app-proxy-transport-tcp"))
+	    {
+	      vcl_cfg->app_proxy_transport_tcp = 1;
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("[%d] configured app_proxy_transport_tcp (%d)",
+			      vcm->my_pid, vcl_cfg->app_proxy_transport_tcp);
+	    }
+	  else if (unformat (line_input, "app-proxy-transport-udp"))
+	    {
+	      vcl_cfg->app_proxy_transport_udp = 1;
+	      if (VPPCOM_DEBUG > 0)
+		clib_warning ("[%d] configured app_proxy_transport_udp (%d)",
+			      vcm->my_pid, vcl_cfg->app_proxy_transport_udp);
+	    }
 	  else if (unformat (line_input, "session-scope-local"))
 	    {
 	      vcl_cfg->session_scope_local = 1;
@@ -1837,6 +1877,30 @@ vppcom_app_create (char *app_name)
 			      VPPCOM_ENV_APP_NAMESPACE_ID "!", vcm->my_pid,
 			      vcm->cfg.namespace_secret);
 	    }
+	}
+      if (getenv (VPPCOM_ENV_APP_IS_PROXY))
+	{
+	  vcm->cfg.app_is_proxy = 1;
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("[%d] configured app_is_proxy (%u) from "
+			  VPPCOM_ENV_APP_IS_PROXY "!", vcm->my_pid,
+			  vcm->cfg.app_is_proxy);
+	}
+      if (getenv (VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP))
+	{
+	  vcm->cfg.app_proxy_transport_tcp = 1;
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("[%d] configured app_proxy_transport_tcp (%u) from "
+			  VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP "!", vcm->my_pid,
+			  vcm->cfg.app_proxy_transport_tcp);
+	}
+      if (getenv (VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP))
+	{
+	  vcm->cfg.app_proxy_transport_udp = 1;
+	  if (VPPCOM_DEBUG > 0)
+	    clib_warning ("[%d] configured app_proxy_transport_udp (%u) from "
+			  VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP "!", vcm->my_pid,
+			  vcm->cfg.app_proxy_transport_udp);
 	}
       if (getenv (VPPCOM_ENV_SESSION_SCOPE_LOCAL))
 	{
@@ -2756,6 +2820,7 @@ select_done:
 static inline void
 vep_verify_epoll_chain (u32 vep_idx)
 {
+  vppcom_main_t *vcm = &vppcom_main;
   session_t *session;
   vppcom_epoll_t *vep;
   int rv;
@@ -2768,21 +2833,23 @@ vep_verify_epoll_chain (u32 vep_idx)
   rv = vppcom_session_at_index (vep_idx, &session);
   if (PREDICT_FALSE (rv))
     {
-      clib_warning ("ERROR: Invalid vep_idx (%u)!", vep_idx);
+      clib_warning ("[%d] ERROR: Invalid vep_idx (%u)!", vcm->my_pid,
+		    vep_idx);
       goto done;
     }
   if (PREDICT_FALSE (!session->is_vep))
     {
-      clib_warning ("ERROR: vep_idx (%u) is not a vep!", vep_idx);
+      clib_warning ("[%d] ERROR: vep_idx (%u) is not a vep!", vcm->my_pid,
+		    vep_idx);
       goto done;
     }
   if (VPPCOM_DEBUG > 1)
-    clib_warning ("vep_idx (%u): Dumping epoll chain\n"
+    clib_warning ("[%d] vep_idx (%u): Dumping epoll chain\n"
 		  "{\n"
 		  "   is_vep         = %u\n"
 		  "   is_vep_session = %u\n"
 		  "   wait_cont_idx  = 0x%x (%u)\n"
-		  "}\n",
+		  "}\n", vcm->my_pid,
 		  vep_idx, session->is_vep, session->is_vep_session,
 		  session->wait_cont_idx, session->wait_cont_idx);
   do
@@ -2812,19 +2879,22 @@ vep_verify_epoll_chain (u32 vep_idx)
 	  rv = vppcom_session_at_index (sid, &session);
 	  if (PREDICT_FALSE (rv))
 	    {
-	      clib_warning ("ERROR: Invalid sid (%u)!", sid);
+	      clib_warning ("[%d] ERROR: Invalid sid (%u)!",
+			    vcm->my_pid, sid);
 	      goto done;
 	    }
 	  if (PREDICT_FALSE (session->is_vep))
-	    clib_warning ("ERROR: sid (%u) is a vep!", vep_idx);
+	    clib_warning ("[%d] ERROR: sid (%u) is a vep!",
+			  vcm->my_pid, vep_idx);
 	  else if (PREDICT_FALSE (!session->is_vep_session))
 	    {
-	      clib_warning ("ERROR: session (%u) is not a vep session!", sid);
+	      clib_warning ("[%d] ERROR: session (%u) is not a vep session!",
+			    vcm->my_pid, sid);
 	      goto done;
 	    }
 	  if (PREDICT_FALSE (session->vep.vep_idx != vep_idx))
-	    clib_warning ("ERROR: session (%u) vep_idx (%u) != "
-			  "vep_idx (%u)!",
+	    clib_warning ("[%d] ERROR: session (%u) vep_idx (%u) != "
+			  "vep_idx (%u)!", vcm->my_pid,
 			  sid, session->vep.vep_idx, vep_idx);
 	}
     }
@@ -2832,7 +2902,7 @@ vep_verify_epoll_chain (u32 vep_idx)
 
 done:
   if (VPPCOM_DEBUG > 1)
-    clib_warning ("vep_idx (%u): Dump complete!", vep_idx);
+    clib_warning ("[%d] vep_idx (%u): Dump complete!", vcm->my_pid, vep_idx);
 }
 
 int
@@ -2855,7 +2925,7 @@ vppcom_epoll_create (void)
   clib_spinlock_unlock (&vcm->sessions_lockp);
 
   if (VPPCOM_DEBUG > 0)
-    clib_warning ("Created vep_idx %u!", vep_idx);
+    clib_warning ("[%d] Created vep_idx %u!", vcm->my_pid, vep_idx);
 
   return (vep_idx);
 }
@@ -2872,7 +2942,8 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
   if (vep_idx == session_index)
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("ERROR: vep_idx == session_index (%u)!", vep_idx);
+	clib_warning ("[%d] ERROR: vep_idx == session_index (%u)!",
+		      vcm->my_pid, vep_idx);
       return VPPCOM_EINVAL;
     }
 
@@ -2881,13 +2952,14 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
   if (PREDICT_FALSE (rv))
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("ERROR: Invalid vep_idx (%u)!", vep_idx);
+	clib_warning ("[%d] ERROR: Invalid vep_idx (%u)!", vep_idx);
       goto done;
     }
   if (PREDICT_FALSE (!vep_session->is_vep))
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("ERROR: vep_idx (%u) is not a vep!", vep_idx);
+	clib_warning ("[%d] ERROR: vep_idx (%u) is not a vep!",
+		      vcm->my_pid, vep_idx);
       rv = VPPCOM_EINVAL;
       goto done;
     }
@@ -2899,7 +2971,8 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
   if (PREDICT_FALSE (rv))
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("ERROR: Invalid session_index (%u)!", session_index);
+	clib_warning ("[%d] ERROR: Invalid session_index (%u)!",
+		      vcm->my_pid, session_index);
       goto done;
     }
   if (PREDICT_FALSE (session->is_vep))
@@ -2915,7 +2988,8 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
     case EPOLL_CTL_ADD:
       if (PREDICT_FALSE (!event))
 	{
-	  clib_warning ("NULL pointer to epoll_event structure!");
+	  clib_warning ("[%d] ERROR: EPOLL_CTL_ADD: NULL pointer to "
+			"epoll_event structure!", vcm->my_pid);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
@@ -2927,8 +3001,9 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 	  if (PREDICT_FALSE (rv))
 	    {
 	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("EPOLL_CTL_ADD: Invalid vep.next_sid (%u) on"
-			      " vep_idx (%u)!", vep_session->vep.next_sid,
+		clib_warning ("[%d] ERROR: EPOLL_CTL_ADD: Invalid "
+			      "vep.next_sid (%u) on vep_idx (%u)!",
+			      vcm->my_pid, vep_session->vep.next_sid,
 			      vep_idx);
 	      goto done;
 	    }
@@ -2943,15 +3018,16 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
       session->is_vep_session = 1;
       vep_session->vep.next_sid = session_index;
       if (VPPCOM_DEBUG > 1)
-	clib_warning ("EPOLL_CTL_ADD: vep_idx %u, sid %u, events 0x%x,"
-		      " data 0x%llx!", vep_idx, session_index,
+	clib_warning ("[%d] EPOLL_CTL_ADD: vep_idx %u, sid %u, events 0x%x,"
+		      " data 0x%llx!", vcm->my_pid, vep_idx, session_index,
 		      event->events, event->data.u64);
       break;
 
     case EPOLL_CTL_MOD:
       if (PREDICT_FALSE (!event))
 	{
-	  clib_warning ("NULL pointer to epoll_event structure!");
+	  clib_warning ("[%d] ERROR: EPOLL_CTL_MOD: NULL pointer to "
+			"epoll_event structure!", vcm->my_pid);
 	  rv = VPPCOM_EINVAL;
 	  goto done;
 	}
@@ -2961,11 +3037,13 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 	  if (VPPCOM_DEBUG > 0)
 	    {
 	      if (!session->is_vep_session)
-		clib_warning ("EPOLL_CTL_MOD: session (%u) is not "
-			      "a vep session!", session_index);
+		clib_warning ("[%d] ERROR: EPOLL_CTL_MOD: session (%u) "
+			      "is not a vep session!",
+			      vcm->my_pid, session_index);
 	      else
-		clib_warning ("EPOLL_CTL_MOD: session (%u) vep_idx (%u) != "
-			      "vep_idx (%u)!", session_index,
+		clib_warning ("[%d] ERROR: EPOLL_CTL_MOD: session (%u) "
+			      "vep_idx (%u) != vep_idx (%u)!",
+			      vcm->my_pid, session_index,
 			      session->vep.vep_idx, vep_idx);
 	    }
 	  rv = VPPCOM_EINVAL;
@@ -2974,8 +3052,8 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
       session->vep.et_mask = VEP_DEFAULT_ET_MASK;
       session->vep.ev = *event;
       if (VPPCOM_DEBUG > 1)
-	clib_warning ("EPOLL_CTL_MOD: vep_idx %u, sid %u, events 0x%x,"
-		      " data 0x%llx!", vep_idx, session_index,
+	clib_warning ("[%d] EPOLL_CTL_MOD: vep_idx %u, sid %u, events 0x%x,"
+		      " data 0x%llx!", vcm->my_pid, vep_idx, session_index,
 		      event->events, event->data.u64);
       break;
 
@@ -2986,11 +3064,13 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 	  if (VPPCOM_DEBUG > 0)
 	    {
 	      if (!session->is_vep_session)
-		clib_warning ("EPOLL_CTL_DEL: session (%u) is not "
-			      "a vep session!", session_index);
+		clib_warning ("[%d] ERROR: EPOLL_CTL_DEL: session (%u) "
+			      "is not a vep session!",
+			      vcm->my_pid, session_index);
 	      else
-		clib_warning ("EPOLL_CTL_DEL: session (%u) vep_idx (%u) != "
-			      "vep_idx (%u)!", session_index,
+		clib_warning ("[%d] ERROR: EPOLL_CTL_DEL: session (%u) "
+			      "vep_idx (%u) != vep_idx (%u)!",
+			      vcm->my_pid, session_index,
 			      session->vep.vep_idx, vep_idx);
 	    }
 	  rv = VPPCOM_EINVAL;
@@ -3010,8 +3090,9 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 	  if (PREDICT_FALSE (rv))
 	    {
 	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("EPOLL_CTL_DEL: Invalid vep.prev_sid (%u) on"
-			      " sid (%u)!", session->vep.prev_sid,
+		clib_warning ("[%d] ERROR: EPOLL_CTL_DEL: Invalid "
+			      "vep.prev_sid (%u) on sid (%u)!",
+			      vcm->my_pid, session->vep.prev_sid,
 			      session_index);
 	      goto done;
 	    }
@@ -3025,8 +3106,9 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
 	  if (PREDICT_FALSE (rv))
 	    {
 	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("EPOLL_CTL_DEL: Invalid vep.next_sid (%u) on"
-			      " sid (%u)!", session->vep.next_sid,
+		clib_warning ("[%d] ERROR: EPOLL_CTL_DEL: Invalid "
+			      "vep.next_sid (%u) on sid (%u)!",
+			      vcm->my_pid, session->vep.next_sid,
 			      session_index);
 	      goto done;
 	    }
@@ -3040,12 +3122,12 @@ vppcom_epoll_ctl (uint32_t vep_idx, int op, uint32_t session_index,
       session->vep.vep_idx = ~0;
       session->is_vep_session = 0;
       if (VPPCOM_DEBUG > 1)
-	clib_warning ("EPOLL_CTL_DEL: vep_idx %u, sid %u!", vep_idx,
-		      session_index);
+	clib_warning ("[%d] EPOLL_CTL_DEL: vep_idx %u, sid %u!",
+		      vcm->my_pid, vep_idx, session_index);
       break;
 
     default:
-      clib_warning ("Invalid operation (%d)!", op);
+      clib_warning ("[%d] ERROR: Invalid operation (%d)!", vcm->my_pid, op);
       rv = VPPCOM_EINVAL;
     }
 
@@ -3067,7 +3149,8 @@ do {                                                    \
       clib_spinlock_unlock (&vcm->sessions_lockp);      \
                                                         \
       if (VPPCOM_DEBUG > 0)                             \
-        clib_warning ("ERROR: Invalid ##I (%u)!", I);   \
+        clib_warning ("[%s] ERROR: Invalid ##I (%u)!",  \
+                      vcm->my_pid, I);                  \
                                                         \
       goto done;                                        \
     }                                                   \
@@ -3088,13 +3171,15 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
   if (PREDICT_FALSE (maxevents <= 0))
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("ERROR: Invalid maxevents (%d)!", maxevents);
+	clib_warning ("[%d] ERROR: Invalid maxevents (%d)!",
+		      vcm->my_pid, maxevents);
       return VPPCOM_EINVAL;
     }
   if (PREDICT_FALSE (wait_for_time < 0))
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("ERROR: Invalid wait_for_time (%f)!", wait_for_time);
+	clib_warning ("[%d] ERROR: Invalid wait_for_time (%f)!",
+		      vcm->my_pid, wait_for_time);
       return VPPCOM_EINVAL;
     }
   memset (events, 0, sizeof (*events) * maxevents);
@@ -3108,13 +3193,15 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
   if (PREDICT_FALSE (!is_vep))
     {
       if (VPPCOM_DEBUG > 0)
-	clib_warning ("ERROR: vep_idx (%u) is not a vep!", vep_idx);
+	clib_warning ("[%d] ERROR: vep_idx (%u) is not a vep!",
+		      vcm->my_pid, vep_idx);
       rv = VPPCOM_EINVAL;
       goto done;
     }
   if ((VPPCOM_DEBUG > 0) && (PREDICT_FALSE (vep_next_sid == ~0)))
     {
-      clib_warning ("WARNING: vep_idx (%u) is empty!", vep_idx);
+      clib_warning ("[%d] WARNING: vep_idx (%u) is empty!",
+		    vcm->my_pid, vep_idx);
       goto done;
     }
 
@@ -3145,23 +3232,24 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 	  if (PREDICT_FALSE (is_vep))
 	    {
 	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("ERROR: sid (%u) is a vep!", vep_idx);
+		clib_warning ("[%d] ERROR: sid (%u) is a vep!",
+			      vcm->my_pid, vep_idx);
 	      rv = VPPCOM_EINVAL;
 	      goto done;
 	    }
 	  if (PREDICT_FALSE (!is_vep_session))
 	    {
 	      if (VPPCOM_DEBUG > 0)
-		clib_warning ("EPOLL_CTL_MOD: session (%u) is not "
-			      "a vep session!", sid);
+		clib_warning ("[%d] ERROR: session (%u) is not "
+			      "a vep session!", vcm->my_pid, sid);
 	      rv = VPPCOM_EINVAL;
 	      goto done;
 	    }
 	  if (PREDICT_FALSE (session_vep_idx != vep_idx))
 	    {
-	      clib_warning ("EPOLL_CTL_MOD: session (%u) "
+	      clib_warning ("[%d] ERROR: session (%u) "
 			    "vep_idx (%u) != vep_idx (%u)!",
-			    sid, session->vep.vep_idx, vep_idx);
+			    vcm->my_pid, sid, session->vep.vep_idx, vep_idx);
 	      rv = VPPCOM_EINVAL;
 	      goto done;
 	    }
@@ -3279,7 +3367,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
     case VPPCOM_ATTR_GET_NREAD:
       rv = vppcom_session_read_ready (session, session_index);
       if (VPPCOM_DEBUG > 1)
-	clib_warning ("VPPCOM_ATTR_GET_NREAD: nread = %d", rv);
+	clib_warning ("[%d] VPPCOM_ATTR_GET_NREAD: nread = %d",
+		      vcm->my_pid, rv);
 
       break;
 
@@ -3293,8 +3382,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	  *flags = O_RDWR | ((session->is_nonblocking) ? O_NONBLOCK : 0);
 	  *buflen = sizeof (*flags);
 	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("VPPCOM_ATTR_GET_FLAGS: flags = 0x%08x, "
-			  "is_nonblocking = %u", *flags,
+	    clib_warning ("[%d] VPPCOM_ATTR_GET_FLAGS: flags = 0x%08x, "
+			  "is_nonblocking = %u", vcm->my_pid, *flags,
 			  session->is_nonblocking);
 	}
       else
@@ -3306,8 +3395,8 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 	{
 	  session->is_nonblocking = (*flags & O_NONBLOCK) ? 1 : 0;
 	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("VPPCOM_ATTR_SET_FLAGS: flags = 0x%08x, "
-			  "is_nonblocking = %u", *flags,
+	    clib_warning ("[%d] VPPCOM_ATTR_SET_FLAGS: flags = 0x%08x, "
+			  "is_nonblocking = %u", vcm->my_pid, *flags,
 			  session->is_nonblocking);
 	}
       else
@@ -3328,9 +3417,9 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			 sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
 	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("VPPCOM_ATTR_GET_PEER_ADDR: sid %u is_ip4 = %u, "
-			  "addr = %U, port %u", session_index,
-			  ep->is_ip4, format_ip46_address,
+	    clib_warning ("[%d] VPPCOM_ATTR_GET_PEER_ADDR: sid %u is_ip4 = "
+			  "%u, addr = %U, port %u", vcm->my_pid,
+			  session_index, ep->is_ip4, format_ip46_address,
 			  &session->peer_addr.ip46, ep->is_ip4,
 			  clib_net_to_host_u16 (ep->port));
 	}
@@ -3352,9 +3441,9 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
 			 sizeof (ip6_address_t));
 	  *buflen = sizeof (*ep);
 	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("VPPCOM_ATTR_GET_LCL_ADDR: sid %u is_ip4 = %u, "
-			  "addr = %U port %d", session_index,
-			  ep->is_ip4, format_ip46_address,
+	    clib_warning ("[%d] VPPCOM_ATTR_GET_LCL_ADDR: sid %u is_ip4 = "
+			  "%u, addr = %U port %d", vcm->my_pid,
+			  session_index, ep->is_ip4, format_ip46_address,
 			  &session->lcl_addr.ip46, ep->is_ip4,
 			  clib_net_to_host_u16 (ep->port));
 	}
@@ -3430,7 +3519,8 @@ vppcom_session_recvfrom (uint32_t session_index, void *buffer,
     rv = vppcom_session_peek (session_index, buffer, buflen);
   else
     {
-      clib_warning ("Unsupport flags for recvfrom %d", flags);
+      clib_warning ("[%d] Unsupport flags for recvfrom %d",
+		    vcm->my_pid, flags);
       rv = VPPCOM_EAFNOSUPPORT;
     }
 
