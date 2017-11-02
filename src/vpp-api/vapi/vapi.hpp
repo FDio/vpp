@@ -105,7 +105,8 @@ public:
 
 private:
   Connection &con;
-  Common_req (Connection &con) : con (con), response_state{RESPONSE_NOT_READY}
+  Common_req (Connection &con)
+      : con (con), context{0}, response_state{RESPONSE_NOT_READY}
   {
   }
 
@@ -577,13 +578,14 @@ private:
 
   static void set_msg_id (vapi_msg_id_t id)
   {
-    assert ((~0 == *msg_id_holder ()) || (id == *msg_id_holder ()));
+    assert ((INVALID_MSG_ID == *msg_id_holder ()) ||
+            (id == *msg_id_holder ()));
     *msg_id_holder () = id;
   }
 
   static vapi_msg_id_t *msg_id_holder ()
   {
-    static vapi_msg_id_t my_id{~0};
+    static vapi_msg_id_t my_id{INVALID_MSG_ID};
     return &my_id;
   }
 

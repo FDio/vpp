@@ -90,8 +90,8 @@ typedef struct
   const char *name_with_crc;
   size_t name_with_crc_len;
   bool has_context;
-  int context_offset;
-  int payload_offset;
+  unsigned int context_offset;
+  unsigned int payload_offset;
   size_t size;
   generic_swap_fn_t swap_to_be;
   generic_swap_fn_t swap_to_host;

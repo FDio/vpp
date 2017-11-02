@@ -238,7 +238,7 @@ vapi_lookup_vapi_msg_id_t (vapi_ctx_t ctx, u16 vl_msg_id)
     {
       return ctx->vl_msg_id_to_vapi_msg_t[vl_msg_id];
     }
-  return ~0;
+  return INVALID_MSG_ID;
 }
 
 vapi_error_e
@@ -337,7 +337,7 @@ vapi_connect (vapi_ctx_t ctx, const char *name,
       u8 scratch[m->name_with_crc_len + 1];
       memcpy (scratch, m->name_with_crc, m->name_with_crc_len + 1);
       u32 id = vl_api_get_msg_index (scratch);
-      if (~0 != id)
+      if (INVALID_MSG_ID != id)
 	{
 	  if (id > UINT16_MAX)
 	    {
@@ -716,7 +716,7 @@ vapi_dispatch_one (vapi_ctx_t ctx)
       vapi_msg_free (ctx, msg);
       return VAPI_EINVAL;
     }
-  if (~0 == (unsigned) ctx->vl_msg_id_to_vapi_msg_t[vpp_id])
+  if (INVALID_MSG_ID == (unsigned) ctx->vl_msg_id_to_vapi_msg_t[vpp_id])
     {
       VAPI_ERR ("Unknown msg ID received, id `%u' marked as not supported",
 		(unsigned) vpp_id);
