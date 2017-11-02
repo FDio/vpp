@@ -780,7 +780,7 @@ memif_init (vlib_main_t * vm)
 
   mhash_init_c_string (&mm->socket_file_index_by_filename, sizeof (uword));
 
-  vec_validate_aligned (mm->rx_buffers, tm->n_vlib_mains - 1,
+  vec_validate_aligned (mm->per_thread_data, tm->n_vlib_mains - 1,
 			CLIB_CACHE_LINE_BYTES);
 
   return 0;
