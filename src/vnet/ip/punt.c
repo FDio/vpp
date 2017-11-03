@@ -370,7 +370,7 @@ udp46_punt_socket_inline (vlib_main_t * vm,
     }
 
 error:
-  vlib_buffer_free_no_next (vm, buffers, n_packets);
+  vlib_buffer_free (vm, buffers, n_packets);
 
   return n_packets;
 }
