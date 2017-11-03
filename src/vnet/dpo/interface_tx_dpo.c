@@ -50,7 +50,7 @@ format_interface_tx_dpo (u8* s, va_list *ap)
     CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
     vnet_main_t * vnm = vnet_get_main();
 
-    return (format(s, "%U-dpo:",
+    return (format(s, "%U-tx-dpo:",
                    format_vnet_sw_interface_name,
                    vnm,
                    vnet_get_sw_interface(vnm, index)));
