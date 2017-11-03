@@ -76,6 +76,9 @@ memif_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (!is_pow2 (ring_size))
     return clib_error_return (0, "ring size must be power of 2");
 
+  if (ring_size > 32768)
+    return clib_error_return (0, "maximum ring size is 32768");
+
   args.log2_ring_size = min_log2 (ring_size);
 
   if (rx_queues > 255 || rx_queues < 1)
