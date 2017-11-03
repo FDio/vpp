@@ -14,6 +14,7 @@
  */
 
 #include "vom/bridge_domain_arp_entry.hpp"
+#include "vom/bridge_domain_arp_entry_cmds.hpp"
 
 namespace VOM {
 
@@ -70,7 +71,8 @@ void
 bridge_domain_arp_entry::sweep()
 {
   if (m_hw) {
-    HW::enqueue(new delete_cmd(m_hw, m_bd->id(), m_mac, m_ip_addr));
+    HW::enqueue(new bridge_domain_arp_entry_cmds::delete_cmd(m_hw, m_bd->id(),
+                                                             m_mac, m_ip_addr));
   }
   HW::write();
 }
@@ -79,7 +81,8 @@ void
 bridge_domain_arp_entry::replay()
 {
   if (m_hw) {
-    HW::enqueue(new create_cmd(m_hw, m_bd->id(), m_mac, m_ip_addr));
+    HW::enqueue(new bridge_domain_arp_entry_cmds::create_cmd(m_hw, m_bd->id(),
+                                                             m_mac, m_ip_addr));
   }
 }
 
@@ -100,7 +103,8 @@ bridge_domain_arp_entry::update(const bridge_domain_arp_entry& r)
  * create the table if it is not yet created
  */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new create_cmd(m_hw, m_bd->id(), m_mac, m_ip_addr));
+    HW::enqueue(new bridge_domain_arp_entry_cmds::create_cmd(m_hw, m_bd->id(),
+                                                             m_mac, m_ip_addr));
   }
 }
 

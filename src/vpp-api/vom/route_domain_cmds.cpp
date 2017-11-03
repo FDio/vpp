@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include "vom/route_domain.hpp"
+#include "vom/route_domain_cmds.hpp"
 
 namespace VOM {
+namespace route_domain_cmds {
 
-route_domain::create_cmd::create_cmd(HW::item<bool>& item,
-                                     l3_proto_t proto,
-                                     route::table_id_t id)
+create_cmd::create_cmd(HW::item<bool>& item,
+                       l3_proto_t proto,
+                       route::table_id_t id)
   : rpc_cmd(item)
   , m_id(id)
   , m_proto(proto)
@@ -27,13 +28,13 @@ route_domain::create_cmd::create_cmd(HW::item<bool>& item,
 }
 
 bool
-route_domain::create_cmd::operator==(const create_cmd& other) const
+create_cmd::operator==(const create_cmd& other) const
 {
   return (m_id == other.m_id);
 }
 
 rc_t
-route_domain::create_cmd::issue(connection& con)
+create_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -50,7 +51,7 @@ route_domain::create_cmd::issue(connection& con)
 }
 
 std::string
-route_domain::create_cmd::to_string() const
+create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "ip-table-create: " << m_hw_item.to_string() << " id:" << m_id
@@ -59,9 +60,9 @@ route_domain::create_cmd::to_string() const
   return (s.str());
 }
 
-route_domain::delete_cmd::delete_cmd(HW::item<bool>& item,
-                                     l3_proto_t proto,
-                                     route::table_id_t id)
+delete_cmd::delete_cmd(HW::item<bool>& item,
+                       l3_proto_t proto,
+                       route::table_id_t id)
   : rpc_cmd(item)
   , m_id(id)
   , m_proto(proto)
@@ -69,13 +70,13 @@ route_domain::delete_cmd::delete_cmd(HW::item<bool>& item,
 }
 
 bool
-route_domain::delete_cmd::operator==(const delete_cmd& other) const
+delete_cmd::operator==(const delete_cmd& other) const
 {
   return (m_id == other.m_id);
 }
 
 rc_t
-route_domain::delete_cmd::issue(connection& con)
+delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -93,7 +94,7 @@ route_domain::delete_cmd::issue(connection& con)
 }
 
 std::string
-route_domain::delete_cmd::to_string() const
+delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "ip-table-delete: " << m_hw_item.to_string() << " id:" << m_id
@@ -101,11 +102,12 @@ route_domain::delete_cmd::to_string() const
 
   return (s.str());
 }
-}
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "mozilla")
- * End:
- */
+} // namespace route_domain_cmds
+} // namespace VOM
+  /*
+   * fd.io coding-style-patch-verification: ON
+   *
+   * Local Variables:
+   * eval: (c-set-style "mozilla")
+   * End:
+   */

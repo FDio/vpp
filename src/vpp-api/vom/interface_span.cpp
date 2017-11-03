@@ -14,7 +14,7 @@
  */
 
 #include "vom/interface_span.hpp"
-#include "vom/cmd.hpp"
+#include "vom/interface_span_cmds.hpp"
 
 namespace VOM {
 /**
@@ -54,8 +54,8 @@ void
 interface_span::sweep()
 {
   if (m_config) {
-    HW::enqueue(
-      new unconfig_cmd(m_config, m_itf_from->handle(), m_itf_to->handle()));
+    HW::enqueue(new interface_span_cmds::unconfig_cmd(
+      m_config, m_itf_from->handle(), m_itf_to->handle()));
   }
   HW::write();
 }
@@ -70,8 +70,8 @@ void
 interface_span::replay()
 {
   if (m_config) {
-    HW::enqueue(new config_cmd(m_config, m_itf_from->handle(),
-                               m_itf_to->handle(), m_state));
+    HW::enqueue(new interface_span_cmds::config_cmd(
+      m_config, m_itf_from->handle(), m_itf_to->handle(), m_state));
   }
 }
 
@@ -90,8 +90,8 @@ void
 interface_span::update(const interface_span& desired)
 {
   if (!m_config) {
-    HW::enqueue(new config_cmd(m_config, m_itf_from->handle(),
-                               m_itf_to->handle(), m_state));
+    HW::enqueue(new interface_span_cmds::config_cmd(
+      m_config, m_itf_from->handle(), m_itf_to->handle(), m_state));
   }
 }
 
@@ -132,7 +132,8 @@ interface_span::event_handler::handle_replay()
 void
 interface_span::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<interface_span::dump_cmd> cmd(new interface_span::dump_cmd());
+  std::shared_ptr<interface_span_cmds::dump_cmd> cmd(
+    new interface_span_cmds::dump_cmd());
 
   HW::enqueue(cmd);
   HW::write();

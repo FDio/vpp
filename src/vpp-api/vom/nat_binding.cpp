@@ -15,6 +15,7 @@
 
 #include "vom/nat_binding.hpp"
 #include "vom/cmd.hpp"
+#include "vom/nat_binding_cmds.hpp"
 
 namespace VOM {
 singular_db<const nat_binding::key_t, nat_binding> nat_binding::m_db;
@@ -64,7 +65,8 @@ nat_binding::sweep()
 {
   if (m_binding) {
     if (direction_t::INPUT == m_dir) {
-      HW::enqueue(new unbind_44_input_cmd(m_binding, m_itf->handle(), m_zone));
+      HW::enqueue(new nat_binding_cmds::unbind_44_input_cmd(
+        m_binding, m_itf->handle(), m_zone));
     } else {
       assert(!"Unimplemented");
     }
@@ -77,7 +79,8 @@ nat_binding::replay()
 {
   if (m_binding) {
     if (direction_t::INPUT == m_dir) {
-      HW::enqueue(new bind_44_input_cmd(m_binding, m_itf->handle(), m_zone));
+      HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
+        m_binding, m_itf->handle(), m_zone));
     } else {
       assert(!"Unimplemented");
     }
@@ -92,7 +95,8 @@ nat_binding::update(const nat_binding& desired)
  */
   if (!m_binding) {
     if (direction_t::INPUT == m_dir) {
-      HW::enqueue(new bind_44_input_cmd(m_binding, m_itf->handle(), m_zone));
+      HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
+        m_binding, m_itf->handle(), m_zone));
     } else {
       assert(!"Unimplemented");
     }

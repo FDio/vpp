@@ -13,14 +13,16 @@
  * limitations under the License.
  */
 
-#include "vom/ip_unnumbered.hpp"
+#include "vom/ip_unnumbered_cmds.hpp"
 
 #include <vapi/vpe.api.vapi.hpp>
 
 namespace VOM {
-ip_unnumbered::config_cmd::config_cmd(HW::item<bool>& item,
-                                      const handle_t& itf,
-                                      const handle_t& l3_itf)
+namespace ip_unnumbered_cmds {
+
+config_cmd::config_cmd(HW::item<bool>& item,
+                       const handle_t& itf,
+                       const handle_t& l3_itf)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_l3_itf(l3_itf)
@@ -28,13 +30,13 @@ ip_unnumbered::config_cmd::config_cmd(HW::item<bool>& item,
 }
 
 bool
-ip_unnumbered::config_cmd::operator==(const config_cmd& o) const
+config_cmd::operator==(const config_cmd& o) const
 {
   return ((m_itf == o.m_itf) && (m_l3_itf == o.m_l3_itf));
 }
 
 rc_t
-ip_unnumbered::config_cmd::issue(connection& con)
+config_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -51,7 +53,7 @@ ip_unnumbered::config_cmd::issue(connection& con)
 }
 
 std::string
-ip_unnumbered::config_cmd::to_string() const
+config_cmd::to_string() const
 {
   std::ostringstream s;
   s << "IP-unnumberd-config: " << m_hw_item.to_string()
@@ -60,9 +62,9 @@ ip_unnumbered::config_cmd::to_string() const
   return (s.str());
 }
 
-ip_unnumbered::unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
-                                          const handle_t& itf,
-                                          const handle_t& l3_itf)
+unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
+                           const handle_t& itf,
+                           const handle_t& l3_itf)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_l3_itf(l3_itf)
@@ -70,13 +72,13 @@ ip_unnumbered::unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
 }
 
 bool
-ip_unnumbered::unconfig_cmd::operator==(const unconfig_cmd& o) const
+unconfig_cmd::operator==(const unconfig_cmd& o) const
 {
   return ((m_itf == o.m_itf) && (m_l3_itf == o.m_l3_itf));
 }
 
 rc_t
-ip_unnumbered::unconfig_cmd::issue(connection& con)
+unconfig_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -94,7 +96,7 @@ ip_unnumbered::unconfig_cmd::issue(connection& con)
 }
 
 std::string
-ip_unnumbered::unconfig_cmd::to_string() const
+unconfig_cmd::to_string() const
 {
   std::ostringstream s;
   s << "IP-unnumberd-unconfig: " << m_hw_item.to_string()
@@ -102,7 +104,9 @@ ip_unnumbered::unconfig_cmd::to_string() const
 
   return (s.str());
 }
-}
+
+}; // namespace ip_unnumbered_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

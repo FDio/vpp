@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include "vom/neighbour.hpp"
+#include "vom/neighbour_cmds.hpp"
 
 namespace VOM {
-neighbour::create_cmd::create_cmd(HW::item<bool>& item,
-                                  handle_t itf,
-                                  const mac_address_t& mac,
-                                  const boost::asio::ip::address& ip_addr)
+namespace neighbour_cmds {
+create_cmd::create_cmd(HW::item<bool>& item,
+                       handle_t itf,
+                       const mac_address_t& mac,
+                       const boost::asio::ip::address& ip_addr)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_mac(mac)
@@ -28,14 +29,14 @@ neighbour::create_cmd::create_cmd(HW::item<bool>& item,
 }
 
 bool
-neighbour::create_cmd::operator==(const create_cmd& other) const
+create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_mac == other.m_mac) && (m_ip_addr == other.m_ip_addr) &&
           (m_itf == other.m_itf));
 }
 
 rc_t
-neighbour::create_cmd::issue(connection& con)
+create_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -54,7 +55,7 @@ neighbour::create_cmd::issue(connection& con)
 }
 
 std::string
-neighbour::create_cmd::to_string() const
+create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "nieghbour-create: " << m_hw_item.to_string()
@@ -64,10 +65,10 @@ neighbour::create_cmd::to_string() const
   return (s.str());
 }
 
-neighbour::delete_cmd::delete_cmd(HW::item<bool>& item,
-                                  handle_t itf,
-                                  const mac_address_t& mac,
-                                  const boost::asio::ip::address& ip_addr)
+delete_cmd::delete_cmd(HW::item<bool>& item,
+                       handle_t itf,
+                       const mac_address_t& mac,
+                       const boost::asio::ip::address& ip_addr)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_mac(mac)
@@ -76,14 +77,14 @@ neighbour::delete_cmd::delete_cmd(HW::item<bool>& item,
 }
 
 bool
-neighbour::delete_cmd::operator==(const delete_cmd& other) const
+delete_cmd::operator==(const delete_cmd& other) const
 {
   return ((m_mac == other.m_mac) && (m_ip_addr == other.m_ip_addr) &&
           (m_itf == other.m_itf));
 }
 
 rc_t
-neighbour::delete_cmd::issue(connection& con)
+delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -103,7 +104,7 @@ neighbour::delete_cmd::issue(connection& con)
 }
 
 std::string
-neighbour::delete_cmd::to_string() const
+delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "neighbour-delete: " << m_hw_item.to_string()
@@ -113,26 +114,26 @@ neighbour::delete_cmd::to_string() const
   return (s.str());
 }
 
-neighbour::dump_cmd::dump_cmd(const handle_t& hdl, const l3_proto_t& proto)
+dump_cmd::dump_cmd(const handle_t& hdl, const l3_proto_t& proto)
   : m_itf(hdl)
   , m_proto(proto)
 {
 }
 
-neighbour::dump_cmd::dump_cmd(const dump_cmd& d)
+dump_cmd::dump_cmd(const dump_cmd& d)
   : m_itf(d.m_itf)
   , m_proto(d.m_proto)
 {
 }
 
 bool
-neighbour::dump_cmd::operator==(const dump_cmd& other) const
+dump_cmd::operator==(const dump_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-neighbour::dump_cmd::issue(connection& con)
+dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -148,11 +149,12 @@ neighbour::dump_cmd::issue(connection& con)
 }
 
 std::string
-neighbour::dump_cmd::to_string() const
+dump_cmd::to_string() const
 {
   return ("neighbour-dump");
 }
-}
+} // namespace neighbour_cmds
+} // namespace vom
 
 /*
  * fd.io coding-style-patch-verification: ON

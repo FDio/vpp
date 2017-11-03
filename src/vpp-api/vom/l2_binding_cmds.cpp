@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include "vom/l2_binding.hpp"
+#include "vom/l2_binding_cmds.hpp"
 
 namespace VOM {
-l2_binding::bind_cmd::bind_cmd(HW::item<bool>& item,
-                               const handle_t& itf,
-                               uint32_t bd,
-                               bool is_bvi)
+namespace l2_binding_cmds {
+bind_cmd::bind_cmd(HW::item<bool>& item,
+                   const handle_t& itf,
+                   uint32_t bd,
+                   bool is_bvi)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_bd(bd)
@@ -28,14 +29,14 @@ l2_binding::bind_cmd::bind_cmd(HW::item<bool>& item,
 }
 
 bool
-l2_binding::bind_cmd::operator==(const bind_cmd& other) const
+bind_cmd::operator==(const bind_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_bd == other.m_bd) &&
           (m_is_bvi == other.m_is_bvi));
 }
 
 rc_t
-l2_binding::bind_cmd::issue(connection& con)
+bind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -54,7 +55,7 @@ l2_binding::bind_cmd::issue(connection& con)
 }
 
 std::string
-l2_binding::bind_cmd::to_string() const
+bind_cmd::to_string() const
 {
   std::ostringstream s;
   s << "L2-bind: " << m_hw_item.to_string() << " itf:" << m_itf.to_string()
@@ -63,10 +64,10 @@ l2_binding::bind_cmd::to_string() const
   return (s.str());
 }
 
-l2_binding::unbind_cmd::unbind_cmd(HW::item<bool>& item,
-                                   const handle_t& itf,
-                                   uint32_t bd,
-                                   bool is_bvi)
+unbind_cmd::unbind_cmd(HW::item<bool>& item,
+                       const handle_t& itf,
+                       uint32_t bd,
+                       bool is_bvi)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_bd(bd)
@@ -75,14 +76,14 @@ l2_binding::unbind_cmd::unbind_cmd(HW::item<bool>& item,
 }
 
 bool
-l2_binding::unbind_cmd::operator==(const unbind_cmd& other) const
+unbind_cmd::operator==(const unbind_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_bd == other.m_bd) &&
           (m_is_bvi == other.m_is_bvi));
 }
 
 rc_t
-l2_binding::unbind_cmd::issue(connection& con)
+unbind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -102,7 +103,7 @@ l2_binding::unbind_cmd::issue(connection& con)
 }
 
 std::string
-l2_binding::unbind_cmd::to_string() const
+unbind_cmd::to_string() const
 {
   std::ostringstream s;
   s << "L2-unbind: " << m_hw_item.to_string() << " itf:" << m_itf.to_string()
@@ -111,9 +112,9 @@ l2_binding::unbind_cmd::to_string() const
   return (s.str());
 }
 
-l2_binding::set_vtr_op_cmd::set_vtr_op_cmd(HW::item<l2_vtr_op_t>& item,
-                                           const handle_t& itf,
-                                           uint16_t tag)
+set_vtr_op_cmd::set_vtr_op_cmd(HW::item<l2_binding::l2_vtr_op_t>& item,
+                               const handle_t& itf,
+                               uint16_t tag)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_tag(tag)
@@ -121,7 +122,7 @@ l2_binding::set_vtr_op_cmd::set_vtr_op_cmd(HW::item<l2_vtr_op_t>& item,
 }
 
 bool
-l2_binding::set_vtr_op_cmd::operator==(const set_vtr_op_cmd& other) const
+set_vtr_op_cmd::operator==(const set_vtr_op_cmd& other) const
 {
   return (
     (m_hw_item.data() == other.m_hw_item.data() && m_itf == other.m_itf) &&
@@ -129,7 +130,7 @@ l2_binding::set_vtr_op_cmd::operator==(const set_vtr_op_cmd& other) const
 }
 
 rc_t
-l2_binding::set_vtr_op_cmd::issue(connection& con)
+set_vtr_op_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -148,7 +149,7 @@ l2_binding::set_vtr_op_cmd::issue(connection& con)
 }
 
 std::string
-l2_binding::set_vtr_op_cmd::to_string() const
+set_vtr_op_cmd::to_string() const
 {
   std::ostringstream s;
   s << "L2-set-vtr-op: " << m_hw_item.to_string()
@@ -156,7 +157,9 @@ l2_binding::set_vtr_op_cmd::to_string() const
 
   return (s.str());
 }
-}
+
+}; // namespace l2_binding_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

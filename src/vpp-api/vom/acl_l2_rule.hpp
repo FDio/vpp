@@ -19,8 +19,6 @@
 #include "vom/acl_types.hpp"
 #include "vom/prefix.hpp"
 
-#include <vapi/acl.api.vapi.hpp>
-
 namespace VOM {
 namespace ACL {
 /**
@@ -68,9 +66,13 @@ public:
   bool operator==(const l2_rule& rule) const;
 
   /**
-   * Convert to VPP API fromat
+   * Getters
    */
-  void to_vpp(vapi_type_macip_acl_rule& rule) const;
+  uint32_t priority() const;
+  action_t action() const;
+  const route::prefix_t& src_ip() const;
+  const mac_address_t& mac() const;
+  const mac_address_t& mac_mask() const;
 
 private:
   /**

@@ -16,15 +16,11 @@
 #ifndef __VOM_ARP_PROXY_CONFIG_H__
 #define __VOM_ARP_PROXY_CONFIG_H__
 
-#include "vom/dump_cmd.hpp"
 #include "vom/hw.hpp"
 #include "vom/inspect.hpp"
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
-#include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
-
-#include <vapi/vpe.api.vapi.hpp>
 
 namespace VOM {
 /**
@@ -69,78 +65,6 @@ public:
    * Dump all LLDP configs into the stream provided
    */
   static void dump(std::ostream& os);
-
-  /**
-   * A command class that adds the ARP Proxy config
-   */
-  class config_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Proxy_arp_add_del>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    config_cmd(HW::item<bool>& item,
-               const boost::asio::ip::address_v4& lo,
-               const boost::asio::ip::address_v4& high);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const config_cmd& i) const;
-
-  private:
-    /**
-     * Address range
-     */
-    const boost::asio::ip::address_v4 m_low;
-    const boost::asio::ip::address_v4 m_high;
-  };
-
-  /**
-   * A cmd class that Unconfigs ArpProxy Config from an interface
-   */
-  class unconfig_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Proxy_arp_add_del>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    unconfig_cmd(HW::item<bool>& item,
-                 const boost::asio::ip::address_v4& lo,
-                 const boost::asio::ip::address_v4& hig);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const unconfig_cmd& i) const;
-
-  private:
-    /**
-     * Address range
-     */
-    const boost::asio::ip::address_v4 m_low;
-    const boost::asio::ip::address_v4 m_high;
-  };
 
 private:
   /**

@@ -14,7 +14,7 @@
  */
 
 #include "vom/tap_interface.hpp"
-#include "vom/cmd.hpp"
+#include "vom/tap_interface_cmds.hpp"
 
 #include <vapi/vpe.api.vapi.hpp>
 
@@ -69,7 +69,8 @@ tap_interface::tap_interface(const tap_interface& o)
 std::queue<cmd*>&
 tap_interface::mk_create_cmd(std::queue<cmd*>& q)
 {
-  q.push(new create_cmd(m_hdl, name(), m_prefix, m_l2_address));
+  q.push(
+    new tap_interface_cmds::create_cmd(m_hdl, name(), m_prefix, m_l2_address));
 
   return (q);
 }
@@ -77,7 +78,7 @@ tap_interface::mk_create_cmd(std::queue<cmd*>& q)
 std::queue<cmd*>&
 tap_interface::mk_delete_cmd(std::queue<cmd*>& q)
 {
-  q.push(new delete_cmd(m_hdl));
+  q.push(new tap_interface_cmds::delete_cmd(m_hdl));
 
   return (q);
 }
@@ -100,7 +101,8 @@ tap_interface::event_handler::handle_populate(const client_db::key_t& key)
   /*
  * dump VPP current states
  */
-  std::shared_ptr<tap_interface::dump_cmd> cmd(new tap_interface::dump_cmd());
+  std::shared_ptr<tap_interface_cmds::dump_cmd> cmd(
+    new tap_interface_cmds::dump_cmd());
 
   HW::enqueue(cmd);
   HW::write();

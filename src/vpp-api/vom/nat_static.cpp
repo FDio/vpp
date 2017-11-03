@@ -14,6 +14,7 @@
  */
 
 #include "vom/nat_static.hpp"
+#include "vom/nat_static_cmds.hpp"
 
 namespace VOM {
 singular_db<nat_static::key_t, nat_static> nat_static::m_db;
@@ -59,8 +60,8 @@ nat_static::sweep()
 {
   if (m_hw) {
     if (m_inside.is_v4()) {
-      HW::enqueue(
-        new delete_44_cmd(m_hw, m_rd->table_id(), m_inside.to_v4(), m_outside));
+      HW::enqueue(new nat_static_cmds::delete_44_cmd(
+        m_hw, m_rd->table_id(), m_inside.to_v4(), m_outside));
     }
   }
   HW::write();
@@ -71,8 +72,8 @@ nat_static::replay()
 {
   if (m_hw) {
     if (m_inside.is_v4()) {
-      HW::enqueue(
-        new create_44_cmd(m_hw, m_rd->table_id(), m_inside.to_v4(), m_outside));
+      HW::enqueue(new nat_static_cmds::create_44_cmd(
+        m_hw, m_rd->table_id(), m_inside.to_v4(), m_outside));
     }
   }
 }
@@ -85,8 +86,8 @@ nat_static::update(const nat_static& r)
  */
   if (rc_t::OK != m_hw.rc()) {
     if (m_inside.is_v4()) {
-      HW::enqueue(
-        new create_44_cmd(m_hw, m_rd->table_id(), m_inside.to_v4(), m_outside));
+      HW::enqueue(new nat_static_cmds::create_44_cmd(
+        m_hw, m_rd->table_id(), m_inside.to_v4(), m_outside));
     }
   }
 }
