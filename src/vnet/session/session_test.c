@@ -732,6 +732,19 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   stream_session_t *listener, *s;
   app_namespace_t *default_ns = app_namespace_get_default ();
   u32 local_ns_index = default_ns->local_table_index;
+  int verbose = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "verbose"))
+	verbose = 1;
+      else
+	{
+	  vlib_cli_output (vm, "parse error: '%U'", format_unformat_error,
+			   input);
+	  return -1;
+	}
+    }
 
   server_sep.is_ip4 = 1;
   server_sep.port = dummy_port;
@@ -834,7 +847,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 				      &rmt_pref.fp_addr.ip4, lcl_port + 1,
 				      rmt_port, TRANSPORT_PROTO_TCP, 0);
   SESSION_TEST ((tc == 0),
-		"optimized lookup for wrong lcl port + 1 should not" " work");
+		"optimized lookup for wrong lcl port + 1 should not work");
 
   /*
    * Add 1.2.3.4/16 * 5.6.7.8/16 4321
@@ -854,12 +867,51 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 		"should not work (constrained lcl ip)");
 
   /*
+   * Add drop rule 1.2.3.4/32 1234 5.6.7.8/32 4321 action -2 (drop)
+   */
+  args.table_args.lcl_port = 1234;
+  args.table_args.lcl.fp_addr.ip4 = lcl_ip;
+  args.table_args.lcl.fp_len = 32;
+  args.table_args.rmt.fp_addr.ip4 = rmt_ip;
+  args.table_args.rmt.fp_len = 32;
+  args.table_args.action_index = SESSION_RULES_TABLE_ACTION_DROP;
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "Add 1.2.3.4/32 1234 5.6.7.8/32 4321 action %d",
+		args.table_args.action_index);
+
+  if (verbose)
+    {
+      session_lookup_dump_rules_table (0, FIB_PROTOCOL_IP4,
+				       TRANSPORT_PROTO_TCP);
+      session_lookup_dump_local_rules_table (0, FIB_PROTOCOL_IP4,
+					     TRANSPORT_PROTO_TCP);
+    }
+
+  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
+				      &rmt_pref.fp_addr.ip4, lcl_port,
+				      rmt_port, TRANSPORT_PROTO_TCP, 0);
+  SESSION_TEST ((tc == 0), "lookup for 1.2.3.4/32 1234 5.6.7.8/16 4321 "
+		"should fail (drop rule)");
+
+  /*
    * Add local scope rule for 0/0 * 5.6.7.8/16 4321 action server_index
    */
+  args.table_args.lcl_port = 0;
   args.table_args.lcl.fp_len = 0;
+  args.table_args.rmt.fp_len = 16;
+  args.table_args.action_index = server_index;
   error = vnet_session_rule_add_del (&args);
   SESSION_TEST ((error == 0), "Add * * 5.6.7.8/16 4321 action %d",
 		args.table_args.action_index);
+
+  if (verbose)
+    {
+      session_lookup_dump_rules_table (0, FIB_PROTOCOL_IP4,
+				       TRANSPORT_PROTO_TCP);
+      session_lookup_dump_local_rules_table (0, FIB_PROTOCOL_IP4,
+					     TRANSPORT_PROTO_TCP);
+    }
+
   app_index = session_lookup_local_session_endpoint (local_ns_index, &sep);
   SESSION_TEST ((app_index == server_index), "local session endpoint lookup "
 		"should work");
@@ -892,7 +944,21 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
 				      &rmt_pref.fp_addr.ip4, lcl_port,
 				      rmt_port, TRANSPORT_PROTO_TCP, 0);
-  SESSION_TEST ((tc == 0), "optimized lookup should not work (del)");
+  SESSION_TEST ((tc == 0),
+		"optimized lookup should not work (del + negative)");
+
+  args.table_args.is_add = 0;
+  args.table_args.lcl_port = 1234;
+  args.table_args.lcl.fp_addr.ip4 = lcl_ip;
+  args.table_args.lcl.fp_len = 32;
+  args.table_args.rmt.fp_addr.ip4 = rmt_ip;
+  args.table_args.rmt.fp_len = 32;
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "Del 1.2.3.4/32 1234 5.6.7.8/32 4321 drop");
+  tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
+				      &rmt_pref.fp_addr.ip4, lcl_port,
+				      rmt_port, TRANSPORT_PROTO_TCP, 0);
+  SESSION_TEST ((tc == 0), "optimized lookup should not work (no-rule)");
   return 0;
 }
 

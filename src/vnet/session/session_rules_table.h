@@ -65,6 +65,8 @@ typedef struct _session_rules_table_add_del_args
   u8 is_add;
 } session_rule_table_add_del_args_t;
 
+#define SESSION_RULES_TABLE_ACTION_DROP (((u32)~0) - 1)
+
 typedef struct _session_rules_table_t
 {
   /**

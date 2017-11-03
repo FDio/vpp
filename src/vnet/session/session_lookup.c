@@ -339,6 +339,14 @@ session_lookup_del_session (stream_session_t * s)
   return session_lookup_del_connection (ts);
 }
 
+static u32
+session_lookup_action_to_session (u32 action_index)
+{
+  if (action_index != SESSION_RULES_TABLE_ACTION_DROP)
+    return action_index;
+  return SESSION_INVALID_INDEX;
+}
+
 static stream_session_t *
 session_lookup_app_listen_session (u32 app_index, u8 fib_proto,
 				   u8 transport_proto)
@@ -356,11 +364,12 @@ session_lookup_rules_table4 (session_rules_table_t * srt, u8 proto,
 			     ip4_address_t * lcl, u16 lcl_port,
 			     ip4_address_t * rmt, u16 rmt_port)
 {
-  u32 action_index;
+  u32 action_index, session_index;
   action_index = session_rules_table_lookup4 (srt, proto, lcl, rmt, lcl_port,
 					      rmt_port);
+  session_index = session_lookup_action_to_session (action_index);
   /* Nothing sophisticated for now, action index is app index */
-  return session_lookup_app_listen_session (action_index, FIB_PROTOCOL_IP4,
+  return session_lookup_app_listen_session (session_index, FIB_PROTOCOL_IP4,
 					    proto);
 }
 
@@ -369,10 +378,11 @@ session_lookup_rules_table6 (session_rules_table_t * srt, u8 proto,
 			     ip6_address_t * lcl, u16 lcl_port,
 			     ip6_address_t * rmt, u16 rmt_port)
 {
-  u32 action_index;
+  u32 action_index, session_index;
   action_index = session_rules_table_lookup6 (srt, proto, lcl, rmt, lcl_port,
 					      rmt_port);
-  return session_lookup_app_listen_session (action_index, FIB_PROTOCOL_IP6,
+  session_index = session_lookup_action_to_session (action_index);
+  return session_lookup_app_listen_session (session_index, FIB_PROTOCOL_IP6,
 					    proto);
 }
 
@@ -384,7 +394,7 @@ session_lookup_session_endpoint (u32 table_index, session_endpoint_t * sep)
   session_kv6_t kv6;
   ip4_address_t lcl4;
   ip6_address_t lcl6;
-  u32 si;
+  u32 ai;
   int rv;
 
   st = session_table_get (table_index);
@@ -399,11 +409,11 @@ session_lookup_session_endpoint (u32 table_index, session_endpoint_t * sep)
 	return kv4.value;
 
       memset (&lcl4, 0, sizeof (lcl4));
-      si =
-	session_rules_table_lookup4 (&st->session_rules, sep->transport_proto,
-				     &lcl4, &sep->ip.ip4, 0, sep->port);
-      if (si != SESSION_RULES_TABLE_INVALID_INDEX)
-	return si;
+      ai = session_rules_table_lookup4 (&st->session_rules,
+					sep->transport_proto, &lcl4,
+					&sep->ip.ip4, 0, sep->port);
+      if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
+	return session_lookup_action_to_session (ai);
     }
   else
     {
@@ -414,11 +424,11 @@ session_lookup_session_endpoint (u32 table_index, session_endpoint_t * sep)
 	return kv6.value;
 
       memset (&lcl6, 0, sizeof (lcl6));
-      si =
-	session_rules_table_lookup6 (&st->session_rules, sep->transport_proto,
-				     &lcl6, &sep->ip.ip6, 0, sep->port);
-      if (si != SESSION_RULES_TABLE_INVALID_INDEX)
-	return si;
+      ai = session_rules_table_lookup6 (&st->session_rules,
+					sep->transport_proto, &lcl6,
+					&sep->ip.ip6, 0, sep->port);
+      if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
+	return session_lookup_action_to_session (ai);
     }
   return SESSION_INVALID_HANDLE;
 }
@@ -475,7 +485,7 @@ session_lookup_local_session_endpoint (u32 table_index,
   session_kv6_t kv6;
   ip4_address_t lcl4;
   ip6_address_t lcl6;
-  u32 si;
+  u32 ai;
   int rv;
 
   st = session_table_get (table_index);
@@ -499,11 +509,11 @@ session_lookup_local_session_endpoint (u32 table_index,
 	return (u32) kv4.value;
 
       memset (&lcl4, 0, sizeof (lcl4));
-      si =
-	session_rules_table_lookup4 (&st->session_rules, sep->transport_proto,
-				     &lcl4, &sep->ip.ip4, 0, sep->port);
-      if (si != SESSION_RULES_TABLE_INVALID_INDEX)
-	return si;
+      ai = session_rules_table_lookup4 (&st->session_rules,
+					sep->transport_proto, &lcl4,
+					&sep->ip.ip4, 0, sep->port);
+      if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
+	return session_lookup_action_to_session (ai);
     }
   else
     {
@@ -522,11 +532,11 @@ session_lookup_local_session_endpoint (u32 table_index,
 	return (u32) kv6.value;
 
       memset (&lcl6, 0, sizeof (lcl6));
-      si =
-	session_rules_table_lookup6 (&st->session_rules, sep->transport_proto,
-				     &lcl6, &sep->ip.ip6, 0, sep->port);
-      if (si != SESSION_RULES_TABLE_INVALID_INDEX)
-	return si;
+      ai = session_rules_table_lookup6 (&st->session_rules,
+					sep->transport_proto, &lcl6,
+					&sep->ip.ip6, 0, sep->port);
+      if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
+	return session_lookup_action_to_session (ai);
     }
   return SESSION_INVALID_INDEX;
 }
@@ -1115,8 +1125,8 @@ vnet_session_rule_add_del (session_rule_add_del_args_t * args)
   if (args->scope & SESSION_RULE_SCOPE_LOCAL)
     {
       st = app_namespace_get_local_table (app_ns);
-      error =
-	session_rules_table_add_del (&st->session_rules, &args->table_args);
+      error = session_rules_table_add_del (&st->session_rules,
+					   &args->table_args);
     }
   return error;
 }

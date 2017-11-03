@@ -99,11 +99,11 @@ RT (mma_rules_table_lookup) (RTT (mma_rules_table) * srt,
   ASSERT (rp);
 
   if (!RT (rule_is_match_for_key) (key, rp))
-    return ~0;
+    return SESSION_RULES_TABLE_INVALID_INDEX;
   for (i = 0; i < vec_len (rp->next_indices); i++)
     {
       rv = RT (mma_rules_table_lookup) (srt, key, rp->next_indices[i]);
-      if (rv != ~0)
+      if (rv != SESSION_RULES_TABLE_INVALID_INDEX)
 	return (rv);
     }
   return (rp->action_index);
@@ -123,11 +123,11 @@ RT (mma_rules_table_lookup_rule) (RTT (mma_rules_table) * srt,
   ASSERT (rp);
 
   if (!RT (rule_is_match_for_key) (key, rp))
-    return ~0;
+    return SESSION_RULES_TABLE_INVALID_INDEX;
   for (i = 0; i < vec_len (rp->next_indices); i++)
     {
       rv = RT (mma_rules_table_lookup_rule) (srt, key, rp->next_indices[i]);
-      if (rv != ~0)
+      if (rv != SESSION_RULES_TABLE_INVALID_INDEX)
 	return (rv);
     }
   return rule_index;
@@ -218,7 +218,7 @@ RT (mma_rules_table_del_rule) (RTT (mma_rules_table) * srt,
   rp = RT (mma_rules_table_get_rule) (srt, rule_index);
 
   if (!RT (rule_is_match_for_key) (&rule->match, rp))
-    return ~0;
+    return SESSION_RULES_TABLE_INVALID_INDEX;
   if (RT (rule_is_exact_match) (rule, rp))
     {
       if (rule_index == srt->root_index)
@@ -257,7 +257,7 @@ RT (mma_rules_table_del_rule) (RTT (mma_rules_table) * srt,
       else if (rv == 0)
 	return rv;
     }
-  return ~0;
+  return SESSION_RULES_TABLE_INVALID_INDEX;
 }
 
 /*
