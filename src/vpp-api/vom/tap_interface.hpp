@@ -18,6 +18,9 @@
 
 #include "vom/interface.hpp"
 
+#include <vapi/interface.api.vapi.hpp>
+#include <vapi/tap.api.vapi.hpp>
+
 namespace VOM {
 /**
  * A tap-interface. e.g. a tap interface
@@ -150,6 +153,8 @@ private:
                 const std::string& name,
                 admin_state_t state,
                 route::prefix_t prefix);
+
+  friend class interface_factory;
 
   /**
    * Ip Prefix

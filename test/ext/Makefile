@@ -50,8 +50,12 @@ VOM_LIBS = $(LIB_VOM) 	\
 	-lboost_unit_test_framework			\
 	$(VAPI_LIBS)
 
+VOM_CPPFLAGS = \
+	-I $(WS_ROOT)/src/vpp-api/ \
+	$(CPPFLAGS)
+
 $(VOM_BIN): $(VOM_CPPSRC) $(VOM_BINDIR) $(LIB_VOM) $(VPP_TEST_BUILD_DIR)/vpp/vpp-api/vapi/.libs/libvapiclient.so
-	$(CXX) -o $@ $(CPPFLAGS) -DBOOST_LOG_DYN_LINK -O0 -g $(VOM_CPPSRC) $(VOM_LIBS)
+	$(CXX) -o $@ $(VOM_CPPFLAGS) -DBOOST_LOG_DYN_LINK -O0 -g $(VOM_CPPSRC) $(VOM_LIBS)
 
 clean:
 	rm -rf $(VAPI_BINDIR) $(VOM_BINDIR)

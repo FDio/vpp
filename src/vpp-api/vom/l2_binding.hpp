@@ -26,6 +26,9 @@
 #include "vom/singular_db.hpp"
 #include "vom/vxlan_tunnel.hpp"
 
+#include <vapi/l2.api.vapi.hpp>
+#include <vapi/vpe.api.vapi.hpp>
+
 namespace VOM {
 /**
  * A Clas representing the binding of an L2 interface to a bridge-domain

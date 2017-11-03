@@ -17,6 +17,7 @@
 #define __VOM_SUB_INTERFACE_H__
 
 #include "vom/interface.hpp"
+#include <vapi/vpe.api.vapi.hpp>
 
 namespace VOM {
 /**
@@ -125,6 +126,8 @@ private:
                 const interface& parent,
                 admin_state_t state,
                 vlan_id_t vlan);
+  friend class interface_factory;
+
   /**
    * The interface class can construct interfaces with handles
    */

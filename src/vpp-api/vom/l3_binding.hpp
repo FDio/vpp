@@ -25,6 +25,7 @@
 #include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
 
+#include <vapi/interface.api.vapi.hpp>
 #include <vapi/ip.api.vapi.hpp>
 
 namespace VOM {

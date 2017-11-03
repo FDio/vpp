@@ -19,6 +19,7 @@
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
 #include "vom/prefix.hpp"
+#include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
 
 #include <vapi/ip.api.vapi.hpp>

@@ -24,6 +24,8 @@
 #include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
 
+#include <vapi/interface.api.vapi.hpp>
+
 namespace VOM {
 /**
  * A representation of IP unnumbered configuration on an interface

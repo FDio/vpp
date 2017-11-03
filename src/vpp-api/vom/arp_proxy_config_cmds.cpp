@@ -13,15 +13,14 @@
  * limitations under the License.
  */
 
-#include "vom/arp_proxy_config.hpp"
-
-#include <vapi/vpe.api.vapi.hpp>
+#include "vom/arp_proxy_config_cmds.hpp"
 
 namespace VOM {
-arp_proxy_config::config_cmd::config_cmd(
-  HW::item<bool>& item,
-  const boost::asio::ip::address_v4& low,
-  const boost::asio::ip::address_v4& high)
+namespace arp_proxy_config_cmds {
+
+config_cmd::config_cmd(HW::item<bool>& item,
+                       const boost::asio::ip::address_v4& low,
+                       const boost::asio::ip::address_v4& high)
   : rpc_cmd(item)
   , m_low(low)
   , m_high(high)
@@ -29,13 +28,13 @@ arp_proxy_config::config_cmd::config_cmd(
 }
 
 bool
-arp_proxy_config::config_cmd::operator==(const config_cmd& o) const
+config_cmd::operator==(const config_cmd& o) const
 {
   return ((m_low == o.m_low) && (m_high == o.m_high));
 }
 
 rc_t
-arp_proxy_config::config_cmd::issue(connection& con)
+config_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -55,7 +54,7 @@ arp_proxy_config::config_cmd::issue(connection& con)
 }
 
 std::string
-arp_proxy_config::config_cmd::to_string() const
+config_cmd::to_string() const
 {
   std::ostringstream s;
   s << "ARP-proxy-config: " << m_hw_item.to_string()
@@ -64,10 +63,9 @@ arp_proxy_config::config_cmd::to_string() const
   return (s.str());
 }
 
-arp_proxy_config::unconfig_cmd::unconfig_cmd(
-  HW::item<bool>& item,
-  const boost::asio::ip::address_v4& low,
-  const boost::asio::ip::address_v4& high)
+unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
+                           const boost::asio::ip::address_v4& low,
+                           const boost::asio::ip::address_v4& high)
   : rpc_cmd(item)
   , m_low(low)
   , m_high(high)
@@ -75,13 +73,13 @@ arp_proxy_config::unconfig_cmd::unconfig_cmd(
 }
 
 bool
-arp_proxy_config::unconfig_cmd::operator==(const unconfig_cmd& o) const
+unconfig_cmd::operator==(const unconfig_cmd& o) const
 {
   return ((m_low == o.m_low) && (m_high == o.m_high));
 }
 
 rc_t
-arp_proxy_config::unconfig_cmd::issue(connection& con)
+unconfig_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -102,7 +100,7 @@ arp_proxy_config::unconfig_cmd::issue(connection& con)
 }
 
 std::string
-arp_proxy_config::unconfig_cmd::to_string() const
+unconfig_cmd::to_string() const
 {
   std::ostringstream s;
   s << "ARP-proxy-unconfig: " << m_hw_item.to_string()
@@ -111,6 +109,8 @@ arp_proxy_config::unconfig_cmd::to_string() const
   return (s.str());
 }
 }
+}
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
