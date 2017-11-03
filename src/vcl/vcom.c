@@ -2792,52 +2792,17 @@ epoll_ctl (int __epfd, int __op, int __fd, struct epoll_event *__event)
   int rv;
   pid_t pid = getpid ();
 
-  if (is_vcom_epfd (__epfd))
+  rv = vcom_epoll_ctl (__epfd, __op, __fd, __event);
+  if (VCOM_DEBUG > 0)
+    fprintf (stderr,
+	     "[%d] epoll_ctl: "
+	     "'%04d'='%04d', '%04d', '%04d'\n", pid, rv, __epfd, __op, __fd);
+  if (rv != 0)
     {
-      /* TBD: currently limiting epoll to support only vcom fds */
-      if (is_vcom_socket_fd (__fd))
-	{
-	  rv = vcom_epoll_ctl (__epfd, __op, __fd, __event);
-	  if (VCOM_DEBUG > 0)
-	    fprintf (stderr,
-		     "[%d] epoll_ctl: "
-		     "'%04d'='%04d', '%04d', '%04d'\n",
-		     pid, rv, __epfd, __op, __fd);
-	  if (rv != 0)
-	    {
-	      errno = -rv;
-	      return -1;
-	    }
-	  return 0;
-	}
-      else
-	{
-	  /*
-	   * TBD: currently epoll does not support kernel fds
-	   * or epoll fds */
-	  errno = EBADF;
-	  return -1;
-	}
-    }
-  else
-    {
-      /* epfd is not an epoll file descriptor */
-      errno = EINVAL;
+      errno = -rv;
       return -1;
     }
   return 0;
-}
-
-int
-vcom_epoll_wait (int __epfd, struct epoll_event *__events,
-		 int __maxevents, int __timeout)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_epoll_pwait (__epfd, __events, __maxevents, __timeout, NULL);
 }
 
 int
@@ -2849,48 +2814,28 @@ epoll_wait (int __epfd, struct epoll_event *__events,
 
   if (__maxevents <= 0 || __maxevents > EP_MAX_EVENTS)
     {
+      fprintf (stderr, "[%d] ERROR: epoll_wait() invalid maxevents %d\n",
+	       pid, __maxevents);
       errno = EINVAL;
       return -1;
     }
 
-  if (is_vcom_epfd (__epfd))
+  rv =
+    vcom_socket_epoll_pwait (__epfd, __events, __maxevents, __timeout, NULL);
+  if (VCOM_DEBUG > 0)
+    fprintf (stderr,
+	     "[%d] epoll_wait: "
+	     "'%04d'='%04d', '%p', "
+	     "'%04d', '%04d'\n",
+	     pid, rv, __epfd, __events, __maxevents, __timeout);
+  if (rv < 0)
     {
-      rv = vcom_epoll_wait (__epfd, __events, __maxevents, __timeout);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] epoll_wait: "
-		 "'%04d'='%04d', '%p', "
-		 "'%04d', '%04d'\n",
-		 pid, rv, __epfd, __events, __maxevents, __timeout);
-      if (rv < 0)
-	{
-	  errno = -rv;
-	  return -1;
-	}
-      return rv;
-    }
-  else
-    {
-      errno = EINVAL;
+      errno = -rv;
       return -1;
     }
-  return 0;
+  return rv;
 }
 
-
-int
-vcom_epoll_pwait (int __epfd, struct epoll_event *__events,
-		  int __maxevents, int __timeout, const __sigset_t * __ss)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  /* implementation */
-  return vcom_socket_epoll_pwait (__epfd, __events,
-				  __maxevents, __timeout, __ss);
-}
 
 int
 epoll_pwait (int __epfd, struct epoll_event *__events,
@@ -2907,7 +2852,9 @@ epoll_pwait (int __epfd, struct epoll_event *__events,
 
   if (is_vcom_epfd (__epfd))
     {
-      rv = vcom_epoll_pwait (__epfd, __events, __maxevents, __timeout, __ss);
+      rv =
+	vcom_socket_epoll_pwait (__epfd, __events, __maxevents, __timeout,
+				 __ss);
       if (VCOM_DEBUG > 0)
 	fprintf (stderr,
 		 "[%d] epoll_pwait: "

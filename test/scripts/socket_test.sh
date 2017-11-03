@@ -520,10 +520,10 @@ write_script_header() {
         echo "export VCL_APP_NAMESPACE_ID=\"$namespace_id\"" >> $1
         echo "export VCL_APP_NAMESPACE_SECRET=\"$namespace_secret\"" >> $1
     fi
-    if [ -n "$VCL_APP_SCOPE_LOCAL" ] ; then
+    if [ -n "$VCL_APP_SCOPE_LOCAL" ] || [ -z "$multi_host" ] ; then
         echo "export VCL_APP_SCOPE_LOCAL=true" >> $1
     fi
-    if [ -n "$VCL_APP_SCOPE_GLOBAL" ] ; then
+    if [ -n "$VCL_APP_SCOPE_GLOBAL" ] || [ -n "$multi_host" ] ; then
         echo "export VCL_APP_SCOPE_GLOBAL=true" >> $1
     fi
     if [ -n "$VCL_APP_PROXY_TRANSPORT_TCP" ] ; then
