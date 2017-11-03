@@ -132,7 +132,7 @@ memif_copy_buffer_from_rx_ring (vlib_main_t * vm, memif_if_t * mif,
 
   while (*num_slots)
     {
-      data_len = ring->desc[mq->last_head].length;
+      data_len = ring->desc[mq->last_head & mask].length;
       while (data_len && (*n_free_bufs))
 	{
 	  /* get empty buffer */
@@ -161,7 +161,7 @@ memif_copy_buffer_from_rx_ring (vlib_main_t * vm, memif_if_t * mif,
 	  bytes_to_copy =
 	    data_len > n_buffer_bytes ? n_buffer_bytes : data_len;
 	  b->current_data = 0;
-	  mb = memif_get_buffer (mif, ring, mq->last_head);
+	  mb = memif_get_buffer (mif, ring, mq->last_head & mask);
 	  clib_memcpy (vlib_buffer_get_current (b), mb + offset,
 		       CLIB_CACHE_LINE_BYTES);
 	  if (bytes_to_copy > CLIB_CACHE_LINE_BYTES)
@@ -191,10 +191,10 @@ memif_copy_buffer_from_rx_ring (vlib_main_t * vm, memif_if_t * mif,
 	}
       last_head = mq->last_head;
       /* Advance to next descriptor */
-      mq->last_head = (mq->last_head + 1) & mask;
+      mq->last_head++;
       offset = 0;
       (*num_slots)--;
-      if ((ring->desc[last_head].flags & MEMIF_DESC_FLAG_NEXT) == 0)
+      if ((ring->desc[last_head & mask].flags & MEMIF_DESC_FLAG_NEXT) == 0)
 	break;
     }
 
@@ -269,10 +269,7 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (head == mq->last_head)
     return 0;
 
-  if (head > mq->last_head)
-    num_slots = head - mq->last_head;
-  else
-    num_slots = ring_size - mq->last_head + head;
+  num_slots = head - mq->last_head;
 
   while (num_slots)
     {
@@ -283,30 +280,16 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
       while (num_slots > 11 && n_left_to_next > 2)
 	{
-	  if (PREDICT_TRUE (mq->last_head + 5 < ring_size))
-	    {
-	      CLIB_PREFETCH (memif_get_buffer (mif, ring, mq->last_head + 2),
-			     CLIB_CACHE_LINE_BYTES, LOAD);
-	      CLIB_PREFETCH (memif_get_buffer (mif, ring, mq->last_head + 3),
-			     CLIB_CACHE_LINE_BYTES, LOAD);
-	      CLIB_PREFETCH (&ring->desc[mq->last_head + 4],
-			     CLIB_CACHE_LINE_BYTES, LOAD);
-	      CLIB_PREFETCH (&ring->desc[mq->last_head + 5],
-			     CLIB_CACHE_LINE_BYTES, LOAD);
-	    }
-	  else
-	    {
-	      CLIB_PREFETCH (memif_get_buffer
-			     (mif, ring, (mq->last_head + 2) % mask),
-			     CLIB_CACHE_LINE_BYTES, LOAD);
-	      CLIB_PREFETCH (memif_get_buffer
-			     (mif, ring, (mq->last_head + 3) % mask),
-			     CLIB_CACHE_LINE_BYTES, LOAD);
-	      CLIB_PREFETCH (&ring->desc[(mq->last_head + 4) % mask],
-			     CLIB_CACHE_LINE_BYTES, LOAD);
-	      CLIB_PREFETCH (&ring->desc[(mq->last_head + 5) % mask],
-			     CLIB_CACHE_LINE_BYTES, LOAD);
-	    }
+	  CLIB_PREFETCH (memif_get_buffer
+			 (mif, ring, (mq->last_head + 2) & mask),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (memif_get_buffer
+			 (mif, ring, (mq->last_head + 3) & mask),
+			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (&ring->desc[(mq->last_head + 4) & mask],
+			 CLIB_CACHE_LINE_BYTES, LOAD);
+	  CLIB_PREFETCH (&ring->desc[(mq->last_head + 5) & mask],
+			 CLIB_CACHE_LINE_BYTES, LOAD);
 
 	  vlib_buffer_t *first_b0 = 0;
 	  u32 bi0 = 0, first_bi0 = 0;
