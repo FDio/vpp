@@ -13,16 +13,18 @@
  * limitations under the License.
  */
 
-#include "vom/sub_interface.hpp"
+#include "vom/sub_interface_cmds.hpp"
 #include "vom/cmd.hpp"
 
 #include <vapi/vpe.api.vapi.hpp>
 
 namespace VOM {
-sub_interface::create_cmd::create_cmd(HW::item<handle_t>& item,
-                                      const std::string& name,
-                                      const handle_t& parent,
-                                      uint16_t vlan)
+namespace sub_interface_cmds {
+
+create_cmd::create_cmd(HW::item<handle_t>& item,
+                       const std::string& name,
+                       const handle_t& parent,
+                       uint16_t vlan)
   : interface::create_cmd<vapi::Create_vlan_subif>(item, name)
   , m_parent(parent)
   , m_vlan(vlan)
@@ -30,14 +32,14 @@ sub_interface::create_cmd::create_cmd(HW::item<handle_t>& item,
 }
 
 bool
-sub_interface::create_cmd::operator==(const create_cmd& other) const
+create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_name == other.m_name) && (m_parent == other.m_parent) &&
           (m_vlan == other.m_vlan));
 }
 
 rc_t
-sub_interface::create_cmd::issue(connection& con)
+create_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -50,14 +52,14 @@ sub_interface::create_cmd::issue(connection& con)
   m_hw_item = wait();
 
   if (m_hw_item.rc() == rc_t::OK) {
-    interface::add(m_name, m_hw_item);
+    insert_interface();
   }
 
   return rc_t::OK;
 }
 
 std::string
-sub_interface::create_cmd::to_string() const
+create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "sub-itf-create: " << m_hw_item.to_string() << " parent:" << m_parent
@@ -65,19 +67,19 @@ sub_interface::create_cmd::to_string() const
   return (s.str());
 }
 
-sub_interface::delete_cmd::delete_cmd(HW::item<handle_t>& item)
+delete_cmd::delete_cmd(HW::item<handle_t>& item)
   : interface::delete_cmd<vapi::Delete_subif>(item)
 {
 }
 
 bool
-sub_interface::delete_cmd::operator==(const delete_cmd& other) const
+delete_cmd::operator==(const delete_cmd& other) const
 {
   return (m_hw_item == other.m_hw_item);
 }
 
 rc_t
-sub_interface::delete_cmd::issue(connection& con)
+delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -89,12 +91,12 @@ sub_interface::delete_cmd::issue(connection& con)
   wait();
   m_hw_item.set(rc_t::NOOP);
 
-  interface::remove(m_hw_item);
+  remove_interface();
   return (rc_t::OK);
 }
 
 std::string
-sub_interface::delete_cmd::to_string() const
+delete_cmd::to_string() const
 {
   std::ostringstream s;
 
@@ -102,11 +104,12 @@ sub_interface::delete_cmd::to_string() const
 
   return (s.str());
 }
-}
-/*
- * fd.io coding-style-patch-verification: ON
- *
- * Local Variables:
- * eval: (c-set-style "mozilla")
- * End:
- */
+} // namespace sub_interface_cmds
+} // namespace VOM
+  /*
+   * fd.io coding-style-patch-verification: ON
+   *
+   * Local Variables:
+   * eval: (c-set-style "mozilla")
+   * End:
+   */

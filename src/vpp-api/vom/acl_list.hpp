@@ -21,14 +21,10 @@
 #include "vom/acl_l2_rule.hpp"
 #include "vom/acl_l3_rule.hpp"
 #include "vom/acl_types.hpp"
-#include "vom/dump_cmd.hpp"
 #include "vom/hw.hpp"
 #include "vom/inspect.hpp"
 #include "vom/om.hpp"
-#include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
-
-#include <vapi/acl.api.vapi.hpp>
 
 namespace VOM {
 namespace ACL {
@@ -37,7 +33,7 @@ namespace ACL {
  * packets.
  * A list is bound to a given interface.
  */
-template <typename RULE, typename UPDATE, typename DELETE, typename DUMP>
+template <typename RULE>
 class list : public object_base
 {
 public:
@@ -135,158 +131,6 @@ public:
    */
   const handle_t& handle() const { return m_hdl.data(); }
 
-  /**
-   * A command class that Create the list
-   */
-  class update_cmd
-    : public rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, UPDATE>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    update_cmd(HW::item<handle_t>& item, const key_t& key, const rules_t& rules)
-      : rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, UPDATE>(item)
-      , m_key(key)
-      , m_rules(rules)
-    {
-    }
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const
-    {
-      std::ostringstream s;
-      s << "ACL-list-update: " << this->item().to_string();
-
-      return (s.str());
-    }
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const update_cmd& other) const
-    {
-      return ((m_key == other.m_key) && (m_rules == other.m_rules));
-    }
-
-    void complete()
-    {
-      std::shared_ptr<list> sp = find(m_key);
-      if (sp && this->item()) {
-        list::add(this->item().data(), sp);
-      }
-    }
-
-    void succeeded()
-    {
-      rpc_cmd<HW::item<handle_t>, HW::item<handle_t>, UPDATE>::succeeded();
-      complete();
-    }
-
-    /**
-     * A callback function for handling ACL creates
-     */
-    virtual vapi_error_e operator()(UPDATE& reply)
-    {
-      int acl_index = reply.get_response().get_payload().acl_index;
-      int retval = reply.get_response().get_payload().retval;
-
-      VOM_LOG(log_level_t::DEBUG) << this->to_string() << " " << retval;
-
-      HW::item<handle_t> res(acl_index, rc_t::from_vpp_retval(retval));
-
-      this->fulfill(res);
-
-      return (VAPI_OK);
-    }
-
-  private:
-    /**
-     * The key.
-     */
-    const key_t& m_key;
-
-    /**
-     * The rules
-     */
-    const rules_t& m_rules;
-  };
-
-  /**
-   * A cmd class that Deletes an ACL
-   */
-  class delete_cmd : public rpc_cmd<HW::item<handle_t>, rc_t, DELETE>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    delete_cmd(HW::item<handle_t>& item)
-      : rpc_cmd<HW::item<handle_t>, rc_t, DELETE>(item)
-    {
-    }
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con) { return (rc_t::INVALID); }
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const
-    {
-      std::ostringstream s;
-      s << "ACL-list-delete: " << this->item().to_string();
-
-      return (s.str());
-    }
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const delete_cmd& other) const
-    {
-      return (this->item().data() == other.item().data());
-    }
-  };
-
-  /**
-   * A cmd class that Dumps all the ACLs
-   */
-  class dump_cmd : public VOM::dump_cmd<DUMP>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    dump_cmd() = default;
-    dump_cmd(const dump_cmd& d) = default;
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con) { return rc_t::INVALID; }
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const { return ("acl-list-dump"); }
-
-  private:
-    /**
-     * HW reutrn code
-     */
-    HW::item<bool> item;
-  };
-
   static std::shared_ptr<list> find(const handle_t& handle)
   {
     return (m_hdl_db[handle].lock());
@@ -345,23 +189,9 @@ private:
   static event_handler m_evh;
 
   /**
-   * Enquue commonds to the VPP command Q for the update
+   * Enqueue commands to the VPP command Q for the update
    */
-  void update(const list& obj)
-  {
-    /*
-     * always update the instance with the latest rule set
-     */
-    if (!m_hdl || obj.m_rules != m_rules) {
-      HW::enqueue(new update_cmd(m_hdl, m_key, m_rules));
-    }
-    /*
-     * We don't, can't, read the priority from VPP,
-     * so the is equals check above does not include the priorty.
-     * but we save it now.
-     */
-    m_rules = obj.m_rules;
-  }
+  void update(const list& obj);
 
   /**
    * HW assigned handle
@@ -389,23 +219,12 @@ private:
   /**
    * Sweep/reap the object if still stale
    */
-  void sweep(void)
-  {
-    if (m_hdl) {
-      HW::enqueue(new delete_cmd(m_hdl));
-    }
-    HW::write();
-  }
+  void sweep(void);
 
   /**
    * Replay the objects state to HW
    */
-  void replay(void)
-  {
-    if (m_hdl) {
-      HW::enqueue(new update_cmd(m_hdl, m_key, m_rules));
-    }
-  }
+  void replay(void);
 
   /**
    * A map of all ACL's against the client's key
@@ -431,36 +250,27 @@ private:
 /**
  * Typedef the L3 ACL type
  */
-typedef list<l3_rule, vapi::Acl_add_replace, vapi::Acl_del, vapi::Acl_dump>
-  l3_list;
+typedef list<l3_rule> l3_list;
 
 /**
  * Typedef the L2 ACL type
  */
-typedef list<l2_rule,
-             vapi::Macip_acl_add,
-             vapi::Macip_acl_del,
-             vapi::Macip_acl_dump>
-  l2_list;
+typedef list<l2_rule> l2_list;
 
 /**
  * Definition of the static singular_db for ACL Lists
  */
-template <typename RULE, typename UPDATE, typename DELETE, typename DUMP>
-singular_db<typename ACL::list<RULE, UPDATE, DELETE, DUMP>::key_t,
-            ACL::list<RULE, UPDATE, DELETE, DUMP>>
-  list<RULE, UPDATE, DELETE, DUMP>::m_db;
+template <typename RULE>
+singular_db<typename ACL::list<RULE>::key_t, ACL::list<RULE>> list<RULE>::m_db;
 
 /**
  * Definition of the static per-handle DB for ACL Lists
  */
-template <typename RULE, typename UPDATE, typename DELETE, typename DUMP>
-std::map<const handle_t, std::weak_ptr<ACL::list<RULE, UPDATE, DELETE, DUMP>>>
-  list<RULE, UPDATE, DELETE, DUMP>::m_hdl_db;
+template <typename RULE>
+std::map<const handle_t, std::weak_ptr<ACL::list<RULE>>> list<RULE>::m_hdl_db;
 
-template <typename RULE, typename UPDATE, typename DELETE, typename DUMP>
-typename ACL::list<RULE, UPDATE, DELETE, DUMP>::event_handler
-  list<RULE, UPDATE, DELETE, DUMP>::m_evh;
+template <typename RULE>
+typename ACL::list<RULE>::event_handler list<RULE>::m_evh;
 };
 };
 

@@ -25,7 +25,6 @@
 #include "vom/interface.hpp"
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
-#include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
 
 namespace VOM {
@@ -34,7 +33,7 @@ namespace ACL {
  * A binding between an ACL and an interface.
  * A representation of the application of the ACL to the interface.
  */
-template <typename LIST, typename BIND, typename DUMP>
+template <typename LIST>
 class binding : public object_base
 {
 public:
@@ -98,159 +97,6 @@ public:
    */
   static void dump(std::ostream& os) { m_db.dump(os); }
 
-  /**
-   * A command class that binds the ACL to the interface
-   */
-  class bind_cmd : public rpc_cmd<HW::item<bool>, rc_t, BIND>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    bind_cmd(HW::item<bool>& item,
-             const direction_t& direction,
-             const handle_t& itf,
-             const handle_t& acl)
-      : rpc_cmd<HW::item<bool>, rc_t, BIND>(item)
-      , m_direction(direction)
-      , m_itf(itf)
-      , m_acl(acl)
-    {
-    }
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const
-    {
-      std::ostringstream s;
-      s << "acl-bind:[" << m_direction.to_string()
-        << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
-
-      return (s.str());
-    }
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const bind_cmd& other) const
-    {
-      return ((m_itf == other.m_itf) && (m_acl == m_acl));
-    }
-
-  private:
-    /**
-     * The direction of the binding
-     */
-    const direction_t m_direction;
-
-    /**
-     * The interface to bind to
-     */
-    const handle_t m_itf;
-
-    /**
-     * The ACL to bind
-     */
-    const handle_t m_acl;
-  };
-
-  /**
-   * A command class that binds the ACL to the interface
-   */
-  class unbind_cmd : public rpc_cmd<HW::item<bool>, rc_t, BIND>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    unbind_cmd(HW::item<bool>& item,
-               const direction_t& direction,
-               const handle_t& itf,
-               const handle_t& acl)
-      : rpc_cmd<HW::item<bool>, rc_t, BIND>(item)
-      , m_direction(direction)
-      , m_itf(itf)
-      , m_acl(acl)
-    {
-    }
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const
-    {
-      std::ostringstream s;
-      s << "acl-unbind:[" << m_direction.to_string()
-        << " itf:" << m_itf.to_string() << " acl:" << m_acl.to_string() << "]";
-
-      return (s.str());
-    }
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const unbind_cmd& other) const
-    {
-      return ((m_itf == other.m_itf) && (m_acl == m_acl));
-    }
-
-  private:
-    /**
-     * The direction of the binding
-     */
-    const direction_t m_direction;
-
-    /**
-     * The interface to bind to
-     */
-    const handle_t m_itf;
-
-    /**
-     * The ACL to bind
-     */
-    const handle_t m_acl;
-  };
-
-  /**
-   * A cmd class that Dumps all the ACLs
-   */
-  class dump_cmd : public VOM::dump_cmd<DUMP>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    dump_cmd() = default;
-    dump_cmd(const dump_cmd& d) = default;
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const { return ("acl-bind-dump"); }
-
-  private:
-    /**
-     * HW reutrn code
-     */
-    HW::item<bool> item;
-  };
-
 private:
   /**
    * Class definition for listeners to OM events
@@ -294,14 +140,7 @@ private:
   /**
    * Enquue commonds to the VPP command Q for the update
    */
-  void update(const binding& obj)
-  {
-    if (!m_binding) {
-      HW::enqueue(
-        new bind_cmd(m_binding, m_direction, m_itf->handle(), m_acl->handle()));
-    }
-    HW::write();
-  }
+  void update(const binding& obj);
 
   /**
    * Find or Add the instance in the DB
@@ -325,25 +164,12 @@ private:
   /**
    * Sweep/reap the object if still stale
    */
-  void sweep(void)
-  {
-    if (m_binding) {
-      HW::enqueue(new unbind_cmd(m_binding, m_direction, m_itf->handle(),
-                                 m_acl->handle()));
-    }
-    HW::write();
-  }
+  void sweep(void);
 
   /**
    * Replay the objects state to HW
    */
-  void replay(void)
-  {
-    if (m_binding) {
-      HW::enqueue(
-        new bind_cmd(m_binding, m_direction, m_itf->handle(), m_acl->handle()));
-    }
-  }
+  void replay(void);
 
   /**
    * The direction the of the packets on which to apply the ACL
@@ -380,30 +206,22 @@ private:
 /**
  * Typedef the L3 binding type
  */
-typedef binding<l3_list,
-                vapi::Acl_interface_add_del,
-                vapi::Acl_interface_list_dump>
-  l3_binding;
+typedef binding<l3_list> l3_binding;
 
 /**
  * Typedef the L2 binding type
  */
-typedef binding<l2_list,
-                vapi::Macip_acl_interface_add_del,
-                vapi::Macip_acl_interface_list_dump>
-  l2_binding;
+typedef binding<l2_list> l2_binding;
 
 /**
  * Definition of the static Singular DB for ACL bindings
  */
-template <typename LIST, typename BIND, typename DUMP>
-singular_db<typename ACL::binding<LIST, BIND, DUMP>::key_t,
-            ACL::binding<LIST, BIND, DUMP>>
-  binding<LIST, BIND, DUMP>::m_db;
+template <typename LIST>
+singular_db<typename ACL::binding<LIST>::key_t, ACL::binding<LIST>>
+  binding<LIST>::m_db;
 
-template <typename LIST, typename BIND, typename DUMP>
-typename ACL::binding<LIST, BIND, DUMP>::event_handler
-  binding<LIST, BIND, DUMP>::m_evh;
+template <typename LIST>
+typename ACL::binding<LIST>::event_handler binding<LIST>::m_evh;
 };
 
 std::ostream& operator<<(

@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
-#include "vom/nat_static.hpp"
+#include "vom/nat_static_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_NAT_API_JSON;
 
 namespace VOM {
-nat_static::create_44_cmd::create_44_cmd(
-  HW::item<bool>& item,
-  route::table_id_t id,
-  const boost::asio::ip::address_v4& inside,
-  const boost::asio::ip::address_v4& outside)
+namespace nat_static_cmds {
+
+create_44_cmd::create_44_cmd(HW::item<bool>& item,
+                             route::table_id_t id,
+                             const boost::asio::ip::address_v4& inside,
+                             const boost::asio::ip::address_v4& outside)
   : rpc_cmd(item)
   , m_id(id)
   , m_inside(inside)
@@ -31,14 +32,14 @@ nat_static::create_44_cmd::create_44_cmd(
 }
 
 bool
-nat_static::create_44_cmd::operator==(const create_44_cmd& other) const
+create_44_cmd::operator==(const create_44_cmd& other) const
 {
   return ((m_id == other.m_id) && (m_inside == other.m_inside) &&
           (m_outside == other.m_outside));
 }
 
 rc_t
-nat_static::create_44_cmd::issue(connection& con)
+create_44_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -60,7 +61,7 @@ nat_static::create_44_cmd::issue(connection& con)
 }
 
 std::string
-nat_static::create_44_cmd::to_string() const
+create_44_cmd::to_string() const
 {
   std::ostringstream s;
   s << "nat-44-static-create: " << m_hw_item.to_string() << " table:" << m_id
@@ -70,11 +71,10 @@ nat_static::create_44_cmd::to_string() const
   return (s.str());
 }
 
-nat_static::delete_44_cmd::delete_44_cmd(
-  HW::item<bool>& item,
-  route::table_id_t id,
-  const boost::asio::ip::address_v4& inside,
-  const boost::asio::ip::address_v4& outside)
+delete_44_cmd::delete_44_cmd(HW::item<bool>& item,
+                             route::table_id_t id,
+                             const boost::asio::ip::address_v4& inside,
+                             const boost::asio::ip::address_v4& outside)
   : rpc_cmd(item)
   , m_id(id)
   , m_inside(inside)
@@ -83,14 +83,14 @@ nat_static::delete_44_cmd::delete_44_cmd(
 }
 
 bool
-nat_static::delete_44_cmd::operator==(const delete_44_cmd& other) const
+delete_44_cmd::operator==(const delete_44_cmd& other) const
 {
   return ((m_id == other.m_id) && (m_inside == other.m_inside) &&
           (m_outside == other.m_outside));
 }
 
 rc_t
-nat_static::delete_44_cmd::issue(connection& con)
+delete_44_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -113,7 +113,7 @@ nat_static::delete_44_cmd::issue(connection& con)
 }
 
 std::string
-nat_static::delete_44_cmd::to_string() const
+delete_44_cmd::to_string() const
 {
   std::ostringstream s;
   s << "nat-44-static-delete: " << m_hw_item.to_string() << " table:" << m_id
@@ -123,22 +123,22 @@ nat_static::delete_44_cmd::to_string() const
   return (s.str());
 }
 
-nat_static::dump_44_cmd::dump_44_cmd()
+dump_44_cmd::dump_44_cmd()
 {
 }
 
-nat_static::dump_44_cmd::dump_44_cmd(const dump_44_cmd& d)
+dump_44_cmd::dump_44_cmd(const dump_44_cmd& d)
 {
 }
 
 bool
-nat_static::dump_44_cmd::operator==(const dump_44_cmd& other) const
+dump_44_cmd::operator==(const dump_44_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-nat_static::dump_44_cmd::issue(connection& con)
+dump_44_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -150,11 +150,12 @@ nat_static::dump_44_cmd::issue(connection& con)
 }
 
 std::string
-nat_static::dump_44_cmd::to_string() const
+dump_44_cmd::to_string() const
 {
   return ("nat-static-dump");
 }
-}
+} // namespace nat_static_cmds
+} // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

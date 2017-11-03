@@ -14,9 +14,8 @@
  */
 
 #include "vom/hw.hpp"
+#include "vom/hw_cmds.hpp"
 #include "vom/logger.hpp"
-
-#include <vapi/vpe.api.vapi.hpp>
 
 namespace VOM {
 HW::cmd_q::cmd_q()
@@ -270,12 +269,13 @@ HW::write()
 bool
 HW::poll()
 {
-  std::shared_ptr<cmd> poll(new Poll(m_poll_state));
+  std::shared_ptr<cmd> poll(new hw_cmds::poll(m_poll_state));
 
   HW::enqueue(poll);
   HW::write();
 
   return (m_poll_state);
+  return (true);
 }
 
 template <>
@@ -298,33 +298,6 @@ HW::item<unsigned int>::to_string() const
   os << "hw-item:["
      << "rc:" << item_rc.to_string() << " data:" << item_data << "]";
   return (os.str());
-}
-
-HW::Poll::Poll(HW::item<bool>& item)
-  : rpc_cmd(item)
-{
-}
-
-rc_t
-HW::Poll::issue(connection& con)
-{
-  msg_t req(con.ctx(), std::ref(*this));
-
-  VAPI_CALL(req.execute());
-
-  m_hw_item.set(wait());
-
-  return (rc_t::OK);
-}
-
-std::string
-HW::Poll::to_string() const
-{
-  std::ostringstream s;
-
-  s << "poll: " << m_hw_item.to_string();
-
-  return (s.str());
 }
 }
 

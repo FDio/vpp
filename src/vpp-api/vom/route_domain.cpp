@@ -15,6 +15,7 @@
 
 #include "vom/route_domain.hpp"
 #include "vom/cmd.hpp"
+#include "vom/route_domain_cmds.hpp"
 
 namespace VOM {
 /**
@@ -55,10 +56,12 @@ void
 route_domain::sweep()
 {
   if (m_hw_v4) {
-    HW::enqueue(new delete_cmd(m_hw_v4, l3_proto_t::IPV4, m_table_id));
+    HW::enqueue(
+      new route_domain_cmds::delete_cmd(m_hw_v4, l3_proto_t::IPV4, m_table_id));
   }
   if (m_hw_v6) {
-    HW::enqueue(new delete_cmd(m_hw_v6, l3_proto_t::IPV6, m_table_id));
+    HW::enqueue(
+      new route_domain_cmds::delete_cmd(m_hw_v6, l3_proto_t::IPV6, m_table_id));
   }
   HW::write();
 }
@@ -67,10 +70,12 @@ void
 route_domain::replay()
 {
   if (m_hw_v4) {
-    HW::enqueue(new create_cmd(m_hw_v4, l3_proto_t::IPV4, m_table_id));
+    HW::enqueue(
+      new route_domain_cmds::create_cmd(m_hw_v4, l3_proto_t::IPV4, m_table_id));
   }
   if (m_hw_v6) {
-    HW::enqueue(new create_cmd(m_hw_v6, l3_proto_t::IPV6, m_table_id));
+    HW::enqueue(
+      new route_domain_cmds::create_cmd(m_hw_v6, l3_proto_t::IPV6, m_table_id));
   }
 }
 
@@ -125,10 +130,12 @@ route_domain::update(const route_domain& desired)
  * create the table if it is not yet created
  */
   if (rc_t::OK != m_hw_v4.rc()) {
-    HW::enqueue(new create_cmd(m_hw_v4, l3_proto_t::IPV4, m_table_id));
+    HW::enqueue(
+      new route_domain_cmds::create_cmd(m_hw_v4, l3_proto_t::IPV4, m_table_id));
   }
   if (rc_t::OK != m_hw_v6.rc()) {
-    HW::enqueue(new create_cmd(m_hw_v6, l3_proto_t::IPV6, m_table_id));
+    HW::enqueue(
+      new route_domain_cmds::create_cmd(m_hw_v6, l3_proto_t::IPV6, m_table_id));
   }
 }
 

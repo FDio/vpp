@@ -14,6 +14,7 @@
  */
 
 #include "vom/neighbour.hpp"
+#include "vom/neighbour_cmds.hpp"
 
 namespace VOM {
 singular_db<neighbour::key_t, neighbour> neighbour::m_db;
@@ -49,7 +50,8 @@ void
 neighbour::sweep()
 {
   if (m_hw) {
-    HW::enqueue(new delete_cmd(m_hw, m_itf->handle(), m_mac, m_ip_addr));
+    HW::enqueue(
+      new neighbour_cmds::delete_cmd(m_hw, m_itf->handle(), m_mac, m_ip_addr));
   }
   HW::write();
 }
@@ -58,7 +60,8 @@ void
 neighbour::replay()
 {
   if (m_hw) {
-    HW::enqueue(new create_cmd(m_hw, m_itf->handle(), m_mac, m_ip_addr));
+    HW::enqueue(
+      new neighbour_cmds::create_cmd(m_hw, m_itf->handle(), m_mac, m_ip_addr));
   }
 }
 
@@ -79,7 +82,8 @@ neighbour::update(const neighbour& r)
  * create the table if it is not yet created
  */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new create_cmd(m_hw, m_itf->handle(), m_mac, m_ip_addr));
+    HW::enqueue(
+      new neighbour_cmds::create_cmd(m_hw, m_itf->handle(), m_mac, m_ip_addr));
   }
 }
 
@@ -131,9 +135,9 @@ neighbour::populate_i(const client_db::key_t& key,
   /*
  * dump VPP current states
  */
-  std::shared_ptr<neighbour::dump_cmd> cmd =
-    std::make_shared<neighbour::dump_cmd>(
-      neighbour::dump_cmd(itf->handle(), proto));
+  std::shared_ptr<neighbour_cmds::dump_cmd> cmd =
+    std::make_shared<neighbour_cmds::dump_cmd>(
+      neighbour_cmds::dump_cmd(itf->handle(), proto));
 
   HW::enqueue(cmd);
   HW::write();

@@ -22,13 +22,12 @@
 #include <string>
 #include <thread>
 
-#include <vapi/vapi.hpp>
-#include <vapi/vpe.api.vapi.hpp>
-
 #include "vom/connection.hpp"
-#include "vom/rpc_cmd.hpp"
+#include "vom/types.hpp"
 
 namespace VOM {
+
+class cmd;
 class HW
 {
 public:
@@ -357,33 +356,6 @@ private:
    * Only the OM can enable/disable HW
    */
   friend class OM;
-
-  /**
-   * A command pool the HW for liveness
-   */
-  class Poll : public rpc_cmd<HW::item<bool>, rc_t, vapi::Control_ping>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     */
-    Poll(HW::item<bool>& item);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const Poll& i) const;
-  };
 };
 
 /**

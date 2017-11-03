@@ -14,12 +14,9 @@
  */
 
 #include "vom/arp_proxy_config.hpp"
-#include "vom/cmd.hpp"
+#include "vom/arp_proxy_config_cmds.hpp"
 
 namespace VOM {
-/**
- * A DB of all LLDP configs
- */
 singular_db<arp_proxy_config::key_t, arp_proxy_config> arp_proxy_config::m_db;
 
 arp_proxy_config::event_handler arp_proxy_config::m_evh;
@@ -51,7 +48,8 @@ void
 arp_proxy_config::sweep()
 {
   if (m_config) {
-    HW::enqueue(new unconfig_cmd(m_config, m_low, m_high));
+    HW::enqueue(
+      new arp_proxy_config_cmds::unconfig_cmd(m_config, m_low, m_high));
   }
   HW::write();
 }
@@ -66,7 +64,7 @@ void
 arp_proxy_config::replay()
 {
   if (m_config) {
-    HW::enqueue(new config_cmd(m_config, m_low, m_high));
+    HW::enqueue(new arp_proxy_config_cmds::config_cmd(m_config, m_low, m_high));
   }
 }
 
@@ -84,7 +82,7 @@ void
 arp_proxy_config::update(const arp_proxy_config& desired)
 {
   if (!m_config) {
-    HW::enqueue(new config_cmd(m_config, m_low, m_high));
+    HW::enqueue(new arp_proxy_config_cmds::config_cmd(m_config, m_low, m_high));
   }
 }
 

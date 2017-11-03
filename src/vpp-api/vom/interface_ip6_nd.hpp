@@ -28,8 +28,6 @@
 #include "vom/singular_db.hpp"
 #include "vom/sub_interface.hpp"
 
-#include <vapi/ip.api.vapi.hpp>
-
 namespace VOM {
 /**
  * A representation of L3 configuration on an interface

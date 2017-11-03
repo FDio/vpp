@@ -16,9 +16,7 @@
 #ifndef __VOM_INTERFACE_H__
 #define __VOM_INTERFACE_H__
 
-#include "vom/dump_cmd.hpp"
 #include "vom/enum_base.hpp"
-#include "vom/event_cmd.hpp"
 #include "vom/hw.hpp"
 #include "vom/inspect.hpp"
 #include "vom/object_base.hpp"
@@ -28,14 +26,15 @@
 #include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
 
-#include <vapi/af_packet.api.vapi.hpp>
-#include <vapi/interface.api.vapi.hpp>
-#include <vapi/stats.api.vapi.hpp>
-#include <vapi/tap.api.vapi.hpp>
-#include <vapi/vapi.hpp>
-#include <vapi/vpe.api.vapi.hpp>
-
 namespace VOM {
+/**
+ * Forward declaration of the stats and events command
+ */
+namespace interface_cmds {
+class stats_cmd;
+class events_cmd;
+};
+
 /**
  * A representation of an interface in VPP
  */
@@ -260,6 +259,11 @@ public:
       interface::add(m_name, this->item());
     }
 
+    /**
+     * add the created interface to the DB
+     */
+    void insert_interface() { interface::add(m_name, this->item()); }
+
     virtual vapi_error_e operator()(MSG& reply)
     {
       int sw_if_index = reply.get_response().get_payload().sw_if_index;
@@ -286,75 +290,6 @@ public:
      * The name of the interface to be created
      */
     const std::string& m_name;
-  };
-
-  /**
-   * A command class to create Loopback interfaces in VPP
-   */
-  class loopback_create_cmd : public create_cmd<vapi::Create_loopback>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     * and the name of the interface to create
-     */
-    loopback_create_cmd(HW::item<handle_t>& item, const std::string& name);
-    ~loopback_create_cmd() = default;
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-  };
-
-  /**
-   * A command class to create af_packet interfaces in VPP
-   */
-  class af_packet_create_cmd : public create_cmd<vapi::Af_packet_create>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     * and the name of the interface to create
-     */
-    af_packet_create_cmd(HW::item<handle_t>& item, const std::string& name);
-    ~af_packet_create_cmd() = default;
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-  };
-
-  /**
-   * A command class to create TAP interfaces in VPP
-   */
-  class tap_create_cmd : public create_cmd<vapi::Tap_connect>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     * and the name of the interface to create
-     */
-    tap_create_cmd(HW::item<handle_t>& item, const std::string& name);
-    ~tap_create_cmd() = default;
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
   };
 
   /**
@@ -394,229 +329,17 @@ public:
      */
     void succeeded() {}
 
+    /**
+     * add the created interface to the DB
+     */
+    void remove_interface() { interface::remove(this->item()); }
+
   protected:
     /**
      * The name of the interface to be created
      */
     const std::string m_name;
   };
-
-  /**
-   * A command class to delete loopback interfaces in VPP
-   */
-  class loopback_delete_cmd : public delete_cmd<vapi::Delete_loopback>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     */
-    loopback_delete_cmd(HW::item<handle_t>& item);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-  };
-
-  /**
-   * A command class to delete af-packet interfaces in VPP
-   */
-  class af_packet_delete_cmd : public delete_cmd<vapi::Af_packet_delete>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     * and the name of the interface to delete
-     */
-    af_packet_delete_cmd(HW::item<handle_t>& item, const std::string& name);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-  };
-
-  /**
-   * A command class to delete TAP interfaces in VPP
-   */
-  class tap_delete_cmd : public delete_cmd<vapi::Tap_delete>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     */
-    tap_delete_cmd(HW::item<handle_t>& item);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-  };
-
-  /**
-   * A command class to delete TAP interfaces in VPP
-   */
-  class set_tag
-    : public rpc_cmd<HW::item<handle_t>, rc_t, vapi::Sw_interface_tag_add_del>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     */
-    set_tag(HW::item<handle_t>& item, const std::string& name);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const set_tag& i) const;
-
-  private:
-    /**
-     * The tag to add
-     */
-    const std::string m_name;
-  };
-
-  /**
-   * A cmd class that changes the admin state
-   */
-  class state_change_cmd : public rpc_cmd<HW::item<admin_state_t>,
-                                          rc_t,
-                                          vapi::Sw_interface_set_flags>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     * and the name handle of the interface whose state is to change
-     */
-    state_change_cmd(HW::item<admin_state_t>& s, const HW::item<handle_t>& h);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const state_change_cmd& i) const;
-
-  private:
-    /**
-     * the handle of the interface to update
-     */
-    const HW::item<handle_t>& m_hdl;
-  };
-
-  /**
-   * A command class that binds an interface to an L3 table
-   */
-  class set_table_cmd : public rpc_cmd<HW::item<route::table_id_t>,
-                                       rc_t,
-                                       vapi::Sw_interface_set_table>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     * and the name handle of the interface whose table is to change
-     */
-    set_table_cmd(HW::item<route::table_id_t>& item,
-                  const l3_proto_t& proto,
-                  const HW::item<handle_t>& h);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const set_table_cmd& i) const;
-
-  private:
-    /**
-     * the handle of the interface to update
-     */
-    const HW::item<handle_t>& m_hdl;
-
-    /**
-     * The L3 protocol of the table
-     */
-    l3_proto_t m_proto;
-  };
-
-  /**
-   * A command class that binds an interface to an L3 table
-   */
-  class set_mac_cmd : public rpc_cmd<HW::item<l2_address_t>,
-                                     rc_t,
-                                     vapi::Sw_interface_set_mac_address>
-  {
-  public:
-    /**
-     * Constructor taking the HW::item to update
-     * and the handle of the interface
-     */
-    set_mac_cmd(HW::item<l2_address_t>& item, const HW::item<handle_t>& h);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const set_mac_cmd& i) const;
-
-  private:
-    /**
-     * the handle of the interface to update
-     */
-    const HW::item<handle_t>& m_hdl;
-  };
-
-  /**
-   * Forward declaration of the Event command
-   */
-  class events_cmd;
 
   /**
    * A class that listens to interface Events
@@ -633,7 +356,7 @@ public:
      * Virtual function called on the listener when the command has data
      * ready to process
      */
-    virtual void handle_interface_event(events_cmd* cmd) = 0;
+    virtual void handle_interface_event(interface_cmds::events_cmd* cmd) = 0;
 
     /**
      * Return the HW::item representing the status
@@ -646,55 +369,6 @@ public:
      */
     HW::item<bool> m_status;
   };
-
-  /**
-   * A command class represents our desire to recieve interface events
-   */
-  class events_cmd
-    : public event_cmd<vapi::Want_interface_events, vapi::Sw_interface_event>
-  {
-  public:
-    /**
-     * Constructor taking the listner to notify
-     */
-    events_cmd(event_listener& el);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * Retires the command - unsubscribe from the events.
-     */
-    void retire(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const events_cmd& i) const;
-
-    /**
-     * Called when it's time to poke the listeners
-     */
-    void notify();
-
-  private:
-    /**
-     * The listeners to notify when data/events arrive
-     */
-    event_listener& m_listener;
-  };
-
-  /**
-   * Forward declaration of the stat command
-   */
-  class stats_cmd;
 
   /**
    * A class that listens to interface Stats
@@ -711,7 +385,7 @@ public:
      * Virtual function called on the listener when the command has data
      * ready to process
      */
-    virtual void handle_interface_stat(stats_cmd* cmd) = 0;
+    virtual void handle_interface_stat(interface_cmds::stats_cmd* cmd) = 0;
 
     /**
      * Return the HW::item representing the status
@@ -723,78 +397,6 @@ public:
      * The status of the subscription
      */
     HW::item<bool> m_status;
-  };
-
-  /**
-   * A command class represents our desire to recieve interface stats
-   */
-  class stats_cmd : public event_cmd<vapi::Want_per_interface_combined_stats,
-                                     vapi::Vnet_per_interface_combined_counters>
-  {
-  public:
-    /**
-     * Constructor taking the listner to notify
-     */
-    stats_cmd(stat_listener& el, const std::vector<handle_t>& interfaces);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * Retires the command - unsubscribe from the stats.
-     */
-    void retire(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const stats_cmd& i) const;
-
-    /**
-     * Called when it's time to poke the listeners
-     */
-    void notify();
-
-  private:
-    /**
-     * The listeners to notify when data/stats arrive
-     */
-    stat_listener& m_listener;
-
-    std::vector<handle_t> m_swifindex;
-  };
-
-  /**
-   * A cmd class that Dumps all the Vpp interfaces
-   */
-  class dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_dump>
-  {
-  public:
-    /**
-     * Default Constructor
-     */
-    dump_cmd();
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const dump_cmd& i) const;
   };
 
   /**
@@ -819,12 +421,6 @@ public:
    */
   static void dump(std::ostream& os);
 
-  /**
-   * Factory method to construct a new interface from the VPP record
-   */
-  static std::unique_ptr<interface> new_interface(
-    const vapi_payload_sw_interface_details& vd);
-
 protected:
   /**
    * Construct an interface object with a handle and a HW address
@@ -834,6 +430,7 @@ protected:
             const std::string& name,
             type_t type,
             admin_state_t state);
+  friend class interface_factory;
 
   /**
    * The SW interface handle VPP has asigned to the interface

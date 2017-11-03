@@ -14,6 +14,7 @@
  */
 
 #include "vom/sub_interface.hpp"
+#include "vom/sub_interface_cmds.hpp"
 
 namespace VOM {
 /**
@@ -64,7 +65,8 @@ sub_interface::mk_name(const interface& parent, vlan_id_t vlan)
 std::queue<cmd*>&
 sub_interface::mk_create_cmd(std::queue<cmd*>& q)
 {
-  q.push(new create_cmd(m_hdl, name(), m_parent->handle(), m_vlan));
+  q.push(new sub_interface_cmds::create_cmd(m_hdl, name(), m_parent->handle(),
+                                            m_vlan));
 
   return (q);
 }
@@ -72,7 +74,7 @@ sub_interface::mk_create_cmd(std::queue<cmd*>& q)
 std::queue<cmd*>&
 sub_interface::mk_delete_cmd(std::queue<cmd*>& q)
 {
-  q.push(new delete_cmd(m_hdl));
+  q.push(new sub_interface_cmds::delete_cmd(m_hdl));
 
   return (q);
 }

@@ -14,9 +14,8 @@
  */
 
 #include "vom/route.hpp"
+#include "vom/route_cmds.hpp"
 #include "vom/singular_db.hpp"
-
-#include <vapi/ip.api.vapi.hpp>
 
 namespace VOM {
 namespace route {
@@ -112,47 +111,6 @@ path::operator<(const path& p) const
   return (false);
 }
 
-void
-path::to_vpp(vapi_payload_ip_add_del_route& payload) const
-{
-  payload.is_drop = 0;
-  payload.is_unreach = 0;
-  payload.is_prohibit = 0;
-  payload.is_local = 0;
-  payload.is_classify = 0;
-  payload.is_multipath = 0;
-  payload.is_resolve_host = 0;
-  payload.is_resolve_attached = 0;
-
-  if (nh_proto_t::ETHERNET == m_nh_proto) {
-    payload.is_l2_bridged = 1;
-  }
-
-  if (special_t::STANDARD == m_type) {
-    uint8_t path_v6;
-    to_bytes(m_nh, &path_v6, payload.next_hop_address);
-
-    if (m_rd) {
-      payload.next_hop_table_id = m_rd->table_id();
-    }
-    if (m_interface) {
-      payload.next_hop_sw_if_index = m_interface->handle().value();
-    }
-  } else if (special_t::DROP == m_type) {
-    payload.is_drop = 1;
-  } else if (special_t::UNREACH == m_type) {
-    payload.is_unreach = 1;
-  } else if (special_t::PROHIBIT == m_type) {
-    payload.is_prohibit = 1;
-  } else if (special_t::LOCAL == m_type) {
-    payload.is_local = 1;
-  }
-  payload.next_hop_weight = m_weight;
-  payload.next_hop_preference = m_preference;
-  payload.next_hop_via_label = 0;
-  payload.classify_table_index = 0;
-}
-
 std::string
 path::to_string() const
 {
@@ -171,6 +129,48 @@ path::to_string() const
     << " preference:" << static_cast<int>(m_preference) << "]";
 
   return (s.str());
+}
+
+path::special_t
+path::type() const
+{
+  return m_type;
+}
+
+nh_proto_t
+path::nh_proto() const
+{
+  return m_nh_proto;
+}
+
+const boost::asio::ip::address&
+path::nh() const
+{
+  return m_nh;
+}
+
+std::shared_ptr<route_domain>
+path::rd() const
+{
+  return m_rd;
+}
+
+std::shared_ptr<interface>
+path::itf() const
+{
+  return m_interface;
+}
+
+uint8_t
+path::weight() const
+{
+  return m_weight;
+}
+
+uint8_t
+path::preference() const
+{
+  return m_preference;
 }
 
 ip_route::ip_route(const prefix_t& prefix)
@@ -221,7 +221,8 @@ void
 ip_route::sweep()
 {
   if (m_hw) {
-    HW::enqueue(new delete_cmd(m_hw, m_rd->table_id(), m_prefix));
+    HW::enqueue(
+      new ip_route_cmds::delete_cmd(m_hw, m_rd->table_id(), m_prefix));
   }
   HW::write();
 }
@@ -230,7 +231,8 @@ void
 ip_route::replay()
 {
   if (m_hw) {
-    HW::enqueue(new update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
+    HW::enqueue(
+      new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
   }
 }
 std::string
@@ -251,7 +253,8 @@ ip_route::update(const ip_route& r)
 * create the table if it is not yet created
 */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
+    HW::enqueue(
+      new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
   }
 }
 
@@ -289,8 +292,10 @@ ip_route::event_handler::handle_replay()
 void
 ip_route::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<ip_route::dump_v4_cmd> cmd_v4(new ip_route::dump_v4_cmd());
-  std::shared_ptr<ip_route::dump_v6_cmd> cmd_v6(new ip_route::dump_v6_cmd());
+  std::shared_ptr<ip_route_cmds::dump_v4_cmd> cmd_v4(
+    new ip_route_cmds::dump_v4_cmd());
+  std::shared_ptr<ip_route_cmds::dump_v6_cmd> cmd_v6(
+    new ip_route_cmds::dump_v6_cmd());
 
   HW::enqueue(cmd_v4);
   HW::enqueue(cmd_v6);
