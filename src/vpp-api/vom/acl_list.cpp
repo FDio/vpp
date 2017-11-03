@@ -14,6 +14,7 @@
  */
 
 #include "vom/acl_list.hpp"
+#include "vom/acl_list_cmds.hpp"
 #include "vom/logger.hpp"
 
 namespace VOM {
@@ -28,7 +29,7 @@ l2_list::event_handler::handle_populate(const client_db::key_t& key)
   /*
 * dump VPP Bridge domains
 */
-  std::shared_ptr<l2_list::dump_cmd> cmd(new l2_list::dump_cmd());
+  std::shared_ptr<list_cmds::l2_dump_cmd> cmd(new list_cmds::l2_dump_cmd());
 
   HW::enqueue(cmd);
   HW::write();
@@ -69,7 +70,7 @@ l3_list::event_handler::handle_populate(const client_db::key_t& key)
   /*
 * dump VPP Bridge domains
 */
-  std::shared_ptr<l3_list::dump_cmd> cmd(new l3_list::dump_cmd());
+  std::shared_ptr<list_cmds::l3_dump_cmd> cmd(new list_cmds::l3_dump_cmd());
 
   HW::enqueue(cmd);
   HW::write();
@@ -101,8 +102,85 @@ l3_list::event_handler::handle_populate(const client_db::key_t& key)
     OM::commit(key, acl);
   }
 }
-};
-};
+
+template <>
+void
+l3_list::update(const l3_list& obj)
+{
+  /*
+   * always update the instance with the latest rule set
+   */
+  if (!m_hdl || obj.m_rules != m_rules) {
+    HW::enqueue(new list_cmds::l3_update_cmd(m_hdl, m_key, m_rules));
+  }
+  /*
+   * We don't, can't, read the priority from VPP,
+   * so the is equals check above does not include the priorty.
+   * but we save it now.
+   */
+  m_rules = obj.m_rules;
+}
+template <>
+void
+l2_list::update(const l2_list& obj)
+{
+  /*
+   * always update the instance with the latest rule set
+   */
+  if (!m_hdl || obj.m_rules != m_rules) {
+    HW::enqueue(new list_cmds::l2_update_cmd(m_hdl, m_key, m_rules));
+  }
+  /*
+   * We don't, can't, read the priority from VPP,
+   * so the is equals check above does not include the priorty.
+   * but we save it now.
+   */
+  m_rules = obj.m_rules;
+}
+/**
+ * Sweep/reap the object if still stale
+ */
+template <>
+void
+l3_list::sweep(void)
+{
+  if (m_hdl) {
+    HW::enqueue(new list_cmds::l3_delete_cmd(m_hdl));
+  }
+  HW::write();
+}
+template <>
+void
+l2_list::sweep(void)
+{
+  if (m_hdl) {
+    HW::enqueue(new list_cmds::l2_delete_cmd(m_hdl));
+  }
+  HW::write();
+}
+
+/**
+ * Replay the objects state to HW
+ */
+template <>
+void
+l3_list::replay(void)
+{
+  if (m_hdl) {
+    HW::enqueue(new list_cmds::l3_update_cmd(m_hdl, m_key, m_rules));
+  }
+}
+template <>
+void
+l2_list::replay(void)
+{
+  if (m_hdl) {
+    HW::enqueue(new list_cmds::l2_update_cmd(m_hdl, m_key, m_rules));
+  }
+}
+
+}; // namespace ACL
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -15,13 +15,13 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include "vom/interface.hpp"
+#include "vom/interface_factory.hpp"
 #include "vom/sub_interface.hpp"
 #include "vom/tap_interface.hpp"
 
 namespace VOM {
 std::unique_ptr<interface>
-interface::new_interface(const vapi_payload_sw_interface_details& vd)
+interface_factory::new_interface(const vapi_payload_sw_interface_details& vd)
 {
   std::unique_ptr<interface> up_itf;
 
@@ -29,12 +29,13 @@ interface::new_interface(const vapi_payload_sw_interface_details& vd)
  * Determine the interface type from the name and VLAN attributes
  */
   std::string name = reinterpret_cast<const char*>(vd.interface_name);
-  type_t type = interface::type_t::from_string(name);
-  admin_state_t state = interface::admin_state_t::from_int(vd.link_up_down);
+  interface::type_t type = interface::type_t::from_string(name);
+  interface::admin_state_t state =
+    interface::admin_state_t::from_int(vd.link_up_down);
   handle_t hdl(vd.sw_if_index);
   l2_address_t l2_address(vd.l2_address, vd.l2_address_length);
 
-  if (type_t::AFPACKET == type) {
+  if (interface::type_t::AFPACKET == type) {
     /*
  * need to strip VPP's "host-" prefix from the interface name
  */
@@ -52,7 +53,7 @@ interface::new_interface(const vapi_payload_sw_interface_details& vd)
   /*
  * pull out the other special cases
  */
-  if (type_t::TAP == type) {
+  if (interface::type_t::TAP == type) {
     /*
  * TAP interface
  */
@@ -67,7 +68,7 @@ interface::new_interface(const vapi_payload_sw_interface_details& vd)
 
     interface parent(parts[0], type, state);
     up_itf.reset(new sub_interface(hdl, parent, state, vd.sub_id));
-  } else if (type_t::VXLAN == type) {
+  } else if (interface::type_t::VXLAN == type) {
     /*
  * there's not enough inforation in a SW interface record to
  * construct
@@ -79,7 +80,7 @@ interface::new_interface(const vapi_payload_sw_interface_details& vd)
 
   return (up_itf);
 }
-}
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

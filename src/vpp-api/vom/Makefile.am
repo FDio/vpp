@@ -57,6 +57,7 @@ libvom_la_SOURCES = 			\
 	connection.cpp			\
 	dhcp_config_cmds.cpp		\
 	dhcp_config.cpp			\
+	hw_cmds.cpp			\
 	hw.cpp				\
 	inspect.cpp			\
 	interface_cmds.cpp		\

@@ -13,15 +13,17 @@
  * limitations under the License.
  */
 
-#include "vom/dhcp_config.hpp"
+#include "vom/dhcp_config_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_DHCP_API_JSON;
 
 namespace VOM {
-dhcp_config::bind_cmd::bind_cmd(HW::item<bool>& item,
-                                const handle_t& itf,
-                                const std::string& hostname,
-                                const l2_address_t& client_id)
+namespace dhcp_config_cmds {
+
+bind_cmd::bind_cmd(HW::item<bool>& item,
+                   const handle_t& itf,
+                   const std::string& hostname,
+                   const l2_address_t& client_id)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_hostname(hostname)
@@ -30,13 +32,13 @@ dhcp_config::bind_cmd::bind_cmd(HW::item<bool>& item,
 }
 
 bool
-dhcp_config::bind_cmd::operator==(const bind_cmd& other) const
+bind_cmd::operator==(const bind_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_hostname == other.m_hostname));
 }
 
 rc_t
-dhcp_config::bind_cmd::issue(connection& con)
+bind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -63,7 +65,7 @@ dhcp_config::bind_cmd::issue(connection& con)
 }
 
 std::string
-dhcp_config::bind_cmd::to_string() const
+bind_cmd::to_string() const
 {
   std::ostringstream s;
   s << "Dhcp-config-bind: " << m_hw_item.to_string()
@@ -72,9 +74,9 @@ dhcp_config::bind_cmd::to_string() const
   return (s.str());
 }
 
-dhcp_config::unbind_cmd::unbind_cmd(HW::item<bool>& item,
-                                    const handle_t& itf,
-                                    const std::string& hostname)
+unbind_cmd::unbind_cmd(HW::item<bool>& item,
+                       const handle_t& itf,
+                       const std::string& hostname)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_hostname(hostname)
@@ -82,13 +84,13 @@ dhcp_config::unbind_cmd::unbind_cmd(HW::item<bool>& item,
 }
 
 bool
-dhcp_config::unbind_cmd::operator==(const unbind_cmd& other) const
+unbind_cmd::operator==(const unbind_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_hostname == other.m_hostname));
 }
 
 rc_t
-dhcp_config::unbind_cmd::issue(connection& con)
+unbind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -110,7 +112,7 @@ dhcp_config::unbind_cmd::issue(connection& con)
 }
 
 std::string
-dhcp_config::unbind_cmd::to_string() const
+unbind_cmd::to_string() const
 {
   std::ostringstream s;
   s << "Dhcp-config-unbind: " << m_hw_item.to_string()
@@ -119,20 +121,20 @@ dhcp_config::unbind_cmd::to_string() const
   return (s.str());
 }
 
-dhcp_config::events_cmd::events_cmd(event_listener& el)
+events_cmd::events_cmd(dhcp_config::event_listener& el)
   : event_cmd(el.status())
   , m_listener(el)
 {
 }
 
 bool
-dhcp_config::events_cmd::operator==(const events_cmd& other) const
+events_cmd::operator==(const events_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-dhcp_config::events_cmd::issue(connection& con)
+events_cmd::issue(connection& con)
 {
   /*
  * Set the call back to handle DHCP complete envets.
@@ -146,23 +148,23 @@ dhcp_config::events_cmd::issue(connection& con)
 }
 
 void
-dhcp_config::events_cmd::retire(connection& con)
+events_cmd::retire(connection& con)
 {
 }
 
 void
-dhcp_config::events_cmd::notify()
+events_cmd::notify()
 {
   m_listener.handle_dhcp_event(this);
 }
 
 std::string
-dhcp_config::events_cmd::to_string() const
+events_cmd::to_string() const
 {
   return ("dhcp-events");
 }
 }
-
+};
 /*
  * fd.io coding-style-patch-verification: ON
  *

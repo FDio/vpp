@@ -13,25 +13,25 @@
  * limitations under the License.
  */
 
-#include "vom/bridge_domain.hpp"
-#include "vom/cmd.hpp"
+#include "vom/bridge_domain_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_L2_API_JSON;
 
 namespace VOM {
-bridge_domain::create_cmd::create_cmd(HW::item<uint32_t>& item)
+namespace bridge_domain_cmds {
+create_cmd::create_cmd(HW::item<uint32_t>& item)
   : rpc_cmd(item)
 {
 }
 
 bool
-bridge_domain::create_cmd::operator==(const create_cmd& other) const
+create_cmd::operator==(const create_cmd& other) const
 {
   return (m_hw_item.data() == other.m_hw_item.data());
 }
 
 rc_t
-bridge_domain::create_cmd::issue(connection& con)
+create_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -53,7 +53,7 @@ bridge_domain::create_cmd::issue(connection& con)
 }
 
 std::string
-bridge_domain::create_cmd::to_string() const
+create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "bridge-domain-create: " << m_hw_item.to_string();
@@ -61,19 +61,19 @@ bridge_domain::create_cmd::to_string() const
   return (s.str());
 }
 
-bridge_domain::delete_cmd::delete_cmd(HW::item<uint32_t>& item)
+delete_cmd::delete_cmd(HW::item<uint32_t>& item)
   : rpc_cmd(item)
 {
 }
 
 bool
-bridge_domain::delete_cmd::operator==(const delete_cmd& other) const
+delete_cmd::operator==(const delete_cmd& other) const
 {
   return (m_hw_item == other.m_hw_item);
 }
 
 rc_t
-bridge_domain::delete_cmd::issue(connection& con)
+delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -90,7 +90,7 @@ bridge_domain::delete_cmd::issue(connection& con)
 }
 
 std::string
-bridge_domain::delete_cmd::to_string() const
+delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "bridge-domain-delete: " << m_hw_item.to_string();
@@ -98,18 +98,18 @@ bridge_domain::delete_cmd::to_string() const
   return (s.str());
 }
 
-bridge_domain::dump_cmd::dump_cmd()
+dump_cmd::dump_cmd()
 {
 }
 
 bool
-bridge_domain::dump_cmd::operator==(const dump_cmd& other) const
+dump_cmd::operator==(const dump_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-bridge_domain::dump_cmd::issue(connection& con)
+dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -124,9 +124,10 @@ bridge_domain::dump_cmd::issue(connection& con)
 }
 
 std::string
-bridge_domain::dump_cmd::to_string() const
+dump_cmd::to_string() const
 {
   return ("bridge-domain-dump");
+}
 }
 }
 
