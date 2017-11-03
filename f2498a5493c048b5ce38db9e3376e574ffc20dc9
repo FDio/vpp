@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5e5405aa_4b422278",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 675,
+      "author": {
+        "id": 320
+      },
+      "writtenOn": "2017-11-03T12:51:53Z",
+      "side": 1,
+      "message": "return value not checked...",
+      "range": {
+        "startLine": 675,
+        "startChar": 4,
+        "endLine": 675,
+        "endChar": 35
+      },
+      "revId": "f2498a5493c048b5ce38db9e3376e574ffc20dc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
