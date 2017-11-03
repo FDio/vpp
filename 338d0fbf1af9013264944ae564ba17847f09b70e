@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "adaadca3_5352b229",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1107,
+      "author": {
+        "id": 483
+      },
+      "writtenOn": "2017-11-03T16:01:26Z",
+      "side": 1,
+      "message": "ah yes - you\u0027re not masking when you do the match.   So yeah - or I guess you could argue we have 252 possible actions rather than 63?",
+      "parentUuid": "e60c2290_f8d70323",
+      "range": {
+        "startLine": 1107,
+        "startChar": 18,
+        "endLine": 1107,
+        "endChar": 70
+      },
+      "revId": "338d0fbf1af9013264944ae564ba17847f09b70e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e5c5c923_cefb255f",
         "filename": "src/plugins/acl/fa_node.h",
         "patchSetId": 1
