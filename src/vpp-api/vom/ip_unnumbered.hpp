@@ -24,6 +24,8 @@
 #include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
 
+#include <vapi/interface.api.vapi.hpp>
+
 namespace VOM {
 /**
  * A representation of IP unnumbered configuration on an interface
@@ -75,84 +77,6 @@ public:
    * Find an singular instance in the DB for the interface passed
    */
   static std::shared_ptr<ip_unnumbered> find(const interface& i);
-
-  /**
-   * A command class that configures the IP unnumbered
-   */
-  class config_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Sw_interface_set_unnumbered>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    config_cmd(HW::item<bool>& item,
-               const handle_t& itf,
-               const handle_t& l3_itf);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const config_cmd& i) const;
-
-  private:
-    /**
-     * Reference to the interface for which the address is required
-     */
-    const handle_t& m_itf;
-    /**
-     * Reference to the interface which has an address
-     */
-    const handle_t& m_l3_itf;
-  };
-
-  /**
-   * A cmd class that Unconfigs L3 Config from an interface
-   */
-  class unconfig_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Sw_interface_set_unnumbered>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    unconfig_cmd(HW::item<bool>& item,
-                 const handle_t& itf,
-                 const handle_t& l3_itf);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const unconfig_cmd& i) const;
-
-  private:
-    /**
-     * Reference to the interface for which the address is required
-     */
-    const handle_t& m_itf;
-    /**
-     * Reference to the interface which has an address
-     */
-    const handle_t& m_l3_itf;
-  };
 
 private:
   /**

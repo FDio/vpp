@@ -26,8 +26,6 @@
 #include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
 
-#include <vapi/vpe.api.vapi.hpp>
-
 namespace VOM {
 /**
  * A representation of LLDP client configuration on an interface
@@ -64,72 +62,6 @@ public:
    * Dump all LLDP bindings into the stream provided
    */
   static void dump(std::ostream& os);
-
-  /**
-   * A command class that binds the LLDP config to the interface
-   */
-  class bind_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Proxy_arp_intfc_enable_disable>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    bind_cmd(HW::item<bool>& item, const handle_t& itf);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const bind_cmd& i) const;
-
-  private:
-    /**
-     * Reference to the HW::item of the interface to bind
-     */
-    const handle_t& m_itf;
-  };
-
-  /**
-   * A cmd class that Unbinds ArpProxy Config from an interface
-   */
-  class unbind_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Proxy_arp_intfc_enable_disable>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    unbind_cmd(HW::item<bool>& item, const handle_t& itf);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const unbind_cmd& i) const;
-
-  private:
-    /**
-     * Reference to the HW::item of the interface to unbind
-     */
-    const handle_t& m_itf;
-  };
 
 private:
   /**

@@ -14,7 +14,7 @@
  */
 
 #include "vom/l2_binding.hpp"
-#include "vom/cmd.hpp"
+#include "vom/l2_binding_cmds.hpp"
 
 namespace VOM {
 /**
@@ -79,8 +79,8 @@ void
 l2_binding::sweep()
 {
   if (m_binding && handle_t::INVALID != m_itf->handle()) {
-    HW::enqueue(new unbind_cmd(m_binding, m_itf->handle(), m_bd->id(),
-                               interface::type_t::BVI == m_itf->type()));
+      HW::enqueue(new l2_binding_cmds::unbind_cmd(m_binding, m_itf->handle(), m_bd->id(),
+                                                  interface::type_t::BVI == m_itf->type()));
   }
 
   // no need to undo the VTR operation.
@@ -91,12 +91,12 @@ void
 l2_binding::replay()
 {
   if (m_binding && handle_t::INVALID != m_itf->handle()) {
-    HW::enqueue(new bind_cmd(m_binding, m_itf->handle(), m_bd->id(),
+    HW::enqueue(new l2_binding_cmds::bind_cmd(m_binding, m_itf->handle(), m_bd->id(),
                              interface::type_t::BVI == m_itf->type()));
   }
 
   if (m_vtr_op && handle_t::INVALID != m_itf->handle()) {
-    HW::enqueue(new set_vtr_op_cmd(m_vtr_op, m_itf->handle(), m_vtr_op_tag));
+    HW::enqueue(new l2_binding_cmds::set_vtr_op_cmd(m_vtr_op, m_itf->handle(), m_vtr_op_tag));
   }
 }
 
@@ -134,7 +134,7 @@ l2_binding::update(const l2_binding& desired)
  * the desired state is always that the interface should be created
  */
   if (rc_t::OK != m_binding.rc()) {
-    HW::enqueue(new bind_cmd(m_binding, m_itf->handle(), m_bd->id(),
+    HW::enqueue(new l2_binding_cmds::bind_cmd(m_binding, m_itf->handle(), m_bd->id(),
                              interface::type_t::BVI == m_itf->type()));
   }
 
@@ -142,7 +142,7 @@ l2_binding::update(const l2_binding& desired)
  * set the VTR operation is request
  */
   if (m_vtr_op.update(desired.m_vtr_op)) {
-    HW::enqueue(new set_vtr_op_cmd(m_vtr_op, m_itf->handle(), m_vtr_op_tag));
+    HW::enqueue(new l2_binding_cmds::set_vtr_op_cmd(m_vtr_op, m_itf->handle(), m_vtr_op_tag));
   }
 }
 

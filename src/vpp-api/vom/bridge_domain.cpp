@@ -14,10 +14,9 @@
  */
 
 #include "vom/bridge_domain.hpp"
-#include "vom/cmd.hpp"
+#include "vom/bridge_domain_cmds.hpp"
 #include "vom/interface.hpp"
 #include "vom/l2_binding.hpp"
-#include "vom/logger.hpp"
 
 namespace VOM {
 /**
@@ -50,7 +49,7 @@ void
 bridge_domain::sweep()
 {
   if (rc_t::OK == m_id.rc()) {
-    HW::enqueue(new delete_cmd(m_id));
+    HW::enqueue(new bridge_domain_cmds::delete_cmd(m_id));
   }
   HW::write();
 }
@@ -59,7 +58,7 @@ void
 bridge_domain::replay()
 {
   if (rc_t::OK == m_id.rc()) {
-    HW::enqueue(new create_cmd(m_id));
+    HW::enqueue(new bridge_domain_cmds::create_cmd(m_id));
   }
 }
 
@@ -117,7 +116,7 @@ bridge_domain::update(const bridge_domain& desired)
  * the desired state is always that the interface should be created
  */
   if (rc_t::OK != m_id.rc()) {
-    HW::enqueue(new create_cmd(m_id));
+    HW::enqueue(new bridge_domain_cmds::create_cmd(m_id));
   }
 }
 
@@ -145,7 +144,8 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
   /*
  * dump VPP Bridge domains
  */
-  std::shared_ptr<bridge_domain::dump_cmd> cmd(new bridge_domain::dump_cmd());
+  std::shared_ptr<bridge_domain_cmds::dump_cmd> cmd(
+    new bridge_domain_cmds::dump_cmd());
 
   HW::enqueue(cmd);
   HW::write();

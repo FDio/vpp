@@ -14,7 +14,7 @@
  */
 
 #include "vom/ip_unnumbered.hpp"
-#include "vom/cmd.hpp"
+#include "vom/ip_unnumbered_cmds.hpp"
 
 namespace VOM {
 /**
@@ -50,7 +50,7 @@ ip_unnumbered::sweep()
 {
   if (m_config) {
     HW::enqueue(
-      new unconfig_cmd(m_config, m_itf->handle(), m_l3_itf->handle()));
+        new ip_unnumbered_cmds::unconfig_cmd(m_config, m_itf->handle(), m_l3_itf->handle()));
   }
   HW::write();
 }
@@ -65,7 +65,7 @@ void
 ip_unnumbered::replay()
 {
   if (m_config) {
-    HW::enqueue(new config_cmd(m_config, m_itf->handle(), m_l3_itf->handle()));
+    HW::enqueue(new ip_unnumbered_cmds::config_cmd(m_config, m_itf->handle(), m_l3_itf->handle()));
   }
 }
 
@@ -83,7 +83,7 @@ void
 ip_unnumbered::update(const ip_unnumbered& desired)
 {
   if (!m_config) {
-    HW::enqueue(new config_cmd(m_config, m_itf->handle(), m_l3_itf->handle()));
+    HW::enqueue(new ip_unnumbered_cmds::config_cmd(m_config, m_itf->handle(), m_l3_itf->handle()));
   }
 }
 

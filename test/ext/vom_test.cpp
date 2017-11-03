@@ -19,15 +19,20 @@
 
 #include "vom/om.hpp"
 #include "vom/interface.hpp"
+#include "vom/interface_cmds.hpp"
 #include "vom/l2_binding.hpp"
 #include "vom/l3_binding.hpp"
 #include "vom/bridge_domain.hpp"
 #include "vom/bridge_domain_entry.hpp"
 #include "vom/bridge_domain_arp_entry.hpp"
+#include "vom/bridge_domain_cmds.hpp"
+#include "vom/bridge_domain_entry_cmds.hpp"
+#include "vom/bridge_domain_arp_entry_cmds.hpp"
 #include "vom/prefix.hpp"
 #include "vom/route.hpp"
 #include "vom/route_domain.hpp"
 #include "vom/vxlan_tunnel.hpp"
+#include "vom/vxlan_tunnel_cmds.hpp"
 #include "vom/sub_interface.hpp"
 #include "vom/acl_list.hpp"
 #include "vom/acl_binding.hpp"
@@ -35,12 +40,15 @@
 #include "vom/acl_l2_rule.hpp"
 #include "vom/arp_proxy_config.hpp"
 #include "vom/arp_proxy_binding.hpp"
+#include "vom/arp_proxy_config_cmds.hpp"
+#include "vom/arp_proxy_binding_cmds.hpp"
 #include "vom/ip_unnumbered.hpp"
 #include "vom/interface_ip6_nd.hpp"
 #include "vom/interface_span.hpp"
 #include "vom/neighbour.hpp"
 #include "vom/nat_static.hpp"
 #include "vom/nat_binding.hpp"
+#include "vom/nat_binding_cmds.hpp"
 
 using namespace boost;
 using namespace VOM;
@@ -61,10 +69,10 @@ public:
 class MockListener : public interface::event_listener,
                      public interface::stat_listener
 {
-    void handle_interface_stat(interface::stats_cmd *cmd)
+    void handle_interface_stat(interface_cmds::stats_cmd *cmd)
     {
     }
-    void handle_interface_event(interface::events_cmd *cmd)
+    void handle_interface_event(interface_cmds::events_cmd *cmd)
     {
     }
 };
@@ -145,37 +153,37 @@ public:
                         throw ExpException(1);
                     }
 
-                    if (typeid(*f_exp) == typeid(interface::af_packet_create_cmd))
+                    if (typeid(*f_exp) == typeid(interface_cmds::af_packet_create_cmd))
                     {
-                        rc = handle_derived<interface::af_packet_create_cmd>(f_exp, f_act);
+                        rc = handle_derived<interface_cmds::af_packet_create_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(interface::loopback_create_cmd))
+                    else if (typeid(*f_exp) == typeid(interface_cmds::loopback_create_cmd))
                     {
-                        rc = handle_derived<interface::loopback_create_cmd>(f_exp, f_act);
+                        rc = handle_derived<interface_cmds::loopback_create_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(interface::loopback_delete_cmd))
+                    else if (typeid(*f_exp) == typeid(interface_cmds::loopback_delete_cmd))
                     {
-                        rc = handle_derived<interface::loopback_delete_cmd>(f_exp, f_act);
+                        rc = handle_derived<interface_cmds::loopback_delete_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(interface::af_packet_delete_cmd))
+                    else if (typeid(*f_exp) == typeid(interface_cmds::af_packet_delete_cmd))
                     {
-                        rc = handle_derived<interface::af_packet_delete_cmd>(f_exp, f_act);
+                        rc = handle_derived<interface_cmds::af_packet_delete_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(interface::state_change_cmd))
+                    else if (typeid(*f_exp) == typeid(interface_cmds::state_change_cmd))
                     {
-                        rc = handle_derived<interface::state_change_cmd>(f_exp, f_act);
+                        rc = handle_derived<interface_cmds::state_change_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(interface::set_table_cmd))
+                    else if (typeid(*f_exp) == typeid(interface_cmds::set_table_cmd))
                     {
-                        rc = handle_derived<interface::set_table_cmd>(f_exp, f_act);
+                        rc = handle_derived<interface_cmds::set_table_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(interface::set_mac_cmd))
+                    else if (typeid(*f_exp) == typeid(interface_cmds::set_mac_cmd))
                     {
-                        rc = handle_derived<interface::set_mac_cmd>(f_exp, f_act);
+                        rc = handle_derived<interface_cmds::set_mac_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(interface::set_tag))
+                    else if (typeid(*f_exp) == typeid(interface_cmds::set_tag))
                     {
-                        rc = handle_derived<interface::set_tag>(f_exp, f_act);
+                        rc = handle_derived<interface_cmds::set_tag>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(route_domain::create_cmd))
                     {
@@ -209,29 +217,29 @@ public:
                     {
                         rc = handle_derived<l3_binding::unbind_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(bridge_domain::create_cmd))
+                    else if (typeid(*f_exp) == typeid(bridge_domain_cmds::create_cmd))
                     {
-                        rc = handle_derived<bridge_domain::create_cmd>(f_exp, f_act);
+                        rc = handle_derived<bridge_domain_cmds::create_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(bridge_domain::delete_cmd))
+                    else if (typeid(*f_exp) == typeid(bridge_domain_cmds::delete_cmd))
                     {
-                        rc = handle_derived<bridge_domain::delete_cmd>(f_exp, f_act);
+                        rc = handle_derived<bridge_domain_cmds::delete_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(bridge_domain_entry::create_cmd))
+                    else if (typeid(*f_exp) == typeid(bridge_domain_entry_cmds::create_cmd))
                     {
-                        rc = handle_derived<bridge_domain_entry::create_cmd>(f_exp, f_act);
+                        rc = handle_derived<bridge_domain_entry_cmds::create_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(bridge_domain_entry::delete_cmd))
+                    else if (typeid(*f_exp) == typeid(bridge_domain_entry_cmds::delete_cmd))
                     {
-                        rc = handle_derived<bridge_domain_entry::delete_cmd>(f_exp, f_act);
+                        rc = handle_derived<bridge_domain_entry_cmds::delete_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(bridge_domain_arp_entry::create_cmd))
+                    else if (typeid(*f_exp) == typeid(bridge_domain_arp_entry_cmds::create_cmd))
                     {
-                        rc = handle_derived<bridge_domain_arp_entry::create_cmd>(f_exp, f_act);
+                        rc = handle_derived<bridge_domain_arp_entry_cmds::create_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(bridge_domain_arp_entry::delete_cmd))
+                    else if (typeid(*f_exp) == typeid(bridge_domain_arp_entry_cmds::delete_cmd))
                     {
-                        rc = handle_derived<bridge_domain_arp_entry::delete_cmd>(f_exp, f_act);
+                        rc = handle_derived<bridge_domain_arp_entry_cmds::delete_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(l2_binding::bind_cmd))
                     {
@@ -245,13 +253,13 @@ public:
                     {
                         rc = handle_derived<l2_binding::set_vtr_op_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(vxlan_tunnel::create_cmd))
+                    else if (typeid(*f_exp) == typeid(vxlan_tunnel_cmds::create_cmd))
                     {
-                        rc = handle_derived<vxlan_tunnel::create_cmd>(f_exp, f_act);
+                        rc = handle_derived<vxlan_tunnel_cmds::create_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(vxlan_tunnel::delete_cmd))
+                    else if (typeid(*f_exp) == typeid(vxlan_tunnel_cmds::delete_cmd))
                     {
-                        rc = handle_derived<vxlan_tunnel::delete_cmd>(f_exp, f_act);
+                        rc = handle_derived<vxlan_tunnel_cmds::delete_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(sub_interface::create_cmd))
                     {
@@ -293,21 +301,21 @@ public:
                     {
                         rc = handle_derived<ACL::l2_binding::unbind_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(arp_proxy_binding::bind_cmd))
+                    else if (typeid(*f_exp) == typeid(arp_proxy_binding_cmds::bind_cmd))
                     {
-                        rc = handle_derived<arp_proxy_binding::bind_cmd>(f_exp, f_act);
+                        rc = handle_derived<arp_proxy_binding_cmds::bind_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(arp_proxy_binding::unbind_cmd))
+                    else if (typeid(*f_exp) == typeid(arp_proxy_binding_cmds::unbind_cmd))
                     {
-                        rc = handle_derived<arp_proxy_binding::unbind_cmd>(f_exp, f_act);
+                        rc = handle_derived<arp_proxy_binding_cmds::unbind_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(arp_proxy_config::config_cmd))
+                    else if (typeid(*f_exp) == typeid(arp_proxy_config_cmds::config_cmd))
                     {
-                        rc = handle_derived<arp_proxy_config::config_cmd>(f_exp, f_act);
+                        rc = handle_derived<arp_proxy_config_cmds::config_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(arp_proxy_config::unconfig_cmd))
+                    else if (typeid(*f_exp) == typeid(arp_proxy_config_cmds::unconfig_cmd))
                     {
-                        rc = handle_derived<arp_proxy_config::unconfig_cmd>(f_exp, f_act);
+                        rc = handle_derived<arp_proxy_config_cmds::unconfig_cmd>(f_exp, f_act);
                     }
                     else if (typeid(*f_exp) == typeid(ip_unnumbered::config_cmd))
                     {
@@ -349,17 +357,17 @@ public:
                     {
                         rc = handle_derived<nat_static::delete_44_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(nat_binding::bind_44_input_cmd))
+                    else if (typeid(*f_exp) == typeid(nat_binding_cmds::bind_44_input_cmd))
                     {
-                        rc = handle_derived<nat_binding::bind_44_input_cmd>(f_exp, f_act);
+                        rc = handle_derived<nat_binding_cmds::bind_44_input_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(nat_binding::unbind_44_input_cmd))
+                    else if (typeid(*f_exp) == typeid(nat_binding_cmds::unbind_44_input_cmd))
                     {
-                        rc = handle_derived<nat_binding::unbind_44_input_cmd>(f_exp, f_act);
+                        rc = handle_derived<nat_binding_cmds::unbind_44_input_cmd>(f_exp, f_act);
                     }
-                    else if (typeid(*f_exp) == typeid(interface::events_cmd))
+                    else if (typeid(*f_exp) == typeid(interface_cmds::events_cmd))
                     {
-                        rc = handle_derived<interface::events_cmd>(f_exp, f_act);
+                        rc = handle_derived<interface_cmds::events_cmd>(f_exp, f_act);
                     }
                     else
                     {
@@ -504,16 +512,16 @@ BOOST_AUTO_TEST_CASE(test_interface) {
      *  2 is the interface handle VPP [mock] assigns
      */
     HW::item<handle_t> hw_ifh(2, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
 
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
 
     TRY_CHECK_RC(OM::write(go, itf1));
 
     HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
 
     TRY_CHECK(OM::remove(go));
 
@@ -525,56 +533,56 @@ BOOST_AUTO_TEST_CASE(test_interface) {
                     interface::type_t::AFPACKET,
                     interface::admin_state_t::DOWN);
 
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(go, itf1));
 
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     TRY_CHECK_RC(OM::write(js, itf1b));
 
     TRY_CHECK(OM::remove(go));
 
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     TRY_CHECK(OM::remove(js));
 
     /*
      * George adds an interface, then we flush all of Geroge's state
      */
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(go, itf1));
 
     TRY_CHECK(OM::mark(go));
 
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     TRY_CHECK(OM::sweep(go));
 
     /*
      * George adds an interface. mark stale. update the same interface. sweep
      * and expect no delete
      */
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     TRY_CHECK_RC(OM::write(go, itf1b));
 
     TRY_CHECK(OM::mark(go));
 
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(go, itf1));
 
     TRY_CHECK(OM::sweep(go));
 
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     TRY_CHECK(OM::remove(go));
 
     /*
      * George adds an insterface, then we mark that state. Add a second interface
      * an flush the first that is now stale.
      */
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(go, itf1));
 
     TRY_CHECK(OM::mark(go));
@@ -585,18 +593,18 @@ BOOST_AUTO_TEST_CASE(test_interface) {
                    interface::admin_state_t::UP);
     HW::item<handle_t> hw_ifh2(3, rc_t::OK);
 
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh2, itf2_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh2));
     TRY_CHECK_RC(OM::write(go, itf2));
 
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     TRY_CHECK(OM::sweep(go));
 
     TRY_CHECK(OM::mark(go));
 
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh2));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
     TRY_CHECK(OM::sweep(go));
 }
 
@@ -624,9 +632,9 @@ BOOST_AUTO_TEST_CASE(test_bvi) {
     HW::item<handle_t> hw_ifh(4, rc_t::OK);
     HW::item<route::prefix_t> hw_pfx_10(pfx_10, rc_t::OK);
 
-    ADD_EXPECT(interface::loopback_create_cmd(hw_ifh, bvi_name));
-    ADD_EXPECT(interface::set_tag(hw_ifh, bvi_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::loopback_create_cmd(hw_ifh, bvi_name));
+    ADD_EXPECT(interface_cmds::set_tag(hw_ifh, bvi_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(ernest, itf));
 
     l3 = new l3_binding(itf, pfx_10);
@@ -642,7 +650,7 @@ BOOST_AUTO_TEST_CASE(test_bvi) {
     l2_address_t l2_addr({0,1,2,3,4,5});
     HW::item<l2_address_t> hw_mac(l2_addr, rc_t::OK);
     itf_new_mac.set(l2_addr);
-    ADD_EXPECT(interface::set_mac_cmd(hw_mac, hw_ifh));
+    ADD_EXPECT(interface_cmds::set_mac_cmd(hw_mac, hw_ifh));
     TRY_CHECK_RC(OM::write(ernest, itf_new_mac));
 
     // create/write the interface to the OM again but with an unset MAC
@@ -656,13 +664,13 @@ BOOST_AUTO_TEST_CASE(test_bvi) {
     l2_address_t l2_addr2({0,1,2,3,4,6});
     HW::item<l2_address_t> hw_mac2(l2_addr2, rc_t::OK);
     itf_new_mac2.set(l2_addr2);
-    ADD_EXPECT(interface::set_mac_cmd(hw_mac2, hw_ifh));
+    ADD_EXPECT(interface_cmds::set_mac_cmd(hw_mac2, hw_ifh));
     TRY_CHECK_RC(OM::write(ernest, itf_new_mac2));
 
     delete l3;
     ADD_EXPECT(l3_binding::unbind_cmd(hw_l3_unbind, hw_ifh.data(), pfx_10));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::loopback_delete_cmd(hw_ifh));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::loopback_delete_cmd(hw_ifh));
     TRY_CHECK(OM::remove(ernest));
 
     /*
@@ -688,11 +696,11 @@ BOOST_AUTO_TEST_CASE(test_bvi) {
                                     rd);
     HW::item<handle_t> hw_ifh2(5, rc_t::OK);
 
-    ADD_EXPECT(interface::loopback_create_cmd(hw_ifh2, bvi2_name));
-    ADD_EXPECT(interface::set_tag(hw_ifh2, bvi2_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh2));
-    ADD_EXPECT(interface::set_table_cmd(hw_rd4_bind, l3_proto_t::IPV4, hw_ifh2));
-    ADD_EXPECT(interface::set_table_cmd(hw_rd6_bind, l3_proto_t::IPV6, hw_ifh2));
+    ADD_EXPECT(interface_cmds::loopback_create_cmd(hw_ifh2, bvi2_name));
+    ADD_EXPECT(interface_cmds::set_tag(hw_ifh2, bvi2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh2));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd4_bind, l3_proto_t::IPV4, hw_ifh2));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd6_bind, l3_proto_t::IPV6, hw_ifh2));
 
     TRY_CHECK_RC(OM::write(graham, *itf2));
 
@@ -704,10 +712,10 @@ BOOST_AUTO_TEST_CASE(test_bvi) {
     delete itf2;
 
     ADD_EXPECT(l3_binding::unbind_cmd(hw_l3_unbind, hw_ifh2.data(), pfx_10));
-    ADD_EXPECT(interface::set_table_cmd(hw_rd4_unbind, l3_proto_t::IPV4, hw_ifh2));
-    ADD_EXPECT(interface::set_table_cmd(hw_rd6_unbind, l3_proto_t::IPV6, hw_ifh2));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh2));
-    ADD_EXPECT(interface::loopback_delete_cmd(hw_ifh2));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd4_unbind, l3_proto_t::IPV4, hw_ifh2));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd6_unbind, l3_proto_t::IPV6, hw_ifh2));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
+    ADD_EXPECT(interface_cmds::loopback_delete_cmd(hw_ifh2));
     ADD_EXPECT(route_domain::delete_cmd(hw_rd4_delete, l3_proto_t::IPV4, 1));
     ADD_EXPECT(route_domain::delete_cmd(hw_rd6_delete, l3_proto_t::IPV6, 1));
     TRY_CHECK(OM::remove(graham));
@@ -732,8 +740,8 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     HW::item<handle_t> hw_ifh(3, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP,
                                                 rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
 
     TRY_CHECK_RC(OM::write(franz, itf1));
 
@@ -741,7 +749,7 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     bridge_domain bd1(33);
 
     HW::item<uint32_t> hw_bd(33, rc_t::OK);
-    ADD_EXPECT(bridge_domain::create_cmd(hw_bd));
+    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd));
 
     TRY_CHECK_RC(OM::write(franz, bd1));
 
@@ -763,8 +771,8 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
                    interface::admin_state_t::UP);
 
     HW::item<handle_t> hw_ifh2(4, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh2, itf2_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh2));
     TRY_CHECK_RC(OM::write(dante, itf2));
 
     // BD add is a no-op since it exists
@@ -782,7 +790,7 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     HW::item<bool> hw_be1(true, rc_t::OK);
     mac_address_t mac1({0,1,2,3,4,5});
     bridge_domain_entry *be1 = new bridge_domain_entry(bd1, mac1, itf2);
-    ADD_EXPECT(bridge_domain_entry::create_cmd(hw_be1, mac1, bd1.id(), hw_ifh2.data()));
+    ADD_EXPECT(bridge_domain_entry_cmds::create_cmd(hw_be1, mac1, bd1.id(), hw_ifh2.data()));
     TRY_CHECK_RC(OM::write(dante, *be1));
 
     // Add some entries to the bridge-domain ARP termination table
@@ -790,7 +798,7 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     boost::asio::ip::address ip1 = boost::asio::ip::address::from_string("10.10.10.10");
 
     bridge_domain_arp_entry *bea1 = new bridge_domain_arp_entry(bd1, mac1, ip1);
-    ADD_EXPECT(bridge_domain_arp_entry::create_cmd(hw_be1, bd1.id(), mac1, ip1));
+    ADD_EXPECT(bridge_domain_arp_entry_cmds::create_cmd(hw_be1, bd1.id(), mac1, ip1));
     TRY_CHECK_RC(OM::write(dante, *bea1));
 
     // flush Franz's state
@@ -798,8 +806,8 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN,
                                                   rc_t::OK);
     ADD_EXPECT(l2_binding::unbind_cmd(hw_l2_bind, hw_ifh.data(), hw_bd.data(), false));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
     TRY_CHECK(OM::remove(franz));
 
     // flush Dante's state - the order the interface and BD are deleted
@@ -809,11 +817,11 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     delete bea1;
     STRICT_ORDER_OFF();
     ADD_EXPECT(l2_binding::unbind_cmd(hw_l2_bind, hw_ifh2.data(), hw_bd.data(), false));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh2));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh2, itf2_name));
-    ADD_EXPECT(bridge_domain_entry::delete_cmd(hw_be1, mac1, bd1.id()));
-    ADD_EXPECT(bridge_domain_arp_entry::delete_cmd(hw_be1, bd1.id(), mac1, ip1));
-    ADD_EXPECT(bridge_domain::delete_cmd(hw_bd));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(bridge_domain_entry_cmds::delete_cmd(hw_be1, mac1, bd1.id()));
+    ADD_EXPECT(bridge_domain_arp_entry_cmds::delete_cmd(hw_be1, bd1.id(), mac1, ip1));
+    ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd));
     TRY_CHECK(OM::remove(dante));
 }
 
@@ -834,7 +842,7 @@ BOOST_AUTO_TEST_CASE(test_vxlan) {
     vxlan_tunnel vxt(ep.src, ep.dst, ep.vni);
 
     HW::item<handle_t> hw_vxt(3, rc_t::OK);
-    ADD_EXPECT(vxlan_tunnel::create_cmd(hw_vxt, "don't-care", ep));
+    ADD_EXPECT(vxlan_tunnel_cmds::create_cmd(hw_vxt, "don't-care", ep));
 
     TRY_CHECK_RC(OM::write(franz, vxt));
 
@@ -842,7 +850,7 @@ BOOST_AUTO_TEST_CASE(test_vxlan) {
     bridge_domain bd1(33);
 
     HW::item<uint32_t> hw_bd(33, rc_t::OK);
-    ADD_EXPECT(bridge_domain::create_cmd(hw_bd));
+    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd));
 
     TRY_CHECK_RC(OM::write(franz, bd1));
 
@@ -860,8 +868,8 @@ BOOST_AUTO_TEST_CASE(test_vxlan) {
     HW::item<handle_t> hw_vxtdel(3, rc_t::NOOP);
     STRICT_ORDER_OFF();
     ADD_EXPECT(l2_binding::unbind_cmd(hw_l2_bind, hw_vxt.data(), hw_bd.data(), false));
-    ADD_EXPECT(bridge_domain::delete_cmd(hw_bd));
-    ADD_EXPECT(vxlan_tunnel::delete_cmd(hw_vxtdel, ep));
+    ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd));
+    ADD_EXPECT(vxlan_tunnel_cmds::delete_cmd(hw_vxtdel, ep));
     TRY_CHECK(OM::remove(franz));
 }
 
@@ -876,10 +884,10 @@ BOOST_AUTO_TEST_CASE(test_vlan) {
                    interface::admin_state_t::UP);
 
     HW::item<handle_t> hw_ifh(2, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
 
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
 
     TRY_CHECK_RC(OM::write(noam, itf1));
 
@@ -889,17 +897,17 @@ BOOST_AUTO_TEST_CASE(test_vlan) {
 
     HW::item<handle_t> hw_vl33(3, rc_t::OK);
     ADD_EXPECT(sub_interface::create_cmd(hw_vl33, itf1_name+".33", hw_ifh.data(), 33));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_vl33));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_vl33));
 
     TRY_CHECK_RC(OM::write(noam, *vl33));
 
     delete vl33;
     HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
     HW::item<handle_t> hw_vl33_down(3, rc_t::NOOP);
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_vl33));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_vl33));
     ADD_EXPECT(sub_interface::delete_cmd(hw_vl33_down));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
 
     TRY_CHECK(OM::remove(noam));
 }
@@ -919,8 +927,8 @@ BOOST_AUTO_TEST_CASE(test_acl) {
                    interface::admin_state_t::UP);
     HW::item<handle_t> hw_ifh(2, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(fyodor, itf1));
 
     route::prefix_t src("10.10.10.10", 32);
@@ -983,8 +991,8 @@ BOOST_AUTO_TEST_CASE(test_acl) {
     ADD_EXPECT(ACL::l3_binding::unbind_cmd(hw_binding, direction_t::INPUT,
                                          hw_ifh.data(), hw_acl.data()));
     ADD_EXPECT(ACL::l3_list::delete_cmd(hw_acl));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
 
     TRY_CHECK(OM::remove(fyodor));
 }
@@ -999,7 +1007,7 @@ BOOST_AUTO_TEST_CASE(test_arp_proxy) {
 
     arp_proxy_config ap(low, high);
     HW::item<bool> hw_ap_cfg(true, rc_t::OK);
-    ADD_EXPECT(arp_proxy_config::config_cmd(hw_ap_cfg, low, high));
+    ADD_EXPECT(arp_proxy_config_cmds::config_cmd(hw_ap_cfg, low, high));
     TRY_CHECK_RC(OM::write(kurt, ap));
 
     std::string itf3_name = "host3";
@@ -1008,13 +1016,13 @@ BOOST_AUTO_TEST_CASE(test_arp_proxy) {
                    interface::admin_state_t::UP);
     HW::item<handle_t> hw_ifh(2, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf3_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf3_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(kurt, itf3));
 
     arp_proxy_binding *apb = new arp_proxy_binding(itf3, ap);
     HW::item<bool> hw_binding(true, rc_t::OK);
-    ADD_EXPECT(arp_proxy_binding::bind_cmd(hw_binding, hw_ifh.data()));
+    ADD_EXPECT(arp_proxy_binding_cmds::bind_cmd(hw_binding, hw_ifh.data()));
     TRY_CHECK_RC(OM::write(kurt, *apb));
 
     delete apb;
@@ -1022,10 +1030,10 @@ BOOST_AUTO_TEST_CASE(test_arp_proxy) {
     HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN,
                                                   rc_t::OK);
     STRICT_ORDER_OFF();
-    ADD_EXPECT(arp_proxy_binding::unbind_cmd(hw_binding, hw_ifh.data()));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf3_name));
-    ADD_EXPECT(arp_proxy_config::unconfig_cmd(hw_ap_cfg, low, high));
+    ADD_EXPECT(arp_proxy_binding_cmds::unbind_cmd(hw_binding, hw_ifh.data()));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf3_name));
+    ADD_EXPECT(arp_proxy_config_cmds::unconfig_cmd(hw_ap_cfg, low, high));
 
     TRY_CHECK(OM::remove(kurt));
 }
@@ -1044,8 +1052,8 @@ BOOST_AUTO_TEST_CASE(test_ip_unnumbered) {
                    interface::admin_state_t::UP);
     HW::item<handle_t> hw_ifh(2, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(eric, itf1));
 
     route::prefix_t pfx_10("10.10.10.10", 24);
@@ -1064,8 +1072,8 @@ BOOST_AUTO_TEST_CASE(test_ip_unnumbered) {
                    interface::admin_state_t::UP);
 
     HW::item<handle_t> hw_ifh2(4, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh2, itf2_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh2));
     TRY_CHECK_RC(OM::write(eric, itf2));
 
     ip_unnumbered *ipun = new ip_unnumbered(itf2, itf1);
@@ -1081,10 +1089,10 @@ BOOST_AUTO_TEST_CASE(test_ip_unnumbered) {
     STRICT_ORDER_OFF();
     ADD_EXPECT(ip_unnumbered::unconfig_cmd(hw_ip_uncfg, hw_ifh2.data(), hw_ifh.data()));
     ADD_EXPECT(l3_binding::unbind_cmd(hw_l3_unbind, hw_ifh.data(), pfx_10));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh2));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh2, itf2_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
 
     TRY_CHECK(OM::remove(eric));
 }
@@ -1103,8 +1111,8 @@ BOOST_AUTO_TEST_CASE(test_ip6nd) {
                    interface::admin_state_t::UP);
     HW::item<handle_t> hw_ifh(3, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(paulo, itf));
 
     route::prefix_t pfx_10("fd8f:69d8:c12c:ca62::3", 128);
@@ -1143,8 +1151,8 @@ BOOST_AUTO_TEST_CASE(test_ip6nd) {
     STRICT_ORDER_OFF();
     ADD_EXPECT(ip6nd_ra_config::unconfig_cmd(hw_ip6nd_ra_config_unconfig, hw_ifh.data(), ra));
     ADD_EXPECT(l3_binding::unbind_cmd(hw_l3_unbind, hw_ifh.data(), pfx_10));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf_name));
 
     TRY_CHECK(OM::remove(paulo));
 }
@@ -1163,8 +1171,8 @@ BOOST_AUTO_TEST_CASE(test_interface_span) {
                    interface::admin_state_t::UP);
     HW::item<handle_t> hw_ifh(2, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(elif, itf1));
 
     /*
@@ -1178,8 +1186,8 @@ BOOST_AUTO_TEST_CASE(test_interface_span) {
     HW::item<handle_t> hw_ifh2(4, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up2(interface::admin_state_t::UP, rc_t::OK);
 
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh2, itf2_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up2, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up2, hw_ifh2));
     TRY_CHECK_RC(OM::write(elif, itf2));
 
     interface_span *itf_span = new interface_span(itf1, itf2, interface_span::state_t::TX_RX_ENABLED);
@@ -1194,10 +1202,10 @@ BOOST_AUTO_TEST_CASE(test_interface_span) {
     delete itf_span;
     STRICT_ORDER_OFF();
     ADD_EXPECT(interface_span::unconfig_cmd(hw_is_uncfg, hw_ifh.data(), hw_ifh2.data()));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down2, hw_ifh2));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down2, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
 
     TRY_CHECK(OM::remove(elif));
 }
@@ -1233,8 +1241,8 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     HW::item<handle_t> hw_ifh(2, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(ian, itf1));
 
     std::string itf2_name = "af2";
@@ -1246,10 +1254,10 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     HW::item<handle_t> hw_ifh2(4, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up2(interface::admin_state_t::UP, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_down2(interface::admin_state_t::DOWN, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh2, itf2_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up2, hw_ifh2));
-    ADD_EXPECT(interface::set_table_cmd(hw_rd4_bind, l3_proto_t::IPV4, hw_ifh2));
-    ADD_EXPECT(interface::set_table_cmd(hw_rd6_bind, l3_proto_t::IPV6, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up2, hw_ifh2));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd4_bind, l3_proto_t::IPV4, hw_ifh2));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd6_bind, l3_proto_t::IPV6, hw_ifh2));
     TRY_CHECK_RC(OM::write(ian, *itf2));
 
     /*
@@ -1330,12 +1338,12 @@ BOOST_AUTO_TEST_CASE(test_routing) {
     ADD_EXPECT(route::ip_route::delete_cmd(hw_route_5, 0, pfx_5));
     ADD_EXPECT(l3_binding::unbind_cmd(hw_l3_10_unbind, hw_ifh.data(), pfx_10));
     ADD_EXPECT(l3_binding::unbind_cmd(hw_l3_11_unbind, hw_ifh2.data(), pfx_11));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf1_name));
-    ADD_EXPECT(interface::set_table_cmd(hw_rd4_unbind, l3_proto_t::IPV4, hw_ifh2));
-    ADD_EXPECT(interface::set_table_cmd(hw_rd4_unbind, l3_proto_t::IPV6, hw_ifh2));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down2, hw_ifh2));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh2, itf2_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf1_name));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd4_unbind, l3_proto_t::IPV4, hw_ifh2));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd4_unbind, l3_proto_t::IPV6, hw_ifh2));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down2, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
     ADD_EXPECT(route_domain::delete_cmd(hw_rd4_delete, l3_proto_t::IPV4, 1));
     ADD_EXPECT(route_domain::delete_cmd(hw_rd6_delete, l3_proto_t::IPV6, 1));
 
@@ -1357,8 +1365,8 @@ BOOST_AUTO_TEST_CASE(test_nat) {
     HW::item<handle_t> hw_ifh(2, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh, itf_in_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh, itf_in_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh));
     TRY_CHECK_RC(OM::write(gs, itf_in));
 
     /*
@@ -1373,8 +1381,8 @@ BOOST_AUTO_TEST_CASE(test_nat) {
     HW::item<interface::admin_state_t> hw_as_up2(interface::admin_state_t::UP, rc_t::OK);
     HW::item<interface::admin_state_t> hw_as_down2(interface::admin_state_t::DOWN, rc_t::OK);
 
-    ADD_EXPECT(interface::af_packet_create_cmd(hw_ifh2, itf_out_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_up2, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh2, itf_out_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up2, hw_ifh2));
     TRY_CHECK_RC(OM::write(gs, itf_out));
 
     /*
@@ -1398,8 +1406,9 @@ BOOST_AUTO_TEST_CASE(test_nat) {
                                          nat_binding::zone_t::INSIDE);
     HW::item<bool> hw_nb_in(true, rc_t::OK);
 
-    ADD_EXPECT(nat_binding::bind_44_input_cmd(hw_nb_in, hw_ifh.data().value(),
-                                              nat_binding::zone_t::INSIDE));
+    ADD_EXPECT(nat_binding_cmds::bind_44_input_cmd(hw_nb_in,
+                                                   hw_ifh.data().value(),
+                                                   nat_binding::zone_t::INSIDE));
     TRY_CHECK_RC(OM::write(gs, *nb_in));
 
     nat_binding *nb_out = new nat_binding(itf_out,
@@ -1408,23 +1417,26 @@ BOOST_AUTO_TEST_CASE(test_nat) {
                                           nat_binding::zone_t::OUTSIDE);
     HW::item<bool> hw_nb_out(true, rc_t::OK);
 
-    ADD_EXPECT(nat_binding::bind_44_input_cmd(hw_nb_out, hw_ifh2.data().value(),
-                                              nat_binding::zone_t::OUTSIDE));
+    ADD_EXPECT(nat_binding_cmds::bind_44_input_cmd(hw_nb_out,
+                                                   hw_ifh2.data().value(),
+                                                   nat_binding::zone_t::OUTSIDE));
     TRY_CHECK_RC(OM::write(gs, *nb_out));
 
 
     STRICT_ORDER_OFF();
     delete nb_in;
     delete nb_out;
-    ADD_EXPECT(nat_binding::unbind_44_input_cmd(hw_nb_in, hw_ifh.data().value(),
-                                                nat_binding::zone_t::INSIDE));
-    ADD_EXPECT(nat_binding::unbind_44_input_cmd(hw_nb_out, hw_ifh2.data().value(),
-                                                nat_binding::zone_t::OUTSIDE));
+    ADD_EXPECT(nat_binding_cmds::unbind_44_input_cmd(hw_nb_in,
+                                                     hw_ifh.data().value(),
+                                                     nat_binding::zone_t::INSIDE));
+    ADD_EXPECT(nat_binding_cmds::unbind_44_input_cmd(hw_nb_out,
+                                                     hw_ifh2.data().value(),
+                                                     nat_binding::zone_t::OUTSIDE));
     ADD_EXPECT(nat_static::delete_44_cmd(hw_ns, 0, in_addr.to_v4(), out_addr));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down, hw_ifh));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh, itf_in_name));
-    ADD_EXPECT(interface::state_change_cmd(hw_as_down2, hw_ifh2));
-    ADD_EXPECT(interface::af_packet_delete_cmd(hw_ifh2, itf_out_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf_in_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down2, hw_ifh2));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf_out_name));
 
     TRY_CHECK(OM::remove(gs));
 }
@@ -1435,8 +1447,8 @@ BOOST_AUTO_TEST_CASE(test_interface_events) {
 
     HW::item<bool> hw_want(true, rc_t::OK);
 
-    ADD_EXPECT(interface::events_cmd(ml));
-    cmd* itf = new interface::events_cmd(ml);
+    ADD_EXPECT(interface_cmds::events_cmd(ml));
+    cmd* itf = new interface_cmds::events_cmd(ml);
 
     HW::enqueue(itf);
     HW::write();
