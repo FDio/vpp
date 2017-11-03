@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "242e69d1_86f60cee",
+        "filename": "src/plugins/acl/fa_node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1107,
+      "author": {
+        "id": 483
+      },
+      "writtenOn": "2017-11-03T15:41:34Z",
+      "side": 1,
+      "message": "shouldn\u0027t we be matching ACL_ACTION_STEERING(action) \u003d\u003d 0?",
+      "range": {
+        "startLine": 1107,
+        "startChar": 18,
+        "endLine": 1107,
+        "endChar": 70
+      },
+      "revId": "338d0fbf1af9013264944ae564ba17847f09b70e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e5c5c923_cefb255f",
+        "filename": "src/plugins/acl/fa_node.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 483
+      },
+      "writtenOn": "2017-11-03T15:41:34Z",
+      "side": 1,
+      "message": "shouldn\u0027t this be 0x3f?",
+      "range": {
+        "startLine": 30,
+        "startChar": 14,
+        "endLine": 30,
+        "endChar": 23
+      },
+      "revId": "338d0fbf1af9013264944ae564ba17847f09b70e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
