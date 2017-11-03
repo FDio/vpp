@@ -14,7 +14,7 @@
  */
 
 #include "vom/acl_binding.hpp"
-#include "vom/om.hpp"
+#include "vom/acl_binding_cmds.hpp"
 
 namespace VOM {
 namespace ACL {
@@ -25,7 +25,8 @@ l2_binding::event_handler::handle_populate(const client_db::key_t& key)
   /*
 * dump VPP Bridge domains
 */
-  std::shared_ptr<l2_binding::dump_cmd> cmd(new l2_binding::dump_cmd());
+  std::shared_ptr<binding_cmds::l2_dump_cmd> cmd(
+    new binding_cmds::l2_dump_cmd());
 
   HW::enqueue(cmd);
   HW::write();
@@ -49,7 +50,8 @@ template <>
 void
 l3_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<l3_binding::dump_cmd> cmd(new l3_binding::dump_cmd());
+  std::shared_ptr<binding_cmds::l3_dump_cmd> cmd(
+    new binding_cmds::l3_dump_cmd());
 
   HW::enqueue(cmd);
   HW::write();
@@ -72,6 +74,70 @@ l3_binding::event_handler::handle_populate(const client_db::key_t& key)
         OM::commit(key, binding);
       }
     }
+  }
+}
+
+template <>
+void
+l3_binding::update(const binding& obj)
+{
+  if (!m_binding) {
+    HW::enqueue(new binding_cmds::l3_bind_cmd(
+      m_binding, m_direction, m_itf->handle(), m_acl->handle()));
+  }
+  HW::write();
+}
+
+template <>
+void
+l3_binding::sweep(void)
+{
+  if (m_binding) {
+    HW::enqueue(new binding_cmds::l3_unbind_cmd(
+      m_binding, m_direction, m_itf->handle(), m_acl->handle()));
+  }
+  HW::write();
+}
+
+template <>
+void
+l3_binding::replay(void)
+{
+  if (m_binding) {
+    HW::enqueue(new binding_cmds::l3_bind_cmd(
+      m_binding, m_direction, m_itf->handle(), m_acl->handle()));
+  }
+}
+
+template <>
+void
+l2_binding::update(const binding& obj)
+{
+  if (!m_binding) {
+    HW::enqueue(new binding_cmds::l2_bind_cmd(
+      m_binding, m_direction, m_itf->handle(), m_acl->handle()));
+  }
+  HW::write();
+}
+
+template <>
+void
+l2_binding::sweep(void)
+{
+  if (m_binding) {
+    HW::enqueue(new binding_cmds::l2_unbind_cmd(
+      m_binding, m_direction, m_itf->handle(), m_acl->handle()));
+  }
+  HW::write();
+}
+
+template <>
+void
+l2_binding::replay(void)
+{
+  if (m_binding) {
+    HW::enqueue(new binding_cmds::l2_bind_cmd(
+      m_binding, m_direction, m_itf->handle(), m_acl->handle()));
   }
 }
 };

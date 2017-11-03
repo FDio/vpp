@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "vom/route.hpp"
-#include "vom/singular_db.hpp"
 
-#include <vapi/ip.api.vapi.hpp>
+#include "vom/route.hpp"
+#include "vom/route_cmds.hpp"
+#include "vom/singular_db.hpp"
 
 namespace VOM {
 namespace route {
@@ -221,7 +221,7 @@ void
 ip_route::sweep()
 {
   if (m_hw) {
-    HW::enqueue(new delete_cmd(m_hw, m_rd->table_id(), m_prefix));
+    HW::enqueue(new ip_route_cmds::delete_cmd(m_hw, m_rd->table_id(), m_prefix));
   }
   HW::write();
 }
@@ -230,7 +230,7 @@ void
 ip_route::replay()
 {
   if (m_hw) {
-    HW::enqueue(new update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
+    HW::enqueue(new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
   }
 }
 std::string
@@ -251,7 +251,7 @@ ip_route::update(const ip_route& r)
 * create the table if it is not yet created
 */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
+    HW::enqueue(new ip_route_cmds::update_cmd(m_hw, m_rd->table_id(), m_prefix, m_paths));
   }
 }
 
@@ -289,8 +289,8 @@ ip_route::event_handler::handle_replay()
 void
 ip_route::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<ip_route::dump_v4_cmd> cmd_v4(new ip_route::dump_v4_cmd());
-  std::shared_ptr<ip_route::dump_v6_cmd> cmd_v6(new ip_route::dump_v6_cmd());
+  std::shared_ptr<ip_route_cmds::dump_v4_cmd> cmd_v4(new ip_route_cmds::dump_v4_cmd());
+  std::shared_ptr<ip_route_cmds::dump_v6_cmd> cmd_v6(new ip_route_cmds::dump_v6_cmd());
 
   HW::enqueue(cmd_v4);
   HW::enqueue(cmd_v6);

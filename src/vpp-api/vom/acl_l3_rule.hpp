@@ -19,8 +19,6 @@
 #include "vom/acl_types.hpp"
 #include "vom/prefix.hpp"
 
-#include <vapi/acl.api.vapi.hpp>
-
 namespace VOM {
 namespace ACL {
 /**
@@ -67,11 +65,6 @@ public:
   bool operator==(const l3_rule& rule) const;
 
   /**
-   * Convert to VPP API fromat
-   */
-  void to_vpp(vapi_type_acl_rule& rule) const;
-
-  /**
    * Set Src Ip Address
    */
   void set_src_ip(route::prefix_t src);
@@ -115,6 +108,21 @@ public:
    * Set TCP flags value
    */
   void set_tcp_flags_value(uint8_t tcp_flags_value);
+
+  /**
+   * Getters
+   */
+  const route::prefix_t& src() const;
+  uint32_t priority() const;
+  action_t action() const;
+  const route::prefix_t& dst() const;
+  uint8_t proto() const;
+  uint16_t srcport_or_icmptype_first() const;
+  uint16_t srcport_or_icmptype_last() const;
+  uint16_t dstport_or_icmpcode_first() const;
+  uint16_t dstport_or_icmpcode_last() const;
+  uint8_t tcp_flags_mask() const;
+  uint8_t tcp_flags_value() const;
 
 private:
   /**

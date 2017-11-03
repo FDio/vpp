@@ -15,14 +15,16 @@
 
 #include <sstream>
 
-#include "vom/route.hpp"
+#include "vom/route_cmds.hpp"
 
 namespace VOM {
 namespace route {
-ip_route::update_cmd::update_cmd(HW::item<bool>& item,
-                                 table_id_t id,
-                                 const prefix_t& prefix,
-                                 const path_list_t& paths)
+namespace ip_route_cmds {
+
+update_cmd::update_cmd(HW::item<bool>& item,
+                       table_id_t id,
+                       const prefix_t& prefix,
+                       const path_list_t& paths)
   : rpc_cmd(item)
   , m_id(id)
   , m_prefix(prefix)
@@ -33,13 +35,13 @@ ip_route::update_cmd::update_cmd(HW::item<bool>& item,
 }
 
 bool
-ip_route::update_cmd::operator==(const update_cmd& other) const
+update_cmd::operator==(const update_cmd& other) const
 {
   return ((m_prefix == other.m_prefix) && (m_id == other.m_id));
 }
 
 rc_t
-ip_route::update_cmd::issue(connection& con)
+update_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), 0, std::ref(*this));
 
@@ -63,7 +65,7 @@ ip_route::update_cmd::issue(connection& con)
 }
 
 std::string
-ip_route::update_cmd::to_string() const
+update_cmd::to_string() const
 {
   std::ostringstream s;
   s << "ip-route-create: " << m_hw_item.to_string() << " table-id:" << m_id
@@ -72,7 +74,7 @@ ip_route::update_cmd::to_string() const
   return (s.str());
 }
 
-ip_route::delete_cmd::delete_cmd(HW::item<bool>& item,
+delete_cmd::delete_cmd(HW::item<bool>& item,
                                  table_id_t id,
                                  const prefix_t& prefix)
   : rpc_cmd(item)
@@ -82,13 +84,13 @@ ip_route::delete_cmd::delete_cmd(HW::item<bool>& item,
 }
 
 bool
-ip_route::delete_cmd::operator==(const delete_cmd& other) const
+delete_cmd::operator==(const delete_cmd& other) const
 {
   return ((m_prefix == other.m_prefix) && (m_id == other.m_id));
 }
 
 rc_t
-ip_route::delete_cmd::issue(connection& con)
+delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), 0, std::ref(*this));
 
@@ -108,7 +110,7 @@ ip_route::delete_cmd::issue(connection& con)
 }
 
 std::string
-ip_route::delete_cmd::to_string() const
+delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "ip-route-delete: " << m_hw_item.to_string() << " id:" << m_id
@@ -117,18 +119,18 @@ ip_route::delete_cmd::to_string() const
   return (s.str());
 }
 
-ip_route::dump_v4_cmd::dump_v4_cmd()
+dump_v4_cmd::dump_v4_cmd()
 {
 }
 
 bool
-ip_route::dump_v4_cmd::operator==(const dump_v4_cmd& other) const
+dump_v4_cmd::operator==(const dump_v4_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-ip_route::dump_v4_cmd::issue(connection& con)
+dump_v4_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -140,23 +142,23 @@ ip_route::dump_v4_cmd::issue(connection& con)
 }
 
 std::string
-ip_route::dump_v4_cmd::to_string() const
+dump_v4_cmd::to_string() const
 {
   return ("ip-route-v4-dump");
 }
 
-ip_route::dump_v6_cmd::dump_v6_cmd()
+dump_v6_cmd::dump_v6_cmd()
 {
 }
 
 bool
-ip_route::dump_v6_cmd::operator==(const dump_v6_cmd& other) const
+dump_v6_cmd::operator==(const dump_v6_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-ip_route::dump_v6_cmd::issue(connection& con)
+dump_v6_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -168,12 +170,13 @@ ip_route::dump_v6_cmd::issue(connection& con)
 }
 
 std::string
-ip_route::dump_v6_cmd::to_string() const
+dump_v6_cmd::to_string() const
 {
   return ("ip-route-v6-dump");
 }
-}
-}
+} // namespace ip_route_cmds
+} // namespace route
+} // namespace vom
 /*
  * fd.io coding-style-patch-verification: ON
  *

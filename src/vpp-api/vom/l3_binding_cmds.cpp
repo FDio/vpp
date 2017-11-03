@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
-#include "vom/l3_binding.hpp"
+#include "vom/l3_binding_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_IP_API_JSON;
 
 namespace VOM {
-l3_binding::bind_cmd::bind_cmd(HW::item<bool>& item,
-                               const handle_t& itf,
-                               const route::prefix_t& pfx)
+namespace l3_binding_cmds {
+bind_cmd::bind_cmd(HW::item<bool>& item,
+                   const handle_t& itf,
+                   const route::prefix_t& pfx)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_pfx(pfx)
@@ -28,13 +29,13 @@ l3_binding::bind_cmd::bind_cmd(HW::item<bool>& item,
 }
 
 bool
-l3_binding::bind_cmd::operator==(const bind_cmd& other) const
+bind_cmd::operator==(const bind_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_pfx == other.m_pfx));
 }
 
 rc_t
-l3_binding::bind_cmd::issue(connection& con)
+bind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -53,7 +54,7 @@ l3_binding::bind_cmd::issue(connection& con)
 }
 
 std::string
-l3_binding::bind_cmd::to_string() const
+bind_cmd::to_string() const
 {
   std::ostringstream s;
   s << "L3-bind: " << m_hw_item.to_string() << " itf:" << m_itf.to_string()
@@ -62,9 +63,9 @@ l3_binding::bind_cmd::to_string() const
   return (s.str());
 }
 
-l3_binding::unbind_cmd::unbind_cmd(HW::item<bool>& item,
-                                   const handle_t& itf,
-                                   const route::prefix_t& pfx)
+unbind_cmd::unbind_cmd(HW::item<bool>& item,
+                       const handle_t& itf,
+                       const route::prefix_t& pfx)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_pfx(pfx)
@@ -72,13 +73,13 @@ l3_binding::unbind_cmd::unbind_cmd(HW::item<bool>& item,
 }
 
 bool
-l3_binding::unbind_cmd::operator==(const unbind_cmd& other) const
+unbind_cmd::operator==(const unbind_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_pfx == other.m_pfx));
 }
 
 rc_t
-l3_binding::unbind_cmd::issue(connection& con)
+unbind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -98,7 +99,7 @@ l3_binding::unbind_cmd::issue(connection& con)
 }
 
 std::string
-l3_binding::unbind_cmd::to_string() const
+unbind_cmd::to_string() const
 {
   std::ostringstream s;
   s << "L3-unbind: " << m_hw_item.to_string() << " itf:" << m_itf.to_string()
@@ -107,24 +108,24 @@ l3_binding::unbind_cmd::to_string() const
   return (s.str());
 }
 
-l3_binding::dump_v4_cmd::dump_v4_cmd(const handle_t& hdl)
+dump_v4_cmd::dump_v4_cmd(const handle_t& hdl)
   : m_itf(hdl)
 {
 }
 
-l3_binding::dump_v4_cmd::dump_v4_cmd(const dump_v4_cmd& d)
+dump_v4_cmd::dump_v4_cmd(const dump_v4_cmd& d)
   : m_itf(d.m_itf)
 {
 }
 
 bool
-l3_binding::dump_v4_cmd::operator==(const dump_v4_cmd& other) const
+dump_v4_cmd::operator==(const dump_v4_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-l3_binding::dump_v4_cmd::issue(connection& con)
+dump_v4_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -140,11 +141,13 @@ l3_binding::dump_v4_cmd::issue(connection& con)
 }
 
 std::string
-l3_binding::dump_v4_cmd::to_string() const
+dump_v4_cmd::to_string() const
 {
   return ("L3-binding-dump");
 }
-}
+
+}; // namespace l3_binding_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON
