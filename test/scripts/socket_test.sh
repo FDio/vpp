@@ -248,12 +248,6 @@ done
 
 VCL_LDPRELOAD_LIB_DIR="${VCL_LDPRELOAD_LIB_DIR:-$lib64_dir}"
 
-if [ -n "$multi_host" ] ; then
-    VCL_SESSION_SCOPE_GLOBAL=true
-else
-    VCL_SESSION_SCOPE_LOCAL=true
-fi
-
 if [ -z "$WS_ROOT" ] ; then
     echo "ERROR: WS_ROOT environment variable not set!" >&2
     echo "       Please set WS_ROOT to VPP workspace root directory." >&2
@@ -520,10 +514,10 @@ write_script_header() {
         echo "export VCL_APP_NAMESPACE_ID=\"$namespace_id\"" >> $1
         echo "export VCL_APP_NAMESPACE_SECRET=\"$namespace_secret\"" >> $1
     fi
-    if [ -n "$VCL_APP_SCOPE_LOCAL" ] ; then
+    if [ -n "$VCL_APP_SCOPE_LOCAL" ] || [ -z "$multi_host" ] ; then
         echo "export VCL_APP_SCOPE_LOCAL=true" >> $1
     fi
-    if [ -n "$VCL_APP_SCOPE_GLOBAL" ] ; then
+    if [ -n "$VCL_APP_SCOPE_GLOBAL" ] || [ -n "$multi_host" ] ; then
         echo "export VCL_APP_SCOPE_GLOBAL=true" >> $1
     fi
     if [ -n "$VCL_APP_PROXY_TRANSPORT_TCP" ] ; then
