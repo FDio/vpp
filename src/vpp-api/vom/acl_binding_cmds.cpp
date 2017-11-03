@@ -13,15 +13,16 @@
  * limitations under the License.
  */
 
-#include "vom/acl_binding.hpp"
+#include "vom/acl_binding_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_ACL_API_JSON;
 
 namespace VOM {
 namespace ACL {
+namespace binding_cmds {
 template <>
 rc_t
-l3_binding::bind_cmd::issue(connection& con)
+l3_bind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -40,7 +41,7 @@ l3_binding::bind_cmd::issue(connection& con)
 
 template <>
 rc_t
-l3_binding::unbind_cmd::issue(connection& con)
+l3_unbind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -59,7 +60,7 @@ l3_binding::unbind_cmd::issue(connection& con)
 
 template <>
 rc_t
-l3_binding::dump_cmd::issue(connection& con)
+l3_dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -75,7 +76,7 @@ l3_binding::dump_cmd::issue(connection& con)
 
 template <>
 rc_t
-l2_binding::bind_cmd::issue(connection& con)
+l2_bind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -94,7 +95,7 @@ l2_binding::bind_cmd::issue(connection& con)
 
 template <>
 rc_t
-l2_binding::unbind_cmd::issue(connection& con)
+l2_unbind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -113,7 +114,7 @@ l2_binding::unbind_cmd::issue(connection& con)
 
 template <>
 rc_t
-l2_binding::dump_cmd::issue(connection& con)
+l2_dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -126,8 +127,10 @@ l2_binding::dump_cmd::issue(connection& con)
 
   return rc_t::OK;
 }
-}
-}
+
+}; // namespace binding_cmds
+}; // namespace ACL
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

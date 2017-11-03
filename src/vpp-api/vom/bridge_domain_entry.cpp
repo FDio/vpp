@@ -14,6 +14,7 @@
  */
 
 #include "vom/bridge_domain_entry.hpp"
+#include "vom/bridge_domain_entry_cmds.hpp"
 
 namespace VOM {
 singular_db<bridge_domain_entry::key_t, bridge_domain_entry>
@@ -66,7 +67,8 @@ void
 bridge_domain_entry::sweep()
 {
   if (m_hw) {
-    HW::enqueue(new delete_cmd(m_hw, m_mac, m_bd->id()));
+    HW::enqueue(
+      new bridge_domain_entry_cmds::delete_cmd(m_hw, m_mac, m_bd->id()));
   }
   HW::write();
 }
@@ -75,7 +77,8 @@ void
 bridge_domain_entry::replay()
 {
   if (m_hw) {
-    HW::enqueue(new create_cmd(m_hw, m_mac, m_bd->id(), m_tx_itf->handle()));
+    HW::enqueue(new bridge_domain_entry_cmds::create_cmd(
+      m_hw, m_mac, m_bd->id(), m_tx_itf->handle()));
   }
 }
 std::string
@@ -95,7 +98,8 @@ bridge_domain_entry::update(const bridge_domain_entry& r)
    * create the table if it is not yet created
    */
   if (rc_t::OK != m_hw.rc()) {
-    HW::enqueue(new create_cmd(m_hw, m_mac, m_bd->id(), m_tx_itf->handle()));
+    HW::enqueue(new bridge_domain_entry_cmds::create_cmd(
+      m_hw, m_mac, m_bd->id(), m_tx_itf->handle()));
   }
 }
 
@@ -133,8 +137,8 @@ bridge_domain_entry::event_handler::handle_replay()
 void
 bridge_domain_entry::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<bridge_domain_entry::dump_cmd> cmd(
-    new bridge_domain_entry::dump_cmd());
+  std::shared_ptr<bridge_domain_entry_cmds::dump_cmd> cmd(
+    new bridge_domain_entry_cmds::dump_cmd());
 
   HW::enqueue(cmd);
   HW::write();

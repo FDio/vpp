@@ -14,7 +14,7 @@
  */
 
 #include "vom/l3_binding.hpp"
-#include "vom/cmd.hpp"
+#include "vom/l3_binding_cmds.hpp"
 
 namespace VOM {
 singular_db<l3_binding::key_type_t, l3_binding> l3_binding::m_db;
@@ -50,7 +50,8 @@ void
 l3_binding::sweep()
 {
   if (m_binding) {
-    HW::enqueue(new unbind_cmd(m_binding, m_itf->handle(), m_pfx));
+    HW::enqueue(
+      new l3_binding_cmds::unbind_cmd(m_binding, m_itf->handle(), m_pfx));
   }
   HW::write();
 }
@@ -59,7 +60,8 @@ void
 l3_binding::replay()
 {
   if (m_binding) {
-    HW::enqueue(new bind_cmd(m_binding, m_itf->handle(), m_pfx));
+    HW::enqueue(
+      new l3_binding_cmds::bind_cmd(m_binding, m_itf->handle(), m_pfx));
   }
 }
 
@@ -86,7 +88,8 @@ l3_binding::update(const l3_binding& desired)
  * the desired state is always that the interface should be created
  */
   if (!m_binding) {
-    HW::enqueue(new bind_cmd(m_binding, m_itf->handle(), m_pfx));
+    HW::enqueue(
+      new l3_binding_cmds::bind_cmd(m_binding, m_itf->handle(), m_pfx));
   }
 }
 

@@ -19,6 +19,8 @@
 #include <memory>
 #include <ostream>
 
+#include "vom/logger.hpp"
+
 namespace VOM {
 /**
  * A Database to store the unique 'singular' instances of a single object

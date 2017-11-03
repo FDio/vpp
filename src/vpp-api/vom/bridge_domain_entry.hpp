@@ -20,8 +20,6 @@
 #include "vom/interface.hpp"
 #include "vom/singular_db.hpp"
 
-#include <vapi/l2.api.vapi.hpp>
-
 namespace VOM {
 /**
  * A MAC forwarding entry in the bridge-domain/L2-FIB
@@ -81,105 +79,6 @@ public:
    * Convert to string for debugging
    */
   std::string to_string() const;
-
-  /**
-   * A command class that creates or updates the bridge_domain
-   */
-  class create_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::L2fib_add_del>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    create_cmd(HW::item<bool>& item,
-               const mac_address_t& mac,
-               uint32_t id,
-               handle_t tx_intf);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const create_cmd& i) const;
-
-  private:
-    mac_address_t m_mac;
-    uint32_t m_bd;
-    handle_t m_tx_itf;
-  };
-
-  /**
-   * A cmd class that deletes a bridge_domain
-   */
-  class delete_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::L2fib_add_del>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    delete_cmd(HW::item<bool>& item, const mac_address_t& mac, uint32_t id);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const delete_cmd& i) const;
-
-  private:
-    mac_address_t m_mac;
-    uint32_t m_bd;
-  };
-
-  /**
-   * A cmd class that Dumps all the interface spans
-   */
-  class dump_cmd : public VOM::dump_cmd<vapi::L2_fib_table_dump>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    dump_cmd();
-    dump_cmd(const dump_cmd& d);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const dump_cmd& i) const;
-
-  private:
-    /**
-     * HW reutrn code
-     */
-    HW::item<bool> item;
-  };
 
 private:
   /**

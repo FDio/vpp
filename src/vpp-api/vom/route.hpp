@@ -21,8 +21,6 @@
 #include "vom/route_domain.hpp"
 #include "vom/singular_db.hpp"
 
-#include <vapi/ip.api.vapi.hpp>
-
 namespace VOM {
 /**
  * Types belonging to Routing
@@ -110,7 +108,6 @@ public:
   /**
    * Convert the path into the VPP API representation
    */
-  void to_vpp(vapi_type_fib_path& path) const;
   void to_vpp(vapi_payload_ip_add_del_route& payload) const;
 
   /**
@@ -122,6 +119,17 @@ public:
    * convert to string format for debug purposes
    */
   std::string to_string() const;
+
+  /**
+   * Getters
+   */
+  special_t type() const;
+  nh_proto_t nh_proto() const;
+  const boost::asio::ip::address& nh() const;
+  std::shared_ptr<route_domain> rd() const;
+  std::shared_ptr<interface> itf() const;
+  uint8_t weight() const;
+  uint8_t preference() const;
 
 private:
   /**
@@ -236,140 +244,6 @@ public:
    * Convert to string for debugging
    */
   std::string to_string() const;
-
-  /**
-   * A command class that creates or updates the route
-   */
-  class update_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_add_del_route>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    update_cmd(HW::item<bool>& item,
-               table_id_t id,
-               const prefix_t& prefix,
-               const path_list_t& paths);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const update_cmd& i) const;
-
-  private:
-    route::table_id_t m_id;
-    prefix_t m_prefix;
-    const path_list_t m_paths;
-  };
-
-  /**
-   * A cmd class that deletes a route
-   */
-  class delete_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_add_del_route>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    delete_cmd(HW::item<bool>& item, table_id_t id, const prefix_t& prefix);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const delete_cmd& i) const;
-
-  private:
-    route::table_id_t m_id;
-    prefix_t m_prefix;
-  };
-
-  /**
-   * A cmd class that Dumps ipv4 fib
-   */
-  class dump_v4_cmd : public VOM::dump_cmd<vapi::Ip_fib_dump>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    dump_v4_cmd();
-    dump_v4_cmd(const dump_cmd& d);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const dump_v4_cmd& i) const;
-
-  private:
-    /**
-     * HW reutrn code
-     */
-    HW::item<bool> item;
-  };
-
-  /**
-   * A cmd class that Dumps ipv6 fib
-   */
-  class dump_v6_cmd : public VOM::dump_cmd<vapi::Ip6_fib_dump>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    dump_v6_cmd();
-    dump_v6_cmd(const dump_cmd& d);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const dump_v6_cmd& i) const;
-
-  private:
-    /**
-     * HW reutrn code
-     */
-    HW::item<bool> item;
-  };
 
 private:
   /**

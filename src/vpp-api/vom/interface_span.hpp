@@ -16,16 +16,12 @@
 #ifndef __VOM_INTERFACE_SPAN_H__
 #define __VOM_INTERFACE_SPAN_H__
 
-#include "vom/dump_cmd.hpp"
 #include "vom/hw.hpp"
 #include "vom/inspect.hpp"
 #include "vom/interface.hpp"
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
-#include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
-
-#include <vapi/span.api.vapi.hpp>
 
 namespace VOM {
 /**
@@ -113,124 +109,6 @@ public:
    * Find a singular instance in the DB for the interface passed
    */
   static std::shared_ptr<interface_span> find(const interface& i);
-
-  /**
-   * A command class that configures the interface span
-   */
-  class config_cmd : public rpc_cmd<HW::item<bool>,
-                                    rc_t,
-                                    vapi::Sw_interface_span_enable_disable>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    config_cmd(HW::item<bool>& item,
-               const handle_t& itf_from,
-               const handle_t& itf_to,
-               const state_t& state);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const config_cmd& i) const;
-
-  private:
-    /**
-     * Reference to the interface to be mirrored
-     */
-    const handle_t& m_itf_from;
-    /**
-     * Reference to the interface where the traffic is mirrored
-     */
-    const handle_t& m_itf_to;
-    /**
-     * the state (rx, tx or both) of the interface to be mirrored
-     */
-    const state_t& m_state;
-  };
-
-  /**
-   * A cmd class that Unconfigs interface span
-   */
-  class unconfig_cmd : public rpc_cmd<HW::item<bool>,
-                                      rc_t,
-                                      vapi::Sw_interface_span_enable_disable>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    unconfig_cmd(HW::item<bool>& item,
-                 const handle_t& itf_from,
-                 const handle_t& itf_to);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const unconfig_cmd& i) const;
-
-  private:
-    /**
-     * Reference to the interface to be mirrored
-     */
-    const handle_t& m_itf_from;
-    /**
-     * Reference to the interface where the traffic is mirrored
-     */
-    const handle_t& m_itf_to;
-  };
-
-  /**
-   * A cmd class that Dumps all the interface spans
-   */
-  class dump_cmd : public VOM::dump_cmd<vapi::Sw_interface_span_dump>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    dump_cmd();
-    dump_cmd(const dump_cmd& d);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const dump_cmd& i) const;
-
-  private:
-    /**
-     * HW reutrn code
-     */
-    HW::item<bool> item;
-  };
 
 private:
   /**

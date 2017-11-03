@@ -21,8 +21,6 @@
 #include "vom/singular_db.hpp"
 #include "vom/types.hpp"
 
-#include <vapi/l2.api.vapi.hpp>
-
 namespace VOM {
 /**
  * A entry in the ARP termination table of a Bridge Domain
@@ -84,78 +82,6 @@ public:
    * Convert to string for debugging
    */
   std::string to_string() const;
-
-  /**
-   * A command class that creates or updates the bridge domain ARP Entry
-   */
-  class create_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Bd_ip_mac_add_del>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    create_cmd(HW::item<bool>& item,
-               uint32_t id,
-               const mac_address_t& mac,
-               const boost::asio::ip::address& ip_addr);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const create_cmd& i) const;
-
-  private:
-    uint32_t m_bd;
-    mac_address_t m_mac;
-    boost::asio::ip::address m_ip_addr;
-  };
-
-  /**
-   * A cmd class that deletes a bridge domain ARP entry
-   */
-  class delete_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Bd_ip_mac_add_del>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    delete_cmd(HW::item<bool>& item,
-               uint32_t id,
-               const mac_address_t& mac,
-               const boost::asio::ip::address& ip_addr);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const delete_cmd& i) const;
-
-  private:
-    uint32_t m_bd;
-    mac_address_t m_mac;
-    boost::asio::ip::address m_ip_addr;
-  };
 
 private:
   /**

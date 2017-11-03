@@ -13,13 +13,46 @@
  * limitations under the License.
  */
 
-#include "vom/acl_list.hpp"
+#include "vom/acl_list_cmds.hpp"
 
 namespace VOM {
 namespace ACL {
+namespace list_cmds {
+/*
+ * Jumping through hoops to not expose the VAPI types publically
+ */
+static void
+to_vpp(const l2_rule& rule, vapi_type_macip_acl_rule& payload)
+{
+  payload.is_permit = rule.action().value();
+  rule.src_ip().to_vpp(&payload.is_ipv6, payload.src_ip_addr,
+                       &payload.src_ip_prefix_len);
+  rule.mac().to_bytes(payload.src_mac, 6);
+  rule.mac_mask().to_bytes(payload.src_mac_mask, 6);
+}
+
+static void
+to_vpp(const l3_rule& rule, vapi_type_acl_rule& payload)
+{
+  payload.is_permit = rule.action().value();
+  rule.src().to_vpp(&payload.is_ipv6, payload.src_ip_addr,
+                    &payload.src_ip_prefix_len);
+  rule.dst().to_vpp(&payload.is_ipv6, payload.dst_ip_addr,
+                    &payload.dst_ip_prefix_len);
+
+  payload.proto = rule.proto();
+  payload.srcport_or_icmptype_first = rule.srcport_or_icmptype_first();
+  payload.srcport_or_icmptype_last = rule.srcport_or_icmptype_last();
+  payload.dstport_or_icmpcode_first = rule.dstport_or_icmpcode_first();
+  payload.dstport_or_icmpcode_last = rule.dstport_or_icmpcode_last();
+
+  payload.tcp_flags_mask = rule.tcp_flags_mask();
+  payload.tcp_flags_value = rule.tcp_flags_value();
+}
+
 template <>
 rc_t
-l3_list::update_cmd::issue(connection& con)
+l3_update_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), m_rules.size(), std::ref(*this));
   uint32_t ii = 0;
@@ -34,7 +67,7 @@ l3_list::update_cmd::issue(connection& con)
   auto it = m_rules.cbegin();
 
   while (it != m_rules.cend()) {
-    it->to_vpp(payload.r[ii]);
+    to_vpp(*it, payload.r[ii]);
     ++it;
     ++ii;
   }
@@ -49,7 +82,7 @@ l3_list::update_cmd::issue(connection& con)
 
 template <>
 rc_t
-l3_list::delete_cmd::issue(connection& con)
+l3_delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -66,7 +99,7 @@ l3_list::delete_cmd::issue(connection& con)
 
 template <>
 rc_t
-l3_list::dump_cmd::issue(connection& con)
+l3_dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -82,7 +115,7 @@ l3_list::dump_cmd::issue(connection& con)
 
 template <>
 rc_t
-l2_list::update_cmd::issue(connection& con)
+l2_update_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), m_rules.size(), std::ref(*this));
   uint32_t ii = 0;
@@ -97,7 +130,7 @@ l2_list::update_cmd::issue(connection& con)
   auto it = m_rules.cbegin();
 
   while (it != m_rules.cend()) {
-    it->to_vpp(payload.r[ii]);
+    to_vpp(*it, payload.r[ii]);
     ++it;
     ++ii;
   }
@@ -111,7 +144,7 @@ l2_list::update_cmd::issue(connection& con)
 
 template <>
 rc_t
-l2_list::delete_cmd::issue(connection& con)
+l2_delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -128,7 +161,7 @@ l2_list::delete_cmd::issue(connection& con)
 
 template <>
 rc_t
-l2_list::dump_cmd::issue(connection& con)
+l2_dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -141,8 +174,10 @@ l2_list::dump_cmd::issue(connection& con)
 
   return rc_t::OK;
 }
-}
-}
+
+}; // namespace list_cmds
+}; // namespace ACL
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

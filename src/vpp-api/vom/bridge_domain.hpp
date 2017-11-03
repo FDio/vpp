@@ -16,16 +16,12 @@
 #ifndef __VOM_BRIDGE_DOMAIN_H__
 #define __VOM_BRIDGE_DOMAIN_H__
 
-#include "vom/dump_cmd.hpp"
 #include "vom/enum_base.hpp"
 #include "vom/hw.hpp"
 #include "vom/inspect.hpp"
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
-#include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
-
-#include <vapi/l2.api.vapi.hpp>
 
 namespace VOM {
 /**
@@ -77,93 +73,6 @@ public:
    * Dump all bridge-doamin into the stream provided
    */
   static void dump(std::ostream& os);
-
-  /**
-   * A command class that creates an Bridge-Domain
-   */
-  class create_cmd
-    : public rpc_cmd<HW::item<uint32_t>, rc_t, vapi::Bridge_domain_add_del>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    create_cmd(HW::item<uint32_t>& item);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const create_cmd& i) const;
-  };
-
-  /**
-   * A cmd class that Delete an Bridge-Domain
-   */
-  class delete_cmd
-    : public rpc_cmd<HW::item<uint32_t>, rc_t, vapi::Bridge_domain_add_del>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    delete_cmd(HW::item<uint32_t>& item);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const delete_cmd& i) const;
-  };
-
-  /**
-   * A cmd class that Dumps all the IPv4 L3 configs
-   */
-  class dump_cmd : public VOM::dump_cmd<vapi::Bridge_domain_dump>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    dump_cmd();
-    dump_cmd(const dump_cmd& d);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const dump_cmd& i) const;
-
-  private:
-    /**
-     * HW reutrn code
-     */
-    HW::item<bool> item;
-  };
 
 private:
   /**

@@ -13,14 +13,16 @@
  * limitations under the License.
  */
 
-#include "vom/lldp_binding.hpp"
+#include "vom/lldp_binding_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_LLDP_API_JSON;
 
 namespace VOM {
-lldp_binding::bind_cmd::bind_cmd(HW::item<bool>& item,
-                                 const handle_t& itf,
-                                 const std::string& port_desc)
+namespace lldp_binding_cmds {
+
+bind_cmd::bind_cmd(HW::item<bool>& item,
+                   const handle_t& itf,
+                   const std::string& port_desc)
   : rpc_cmd(item)
   , m_itf(itf)
   , m_port_desc(port_desc)
@@ -28,13 +30,13 @@ lldp_binding::bind_cmd::bind_cmd(HW::item<bool>& item,
 }
 
 bool
-lldp_binding::bind_cmd::operator==(const bind_cmd& other) const
+bind_cmd::operator==(const bind_cmd& other) const
 {
   return ((m_itf == other.m_itf) && (m_port_desc == other.m_port_desc));
 }
 
 rc_t
-lldp_binding::bind_cmd::issue(connection& con)
+bind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -53,7 +55,7 @@ lldp_binding::bind_cmd::issue(connection& con)
 }
 
 std::string
-lldp_binding::bind_cmd::to_string() const
+bind_cmd::to_string() const
 {
   std::ostringstream s;
   s << "Lldp-bind: " << m_hw_item.to_string() << " itf:" << m_itf.to_string()
@@ -62,20 +64,20 @@ lldp_binding::bind_cmd::to_string() const
   return (s.str());
 }
 
-lldp_binding::unbind_cmd::unbind_cmd(HW::item<bool>& item, const handle_t& itf)
+unbind_cmd::unbind_cmd(HW::item<bool>& item, const handle_t& itf)
   : rpc_cmd(item)
   , m_itf(itf)
 {
 }
 
 bool
-lldp_binding::unbind_cmd::operator==(const unbind_cmd& other) const
+unbind_cmd::operator==(const unbind_cmd& other) const
 {
   return (m_itf == other.m_itf);
 }
 
 rc_t
-lldp_binding::unbind_cmd::issue(connection& con)
+unbind_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -92,14 +94,16 @@ lldp_binding::unbind_cmd::issue(connection& con)
 }
 
 std::string
-lldp_binding::unbind_cmd::to_string() const
+unbind_cmd::to_string() const
 {
   std::ostringstream s;
   s << "Lldp-unbind: " << m_hw_item.to_string() << " itf:" << m_itf.to_string();
 
   return (s.str());
 }
-}
+
+}; // namespace lldp_binding_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

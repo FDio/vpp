@@ -13,27 +13,29 @@
  * limitations under the License.
  */
 
-#include "vom/vxlan_tunnel.hpp"
+#include "vom/vxlan_tunnel_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_VXLAN_API_JSON;
 
 namespace VOM {
-vxlan_tunnel::create_cmd::create_cmd(HW::item<handle_t>& item,
-                                     const std::string& name,
-                                     const endpoint_t& ep)
+namespace vxlan_tunnel_cmds {
+
+create_cmd::create_cmd(HW::item<handle_t>& item,
+                       const std::string& name,
+                       const vxlan_tunnel::endpoint_t& ep)
   : interface::create_cmd<vapi::Vxlan_add_del_tunnel>(item, name)
   , m_ep(ep)
 {
 }
 
 bool
-vxlan_tunnel::create_cmd::operator==(const create_cmd& other) const
+create_cmd::operator==(const create_cmd& other) const
 {
   return (m_ep == other.m_ep);
 }
 
 rc_t
-vxlan_tunnel::create_cmd::issue(connection& con)
+create_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -52,14 +54,14 @@ vxlan_tunnel::create_cmd::issue(connection& con)
   m_hw_item = wait();
 
   if (m_hw_item) {
-    interface::add(m_name, m_hw_item);
+    insert_interface();
   }
 
   return rc_t::OK;
 }
 
 std::string
-vxlan_tunnel::create_cmd::to_string() const
+create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "vxlan-tunnel-create: " << m_hw_item.to_string() << m_ep.to_string();
@@ -67,21 +69,21 @@ vxlan_tunnel::create_cmd::to_string() const
   return (s.str());
 }
 
-vxlan_tunnel::delete_cmd::delete_cmd(HW::item<handle_t>& item,
-                                     const endpoint_t& ep)
+delete_cmd::delete_cmd(HW::item<handle_t>& item,
+                       const vxlan_tunnel::endpoint_t& ep)
   : interface::delete_cmd<vapi::Vxlan_add_del_tunnel>(item)
   , m_ep(ep)
 {
 }
 
 bool
-vxlan_tunnel::delete_cmd::operator==(const delete_cmd& other) const
+delete_cmd::operator==(const delete_cmd& other) const
 {
   return (m_ep == other.m_ep);
 }
 
 rc_t
-vxlan_tunnel::delete_cmd::issue(connection& con)
+delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -100,12 +102,12 @@ vxlan_tunnel::delete_cmd::issue(connection& con)
   wait();
   m_hw_item.set(rc_t::NOOP);
 
-  interface::remove(m_hw_item);
+  remove_interface();
   return (rc_t::OK);
 }
 
 std::string
-vxlan_tunnel::delete_cmd::to_string() const
+delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "vxlan-tunnel-delete: " << m_hw_item.to_string() << m_ep.to_string();
@@ -113,18 +115,18 @@ vxlan_tunnel::delete_cmd::to_string() const
   return (s.str());
 }
 
-vxlan_tunnel::dump_cmd::dump_cmd()
+dump_cmd::dump_cmd()
 {
 }
 
 bool
-vxlan_tunnel::dump_cmd::operator==(const dump_cmd& other) const
+dump_cmd::operator==(const dump_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-vxlan_tunnel::dump_cmd::issue(connection& con)
+dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -139,11 +141,12 @@ vxlan_tunnel::dump_cmd::issue(connection& con)
 }
 
 std::string
-vxlan_tunnel::dump_cmd::to_string() const
+dump_cmd::to_string() const
 {
   return ("Vpp-vxlan_tunnels-Dump");
 }
-}
+} // namespace vxlan_tunnel_cmds
+} // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON
