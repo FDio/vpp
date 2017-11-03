@@ -105,6 +105,24 @@
       "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5f3b10d9_f6a11069",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 3
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-11-03T08:25:28Z",
+      "side": 0,
+      "message": "I still don\u0027t get why VPP 18.01 for any kind of packaging would require nasm package given that we are building nasm from sources as part of building Intel IPsec-MB library.\nCan you clarify why downstream distros would require nasm package? Is it because you can only use other packages to build an srpm?",
+      "parentUuid": "0901a1da_ab377fde",
+      "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
