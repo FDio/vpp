@@ -15,6 +15,7 @@
 
 #include "vom/vxlan_tunnel.hpp"
 #include "vom/logger.hpp"
+#include "vom/vxlan_tunnel_cmds.hpp"
 
 namespace VOM {
 const std::string VXLAN_TUNNEL_NAME = "vxlan-tunnel-itf";
@@ -134,7 +135,7 @@ void
 vxlan_tunnel::sweep()
 {
   if (m_hdl) {
-    HW::enqueue(new delete_cmd(m_hdl, m_tep));
+    HW::enqueue(new vxlan_tunnel_cmds::delete_cmd(m_hdl, m_tep));
   }
   HW::write();
 }
@@ -143,7 +144,7 @@ void
 vxlan_tunnel::replay()
 {
   if (m_hdl) {
-    HW::enqueue(new create_cmd(m_hdl, name(), m_tep));
+    HW::enqueue(new vxlan_tunnel_cmds::create_cmd(m_hdl, name(), m_tep));
   }
 }
 
@@ -174,7 +175,7 @@ vxlan_tunnel::update(const vxlan_tunnel& desired)
    * the desired state is always that the interface should be created
    */
   if (!m_hdl) {
-    HW::enqueue(new create_cmd(m_hdl, name(), m_tep));
+    HW::enqueue(new vxlan_tunnel_cmds::create_cmd(m_hdl, name(), m_tep));
   }
 }
 
@@ -218,7 +219,8 @@ vxlan_tunnel::event_handler::handle_populate(const client_db::key_t& key)
   /*
  * dump VPP current states
  */
-  std::shared_ptr<vxlan_tunnel::dump_cmd> cmd(new vxlan_tunnel::dump_cmd());
+  std::shared_ptr<vxlan_tunnel_cmds::dump_cmd> cmd(
+    new vxlan_tunnel_cmds::dump_cmd());
 
   HW::enqueue(cmd);
   HW::write();

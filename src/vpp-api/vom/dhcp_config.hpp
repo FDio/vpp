@@ -13,22 +13,20 @@
  * limitations under the License.
  */
 
-#ifndef __VOM_DHCP_INTERFACE_H__
-#define __VOM_DHCP_INTERFACE_H__
+#ifndef __VOM_DHCP_CONFIG_H__
+#define __VOM_DHCP_CONFIG_H__
 
-#include "vom/dump_cmd.hpp"
 #include "vom/hw.hpp"
 #include "vom/inspect.hpp"
 #include "vom/interface.hpp"
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
-#include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
-#include "vom/sub_interface.hpp"
-
-#include <vapi/dhcp.api.vapi.hpp>
 
 namespace VOM {
+namespace dhcp_config_cmds {
+class events_cmd;
+};
 /**
  * A representation of DHCP client configuration on an interface
  */
@@ -73,97 +71,6 @@ public:
   static void dump(std::ostream& os);
 
   /**
-   * A command class that binds the DHCP config to the interface
-   */
-  class bind_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Dhcp_client_config>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    bind_cmd(HW::item<bool>& item,
-             const handle_t& itf,
-             const std::string& hostname,
-             const l2_address_t& client_id);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const bind_cmd& i) const;
-
-  private:
-    /**
-     * Reference to the HW::item of the interface to bind
-     */
-    const handle_t& m_itf;
-
-    /**
-     * The DHCP client's hostname
-     */
-    const std::string m_hostname;
-
-    /**
-     * The DHCP client's ID
-     */
-    const l2_address_t m_client_id;
-  };
-
-  /**
-   * A cmd class that Unbinds Dhcp Config from an interface
-   */
-  class unbind_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Dhcp_client_config>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    unbind_cmd(HW::item<bool>& item,
-               const handle_t& itf,
-               const std::string& hostname);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const unbind_cmd& i) const;
-
-  private:
-    /**
-     * Reference to the HW::item of the interface to unbind
-     */
-    const handle_t& m_itf;
-
-    /**
-     * The DHCP client's hostname
-     */
-    const std::string m_hostname;
-  };
-
-  /**
-   * Forward declartion of the Event Command
-   */
-  class events_cmd;
-
-  /**
    * A class that listens to DHCP Events
    */
   class event_listener
@@ -178,7 +85,7 @@ public:
      * listener's virtual function invoked when a DHCP event is
      * available to read
      */
-    virtual void handle_dhcp_event(events_cmd* cmd) = 0;
+    virtual void handle_dhcp_event(dhcp_config_cmds::events_cmd* cmd) = 0;
 
     /**
      * Return the HW::item associated with this command
@@ -190,50 +97,6 @@ public:
      * The HW::item associated with this command
      */
     HW::item<bool> m_status;
-  };
-
-  /**
-   * A functor class represents our desire to recieve interface events
-   */
-  class events_cmd
-    : public event_cmd<vapi::Control_ping, vapi::Dhcp_compl_event>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    events_cmd(event_listener& el);
-
-    /**
-     * Issue the command to VPP/HW - subscribe to DHCP events
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * Retire the command - unsubscribe
-     */
-    void retire(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const events_cmd& i) const;
-
-    /**
-     * called in the VAPI RX thread when data is available.
-     */
-    void notify();
-
-  private:
-    void succeeded() {}
-    /**
-     * The listner of this command
-     */
-    event_listener& m_listener;
   };
 
 private:

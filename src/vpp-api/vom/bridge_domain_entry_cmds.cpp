@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include "vom/bridge_domain_entry.hpp"
+#include "vom/bridge_domain_entry_cmds.hpp"
 
 namespace VOM {
-bridge_domain_entry::create_cmd::create_cmd(HW::item<bool>& item,
-                                            const mac_address_t& mac,
-                                            uint32_t bd,
-                                            handle_t tx_itf)
+namespace bridge_domain_entry_cmds {
+create_cmd::create_cmd(HW::item<bool>& item,
+                       const mac_address_t& mac,
+                       uint32_t bd,
+                       handle_t tx_itf)
   : rpc_cmd(item)
   , m_mac(mac)
   , m_bd(bd)
@@ -28,14 +29,14 @@ bridge_domain_entry::create_cmd::create_cmd(HW::item<bool>& item,
 }
 
 bool
-bridge_domain_entry::create_cmd::operator==(const create_cmd& other) const
+create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_mac == other.m_mac) && (m_tx_itf == other.m_tx_itf) &&
           (m_bd == other.m_bd));
 }
 
 rc_t
-bridge_domain_entry::create_cmd::issue(connection& con)
+create_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -53,7 +54,7 @@ bridge_domain_entry::create_cmd::issue(connection& con)
 }
 
 std::string
-bridge_domain_entry::create_cmd::to_string() const
+create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "bridge-domain-entry-create: " << m_hw_item.to_string() << " bd:" << m_bd
@@ -62,9 +63,9 @@ bridge_domain_entry::create_cmd::to_string() const
   return (s.str());
 }
 
-bridge_domain_entry::delete_cmd::delete_cmd(HW::item<bool>& item,
-                                            const mac_address_t& mac,
-                                            uint32_t bd)
+delete_cmd::delete_cmd(HW::item<bool>& item,
+                       const mac_address_t& mac,
+                       uint32_t bd)
   : rpc_cmd(item)
   , m_mac(mac)
   , m_bd(bd)
@@ -72,13 +73,13 @@ bridge_domain_entry::delete_cmd::delete_cmd(HW::item<bool>& item,
 }
 
 bool
-bridge_domain_entry::delete_cmd::operator==(const delete_cmd& other) const
+delete_cmd::operator==(const delete_cmd& other) const
 {
   return ((m_mac == other.m_mac) && (m_bd == other.m_bd));
 }
 
 rc_t
-bridge_domain_entry::delete_cmd::issue(connection& con)
+delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -97,7 +98,7 @@ bridge_domain_entry::delete_cmd::issue(connection& con)
 }
 
 std::string
-bridge_domain_entry::delete_cmd::to_string() const
+delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "bridge-domain-entry-delete: " << m_hw_item.to_string() << " bd:" << m_bd
@@ -106,18 +107,18 @@ bridge_domain_entry::delete_cmd::to_string() const
   return (s.str());
 }
 
-bridge_domain_entry::dump_cmd::dump_cmd()
+dump_cmd::dump_cmd()
 {
 }
 
 bool
-bridge_domain_entry::dump_cmd::operator==(const dump_cmd& other) const
+dump_cmd::operator==(const dump_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-bridge_domain_entry::dump_cmd::issue(connection& con)
+dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -132,9 +133,10 @@ bridge_domain_entry::dump_cmd::issue(connection& con)
 }
 
 std::string
-bridge_domain_entry::dump_cmd::to_string() const
+dump_cmd::to_string() const
 {
   return ("bridge-domain-entry-dump");
+}
 }
 }
 

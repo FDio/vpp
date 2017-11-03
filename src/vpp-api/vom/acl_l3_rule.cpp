@@ -43,23 +43,6 @@ l3_rule::operator<(const l3_rule& other) const
   return (other.m_priority < m_priority);
 }
 
-void
-l3_rule::to_vpp(vapi_type_acl_rule& rule) const
-{
-  rule.is_permit = m_action.value();
-  m_src.to_vpp(&rule.is_ipv6, rule.src_ip_addr, &rule.src_ip_prefix_len);
-  m_dst.to_vpp(&rule.is_ipv6, rule.dst_ip_addr, &rule.dst_ip_prefix_len);
-
-  rule.proto = m_proto;
-  rule.srcport_or_icmptype_first = m_srcport_or_icmptype_first;
-  rule.srcport_or_icmptype_last = m_srcport_or_icmptype_last;
-  rule.dstport_or_icmpcode_first = m_dstport_or_icmpcode_first;
-  rule.dstport_or_icmpcode_last = m_dstport_or_icmpcode_last;
-
-  rule.tcp_flags_mask = m_tcp_flags_mask;
-  rule.tcp_flags_value = m_tcp_flags_value;
-}
-
 bool
 l3_rule::operator==(const l3_rule& rule) const
 {
@@ -144,8 +127,75 @@ l3_rule::set_tcp_flags_value(uint8_t tcp_flags_value)
 {
   m_tcp_flags_value = tcp_flags_value;
 }
+
+const route::prefix_t&
+l3_rule::src() const
+{
+  return m_src;
 }
+
+uint32_t
+l3_rule::priority() const
+{
+  return m_priority;
 }
+
+action_t
+l3_rule::action() const
+{
+  return m_action;
+}
+
+const route::prefix_t&
+l3_rule::dst() const
+{
+  return m_dst;
+}
+
+uint8_t
+l3_rule::proto() const
+{
+  return m_proto;
+}
+
+uint16_t
+l3_rule::srcport_or_icmptype_first() const
+{
+  return m_srcport_or_icmptype_first;
+}
+
+uint16_t
+l3_rule::srcport_or_icmptype_last() const
+{
+  return m_srcport_or_icmptype_last;
+}
+
+uint16_t
+l3_rule::dstport_or_icmpcode_first() const
+{
+  return m_dstport_or_icmpcode_first;
+}
+
+uint16_t
+l3_rule::dstport_or_icmpcode_last() const
+{
+  return m_dstport_or_icmpcode_last;
+}
+
+uint8_t
+l3_rule::tcp_flags_mask() const
+{
+  return m_tcp_flags_mask;
+}
+
+uint8_t
+l3_rule::tcp_flags_value() const
+{
+  return m_tcp_flags_value;
+}
+
+}; // namespace ACL
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

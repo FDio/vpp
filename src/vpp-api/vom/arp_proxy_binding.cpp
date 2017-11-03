@@ -14,12 +14,12 @@
  */
 
 #include "vom/arp_proxy_binding.hpp"
-#include "vom/cmd.hpp"
+#include "vom/arp_proxy_binding_cmds.hpp"
 
 namespace VOM {
 
 /**
- * A DB of all LLDP configs
+ * A DB of all ARP proxy bindings configs
  */
 singular_db<interface::key_type, arp_proxy_binding> arp_proxy_binding::m_db;
 
@@ -52,7 +52,8 @@ void
 arp_proxy_binding::sweep()
 {
   if (m_binding) {
-    HW::enqueue(new unbind_cmd(m_binding, m_itf->handle()));
+    HW::enqueue(
+      new arp_proxy_binding_cmds::unbind_cmd(m_binding, m_itf->handle()));
   }
   HW::write();
 }
@@ -67,7 +68,8 @@ void
 arp_proxy_binding::replay()
 {
   if (m_binding) {
-    HW::enqueue(new bind_cmd(m_binding, m_itf->handle()));
+    HW::enqueue(
+      new arp_proxy_binding_cmds::bind_cmd(m_binding, m_itf->handle()));
   }
 }
 
@@ -87,7 +89,8 @@ arp_proxy_binding::update(const arp_proxy_binding& desired)
  * the desired state is always that the interface should be created
  */
   if (!m_binding) {
-    HW::enqueue(new bind_cmd(m_binding, m_itf->handle()));
+    HW::enqueue(
+      new arp_proxy_binding_cmds::bind_cmd(m_binding, m_itf->handle()));
   }
 }
 

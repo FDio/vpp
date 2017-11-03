@@ -16,13 +16,11 @@
 #ifndef __VOM_LLDP_GLOBAL_H__
 #define __VOM_LLDP_GLOBAL_H__
 
-#include "vom/dump_cmd.hpp"
 #include "vom/hw.hpp"
 #include "vom/inspect.hpp"
 #include "vom/interface.hpp"
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
-#include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
 #include "vom/sub_interface.hpp"
 

@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-#include "vom/bridge_domain_arp_entry.hpp"
+#include "vom/bridge_domain_arp_entry_cmds.hpp"
 
 namespace VOM {
+namespace bridge_domain_arp_entry_cmds {
 
-bridge_domain_arp_entry::create_cmd::create_cmd(
-  HW::item<bool>& item,
-  uint32_t bd,
-  const mac_address_t& mac,
-  const boost::asio::ip::address& ip_addr)
+create_cmd::create_cmd(HW::item<bool>& item,
+                       uint32_t bd,
+                       const mac_address_t& mac,
+                       const boost::asio::ip::address& ip_addr)
   : rpc_cmd(item)
   , m_bd(bd)
   , m_mac(mac)
@@ -30,14 +30,14 @@ bridge_domain_arp_entry::create_cmd::create_cmd(
 }
 
 bool
-bridge_domain_arp_entry::create_cmd::operator==(const create_cmd& other) const
+create_cmd::operator==(const create_cmd& other) const
 {
   return ((m_mac == other.m_mac) && (m_ip_addr == other.m_ip_addr) &&
           (m_bd == other.m_bd));
 }
 
 rc_t
-bridge_domain_arp_entry::create_cmd::issue(connection& con)
+create_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -55,7 +55,7 @@ bridge_domain_arp_entry::create_cmd::issue(connection& con)
 }
 
 std::string
-bridge_domain_arp_entry::create_cmd::to_string() const
+create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "bridge-domain-arp-entry-create: " << m_hw_item.to_string()
@@ -65,11 +65,10 @@ bridge_domain_arp_entry::create_cmd::to_string() const
   return (s.str());
 }
 
-bridge_domain_arp_entry::delete_cmd::delete_cmd(
-  HW::item<bool>& item,
-  uint32_t bd,
-  const mac_address_t& mac,
-  const boost::asio::ip::address& ip_addr)
+delete_cmd::delete_cmd(HW::item<bool>& item,
+                       uint32_t bd,
+                       const mac_address_t& mac,
+                       const boost::asio::ip::address& ip_addr)
   : rpc_cmd(item)
   , m_bd(bd)
   , m_mac(mac)
@@ -78,14 +77,14 @@ bridge_domain_arp_entry::delete_cmd::delete_cmd(
 }
 
 bool
-bridge_domain_arp_entry::delete_cmd::operator==(const delete_cmd& other) const
+delete_cmd::operator==(const delete_cmd& other) const
 {
   return ((m_mac == other.m_mac) && (m_ip_addr == other.m_ip_addr) &&
           (m_bd == other.m_bd));
 }
 
 rc_t
-bridge_domain_arp_entry::delete_cmd::issue(connection& con)
+delete_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -104,7 +103,7 @@ bridge_domain_arp_entry::delete_cmd::issue(connection& con)
 }
 
 std::string
-bridge_domain_arp_entry::delete_cmd::to_string() const
+delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "bridge-domain-arp-entry-delete: " << m_hw_item.to_string()
@@ -113,7 +112,9 @@ bridge_domain_arp_entry::delete_cmd::to_string() const
 
   return (s.str());
 }
-}
+
+}; // namespace bridge_domain_arp_entry
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -14,7 +14,7 @@
  */
 
 #include "vom/lldp_binding.hpp"
-#include "vom/cmd.hpp"
+#include "vom/lldp_binding_cmds.hpp"
 
 namespace VOM {
 /**
@@ -50,7 +50,7 @@ void
 lldp_binding::sweep()
 {
   if (m_binding) {
-    HW::enqueue(new unbind_cmd(m_binding, m_itf->handle()));
+    HW::enqueue(new lldp_binding_cmds::unbind_cmd(m_binding, m_itf->handle()));
   }
   HW::write();
 }
@@ -65,7 +65,8 @@ void
 lldp_binding::replay()
 {
   if (m_binding) {
-    HW::enqueue(new bind_cmd(m_binding, m_itf->handle(), m_port_desc));
+    HW::enqueue(
+      new lldp_binding_cmds::bind_cmd(m_binding, m_itf->handle(), m_port_desc));
   }
 }
 
@@ -86,7 +87,8 @@ lldp_binding::update(const lldp_binding& desired)
  * the desired state is always that the interface should be created
  */
   if (!m_binding) {
-    HW::enqueue(new bind_cmd(m_binding, m_itf->handle(), m_port_desc));
+    HW::enqueue(
+      new lldp_binding_cmds::bind_cmd(m_binding, m_itf->handle(), m_port_desc));
   }
 }
 

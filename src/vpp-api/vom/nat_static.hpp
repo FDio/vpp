@@ -16,12 +16,9 @@
 #ifndef __VOM_NAT_STATIC_H__
 #define __VOM_NAT_STATIC_H__
 
-#include "vom/dump_cmd.hpp"
 #include "vom/route.hpp"
 #include "vom/singular_db.hpp"
 #include "vom/types.hpp"
-
-#include <vapi/nat.api.vapi.hpp>
 
 namespace VOM {
 /**
@@ -86,111 +83,6 @@ public:
    * Convert to string for debugging
    */
   std::string to_string() const;
-
-  /**
-   * A command class that creates NAT 44 static mapping
-   */
-  class create_44_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat44_add_del_static_mapping>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    create_44_cmd(HW::item<bool>& item,
-                  route::table_id_t id,
-                  const boost::asio::ip::address_v4& inside,
-                  const boost::asio::ip::address_v4& outside);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const create_44_cmd& i) const;
-
-  private:
-    route::table_id_t m_id;
-    const boost::asio::ip::address_v4 m_inside;
-    const boost::asio::ip::address_v4 m_outside;
-  };
-
-  /**
-   * A cmd class that deletes a NAT 44 static mapping
-   */
-  class delete_44_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Nat44_add_del_static_mapping>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    delete_44_cmd(HW::item<bool>& item,
-                  route::table_id_t id,
-                  const boost::asio::ip::address_v4& inside,
-                  const boost::asio::ip::address_v4& outside);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const delete_44_cmd& i) const;
-
-  private:
-    route::table_id_t m_id;
-    const boost::asio::ip::address_v4 m_inside;
-    const boost::asio::ip::address_v4 m_outside;
-  };
-
-  /**
-   * A cmd class that Dumps all the nat_statics
-   */
-  class dump_44_cmd : public dump_cmd<vapi::Nat44_static_mapping_dump>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    dump_44_cmd();
-    dump_44_cmd(const dump_44_cmd& d);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const dump_44_cmd& i) const;
-
-  private:
-    /**
-     * HW reutrn code
-     */
-    HW::item<bool> item;
-  };
 
 private:
   /**

@@ -48,75 +48,6 @@ public:
    */
   std::shared_ptr<sub_interface> singular() const;
 
-  /**
-   * A functor class that creates an interface
-   */
-  class create_cmd : public interface::create_cmd<vapi::Create_vlan_subif>
-  {
-  public:
-    /**
-     * Cstrunctor taking the reference to the parent
-     * and the sub-interface's VLAN
-     */
-    create_cmd(HW::item<handle_t>& item,
-               const std::string& name,
-               const handle_t& parent,
-               uint16_t vlan);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const create_cmd& i) const;
-
-  private:
-    /**
-     * Refernece to the parents handle
-     */
-    const handle_t& m_parent;
-
-    /**
-     * The VLAN of the sub-interface
-     */
-    uint16_t m_vlan;
-  };
-
-  /**
-   * A cmd class that Delete an interface
-   */
-  class delete_cmd : public interface::delete_cmd<vapi::Delete_subif>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    delete_cmd(HW::item<handle_t>& item);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const delete_cmd& i) const;
-  };
-
 private:
   /**
    * Construct with handle
@@ -125,6 +56,8 @@ private:
                 const interface& parent,
                 admin_state_t state,
                 vlan_id_t vlan);
+  friend class interface_factory;
+
   /**
    * The interface class can construct interfaces with handles
    */

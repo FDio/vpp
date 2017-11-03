@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-#include "vom/tap_interface.hpp"
-#include "vom/cmd.hpp"
+#include "vom/tap_interface_cmds.hpp"
 
 #include <vapi/tap.api.vapi.hpp>
 
 namespace VOM {
-tap_interface::create_cmd::create_cmd(HW::item<handle_t>& item,
-                                      const std::string& name,
-                                      route::prefix_t& prefix,
-                                      const l2_address_t& l2_address)
+namespace tap_interface_cmds {
+create_cmd::create_cmd(HW::item<handle_t>& item,
+                       const std::string& name,
+                       route::prefix_t& prefix,
+                       const l2_address_t& l2_address)
   : interface::create_cmd<vapi::Tap_connect>(item, name)
   , m_prefix(prefix)
   , m_l2_address(l2_address)
@@ -30,7 +30,7 @@ tap_interface::create_cmd::create_cmd(HW::item<handle_t>& item,
 }
 
 rc_t
-tap_interface::create_cmd::issue(connection& con)
+create_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -63,7 +63,7 @@ tap_interface::create_cmd::issue(connection& con)
 }
 
 std::string
-tap_interface::create_cmd::to_string() const
+create_cmd::to_string() const
 {
   std::ostringstream s;
   s << "tap-intf-create: " << m_hw_item.to_string()
@@ -72,20 +72,20 @@ tap_interface::create_cmd::to_string() const
   return (s.str());
 }
 
-tap_interface::delete_cmd::delete_cmd(HW::item<handle_t>& item)
+delete_cmd::delete_cmd(HW::item<handle_t>& item)
   : interface::delete_cmd<vapi::Tap_delete>(item)
 {
 }
 
 rc_t
-tap_interface::delete_cmd::issue(connection& con)
+delete_cmd::issue(connection& con)
 {
   // finally... call VPP
 
   return rc_t::OK;
 }
 std::string
-tap_interface::delete_cmd::to_string() const
+delete_cmd::to_string() const
 {
   std::ostringstream s;
   s << "tap-itf-delete: " << m_hw_item.to_string();
@@ -93,18 +93,18 @@ tap_interface::delete_cmd::to_string() const
   return (s.str());
 }
 
-tap_interface::dump_cmd::dump_cmd()
+dump_cmd::dump_cmd()
 {
 }
 
 bool
-tap_interface::dump_cmd::operator==(const dump_cmd& other) const
+dump_cmd::operator==(const dump_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-tap_interface::dump_cmd::issue(connection& con)
+dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -116,11 +116,12 @@ tap_interface::dump_cmd::issue(connection& con)
 }
 
 std::string
-tap_interface::dump_cmd::to_string() const
+dump_cmd::to_string() const
 {
   return ("tap-itf-dump");
 }
-}
+} // namespace tap_interface_cmds
+} // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

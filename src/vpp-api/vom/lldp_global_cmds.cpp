@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-#include "vom/lldp_global.hpp"
+#include "vom/lldp_global_cmds.hpp"
 
 namespace VOM {
-lldp_global::config_cmd::config_cmd(HW::item<bool>& item,
-                                    const std::string& system_name,
-                                    uint32_t tx_hold,
-                                    uint32_t tx_interval)
+namespace lldp_global_cmds {
+config_cmd::config_cmd(HW::item<bool>& item,
+                       const std::string& system_name,
+                       uint32_t tx_hold,
+                       uint32_t tx_interval)
   : rpc_cmd(item)
   , m_system_name(system_name)
   , m_tx_hold(tx_hold)
@@ -28,13 +29,13 @@ lldp_global::config_cmd::config_cmd(HW::item<bool>& item,
 }
 
 bool
-lldp_global::config_cmd::operator==(const config_cmd& other) const
+config_cmd::operator==(const config_cmd& other) const
 {
   return (m_system_name == other.m_system_name);
 }
 
 rc_t
-lldp_global::config_cmd::issue(connection& con)
+config_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -53,7 +54,7 @@ lldp_global::config_cmd::issue(connection& con)
 }
 
 std::string
-lldp_global::config_cmd::to_string() const
+config_cmd::to_string() const
 {
   std::ostringstream s;
   s << "Lldp-global-config: " << m_hw_item.to_string()
@@ -62,7 +63,9 @@ lldp_global::config_cmd::to_string() const
 
   return (s.str());
 }
-}
+
+}; // namespace lldp_global_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -92,84 +92,6 @@ public:
    */
   void replay(void);
 
-  /**
-   * A command class that creates the IP table
-   */
-  class create_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_table_add_del>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    create_cmd(HW::item<bool>& item, l3_proto_t proto, route::table_id_t id);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const create_cmd& i) const;
-
-  private:
-    /**
-     * table-ID to create
-     */
-    route::table_id_t m_id;
-
-    /**
-     * L3 protocol of the table
-     */
-    l3_proto_t m_proto;
-  };
-
-  /**
-   * A cmd class that Deletes the IP Table
-   */
-  class delete_cmd
-    : public rpc_cmd<HW::item<bool>, rc_t, vapi::Ip_table_add_del>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    delete_cmd(HW::item<bool>& item, l3_proto_t proto, route::table_id_t id);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const delete_cmd& i) const;
-
-  private:
-    /**
-     * table-ID to create
-     */
-    route::table_id_t m_id;
-
-    /**
-     * L3 protocol of the table
-     */
-    l3_proto_t m_proto;
-  };
-
 private:
   /**
    * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
@@ -217,7 +139,7 @@ private:
    */
   static singular_db<route::table_id_t, route_domain> m_db;
 };
-};
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

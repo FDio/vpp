@@ -23,10 +23,7 @@
 #include "vom/om.hpp"
 #include "vom/prefix.hpp"
 #include "vom/route_domain.hpp"
-#include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
-
-#include <vapi/vxlan.api.vapi.hpp>
 
 namespace VOM {
 /**
@@ -129,101 +126,6 @@ public:
    */
   static void dump(std::ostream& os);
 
-  /**
-   * A Command class that creates an VXLAN tunnel
-   */
-  class create_cmd : public interface::create_cmd<vapi::Vxlan_add_del_tunnel>
-  {
-  public:
-    /**
-     * Create command constructor taking HW item to update and the
-     * endpoint values
-     */
-    create_cmd(HW::item<handle_t>& item,
-               const std::string& name,
-               const endpoint_t& ep);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const create_cmd& i) const;
-
-  private:
-    /**
-     * Enpoint values of the tunnel to be created
-     */
-    const endpoint_t m_ep;
-  };
-
-  /**
-   * A functor class that creates an VXLAN tunnel
-   */
-  class delete_cmd : public interface::delete_cmd<vapi::Vxlan_add_del_tunnel>
-  {
-  public:
-    /**
-     * delete command constructor taking HW item to update and the
-     * endpoint values
-     */
-    delete_cmd(HW::item<handle_t>& item, const endpoint_t& ep);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const delete_cmd& i) const;
-
-  private:
-    /**
-     * Enpoint values of the tunnel to be deleted
-     */
-    const endpoint_t m_ep;
-  };
-
-  /**
-   * A cmd class that Dumps all the Vpp interfaces
-   */
-  class dump_cmd : public VOM::dump_cmd<vapi::Vxlan_tunnel_dump>
-  {
-  public:
-    /**
-     * Default Constructor
-     */
-    dump_cmd();
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const dump_cmd& i) const;
-  };
-
 private:
   /**
    * Class definition for listeners to OM events
@@ -318,7 +220,8 @@ private:
  * Ostream output for a tunnel endpoint
  */
 std::ostream& operator<<(std::ostream& os, const vxlan_tunnel::endpoint_t& ep);
-};
+
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON
