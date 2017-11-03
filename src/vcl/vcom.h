@@ -16,9 +16,10 @@
 #ifndef included_vcom_h
 #define included_vcom_h
 
-/* VCOM DEBUG flag.  Setting this to 1 or 0 turns off
-   ASSERT & other debugging code. */
-#ifndef VCOM_DEBUG
+#if (CLIB_DEBUG > 0)
+/* Set VCOM_DEBUG 2 for connection debug, 3 for read/write debug output */
+#define VCOM_DEBUG 1
+#else
 #define VCOM_DEBUG 0
 #endif
 
