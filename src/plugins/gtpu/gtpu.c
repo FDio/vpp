@@ -139,6 +139,7 @@ VNET_HW_INTERFACE_CLASS (gtpu_hw_class) =
   .name = "GTPU",
   .format_header = format_gtpu_header_with_length,
   .build_rewrite = default_build_rewrite,
+  .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
 /* *INDENT-ON* */
 
