@@ -73,6 +73,7 @@ typedef enum
   MEMIF_ERR_DISCONNECTED,	/*!< peer interface disconnected */
   MEMIF_ERR_UNKNOWN_MSG,	/*!< unknown message type */
   MEMIF_ERR_POLL_CANCEL,	/*!< memif_poll_event() was cancelled */
+  MEMIF_ERR_MAX_RING,		/*!< too large ring size */
 } memif_err_t;
 
 /**
