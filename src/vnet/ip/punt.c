@@ -232,18 +232,28 @@ VLIB_NODE_FUNCTION_MULTIARCH (udp6_punt_node, udp6_punt);;
 
 /* *INDENT-ON* */
 
-static struct sockaddr_un *
-punt_socket_get (bool is_ip4, u16 port)
+static punt_client_t *
+punt_client_get (bool is_ip4, u16 port)
 {
   punt_main_t *pm = &punt_main;
-  punt_client_t *v = is_ip4 ? pm->clients_by_dst_port4 :
-    pm->clients_by_dst_port6;
+  punt_client_t *v =
+    is_ip4 ? pm->clients_by_dst_port4 : pm->clients_by_dst_port6;
 
   u16 i = sparse_vec_index (v, port);
   if (i == SPARSE_VEC_INVALID_INDEX)
     return 0;
 
-  return &vec_elt (v, i).caddr;
+  return &vec_elt (v, i);
+}
+
+static struct sockaddr_un *
+punt_socket_get (bool is_ip4, u16 port)
+{
+  punt_client_t *v = punt_client_get (is_ip4, port);
+  if (v)
+    return &v->caddr;
+
+  return NULL;
 }
 
 static void
@@ -268,6 +278,28 @@ static void
 punt_socket_unregister (bool is_ip4, u8 protocol, u16 port)
 {
   return;
+}
+
+typedef struct
+{
+  punt_client_t client;
+  u8 is_midchain;
+} udp_punt_trace_t;
+
+u8 *
+format_udp_punt_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  udp_punt_trace_t *t = va_arg (*args, udp_punt_trace_t *);
+  u32 indent = format_get_indent (s);
+  s = format (s, "to: %s", t->client.caddr.sun_path);
+  if (t->is_midchain)
+    {
+      s = format (s, "\n%U(buffer is part of chain)", format_white_space,
+		  indent);
+    }
+  return s;
 }
 
 always_inline uword
@@ -325,6 +357,18 @@ udp46_punt_socket_inline (vlib_main_t * vm,
 	  goto error;
 	}
 
+      punt_client_t *c = NULL;
+      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+	{
+	  if (!c)
+	    {
+	      c = punt_client_get (is_ip4, port);
+	    }
+	  udp_punt_trace_t *t;
+	  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
+	  clib_memcpy (&t->client, c, sizeof (t->client));
+	}
+
       /* Re-set iovecs if present. */
       if (iovecs)
 	_vec_len (iovecs) = 0;
@@ -347,6 +391,13 @@ udp46_punt_socket_inline (vlib_main_t * vm,
 	  do
 	    {
 	      b = vlib_get_buffer (vm, b->next_buffer);
+	      if (PREDICT_FALSE (b->flags & VLIB_BUFFER_IS_TRACED))
+		{
+		  udp_punt_trace_t *t;
+		  t = vlib_add_trace (vm, node, b, sizeof (t[0]));
+		  clib_memcpy (&t->client, c, sizeof (t->client));
+		  t->is_midchain = 1;
+		}
 
 	      vec_add2 (iovecs, iov, 1);
 
@@ -394,6 +445,7 @@ udp6_punt_socket (vlib_main_t * vm,
 VLIB_REGISTER_NODE (udp4_punt_socket_node) = {
   .function = udp4_punt_socket,
   .name = "ip4-udp-punt-socket",
+  .format_trace = format_udp_punt_trace,
   .flags = VLIB_NODE_FLAG_IS_DROP,
   /* Takes a vector of packets. */
   .vector_size = sizeof (u32),
@@ -403,6 +455,7 @@ VLIB_REGISTER_NODE (udp4_punt_socket_node) = {
 VLIB_REGISTER_NODE (udp6_punt_socket_node) = {
   .function = udp6_punt_socket,
   .name = "ip6-udp-punt-socket",
+  .format_trace = format_udp_punt_trace,
   .flags = VLIB_NODE_FLAG_IS_DROP,
   .vector_size = sizeof (u32),
   .n_errors = PUNT_N_ERROR,
