@@ -14,7 +14,7 @@
  */
 
 #include "vom/dhcp_config.hpp"
-#include "vom/cmd.hpp"
+#include "vom/dhcp_config_cmds.hpp"
 
 namespace VOM {
 /**
@@ -62,7 +62,8 @@ void
 dhcp_config::sweep()
 {
   if (m_binding) {
-    HW::enqueue(new unbind_cmd(m_binding, m_itf->handle(), m_hostname));
+    HW::enqueue(
+      new dhcp_config_cmds::unbind_cmd(m_binding, m_itf->handle(), m_hostname));
   }
   HW::write();
 }
@@ -77,8 +78,8 @@ void
 dhcp_config::replay()
 {
   if (m_binding) {
-    HW::enqueue(
-      new bind_cmd(m_binding, m_itf->handle(), m_hostname, m_client_id));
+    HW::enqueue(new dhcp_config_cmds::bind_cmd(m_binding, m_itf->handle(),
+                                               m_hostname, m_client_id));
   }
 }
 
@@ -99,8 +100,8 @@ dhcp_config::update(const dhcp_config& desired)
  * the desired state is always that the interface should be created
  */
   if (!m_binding) {
-    HW::enqueue(
-      new bind_cmd(m_binding, m_itf->handle(), m_hostname, m_client_id));
+    HW::enqueue(new dhcp_config_cmds::bind_cmd(m_binding, m_itf->handle(),
+                                               m_hostname, m_client_id));
   }
 }
 

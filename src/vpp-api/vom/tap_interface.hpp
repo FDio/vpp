@@ -16,7 +16,12 @@
 #ifndef __VOM_TAP_INTERFACE_H__
 #define __VOM_TAP_INTERFACE_H__
 
+#include "vom/dump_cmd.hpp"
 #include "vom/interface.hpp"
+#include "vom/rpc_cmd.hpp"
+
+#include <vapi/interface.api.vapi.hpp>
+#include <vapi/tap.api.vapi.hpp>
 
 namespace VOM {
 /**
@@ -150,6 +155,8 @@ private:
                 const std::string& name,
                 admin_state_t state,
                 route::prefix_t prefix);
+
+  friend class interface_factory;
 
   /**
    * Ip Prefix

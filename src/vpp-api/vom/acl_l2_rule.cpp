@@ -39,15 +39,6 @@ l2_rule::operator<(const l2_rule& other) const
   return (other.m_priority < m_priority);
 }
 
-void
-l2_rule::to_vpp(vapi_type_macip_acl_rule& rule) const
-{
-  rule.is_permit = m_action.value();
-  m_src_ip.to_vpp(&rule.is_ipv6, rule.src_ip_addr, &rule.src_ip_prefix_len);
-  m_mac.to_bytes(rule.src_mac, 6);
-  m_mac_mask.to_bytes(rule.src_mac_mask, 6);
-}
-
 bool
 l2_rule::operator==(const l2_rule& rule) const
 {
@@ -66,6 +57,36 @@ l2_rule::to_string() const
     << " mac-mask:" << m_mac_mask << "]";
 
   return (s.str());
+}
+
+uint32_t
+l2_rule::priority() const
+{
+  return m_priority;
+}
+
+action_t
+l2_rule::action() const
+{
+  return m_action;
+}
+
+const route::prefix_t&
+l2_rule::src_ip() const
+{
+  return m_src_ip;
+}
+
+const mac_address_t&
+l2_rule::mac() const
+{
+  return m_mac;
+}
+
+const mac_address_t&
+l2_rule::mac_mask() const
+{
+  return m_mac_mask;
 }
 }
 }

@@ -14,8 +14,9 @@
  */
 
 #include "vom/interface.hpp"
-#include "vom/cmd.hpp"
-#include "vom/l3_binding.hpp"
+#include "vom/interface_cmds.hpp"
+#include "vom/interface_factory.hpp"
+#include "vom/l3_binding_cmds.hpp"
 #include "vom/logger.hpp"
 #include "vom/prefix.hpp"
 
@@ -150,14 +151,16 @@ interface::sweep()
 {
   if (m_table_id) {
     m_table_id.data() = route::DEFAULT_TABLE;
-    HW::enqueue(new set_table_cmd(m_table_id, l3_proto_t::IPV4, m_hdl));
-    HW::enqueue(new set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
+    HW::enqueue(
+      new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV4, m_hdl));
+    HW::enqueue(
+      new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
   }
 
   // If the interface is up, bring it down
   if (m_state && interface::admin_state_t::UP == m_state.data()) {
     m_state.data() = interface::admin_state_t::DOWN;
-    HW::enqueue(new state_change_cmd(m_state, m_hdl));
+    HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
   }
   if (m_hdl) {
     std::queue<cmd*> cmds;
@@ -175,12 +178,14 @@ interface::replay()
   }
 
   if (m_state && interface::admin_state_t::UP == m_state.data()) {
-    HW::enqueue(new state_change_cmd(m_state, m_hdl));
+    HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
   }
 
   if (m_table_id) {
-    HW::enqueue(new set_table_cmd(m_table_id, l3_proto_t::IPV4, m_hdl));
-    HW::enqueue(new set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
+    HW::enqueue(
+      new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV4, m_hdl));
+    HW::enqueue(
+      new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
   }
 }
 
@@ -231,14 +236,14 @@ std::queue<cmd*>&
 interface::mk_create_cmd(std::queue<cmd*>& q)
 {
   if (type_t::LOOPBACK == m_type) {
-    q.push(new loopback_create_cmd(m_hdl, m_name));
+    q.push(new interface_cmds::loopback_create_cmd(m_hdl, m_name));
   } else if (type_t::BVI == m_type) {
-    q.push(new loopback_create_cmd(m_hdl, m_name));
-    q.push(new set_tag(m_hdl, m_name));
+    q.push(new interface_cmds::loopback_create_cmd(m_hdl, m_name));
+    q.push(new interface_cmds::set_tag(m_hdl, m_name));
   } else if (type_t::AFPACKET == m_type) {
-    q.push(new af_packet_create_cmd(m_hdl, m_name));
+    q.push(new interface_cmds::af_packet_create_cmd(m_hdl, m_name));
   } else if (type_t::TAP == m_type) {
-    q.push(new tap_create_cmd(m_hdl, m_name));
+    q.push(new interface_cmds::tap_create_cmd(m_hdl, m_name));
   }
 
   return (q);
@@ -248,11 +253,11 @@ std::queue<cmd*>&
 interface::mk_delete_cmd(std::queue<cmd*>& q)
 {
   if ((type_t::LOOPBACK == m_type) || (type_t::BVI == m_type)) {
-    q.push(new loopback_delete_cmd(m_hdl));
+    q.push(new interface_cmds::loopback_delete_cmd(m_hdl));
   } else if (type_t::AFPACKET == m_type) {
-    q.push(new af_packet_delete_cmd(m_hdl, m_name));
+    q.push(new interface_cmds::af_packet_delete_cmd(m_hdl, m_name));
   } else if (type_t::TAP == m_type) {
-    q.push(new tap_delete_cmd(m_hdl));
+    q.push(new interface_cmds::tap_delete_cmd(m_hdl));
   }
 
   return (q);
@@ -273,14 +278,14 @@ interface::update(const interface& desired)
  * change the interface state to that which is deisred
  */
   if (m_state.update(desired.m_state)) {
-    HW::enqueue(new state_change_cmd(m_state, m_hdl));
+    HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
   }
 
   /*
  * change the interface state to that which is deisred
  */
   if (m_l2_address.update(desired.m_l2_address)) {
-    HW::enqueue(new set_mac_cmd(m_l2_address, m_hdl));
+    HW::enqueue(new interface_cmds::set_mac_cmd(m_l2_address, m_hdl));
   }
 
   /*
@@ -288,8 +293,10 @@ interface::update(const interface& desired)
  * table ID
  */
   if (!m_table_id && m_rd) {
-    HW::enqueue(new set_table_cmd(m_table_id, l3_proto_t::IPV4, m_hdl));
-    HW::enqueue(new set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
+    HW::enqueue(
+      new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV4, m_hdl));
+    HW::enqueue(
+      new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
   }
 }
 
@@ -359,14 +366,14 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
   /*
  * dump VPP current states
  */
-  std::shared_ptr<interface::dump_cmd> cmd(new interface::dump_cmd());
+  std::shared_ptr<interface_cmds::dump_cmd> cmd(new interface_cmds::dump_cmd());
 
   HW::enqueue(cmd);
   HW::write();
 
   for (auto& itf_record : *cmd) {
     std::unique_ptr<interface> itf =
-      interface::new_interface(itf_record.get_payload());
+      interface_factory::new_interface(itf_record.get_payload());
 
     if (itf && interface::type_t::LOCAL != itf->type()) {
       VOM_LOG(log_level_t::DEBUG) << "dump: " << itf->to_string();
@@ -380,9 +387,9 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
       /**
  * Get the address configured on the interface
  */
-      std::shared_ptr<l3_binding::dump_v4_cmd> dcmd =
-        std::make_shared<l3_binding::dump_v4_cmd>(
-          l3_binding::dump_v4_cmd(itf->handle()));
+      std::shared_ptr<l3_binding_cmds::dump_v4_cmd> dcmd =
+        std::make_shared<l3_binding_cmds::dump_v4_cmd>(
+          l3_binding_cmds::dump_v4_cmd(itf->handle()));
 
       HW::enqueue(dcmd);
       HW::write();

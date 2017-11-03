@@ -16,9 +16,11 @@
 #ifndef __VOM_ROUTE_H__
 #define __VOM_ROUTE_H__
 
+#include "vom/dump_cmd.hpp"
 #include "vom/interface.hpp"
 #include "vom/prefix.hpp"
 #include "vom/route_domain.hpp"
+#include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
 
 #include <vapi/ip.api.vapi.hpp>

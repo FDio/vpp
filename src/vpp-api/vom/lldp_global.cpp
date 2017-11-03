@@ -14,7 +14,7 @@
  */
 
 #include "vom/lldp_global.hpp"
-#include "vom/cmd.hpp"
+#include "vom/lldp_global_cmds.hpp"
 
 namespace VOM {
 /**
@@ -64,8 +64,8 @@ void
 lldp_global::replay()
 {
   if (m_binding) {
-    HW::enqueue(
-      new config_cmd(m_binding, m_system_name, m_tx_hold, m_tx_interval));
+    HW::enqueue(new lldp_global_cmds::config_cmd(m_binding, m_system_name,
+                                                 m_tx_hold, m_tx_interval));
   }
 }
 
@@ -84,8 +84,8 @@ void
 lldp_global::update(const lldp_global& desired)
 {
   if (!m_binding) {
-    HW::enqueue(
-      new config_cmd(m_binding, m_system_name, m_tx_hold, m_tx_interval));
+    HW::enqueue(new lldp_global_cmds::config_cmd(m_binding, m_system_name,
+                                                 m_tx_hold, m_tx_interval));
   }
 }
 

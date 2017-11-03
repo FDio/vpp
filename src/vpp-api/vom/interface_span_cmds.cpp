@@ -13,15 +13,17 @@
  * limitations under the License.
  */
 
-#include "vom/interface_span.hpp"
+#include "vom/interface_span_cmds.hpp"
 
 DEFINE_VAPI_MSG_IDS_SPAN_API_JSON;
 
 namespace VOM {
-interface_span::config_cmd::config_cmd(HW::item<bool>& item,
-                                       const handle_t& itf_from,
-                                       const handle_t& itf_to,
-                                       const interface_span::state_t& state)
+namespace interface_span_cmds {
+
+config_cmd::config_cmd(HW::item<bool>& item,
+                       const handle_t& itf_from,
+                       const handle_t& itf_to,
+                       const interface_span::state_t& state)
   : rpc_cmd(item)
   , m_itf_from(itf_from)
   , m_itf_to(itf_to)
@@ -30,14 +32,14 @@ interface_span::config_cmd::config_cmd(HW::item<bool>& item,
 }
 
 bool
-interface_span::config_cmd::operator==(const config_cmd& o) const
+config_cmd::operator==(const config_cmd& o) const
 {
   return ((m_itf_from == o.m_itf_from) && (m_itf_to == o.m_itf_to) &&
           (m_state == o.m_state));
 }
 
 rc_t
-interface_span::config_cmd::issue(connection& con)
+config_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -55,7 +57,7 @@ interface_span::config_cmd::issue(connection& con)
 }
 
 std::string
-interface_span::config_cmd::to_string() const
+config_cmd::to_string() const
 {
   std::ostringstream s;
   s << "itf-span-config: " << m_hw_item.to_string()
@@ -65,9 +67,9 @@ interface_span::config_cmd::to_string() const
   return (s.str());
 }
 
-interface_span::unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
-                                           const handle_t& itf_from,
-                                           const handle_t& itf_to)
+unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
+                           const handle_t& itf_from,
+                           const handle_t& itf_to)
   : rpc_cmd(item)
   , m_itf_from(itf_from)
   , m_itf_to(itf_to)
@@ -75,13 +77,13 @@ interface_span::unconfig_cmd::unconfig_cmd(HW::item<bool>& item,
 }
 
 bool
-interface_span::unconfig_cmd::operator==(const unconfig_cmd& o) const
+unconfig_cmd::operator==(const unconfig_cmd& o) const
 {
   return ((m_itf_from == o.m_itf_from) && (m_itf_to == o.m_itf_to));
 }
 
 rc_t
-interface_span::unconfig_cmd::issue(connection& con)
+unconfig_cmd::issue(connection& con)
 {
   msg_t req(con.ctx(), std::ref(*this));
 
@@ -100,7 +102,7 @@ interface_span::unconfig_cmd::issue(connection& con)
 }
 
 std::string
-interface_span::unconfig_cmd::to_string() const
+unconfig_cmd::to_string() const
 {
   std::ostringstream s;
   s << "itf-span-unconfig: " << m_hw_item.to_string()
@@ -110,18 +112,18 @@ interface_span::unconfig_cmd::to_string() const
   return (s.str());
 }
 
-interface_span::dump_cmd::dump_cmd()
+dump_cmd::dump_cmd()
 {
 }
 
 bool
-interface_span::dump_cmd::operator==(const dump_cmd& other) const
+dump_cmd::operator==(const dump_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-interface_span::dump_cmd::issue(connection& con)
+dump_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -136,11 +138,13 @@ interface_span::dump_cmd::issue(connection& con)
 }
 
 std::string
-interface_span::dump_cmd::to_string() const
+dump_cmd::to_string() const
 {
   return ("interface-span-dump");
 }
-}
+
+}; // namespace interface_span_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON
