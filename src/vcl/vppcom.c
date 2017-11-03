@@ -2166,6 +2166,15 @@ vppcom_session_listen (uint32_t listen_session_index, uint32_t q_len)
       return VPPCOM_EBADFD;
     }
 
+  if (listen_session->is_listen)
+    {
+      clib_spinlock_unlock (&vcm->sessions_lockp);
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("[%d] sid (%u) is already in listen state!",
+		      vcm->my_pid, listen_session_index);
+      return VPPCOM_OK;
+    }
+
   if (VPPCOM_DEBUG > 0)
     clib_warning ("[%d] sid %d", vcm->my_pid, listen_session_index);
 
@@ -2820,25 +2829,24 @@ vep_verify_epoll_chain (u32 vep_idx)
   do
     {
       vep = &session->vep;
-      sid = vep->next_sid;
-      if (session->is_vep_session)
+      if (session->is_vep_session && (VPPCOM_DEBUG > 1))
 	{
-	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("vep_idx[%u]: sid 0x%x (%u)\n"
-			  "{\n"
-			  "   next_sid       = 0x%x (%u)\n"
-			  "   prev_sid       = 0x%x (%u)\n"
-			  "   vep_idx        = 0x%x (%u)\n"
-			  "   ev.events      = 0x%x\n"
-			  "   ev.data.u64    = 0x%llx\n"
-			  "   et_mask        = 0x%x\n"
-			  "}\n",
-			  vep_idx, sid, sid,
-			  vep->next_sid, vep->next_sid,
-			  vep->prev_sid, vep->prev_sid,
-			  vep->vep_idx, vep->vep_idx,
-			  vep->ev.events, vep->ev.data.u64, vep->et_mask);
+	  clib_warning ("vep_idx[%u]: sid 0x%x (%u)\n"
+			"{\n"
+			"   next_sid       = 0x%x (%u)\n"
+			"   prev_sid       = 0x%x (%u)\n"
+			"   vep_idx        = 0x%x (%u)\n"
+			"   ev.events      = 0x%x\n"
+			"   ev.data.u64    = 0x%llx\n"
+			"   et_mask        = 0x%x\n"
+			"}\n",
+			vep_idx, sid, sid,
+			vep->next_sid, vep->next_sid,
+			vep->prev_sid, vep->prev_sid,
+			vep->vep_idx, vep->vep_idx,
+			vep->ev.events, vep->ev.data.u64, vep->et_mask);
 	}
+      sid = vep->next_sid;
       if (sid != ~0)
 	{
 	  rv = vppcom_session_at_index (sid, &session);
@@ -3140,13 +3148,6 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 		      vcm->my_pid, maxevents);
       return VPPCOM_EINVAL;
     }
-  if (PREDICT_FALSE (wait_for_time < 0))
-    {
-      if (VPPCOM_DEBUG > 0)
-	clib_warning ("[%d] ERROR: Invalid wait_for_time (%f)!",
-		      vcm->my_pid, wait_for_time);
-      return VPPCOM_EINVAL;
-    }
   memset (events, 0, sizeof (*events) * maxevents);
 
   VCL_LOCK_AND_GET_SESSION (vep_idx, &vep_session);
@@ -3163,10 +3164,11 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
       rv = VPPCOM_EINVAL;
       goto done;
     }
-  if ((VPPCOM_DEBUG > 0) && (PREDICT_FALSE (vep_next_sid == ~0)))
+  if (PREDICT_FALSE (vep_next_sid == ~0))
     {
-      clib_warning ("[%d] WARNING: vep_idx (%u) is empty!",
-		    vcm->my_pid, vep_idx);
+      if (VPPCOM_DEBUG > 0)
+	clib_warning ("[%d] WARNING: vep_idx (%u) is empty!",
+		      vcm->my_pid, vep_idx);
       goto done;
     }
 
@@ -3304,7 +3306,9 @@ vppcom_epoll_wait (uint32_t vep_idx, struct epoll_event *events,
 	    }
 	}
     }
-  while ((num_ev == 0) && (clib_time_now (&vcm->clib_time) <= timeout));
+  while ((num_ev == 0) &&
+	 ((wait_for_time == -1) ||
+	  (clib_time_now (&vcm->clib_time) <= timeout)));
 
   if (wait_cont_idx != ~0)
     {

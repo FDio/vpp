@@ -97,6 +97,8 @@ typedef struct
    * 03. cached for frequent access.
    * */
   i32 count;
+  i32 vcl_cnt;
+  i32 libc_cnt;
 
   /* close( ) called on this epoll instance */
   /* 0 - close ( ) not called, 1 - close( ) called. */
