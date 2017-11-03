@@ -680,10 +680,11 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
   nat64_main_t *nm = &nat64_main;
+  vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
   u8 is_add = 1;
-  u32 vrf_id = 0;
+  u32 vrf_id = 0, sw_if_index = ~0;
   ip6_address_t prefix;
   u32 plen = 0;
   int rv;
@@ -704,6 +705,9 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (line_input, "del"))
 	is_add = 0;
+      else if (unformat (line_input, "interface %U", unformat_vnet_sw_interface,
+			 vnm, &sw_if_index))
+	;
       else
 	{
 	  error = clib_error_return (0, "unknown input: '%U'",
@@ -730,6 +734,25 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
       goto done;
     default:
       break;
+    }
+
+  /* Add RX interface route, for NAT isn't running on the real input
+     interface */
+  if (sw_if_index != ~0)
+    {
+      u32 fib_index;
+      fib_prefix_t fibpfx = {
+	.fp_len = plen,
+	.fp_proto = FIB_PROTOCOL_IP6,
+	.fp_addr = { .ip6 = prefix }
+      };
+      fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6, vrf_id,
+						     FIB_SOURCE_PLUGIN_HI);
+
+      fib_table_entry_update_one_path(fib_index, &fibpfx, FIB_SOURCE_API,
+				      FIB_ENTRY_FLAG_NONE, DPO_PROTO_IP6,
+				      NULL, sw_if_index, ~0, 0, NULL,
+				      FIB_ROUTE_PATH_INTF_RX);
     }
 
 done:
@@ -954,7 +977,7 @@ VLIB_CLI_COMMAND (show_nat64_st_command, static) = {
 VLIB_CLI_COMMAND (nat64_add_del_prefix_command, static) = {
   .path = "nat64 add prefix",
   .short_help = "nat64 add prefix <ip6-prefix>/<plen> [tenant-vrf <vrf-id>] "
-                "[del]",
+                "[del] [interface <interface]",
   .function = nat64_add_del_prefix_command_fn,
 };
 
