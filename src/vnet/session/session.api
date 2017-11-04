@@ -397,6 +397,50 @@ autoreply define session_rule_add_del {
   u8 scope;
 };
 
+/** \brief Dump session rules
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+ */
+define session_rules_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Session rules details
+	@param context - sender context, to match reply w/ request
+    @param transport_proto - transport protocol (0 - tcp 1 - udp)
+    @param is_ip4 - flag to indicate if ip addresses are ip4 or 6
+    @param lcl_ip - local ip
+    @param lcl_plen - local prefix length
+    @param rmt_ip - remote ip
+    @param rmt_ple - remote prefix length
+    @param lcl_port - local port
+    @param rmt_port - remote port
+    @param action_index - the only action defined now is forward to
+    						  application with index action_index
+    	@param appns_index - application namespace where rule is to be applied
+    						 to
+    	@param scope - flag that indicates scope of the rule: global or local.
+    				   If 0, default is global, 1 is global 2 is local, 3 is
+    				   both
+  */
+define session_rules_details
+{
+  u32 context;
+  u8 transport_proto;
+  u8 is_ip4;
+  u8 lcl_ip[16];
+  u8 lcl_plen;
+  u8 rmt_ip[16];
+  u8 rmt_plen;
+  u16 lcl_port;
+  u16 rmt_port;
+  u32 action_index;
+  u32 appns_index;
+  u8 scope;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

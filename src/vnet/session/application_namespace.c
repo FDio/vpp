@@ -94,7 +94,9 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
 	{
 	  app_ns = app_namespace_alloc (a->ns_id);
 	  st = session_table_alloc ();
-	  session_table_init (st);
+	  session_table_init (st, FIB_PROTOCOL_MAX);
+	  st->is_local = 1;
+	  st->appns_index = app_namespace_index (app_ns);
 	  app_ns->local_table_index = session_table_index (st);
 	}
       app_ns->ns_secret = a->secret;
@@ -103,6 +105,7 @@ vnet_app_namespace_add_del (vnet_app_namespace_add_del_args_t * a)
 	fib_table_find (FIB_PROTOCOL_IP4, a->ip4_fib_id);
       app_ns->ip6_fib_index =
 	fib_table_find (FIB_PROTOCOL_IP6, a->ip6_fib_id);
+      session_lookup_set_tables_appns (app_ns);
     }
   else
     {
