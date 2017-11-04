@@ -27,7 +27,7 @@ setup (name = 'vpp_papi',
        license = 'Apache-2.0',
        test_suite = 'tests',
        install_requires=['cffi >= 1.6'],
-       py_modules=['vpp_papi'],
+       py_modules=['vpp_papi', 'vpp_papi_unserialize', 'vpp_papi_graph'],
        long_description = '''VPP Python language binding.''',
        zip_safe = True,
 )
