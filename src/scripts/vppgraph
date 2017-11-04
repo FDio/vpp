@@ -1,0 +1,252 @@
+#!/usr/bin/env python
+# Copyright (c) 2017 Comcast Cable Communications Management, LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Retrieves and renders the VPP graph."""
+
+from __future__ import print_function
+
+import sys
+import argparse
+
+from texttable import Texttable
+
+from vpp_papi import VPP
+from vpp_papi_unserialize import VPPUnserializeBuffer
+from vpp_papi_graph import VPPNodeThreads
+
+
+"""A set of common terminal nodes"""
+common_terminals = frozenset((
+        'error-drop',
+        'feature-bitmap-drop',
+        'ip4-drop',
+        'ip6-drop',
+        'mpls-drop',
+))
+
+
+def filter_test(args, node, adj=False):
+    """Return True if the node should be filtered"""
+
+    if (args.filter_common_terminals and
+            node.name in common_terminals):
+        return True
+
+    if not adj:
+        if args.filter_idle and node.stats.clocks == 0:
+            return True
+
+    return False
+
+
+def filter_nodes(args, nodes):
+    """Return a generator of filtered nodes"""
+
+    # Determine number of nodes that point to a given node
+    if args.filter_orphans:
+        dstn = {}
+        for node in nodes:
+            for nxtn in node.next_nodes:
+                dstn[nxtn.name] = dstn.get(nxtn.name, 0) + 1
+
+    for node in nodes:
+        if args.filter_orphans:
+            # skip orphaned nodes
+            if not (node.next_nodes or dstn.get(node.name)):
+                continue
+
+        if filter_test(args, node):
+            continue
+
+        yield node
+
+
+def render_table(args, nodes):
+    t = Texttable()
+    t.set_cols_align(['l', 'l', 'l'])
+    t.set_cols_valign(['t', 't', 't'])
+    rows = [['Node name', 'Statistics', 'Next nodes']]
+
+    for node in filter_nodes(args, nodes):
+        rows.append([
+            node.name,
+            "\n".join((
+                "Clocks:   %d" % node.stats.clocks,
+                "Calls:    %s" % node.stats.calls,
+                "Vectors:  %s" % node.stats.vectors,
+                "Suspends: %d" % node.stats.suspends,
+            )),
+            "\n".join([n.name for n in node.next_nodes
+                       if not filter_test(args, n, True)]),
+        ])
+    t.add_rows(rows)
+
+    return "".join((t.draw(), "\n"))
+
+
+def render_dot(args, nodes):
+    s = []
+    s.append('digraph vppgraph {')
+    s.append('  node [shape=box, fontsize=10];')
+    s.append('  edge [arrowhead=vee, arrowsize=0.5];')
+    s.append('')
+
+    # Render the graph
+    for node in filter_nodes(args, nodes):
+        if args.render_label_html:
+            label = [
+                '<table border="0" cellborder="0" cellspacing="0">\n<tr>'
+                '<td colspan="2" align="center"><b>%s</b></td>' % node.name
+            ]
+
+            if args.render_node_state:
+                label.append('<td align="left">State</td>'
+                             '<td align="left"><i>%s</i></td>' %
+                             node.state_string)
+
+            if args.render_node_stats:
+                label.append('<td align="left">Clocks</td>'
+                             '<td align="left"><i>%.3E</i></td>' %
+                             node.stats.clocks)
+                label.append('<td align="left">Calls</td>'
+                             '<td align="left"><i>%.3E</i></td>' %
+                             node.stats.calls)
+                label.append('<td align="left">Vectors</td>'
+                             '<td align="left"><i>%.3E</i></td>' %
+                             node.stats.vectors)
+
+            label[-1] += "</tr>\n</table>"
+            s.append('  "%s" [label=<%s>];' %
+                     (node.name, "</tr>\n<tr>".join(label)))
+        else:
+            label = [node.name]
+
+            if args.render_node_state:
+                label.append("state: %s" % node.state_string)
+
+            if args.render_node_stats:
+                label.append("clocks: %.3E" % node.stats.clocks)
+                label.append("calls: %.3E" % node.stats.calls)
+
+            s.append('  "%s" [label="%s"];' % (node.name, "\\n".join(label)))
+
+        for nxtn in node.next_nodes:
+            if filter_test(args, nxtn, True):
+                continue
+            s.append('    "%s" -> "%s" [label="%s"];' % (
+                node.name,
+                nxtn.name,
+                ""  # TODO find something useful to label the edge with
+            ))
+        s.append('')
+
+    s.append('}')
+    s.append('')
+
+    return "\n".join(s)
+
+
+renderers = {
+    "table": render_table,
+    "dot": render_dot,
+}
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description="Fetches and renders the VPP node graph.")
+    ap.add_argument('--api-dir', metavar="directory",
+                    default=VPP.find_api_dir(),
+                    help="Override the location of the API files; "
+                    "otherwise it will be searched for in "
+                    "well-known locations. [%(default)s]")
+
+    ro = ap.add_argument_group('Render options')
+    ro.add_argument('--render-as', '-r',
+                    choices=sorted(renderers.keys()),
+                    default='table',
+                    help="Output format to render the graph as. "
+                    "[%(default)s]")
+    ro.add_argument('--output-to', '-o', metavar='file',
+                    default='-',
+                    help="Where to send the output. '-' means "
+                    "'stdout'. [%(default)s]")
+    ro.add_argument("--render-label-html",
+                    action="store_true",
+                    help="Render node labels in HTML. [%(default)s]")
+    ro.add_argument("--render-node-state",
+                    action='store_true',
+                    help='Add the node state to each node. [%(default)s]')
+    ro.add_argument("--render-node-stats",
+                    action='store_true',
+                    help='Add statistics to each node. [%(default)s]')
+
+    fo = ap.add_argument_group('Filtering options')
+    fo.add_argument('--filter-orphans',
+                    action='store_true',
+                    help="Exclude orphan nodes.")
+    fo.add_argument('--filter-common-terminals',
+                    action='store_true',
+                    help='Exclude common terminal nodes, '
+                    'such as error-drop. '
+                    'This helps to de-clutter the graph.')
+    fo.add_argument('--filter-idle',
+                    action='store_true',
+                    help='Exclude nodes with no activity.')
+    # TODO:
+    # --filter-start-at <node>
+
+    args = ap.parse_args()
+
+    # Try to find the API definition files
+    api_files = VPP.find_api_files(api_dir=args.api_dir, patterns='vpe')
+    if not api_files:
+        print("ERROR: No JSON API files found in '%s'." % args.api_dir)
+        exit(1)
+
+    # Connect to VPP
+    vpp = VPP(api_files)
+    rc = vpp.connect('graphdump')
+    # TODO check rc
+
+    # Grab the graph
+    rc = vpp.get_node_graph()
+    buf = VPPUnserializeBuffer(rc.reply_in_shmem)
+    threads = VPPNodeThreads(buf)
+    vn = threads.coalesce_threads()
+
+    # Work out where to sent the output
+    if args.output_to == '-':
+        fp = sys.stdout
+    else:
+        fp = open(args.output_to, 'w+')
+
+    # Render the graph
+    fn = renderers[args.render_as]
+    fp.write(fn(args, vn.nodes))
+
+    # All done, close up
+    if fp != sys.stdout:
+        fp.close()
+        fp = None
+
+    rc = vpp.disconnect()
+
+
+if __name__ == '__main__':
+    main()
+
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4

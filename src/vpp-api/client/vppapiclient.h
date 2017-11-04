@@ -33,4 +33,7 @@ int vac_msg_table_max_index(void);
 void vac_rx_suspend (void);
 void vac_rx_resume (void);
 void vac_set_error_handler(vac_error_callback_t);
+
+int vac_buffer_from_shmem(unsigned long pointer, char **buffer, int *buflen);
+void vac_buffer_free(void *v);
 #endif
