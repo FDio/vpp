@@ -32,6 +32,13 @@ class TestPAPI(VppTestCase):
         self.assertRaises(ValueError, self.v.get_node_index,
                           node_name=node_name)
 
+    def test_reply_in_shmem(self):
+        rc = self.v.get_node_graph()
+        # check the reply is the right type of thing
+        # if this is an integer then we didn't go fetch the
+        # data; it should be 'bytes'
+        self.assertIsInstance(rc.reply_in_shmem, bytes)
+
 
 class TestPAPIMessageParsing(VppTestCase):
     """ PAPI Message parsing Test Case """

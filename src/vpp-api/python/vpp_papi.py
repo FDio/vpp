@@ -50,6 +50,9 @@ int vac_msg_table_max_index(void);
 void vac_rx_suspend (void);
 void vac_rx_resume (void);
 void vac_set_error_handler(vac_error_callback_t);
+
+int vac_buffer_from_shmem(unsigned long pointer, char **buffer, int *buflen);
+void vac_buffer_free(void *v);
  """)
 
 # Barfs on failure, no need to check success.
@@ -508,6 +511,21 @@ class VPP():
                     res.append(v.unpack_from(buf, off)[0])
                     size = v.size
 
+            if k == 'reply_in_shmem':
+                pointer = res[-1]
+                if pointer > 0:
+                    # If the result needs to be rescued from shared memory,
+                    # go take care of it. If we don't do this, VPP leaks
+                    # memory should such API calls be made. This could do
+                    # with a better convention for identifying this situation.
+                    buf = self._fetch_result_from_shmem(pointer)
+                else:
+                    buf = None
+
+                # Replace the useless pointer value with the buffer
+                # retrieved (if any).
+                res[-1] = buf
+
         return off + size - offset, msgdef['return_tuple']._make(res)
 
     def ret_tup(self, name):
@@ -851,6 +869,55 @@ class VPP():
             msgname = type(r).__name__
             if self.event_callback:
                 self.event_callback(msgname, r)
+
+    def _fetch_result_from_shmem(self, pointer):
+        """Retrieves a result from a VPP vector via shared memory.
+
+        A small number of API responses contain a field typically called
+        'result_in_shmem' which is the literal value of the location in
+        memory (in the C language this is called a pointer) of a VPP
+        vector; that is, storage that has been allocated by the VPP process
+        and accessible over the shared memory that can be mapped into other
+        processes.
+
+        To retrieve the data is a simple matter of turning the literal value
+        into a pointer and using VPP's "vec" methods to determine the size
+        of the block. However, it is also the responsibility of the receiving
+        client to release that allocation and doing that requires some careful
+        gymnastics.
+
+        Both of these steps are taken care of by the 'vac_buffer_from_shmem'
+        routine in the 'libvppapiclient' library.  Specifically that function
+        returns a _copy_ of the memory allocated from our own heap.
+
+        We then make a further copy into a Python object and free the first
+        copy back to our heap. It is possible we could engineer a way to
+        avoid this undesirable double-copy technique but, for the sake of
+        robustness, this is what we have right now.
+
+        Note that detecting invalid values of 'pointer' is not possible.
+        Should that occur it is likely the program will be terminated with
+        SIGSEGV and it is likely the VPP process will become unstable.
+
+        :param pointer: The literal value of 'reply_in_shmem' which we should
+            treat as a pointer.
+        :rtype: bytes
+        :returns: A Python 'bytes' object of the data retrieved.
+        """
+
+        buf = ffi.new("char **")
+        buflen = ffi.new("int *")
+
+        # Fetch a copy of the shared memory area
+        self.vpp_api.vac_buffer_from_shmem(pointer, buf, buflen)
+
+        # Make a copy of that as a python bytestream
+        blob = bytes(ffi.buffer(buf[0], buflen[0]))
+
+        # Free the first copy.
+        self.vpp_api.vac_buffer_free(buf[0])
+
+        return blob
 
 
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
