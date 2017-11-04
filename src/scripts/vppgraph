@@ -1,0 +1,203 @@
+#!/usr/bin/env python
+# Copyright (c) 2017 Comcast Cable Communications Management, LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Retrieves and renders the VPP graph."""
+
+from __future__ import print_function
+
+import os
+import sys
+import fnmatch
+import argparse
+
+from texttable import Texttable
+
+from vpp_papi import VPP, ffi
+from vpp_papi_unserialize import VPPUnserializeBuffer
+from vpp_papi_graph import VPPNodeThreads
+
+
+def find_api_dir():
+    dirs = []
+
+    if 'VPP_API_DIR' in os.environ:
+        dirs.append(os.environ['VPP_API_DIR'])
+
+    # perhaps we're in the 'src/scripts' or 'src/vpp-api/python' dir;
+    # in which case, plot a course to likely places in the src tree
+    localdir = os.path.dirname(os.path.realpath(__file__))
+    localdir_s = localdir.split(os.path.sep)
+    srcdir = None
+    if localdir_s[-2:] == ['src', 'scripts']:
+        # work out the root of the src tree
+        srcdir = os.path.sep.join(localdir_s[:-2])
+    elif localdir_s[-2:] == ['src', 'vpp-api', 'python']:
+        # work out the root of the src tree
+        srcdir = os.path.sep.join(localdir_s[:-3])
+    if srcdir:
+        # try likely dirs
+        _x = 'vpp/share/vpp/api/core'
+        dirs.append("%s/build-root/install-vpp_debug-native/%s" %
+                    (srcdir, _x))
+        dirs.append("%s/build-root/install-vpp_release-native/%s" %
+                    (srcdir, _x))
+
+    # finally, try the system location
+    dirs.append("/usr/share/vpp/api")
+
+    # check the directories; first one wins
+    for dir in dirs:
+        if os.path.isdir(dir):
+            return dir
+
+    return None
+
+
+def find_api_files(api_dir=None):
+    if api_dir is None:
+        api_dir = find_api_dir()
+    api_files = []
+    for root, dirnames, filenames in os.walk(api_dir):
+        for filename in fnmatch.filter(filenames, '*.api.json'):
+            api_files.append(os.path.join(api_dir, filename))
+    return api_files
+
+
+def render_table(args, nodes):
+    t = Texttable()
+    t.set_cols_align(['l', 'l'])
+    t.set_cols_valign(['t', 't'])
+    rows = [['Node name', 'Next nodes']]
+    
+    # Determine number of nodes that point to a given node
+    dstn = {}
+    for node in nodes:
+        for nxtn in node.next_nodes:
+            dstn[nxtn.name] = dstn.get(nxtn.name, 0) + 1
+
+    for node in nodes:
+        # skip orphaned nodes
+        if not args.filter_include_orphans and not node.next_nodes and not dstn.get(node.name):
+            continue
+        
+        rows.append([
+            node.name,
+            "\n".join([n.name for n in node.next_nodes]),
+        ])
+    t.add_rows(rows)
+
+    return "".join((t.draw(), "\n"))
+
+def render_dot(args, nodes):
+    s = []
+    s.append('digraph vlib {')
+    s.append('  node [shape=box, fontsize=10];')
+    s.append('  edge [arrowhead=vee, arrowsize=0.5];')
+    s.append('')
+
+    # Determine number of nodes that point to a given node
+    dstn = {}
+    for node in nodes:
+        for nxtn in node.next_nodes:
+            dstn[nxtn.name] = dstn.get(nxtn.name, 0) + 1
+
+    # Render the graph
+    for node in nodes:
+        # skip orphaned nodes
+        if not args.filter_include_orphans and not node.next_nodes and not dstn.get(node.name):
+            continue
+
+        s.append('  "%s" [label="%s"];' % (node.name, node.name))
+        for nxtn in node.next_nodes:
+            s.append('    "%s" -> "%s" [label="%s"];' % (
+                node.name,
+                nxtn.name,
+                "foo"
+            ))
+        s.append('')
+
+    s.append('}')
+    s.append('')
+
+    return "\n".join(s)
+
+
+renderers = {
+    "table": render_table,
+    "dot": render_dot,
+}
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description="Fetches and renders the VPP node graph.")
+    ap.add_argument('--api-dir', metavar="directory",
+                    default=find_api_dir(),
+                    help="Override the location of the API files; "
+                    "otherwise it will be searched for in "
+                    "well-known locations. [%(default)s]")
+    ap.add_argument('--render-as', '-r',
+                    choices=sorted(renderers.keys()),
+                    default='table',
+                    help="Output format to render the graph as. "
+                    "[%(default)s]")
+    ap.add_argument('--output-to', '-o', metavar='file',
+                    default='-',
+                    help="Where to send the output. '-' means "
+                    "'stdout'. [%(default)s]")
+
+    f = ap.add_argument_group('Filtering options')
+    f.add_argument('--filter-include-orphans',
+                    action='store_true',
+                    help="Do not exclude orphan nodes.")
+    # TODO:
+    # --filter-exclude-common-terminals
+    # --filter-exclude-idle
+    # --filter-start-at <node>
+
+    args = ap.parse_args()
+
+    api_files = find_api_files(api_dir=args.api_dir)
+    if not api_files:
+        print("ERROR: No JSON API files found in '%s'." % args.api_dir)
+        exit(1)
+
+    vpp = VPP(api_files)
+    rc = vpp.connect('graphdump')
+
+    rc = vpp.get_node_graph()
+    buf = VPPUnserializeBuffer(rc.reply_in_shmem)
+    threads = VPPNodeThreads(buf)
+    vn = threads.coalesce_threads()
+
+    if args.output_to == '-':
+        fp = sys.stdout
+    else:
+        fp = open(args.output_to, 'w+')
+
+    fn = renderers[args.render_as]
+    fp.write(fn(args, vn.nodes))
+
+    if fp != sys.stdout:
+        fp.close()
+        fp = None
+
+    rc = vpp.disconnect()
+
+if __name__ == '__main__':
+    main()
+
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
