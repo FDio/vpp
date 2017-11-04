@@ -22,6 +22,12 @@
 static session_table_t *lookup_tables;
 
 session_table_t *
+_get_session_tables (void)
+{
+  return lookup_tables;
+}
+
+session_table_t *
 session_table_alloc (void)
 {
   session_table_t *slt;
@@ -61,8 +67,10 @@ session_table_get (u32 table_index)
  * otherwise it uses defaults above.
  */
 void
-session_table_init (session_table_t * slt)
+session_table_init (session_table_t * slt, u8 fib_proto)
 {
+  u8 all = fib_proto > FIB_PROTOCOL_IP6 ? 1 : 0;
+
 #define _(af,table,parm,value) 						\
   u32 configured_##af##_##table##_table_##parm = value;
   foreach_hash_table_parameter;
@@ -75,19 +83,24 @@ session_table_init (session_table_t * slt)
   foreach_hash_table_parameter;
 #undef _
 
-  clib_bihash_init_16_8 (&slt->v4_session_hash, "v4 session table",
-			 configured_v4_session_table_buckets,
-			 configured_v4_session_table_memory);
-  clib_bihash_init_48_8 (&slt->v6_session_hash, "v6 session table",
-			 configured_v6_session_table_buckets,
-			 configured_v6_session_table_memory);
-  clib_bihash_init_16_8 (&slt->v4_half_open_hash, "v4 half-open table",
-			 configured_v4_halfopen_table_buckets,
-			 configured_v4_halfopen_table_memory);
-  clib_bihash_init_48_8 (&slt->v6_half_open_hash, "v6 half-open table",
-			 configured_v6_halfopen_table_buckets,
-			 configured_v6_halfopen_table_memory);
-
+  if (fib_proto == FIB_PROTOCOL_IP4 || all)
+    {
+      clib_bihash_init_16_8 (&slt->v4_session_hash, "v4 session table",
+			     configured_v4_session_table_buckets,
+			     configured_v4_session_table_memory);
+      clib_bihash_init_16_8 (&slt->v4_half_open_hash, "v4 half-open table",
+			     configured_v4_halfopen_table_buckets,
+			     configured_v4_halfopen_table_memory);
+    }
+  if (fib_proto == FIB_PROTOCOL_IP6 || all)
+    {
+      clib_bihash_init_48_8 (&slt->v6_session_hash, "v6 session table",
+			     configured_v6_session_table_buckets,
+			     configured_v6_session_table_memory);
+      clib_bihash_init_48_8 (&slt->v6_half_open_hash, "v6 half-open table",
+			     configured_v6_halfopen_table_buckets,
+			     configured_v6_halfopen_table_memory);
+    }
   session_rules_table_init (&slt->session_rules);
 }
 

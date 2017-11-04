@@ -19,6 +19,7 @@
 #include <vnet/session/session_table.h>
 #include <vnet/session/stream_session.h>
 #include <vnet/session/transport.h>
+#include <vnet/session/application_namespace.h>
 
 stream_session_t *session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl,
 					ip4_address_t * rmt, u16 lcl_port,
@@ -115,6 +116,7 @@ typedef struct _session_rule_add_del_args
 } session_rule_add_del_args_t;
 
 clib_error_t *vnet_session_rule_add_del (session_rule_add_del_args_t * args);
+void session_lookup_set_tables_appns (app_namespace_t * app_ns);
 
 void session_lookup_init (void);
 
