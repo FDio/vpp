@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a2e27195_7ef0af32",
+        "filename": "src/vpp-api/vom/interface.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-11-04T19:16:32Z",
+      "side": 1,
+      "message": "I have to add it temporarily. As interface::*_cmds still exits in this class. Will clean this up.",
+      "revId": "cd16b9e2bf236b0af5887c1cf23f89e96787af57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "aa0d955d_83704573",
+        "filename": "src/vpp-api/vom/interface.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 231,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-11-04T19:16:32Z",
+      "side": 1,
+      "message": "here!",
+      "revId": "cd16b9e2bf236b0af5887c1cf23f89e96787af57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "64f24c67_729296cf",
+        "filename": "src/vpp-api/vom/interface.hpp",
+        "patchSetId": 7
+      },
+      "lineNbr": 299,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-11-04T19:16:32Z",
+      "side": 1,
+      "message": "Here!",
+      "revId": "cd16b9e2bf236b0af5887c1cf23f89e96787af57",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
