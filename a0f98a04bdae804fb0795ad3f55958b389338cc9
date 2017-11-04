@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c39b025a_ef7d1078",
+        "filename": "src/vpp-api/vom/route.hpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-04T09:19:14Z",
+      "side": 1,
+      "message": "since there are no command objects in these .hpp files now, we don\u0027t need the *_cmd.hpp includes.",
+      "revId": "a0f98a04bdae804fb0795ad3f55958b389338cc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d6123bbf_7df9808e",
+        "filename": "src/vpp-api/vom/sub_interface.hpp",
+        "patchSetId": 5
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-04T09:19:14Z",
+      "side": 1,
+      "message": "remove this. no vapi includes in any files that a user would include.\nsame applies to other .hpp files from whcih you have moved the commands",
+      "revId": "a0f98a04bdae804fb0795ad3f55958b389338cc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
