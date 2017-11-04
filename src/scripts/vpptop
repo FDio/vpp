@@ -1,0 +1,505 @@
+#!/usr/bin/env python
+# Copyright (c) 2017 Comcast Cable Communications Management, LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Simple 'top' like program for VPP."""
+
+from __future__ import print_function
+
+import re
+import sys
+import time
+import curses
+import locale
+import argparse
+
+from texttable import Texttable
+
+from vpp_papi import VPP
+from vpp_papi_unserialize import VPPUnserializeBuffer
+from vpp_papi_graph import VPPNodeThreads
+
+
+"""A set of common terminal nodes"""
+common_terminals = frozenset((
+        'error-punt',
+        'error-drop',
+        'feature-bitmap-drop',
+        'ip4-drop',
+        'ip6-drop',
+        'mpls-drop',
+))
+
+
+"""Column names for the different display modes"""
+column_names = {
+    "nodes": {
+        "header": ['Name', 'Clocks', 'Calls', 'Vectors', 'Suspends'],
+        "names": ['name', 'clocks', 'calls', 'vectors', 'suspends'],
+
+    },
+    "threads": {
+        "header": ['T', 'Name', 'State', 'Clocks', 'Calls', 'Vectors',
+                   'Suspends'],
+        "names": ['thread', 'name', 'state', 'clocks', 'calls',
+                  'vectors', 'suspends']
+    }
+}
+
+"""A de-duplicated list of all the available column names"""
+all_column_names = list(set(sum([v['names'] for v in column_names.values()],
+                        [])))
+
+"""Mapping of control codes to Curses attributes"""
+attrmap = {  # (mask, value)
+        '\a': (curses.A_ATTRIBUTES | curses.A_COLOR, curses.A_NORMAL),
+        '\b': (curses.A_BOLD, curses.A_BOLD),
+        '\f': (curses.A_DIM, curses.A_DIM),
+        '\r': (curses.A_REVERSE, curses.A_REVERSE),
+        '\v': (curses.A_UNDERLINE, curses.A_UNDERLINE),
+        '\x00': (curses.A_COLOR, curses.COLOR_BLACK + 1),
+        '\x01': (curses.A_COLOR, curses.COLOR_RED + 1),
+        '\x02': (curses.A_COLOR, curses.COLOR_GREEN + 1),
+        '\x03': (curses.A_COLOR, curses.COLOR_YELLOW + 1),
+        '\x04': (curses.A_COLOR, curses.COLOR_BLUE + 1),
+        '\x05': (curses.A_COLOR, curses.COLOR_MAGENTA + 1),
+        '\x06': (curses.A_COLOR, curses.COLOR_CYAN + 1),
+        '\x09': (curses.A_COLOR, curses.COLOR_WHITE + 1),
+        '\x0a': (curses.A_COLOR, 0),
+}
+
+"""A sequence of characters to make a spinner icon"""
+spinner_chars = [
+        unichr(0x259b),
+        unichr(0x259c),
+        unichr(0x259f),
+        unichr(0x2599),
+]
+
+
+def filter_test(args, node, adj=False):
+    """Return True if the node should be filtered"""
+
+    if (args.filter_common_terminals and
+            node.name in common_terminals):
+        return True
+
+    if not adj:
+        if args.filter_idle and node.stats.clocks == 0:
+            return True
+
+    return False
+
+
+def filter_nodes(args, nodes):
+    """Return a generator of filtered nodes"""
+
+    # Determine number of nodes that point to a given node
+    if args.filter_orphans:
+        dstn = {}
+        for node in nodes:
+            for nxtn in node.next_nodes:
+                dstn[nxtn.name] = dstn.get(nxtn.name, 0) + 1
+
+    for node in nodes:
+        if args.filter_orphans:
+            # skip orphaned nodes
+            if not (node.next_nodes or dstn.get(node.name)):
+                continue
+
+        if filter_test(args, node):
+            continue
+
+        yield node
+
+
+def collate_threads(args, threads):
+    t = 0
+    for thread in threads:
+        for node in thread.nodes:
+            if filter_test(args, node):
+                continue
+            yield [
+                    t,
+                    node.name,
+                    node.state_string,
+                    node.stats.clocks,
+                    node.stats.calls,
+                    node.stats.vectors,
+                    node.stats.suspends,
+            ]
+        t += 1
+
+
+def collate_nodes(args, nodes):
+    for node in nodes:
+        if filter_test(args, node):
+            continue
+        yield [
+            node.name,
+            node.stats.clocks,
+            node.stats.calls,
+            node.stats.vectors,
+            node.stats.suspends,
+        ]
+
+
+def render_one_head(args, nodes, tid):
+    n_clocks = 0
+    n_calls = 0
+
+    for node in nodes:
+        n_clocks += node.stats.clocks
+        n_calls += node.stats.calls
+
+    return "  thread:\b%s\b clocks:\b%.3E\b calls:\b%.3E\b" % (
+            str(tid) if tid >= 0 else "all",
+            n_clocks,
+            n_calls,
+    )
+
+
+def render_head(args, root, maxrows, maxcols):
+    if args.render_threads_coalesced:
+        return [render_one_head(args, root.nodes, -1)]
+
+    return [render_one_head(args, root.threads[i].nodes, i)
+            for i in range(len(root.threads))]
+
+
+def render_table(args, root, maxrows, maxcols):
+    t = Texttable(max_width=maxcols)
+    t.set_deco(0)
+    if args.render_threads_coalesced:
+        header = column_names['nodes']["header"]
+        labels = column_names["nodes"]["names"]
+    else:
+        header = column_names['threads']["header"]
+        labels = column_names["threads"]["names"]
+    t.set_cols_align(['l']*len(header))
+    t.set_cols_valign(['t']*len(header))
+
+    t.header(header)
+    r = 1
+
+    if args.render_threads_coalesced:
+        items = collate_nodes(args, root.nodes)
+    else:
+        items = collate_threads(args, root.threads)
+
+    if args.render_sort and args.render_sort in labels:
+        _k = labels.index(args.render_sort)
+        items = sorted(items, key=lambda v: v[_k],
+                       reverse=not args.render_sort_reverse)
+
+    for item in items:
+        t.add_row(item)
+        r += 1
+        if r >= maxrows:
+            break
+
+    return t.draw().split("\n")
+
+
+def run(stdscr, args, vpp):
+    curses.halfdelay(1)
+    curses.curs_set(0)
+    spinner_index = 0
+
+    if curses.has_colors():
+        curses.use_default_colors()
+
+        if args.render_color:
+            fg = args.render_color_fg
+            bg = args.render_color_bg
+            if bg is None:
+                bg = 0
+            if fg is None:
+                fg = 0
+            if bg > 0 and fg <= 0:
+                # Special handling; bg can't take effect unless we use
+                # non-default fg, so choose one
+                fg = 16 - bg
+
+            # Setup the curses standard colors, but offset by 1 so we can
+            # make use of black.
+            for i in range(0, curses.COLORS):
+                curses.init_pair(i + 1, i, bg)
+
+            stdscr.bkgdset(' ', curses.A_NORMAL | curses.color_pair(fg))
+
+    running = True
+    while running:
+        ts = time.time() + args.refresh_rate
+        rows, cols = stdscr.getmaxyx()
+        stdscr.move(0, 0)
+        row = 1
+
+        rc = vpp.get_node_graph()
+        buf = VPPUnserializeBuffer(rc.reply_in_shmem)
+        vt = VPPNodeThreads(buf)
+        vn = vt.coalesce_threads()
+        if args.render_threads_coalesced:
+            root = vn
+        else:
+            root = vt
+
+        def _addstr(row, string, attr=curses.A_NORMAL):
+            r"""Crude way to embed character attributes.
+            \a reset all attributes
+            \b bold
+            \f dim
+            \r reverse
+            \v underline
+            \0x00 black
+            \0x01 red
+            \0x02 green
+            \0x03 yellow
+            \0x04 blue
+            \0x05 magenta
+            \0x06 cyan
+            \0x09 white
+            """
+
+            parts = []
+            r = re.compile("[\x00-\x1f]")
+            i = 0
+            for n in [m.start() for m in r.finditer(string)]:
+                if n - i > 0:
+                    parts.append((string[i:n], attr))
+                a = string[n]
+                if a in attrmap:
+                    mask, val = attrmap[a]
+                    if mask & curses.A_COLOR != 0:
+                        # it's a color
+                        if args.render_color and curses.has_colors():
+                            val = curses.color_pair(val)
+                        else:
+                            # has no color, make this a no-op
+                            mask = 0
+                            val = 0
+                    if (attr & mask) == val:
+                        # toggle it off
+                        attr = (attr & ~mask)
+                    else:
+                        # toggle it on
+                        attr = (attr & ~mask) | val
+                i = n + 1
+            if len(string) - i > 0:
+                parts.append((string[i:], attr))
+
+            stdscr.move(row, 0)
+
+            for part in parts:
+                stdscr.addstr(*part)
+            stdscr.clrtoeol()
+
+        head = render_head(args, root, maxrows=rows-row, maxcols=cols)
+        for line in head:
+            _addstr(row, line)
+            row += 1
+            if row >= rows:
+                break
+
+        table = render_table(args, root, maxrows=rows-row, maxcols=cols)
+        _tr = 0
+        for line in table:
+            formatting = []
+            if _tr == 0:
+                formatting.append(curses.A_BOLD)
+            stdscr.addstr(row, 0, line, *formatting)
+            stdscr.clrtoeol()
+            _tr += 1
+            row += 1
+            if row >= rows:
+                break
+
+        always_once = True
+        while always_once or time.time() < ts:
+            always_once = False
+
+            # just so the clock looks nice and responsive, draw
+            # the title row here
+            params = (
+                time.strftime("%H:%M:%S"),
+                len(vt.threads),
+                "s" if len(vt.threads) > 1 else "",
+                len(vn.nodes),
+                "s" if len(vn.nodes) > 1 else "",
+                sum([1 if n.stats.clocks else 0 for n in vn.nodes]),
+            )
+            stdscr.addstr(0, 0, ("vpptop - %s, %d thread%s, "
+                                 "%d node%s, %d have run" %
+                                 params)[:cols], curses.A_REVERSE)
+
+            stdscr.addstr("  sort:%s%s" % (
+                (unichr(0x2193) if args.render_sort_reverse
+                    else unichr(0x2191)).encode("utf-8"),
+                args.render_sort
+            ), curses.A_REVERSE)
+
+            # if top line has space, fill in the rest
+            y, x = stdscr.getyx()
+            if y == 0:
+                stdscr.addstr(" " * (cols - x), curses.A_REVERSE)
+
+            # park the cursor somewhere inocuous and print the spinner
+            stdscr.move(0, cols - 1)
+            stdscr.addstr(spinner_chars[spinner_index].encode('utf-8'),
+                          curses.A_REVERSE)
+            stdscr.move(0, cols - 1)
+
+            # paint the screen
+            stdscr.refresh()
+
+            # check for key presses
+            try:
+                c = stdscr.getch()
+            except:
+                continue
+
+            if c == 113 or c == 27:  # 'q' or Escape
+                running = False
+                break
+            elif c == 105:  # 'i'
+                args.filter_idle = not args.filter_idle
+                break
+            elif c == 114:  # 'r'
+                v = args.render_sort_reverse
+                args.render_sort_reverse = not v
+                break
+            elif c == 116:  # 't'
+                v = args.render_threads_coalesced
+                args.render_threads_coalesced = not v
+                break
+            elif c == -1:
+                continue
+            else:
+                # things like screen resize, unknown keys just
+                # trigger instant refresh
+                break
+
+        spinner_index += 1
+        if spinner_index >= len(spinner_chars):
+            spinner_index = 0
+
+
+def main():
+    # Build a color map so we can use it in the command line options
+    color_map = {}
+    for color in ('black', 'red', 'green', 'yellow',
+                  'blue', 'magenta', 'cyan', 'white'):
+        v = getattr(curses, "COLOR_%s" % color.upper(), None)
+        if v is not None:
+            color_map[color] = v
+            color_map['lt' + color] = v + 8
+
+    ap = argparse.ArgumentParser(
+        description="Fetches and renders the VPP node graph.")
+    ap.add_argument('--api-dir', metavar="directory",
+                    default=VPP.find_api_dir(),
+                    help="Override the location of the API files; "
+                    "otherwise it will be searched for in "
+                    "well-known locations. [%(default)s]")
+
+    ro = ap.add_argument_group('Render options')
+    ro.add_argument('--render-threads-coalesced',
+                    action='store_true',
+                    help='Render node data from each threads into '
+                    'a single row. [%(default)s]')
+    ro.add_argument('--render-sort',
+                    choices=sorted(all_column_names+['none']),
+                    default='clocks',
+                    help="Sort table by column. [%(default)s]")
+    ro.add_argument('--render-sort-reverse',
+                    action='store_true',
+                    help="Reverse the sort order. [%(default)s]")
+    ro.add_argument('--render-color',
+                    action='store_true',
+                    help='Uses terminal color, if available. [%(default)s]')
+    ro.add_argument('--render-color-bg',
+                    choices=sorted(color_map.keys()+['none']),
+                    default='none',
+                    help="If using color, the background color. [%(default)s]")
+    ro.add_argument('--render-color-fg',
+                    choices=sorted(color_map.keys()+['none']),
+                    default='none',
+                    help="If using color, the primary foreground color. "
+                    "[%(default)s]")
+    ro.add_argument('--refresh-rate', type=float, metavar='seconds',
+                    default=1.0,
+                    help='Page refresh rate, in seconds. [%(default)s]')
+
+    fo = ap.add_argument_group('Filtering options')
+    fo.add_argument('--filter-orphans',
+                    action='store_true',
+                    help="Exclude orphan nodes.")
+    fo.add_argument('--filter-common-terminals',
+                    action='store_true',
+                    help='Exclude common terminal nodes, '
+                    'such as error-drop. '
+                    'This helps to de-clutter the graph.')
+    fo.add_argument('--filter-idle',
+                    action='store_true',
+                    help='Exclude nodes with no activity.')
+
+    args = ap.parse_args()
+
+    # Validate sort column
+    if args.render_sort == 'none':
+        args.render_sort = None
+
+    # Validate the color params, if given
+    if args.render_color_bg == 'none':
+        args.render_color_bg = None
+    else:
+        args.render_color_bg = color_map[args.render_color_bg]
+        args.render_color = True
+    if args.render_color_fg == 'none':
+        args.render_color_fg = None
+    else:
+        args.render_color_fg = color_map[args.render_color_fg] + 1
+        args.render_color = True
+
+    # Try to find the API definition files
+    api_files = VPP.find_api_files(api_dir=args.api_dir, patterns='vpe')
+    if not api_files:
+        print("ERROR: No JSON API files found in '%s'." % args.api_dir)
+        exit(1)
+
+    # Connect to VPP
+    vpp = VPP(api_files)
+    rc = vpp.connect('vpptop')
+    # TODO check rc
+
+    # Make sure we have a broad locale
+    locale.setlocale(locale.LC_ALL, "")
+
+    # Fire up the application
+    try:
+        curses.wrapper(run, args, vpp)
+    except KeyboardInterrupt:
+        pass
+    except:
+        raise
+
+    # All done, say bye to VPP
+    rc = vpp.disconnect()
+
+
+if __name__ == '__main__':
+    main()
+
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
