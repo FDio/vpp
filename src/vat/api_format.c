@@ -5626,7 +5626,8 @@ _(DNS_ENABLE_DISABLE_REPLY, dns_enable_disable_reply)                   \
 _(DNS_NAME_SERVER_ADD_DEL_REPLY, dns_name_server_add_del_reply)		\
 _(DNS_RESOLVE_NAME_REPLY, dns_resolve_name_reply)			\
 _(DNS_RESOLVE_IP_REPLY, dns_resolve_ip_reply)				\
-_(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)
+_(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
+_(SESSION_RULES_DETAILS, session_rules_details)
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)                               \
@@ -21552,6 +21553,75 @@ api_dns_name_server_add_del (vat_main_t * vam)
   return ret;
 }
 
+static void
+vl_api_session_rules_details_t_handler (vl_api_session_rules_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  if (mp->is_ip4)
+    {
+      print (vam->ofp, "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d",
+	     mp->appns_index, mp->transport_proto, mp->scope,
+	     format_ip4_address, &mp->lcl_ip, mp->lcl_plen, mp->lcl_port,
+	     format_ip4_address, &mp->rmt_ip, mp->rmt_plen, mp->rmt_port,
+	     mp->action_index);
+    }
+  else
+    {
+      print (vam->ofp, "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d",
+	     mp->appns_index, mp->transport_proto, mp->scope,
+	     format_ip6_address, &mp->lcl_ip, mp->lcl_plen, mp->lcl_port,
+	     format_ip6_address, &mp->rmt_ip, mp->rmt_plen, mp->rmt_port,
+	     mp->action_index);
+    }
+}
+
+static void
+vl_api_session_rules_details_t_handler_json (vl_api_session_rules_details_t *
+					     mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+  struct in6_addr ip6;
+  struct in_addr ip4;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+  vat_json_init_object (node);
+
+  vat_json_object_add_uint (node, "is_ip4", mp->is_ip4 ? 1 : 0);
+  vat_json_object_add_uint (node, "appns_index",
+			    clib_net_to_host_u32 (mp->appns_index));
+  vat_json_object_add_uint (node, "transport_proto", mp->transport_proto);
+  vat_json_object_add_uint (node, "scope", mp->scope);
+  vat_json_object_add_uint (node, "action_index",
+			    clib_net_to_host_u32 (mp->action_index));
+  vat_json_object_add_uint (node, "lcl_port",
+			    clib_net_to_host_u16 (mp->lcl_port));
+  vat_json_object_add_uint (node, "rmt_port",
+			    clib_net_to_host_u16 (mp->rmt_port));
+  vat_json_object_add_uint (node, "lcl_plen", mp->lcl_plen);
+  vat_json_object_add_uint (node, "rmt_plen", mp->rmt_plen);
+  if (mp->is_ip4)
+    {
+      clib_memcpy (&ip4, mp->lcl_ip, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "lcl_ip", ip4);
+      clib_memcpy (&ip4, mp->rmt_ip, sizeof (ip4));
+      vat_json_object_add_ip4 (node, "rmt_ip", ip4);
+    }
+  else
+    {
+      clib_memcpy (&ip6, mp->lcl_ip, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "lcl_ip", ip6);
+      clib_memcpy (&ip6, mp->rmt_ip, sizeof (ip6));
+      vat_json_object_add_ip6 (node, "rmt_ip", ip6);
+    }
+}
+
 static int
 api_session_rule_add_del (vat_main_t * vam)
 {
@@ -21636,6 +21706,31 @@ api_session_rule_add_del (vat_main_t * vam)
     }
 
   S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
+api_session_rules_dump (vat_main_t * vam)
+{
+  vl_api_session_rules_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  if (!vam->json_output)
+    {
+      print (vam->ofp, "%=20s", "Session Rules");
+    }
+
+  M (SESSION_RULES_DUMP, mp);
+  /* send it... */
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  /* Wait for a reply... */
   W (ret);
   return ret;
 }
@@ -22450,6 +22545,7 @@ _(dns_name_server_add_del, "<ip-address> [del]")			\
 _(dns_resolve_name, "<hostname>")					\
 _(session_rule_add_del, "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "	\
   "<lcl-port> <rmt-ip>/<plen> <rmt-port> action <nn>")			\
+_(session_rules_dump, "")						\
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \

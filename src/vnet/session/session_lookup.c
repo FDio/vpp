@@ -162,25 +162,33 @@ make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * t)
 		 session_type_from_proto_and_ip (t->proto, 0));
 }
 
-
 static session_table_t *
-session_table_get_or_alloc_for_connection (transport_connection_t * tc)
+session_table_get_or_alloc (u8 fib_proto, u8 fib_index)
 {
   session_table_t *st;
-  u32 table_index, fib_proto = transport_connection_fib_proto (tc);
-  if (vec_len (fib_index_to_table_index[fib_proto]) <= tc->fib_index)
+  u32 table_index;
+  if (vec_len (fib_index_to_table_index[fib_proto]) <= fib_index)
     {
       st = session_table_alloc ();
       table_index = session_table_index (st);
-      vec_validate (fib_index_to_table_index[fib_proto], tc->fib_index);
-      fib_index_to_table_index[fib_proto][tc->fib_index] = table_index;
+      vec_validate (fib_index_to_table_index[fib_proto], fib_index);
+      fib_index_to_table_index[fib_proto][fib_index] = table_index;
+      st->active_fib_proto = fib_proto;
       return st;
     }
   else
     {
-      table_index = fib_index_to_table_index[fib_proto][tc->fib_index];
+      table_index = fib_index_to_table_index[fib_proto][fib_index];
       return session_table_get (table_index);
     }
+}
+
+static session_table_t *
+session_table_get_or_alloc_for_connection (transport_connection_t * tc)
+{
+  u32 fib_proto;
+  fib_proto = transport_connection_fib_proto (tc);
+  return session_table_get_or_alloc (fib_proto, tc->fib_index);
 }
 
 static session_table_t *
@@ -1131,6 +1139,25 @@ vnet_session_rule_add_del (session_rule_add_del_args_t * args)
   return error;
 }
 
+/**
+ * Mark (global) tables as pertaining to app ns
+ */
+void
+session_lookup_set_tables_appns (app_namespace_t * app_ns)
+{
+  session_table_t *st;
+  u32 fib_index;
+  u8 fp;
+
+  for (fp = 0; fp < ARRAY_LEN (fib_index_to_table_index); fp++)
+    {
+      fib_index = app_namespace_get_fib_index (app_ns, fp);
+      st = session_table_get_for_fib_index (fp, fib_index);
+      if (st)
+	st->appns_index = app_namespace_index (app_ns);
+    }
+}
+
 u8 *
 format_ip4_session_lookup_kvp (u8 * s, va_list * args)
 {
@@ -1430,11 +1457,13 @@ session_lookup_init (void)
   session_table_t *st = session_table_alloc ();
   vec_validate (fib_index_to_table_index[FIB_PROTOCOL_IP4], 0);
   fib_index_to_table_index[FIB_PROTOCOL_IP4][0] = session_table_index (st);
-  session_table_init (st);
+  st->active_fib_proto = FIB_PROTOCOL_IP4;
+  session_table_init (st, FIB_PROTOCOL_IP4);
   st = session_table_alloc ();
   vec_validate (fib_index_to_table_index[FIB_PROTOCOL_IP6], 0);
   fib_index_to_table_index[FIB_PROTOCOL_IP6][0] = session_table_index (st);
-  session_table_init (st);
+  st->active_fib_proto = FIB_PROTOCOL_IP6;
+  session_table_init (st, FIB_PROTOCOL_IP6);
 }
 
 /*
