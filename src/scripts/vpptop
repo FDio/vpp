@@ -1,0 +1,325 @@
+#!/usr/bin/env python
+# Copyright (c) 2017 Comcast Cable Communications Management, LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Simple 'top' like program for VPP."""
+
+from __future__ import print_function
+
+import os
+import sys
+import time
+import curses
+import fnmatch
+import argparse
+
+from texttable import Texttable
+
+from vpp_papi import VPP
+from vpp_papi_unserialize import VPPUnserializeBuffer
+from vpp_papi_graph import VPPNodeThreads
+
+
+"""A set of common terminal nodes"""
+common_terminals = frozenset((
+        'error-drop',
+        'feature-bitmap-drop',
+        'ip4-drop',
+        'ip6-drop',
+        'mpls-drop',
+))
+
+
+"""Column names for the different display modes"""
+column_names = {
+    "nodes": {
+        "header": ['Name', 'Clocks', 'Calls', 'Vectors', 'Suspends'],
+        "names": ['name', 'clocks', 'calls', 'vectors', 'suspends'],
+
+    },
+    "threads": {
+        "header": ['T', 'Name', 'State', 'Clocks', 'Calls', 'Vectors',
+                   'Suspends'],
+        "names": ['thread', 'name', 'state', 'clocks', 'calls',
+                  'vectors', 'suspends']
+    }
+}
+all_column_names = list(set(sum([v['names'] for v in column_names.values()],
+                        [])))
+
+
+def find_api_dir():
+    dirs = []
+
+    if 'VPP_API_DIR' in os.environ:
+        dirs.append(os.environ['VPP_API_DIR'])
+
+    # perhaps we're in the 'src/scripts' or 'src/vpp-api/python' dir;
+    # in which case, plot a course to likely places in the src tree
+    localdir = os.path.dirname(os.path.realpath(__file__))
+    localdir_s = localdir.split(os.path.sep)
+    srcdir = None
+    if localdir_s[-2:] == ['src', 'scripts']:
+        # work out the root of the src tree
+        srcdir = os.path.sep.join(localdir_s[:-2])
+    elif localdir_s[-2:] == ['src', 'vpp-api', 'python']:
+        # work out the root of the src tree
+        srcdir = os.path.sep.join(localdir_s[:-3])
+    if srcdir:
+        # try likely dirs
+        _x = 'vpp/share/vpp/api/core'
+        dirs.append("%s/build-root/install-vpp_debug-native/%s" %
+                    (srcdir, _x))
+        dirs.append("%s/build-root/install-vpp_release-native/%s" %
+                    (srcdir, _x))
+
+    # finally, try the system location
+    dirs.append("/usr/share/vpp/api")
+
+    # check the directories; first one wins
+    for dir in dirs:
+        if os.path.isdir(dir):
+            return dir
+
+    return None
+
+
+def find_api_files(api_dir=None, patterns='*'):
+    if api_dir is None:
+        api_dir = find_api_dir()
+    if isinstance(patterns, list) or isinstance(patterns, tuple):
+        patterns = [p.strip() + '.api.json' for p in patterns]
+    else:
+        patterns = [p.strip() + '.api.json' for p in patterns.split(",")]
+    api_files = []
+    for root, dirnames, files in os.walk(api_dir):
+        # iterate all given patterns and de-dup the result
+        files = set(sum([fnmatch.filter(files, p) for p in patterns], []))
+        for filename in files:
+            api_files.append(os.path.join(api_dir, filename))
+    return api_files
+
+
+def filter_test(args, node, adj=False):
+    """Return True if the node should be filtered"""
+
+    if (args.filter_common_terminals and
+            node.name in common_terminals):
+        return True
+
+    if not adj:
+        if args.filter_idle and node.stats.clocks == 0:
+            return True
+
+    return False
+
+
+def filter_nodes(args, nodes):
+    """Return a generator of filtered nodes"""
+
+    # Determine number of nodes that point to a given node
+    if args.filter_orphans:
+        dstn = {}
+        for node in nodes:
+            for nxtn in node.next_nodes:
+                dstn[nxtn.name] = dstn.get(nxtn.name, 0) + 1
+
+    for node in nodes:
+        if args.filter_orphans:
+            # skip orphaned nodes
+            if not (node.next_nodes or dstn.get(node.name)):
+                continue
+
+        if filter_test(args, node):
+            continue
+
+        yield node
+
+
+def collate_threads(args, threads):
+    t = 0
+    for thread in threads:
+        for node in thread.nodes:
+            if filter_test(args, node):
+                continue
+            yield [
+                    t,
+                    node.name,
+                    node.state_string,
+                    node.stats.clocks,
+                    node.stats.calls,
+                    node.stats.vectors,
+                    node.stats.suspends,
+            ]
+        t += 1
+
+
+def collate_nodes(args, nodes):
+    for node in nodes:
+        if filter_test(args, node):
+            continue
+        yield [
+            node.name,
+            node.stats.clocks,
+            node.stats.calls,
+            node.stats.vectors,
+            node.stats.suspends,
+        ]
+
+
+def render_table(args, vt, maxrows, maxcols):
+    t = Texttable(max_width=maxcols)
+    t.set_deco(t.HEADER)
+    if args.render_threads_coalesced:
+        header = column_names['nodes']["header"]
+        labels = column_names["nodes"]["names"]
+    else:
+        header = column_names['threads']["header"]
+        labels = column_names["threads"]["names"]
+    t.set_cols_align(['l']*len(header))
+    t.set_cols_valign(['t']*len(header))
+
+    t.header(header)
+    r = 2
+
+    if args.render_threads_coalesced:
+        vn = vt.coalesce_threads()
+        items = collate_nodes(args, vn.nodes)
+    else:
+        items = collate_threads(args, vt.threads)
+
+    if args.render_sort and args.render_sort in labels:
+        _k = labels.index(args.render_sort)
+        items = sorted(items, key=lambda v: v[_k],
+                       reverse=not args.render_sort_reverse)
+
+    for item in items:
+        t.add_row(item)
+        r += 1
+        if r >= maxrows:
+            break
+
+    return t.draw().split("\n")
+
+
+def run(stdscr, args, vpp):
+    curses.halfdelay(1)
+
+    running = True
+    while running:
+        ts = time.time() + 1
+        rows, cols = stdscr.getmaxyx()
+        stdscr.clear()
+        row = 1
+
+        rc = vpp.get_node_graph()
+        buf = VPPUnserializeBuffer(rc.reply_in_shmem)
+        vt = VPPNodeThreads(buf)
+
+        table = render_table(args, vt, maxrows=rows-row, maxcols=cols)
+        for line in table:
+            stdscr.addstr(row, 0, line)
+            row += 1
+            if row >= rows:
+                break
+
+        always_once = True
+        while always_once or time.time() < ts:
+            always_once = False
+
+            # just so the clock looks nice and responsive, draw
+            # the title row here
+            stdscr.addstr(0, 0, "vpptop - %s" % (
+                time.strftime("%H:%M:%S")
+                ), curses.A_REVERSE)
+            stdscr.refresh()
+
+            # check for key presses
+            try:
+                c = stdscr.getch()
+            except:
+                continue
+
+            if c == 113 or c == 27:  # 'q' or Escape
+                running = False
+                break
+            elif c == 105:  # 'i'
+                args.filter_idle = not args.filter_idle
+            elif c == 116:  # 't'
+                v = not args.render_threads_coalesced
+                args.render_threads_coalesced = v
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description="Fetches and renders the VPP node graph.")
+    ap.add_argument('--api-dir', metavar="directory",
+                    default=find_api_dir(),
+                    help="Override the location of the API files; "
+                    "otherwise it will be searched for in "
+                    "well-known locations. [%(default)s]")
+
+    ro = ap.add_argument_group('Render options')
+    ro.add_argument('--render-threads-coalesced',
+                    action='store_true',
+                    help='Render node data from each threads into '
+                    'a single row.')
+    ro.add_argument('--render-sort',
+                    choices=sorted(all_column_names),
+                    default=None,
+                    help="Sort table by column. [%(default)s]")
+    ro.add_argument('--render-sort-reverse',
+                    action='store_true',
+                    help="Reverse the sort order")
+
+    fo = ap.add_argument_group('Filtering options')
+    fo.add_argument('--filter-orphans',
+                    action='store_true',
+                    help="Do not exclude orphan nodes.")
+    fo.add_argument('--filter-common-terminals',
+                    action='store_true',
+                    help='Exclude common terminal nodes, '
+                    'such as error-drop. '
+                    'This helps to de-clutter the graph.')
+    fo.add_argument('--filter-idle',
+                    action='store_true',
+                    help='Exclude nodes with no activity.')
+    # TODO:
+    # --filter-start-at <node>
+
+    args = ap.parse_args()
+
+    api_files = find_api_files(api_dir=args.api_dir, patterns='vpe')
+    if not api_files:
+        print("ERROR: No JSON API files found in '%s'." % args.api_dir)
+        exit(1)
+
+    vpp = VPP(api_files)
+    rc = vpp.connect('vpptop')
+    # TODO check rc
+
+    try:
+        curses.wrapper(run, args, vpp)
+    except KeyboardInterrupt:
+        pass
+    except:
+        raise
+
+    rc = vpp.disconnect()
+
+if __name__ == '__main__':
+    main()
+
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4

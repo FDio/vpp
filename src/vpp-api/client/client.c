@@ -522,3 +522,125 @@ vac_set_error_handler (vac_error_callback_t cb)
 {
   if (cb) clib_error_register_handler (cb, 0);
 }
+
+/**
+ * Retrieve data from a VPP vector via shared memory.
+ *
+ * A small number of API responses contain a field typically called
+ * @c result_in_shmem which is the literal value of a pointer to a VPP
+ * vector; that is, storage that has been allocated by the VPP process
+ * and accessible over the shared memory that can be mapped into other
+ * processes.
+ *
+ * To retrieve the data is a simple matter of turning the literal value
+ * into a pointer and using VPP's "vec" methods to determine the size
+ * of the block. However, it is also the responsibility of the receiving
+ * client to release that allocation and doing so requires some careful
+ * gymnastics.
+ * We first make a copy of the data on our own heap; we then acquire
+ * a lock on VPP's heap, swap to its heap context and free the vector,
+ * on VPP's heap, that the data resided within. After restoring the heap
+ * context and releasing the lock we return with the location of the copy.
+ *
+ * @warning Detecting invalid values of @c pointer is not possible.
+ *   Should that occur it is likely the program will be terminated with
+ *   @c SIGSEGV and it is likely the VPP process will become unstable.
+ *
+ * @attention If this function succeeds, the memory allocated by it
+ *   must be released after use by passing the value stored at
+ *   @c *buffer to @ref vac_buffer_free.
+ *
+ * @param pointer The literal value of @c reply_in_shmem which we should
+ *   treat as a pointer. This value is assumed to be in network order.
+ * @param buffer A pointer to a location in which we store the location
+ *   of the copy we made of the data. This value is untouched if any
+ *   error conditions occur.
+ * @param buflen A pointer to a location in which we store the length
+ *   of the data pointed to by @c *buffer.
+ * @return @c 1 on success, @c 0 otherwise. An error will typically occur
+ *   only if @c pointer is obviously invalid, allocating local memory
+ *   failed or there is no current connection to VPP.
+ */
+int
+vac_buffer_from_shmem (unsigned long pointer, char **buffer, int *buflen)
+{
+  vac_main_t *pm = &vac_main;
+  api_main_t *am = &api_main;
+  void *oldheap;
+  u8 *reply, *copy;
+  int len;
+
+  if (pointer == 0) /* avoid an obviously invalid case */
+    return 0;
+
+  if (!pm->connected_to_vlib)
+    return 0;
+
+  /* Copy the buffer from the sender.
+   * We do not need to hold the lock to do this; this is good
+   * because, if the pointer is invalid, a SIGSEGV would leave
+   * the lock intact thus ruining the rest of VPP's day.
+   */
+  reply = uword_to_pointer (clib_net_to_host_u64 (pointer), u8 *);
+  len = _vec_len (reply);
+  copy = malloc (len);
+  if (copy == NULL)
+    return 0;
+  clib_memcpy (copy, reply, len);
+
+  /* Free the original message in the senders heap.
+   * This has to be done in the context of VPP's own heap;
+   * this means we need to hold VPP's lock on that heap.
+   * We want to do this for as little time as possible.
+   */
+  pthread_mutex_lock (&am->vlib_rp->mutex);
+  oldheap = svm_push_data_heap (am->vlib_rp);
+  vec_free (reply);
+  svm_pop_heap (oldheap);
+  pthread_mutex_unlock (&am->vlib_rp->mutex);
+
+  /* Tell our caller where we put it. */
+  *buffer = (char *) copy;
+  *buflen = len;
+
+  return 1;
+}
+
+/**
+ * Copy data into a VPP vector inside the shared memory segment.
+ *
+ * Ostensibly for use with API calls that require use of shared
+ * memory for data passing.
+ *
+ * @note Not yet implemented. The only API call that makes use of
+ *   this, one of the CLI exec calls, is slated for deprecation.
+ */
+unsigned long
+vac_buffer_to_shmem (char *buffer, int buflen)
+{
+  /* TODO:
+   * get lock & push the remote heap context
+   * allocate a vec for the buffer
+   * pop & unlock
+   * copy buffer into vec region
+   * return vec pointer as unsigned lomg
+   */
+  (void) buffer;
+  (void) buflen;
+  return 0;
+}
+
+/**
+ * Free memory allocated by @ref vac_buffer_from_shmem.
+ *
+ * Memory allocated by @ref vac_buffer_from_shmem needs to be released
+ * back to the heap after use. This function makes that happen.
+ *
+ * @param buffer Pointer to memory allocated by
+ *   @ref vac_buffer_from_shmem.
+ */
+void
+vac_buffer_free (void *buffer)
+{
+  free (buffer);
+}
