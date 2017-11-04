@@ -192,18 +192,22 @@ dns46_reply_node_fn (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (dns46_reply_node) =
 {
-  .function = dns46_reply_node_fn,.name = "dns46_reply",.vector_size =
-    sizeof (u32),.format_trace = format_dns46_reply_trace,.type =
-    VLIB_NODE_TYPE_INTERNAL,.n_errors =
-    ARRAY_LEN (dns46_reply_error_strings),.error_strings =
-    dns46_reply_error_strings,.n_next_nodes = DNS46_REPLY_N_NEXT,
-    /* edit / add dispositions here */
-    .next_nodes =
-  {
-  [DNS46_REPLY_NEXT_DROP] = "error-drop",}
-,};
+  .function = dns46_reply_node_fn,
+  .name = "dns46_reply",
+  .vector_size = sizeof (u32),
+  .format_trace = format_dns46_reply_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (dns46_reply_error_strings),
+  .error_strings = dns46_reply_error_strings,
+  .n_next_nodes = DNS46_REPLY_N_NEXT,
+  .next_nodes = {
+    [DNS46_REPLY_NEXT_DROP] = "error-drop",
+  },
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON

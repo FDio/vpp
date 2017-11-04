@@ -820,6 +820,7 @@ libvnet_la_SOURCES +=				\
  vnet/dns/dns.h					\
  vnet/dns/dns_packet.h				\
  vnet/dns/reply_node.c				\
+ vnet/dns/request_node.c			\
  vnet/dns/resolver_process.c
 
 nobase_include_HEADERS +=			\

@@ -29,10 +29,21 @@ typedef struct
   u32 request_type;
   u32 client_index;
   u32 client_context;
-} pending_api_request_t;
+  u8 is_ip6;
+  u16 dst_port;
+  u16 id;
+  u16 pad;
+  u8 dst_address[16];
+  u8 *name;
+} dns_pending_request_t;
 
-#define DNS_API_PENDING_NAME_TO_IP 1
-#define DNS_API_PENDING_IP_TO_NAME 2
+typedef enum
+{
+  DNS_API_PENDING_NAME_TO_IP = 1,
+  DNS_API_PENDING_IP_TO_NAME,
+  DNS_PEER_PENDING_NAME_TO_IP,
+  DNS_PEER_PENDING_IP_TO_NAME,
+} dns_pending_request_type_t;
 
 typedef struct
 {
@@ -60,10 +71,8 @@ typedef struct
   /** Cached dns response */
   u8 *dns_response;
 
-  /** Clients awaiting responses */
-  pending_api_request_t *pending_api_requests;
-  ip4_address_t *ip4_peers_to_notify;
-  ip6_address_t *ip6_peers_to_notify;
+  /** Clients / peers awaiting responses */
+  dns_pending_request_t *pending_requests;
 } dns_cache_entry_t;
 
 #define DNS_CACHE_ENTRY_FLAG_VALID	(1<<0) /**< we have Actual Data */
@@ -108,7 +117,26 @@ typedef struct
 extern dns_main_t dns_main;
 
 extern vlib_node_registration_t dns46_reply_node;
+extern vlib_node_registration_t dns4_request_node;
+extern vlib_node_registration_t dns6_request_node;
 extern vlib_node_registration_t dns_resolver_node;
+
+#define foreach_dns46_request_error                                     \
+_(NONE, "No error")							\
+_(UNIMPLEMENTED, "Unimplemented")                                       \
+_(PROCESSED, "DNS request pkts processed")                              \
+_(IP_OPTIONS, "DNS pkts with ip options (dropped)")                     \
+_(BAD_REQUEST, "DNS pkts with serious discrepanices (dropped)")         \
+_(TOO_MANY_REQUESTS, "DNS pkts asking too many questions")              \
+_(RESOLUTION_REQUIRED, "DNS pkts pending upstream name resolution")
+
+typedef enum
+{
+#define _(sym,str) DNS46_REQUEST_ERROR_##sym,
+  foreach_dns46_request_error
+#undef _
+    DNS46_REQUEST_N_ERROR,
+} dns46_request_error_t;
 
 #define foreach_dns46_reply_error                       \
 _(PROCESSED, "DNS reply pkts processed")                \
@@ -129,6 +157,19 @@ int
 vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply);
 
 int vnet_dns_delete_entry_by_index_nolock (dns_main_t * dm, u32 index);
+
+int
+vnet_dns_resolve_name (dns_main_t * dm, u8 * name, dns_pending_request_t * t,
+		       dns_cache_entry_t ** retp);
+
+void vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * t,
+			   dns_cache_entry_t * ep, vlib_buffer_t * b0);
+
+void vnet_send_dns6_reply (dns_main_t * dm, dns_pending_request_t * t,
+			   dns_cache_entry_t * ep, vlib_buffer_t * b0);
+
+u8 *vnet_dns_labels_to_name (u8 * label, u8 * full_text,
+			     u8 ** parse_from_here);
 
 format_function_t format_dns_reply;
 

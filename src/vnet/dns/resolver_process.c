@@ -53,6 +53,7 @@ static void
 resolve_event (dns_main_t * dm, f64 now, u8 * reply)
 {
   vlib_main_t *vm = dm->vlib_main;
+  dns_pending_request_t *pr;
   dns_header_t *d;
   u32 pool_index;
   dns_cache_entry_t *ep;
@@ -99,51 +100,68 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
     ep->flags |= DNS_CACHE_ENTRY_FLAG_VALID;
 
   /* Most likely, send 1 message */
-  for (i = 0; i < vec_len (ep->pending_api_requests); i++)
+  for (i = 0; i < vec_len (ep->pending_requests); i++)
     {
       vl_api_registration_t *regp;
 
-      regp = vl_api_client_index_to_registration
-	(ep->pending_api_requests[i].client_index);
+      pr = vec_elt_at_index (ep->pending_requests, i);
 
-      if (regp == 0)
-	continue;
+      switch (pr->request_type)
+	{
+	case DNS_API_PENDING_NAME_TO_IP:
+	  {
+	    vl_api_dns_resolve_name_reply_t *rmp;
+	    regp = vl_api_client_index_to_registration (pr->client_index);
+	    if (regp == 0)
+	      continue;
 
-      if (ep->pending_api_requests[i].request_type
-	  == DNS_API_PENDING_NAME_TO_IP)
-	{
-	  vl_api_dns_resolve_name_reply_t *rmp;
-	  rmp = vl_msg_api_alloc (sizeof (*rmp));
-	  rmp->_vl_msg_id =
-	    clib_host_to_net_u16 (VL_API_DNS_RESOLVE_NAME_REPLY);
-	  rmp->context = ep->pending_api_requests[i].client_context;
-	  min_ttl = ~0;
-	  rv = vnet_dns_response_to_reply (ep->dns_response, rmp, &min_ttl);
-	  if (min_ttl != ~0)
-	    ep->expiration_time = now + min_ttl;
-	  rmp->retval = clib_host_to_net_u32 (rv);
-	  vl_msg_api_send (regp, (u8 *) rmp);
-	}
-      else
-	{
-	  vl_api_dns_resolve_ip_reply_t *rmp;
-	  rmp = vl_msg_api_alloc (sizeof (*rmp));
-	  rmp->_vl_msg_id =
-	    clib_host_to_net_u16 (VL_API_DNS_RESOLVE_IP_REPLY);
-	  rmp->context = ep->pending_api_requests[i].client_context;
-	  min_ttl = ~0;
-	  rv = vnet_dns_response_to_name (ep->dns_response, rmp, &min_ttl);
-	  if (min_ttl != ~0)
-	    ep->expiration_time = now + min_ttl;
-	  rmp->retval = clib_host_to_net_u32 (rv);
-	  vl_msg_api_send (regp, (u8 *) rmp);
+	    rmp = vl_msg_api_alloc (sizeof (*rmp));
+	    rmp->_vl_msg_id =
+	      clib_host_to_net_u16 (VL_API_DNS_RESOLVE_NAME_REPLY);
+	    rmp->context = pr->client_context;
+	    min_ttl = ~0;
+	    rv = vnet_dns_response_to_reply (ep->dns_response, rmp, &min_ttl);
+	    if (min_ttl != ~0)
+	      ep->expiration_time = now + min_ttl;
+	    rmp->retval = clib_host_to_net_u32 (rv);
+	    vl_msg_api_send (regp, (u8 *) rmp);
+	  }
+	  break;
+
+	case DNS_API_PENDING_IP_TO_NAME:
+	  {
+	    vl_api_dns_resolve_ip_reply_t *rmp;
+
+	    regp = vl_api_client_index_to_registration (pr->client_index);
+	    if (regp == 0)
+	      continue;
+
+	    rmp = vl_msg_api_alloc (sizeof (*rmp));
+	    rmp->_vl_msg_id =
+	      clib_host_to_net_u16 (VL_API_DNS_RESOLVE_IP_REPLY);
+	    rmp->context = pr->client_context;
+	    min_ttl = ~0;
+	    rv = vnet_dns_response_to_name (ep->dns_response, rmp, &min_ttl);
+	    if (min_ttl != ~0)
+	      ep->expiration_time = now + min_ttl;
+	    rmp->retval = clib_host_to_net_u32 (rv);
+	    vl_msg_api_send (regp, (u8 *) rmp);
+	  }
+	  break;
+
+	case DNS_PEER_PENDING_IP_TO_NAME:
+	case DNS_PEER_PENDING_NAME_TO_IP:
+	  if (pr->is_ip6)
+	    vnet_send_dns6_reply (dm, pr, ep, 0 /* allocate a buffer */ );
+	  else
+	    vnet_send_dns4_reply (dm, pr, ep, 0 /* allocate a buffer */ );
+	  break;
+	default:
+	  clib_warning ("request type %d unknown", pr->request_type);
+	  break;
 	}
     }
-  vec_free (ep->pending_api_requests);
-
-  /* $$$ Add ip4/ip6 reply code */
-  vec_free (ep->ip4_peers_to_notify);
-  vec_free (ep->ip6_peers_to_notify);
+  vec_free (ep->pending_requests);
 
   for (i = 0; i < vec_len (dm->unresolved_entries); i++)
     {
