@@ -22,7 +22,7 @@ import collections
 import struct
 import json
 import threading
-import glob
+import fnmatch
 import atexit
 from cffi import FFI
 import cffi
@@ -144,7 +144,14 @@ class VPP():
 
         if not apifiles:
             # Pick up API definitions from default directory
-            apifiles = glob.glob('/usr/share/vpp/api/*.api.json')
+            try:
+                apifiles = self.find_api_files()
+            except RuntimeError:
+                # In test mode we don't care that we can't find the API files
+                if testmode:
+                    apifiles = []
+                else:
+                    raise
 
         for file in apifiles:
             with open(file) as apidef_file:
@@ -186,6 +193,131 @@ class VPP():
                 self.context += 1
                 return self.context
     get_context = ContextId()
+
+    @classmethod
+    def find_api_dir(cls):
+        """Attempt to find the best directory in which API definition
+        files may reside. If the value VPP_API_DIR exists in the environment
+        then it is first on the search list. If we're inside a recognized
+        location in a VPP source tree (src/scripts and src/vpp-api/python)
+        then entries from there to the likely locations in build-root are
+        added. Finally the location used by system packages is added.
+
+        :returns: A single directory name, or None if no such directory
+            could be found.
+        """
+        dirs = []
+
+        if 'VPP_API_DIR' in os.environ:
+            dirs.append(os.environ['VPP_API_DIR'])
+
+        # perhaps we're in the 'src/scripts' or 'src/vpp-api/python' dir;
+        # in which case, plot a course to likely places in the src tree
+        import __main__ as main
+        if hasattr(main, '__file__'):
+            # get the path of the calling script
+            localdir = os.path.dirname(os.path.realpath(main.__file__))
+        else:
+            # use cwd if there is no calling script
+            localdir = os.cwd()
+        localdir_s = localdir.split(os.path.sep)
+
+        def dmatch(dir):
+            """Match dir against right-hand components of the script dir"""
+            d = dir.split('/')  # param 'dir' assumes a / separator
+            l = len(d)
+            return len(localdir_s) > l and localdir_s[-l:] == d
+
+        def sdir(srcdir, variant):
+            """Build a path from srcdir to the staged API files of
+            'variant'  (typically '' or '_debug')"""
+            # Since 'core' and 'plugin' files are staged
+            # in separate directories, we target the parent dir.
+            return os.path.sep.join((
+                srcdir,
+                'build-root',
+                'install-vpp%s-native' % variant,
+                'vpp',
+                'share',
+                'vpp',
+                'api',
+            ))
+
+        srcdir = None
+        if dmatch('src/scripts'):
+            srcdir = os.path.sep.join(localdir_s[:-2])
+        elif dmatch('src/vpp-api/python'):
+            srcdir = os.path.sep.join(localdir_s[:-3])
+        elif dmatch('test'):
+            # we're apparently running tests
+            srcdir = os.path.sep.join(localdir_s[:-1])
+
+        if srcdir:
+            # we're in the source tree, try both the debug and release
+            # variants.
+            x = 'vpp/share/vpp/api'
+            dirs.append(sdir(srcdir, '_debug'))
+            dirs.append(sdir(srcdir, ''))
+
+        # Test for staged copies of the scripts
+        # For these, since we explicitly know if we're running a debug versus
+        # release variant, target only the relevant directory
+        if dmatch('build-root/install-vpp_debug-native/vpp/bin'):
+            srcdir = os.path.sep.join(localdir_s[:-4])
+            dirs.append(sdir(srcdir, '_debug'))
+        if dmatch('build-root/install-vpp-native/vpp/bin'):
+            srcdir = os.path.sep.join(localdir_s[:-4])
+            dirs.append(sdir(srcdir, ''))
+
+        # finally, try the location system packages typically install into
+        dirs.append(os.path.sep.join(('', 'usr', 'share', 'vpp', 'api')))
+
+        # check the directories for existance; first one wins
+        for dir in dirs:
+            if os.path.isdir(dir):
+                return dir
+
+        return None
+
+    @classmethod
+    def find_api_files(cls, api_dir=None, patterns='*'):
+        """Find API definition files from the given directory tree with the
+        given pattern. If no directory is given then find_api_dir() is used
+        to locate one. If no pattern is given then all definition files found
+        in the directory tree are used.
+
+        :param api_dir: A directory tree in which to locate API definition
+            files; subdirectories are descended into.
+            If this is None then find_api_dir() is called to discover it.
+        :param patterns: A list of patterns to use in each visited directory
+            when looking for files.
+            This can be a list/tuple object or a comma-separated string of
+            patterns. Each value in the list will have leading/trialing
+            whitespace stripped.
+            The pattern specifies the first part of the filename, '.api.json'
+            is appended.
+            The results are de-duplicated, thus overlapping patterns are fine.
+            If this is None it defaults to '*' meaning "all API files".
+        :returns: A list of file paths for the API files found.
+        """
+        if api_dir is None:
+            api_dir = cls.find_api_dir()
+            if api_dir is None:
+                raise RuntimeError("api_dir cannot be located")
+
+        if isinstance(patterns, list) or isinstance(patterns, tuple):
+            patterns = [p.strip() + '.api.json' for p in patterns]
+        else:
+            patterns = [p.strip() + '.api.json' for p in patterns.split(",")]
+
+        api_files = []
+        for root, dirnames, files in os.walk(api_dir):
+            # iterate all given patterns and de-dup the result
+            files = set(sum([fnmatch.filter(files, p) for p in patterns], []))
+            for filename in files:
+                api_files.append(os.path.join(root, filename))
+
+        return api_files
 
     def status(self):
         """Debug function: report current VPP API status to stdout."""
@@ -283,7 +415,7 @@ class VPP():
                         if v[0] in kwargs:
                             l = kwargs[v[0]]
                             if l != len(kwargs[k]):
-                                raise ValueError(1, 'Input list length mistmatch: %s (%s != %s)' % (k, l, len(kwargs[k])))
+                                raise ValueError(1, 'Input list length mismatch: %s (%s != %s)' % (k, l, len(kwargs[k])))
                         else:
                             l = len(kwargs[k])
                         if v[1].size == 1:
@@ -299,7 +431,7 @@ class VPP():
                         size = v(self, True, buf, off, kwargs[k])
                     else:
                         if type(kwargs[k]) is str and v.size < len(kwargs[k]):
-                            raise ValueError(1, 'Input list length mistmatch: %s (%s < %s)' % (k, v.size, len(kwargs[k])))
+                            raise ValueError(1, 'Input list length mismatch: %s (%s < %s)' % (k, v.size, len(kwargs[k])))
                         v.pack_into(buf, off, kwargs[k])
                         size = v.size
             else:
@@ -321,7 +453,7 @@ class VPP():
 
     def encode(self, msgdef, kwargs):
         # Make suitably large buffer
-    	size = self.get_size(msgdef['sizes'], kwargs)
+        size = self.get_size(msgdef['sizes'], kwargs)
         buf = bytearray(size)
         offset = 0
         size = self.__struct_type(True, msgdef, buf, offset, kwargs)
@@ -719,3 +851,6 @@ class VPP():
             msgname = type(r).__name__
             if self.event_callback:
                 self.event_callback(msgname, r)
+
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
