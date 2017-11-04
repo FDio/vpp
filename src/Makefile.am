@@ -70,6 +70,7 @@ include vpp.am
 include vpp-api-test.am
 include uri.am
 include vcl.am
+include scripts.am
 
 SUBDIRS += plugins
 SUBDIRS += vpp-api/vapi

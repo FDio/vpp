@@ -1,5 +1,5 @@
 
-VPPAPICLIENT_17.07 {
+VPPAPICLIENT_18.02 {
 	global:
 	vac_read;
 	vac_write;
@@ -12,6 +12,8 @@ VPPAPICLIENT_17.07 {
 	vac_rx_resume;
 	vac_free;
 	vac_msg_table_size;
+        vac_buffer_from_shmem;
+        vac_buffer_free;
 
 	api_main;
 

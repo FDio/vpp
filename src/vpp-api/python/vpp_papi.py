@@ -24,6 +24,7 @@ import json
 import threading
 import glob
 import atexit
+import fnmatch
 from cffi import FFI
 import cffi
 
@@ -50,6 +51,9 @@ int vac_msg_table_max_index(void);
 void vac_rx_suspend (void);
 void vac_rx_resume (void);
 void vac_set_error_handler(vac_error_callback_t);
+
+int vac_buffer_from_shmem(unsigned long pointer, char **buffer, int *buflen);
+void vac_buffer_free(void *v);
  """)
 
 # Barfs on failure, no need to check success.
@@ -144,7 +148,14 @@ class VPP():
 
         if not apifiles:
             # Pick up API definitions from default directory
-            apifiles = glob.glob('/usr/share/vpp/api/*.api.json')
+            try:
+                apifiles = self.find_api_files()
+            except RuntimeError:
+                # In test mode we don't care that we can't find the API files
+                if testmode:
+                    apifiles = []
+                else:
+                    raise
 
         for file in apifiles:
             with open(file) as apidef_file:
@@ -186,6 +197,127 @@ class VPP():
                 self.context += 1
                 return self.context
     get_context = ContextId()
+
+    @classmethod
+    def find_api_dir(cls):
+        """Attempt to find the best directory in which API definition
+        files may reside. If the value VPP_API_DIR exists in the environment
+        then it is first on the search list. If we're inside a recognized
+        location in a VPP source tree (src/scripts and src/vpp-api/python)
+        then entries from there to the likely locations in build-root are
+        added. Finally the location used by system packages is added.
+
+        :returns: A single directory name, or None if no such directory
+            could be found.
+        """
+        dirs = []
+
+        if 'VPP_API_DIR' in os.environ:
+            dirs.append(os.environ['VPP_API_DIR'])
+
+        # perhaps we're in the 'src/scripts' or 'src/vpp-api/python' dir;
+        # in which case, plot a course to likely places in the src tree
+        import __main__ as main
+        if hasattr(main, '__file__'):
+            # get the path of the calling script
+            localdir = os.path.dirname(os.path.realpath(main.__file__))
+        else:
+            # use cwd if there is no calling script
+            localdir = os.cwd()
+        localdir_s = localdir.split(os.path.sep)
+
+        def dmatch(dir):
+            """Match dir against right-hand components of the script dir"""
+            d = dir.split('/')  # param 'dir' assumes a / separator
+            l = len(d)
+            return len(localdir_s) > l and localdir_s[-l:] == d
+
+        def sdir(srcdir, variant):
+            """Build a path from srcdir to the staged API files of
+            'variant'"""
+            # Since 'core' and 'plugin' files are staged 
+            # in separate directories, we target the parent dir.
+            return os.path.sep.join((
+                srcdir,
+                'build-root',
+                'install-vpp%s-native' % variant,
+                'vpp',
+                'share',
+                'vpp',
+                'api',
+            ))
+
+        srcdir = None
+        if dmatch('src/scripts'):
+            srcdir = os.path.sep.join(localdir_s[:-2])
+        elif dmatch('src/vpp-api/python'):
+            srcdir = os.path.sep.join(localdir_s[:-3])
+        elif dmatch('test'):
+            # we're apparently running tests
+            srcdir = os.path.sep.join(localdir_s[:-1])
+
+        if srcdir:
+            # we're in the source tree, try both the debug and release
+            # variants.
+            x = 'vpp/share/vpp/api'
+            dirs.append(sdir(srcdir, '_debug'))
+            dirs.append(sdir(srcdir, ''))
+
+        # Test for staged copies of the scripts
+        # For these, since we explicitly know if we're running a debug versus
+        # release variant, target only the relevant directory
+        if dmatch('build-root/install-vpp_debug-native/vpp/bin'):
+            srcdir = os.path.sep.join(localdir_s[:-4])
+            dirs.append(sdir(srcdir, '_debug'))
+        if dmatch('build-root/install-vpp-native/vpp/bin'):
+            srcdir = os.path.sep.join(localdir_s[:-4])
+            dirs.append(sdir(srcdir, ''))
+
+        # finally, try the location system packages typically install into
+        dirs.append(os.path.sep.join(('', 'usr', 'share', 'vpp', 'api')))
+
+        # check the directories for existance; first one wins
+        for dir in dirs:
+            if os.path.isdir(dir):
+                return dir
+
+        return None
+
+    @classmethod
+    def find_api_files(cls, api_dir=None, patterns='*'):
+        """Find API definition files from the given directory with the
+        given pattern. If no directory is given then find_api_dir() is used
+        to locate one. If no pattern is given then all definition files in
+        that directory are used.
+
+        :param api_dir: A directory tree in which to locate API definition
+            files. If this is None then find_api_dir is called.
+        :param patterns: A list of patterns to use when looking for files.
+            This can be a list object or a comma-separated string of patterns.
+            The pattern specifies the first part of the filename, '.api.json'
+            is appended. The results are de-duplicated, thus overlapping
+            patterns are fine. If this is None it defaults to '*' meaning
+            "all API files".
+        :returns: A list of file paths for the API files found.
+        """
+        if api_dir is None:
+            api_dir = cls.find_api_dir()
+            if api_dir is None:
+                raise RuntimeError("api_dir cannot be located")
+
+        if isinstance(patterns, list) or isinstance(patterns, tuple):
+            patterns = [p.strip() + '.api.json' for p in patterns]
+        else:
+            patterns = [p.strip() + '.api.json' for p in patterns.split(",")]
+
+        api_files = []
+        for root, dirnames, files in os.walk(api_dir):
+            # iterate all given patterns and de-dup the result
+            files = set(sum([fnmatch.filter(files, p) for p in patterns], []))
+            for filename in files:
+                api_files.append(os.path.join(root, filename))
+
+        return api_files
 
     def status(self):
         """Debug function: report current VPP API status to stdout."""
@@ -283,7 +415,7 @@ class VPP():
                         if v[0] in kwargs:
                             l = kwargs[v[0]]
                             if l != len(kwargs[k]):
-                                raise ValueError(1, 'Input list length mistmatch: %s (%s != %s)' % (k, l, len(kwargs[k])))
+                                raise ValueError(1, 'Input list length mismatch: %s (%s != %s)' % (k, l, len(kwargs[k])))
                         else:
                             l = len(kwargs[k])
                         if v[1].size == 1:
@@ -299,7 +431,7 @@ class VPP():
                         size = v(self, True, buf, off, kwargs[k])
                     else:
                         if type(kwargs[k]) is str and v.size < len(kwargs[k]):
-                            raise ValueError(1, 'Input list length mistmatch: %s (%s < %s)' % (k, v.size, len(kwargs[k])))
+                            raise ValueError(1, 'Input list length mismatch: %s (%s < %s)' % (k, v.size, len(kwargs[k])))
                         v.pack_into(buf, off, kwargs[k])
                         size = v.size
             else:
@@ -321,7 +453,7 @@ class VPP():
 
     def encode(self, msgdef, kwargs):
         # Make suitably large buffer
-    	size = self.get_size(msgdef['sizes'], kwargs)
+        size = self.get_size(msgdef['sizes'], kwargs)
         buf = bytearray(size)
         offset = 0
         size = self.__struct_type(True, msgdef, buf, offset, kwargs)
@@ -375,6 +507,21 @@ class VPP():
                 else:
                     res.append(v.unpack_from(buf, off)[0])
                     size = v.size
+
+            if k == 'reply_in_shmem':
+                pointer = res[-1]
+                if pointer > 0:
+                    # If the result needs to be rescued from shared memory,
+                    # go take care of it. If we don't do this, VPP leaks
+                    # memory should such API calls be made. This could do
+                    # with a better convention for identifying this situation.
+                    buf = self._fetch_result_from_shmem(pointer)
+                else:
+                    buf = None
+
+                # Replace the useless pointer value with the buffer
+                # retrieved (if any).
+                res[-1] = buf
 
         return off + size - offset, msgdef['return_tuple']._make(res)
 
@@ -719,3 +866,55 @@ class VPP():
             msgname = type(r).__name__
             if self.event_callback:
                 self.event_callback(msgname, r)
+
+    def _fetch_result_from_shmem(self, pointer):
+        """Retrieves a result from a VPP vector via shared memory.
+
+        A small number of API responses contain a field typically called
+        'result_in_shmem' which is the literal value of the location in
+        memory (in the C language this is called a pointer) of a VPP
+        vector; that is, storage that has been allocated by the VPP process
+        and accessible over the shared memory that can be mapped into other
+        processes.
+
+        To retrieve the data is a simple matter of turning the literal value
+        into a pointer and using VPP's "vec" methods to determine the size
+        of the block. However, it is also the responsibility of the receiving
+        client to release that allocation and doing that requires some careful
+        gymnastics.
+
+        Both of these steps are taken care of by the 'vac_buffer_from_shmem'
+        routine in the 'libvppapiclient' library.  Specifically that function
+        returns a _copy_ of the memory allocated from our own heap.
+
+        We then make a further copy into a Python object and free the first
+        copy back to our heap. It is possible we could engineer a way to
+        avoid this undesirable double-copy technique but, for the sake of
+        robustness, this is what we have right now.
+
+        Note that detecting invalid values of 'pointer' is not possible.
+        Should that occur it is likely the program will be terminated with
+        SIGSEGV and it is likely the VPP process will become unstable.
+
+        :param pointer: The literal value of 'reply_in_shmem' which we should
+            treat as a pointer.
+        :rtype: bytes
+        :returns: A Python 'bytes' object of the data retrieved.
+        """
+
+        buf = ffi.new("char **")
+        buflen = ffi.new("int *")
+
+        # Fetch a copy of the shared memory area
+        self.vpp_api.vac_buffer_from_shmem(pointer, buf, buflen)
+
+        # Make a copy of that as a python bytestream
+        blob = bytes(ffi.buffer(buf[0], buflen[0]))
+
+        # Free the first copy.
+        self.vpp_api.vac_buffer_free(buf[0])
+
+        return blob
+
+
+# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
