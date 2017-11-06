@@ -397,8 +397,8 @@ static const unsigned optional = 0;
 #define CHECK_MANDATORY(t, n, s, r, ...)                                  \
   PRAGMA_STR1                                                             \
   if (mandatory == r && !have_##n)                                        \
-    PRAGMA_STR2                                                           \
     {                                                                     \
+      PRAGMA_STR2                                                         \
       ret = clib_error_return (0, "Required parameter `%s' missing.", s); \
       goto out;                                                           \
     }
