@@ -113,6 +113,10 @@ typedef struct _session_rule_add_del_args
    * Rule scope flag.
    */
   u8 scope;
+  /**
+   * Transport protocol for the rule
+   */
+  u8 transport_proto;
 } session_rule_add_del_args_t;
 
 clib_error_t *vnet_session_rule_add_del (session_rule_add_del_args_t * args);

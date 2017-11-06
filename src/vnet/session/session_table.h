@@ -37,7 +37,7 @@ typedef struct _session_lookup_table
   /**
    * Per fib proto and transport proto session rules tables
    */
-  session_rules_table_t session_rules;
+  session_rules_table_t session_rules[TRANSPORT_N_PROTO];
 
   /** Flag that indicates if table has local scope */
   u8 is_local;

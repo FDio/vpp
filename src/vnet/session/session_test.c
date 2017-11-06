@@ -506,8 +506,7 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
 		action_index - 1);
 
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
-				 lcl_port, rmt_port);
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 1),
 		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 1: %d",
 		res);
@@ -561,8 +560,7 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
    * and  3.3.3.3 1234 7.7.7.7 4321
    */
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
-				 lcl_port, rmt_port);
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 3),
 		"Lookup 1.2.3.4 1234 5.6.7.8 4321 action " "should be 3: %d",
 		res);
@@ -570,15 +568,14 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   lcl_lkup.as_u32 = clib_host_to_net_u32 (0x01020204);
   rmt_lkup.as_u32 = clib_host_to_net_u32 (0x05060709);
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_lkup,
+    session_rules_table_lookup4 (srt, &lcl_lkup,
 				 &rmt_lkup, lcl_port, rmt_port);
   SESSION_TEST ((res == 1),
 		"Lookup 1.2.2.4 1234 5.6.7.9 4321, action " "should be 1: %d",
 		res);
 
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip3, &rmt_ip3,
-				 lcl_port, rmt_port);
+    session_rules_table_lookup4 (srt, &lcl_ip3, &rmt_ip3, lcl_port, rmt_port);
   SESSION_TEST ((res == 6),
 		"Lookup 3.3.3.3 1234 7.7.7.7 4321, action "
 		"should be 6 (updated): %d", res);
@@ -598,13 +595,12 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((error == 0), "Add 1.2.3.4/24 * 5.6.7.8/24 * action %d",
 		action_index - 1);
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
-				 lcl_port, rmt_port);
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 7),
 		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should"
 		" be 7 (lpm dst): %d", res);
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip,
 				 lcl_port + 1, rmt_port);
   SESSION_TEST ((res == 7),
 		"Lookup 1.2.3.4 1235 5.6.7.8 4321, action should " "be 7: %d",
@@ -645,23 +641,21 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
 		action_index - 1);
 
   if (verbose)
-    session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP4,
-				  TRANSPORT_PROTO_TCP);
+    session_rules_table_cli_dump (vm, srt, FIB_PROTOCOL_IP4);
 
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
-				 lcl_port, rmt_port);
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 3),
 		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 3: %d",
 		res);
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip,
 				 lcl_port + 1, rmt_port);
   SESSION_TEST ((res == 9),
 		"Lookup 1.2.3.4 1235 5.6.7.8 4321, action should " "be 9: %d",
 		res);
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip,
 				 lcl_port + 1, rmt_port + 1);
   SESSION_TEST ((res == 8),
 		"Lookup 1.2.3.4 1235 5.6.7.8 4322, action should " "be 8: %d",
@@ -679,8 +673,7 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   error = session_rules_table_add_del (srt, &args);
   SESSION_TEST ((error == 0), "Del 1.2.0.0/16 1234 5.6.0.0/16 4321");
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
-				 lcl_port, rmt_port);
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 3),
 		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 3: %d",
 		res);
@@ -691,8 +684,7 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   error = session_rules_table_add_del (srt, &args);
   SESSION_TEST ((error == 0), "Del 1.2.0.0/16 * 5.6.0.0/16 *");
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
-				 lcl_port, rmt_port);
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 3),
 		"Lookup 1.2.3.4 1234 5.6.7.8 4321, action should " "be 3: %d",
 		res);
@@ -710,8 +702,7 @@ session_test_rule_table (vlib_main_t * vm, unformat_input_t * input)
   error = session_rules_table_add_del (srt, &args);
   SESSION_TEST ((error == 0), "Del 1.2.3.4/24 1234 5.6.7.5/24");
   res =
-    session_rules_table_lookup4 (srt, TRANSPORT_PROTO_TCP, &lcl_ip, &rmt_ip,
-				 lcl_port, rmt_port);
+    session_rules_table_lookup4 (srt, &lcl_ip, &rmt_ip, lcl_port, rmt_port);
   SESSION_TEST ((res == 2), "Action should be 2: %d", res);
 
   return 0;
@@ -959,6 +950,32 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 				      &rmt_pref.fp_addr.ip4, lcl_port,
 				      rmt_port, TRANSPORT_PROTO_TCP, 0);
   SESSION_TEST ((tc == 0), "optimized lookup should not work (no-rule)");
+
+  /*
+   * Test tags. Add/del rule with tag
+   */
+  args.table_args.is_add = 1;
+  args.table_args.lcl_port = 1234;
+  args.table_args.lcl.fp_addr.ip4 = lcl_ip;
+  args.table_args.lcl.fp_len = 16;
+  args.table_args.rmt.fp_addr.ip4 = rmt_ip;
+  args.table_args.rmt.fp_len = 16;
+  args.table_args.tag = format (0, "test_rule");
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "Add 1.2.3.4/16 1234 5.6.7.8/16 4321 drop "
+		"tag test_rule");
+  if (verbose)
+    {
+      session_lookup_dump_rules_table (0, FIB_PROTOCOL_IP4,
+				       TRANSPORT_PROTO_TCP);
+      session_lookup_dump_local_rules_table (0, FIB_PROTOCOL_IP4,
+					     TRANSPORT_PROTO_TCP);
+    }
+  args.table_args.is_add = 0;
+  args.table_args.lcl_port += 1;
+  SESSION_TEST ((error == 0), "Del 1.2.3.4/32 1234 5.6.7.8/32 4321 drop "
+		"tag test_rule");
+
   return 0;
 }
 
