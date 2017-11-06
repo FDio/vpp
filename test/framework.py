@@ -76,9 +76,15 @@ def pump_output(testclass):
         if testclass.vpp.stdout.fileno() in readable:
             read = os.read(testclass.vpp.stdout.fileno(), 1024)
             testclass.vpp_stdout_deque.append(read)
+            if not testclass.cache_vpp_output:
+                for line in read.splitlines():
+                    testclass.logger.debug("VPP STDOUT: %s" % line)
         if testclass.vpp.stderr.fileno() in readable:
             read = os.read(testclass.vpp.stderr.fileno(), 1024)
             testclass.vpp_stderr_deque.append(read)
+            if not testclass.cache_vpp_output:
+                for line in read.splitlines():
+                    testclass.logger.debug("VPP STDERR: %s" % line)
         # ignoring the dummy pipe here intentionally - the flag will take care
         # of properly terminating the loop
 
@@ -190,6 +196,12 @@ class VppTestCase(unittest.TestCase):
             d = os.getenv("DEBUG")
         except:
             d = None
+        try:
+            c = os.getenv("CACHE_OUTPUT", "1")
+            cls.cache_vpp_output = \
+                True if c.lower() in ("y", "yes", "1") else False
+        except:
+            cls.cache_vpp_output = True
         cls.set_debug_flags(d)
         cls.vpp_bin = os.getenv('VPP_TEST_BIN', "vpp")
         cls.plugin_path = os.getenv('VPP_TEST_PLUGIN_PATH')

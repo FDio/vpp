@@ -355,6 +355,7 @@ define test
 	  EXTENDED_TESTS=$(EXTENDED_TESTS) \
 	  PYTHON=$(PYTHON) \
 	  OS_ID=$(OS_ID) \
+	  CACHE_OUTPUT=$(CACHE_OUTPUT) \
 	  $(3)
 endef
 

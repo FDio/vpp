@@ -210,6 +210,7 @@ help:
 	@echo ""
 	@echo "Arguments controlling test runs:"
 	@echo " V=[0|1|2]            - set test verbosity level"
+	@echo " CACHE_OUTPUT=[0|1]   - cache VPP stdout/stderr and log as one block after test finishes (default: 1)"
 	@echo " FAILFAST=[0|1]       - fail fast if 1, complete all tests if 0"
 	@echo " TIMEOUT=<timeout>    - fail test suite if any single test takes longer than <timeout> to finish"
 	@echo " RETRIES=<n>          - retry failed tests <n> times"
