@@ -32,8 +32,7 @@ override_dh_install:
 
 override_dh_shlibdeps:
 	@dh_shlibdeps 2>&1 \
-	  | grep -v "probably a plugin" \
-	  | grep -v "similar warnings have been skipped"
+	  | { grep -v -e "probably a plugin" -e "similar warnings have been skipped" || true; }
 
 override_dh_strip:
 	dh_strip --dbg-package=vpp-dbg
