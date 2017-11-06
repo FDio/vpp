@@ -518,12 +518,17 @@ libvnet_la_SOURCES +=				\
  vnet/udp/builtin_server.c			\
  vnet/udp/udp_format.c				\
  vnet/udp/udp_local.c				\
- vnet/udp/udp_pg.c
+ vnet/udp/udp_pg.c				\
+ vnet/udp/udp_encap_node.c			\
+ vnet/udp/udp_encap.c				\
+ vnet/udp/udp_api.c
 
 nobase_include_HEADERS +=			\
   vnet/udp/udp_error.def                       	\
   vnet/udp/udp.h                               	\
   vnet/udp/udp_packet.h
+
+API_FILES += vnet/udp/udp.api
 
 ########################################
 # Tunnel protocol: gre
