@@ -23,6 +23,7 @@
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_det.h>
 #include <nat/nat64.h>
+#include <nat/dslite.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
 
@@ -1448,12 +1449,14 @@ static clib_error_t * snat_init (vlib_main_t * vm)
 
   error = nat64_init(vm);
 
+  dslite_init(vm);
+
   return error;
 }
 
 VLIB_INIT_FUNCTION (snat_init);
 
-void snat_free_outside_address_and_port (snat_main_t * sm,
+void snat_free_outside_address_and_port (snat_address_t * addresses,
                                          u32 thread_index,
                                          snat_session_key_t * k,
                                          u32 address_index)
@@ -1461,9 +1464,9 @@ void snat_free_outside_address_and_port (snat_main_t * sm,
   snat_address_t *a;
   u16 port_host_byte_order = clib_net_to_host_u16 (k->port);
 
-  ASSERT (address_index < vec_len (sm->addresses));
+  ASSERT (address_index < vec_len (addresses));
 
-  a = sm->addresses + address_index;
+  a = addresses + address_index;
 
   switch (k->protocol)
     {
@@ -1572,38 +1575,42 @@ int snat_static_mapping_match (snat_main_t * sm,
 }
 
 static_always_inline u16
-snat_random_port (snat_main_t * sm, u16 min, u16 max)
+snat_random_port (u16 min, u16 max)
 {
+  snat_main_t *sm = &snat_main;
   return min + random_u32 (&sm->random_seed) /
     (random_u32_max() / (max - min + 1) + 1);
 }
 
-int snat_alloc_outside_address_and_port (snat_main_t * sm,
+int snat_alloc_outside_address_and_port (snat_address_t * addresses,
                                          u32 fib_index,
                                          u32 thread_index,
                                          snat_session_key_t * k,
-                                         u32 * address_indexp)
+                                         u32 * address_indexp,
+                                         u8 vrf_mode,
+                                         u16 port_per_thread,
+                                         u32 snat_thread_index)
 {
   int i;
   snat_address_t *a;
   u32 portnum;
 
-  for (i = 0; i < vec_len (sm->addresses); i++)
+  for (i = 0; i < vec_len (addresses); i++)
     {
-      a = sm->addresses + i;
-      if (sm->vrf_mode && a->fib_index != ~0 && a->fib_index != fib_index)
+      a = addresses + i;
+      if (vrf_mode && a->fib_index != ~0 && a->fib_index != fib_index)
         continue;
       switch (k->protocol)
         {
 #define _(N, j, n, s) \
         case SNAT_PROTOCOL_##N: \
-          if (a->busy_##n##_ports_per_thread[thread_index] < sm->port_per_thread) \
+          if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread) \
             { \
               while (1) \
                 { \
-                  portnum = (sm->port_per_thread * \
-                    sm->per_thread_data[thread_index].snat_thread_index) + \
-                    snat_random_port(sm, 1, sm->port_per_thread) + 1024; \
+                  portnum = (port_per_thread * \
+                    snat_thread_index) + \
+                    snat_random_port(1, port_per_thread) + 1024; \
                   if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
                     continue; \
                   clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \

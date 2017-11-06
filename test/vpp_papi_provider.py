@@ -1647,6 +1647,34 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.nat64_prefix_dump, {})
 
+    def dslite_set_aftr_addr(self, ip6, ip4):
+        """Set DS-Lite AFTR addresses
+
+        :param ip4: IPv4 address
+        :param ip6: IPv6 address
+        """
+        return self.api(
+            self.papi.dslite_set_aftr_addr,
+            {'ip4_addr': ip4,
+             'ip6_addr': ip6})
+
+    def dslite_add_del_pool_addr_range(
+            self,
+            start_addr,
+            end_addr,
+            is_add=1):
+        """Add/del address range to DS-Lite pool
+
+        :param start_addr: First IP address
+        :param end_addr: Last IP address
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(
+            self.papi.dslite_add_del_pool_addr_range,
+            {'start_addr': start_addr,
+             'end_addr': end_addr,
+             'is_add': is_add})
+
     def control_ping(self):
         self.api(self.papi.control_ping)
 

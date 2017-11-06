@@ -376,16 +376,19 @@ extern vlib_node_registration_t snat_det_out2in_node;
 extern vlib_node_registration_t snat_hairpin_dst_node;
 extern vlib_node_registration_t snat_hairpin_src_node;
 
-void snat_free_outside_address_and_port (snat_main_t * sm,
+void snat_free_outside_address_and_port (snat_address_t * addresses,
                                          u32 thread_index,
                                          snat_session_key_t * k,
                                          u32 address_index);
 
-int snat_alloc_outside_address_and_port (snat_main_t * sm,
+int snat_alloc_outside_address_and_port (snat_address_t * addresses,
                                          u32 fib_index,
                                          u32 thread_index,
                                          snat_session_key_t * k,
-                                         u32 * address_indexp);
+                                         u32 * address_indexp,
+                                         u8 vrf_mode,
+                                         u16 port_per_thread,
+                                         u32 snat_thread_index);
 
 int snat_static_mapping_match (snat_main_t * sm,
                                snat_session_key_t match,
