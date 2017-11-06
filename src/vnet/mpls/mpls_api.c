@@ -234,9 +234,11 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
                                    mp->mr_is_rpf_id,
                                    0,	// l2_bridged
                                    0,   // is source_lookup
+                                   0,   // is_udp_encap
 				   fib_index, &pfx,
 				   mp->mr_next_hop_proto,
-				   &nh, ntohl (mp->mr_next_hop_sw_if_index),
+				   &nh, ~0, // next_hop_id
+                                   ntohl (mp->mr_next_hop_sw_if_index),
 				   next_hop_fib_index,
 				   mp->mr_next_hop_weight,
 				   mp->mr_next_hop_preference,

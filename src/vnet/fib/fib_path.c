@@ -36,6 +36,7 @@
 #include <vnet/fib/fib_internal.h>
 #include <vnet/fib/fib_urpf_list.h>
 #include <vnet/fib/mpls_fib.h>
+#include <vnet/udp/udp_encap.h>
 
 /**
  * Enurmeration of path types
@@ -74,6 +75,10 @@ typedef enum fib_path_type_t_ {
      */
     FIB_PATH_TYPE_INTF_RX,
     /**
+     * interface receive.
+     */
+    FIB_PATH_TYPE_UDP_ENCAP,
+    /**
      * receive. it's for-us.
      */
     FIB_PATH_TYPE_RECEIVE,
@@ -96,6 +101,7 @@ typedef enum fib_path_type_t_ {
     [FIB_PATH_TYPE_EXCLUSIVE]         = "exclusive",	        \
     [FIB_PATH_TYPE_DEAG]              = "deag",	                \
     [FIB_PATH_TYPE_INTF_RX]           = "intf-rx",	        \
+    [FIB_PATH_TYPE_UDP_ENCAP]         = "udp-encap",	        \
     [FIB_PATH_TYPE_RECEIVE]           = "receive",	        \
 }
 
@@ -285,6 +291,12 @@ typedef struct fib_path_t_ {
 	     */
 	    u32 fp_interface;
 	} intf_rx;
+	struct {
+	    /**
+	     * The UDP Encap object this path resolves through
+	     */
+	    u32 fp_udp_encap_id;
+	} udp_encap;
     };
     STRUCT_MARK(path_hash_end);
 
@@ -479,6 +491,9 @@ format_fib_path (u8 * s, va_list * args)
 		    path->fp_dpo.dpoi_index);
 
 	break;
+    case FIB_PATH_TYPE_UDP_ENCAP:
+        s = format (s, " UDP-encap ID:%d", path->udp_encap.fp_udp_encap_id);
+        break;
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:
     case FIB_PATH_TYPE_SPECIAL:
@@ -784,6 +799,9 @@ fib_path_unresolve (fib_path_t *path)
             adj_unlock(path->fp_dpo.dpoi_index);
         }
         break;
+    case FIB_PATH_TYPE_UDP_ENCAP:
+	udp_encap_unlock_w_index(path->fp_dpo.dpoi_index);
+        break;
     case FIB_PATH_TYPE_EXCLUSIVE:
 	dpo_reset(&path->exclusive.fp_ex_dpo);
         break;
@@ -989,6 +1007,33 @@ FIXME comment
 	    path->fp_oper_flags |= FIB_PATH_OPER_FLAG_DROP;
 	}
 	break;
+    case FIB_PATH_TYPE_UDP_ENCAP:
+    {
+        dpo_id_t via_dpo = DPO_INVALID;
+
+        /*
+         * hope for the best - clear if restrictions apply.
+         */
+        path->fp_oper_flags |= FIB_PATH_OPER_FLAG_RESOLVED;
+
+        udp_encap_contribute_forwarding(path->udp_encap.fp_udp_encap_id,
+                                        path->fp_nh_proto,
+                                        &via_dpo);
+        /*
+         * If this path is contributing a drop, then it's not resolved
+         */
+        if (dpo_is_drop(&via_dpo) || load_balance_is_drop(&via_dpo))
+        {
+            path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
+        }
+
+        /*
+         * update the path's contributed DPO
+         */
+        dpo_copy(&path->fp_dpo, &via_dpo);
+        dpo_reset(&via_dpo);
+        break;
+    }
     case FIB_PATH_TYPE_INTF_RX:
         ASSERT(0);
     case FIB_PATH_TYPE_DEAG:
@@ -1102,6 +1147,11 @@ fib_path_create (fib_node_index_t pl_index,
         path->fp_type = FIB_PATH_TYPE_RECEIVE;
         path->receive.fp_interface = rpath->frp_sw_if_index;
         path->receive.fp_addr = rpath->frp_addr;
+    }
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_UDP_ENCAP)
+    {
+        path->fp_type = FIB_PATH_TYPE_UDP_ENCAP;
+        path->udp_encap.fp_udp_encap_id = rpath->frp_udp_encap_id;
     }
     else if (path->fp_cfg_flags & FIB_PATH_CFG_FLAG_INTF_RX)
     {
@@ -1346,6 +1396,9 @@ fib_path_cmp_i (const fib_path_t *path1,
 	case FIB_PATH_TYPE_INTF_RX:
 	    res = (path1->intf_rx.fp_interface - path2->intf_rx.fp_interface);
 	    break;
+	case FIB_PATH_TYPE_UDP_ENCAP:
+	    res = (path1->udp_encap.fp_udp_encap_id - path2->udp_encap.fp_udp_encap_id);
+	    break;
 	case FIB_PATH_TYPE_SPECIAL:
 	case FIB_PATH_TYPE_RECEIVE:
 	case FIB_PATH_TYPE_EXCLUSIVE:
@@ -1460,6 +1513,9 @@ fib_path_cmp_w_route_path (fib_node_index_t path_index,
 	case FIB_PATH_TYPE_INTF_RX:
 	    res = (path->intf_rx.fp_interface - rpath->frp_sw_if_index);
             break;
+	case FIB_PATH_TYPE_UDP_ENCAP:
+	    res = (path->udp_encap.fp_udp_encap_id - rpath->frp_udp_encap_id);
+            break;
 	case FIB_PATH_TYPE_DEAG:
 	    res = (path->deag.fp_tbl_id - rpath->frp_fib_index);
 	    if (0 == res)
@@ -1565,6 +1621,7 @@ fib_path_recursive_loop_detect (fib_node_index_t path_index,
     case FIB_PATH_TYPE_DEAG:
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:
+    case FIB_PATH_TYPE_UDP_ENCAP:
     case FIB_PATH_TYPE_EXCLUSIVE:
 	/*
 	 * these path types cannot be part of a loop, since they are the leaves
@@ -1724,6 +1781,12 @@ fib_path_resolve (fib_node_index_t path_index)
                                 &path->receive.fp_addr,
                                 &path->fp_dpo);
 	break;
+    case FIB_PATH_TYPE_UDP_ENCAP:
+        udp_encap_lock(path->udp_encap.fp_udp_encap_id);
+        udp_encap_contribute_forwarding(path->udp_encap.fp_udp_encap_id,
+                                        path->fp_nh_proto,
+                                        &path->fp_dpo);
+        break;
     case FIB_PATH_TYPE_INTF_RX: {
 	/*
 	 * Resolve via a receive DPO.
@@ -1766,6 +1829,7 @@ fib_path_get_resolving_interface (fib_node_index_t path_index)
         }
         break;
     case FIB_PATH_TYPE_INTF_RX:
+    case FIB_PATH_TYPE_UDP_ENCAP:
     case FIB_PATH_TYPE_SPECIAL:
     case FIB_PATH_TYPE_DEAG:
     case FIB_PATH_TYPE_EXCLUSIVE:
@@ -1872,6 +1936,7 @@ fib_path_contribute_urpf (fib_node_index_t path_index,
     case FIB_PATH_TYPE_DEAG:
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:
+    case FIB_PATH_TYPE_UDP_ENCAP:
 	/*
 	 * these path types don't link to an adj
 	 */
@@ -1905,12 +1970,13 @@ fib_path_stack_mpls_disp (fib_node_index_t path_index,
                                      &tmp));
         dpo_reset(&tmp);
         break;
-    }                
+    }
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_ATTACHED:
     case FIB_PATH_TYPE_ATTACHED_NEXT_HOP:
     case FIB_PATH_TYPE_RECURSIVE:
     case FIB_PATH_TYPE_INTF_RX:
+    case FIB_PATH_TYPE_UDP_ENCAP:
     case FIB_PATH_TYPE_EXCLUSIVE:
     case FIB_PATH_TYPE_SPECIAL:
         break;
@@ -2071,6 +2137,11 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
             interface_rx_dpo_add_or_lock(fib_forw_chain_type_to_dpo_proto(fct),
                                          path->attached.fp_interface,
                                          dpo);
+            break;
+        case FIB_PATH_TYPE_UDP_ENCAP:
+            udp_encap_contribute_forwarding(path->udp_encap.fp_udp_encap_id,
+                                            path->fp_nh_proto,
+                                            dpo);
             break;
         case FIB_PATH_TYPE_RECEIVE:
         case FIB_PATH_TYPE_SPECIAL:
