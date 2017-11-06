@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d0b6268c_eddf0abc",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/CallbackApiWritePerfTest.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-11-06T05:39:59Z",
+      "side": 1,
+      "message": "addDelTable",
+      "range": {
+        "startLine": 36,
+        "startChar": 8,
+        "endLine": 36,
+        "endChar": 15
+      },
+      "revId": "dee6dcc7e6698ba53b827fb3cf3054c2aba80392",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0ac62db3_74d4897f",
+        "filename": "src/vpp-api/java/jvpp-core/io/fd/vpp/jvpp/core/examples/CallbackApiWritePerfTest.java",
+        "patchSetId": 5
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 174
+      },
+      "writtenOn": "2017-11-06T05:39:59Z",
+      "side": 1,
+      "message": "requests",
+      "range": {
+        "startLine": 67,
+        "startChar": 30,
+        "endLine": 67,
+        "endChar": 37
+      },
+      "revId": "dee6dcc7e6698ba53b827fb3cf3054c2aba80392",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
