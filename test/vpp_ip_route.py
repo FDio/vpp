@@ -108,6 +108,8 @@ class VppRoutePath(object):
             is_resolve_host=0,
             is_resolve_attached=0,
             is_source_lookup=0,
+            is_udp_encap=0,
+            next_hop_id=0xffffffff,
             proto=DpoProto.DPO_PROTO_IP4):
         self.nh_itf = nh_sw_if_index
         self.nh_table_id = nh_table_id
@@ -130,6 +132,8 @@ class VppRoutePath(object):
         if rpf_id != 0:
             self.is_rpf_id = 1
             self.nh_itf = rpf_id
+        self.is_udp_encap = is_udp_encap
+        self.next_hop_id = next_hop_id
 
 
 class VppMRoutePath(VppRoutePath):
@@ -194,12 +198,14 @@ class VppIpRoute(VppObject):
                         path.nh_labels),
                     next_hop_via_label=path.nh_via_label,
                     next_hop_table_id=path.nh_table_id,
+                    next_hop_id=path.next_hop_id,
                     is_ipv6=self.is_ip6,
                     is_l2_bridged=1
                     if path.proto == DpoProto.DPO_PROTO_ETHERNET else 0,
                     is_resolve_host=path.is_resolve_host,
                     is_resolve_attached=path.is_resolve_attached,
                     is_source_lookup=path.is_source_lookup,
+                    is_udp_encap=path.is_udp_encap,
                     is_multipath=1 if len(self.paths) > 1 else 0)
         self._test.registry.register(self, self._test.logger)
 
@@ -226,7 +232,9 @@ class VppIpRoute(VppObject):
                     table_id=self.table_id,
                     next_hop_table_id=path.nh_table_id,
                     next_hop_via_label=path.nh_via_label,
+                    next_hop_id=path.next_hop_id,
                     is_add=0,
+                    is_udp_encap=path.is_udp_encap,
                     is_ipv6=self.is_ip6)
 
     def query_vpp_config(self):

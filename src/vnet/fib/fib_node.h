@@ -44,6 +44,7 @@ typedef enum fib_node_type_t_ {
     FIB_NODE_TYPE_MAP_E,
     FIB_NODE_TYPE_VXLAN_GPE_TUNNEL,
     FIB_NODE_TYPE_GENEVE_TUNNEL,
+    FIB_NODE_TYPE_UDP_ENCAP,
     /**
      * Marker. New types before this one. leave the test last.
      */
@@ -68,6 +69,7 @@ typedef enum fib_node_type_t_ {
     [FIB_NODE_TYPE_VXLAN_TUNNEL] = "vxlan-tunnel", \
     [FIB_NODE_TYPE_MAP_E] = "map-e", \
     [FIB_NODE_TYPE_VXLAN_GPE_TUNNEL] = "vxlan-gpe-tunnel", \
+    [FIB_NODE_TYPE_UDP_ENCAP] = "udp-encap", \
 }
 
 /**
