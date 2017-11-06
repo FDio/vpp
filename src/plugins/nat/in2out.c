@@ -366,12 +366,15 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
                                               s->in2out.fib_index);
 
           snat_free_outside_address_and_port
-            (sm, thread_index, &s->out2in, s->outside_address_index);
+            (sm->addresses, thread_index, &s->out2in, s->outside_address_index);
         }
       s->outside_address_index = ~0;
 
-      if (snat_alloc_outside_address_and_port (sm, rx_fib_index0, thread_index,
-                                               &key1, &address_index))
+      if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index0,
+                                               thread_index, &key1,
+                                               &address_index, sm->vrf_mode,
+                                               sm->port_per_thread,
+                                               sm->per_thread_data[thread_index].snat_thread_index))
         {
           ASSERT(0);
 
@@ -389,9 +392,11 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
         {
           static_mapping = 0;
           /* Try to create dynamic translation */
-          if (snat_alloc_outside_address_and_port (sm, rx_fib_index0,
+          if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index0,
                                                    thread_index, &key1,
-                                                   &address_index))
+                                                   &address_index, sm->vrf_mode,
+                                                   sm->port_per_thread,
+                                                   sm->per_thread_data[thread_index].snat_thread_index))
             {
               b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
               return SNAT_IN2OUT_NEXT_DROP;
@@ -1265,7 +1270,8 @@ create_ses:
                                                   s->out2in.port,
                                                   s->in2out.fib_index);
 
-              snat_free_outside_address_and_port (sm, thread_index, &s->out2in,
+              snat_free_outside_address_and_port (sm->addresses, thread_index,
+                                                  &s->out2in,
                                                   s->outside_address_index);
 
               /* Remove in2out, out2in keys */
