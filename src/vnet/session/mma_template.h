@@ -30,7 +30,7 @@
 #define __rtt(a, b) _rtt(a,b)
 #define RTT(a) __rtt(a, MMA_RT_TYPE)
 
-#define SESSION_RULES_TABLE_INVALID_INDEX ((u32)~0)
+#define MMA_TABLE_INVALID_INDEX ((u32)~0)
 
 typedef struct
 {
@@ -79,7 +79,8 @@ RT (session_rule_free) (RTT (mma_rules_table) * srt, RTT (mma_rule) * rule);
 RTT (mma_rule) *
 RT (mma_table_get_rule) (RTT (mma_rules_table) * srt, u32 srt_index);
 u32
-RT (mma_table_rule_index) (RTT (mma_rules_table) * srt, RTT (mma_rule) * sr);
+RT (mma_rules_table_rule_index) (RTT (mma_rules_table) * srt,
+				 RTT (mma_rule) * sr);
 #endif /* SRC_VNET_SESSION_MMA_TEMPLATE_H_ */
 
 /*

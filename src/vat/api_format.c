@@ -21560,19 +21560,21 @@ vl_api_session_rules_details_t_handler (vl_api_session_rules_details_t * mp)
 
   if (mp->is_ip4)
     {
-      print (vam->ofp, "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d",
+      print (vam->ofp,
+	     "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d tag: %s",
 	     mp->appns_index, mp->transport_proto, mp->scope,
 	     format_ip4_address, &mp->lcl_ip, mp->lcl_plen, mp->lcl_port,
 	     format_ip4_address, &mp->rmt_ip, mp->rmt_plen, mp->rmt_port,
-	     mp->action_index);
+	     mp->action_index, mp->tag);
     }
   else
     {
-      print (vam->ofp, "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d",
+      print (vam->ofp,
+	     "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d tag: %s",
 	     mp->appns_index, mp->transport_proto, mp->scope,
 	     format_ip6_address, &mp->lcl_ip, mp->lcl_plen, mp->lcl_port,
 	     format_ip6_address, &mp->rmt_ip, mp->rmt_plen, mp->rmt_port,
-	     mp->action_index);
+	     mp->action_index, mp->tag);
     }
 }
 
@@ -21606,6 +21608,7 @@ vl_api_session_rules_details_t_handler_json (vl_api_session_rules_details_t *
 			    clib_net_to_host_u16 (mp->rmt_port));
   vat_json_object_add_uint (node, "lcl_plen", mp->lcl_plen);
   vat_json_object_add_uint (node, "rmt_plen", mp->rmt_plen);
+  vat_json_object_add_string_copy (node, "tag", mp->tag);
   if (mp->is_ip4)
     {
       clib_memcpy (&ip4, mp->lcl_ip, sizeof (ip4));
@@ -21632,7 +21635,7 @@ api_session_rule_add_del (vat_main_t * vam)
   ip4_address_t lcl_ip4, rmt_ip4;
   ip6_address_t lcl_ip6, rmt_ip6;
   u8 is_ip4 = 1, conn_set = 0;
-  u8 is_add = 1;
+  u8 is_add = 1, *tag = 0;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
@@ -21648,6 +21651,8 @@ api_session_rule_add_del (vat_main_t * vam)
       else if (unformat (i, "appns %d", &appns_index))
 	;
       else if (unformat (i, "scope %d", &scope))
+	;
+      else if (unformat (i, "tag %_%v%_", &tag))
 	;
       else
 	if (unformat
@@ -21688,8 +21693,10 @@ api_session_rule_add_del (vat_main_t * vam)
 
   mp->is_ip4 = is_ip4;
   mp->transport_proto = proto;
-  mp->lcl_plen = clib_host_to_net_u16 (lcl_plen);
-  mp->rmt_plen = clib_host_to_net_u16 (rmt_plen);
+  mp->lcl_port = clib_host_to_net_u16 ((u16) lcl_port);
+  mp->rmt_port = clib_host_to_net_u16 ((u16) rmt_port);
+  mp->lcl_plen = lcl_plen;
+  mp->rmt_plen = rmt_plen;
   mp->action_index = clib_host_to_net_u32 (action);
   mp->appns_index = clib_host_to_net_u32 (appns_index);
   mp->scope = scope;
@@ -21703,6 +21710,11 @@ api_session_rule_add_del (vat_main_t * vam)
     {
       clib_memcpy (mp->lcl_ip, &lcl_ip6, sizeof (lcl_ip6));
       clib_memcpy (mp->rmt_ip, &rmt_ip6, sizeof (rmt_ip6));
+    }
+  if (tag)
+    {
+      clib_memcpy (mp->tag, tag, vec_len (tag));
+      vec_free (tag);
     }
 
   S (mp);

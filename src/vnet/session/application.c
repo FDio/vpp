@@ -558,6 +558,7 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 
   if (!ip_is_zero (&tc->lcl_ip, 1))
     {
+      memset (&args, 0, sizeof (args));
       memset (&lcl_pref, 0, sizeof (lcl_pref));
       ip_copy (&lcl_pref.fp_addr, &tc->lcl_ip, is_ip4);
       lcl_pref.fp_len = is_ip4 ? 32 : 128;
@@ -572,7 +573,7 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
       args.table_args.rmt_port = 0;
       args.table_args.action_index = app->index;
       args.table_args.is_add = is_start;
-      args.table_args.transport_proto = transport_proto;
+      args.transport_proto = transport_proto;
       args.appns_index = app->ns_index;
       args.scope = SESSION_RULE_SCOPE_GLOBAL;
       return vnet_session_rule_add_del (&args);
@@ -595,7 +596,7 @@ application_start_stop_proxy (application_t * app, u8 transport_proto,
       args.table_args.rmt_port = 0;
       args.table_args.action_index = app->index;
       args.table_args.is_add = is_start;
-      args.table_args.transport_proto = transport_proto;
+      args.transport_proto = transport_proto;
       args.appns_index = app->ns_index;
       args.scope = SESSION_RULE_SCOPE_LOCAL;
       vnet_session_rule_add_del (&args);

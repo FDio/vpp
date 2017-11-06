@@ -94,16 +94,16 @@ RT (mma_rules_table_lookup) (RTT (mma_rules_table) * srt,
   u32 rv;
   int i;
 
-  ASSERT (rule_index != SESSION_RULES_TABLE_INVALID_INDEX);
+  ASSERT (rule_index != MMA_TABLE_INVALID_INDEX);
   rp = RT (mma_rules_table_get_rule) (srt, rule_index);
   ASSERT (rp);
 
   if (!RT (rule_is_match_for_key) (key, rp))
-    return SESSION_RULES_TABLE_INVALID_INDEX;
+    return MMA_TABLE_INVALID_INDEX;
   for (i = 0; i < vec_len (rp->next_indices); i++)
     {
       rv = RT (mma_rules_table_lookup) (srt, key, rp->next_indices[i]);
-      if (rv != SESSION_RULES_TABLE_INVALID_INDEX)
+      if (rv != MMA_TABLE_INVALID_INDEX)
 	return (rv);
     }
   return (rp->action_index);
@@ -118,16 +118,16 @@ RT (mma_rules_table_lookup_rule) (RTT (mma_rules_table) * srt,
   u32 rv;
   int i;
 
-  ASSERT (rule_index != SESSION_RULES_TABLE_INVALID_INDEX);
+  ASSERT (rule_index != MMA_TABLE_INVALID_INDEX);
   rp = RT (mma_rules_table_get_rule) (srt, rule_index);
   ASSERT (rp);
 
   if (!RT (rule_is_match_for_key) (key, rp))
-    return SESSION_RULES_TABLE_INVALID_INDEX;
+    return MMA_TABLE_INVALID_INDEX;
   for (i = 0; i < vec_len (rp->next_indices); i++)
     {
       rv = RT (mma_rules_table_lookup_rule) (srt, key, rp->next_indices[i]);
-      if (rv != SESSION_RULES_TABLE_INVALID_INDEX)
+      if (rv != MMA_TABLE_INVALID_INDEX)
 	return (rv);
     }
   return rule_index;
@@ -214,15 +214,15 @@ RT (mma_rules_table_del_rule) (RTT (mma_rules_table) * srt,
   u32 rv;
   int i;
 
-  ASSERT (rule_index != SESSION_RULES_TABLE_INVALID_INDEX);
+  ASSERT (rule_index != MMA_TABLE_INVALID_INDEX);
   rp = RT (mma_rules_table_get_rule) (srt, rule_index);
 
   if (!RT (rule_is_match_for_key) (&rule->match, rp))
-    return SESSION_RULES_TABLE_INVALID_INDEX;
+    return MMA_TABLE_INVALID_INDEX;
   if (RT (rule_is_exact_match) (rule, rp))
     {
       if (rule_index == srt->root_index)
-	rp->action_index = SESSION_RULES_TABLE_INVALID_INDEX;
+	rp->action_index = MMA_TABLE_INVALID_INDEX;
       return 1;
     }
   for (i = 0; i < vec_len (rp->next_indices); i++)
@@ -257,7 +257,7 @@ RT (mma_rules_table_del_rule) (RTT (mma_rules_table) * srt,
       else if (rv == 0)
 	return rv;
     }
-  return SESSION_RULES_TABLE_INVALID_INDEX;
+  return MMA_TABLE_INVALID_INDEX;
 }
 
 /*

@@ -3215,18 +3215,19 @@ static void *vl_api_session_rule_add_del_t_print
   u8 *s;
   char *proto = mp->transport_proto == 0 ? "tcp" : "udp";
   s = format (0, "SCRIPT: session_rule_add_del ");
+  mp->tag[sizeof (mp->tag) - 1] = 0;
   if (mp->is_ip4)
-    s = format (s, "appns %d scope %d %s %U/%d %d %U/%d %d action %u",
+    s = format (s, "appns %d scope %d %s %U/%d %d %U/%d %d action %u tag %s",
 		mp->appns_index, mp->scope, proto, format_ip4_address,
 		(ip4_address_t *) mp->lcl_ip, mp->lcl_plen,
 		format_ip4_address, (ip4_address_t *) mp->rmt_ip,
-		mp->rmt_plen, mp->action_index);
+		mp->rmt_plen, mp->action_index, mp->tag);
   else
-    s = format (s, "appns %d scope %d %s %U/%d %d %U/%d %d action %u",
+    s = format (s, "appns %d scope %d %s %U/%d %d %U/%d %d action %u tag %s",
 		mp->appns_index, mp->scope, proto, format_ip6_address,
 		(ip6_address_t *) mp->lcl_ip, mp->lcl_plen,
 		format_ip6_address, (ip6_address_t *) mp->rmt_ip,
-		mp->rmt_plen, mp->action_index);
+		mp->rmt_plen, mp->action_index, mp->tag);
   FINISH;
 }
 

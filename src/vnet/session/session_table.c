@@ -70,6 +70,7 @@ void
 session_table_init (session_table_t * slt, u8 fib_proto)
 {
   u8 all = fib_proto > FIB_PROTOCOL_IP6 ? 1 : 0;
+  int i;
 
 #define _(af,table,parm,value) 						\
   u32 configured_##af##_##table##_table_##parm = value;
@@ -101,7 +102,9 @@ session_table_init (session_table_t * slt, u8 fib_proto)
 			     configured_v6_halfopen_table_buckets,
 			     configured_v6_halfopen_table_memory);
     }
-  session_rules_table_init (&slt->session_rules);
+
+  for (i = 0; i < TRANSPORT_N_PROTO; i++)
+    session_rules_table_init (&slt->session_rules[i]);
 }
 
 typedef struct _ip4_session_table_walk_ctx_t
