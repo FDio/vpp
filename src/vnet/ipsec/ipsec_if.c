@@ -442,14 +442,14 @@ ipsec_set_interface_sa (vnet_main_t * vnm, u32 hw_if_index, u32 sa_id,
 
       /* unset old inbound hash entry. packets should stop arriving */
       key =
-	(u64) old_sa->tunnel_dst_addr.ip4.as_u32 << 32 | (u64) old_sa->spi;
+	(u64) old_sa->tunnel_src_addr.ip4.as_u32 << 32 | (u64) old_sa->spi;
       p = hash_get (im->ipsec_if_pool_index_by_key, key);
       if (p)
 	hash_unset (im->ipsec_if_pool_index_by_key, key);
 
       /* set new inbound SA, then set new hash entry */
       t->input_sa_index = sa_index;
-      key = (u64) sa->tunnel_dst_addr.ip4.as_u32 << 32 | (u64) sa->spi;
+      key = (u64) sa->tunnel_src_addr.ip4.as_u32 << 32 | (u64) sa->spi;
       hash_set (im->ipsec_if_pool_index_by_key, key, hi->dev_instance);
     }
   else
