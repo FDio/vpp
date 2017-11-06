@@ -1567,3 +1567,30 @@ define nat64_prefix_details {
   u8 prefix_len;
   u32 vrf_id;
 };
+
+
+/*
+ * DS-Lite APIs
+ */
+
+/** \brief Add/delete address range to DS-Lite pool
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param start_addr - start address of the range
+    @param end_addr - end address of the range
+    @param is_add - 1 if add, 0 if delete
+*/
+autoreply define dslite_add_del_pool_addr_range {
+  u32 client_index;
+  u32 context;
+  u8 start_addr[4];
+  u8 end_addr[4];
+  u8 is_add;
+};
+
+autoreply define dslite_set_aftr_addr {
+  u32 client_index;
+  u32 context;
+  u8 ip4_addr[4];
+  u8 ip6_addr[16];
+};

@@ -21,6 +21,7 @@
 #include <nat/nat.h>
 #include <nat/nat_det.h>
 #include <nat/nat64.h>
+#include <nat/dslite.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
@@ -3289,6 +3290,87 @@ vl_api_nat64_prefix_dump_t_print (vl_api_nat64_prefix_dump_t * mp,
   FINISH;
 }
 
+/***************/
+/*** DS-Lite ***/
+/***************/
+
+static void
+vl_api_dslite_set_aftr_addr_t_handler (vl_api_dslite_set_aftr_addr_t * mp)
+{
+  vl_api_dslite_set_aftr_addr_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  dslite_main_t *dm = &dslite_main;
+  int rv = 0;
+  ip6_address_t ip6_addr;
+
+  memcpy (&ip6_addr.as_u8, mp->ip6_addr, 16);
+
+  rv = dslite_set_aftr_ip6_addr (dm, &ip6_addr);
+
+  REPLY_MACRO (VL_API_DSLITE_SET_AFTR_ADDR_REPLY);
+}
+
+static void *
+vl_api_dslite_set_aftr_addr_t_print (vl_api_dslite_set_aftr_addr_t * mp,
+				     void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dslite_set_aftr_addr ");
+  s = format (s, "ip6_addr %U ip4_addr %U\n",
+	      format_ip6_address, mp->ip6_addr,
+	      format_ip4_address, mp->ip4_addr);
+
+  FINISH;
+}
+
+static void
+  vl_api_dslite_add_del_pool_addr_range_t_handler
+  (vl_api_dslite_add_del_pool_addr_range_t * mp)
+{
+  vl_api_dslite_add_del_pool_addr_range_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  dslite_main_t *dm = &dslite_main;
+  int rv = 0;
+  ip4_address_t this_addr;
+  u32 start_host_order, end_host_order;
+  int i, count;
+  u32 *tmp;
+
+  tmp = (u32 *) mp->start_addr;
+  start_host_order = clib_host_to_net_u32 (tmp[0]);
+  tmp = (u32 *) mp->end_addr;
+  end_host_order = clib_host_to_net_u32 (tmp[0]);
+
+  count = (end_host_order - start_host_order) + 1;
+  memcpy (&this_addr.as_u8, mp->start_addr, 4);
+
+  for (i = 0; i < count; i++)
+    {
+      if ((rv = dslite_add_del_pool_addr (dm, &this_addr, mp->is_add)))
+	goto send_reply;
+
+      increment_v4_address (&this_addr);
+    }
+
+send_reply:
+  REPLY_MACRO (VL_API_DSLITE_ADD_DEL_POOL_ADDR_RANGE_REPLY);
+}
+
+static void *vl_api_dslite_add_del_pool_addr_range_t_print
+  (vl_api_dslite_add_del_pool_addr_range_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dslite_add_del_pool_addr_range ");
+  s = format (s, "%U - %U\n",
+	      format_ip4_address, mp->start_addr,
+	      format_ip4_address, mp->end_addr);
+
+  FINISH;
+}
+
+
 /* List of message types that this plugin understands */
 #define foreach_snat_plugin_api_msg                                     \
 _(SNAT_ADD_ADDRESS_RANGE, snat_add_address_range)                       \
@@ -3360,7 +3442,9 @@ _(NAT64_SET_TIMEOUTS, nat64_set_timeouts)                               \
 _(NAT64_GET_TIMEOUTS, nat64_get_timeouts)                               \
 _(NAT64_ST_DUMP, nat64_st_dump)                                         \
 _(NAT64_ADD_DEL_PREFIX, nat64_add_del_prefix)                           \
-_(NAT64_PREFIX_DUMP, nat64_prefix_dump)
+_(NAT64_PREFIX_DUMP, nat64_prefix_dump)                                 \
+_(DSLITE_ADD_DEL_POOL_ADDR_RANGE, dslite_add_del_pool_addr_range)       \
+_(DSLITE_SET_AFTR_ADDR, dslite_set_aftr_addr)
 
 /* Set up the API message handling tables */
 static clib_error_t *
