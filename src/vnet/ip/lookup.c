@@ -368,11 +368,11 @@ vnet_ip_route_cmd (vlib_main_t * vm,
   unformat_input_t _line_input, *line_input = &_line_input;
   fib_route_path_t *rpaths = NULL, rpath;
   dpo_id_t dpo = DPO_INVALID, *dpos = NULL;
+  u32 table_id, is_del, udp_encap_id;
   fib_prefix_t *prefixs = NULL, pfx;
   mpls_label_t out_label, via_label;
   clib_error_t *error = NULL;
   u32 weight, preference;
-  u32 table_id, is_del;
   vnet_main_t *vnm;
   u32 fib_index;
   f64 count;
@@ -525,6 +525,13 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	  rpath.frp_weight = 1;
 	  rpath.frp_sw_if_index = ~0;
 	  rpath.frp_proto = DPO_PROTO_IP6;
+	  vec_add1 (rpaths, rpath);
+	}
+      else if (unformat (line_input, "via udp-encap %d", &udp_encap_id))
+	{
+	  rpath.frp_udp_encap_id = udp_encap_id;
+	  rpath.frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
+	  rpath.frp_proto = fib_proto_to_dpo (pfx.fp_proto);
 	  vec_add1 (rpaths, rpath);
 	}
       else if (unformat (line_input,

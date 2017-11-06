@@ -307,6 +307,10 @@ typedef enum fib_route_path_flags_t_
      * A deag path using the packet's source not destination address.
      */
     FIB_ROUTE_PATH_SOURCE_LOOKUP = (1 << 8),
+    /**
+     * A path via a UDP encap object.
+     */
+    FIB_ROUTE_PATH_UDP_ENCAP = (1 << 9),
 } fib_route_path_flags_t;
 
 /**
@@ -375,6 +379,10 @@ typedef struct fib_route_path_t_ {
          * The RPF-ID
          */
         fib_rpf_id_t frp_rpf_id;
+        /**
+         * UDP encap ID
+         */
+        u32 frp_udp_encap_id;
     };
     /**
      * The FIB index to lookup the nexthop

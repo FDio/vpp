@@ -832,10 +832,12 @@ add_del_route_t_handler (u8 is_multipath,
 			 u8 is_rpf_id,
 			 u8 is_l2_bridged,
 			 u8 is_source_lookup,
+			 u8 is_udp_encap,
 			 u32 fib_index,
 			 const fib_prefix_t * prefix,
 			 dpo_proto_t next_hop_proto,
 			 const ip46_address_t * next_hop,
+			 u32 next_hop_id,
 			 u32 next_hop_sw_if_index,
 			 u8 next_hop_fib_index,
 			 u16 next_hop_weight,
@@ -883,6 +885,11 @@ add_del_route_t_handler (u8 is_multipath,
     path_flags |= FIB_ROUTE_PATH_SOURCE_LOOKUP;
   if (is_multicast)
     entry_flags |= FIB_ENTRY_FLAG_MULTICAST;
+  if (is_udp_encap)
+    {
+      path_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
+      path.frp_udp_encap_id = next_hop_id;
+    }
 
   path.frp_flags = path_flags;
 
@@ -1112,8 +1119,10 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   mp->is_resolve_attached, 0, 0,
 				   mp->is_l2_bridged,
 				   mp->is_source_lookup,
+				   mp->is_udp_encap,
 				   fib_index, &pfx, DPO_PROTO_IP4,
 				   &nh,
+				   ntohl (mp->next_hop_id),
 				   ntohl (mp->next_hop_sw_if_index),
 				   next_hop_fib_index,
 				   mp->next_hop_weight,
@@ -1173,8 +1182,10 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   mp->is_resolve_attached, 0, 0,
 				   mp->is_l2_bridged,
 				   mp->is_source_lookup,
+				   mp->is_udp_encap,
 				   fib_index, &pfx, DPO_PROTO_IP6,
-				   &nh, ntohl (mp->next_hop_sw_if_index),
+				   &nh, ntohl (mp->next_hop_id),
+				   ntohl (mp->next_hop_sw_if_index),
 				   next_hop_fib_index,
 				   mp->next_hop_weight,
 				   mp->next_hop_preference,

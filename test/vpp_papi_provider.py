@@ -735,6 +735,7 @@ class VppPapiProvider(object):
             next_hop_n_out_labels=0,
             next_hop_out_label_stack=[],
             next_hop_via_label=MPLS_LABEL_INVALID,
+            next_hop_id=0xFFFFFFFF,
             is_resolve_host=0,
             is_resolve_attached=0,
             classify_table_index=0xFFFFFFFF,
@@ -747,6 +748,7 @@ class VppPapiProvider(object):
             is_classify=0,
             is_multipath=0,
             is_l2_bridged=0,
+            is_udp_encap=0,
             is_source_lookup=0):
         """
 
@@ -790,9 +792,11 @@ class VppPapiProvider(object):
              'is_resolve_attached': is_resolve_attached,
              'is_l2_bridged': is_l2_bridged,
              'is_source_lookup': is_source_lookup,
+             'is_udp_encap': is_udp_encap,
              'next_hop_weight': next_hop_weight,
              'dst_address_length': dst_address_length,
              'dst_address': dst_address,
+             'next_hop_id': next_hop_id,
              'next_hop_address': next_hop_address,
              'next_hop_n_out_labels': next_hop_n_out_labels,
              'next_hop_via_label': next_hop_via_label,
@@ -979,6 +983,41 @@ class VppPapiProvider(object):
              'dst_address': dst_address,
              'outer_fib_id': outer_fib_id}
         )
+
+    def udp_encap_add_del(self,
+                          id,
+                          src_ip,
+                          dst_ip,
+                          src_port,
+                          dst_port,
+                          table_id=0,
+                          is_add=1,
+                          is_ip6=0):
+        """ Add a GRE tunnel
+        :param id: user provided ID
+        :param src_ip:
+        :param dst_ip:
+        :param src_port:
+        :param dst_port:
+        :param outer_fib_id:  (Default value = 0)
+        :param is_add:  (Default value = 1)
+        :param is_ipv6:  (Default value = 0)
+        """
+
+        return self.api(
+            self.papi.udp_encap_add_del,
+            {'id': id,
+             'is_add': is_add,
+             'is_ip6': is_ip6,
+             'src_ip': src_ip,
+             'dst_ip': dst_ip,
+             'src_port': src_port,
+             'dst_port': dst_port,
+             'table_id': table_id}
+        )
+
+    def udp_encap_dump(self):
+        return self.api(self.papi.udp_encap_dump, {})
 
     def mpls_fib_dump(self):
         return self.api(self.papi.mpls_fib_dump, {})
