@@ -45,10 +45,16 @@ vpp_root_packages = vpp
 # vpp_dpdk_lib_dir = /usr/lib
 # vpp_dpdk_shared_lib = yes
 
+vpp_configure_args_vpp =
+
 # load balancer plugin is not portable on 32 bit platform
 ifeq ($(MACHINE),i686)
-vpp_configure_args_vpp = --disable-lb-plugin
+vpp_configure_args_vpp += --disable-lb-plugin
 endif
+
+# To disable the VPP object model build - and save about half the build time -
+# uncomment the following...
+# vpp_configure_args_vpp += --disable-vom
 
 vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
 	-fstack-protector-all -fPIC -Werror

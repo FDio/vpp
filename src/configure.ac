@@ -134,6 +134,7 @@ DISABLE_ARG(vlib,	[Disable vlib and dependant libs and binaries])
 DISABLE_ARG(svm,	[Disable svm and dependant libs and binaries])
 DISABLE_ARG(papi,	[Disable Python API bindings])
 DISABLE_ARG(japi,	[Disable Java API bindings])
+DISABLE_ARG(vom,	[Disable VPP object model bindings])
 
 # --with-X
 

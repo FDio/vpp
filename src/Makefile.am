@@ -72,6 +72,7 @@ include uri.am
 include vcl.am
 
 SUBDIRS += plugins
+SUBDIRS += vpp-api/vapi
 
 if ENABLE_PAPI
 include vpp-api.am
@@ -82,8 +83,9 @@ if ENABLE_JAPI
 SUBDIRS += vpp-api/java
 endif
 
-SUBDIRS += vpp-api/vapi
+if ENABLE_VOM
 SUBDIRS += vpp-api/vom
+endif
 
 ###############################################################################
 # API
