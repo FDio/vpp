@@ -222,7 +222,7 @@ class VppTestCase(unittest.TestCase):
         try:
             c = os.getenv("CACHE_OUTPUT", "1")
             cls.cache_vpp_output = \
-                True if c.lower() in ("y", "yes", "1") else False
+                False if c.lower() in ("n", "no", "0") else True
         except:
             cls.cache_vpp_output = True
         cls.set_debug_flags(d)
