@@ -79,7 +79,8 @@ _(IP6ND_PROXY_ADD_DEL, ip6nd_proxy_add_del)                             \
 _(IP6ND_PROXY_DUMP, ip6nd_proxy_dump)                                   \
 _(SW_INTERFACE_IP6_ENABLE_DISABLE, sw_interface_ip6_enable_disable )    \
 _(SW_INTERFACE_IP6_SET_LINK_LOCAL_ADDRESS, 				\
-  sw_interface_ip6_set_link_local_address)
+  sw_interface_ip6_set_link_local_address)				\
+_(IP_CONTAINER_PROXY_ADD_DEL, ip_container_proxy_add_del )
 
 extern void stats_dslock_with_hint (int hint, int tag);
 extern void stats_dsunlock (void);
@@ -1847,6 +1848,29 @@ vl_api_mfib_signal_dump_t_handler (vl_api_mfib_signal_dump_t * mp)
 
   while (q->cursize < q->maxsize && mfib_signal_send_one (q, mp->context))
     ;
+}
+
+static void
+  vl_api_ip_container_proxy_add_del_t_handler
+  (vl_api_ip_container_proxy_add_del_t * mp)
+{
+  vl_api_ip_container_proxy_add_del_reply_t *rmp;
+  vnet_ip_container_proxy_args_t args;
+  int rv = 0;
+  clib_error_t *error;
+
+  memset (&args, 0, sizeof (args));
+  ip_set (&args.prefix.fp_addr, mp->ip, mp->is_ip4);
+  args.prefix.fp_len = mp->plen ? mp->plen : (mp->is_ip4 ? 32 : 128);
+  args.sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
+  args.is_add = mp->is_add;
+  if ((error = vnet_ip_container_proxy_add_del (&args)))
+    {
+      rv = clib_error_get_code (error);
+      clib_error_report (error);
+    }
+
+  REPLY_MACRO (VL_API_IP_CONTAINER_PROXY_ADD_DEL_REPLY);
 }
 
 #define vl_msg_name_crc_list
