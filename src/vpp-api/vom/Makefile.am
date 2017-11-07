@@ -118,12 +118,14 @@ vominclude_HEADERS =			\
 	cmd.hpp				\
 	connection.hpp			\
 	dhcp_config.hpp			\
+	dhcp_config_cmds.hpp		\
 	dump_cmd.hpp			\
 	enum_base.hpp			\
 	event_cmd.hpp			\
 	hw.hpp				\
 	inspect.hpp			\
 	interface.hpp			\
+	interface_cmds.hpp		\
 	interface_ip6_nd.hpp		\
 	interface_span.hpp		\
 	ip_unnumbered.hpp		\
