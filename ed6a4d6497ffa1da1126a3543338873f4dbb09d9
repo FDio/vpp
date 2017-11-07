@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "856fc056_77382098",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1467,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-11-07T08:40:19Z",
+      "side": 1,
+      "message": "Was this supposed to happen under VPPCOM_DEBUG \u003e 0?",
+      "range": {
+        "startLine": 1467,
+        "startChar": 6,
+        "endLine": 1467,
+        "endChar": 9
+      },
+      "revId": "ed6a4d6497ffa1da1126a3543338873f4dbb09d9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
