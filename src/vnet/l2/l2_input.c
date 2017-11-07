@@ -193,6 +193,14 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
       if (ethertype != ETHERNET_TYPE_ARP &&
 	  (ethertype != ETHERNET_TYPE_IP6 || protocol != IP_PROTOCOL_ICMP6))
 	feat_mask &= ~(L2INPUT_FEAT_ARP_TERM);
+      /*
+       * Check for from-BVI processing - set SHG of ARP/ICMP6 packets from BVI
+       * to 0 so it can also flood to VXLAN tunnels or other ports with the
+       * same SHG as that of the BVI.
+       */
+      else if (PREDICT_FALSE (vnet_buffer (b0)->sw_if_index[VLIB_TX] ==
+			      L2INPUT_BVI))
+	vnet_buffer (b0)->l2.shg = 0;
     }
   else
     {
