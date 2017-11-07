@@ -432,11 +432,9 @@ int
 vcom_socket_accept (int __fd, __SOCKADDR_ARG __addr,
 		    socklen_t * __restrict __addr_len);
 
-#ifdef __USE_GNU
 int
 vcom_socket_accept4 (int __fd, __SOCKADDR_ARG __addr,
 		     socklen_t * __restrict __addr_len, int __flags);
-#endif
 
 int vcom_socket_shutdown (int __fd, int __how);
 

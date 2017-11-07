@@ -2568,7 +2568,6 @@ accept (int __fd, __SOCKADDR_ARG __addr, socklen_t * __restrict __addr_len)
   return libc_accept (__fd, __addr, __addr_len);
 }
 
-#ifdef __USE_GNU
 /*
  * Similar to 'accept' but takes an additional parameter to specify
  * flags.
@@ -2592,8 +2591,13 @@ int
 accept4 (int __fd, __SOCKADDR_ARG __addr,
 	 socklen_t * __restrict __addr_len, int __flags)
 {
-  int rv;
+  int rv = 0;
   pid_t pid = getpid ();
+
+  fprintf (stderr,
+	   "[%d] accept4: in the beginning... "
+	   "'%04d'='%04d', '%p', '%p', '%04x'\n",
+	   pid, rv, __fd, __addr, __addr_len, __flags);
 
   if (is_vcom_socket_fd (__fd))
     {
@@ -2602,7 +2606,7 @@ accept4 (int __fd, __SOCKADDR_ARG __addr,
       rv = vcom_accept4 (__fd, __addr, __addr_len, __flags);
       if (VCOM_DEBUG > 0)
 	fprintf (stderr,
-		 "[%d] accept4: "
+		 "[%d] accept4: VCL "
 		 "'%04d'='%04d', '%p', '%p', '%04x'\n",
 		 pid, rv, __fd, __addr, __addr_len, __flags);
       if (VCOM_DEBUG > 0)
@@ -2614,10 +2618,13 @@ accept4 (int __fd, __SOCKADDR_ARG __addr,
 	}
       return rv;
     }
+  fprintf (stderr,
+	   "[%d] accept4: libc "
+	   "'%04d'='%04d', '%p', '%p', '%04x'\n",
+	   pid, rv, __fd, __addr, __addr_len, __flags);
+
   return libc_accept4 (__fd, __addr, __addr_len, __flags);
 }
-
-#endif
 
 /*
  * Shut down all or part of the connection open on socket FD.
@@ -2822,7 +2829,7 @@ epoll_wait (int __epfd, struct epoll_event *__events,
 
   rv =
     vcom_socket_epoll_pwait (__epfd, __events, __maxevents, __timeout, NULL);
-  if (VCOM_DEBUG > 0)
+  if (VCOM_DEBUG > 1)
     fprintf (stderr,
 	     "[%d] epoll_wait: "
 	     "'%04d'='%04d', '%p', "

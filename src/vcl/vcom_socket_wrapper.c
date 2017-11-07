@@ -154,14 +154,11 @@ PRINTF_ATTRIBUTE (3, 4);
  * SWRAP LOADING LIBC FUNCTIONS
  *********************************************************/
 
-#ifdef HAVE_ACCEPT4
 typedef int (*__libc_accept4) (int sockfd,
 			       struct sockaddr * addr,
 			       socklen_t * addrlen, int flags);
-#else
 typedef int (*__libc_accept) (int sockfd,
 			      struct sockaddr * addr, socklen_t * addrlen);
-#endif
 typedef int (*__libc_bind) (int sockfd,
 			    const struct sockaddr * addr, socklen_t addrlen);
 typedef int (*__libc_close) (int fd);
@@ -282,11 +279,8 @@ typedef int (*__libc_ppoll) (struct pollfd * __fds, nfds_t __nfds,
 
 struct swrap_libc_symbols
 {
-#ifdef HAVE_ACCEPT4
   SWRAP_SYMBOL_ENTRY (accept4);
-#else
   SWRAP_SYMBOL_ENTRY (accept);
-#endif
   SWRAP_SYMBOL_ENTRY (bind);
   SWRAP_SYMBOL_ENTRY (close);
   SWRAP_SYMBOL_ENTRY (connect);
@@ -474,7 +468,6 @@ _swrap_bind_symbol (enum swrap_lib lib, const char *fn_name)
  * has probably something todo with with the linker.
  * So we need load each function at the point it is called the first time.
  */
-#ifdef HAVE_ACCEPT4
 int
 libc_accept4 (int sockfd,
 	      struct sockaddr *addr, socklen_t * addrlen, int flags)
@@ -484,8 +477,6 @@ libc_accept4 (int sockfd,
   return swrap.libc.symbols._libc_accept4.f (sockfd, addr, addrlen, flags);
 }
 
-#else /* HAVE_ACCEPT4 */
-
 int
 libc_accept (int sockfd, struct sockaddr *addr, socklen_t * addrlen)
 {
@@ -493,7 +484,6 @@ libc_accept (int sockfd, struct sockaddr *addr, socklen_t * addrlen)
 
   return swrap.libc.symbols._libc_accept.f (sockfd, addr, addrlen);
 }
-#endif /* HAVE_ACCEPT4 */
 
 int
 libc_bind (int sockfd, const struct sockaddr *addr, socklen_t addrlen)
