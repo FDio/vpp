@@ -3231,6 +3231,23 @@ static void *vl_api_session_rule_add_del_t_print
   FINISH;
 }
 
+static void *vl_api_ip_container_proxy_add_del_t_print
+  (vl_api_ip_container_proxy_add_del_t * mp, void *handle)
+{
+  u8 *s;
+  s = format (0, "SCRIPT: ip_container_proxy_add_del ");
+  if (mp->is_ip4)
+    s = format (s, "is_add %d address %U/%d sw_if_index %d",
+		mp->is_add, format_ip4_address,
+		(ip4_address_t *) mp->ip, mp->plen, mp->sw_if_index);
+  else
+    s = format (s, "is_add %d address %U/%d sw_if_index %d",
+		mp->is_add, format_ip6_address,
+		(ip6_address_t *) mp->ip, mp->plen, mp->sw_if_index);
+  FINISH;
+}
+
+
 #define foreach_custom_print_no_arg_function                            \
 _(lisp_eid_table_vni_dump)                                              \
 _(lisp_map_resolver_dump)                                               \

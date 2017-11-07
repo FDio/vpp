@@ -5305,7 +5305,8 @@ _(tcp_configure_src_addresses_reply)			\
 _(app_namespace_add_del_reply)                          \
 _(dns_enable_disable_reply)                             \
 _(dns_name_server_add_del_reply)			\
-_(session_rule_add_del_reply)
+_(session_rule_add_del_reply)				\
+_(ip_container_proxy_add_del_reply)
 
 #define _(n)                                    \
     static void vl_api_##n##_t_handler          \
@@ -5627,7 +5628,8 @@ _(DNS_NAME_SERVER_ADD_DEL_REPLY, dns_name_server_add_del_reply)		\
 _(DNS_RESOLVE_NAME_REPLY, dns_resolve_name_reply)			\
 _(DNS_RESOLVE_IP_REPLY, dns_resolve_ip_reply)				\
 _(SESSION_RULE_ADD_DEL_REPLY, session_rule_add_del_reply)		\
-_(SESSION_RULES_DETAILS, session_rules_details)
+_(SESSION_RULES_DETAILS, session_rules_details)				\
+_(IP_CONTAINER_PROXY_ADD_DEL_REPLY, ip_container_proxy_add_del_reply)	\
 
 #define foreach_standalone_reply_msg					\
 _(SW_INTERFACE_EVENT, sw_interface_event)                               \
@@ -21748,6 +21750,61 @@ api_session_rules_dump (vat_main_t * vam)
 }
 
 static int
+api_ip_container_proxy_add_del (vat_main_t * vam)
+{
+  vl_api_ip_container_proxy_add_del_t *mp;
+  unformat_input_t *i = vam->input;
+  u32 plen = ~0, sw_if_index = ~0;
+  ip4_address_t ip4;
+  ip6_address_t ip6;
+  u8 is_ip4 = 1;
+  u8 is_add = 1;
+  int ret;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	;
+      if (unformat (i, "%U", unformat_ip4_address, &ip4))
+	{
+	  is_ip4 = 1;
+	  plen = 32;
+	}
+      else if (unformat (i, "%U", unformat_ip6_address, &ip6))
+	{
+	  is_ip4 = 0;
+	  plen = 128;
+	}
+      else if (unformat (i, "sw_if_index %u", &sw_if_index))
+	;
+      else
+	break;
+    }
+  if (sw_if_index == ~0 || plen == ~0)
+    {
+      errmsg ("address and sw_if_index must be set");
+      return -99;
+    }
+
+  M (IP_CONTAINER_PROXY_ADD_DEL, mp);
+
+  mp->is_ip4 = is_ip4;
+  mp->sw_if_index = clib_host_to_net_u32 (sw_if_index);
+  mp->plen = plen;
+  mp->is_add = is_add;
+  if (is_ip4)
+    clib_memcpy (mp->ip, &ip4, sizeof (ip4));
+  else
+    clib_memcpy (mp->ip, &ip6, sizeof (ip6));
+
+  S (mp);
+  W (ret);
+  return ret;
+}
+
+static int
 q_or_quit (vat_main_t * vam)
 {
 #if VPP_API_TEST_BUILTIN == 0
@@ -22558,6 +22615,7 @@ _(dns_resolve_name, "<hostname>")					\
 _(session_rule_add_del, "[add|del] proto <tcp/udp> <lcl-ip>/<plen> "	\
   "<lcl-port> <rmt-ip>/<plen> <rmt-port> action <nn>")			\
 _(session_rules_dump, "")						\
+_(ip_container_proxy_add_del, "[add|del] <address> <sw_if_index>")	\
 
 /* List of command functions, CLI names map directly to functions */
 #define foreach_cli_function                                    \
