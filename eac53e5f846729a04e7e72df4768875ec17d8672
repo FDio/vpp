@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b3cb5e66_7099d3e7",
+        "filename": "src/vnet/ip/lookup.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1457,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-07T07:20:13Z",
+      "side": 1,
+      "message": "dpo_reset(\u0026proxy_dpo);\nto keep this function lock neutral. the FIB will take its own lock on the DPO.",
+      "revId": "eac53e5f846729a04e7e72df4768875ec17d8672",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
