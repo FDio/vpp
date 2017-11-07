@@ -217,6 +217,12 @@ segment_manager_app_detached (segment_manager_t * sm)
   return (sm->app_index == SEGMENT_MANAGER_INVALID_APP_INDEX);
 }
 
+void
+segment_manager_app_detach (segment_manager_t * sm)
+{
+  sm->app_index = SEGMENT_MANAGER_INVALID_APP_INDEX;
+}
+
 static void
 segment_manager_del_segment (segment_manager_t * sm, u32 segment_index)
 {
@@ -325,6 +331,7 @@ segment_manager_del (segment_manager_t * sm)
 void
 segment_manager_init_del (segment_manager_t * sm)
 {
+  segment_manager_app_detach (sm);
   if (segment_manager_has_fifos (sm))
     segment_manager_del_sessions (sm);
   else

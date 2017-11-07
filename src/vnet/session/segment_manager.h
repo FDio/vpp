@@ -120,6 +120,7 @@ unix_shared_memory_queue_t *segment_manager_alloc_queue (segment_manager_t *
 							 sm, u32 queue_size);
 void segment_manager_dealloc_queue (segment_manager_t * sm,
 				    unix_shared_memory_queue_t * q);
+void segment_manager_app_detach (segment_manager_t * sm);
 
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
 /*
