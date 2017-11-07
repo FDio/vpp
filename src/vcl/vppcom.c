@@ -1448,25 +1448,36 @@ defaulted:
     fclose (fp);
   if (argv != NULL)
     free (argv);
+
   vcl_mem = mmap (0, vcl_cfg->heapsize, PROT_READ | PROT_WRITE,
 		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-  if (vcl_mem < 0)
-    clib_unix_error ("[%d] ERROR: mmap(0, %lld == 0x%llx, "
-		     "PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS, "
-		     "-1, 0) failed!",
-		     getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
-
+  if (vcl_mem <= 0)
+    {
+      clib_unix_error ("[%d] ERROR: mmap(0, %lld == 0x%llx, "
+		       "PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS, "
+		       "-1, 0) failed!",
+		       getpid (), vcl_cfg->heapsize, vcl_cfg->heapsize);
+      return;
+    }
   heap = clib_mem_init (vcl_mem, vcl_cfg->heapsize);
   if (!heap)
-    clib_warning ("[%d] ERROR: clib_mem_init() failed!", getpid ());
-  else if (VPPCOM_DEBUG > 0)
     {
-      clib_warning ("[%d] allocated VCL heap = %p, size %lld (0x%llx)",
-		    getpid (), heap, vcl_cfg->heapsize, vcl_cfg->heapsize);
-
-      vcm = clib_mem_alloc (sizeof (_vppcom_main));
-      clib_memcpy (vcm, &_vppcom_main, sizeof (_vppcom_main));
+      clib_warning ("[%d] ERROR: clib_mem_init() failed!", getpid ());
+      return;
     }
+  vcl_mem = clib_mem_alloc (sizeof (_vppcom_main));
+  if (!vcl_mem)
+    {
+      clib_warning ("[%d] ERROR: clib_mem_alloc() failed!", getpid ());
+      return;
+    }
+
+  clib_memcpy (vcl_mem, &_vppcom_main, sizeof (_vppcom_main));
+  vcm = vcl_mem;
+
+  if (VPPCOM_DEBUG > 0)
+    clib_warning ("[%d] allocated VCL heap = %p, size %lld (0x%llx)",
+		  getpid (), heap, vcl_cfg->heapsize, vcl_cfg->heapsize);
 }
 
 static void
