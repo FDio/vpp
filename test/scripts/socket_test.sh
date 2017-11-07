@@ -569,7 +569,7 @@ write_gdb_cmdfile() {
     echo "set confirm off" >> $1
     if [ -n "$4" ] ; then
         echo "set exec-wrapper env LD_PRELOAD=$4" >> $1
-        echo "start" >> $1
+        # echo "start" >> $1
     fi
 
     if [ ! -f $2 ] ; then

@@ -304,6 +304,8 @@ new_client (void)
 				     -1.0 /* wait forever */ );
   if (client_fd < 0)
     errno = -client_fd;
+#elif HAVE_ACCEPT4
+  client_fd = accept4 (ssm->listen_fd, (struct sockaddr *) NULL, NULL, NULL);
 #else
   client_fd = accept (ssm->listen_fd, (struct sockaddr *) NULL, NULL);
 #endif

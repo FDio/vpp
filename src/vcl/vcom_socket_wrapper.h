@@ -66,6 +66,7 @@
 #include <poll.h>
 #include <sys/uio.h>
 #include <stdlib.h>
+#include <vcl/vcom.h>
 
 
 /* GCC have printf type attribute check. */
@@ -104,13 +105,10 @@
  * has probably something todo with with the linker.
  * So we need load each function at the point it is called the first time.
  */
-#ifdef HAVE_ACCEPT4
-int
-libc_accept4 (int sockfd,
-	      struct sockaddr *addr, socklen_t * addrlen, int flags);
-#else /* HAVE_ACCEPT4 */
+int libc_accept4 (int sockfd, struct sockaddr *addr, socklen_t * addrlen,
+		  int flags);
+
 int libc_accept (int sockfd, struct sockaddr *addr, socklen_t * addrlen);
-#endif /* HAVE_ACCEPT4 */
 
 int libc_bind (int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 
