@@ -407,14 +407,15 @@ session_lookup_session_endpoint (u32 table_index, session_endpoint_t * sep)
   ip6_address_t lcl6;
   u32 ai;
   int rv;
+  u8 sst;
 
+  sst = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
   st = session_table_get (table_index);
   if (!st)
     return SESSION_INVALID_HANDLE;
   if (sep->is_ip4)
     {
-      make_v4_listener_kv (&kv4, &sep->ip.ip4, sep->port,
-			   sep->transport_proto);
+      make_v4_listener_kv (&kv4, &sep->ip.ip4, sep->port, sst);
       rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
       if (rv == 0)
 	return kv4.value;
@@ -428,8 +429,7 @@ session_lookup_session_endpoint (u32 table_index, session_endpoint_t * sep)
     }
   else
     {
-      make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port,
-			   sep->transport_proto);
+      make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port, sst);
       rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
       if (rv == 0)
 	return kv6.value;

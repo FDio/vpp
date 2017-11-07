@@ -99,6 +99,72 @@ static session_cb_vft_t dummy_session_cbs = {
 /* *INDENT-ON* */
 
 static int
+session_test_basic (vlib_main_t * vm, unformat_input_t * input)
+{
+  session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
+  u64 options[SESSION_OPTIONS_N_OPTIONS], bind4_handle, bind6_handle;
+  u8 segment_name[128];
+  clib_error_t *error = 0;
+  u32 server_index;
+
+  memset (options, 0, sizeof (options));
+  options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_ACCEPT_REDIRECT;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
+  options[APP_OPTIONS_FLAGS] |= APP_OPTIONS_FLAGS_USE_LOCAL_SCOPE;
+  vnet_app_attach_args_t attach_args = {
+    .api_client_index = ~0,
+    .options = options,
+    .namespace_id = 0,
+    .session_cb_vft = &dummy_session_cbs,
+    .segment_name = segment_name,
+  };
+
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "app attached");
+  server_index = attach_args.app_index;
+
+  server_sep.is_ip4 = 1;
+  vnet_bind_args_t bind_args = {
+    .sep = server_sep,
+    .app_index = 0,
+  };
+
+  bind_args.app_index = server_index;
+  error = vnet_bind (&bind_args);
+  SESSION_TEST ((error == 0), "server bind4 should work");
+  bind4_handle = bind_args.handle;
+
+  error = vnet_bind (&bind_args);
+  SESSION_TEST ((error != 0), "double server bind4 should not work");
+
+  bind_args.sep.is_ip4 = 0;
+  error = vnet_bind (&bind_args);
+  SESSION_TEST ((error == 0), "server bind6 should work");
+  bind6_handle = bind_args.handle;
+
+  error = vnet_bind (&bind_args);
+  SESSION_TEST ((error != 0), "double server bind6 should not work");
+
+  vnet_unbind_args_t unbind_args = {
+    .handle = bind4_handle,
+    .app_index = server_index,
+  };
+  error = vnet_unbind (&unbind_args);
+  SESSION_TEST ((error == 0), "unbind4 should work");
+
+  unbind_args.handle = bind6_handle;
+  error = vnet_unbind (&unbind_args);
+  SESSION_TEST ((error == 0), "unbind6 should work");
+
+  vnet_app_detach_args_t detach_args = {
+    .app_index = server_index,
+  };
+  vnet_application_detach (&detach_args);
+  return 0;
+}
+
+static int
 session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 {
   u64 options[SESSION_OPTIONS_N_OPTIONS], dummy_secret = 1234;
@@ -976,6 +1042,10 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((error == 0), "Del 1.2.3.4/32 1234 5.6.7.8/32 4321 drop "
 		"tag test_rule");
 
+  vnet_app_detach_args_t detach_args = {
+    .app_index = server_index,
+  };
+  vnet_application_detach (&detach_args);
   return 0;
 }
 
@@ -1114,20 +1184,34 @@ session_test (vlib_main_t * vm,
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "namespace"))
-	{
-	  res = session_test_namespace (vm, input);
-	}
+      if (unformat (input, "basic"))
+	res = session_test_basic (vm, input);
+      else if (unformat (input, "namespace"))
+	res = session_test_namespace (vm, input);
       else if (unformat (input, "rules-table"))
 	res = session_test_rule_table (vm, input);
       else if (unformat (input, "rules"))
 	res = session_test_rules (vm, input);
       else if (unformat (input, "proxy"))
 	res = session_test_proxy (vm, input);
+      else if (unformat (input, "all"))
+	{
+	  if ((res = session_test_basic (vm, input)))
+	    goto done;
+	  if ((res = session_test_namespace (vm, input)))
+	    goto done;
+	  if ((res = session_test_rule_table (vm, input)))
+	    goto done;
+	  if ((res = session_test_rules (vm, input)))
+	    goto done;
+	  if ((res = session_test_proxy (vm, input)))
+	    goto done;
+	}
       else
 	break;
     }
 
+done:
   if (res)
     return clib_error_return (0, "Session unit test failed");
   return 0;
