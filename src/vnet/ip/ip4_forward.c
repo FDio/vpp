@@ -1577,12 +1577,12 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  good_tcp_udp0 =
 	    (p0->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
-	     && !(p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
-		  || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) != 0;
+	     || (p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+		 || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) != 0;
 	  good_tcp_udp1 = (p1->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
-			   && !(p1->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
-				|| p1->flags &
-				VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) != 0;
+			   || (p1->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+			       || p1->flags &
+			       VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) != 0;
 
 	  if (PREDICT_FALSE (ip4_local_do_l4_check (is_tcp_udp0, p0->flags)
 			     || ip4_local_do_l4_check (is_tcp_udp1,
@@ -1740,8 +1740,8 @@ ip4_local_inline (vlib_main_t * vm,
 
 	  good_tcp_udp0 =
 	    (p0->flags & VNET_BUFFER_F_L4_CHECKSUM_CORRECT
-	     && !(p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
-		  || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) != 0;
+	     || (p0->flags & VNET_BUFFER_F_OFFLOAD_TCP_CKSUM
+		 || p0->flags & VNET_BUFFER_F_OFFLOAD_UDP_CKSUM)) != 0;
 
 	  if (PREDICT_FALSE (ip4_local_do_l4_check (is_tcp_udp0, p0->flags)))
 	    {
