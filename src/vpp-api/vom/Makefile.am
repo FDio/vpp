@@ -16,7 +16,7 @@ ACLOCAL_AMFLAGS = -I m4
 AM_LIBTOOLFLAGS = --quiet
 
 AM_CXXFLAGS = -Wall -std=gnu++11 -I${top_srcdir} -I${top_builddir}/vpp-api/vapi/ -I$(top_srcdir)/vpp-api/ -I${libdir}/../include
-AM_LDFLAGS = -shared -avoid-version -no-undefined
+AM_LDFLAGS = -shared -no-undefined
 
 bin_PROGRAMS =
 noinst_LTLIBRARIES =
