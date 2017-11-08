@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "42f63204_6db5dce6",
+        "filename": "src/vppinfra/bihash_template.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-11-08T18:10:02Z",
+      "side": 1,
+      "message": "Please code:\n\nh-\u003ewriter_lock \u003d clib_mem_alloc_aligned(...);\nh-\u003ewriter_lock[0] \u003d 0;\n\nto avoid missing cast warnings.",
+      "revId": "7110f08a1b087655e9288074503e1be5aaf0726a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
