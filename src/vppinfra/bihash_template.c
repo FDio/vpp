@@ -33,8 +33,10 @@ void BV (clib_bihash_init)
 
   oldheap = clib_mem_set_heap (h->mheap);
   vec_validate_aligned (h->buckets, nbuckets - 1, CLIB_CACHE_LINE_BYTES);
+  clib_spinlock_init (&h->writer_lock);
   h->writer_lock = clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES,
 					   CLIB_CACHE_LINE_BYTES);
+  h->writer_lock[0] = 0;
 
   for (i = 0; i < nbuckets; i++)
     BV (clib_bihash_reset_cache) (h->buckets + i);
