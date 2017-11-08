@@ -35,10 +35,12 @@ int map_add_del_psid (u32 map_domain_index, u16 psid, ip6_address_t * tep,
 		      u8 is_add);
 u8 *format_map_trace (u8 * s, va_list * args);
 
-typedef enum __attribute__ ((__packed__))
+typedef enum
 {
-  MAP_DOMAIN_PREFIX = 1 << 0, MAP_DOMAIN_TRANSLATION = 1 << 1,	// The domain uses MAP-T
-} map_domain_flags_e;
+  MAP_DOMAIN_PREFIX = 1 << 0,
+  MAP_DOMAIN_TRANSLATION = 1 << 1,	// The domain uses MAP-T
+  MAP_DOMAIN_RFC6052 = 1 << 2,
+} __attribute__ ((__packed__)) map_domain_flags_e;
 
 /**
  * IP4 reassembly logic:
@@ -382,6 +384,9 @@ map_get_sfx (map_domain_t *d, u32 addr, u16 port)
   if (d->ip6_prefix_len == 128)
     return clib_net_to_host_u64(d->ip6_prefix.as_u64[1]);
 
+  if (d->flags & MAP_DOMAIN_RFC6052)
+    return (clib_net_to_host_u64(d->ip6_prefix.as_u64[1]) | addr);
+
   /* IPv4 prefix */
   if (d->flags & MAP_DOMAIN_PREFIX)
     return (u64) (addr & (0xFFFFFFFF << d->suffix_shift)) << 16;
@@ -398,9 +403,12 @@ map_get_sfx_net (map_domain_t *d, u32 addr, u16 port)
 }
 
 static_always_inline u32
-map_get_ip4 (ip6_address_t *addr)
+map_get_ip4 (ip6_address_t *addr, map_domain_flags_e flags)
 {
-  return clib_host_to_net_u32(clib_net_to_host_u64(addr->as_u64[1]) >> 16);
+  if (flags & MAP_DOMAIN_RFC6052)
+    return clib_host_to_net_u32(clib_net_to_host_u64(addr->as_u64[1]));
+  else
+    return clib_host_to_net_u32(clib_net_to_host_u64(addr->as_u64[1]) >> 16);
 }
 
 /*
@@ -427,16 +435,19 @@ ip6_map_get_domain (u32 mdi,
 {
   map_main_t *mm = &map_main;
 
+#ifdef TODO
   /*
    * Disable direct MAP domain lookup on decap, until the security check is updated to verify IPv4 SA.
    * (That's done implicitly when MAP domain is looked up in the IPv4 FIB)
    */
-#ifdef MAP_NONSHARED_DOMAIN_ENABLED
-#error "How can you be sure this domain is not shared?"
-  *map_domain_index = mdi;
-  return pool_elt_at_index(mm->domains, mdi);
+  //#ifdef MAP_NONSHARED_DOMAIN_ENABLED
+  //#error "How can you be sure this domain is not shared?"
 #endif
 
+  *map_domain_index = mdi;
+  return pool_elt_at_index(mm->domains, mdi);
+
+#ifdef TODO
   u32 lbi = ip4_fib_forwarding_lookup(0, addr);
   const dpo_id_t *dpo = load_balance_get_bucket(lbi, 0);
   if (PREDICT_TRUE(dpo->dpoi_type == map_dpo_type ||
@@ -447,6 +458,7 @@ ip6_map_get_domain (u32 mdi,
     }
   *error = MAP_ERROR_NO_DOMAIN;
   return NULL;
+#endif
 }
 
 map_ip4_reass_t *
