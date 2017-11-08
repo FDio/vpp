@@ -807,6 +807,61 @@ nat64_show_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
+static clib_error_t *
+nat64_add_interface_address_command_fn (vlib_main_t * vm,
+					unformat_input_t * input,
+					vlib_cli_command_t * cmd)
+{
+  nat64_main_t *nm = &nat64_main;
+  vnet_main_t *vnm = vnet_get_main ();
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 sw_if_index;
+  int rv;
+  int is_add = 1;
+  clib_error_t *error = 0;
+
+  if (nm->is_disabled)
+    return clib_error_return (0,
+			      "NAT64 disabled, multi thread not supported");
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat
+	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
+	;
+      else if (unformat (line_input, "del"))
+	is_add = 0;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  rv = nat64_add_interface_address (sw_if_index, is_add);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+      error = clib_error_return (0, "entry not exist");
+      break;
+    case VNET_API_ERROR_VALUE_EXIST:
+      error = clib_error_return (0, "entry exist");
+      break;
+    default:
+      break;
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
 /* *INDENT-OFF* */
 
 /*?
@@ -1017,6 +1072,19 @@ VLIB_CLI_COMMAND (show_nat64_prefix_command, static) = {
   .function = nat64_show_prefix_command_fn,
 };
 
+/*?
+ * @cliexpar
+ * @cliexstart{nat64 add interface address}
+ * Add/delete NAT64 pool address from specific (DHCP addressed) interface.
+ * To add NAT64 pool address from specific interface use:
+ *  vpp# nat64 add interface address GigabitEthernet0/8/0
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (nat64_add_interface_address_command, static) = {
+    .path = "nat64 add interface address",
+    .short_help = "nat64 add interface address <interface> [del]",
+    .function = nat64_add_interface_address_command_fn,
+};
 /* *INDENT-ON* */
 
 /*

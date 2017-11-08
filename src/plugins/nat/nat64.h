@@ -55,6 +55,9 @@ typedef struct
   /** Address pool vector */
   snat_address_t *addr_pool;
 
+  /** sw_if_indices whose interface addresses should be auto-added */
+  u32 *auto_add_sw_if_indices;
+
   /** Pref64 vector */
   nat64_prefix_t *pref64;
 
@@ -70,6 +73,7 @@ typedef struct
 
   u8 is_disabled;
 
+  ip4_main_t *ip4_main;
   snat_main_t *sm;
 } nat64_main_t;
 
@@ -101,6 +105,16 @@ typedef int (*nat64_pool_addr_walk_fn_t) (snat_address_t * addr, void *ctx);
  * @param ctx A context passed in the visit function.
  */
 void nat64_pool_addr_walk (nat64_pool_addr_walk_fn_t fn, void *ctx);
+
+/**
+ * @brief NAT64 pool address from specific (DHCP addressed) interface.
+ *
+ * @param sw_if_index Index of the interface.
+ * @param is_add      1 if add, 0 if delete.
+ *
+ * @returns 0 on success, non-zero value otherwise.
+ */
+int nat64_add_interface_address (u32 sw_if_index, int is_add);
 
 /**
  * @brief Enable/disable NAT64 feature on the interface.
