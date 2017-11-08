@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7d24c92e_6c538e86",
+        "filename": "src/vnet/tcp/builtin_http_server.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 361,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-11-08T06:43:40Z",
+      "side": 1,
+      "message": "It\u0027s okay to just test that this is non 0. So something like: if (rv) return rv;",
+      "range": {
+        "startLine": 361,
+        "startChar": 6,
+        "endLine": 361,
+        "endChar": 14
+      },
+      "revId": "d5ffdaef33367367996c46869790246f13332c90",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
