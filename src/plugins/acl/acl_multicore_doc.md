@@ -126,6 +126,10 @@ egress packets. This allows of significant savings in memory,
 because now we need to keep only one copy of the session table per
 interface instead of two, and also to only have ONE node for all the lookups,
 (L2/L3 path, in/out, IPv4/IPv6) - significantly reducing the code complexity.
+Also, the L2 classifier tables are used to steer the traffic which is one
+or two dot1q tags further from the ethernet header, by inserting
+the appropriate sessions into L2 table, redirecting to IPv4 and IPv6 code
+based on the ethertype.
 
 Unfortunately, bihash still has the "lack of backpressure" problem,
 in a sense that if you try to insert too many entries and run out
