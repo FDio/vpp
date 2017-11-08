@@ -356,7 +356,8 @@ http_server_rx_callback (stream_session_t * s)
   http_server_main_t *hsm = &http_server_main;
   builtin_http_server_args *args;
 
-  session_rx_request (s);
+  if (-1 == session_rx_request (s))
+    return -1;
 
   /* send the command to a new/recycled vlib process */
   args = clib_mem_alloc (sizeof (*args));
