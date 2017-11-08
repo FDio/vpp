@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-vl_api_version 1.0.0
+vl_api_version 1.1.0
 
 /** \brief Add MAP domains
     @param client_index - opaque cookie to identify the sender
@@ -27,6 +27,7 @@ vl_api_version 1.0.0
     @param psid_offset - Port Set Identifider (PSID) offset
     @param psid_length - PSID length
     @param is_translation - MAP-E / MAP-T
+    @param is_rfc6052 - rfc6052 translation
     @param mtu - MTU
 */
 define map_add_domain
@@ -43,6 +44,7 @@ define map_add_domain
   u8 psid_offset;
   u8 psid_length;
   u8 is_translation;
+  u8 is_rfc6052;
   u16 mtu;
 };
 

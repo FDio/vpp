@@ -56,7 +56,14 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   vl_api_map_add_domain_reply_t *rmp;
   int rv = 0;
   u32 index;
-  u8 flags = mp->is_translation ? MAP_DOMAIN_TRANSLATION : 0;
+  u8 flags = 0;
+
+  if (mp->is_translation)
+    flags |= MAP_DOMAIN_TRANSLATION;
+
+  if (mp->is_rfc6052)
+    flags |= MAP_DOMAIN_RFC6052;
+
   rv =
     map_create_domain ((ip4_address_t *) & mp->ip4_prefix, mp->ip4_prefix_len,
 		       (ip6_address_t *) & mp->ip6_prefix, mp->ip6_prefix_len,
