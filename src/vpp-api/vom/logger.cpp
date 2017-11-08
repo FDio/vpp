@@ -22,10 +22,10 @@
 #include "vom/logger.hpp"
 
 namespace VOM {
-const log_level_t log_level_t::CRITICAL(0, "critical");
-const log_level_t log_level_t::ERROR(0, "error");
-const log_level_t log_level_t::WARNING(0, "warning");
-const log_level_t log_level_t::INFO(0, "info");
+const log_level_t log_level_t::CRITICAL(4, "critical");
+const log_level_t log_level_t::ERROR(3, "error");
+const log_level_t log_level_t::WARNING(2, "warning");
+const log_level_t log_level_t::INFO(1, "info");
 const log_level_t log_level_t::DEBUG(0, "debug");
 
 log_level_t::log_level_t(int v, const std::string& s)
