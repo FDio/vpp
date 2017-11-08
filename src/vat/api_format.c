@@ -21564,19 +21564,21 @@ vl_api_session_rules_details_t_handler (vl_api_session_rules_details_t * mp)
     {
       print (vam->ofp,
 	     "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d tag: %s",
-	     mp->appns_index, mp->transport_proto, mp->scope,
-	     format_ip4_address, &mp->lcl_ip, mp->lcl_plen, mp->lcl_port,
-	     format_ip4_address, &mp->rmt_ip, mp->rmt_plen, mp->rmt_port,
-	     mp->action_index, mp->tag);
+	     clib_net_to_host_u32 (mp->appns_index), mp->transport_proto,
+	     mp->scope, format_ip4_address, &mp->lcl_ip, mp->lcl_plen,
+	     clib_net_to_host_u16 (mp->lcl_port), format_ip4_address,
+	     &mp->rmt_ip, mp->rmt_plen, clib_net_to_host_u16 (mp->rmt_port),
+	     clib_net_to_host_u32 (mp->action_index), mp->tag);
     }
   else
     {
       print (vam->ofp,
 	     "appns %u tp %u scope %d %U/%d %d %U/%d %d action: %d tag: %s",
-	     mp->appns_index, mp->transport_proto, mp->scope,
-	     format_ip6_address, &mp->lcl_ip, mp->lcl_plen, mp->lcl_port,
-	     format_ip6_address, &mp->rmt_ip, mp->rmt_plen, mp->rmt_port,
-	     mp->action_index, mp->tag);
+	     clib_net_to_host_u32 (mp->appns_index), mp->transport_proto,
+	     mp->scope, format_ip6_address, &mp->lcl_ip, mp->lcl_plen,
+	     clib_net_to_host_u16 (mp->lcl_port), format_ip6_address,
+	     &mp->rmt_ip, mp->rmt_plen, clib_net_to_host_u16 (mp->rmt_port),
+	     clib_net_to_host_u32 (mp->action_index), mp->tag);
     }
 }
 
