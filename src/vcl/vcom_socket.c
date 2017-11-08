@@ -1437,8 +1437,9 @@ vcom_socket_getpeername (int __fd, __SOCKADDR_ARG __addr,
   if (!__addr || !__len)
     return -EFAULT;
 
+  u8 src_addr[sizeof (struct sockaddr_in6)];
   vppcom_endpt_t ep;
-  ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
+  ep.ip = src_addr;
   rv = vcom_session_getpeername (vsock->sid, &ep);
   if (rv == 0)
     {
@@ -1449,12 +1450,27 @@ vcom_socket_getpeername (int __fd, __SOCKADDR_ARG __addr,
 	    {
 	    case AF_INET:
 	      ((struct sockaddr_in *) __addr)->sin_port = ep.port;
-	      *__len = sizeof (struct sockaddr_in);
+	      if (*__len >= sizeof (struct sockaddr_in))
+		{
+		  memcpy (&((struct sockaddr_in *) __addr)->sin_addr,
+			  src_addr, sizeof (struct in_addr));
+		  *__len = sizeof (struct sockaddr_in);
+		}
+	      else
+		rv = -EINVAL;
 	      break;
 
 	    case AF_INET6:
 	      ((struct sockaddr_in6 *) __addr)->sin6_port = ep.port;
-	      *__len = sizeof (struct sockaddr_in6);
+	      if (*__len >= sizeof (struct sockaddr_in6))
+		{
+		  memcpy (((struct sockaddr_in6 *) __addr)->sin6_addr.
+			  __in6_u.__u6_addr8, src_addr,
+			  sizeof (struct in6_addr));
+		  *__len = sizeof (struct sockaddr_in6);
+		}
+	      else
+		rv = -EINVAL;
 	      break;
 
 	    default:
