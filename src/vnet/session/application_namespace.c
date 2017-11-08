@@ -254,25 +254,28 @@ format_app_namespace (u8 * s, va_list * args)
 }
 
 static clib_error_t *
-show_app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
+show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
 		vlib_cli_command_t * cmd)
 {
+  unformat_input_t _line_input, *line_input = &_line_input;
   app_namespace_t *app_ns;
   session_table_t *st;
   u8 *ns_id, do_table = 0;
 
   session_cli_return_if_not_enabled ();
 
-  if (unformat_peek_input (input) != UNFORMAT_END_OF_INPUT)
+  if (!unformat_user (main_input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "table %_%v%_", &ns_id))
+      if (unformat (line_input, "table %_%v%_", &ns_id))
 	do_table = 1;
       else
 	{
-	  vlib_cli_output (vm, "unknown input [%U]",
-			   format_unformat_error, input);
-	  return clib_error_return (0, "unknown input `%U'",
-				    format_unformat_error, input);
+	  vlib_cli_output (vm, "unknown input [%U]", format_unformat_error,
+			   line_input);
+	  goto done;
 	}
     }
 
@@ -282,17 +285,17 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
       if (!app_ns)
 	{
 	  vlib_cli_output (vm, "ns %v not found", ns_id);
-	  return 0;
+	  goto done;
 	}
       st = session_table_get (app_ns->local_table_index);
       if (!st)
 	{
 	  vlib_cli_output (vm, "table for ns %v could not be found", ns_id);
-	  return 0;
+	  goto done;
 	}
       session_lookup_show_table_entries (vm, st, 0, 1);
       vec_free (ns_id);
-      return 0;
+      goto done;
     }
 
   vlib_cli_output (vm, "%-20s%-20s%-20s", "Namespace", "Secret",
@@ -304,6 +307,8 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * input,
   }));
   /* *INDENT-ON* */
 
+done:
+  unformat_free (line_input);
   return 0;
 }
 
