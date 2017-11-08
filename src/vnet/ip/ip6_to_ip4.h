@@ -255,6 +255,7 @@ icmp6_to_icmp (vlib_buffer_t * p, ip6_to_ip4_set_fn_t fn, void *ctx,
   icmp46_header_t *icmp;
   ip_csum_t csum;
   int rv;
+  ip6_address_t old_src, old_dst;
 
   ip6 = vlib_buffer_get_current (p);
   ip6_pay_len = clib_net_to_host_u16 (ip6->payload_length);
@@ -325,12 +326,10 @@ icmp6_to_icmp (vlib_buffer_t * p, ip6_to_ip4_set_fn_t fn, void *ctx,
 	  return -1;
 	}
 
-      csum = *inner_L4_checksum;
-      csum = ip_csum_sub_even (csum, inner_ip6->src_address.as_u64[0]);
-      csum = ip_csum_sub_even (csum, inner_ip6->src_address.as_u64[1]);
-      csum = ip_csum_sub_even (csum, inner_ip6->dst_address.as_u64[0]);
-      csum = ip_csum_sub_even (csum, inner_ip6->dst_address.as_u64[1]);
-      *inner_L4_checksum = ip_csum_fold (csum);
+      old_src.as_u64[0] = inner_ip6->src_address.as_u64[0];
+      old_src.as_u64[1] = inner_ip6->src_address.as_u64[1];
+      old_dst.as_u64[0] = inner_ip6->dst_address.as_u64[0];
+      old_dst.as_u64[1] = inner_ip6->dst_address.as_u64[1];
 
       if ((rv = inner_fn (inner_ip6, inner_ip4, inner_ctx)) != 0)
 	return rv;
@@ -363,6 +362,10 @@ icmp6_to_icmp (vlib_buffer_t * p, ip6_to_ip4_set_fn_t fn, void *ctx,
 	{
 	  //Update to new pseudo-header
 	  csum = *inner_L4_checksum;
+	  csum = ip_csum_sub_even (csum, old_src.as_u64[0]);
+	  csum = ip_csum_sub_even (csum, old_src.as_u64[1]);
+	  csum = ip_csum_sub_even (csum, old_dst.as_u64[0]);
+	  csum = ip_csum_sub_even (csum, old_dst.as_u64[1]);
 	  csum = ip_csum_add_even (csum, inner_ip4->src_address.as_u32);
 	  csum = ip_csum_add_even (csum, inner_ip4->dst_address.as_u32);
 	  *inner_L4_checksum = ip_csum_fold (csum);
@@ -488,6 +491,7 @@ ip6_to_ip4_tcp_udp (vlib_buffer_t * p, ip6_to_ip4_set_fn_t fn, void *ctx,
   u8 l4_protocol;
   u16 l4_offset;
   int rv;
+  ip6_address_t old_src, old_dst;
 
   ip6 = vlib_buffer_get_current (p);
 
@@ -504,18 +508,13 @@ ip6_to_ip4_tcp_udp (vlib_buffer_t * p, ip6_to_ip4_set_fn_t fn, void *ctx,
     {
       udp_header_t *udp = ip6_next_header (ip6);
       checksum = &udp->checksum;
-      //UDP checksum is optional over IPv4
-      if (!udp_checksum)
-	goto no_csum;
     }
 
-  csum = ip_csum_sub_even (*checksum, ip6->src_address.as_u64[0]);
-  csum = ip_csum_sub_even (csum, ip6->src_address.as_u64[1]);
-  csum = ip_csum_sub_even (csum, ip6->dst_address.as_u64[0]);
-  csum = ip_csum_sub_even (csum, ip6->dst_address.as_u64[1]);
-  *checksum = ip_csum_fold (csum);
+  old_src.as_u64[0] = ip6->src_address.as_u64[0];
+  old_src.as_u64[1] = ip6->src_address.as_u64[1];
+  old_dst.as_u64[0] = ip6->dst_address.as_u64[0];
+  old_dst.as_u64[1] = ip6->dst_address.as_u64[1];
 
-no_csum:
   ip4 = (ip4_header_t *) u8_ptr_add (ip6, l4_offset - sizeof (*ip4));
 
   vlib_buffer_advance (p, l4_offset - sizeof (*ip4));
@@ -554,7 +553,11 @@ no_csum:
     }
   else
     {
-      csum = ip_csum_add_even (*checksum, ip4->dst_address.as_u32);
+      csum = ip_csum_sub_even (*checksum, old_src.as_u64[0]);
+      csum = ip_csum_sub_even (csum, old_src.as_u64[1]);
+      csum = ip_csum_sub_even (csum, old_dst.as_u64[0]);
+      csum = ip_csum_sub_even (csum, old_dst.as_u64[1]);
+      csum = ip_csum_add_even (csum, ip4->dst_address.as_u32);
       csum = ip_csum_add_even (csum, ip4->src_address.as_u32);
       *checksum = ip_csum_fold (csum);
     }
