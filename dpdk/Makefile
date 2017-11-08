@@ -386,6 +386,11 @@ build-deb: $(DEV_DEB)
 
 install-deb:
 ifneq ($(INSTALLED_DEB_VER),$(DPDK_VERSION)-$(PKG_SUFFIX))
+	@echo "=========================================================="
+	@echo " Out of date DPDK package installed."
+	@echo " Installed: $(INSTALLED_DEB_VER)"
+	@echo " Needed: $(DPDK_VERSION)-$(PKG_SUFFIX)"
+	@echo "=========================================================="
 	@make $(DEV_DEB)
 	@sudo dpkg -i $(DEV_DEB)
 else
