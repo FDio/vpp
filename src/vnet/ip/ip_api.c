@@ -86,7 +86,8 @@ extern void stats_dslock_with_hint (int hint, int tag);
 extern void stats_dsunlock (void);
 
 static void
-send_ip_neighbor_details (u8 is_ipv6,
+send_ip_neighbor_details (u32 sw_if_index,
+			  u8 is_ipv6,
 			  u8 is_static,
 			  u8 * mac_address,
 			  u8 * ip_address,
@@ -98,6 +99,7 @@ send_ip_neighbor_details (u8 is_ipv6,
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = ntohs (VL_API_IP_NEIGHBOR_DETAILS);
   mp->context = context;
+  mp->sw_if_index = htonl (sw_if_index);
   mp->is_ipv6 = is_ipv6;
   mp->is_static = is_static;
   memcpy (mp->mac_address, mac_address, 6);
@@ -126,7 +128,8 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
       vec_foreach (n, ns)
       {
         send_ip_neighbor_details
-          (mp->is_ipv6, ((n->flags & IP6_NEIGHBOR_FLAG_STATIC) ? 1 : 0),
+          (sw_if_index, mp->is_ipv6,
+	   ((n->flags & IP6_NEIGHBOR_FLAG_STATIC) ? 1 : 0),
            (u8 *) n->link_layer_address,
            (u8 *) & (n->key.ip6_address.as_u8),
            q, mp->context);
@@ -142,7 +145,7 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
       /* *INDENT-OFF* */
       vec_foreach (n, ns)
       {
-        send_ip_neighbor_details (mp->is_ipv6,
+        send_ip_neighbor_details (sw_if_index, mp->is_ipv6,
           ((n->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC) ? 1 : 0),
           (u8*) n->ethernet_address,
           (u8*) & (n->ip4_address.as_u8),
