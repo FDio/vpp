@@ -1505,14 +1505,14 @@ ip_container_cmd (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   fib_prefix_t pfx;
-
-  u32 is_del;
+  u32 is_del, addr_set = 0;
   vnet_main_t *vnm;
   u32 sw_if_index;
 
   vnm = vnet_get_main ();
   is_del = 0;
   sw_if_index = ~0;
+  memset (&pfx, 0, sizeof (pfx));
 
   /* Get a line of input. */
   if (!unformat_user (main_input, unformat_line_input, line_input))
@@ -1524,12 +1524,14 @@ ip_container_cmd (vlib_main_t * vm,
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP4;
 	  pfx.fp_len = 32;
+	  addr_set = 1;
 	}
       else if (unformat (line_input, "%U",
 			 unformat_ip6_address, &pfx.fp_addr.ip6))
 	{
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  pfx.fp_len = 128;
+	  addr_set = 1;
 	}
       else if (unformat (line_input, "%U",
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
@@ -1541,9 +1543,10 @@ ip_container_cmd (vlib_main_t * vm,
 				   format_unformat_error, line_input));
     }
 
-  if (~0 == sw_if_index)
+  if (~0 == sw_if_index || !addr_set)
     {
-      return (clib_error_return (0, "no interface"));
+      vlib_cli_output (vm, "interface and address must be set");
+      return 0;
     }
 
   vnet_ip_container_proxy_args_t args = {
