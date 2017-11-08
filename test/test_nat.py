@@ -3428,7 +3428,7 @@ class TestNAT64(MethodHolder):
             cls.vrf1_nat_addr_n = socket.inet_pton(socket.AF_INET,
                                                    cls.vrf1_nat_addr)
 
-            cls.create_pg_interfaces(range(4))
+            cls.create_pg_interfaces(range(5))
             cls.ip6_interfaces = list(cls.pg_interfaces[0:1])
             cls.ip6_interfaces.append(cls.pg_interfaces[2])
             cls.ip4_interfaces = list(cls.pg_interfaces[1:2])
@@ -4336,6 +4336,25 @@ class TestNAT64(MethodHolder):
         self.assertEqual(p[TCP].sport, 20)
         self.assertEqual(p[TCP].dport, self.tcp_port_in)
         self.assertEqual(data, p[Raw].load)
+
+    def test_interface_addr(self):
+        """ Acquire NAT64 pool addresses from interface """
+        self.vapi.nat64_add_interface_addr(self.pg4.sw_if_index)
+
+        # no address in NAT64 pool
+        adresses = self.vapi.nat44_address_dump()
+        self.assertEqual(0, len(adresses))
+
+        # configure interface address and check NAT64 address pool
+        self.pg4.config_ip4()
+        addresses = self.vapi.nat64_pool_addr_dump()
+        self.assertEqual(len(addresses), 1)
+        self.assertEqual(addresses[0].address, self.pg4.local_ip4n)
+
+        # remove interface address and check NAT64 address pool
+        self.pg4.unconfig_ip4()
+        addresses = self.vapi.nat64_pool_addr_dump()
+        self.assertEqual(0, len(adresses))
 
     def nat64_get_ses_num(self):
         """

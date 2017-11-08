@@ -1723,6 +1723,18 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.nat64_prefix_dump, {})
 
+    def nat64_add_interface_addr(
+            self,
+            sw_if_index,
+            is_add=1):
+        """Add/del NAT64 address from interface
+
+        :param sw_if_index: Software index of the interface
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(self.papi.nat64_add_del_interface_addr,
+                        {'is_add': is_add, 'sw_if_index': sw_if_index})
+
     def dslite_set_aftr_addr(self, ip6, ip4):
         """Set DS-Lite AFTR addresses
 

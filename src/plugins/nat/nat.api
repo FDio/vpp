@@ -1649,6 +1649,20 @@ define nat64_prefix_details {
   u32 vrf_id;
 };
 
+/** \brief Add/delete NAT64 pool address from specific interfce
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param sw_if_index - software index of the interface
+*/
+autoreply define nat64_add_del_interface_addr {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 is_inside;
+  u32 sw_if_index;
+};
+
 
 /*
  * DS-Lite APIs

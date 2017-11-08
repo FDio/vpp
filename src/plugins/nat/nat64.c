@@ -47,12 +47,47 @@ static u8 well_known_prefix[] = {
 
 /* *INDENT-ON* */
 
+static void
+nat64_ip4_add_del_interface_address_cb (ip4_main_t * im, uword opaque,
+					u32 sw_if_index,
+					ip4_address_t * address,
+					u32 address_length,
+					u32 if_address_index, u32 is_delete)
+{
+  nat64_main_t *nm = &nat64_main;
+  int i, j;
+
+  for (i = 0; i < vec_len (nm->auto_add_sw_if_indices); i++)
+    {
+      if (sw_if_index == nm->auto_add_sw_if_indices[i])
+	{
+	  if (!is_delete)
+	    {
+	      /* Don't trip over lease renewal, static config */
+	      for (j = 0; j < vec_len (nm->addr_pool); j++)
+		if (nm->addr_pool[j].addr.as_u32 == address->as_u32)
+		  return;
+
+	      (void) nat64_add_del_pool_addr (address, ~0, 1);
+	      return;
+	    }
+	  else
+	    {
+	      (void) nat64_add_del_pool_addr (address, ~0, 0);
+	      return;
+	    }
+	}
+    }
+}
+
 clib_error_t *
 nat64_init (vlib_main_t * vm)
 {
   nat64_main_t *nm = &nat64_main;
   clib_error_t *error = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  ip4_add_del_interface_address_callback_t cb4;
+  ip4_main_t *im = &ip4_main;
 
   nm->is_disabled = 0;
 
@@ -74,6 +109,12 @@ nat64_init (vlib_main_t * vm)
   nm->tcp_trans_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
   nm->tcp_est_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
   nm->tcp_incoming_syn_timeout = SNAT_TCP_INCOMING_SYN;
+
+  /* Set up the interface address add/del callback */
+  cb4.function = nat64_ip4_add_del_interface_address_cb;
+  cb4.function_opaque = 0;
+  vec_add1 (im->add_del_interface_address_callbacks, cb4);
+  nm->ip4_main = im;
 
 error:
   return error;
@@ -160,6 +201,47 @@ nat64_pool_addr_walk (nat64_pool_addr_walk_fn_t fn, void *ctx)
         break;
     };
   /* *INDENT-ON* */
+}
+
+int
+nat64_add_interface_address (u32 sw_if_index, int is_add)
+{
+  nat64_main_t *nm = &nat64_main;
+  ip4_main_t *ip4_main = nm->ip4_main;
+  ip4_address_t *first_int_addr;
+  int i;
+
+  first_int_addr = ip4_interface_first_address (ip4_main, sw_if_index, 0);
+
+  for (i = 0; i < vec_len (nm->auto_add_sw_if_indices); i++)
+    {
+      if (nm->auto_add_sw_if_indices[i] == sw_if_index)
+	{
+	  if (is_add)
+	    return VNET_API_ERROR_VALUE_EXIST;
+	  else
+	    {
+	      /* if have address remove it */
+	      if (first_int_addr)
+		(void) nat64_add_del_pool_addr (first_int_addr, ~0, 0);
+
+	      vec_del1 (nm->auto_add_sw_if_indices, i);
+	      return 0;
+	    }
+	}
+    }
+
+  if (!is_add)
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
+
+  /* add to the auto-address list */
+  vec_add1 (nm->auto_add_sw_if_indices, sw_if_index);
+
+  /* If the address is already bound - or static - add it now */
+  if (first_int_addr)
+    (void) nat64_add_del_pool_addr (first_int_addr, ~0, 1);
+
+  return 0;
 }
 
 int

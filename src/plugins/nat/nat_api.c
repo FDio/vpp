@@ -3431,6 +3431,44 @@ vl_api_nat64_prefix_dump_t_print (vl_api_nat64_prefix_dump_t * mp,
   FINISH;
 }
 
+static void
+  vl_api_nat64_add_del_interface_addr_t_handler
+  (vl_api_nat64_add_del_interface_addr_t * mp)
+{
+  nat64_main_t *nm = &nat64_main;
+  snat_main_t *sm = &snat_main;
+  vl_api_nat64_add_del_interface_addr_reply_t *rmp;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+  int rv = 0;
+
+  if (nm->is_disabled)
+    {
+      rv = VNET_API_ERROR_FEATURE_DISABLED;
+      goto send_reply;
+    }
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = nat64_add_interface_address (sw_if_index, mp->is_add);
+
+  BAD_SW_IF_INDEX_LABEL;
+send_reply:
+  REPLY_MACRO (VL_API_NAT64_ADD_DEL_INTERFACE_ADDR_REPLY);
+}
+
+static void *vl_api_nat64_add_del_interface_addr_t_print
+  (vl_api_nat64_add_del_interface_addr_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat64_add_del_interface_addr ");
+  s = format (s, "sw_if_index %d %s",
+	      clib_host_to_net_u32 (mp->sw_if_index),
+	      mp->is_add ? "" : "del");
+
+  FINISH;
+}
+
 /***************/
 /*** DS-Lite ***/
 /***************/
@@ -3587,6 +3625,7 @@ _(NAT64_GET_TIMEOUTS, nat64_get_timeouts)                               \
 _(NAT64_ST_DUMP, nat64_st_dump)                                         \
 _(NAT64_ADD_DEL_PREFIX, nat64_add_del_prefix)                           \
 _(NAT64_PREFIX_DUMP, nat64_prefix_dump)                                 \
+_(NAT64_ADD_DEL_INTERFACE_ADDR, nat64_add_del_interface_addr)           \
 _(DSLITE_ADD_DEL_POOL_ADDR_RANGE, dslite_add_del_pool_addr_range)       \
 _(DSLITE_SET_AFTR_ADDR, dslite_set_aftr_addr)
 
