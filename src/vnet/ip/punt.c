@@ -415,7 +415,7 @@ udp46_punt_socket_inline (vlib_main_t * vm,
 	.msg_iovlen = vec_len (iovecs),
       };
 
-      if (sendmsg (pm->socket_fd, &msg, 0) < l)
+      if (sendmsg (pm->socket_fd, &msg, 0) < (ssize_t) l)
 	vlib_node_increment_counter (vm, node_index,
 				     PUNT_ERROR_SOCKET_TX_ERROR, 1);
     }
