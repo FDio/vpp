@@ -57,6 +57,7 @@ vl_api_map_add_domain_t_handler (vl_api_map_add_domain_t * mp)
   int rv = 0;
   u32 index;
   u8 flags = mp->is_translation ? MAP_DOMAIN_TRANSLATION : 0;
+  /* TODO: Add RFC6052 mode support */
   rv =
     map_create_domain ((ip4_address_t *) & mp->ip4_prefix, mp->ip4_prefix_len,
 		       (ip6_address_t *) & mp->ip6_prefix, mp->ip6_prefix_len,

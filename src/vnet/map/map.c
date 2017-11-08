@@ -85,6 +85,12 @@ map_create_domain (ip4_address_t * ip4_prefix,
 	  clib_warning ("MAP-T only supports ip6_src_len = 96 for now.");
 	  return -1;
 	}
+      if ((flags & MAP_DOMAIN_RFC6052) && ip6_prefix_len != 96)
+	{
+	  clib_warning ("RFC6052 translation only supports ip6_prefix_len = "
+			"96 for now");
+	  return -1;
+	}
     }
   else
     {
@@ -586,6 +592,8 @@ map_add_domain_command_fn (vlib_main_t * vm,
 	num_m_args++;
       else if (unformat (line_input, "map-t"))
 	flags |= MAP_DOMAIN_TRANSLATION;
+      else if (unformat (line_input, "rfc6052"))
+	flags |= (MAP_DOMAIN_TRANSLATION | MAP_DOMAIN_RFC6052);
       else
 	{
 	  error = clib_error_return (0, "unknown input `%U'",
@@ -919,6 +927,18 @@ done:
   return error;
 }
 
+static char *
+map_flags_to_string (u32 flags)
+{
+  if (flags & MAP_DOMAIN_RFC6052)
+    return "rfc6052";
+  if (flags & MAP_DOMAIN_PREFIX)
+    return "prefix";
+  if (flags & MAP_DOMAIN_TRANSLATION)
+    return "map-t";
+  return "";
+}
+
 static u8 *
 format_map_domain (u8 * s, va_list * args)
 {
@@ -933,13 +953,14 @@ format_map_domain (u8 * s, va_list * args)
     ip6_prefix = d->ip6_prefix;
 
   s = format (s,
-	      "[%d] ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d ea_bits_len %d psid-offset %d psid-len %d mtu %d %s",
+	      "[%d] ip4-pfx %U/%d ip6-pfx %U/%d ip6-src %U/%d ea_bits_len %d "
+	      "psid-offset %d psid-len %d mtu %d %s",
 	      d - mm->domains,
 	      format_ip4_address, &d->ip4_prefix, d->ip4_prefix_len,
 	      format_ip6_address, &ip6_prefix, d->ip6_prefix_len,
 	      format_ip6_address, &d->ip6_src, d->ip6_src_len,
 	      d->ea_bits_len, d->psid_offset, d->psid_length, d->mtu,
-	      (d->flags & MAP_DOMAIN_TRANSLATION) ? "map-t" : "");
+	      map_flags_to_string (d->flags));
 
   if (counters)
     {
