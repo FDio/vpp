@@ -1437,7 +1437,7 @@ defaulted:
 
   vcl_mem = mmap (0, vcl_cfg->heapsize, PROT_READ | PROT_WRITE,
 		  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
-  if (vcl_mem <= 0)
+  if (vcl_mem == MAP_FAILED)
     {
       clib_unix_error ("[%d] ERROR: mmap(0, %lld == 0x%llx, "
 		       "PROT_READ | PROT_WRITE,MAP_SHARED | MAP_ANONYMOUS, "
