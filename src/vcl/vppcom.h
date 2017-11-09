@@ -27,6 +27,7 @@
 #define VPPCOM_VRF_DEFAULT                   0
 #define VPPCOM_CONF_DEFAULT                  "/etc/vpp/vcl.conf"
 #define VPPCOM_ENV_CONF                      "VCL_CONFIG"
+#define VPPCOM_ENV_DEBUG                     "VCL_DEBUG"
 #define VPPCOM_ENV_APP_PROXY_TRANSPORT_TCP   "VCL_APP_PROXY_TRANSPORT_TCP"
 #define VPPCOM_ENV_APP_PROXY_TRANSPORT_UDP   "VCL_APP_PROXY_TRANSPORT_UDP"
 #define VPPCOM_ENV_APP_NAMESPACE_ID          "VCL_APP_NAMESPACE_ID"
