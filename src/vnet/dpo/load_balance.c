@@ -240,6 +240,16 @@ load_balance_is_drop (const dpo_id_t *dpo)
     return (0);
 }
 
+u16
+load_balance_n_buckets (index_t lbi)
+{
+    load_balance_t *lb;
+
+    lb = load_balance_get(lbi);
+
+    return (lb->lb_n_buckets);
+}
+
 void
 load_balance_set_fib_entry_flags (index_t lbi,
                                   fib_entry_flag_t flags)

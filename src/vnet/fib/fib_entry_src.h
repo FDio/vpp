@@ -166,6 +166,12 @@ typedef const void* (*fib_entry_src_get_data_t)(fib_entry_src_t *src,
                                                 const fib_entry_t *fib_entry);
 
 /**
+ * Contribute forwarding to interpose inthe chain
+ */
+typedef const dpo_id_t* (*fib_entry_src_contribute_interpose_t)(const fib_entry_src_t *src,
+                                                         const fib_entry_t *fib_entry);
+
+/**
  * Virtual function table each FIB entry source will register
  */
 typedef struct fib_entry_src_vft_t_ {
@@ -185,14 +191,15 @@ typedef struct fib_entry_src_vft_t_ {
     fib_entry_src_fwd_update_t fesv_fwd_update;
     fib_entry_src_get_data_t fesv_get_data;
     fib_entry_src_set_data_t fesv_set_data;
+    fib_entry_src_contribute_interpose_t fesv_contribute_interpose;
 } fib_entry_src_vft_t;
 
 #define FOR_EACH_SRC_ADDED(_entry, _src, _source, action)	\
 {								\
-    vec_foreach(_src, _entry->fe_srcs)				\
+    vec_foreach(_src, (_entry)->fe_srcs)                        \
     {								\
 	if (_src->fes_flags & FIB_ENTRY_SRC_FLAG_ADDED) {	\
-	    _source = _src->fes_src;				\
+	    _source = (_src)->fes_src;				\
 	    do {						\
 		action;						\
 	    } while(0);						\
@@ -279,6 +286,7 @@ extern void fib_entry_src_mk_lb (fib_entry_t *fib_entry,
 
 extern fib_protocol_t fib_entry_get_proto(const fib_entry_t * fib_entry);
 extern dpo_proto_t fib_entry_get_dpo_proto(const fib_entry_t * fib_entry);
+extern int fib_entry_source_provides_interpose(fib_source_t source);
 
 /*
  * Per-source registration. declared here so we save a separate .h file for each

@@ -330,6 +330,17 @@ dpo_register_new_type (const dpo_vft_t *vft,
 }
 
 void
+dpo_mk_interpose (const dpo_id_t *original,
+                  const dpo_id_t *parent,
+                  dpo_id_t *clone)
+{
+    if (!dpo_id_is_valid(original))
+	return;
+
+    dpo_vfts[original->dpoi_type].dv_mk_interpose(original, parent, clone);
+}
+
+void
 dpo_lock (dpo_id_t *dpo)
 {
     if (!dpo_id_is_valid(dpo))

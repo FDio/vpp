@@ -292,9 +292,67 @@ const static fib_entry_src_vft_t rr_src_vft = {
     .fesv_format = fib_entry_src_rr_format,
 };
 
+static void
+fib_entry_src_interpose_add (fib_entry_src_t *src,
+                             const fib_entry_t *entry,
+                             fib_entry_flag_t flags,
+                             dpo_proto_t proto,
+                             const dpo_id_t *dpo)
+{
+    dpo_copy(&src->interpose.fesr_dpo, dpo);
+}
+
+static void
+fib_entry_src_interpose_remove (fib_entry_src_t *src)
+{
+    dpo_reset(&src->interpose.fesr_dpo);
+}
+
+static void
+fib_entry_src_interpose_set_data (fib_entry_src_t *src,
+                                  const fib_entry_t *fib_entry,
+                                  const void *data)
+{
+    const dpo_id_t *dpo = data;
+
+    dpo_copy(&src->interpose.fesr_dpo, dpo);
+}
+
+/**
+ * Contribute forwarding to interpose inthe chain
+ */
+const dpo_id_t* fib_entry_src_interpose_contribute(const fib_entry_src_t *src,
+                                                   const fib_entry_t *fib_entry)
+{
+    return (&src->interpose.fesr_dpo);
+}
+
+static u8*
+fib_entry_src_interpose_format (fib_entry_src_t *src,
+                                u8* s)
+{
+    return (format(s, "cover:%d interpose:%U",
+                   src->rr.fesr_cover,
+                   format_dpo_id, &src->interpose.fesr_dpo, 8));
+}
+
+const static fib_entry_src_vft_t interpose_src_vft = {
+    .fesv_init = fib_entry_src_rr_init,
+    .fesv_activate = fib_entry_src_rr_activate,
+    .fesv_deactivate = fib_entry_src_rr_deactivate,
+    .fesv_cover_change = fib_entry_src_rr_cover_change,
+    .fesv_cover_update = fib_entry_src_rr_cover_update,
+    .fesv_format = fib_entry_src_interpose_format,
+    .fesv_add = fib_entry_src_interpose_add,
+    .fesv_remove = fib_entry_src_interpose_remove,
+    .fesv_contribute_interpose = fib_entry_src_interpose_contribute,
+    .fesv_set_data = fib_entry_src_interpose_set_data,
+};
+
 void
 fib_entry_src_rr_register (void)
 {
     fib_entry_src_register(FIB_SOURCE_RR, &rr_src_vft);    
     fib_entry_src_register(FIB_SOURCE_URPF_EXEMPT, &rr_src_vft);    
+    fib_entry_src_register(FIB_SOURCE_INTERPOSE, &interpose_src_vft);
 }

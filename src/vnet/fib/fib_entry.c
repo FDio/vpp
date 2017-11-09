@@ -125,8 +125,8 @@ format_fib_entry (u8 * s, va_list * args)
 	FOR_EACH_SRC_ADDED(fib_entry, src, source,
         ({
 	    s = format (s, "\n  %U", format_fib_source, source);
-	    s = fib_entry_src_format(fib_entry, source, s);
 	    s = format (s, " refs:%d ", src->fes_ref_count);
+	    s = fib_entry_src_format(fib_entry, source, s);
 	    if (FIB_ENTRY_FLAG_NONE != src->fes_entry_flags) {
 		s = format(s, "flags:");
 		FOR_EACH_FIB_ATTRIBUTE(attr) {
@@ -750,6 +750,21 @@ fib_entry_post_update_actions (fib_entry_t *fib_entry,
     fib_entry_post_install_actions(fib_entry, source, old_flags);
 }
 
+void
+fib_entry_recalculate_forwarding (fib_node_index_t fib_entry_index)
+{
+    fib_source_t best_source;
+    fib_entry_t *fib_entry;
+    fib_entry_src_t *bsrc;
+
+    fib_entry = fib_entry_get(fib_entry_index);
+
+    bsrc = fib_entry_get_best_src_i(fib_entry);
+    best_source = fib_entry_src_get_source(bsrc);
+
+    fib_entry_src_action_reactivate(fib_entry, best_source);
+}
+
 static void
 fib_entry_source_change (fib_entry_t *fib_entry,
 			 fib_source_t best_source,
@@ -771,11 +786,22 @@ fib_entry_source_change (fib_entry_t *fib_entry,
     }
     else if (new_source > best_source)
     {
-	/*
-	 * the new source loses. nothing to do here.
-	 * the data from the source is saved in the path-list created
-	 */
-	return;
+        if (fib_entry_source_provides_interpose(new_source))
+        {
+            /*
+             * the new, but lower priority source provides interpose.
+             * reactivate the best source so the interposer gets stacked
+             */
+            fib_entry_src_action_reactivate(fib_entry, best_source);
+        }
+        else
+        {
+            /*
+             * the new source loses. nothing to do here.
+             * the data from the source is saved in the path-list created
+             */
+            return;
+        }
     }
     else
     {
