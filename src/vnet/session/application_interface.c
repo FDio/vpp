@@ -109,7 +109,7 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
 
   table_index = application_session_table (app,
 					   session_endpoint_fib_proto (sep));
-  listener = session_lookup_session_endpoint (table_index, sep);
+  listener = session_lookup_endpoint_listener (table_index, sep, 1);
   if (listener != SESSION_INVALID_HANDLE)
     return VNET_API_ERROR_ADDRESS_IN_USE;
 
@@ -120,7 +120,7 @@ vnet_bind_i (u32 app_index, session_endpoint_t * sep, u64 * handle)
   if (application_has_local_scope (app) && session_endpoint_is_zero (sep))
     {
       table_index = application_local_session_table (app);
-      listener = session_lookup_session_endpoint (table_index, sep);
+      listener = session_lookup_endpoint_listener (table_index, sep, 1);
       if (listener != SESSION_INVALID_HANDLE)
 	return VNET_API_ERROR_ADDRESS_IN_USE;
       session_lookup_add_session_endpoint (table_index, sep, app->index);
@@ -223,7 +223,9 @@ vnet_connect_i (u32 app_index, u32 api_context, session_endpoint_t * sep,
   if (application_has_local_scope (app))
     {
       table_index = application_local_session_table (app);
-      server_index = session_lookup_local_session_endpoint (table_index, sep);
+      server_index = session_lookup_local_endpoint (table_index, sep);
+      if (server_index == APP_DROP_INDEX)
+	return VNET_API_ERROR_APP_CONNECT_FILTERED;
 
       /*
        * Break loop if rule in local table points to connecting app. This

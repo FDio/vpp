@@ -103,6 +103,7 @@ typedef struct _application
 } application_t;
 
 #define APP_INVALID_INDEX ((u32)~0)
+#define APP_DROP_INDEX (((u32)~0) - 1)
 #define APP_NS_INVALID_INDEX ((u32)~0)
 #define APP_INVALID_SEGMENT_MANAGER_INDEX ((u32) ~0)
 
