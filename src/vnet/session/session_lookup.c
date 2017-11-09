@@ -348,7 +348,7 @@ session_lookup_del_session (stream_session_t * s)
 }
 
 static u32
-session_lookup_action_to_session (u32 action_index)
+session_lookup_action_to_session_index (u32 action_index)
 {
   if (action_index != SESSION_RULES_TABLE_ACTION_DROP)
     return action_index;
@@ -367,16 +367,27 @@ session_lookup_app_listen_session (u32 app_index, u8 fib_proto,
   return application_first_listener (app, fib_proto, transport_proto);
 }
 
+static stream_session_t *
+session_lookup_action_to_session (u32 action_index, u8 fib_proto,
+				  u8 transport_proto)
+{
+  u32 session_index;
+  session_index = session_lookup_action_to_session_index (action_index);
+  /* Nothing sophisticated for now, action index is app index */
+  return session_lookup_app_listen_session (session_index, fib_proto,
+					    transport_proto);
+}
+
 stream_session_t *
-session_lookup_rules_table4 (session_table_t * st, u8 proto,
-			     ip4_address_t * lcl, u16 lcl_port,
-			     ip4_address_t * rmt, u16 rmt_port)
+session_lookup_rules_table_session4 (session_table_t * st, u8 proto,
+				     ip4_address_t * lcl, u16 lcl_port,
+				     ip4_address_t * rmt, u16 rmt_port)
 {
   session_rules_table_t *srt = &st->session_rules[proto];
   u32 action_index, session_index;
   action_index = session_rules_table_lookup4 (srt, lcl, rmt, lcl_port,
 					      rmt_port);
-  session_index = session_lookup_action_to_session (action_index);
+  session_index = session_lookup_action_to_session_index (action_index);
   /* Nothing sophisticated for now, action index is app index */
   return session_lookup_app_listen_session (session_index, FIB_PROTOCOL_IP4,
 					    proto);
@@ -391,20 +402,27 @@ session_lookup_rules_table6 (session_table_t * st, u8 proto,
   u32 action_index, session_index;
   action_index = session_rules_table_lookup6 (srt, lcl, rmt, lcl_port,
 					      rmt_port);
-  session_index = session_lookup_action_to_session (action_index);
+  session_index = session_lookup_action_to_session_index (action_index);
   return session_lookup_app_listen_session (session_index, FIB_PROTOCOL_IP6,
 					    proto);
 }
 
+/**
+ * Lookup listener for session endpoint in table
+ *
+ * @param table_index table where the endpoint should be looked up
+ * @param sep session endpoint to be looked up
+ * @param use_rules flag that indicates if the session rules of the table
+ * 		    should be used
+ * @return invalid handle if nothing is found, the handle of a valid listener
+ * 	   or an action_index if a rule is hit
+ */
 u64
-session_lookup_session_endpoint (u32 table_index, session_endpoint_t * sep)
+session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
+				  u8 use_rules)
 {
   session_rules_table_t *srt;
   session_table_t *st;
-  session_kv4_t kv4;
-  session_kv6_t kv6;
-  ip4_address_t lcl4;
-  ip6_address_t lcl6;
   u32 ai;
   int rv;
   u8 sst;
@@ -415,94 +433,95 @@ session_lookup_session_endpoint (u32 table_index, session_endpoint_t * sep)
     return SESSION_INVALID_HANDLE;
   if (sep->is_ip4)
     {
+      session_kv4_t kv4;
+      ip4_address_t lcl4;
+
       make_v4_listener_kv (&kv4, &sep->ip.ip4, sep->port, sst);
       rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
       if (rv == 0)
 	return kv4.value;
-
-      memset (&lcl4, 0, sizeof (lcl4));
-      srt = &st->session_rules[sep->transport_proto];
-      ai = session_rules_table_lookup4 (srt, &lcl4, &sep->ip.ip4, 0,
-					sep->port);
-      if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
-	return session_lookup_action_to_session (ai);
+      if (use_rules)
+	{
+	  memset (&lcl4, 0, sizeof (lcl4));
+	  srt = &st->session_rules[sep->transport_proto];
+	  ai = session_rules_table_lookup4 (srt, &lcl4, &sep->ip.ip4, 0,
+					    sep->port);
+	  if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
+	    return session_lookup_action_to_session_index (ai);
+	}
     }
   else
     {
+      session_kv6_t kv6;
+      ip6_address_t lcl6;
+
       make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port, sst);
       rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
       if (rv == 0)
 	return kv6.value;
 
-      memset (&lcl6, 0, sizeof (lcl6));
-      srt = &st->session_rules[sep->transport_proto];
-      ai = session_rules_table_lookup6 (srt, &lcl6, &sep->ip.ip6, 0,
-					sep->port);
-      if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
-	return session_lookup_action_to_session (ai);
+      if (use_rules)
+	{
+	  memset (&lcl6, 0, sizeof (lcl6));
+	  srt = &st->session_rules[sep->transport_proto];
+	  ai = session_rules_table_lookup6 (srt, &lcl6, &sep->ip.ip6, 0,
+					    sep->port);
+	  if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
+	    return session_lookup_action_to_session_index (ai);
+	}
     }
   return SESSION_INVALID_HANDLE;
 }
 
-stream_session_t *
-session_lookup_global_session_endpoint (session_endpoint_t * sep)
-{
-  session_table_t *st;
-  session_kv4_t kv4;
-  session_kv6_t kv6;
-  ip4_address_t lcl4;
-  ip6_address_t lcl6;
-  u8 fib_proto;
-  u32 table_index;
-  int rv;
-
-  fib_proto = session_endpoint_fib_proto (sep);
-  table_index = session_lookup_get_index_for_fib (fib_proto, sep->fib_index);
-  st = session_table_get (table_index);
-  if (!st)
-    return 0;
-  if (sep->is_ip4)
-    {
-      make_v4_listener_kv (&kv4, &sep->ip.ip4, sep->port,
-			   sep->transport_proto);
-      rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
-      if (rv == 0)
-	return session_get_from_handle (kv4.value);
-      memset (&lcl4, 0, sizeof (lcl4));
-      return session_lookup_rules_table4 (st, sep->transport_proto, &lcl4, 0,
-					  &sep->ip.ip4, sep->port);
-    }
-  else
-    {
-      make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port,
-			   sep->transport_proto);
-      rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
-      if (rv == 0)
-	return session_get_from_handle (kv6.value);
-      memset (&lcl6, 0, sizeof (lcl6));
-      return session_lookup_rules_table6 (st, sep->transport_proto, &lcl6, 0,
-					  &sep->ip.ip6, sep->port);
-    }
-}
-
+/**
+ * Look up endpoint in local session table
+ *
+ * The result, for now, is an application index and it may in the future
+ * be extended to a more complicated "action object". The only action we
+ * emulate now is "drop" and for that we return a special app index.
+ *
+ * Lookup logic is to check in order:
+ * - the rules in the table (connect acls)
+ * - session sub-table for a listener
+ * - session sub-table for a local listener (zeroed addr)
+ *
+ * @param table_index table where the lookup should be done
+ * @param sep session endpoint to be looked up
+ * @return index that can be interpreted as an app index or drop action.
+ */
 u32
-session_lookup_local_session_endpoint (u32 table_index,
-				       session_endpoint_t * sep)
+session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
 {
   session_rules_table_t *srt;
   session_table_t *st;
-  session_kv4_t kv4;
-  session_kv6_t kv6;
-  ip4_address_t lcl4;
-  ip6_address_t lcl6;
   u32 ai;
   int rv;
 
   st = session_table_get (table_index);
   if (!st)
     return SESSION_INVALID_INDEX;
+  ASSERT (st->is_local);
+
   if (sep->is_ip4)
     {
+      session_kv4_t kv4;
+      ip4_address_t lcl4;
+
+      /*
+       * Check if endpoint has special rules associated
+       */
+      memset (&lcl4, 0, sizeof (lcl4));
+      srt = &st->session_rules[sep->transport_proto];
+      ai = session_rules_table_lookup4 (srt, &lcl4, &sep->ip.ip4, 0,
+					sep->port);
+      if (ai == SESSION_RULES_TABLE_ACTION_DROP)
+	return APP_DROP_INDEX;
+      if (ai != SESSION_RULES_TABLE_ACTION_NONE)
+	return session_lookup_action_to_session_index (ai);
+
+      /*
+       * Check if session endpoint is a listener
+       */
       make_v4_listener_kv (&kv4, &sep->ip.ip4, sep->port,
 			   sep->transport_proto);
       rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
@@ -517,16 +536,21 @@ session_lookup_local_session_endpoint (u32 table_index,
       rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
       if (rv == 0)
 	return (u32) kv4.value;
-
-      memset (&lcl4, 0, sizeof (lcl4));
-      srt = &st->session_rules[sep->transport_proto];
-      ai = session_rules_table_lookup4 (srt, &lcl4, &sep->ip.ip4, 0,
-					sep->port);
-      if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
-	return session_lookup_action_to_session (ai);
     }
   else
     {
+      session_kv6_t kv6;
+      ip6_address_t lcl6;
+
+      memset (&lcl6, 0, sizeof (lcl6));
+      srt = &st->session_rules[sep->transport_proto];
+      ai = session_rules_table_lookup6 (srt, &lcl6, &sep->ip.ip6, 0,
+					sep->port);
+      if (ai == SESSION_RULES_TABLE_ACTION_DROP)
+	return APP_DROP_INDEX;
+      if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
+	return session_lookup_action_to_session_index (ai);
+
       make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port,
 			   sep->transport_proto);
       rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
@@ -540,15 +564,8 @@ session_lookup_local_session_endpoint (u32 table_index,
       rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
       if (rv == 0)
 	return (u32) kv6.value;
-
-      memset (&lcl6, 0, sizeof (lcl6));
-      srt = &st->session_rules[sep->transport_proto];
-      ai = session_rules_table_lookup6 (srt, &lcl6, &sep->ip.ip6, 0,
-					sep->port);
-      if (ai != SESSION_RULES_TABLE_INVALID_INDEX)
-	return session_lookup_action_to_session (ai);
     }
-  return SESSION_INVALID_INDEX;
+  return APP_INVALID_INDEX;
 }
 
 static stream_session_t *
@@ -725,30 +742,6 @@ session_lookup_half_open_connection (u64 handle, u8 proto, u8 is_ip4)
   return 0;
 }
 
-static transport_connection_t *
-session_lookup_rules_table_connection4 (session_table_t * st, u8 proto,
-					ip4_address_t * lcl, u16 lcl_port,
-					ip4_address_t * rmt, u16 rmt_port)
-{
-  stream_session_t *s;
-  s = session_lookup_rules_table4 (st, proto, lcl, lcl_port, rmt, rmt_port);
-  if (s)
-    return tp_vfts[s->session_type].get_listener (s->connection_index);
-  return 0;
-}
-
-static transport_connection_t *
-session_lookup_rules_table_connection6 (session_table_t * srt, u8 proto,
-					ip6_address_t * lcl, u16 lcl_port,
-					ip6_address_t * rmt, u16 rmt_port)
-{
-  stream_session_t *s;
-  s = session_lookup_rules_table6 (srt, proto, lcl, lcl_port, rmt, rmt_port);
-  if (s)
-    return tp_vfts[s->session_type].get_listener (s->connection_index);
-  return 0;
-}
-
 /**
  * Lookup connection with ip4 and transport layer information
  *
@@ -758,10 +751,10 @@ session_lookup_rules_table_connection6 (session_table_t * srt, u8 proto,
  * The lookup is incremental and returns whenever something is matched. The
  * steps are:
  * - Try to find an established session
- * - Try to find a fully-formed or local source wildcarded (listener bound to
- *   all interfaces) listener session
  * - Try to find a half-open connection
  * - Try session rules table
+ * - Try to find a fully-formed or local source wildcarded (listener bound to
+ *   all interfaces) listener session
  * - return 0
  *
  * @param fib_index	index of fib wherein the connection was received
@@ -782,13 +775,16 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
   session_table_t *st;
   session_kv4_t kv4;
   stream_session_t *s;
+  u32 action_index;
   int rv;
 
   st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4, fib_index);
   if (PREDICT_FALSE (!st))
     return 0;
 
-  /* Lookup session amongst established ones */
+  /*
+   * Lookup session amongst established ones
+   */
   make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
@@ -799,12 +795,9 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
 						      thread_index);
     }
 
-  /* If nothing is found, check if any listener is available */
-  s = session_lookup_listener4_i (st, lcl, lcl_port, proto);
-  if (s)
-    return tp_vfts[s->session_type].get_listener (s->connection_index);
-
-  /* Try half-open connections */
+  /*
+   * Try half-open connections
+   */
   rv = clib_bihash_search_inline_16_8 (&st->v4_half_open_hash, &kv4);
   if (rv == 0)
     {
@@ -812,9 +805,29 @@ session_lookup_connection_wt4 (u32 fib_index, ip4_address_t * lcl,
       return tp_vfts[sst].get_half_open (kv4.value & 0xFFFFFFFF);
     }
 
-  /* Check the session rules table */
-  return session_lookup_rules_table_connection4 (st, proto, lcl, lcl_port,
-						 rmt, rmt_port);
+  /*
+   * Check the session rules table
+   */
+  action_index = session_rules_table_lookup4 (&st->session_rules[proto], lcl,
+					      rmt, lcl_port, rmt_port);
+  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+    return 0;
+  if (action_index != SESSION_RULES_TABLE_ACTION_NONE)
+    {
+      s = session_lookup_action_to_session (action_index, FIB_PROTOCOL_IP4,
+					    proto);
+      if (s)
+	return tp_vfts[s->session_type].get_listener (s->connection_index);
+    }
+
+  /*
+   * If nothing is found, check if any listener is available
+   */
+  s = session_lookup_listener4_i (st, lcl, lcl_port, proto);
+  if (s)
+    return tp_vfts[s->session_type].get_listener (s->connection_index);
+
+  return 0;
 }
 
 /**
@@ -841,13 +854,16 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
   session_table_t *st;
   session_kv4_t kv4;
   stream_session_t *s;
+  u32 action_index;
   int rv;
 
   st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4, fib_index);
   if (PREDICT_FALSE (!st))
     return 0;
 
-  /* Lookup session amongst established ones */
+  /*
+   * Lookup session amongst established ones
+   */
   make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
@@ -857,21 +873,39 @@ session_lookup_connection4 (u32 fib_index, ip4_address_t * lcl,
 						      s->thread_index);
     }
 
-  /* If nothing is found, check if any listener is available */
-  s = session_lookup_listener4_i (st, lcl, lcl_port, proto);
-  if (s)
-    return tp_vfts[s->session_type].get_listener (s->connection_index);
-
-  /* Finally, try half-open connections */
+  /*
+   * Try half-open connections
+   */
   rv = clib_bihash_search_inline_16_8 (&st->v4_half_open_hash, &kv4);
   if (rv == 0)
     {
       u32 sst = session_type_from_proto_and_ip (proto, 1);
       return tp_vfts[sst].get_half_open (kv4.value & 0xFFFFFFFF);
     }
-  /* Check the session rules table */
-  return session_lookup_rules_table_connection4 (st, proto, lcl, lcl_port,
-						 rmt, rmt_port);
+
+  /*
+   * Check the session rules table
+   */
+  action_index = session_rules_table_lookup4 (&st->session_rules[proto], lcl,
+					      rmt, lcl_port, rmt_port);
+  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+    return 0;
+  if (action_index != SESSION_RULES_TABLE_ACTION_NONE)
+    {
+      s = session_lookup_action_to_session (action_index, FIB_PROTOCOL_IP4,
+					    proto);
+      if (s)
+	return tp_vfts[s->session_type].get_listener (s->connection_index);
+    }
+
+  /*
+   * If nothing is found, check if any listener is available
+   */
+  s = session_lookup_listener4_i (st, lcl, lcl_port, proto);
+  if (s)
+    return tp_vfts[s->session_type].get_listener (s->connection_index);
+
+  return 0;
 }
 
 /**
@@ -894,23 +928,42 @@ session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
   session_table_t *st;
   session_kv4_t kv4;
   stream_session_t *s;
+  u32 action_index;
   int rv;
 
   st = session_table_get_for_fib_index (FIB_PROTOCOL_IP4, fib_index);
   if (PREDICT_FALSE (!st))
     return 0;
 
-  /* Lookup session amongst established ones */
+  /*
+   * Lookup session amongst established ones
+   */
   make_v4_ss_kv (&kv4, lcl, rmt, lcl_port, rmt_port, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
     return session_get_from_handle_safe (kv4.value);
 
-  /* If nothing is found, check if any listener is available */
+  /*
+   * Check the session rules table
+   */
+  action_index = session_rules_table_lookup4 (&st->session_rules[proto], lcl,
+					      rmt, lcl_port, rmt_port);
+  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+    return 0;
+  if (action_index != SESSION_RULES_TABLE_ACTION_NONE)
+    {
+      if ((s = session_lookup_action_to_session (action_index,
+						 FIB_PROTOCOL_IP4, proto)))
+	return s;
+    }
+
+  /*
+   *  If nothing is found, check if any listener is available
+   */
   if ((s = session_lookup_listener4_i (st, lcl, lcl_port, proto)))
     return s;
-  return session_lookup_rules_table4 (st, proto, lcl,
-				      lcl_port, rmt, rmt_port);
+
+  return 0;
 }
 
 /**
@@ -922,10 +975,10 @@ session_lookup_safe4 (u32 fib_index, ip4_address_t * lcl, ip4_address_t * rmt,
  * The lookup is incremental and returns whenever something is matched. The
  * steps are:
  * - Try to find an established session
- * - Try to find a fully-formed or local source wildcarded (listener bound to
- *   all interfaces) listener session
  * - Try to find a half-open connection
  * - Try session rules table
+ * - Try to find a fully-formed or local source wildcarded (listener bound to
+ *   all interfaces) listener session
  * - return 0
  *
  * @param fib_index	index of the fib wherein the connection was received
@@ -946,6 +999,7 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
   session_table_t *st;
   stream_session_t *s;
   session_kv6_t kv6;
+  u32 action_index;
   int rv;
 
   st = session_table_get_for_fib_index (FIB_PROTOCOL_IP6, fib_index);
@@ -962,12 +1016,7 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
 						      thread_index);
     }
 
-  /* If nothing is found, check if any listener is available */
-  s = session_lookup_listener6_i (st, lcl, lcl_port, proto);
-  if (s)
-    return tp_vfts[s->session_type].get_listener (s->connection_index);
-
-  /* Finally, try half-open connections */
+  /* Try half-open connections */
   rv = clib_bihash_search_inline_48_8 (&st->v6_half_open_hash, &kv6);
   if (rv == 0)
     {
@@ -975,8 +1024,25 @@ session_lookup_connection_wt6 (u32 fib_index, ip6_address_t * lcl,
       return tp_vfts[sst].get_half_open (kv6.value & 0xFFFFFFFF);
     }
 
-  return session_lookup_rules_table_connection6 (st, proto, lcl, lcl_port,
-						 rmt, rmt_port);
+  /* Check the session rules table */
+  action_index = session_rules_table_lookup6 (&st->session_rules[proto], lcl,
+					      rmt, lcl_port, rmt_port);
+  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+    return 0;
+  if (action_index != SESSION_RULES_TABLE_ACTION_NONE)
+    {
+      s = session_lookup_action_to_session (action_index, FIB_PROTOCOL_IP4,
+					    proto);
+      if (s)
+	return tp_vfts[s->session_type].get_listener (s->connection_index);
+    }
+
+  /* If nothing is found, check if any listener is available */
+  s = session_lookup_listener6_i (st, lcl, lcl_port, proto);
+  if (s)
+    return tp_vfts[s->session_type].get_listener (s->connection_index);
+
+  return 0;
 }
 
 /**
@@ -1003,6 +1069,7 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
   session_table_t *st;
   stream_session_t *s;
   session_kv6_t kv6;
+  u32 action_index;
   int rv;
 
   st = session_table_get_for_fib_index (FIB_PROTOCOL_IP6, fib_index);
@@ -1018,12 +1085,7 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
 						      s->thread_index);
     }
 
-  /* If nothing is found, check if any listener is available */
-  s = session_lookup_listener6 (fib_index, lcl, lcl_port, proto);
-  if (s)
-    return tp_vfts[s->session_type].get_listener (s->connection_index);
-
-  /* Finally, try half-open connections */
+  /* Try half-open connections */
   rv = clib_bihash_search_inline_48_8 (&st->v6_half_open_hash, &kv6);
   if (rv == 0)
     {
@@ -1031,8 +1093,25 @@ session_lookup_connection6 (u32 fib_index, ip6_address_t * lcl,
       return tp_vfts[sst].get_half_open (kv6.value & 0xFFFFFFFF);
     }
 
-  return session_lookup_rules_table_connection6 (st, proto, lcl, lcl_port,
-						 rmt, rmt_port);
+  /* Check the session rules table */
+  action_index = session_rules_table_lookup6 (&st->session_rules[proto], lcl,
+					      rmt, lcl_port, rmt_port);
+  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+    return 0;
+  if (action_index != SESSION_RULES_TABLE_ACTION_NONE)
+    {
+      s = session_lookup_action_to_session (action_index, FIB_PROTOCOL_IP4,
+					    proto);
+      if (s)
+	return tp_vfts[s->session_type].get_listener (s->connection_index);
+    }
+
+  /* If nothing is found, check if any listener is available */
+  s = session_lookup_listener6 (fib_index, lcl, lcl_port, proto);
+  if (s)
+    return tp_vfts[s->session_type].get_listener (s->connection_index);
+
+  return 0;
 }
 
 /**
@@ -1055,6 +1134,7 @@ session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
   session_table_t *st;
   session_kv6_t kv6;
   stream_session_t *s;
+  u32 action_index;
   int rv;
 
   st = session_table_get_for_fib_index (FIB_PROTOCOL_IP6, fib_index);
@@ -1066,11 +1146,23 @@ session_lookup_safe6 (u32 fib_index, ip6_address_t * lcl, ip6_address_t * rmt,
   if (rv == 0)
     return session_get_from_handle_safe (kv6.value);
 
+  /* Check the session rules table */
+  action_index = session_rules_table_lookup6 (&st->session_rules[proto], lcl,
+					      rmt, lcl_port, rmt_port);
+  if (action_index == SESSION_RULES_TABLE_ACTION_DROP)
+    return 0;
+  if (action_index != SESSION_RULES_TABLE_ACTION_NONE)
+    {
+      if ((s =
+	   session_lookup_action_to_session (action_index, FIB_PROTOCOL_IP4,
+					     proto)))
+	return s;
+    }
+
   /* If nothing is found, check if any listener is available */
   if ((s = session_lookup_listener6_i (st, lcl, lcl_port, proto)))
     return s;
-  return session_lookup_rules_table6 (st, proto, lcl,
-				      lcl_port, rmt, rmt_port);
+  return 0;
 }
 
 u64
@@ -1138,6 +1230,9 @@ vnet_session_rule_add_del (session_rule_add_del_args_t * args)
     }
   if (args->scope & SESSION_RULE_SCOPE_LOCAL)
     {
+      memset (&args->table_args.lcl, 0, sizeof (args->table_args.lcl));
+      args->table_args.lcl.fp_proto = args->table_args.rmt.fp_proto;
+      args->table_args.lcl_port = 0;
       st = app_namespace_get_local_table (app_ns);
       srt = &st->session_rules[args->transport_proto];
       error = session_rules_table_add_del (srt, &args->table_args);
