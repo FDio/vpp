@@ -757,6 +757,21 @@ fib_entry_post_update_actions (fib_entry_t *fib_entry,
 }
 
 void
+fib_entry_recalculate_forwarding (fib_node_index_t fib_entry_index)
+{
+    fib_source_t best_source;
+    fib_entry_t *fib_entry;
+    fib_entry_src_t *bsrc;
+
+    fib_entry = fib_entry_get(fib_entry_index);
+
+    bsrc = fib_entry_get_best_src_i(fib_entry);
+    best_source = fib_entry_src_get_source(bsrc);
+
+    fib_entry_src_action_reactivate(fib_entry, best_source);
+}
+
+void
 fib_entry_source_change (fib_entry_t *fib_entry,
                          fib_source_t old_source,
 			 fib_source_t new_source)
@@ -776,11 +791,22 @@ fib_entry_source_change (fib_entry_t *fib_entry,
     }
     else if (new_source > old_source)
     {
-	/*
-	 * the new source loses. nothing to do here.
-	 * the data from the source is saved in the path-list created
-	 */
-	return;
+        if (fib_entry_source_provides_interpose(new_source))
+        {
+            /*
+             * the new, but lower priority source provides interpose.
+             * reactivate the best source so the interposer gets stacked
+             */
+            fib_entry_src_action_reactivate(fib_entry, new_source);
+        }
+        else
+        {
+            /*
+             * the new source loses. nothing to do here.
+             * the data from the source is saved in the path-list created
+             */
+            return;
+        }
     }
     else
     {

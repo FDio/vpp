@@ -348,8 +348,10 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
 {
     fib_entry_src_collect_forwarding_ctx_t *ctx;
     fib_path_ext_t *path_ext;
+    u32 n_nhs;
 
     ctx = arg;
+    n_nhs = vec_len(ctx->next_hops);
 
     /*
      * if the path is not resolved, don't include it.
@@ -426,6 +428,41 @@ fib_entry_src_collect_forwarding (fib_node_index_t pl_index,
     else
     {
         fib_entry_src_get_path_forwarding(path_index, ctx);
+    }
+
+    /*
+     * a this point 'ctx' has the DPO the path contributed, plus
+     * any labels from path extensions.
+     * check if there are any interpose sources that want to contribute
+     */
+    if (n_nhs < vec_len(ctx->next_hops))
+    {
+        /*
+         * the path contributed a new choice.
+         */
+        fib_entry_src_t *src;
+        fib_source_t source;
+
+        FOR_EACH_SRC_ADDED(ctx->fib_entry, src, source,
+        ({
+            if (NULL != fib_entry_src_vft[source].fesv_contribute_interpose)
+            {
+                const dpo_id_t *interposer;
+                dpo_id_t clone = DPO_INVALID;
+
+                interposer = fib_entry_src_vft[source].fesv_contribute_interpose(src, ctx->fib_entry);
+
+                if (NULL != interposer)
+                {
+                    dpo_mk_interpose(interposer,
+                                     &ctx->next_hops[n_nhs].path_dpo,
+                                     &clone);
+
+                    dpo_copy(&ctx->next_hops[n_nhs].path_dpo, &clone);
+                    dpo_reset(&clone);
+                }
+            }
+        }));
     }
 
     return (FIB_PATH_LIST_WALK_CONTINUE);
@@ -1772,6 +1809,12 @@ fib_entry_get_source_data (fib_node_index_t fib_entry_index,
 	return (fib_entry_src_vft[source].fesv_get_data(esrc, fib_entry));
     }
     return (NULL);
+}
+
+int
+fib_entry_source_provides_interpose (fib_source_t source)
+{
+    return (NULL != fib_entry_src_vft[source].fesv_contribute_interpose);
 }
 
 void
