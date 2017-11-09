@@ -85,8 +85,6 @@ class TestACLplugin(VppTestCase):
         """
         super(TestACLplugin, cls).setUpClass()
 
-        random.seed()
-
         try:
             # Create 2 pg interfaces
             cls.create_pg_interfaces(range(2))
