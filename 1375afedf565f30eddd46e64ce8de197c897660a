@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "1f0856f0_e3d62628",
+        "filename": "src/plugins/l3span/l3_span.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-09T19:14:35Z",
+      "side": 1,
+      "message": "if it is not locked, then it might be deleted with my routes in it.\nthe L3 span feature needs to lock the table. I could be more intelligent and lock the table only once when the first route is added and then unlock when the last is removed. But that would require the L3-span code to store/organise its own entries in a particular way.",
+      "parentUuid": "86234eb7_fab4bcd0",
+      "revId": "1375afedf565f30eddd46e64ce8de197c897660a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c0ba2c9a_ad35922f",
         "filename": "src/vnet/dpo/dpo.h",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2017-11-09T19:03:55Z",
       "side": 1,
       "message": "why new DPO TYPE is needed, when you are registering as new type",
+      "revId": "1375afedf565f30eddd46e64ce8de197c897660a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "84350c16_112e8d40",
+        "filename": "src/vnet/dpo/dpo.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-09T19:14:35Z",
+      "side": 1,
+      "message": "you\u0027re right i don\u0027t need this.",
+      "parentUuid": "c0ba2c9a_ad35922f",
       "revId": "1375afedf565f30eddd46e64ce8de197c897660a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
