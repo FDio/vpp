@@ -90,7 +90,7 @@ esp_encrypt_aes_cbc (ipsec_crypto_alg_t alg,
 {
   esp_main_t *em = &esp_main;
   u32 thread_index = vlib_get_thread_index ();
-  EVP_CIPHER_CTX *ctx = &(em->per_thread_data[thread_index].encrypt_ctx);
+  EVP_CIPHER_CTX *ctx = em->per_thread_data[thread_index].encrypt_ctx;
   const EVP_CIPHER *cipher = NULL;
   int out_len;
 
