@@ -35,6 +35,7 @@ libvom_la_LIBADD = 					\
 	-lm -lrt
 
 libvom_la_SOURCES = 			\
+	types.cpp			\
 	acl_binding_cmds.cpp		\
 	acl_binding.cpp			\
 	acl_l2_rule.cpp			\
@@ -97,7 +98,6 @@ libvom_la_SOURCES = 			\
 	sub_interface.cpp		\
 	tap_interface.cpp		\
 	tap_interface_cmds.cpp		\
-	types.cpp			\
 	vxlan_tunnel_cmds.cpp 		\
 	vxlan_tunnel.cpp
 
