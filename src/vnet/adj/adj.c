@@ -132,13 +132,17 @@ format_ip_adjacency (u8 * s, va_list * args)
         vlib_counter_t counts;
 
         vlib_get_combined_counter(&adjacency_counters, adj_index, &counts);
-        s = format (s, "\n counts:[%Ld:%Ld]", counts.packets, counts.bytes);
-	s = format (s, "\n locks:%d", adj->ia_node.fn_locks);
+        s = format (s, "\n   counts:[%Ld:%Ld]", counts.packets, counts.bytes);
+	s = format (s, "\n   locks:%d", adj->ia_node.fn_locks);
 	s = format(s, "\n delegates:\n  ");
         adj_delegate_format(s, adj);
 
-	s = format(s, "\n children:\n  ");
-	s = fib_node_children_format(adj->ia_node.fn_children, s);
+	s = format(s, "\n children:");
+        if (fib_node_list_get_size(adj->ia_node.fn_children))
+        {
+            s = format(s, "\n  ");
+            s = fib_node_children_format(adj->ia_node.fn_children, s);
+        }
     }
 
     return s;

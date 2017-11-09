@@ -121,18 +121,26 @@ class VppBierRoute(VppObject):
         self.paths = paths
 
     def add_vpp_config(self):
+        br_paths = []
+        for p in self.paths:
+            br_paths.append(p.encode())
+
         self._test.vapi.bier_route_add_del(
             self.tbl_id,
             self.bp,
-            self.paths,
+            br_paths,
             is_add=1)
         self._test.registry.register(self, self._test.logger)
 
     def remove_vpp_config(self):
+        br_paths = []
+        for p in self.paths:
+            br_paths.append(p.encode())
+
         self._test.vapi.bier_route_add_del(
             self.tbl_id,
             self.bp,
-            self.paths,
+            br_paths,
             is_add=0)
 
     def __str__(self):

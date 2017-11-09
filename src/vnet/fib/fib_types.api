@@ -21,7 +21,12 @@
     @param is_local - local if non-zero, else remote
     @param is_drop - Drop the packet
     @param is_udp_encap - The path describes a UDP-o-IP encapsulation.
-    @param afi - the afi of the next hop, IP46_TYPE_IP4=1, IP46_TYPE_IP6=2
+    @param is_dvr - Does the route resolve via a DVR interface.
+    @param is_source_lookup - The the path is a deaggregate path (i.e. a lookup
+    	   		      in another table) is the lookup on the packet's
+			      source address or destination.
+    @param afi - dpo_proto_t protocol that describes the next-hop address
+    @param via_label - The next-hop is a resolved via a local label
     @param next_hop[16] - the next hop address
     @param next_hop_id - Used when the path resolves via an object
                          that has a unique identifier. e.g. the UDP
@@ -36,10 +41,15 @@ typeonly define fib_path3
   u8 is_local;
   u8 is_drop;
   u8 is_udp_encap;
+  u8 is_resolve_host;
+  u8 is_resolve_attached;
+  u8 is_dvr;
+  u8 is_source_lookup;
   u8 afi;
   u8 next_hop[16];
   u32 next_hop_id;
   u32 rpf_id;
+  u32 via_label;
   u8 n_labels;
   u32 label_stack[16];
 };

@@ -253,16 +253,10 @@ format_adj_glean (u8* s, va_list *ap)
 {
     index_t index = va_arg(*ap, index_t);
     CLIB_UNUSED(u32 indent) = va_arg(*ap, u32);
-    vnet_main_t * vnm = vnet_get_main();
     ip_adjacency_t * adj = adj_get(index);
 
     s = format(s, "%U-glean: %U",
                format_fib_protocol, adj->ia_nh_proto,
-               format_vnet_sw_interface_name,
-               vnm,
-               vnet_get_sw_interface(vnm,
-                                     adj->rewrite_header.sw_if_index));
-    s = format (s, " %U",
 		format_vnet_rewrite,
 		&adj->rewrite_header, sizeof (adj->rewrite_data), 0);
 

@@ -49,6 +49,7 @@
 #undef vl_printfun
 
 #include <vlibapi/api_helper_macros.h>
+#include <vnet/fib/fib_api.h>
 
 #define foreach_bier_api_msg                            \
     _(BIER_TABLE_ADD_DEL, bier_table_add_del)           \
@@ -164,7 +165,7 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
     vnet_main_t *vnm;
     bier_bp_t bp;
     int rv = 0;
-    u8 ii, jj;
+    u8 ii;
 
     vnm = vnet_get_main ();
     vnm->api_errno = 0;
@@ -195,53 +196,11 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
     vec_foreach_index(ii, brpaths)
     {
         brpath = &brpaths[ii];
-        memset(brpath, 0, sizeof(*brpath));
-        brpath->frp_sw_if_index = ~0;
+        rv = fib_path_api_parse(&mp->br_paths[ii], brpath);
 
-        vec_validate(brpath->frp_label_stack,
-                     mp->br_paths[ii].n_labels - 1);
-        for (jj = 0; jj < mp->br_paths[ii].n_labels; jj++)
+        if (0 != rv)
         {
-            brpath->frp_label_stack[jj] =
-                ntohl(mp->br_paths[ii].label_stack[jj]);
-        }
-
-        if (mp->br_paths[ii].is_udp_encap)
-        {
-            brpath->frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
-            brpath->frp_udp_encap_id = ntohl(mp->br_paths[ii].next_hop_id);
-        }
-        else
-        {
-            if (0 == mp->br_paths[ii].afi)
-            {
-                clib_memcpy (&brpath->frp_addr.ip4,
-                             mp->br_paths[ii].next_hop,
-                             sizeof (brpath->frp_addr.ip4));
-            }
-            else
-            {
-                clib_memcpy (&brpath->frp_addr.ip6,
-                             mp->br_paths[ii].next_hop,
-                             sizeof (brpath->frp_addr.ip6));
-            }
-            if (ip46_address_is_zero(&brpath->frp_addr))
-            {
-                index_t bdti;
-
-                bdti = bier_disp_table_find(ntohl(mp->br_paths[ii].table_id));
-
-                if (INDEX_INVALID != bdti)
-                {
-                    brpath->frp_fib_index = bdti;
-                    brpath->frp_proto = DPO_PROTO_BIER;
-                }
-                else
-                {
-                    rv = VNET_API_ERROR_NO_SUCH_FIB;
-                    goto done;
-                }
-            }
+            goto done;
         }
     }
 

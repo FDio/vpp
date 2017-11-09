@@ -27,8 +27,8 @@
 static void
 fib_entry_src_interface_init (fib_entry_src_t *src)
 {
-    src->interface.fesi_cover = FIB_NODE_INDEX_INVALID;
-    src->interface.fesi_sibling = FIB_NODE_INDEX_INVALID;
+    src->u.interface.fesi_cover = FIB_NODE_INDEX_INVALID;
+    src->u.interface.fesi_sibling = FIB_NODE_INDEX_INVALID;
 }
 
 static void
@@ -74,7 +74,7 @@ fib_entry_src_interface_path_swap (fib_entry_src_t *src,
         {
             /*
              * the connected prefix will link to a glean on a non-p2p
-             * interface.
+             * u.interface.
              */
             adj->sub_type.glean.receive_addr = entry->fe_prefix.fp_addr;
         }
@@ -98,15 +98,15 @@ fib_entry_src_interface_activate (fib_entry_src_t *src,
 	 * during an attached export of the cover, this local prefix is
 	 * also exported
 	 */
-	src->interface.fesi_cover =
+	src->u.interface.fesi_cover =
 	    fib_table_get_less_specific(fib_entry->fe_fib_index,
 					&fib_entry->fe_prefix);
 
-	ASSERT(FIB_NODE_INDEX_INVALID != src->interface.fesi_cover);
+	ASSERT(FIB_NODE_INDEX_INVALID != src->u.interface.fesi_cover);
 
-	cover = fib_entry_get(src->interface.fesi_cover);
+	cover = fib_entry_get(src->u.interface.fesi_cover);
 
-	src->interface.fesi_sibling =
+	src->u.interface.fesi_sibling =
 	    fib_entry_cover_track(cover, fib_entry_get_index(fib_entry));
     }
 
@@ -127,13 +127,13 @@ fib_entry_src_interface_deactivate (fib_entry_src_t *src,
     /*
      * remove the depednecy on the covering entry
      */
-    if (FIB_NODE_INDEX_INVALID != src->interface.fesi_cover)
+    if (FIB_NODE_INDEX_INVALID != src->u.interface.fesi_cover)
     {
-	cover = fib_entry_get(src->interface.fesi_cover);
+	cover = fib_entry_get(src->u.interface.fesi_cover);
 
-	fib_entry_cover_untrack(cover, src->interface.fesi_sibling);
+	fib_entry_cover_untrack(cover, src->u.interface.fesi_sibling);
 
-	src->interface.fesi_cover = FIB_NODE_INDEX_INVALID;
+	src->u.interface.fesi_cover = FIB_NODE_INDEX_INVALID;
     }
 }
 
@@ -146,7 +146,7 @@ fib_entry_src_interface_cover_change (fib_entry_src_t *src,
 	.bw_reason = FIB_NODE_BW_REASON_FLAG_NONE,
     };
 
-    if (FIB_NODE_INDEX_INVALID == src->interface.fesi_cover)
+    if (FIB_NODE_INDEX_INVALID == src->u.interface.fesi_cover)
     {
 	/*
 	 * not tracking the cover. surprised we got poked?
@@ -159,8 +159,9 @@ fib_entry_src_interface_cover_change (fib_entry_src_t *src,
      * entry inserted benaeth it. That does not necessarily mean that this
      * entry is covered by the new prefix. check that
      */
-    if (src->rr.fesr_cover != fib_table_get_less_specific(fib_entry->fe_fib_index,
-							  &fib_entry->fe_prefix))
+    if (src->u.interface.fesi_cover !=
+        fib_table_get_less_specific(fib_entry->fe_fib_index,
+                                    &fib_entry->fe_prefix))
     {
 	fib_entry_src_interface_deactivate(src, fib_entry);
 	fib_entry_src_interface_activate(src, fib_entry);
@@ -177,9 +178,9 @@ fib_entry_src_interface_installed (fib_entry_src_t *src,
      */
     fib_entry_t *cover;
 
-    if (FIB_NODE_INDEX_INVALID != src->interface.fesi_cover)
+    if (FIB_NODE_INDEX_INVALID != src->u.interface.fesi_cover)
     {
-	cover = fib_entry_get(src->interface.fesi_cover);
+	cover = fib_entry_get(src->u.interface.fesi_cover);
 
 	fib_attached_export_covered_added(cover,
 					  fib_entry_get_index(fib_entry));
@@ -190,7 +191,7 @@ static u8*
 fib_entry_src_interface_format (fib_entry_src_t *src,
 				u8* s)
 {
-    return (format(s, " cover:%d", src->interface.fesi_cover));
+    return (format(s, " cover:%d", src->u.interface.fesi_cover));
 }
 
 const static fib_entry_src_vft_t interface_src_vft = {

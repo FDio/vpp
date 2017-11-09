@@ -43,16 +43,17 @@ static int bier_test_do_debug;
     if (!(_evald)) {						\
         fformat(stderr, "FAIL:%d: " _comment "\n",		\
                 __LINE__, ##_args);				\
+        res = 1;                                                \
     } else {							\
         if (bier_test_do_debug)                                 \
             fformat(stderr, "PASS:%d: " _comment "\n",          \
                     __LINE__, ##_args);				\
     }								\
-    _evald;							\
+    res;							\
 })
 #define BIER_TEST(_cond, _comment, _args...)			\
 {								\
-    if (!BIER_TEST_I(_cond, _comment, ##_args)) {		\
+    if (BIER_TEST_I(_cond, _comment, ##_args)) {		\
         return 1;                                               \
         ASSERT(!("FAIL: " _comment));				\
     }								\
@@ -103,8 +104,10 @@ bier_test_mk_intf (u32 ninterfaces)
     clib_error_t * error = NULL;
     test_main_t *tm = &test_main;
     u8 byte;
+    int res;
     u32 i;
 
+    res = 0;
     ASSERT(ninterfaces <= ARRAY_LEN(tm->hw_if_indicies));
 
     for (i=0; i<6; i++)
@@ -146,13 +149,13 @@ bier_test_mk_intf (u32 ninterfaces)
                                           tm->hw_if_indicies[i]);
     }
 
-    return (0);
+    return (res);
 }
 
 #define BIER_TEST_LB(_cond, _comment, _args...)			\
 {								\
-    if (!BIER_TEST_I(_cond, _comment, ##_args)) {		\
-        return (0);						\
+    if (BIER_TEST_I(_cond, _comment, ##_args)) {		\
+        return (1);						\
     }								\
 }
 
@@ -168,13 +171,14 @@ bier_test_validate_entry (index_t bei,
 
     va_start(ap, n_buckets);
 
+    res = 0;
     bier_entry_contribute_forwarding(bei, &dpo);
 
-    res = BIER_TEST_I((DPO_LOAD_BALANCE == dpo.dpoi_type),
-                      "Entry links to %U",
-                      format_dpo_type, dpo.dpoi_type);
+    BIER_TEST_I((DPO_LOAD_BALANCE == dpo.dpoi_type),
+                "Entry links to %U",
+                format_dpo_type, dpo.dpoi_type);
 
-    if (res)
+    if (!res)
     {
         lb = load_balance_get(dpo.dpoi_index);
         res = fib_test_validate_lb_v(lb, n_buckets, &ap);
@@ -193,6 +197,7 @@ bier_test_mpls_spf (void)
     u32 mpls_fib_index;
     test_main_t *tm;
     int lb_count;
+    int res;
 
     lb_count = pool_elts(load_balance_pool);
     tm = &test_main;
@@ -245,24 +250,24 @@ bier_test_mpls_spf (void)
     BIER_TEST(FIB_NODE_INDEX_INVALID == lfei, "1600/0 is not present");
 
     lfei = fib_table_lookup(mpls_fib_index, &pfx_1600_eos);
-    BIER_TEST(fib_test_validate_entry(lfei, FIB_FORW_CHAIN_TYPE_MPLS_EOS,
-                                      16,
-                                      &l_o_bt[0],
-                                      &l_o_bt[1],
-                                      &l_o_bt[2],
-                                      &l_o_bt[3],
-                                      &l_o_bt[4],
-                                      &l_o_bt[5],
-                                      &l_o_bt[6],
-                                      &l_o_bt[7],
-                                      &l_o_bt[8],
-                                      &l_o_bt[9],
-                                      &l_o_bt[10],
-                                      &l_o_bt[11],
-                                      &l_o_bt[12],
-                                      &l_o_bt[13],
-                                      &l_o_bt[14],
-                                      &l_o_bt[15]),
+    BIER_TEST(!fib_test_validate_entry(lfei, FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+                                       16,
+                                       &l_o_bt[0],
+                                       &l_o_bt[1],
+                                       &l_o_bt[2],
+                                       &l_o_bt[3],
+                                       &l_o_bt[4],
+                                       &l_o_bt[5],
+                                       &l_o_bt[6],
+                                       &l_o_bt[7],
+                                       &l_o_bt[8],
+                                       &l_o_bt[9],
+                                       &l_o_bt[10],
+                                       &l_o_bt[11],
+                                       &l_o_bt[12],
+                                       &l_o_bt[13],
+                                       &l_o_bt[14],
+                                       &l_o_bt[15]),
               "1600/1 LB stacks on BIER table %d", bti);
 
     /*
@@ -282,24 +287,24 @@ bier_test_mpls_spf (void)
     BIER_TEST(FIB_NODE_INDEX_INVALID == lfei, "1600/1 is deleted");
 
     lfei = fib_table_lookup(mpls_fib_index, &pfx_1601_eos);
-    BIER_TEST(fib_test_validate_entry(lfei, FIB_FORW_CHAIN_TYPE_MPLS_EOS,
-                                      16,
-                                      &l_o_bt[0],
-                                      &l_o_bt[1],
-                                      &l_o_bt[2],
-                                      &l_o_bt[3],
-                                      &l_o_bt[4],
-                                      &l_o_bt[5],
-                                      &l_o_bt[6],
-                                      &l_o_bt[7],
-                                      &l_o_bt[8],
-                                      &l_o_bt[9],
-                                      &l_o_bt[10],
-                                      &l_o_bt[11],
-                                      &l_o_bt[12],
-                                      &l_o_bt[13],
-                                      &l_o_bt[14],
-                                      &l_o_bt[15]),
+    BIER_TEST(!fib_test_validate_entry(lfei, FIB_FORW_CHAIN_TYPE_MPLS_EOS,
+                                       16,
+                                       &l_o_bt[0],
+                                       &l_o_bt[1],
+                                       &l_o_bt[2],
+                                       &l_o_bt[3],
+                                       &l_o_bt[4],
+                                       &l_o_bt[5],
+                                       &l_o_bt[6],
+                                       &l_o_bt[7],
+                                       &l_o_bt[8],
+                                       &l_o_bt[9],
+                                       &l_o_bt[10],
+                                       &l_o_bt[11],
+                                       &l_o_bt[12],
+                                       &l_o_bt[13],
+                                       &l_o_bt[14],
+                                       &l_o_bt[15]),
               "1601/1 LB stacks on BIER table %d", bti);
 
     /*
@@ -406,8 +411,8 @@ bier_test_mpls_spf (void)
     fib_entry_contribute_forwarding(fei,
                                     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
                                     &neos_dpo_1_1_1_1);
-    BIER_TEST(fib_test_validate_lb(&neos_dpo_1_1_1_1, 1,
-                                   &bucket_neos_99_via_10_10_10_1),
+    BIER_TEST(!fib_test_validate_lb(&neos_dpo_1_1_1_1, 1,
+                                    &bucket_neos_99_via_10_10_10_1),
               "1.1.1.1/32 n-eos LB 1 buckets via: 99 + 10.10.10.1");
     BIER_TEST(!dpo_cmp(&neos_dpo_1_1_1_1,
                        &bfm_1_1_1_1->bfm_dpo),
@@ -461,9 +466,9 @@ bier_test_mpls_spf (void)
     fib_entry_contribute_forwarding(fei,
                                     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
                                     &neos_dpo_1_1_1_1);
-    BIER_TEST(fib_test_validate_lb(&neos_dpo_1_1_1_1, 2,
-                                   &bucket_neos_99_via_10_10_10_1,
-                                   &bucket_neos_100_via_10_10_10_2),
+    BIER_TEST(!fib_test_validate_lb(&neos_dpo_1_1_1_1, 2,
+                                    &bucket_neos_99_via_10_10_10_1,
+                                    &bucket_neos_100_via_10_10_10_2),
               "1.1.1.1/32 n-eos LB 2 buckets "
               "via: 99 + 10.10.10.1, "
               "via: 100 + 10.10.10.2");
@@ -568,9 +573,9 @@ bier_test_mpls_spf (void)
     input_paths_1_1_1_1 = vec_dup(paths_1_1_1_1);
     bier_table_route_add(&bt_0_0_0_256, 3, input_paths_1_1_1_1);
 
-    BIER_TEST(bier_test_validate_entry(bei_3, 2,
-                                       &dpo_o_bfm_1_1_1_1,
-                                       &dpo_o_bfm_1_1_1_2),
+    BIER_TEST(!bier_test_validate_entry(bei_3, 2,
+                                        &dpo_o_bfm_1_1_1_1,
+                                        &dpo_o_bfm_1_1_1_2),
               "BP:3 stacks on fmask 1.1.1.2 & 1.1.1.1");
 
     /*
@@ -620,9 +625,9 @@ bier_test_mpls_spf (void)
     /* suspend so the update walk kicks int */
     vlib_process_suspend(vlib_get_main(), 1e-5);
 
-    BIER_TEST(bier_test_validate_entry(bei_3, 2,
-                                       &dpo_o_bfm_1_1_1_1,
-                                       &dpo_o_bfm_1_1_1_2),
+    BIER_TEST(!bier_test_validate_entry(bei_3, 2,
+                                        &dpo_o_bfm_1_1_1_1,
+                                        &dpo_o_bfm_1_1_1_2),
               "BP:3 stacks on fmask 1.1.1.2 & 1.1.1.1");
     BIER_TEST((bier_table_fwd_lookup(bier_table_get(l_o_bt[0].bier.table), 3) ==
                bfmi_1_1_1_1),
@@ -704,9 +709,7 @@ static int
 bier_test_mpls_imp (void)
 {
     fib_node_index_t bii;
-    /* test_main_t *tm; */
-
-    /* tm = &test_main; */
+    int res;
 
     /*
      * Add the BIER Main table
@@ -728,6 +731,7 @@ bier_test_mpls_imp (void)
     u8 buckets[BIER_HDR_BUCKETS_256];
     memset(buckets, 0x5, BIER_HDR_BUCKETS_256);
 
+    res = 0;
     bier_bit_string_init(&bbs_256, BIER_HDR_LEN_256, buckets);
 
     bii = bier_imp_add_or_lock(&bt_0_0_0_256, 1, &bbs_256);
@@ -785,7 +789,9 @@ bier_test_mpls_disp (void)
         .bti_ecmp = BIER_ECMP_TABLE_ID_MAIN,
     };
     index_t bti;
+    int res;
 
+    res = 0;
     bti = bier_table_add_or_lock(&bt_0_0_0_256, 1600);
 
     /*

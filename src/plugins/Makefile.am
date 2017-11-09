@@ -111,6 +111,10 @@ if ENABLE_GBP_PLUGIN
 include gbp.am
 endif
 
+if ENABLE_L3SPAN_PLUGIN
+include l3span.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files

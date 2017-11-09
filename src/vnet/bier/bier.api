@@ -19,6 +19,7 @@
     called through a shared memory interface.
 */
 option version = "1.0.0";
+
 import "vnet/fib/fib_types.api";
 
 /** \brief BIER Table Indentifier

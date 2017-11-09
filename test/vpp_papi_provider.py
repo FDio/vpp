@@ -2875,25 +2875,14 @@ class VppPapiProvider(object):
                            paths,
                            is_add=1):
         """ BIER Route add/del """
-        br_paths = []
-        for p in paths:
-            br_paths.append({'next_hop': p.nh_addr,
-                             'weight': 1,
-                             'afi': 0,
-                             'preference': 0,
-                             'table_id': p.nh_table_id,
-                             'next_hop_id': p.next_hop_id,
-                             'is_udp_encap': p.is_udp_encap,
-                             'n_labels': len(p.nh_labels),
-                             'label_stack': p.nh_labels})
         return self.api(
             self.papi.bier_route_add_del,
             {'br_tbl_id': {"bt_set": bti.set_id,
                            "bt_sub_domain": bti.sub_domain_id,
                            "bt_hdr_len_id": bti.hdr_len_id},
              'br_bp': bp,
-             'br_n_paths': len(br_paths),
-             'br_paths': br_paths,
+             'br_n_paths': len(paths),
+             'br_paths': paths,
              'br_is_add': is_add})
 
     def bier_route_dump(self, bti):
@@ -3210,3 +3199,24 @@ class VppPapiProvider(object):
     def gbp_contract_dump(self):
         """ GBP contract Dump """
         return self.api(self.papi.gbp_contract_dump, {})
+
+    def l3_span_add_del(self,
+                        table_id,
+                        dst_address,
+                        dst_address_length,
+                        is_ip6,
+                        paths,
+                        is_add):
+        """ L3 Span add/del """
+        return self.api(
+            self.papi.l3_span_add_del,
+            {'table_id': table_id,
+             'dst_address_length': dst_address_length,
+             'dst_address': dst_address,
+             'is_ip6': is_ip6,
+             'n_paths': len(paths),
+             'paths': paths,
+             'is_add': is_add})
+
+    def l3_span_dump(self):
+        return self.api(self.papi.l3_span_dump, {})

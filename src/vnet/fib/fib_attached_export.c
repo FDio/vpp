@@ -20,6 +20,7 @@
 #include <vnet/fib/fib_entry_cover.h>
 #include <vnet/fib/fib_entry_src.h>
 #include <vnet/fib/fib_entry_delegate.h>
+#include <vnet/dpo/drop_dpo.h>
 
 /**
  * A description of the need to import routes from the export table
@@ -184,7 +185,7 @@ fib_entry_import_add (fib_ae_import_t *import,
 
         dpo = fib_entry_contribute_ip_forwarding(entry_index);
 
-        if (dpo_id_is_valid(dpo))
+        if (dpo_id_is_valid(dpo) && !dpo_is_drop(dpo))
         {
             fib_table_entry_special_dpo_add(import->faei_import_fib,
                                             &prefix,

@@ -263,7 +263,7 @@ format_udp_encap_i (u8 * s, va_list * args)
   ue = udp_encap_get (uei);
 
   // FIXME
-  s = format (s, "udp-ecap:[%d]: id:%d ip-fib-index:%d",
+  s = format (s, "udp-ecap:[%d]: id:%d ip-fib-index:%d ",
 	      uei, ue->ue_id, ue->ue_fib_index);
   if (FIB_PROTOCOL_IP4 == ue->ue_ip_proto)
     {

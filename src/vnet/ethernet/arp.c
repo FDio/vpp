@@ -979,7 +979,7 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	    /*
 	     * we're looking for FIB entries that indicate the source
 	     * is attached. There may be more specific non-attached
-	     * routes tht match the source, but these do not influence
+	     * routes that match the source, but these do not influence
 	     * whether we respond to an ARP request, i.e. they do not
 	     * influence whether we are the correct way for the sender
 	     * to reach us, they only affect how we reach the sender.

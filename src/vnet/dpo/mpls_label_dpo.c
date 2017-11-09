@@ -671,11 +671,44 @@ mpls_label_dpo_mem_show (void)
 			  sizeof(mpls_label_dpo_t));
 }
 
+/**
+ * Interpose a label DPO. used in the FIB unit tests
+ */
+static void
+mpls_label_interpose (const dpo_id_t *original,
+                      const dpo_id_t *parent,
+                      dpo_id_t *clone)
+{
+    mpls_label_dpo_t *mld, *mld_clone;
+
+    mld_clone = mpls_label_dpo_alloc();
+    mld = mpls_label_dpo_get(original->dpoi_index);
+
+    mld_clone->mld_locks = 0;
+    clib_memcpy(&mld_clone->mld_hdr,
+                &mld->mld_hdr,
+                sizeof(mld_clone->mld_hdr));
+    mld_clone->mld_payload_proto = mld->mld_payload_proto;
+    mld_clone->mld_n_labels = mld->mld_n_labels;
+    mld_clone->mld_n_hdr_bytes = mld->mld_n_hdr_bytes;
+
+    dpo_stack(DPO_MPLS_LABEL,
+              mld_clone->mld_payload_proto,
+              &mld_clone->mld_dpo,
+              parent);
+
+    dpo_set(clone,
+            DPO_MPLS_LABEL,
+            mld_clone->mld_payload_proto,
+            mpls_label_dpo_get_index(mld_clone));
+}
+
 const static dpo_vft_t mld_vft = {
     .dv_lock = mpls_label_dpo_lock,
     .dv_unlock = mpls_label_dpo_unlock,
     .dv_format = format_mpls_label_dpo,
     .dv_mem_show = mpls_label_dpo_mem_show,
+    .dv_mk_interpose = mpls_label_interpose,
 };
 
 const static char* const mpls_label_imp_ip4_nodes[] =
