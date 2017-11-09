@@ -116,6 +116,7 @@ typedef enum dpo_type_t_ {
     DPO_INTERFACE_TX,
     DPO_L2_BRIDGE,
     DPO_L3_PROXY,
+    DPO_L3_SPAN,
     DPO_LAST,
 } __attribute__((packed)) dpo_type_t;
 
@@ -145,6 +146,7 @@ typedef enum dpo_type_t_ {
     [DPO_INTERFACE_TX] = "dpo-interface-tx",	\
     [DPO_L2_BRIDGE] = "dpo-l2-bridge",	\
     [DPO_L3_PROXY] = "dpo-l3-proxy",	\
+    [DPO_L3_PROXY] = "dpo-l3-span",	\
 }
 
 /**
@@ -209,6 +211,14 @@ extern void dpo_lock(dpo_id_t *dpo);
  *  Release a reference counting lock on the DPO
  */
 extern void dpo_unlock(dpo_id_t *dpo);
+
+/**
+ * @brief
+ *  Make an interpose DPO from an original
+ */
+extern void dpo_mk_interpose(const dpo_id_t *original,
+                             const dpo_id_t *parent,
+                             dpo_id_t *clone);
 
 /**
  * @brief Set/create a DPO ID
@@ -360,6 +370,18 @@ typedef u32* (*dpo_get_next_node_t)(const dpo_id_t *dpo);
 typedef u32 (*dpo_get_urpf_t)(const dpo_id_t *dpo);
 
 /**
+ * @brief Called during FIB interposition when the originally
+ * registered DPO is used to 'clone' an instance for interposition
+ * at a particular location in the FIB graph.
+ * The parent is the next DPO in the chain that the clone will
+ * be used instead of. The clone may then choose to stack itself
+ * on the parent.
+ */
+typedef void (*dpo_mk_interpose_t)(const dpo_id_t *original,
+                                   const dpo_id_t *parent,
+                                   dpo_id_t *clone);
+
+/**
  * @brief A virtual function table regisitered for a DPO type
  */
 typedef struct dpo_vft_t_
@@ -391,6 +413,10 @@ typedef struct dpo_vft_t_
      * Get uRPF interface
      */
     dpo_get_urpf_t dv_get_urpf;
+    /**
+     * Signal on an interposed child that the parent has changed
+     */
+    dpo_mk_interpose_t dv_mk_interpose;
 } dpo_vft_t;
 
 
