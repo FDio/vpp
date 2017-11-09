@@ -343,7 +343,7 @@ fi
 if [ -z "$api_segment" ] ; then
     api_segment=" api-segment { gid $user_gid }"
 fi
-vpp_args="unix { interactive exec $tmp_vpp_exec_file}${api_segment}"
+vpp_args="unix { interactive full-coredump coredump-size unlimited exec $tmp_vpp_exec_file}${api_segment}"
 
 if [ $iperf3 -eq 1 ] ; then
     app_dir="$(dirname $(which iperf3))/"
@@ -509,7 +509,12 @@ write_script_header() {
             echo "trap \"rm -f $1 $2 $tmp_vpp_exec_file\" $trap_signals" >> $1
         fi
     fi
-    echo "export VCL_CONFIG=${vcl_config_dir}${vcl_config}" >> $1
+    if [ -n "$VCL_CONFIG" ] ; then
+        echo "export VCL_CONFIG=${vcl_config_dir}${vcl_config}" >> $1
+    fi
+    if [ -n "$VCL_DEBUG" ] ; then
+        echo "export VCL_DEBUG=$VCL_DEBUG" >> $1
+    fi
     if [ -n "$namespace_id" ] ; then
         echo "export VCL_APP_NAMESPACE_ID=\"$namespace_id\"" >> $1
         echo "export VCL_APP_NAMESPACE_SECRET=\"$namespace_secret\"" >> $1
