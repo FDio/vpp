@@ -260,12 +260,15 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
   unformat_input_t _line_input, *line_input = &_line_input;
   app_namespace_t *app_ns;
   session_table_t *st;
-  u8 *ns_id, do_table = 0;
+  u8 *ns_id, do_table = 0, had_input = 1;
 
   session_cli_return_if_not_enabled ();
 
   if (!unformat_user (main_input, unformat_line_input, line_input))
-    return 0;
+    {
+      had_input = 0;
+      goto do_ns_list;
+    }
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -300,7 +303,7 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
 
   vlib_cli_output (vm, "%-20s%-20s%-20s", "Namespace", "Secret",
 		   "sw_if_index");
-
+do_ns_list:
   /* *INDENT-OFF* */
   pool_foreach (app_ns, app_namespace_pool, ({
     vlib_cli_output (vm, "%U", format_app_namespace, app_ns);
@@ -308,7 +311,8 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
   /* *INDENT-ON* */
 
 done:
-  unformat_free (line_input);
+  if (had_input)
+    unformat_free (line_input);
   return 0;
 }
 
