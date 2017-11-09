@@ -72,6 +72,29 @@ void clib_memswap (void *_a, void *_b, uword bytes);
 #define clib_memcpy(a,b,c) memcpy(a,b,c)
 #endif
 
+/*
+ * Copy 64 bytes of data to 4 destinations
+ */
+
+static_always_inline void
+clib_memcpy64_x4 (void *d0, void *d1, void *d2, void *d3, void *s)
+{
+  u8x32 __attribute__ ((aligned (1))) r0 = *(((u8x32 *) s) + 0);
+  u8x32 __attribute__ ((aligned (1))) r1 = *(((u8x32 *) s) + 1);
+
+  *(((u8x32 *) d0) + 0) = r0;
+  *(((u8x32 *) d0) + 1) = r1;
+
+  *(((u8x32 *) d1) + 0) = r0;
+  *(((u8x32 *) d1) + 1) = r1;
+
+  *(((u8x32 *) d2) + 0) = r0;
+  *(((u8x32 *) d2) + 1) = r1;
+
+  *(((u8x32 *) d3) + 0) = r0;
+  *(((u8x32 *) d3) + 1) = r1;
+}
+
 #endif /* included_clib_string_h */
 
 /*

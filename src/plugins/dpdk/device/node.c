@@ -259,43 +259,6 @@ dpdk_prefetch_ethertype (struct rte_mbuf *mb)
 		 CLIB_CACHE_LINE_BYTES, LOAD);
 }
 
-
-/*
-   This function should fill 1st cacheline of vlib_buffer_t metadata with data
-   from buffer template. Instead of filling field by field, we construct
-   template and then use 128/256 bit vector instruction to copy data.
-   This code first loads whole cacheline into 4 128-bit registers (xmm)
-   or two 256 bit registers (ymm) and then stores data into all 4 buffers
-   efectively saving on register load operations.
-*/
-
-static_always_inline void
-dpdk_buffer_init_from_template (void *d0, void *d1, void *d2, void *d3,
-				void *s)
-{
-#if defined(CLIB_HAVE_VEC128)
-  int i;
-  for (i = 0; i < 2; i++)
-    {
-      *(u8x32 *) (((u8 *) d0) + i * 32) =
-	*(u8x32 *) (((u8 *) d1) + i * 32) =
-	*(u8x32 *) (((u8 *) d2) + i * 32) =
-	*(u8x32 *) (((u8 *) d3) + i * 32) = *(u8x32 *) (((u8 *) s) + i * 32);
-    }
-#elif defined(CLIB_HAVE_VEC64)
-  int i;
-  for (i = 0; i < 4; i++)
-    {
-      *(u8x16 *) (((u8 *) d0) + i * 16) =
-	*(u8x16 *) (((u8 *) d1) + i * 16) =
-	*(u8x16 *) (((u8 *) d2) + i * 16) =
-	*(u8x16 *) (((u8 *) d3) + i * 16) = *(u8x16 *) (((u8 *) s) + i * 16);
-    }
-#else
-#error "Either CLIB_HAVE_VEC128 or CLIB_HAVE_VEC64 has to be defined"
-#endif
-}
-
 /*
  * This function is used when there are no worker threads.
  * The main thread performs IO and forwards the packets.
@@ -401,7 +364,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  b2 = vlib_buffer_from_rte_mbuf (mb2);
 	  b3 = vlib_buffer_from_rte_mbuf (mb3);
 
-	  dpdk_buffer_init_from_template (b0, b1, b2, b3, bt);
+	  clib_memcpy64_x4 (b0, b1, b2, b3, bt);
 
 	  dpdk_prefetch_buffer (xd->rx_vectors[queue_id][mb_index + 9]);
 	  dpdk_prefetch_ethertype (xd->rx_vectors[queue_id][mb_index + 5]);
