@@ -121,6 +121,12 @@ typedef enum fib_source_t_ {
      */
     FIB_SOURCE_URPF_EXEMPT,
     /**
+     * The interpose source.
+     * place the forwarding provided by the source infront of the forwarding
+     * provided by the best source, or failing that, by the cover.
+     */
+    FIB_SOURCE_INTERPOSE,
+    /**
      * The default route source.
      * The default route is always added to the FIB table (like the
      * special sources) but we need to be able to over-ride it with
@@ -146,6 +152,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_INTERFACE] = "interface",		\
     [FIB_SOURCE_PROXY] = "proxy",                       \
     [FIB_SOURCE_BIER] = "BIER",			        \
+    [FIB_SOURCE_IP6_ND_PROXY] = "proxy",                \
     [FIB_SOURCE_API] = "API",			        \
     [FIB_SOURCE_CLI] = "CLI",			        \
     [FIB_SOURCE_ADJ] = "adjacency",			\
@@ -160,7 +167,9 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_AE] = "attached_export",	        \
     [FIB_SOURCE_MPLS] = "mpls",           	        \
     [FIB_SOURCE_URPF_EXEMPT] = "urpf-exempt",	        \
+    [FIB_SOURCE_INTERPOSE] = "interpose",	        \
     [FIB_SOURCE_DEFAULT_ROUTE] = "default-route",	\
+    [FIB_SOURCE_PLUGIN_HI] = "plugin-hi",               \
 }
 
 #define FOR_EACH_FIB_SOURCE(_item) \
@@ -358,6 +367,21 @@ typedef struct fib_entry_src_t_ {
 	    /**
 	     * the index of the FIB entry that is the covering entry
 	     */
+	    fib_node_index_t fesr_cover;
+	    /**
+	     * This source's index in the cover's list
+	     */
+	    u32 fesr_sibling;
+            /**
+             * DPO type to interpose. The dpo type needs to have registered
+             * it's 'contribute interpose' callback function.
+             */
+            dpo_id_t fesr_dpo;
+	} interpose;
+	struct {
+	    /**
+	     * the index of the FIB entry that is the covering entry
+	     */
 	    fib_node_index_t fesa_cover;
 	    /**
 	     * This source's index in the cover's list
@@ -502,6 +526,8 @@ extern void fib_entry_inherit(fib_node_index_t cover,
 extern fib_entry_src_flag_t fib_entry_delete(fib_node_index_t fib_entry_index,
 					     fib_source_t source);
 
+extern void fib_entry_recalculate_forwarding(
+    fib_node_index_t fib_entry_index);
 extern void fib_entry_contribute_urpf(fib_node_index_t path_index,
 				      index_t urpf);
 extern void fib_entry_contribute_forwarding(
