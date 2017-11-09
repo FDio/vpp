@@ -41,11 +41,17 @@
 #undef vl_printfun
 
 #if (CLIB_DEBUG > 0)
-/* Set VPPCOM_DEBUG 2 for connection debug, 3 for read/write debug output */
-#define VPPCOM_DEBUG 1
+/* Set VPPCOM_DEBUG_INIT 2 for connection debug,
+ *                       3 for read/write debug output
+ * or
+ *    export VCL_DEBUG=<#> to set dynamically.
+ */
+#define VPPCOM_DEBUG_INIT 1
 #else
-#define VPPCOM_DEBUG 0
+#define VPPCOM_DEBUG_INIT 0
 #endif
+
+#define VPPCOM_DEBUG vcm->debug
 
 /*
  * VPPCOM Private definitions and functions.
@@ -141,6 +147,7 @@ typedef struct vppcom_cfg_t_
 typedef struct vppcom_main_t_
 {
   u8 init;
+  u32 debug;
   u32 *client_session_index_fifo;
   volatile u32 bind_session_index;
   int main_cpu;
@@ -185,7 +192,10 @@ typedef struct vppcom_main_t_
  *       Do not access it directly -- use vcm which will point to
  *       the heap allocated copy after init.
  */
-static vppcom_main_t _vppcom_main = {.my_client_index = ~0 };
+static vppcom_main_t _vppcom_main = {
+  .debug = VPPCOM_DEBUG_INIT,
+  .my_client_index = ~0
+};
 
 static vppcom_main_t *vcm = &_vppcom_main;
 
@@ -1798,6 +1808,22 @@ vppcom_app_create (char *app_name)
 
       vcm->init = 1;
       vppcom_cfg_init (vcl_cfg);
+      env_var_str = getenv (VPPCOM_ENV_DEBUG);
+      if (env_var_str)
+	{
+	  u32 tmp;
+	  if (sscanf (env_var_str, "%u", &tmp) != 1)
+	    clib_warning ("[%d] Invalid debug level specified in "
+			  "the environment variable "
+			  VPPCOM_ENV_DEBUG
+			  " (%s)!\n", getpid (), env_var_str);
+	  else
+	    {
+	      vcm->debug = tmp;
+	      clib_warning ("[%d] configured debug level (%u) from "
+			    VPPCOM_ENV_DEBUG "!", getpid (), vcm->debug);
+	    }
+	}
       conf_fname = getenv (VPPCOM_ENV_CONF);
       if (!conf_fname)
 	{
