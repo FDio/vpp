@@ -676,7 +676,7 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
   app = application_lookup (mp->client_index);
   if (app)
     {
-      a->app_index = mp->client_index;
+      a->app_index = app->index;
       a->handle = mp->handle;
       if ((error = vnet_unbind (a)))
 	{
