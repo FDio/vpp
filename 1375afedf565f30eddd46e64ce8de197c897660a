@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "86234eb7_fab4bcd0",
+        "filename": "src/plugins/l3span/l3_span.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 158,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2017-11-09T19:03:55Z",
+      "side": 1,
+      "message": "why table lock is needed here while adding entries into the FIB?",
+      "revId": "1375afedf565f30eddd46e64ce8de197c897660a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c0ba2c9a_ad35922f",
+        "filename": "src/vnet/dpo/dpo.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 126,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2017-11-09T19:03:55Z",
+      "side": 1,
+      "message": "why new DPO TYPE is needed, when you are registering as new type",
+      "revId": "1375afedf565f30eddd46e64ce8de197c897660a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
