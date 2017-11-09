@@ -269,6 +269,15 @@ typedef u32 snat_icmp_match_function_t (struct snat_main_s *sm,
 
 typedef u32 (snat_get_worker_function_t) (ip4_header_t * ip, u32 rx_fib_index);
 
+typedef int nat_alloc_out_addr_and_port_function_t (snat_address_t * addresses,
+                                                    u32 fib_index,
+                                                    u32 thread_index,
+                                                    snat_session_key_t * k,
+                                                    u32 * address_indexp,
+                                                    u8 vrf_mode,
+                                                    u16 port_per_thread,
+                                                    u32 snat_thread_index);
+
 typedef struct snat_main_s {
   /* Endpoint address dependent sessions lookup tables */
   clib_bihash_16_8_t out2in_ed;
@@ -304,6 +313,10 @@ typedef struct snat_main_s {
 
   /* Vector of outside addresses */
   snat_address_t * addresses;
+  nat_alloc_out_addr_and_port_function_t *alloc_addr_and_port;
+  u8 psid_offset;
+  u8 psid_length;
+  u16 psid;
 
   /* sw_if_indices whose intfc addresses should be auto-added */
   u32 * auto_add_sw_if_indices;
