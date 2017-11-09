@@ -3030,7 +3030,11 @@ ikev2_initiate_sa_init (vlib_main_t * vm, u8 * name)
     sa.i_auth.method = p->auth.method;
     sa.i_auth.hex = p->auth.hex;
     sa.i_auth.data = vec_dup (p->auth.data);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    clib_memcpy (sa.i_auth.key, p->auth.key, EVP_PKEY_size (p->auth.key));
+#else
     sa.i_auth.key = vec_dup (p->auth.key);
+#endif
     vec_add (sa.childs[0].tsi, &p->loc_ts, 1);
     vec_add (sa.childs[0].tsr, &p->rem_ts, 1);
 

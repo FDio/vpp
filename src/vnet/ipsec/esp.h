@@ -63,11 +63,23 @@ typedef struct
 typedef struct
 {
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_CIPHER_CTX *encrypt_ctx;
+#else
   EVP_CIPHER_CTX encrypt_ctx;
+#endif
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_CIPHER_CTX *decrypt_ctx;
+#else
   EVP_CIPHER_CTX decrypt_ctx;
+#endif
     CLIB_CACHE_LINE_ALIGN_MARK (cacheline2);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  HMAC_CTX *hmac_ctx;
+#else
   HMAC_CTX hmac_ctx;
+#endif
   ipsec_crypto_alg_t last_encrypt_alg;
   ipsec_crypto_alg_t last_decrypt_alg;
   ipsec_integ_alg_t last_integ_alg;
@@ -273,9 +285,15 @@ esp_init ()
 
   for (thread_id = 0; thread_id < tm->n_vlib_mains - 1; thread_id++)
     {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      em->per_thread_data[thread_id].encrypt_ctx = EVP_CIPHER_CTX_new ();
+      em->per_thread_data[thread_id].decrypt_ctx = EVP_CIPHER_CTX_new ();
+      em->per_thread_data[thread_id].hmac_ctx = HMAC_CTX_new ();
+#else
       EVP_CIPHER_CTX_init (&(em->per_thread_data[thread_id].encrypt_ctx));
       EVP_CIPHER_CTX_init (&(em->per_thread_data[thread_id].decrypt_ctx));
       HMAC_CTX_init (&(em->per_thread_data[thread_id].hmac_ctx));
+#endif
     }
 }
 
@@ -287,7 +305,11 @@ hmac_calc (ipsec_integ_alg_t alg,
 {
   esp_main_t *em = &esp_main;
   u32 thread_index = vlib_get_thread_index ();
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  HMAC_CTX *ctx = em->per_thread_data[thread_index].hmac_ctx;
+#else
   HMAC_CTX *ctx = &(em->per_thread_data[thread_index].hmac_ctx);
+#endif
   const EVP_MD *md = NULL;
   unsigned int len;
 
@@ -302,7 +324,7 @@ hmac_calc (ipsec_integ_alg_t alg,
       em->per_thread_data[thread_index].last_integ_alg = alg;
     }
 
-  HMAC_Init (ctx, key, key_len, md);
+  HMAC_Init_ex (ctx, key, key_len, md, NULL);
 
   HMAC_Update (ctx, data, data_len);
 
