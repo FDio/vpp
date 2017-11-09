@@ -157,6 +157,7 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
     [FIB_SOURCE_INTERFACE] = "interface",		\
     [FIB_SOURCE_PROXY] = "proxy",                       \
     [FIB_SOURCE_BIER] = "BIER",			        \
+    [FIB_SOURCE_IP6_ND_PROXY] = "proxy",                \
     [FIB_SOURCE_API] = "API",			        \
     [FIB_SOURCE_CLI] = "CLI",			        \
     [FIB_SOURCE_ADJ] = "adjacency",			\

@@ -1,0 +1,60 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+option version = "1.0.0";
+import "vnet/fib/fib_types.api";
+
+/* Complain to Ole about this ... can't embed types from fib.api */
+typeonly define l3_span {
+  u32 table_id;
+  u8 dst_address_length;
+  u8 n_paths;
+  u8 is_ip6;
+  u8 dst_address[16];
+};
+
+/** \brief 
+*/
+autoreply define l3_span_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u32 table_id;
+  u8 dst_address_length;
+  u8 n_paths;
+  u8 is_ip6;
+  u8 dst_address[16];
+  vl_api_fib_path3_t paths[n_paths];
+};
+
+define l3_span_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+define l3_span_details
+{
+  u32 context;
+  vl_api_l3_span_t span;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

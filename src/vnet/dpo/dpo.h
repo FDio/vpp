@@ -124,6 +124,7 @@ typedef enum dpo_type_t_ {
     DPO_BIER_DISP_TABLE,
     DPO_BIER_DISP_ENTRY,
     DPO_IP6_LL,
+    DPO_L3_SPAN,
     DPO_LAST,
 } __attribute__((packed)) dpo_type_t;
 
@@ -159,6 +160,7 @@ typedef enum dpo_type_t_ {
     [DPO_BIER_DISP_ENTRY] = "bier-disp-entry",	\
     [DPO_BIER_DISP_TABLE] = "bier-disp-table",	\
     [DPO_IP6_LL] = "ip6-link-local",	\
+    [DPO_L3_SPAN] = "dpo-l3-span",	\
 }
 
 /**
