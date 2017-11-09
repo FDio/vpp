@@ -41,11 +41,17 @@
 #undef vl_printfun
 
 #if (CLIB_DEBUG > 0)
-/* Set VPPCOM_DEBUG 2 for connection debug, 3 for read/write debug output */
-#define VPPCOM_DEBUG 1
+/* Set VPPCOM_DEBUG_INIT 2 for connection debug,
+ *                       3 for read/write debug output
+ * or
+ *    export VCL_DEBUG=<#> to set dynamically.
+ */
+#define VPPCOM_DEBUG_INIT 1
 #else
-#define VPPCOM_DEBUG 0
+#define VPPCOM_DEBUG_INIT 0
 #endif
+
+#define VPPCOM_DEBUG vcm->debug
 
 /*
  * VPPCOM Private definitions and functions.
@@ -141,6 +147,7 @@ typedef struct vppcom_cfg_t_
 typedef struct vppcom_main_t_
 {
   u8 init;
+  u32 debug;
   u32 *client_session_index_fifo;
   volatile u32 bind_session_index;
   int main_cpu;
@@ -185,7 +192,10 @@ typedef struct vppcom_main_t_
  *       Do not access it directly -- use vcm which will point to
  *       the heap allocated copy after init.
  */
-static vppcom_main_t _vppcom_main = {.my_client_index = ~0 };
+static vppcom_main_t _vppcom_main = {
+  .debug = VPPCOM_DEBUG_INIT,
+  .my_client_index = ~0
+};
 
 static vppcom_main_t *vcm = &_vppcom_main;
 
@@ -1798,6 +1808,22 @@ vppcom_app_create (char *app_name)
 
       vcm->init = 1;
       vppcom_cfg_init (vcl_cfg);
+      env_var_str = getenv (VPPCOM_ENV_DEBUG);
+      if (env_var_str)
+	{
+	  u32 tmp;
+	  if (sscanf (env_var_str, "%u", &tmp) != 1)
+	    clib_warning ("[%d] Invalid debug level specified in "
+			  "the environment variable "
+			  VPPCOM_ENV_DEBUG
+			  " (%s)!\n", getpid (), env_var_str);
+	  else
+	    {
+	      vcm->debug = tmp;
+	      clib_warning ("[%d] configured debug level (%u) from "
+			    VPPCOM_ENV_DEBUG "!", getpid (), vcm->debug);
+	    }
+	}
       conf_fname = getenv (VPPCOM_ENV_CONF);
       if (!conf_fname)
 	{
@@ -2453,7 +2479,7 @@ vppcom_session_peek (uint32_t session_index, void *buf, int n)
 static inline int
 vppcom_session_read_ready (session_t * session, u32 session_index)
 {
-  svm_fifo_t *rx_fifo;
+  svm_fifo_t *rx_fifo = 0;
   int ready = 0;
 
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
@@ -2776,9 +2802,9 @@ vep_verify_epoll_chain (u32 vep_idx)
   session_t *session;
   vppcom_epoll_t *vep;
   int rv;
-  u32 sid;
+  u32 sid = vep_idx;
 
-  if (VPPCOM_DEBUG < 1)
+  if (VPPCOM_DEBUG <= 1)
     return;
 
   /* Assumes caller has acquired spinlock: vcm->sessions_lockp */
@@ -2794,35 +2820,17 @@ vep_verify_epoll_chain (u32 vep_idx)
 		    vep_idx);
       goto done;
     }
-  if (VPPCOM_DEBUG > 1)
-    clib_warning ("[%d] vep_idx (%u): Dumping epoll chain\n"
-		  "{\n"
-		  "   is_vep         = %u\n"
-		  "   is_vep_session = %u\n"
-		  "   wait_cont_idx  = 0x%x (%u)\n"
-		  "}\n", getpid (),
-		  vep_idx, session->is_vep, session->is_vep_session,
-		  session->wait_cont_idx, session->wait_cont_idx);
+  clib_warning ("[%d] vep_idx (%u): Dumping epoll chain\n"
+		"{\n"
+		"   is_vep         = %u\n"
+		"   is_vep_session = %u\n"
+		"   wait_cont_idx  = 0x%x (%u)\n"
+		"}\n", getpid (),
+		vep_idx, session->is_vep, session->is_vep_session,
+		session->wait_cont_idx, session->wait_cont_idx);
   do
     {
       vep = &session->vep;
-      if (session->is_vep_session && (VPPCOM_DEBUG > 1))
-	{
-	  clib_warning ("vep_idx[%u]: sid 0x%x (%u)\n"
-			"{\n"
-			"   next_sid       = 0x%x (%u)\n"
-			"   prev_sid       = 0x%x (%u)\n"
-			"   vep_idx        = 0x%x (%u)\n"
-			"   ev.events      = 0x%x\n"
-			"   ev.data.u64    = 0x%llx\n"
-			"   et_mask        = 0x%x\n"
-			"}\n",
-			vep_idx, sid, sid,
-			vep->next_sid, vep->next_sid,
-			vep->prev_sid, vep->prev_sid,
-			vep->vep_idx, vep->vep_idx,
-			vep->ev.events, vep->ev.data.u64, vep->et_mask);
-	}
       sid = vep->next_sid;
       if (sid != ~0)
 	{
@@ -2845,13 +2853,29 @@ vep_verify_epoll_chain (u32 vep_idx)
 	    clib_warning ("[%d] ERROR: session (%u) vep_idx (%u) != "
 			  "vep_idx (%u)!", getpid (),
 			  sid, session->vep.vep_idx, vep_idx);
+	  if (session->is_vep_session)
+	    {
+	      clib_warning ("vep_idx[%u]: sid 0x%x (%u)\n"
+			    "{\n"
+			    "   next_sid       = 0x%x (%u)\n"
+			    "   prev_sid       = 0x%x (%u)\n"
+			    "   vep_idx        = 0x%x (%u)\n"
+			    "   ev.events      = 0x%x\n"
+			    "   ev.data.u64    = 0x%llx\n"
+			    "   et_mask        = 0x%x\n"
+			    "}\n",
+			    vep_idx, sid, sid,
+			    vep->next_sid, vep->next_sid,
+			    vep->prev_sid, vep->prev_sid,
+			    vep->vep_idx, vep->vep_idx,
+			    vep->ev.events, vep->ev.data.u64, vep->et_mask);
+	    }
 	}
     }
   while (sid != ~0);
 
 done:
-  if (VPPCOM_DEBUG > 1)
-    clib_warning ("[%d] vep_idx (%u): Dump complete!", getpid (), vep_idx);
+  clib_warning ("[%d] vep_idx (%u): Dump complete!\n", getpid (), vep_idx);
 }
 
 int
