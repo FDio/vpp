@@ -526,7 +526,8 @@ libvnet_la_SOURCES +=				\
 nobase_include_HEADERS +=			\
   vnet/udp/udp_error.def                       	\
   vnet/udp/udp.h                               	\
-  vnet/udp/udp_packet.h
+  vnet/udp/udp_packet.h				\
+  vnet/udp/udp.api.h
 
 API_FILES += vnet/udp/udp.api
 
