@@ -2756,11 +2756,43 @@ class TestNAT44(MethodHolder):
         self.assertEqual(p[TCP].dport, self.tcp_port_in)
         self.assertEqual(data, p[Raw].load)
 
+    def test_port_restricted(self):
+        """ Port restricted NAT44 (MAP-E CE) """
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+        self.vapi.cli("nat44 addr-port-assignment-alg map-e psid 10 "
+                      "psid-offset 6 psid-len 6")
+
+        p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg1.remote_ip4) /
+             TCP(sport=4567, dport=22))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.dst, self.pg1.remote_ip4)
+            self.assertEqual(ip.src, self.nat_addr)
+            self.assertEqual(tcp.dport, 22)
+            self.assertNotEqual(tcp.sport, 4567)
+            self.assertEqual((tcp.sport >> 6) & 63, 10)
+            self.check_tcp_checksum(p)
+            self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
+
     def tearDown(self):
         super(TestNAT44, self).tearDown()
         if not self.vpp_dead:
             self.logger.info(self.vapi.cli("show nat44 verbose"))
             self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
+            self.vapi.cli("nat44 addr-port-assignment-alg default")
             self.clear_nat44()
 
 

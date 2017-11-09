@@ -1378,6 +1378,16 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
                                        u32 if_address_index,
                                        u32 is_delete);
 
+static int
+nat_alloc_addr_and_port_default (snat_address_t * addresses,
+                                 u32 fib_index,
+                                 u32 thread_index,
+                                 snat_session_key_t * k,
+                                 u32 * address_indexp,
+                                 u8 vrf_mode,
+                                 u16 port_per_thread,
+                                 u32 snat_thread_index);
+
 static clib_error_t * snat_init (vlib_main_t * vm)
 {
   snat_main_t * sm = &snat_main;
@@ -1408,6 +1418,7 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->tcp_established_timeout = SNAT_TCP_ESTABLISHED_TIMEOUT;
   sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
   sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
+  sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
 
   p = hash_get_mem (tm->thread_registrations_by_name, "workers");
   if (p)
@@ -1587,14 +1598,32 @@ snat_random_port (u16 min, u16 max)
     (random_u32_max() / (max - min + 1) + 1);
 }
 
-int snat_alloc_outside_address_and_port (snat_address_t * addresses,
-                                         u32 fib_index,
-                                         u32 thread_index,
-                                         snat_session_key_t * k,
-                                         u32 * address_indexp,
-                                         u8 vrf_mode,
-                                         u16 port_per_thread,
-                                         u32 snat_thread_index)
+int
+snat_alloc_outside_address_and_port (snat_address_t * addresses,
+                                     u32 fib_index,
+                                     u32 thread_index,
+                                     snat_session_key_t * k,
+                                     u32 * address_indexp,
+                                     u8 vrf_mode,
+                                     u16 port_per_thread,
+                                     u32 snat_thread_index)
+{
+  snat_main_t *sm = &snat_main;
+
+  return sm->alloc_addr_and_port(addresses, fib_index, thread_index, k,
+                                 address_indexp, vrf_mode, port_per_thread,
+                                 snat_thread_index);
+}
+
+static int
+nat_alloc_addr_and_port_default (snat_address_t * addresses,
+                                 u32 fib_index,
+                                 u32 thread_index,
+                                 snat_session_key_t * k,
+                                 u32 * address_indexp,
+                                 u8 vrf_mode,
+                                 u16 port_per_thread,
+                                 u32 snat_thread_index)
 {
   int i;
   snat_address_t *a;
@@ -1641,6 +1670,59 @@ int snat_alloc_outside_address_and_port (snat_address_t * addresses,
   return 1;
 }
 
+static int
+nat_alloc_addr_and_port_mape (snat_address_t * addresses,
+                              u32 fib_index,
+                              u32 thread_index,
+                              snat_session_key_t * k,
+                              u32 * address_indexp,
+                              u8 vrf_mode,
+                              u16 port_per_thread,
+                              u32 snat_thread_index)
+{
+  snat_main_t *sm = &snat_main;
+  snat_address_t *a = addresses;
+  u16 m, ports, portnum, A, j;
+  m = 16 - (sm->psid_offset + sm->psid_length);
+  ports = (1 << (16 - sm->psid_length)) - (1 << m);
+
+  if (!vec_len (addresses))
+    goto exhausted;
+
+  switch (k->protocol)
+    {
+#define _(N, i, n, s) \
+    case SNAT_PROTOCOL_##N: \
+      if (a->busy_##n##_ports < ports) \
+        { \
+          while (1) \
+            { \
+              A = snat_random_port(1, pow2_mask(sm->psid_offset)); \
+              j = snat_random_port(0, pow2_mask(m)); \
+              portnum = A | (sm->psid << sm->psid_offset) | (j << (16 - m)); \
+              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+                continue; \
+              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+              a->busy_##n##_ports++; \
+              k->addr = a->addr; \
+              k->port = clib_host_to_net_u16 (portnum); \
+              *address_indexp = i; \
+              return 0; \
+            } \
+        } \
+      break;
+      foreach_snat_protocol
+#undef _
+    default:
+      clib_warning("unknown protocol");
+      return 1;
+    }
+
+exhausted:
+  /* Totally out of translations to use... */
+  snat_ipfix_logging_addresses_exhausted(0);
+  return 1;
+}
 
 static clib_error_t *
 add_address_command_fn (vlib_main_t * vm,
@@ -3199,6 +3281,52 @@ VLIB_CLI_COMMAND (nat44_del_session_command, static) = {
     .path = "nat44 del session",
     .short_help = "nat44 del session in|out <addr>:<port> tcp|udp|icmp [vrf <id>]",
     .function = nat44_del_session_command_fn,
+};
+
+static clib_error_t *
+nat44_set_alloc_addr_and_port_alg_command_fn (vlib_main_t * vm,
+                                              unformat_input_t * input,
+                                              vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = 0;
+  u32 psid, psid_offset, psid_length;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "default"))
+        sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
+      else if (unformat (line_input, "map-e psid %d psid-offset %d psid-len %d",
+               &psid, &psid_offset, &psid_length))
+        {
+          sm->alloc_addr_and_port = nat_alloc_addr_and_port_mape;
+          sm->psid = (u16) psid;
+          sm->psid_offset = (u16) psid_offset;
+          sm->psid_length = (u16) psid_length;
+        }
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+};
+
+VLIB_CLI_COMMAND (nat44_set_alloc_addr_and_port_alg_command, static) = {
+    .path = "nat44 addr-port-assignment-alg",
+    .short_help = "nat44 addr-port-assignment-alg <alg-name> [<alg-params>]",
+    .function = nat44_set_alloc_addr_and_port_alg_command_fn,
 };
 
 static clib_error_t *
