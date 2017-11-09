@@ -112,7 +112,7 @@ class VPP():
     these messages in a background thread.
     """
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
-                 logger=logging.getLogger('vpp_papi'), loglevel='debug'):
+                 logger=logging.getLogger('vpp_papi'), loglevel='debug', read_timeout=0):
         """Create a VPP API object.
 
         apifiles is a list of files containing API
@@ -134,7 +134,7 @@ class VPP():
         self.apifiles = []
         self.event_callback = None
         self.message_queue = queue.Queue()
-        self.read_timeout = 0
+        self.read_timeout = read_timeout
         self.vpp_api = vpp_api
         if async_thread:
             self.event_thread = threading.Thread(
