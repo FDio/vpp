@@ -86,7 +86,11 @@ esp_decrypt_aes_cbc (ipsec_crypto_alg_t alg,
 {
   esp_main_t *em = &esp_main;
   u32 thread_index = vlib_get_thread_index ();
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  EVP_CIPHER_CTX *ctx = em->per_thread_data[thread_index].decrypt_ctx;
+#else
   EVP_CIPHER_CTX *ctx = &(em->per_thread_data[thread_index].decrypt_ctx);
+#endif
   const EVP_CIPHER *cipher = NULL;
   int out_len;
 
