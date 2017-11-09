@@ -54,10 +54,9 @@ inspect::handle_input(const std::string& message, std::ostream& output)
       }
     } else if (message.find("keys") != std::string::npos) {
       OM::dump(output);
-    } else if (message.find("key") != std::string::npos) {
+    } else if (message.find("key:") != std::string::npos) {
       std::vector<std::string> results;
       boost::split(results, message, boost::is_any_of(":\n"));
-
       OM::dump(results[1], output);
     } else if (message.find("all") != std::string::npos) {
       /*
