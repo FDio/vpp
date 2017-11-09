@@ -323,6 +323,7 @@ vlib_buffer_free (vlib_main_t * vm,
 		  /* number of buffers to free */
 		  u32 n_buffers)
 {
+  printf("Free %u buffers\n", n_buffers); fflush(stdout);
   vlib_buffer_main_t *bm = vm->buffer_main;
 
   ASSERT (bm->cb.vlib_buffer_free_cb);
@@ -828,6 +829,7 @@ vlib_buffer_add_to_free_list (vlib_main_t * vm,
       vec_add_aligned (mf->global_buffers, f->buffers, VLIB_FRAME_SIZE,
 		       CLIB_CACHE_LINE_BYTES);
       vec_delete (f->buffers, VLIB_FRAME_SIZE, 0);
+      f->n_alloc -= VLIB_FRAME_SIZE;
       clib_spinlock_unlock (&mf->global_buffers_lock);
     }
 }
