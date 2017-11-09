@@ -704,8 +704,6 @@ class TestNAT44(MethodHolder):
             cls.pg4._remote_ip4 = cls.pg9._remote_hosts[0]._ip4 = "10.0.0.2"
             cls.pg9.resolve_arp()
 
-            random.seed()
-
         except Exception:
             super(TestNAT44, cls).tearDownClass()
             raise
