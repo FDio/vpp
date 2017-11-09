@@ -127,6 +127,10 @@ if ENABLE_L2E_PLUGIN
 include l2e.am
 endif
 
+if ENABLE_L3SPAN_PLUGIN
+include l3span.am
+endif
+
 if ENABLE_GBP_PLUGIN
 include gbp.am
 endif
