@@ -48,6 +48,7 @@ bind_cmd::issue(connection& con)
   payload.pid = getpid();
   payload.want_dhcp_event = 1;
 
+  memset(payload.hostname, 0, sizeof(payload.hostname));
   memcpy(payload.hostname, m_hostname.c_str(),
          std::min(sizeof(payload.hostname), m_hostname.length()));
 
