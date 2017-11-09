@@ -828,6 +828,7 @@ vlib_buffer_add_to_free_list (vlib_main_t * vm,
       vec_add_aligned (mf->global_buffers, f->buffers, VLIB_FRAME_SIZE,
 		       CLIB_CACHE_LINE_BYTES);
       vec_delete (f->buffers, VLIB_FRAME_SIZE, 0);
+      f->n_alloc -= VLIB_FRAME_SIZE;
       clib_spinlock_unlock (&mf->global_buffers_lock);
     }
 }
