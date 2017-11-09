@@ -43,7 +43,6 @@ $(VOM_BINDIR):
 
 LIB_VOM = $(VPP_TEST_BUILD_DIR)/vpp/vpp-api/vom/.libs/libvom.so
 VOM_LIBS = $(LIB_VOM) 	\
-	-lboost_log					\
 	-lboost_thread					\
 	-lboost_system					\
 	-lboost_filesystem				\
