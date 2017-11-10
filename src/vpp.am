@@ -18,6 +18,7 @@ bin_vpp_SOURCES =				\
   vpp/app/vpe_cli.c				\
   vpp/app/version.c				\
   vpp/oam/oam.c					\
+  vpp/oam/oam_api.c				\
   vpp/stats/stats.c
 
 bin_vpp_SOURCES +=				\
@@ -43,10 +44,13 @@ nobase_include_HEADERS +=			\
   vpp/api/vpe_all_api_h.h			\
   vpp/api/vpe_msg_enum.h			\
   vpp/stats/stats.api.h 			\
+  vpp/oam/oam.api.h 				\
   vpp/api/vpe.api.h
 
-API_FILES += vpp/api/vpe.api
-API_FILES += vpp/stats/stats.api
+API_FILES += 					\
+  vpp/api/vpe.api				\
+  vpp/stats/stats.api				\
+  vpp/oam/oam.api
 
 BUILT_SOURCES += .version
 

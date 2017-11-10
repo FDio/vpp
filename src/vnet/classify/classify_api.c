@@ -27,6 +27,7 @@
 #include <vnet/classify/input_acl.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/classify/flow_classify.h>
+#include <vnet/l2/l2_classify.h>
 
 #include <vnet/vnet_msg_enum.h>
 
@@ -56,7 +57,10 @@ _(CLASSIFY_SESSION_DUMP,classify_session_dump)                          \
 _(POLICER_CLASSIFY_SET_INTERFACE, policer_classify_set_interface)       \
 _(POLICER_CLASSIFY_DUMP, policer_classify_dump)                         \
 _(FLOW_CLASSIFY_SET_INTERFACE, flow_classify_set_interface)             \
-_(FLOW_CLASSIFY_DUMP, flow_classify_dump)
+_(FLOW_CLASSIFY_DUMP, flow_classify_dump)                               \
+_(INPUT_ACL_SET_INTERFACE, input_acl_set_interface)                     \
+_(CLASSIFY_SET_INTERFACE_IP_TABLE, classify_set_interface_ip_table)     \
+_(CLASSIFY_SET_INTERFACE_L2_TABLES, classify_set_interface_l2_tables)
 
 #define foreach_classify_add_del_table_field    \
 _(table_index)                                  \
@@ -492,6 +496,93 @@ vl_api_flow_classify_dump_t_handler (vl_api_flow_classify_dump_t * mp)
 				      mp->context);
 	}
     }
+}
+
+static void vl_api_classify_set_interface_ip_table_t_handler
+  (vl_api_classify_set_interface_ip_table_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_classify_set_interface_ip_table_reply_t *rmp;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 table_index = ntohl (mp->table_index);
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  if (mp->is_ipv6)
+    rv = vnet_set_ip6_classify_intfc (vm, sw_if_index, table_index);
+  else
+    rv = vnet_set_ip4_classify_intfc (vm, sw_if_index, table_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_CLASSIFY_SET_INTERFACE_IP_TABLE_REPLY);
+}
+
+static void vl_api_classify_set_interface_l2_tables_t_handler
+  (vl_api_classify_set_interface_l2_tables_t * mp)
+{
+  vl_api_classify_set_interface_l2_tables_reply_t *rmp;
+  int rv;
+  u32 sw_if_index, ip4_table_index, ip6_table_index, other_table_index;
+  int enable;
+
+  ip4_table_index = ntohl (mp->ip4_table_index);
+  ip6_table_index = ntohl (mp->ip6_table_index);
+  other_table_index = ntohl (mp->other_table_index);
+  sw_if_index = ntohl (mp->sw_if_index);
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  if (mp->is_input)
+    rv = vnet_l2_input_classify_set_tables (sw_if_index, ip4_table_index,
+					    ip6_table_index,
+					    other_table_index);
+  else
+    rv = vnet_l2_output_classify_set_tables (sw_if_index, ip4_table_index,
+					     ip6_table_index,
+					     other_table_index);
+
+  if (rv == 0)
+    {
+      if (ip4_table_index != ~0 || ip6_table_index != ~0
+	  || other_table_index != ~0)
+	enable = 1;
+      else
+	enable = 0;
+
+      if (mp->is_input)
+	vnet_l2_input_classify_enable_disable (sw_if_index, enable);
+      else
+	vnet_l2_output_classify_enable_disable (sw_if_index, enable);
+    }
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_CLASSIFY_SET_INTERFACE_L2_TABLES_REPLY);
+}
+
+static void vl_api_input_acl_set_interface_t_handler
+  (vl_api_input_acl_set_interface_t * mp)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  vl_api_input_acl_set_interface_reply_t *rmp;
+  int rv;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  u32 ip4_table_index = ntohl (mp->ip4_table_index);
+  u32 ip6_table_index = ntohl (mp->ip6_table_index);
+  u32 l2_table_index = ntohl (mp->l2_table_index);
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  rv = vnet_set_input_acl_intfc (vm, sw_if_index, ip4_table_index,
+				 ip6_table_index, l2_table_index, mp->is_add);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_INPUT_ACL_SET_INTERFACE_REPLY);
 }
 
 /*

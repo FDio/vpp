@@ -53,6 +53,7 @@ _(MPLS_ROUTE_ADD_DEL, mpls_route_add_del)                   \
 _(MPLS_TABLE_ADD_DEL, mpls_table_add_del)                   \
 _(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)                 \
 _(MPLS_TUNNEL_DUMP, mpls_tunnel_dump)                       \
+_(SW_INTERFACE_SET_MPLS_ENABLE, sw_interface_set_mpls_enable) \
 _(MPLS_FIB_DUMP, mpls_fib_dump)
 
 extern void stats_dslock_with_hint (int hint, int tag);
@@ -354,6 +355,23 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
     rmp->sw_if_index = ntohl(tunnel_sw_if_index);
   }));
   /* *INDENT-ON* */
+}
+
+static void
+  vl_api_sw_interface_set_mpls_enable_t_handler
+  (vl_api_sw_interface_set_mpls_enable_t * mp)
+{
+  vl_api_sw_interface_set_mpls_enable_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = mpls_sw_interface_enable_disable (&mpls_main,
+					 ntohl (mp->sw_if_index),
+					 mp->enable, 1);
+
+  BAD_SW_IF_INDEX_LABEL;
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_MPLS_ENABLE_REPLY);
 }
 
 typedef struct mpls_tunnel_send_walk_ctx_t_

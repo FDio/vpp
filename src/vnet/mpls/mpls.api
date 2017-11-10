@@ -241,6 +241,20 @@ manual_endian manual_print define mpls_fib_details
   vl_api_fib_path2_t path[count];
 };
 
+/** \brief Enable or Disable MPLS on and interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - index of the interface
+    @param enable - if non-zero enable, else disable
+*/
+autoreply define sw_interface_set_mpls_enable
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 enable;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
