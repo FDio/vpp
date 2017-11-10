@@ -171,6 +171,9 @@ AS_CASE([$build_cpu],
 )
 AC_SUBST([CPU_FLAGS])
 
+AM_CONDITIONAL([CPU_X86_64], [test "$build_cpu" = "x86_64"])
+AM_CONDITIONAL([CPU_AARCH64], [test "$build_cpu" = "aarch64"])
+
 ###############################################################################
 # Substitutions and defines
 ###############################################################################

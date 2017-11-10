@@ -253,10 +253,7 @@ fill_free_list (vlib_main_t * vm,
       fl->buffers[f++] = bi2;
       fl->buffers[f++] = bi3;
 
-      clib_memcpy (b0, &bt, sizeof (vlib_buffer_t));
-      clib_memcpy (b1, &bt, sizeof (vlib_buffer_t));
-      clib_memcpy (b2, &bt, sizeof (vlib_buffer_t));
-      clib_memcpy (b3, &bt, sizeof (vlib_buffer_t));
+      clib_memcpy64_x4 (b0, b1, b2, b3, &bt);
 
       if (fl->buffer_init_function)
 	{
