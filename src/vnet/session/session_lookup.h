@@ -60,7 +60,8 @@ stream_session_t *session_lookup_listener (u32 table_index,
 int session_lookup_add_connection (transport_connection_t * tc, u64 value);
 int session_lookup_del_connection (transport_connection_t * tc);
 u64 session_lookup_endpoint_listener (u32 table_index,
-				      session_endpoint_t * sep, u8 use_rules);
+				      session_endpoint_t * sepi,
+				      u8 use_rules);
 u32 session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep);
 stream_session_t *session_lookup_global_session_endpoint (session_endpoint_t
 							  *);

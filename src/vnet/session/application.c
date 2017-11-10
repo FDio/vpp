@@ -535,8 +535,6 @@ static clib_error_t *
 application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 					u8 transport_proto, u8 is_start)
 {
-  session_rule_add_del_args_t args;
-  fib_prefix_t lcl_pref, rmt_pref;
   app_namespace_t *app_ns = app_namespace_get (app->ns_index);
   u8 is_ip4 = (fib_proto == FIB_PROTOCOL_IP4);
   session_endpoint_t sep = SESSION_ENDPOINT_NULL;
@@ -561,25 +559,13 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 
   if (!ip_is_zero (&tc->lcl_ip, 1))
     {
-      memset (&args, 0, sizeof (args));
-      memset (&lcl_pref, 0, sizeof (lcl_pref));
-      ip_copy (&lcl_pref.fp_addr, &tc->lcl_ip, is_ip4);
-      lcl_pref.fp_len = is_ip4 ? 32 : 128;
-      lcl_pref.fp_proto = fib_proto;
-      memset (&rmt_pref, 0, sizeof (rmt_pref));
-      rmt_pref.fp_len = 0;
-      rmt_pref.fp_proto = fib_proto;
-
-      args.table_args.lcl = lcl_pref;
-      args.table_args.rmt = rmt_pref;
-      args.table_args.lcl_port = 0;
-      args.table_args.rmt_port = 0;
-      args.table_args.action_index = app->index;
-      args.table_args.is_add = is_start;
-      args.transport_proto = transport_proto;
-      args.appns_index = app->ns_index;
-      args.scope = SESSION_RULE_SCOPE_GLOBAL;
-      return vnet_session_rule_add_del (&args);
+      u32 sti;
+      sep.is_ip4 = is_ip4;
+      sep.fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
+      sep.transport_proto = transport_proto;
+      sep.port = 0;
+      sti = session_lookup_get_index_for_fib (fib_proto, sep.fib_index);
+      session_lookup_add_session_endpoint (sti, &sep, s->session_index);
     }
   return 0;
 }
@@ -588,25 +574,20 @@ void
 application_start_stop_proxy (application_t * app, u8 transport_proto,
 			      u8 is_start)
 {
-  session_rule_add_del_args_t args;
-
   if (application_has_local_scope (app))
     {
-      memset (&args, 0, sizeof (args));
-      args.table_args.lcl.fp_proto = FIB_PROTOCOL_IP4;
-      args.table_args.rmt.fp_proto = FIB_PROTOCOL_IP4;
-      args.table_args.lcl_port = 0;
-      args.table_args.rmt_port = 0;
-      args.table_args.action_index = app->index;
-      args.table_args.is_add = is_start;
-      args.transport_proto = transport_proto;
-      args.appns_index = app->ns_index;
-      args.scope = SESSION_RULE_SCOPE_LOCAL;
-      vnet_session_rule_add_del (&args);
+      session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+      app_namespace_t *app_ns;
+      app_ns = app_namespace_get (app->ns_index);
+      sep.is_ip4 = 1;
+      sep.transport_proto = transport_proto;
+      sep.port = 0;
+      session_lookup_add_session_endpoint (app_ns->local_table_index, &sep,
+					   app->index);
 
-      args.table_args.lcl.fp_proto = FIB_PROTOCOL_IP6;
-      args.table_args.rmt.fp_proto = FIB_PROTOCOL_IP6;
-      vnet_session_rule_add_del (&args);
+      sep.is_ip4 = 0;
+      session_lookup_add_session_endpoint (app_ns->local_table_index, &sep,
+					   app->index);
     }
 
   if (application_has_global_scope (app))

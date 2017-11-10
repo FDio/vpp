@@ -1112,6 +1112,9 @@ static int
 session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
 {
   u64 options[SESSION_OPTIONS_N_OPTIONS];
+  char *show_listeners = "sh session listeners tcp verbose";
+  char *show_local_listeners = "sh app ns table default";
+  unformat_input_t tmp_input;
   u32 server_index, app_index;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   clib_error_t *error = 0;
@@ -1189,8 +1192,14 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   server_index = attach_args.app_index;
 
   if (verbose)
-    session_lookup_dump_rules_table (0, FIB_PROTOCOL_IP4,
-				     TRANSPORT_PROTO_TCP);
+    {
+      unformat_init_string (&tmp_input, show_listeners,
+			    strlen (show_listeners));
+      vlib_cli_input (vm, &tmp_input, 0, 0);
+      unformat_init_string (&tmp_input, show_local_listeners,
+			    strlen (show_local_listeners));
+      vlib_cli_input (vm, &tmp_input, 0, 0);
+    }
 
   tc = session_lookup_connection_wt4 (0, &lcl_ip, &rmt_ip, lcl_port, rmt_port,
 				      TRANSPORT_PROTO_TCP, 0);
@@ -1206,10 +1215,6 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((tc == 0), "lookup 5.6.7.8 1234 5.6.7.8 4321 should"
 		" not work");
 
-  if (verbose)
-    session_lookup_dump_local_rules_table (app_ns->local_table_index,
-					   FIB_PROTOCOL_IP4,
-					   TRANSPORT_PROTO_TCP);
   app_index = session_lookup_local_endpoint (app_ns->local_table_index, &sep);
   SESSION_TEST ((app_index == server_index), "local session endpoint lookup"
 		" should work");
@@ -1220,14 +1225,19 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   vnet_application_detach (&detach_args);
 
   if (verbose)
-    session_lookup_dump_local_rules_table (app_ns->local_table_index,
-					   FIB_PROTOCOL_IP4,
-					   TRANSPORT_PROTO_TCP);
+    {
+      unformat_init_string (&tmp_input, show_listeners,
+			    strlen (show_listeners));
+      vlib_cli_input (vm, &tmp_input, 0, 0);
+      unformat_init_string (&tmp_input, show_local_listeners,
+			    strlen (show_local_listeners));
+      vlib_cli_input (vm, &tmp_input, 0, 0);
+    }
 
   app_index = session_lookup_local_endpoint (app_ns->local_table_index, &sep);
   SESSION_TEST ((app_index == SESSION_RULES_TABLE_INVALID_INDEX),
 		"local session endpoint lookup should not work after detach");
-
+  unformat_free (&tmp_input);
   return 0;
 }
 
