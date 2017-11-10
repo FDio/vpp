@@ -380,17 +380,23 @@ typedef struct vlib_buffer_free_list_t
   uword buffer_init_function_opaque;
 } __attribute__ ((aligned (16))) vlib_buffer_free_list_t;
 
+typedef u32 (vlib_buffer_alloc_cb_t) (struct vlib_main_t * vm, u32 * buffers,
+				      u32 n_buffers);
+typedef u32 (vlib_buffer_alloc_from_free_list_cb_t) (struct vlib_main_t * vm,
+						     u32 * buffers,
+						     u32 n_buffers,
+						     u32 free_list_index);
+typedef void (vlib_buffer_free_cb_t) (struct vlib_main_t * vm, u32 * buffers,
+				      u32 n_buffers);
+typedef void (vlib_buffer_free_no_next_cb_t) (struct vlib_main_t * vm,
+					      u32 * buffers, u32 n_buffers);
+
 typedef struct
 {
-  u32 (*vlib_buffer_alloc_cb) (struct vlib_main_t * vm, u32 * buffers,
-			       u32 n_buffers);
-  u32 (*vlib_buffer_alloc_from_free_list_cb) (struct vlib_main_t * vm,
-					      u32 * buffers, u32 n_buffers,
-					      u32 free_list_index);
-  void (*vlib_buffer_free_cb) (struct vlib_main_t * vm, u32 * buffers,
-			       u32 n_buffers);
-  void (*vlib_buffer_free_no_next_cb) (struct vlib_main_t * vm, u32 * buffers,
-				       u32 n_buffers);
+  vlib_buffer_alloc_cb_t *vlib_buffer_alloc_cb;
+  vlib_buffer_alloc_from_free_list_cb_t *vlib_buffer_alloc_from_free_list_cb;
+  vlib_buffer_free_cb_t *vlib_buffer_free_cb;
+  vlib_buffer_free_no_next_cb_t *vlib_buffer_free_no_next_cb;
   void (*vlib_packet_template_init_cb) (struct vlib_main_t * vm, void *t,
 					void *packet_data,
 					uword n_packet_data_bytes,
