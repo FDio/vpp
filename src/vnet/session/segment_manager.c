@@ -27,6 +27,11 @@ u32 segment_name_counter = 0;
  */
 segment_manager_t *segment_managers = 0;
 
+/*
+ * Pool of segment manager properties
+ */
+static segment_manager_properties_t *segment_manager_properties_pool;
+
 /**
  * Process private segment index
  */
@@ -37,6 +42,36 @@ u32 *private_segment_indices;
  */
 u32 default_fifo_size = 1 << 16;
 u32 default_segment_size = 1 << 20;
+
+segment_manager_properties_t *
+segment_manager_properties_alloc (void)
+{
+  segment_manager_properties_t *props;
+  pool_get (segment_manager_properties_pool, props);
+  memset (props, 0, sizeof (*props));
+  return props;
+}
+
+void
+segment_manager_properties_free (segment_manager_properties_t * props)
+{
+  pool_put (segment_manager_properties_pool, props);
+  memset (props, 0xFB, sizeof (*props));
+}
+
+segment_manager_properties_t *
+segment_manager_properties_get (u32 smp_index)
+{
+  if (pool_is_free_index (segment_manager_properties_pool, smp_index))
+    return 0;
+  return pool_elt_at_index (segment_manager_properties_pool, smp_index);
+}
+
+u32
+segment_manager_properties_index (segment_manager_properties_t * p)
+{
+  return p - segment_manager_properties_pool;
+}
 
 void
 segment_manager_get_segment_info (u32 index, u8 ** name, u32 * size)
@@ -52,17 +87,18 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
 			       u8 * segment_name)
 {
   svm_fifo_segment_create_args_t _ca, *ca = &_ca;
+  segment_manager_properties_t *props;
   int rv;
 
   memset (ca, 0, sizeof (*ca));
-
-  if (!sm->properties->use_private_segment)
+  props = segment_manager_properties_get (sm->properties_index);
+  if (!props->use_private_segment)
     {
       ca->segment_name = (char *) segment_name;
       ca->segment_size = segment_size;
-      ca->rx_fifo_size = sm->properties->rx_fifo_size;
-      ca->tx_fifo_size = sm->properties->tx_fifo_size;
-      ca->preallocated_fifo_pairs = sm->properties->preallocated_fifo_pairs;
+      ca->rx_fifo_size = props->rx_fifo_size;
+      ca->tx_fifo_size = props->tx_fifo_size;
+      ca->preallocated_fifo_pairs = props->preallocated_fifo_pairs;
 
       rv = svm_fifo_segment_create (ca);
       if (rv)
@@ -81,11 +117,11 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
 
       ca->segment_name = "process-private-segment";
       ca->segment_size = ~0;
-      ca->rx_fifo_size = sm->properties->rx_fifo_size;
-      ca->tx_fifo_size = sm->properties->tx_fifo_size;
-      ca->preallocated_fifo_pairs = sm->properties->preallocated_fifo_pairs;
-      ca->private_segment_count = sm->properties->private_segment_count;
-      ca->private_segment_size = sm->properties->private_segment_size;
+      ca->rx_fifo_size = props->rx_fifo_size;
+      ca->tx_fifo_size = props->tx_fifo_size;
+      ca->preallocated_fifo_pairs = props->preallocated_fifo_pairs;
+      ca->private_segment_count = props->private_segment_count;
+      ca->private_segment_size = props->private_segment_size;
 
       /* Default to a small private segment */
       if (ca->private_segment_size == 0)
@@ -130,15 +166,17 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
 int
 session_manager_add_segment (segment_manager_t * sm)
 {
-  u8 *segment_name;
   svm_fifo_segment_create_args_t _ca, *ca = &_ca;
+  segment_manager_properties_t *props;
   u32 add_segment_size;
+  u8 *segment_name;
   int rv;
 
   memset (ca, 0, sizeof (*ca));
+  props = segment_manager_properties_get (sm->properties_index);
   segment_name = format (0, "%d-%d%c", getpid (), segment_name_counter++, 0);
-  add_segment_size = sm->properties->add_segment_size ?
-    sm->properties->add_segment_size : default_segment_size;
+  add_segment_size = props->add_segment_size ?
+    props->add_segment_size : default_segment_size;
 
   rv = session_manager_add_segment_i (sm, add_segment_size, segment_name);
   vec_free (segment_name);
@@ -171,17 +209,14 @@ segment_manager_new ()
  * Returns error if svm segment allocation fails.
  */
 int
-segment_manager_init (segment_manager_t * sm,
-		      segment_manager_properties_t * properties,
+segment_manager_init (segment_manager_t * sm, u32 props_index,
 		      u32 first_seg_size)
 {
   int rv;
 
   /* app allocates these */
-  sm->properties = properties;
-
+  sm->properties_index = props_index;
   first_seg_size = first_seg_size > 0 ? first_seg_size : default_segment_size;
-
   rv = session_manager_add_first_segment (sm, first_seg_size);
   if (rv)
     {
@@ -348,6 +383,7 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 				     u32 * fifo_segment_index)
 {
   svm_fifo_segment_private_t *fifo_segment;
+  segment_manager_properties_t *props;
   u32 fifo_size, sm_index;
   u8 added_a_segment = 0;
   int i;
@@ -359,19 +395,20 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
   clib_spinlock_lock (&sm->lockp);
 
   /* Allocate svm fifos */
+  props = segment_manager_properties_get (sm->properties_index);
 again:
   for (i = 0; i < vec_len (sm->segment_indices); i++)
     {
       *fifo_segment_index = sm->segment_indices[i];
       fifo_segment = svm_fifo_segment_get_segment (*fifo_segment_index);
 
-      fifo_size = sm->properties->rx_fifo_size;
+      fifo_size = props->rx_fifo_size;
       fifo_size = (fifo_size == 0) ? default_fifo_size : fifo_size;
       *server_rx_fifo =
 	svm_fifo_segment_alloc_fifo (fifo_segment, fifo_size,
 				     FIFO_SEGMENT_RX_FREELIST);
 
-      fifo_size = sm->properties->tx_fifo_size;
+      fifo_size = props->tx_fifo_size;
       fifo_size = (fifo_size == 0) ? default_fifo_size : fifo_size;
       *server_tx_fifo =
 	svm_fifo_segment_alloc_fifo (fifo_segment, fifo_size,
@@ -404,7 +441,7 @@ again:
   /* See if we're supposed to create another segment */
   if (*server_rx_fifo == 0)
     {
-      if (sm->properties->add_segment && !sm->properties->use_private_segment)
+      if (props->add_segment && !props->use_private_segment)
 	{
 	  if (added_a_segment)
 	    {
@@ -625,7 +662,7 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-		          /* *INDENT-OFF* */
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (segment_manager_show_command, static) =
 {
   .path = "show segment-manager",
