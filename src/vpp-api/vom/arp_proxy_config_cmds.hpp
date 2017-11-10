@@ -20,7 +20,7 @@
 #include "vom/dump_cmd.hpp"
 #include "vom/rpc_cmd.hpp"
 
-#include <vapi/vpe.api.vapi.hpp>
+#include <vapi/ip.api.vapi.hpp>
 
 namespace VOM {
 namespace arp_proxy_config_cmds {

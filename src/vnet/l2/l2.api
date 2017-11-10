@@ -380,6 +380,106 @@ autoreply define l2_interface_pbb_tag_rewrite
   u32 i_sid;
 };
 
+/** \brief L2 interface patch add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param rx_sw_if_index - receive side interface 
+    @param tx_sw_if_index - transmit side interface
+    @param is_add - if non-zero set up the interface patch, else remove it
+*/
+autoreply define l2_patch_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 rx_sw_if_index;
+  u32 tx_sw_if_index;
+  u8 is_add;
+};
+
+/** \brief Set L2 XConnect between two interfaces request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param rx_sw_if_index - Receive interface index
+    @param tx_sw_if_index - Transmit interface index
+    @param enable - enable xconnect if not 0, else set to L3 mode
+*/
+autoreply define sw_interface_set_l2_xconnect
+{
+  u32 client_index;
+  u32 context;
+  u32 rx_sw_if_index;
+  u32 tx_sw_if_index;
+  u8 enable;
+};
+
+/** \brief Interface bridge mode request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param rx_sw_if_index - the interface
+    @param bd_id - bridge domain id
+    @param bvi - Setup interface as a bvi, bridge mode only
+    @param shg - Shared horizon group, for bridge mode only
+    @param enable - Enable beige mode if not 0, else set to L3 mode
+*/
+autoreply define sw_interface_set_l2_bridge
+{
+  u32 client_index;
+  u32 context;
+  u32 rx_sw_if_index;
+  u32 bd_id;
+  u8 shg;
+  u8 bvi;
+  u8 enable;
+};
+
+/** \brief Set bridge domain ip to mac entry request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bd_id - the bridge domain to set the flags for
+    @param is_add - if non-zero, add the entry, else clear it
+    @param is_ipv6 - if non-zero, ipv6 address, else ipv4 address
+    @param mac_address - MAC address
+    @param 
+*/
+autoreply define bd_ip_mac_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 bd_id;
+  u8 is_add;
+  u8 is_ipv6;
+  u8 ip_address[16];
+  u8 mac_address[6];
+};
+
+/** \brief L2 interface ethernet flow point filtering enable/disable request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to enable/disable filtering on
+    @param enable_disable - if non-zero enable filtering, else disable
+*/
+autoreply define l2_interface_efp_filter
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 enable_disable;
+};
+
+/** \brief Interface set vpath request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface used to reach neighbor
+    @param enable - if non-zero enable, else disable
+*/
+autoreply define sw_interface_set_vpath
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u8 enable;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

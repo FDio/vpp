@@ -708,22 +708,6 @@ static void *vl_api_ip_neighbor_add_del_t_print
   FINISH;
 }
 
-static void *
-vl_api_reset_vrf_t_print (vl_api_reset_vrf_t * mp, void *handle)
-{
-  u8 *s;
-
-  s = format (0, "SCRIPT: reset_vrf ");
-
-  if (mp->vrf_id)
-    s = format (s, "vrf %d ", ntohl (mp->vrf_id));
-
-  if (mp->is_ipv6 != 0)
-    s = format (s, "ipv6 ");
-
-  FINISH;
-}
-
 static void *vl_api_create_vlan_subif_t_print
   (vl_api_create_vlan_subif_t * mp, void *handle)
 {
@@ -3287,7 +3271,6 @@ _(PROXY_ARP_INTFC_ENABLE_DISABLE, proxy_arp_intfc_enable_disable)       \
 _(MPLS_TUNNEL_ADD_DEL, mpls_tunnel_add_del)		                \
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)             \
 _(IP_NEIGHBOR_ADD_DEL, ip_neighbor_add_del)                             \
-_(RESET_VRF, reset_vrf)                                                 \
 _(CREATE_VLAN_SUBIF, create_vlan_subif)                                 \
 _(CREATE_SUBIF, create_subif)                                           \
 _(OAM_ADD_DEL, oam_add_del)                                             \

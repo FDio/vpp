@@ -21,6 +21,8 @@
 #define included_punt_h
 
 #include <sys/un.h>
+#include <stdbool.h>
+
 typedef enum
 {
 #define punt_error(n,s) PUNT_ERROR_##n,
