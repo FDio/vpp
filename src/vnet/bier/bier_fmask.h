@@ -54,7 +54,7 @@ typedef struct bier_fmask_bits_t_ {
      * The total number of references to bits set on this mask
      * in effect a count of the number of children.
      */
-    uint32_t bfmb_count;
+    u32 bfmb_count;
 } bier_fmask_bits_t;
 
 /**

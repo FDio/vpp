@@ -56,37 +56,37 @@ const static u16 bier_hdr_len_prefix_len[] = {
     [BIER_HDR_LEN_4096] = 13,
 };
 
-uint32_t
+u32
 bier_hdr_len_id_to_num_buckets (bier_hdr_len_id_t id)
 {
     return (bier_hdr_len_num_buckets[id]);
 }
 
-uint32_t
+u32
 bier_hdr_len_id_to_num_bytes (bier_hdr_len_id_t id)
 {
     return (bier_hdr_len_id_to_num_buckets(id));
 }
 
-uint32_t
+u32
 bier_hdr_len_id_to_max_bucket (bier_hdr_len_id_t id)
 {
     return (bier_hdr_len_id_to_num_buckets(id) - 1);
 }
 
-uint32_t
+u32
 bier_hdr_len_id_to_num_bits (bier_hdr_len_id_t id)
 {
     return (bier_hdr_len_num_bits[id]);
 }
 
-uint32_t
+u32
 bier_hdr_len_id_to_max_bit (bier_hdr_len_id_t id)
 {
     return (bier_hdr_len_id_to_num_bits(id));
 }
 
-uint32_t
+u32
 bier_hdr_len_id_to_prefix_len (bier_hdr_len_id_t id)
 {
     return (bier_hdr_len_prefix_len[id]);

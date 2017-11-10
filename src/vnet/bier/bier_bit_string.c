@@ -53,7 +53,7 @@ bier_bit_string_set_bit (bier_bit_string_t *bit_string,
                          bier_bp_t bp)
 {
     bier_bit_mask_bucket_t bmask;
-    uint16_t byte_pos, bit_pos;
+    u16 byte_pos, bit_pos;
 
     BIER_BIT_POS_IS_VALID(bp, bit_string);
     BIER_GET_STRING_POS(bp, byte_pos, bit_pos, bit_string);
@@ -66,7 +66,7 @@ void
 bier_bit_string_clear_bit (bier_bit_string_t *bit_string,
                            bier_bp_t bp)
 {
-    uint16_t byte_pos, bit_pos;
+    u16 byte_pos, bit_pos;
 
     BIER_BIT_POS_IS_VALID(bp, bit_string);
     BIER_GET_STRING_POS(bp, byte_pos, bit_pos, bit_string);

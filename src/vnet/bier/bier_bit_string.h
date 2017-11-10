@@ -53,7 +53,7 @@ extern u8 *format_bier_bit_string(u8 * s, va_list * args);
 always_inline int
 bier_bit_string_is_zero (const bier_bit_string_t *src)
 {
-    uint16_t index;
+    u16 index;
 
     for (index = 0;
          index < BIER_BBS_NUM_INT_BUKCETS(src);
@@ -69,7 +69,7 @@ always_inline void
 bier_bit_string_clear_string (const bier_bit_string_t *src,
                               bier_bit_string_t *dest)
 {
-    uint16_t index;
+    u16 index;
 
     ASSERT(src->bbs_len == dest->bbs_len);
 
@@ -84,7 +84,7 @@ always_inline void
 bier_bit_string_logical_and_string (const bier_bit_string_t *src,
                                     bier_bit_string_t *dest)
 {
-    uint16_t index;
+    u16 index;
 
     ASSERT(src->bbs_len == dest->bbs_len);
 
