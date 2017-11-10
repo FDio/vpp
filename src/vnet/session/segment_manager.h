@@ -59,7 +59,7 @@ typedef struct _segment_manager
    * Pointer to manager properties. Could be shared among all of
    * an app's segment managers s
    */
-  segment_manager_properties_t *properties;
+  u32 properties_index;
 
   /**
    * First segment should not be deleted unless segment manger is deleted.
@@ -96,9 +96,7 @@ segment_manager_index (segment_manager_t * sm)
 
 segment_manager_t *segment_manager_new ();
 int
-segment_manager_init (segment_manager_t * sm,
-		      segment_manager_properties_t * properties,
-		      u32 seg_size);
+segment_manager_init (segment_manager_t * sm, u32 props_index, u32 seg_size);
 
 void segment_manager_get_segment_info (u32 index, u8 ** name, u32 * size);
 int
@@ -121,6 +119,11 @@ unix_shared_memory_queue_t *segment_manager_alloc_queue (segment_manager_t *
 void segment_manager_dealloc_queue (segment_manager_t * sm,
 				    unix_shared_memory_queue_t * q);
 void segment_manager_app_detach (segment_manager_t * sm);
+
+segment_manager_properties_t *segment_manager_properties_alloc (void);
+void segment_manager_properties_free (segment_manager_properties_t * p);
+segment_manager_properties_t *segment_manager_properties_get (u32 smp_index);
+u32 segment_manager_properties_index (segment_manager_properties_t * p);
 
 #endif /* SRC_VNET_SESSION_SEGMENT_MANAGER_H_ */
 /*

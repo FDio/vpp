@@ -212,6 +212,7 @@ redirect_connect_callback (u32 server_api_client_index, void *mp_arg)
 {
   vl_api_connect_sock_t *mp = mp_arg;
   unix_shared_memory_queue_t *server_q, *client_q;
+  segment_manager_properties_t *props;
   vlib_main_t *vm = vlib_get_main ();
   f64 timeout = vlib_time_now (vm) + 0.5;
   application_t *app;
@@ -241,8 +242,9 @@ redirect_connect_callback (u32 server_api_client_index, void *mp_arg)
       return -1;
     }
 
-  mp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = app->sm_properties.rx_fifo_size;
-  mp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = app->sm_properties.tx_fifo_size;
+  props = segment_manager_properties_get (app->sm_properties);
+  mp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = props->rx_fifo_size;
+  mp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = props->tx_fifo_size;
 
   /*
    * Bounce message handlers MUST NOT block the data-plane.

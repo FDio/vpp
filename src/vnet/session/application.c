@@ -146,11 +146,12 @@ application_new ()
 void
 application_del (application_t * app)
 {
+  segment_manager_properties_t *props;
+  vnet_unbind_args_t _a, *a = &_a;
   segment_manager_t *sm;
   u64 handle, *handles = 0;
   u32 index;
   int i;
-  vnet_unbind_args_t _a, *a = &_a;
 
   /*
    * The app event queue allocated in first segment is cleared with
@@ -207,7 +208,8 @@ application_del (application_t * app)
 	  segment_manager_del (sm);
 	}
     }
-
+  props = segment_manager_properties_get (app->sm_properties);
+  segment_manager_properties_free (props);
   application_table_del (app);
   pool_put (app_pool, app);
 }
@@ -243,7 +245,8 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
    */
   sm = segment_manager_new ();
   sm->app_index = app->index;
-  props = &app->sm_properties;
+  props = segment_manager_properties_alloc ();
+  app->sm_properties = segment_manager_properties_index (props);
   props->add_segment_size = options[SESSION_OPTIONS_ADD_SEGMENT_SIZE];
   props->rx_fifo_size = options[SESSION_OPTIONS_RX_FIFO_SIZE];
   props->rx_fifo_size =
@@ -259,7 +262,7 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   props->private_segment_size = options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE];
 
   first_seg_size = options[SESSION_OPTIONS_SEGMENT_SIZE];
-  if ((rv = segment_manager_init (sm, props, first_seg_size)))
+  if ((rv = segment_manager_init (sm, app->sm_properties, first_seg_size)))
     return rv;
   sm->first_is_protected = 1;
 
@@ -329,7 +332,7 @@ application_alloc_segment_manager (application_t * app)
     }
 
   sm = segment_manager_new ();
-  sm->properties = &app->sm_properties;
+  sm->properties_index = app->sm_properties;
 
   return sm;
 }
@@ -745,6 +748,7 @@ format_application (u8 * s, va_list * args)
 {
   application_t *app = va_arg (*args, application_t *);
   CLIB_UNUSED (int verbose) = va_arg (*args, int);
+  segment_manager_properties_t *props;
   const u8 *app_ns_name;
   u8 *app_name;
 
@@ -763,13 +767,13 @@ format_application (u8 * s, va_list * args)
 
   app_name = app_get_name_from_reg_index (app);
   app_ns_name = app_namespace_id_from_index (app->ns_index);
+  props = segment_manager_properties_get (app->sm_properties);
   if (verbose)
     s =
       format (s, "%-10d%-20s%-15s%-15d%-15d%-15d%-15d", app->index, app_name,
 	      app_ns_name, app->api_client_index,
-	      app->sm_properties.add_segment_size,
-	      app->sm_properties.rx_fifo_size,
-	      app->sm_properties.tx_fifo_size);
+	      props->add_segment_size,
+	      props->rx_fifo_size, props->tx_fifo_size);
   else
     s = format (s, "%-10d%-20s%-15s%-20d", app->index, app_name, app_ns_name,
 		app->api_client_index);
