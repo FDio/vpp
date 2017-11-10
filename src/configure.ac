@@ -171,6 +171,12 @@ AS_CASE([$build_cpu],
 )
 AC_SUBST([CPU_FLAGS])
 
+AC_SUBST([CPU_AVX512_FLAGS],"-march=core-avx2 -mtune=core-avx2 -mavx512f -mavx512bw -mavx512cd -mavx512dq -mavx512vl -mbmi -mbmi2 -mfma -mclflushopt -mrdrnd -mxsavec -mxsaveopt -mxsaves -mvzeroupper -msahf -madx -maes -mfpmath=sse -mfsgsbase -m128bit-long-double -maddress-mode=long -mf16c -mbranch-cost=3 -mcx16 -mcx16 -mmmx -mmovbe -mfxsr -mhle -mpclmul -mpopcnt -mprfchw -mrdseed -mno-stackrealign -mno-fentry -mlzcnt")
+AC_SUBST([CPU_AVX2_FLAGS],"-march=core-avx2 -mtune=core-avx2")
+
+AM_CONDITIONAL([CPU_X86_64], [test "$build_cpu" = "x86_64"])
+AM_CONDITIONAL([CPU_AARCH64], [test "$build_cpu" = "aarch64"])
+
 ###############################################################################
 # Substitutions and defines
 ###############################################################################
