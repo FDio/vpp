@@ -78,6 +78,11 @@
 #define CLIB_PACKED(x)	x __attribute__ ((packed))
 #define CLIB_UNUSED(x)	x __attribute__ ((unused))
 
+#define __clib_unused __attribute__ ((unused))
+#define __clib_weak __attribute__ ((weak))
+#define __clib_packed __attribute__ ((packed))
+#define __clib_constructor __attribute__ ((constructor))
+
 #define never_inline __attribute__ ((__noinline__))
 
 #if CLIB_DEBUG > 0

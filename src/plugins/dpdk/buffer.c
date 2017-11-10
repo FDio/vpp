@@ -124,6 +124,7 @@ next:
     }
 }
 
+#ifndef CLIB_MULTIARCH_VARIANT
 static void
 del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
 {
@@ -176,6 +177,7 @@ dpdk_buffer_delete_free_list (vlib_main_t * vm, u32 free_list_index)
       pool_put (bm->buffer_free_list_pool, f);
     }
 }
+#endif
 
 /* Make sure free list has at least given number of free buffers. */
 static uword
@@ -253,10 +255,7 @@ fill_free_list (vlib_main_t * vm,
       fl->buffers[f++] = bi2;
       fl->buffers[f++] = bi3;
 
-      clib_memcpy (b0, &bt, sizeof (vlib_buffer_t));
-      clib_memcpy (b1, &bt, sizeof (vlib_buffer_t));
-      clib_memcpy (b2, &bt, sizeof (vlib_buffer_t));
-      clib_memcpy (b3, &bt, sizeof (vlib_buffer_t));
+      clib_memcpy64_x4 (b0, b1, b2, b3, &bt);
 
       if (fl->buffer_init_function)
 	{
@@ -317,7 +316,8 @@ alloc_from_free_list (vlib_main_t * vm,
    Returns number actually allocated which will be either zero or
    number requested. */
 u32
-dpdk_buffer_alloc (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
+CLIB_MULTIARCH_FN (dpdk_buffer_alloc) (vlib_main_t * vm, u32 * buffers,
+				       u32 n_buffers)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
 
@@ -330,9 +330,10 @@ dpdk_buffer_alloc (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
 
 
 u32
-dpdk_buffer_alloc_from_free_list (vlib_main_t * vm,
-				  u32 * buffers,
-				  u32 n_buffers, u32 free_list_index)
+CLIB_MULTIARCH_FN (dpdk_buffer_alloc_from_free_list) (vlib_main_t * vm,
+						      u32 * buffers,
+						      u32 n_buffers,
+						      u32 free_list_index)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
   vlib_buffer_free_list_t *f;
@@ -455,20 +456,23 @@ vlib_buffer_free_inline (vlib_main_t * vm,
   }
 }
 
-static void
-dpdk_buffer_free (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
+void
+CLIB_MULTIARCH_FN (dpdk_buffer_free) (vlib_main_t * vm, u32 * buffers,
+				      u32 n_buffers)
 {
   vlib_buffer_free_inline (vm, buffers, n_buffers,	/* follow_buffer_next */
 			   1);
 }
 
-static void
-dpdk_buffer_free_no_next (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
+void
+CLIB_MULTIARCH_FN (dpdk_buffer_free_no_next) (vlib_main_t * vm, u32 * buffers,
+					      u32 n_buffers)
 {
   vlib_buffer_free_inline (vm, buffers, n_buffers,	/* follow_buffer_next */
 			   0);
 }
 
+#ifndef CLIB_MULTIARCH_VARIANT
 static void
 dpdk_packet_template_init (vlib_main_t * vm,
 			   void *vt,
@@ -681,6 +685,42 @@ VLIB_BUFFER_REGISTER_CALLBACKS (dpdk, static) = {
   .vlib_buffer_delete_free_list_cb = &dpdk_buffer_delete_free_list,
 };
 /* *INDENT-ON* */
+
+#if __x86_64__
+vlib_buffer_alloc_cb_t __clib_weak dpdk_buffer_alloc_avx512;
+vlib_buffer_alloc_cb_t __clib_weak dpdk_buffer_alloc_avx2;
+vlib_buffer_alloc_from_free_list_cb_t __clib_weak
+  dpdk_buffer_alloc_from_free_list_avx512;
+vlib_buffer_alloc_from_free_list_cb_t __clib_weak
+  dpdk_buffer_alloc_from_free_list_avx2;
+vlib_buffer_free_cb_t __clib_weak dpdk_buffer_free_cb_avx512;
+vlib_buffer_free_cb_t __clib_weak dpdk_buffer_free_cb_avx2;
+vlib_buffer_free_no_next_cb_t __clib_weak dpdk_buffer_free_no_next_cb_avx512;
+vlib_buffer_free_no_next_cb_t __clib_weak dpdk_buffer_free_no_next_cb_avx2;
+
+static void __clib_constructor
+dpdk_input_multiarch_select (void)
+{
+  vlib_buffer_callbacks_t *cb = &__dpdk_buffer_callbacks;
+  if (dpdk_buffer_alloc_avx512 && clib_cpu_supports_avx512f ())
+    {
+      cb->vlib_buffer_alloc_cb = dpdk_buffer_alloc_avx512;
+      cb->vlib_buffer_alloc_from_free_list_cb =
+	dpdk_buffer_alloc_from_free_list_avx512;
+      cb->vlib_buffer_free_cb = dpdk_buffer_free_cb_avx512;
+      cb->vlib_buffer_free_no_next_cb = dpdk_buffer_free_no_next_cb_avx512;
+    }
+  else if (dpdk_buffer_alloc_avx2 && clib_cpu_supports_avx2 ())
+    {
+      cb->vlib_buffer_alloc_cb = dpdk_buffer_alloc_avx2;
+      cb->vlib_buffer_alloc_from_free_list_cb =
+	dpdk_buffer_alloc_from_free_list_avx2;
+      cb->vlib_buffer_free_cb = dpdk_buffer_free_cb_avx2;
+      cb->vlib_buffer_free_no_next_cb = dpdk_buffer_free_no_next_cb_avx2;
+    }
+}
+#endif
+#endif
 
 /** @endcond */
 /*

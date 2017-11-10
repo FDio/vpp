@@ -38,6 +38,7 @@ typedef enum
     DPDK_TX_FUNC_N_ERROR,
 } dpdk_tx_func_error_t;
 
+#ifndef CLIB_MULTIARCH_VARIANT
 static char *dpdk_tx_func_error_strings[] = {
 #define _(n,s) s,
   foreach_dpdk_tx_func_error
@@ -65,8 +66,9 @@ dpdk_set_mac_address (vnet_hw_interface_t * hi, char *address)
       return NULL;
     }
 }
+#endif
 
-struct rte_mbuf *
+static struct rte_mbuf *
 dpdk_replicate_packet_mb (vlib_buffer_t * b)
 {
   dpdk_main_t *dm = &dpdk_main;
@@ -368,9 +370,10 @@ dpdk_buffer_tx_offload (dpdk_device_t * xd, vlib_buffer_t * b,
  * rte_mbuf pointers. It then passes this vector to tx_burst_vector_internal
  * which calls the dpdk tx_burst function.
  */
-static uword
-dpdk_interface_tx (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * f)
+uword
+CLIB_MULTIARCH_FN (dpdk_interface_tx) (vlib_main_t * vm,
+				       vlib_node_runtime_t * node,
+				       vlib_frame_t * f)
 {
   dpdk_main_t *dm = &dpdk_main;
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
@@ -632,6 +635,7 @@ dpdk_interface_tx (vlib_main_t * vm,
   return tx_pkts;
 }
 
+#ifndef CLIB_MULTIARCH_VARIANT
 static void
 dpdk_clear_hw_interface_counters (u32 instance)
 {
@@ -789,12 +793,25 @@ VNET_DEVICE_CLASS (dpdk_device_class) = {
   .rx_redirect_to_node = dpdk_set_interface_next_node,
   .mac_addr_change_function = dpdk_set_mac_address,
 };
-
-VLIB_DEVICE_TX_FUNCTION_MULTIARCH (dpdk_device_class, dpdk_interface_tx)
 /* *INDENT-ON* */
+
+#if __x86_64__
+vlib_node_function_t __clib_weak dpdk_interface_tx_avx512;
+vlib_node_function_t __clib_weak dpdk_interface_tx_avx2;
+static void __clib_constructor
+dpdk_interface_tx_multiarch_select (void)
+{
+  if (dpdk_interface_tx_avx512 && clib_cpu_supports_avx512f ())
+    dpdk_device_class.tx_function = dpdk_interface_tx_avx512;
+  else if (dpdk_interface_tx_avx2 && clib_cpu_supports_avx2 ())
+    dpdk_device_class.tx_function = dpdk_interface_tx_avx2;
+}
+#endif
+#endif
 
 #define UP_DOWN_FLAG_EVENT 1
 
+#ifndef CLIB_MULTIARCH_VARIANT
 uword
 admin_up_down_process (vlib_main_t * vm,
 		       vlib_node_runtime_t * rt, vlib_frame_t * f)
@@ -846,6 +863,7 @@ VLIB_REGISTER_NODE (admin_up_down_process_node,static) = {
     .process_log2_n_stack_bytes = 17,  // 256KB
 };
 /* *INDENT-ON* */
+#endif
 
 /*
  * fd.io coding-style-patch-verification: ON
