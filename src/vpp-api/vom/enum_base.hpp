@@ -31,18 +31,18 @@ class enum_base
 {
 public:
   /**
- * convert to string format for debug purposes
- */
+   * convert to string format for debug purposes
+   */
   const std::string& to_string() const { return (m_desc); }
 
   /**
- * Comparison operator
- */
+   * Comparison operator
+   */
   bool operator==(const enum_base& e) const { return (e.m_value == m_value); }
 
   /**
- * Assignment
- */
+   * Assignment
+   */
   enum_base& operator=(const enum_base& e)
   {
     m_value = e.m_value;
@@ -52,44 +52,44 @@ public:
   }
 
   /**
- * Comparison operator
- */
+   * Comparison operator
+   */
   bool operator!=(const enum_base& e) const { return (e.m_value != m_value); }
 
   /**
- * integer conversion operator
- */
-  constexpr operator int() const { return (m_value); }
+   * integer conversion operator
+   */
+  operator int() const { return (m_value); }
 
   /**
- * Return the value of the enum - same as integer conversion
- */
-  constexpr int value() const { return (m_value); }
+   * Return the value of the enum - same as integer conversion
+   */
+  int value() const { return (m_value); }
 
 protected:
   /**
- * Constructor of an enum - takes value and string description
- */
-  constexpr enum_base(int value, const std::string desc)
+   * Constructor of an enum - takes value and string description
+   */
+  enum_base(int value, const std::string desc)
     : m_value(value)
     , m_desc(desc)
   {
   }
 
   /**
- * Constructor
- */
+   * Constructor
+   */
   virtual ~enum_base() {}
 
 private:
   /**
- * Integer value of the enum
- */
+   * Integer value of the enum
+   */
   int m_value;
 
   /**
- * String description
- */
+   * String description
+   */
   std::string m_desc;
 };
 };
