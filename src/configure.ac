@@ -161,6 +161,20 @@ AC_ARG_WITH(pre-data,
 	     esac], [with_pre_data=128])
 
 ###############################################################################
+# Target CPU flags
+###############################################################################
+
+AS_CASE([$build_cpu],
+	[x86_64], [CPU_FLAGS="-march=corei7 -mtune=corei7-avx"],
+	[aarch64], [CPU_FLAGS="-march=armv8-a+crc"],
+	[CPU_FLAGS=""],
+)
+AC_SUBST([CPU_FLAGS])
+
+AM_CONDITIONAL([CPU_X86_64], [test "$build_cpu" = "x86_64"])
+AM_CONDITIONAL([CPU_AARCH64], [test "$build_cpu" = "aarch64"])
+
+###############################################################################
 # Substitutions and defines
 ###############################################################################
 

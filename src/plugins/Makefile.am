@@ -23,6 +23,7 @@ BUILT_SOURCES =
 vppplugins_LTLIBRARIES =
 vppapitestplugins_LTLIBRARIES =
 noinst_HEADERS =
+noinst_LTLIBRARIES =
 nobase_apiinclude_HEADERS =
 nobase_include_HEADERS =
 

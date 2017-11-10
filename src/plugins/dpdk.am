@@ -36,6 +36,7 @@ dpdk_plugin_la_LDFLAGS += -Wl,-lnuma
 endif
 
 dpdk_plugin_la_LDFLAGS += -Wl,-lm,-ldl
+dpdk_plugin_la_LIBADD =
 
 dpdk_plugin_la_SOURCES =					\
   dpdk/main.c							\
@@ -58,6 +59,32 @@ dpdk_plugin_la_SOURCES =					\
   dpdk/api/dpdk_plugin.api.h
 
 API_FILES += dpdk/api/dpdk.api
+
+if CPU_X86_64
+###############################################################
+# AVX2
+###############################################################
+libdpdk_plugin_avx2_la_SOURCES = dpdk/device/node.c
+libdpdk_plugin_avx2_la_CFLAGS =					\
+	$(AM_CFLAGS) 						\
+	-DCLIB_MULTIARCH_VARIANT=avx2				\
+	-march=core-avx2					\
+	-mtune=core-avx2
+noinst_LTLIBRARIES += libdpdk_plugin_avx2.la
+dpdk_plugin_la_LIBADD += libdpdk_plugin_avx2.la
+
+###############################################################
+# AVX512
+###############################################################
+libdpdk_plugin_avx512_la_SOURCES = dpdk/device/node.c
+libdpdk_plugin_avx512_la_CFLAGS =				\
+	$(AM_CFLAGS)						\
+	-DCLIB_MULTIARCH_VARIANT=avx512				\
+	-march=skylake-avx512					\
+	-mtune=skylake-avx512
+noinst_LTLIBRARIES += libdpdk_plugin_avx512.la
+dpdk_plugin_la_LIBADD += libdpdk_plugin_avx512.la
+endif
 
 nobase_include_HEADERS +=					\
   dpdk/device/dpdk.h						\
