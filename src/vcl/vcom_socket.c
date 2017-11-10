@@ -2860,7 +2860,7 @@ vcom_socket_epoll_pwait (int __epfd, struct epoll_event *__events,
   int rv = -EBADF;
   int rv2;
   double time_to_wait = (double) 0;
-  double timeout;
+  double timeout, now = 0;
   vcom_epoll_t *vepoll;
   i32 vep_idx;
   static struct epoll_event *libc_ev = 0;
@@ -2875,8 +2875,7 @@ vcom_socket_epoll_pwait (int __epfd, struct epoll_event *__events,
       goto out;
     }
 
-  time_to_wait = ((__timeout > 0) ?
-		  (double) __timeout / (double) 1000 : (double) __timeout);
+  time_to_wait = ((__timeout >= 0) ? (double) __timeout / (double) 1000 : 0);
 
   vep_idx = vcom_socket_get_vep_idx_and_vepoll (__epfd, &vepoll);
   if (vep_idx == INVALID_VEP_IDX)
@@ -2899,7 +2898,8 @@ vcom_socket_epoll_pwait (int __epfd, struct epoll_event *__events,
     {
       if (VCOM_DEBUG > 2)
 	fprintf (stderr, "[%d] vcom_socket_epoll_pwait: libc_cnt = 0, "
-		 "calling vppcom_epoll_wait()\n", getpid ());
+		 "calling vppcom_epoll_wait() time_to_wait = %f\n",
+		 getpid (), time_to_wait);
       rv = vppcom_epoll_wait (vep_idx, __events, __maxevents, time_to_wait);
     }
   else if (vepoll->vcl_cnt == 0)
@@ -2913,14 +2913,20 @@ vcom_socket_epoll_pwait (int __epfd, struct epoll_event *__events,
     {
       if (VCOM_DEBUG > 2)
 	fprintf (stderr, "[%d] vcom_socket_epoll_pwait: vcl_cnt = %d, "
-		 "libc_cnt = %d -> mixed polling\n", getpid (),
-		 vepoll->vcl_cnt, vepoll->libc_cnt);
+		 "libc_cnt = %d -> mixed polling (time_to_wait = %f, "
+		 "__timeout = %d)\n",
+		 getpid (), vepoll->vcl_cnt, vepoll->libc_cnt,
+		 time_to_wait, __timeout);
       vec_validate (libc_ev, __maxevents);
       timeout = clib_time_now (&vsm->clib_time) + time_to_wait;
       do
 	{
 	  rv = vppcom_epoll_wait (vep_idx, __events, __maxevents, 0);
 	  rv2 = libc_epoll_pwait (__epfd, libc_ev, __maxevents, 1, __ss);
+	  if (VCOM_DEBUG == 666)
+	    fprintf (stderr, "[%d] vcom_socket_epoll_pwait: "
+		     "rv = %d, rv2 = %d, timeout = %f, now = %f\n",
+		     getpid (), rv, rv2, timeout, now);
 	  if ((rv > 0) || (rv2 > 0))
 	    {
 	      if (VCOM_DEBUG > 2)
@@ -2949,9 +2955,10 @@ vcom_socket_epoll_pwait (int __epfd, struct epoll_event *__events,
 		}
 	      goto out;
 	    }
+	  if (__timeout != -1)
+	    now = clib_time_now (&vsm->clib_time);
 	}
-      while ((__timeout == -1)
-	     || (clib_time_now (&vsm->clib_time) < timeout));
+      while (now < timeout);
     }
 
 out:
