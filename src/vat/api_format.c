@@ -5304,7 +5304,6 @@ _(p2p_ethernet_del_reply)                               \
 _(lldp_config_reply)                                    \
 _(sw_interface_set_lldp_reply)				\
 _(tcp_configure_src_addresses_reply)			\
-_(app_namespace_add_del_reply)                          \
 _(dns_enable_disable_reply)                             \
 _(dns_name_server_add_del_reply)			\
 _(session_rule_add_del_reply)				\
@@ -21461,6 +21460,41 @@ api_tcp_configure_src_addresses (vat_main_t * vam)
   S (mp);
   W (ret);
   return ret;
+}
+
+static void vl_api_app_namespace_add_del_reply_t_handler
+  (vl_api_app_namespace_add_del_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      if (retval == 0)
+	errmsg ("app ns index %d\n", ntohl (mp->appns_index));
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_app_namespace_add_del_reply_t_handler_json
+  (vl_api_app_namespace_add_del_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "appns_index", ntohl (mp->appns_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
 }
 
 static int
