@@ -54,6 +54,14 @@
 #define CLIB_HAVE_VEC128
 #endif
 
+#if defined (__AVX__)
+#define CLIB_HAVE_VEC256
+#endif
+
+#if defined (__AVX512F__)
+#define CLIB_HAVE_VEC512
+#endif
+
 /* 128 implies 64 */
 #ifdef CLIB_HAVE_VEC128
 #define CLIB_HAVE_VEC64
@@ -115,6 +123,23 @@ typedef u64 u64x4 _vector_size (32);
 typedef f32 f32x8 _vector_size (32);
 typedef f64 f64x4 _vector_size (32);
 #endif /* CLIB_HAVE_VEC128 */
+
+#ifdef CLIB_HAVE_VEC512
+/* Signed 512 bit. */
+typedef i8 i8x64 _vector_size (64);
+typedef i16 i16x32 _vector_size (64);
+typedef i32 i32x16 _vector_size (64);
+typedef long long i64x8 _vector_size (64);
+
+/* Unsigned 512 bit. */
+typedef u8 u8x64 _vector_size (64);
+typedef u16 u16x32 _vector_size (64);
+typedef u32 u32x16 _vector_size (64);
+typedef u64 u64x8 _vector_size (64);
+
+typedef f32 f32x16 _vector_size (64);
+typedef f64 f64x8 _vector_size (64);
+#endif /* CLIB_HAVE_VEC512 */
 
 /* Vector word sized types. */
 #ifndef CLIB_VECTOR_WORD_BITS
