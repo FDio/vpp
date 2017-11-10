@@ -404,9 +404,12 @@ map_get_sfx_net (map_domain_t *d, u32 addr, u16 port)
 
 /* TODO: Doesn't work for RFC6052 style mapping */
 static_always_inline u32
-map_get_ip4 (ip6_address_t *addr)
+map_get_ip4 (ip6_address_t *addr, map_domain_flags_e flags)
 {
-  return clib_host_to_net_u32(clib_net_to_host_u64(addr->as_u64[1]) >> 16);
+  if (flags & MAP_DOMAIN_RFC6052)
+    return clib_host_to_net_u32(clib_net_to_host_u64(addr->as_u64[1]));
+  else
+    return clib_host_to_net_u32(clib_net_to_host_u64(addr->as_u64[1]) >> 16);
 }
 
 /*

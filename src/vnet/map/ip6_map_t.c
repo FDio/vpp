@@ -59,7 +59,8 @@ ip6_map_fragment_cache (ip6_header_t * ip6, ip6_frag_hdr_t * frag,
 {
   u32 *ignore = NULL;
   map_ip4_reass_lock ();
-  map_ip4_reass_t *r = map_ip4_reass_get (map_get_ip4 (&ip6->src_address),
+  map_ip4_reass_t *r = map_ip4_reass_get (map_get_ip4 (&ip6->src_address,
+						       d->flags),
 					  ip6_map_t_embedded_address (d,
 								      &ip6->
 								      dst_address),
@@ -82,7 +83,8 @@ ip6_map_fragment_get (ip6_header_t * ip6, ip6_frag_hdr_t * frag,
 {
   u32 *ignore = NULL;
   map_ip4_reass_lock ();
-  map_ip4_reass_t *r = map_ip4_reass_get (map_get_ip4 (&ip6->src_address),
+  map_ip4_reass_t *r = map_ip4_reass_get (map_get_ip4 (&ip6->src_address,
+						       d->flags),
 					  ip6_map_t_embedded_address (d,
 								      &ip6->
 								      dst_address),
@@ -110,7 +112,7 @@ ip6_to_ip4_set_icmp_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 
   //Security check
   //Note that this prevents an intermediate IPv6 router from answering the request
-  ip4_sadr = map_get_ip4 (&ip6->src_address);
+  ip4_sadr = map_get_ip4 (&ip6->src_address, ctx->d->flags);
   if (ip6->src_address.as_u64[0] !=
       map_get_pfx_net (ctx->d, ip4_sadr, ctx->sender_port)
       || ip6->src_address.as_u64[1] != map_get_sfx_net (ctx->d, ip4_sadr,
@@ -132,7 +134,7 @@ ip6_to_ip4_set_inner_icmp_cb (ip6_header_t * ip6, ip4_header_t * ip4,
   u32 inner_ip4_dadr;
 
   //Security check of inner packet
-  inner_ip4_dadr = map_get_ip4 (&ip6->dst_address);
+  inner_ip4_dadr = map_get_ip4 (&ip6->dst_address, ctx->d->flags);
   if (ip6->dst_address.as_u64[0] !=
       map_get_pfx_net (ctx->d, inner_ip4_dadr, ctx->sender_port)
       || ip6->dst_address.as_u64[1] != map_get_sfx_net (ctx->d,
@@ -612,8 +614,10 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 	  ip60 = vlib_buffer_get_current (p0);
 	  ip61 = vlib_buffer_get_current (p1);
 
-	  saddr0 = map_get_ip4 (&ip60->src_address);
-	  saddr1 = map_get_ip4 (&ip61->src_address);
+	  saddr0 = 0;		/* TODO */
+	  saddr1 = 0;		/* TODO */
+	  /* NOTE: ip6_map_get_domain currently doesn't utilize second argument */
+
 	  d0 = ip6_map_get_domain (vnet_buffer (p0)->ip.adj_index[VLIB_TX],
 				   (ip4_address_t *) & saddr0,
 				   &vnet_buffer (p0)->map_t.map_domain_index,
@@ -623,6 +627,9 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 				(ip4_address_t *) & saddr1,
 				&vnet_buffer (p1)->map_t.map_domain_index,
 				&error1);
+
+	  saddr0 = map_get_ip4 (&ip60->src_address, d0->flags);
+	  saddr1 = map_get_ip4 (&ip61->src_address, d1->flags);
 
 	  vnet_buffer (p0)->map_t.v6.saddr = saddr0;
 	  vnet_buffer (p1)->map_t.v6.saddr = saddr1;
@@ -790,12 +797,17 @@ ip6_map_t (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
 	  p0 = vlib_get_buffer (vm, pi0);
 	  ip60 = vlib_buffer_get_current (p0);
+
 	  //Save saddr in a different variable to not overwrite ip.adj_index
-	  saddr = map_get_ip4 (&ip60->src_address);
+	  saddr = 0;		/* TODO */
+	  /* NOTE: ip6_map_get_domain currently doesn't utilize second argument */
+
 	  d0 = ip6_map_get_domain (vnet_buffer (p0)->ip.adj_index[VLIB_TX],
 				   (ip4_address_t *) & saddr,
 				   &vnet_buffer (p0)->map_t.map_domain_index,
 				   &error0);
+
+	  saddr = map_get_ip4 (&ip60->src_address, d0->flags);
 
 	  //FIXME: What if d0 is null
 	  vnet_buffer (p0)->map_t.v6.saddr = saddr;
