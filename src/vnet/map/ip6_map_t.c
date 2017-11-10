@@ -202,8 +202,8 @@ ip6_map_t_icmp (vlib_main_t * vm,
 	    }
 
 	  if (icmp6_to_icmp
-	      (p0, ip6_to_ip4_set_icmp_cb, d0, ip6_to_ip4_set_inner_icmp_cb,
-	       d0))
+	      (p0, ip6_to_ip4_set_icmp_cb, &ctx0,
+	       ip6_to_ip4_set_inner_icmp_cb, &ctx0))
 	    {
 	      error0 = MAP_ERROR_ICMP;
 	      goto err0;
