@@ -23,6 +23,8 @@
 #include <vnet/ip/ip_packet.h>
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
+#include <vnet/fib/fib_node.h>
+#include <vnet/ethernet/arp_packet.h>
 #include <vlib/cli.h>
 #include <vnet/l2/l2_input.h>
 #include <vnet/l2/l2_output.h>
@@ -193,20 +195,37 @@ classify_and_dispatch (l2input_main_t * msm, vlib_buffer_t * b0, u32 * next0)
       if (ethertype != ETHERNET_TYPE_ARP &&
 	  (ethertype != ETHERNET_TYPE_IP6 || protocol != IP_PROTOCOL_ICMP6))
 	feat_mask &= ~(L2INPUT_FEAT_ARP_TERM);
+
       /*
-       * Check for from-BVI processing - set SHG of ARP/ICMP6 packets from BVI
-       * to 0 so it can also flood to VXLAN tunnels or other ports with the
-       * same SHG as that of the BVI.
+       * For packet from BVI - set SHG of ARP request or ICMPv6 neighbor
+       * solicitation packet from BVI to 0 so it can also flood to VXLAN
+       * tunnels or other ports with the same SHG as that of the BVI.
        */
       else if (PREDICT_FALSE (vnet_buffer (b0)->sw_if_index[VLIB_TX] ==
 			      L2INPUT_BVI))
-	vnet_buffer (b0)->l2.shg = 0;
+	{
+	  if (ethertype == ETHERNET_TYPE_ARP)
+	    {
+	      ethernet_arp_header_t *arp0 = (ethernet_arp_header_t *) l3h0;
+	      if (arp0->opcode ==
+		  clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request))
+		vnet_buffer (b0)->l2.shg = 0;
+	    }
+	  else			/* must be ICMPv6 */
+	    {
+	      ip6_header_t *iph0 = (ip6_header_t *) l3h0;
+	      icmp6_neighbor_solicitation_or_advertisement_header_t *ndh0;
+	      ndh0 = ip6_next_header (iph0);
+	      if (ndh0->icmp.type == ICMP6_neighbor_solicitation)
+		vnet_buffer (b0)->l2.shg = 0;
+	    }
+	}
     }
   else
     {
       /*
-       * Check for from-BVI processing - set SHG of unicast packets from BVI
-       * to 0 so it is not dropped for VXLAN tunnels or other ports with the
+       * For packet from BVI - set SHG of unicast packet from BVI to 0 so it
+       * is not dropped on output to VXLAN tunnels or other ports with the
        * same SHG as that of the BVI.
        */
       if (PREDICT_FALSE (vnet_buffer (b0)->sw_if_index[VLIB_TX] ==
