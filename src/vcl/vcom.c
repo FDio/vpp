@@ -196,12 +196,10 @@ close (int __fd)
   if (is_vcom_socket_fd (__fd) || is_vcom_epfd (__fd))
     {
       if (VCOM_DEBUG > 0)
-	vcom_socket_main_show ();
+	fprintf (stderr, "[%d] close: fd %d\n", pid, __fd);
       rv = vcom_close (__fd);
       if (VCOM_DEBUG > 0)
-	fprintf (stderr, "[%d] close: " "'%04d'='%04d'\n", pid, rv, __fd);
-      if (VCOM_DEBUG > 0)
-	vcom_socket_main_show ();
+	fprintf (stderr, "[%d] close: vcom_close() returned %d\n", pid, rv);
       if (rv != 0)
 	{
 	  errno = -rv;
