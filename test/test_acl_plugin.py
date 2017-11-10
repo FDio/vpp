@@ -558,15 +558,15 @@ class TestACLplugin(VppTestCase):
 
         # Test 2: try to modify a nonexistent ACL
         reply = self.vapi.acl_add_replace(acl_index=432, r=r,
-                                          tag="FFFF:FFFF", expected_retval=-1)
-        self.assertEqual(reply.retval, -1)
+                                          tag="FFFF:FFFF", expected_retval=-6)
+        self.assertEqual(reply.retval, -6)
         # The ACL number should pass through
         self.assertEqual(reply.acl_index, 432)
         # apply an ACL on an interface inbound, try to delete ACL, must fail
         self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
                                              n_input=1,
                                              acls=[first_acl])
-        reply = self.vapi.acl_del(acl_index=first_acl, expected_retval=-1)
+        reply = self.vapi.acl_del(acl_index=first_acl, expected_retval=-142)
         # Unapply an ACL and then try to delete it - must be ok
         self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
                                              n_input=0,
@@ -577,7 +577,7 @@ class TestACLplugin(VppTestCase):
         self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
                                              n_input=0,
                                              acls=[second_acl])
-        reply = self.vapi.acl_del(acl_index=second_acl, expected_retval=-1)
+        reply = self.vapi.acl_del(acl_index=second_acl, expected_retval=-143)
         # Unapply the ACL and then try to delete it - must be ok
         self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
                                              n_input=0,
@@ -588,7 +588,7 @@ class TestACLplugin(VppTestCase):
         self.vapi.acl_interface_set_acl_list(sw_if_index=self.pg0.sw_if_index,
                                              n_input=1,
                                              acls=[first_acl],
-                                             expected_retval=-1)
+                                             expected_retval=-6)
 
         self.logger.info("ACLP_TEST_FINISH_0001")
 
