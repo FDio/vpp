@@ -113,6 +113,20 @@ make_v4_listener_kv (session_kv4_t * kv, ip4_address_t * lcl, u16 lcl_port,
 }
 
 always_inline void
+make_v4_proxy_kv (session_kv4_t * kv, ip4_address_t * lcl, u8 proto)
+{
+  v4_connection_key_t *key = (v4_connection_key_t *) kv->key;
+
+  key->src.as_u32 = lcl->as_u32;
+  key->dst.as_u32 = 0;
+  key->src_port = 0;
+  key->dst_port = 0;
+  key->proto = proto;
+
+  kv->value = ~0ULL;
+}
+
+always_inline void
 make_v4_ss_kv_from_tc (session_kv4_t * kv, transport_connection_t * t)
 {
   make_v4_ss_kv (kv, &t->lcl_ip.ip4, &t->rmt_ip.ip4, t->lcl_port, t->rmt_port,
@@ -148,6 +162,23 @@ make_v6_listener_kv (session_kv6_t * kv, ip6_address_t * lcl, u16 lcl_port,
   key->dst.as_u64[0] = 0;
   key->dst.as_u64[1] = 0;
   key->src_port = lcl_port;
+  key->dst_port = 0;
+  key->proto = proto;
+  key->unused = 0;
+
+  kv->value = ~0ULL;
+}
+
+always_inline void
+make_v6_proxy_kv (session_kv6_t * kv, ip6_address_t * lcl, u8 proto)
+{
+  v6_connection_key_t *key = (v6_connection_key_t *) kv->key;
+
+  key->src.as_u64[0] = lcl->as_u64[0];
+  key->src.as_u64[1] = lcl->as_u64[1];
+  key->dst.as_u64[0] = 0;
+  key->dst.as_u64[1] = 0;
+  key->src_port = 0;
   key->dst_port = 0;
   key->proto = proto;
   key->unused = 0;
@@ -536,6 +567,14 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
       rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
       if (rv == 0)
 	return (u32) kv4.value;
+
+      /*
+       * Zero out the port and check if we have proxy
+       */
+      kv4.key[1] = 0;
+      rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
+      if (rv == 0)
+	return (u32) kv4.value;
     }
   else
     {
@@ -564,6 +603,14 @@ session_lookup_local_endpoint (u32 table_index, session_endpoint_t * sep)
       rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
       if (rv == 0)
 	return (u32) kv6.value;
+
+      /*
+       * Zero out the port. Same logic as above.
+       */
+      kv6.key[4] = kv6.key[5] = 0;
+      rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
+      if (rv == 0)
+	return (u32) kv6.value;
     }
   return APP_INVALID_INDEX;
 }
@@ -575,13 +622,26 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
   session_kv4_t kv4;
   int rv;
 
+  /*
+   * First, try a fully formed listener
+   */
   make_v4_listener_kv (&kv4, lcl, lcl_port, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
     return session_manager_get_listener (proto, (u32) kv4.value);
 
-  /* Zero out the lcl ip */
+  /*
+   * Zero out the lcl ip and check if any 0/0 port binds have been done
+   */
   kv4.key[0] = 0;
+  rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
+  if (rv == 0)
+    return session_manager_get_listener (proto, (u32) kv4.value);
+
+  /*
+   * Zero out port and check if we have a proxy set up for our ip
+   */
+  make_v4_proxy_kv (&kv4, lcl, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
     return session_manager_get_listener (proto, (u32) kv4.value);
@@ -618,6 +678,10 @@ session_lookup_listener6_i (session_table_t * st, ip6_address_t * lcl,
   if (rv == 0)
     return session_manager_get_listener (proto, (u32) kv6.value);
 
+  make_v6_proxy_kv (&kv6, lcl, proto);
+  rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
+  if (rv == 0)
+    return session_manager_get_listener (proto, (u32) kv6.value);
   return 0;
 }
 

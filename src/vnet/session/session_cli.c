@@ -200,10 +200,10 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			 vlib_cli_command_t * cmd)
 {
   session_manager_main_t *smm = &session_manager_main;
+  u8 *str = 0, one_session = 0, do_listeners = 0, sst, *app_name;
   int verbose = 0, i;
-  stream_session_t *pool;
-  stream_session_t *s;
-  u8 *str = 0, one_session = 0;
+  stream_session_t *pool, *s;
+  u32 transport_proto = ~0;
 
   if (!smm->is_enabled)
     {
@@ -216,6 +216,9 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	;
       else if (unformat (input, "verbose"))
 	verbose = 1;
+      else if (unformat (input, "listeners %U", unformat_transport_proto,
+			 &transport_proto))
+	do_listeners = 1;
       else if (unformat (input, "%U", unformat_stream_session, &s))
 	{
 	  one_session = 1;
@@ -228,6 +231,27 @@ show_session_command_fn (vlib_main_t * vm, unformat_input_t * input,
   if (one_session)
     {
       vlib_cli_output (vm, "%U", format_stream_session, s, 3);
+      return 0;
+    }
+
+  if (do_listeners)
+    {
+      sst = session_type_from_proto_and_ip (transport_proto, 1);
+      vlib_cli_output (vm, "There are %d active %U listeners",
+		       pool_elts (smm->listen_sessions[sst]),
+		       format_transport_proto, transport_proto);
+      if (verbose)
+	{
+	  vlib_cli_output (vm, "%-40s%-24s%-10s", "Listener", "App", "S-idx");
+          /* *INDENT-OFF* */
+          pool_foreach (s, smm->listen_sessions[sst], ({
+            app_name = application_name_from_index (s->app_index);
+            vlib_cli_output (vm, "%U%-25v%-10u", format_stream_session, s, 1,
+                             app_name, s->session_index);
+            vec_free (app_name);
+          }));
+          /* *INDENT-ON* */
+	}
       return 0;
     }
 
