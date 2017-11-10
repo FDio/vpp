@@ -114,7 +114,7 @@ typedef struct
   u16 qp_id;
   u16 inflights[2];
   u16 n_ops;
-  u16 __unused;
+  u16 _unused;
   struct rte_crypto_op *ops[VLIB_FRAME_SIZE];
   u32 bi[VLIB_FRAME_SIZE];
 } crypto_resource_t __attribute__ ((aligned (CLIB_CACHE_LINE_BYTES)));
@@ -311,7 +311,6 @@ crypto_set_icb (dpdk_gcm_cnt_blk * icb, u32 salt, u32 seq, u32 seq_hi)
 #endif
 }
 
-#define __unused __attribute__((unused))
 static_always_inline void
 crypto_op_setup (u8 is_aead, struct rte_mbuf *mb0,
 		 struct rte_crypto_op *op, void *session,
@@ -379,8 +378,6 @@ crypto_op_setup (u8 is_aead, struct rte_mbuf *mb0,
     }
 #endif /* DPDK_NO_AEAD */
 }
-
-#undef __unused
 
 #endif /* __DPDK_IPSEC_H__ */
 
