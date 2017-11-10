@@ -72,6 +72,71 @@ void clib_memswap (void *_a, void *_b, uword bytes);
 #define clib_memcpy(a,b,c) memcpy(a,b,c)
 #endif
 
+/*
+ * Copy 64 bytes of data to 4 destinations
+ * this function is typically used in quad-loop case when whole cacheline
+ * needs to be copied to 4 different places. First it reads whole cacheline
+ * to 1/2/4 SIMD registers and then it writes data to 4 destinations.
+ */
+
+static_always_inline void
+clib_memcpy64_x4 (void *d0, void *d1, void *d2, void *d3, void *s)
+{
+#if defined (CLIB_HAVE_VEC512)
+  u8x64 __attribute__ ((aligned (1))) r0 = *(((u8x64 *) s) + 0);
+
+  *(((u8x64 *) d0) + 0) = r0;
+  *(((u8x64 *) d1) + 0) = r0;
+  *(((u8x64 *) d2) + 0) = r0;
+  *(((u8x64 *) d3) + 0) = r0;
+#elif defined (CLIB_HAVE_VEC256)
+  u8x32 __attribute__ ((aligned (1))) r0 = *(((u8x32 *) s) + 0);
+  u8x32 __attribute__ ((aligned (1))) r1 = *(((u8x32 *) s) + 1);
+
+  *(((u8x32 *) d0) + 0) = r0;
+  *(((u8x32 *) d0) + 1) = r1;
+
+  *(((u8x32 *) d1) + 0) = r0;
+  *(((u8x32 *) d1) + 1) = r1;
+
+  *(((u8x32 *) d2) + 0) = r0;
+  *(((u8x32 *) d2) + 1) = r1;
+
+  *(((u8x32 *) d3) + 0) = r0;
+  *(((u8x32 *) d3) + 1) = r1;
+#elif defined (CLIB_HAVE_VEC128)
+  u8x16 __attribute__ ((aligned (1))) r0 = *(((u8x16 *) s) + 0);
+  u8x16 __attribute__ ((aligned (1))) r1 = *(((u8x16 *) s) + 1);
+  u8x16 __attribute__ ((aligned (1))) r2 = *(((u8x16 *) s) + 3);
+  u8x16 __attribute__ ((aligned (1))) r3 = *(((u8x16 *) s) + 4);
+
+  *(((u8x16 *) d0) + 0) = r0;
+  *(((u8x16 *) d0) + 1) = r1;
+  *(((u8x16 *) d0) + 2) = r2;
+  *(((u8x16 *) d0) + 3) = r3;
+
+  *(((u8x16 *) d1) + 0) = r0;
+  *(((u8x16 *) d1) + 1) = r1;
+  *(((u8x16 *) d1) + 2) = r2;
+  *(((u8x16 *) d1) + 3) = r3;
+
+  *(((u8x16 *) d2) + 0) = r0;
+  *(((u8x16 *) d2) + 1) = r1;
+  *(((u8x16 *) d2) + 2) = r2;
+  *(((u8x16 *) d2) + 3) = r3;
+
+  *(((u8x16 *) d3) + 0) = r0;
+  *(((u8x16 *) d3) + 1) = r1;
+  *(((u8x16 *) d3) + 2) = r2;
+  *(((u8x16 *) d3) + 3) = r3;
+#else
+  clib_memcpy (d0, s, 64);
+  clib_memcpy (d1, s, 64);
+  clib_memcpy (d2, s, 64);
+  clib_memcpy (d3, s, 64);
+#endif
+}
+
 #endif /* included_clib_string_h */
 
 /*

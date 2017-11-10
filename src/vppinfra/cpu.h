@@ -51,6 +51,13 @@
   return & fn;                                                         \
 }
 
+#ifdef CLIB_MULTIARCH_VARIANT
+#define __CLIB_MULTIARCH_FN(a,b) a##_##b
+#define _CLIB_MULTIARCH_FN(a,b) __CLIB_MULTIARCH_FN(a,b)
+#define CLIB_MULTIARCH_FN(fn) _CLIB_MULTIARCH_FN(fn,CLIB_MULTIARCH_VARIANT)
+#else
+#define CLIB_MULTIARCH_FN(fn) fn
+#endif
 
 #define foreach_x86_64_flags \
 _ (sse3,     1, ecx, 0)   \

@@ -119,6 +119,22 @@ AC_DEFUN([DETECT_DPDK_IS_1702_OR_1705],
   AM_CONDITIONAL(DPDK_IS_1702_OR_1705, test "$dpdk_is_1702_or_1705" = "yes")
 ])
 
+# Check if compiler supports specific flag
+AC_DEFUN([CC_CHECK_FLAG],
+[
+  AC_MSG_CHECKING([if $CC supports $1])
+  AC_LANG_PUSH([C])
+  ac_saved_cflags="$CFLAGS"
+  CFLAGS="-Werror $1"
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
+  [c_flag_check=yes],
+  [c_flag_check=no]
+)
+  AC_MSG_RESULT([$c_flag_check])
+  CFLAGS="$ac_saved_cflags"
+  AC_LANG_POP([C])
+])
+
 ###############################################################################
 # configure arguments
 ###############################################################################
@@ -164,12 +180,32 @@ AC_ARG_WITH(pre-data,
 # Target CPU flags
 ###############################################################################
 
+# Check if compiler supports march=core-avx2
+CC_CHECK_FLAG("-march=core-avx2")
+AS_IF([test "$cc_flag_check" = yes],
+      [march_core_avx2=yes],
+      [march_core_avx2=no])
+AM_CONDITIONAL([CC_SUPPORTS_AVX2], [test "$march_core_avx2" = "yes"])
+
+# Check if compiler supports march=skylake-avx512
+CC_CHECK_FLAG("-march=skylake-avx512")
+AS_IF([test "$cc_flag_check" = yes],
+  [march_skylake_avx512=yes],
+  [march_skylake_avx512=no])
+AM_CONDITIONAL([CC_SUPPORTS_AVX512], [test "$march_skylake_avx512" = "yes"])
+
 AS_CASE([$build_cpu],
 	[x86_64], [CPU_FLAGS="-march=corei7 -mtune=corei7-avx"],
 	[aarch64], [CPU_FLAGS="-march=armv8-a+crc"],
 	[CPU_FLAGS=""],
 )
 AC_SUBST([CPU_FLAGS])
+
+AC_SUBST([CPU_AVX2_FLAGS],"-march=core-avx2 -mtune=core-avx2")
+AC_SUBST([CPU_AVX512_FLAGS],"-march=skylake-avx512 -mtune=skylake-avx512")
+
+AM_CONDITIONAL([CPU_X86_64], [test "$build_cpu" = "x86_64"])
+AM_CONDITIONAL([CPU_AARCH64], [test "$build_cpu" = "aarch64"])
 
 ###############################################################################
 # Substitutions and defines
