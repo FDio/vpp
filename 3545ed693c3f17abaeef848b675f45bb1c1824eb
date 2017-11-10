@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "3102d4be_81946d3d",
+        "filename": "src/vcl/vcom_socket.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 680
+      },
+      "writtenOn": "2017-11-10T05:18:54Z",
+      "side": 1,
+      "message": "*__len is not just the size of struct sin_addr. It is the size of the entire sockaddr which composes of sa_family, sa_port, sin_addr, etc. We have to do the math to compute how many bytes that is left for the sin_addr. For example, if the application passes us the size of sockaddr_in, *__len will not have enough bytes for the in6_addr. But your suggestion would not catch it and will write beyond the buffer.",
+      "parentUuid": "e996047e_eac6bf45",
+      "range": {
+        "startLine": 1431,
+        "startChar": 0,
+        "endLine": 1437,
+        "endChar": 16
+      },
+      "revId": "3545ed693c3f17abaeef848b675f45bb1c1824eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "77277f12_e4c8092f",
         "filename": "src/vcl/vcom_socket.c",
         "patchSetId": 2
