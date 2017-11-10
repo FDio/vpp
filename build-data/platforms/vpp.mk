@@ -16,18 +16,8 @@
 MACHINE=$(shell uname -m)
 
 vpp_arch = native
-ifeq ($(MACHINE),$(filter $(MACHINE),x86_64 i686))
-vpp_march = corei7			# Nehalem Instruction set
-vpp_mtune = corei7-avx			# Optimize for Sandy Bridge
-else ifeq ($(MACHINE),aarch64)
 ifeq ($(TARGET_PLATFORM),thunderx)
-vpp_march = armv8-a+crc
-vpp_mtune = thunderx
 vpp_dpdk_target = arm64-thunderx-linuxapp-gcc
-else
-vpp_march = native
-vpp_mtune = generic
-endif
 endif
 vpp_native_tools = vppapigen
 
@@ -56,28 +46,20 @@ endif
 # uncomment the following...
 # vpp_configure_args_vpp += --disable-vom
 
-vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
+vpp_debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
 	-fstack-protector-all -fPIC -Werror
-vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
+vpp_debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 \
 	-fstack-protector-all -fPIC -Werror
 
-vpp_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
-	-fstack-protector -fPIC -Werror
-vpp_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
-	-fstack-protector -fPIC -Werror
+vpp_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
+vpp_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
 
-vpp_clang_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
-	-fstack-protector -fPIC -Werror
-vpp_clang_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -march=$(MARCH) -mtune=$(MTUNE) \
-	-fstack-protector -fPIC -Werror
+vpp_clang_TAG_CFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
+vpp_clang_TAG_LDFLAGS = -g -O2 -DFORTIFY_SOURCE=2 -fstack-protector -fPIC -Werror
 
-vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
-	-fPIC -Werror -fprofile-arcs -ftest-coverage
-vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -march=$(MARCH) \
-	-fPIC -Werror -coverage
+vpp_gcov_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -Werror -fprofile-arcs -ftest-coverage
+vpp_gcov_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -fPIC -Werror -coverage
 
-vpp_coverity_TAG_CFLAGS = -g -O2 -march=$(MARCH) -mtune=$(MTUNE) \
-	-fPIC -Werror -D__COVERITY__
-vpp_coverity_TAG_LDFLAGS = -g -O2 -march=$(MARCH) -mtune=$(MTUNE) \
-	-fPIC -Werror -D__COVERITY__ 
+vpp_coverity_TAG_CFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
+vpp_coverity_TAG_LDFLAGS = -g -O2 -fPIC -Werror -D__COVERITY__
 

@@ -161,6 +161,16 @@ AC_ARG_WITH(pre-data,
 	     esac], [with_pre_data=128])
 
 ###############################################################################
+# Target CPU flags
+###############################################################################
+
+AS_CASE([$build_cpu],
+	[x86_64], [AC_SUBST(CPU_FLAGS, "-march=corei7 -mtune=corei7-avx")],
+	[aarch64], [AC_SUBST(CPU_FLAGS, "-march=armv8-a+crc")],
+	[AC_MSG_ERROR("Unsupported target CPU $build_cpu")]
+)
+
+###############################################################################
 # Substitutions and defines
 ###############################################################################
 
