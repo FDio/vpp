@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7d2244c7_06e83f1e",
+        "filename": "src/vcl/vcom_socket.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1426,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-11-10T04:39:47Z",
+      "side": 1,
+      "message": "Please remove this check.  The value of ep-\u003evrf is orthogonal to the operation being performed by this function.  \n\nIn the future, it will be set to something other than VPPCOM_VRF_DEFAULT.",
+      "range": {
+        "startLine": 1424,
+        "startChar": 0,
+        "endLine": 1426,
+        "endChar": 1
+      },
+      "revId": "3545ed693c3f17abaeef848b675f45bb1c1824eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e996047e_eac6bf45",
+        "filename": "src/vcl/vcom_socket.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1437,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-11-10T04:39:47Z",
+      "side": 1,
+      "message": "Why do we need these calcuations?  \n\nAll of this can be simplified into:\n\nclib_memcpy (\u0026((struct sockaddr_in *) __addr)-\u003esin_addr, ep-\u003eip, clib_min (sizeof(struct in_addr), *__len));",
+      "range": {
+        "startLine": 1431,
+        "startChar": 0,
+        "endLine": 1437,
+        "endChar": 16
+      },
+      "revId": "3545ed693c3f17abaeef848b675f45bb1c1824eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "77277f12_e4c8092f",
+        "filename": "src/vcl/vcom_socket.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1448,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-11-10T04:39:47Z",
+      "side": 1,
+      "message": "Same here.\n\nclib_memcpy (((struct sockaddr_in6 *) __addr)-\u003esin6_addr.__in6_u.__u6_addr8, clib_min (sizeof(struct in6_addr), *__len))",
+      "range": {
+        "startLine": 1442,
+        "startChar": 0,
+        "endLine": 1448,
+        "endChar": 44
+      },
+      "revId": "3545ed693c3f17abaeef848b675f45bb1c1824eb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
