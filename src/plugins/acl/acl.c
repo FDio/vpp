@@ -182,7 +182,7 @@ acl_add_list (u32 count, vl_api_acl_rule_t rules[],
 	{
 	  /* tried to replace a non-existent ACL, no point doing anything */
           clib_warning("acl-plugin-error: Trying to replace nonexistent ACL %d (tag %s)", *acl_list_index, tag);
-	  return -1;
+	  return VNET_API_ERROR_NO_SUCH_ENTRY;
 	}
     }
   if (0 == count) {
@@ -254,19 +254,19 @@ acl_del_list (u32 acl_list_index)
   int i, ii;
   if (pool_is_free_index (am->acls, acl_list_index))
     {
-      return -1;
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
 
   if (acl_list_index < vec_len(am->input_sw_if_index_vec_by_acl)) {
     if (vec_len(vec_elt(am->input_sw_if_index_vec_by_acl, acl_list_index)) > 0) {
       /* ACL is applied somewhere inbound. Refuse to delete */
-      return -1;
+      return VNET_API_ERROR_ACL_IN_USE_INBOUND;
     }
   }
   if (acl_list_index < vec_len(am->output_sw_if_index_vec_by_acl)) {
     if (vec_len(vec_elt(am->output_sw_if_index_vec_by_acl, acl_list_index)) > 0) {
       /* ACL is applied somewhere outbound. Refuse to delete */
-      return -1;
+      return VNET_API_ERROR_ACL_IN_USE_OUTBOUND;
     }
   }
 
@@ -910,7 +910,7 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
   acl_main_t *am = &acl_main;
   if (acl_is_not_defined(am, acl_list_index)) {
     /* ACL is not defined. Can not apply */
-    return -1;
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
   }
   void *oldheap = acl_set_heap(am);
 
@@ -924,7 +924,7 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
                      acl_list_index, sw_if_index, index);
         /* the entry is already there */
         clib_mem_set_heap (oldheap);
-        return -1;
+        return VNET_API_ERROR_ACL_IN_USE_INBOUND;
       }
       /* if there was no ACL applied before, enable the ACL processing */
       if (vec_len(am->input_acl_vec_by_sw_if_index[sw_if_index]) == 0) {
@@ -946,7 +946,7 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
                      acl_list_index, sw_if_index, index);
         /* the entry is already there */
         clib_mem_set_heap (oldheap);
-        return -1;
+        return VNET_API_ERROR_ACL_IN_USE_OUTBOUND;
       }
       /* if there was no ACL applied before, enable the ACL processing */
       if (vec_len(am->output_acl_vec_by_sw_if_index[sw_if_index]) == 0) {
@@ -968,7 +968,7 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
 {
   acl_main_t *am = &acl_main;
   int i;
-  int rv = -1;
+  int rv = VNET_API_ERROR_NO_SUCH_ENTRY;
   void *oldheap = acl_set_heap(am);
   if (is_input)
     {
@@ -1085,7 +1085,7 @@ static int
 acl_interface_add_del_inout_acl (u32 sw_if_index, u8 is_add, u8 is_input,
 				 u32 acl_list_index)
 {
-  int rv = -1;
+  int rv = VNET_API_ERROR_NO_SUCH_ENTRY;
   acl_main_t *am = &acl_main;
   if (is_add)
     {
@@ -1427,7 +1427,7 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
   {
     /* tried to replace a non-existent ACL, no point doing anything */
           clib_warning("acl-plugin-error: Trying to replace nonexistent MACIP ACL %d (tag %s)", *acl_list_index, tag);
-    return -1;
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
   }
     }
 
@@ -1496,7 +1496,7 @@ macip_acl_interface_del_acl (acl_main_t * am, u32 sw_if_index)
   macip_acl_index = am->macip_acl_by_sw_if_index[sw_if_index];
   /* No point in deleting MACIP ACL which is not applied */
   if (~0 == macip_acl_index)
-    return -1;
+    return VNET_API_ERROR_NO_SUCH_ENTRY;
   a = pool_elt_at_index (am->macip_acls, macip_acl_index);
   /* remove the classifier tables off the interface L2 ACL */
   rv =
@@ -1517,7 +1517,7 @@ macip_acl_interface_add_acl (acl_main_t * am, u32 sw_if_index,
   int rv;
   if (pool_is_free_index (am->macip_acls, macip_acl_index))
     {
-      return -1;
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
   void *oldheap = acl_set_heap(am);
   a = pool_elt_at_index (am->macip_acls, macip_acl_index);
@@ -1543,7 +1543,7 @@ macip_acl_del_list (u32 acl_list_index)
   int i;
   if (pool_is_free_index (am->macip_acls, acl_list_index))
     {
-      return -1;
+      return VNET_API_ERROR_NO_SUCH_ENTRY;
     }
 
   /* delete any references to the ACL */
@@ -1694,7 +1694,7 @@ vl_api_acl_interface_set_acl_list_t_handler
         {
           if(acl_is_not_defined(am, ntohl (mp->acls[i]))) {
             /* ACL does not exist, so we can not apply it */
-            rv = -1;
+            rv = VNET_API_ERROR_NO_SUCH_ENTRY;
           }
         }
       if (0 == rv) {
