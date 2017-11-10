@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "22310493_5c6bc1f7",
+        "filename": "src/svm/svm_common.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 90,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2017-11-10T18:09:08Z",
+      "side": 1,
+      "message": "We can use #define BASEVA (1ul \u003c\u003c (VA_BITS-2)) instead of #define BASEVA ((1ul \u003c\u003c VA_BITS) / 4).",
+      "revId": "3071d2873cdde48f9f6ca6308d1702629777bfb2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
