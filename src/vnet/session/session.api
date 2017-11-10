@@ -348,7 +348,7 @@ autoreply define session_enable_disable {
     @param namespace_id_len - length of namespace id lower
     @param namespace_id - namespace id
 */
-autoreply define app_namespace_add_del {
+define app_namespace_add_del {
   u32 client_index;
   u32 context;
   u64 secret;
@@ -357,6 +357,18 @@ autoreply define app_namespace_add_del {
   u32 ip6_fib_id;
   u8 namespace_id_len;
   u8 namespace_id[64];
+};
+
+/** \brief Reply for app namespace add/del
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param appns_index - app namespace index
+*/
+define app_namespace_add_del_reply
+{
+  u32 context;
+  i32 retval;
+  u32 appns_index;
 };
 
 /** \brief add/del session rule
