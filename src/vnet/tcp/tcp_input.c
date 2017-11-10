@@ -2753,15 +2753,6 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 			   sizeof (ip6_address_t));
 	    }
 
-	  if (stream_session_accept (&child0->connection, lc0->c_s_index,
-				     0 /* notify */ ))
-	    {
-	      clib_warning ("session accept fail");
-	      tcp_connection_cleanup (child0);
-	      error0 = TCP_ERROR_CREATE_SESSION_FAIL;
-	      goto drop;
-	    }
-
 	  if (tcp_options_parse (th0, &child0->rcv_opts))
 	    {
 	      clib_warning ("options parse fail");
@@ -2790,6 +2781,15 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  tcp_connection_init_vars (child0);
 	  TCP_EVT_DBG (TCP_EVT_SYN_RCVD, child0, 1);
+
+	  if (stream_session_accept (&child0->connection, lc0->c_s_index,
+				     0 /* notify */ ))
+	    {
+	      clib_warning ("session accept fail");
+	      tcp_connection_cleanup (child0);
+	      error0 = TCP_ERROR_CREATE_SESSION_FAIL;
+	      goto drop;
+	    }
 
 	  /* Reuse buffer to make syn-ack and send */
 	  tcp_make_synack (child0, b0);
