@@ -608,6 +608,212 @@ autoreply define ip_container_proxy_add_del
   u8 is_add;
 };
 
+/** \brief Configure IP source and L4 port-range check
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ip6 - 1 if source address type is IPv6
+    @param is_add - 1 if add, 0 if delete
+    @param mask_length - mask length for address entry
+    @param address - array of address bytes
+    @param number_of_ranges - length of low_port and high_port arrays (must match)
+    @param low_ports[32] - up to 32 low end of port range entries (must have corresponding high_ports entry)
+    @param high_ports[32] - up to 32 high end of port range entries (must have corresponding low_ports entry)
+    @param vrf_id - fib table/vrf id to associate the source and port-range check with
+    @note To specify a single port set low_port and high_port entry the same
+*/
+autoreply define ip_source_and_port_range_check_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_ipv6;
+  u8 is_add;
+  u8 mask_length;
+  u8 address[16];
+  u8 number_of_ranges;
+  u16 low_ports[32];
+  u16 high_ports[32];
+  u32 vrf_id;
+};
+
+/** \brief Set interface source and L4 port-range request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param interface_id - interface index
+    @param tcp_vrf_id - VRF associated with source and TCP port-range check
+    @param udp_vrf_id - VRF associated with source and TCP port-range check
+*/
+autoreply define ip_source_and_port_range_check_interface_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u32 sw_if_index;
+  u32 tcp_in_vrf_id;
+  u32 tcp_out_vrf_id;
+  u32 udp_in_vrf_id;
+  u32 udp_out_vrf_id;
+};
+
+/** \brief Register for ip4 arp resolution events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+    @param address - the exact ip4 address of interest
+*/
+autoreply define want_ip4_arp_events
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
+  u32 pid;
+  u32 address;
+};
+
+/** \brief Tell client about an ip4 arp resolution event
+    @param client_index - opaque cookie to identify the sender
+    @param address - the exact ip4 address of interest
+    @param pid - client pid registered to receive notification
+    @param sw_if_index - interface which received ARP packet
+    @param new_mac - the new mac address 
+    @param mac_ip - 0: resolution event, 1: mac/ip binding in bd
+*/
+define ip4_arp_event
+{
+  u32 client_index;
+  u32 address;
+  u32 pid;
+  u32 sw_if_index;
+  u8 new_mac[6];
+  u8 mac_ip;
+};
+
+/** \brief Register for ip6 nd resolution events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+    @param address - the exact ip6 address of interest
+*/
+autoreply define want_ip6_nd_events
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
+  u32 pid;
+  u8 address[16];
+};
+
+/** \brief Tell client about an ip6 nd resolution or mac/ip event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param sw_if_index - interface which received ARP packet
+    @param address - the exact ip6 address of interest
+    @param new_mac - the new mac address 
+    @param mac_ip - 0: resolution event, 1: mac/ip binding in bd
+*/
+define ip6_nd_event
+{
+  u32 client_index;
+  u32 pid;
+  u32 sw_if_index;
+  u8 address[16];
+  u8 new_mac[6];
+  u8 mac_ip;
+};
+
+/** \brief Proxy ARP add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param vrf_id - VRF / Fib table ID
+    @param is_add - 1 if adding the Proxy ARP range, 0 if deleting
+    @param low_address[4] - Low address of the Proxy ARP range
+    @param hi_address[4] - High address of the Proxy ARP range
+*/
+autoreply define proxy_arp_add_del
+{
+  u32 client_index;
+  u32 context;
+  u32 vrf_id;
+  u8 is_add;
+  u8 low_address[4];
+  u8 hi_address[4];
+};
+
+/** \brief Proxy ARP add / del request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - Which interface to enable / disable Proxy Arp on
+    @param enable_disable - 1 to enable Proxy ARP on interface, 0 to disable
+*/
+autoreply define proxy_arp_intfc_enable_disable
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  /* 1 = on, 0 = off */
+  u8 enable_disable;
+};
+
+/** \brief Reset fib table request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param vrf_id - vrf/table id of the fib table to reset
+    @param is_ipv6 - an ipv6 fib to reset if non-zero, else ipv4
+*/
+autoreply define reset_fib
+{
+  u32 client_index;
+  u32 context;
+  u32 vrf_id;
+  u8 is_ipv6;
+};
+
+/** \brief Set max allowed ARP or ip6 neighbor entries request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ipv6 - neighbor limit if non-zero, else ARP limit
+    @param arp_neighbor_limit - the new limit, defaults are ~ 50k
+*/
+autoreply define set_arp_neighbor_limit
+{
+  u32 client_index;
+  u32 context;
+  u8 is_ipv6;
+  u32 arp_neighbor_limit;
+};
+
+/** \brief IOAM enable : Enable in-band OAM
+    @param id - profile id
+    @param seqno - To enable Seqno Processing
+    @param analyse - Enabling analysis of iOAM at decap node 
+    @param pow_enable - Proof of Work enabled or not flag
+    @param trace_enable - iOAM Trace enabled or not flag
+*/
+autoreply define ioam_enable
+{
+  u32 client_index;
+  u32 context;
+  u16 id;
+  u8 seqno;
+  u8 analyse;
+  u8 pot_enable;
+  u8 trace_enable;
+  u32 node_id;
+};
+
+/** \brief iOAM disable
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param index - MAP Domain index
+*/
+autoreply define ioam_disable
+{
+  u32 client_index;
+  u32 context;
+  u16 id;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

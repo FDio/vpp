@@ -58,12 +58,18 @@ _(L2FIB_FLUSH_BD, l2fib_flush_bd)                           \
 _(L2FIB_ADD_DEL, l2fib_add_del)                             \
 _(WANT_L2_MACS_EVENTS, want_l2_macs_events)		    \
 _(L2_FLAGS, l2_flags)                                       \
-_(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)             \
-_(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                   \
-_(BRIDGE_FLAGS, bridge_flags)                               \
+_(SW_INTERFACE_SET_L2_XCONNECT, sw_interface_set_l2_xconnect)   \
+_(SW_INTERFACE_SET_L2_BRIDGE, sw_interface_set_l2_bridge)       \
+_(L2_PATCH_ADD_DEL, l2_patch_add_del)				\
+_(L2_INTERFACE_EFP_FILTER, l2_interface_efp_filter)             \
+_(BD_IP_MAC_ADD_DEL, bd_ip_mac_add_del)                         \
+_(BRIDGE_DOMAIN_ADD_DEL, bridge_domain_add_del)                 \
+_(BRIDGE_DOMAIN_DUMP, bridge_domain_dump)                       \
+_(BRIDGE_FLAGS, bridge_flags)                                   \
 _(L2_INTERFACE_VLAN_TAG_REWRITE, l2_interface_vlan_tag_rewrite) \
-_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite) \
-_(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)
+_(L2_INTERFACE_PBB_TAG_REWRITE, l2_interface_pbb_tag_rewrite)   \
+_(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)         \
+_(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)
 
 static void
 send_l2_xconnect_details (unix_shared_memory_queue_t * q, u32 context,
@@ -626,6 +632,168 @@ static void
   BAD_SW_IF_INDEX_LABEL;
 
   REPLY_MACRO (VL_API_L2_INTERFACE_PBB_TAG_REWRITE_REPLY);
+}
+
+static void
+  vl_api_sw_interface_set_l2_xconnect_t_handler
+  (vl_api_sw_interface_set_l2_xconnect_t * mp)
+{
+  vl_api_sw_interface_set_l2_xconnect_reply_t *rmp;
+  int rv = 0;
+  u32 rx_sw_if_index = ntohl (mp->rx_sw_if_index);
+  u32 tx_sw_if_index = ntohl (mp->tx_sw_if_index);
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
+
+  VALIDATE_RX_SW_IF_INDEX (mp);
+
+  if (mp->enable)
+    {
+      VALIDATE_TX_SW_IF_INDEX (mp);
+      rv = set_int_l2_mode (vm, vnm, MODE_L2_XC,
+			    rx_sw_if_index, 0, 0, 0, tx_sw_if_index);
+    }
+  else
+    {
+      rv = set_int_l2_mode (vm, vnm, MODE_L3, rx_sw_if_index, 0, 0, 0, 0);
+    }
+
+  BAD_RX_SW_IF_INDEX_LABEL;
+  BAD_TX_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_L2_XCONNECT_REPLY);
+}
+
+static void
+  vl_api_sw_interface_set_l2_bridge_t_handler
+  (vl_api_sw_interface_set_l2_bridge_t * mp)
+{
+  bd_main_t *bdm = &bd_main;
+  vl_api_sw_interface_set_l2_bridge_reply_t *rmp;
+  int rv = 0;
+  vlib_main_t *vm = vlib_get_main ();
+  vnet_main_t *vnm = vnet_get_main ();
+
+  VALIDATE_RX_SW_IF_INDEX (mp);
+  u32 rx_sw_if_index = ntohl (mp->rx_sw_if_index);
+
+
+  if (mp->enable)
+    {
+      VALIDATE_BD_ID (mp);
+      u32 bd_id = ntohl (mp->bd_id);
+      u32 bd_index = bd_find_or_add_bd_index (bdm, bd_id);
+      u32 bvi = mp->bvi;
+      u8 shg = mp->shg;
+      rv = set_int_l2_mode (vm, vnm, MODE_L2_BRIDGE,
+			    rx_sw_if_index, bd_index, bvi, shg, 0);
+    }
+  else
+    {
+      rv = set_int_l2_mode (vm, vnm, MODE_L3, rx_sw_if_index, 0, 0, 0, 0);
+    }
+
+  BAD_RX_SW_IF_INDEX_LABEL;
+  BAD_BD_ID_LABEL;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_L2_BRIDGE_REPLY);
+}
+
+static void
+vl_api_bd_ip_mac_add_del_t_handler (vl_api_bd_ip_mac_add_del_t * mp)
+{
+  bd_main_t *bdm = &bd_main;
+  vl_api_bd_ip_mac_add_del_reply_t *rmp;
+  int rv = 0;
+  u32 bd_id = ntohl (mp->bd_id);
+  u32 bd_index;
+  uword *p;
+
+  if (bd_id == 0)
+    {
+      rv = VNET_API_ERROR_BD_NOT_MODIFIABLE;
+      goto out;
+    }
+
+  p = hash_get (bdm->bd_index_by_bd_id, bd_id);
+  if (p == 0)
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto out;
+    }
+
+  bd_index = p[0];
+  if (bd_add_del_ip_mac (bd_index, mp->ip_address,
+			 mp->mac_address, mp->is_ipv6, mp->is_add))
+    rv = VNET_API_ERROR_UNSPECIFIED;
+
+out:
+  REPLY_MACRO (VL_API_BD_IP_MAC_ADD_DEL_REPLY);
+}
+
+extern void l2_efp_filter_configure (vnet_main_t * vnet_main,
+				     u32 sw_if_index, u32 enable);
+
+static void
+vl_api_l2_interface_efp_filter_t_handler (vl_api_l2_interface_efp_filter_t *
+					  mp)
+{
+  int rv;
+  vl_api_l2_interface_efp_filter_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+
+  // enable/disable the feature
+  l2_efp_filter_configure (vnm, mp->sw_if_index, mp->enable_disable);
+  rv = vnm->api_errno;
+
+  REPLY_MACRO (VL_API_L2_INTERFACE_EFP_FILTER_REPLY);
+}
+
+static void
+vl_api_l2_patch_add_del_t_handler (vl_api_l2_patch_add_del_t * mp)
+{
+  extern int vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index,
+				    int is_add);
+  vl_api_l2_patch_add_del_reply_t *rmp;
+  int vnet_l2_patch_add_del (u32 rx_sw_if_index, u32 tx_sw_if_index,
+			     int is_add);
+  int rv = 0;
+
+  VALIDATE_RX_SW_IF_INDEX (mp);
+  VALIDATE_TX_SW_IF_INDEX (mp);
+
+  rv = vnet_l2_patch_add_del (ntohl (mp->rx_sw_if_index),
+			      ntohl (mp->tx_sw_if_index),
+			      (int) (mp->is_add != 0));
+
+  BAD_RX_SW_IF_INDEX_LABEL;
+  BAD_TX_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_L2_PATCH_ADD_DEL_REPLY);
+}
+
+static void
+vl_api_sw_interface_set_vpath_t_handler (vl_api_sw_interface_set_vpath_t * mp)
+{
+  vl_api_sw_interface_set_vpath_reply_t *rmp;
+  int rv = 0;
+  u32 sw_if_index = ntohl (mp->sw_if_index);
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  l2input_intf_bitmap_enable (sw_if_index, L2INPUT_FEAT_VPATH, mp->enable);
+  vnet_feature_enable_disable ("ip4-unicast", "vpath-input-ip4",
+			       sw_if_index, mp->enable, 0, 0);
+  vnet_feature_enable_disable ("ip4-multicast", "vpath-input-ip4",
+			       sw_if_index, mp->enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-unicast", "vpath-input-ip6",
+			       sw_if_index, mp->enable, 0, 0);
+  vnet_feature_enable_disable ("ip6-multicast", "vpath-input-ip6",
+			       sw_if_index, mp->enable, 0, 0);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_SW_INTERFACE_SET_VPATH_REPLY);
 }
 
 /*

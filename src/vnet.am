@@ -354,6 +354,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip_input_acl.c				\
  vnet/ip/lookup.c				\
  vnet/ip/ping.c					\
+ vnet/ip/punt_api.c				\
  vnet/ip/punt.c
 
 nobase_include_HEADERS +=			\
@@ -380,9 +381,12 @@ nobase_include_HEADERS +=			\
  vnet/ip/ports.def				\
  vnet/ip/protocols.def				\
  vnet/ip/punt_error.def				\
+ vnet/ip/punt.api.h				\
  vnet/ip/punt.h
 
-API_FILES += vnet/ip/ip.api
+API_FILES += 					\
+ vnet/ip/ip.api 				\
+ vnet/ip/punt.api
 
 ########################################
 # Bidirectional Forwarding Detection
@@ -845,11 +849,15 @@ libvnet_la_SOURCES +=				\
   vnet/pg/init.c				\
   vnet/pg/input.c				\
   vnet/pg/output.c				\
-  vnet/pg/stream.c
+  vnet/pg/stream.c				\
+  vnet/pg/pg_api.c
 
 nobase_include_HEADERS +=			\
   vnet/pg/pg.h					\
-  vnet/pg/edit.h
+  vnet/pg/edit.h				\
+  vnet/pg/pg.api.h
+
+API_FILES += vnet/pg/pg.api
 
 ########################################
 # virtio
@@ -955,10 +963,14 @@ API_FILES += vnet/devices/netmap/netmap.api
 
 libvnet_la_SOURCES +=				\
   vnet/feature/feature.c			\
+  vnet/feature/feature_api.c			\
   vnet/feature/registration.c
 
 nobase_include_HEADERS +=			\
-  vnet/feature/feature.h
+  vnet/feature/feature.h			\
+  vnet/feature/feature.api.h
+
+API_FILES += vnet/feature/feature.api
 
 ########################################
 # Unix kernel related

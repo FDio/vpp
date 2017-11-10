@@ -20,7 +20,7 @@
 #include "vom/rpc_cmd.hpp"
 #include "vom/sub_interface.hpp"
 
-#include <vapi/vpe.api.vapi.hpp>
+#include <vapi/interface.api.vapi.hpp>
 
 namespace VOM {
 namespace sub_interface_cmds {

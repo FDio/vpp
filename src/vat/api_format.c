@@ -5186,7 +5186,6 @@ _(proxy_arp_add_del_reply)                              \
 _(proxy_arp_intfc_enable_disable_reply)                 \
 _(sw_interface_set_unnumbered_reply)                    \
 _(ip_neighbor_add_del_reply)                            \
-_(reset_vrf_reply)                                      \
 _(oam_add_del_reply)                                    \
 _(reset_fib_reply)                                      \
 _(dhcp_proxy_config_reply)                              \
@@ -5393,7 +5392,6 @@ _(MPLS_TUNNEL_ADD_DEL_REPLY, mpls_tunnel_add_del_reply)                 \
 _(SW_INTERFACE_SET_UNNUMBERED_REPLY,                                    \
   sw_interface_set_unnumbered_reply)                                    \
 _(IP_NEIGHBOR_ADD_DEL_REPLY, ip_neighbor_add_del_reply)                 \
-_(RESET_VRF_REPLY, reset_vrf_reply)                                     \
 _(CREATE_VLAN_SUBIF_REPLY, create_vlan_subif_reply)                     \
 _(CREATE_SUBIF_REPLY, create_subif_reply)                     		\
 _(OAM_ADD_DEL_REPLY, oam_add_del_reply)                                 \
@@ -9005,45 +9003,6 @@ api_ip_neighbor_add_del (vat_main_t * vam)
   S (mp);
 
   /* Wait for a reply, return good/bad news  */
-  W (ret);
-  return ret;
-}
-
-static int
-api_reset_vrf (vat_main_t * vam)
-{
-  unformat_input_t *i = vam->input;
-  vl_api_reset_vrf_t *mp;
-  u32 vrf_id = 0;
-  u8 is_ipv6 = 0;
-  u8 vrf_id_set = 0;
-  int ret;
-
-  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
-    {
-      if (unformat (i, "vrf %d", &vrf_id))
-	vrf_id_set = 1;
-      else if (unformat (i, "ipv6"))
-	is_ipv6 = 1;
-      else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
-    }
-
-  if (vrf_id_set == 0)
-    {
-      errmsg ("missing vrf id");
-      return -99;
-    }
-
-  M (RESET_VRF, mp);
-
-  mp->vrf_id = ntohl (vrf_id);
-  mp->is_ipv6 = is_ipv6;
-
-  S (mp);
   W (ret);
   return ret;
 }
@@ -22439,7 +22398,6 @@ _(sw_interface_set_unnumbered,                                          \
 _(ip_neighbor_add_del,                                                  \
   "(<intfc> | sw_if_index <id>) dst <ip46-address> "                    \
   "[mac <mac-addr>] [vrf <vrf-id>] [is_static] [del]")                  \
-_(reset_vrf, "vrf <id> [ipv6]")                                         \
 _(create_vlan_subif, "<intfc> | sw_if_index <id> vlan <n>")             \
 _(create_subif, "<intfc> | sw_if_index <id> sub_id <n>\n"               \
   "[outer_vlan_id <n>][inner_vlan_id <n>]\n"                            \

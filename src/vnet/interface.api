@@ -411,6 +411,143 @@ autoreply define sw_interface_set_rx_mode
     u8 mode;
 };
 
+/* Gross kludge, DGMS */
+autoreply define interface_name_renumber
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 new_show_dev_instance;
+};
+
+define create_subif
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 sub_id;
+
+  /* These fields map directly onto the subif template */
+  u8 no_tags;
+  u8 one_tag;
+  u8 two_tags;
+  u8 dot1ad;			// 0 = dot1q, 1=dot1ad
+  u8 exact_match;
+  u8 default_sub;
+  u8 outer_vlan_id_any;
+  u8 inner_vlan_id_any;
+  u16 outer_vlan_id;
+  u16 inner_vlan_id;
+};
+
+define create_subif_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Create a new subinterface with the given vlan id
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - software index of the new vlan's parent interface
+    @param vlan_id - vlan tag of the new interface
+*/
+define create_vlan_subif
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 vlan_id;
+};
+
+/** \brief Reply for the vlan subinterface create request
+    @param context - returned sender context, to match reply w/ request
+    @param retval - return code
+    @param sw_if_index - software index allocated for the new subinterface
+*/
+define create_vlan_subif_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Delete sub interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface that was created by create_subif
+*/
+autoreply define delete_subif {
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
+/** \brief Create loopback interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mac_address - mac addr to assign to the interface if none-zero
+*/
+define create_loopback
+{
+  u32 client_index;
+  u32 context;
+  u8 mac_address[6];
+};
+
+/** \brief Create loopback interface response
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface that was created
+    @param retval - return code for the request
+*/
+define create_loopback_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Create loopback interface instance request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param mac_address - mac addr to assign to the interface if none-zero
+    @param is_specified - if non-0, a specific user_instance is being requested
+    @param user_instance - requested instance, ~0 => dynamically allocate
+*/
+define create_loopback_instance
+{
+  u32 client_index;
+  u32 context;
+  u8 mac_address[6];
+  u8 is_specified;
+  u32 user_instance;
+};
+
+/** \brief Create loopback interface instance response
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface that was created
+    @param retval - return code for the request
+*/
+define create_loopback_instance_reply
+{
+  u32 context;
+  i32 retval;
+  u32 sw_if_index;
+};
+
+/** \brief Delete loopback interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - sw index of the interface that was created
+*/
+autoreply define delete_loopback
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

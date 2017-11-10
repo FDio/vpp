@@ -60,7 +60,14 @@ _(SW_INTERFACE_GET_TABLE, sw_interface_get_table)               \
 _(SW_INTERFACE_SET_UNNUMBERED, sw_interface_set_unnumbered)     \
 _(SW_INTERFACE_CLEAR_STATS, sw_interface_clear_stats)           \
 _(SW_INTERFACE_TAG_ADD_DEL, sw_interface_tag_add_del)           \
-_(SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address)
+_(SW_INTERFACE_SET_MAC_ADDRESS, sw_interface_set_mac_address)   \
+_(CREATE_VLAN_SUBIF, create_vlan_subif)                         \
+_(CREATE_SUBIF, create_subif)                                   \
+_(DELETE_SUBIF, delete_subif)                                   \
+_(CREATE_LOOPBACK, create_loopback)				\
+_(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)		\
+_(DELETE_LOOPBACK, delete_loopback)                             \
+_(INTERFACE_NAME_RENUMBER, interface_name_renumber)
 
 static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
@@ -927,6 +934,247 @@ static void vl_api_sw_interface_set_rx_mode_t_handler
   BAD_SW_IF_INDEX_LABEL;
 out:
   REPLY_MACRO (VL_API_SW_INTERFACE_SET_RX_MODE_REPLY);
+}
+
+static void
+vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
+{
+  vl_api_create_vlan_subif_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = (u32) ~ 0;
+  vnet_hw_interface_t *hi;
+  int rv = 0;
+  u32 id;
+  vnet_sw_interface_t template;
+  uword *p;
+  vnet_interface_main_t *im = &vnm->interface_main;
+  u64 sup_and_sub_key;
+  unix_shared_memory_queue_t *q;
+  clib_error_t *error;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  hi = vnet_get_sup_hw_interface (vnm, ntohl (mp->sw_if_index));
+
+  if (hi->bond_info == VNET_HW_INTERFACE_BOND_INFO_SLAVE)
+    {
+      rv = VNET_API_ERROR_BOND_SLAVE_NOT_ALLOWED;
+      goto out;
+    }
+
+  id = ntohl (mp->vlan_id);
+  if (id == 0 || id > 4095)
+    {
+      rv = VNET_API_ERROR_INVALID_VLAN;
+      goto out;
+    }
+
+  sup_and_sub_key = ((u64) (hi->sw_if_index) << 32) | (u64) id;
+
+  p = hash_get_mem (im->sw_if_index_by_sup_and_sub, &sup_and_sub_key);
+  if (p)
+    {
+      rv = VNET_API_ERROR_VLAN_ALREADY_EXISTS;
+      goto out;
+    }
+
+  memset (&template, 0, sizeof (template));
+  template.type = VNET_SW_INTERFACE_TYPE_SUB;
+  template.sup_sw_if_index = hi->sw_if_index;
+  template.sub.id = id;
+  template.sub.eth.raw_flags = 0;
+  template.sub.eth.flags.one_tag = 1;
+  template.sub.eth.outer_vlan_id = id;
+  template.sub.eth.flags.exact_match = 1;
+
+  error = vnet_create_sw_interface (vnm, &template, &sw_if_index);
+  if (error)
+    {
+      clib_error_report (error);
+      rv = VNET_API_ERROR_INVALID_REGISTRATION;
+      goto out;
+    }
+
+  u64 *kp = clib_mem_alloc (sizeof (*kp));
+  *kp = sup_and_sub_key;
+
+  hash_set (hi->sub_interface_sw_if_index_by_id, id, sw_if_index);
+  hash_set_mem (im->sw_if_index_by_sup_and_sub, kp, sw_if_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+out:
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (!q)
+    return;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = htons (VL_API_CREATE_VLAN_SUBIF_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = htonl (rv);
+  rmp->sw_if_index = htonl (sw_if_index);
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+vl_api_create_subif_t_handler (vl_api_create_subif_t * mp)
+{
+  vl_api_create_subif_reply_t *rmp;
+  vnet_main_t *vnm = vnet_get_main ();
+  u32 sw_if_index = ~0;
+  int rv = 0;
+  u32 sub_id;
+  vnet_sw_interface_t *si;
+  vnet_hw_interface_t *hi;
+  vnet_sw_interface_t template;
+  uword *p;
+  vnet_interface_main_t *im = &vnm->interface_main;
+  u64 sup_and_sub_key;
+  clib_error_t *error;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  si = vnet_get_sup_sw_interface (vnm, ntohl (mp->sw_if_index));
+  hi = vnet_get_sup_hw_interface (vnm, ntohl (mp->sw_if_index));
+
+  if (hi->bond_info == VNET_HW_INTERFACE_BOND_INFO_SLAVE)
+    {
+      rv = VNET_API_ERROR_BOND_SLAVE_NOT_ALLOWED;
+      goto out;
+    }
+
+  sw_if_index = si->sw_if_index;
+  sub_id = ntohl (mp->sub_id);
+
+  sup_and_sub_key = ((u64) (sw_if_index) << 32) | (u64) sub_id;
+
+  p = hash_get_mem (im->sw_if_index_by_sup_and_sub, &sup_and_sub_key);
+  if (p)
+    {
+      if (CLIB_DEBUG > 0)
+	clib_warning ("sup sw_if_index %d, sub id %d already exists\n",
+		      sw_if_index, sub_id);
+      rv = VNET_API_ERROR_SUBIF_ALREADY_EXISTS;
+      goto out;
+    }
+
+  memset (&template, 0, sizeof (template));
+  template.type = VNET_SW_INTERFACE_TYPE_SUB;
+  template.sup_sw_if_index = sw_if_index;
+  template.sub.id = sub_id;
+  template.sub.eth.flags.no_tags = mp->no_tags;
+  template.sub.eth.flags.one_tag = mp->one_tag;
+  template.sub.eth.flags.two_tags = mp->two_tags;
+  template.sub.eth.flags.dot1ad = mp->dot1ad;
+  template.sub.eth.flags.exact_match = mp->exact_match;
+  template.sub.eth.flags.default_sub = mp->default_sub;
+  template.sub.eth.flags.outer_vlan_id_any = mp->outer_vlan_id_any;
+  template.sub.eth.flags.inner_vlan_id_any = mp->inner_vlan_id_any;
+  template.sub.eth.outer_vlan_id = ntohs (mp->outer_vlan_id);
+  template.sub.eth.inner_vlan_id = ntohs (mp->inner_vlan_id);
+
+  error = vnet_create_sw_interface (vnm, &template, &sw_if_index);
+  if (error)
+    {
+      clib_error_report (error);
+      rv = VNET_API_ERROR_SUBIF_CREATE_FAILED;
+      goto out;
+    }
+
+  u64 *kp = clib_mem_alloc (sizeof (*kp));
+  *kp = sup_and_sub_key;
+
+  hash_set (hi->sub_interface_sw_if_index_by_id, sub_id, sw_if_index);
+  hash_set_mem (im->sw_if_index_by_sup_and_sub, kp, sw_if_index);
+
+  BAD_SW_IF_INDEX_LABEL;
+
+out:
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_CREATE_SUBIF_REPLY,
+  ({
+    rmp->sw_if_index = ntohl(sw_if_index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_delete_subif_t_handler (vl_api_delete_subif_t * mp)
+{
+  vl_api_delete_subif_reply_t *rmp;
+  int rv;
+
+  rv = vnet_delete_sub_interface (ntohl (mp->sw_if_index));
+
+  REPLY_MACRO (VL_API_DELETE_SUBIF_REPLY);
+}
+
+static void
+vl_api_interface_name_renumber_t_handler (vl_api_interface_name_renumber_t *
+					  mp)
+{
+  vl_api_interface_name_renumber_reply_t *rmp;
+  int rv = 0;
+
+  VALIDATE_SW_IF_INDEX (mp);
+
+  rv = vnet_interface_name_renumber
+    (ntohl (mp->sw_if_index), ntohl (mp->new_show_dev_instance));
+
+  BAD_SW_IF_INDEX_LABEL;
+
+  REPLY_MACRO (VL_API_INTERFACE_NAME_RENUMBER_REPLY);
+}
+
+static void
+vl_api_create_loopback_t_handler (vl_api_create_loopback_t * mp)
+{
+  vl_api_create_loopback_reply_t *rmp;
+  u32 sw_if_index;
+  int rv;
+
+  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address, 0, 0);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_CREATE_LOOPBACK_REPLY,
+  ({
+    rmp->sw_if_index = ntohl (sw_if_index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void vl_api_create_loopback_instance_t_handler
+  (vl_api_create_loopback_instance_t * mp)
+{
+  vl_api_create_loopback_instance_reply_t *rmp;
+  u32 sw_if_index;
+  u8 is_specified = mp->is_specified;
+  u32 user_instance = ntohl (mp->user_instance);
+  int rv;
+
+  rv = vnet_create_loopback_interface (&sw_if_index, mp->mac_address,
+				       is_specified, user_instance);
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2(VL_API_CREATE_LOOPBACK_INSTANCE_REPLY,
+  ({
+    rmp->sw_if_index = ntohl (sw_if_index);
+  }));
+  /* *INDENT-ON* */
+}
+
+static void
+vl_api_delete_loopback_t_handler (vl_api_delete_loopback_t * mp)
+{
+  vl_api_delete_loopback_reply_t *rmp;
+  u32 sw_if_index;
+  int rv;
+
+  sw_if_index = ntohl (mp->sw_if_index);
+  rv = vnet_delete_loopback_interface (sw_if_index);
+
+  REPLY_MACRO (VL_API_DELETE_LOOPBACK_REPLY);
 }
 
 /*

@@ -326,6 +326,64 @@ define flow_classify_details {
     u32 table_index;
 };
 
+/** \brief Set/unset the classification table for an interface request 
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_ipv6 - ipv6 if non-zero, else ipv4
+    @param sw_if_index - interface to associate with the table
+    @param table_index - index of the table, if ~0 unset the table
+*/
+autoreply define classify_set_interface_ip_table
+{
+  u32 client_index;
+  u32 context;
+  u8 is_ipv6;
+  u32 sw_if_index;
+  u32 table_index;		/* ~0 => off */
+};
+
+/** \brief Set/unset l2 classification tables for an interface request
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to set/unset tables for
+    @param ip4_table_index - ip4 index, use ~0 for all 3 indexes to unset
+    @param ip6_table_index - ip6 index
+    @param other_table_index - other index
+*/
+autoreply define classify_set_interface_l2_tables
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  /* 3 x ~0 => off */
+  u32 ip4_table_index;
+  u32 ip6_table_index;
+  u32 other_table_index;
+  u8 is_input;
+};
+
+/** \brief Set/unset input ACL interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to set/unset input ACL
+    @param ip4_table_index - ip4 classify table index (~0 for skip)
+    @param ip6_table_index - ip6 classify table index (~0 for skip)
+    @param l2_table_index  -  l2 classify table index (~0 for skip)
+    @param is_add - Set input ACL if non-zero, else unset
+    Note: User is recommeneded to use just one valid table_index per call.
+          (ip4_table_index, ip6_table_index, or l2_table_index)
+*/
+autoreply define input_acl_set_interface
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 ip4_table_index;
+  u32 ip6_table_index;
+  u32 l2_table_index;
+  u8 is_add;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

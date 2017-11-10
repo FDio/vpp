@@ -1,0 +1,72 @@
+/*
+ * Copyright (c) 2015-2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+vl_api_version 1.0.0
+
+/** \brief Punt traffic to the host
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - add punt if non-zero, else delete
+    @param ipv - L3 protocol 4 - IPv4, 6 - IPv6, ~0 - All
+    @param l4_protocol - L4 protocol to be punted, only UDP (0x11) is supported
+    @param l4_port - TCP/UDP port to be punted
+*/
+autoreply define punt {
+    u32 client_index;
+    u32 context;
+    u8 is_add;
+    u8 ipv;
+    u8 l4_protocol;
+    u16 l4_port;
+};
+
+/** \brief Punt traffic to the host via socket
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param header_version - expected meta data header version (currently 1)
+    @param is_ip4 - L3 protocol 1 - IPv4, 0 - IPv6
+    @param l4_protocol - L4 protocol to be punted, only UDP (0x11) is supported
+    @param l4_port - TCP/UDP port to be punted
+*/
+define punt_socket_register {
+    u32 client_index;
+    u32 context;
+    u32 header_version;
+    u8 is_ip4;
+    u8 l4_protocol;
+    u16 l4_port;
+    u8 pathname[108]; /* Linux sun_path defined to be 108 bytes, see unix(7) */
+};
+
+define punt_socket_register_reply
+{
+  u32 context;
+  i32 retval;
+  u8 pathname[64];
+};
+
+autoreply define punt_socket_deregister {
+    u32 client_index;
+    u32 context;
+    u8 is_ip4;
+    u8 l4_protocol;
+    u16 l4_port;
+};
+
+/*
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
