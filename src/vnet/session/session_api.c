@@ -748,8 +748,9 @@ static void
 vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
 {
   vl_api_app_namespace_add_del_reply_t *rmp;
-  u8 *ns_id = 0;
   clib_error_t *error = 0;
+  u32 appns_index = 0;
+  u8 *ns_id = 0;
   int rv = 0;
   if (!session_manager_is_enabled ())
     {
@@ -779,9 +780,24 @@ vl_api_app_namespace_add_del_t_handler (vl_api_app_namespace_add_del_t * mp)
       rv = clib_error_get_code (error);
       clib_error_report (error);
     }
+  else
+    {
+      appns_index = app_namespace_index_from_id (ns_id);
+      if (appns_index == APP_NAMESPACE_INVALID_INDEX)
+	{
+	  clib_warning ("app ns lookup failed");
+	  rv = VNET_API_ERROR_UNSPECIFIED;
+	}
+    }
   vec_free (ns_id);
+
+  /* *INDENT-OFF* */
 done:
-  REPLY_MACRO (VL_API_APP_NAMESPACE_ADD_DEL_REPLY);
+  REPLY_MACRO2 (VL_API_APP_NAMESPACE_ADD_DEL_REPLY, ({
+    if (!rv)
+      rmp->appns_index = clib_host_to_net_u32 (appns_index);
+  }));
+  /* *INDENT-ON* */
 }
 
 static void
