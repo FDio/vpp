@@ -123,6 +123,24 @@
       "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c955cdf2_d6f095aa",
+        "filename": "extras/rpm/vpp.spec",
+        "patchSetId": 3
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 32
+      },
+      "writtenOn": "2017-11-10T18:26:03Z",
+      "side": 0,
+      "message": "Now that we are building nasm from source, we don\u0027t need nasm package dependency in spec file.",
+      "parentUuid": "5f3b10d9_f6a11069",
+      "revId": "66cf6eb41c5a8bb833e94040dff94f6d8ce3814e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
