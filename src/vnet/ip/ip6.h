@@ -326,6 +326,32 @@ ip6_interface_address_matching_destination (ip6_main_t * im,
   return result;
 }
 
+/* Find interface address which matches destination. */
+always_inline ip6_address_t *
+ip6_interface_get_link_local_address (ip6_main_t * im,
+				      ip6_address_t * dst,
+				      u32 sw_if_index,
+				      ip_interface_address_t ** result_ia)
+{
+  ip_lookup_main_t *lm = &im->lookup_main;
+  ip_interface_address_t *ia;
+
+  /* *INDENT-OFF* */
+  foreach_ip_interface_address (lm, ia, sw_if_index,
+                                1 /* honor unnumbered */,
+  ({
+    ip6_address_t * a = ip_interface_address_get_address (lm, ia);
+    if (a->as_u8[0] == 0xfe && a->as_u8[1] == 0x80)
+      {
+	if (result_ia)
+	  *result_ia = ia;
+	return a;
+      }
+  }));
+  /* *INDENT-ON* */
+  return NULL;
+}
+
 clib_error_t *ip6_add_del_interface_address (vlib_main_t * vm,
 					     u32 sw_if_index,
 					     ip6_address_t * address,
