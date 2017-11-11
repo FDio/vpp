@@ -17,26 +17,44 @@
 #include <vppinfra/cpu.h>
 
 #define foreach_x86_cpu_uarch \
- _(0x06, 0x4f, "Broadwell", "Broadwell-EP/EX") \
- _(0x06, 0x3d, "Broadwell", "Broadwell") \
- _(0x06, 0x3f, "Haswell", "Haswell-E") \
+ _(0x06, 0x9e, "Kaby Lake", "Kaby Lake DT/H/S/X") \
+ _(0x06, 0x8e, "Kaby Lake", "Kaby Lake Y/U") \
+ _(0x06, 0x85, "Knights Mill", "Knights Mill") \
+ _(0x06, 0x5f, "Goldmont", "Denverton") \
+ _(0x06, 0x5e, "Skylake", "Skylake DT/H/S") \
+ _(0x06, 0x5c, "Goldmont", "Apollo Lake") \
+ _(0x06, 0x5a, "Silvermont", "Moorefield") \
+ _(0x06, 0x57, "Knights Landing", "Knights Landing") \
+ _(0x06, 0x56, "Broadwell", "Broadwell DE") \
+ _(0x06, 0x55, "Skylake", "Skylake X/SP") \
+ _(0x06, 0x4f, "Broadwell", "Broadwell EP/EX") \
+ _(0x06, 0x4e, "Skylake", "Skylake Y/U") \
+ _(0x06, 0x4d, "Silvermont", "Rangeley") \
+ _(0x06, 0x4c, "Airmont", "Braswell") \
+ _(0x06, 0x47, "Broadwell", "Broadwell H") \
+ _(0x06, 0x46, "Haswell", "Crystalwell") \
+ _(0x06, 0x45, "Haswell", "Haswell ULT") \
+ _(0x06, 0x3f, "Haswell", "Haswell E") \
+ _(0x06, 0x3e, "Ivy Bridge", "Ivy Bridge E/EN/EP") \
+ _(0x06, 0x3d, "Broadwell", "Broadwell U") \
  _(0x06, 0x3c, "Haswell", "Haswell") \
- _(0x06, 0x3e, "IvyBridge", "IvyBridge-E/EN/EP") \
- _(0x06, 0x3a, "IvyBridge", "IvyBridge") \
- _(0x06, 0x2a, "SandyBridge", "SandyBridge") \
- _(0x06, 0x2d, "SandyBridge", "SandyBridge-E/EN/EP") \
+ _(0x06, 0x3a, "Ivy Bridge", "IvyBridge") \
+ _(0x06, 0x37, "Silvermont", "BayTrail") \
+ _(0x06, 0x36, "Saltwell", "Cedarview,Centerton") \
+ _(0x06, 0x35, "Saltwell", "Cloverview") \
+ _(0x06, 0x2f, "Westmere", "Westmere EX") \
+ _(0x06, 0x2e, "Nehalem", "Nehalem EX") \
+ _(0x06, 0x2d, "Sandy Bridge", "SandyBridge E/EN/EP") \
+ _(0x06, 0x2c, "Westmere", "Westmere EP/EX,Gulftown") \
+ _(0x06, 0x2a, "Sandy Bridge", "Sandy Bridge") \
+ _(0x06, 0x27, "Saltwell", "Medfield") \
+ _(0x06, 0x26, "Bonnell", "Tunnel Creek") \
  _(0x06, 0x25, "Westmere", "Arrandale,Clarksdale") \
- _(0x06, 0x2c, "Westmere", "Westmere-EP/EX,Gulftown") \
- _(0x06, 0x2f, "Westmere", "Westmere-EX") \
  _(0x06, 0x1e, "Nehalem", "Clarksfield,Lynnfield,Jasper Forest") \
- _(0x06, 0x1a, "Nehalem", "Nehalem-EP,Bloomfield)") \
- _(0x06, 0x2e, "Nehalem", "Nehalem-EX") \
- _(0x06, 0x17, "Penryn", "Yorkfield,Wolfdale,Penryn,Harpertown (DP)") \
- _(0x06, 0x1d, "Penryn", "Dunnington (MP)") \
- _(0x06, 0x37, "Atom", "Bay Trail") \
- _(0x06, 0x36, "Atom", "Cedarview") \
- _(0x06, 0x26, "Atom", "Lincroft") \
- _(0x06, 0x1c, "Atom", "Pineview/Silverthorne")
+ _(0x06, 0x1d, "Penryn", "Dunnington") \
+ _(0x06, 0x1c, "Bonnell", "Pineview,Silverthorne") \
+ _(0x06, 0x1a, "Nehalem", "Nehalem EP,Bloomfield)") \
+ _(0x06, 0x17, "Penryn", "Yorkfield,Wolfdale,Penryn,Harpertown")
 
 u8 *
 format_cpu_uarch (u8 * s, va_list * args)
