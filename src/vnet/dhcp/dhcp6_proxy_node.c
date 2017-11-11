@@ -19,6 +19,7 @@
 #include <vnet/pg/pg.h>
 #include <vnet/dhcp/dhcp_proxy.h>
 #include <vnet/dhcp/dhcp6_packet.h>
+#include <vnet/dhcp/client6.h>
 #include <vnet/mfib/mfib_table.h>
 #include <vnet/mfib/ip6_mfib.h>
 #include <vnet/fib/fib.h>
@@ -196,7 +197,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 
           clib_memcpy(client_src_mac, e_h0->src_address, 6);
 
-          switch (h0->u.msg_type) {
+          switch (h0->msg_type) {
             case DHCPV6_MSG_SOLICIT:
             case DHCPV6_MSG_REQUEST:
             case DHCPV6_MSG_CONFIRM:
@@ -263,7 +264,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
           fwd_opt->option = clib_host_to_net_u16(DHCPV6_OPTION_RELAY_MSG);
 
           r1->hop_count++;
-          r1->hop_count = (h0->u.msg_type != DHCPV6_MSG_RELAY_FORW) ? 0 : r1->hop_count;
+          r1->hop_count = (h0->msg_type != DHCPV6_MSG_RELAY_FORW) ? 0 : r1->hop_count;
 
           if (PREDICT_FALSE(r1->hop_count >= HOP_COUNT_LIMIT))
             {
@@ -275,7 +276,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 
 
           /* If relay-fwd and src address is site or global unicast address  */
-          if (h0->u.msg_type == DHCPV6_MSG_RELAY_FORW &&
+          if (h0->msg_type == DHCPV6_MSG_RELAY_FORW &&
               ((ip0->src_address.as_u8[0] & 0xe0) == 0x20 ||
                (ip0->src_address.as_u8[0] & 0xfe) == 0xfc))
             {
@@ -325,7 +326,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
           id1->int_idx = clib_host_to_net_u32(rx_sw_if_index);
 
           u1->length =0;
-          if (h0->u.msg_type != DHCPV6_MSG_RELAY_FORW)
+          if (h0->msg_type != DHCPV6_MSG_RELAY_FORW)
             {
                cmac = (dhcpv6_client_mac_t *) (((uword) ip1) + b0->current_length);
                b0->current_length += (sizeof (*cmac));
@@ -410,7 +411,7 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
 
           next0 = DHCPV6_PROXY_TO_SERVER_INPUT_NEXT_LOOKUP;
 
-          is_solicit = (DHCPV6_MSG_SOLICIT == h0->u.msg_type);
+          is_solicit = (DHCPV6_MSG_SOLICIT == h0->msg_type);
 
           /*
            * If we have multiple servers configured and this is the
@@ -586,6 +587,10 @@ dhcpv6_proxy_to_client_input (vlib_main_t * vm,
       bi0 = from[0];
       from += 1;
       n_left_from -= 1;
+
+      /* Consumed by dhcp client code? */
+      if (dhcp6_client_for_us (vm, bi0))
+	continue;
 
       b0 = vlib_get_buffer (vm, bi0);
       h0 = vlib_buffer_get_current (b0);
