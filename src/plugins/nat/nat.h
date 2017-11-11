@@ -344,6 +344,7 @@ typedef struct snat_main_s {
   u8 static_mapping_only;
   u8 static_mapping_connection_tracking;
   u8 deterministic;
+  u8 translate_all;
   u32 translation_buckets;
   u32 translation_memory_size;
   u32 max_translations;

@@ -1731,9 +1731,11 @@ add_address_command_fn (vlib_main_t * vm,
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   snat_main_t * sm = &snat_main;
+  vnet_main_t *vnm = vnet_get_main ();
   ip4_address_t start_addr, end_addr, this_addr;
   u32 start_host_order, end_host_order;
   u32 vrf_id = ~0;
+  u32 sw_if_index = ~0;
   int i, count;
   int is_add = 1;
   int rv = 0;
@@ -1753,6 +1755,11 @@ add_address_command_fn (vlib_main_t * vm,
         ;
       else if (unformat (line_input, "%U", unformat_ip4_address, &start_addr))
         end_addr = start_addr;
+      else
+        if (unformat
+            (line_input, "interface %U", unformat_vnet_sw_interface, vnm,
+             &sw_if_index))
+        ;
       else if (unformat (line_input, "del"))
         is_add = 0;
       else
@@ -1807,6 +1814,45 @@ add_address_command_fn (vlib_main_t * vm,
           break;
         }
 
+      /*
+       * Add RX interface route, when NAT isn't running on the real out
+       * interface
+       */
+      if (sw_if_index != ~0)
+        {
+          u32 fib_index;
+          fib_prefix_t fibpfx = {
+            .fp_len = 32,
+            .fp_proto = FIB_PROTOCOL_IP4,
+            .fp_addr = {.ip4 = this_addr}
+          };
+
+          /* TODO */
+          vrf_id = 0;
+
+          if (is_add)
+            {
+              fib_index = fib_table_find_or_create_and_lock (
+                      FIB_PROTOCOL_IP4, vrf_id, FIB_SOURCE_PLUGIN_HI);
+              fib_table_entry_update_one_path (fib_index, &fibpfx,
+                                               FIB_SOURCE_PLUGIN_HI,
+                                               FIB_ENTRY_FLAG_NONE,
+                                               DPO_PROTO_IP4,
+                                               NULL, sw_if_index, ~0, 0, NULL,
+                                               FIB_ROUTE_PATH_INTF_RX);
+            }
+          else
+            {
+              fib_index = fib_table_find (FIB_PROTOCOL_IP4, vrf_id);
+              fib_table_entry_path_remove (fib_index, &fibpfx,
+                                           FIB_SOURCE_PLUGIN_HI, DPO_PROTO_IP4,
+                                           NULL, sw_if_index, ~0, 1,
+                                           FIB_ROUTE_PATH_INTF_RX);
+              fib_table_unlock (fib_index, FIB_PROTOCOL_IP4,
+                                FIB_SOURCE_PLUGIN_HI);
+            }
+        }
+
       increment_v4_address (&this_addr);
     }
 
@@ -1819,8 +1865,73 @@ done:
 VLIB_CLI_COMMAND (add_address_command, static) = {
   .path = "nat44 add address",
   .short_help = "nat44 add address <ip4-range-start> [- <ip4-range-end>] "
-                "[tenant-vrf <vrf-id>] [del]",
+                "[tenant-vrf <vrf-id>] [interface <interface>] [del]",
   .function = add_address_command_fn,
+};
+
+static clib_error_t *
+translate_all_command_fn (vlib_main_t * vm,
+                          unformat_input_t * input,
+                          vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  snat_main_t * sm = &snat_main;
+  clib_error_t * error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "expected 'on' or 'off'");
+
+  u8 is_set = 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on") && !is_set)
+        {
+          sm->translate_all = 1;
+          is_set = 1;
+        }
+      else if (unformat (line_input, "off") && !is_set)
+        {
+          sm->translate_all = 0;
+          is_set = 1;
+        }
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  if (!is_set)
+    {
+      error = clib_error_return (0, "expected 'on' or 'off'");
+      goto done;
+    }
+
+  done:
+    unformat_free (line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat44 translate-all}
+ * Enable/disable translating all packets coming from NAT44 inside interfaces.
+ * By default only packets routed through NAT44 outside interfaces are
+ * trasnated.
+ * To enable translating all packets use:
+ *  vpp# nat44 translate-all on
+ * To disable translating all packets use:
+ *  vpp# nat44 translate-all off
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (translate_all_command, static) = {
+  .path = "nat44 translate-all",
+  .short_help = "nat44 translate-all on|off",
+  .function = translate_all_command_fn,
 };
 
 static clib_error_t *
