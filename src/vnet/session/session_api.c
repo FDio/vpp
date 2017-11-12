@@ -520,7 +520,7 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
     }
 
 done:
-  REPLY_MACRO (VL_API_DISCONNECT_SESSION_REPLY);
+  REPLY_MACRO2 (VL_API_DISCONNECT_SESSION_REPLY, rmp->handle = mp->handle);
 }
 
 static void
