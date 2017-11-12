@@ -599,33 +599,44 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 					   mp)
 {
   uword *p;
+  u32 session_index = ~0;
 
   p = hash_get (vcm->session_index_by_vpp_handles, mp->handle);
   if (p)
     {
       session_t *session = 0;
       int rv;
+
+      session_index = p[0];
+      hash_unset (vcm->session_index_by_vpp_handles, mp->handle);
       clib_spinlock_lock (&vcm->sessions_lockp);
-      rv = vppcom_session_at_index (p[0], &session);
+      rv = vppcom_session_at_index (session_index, &session);
       if (PREDICT_FALSE (rv))
 	{
 	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("[%d] invalid session, sid (%u) has been closed!",
-			  getpid (), p[0]);
+	    clib_warning ("[%d] invalid session, sid %u has been closed!",
+			  getpid (), session_index);
 	}
-      hash_unset (vcm->session_index_by_vpp_handles, mp->handle);
-      session->state = STATE_DISCONNECT;
+      else
+	{
+	  if (VPPCOM_DEBUG > 1)
+	    clib_warning ("[%d] vpp handle 0x%llx, sid %u disconnected!",
+			  getpid (), mp->handle, session_index);
+
+	  session->state = STATE_DISCONNECT;
+	}
       clib_spinlock_unlock (&vcm->sessions_lockp);
     }
   else
     {
       if (VPPCOM_DEBUG > 1)
-	clib_warning ("[%d] couldn't find session key %llx", getpid (),
-		      mp->handle);
+	clib_warning ("[%d] couldn't find session: unknown vpp handle 0x%llx",
+		      getpid (), mp->handle);
     }
 
   if (mp->retval)
-    clib_warning ("[%d] disconnect_session failed: %U", getpid (),
+    clib_warning ("[%d] disconnect_session vpp handle 0x%llx, sid %u "
+		  "failed: %U", getpid (), mp->handle, session_index,
 		  format_api_error, ntohl (mp->retval));
 }
 
@@ -680,8 +691,8 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
     }
   else
     {
-      clib_warning ("[%d] couldn't find session key %llx", getpid (),
-		    mp->handle);
+      clib_warning ("[%d] couldn't find session: unknonwn vpp handle 0x%llx",
+		    getpid (), mp->handle);
       rv = -11;
     }
 
@@ -721,8 +732,8 @@ vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
     }
   else
     {
-      clib_warning ("[%d] couldn't find session key %llx", getpid (),
-		    mp->handle);
+      clib_warning ("[%d] couldn't find session: unknown vpp handle 0x%llx",
+		    getpid (), mp->handle);
       rv = -11;
     }
 
@@ -811,10 +822,10 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
   hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
 
   if (VPPCOM_DEBUG > 1)
-    clib_warning ("[%d] client sid %d\n"
+    clib_warning ("[%d] client sid %d, vpp handle 0x%llx\n"
 		  "  session_rx_fifo %p, refcnt %d\n"
 		  "  session_tx_fifo %p, refcnt %d",
-		  getpid (), session_index,
+		  getpid (), session_index, mp->handle,
 		  session->server_rx_fifo,
 		  session->server_rx_fifo->refcnt,
 		  session->server_tx_fifo, session->server_tx_fifo->refcnt);
