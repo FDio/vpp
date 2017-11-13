@@ -88,18 +88,17 @@
 #define ANSI_RESTCURSOR CSI "u"
 
 /** Maximum depth into a byte stream from which to compile a Telnet
- * protocol message. This is a saftey measure. */
+ * protocol message. This is a safety measure. */
 #define UNIX_CLI_MAX_DEPTH_TELNET 24
 
-/** Minimum terminal width we will accept */
-#define UNIX_CLI_MIN_TERMINAL_WIDTH 1
 /** Maximum terminal width we will accept */
 #define UNIX_CLI_MAX_TERMINAL_WIDTH 512
-/** Minimum terminal height we will accept */
-#define UNIX_CLI_MIN_TERMINAL_HEIGHT 1
 /** Maximum terminal height we will accept */
 #define UNIX_CLI_MAX_TERMINAL_HEIGHT 512
-
+/** Default terminal height */
+#define UNIX_CLI_DEFAULT_TERMINAL_HEIGHT 24
+/** Default terminal width */
+#define UNIX_CLI_DEFAULT_TERMINAL_WIDTH 80
 
 /** A CLI banner line. */
 typedef struct
@@ -1265,15 +1264,15 @@ unix_cli_process_telnet (unix_main_t * um,
 		      clib_net_to_host_u16 (*((u16 *) (input_vector + 3)));
 		    if (cf->width > UNIX_CLI_MAX_TERMINAL_WIDTH)
 		      cf->width = UNIX_CLI_MAX_TERMINAL_WIDTH;
-		    if (cf->width < UNIX_CLI_MIN_TERMINAL_WIDTH)
-		      cf->width = UNIX_CLI_MIN_TERMINAL_WIDTH;
+		    if (cf->width == 0)
+		      cf->width = UNIX_CLI_DEFAULT_TERMINAL_WIDTH;
 
 		    cf->height =
 		      clib_net_to_host_u16 (*((u16 *) (input_vector + 5)));
 		    if (cf->height > UNIX_CLI_MAX_TERMINAL_HEIGHT)
 		      cf->height = UNIX_CLI_MAX_TERMINAL_HEIGHT;
-		    if (cf->height < UNIX_CLI_MIN_TERMINAL_HEIGHT)
-		      cf->height = UNIX_CLI_MIN_TERMINAL_HEIGHT;
+		    if (cf->height == 0)
+		      cf->height = UNIX_CLI_DEFAULT_TERMINAL_HEIGHT;
 
 		    /* reindex pager buffer */
 		    unix_cli_pager_reindex (cf);
@@ -2674,6 +2673,12 @@ unix_cli_listen_read_ready (clib_file_t * uf)
       /* Setup the pager */
       cf->no_pager = um->cli_no_pager;
 
+      /* Default terminal dimensions, should the terminal
+       * fail to provide any.
+       */
+      cf->width = UNIX_CLI_DEFAULT_TERMINAL_WIDTH;
+      cf->height = UNIX_CLI_DEFAULT_TERMINAL_HEIGHT;
+
       /* Send the telnet options */
       uf = pool_elt_at_index (fm->file_pool, cf->clib_file_index);
       unix_vlib_cli_output_raw (cf, uf, charmode_option,
@@ -2713,14 +2718,14 @@ unix_cli_resize_interrupt (int signum)
   cf->width = ws.ws_col;
   if (cf->width > UNIX_CLI_MAX_TERMINAL_WIDTH)
     cf->width = UNIX_CLI_MAX_TERMINAL_WIDTH;
-  if (cf->width < UNIX_CLI_MIN_TERMINAL_WIDTH)
-    cf->width = UNIX_CLI_MIN_TERMINAL_WIDTH;
+  if (cf->width == 0)
+    cf->width = UNIX_CLI_DEFAULT_TERMINAL_WIDTH;
 
   cf->height = ws.ws_row;
   if (cf->height > UNIX_CLI_MAX_TERMINAL_HEIGHT)
     cf->height = UNIX_CLI_MAX_TERMINAL_HEIGHT;
-  if (cf->height < UNIX_CLI_MIN_TERMINAL_HEIGHT)
-    cf->height = UNIX_CLI_MIN_TERMINAL_HEIGHT;
+  if (cf->height == 0)
+    cf->height = UNIX_CLI_DEFAULT_TERMINAL_HEIGHT;
 
   /* Reindex the pager buffer */
   unix_cli_pager_reindex (cf);
@@ -2781,8 +2786,8 @@ unix_cli_config (vlib_main_t * vm, unformat_input_t * input)
 	       * We have a tty, but no size. Use defaults.
 	       * vpp "unix interactive" inside emacs + gdb ends up here.
 	       */
-	      cf->width = 80;
-	      cf->height = 24;
+	      cf->width = UNIX_CLI_DEFAULT_TERMINAL_WIDTH;
+	      cf->height = UNIX_CLI_DEFAULT_TERMINAL_HEIGHT;
 	    }
 
 	  /* Setup the history */
