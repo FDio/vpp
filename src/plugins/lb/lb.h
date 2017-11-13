@@ -30,8 +30,7 @@
 #ifndef LB_PLUGIN_LB_LB_H_
 #define LB_PLUGIN_LB_LB_H_
 
-#include <lb/util.h>
-#include <lb/refcount.h>
+#include <vnet/util/refcount.h>
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
