@@ -644,7 +644,7 @@ configure_check_timestamp =						\
 # NB: GNU Make 4.2 will let us use '$(file </proc/cpuinfo)' to both test
 # for file presence and content; for now this will have to do.
 MAKE_PARALLEL_JOBS = -j $(if $(shell [ -f /proc/cpuinfo ] && head /proc/cpuinfo), \
-	$(shell expr 2 '*' $$(grep -c ^processor /proc/cpuinfo)), 2)
+	$(shell grep -c ^processor /proc/cpuinfo), 2)
 MAKE_PARALLEL_FLAGS = $(if $($(PACKAGE)_make_parallel_fails),,$(MAKE_PARALLEL_JOBS))
 
 # Make command shorthand for packages & tools.
