@@ -210,6 +210,20 @@ void ip6_prefix_max_address_host_order (ip6_address_t * ip, u8 plen,
 void ip6_preflen_to_mask (u8 pref_len, ip6_address_t * mask);
 u32 ip6_mask_to_preflen (ip6_address_t * mask);
 
+#define ip46_address_type(ip46) (ip46_address_is_ip4(ip46)?IP46_TYPE_IP4:IP46_TYPE_IP6)
+#define ip46_prefix_is_ip4(ip46, len) ((len) >= 96 && ip46_address_is_ip4(ip46))
+#define ip46_prefix_type(ip46, len) (ip46_prefix_is_ip4(ip46, len)?IP46_TYPE_IP4:IP46_TYPE_IP6)
+
+void ip46_prefix_normalize (ip46_address_t * prefix, u8 plen);
+uword unformat_ip46_prefix (unformat_input_t * input, va_list * args);
+u8 *format_ip46_prefix (u8 * s, va_list * args);
+
+/**
+ * 32 bits integer comparison for running values.
+ * 1 > 0 is true. But 1 > 0xffffffff also is.
+ */
+#define clib_u32_loop_gt(a, b) (((u32)(a)) - ((u32)(b)) < 0x7fffffff)
+
 #endif /* included_ip_main_h */
 
 /*
