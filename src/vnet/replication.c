@@ -45,6 +45,7 @@ replication_prep (vlib_main_t * vm,
   /* Save state from vlib buffer */
   ctx->saved_free_list_index = vlib_buffer_get_free_list_index (b0);
   ctx->current_data = b0->current_data;
+  ctx->flags = b0->flags & VNET_BUFFER_FLAGS_VLAN_BITS;
 
   /* Set up vlib buffer hooks */
   b0->recycle_count = ctx_id;
@@ -103,6 +104,10 @@ replication_recycle (vlib_main_t * vm, vlib_buffer_t * b0, u32 is_last)
   /* Restore vnet buffer state */
   clib_memcpy (vnet_buffer (b0), ctx->vnet_buffer,
 	       sizeof (vnet_buffer_opaque_t));
+
+  /* Restore the vlan flags */
+  b0->flags &= ~VNET_BUFFER_FLAGS_VLAN_BITS;
+  b0->flags |= ctx->flags;
 
   /* Restore the packet start (current_data) and length */
   vlib_buffer_advance (b0, ctx->current_data - b0->current_data);
