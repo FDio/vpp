@@ -719,14 +719,14 @@ acl_fa_restart_timer_for_session (acl_main_t * am, u64 now, fa_full_session_id_t
 
 static u8
 acl_fa_track_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
-		      fa_session_t * sess, fa_5tuple_t * pkt_5tuple)
+		      fa_session_t * sess, fa_5tuple_t * pkt_5tuple, u8 ace_action)
 {
   sess->last_active_time = now;
   if (pkt_5tuple->pkt.tcp_flags_valid)
     {
       sess->tcp_flags_seen.as_u8[is_input] |= pkt_5tuple->pkt.tcp_flags;
     }
-  return 3;
+  return ace_action;
 }
 
 
@@ -875,7 +875,7 @@ acl_fa_try_recycle_session (acl_main_t * am, int is_input, u16 thread_index, u32
 
 static fa_session_t *
 acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
-		    fa_5tuple_t * p5tuple)
+		    fa_5tuple_t * p5tuple, u8 ace_action)
 {
   clib_bihash_kv_40_8_t *pkv = &p5tuple->kv;
   clib_bihash_kv_40_8_t kv;
@@ -884,6 +884,7 @@ acl_fa_add_session (acl_main_t * am, int is_input, u32 sw_if_index, u64 now,
   void *oldheap = clib_mem_set_heap(am->acl_mheap);
   acl_fa_per_worker_data_t *pw = &am->per_worker_data[thread_index];
 
+  f_sess_id.ace_action = ace_action;
   f_sess_id.thread_index = thread_index;
   fa_session_t *sess;
 
@@ -1033,7 +1034,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 		    fa_session_get_timeout_type (am, sess);
 		  action =
 		    acl_fa_track_session (am, is_input, sw_if_index0, now,
-					  sess, &fa_5tuple);
+					  sess, &fa_5tuple, f_sess_id.ace_action);
 		  /* expose the session id to the tracer */
 		  match_rule_index = f_sess_id.session_index;
 		  int new_timeout_type =
@@ -1061,7 +1062,7 @@ acl_fa_node_fn (vlib_main_t * vm,
 		  if (PREDICT_FALSE(sess->sw_if_index != sw_if_index0)) {
                     clib_warning("BUG: session LSB16(sw_if_index) and 5-tuple collision!");
                     acl_check_needed = 0;
-                    action = 0;
+                    action = ACL_ACTION_POLICY_DENY;
                   }
 		}
 	    }
@@ -1072,10 +1073,12 @@ acl_fa_node_fn (vlib_main_t * vm,
 		multi_acl_match_5tuple (sw_if_index0, &fa_5tuple, is_l2_path,
 				       is_ip6, is_input, &match_acl_in_index,
 				       &match_rule_index, &trace_bitmap);
-	      error0 = action;
-	      if (1 == action)
+	      u8 action_policy = ACL_ACTION_POLICY(action);
+	      error0 = action_policy;
+
+	      if (ACL_ACTION_POLICY_PERMIT == action_policy)
 		pkts_acl_permit += 1;
-	      if (2 == action)
+	      if (ACL_ACTION_POLICY_PERMIT_REFLECT == action_policy)
 		{
 		  if (!acl_fa_can_add_session (am, is_input, sw_if_index0))
                     acl_fa_try_recycle_session (am, is_input, thread_index, sw_if_index0);
@@ -1083,14 +1086,15 @@ acl_fa_node_fn (vlib_main_t * vm,
 		  if (acl_fa_can_add_session (am, is_input, sw_if_index0))
 		    {
                       fa_session_t *sess = acl_fa_add_session (am, is_input, sw_if_index0, now,
-					                       &kv_sess);
+					                       &kv_sess, (action | ACL_ACTION_POLICY_SESSION_HIT));
                       acl_fa_track_session (am, is_input, sw_if_index0, now,
-                                            sess, &fa_5tuple);
+                                            sess, &fa_5tuple, action);
 		      pkts_new_session += 1;
 		    }
 		  else
 		    {
-		      action = 0;
+		      action = ACL_ACTION_POLICY_DENY;
+		      action_policy = ACL_ACTION_POLICY_DENY;
 		      error0 = ACL_FA_ERROR_ACL_TOO_MANY_SESSIONS;
 		    }
 		}
@@ -1098,12 +1102,26 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 
 
-	  if (action > 0)
+	  if (PREDICT_TRUE(action > ACL_ACTION_POLICY_DENY))
 	    {
-	      if (is_l2_path)
-		next0 = vnet_l2_feature_next (b0, l2_feat_next_node_index, 0);
-	      else
-		vnet_feature_next (sw_if_index0, &next0, b0);
+              if (PREDICT_TRUE(action <= ACL_ACTION_POLICY_SESSION_HIT)) {
+                /* the standard packet path, just figure out the next node */
+	        if (is_l2_path)
+		  next0 = vnet_l2_feature_next (b0, l2_feat_next_node_index, 0);
+	        else
+		  vnet_feature_next (sw_if_index0, &next0, b0);
+              } else {
+                u8 action_steering = ACL_ACTION_STEERING(action);
+                switch (action_steering) {
+                  case ACL_ACTION_STEERING_SET_NEXT:
+                    next0 = vnet_buffer(b0)->l2_classify.opaque_index;
+		    vnet_buffer(b0)->l2_classify.opaque_index = (match_rule_index & 0xffff) + ((match_acl_in_index & 0xffff) << 16);
+                    break;
+                  /* Add your entries here to do a lookup depending on the action_steering = (2..63) << 2 */
+                  default:
+                    next0 = 0; /* drop */
+                }
+              }
 	    }
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)

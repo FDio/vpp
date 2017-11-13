@@ -19,6 +19,18 @@
 #define ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE (1<<30)
 #define ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES 1000000
 
+#define ACL_ACTION_POLICY_DENY             0
+#define ACL_ACTION_POLICY_PERMIT           1
+#define ACL_ACTION_POLICY_PERMIT_REFLECT   2
+#define ACL_ACTION_POLICY_SESSION_HIT      3
+/* needs to mask out all the four options above */
+#define ACL_ACTION_POLICY(action)  (action & 3)
+
+/* The remaining bits are used for traffic steering */
+#define ACL_ACTION_STEERING(action) (0b111111 & (action >> 2))
+/* Set the next index from vnet_buffer(b)->l2_classify.opaque_index supplied by the packet */
+#define ACL_ACTION_STEERING_SET_NEXT       (1 << 2)
+
 typedef union {
   u64 as_u64;
   struct {
@@ -80,7 +92,8 @@ typedef struct {
     struct {
       u32 session_index;
       u16 thread_index;
-      u16 reserved0;
+      u8 ace_action; /* action from the ACL entry */
+      u8 reserved0;
     };
   };
 } fa_full_session_id_t;
