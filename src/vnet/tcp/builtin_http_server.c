@@ -419,6 +419,7 @@ found:
 out:
   /* Cleanup */
   vec_free (request);
+  hsm->rx_buf[s->thread_index] = request;
   return 0;
 }
 
