@@ -31,10 +31,17 @@
 
 #include <vnet/vnet.h>
 
+/*
+ * Reference counting
+ * A specific reference counter is used. The design is quite
+ * similar to vlib counters but:
+ *   - It is possible to decrease the value
+ *   - Summing will not zero the per-thread counters
+ *   - Only the thread can reallocate its own counters vector (to avoid concurrency issues)
+*/
 typedef struct {
   u32 *counters;
-  u32 length;
-  u32 *reader_lengths;
+  volatile u32 *counter_lock;
   CLIB_CACHE_LINE_ALIGN_MARK(o);
 } vlib_refcount_per_cpu_t;
 
@@ -42,14 +49,27 @@ typedef struct {
   vlib_refcount_per_cpu_t *per_cpu;
 } vlib_refcount_t;
 
+static_always_inline
+void vlib_refcount_lock (volatile u32 *counter_lock)
+{
+  while (__sync_lock_test_and_set (counter_lock, 1))
+    ;
+}
+
+static_always_inline
+void vlib_refcount_unlock (volatile u32 *counter_lock)
+{
+  *counter_lock = 0;
+}
+
 void __vlib_refcount_resize(vlib_refcount_per_cpu_t *per_cpu, u32 size);
 
 static_always_inline
 void vlib_refcount_add(vlib_refcount_t *r, u32 thread_index, u32 counter_index, i32 v)
 {
   vlib_refcount_per_cpu_t *per_cpu = &r->per_cpu[thread_index];
-  if (PREDICT_FALSE(counter_index >= per_cpu->length))
-    __vlib_refcount_resize(per_cpu, clib_max(counter_index + 16, per_cpu->length * 2));
+  if (PREDICT_FALSE(counter_index >= vec_len(per_cpu->counters)))
+    __vlib_refcount_resize(per_cpu, clib_max(counter_index + 16,(vec_len(per_cpu->counters)) * 2));
 
   per_cpu->counters[counter_index] += v;
 }
@@ -60,8 +80,16 @@ static_always_inline
 void vlib_refcount_init(vlib_refcount_t *r)
 {
   vlib_thread_main_t *tm = vlib_get_thread_main ();
+  u32 thread_index;
   r->per_cpu = 0;
   vec_validate (r->per_cpu, tm->n_vlib_mains - 1);
+
+  for (thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++)
+    {
+      r->per_cpu[thread_index].counter_lock =
+	  clib_mem_alloc_aligned(CLIB_CACHE_LINE_BYTES,CLIB_CACHE_LINE_BYTES);
+      r->per_cpu[thread_index].counter_lock[0] = 0;
+    }
 }
 
 
