@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include <lb/util.h>
+#include <vnet/util.h>
 
 void ip46_prefix_normalize(ip46_address_t *prefix, u8 plen)
 {
