@@ -17,8 +17,8 @@
  * Non-LB specific stuff comes here
  */
 
-#ifndef LB_PLUGIN_LB_UTIL_H_
-#define LB_PLUGIN_LB_UTIL_H_
+#ifndef VNET_UTIL_H_
+#define VNET_UTIL_H_
 
 #include <vnet/vnet.h>
 #include <vnet/ip/ip.h>
@@ -37,4 +37,4 @@ u8 *format_ip46_prefix (u8 * s, va_list * args);
  */
 #define clib_u32_loop_gt(a, b) (((u32)(a)) - ((u32)(b)) < 0x7fffffff)
 
-#endif /* LB_PLUGIN_LB_UTIL_H_ */
+#endif /* VNET_UTIL_H_ */

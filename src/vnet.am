@@ -40,7 +40,9 @@ libvnet_la_SOURCES +=				\
   vnet/interface_format.c			\
   vnet/interface_output.c			\
   vnet/misc.c					\
-  vnet/replication.c
+  vnet/refcount.c               \
+  vnet/replication.c            \
+  vnet/util.c
 
 nobase_include_HEADERS +=			\
   vnet/api_errno.h				\
@@ -56,11 +58,13 @@ nobase_include_HEADERS +=			\
   vnet/ip/ip6_to_ip4.h   			\
   vnet/l3_types.h				\
   vnet/pipeline.h				\
+  vnet/refcount.h					\
   vnet/replication.h				\
   vnet/vnet.h					\
   vnet/vnet_all_api_h.h				\
   vnet/vnet_msg_enum.h				\
-  vnet/util/radix.h
+  vnet/util/radix.h                 \
+  vnet/util.h
 
 API_FILES += vnet/interface.api
 

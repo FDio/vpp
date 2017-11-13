@@ -14,7 +14,7 @@
  */
 
 #include <lb/lb.h>
-#include <lb/util.h>
+#include <vnet/util.h>
 
 static clib_error_t *
 lb_vip_command_fn (vlib_main_t * vm,
