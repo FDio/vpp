@@ -19,7 +19,6 @@ lb_plugin_la_SOURCES =			\
 	lb/node.c			\
 	lb/cli.c			\
 	lb/util.c			\
-	lb/refcount.c			\
 	lb/api.c
 
 BUILT_SOURCES +=			\
@@ -31,7 +30,6 @@ API_FILES += lb/lb.api
 noinst_HEADERS +=			\
 	lb/lb.h				\
 	lb/util.h			\
-	lb/refcount.h			\
 	lb/lbhash.h			\
 	lb/lb.api.h
 
