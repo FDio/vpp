@@ -465,7 +465,8 @@ const static dpo_vft_t bier_fmask_dpo_vft = {
 
 const static char *const bier_fmask_mpls_nodes[] =
 {
-    "bier-output"
+    "bier-output",
+    NULL
 };
 const static char * const * const bier_fmask_nodes[DPO_PROTO_NUM] =
 {
