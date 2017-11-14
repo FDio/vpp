@@ -127,8 +127,8 @@ AC_DEFUN([CC_CHECK_FLAG],
   ac_saved_cflags="$CFLAGS"
   CFLAGS="-Werror $1"
   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([])],
-  [c_flag_check=yes],
-  [c_flag_check=no]
+  [cc_flag_check=yes],
+  [cc_flag_check=no]
 )
   AC_MSG_RESULT([$c_flag_check])
   CFLAGS="$ac_saved_cflags"
