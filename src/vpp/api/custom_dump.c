@@ -844,9 +844,13 @@ static void *vl_api_dhcp_proxy_set_vss_t_print
 
   s = format (s, "tbl_id %d ", ntohl (mp->tbl_id));
 
-  s = format (s, "fib_id %d ", ntohl (mp->fib_id));
-
-  s = format (s, "oui %d ", ntohl (mp->oui));
+  if (mp->vss_type == VSS_TYPE_VPN_ID)
+    {
+      s = format (s, "fib_id %d ", ntohl (mp->vpn_index));
+      s = format (s, "oui %d ", ntohl (mp->oui));
+    }
+  else if (mp->vss_type == VSS_TYPE_ASCII)
+    s = format (s, "vpn_ascii_id %s", mp->vpn_ascii_id);
 
   if (mp->is_ipv6 != 0)
     s = format (s, "ipv6 ");
