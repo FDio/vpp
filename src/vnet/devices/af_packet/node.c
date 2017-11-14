@@ -115,7 +115,8 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
     {
       ip4_header_t *ip4 =
 	(vlib_buffer_get_current (b) + sizeof (ethernet_header_t));
-      b->flags |= VNET_BUFFER_F_IS_IP4;
+      b->flags |= VNET_BUFFER_F_IS_IP4 | VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+      ip4->checksum = 0;
       if (ip4->protocol == IP_PROTOCOL_TCP)
 	{
 	  b->flags |= VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
