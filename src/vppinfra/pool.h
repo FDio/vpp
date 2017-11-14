@@ -233,9 +233,10 @@ do {                                                                    \
   _pool_var (l) = 0;                                                    \
   if (P)                                                                \
     {                                                                   \
-    if (_pool_var (p)->max_elts)                                        \
-      return 0;                                                         \
-    _pool_var (l) = vec_len (_pool_var (p)->free_indices);              \
+      if (_pool_var (p)->max_elts)                                      \
+        _pool_var (l) = _pool_var (p)->max_elts;			\
+      else								\
+        _pool_var (l) = vec_len (_pool_var (p)->free_indices);          \
     }                                                                   \
                                                                         \
   /* Free elements, certainly won't expand */                           \
