@@ -229,19 +229,19 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
                     }
                 }
               o = (dhcp_option_t *) (((uword) o) + (o->length + 2));
-          }
+	    }
 
           fl = vlib_buffer_get_free_list (vm, vlib_buffer_get_free_list_index (b0));
           // start write at (option*)o, some packets have padding
           if (((u8 *)o - (u8 *)b0->data + VPP_DHCP_OPTION82_SIZE) > fl->n_data_bytes)
-          {
+            {
               next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_DROP;
               pkts_too_big++;
               goto do_trace;
-          }
+	    }
 
           if ((o->option == 0xFF)  && ((u8 *)o <= end))
-          {  
+            {  
               vnet_main_t *vnm = vnet_get_main();   
               u16 old_l0, new_l0;
               ip4_address_t _ia0, * ia0 = &_ia0;
@@ -264,65 +264,53 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
               ia0 = ip4_interface_first_address(&ip4_main, sw_if_index, 0);
                   
               if (ia0 == 0)
-              {
+                {
                   error0 = DHCP_PROXY_ERROR_NO_INTERFACE_ADDRESS;
                   next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_DROP;
                   pkts_no_interface_address++;
                   goto do_trace;
-              }
+                }
 
               /* Add option 82 */
               o->option = 82;   /* option 82 */
               o->length = 12;   /* 12 octets to follow */
               o->data[0] = 1;   /* suboption 1, circuit ID (=FIB id) */
               o->data[1] = 4;   /* length of suboption */
-              o->data[2] = (original_sw_if_index >> 24) & 0xFF;
-              o->data[3] = (original_sw_if_index >> 16) & 0xFF;
-              o->data[4] = (original_sw_if_index >> 8)  & 0xFF;
-              o->data[5] = (original_sw_if_index >> 0)  & 0xFF;
+	      u32 *o_ifid = (u32 *) &o->data[2];
+	      *o_ifid = clib_host_to_net_u32 (original_sw_if_index);
               o->data[6] = 5; /* suboption 5 (client RX intfc address) */
               o->data[7] = 4; /* length 4 */
-              o->data[8] = ia0->as_u8[0];
-              o->data[9] = ia0->as_u8[1];
-              o->data[10] = ia0->as_u8[2];
-              o->data[11] = ia0->as_u8[3];
+	      u32 *o_addr = (u32 *) &o->data[8];
+	      *o_addr = ia0->as_u32;
               o->data[12] = 0xFF;
 
               vss = dhcp_get_vss_info (dpm, fib_index, FIB_PROTOCOL_IP4);
-              if (NULL != vss)
-              {
-                  u32 opt82_fib_id=0, opt82_oui=0;
+              if (vss)
+                {
+		  u32 id_len;			/* length of VPN ID */
 
-                  opt82_oui =  vss->oui;
-                  opt82_fib_id =  vss->fib_id;
+		  if (vss->vss_type == VSS_TYPE_VPN_ID)
+		    {
+		      id_len = sizeof (vss->vpn_id);	/* vpn_id is 7 bytes */
+		      memcpy (&o->data[15], vss->vpn_id, id_len);
+		    }
+		  else if (vss->vss_type == VSS_TYPE_ASCII)
+		    {
+		      id_len = vec_len (vss->vpn_ascii_id);
+		      memcpy (&o->data[15], vss->vpn_ascii_id, id_len);
+		    }
+		  else	/* must be VSS_TYPE_DEFAULT, no VPN ID */
+		    id_len = 0; 
 
-                  o->data[12] = 151; /* vss suboption */
-                  if (255 == opt82_fib_id) {
-                      o->data[13] = 1;   /* length */
-                      o->data[14] = 255;   /* vss option type */
-                      o->data[15] = 152; /* vss control suboption */
-                      o->data[16] = 0;   /* length */
-                      /* and a new "end-of-options" option (0xff) */
-                      o->data[17] = 0xFF;
-                      o->length += 5;
-                  } else {
-                      o->data[13] = 8;   /* length */
-                      o->data[14] = 1;   /* vss option type */
-                      o->data[15] = (opt82_oui >> 16) & 0xff;
-                      o->data[16] = (opt82_oui >> 8) & 0xff;
-                      o->data[17] = (opt82_oui ) & 0xff;
-                      o->data[18] = (opt82_fib_id >> 24) & 0xff;
-                      o->data[19] = (opt82_fib_id >> 16) & 0xff;
-                      o->data[20] = (opt82_fib_id >> 8) & 0xff;
-                      o->data[21] = (opt82_fib_id) & 0xff;
-                      o->data[22] = 152; /* vss control suboption */
-                      o->data[23] = 0;   /* length */
-                          
-                      /* and a new "end-of-options" option (0xff) */
-                      o->data[24] = 0xFF;
-                      o->length += 12;
-                  }
-              }
+                  o->data[12] = 151;		/* vss suboption */
+		  o->data[13] = id_len + 1;	/* length: vss_type + id_len */
+		  o->data[14] = vss->vss_type;	/* vss option type */
+		  o->data[15 + id_len] = 152;	/* vss control suboption */
+		  o->data[16 + id_len] = 0;	/* length */
+		  o->data[17 + id_len] = 0xFF;	/* "end-of-options" (0xFF) */
+		  /* 5 bytes for suboption headers 151+len, 152+len and 0xFF */
+		  o->length += id_len + 5; 
+                }
 
               len = o->length + 3;
               b0->current_length += len;
@@ -341,11 +329,13 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
               new_l0 = clib_net_to_host_u16 (u0->length);
               new_l0 += len;
               u0->length = clib_host_to_net_u16 (new_l0);
-          } else {
+            } 
+	  else 
+	    {
               vlib_node_increment_counter 
                   (vm, dhcp_proxy_to_server_node.index,
                    DHCP_PROXY_ERROR_OPTION_82_ERROR, 1);
-          }
+	    }
           
           next0 = DHCP_PROXY_TO_SERVER_INPUT_NEXT_LOOKUP;
 
@@ -355,11 +345,11 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
            * those servers
            */
           if (is_discover && vec_len(proxy->dhcp_servers) > 1)
-          {
+            {
               u32 ii;
 
               for (ii = 1; ii < vec_len(proxy->dhcp_servers); ii++)
-              {
+                {
                   vlib_buffer_t *c0;
                   u32 ci0;
               
@@ -387,7 +377,7 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
                                                    ci0, next0);
 
                   if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
-                  {
+                    {
                       dhcp_proxy_trace_t *tr;
 
                       tr = vlib_add_trace (vm, node, c0, sizeof (*tr));
@@ -397,15 +387,15 @@ dhcp_proxy_to_server_input (vlib_main_t * vm,
                       tr->sw_if_index = sw_if_index;
                       if (next0 == DHCP_PROXY_TO_SERVER_INPUT_NEXT_LOOKUP)
                           tr->trace_ip4_address.as_u32 = server->dhcp_server.ip4.as_u32;
-                  }
+		    }
 
                   if (PREDICT_FALSE(0 == n_left_to_next))
-                  {
+                    {
                       vlib_put_next_frame (vm, node, next_index,
                                            n_left_to_next);
                       vlib_get_next_frame (vm, node, next_index,
                                            to_next, n_left_to_next);
-                  }
+                    }
               }
           }
         do_trace:
@@ -949,54 +939,47 @@ dhcp_option_82_vss_fn (vlib_main_t * vm,
                         unformat_input_t * input,
                         vlib_cli_command_t * cmd)
 {
-  int is_del = 0, got_new_vpn_id=0;
-  u32 oui=0, fib_id=0, tbl_id=~0;
+  u8 is_del = 0, vss_type = VSS_TYPE_DEFAULT;
+  u32 oui = 0, fib_id = 0, tbl_id = ~0;
+  u8 *vpn_ascii_id = 0;
 
   while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT) 
     {
-
-      if (unformat(input, "delete") || unformat(input, "del"))
-          is_del = 1;    
+      if (unformat (input, "table %d", &tbl_id))
+	  ;
       else if (unformat (input, "oui %d", &oui))
-          got_new_vpn_id = 1;
+	  vss_type = VSS_TYPE_VPN_ID;
       else if (unformat (input, "vpn-id %d", &fib_id))
-          got_new_vpn_id = 1;
-      else if (unformat (input, "table %d", &tbl_id))
-          got_new_vpn_id = 1;
+	  vss_type = VSS_TYPE_VPN_ID;
+      else if (unformat (input, "vpn-ascii-id %s", &vpn_ascii_id))
+	  vss_type = VSS_TYPE_ASCII;
+      else if (unformat(input, "delete") || unformat(input, "del"))
+	  is_del = 1;    
       else
-          break;
-  }
+        break;
+    }
+
   if (tbl_id == ~0)
       return clib_error_return (0, "no table ID specified.");
   
-  if (is_del || got_new_vpn_id)
+  int rv = dhcp_proxy_set_vss (FIB_PROTOCOL_IP4, tbl_id, vss_type, 
+			       vpn_ascii_id, oui, fib_id, is_del);
+  switch (rv)
     {
-      int rv;
-      rv = dhcp_proxy_set_vss(FIB_PROTOCOL_IP4, tbl_id, oui, fib_id, is_del);
-      switch (rv)
-        {
-        case 0:
-            return 0;
-            
-        case VNET_API_ERROR_NO_SUCH_FIB:
-            return clib_error_return (0, "option 82 vss(oui:%d, vpn-id:%d) not found in table %d",
-                                      oui, fib_id, tbl_id);
-            
-        case VNET_API_ERROR_NO_SUCH_ENTRY:
-            return clib_error_return (0, "option 82 vss for table %d not found in in pool.",
-                                      tbl_id);
-        default:
-          return clib_error_return (0, "BUG: rv %d", rv);
-        }
+    case 0:
+	return 0;
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+	return clib_error_return (0, "option 82 vss for table %d not found in in pool.",
+				  tbl_id);
+    default:
+	return clib_error_return (0, "BUG: rv %d", rv);
+
     }
-  else
-      return clib_error_return (0, "parse error`%U'",
-                                format_unformat_error, input);
 }
 
 VLIB_CLI_COMMAND (dhcp_proxy_vss_command,static) = {
   .path = "set dhcp option-82 vss",
-  .short_help = "set dhcp option-82 vss [del] table <table id> oui <oui> vpn-id <vpn-id>",
+  .short_help = "set dhcp option-82 vss [del] table <table id> [oui <n> vpn-id <n> | vpn-ascii-id <text>]",
   .function = dhcp_option_82_vss_fn,
 };
 

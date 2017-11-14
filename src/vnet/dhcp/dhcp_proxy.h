@@ -48,13 +48,24 @@ typedef enum {
  */
 typedef struct dhcp_vss_t_ {
     /**
-     * @brief ?? RFC doesn't say
+     * @brief VSS type as defined in RFC 6607:
+     *	 0 for NVT ASCII VPN Identifier
+     *   1 for RFC 2685 VPN-ID of 7 octects - 3 bytes OUI & 4 bytes VPN index
+     *   255 for global default VPN
      */
-    u32 oui;
+    u8 vss_type;
+#define VSS_TYPE_ASCII 0
+#define VSS_TYPE_VPN_ID 1
+#define VSS_TYPE_INVALID 123
+#define VSS_TYPE_DEFAULT 255
     /**
-     * @brief VPN-ID
+     * @brief Type 1 VPN-ID
      */
-    u32 fib_id;
+    u8 vpn_id[7];
+    /**
+     * @brief Type 0 ASCII VPN Identifier
+     */
+    u8 *vpn_ascii_id;
 } dhcp_vss_t;
 
 /**
@@ -152,11 +163,13 @@ int dhcp_vss_show_walk (dhcp_vss_t *vss,
 /**
  * @brief Configure/set a new VSS info
  */
-int dhcp_proxy_set_vss(fib_protocol_t proto,
-                       u32 vrf_id,
-                       u32 oui,
-                       u32 fib_id,
-                       int is_del);
+int dhcp_proxy_set_vss (fib_protocol_t proto,
+                        u32 tbl_id,
+			u8 vss_type,
+			u8 *vpn_ascii_id,
+                        u32 oui,
+                        u32 vpn_index,
+			u8 is_del);
 
 /**
  * @brief Dump the proxy configs to the API

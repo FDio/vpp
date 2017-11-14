@@ -2021,18 +2021,22 @@ class VppPapiProvider(object):
 
     def dhcp_proxy_set_vss(self,
                            table_id,
-                           fib_id,
-                           oui,
+                           vss_type=255,
+                           vpn_ascii_id="",
+                           oui=0,
+                           vpn_index=0,
                            is_add=1,
                            is_ip6=0):
         return self.api(
             self.papi.dhcp_proxy_set_vss,
             {
                 'tbl_id': table_id,
-                'fib_id': fib_id,
-                'is_ipv6': is_ip6,
-                'is_add': is_add,
+                'vss_type': vss_type,
+                'vpn_ascii_id': vpn_ascii_id,
                 'oui': oui,
+                'vpn_index': vpn_index,
+                'is_add': is_add,
+                'is_ipv6': is_ip6,
             })
 
     def dhcp_client(self,

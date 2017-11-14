@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-vl_api_version 1.0.0
+vl_api_version 1.0.1
 
 /** \brief DHCP Proxy config add / del request
     @param client_index - opaque cookie to identify the sender
@@ -42,8 +42,10 @@ autoreply define dhcp_proxy_config
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param tbl_id - table id
-    @param oui - first part of vpn id
-    @param fib_id - second part of vpn id
+    @vss_type - 0: use ASCI vpn_id; 1: use oui/vpn_index; 255: global vpn
+    @vpn_ascii - null terminated ASCII VPN ID up to 128 characters
+    @param oui - first part of rfc2685 vpn id, 3 bytes oui 
+    @param vpn_index - second part of rfc2685 vpn id, 4 bytes vpn index
     @param is_ipv6 - ip6 if non-zero, else ip4
     @param is_add - set vss if non-zero, else delete
 */
@@ -52,8 +54,10 @@ autoreply define dhcp_proxy_set_vss
   u32 client_index;
   u32 context;
   u32 tbl_id;
+  u8 vss_type;
+  u8 vpn_ascii_id[129];
   u32 oui;
-  u32 fib_id;
+  u32 vpn_index;
   u8 is_ipv6;
   u8 is_add;
 };
@@ -128,6 +132,8 @@ manual_endian manual_print define dhcp_proxy_details
   u32 rx_vrf_id;
   u32 vss_oui;
   u32 vss_fib_id;
+  u8 vss_type;
+  u8 vss_vpn_ascii_id[129];
   u8 is_ipv6;
   u8 dhcp_src_address[16];
   u8 count;

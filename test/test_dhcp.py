@@ -4,7 +4,7 @@ import unittest
 import socket
 import struct
 
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, running_extended_tests
 from vpp_neighbor import VppNeighbor
 from vpp_ip_route import find_route, VppIpTable
 from util import mk_ll_addr
@@ -33,12 +33,12 @@ class TestDHCP(VppTestCase):
     def setUp(self):
         super(TestDHCP, self).setUp()
 
-        # create 3 pg interfaces
-        self.create_pg_interfaces(range(4))
+        # create 6 pg interfaces for pg0 to pg5
+        self.create_pg_interfaces(range(6))
         self.tables = []
 
-        # pg0 and 1 are IP configured in VRF 0 and 1.
-        # pg2 and 3 are non IP-configured in VRF 0 and 1
+        # pg0 to 2 are IP configured in VRF 0, 1 and 2.
+        # pg3 to 5 are non IP-configured in VRF 0, 1 and 2.
         table_id = 0
         for table_id in range(1, 4):
             tbl4 = VppIpTable(self, table_id)
@@ -49,7 +49,7 @@ class TestDHCP(VppTestCase):
             self.tables.append(tbl6)
 
         table_id = 0
-        for i in self.pg_interfaces[:2]:
+        for i in self.pg_interfaces[:3]:
             i.admin_up()
             i.set_table_ip4(table_id)
             i.set_table_ip6(table_id)
@@ -60,14 +60,14 @@ class TestDHCP(VppTestCase):
             table_id += 1
 
         table_id = 0
-        for i in self.pg_interfaces[2:]:
+        for i in self.pg_interfaces[3:]:
             i.admin_up()
             i.set_table_ip4(table_id)
             i.set_table_ip6(table_id)
             table_id += 1
 
     def tearDown(self):
-        for i in self.pg_interfaces[:2]:
+        for i in self.pg_interfaces[:3]:
             i.unconfig_ip4()
             i.unconfig_ip6()
 
@@ -96,10 +96,11 @@ class TestDHCP(VppTestCase):
 
         self.assertTrue(found)
 
-    def validate_relay_options(self, pkt, intf, ip_addr, fib_id, oui):
+    def validate_relay_options(self, pkt, intf, ip_addr, vpn_id, fib_id, oui):
         dhcp = pkt[DHCP]
         found = 0
         data = []
+        id_len = len(vpn_id)
 
         for i in dhcp.options:
             if type(i) is tuple:
@@ -110,6 +111,8 @@ class TestDHCP(VppTestCase):
                     data = i[1]
                     if oui != 0:
                         self.assertEqual(len(data), 24)
+                    elif len(vpn_id) > 0:
+                        self.assertEqual(len(data), len(vpn_id)+17)
                     else:
                         self.assertEqual(len(data), 12)
 
@@ -142,8 +145,9 @@ class TestDHCP(VppTestCase):
                     self.assertEqual(data[11], claddr[3])
 
                     if oui != 0:
-                        # sub-option 151 encodes the 3 byte oui
-                        # and the 4 byte fib_id
+                        # sub-option 151 encodes vss_type 1,
+                        # the 3 byte oui and the 4 byte fib_id
+                        self.assertEqual(id_len, 0)
                         self.assertEqual(ord(data[12]), 151)
                         self.assertEqual(ord(data[13]), 8)
                         self.assertEqual(ord(data[14]), 1)
@@ -158,6 +162,19 @@ class TestDHCP(VppTestCase):
                         # VSS control sub-option
                         self.assertEqual(ord(data[22]), 152)
                         self.assertEqual(ord(data[23]), 0)
+
+                    if id_len > 0:
+                        # sub-option 151 encode vss_type of 0
+                        # followerd by vpn_id in ascii
+                        self.assertEqual(oui, 0)
+                        self.assertEqual(ord(data[12]), 151)
+                        self.assertEqual(ord(data[13]), id_len+1)
+                        self.assertEqual(ord(data[14]), 0)
+                        self.assertEqual(data[15:15+id_len], vpn_id)
+
+                        # VSS control sub-option
+                        self.assertEqual(ord(data[15+len(vpn_id)]), 152)
+                        self.assertEqual(ord(data[16+len(vpn_id)]), 0)
 
                     found = 1
         self.assertTrue(found)
@@ -174,7 +191,7 @@ class TestDHCP(VppTestCase):
                     found = True
         self.assertTrue(found)
 
-    def verify_dhcp_offer(self, pkt, intf, fib_id=0, oui=0):
+    def verify_dhcp_offer(self, pkt, intf, vpn_id="", fib_id=0, oui=0):
         ether = pkt[Ether]
         self.assertEqual(ether.dst, "ff:ff:ff:ff:ff:ff")
         self.assertEqual(ether.src, intf.local_mac)
@@ -189,7 +206,7 @@ class TestDHCP(VppTestCase):
 
         self.verify_dhcp_msg_type(pkt, "offer")
         data = self.validate_relay_options(pkt, intf, intf.local_ip4,
-                                           fib_id, oui)
+                                           vpn_id, fib_id, oui)
 
     def verify_orig_dhcp_pkt(self, pkt, intf):
         ether = pkt[Ether]
@@ -229,6 +246,7 @@ class TestDHCP(VppTestCase):
 
     def verify_relayed_dhcp_discover(self, pkt, intf, src_intf=None,
                                      fib_id=0, oui=0,
+                                     vpn_id="",
                                      dst_mac=None, dst_ip=None):
         if not dst_mac:
             dst_mac = intf.remote_mac
@@ -259,11 +277,13 @@ class TestDHCP(VppTestCase):
 
         data = self.validate_relay_options(pkt, src_intf,
                                            src_intf.local_ip4,
+                                           vpn_id,
                                            fib_id, oui)
         return data
 
     def verify_dhcp6_solicit(self, pkt, intf,
                              peer_ip, peer_mac,
+                             vpn_id="",
                              fib_id=0,
                              oui=0,
                              dst_mac=None,
@@ -293,7 +313,10 @@ class TestDHCP(VppTestCase):
         self.assertEqual(cll.lltype, 1)
         self.assertEqual(cll.clladdr, peer_mac)
 
+        id_len = len(vpn_id)
+
         if fib_id != 0:
+            self.assertEqual(id_len, 0)
             vss = pkt[DHCP6OptVSS]
             self.assertEqual(vss.optlen, 8)
             self.assertEqual(vss.type, 1)
@@ -306,6 +329,13 @@ class TestDHCP(VppTestCase):
             self.assertEqual(ord(vss.data[4]), 0)
             self.assertEqual(ord(vss.data[5]), 0)
             self.assertEqual(ord(vss.data[6]), fib_id)
+
+        if id_len > 0:
+            self.assertEqual(oui, 0)
+            vss = pkt[DHCP6OptVSS]
+            self.assertEqual(vss.optlen, id_len+1)
+            self.assertEqual(vss.type, 0)
+            self.assertEqual(vss.data[0:id_len], vpn_id)
 
         # the relay message should be an encoded Solicit
         msg = pkt[DHCP6OptRelayMsg]
@@ -336,7 +366,7 @@ class TestDHCP(VppTestCase):
         # Verify no response to DHCP request without DHCP config
         #
         p_disc_vrf0 = (Ether(dst="ff:ff:ff:ff:ff:ff",
-                             src=self.pg2.remote_mac) /
+                             src=self.pg3.remote_mac) /
                        IP(src="0.0.0.0", dst="255.255.255.255") /
                        UDP(sport=DHCP4_CLIENT_PORT,
                            dport=DHCP4_SERVER_PORT) /
@@ -344,17 +374,27 @@ class TestDHCP(VppTestCase):
                        DHCP(options=[('message-type', 'discover'), ('end')]))
         pkts_disc_vrf0 = [p_disc_vrf0]
         p_disc_vrf1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
-                             src=self.pg3.remote_mac) /
+                             src=self.pg4.remote_mac) /
                        IP(src="0.0.0.0", dst="255.255.255.255") /
                        UDP(sport=DHCP4_CLIENT_PORT,
                            dport=DHCP4_SERVER_PORT) /
                        BOOTP(op=1) /
                        DHCP(options=[('message-type', 'discover'), ('end')]))
-        pkts_disc_vrf1 = [p_disc_vrf0]
+        pkts_disc_vrf1 = [p_disc_vrf1]
+        p_disc_vrf2 = (Ether(dst="ff:ff:ff:ff:ff:ff",
+                             src=self.pg5.remote_mac) /
+                       IP(src="0.0.0.0", dst="255.255.255.255") /
+                       UDP(sport=DHCP4_CLIENT_PORT,
+                           dport=DHCP4_SERVER_PORT) /
+                       BOOTP(op=1) /
+                       DHCP(options=[('message-type', 'discover'), ('end')]))
+        pkts_disc_vrf2 = [p_disc_vrf2]
 
-        self.send_and_assert_no_replies(self.pg2, pkts_disc_vrf0,
+        self.send_and_assert_no_replies(self.pg3, pkts_disc_vrf0,
                                         "DHCP with no configuration")
-        self.send_and_assert_no_replies(self.pg3, pkts_disc_vrf1,
+        self.send_and_assert_no_replies(self.pg4, pkts_disc_vrf1,
+                                        "DHCP with no configuration")
+        self.send_and_assert_no_replies(self.pg5, pkts_disc_vrf2,
                                         "DHCP with no configuration")
 
         #
@@ -371,7 +411,7 @@ class TestDHCP(VppTestCase):
         # Discover packets from the client are dropped because there is no
         # IP address configured on the client facing interface
         #
-        self.send_and_assert_no_replies(self.pg2, pkts_disc_vrf0,
+        self.send_and_assert_no_replies(self.pg3, pkts_disc_vrf0,
                                         "Discover DHCP no relay address")
 
         #
@@ -386,13 +426,13 @@ class TestDHCP(VppTestCase):
              DHCP(options=[('message-type', 'offer'), ('end')]))
         pkts = [p]
 
-        self.send_and_assert_no_replies(self.pg2, pkts,
+        self.send_and_assert_no_replies(self.pg3, pkts,
                                         "Offer DHCP no relay address")
 
         #
         # configure an IP address on the client facing interface
         #
-        self.pg2.config_ip4()
+        self.pg3.config_ip4()
 
         #
         # Try again with a discover packet
@@ -401,7 +441,7 @@ class TestDHCP(VppTestCase):
         # UDP source ports are unchanged
         # we've no option 82 config so that should be absent
         #
-        self.pg2.add_stream(pkts_disc_vrf0)
+        self.pg3.add_stream(pkts_disc_vrf0)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -409,7 +449,7 @@ class TestDHCP(VppTestCase):
         rx = rx[0]
 
         option_82 = self.verify_relayed_dhcp_discover(rx, self.pg0,
-                                                      src_intf=self.pg2)
+                                                      src_intf=self.pg3)
 
         #
         # Create an DHCP offer reply from the server with a correctly formatted
@@ -429,10 +469,10 @@ class TestDHCP(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg2.get_capture(1)
+        rx = self.pg3.get_capture(1)
         rx = rx[0]
 
-        self.verify_dhcp_offer(rx, self.pg2)
+        self.verify_dhcp_offer(rx, self.pg3)
 
         #
         # Bogus Option 82:
@@ -469,7 +509,7 @@ class TestDHCP(VppTestCase):
         #
         # Send a DHCP request in VRF 1. should be dropped.
         #
-        self.send_and_assert_no_replies(self.pg3, pkts_disc_vrf1,
+        self.send_and_assert_no_replies(self.pg4, pkts_disc_vrf1,
                                         "DHCP with no configuration VRF 1")
 
         #
@@ -481,65 +521,91 @@ class TestDHCP(VppTestCase):
                                     rx_table_id=0,
                                     is_add=0)
 
-        self.send_and_assert_no_replies(self.pg2, pkts_disc_vrf0,
+        self.send_and_assert_no_replies(self.pg3, pkts_disc_vrf0,
                                         "DHCP config removed VRF 0")
-        self.send_and_assert_no_replies(self.pg3, pkts_disc_vrf1,
+        self.send_and_assert_no_replies(self.pg4, pkts_disc_vrf1,
                                         "DHCP config removed VRF 1")
 
         #
-        # Add DHCP config for VRF 1
+        # Add DHCP config for VRF 1 & 2
         #
-        server_addr = self.pg1.remote_ip4n
-        src_addr = self.pg1.local_ip4n
-        self.vapi.dhcp_proxy_config(server_addr,
-                                    src_addr,
+        server_addr1 = self.pg1.remote_ip4n
+        src_addr1 = self.pg1.local_ip4n
+        self.vapi.dhcp_proxy_config(server_addr1,
+                                    src_addr1,
                                     rx_table_id=1,
                                     server_table_id=1)
+        server_addr2 = self.pg2.remote_ip4n
+        src_addr2 = self.pg2.local_ip4n
+        self.vapi.dhcp_proxy_config(server_addr2,
+                                    src_addr2,
+                                    rx_table_id=2,
+                                    server_table_id=2)
 
         #
-        # Confim DHCP requests ok in VRF 1.
+        # Confim DHCP requests ok in VRF 1 & 2.
         #  - dropped on IP config on client interface
         #
-        self.send_and_assert_no_replies(self.pg3, pkts_disc_vrf1,
+        self.send_and_assert_no_replies(self.pg4, pkts_disc_vrf1,
                                         "DHCP config removed VRF 1")
+        self.send_and_assert_no_replies(self.pg5, pkts_disc_vrf2,
+                                        "DHCP config removed VRF 2")
 
         #
         # configure an IP address on the client facing interface
         #
-        self.pg3.config_ip4()
-
-        self.pg3.add_stream(pkts_disc_vrf1)
+        self.pg4.config_ip4()
+        self.pg4.add_stream(pkts_disc_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
-
         rx = self.pg1.get_capture(1)
         rx = rx[0]
-        self.verify_relayed_dhcp_discover(rx, self.pg1, src_intf=self.pg3)
+        self.verify_relayed_dhcp_discover(rx, self.pg1, src_intf=self.pg4)
+
+        self.pg5.config_ip4()
+        self.pg5.add_stream(pkts_disc_vrf2)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg2.get_capture(1)
+        rx = rx[0]
+        self.verify_relayed_dhcp_discover(rx, self.pg2, src_intf=self.pg5)
 
         #
         # Add VSS config
-        #  table=1, fib=id=1, oui=4
-        self.vapi.dhcp_proxy_set_vss(1, 1, 4)
+        #  table=1, vss_type=1, vpn_index=1, oui=4
+        #  table=2, vss_type=0, vpn_id = "ip4-table-2"
+        self.vapi.dhcp_proxy_set_vss(1, 1, vpn_index=1, oui=4, is_add=1)
+        self.vapi.dhcp_proxy_set_vss(2, 0, "ip4-table-2", is_add=1)
 
-        self.pg3.add_stream(pkts_disc_vrf1)
+        self.pg4.add_stream(pkts_disc_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         rx = self.pg1.get_capture(1)
         rx = rx[0]
         self.verify_relayed_dhcp_discover(rx, self.pg1,
-                                          src_intf=self.pg3,
+                                          src_intf=self.pg4,
                                           fib_id=1, oui=4)
+
+        self.pg5.add_stream(pkts_disc_vrf2)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(1)
+        rx = rx[0]
+        self.verify_relayed_dhcp_discover(rx, self.pg2,
+                                          src_intf=self.pg5,
+                                          vpn_id="ip4-table-2")
 
         #
         # Add a second DHCP server in VRF 1
         #  expect clients messages to be relay to both configured servers
         #
         self.pg1.generate_remote_hosts(2)
-        server_addr2 = socket.inet_pton(AF_INET, self.pg1.remote_hosts[1].ip4)
+        server_addr12 = socket.inet_pton(AF_INET, self.pg1.remote_hosts[1].ip4)
 
-        self.vapi.dhcp_proxy_config(server_addr2,
-                                    src_addr,
+        self.vapi.dhcp_proxy_config(server_addr12,
+                                    src_addr1,
                                     rx_table_id=1,
                                     server_table_id=1,
                                     is_add=1)
@@ -558,7 +624,7 @@ class TestDHCP(VppTestCase):
         # The frist packet is sent to the second server
         # We're not enforcing that here, it's just the way it is.
         #
-        self.pg3.add_stream(pkts_disc_vrf1)
+        self.pg4.add_stream(pkts_disc_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -566,12 +632,12 @@ class TestDHCP(VppTestCase):
 
         option_82 = self.verify_relayed_dhcp_discover(
             rx[0], self.pg1,
-            src_intf=self.pg3,
+            src_intf=self.pg4,
             dst_mac=self.pg1.remote_hosts[1].mac,
             dst_ip=self.pg1.remote_hosts[1].ip4,
             fib_id=1, oui=4)
         self.verify_relayed_dhcp_discover(rx[1], self.pg1,
-                                          src_intf=self.pg3,
+                                          src_intf=self.pg4,
                                           fib_id=1, oui=4)
 
         #
@@ -597,10 +663,10 @@ class TestDHCP(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg3.get_capture(2)
+        rx = self.pg4.get_capture(2)
 
-        self.verify_dhcp_offer(rx[0], self.pg3, fib_id=1, oui=4)
-        self.verify_dhcp_offer(rx[1], self.pg3, fib_id=1, oui=4)
+        self.verify_dhcp_offer(rx[0], self.pg4, fib_id=1, oui=4)
+        self.verify_dhcp_offer(rx[1], self.pg4, fib_id=1, oui=4)
 
         #
         # Ensure offers from non-servers are dropeed
@@ -619,7 +685,7 @@ class TestDHCP(VppTestCase):
         # Ensure only the discover is sent to multiple servers
         #
         p_req_vrf1 = (Ether(dst="ff:ff:ff:ff:ff:ff",
-                            src=self.pg3.remote_mac) /
+                            src=self.pg4.remote_mac) /
                       IP(src="0.0.0.0", dst="255.255.255.255") /
                       UDP(sport=DHCP4_CLIENT_PORT,
                           dport=DHCP4_SERVER_PORT) /
@@ -627,7 +693,7 @@ class TestDHCP(VppTestCase):
                       DHCP(options=[('message-type', 'request'),
                                     ('end')]))
 
-        self.pg3.add_stream(p_req_vrf1)
+        self.pg4.add_stream(p_req_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -636,8 +702,8 @@ class TestDHCP(VppTestCase):
         #
         # Remove the second DHCP server
         #
-        self.vapi.dhcp_proxy_config(server_addr2,
-                                    src_addr,
+        self.vapi.dhcp_proxy_config(server_addr12,
+                                    src_addr1,
                                     rx_table_id=1,
                                     server_table_id=1,
                                     is_add=0)
@@ -645,45 +711,55 @@ class TestDHCP(VppTestCase):
         #
         # Test we can still relay with the first
         #
-        self.pg3.add_stream(pkts_disc_vrf1)
+        self.pg4.add_stream(pkts_disc_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         rx = self.pg1.get_capture(1)
         rx = rx[0]
         self.verify_relayed_dhcp_discover(rx, self.pg1,
-                                          src_intf=self.pg3,
+                                          src_intf=self.pg4,
                                           fib_id=1, oui=4)
 
         #
         # Remove the VSS config
         #  relayed DHCP has default vlaues in the option.
         #
-        self.vapi.dhcp_proxy_set_vss(1, 1, 4, is_add=0)
+        self.vapi.dhcp_proxy_set_vss(1, is_add=0)
+        self.vapi.dhcp_proxy_set_vss(2, is_add=0)
 
-        self.pg3.add_stream(pkts_disc_vrf1)
+        self.pg4.add_stream(pkts_disc_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         rx = self.pg1.get_capture(1)
         rx = rx[0]
-        self.verify_relayed_dhcp_discover(rx, self.pg1, src_intf=self.pg3)
+        self.verify_relayed_dhcp_discover(rx, self.pg1, src_intf=self.pg4)
 
         #
         # remove DHCP config to cleanup
         #
-        self.vapi.dhcp_proxy_config(server_addr,
-                                    src_addr,
+        self.vapi.dhcp_proxy_config(server_addr1,
+                                    src_addr1,
                                     rx_table_id=1,
                                     server_table_id=1,
                                     is_add=0)
+        self.vapi.dhcp_proxy_config(server_addr2,
+                                    src_addr2,
+                                    rx_table_id=2,
+                                    server_table_id=2,
+                                    is_add=0)
 
-        self.send_and_assert_no_replies(self.pg2, pkts_disc_vrf0,
+        self.send_and_assert_no_replies(self.pg3, pkts_disc_vrf0,
                                         "DHCP cleanup VRF 0")
-        self.send_and_assert_no_replies(self.pg3, pkts_disc_vrf1,
+        self.send_and_assert_no_replies(self.pg4, pkts_disc_vrf1,
                                         "DHCP cleanup VRF 1")
-        self.pg2.unconfig_ip4()
+        self.send_and_assert_no_replies(self.pg5, pkts_disc_vrf2,
+                                        "DHCP cleanup VRF 2")
+
         self.pg3.unconfig_ip4()
+        self.pg4.unconfig_ip4()
+        self.pg5.unconfig_ip4()
 
     def test_dhcp6_proxy(self):
         """ DHCPv6 Proxy"""
@@ -691,30 +767,41 @@ class TestDHCP(VppTestCase):
         # Verify no response to DHCP request without DHCP config
         #
         dhcp_solicit_dst = "ff02::1:2"
-        dhcp_solicit_src_vrf0 = mk_ll_addr(self.pg2.remote_mac)
-        dhcp_solicit_src_vrf1 = mk_ll_addr(self.pg3.remote_mac)
+        dhcp_solicit_src_vrf0 = mk_ll_addr(self.pg3.remote_mac)
+        dhcp_solicit_src_vrf1 = mk_ll_addr(self.pg4.remote_mac)
+        dhcp_solicit_src_vrf2 = mk_ll_addr(self.pg5.remote_mac)
         server_addr_vrf0 = self.pg0.remote_ip6n
         src_addr_vrf0 = self.pg0.local_ip6n
         server_addr_vrf1 = self.pg1.remote_ip6n
         src_addr_vrf1 = self.pg1.local_ip6n
+        server_addr_vrf2 = self.pg2.remote_ip6n
+        src_addr_vrf2 = self.pg2.local_ip6n
 
         dmac = in6_getnsmac(inet_pton(socket.AF_INET6, dhcp_solicit_dst))
-        p_solicit_vrf0 = (Ether(dst=dmac, src=self.pg2.remote_mac) /
+        p_solicit_vrf0 = (Ether(dst=dmac, src=self.pg3.remote_mac) /
                           IPv6(src=dhcp_solicit_src_vrf0,
                                dst=dhcp_solicit_dst) /
                           UDP(sport=DHCP6_SERVER_PORT,
                               dport=DHCP6_CLIENT_PORT) /
                           DHCP6_Solicit())
-        p_solicit_vrf1 = (Ether(dst=dmac, src=self.pg3.remote_mac) /
+        p_solicit_vrf1 = (Ether(dst=dmac, src=self.pg4.remote_mac) /
                           IPv6(src=dhcp_solicit_src_vrf1,
                                dst=dhcp_solicit_dst) /
                           UDP(sport=DHCP6_SERVER_PORT,
                               dport=DHCP6_CLIENT_PORT) /
                           DHCP6_Solicit())
+        p_solicit_vrf2 = (Ether(dst=dmac, src=self.pg5.remote_mac) /
+                          IPv6(src=dhcp_solicit_src_vrf2,
+                               dst=dhcp_solicit_dst) /
+                          UDP(sport=DHCP6_SERVER_PORT,
+                              dport=DHCP6_CLIENT_PORT) /
+                          DHCP6_Solicit())
 
-        self.send_and_assert_no_replies(self.pg2, p_solicit_vrf0,
+        self.send_and_assert_no_replies(self.pg3, p_solicit_vrf0,
                                         "DHCP with no configuration")
-        self.send_and_assert_no_replies(self.pg3, p_solicit_vrf1,
+        self.send_and_assert_no_replies(self.pg4, p_solicit_vrf1,
+                                        "DHCP with no configuration")
+        self.send_and_assert_no_replies(self.pg5, p_solicit_vrf2,
                                         "DHCP with no configuration")
 
         #
@@ -728,20 +815,20 @@ class TestDHCP(VppTestCase):
                                     server_table_id=0,
                                     is_ipv6=1)
 
-        self.send_and_assert_no_replies(self.pg2, p_solicit_vrf0,
+        self.send_and_assert_no_replies(self.pg3, p_solicit_vrf0,
                                         "DHCP with no configuration")
-        self.send_and_assert_no_replies(self.pg3, p_solicit_vrf1,
+        self.send_and_assert_no_replies(self.pg4, p_solicit_vrf1,
                                         "DHCP with no configuration")
 
         #
         # configure an IP address on the client facing interface
         #
-        self.pg2.config_ip6()
+        self.pg3.config_ip6()
 
         #
         # Now the DHCP requests are relayed to the server
         #
-        self.pg2.add_stream(p_solicit_vrf0)
+        self.pg3.add_stream(p_solicit_vrf0)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -749,7 +836,7 @@ class TestDHCP(VppTestCase):
 
         self.verify_dhcp6_solicit(rx[0], self.pg0,
                                   dhcp_solicit_src_vrf0,
-                                  self.pg2.remote_mac)
+                                  self.pg3.remote_mac)
 
         #
         # Exception cases for rejected relay responses
@@ -760,7 +847,7 @@ class TestDHCP(VppTestCase):
                       IPv6(dst=self.pg0.local_ip6, src=self.pg0.remote_ip6) /
                       UDP(sport=DHCP6_SERVER_PORT, dport=DHCP6_SERVER_PORT) /
                       DHCP6_Advertise())
-        self.send_and_assert_no_replies(self.pg2, p_adv_vrf0,
+        self.send_and_assert_no_replies(self.pg3, p_adv_vrf0,
                                         "DHCP6 not a relay reply")
 
         # 2 - no relay message option
@@ -769,7 +856,7 @@ class TestDHCP(VppTestCase):
                       UDP(sport=DHCP6_SERVER_PORT, dport=DHCP6_SERVER_PORT) /
                       DHCP6_RelayReply() /
                       DHCP6_Advertise())
-        self.send_and_assert_no_replies(self.pg2, p_adv_vrf0,
+        self.send_and_assert_no_replies(self.pg3, p_adv_vrf0,
                                         "DHCP not a relay message")
 
         # 3 - no circuit ID
@@ -779,7 +866,7 @@ class TestDHCP(VppTestCase):
                       DHCP6_RelayReply() /
                       DHCP6OptRelayMsg(optlen=0) /
                       DHCP6_Advertise())
-        self.send_and_assert_no_replies(self.pg2, p_adv_vrf0,
+        self.send_and_assert_no_replies(self.pg3, p_adv_vrf0,
                                         "DHCP6 no circuit ID")
         # 4 - wrong circuit ID
         p_adv_vrf0 = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
@@ -789,7 +876,7 @@ class TestDHCP(VppTestCase):
                       DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x05') /
                       DHCP6OptRelayMsg(optlen=0) /
                       DHCP6_Advertise())
-        self.send_and_assert_no_replies(self.pg2, p_adv_vrf0,
+        self.send_and_assert_no_replies(self.pg3, p_adv_vrf0,
                                         "DHCP6 wrong circuit ID")
 
         #
@@ -799,7 +886,7 @@ class TestDHCP(VppTestCase):
                       IPv6(dst=self.pg0.local_ip6, src=self.pg0.remote_ip6) /
                       UDP(sport=DHCP6_SERVER_PORT, dport=DHCP6_SERVER_PORT) /
                       DHCP6_RelayReply() /
-                      DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x03') /
+                      DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x04') /
                       DHCP6OptRelayMsg(optlen=0) /
                       DHCP6_Advertise(trid=1) /
                       DHCP6OptStatusCode(statuscode=0))
@@ -809,9 +896,9 @@ class TestDHCP(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg2.get_capture(1)
+        rx = self.pg3.get_capture(1)
 
-        self.verify_dhcp6_advert(rx[0], self.pg2, "::")
+        self.verify_dhcp6_advert(rx[0], self.pg3, "::")
 
         #
         # Send the relay response (the advertisement)
@@ -820,7 +907,7 @@ class TestDHCP(VppTestCase):
                       IPv6(dst=self.pg0.local_ip6, src=self.pg0.remote_ip6) /
                       UDP(sport=DHCP6_SERVER_PORT, dport=DHCP6_SERVER_PORT) /
                       DHCP6_RelayReply(peeraddr=dhcp_solicit_src_vrf0) /
-                      DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x03') /
+                      DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x04') /
                       DHCP6OptRelayMsg(optlen=0) /
                       DHCP6_Advertise(trid=1) /
                       DHCP6OptStatusCode(statuscode=0))
@@ -830,24 +917,31 @@ class TestDHCP(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg2.get_capture(1)
+        rx = self.pg3.get_capture(1)
 
-        self.verify_dhcp6_advert(rx[0], self.pg2, dhcp_solicit_src_vrf0)
+        self.verify_dhcp6_advert(rx[0], self.pg3, dhcp_solicit_src_vrf0)
 
         #
-        # Add all the config for VRF 1
+        # Add all the config for VRF 1 & 2
         #
         self.vapi.dhcp_proxy_config(server_addr_vrf1,
                                     src_addr_vrf1,
                                     rx_table_id=1,
                                     server_table_id=1,
                                     is_ipv6=1)
-        self.pg3.config_ip6()
+        self.pg4.config_ip6()
+
+        self.vapi.dhcp_proxy_config(server_addr_vrf2,
+                                    src_addr_vrf2,
+                                    rx_table_id=2,
+                                    server_table_id=2,
+                                    is_ipv6=1)
+        self.pg5.config_ip6()
 
         #
         # VRF 1 solicit
         #
-        self.pg3.add_stream(p_solicit_vrf1)
+        self.pg4.add_stream(p_solicit_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -855,7 +949,20 @@ class TestDHCP(VppTestCase):
 
         self.verify_dhcp6_solicit(rx[0], self.pg1,
                                   dhcp_solicit_src_vrf1,
-                                  self.pg3.remote_mac)
+                                  self.pg4.remote_mac)
+
+        #
+        # VRF 2 solicit
+        #
+        self.pg5.add_stream(p_solicit_vrf2)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(1)
+
+        self.verify_dhcp6_solicit(rx[0], self.pg2,
+                                  dhcp_solicit_src_vrf2,
+                                  self.pg5.remote_mac)
 
         #
         # VRF 1 Advert
@@ -864,7 +971,7 @@ class TestDHCP(VppTestCase):
                       IPv6(dst=self.pg1.local_ip6, src=self.pg1.remote_ip6) /
                       UDP(sport=DHCP6_SERVER_PORT, dport=DHCP6_SERVER_PORT) /
                       DHCP6_RelayReply(peeraddr=dhcp_solicit_src_vrf1) /
-                      DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x04') /
+                      DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x05') /
                       DHCP6OptRelayMsg(optlen=0) /
                       DHCP6_Advertise(trid=1) /
                       DHCP6OptStatusCode(statuscode=0))
@@ -874,16 +981,18 @@ class TestDHCP(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg3.get_capture(1)
+        rx = self.pg4.get_capture(1)
 
-        self.verify_dhcp6_advert(rx[0], self.pg3, dhcp_solicit_src_vrf1)
+        self.verify_dhcp6_advert(rx[0], self.pg4, dhcp_solicit_src_vrf1)
 
         #
         # Add VSS config
-        #  table=1, fib=id=1, oui=4
-        self.vapi.dhcp_proxy_set_vss(1, 1, 4, is_ip6=1)
+        #  table=1, vss_type=1, vpn_index=1, oui=4
+        #  table=2, vss_type=0, vpn_id = "ip6-table-2"
+        self.vapi.dhcp_proxy_set_vss(1, 1, oui=4, vpn_index=1, is_ip6=1)
+        self.vapi.dhcp_proxy_set_vss(2, 0, "IPv6-table-2", is_ip6=1)
 
-        self.pg3.add_stream(p_solicit_vrf1)
+        self.pg4.add_stream(p_solicit_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -891,17 +1000,28 @@ class TestDHCP(VppTestCase):
 
         self.verify_dhcp6_solicit(rx[0], self.pg1,
                                   dhcp_solicit_src_vrf1,
-                                  self.pg3.remote_mac,
+                                  self.pg4.remote_mac,
                                   fib_id=1,
                                   oui=4)
+
+        self.pg5.add_stream(p_solicit_vrf2)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg2.get_capture(1)
+
+        self.verify_dhcp6_solicit(rx[0], self.pg2,
+                                  dhcp_solicit_src_vrf2,
+                                  self.pg5.remote_mac,
+                                  vpn_id="IPv6-table-2")
 
         #
         # Remove the VSS config
         #  relayed DHCP has default vlaues in the option.
         #
-        self.vapi.dhcp_proxy_set_vss(1, 1, 4, is_ip6=1, is_add=0)
+        self.vapi.dhcp_proxy_set_vss(1, is_ip6=1, is_add=0)
 
-        self.pg3.add_stream(p_solicit_vrf1)
+        self.pg4.add_stream(p_solicit_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -909,16 +1029,17 @@ class TestDHCP(VppTestCase):
 
         self.verify_dhcp6_solicit(rx[0], self.pg1,
                                   dhcp_solicit_src_vrf1,
-                                  self.pg3.remote_mac)
+                                  self.pg4.remote_mac)
 
         #
         # Add a second DHCP server in VRF 1
         #  expect clients messages to be relay to both configured servers
         #
         self.pg1.generate_remote_hosts(2)
-        server_addr2 = socket.inet_pton(AF_INET6, self.pg1.remote_hosts[1].ip6)
+        server_addr12 = socket.inet_pton(AF_INET6,
+                                         self.pg1.remote_hosts[1].ip6)
 
-        self.vapi.dhcp_proxy_config(server_addr2,
+        self.vapi.dhcp_proxy_config(server_addr12,
                                     src_addr_vrf1,
                                     rx_table_id=1,
                                     server_table_id=1,
@@ -939,7 +1060,7 @@ class TestDHCP(VppTestCase):
         # The frist packet is sent to the second server
         # We're not enforcing that here, it's just the way it is.
         #
-        self.pg3.add_stream(p_solicit_vrf1)
+        self.pg4.add_stream(p_solicit_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -947,10 +1068,10 @@ class TestDHCP(VppTestCase):
 
         self.verify_dhcp6_solicit(rx[0], self.pg1,
                                   dhcp_solicit_src_vrf1,
-                                  self.pg3.remote_mac)
+                                  self.pg4.remote_mac)
         self.verify_dhcp6_solicit(rx[1], self.pg1,
                                   dhcp_solicit_src_vrf1,
-                                  self.pg3.remote_mac,
+                                  self.pg4.remote_mac,
                                   dst_mac=self.pg1.remote_hosts[1].mac,
                                   dst_ip=self.pg1.remote_hosts[1].ip6)
 
@@ -961,7 +1082,7 @@ class TestDHCP(VppTestCase):
               IPv6(dst=self.pg1.local_ip6, src=self.pg1.remote_ip6) /
               UDP(sport=DHCP6_SERVER_PORT, dport=DHCP6_SERVER_PORT) /
               DHCP6_RelayReply(peeraddr=dhcp_solicit_src_vrf1) /
-              DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x04') /
+              DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x05') /
               DHCP6OptRelayMsg(optlen=0) /
               DHCP6_Advertise(trid=1) /
               DHCP6OptStatusCode(statuscode=0))
@@ -969,7 +1090,7 @@ class TestDHCP(VppTestCase):
               IPv6(dst=self.pg1.local_ip6, src=self.pg1._remote_hosts[1].ip6) /
               UDP(sport=DHCP6_SERVER_PORT, dport=DHCP6_SERVER_PORT) /
               DHCP6_RelayReply(peeraddr=dhcp_solicit_src_vrf1) /
-              DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x04') /
+              DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x05') /
               DHCP6OptRelayMsg(optlen=0) /
               DHCP6_Advertise(trid=1) /
               DHCP6OptStatusCode(statuscode=0))
@@ -980,22 +1101,22 @@ class TestDHCP(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg3.get_capture(2)
+        rx = self.pg4.get_capture(2)
 
-        self.verify_dhcp6_advert(rx[0], self.pg3, dhcp_solicit_src_vrf1)
-        self.verify_dhcp6_advert(rx[1], self.pg3, dhcp_solicit_src_vrf1)
+        self.verify_dhcp6_advert(rx[0], self.pg4, dhcp_solicit_src_vrf1)
+        self.verify_dhcp6_advert(rx[1], self.pg4, dhcp_solicit_src_vrf1)
 
         #
         # Ensure only solicit messages are duplicated
         #
-        p_request_vrf1 = (Ether(dst=dmac, src=self.pg3.remote_mac) /
+        p_request_vrf1 = (Ether(dst=dmac, src=self.pg4.remote_mac) /
                           IPv6(src=dhcp_solicit_src_vrf1,
                                dst=dhcp_solicit_dst) /
                           UDP(sport=DHCP6_SERVER_PORT,
                               dport=DHCP6_CLIENT_PORT) /
                           DHCP6_Request())
 
-        self.pg3.add_stream(p_request_vrf1)
+        self.pg4.add_stream(p_request_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -1009,7 +1130,7 @@ class TestDHCP(VppTestCase):
               IPv6(dst=self.pg1.local_ip6, src="3001::1") /
               UDP(sport=DHCP6_SERVER_PORT, dport=DHCP6_SERVER_PORT) /
               DHCP6_RelayReply(peeraddr=dhcp_solicit_src_vrf1) /
-              DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x04') /
+              DHCP6OptIfaceId(optlen=4, ifaceid='\x00\x00\x00\x05') /
               DHCP6OptRelayMsg(optlen=0) /
               DHCP6_Advertise(trid=1) /
               DHCP6OptStatusCode(statuscode=0))
@@ -1019,7 +1140,7 @@ class TestDHCP(VppTestCase):
         #
         # Remove the second DHCP server
         #
-        self.vapi.dhcp_proxy_config(server_addr2,
+        self.vapi.dhcp_proxy_config(server_addr12,
                                     src_addr_vrf1,
                                     rx_table_id=1,
                                     server_table_id=1,
@@ -1029,7 +1150,7 @@ class TestDHCP(VppTestCase):
         #
         # Test we can still relay with the first
         #
-        self.pg3.add_stream(p_solicit_vrf1)
+        self.pg4.add_stream(p_solicit_vrf1)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -1037,11 +1158,17 @@ class TestDHCP(VppTestCase):
 
         self.verify_dhcp6_solicit(rx[0], self.pg1,
                                   dhcp_solicit_src_vrf1,
-                                  self.pg3.remote_mac)
+                                  self.pg4.remote_mac)
 
         #
         # Cleanup
         #
+        self.vapi.dhcp_proxy_config(server_addr_vrf2,
+                                    src_addr_vrf2,
+                                    rx_table_id=2,
+                                    server_table_id=2,
+                                    is_ipv6=1,
+                                    is_add=0)
         self.vapi.dhcp_proxy_config(server_addr_vrf1,
                                     src_addr_vrf1,
                                     rx_table_id=1,
@@ -1062,8 +1189,9 @@ class TestDHCP(VppTestCase):
                                     server_table_id=0,
                                     is_ipv6=1,
                                     is_add=0)
-        self.pg2.unconfig_ip6()
         self.pg3.unconfig_ip6()
+        self.pg4.unconfig_ip6()
+        self.pg5.unconfig_ip6()
 
     def test_dhcp_client(self):
         """ DHCP Client"""
@@ -1073,119 +1201,119 @@ class TestDHCP(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
 
         #
-        # Configure DHCP client on PG2 and capture the discover sent
+        # Configure DHCP client on PG3 and capture the discover sent
         #
-        self.vapi.dhcp_client(self.pg2.sw_if_index, hostname)
+        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname)
 
-        rx = self.pg2.get_capture(1)
+        rx = self.pg3.get_capture(1)
 
-        self.verify_orig_dhcp_discover(rx[0], self.pg2, hostname)
+        self.verify_orig_dhcp_discover(rx[0], self.pg3, hostname)
 
         #
-        # Sned back on offer, expect the request
+        # Send back on offer, expect the request
         #
-        p_offer = (Ether(dst=self.pg2.local_mac, src=self.pg2.remote_mac) /
-                   IP(src=self.pg2.remote_ip4, dst="255.255.255.255") /
+        p_offer = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
+                   IP(src=self.pg3.remote_ip4, dst="255.255.255.255") /
                    UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
-                   BOOTP(op=1, yiaddr=self.pg2.local_ip4) /
+                   BOOTP(op=1, yiaddr=self.pg3.local_ip4) /
                    DHCP(options=[('message-type', 'offer'),
-                                 ('server_id', self.pg2.remote_ip4),
+                                 ('server_id', self.pg3.remote_ip4),
                                  ('end')]))
 
-        self.pg2.add_stream(p_offer)
+        self.pg3.add_stream(p_offer)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg2.get_capture(1)
-        self.verify_orig_dhcp_request(rx[0], self.pg2, hostname,
-                                      self.pg2.local_ip4)
+        rx = self.pg3.get_capture(1)
+        self.verify_orig_dhcp_request(rx[0], self.pg3, hostname,
+                                      self.pg3.local_ip4)
 
         #
         # Send an acknowloedgement
         #
-        p_ack = (Ether(dst=self.pg2.local_mac, src=self.pg2.remote_mac) /
-                 IP(src=self.pg2.remote_ip4, dst="255.255.255.255") /
+        p_ack = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
+                 IP(src=self.pg3.remote_ip4, dst="255.255.255.255") /
                  UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
-                 BOOTP(op=1, yiaddr=self.pg2.local_ip4) /
+                 BOOTP(op=1, yiaddr=self.pg3.local_ip4) /
                  DHCP(options=[('message-type', 'ack'),
                                ('subnet_mask', "255.255.255.0"),
-                               ('router', self.pg2.remote_ip4),
-                               ('server_id', self.pg2.remote_ip4),
+                               ('router', self.pg3.remote_ip4),
+                               ('server_id', self.pg3.remote_ip4),
                                ('lease_time', 43200),
                                ('end')]))
 
-        self.pg2.add_stream(p_ack)
+        self.pg3.add_stream(p_ack)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
         #
         # We'll get an ARP request for the router address
         #
-        rx = self.pg2.get_capture(1)
+        rx = self.pg3.get_capture(1)
 
-        self.assertEqual(rx[0][ARP].pdst, self.pg2.remote_ip4)
+        self.assertEqual(rx[0][ARP].pdst, self.pg3.remote_ip4)
         self.pg_enable_capture(self.pg_interfaces)
 
         #
         # At the end of this procedure there should be a connected route
         # in the FIB
         #
-        self.assertTrue(find_route(self, self.pg2.local_ip4, 24))
-        self.assertTrue(find_route(self, self.pg2.local_ip4, 32))
+        self.assertTrue(find_route(self, self.pg3.local_ip4, 24))
+        self.assertTrue(find_route(self, self.pg3.local_ip4, 32))
 
         # remove the left over ARP entry
-        self.vapi.ip_neighbor_add_del(self.pg2.sw_if_index,
-                                      mactobinary(self.pg2.remote_mac),
-                                      self.pg2.remote_ip4,
+        self.vapi.ip_neighbor_add_del(self.pg3.sw_if_index,
+                                      mactobinary(self.pg3.remote_mac),
+                                      self.pg3.remote_ip4,
                                       is_add=0)
         #
         # remove the DHCP config
         #
-        self.vapi.dhcp_client(self.pg2.sw_if_index, hostname, is_add=0)
+        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname, is_add=0)
 
         #
         # and now the route should be gone
         #
-        self.assertFalse(find_route(self, self.pg2.local_ip4, 32))
-        self.assertFalse(find_route(self, self.pg2.local_ip4, 24))
+        self.assertFalse(find_route(self, self.pg3.local_ip4, 32))
+        self.assertFalse(find_route(self, self.pg3.local_ip4, 24))
 
         #
         # Start the procedure again. this time have VPP send the client-ID
         #
-        self.pg2.admin_down()
+        self.pg3.admin_down()
         self.sleep(1)
-        self.pg2.admin_up()
-        self.vapi.dhcp_client(self.pg2.sw_if_index, hostname,
-                              client_id=self.pg2.local_mac)
+        self.pg3.admin_up()
+        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname,
+                              client_id=self.pg3.local_mac)
 
-        rx = self.pg2.get_capture(1)
+        rx = self.pg3.get_capture(1)
 
-        self.verify_orig_dhcp_discover(rx[0], self.pg2, hostname,
-                                       self.pg2.local_mac)
+        self.verify_orig_dhcp_discover(rx[0], self.pg3, hostname,
+                                       self.pg3.local_mac)
 
-        self.pg2.add_stream(p_offer)
+        self.pg3.add_stream(p_offer)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
-        rx = self.pg2.get_capture(1)
-        self.verify_orig_dhcp_request(rx[0], self.pg2, hostname,
-                                      self.pg2.local_ip4)
+        rx = self.pg3.get_capture(1)
+        self.verify_orig_dhcp_request(rx[0], self.pg3, hostname,
+                                      self.pg3.local_ip4)
 
         #
         # unicast the ack to the offered address
         #
-        p_ack = (Ether(dst=self.pg2.local_mac, src=self.pg2.remote_mac) /
-                 IP(src=self.pg2.remote_ip4, dst=self.pg2.local_ip4) /
+        p_ack = (Ether(dst=self.pg3.local_mac, src=self.pg3.remote_mac) /
+                 IP(src=self.pg3.remote_ip4, dst=self.pg3.local_ip4) /
                  UDP(sport=DHCP4_SERVER_PORT, dport=DHCP4_CLIENT_PORT) /
-                 BOOTP(op=1, yiaddr=self.pg2.local_ip4) /
+                 BOOTP(op=1, yiaddr=self.pg3.local_ip4) /
                  DHCP(options=[('message-type', 'ack'),
                                ('subnet_mask', "255.255.255.0"),
-                               ('router', self.pg2.remote_ip4),
-                               ('server_id', self.pg2.remote_ip4),
+                               ('router', self.pg3.remote_ip4),
+                               ('server_id', self.pg3.remote_ip4),
                                ('lease_time', 43200),
                                ('end')]))
 
-        self.pg2.add_stream(p_ack)
+        self.pg3.add_stream(p_ack)
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
 
@@ -1193,16 +1321,16 @@ class TestDHCP(VppTestCase):
         # At the end of this procedure there should be a connected route
         # in the FIB
         #
-        self.assertTrue(find_route(self, self.pg2.local_ip4, 32))
-        self.assertTrue(find_route(self, self.pg2.local_ip4, 24))
+        self.assertTrue(find_route(self, self.pg3.local_ip4, 32))
+        self.assertTrue(find_route(self, self.pg3.local_ip4, 24))
 
         #
         # remove the DHCP config
         #
-        self.vapi.dhcp_client(self.pg2.sw_if_index, hostname, is_add=0)
+        self.vapi.dhcp_client(self.pg3.sw_if_index, hostname, is_add=0)
 
-        self.assertFalse(find_route(self, self.pg2.local_ip4, 32))
-        self.assertFalse(find_route(self, self.pg2.local_ip4, 24))
+        self.assertFalse(find_route(self, self.pg3.local_ip4, 32))
+        self.assertFalse(find_route(self, self.pg3.local_ip4, 24))
 
 
 if __name__ == '__main__':
