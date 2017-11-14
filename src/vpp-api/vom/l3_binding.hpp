@@ -46,6 +46,19 @@ public:
   ~l3_binding();
 
   /**
+   * The key type for l3_bindings
+   */
+  typedef std::pair<interface::key_type, route::prefix_t> key_type_t;
+
+  /**
+   * The iterator type
+   */
+  typedef singular_db<key_type_t, l3_binding>::const_iterator const_iterator_t;
+
+  static const_iterator_t cbegin();
+  static const_iterator_t cend();
+
+  /**
    * Return the 'singular instance' of the L3-Config that matches this
    * object
    */
@@ -57,19 +70,19 @@ public:
   std::string to_string() const;
 
   /**
-   * Return the prefix associated with this L3config
+   * Return the prefix associated with this L3 binding
    */
   const route::prefix_t& prefix() const;
+
+  /**
+   * Return the interface associated with this L3 binding
+   */
+  const interface& itf() const;
 
   /**
    * Dump all l3_bindings into the stream provided
    */
   static void dump(std::ostream& os);
-
-  /**
-   * The key type for l3_bindings
-   */
-  typedef std::pair<interface::key_type, route::prefix_t> key_type_t;
 
   /**
    * Find an singular instance in the DB for the interface passed
@@ -141,6 +154,8 @@ private:
    * replay the object to create it in hardware
    */
   void replay(void);
+
+  friend class interface;
 
   /**
    * A reference counting pointer the interface that this L3 layer
