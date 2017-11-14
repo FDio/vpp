@@ -330,31 +330,40 @@ dhcpv6_proxy_to_server_input (vlib_main_t * vm,
                cmac = (dhcpv6_client_mac_t *) (((uword) ip1) + b0->current_length);
                b0->current_length += (sizeof (*cmac));
                cmac->opt.length =clib_host_to_net_u16(sizeof(*cmac) -
-                                                      sizeof(cmac->opt));
+						      sizeof(cmac->opt));
                cmac->opt.option = clib_host_to_net_u16(DHCPV6_OPTION_CLIENT_LINK_LAYER_ADDRESS);
-               cmac->link_type = clib_host_to_net_u16(1); // ethernet
+               cmac->link_type = clib_host_to_net_u16(1); /* ethernet */
                clib_memcpy(cmac->data, client_src_mac, 6);
                u1->length += sizeof(*cmac);
             }
 
           vss = dhcp_get_vss_info(dpm, rx_fib_idx, FIB_PROTOCOL_IP6);
 
-          if (NULL != vss) {
+          if (vss)
+	    {
+	      u16 id_len;	/* length of VPN ID */
+	      u16 type_len = sizeof (vss1->vss_type);
+
               vss1 = (dhcpv6_vss_t *) (((uword) ip1) + b0->current_length);
-              b0->current_length += (sizeof (*vss1));
-              vss1->opt.length =clib_host_to_net_u16(sizeof(*vss1) -
-						     sizeof(vss1->opt));
-              vss1->opt.option = clib_host_to_net_u16(DHCPV6_OPTION_VSS);
-              vss1->data[0] = 1;   // type
-              vss1->data[1] = vss->oui >>16 & 0xff;
-              vss1->data[2] = vss->oui >>8  & 0xff;
-              vss1->data[3] = vss->oui & 0xff;
-              vss1->data[4] = vss->fib_id >> 24 & 0xff;
-              vss1->data[5] = vss->fib_id >> 16 & 0xff;
-              vss1->data[6] = vss->fib_id >> 8 & 0xff;
-              vss1->data[7] = vss->fib_id & 0xff;
-              u1->length += sizeof(*vss1);
-          }
+	      vss1->vss_type = vss->vss_type;
+	      if (vss->vss_type == VSS_TYPE_VPN_ID)
+	        {
+		  id_len = sizeof (vss->vpn_id);	/* vpn_id is 7 bytes */
+		  memcpy (vss1->data, vss->vpn_id, id_len);
+	        }
+	      else if (vss->vss_type == VSS_TYPE_ASCII)
+	        {
+		  id_len = vec_len (vss->vpn_ascii_id);
+		  memcpy (vss1->data, vss->vpn_ascii_id, id_len);
+	        }
+	      else	/* must be VSS_TYPE_DEFAULT, no VPN ID */
+		id_len = 0;
+
+              vss1->opt.option = clib_host_to_net_u16 (DHCPV6_OPTION_VSS);
+	      vss1->opt.length = clib_host_to_net_u16 (type_len + id_len);
+	      u1->length += type_len + id_len + sizeof (vss1->opt);
+	      b0->current_length += type_len + id_len + sizeof (vss1->opt);
+            }
 
           pkts_to_server++;
           u1->checksum = 0;
@@ -1030,18 +1039,20 @@ dhcpv6_vss_command_fn (vlib_main_t * vm,
                        unformat_input_t * input,
                        vlib_cli_command_t * cmd)
 {
-  int is_del = 0, got_new_vss=0;
-  u32 oui=0;
-  u32 fib_id=0, tbl_id=~0;
+  u8 is_del = 0, vss_type = VSS_TYPE_DEFAULT;
+  u8 *vpn_ascii_id = 0;
+  u32 oui = 0, fib_id = 0, tbl_id = ~0;
 
   while (unformat_check_input(input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "oui %d", &oui))
-          got_new_vss = 1;
+      if (unformat (input, "table %d", &tbl_id))
+          ;
+      else if (unformat (input, "oui %d", &oui))
+	  vss_type = VSS_TYPE_VPN_ID;
       else if (unformat (input, "vpn-id %d", &fib_id))
-          got_new_vss = 1;
-      else if (unformat (input, "table %d", &tbl_id))
-          got_new_vss = 1;
+	  vss_type = VSS_TYPE_VPN_ID;
+      else if (unformat (input, "vpn-ascii-id %s", &vpn_ascii_id))
+	  vss_type = VSS_TYPE_ASCII;
       else if (unformat(input, "delete") || unformat(input, "del"))
           is_del = 1;
       else
@@ -1051,37 +1062,23 @@ dhcpv6_vss_command_fn (vlib_main_t * vm,
   if (tbl_id ==~0)
       return clib_error_return (0, "no table ID specified.");
 
-  if (is_del || got_new_vss)
+  int rv = dhcp_proxy_set_vss(FIB_PROTOCOL_IP6, tbl_id, vss_type,
+			      vpn_ascii_id, oui, fib_id, is_del);
+  switch (rv)
     {
-      int rv;
-
-      rv = dhcp_proxy_set_vss(FIB_PROTOCOL_IP6, tbl_id, oui, fib_id, is_del);
-      switch (rv)
-        {
-        case 0:
-          return 0;
-
-        case VNET_API_ERROR_NO_SUCH_FIB:
-            return clib_error_return (0, "vss info (oui:%d, vpn-id:%d)  not found in table %d.",
-                                      oui, fib_id, tbl_id);
-
-        case VNET_API_ERROR_NO_SUCH_ENTRY:
-            return clib_error_return (0, "vss for table %d not found in pool.",
-                                      tbl_id);
-
-        default:
-          return clib_error_return (0, "BUG: rv %d", rv);
-        }
+    case 0:
+	return 0;
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+	return clib_error_return (0, "vss for table %d not found in pool.",
+				  tbl_id);
+    default:
+	return clib_error_return (0, "BUG: rv %d", rv);
     }
-  else
-      return clib_error_return (0, "parse error`%U'",
-                                format_unformat_error, input);
-
 }
 
 VLIB_CLI_COMMAND (dhcpv6_proxy_vss_command, static) = {
   .path = "set dhcpv6 vss",
-  .short_help = "set dhcpv6 vss table <table-id> oui <oui> vpn-idx <vpn-idx>",
+  .short_help = "set dhcpv6 vss table <table-id> [oui <n> vpn-id <n> | vpn-ascii-id <text>]",
   .function = dhcpv6_vss_command_fn,
 };
 

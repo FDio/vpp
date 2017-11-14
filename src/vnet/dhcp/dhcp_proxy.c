@@ -278,19 +278,60 @@ dhcp_vss_show_walk (dhcp_vss_t *vss,
 {
     vlib_main_t * vm = ctx;
 
-    vlib_cli_output (vm, "%=6d%=6d%=12d",
-                     rx_table_id,
-                     vss->oui,
-                     vss->fib_id);
+    if (vss->vss_type == VSS_TYPE_VPN_ID)
+      {
+	u32 oui = ((u32) vss->vpn_id[0] << 16) + ((u32) vss->vpn_id[1] << 8)
+	    + ((u32) vss->vpn_id[2]);
+	u32 fib_id = ((u32) vss->vpn_id[3] << 24) + ((u32) vss->vpn_id[4] << 16)
+	    + ((u32) vss->vpn_id[5] << 8) + ((u32) vss->vpn_id[6]);
+	vlib_cli_output (vm, " fib_table: %d  oui: %d vpn_index: %d",
+			 rx_table_id, oui, fib_id);
+      }
+    else if (vss->vss_type == VSS_TYPE_ASCII)
+	vlib_cli_output (vm, " fib_table: %d  vpn_id: %s",
+			 rx_table_id, vss->vpn_ascii_id);
+    else
+	vlib_cli_output (vm, " fib_table: %d  default global vpn", rx_table_id);
 
     return (1);
 }
 
+void update_vss (dhcp_vss_t *v,
+		 u8 vss_type,
+		 u8 *vpn_ascii_id,
+		 u32 oui,
+		 u32 vpn_index)
+{
+  v->vss_type = vss_type;
+  if (v->vpn_ascii_id)
+    {
+	if (v->vpn_ascii_id == (u8 *) ~0)
+	v->vpn_ascii_id = 0;
+      else
+	vec_free (v->vpn_ascii_id);
+    }
+
+  if (vss_type == VSS_TYPE_ASCII)
+      v->vpn_ascii_id = vpn_ascii_id;
+  else if (vss_type == VSS_TYPE_VPN_ID)
+    {
+      v->vpn_id[0] = (oui >> 16) & 0xff;
+      v->vpn_id[1] = (oui >> 8) & 0xff;
+      v->vpn_id[2] = (oui >> 0) & 0xff;
+      v->vpn_id[3] = (vpn_index >> 24) & 0xff;
+      v->vpn_id[4] = (vpn_index >> 16) & 0xff;
+      v->vpn_id[5] = (vpn_index >> 8) & 0xff;
+      v->vpn_id[6] = (vpn_index >> 0) & 0xff;
+    }
+}
+
 int dhcp_proxy_set_vss (fib_protocol_t proto,
                         u32 tbl_id,
+			u8 vss_type,
+			u8 *vpn_ascii_id,
                         u32 oui,
-                        u32 fib_id, 
-                        int is_del)
+                        u32 vpn_index,
+                        u8 is_del)
 {
   dhcp_proxy_main_t *dm = &dhcp_proxy_main;
   dhcp_vss_t *v = NULL;
@@ -306,43 +347,40 @@ int dhcp_proxy_set_vss (fib_protocol_t proto,
   v = dhcp_get_vss_info(dm, rx_fib_index, proto);
 
   if (NULL != v)
-  {
+    {
       if (is_del)
-      {
+        {
           /* release the lock held on the table when the VSS
            * info was created */
           dhcp_proxy_rx_table_unlock (proto, rx_fib_index);
 
+	  vec_free (v->vpn_ascii_id);
           pool_put (dm->vss[proto], v);
           dm->vss_index_by_rx_fib_index[proto][rx_fib_index] = ~0;
-      }
+        }
       else
-      {
-          /* this is a modify */
-          v->fib_id = fib_id;
-          v->oui = oui;
-      }
-  }
+        {
+	  update_vss (v, vss_type, vpn_ascii_id, oui, vpn_index);
+        }
+    }
   else
-  {
+    {
       if (is_del)
-          rc = VNET_API_ERROR_NO_SUCH_ENTRY;
+        rc = VNET_API_ERROR_NO_SUCH_ENTRY;
       else
-      {
+        {
           /* create a new entry */
           vec_validate_init_empty(dm->vss_index_by_rx_fib_index[proto],
                                   rx_fib_index, ~0);
 
           /* hold a lock on the table whilst the VSS info exist */
           pool_get (dm->vss[proto], v);
-          v->fib_id = fib_id;
-          v->oui = oui;
-
+	  update_vss (v, vss_type, vpn_ascii_id, oui, vpn_index);
           dm->vss_index_by_rx_fib_index[proto][rx_fib_index] =
               v - dm->vss[proto];
           dhcp_proxy_rx_table_lock (proto, rx_fib_index);
-      }
-  }
+        }
+    }
 
   /* Release the lock taken during the create_or_lock at the start */
   dhcp_proxy_rx_table_unlock (proto, rx_fib_index);
