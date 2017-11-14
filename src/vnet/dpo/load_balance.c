@@ -815,6 +815,7 @@ const static char* const load_balance_l2_nodes[] =
 const static char* const load_balance_nsh_nodes[] =
 {
     "nsh-load-balance",
+    NULL
 };
 const static char* const load_balance_bier_nodes[] =
 {
