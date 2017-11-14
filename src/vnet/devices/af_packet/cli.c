@@ -225,7 +225,8 @@ af_packet_set_l4_cksum_offload_command_fn (vlib_main_t * vm,
 	}
     }
 
-  af_packet_set_l4_cksum_offload (vm, sw_if_index, set);
+  if (af_packet_set_l4_cksum_offload (vm, sw_if_index, set) < 0)
+    error = clib_error_return (0, "not an af_packet interface");
 
 done:
   unformat_free (line_input);
