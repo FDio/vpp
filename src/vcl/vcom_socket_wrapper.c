@@ -212,6 +212,8 @@ typedef int (*__libc_recvmsg) (int sockfd, const struct msghdr * msg,
 			       int flags);
 typedef int (*__libc_send) (int sockfd, const void *buf, size_t len,
 			    int flags);
+typedef ssize_t (*__libc_sendfile) (int out_fd, int in_fd, off_t * offset,
+				    size_t len);
 typedef int (*__libc_sendmsg) (int sockfd, const struct msghdr * msg,
 			       int flags);
 typedef int (*__libc_sendto) (int sockfd, const void *buf, size_t len,
@@ -314,6 +316,7 @@ struct swrap_libc_symbols
   SWRAP_SYMBOL_ENTRY (recvfrom);
   SWRAP_SYMBOL_ENTRY (recvmsg);
   SWRAP_SYMBOL_ENTRY (send);
+  SWRAP_SYMBOL_ENTRY (sendfile);
   SWRAP_SYMBOL_ENTRY (sendmsg);
   SWRAP_SYMBOL_ENTRY (sendto);
   SWRAP_SYMBOL_ENTRY (setsockopt);
@@ -615,6 +618,7 @@ libc_listen (int sockfd, int backlog)
   return swrap.libc.symbols._libc_listen.f (sockfd, backlog);
 }
 
+/* TBD: libc_read() should return ssize_t not an int */
 int
 libc_read (int fd, void *buf, size_t count)
 {
@@ -666,6 +670,14 @@ libc_send (int sockfd, const void *buf, size_t len, int flags)
   swrap_bind_symbol_libc (send);
 
   return swrap.libc.symbols._libc_send.f (sockfd, buf, len, flags);
+}
+
+ssize_t
+libc_sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
+{
+  swrap_bind_symbol_libc (sendfile);
+
+  return swrap.libc.symbols._libc_sendfile.f (out_fd, in_fd, offset, len);
 }
 
 int

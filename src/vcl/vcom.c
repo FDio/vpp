@@ -98,7 +98,7 @@ static int is_vcom_init;
  * RETURN: 0 on success -1 on failure
  * */
 static inline int
-vcom_init ()
+vcom_init (void)
 {
   pid_t pid = getpid ();
 
@@ -2068,6 +2068,46 @@ send (int __fd, const void *__buf, size_t __n, int __flags)
   return libc_send (__fd, __buf, __n, __flags);
 }
 
+ssize_t
+sendfile (int __out_fd, int __in_fd, off_t * __offset, size_t __len)
+{
+  ssize_t size;
+
+  if (VCOM_DEBUG > 2)
+    clib_warning ("[%d] __out_fd %d, __in_fd %d, __offset %p, __len %ld",
+		  getpid (), __out_fd, __in_fd, __offset, __len);
+
+  if (is_vcom_socket_fd (__out_fd))
+    {
+      /* TBD: refactor this check to be part of is_vcom_socket_fd() */
+      if (vcom_init () != 0)
+	return -1;
+
+      size = vcom_socket_sendfile (__out_fd, __in_fd, __offset, __len);
+      if (VCOM_DEBUG > 2)
+	clib_warning ("[%d] vcom_socket_sendfile (out_fd %d, in_fd %d, "
+		      "offset %p (%ld), len %lu) returned %ld",
+		      getpid (), __out_fd, __in_fd, __offset,
+		      __offset ? *__offset : -1, __len, size);
+      if (size < 0)
+	{
+	  errno = -size;
+	  return -1;
+	}
+      return size;
+    }
+  if (VCOM_DEBUG > 2)
+    clib_warning ("[%d] calling libc_sendfile!", getpid ());
+  return libc_sendfile (__out_fd, __in_fd, __offset, __len);
+}
+
+ssize_t
+sendfile64 (int __out_fd, int __in_fd, off_t * __offset, size_t __len)
+{
+  return sendfile (__out_fd, __in_fd, __offset, __len);
+}
+
+
 /*
  * Read N bytes into BUF from socket FD.
  * Returns the number read or -1 for errors.
@@ -2827,7 +2867,7 @@ epoll_wait (int __epfd, struct epoll_event *__events,
 
   rv =
     vcom_socket_epoll_pwait (__epfd, __events, __maxevents, __timeout, NULL);
-  if (VCOM_DEBUG > 1)
+  if (VCOM_DEBUG > 2)
     fprintf (stderr,
 	     "[%d] epoll_wait: "
 	     "'%04d'='%04d', '%p', "
