@@ -34,7 +34,8 @@ public:
   /**
    * Constructor
    */
-  create_cmd(HW::item<uint32_t>& item);
+  create_cmd(HW::item<uint32_t>& item,
+             const bridge_domain::learning_mode_t& lmode);
 
   /**
    * Issue the command to VPP/HW
@@ -49,6 +50,12 @@ public:
    * Comparison operator - only used for UT
    */
   bool operator==(const create_cmd& i) const;
+
+private:
+  /**
+   * the learning mode for the bridge
+   */
+  bridge_domain::learning_mode_t m_learning_mode;
 };
 
 /**

@@ -18,6 +18,9 @@
 #include "vom/route_domain_cmds.hpp"
 
 namespace VOM {
+
+route_domain::event_handler route_domain::m_evh;
+
 /**
  * A DB of al the interfaces, key on the name
  */
@@ -164,7 +167,38 @@ route_domain::dump(std::ostream& os)
 {
   m_db.dump(os);
 }
+
+void
+route_domain::event_handler::handle_populate(const client_db::key_t& key)
+{
 }
+
+route_domain::event_handler::event_handler()
+{
+  OM::register_listener(this);
+  inspect::register_handler({ "rd", "route-domain" }, "Route Domains", this);
+}
+
+void
+route_domain::event_handler::handle_replay()
+{
+  m_db.replay();
+}
+
+dependency_t
+route_domain::event_handler::order() const
+{
+  return (dependency_t::TABLE);
+}
+
+void
+route_domain::event_handler::show(std::ostream& os)
+{
+  m_db.dump(os);
+}
+
+}; // namespace VOPM
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
