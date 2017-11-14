@@ -693,10 +693,10 @@ vlib_buffer_alloc_from_free_list_cb_t __clib_weak
   dpdk_buffer_alloc_from_free_list_avx512;
 vlib_buffer_alloc_from_free_list_cb_t __clib_weak
   dpdk_buffer_alloc_from_free_list_avx2;
-vlib_buffer_free_cb_t __clib_weak dpdk_buffer_free_cb_avx512;
-vlib_buffer_free_cb_t __clib_weak dpdk_buffer_free_cb_avx2;
-vlib_buffer_free_no_next_cb_t __clib_weak dpdk_buffer_free_no_next_cb_avx512;
-vlib_buffer_free_no_next_cb_t __clib_weak dpdk_buffer_free_no_next_cb_avx2;
+vlib_buffer_free_cb_t __clib_weak dpdk_buffer_free_avx512;
+vlib_buffer_free_cb_t __clib_weak dpdk_buffer_free_avx2;
+vlib_buffer_free_no_next_cb_t __clib_weak dpdk_buffer_free_no_next_avx512;
+vlib_buffer_free_no_next_cb_t __clib_weak dpdk_buffer_free_no_next_avx2;
 
 static void __clib_constructor
 dpdk_input_multiarch_select (void)
@@ -707,16 +707,16 @@ dpdk_input_multiarch_select (void)
       cb->vlib_buffer_alloc_cb = dpdk_buffer_alloc_avx512;
       cb->vlib_buffer_alloc_from_free_list_cb =
 	dpdk_buffer_alloc_from_free_list_avx512;
-      cb->vlib_buffer_free_cb = dpdk_buffer_free_cb_avx512;
-      cb->vlib_buffer_free_no_next_cb = dpdk_buffer_free_no_next_cb_avx512;
+      cb->vlib_buffer_free_cb = dpdk_buffer_free_avx512;
+      cb->vlib_buffer_free_no_next_cb = dpdk_buffer_free_no_next_avx512;
     }
   else if (dpdk_buffer_alloc_avx2 && clib_cpu_supports_avx2 ())
     {
       cb->vlib_buffer_alloc_cb = dpdk_buffer_alloc_avx2;
       cb->vlib_buffer_alloc_from_free_list_cb =
 	dpdk_buffer_alloc_from_free_list_avx2;
-      cb->vlib_buffer_free_cb = dpdk_buffer_free_cb_avx2;
-      cb->vlib_buffer_free_no_next_cb = dpdk_buffer_free_no_next_cb_avx2;
+      cb->vlib_buffer_free_cb = dpdk_buffer_free_avx2;
+      cb->vlib_buffer_free_no_next_cb = dpdk_buffer_free_no_next_avx2;
     }
 }
 #endif
