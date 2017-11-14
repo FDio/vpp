@@ -159,6 +159,8 @@ int libc_recvmsg (int sockfd, struct msghdr *msg, int flags);
 
 int libc_send (int sockfd, const void *buf, size_t len, int flags);
 
+ssize_t libc_sendfile (int out_fd, int in_fd, off_t * offset, size_t len);
+
 int libc_sendmsg (int sockfd, const struct msghdr *msg, int flags);
 
 int

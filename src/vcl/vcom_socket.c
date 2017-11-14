@@ -70,6 +70,7 @@ typedef struct vcom_socket_main_t_
   /* Hash table - key:fd, value:vec of epitemidx */
   uword *epitemidxs_by_fd;
 
+  u8 *io_buffer;
 } vcom_socket_main_t;
 
 vcom_socket_main_t vcom_socket_main;
@@ -1493,6 +1494,156 @@ vcom_socket_send (int __fd, const void *__buf, size_t __n, int __flags)
   return vcom_socket_sendto (__fd, __buf, __n, __flags, NULL, 0);
 }
 
+/* NOTE: this function is not thread safe or 32-bit friendly */
+ssize_t
+vcom_socket_sendfile (int __out_fd, int __in_fd, off_t * __offset,
+		      size_t __len)
+{
+  vcom_socket_main_t *vsm = &vcom_socket_main;
+  uword *p;
+  vcom_socket_t *vsock;
+  size_t n_bytes_left = __len;
+  u32 out_sockidx, out_sid = ~0;
+  size_t bytes_to_read;
+  int nbytes;
+  int rv, errno_val;
+  ssize_t results = 0;
+  u8 eagain = 0;
+
+  if (VCOM_DEBUG > 2)
+    clib_warning ("[%d] __out_fd %d, __in_fd %d, __offset %p, __len %lu",
+		  getpid (), __out_fd, __in_fd, __offset, __len);
+
+  p = hash_get (vsm->sockidx_by_fd, __out_fd);
+  if (!p)
+    {
+      clib_warning ("[%d] ERROR: invalid __out_fd (%d), fd lookup failed!",
+		    getpid (), __len);
+      return -EBADF;
+    }
+  out_sockidx = p[0];
+  vsock = pool_elt_at_index (vsm->vsockets, out_sockidx);
+  if (!vsock)
+    {
+      clib_warning ("[%d] ERROR: invalid __out_fd (%d) / out_sockidx %u, "
+		    "missing vsock pool element!",
+		    getpid (), __len, out_sockidx);
+      return -ENOTSOCK;
+    }
+  out_sid = vsock->sid;
+  if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
+    {
+      clib_warning ("[%d] ERROR: __out_fd (%d), socket (sid %u) "
+		    "is not VCL bound!", getpid (), __out_fd, out_sid);
+      return -EINVAL;
+    }
+
+  if (__offset)
+    {
+      off_t offset = lseek (__in_fd, *__offset, SEEK_SET);
+      if (offset == -1)
+	{
+	  errno_val = errno;
+	  perror ("lseek()");
+	  clib_warning ("[%d] ERROR: lseek SEEK_SET failed: "
+			"in_fd %d, offset %p (%ld), rv %ld, errno %d",
+			getpid (), __in_fd, __offset, *__offset, offset,
+			errno_val);
+	  return -errno_val;
+	}
+
+      ASSERT (offset == *__offset);
+    }
+
+  do
+    {
+      bytes_to_read = vppcom_session_attr (out_sid,
+					   VPPCOM_ATTR_GET_NWRITE, 0, 0);
+      if (VCOM_DEBUG > 2)
+	clib_warning ("[%d] results %ld, n_bytes_left %lu, "
+		      "bytes_to_read %lu", getpid (), results,
+		      n_bytes_left, bytes_to_read);
+      if (bytes_to_read == 0)
+	{
+	  u32 flags, flags_len = sizeof (flags);
+	  rv = vppcom_session_attr (out_sid, VPPCOM_ATTR_GET_FLAGS, &flags,
+				    &flags_len);
+	  ASSERT (rv == VPPCOM_OK);
+
+	  if (flags & O_NONBLOCK)
+	    {
+	      if (!results)
+		{
+		  if (VCOM_DEBUG > 2)
+		    clib_warning ("[%d] EAGAIN", getpid ());
+		  eagain = 1;
+		}
+	      goto update_offset;
+	    }
+	  else
+	    continue;
+	}
+      bytes_to_read = clib_min (n_bytes_left, bytes_to_read);
+      vec_validate (vsm->io_buffer, bytes_to_read);
+      nbytes = libc_read (__in_fd, vsm->io_buffer, bytes_to_read);
+      if (nbytes < 0)
+	{
+	  errno_val = errno;
+	  perror ("read()");
+	  clib_warning ("[%d] ERROR: libc_read (__in_fd (%d), "
+			"io_buffer %p, bytes_to_read %lu) returned "
+			"errno %d",
+			getpid (), __in_fd, vsm->io_buffer,
+			bytes_to_read, errno_val);
+	  if (results == 0)
+	    {
+	      vec_reset_length (vsm->io_buffer);
+	      return -errno_val;
+	    }
+	  goto update_offset;
+	}
+      rv = vppcom_session_write (out_sid, vsm->io_buffer, nbytes);
+      if (rv < 0)
+	{
+	  clib_warning ("[%d] ERROR: vppcom_session_write ("
+			"out_sid %u, io_buffer %p, nbytes %d) returned %d",
+			getpid (), out_sid, vsm->io_buffer, nbytes, rv);
+	  if (results == 0)
+	    {
+	      vec_reset_length (vsm->io_buffer);
+	      return rv;
+	    }
+	  goto update_offset;
+	}
+
+      results += nbytes;
+      ASSERT (n_bytes_left >= nbytes);
+      n_bytes_left = n_bytes_left - nbytes;
+    }
+  while (n_bytes_left > 0);
+
+update_offset:
+  if (__offset)
+    {
+      off_t offset = lseek (__in_fd, *__offset, SEEK_SET);
+      if (offset == -1)
+	{
+	  errno_val = errno;
+	  perror ("lseek()");
+	  clib_warning ("[%d] ERROR: lseek (__in_fd %d, __offset %p "
+			"(%ld), SEEK_SET) returned errno %d",
+			getpid (), __in_fd, __offset, *__offset, errno_val);
+	  vec_reset_length (vsm->io_buffer);
+	  return -errno_val;
+	}
+
+      *__offset += results + 1;
+    }
+
+  vec_reset_length (vsm->io_buffer);
+  return eagain ? -EAGAIN : results;
+}
+
 ssize_t
 vcom_socket_recv (int __fd, void *__buf, size_t __n, int __flags)
 {
@@ -2327,7 +2478,7 @@ vcom_socket_accept_flags (int __fd, __SOCKADDR_ARG __addr,
 	   * on the queue, accept () blocks the caller
 	   * until a connection is present.
 	   */
-	  rv = vppcom_session_accept (vsock->sid, &ep,
+	  rv = vppcom_session_accept (vsock->sid, &ep, flags,
 				      -1.0 /* wait forever */ );
 	}
       else
@@ -2337,7 +2488,7 @@ vcom_socket_accept_flags (int __fd, __SOCKADDR_ARG __addr,
 	   * block.
 	   * */
 	  /* is non blocking */
-	  rv = vppcom_session_accept (vsock->sid, &ep, 0);
+	  rv = vppcom_session_accept (vsock->sid, &ep, flags, 0);
 	  /* If the socket is marked nonblocking and
 	   * no pending connections are present on the
 	   * queue, accept fails with the error

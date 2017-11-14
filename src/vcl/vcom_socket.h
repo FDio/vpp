@@ -383,6 +383,10 @@ vcom_socket_send (int __fd, const void *__buf, size_t __n, int __flags);
 
 ssize_t vcom_socket_recv (int __fd, void *__buf, size_t __n, int __flags);
 
+ssize_t
+vcom_socket_sendfile (int __out_fd, int __in_fd, off_t * __offset,
+		      size_t __len);
+
 /*
  * RETURN   1 if __fd is (SOCK_STREAM, SOCK_SEQPACKET),
  * 0 otherwise

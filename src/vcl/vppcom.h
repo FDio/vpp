@@ -72,7 +72,7 @@ typedef enum
 typedef enum
 {
   VPPCOM_ATTR_GET_NREAD,
-  VPPCOM_ATTR_PEEK_NREAD,
+  VPPCOM_ATTR_GET_NWRITE,
   VPPCOM_ATTR_GET_FLAGS,
   VPPCOM_ATTR_SET_FLAGS,
   VPPCOM_ATTR_GET_LCL_ADDR,
@@ -147,7 +147,7 @@ extern int vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep);
 extern int vppcom_session_listen (uint32_t session_index, uint32_t q_len);
 extern int vppcom_session_accept (uint32_t session_index,
 				  vppcom_endpt_t * client_ep,
-				  double wait_for_time);
+				  uint32_t flags, double wait_for_time);
 
 extern int vppcom_session_connect (uint32_t session_index,
 				   vppcom_endpt_t * server_ep);
