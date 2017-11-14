@@ -760,7 +760,7 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     bridge_domain bd1(33);
 
     HW::item<uint32_t> hw_bd(33, rc_t::OK);
-    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd));
+    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd, bridge_domain::learning_mode_t::ON));
 
     TRY_CHECK_RC(OM::write(franz, bd1));
 
@@ -858,10 +858,10 @@ BOOST_AUTO_TEST_CASE(test_vxlan) {
     TRY_CHECK_RC(OM::write(franz, vxt));
 
     // bridge-domain create
-    bridge_domain bd1(33);
+    bridge_domain bd1(33, bridge_domain::learning_mode_t::OFF);
 
     HW::item<uint32_t> hw_bd(33, rc_t::OK);
-    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd));
+    ADD_EXPECT(bridge_domain_cmds::create_cmd(hw_bd, bridge_domain::learning_mode_t::OFF));
 
     TRY_CHECK_RC(OM::write(franz, bd1));
 

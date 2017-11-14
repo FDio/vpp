@@ -18,8 +18,10 @@
 
 #include <deque>
 #include <map>
+#include <memory>
 #include <ostream>
 #include <string>
+#include <vector>
 
 namespace VOM {
 /**

@@ -19,6 +19,17 @@
 #include "vom/l2_binding.hpp"
 
 namespace VOM {
+
+const bridge_domain::learning_mode_t bridge_domain::learning_mode_t::ON(1,
+                                                                        "on");
+const bridge_domain::learning_mode_t bridge_domain::learning_mode_t::OFF(0,
+                                                                         "off");
+
+bridge_domain::learning_mode_t::learning_mode_t(int v, const std::string& s)
+  : enum_base<bridge_domain::learning_mode_t>(v, s)
+{
+}
+
 /**
  * A DB of al the interfaces, key on the name
  */
@@ -29,13 +40,15 @@ bridge_domain::event_handler bridge_domain::m_evh;
 /**
  * Construct a new object matching the desried state
  */
-bridge_domain::bridge_domain(uint32_t id)
+bridge_domain::bridge_domain(uint32_t id, const learning_mode_t& lmode)
   : m_id(id)
+  , m_learning_mode(lmode)
 {
 }
 
 bridge_domain::bridge_domain(const bridge_domain& o)
   : m_id(o.m_id)
+  , m_learning_mode(o.m_learning_mode)
 {
 }
 
@@ -58,7 +71,7 @@ void
 bridge_domain::replay()
 {
   if (rc_t::OK == m_id.rc()) {
-    HW::enqueue(new bridge_domain_cmds::create_cmd(m_id));
+    HW::enqueue(new bridge_domain_cmds::create_cmd(m_id, m_learning_mode));
   }
 }
 
@@ -116,7 +129,7 @@ bridge_domain::update(const bridge_domain& desired)
  * the desired state is always that the interface should be created
  */
   if (rc_t::OK != m_id.rc()) {
-    HW::enqueue(new bridge_domain_cmds::create_cmd(m_id));
+    HW::enqueue(new bridge_domain_cmds::create_cmd(m_id, m_learning_mode));
   }
 }
 

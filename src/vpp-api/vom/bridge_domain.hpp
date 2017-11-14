@@ -32,6 +32,21 @@ class bridge_domain : public object_base
 {
 public:
   /**
+   * Bridge Domain Learning mode
+   */
+  struct learning_mode_t : enum_base<learning_mode_t>
+  {
+    const static learning_mode_t ON;
+    const static learning_mode_t OFF;
+
+  private:
+    /**
+     * Private constructor taking the value and the string name
+     */
+    learning_mode_t(int v, const std::string& s);
+  };
+
+  /**
    * The value of the defaultbridge domain
    */
   const static uint32_t DEFAULT_TABLE = 0;
@@ -39,11 +54,14 @@ public:
   /**
    * Construct a new object matching the desried state
    */
-  bridge_domain(uint32_t id);
+  bridge_domain(uint32_t id,
+                const learning_mode_t& lmode = learning_mode_t::ON);
+
   /**
    * Copy Constructor
    */
   bridge_domain(const bridge_domain& o);
+
   /**
    * Destructor
    */
@@ -144,6 +162,11 @@ private:
    * The ID we assign to this BD and the HW result in VPP
    */
   HW::item<uint32_t> m_id;
+
+  /**
+   * The leanring mode of the bridge
+   */
+  learning_mode_t m_learning_mode;
 
   /**
    * A map of all interfaces key against the interface's name

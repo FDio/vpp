@@ -19,6 +19,7 @@
 
 namespace VOM {
 namespace route {
+ip_route::event_handler ip_route::m_evh;
 singular_db<ip_route::key_t, ip_route> ip_route::m_db;
 
 const path::special_t path::special_t::STANDARD(0, "standard");
