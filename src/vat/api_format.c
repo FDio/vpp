@@ -50,6 +50,7 @@
 #include <vnet/policer/policer.h>
 #include <vnet/policer/police.h>
 #include <vnet/mfib/mfib_types.h>
+#include <vnet/dhcp/dhcp_proxy.h>
 
 #include "vat/json_format.h"
 
@@ -7060,7 +7061,7 @@ api_bridge_domain_add_del (vat_main_t * vam)
       goto done;
     }
 
-  if ((bd_tag) && (strlen ((char *) bd_tag) > 63))
+  if ((bd_tag) && (vec_len (bd_tag) > 63))
     {
       errmsg ("bd-tag cannot be longer than 63");
       ret = -99;
@@ -7078,8 +7079,10 @@ api_bridge_domain_add_del (vat_main_t * vam)
   mp->is_add = is_add;
   mp->mac_age = (u8) mac_age;
   if (bd_tag)
-    strcpy ((char *) mp->bd_tag, (char *) bd_tag);
-
+    {
+      clib_memcpy (mp->bd_tag, bd_tag, vec_len (bd_tag));
+      mp->bd_tag[vec_len (bd_tag)] = 0;
+    }
   S (mp);
   W (ret);
 
@@ -9337,15 +9340,19 @@ vl_api_dhcp_proxy_details_t_handler (vl_api_dhcp_proxy_details_t * mp)
 
   if (mp->is_ipv6)
     print (vam->ofp,
-	   "RX Table-ID %d, Source Address %U, VSS FIB-ID %d, VSS OUI %d",
+	   "RX Table-ID %d, Source Address %U, VSS Type %d, "
+	   "VSS VPN-ID '%s', VSS FIB-ID %d, VSS OUI %d",
 	   ntohl (mp->rx_vrf_id),
 	   format_ip6_address, mp->dhcp_src_address,
+	   mp->vss_type, mp->vss_vpn_ascii_id,
 	   ntohl (mp->vss_oui), ntohl (mp->vss_fib_id));
   else
     print (vam->ofp,
-	   "RX Table-ID %d, Source Address %U, VSS FIB-ID %d, VSS OUI %d",
+	   "RX Table-ID %d, Source Address %U, VSS Type %d, "
+	   "VSS VPN-ID '%s', VSS FIB-ID %d, VSS OUI %d",
 	   ntohl (mp->rx_vrf_id),
 	   format_ip4_address, mp->dhcp_src_address,
+	   mp->vss_type, mp->vss_vpn_ascii_id,
 	   ntohl (mp->vss_oui), ntohl (mp->vss_fib_id));
 
   for (i = 0; i < count; i++)
@@ -9382,6 +9389,10 @@ static void vl_api_dhcp_proxy_details_t_handler_json
 
   vat_json_init_object (node);
   vat_json_object_add_uint (node, "rx-table-id", ntohl (mp->rx_vrf_id));
+  vat_json_object_add_bytes (node, "vss-type", &mp->vss_type,
+			     sizeof (mp->vss_type));
+  vat_json_object_add_string_copy (node, "vss-vpn-ascii-id",
+				   mp->vss_vpn_ascii_id);
   vat_json_object_add_uint (node, "vss-fib-id", ntohl (mp->vss_fib_id));
   vat_json_object_add_uint (node, "vss-oui", ntohl (mp->vss_oui));
 
@@ -9456,59 +9467,62 @@ api_dhcp_proxy_set_vss (vat_main_t * vam)
   vl_api_dhcp_proxy_set_vss_t *mp;
   u8 is_ipv6 = 0;
   u8 is_add = 1;
-  u32 tbl_id;
-  u8 tbl_id_set = 0;
-  u32 oui;
-  u8 oui_set = 0;
-  u32 fib_id;
-  u8 fib_id_set = 0;
+  u32 tbl_id = ~0;
+  u8 vss_type = VSS_TYPE_DEFAULT;
+  u8 *vpn_ascii_id = 0;
+  u32 oui = 0;
+  u32 fib_id = 0;
   int ret;
 
   while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (i, "tbl_id %d", &tbl_id))
-	tbl_id_set = 1;
-      if (unformat (i, "fib_id %d", &fib_id))
-	fib_id_set = 1;
-      if (unformat (i, "oui %d", &oui))
-	oui_set = 1;
+	;
+      else if (unformat (i, "vpn_ascii_id %s", &vpn_ascii_id))
+	vss_type = VSS_TYPE_ASCII;
+      else if (unformat (i, "fib_id %d", &fib_id))
+	vss_type = VSS_TYPE_VPN_ID;
+      else if (unformat (i, "oui %d", &oui))
+	vss_type = VSS_TYPE_VPN_ID;
       else if (unformat (i, "ipv6"))
 	is_ipv6 = 1;
       else if (unformat (i, "del"))
 	is_add = 0;
       else
-	{
-	  clib_warning ("parse error '%U'", format_unformat_error, i);
-	  return -99;
-	}
+	break;
     }
 
-  if (tbl_id_set == 0)
+  if (tbl_id == ~0)
     {
-      errmsg ("missing tbl id");
+      errmsg ("missing tbl_id ");
+      vec_free (vpn_ascii_id);
       return -99;
     }
 
-  if (fib_id_set == 0)
+  if ((vpn_ascii_id) && (vec_len (vpn_ascii_id) > 128))
     {
-      errmsg ("missing fib id");
-      return -99;
-    }
-  if (oui_set == 0)
-    {
-      errmsg ("missing oui");
+      errmsg ("vpn_ascii_id cannot be longer than 128 ");
+      vec_free (vpn_ascii_id);
       return -99;
     }
 
   M (DHCP_PROXY_SET_VSS, mp);
   mp->tbl_id = ntohl (tbl_id);
-  mp->fib_id = ntohl (fib_id);
+  mp->vss_type = vss_type;
+  if (vpn_ascii_id)
+    {
+      clib_memcpy (mp->vpn_ascii_id, vpn_ascii_id, vec_len (vpn_ascii_id));
+      mp->vpn_ascii_id[vec_len (vpn_ascii_id)] = 0;
+    }
+  mp->vpn_index = ntohl (fib_id);
   mp->oui = ntohl (oui);
   mp->is_ipv6 = is_ipv6;
   mp->is_add = is_add;
 
   S (mp);
   W (ret);
+
+  vec_free (vpn_ascii_id);
   return ret;
 }
 
@@ -22344,7 +22358,7 @@ _(sw_interface_set_l2_bridge,                                           \
   "enable | disable")                                                   \
 _(bridge_domain_set_mac_age, "bd_id <bridge-domain-id> mac-age 0-255")  \
 _(bridge_domain_add_del,                                                \
-  "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] [learn 1|0] [arp-term 1|0] [mac-age 0-255] [bd-tag <tag>] [del]\n") \
+  "bd_id <bridge-domain-id> [flood 1|0] [uu-flood 1|0] [forward 1|0] [learn 1|0] [arp-term 1|0] [mac-age 0-255] [bd-tag <text>] [del]\n") \
 _(bridge_domain_dump, "[bd_id <bridge-domain-id>]\n")                   \
 _(l2fib_add_del,                                                        \
   "mac <mac-addr> bd_id <bridge-domain-id> [del] | sw_if <intfc> | sw_if_index <id> [static] [filter] [bvi] [count <nn>]\n") \
@@ -22409,7 +22423,7 @@ _(dhcp_proxy_config,                                                    \
   "svr <v46-address> src <v46-address>\n"                               \
    "rx_vrf_id <nn> server_vrf_id <nn>  [del]")                          \
 _(dhcp_proxy_set_vss,                                                   \
-  "tbl_id <n> fib_id <n> oui <n> [ipv6] [del]")                         \
+  "tbl_id <n> [fib_id <n> oui <n> | vpn_ascii_id <text>] [ipv6] [del]") \
 _(dhcp_proxy_dump, "ip6")                                               \
 _(dhcp_client_config,                                                   \
   "<intfc> | sw_if_index <id> [hostname <name>] [disable_event] [del]") \

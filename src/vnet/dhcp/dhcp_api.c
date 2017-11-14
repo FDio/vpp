@@ -55,14 +55,16 @@ static void
 vl_api_dhcp_proxy_set_vss_t_handler (vl_api_dhcp_proxy_set_vss_t * mp)
 {
   vl_api_dhcp_proxy_set_vss_reply_t *rmp;
+  u8 *vpn_ascii_id;
   int rv;
 
-  rv = dhcp_proxy_set_vss ((mp->is_ipv6 ?
-			    FIB_PROTOCOL_IP6 :
-			    FIB_PROTOCOL_IP4),
-			   ntohl (mp->tbl_id),
-			   ntohl (mp->oui),
-			   ntohl (mp->fib_id), (int) mp->is_add == 0);
+  mp->vpn_ascii_id[sizeof (mp->vpn_ascii_id) - 1] = 0;
+  vpn_ascii_id = format (0, "%s", mp->vpn_ascii_id);
+  rv =
+    dhcp_proxy_set_vss ((mp->is_ipv6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4),
+			ntohl (mp->tbl_id), mp->vss_type, vpn_ascii_id,
+			ntohl (mp->oui), ntohl (mp->vpn_index),
+			mp->is_add == 0);
 
   REPLY_MACRO (VL_API_DHCP_PROXY_SET_VSS_REPLY);
 }
@@ -147,11 +149,27 @@ dhcp_send_details (fib_protocol_t proto,
 
   vss = dhcp_get_vss_info (&dhcp_proxy_main, proxy->rx_fib_index, proto);
 
-  if (NULL != vss)
+  if (vss)
     {
-      mp->vss_oui = htonl (vss->oui);
-      mp->vss_fib_id = htonl (vss->fib_id);
+      mp->vss_type = vss->vss_type;
+      if (vss->vss_type == VSS_TYPE_ASCII)
+	{
+	  u32 id_len = vec_len (vss->vpn_ascii_id);
+	  clib_memcpy (mp->vss_vpn_ascii_id, vss->vpn_ascii_id, id_len);
+	}
+      else if (vss->vss_type == VSS_TYPE_VPN_ID)
+	{
+	  u32 oui = ((u32) vss->vpn_id[0] << 16) + ((u32) vss->vpn_id[1] << 8)
+	    + ((u32) vss->vpn_id[2]);
+	  u32 fib_id = ((u32) vss->vpn_id[3] << 24) +
+	    ((u32) vss->vpn_id[4] << 16) + ((u32) vss->vpn_id[5] << 8) +
+	    ((u32) vss->vpn_id[6]);
+	  mp->vss_oui = htonl (oui);
+	  mp->vss_fib_id = htonl (fib_id);
+	}
     }
+  else
+    mp->vss_type = VSS_TYPE_INVALID;
 
   vec_foreach_index (count, proxy->dhcp_servers)
   {

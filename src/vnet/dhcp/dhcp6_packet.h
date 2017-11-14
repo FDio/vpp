@@ -164,7 +164,8 @@ typedef CLIB_PACKED (struct {
 
 typedef CLIB_PACKED (struct {
   dhcpv6_option_t opt;
-  u8 data[8];  // data[0]:type, data[1..7]: VPN ID
+  u8 vss_type;
+  u8 data[0];
 }) dhcpv6_vss_t;
 
 typedef CLIB_PACKED (struct {
