@@ -393,7 +393,8 @@ const static dpo_vft_t bier_table_dpo_vft = {
 
 const static char *const bier_table_mpls_nodes[] =
 {
-    "bier-input"
+    "bier-input",
+    NULL
 };
 const static char * const * const bier_table_nodes[DPO_PROTO_NUM] =
 {
