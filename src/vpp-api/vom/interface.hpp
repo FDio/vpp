@@ -540,9 +540,9 @@ private:
 
   /**
    * shared pointer to the routeDoamin the interface is in.
-   * NULL is not mapped  - i.e. in eht default table
+   * NULL is not mapped  - i.e. in the default table
    */
-  const std::shared_ptr<route_domain> m_rd;
+  std::shared_ptr<route_domain> m_rd;
 
   /**
    * The state of the interface

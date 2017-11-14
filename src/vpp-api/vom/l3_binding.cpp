@@ -71,6 +71,24 @@ l3_binding::prefix() const
   return (m_pfx);
 }
 
+const interface&
+l3_binding::itf() const
+{
+  return (*m_itf);
+}
+
+l3_binding::const_iterator_t
+l3_binding::cbegin()
+{
+  return m_db.cbegin();
+}
+
+l3_binding::const_iterator_t
+l3_binding::cend()
+{
+  return m_db.cend();
+}
+
 std::string
 l3_binding::to_string() const
 {
@@ -85,8 +103,10 @@ void
 l3_binding::update(const l3_binding& desired)
 {
   /*
- * the desired state is always that the interface should be created
- */
+   * no updates for the binding. chaning the interface or the prefix is a change
+   * to the
+   * key, hence a new object
+   */
   if (!m_binding) {
     HW::enqueue(
       new l3_binding_cmds::bind_cmd(m_binding, m_itf->handle(), m_pfx));

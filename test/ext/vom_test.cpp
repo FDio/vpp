@@ -1467,4 +1467,91 @@ BOOST_AUTO_TEST_CASE(test_interface_events) {
     HW::dequeue(itf);
 }
 
+BOOST_AUTO_TEST_CASE(test_interface_route_domain_change) {
+    VppInit vi;
+    const std::string rene = "ReneGoscinny";
+    rc_t rc = rc_t::OK;
+
+    /*
+     * Create an interface with two IP addresses
+     */
+    std::string itf1_name = "host1";
+    interface itf1(itf1_name,
+                   interface::type_t::AFPACKET,
+                   interface::admin_state_t::UP);
+    HW::item<handle_t> hw_ifh1(2, rc_t::OK);
+    HW::item<interface::admin_state_t> hw_as_up(interface::admin_state_t::UP, rc_t::OK);
+    HW::item<interface::admin_state_t> hw_as_down(interface::admin_state_t::DOWN, rc_t::OK);
+    ADD_EXPECT(interface_cmds::af_packet_create_cmd(hw_ifh1, itf1_name));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_up, hw_ifh1));
+    TRY_CHECK_RC(OM::write(rene, itf1));
+
+    route::prefix_t pfx_10("10.10.10.10", 24);
+    l3_binding *l3_1 = new l3_binding(itf1, pfx_10);
+    HW::item<bool> hw_l3_bind1(true, rc_t::OK);
+    HW::item<bool> hw_l3_unbind1(false, rc_t::OK);
+    ADD_EXPECT(l3_binding_cmds::bind_cmd(hw_l3_bind1, hw_ifh1.data(), pfx_10));
+    TRY_CHECK_RC(OM::write(rene, *l3_1));
+
+    route::prefix_t pfx_11("10.10.11.11", 24);
+    l3_binding *l3_2 = new l3_binding(itf1, pfx_11);
+    HW::item<bool> hw_l3_bind2(true, rc_t::OK);
+    HW::item<bool> hw_l3_unbind2(false, rc_t::OK);
+    ADD_EXPECT(l3_binding_cmds::bind_cmd(hw_l3_bind2, hw_ifh1.data(), pfx_11));
+    TRY_CHECK_RC(OM::write(rene, *l3_2));
+
+    route_domain rd(1);
+    HW::item<bool> hw_rd_create(true, rc_t::OK);
+    HW::item<bool> hw_rd_delete(false, rc_t::OK);
+    HW::item<route::table_id_t> hw_rd_bind(1, rc_t::OK);
+    HW::item<route::table_id_t> hw_rd_unbind(route::DEFAULT_TABLE, rc_t::OK);
+    ADD_EXPECT(route_domain_cmds::create_cmd(hw_rd_create, l3_proto_t::IPV4, 1));
+    ADD_EXPECT(route_domain_cmds::create_cmd(hw_rd_create, l3_proto_t::IPV6, 1));
+    TRY_CHECK_RC(OM::write(rene, rd));
+
+    /*
+     * update the interface to change to a new route-domain
+     * expect that the l3-bindings are removed and readded.
+     */
+    interface *itf2 = new interface(itf1_name,
+                                    interface::type_t::AFPACKET,
+                                    interface::admin_state_t::UP,
+                                    rd);
+    ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind1, hw_ifh1.data(), pfx_10));
+    ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind2, hw_ifh1.data(), pfx_11));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd_bind, l3_proto_t::IPV4, hw_ifh1));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd_bind, l3_proto_t::IPV6, hw_ifh1));
+    ADD_EXPECT(l3_binding_cmds::bind_cmd(hw_l3_bind1, hw_ifh1.data(), pfx_10));
+    ADD_EXPECT(l3_binding_cmds::bind_cmd(hw_l3_bind2, hw_ifh1.data(), pfx_11));
+    TRY_CHECK_RC(OM::write(rene, *itf2));
+
+    /*
+     * mve the interface back to the default route-domain
+     */
+    interface itf3(itf1_name,
+                   interface::type_t::AFPACKET,
+                   interface::admin_state_t::UP);
+    ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind1, hw_ifh1.data(), pfx_10));
+    ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind2, hw_ifh1.data(), pfx_11));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd_unbind, l3_proto_t::IPV4, hw_ifh1));
+    ADD_EXPECT(interface_cmds::set_table_cmd(hw_rd_unbind, l3_proto_t::IPV6, hw_ifh1));
+    ADD_EXPECT(l3_binding_cmds::bind_cmd(hw_l3_bind1, hw_ifh1.data(), pfx_10));
+    ADD_EXPECT(l3_binding_cmds::bind_cmd(hw_l3_bind2, hw_ifh1.data(), pfx_11));
+    TRY_CHECK_RC(OM::write(rene, itf3));
+
+    delete l3_1;
+    delete l3_2;
+    delete itf2;
+
+    STRICT_ORDER_OFF();
+    ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind1, hw_ifh1.data(), pfx_10));
+    ADD_EXPECT(l3_binding_cmds::unbind_cmd(hw_l3_unbind2, hw_ifh1.data(), pfx_11));
+    ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh1));
+    ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh1, itf1_name));
+    ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd_delete, l3_proto_t::IPV4, 1));
+    ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd_delete, l3_proto_t::IPV6, 1));
+
+    TRY_CHECK(OM::remove(rene));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -149,7 +149,7 @@ interface::cend()
 void
 interface::sweep()
 {
-  if (m_table_id) {
+  if (m_table_id && (m_table_id.data() != route::DEFAULT_TABLE)) {
     m_table_id.data() = route::DEFAULT_TABLE;
     HW::enqueue(
       new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV4, m_hdl));
@@ -181,7 +181,7 @@ interface::replay()
     HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
   }
 
-  if (m_table_id) {
+  if (m_table_id && (m_table_id.data() != route::DEFAULT_TABLE)) {
     HW::enqueue(
       new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV4, m_hdl));
     HW::enqueue(
@@ -267,32 +267,58 @@ void
 interface::update(const interface& desired)
 {
   /*
- * the desired state is always that the interface should be created
- */
+   * the desired state is always that the interface should be created
+   */
   if (rc_t::OK != m_hdl.rc()) {
     std::queue<cmd*> cmds;
     HW::enqueue(mk_create_cmd(cmds));
   }
 
   /*
- * change the interface state to that which is deisred
- */
+   * change the interface state to that which is deisred
+   */
   if (m_state.update(desired.m_state)) {
     HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
   }
 
   /*
- * change the interface state to that which is deisred
- */
+   * change the interface state to that which is deisred
+   */
   if (m_l2_address.update(desired.m_l2_address)) {
     HW::enqueue(new interface_cmds::set_mac_cmd(m_l2_address, m_hdl));
   }
 
   /*
- * If the interface is mapped into a route domain, set VPP's
- * table ID
- */
-  if (!m_table_id && m_rd) {
+   * If the interface is mapped into a route domain, set VPP's
+   * table ID
+   */
+  if (m_rd != desired.m_rd) {
+    /*
+     * changing route domains. need to remove all L3 bindings, swap the table
+     * then reapply the bindings.
+     */
+    auto it = l3_binding::cbegin();
+
+    while (it != l3_binding::cend()) {
+      if (it->second.lock()->itf().key() == key())
+        it->second.lock()->sweep();
+      ++it;
+    }
+    m_rd = desired.m_rd;
+    m_table_id.update(m_rd ? m_rd->table_id() : route::DEFAULT_TABLE);
+    HW::enqueue(
+      new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV4, m_hdl));
+    HW::enqueue(
+      new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
+    HW::write();
+
+    it = l3_binding::cbegin();
+    while (it != l3_binding::cend()) {
+      if (it->second.lock()->itf().key() == key())
+        it->second.lock()->replay(); //(*it->second.lock());
+      ++it;
+    }
+  } else if (!m_table_id && m_rd) {
     HW::enqueue(
       new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV4, m_hdl));
     HW::enqueue(
