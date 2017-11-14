@@ -331,7 +331,8 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
 static void
 send_ip6_fib_details (vpe_api_main_t * am,
 		      unix_shared_memory_queue_t * q,
-		      u32 table_id, fib_prefix_t * pfx,
+		      const fib_table_t * table,
+		      const fib_prefix_t * pfx,
 		      fib_route_path_encode_t * api_rpaths, u32 context)
 {
   vl_api_ip6_fib_details_t *mp;
@@ -347,9 +348,11 @@ send_ip6_fib_details (vpe_api_main_t * am,
   mp->_vl_msg_id = ntohs (VL_API_IP6_FIB_DETAILS);
   mp->context = context;
 
-  mp->table_id = htonl (table_id);
+  mp->table_id = htonl (table->ft_table_id);
   mp->address_length = pfx->fp_len;
   memcpy (mp->address, &pfx->fp_addr.ip6, sizeof (pfx->fp_addr.ip6));
+  memcpy (mp->table_name, table->ft_desc,
+	  clib_min (vec_len (table->ft_desc), sizeof (mp->table_name)));
 
   mp->count = htonl (path_count);
   fp = mp->path;
@@ -436,9 +439,7 @@ api_ip6_fib_table_get_all (unix_shared_memory_queue_t * q,
     fib_entry_get_prefix (*fib_entry_index, &pfx);
     api_rpaths = NULL;
     fib_entry_encode (*fib_entry_index, &api_rpaths);
-    send_ip6_fib_details (am, q,
-			  fib_table->ft_table_id,
-			  &pfx, api_rpaths, mp->context);
+    send_ip6_fib_details (am, q, fib_table, &pfx, api_rpaths, mp->context);
     vec_free (api_rpaths);
   }
 
