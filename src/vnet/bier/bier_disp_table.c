@@ -328,7 +328,8 @@ const static dpo_vft_t bier_disp_table_dpo_vft = {
 
 const static char *const bier_disp_table_bier_nodes[] =
 {
-    "bier-disp-lookup"
+    "bier-disp-lookup",
+    NULL
 };
 
 const static char * const * const bier_disp_table_nodes[DPO_PROTO_NUM] =
