@@ -130,7 +130,7 @@ AC_DEFUN([CC_CHECK_FLAG],
   [cc_flag_check=yes],
   [cc_flag_check=no]
 )
-  AC_MSG_RESULT([$c_flag_check])
+  AC_MSG_RESULT([$cc_flag_check])
   CFLAGS="$ac_saved_cflags"
   AC_LANG_POP([C])
 ])
