@@ -20,6 +20,11 @@ SAMPLE_PLUGIN?=no
 MACHINE=$(shell uname -m)
 SUDO?=sudo
 
+# find latest GCC available if CC is not set
+ifeq ($(CC),cc)
+export CC=$(shell find /usr/bin -regex '.*/gcc-[0-9.]*' | sort -V | tail -1)
+endif
+
 ,:=,
 define disable_plugins
 $(if $(1), \
@@ -68,6 +73,8 @@ DEB_DEPENDS += libboost-all-dev libffi-dev python-ply libmbedtls-dev
 ifeq ($(OS_VERSION_ID),14.04)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 	DEB_DEPENDS += libssl-dev
+else ifeq ($(OS_VERSION_ID),16.04)
+	DEB_DEPENDS += gcc-7
 else ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
 	DEB_DEPENDS += openjdk-8-jdk-headless
 	DEB_DEPENDS += libssl-dev
@@ -273,6 +280,9 @@ ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 ifeq ($(OS_VERSION_ID),14.04)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install software-properties-common
 	@sudo -E add-apt-repository ppa:openjdk-r/ppa $(CONFIRM)
+endif
+ifeq ($(OS_VERSION_ID),16.04)
+	@sudo -E add-apt-repository ppa:ubuntu-toolchain-r/test $(CONFIRM)
 endif
 ifeq ($(OS_ID)-$(OS_VERSION_ID),debian-8)
 	@grep -q jessie-backports /etc/apt/sources.list /etc/apt/sources.list.d/* 2> /dev/null \
