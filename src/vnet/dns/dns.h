@@ -139,6 +139,7 @@ typedef enum
 } dns46_request_error_t;
 
 #define foreach_dns46_reply_error                       \
+_(DISABLED, "DNS pkts punted (feature disabled)")       \
 _(PROCESSED, "DNS reply pkts processed")                \
 _(NO_ELT, "No DNS pool element")                        \
 _(FORMAT_ERROR, "DNS format errors")                    \

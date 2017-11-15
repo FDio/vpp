@@ -50,6 +50,7 @@ static char *dns46_reply_error_strings[] = {
 typedef enum
 {
   DNS46_REPLY_NEXT_DROP,
+  DNS46_REPLY_NEXT_PUNT,
   DNS46_REPLY_N_NEXT,
 } dns46_reply_next_t;
 
@@ -59,6 +60,7 @@ dns46_reply_node_fn (vlib_main_t * vm,
 {
   u32 n_left_from, *from, *to_next;
   dns46_reply_next_t next_index;
+  dns_main_t *dm = &dns_main;
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -139,8 +141,8 @@ dns46_reply_node_fn (vlib_main_t * vm,
 	  vlib_buffer_t *b0;
 	  u32 next0 = DNS46_REPLY_NEXT_DROP;
 	  dns_header_t *d0;
-	  u32 pool_index0;
-	  u32 error0;
+	  u32 pool_index0 = ~0;
+	  u32 error0 = 0;
 	  u8 *resp0 = 0;
 
 	  /* speculatively enqueue b0 to the current next frame */
@@ -149,11 +151,16 @@ dns46_reply_node_fn (vlib_main_t * vm,
 	  from += 1;
 	  to_next += 1;
 	  n_left_from -= 1;
-
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  d0 = vlib_buffer_get_current (b0);
+	  if (PREDICT_FALSE (dm->is_enabled == 0))
+	    {
+	      next0 = DNS46_REPLY_NEXT_PUNT;
+	      error0 = DNS46_REPLY_ERROR_DISABLED;
+	      goto done0;
+	    }
 
 	  pool_index0 = clib_host_to_net_u16 (d0->id);
 
@@ -169,6 +176,7 @@ dns46_reply_node_fn (vlib_main_t * vm,
 					(uword) resp0);
 	  error0 = DNS46_REPLY_ERROR_PROCESSED;
 
+	done0:
 	  b0->error = node->errors[error0];
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -205,6 +213,7 @@ VLIB_REGISTER_NODE (dns46_reply_node) =
   .n_next_nodes = DNS46_REPLY_N_NEXT,
   .next_nodes = {
     [DNS46_REPLY_NEXT_DROP] = "error-drop",
+    [DNS46_REPLY_NEXT_PUNT] = "error-punt",
   },
 };
 /* *INDENT-ON* */

@@ -51,6 +51,7 @@ typedef enum
 {
   DNS46_REQUEST_NEXT_DROP,
   DNS46_REQUEST_NEXT_IP_LOOKUP,
+  DNS46_REQUEST_NEXT_PUNT,
   DNS46_REQUEST_N_NEXT,
 } dns46_request_next_t;
 
@@ -160,15 +161,22 @@ dns46_request_inline (vlib_main_t * vm,
 	  from += 1;
 	  to_next += 1;
 	  n_left_from -= 1;
-
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
 	  d0 = vlib_buffer_get_current (b0);
 	  u0 = (udp_header_t *) ((u8 *) d0 - sizeof (*u0));
+
+	  if (PREDICT_FALSE (dm->is_enabled == 0))
+	    {
+	      next0 = DNS46_REQUEST_NEXT_PUNT;
+	      goto done0;
+	    }
+
 	  if (is_ip6)
 	    {
-	      ip60 = (ip6_header_t *) (((u8 *) u0) - sizeof (ip4_header_t));
+	      ip60 = (ip6_header_t *) (((u8 *) u0) - sizeof (ip6_header_t));
+	      next0 = DNS46_REQUEST_NEXT_DROP;
 	      error0 = DNS46_REQUEST_ERROR_UNIMPLEMENTED;
 	      goto done0;
 	    }
@@ -187,11 +195,13 @@ dns46_request_inline (vlib_main_t * vm,
 	  /* Requests only */
 	  if (flags0 & DNS_QR)
 	    {
+	      next0 = DNS46_REQUEST_NEXT_DROP;
 	      error0 = DNS46_REQUEST_ERROR_BAD_REQUEST;
 	      goto done0;
 	    }
 	  if (clib_net_to_host_u16 (d0->qdcount) != 1)
 	    {
+	      next0 = DNS46_REQUEST_NEXT_DROP;
 	      error0 = DNS46_REQUEST_ERROR_TOO_MANY_REQUESTS;
 	      goto done0;
 	    }
@@ -286,6 +296,7 @@ VLIB_REGISTER_NODE (dns4_request_node) =
   .n_next_nodes = DNS46_REQUEST_N_NEXT,
   .next_nodes = {
     [DNS46_REQUEST_NEXT_DROP] = "error-drop",
+    [DNS46_REQUEST_NEXT_PUNT] = "error-punt",
     [DNS46_REQUEST_NEXT_IP_LOOKUP] = "ip4-lookup",
   },
 };
@@ -312,6 +323,7 @@ VLIB_REGISTER_NODE (dns6_request_node) =
   .n_next_nodes = DNS46_REQUEST_N_NEXT,
   .next_nodes = {
     [DNS46_REQUEST_NEXT_DROP] = "error-drop",
+    [DNS46_REQUEST_NEXT_PUNT] = "error-punt",
     [DNS46_REQUEST_NEXT_IP_LOOKUP] = "ip6-lookup",
   },
 };
