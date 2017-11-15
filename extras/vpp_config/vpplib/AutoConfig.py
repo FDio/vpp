@@ -37,14 +37,16 @@ MAX_PERCENT_FOR_HUGE_PAGES = 70
 class AutoConfig(object):
     """Auto Configuration Tools"""
 
-    def __init__(self, rootdir, filename):
+    def __init__(self, rootdir, filename, clean=False):
         """
         The Auto Configure class.
 
         :param rootdir: The root directory for all the auto configuration files
         :param filename: The autoconfiguration file
+        :param clean: When set initialize the nodes from the auto-config file
         :type rootdir: str
         :type filename: str
+        :type clean: bool
         """
         self._autoconfig_filename = rootdir + filename
         self._rootdir = rootdir
@@ -52,6 +54,7 @@ class AutoConfig(object):
         self._nodes = {}
         self._vpp_devices_node = {}
         self._hugepage_config = ""
+        self._clean = clean
         self._loadconfig()
 
     def get_nodes(self):
@@ -84,6 +87,7 @@ class AutoConfig(object):
                 if ret != 0:
                     logging.debug(stderr)
 
+    # noinspection PyBroadException
     @staticmethod
     def _ask_user_ipv4():
         """
@@ -189,7 +193,7 @@ class AutoConfig(object):
                 raise RuntimeError("Couldn't read the Auto config file {}.".format(self._autoconfig_filename, exc))
 
         systemfile = self._rootdir + self._metadata['system_config_file']
-        if os.path.isfile(systemfile):
+        if self._clean is False and os.path.isfile(systemfile):
             with open(systemfile, 'r') as sysstream:
                 try:
                     systopo = yaml.load(sysstream)
@@ -221,7 +225,7 @@ class AutoConfig(object):
         # Write the system config file
         filename = self._rootdir + self._metadata['system_config_file']
         with open(filename, 'w') as yamlfile:
-            yaml.dump(ydata, yamlfile, default_flow_style=False)
+            yaml.dump(ydata, yamlfile)
 
     def _update_auto_config(self):
         """
@@ -252,8 +256,8 @@ class AutoConfig(object):
                 interface = item[1]
 
                 node['interfaces'][port] = {}
-                node['interfaces'][port]['pci_address'] = \
-                    interface['pci_address']
+                addr = '{}'.format(interface['pci_address'])
+                node['interfaces'][port]['pci_address'] = addr
                 if 'mac_address' in interface:
                     node['interfaces'][port]['mac_address'] = \
                         interface['mac_address']
@@ -281,7 +285,7 @@ class AutoConfig(object):
 
         # Write the auto config config file
         with open(self._autoconfig_filename, 'w') as yamlfile:
-            yaml.dump(ydata, yamlfile, default_flow_style=False)
+            yaml.dump(ydata, yamlfile)
 
     def apply_huge_pages(self):
         """
@@ -327,7 +331,10 @@ class AutoConfig(object):
 
         # Get main core
         cpu = '\n'
-        vpp_main_core = node['cpu']['vpp_main_core']
+        if 'vpp_main_core' in node['cpu']:
+            vpp_main_core = node['cpu']['vpp_main_core']
+        else:
+            vpp_main_core = 0
         if vpp_main_core is not 0:
             cpu += '  main-core {}\n'.format(vpp_main_core)
 
@@ -696,7 +703,10 @@ class AutoConfig(object):
             # Get the isolated CPUs
             other_workers = node['cpu']['other_workers']
             vpp_workers = node['cpu']['vpp_workers']
-            vpp_main_core = node['cpu']['vpp_main_core']
+            if 'vpp_main_core' in node['cpu']:
+                vpp_main_core = node['cpu']['vpp_main_core']
+            else:
+                vpp_main_core = 0
             all_workers = []
             if other_workers is not None:
                 all_workers = [other_workers]
@@ -943,9 +953,11 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
             node['cpu']['reserve_vpp_main_core'] = reserve_vpp_main_core
             node['cpu']['vpp_main_core'] = 0
 
-    def modify_cpu(self):
+    def modify_cpu(self, ask_questions=True):
         """
         Modify the cpu configuration, asking for the user for the values.
+
+        :param ask_questions: When true ask the user for config parameters
 
         """
 
@@ -990,11 +1002,13 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
             node['cpu']['cpus_per_node'] = cpus_per_node
 
             # Ask the user some questions
-            self._modify_cpu_questions(node, total_cpus, numa_nodes)
+            if ask_questions:
+                self._modify_cpu_questions(node, total_cpus, numa_nodes)
 
             # Populate the interfaces with the numa node
-            ikeys = node['interfaces'].keys()
-            VPPUtil.get_interfaces_numa_node(node, *tuple(ikeys))
+            if 'interfaces' in node:
+                ikeys = node['interfaces'].keys()
+                VPPUtil.get_interfaces_numa_node(node, *tuple(ikeys))
 
             # We don't want to write the cpuinfo
             node['cpuinfo'] = ""
@@ -1059,6 +1073,33 @@ other than VPP? [0-{}][0]? '.format(str(max_other_cores))
                     device = dit[1]
                     dpdk_devices[dvid] = device
                     del other_devices[dvid]
+
+    def update_interfaces_config(self):
+        """
+        Modify the interfaces directly from the config file.
+
+        """
+
+        for i in self._nodes.items():
+            node = i[1]
+            devices = node['devices']
+            all_devices = devices['other_devices']
+            all_devices.update(devices['dpdk_devices'])
+            all_devices.update(devices['kernel_devices'])
+
+            current_ifcs = {}
+            interfaces = {}
+            if 'interfaces' in node:
+                current_ifcs = node['interfaces']
+            if current_ifcs:
+                for ifc in current_ifcs.values():
+                    dvid = ifc['pci_address']
+                    if dvid in all_devices:
+                        VppPCIUtil.vpp_create_interface(interfaces, dvid,
+                                                        all_devices[dvid])
+            node['interfaces'] = interfaces
+
+        self.updateconfig()
 
     def modify_devices(self):
         """

@@ -17,14 +17,6 @@
 
 import os
 import sys
-import vpp_config as vppcfg
+import vpp_config as vpp
 
-# Check for root
-if not os.geteuid() == 0:
-    sys.exit('\nPlease run the VPP Configuration Utility as root.')
-
-# Setup
-vppcfg.autoconfig_setup()
-
-# Main menu
-vppcfg.autoconfig_main()
+vpp.config_main()
