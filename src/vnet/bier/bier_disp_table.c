@@ -206,9 +206,11 @@ bier_disp_table_entry_remove (index_t bdti,
 
 static index_t
 bier_disp_table_lookup_hton(index_t bdti,
-                            bier_bp_t src)
+                            bier_bp_t bp)
 {
-    return (bier_disp_table_lookup(bdti, clib_host_to_net_u16(src)));
+    bier_hdr_src_id_t src = bp;
+
+    return (bier_disp_table_lookup(bdti, clib_host_to_net_u32(src)));
 }
 
 void

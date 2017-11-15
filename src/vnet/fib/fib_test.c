@@ -612,12 +612,18 @@ fib_test_validate_lb (const dpo_id_t *dpo,
 
     va_start(ap, n_buckets);
 
-    FIB_TEST_LB((DPO_LOAD_BALANCE == dpo->dpoi_type),
-               "Entry links to %U",
-               format_dpo_type, dpo->dpoi_type);
-    lb = load_balance_get(dpo->dpoi_index);
+    if (FIB_TEST_I((DPO_LOAD_BALANCE == dpo->dpoi_type),
+                   "Entry links to %U",
+                   format_dpo_type, dpo->dpoi_type))
+    {
+        lb = load_balance_get(dpo->dpoi_index);
 
-    res = fib_test_validate_lb_v(lb, n_buckets, &ap);
+        res = fib_test_validate_lb_v(lb, n_buckets, &ap);
+    }
+    else
+    {
+        res = !0;
+    }
 
     va_end(ap);
 
