@@ -27,7 +27,8 @@ static char *tcp_error_strings[] = {
 
 /* All TCP nodes have the same outgoing arcs */
 #define foreach_tcp_state_next                  \
-  _ (DROP, "error-drop")                        \
+  _ (DROP4, "ip4-drop")                         \
+  _ (DROP6, "ip6-drop")                         \
   _ (TCP4_OUTPUT, "tcp4-output")                \
   _ (TCP6_OUTPUT, "tcp6-output")
 
@@ -74,6 +75,9 @@ typedef enum _tcp_state_next
 
 #define tcp_next_output(is_ip4) (is_ip4 ? TCP_NEXT_TCP4_OUTPUT          \
                                         : TCP_NEXT_TCP6_OUTPUT)
+
+#define tcp_next_drop(is_ip4) (is_ip4 ? TCP_NEXT_DROP4                  \
+                                      : TCP_NEXT_DROP6)
 
 vlib_node_registration_t tcp4_established_node;
 vlib_node_registration_t tcp6_established_node;
@@ -1554,7 +1558,7 @@ tcp_segment_rcv (tcp_main_t * tm, tcp_connection_t * tc, vlib_buffer_t * b,
       if (seq_lt (vnet_buffer (b)->tcp.seq_number, tc->rcv_nxt))
 	{
 	  error = TCP_ERROR_SEGMENT_OLD;
-	  *next0 = TCP_NEXT_DROP;
+	  *next0 = tcp_next_drop (tc->c_is_ip4);
 
 	  /* Completely in the past (possible retransmit) */
 	  if (seq_leq (vnet_buffer (b)->tcp.seq_end, tc->rcv_nxt))
@@ -1707,7 +1711,7 @@ tcp46_established_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_buffer_t *b0;
 	  tcp_header_t *th0 = 0;
 	  tcp_connection_t *tc0;
-	  u32 next0 = TCP_ESTABLISHED_NEXT_DROP, error0 = TCP_ERROR_ENQUEUED;
+	  u32 next0 = tcp_next_drop (is_ip4), error0 = TCP_ERROR_ENQUEUED;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -1967,7 +1971,7 @@ tcp46_syn_sent_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  tcp_header_t *tcp0 = 0;
 	  tcp_connection_t *tc0;
 	  tcp_connection_t *new_tc0;
-	  u32 next0 = TCP_SYN_SENT_NEXT_DROP, error0 = TCP_ERROR_ENQUEUED;
+	  u32 next0 = tcp_next_drop (is_ip4), error0 = TCP_ERROR_ENQUEUED;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -2294,7 +2298,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  vlib_buffer_t *b0;
 	  tcp_header_t *tcp0 = 0;
 	  tcp_connection_t *tc0;
-	  u32 next0 = TCP_RCV_PROCESS_NEXT_DROP, error0 = TCP_ERROR_ENQUEUED;
+	  u32 next0 = tcp_next_drop (is_ip4), error0 = TCP_ERROR_ENQUEUED;
 	  u8 is_fin0;
 
 	  bi0 = from[0];
@@ -2690,7 +2694,7 @@ tcp46_listen_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip4_header_t *ip40;
 	  ip6_header_t *ip60;
 	  tcp_connection_t *child0;
-	  u32 error0 = TCP_ERROR_SYNS_RCVD, next0 = TCP_LISTEN_NEXT_DROP;
+	  u32 error0 = TCP_ERROR_SYNS_RCVD, next0 = tcp_next_drop (is_ip4);
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -2895,22 +2899,22 @@ typedef enum _tcp_input_next
 } tcp_input_next_t;
 
 #define foreach_tcp4_input_next                 \
-  _ (DROP, "error-drop")                        \
+  _ (DROP, "ip4-drop")                          \
   _ (LISTEN, "tcp4-listen")                     \
   _ (RCV_PROCESS, "tcp4-rcv-process")           \
   _ (SYN_SENT, "tcp4-syn-sent")                 \
   _ (ESTABLISHED, "tcp4-established")		\
   _ (RESET, "tcp4-reset")			\
-  _ (PUNT, "error-punt")
+  _ (PUNT, "ip4-punt")
 
 #define foreach_tcp6_input_next                 \
-  _ (DROP, "error-drop")                        \
+  _ (DROP, "ip6-drop")                          \
   _ (LISTEN, "tcp6-listen")                     \
   _ (RCV_PROCESS, "tcp6-rcv-process")           \
   _ (SYN_SENT, "tcp6-syn-sent")                 \
   _ (ESTABLISHED, "tcp6-established")		\
   _ (RESET, "tcp6-reset")			\
-  _ (PUNT, "error-punt")
+  _ (PUNT, "ip6-punt")
 
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
 
