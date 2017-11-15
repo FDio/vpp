@@ -72,7 +72,7 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
         #  could be arbitrary.
         self.assertEqual(pkt[UDP].dport, type(self).dport)
         # Verify VNI
-        self.assertEqual(pkt[VXLAN].VNI, vni)
+        self.assertEqual(pkt[VXLAN].vni, vni)
 
     def test_decap(self):
         """ Decapsulation test
