@@ -40,7 +40,8 @@
 #include <stdbool.h>
 
 #define foreach_punt_next			\
-  _ (PUNT, "error-punt")
+  _ (PUNT4, "ip4-punt")                         \
+  _ (PUNT6, "ip6-punt")
 
 typedef enum
 {
@@ -57,6 +58,8 @@ enum punt_socket_rx_next_e
   PUNT_SOCKET_RX_NEXT_IP6_LOOKUP,
   PUNT_SOCKET_RX_N_NEXT
 };
+
+#define punt_next_punt(is_ip4) (is_ip4 ? PUNT_NEXT_PUNT4 : PUNT_NEXT_PUNT6)
 
 vlib_node_registration_t udp4_punt_node;
 vlib_node_registration_t udp6_punt_node;
@@ -104,7 +107,8 @@ udp46_punt_inline (vlib_main_t * vm,
     {
       u32 n_left_to_next;
 
-      vlib_get_next_frame (vm, node, PUNT_NEXT_PUNT, to_next, n_left_to_next);
+      vlib_get_next_frame (vm, node, punt_next_punt (is_ip4), to_next,
+			   n_left_to_next);
 
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
@@ -123,7 +127,7 @@ udp46_punt_inline (vlib_main_t * vm,
 	  b0->error = node->errors[PUNT_ERROR_UDP_PORT];
 	}
 
-      vlib_put_next_frame (vm, node, PUNT_NEXT_PUNT, n_left_to_next);
+      vlib_put_next_frame (vm, node, punt_next_punt (is_ip4), n_left_to_next);
     }
 
   return from_frame->n_vectors;

@@ -2727,7 +2727,7 @@ ip4_rewrite_inline (vlib_main_t * vm,
 
     <em>Next Indices:</em>
     - <code> adj->rewrite_header.next_index </code>
-      or @c error-drop
+      or @c ip4-drop
 */
 static uword
 ip4_rewrite (vlib_main_t * vm,
@@ -2779,7 +2779,7 @@ VLIB_REGISTER_NODE (ip4_rewrite_node) = {
 
   .n_next_nodes = 2,
   .next_nodes = {
-    [IP4_REWRITE_NEXT_DROP] = "error-drop",
+    [IP4_REWRITE_NEXT_DROP] = "ip4-drop",
     [IP4_REWRITE_NEXT_ICMP_ERROR] = "ip4-icmp-error",
   },
 };
