@@ -65,15 +65,6 @@ typedef struct
 
 typedef struct
 {
-  u32 sw_if_index;
-  u64 rx_packets;			/**< packet counter */
-  u64 rx_bytes;			/**< byte counter  */
-  u64 tx_packets;			/**< packet counter */
-  u64 tx_bytes;			/**< byte counter  */
-} vnet_combined_counter_t;
-
-typedef struct
-{
   ip6_address_t address;
   u32 address_length;
   u32 index;
