@@ -855,7 +855,7 @@ crypto_op_init (struct rte_mempool *mempool,
 }
 
 static clib_error_t *
-crypto_create_crypto_op_pool (u8 numa)
+crypto_create_crypto_op_pool (vlib_main_t * vm, u8 numa)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   dpdk_config_main_t *conf = &dpdk_config_main;
@@ -863,39 +863,42 @@ crypto_create_crypto_op_pool (u8 numa)
   u8 *pool_name;
   u32 pool_priv_size = sizeof (struct rte_crypto_op_pool_private);
   struct rte_crypto_op_pool_private *priv;
+  struct rte_mempool *mp;
   clib_error_t *error = NULL;
+  vlib_physmem_region_index_t pri;
 
   data = vec_elt_at_index (dcm->data, numa);
 
+  /* Already allocated */
   if (data->crypto_op)
     return NULL;
 
   pool_name = format (0, "crypto_pool_numa%u%c", numa, 0);
 
-  data->crypto_op =
-    rte_mempool_create ((i8 *) pool_name, conf->num_mbufs, crypto_op_len (),
-			512, pool_priv_size, NULL, NULL, crypto_op_init, NULL,
-			numa, 0);
+  error =
+    dpdk_pool_create (vm, pool_name, crypto_op_len (), conf->num_mbufs,
+		      pool_priv_size, 512, numa, &mp, &pri);
 
-  if (!data->crypto_op)
-    {
-      error = clib_error_return (0, "failed to allocate %s", pool_name);
-      goto done;
-    }
+  vec_free (pool_name);
 
-  priv = rte_mempool_get_priv (data->crypto_op);
+  if (error)
+    return error;
 
+  /* Initialize mempool private data */
+  priv = rte_mempool_get_priv (mp);
   priv->priv_size = pool_priv_size;
   priv->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
 
-done:
-  vec_free (pool_name);
+  /* call the object initializers */
+  rte_mempool_obj_iter (mp, crypto_op_init, 0);
 
-  return error;
+  data->crypto_op = mp;
+
+  return NULL;
 }
 
 static clib_error_t *
-crypto_create_session_h_pool (u8 numa)
+crypto_create_session_h_pool (vlib_main_t * vm, u8 numa)
 {
 #if DPDK_NO_AEAD
   return NULL;
@@ -903,8 +906,10 @@ crypto_create_session_h_pool (u8 numa)
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_data_t *data;
   u8 *pool_name;
-  u32 elt_size;
+  struct rte_mempool *mp;
   clib_error_t *error = NULL;
+  vlib_physmem_region_index_t pri;
+  u32 elt_size;
 
   data = vec_elt_at_index (dcm->data, numa);
 
@@ -912,23 +917,26 @@ crypto_create_session_h_pool (u8 numa)
     return NULL;
 
   pool_name = format (0, "session_h_pool_numa%u%c", numa, 0);
+
   elt_size = rte_cryptodev_get_header_session_size ();
 
-  data->session_h =
-    rte_mempool_create ((i8 *) pool_name, DPDK_CRYPTO_NB_SESS_OBJS, elt_size,
-			512, 0, NULL, NULL, NULL, NULL, numa, 0);
-
-  if (!data->session_h)
-    error = clib_error_return (0, "failed to allocate %s", pool_name);
+  error =
+    dpdk_pool_create (vm, pool_name, elt_size, DPDK_CRYPTO_NB_SESS_OBJS,
+		      0, 512, numa, &mp, &pri);
 
   vec_free (pool_name);
 
-  return error;
+  if (error)
+    return error;
+
+  data->session_h = mp;
+
+  return NULL;
 #endif
 }
 
 static clib_error_t *
-crypto_create_session_drv_pool (crypto_dev_t * dev)
+crypto_create_session_drv_pool (vlib_main_t * vm, crypto_dev_t * dev)
 {
 #if DPDK_NO_AEAD
   return NULL;
@@ -936,8 +944,10 @@ crypto_create_session_drv_pool (crypto_dev_t * dev)
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   crypto_data_t *data;
   u8 *pool_name;
-  u32 elt_size;
+  struct rte_mempool *mp;
   clib_error_t *error = NULL;
+  vlib_physmem_region_index_t pri;
+  u32 elt_size;
   u8 numa = dev->numa;
 
   data = vec_elt_at_index (dcm->data, numa);
@@ -951,21 +961,23 @@ crypto_create_session_drv_pool (crypto_dev_t * dev)
   pool_name = format (0, "session_drv%u_pool_numa%u%c", dev->drv_id, numa, 0);
   elt_size = rte_cryptodev_get_private_session_size (dev->id);
 
-  data->session_drv[dev->drv_id] =
-    rte_mempool_create ((i8 *) pool_name, DPDK_CRYPTO_NB_SESS_OBJS, elt_size,
-			512, 0, NULL, NULL, NULL, NULL, numa, 0);
-
-  if (!data->session_drv[dev->drv_id])
-    error = clib_error_return (0, "failed to allocate %s", pool_name);
+  error =
+    dpdk_pool_create (vm, pool_name, elt_size, DPDK_CRYPTO_NB_SESS_OBJS,
+		      0, 512, numa, &mp, &pri);
 
   vec_free (pool_name);
 
-  return error;
+  if (error)
+    return error;
+
+  data->session_drv[dev->drv_id] = mp;
+
+  return NULL;
 #endif
 }
 
 static clib_error_t *
-crypto_create_pools (void)
+crypto_create_pools (vlib_main_t * vm)
 {
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
   clib_error_t *error = NULL;
@@ -976,15 +988,15 @@ crypto_create_pools (void)
     {
       vec_validate_aligned (dcm->data, dev->numa, CLIB_CACHE_LINE_BYTES);
 
-      error = crypto_create_crypto_op_pool (dev->numa);
+      error = crypto_create_crypto_op_pool (vm, dev->numa);
       if (error)
 	return error;
 
-      error = crypto_create_session_h_pool (dev->numa);
+      error = crypto_create_session_h_pool (vm, dev->numa);
       if (error)
 	return error;
 
-      error = crypto_create_session_drv_pool (dev);
+      error = crypto_create_session_drv_pool (vm, dev);
       if (error)
 	return error;
     }
@@ -1067,7 +1079,7 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
 
   crypto_auto_placement ();
 
-  error = crypto_create_pools ();
+  error = crypto_create_pools (vm);
   if (error)
     {
       clib_error_report (error);
