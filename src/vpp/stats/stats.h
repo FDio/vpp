@@ -51,30 +51,6 @@ typedef CLIB_PACKED (struct
 }) ip4_route_t;
 /* *INDENT-ON* */
 
-/* see interface.api */
-typedef struct
-{
-  u32 sw_if_index;
-  u64 drop;
-  u64 punt;
-  u64 rx_ip4;
-  u64 rx_ip6;
-  u64 rx_no_buffer;
-  u64 rx_miss;
-  u64 rx_error;
-  u64 tx_error;
-  u64 rx_mpls;
-} vnet_simple_counter_t;
-
-typedef struct
-{
-  u32 sw_if_index;
-  u64 rx_packets;			/**< packet counter */
-  u64 rx_bytes;			/**< byte counter  */
-  u64 tx_packets;			/**< packet counter */
-  u64 tx_bytes;			/**< byte counter  */
-} vnet_combined_counter_t;
-
 typedef struct
 {
   ip6_address_t address;
