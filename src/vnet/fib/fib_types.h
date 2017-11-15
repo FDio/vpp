@@ -461,6 +461,16 @@ typedef struct fib_route_path_t_ {
 } fib_route_path_t;
 
 /**
+ * Unformat a fib_route_path_t from CLI input
+ */
+extern uword unformat_fib_route_path(unformat_input_t * input, va_list * args);
+
+/**
+ * A help string to list the FIB path options
+ */
+#define FIB_ROUTE_PATH_HELP "[next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <interface>] [out-labels <value value value>]"
+
+/**
  * @brief 
  * A representation of a fib path for fib_path_encode to convey the information to the caller
  */

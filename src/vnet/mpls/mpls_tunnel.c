@@ -778,11 +778,11 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
     vnet_main_t * vnm = vnet_get_main();
     u8 is_del = 0, l2_only = 0, is_multicast =0;
     fib_route_path_t rpath, *rpaths = NULL;
-    mpls_label_t out_label = MPLS_LABEL_INVALID;
-    u32 sw_if_index = ~0;
+    u32 sw_if_index = ~0, payload_proto;
     clib_error_t *error = NULL;
 
     memset(&rpath, 0, sizeof(rpath));
+    payload_proto = DPO_PROTO_MPLS;
 
     /* Get a line of input. */
     if (! unformat_user (input, unformat_line_input, line_input))
@@ -800,56 +800,14 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
             is_del = 0;
         else if (unformat (line_input, "add"))
             is_del = 0;
-        else if (unformat (line_input, "out-labels"))
-	{
-            while (unformat (line_input, "%U",
-                             unformat_mpls_unicast_label,
-                             &out_label))
-            {
-                vec_add1 (rpath.frp_label_stack, out_label);
-            }
-	}
-        else if (unformat (line_input, "via %U %U",
-                           unformat_ip4_address,
-                           &rpath.frp_addr.ip4,
-                           unformat_vnet_sw_interface, vnm,
-                           &rpath.frp_sw_if_index))
-        {
-            rpath.frp_weight = 1;
-            rpath.frp_proto = DPO_PROTO_IP4;
-        }
-
-        else if (unformat (line_input, "via %U %U",
-                           unformat_ip6_address,
-                           &rpath.frp_addr.ip6,
-                           unformat_vnet_sw_interface, vnm,
-                           &rpath.frp_sw_if_index))
-        {
-            rpath.frp_weight = 1;
-            rpath.frp_proto = DPO_PROTO_IP6;
-        }
-        else if (unformat (line_input, "via %U",
-                           unformat_ip6_address,
-                           &rpath.frp_addr.ip6))
-        {
-            rpath.frp_fib_index = 0;
-            rpath.frp_weight = 1;
-            rpath.frp_sw_if_index = ~0;
-            rpath.frp_proto = DPO_PROTO_IP6;
-        }
-        else if (unformat (line_input, "via %U",
-                           unformat_ip4_address,
-                           &rpath.frp_addr.ip4))
-        {
-            rpath.frp_fib_index = 0;
-            rpath.frp_weight = 1;
-            rpath.frp_sw_if_index = ~0;
-            rpath.frp_proto = DPO_PROTO_IP4;
-        }
         else if (unformat (line_input, "l2-only"))
             l2_only = 1;
         else if (unformat (line_input, "multicast"))
             is_multicast = 1;
+        else if (unformat (line_input, "via %U",
+                           unformat_fib_route_path,
+                           &rpath, &payload_proto))
+            vec_add1(rpaths, rpath);
         else
         {
             error = clib_error_return (0, "unknown input '%U'",
@@ -857,8 +815,6 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
             goto done;
         }
     }
-
-    vec_add1(rpaths, rpath);
 
     if (is_del)
     {
@@ -901,7 +857,7 @@ done:
 VLIB_CLI_COMMAND (create_mpls_tunnel_command, static) = {
   .path = "mpls tunnel",
   .short_help =
-  "mpls tunnel via [addr] [interface] [out-labels]",
+  "mpls tunnel [multicast] [l2-only] via [next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <interface>] [out-labels <value value value>]",
   .function = vnet_create_mpls_tunnel_command_fn,
 };
 
