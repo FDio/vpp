@@ -83,7 +83,15 @@ signal_ip46_icmp_reply_event (u8 event_type, vlib_buffer_t * b0)
   uword *p = hash_get (pm->ping_run_by_icmp_id,
 		       clib_net_to_host_u16 (net_icmp_id));
   if (!p)
-    return 0;
+    {
+      /* advance the buffer for punting */
+      if (event_type == PING_RESPONSE_IP4)
+	vlib_buffer_advance (b0, -(sizeof (ip4_header_t)));
+      else
+	vlib_buffer_advance (b0, -(sizeof (ip6_header_t)));
+
+      return 0;
+    }
 
   ping_run_t *pr = vec_elt_at_index (pm->ping_runs, p[0]);
   vlib_main_t *vm = vlib_mains[pr->cli_thread_index];
@@ -155,8 +163,8 @@ VLIB_REGISTER_NODE (ip6_icmp_echo_reply_node, static) =
   .format_trace = format_icmp_echo_trace,
   .n_next_nodes = ICMP6_ECHO_REPLY_N_NEXT,
   .next_nodes = {
-    [ICMP6_ECHO_REPLY_NEXT_DROP] = "error-drop",
-    [ICMP6_ECHO_REPLY_NEXT_PUNT] = "error-punt",
+    [ICMP6_ECHO_REPLY_NEXT_DROP] = "ip6-drop",
+    [ICMP6_ECHO_REPLY_NEXT_PUNT] = "ip6-punt",
   },
 };
 /* *INDENT-ON* */
@@ -213,8 +221,8 @@ VLIB_REGISTER_NODE (ip4_icmp_echo_reply_node, static) =
   .format_trace = format_icmp_echo_trace,
   .n_next_nodes = ICMP4_ECHO_REPLY_N_NEXT,
   .next_nodes = {
-    [ICMP4_ECHO_REPLY_NEXT_DROP] = "error-drop",
-    [ICMP4_ECHO_REPLY_NEXT_PUNT] = "error-punt",
+    [ICMP4_ECHO_REPLY_NEXT_DROP] = "ip4-drop",
+    [ICMP4_ECHO_REPLY_NEXT_PUNT] = "ip4-punt",
   },
 };
 /* *INDENT-ON* */

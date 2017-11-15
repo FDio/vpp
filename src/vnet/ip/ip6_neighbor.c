@@ -2435,7 +2435,7 @@ VLIB_REGISTER_NODE (ip6_icmp_router_solicitation_node,static) =
 
   .n_next_nodes = ICMP6_ROUTER_SOLICITATION_N_NEXT,
   .next_nodes = {
-    [ICMP6_ROUTER_SOLICITATION_NEXT_DROP] = "error-drop",
+    [ICMP6_ROUTER_SOLICITATION_NEXT_DROP] = "ip6-drop",
     [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_RW] = "ip6-rewrite-mcast",
     [ICMP6_ROUTER_SOLICITATION_NEXT_REPLY_TX] = "interface-output",
   },
@@ -2628,7 +2628,7 @@ VLIB_REGISTER_NODE (ip6_icmp_router_advertisement_node,static) =
 
   .n_next_nodes = 1,
   .next_nodes = {
-    [0] = "error-drop",
+    [0] = "ip6-drop",
   },
 };
 /* *INDENT-ON* */
@@ -2671,7 +2671,7 @@ VLIB_REGISTER_NODE (ip6_icmp_neighbor_solicitation_node,static) =
 
   .n_next_nodes = ICMP6_NEIGHBOR_SOLICITATION_N_NEXT,
   .next_nodes = {
-    [ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP] = "error-drop",
+    [ICMP6_NEIGHBOR_SOLICITATION_NEXT_DROP] = "ip6-drop",
     [ICMP6_NEIGHBOR_SOLICITATION_NEXT_REPLY] = "interface-output",
   },
 };
@@ -2689,7 +2689,7 @@ VLIB_REGISTER_NODE (ip6_icmp_neighbor_advertisement_node,static) =
 
   .n_next_nodes = 1,
   .next_nodes = {
-    [0] = "error-drop",
+    [0] = "ip6-drop",
   },
 };
 /* *INDENT-ON* */

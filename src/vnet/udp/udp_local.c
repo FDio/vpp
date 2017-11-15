@@ -23,16 +23,22 @@
 
 udp_main_t udp_main;
 
-#define foreach_udp_local_next                  \
-  _ (PUNT, "error-punt")                        \
-  _ (DROP, "error-drop")                        \
-  _ (ICMP4_ERROR, "ip4-icmp-error")             \
-  _ (ICMP6_ERROR, "ip6-icmp-error")
+#define foreach_udp4_local_next                  \
+  _ (PUNT, "ip4-punt")                           \
+  _ (DROP, "ip4-drop")                           \
+  _ (ICMP_ERROR, "ip4-icmp-error")
+
+#define foreach_udp6_local_next                  \
+  _ (PUNT, "ip6-punt")                          \
+  _ (DROP, "ip6-drop")                           \
+  _ (ICMP_ERROR, "ip6-icmp-error")
+
+
 
 typedef enum
 {
 #define _(s,n) UDP_LOCAL_NEXT_##s,
-  foreach_udp_local_next
+  foreach_udp4_local_next
 #undef _
     UDP_LOCAL_N_NEXT,
 } udp_local_next_t;
@@ -195,7 +201,7 @@ udp46_local_inline (vlib_main_t * vm,
 					       ICMP4_destination_unreachable,
 					       ICMP4_destination_unreachable_port_unreachable,
 					       0);
-		  next0 = UDP_LOCAL_NEXT_ICMP4_ERROR;
+		  next0 = UDP_LOCAL_NEXT_ICMP_ERROR;
 		  n_no_listener++;
 		}
 	      else
@@ -204,7 +210,7 @@ udp46_local_inline (vlib_main_t * vm,
 					       ICMP6_destination_unreachable,
 					       ICMP6_destination_unreachable_port_unreachable,
 					       0);
-		  next0 = UDP_LOCAL_NEXT_ICMP6_ERROR;
+		  next0 = UDP_LOCAL_NEXT_ICMP_ERROR;
 		  n_no_listener++;
 		}
 	    }
@@ -232,7 +238,7 @@ udp46_local_inline (vlib_main_t * vm,
 					       ICMP4_destination_unreachable,
 					       ICMP4_destination_unreachable_port_unreachable,
 					       0);
-		  next1 = UDP_LOCAL_NEXT_ICMP4_ERROR;
+		  next1 = UDP_LOCAL_NEXT_ICMP_ERROR;
 		  n_no_listener++;
 		}
 	      else
@@ -241,7 +247,7 @@ udp46_local_inline (vlib_main_t * vm,
 					       ICMP6_destination_unreachable,
 					       ICMP6_destination_unreachable_port_unreachable,
 					       0);
-		  next1 = UDP_LOCAL_NEXT_ICMP6_ERROR;
+		  next1 = UDP_LOCAL_NEXT_ICMP_ERROR;
 		  n_no_listener++;
 		}
 	    }
@@ -260,8 +266,7 @@ udp46_local_inline (vlib_main_t * vm,
 		{
 		  tr->src_port = h0 ? h0->src_port : 0;
 		  tr->dst_port = h0 ? h0->dst_port : 0;
-		  tr->bound = (next0 != UDP_LOCAL_NEXT_ICMP4_ERROR &&
-			       next0 != UDP_LOCAL_NEXT_ICMP6_ERROR);
+		  tr->bound = (next0 != UDP_LOCAL_NEXT_ICMP_ERROR);
 		}
 	    }
 	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
@@ -272,8 +277,7 @@ udp46_local_inline (vlib_main_t * vm,
 		{
 		  tr->src_port = h1 ? h1->src_port : 0;
 		  tr->dst_port = h1 ? h1->dst_port : 0;
-		  tr->bound = (next1 != UDP_LOCAL_NEXT_ICMP4_ERROR &&
-			       next1 != UDP_LOCAL_NEXT_ICMP6_ERROR);
+		  tr->bound = (next1 != UDP_LOCAL_NEXT_ICMP_ERROR);
 		}
 	    }
 
@@ -341,7 +345,7 @@ udp46_local_inline (vlib_main_t * vm,
 						   ICMP4_destination_unreachable,
 						   ICMP4_destination_unreachable_port_unreachable,
 						   0);
-		      next0 = UDP_LOCAL_NEXT_ICMP4_ERROR;
+		      next0 = UDP_LOCAL_NEXT_ICMP_ERROR;
 		      n_no_listener++;
 		    }
 		  else
@@ -350,7 +354,7 @@ udp46_local_inline (vlib_main_t * vm,
 						   ICMP6_destination_unreachable,
 						   ICMP6_destination_unreachable_port_unreachable,
 						   0);
-		      next0 = UDP_LOCAL_NEXT_ICMP6_ERROR;
+		      next0 = UDP_LOCAL_NEXT_ICMP_ERROR;
 		      n_no_listener++;
 		    }
 		}
@@ -376,8 +380,7 @@ udp46_local_inline (vlib_main_t * vm,
 		{
 		  tr->src_port = h0->src_port;
 		  tr->dst_port = h0->dst_port;
-		  tr->bound = (next0 != UDP_LOCAL_NEXT_ICMP4_ERROR &&
-			       next0 != UDP_LOCAL_NEXT_ICMP6_ERROR);
+		  tr->bound = (next0 != UDP_LOCAL_NEXT_ICMP_ERROR);
 		}
 	    }
 
@@ -426,7 +429,7 @@ VLIB_REGISTER_NODE (udp4_local_node) = {
   .n_next_nodes = UDP_LOCAL_N_NEXT,
   .next_nodes = {
 #define _(s,n) [UDP_LOCAL_NEXT_##s] = n,
-    foreach_udp_local_next
+    foreach_udp4_local_next
 #undef _
   },
 
@@ -451,7 +454,7 @@ VLIB_REGISTER_NODE (udp6_local_node) = {
   .n_next_nodes = UDP_LOCAL_N_NEXT,
   .next_nodes = {
 #define _(s,n) [UDP_LOCAL_NEXT_##s] = n,
-    foreach_udp_local_next
+    foreach_udp6_local_next
 #undef _
   },
 

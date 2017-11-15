@@ -547,7 +547,7 @@ VLIB_REGISTER_NODE (ip4_frag_node) = {
     [IP4_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP4_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
     [IP4_FRAG_NEXT_ICMP_ERROR] = "ip4-icmp-error",
-    [IP4_FRAG_NEXT_DROP] = "error-drop"
+    [IP4_FRAG_NEXT_DROP] = "ip4-drop"
   },
 };
 /* *INDENT-ON* */
@@ -567,7 +567,7 @@ VLIB_REGISTER_NODE (ip6_frag_node) = {
   .next_nodes = {
     [IP6_FRAG_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [IP6_FRAG_NEXT_IP6_LOOKUP] = "ip6-lookup",
-    [IP6_FRAG_NEXT_DROP] = "error-drop"
+    [IP6_FRAG_NEXT_DROP] = "ip6-drop"
   },
 };
 /* *INDENT-ON* */
