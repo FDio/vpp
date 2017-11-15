@@ -219,7 +219,7 @@ VLIB_REGISTER_NODE (ip4_icmp_input_node,static) = {
 
   .n_next_nodes = 1,
   .next_nodes = {
-    [ICMP_INPUT_NEXT_ERROR] = "error-punt",
+    [ICMP_INPUT_NEXT_ERROR] = "ip4-punt",
   },
 };
 /* *INDENT-ON* */
@@ -592,7 +592,7 @@ VLIB_REGISTER_NODE (ip4_icmp_error_node) = {
 
   .n_next_nodes = IP4_ICMP_ERROR_N_NEXT,
   .next_nodes = {
-    [IP4_ICMP_ERROR_NEXT_DROP] = "error-drop",
+    [IP4_ICMP_ERROR_NEXT_DROP] = "ip4-drop",
     [IP4_ICMP_ERROR_NEXT_LOOKUP] = "ip4-lookup",
   },
 
