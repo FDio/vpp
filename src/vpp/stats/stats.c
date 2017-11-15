@@ -687,15 +687,20 @@ static void
   uword *p;
   i32 retval = 0;
   vl_api_registration_t *reg;
-  int i;
-  u32 swif;
+  u32 i, swif, num = 0;
 
-  // Validate we have good sw_if_indexes before registering
-  for (i = 0; i < mp->num; i++)
+  num = ntohl (mp->num);
+
+  /*
+   * Validate sw_if_indexes before registering
+   */
+  for (i = 0; i < num; i++)
     {
-      swif = mp->sw_ifs[i];
+      swif = ntohl (mp->sw_ifs[i]);
 
-      /* Check its a real sw_if_index that the client is allowed to see */
+      /*
+       * Check its a real sw_if_index that the client is allowed to see
+       */
       if (swif != ~0)
 	{
 	  if (pool_is_free_index (sm->interface_main->sw_interfaces, swif))
@@ -706,23 +711,24 @@ static void
 	}
     }
 
-  for (i = 0; i < mp->num; i++)
+  for (i = 0; i < num; i++)
     {
-      swif = mp->sw_ifs[i];
+      swif = ntohl (mp->sw_ifs[i]);
 
       rp.client_index = mp->client_index;
       rp.client_pid = mp->pid;
       handle_client_registration (&rp, IDX_PER_INTERFACE_COMBINED_COUNTERS,
-				  swif, mp->enable_disable);
+				  swif, ntohl (mp->enable_disable));
     }
 
 reply:
   reg = vl_api_client_index_to_registration (mp->client_index);
   if (!reg)
     {
-      for (i = 0; i < mp->num; i++)
+      for (i = 0; i < num; i++)
 	{
-	  swif = mp->sw_ifs[i];
+	  swif = ntohl (mp->sw_ifs[i]);
+
 	  sm->enable_poller =
 	    clear_client_for_stat (IDX_PER_INTERFACE_COMBINED_COUNTERS, swif,
 				   mp->client_index);
@@ -748,53 +754,21 @@ do_combined_per_interface_counters (stats_main_t * sm)
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
   vl_api_registration_t *vl_reg;
   vlib_combined_counter_main_t *cm;
-  /*
-   * items_this_message will eventually be used to optimise the batching
-   * of per client messages for each stat. For now setting this to 1 then
-   * iterate. This will not affect API.
-   *
-   * FIXME instead of enqueueing here, this should be sent to a batch
-   * storer for per-client transmission. Each "mp" sent would be a single entry
-   * and if a client is listening to other sw_if_indexes for same, it would be
-   * appended to that *mp
-   */
-  u32 items_this_message = 1;
-  vnet_combined_counter_t *vp = 0;
+  vl_api_vnet_combined_counter_t *vp = 0;
   vlib_counter_t v;
-  int i, j;
-  u32 timestamp;
+  u32 i, j;
   vpe_client_stats_registration_t *reg;
   vpe_client_registration_t *client;
   u32 *sw_if_index = 0;
 
-  /*
-     FIXME(s):
-     - capturing the timestamp of the counters "when VPP knew them" is important.
-     Less so is that the timing of the delivery to the control plane be in the same
-     timescale.
-
-     i.e. As long as the control plane can delta messages from VPP and work out
-     velocity etc based on the timestamp, it can do so in a more "batch mode".
-
-     It would be beneficial to keep a "per-client" message queue, and then
-     batch all the stat messages for a client into one message, with
-     discrete timestamps.
-
-     Given this particular API is for "per interface" one assumes that the scale
-     is less than the ~0 case, which the prior API is suited for.
-   */
   vnet_interface_counter_lock (im);
-
-  timestamp = vlib_time_now (sm->vlib_main);
 
   vec_reset_length (sm->regs_tmp);
 
   /* *INDENT-OFF* */
   pool_foreach (reg,
                 sm->stats_registrations[IDX_PER_INTERFACE_COMBINED_COUNTERS],
-  ({
-    vec_add1 (sm->regs_tmp, reg);
-  }));
+		({ vec_add1 (sm->regs_tmp, reg); }));
   /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (sm->regs_tmp); i++)
@@ -810,13 +784,10 @@ do_combined_per_interface_counters (stats_main_t * sm)
       vec_reset_length (sm->clients_tmp);
 
       /* *INDENT-OFF* */
-      pool_foreach (client, reg->clients, ({
-	vec_add1 (sm->clients_tmp, client);
-      }));
+      pool_foreach (client, reg->clients, ({ vec_add1 (sm->clients_tmp,
+						      client);}));
       /* *INDENT-ON* */
 
-      //FIXME - should be doing non-variant part of mp here and managing
-      // any alloc per client in that vec_foreach
       for (j = 0; j < vec_len (sm->clients_tmp); j++)
 	{
 	  client = sm->clients_tmp[j];
@@ -831,35 +802,59 @@ do_combined_per_interface_counters (stats_main_t * sm)
 				       reg->item, client->client_index);
 	      continue;
 	    }
+	  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) + sizeof (*vp));
+	  memset (mp, 0, sizeof (*mp));
 
-	  mp = vl_msg_api_alloc (sizeof (*mp) +
-				 (items_this_message *
-				  (sizeof (*vp) /* rx */ )));
-
-	  // FIXME when optimising for items_this_message > 1 need to include a
-	  // SIMPLE_INTERFACE_BATCH_SIZE check.
 	  mp->_vl_msg_id =
 	    ntohs (VL_API_VNET_PER_INTERFACE_COMBINED_COUNTERS);
 
-	  mp->count = items_this_message;
-	  mp->timestamp = timestamp;
-	  vp = (vnet_combined_counter_t *) mp->data;
+	  /*
+	   * count will eventually be used to optimise the batching
+	   * of per client messages for each stat. For now setting this to 1 then
+	   * iterate. This will not affect API.
+	   *
+	   * FIXME instead of enqueueing here, this should be sent to a batch
+	   * storer for per-client transmission. Each "mp" sent would be a single entry
+	   * and if a client is listening to other sw_if_indexes for same, it would be
+	   * appended to that *mp
+	   *
+	   *
+	   * FIXME(s):
+	   * - capturing the timestamp of the counters "when VPP knew them" is important.
+	   * Less so is that the timing of the delivery to the control plane be in the same
+	   * timescale.
 
+	   * i.e. As long as the control plane can delta messages from VPP and work out
+	   * velocity etc based on the timestamp, it can do so in a more "batch mode".
+
+	   * It would be beneficial to keep a "per-client" message queue, and then
+	   * batch all the stat messages for a client into one message, with
+	   * discrete timestamps.
+
+	   * Given this particular API is for "per interface" one assumes that the scale
+	   * is less than the ~0 case, which the prior API is suited for.
+	   */
+
+	  /*
+	   * 1 message per api call for now
+	   */
+	  mp->count = htonl (1);
+	  mp->timestamp = htonl (vlib_time_now (sm->vlib_main));
+
+	  vp = (vl_api_vnet_combined_counter_t *) mp->data;
 	  vp->sw_if_index = htonl (reg->item);
 
+	  im = &vnet_get_main ()->interface_main;
 	  cm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX;
 	  vlib_get_combined_counter (cm, reg->item, &v);
-	  clib_mem_unaligned (&vp->rx_packets, u64)
-	    = clib_host_to_net_u64 (v.packets);
+	  clib_mem_unaligned (&vp->rx_packets, u64) =
+	    clib_host_to_net_u64 (v.packets);
 	  clib_mem_unaligned (&vp->rx_bytes, u64) =
 	    clib_host_to_net_u64 (v.bytes);
-
-
-	  /* TX vlib_counter_t packets/bytes */
 	  cm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
 	  vlib_get_combined_counter (cm, reg->item, &v);
-	  clib_mem_unaligned (&vp->tx_packets, u64)
-	    = clib_host_to_net_u64 (v.packets);
+	  clib_mem_unaligned (&vp->tx_packets, u64) =
+	    clib_host_to_net_u64 (v.packets);
 	  clib_mem_unaligned (&vp->tx_bytes, u64) =
 	    clib_host_to_net_u64 (v.bytes);
 
@@ -886,12 +881,13 @@ static void
   uword *p;
   i32 retval = 0;
   vl_api_registration_t *reg;
-  int i;
-  u32 swif;
+  u32 i, swif, num = 0;
 
-  for (i = 0; i < mp->num; i++)
+  num = ntohl (mp->num);
+
+  for (i = 0; i < num; i++)
     {
-      swif = mp->sw_ifs[i];
+      swif = ntohl (mp->sw_ifs[i]);
 
       /* Check its a real sw_if_index that the client is allowed to see */
       if (swif != ~0)
@@ -904,14 +900,14 @@ static void
 	}
     }
 
-  for (i = 0; i < mp->num; i++)
+  for (i = 0; i < num; i++)
     {
-      swif = mp->sw_ifs[i];
+      swif = ntohl (mp->sw_ifs[i]);
 
       rp.client_index = mp->client_index;
       rp.client_pid = mp->pid;
       handle_client_registration (&rp, IDX_PER_INTERFACE_SIMPLE_COUNTERS,
-				  swif, mp->enable_disable);
+				  swif, ntohl (mp->enable_disable));
     }
 
 reply:
@@ -920,9 +916,9 @@ reply:
   /* Client may have disconnected abruptly, clean up */
   if (!reg)
     {
-      for (i = 0; i < mp->num; i++)
+      for (i = 0; i < num; i++)
 	{
-	  swif = mp->sw_ifs[i];
+	  swif = ntohl (mp->sw_ifs[i]);
 	  sm->enable_poller =
 	    clear_client_for_stat (IDX_PER_INTERFACE_SIMPLE_COUNTERS, swif,
 				   mp->client_index);
@@ -950,52 +946,21 @@ do_simple_per_interface_counters (stats_main_t * sm)
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
   vl_api_registration_t *vl_reg;
   vlib_simple_counter_main_t *cm;
-  /*
-   * items_this_message will eventually be used to optimise the batching
-   * of per client messages for each stat. For now setting this to 1 then
-   * iterate. This will not affect API.
-   *
-   * FIXME instead of enqueueing here, this should be sent to a batch
-   * storer for per-client transmission. Each "mp" sent would be a single entry
-   * and if a client is listening to other sw_if_indexes for same, it would be
-   * appended to that *mp
-   */
-  u32 items_this_message = 1;
-  int i, j, size;
+  u32 i, j, size;
   vpe_client_stats_registration_t *reg;
   vpe_client_registration_t *client;
-  u32 timestamp;
-  u32 count;
-  vnet_simple_counter_t *vp = 0;
+  u32 timestamp, count;
+  vl_api_vnet_simple_counter_t *vp = 0;
   counter_t v;
 
-  /*
-     FIXME(s):
-     - capturing the timestamp of the counters "when VPP knew them" is important.
-     Less so is that the timing of the delivery to the control plane be in the same
-     timescale.
-
-     i.e. As long as the control plane can delta messages from VPP and work out
-     velocity etc based on the timestamp, it can do so in a more "batch mode".
-
-     It would be beneficial to keep a "per-client" message queue, and then
-     batch all the stat messages for a client into one message, with
-     discrete timestamps.
-
-     Given this particular API is for "per interface" one assumes that the scale
-     is less than the ~0 case, which the prior API is suited for.
-   */
   vnet_interface_counter_lock (im);
-
-  timestamp = vlib_time_now (sm->vlib_main);
 
   vec_reset_length (sm->regs_tmp);
 
   /* *INDENT-OFF* */
   pool_foreach (reg,
-                sm->stats_registrations[IDX_PER_INTERFACE_SIMPLE_COUNTERS], ({
-    vec_add1 (sm->regs_tmp, reg);
-  }));
+		sm->stats_registrations[IDX_PER_INTERFACE_SIMPLE_COUNTERS],
+                ({ vec_add1 (sm->regs_tmp, reg); }));
   /* *INDENT-ON* */
 
   for (i = 0; i < vec_len (sm->regs_tmp); i++)
@@ -1011,13 +976,10 @@ do_simple_per_interface_counters (stats_main_t * sm)
       vec_reset_length (sm->clients_tmp);
 
       /* *INDENT-OFF* */
-      pool_foreach (client, reg->clients, ({
-	vec_add1 (sm->clients_tmp, client);
-      }));
+      pool_foreach (client, reg->clients, ({ vec_add1 (sm->clients_tmp,
+						      client);}));
       /* *INDENT-ON* */
 
-      //FIXME - should be doing non-variant part of mp here and managing
-      // any alloc per client in that vec_foreach
       for (j = 0; j < vec_len (sm->clients_tmp); j++)
 	{
 	  client = sm->clients_tmp[j];
@@ -1032,19 +994,46 @@ do_simple_per_interface_counters (stats_main_t * sm)
 	      continue;
 	    }
 
-	  size = (sizeof (*mp) + (items_this_message * (sizeof (u64) * 10)));
-	  mp = vl_msg_api_alloc (size);
-	  // FIXME when optimising for items_this_message > 1 need to include a
-	  // SIMPLE_INTERFACE_BATCH_SIZE check.
+	  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp) + sizeof (*vp));
+	  memset (mp, 0, sizeof (*mp));
 	  mp->_vl_msg_id = ntohs (VL_API_VNET_PER_INTERFACE_SIMPLE_COUNTERS);
 
-	  mp->count = items_this_message;
-	  mp->timestamp = timestamp;
-	  vp = (vnet_simple_counter_t *) mp->data;
+	  /*
+	   * count will eventually be used to optimise the batching
+	   * of per client messages for each stat. For now setting this to 1 then
+	   * iterate. This will not affect API.
+	   *
+	   * FIXME instead of enqueueing here, this should be sent to a batch
+	   * storer for per-client transmission. Each "mp" sent would be a single entry
+	   * and if a client is listening to other sw_if_indexes for same, it would be
+	   * appended to that *mp
+	   *
+	   *
+	   * FIXME(s):
+	   * - capturing the timestamp of the counters "when VPP knew them" is important.
+	   * Less so is that the timing of the delivery to the control plane be in the same
+	   * timescale.
+
+	   * i.e. As long as the control plane can delta messages from VPP and work out
+	   * velocity etc based on the timestamp, it can do so in a more "batch mode".
+
+	   * It would be beneficial to keep a "per-client" message queue, and then
+	   * batch all the stat messages for a client into one message, with
+	   * discrete timestamps.
+
+	   * Given this particular API is for "per interface" one assumes that the scale
+	   * is less than the ~0 case, which the prior API is suited for.
+	   */
+
+	  /*
+	   * 1 message per api call for now
+	   */
+	  mp->count = htonl (1);
+	  mp->timestamp = htonl (vlib_time_now (sm->vlib_main));
+	  vp = (vl_api_vnet_simple_counter_t *) mp->data;
 
 	  vp->sw_if_index = htonl (reg->item);
 
-	  //FIXME will be simpler with a preprocessor macro
 	  // VNET_INTERFACE_COUNTER_DROP
 	  cm = im->sw_if_counters + VNET_INTERFACE_COUNTER_DROP;
 	  v = vlib_get_simple_counter (cm, reg->item);
