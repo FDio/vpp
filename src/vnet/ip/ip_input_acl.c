@@ -400,7 +400,7 @@ VLIB_REGISTER_NODE (ip4_inacl_node) = {
 
   .n_next_nodes = ACL_NEXT_INDEX_N_NEXT,
   .next_nodes = {
-    [ACL_NEXT_INDEX_DENY] = "error-drop",
+    [ACL_NEXT_INDEX_DENY] = "ip4-drop",
   },
 };
 /* *INDENT-ON* */
@@ -425,7 +425,7 @@ VLIB_REGISTER_NODE (ip6_inacl_node) = {
 
   .n_next_nodes = ACL_NEXT_INDEX_N_NEXT,
   .next_nodes = {
-    [ACL_NEXT_INDEX_DENY] = "error-drop",
+    [ACL_NEXT_INDEX_DENY] = "ip6-drop",
   },
 };
 /* *INDENT-ON* */

@@ -309,7 +309,7 @@ VLIB_REGISTER_NODE (ip4_check_source_reachable_via_any) = {
 
   .n_next_nodes = IP4_SOURCE_CHECK_N_NEXT,
   .next_nodes = {
-    [IP4_SOURCE_CHECK_NEXT_DROP] = "error-drop",
+    [IP4_SOURCE_CHECK_NEXT_DROP] = "ip4-drop",
   },
 
   .format_buffer = format_ip4_header,
@@ -328,7 +328,7 @@ VLIB_REGISTER_NODE (ip4_check_source_reachable_via_rx) = {
 
   .n_next_nodes = IP4_SOURCE_CHECK_N_NEXT,
   .next_nodes = {
-    [IP4_SOURCE_CHECK_NEXT_DROP] = "error-drop",
+    [IP4_SOURCE_CHECK_NEXT_DROP] = "ip4-drop",
   },
 
   .format_buffer = format_ip4_header,
@@ -405,7 +405,7 @@ done:
  * Example of graph node before range checking is enabled:
  * @cliexstart{show vlib graph ip4-source-check-via-rx}
  *            Name                      Next                    Previous
- * ip4-source-check-via-rx         error-drop [0]
+ * ip4-source-check-via-rx         ip4-drop [0]
  * @cliexend
  *
  * Example of how to enable unicast source checking on an interface:
@@ -414,7 +414,7 @@ done:
  * Example of graph node after range checking is enabled:
  * @cliexstart{show vlib graph ip4-source-check-via-rx}
  *            Name                      Next                    Previous
- * ip4-source-check-via-rx         error-drop [0]         ip4-input-no-checksum
+ * ip4-source-check-via-rx         ip4-drop [0]           ip4-input-no-checksum
  *                           ip4-source-and-port-range-         ip4-input
  * @cliexend
  *

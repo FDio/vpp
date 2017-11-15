@@ -155,8 +155,8 @@ VLIB_REGISTER_NODE (ip6_icmp_echo_reply_node, static) =
   .format_trace = format_icmp_echo_trace,
   .n_next_nodes = ICMP6_ECHO_REPLY_N_NEXT,
   .next_nodes = {
-    [ICMP6_ECHO_REPLY_NEXT_DROP] = "error-drop",
-    [ICMP6_ECHO_REPLY_NEXT_PUNT] = "error-punt",
+    [ICMP6_ECHO_REPLY_NEXT_DROP] = "ip6-drop",
+    [ICMP6_ECHO_REPLY_NEXT_PUNT] = "ip6-punt",
   },
 };
 /* *INDENT-ON* */
@@ -213,8 +213,8 @@ VLIB_REGISTER_NODE (ip4_icmp_echo_reply_node, static) =
   .format_trace = format_icmp_echo_trace,
   .n_next_nodes = ICMP4_ECHO_REPLY_N_NEXT,
   .next_nodes = {
-    [ICMP4_ECHO_REPLY_NEXT_DROP] = "error-drop",
-    [ICMP4_ECHO_REPLY_NEXT_PUNT] = "error-punt",
+    [ICMP4_ECHO_REPLY_NEXT_DROP] = "ip4-drop",
+    [ICMP4_ECHO_REPLY_NEXT_PUNT] = "ip4-punt",
   },
 };
 /* *INDENT-ON* */
