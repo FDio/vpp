@@ -24,8 +24,10 @@
 udp_main_t udp_main;
 
 #define foreach_udp_local_next                  \
-  _ (PUNT, "error-punt")                        \
-  _ (DROP, "error-drop")                        \
+  _ (PUNT4, "ip4-punt")                         \
+  _ (PUNT6, "ip6-punt")                         \
+  _ (DROP4, "ip4-drop")                         \
+  _ (DROP6, "ip6-drop")                         \
   _ (ICMP4_ERROR, "ip4-icmp-error")             \
   _ (ICMP6_ERROR, "ip6-icmp-error")
 
@@ -36,6 +38,9 @@ typedef enum
 #undef _
     UDP_LOCAL_N_NEXT,
 } udp_local_next_t;
+
+#define udp_local_next_drop(is_ip4)      ((is_ip4) ? UDP_LOCAL_NEXT_DROP4 : UDP_LOCAL_NEXT_DROP6)
+#define udp_local_next_punt(is_ip4)      ((is_ip4) ? UDP_LOCAL_NEXT_PUNT4 : UDP_LOCAL_NEXT_PUNT6)
 
 typedef struct
 {
@@ -132,7 +137,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (b0->current_length < advance0 + sizeof (*h0)))
 	    {
 	      error0 = UDP_ERROR_LENGTH_ERROR;
-	      next0 = UDP_LOCAL_NEXT_DROP;
+	      next0 = udp_local_next_drop (is_ip4);
 	    }
 	  else
 	    {
@@ -143,14 +148,14 @@ udp46_local_inline (vlib_main_t * vm,
 				 vlib_buffer_length_in_chain (vm, b0)))
 		{
 		  error0 = UDP_ERROR_LENGTH_ERROR;
-		  next0 = UDP_LOCAL_NEXT_DROP;
+		  next0 = udp_local_next_drop (is_ip4);
 		}
 	    }
 
 	  if (PREDICT_FALSE (b1->current_length < advance1 + sizeof (*h1)))
 	    {
 	      error1 = UDP_ERROR_LENGTH_ERROR;
-	      next1 = UDP_LOCAL_NEXT_DROP;
+	      next1 = udp_local_next_drop (is_ip4);
 	    }
 	  else
 	    {
@@ -161,7 +166,7 @@ udp46_local_inline (vlib_main_t * vm,
 				 vlib_buffer_length_in_chain (vm, b1)))
 		{
 		  error1 = UDP_ERROR_LENGTH_ERROR;
-		  next1 = UDP_LOCAL_NEXT_DROP;
+		  next1 = udp_local_next_drop (is_ip4);
 		}
 	    }
 
@@ -187,7 +192,7 @@ udp46_local_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE (punt_unknown))
 		{
 		  b0->error = node->errors[UDP_ERROR_PUNT];
-		  next0 = UDP_LOCAL_NEXT_PUNT;
+		  next0 = udp_local_next_punt (is_ip4);
 		}
 	      else if (is_ip4)
 		{
@@ -224,7 +229,7 @@ udp46_local_inline (vlib_main_t * vm,
 	      if (PREDICT_FALSE (punt_unknown))
 		{
 		  b1->error = node->errors[UDP_ERROR_PUNT];
-		  next1 = UDP_LOCAL_NEXT_PUNT;
+		  next1 = udp_local_next_punt (is_ip4);
 		}
 	      else if (is_ip4)
 		{
@@ -308,7 +313,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  if (PREDICT_FALSE (b0->current_length < advance0 + sizeof (*h0)))
 	    {
 	      b0->error = node->errors[UDP_ERROR_LENGTH_ERROR];
-	      next0 = UDP_LOCAL_NEXT_DROP;
+	      next0 = udp_local_next_drop (is_ip4);
 	      goto trace_x1;
 	    }
 
@@ -333,7 +338,7 @@ udp46_local_inline (vlib_main_t * vm,
 		  if (PREDICT_FALSE (punt_unknown))
 		    {
 		      b0->error = node->errors[UDP_ERROR_PUNT];
-		      next0 = UDP_LOCAL_NEXT_PUNT;
+		      next0 = udp_local_next_punt (is_ip4);
 		    }
 		  else if (is_ip4)
 		    {
@@ -364,7 +369,7 @@ udp46_local_inline (vlib_main_t * vm,
 	  else
 	    {
 	      b0->error = node->errors[UDP_ERROR_LENGTH_ERROR];
-	      next0 = UDP_LOCAL_NEXT_DROP;
+	      next0 = udp_local_next_drop (is_ip4);
 	    }
 
 	trace_x1:
