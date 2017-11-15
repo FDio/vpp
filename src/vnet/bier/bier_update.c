@@ -79,12 +79,13 @@ vnet_bier_route_cmd (vlib_main_t * vm,
     fib_route_path_t brp = {
         .frp_flags = FIB_ROUTE_PATH_BIER_FMASK,
     };
+    u32 hdr_len, payload_proto;
     bier_table_id_t bti = {
     };
-    mpls_label_t out_label;
     bier_bp_t bp;
-    u32 hdr_len;
     u32 add = 1;
+
+    payload_proto = DPO_PROTO_BIER;
 
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
         if (unformat (input, "del")) {
@@ -93,11 +94,9 @@ vnet_bier_route_cmd (vlib_main_t * vm,
         } else if (unformat (input, "set %d", &bti.bti_set)) {
         } else if (unformat (input, "bsl %d", &hdr_len)) {
         } else if (unformat (input, "bp %d", &bp)) {
-        } else if (unformat (input, "v4-nh %U",
-                             unformat_ip46_address,
-                             &brp.frp_addr, 0)) {
-        } else if (unformat (input, "mpls %d", &out_label)) {
-            vec_add1(brp.frp_label_stack, out_label);
+        } else if (unformat (input, "via %U",
+                             unformat_fib_route_path,
+                             &brp, &payload_proto)) {
         } else {
             error = unformat_parse_error (input);
             goto done;
@@ -122,7 +121,7 @@ done:
 }
 
 VLIB_CLI_COMMAND (bier_route_command) = {
-  .path = "bier route",
+  .path = "bier route via" FIB_ROUTE_PATH_HELP,
   .short_help = "Add/delete BIER Routes",
   .function = vnet_bier_route_cmd,
 };

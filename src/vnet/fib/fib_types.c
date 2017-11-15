@@ -330,3 +330,164 @@ fib_forw_chain_type_to_dpo_proto (fib_forward_chain_type_t fct)
     }
     return (DPO_PROTO_IP4);
 }
+
+uword
+unformat_fib_route_path (unformat_input_t * input, va_list * args)
+{
+    fib_route_path_t *rpath = va_arg (*args, fib_route_path_t *);
+    u32 *payload_proto = va_arg (*args, u32*);
+    u32 weight, preference, udp_encap_id;
+    mpls_label_t out_label;
+    vnet_main_t *vnm;
+
+    vnm = vnet_get_main ();
+    memset(rpath, 0, sizeof(*rpath));
+    rpath->frp_weight = 1;
+    rpath->frp_sw_if_index = ~0;
+
+    while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+        if (unformat (input, "%U %U",
+                      unformat_ip4_address,
+                      &rpath->frp_addr.ip4,
+                      unformat_vnet_sw_interface, vnm,
+                      &rpath->frp_sw_if_index))
+        {
+            rpath->frp_proto = DPO_PROTO_IP4;
+        }
+        else if (unformat (input, "%U %U",
+                           unformat_ip6_address,
+                           &rpath->frp_addr.ip6,
+                           unformat_vnet_sw_interface, vnm,
+                           &rpath->frp_sw_if_index))
+        {
+            rpath->frp_proto = DPO_PROTO_IP6;
+        }
+        else if (unformat (input, "weight %u", &weight))
+        {
+            rpath->frp_weight = weight;
+        }
+        else if (unformat (input, "preference %u", &preference))
+        {
+            rpath->frp_preference = preference;
+        }
+        else if (unformat (input, "%U next-hop-table %d",
+                           unformat_ip4_address,
+                           &rpath->frp_addr.ip4,
+                           &rpath->frp_fib_index))
+        {
+            rpath->frp_sw_if_index = ~0;
+            rpath->frp_proto = DPO_PROTO_IP4;
+        }
+        else if (unformat (input, "%U next-hop-table %d",
+                           unformat_ip6_address,
+                           &rpath->frp_addr.ip6,
+                           &rpath->frp_fib_index))
+        {
+            rpath->frp_sw_if_index = ~0;
+            rpath->frp_proto = DPO_PROTO_IP6;
+        }
+        else if (unformat (input, "%U",
+                           unformat_ip4_address,
+                           &rpath->frp_addr.ip4))
+        {
+            /*
+             * the recursive next-hops are by default in the default table
+             */
+            rpath->frp_fib_index = 0;
+            rpath->frp_sw_if_index = ~0;
+            rpath->frp_proto = DPO_PROTO_IP4;
+        }
+        else if (unformat (input, "%U",
+                           unformat_ip6_address,
+                           &rpath->frp_addr.ip6))
+        {
+            rpath->frp_fib_index = 0;
+            rpath->frp_sw_if_index = ~0;
+            rpath->frp_proto = DPO_PROTO_IP6;
+        }
+        else if (unformat (input, "udp-encap %d", &udp_encap_id))
+        {
+            rpath->frp_udp_encap_id = udp_encap_id;
+            rpath->frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
+            rpath->frp_proto = *payload_proto;
+        }
+        else if (unformat (input, "lookup in table %d", &rpath->frp_fib_index))
+        {
+            rpath->frp_proto = *payload_proto;
+            rpath->frp_sw_if_index = ~0;
+        }
+        else if (unformat (input, "via %U",
+                           unformat_vnet_sw_interface, vnm,
+                           &rpath->frp_sw_if_index))
+        {
+            rpath->frp_proto = *payload_proto;
+        }
+        else if (unformat (input, "resolve-via-host"))
+        {
+            rpath->frp_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_HOST;
+        }
+        else if (unformat (input, "resolve-via-attached"))
+        {
+            rpath->frp_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED;
+        }
+        else if (unformat (input,
+                           "ip4-lookup-in-table %d",
+                           &rpath->frp_fib_index))
+        {
+            rpath->frp_proto = DPO_PROTO_IP4;
+            *payload_proto = DPO_PROTO_IP4;
+        }
+        else if (unformat (input,
+                           "ip6-lookup-in-table %d",
+                           &rpath->frp_fib_index))
+        {
+            rpath->frp_proto = DPO_PROTO_IP6;
+            *payload_proto = DPO_PROTO_IP6;
+        }
+        else if (unformat (input,
+                           "mpls-lookup-in-table %d",
+                           &rpath->frp_fib_index))
+        {
+            rpath->frp_proto = DPO_PROTO_MPLS;
+            *payload_proto = DPO_PROTO_MPLS;
+        }
+        else if (unformat (input,
+                           "l2-input-on %U",
+                           unformat_vnet_sw_interface, vnm,
+                           &rpath->frp_sw_if_index))
+        {
+            rpath->frp_proto = DPO_PROTO_ETHERNET;
+            *payload_proto = DPO_PROTO_ETHERNET;
+        }
+        else if (unformat (input, "via-label %U",
+                           unformat_mpls_unicast_label,
+                           &rpath->frp_local_label))
+        {
+            rpath->frp_eos = MPLS_NON_EOS;
+            rpath->frp_proto = DPO_PROTO_MPLS;
+            rpath->frp_sw_if_index = ~0;
+        }
+        else if (unformat (input, "rx-ip4 %U",
+                           unformat_vnet_sw_interface, vnm,
+                           &rpath->frp_sw_if_index))
+        {
+            rpath->frp_proto = DPO_PROTO_IP4;
+            rpath->frp_flags = FIB_ROUTE_PATH_INTF_RX;
+        }
+        else if (unformat (input, "out-labels"))
+        {
+            while (unformat (input, "%U",
+                             unformat_mpls_unicast_label, &out_label))
+            {
+                vec_add1(rpath->frp_label_stack, out_label);
+            }
+        }
+        else
+        {
+            return (0);
+        }
+    }
+
+    return (1);
+}
