@@ -125,6 +125,12 @@ interface::type() const
 const handle_t&
 interface::handle() const
 {
+  return (singular()->handle_i());
+}
+
+const handle_t&
+interface::handle_i() const
+{
   return (m_hdl.data());
 }
 

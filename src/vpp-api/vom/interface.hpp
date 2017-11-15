@@ -518,6 +518,11 @@ private:
   void update(const interface& obj);
 
   /*
+   * return the interface's handle in the singular instance
+   */
+  const handle_t& handle_i() const;
+
+  /*
    * It's the OM class that calls singular()
    */
   friend class OM;
