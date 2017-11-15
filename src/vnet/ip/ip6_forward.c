@@ -1902,7 +1902,7 @@ VLIB_REGISTER_NODE (ip6_discover_neighbor_node) =
   .n_next_nodes = IP6_DISCOVER_NEIGHBOR_N_NEXT,
   .next_nodes =
   {
-    [IP6_DISCOVER_NEIGHBOR_NEXT_DROP] = "error-drop",
+    [IP6_DISCOVER_NEIGHBOR_NEXT_DROP] = "ip6-drop",
     [IP6_DISCOVER_NEIGHBOR_NEXT_REPLY_TX] = "interface-output",
   },
 };
@@ -1920,7 +1920,7 @@ VLIB_REGISTER_NODE (ip6_glean_node) =
   .n_next_nodes = IP6_DISCOVER_NEIGHBOR_N_NEXT,
   .next_nodes =
   {
-    [IP6_DISCOVER_NEIGHBOR_NEXT_DROP] = "error-drop",
+    [IP6_DISCOVER_NEIGHBOR_NEXT_DROP] = "ip6-drop",
     [IP6_DISCOVER_NEIGHBOR_NEXT_REPLY_TX] = "interface-output",
   },
 };
@@ -2432,7 +2432,7 @@ VLIB_REGISTER_NODE (ip6_rewrite_node) =
   .n_next_nodes = 2,
   .next_nodes =
   {
-    [IP6_REWRITE_NEXT_DROP] = "error-drop",
+    [IP6_REWRITE_NEXT_DROP] = "ip6-drop",
     [IP6_REWRITE_NEXT_ICMP_ERROR] = "ip6-icmp-error",
   },
 };

@@ -250,7 +250,7 @@ VLIB_REGISTER_NODE (ip6_icmp_input_node) = {
 
   .n_next_nodes = 1,
   .next_nodes = {
-    [ICMP_INPUT_NEXT_DROP] = "error-drop",
+    [ICMP_INPUT_NEXT_DROP] = "ip6-drop",
   },
 };
 /* *INDENT-ON* */
@@ -663,7 +663,7 @@ VLIB_REGISTER_NODE (ip6_icmp_error_node) = {
 
   .n_next_nodes = IP6_ICMP_ERROR_N_NEXT,
   .next_nodes = {
-    [IP6_ICMP_ERROR_NEXT_DROP] = "error-drop",
+    [IP6_ICMP_ERROR_NEXT_DROP] = "ip6-drop",
     [IP6_ICMP_ERROR_NEXT_LOOKUP] = "ip6-lookup",
   },
 

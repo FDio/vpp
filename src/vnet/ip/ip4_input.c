@@ -252,7 +252,7 @@ ip4_input_inline (vlib_main_t * vm,
     <em>Next Indices:</em>
     - Dispatches pkts to the (first) feature node:
       <code> vnet_get_config_data (... &next0 ...); </code>
-      or @c error-drop
+      or @c ip4-drop
 */
 static uword
 ip4_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
@@ -284,8 +284,8 @@ VLIB_REGISTER_NODE (ip4_input_node) = {
 
   .n_next_nodes = IP4_INPUT_N_NEXT,
   .next_nodes = {
-    [IP4_INPUT_NEXT_DROP] = "error-drop",
-    [IP4_INPUT_NEXT_PUNT] = "error-punt",
+    [IP4_INPUT_NEXT_DROP] = "ip4-drop",
+    [IP4_INPUT_NEXT_PUNT] = "ip4-punt",
     [IP4_INPUT_NEXT_LOOKUP] = "ip4-lookup",
     [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-mfib-forward-lookup",
     [IP4_INPUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",
@@ -306,8 +306,8 @@ VLIB_REGISTER_NODE (ip4_input_no_checksum_node,static) = {
 
   .n_next_nodes = IP4_INPUT_N_NEXT,
   .next_nodes = {
-    [IP4_INPUT_NEXT_DROP] = "error-drop",
-    [IP4_INPUT_NEXT_PUNT] = "error-punt",
+    [IP4_INPUT_NEXT_DROP] = "ip4-drop",
+    [IP4_INPUT_NEXT_PUNT] = "ip4-punt",
     [IP4_INPUT_NEXT_LOOKUP] = "ip4-lookup",
     [IP4_INPUT_NEXT_LOOKUP_MULTICAST] = "ip4-mfib-forward-lookup",
     [IP4_INPUT_NEXT_ICMP_ERROR] = "ip4-icmp-error",

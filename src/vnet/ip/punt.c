@@ -39,13 +39,16 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define foreach_punt_next			\
-  _ (PUNT, "error-punt")
+#define foreach_punt4_next			\
+  _ (PUNT, "ip4-punt")
+
+#define foreach_punt6_next			\
+  _ (PUNT, "ip6-punt")
 
 typedef enum
 {
 #define _(s,n) PUNT_NEXT_##s,
-  foreach_punt_next
+  foreach_punt4_next
 #undef _
     PUNT_N_NEXT,
 } punt_next_t;
@@ -204,7 +207,7 @@ VLIB_REGISTER_NODE (udp4_punt_node) = {
   .n_next_nodes = PUNT_N_NEXT,
   .next_nodes = {
 #define _(s,n) [PUNT_NEXT_##s] = n,
-     foreach_punt_next
+     foreach_punt4_next
 #undef _
   },
 };
@@ -223,7 +226,7 @@ VLIB_REGISTER_NODE (udp6_punt_node) = {
   .n_next_nodes = PUNT_N_NEXT,
   .next_nodes = {
 #define _(s,n) [PUNT_NEXT_##s] = n,
-     foreach_punt_next
+     foreach_punt6_next
 #undef _
   },
 };

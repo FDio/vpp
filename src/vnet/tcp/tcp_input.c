@@ -26,15 +26,18 @@ static char *tcp_error_strings[] = {
 };
 
 /* All TCP nodes have the same outgoing arcs */
-#define foreach_tcp_state_next                  \
-  _ (DROP, "error-drop")                        \
-  _ (TCP4_OUTPUT, "tcp4-output")                \
-  _ (TCP6_OUTPUT, "tcp6-output")
+#define foreach_tcp4_state_next                \
+  _ (DROP, "ip4-drop")                         \
+  _ (TCP_OUTPUT, "tcp4-output")
+
+#define foreach_tcp6_state_next                \
+  _ (DROP, "ip6-drop")                         \
+  _ (TCP_OUTPUT, "tcp6-output")
 
 typedef enum _tcp_established_next
 {
 #define _(s,n) TCP_ESTABLISHED_NEXT_##s,
-  foreach_tcp_state_next
+  foreach_tcp4_state_next
 #undef _
     TCP_ESTABLISHED_N_NEXT,
 } tcp_established_next_t;
@@ -42,7 +45,7 @@ typedef enum _tcp_established_next
 typedef enum _tcp_rcv_process_next
 {
 #define _(s,n) TCP_RCV_PROCESS_NEXT_##s,
-  foreach_tcp_state_next
+  foreach_tcp4_state_next
 #undef _
     TCP_RCV_PROCESS_N_NEXT,
 } tcp_rcv_process_next_t;
@@ -50,7 +53,7 @@ typedef enum _tcp_rcv_process_next
 typedef enum _tcp_syn_sent_next
 {
 #define _(s,n) TCP_SYN_SENT_NEXT_##s,
-  foreach_tcp_state_next
+  foreach_tcp4_state_next
 #undef _
     TCP_SYN_SENT_N_NEXT,
 } tcp_syn_sent_next_t;
@@ -58,7 +61,7 @@ typedef enum _tcp_syn_sent_next
 typedef enum _tcp_listen_next
 {
 #define _(s,n) TCP_LISTEN_NEXT_##s,
-  foreach_tcp_state_next
+  foreach_tcp4_state_next
 #undef _
     TCP_LISTEN_N_NEXT,
 } tcp_listen_next_t;
@@ -67,13 +70,12 @@ typedef enum _tcp_listen_next
 typedef enum _tcp_state_next
 {
 #define _(s,n) TCP_NEXT_##s,
-  foreach_tcp_state_next
+  foreach_tcp4_state_next
 #undef _
     TCP_STATE_N_NEXT,
 } tcp_state_next_t;
 
-#define tcp_next_output(is_ip4) (is_ip4 ? TCP_NEXT_TCP4_OUTPUT          \
-                                        : TCP_NEXT_TCP6_OUTPUT)
+#define tcp_next_output(is_ip4) (TCP_NEXT_TCP_OUTPUT)
 
 vlib_node_registration_t tcp4_established_node;
 vlib_node_registration_t tcp6_established_node;
@@ -1826,7 +1828,7 @@ VLIB_REGISTER_NODE (tcp4_established_node) =
   .next_nodes =
   {
 #define _(s,n) [TCP_ESTABLISHED_NEXT_##s] = n,
-    foreach_tcp_state_next
+    foreach_tcp4_state_next
 #undef _
   },
   .format_trace = format_tcp_rx_trace_short,
@@ -1848,7 +1850,7 @@ VLIB_REGISTER_NODE (tcp6_established_node) =
   .next_nodes =
   {
 #define _(s,n) [TCP_ESTABLISHED_NEXT_##s] = n,
-    foreach_tcp_state_next
+    foreach_tcp6_state_next
 #undef _
   },
   .format_trace = format_tcp_rx_trace_short,
@@ -2226,7 +2228,7 @@ VLIB_REGISTER_NODE (tcp4_syn_sent_node) =
   .next_nodes =
   {
 #define _(s,n) [TCP_SYN_SENT_NEXT_##s] = n,
-    foreach_tcp_state_next
+    foreach_tcp4_state_next
 #undef _
   },
   .format_trace = format_tcp_rx_trace_short,
@@ -2248,7 +2250,7 @@ VLIB_REGISTER_NODE (tcp6_syn_sent_node) =
   .next_nodes =
   {
 #define _(s,n) [TCP_SYN_SENT_NEXT_##s] = n,
-    foreach_tcp_state_next
+    foreach_tcp6_state_next
 #undef _
   },
   .format_trace = format_tcp_rx_trace_short,
@@ -2620,7 +2622,7 @@ VLIB_REGISTER_NODE (tcp4_rcv_process_node) =
   .next_nodes =
   {
 #define _(s,n) [TCP_RCV_PROCESS_NEXT_##s] = n,
-    foreach_tcp_state_next
+    foreach_tcp4_state_next
 #undef _
   },
   .format_trace = format_tcp_rx_trace_short,
@@ -2642,7 +2644,7 @@ VLIB_REGISTER_NODE (tcp6_rcv_process_node) =
   .next_nodes =
   {
 #define _(s,n) [TCP_RCV_PROCESS_NEXT_##s] = n,
-    foreach_tcp_state_next
+    foreach_tcp4_state_next
 #undef _
   },
   .format_trace = format_tcp_rx_trace_short,
@@ -2843,7 +2845,7 @@ VLIB_REGISTER_NODE (tcp4_listen_node) =
   .next_nodes =
   {
 #define _(s,n) [TCP_LISTEN_NEXT_##s] = n,
-    foreach_tcp_state_next
+    foreach_tcp4_state_next
 #undef _
   },
   .format_trace = format_tcp_rx_trace_short,
@@ -2865,7 +2867,7 @@ VLIB_REGISTER_NODE (tcp6_listen_node) =
   .next_nodes =
   {
 #define _(s,n) [TCP_LISTEN_NEXT_##s] = n,
-    foreach_tcp_state_next
+    foreach_tcp6_state_next
 #undef _
   },
   .format_trace = format_tcp_rx_trace_short,
@@ -2890,22 +2892,22 @@ typedef enum _tcp_input_next
 } tcp_input_next_t;
 
 #define foreach_tcp4_input_next                 \
-  _ (DROP, "error-drop")                        \
+  _ (DROP, "ip4-drop")                          \
   _ (LISTEN, "tcp4-listen")                     \
   _ (RCV_PROCESS, "tcp4-rcv-process")           \
   _ (SYN_SENT, "tcp4-syn-sent")                 \
   _ (ESTABLISHED, "tcp4-established")		\
   _ (RESET, "tcp4-reset")			\
-  _ (PUNT, "error-punt")
+  _ (PUNT, "ip4-punt")
 
 #define foreach_tcp6_input_next                 \
-  _ (DROP, "error-drop")                        \
+  _ (DROP, "ip6-drop")                          \
   _ (LISTEN, "tcp6-listen")                     \
   _ (RCV_PROCESS, "tcp6-rcv-process")           \
   _ (SYN_SENT, "tcp6-syn-sent")                 \
   _ (ESTABLISHED, "tcp6-established")		\
   _ (RESET, "tcp6-reset")			\
-  _ (PUNT, "error-punt")
+  _ (PUNT, "ip6-punt")
 
 #define filter_flags (TCP_FLAG_SYN|TCP_FLAG_ACK|TCP_FLAG_RST|TCP_FLAG_FIN)
 

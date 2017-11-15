@@ -235,7 +235,7 @@ VLIB_REGISTER_NODE (ip6_input_node) = {
 
   .n_next_nodes = IP6_INPUT_N_NEXT,
   .next_nodes = {
-    [IP6_INPUT_NEXT_DROP] = "error-drop",
+    [IP6_INPUT_NEXT_DROP] = "ip6-drop",
     [IP6_INPUT_NEXT_LOOKUP] = "ip6-lookup",
     [IP6_INPUT_NEXT_ICMP_ERROR] = "ip6-icmp-error",
     [IP6_INPUT_NEXT_LOOKUP_MULTICAST] = "ip6-mfib-forward-lookup",
