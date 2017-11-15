@@ -39,6 +39,25 @@ typedef struct
   u8 action;
 } acl_fa_trace_t;
 
+static u8 *
+format_fa_5tuple (u8 * s, va_list * args)
+{
+  fa_5tuple_t *p5t = va_arg (*args, fa_5tuple_t *);
+
+  return format(s, "%s sw_if_index %d (lsb16 %d) l3 %s%s %U -> %U"
+                   " l4 proto %d l4_valid %d port %d -> %d tcp flags (%s) %02x rsvd %x",
+                p5t->pkt.is_input ? "input" : "output",
+                p5t->pkt.sw_if_index, p5t->l4.lsb_of_sw_if_index, p5t->pkt.is_ip6 ? "ip6" : "ip4",
+                p5t->pkt.is_nonfirst_fragment ? " non-initial fragment" : "",
+                format_ip46_address, &p5t->addr[0], p5t->pkt.is_ip6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+                format_ip46_address, &p5t->addr[1], p5t->pkt.is_ip6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
+                p5t->l4.proto, p5t->pkt.l4_valid,
+                p5t->l4.port[0], p5t->l4.port[1],
+                p5t->pkt.tcp_flags_valid ? "valid": "invalid",
+                p5t->pkt.tcp_flags,
+                p5t->pkt.flags_reserved);
+}
+
 /* packet trace format function */
 static u8 *
 format_acl_fa_trace (u8 * s, va_list * args)
@@ -55,6 +74,9 @@ format_acl_fa_trace (u8 * s, va_list * args)
 	    t->match_rule_index, t->trace_bitmap,
 	    t->packet_info[0], t->packet_info[1], t->packet_info[2],
 	    t->packet_info[3], t->packet_info[4], t->packet_info[5]);
+
+  /* Now also print out the packet_info in a form usable by humans */
+  s = format (s, "\n   %U", format_fa_5tuple, t->packet_info);
   return s;
 }
 
