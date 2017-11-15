@@ -19,6 +19,7 @@ import re
 import os
 import sys
 import logging
+import argparse
 
 from vpplib.AutoConfig import AutoConfig
 from vpplib.VPPUtil import VPPUtil
@@ -138,11 +139,13 @@ def autoconfig_show_system():
     acfg.sys_info()
 
 
-def autoconfig_hugepage_apply(node):
+def autoconfig_hugepage_apply(node, ask_questions=True):
     """
     Apply the huge page configuration.
     :param node: The node structure
     :type node: dict
+    :param ask_questions: When True ask the user questions
+    :type ask_questions: bool
     :returns: -1 if the caller should return, 0 if not
     :rtype: int
 
@@ -153,11 +156,10 @@ def autoconfig_hugepage_apply(node):
         print "These are the changes we will apply to"
         print "the huge page file ({}).\n".format(VPP_REAL_HUGE_PAGE_FILE)
         print diffs
-        answer = autoconfig_yn(
-            "\nAre you sure you want to apply these changes [Y/n]? ",
-            'y')
-        if answer == 'n':
-            return -1
+        if ask_questions:
+            answer = autoconfig_yn("\nAre you sure you want to apply these changes [Y/n]? ", 'y')
+            if answer == 'n':
+                return -1
 
         # Copy and sysctl
         autoconfig_cp(node, rootdir + VPP_HUGE_PAGE_FILE, VPP_REAL_HUGE_PAGE_FILE)
@@ -172,33 +174,28 @@ def autoconfig_hugepage_apply(node):
     return 0
 
 
-def autoconfig_vpp_apply(node):
+def autoconfig_vpp_apply(node, ask_questions=True):
     """
     Apply the vpp configuration.
 
     :param node: The node structure
     :type node: dict
+    :param ask_questions: When True ask the user questions
+    :type ask_questions: bool
     :returns: -1 if the caller should return, 0 if not
     :rtype: int
 
     """
-
-    cmd = "service vpp stop"
-    (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
-    if ret != 0:
-        raise RuntimeError('{} failed on node {} {} {}'.
-                           format(cmd, node['host'], stdout, stderr))
 
     diffs = autoconfig_diff(node, VPP_REAL_STARTUP_FILE, rootdir + VPP_STARTUP_FILE)
     if diffs != '':
         print "These are the changes we will apply to"
         print "the VPP startup file ({}).\n".format(VPP_REAL_STARTUP_FILE)
         print diffs
-        answer = autoconfig_yn(
-            "\nAre you sure you want to apply these changes [Y/n]? ",
-            'y')
-        if answer == 'n':
-            return -1
+        if ask_questions:
+            answer = autoconfig_yn("\nAre you sure you want to apply these changes [Y/n]? ", 'y')
+            if answer == 'n':
+                return -1
 
         # Copy the VPP startup
         autoconfig_cp(node, rootdir + VPP_STARTUP_FILE, VPP_REAL_STARTUP_FILE)
@@ -208,69 +205,76 @@ def autoconfig_vpp_apply(node):
     return 0
 
 
-def autoconfig_grub_apply(node):
+def autoconfig_grub_apply(node, ask_questions=True):
     """
     Apply the grub configuration.
 
     :param node: The node structure
     :type node: dict
+    :param ask_questions: When True ask the user questions
+    :type ask_questions: bool
     :returns: -1 if the caller should return, 0 if not
     :rtype: int
 
     """
+
     print "\nThe configured grub cmdline looks like this:"
     configured_cmdline = node['grub']['default_cmdline']
     current_cmdline = node['grub']['current_cmdline']
     print configured_cmdline
     print "\nThe current boot cmdline looks like this:"
     print current_cmdline
-    question = "\nDo you want to keep the current boot cmdline [Y/n]? "
-    answer = autoconfig_yn(question, 'y')
-    if answer == 'n':
-        node['grub']['keep_cmdline'] = False
+    if ask_questions:
+        question = "\nDo you want to keep the current boot cmdline [Y/n]? "
+        answer = autoconfig_yn(question, 'y')
+        if answer == 'y':
+            return
 
-        # Diff the file
-        diffs = autoconfig_diff(node, VPP_REAL_GRUB_FILE, rootdir + VPP_GRUB_FILE)
-        if diffs != '':
-            print "These are the changes we will apply to"
-            print "the GRUB file ({}).\n".format(VPP_REAL_GRUB_FILE)
-            print diffs
-            answer = autoconfig_yn(
-                "\nAre you sure you want to apply these changes [y/N]? ",
-                'n')
+    node['grub']['keep_cmdline'] = False
+
+    # Diff the file
+    diffs = autoconfig_diff(node, VPP_REAL_GRUB_FILE, rootdir + VPP_GRUB_FILE)
+    if diffs != '':
+        print "These are the changes we will apply to"
+        print "the GRUB file ({}).\n".format(VPP_REAL_GRUB_FILE)
+        print diffs
+        if ask_questions:
+            answer = autoconfig_yn("\nAre you sure you want to apply these changes [y/N]? ", 'n')
             if answer == 'n':
                 return -1
 
-            # Copy and update grub
-            autoconfig_cp(node, rootdir + VPP_GRUB_FILE, VPP_REAL_GRUB_FILE)
-            distro = VPPUtil.get_linux_distro()
-            if distro[0] == 'Ubuntu':
-                cmd = "update-grub"
-            else:
-                cmd = "grub2-mkconfig -o /boot/grub2/grub.cfg"
-            (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
-            if ret != 0:
-                raise RuntimeError('{} failed on node {} {} {}'.
-                                   format(cmd,
-                                          node['host'],
-                                          stdout,
-                                          stderr))
-            print "There have been changes to the GRUB config a",
-            print "reboot will be required."
-            return -1
+        # Copy and update grub
+        autoconfig_cp(node, rootdir + VPP_GRUB_FILE, VPP_REAL_GRUB_FILE)
+        distro = VPPUtil.get_linux_distro()
+        if distro[0] == 'Ubuntu':
+            cmd = "update-grub"
         else:
-            print '\nThere are no changes to the GRUB config.'
+            cmd = "grub2-mkconfig -o /boot/grub2/grub.cfg"
+
+        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
+        if ret != 0:
+            raise RuntimeError('{} failed on node {} {} {}'.
+                               format(cmd, node['host'], stdout, stderr))
+
+        print "There have been changes to the GRUB config a",
+        print "reboot will be required."
+        return -1
+    else:
+        print '\nThere are no changes to the GRUB config.'
 
     return 0
 
 
-def autoconfig_apply():
+def autoconfig_apply(ask_questions=True):
     """
     Apply the configuration.
 
     Show the diff of the dryrun file and the actual configuration file
     Copy the files from the dryrun directory to the actual file.
     Peform the system function
+
+    :param ask_questions: When true ask the user questions
+    :type ask_questions: bool
 
     """
 
@@ -282,10 +286,11 @@ def autoconfig_apply():
 
     acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
 
-    print "\nWe are now going to configure your system(s).\n"
-    answer = autoconfig_yn("Are you sure you want to do this [Y/n]? ", 'y')
-    if answer == 'n':
-        return
+    if ask_questions:
+        print "\nWe are now going to configure your system(s).\n"
+        answer = autoconfig_yn("Are you sure you want to do this [Y/n]? ", 'y')
+        if answer == 'n':
+            return
 
     nodes = acfg.get_nodes()
     for i in nodes.items():
@@ -295,42 +300,45 @@ def autoconfig_apply():
         if not acfg.min_system_resources(node):
             return
 
+        # Stop VPP
+        VPPUtil.stop(node)
+
         # Huge Pages
-        ret = autoconfig_hugepage_apply(node)
+        ret = autoconfig_hugepage_apply(node, ask_questions)
         if ret != 0:
             return
 
         # VPP
-        ret = autoconfig_vpp_apply(node)
+        ret = autoconfig_vpp_apply(node, ask_questions)
         if ret != 0:
             return
 
         # Grub
-        ret = autoconfig_grub_apply(node)
+        ret = autoconfig_grub_apply(node, ask_questions)
         if ret != 0:
+            # We can still start VPP, even if we haven't configured grub
+            VPPUtil.start(node)
             return
 
         # Everything is configured start vpp
-        cmd = "service vpp start"
-        (ret, stdout, stderr) = VPPUtil.exec_command(cmd)
-        if ret != 0:
-            raise RuntimeError('{} failed on node {} {} {}'.
-                               format(cmd, node['host'], stdout, stderr))
+        VPPUtil.start(node)
 
-
-def autoconfig_dryrun():
+def autoconfig_dryrun(ask_questions=True):
     """
     Execute the dryrun function.
+
+    :param ask_questions: When true ask the user for paraameters
+    :type ask_questions: bool
 
     """
 
     vutil = VPPUtil()
     pkgs = vutil.get_installed_vpp_pkgs()
     if len(pkgs) == 0:
-        print "\nVPP is not installed, install VPP with option 4."
+        print "\nVPP is not installed, please install VPP."
         return
 
-    acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE)
+    acfg = AutoConfig(rootdir, VPP_AUTO_CONFIGURATION_FILE, clean=True)
 
     # Stop VPP on each node
     nodes = acfg.get_nodes()
@@ -349,16 +357,20 @@ def autoconfig_dryrun():
             return
 
     # Modify the devices
-    acfg.modify_devices()
+    if ask_questions:
+        acfg.modify_devices()
+    else:
+        acfg.update_interfaces_config()
 
     # Modify CPU
-    acfg.modify_cpu()
+    acfg.modify_cpu(ask_questions)
 
     # Calculate the cpu parameters
     acfg.calculate_cpu_parameters()
 
     # Acquire TCP stack parameters
-    acfg.acquire_tcp_params()
+    if ask_questions:
+        acfg.acquire_tcp_params()
 
     # Apply the startup
     acfg.apply_vpp_startup()
@@ -367,7 +379,8 @@ def autoconfig_dryrun():
     acfg.apply_grub_cmdline()
 
     # Huge Pages
-    acfg.modify_huge_pages()
+    if ask_questions:
+        acfg.modify_huge_pages()
     acfg.apply_huge_pages()
 
 
@@ -475,14 +488,15 @@ def autoconfig_basic_test_menu():
 
     """
 
-#    basic_menu_text = '\nWhat would you like to do?\n\n\
-# 1) List/Create Simple IPv4 Setup\n\
-# 2) List/Create Create VM and Connect to VPP interfaces\n\
-# 9 or q) Back to main menu.'
-
     basic_menu_text = '\nWhat would you like to do?\n\n\
 1) List/Create Simple IPv4 Setup\n\
 9 or q) Back to main menu.'
+
+    # 1) List/Create Simple IPv4 Setup\n\
+    # 2) List/Create Create VM and Connect to VPP interfaces\n\
+    # 9 or q) Back to main menu.'
+
+
     print "{}".format(basic_menu_text)
 
     input_valid = False
@@ -521,7 +535,7 @@ def autoconfig_basic_test():
         if answer == '1':
             autoconfig_ipv4_setup()
         # elif answer == '2':
-        #    autoconfig_create_vm()
+         #    autoconfig_create_vm()
         elif answer == '9' or answer == 'q':
             return
         else:
@@ -572,6 +586,9 @@ def autoconfig_main():
 
     """
 
+    # Setup
+    autoconfig_setup()
+
     answer = ''
     while answer != 'q':
         answer = autoconfig_main_menu()
@@ -591,7 +608,7 @@ def autoconfig_main():
             autoconfig_not_implemented()
 
 
-def autoconfig_setup():
+def autoconfig_setup(ask_questions=True):
     """
     The auto configuration setup function.
 
@@ -617,15 +634,16 @@ def autoconfig_setup():
         raise RuntimeError('The Auto configuration file does not exist {}'.
                            format(filename))
 
-    print "\nWelcome to the VPP system configuration utility"
+    if ask_questions:
+        print "\nWelcome to the VPP system configuration utility"
 
-    print "\nThese are the files we will modify:"
-    print "    /etc/vpp/startup.conf"
-    print "    /etc/sysctl.d/80-vpp.conf"
-    print "    /etc/default/grub"
+        print "\nThese are the files we will modify:"
+        print "    /etc/vpp/startup.conf"
+        print "    /etc/sysctl.d/80-vpp.conf"
+        print "    /etc/default/grub"
 
-    print "\nBefore we change them, we'll create working copies in {}".format(rootdir + VPP_DRYRUNDIR)
-    print "Please inspect them carefully before applying the actual configuration (option 3)!"
+        print "\nBefore we change them, we'll create working copies in {}".format(rootdir + VPP_DRYRUNDIR)
+        print "Please inspect them carefully before applying the actual configuration (option 3)!"
 
     nodes = acfg.get_nodes()
     for i in nodes.items():
@@ -642,14 +660,62 @@ def autoconfig_setup():
             autoconfig_cp(node, VPP_REAL_GRUB_FILE, '{}'.format(rootdir + VPP_GRUB_FILE))
 
 
-if __name__ == '__main__':
+def execute_with_args(args):
+    """
+    Execute the configuration utility with agruments.
+
+    :param args: The Command line arguments
+    :type args: tuple
+    """
+
+    # Setup
+    autoconfig_setup(ask_questions=False)
+
+    # Execute the command
+    if args.show:
+        autoconfig_show_system()
+    elif args.dry_run:
+        autoconfig_dryrun(ask_questions=False)
+    elif args.apply:
+        autoconfig_apply(ask_questions=False)
+    else:
+        autoconfig_not_implemented()
+
+
+def config_main():
+    """
+    The vpp configuration utility main entry point.
+
+    """
 
     # Check for root
     if not os.geteuid() == 0:
         sys.exit('\nPlease run the VPP Configuration Utility as root.')
 
-    # Setup
-    autoconfig_setup()
+    # If no arguments were entered, ask the user questions to get the main parameters
+    if len(sys.argv) == 1:
+        # Main menu
+        autoconfig_main()
+        return
 
-    # Main menu
-    autoconfig_main()
+    # There were arguments specified, so execute the utility using command line arguments
+    description = 'The VPP configuration utility allows the user to configure VPP in a simple and safe manner. \
+The utility takes input from the user or the speficfied .yaml file. The user should then examine these files \
+to be sure they are correct and then actually apply the configuration. When run without arguments the utility run \
+in an interactive mode'
+
+    main_parser = argparse.ArgumentParser(prog='arg-test', description=description,
+                                          epilog='See "%(prog)s help COMMAND" for help on a specific command.')
+    main_parser.add_argument('--apply', '-a', action='store_true', help='Apply the cofiguration.')
+    main_parser.add_argument('--dry-run', '-dr', action='store_true', help='Create the dryrun configuration files.')
+    main_parser.add_argument('--show', '-s', action='store_true', help='Shows basic system information')
+    main_parser.add_argument('--debug', '-d', action='count', help='Print debug output (multiple levels)')
+
+    args = main_parser.parse_args()
+
+    return execute_with_args(args)
+
+
+if __name__ == '__main__':
+
+    config_main()
