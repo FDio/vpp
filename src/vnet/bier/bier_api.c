@@ -178,7 +178,7 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
         brpath->frp_flags = FIB_ROUTE_PATH_BIER_FMASK;
 
         vec_validate(brpath->frp_label_stack,
-                     mp->br_paths[ii].n_labels);
+                     mp->br_paths[ii].n_labels - 1);
         for (jj = 0; jj < mp->br_paths[ii].n_labels; jj++)
         {
             brpath->frp_label_stack[jj] =

@@ -836,7 +836,7 @@ bier_test_mpls_disp (void)
         .frp_rpf_id = 9, // some non-zero value
         .frp_flags = FIB_ROUTE_PATH_RPF_ID,
     };
-    u16 src = 99;
+    bier_hdr_src_id_t src = 99;
     vec_add1(rpaths, path_via_mfib);
     bier_disp_table_entry_path_add(bier_disp_tbl_id, src,
                                    BIER_HDR_PROTO_IPV4, rpaths);

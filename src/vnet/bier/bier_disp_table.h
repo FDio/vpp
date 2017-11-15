@@ -98,7 +98,7 @@ bier_disp_table_get (index_t bdti)
 
 static inline index_t
 bier_disp_table_lookup (index_t bdti,
-                        bier_bp_t src)
+                        bier_hdr_src_id_t src)
 {
     bier_disp_table_t *bdt;
 

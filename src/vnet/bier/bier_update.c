@@ -76,7 +76,7 @@ vnet_bier_route_cmd (vlib_main_t * vm,
                      vlib_cli_command_t * cmd)
 {
     clib_error_t * error = NULL;
-    fib_route_path_t brp = {
+    fib_route_path_t *brps = NULL, brp = {
         .frp_flags = FIB_ROUTE_PATH_BIER_FMASK,
     };
     bier_table_id_t bti = {
@@ -104,6 +104,7 @@ vnet_bier_route_cmd (vlib_main_t * vm,
         }
     }
 
+    vec_add1(brps, brp);
     bti.bti_hdr_len = bier_hdr_bit_len_to_id(hdr_len);
     // FIXME
     bti.bti_type    = BIER_TABLE_MPLS_SPF;
@@ -118,6 +119,7 @@ vnet_bier_route_cmd (vlib_main_t * vm,
     }
 
 done:
+    vec_free(brps);
     return (error);
 }
 
@@ -138,6 +140,7 @@ show_bier_fib_command_fn (vlib_main_t * vm,
 
     bp = BIER_BP_INVALID;
     bti = bei = INDEX_INVALID;
+    flags = BIER_SHOW_BRIEF;
 
     while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT) {
         if (unformat (input, "%d %d", &bti, &bp))
