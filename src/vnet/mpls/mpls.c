@@ -212,16 +212,13 @@ vnet_mpls_local_label (vlib_main_t * vm,
                        vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, * line_input = &_line_input;
+  u32 table_id, is_del, is_ip, payload_proto;
   fib_route_path_t *rpaths = NULL, rpath;
-  u32 table_id, is_del, is_ip;
   mpls_label_t local_label;
-  mpls_label_t out_label;
   clib_error_t * error;
   mpls_eos_bit_t eos;
-  vnet_main_t * vnm;
   fib_prefix_t pfx;
 
-  vnm = vnet_get_main();
   error = NULL;
   is_ip = 0;
   table_id = 0;
@@ -229,6 +226,7 @@ vnet_mpls_local_label (vlib_main_t * vm,
   is_del = 0;
   local_label = MPLS_LABEL_INVALID;
   memset(&pfx, 0, sizeof(pfx));
+  payload_proto = DPO_PROTO_MPLS;
 
    /* Get a line of input. */
   if (! unformat_user (input, unformat_line_input, line_input))
@@ -236,8 +234,6 @@ vnet_mpls_local_label (vlib_main_t * vm,
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      memset(&rpath, 0, sizeof(rpath));
-
       if (unformat (line_input, "table %d", &table_id))
 	;
       else if (unformat (line_input, "del"))
@@ -264,158 +260,15 @@ vnet_mpls_local_label (vlib_main_t * vm,
 	  pfx.fp_proto = FIB_PROTOCOL_IP6;
           is_ip = 1;
       }
-      else if (unformat (line_input, "via %U %U weight %u",
-			 unformat_ip4_address,
-			 &rpath.frp_addr.ip4,
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index,
-			 &rpath.frp_weight))
-      {
-	  rpath.frp_proto = DPO_PROTO_IP4;
-	  vec_add1(rpaths, rpath);
-      }
-
-      else if (unformat (line_input, "via %U %U weight %u",
-			 unformat_ip6_address,
-			 &rpath.frp_addr.ip6,
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index,
-			 &rpath.frp_weight))
-      {
-	  rpath.frp_proto = DPO_PROTO_IP6;
-	  vec_add1(rpaths, rpath);
-      }
-
-      else if (unformat (line_input, "via %U %U",
-			 unformat_ip4_address,
- 			 &rpath.frp_addr.ip4,
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index))
-      {
-	  rpath.frp_weight = 1;
-	  rpath.frp_proto = DPO_PROTO_IP4;
-	  vec_add1(rpaths, rpath);
-      }
-      else if (unformat (line_input, "rx-ip4 %U",
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index))
-      {
-	  rpath.frp_weight = 1;
-	  rpath.frp_proto = DPO_PROTO_IP4;
-          rpath.frp_flags = FIB_ROUTE_PATH_INTF_RX;
-	  vec_add1(rpaths, rpath);
-      }
-      else if (unformat (line_input, "via %U %U",
-			 unformat_ip6_address,
- 			 &rpath.frp_addr.ip6,
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index))
-      {
-	  rpath.frp_weight = 1;
-	  rpath.frp_proto = DPO_PROTO_IP6;
-	  vec_add1(rpaths, rpath);
-      }
-      else if (unformat (line_input, "via %U next-hop-table %d",
-			 unformat_ip4_address,
-  			 &rpath.frp_addr.ip4,
-			 &rpath.frp_fib_index))
-      {
-	  rpath.frp_weight = 1;
-	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = DPO_PROTO_IP4;
-	  vec_add1(rpaths, rpath);
-      }
-      else if (unformat (line_input, "via %U next-hop-table %d",
-			 unformat_ip6_address,
-  			 &rpath.frp_addr.ip6,
-			 &rpath.frp_fib_index))
-      {
-	  rpath.frp_weight = 1;
-	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = DPO_PROTO_IP6;
-	  vec_add1(rpaths, rpath);
-      }
       else if (unformat (line_input, "via %U",
-			 unformat_ip4_address,
-  			 &rpath.frp_addr.ip4))
+			 unformat_fib_route_path,
+			 &rpath, &payload_proto))
       {
-	  /*
-	   * the recursive next-hops are by default in the same table
-	   * as the prefix
-	   */
-	  rpath.frp_fib_index = table_id;
-	  rpath.frp_weight = 1;
-	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = DPO_PROTO_IP4;
-	  vec_add1(rpaths, rpath);
-      }
-      else if (unformat (line_input, "via %U",
-			 unformat_ip6_address,
-  			 &rpath.frp_addr.ip6))
-      {
-	  rpath.frp_fib_index = table_id;
-	  rpath.frp_weight = 1;
-	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = DPO_PROTO_IP6;
+          pfx.fp_payload_proto = payload_proto;
 	  vec_add1(rpaths, rpath);
       }
       else if (unformat (line_input, "%d", &local_label))
 	;
-      else if (unformat (line_input,
-			 "ip4-lookup-in-table %d",
-			 &rpath.frp_fib_index))
-      {
-          rpath.frp_proto = DPO_PROTO_IP4;
-          rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
-	  pfx.fp_payload_proto = DPO_PROTO_IP4;
-	  vec_add1(rpaths, rpath);
-      }
-      else if (unformat (line_input,
-			 "ip6-lookup-in-table %d",
-			 &rpath.frp_fib_index))
-      {
-          rpath.frp_proto = DPO_PROTO_IP6;
-          rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
-	  vec_add1(rpaths, rpath);
-	  pfx.fp_payload_proto = DPO_PROTO_IP6;
-      }
-      else if (unformat (line_input,
-			 "mpls-lookup-in-table %d",
-			 &rpath.frp_fib_index))
-      {
-          rpath.frp_proto = DPO_PROTO_MPLS;
-          rpath.frp_sw_if_index = FIB_NODE_INDEX_INVALID;
-	  pfx.fp_payload_proto = DPO_PROTO_MPLS;
-	  vec_add1(rpaths, rpath);
-      }
-      else if (unformat (line_input,
-			 "l2-input-on %U",
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index))
-      {
-          rpath.frp_proto = DPO_PROTO_ETHERNET;
-	  pfx.fp_payload_proto = DPO_PROTO_ETHERNET;
-          rpath.frp_flags = FIB_ROUTE_PATH_INTF_RX;
-	  vec_add1(rpaths, rpath);
-      }
-      else if (unformat (line_input, "out-labels"))
-      {
-	  if (vec_len (rpaths) == 0)
-          {
-	      error = clib_error_return (0, "Paths then labels");
-	      goto done;
-          }
-          else
-          {
-              while (unformat (line_input, "%U",
-                               unformat_mpls_unicast_label,
-                               &out_label))
-              {
-                  vec_add1 (rpaths[vec_len (rpaths) - 1].frp_label_stack,
-                            out_label);
-              }
-          }
-      }
       else
       {
           error = clib_error_return (0, "unkown input: %U",
@@ -531,9 +384,9 @@ done:
 }
 
 VLIB_CLI_COMMAND (mpls_local_label_command, static) = {
-  .path = "mpls local-label",
+  .path = "mpls local-label <label-value> [eos|non-eos] via [next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <interface>] [out-labels <value value value>]",
   .function = vnet_mpls_local_label,
-  .short_help = "Create/Delete MPL local labels",
+  .short_help = "Create/Delete MPLS local labels",
 };
 
 clib_error_t *

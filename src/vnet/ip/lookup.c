@@ -366,24 +366,18 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 		   unformat_input_t * main_input, vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  fib_route_path_t *rpaths = NULL, rpath;
+  u32 table_id, is_del, fib_index, payload_proto;
   dpo_id_t dpo = DPO_INVALID, *dpos = NULL;
-  u32 table_id, is_del, udp_encap_id;
+  fib_route_path_t *rpaths = NULL, rpath;
   fib_prefix_t *prefixs = NULL, pfx;
-  mpls_label_t out_label, via_label;
   clib_error_t *error = NULL;
-  u32 weight, preference;
-  vnet_main_t *vnm;
-  u32 fib_index;
   f64 count;
   int i;
 
-  vnm = vnet_get_main ();
   is_del = 0;
   table_id = 0;
   count = 1;
   memset (&pfx, 0, sizeof (pfx));
-  out_label = via_label = MPLS_LABEL_INVALID;
 
   /* Get a line of input. */
   if (!unformat_user (main_input, unformat_line_input, line_input))
@@ -395,159 +389,24 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 
       if (unformat (line_input, "table %d", &table_id))
 	;
-      else if (unformat (line_input, "resolve-via-host"))
-	{
-	  if (vec_len (rpaths) == 0)
-	    {
-	      error = clib_error_return (0, "Paths then flags");
-	      goto done;
-	    }
-	  rpaths[vec_len (rpaths) - 1].frp_flags |=
-	    FIB_ROUTE_PATH_RESOLVE_VIA_HOST;
-	}
-      else if (unformat (line_input, "resolve-via-attached"))
-	{
-	  if (vec_len (rpaths) == 0)
-	    {
-	      error = clib_error_return (0, "Paths then flags");
-	      goto done;
-	    }
-	  rpaths[vec_len (rpaths) - 1].frp_flags |=
-	    FIB_ROUTE_PATH_RESOLVE_VIA_ATTACHED;
-	}
-      else if (unformat (line_input, "out-labels"))
-	{
-	  if (vec_len (rpaths) == 0)
-	    {
-	      error = clib_error_return (0, "Paths then labels");
-	      goto done;
-	    }
-	  else
-	    {
-	      while (unformat (line_input, "%U",
-			       unformat_mpls_unicast_label, &out_label))
-		{
-		  vec_add1 (rpaths[vec_len (rpaths) - 1].frp_label_stack,
-			    out_label);
-		}
-	    }
-	}
-      else if (unformat (line_input, "via-label %U",
-			 unformat_mpls_unicast_label, &rpath.frp_local_label))
-	{
-	  rpath.frp_weight = 1;
-	  rpath.frp_eos = MPLS_NON_EOS;
-	  rpath.frp_proto = DPO_PROTO_MPLS;
-	  rpath.frp_sw_if_index = ~0;
-	  vec_add1 (rpaths, rpath);
-	}
       else if (unformat (line_input, "count %f", &count))
 	;
 
       else if (unformat (line_input, "%U/%d",
 			 unformat_ip4_address, &pfx.fp_addr.ip4, &pfx.fp_len))
 	{
-	  pfx.fp_proto = FIB_PROTOCOL_IP4;
+	  payload_proto = pfx.fp_proto = FIB_PROTOCOL_IP4;
 	  vec_add1 (prefixs, pfx);
 	}
       else if (unformat (line_input, "%U/%d",
 			 unformat_ip6_address, &pfx.fp_addr.ip6, &pfx.fp_len))
 	{
-	  pfx.fp_proto = FIB_PROTOCOL_IP6;
+	  payload_proto = pfx.fp_proto = FIB_PROTOCOL_IP6;
 	  vec_add1 (prefixs, pfx);
 	}
-      else if (unformat (line_input, "via %U %U",
-			 unformat_ip4_address,
-			 &rpath.frp_addr.ip4,
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index))
-	{
-	  rpath.frp_weight = 1;
-	  rpath.frp_proto = DPO_PROTO_IP4;
-	  vec_add1 (rpaths, rpath);
-	}
-
-      else if (unformat (line_input, "via %U %U",
-			 unformat_ip6_address,
-			 &rpath.frp_addr.ip6,
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index))
-	{
-	  rpath.frp_weight = 1;
-	  rpath.frp_proto = DPO_PROTO_IP6;
-	  vec_add1 (rpaths, rpath);
-	}
-      else if (unformat (line_input, "weight %u", &weight))
-	{
-	  ASSERT (vec_len (rpaths));
-	  rpaths[vec_len (rpaths) - 1].frp_weight = weight;
-	}
-      else if (unformat (line_input, "preference %u", &preference))
-	{
-	  ASSERT (vec_len (rpaths));
-	  rpaths[vec_len (rpaths) - 1].frp_preference = preference;
-	}
-      else if (unformat (line_input, "via %U next-hop-table %d",
-			 unformat_ip4_address,
-			 &rpath.frp_addr.ip4, &rpath.frp_fib_index))
-	{
-	  rpath.frp_weight = 1;
-	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = DPO_PROTO_IP4;
-	  vec_add1 (rpaths, rpath);
-	}
-      else if (unformat (line_input, "via %U next-hop-table %d",
-			 unformat_ip6_address,
-			 &rpath.frp_addr.ip6, &rpath.frp_fib_index))
-	{
-	  rpath.frp_weight = 1;
-	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = DPO_PROTO_IP6;
-	  vec_add1 (rpaths, rpath);
-	}
       else if (unformat (line_input, "via %U",
-			 unformat_ip4_address, &rpath.frp_addr.ip4))
+			 unformat_fib_route_path, &rpath, &payload_proto))
 	{
-	  /*
-	   * the recursive next-hops are by default in the same table
-	   * as the prefix
-	   */
-	  rpath.frp_fib_index = table_id;
-	  rpath.frp_weight = 1;
-	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = DPO_PROTO_IP4;
-	  vec_add1 (rpaths, rpath);
-	}
-      else if (unformat (line_input, "via %U",
-			 unformat_ip6_address, &rpath.frp_addr.ip6))
-	{
-	  rpath.frp_fib_index = table_id;
-	  rpath.frp_weight = 1;
-	  rpath.frp_sw_if_index = ~0;
-	  rpath.frp_proto = DPO_PROTO_IP6;
-	  vec_add1 (rpaths, rpath);
-	}
-      else if (unformat (line_input, "via udp-encap %d", &udp_encap_id))
-	{
-	  rpath.frp_udp_encap_id = udp_encap_id;
-	  rpath.frp_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
-	  rpath.frp_proto = fib_proto_to_dpo (pfx.fp_proto);
-	  vec_add1 (rpaths, rpath);
-	}
-      else if (unformat (line_input,
-			 "lookup in table %d", &rpath.frp_fib_index))
-	{
-	  rpath.frp_proto = fib_proto_to_dpo (pfx.fp_proto);
-	  rpath.frp_sw_if_index = ~0;
-	  vec_add1 (rpaths, rpath);
-	}
-      else if (vec_len (prefixs) > 0 &&
-	       unformat (line_input, "via %U",
-			 unformat_vnet_sw_interface, vnm,
-			 &rpath.frp_sw_if_index))
-	{
-	  rpath.frp_weight = 1;
-	  rpath.frp_proto = fib_proto_to_dpo (prefixs[0].fp_proto);
 	  vec_add1 (rpaths, rpath);
 	}
       else if (vec_len (prefixs) > 0 &&
@@ -838,7 +697,7 @@ VLIB_CLI_COMMAND (vlib_cli_show_ip6_command, static) = {
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (ip_route_command, static) = {
   .path = "ip route",
-  .short_help = "ip route [add|del] [count <n>] <dst-ip-addr>/<width> [table <table-id>] [via <next-hop-ip-addr> [<interface>] [weight <weight>]] | [via arp <interface> <adj-hop-ip-addr>] | [via drop|punt|local<id>|arp|classify <classify-idx>] [lookup in table <out-table-id>]",
+  .short_help = "ip route [add|del] [count <n>] <dst-ip-addr>/<width> [table <table-id>] via [next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <interface>] [out-labels <value value value>]",
   .function = vnet_ip_route_cmd,
   .is_mp_safe = 1,
 };
