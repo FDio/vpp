@@ -354,16 +354,24 @@ static void
 acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
 		 int is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt)
 {
-  int l3_offset = ethernet_buffer_header_size(b0);
+  int l3_offset;
   int l4_offset;
   u16 ports[2];
   u16 proto;
+
   /* IP4 and IP6 protocol numbers of ICMP */
   static u8 icmp_protos[] = { IP_PROTOCOL_ICMP, IP_PROTOCOL_ICMP6 };
 
-  if (is_input && !(is_l2_path))
+  if (is_l2_path)
     {
-      l3_offset = 0;
+      l3_offset = ethernet_buffer_header_size(b0);
+    }
+  else
+    {
+      if (is_input)
+        l3_offset = 0;
+      else
+        l3_offset = vnet_buffer(b0)->ip.save_rewrite_length;
     }
 
   /* key[0..3] contains src/dst address and is cleared/set below */
