@@ -1,0 +1,11 @@
+diff --git a/scapy/layers/vxlan.py b/scapy/layers/vxlan.py
+--- a/scapy/layers/vxlan.py
++++ b/scapy/layers/vxlan.py
+@@ -65,6 +65,7 @@
+             return self.sprintf("VXLAN (vni=%VXLAN.vni%)")
+
+ bind_layers(UDP, VXLAN, dport=4789)  # RFC standard port
++bind_layers(UDP, VXLAN, dport=4790)  # RFC standard vxlan-gpe port
+ bind_layers(UDP, VXLAN, dport=6633)  # New IANA assigned port for use with NSH
+ bind_layers(UDP, VXLAN, dport=8472)  # Linux implementation port
+ bind_layers(VXLAN, Ether, {'flags': 0x8})
