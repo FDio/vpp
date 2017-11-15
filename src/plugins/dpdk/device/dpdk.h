@@ -465,6 +465,12 @@ uword
 admin_up_down_process (vlib_main_t * vm,
 		       vlib_node_runtime_t * rt, vlib_frame_t * f);
 
+clib_error_t *dpdk_pool_create (vlib_main_t * vm, u8 * pool_name,
+				u32 elt_size, u32 num_elts,
+				u32 pool_priv_size, u16 cache_size, u8 numa,
+				struct rte_mempool **_mp,
+				vlib_physmem_region_index_t * pri);
+
 clib_error_t *dpdk_buffer_pool_create (vlib_main_t * vm, unsigned num_mbufs,
 				       unsigned socket_id);
 
