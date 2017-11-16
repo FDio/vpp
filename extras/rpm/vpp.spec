@@ -32,9 +32,7 @@ Release: %{_release}
 Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
-%if  0%{?fedora} >= 25
 BuildRequires: subunit, subunit-devel
-%endif
 %if 0%{?fedora} >= 26
 BuildRequires: compat-openssl10-devel
 BuildRequires: python2-devel, python2-virtualenv
