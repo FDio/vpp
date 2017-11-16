@@ -47,6 +47,9 @@ u8 * format_mpls_unicast_label (u8 * s, va_list * args)
   case MPLS_IETF_GAL_LABEL:
       s = format (s, "%s", MPLS_IETF_GAL_STRING);
       break;
+  case MPLS_LABEL_POP:
+      s = format (s, "pop");
+      break;
   default:
       s = format (s, "%d", label);
       break;
@@ -411,8 +414,10 @@ vnet_mpls_local_label (vlib_main_t * vm,
                                unformat_mpls_unicast_label,
                                &out_label))
               {
-                  vec_add1 (rpaths[vec_len (rpaths) - 1].frp_label_stack,
-                            out_label);
+                  fib_mpls_label_t fml = {
+                    .fml_value = out_label,
+                  };
+		  vec_add1 (rpaths[vec_len (rpaths) - 1].frp_label_stack, fml);
               }
           }
       }

@@ -181,7 +181,7 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
                      mp->br_paths[ii].n_labels);
         for (jj = 0; jj < mp->br_paths[ii].n_labels; jj++)
         {
-            brpath->frp_label_stack[jj] =
+            brpath->frp_label_stack[jj].fml_value =
                 ntohl(mp->br_paths[ii].label_stack[jj]);
         }
 

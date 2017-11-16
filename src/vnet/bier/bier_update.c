@@ -97,7 +97,10 @@ vnet_bier_route_cmd (vlib_main_t * vm,
                              unformat_ip46_address,
                              &brp.frp_addr, 0)) {
         } else if (unformat (input, "mpls %d", &out_label)) {
-            vec_add1(brp.frp_label_stack, out_label);
+            fib_mpls_label_t fml = {
+                .fml_value = out_label,
+            };
+            vec_add1(brp.frp_label_stack, fml);
         } else {
             error = unformat_parse_error (input);
             goto done;

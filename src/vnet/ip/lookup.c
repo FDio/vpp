@@ -427,8 +427,11 @@ vnet_ip_route_cmd (vlib_main_t * vm,
 	      while (unformat (line_input, "%U",
 			       unformat_mpls_unicast_label, &out_label))
 		{
+		  fib_mpls_label_t fml = {
+		    .fml_value = out_label,
+		  };
 		  vec_add1 (rpaths[vec_len (rpaths) - 1].frp_label_stack,
-			    out_label);
+			    fml);
 		}
 	    }
 	}

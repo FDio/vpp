@@ -45,6 +45,11 @@ typedef struct mpls_disp_dpo_t
      * Number of locks/users of the label
      */
     u16 mdd_locks;
+
+    /**
+     * LSP mode
+     */
+    fib_mpls_lsp_mode_t mdd_mode;
 } mpls_disp_dpo_t;
 
 /**
@@ -60,11 +65,15 @@ _Static_assert((sizeof(mpls_disp_dpo_t) <= CLIB_CACHE_LINE_BYTES),
  *
  * @param payload_proto The ptocool of the payload packets that will
  *                      be imposed with this label header.
+ * @param rpf_id The RPF ID the packet will aquire - only for mcast
+ * @param mode The LSP mode; pipe or uniform
  * @param dpo The parent of the created MPLS label object
  */
-extern index_t mpls_disp_dpo_create(dpo_proto_t payload_proto,
-                                    fib_rpf_id_t rpf_id,
-                                    const dpo_id_t *dpo);
+extern void mpls_disp_dpo_create(dpo_proto_t payload_proto,
+                                 fib_rpf_id_t rpf_id,
+                                 fib_mpls_lsp_mode_t mode,
+                                 const dpo_id_t *parent,
+                                 dpo_id_t *dpo);
 
 extern u8* format_mpls_disp_dpo(u8 *s, va_list *args);
 

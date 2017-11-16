@@ -354,6 +354,59 @@ typedef u32 fib_rpf_id_t;
 #define MFIB_RPF_ID_NONE (0)
 
 /**
+ * MPLS LSP mode - only valid at the head and tail
+ */
+typedef enum fib_mpls_lsp_mode_t_
+{
+    /**
+     * Pipe Mode - the default.
+     *  TTL and DSCP markings are not carried between the layers
+     */
+    FIB_MPLS_LSP_MODE_PIPE,
+    /**
+     * Uniform mode.
+     *  TTL and DSCP are copied between the layers
+     */
+    FIB_MPLS_LSP_MODE_UNIFORM,
+} fib_mpls_lsp_mode_t;
+
+#define FIB_MPLS_LSP_MODES {			\
+    [FIB_MPLS_LSP_MODE_PIPE]     = "pipe",     	\
+    [FIB_MPLS_LSP_MODE_UNIFORM]  = "uniform",   \
+}
+
+/**
+ * Format an LSP mode type
+ */
+extern u8 * format_fib_mpls_lsp_mode(u8 *s, va_list *ap);
+
+/**
+ * Configuration for each label value in the output-stack
+ */
+typedef struct fib_mpls_label_t_
+{
+    /**
+     * The label value
+     */
+    mpls_label_t fml_value;
+
+    /**
+     * The LSP mode
+     */
+    fib_mpls_lsp_mode_t fml_mode;
+
+    /**
+     * TTL. valid only at imposition.
+     */
+    u8 fml_ttl;
+
+    /**
+     * EXP bits; valid only at imposition.
+     */
+    u8 fml_exp;
+} fib_mpls_label_t;
+
+/**
  * @brief 
  * A representation of a path as described by a route producer.
  * These paramenters will determine the path 'type', of which there are:
@@ -425,7 +478,7 @@ typedef struct fib_route_path_t_ {
             /**
              * The outgoing MPLS label Stack. NULL implies no label.
              */
-            mpls_label_t *frp_label_stack;
+            fib_mpls_label_t *frp_label_stack;
         };
         /**
          * A path that resolves via a BIER Table.

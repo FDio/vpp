@@ -806,7 +806,10 @@ vnet_create_mpls_tunnel_command_fn (vlib_main_t * vm,
                              unformat_mpls_unicast_label,
                              &out_label))
             {
-                vec_add1 (rpath.frp_label_stack, out_label);
+                  fib_mpls_label_t fml = {
+                    .fml_value = out_label,
+                  };
+		  vec_add1 (rpaths[vec_len (rpaths) - 1].frp_label_stack, fml);
             }
 	}
         else if (unformat (line_input, "via %U %U",

@@ -229,7 +229,7 @@ bier_fmask_init (bier_fmask_t *bfm,
 
     if (!(bfm->bfm_flags & BIER_FMASK_FLAG_DISP))
     {
-        olabel = rpath->frp_label_stack[0];
+        olabel = rpath->frp_label_stack[0].fml_value;
         vnet_mpls_uc_set_label(&bfm->bfm_label, olabel);
         vnet_mpls_uc_set_exp(&bfm->bfm_label, 0);
         vnet_mpls_uc_set_s(&bfm->bfm_label, 1);

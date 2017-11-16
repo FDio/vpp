@@ -98,6 +98,12 @@ define mpls_tunnel_dump
   i32 tunnel_index;
 };
 
+typeonly define fib_mpls_label2
+{
+  u8 is_uniform;
+  u32 label;
+};
+
 /** \brief FIB path
     @param sw_if_index - index of the interface
     @param weight - The weight, for UCMP
@@ -123,7 +129,7 @@ typeonly manual_print manual_endian define fib_path2
   u8 is_prohibit;
   u8 afi;
   u8 next_hop[16];
-  u32 labels[16];
+  u32 vl_api_fib_mpls_label2_t[16];
 };
 
 /** \brief mpls tunnel details
@@ -211,7 +217,7 @@ autoreply define mpls_route_add_del
   u32 mr_next_hop_sw_if_index;
   u32 mr_next_hop_table_id;
   u32 mr_next_hop_via_label;
-  u32 mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
+  vl_api_fib_mpls_label2_t mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
 };
 
 /** \brief Dump MPLS fib table
