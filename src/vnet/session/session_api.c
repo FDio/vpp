@@ -625,6 +625,9 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   int rv = 0;
   clib_error_t *error;
   application_t *app;
+  stream_session_t *s;
+  transport_connection_t *tc = 0;
+  ip46_address_t *ip46;
 
   if (session_manager_is_enabled () == 0)
     {
@@ -633,29 +636,43 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
     }
 
   app = application_lookup (mp->client_index);
-  if (app)
+  if (!app)
     {
-      ip46_address_t *ip46 = (ip46_address_t *) mp->ip;
-      memset (a, 0, sizeof (*a));
-      a->sep.is_ip4 = mp->is_ip4;
-      a->sep.ip = *ip46;
-      a->sep.port = mp->port;
-      a->sep.fib_index = mp->vrf;
-      a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
-      a->sep.transport_proto = mp->proto;
-      a->app_index = app->index;
-
-      if ((error = vnet_bind (a)))
-	{
-	  rv = clib_error_get_code (error);
-	  clib_error_report (error);
-	}
+      rv = VNET_API_ERROR_APPLICATION_NOT_ATTACHED;
+      goto done;
     }
+
+  ip46 = (ip46_address_t *) mp->ip;
+  memset (a, 0, sizeof (*a));
+  a->sep.is_ip4 = mp->is_ip4;
+  a->sep.ip = *ip46;
+  a->sep.port = mp->port;
+  a->sep.fib_index = mp->vrf;
+  a->sep.sw_if_index = ENDPOINT_INVALID_INDEX;
+  a->sep.transport_proto = mp->proto;
+  a->app_index = app->index;
+
+  if ((error = vnet_bind (a)))
+    {
+      rv = clib_error_get_code (error);
+      clib_error_report (error);
+    }
+  else
+    {
+      s = listen_session_get_from_handle (a->handle);
+      tc = listen_session_get_transport (s);
+    }
+
 done:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_BIND_SOCK_REPLY,({
     if (!rv)
-      rmp->handle = a->handle;
+      {
+	rmp->handle = a->handle;
+	rmp->lcl_is_ip4 = tc->is_ip4;
+	clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+	rmp->lcl_port = tc->lcl_port;
+      }
   }));
   /* *INDENT-ON* */
 }
