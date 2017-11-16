@@ -306,6 +306,46 @@ vppcom_session_at_index (u32 session_index, session_t * volatile *sess)
   return VPPCOM_OK;
 }
 
+static inline void
+vppcom_session_table_add_listener (u64 listener_handle, u32 value)
+{
+  /* Session and listener handles have different formats. The latter has
+   * the thread index in the upper 32 bits while the former has the session
+   * type. Knowing that, for listeners we just flip the MSB to 1 */
+  listener_handle |= 1ULL << 63;
+  hash_set (vcm->session_index_by_vpp_handles, listener_handle, value);
+}
+
+static inline session_t *
+vppcom_session_table_lookup_listener (u64 listener_handle)
+{
+  uword *p;
+  u64 handle = listener_handle | (1ULL << 63);
+  p = hash_get (vcm->session_index_by_vpp_handles, handle);
+  if (!p)
+    {
+      clib_warning ("[%d] couldn't find listen session: unknown vpp "
+		    "listener handle %llx", getpid (), listener_handle);
+      return 0;
+    }
+  if (pool_is_free_index (vcm->sessions, p[0]))
+    {
+      if (VPPCOM_DEBUG > 1)
+	clib_warning ("[%d] invalid listen session, sid (%u)", getpid (),
+		      p[0]);
+      return 0;
+    }
+
+  return pool_elt_at_index (vcm->sessions, p[0]);
+}
+
+static inline void
+vppcom_session_table_del_listener (u64 listener_handle)
+{
+  listener_handle |= 1ULL << 63;
+  hash_unset (vcm->session_index_by_vpp_handles, listener_handle);
+}
+
 static int
 vppcom_connect_to_vpp (char *app_name)
 {
@@ -670,12 +710,26 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
   session_t *session = 0;
   vl_api_disconnect_session_reply_t *rmp;
   uword *p;
-  int rv = 0;
+  int rv = 0, rval;
 
   p = hash_get (vcm->session_index_by_vpp_handles, mp->handle);
+  if (VPPCOM_DEBUG > 0)
+    {
+      if (!p)
+	{
+	  clib_warning ("[%d] request to disconnect invalid handle (%u)!",
+			getpid (), mp->handle);
+	  rv = -11;
+	  goto done;
+	}
+      clib_warning ("[%d] disconnecting handle %u sid (%u)!", getpid (),
+		    mp->handle, p[0]);
+    }
+
+  goto done;
+
   if (p)
     {
-      int rval;
       clib_spinlock_lock (&vcm->sessions_lockp);
       rval = vppcom_session_at_index (p[0], &session);
       if (PREDICT_FALSE (rval))
@@ -696,6 +750,7 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
       rv = -11;
     }
 
+done:
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
 
@@ -890,8 +945,11 @@ vl_api_bind_sock_reply_t_handler (vl_api_bind_sock_reply_t * mp)
   if (rv == VPPCOM_OK)
     {
       session->vpp_handle = mp->handle;
-      hash_set (vcm->session_index_by_vpp_handles, mp->handle,
-		vcm->bind_session_index);
+      session->lcl_addr.is_ip4 = mp->lcl_is_ip4;
+      clib_memcpy (&session->lcl_addr.ip46, mp->lcl_ip,
+		   sizeof (session->peer_addr.ip46));
+      session->lcl_port = mp->lcl_port;
+      vppcom_session_table_add_listener (mp->handle, vcm->bind_session_index);
       session->state = mp->retval ? STATE_FAILED : STATE_LISTEN;
       vcm->bind_session_index = ~0;
     }
@@ -902,16 +960,17 @@ static void
 vl_api_unbind_sock_reply_t_handler (vl_api_unbind_sock_reply_t * mp)
 {
   session_t *session = 0;
-  int rv;
 
   clib_spinlock_lock (&vcm->sessions_lockp);
-  rv = vppcom_session_at_index (vcm->bind_session_index, &session);
-  if (rv == VPPCOM_OK)
+  session = vppcom_session_table_lookup_listener (vcm->bind_session_index);
+
+  if (session)
     {
       if ((VPPCOM_DEBUG > 1) && (mp->retval))
 	clib_warning ("[%d] unbind failed: %U", getpid (), format_api_error,
 		      ntohl (mp->retval));
 
+      vppcom_session_table_del_listener (vcm->bind_session_index);
       vcm->bind_session_index = ~0;
       session->state = STATE_START;
     }
@@ -1018,16 +1077,24 @@ static void
 vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 {
   svm_fifo_t *rx_fifo, *tx_fifo;
-  session_t *session;
+  session_t *session, *listen_session;
   u32 session_index;
-  uword *p;
 
   clib_spinlock_lock (&vcm->sessions_lockp);
   if (!clib_fifo_free_elts (vcm->client_session_index_fifo))
     {
       clib_warning ("[%d] client session queue is full!", getpid ());
-      vppcom_send_accept_session_reply (VNET_API_ERROR_QUEUE_FULL,
-					mp->handle);
+      vppcom_send_accept_session_reply (mp->handle,
+					VNET_API_ERROR_QUEUE_FULL);
+      clib_spinlock_unlock (&vcm->sessions_lockp);
+      return;
+    }
+
+  listen_session = vppcom_session_table_lookup_listener (mp->listener_handle);
+  if (!listen_session)
+    {
+      clib_warning ("[%d] ERROR: couldn't find listen session: unknown vpp "
+		    "listener handle %llx", getpid (), mp->listener_handle);
       clib_spinlock_unlock (&vcm->sessions_lockp);
       return;
     }
@@ -1057,36 +1124,12 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 
   /* Add it to lookup table */
   hash_set (vcm->session_index_by_vpp_handles, mp->handle, session_index);
-
-  p = hash_get (vcm->session_index_by_vpp_handles, mp->listener_handle);
-  if (p)
-    {
-      int rval;
-      session_t *listen_session;
-
-      rval = vppcom_session_at_index (p[0], &listen_session);
-      if (PREDICT_FALSE (rval))
-	{
-	  if (VPPCOM_DEBUG > 1)
-	    clib_warning ("[%d] invalid listen session, sid (%u) "
-			  "has been closed!", getpid (), p[0]);
-	}
-      else
-	{
-	  session->lcl_port = listen_session->lcl_port;
-	  session->lcl_addr = listen_session->lcl_addr;
-	}
-      clib_spinlock_unlock (&vcm->sessions_lockp);
-      hash_unset (vcm->session_index_by_vpp_handles, mp->handle);
-    }
-  else
-    {
-      clib_warning ("[%d] couldn't find listen session: unknown vpp "
-		    "listener handle %llx", getpid (), mp->listener_handle);
-    }
+  session->lcl_port = listen_session->lcl_port;
+  session->lcl_addr = listen_session->lcl_addr;
 
   /* TBD: move client_session_index_fifo into listener session */
   clib_fifo_add1 (vcm->client_session_index_fifo, session_index);
+
   clib_spinlock_unlock (&vcm->sessions_lockp);
 
   if (VPPCOM_DEBUG > 1)
@@ -1145,7 +1188,8 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       if (VPPCOM_DEBUG > 1)
 	clib_warning ("[%d] client session queue is full!", getpid ());
       clib_spinlock_unlock (&vcm->sessions_lockp);
-      vppcom_send_accept_session_reply (VNET_API_ERROR_QUEUE_FULL, 0);
+      /* TBD: fix handle */
+      vppcom_send_accept_session_reply (0, VNET_API_ERROR_QUEUE_FULL);
       return;
     }
 
@@ -1264,6 +1308,9 @@ vppcom_session_unbind (u32 session_index)
     }
   clib_spinlock_unlock (&vcm->sessions_lockp);
 
+  if (vcm->bind_session_index != session_index)
+    clib_warning ("[%d] ERROR: unbinding a not bound listener %u (%u)",
+		  session_index, vcm->bind_session_index);
   vcm->bind_session_index = session_index;
   vppcom_send_unbind_sock (session_index);
   rv = vppcom_wait_for_session_state_change (session_index, STATE_START,
@@ -1298,6 +1345,9 @@ vppcom_session_disconnect (u32 session_index)
 
   if (!session->is_cut_thru)
     {
+      if (VPPCOM_DEBUG > 1)
+	clib_warning ("[%d] disconnecting sid (%u)", getpid (),
+		      session_index);
       vppcom_send_disconnect (session);
       clib_spinlock_unlock (&vcm->sessions_lockp);
 
@@ -2425,7 +2475,7 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
   else
     {
       cut_thru_str = " ";
-      vppcom_send_accept_session_reply (0, client_session->vpp_handle);
+      vppcom_send_accept_session_reply (client_session->vpp_handle, 0);
     }
 
   if (VPPCOM_DEBUG > 0)
