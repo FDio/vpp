@@ -278,6 +278,9 @@ define bind_sock_reply {
   u64 handle;
   i32 retval;
   u64 server_event_queue_address;
+  u8 lcl_is_ip4;
+  u8 lcl_ip[16];
+  u16 lcl_port;
   u32 segment_size;
   u8 segment_name_length;
   u8 segment_name[128];

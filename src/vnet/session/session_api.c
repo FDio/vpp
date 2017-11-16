@@ -625,6 +625,8 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   int rv = 0;
   clib_error_t *error;
   application_t *app;
+  stream_session_t *s;
+  transport_connection_t *tc;
 
   if (session_manager_is_enabled () == 0)
     {
@@ -650,12 +652,22 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
 	  rv = clib_error_get_code (error);
 	  clib_error_report (error);
 	}
+      else
+	{
+	  s = listen_session_get_from_handle (a->handle);
+	  tc = listen_session_get_transport (s);
+	}
     }
 done:
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_BIND_SOCK_REPLY,({
     if (!rv)
-      rmp->handle = a->handle;
+      {
+	rmp->handle = a->handle;
+	rmp->lcl_is_ip4 = tc->is_ip4;
+	clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+	rmp->lcl_port = tc->lcl_port;
+      }
   }));
   /* *INDENT-ON* */
 }
