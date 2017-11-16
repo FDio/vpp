@@ -1108,8 +1108,10 @@ mfib_test_i (fib_protocol_t PROTO,
 	    .eos = MPLS_EOS,
 	},
     };
-    mpls_label_t *l3300 = NULL;
-    vec_add1(l3300, 3300);
+    fib_mpls_label_t *l3300 = NULL, fml3300 = {
+        .fml_value = 3300,
+    };
+    vec_add1(l3300, fml3300);
 
     /*
      * MPLS enable an interface so we get the MPLS table created

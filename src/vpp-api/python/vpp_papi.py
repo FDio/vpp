@@ -112,7 +112,8 @@ class VPP():
     these messages in a background thread.
     """
     def __init__(self, apifiles=None, testmode=False, async_thread=True,
-                 logger=logging.getLogger('vpp_papi'), loglevel='debug', read_timeout=0):
+                 logger=logging.getLogger('vpp_papi'), loglevel='debug',
+                 read_timeout=0):
         """Create a VPP API object.
 
         apifiles is a list of files containing API
@@ -395,9 +396,9 @@ class VPP():
 
         for k in kwargs:
             if k not in msgdef['args']:
-                raise ValueError(1,'Non existing argument [' + k + ']' + \
-                                 ' used in call to: ' + \
-                                 self.id_names[kwargs['_vl_msg_id']] + '()' )
+                raise ValueError(1,'Non-existing argument [{}] used in ' \
+                                 'call: {} {}'.format(k, msgdef['args'].keys(),
+                                                      kwargs))
 
         for k, v in vpp_iterator(msgdef['args']):
             off += size

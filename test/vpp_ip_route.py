@@ -38,6 +38,11 @@ class DpoProto:
     DPO_PROTO_NSH = 5
 
 
+class MplsLspMode:
+    PIPE = 0
+    UNIFORM = 1
+
+
 def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
     if inet == AF_INET:
         s = 4
@@ -93,6 +98,14 @@ class VppIpTable(VppObject):
         return ("table-%s-%d" %
                 ("v6" if self.is_ip6 == 1 else "v4",
                  self.table_id))
+
+
+class VppMplsLabel(object):
+    def __init__(self, value, mode=MplsLspMode.PIPE, ttl=64, exp=0):
+        self.value = value
+        self.mode = mode
+        self.ttl = ttl
+        self.exp = exp
 
 
 class VppRoutePath(object):

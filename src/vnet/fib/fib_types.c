@@ -25,6 +25,7 @@
 static const char* fib_protocol_names[] = FIB_PROTOCOLS;
 static const char* vnet_link_names[] = VNET_LINKS;
 static const char* fib_forw_chain_names[] = FIB_FORW_CHAINS;
+static const char* fib_mpls_lsp_mode_names[] = FIB_MPLS_LSP_MODES;
 
 u8 *
 format_fib_protocol (u8 * s, va_list * ap)
@@ -48,6 +49,14 @@ format_fib_forw_chain_type (u8 * s, va_list * args)
     fib_forward_chain_type_t fct = va_arg(*args, int);
 
     return (format (s, "%s", fib_forw_chain_names[fct]));
+}
+
+u8 *
+format_fib_mpls_lsp_mode(u8 *s, va_list *ap)
+{
+    fib_mpls_lsp_mode_t mode = va_arg(*ap, int);
+
+    return (format (s, "%s", fib_mpls_lsp_mode_names[mode])); 
 }
 
 void
@@ -480,7 +489,10 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             while (unformat (input, "%U",
                              unformat_mpls_unicast_label, &out_label))
             {
-                vec_add1(rpath->frp_label_stack, out_label);
+                fib_mpls_label_t fml = {
+                    .fml_value = out_label,
+                };
+                vec_add1(rpath->frp_label_stack, fml);
             }
         }
         else

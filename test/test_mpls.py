@@ -6,7 +6,8 @@ import socket
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
-    MRouteItfFlags, MRouteEntryFlags, DpoProto, VppIpTable, VppMplsTable
+    MRouteItfFlags, MRouteEntryFlags, DpoProto, VppIpTable, VppMplsTable, \
+    VppMplsLabel, MplsLspMode
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 from scapy.packet import Raw
@@ -330,7 +331,7 @@ class TestMPLS(VppTestCase):
         route_32_eos = VppMplsRoute(self, 32, 1,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
-                                                  labels=[33])])
+                                                  labels=[VppMplsLabel(33)])])
         route_32_eos.add_vpp_config()
 
         #
@@ -353,7 +354,7 @@ class TestMPLS(VppTestCase):
         route_32_neos = VppMplsRoute(self, 32, 0,
                                      [VppRoutePath(self.pg0.remote_ip4,
                                                    self.pg0.sw_if_index,
-                                                   labels=[33])])
+                                                   labels=[VppMplsLabel(33)])])
         route_32_neos.add_vpp_config()
 
         #
@@ -445,7 +446,28 @@ class TestMPLS(VppTestCase):
             self, 334, 1,
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
-                          labels=[3],
+                          labels=[VppMplsLabel(3)],
+                          proto=DpoProto.DPO_PROTO_IP6)])
+        route_334_eos.add_vpp_config()
+
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_labelled_ip6(self.pg0, [334], 64)
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture()
+        self.verify_capture_ip6(self.pg0, rx, tx)
+
+        #
+        # An MPLS xconnect - EOS label in IPv6 out w imp-null in uniform mode
+        #
+        route_334_eos = VppMplsRoute(
+            self, 334, 1,
+            [VppRoutePath(self.pg0.remote_ip6,
+                          self.pg0.sw_if_index,
+                          labels=[VppMplsLabel(3, MplsLspMode.UNIFORM)],
                           proto=DpoProto.DPO_PROTO_IP6)])
         route_334_eos.add_vpp_config()
 
@@ -500,7 +522,8 @@ class TestMPLS(VppTestCase):
                                     [VppRoutePath("0.0.0.0",
                                                   0xffffffff,
                                                   nh_via_label=32,
-                                                  labels=[44, 45])])
+                                                  labels=[VppMplsLabel(44),
+                                                          VppMplsLabel(45)])])
         route_34_eos.add_vpp_config()
 
         tx = self.create_stream_labelled_ip4(self.pg0, [34])
@@ -520,7 +543,8 @@ class TestMPLS(VppTestCase):
                                      [VppRoutePath("0.0.0.0",
                                                    0xffffffff,
                                                    nh_via_label=32,
-                                                   labels=[44, 46])])
+                                                   labels=[VppMplsLabel(44),
+                                                           VppMplsLabel(46)])])
         route_34_neos.add_vpp_config()
 
         self.vapi.cli("clear trace")

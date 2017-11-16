@@ -170,8 +170,8 @@ static int
 mpls_route_add_del_t_handler (vnet_main_t * vnm,
 			      vl_api_mpls_route_add_del_t * mp)
 {
+  fib_mpls_label_t *label_stack = NULL;
   u32 fib_index, next_hop_fib_index;
-  mpls_label_t *label_stack = NULL;
   int rv, ii, n_labels;;
 
   fib_prefix_t pfx = {
@@ -211,13 +211,17 @@ mpls_route_add_del_t_handler (vnet_main_t * vnm,
   n_labels = mp->mr_next_hop_n_out_labels;
   if (n_labels == 0)
     ;
-  else if (1 == n_labels)
-    vec_add1 (label_stack, ntohl (mp->mr_next_hop_out_label_stack[0]));
   else
     {
       vec_validate (label_stack, n_labels - 1);
       for (ii = 0; ii < n_labels; ii++)
-	label_stack[ii] = ntohl (mp->mr_next_hop_out_label_stack[ii]);
+	{
+	  label_stack[ii].fml_value =
+	    ntohl (mp->mr_next_hop_out_label_stack[ii].label);
+	  label_stack[ii].fml_mode =
+	    (mp->mr_next_hop_out_label_stack[ii].is_uniform ?
+	     FIB_MPLS_LSP_MODE_UNIFORM : FIB_MPLS_LSP_MODE_PIPE);
+	}
     }
 
   /* *INDENT-OFF* */
@@ -323,8 +327,12 @@ vl_api_mpls_tunnel_add_del_t_handler (vl_api_mpls_tunnel_add_del_t * mp)
   if (mp->mt_is_add)
     {
       for (ii = 0; ii < mp->mt_next_hop_n_out_labels; ii++)
-	vec_add1 (rpath.frp_label_stack,
-		  ntohl (mp->mt_next_hop_out_label_stack[ii]));
+	{
+	  fib_mpls_label_t fml = {
+	    .fml_value = ntohl (mp->mt_next_hop_out_label_stack[ii]),
+	  };
+	  vec_add1 (rpath.frp_label_stack, fml);
+	}
     }
 
   vec_add1 (rpaths, rpath);
