@@ -46,8 +46,9 @@
 #define foreach_vpe_api_msg                             \
 _(SR_LOCALSID_ADD_DEL, sr_localsid_add_del)             \
 _(SR_POLICY_DEL, sr_policy_del)                         \
-_(SR_STEERING_ADD_DEL, sr_steering_add_del)
-//_(SR_LOCALSIDS, sr_localsids_dump)
+_(SR_STEERING_ADD_DEL, sr_steering_add_del)             \
+_(SR_SET_ENCAP_SOURCE, sr_set_encap_source)             \
+_(SR_LOCALSIDS_DUMP, sr_localsids_dump)
 //_(SR_LOCALSID_BEHAVIORS, sr_localsid_behaviors_dump)
 
 static void vl_api_sr_localsid_add_del_t_handler
@@ -152,6 +153,16 @@ vl_api_sr_policy_del_t_handler (vl_api_sr_policy_del_t * mp)
   REPLY_MACRO (VL_API_SR_POLICY_DEL_REPLY);
 }
 
+static void
+vl_api_sr_set_encap_source_t_handler (vl_api_sr_set_encap_source_t * mp)
+{
+  vl_api_sr_set_encap_source_reply_t *rmp;
+  int rv = 0;
+  sr_set_source ((ip6_address_t *) & mp->encaps_source);
+
+  REPLY_MACRO (VL_API_SR_POLICY_DEL_REPLY);
+}
+
 static void vl_api_sr_steering_add_del_t_handler
   (vl_api_sr_steering_add_del_t * mp)
 {
@@ -178,6 +189,47 @@ static void vl_api_sr_steering_add_del_t_handler
 
   REPLY_MACRO (VL_API_SR_STEERING_ADD_DEL_REPLY);
 }
+
+static void send_sr_localsid_details
+  (ip6_sr_localsid_t * t, unix_shared_memory_queue_t * q, u32 context)
+{
+  vl_api_sr_localsids_details_t *rmp;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_SR_LOCALSIDS_DETAILS);
+  memcpy (rmp->address, &t->localsid, sizeof (ip6_address_t));
+  rmp->end_psp = t->end_psp;
+  rmp->behavior = htons (t->behavior);
+  rmp->fib_table = htonl (t->fib_table);
+  memcpy (rmp->xconnect_next_hop, &t->next_hop, sizeof (ip6_address_t));
+  rmp->xconnect_iface_or_vrf_table = htonl (t->sw_if_index);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void vl_api_sr_localsids_dump_t_handler
+  (vl_api_sr_localsids_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  ip6_sr_main_t *sm = &sr_main;
+  ip6_sr_localsid_t *t;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    {
+      return;
+    }
+
+  /* *INDENT-OFF* */
+  pool_foreach (t, sm->localsids,
+  ({
+    send_sr_localsid_details(t, q, mp->context);
+  }));
+  /* *INDENT-ON* */
+}
+
 
 /*
  * sr_api_hookup

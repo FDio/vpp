@@ -112,6 +112,12 @@ static ip6_address_t sr_pr_encaps_src;
 /* Note:  This is temporal. We don't know whether to follow this path or
           take the ip address of a loopback interface or even the OIF         */
 
+void
+sr_set_source (ip6_address_t * address)
+{
+  clib_memcpy (&sr_pr_encaps_src, address, sizeof (sr_pr_encaps_src));
+}
+
 static clib_error_t *
 set_sr_src_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
