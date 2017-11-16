@@ -131,6 +131,7 @@ dpdk_tx_trace_buffer (dpdk_main_t * dm,
 	       sizeof (buffer[0]) - sizeof (buffer->pre_data));
   clib_memcpy (t0->buffer.pre_data, buffer->data + buffer->current_data,
 	       sizeof (t0->buffer.pre_data));
+  clib_memcpy (&t0->data, mb->buf_addr + mb->data_off, sizeof (t0->data));
 }
 
 static_always_inline void
