@@ -177,16 +177,13 @@ bier_fmask_init (bier_fmask_t *bfm,
 
     if (!(bfm->bfm_flags & BIER_FMASK_FLAG_DISP))
     {
-        /*
-         * leave this label in host byte order so we can OR in the TTL
-         */
         if (NULL != rpaths->frp_label_stack)
         {
-            olabel = rpaths->frp_label_stack[0];
+            olabel = rpaths->frp_label_stack[0].fml_value;
             vnet_mpls_uc_set_label(&bfm->bfm_label, olabel);
             vnet_mpls_uc_set_exp(&bfm->bfm_label, 0);
             vnet_mpls_uc_set_s(&bfm->bfm_label, 1);
-            vnet_mpls_uc_set_ttl(&bfm->bfm_label, 0);
+            vnet_mpls_uc_set_ttl(&bfm->bfm_label, 64);
             bfm->bfm_flags |= BIER_FMASK_FLAG_MPLS;
         }
         else
@@ -207,7 +204,9 @@ bier_fmask_init (bier_fmask_t *bfm,
             vnet_mpls_uc_set_label(&bfm->bfm_label, id);
             vnet_mpls_uc_set_s(&bfm->bfm_label, 1);
             vnet_mpls_uc_set_exp(&bfm->bfm_label, 0);
+            vnet_mpls_uc_set_ttl(&bfm->bfm_label, 64);
         }
+        bfm->bfm_label = clib_host_to_net_u32(bfm->bfm_label);
     }
 
     bfm->bfm_pl = fib_path_list_create((FIB_PATH_LIST_FLAG_SHARED |

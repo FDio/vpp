@@ -20,11 +20,47 @@
 #include <vnet/mpls/packet.h>
 #include <vnet/dpo/dpo.h>
 
+/**
+ * Flags present on an MPLS label sourced path-extension
+ */
+typedef enum mpls_label_dpo_attr_t_
+{
+    /**
+     * Do not decrement the TTL of IP packet during imposition
+     */
+    MPLS_LABEL_DPO_ATTR_NO_IP_TTL_DECR,
+    MPLS_LABEL_DPO_ATTR_UNIFORM_MODE,
+} mpls_label_dpo_attr_t;
+
+#define MPLS_LABEL_DPO_ATTR_MAX (MPLS_LABEL_DPO_ATTR_UNIFORM_MODE+1)
+
+typedef enum mpls_label_dpo_flags_t_
+{
+    MPLS_LABEL_DPO_FLAG_NONE = 0,
+    MPLS_LABEL_DPO_FLAG_NO_IP_TTL_DECR = (1 << MPLS_LABEL_DPO_ATTR_NO_IP_TTL_DECR),
+    MPLS_LABEL_DPO_FLAG_UNIFORM_MODE = (1 << MPLS_LABEL_DPO_ATTR_UNIFORM_MODE),
+} __attribute__ ((packed)) mpls_label_dpo_flags_t;
+
+#define MPLS_LABEL_DPO_ATTR_NAMES {                               \
+    [MPLS_LABEL_DPO_ATTR_NO_IP_TTL_DECR] = "no-ip-tll-decr",      \
+    [MPLS_LABEL_DPO_ATTR_UNIFORM_MODE]   = "uniform-mode",        \
+}
+
+#define FOR_EACH_MPLS_LABEL_DPO_ATTR(_item)                \
+    for (_item = MPLS_LABEL_DPO_ATTR_NO_IP_TTL_DECR;       \
+         _item <= MPLS_LABEL_DPO_ATTR_UNIFORM_MODE;        \
+         _item++)
+
+/**
+ * Format the flags variable
+ */
+extern u8* format_mpls_label_dpo_flags(u8 *s, va_list *args);
 
 /**
  * Maximum number of labels in one DPO
  */
 #define MPLS_LABEL_DPO_MAX_N_LABELS 12
+
 /**
  * A representation of an MPLS label for imposition in the data-path
  */
@@ -47,9 +83,14 @@ typedef struct mpls_label_dpo_t
     dpo_proto_t mld_payload_proto;
 
     /**
+     * Flags
+     */
+    mpls_label_dpo_flags_t mld_flags;
+
+    /**
      * Size of the label stack
      */
-    u16 mld_n_labels;
+    u8 mld_n_labels;
 
     /**
      * Cached amount of header bytes to paint
@@ -75,18 +116,17 @@ STATIC_ASSERT((sizeof(mpls_label_dpo_t) <= CLIB_CACHE_LINE_BYTES),
  *
  * @param label_stack The stack if labels to impose, outer most label first
  * @param eos The inner most label's EOS bit
- * @param ttl The inner most label's TTL bit
- * @param exp The inner most label's EXP bit
  * @param payload_proto The ptocool of the payload packets that will
  *                      be imposed with this label header.
- * @param dpo The parent of the created MPLS label object
+ * @param parent The parent of the created MPLS label object
+ * @param dpo The MPLS label DPO created
  */
-extern index_t mpls_label_dpo_create(mpls_label_t *label_stack,
-                                     mpls_eos_bit_t eos,
-                                     u8 ttl,
-                                     u8 exp,
-                                     dpo_proto_t payload_proto,
-				     const dpo_id_t *dpo);
+extern void mpls_label_dpo_create(fib_mpls_label_t *label_stack,
+                                  mpls_eos_bit_t eos,
+                                  dpo_proto_t payload_proto,
+                                  mpls_label_dpo_flags_t flags,
+                                  const dpo_id_t *paremt,
+                                  dpo_id_t *dpo);
 
 extern u8* format_mpls_label_dpo(u8 *s, va_list *args);
 
@@ -103,5 +143,10 @@ mpls_label_dpo_get (index_t index)
 }
 
 extern void mpls_label_dpo_module_init(void);
+
+/*
+ * test function to get the registered DPO type for the flags
+ */
+extern dpo_type_t mpls_label_dpo_get_type(mpls_label_dpo_flags_t flags);
 
 #endif

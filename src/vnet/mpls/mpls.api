@@ -40,21 +40,16 @@ autoreply define mpls_ip_bind_unbind
   u8 mb_address[16];
 };
 
-/** \brief MPLS tunnel Add / del route
-    @param client_index - opaque cookie to identify the sender
-    @param context - sender context, to match reply w/ request
-    @param mt_is_add - Is this a route add or delete
-    @param mt_sw_if_index - The SW interface index of the tunnel to delete
-    @param mt_is_multicast - Is the tunnel's underlying LSP multicast
-    @param mt_next_hop_proto_is_ip4 - The next-hop is IPV4
-    @param mt_next_hop_weight - The weight, for UCMP
-    @param mt_next_hop_preference - The preference
-    @param mt_next_hop[16] - the nextop address
-    @param mt_next_hop_sw_if_index - the next-hop SW interface
-    @param mt_next_hop_table_id - the next-hop table-id (if appropriate)
-    @param mt_next_hop_n_out_labels - the number of next-hop output labels
-    @param mt_next_hop_out_label_stack - the next-hop output label stack,  outer most first
+/** \brief MPLS label
 */
+typeonly define fib_mpls_label2
+{
+  u8 is_uniform;
+  u32 label;
+  u8 ttl;
+  u8 exp;
+};
+
 define mpls_tunnel_add_del
 {
   u32 client_index;
@@ -70,7 +65,7 @@ define mpls_tunnel_add_del
   u8 mt_next_hop_n_out_labels;
   u32 mt_next_hop_sw_if_index;
   u32 mt_next_hop_table_id;
-  u32 mt_next_hop_out_label_stack[mt_next_hop_n_out_labels];
+  vl_api_fib_mpls_label2_t mt_next_hop_out_label_stack[mt_next_hop_n_out_labels];
 };
 
 /** \brief Reply for MPLS tunnel add / del request
@@ -121,7 +116,7 @@ typeonly manual_print manual_endian define fib_path2
   u8 is_prohibit;
   u8 afi;
   u8 next_hop[16];
-  u32 labels[16];
+  u32 vl_api_fib_mpls_label2_t[16];
 };
 
 /** \brief mpls tunnel details
@@ -207,7 +202,7 @@ autoreply define mpls_route_add_del
   u32 mr_next_hop_sw_if_index;
   u32 mr_next_hop_table_id;
   u32 mr_next_hop_via_label;
-  u32 mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
+  vl_api_fib_mpls_label2_t mr_next_hop_out_label_stack[mr_next_hop_n_out_labels];
 };
 
 /** \brief Dump MPLS fib table

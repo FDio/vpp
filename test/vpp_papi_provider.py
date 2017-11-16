@@ -1095,7 +1095,6 @@ class VppPapiProvider(object):
         :param next_hop_weight:  (Default value = 1)
 
         """
-
         return self.api(
             self.papi.mpls_route_add_del,
             {'mr_label': label,
