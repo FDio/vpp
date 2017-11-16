@@ -347,6 +347,13 @@ ip6_traffic_class (ip6_header_t * i)
   return (i->ip_version_traffic_class_and_flow_label & 0x0FF00000) >> 20;
 }
 
+static_always_inline u8
+ip6_traffic_class_network_order (const ip6_header_t * ip6)
+{
+  return (clib_net_to_host_u32 (ip6->ip_version_traffic_class_and_flow_label)
+	  & 0x0ff00000) >> 20;
+}
+
 always_inline void *
 ip6_next_header (ip6_header_t * i)
 {

@@ -38,6 +38,11 @@ class DpoProto:
     DPO_PROTO_NSH = 5
 
 
+class MplsLspMode:
+    PIPE = 0
+    UNIFORM = 1
+
+
 def find_route(test, ip_addr, len, table_id=0, inet=AF_INET):
     if inet == AF_INET:
         s = 4
@@ -95,6 +100,21 @@ class VppIpTable(VppObject):
                  self.table_id))
 
 
+class VppMplsLabel(object):
+    def __init__(self, value, mode=MplsLspMode.PIPE, ttl=64, exp=0):
+        self.value = value
+        self.mode = mode
+        self.ttl = ttl
+        self.exp = exp
+
+    def encode(self):
+        is_uniform = 0 if self.mode is MplsLspMode.PIPE else 1
+        return {'label': self.value,
+                'ttl': self.ttl,
+                'exp': self.exp,
+                'is_uniform': is_uniform}
+
+
 class VppRoutePath(object):
 
     def __init__(
@@ -137,6 +157,16 @@ class VppRoutePath(object):
         self.is_udp_encap = is_udp_encap
         self.next_hop_id = next_hop_id
         self.is_dvr = is_dvr
+
+    def encode_labels(self):
+        lstack = []
+        for l in self.nh_labels:
+            if type(l) == VppMplsLabel:
+                lstack.append(l.encode())
+            else:
+                lstack.append({'label': l,
+                               'ttl': 255})
+        return lstack
 
 
 class VppMRoutePath(VppRoutePath):
@@ -195,15 +225,16 @@ class VppIpRoute(VppObject):
                 is_ipv6=self.is_ip6)
         else:
             for path in self.paths:
+                lstack = path.encode_labels()
+
                 self._test.vapi.ip_add_del_route(
                     self.dest_addr,
                     self.dest_addr_len,
                     path.nh_addr,
                     path.nh_itf,
                     table_id=self.table_id,
-                    next_hop_out_label_stack=path.nh_labels,
-                    next_hop_n_out_labels=len(
-                        path.nh_labels),
+                    next_hop_out_label_stack=lstack,
+                    next_hop_n_out_labels=len(lstack),
                     next_hop_via_label=path.nh_via_label,
                     next_hop_table_id=path.nh_table_id,
                     next_hop_id=path.next_hop_id,
@@ -513,6 +544,8 @@ class VppMplsRoute(VppObject):
     def add_vpp_config(self):
         is_multipath = len(self.paths) > 1
         for path in self.paths:
+            lstack = path.encode_labels()
+
             self._test.vapi.mpls_route_add_del(
                 self.local_label,
                 self.eos_bit,
@@ -524,9 +557,8 @@ class VppMplsRoute(VppObject):
                 table_id=self.table_id,
                 is_interface_rx=path.is_interface_rx,
                 is_rpf_id=path.is_rpf_id,
-                next_hop_out_label_stack=path.nh_labels,
-                next_hop_n_out_labels=len(
-                    path.nh_labels),
+                next_hop_out_label_stack=lstack,
+                next_hop_n_out_labels=len(lstack),
                 next_hop_via_label=path.nh_via_label,
                 next_hop_table_id=path.nh_table_id)
         self._test.registry.register(self, self._test.logger)

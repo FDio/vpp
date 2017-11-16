@@ -188,6 +188,7 @@ typedef struct
      */
     struct
     {
+      u32 pad[VLIB_N_RX_TX];	/* do not overlay w/ ip.adj_index[0,1] */
       u8 ttl;
       u8 exp;
       u8 first;
