@@ -587,6 +587,10 @@ format_dpdk_tx_dma_trace (u8 * s, va_list * va)
 	      format_white_space, indent,
 	      t->buffer_index, format_vlib_buffer, &t->buffer);
 
+  s = format (s, "\n%U%U",
+	      format_white_space, indent,
+	      format_dpdk_rte_mbuf, &t->mb, &t->data);
+
   s = format (s, "\n%U%U", format_white_space, indent,
 	      format_ethernet_header_with_length, t->buffer.pre_data,
 	      sizeof (t->buffer.pre_data));
@@ -713,11 +717,12 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
 
   s = format (s, "PKT MBUF: port %d, nb_segs %d, pkt_len %d"
 	      "\n%Ubuf_len %d, data_len %d, ol_flags 0x%x, data_off %d, phys_addr 0x%x"
-	      "\n%Upacket_type 0x%x",
+	      "\n%Upacket_type 0x%x l2_len %u l3_len %u outer_l2_len %u outer_l3_len %u",
 	      mb->port, mb->nb_segs, mb->pkt_len,
 	      format_white_space, indent,
 	      mb->buf_len, mb->data_len, mb->ol_flags, mb->data_off,
-	      mb->buf_physaddr, format_white_space, indent, mb->packet_type);
+	      mb->buf_physaddr, format_white_space, indent, mb->packet_type,
+	      mb->l2_len, mb->l3_len, mb->outer_l2_len, mb->outer_l3_len);
 
   if (mb->ol_flags)
     s = format (s, "\n%U%U", format_white_space, indent,

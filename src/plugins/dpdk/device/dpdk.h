@@ -405,6 +405,7 @@ typedef struct
   struct rte_mbuf mb;
   /* Copy of VLIB buffer; packet data stored in pre_data. */
   vlib_buffer_t buffer;
+  u8 data[256];			/* First 256 data bytes, used for hexdump */
 } dpdk_tx_dma_trace_t;
 
 typedef struct
