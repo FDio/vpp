@@ -6,7 +6,8 @@ import socket
 from framework import VppTestCase, VppTestRunner
 from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsIpBind, VppIpMRoute, VppMRoutePath, \
-    MRouteItfFlags, MRouteEntryFlags, DpoProto, VppIpTable, VppMplsTable
+    MRouteItfFlags, MRouteEntryFlags, DpoProto, VppIpTable, VppMplsTable, \
+    VppMplsLabel, MplsLspMode
 from vpp_mpls_tunnel_interface import VppMPLSTunnelInterface
 
 from scapy.packet import Raw
@@ -25,20 +26,21 @@ def verify_filter(capture, sent):
     return capture
 
 
-def verify_mpls_stack(tst, rx, mpls_labels, ttl=255, num=0):
+def verify_mpls_stack(tst, rx, mpls_labels, ttl=255):
     # the rx'd packet has the MPLS label popped
+    rx.show()
     eth = rx[Ether]
     tst.assertEqual(eth.type, 0x8847)
 
     rx_mpls = rx[MPLS]
 
     for ii in range(len(mpls_labels)):
-        tst.assertEqual(rx_mpls.label, mpls_labels[ii])
-        tst.assertEqual(rx_mpls.cos, 0)
-        if ii == num:
+        tst.assertEqual(rx_mpls.label, mpls_labels[ii].value)
+        tst.assertEqual(rx_mpls.cos, mpls_labels[ii].exp)
+        if mpls_labels[ii].mode is MplsLspMode.UNIFORM:
             tst.assertEqual(rx_mpls.ttl, ttl)
         else:
-            tst.assertEqual(rx_mpls.ttl, 255)
+            tst.assertEqual(rx_mpls.ttl, mpls_labels[ii].ttl)
         if ii == len(mpls_labels) - 1:
             tst.assertEqual(rx_mpls.s, 1)
         else:
@@ -140,14 +142,14 @@ class TestMPLS(VppTestCase):
             pkts.append(p)
         return pkts
 
-    def create_stream_ip4(self, src_if, dst_ip):
+    def create_stream_ip4(self, src_if, dst_ip, ip_ttl=64):
         self.reset_packet_infos()
         pkts = []
         for i in range(0, 257):
             info = self.create_packet_info(src_if, src_if)
             payload = self.info_to_payload(info)
             p = (Ether(dst=src_if.local_mac, src=src_if.remote_mac) /
-                 IP(src=src_if.remote_ip4, dst=dst_ip) /
+                 IP(src=src_if.remote_ip4, dst=dst_ip, ttl=ip_ttl) /
                  UDP(sport=1234, dport=1234) /
                  Raw(payload))
             info.data = p.copy()
@@ -226,10 +228,7 @@ class TestMPLS(VppTestCase):
         except:
             raise
 
-    def verify_capture_tunneled_ip4(self, src_if, capture, sent, mpls_labels,
-                                    ttl=255, top=None):
-        if top is None:
-            top = len(mpls_labels) - 1
+    def verify_capture_tunneled_ip4(self, src_if, capture, sent, mpls_labels):
         try:
             capture = verify_filter(capture, sent)
 
@@ -241,8 +240,7 @@ class TestMPLS(VppTestCase):
                 tx_ip = tx[IP]
                 rx_ip = rx[IP]
 
-                # the MPLS TTL is 255 since it enters a new tunnel
-                verify_mpls_stack(self, rx, mpls_labels, ttl, top)
+                verify_mpls_stack(self, rx, mpls_labels)
 
                 self.assertEqual(rx_ip.src, tx_ip.src)
                 self.assertEqual(rx_ip.dst, tx_ip.dst)
@@ -323,7 +321,7 @@ class TestMPLS(VppTestCase):
         route_32_eos = VppMplsRoute(self, 32, 1,
                                     [VppRoutePath(self.pg0.remote_ip4,
                                                   self.pg0.sw_if_index,
-                                                  labels=[33])])
+                                                  labels=[VppMplsLabel(33)])])
         route_32_eos.add_vpp_config()
 
         #
@@ -439,6 +437,27 @@ class TestMPLS(VppTestCase):
             [VppRoutePath(self.pg0.remote_ip6,
                           self.pg0.sw_if_index,
                           labels=[3],
+                          proto=DpoProto.DPO_PROTO_IP6)])
+        route_334_eos.add_vpp_config()
+
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_labelled_ip6(self.pg0, [334], 64)
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture()
+        self.verify_capture_ip6(self.pg0, rx, tx)
+
+        #
+        # An MPLS xconnect - EOS label in IPv6 out w imp-null in uniform mode
+        #
+        route_334_eos = VppMplsRoute(
+            self, 334, 1,
+            [VppRoutePath(self.pg0.remote_ip6,
+                          self.pg0.sw_if_index,
+                          labels=[VppMplsLabel(3, MplsLspMode.UNIFORM)],
                           proto=DpoProto.DPO_PROTO_IP6)])
         route_334_eos.add_vpp_config()
 
@@ -715,16 +734,18 @@ class TestMPLS(VppTestCase):
         route_10_0_0_2.remove_vpp_config()
         route_10_0_0_1.remove_vpp_config()
 
-    def test_tunnel(self):
-        """ MPLS Tunnel Tests """
+    def test_tunnel_pipe(self):
+        """ MPLS Tunnel Tests - Pipe """
 
         #
         # Create a tunnel with a single out label
         #
-        mpls_tun = VppMPLSTunnelInterface(self,
-                                          [VppRoutePath(self.pg0.remote_ip4,
-                                                        self.pg0.sw_if_index,
-                                                        labels=[44, 46])])
+        mpls_tun = VppMPLSTunnelInterface(
+            self,
+            [VppRoutePath(self.pg0.remote_ip4,
+                          self.pg0.sw_if_index,
+                          labels=[VppMplsLabel(44),
+                                  VppMplsLabel(46)])])
         mpls_tun.add_vpp_config()
         mpls_tun.admin_up()
 
@@ -736,6 +757,8 @@ class TestMPLS(VppTestCase):
                                                   mpls_tun._sw_if_index)])
         route_10_0_0_3.add_vpp_config()
 
+        self.logger.error(self.vapi.cli("sh adj"))
+
         self.vapi.cli("clear trace")
         tx = self.create_stream_ip4(self.pg0, "10.0.0.3")
         self.pg0.add_stream(tx)
@@ -744,7 +767,72 @@ class TestMPLS(VppTestCase):
         self.pg_start()
 
         rx = self.pg0.get_capture()
-        self.verify_capture_tunneled_ip4(self.pg0, rx, tx, [44, 46])
+        self.verify_capture_tunneled_ip4(self.pg0, rx, tx,
+                                         [VppMplsLabel(44),
+                                          VppMplsLabel(46)])
+
+        #
+        # add a labelled route through the new tunnel
+        #
+        route_10_0_0_4 = VppIpRoute(self, "10.0.0.4", 32,
+                                    [VppRoutePath("0.0.0.0",
+                                                  mpls_tun._sw_if_index,
+                                                  labels=[33])])
+        route_10_0_0_4.add_vpp_config()
+
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "10.0.0.4")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture()
+        self.verify_capture_tunneled_ip4(self.pg0, rx, tx,
+                                         [VppMplsLabel(44),
+                                          VppMplsLabel(46),
+                                          VppMplsLabel(33, ttl=255)])
+
+    def test_tunnel_uniform(self):
+        """ MPLS Tunnel Tests - Uniform """
+
+        #
+        # Create a tunnel with a single out label
+        # The label stack is specified here from outer to inner
+        #
+        mpls_tun = VppMPLSTunnelInterface(
+            self,
+            [VppRoutePath(self.pg0.remote_ip4,
+                          self.pg0.sw_if_index,
+                          labels=[VppMplsLabel(44, ttl=32),
+                                  VppMplsLabel(46,
+                                               mode=MplsLspMode.UNIFORM)])])
+        mpls_tun.add_vpp_config()
+        mpls_tun.admin_up()
+
+        self.logger.error(self.vapi.cli("sh mpls tun 0"))
+
+        #
+        # add an unlabelled route through the new tunnel
+        #
+        route_10_0_0_3 = VppIpRoute(self, "10.0.0.3", 32,
+                                    [VppRoutePath("0.0.0.0",
+                                                  mpls_tun._sw_if_index)])
+        route_10_0_0_3.add_vpp_config()
+        self.logger.error(self.vapi.cli("sh adj"))
+        self.logger.error(self.vapi.cli("sh ip fib 10.0.0.3"))
+
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "10.0.0.3", ip_ttl=24)
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture()
+        self.verify_capture_tunneled_ip4(self.pg0, rx, tx,
+                                         [VppMplsLabel(44, ttl=32),
+                                          VppMplsLabel(46, ttl=23)])
 
         #
         # add a labelled route through the new tunnel

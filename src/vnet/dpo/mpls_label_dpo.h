@@ -47,6 +47,11 @@ typedef struct mpls_label_dpo_t
     dpo_proto_t mld_payload_proto;
 
     /**
+     * The LSP mode
+     */
+    fib_mpls_lsp_mode_t mld_mode;
+
+    /**
      * Size of the label stack
      */
     u16 mld_n_labels;
@@ -75,18 +80,16 @@ STATIC_ASSERT((sizeof(mpls_label_dpo_t) <= CLIB_CACHE_LINE_BYTES),
  *
  * @param label_stack The stack if labels to impose, outer most label first
  * @param eos The inner most label's EOS bit
- * @param ttl The inner most label's TTL bit
- * @param exp The inner most label's EXP bit
  * @param payload_proto The ptocool of the payload packets that will
  *                      be imposed with this label header.
- * @param dpo The parent of the created MPLS label object
+ * @param parent The parent of the created MPLS label object
+ * @param dpo The MPLS label DPO created
  */
-extern index_t mpls_label_dpo_create(mpls_label_t *label_stack,
-                                     mpls_eos_bit_t eos,
-                                     u8 ttl,
-                                     u8 exp,
-                                     dpo_proto_t payload_proto,
-				     const dpo_id_t *dpo);
+extern void mpls_label_dpo_create(fib_mpls_label_t *label_stack,
+                                  mpls_eos_bit_t eos,
+                                  dpo_proto_t payload_proto,
+                                  const dpo_id_t *paremt,
+                                  dpo_id_t *dpo);
 
 extern u8* format_mpls_label_dpo(u8 *s, va_list *args);
 

@@ -1,6 +1,6 @@
 
 from vpp_interface import VppInterface
-from vpp_ip_route import VppRoutePath
+from vpp_ip_route import VppRoutePath, VppMplsLabel
 import socket
 
 
@@ -21,6 +21,8 @@ class VppMPLSTunnelInterface(VppInterface):
     def add_vpp_config(self):
         self._sw_if_index = 0xffffffff
         for path in self.t_paths:
+            lstack = path.encode_labels()
+
             reply = self.test.vapi.mpls_tunnel_add_del(
                 self._sw_if_index,
                 1,  # IPv4 next-hop
@@ -28,8 +30,8 @@ class VppMPLSTunnelInterface(VppInterface):
                 path.nh_itf,
                 path.nh_table_id,
                 path.weight,
-                next_hop_out_label_stack=path.nh_labels,
-                next_hop_n_out_labels=len(path.nh_labels),
+                next_hop_out_label_stack=lstack,
+                next_hop_n_out_labels=len(lstack),
                 is_multicast=self.is_multicast,
                 l2_only=self.is_l2)
             self._sw_if_index = reply.sw_if_index

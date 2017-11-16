@@ -273,9 +273,8 @@ mpls_tunnel_stack (adj_index_t ai)
 
         mpls_tunnel_mk_lb(mt,
                           adj->ia_link,
-                          (VNET_LINK_MPLS == adj_get_link_type(ai) ?
-                           FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
-                           FIB_FORW_CHAIN_TYPE_MPLS_EOS),
+                          fib_forw_chain_type_from_link_type(
+                              adj_get_link_type(ai)),
                           &dpo);
 
         adj_nbr_midchain_stack(ai, &dpo);

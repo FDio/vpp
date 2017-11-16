@@ -47,6 +47,14 @@
 
 #define MPLS_LABEL_INVALID (MPLS_IETF_MAX_LABEL+1)
 
+/**
+ * A value that is explicit about the end of the LSP. Specifying
+ * a label value is needed when the mode configuration (pipe/uniform)
+ * is also requested.
+ * imp-null implies a label swap. pop can be used for a deag.
+ */
+#define MPLS_LABEL_POP (MPLS_IETF_MAX_LABEL+2)
+
 #define MPLS_LABEL_IS_REAL(_lbl) \
     (((_lbl) > MPLS_IETF_MIN_UNRES_LABEL) &&	\
      ((_lbl) <= MPLS_IETF_MAX_UNRES_LABEL))
