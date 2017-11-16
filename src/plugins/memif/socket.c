@@ -289,7 +289,9 @@ memif_msg_receive_init (memif_if_t ** mifp, memif_msg_t * msg,
   return 0;
 
 error:
+  tmp.sock = sock;
   memif_msg_send_disconnect (&tmp, err);
+  memif_socket_close (&sock);
   return err;
 }
 
