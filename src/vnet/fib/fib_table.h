@@ -299,7 +299,7 @@ extern fib_node_index_t fib_table_entry_path_add(u32 fib_index,
 						 u32 next_hop_sw_if_index,
 						 u32 next_hop_fib_index,
 						 u32 next_hop_weight,
-						 mpls_label_t *next_hop_label_stack,
+						 fib_mpls_label_t *next_hop_label_stack,
 						 fib_route_path_flags_t pf);
 /**
  * @brief
@@ -482,7 +482,7 @@ extern fib_node_index_t fib_table_entry_update_one_path(u32 fib_index,
 							u32 next_hop_sw_if_index,
 							u32 next_hop_fib_index,
 							u32 next_hop_weight,
-							mpls_label_t *next_hop_label_stack,
+							fib_mpls_label_t *next_hop_label_stack,
 							fib_route_path_flags_t pf);
 
 /**

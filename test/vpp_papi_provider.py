@@ -1083,7 +1083,11 @@ class VppPapiProvider(object):
         :param next_hop_weight:  (Default value = 1)
 
         """
-
+        lstack = []
+        for l in  next_hop_out_label_stack:
+            lstack.append({'value': l.value,
+                           'ttl': l.ttl,
+                           'exp': l.exp})
         return self.api(
             self.papi.mpls_route_add_del,
             {'mr_label': label,
@@ -1105,7 +1109,7 @@ class VppPapiProvider(object):
              'mr_next_hop_sw_if_index': next_hop_sw_if_index,
              'mr_next_hop_table_id': next_hop_table_id,
              'mr_next_hop_via_label': next_hop_via_label,
-             'mr_next_hop_out_label_stack': next_hop_out_label_stack})
+             'mr_next_hop_out_label_stack': lstack})
 
     def mpls_ip_bind_unbind(
             self,

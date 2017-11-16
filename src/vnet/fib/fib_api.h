@@ -53,7 +53,7 @@ add_del_route_t_handler (u8 is_multipath,
 			 u16 next_hop_weight,
 			 u16 next_hop_preference,
 			 mpls_label_t next_hop_via_label,
-			 mpls_label_t * next_hop_out_label_stack);
+			 fib_mpls_label_t * next_hop_out_label_stack);
 
 void
 copy_fib_next_hop (fib_route_path_encode_t * api_rpath,

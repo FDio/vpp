@@ -314,7 +314,10 @@ bier_test_mpls_spf (void)
         .frp_bier_fib_index = bti,
         .frp_flags = FIB_ROUTE_PATH_BIER_FMASK,
     };
-    vec_add1(path_1_1_1_1.frp_label_stack, 500);
+    fib_mpls_label_t fml_500 = {
+        .fml_value = 500,
+    };
+    vec_add1(path_1_1_1_1.frp_label_stack, fml_500);
     vec_add1(paths_1_1_1_1, path_1_1_1_1);
     const fib_prefix_t pfx_1_1_1_1_s_32 = {
         .fp_addr = nh_1_1_1_1,
@@ -395,8 +398,10 @@ bier_test_mpls_spf (void)
             .ttl = 255,
         },
     };
-    mpls_label_t *out_lbl_99 = NULL;
-    vec_add1(out_lbl_99, 99);
+    fib_mpls_label_t *out_lbl_99 = NULL, fml_99 = {
+        .fml_value = 99,
+    };
+    vec_add1(out_lbl_99, fml_99);
 
     fei = fib_table_entry_update_one_path(0,
                                           &pfx_1_1_1_1_s_32,
@@ -448,8 +453,10 @@ bier_test_mpls_spf (void)
             .ttl = 255,
         },
     };
-    mpls_label_t *out_lbl_100 = NULL;
-    vec_add1(out_lbl_100, 100);
+    fib_mpls_label_t *out_lbl_100 = NULL, fml_100 = {
+        .fml_value = 100,
+    };
+    vec_add1(out_lbl_100, fml_100);
 
     fei = fib_table_entry_path_add(0,
                                    &pfx_1_1_1_1_s_32,
@@ -508,7 +515,10 @@ bier_test_mpls_spf (void)
         .frp_bier_fib_index = bti,
         .frp_flags = FIB_ROUTE_PATH_BIER_FMASK,
     };
-    vec_add1(path_1_1_1_2.frp_label_stack, 501);
+    fib_mpls_label_t fml_501 = {
+        .fml_value = 501,
+    };
+    vec_add1(path_1_1_1_2.frp_label_stack, fml_501);
     vec_add1(paths_1_1_1_2, path_1_1_1_2);
     const bier_fmask_id_t bfm_id_1_1_1_2 = {
         .bfmi_hdr_type = BIER_HDR_O_MPLS,
@@ -516,8 +526,10 @@ bier_test_mpls_spf (void)
     };
     index_t bei_3;
 
-    mpls_label_t *out_lbl_101 = NULL;
-    vec_add1(out_lbl_101, 101);
+    fib_mpls_label_t *out_lbl_101 = NULL, fml_101 = {
+        .fml_value = 101,
+    };
+    vec_add1(out_lbl_101, fml_101);
     fei = fib_table_entry_path_add(0,
                                    &pfx_1_1_1_2_s_32,
                                    FIB_SOURCE_API,
@@ -608,7 +620,7 @@ bier_test_mpls_spf (void)
      * add the via back
      */
     out_lbl_101 = NULL;
-    vec_add1(out_lbl_101, 101);
+    vec_add1(out_lbl_101, fml_101);
     fei = fib_table_entry_path_add(0,
                                    &pfx_1_1_1_2_s_32,
                                    FIB_SOURCE_API,
