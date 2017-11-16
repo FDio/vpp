@@ -185,6 +185,10 @@ print_memif_details ()
 	{
 	  printf ("\t\tqueue id: %u\n", md.rx_queues[e].qid);
 	  printf ("\t\tring size: %u\n", md.rx_queues[e].ring_size);
+	  printf ("\t\tring rx mode: %s\n",
+		  md.rx_queues[e].flags ? "polling" : "interrupt");
+	  printf ("\t\tring head: %u\n", md.rx_queues[e].head);
+	  printf ("\t\tring tail: %u\n", md.rx_queues[e].tail);
 	  printf ("\t\tbuffer size: %u\n", md.rx_queues[e].buffer_size);
 	}
       printf ("\ttx queues:\n");
@@ -192,6 +196,10 @@ print_memif_details ()
 	{
 	  printf ("\t\tqueue id: %u\n", md.tx_queues[e].qid);
 	  printf ("\t\tring size: %u\n", md.tx_queues[e].ring_size);
+	  printf ("\t\tring rx mode: %s\n",
+		  md.tx_queues[e].flags ? "polling" : "interrupt");
+	  printf ("\t\tring head: %u\n", md.tx_queues[e].head);
+	  printf ("\t\tring tail: %u\n", md.tx_queues[e].tail);
 	  printf ("\t\tbuffer size: %u\n", md.tx_queues[e].buffer_size);
 	}
       printf ("\tlink: ");
@@ -1213,7 +1221,7 @@ user_input_handler ()
     }
   else
     {
-      DBG ("unknown command: %s", ui);
+      INFO ("unknown command: %s", ui);
       goto done;
     }
 
