@@ -1151,8 +1151,6 @@ clib_error_t *
 tcp_main_enable (vlib_main_t * vm)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
-  ip_protocol_info_t *pi;
-  ip_main_t *im = &ip_main;
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
   clib_error_t *error = 0;
   u32 num_threads;
@@ -1170,13 +1168,6 @@ tcp_main_enable (vlib_main_t * vm)
   /*
    * Registrations
    */
-
-  /* Register with IP */
-  pi = ip_get_protocol_info (im, IP_PROTOCOL_TCP);
-  if (pi == 0)
-    return clib_error_return (0, "TCP protocol info AWOL");
-  pi->format_header = format_tcp_header;
-  pi->unformat_pg_edit = unformat_pg_tcp_header;
 
   ip4_register_protocol (IP_PROTOCOL_TCP, tcp4_input_node.index);
   ip6_register_protocol (IP_PROTOCOL_TCP, tcp6_input_node.index);
@@ -1282,7 +1273,19 @@ clib_error_t *
 tcp_init (vlib_main_t * vm)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
+  ip_main_t *im = &ip_main;
+  ip_protocol_info_t *pi;
+
+  /* Session layer, and by implication tcp, are disabled by default */
   tm->is_enabled = 0;
+
+  /* Register with IP for header parsing */
+  pi = ip_get_protocol_info (im, IP_PROTOCOL_TCP);
+  if (pi == 0)
+    return clib_error_return (0, "TCP protocol info AWOL");
+  pi->format_header = format_tcp_header;
+  pi->unformat_pg_edit = unformat_pg_tcp_header;
+
   tcp_api_reference ();
   return 0;
 }
