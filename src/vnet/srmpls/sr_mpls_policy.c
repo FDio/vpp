@@ -34,9 +34,6 @@
 #include <vnet/srmpls/sr_mpls.h>
 #include <vnet/fib/mpls_fib.h>
 #include <vnet/dpo/dpo.h>
-#include <vnet/dpo/replicate_dpo.h>
-#include <vnet/dpo/mpls_label_dpo.h>
-#include <vnet/dpo/lookup_dpo.h>
 #include <vnet/ip/ip.h>
 
 #include <vppinfra/error.h>
@@ -763,7 +760,11 @@ sr_mpls_policy_assign_endpoint_color (mpls_label_t bsid,
 			      FIB_SOURCE_SR,
 			      FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT, paths);
 
-      vec_add1 (path.frp_label_stack, MPLS_IETF_IMPLICIT_NULL_LABEL);
+      fib_mpls_label_t fml = {
+	.fml_value = MPLS_IETF_IMPLICIT_NULL_LABEL,
+      };
+
+      vec_add1 (path.frp_label_stack, fml);
       pfx.fp_eos = MPLS_NON_EOS;
       path.frp_eos = MPLS_NON_EOS;
 

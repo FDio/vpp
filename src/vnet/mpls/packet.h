@@ -42,6 +42,32 @@ typedef enum mpls_eos_bit_t_
     [MPLS_EOS] = "eos",				\
 }
 
+/**
+ * The Default TTL added to MPLS label headers when no other value is available
+ */
+#define MPLS_LABEL_DEFAULT_TTL 64
+
+/**
+ * The Default EXP added to MPLS label headers when no other value is available
+ */
+#define MPLS_LABEL_DEFAULT_EXP 0
+
+/**
+ * When in uniform mode convert an IPv[46] DSCP value to an MPLS EXP value
+ */
+static inline u8 ip_dscp_to_mpls_exp (u8 tos)
+{
+    return (tos >> 5);
+}
+
+/**
+ * When in uniform mode convert an MPLS EXP value to an IPv[46] DSCP value
+ */
+static inline u8 mpls_exp_to_ip_dscp (u8 exp)
+{
+    return (exp << 5);
+}
+
 #define FOR_EACH_MPLS_EOS_BIT(_eos) \
     for (_eos = MPLS_NON_EOS; _eos <= MPLS_EOS; _eos++)
 
