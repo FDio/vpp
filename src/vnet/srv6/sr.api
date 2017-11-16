@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-vl_api_version 1.0.0
+vl_api_version 1.0.1
 
 /** \brief IPv6 SR LocalSID add/del request
     @param client_index - opaque cookie to identify the sender
@@ -106,6 +106,19 @@ autoreply define sr_policy_del
   u32 sr_policy_index;
 };
 
+/** \brief IPv6 SR Set SRv6 encapsulation source
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param bsid is the bindingSID of the SR Policy
+    @param index is the index of the SR policy
+*/
+autoreply define sr_set_encap_source
+{
+  u32 client_index;
+  u32 context;
+  u8 encaps_source[16];
+};
+
 /** \brief IPv6 SR steering add/del
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -136,33 +149,22 @@ autoreply define sr_steering_add_del
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
 */
-/**define sr_localsids_dump
+define sr_localsids_dump
 {
   u32 client_index;
   u32 context;
-};*/
+};
 
-/** \brief Details about a single SR LocalSID
-    @param context - returned sender context, to match reply w/ request
-    @param localsid_addr IPv6 address of the localsid
-    @param behavior Type of behavior (function) for this localsid
-    @param end_psp Boolean of whether decapsulation is allowed in this function
-    @param sw_if_index Only for L2/L3 xconnect. OIF. In VRF variant the fib_table.
-    @param vlan_index Only for L2 xconnect. Outgoing VLAN tag.
-    @param fib_table  FIB table in which we should install the localsid entry
-    @param nh_addr Next Hop IPv4/IPv6 address. Only for L2/L3 xconnect.
-*/
-/**manual_endian define sr_localsid_details
+define sr_localsids_details
 {
   u32 context;
-  u8 localsid_addr[16];
-  u8 behavior;
+  u8 address[16];
   u8 end_psp;
-  u32 sw_if_index;
-  u32 vlan_index;
+  u16 behavior;
   u32 fib_table;
-  u8 nh_addr[16];
-};*/
+  u8 xconnect_next_hop[16];
+  u32 xconnect_iface_or_vrf_table;
+};
 
 /*
  * fd.io coding-style-patch-verification: OFF
