@@ -200,14 +200,21 @@ typedef struct
 /** \brief Memif queue details
     @param qid - queue id
     @param ring_size - size of ring buffer in sharem memory
+    @param flags - ring flags
+    @param head - ring head pointer
+    @param tail - ring tail pointer
     @param buffer_size - buffer size on sharem memory
 */
 typedef struct
 {
   uint8_t qid;
   uint32_t ring_size;
+/** if set queue is in polling mode, else in interrupt mode */
+#define MEMIF_QUEUE_FLAG_POLLING 1
+  uint16_t flags;
+  uint16_t head;
+  uint16_t tail;
   uint16_t buffer_size;
-  /* add ring information */
 } memif_queue_details_t;
 
 /** \brief Memif details
