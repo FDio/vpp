@@ -303,7 +303,7 @@ send_bier_route_details (const bier_table_t *bt,
         fp->preference = api_rpath->rpath.frp_preference;
         fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
         fp->n_labels = 0;
-        copy_fib_next_hop (api_rpath, fp);
+        fp->afi = copy_fib_next_hop (api_rpath, fp->next_hop);
         fp++;
     }
 
@@ -668,7 +668,7 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
                 fp->preference = api_rpath->rpath.frp_preference;
                 fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
                 fp->n_labels = 0;
-                copy_fib_next_hop (api_rpath, fp);
+                fp->afi = copy_fib_next_hop (api_rpath, fp->next_hop);
                 fp++;
             }
 

@@ -55,8 +55,8 @@ add_del_route_t_handler (u8 is_multipath,
 			 mpls_label_t next_hop_via_label,
 			 mpls_label_t * next_hop_out_label_stack);
 
-void
+ip46_type_t
 copy_fib_next_hop (fib_route_path_encode_t * api_rpath,
-		   void * fp_arg);
+		   u8 * nh);
 
 #endif /* __FIB_API_H__ */

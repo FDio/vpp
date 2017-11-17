@@ -11,26 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-vppapitestplugins_LTLIBRARIES += acl_test_plugin.la
-vppplugins_LTLIBRARIES += acl_plugin.la
+vppplugins_LTLIBRARIES += abf_plugin.la
 
-acl_plugin_la_SOURCES =				\
-	acl/acl.c				\
-	acl/hash_lookup.c			\
-	acl/lookup_context.c			\
-	acl/fa_node.c			\
-	acl/l2sess.h				\
-	acl/manual_fns.h			\
-	acl/acl_plugin.api.h
+abf_plugin_la_SOURCES =				\
+	abf/abf_policy.c			\
+	abf/abf_api.c				\
+	abf/abf_itf_attach.c
 
-API_FILES += acl/acl.api
+API_FILES += abf/abf.api
 
 nobase_apiinclude_HEADERS +=			\
-  acl/acl_all_api_h.h				\
-  acl/acl_msg_enum.h				\
-  acl/manual_fns.h				\
-  acl/acl.api.h
-
-acl_test_plugin_la_SOURCES = acl/acl_test.c acl/acl_plugin.api.h acl/acl_all_api.h
+  abf/abf_all_api_h.h				\
+  abf/abf_msg_enum.h				\
+  abf/abf.api.h
 
 # vi:syntax=automake

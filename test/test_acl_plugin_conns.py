@@ -141,6 +141,10 @@ class ACLPluginConnTestCase(VppTestCase):
             i.config_ip6()
             i.resolve_arp()
             i.resolve_ndp()
+    def setUp(self):
+        super(ACLPluginConnTestCase, self).setUp()
+        # To test the linear search, uncomment the below line
+        # self.logger.info(self.vapi.ppcli("set acl-plugin use-hash-acl-matching 0"))
 
     def tearDown(self):
         """Run standard test teardown and log various show commands
