@@ -3229,3 +3229,22 @@ class VppPapiProvider(object):
         """ 6RD tunnel Delete """
         return self.api(self.papi.sixrd_del_tunnel,
                         {'sw_if_index': sw_if_index})
+    def abf_policy_add_del(self, is_add, policy):
+        return self.api(
+            self.papi.abf_policy_add_del,
+            {'is_add': is_add,
+             'policy': policy})
+
+    def abf_itf_attach_add_del(self, is_add, attach):
+        return self.api(
+            self.papi.abf_itf_attach_add_del,
+            {'is_add': is_add,
+             'attach': attach})
+
+    def abf_policy_dump(self):
+        return self.api(
+            self.papi.abf_policy_dump, {})
+
+    def abf_itf_attach_dump(self):
+        return self.api(
+            self.papi.abf_itf_attach_dump, {})

@@ -115,6 +115,10 @@ if ENABLE_TLSMBEDTLS_PLUGIN
 include tlsmbedtls.am
 endif
 
+if ENABLE_ABF_PLUGIN
+include abf.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
