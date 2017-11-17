@@ -99,26 +99,6 @@ AC_DEFUN([DPDK_IS_PMD_ENABLED],
   m4_append_uniq([list_of_with], [$2], [, ])
 ])
 
-AC_DEFUN([DETECT_DPDK_IS_1702_OR_1705],
-[
-  AC_MSG_CHECKING([for RTE_VERSION 17.02/17.05 in rte_version.h])
-  AC_TRY_RUN(
-    [
-    #include <rte_version.h>
-    int main()
-    {
-      return ((RTE_VER_YEAR != 17) ||
-	      (RTE_VER_MONTH != 2 && RTE_VER_MONTH != 5));
-    }
-    ],
-    [dpdk_is_1702_or_1705=yes]
-    [AC_MSG_RESULT([yes])],
-    [dpdk_is_1702_or_1705=no]
-    [AC_MSG_RESULT([no])]
-  )
-  AM_CONDITIONAL(DPDK_IS_1702_OR_1705, test "$dpdk_is_1702_or_1705" = "yes")
-])
-
 # Check if compiler supports specific flag
 AC_DEFUN([CC_CHECK_FLAG],
 [
@@ -262,8 +242,6 @@ with_isa_l_crypto_lib=no
 DPDK_IS_PMD_ENABLED(LIBRTE_PMD_AESNI_MB, dpdk_aesni_mb_pmd)
 DPDK_IS_PMD_ENABLED(LIBRTE_PMD_AESNI_GCM, dpdk_aesni_gcm_pmd)
 
-DETECT_DPDK_IS_1702_OR_1705()
-
 AM_COND_IF([WITH_DPDK_AESNI_MB_PMD],
 [
   AC_CHECK_LIB([IPSec_MB], [submit_job_sse],
@@ -273,17 +251,9 @@ AM_COND_IF([WITH_DPDK_AESNI_MB_PMD],
 
 AM_COND_IF([WITH_DPDK_AESNI_GCM_PMD],
 [
-  AM_COND_IF([DPDK_IS_1702_OR_1705],
-  [
-    AC_CHECK_LIB([isal_crypto], [aesni_gcm128_init],
-		 [with_isa_l_crypto_lib=yes],
-		 [AC_MSG_ERROR([isal_crypto library not found])])
-  ],
-  [
-    AC_CHECK_LIB([IPSec_MB], [submit_job_sse],
-		 [with_aesni_mb_lib=yes],
-		 [AC_MSG_ERROR([IPSec_MB library not found])])
-  ])
+  AC_CHECK_LIB([IPSec_MB], [submit_job_sse],
+    [with_aesni_mb_lib=yes],
+    [AC_MSG_ERROR([IPSec_MB library not found])])
 ])
 
 m4_append([list_of_with], [aesni_mb_lib], [, ])
