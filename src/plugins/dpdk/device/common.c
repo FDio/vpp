@@ -155,11 +155,11 @@ dpdk_device_start (dpdk_device_t * xd)
 
   if (xd->pmd == VNET_DPDK_PMD_BOND)
     {
-      u8 slink[16];
+      dpdk_portid_t slink[16];
       int nlink = rte_eth_bond_slaves_get (xd->device_index, slink, 16);
       while (nlink >= 1)
 	{
-	  u8 dpdk_port = slink[--nlink];
+	  dpdk_portid_t dpdk_port = slink[--nlink];
 	  rte_eth_allmulticast_enable (dpdk_port);
 	}
     }
@@ -177,11 +177,11 @@ dpdk_device_stop (dpdk_device_t * xd)
   /* For bonded interface, stop slave links */
   if (xd->pmd == VNET_DPDK_PMD_BOND)
     {
-      u8 slink[16];
+      dpdk_portid_t slink[16];
       int nlink = rte_eth_bond_slaves_get (xd->device_index, slink, 16);
       while (nlink >= 1)
 	{
-	  u8 dpdk_port = slink[--nlink];
+	  dpdk_portid_t dpdk_port = slink[--nlink];
 	  rte_eth_dev_stop (dpdk_port);
 	}
     }
@@ -246,7 +246,7 @@ garp_na_proc_callback (uword * dpdk_port)
 }
 
 always_inline int
-dpdk_port_state_callback_inline (uint8_t port_id,
+dpdk_port_state_callback_inline (dpdk_portid_t port_id,
 				 enum rte_eth_event_type type, void *param)
 {
   struct rte_eth_link link;
@@ -294,24 +294,15 @@ dpdk_port_state_callback_inline (uint8_t port_id,
   return 0;
 }
 
-#if DPDK_VOID_CALLBACK
-void
-dpdk_port_state_callback (uint8_t port_id,
-			  enum rte_eth_event_type type, void *param)
-{
-  dpdk_port_state_callback_inline (port_id, type, param);
-}
-
-#else
 int
-dpdk_port_state_callback (uint8_t port_id,
+dpdk_port_state_callback (dpdk_portid_t port_id,
 			  enum rte_eth_event_type type,
 			  void *param,
 			  void *ret_param __attribute__ ((unused)))
 {
   return dpdk_port_state_callback_inline (port_id, type, param);
 }
-#endif
+
 /*
  * fd.io coding-style-patch-verification: ON
  *
