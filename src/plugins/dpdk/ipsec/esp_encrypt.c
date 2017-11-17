@@ -197,13 +197,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		vec_elt_at_index (dcm->cipher_algs, sa0->crypto_alg);
 	      auth_alg = vec_elt_at_index (dcm->auth_algs, sa0->integ_alg);
 
-#if DPDK_NO_AEAD
-	      is_aead = ((sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_128) ||
-			 (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_192) ||
-			 (sa0->crypto_alg == IPSEC_CRYPTO_ALG_AES_GCM_256));
-#else
 	      is_aead = (cipher_alg->type == RTE_CRYPTO_SYM_XFORM_AEAD);
-#endif
 
 	      if (is_aead)
 		auth_alg = cipher_alg;

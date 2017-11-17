@@ -28,12 +28,8 @@ endif
 if WITH_IBVERBS_LIB
 dpdk_plugin_la_LDFLAGS += -Wl,-libverbs
 endif
-if DPDK_IS_1702_OR_1705
-dpdk_plugin_la_CFLAGS = $(AM_CFLAGS) -DDPDK_VOID_CALLBACK=1 -DDPDK_NO_AEAD=1
-else
-dpdk_plugin_la_CFLAGS = $(AM_CFLAGS) -DDPDK_VOID_CALLBACK=0 -DDPDK_NO_AEAD=0
+dpdk_plugin_la_CFLAGS = $(AM_CFLAGS)
 dpdk_plugin_la_LDFLAGS += -Wl,-lnuma
-endif
 
 dpdk_plugin_la_LDFLAGS += -Wl,-lm,-ldl
 dpdk_plugin_la_LIBADD =
