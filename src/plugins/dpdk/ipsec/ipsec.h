@@ -249,7 +249,9 @@ crypto_alloc_ops (u8 numa, struct rte_crypto_op ** ops, u32 n)
 
   ret = rte_mempool_get_bulk (data->crypto_op, (void **) ops, n);
 
+  /* *INDENT-OFF* */
   data->crypto_op_get_failed += ! !ret;
+  /* *INDENT-ON* */
 
   return ret;
 }
@@ -306,20 +308,16 @@ crypto_set_icb (dpdk_gcm_cnt_blk * icb, u32 salt, u32 seq, u32 seq_hi)
   icb->salt = salt;
   icb->iv[0] = seq;
   icb->iv[1] = seq_hi;
-#if DPDK_NO_AEAD
-  icb->cnt = clib_host_to_net_u32 (1);
-#endif
 }
 
-#define __unused __attribute__((unused))
 static_always_inline void
 crypto_op_setup (u8 is_aead, struct rte_mbuf *mb0,
 		 struct rte_crypto_op *op, void *session,
 		 u32 cipher_off, u32 cipher_len,
-		 u8 * icb __unused, u32 iv_size __unused,
+		 u8 * icb __clib_unused, u32 iv_size __clib_unused,
 		 u32 auth_off, u32 auth_len,
-		 u8 * aad __unused, u32 aad_size __unused,
-		 u8 * digest, u64 digest_paddr, u32 digest_size __unused)
+		 u8 * aad __clib_unused, u32 aad_size __clib_unused,
+		 u8 * digest, u64 digest_paddr, u32 digest_size __clib_unused)
 {
   struct rte_crypto_sym_op *sym_op;
 
@@ -328,32 +326,6 @@ crypto_op_setup (u8 is_aead, struct rte_mbuf *mb0,
   sym_op->m_src = mb0;
   sym_op->session = session;
 
-#if DPDK_NO_AEAD
-  sym_op->cipher.data.offset = cipher_off;
-  sym_op->cipher.data.length = cipher_len;
-
-  sym_op->cipher.iv.data = icb;
-  sym_op->cipher.iv.phys_addr =
-    op->phys_addr + (uintptr_t) icb - (uintptr_t) op;
-  sym_op->cipher.iv.length = iv_size;
-
-  if (is_aead)
-    {
-      sym_op->auth.aad.data = aad;
-      sym_op->auth.aad.phys_addr =
-	op->phys_addr + (uintptr_t) aad - (uintptr_t) op;
-      sym_op->auth.aad.length = aad_size;
-    }
-  else
-    {
-      sym_op->auth.data.offset = auth_off;
-      sym_op->auth.data.length = auth_len;
-    }
-
-  sym_op->auth.digest.data = digest;
-  sym_op->auth.digest.phys_addr = digest_paddr;
-  sym_op->auth.digest.length = digest_size;
-#else /* ! DPDK_NO_AEAD */
   if (is_aead)
     {
       sym_op->aead.data.offset = cipher_off;
@@ -377,10 +349,7 @@ crypto_op_setup (u8 is_aead, struct rte_mbuf *mb0,
       sym_op->auth.digest.data = digest;
       sym_op->auth.digest.phys_addr = digest_paddr;
     }
-#endif /* DPDK_NO_AEAD */
 }
-
-#undef __unused
 
 #endif /* __DPDK_IPSEC_H__ */
 
