@@ -2806,3 +2806,24 @@ class VppPapiProvider(object):
         return self.api(self.papi.add_node_next,
                         {'node_name': node_name,
                          'next_name': next_name})
+
+    def abf_policy_add_del(self, is_add, is_replace, details):
+        return self.api(
+            self.papi.abf_policy_add_del,
+            {'is_add': is_add,
+             'is_replace': is_replace,
+             'details': details})
+
+    def abf_attach_add_del(self, is_add, details):
+        return self.api(
+            self.papi.abf_attach_add_del,
+            {'is_add': is_add,
+             'details': details})
+
+    def abf_policy_dump(self):
+        return self.api(
+            self.papi.abf_policy_dump, {})
+
+    def abf_attach_dump(self):
+        return self.api(
+            self.papi.abf_attach_dump, {})
