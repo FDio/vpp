@@ -726,7 +726,7 @@ pppoe_init (vlib_main_t * vm)
 				pppoe_input_node.index);
 
   ethernet_register_input_type (vm, ETHERNET_TYPE_PPPOE_DISCOVERY,
-				pppoe_tap_dispatch_node.index);
+				pppoe_cp_dispatch_node.index);
 
   return 0;
 }
