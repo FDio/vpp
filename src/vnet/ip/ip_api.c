@@ -174,30 +174,32 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
 }
 
 
-void
-copy_fib_next_hop (fib_route_path_encode_t * api_rpath, void *fp_arg)
+ip46_type_t
+copy_fib_next_hop (fib_route_path_encode_t * api_rpath, u8 * nh)
 {
+  ip46_type_t type;
   int is_ip4;
-  vl_api_fib_path_t *fp = (vl_api_fib_path_t *) fp_arg;
 
   if (api_rpath->rpath.frp_proto == DPO_PROTO_IP4)
-    fp->afi = IP46_TYPE_IP4;
+    type = IP46_TYPE_IP4;
   else if (api_rpath->rpath.frp_proto == DPO_PROTO_IP6)
-    fp->afi = IP46_TYPE_IP6;
+    type = IP46_TYPE_IP6;
   else
     {
       is_ip4 = ip46_address_is_ip4 (&api_rpath->rpath.frp_addr);
       if (is_ip4)
-	fp->afi = IP46_TYPE_IP4;
+	type = IP46_TYPE_IP4;
       else
-	fp->afi = IP46_TYPE_IP6;
+	type = IP46_TYPE_IP6;
     }
-  if (fp->afi == IP46_TYPE_IP4)
-    memcpy (fp->next_hop, &api_rpath->rpath.frp_addr.ip4,
+  if (type == IP46_TYPE_IP4)
+    memcpy (nh, &api_rpath->rpath.frp_addr.ip4,
 	    sizeof (api_rpath->rpath.frp_addr.ip4));
   else
-    memcpy (fp->next_hop, &api_rpath->rpath.frp_addr.ip6,
+    memcpy (nh, &api_rpath->rpath.frp_addr.ip6,
 	    sizeof (api_rpath->rpath.frp_addr.ip6));
+
+  return (type);
 }
 
 static void
@@ -261,7 +263,7 @@ send_ip_fib_details (vpe_api_main_t * am,
     fp->weight = api_rpath->rpath.frp_weight;
     fp->preference = api_rpath->rpath.frp_preference;
     fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
-    copy_fib_next_hop (api_rpath, fp);
+    fp->afi = copy_fib_next_hop (api_rpath, fp->next_hop);
     fp++;
   }
 
@@ -389,7 +391,7 @@ send_ip6_fib_details (vpe_api_main_t * am,
     fp->weight = api_rpath->rpath.frp_weight;
     fp->preference = api_rpath->rpath.frp_preference;
     fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
-    copy_fib_next_hop (api_rpath, fp);
+    fp->afi = copy_fib_next_hop (api_rpath, fp->next_hop);
     fp++;
   }
 
@@ -505,7 +507,7 @@ send_ip_mfib_details (unix_shared_memory_queue_t * q,
 
     fp->weight = 0;
     fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
-    copy_fib_next_hop (api_rpath, fp);
+    fp->afi = copy_fib_next_hop (api_rpath, fp->next_hop);
     fp++;
   }
   vec_free (api_rpaths);
@@ -602,7 +604,7 @@ send_ip6_mfib_details (vpe_api_main_t * am,
 
     fp->weight = 0;
     fp->sw_if_index = htonl (api_rpath->rpath.frp_sw_if_index);
-    copy_fib_next_hop (api_rpath, fp);
+    fp->afi = copy_fib_next_hop (api_rpath, fp->next_hop);
     fp++;
   }
 

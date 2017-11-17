@@ -71,6 +71,7 @@ class TestBier(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         for i in self.pg_interfaces:
+            i.get_capture(0)
             i.assert_nothing_captured(remark=remark)
 
     def send_and_expect(self, input, pkts, output):
