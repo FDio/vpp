@@ -3532,3 +3532,23 @@ class VppPapiProvider(object):
         """
         return self.api(self.papi.sw_interface_vhost_user_dump,
                         {})
+
+    def abf_policy_add_del(self, is_add, policy):
+        return self.api(
+            self.papi.abf_policy_add_del,
+            {'is_add': is_add,
+             'policy': policy})
+
+    def abf_itf_attach_add_del(self, is_add, attach):
+        return self.api(
+            self.papi.abf_itf_attach_add_del,
+            {'is_add': is_add,
+             'attach': attach})
+
+    def abf_policy_dump(self):
+        return self.api(
+            self.papi.abf_policy_dump, {})
+
+    def abf_itf_attach_dump(self):
+        return self.api(
+            self.papi.abf_itf_attach_dump, {})
