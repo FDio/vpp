@@ -30,6 +30,10 @@ nobase_include_HEADERS =
 vppapitestpluginsdir = ${libdir}/vpp_api_test_plugins
 vpppluginsdir = ${libdir}/vpp_plugins
 
+if ENABLE_ABF_PLUGIN
+include abf.am
+endif
+
 if ENABLE_ACL_PLUGIN
 include acl.am
 endif
