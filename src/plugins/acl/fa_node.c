@@ -19,20 +19,25 @@
 #include <vnet/vnet.h>
 #include <vnet/pg/pg.h>
 #include <vppinfra/error.h>
-#include <acl/acl.h>
-#include <vppinfra/bihash_40_8.h>
 
-#include <vppinfra/bihash_template.h>
-#include <vppinfra/bihash_template.c>
+
+#include <acl/acl.h>
 #include <vnet/ip/icmp46_packet.h>
 
-#include "fa_node.h"
-#include "hash_lookup.h"
+#include <plugins/acl/fa_node.h>
+#include <plugins/acl/acl.h>
+#include <plugins/acl/lookup_context.h>
+#include <plugins/acl/public_inlines.h>
+
+#include <vppinfra/bihash_40_8.h>
+#include <vppinfra/bihash_template.h>
+#include <vppinfra/bihash_template.c>
 
 typedef struct
 {
   u32 next_index;
   u32 sw_if_index;
+  u32 lc_index;
   u32 match_acl_in_index;
   u32 match_rule_index;
   u64 packet_info[6];
@@ -76,10 +81,9 @@ format_fa_5tuple (u8 * s, va_list * args)
 {
   fa_5tuple_t *p5t = va_arg (*args, fa_5tuple_t *);
 
-  return format(s, "%s sw_if_index %d (lsb16 %d) l3 %s%s %U -> %U"
+  return format(s, "lc_index %d (lsb16 of sw_if_index %d) l3 %s%s %U -> %U"
                    " l4 proto %d l4_valid %d port %d -> %d tcp flags (%s) %02x rsvd %x",
-                p5t->pkt.is_input ? "input" : "output",
-                p5t->pkt.sw_if_index, p5t->l4.lsb_of_sw_if_index, p5t->pkt.is_ip6 ? "ip6" : "ip4",
+                p5t->pkt.lc_index, p5t->l4.lsb_of_sw_if_index, p5t->pkt.is_ip6 ? "ip6" : "ip4",
                 p5t->pkt.is_nonfirst_fragment ? " non-initial fragment" : "",
                 format_ip46_address, &p5t->addr[0], p5t->pkt.is_ip6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
                 format_ip46_address, &p5t->addr[1], p5t->pkt.is_ip6 ? IP46_TYPE_IP6 : IP46_TYPE_IP4,
@@ -106,9 +110,9 @@ format_acl_fa_trace (u8 * s, va_list * args)
 
   s =
     format (s,
-	    "acl-plugin: sw_if_index %d, next index %d, action: %d, match: acl %d rule %d trace_bits %08x\n"
+	    "acl-plugin: lc_index: %d, sw_if_index %d, next index %d, action: %d, match: acl %d rule %d trace_bits %08x\n"
 	    "  pkt info %016llx %016llx %016llx %016llx %016llx %016llx",
-	    t->sw_if_index, t->next_index, t->action, t->match_acl_in_index,
+	    t->lc_index, t->sw_if_index, t->next_index, t->action, t->match_acl_in_index,
 	    t->match_rule_index, t->trace_bitmap,
 	    t->packet_info[0], t->packet_info[1], t->packet_info[2],
 	    t->packet_info[3], t->packet_info[4], t->packet_info[5]);
@@ -143,420 +147,6 @@ static char *acl_fa_error_strings[] = {
 #undef _
 };
 /* *INDENT-ON* */
-
-static void *
-get_ptr_to_offset (vlib_buffer_t * b0, int offset)
-{
-  u8 *p = vlib_buffer_get_current (b0) + offset;
-  return p;
-}
-
-
-static int
-fa_acl_match_addr (ip46_address_t * addr1, ip46_address_t * addr2,
-		   int prefixlen, int is_ip6)
-{
-  if (prefixlen == 0)
-    {
-      /* match any always succeeds */
-      return 1;
-    }
-  if (is_ip6)
-    {
-      if (memcmp (addr1, addr2, prefixlen / 8))
-	{
-	  /* If the starting full bytes do not match, no point in bittwidling the thumbs further */
-	  return 0;
-	}
-      if (prefixlen % 8)
-	{
-	  u8 b1 = *((u8 *) addr1 + 1 + prefixlen / 8);
-	  u8 b2 = *((u8 *) addr2 + 1 + prefixlen / 8);
-	  u8 mask0 = (0xff - ((1 << (8 - (prefixlen % 8))) - 1));
-	  return (b1 & mask0) == b2;
-	}
-      else
-	{
-	  /* The prefix fits into integer number of bytes, so nothing left to do */
-	  return 1;
-	}
-    }
-  else
-    {
-      uint32_t a1 = ntohl (addr1->ip4.as_u32);
-      uint32_t a2 = ntohl (addr2->ip4.as_u32);
-      uint32_t mask0 = 0xffffffff - ((1 << (32 - prefixlen)) - 1);
-      return (a1 & mask0) == a2;
-    }
-}
-
-static int
-fa_acl_match_port (u16 port, u16 port_first, u16 port_last, int is_ip6)
-{
-  return ((port >= port_first) && (port <= port_last));
-}
-
-int
-single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tuple,
-		  int is_ip6, u8 * r_action, u32 * r_acl_match_p,
-		  u32 * r_rule_match_p, u32 * trace_bitmap)
-{
-  int i;
-  acl_list_t *a;
-  acl_rule_t *r;
-
-  if (pool_is_free_index (am->acls, acl_index))
-    {
-      if (r_acl_match_p)
-	*r_acl_match_p = acl_index;
-      if (r_rule_match_p)
-	*r_rule_match_p = -1;
-      /* the ACL does not exist but is used for policy. Block traffic. */
-      return 0;
-    }
-  a = am->acls + acl_index;
-  for (i = 0; i < a->count; i++)
-    {
-      r = a->rules + i;
-      if (is_ip6 != r->is_ipv6)
-	{
-	  continue;
-	}
-      if (!fa_acl_match_addr
-	  (&pkt_5tuple->addr[1], &r->dst, r->dst_prefixlen, is_ip6))
-	continue;
-
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning
-	("ACL_FA_NODE_DBG acl %d rule %d pkt dst addr %U match rule addr %U/%d",
-	 acl_index, i, format_ip46_address, &pkt_5tuple->addr[1],
-	 r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4, format_ip46_address,
-         &r->dst, r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4,
-	 r->dst_prefixlen);
-#endif
-
-      if (!fa_acl_match_addr
-	  (&pkt_5tuple->addr[0], &r->src, r->src_prefixlen, is_ip6))
-	continue;
-
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning
-	("ACL_FA_NODE_DBG acl %d rule %d pkt src addr %U match rule addr %U/%d",
-	 acl_index, i, format_ip46_address, &pkt_5tuple->addr[0],
-	 r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4, format_ip46_address,
-         &r->src, r->is_ipv6 ? IP46_TYPE_IP6: IP46_TYPE_IP4,
-	 r->src_prefixlen);
-      clib_warning
-	("ACL_FA_NODE_DBG acl %d rule %d trying to match pkt proto %d with rule %d",
-	 acl_index, i, pkt_5tuple->l4.proto, r->proto);
-#endif
-      if (r->proto)
-	{
-	  if (pkt_5tuple->l4.proto != r->proto)
-	    continue;
-
-          if (PREDICT_FALSE (pkt_5tuple->pkt.is_nonfirst_fragment &&
-                     am->l4_match_nonfirst_fragment))
-          {
-            /* non-initial fragment with frag match configured - match this rule */
-            *trace_bitmap |= 0x80000000;
-            *r_action = r->is_permit;
-            if (r_acl_match_p)
-	      *r_acl_match_p = acl_index;
-            if (r_rule_match_p)
-	      *r_rule_match_p = i;
-            return 1;
-          }
-
-	  /* A sanity check just to ensure we are about to match the ports extracted from the packet */
-	  if (PREDICT_FALSE (!pkt_5tuple->pkt.l4_valid))
-	    continue;
-
-#ifdef FA_NODE_VERBOSE_DEBUG
-	  clib_warning
-	    ("ACL_FA_NODE_DBG acl %d rule %d pkt proto %d match rule %d",
-	     acl_index, i, pkt_5tuple->l4.proto, r->proto);
-#endif
-
-	  if (!fa_acl_match_port
-	      (pkt_5tuple->l4.port[0], r->src_port_or_type_first,
-	       r->src_port_or_type_last, is_ip6))
-	    continue;
-
-#ifdef FA_NODE_VERBOSE_DEBUG
-	  clib_warning
-	    ("ACL_FA_NODE_DBG acl %d rule %d pkt sport %d match rule [%d..%d]",
-	     acl_index, i, pkt_5tuple->l4.port[0], r->src_port_or_type_first,
-	     r->src_port_or_type_last);
-#endif
-
-	  if (!fa_acl_match_port
-	      (pkt_5tuple->l4.port[1], r->dst_port_or_code_first,
-	       r->dst_port_or_code_last, is_ip6))
-	    continue;
-
-#ifdef FA_NODE_VERBOSE_DEBUG
-	  clib_warning
-	    ("ACL_FA_NODE_DBG acl %d rule %d pkt dport %d match rule [%d..%d]",
-	     acl_index, i, pkt_5tuple->l4.port[1], r->dst_port_or_code_first,
-	     r->dst_port_or_code_last);
-#endif
-	  if (pkt_5tuple->pkt.tcp_flags_valid
-	      && ((pkt_5tuple->pkt.tcp_flags & r->tcp_flags_mask) !=
-		  r->tcp_flags_value))
-	    continue;
-	}
-      /* everything matches! */
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning ("ACL_FA_NODE_DBG acl %d rule %d FULL-MATCH, action %d",
-		    acl_index, i, r->is_permit);
-#endif
-      *r_action = r->is_permit;
-      if (r_acl_match_p)
-	*r_acl_match_p = acl_index;
-      if (r_rule_match_p)
-	*r_rule_match_p = i;
-      return 1;
-    }
-  return 0;
-}
-
-static u8
-linear_multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
-		       int is_ip6, int is_input, u32 * acl_match_p,
-		       u32 * rule_match_p, u32 * trace_bitmap)
-{
-  acl_main_t *am = &acl_main;
-  int i;
-  u32 *acl_vector;
-  u8 action = 0;
-
-  if (is_input)
-    {
-      vec_validate (am->input_acl_vec_by_sw_if_index, sw_if_index);
-      acl_vector = am->input_acl_vec_by_sw_if_index[sw_if_index];
-    }
-  else
-    {
-      vec_validate (am->output_acl_vec_by_sw_if_index, sw_if_index);
-      acl_vector = am->output_acl_vec_by_sw_if_index[sw_if_index];
-    }
-  for (i = 0; i < vec_len (acl_vector); i++)
-    {
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning ("ACL_FA_NODE_DBG: Trying to match ACL: %d",
-		    acl_vector[i]);
-#endif
-      if (single_acl_match_5tuple
-	  (am, acl_vector[i], pkt_5tuple, is_ip6, &action,
-	   acl_match_p, rule_match_p, trace_bitmap))
-	{
-	  return action;
-	}
-    }
-  if (vec_len (acl_vector) > 0)
-    {
-      /* If there are ACLs and none matched, deny by default */
-      return 0;
-    }
-#ifdef FA_NODE_VERBOSE_DEBUG
-  clib_warning ("ACL_FA_NODE_DBG: No ACL on sw_if_index %d", sw_if_index);
-#endif
-  /* Deny by default. If there are no ACLs defined we should not be here. */
-  return 0;
-}
-
-static u8
-multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
-                       int is_ip6, int is_input, u32 * acl_match_p,
-                       u32 * rule_match_p, u32 * trace_bitmap)
-{
-  acl_main_t *am = &acl_main;
-  if (am->use_hash_acl_matching) {
-    return hash_multi_acl_match_5tuple(sw_if_index, pkt_5tuple, is_l2, is_ip6,
-                                 is_input, acl_match_p, rule_match_p, trace_bitmap);
-  } else {
-    return linear_multi_acl_match_5tuple(sw_if_index, pkt_5tuple, is_l2, is_ip6,
-                                 is_input, acl_match_p, rule_match_p, trace_bitmap);
-  }
-}
-
-static int
-offset_within_packet (vlib_buffer_t * b0, int offset)
-{
-  /* For the purposes of this code, "within" means we have at least 8 bytes after it */
-  return (offset <= (b0->current_length - 8));
-}
-
-static void
-acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
-		 int is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt)
-{
-  int l3_offset;
-  int l4_offset;
-  u16 ports[2];
-  u16 proto;
-
-  if (is_l2_path)
-    {
-      l3_offset = ethernet_buffer_header_size(b0);
-    }
-  else
-    {
-      if (is_input)
-        l3_offset = 0;
-      else
-        l3_offset = vnet_buffer(b0)->ip.save_rewrite_length;
-    }
-
-  /* key[0..3] contains src/dst address and is cleared/set below */
-  /* Remainder of the key and per-packet non-key data */
-  p5tuple_pkt->kv.key[4] = 0;
-  p5tuple_pkt->kv.value = 0;
-
-  if (is_ip6)
-    {
-      clib_memcpy (&p5tuple_pkt->addr,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip6_header_t,
-						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr));
-      proto =
-	*(u8 *) get_ptr_to_offset (b0,
-				   offsetof (ip6_header_t,
-					     protocol) + l3_offset);
-      l4_offset = l3_offset + sizeof (ip6_header_t);
-#ifdef FA_NODE_VERBOSE_DEBUG
-      clib_warning ("ACL_FA_NODE_DBG: proto: %d, l4_offset: %d", proto,
-		    l4_offset);
-#endif
-      /* IP6 EH handling is here, increment l4_offset if needs to, update the proto */
-      int need_skip_eh = clib_bitmap_get (am->fa_ipv6_known_eh_bitmap, proto);
-      if (PREDICT_FALSE (need_skip_eh))
-	{
-	  while (need_skip_eh && offset_within_packet (b0, l4_offset))
-	    {
-	      /* Fragment header needs special handling */
-	      if (PREDICT_FALSE(ACL_EH_FRAGMENT == proto))
-	        {
-	          proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
-		  u16 frag_offset;
-		  clib_memcpy (&frag_offset, get_ptr_to_offset (b0, 2 + l4_offset), sizeof(frag_offset));
-		  frag_offset = ntohs(frag_offset) >> 3;
-		  if (frag_offset)
-		    {
-                      p5tuple_pkt->pkt.is_nonfirst_fragment = 1;
-                      /* invalidate L4 offset so we don't try to find L4 info */
-                      l4_offset += b0->current_length;
-		    }
-		  else
-		    {
-		      /* First fragment: skip the frag header and move on. */
-		      l4_offset += 8;
-		    }
-		}
-              else
-                {
-	          u8 nwords = *(u8 *) get_ptr_to_offset (b0, 1 + l4_offset);
-	          proto = *(u8 *) get_ptr_to_offset (b0, l4_offset);
-	          l4_offset += 8 * (1 + (u16) nwords);
-                }
-#ifdef FA_NODE_VERBOSE_DEBUG
-	      clib_warning ("ACL_FA_NODE_DBG: new proto: %d, new offset: %d",
-			    proto, l4_offset);
-#endif
-	      need_skip_eh =
-		clib_bitmap_get (am->fa_ipv6_known_eh_bitmap, proto);
-	    }
-	}
-    }
-  else
-    {
-      p5tuple_pkt->kv.key[0] = 0;
-      p5tuple_pkt->kv.key[1] = 0;
-      p5tuple_pkt->kv.key[2] = 0;
-      p5tuple_pkt->kv.key[3] = 0;
-      clib_memcpy (&p5tuple_pkt->addr[0].ip4,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						src_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr[0].ip4));
-      clib_memcpy (&p5tuple_pkt->addr[1].ip4,
-		   get_ptr_to_offset (b0,
-				      offsetof (ip4_header_t,
-						dst_address) + l3_offset),
-		   sizeof (p5tuple_pkt->addr[1].ip4));
-      proto =
-	*(u8 *) get_ptr_to_offset (b0,
-				   offsetof (ip4_header_t,
-					     protocol) + l3_offset);
-      l4_offset = l3_offset + sizeof (ip4_header_t);
-      u16 flags_and_fragment_offset;
-      clib_memcpy (&flags_and_fragment_offset,
-                   get_ptr_to_offset (b0,
-                                      offsetof (ip4_header_t,
-                                                flags_and_fragment_offset)) + l3_offset,
-                                                sizeof(flags_and_fragment_offset));
-      flags_and_fragment_offset = ntohs (flags_and_fragment_offset);
-
-      /* non-initial fragments have non-zero offset */
-      if ((PREDICT_FALSE(0xfff & flags_and_fragment_offset)))
-        {
-          p5tuple_pkt->pkt.is_nonfirst_fragment = 1;
-          /* invalidate L4 offset so we don't try to find L4 info */
-          l4_offset += b0->current_length;
-        }
-
-    }
-  p5tuple_pkt->l4.proto = proto;
-  if (PREDICT_TRUE (offset_within_packet (b0, l4_offset)))
-    {
-      p5tuple_pkt->pkt.l4_valid = 1;
-      if (icmp_protos[is_ip6] == proto)
-	{
-	  /* type */
-	  p5tuple_pkt->l4.port[0] =
-	    *(u8 *) get_ptr_to_offset (b0,
-				       l4_offset + offsetof (icmp46_header_t,
-							     type));
-	  /* code */
-	  p5tuple_pkt->l4.port[1] =
-	    *(u8 *) get_ptr_to_offset (b0,
-				       l4_offset + offsetof (icmp46_header_t,
-							     code));
-	}
-      else if ((IPPROTO_TCP == proto) || (IPPROTO_UDP == proto))
-	{
-	  clib_memcpy (&ports,
-		       get_ptr_to_offset (b0,
-					  l4_offset + offsetof (tcp_header_t,
-								src_port)),
-		       sizeof (ports));
-	  p5tuple_pkt->l4.port[0] = ntohs (ports[0]);
-	  p5tuple_pkt->l4.port[1] = ntohs (ports[1]);
-
-	  p5tuple_pkt->pkt.tcp_flags =
-	    *(u8 *) get_ptr_to_offset (b0,
-				       l4_offset + offsetof (tcp_header_t,
-							     flags));
-	  p5tuple_pkt->pkt.tcp_flags_valid = (proto == IPPROTO_TCP);
-	}
-      /*
-       * FIXME: rather than the above conditional, here could
-       * be a nice generic mechanism to extract two L4 values:
-       *
-       * have a per-protocol array of 4 elements like this:
-       *   u8 offset; to take the byte from, off L4 header
-       *   u8 mask; to mask it with, before storing
-       *
-       * this way we can describe UDP, TCP and ICMP[46] semantics,
-       * and add a sort of FPM-type behavior for other protocols.
-       *
-       * Of course, is it faster ? and is it needed ?
-       *
-       */
-    }
-}
 
 static int
 acl_fa_ifc_has_sessions (acl_main_t * am, int sw_if_index0)
@@ -774,6 +364,10 @@ acl_fa_conn_list_add_session (acl_main_t * am, fa_full_session_id_t sess_id, u64
     ASSERT(prev_sess->thread_index == sess->thread_index);
   }
   pw->fa_conn_list_tail[list_id] = sess_id.session_index;
+  
+#ifdef FA_NODE_VERBOSE_DEBUG
+    clib_warning("FA-SESSION-DEBUG: add session id %d on thread %d sw_if_index %d", sess_id.session_index, thread_index, sess->sw_if_index);
+#endif
   pw->serviced_sw_if_index_bitmap = clib_bitmap_set(pw->serviced_sw_if_index_bitmap, sess->sw_if_index, 1);
 
   if (~0 == pw->fa_conn_list_head[list_id]) {
@@ -942,8 +536,8 @@ acl_fa_check_idle_sessions(acl_main_t *am, u16 thread_index, u64 now)
 	if ((now < sess_timeout_time) && (0 == clib_bitmap_get(pw->pending_clear_sw_if_index_bitmap, sw_if_index)))
 	  {
 #ifdef FA_NODE_VERBOSE_DEBUG
-	    clib_warning ("ACL_FA_NODE_CLEAN: Restarting timer for session %d",
-	       (int) session_index);
+	    clib_warning ("ACL_FA_NODE_CLEAN: Restarting timer for session %d, sw_if_index %d",
+	       (int) fsid.session_index, sess->sw_if_index);
 #endif
 	    /* There was activity on the session, so the idle timeout
 	       has not passed. Enqueue for another time period. */
@@ -954,8 +548,8 @@ acl_fa_check_idle_sessions(acl_main_t *am, u16 thread_index, u64 now)
 	else
 	  {
 #ifdef FA_NODE_VERBOSE_DEBUG
-	    clib_warning ("ACL_FA_NODE_CLEAN: Deleting session %d",
-	       (int) session_index);
+	    clib_warning ("ACL_FA_NODE_CLEAN: Deleting session %d, sw_if_index %d",
+	       (int) fsid.session_index, sess->sw_if_index);
 #endif
 	    acl_fa_delete_session (am, sw_if_index, fsid);
 	    pw->cnt_deleted_sessions++;
@@ -1044,9 +638,7 @@ static int
 acl_fa_find_session (acl_main_t * am, u32 sw_if_index0, fa_5tuple_t * p5tuple,
 		     clib_bihash_kv_40_8_t * pvalue_sess)
 {
-  return (BV (clib_bihash_search)
-	  (&am->fa_sessions_hash, &p5tuple->kv,
-	   pvalue_sess) == 0);
+  return (clib_bihash_search_40_8 (&am->fa_sessions_hash, &p5tuple->kv, pvalue_sess) == 0);
 }
 
 
@@ -1090,8 +682,10 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  u32 next0 = 0;
 	  u8 action = 0;
 	  u32 sw_if_index0;
+	  u32 lc_index0;
 	  int acl_check_needed = 1;
 	  u32 match_acl_in_index = ~0;
+	  u32 match_acl_pos = ~0;
 	  u32 match_rule_index = ~0;
 	  u8 error0 = 0;
 	  u32 valid_new_sess;
@@ -1111,26 +705,30 @@ acl_fa_node_fn (vlib_main_t * vm,
 	  else
 	    sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 
+	  if (is_input)
+	    lc_index0 = am->input_lc_index_by_sw_if_index[sw_if_index0];
+	  else
+	    lc_index0 = am->output_lc_index_by_sw_if_index[sw_if_index0];
 	  /*
 	   * Extract the L3/L4 matching info into a 5-tuple structure,
 	   * then create a session key whose layout is independent on forward or reverse
 	   * direction of the packet.
 	   */
 
-	  acl_fill_5tuple (am, b0, is_ip6, is_input, is_l2_path, &fa_5tuple);
+	  acl_plugin_fill_5tuple_inline (lc_index0, b0, is_ip6, is_input, is_l2_path, (fa_5tuple_opaque_t *)&fa_5tuple);
           fa_5tuple.l4.lsb_of_sw_if_index = sw_if_index0 & 0xffff;
+	  fa_5tuple.pkt.lc_index = lc_index0;
 	  valid_new_sess = acl_make_5tuple_session_key (am, is_input, is_ip6, sw_if_index0,  &fa_5tuple, &kv_sess);
-	  fa_5tuple.pkt.sw_if_index = sw_if_index0;
           fa_5tuple.pkt.is_ip6 = is_ip6;
-          fa_5tuple.pkt.is_input = is_input;
+          // XXDEL fa_5tuple.pkt.is_input = is_input;
           fa_5tuple.pkt.mask_type_index_lsb = ~0;
 #ifdef FA_NODE_VERBOSE_DEBUG
 	  clib_warning
-	    ("ACL_FA_NODE_DBG: session 5-tuple %016llx %016llx %016llx %016llx %016llx : %016llx",
+	    ("ACL_FA_NODE_DBG: session 5-tuple %016llx %016llx %016llx %016llx %016llx %016llx",
 	     kv_sess.kv.key[0], kv_sess.kv.key[1], kv_sess.kv.key[2],
 	     kv_sess.kv.key[3], kv_sess.kv.key[4], kv_sess.kv.value);
 	  clib_warning
-	    ("ACL_FA_NODE_DBG: packet 5-tuple %016llx %016llx %016llx %016llx %016llx : %016llx",
+	    ("ACL_FA_NODE_DBG: packet 5-tuple %016llx %016llx %016llx %016llx %016llx %016llx",
 	     fa_5tuple.kv.key[0], fa_5tuple.kv.key[1], fa_5tuple.kv.key[2],
 	     fa_5tuple.kv.key[3], fa_5tuple.kv.key[4], fa_5tuple.kv.value);
 #endif
@@ -1189,9 +787,9 @@ acl_fa_node_fn (vlib_main_t * vm,
 
 	  if (acl_check_needed)
 	    {
-	      action =
-		multi_acl_match_5tuple (sw_if_index0, &fa_5tuple, is_l2_path,
-				       is_ip6, is_input, &match_acl_in_index,
+              action = 0; /* deny by default */
+	      acl_plugin_match_5tuple_inline (lc_index0, (fa_5tuple_opaque_t *)&fa_5tuple,
+				       is_ip6, &action, &match_acl_pos, &match_acl_in_index,
 				       &match_rule_index, &trace_bitmap);
 	      error0 = action;
 	      if (1 == action)
@@ -1236,12 +834,16 @@ acl_fa_node_fn (vlib_main_t * vm,
 	      else
 		vnet_feature_next (sw_if_index0, &next0, b0);
 	    }
+#ifdef FA_NODE_VERBOSE_DEBUG
+          clib_warning("ACL_FA_NODE_DBG: sw_if_index %d lc_index %d action %d acl_index %d rule_index %d", sw_if_index0, lc_index0, action, match_acl_in_index, match_rule_index);
+#endif
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
 	      acl_fa_trace_t *t = vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = sw_if_index0;
+	      t->lc_index = lc_index0;
 	      t->next_index = next0;
 	      t->match_acl_in_index = match_acl_in_index;
 	      t->match_rule_index = match_rule_index;
