@@ -218,6 +218,7 @@ AC_SUBST(AR_FLAGS)
 ###############################################################################
 
 # Please keep alphabetical order
+PLUGIN_ENABLED(abf)
 PLUGIN_ENABLED(acl)
 PLUGIN_ENABLED(avf)
 PLUGIN_ENABLED(cdp)

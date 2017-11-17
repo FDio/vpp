@@ -655,7 +655,7 @@ class VPPAPI(object):
         imported_objs = []
         for o in objs:
             if isinstance(o, Import):
-                return objs + self.process_imports(o.result, True)
+                return self.process_imports(o.result, True) + objs
             if in_import:
                 if isinstance(o, Define) and o.typeonly:
                     imported_objs.append(o)
