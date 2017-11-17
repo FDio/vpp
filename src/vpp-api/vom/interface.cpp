@@ -54,10 +54,10 @@ interface::interface(const handle_t& handle,
                      const std::string& name,
                      interface::type_t type,
                      interface::admin_state_t state)
-  : m_hdl(handle)
+  : m_hdl(handle, rc_t::OK)
   , m_name(name)
   , m_type(type)
-  , m_state(state)
+  , m_state(state, rc_t::OK)
   , m_table_id(route::DEFAULT_TABLE)
   , m_l2_address(l2_address)
   , m_oper(oper_state_t::DOWN)
@@ -278,7 +278,17 @@ interface::update(const interface& desired)
   if (rc_t::OK != m_hdl.rc()) {
     std::queue<cmd*> cmds;
     HW::enqueue(mk_create_cmd(cmds));
+    /*
+     * interface create now, so we can barf early if it fails
+     */
+    HW::write();
   }
+
+  /*
+   * If the interface is not created do other commands should be issued
+   */
+  if (rc_t::OK != m_hdl.rc())
+    return;
 
   /*
    * change the interface state to that which is deisred

@@ -61,7 +61,7 @@ log_t::set(const std::string& ofile)
 }
 
 std::ostream&
-log_t::stream(const char* file, int line)
+log_t::stream(const char* file, int line, const log_level_t& level)
 {
   auto end = std::chrono::system_clock::now();
   auto end_time = std::chrono::system_clock::to_time_t(end);
@@ -77,7 +77,7 @@ log_t::stream(const char* file, int line)
   boost::split(dirs, file, boost::is_any_of("/"));
 
   *m_o_stream << std::endl
-              << display << "]"
+              << display << " [" << level.to_string() << "]"
               << " " << dirs.back() << ":" << line << ": ";
 
   return (*m_o_stream);
