@@ -99,6 +99,11 @@ class TestIpIrb(VppTestCase):
         cls.pg0.remote_hosts = cls.loop0.remote_hosts[:half]
         cls.pg1.remote_hosts = cls.loop0.remote_hosts[half:]
 
+    def setUp(self):
+        super(TestIpIrb, self).setUp()
+        # to test the linear search, uncoment the below line
+        # self.logger.info(self.vapi.ppcli("set acl-plugin use-hash-acl-matching 0"))
+
     def tearDown(self):
         """Run standard test teardown and log ``show l2patch``,
         ``show l2fib verbose``,``show bridge-domain <bd_id> detail``,

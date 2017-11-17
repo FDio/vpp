@@ -127,6 +127,8 @@ class TestACLplugin(VppTestCase):
 
     def setUp(self):
         super(TestACLplugin, self).setUp()
+        # Uncomment the below line to test the linear matching
+        # self.logger.info(self.vapi.ppcli("set acl-plugin use-hash-acl-matching 0"))
         self.reset_packet_infos()
 
     def tearDown(self):
