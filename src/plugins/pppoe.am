@@ -16,8 +16,8 @@ vppplugins_LTLIBRARIES += pppoe_plugin.la
 
 pppoe_plugin_la_SOURCES =	\
     pppoe/pppoe_decap.c		\
-    pppoe/pppoe_tap.c		\
-    pppoe/pppoe_tap_node.c	\
+    pppoe/pppoe_cp.c		\
+    pppoe/pppoe_cp_node.c	\
     pppoe/pppoe.c		\
     pppoe/pppoe_api.c
 

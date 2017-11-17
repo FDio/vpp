@@ -343,7 +343,7 @@ class TestPPPoE(VppTestCase):
         # and we should still be able to use the original
         #
         try:
-            gre_if.add_vpp_config()
+            pppoe_if.add_vpp_config()
         except Exception:
             pass
         else:
@@ -400,7 +400,7 @@ class TestPPPoE(VppTestCase):
         # and we should still be able to use the original
         #
         try:
-            gre_if.remove_vpp_config()
+            pppoe_if.remove_vpp_config()
         except Exception:
             pass
         else:
