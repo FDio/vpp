@@ -47,7 +47,7 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
         Decapsulate the original payload frame by removing VXLAN-GPE header
         """
         # check if is set I and P flag
-        self.assertEqual(pkt[VXLAN].flags, int('0xc', 16))
+        self.assertEqual(pkt[VXLAN].flags, 0x0c)
         return pkt[VXLAN].payload
 
     # Method for checking VXLAN-GPE encapsulation.
@@ -73,84 +73,6 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
         self.assertEqual(pkt[UDP].dport, type(self).dport)
         # Verify VNI
         self.assertEqual(pkt[VXLAN].vni, vni)
-
-    def test_decap(self):
-        """ Decapsulation test
-        Send encapsulated frames from pg0
-        Verify receipt of decapsulated frames on pg1
-        """
-
-        encapsulated_pkt = self.encapsulate(self.frame_request,
-                                            self.single_tunnel_bd)
-
-        self.pg0.add_stream([encapsulated_pkt, ])
-
-        self.pg1.enable_capture()
-
-        self.pg_start()
-
-        # Pick first received frame and check if it's the non-encapsulated
-        # frame
-        out = self.pg1.get_capture(1)
-        pkt = out[0]
-        self.assert_eq_pkts(pkt, self.frame_request)
-
-    def test_encap(self):
-        """ Encapsulation test
-        Send frames from pg1
-        Verify receipt of encapsulated frames on pg0
-        """
-        self.pg1.add_stream([self.frame_reply])
-
-        self.pg0.enable_capture()
-
-        self.pg_start()
-
-        # Pick first received frame and check if it's corectly encapsulated.
-        out = self.pg0.get_capture(1)
-        pkt = out[0]
-        self.check_encapsulation(pkt, self.single_tunnel_bd)
-
-        # payload = self.decapsulate(pkt)
-        # self.assert_eq_pkts(payload, self.frame_reply)
-
-    def test_ucast_flood(self):
-        """ Unicast flood test
-        Send frames from pg3
-        Verify receipt of encapsulated frames on pg0
-        """
-        self.pg3.add_stream([self.frame_reply])
-
-        self.pg0.enable_capture()
-
-        self.pg_start()
-
-        # Get packet from each tunnel and assert it's corectly encapsulated.
-        out = self.pg0.get_capture(self.n_ucast_tunnels)
-        for pkt in out:
-            self.check_encapsulation(pkt, self.ucast_flood_bd, True)
-            # payload = self.decapsulate(pkt)
-            # self.assert_eq_pkts(payload, self.frame_reply)
-
-    def test_mcast_flood(self):
-        """ Multicast flood test
-        Send frames from pg2
-        Verify receipt of encapsulated frames on pg0
-        """
-        self.pg2.add_stream([self.frame_reply])
-
-        self.pg0.enable_capture()
-
-        self.pg_start()
-
-        # Pick first received frame and check if it's corectly encapsulated.
-        out = self.pg0.get_capture(1)
-        pkt = out[0]
-        self.check_encapsulation(pkt, self.mcast_flood_bd,
-                                 local_only=False, mcast_pkt=True)
-
-        # payload = self.decapsulate(pkt)
-        # self.assert_eq_pkts(payload, self.frame_reply)
 
     @classmethod
     def create_vxlan_gpe_flood_test_bd(cls, vni, n_ucast_tunnels):
@@ -232,7 +154,7 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
 
         try:
             cls.dport = 4790
-            cls.flags = 0xc
+            cls.flags = 0x0c
 
             # Create 2 pg interfaces.
             cls.create_pg_interfaces(range(4))
@@ -295,6 +217,16 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
             super(TestVxlanGpe, cls).tearDownClass()
             raise
 
+    @unittest.skip("test disabled for vxlan-gpe")
+    def test_mcast_flood(self):
+        """ inherited from BridgeDomain """
+        pass
+
+    @unittest.skip("test disabled for vxlan-gpe")
+    def test_mcast_rcv(self):
+        """ inherited from BridgeDomain """
+        pass
+
     # Method to define VPP actions before tear down of the test case.
     #  Overrides tearDown method in VppTestCase class.
     #  @param self The object pointer.
@@ -305,7 +237,7 @@ class TestVxlanGpe(BridgeDomain, VppTestCase):
             self.logger.info(self.vapi.cli("show bridge-domain 12 detail"))
             self.logger.info(self.vapi.cli("show bridge-domain 13 detail"))
             self.logger.info(self.vapi.cli("show int"))
-            self.logger.info(self.vapi.cli("show vxlan-gpe tunnel"))
+            self.logger.info(self.vapi.cli("show vxlan-gpe"))
             self.logger.info(self.vapi.cli("show trace"))
 
 
