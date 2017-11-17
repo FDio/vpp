@@ -52,7 +52,7 @@ public:
   /**
    * Return the stream
    */
-  std::ostream& stream(const char* file, int line);
+  std::ostream& stream(const char* file, int line, const log_level_t& level);
 
   /**
    * The configured level
@@ -93,7 +93,7 @@ log_t& logger();
 
 #define VOM_LOG(lvl)                                                           \
   if (lvl >= logger().level())                                                 \
-  logger().stream(__FILE__, __LINE__)
+  logger().stream(__FILE__, __LINE__, lvl)
 };
 
 /*

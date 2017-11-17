@@ -77,6 +77,11 @@ public:
     }
 
     /**
+     * Destructor
+     */
+    ~item() = default;
+
+    /**
      * Comparison operator
      */
     bool operator==(const item<T>& i) const

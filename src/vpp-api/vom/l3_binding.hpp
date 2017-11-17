@@ -167,7 +167,7 @@ private:
   /**
    * The prefix for this L3 configuration
    */
-  const route::prefix_t& m_pfx;
+  const route::prefix_t m_pfx;
 
   /**
    * HW configuration for the binding. The bool representing the

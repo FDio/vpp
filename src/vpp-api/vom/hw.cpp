@@ -127,9 +127,9 @@ HW::cmd_q::write()
   rc_t rc = rc_t::OK;
 
   /*
- * The queue is enabled, Execute each command in the queue.
- * If one execution fails, abort the rest
- */
+   * The queue is enabled, Execute each command in the queue.
+   * If one execution fails, abort the rest
+   */
   auto it = m_queue.begin();
 
   while (it != m_queue.end()) {
@@ -139,41 +139,43 @@ HW::cmd_q::write()
 
     if (m_enabled) {
       /*
- * before we issue the command we must move it to the pending
- * store
- * ince a async event can be recieved before the command
- * completes
- */
+       * before we issue the command we must move it to the pending
+       * store
+       * ince a async event can be recieved before the command
+       * completes
+       */
       m_pending[c.get()] = c;
 
       rc = c->issue(m_conn);
 
       if (rc_t::INPROGRESS == rc) {
         /*
- * this command completes asynchronously
- * leave the command in the pending store
- */
+         * this command completes asynchronously
+         * leave the command in the pending store
+         */
       } else {
         /*
- * the command completed, remove from the pending store
- */
+         * the command completed, remove from the pending store
+         */
         m_pending.erase(c.get());
 
         if (rc_t::OK == rc) {
           /*
- * move to the next
- */
+           * move to the next
+           */
         } else {
           /*
- * barf out without issuing the rest
- */
+           * barf out without issuing the rest
+           */
+          VOM_LOG(log_level_t::ERROR) << "Failed to execute: "
+                                      << c->to_string();
           break;
         }
       }
     } else {
       /*
- * The HW is disabled, so set each command as succeeded
- */
+       * The HW is disabled, so set each command as succeeded
+       */
       c->succeeded();
     }
 
@@ -181,8 +183,8 @@ HW::cmd_q::write()
   }
 
   /*
- * erase all objects in the queue
- */
+   * erase all objects in the queue
+   */
   m_queue.erase(m_queue.begin(), m_queue.end());
 
   return (rc);
