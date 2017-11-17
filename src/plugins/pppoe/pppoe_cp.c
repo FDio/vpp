@@ -16,18 +16,17 @@
  */
 
 #include <pppoe/pppoe.h>
-#include <vnet/unix/tapcli.h>
 
 static clib_error_t *
-pppoe_add_del_tap_command_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+pppoe_add_del_cp_command_fn (vlib_main_t * vm,
+			     unformat_input_t * input,
+			     vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
   pppoe_main_t *pem = &pppoe_main;
   u8 is_add = 1;
-  u8 tap_if_index_set = 0;
-  u32 tap_if_index = 0;
+  u8 cp_if_index_set = 0;
+  u32 cp_if_index = 0;
   clib_error_t *error = NULL;
 
   /* Get a line of input. */
@@ -40,8 +39,8 @@ pppoe_add_del_tap_command_fn (vlib_main_t * vm,
 	{
 	  is_add = 0;
 	}
-      else if (unformat (line_input, "tap-if-index %d", &tap_if_index))
-	tap_if_index_set = 1;
+      else if (unformat (line_input, "cp-if-index %d", &cp_if_index))
+	cp_if_index_set = 1;
       else
 	{
 	  error = clib_error_return (0, "parse error: '%U'",
@@ -50,19 +49,19 @@ pppoe_add_del_tap_command_fn (vlib_main_t * vm,
 	}
     }
 
-  if (tap_if_index_set == 0)
+  if (cp_if_index_set == 0)
     {
-      error = clib_error_return (0, "tap if index not specified");
+      error = clib_error_return (0, "cp if index not specified");
       goto done;
     }
 
   if (is_add)
     {
-      pem->tap_if_index = tap_if_index;
+      pem->cp_if_index = cp_if_index;
     }
   else
     {
-      pem->tap_if_index = ~0;
+      pem->cp_if_index = ~0;
     }
 
 done:
@@ -72,11 +71,11 @@ done:
 }
 
 /* *INDENT-OFF* */
-VLIB_CLI_COMMAND (create_pppoe_tap_cmd, static) =
+VLIB_CLI_COMMAND (create_pppoe_cp_cmd, static) =
 {
-    .path = "create pppoe tap",
-    .short_help = "create pppoe tap if-name <intfc> [del]",
-    .function = pppoe_add_del_tap_command_fn,
+    .path = "create pppoe cp",
+    .short_help = "create pppoe cp if-name <intfc> [del]",
+    .function = pppoe_add_del_cp_command_fn,
 };
 /* *INDENT-ON* */
 
