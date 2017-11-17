@@ -29,8 +29,8 @@ PKG_SUFFIX ?= vpp2
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
-DPDK_17.05_TARBALL_MD5_CKSUM := 0a68c31cd6a6cabeed0a4331073e4c05
 DPDK_17.08_TARBALL_MD5_CKSUM := 0641f59ea8ea98afefa7cfa2699f6241
+DPDK_17.11_TARBALL_MD5_CKSUM := 53ee9e054a8797c9e67ffa0eb5d0c701
 DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 MACHINE=$(shell uname -m)
 
@@ -42,7 +42,11 @@ NASM_SOURCE := $(B)/nasm-$(NASM_VER)
 
 ISA_L_CRYPTO_LIB := n
 
+ifeq ($(DPDK_VERSION),17.08)
 IPSEC_MB_VER ?= 0.46
+else
+IPSEC_MB_VER ?= 0.47
+endif
 ISA_L_CRYPTO_VER := 2.18.0
 
 ifeq ($(MACHINE),$(filter $(MACHINE),x86_64))
@@ -220,6 +224,7 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PORT,n)
 	$(call set,RTE_LIBRTE_TABLE,n)
 	$(call set,RTE_LIBRTE_PIPELINE,n)
+	$(call set,RTE_LIBRTE_FLOW_CLASSIFY,n)
 	$(call set,RTE_KNI_KMOD,n)
 	$(call set,RTE_EAL_IGB_UIO,n)
 	@rm -f .config.ok
