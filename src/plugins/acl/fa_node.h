@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <vppinfra/bihash_40_8.h>
 
+#define FA_NODE_VERBOSE_DEBUG 3
+
 #define TCP_FLAG_FIN    0x01
 #define TCP_FLAG_SYN    0x02
 #define TCP_FLAG_RST    0x04
@@ -22,15 +24,14 @@
 typedef union {
   u64 as_u64;
   struct {
-    u32 sw_if_index;
+    u32 lc_index;
     u16 mask_type_index_lsb;
     u8 tcp_flags;
     u8 tcp_flags_valid:1;
-    u8 is_input:1;
     u8 l4_valid:1;
     u8 is_nonfirst_fragment:1;
     u8 is_ip6:1;
-    u8 flags_reserved:3;
+    u8 flags_reserved:4;
   };
 } fa_packet_info_t;
 
@@ -52,6 +53,10 @@ typedef union {
   };
   clib_bihash_kv_40_8_t kv;
 } fa_5tuple_t;
+
+typedef struct {
+  u8 opaque[sizeof(fa_5tuple_t)];
+} fa_5tuple_opaque_t;
 
 
 typedef struct {
