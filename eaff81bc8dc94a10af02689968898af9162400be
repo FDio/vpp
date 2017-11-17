@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0ff00de7_3f49d81e",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-11-17T18:38:47Z",
+      "side": 1,
+      "message": "Instead of keeping only one drop dispatch index and forking the nodes, convert DROP into DROP4 and DROP6 and then do something similar to what tcp_next_output (is_ip4) does. Namely, add a macro:\n\ntcp_next_drop (is_ip4) (is_ip4 ? TCP_NEXT_DROP4 : TCP_NEXT_DROP6)\n\nThen update all the places where TCP_NEXT_DROP is to use the macro. Since all tcp46_* dispatch functions are inlined and have is_ip4 as a parameter, this will probably turn out to be 0-clock cost.",
+      "range": {
+        "startLine": 30,
+        "startChar": 5,
+        "endLine": 30,
+        "endChar": 9
+      },
+      "revId": "eaff81bc8dc94a10af02689968898af9162400be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5c9aca66_a55b709f",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 78,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-11-17T18:38:47Z",
+      "side": 1,
+      "message": "Per comment above, please revert this change.",
+      "range": {
+        "startLine": 78,
+        "startChar": 8,
+        "endLine": 78,
+        "endChar": 23
+      },
+      "revId": "eaff81bc8dc94a10af02689968898af9162400be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "58860269_99539276",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2294,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-11-17T18:38:47Z",
+      "side": 1,
+      "message": "Here\u0027s one of the places where you need to do: next0 \u003d tcp_next_drop (is_ip4);",
+      "range": {
+        "startLine": 2294,
+        "startChar": 15,
+        "endLine": 2294,
+        "endChar": 40
+      },
+      "revId": "eaff81bc8dc94a10af02689968898af9162400be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cf49fba0_0fac2ca3",
+        "filename": "src/vnet/udp/udp_local.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 34,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-11-17T18:38:47Z",
+      "side": 1,
+      "message": "Revert this and follow the same pattern like in tcp: have all nexts under foreach_udp_local_next and then write one or more macros that select between v4 and v6 actions based on is_ip4 passed to the inlined functions.",
+      "range": {
+        "startLine": 31,
+        "startChar": 0,
+        "endLine": 34,
+        "endChar": 34
+      },
+      "revId": "eaff81bc8dc94a10af02689968898af9162400be",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
