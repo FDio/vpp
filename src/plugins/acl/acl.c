@@ -105,6 +105,16 @@ format_vec16 (u8 * s, va_list * va)
 
 
 
+u8
+acl_plugin_acl_exists (u32 acl_index)
+{
+  acl_main_t *am = &acl_main;
+
+  if (pool_is_free_index (am->acls, acl_index))
+    return 0;
+
+  return 1;
+}
 
 static void *
 acl_set_heap (acl_main_t * am)
