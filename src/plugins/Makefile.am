@@ -83,6 +83,10 @@ if ENABLE_STN_PLUGIN
 include stn.am
 endif
 
+if ENABLE_ABF_PLUGIN
+include abf.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
