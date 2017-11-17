@@ -49,6 +49,10 @@ typedef struct
 
   /* process node index for evnt scheduling */
   u32 node_index;
+
+  u32 prealloc_fifos;
+  u32 private_segment_size;
+  u32 fifo_size;
   vlib_main_t *vlib_main;
 } http_server_main_t;
 
@@ -517,10 +521,13 @@ server_attach ()
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;
   a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 128 << 20;
-  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = 8 << 10;
-  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = 32 << 10;
+  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] =
+    hsm->fifo_size ? hsm->fifo_size : 8 << 10;
+  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] =
+    hsm->fifo_size ? hsm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
-  a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 16;
+  a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hsm->prealloc_fifos;
+  a->options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE] = hsm->private_segment_size;
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
@@ -577,12 +584,31 @@ server_create_command_fn (vlib_main_t * vm,
 {
   http_server_main_t *hsm = &http_server_main;
   int rv, is_static = 0;
+  u64 seg_size;
   u8 *html;
 
+  hsm->prealloc_fifos = 0;
+  hsm->private_segment_size = 0;
+  hsm->fifo_size = 0;
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat (input, "static"))
 	is_static = 1;
+      else if (unformat (input, "prealloc-fifos %d", &hsm->prealloc_fifos))
+	;
+      else if (unformat (input, "private-segment-size %U",
+			 unformat_memory_size, &seg_size))
+	{
+	  if (seg_size >= 0x100000000ULL)
+	    {
+	      vlib_cli_output (vm, "private segment size %llu, too large",
+			       seg_size);
+	      return 0;
+	    }
+	  hsm->private_segment_size = seg_size;
+	}
+      else if (unformat (input, "fifo-size %d", &hsm->fifo_size))
+	hsm->fifo_size <<= 10;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
