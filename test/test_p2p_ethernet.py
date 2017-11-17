@@ -9,7 +9,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP
 from scapy.layers.inet6 import IPv6
 
-from framework import VppTestCase, VppTestRunner, running_extended_tests
+from framework import VppTestCase, VppTestRunner
 from vpp_sub_interface import VppP2PSubint
 from vpp_ip_route import VppIpRoute, VppRoutePath, DpoProto
 from util import mactobinary
@@ -88,39 +88,6 @@ class P2PEthernetAPI(VppTestCase):
         count = 0
         for intf in intfs:
             if intf.startswith('pg2.'):
-                count += 1
-        self.assertEqual(count, clients)
-
-        self.logger.info("FFP_TEST_FINISH_0001")
-
-    @unittest.skipUnless(running_extended_tests(), "part of extended tests")
-    def test_p2p_subif_creation_10k(self):
-        """create 100k of p2p subifs"""
-        self.logger.info("FFP_TEST_START_0001")
-
-        macs = []
-        clients = 100000
-        mac = int("dead00000000", 16)
-
-        s_time = datetime.datetime.now()
-        for i in range(1, clients+1):
-            if i % 1000 == 0:
-                e_time = datetime.datetime.now()
-                print "Created 1000 subifs in %s secs" % (e_time - s_time)
-                s_time = e_time
-            try:
-                macs.append(':'.join(re.findall('..', '{:02x}'.format(mac+i))))
-                self.vapi.create_p2pethernet_subif(self.pg3.sw_if_index,
-                                                   mactobinary(macs[i-1]),
-                                                   i)
-            except Exception:
-                print "Failed to create subif %d %s" % (i, macs[i-1])
-                raise
-
-        intfs = self.vapi.cli("show interface").split("\n")
-        count = 0
-        for intf in intfs:
-            if intf.startswith('pg3.'):
                 count += 1
         self.assertEqual(count, clients)
 
