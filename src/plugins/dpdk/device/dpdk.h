@@ -39,6 +39,9 @@
 #include <rte_eth_bond.h>
 #include <rte_sched.h>
 #include <rte_net.h>
+#if RTE_VERSION >= RTE_VERSION_NUM(17, 11, 0, 0)
+#include <rte_bus_pci.h>
+#endif
 
 #include <vnet/unix/pcap.h>
 #include <vnet/devices/devices.h>
@@ -115,6 +118,12 @@ typedef struct
   u64 tx_tail;
 } tx_ring_hdr_t;
 
+#if RTE_VERSION < RTE_VERSION_NUM(17, 11, 0, 0)
+typedef uint8_t dpdk_portid_t;
+#else
+typedef uint16_t dpdk_portid_t;
+#endif
+
 typedef struct
 {
   struct rte_ring *swq;
@@ -150,7 +159,7 @@ typedef struct
   volatile u32 **lockp;
 
   /* Instance ID */
-  u32 device_index;
+  dpdk_portid_t device_index;
 
   u32 hw_if_index;
   u32 vlib_sw_if_index;
@@ -203,11 +212,11 @@ typedef struct
   dpdk_device_hqos_per_hqos_thread_t *hqos_ht;
 
   /* af_packet or BondEthernet instance number */
-  u8 port_id;
+  dpdk_portid_t port_id;
 
   /* Bonded interface port# of a slave -
      only valid if DPDK_DEVICE_FLAG_BOND_SLAVE bit is set */
-  u8 bond_port;
+  dpdk_portid_t bond_port;
 
   struct rte_eth_link link;
   f64 time_last_link_update;
@@ -422,14 +431,9 @@ void dpdk_device_setup (dpdk_device_t * xd);
 void dpdk_device_start (dpdk_device_t * xd);
 void dpdk_device_stop (dpdk_device_t * xd);
 
-#if DPDK_VOID_CALLBACK
-void dpdk_port_state_callback (uint8_t port_id,
-			       enum rte_eth_event_type type, void *param);
-#else
-int dpdk_port_state_callback (uint8_t port_id,
+int dpdk_port_state_callback (dpdk_portid_t port_id,
 			      enum rte_eth_event_type type,
 			      void *param, void *ret_param);
-#endif
 
 #define foreach_dpdk_error						\
   _(NONE, "no error")							\

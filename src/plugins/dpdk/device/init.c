@@ -1441,7 +1441,7 @@ dpdk_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	    if (xd->pmd == VNET_DPDK_PMD_BOND)
 	      {
 		u8 addr[6];
-		u8 slink[16];
+		dpdk_portid_t slink[16];
 		int nlink = rte_eth_bond_slaves_get (i, slink, 16);
 		if (nlink > 0)
 		  {

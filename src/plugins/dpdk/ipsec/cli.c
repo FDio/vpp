@@ -532,7 +532,6 @@ show_dpdk_crypto_pools_fn (vlib_main_t * vm,
   {
     if (data->crypto_op)
       vlib_cli_output (vm, "%U\n", format_dpdk_mempool, data->crypto_op);
-#if ! DPDK_NO_AEAD
     if (data->session_h)
       vlib_cli_output (vm, "%U\n", format_dpdk_mempool, data->session_h);
 
@@ -540,18 +539,8 @@ show_dpdk_crypto_pools_fn (vlib_main_t * vm,
     vec_foreach (mp, data->session_drv)
       if (mp[0])
 	vlib_cli_output (vm, "%U\n", format_dpdk_mempool, mp[0]);
-#endif
   }
   /* *INDENT-ON* */
-
-#if DPDK_NO_AEAD
-  crypto_dev_t *dev;
-  /* *INDENT-OFF* */
-  vec_foreach (dev, dcm->dev) if (rte_cryptodevs[dev->id].data->session_pool)
-    vlib_cli_output (vm, "%U\n", format_dpdk_mempool,
-		     rte_cryptodevs[dev->id].data->session_pool);
-  /* *INDENT-ON* */
-#endif
 
   return NULL;
 }

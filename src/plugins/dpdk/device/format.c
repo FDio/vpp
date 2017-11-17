@@ -79,18 +79,24 @@
   _(DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM, "outer-ipv4-cksum") \
   _(DEV_TX_OFFLOAD_QINQ_INSERT, "qinq-insert")
 
+#if RTE_VERSION < RTE_VERSION_NUM(17, 11, 0, 0)
+#define PKT_RX_VLAN PKT_RX_VLAN_PKT
+#endif
+
 #define foreach_dpdk_pkt_rx_offload_flag                                \
-  _ (PKT_RX_VLAN_PKT, "RX packet is a 802.1q VLAN packet")              \
+  _ (PKT_RX_VLAN, "RX packet is a 802.1q VLAN packet")                  \
   _ (PKT_RX_RSS_HASH, "RX packet with RSS hash result")                 \
   _ (PKT_RX_FDIR, "RX packet with FDIR infos")                          \
   _ (PKT_RX_L4_CKSUM_BAD, "L4 cksum of RX pkt. is not OK")              \
   _ (PKT_RX_IP_CKSUM_BAD, "IP cksum of RX pkt. is not OK")              \
+  _ (PKT_RX_EIP_CKSUM_BAD, "External IP header checksum error")         \
   _ (PKT_RX_VLAN_STRIPPED, "RX packet VLAN tag stripped")               \
   _ (PKT_RX_IP_CKSUM_GOOD, "IP cksum of RX pkt. is valid")              \
   _ (PKT_RX_L4_CKSUM_GOOD, "L4 cksum of RX pkt. is valid")              \
   _ (PKT_RX_IEEE1588_PTP, "RX IEEE1588 L2 Ethernet PT Packet")          \
   _ (PKT_RX_IEEE1588_TMST, "RX IEEE1588 L2/L4 timestamped packet")      \
-  _ (PKT_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped")
+  _ (PKT_RX_QINQ_STRIPPED, "RX packet QinQ tags stripped") \
+  _ (PKT_RX_TIMESTAMP, "Timestamp field is valid")
 
 #define foreach_dpdk_pkt_type                                           \
   _ (L2, ETHER, "Ethernet packet")                                      \
@@ -728,7 +734,7 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
     s = format (s, "\n%U%U", format_white_space, indent,
 		format_dpdk_pkt_offload_flags, &mb->ol_flags);
 
-  if ((mb->ol_flags & PKT_RX_VLAN_PKT) &&
+  if ((mb->ol_flags & PKT_RX_VLAN) &&
       ((mb->ol_flags & (PKT_RX_VLAN_STRIPPED | PKT_RX_QINQ_STRIPPED)) == 0))
     {
       ethernet_vlan_header_tv_t *vlan_hdr =
