@@ -1282,7 +1282,7 @@ vxlan_gpe_init (vlib_main_t * vm)
   vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_IP6,
 				     VXLAN_GPE_INPUT_NEXT_IP6_INPUT);
   vxlan_gpe_register_decap_protocol (VXLAN_GPE_PROTOCOL_ETHERNET,
-				     VXLAN_GPE_INPUT_NEXT_ETHERNET_INPUT);
+				     VXLAN_GPE_INPUT_NEXT_L2_INPUT);
 
   fib_node_register_type (FIB_NODE_TYPE_VXLAN_GPE_TUNNEL, &vxlan_gpe_vft);
 

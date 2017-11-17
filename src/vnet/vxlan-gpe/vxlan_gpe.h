@@ -169,7 +169,7 @@ typedef struct
 _(DROP, "error-drop")                           \
 _(IP4_INPUT, "ip4-input")                       \
 _(IP6_INPUT, "ip6-input")                       \
-_(ETHERNET_INPUT, "ethernet-input")
+_(L2_INPUT, "l2-input")
 
 /** struct for next nodes for VXLAN GPE input */
 typedef enum

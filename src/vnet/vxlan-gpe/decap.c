@@ -338,6 +338,9 @@ vxlan_gpe_input (vlib_main_t * vm,
 	  /* Required to make the l2 tag push / pop code work on l2 subifs */
 	  vnet_update_l2_len (b0);
 
+	  /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = t0->sw_if_index;
+
       /**
        * ip[46] lookup in the configured FIB
        */
@@ -425,6 +428,9 @@ vxlan_gpe_input (vlib_main_t * vm,
 
 	  /* Required to make the l2 tag push / pop code work on l2 subifs */
 	  vnet_update_l2_len (b1);
+
+	  /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
+	  vnet_buffer (b1)->sw_if_index[VLIB_RX] = t1->sw_if_index;
 
 	  /*
 	   * ip[46] lookup in the configured FIB
@@ -594,6 +600,9 @@ vxlan_gpe_input (vlib_main_t * vm,
 
 	  /* Required to make the l2 tag push / pop code work on l2 subifs */
 	  vnet_update_l2_len (b0);
+
+	  /* Set packet input sw_if_index to unicast VXLAN tunnel for learning */
+	  vnet_buffer (b0)->sw_if_index[VLIB_RX] = t0->sw_if_index;
 
 	  /*
 	   * ip[46] lookup in the configured FIB
