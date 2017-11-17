@@ -73,7 +73,7 @@ typedef struct
 _(DROP, "error-drop")                  \
 _(IP4_INPUT, "ip4-input")              \
 _(IP6_INPUT, "ip6-input" )             \
-_(CP_INPUT, "pppoe-tap-dispatch" )     \
+_(CP_INPUT, "pppoe-cp-dispatch" )      \
 
 typedef enum
 {
@@ -163,7 +163,7 @@ typedef struct
   u32 *session_index_by_sw_if_index;
 
   /* used for pppoe cp path */
-  u32 tap_if_index;
+  u32 cp_if_index;
 
   /* API message ID base */
   u16 msg_id_base;
@@ -177,7 +177,7 @@ typedef struct
 extern pppoe_main_t pppoe_main;
 
 extern vlib_node_registration_t pppoe_input_node;
-extern vlib_node_registration_t pppoe_tap_dispatch_node;
+extern vlib_node_registration_t pppoe_cp_dispatch_node;
 
 typedef struct
 {
@@ -198,7 +198,7 @@ typedef struct
 {
   u8 is_add;
   u32 client_if_index;
-  u32 tap_if_index;
+  u32 cp_if_index;
 } vnet_pppoe_add_del_tap_args_t;
 
 always_inline u64
