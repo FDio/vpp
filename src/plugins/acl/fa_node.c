@@ -283,6 +283,16 @@ single_acl_match_5tuple (acl_main_t * am, u32 acl_index, fa_5tuple_t * pkt_5tupl
   return 0;
 }
 
+int
+acl_plugin_single_acl_match_5tuple (u32 acl_index, fa_5tuple_t * pkt_5tuple,
+		  int is_ip6, u8 * r_action, u32 * r_acl_match_p,
+		  u32 * r_rule_match_p, u32 * trace_bitmap)
+{
+  acl_main_t * am = &acl_main;
+  return single_acl_match_5tuple(am, acl_index, pkt_5tuple, is_ip6, r_action,
+                                 r_acl_match_p, r_rule_match_p, trace_bitmap);
+}
+
 static u8
 linear_multi_acl_match_5tuple (u32 sw_if_index, fa_5tuple_t * pkt_5tuple, int is_l2,
 		       int is_ip6, int is_input, u32 * acl_match_p,
@@ -523,6 +533,13 @@ acl_fill_5tuple (acl_main_t * am, vlib_buffer_t * b0, int is_ip6,
     }
 }
 
+void
+acl_plugin_fill_5tuple (vlib_buffer_t * b0, int is_ip6,
+		 int is_input, int is_l2_path, fa_5tuple_t * p5tuple_pkt)
+{
+  acl_main_t * am = &acl_main;
+  acl_fill_5tuple(am, b0, is_ip6, is_input, is_l2_path, p5tuple_pkt);
+}
 
 /* Session keys match the packets received, and mirror the packets sent */
 static void
