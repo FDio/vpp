@@ -1,0 +1,131 @@
+/* Hey Emacs use -*- mode: C -*- */
+/*
+ * Copyright (c) 2016 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/** \file
+    This file defines the vpp control-plane API messages
+    used to control the ABF plugin
+*/
+
+option version = "1.0.0";
+import "vnet/fib/fib_types.api";
+
+/** \brief Get the plugin version
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define abf_plugin_get_version
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Reply to get the plugin version
+    @param context - returned sender context, to match reply w/ request
+    @param major - Incremented every time a known breaking behavior change is introduced
+    @param minor - Incremented with small changes, may be used to avoid buggy versions
+*/
+define abf_plugin_get_version_reply
+{
+  u32 context;
+  u32 major;
+  u32 minor;
+};
+
+/** \brief A description of an ABF policy
+    @param policy_id User chosen Identifier for the policy
+    @param acl_index The ACL that the policy will match against
+    @param n_paths Number of paths
+    @param paths The set of forwarding paths that are being added or removed.
+ */
+typeonly define abf_policy
+{
+  u32 policy_id;
+  u32 acl_index;
+  u8 n_paths;
+  vl_api_fib_path_t paths[n_paths];
+};
+
+/** \brief A description of an ABF policy
+    @param is_add Is this the addition or removal of paths from the policy
+           If the policy does not exist it is created. If the last path
+           Is being removed, the policy is deleted
+    @param policy The policy
+ */
+autoreply define abf_policy_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_abf_policy_t policy;
+};
+
+/** \brief Policy description returned in the dump
+ */
+define abf_policy_details
+{
+  u32 context;
+  vl_api_abf_policy_t policy;
+};
+
+/** \brief Dump all ABF policies
+ */
+define abf_policy_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief A description of a policy attachment to an interface
+    @param The policy ID to attach
+    @param sw_if_index The interface to attach to
+    @param priority The priority of the attachment, w.r.t. to other attachments
+              on this interface. lower value is 'better'
+    @param is_ipv6 Does this attachment apply to IPv6 packets (or IPv4)
+*/
+typeonly define abf_itf_attach
+{
+  u32 policy_id;
+  u32 sw_if_index;
+  u32 priority;
+  u8 is_ipv6;
+};
+
+/** \brief Add or delete a policy attachment to an interface
+ */
+autoreply define abf_itf_attach_add_del
+{
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  vl_api_abf_itf_attach_t attach;
+};
+
+/** \brief Attachment details from a dump
+ */
+define abf_itf_attach_details
+{
+  u32 context;
+  vl_api_abf_itf_attach_t attach;
+};
+
+/** \brief Dump all the policy attachments
+ */
+define abf_itf_attach_dump
+{
+  u32 client_index;
+  u32 context;
+};
+
