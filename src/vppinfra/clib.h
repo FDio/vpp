@@ -78,6 +78,9 @@
 #define CLIB_PACKED(x)	x __attribute__ ((packed))
 #define CLIB_UNUSED(x)	x __attribute__ ((unused))
 
+/* Make a string from the macro's argument */
+#define CLIB_STRING_MACRO(x) #x
+
 #define __clib_unused __attribute__ ((unused))
 #define __clib_weak __attribute__ ((weak))
 #define __clib_packed __attribute__ ((packed))
