@@ -115,6 +115,32 @@ void *vlib_get_plugin_symbol (char *plugin_name, char *symbol_name);
   vlib_plugin_registration_t vlib_plugin_registration \
   __attribute__((__section__(".vlib_plugin_registration")))
 
+/* Call a plugin init function: used for init function dependencies. */
+#define vlib_call_plugin_init_function(vm,p,x)                  \
+({                                                              \
+  clib_error_t *(*_f)(vlib_main_t *);                           \
+  uword *_fptr = 0;                                             \
+  clib_error_t * _error = 0;                                    \
+  _fptr= vlib_get_plugin_symbol                                 \
+    (p, CLIB_STRING_MACRO(_vlib_init_function_##x));            \
+  if (_fptr == 0)                                               \
+    {                                                           \
+      _error = clib_error_return                                \
+        (0, "Plugin %s and/or symbol %s not found.",            \
+         p, CLIB_STRING_MACRO(_vlib_init_function_##x));        \
+    }                                                           \
+  else                                                          \
+    {                                                           \
+      _f = (void *)(_fptr[0]);                                  \
+    }                                                           \
+  if (_fptr && ! hash_get (vm->init_functions_called, _f))      \
+    {                                                           \
+      hash_set1 (vm->init_functions_called, _f);                \
+      _error = _f (vm);                                         \
+    }                                                           \
+  _error;                                                       \
+ })
+
 #endif /* __included_plugin_h__ */
 
 /*
