@@ -373,7 +373,7 @@ vnet_classify_entry_claim_resource (vnet_classify_entry_t *e)
     case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
         fib_table_lock (e->metadata, FIB_PROTOCOL_IP6, FIB_SOURCE_CLASSIFY);
         break;
-    case CLASSIFY_ACTION_SET_SR_POLICY_INDEX:
+    case CLASSIFY_ACTION_SET_METADATA:
         break;
     }
 }
@@ -389,7 +389,7 @@ vnet_classify_entry_release_resource (vnet_classify_entry_t *e)
     case CLASSIFY_ACTION_SET_IP6_FIB_INDEX:
         fib_table_unlock (e->metadata, FIB_PROTOCOL_IP6, FIB_SOURCE_CLASSIFY);
         break;
-    case CLASSIFY_ACTION_SET_SR_POLICY_INDEX:
+    case CLASSIFY_ACTION_SET_METADATA:
         break;
     }
 }
@@ -2108,7 +2108,7 @@ int vnet_classify_add_del_session (vnet_classify_main_t * cm,
     e->metadata = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
                                                      metadata,
                                                      FIB_SOURCE_CLASSIFY);
-  else if (e->action == CLASSIFY_ACTION_SET_SR_POLICY_INDEX)
+  else if (e->action == CLASSIFY_ACTION_SET_METADATA)
     e->metadata = metadata;
   else
     e->metadata = 0;
