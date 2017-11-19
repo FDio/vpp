@@ -103,6 +103,10 @@ vppcom_retval_str (int retval)
       st = "VPPCOM_EAGAIN";
       break;
 
+    case VPPCOM_ENOMEM:
+      st = "VPPCOM_ENOMEM";
+      break;
+
     case VPPCOM_EINVAL:
       st = "VPPCOM_EINVAL";
       break;

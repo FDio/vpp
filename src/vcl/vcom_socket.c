@@ -1557,8 +1557,17 @@ vcom_socket_sendfile (int __out_fd, int __in_fd, off_t * __offset,
 
   do
     {
-      bytes_to_read = vppcom_session_attr (out_sid,
-					   VPPCOM_ATTR_GET_NWRITE, 0, 0);
+      rv = vppcom_session_attr (out_sid, VPPCOM_ATTR_GET_NWRITE, 0, 0);
+      if (rv < 0)
+	{
+	  clib_warning ("[%d] ERROR: vppcom_session_attr (out_sid (%u), "
+			"VPPCOM_ATTR_GET_NWRITE, 0, 0) returned %d (%s)!",
+			getpid (), out_sid, rv, vppcom_retval_str (rv));
+	  vec_reset_length (vsm->io_buffer);
+	  return rv;
+	}
+
+      bytes_to_read = (size_t) rv;
       if (VCOM_DEBUG > 2)
 	clib_warning ("[%d] results %ld, n_bytes_left %lu, "
 		      "bytes_to_read %lu", getpid (), results,
@@ -1606,8 +1615,10 @@ vcom_socket_sendfile (int __out_fd, int __in_fd, off_t * __offset,
       if (rv < 0)
 	{
 	  clib_warning ("[%d] ERROR: vppcom_session_write ("
-			"out_sid %u, io_buffer %p, nbytes %d) returned %d",
-			getpid (), out_sid, vsm->io_buffer, nbytes, rv);
+			"out_sid %u, io_buffer %p, nbytes %d) "
+			"returned %d (%s)",
+			getpid (), out_sid, vsm->io_buffer, nbytes,
+			rv, vppcom_retval_str (rv));
 	  if (results == 0)
 	    {
 	      vec_reset_length (vsm->io_buffer);
