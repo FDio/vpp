@@ -842,6 +842,7 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
   table_args->tag = format (0, "%s", mp->tag);
   args.appns_index = clib_net_to_host_u32 (mp->appns_index);
   args.scope = mp->scope;
+  args.transport_proto = mp->transport_proto;
 
   memset (&table_args->lcl.fp_addr, 0, sizeof (table_args->lcl.fp_addr));
   memset (&table_args->rmt.fp_addr, 0, sizeof (table_args->rmt.fp_addr));
