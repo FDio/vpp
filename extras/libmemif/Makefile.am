@@ -80,10 +80,11 @@ icmpr_mt_CPPFLAGS = $(AM_CPPFLAGS) -Isrc -Iexamples/icmp_responder
 
 noinst_PROGRAMS = icmpr icmpr-epoll icmpr-mt
 
-check_PROGRAMS = unit_test
-
 include_HEADERS = src/libmemif.h src/memif.h
 
 lib_LTLIBRARIES = libmemif.la
 
+if USE_CHECK
+check_PROGRAMS = unit_test
 TESTS = $(check_PROGRAMS)
+endif
