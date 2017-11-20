@@ -43,6 +43,7 @@ static u32 indent;
 static int dont_output_version;
 int dump_tree;
 static char *fixed_name;
+static char *include_guard;
 static char tmpbuf [MAXNAME];
 static char *current_def_name;
 static char *current_union_name;
@@ -1094,6 +1095,28 @@ void dump(node_t *np)
     }
 }
 
+static char *
+fixup_input_filename_for_include_guard(void)
+{
+    char *cp;
+
+    cp = (char *)input_filename;
+    strncpy (tmpbuf, cp, sizeof(tmpbuf)-1);
+    cp = tmpbuf;
+
+    while (*cp)
+    {
+        if (*cp == '/')
+            *cp = '_';
+        if (*cp == '.')
+            *cp = '_';
+
+        cp++;
+    }
+
+    return (sxerox(tmpbuf));
+}
+
 char *fixup_input_filename(void)
 {
     char *cp;
@@ -1138,6 +1161,7 @@ void generate_top_boilerplate(FILE *fp)
         curtime = starttime;
     datestring = asctime(gmtime(&curtime));
     fixed_name = fixup_input_filename();
+    include_guard = fixup_input_filename_for_include_guard();
 
     datestring[24] = 0;
 
@@ -1147,6 +1171,8 @@ void generate_top_boilerplate(FILE *fp)
     fprintf (fp, " * Automatically generated: please edit the input file ");
     fprintf (fp, "NOT this file!\n");
     fprintf (fp, " */\n\n");
+    fprintf (fp, "#ifndef __%s__H__\n", include_guard);
+    fprintf (fp, "#define __%s__H__\n", include_guard);
     fprintf (fp, "#if defined(vl_msg_id)||defined(vl_union_id)||");
     fprintf (fp, "defined(vl_printfun) \\\n ||defined(vl_endianfun)||");
     fprintf (fp, " defined(vl_api_version)||defined(vl_typedefs) \\\n");
@@ -1173,6 +1199,7 @@ void generate_bottom_boilerplate(FILE *fp)
     fprintf (fp, "vl_api_version(%s, 0x%08x)\n\n", 
              fixed_name, (unsigned int)input_crc);
 
+    fprintf (fp, "#endif\n");
     fprintf (fp, "#endif\n\n");
 }
 
@@ -1196,6 +1223,18 @@ void generate_msg_ids(YYSTYPE a1, FILE *fp)
     }
     fprintf (fp, "#endif\n");
 
+}
+
+void generate_imports(YYSTYPE a1, FILE *fp)
+{
+    node_t *np = (node_t *)a1;
+
+    while (np) {
+        if (np->type == NODE_IMPORT) {
+            fprintf (fp, "#include \"%s.h\"\n", (i8 *)np->data[0]);
+        }
+        np = np->peer;
+    }
 }
 
 void generate_msg_names(YYSTYPE a1, FILE *fp)
@@ -1450,6 +1489,15 @@ YYSTYPE add_version (YYSTYPE a1, YYSTYPE a2, YYSTYPE a3)
     return ((YYSTYPE) np);
 }
 
+YYSTYPE add_import (YYSTYPE a1)
+{
+    node_t *np;
+
+    np = make_node(NODE_IMPORT);
+    np->data[0] = (void *) a1;
+    return ((YYSTYPE) np);
+}
+
 void generate_python_msg_definitions(YYSTYPE a1, FILE *fp)
 {
     node_t *np = (node_t *)a1;
@@ -1582,6 +1630,7 @@ void generate(YYSTYPE a1)
     if (ofp) {
         generate_top_boilerplate(ofp);
 
+        generate_imports(a1, ofp);
         generate_msg_ids(a1, ofp);
         generate_msg_names(a1, ofp);
         generate_msg_name_crc_list(a1, ofp);

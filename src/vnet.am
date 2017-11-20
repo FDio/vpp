@@ -1039,6 +1039,8 @@ nobase_include_HEADERS +=			\
   vnet/fib/fib_entry.h				\
   vnet/fib/fib_entry_delegate.h
 
+API_FILES += vnet/fib/fib.api
+
 ########################################
 # ADJ
 ########################################

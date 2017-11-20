@@ -34,11 +34,12 @@ void generate (YYSTYPE);
  YYSTYPE add_variable_length_vector_vbl(YYSTYPE, YYSTYPE);
  YYSTYPE set_flags(YYSTYPE, YYSTYPE);
  YYSTYPE add_version(YYSTYPE, YYSTYPE, YYSTYPE);
+ YYSTYPE add_import(YYSTYPE);
 %}
 
-%token NAME RPAR LPAR SEMI LBRACK RBRACK NUMBER PRIMTYPE BARF
+%token NAME RPAR LPAR SEMI LBRACK RBRACK NUMBER PRIMTYPE BARF FILENAME
 %token TPACKED DEFINE LCURLY RCURLY STRING UNION
-%token HELPER_STRING COMMA DOT VL_API_VERSION
+%token HELPER_STRING COMMA DOT VL_API_VERSION IMPORT
 %token NOVERSION MANUAL_PRINT MANUAL_ENDIAN TYPEONLY DONT_TRACE AUTOREPLY
 
 %%
@@ -53,6 +54,7 @@ slist:	  slist stmt            {$$ = add_slist ($1, $2);}
 stmt:     flist defn            {$$ = set_flags($1, $2);}
         | defn                  {$$ = $1;}
         | api_version           {$$ = $1;}
+        | import                {$$ = $1;}
           ;
 
 flist:    flist flag            {$$ = (YYSTYPE)(unsigned long)
@@ -94,3 +96,7 @@ vbl:      NAME                      {$$ = add_scalar_vbl($1);}
 
 api_version:  VL_API_VERSION NUMBER DOT NUMBER DOT NUMBER 
                                     {$$ = add_version ($2, $4, $6);}
+
+import:  IMPORT STRING
+                     {$$ = add_import ($2);}
+

@@ -45,6 +45,7 @@ enum node_subclass {  /* WARNING: indices must match the vft... */
     NODE_COMPLEX,
     NODE_NOVERSION,
     NODE_VERSION,
+    NODE_IMPORT,
     NODE_UWORD,
     NODE_N_TYPES,  /* number of node types with VFT's */
 

@@ -942,7 +942,8 @@ int yylex (void)
     case AUTOREPLY:          code = 280; break;
     case DOT:                code = 281; break;
     case VL_API_VERSION:     code = 282; break;
-        
+    case IMPORT:             code = 283; break;
+
     case EOF: code = ~0; break; /* hysterical compatibility */
 
     default:
@@ -990,6 +991,7 @@ static struct keytab {
     {"i32",             NODE_I32},
     {"i64",             NODE_I64},
     {"i8",              NODE_I8},
+    {"import",  	NODE_IMPORT},
     {"manual_endian",   NODE_MANUAL_ENDIAN},
     {"manual_print",    NODE_MANUAL_PRINT},
     {"noversion",       NODE_NOVERSION},
@@ -1069,6 +1071,9 @@ static int name_check (const char *s, YYSTYPE *token_value)
 
             case NODE_VERSION:
                 return(VL_API_VERSION);
+
+            case NODE_IMPORT:
+                return(IMPORT);
 
             case NODE_UNION:
                 return(UNION);
