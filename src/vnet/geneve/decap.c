@@ -25,7 +25,7 @@ typedef struct
   u32 next_index;
   u32 tunnel_index;
   u32 error;
-  u32 vni;
+  u32 vni_rsvd;
 } geneve_rx_trace_t;
 
 static u8 *
@@ -40,12 +40,12 @@ format_geneve_rx_trace (u8 * s, va_list * args)
       s =
 	format (s,
 		"GENEVE decap from geneve_tunnel%d vni %d next %d error %d",
-		t->tunnel_index, t->vni, t->next_index, t->error);
+		t->tunnel_index, t->vni_rsvd, t->next_index, t->error);
     }
   else
     {
       s = format (s, "GENEVE decap error - tunnel for vni %d does not exist",
-		  t->vni);
+		  t->vni_rsvd);
     }
   return s;
 }
@@ -147,6 +147,10 @@ geneve_input (vlib_main_t * vm,
 	  /* udp leaves current_data pointing at the geneve header */
 	  geneve0 = vlib_buffer_get_current (b0);
 	  geneve1 = vlib_buffer_get_current (b1);
+
+	  vnet_geneve_hdr_1word_ntoh (geneve0);
+	  vnet_geneve_hdr_1word_ntoh (geneve1);
+
 	  if (is_ip4)
 	    {
 	      vlib_buffer_advance
@@ -198,13 +202,14 @@ geneve_input (vlib_main_t * vm,
 	  tunnel_index1 = ~0;
 	  error1 = 0;
 
-	  if (PREDICT_FALSE (geneve0->ver != GENEVE_VERSION))
+	  if (PREDICT_FALSE
+	      (vnet_get_geneve_version (geneve0) != GENEVE_VERSION))
 	    {
 	      error0 = GENEVE_ERROR_BAD_FLAGS;
 	      next0 = GENEVE_INPUT_NEXT_DROP;
 	      goto trace0;
 	    }
-#if SUPPORT_OPTIONS_HEADER==0
+#if SUPPORT_OPTIONS_HEADER==1
 	  if (PREDICT_FALSE (vnet_get_geneve_critical_bit (geneve0) == 1))
 	    {
 	      error0 = GENEVE_ERROR_BAD_FLAGS;
@@ -215,7 +220,7 @@ geneve_input (vlib_main_t * vm,
 	  if (is_ip4)
 	    {
 	      key4_0.remote = ip4_0->src_address.as_u32;
-	      key4_0.vni = geneve0->vni;
+	      key4_0.vni = vnet_get_geneve_vni_bigendian (geneve0);
 
 	      /* Make sure GENEVE tunnel exist according to packet SIP and VNI */
 	      if (PREDICT_FALSE (key4_0.as_u64 != last_key4.as_u64))
@@ -250,7 +255,7 @@ geneve_input (vlib_main_t * vm,
 		  (ip4_address_is_multicast (&ip4_0->dst_address)))
 		{
 		  key4_0.remote = ip4_0->dst_address.as_u32;
-		  key4_0.vni = geneve0->vni;
+		  key4_0.vni = vnet_get_geneve_vni_bigendian (geneve0);
 		  /* Make sure mcast GENEVE tunnel exist by packet DIP and VNI */
 		  p0 = hash_get (vxm->geneve4_tunnel_by_key, key4_0.as_u64);
 		  if (PREDICT_TRUE (p0 != NULL))
@@ -268,7 +273,7 @@ geneve_input (vlib_main_t * vm,
 	    {
 	      key6_0.remote.as_u64[0] = ip6_0->src_address.as_u64[0];
 	      key6_0.remote.as_u64[1] = ip6_0->src_address.as_u64[1];
-	      key6_0.vni = geneve0->vni;
+	      key6_0.vni = vnet_get_geneve_vni_bigendian (geneve0);
 
 	      /* Make sure GENEVE tunnel exist according to packet SIP and VNI */
 	      if (PREDICT_FALSE
@@ -305,7 +310,7 @@ geneve_input (vlib_main_t * vm,
 		{
 		  key6_0.remote.as_u64[0] = ip6_0->dst_address.as_u64[0];
 		  key6_0.remote.as_u64[1] = ip6_0->dst_address.as_u64[1];
-		  key6_0.vni = geneve0->vni;
+		  key6_0.vni = vnet_get_geneve_vni_bigendian (geneve0);
 		  p0 = hash_get_mem (vxm->geneve6_tunnel_by_key, &key6_0);
 		  if (PREDICT_TRUE (p0 != NULL))
 		    {
@@ -361,16 +366,17 @@ geneve_input (vlib_main_t * vm,
 	      tr->next_index = next0;
 	      tr->error = error0;
 	      tr->tunnel_index = tunnel_index0;
-	      tr->vni = vnet_get_geneve_vni (geneve0);
+	      tr->vni_rsvd = vnet_get_geneve_vni (geneve0);
 	    }
 
-	  if (PREDICT_FALSE (geneve1->ver != GENEVE_VERSION))
+	  if (PREDICT_FALSE
+	      (vnet_get_geneve_version (geneve1) != GENEVE_VERSION))
 	    {
 	      error1 = GENEVE_ERROR_BAD_FLAGS;
 	      next1 = GENEVE_INPUT_NEXT_DROP;
 	      goto trace1;
 	    }
-#if SUPPORT_OPTIONS_HEADER==0
+#if SUPPORT_OPTIONS_HEADER==1
 	  if (PREDICT_FALSE (vnet_get_geneve_critical_bit (geneve1) == 1))
 	    {
 	      error1 = GENEVE_ERROR_BAD_FLAGS;
@@ -381,7 +387,7 @@ geneve_input (vlib_main_t * vm,
 	  if (is_ip4)
 	    {
 	      key4_1.remote = ip4_1->src_address.as_u32;
-	      key4_1.vni = geneve1->vni;
+	      key4_1.vni = vnet_get_geneve_vni_bigendian (geneve1);
 
 	      /* Make sure unicast GENEVE tunnel exist by packet SIP and VNI */
 	      if (PREDICT_FALSE (key4_1.as_u64 != last_key4.as_u64))
@@ -416,7 +422,7 @@ geneve_input (vlib_main_t * vm,
 		  (ip4_address_is_multicast (&ip4_1->dst_address)))
 		{
 		  key4_1.remote = ip4_1->dst_address.as_u32;
-		  key4_1.vni = geneve1->vni;
+		  key4_1.vni = vnet_get_geneve_vni_bigendian (geneve1);
 		  /* Make sure mcast GENEVE tunnel exist by packet DIP and VNI */
 		  p1 = hash_get (vxm->geneve4_tunnel_by_key, key4_1.as_u64);
 		  if (PREDICT_TRUE (p1 != NULL))
@@ -434,7 +440,7 @@ geneve_input (vlib_main_t * vm,
 	    {
 	      key6_1.remote.as_u64[0] = ip6_1->src_address.as_u64[0];
 	      key6_1.remote.as_u64[1] = ip6_1->src_address.as_u64[1];
-	      key6_1.vni = geneve1->vni;
+	      key6_1.vni = vnet_get_geneve_vni_bigendian (geneve1);
 
 	      /* Make sure GENEVE tunnel exist according to packet SIP and VNI */
 	      if (PREDICT_FALSE
@@ -473,7 +479,7 @@ geneve_input (vlib_main_t * vm,
 		{
 		  key6_1.remote.as_u64[0] = ip6_1->dst_address.as_u64[0];
 		  key6_1.remote.as_u64[1] = ip6_1->dst_address.as_u64[1];
-		  key6_1.vni = geneve1->vni;
+		  key6_1.vni = vnet_get_geneve_vni_bigendian (geneve1);
 		  p1 = hash_get_mem (vxm->geneve6_tunnel_by_key, &key6_1);
 		  if (PREDICT_TRUE (p1 != NULL))
 		    {
@@ -529,7 +535,7 @@ geneve_input (vlib_main_t * vm,
 	      tr->next_index = next1;
 	      tr->error = error1;
 	      tr->tunnel_index = tunnel_index1;
-	      tr->vni = vnet_get_geneve_vni (geneve1);
+	      tr->vni_rsvd = vnet_get_geneve_vni (geneve1);
 	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
@@ -564,6 +570,8 @@ geneve_input (vlib_main_t * vm,
 
 	  /* udp leaves current_data pointing at the geneve header */
 	  geneve0 = vlib_buffer_get_current (b0);
+	  vnet_geneve_hdr_1word_ntoh (geneve0);
+
 	  if (is_ip4)
 	    {
 	      vlib_buffer_advance
@@ -598,13 +606,14 @@ geneve_input (vlib_main_t * vm,
 	  tunnel_index0 = ~0;
 	  error0 = 0;
 
-	  if (PREDICT_FALSE (geneve0->ver != GENEVE_VERSION))
+	  if (PREDICT_FALSE
+	      (vnet_get_geneve_version (geneve0) != GENEVE_VERSION))
 	    {
 	      error0 = GENEVE_ERROR_BAD_FLAGS;
 	      next0 = GENEVE_INPUT_NEXT_DROP;
 	      goto trace00;
 	    }
-#if SUPPORT_OPTIONS_HEADER==0
+#if SUPPORT_OPTIONS_HEADER==1
 	  if (PREDICT_FALSE (vnet_get_geneve_critical_bit (geneve0) == 1))
 	    {
 	      error0 = GENEVE_ERROR_BAD_FLAGS;
@@ -615,7 +624,7 @@ geneve_input (vlib_main_t * vm,
 	  if (is_ip4)
 	    {
 	      key4_0.remote = ip4_0->src_address.as_u32;
-	      key4_0.vni = geneve0->vni;
+	      key4_0.vni = vnet_get_geneve_vni_bigendian (geneve0);
 
 	      /* Make sure unicast GENEVE tunnel exist by packet SIP and VNI */
 	      if (PREDICT_FALSE (key4_0.as_u64 != last_key4.as_u64))
@@ -650,7 +659,7 @@ geneve_input (vlib_main_t * vm,
 		  (ip4_address_is_multicast (&ip4_0->dst_address)))
 		{
 		  key4_0.remote = ip4_0->dst_address.as_u32;
-		  key4_0.vni = geneve0->vni;
+		  key4_0.vni = vnet_get_geneve_vni_bigendian (geneve0);
 		  /* Make sure mcast GENEVE tunnel exist by packet DIP and VNI */
 		  p0 = hash_get (vxm->geneve4_tunnel_by_key, key4_0.as_u64);
 		  if (PREDICT_TRUE (p0 != NULL))
@@ -668,7 +677,7 @@ geneve_input (vlib_main_t * vm,
 	    {
 	      key6_0.remote.as_u64[0] = ip6_0->src_address.as_u64[0];
 	      key6_0.remote.as_u64[1] = ip6_0->src_address.as_u64[1];
-	      key6_0.vni = geneve0->vni;
+	      key6_0.vni = vnet_get_geneve_vni_bigendian (geneve0);
 
 	      /* Make sure GENEVE tunnel exist according to packet SIP and VNI */
 	      if (PREDICT_FALSE
@@ -705,7 +714,7 @@ geneve_input (vlib_main_t * vm,
 		{
 		  key6_0.remote.as_u64[0] = ip6_0->dst_address.as_u64[0];
 		  key6_0.remote.as_u64[1] = ip6_0->dst_address.as_u64[1];
-		  key6_0.vni = geneve0->vni;
+		  key6_0.vni = vnet_get_geneve_vni_bigendian (geneve0);
 		  p0 = hash_get_mem (vxm->geneve6_tunnel_by_key, &key6_0);
 		  if (PREDICT_TRUE (p0 != NULL))
 		    {
@@ -761,7 +770,7 @@ geneve_input (vlib_main_t * vm,
 	      tr->next_index = next0;
 	      tr->error = error0;
 	      tr->tunnel_index = tunnel_index0;
-	      tr->vni = vnet_get_geneve_vni (geneve0);
+	      tr->vni_rsvd = vnet_get_geneve_vni (geneve0);
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,

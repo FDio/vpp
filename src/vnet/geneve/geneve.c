@@ -32,9 +32,6 @@
  * This makes it possible for servers to be co-located in the same data
  * center or be separated geographically as long as they are reachable
  * through the underlay L3 network.
- *
- * You can refer to this kind of L2 overlay bridge domain as a GENEVE
- * (Virtual eXtensible VLAN) segment.
  */
 
 
@@ -272,6 +269,9 @@ geneve_rewrite (geneve_tunnel_t * t, bool is_ip6)
   vnet_set_geneve_oamframe_bit (geneve, 0);
   vnet_set_geneve_critical_bit (geneve, 0);
   vnet_set_geneve_protocol (geneve, GENEVE_ETH_PROTOCOL);
+
+  vnet_geneve_hdr_1word_hton (geneve);
+
   vnet_set_geneve_vni (geneve, t->vni);
 
   t->rewrite = r.rw;
@@ -404,13 +404,15 @@ int vnet_geneve_add_del_tunnel
   if (!is_ip6)
     {
       key4.remote = a->remote.ip4.as_u32;
-      key4.vni = clib_host_to_net_u32 (a->vni << 8);
+      key4.vni =
+	clib_host_to_net_u32 ((a->vni << GENEVE_VNI_SHIFT) & GENEVE_VNI_MASK);
       p = hash_get (vxm->geneve4_tunnel_by_key, key4.as_u64);
     }
   else
     {
       key6.remote = a->remote.ip6;
-      key6.vni = clib_host_to_net_u32 (a->vni << 8);
+      key6.vni =
+	clib_host_to_net_u32 ((a->vni << GENEVE_VNI_SHIFT) & GENEVE_VNI_MASK);
       p = hash_get_mem (vxm->geneve6_tunnel_by_key, &key6);
     }
 
