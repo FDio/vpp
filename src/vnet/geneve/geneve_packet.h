@@ -113,49 +113,49 @@ vnet_set_geneve_vni (geneve_header_t * h, u32 vni)
 static inline u8
 vnet_get_geneve_version (geneve_header_t * h)
 {
-  return (clib_net_to_host_u32 (h->ver) >> 30);
+  return (clib_net_to_host_u32 (h->ver) >> 6);
 }
 
 static inline void
 vnet_set_geneve_version (geneve_header_t * h, u8 version)
 {
-  h->ver = clib_host_to_net_u32 (version << 30);
+  h->ver = clib_host_to_net_u32 (version << 6);
 }
 
 static inline u8
 vnet_get_geneve_options_len (geneve_header_t * h)
 {
-  return (clib_net_to_host_u32 (h->opt_len) >> 24);
+  return (clib_net_to_host_u32 (h->opt_len));
 }
 
 static inline void
 vnet_set_geneve_options_len (geneve_header_t * h, u8 len)
 {
-  h->opt_len = clib_host_to_net_u32 (len << 24);
+  h->opt_len = clib_host_to_net_u32 (len);
 }
 
 static inline u8
 vnet_get_geneve_oamframe_bit (geneve_header_t * h)
 {
-  return (clib_net_to_host_u32 (h->oam_frame) >> 23);
+  return (clib_net_to_host_u32 (h->oam_frame) >> 7);
 }
 
 static inline void
 vnet_set_geneve_oamframe_bit (geneve_header_t * h, u8 oam)
 {
-  h->oam_frame = clib_host_to_net_u32 (oam << 23);
+  h->oam_frame = clib_host_to_net_u32 (oam << 7);
 }
 
 static inline u8
 vnet_get_geneve_critical_bit (geneve_header_t * h)
 {
-  return (clib_net_to_host_u32 (h->critical_options) >> 22);
+  return (clib_net_to_host_u32 (h->critical_options) >> 6);
 }
 
 static inline void
 vnet_set_geneve_critical_bit (geneve_header_t * h, u8 critical_opts)
 {
-  h->critical_options = clib_host_to_net_u32 (critical_opts << 22);
+  h->critical_options = clib_host_to_net_u32 (critical_opts << 6);
 }
 
 static inline u16

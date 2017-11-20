@@ -32,9 +32,6 @@
  * This makes it possible for servers to be co-located in the same data
  * center or be separated geographically as long as they are reachable
  * through the underlay L3 network.
- *
- * You can refer to this kind of L2 overlay bridge domain as a GENEVE
- * (Virtual eXtensible VLAN) segment.
  */
 
 
