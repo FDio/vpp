@@ -536,7 +536,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   tclient_main_t *tm = &tclient_main;
   vlib_thread_main_t *thread_main = vlib_get_thread_main ();
   uword *event_data = 0, event_type;
-  u8 *default_connect_uri = (u8 *) "tcp://6.0.1.1/1234", *uri, *appns_id;
+  u8 *default_connect_uri = (u8 *) "tcp://6.0.1.1/1234", *uri, *appns_id = 0;
   u64 tmp, total_bytes, appns_flags = 0, appns_secret = 0;
   f64 test_timeout = 20.0, syn_timeout = 20.0, delta;
   f64 time_before_connects;
