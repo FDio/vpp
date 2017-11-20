@@ -1902,6 +1902,7 @@ tcp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
   tcp_header_t *tcp;
   transport_connection_t *tconn;
   tcp_connection_t *tc;
+  u8 is_filtered = 0;
   if (is_ip4)
     {
       ip4_header_t *ip4;
@@ -1913,7 +1914,7 @@ tcp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
 					     tcp->dst_port,
 					     tcp->src_port,
 					     TRANSPORT_PROTO_TCP,
-					     thread_index);
+					     thread_index, &is_filtered);
       tc = tcp_get_connection_from_transport (tconn);
       ASSERT (tcp_lookup_is_valid (tc, tcp));
     }
@@ -1928,7 +1929,7 @@ tcp_lookup_connection (u32 fib_index, vlib_buffer_t * b, u8 thread_index,
 					     tcp->dst_port,
 					     tcp->src_port,
 					     TRANSPORT_PROTO_TCP,
-					     thread_index);
+					     thread_index, &is_filtered);
       tc = tcp_get_connection_from_transport (tconn);
       ASSERT (tcp_lookup_is_valid (tc, tcp));
     }
@@ -2939,7 +2940,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip4_header_t *ip40;
 	  ip6_header_t *ip60;
 	  u32 error0 = TCP_ERROR_NO_LISTENER, next0 = TCP_INPUT_NEXT_DROP;
-	  u8 flags0;
+	  u8 flags0, is_filtered = 0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -2968,9 +2969,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						     tcp0->dst_port,
 						     tcp0->src_port,
 						     TRANSPORT_PROTO_TCP,
-						     my_thread_index);
-	      tc0 = tcp_get_connection_from_transport (tconn);
-	      ASSERT (tcp_lookup_is_valid (tc0, tcp0));
+						     my_thread_index,
+						     &is_filtered);
 	    }
 	  else
 	    {
@@ -2986,9 +2986,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 						     tcp0->dst_port,
 						     tcp0->src_port,
 						     TRANSPORT_PROTO_TCP,
-						     my_thread_index);
-	      tc0 = tcp_get_connection_from_transport (tconn);
-	      ASSERT (tcp_lookup_is_valid (tc0, tcp0));
+						     my_thread_index,
+						     &is_filtered);
 	    }
 
 	  /* Length check */
@@ -2999,8 +2998,11 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* Session exists */
-	  if (PREDICT_TRUE (0 != tc0))
+	  if (PREDICT_TRUE (0 != tconn))
 	    {
+	      tc0 = tcp_get_connection_from_transport (tconn);
+	      ASSERT (tcp_lookup_is_valid (tc0, tcp0));
+
 	      /* Save connection index */
 	      vnet_buffer (b0)->tcp.connection_index = tc0->c_c_index;
 	      vnet_buffer (b0)->tcp.seq_number =
@@ -3032,8 +3034,13 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  else
 	    {
-	      if ((is_ip4 && tm->punt_unknown4) ||
-		  (!is_ip4 && tm->punt_unknown6))
+	      if (is_filtered)
+		{
+		  next0 = TCP_INPUT_NEXT_DROP;
+		  error0 = TCP_ERROR_FILTERED;
+		}
+	      else if ((is_ip4 && tm->punt_unknown4) ||
+		       (!is_ip4 && tm->punt_unknown6))
 		{
 		  next0 = TCP_INPUT_NEXT_PUNT;
 		  error0 = TCP_ERROR_PUNT;
@@ -3044,6 +3051,7 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  next0 = TCP_INPUT_NEXT_RESET;
 		  error0 = TCP_ERROR_NO_LISTENER;
 		}
+	      tc0 = 0;
 	    }
 
 	done:
@@ -3051,8 +3059,8 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
-	      tcp_rx_trace_t *t0 =
-		vlib_add_trace (vm, node, b0, sizeof (*t0));
+	      tcp_rx_trace_t *t0;
+	      t0 = vlib_add_trace (vm, node, b0, sizeof (*t0));
 	      tcp_set_rx_trace_data (t0, tc0, tcp0, b0, is_ip4);
 	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index, to_next,
