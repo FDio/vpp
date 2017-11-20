@@ -163,11 +163,15 @@ interface::sweep()
       new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
   }
 
+  if (m_stats)
+    HW::dequeue(m_stats);
+
   // If the interface is up, bring it down
   if (m_state && interface::admin_state_t::UP == m_state.data()) {
     m_state.data() = interface::admin_state_t::DOWN;
     HW::enqueue(new interface_cmds::state_change_cmd(m_state, m_hdl));
   }
+
   if (m_hdl) {
     std::queue<cmd*> cmds;
     HW::enqueue(mk_delete_cmd(cmds));
@@ -354,6 +358,20 @@ void
 interface::set(const oper_state_t& state)
 {
   m_oper = state;
+}
+
+void
+interface::enable_stats_i(interface::stat_listener& el)
+{
+  m_stats.reset(new interface_cmds::stats_cmd(el, handle_i()));
+  HW::enqueue(m_stats);
+  HW::write();
+}
+
+void
+interface::enable_stats(interface::stat_listener& el)
+{
+  singular()->enable_stats_i(el);
 }
 
 std::shared_ptr<interface>
