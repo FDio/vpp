@@ -421,6 +421,11 @@ public:
    */
   static void dump(std::ostream& os);
 
+  /**
+   * Enable stats for this interface
+   */
+  void enable_stats(stat_listener& el);
+
 protected:
   /**
    * Construct an interface object with a handle and a HW address
@@ -513,6 +518,11 @@ private:
   static event_handler m_evh;
 
   /**
+   * enable the interface stats in the singular instance
+   */
+  void enable_stats_i(stat_listener& el);
+
+  /**
    * Commit the acculmulated changes into VPP. i.e. to a 'HW" write.
    */
   void update(const interface& obj);
@@ -548,6 +558,11 @@ private:
    * NULL is not mapped  - i.e. in the default table
    */
   std::shared_ptr<route_domain> m_rd;
+
+  /**
+   * shared pointer to the stats object for this interface.
+   */
+  std::shared_ptr<interface_cmds::stats_cmd> m_stats;
 
   /**
    * The state of the interface

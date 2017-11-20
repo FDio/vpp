@@ -364,7 +364,7 @@ private:
   /**
    * The listeners to notify when data/events arrive
    */
-  interface::interface::event_listener& m_listener;
+  interface::event_listener& m_listener;
 };
 
 /**
@@ -377,8 +377,7 @@ public:
   /**
    * Constructor taking the listner to notify
    */
-  stats_cmd(interface::stat_listener& el,
-            const std::vector<handle_t>& interfaces);
+  stats_cmd(interface::stat_listener& el, const handle_t& handle);
 
   /**
    * Issue the command to VPP/HW
@@ -409,9 +408,9 @@ private:
   /**
    * The listeners to notify when data/stats arrive
    */
-  interface::interface::stat_listener& m_listener;
+  interface::stat_listener& m_listener;
 
-  std::vector<handle_t> m_swifindex;
+  handle_t m_swifindex;
 };
 
 /**

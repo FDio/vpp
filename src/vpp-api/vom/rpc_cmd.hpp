@@ -71,7 +71,16 @@ public:
   /**
    * Fulfill the commands promise. Called from the RX thread
    */
-  void fulfill(const DATA& d) { m_promise.set_value(d); }
+  void fulfill(const DATA& d)
+  {
+    m_promise.set_value(d);
+
+    /*
+     * we reset the promise after setting the value to reuse it
+     * when we run the retire command from the same cmd object
+     */
+    m_promise = std::promise<DATA>();
+  }
 
   /**
    * Wait on the commands promise. i.e. block on the completion
