@@ -871,6 +871,10 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
   session->server_rx_fifo = rx_fifo;
   session->server_tx_fifo = tx_fifo;
   session->vpp_handle = mp->handle;
+  session->lcl_addr.is_ip4 = mp->is_ip4;
+  clib_memcpy (&session->lcl_addr.ip46, mp->lcl_ip,
+	       sizeof (session->peer_addr.ip46));
+  session->lcl_port = mp->lcl_port;
   session->state = STATE_CONNECT;
 
   /* Add it to lookup table */
