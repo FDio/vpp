@@ -1558,7 +1558,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   transport_connection_t _tc1, *tc1 = &_tc1, _tc2, *tc2 = &_tc2, *tconn;
   tcp_connection_t *tc;
   stream_session_t *s;
-  u8 cmp = 0;
+  u8 cmp = 0, is_filtered = 0;
 
   pool_get (smm->sessions[0], s);
   memset (s, 0, sizeof (*s));
@@ -1601,7 +1601,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4,
 					 &tc1->rmt_ip.ip4,
 					 tc1->lcl_port, tc1->rmt_port,
-					 tc1->proto, 0);
+					 tc1->proto, 0, &is_filtered);
   cmp = (memcmp (&tconn->rmt_ip, &tc1->rmt_ip, sizeof (tc1->rmt_ip)) == 0);
   TCP_TEST ((cmp), "rmt ip is identical %d", cmp);
   TCP_TEST ((tconn->lcl_port == tc1->lcl_port),
@@ -1614,7 +1614,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4,
 					 &tc2->rmt_ip.ip4,
 					 tc2->lcl_port, tc2->rmt_port,
-					 tc2->proto, 0);
+					 tc2->proto, 0, &is_filtered);
   TCP_TEST ((tconn == 0), "lookup result should be null");
 
   /*
@@ -1624,12 +1624,12 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4,
 					 &tc1->rmt_ip.ip4,
 					 tc1->lcl_port, tc1->rmt_port,
-					 tc1->proto, 0);
+					 tc1->proto, 0, &is_filtered);
   TCP_TEST ((tconn == 0), "lookup result should be null");
   tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4,
 					 &tc2->rmt_ip.ip4,
 					 tc2->lcl_port, tc2->rmt_port,
-					 tc2->proto, 0);
+					 tc2->proto, 0, &is_filtered);
   TCP_TEST ((tconn == 0), "lookup result should be null");
 
   /*
@@ -1639,7 +1639,7 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tconn = session_lookup_connection_wt4 (0, &tc2->lcl_ip.ip4,
 					 &tc2->rmt_ip.ip4,
 					 tc2->lcl_port, tc2->rmt_port,
-					 tc2->proto, 0);
+					 tc2->proto, 0, &is_filtered);
   TCP_TEST ((tconn == 0), "lookup result should be null");
 
   return 0;
