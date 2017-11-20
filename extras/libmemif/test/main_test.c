@@ -437,7 +437,7 @@ START_TEST (test_buffer_alloc)
   qid = 0;
   if ((err =
        memif_buffer_alloc (conn, qid, bufs, max_buf,
-			   &buf)) != MEMIF_ERR_SUCCESS)
+			   &buf, 0)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (buf, max_buf);
@@ -451,7 +451,7 @@ START_TEST (test_buffer_alloc)
   qid = 1;
   if ((err =
        memif_buffer_alloc (conn, qid, bufs, max_buf,
-			   &buf)) != MEMIF_ERR_SUCCESS)
+			   &buf, 0)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (buf, max_buf);
@@ -466,7 +466,7 @@ START_TEST (test_buffer_alloc)
   qid = 2;
   if ((err =
        memif_buffer_alloc (conn, qid, bufs, max_buf,
-			   &buf)) != MEMIF_ERR_SUCCESS)
+			   &buf, 0)) != MEMIF_ERR_SUCCESS)
     ck_assert_msg (err == MEMIF_ERR_QID, "err code: %u, err msg: %s", err,
 		   memif_strerror (err));
 
@@ -528,7 +528,7 @@ START_TEST (test_tx_burst)
   qid = 0;
   if ((err =
        memif_buffer_alloc (conn, qid, bufs, max_buf,
-			   &buf)) != MEMIF_ERR_SUCCESS)
+			   &buf, 0)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (buf, max_buf);
@@ -549,7 +549,7 @@ START_TEST (test_tx_burst)
   qid = 1;
   if ((err =
        memif_buffer_alloc (conn, qid, bufs, max_buf,
-			   &buf)) != MEMIF_ERR_SUCCESS)
+			   &buf, 0)) != MEMIF_ERR_SUCCESS)
     ck_abort_msg ("err code: %u, err msg: %s", err, memif_strerror (err));
 
   ck_assert_uint_eq (buf, max_buf);
