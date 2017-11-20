@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2b73fb2c_89bef169",
+        "filename": "src/vnet/geneve/geneve_packet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 116,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-20T08:50:18Z",
+      "side": 1,
+      "message": "byte swap a 6 bit field of an 8 bit, bit field, as if it were a 32bit int, then shift it 6 bits. I\u0027d be lying if I said I could guess the answer. Same goes for the code before the change, on any CPU architecture.\nThe fact that this code requires changing is evident it is not obvious.\n\nCould I recommend not using bit fields and instead code the bit manipulations yourself. see e.g. vnet/bier/bier_hdr_inlines.h",
+      "revId": "e190c7ddbcf539ea8ee7366d74d58cca10125b1a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
