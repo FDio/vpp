@@ -168,6 +168,9 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
       return 0;
     }
 
+  /* Allow enqueuing of a new event */
+  svm_fifo_unset_event (s0->server_tx_fifo);
+
   /* Check how much we can pull. */
   max_dequeue0 = svm_fifo_max_dequeue (s0->server_tx_fifo);
 
@@ -183,10 +186,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   /* Nothing to read return */
   if (max_dequeue0 == 0)
-    {
-      svm_fifo_unset_event (s0->server_tx_fifo);
-      return 0;
-    }
+    return 0;
 
   /* Ensure we're not writing more than transport window allows */
   if (max_dequeue0 < snd_space0)
@@ -249,8 +249,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 	  ASSERT (n_bufs >= n_bufs_per_frame);
 	}
-      /* Allow enqueuing of a new event */
-      svm_fifo_unset_event (s0->server_tx_fifo);
 
       vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
       while (left_to_snd0 && n_left_to_next)
