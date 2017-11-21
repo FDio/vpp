@@ -45,6 +45,30 @@
       "revId": "6647b6da5f47f95ebb4dd15d382a2fca6d4106a3",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5402cef8_c560a1d3",
+        "filename": "src/vnet/session/session_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 709,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-11-21T15:00:51Z",
+      "side": 1,
+      "message": "Looking at the REPLY_MACRO definitions, both of these changes are redundant.  I will remove them in the next patch.",
+      "parentUuid": "7afcf778_f86cf259",
+      "range": {
+        "startLine": 709,
+        "startChar": 2,
+        "endLine": 709,
+        "endChar": 14
+      },
+      "revId": "6647b6da5f47f95ebb4dd15d382a2fca6d4106a3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
