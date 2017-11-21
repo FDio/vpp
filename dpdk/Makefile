@@ -24,8 +24,8 @@ DPDK_MLX5_PMD         ?= n
 
 B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
-DPDK_VERSION ?= 17.08
-PKG_SUFFIX ?= vpp2
+DPDK_VERSION ?= 17.11
+PKG_SUFFIX ?= vpp1
 DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
