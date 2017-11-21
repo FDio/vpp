@@ -1,0 +1,129 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "46a6ee4b_7ece5be8",
+        "filename": "extras/libmemif/Makefile.am",
+        "patchSetId": 2
+      },
+      "lineNbr": 87,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-11-21T12:26:35Z",
+      "side": 1,
+      "message": "ifeq ($(HAVE_CHECK),1) ?",
+      "revId": "0768ba7ffc39cca538f0a4f2e22fdf5809781518",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b8af74c2_8f8f10a5",
+        "filename": "extras/libmemif/configure.ac",
+        "patchSetId": 2
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-11-21T12:26:35Z",
+      "side": 1,
+      "message": "Do we need the extra conditional?",
+      "revId": "0768ba7ffc39cca538f0a4f2e22fdf5809781518",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c1edda15_136d5cd8",
+        "filename": "extras/libmemif/test/main_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 440,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-11-21T12:26:35Z",
+      "side": 1,
+      "message": "This seems to be unrelated with the reason for the change?",
+      "revId": "0768ba7ffc39cca538f0a4f2e22fdf5809781518",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d255abfd_103fb654",
+        "filename": "extras/libmemif/test/main_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 454,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-11-21T12:26:35Z",
+      "side": 1,
+      "message": "As above",
+      "revId": "0768ba7ffc39cca538f0a4f2e22fdf5809781518",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7dc4c067_3f5a0926",
+        "filename": "extras/libmemif/test/main_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 469,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-11-21T12:26:35Z",
+      "side": 1,
+      "message": "As above",
+      "range": {
+        "startLine": 469,
+        "startChar": 0,
+        "endLine": 469,
+        "endChar": 6
+      },
+      "revId": "0768ba7ffc39cca538f0a4f2e22fdf5809781518",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "970c9d9e_b61651d9",
+        "filename": "extras/libmemif/test/main_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 531,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-11-21T12:26:35Z",
+      "side": 1,
+      "message": "As above",
+      "revId": "0768ba7ffc39cca538f0a4f2e22fdf5809781518",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1daded2b_9f586021",
+        "filename": "extras/libmemif/test/main_test.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 552,
+      "author": {
+        "id": 540
+      },
+      "writtenOn": "2017-11-21T12:26:35Z",
+      "side": 1,
+      "message": "As above",
+      "revId": "0768ba7ffc39cca538f0a4f2e22fdf5809781518",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
