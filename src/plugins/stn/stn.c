@@ -109,8 +109,20 @@ stn_punt_fn (vlib_main_t * vm,
 
 	  p0 = vlib_get_buffer (vm, pi0);
 
+/*
+ * We are not guaranteed any particular layer here.
+ * So we need to reparse from the beginning of the packet.
+ * which may not start from zero with some DPDK drivers.
+
 	  ip4_header_t *ip = vlib_buffer_get_current(p0);
 	  if ((ip->ip_version_and_header_length & 0xf0) == 0x40)
+*
+*/
+         int ethernet_header_offset = 0; /* to be filled by DPDK */
+         ethernet_header_t *eth = (ethernet_header_t *)(p0->data + ethernet_header_offset);
+         /* ensure the block current data starts at L3 boundary now for the subsequent nodes */
+         vlib_buffer_advance(p0, ethernet_header_offset + sizeof(ethernet_header_t) - p0->current_data);
+          if (clib_net_to_host_u16(eth->type) == ETHERNET_TYPE_IP4)
 	    next0 = stn->punt_to_stn_ip4_next_index;
 	  else
 	    next0 = stn->punt_to_stn_ip6_next_index;
