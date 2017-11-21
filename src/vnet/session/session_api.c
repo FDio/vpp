@@ -668,6 +668,7 @@ done:
   REPLY_MACRO2 (VL_API_BIND_SOCK_REPLY,({
     if (!rv)
       {
+        rmp->context = mp->context;
 	rmp->handle = a->handle;
 	rmp->lcl_is_ip4 = tc->is_ip4;
 	clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
@@ -705,7 +706,11 @@ vl_api_unbind_sock_t_handler (vl_api_unbind_sock_t * mp)
     }
 
 done:
-  REPLY_MACRO (VL_API_UNBIND_SOCK_REPLY);
+  REPLY_MACRO2 (VL_API_UNBIND_SOCK_REPLY, (
+					    {
+					    rmp->context = mp->context;
+					    }
+		));
 }
 
 static void
