@@ -266,7 +266,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 				      VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
       vlib_buffer_init_for_free_list (bt, fl);
       bt->flags = dm->buffer_flags_template;
-      bt->current_data = -RTE_PKTMBUF_HEADROOM;
       vnet_buffer (bt)->sw_if_index[VLIB_TX] = (u32) ~ 0;
     }
 
@@ -1600,7 +1599,7 @@ dpdk_init (vlib_main_t * vm)
   dm->buffer_flags_template =
     (VLIB_BUFFER_TOTAL_LENGTH_VALID | VLIB_BUFFER_EXT_HDR_VALID
      | VNET_BUFFER_F_L4_CHECKSUM_COMPUTED |
-     VNET_BUFFER_F_L4_CHECKSUM_CORRECT);
+     VNET_BUFFER_F_L4_CHECKSUM_CORRECT | VNET_BUFFER_F_L2_HDR_OFFSET_VALID);
 
   dm->stat_poll_interval = DPDK_STATS_POLL_INTERVAL;
   dm->link_state_poll_interval = DPDK_LINK_POLL_INTERVAL;

@@ -31,6 +31,7 @@ endif
 # Generic stuff
 ########################################
 libvnet_la_SOURCES +=				\
+  vnet/buffer.c					\
   vnet/config.c					\
   vnet/devices/devices.c			\
   vnet/handoff.c				\

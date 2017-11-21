@@ -43,33 +43,36 @@
 #include <vlib/vlib.h>
 
 #define foreach_vnet_buffer_field \
-  _( 1, L4_CHECKSUM_COMPUTED)				\
-  _( 2, L4_CHECKSUM_CORRECT)				\
-  _( 3, VLAN_2_DEEP)					\
-  _( 4, VLAN_1_DEEP)					\
-  _( 8, SPAN_CLONE)					\
-  _( 6, HANDOFF_NEXT_VALID)				\
-  _( 7, LOCALLY_ORIGINATED)				\
-  _( 8, IS_IP4)						\
-  _( 9, IS_IP6)						\
-  _(10, OFFLOAD_IP_CKSUM)				\
-  _(11, OFFLOAD_TCP_CKSUM)				\
-  _(12, OFFLOAD_UDP_CKSUM)                              \
-  _(13, IS_NATED)
+  _( 1, L4_CHECKSUM_COMPUTED, "l4-cksum-computed")	\
+  _( 2, L4_CHECKSUM_CORRECT, "l4-cksum-correct")	\
+  _( 3, VLAN_2_DEEP, "vlan-2-deep")			\
+  _( 4, VLAN_1_DEEP, "vlan-1-deep")			\
+  _( 8, SPAN_CLONE, "span-clone")			\
+  _( 6, HANDOFF_NEXT_VALID, "handoff-next-valid")	\
+  _( 7, LOCALLY_ORIGINATED, "local")			\
+  _( 8, IS_IP4, "ip4")					\
+  _( 9, IS_IP6, "ip6")					\
+  _(10, OFFLOAD_IP_CKSUM, "offload-ip-cksum")		\
+  _(11, OFFLOAD_TCP_CKSUM, "offload-tcp-cksum")		\
+  _(12, OFFLOAD_UDP_CKSUM, "offload-udp-cksum")		\
+  _(13, IS_NATED, "nated")				\
+  _(14, L2_HDR_OFFSET_VALID, 0)				\
+  _(15, L3_HDR_OFFSET_VALID, 0)				\
+  _(16, L4_HDR_OFFSET_VALID, 0)
 
 #define VNET_BUFFER_FLAGS_VLAN_BITS \
   (VNET_BUFFER_F_VLAN_1_DEEP | VNET_BUFFER_F_VLAN_2_DEEP)
 
 enum
 {
-#define _(bit, name) VNET_BUFFER_F_##name  = (1 << LOG2_VLIB_BUFFER_FLAG_USER(bit)),
+#define _(bit, name, v) VNET_BUFFER_F_##name  = (1 << LOG2_VLIB_BUFFER_FLAG_USER(bit)),
   foreach_vnet_buffer_field
 #undef _
 };
 
 enum
 {
-#define _(bit, name) VNET_BUFFER_F_LOG2_##name  = LOG2_VLIB_BUFFER_FLAG_USER(bit),
+#define _(bit, name, v) VNET_BUFFER_F_LOG2_##name  = LOG2_VLIB_BUFFER_FLAG_USER(bit),
   foreach_vnet_buffer_field
 #undef _
 };
@@ -350,6 +353,7 @@ STATIC_ASSERT (sizeof (vnet_buffer_opaque2_t) <=
 	       STRUCT_SIZE_OF (vlib_buffer_t, opaque2),
 	       "VNET buffer opaque2 meta-data too large for vlib_buffer");
 
+format_function_t format_vnet_buffer;
 
 #endif /* included_vnet_buffer_h */
 

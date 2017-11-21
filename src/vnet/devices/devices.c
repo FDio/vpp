@@ -52,6 +52,16 @@ device_input_next_node_advance[((VNET_DEVICE_INPUT_N_NEXT_NODES /
       [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = sizeof (ethernet_header_t),
 };
 
+const u32 __attribute__((aligned (CLIB_CACHE_LINE_BYTES)))
+device_input_next_node_flags[((VNET_DEVICE_INPUT_N_NEXT_NODES /
+				CLIB_CACHE_LINE_BYTES) +1) * CLIB_CACHE_LINE_BYTES] =
+{
+      [VNET_DEVICE_INPUT_NEXT_IP4_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
+      [VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
+      [VNET_DEVICE_INPUT_NEXT_IP6_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
+      [VNET_DEVICE_INPUT_NEXT_MPLS_INPUT] = VNET_BUFFER_F_L3_HDR_OFFSET_VALID,
+};
+
 VNET_FEATURE_ARC_INIT (device_input, static) =
 {
   .arc_name  = "device-input",

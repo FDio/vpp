@@ -601,7 +601,7 @@ format_ixge_rx_dma_trace (u8 * s, va_list * va)
 
   s = format (s, "\n%Ubuffer 0x%x: %U",
 	      format_white_space, indent,
-	      t->buffer_index, format_vlib_buffer, &t->buffer);
+	      t->buffer_index, format_vnet_buffer, &t->buffer);
 
   s = format (s, "\n%U", format_white_space, indent);
 
@@ -885,7 +885,7 @@ format_ixge_tx_dma_trace (u8 * s, va_list * va)
 
   s = format (s, "\n%Ubuffer 0x%x: %U",
 	      format_white_space, indent,
-	      t->buffer_index, format_vlib_buffer, &t->buffer);
+	      t->buffer_index, format_vnet_buffer, &t->buffer);
 
   s = format (s, "\n%U", format_white_space, indent);
 
