@@ -485,7 +485,7 @@ set_pre_cmd() {
         pre_cmd="$gdb_in_emacs "
     elif [ $gdb -eq 1 ] ; then
         write_gdb_cmdfile $tmp_gdb_cmdfile $gdb_cmdfile $emacs $3
-        pre_cmd="gdb -x $tmp_gdb_cmdfile -i=mi --args "
+        pre_cmd="gdb -x $tmp_gdb_cmdfile --args "
     elif [ -z $3 ] ; then
         unset -v pre_cmd
     else

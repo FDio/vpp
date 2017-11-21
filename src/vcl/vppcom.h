@@ -65,6 +65,7 @@ typedef enum
   VPPCOM_EBADFD = -EBADFD,
   VPPCOM_EAFNOSUPPORT = -EAFNOSUPPORT,
   VPPCOM_ECONNRESET = -ECONNRESET,
+  VPPCOM_ENOTCONN = -ENOTCONN,
   VPPCOM_ECONNREFUSED = -ECONNREFUSED,
   VPPCOM_ETIMEDOUT = -ETIMEDOUT,
 } vppcom_error_t;
@@ -121,6 +122,10 @@ vppcom_retval_str (int retval)
 
     case VPPCOM_ECONNRESET:
       st = "VPPCOM_ECONNRESET";
+      break;
+
+    case VPPCOM_ENOTCONN:
+      st = "VPPCOM_ENOTCONN";
       break;
 
     case VPPCOM_ECONNREFUSED:
