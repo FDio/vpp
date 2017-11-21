@@ -112,7 +112,19 @@ clib_netlink_set_if_namespace (int ifindex, char *net_ns)
   clib_error_t *err;
   int ns_fd;
   u8 *s;
-  s = format (0, "/var/run/netns/%s%c", net_ns, 0);
+
+  if (strncmp (net_ns, "pid:", 4) == 0)
+    {
+      int pid = atoi (net_ns + 4);
+      return clib_netlink_set_if_attr (ifindex, IFLA_NET_NS_PID, &pid,
+				       sizeof (int));
+    }
+
+  if (net_ns[0] == '/')
+    s = format (0, "%s%c", net_ns, 0);
+  else
+    s = format (0, "/var/run/netns/%s%c", net_ns, 0);
+
   ns_fd = open ((char *) s, O_RDONLY);
   vec_free (s);
   if (ns_fd == -1)
