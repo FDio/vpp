@@ -123,8 +123,8 @@ done:
 }
 
 VLIB_CLI_COMMAND (bier_route_command) = {
-    .path = "bier route via [next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <interface>] [out-labels <value value value>]",
-  .short_help = "Add/delete BIER Routes",
+  .path = "bier route",
+  .short_help = "bier route sd <sud-domain> set <set> bsl <bit-string-length> bp <bit-position> via [next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <interface>] [out-labels <value value value>]",
   .function = vnet_bier_route_cmd,
 };
 
