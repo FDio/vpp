@@ -737,12 +737,12 @@ format_application (u8 * s, va_list * args)
     {
       if (verbose)
 	s = format (s, "%-10s%-20s%-15s%-15s%-15s%-15s%-15s", "Index", "Name",
-		    "Namespace", "API Client", "Add seg size", "Rx fifo size",
+		    "API Client", "Namespace", "Add seg size", "Rx fifo size",
 		    "Tx fifo size");
       else
 	s =
-	  format (s, "%-10s%-20s%-15s%-20s", "Index", "Name", "Namespace",
-		  "API Client");
+	  format (s, "%-10s%-20s%-15s%-40s", "Index", "Name", "API Client",
+		  "Namespace");
       return s;
     }
 
@@ -751,13 +751,13 @@ format_application (u8 * s, va_list * args)
   props = segment_manager_properties_get (app->sm_properties);
   if (verbose)
     s =
-      format (s, "%-10d%-20s%-15s%-15d%-15d%-15d%-15d", app->index, app_name,
-	      app_ns_name, app->api_client_index,
+      format (s, "%-10d%-20s%-15d%-15d%-15d%-15d%-15d", app->index, app_name,
+	      app->api_client_index, app->ns_index,
 	      props->add_segment_size,
 	      props->rx_fifo_size, props->tx_fifo_size);
   else
-    s = format (s, "%-10d%-20s%-15s%-20d", app->index, app_name, app_ns_name,
-		app->api_client_index);
+    s = format (s, "%-10d%-20s%-15d%-40s", app->index, app_name,
+		app->api_client_index, app_ns_name);
   return s;
 }
 

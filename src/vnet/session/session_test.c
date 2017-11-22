@@ -776,16 +776,17 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
   u64 options[SESSION_OPTIONS_N_OPTIONS];
   u16 lcl_port = 1234, rmt_port = 4321;
-  u32 server_index, app_index;
+  u32 server_index, server_index2, app_index;
   u32 dummy_server_api_index = ~0;
   transport_connection_t *tc;
   u32 dummy_port = 1111;
   clib_error_t *error = 0;
-  u8 segment_name[128], is_filtered = 0;
+  u8 segment_name[128], is_filtered = 0, *ns_id = format (0, "appns1");
   stream_session_t *listener, *s;
   app_namespace_t *default_ns = app_namespace_get_default ();
   u32 local_ns_index = default_ns->local_table_index;
   int verbose = 0, rv;
+  app_namespace_t *app_ns;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -989,7 +990,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 
   app_index = session_lookup_local_endpoint (local_ns_index, &sep);
   SESSION_TEST ((app_index == APP_INVALID_INDEX), "lookup for 1.2.3.4/32 1234"
-		" 5.6.7.8/16 4321 in local table should return invalid");
+		" 5.6.7.8/32 4321 in local table should return invalid");
 
   if (verbose)
     {
@@ -1001,7 +1002,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   sep.ip.ip4.as_u32 += 1 << 24;
   app_index = session_lookup_local_endpoint (local_ns_index, &sep);
   SESSION_TEST ((app_index == APP_DROP_INDEX), "lookup for 1.2.3.4/32 1234"
-		" 5.6.7.9/16 4321 in local table should return invalid");
+		" 5.6.7.9/32 4321 in local table should return deny");
 
   vnet_connect_args_t connect_args = {
     .sep = sep,
@@ -1179,13 +1180,138 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 				      &rmt_pref.fp_addr.ip4, lcl_port,
 				      rmt_port, TRANSPORT_PROTO_TCP, 0,
 				      &is_filtered);
-  SESSION_TEST ((tc == 0), "lookup 1.2.3.4/32 1234 5.6.7.8/16 4321 should not"
+  SESSION_TEST ((tc == 0), "lookup 1.2.3.4/32 1234 5.6.7.8/32 4321 should not"
 		" work (del)");
+
+
+  /*
+   * Test local rules with multiple namespaces
+   */
+
+  /*
+   * Add deny rule 1.2.3.4/32 1234 5.6.7.8/32 0 action -2 (drop)
+   */
+  args.table_args.is_add = 1;
+  args.table_args.lcl_port = 1234;
+  args.table_args.rmt_port = 0;
+  args.table_args.lcl.fp_addr.ip4 = lcl_ip;
+  args.table_args.lcl.fp_len = 32;
+  args.table_args.rmt.fp_addr.ip4 = rmt_ip;
+  args.table_args.rmt.fp_len = 32;
+  args.table_args.action_index = SESSION_RULES_TABLE_ACTION_DROP;
+  args.table_args.tag = 0;
+  args.scope = SESSION_RULE_SCOPE_LOCAL;
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "Add 1.2.3.4/32 1234 5.6.7.8/32 4321 action %d",
+		args.table_args.action_index);
+  /*
+   * Add 'white' rule 1.2.3.4/32 1234 5.6.7.8/32 4321 action -2 (drop)
+   */
+  args.table_args.is_add = 1;
+  args.table_args.lcl_port = 1234;
+  args.table_args.rmt_port = 4321;
+  args.table_args.lcl.fp_addr.ip4 = lcl_ip;
+  args.table_args.lcl.fp_len = 32;
+  args.table_args.rmt.fp_addr.ip4 = rmt_ip;
+  args.table_args.rmt.fp_len = 32;
+  args.table_args.action_index = SESSION_RULES_TABLE_ACTION_ALLOW;
+  error = vnet_session_rule_add_del (&args);
+
+  if (verbose)
+    {
+      session_lookup_dump_local_rules_table (local_ns_index, FIB_PROTOCOL_IP4,
+					     TRANSPORT_PROTO_TCP);
+    }
+
+  vnet_app_namespace_add_del_args_t ns_args = {
+    .ns_id = ns_id,
+    .secret = 0,
+    .sw_if_index = APP_NAMESPACE_INVALID_INDEX,
+    .is_add = 1
+  };
+  error = vnet_app_namespace_add_del (&ns_args);
+  SESSION_TEST ((error == 0), "app ns insertion should succeed: %d",
+		clib_error_get_code (error));
+  app_ns = app_namespace_get_from_id (ns_id);
+
+  attach_args.namespace_id = ns_id;
+  attach_args.api_client_index = dummy_server_api_index - 1;
+  error = vnet_application_attach (&attach_args);
+  SESSION_TEST ((error == 0), "server2 attached");
+  server_index2 = attach_args.app_index;
+
+  /*
+   * Add deny rule 1.2.3.4/32 1234 5.6.7.8/32 0 action -2 (drop)
+   */
+  args.table_args.lcl_port = 1234;
+  args.table_args.rmt_port = 0;
+  args.table_args.lcl.fp_addr.ip4 = lcl_ip;
+  args.table_args.lcl.fp_len = 32;
+  args.table_args.rmt.fp_addr.ip4 = rmt_ip;
+  args.table_args.rmt.fp_len = 32;
+  args.table_args.action_index = SESSION_RULES_TABLE_ACTION_DROP;
+  args.appns_index = app_namespace_index (app_ns);
+
+  error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0), "Add 1.2.3.4/32 1234 5.6.7.8/32 4321 action %d "
+		"in test namespace", args.table_args.action_index);
+  /*
+   * Lookup default namespace
+   */
+  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((app_index == APP_INVALID_INDEX),
+		"lookup for 1.2.3.4/32 1234 5.6.7.8/32 4321 in local table "
+		"should return allow (invalid)");
+
+  sep.port += 1;
+  app_index = session_lookup_local_endpoint (local_ns_index, &sep);
+  SESSION_TEST ((app_index == APP_DROP_INDEX), "lookup for 1.2.3.4/32 1234 "
+		"5.6.7.8/16 432*2* in local table should return deny");
+
+  connect_args.app_index = server_index;
+  connect_args.sep = sep;
+  error = vnet_connect (&connect_args);
+  SESSION_TEST ((error != 0), "connect should fail");
+  rv = clib_error_get_code (error);
+  SESSION_TEST ((rv == VNET_API_ERROR_APP_CONNECT_FILTERED),
+		"connect should be filtered");
+
+  /*
+   * Lookup test namespace
+   */
+  app_index = session_lookup_local_endpoint (app_ns->local_table_index, &sep);
+  SESSION_TEST ((app_index == APP_DROP_INDEX), "lookup for 1.2.3.4/32 1234 "
+		"5.6.7.8/16 4321 in local table should return deny");
+
+  connect_args.app_index = server_index;
+  error = vnet_connect (&connect_args);
+  SESSION_TEST ((error != 0), "connect should fail");
+  rv = clib_error_get_code (error);
+  SESSION_TEST ((rv == VNET_API_ERROR_APP_CONNECT_FILTERED),
+		"connect should be filtered");
+
+  args.table_args.is_add = 0;
+  vnet_session_rule_add_del (&args);
+
+  args.appns_index = 0;
+  args.table_args.is_add = 0;
+  vnet_session_rule_add_del (&args);
+
+  args.table_args.rmt_port = 4321;
+  vnet_session_rule_add_del (&args);
+  /*
+   * Final Cleanup
+   */
   vec_free (args.table_args.tag);
   vnet_app_detach_args_t detach_args = {
     .app_index = server_index,
   };
   vnet_application_detach (&detach_args);
+
+  detach_args.app_index = server_index2;
+  vnet_application_detach (&detach_args);
+
+  vec_free (ns_id);
   return 0;
 }
 
