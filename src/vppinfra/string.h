@@ -53,6 +53,10 @@
 #include <vppinfra/standalone_string.h>
 #endif
 
+#if _x86_64_
+#include <x86intrin.h>
+#endif
+
 /* Exchanges source and destination. */
 void clib_memswap (void *_a, void *_b, uword bytes);
 
@@ -82,53 +86,56 @@ void clib_memswap (void *_a, void *_b, uword bytes);
 static_always_inline void
 clib_memcpy64_x4 (void *d0, void *d1, void *d2, void *d3, void *s)
 {
-#if defined (CLIB_HAVE_VEC512)
-  u8x64 __attribute__ ((aligned (1))) r0 = *(((u8x64 *) s) + 0);
+#if defined (__AVX512F__)
+  __m512i r0 = _mm512_loadu_si512 (s);
 
-  *(((u8x64 *) d0) + 0) = r0;
-  *(((u8x64 *) d1) + 0) = r0;
-  *(((u8x64 *) d2) + 0) = r0;
-  *(((u8x64 *) d3) + 0) = r0;
-#elif defined (CLIB_HAVE_VEC256)
-  u8x32 __attribute__ ((aligned (1))) r0 = *(((u8x32 *) s) + 0);
-  u8x32 __attribute__ ((aligned (1))) r1 = *(((u8x32 *) s) + 1);
+  _mm512_storeu_si512 (d0, r0);
+  _mm512_storeu_si512 (d1, r0);
+  _mm512_storeu_si512 (d2, r0);
+  _mm512_storeu_si512 (d3, r0);
 
-  *(((u8x32 *) d0) + 0) = r0;
-  *(((u8x32 *) d0) + 1) = r1;
+#elif defined (__AVX2__)
+  __m256i r0 = _mm256_loadu_si256 ((__m256i *) s + 0 * 32);
+  __m256i r1 = _mm256_loadu_si256 ((__m256i *) s + 1 * 32);
 
-  *(((u8x32 *) d1) + 0) = r0;
-  *(((u8x32 *) d1) + 1) = r1;
+  _mm256_storeu_si256 ((__m256i *) d0 + 0 * 32, r0);
+  _mm256_storeu_si256 ((__m256i *) d0 + 1 * 32, r1);
 
-  *(((u8x32 *) d2) + 0) = r0;
-  *(((u8x32 *) d2) + 1) = r1;
+  _mm256_storeu_si256 ((__m256i *) d1 + 0 * 32, r0);
+  _mm256_storeu_si256 ((__m256i *) d1 + 1 * 32, r1);
 
-  *(((u8x32 *) d3) + 0) = r0;
-  *(((u8x32 *) d3) + 1) = r1;
-#elif defined (CLIB_HAVE_VEC128)
-  u8x16 __attribute__ ((aligned (1))) r0 = *(((u8x16 *) s) + 0);
-  u8x16 __attribute__ ((aligned (1))) r1 = *(((u8x16 *) s) + 1);
-  u8x16 __attribute__ ((aligned (1))) r2 = *(((u8x16 *) s) + 3);
-  u8x16 __attribute__ ((aligned (1))) r3 = *(((u8x16 *) s) + 4);
+  _mm256_storeu_si256 ((__m256i *) d2 + 0 * 32, r0);
+  _mm256_storeu_si256 ((__m256i *) d2 + 1 * 32, r1);
 
-  *(((u8x16 *) d0) + 0) = r0;
-  *(((u8x16 *) d0) + 1) = r1;
-  *(((u8x16 *) d0) + 2) = r2;
-  *(((u8x16 *) d0) + 3) = r3;
+  _mm256_storeu_si256 ((__m256i *) d3 + 0 * 32, r0);
+  _mm256_storeu_si256 ((__m256i *) d3 + 1 * 32, r1);
 
-  *(((u8x16 *) d1) + 0) = r0;
-  *(((u8x16 *) d1) + 1) = r1;
-  *(((u8x16 *) d1) + 2) = r2;
-  *(((u8x16 *) d1) + 3) = r3;
+#elif defined (__SSSE3__)
+  __m128i r0 = _mm_loadu_si128 ((__m128i *) s + 0 * 16);
+  __m128i r1 = _mm_loadu_si128 ((__m128i *) s + 1 * 16);
+  __m128i r2 = _mm_loadu_si128 ((__m128i *) s + 2 * 16);
+  __m128i r3 = _mm_loadu_si128 ((__m128i *) s + 3 * 16);
 
-  *(((u8x16 *) d2) + 0) = r0;
-  *(((u8x16 *) d2) + 1) = r1;
-  *(((u8x16 *) d2) + 2) = r2;
-  *(((u8x16 *) d2) + 3) = r3;
+  _mm_storeu_si128 ((__m128i *) d0 + 0 * 16, r0);
+  _mm_storeu_si128 ((__m128i *) d0 + 1 * 16, r1);
+  _mm_storeu_si128 ((__m128i *) d0 + 2 * 16, r2);
+  _mm_storeu_si128 ((__m128i *) d0 + 3 * 16, r3);
 
-  *(((u8x16 *) d3) + 0) = r0;
-  *(((u8x16 *) d3) + 1) = r1;
-  *(((u8x16 *) d3) + 2) = r2;
-  *(((u8x16 *) d3) + 3) = r3;
+  _mm_storeu_si128 ((__m128i *) d1 + 0 * 16, r0);
+  _mm_storeu_si128 ((__m128i *) d1 + 1 * 16, r1);
+  _mm_storeu_si128 ((__m128i *) d1 + 2 * 16, r2);
+  _mm_storeu_si128 ((__m128i *) d1 + 3 * 16, r3);
+
+  _mm_storeu_si128 ((__m128i *) d2 + 0 * 16, r0);
+  _mm_storeu_si128 ((__m128i *) d2 + 1 * 16, r1);
+  _mm_storeu_si128 ((__m128i *) d2 + 2 * 16, r2);
+  _mm_storeu_si128 ((__m128i *) d2 + 3 * 16, r3);
+
+  _mm_storeu_si128 ((__m128i *) d3 + 0 * 16, r0);
+  _mm_storeu_si128 ((__m128i *) d3 + 1 * 16, r1);
+  _mm_storeu_si128 ((__m128i *) d3 + 2 * 16, r2);
+  _mm_storeu_si128 ((__m128i *) d3 + 3 * 16, r3);
+
 #else
   clib_memcpy (d0, s, 64);
   clib_memcpy (d1, s, 64);
