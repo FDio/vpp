@@ -90,6 +90,7 @@ mpls_interface_enable_disable (vlib_main_t * vm,
   vnet_main_t * vnm = vnet_get_main();
   clib_error_t * error = 0;
   u32 sw_if_index, enable;
+  int rv;
 
   sw_if_index = ~0;
 
@@ -111,7 +112,10 @@ mpls_interface_enable_disable (vlib_main_t * vm,
       goto done;
     }
 
-  mpls_sw_interface_enable_disable(&mpls_main, sw_if_index, enable, 0);
+  rv = mpls_sw_interface_enable_disable(&mpls_main, sw_if_index, enable, 0);
+
+  if (VNET_API_ERROR_NO_SUCH_FIB == rv)
+      error = clib_error_return (0, "default MPLS table must be created first");
 
  done:
   return error;
