@@ -248,9 +248,8 @@ u8 *
 format_app_namespace (u8 * s, va_list * args)
 {
   app_namespace_t *app_ns = va_arg (*args, app_namespace_t *);
-  s = format (s, "%-20v%-10u%-20lu%-20u", app_ns->ns_id,
-	      app_namespace_index (app_ns), app_ns->ns_secret,
-	      app_ns->sw_if_index);
+  s = format (s, "%-10u%-20lu%-20u%-50v", app_namespace_index (app_ns),
+	      app_ns->ns_secret, app_ns->sw_if_index, app_ns->ns_id);
   return s;
 }
 
@@ -303,8 +302,8 @@ show_app_ns_fn (vlib_main_t * vm, unformat_input_t * main_input,
     }
 
 do_ns_list:
-  vlib_cli_output (vm, "%-20s%-10s%-20s%-20s", "Namespace", "Index", "Secret",
-		   "sw_if_index");
+  vlib_cli_output (vm, "%-10s%-20s%-20s%-50s", "Index", "Secret",
+		   "sw_if_index", "Name");
 
   /* *INDENT-OFF* */
   pool_foreach (app_ns, app_namespace_pool, ({
