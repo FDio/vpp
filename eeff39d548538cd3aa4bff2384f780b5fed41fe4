@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6f775a04_affa7315",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 378,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-11-22T17:00:10Z",
+      "side": 1,
+      "message": "Hmm, I would do this the other way round; have \"make wipe\" also invoke \"test-wipe\" because it\u0027s more common for me to want to re-do tests than re-build everything.",
+      "range": {
+        "startLine": 378,
+        "startChar": 0,
+        "endLine": 378,
+        "endChar": 15
+      },
+      "revId": "eeff39d548538cd3aa4bff2384f780b5fed41fe4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
