@@ -43,11 +43,12 @@
 /* Global main structure. */
 hdlc_main_t hdlc_main;
 
-u8 * format_hdlc_protocol (u8 * s, va_list * args)
+u8 *
+format_hdlc_protocol (u8 * s, va_list * args)
 {
   hdlc_protocol_t p = va_arg (*args, u32);
-  hdlc_main_t * pm = &hdlc_main;
-  hdlc_protocol_info_t * pi = hdlc_get_protocol_info (pm, p);
+  hdlc_main_t *pm = &hdlc_main;
+  hdlc_protocol_info_t *pi = hdlc_get_protocol_info (pm, p);
 
   if (pi)
     s = format (s, "%s", pi->name);
@@ -57,10 +58,11 @@ u8 * format_hdlc_protocol (u8 * s, va_list * args)
   return s;
 }
 
-u8 * format_hdlc_header_with_length (u8 * s, va_list * args)
+u8 *
+format_hdlc_header_with_length (u8 * s, va_list * args)
 {
-  hdlc_main_t * pm = &hdlc_main;
-  hdlc_header_t * h = va_arg (*args, hdlc_header_t *);
+  hdlc_main_t *pm = &hdlc_main;
+  hdlc_header_t *h = va_arg (*args, hdlc_header_t *);
   u32 max_header_bytes = va_arg (*args, u32);
   hdlc_protocol_t p = clib_net_to_host_u16 (h->protocol);
   u32 indent, header_bytes;
@@ -80,8 +82,8 @@ u8 * format_hdlc_header_with_length (u8 * s, va_list * args)
 
   if (max_header_bytes != 0 && header_bytes > max_header_bytes)
     {
-      hdlc_protocol_info_t * pi = hdlc_get_protocol_info (pm, p);
-      vlib_node_t * node = vlib_get_node (pm->vlib_main, pi->node_index);
+      hdlc_protocol_info_t *pi = hdlc_get_protocol_info (pm, p);
+      vlib_node_t *node = vlib_get_node (pm->vlib_main, pi->node_index);
       if (node->format_buffer)
 	s = format (s, "\n%U%U",
 		    format_white_space, indent,
@@ -92,24 +94,24 @@ u8 * format_hdlc_header_with_length (u8 * s, va_list * args)
   return s;
 }
 
-u8 * format_hdlc_header (u8 * s, va_list * args)
+u8 *
+format_hdlc_header (u8 * s, va_list * args)
 {
-  hdlc_header_t * h = va_arg (*args, hdlc_header_t *);
+  hdlc_header_t *h = va_arg (*args, hdlc_header_t *);
   return format (s, "%U", format_hdlc_header_with_length, h, 0);
 }
 
 /* Returns hdlc protocol as an int in host byte order. */
 uword
 unformat_hdlc_protocol_host_byte_order (unformat_input_t * input,
-				       va_list * args)
+					va_list * args)
 {
-  u16 * result = va_arg (*args, u16 *);
-  hdlc_main_t * pm = &hdlc_main;
+  u16 *result = va_arg (*args, u16 *);
+  hdlc_main_t *pm = &hdlc_main;
   int p, i;
 
   /* Numeric type. */
-  if (unformat (input, "0x%x", &p)
-      || unformat (input, "%d", &p))
+  if (unformat (input, "0x%x", &p) || unformat (input, "%d", &p))
     {
       if (p >= (1 << 16))
 	return 0;
@@ -121,7 +123,7 @@ unformat_hdlc_protocol_host_byte_order (unformat_input_t * input,
   if (unformat_user (input, unformat_vlib_number_by_name,
 		     pm->protocol_info_by_name, &i))
     {
-      hdlc_protocol_info_t * pi = vec_elt_at_index (pm->protocol_infos, i);
+      hdlc_protocol_info_t *pi = vec_elt_at_index (pm->protocol_infos, i);
       *result = pi->protocol;
       return 1;
     }
@@ -131,24 +133,23 @@ unformat_hdlc_protocol_host_byte_order (unformat_input_t * input,
 
 uword
 unformat_hdlc_protocol_net_byte_order (unformat_input_t * input,
-				      va_list * args)
+				       va_list * args)
 {
-  u16 * result = va_arg (*args, u16 *);
-  if (! unformat_user (input, unformat_hdlc_protocol_host_byte_order, result))
+  u16 *result = va_arg (*args, u16 *);
+  if (!unformat_user (input, unformat_hdlc_protocol_host_byte_order, result))
     return 0;
-  *result = clib_host_to_net_u16 ((u16) *result);
+  *result = clib_host_to_net_u16 ((u16) * result);
   return 1;
 }
 
 uword
 unformat_hdlc_header (unformat_input_t * input, va_list * args)
 {
-  u8 ** result = va_arg (*args, u8 **);
-  hdlc_header_t _h, * h = &_h;
+  u8 **result = va_arg (*args, u8 **);
+  hdlc_header_t _h, *h = &_h;
   u16 p;
 
-  if (! unformat (input, "%U",
-		  unformat_hdlc_protocol_host_byte_order, &p))
+  if (!unformat (input, "%U", unformat_hdlc_protocol_host_byte_order, &p))
     return 0;
 
   h->address = 0xff;
@@ -157,45 +158,46 @@ unformat_hdlc_header (unformat_input_t * input, va_list * args)
 
   /* Add header to result. */
   {
-    void * p;
+    void *p;
     u32 n_bytes = sizeof (h[0]);
 
     vec_add2 (*result, p, n_bytes);
     clib_memcpy (p, h, n_bytes);
   }
-  
+
   return 1;
 }
 
-static u8*
+static u8 *
 hdlc_build_rewrite (vnet_main_t * vnm,
 		    u32 sw_if_index,
-		    vnet_link_t link_type,
-		    const void *dst_address)
+		    vnet_link_t link_type, const void *dst_address)
 {
-  hdlc_header_t * h;
-  u8* rewrite = NULL;
+  hdlc_header_t *h;
+  u8 *rewrite = NULL;
   hdlc_protocol_t protocol;
 
-  switch (link_type) {
+  switch (link_type)
+    {
 #define _(a,b) case VNET_LINK_##a: protocol = HDLC_PROTOCOL_##b; break
-    _ (IP4, ip4);
-    _ (IP6, ip6);
-    _ (MPLS, mpls_unicast);
+      _(IP4, ip4);
+      _(IP6, ip6);
+      _(MPLS, mpls_unicast);
 #undef _
-  default:
+    default:
       return (NULL);
-  }
+    }
 
-  vec_validate(rewrite, sizeof(*h)-1);
-  h = (hdlc_header_t *)rewrite;
+  vec_validate (rewrite, sizeof (*h) - 1);
+  h = (hdlc_header_t *) rewrite;
   h->address = 0x0f;
   h->control = 0x00;
   h->protocol = clib_host_to_net_u16 (protocol);
-		     
+
   return (rewrite);
 }
 
+/* *INDENT-OFF* */
 VNET_HW_INTERFACE_CLASS (hdlc_hw_interface_class) = {
   .name = "HDLC",
   .format_header = format_hdlc_header_with_length,
@@ -203,12 +205,12 @@ VNET_HW_INTERFACE_CLASS (hdlc_hw_interface_class) = {
   .build_rewrite = hdlc_build_rewrite,
   .flags = VNET_HW_INTERFACE_CLASS_FLAG_P2P,
 };
+/* *INDENT-ON* */
 
-static void add_protocol (hdlc_main_t * pm,
-			  hdlc_protocol_t protocol,
-			  char * protocol_name)
+static void
+add_protocol (hdlc_main_t * pm, hdlc_protocol_t protocol, char *protocol_name)
 {
-  hdlc_protocol_info_t * pi;
+  hdlc_protocol_info_t *pi;
   u32 i;
 
   vec_add2 (pm->protocol_infos, pi, 1);
@@ -222,9 +224,10 @@ static void add_protocol (hdlc_main_t * pm,
   hash_set_mem (pm->protocol_info_by_name, pi->name, i);
 }
 
-static clib_error_t * hdlc_init (vlib_main_t * vm)
+static clib_error_t *
+hdlc_init (vlib_main_t * vm)
 {
-  hdlc_main_t * pm = &hdlc_main;
+  hdlc_main_t *pm = &hdlc_main;
 
   memset (pm, 0, sizeof (pm[0]));
   pm->vlib_main = vm;
@@ -235,15 +238,23 @@ static clib_error_t * hdlc_init (vlib_main_t * vm)
 #define _(n,s) add_protocol (pm, HDLC_PROTOCOL_##s, #s);
   foreach_hdlc_protocol
 #undef _
-
-  return vlib_call_init_function (vm, hdlc_input_init);
+    return vlib_call_init_function (vm, hdlc_input_init);
 }
 
 VLIB_INIT_FUNCTION (hdlc_init);
 
-hdlc_main_t * hdlc_get_main (vlib_main_t * vm)
+hdlc_main_t *
+hdlc_get_main (vlib_main_t * vm)
 {
   vlib_call_init_function (vm, hdlc_init);
   return &hdlc_main;
 }
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
