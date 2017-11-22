@@ -2336,8 +2336,6 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
   clib_fifo_sub1 (vcm->client_session_index_fifo, client_session_index);
   rv = vppcom_session_at_index (client_session_index, &client_session);
   ASSERT (rv == VPPCOM_OK);
-  ASSERT (client_session->peer_addr.is_ip4 ==
-	  listen_session->lcl_addr.is_ip4);
 
   client_session->is_nonblocking = (flags & O_NONBLOCK) ? 1 : 0;
   if (VPPCOM_DEBUG > 0)
