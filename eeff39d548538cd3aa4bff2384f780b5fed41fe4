@@ -22,6 +22,30 @@
       "revId": "eeff39d548538cd3aa4bff2384f780b5fed41fe4",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "974174ed_5aaa6f9d",
+        "filename": "Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 378,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2017-11-22T21:32:18Z",
+      "side": 1,
+      "message": "+1\n\nAlso there are 2 wipe targets:\n\nmake wipe          -- wipes the debug build\nmake wipe-release  -- wipes the release build\n\nPlease add \"test-wipe\" as a dependency to both of them.",
+      "parentUuid": "6f775a04_affa7315",
+      "range": {
+        "startLine": 378,
+        "startChar": 0,
+        "endLine": 378,
+        "endChar": 15
+      },
+      "revId": "eeff39d548538cd3aa4bff2384f780b5fed41fe4",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
