@@ -49,13 +49,15 @@
   _ (0x86dd, ip6)				\
   _ (0xfefe, osi)
 
-typedef enum {
+typedef enum
+{
 #define _(n,f) HDLC_PROTOCOL_##f = n,
   foreach_hdlc_protocol
 #undef _
 } hdlc_protocol_t;
 
-typedef struct {
+typedef struct
+{
   /* Set to 0x0f for unicast; 0x8f for broadcast. */
   u8 address;
 
@@ -70,3 +72,11 @@ typedef struct {
 } hdlc_header_t;
 
 #endif /* included_vnet_hdlc_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
