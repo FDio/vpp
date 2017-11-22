@@ -79,17 +79,31 @@
 STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE == RTE_PKTMBUF_HEADROOM,
 	       "VLIB_BUFFER_PRE_DATA_SIZE must be equal to RTE_PKTMBUF_HEADROOM");
 
-static struct rte_mbuf ***mbuf_pending_free_list = 0;
+typedef struct
+{
+  struct rte_mbuf ***mbuf_pending_free_list;
+
+  /* cached last pool */
+  struct rte_mempool *last_pool;
+  u8 last_buffer_pool_index;
+} dpdk_buffer_per_thread_data;
+
+typedef struct
+{
+  dpdk_buffer_per_thread_data *ptd;
+} dpdk_buffer_main_t;
+
+dpdk_buffer_main_t dpdk_buffer_main;
 
 static_always_inline void
-dpdk_rte_pktmbuf_free (vlib_main_t * vm, vlib_buffer_t * b)
+dpdk_rte_pktmbuf_free (vlib_main_t * vm, u32 thread_index, vlib_buffer_t * b)
 {
   vlib_buffer_t *hb = b;
+  dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
+  dpdk_buffer_per_thread_data *d = vec_elt_at_index (dbm->ptd, thread_index);
   struct rte_mbuf *mb;
   u32 next, flags;
   mb = rte_mbuf_from_vlib_buffer (hb);
-  static struct rte_mempool *last_pool = 0;
-  static u8 last_buffer_pool_index;
 
 next:
   flags = b->flags;
@@ -105,16 +119,16 @@ next:
   mb = rte_pktmbuf_prefree_seg (mb);
   if (mb)
     {
-      if (mb->pool != last_pool)
+      if (mb->pool != d->last_pool)
 	{
-	  last_pool = mb->pool;
-	  dpdk_mempool_private_t *privp = rte_mempool_get_priv (last_pool);
-	  last_buffer_pool_index = privp->buffer_pool_index;
-	  vec_validate_aligned (mbuf_pending_free_list,
-				last_buffer_pool_index,
+	  d->last_pool = mb->pool;
+	  dpdk_mempool_private_t *privp = rte_mempool_get_priv (d->last_pool);
+	  d->last_buffer_pool_index = privp->buffer_pool_index;
+	  vec_validate_aligned (d->mbuf_pending_free_list,
+				d->last_buffer_pool_index,
 				CLIB_CACHE_LINE_BYTES);
 	}
-      vec_add1 (mbuf_pending_free_list[last_buffer_pool_index], mb);
+      vec_add1 (d->mbuf_pending_free_list[d->last_buffer_pool_index], mb);
     }
 
   if (flags & VLIB_BUFFER_NEXT_PRESENT)
@@ -130,11 +144,12 @@ del_free_list (vlib_main_t * vm, vlib_buffer_free_list_t * f)
 {
   u32 i;
   vlib_buffer_t *b;
+  u32 thread_index = vlib_get_thread_index ();
 
   for (i = 0; i < vec_len (f->buffers); i++)
     {
       b = vlib_get_buffer (vm, f->buffers[i]);
-      dpdk_rte_pktmbuf_free (vm, b);
+      dpdk_rte_pktmbuf_free (vm, thread_index, b);
     }
 
   vec_free (f->name);
@@ -357,6 +372,7 @@ recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
 		 vlib_buffer_t * b)
 {
   vlib_buffer_free_list_t *fl;
+  u32 thread_index = vlib_get_thread_index ();
   u32 fi;
   fl = vlib_buffer_get_buffer_free_list (vm, b, &fi);
 
@@ -380,7 +396,7 @@ recycle_or_free (vlib_main_t * vm, vlib_buffer_main_t * bm, u32 bi,
   else
     {
       if (PREDICT_TRUE ((b->flags & VLIB_BUFFER_RECYCLE) == 0))
-	dpdk_rte_pktmbuf_free (vm, b);
+	dpdk_rte_pktmbuf_free (vm, thread_index, b);
     }
 }
 
@@ -389,7 +405,10 @@ vlib_buffer_free_inline (vlib_main_t * vm,
 			 u32 * buffers, u32 n_buffers, u32 follow_buffer_next)
 {
   vlib_buffer_main_t *bm = vm->buffer_main;
+  dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
   vlib_buffer_t *b0, *b1, *b2, *b3;
+  u32 thread_index = vlib_get_thread_index ();
+  dpdk_buffer_per_thread_data *d = vec_elt_at_index (dbm->ptd, thread_index);
   int i = 0;
   u32 (*cb) (vlib_main_t * vm, u32 * buffers, u32 n_buffers,
 	     u32 follow_buffer_next);
@@ -444,14 +463,14 @@ vlib_buffer_free_inline (vlib_main_t * vm,
       _vec_len (bm->announce_list) = 0;
     }
 
-  vec_foreach_index (i, mbuf_pending_free_list)
+  vec_foreach_index (i, d->mbuf_pending_free_list)
   {
-    int len = vec_len (mbuf_pending_free_list[i]);
+    int len = vec_len (d->mbuf_pending_free_list[i]);
     if (len)
       {
-	rte_mempool_put_bulk (mbuf_pending_free_list[i][len - 1]->pool,
-			      (void *) mbuf_pending_free_list[i], len);
-	vec_reset_length (mbuf_pending_free_list[i]);
+	rte_mempool_put_bulk (d->mbuf_pending_free_list[i][len - 1]->pool,
+			      (void *) d->mbuf_pending_free_list[i], len);
+	vec_reset_length (d->mbuf_pending_free_list[i]);
       }
   }
 }
@@ -698,6 +717,18 @@ dpdk_buffer_poison_trajectory_all (void)
 			  0);
 }
 #endif
+
+static clib_error_t *
+dpdk_buffer_init (vlib_main_t * vm)
+{
+  dpdk_buffer_main_t *dbm = &dpdk_buffer_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  vec_validate_aligned (dbm->ptd, tm->n_vlib_mains - 1,
+			CLIB_CACHE_LINE_BYTES);
+  return 0;
+}
+
+VLIB_INIT_FUNCTION (dpdk_buffer_init);
 
 /* *INDENT-OFF* */
 VLIB_BUFFER_REGISTER_CALLBACKS (dpdk, static) = {
