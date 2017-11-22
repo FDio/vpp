@@ -624,7 +624,7 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
   vnet_bind_args_t _a, *a = &_a;
   int rv = 0;
   clib_error_t *error;
-  application_t *app;
+  application_t *app = 0;
   stream_session_t *s;
   transport_connection_t *tc = 0;
   ip46_address_t *ip46;
@@ -657,11 +657,6 @@ vl_api_bind_sock_t_handler (vl_api_bind_sock_t * mp)
       rv = clib_error_get_code (error);
       clib_error_report (error);
     }
-  else
-    {
-      s = listen_session_get_from_handle (a->handle);
-      tc = listen_session_get_transport (s);
-    }
 
 done:
   /* *INDENT-OFF* */
@@ -669,9 +664,14 @@ done:
     if (!rv)
       {
 	rmp->handle = a->handle;
-	rmp->lcl_is_ip4 = tc->is_ip4;
-	clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
-	rmp->lcl_port = tc->lcl_port;
+        rmp->lcl_port = mp->port;
+	if (application_has_global_scope (app))
+	  {
+	    s = listen_session_get_from_handle (a->handle);
+	    tc = listen_session_get_transport (s);
+            rmp->lcl_is_ip4 = tc->is_ip4;
+            clib_memcpy (rmp->lcl_ip, &tc->lcl_ip, sizeof (tc->lcl_ip));
+	  }
       }
   }));
   /* *INDENT-ON* */
