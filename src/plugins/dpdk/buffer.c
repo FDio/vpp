@@ -88,8 +88,8 @@ dpdk_rte_pktmbuf_free (vlib_main_t * vm, vlib_buffer_t * b)
   struct rte_mbuf *mb;
   u32 next, flags;
   mb = rte_mbuf_from_vlib_buffer (hb);
-  static struct rte_mempool *last_pool = 0;
-  static u8 last_buffer_pool_index;
+  static __thread struct rte_mempool *last_pool = 0;
+  static __thread u8 last_buffer_pool_index;
 
 next:
   flags = b->flags;
