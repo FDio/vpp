@@ -375,7 +375,7 @@ test-all-debug: bootstrap
 test-help:
 	@make -C test help
 
-test-wipe:
+test-wipe: wipe
 	@make -C test wipe
 
 test-shell: bootstrap
