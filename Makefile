@@ -324,7 +324,7 @@ build: $(BR)/.bootstrap.ok
 wipedist:
 	@$(RM) $(BR)/*.tar.xz
 
-wipe: wipedist $(BR)/.bootstrap.ok
+wipe: wipedist test-wipe $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM)_debug,$(addsuffix -wipe,$(TARGETS)))
 
 rebuild: wipe build
@@ -332,7 +332,7 @@ rebuild: wipe build
 build-release: $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM),$(addsuffix -install,$(TARGETS)))
 
-wipe-release: $(BR)/.bootstrap.ok
+wipe-release: test-wipe $(BR)/.bootstrap.ok
 	$(call make,$(PLATFORM),$(addsuffix -wipe,$(TARGETS)))
 
 rebuild-release: wipe-release build-release
