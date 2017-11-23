@@ -242,33 +242,44 @@ class MethodHolder(VppTestCase):
 
         return pkts
 
-    def create_stream_out(self, out_if, dst_ip=None, ttl=64):
+    def create_stream_out(self, out_if, dst_ip=None, ttl=64,
+                          use_inside_ports=False):
         """
         Create packet stream for outside network
 
         :param out_if: Outside interface
         :param dst_ip: Destination IP address (Default use global NAT address)
         :param ttl: TTL of generated packets
+        :param use_inside_ports: Use inside NAT ports as destination ports
+               instead of outside ports
         """
         if dst_ip is None:
             dst_ip = self.nat_addr
+        if not use_inside_ports:
+            tcp_port = self.tcp_port_out
+            udp_port = self.udp_port_out
+            icmp_id = self.icmp_id_out
+        else:
+            tcp_port = self.tcp_port_in
+            udp_port = self.udp_port_in
+            icmp_id = self.icmp_id_in
         pkts = []
         # TCP
         p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
              IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
-             TCP(dport=self.tcp_port_out, sport=20))
+             TCP(dport=tcp_port, sport=20))
         pkts.append(p)
 
         # UDP
         p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
              IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
-             UDP(dport=self.udp_port_out, sport=20))
+             UDP(dport=udp_port, sport=20))
         pkts.append(p)
 
         # ICMP
         p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
              IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
-             ICMP(id=self.icmp_id_out, type='echo-reply'))
+             ICMP(id=icmp_id, type='echo-reply'))
         pkts.append(p)
 
         return pkts
@@ -654,6 +665,7 @@ class TestNAT44(MethodHolder):
             cls.icmp_id_in = 6305
             cls.icmp_id_out = 6305
             cls.nat_addr = '10.0.0.3'
+            cls.nat_addr_n = socket.inet_pton(socket.AF_INET, cls.nat_addr)
             cls.ipfix_src_port = 4739
             cls.ipfix_domain_id = 1
 
@@ -869,6 +881,78 @@ class TestNAT44(MethodHolder):
         self.pg_start()
         capture = self.pg0.get_capture(len(pkts))
         self.verify_capture_in(capture, self.pg0)
+
+    def test_acl(self):
+        """ NAT44 ACL test """
+
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+
+        acl = {
+            'is_permit': 1, 'is_ipv6': 0, 'proto': 0,
+            'srcport_or_icmptype_first': 0,
+            'srcport_or_icmptype_last': 0xffff,
+            'src_ip_prefix_len': 32,
+            'src_ip_addr': self.pg0.remote_ip4n,
+            'dstport_or_icmpcode_first': 0,
+            'dstport_or_icmpcode_last': 0xffff,
+            'dst_ip_prefix_len': 32,
+            'dst_ip_addr': self.pg1.remote_ip4n
+        }
+
+        acl_index = self.vapi.acl_add_replace(0xffffffff, [acl]).acl_index
+        self.vapi.nat44_set_acl(acl_index)
+
+        real_ip = self.pg0.remote_ip4n
+        alias_ip = self.nat_addr_n
+        self.vapi.nat44_add_del_static_mapping(local_ip=real_ip,
+                                               external_ip=alias_ip)
+
+        try:
+            # in2out - ACL match
+
+            pkts = self.create_stream_out(self.pg1)
+            self.pg1.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg0.get_capture(len(pkts))
+            self.verify_capture_in(capture, self.pg0)
+
+            pkts = self.create_stream_in(self.pg0, self.pg1)
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg1.get_capture(len(pkts))
+            self.verify_capture_out(capture, same_port=True)
+
+            # in2out - no ACL match
+
+            host0 = self.pg0.remote_hosts[0]
+            self.pg0.remote_hosts[0] = self.pg0.remote_hosts[1]
+            try:
+                pkts = self.create_stream_out(self.pg1,
+                                              dst_ip=self.pg0.remote_ip4,
+                                              use_inside_ports=True)
+                self.pg1.add_stream(pkts)
+                self.pg_enable_capture(self.pg_interfaces)
+                self.pg_start()
+                capture = self.pg0.get_capture(len(pkts))
+                self.verify_capture_in(capture, self.pg0)
+
+                pkts = self.create_stream_in(self.pg0, self.pg1)
+                self.pg0.add_stream(pkts)
+                self.pg_enable_capture(self.pg_interfaces)
+                self.pg_start()
+                capture = self.pg1.get_capture(len(pkts))
+                self.verify_capture_out(capture, nat_ip=self.pg0.remote_ip4,
+                                        same_port=True)
+            finally:
+                self.pg0.remote_hosts[0] = host0
+
+        finally:
+            self.vapi.nat44_set_acl(0xffffffff)
 
     def test_dynamic_icmp_errors_in2out_ttl_1(self):
         """ NAT44 handling of client packets with TTL=1 """

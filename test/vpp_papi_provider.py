@@ -1443,6 +1443,17 @@ class VppPapiProvider(object):
              'vrf_id': vrf_id,
              'is_in': is_in})
 
+    def nat44_set_acl(
+            self,
+            acl_index):
+        """Set/unset ACL for NAT44
+
+        :param acl_index: ACL index to set fot NAT44, 2^32-1 means unset
+        """
+        return self.api(
+            self.papi.nat44_set_acl,
+            {'acl_index': acl_index})
+
     def nat_set_reass(
             self,
             timeout=2,

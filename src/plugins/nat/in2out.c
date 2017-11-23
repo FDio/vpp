@@ -26,6 +26,8 @@
 #include <nat/nat_det.h>
 #include <nat/nat_reass.h>
 
+#include <acl/exports.h>
+
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
 #include <vppinfra/elog.h>
@@ -176,9 +178,15 @@ typedef enum {
  */
 static inline int
 snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t *node,
-                         u32 sw_if_index0, ip4_header_t * ip0, u32 proto0,
-                         u32 rx_fib_index0)
+                         vlib_buffer_t *b0, u32 sw_if_index0,
+                         ip4_header_t * ip0, u32 proto0, u32 rx_fib_index0)
 {
+  fa_5tuple_t fa_5tuple0;
+  u32 match_acl_index;
+  u32 match_rule_index;
+  u32 trace_bitmap;
+  u8 action;
+
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP4,
@@ -187,6 +195,18 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t *node,
         .ip4.as_u32 = ip0->dst_address.as_u32,
     },
   };
+
+
+  /* Don't NAT packet not matching ACL */
+  if (sm->acl_index != ~0)
+    {
+      acl_plugin_fill_5tuple(b0, 0, 1, 0, &fa_5tuple0);
+
+      if (!acl_plugin_single_acl_match_5tuple(sm->acl_index, &fa_5tuple0, 0,
+                                              &action, &match_acl_index,
+                                              &match_rule_index, &trace_bitmap))
+          return 1;
+    }
 
   /* Don't NAT packet aimed at the intfc address */
   if (PREDICT_FALSE(is_interface_addr(sm, node, sw_if_index0,
@@ -217,8 +237,8 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t *node,
 
 static inline int
 snat_not_translate (snat_main_t * sm, vlib_node_runtime_t *node,
-                    u32 sw_if_index0, ip4_header_t * ip0, u32 proto0,
-                    u32 rx_fib_index0, u32 thread_index)
+                    vlib_buffer_t *b0, u32 sw_if_index0, ip4_header_t * ip0,
+                    u32 proto0, u32 rx_fib_index0, u32 thread_index)
 {
   udp_header_t * udp0 = ip4_next_header (ip0);
   snat_session_key_t key0, sm0;
@@ -242,7 +262,7 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t *node,
   else
     return 0;
 
-  return snat_not_translate_fast(sm, node, sw_if_index0, ip0, proto0,
+  return snat_not_translate_fast(sm, node, b0, sw_if_index0, ip0, proto0,
                                  rx_fib_index0);
 }
 
@@ -589,7 +609,7 @@ u32 icmp_match_in2out_slow(snat_main_t *sm, vlib_node_runtime_t *node,
   if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].in2out, &kv0,
                               &value0))
     {
-      if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0, ip0,
+      if (PREDICT_FALSE(snat_not_translate(sm, node, b0, sw_if_index0, ip0,
           IP_PROTOCOL_ICMP, rx_fib_index0, thread_index) &&
           vnet_buffer(b0)->sw_if_index[VLIB_TX] == ~0))
         {
@@ -679,7 +699,7 @@ u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
 
   if (snat_static_mapping_match(sm, key0, &sm0, 0, &is_addr_only))
     {
-      if (PREDICT_FALSE(snat_not_translate_fast(sm, node, sw_if_index0, ip0,
+      if (PREDICT_FALSE(snat_not_translate_fast(sm, node, b0, sw_if_index0, ip0,
           IP_PROTOCOL_ICMP, rx_fib_index0)))
         {
           dont_translate = 1;
@@ -1692,7 +1712,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
+                  if (PREDICT_FALSE(snat_not_translate(sm, node, b0, sw_if_index0,
                       ip0, proto0, rx_fib_index0, thread_index)) && !is_output_feature)
                     goto trace00;
 
@@ -1874,7 +1894,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index1,
+                  if (PREDICT_FALSE(snat_not_translate(sm, node, b0, sw_if_index1,
                       ip1, proto1, rx_fib_index1, thread_index)) && !is_output_feature)
                     goto trace01;
 
@@ -2088,7 +2108,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
             {
               if (is_slow_path)
                 {
-                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
+                  if (PREDICT_FALSE(snat_not_translate(sm, node, b0, sw_if_index0,
                       ip0, proto0, rx_fib_index0, thread_index)) && !is_output_feature)
                     goto trace0;
 
@@ -2629,7 +2649,7 @@ nat44_in2out_reass_node_fn (vlib_main_t * vm,
 
               if (clib_bihash_search_8_8 (&per_thread_data->in2out, &kv0, &value0))
                 {
-                  if (PREDICT_FALSE(snat_not_translate(sm, node, sw_if_index0,
+                  if (PREDICT_FALSE(snat_not_translate(sm, node, b0, sw_if_index0,
                       ip0, proto0, rx_fib_index0, thread_index)))
                     goto trace0;
 
@@ -3483,7 +3503,7 @@ u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
     {
       clib_warning("no match for internal host %U",
                    format_ip4_address, &in_addr);
-      if (PREDICT_FALSE(snat_not_translate_fast(sm, node, sw_if_index0, ip0,
+      if (PREDICT_FALSE(snat_not_translate_fast(sm, node, b0, sw_if_index0, ip0,
           IP_PROTOCOL_ICMP, rx_fib_index0)))
         {
           dont_translate = 1;
@@ -3502,7 +3522,7 @@ u32 icmp_match_in2out_det(snat_main_t *sm, vlib_node_runtime_t *node,
   ses0 = snat_det_find_ses_by_in(dm0, &in_addr, in_port, key0);
   if (PREDICT_FALSE(!ses0))
     {
-      if (PREDICT_FALSE(snat_not_translate_fast(sm, node, sw_if_index0, ip0,
+      if (PREDICT_FALSE(snat_not_translate_fast(sm, node, b0, sw_if_index0, ip0,
           IP_PROTOCOL_ICMP, rx_fib_index0)))
         {
           dont_translate = 1;
