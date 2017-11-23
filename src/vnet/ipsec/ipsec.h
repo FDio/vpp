@@ -23,7 +23,8 @@
 
 #define foreach_ipsec_output_next                \
 _(DROP, "error-drop")                            \
-_(ESP_ENCRYPT, "esp-encrypt")
+_(ESP_ENCRYPT, "esp-encrypt")                    \
+_(AH_ENCRYPT, "ah-encrypt")
 
 #define _(v, s) IPSEC_OUTPUT_NEXT_##v,
 typedef enum
@@ -36,7 +37,8 @@ typedef enum
 
 #define foreach_ipsec_input_next                \
 _(DROP, "error-drop")                           \
-_(ESP_DECRYPT, "esp-decrypt")
+_(ESP_DECRYPT, "esp-decrypt")                   \
+_(AH_DECRYPT, "ah-decrypt")
 
 #define _(v, s) IPSEC_INPUT_NEXT_##v,
 typedef enum
@@ -278,9 +280,13 @@ typedef struct
   u32 error_drop_node_index;
   u32 esp_encrypt_node_index;
   u32 esp_decrypt_node_index;
+  u32 ah_encrypt_node_index;
+  u32 ah_decrypt_node_index;
   /* next node indeces */
   u32 esp_encrypt_next_index;
   u32 esp_decrypt_next_index;
+  u32 ah_encrypt_next_index;
+  u32 ah_decrypt_next_index;
 
   /* callbacks */
   ipsec_main_callbacks_t cb;
@@ -290,6 +296,8 @@ extern ipsec_main_t ipsec_main;
 
 extern vlib_node_registration_t esp_encrypt_node;
 extern vlib_node_registration_t esp_decrypt_node;
+extern vlib_node_registration_t ah_encrypt_node;
+extern vlib_node_registration_t ah_decrypt_node;
 extern vlib_node_registration_t ipsec_if_output_node;
 extern vlib_node_registration_t ipsec_if_input_node;
 

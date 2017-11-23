@@ -425,6 +425,8 @@ libvnet_la_SOURCES +=				\
  vnet/ipsec/esp_format.c			\
  vnet/ipsec/esp_encrypt.c			\
  vnet/ipsec/esp_decrypt.c			\
+ vnet/ipsec/ah_decrypt.c			\
+ vnet/ipsec/ah_encrypt.c			\
  vnet/ipsec/ikev2.c				\
  vnet/ipsec/ikev2_crypto.c			\
  vnet/ipsec/ikev2_cli.c				\
@@ -441,6 +443,7 @@ libvnet_la_SOURCES +=				\
 nobase_include_HEADERS +=			\
  vnet/ipsec/ipsec.h				\
  vnet/ipsec/esp.h				\
+ vnet/ipsec/ah.h				\
  vnet/ipsec/ikev2.h				\
  vnet/ipsec/ikev2_priv.h			\
  vnet/ipsec/ipsec.api.h
