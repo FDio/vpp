@@ -242,6 +242,9 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t *node,
   else
     return 0;
 
+  if (sm->forwarding_enabled)
+    return 1;
+
   return snat_not_translate_fast(sm, node, sw_if_index0, ip0, proto0,
                                  rx_fib_index0);
 }
