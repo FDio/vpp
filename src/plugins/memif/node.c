@@ -41,7 +41,7 @@ typedef enum
     MEMIF_INPUT_N_ERROR,
 } memif_input_error_t;
 
-static char *memif_input_error_strings[] = {
+static __clib_unused char *memif_input_error_strings[] = {
 #define _(n,s) s,
   foreach_memif_input_error
 #undef _
@@ -54,7 +54,7 @@ typedef struct
   u16 ring;
 } memif_input_trace_t;
 
-static u8 *
+static __clib_unused u8 *
 format_memif_input_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
@@ -447,9 +447,10 @@ memif_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx_packets;
 }
 
-static uword
-memif_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-		vlib_frame_t * frame)
+uword
+CLIB_MULTIARCH_FN (memif_input_fn) (vlib_main_t * vm,
+				    vlib_node_runtime_t * node,
+				    vlib_frame_t * frame)
 {
   u32 n_rx = 0;
   memif_main_t *nm = &memif_main;
@@ -491,6 +492,7 @@ memif_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   return n_rx;
 }
 
+#ifndef CLIB_MULTIARCH_VARIANT
 /* *INDENT-OFF* */
 VLIB_REGISTER_NODE (memif_input_node) = {
   .function = memif_input_fn,
@@ -503,7 +505,21 @@ VLIB_REGISTER_NODE (memif_input_node) = {
   .error_strings = memif_input_error_strings,
 };
 
-VLIB_NODE_FUNCTION_MULTIARCH (memif_input_node, memif_input_fn)
+vlib_node_function_t __clib_weak memif_input_avx512;
+vlib_node_function_t __clib_weak memif_input_avx2;
+
+#if __x86_64__
+static void __clib_constructor
+memif_input_multiarch_select (void)
+{
+  if (memif_input_avx512 && clib_cpu_supports_avx512f ())
+    memif_input_node.function = memif_input_avx512;
+  else if (memif_input_avx2 && clib_cpu_supports_avx2 ())
+    memif_input_node.function = memif_input_avx2;
+}
+#endif
+#endif
+
 /* *INDENT-ON* */
 
 
