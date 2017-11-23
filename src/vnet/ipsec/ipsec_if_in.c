@@ -65,7 +65,7 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   ipsec_main_t *im = &ipsec_main;
   vnet_main_t *vnm = im->vnet_main;
   vnet_interface_main_t *vim = &vnm->interface_main;
-  esp_main_t *em = &esp_main;
+  ipsec_proto_main_t *em = &ipsec_proto_main;
   u32 *from, *to_next = 0, next_index;
   u32 n_left_from, last_sw_if_index = ~0;
   u32 thread_index = vlib_get_thread_index ();
@@ -130,7 +130,9 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  else
 		    {
 		      sa0 = pool_elt_at_index (im->sad, t->input_sa_index);
-		      icv_len = em->esp_integ_algs[sa0->integ_alg].trunc_size;
+		      icv_len =
+			em->ipsec_proto_main_integ_algs[sa0->
+							integ_alg].trunc_size;
 
 		      /* length = packet length - ESP/tunnel overhead */
 		      n_bytes -= n_packets * (sizeof (ip4_header_t) +
@@ -178,7 +180,7 @@ ipsec_if_input_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   if (last_t)
     {
       sa0 = pool_elt_at_index (im->sad, last_t->input_sa_index);
-      icv_len = em->esp_integ_algs[sa0->integ_alg].trunc_size;
+      icv_len = em->ipsec_proto_main_integ_algs[sa0->integ_alg].trunc_size;
 
       n_bytes -= n_packets * (sizeof (ip4_header_t) + sizeof (esp_header_t) +
 			      sizeof (esp_footer_t) + 16 /* aes-cbc IV */  +

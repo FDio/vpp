@@ -96,9 +96,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	sa.protocol = IPSEC_PROTOCOL_ESP;
       else if (unformat (line_input, "ah"))
 	{
-	  //sa.protocol = IPSEC_PROTOCOL_AH;
-	  error = clib_error_return (0, "unsupported security protocol 'AH'");
-	  goto done;
+	  sa.protocol = IPSEC_PROTOCOL_AH;
 	}
       else
 	if (unformat (line_input, "crypto-key %U", unformat_hex_string, &ck))
