@@ -606,6 +606,37 @@ autoreply define nat44_del_session {
   u32 vrf_id;
 };
 
+/** \brief Enable/disable forwarding for NAT44
+    Forward packets which don't match existing translation
+    or static mapping instead of dropping them.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - 0 for enable, 1 for disable
+*/
+autoreply define nat44_forwarding_enable_disable {
+  u32 client_index;
+  u32 context;
+  u8 enable;
+};
+
+/** \brief Check if forwarding is enabled or disabled
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_forwarding_is_enabled {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Response to check if forwarding is enabled or disabled
+    @param context - sender context, to match reply w/ request
+    @param enabled - 1 if enabled, 0 if disabled
+*/
+define nat44_forwarding_is_enabled_reply {
+  u32 context;
+  u8 enabled;
+};
+
 
 /*
  * Deterministic NAT (CGN) APIs

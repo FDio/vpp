@@ -1366,6 +1366,63 @@ vl_api_nat44_del_session_t_print (vl_api_nat44_del_session_t * mp,
   FINISH;
 }
 
+static void
+  vl_api_nat44_forwarding_enable_disable_t_handler
+  (vl_api_nat44_forwarding_enable_disable_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_forwarding_enable_disable_reply_t *rmp;
+  int rv = 0;
+
+  sm->forwarding_enabled = mp->enable != 0;
+
+  REPLY_MACRO (VL_API_NAT44_FORWARDING_ENABLE_DISABLE_REPLY);
+}
+
+static void *vl_api_nat44_forwarding_enable_disable_t_print
+  (vl_api_nat44_forwarding_enable_disable_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_forwarding_enable_disable ");
+  s = format (s, "enable %d", mp->enable != 0);
+
+  FINISH;
+}
+
+static void
+  vl_api_nat44_forwarding_is_enabled_t_handler
+  (vl_api_nat44_forwarding_is_enabled_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_forwarding_is_enabled_reply_t *rmp;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_NAT44_FORWARDING_IS_ENABLED_REPLY + sm->msg_id_base);
+  rmp->context = mp->context;
+
+  rmp->enabled = sm->forwarding_enabled;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void *vl_api_nat44_forwarding_is_enabled_t_print
+  (vl_api_nat44_forwarding_is_enabled_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_forwarding_is_enabled ");
+
+  FINISH;
+}
+
 /*******************************/
 /*** Deterministic NAT (CGN) ***/
 /*******************************/
@@ -2434,6 +2491,8 @@ _(NAT44_INTERFACE_OUTPUT_FEATURE_DUMP,                                  \
 _(NAT44_ADD_DEL_LB_STATIC_MAPPING, nat44_add_del_lb_static_mapping)     \
 _(NAT44_LB_STATIC_MAPPING_DUMP, nat44_lb_static_mapping_dump)           \
 _(NAT44_DEL_SESSION, nat44_del_session)                                 \
+_(NAT44_FORWARDING_ENABLE_DISABLE, nat44_forwarding_enable_disable)     \
+_(NAT44_FORWARDING_IS_ENABLED, nat44_forwarding_is_enabled)             \
 _(NAT_DET_ADD_DEL_MAP, nat_det_add_del_map)                             \
 _(NAT_DET_FORWARD, nat_det_forward)                                     \
 _(NAT_DET_REVERSE, nat_det_reverse)                                     \

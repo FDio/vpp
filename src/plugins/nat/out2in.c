@@ -320,16 +320,24 @@ u32 icmp_match_out2in_slow(snat_main_t *sm, vlib_node_runtime_t *node,
          destination address and port in packet */
       if (snat_static_mapping_match(sm, key0, &sm0, 1, &is_addr_only, 0))
         {
-          /* Don't NAT packet aimed at the intfc address */
-          if (PREDICT_FALSE(is_interface_addr(sm, node, sw_if_index0,
-                                              ip0->dst_address.as_u32)))
+          if (!sm->forwarding_enabled)
+            {
+              /* Don't NAT packet aimed at the intfc address */
+              if (PREDICT_FALSE(is_interface_addr(sm, node, sw_if_index0,
+                                                  ip0->dst_address.as_u32)))
+                {
+                  dont_translate = 1;
+                  goto out;
+                }
+              b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
+              next0 = SNAT_OUT2IN_NEXT_DROP;
+              goto out;
+            }
+          else
             {
               dont_translate = 1;
               goto out;
             }
-          b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
-          next0 = SNAT_OUT2IN_NEXT_DROP;
-          goto out;
         }
 
       if (PREDICT_FALSE(icmp0->type != ICMP4_echo_reply &&
@@ -1017,16 +1025,21 @@ snat_out2in_node_fn (vlib_main_t * vm,
                  destination address and port in packet */
               if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
                 {
-                  b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
-                  /*
-                   * Send DHCP packets to the ipv4 stack, or we won't
-                   * be able to use dhcp client on the outside interface
-                   */
-                  if (proto0 != SNAT_PROTOCOL_UDP
-                      || (udp0->dst_port
-                          != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
-                    next0 = SNAT_OUT2IN_NEXT_DROP;
-                  goto trace0;
+                  if (!sm->forwarding_enabled)
+                    {
+                      b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
+                      /*
+                       * Send DHCP packets to the ipv4 stack, or we won't
+                       * be able to use dhcp client on the outside interface
+                       */
+                      if (proto0 != SNAT_PROTOCOL_UDP
+                          || (udp0->dst_port
+                              != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
+                        next0 = SNAT_OUT2IN_NEXT_DROP;
+                      goto trace0;
+                    }
+                  else
+                    goto trace0;
                 }
 
               /* Create session initiated by host from external network */
@@ -1175,16 +1188,21 @@ snat_out2in_node_fn (vlib_main_t * vm,
                  destination address and port in packet */
               if (snat_static_mapping_match(sm, key1, &sm1, 1, 0, 0))
                 {
-                  b1->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
-                  /*
-                   * Send DHCP packets to the ipv4 stack, or we won't
-                   * be able to use dhcp client on the outside interface
-                   */
-                  if (proto1 != SNAT_PROTOCOL_UDP
-                      || (udp1->dst_port
-                          != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
-                    next1 = SNAT_OUT2IN_NEXT_DROP;
-                  goto trace1;
+                  if (!sm->forwarding_enabled)
+                    {
+                      b1->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
+                      /*
+                       * Send DHCP packets to the ipv4 stack, or we won't
+                       * be able to use dhcp client on the outside interface
+                       */
+                      if (proto1 != SNAT_PROTOCOL_UDP
+                          || (udp1->dst_port
+                              != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
+                        next1 = SNAT_OUT2IN_NEXT_DROP;
+                      goto trace1;
+                    }
+                  else
+                    goto trace1;
                 }
 
               /* Create session initiated by host from external network */
@@ -1369,17 +1387,21 @@ snat_out2in_node_fn (vlib_main_t * vm,
                  destination address and port in packet */
               if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
                 {
-                  b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
-                  /*
-                   * Send DHCP packets to the ipv4 stack, or we won't
-                   * be able to use dhcp client on the outside interface
-                   */
-                  if (proto0 != SNAT_PROTOCOL_UDP
-                      || (udp0->dst_port
-                          != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
-
-                    next0 = SNAT_OUT2IN_NEXT_DROP;
-                  goto trace00;
+                  if (!sm->forwarding_enabled)
+                    {
+                      b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
+                      /*
+                       * Send DHCP packets to the ipv4 stack, or we won't
+                       * be able to use dhcp client on the outside interface
+                       */
+                      if (proto0 != SNAT_PROTOCOL_UDP
+                          || (udp0->dst_port
+                              != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
+                        next0 = SNAT_OUT2IN_NEXT_DROP;
+                      goto trace00;
+                    }
+                  else
+                    goto trace00;
                 }
 
               /* Create session initiated by host from external network */
@@ -1605,17 +1627,21 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
                      destination address and port in packet */
                   if (snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
                     {
-                      b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
-                      /*
-                       * Send DHCP packets to the ipv4 stack, or we won't
-                       * be able to use dhcp client on the outside interface
-                       */
-                      if (proto0 != SNAT_PROTOCOL_UDP
-                          || (udp0->dst_port
-                              != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
-
-                        next0 = SNAT_OUT2IN_NEXT_DROP;
-                      goto trace0;
+                      if (!sm->forwarding_enabled)
+                        {
+                          b0->error = node->errors[SNAT_OUT2IN_ERROR_NO_TRANSLATION];
+                          /*
+                           * Send DHCP packets to the ipv4 stack, or we won't
+                           * be able to use dhcp client on the outside interface
+                           */
+                          if (proto0 != SNAT_PROTOCOL_UDP
+                              || (udp0->dst_port
+                                  != clib_host_to_net_u16(UDP_DST_PORT_dhcp_to_client)))
+                            next0 = SNAT_OUT2IN_NEXT_DROP;
+                          goto trace0;
+                        }
+                      else
+                        goto trace0;
                     }
 
                   /* Create session initiated by host from external network */

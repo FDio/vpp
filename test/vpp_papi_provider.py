@@ -1457,6 +1457,17 @@ class VppPapiProvider(object):
              'vrf_id': vrf_id,
              'is_in': is_in})
 
+    def nat44_forwarding_enable_disable(
+            self,
+            enable):
+        """Enable/disable forwarding for NAT44
+
+        :param enable: 1 for enable, 0 for disable
+        """
+        return self.api(
+            self.papi.nat44_forwarding_enable_disable,
+            {'enable': enable})
+
     def nat_set_reass(
             self,
             timeout=2,

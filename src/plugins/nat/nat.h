@@ -350,6 +350,9 @@ typedef struct snat_main_s {
   /* Deterministic NAT */
   snat_det_map_t * det_maps;
 
+  /* If forwarding is enabled */
+  u8 forwarding_enabled;
+
   /* Config parameters */
   u8 static_mapping_only;
   u8 static_mapping_connection_tracking;

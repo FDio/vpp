@@ -1642,6 +1642,7 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
   sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
+  sm->forwarding_enabled = 0;
 
   p = hash_get_mem (tm->thread_registrations_by_name, "workers");
   if (p)
@@ -4207,4 +4208,71 @@ VLIB_CLI_COMMAND (snat_det_close_session_in_command, static) = {
   .short_help = "nat44 deterministic close session in "
                 "<in_addr>:<in_port> <ext_addr>:<ext_port>",
   .function = snat_det_close_session_in_fn,
+};
+
+static clib_error_t *
+snat_forwarding_set_command_fn (vlib_main_t *vm,
+                                unformat_input_t * input,
+                                vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u8 forwarding_enable;
+  u8 forwarding_enable_set = 0;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+      return clib_error_return (0, "'enable' or 'disable' expected");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (!forwarding_enable_set && unformat (line_input, "enable"))
+        {
+          forwarding_enable = 1;
+          forwarding_enable_set = 1;
+        }
+      else if (!forwarding_enable_set && unformat (line_input, "disable"))
+        {
+          forwarding_enable = 0;
+          forwarding_enable_set = 1;
+        }
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+                                     format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  if (!forwarding_enable_set)
+    {
+      error = clib_error_return (0, "'enable' or 'disable' expected");
+      goto done;
+    }
+
+  sm->forwarding_enabled = forwarding_enable;
+
+done:
+  unformat_free(line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat44 forwarding}
+ * Enable or disable forwarding
+ * Forward packets which don't match existing translation
+ * or static mapping instead of dropping them.
+ * To enable forwarding, use:
+ *  vpp# nat44 forwarding enable
+ * To disable forwarding, use:
+ *  vpp# nat44 forwarding disable
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (snat_forwarding_set_command, static) = {
+  .path = "nat44 forwarding",
+  .short_help = "nat44 forwarding enable|disable",
+  .function = snat_forwarding_set_command_fn,
 };
