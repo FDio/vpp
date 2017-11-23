@@ -23,6 +23,7 @@
 #include <vnet/ipsec/ipsec.h>
 #include <vnet/ipsec/ikev2.h>
 #include <vnet/ipsec/esp.h>
+#include <vnet/ipsec/ah.h>
 
 ipsec_main_t ipsec_main;
 
@@ -567,8 +568,18 @@ ipsec_init (vlib_main_t * vm)
   ASSERT (node);
   im->esp_decrypt_node_index = node->index;
 
+  node = vlib_get_node_by_name (vm, (u8 *) "ah-encrypt");
+  ASSERT (node);
+  im->ah_encrypt_node_index = node->index;
+
+  node = vlib_get_node_by_name (vm, (u8 *) "ah-decrypt");
+  ASSERT (node);
+  im->ah_decrypt_node_index = node->index;
+
   im->esp_encrypt_next_index = IPSEC_OUTPUT_NEXT_ESP_ENCRYPT;
   im->esp_decrypt_next_index = IPSEC_INPUT_NEXT_ESP_DECRYPT;
+  im->ah_encrypt_next_index = IPSEC_OUTPUT_NEXT_AH_ENCRYPT;
+  im->ah_decrypt_next_index = IPSEC_INPUT_NEXT_AH_DECRYPT;
 
   im->cb.check_support_cb = ipsec_check_support;
 
@@ -578,7 +589,7 @@ ipsec_init (vlib_main_t * vm)
   if ((error = vlib_call_init_function (vm, ipsec_tunnel_if_init)))
     return error;
 
-  esp_init ();
+  ipsec_proto_init ();
 
   if ((error = ikev2_init (vm)))
     return error;
