@@ -363,7 +363,7 @@ dpdk_prefetch_buffer_by_index (vlib_main_t * vm, u32 bi)
   struct rte_mbuf *mb;
   b = vlib_get_buffer (vm, bi);
   mb = rte_mbuf_from_vlib_buffer (b);
-  CLIB_PREFETCH (mb, CLIB_CACHE_LINE_BYTES, STORE);
+  CLIB_PREFETCH (mb, 2 * CLIB_CACHE_LINE_BYTES, STORE);
   CLIB_PREFETCH (b, CLIB_CACHE_LINE_BYTES, LOAD);
 }
 
