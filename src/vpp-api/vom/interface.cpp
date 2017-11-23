@@ -24,7 +24,7 @@ namespace VOM {
 /**
  * A DB of all the interfaces, key on the name
  */
-singular_db<const std::string, interface> interface::m_db;
+singular_db<interface::key_t, interface> interface::m_db;
 
 /**
  * A DB of all the interfaces, key on VPP's handle
@@ -89,6 +89,15 @@ interface::interface(const interface& o)
   , m_l2_address(o.m_l2_address)
   , m_oper(o.m_oper)
 {
+}
+
+bool
+interface::operator==(const interface& i) const
+{
+  return ((key() == i.key()) &&
+          (m_l2_address.data() == i.m_l2_address.data()) &&
+          (m_state == i.m_state) && (m_rd == i.m_rd) && (m_type == i.m_type) &&
+          (m_oper == i.m_oper));
 }
 
 interface::event_listener::event_listener()
@@ -217,8 +226,8 @@ interface::to_string() const
 {
   std::ostringstream s;
   s << "interface:[" << m_name << " type:" << m_type.to_string()
-    << " hdl:" << m_hdl.to_string()
-    << " l2-address:" << m_l2_address.to_string();
+    << " hdl:" << m_hdl.to_string() << " l2-address:["
+    << m_l2_address.to_string() << "]";
 
   if (m_rd) {
     s << " rd:" << m_rd->to_string();
@@ -236,7 +245,7 @@ interface::name() const
   return (m_name);
 }
 
-const interface::key_type&
+const interface::key_t&
 interface::key() const
 {
   return (name());
@@ -377,7 +386,7 @@ interface::enable_stats(interface::stat_listener& el)
 std::shared_ptr<interface>
 interface::singular_i() const
 {
-  return (m_db.find_or_add(name(), *this));
+  return (m_db.find_or_add(key(), *this));
 }
 
 std::shared_ptr<interface>
@@ -387,9 +396,9 @@ interface::singular() const
 }
 
 std::shared_ptr<interface>
-interface::find(const std::string& name)
+interface::find(const key_t& k)
 {
-  return (m_db.find(name));
+  return (m_db.find(k));
 }
 
 std::shared_ptr<interface>
@@ -399,9 +408,9 @@ interface::find(const handle_t& handle)
 }
 
 void
-interface::add(const std::string& name, const HW::item<handle_t>& item)
+interface::add(const key_t& key, const HW::item<handle_t>& item)
 {
-  std::shared_ptr<interface> sp = find(name);
+  std::shared_ptr<interface> sp = find(key);
 
   if (sp && item) {
     m_hdl_db[item.data()] = sp;
@@ -424,9 +433,9 @@ void
 interface::event_handler::handle_populate(const client_db::key_t& key)
 {
   /*
- * dump VPP current states
- */
-  std::shared_ptr<interface_cmds::dump_cmd> cmd(new interface_cmds::dump_cmd());
+   * dump VPP current states
+   */
+  interface_cmds::dump_cmd* cmd = new interface_cmds::dump_cmd();
 
   HW::enqueue(cmd);
   HW::write();
@@ -438,15 +447,15 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
     if (itf && interface::type_t::LOCAL != itf->type()) {
       VOM_LOG(log_level_t::DEBUG) << "dump: " << itf->to_string();
       /*
- * Write each of the discovered interfaces into the OM,
- * but disable the HW Command q whilst we do, so that no
- * commands are sent to VPP
- */
+       * Write each of the discovered interfaces into the OM,
+       * but disable the HW Command q whilst we do, so that no
+       * commands are sent to VPP
+       */
       OM::commit(key, *itf);
 
       /**
- * Get the address configured on the interface
- */
+       * Get the address configured on the interface
+       */
       std::shared_ptr<l3_binding_cmds::dump_v4_cmd> dcmd =
         std::make_shared<l3_binding_cmds::dump_v4_cmd>(
           l3_binding_cmds::dump_v4_cmd(itf->handle()));
@@ -491,7 +500,9 @@ interface::event_handler::show(std::ostream& os)
 {
   m_db.dump(os);
 }
-}
+
+} // namespace VOM
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

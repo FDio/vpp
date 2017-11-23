@@ -32,6 +32,11 @@ namespace VOM {
 class l2_binding : public object_base
 {
 public:
+  /**
+   * Key type for an L2 binding in the singular DB
+   */
+  typedef interface::key_t key_t;
+
   struct l2_vtr_op_t : public enum_base<l2_vtr_op_t>
   {
     l2_vtr_op_t(const l2_vtr_op_t& l) = default;
@@ -67,6 +72,16 @@ public:
   ~l2_binding();
 
   /**
+   * Return the binding's key
+   */
+  const key_t& key() const;
+
+  /**
+   * Comparison operator - for UT
+   */
+  bool operator==(const l2_binding& l) const;
+
+  /**
    * Return the 'singular instance' of the L2 config that matches this
    * object
    */
@@ -86,6 +101,11 @@ public:
    * Set the VTR operation on the binding/interface
    */
   void set(const l2_vtr_op_t& op, uint16_t tag);
+
+  /**
+   * Static function to find the bridge_domain in the model
+   */
+  static std::shared_ptr<l2_binding> find(const key_t& key);
 
 private:
   /**
@@ -141,7 +161,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<const handle_t, l2_binding>;
+  friend class singular_db<key_t, l2_binding>;
 
   /**
    * Sweep/reap the object if still stale
@@ -186,7 +206,7 @@ private:
   /**
    * A map of all L2 interfaces key against the interface's handle_t
    */
-  static singular_db<const handle_t, l2_binding> m_db;
+  static singular_db<key_t, l2_binding> m_db;
 };
 };
 

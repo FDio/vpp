@@ -25,7 +25,10 @@ client_db::find(const client_db::key_t& k)
 void
 client_db::flush(const client_db::key_t& k)
 {
-  m_objs.erase(m_objs.find(k));
+  auto found = m_objs.find(k);
+
+  if (found != m_objs.end())
+    m_objs.erase(found);
 }
 
 void

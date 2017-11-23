@@ -16,9 +16,15 @@
 #ifndef __VOM_CONNECTION_H__
 #define __VOM_CONNECTION_H__
 
+#include <memory>
 #include <string>
 
-#include <vapi/vapi.hpp>
+/**
+ * Forward declarations
+ */
+namespace vapi {
+class Connection;
+};
 
 namespace VOM {
 /**
@@ -56,7 +62,7 @@ private:
   /**
    * The VAPI connection context
    */
-  vapi::Connection m_vapi_conn;
+  std::unique_ptr<vapi::Connection> m_vapi_conn;
 
   /**
    * The name of this application

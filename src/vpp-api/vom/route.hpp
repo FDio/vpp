@@ -106,9 +106,14 @@ public:
   path(const path& p);
 
   /**
-   * Convert the path into the VPP API representation
+   * Destructor
    */
-  void to_vpp(vapi_payload_ip_add_del_route& payload) const;
+  ~path();
+
+  /**
+   * comparison operator
+   */
+  bool operator==(const path& p) const;
 
   /**
    * Less than operator for set insertion
@@ -211,6 +216,16 @@ public:
   ~ip_route();
 
   /**
+   * Get the route's key
+   */
+  const key_t key() const;
+
+  /**
+   * Comparison operator
+   */
+  bool operator==(const ip_route& i) const;
+
+  /**
    * Return the matching 'singular instance'
    */
   std::shared_ptr<ip_route> singular() const;
@@ -244,6 +259,11 @@ public:
    * Convert to string for debugging
    */
   std::string to_string() const;
+
+  /**
+   * Return the matching 'singular instance'
+   */
+  static std::shared_ptr<ip_route> find(const key_t& k);
 
 private:
   /**

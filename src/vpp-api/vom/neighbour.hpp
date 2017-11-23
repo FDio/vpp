@@ -31,9 +31,7 @@ public:
    * The key for a bridge_domain ARP entry;
    *  the BD, IP address and MAC address
    */
-  typedef std::tuple<interface::key_type,
-                     mac_address_t,
-                     boost::asio::ip::address>
+  typedef std::tuple<interface::key_t, mac_address_t, boost::asio::ip::address>
     key_t;
 
   /**

@@ -103,7 +103,7 @@ public:
   /**
    * The key type for interface_spans
    */
-  typedef std::pair<interface::key_type, interface::key_type> key_type_t;
+  typedef std::pair<interface::key_t, interface::key_t> key_t;
 
   /**
    * Find a singular instance in the DB for the interface passed
@@ -165,7 +165,7 @@ private:
   /**
      e* It's the singular_db class that calls replay()
   */
-  friend class singular_db<key_type_t, interface_span>;
+  friend class singular_db<key_t, interface_span>;
 
   /**
    * Sweep/reap the object if still stale
@@ -202,14 +202,13 @@ private:
    * A map of all interface span keyed against the interface to be
    * mirrored.
  */
-  static singular_db<key_type_t, interface_span> m_db;
+  static singular_db<key_t, interface_span> m_db;
 };
 
 /**
  * Ostream output for the key
  */
-std::ostream& operator<<(std::ostream& os,
-                         const interface_span::key_type_t& key);
+std::ostream& operator<<(std::ostream& os, const interface_span::key_t& key);
 };
 
 /*

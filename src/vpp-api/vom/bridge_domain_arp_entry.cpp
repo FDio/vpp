@@ -25,22 +25,22 @@ bridge_domain_arp_entry::event_handler bridge_domain_arp_entry::m_evh;
 
 bridge_domain_arp_entry::bridge_domain_arp_entry(
   const bridge_domain& bd,
-  const mac_address_t& mac,
-  const boost::asio::ip::address& ip_addr)
+  const boost::asio::ip::address& ip_addr,
+  const mac_address_t& mac)
   : m_hw(false)
   , m_bd(bd.singular())
-  , m_mac(mac)
   , m_ip_addr(ip_addr)
+  , m_mac(mac)
 {
 }
 
 bridge_domain_arp_entry::bridge_domain_arp_entry(
-  const mac_address_t& mac,
-  const boost::asio::ip::address& ip_addr)
+  const boost::asio::ip::address& ip_addr,
+  const mac_address_t& mac)
   : m_hw(false)
   , m_bd(nullptr)
-  , m_mac(mac)
   , m_ip_addr(ip_addr)
+  , m_mac(mac)
 {
   /*
  * the route goes in the default table
@@ -54,8 +54,8 @@ bridge_domain_arp_entry::bridge_domain_arp_entry(
   const bridge_domain_arp_entry& bde)
   : m_hw(bde.m_hw)
   , m_bd(bde.m_bd)
-  , m_mac(bde.m_mac)
   , m_ip_addr(bde.m_ip_addr)
+  , m_mac(bde.m_mac)
 {
 }
 
@@ -64,7 +64,19 @@ bridge_domain_arp_entry::~bridge_domain_arp_entry()
   sweep();
 
   // not in the DB anymore.
-  m_db.release(std::make_tuple(m_bd->id(), m_mac, m_ip_addr), this);
+  m_db.release(key(), this);
+}
+
+const bridge_domain_arp_entry::key_t
+bridge_domain_arp_entry::key() const
+{
+  return (std::make_pair(m_bd->key(), m_ip_addr));
+}
+
+bool
+bridge_domain_arp_entry::operator==(const bridge_domain_arp_entry& bdae) const
+{
+  return ((key() == bdae.key()) && (m_mac == bdae.m_mac));
 }
 
 void
@@ -111,8 +123,13 @@ bridge_domain_arp_entry::update(const bridge_domain_arp_entry& r)
 std::shared_ptr<bridge_domain_arp_entry>
 bridge_domain_arp_entry::find_or_add(const bridge_domain_arp_entry& temp)
 {
-  return (m_db.find_or_add(
-    std::make_tuple(temp.m_bd->id(), temp.m_mac, temp.m_ip_addr), temp));
+  return (m_db.find_or_add(temp.key(), temp));
+}
+
+std::shared_ptr<bridge_domain_arp_entry>
+bridge_domain_arp_entry::find(const key_t& k)
+{
+  return (m_db.find(k));
 }
 
 std::shared_ptr<bridge_domain_arp_entry>
@@ -125,15 +142,6 @@ void
 bridge_domain_arp_entry::dump(std::ostream& os)
 {
   m_db.dump(os);
-}
-
-std::ostream&
-operator<<(std::ostream& os, const bridge_domain_arp_entry::key_t& key)
-{
-  os << "[" << std::get<0>(key) << ", " << std::get<1>(key) << ", "
-     << std::get<2>(key) << "]";
-
-  return (os);
 }
 
 bridge_domain_arp_entry::event_handler::event_handler()

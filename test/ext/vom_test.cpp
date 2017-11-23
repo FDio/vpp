@@ -808,7 +808,7 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     HW::item<bool> hw_bea1(true, rc_t::OK);
     boost::asio::ip::address ip1 = boost::asio::ip::address::from_string("10.10.10.10");
 
-    bridge_domain_arp_entry *bea1 = new bridge_domain_arp_entry(bd1, mac1, ip1);
+    bridge_domain_arp_entry *bea1 = new bridge_domain_arp_entry(bd1, ip1, mac1);
     ADD_EXPECT(bridge_domain_arp_entry_cmds::create_cmd(hw_be1, bd1.id(), mac1, ip1));
     TRY_CHECK_RC(OM::write(dante, *bea1));
 

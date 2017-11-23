@@ -60,8 +60,8 @@ inspect::handle_input(const std::string& message, std::ostream& output)
       OM::dump(results[1], output);
     } else if (message.find("all") != std::string::npos) {
       /*
- * get the unique set of handlers, then invoke each
- */
+       * get the unique set of handlers, then invoke each
+       */
       std::set<command_handler*> hdlrs;
       for (auto h : *m_cmd_handlers) {
         hdlrs.insert(h.second);

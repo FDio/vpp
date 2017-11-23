@@ -31,6 +31,11 @@ class l3_binding : public object_base
 {
 public:
   /**
+   * The key type for l3_bindings
+   */
+  typedef std::pair<interface::key_t, route::prefix_t> key_t;
+
+  /**
    * Construct a new object matching the desried state
    */
   l3_binding(const interface& itf, const route::prefix_t& pfx);
@@ -46,14 +51,19 @@ public:
   ~l3_binding();
 
   /**
-   * The key type for l3_bindings
+   * Comparison operator
    */
-  typedef std::pair<interface::key_type, route::prefix_t> key_type_t;
+  bool operator==(const l3_binding& l) const;
+
+  /**
+   * Get the object's key
+   */
+  const key_t key() const;
 
   /**
    * The iterator type
    */
-  typedef singular_db<key_type_t, l3_binding>::const_iterator const_iterator_t;
+  typedef singular_db<key_t, l3_binding>::const_iterator const_iterator_t;
 
   static const_iterator_t cbegin();
   static const_iterator_t cend();
@@ -85,9 +95,14 @@ public:
   static void dump(std::ostream& os);
 
   /**
-   * Find an singular instance in the DB for the interface passed
+   * Find all bindings in the DB for the interface passed
    */
   static std::deque<std::shared_ptr<l3_binding>> find(const interface& i);
+
+  /**
+   * Find a binding from its key
+   */
+  static std::shared_ptr<l3_binding> find(const key_t& k);
 
 private:
   /**
@@ -143,7 +158,7 @@ private:
   /**
      e* It's the singular_db class that calls replay()
   */
-  friend class singular_db<key_type_t, l3_binding>;
+  friend class singular_db<key_t, l3_binding>;
 
   /**
    * Sweep/reap the object if still stale
@@ -179,13 +194,13 @@ private:
    * A map of all L3 configs keyed against a combination of the interface
    * and subnet's keys.
    */
-  static singular_db<key_type_t, l3_binding> m_db;
+  static singular_db<key_t, l3_binding> m_db;
 };
 
 /**
  * Ostream output for the key
  */
-std::ostream& operator<<(std::ostream& os, const l3_binding::key_type_t& key);
+std::ostream& operator<<(std::ostream& os, const l3_binding::key_t& key);
 };
 
 /*

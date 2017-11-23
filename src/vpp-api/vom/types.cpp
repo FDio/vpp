@@ -131,7 +131,6 @@ mac_address_t::to_string() const
 
   s.fill('0');
   s << std::hex;
-  s << "mac:[";
   for (auto byte : bytes) {
     if (first)
       first = false;
@@ -139,7 +138,6 @@ mac_address_t::to_string() const
       s << ":";
     s << std::setw(2) << static_cast<unsigned int>(byte);
   }
-  s << "]";
 
   return (s.str());
 }
