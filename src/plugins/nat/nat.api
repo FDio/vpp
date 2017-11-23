@@ -1161,6 +1161,35 @@ autoreply define nat44_del_session {
   u32 vrf_id;
 };
 
+/** \brief Set ACL for NAT44
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param acl_index - ACL index, ~0 to unset ACL
+*/
+autoreply define nat44_set_acl {
+  u32 client_index;
+  u32 context;
+  u32 acl_index;
+};
+
+/** \brief Get ACL of NAT44
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_get_acl {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get ACL of NAT44 response
+    @param context - sender context, to match reply w/ request
+    @param acl_index - ACL index if set, ~0 otherwise
+*/
+define nat44_get_acl_reply {
+  u32 context;
+  u32 acl_index;
+};
+
 
 /*
  * Deterministic NAT (CGN) APIs

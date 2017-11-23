@@ -25,8 +25,10 @@
 #include <nat/nat64.h>
 #include <nat/dslite.h>
 #include <nat/nat_reass.h>
+#include <acl/exports.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vlib/unix/plugin.h>
 
 #include <vpp/app/version.h>
 
@@ -1401,6 +1403,11 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   u32 i;
   ip4_add_del_interface_address_callback_t cb4;
 
+  if ((error = vlib_call_plugin_init_function (vm, "acl_plugin.so", acl_init)))
+     return error;
+  if ((error = acl_plugin_exports_init ()))
+     return error;
+
   sm->vlib_main = vm;
   sm->vnet_main = vnet_get_main();
   sm->ip4_main = im;
@@ -1419,6 +1426,7 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   sm->tcp_transitory_timeout = SNAT_TCP_TRANSITORY_TIMEOUT;
   sm->icmp_timeout = SNAT_ICMP_TIMEOUT;
   sm->alloc_addr_and_port = nat_alloc_addr_and_port_default;
+  sm->acl_index = ~0;
 
   p = hash_get_mem (tm->thread_registrations_by_name, "workers");
   if (p)
@@ -3726,4 +3734,73 @@ VLIB_CLI_COMMAND (snat_det_close_session_in_command, static) = {
   .short_help = "nat44 deterministic close session in "
                 "<in_addr>:<in_port> <ext_addr>:<ext_port>",
   .function = snat_det_close_session_in_fn,
+};
+
+static clib_error_t *
+snat_acl_set_command_fn (vlib_main_t *vm,
+                             unformat_input_t * input,
+                             vlib_cli_command_t * cmd)
+{
+  snat_main_t *sm = &snat_main;
+  //acl_main_t *am = acl_plugin_get_acl_main();
+  unformat_input_t _line_input, *line_input = &_line_input;
+  u32 acl_index;
+  u8 acl_index_set = 0;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+      return clib_error_return (0, "ACL index or 'del' expected");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (!acl_index_set && unformat (line_input, "%d", &acl_index))
+          acl_index_set = 1;
+      else if (!acl_index_set && unformat (line_input, "del"))
+        {
+          acl_index = ~0;
+          acl_index_set = 1;
+        }
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+                                     format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  if (!acl_index_set)
+    {
+      error = clib_error_return (0, "ACL index or 'del' expected");
+      goto done;
+    }
+
+  if (acl_index != ~0 && !acl_plugin_acl_exists(acl_index))
+    {
+      error = clib_error_return (0, "Bad ACL index");
+      goto done;
+    }
+
+  sm->acl_index = acl_index;
+
+done:
+  unformat_free(line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat44 set acl}
+ * Set or unset ACL table
+ * To set acl table with index 7, use:
+ *  vpp# nat44 set acl 7
+ * To unset acl table, use:
+ *  vpp# nat44 set acl del
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (snat_acl_set_command, static) = {
+  .path = "nat44 set acl",
+  .short_help = "nat44 set acl <acl-index>|del",
+  .function = snat_acl_set_command_fn,
 };
