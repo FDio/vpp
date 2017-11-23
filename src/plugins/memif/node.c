@@ -505,17 +505,17 @@ VLIB_REGISTER_NODE (memif_input_node) = {
   .error_strings = memif_input_error_strings,
 };
 
-vlib_node_function_t __clib_weak memif_input_avx512;
-vlib_node_function_t __clib_weak memif_input_avx2;
+vlib_node_function_t __clib_weak memif_input_fn_avx512;
+vlib_node_function_t __clib_weak memif_input_fn_avx2;
 
 #if __x86_64__
 static void __clib_constructor
 memif_input_multiarch_select (void)
 {
-  if (memif_input_avx512 && clib_cpu_supports_avx512f ())
-    memif_input_node.function = memif_input_avx512;
-  else if (memif_input_avx2 && clib_cpu_supports_avx2 ())
-    memif_input_node.function = memif_input_avx2;
+  if (memif_input_fn_avx512 && clib_cpu_supports_avx512f ())
+    memif_input_node.function = memif_input_fn_avx512;
+  else if (memif_input_fn_avx2 && clib_cpu_supports_avx2 ())
+    memif_input_node.function = memif_input_fn_avx2;
 }
 #endif
 #endif
