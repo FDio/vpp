@@ -1136,7 +1136,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 		" not work (no-rule)");
 
   /*
-   * Test tags. Add/del rule with tag
+   * Test tags. Add/overwrite/del rule with tag
    */
   args.table_args.is_add = 1;
   args.table_args.lcl_port = 1234;
@@ -1164,9 +1164,15 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   SESSION_TEST ((tc->c_index == listener->connection_index),
 		"lookup 1.2.3.4/32 1234 5.6.7.8/16 4321 should work");
 
-  args.table_args.is_add = 0;
-  args.table_args.lcl_port += 1;
+  vec_free (args.table_args.tag);
+  args.table_args.lcl_port = 1234;
+  args.table_args.lcl.fp_addr.ip4 = lcl_ip;
+  args.table_args.lcl.fp_len = 16;
+  args.table_args.tag = format (0, "test_rule_overwrite");
   error = vnet_session_rule_add_del (&args);
+  SESSION_TEST ((error == 0),
+		"Overwrite 1.2.3.4/16 1234 5.6.7.8/16 4321 deny tag test_rule"
+		" should work");
   if (verbose)
     {
       session_lookup_dump_rules_table (0, FIB_PROTOCOL_IP4,
@@ -1174,8 +1180,19 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
       session_lookup_dump_local_rules_table (local_ns_index, FIB_PROTOCOL_IP4,
 					     TRANSPORT_PROTO_TCP);
     }
+
+  args.table_args.is_add = 0;
+  args.table_args.lcl_port += 1;
+  error = vnet_session_rule_add_del (&args);
   SESSION_TEST ((error == 0), "Del 1.2.3.4/32 1234 5.6.7.8/32 4321 deny "
-		"tag test_rule");
+		"tag %v", args.table_args.tag);
+  if (verbose)
+    {
+      session_lookup_dump_rules_table (0, FIB_PROTOCOL_IP4,
+				       TRANSPORT_PROTO_TCP);
+      session_lookup_dump_local_rules_table (local_ns_index, FIB_PROTOCOL_IP4,
+					     TRANSPORT_PROTO_TCP);
+    }
   tc = session_lookup_connection_wt4 (0, &lcl_pref.fp_addr.ip4,
 				      &rmt_pref.fp_addr.ip4, lcl_port,
 				      rmt_port, TRANSPORT_PROTO_TCP, 0,
