@@ -339,6 +339,9 @@ typedef struct snat_main_s {
   /* Deterministic NAT */
   snat_det_map_t * det_maps;
 
+  /* If ACL is enabled */
+  u8 acl_enabled;
+
   /* Config parameters */
   u8 static_mapping_only;
   u8 static_mapping_connection_tracking;

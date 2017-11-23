@@ -242,33 +242,44 @@ class MethodHolder(VppTestCase):
 
         return pkts
 
-    def create_stream_out(self, out_if, dst_ip=None, ttl=64):
+    def create_stream_out(self, out_if, dst_ip=None, ttl=64,
+                          use_inside_ports=False):
         """
         Create packet stream for outside network
 
         :param out_if: Outside interface
         :param dst_ip: Destination IP address (Default use global NAT address)
         :param ttl: TTL of generated packets
+        :param use_inside_ports: Use inside NAT ports as destination ports
+               instead of outside ports
         """
         if dst_ip is None:
             dst_ip = self.nat_addr
+        if not use_inside_ports:
+            tcp_port = self.tcp_port_out
+            udp_port = self.udp_port_out
+            icmp_id = self.icmp_id_out
+        else:
+            tcp_port = self.tcp_port_in
+            udp_port = self.udp_port_in
+            icmp_id = self.icmp_id_in
         pkts = []
         # TCP
         p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
              IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
-             TCP(dport=self.tcp_port_out, sport=20))
+             TCP(dport=tcp_port, sport=20))
         pkts.append(p)
 
         # UDP
         p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
              IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
-             UDP(dport=self.udp_port_out, sport=20))
+             UDP(dport=udp_port, sport=20))
         pkts.append(p)
 
         # ICMP
         p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
              IP(src=out_if.remote_ip4, dst=dst_ip, ttl=ttl) /
-             ICMP(id=self.icmp_id_out, type='echo-reply'))
+             ICMP(id=icmp_id, type='echo-reply'))
         pkts.append(p)
 
         return pkts
@@ -639,12 +650,12 @@ class MethodHolder(VppTestCase):
         self.assertEqual(struct.pack("!I", 0), record[283])
 
 
-class TestNAT44(MethodHolder):
-    """ NAT44 Test Cases """
+class TestNAT44BaseClass(MethodHolder):
+    """ NAT44 Test Cases Base Class"""
 
     @classmethod
     def setUpClass(cls):
-        super(TestNAT44, cls).setUpClass()
+        super(TestNAT44BaseClass, cls).setUpClass()
 
         try:
             cls.tcp_port_in = 6303
@@ -654,6 +665,7 @@ class TestNAT44(MethodHolder):
             cls.icmp_id_in = 6305
             cls.icmp_id_out = 6305
             cls.nat_addr = '10.0.0.3'
+            cls.nat_addr_n = socket.inet_pton(socket.AF_INET, cls.nat_addr)
             cls.ipfix_src_port = 4739
             cls.ipfix_domain_id = 1
 
@@ -705,7 +717,7 @@ class TestNAT44(MethodHolder):
             cls.pg9.resolve_arp()
 
         except Exception:
-            super(TestNAT44, cls).tearDownClass()
+            super(TestNAT44BaseClass, cls).tearDownClass()
             raise
 
     def clear_nat44(self):
@@ -845,6 +857,18 @@ class TestNAT44(MethodHolder):
         nat_addr = socket.inet_pton(socket.AF_INET, ip)
         self.vapi.nat44_add_del_address_range(nat_addr, nat_addr, is_add,
                                               vrf_id=vrf_id)
+
+    def tearDown(self):
+        super(TestNAT44BaseClass, self).tearDown()
+        if not self.vpp_dead:
+            self.logger.info(self.vapi.cli("show nat44 verbose"))
+            self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
+            self.vapi.cli("nat44 addr-port-assignment-alg default")
+            self.clear_nat44()
+
+
+class TestNAT44(TestNAT44BaseClass):
+    """ NAT44 Test Cases """
 
     def test_dynamic(self):
         """ NAT44 dynamic translation test """
@@ -2857,13 +2881,75 @@ class TestNAT44(MethodHolder):
             self.logger.error(ppp("Unexpected or invalid packet:", p))
             raise
 
-    def tearDown(self):
-        super(TestNAT44, self).tearDown()
-        if not self.vpp_dead:
-            self.logger.info(self.vapi.cli("show nat44 verbose"))
-            self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
-            self.vapi.cli("nat addr-port-assignment-alg default")
-            self.clear_nat44()
+
+class TestNAT44StaticMappingOnlyConnectionTracking(TestNAT44BaseClass):
+    """ NAT44 Test Cases for static mapping only and connection tracking """
+
+    @classmethod
+    def setUpConstants(cls):
+        super(TestNAT44StaticMappingOnlyConnectionTracking, cls).setUpConstants()
+        cls.vpp_cmdline.extend(["nat", "{", "static mapping only connection tracking", "}"])
+
+    def test_acl(self):
+        """ NAT44 ACL test """
+
+        # self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+        self.vapi.nat44_acl_enable_disable(1)
+
+        real_ip = self.pg0.remote_ip4n
+        alias_ip = self.nat_addr_n
+        self.vapi.nat44_add_del_static_mapping(local_ip=real_ip,
+                                               external_ip=alias_ip)
+
+        try:
+            # in2out - ACL match
+
+            pkts = self.create_stream_out(self.pg1)
+            self.pg1.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg0.get_capture(len(pkts))
+            self.verify_capture_in(capture, self.pg0)
+
+            pkts = self.create_stream_in(self.pg0, self.pg1)
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg1.get_capture(len(pkts))
+            self.verify_capture_out(capture, same_port=True)
+
+            # in2out - no ACL match
+
+            host0 = self.pg0.remote_hosts[0]
+            self.pg0.remote_hosts[0] = self.pg0.remote_hosts[1]
+            try:
+                pkts = self.create_stream_out(self.pg1,
+                                              dst_ip=self.pg0.remote_ip4,
+                                              use_inside_ports=True)
+                self.pg1.add_stream(pkts)
+                self.pg_enable_capture(self.pg_interfaces)
+                self.pg_start()
+                capture = self.pg0.get_capture(len(pkts))
+                self.verify_capture_in(capture, self.pg0)
+
+                pkts = self.create_stream_in(self.pg0, self.pg1)
+                self.pg0.add_stream(pkts)
+                self.pg_enable_capture(self.pg_interfaces)
+                self.pg_start()
+                capture = self.pg1.get_capture(len(pkts))
+                self.verify_capture_out(capture, nat_ip=self.pg0.remote_ip4,
+                                        same_port=True)
+            finally:
+                self.pg0.remote_hosts[0] = host0
+
+        finally:
+            self.vapi.nat44_acl_enable_disable(0)
+            self.vapi.nat44_add_del_static_mapping(local_ip=real_ip,
+                                                   external_ip=alias_ip,
+                                                   is_add=0)
 
 
 class TestDeterministicNAT(MethodHolder):
