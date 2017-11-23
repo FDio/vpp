@@ -26,7 +26,6 @@
 #include "vom/ra_prefix.hpp"
 #include "vom/rpc_cmd.hpp"
 #include "vom/singular_db.hpp"
-#include "vom/sub_interface.hpp"
 
 namespace VOM {
 /**
@@ -96,7 +95,7 @@ public:
   /**
    * The key type for interface ip6 nd
    */
-  typedef interface::key_type key_t;
+  typedef interface::key_t key_t;
 
   /**
    * Find an singular instance in the DB for the interface passed

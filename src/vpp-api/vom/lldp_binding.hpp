@@ -31,6 +31,11 @@ class lldp_binding : public object_base
 {
 public:
   /**
+   * Typedef for the key of a LLDP binding
+   */
+  typedef interface::key_t key_t;
+
+  /**
    * Construct a new object matching the desried state
    */
   lldp_binding(const interface& itf, const std::string& hostname);
@@ -39,10 +44,21 @@ public:
    * Copy Constructor
    */
   lldp_binding(const lldp_binding& o);
+
   /**
    * Destructor
    */
   ~lldp_binding();
+
+  /**
+   * Comparison operator
+   */
+  bool operator==(const lldp_binding& b) const;
+
+  /**
+   * Return this object's key
+   */
+  const key_t& key() const;
 
   /**
    * Return the 'singular' of the LLDP binding that matches this object
@@ -58,6 +74,11 @@ public:
    * Dump all LLDP bindings into the stream provided
    */
   static void dump(std::ostream& os);
+
+  /**
+   * Find or add LLDP binding based on its key
+   */
+  static std::shared_ptr<lldp_binding> find(const key_t& k);
 
 private:
   /**
@@ -113,7 +134,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<interface::key_type, lldp_binding>;
+  friend class singular_db<key_t, lldp_binding>;
 
   /**
    * Sweep/reap the object if still stale
@@ -146,7 +167,7 @@ private:
   /**
    * A map of all Lldp bindings keyed against the interface.
    */
-  static singular_db<interface::key_type, lldp_binding> m_db;
+  static singular_db<key_t, lldp_binding> m_db;
 };
 };
 

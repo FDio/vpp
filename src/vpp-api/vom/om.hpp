@@ -16,6 +16,7 @@
 #ifndef __VOM_OM_H__
 #define __VOM_OM_H__
 
+#include <algorithm>
 #include <memory>
 #include <set>
 

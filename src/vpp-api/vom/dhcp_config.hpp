@@ -34,6 +34,11 @@ class dhcp_config : public object_base
 {
 public:
   /**
+   * typedef for the DHCP config key type
+   */
+  typedef interface::key_t key_t;
+
+  /**
    * Construct a new object matching the desried state
    */
   dhcp_config(const interface& itf, const std::string& hostname);
@@ -56,6 +61,16 @@ public:
   ~dhcp_config();
 
   /**
+   * Comparison operator - for UT
+   */
+  bool operator==(const dhcp_config& d) const;
+
+  /**
+   * Return the object's key
+   */
+  const key_t& key() const;
+
+  /**
    * Return the 'singular' of the DHCP config that matches this object
    */
   std::shared_ptr<dhcp_config> singular() const;
@@ -71,8 +86,13 @@ public:
   static void dump(std::ostream& os);
 
   /**
-   * A class that listens to DHCP Events
+   * Find a DHCP config from its key
    */
+  static std::shared_ptr<dhcp_config> find(const key_t& k);
+
+  /**
+ * A class that listens to DHCP Events
+ */
   class event_listener
   {
   public:
@@ -153,7 +173,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<interface::key_type, dhcp_config>;
+  friend class singular_db<key_t, dhcp_config>;
 
   /**
    * Sweep/reap the object if still stale
@@ -191,7 +211,7 @@ private:
   /**
    * A map of all Dhcp configs keyed against the interface.
    */
-  static singular_db<interface::key_type, dhcp_config> m_db;
+  static singular_db<key_t, dhcp_config> m_db;
 };
 };
 

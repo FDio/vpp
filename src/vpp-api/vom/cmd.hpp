@@ -20,8 +20,6 @@
 
 #include "vom/types.hpp"
 
-#include <vapi/vapi.hpp>
-
 namespace VOM {
 /**
  * Forward declaration of the connection class

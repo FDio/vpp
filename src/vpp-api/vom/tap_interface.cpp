@@ -99,8 +99,8 @@ void
 tap_interface::event_handler::handle_populate(const client_db::key_t& key)
 {
   /*
- * dump VPP current states
- */
+   * dump VPP current states
+   */
   std::shared_ptr<tap_interface_cmds::dump_cmd> cmd(
     new tap_interface_cmds::dump_cmd());
 
@@ -118,10 +118,10 @@ tap_interface::event_handler::handle_populate(const client_db::key_t& key)
     VOM_LOG(log_level_t::DEBUG) << "tap-dump: " << itf.to_string();
 
     /*
- * Write each of the discovered interfaces into the OM,
- * but disable the HW Command q whilst we do, so that no
- * commands are sent to VPP
- */
+     * Write each of the discovered interfaces into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
     OM::commit(key, itf);
   }
 }
@@ -147,9 +147,10 @@ tap_interface::event_handler::order() const
 void
 tap_interface::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  // dumped by the interface handler
 }
-}
+
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

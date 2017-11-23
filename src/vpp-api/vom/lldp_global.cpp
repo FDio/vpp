@@ -48,6 +48,19 @@ lldp_global::~lldp_global()
   m_db.release(m_system_name, this);
 }
 
+const lldp_global::key_t&
+lldp_global::key() const
+{
+  return (m_system_name);
+}
+
+bool
+lldp_global::operator==(const lldp_global& l) const
+{
+  return ((key() == l.key()) && (m_tx_hold == l.m_tx_hold) &&
+          (m_tx_interval == l.m_tx_interval));
+}
+
 void
 lldp_global::sweep()
 {
@@ -92,7 +105,13 @@ lldp_global::update(const lldp_global& desired)
 std::shared_ptr<lldp_global>
 lldp_global::find_or_add(const lldp_global& temp)
 {
-  return (m_db.find_or_add(temp.m_system_name, temp));
+  return (m_db.find_or_add(temp.key(), temp));
+}
+
+std::shared_ptr<lldp_global>
+lldp_global::find(const key_t& k)
+{
+  return (m_db.find(k));
 }
 
 std::shared_ptr<lldp_global>

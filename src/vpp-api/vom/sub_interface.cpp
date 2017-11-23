@@ -56,6 +56,13 @@ sub_interface::sub_interface(const sub_interface& o)
 {
 }
 
+bool
+sub_interface::operator==(const sub_interface& s) const
+{
+  return (interface::operator==(s) && (m_parent->key() == s.m_parent->key()) &&
+          (m_vlan == s.m_vlan));
+}
+
 std::string
 sub_interface::mk_name(const interface& parent, vlan_id_t vlan)
 {
@@ -88,9 +95,16 @@ sub_interface::singular() const
 std::shared_ptr<interface>
 sub_interface::singular_i() const
 {
-  return m_db.find_or_add(name(), *this);
+  return m_db.find_or_add(key(), *this);
 }
+
+std::shared_ptr<sub_interface>
+sub_interface::find(const key_t& k)
+{
+  return std::dynamic_pointer_cast<sub_interface>(m_db.find(k));
 }
+
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

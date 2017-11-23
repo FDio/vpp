@@ -44,9 +44,19 @@ public:
   sub_interface(const sub_interface& o);
 
   /**
+   * comparison operator - for UT
+   */
+  bool operator==(const sub_interface& s) const;
+
+  /**
    * Return the matching 'singular instance' of the sub-interface
    */
   std::shared_ptr<sub_interface> singular() const;
+
+  /**
+   * Find a subinterface from its key
+   */
+  static std::shared_ptr<sub_interface> find(const key_t& k);
 
 private:
   /**

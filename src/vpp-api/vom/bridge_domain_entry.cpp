@@ -55,12 +55,24 @@ bridge_domain_entry::bridge_domain_entry(const bridge_domain_entry& bde)
 {
 }
 
+const bridge_domain_entry::key_t
+bridge_domain_entry::key() const
+{
+  return (std::make_pair(m_bd->key(), m_mac));
+}
+
+bool
+bridge_domain_entry::operator==(const bridge_domain_entry& bde) const
+{
+  return ((key() == bde.key()) && (m_tx_itf == bde.m_tx_itf));
+}
+
 bridge_domain_entry::~bridge_domain_entry()
 {
   sweep();
 
   // not in the DB anymore.
-  m_db.release(std::make_pair(m_bd->id(), m_mac), this);
+  m_db.release(key(), this);
 }
 
 void
@@ -106,7 +118,13 @@ bridge_domain_entry::update(const bridge_domain_entry& r)
 std::shared_ptr<bridge_domain_entry>
 bridge_domain_entry::find_or_add(const bridge_domain_entry& temp)
 {
-  return (m_db.find_or_add(std::make_pair(temp.m_bd->id(), temp.m_mac), temp));
+  return (m_db.find_or_add(temp.key(), temp));
+}
+
+std::shared_ptr<bridge_domain_entry>
+bridge_domain_entry::find(const key_t& k)
+{
+  return (m_db.find(k));
 }
 
 std::shared_ptr<bridge_domain_entry>

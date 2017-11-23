@@ -43,6 +43,12 @@ route_domain::route_domain(const route_domain& o)
 {
 }
 
+bool
+route_domain::operator==(const route_domain& r) const
+{
+  return (m_table_id == r.m_table_id);
+}
+
 route::table_id_t
 route_domain::table_id() const
 {

@@ -21,7 +21,7 @@ namespace VOM {
  */
 const interface::type_t interface::type_t::UNKNOWN(0, "unknown");
 const interface::type_t interface::type_t::BVI(1, "BVI");
-const interface::type_t interface::type_t::ETHERNET(2, "Ehternet");
+const interface::type_t interface::type_t::ETHERNET(2, "Ethernet");
 const interface::type_t interface::type_t::VXLAN(3, "VXLAN");
 const interface::type_t interface::type_t::AFPACKET(4, "AFPACKET");
 const interface::type_t interface::type_t::LOOPBACK(5, "LOOPBACK");

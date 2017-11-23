@@ -143,7 +143,7 @@ private:
   /**
    * the map of objects against their key
    */
-  std::map<KEY, std::weak_ptr<OBJ>> m_map;
+  std::map<const KEY, std::weak_ptr<OBJ>> m_map;
 };
 };
 

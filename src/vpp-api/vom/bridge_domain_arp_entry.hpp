@@ -32,20 +32,20 @@ public:
    * The key for a bridge_domain ARP entry;
    *  the BD, IP address and MAC address
    */
-  typedef std::tuple<uint32_t, mac_address_t, boost::asio::ip::address> key_t;
+  typedef std::pair<bridge_domain::key_t, boost::asio::ip::address> key_t;
 
   /**
-   * Construct a bridge_domain in the given bridge domain
+   * Construct a bridge domain ARP Entry in the given bridge domain
    */
   bridge_domain_arp_entry(const bridge_domain& bd,
-                          const mac_address_t& mac,
-                          const boost::asio::ip::address& ip_addr);
+                          const boost::asio::ip::address& ip_addr,
+                          const mac_address_t& mac);
 
   /**
-   * Construct a bridge_domain in the default table
+   * Construct a bridge domain ARP entry in the default table
    */
-  bridge_domain_arp_entry(const mac_address_t& mac,
-                          const boost::asio::ip::address& ip_addr);
+  bridge_domain_arp_entry(const boost::asio::ip::address& ip_addr,
+                          const mac_address_t& mac);
 
   /**
    * Copy Construct
@@ -58,6 +58,16 @@ public:
   ~bridge_domain_arp_entry();
 
   /**
+   * Return the object's key
+   */
+  const key_t key() const;
+
+  /**
+   * comparison operator
+   */
+  bool operator==(const bridge_domain_arp_entry& bdae) const;
+
+  /**
    * Return the matching 'singular instance'
    */
   std::shared_ptr<bridge_domain_arp_entry> singular() const;
@@ -65,8 +75,7 @@ public:
   /**
    * Find the instnace of the bridge_domain domain in the OM
    */
-  static std::shared_ptr<bridge_domain_arp_entry> find(
-    const bridge_domain_arp_entry& temp);
+  static std::shared_ptr<bridge_domain_arp_entry> find(const key_t& k);
 
   /**
    * Dump all bridge_domain-doamin into the stream provided
@@ -156,14 +165,14 @@ private:
   std::shared_ptr<bridge_domain> m_bd;
 
   /**
-   * The mac to match
-   */
-  mac_address_t m_mac;
-
-  /**
    * The IP address
    */
   boost::asio::ip::address m_ip_addr;
+
+  /**
+   * The mac to return
+   */
+  mac_address_t m_mac;
 
   /**
    * A map of all bridge_domains
@@ -173,7 +182,7 @@ private:
 
 std::ostream& operator<<(std::ostream& os,
                          const bridge_domain_arp_entry::key_t& key);
-};
+}; // namespace
 
 /*
  * fd.io coding-style-patch-verification: ON

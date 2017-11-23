@@ -20,7 +20,7 @@ namespace VOM {
 /**
  * A DB of all LLDP configs
  */
-singular_db<interface::key_type, lldp_binding> lldp_binding::m_db;
+singular_db<interface::key_t, lldp_binding> lldp_binding::m_db;
 
 lldp_binding::event_handler lldp_binding::m_evh;
 
@@ -44,6 +44,18 @@ lldp_binding::~lldp_binding()
 
   // not in the DB anymore.
   m_db.release(m_itf->key(), this);
+}
+
+bool
+lldp_binding::operator==(const lldp_binding& l) const
+{
+  return ((key() == l.key()) && (m_port_desc == l.m_port_desc));
+}
+
+const lldp_binding::key_t&
+lldp_binding::key() const
+{
+  return (m_itf->key());
 }
 
 void
@@ -96,6 +108,12 @@ std::shared_ptr<lldp_binding>
 lldp_binding::find_or_add(const lldp_binding& temp)
 {
   return (m_db.find_or_add(temp.m_itf->key(), temp));
+}
+
+std::shared_ptr<lldp_binding>
+lldp_binding::find(const key_t& k)
+{
+  return (m_db.find(k));
 }
 
 std::shared_ptr<lldp_binding>

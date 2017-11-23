@@ -54,6 +54,11 @@ public:
   ~route_domain();
 
   /**
+   * comparison operator - for UT
+   */
+  bool operator==(const route_domain& r) const;
+
+  /**
    * Return the matching 'singular instance'
    */
   std::shared_ptr<route_domain> singular() const;

@@ -17,7 +17,7 @@
 #include "vom/l3_binding_cmds.hpp"
 
 namespace VOM {
-singular_db<l3_binding::key_type_t, l3_binding> l3_binding::m_db;
+singular_db<l3_binding::key_t, l3_binding> l3_binding::m_db;
 
 l3_binding::event_handler l3_binding::m_evh;
 
@@ -43,7 +43,19 @@ l3_binding::~l3_binding()
   sweep();
 
   // not in the DB anymore.
-  m_db.release(make_pair(m_itf->key(), m_pfx), this);
+  m_db.release(key(), this);
+}
+
+bool
+l3_binding::operator==(const l3_binding& l) const
+{
+  return ((m_pfx == l.m_pfx) && (*m_itf == *l.m_itf));
+}
+
+const l3_binding::key_t
+l3_binding::key() const
+{
+  return (make_pair(m_itf->key(), m_pfx));
 }
 
 void
@@ -93,7 +105,7 @@ std::string
 l3_binding::to_string() const
 {
   std::ostringstream s;
-  s << "L3-config:[" << m_itf->to_string() << " prefix:" << m_pfx.to_string()
+  s << "L3-binding:[" << m_itf->to_string() << " prefix:" << m_pfx.to_string()
     << " " << m_binding.to_string() << "]";
 
   return (s.str());
@@ -116,7 +128,13 @@ l3_binding::update(const l3_binding& desired)
 std::shared_ptr<l3_binding>
 l3_binding::find_or_add(const l3_binding& temp)
 {
-  return (m_db.find_or_add(make_pair(temp.m_itf->key(), temp.m_pfx), temp));
+  return (m_db.find_or_add(temp.key(), temp));
+}
+
+std::shared_ptr<l3_binding>
+l3_binding::find(const key_t& k)
+{
+  return (m_db.find(k));
 }
 
 std::shared_ptr<l3_binding>
@@ -132,7 +150,7 @@ l3_binding::dump(std::ostream& os)
 }
 
 std::ostream&
-operator<<(std::ostream& os, const l3_binding::key_type_t& key)
+operator<<(std::ostream& os, const l3_binding::key_t& key)
 {
   os << "[" << key.first << ", " << key.second << "]";
 

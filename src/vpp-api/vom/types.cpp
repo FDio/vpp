@@ -18,6 +18,8 @@
 #include <iostream>
 #include <sstream>
 
+#include <boost/algorithm/string.hpp>
+
 #include "vom/types.hpp"
 
 namespace VOM {
@@ -111,6 +113,19 @@ mac_address_t::mac_address_t(std::initializer_list<uint8_t> i)
   std::copy(i.begin(), i.end(), std::begin(bytes));
 }
 
+mac_address_t::mac_address_t(const std::string& str)
+{
+  std::vector<std::string> parts;
+
+  boost::split(parts, str, boost::is_any_of(":"));
+
+  size_t n_bytes = std::min(bytes.size(), parts.size());
+
+  for (uint32_t ii = 0; ii < n_bytes; ii++) {
+    bytes[ii] = std::stoul(parts[ii], nullptr, 16);
+  }
+}
+
 const mac_address_t mac_address_t::ONE({ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff });
 
 const mac_address_t mac_address_t::ZERO({ 0x0 });
@@ -131,7 +146,6 @@ mac_address_t::to_string() const
 
   s.fill('0');
   s << std::hex;
-  s << "mac:[";
   for (auto byte : bytes) {
     if (first)
       first = false;
@@ -139,7 +153,6 @@ mac_address_t::to_string() const
       s << ":";
     s << std::setw(2) << static_cast<unsigned int>(byte);
   }
-  s << "]";
 
   return (s.str());
 }

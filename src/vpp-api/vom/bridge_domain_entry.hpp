@@ -30,7 +30,7 @@ public:
   /**
    * The key for a bridge_domain
    */
-  typedef std::pair<uint32_t, mac_address_t> key_t;
+  typedef std::pair<bridge_domain::key_t, mac_address_t> key_t;
 
   /**
    * Construct a bridge_domain in the given bridge domain
@@ -55,6 +55,16 @@ public:
   ~bridge_domain_entry();
 
   /**
+   * Return the object's key
+   */
+  const key_t key() const;
+
+  /**
+   * comparison operator
+   */
+  bool operator==(const bridge_domain_entry& be) const;
+
+  /**
    * Return the matching 'singular instance'
    */
   std::shared_ptr<bridge_domain_entry> singular() const;
@@ -62,8 +72,7 @@ public:
   /**
    * Find the instnace of the bridge_domain domain in the OM
    */
-  static std::shared_ptr<bridge_domain_entry> find(
-    const bridge_domain_entry& temp);
+  static std::shared_ptr<bridge_domain_entry> find(const key_t& k);
 
   /**
    * Dump all bridge_domain-doamin into the stream provided

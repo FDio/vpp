@@ -116,7 +116,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<interface::key_type, arp_proxy_binding>;
+  friend class singular_db<interface::key_t, arp_proxy_binding>;
 
   /**
    * Sweep/reap the object if still stale
@@ -149,7 +149,7 @@ private:
   /**
    * A map of all ArpProxy bindings keyed against the interface.
    */
-  static singular_db<interface::key_type, arp_proxy_binding> m_db;
+  static singular_db<interface::key_t, arp_proxy_binding> m_db;
 };
 };
 

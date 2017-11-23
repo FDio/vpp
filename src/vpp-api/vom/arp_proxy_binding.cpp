@@ -21,7 +21,7 @@ namespace VOM {
 /**
  * A DB of all ARP proxy bindings configs
  */
-singular_db<interface::key_type, arp_proxy_binding> arp_proxy_binding::m_db;
+singular_db<interface::key_t, arp_proxy_binding> arp_proxy_binding::m_db;
 
 arp_proxy_binding::event_handler arp_proxy_binding::m_evh;
 
