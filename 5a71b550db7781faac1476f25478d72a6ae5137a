@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ad23f23f_d7db1e4b",
+        "filename": "src/vnet/ipsec/ipsec_cli.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 101,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-11-23T16:32:57Z",
+      "side": 1,
+      "message": "Can you just remove this?",
+      "range": {
+        "startLine": 100,
+        "startChar": 3,
+        "endLine": 101,
+        "endChar": 15
+      },
+      "revId": "5a71b550db7781faac1476f25478d72a6ae5137a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
