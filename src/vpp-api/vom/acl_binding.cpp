@@ -144,7 +144,7 @@ l2_binding::replay(void)
 
 std::ostream&
 operator<<(std::ostream& os,
-           const std::pair<direction_t, interface::key_type>& key)
+           const std::pair<direction_t, interface::key_t>& key)
 {
   os << "[" << key.first.to_string() << " " << key.second << "]";
 

@@ -18,13 +18,9 @@
 
 #include "vom/hw.hpp"
 #include "vom/inspect.hpp"
-#include "vom/interface.hpp"
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
 #include "vom/singular_db.hpp"
-#include "vom/sub_interface.hpp"
-
-#include <vapi/lldp.api.vapi.hpp>
 
 namespace VOM {
 /**
@@ -33,6 +29,11 @@ namespace VOM {
 class lldp_global : public object_base
 {
 public:
+  /**
+   * The key for the global conifugration is the 'system' namse
+   */
+  typedef std::string key_t;
+
   /**
    * Construct a new object matching the desried state
    */
@@ -51,6 +52,16 @@ public:
   ~lldp_global();
 
   /**
+   * Get this objects key
+   */
+  const key_t& key() const;
+
+  /**
+   * Comparison operator
+   */
+  bool operator==(const lldp_global& l) const;
+
+  /**
    * Return the 'singular' of the LLDP global that matches this object
    */
   std::shared_ptr<lldp_global> singular() const;
@@ -66,45 +77,9 @@ public:
   static void dump(std::ostream& os);
 
   /**
-   * A command class that binds the LLDP global to the interface
+   * Find LLDP global config from its key
    */
-  class config_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Lldp_config>
-  {
-  public:
-    /**
-     * Constructor
-     */
-    config_cmd(HW::item<bool>& item,
-               const std::string& system_name,
-               uint32_t tx_hold,
-               uint32_t tx_interval);
-
-    /**
-     * Issue the command to VPP/HW
-     */
-    rc_t issue(connection& con);
-    /**
-     * convert to string format for debug purposes
-     */
-    std::string to_string() const;
-
-    /**
-     * Comparison operator - only used for UT
-     */
-    bool operator==(const config_cmd& i) const;
-
-  private:
-    /**
-     * The system name
-     */
-    const std::string m_system_name;
-
-    /**
-     * TX timer configs
-     */
-    uint32_t m_tx_hold;
-    uint32_t m_tx_interval;
-  };
+  static std::shared_ptr<lldp_global> find(const key_t& k);
 
 private:
   /**
@@ -160,7 +135,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<interface::key_type, lldp_global>;
+  friend class singular_db<key_t, lldp_global>;
 
   /**
    * Sweep/reap the object if still stale
@@ -193,7 +168,7 @@ private:
    * A map of all Lldp globals keyed against the system name.
    *  there needs to be some sort of key, that will do.
    */
-  static singular_db<std::string, lldp_global> m_db;
+  static singular_db<key_t, lldp_global> m_db;
 };
 };
 

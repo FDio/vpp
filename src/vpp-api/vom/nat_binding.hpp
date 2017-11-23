@@ -61,7 +61,7 @@ public:
    *  The zoe is not included, since the same interface is never inside
    * and outside.
    */
-  typedef std::tuple<interface::key_type, direction_t, l3_proto_t> key_t;
+  typedef std::tuple<interface::key_t, direction_t, l3_proto_t> key_t;
 
   /**
    * Construct a new object matching the desried state

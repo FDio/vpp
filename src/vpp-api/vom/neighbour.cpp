@@ -21,20 +21,20 @@ singular_db<neighbour::key_t, neighbour> neighbour::m_db;
 neighbour::event_handler neighbour::m_evh;
 
 neighbour::neighbour(const interface& itf,
-                     const mac_address_t& mac,
-                     const boost::asio::ip::address& ip_addr)
+                     const boost::asio::ip::address& ip_addr,
+                     const mac_address_t& mac)
   : m_hw(false)
   , m_itf(itf.singular())
-  , m_mac(mac)
   , m_ip_addr(ip_addr)
+  , m_mac(mac)
 {
 }
 
 neighbour::neighbour(const neighbour& bde)
   : m_hw(bde.m_hw)
   , m_itf(bde.m_itf)
-  , m_mac(bde.m_mac)
   , m_ip_addr(bde.m_ip_addr)
+  , m_mac(bde.m_mac)
 {
 }
 
@@ -43,7 +43,19 @@ neighbour::~neighbour()
   sweep();
 
   // not in the DB anymore.
-  m_db.release(std::make_tuple(m_itf->key(), m_mac, m_ip_addr), this);
+  m_db.release(key(), this);
+}
+
+bool
+neighbour::operator==(const neighbour& n) const
+{
+  return ((key() == n.key()) && (m_mac == n.m_mac));
+}
+
+const neighbour::key_t
+neighbour::key() const
+{
+  return (std::make_pair(m_itf->key(), m_ip_addr));
 }
 
 void
@@ -90,8 +102,13 @@ neighbour::update(const neighbour& r)
 std::shared_ptr<neighbour>
 neighbour::find_or_add(const neighbour& temp)
 {
-  return (m_db.find_or_add(
-    std::make_tuple(temp.m_itf->key(), temp.m_mac, temp.m_ip_addr), temp));
+  return (m_db.find_or_add(temp.key(), temp));
+}
+
+std::shared_ptr<neighbour>
+neighbour::find(const key_t& k)
+{
+  return (m_db.find(k));
 }
 
 std::shared_ptr<neighbour>
@@ -109,8 +126,7 @@ neighbour::dump(std::ostream& os)
 std::ostream&
 operator<<(std::ostream& os, const neighbour::key_t& key)
 {
-  os << "[" << std::get<0>(key) << ", " << std::get<1>(key) << ", "
-     << std::get<2>(key) << "]";
+  os << "[" << key.first << ", " << key.second << "]";
 
   return (os);
 }
@@ -133,8 +149,8 @@ neighbour::populate_i(const client_db::key_t& key,
                       const l3_proto_t& proto)
 {
   /*
- * dump VPP current states
- */
+   * dump VPP current states
+   */
   std::shared_ptr<neighbour_cmds::dump_cmd> cmd =
     std::make_shared<neighbour_cmds::dump_cmd>(
       neighbour_cmds::dump_cmd(itf->handle(), proto));
@@ -144,23 +160,23 @@ neighbour::populate_i(const client_db::key_t& key,
 
   for (auto& record : *cmd) {
     /*
- * construct a neighbour from each recieved record.
- */
+     * construct a neighbour from each recieved record.
+     */
     auto& payload = record.get_payload();
 
     mac_address_t mac(payload.mac_address);
     boost::asio::ip::address ip_addr =
       from_bytes(payload.is_ipv6, payload.ip_address);
-    neighbour n(*itf, mac, ip_addr);
+    neighbour n(*itf, ip_addr, mac);
 
     VOM_LOG(log_level_t::DEBUG) << "neighbour-dump: " << itf->to_string()
                                 << mac.to_string() << ip_addr.to_string();
 
     /*
- * Write each of the discovered interfaces into the OM,
- * but disable the HW Command q whilst we do, so that no
- * commands are sent to VPP
- */
+     * Write each of the discovered interfaces into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
     OM::commit(key, n);
   }
 }

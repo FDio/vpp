@@ -22,26 +22,23 @@
 
 namespace VOM {
 /**
- * A entry in the ARP termination table of a Bridge Domain
+ * A entry in the neighbour entry (ARP or IPv6 ND)
  */
 class neighbour : public object_base
 {
 public:
   /**
-   * The key for a bridge_domain ARP entry;
-   *  the BD, IP address and MAC address
+   * The key for a neighbour entry;
+   *  the interface and IP address
    */
-  typedef std::tuple<interface::key_type,
-                     mac_address_t,
-                     boost::asio::ip::address>
-    key_t;
+  typedef std::pair<interface::key_t, boost::asio::ip::address> key_t;
 
   /**
    * Construct an ARP entry
    */
   neighbour(const interface& itf,
-            const mac_address_t& mac,
-            const boost::asio::ip::address& ip_addr);
+            const boost::asio::ip::address& ip_addr,
+            const mac_address_t& mac);
 
   /**
    * Copy Construct
@@ -54,17 +51,27 @@ public:
   ~neighbour();
 
   /**
+   * Return the object's key
+   */
+  const key_t key() const;
+
+  /**
+   * Comparison operator
+   */
+  bool operator==(const neighbour& n) const;
+
+  /**
    * Return the matching 'singular instance'
    */
   std::shared_ptr<neighbour> singular() const;
 
   /**
-   * Find the instnace of the bridge_domain domain in the OM
+   * Find the neighbour fromits key
    */
-  static std::shared_ptr<neighbour> find(const neighbour& temp);
+  static std::shared_ptr<neighbour> find(const key_t& k);
 
   /**
-   * Dump all bridge_domain-doamin into the stream provided
+   * Dump all neighbours into the stream provided
    */
   static void dump(std::ostream& os);
 
@@ -127,7 +134,7 @@ private:
                          const l3_proto_t& proto);
 
   /**
-   * Find or add the instnace of the bridge_domain domain in the OM
+   * Find or add the instnace of the neighbour in the OM
    */
   static std::shared_ptr<neighbour> find_or_add(const neighbour& temp);
 
@@ -157,14 +164,14 @@ private:
   std::shared_ptr<interface> m_itf;
 
   /**
-   * The mac to match
-   */
-  mac_address_t m_mac;
-
-  /**
    * The IP address
    */
   boost::asio::ip::address m_ip_addr;
+
+  /**
+   * The mac to match
+   */
+  mac_address_t m_mac;
 
   /**
    * A map of all bridge_domains

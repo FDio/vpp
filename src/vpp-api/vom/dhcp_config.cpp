@@ -20,7 +20,7 @@ namespace VOM {
 /**
  * A DB of all DHCP configs
  */
-singular_db<interface::key_type, dhcp_config> dhcp_config::m_db;
+singular_db<interface::key_t, dhcp_config> dhcp_config::m_db;
 
 dhcp_config::event_handler dhcp_config::m_evh;
 
@@ -56,6 +56,19 @@ dhcp_config::~dhcp_config()
 
   // not in the DB anymore.
   m_db.release(m_itf->key(), this);
+}
+
+bool
+dhcp_config::operator==(const dhcp_config& l) const
+{
+  return ((key() == l.key()) && (m_hostname == l.m_hostname) &&
+          (m_client_id == l.m_client_id));
+}
+
+const dhcp_config::key_t&
+dhcp_config::key() const
+{
+  return (m_itf->key());
 }
 
 void
@@ -109,6 +122,12 @@ std::shared_ptr<dhcp_config>
 dhcp_config::find_or_add(const dhcp_config& temp)
 {
   return (m_db.find_or_add(temp.m_itf->key(), temp));
+}
+
+std::shared_ptr<dhcp_config>
+dhcp_config::find(const key_t& k)
+{
+  return (m_db.find(k));
 }
 
 std::shared_ptr<dhcp_config>

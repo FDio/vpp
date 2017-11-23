@@ -44,7 +44,7 @@ public:
   /**
    * The key for interface's key
    */
-  typedef std::string key_type;
+  typedef std::string key_t;
 
   /**
    * The iterator type
@@ -207,7 +207,7 @@ public:
   /**
    * Return the interface type
    */
-  const key_type& key() const;
+  const key_t& key() const;
 
   /**
    * Return the L2 Address
@@ -223,6 +223,11 @@ public:
    * Set the operational state of the interface, as reported by VPP
    */
   void set(const oper_state_t& state);
+
+  /**
+   * Comparison operator - only used for UT
+   */
+  virtual bool operator==(const interface& i) const;
 
   /**
    * A base class for interface Create commands
@@ -400,21 +405,14 @@ public:
   };
 
   /**
-   * The the singular instance of the interface in the object_base-Model
-   */
-  static std::shared_ptr<interface> find(const interface& temp);
-
-  /**
-   * The the singular instance of the interface in the object_base-Model
-   * by handle
+   * The the singular instance of the interface in the DB by handle
    */
   static std::shared_ptr<interface> find(const handle_t& h);
 
   /**
-   * The the singular instance of the interface in the object_base-Model
-   * by name
+   * The the singular instance of the interface in the DB by key
    */
-  static std::shared_ptr<interface> find(const std::string& s);
+  static std::shared_ptr<interface> find(const key_t& k);
 
   /**
    * Dump all interfaces into the stream provided
@@ -472,12 +470,12 @@ protected:
   /**
    * A map of all interfaces key against the interface's name
    */
-  static singular_db<const std::string, interface> m_db;
+  static singular_db<key_t, interface> m_db;
 
   /**
    * Add an interface to the DB keyed on handle
    */
-  static void add(const std::string& name, const HW::item<handle_t>& item);
+  static void add(const key_t& name, const HW::item<handle_t>& item);
 
   /**
    * remove an interface from the DB keyed on handle
@@ -540,7 +538,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<const std::string, interface>;
+  friend class singular_db<key_t, interface>;
 
   /**
    * The interfaces name

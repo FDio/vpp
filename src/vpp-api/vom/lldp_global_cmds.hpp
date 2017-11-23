@@ -26,8 +26,8 @@ namespace VOM {
 namespace lldp_global_cmds {
 
 /**
-* A command class that binds the LLDP global to the interface
-*/
+ * A command class that binds the LLDP global to the interface
+ */
 class config_cmd : public rpc_cmd<HW::item<bool>, rc_t, vapi::Lldp_config>
 {
 public:

@@ -52,10 +52,22 @@ bridge_domain::bridge_domain(const bridge_domain& o)
 {
 }
 
+const bridge_domain::key_t&
+bridge_domain::key() const
+{
+  return (m_id.data());
+}
+
 uint32_t
 bridge_domain::id() const
 {
   return (m_id.data());
+}
+
+bool
+bridge_domain::operator==(const bridge_domain& b) const
+{
+  return (id() == b.id());
 }
 
 void
@@ -93,41 +105,17 @@ bridge_domain::to_string() const
 }
 
 std::shared_ptr<bridge_domain>
-bridge_domain::find(uint32_t id)
+bridge_domain::find(const key_t& key)
 {
-  /*
- * Loop throught the entire map looking for matching interface.
- * not the most efficient algorithm, but it will do for now. The
- * number of L3 configs is low and this is only called during bootup
- */
-  std::shared_ptr<bridge_domain> bd;
-
-  auto it = m_db.cbegin();
-
-  while (it != m_db.cend()) {
-    /*
- * The key in the DB is a pair of the interface's name and prefix.
- * If the keys match, save the L3-config
- */
-    auto key = it->first;
-
-    if (id == key) {
-      bd = it->second.lock();
-      break;
-    }
-
-    ++it;
-  }
-
-  return (bd);
+  return (m_db.find(key));
 }
 
 void
 bridge_domain::update(const bridge_domain& desired)
 {
   /*
- * the desired state is always that the interface should be created
- */
+   * the desired state is always that the interface should be created
+   */
   if (rc_t::OK != m_id.rc()) {
     HW::enqueue(new bridge_domain_cmds::create_cmd(m_id, m_learning_mode));
   }

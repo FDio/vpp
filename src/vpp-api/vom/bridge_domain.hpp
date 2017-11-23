@@ -32,6 +32,11 @@ class bridge_domain : public object_base
 {
 public:
   /**
+   * Key Type for Bridge Domains in the sigular DB
+   */
+  typedef uint32_t key_t;
+
+  /**
    * Bridge Domain Learning mode
    */
   struct learning_mode_t : enum_base<learning_mode_t>
@@ -68,6 +73,21 @@ public:
   ~bridge_domain();
 
   /**
+   * Comparison operator - for UT
+   */
+  bool operator==(const bridge_domain& b) const;
+
+  /**
+   * Return the bridge domain's VPP ID
+   */
+  uint32_t id() const;
+
+  /**
+   * Return the bridge domain's key
+   */
+  const key_t& key() const;
+
+  /**
    * Return the matchin 'singular' instance of the bridge-domain
    */
   std::shared_ptr<bridge_domain> singular() const;
@@ -78,14 +98,9 @@ public:
   std::string to_string(void) const;
 
   /**
-   * Return VPP's handle for this obejct
-   */
-  uint32_t id() const;
-
-  /**
    * Static function to find the bridge_domain in the model
    */
-  static std::shared_ptr<bridge_domain> find(uint32_t id);
+  static std::shared_ptr<bridge_domain> find(const key_t& key);
 
   /**
    * Dump all bridge-doamin into the stream provided
@@ -146,7 +161,7 @@ private:
   /**
    * It's the singular_db class that calls replay()
    */
-  friend class singular_db<uint32_t, bridge_domain>;
+  friend class singular_db<key_t, bridge_domain>;
 
   /**
    * Sweep/reap the object if still stale
@@ -171,7 +186,7 @@ private:
   /**
    * A map of all interfaces key against the interface's name
    */
-  static singular_db<uint32_t, bridge_domain> m_db;
+  static singular_db<key_t, bridge_domain> m_db;
 };
 };
 

@@ -49,9 +49,9 @@ void
 OM::sweep(const client_db::key_t& key)
 {
   /*
- * Find if the object already stored on behalf of this key.
- * and mark them stale
- */
+   * Find if the object already stored on behalf of this key.
+   * and mark them stale
+   */
   object_ref_list& objs = m_db->find(key);
 
   for (auto it = objs.begin(); it != objs.end();) {
@@ -69,11 +69,11 @@ void
 OM::remove(const client_db::key_t& key)
 {
   /*
- * Simply reset the list for this key. This will desctruct the
- * object list and shared_ptrs therein. When the last shared_ptr
- * goes the objects desctructor is called and the object is
- * removed from OM
- */
+   * Simply reset the list for this key. This will desctruct the
+   * object list and shared_ptrs therein. When the last shared_ptr
+   * goes the objects desctructor is called and the object is
+   * removed from OM
+   */
   m_db->flush(key);
 
   HW::write();
@@ -83,8 +83,8 @@ void
 OM::replay()
 {
   /*
- * the listeners are sorted in dependency order
- */
+   * the listeners are sorted in dependency order
+   */
   for (listener* l : *m_listeners) {
     l->handle_replay();
   }
@@ -108,15 +108,15 @@ void
 OM::populate(const client_db::key_t& key)
 {
   /*
- * the listeners are sorted in dependency order
- */
+   * the listeners are sorted in dependency order
+   */
   for (listener* l : *m_listeners) {
     l->handle_populate(key);
   }
 
   /*
- * once we have it all, mark it stale.
- */
+   * once we have it all, mark it stale.
+   */
   mark(key);
 }
 

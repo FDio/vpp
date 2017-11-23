@@ -40,7 +40,7 @@ public:
   /**
    * The key for a binding is the direction and the interface
    */
-  typedef std::pair<direction_t, interface::key_type> key_t;
+  typedef std::pair<direction_t, interface::key_t> key_t;
 
   /**
    * Construct a new object matching the desried state
@@ -224,9 +224,8 @@ template <typename LIST>
 typename ACL::binding<LIST>::event_handler binding<LIST>::m_evh;
 };
 
-std::ostream& operator<<(
-  std::ostream& os,
-  const std::pair<direction_t, interface::key_type>& key);
+std::ostream& operator<<(std::ostream& os,
+                         const std::pair<direction_t, interface::key_t>& key);
 };
 
 /*

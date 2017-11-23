@@ -13,11 +13,14 @@
  * limitations under the License.
  */
 
+#include <vapi/vapi.hpp>
+
 #include "vom/connection.hpp"
 
 namespace VOM {
 connection::connection()
-  : m_app_name("vpp-OM")
+  : m_vapi_conn(new vapi::Connection())
+  , m_app_name("VOM")
 {
 }
 
@@ -29,7 +32,7 @@ connection::~connection()
 void
 connection::disconnect()
 {
-  m_vapi_conn.disconnect();
+  m_vapi_conn->disconnect();
 }
 
 void
@@ -38,16 +41,16 @@ connection::connect()
   vapi_error_e rv;
 
   do {
-    rv = m_vapi_conn.connect(m_app_name.c_str(),
-                             NULL, // m_api_prefix.c_str(),
-                             128, 128);
+    rv = m_vapi_conn->connect(m_app_name.c_str(),
+                              NULL, // m_api_prefix.c_str(),
+                              128, 128);
   } while (VAPI_OK != rv);
 }
 
 vapi::Connection&
 connection::ctx()
 {
-  return (m_vapi_conn);
+  return (*m_vapi_conn);
 }
 }
 

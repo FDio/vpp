@@ -217,8 +217,8 @@ void
 vxlan_tunnel::event_handler::handle_populate(const client_db::key_t& key)
 {
   /*
- * dump VPP current states
- */
+   * dump VPP current states
+   */
   std::shared_ptr<vxlan_tunnel_cmds::dump_cmd> cmd(
     new vxlan_tunnel_cmds::dump_cmd());
 
@@ -262,9 +262,11 @@ vxlan_tunnel::event_handler::order() const
 void
 vxlan_tunnel::event_handler::show(std::ostream& os)
 {
-  m_db.dump(os);
+  // dumped by the interface handler
 }
-}
+
+}; // namespace VOM
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

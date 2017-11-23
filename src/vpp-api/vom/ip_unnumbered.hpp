@@ -68,7 +68,7 @@ public:
   /**
    * The key type for ip_unnumbereds
    */
-  typedef interface::key_type key_t;
+  typedef interface::key_t key_t;
 
   /**
    * Find an singular instance in the DB for the interface passed

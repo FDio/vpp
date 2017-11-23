@@ -18,10 +18,12 @@
 
 #include <deque>
 #include <map>
+#include <queue>
 #include <sstream>
 #include <string>
 #include <thread>
 
+#include "vom/cmd.hpp"
 #include "vom/connection.hpp"
 #include "vom/types.hpp"
 
@@ -230,7 +232,7 @@ public:
     /**
      * Blocking Connect to VPP - call once at bootup
      */
-    void connect();
+    virtual void connect();
 
     /**
      * Disable the passing of commands to VPP. Whilst disabled all
