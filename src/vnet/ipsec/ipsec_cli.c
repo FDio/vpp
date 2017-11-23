@@ -96,9 +96,7 @@ ipsec_sa_add_del_command_fn (vlib_main_t * vm,
 	sa.protocol = IPSEC_PROTOCOL_ESP;
       else if (unformat (line_input, "ah"))
 	{
-	  //sa.protocol = IPSEC_PROTOCOL_AH;
-	  error = clib_error_return (0, "unsupported security protocol 'AH'");
-	  goto done;
+	  sa.protocol = IPSEC_PROTOCOL_AH;
 	}
       else
 	if (unformat (line_input, "crypto-key %U", unformat_hex_string, &ck))
@@ -339,6 +337,21 @@ ipsec_policy_add_del_command_fn (vlib_main_t * vm,
 	}
     }
 
+  /* Check if SA is for IPv6/AH which is not supported. Return error if TRUE. */
+  if (p.sa_id)
+    {
+      uword *p1;
+      ipsec_main_t *im = &ipsec_main;
+      ipsec_sa_t *sa = 0;
+      p1 = hash_get (im->sa_index_by_sa_id, p.sa_id);
+      sa = pool_elt_at_index (im->sad, p1[0]);
+      if (sa && sa->protocol == IPSEC_PROTOCOL_AH && is_add && p.is_ipv6)
+	{
+	  error = clib_error_return (0, "AH not supported for IPV6: '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
   ipsec_add_del_policy (vm, &p, is_add);
   if (is_ip_any)
     {
