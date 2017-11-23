@@ -23,6 +23,7 @@
 #include <nat/nat64.h>
 #include <nat/dslite.h>
 #include <nat/nat_reass.h>
+#include <acl/exports.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 
@@ -2455,6 +2456,70 @@ vl_api_nat44_del_session_t_print (vl_api_nat44_del_session_t * mp,
   FINISH;
 }
 
+static void
+vl_api_nat44_set_acl_t_handler (vl_api_nat44_set_acl_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_set_acl_reply_t *rmp;
+  u32 acl_index;
+  int rv = 0;
+
+  acl_index = ntohl (mp->acl_index);
+
+  if (acl_index != ~0 && !acl_plugin_acl_exists (acl_index))
+    {
+      rv = VNET_API_ERROR_NO_SUCH_ENTRY;
+      goto done;
+    }
+
+  sm->acl_index = acl_index;
+
+done:
+  REPLY_MACRO (VL_API_NAT44_SET_ACL_REPLY);
+}
+
+static void *
+vl_api_nat44_set_acl_t_print (vl_api_nat44_set_acl_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_set_acl ");
+  s = format (s, "acl_index %u", ntohl (mp->acl_index));
+
+  FINISH;
+}
+
+static void
+vl_api_nat44_get_acl_t_handler (vl_api_nat44_get_acl_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_get_acl_reply_t *rmp;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_NAT44_GET_ACL_REPLY + sm->msg_id_base);
+  rmp->context = mp->context;
+
+  rmp->acl_index = htonl (sm->acl_index);
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void *
+vl_api_nat44_get_acl_t_print (vl_api_nat44_get_acl_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_get_acl ");
+
+  FINISH;
+}
+
 /*******************************/
 /*** Deterministic NAT (CGN) ***/
 /*******************************/
@@ -3605,6 +3670,8 @@ _(NAT44_INTERFACE_OUTPUT_FEATURE_DUMP,                                  \
 _(NAT44_ADD_DEL_LB_STATIC_MAPPING, nat44_add_del_lb_static_mapping)     \
 _(NAT44_LB_STATIC_MAPPING_DUMP, nat44_lb_static_mapping_dump)           \
 _(NAT44_DEL_SESSION, nat44_del_session)                                 \
+_(NAT44_SET_ACL, nat44_set_acl)                                         \
+_(NAT44_GET_ACL, nat44_get_acl)                                         \
 _(NAT_DET_ADD_DEL_MAP, nat_det_add_del_map)                             \
 _(NAT_DET_FORWARD, nat_det_forward)                                     \
 _(NAT_DET_REVERSE, nat_det_reverse)                                     \
