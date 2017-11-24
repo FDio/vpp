@@ -509,8 +509,9 @@ vlib_buffer_delete_free_list_internal (vlib_main_t * vm, u32 free_list_index)
 
 /* Make sure free list has at least given number of free buffers. */
 static uword
-fill_free_list (vlib_main_t * vm,
-		vlib_buffer_free_list_t * fl, uword min_free_buffers)
+vlib_buffer_fill_free_list_internal (vlib_main_t * vm,
+				     vlib_buffer_free_list_t * fl,
+				     uword min_free_buffers)
 {
   vlib_buffer_t *buffers, *b;
   vlib_buffer_free_list_t *mfl;
@@ -594,63 +595,6 @@ fill_free_list (vlib_main_t * vm,
 	fl->buffer_init_function (vm, fl, bi, n_this_chunk);
     }
   return n_alloc;
-}
-
-static u32
-alloc_from_free_list (vlib_main_t * vm,
-		      vlib_buffer_free_list_t * free_list,
-		      u32 * alloc_buffers, u32 n_alloc_buffers)
-{
-  u32 *dst, *src;
-  uword len;
-  uword n_filled;
-
-  dst = alloc_buffers;
-
-  n_filled = fill_free_list (vm, free_list, n_alloc_buffers);
-  if (n_filled == 0)
-    return 0;
-
-  len = vec_len (free_list->buffers);
-  ASSERT (len >= n_alloc_buffers);
-
-  src = free_list->buffers + len - n_alloc_buffers;
-  clib_memcpy (dst, src, n_alloc_buffers * sizeof (u32));
-
-  _vec_len (free_list->buffers) -= n_alloc_buffers;
-
-  /* Verify that buffers are known free. */
-  vlib_buffer_validate_alloc_free (vm, alloc_buffers,
-				   n_alloc_buffers, VLIB_BUFFER_KNOWN_FREE);
-
-  return n_alloc_buffers;
-}
-
-
-/* Allocate a given number of buffers into given array.
-   Returns number actually allocated which will be either zero or
-   number requested. */
-static u32
-vlib_buffer_alloc_internal (vlib_main_t * vm, u32 * buffers, u32 n_buffers)
-{
-  vlib_buffer_main_t *bm = vm->buffer_main;
-
-  return alloc_from_free_list
-    (vm,
-     pool_elt_at_index (bm->buffer_free_list_pool,
-			VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX),
-     buffers, n_buffers);
-}
-
-static u32
-vlib_buffer_alloc_from_free_list_internal (vlib_main_t * vm,
-					   u32 * buffers,
-					   u32 n_buffers, u32 free_list_index)
-{
-  vlib_buffer_main_t *bm = vm->buffer_main;
-  vlib_buffer_free_list_t *f;
-  f = pool_elt_at_index (bm->buffer_free_list_pool, free_list_index);
-  return alloc_from_free_list (vm, f, buffers, n_buffers);
 }
 
 void *
@@ -1087,9 +1031,7 @@ vlib_buffer_main_init (struct vlib_main_t * vm)
       return 0;
     }
 
-  bm->cb.vlib_buffer_alloc_cb = &vlib_buffer_alloc_internal;
-  bm->cb.vlib_buffer_alloc_from_free_list_cb =
-    &vlib_buffer_alloc_from_free_list_internal;
+  bm->cb.vlib_buffer_fill_free_list_cb = &vlib_buffer_fill_free_list_internal;
   bm->cb.vlib_buffer_free_cb = &vlib_buffer_free_internal;
   bm->cb.vlib_buffer_free_no_next_cb = &vlib_buffer_free_no_next_internal;
   bm->cb.vlib_buffer_delete_free_list_cb =

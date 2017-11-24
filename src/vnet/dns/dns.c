@@ -2653,7 +2653,7 @@ vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * pr,
 		      dns_cache_entry_t * ep, vlib_buffer_t * b0)
 {
   vlib_main_t *vm = dm->vlib_main;
-  u32 bi;
+  u32 bi = 0;
   fib_prefix_t prefix;
   fib_node_index_t fei;
   u32 sw_if_index, fib_index;
