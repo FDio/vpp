@@ -834,8 +834,8 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
   table_args->lcl.fp_proto = fib_proto;
   table_args->rmt.fp_len = mp->rmt_plen;
   table_args->rmt.fp_proto = fib_proto;
-  table_args->lcl_port = clib_net_to_host_u16 (mp->lcl_port);
-  table_args->rmt_port = clib_net_to_host_u16 (mp->rmt_port);
+  table_args->lcl_port = mp->lcl_port;
+  table_args->rmt_port = mp->rmt_port;
   table_args->action_index = clib_net_to_host_u32 (mp->action_index);
   table_args->is_add = mp->is_add;
   mp->tag[sizeof (mp->tag) - 1] = 0;
