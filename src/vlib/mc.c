@@ -109,7 +109,7 @@ mc_seq_cmp (u32 x, u32 y)
 void *
 mc_get_vlib_buffer (vlib_main_t * vm, u32 n_bytes, u32 * bi_return)
 {
-  u32 n_alloc, bi;
+  u32 n_alloc, bi = 0;
   vlib_buffer_t *b;
 
   n_alloc = vlib_buffer_alloc (vm, &bi, 1);
