@@ -16,6 +16,24 @@
       "revId": "1288b935eac5537804bf21201702724d9b431fd2",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "17b047a3_a1689118",
+        "filename": "src/vnet/geneve/geneve_packet.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2017-11-24T14:31:28Z",
+      "side": 1,
+      "message": "Honestly, I like to keep the VNI as is (until the actual use of the \"reserved\" bits gets finalized in the RFC).",
+      "parentUuid": "e2cc332a_5ae0748c",
+      "revId": "1288b935eac5537804bf21201702724d9b431fd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
