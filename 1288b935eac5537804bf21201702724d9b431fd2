@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "e2cc332a_5ae0748c",
+        "filename": "src/vnet/geneve/geneve_packet.h",
+        "patchSetId": 7
+      },
+      "lineNbr": 140,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-24T14:25:12Z",
+      "side": 1,
+      "message": "my advice, and it is just advice, would be to have all these get/set functions consistent w.r.t. the expected endianness of the input and output. say always host order. You can then do necessary byte swapping before/after use.\nyou have a frist_word swap, perhaps a second_word swap too.",
+      "revId": "1288b935eac5537804bf21201702724d9b431fd2",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
