@@ -834,8 +834,8 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
   table_args->lcl.fp_proto = fib_proto;
   table_args->rmt.fp_len = mp->rmt_plen;
   table_args->rmt.fp_proto = fib_proto;
-  table_args->lcl_port = clib_net_to_host_u16 (mp->lcl_port);
-  table_args->rmt_port = clib_net_to_host_u16 (mp->rmt_port);
+  table_args->lcl_port = mp->lcl_port;
+  table_args->rmt_port = mp->rmt_port;
   table_args->action_index = clib_net_to_host_u32 (mp->action_index);
   table_args->is_add = mp->is_add;
   mp->tag[sizeof (mp->tag) - 1] = 0;
@@ -879,8 +879,8 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
   clib_memcpy (rmp->rmt_ip, &match->rmt_ip, sizeof (match->rmt_ip));
   rmp->lcl_plen = ip4_mask_to_preflen (&mask->lcl_ip);
   rmp->rmt_plen = ip4_mask_to_preflen (&mask->rmt_ip);
-  rmp->lcl_port = clib_host_to_net_u16 (match->lcl_port);
-  rmp->rmt_port = clib_host_to_net_u16 (match->rmt_port);
+  rmp->lcl_port = match->lcl_port;
+  rmp->rmt_port = match->rmt_port;
   rmp->action_index = clib_host_to_net_u32 (rule->action_index);
   rmp->scope =
     is_local ? SESSION_RULE_SCOPE_LOCAL : SESSION_RULE_SCOPE_GLOBAL;
@@ -916,8 +916,8 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
   clib_memcpy (rmp->rmt_ip, &match->rmt_ip, sizeof (match->rmt_ip));
   rmp->lcl_plen = ip6_mask_to_preflen (&mask->lcl_ip);
   rmp->rmt_plen = ip6_mask_to_preflen (&mask->rmt_ip);
-  rmp->lcl_port = clib_host_to_net_u16 (match->lcl_port);
-  rmp->rmt_port = clib_host_to_net_u16 (match->rmt_port);
+  rmp->lcl_port = match->lcl_port;
+  rmp->rmt_port = match->rmt_port;
   rmp->action_index = clib_host_to_net_u32 (rule->action_index);
   rmp->scope =
     is_local ? SESSION_RULE_SCOPE_LOCAL : SESSION_RULE_SCOPE_GLOBAL;

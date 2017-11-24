@@ -254,8 +254,8 @@ ip6_mask_to_preflen (ip6_address_t * mask)
   u8 first1, first0;
   if (mask->as_u64[0] == 0 && mask->as_u64[1] == 0)
     return 0;
-  first1 = log2_first_set (mask->as_u64[1]);
-  first0 = log2_first_set (mask->as_u64[0]);
+  first1 = log2_first_set (clib_net_to_host_u64 (mask->as_u64[1]));
+  first0 = log2_first_set (clib_net_to_host_u64 (mask->as_u64[0]));
 
   if (first1 != 0)
     return 128 - first1;
