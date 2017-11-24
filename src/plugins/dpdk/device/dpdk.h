@@ -321,6 +321,7 @@ typedef struct
   u8 *uio_driver_name;
   u8 no_multi_seg;
   u8 enable_tcp_udp_checksum;
+  u8 no_tx_checksum_offload;
 
   /* Required config parameters */
   u8 coremask_set_manually;
