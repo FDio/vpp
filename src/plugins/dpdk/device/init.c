@@ -331,6 +331,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       clib_memcpy (&xd->tx_conf, &dev_info.default_txconf,
 		   sizeof (struct rte_eth_txconf));
+
+      if (dm->conf->no_tx_checksum_offload == 0)
+	xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOXSUMS;
+
       if (dm->conf->no_multi_seg)
 	{
 	  xd->tx_conf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
@@ -636,8 +640,9 @@ dpdk_lib_init (dpdk_main_t * dm)
 
       hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
 
-      if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD)
-	hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
+      if (dm->conf->no_tx_checksum_offload == 0)
+	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD)
+	  hi->flags |= VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD;
 
       dpdk_device_setup (xd);
 
@@ -914,6 +919,9 @@ dpdk_config (vlib_main_t * vm, unformat_input_t * input)
 
       else if (unformat (input, "enable-tcp-udp-checksum"))
 	conf->enable_tcp_udp_checksum = 1;
+
+      else if (unformat (input, "no-tx-checksum-offload"))
+	conf->no_tx_checksum_offload = 1;
 
       else if (unformat (input, "decimal-interface-names"))
 	conf->interface_name_format_decimal = 1;
