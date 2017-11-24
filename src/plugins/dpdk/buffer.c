@@ -81,6 +81,7 @@ STATIC_ASSERT (VLIB_BUFFER_PRE_DATA_SIZE == RTE_PKTMBUF_HEADROOM,
 
 typedef struct
 {
+  CLIB_CACHE_LINE_ALIGN_MARK (cacheline0);
   struct rte_mbuf ***mbuf_pending_free_list;
 
   /* cached last pool */
