@@ -128,10 +128,11 @@ format_session_rule4 (u8 * s, va_list * args)
 
   s = format (s, "[%d] rule: %U/%d %d %U/%d %d action: %d tag: %v", ri,
 	      format_ip4_address, &match->lcl_ip,
-	      ip4_mask_to_preflen (&mask->lcl_ip), match->lcl_port,
-	      format_ip4_address, &match->rmt_ip,
-	      ip4_mask_to_preflen (&mask->rmt_ip), match->rmt_port,
-	      sr->action_index, tag ? tag : null_tag);
+	      ip4_mask_to_preflen (&mask->lcl_ip),
+	      clib_net_to_host_u16 (match->lcl_port), format_ip4_address,
+	      &match->rmt_ip, ip4_mask_to_preflen (&mask->rmt_ip),
+	      clib_net_to_host_u16 (match->rmt_port), sr->action_index,
+	      tag ? tag : null_tag);
   if (vec_len (sr->next_indices))
     {
       s = format (s, "\n    children: ");
@@ -161,10 +162,11 @@ format_session_rule6 (u8 * s, va_list * args)
 
   s = format (s, "[%d] rule: %U/%d %d %U/%d %d action: %d tag: %v", ri,
 	      format_ip6_address, &match->lcl_ip,
-	      ip6_mask_to_preflen (&mask->lcl_ip), match->lcl_port,
-	      format_ip6_address, &match->rmt_ip,
-	      ip6_mask_to_preflen (&mask->rmt_ip), match->rmt_port,
-	      sr->action_index, tag ? tag : null_tag);
+	      ip6_mask_to_preflen (&mask->lcl_ip),
+	      clib_net_to_host_u16 (match->lcl_port), format_ip6_address,
+	      &match->rmt_ip, ip6_mask_to_preflen (&mask->rmt_ip),
+	      clib_net_to_host_u16 (match->rmt_port), sr->action_index,
+	      tag ? tag : null_tag);
   if (vec_len (sr->next_indices))
     {
       s = format (s, "\n    children: ");
