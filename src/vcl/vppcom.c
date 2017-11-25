@@ -1063,7 +1063,7 @@ format_ip46_address (u8 * s, va_list * args)
 }
 
 static inline void
-vppcom_send_accept_session_reply (u32 handle, int retval)
+vppcom_send_accept_session_reply (u32 handle, u32 context, int retval)
 {
   vl_api_accept_session_reply_t *rmp;
 
@@ -1071,6 +1071,7 @@ vppcom_send_accept_session_reply (u32 handle, int retval)
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_ACCEPT_SESSION_REPLY);
   rmp->retval = htonl (retval);
+  rmp->context = context;
   rmp->handle = handle;
   vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & rmp);
 }
@@ -1086,7 +1087,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   if (!clib_fifo_free_elts (vcm->client_session_index_fifo))
     {
       clib_warning ("[%d] client session queue is full!", getpid ());
-      vppcom_send_accept_session_reply (mp->handle,
+      vppcom_send_accept_session_reply (mp->handle, mp->context,
 					VNET_API_ERROR_QUEUE_FULL);
       clib_spinlock_unlock (&vcm->sessions_lockp);
       return;
@@ -1112,6 +1113,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   tx_fifo->client_session_index = session_index;
 
   session->vpp_handle = mp->handle;
+  session->client_context = mp->context;
   session->server_rx_fifo = rx_fifo;
   session->server_tx_fifo = tx_fifo;
   session->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
@@ -1135,18 +1137,16 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   clib_spinlock_unlock (&vcm->sessions_lockp);
 
   if (VPPCOM_DEBUG > 1)
-    {
-      u8 *ip_str = format (0, "%U", format_ip46_address, &mp->ip, mp->is_ip4);
-      clib_warning ("[%d] received request to accept session (sid %d) "
-		    "from %s:%d", getpid (), session_index, ip_str,
-		    clib_net_to_host_u16 (mp->port));
-      vec_free (ip_str);
-    }
+    clib_warning ("[%d] vpp handle 0x%llx, sid %u: client accept "
+		  "request from %s address %U port %d!", getpid (),
+		  mp->handle, session_index, mp->is_ip4 ? "IPv4" : "IPv6",
+		  format_ip46_address, &mp->ip, mp->is_ip4,
+		  clib_net_to_host_u16 (mp->port));
 }
 
 static void
 vppcom_send_connect_session_reply (session_t * session, u32 session_index,
-				   int retval)
+				   u64 vpp_handle, u32 context, int retval)
 {
   vl_api_connect_session_reply_t *rmp;
   u32 len;
@@ -1154,8 +1154,17 @@ vppcom_send_connect_session_reply (session_t * session, u32 session_index,
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
-
   rmp->_vl_msg_id = ntohs (VL_API_CONNECT_SESSION_REPLY);
+
+  if (!session)
+    {
+      rmp->context = context;
+      rmp->handle = vpp_handle;
+      rmp->retval = htonl (retval);
+      vl_msg_api_send_shmem (vcm->vl_input_queue, (u8 *) & rmp);
+      return;
+    }
+
   rmp->context = session->client_context;
   rmp->retval = htonl (retval);
   rmp->handle = session->vpp_handle;
@@ -1194,8 +1203,10 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
       if (VPPCOM_DEBUG > 1)
 	clib_warning ("[%d] client session queue is full!", getpid ());
 
-      /* TBD: fix handle missing in api msg. */
-      vppcom_send_accept_session_reply (0, VNET_API_ERROR_QUEUE_FULL);
+      /* TBD: Fix api to include vpp handle */
+      vppcom_send_connect_session_reply (0 /* session */ , 0 /* sid */ ,
+					 0 /* handle */ , mp->context,
+					 VNET_API_ERROR_QUEUE_FULL);
       return;
     }
 
@@ -2436,7 +2447,10 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 	  vec_reset_length (a->new_segment_indices);
 	  rv = VNET_API_ERROR_URI_FIFO_CREATE_FAILED;
 	  vppcom_send_connect_session_reply (client_session,
-					     client_session_index, rv);
+					     client_session_index,
+					     client_session->vpp_handle,
+					     client_session->client_context,
+					     rv);
 	  clib_spinlock_unlock (&vcm->sessions_lockp);
 	  rv = VPPCOM_ENOMEM;
 	  goto done;
@@ -2460,7 +2474,10 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 			vcm->cfg.rx_fifo_size, vcm->cfg.rx_fifo_size);
 	  rv = VNET_API_ERROR_URI_FIFO_CREATE_FAILED;
 	  vppcom_send_connect_session_reply (client_session,
-					     client_session_index, rv);
+					     client_session_index,
+					     client_session->vpp_handle,
+					     client_session->client_context,
+					     rv);
 	  clib_spinlock_unlock (&vcm->sessions_lockp);
 	  rv = VPPCOM_ENOMEM;
 	  goto done;
@@ -2481,7 +2498,10 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 			vcm->cfg.tx_fifo_size, vcm->cfg.tx_fifo_size);
 	  rv = VNET_API_ERROR_URI_FIFO_CREATE_FAILED;
 	  vppcom_send_connect_session_reply (client_session,
-					     client_session_index, rv);
+					     client_session_index,
+					     client_session->vpp_handle,
+					     client_session->client_context,
+					     rv);
 	  clib_spinlock_unlock (&vcm->sessions_lockp);
 	  rv = VPPCOM_ENOMEM;
 	  goto done;
@@ -2514,12 +2534,16 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 #endif
       vppcom_send_connect_session_reply (client_session,
 					 client_session_index,
+					 client_session->vpp_handle,
+					 client_session->client_context,
 					 0 /* retval OK */ );
     }
   else
     {
       cut_thru_str = " ";
-      vppcom_send_accept_session_reply (client_session->vpp_handle, 0);
+      vppcom_send_accept_session_reply (client_session->vpp_handle,
+					client_session->client_context,
+					0 /* retval OK */ );
     }
 
   if (VPPCOM_DEBUG > 0)
