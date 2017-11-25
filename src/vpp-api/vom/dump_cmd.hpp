@@ -62,9 +62,28 @@ public:
    */
   virtual ~dump_cmd() {}
 
-  const_iterator begin() { return (m_dump->get_result_set().begin()); }
+  /**
+   * Constant iterator to the start of the records retunred during the dump
+   */
+  const_iterator begin()
+  {
+    /*
+     * m_dump is NULL during client UT when the commands are not issued.
+     */
+    if (!m_dump)
+      return const_iterator();
+    return (m_dump->get_result_set().begin());
+  }
 
-  const_iterator end() { return (m_dump->get_result_set().end()); }
+  /**
+   * Constant iterator to the end of the records retunred during the dump
+   */
+  const_iterator end()
+  {
+    if (!m_dump)
+      return const_iterator();
+    return (m_dump->get_result_set().end());
+  }
 
   /**
    * Wait for the issue of the command to complete
