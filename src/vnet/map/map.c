@@ -356,9 +356,7 @@ map_last_lock_gone (fib_node_t * node)
 static map_main_pre_resolved_t *
 map_from_fib_node (fib_node_t * node)
 {
-#if (CLIB_DEBUG > 0)
   ASSERT (FIB_NODE_TYPE_MAP_E == node->fn_type);
-#endif
   return ((map_main_pre_resolved_t *)
 	  (((char *) node) -
 	   STRUCT_OFFSET_OF (map_main_pre_resolved_t, node)));

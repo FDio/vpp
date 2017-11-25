@@ -143,9 +143,7 @@ geneve_tunnel_restack_dpo (geneve_tunnel_t * t)
 static geneve_tunnel_t *
 geneve_tunnel_from_fib_node (fib_node_t * node)
 {
-#if (CLIB_DEBUG > 0)
   ASSERT (FIB_NODE_TYPE_GENEVE_TUNNEL == node->fn_type);
-#endif
   return ((geneve_tunnel_t *) (((char *) node) -
 			       STRUCT_OFFSET_OF (geneve_tunnel_t, node)));
 }

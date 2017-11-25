@@ -52,7 +52,7 @@ typedef enum fib_node_type_t_ {
      */
     FIB_NODE_TYPE_TEST,
     FIB_NODE_TYPE_LAST = FIB_NODE_TYPE_TEST,
-} fib_node_type_t;
+} __attribute__ ((packed)) fib_node_type_t;
 
 #define FIB_NODE_TYPE_MAX (FIB_NODE_TYPE_LAST + 1)
 
@@ -284,18 +284,21 @@ typedef struct fib_node_vft_t_ {
  * Objects in the FIB form a graph.
  */
 typedef struct fib_node_t_ {
-#if CLIB_DEBUG > 0
     /**
      * The node's type. make sure we are dynamic/down casting correctly
      */
     fib_node_type_t fn_type;
-#endif
+
+    /**
+     * Some pad space the concrete/derived type is free to use
+     */
+    u16 fn_pad;
     /**
      * The node's VFT.
      * we could store the type here instead, and lookup the VFT using that. But
      * I like this better,
      */
-    const fib_node_vft_t *fn_vft;
+//    const fib_node_vft_t *fn_vft;
 
     /**
      * Vector of nodes that depend upon/use/share this node
@@ -308,6 +311,8 @@ typedef struct fib_node_t_ {
      */
     u32 fn_locks;
 } fib_node_t;
+
+STATIC_ASSERT(sizeof(fib_node_t) == 12, "FIB node type is growing");
 
 /**
  * @brief

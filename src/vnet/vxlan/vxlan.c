@@ -138,9 +138,7 @@ vxlan_tunnel_restack_dpo(vxlan_tunnel_t * t)
 static vxlan_tunnel_t *
 vxlan_tunnel_from_fib_node (fib_node_t *node)
 {
-#if (CLIB_DEBUG > 0)
     ASSERT(FIB_NODE_TYPE_VXLAN_TUNNEL == node->fn_type);
-#endif
     return ((vxlan_tunnel_t*) (((char*)node) -
 			       STRUCT_OFFSET_OF(vxlan_tunnel_t, node)));
 }

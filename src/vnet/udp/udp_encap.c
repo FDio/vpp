@@ -325,9 +325,7 @@ format_udp_encap (u8 * s, va_list * args)
 static udp_encap_t *
 udp_encap_from_fib_node (fib_node_t * node)
 {
-#if (CLIB_DEBUG > 0)
   ASSERT (FIB_NODE_TYPE_UDP_ENCAP == node->fn_type);
-#endif
   return ((udp_encap_t *) (((char *) node) -
 			   STRUCT_OFFSET_OF (udp_encap_t, ue_fib_node)));
 }

@@ -439,9 +439,7 @@ fib_path_get_node (fib_node_index_t index)
 static fib_path_t*
 fib_path_from_fib_node (fib_node_t *node)
 {
-#if CLIB_DEBUG > 0
     ASSERT(FIB_NODE_TYPE_PATH == node->fn_type);
-#endif
     return ((fib_path_t*)node);
 }
 

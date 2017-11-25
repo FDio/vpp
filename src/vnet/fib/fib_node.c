@@ -183,14 +183,11 @@ void
 fib_node_init (fib_node_t *node,
 	       fib_node_type_t type)
 {
-#if CLIB_DEBUG > 0
     /**
-     * The node's type. make sure we are dynamic/down casting correctly
+     * The node's type. used to retrieve the VFT.
      */
     node->fn_type = type;
-#endif
     node->fn_locks = 0;
-    node->fn_vft = &fn_vfts[type];
     node->fn_children = FIB_NODE_INDEX_INVALID;
 }
 
@@ -213,7 +210,7 @@ fib_node_unlock (fib_node_t *node)
 
     if (0 == node->fn_locks)
     {
-	node->fn_vft->fnv_last_lock(node);
+	fn_vfts[node->fn_type].fnv_last_lock(node);
     }
 }
 
