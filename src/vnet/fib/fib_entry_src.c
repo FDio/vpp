@@ -61,13 +61,62 @@ fib_entry_src_action_init (fib_entry_t *fib_entry,
 	fib_entry_src_vft[source].fesv_init(&esrc);
     }
 
-    vec_add1(fib_entry->fe_srcs, esrc);
-    vec_sort_with_function(fib_entry->fe_srcs,
-			   fib_entry_src_cmp_for_sort);
+    if (fib_entry_has_multiple_srcs(fib_entry))
+    {
+        vec_add1(fib_entry->fe_u_src.fe_srcs, esrc);
+
+        vec_sort_with_function(fib_entry->fe_u_src.fe_srcs,
+                               fib_entry_src_cmp_for_sort);
+    }
+    else
+    {
+        /*
+         * is this the very first source
+         */
+        if (FIB_SOURCE_INVALID == fib_entry->fe_u_src.fe_src.fes_src)
+        {
+            clib_memcpy(&fib_entry->fe_u_src.fe_src, &esrc, sizeof(esrc));
+        }
+        else
+        {
+            /*
+             * transitioning to multiple sources.
+             * allocate the vecotr of sources.
+             */
+            fib_entry_src_t *srcs = NULL;
+
+            vec_validate(srcs, 1);
+
+            /*
+             * sorted insert
+             */
+            if (fib_entry->fe_u_src.fe_src.fes_src < esrc.fes_src)
+            {
+                srcs[0] = fib_entry->fe_u_src.fe_src;
+                srcs[1] = esrc;
+            }
+            else
+            {
+                srcs[0] = esrc;
+                srcs[1] = fib_entry->fe_u_src.fe_src;
+            }
+            memset(&fib_entry->fe_u_src.fe_src, 0,
+                   sizeof(fib_entry->fe_u_src.fe_src));
+            fib_entry->fe_u_src.fe_srcs = srcs;
+
+            fib_entry->fe_node.fn_pad |= FIB_ENTRY_NODE_FLAG_MULTIPLE_SRCS;
+        }
+    }
+}
+
+u32
+fib_entry_has_multiple_srcs(const fib_entry_t * fib_entry)
+{
+    return (fib_entry->fe_node.fn_pad & FIB_ENTRY_NODE_FLAG_MULTIPLE_SRCS);
 }
 
 static fib_entry_src_t *
-fib_entry_src_find (const fib_entry_t *fib_entry,
+fib_entry_src_find (fib_entry_t *fib_entry,
 		    fib_source_t source,
 		    u32 *index)
 
@@ -76,20 +125,80 @@ fib_entry_src_find (const fib_entry_t *fib_entry,
     int ii;
 
     ii = 0;
-    vec_foreach(esrc, fib_entry->fe_srcs)
+    if (fib_entry_has_multiple_srcs(fib_entry))
     {
-	if (esrc->fes_src == source)
-	{
-	    if (NULL != index)
-	    {
-		*index = ii;
-	    }
-	    return (esrc);
-	}
-	else
-	{
-	    ii++;
-	}
+        vec_foreach(esrc, fib_entry->fe_u_src.fe_srcs)
+        {
+            if (esrc->fes_src == source)
+            {
+                if (NULL != index)
+                {
+                    *index = ii;
+                }
+                return (esrc);
+            }
+            else
+            {
+                ii++;
+            }
+        }
+    }
+    else
+    {
+        esrc = &fib_entry->fe_u_src.fe_src;
+        if (esrc->fes_src == source)
+        {
+            if (NULL != index)
+            {
+                *index = -1;
+            }
+            return (esrc);
+        }
+    }
+
+    return (NULL);
+}
+
+static fib_entry_src_t *
+fib_entry_src_delete (fib_entry_t *fib_entry,
+                      u32 index)
+
+{
+    if (-1 == index)
+    {
+        ASSERT(!fib_entry_has_multiple_srcs(fib_entry));
+        memset(&fib_entry->fe_u_src.fe_src, 0,
+               sizeof(fib_entry->fe_u_src.fe_src));
+    }
+    else
+    {
+        vec_del1(fib_entry->fe_u_src.fe_srcs, index);
+
+        ASSERT(vec_len(fib_entry->fe_u_src.fe_srcs));
+        if (1 == vec_len(fib_entry->fe_u_src.fe_srcs))
+        {
+            /*
+             * Is there much point in transitioning back?
+             * We've paid the cost of the malloc for the vector,
+             * why not keep it.
+             * Favour memory use. If the expectation that multiple sources
+             * is rare is correct, then we should expect this entry is
+             * unlikely to need the vector again
+             */
+            fib_entry_src_t *srcs;
+
+            srcs = fib_entry->fe_u_src.fe_srcs;
+            fib_entry->fe_node.fn_pad &= ~FIB_ENTRY_NODE_FLAG_MULTIPLE_SRCS;
+            clib_memcpy(&fib_entry->fe_u_src.fe_src,
+                        &srcs[0],
+                        sizeof(fib_entry->fe_u_src.fe_src));
+            vec_free(srcs);
+        }
+        else
+        {
+            vec_sort_with_function(fib_entry->fe_u_src.fe_srcs,
+                                   fib_entry_src_cmp_for_sort);
+        }
     }
 
     return (NULL);
@@ -108,8 +217,7 @@ fib_entry_is_sourced (fib_node_index_t fib_entry_index,
 
 static fib_entry_src_t *
 fib_entry_src_find_or_create (fib_entry_t *fib_entry,
-			      fib_source_t source,
-			      u32 *index)
+			      fib_source_t source)
 {
     fib_entry_src_t *esrc;
 
@@ -141,7 +249,7 @@ fib_entry_src_action_deinit (fib_entry_t *fib_entry,
     }
 
     fib_path_ext_list_flush(&esrc->fes_path_exts);
-    vec_del1(fib_entry->fe_srcs, index);
+    fib_entry_src_delete(fib_entry, index);
 }
 
 fib_entry_src_cover_res_t
@@ -744,23 +852,6 @@ fib_entry_src_action_deactivate (fib_entry_t *fib_entry,
     fib_entry->fe_sibling = FIB_NODE_INDEX_INVALID;
 }
 
-static void
-fib_entry_src_action_fwd_update (const fib_entry_t *fib_entry,
-				 fib_source_t source)
-{
-    fib_entry_src_t *esrc;
-
-    vec_foreach(esrc, fib_entry->fe_srcs)
-    {
-	if (NULL != fib_entry_src_vft[esrc->fes_src].fesv_fwd_update)
-	{
-	    fib_entry_src_vft[esrc->fes_src].fesv_fwd_update(esrc,
-							     fib_entry,
-							     source);
-	}
-    }
-}
-
 void
 fib_entry_src_action_reactivate (fib_entry_t *fib_entry,
 				 fib_source_t source)
@@ -813,11 +904,10 @@ fib_entry_src_action_reactivate (fib_entry_t *fib_entry,
 	fib_path_list_unlock(path_list_index);
     }
     fib_entry_src_action_install(fib_entry, source);
-    fib_entry_src_action_fwd_update(fib_entry, source);
 }
 
 void
-fib_entry_src_action_installed (const fib_entry_t *fib_entry,
+fib_entry_src_action_installed (fib_entry_t *fib_entry,
 				fib_source_t source)
 {
     fib_entry_src_t *esrc;
@@ -829,8 +919,6 @@ fib_entry_src_action_installed (const fib_entry_t *fib_entry,
 	fib_entry_src_vft[source].fesv_installed(esrc,
 						 fib_entry);
     }
-
-    fib_entry_src_action_fwd_update(fib_entry, source);
 }
 
 /*
@@ -850,7 +938,7 @@ fib_entry_src_action_add (fib_entry_t *fib_entry,
     fib_node_index_t fib_entry_index;
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find_or_create(fib_entry, source, NULL);
+    esrc = fib_entry_src_find_or_create(fib_entry, source);
 
     esrc->fes_ref_count++;
 
@@ -909,7 +997,7 @@ fib_entry_src_action_update (fib_entry_t *fib_entry,
     fib_node_index_t fib_entry_index, old_path_list_index;
     fib_entry_src_t *esrc;
 
-    esrc = fib_entry_src_find_or_create(fib_entry, source, NULL);
+    esrc = fib_entry_src_find_or_create(fib_entry, source);
 
     if (NULL == esrc)
 	return (fib_entry_src_action_add(fib_entry, source, flags, dpo));
@@ -1367,29 +1455,6 @@ fib_entry_get_flags_for_source (fib_node_index_t entry_index,
     }
 
     return (FIB_ENTRY_FLAG_NONE);
-}
-
-fib_entry_flag_t
-fib_entry_get_flags_i (const fib_entry_t *fib_entry)
-{
-    fib_entry_flag_t flags;
-
-    /*
-     * the vector of sources is deliberately arranged in priority order
-     */
-    if (0 == vec_len(fib_entry->fe_srcs))
-    {
-	flags = FIB_ENTRY_FLAG_NONE;
-    }
-    else
-    {
-	fib_entry_src_t *esrc;
-
-	esrc = vec_elt_at_index(fib_entry->fe_srcs, 0);
-	flags = esrc->fes_entry_flags;
-    }
-
-    return (flags);
 }
 
 void
