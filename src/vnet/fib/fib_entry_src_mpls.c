@@ -181,13 +181,6 @@ const static fib_entry_src_vft_t mpls_src_vft = {
     .fesv_format = fib_entry_src_mpls_format,
     .fesv_set_data = fib_entry_src_mpls_set_data,
     .fesv_get_data = fib_entry_src_mpls_get_data,
-    /*
-     * .fesv_fwd_update = fib_entry_src_mpls_fwd_update,
-     *  When the forwarding for the IP entry is updated, any MPLS chains
-     * it has created are also updated. Since the MPLS entry will have already
-     * installed that chain/load-balance there is no need to update the netry
-     * FIXME: later: propagate any walk to the children of the MPLS entry. for SR
-     */
 };
 
 void
