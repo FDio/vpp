@@ -246,6 +246,14 @@ while ! [[ $run_test ]] && (( $# > 0 )) ; do
     shift
 done
 
+if [ -z "$VCL_DEBUG" ] ; then
+    if [ "$title_dbg" = "-DEBUG" ] ; then
+        VCL_DEBUG=1
+    else
+        VCL_DEBUG=0
+    fi
+fi
+
 VCL_LDPRELOAD_LIB_DIR="${VCL_LDPRELOAD_LIB_DIR:-$lib64_dir}"
 
 if [ -z "$WS_ROOT" ] ; then
@@ -763,7 +771,7 @@ docker_preload() {
         gdb_cmdfile=$VPPCOM_SERVER_GDB_CMDFILE
         set_pre_cmd $emacs_server $gdb_server $docker_ld_preload_lib
         write_script_header $cmd2_file $tmp_gdb_cmdfile "$title2" "sleep 2"
-        echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $ld_preload_dir:$docker_ld_preload_dir -v $vcl_config_dir:$docker_vcl_config_dir -p $sock_srvr_port:$sock_srvr_port -e VCL_CONFIG=${docker_vcl_config_dir}$vcl_config -e LD_LIBRARY_PATH=$docker_lib64_dir:$docker_ld_preload_dir ${docker_ld_preload}$docker_os ${docker_app_dir}${srvr_app}" >> $cmd2_file
+        echo "docker run -it -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir -v $ld_preload_dir:$docker_ld_preload_dir -v $vcl_config_dir:$docker_vcl_config_dir -p $sock_srvr_port:$sock_srvr_port -e VCL_DEBUG=$VCL_DEBUG -e VCL_CONFIG=${docker_vcl_config_dir}$vcl_config -e LD_LIBRARY_PATH=$docker_lib64_dir:$docker_ld_preload_dir ${docker_ld_preload}$docker_os ${docker_app_dir}${srvr_app}" >> $cmd2_file
         write_script_footer $cmd2_file $perf_server
         chmod +x $cmd2_file
     fi
@@ -775,7 +783,7 @@ docker_preload() {
         set_pre_cmd $emacs_client $gdb_client $docker_ld_preload_lib
         write_script_header $cmd3_file $tmp_gdb_cmdfile "$title3" "sleep 4"
         echo "$get_docker_server_ip4addr" >> $cmd3_file
-        echo "docker run -it --cpuset-cpus='4-7' -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir  -v $ld_preload_dir:$docker_ld_preload_dir -v $vcl_config_dir:$docker_vcl_config_dir -e VCL_CONFIG=${docker_vcl_config_dir}$vcl_config -e LD_LIBRARY_PATH=$docker_lib64_dir ${docker_ld_preload}$docker_os ${docker_app_dir}${clnt_app}" >> $cmd3_file
+        echo "docker run -it --cpuset-cpus='4-7' -v $vpp_shm_dir:$vpp_shm_dir -v $vpp_dir:$docker_vpp_dir -v $lib64_dir:$docker_lib64_dir  -v $ld_preload_dir:$docker_ld_preload_dir -v $vcl_config_dir:$docker_vcl_config_dir -e VCL_DEBUG=$VCL_DEBUG -e VCL_CONFIG=${docker_vcl_config_dir}$vcl_config -e LD_LIBRARY_PATH=$docker_lib64_dir ${docker_ld_preload}$docker_os ${docker_app_dir}${clnt_app}" >> $cmd3_file
         write_script_footer $cmd3_file $perf_client
         chmod +x $cmd3_file
     fi

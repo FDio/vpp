@@ -315,6 +315,7 @@ new_client (void)
       errno_val = errno;
       perror ("ERROR in new_client()");
       fprintf (stderr, "ERROR: accept failed (errno = %d)!\n", errno_val);
+      return;
     }
 
   printf ("SERVER: Got a connection -- fd = %d (0x%08x)!\n",

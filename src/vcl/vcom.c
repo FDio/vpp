@@ -1951,6 +1951,12 @@ vcom_connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
     case AF_INET:
     case AF_INET6:
       rv = vcom_socket_connect (__fd, __addr, __len);
+      if (!rv)
+	{
+	  errno = -rv;
+	  return -1;
+
+	}
       break;
 
     default:
@@ -1977,7 +1983,7 @@ connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
 		 "'%04d'='%04d', '%p', '%04d'\n",
 		 pid, (unsigned long) tid, (unsigned long) tid,
 		 rv, __fd, __addr, __len);
-      if (rv != 0)
+      if (!rv)
 	{
 	  errno = -rv;
 	  return -1;
