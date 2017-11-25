@@ -153,9 +153,7 @@ gre_tunnel_db_remove (const gre_tunnel_t *t)
 static gre_tunnel_t *
 gre_tunnel_from_fib_node (fib_node_t *node)
 {
-#if (CLIB_DEBUG > 0)
     ASSERT(FIB_NODE_TYPE_GRE_TUNNEL == node->fn_type);
-#endif
     return ((gre_tunnel_t*) (((char*)node) -
                              STRUCT_OFFSET_OF(gre_tunnel_t, node)));
 }

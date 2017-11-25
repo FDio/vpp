@@ -238,9 +238,7 @@ format_mfib_entry (u8 * s, va_list * args)
 static mfib_entry_t*
 mfib_entry_from_fib_node (fib_node_t *node)
 {
-#if CLIB_DEBUG > 0
     ASSERT(FIB_NODE_TYPE_MFIB_ENTRY == node->fn_type);
-#endif
     return ((mfib_entry_t*)node);
 }
 
