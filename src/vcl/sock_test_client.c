@@ -525,6 +525,11 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 
 #ifdef VCL_TEST
 	  rv = vppcom_session_connect (tsock->fd, &scm->server_endpt);
+	  if (rv)
+	    {
+	      errno = -rv;
+	      rv = -1;
+	    }
 #else
 	  rv =
 	    connect (tsock->fd, (struct sockaddr *) &scm->server_addr,
@@ -533,9 +538,10 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	  if (rv < 0)
 	    {
 	      errno_val = errno;
-	      perror ("ERROR in main()");
+	      perror ("ERROR in sock_test_connect_test_sockets()");
 	      fprintf (stderr, "ERROR: connect failed (errno = %d)!\n",
 		       errno_val);
+	      return -1;
 	    }
 	  tsock->cfg = ctrl->cfg;
 	  sock_test_socket_buf_alloc (tsock);
@@ -632,6 +638,7 @@ cfg_num_test_sockets_set (void)
     {
       ctrl->cfg.num_test_sockets = num_test_sockets;
       sock_test_connect_test_sockets (num_test_sockets);
+
       sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   else
@@ -965,6 +972,11 @@ main (int argc, char **argv)
 
 #ifdef VCL_TEST
       rv = vppcom_session_connect (ctrl->fd, &scm->server_endpt);
+      if (rv)
+	{
+	  errno = -rv;
+	  rv = -1;
+	}
 #else
       rv =
 	connect (ctrl->fd, (struct sockaddr *) &scm->server_addr,
@@ -976,6 +988,7 @@ main (int argc, char **argv)
 	  perror ("ERROR in main()");
 	  fprintf (stderr, "ERROR: connect failed (errno = %d)!\n",
 		   errno_val);
+	  return -1;
 	}
 
       sock_test_cfg_sync (ctrl);

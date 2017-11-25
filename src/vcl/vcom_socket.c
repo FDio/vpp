@@ -3011,12 +3011,10 @@ vcom_socket_epoll_pwait (int __epfd, struct epoll_event *__events,
 {
   vcom_socket_main_t *vsm = &vcom_socket_main;
   int rv = -EBADF;
-  int rv2;
   double time_to_wait = (double) 0;
   double timeout, now = 0;
   vcom_epoll_t *vepoll;
   i32 vep_idx;
-  static struct epoll_event *libc_ev = 0;
 
   /* validate __event */
   if (!__events || (__timeout < -1))
@@ -3070,42 +3068,40 @@ vcom_socket_epoll_pwait (int __epfd, struct epoll_event *__events,
 		 "__timeout = %d)\n",
 		 getpid (), vepoll->vcl_cnt, vepoll->libc_cnt,
 		 time_to_wait, __timeout);
-      vec_validate (libc_ev, __maxevents);
       timeout = clib_time_now (&vsm->clib_time) + time_to_wait;
       do
 	{
 	  rv = vppcom_epoll_wait (vep_idx, __events, __maxevents, 0);
-	  rv2 = libc_epoll_pwait (__epfd, libc_ev, __maxevents, 1, __ss);
-	  if (VCOM_DEBUG == 666)
-	    fprintf (stderr, "[%d] vcom_socket_epoll_pwait: "
-		     "rv = %d, rv2 = %d, timeout = %f, now = %f\n",
-		     getpid (), rv, rv2, timeout, now);
-	  if ((rv > 0) || (rv2 > 0))
+	  if (rv > 0)
 	    {
 	      if (VCOM_DEBUG > 2)
 		fprintf (stderr, "[%d] vcom_socket_epoll_pwait: "
-			 "rv = %d, rv2 = %d\n", getpid (), rv, rv2);
-	      int n = __maxevents - rv;
-	      n = rv2 <= n ? rv2 : n;
-	      rv = (rv > 0) ? rv : 0;
-
-	      clib_memcpy (&__events[rv], libc_ev, n * sizeof (*libc_ev));
-	      rv += rv2;
+			 "vppcom_epoll_wait() returned %d\n", getpid (), rv);
 	      goto out;
 	    }
-	  else if ((rv < 0) || (rv2 < 0))
+	  else if (rv < 0)
 	    {
-	      if (rv < 0)
-		fprintf (stderr,
-			 "[%d] ERROR: vppcom_epoll_wait() returned %d\n",
-			 getpid (), rv);
-	      if (rv2 < 0)
-		{
-		  fprintf (stderr,
-			   "[%d] ERROR: libc_epoll_wait() failed, errno %d\n",
-			   getpid (), errno);
-		  rv = (rv < 0) ? rv : -errno;
-		}
+	      if (VCOM_DEBUG > 2)
+		fprintf (stderr, "[%d] ERROR: vcom_socket_epoll_pwait: "
+			 "vppcom_epoll_wait() returned %d\n", getpid (), rv);
+
+	      goto out;
+	    }
+	  rv = libc_epoll_pwait (__epfd, __events, __maxevents, 1, __ss);
+	  if (rv > 0)
+	    {
+	      if (VCOM_DEBUG > 2)
+		fprintf (stderr, "[%d] vcom_socket_epoll_pwait: "
+			 "libc_epoll_pwait() returned %d\n", getpid (), rv);
+	      goto out;
+	    }
+	  else if (rv < 0)
+	    {
+	      int errno_val = errno;
+	      perror ("libc_epoll_wait");
+	      fprintf (stderr, "[%d]  vcom_socket_epoll_pwait: "
+		       "libc_epoll_wait() failed, errno %d\n",
+		       getpid (), errno_val);
 	      goto out;
 	    }
 	  if (__timeout != -1)
@@ -3113,9 +3109,7 @@ vcom_socket_epoll_pwait (int __epfd, struct epoll_event *__events,
 	}
       while (now < timeout);
     }
-
 out:
-  vec_reset_length (libc_ev);
   return rv;
 }
 

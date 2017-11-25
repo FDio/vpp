@@ -315,6 +315,7 @@ new_client (void)
       errno_val = errno;
       perror ("ERROR in new_client()");
       fprintf (stderr, "ERROR: accept failed (errno = %d)!\n", errno_val);
+      return;
     }
 
   printf ("SERVER: Got a connection -- fd = %d (0x%08x)!\n",
@@ -681,6 +682,7 @@ main (int argc, char **argv)
 			  close (client_fd);
 #endif
 			  conn_pool_free (conn);
+			  printf ("SERVER: Closed client fd %d\n", client_fd);
 #if ! SOCK_SERVER_USE_EPOLL
 			  if (ssm->nfds == (ssm->listen_fd + 1))
 #else
