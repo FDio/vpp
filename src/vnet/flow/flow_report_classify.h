@@ -66,57 +66,69 @@ _(tcpudp->dst_port, ((u16[]){0xFFFF}), udpDestinationPort, 2)
   }                                                                         \
   foreach_ipfix_transport_protocol_field
 
-typedef struct {
+typedef struct
+{
   u32 classify_table_index;
   u8 ip_version;
   u8 transport_protocol;
 } ipfix_classify_table_t;
 
-typedef struct {
+typedef struct
+{
   u32 domain_id;
   u16 src_port;
-  ipfix_classify_table_t * tables;
+  ipfix_classify_table_t *tables;
 } flow_report_classify_main_t;
 
 extern flow_report_classify_main_t flow_report_classify_main;
 
-static_always_inline u8 ipfix_classify_table_index_valid (u32 index)
+static_always_inline u8
+ipfix_classify_table_index_valid (u32 index)
 {
-  flow_report_classify_main_t * fcm = &flow_report_classify_main;
-  return index < vec_len(fcm->tables) &&
-         fcm->tables[index].classify_table_index != ~0;
+  flow_report_classify_main_t *fcm = &flow_report_classify_main;
+  return index < vec_len (fcm->tables) &&
+    fcm->tables[index].classify_table_index != ~0;
 }
 
-static_always_inline ipfix_classify_table_t * ipfix_classify_add_table (void)
+static_always_inline ipfix_classify_table_t *
+ipfix_classify_add_table (void)
 {
-  flow_report_classify_main_t * fcm = &flow_report_classify_main;
+  flow_report_classify_main_t *fcm = &flow_report_classify_main;
   u32 i;
-  for (i = 0; i < vec_len(fcm->tables); i++)
-    if (!ipfix_classify_table_index_valid(i))
+  for (i = 0; i < vec_len (fcm->tables); i++)
+    if (!ipfix_classify_table_index_valid (i))
       return &fcm->tables[i];
-  u32 index = vec_len(fcm->tables);
-  vec_validate(fcm->tables, index);
+  u32 index = vec_len (fcm->tables);
+  vec_validate (fcm->tables, index);
   return &fcm->tables[index];
 }
 
-static_always_inline void ipfix_classify_delete_table (u32 index)
+static_always_inline void
+ipfix_classify_delete_table (u32 index)
 {
-  flow_report_classify_main_t * fcm = &flow_report_classify_main;
-  ASSERT (index < vec_len(fcm->tables));
+  flow_report_classify_main_t *fcm = &flow_report_classify_main;
+  ASSERT (index < vec_len (fcm->tables));
   ASSERT (fcm->tables[index].classify_table_index != ~0);
   fcm->tables[index].classify_table_index = ~0;
 }
 
-u8 * ipfix_classify_template_rewrite (flow_report_main_t * frm,
-                                      flow_report_t * fr,
-                                      ip4_address_t * collector_address,
-                                      ip4_address_t * src_address,
-                                      u16 collector_port);
+u8 *ipfix_classify_template_rewrite (flow_report_main_t * frm,
+				     flow_report_t * fr,
+				     ip4_address_t * collector_address,
+				     ip4_address_t * src_address,
+				     u16 collector_port);
 
-vlib_frame_t * ipfix_classify_send_flows (flow_report_main_t * frm,
-                                          flow_report_t * fr,
-                                          vlib_frame_t * f,
-                                          u32 * to_next,
-                                          u32 node_index);
+vlib_frame_t *ipfix_classify_send_flows (flow_report_main_t * frm,
+					 flow_report_t * fr,
+					 vlib_frame_t * f,
+					 u32 * to_next, u32 node_index);
 
 #endif /* __included_flow_report_classify_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
