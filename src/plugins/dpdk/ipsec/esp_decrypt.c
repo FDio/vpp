@@ -264,7 +264,7 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 	    }
 
 	  u32 cipher_off, cipher_len;
-	  u32 auth_len = 0, aad_size = 0;
+	  u32 auth_len = 0;
 	  u8 *aad = NULL;
 
           u8 *iv = (u8 *) (esp0 + 1);
@@ -285,20 +285,19 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
 	      u32 *_iv = (u32 *) iv;
 
 	      crypto_set_icb (icb, sa0->salt, _iv[0], _iv[1]);
-	      iv_size = 12;
 	    }
 
           if (is_aead)
             {
               aad = priv->aad;
-              clib_memcpy(aad, esp0, 8);
+	      u32 * _aad = (u32 *) aad;
+              clib_memcpy (aad, esp0, 8);
+
+	      /* _aad[3] should always be 0 */
               if (PREDICT_FALSE (sa0->use_esn))
-		{
-		  *((u32*)&aad[8]) = sa0->seq_hi;
-		  aad_size = 12;
-		}
+		_aad[2] = clib_host_to_net_u32 (sa0->seq_hi);
 	      else
-		aad_size = 8;
+		_aad[2] = 0;
             }
           else
             {
@@ -307,7 +306,8 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
               if (sa0->use_esn)
                 {
                   clib_memcpy (priv->icv, digest, trunc_size);
-                  *((u32*) digest) = sa0->seq_hi;
+		  u32 *_digest = (u32 *) digest;
+                  _digest[0] = clib_host_to_net_u32 (sa0->seq_hi);
 		  auth_len += sizeof(sa0->seq_hi);
 
                   digest = priv->icv;
@@ -316,10 +316,8 @@ dpdk_esp_decrypt_node_fn (vlib_main_t * vm,
                 }
             }
 
-	  crypto_op_setup (is_aead, mb0, op, session,
-			   cipher_off, cipher_len, (u8 *) icb, iv_size,
-			   0, auth_len, aad, aad_size,
-			   digest, digest_paddr, trunc_size);
+	  crypto_op_setup (is_aead, mb0, op, session, cipher_off, cipher_len,
+			   0, auth_len, aad, digest, digest_paddr);
 trace:
 	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
 	    {
@@ -522,22 +520,13 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
 		  memmove(oh4, ih4, ih4_len);
 
 		  next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
-		  u16 old_ttl_prot =
-		    ((u16) oh4->ttl) << 8 | (u16) oh4->protocol;
-		  u16 new_ttl_prot =
-		    ((u16) oh4->ttl) << 8 | (u16) f0->next_header;
 		  oh4->protocol = f0->next_header;
-		  u16 new_len = clib_host_to_net_u16 (b0->current_length);
-		  oh4->length = new_len;
-		  /* rfc1264 incremental checksum update */
-		  oh4->checksum = ~(~oh4->checksum + ~oh4->length + new_len +
-				    ~old_ttl_prot + new_ttl_prot);
-
+		  oh4->length = clib_host_to_net_u16 (b0->current_length);
+		  oh4->checksum = ip4_header_checksum(oh4);
 		}
 	      else if ((ih4->ip_version_and_header_length & 0xF0) == 0x60)
 		{
-		  /* FIXME find ip header */
-		  ih6 = (ip6_header_t *) (b0->data + sizeof(ethernet_header_t));
+		  ih6 = (ip6_header_t *) ih4;
 		  vlib_buffer_advance (b0, -sizeof(ip6_header_t));
 		  oh6 = vlib_buffer_get_current (b0);
 		  memmove(oh6, ih6, sizeof(ip6_header_t));
