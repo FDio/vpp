@@ -346,10 +346,10 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      priv->next = DPDK_CRYPTO_INPUT_NEXT_INTERFACE_OUTPUT;
 	      u16 rewrite_len = vnet_buffer (b0)->ip.save_rewrite_length;
 	      u16 adv = sizeof (esp_header_t) + iv_size;
-	      vlib_buffer_advance (b0, -rewrite_len - adv);
+	      vlib_buffer_advance (b0, -adv - rewrite_len);
 	      u8 *src = ((u8 *) ih0) - rewrite_len;
 	      u8 *dst = vlib_buffer_get_current (b0);
-	      oh0 = (ip4_and_esp_header_t *) (dst + rewrite_len);
+	      oh0 = vlib_buffer_get_current (b0) + rewrite_len;
 
 	      if (is_ipv6)
 		{
@@ -363,13 +363,12 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		}
 	      else		/* ipv4 */
 		{
-		  orig_sz -= ip4_header_bytes (&ih0->ip4);
+		  u16 ip_size = ip4_header_bytes (&ih0->ip4);
+		  orig_sz -= ip_size;
 		  next_hdr_type = ih0->ip4.protocol;
-		  memmove (dst, src,
-			   rewrite_len + ip4_header_bytes (&ih0->ip4));
+		  memmove (dst, src, rewrite_len + ip_size);
 		  oh0->ip4.protocol = IP_PROTOCOL_IPSEC_ESP;
-		  esp0 =
-		    (esp_header_t *) (oh0 + ip4_header_bytes (&ih0->ip4));
+		  esp0 = (esp_header_t *) (((u8 *) oh0) + ip_size);
 		}
 	      esp0->spi = clib_host_to_net_u32 (sa0->spi);
 	      esp0->seq = clib_host_to_net_u32 (sa0->seq);
@@ -383,6 +382,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  u8 *padding =
 	    vlib_buffer_put_uninit (b0, pad_bytes + 2 + trunc_size);
 
+	  /* The extra pad bytes would be overwritten by the digest */
 	  if (pad_bytes)
 	    clib_memcpy (padding, pad_data, 16);
 
@@ -410,9 +410,9 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  mb0->pkt_len = vlib_buffer_get_tail (b0) - ((u8 *) esp0);
 	  mb0->data_off = ((void *) esp0) - mb0->buf_addr;
 
-	  u32 cipher_off, cipher_len;
-	  u32 auth_len = 0, aad_size = 0;
+	  u32 cipher_off, cipher_len, auth_len = 0;
 	  u32 *aad = NULL;
+
 	  u8 *digest = vlib_buffer_get_tail (b0) - trunc_size;
 	  u64 digest_paddr =
 	    mb0->buf_physaddr + digest - ((u8 *) mb0->buf_addr);
@@ -430,8 +430,6 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 
 	      cipher_off = sizeof (esp_header_t) + iv_size;
 	      cipher_len = pad_payload_len;
-
-	      iv_size = 12;	/* CTR/GCM IV size, not ESP IV size */
 	    }
 
 	  if (is_aead)
@@ -440,13 +438,11 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      aad[0] = clib_host_to_net_u32 (sa0->spi);
 	      aad[1] = clib_host_to_net_u32 (sa0->seq);
 
-	      if (sa0->use_esn)
-		{
-		  aad[2] = clib_host_to_net_u32 (sa0->seq_hi);
-		  aad_size = 12;
-		}
+	      /* aad[3] should always be 0 */
+	      if (PREDICT_FALSE (sa0->use_esn))
+		aad[2] = clib_host_to_net_u32 (sa0->seq_hi);
 	      else
-		aad_size = 8;
+		aad[2] = 0;
 	    }
 	  else
 	    {
@@ -454,15 +450,14 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		vlib_buffer_get_tail (b0) - ((u8 *) esp0) - trunc_size;
 	      if (sa0->use_esn)
 		{
-		  *((u32 *) digest) = sa0->seq_hi;
+		  u32 *_digest = (u32 *) digest;
+		  _digest[0] = clib_host_to_net_u32 (sa0->seq_hi);
 		  auth_len += 4;
 		}
 	    }
 
-	  crypto_op_setup (is_aead, mb0, op, session,
-			   cipher_off, cipher_len, (u8 *) icb, iv_size,
-			   0, auth_len, (u8 *) aad, aad_size,
-			   digest, digest_paddr, trunc_size);
+	  crypto_op_setup (is_aead, mb0, op, session, cipher_off, cipher_len,
+			   0, auth_len, (u8 *) aad, digest, digest_paddr);
 
 	trace:
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))

@@ -328,10 +328,13 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
   struct rte_crypto_sym_xform cipher_xform = { 0 };
   struct rte_crypto_sym_xform auth_xform = { 0 };
   struct rte_crypto_sym_xform *xfs;
+  struct rte_cryptodev_sym_session **s;
   crypto_session_key_t key = { 0 };
 
   key.drv_id = res->drv_id;
   key.sa_idx = sa_idx;
+
+  data = vec_elt_at_index (dcm->data, res->numa);
 
   sa = pool_elt_at_index (im->sad, sa_idx);
 
@@ -359,16 +362,14 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
 	}
     }
 
-  data = vec_elt_at_index (dcm->data, res->numa);
-
   /*
    * DPDK_VER >= 1708:
    *   Multiple worker/threads share the session for an SA
    *   Single session per SA, initialized for each device driver
    */
-  session[0] = (void *) hash_get (data->session_by_sa_index, sa_idx);
+  s = (void *) hash_get (data->session_by_sa_index, sa_idx);
 
-  if (!session[0])
+  if (!s)
     {
       session[0] = rte_cryptodev_sym_session_create (data->session_h);
       if (!session[0])
@@ -378,6 +379,8 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
 	}
       hash_set (data->session_by_sa_index, sa_idx, session[0]);
     }
+  else
+    session[0] = s[0];
 
   struct rte_mempool **mp;
   mp = vec_elt_at_index (data->session_drv, res->drv_id);
@@ -392,7 +395,7 @@ create_sym_session (struct rte_cryptodev_sym_session **session,
 				res->drv_id);
     }
 
-  hash_set (cwm->session_by_drv_id_and_sa_index, key.val, session[0]);
+  hash_set (data->session_by_drv_id_and_sa_index, key.val, session[0]);
 
   return 0;
 }
@@ -423,18 +426,58 @@ set_session_private_data (struct rte_cryptodev_sym_session *sess,
 }
 
 static clib_error_t *
+dpdk_crypto_session_disposal (crypto_session_disposal_t * v, u64 ts)
+{
+  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
+  crypto_session_disposal_t *s;
+  void *drv_session;
+  u32 drv_id;
+  i32 ret;
+
+  /* *INDENT-OFF* */
+  vec_foreach (s, v)
+    {
+      /* ordered vector by timestamp */
+      if (!(s->ts + dcm->session_timeout < ts))
+	break;
+
+      vec_foreach_index (drv_id, dcm->drv)
+	{
+	  drv_session = get_session_private_data (s->session, drv_id);
+	  if (!drv_session)
+	    continue;
+
+	  /*
+	   * Custom clear to avoid finding a dev_id for drv_id:
+	   *  ret = rte_cryptodev_sym_session_clear (dev_id, drv_session);
+	   *  ASSERT (!ret);
+	   */
+	  clear_and_free_obj (drv_session);
+
+	  set_session_private_data (s->session, drv_id, NULL);
+	}
+
+      ret = rte_cryptodev_sym_session_free (s->session);
+      ASSERT (!ret);
+    }
+  /* *INDENT-ON* */
+
+  if (s < vec_end (v))
+    vec_delete (v, s - v, 0);
+
+  return 0;
+}
+
+static clib_error_t *
 add_del_sa_session (u32 sa_index, u8 is_add)
 {
   ipsec_main_t *im = &ipsec_main;
   dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
-  crypto_worker_main_t *cwm;
+  crypto_data_t *data;
   struct rte_cryptodev_sym_session *s;
   crypto_session_key_t key = { 0 };
   uword *val;
   u32 drv_id;
-  i32 ret;
-
-  key.sa_idx = sa_index;
 
   if (is_add)
     {
@@ -456,28 +499,8 @@ add_del_sa_session (u32 sa_index, u8 is_add)
       return 0;
     }
 
-  /* XXX Wait N cycles to be sure session is not in use OR
-   * keep refcnt at SA level per worker/thread ? */
-  unix_sleep (0.2);
+  key.sa_idx = sa_index;
 
-  /* *INDENT-OFF* */
-  vec_foreach (cwm, dcm->workers_main)
-    {
-      for (drv_id = 0; drv_id < dcm->max_drv_id; drv_id++)
-	{
-	  key.drv_id = drv_id;
-	  val = hash_get (cwm->session_by_drv_id_and_sa_index, key.val);
-	  s = (struct rte_cryptodev_sym_session *) val;
-
-	  if (!s)
-	    continue;
-
-	  hash_unset (cwm->session_by_drv_id_and_sa_index, key.val);
-	}
-    }
-  /* *INDENT-ON* */
-
-  crypto_data_t *data;
   /* *INDENT-OFF* */
   vec_foreach (data, dcm->data)
     {
@@ -487,27 +510,28 @@ add_del_sa_session (u32 sa_index, u8 is_add)
       if (!s)
 	continue;
 
-      hash_unset (data->session_by_sa_index, sa_index);
-
-      void *drv_session;
       vec_foreach_index (drv_id, dcm->drv)
 	{
-	  drv_session = get_session_private_data (s, drv_id);
-	  if (!drv_session)
+	  key.drv_id = drv_id;
+	  val = hash_get (data->session_by_drv_id_and_sa_index, key.val);
+	  s = (struct rte_cryptodev_sym_session *) val;
+
+	  if (!s)
 	    continue;
 
-	  /*
-	   * Custom clear to avoid finding a dev_id for drv_id:
-	   *  ret = rte_cryptodev_sym_session_clear (dev_id, drv_session);
-	   *  ASSERT (!ret);
-	   */
-	  clear_and_free_obj (drv_session);
-
-	  set_session_private_data (s, drv_id, NULL);
+	  hash_unset (data->session_by_drv_id_and_sa_index, key.val);
 	}
 
-      ret = rte_cryptodev_sym_session_free(s);
-      ASSERT (!ret);
+      hash_unset (data->session_by_sa_index, sa_index);
+
+      u64 ts = unix_time_now_nsec ();
+      dpdk_crypto_session_disposal (data->session_disposal, ts);
+
+      crypto_session_disposal_t sd;
+      sd.ts = ts;
+      sd.session = s;
+
+      vec_add1 (data->session_disposal, sd);
     }
   /* *INDENT-ON* */
 
@@ -782,7 +806,11 @@ crypto_op_init (struct rte_mempool *mempool,
   op->sess_type = RTE_CRYPTO_OP_WITH_SESSION;
   op->type = RTE_CRYPTO_OP_TYPE_SYMMETRIC;
   op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
-  op->phys_addr = rte_mem_virt2phy (_obj);
+#if RTE_VERSION < RTE_VERSION_NUM(17, 11, 0, 0)
+  op->phys_addr = rte_mempool_virt2phy (NULL, _obj);
+#else
+  op->phys_addr = rte_mempool_virt2iova (_obj);
+#endif
   op->mempool = mempool;
 }
 
@@ -984,6 +1012,8 @@ dpdk_ipsec_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
       crypto_disable ();
       return 0;
     }
+
+  dcm->session_timeout = 10e9;
 
   vec_validate_init_empty_aligned (dcm->workers_main, n_mains - 1,
 				   (crypto_worker_main_t) EMPTY_STRUCT,
