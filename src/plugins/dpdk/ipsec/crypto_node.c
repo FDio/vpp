@@ -230,8 +230,6 @@ dpdk_crypto_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       vec_free (remove);
     }
 
-  /* TODO Clear all sessions in device */
-
   return n_deq;
 }
 
