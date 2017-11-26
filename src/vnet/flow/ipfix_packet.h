@@ -21,14 +21,16 @@
  * https://tools.ietf.org/html/rfc7011
  */
 
-typedef struct {
+typedef struct
+{
   u32 version_length;
   u32 export_time;
   u32 sequence_number;
   u32 domain_id;
 } ipfix_message_header_t;
 
-static inline u32 version_length (u16 length)
+static inline u32
+version_length (u16 length)
 {
   return clib_host_to_net_u32 (0x000a0000 | length);
 }
@@ -60,23 +62,26 @@ static inline u32 version_length (u16 length)
  *      present.
  */
 
-typedef struct {
+typedef struct
+{
   u32 e_id_length;
   u32 enterprise;
 } ipfix_enterprise_field_specifier_t;
 
-typedef struct {
+typedef struct
+{
   u32 e_id_length;
 } ipfix_field_specifier_t;
 
-static inline u32 ipfix_e_id_length (int e, u16 id, u16 length)
+static inline u32
+ipfix_e_id_length (int e, u16 id, u16 length)
 {
   u32 value;
-  value = (e<<31) | ((id&0x7FFF) <<16) | length;
+  value = (e << 31) | ((id & 0x7FFF) << 16) | length;
   return clib_host_to_net_u32 (value);
 }
 
-/* 
+/*
  *   Every Set contains a common header.  This header is defined in
  *   Figure I.
  *
@@ -107,16 +112,18 @@ static inline u32 ipfix_e_id_length (int e, u16 id, u16 length)
  *      determine the position of the next Set.
  */
 
-typedef struct {
+typedef struct
+{
   u32 set_id_length;
 } ipfix_set_header_t;
 
-static inline u32 ipfix_set_id_length (u16 set_id, u16 length)
+static inline u32
+ipfix_set_id_length (u16 set_id, u16 length)
 {
-  return clib_host_to_net_u32 ((set_id<<16) | length);
+  return clib_host_to_net_u32 ((set_id << 16) | length);
 }
 
-/* 
+/*
  *   The format of the Template Record is shown in Figure J.  It consists
  *   of a Template Record Header and one or more Field Specifiers.  Field
  *   Specifiers are defined in Figure G above.
@@ -168,17 +175,20 @@ static inline u32 ipfix_set_id_length (u16 set_id, u16 length)
  *      Number of fields in this Template Record.
  */
 
-typedef struct {
+typedef struct
+{
   u32 id_count;
 } ipfix_template_header_t;
 
-static inline u32 ipfix_id_count (u16 id, u16 count)
+static inline u32
+ipfix_id_count (u16 id, u16 count)
 {
-  return clib_host_to_net_u32 ((id<<16) | count);
+  return clib_host_to_net_u32 ((id << 16) | count);
 }
 
 /* Template packet */
-typedef struct {
+typedef struct
+{
   ipfix_message_header_t h;
   ipfix_set_header_t s;
   ipfix_template_header_t t;
@@ -186,3 +196,11 @@ typedef struct {
 } ipfix_template_packet_t;
 
 #endif /* __included_ipfix_packet_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
