@@ -522,22 +522,13 @@ dpdk_esp_decrypt_post_node_fn (vlib_main_t * vm,
 		  memmove(oh4, ih4, ih4_len);
 
 		  next0 = ESP_DECRYPT_NEXT_IP4_INPUT;
-		  u16 old_ttl_prot =
-		    ((u16) oh4->ttl) << 8 | (u16) oh4->protocol;
-		  u16 new_ttl_prot =
-		    ((u16) oh4->ttl) << 8 | (u16) f0->next_header;
 		  oh4->protocol = f0->next_header;
-		  u16 new_len = clib_host_to_net_u16 (b0->current_length);
-		  oh4->length = new_len;
-		  /* rfc1264 incremental checksum update */
-		  oh4->checksum = ~(~oh4->checksum + ~oh4->length + new_len +
-				    ~old_ttl_prot + new_ttl_prot);
-
+		  oh4->length = clib_host_to_net_u16 (b0->current_length);
+		  oh4->checksum = ip4_header_checksum(oh4);
 		}
 	      else if ((ih4->ip_version_and_header_length & 0xF0) == 0x60)
 		{
-		  /* FIXME find ip header */
-		  ih6 = (ip6_header_t *) (b0->data + sizeof(ethernet_header_t));
+		  ih6 = (ip6_header_t *) ih4;
 		  vlib_buffer_advance (b0, -sizeof(ip6_header_t));
 		  oh6 = vlib_buffer_get_current (b0);
 		  memmove(oh6, ih6, sizeof(ip6_header_t));

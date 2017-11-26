@@ -346,10 +346,10 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	      priv->next = DPDK_CRYPTO_INPUT_NEXT_INTERFACE_OUTPUT;
 	      u16 rewrite_len = vnet_buffer (b0)->ip.save_rewrite_length;
 	      u16 adv = sizeof (esp_header_t) + iv_size;
-	      vlib_buffer_advance (b0, -rewrite_len - adv);
+	      vlib_buffer_advance (b0, - adv - rewrite_len);
 	      u8 *src = ((u8 *) ih0) - rewrite_len;
 	      u8 *dst = vlib_buffer_get_current (b0);
-	      oh0 = (ip4_and_esp_header_t *) (dst + rewrite_len);
+	      oh0 = vlib_buffer_get_current (b0) + rewrite_len;
 
 	      if (is_ipv6)
 		{
@@ -363,13 +363,12 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 		}
 	      else		/* ipv4 */
 		{
-		  orig_sz -= ip4_header_bytes (&ih0->ip4);
+		  u16 ip_size = ip4_header_bytes (&ih0->ip4);
+		  orig_sz -= ip_size;
 		  next_hdr_type = ih0->ip4.protocol;
-		  memmove (dst, src,
-			   rewrite_len + ip4_header_bytes (&ih0->ip4));
+		  memmove (dst, src, rewrite_len + ip_size);
 		  oh0->ip4.protocol = IP_PROTOCOL_IPSEC_ESP;
-		  esp0 =
-		    (esp_header_t *) (oh0 + ip4_header_bytes (&ih0->ip4));
+		  esp0 = (esp_header_t *) (((u8 *)oh0) + ip_size);
 		}
 	      esp0->spi = clib_host_to_net_u32 (sa0->spi);
 	      esp0->seq = clib_host_to_net_u32 (sa0->seq);
@@ -383,6 +382,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  u8 *padding =
 	    vlib_buffer_put_uninit (b0, pad_bytes + 2 + trunc_size);
 
+	  /* The extra pad bytes would be overwritten by the digest */
 	  if (pad_bytes)
 	    clib_memcpy (padding, pad_data, 16);
 

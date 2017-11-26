@@ -65,7 +65,6 @@ typedef struct
 typedef struct
 {
   u16 *resource_idx;
-  uword *session_by_drv_id_and_sa_index;
   struct rte_crypto_op **ops;
   u16 cipher_resource_idx[IPSEC_CRYPTO_N_ALG];
   u16 auth_resource_idx[IPSEC_INTEG_N_ALG];
@@ -121,10 +120,18 @@ typedef struct
 
 typedef struct
 {
+  u64 ts;
+  struct rte_cryptodev_sym_session *session;
+} crypto_session_disposal_t;
+
+typedef struct
+{
   struct rte_mempool *crypto_op;
   struct rte_mempool *session_h;
   struct rte_mempool **session_drv;
+  crypto_session_disposal_t *session_disposal;
   uword *session_by_sa_index;
+  uword *session_by_drv_id_and_sa_index;
   u64 crypto_op_get_failed;
   u64 session_h_failed;
   u64 *session_drv_failed;
@@ -140,7 +147,7 @@ typedef struct
   crypto_alg_t *auth_algs;
   crypto_data_t *data;
   crypto_drv_t *drv;
-  u8 max_drv_id;
+  u64 session_timeout; /* nsec */
   u8 enabled;
 } dpdk_crypto_main_t;
 
@@ -200,12 +207,16 @@ crypto_get_session (struct rte_cryptodev_sym_session **session,
 		    crypto_resource_t * res,
 		    crypto_worker_main_t * cwm, u8 is_outbound)
 {
+  dpdk_crypto_main_t *dcm = &dpdk_crypto_main;
+  crypto_data_t *data;
+  uword *val;
   crypto_session_key_t key = { 0 };
 
   key.drv_id = res->drv_id;
   key.sa_idx = sa_idx;
 
-  uword *val = hash_get (cwm->session_by_drv_id_and_sa_index, key.val);
+  data = vec_elt_at_index (dcm->data, res->numa);
+  val = hash_get (data->session_by_drv_id_and_sa_index, key.val);
 
   if (PREDICT_FALSE (!val))
     return create_sym_session (session, sa_idx, res, cwm, is_outbound);
