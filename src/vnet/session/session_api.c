@@ -106,6 +106,16 @@ send_session_accept_callback (stream_session_t * s)
   tp_vft = transport_protocol_get_vft (s->session_type);
   tc = tp_vft->get_connection (s->connection_index, s->thread_index);
   mp->listener_handle = listen_session_get_handle (listener);
+
+  if (application_is_proxy (server))
+    {
+      listener =
+	application_first_listener (server,
+				    transport_connection_fib_proto (tc),
+				    tc->proto);
+      if (listener)
+	mp->listener_handle = listen_session_get_handle (listener);
+    }
   mp->handle = session_handle (s);
   mp->server_rx_fifo = pointer_to_uword (s->server_rx_fifo);
   mp->server_tx_fifo = pointer_to_uword (s->server_tx_fifo);
