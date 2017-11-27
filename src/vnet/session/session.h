@@ -24,6 +24,7 @@
 
 #define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
 #define INVALID_INDEX ((u32)~0)
+#define SESSION_PROXY_LISTENER_INDEX ((u32)~0 - 1)
 
 /* TODO decide how much since we have pre-data as well */
 #define MAX_HDRS_LEN    100	/* Max number of bytes for headers */
