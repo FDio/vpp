@@ -27,7 +27,8 @@
 
 extern vnet_hw_interface_class_t gre_hw_interface_class;
 
-typedef enum {
+typedef enum
+{
 #define gre_error(n,s) GRE_ERROR_##n,
 #include <vnet/gre/error.def>
 #undef gre_error
@@ -37,9 +38,10 @@ typedef enum {
 /**
  * A GRE payload protocol registration
  */
-typedef struct {
+typedef struct
+{
   /** Name (a c string). */
-  char * name;
+  char *name;
 
   /** GRE protocol type in host byte order. */
   gre_protocol_t protocol;
@@ -76,7 +78,8 @@ typedef enum gre_tunnel_tyoe_t_
 /**
  * @brief A representation of a GRE tunnel
  */
-typedef struct {
+typedef struct
+{
   /**
    * Linkage into the FIB object graph
    */
@@ -125,7 +128,8 @@ typedef struct {
 /**
  * @brief GRE related global data
  */
-typedef struct {
+typedef struct
+{
   /**
    * pool of tunnel instances
    */
@@ -134,64 +138,68 @@ typedef struct {
   /**
    * GRE payload protocol registrations
    */
-  gre_protocol_info_t * protocol_infos;
+  gre_protocol_info_t *protocol_infos;
 
   /**
    *  Hash tables mapping name/protocol to protocol info index.
    */
-  uword * protocol_info_by_name, * protocol_info_by_protocol;
+  uword *protocol_info_by_name, *protocol_info_by_protocol;
 
   /**
    * Hash mapping ipv4 src/dst addr pair to tunnel
    */
-  uword * tunnel_by_key4;
+  uword *tunnel_by_key4;
 
   /**
      * Hash mapping ipv6 src/dst addr pair to tunnel
      */
-    uword * tunnel_by_key6;
+  uword *tunnel_by_key6;
 
   /**
    * Free vlib hw_if_indices.
    * A free list per-tunnel type since the interfaces ctreated are fo different
    * types and we cannot change the type.
    */
-  u32 * free_gre_tunnel_hw_if_indices[GRE_TUNNEL_N_TYPES];
+  u32 *free_gre_tunnel_hw_if_indices[GRE_TUNNEL_N_TYPES];
 
   /**
    * Mapping from sw_if_index to tunnel index
    */
-  u32 * tunnel_index_by_sw_if_index;
+  u32 *tunnel_index_by_sw_if_index;
 
   /* Sparse vector mapping gre protocol in network byte order
      to next index. */
-  u16 * next_by_protocol;
+  u16 *next_by_protocol;
 
   /* convenience */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
 } gre_main_t;
 
 /**
  * @brief IPv4 and GRE header.
  */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;
   gre_header_t gre;
 }) ip4_and_gre_header_t;
+/* *INDENT-ON* */
 
 /**
  * @brief IPv6 and GRE header.
  */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip6_header_t ip6;
   gre_header_t gre;
 }) ip6_and_gre_header_t;
+/* *INDENT-ON* */
 
 always_inline gre_protocol_info_t *
 gre_get_protocol_info (gre_main_t * em, gre_protocol_t protocol)
 {
-  uword * p = hash_get (em->protocol_info_by_protocol, protocol);
+  uword *p = hash_get (em->protocol_info_by_protocol, protocol);
   return p ? vec_elt_at_index (em->protocol_infos, p[0]) : 0;
 }
 
@@ -200,17 +208,14 @@ extern gre_main_t gre_main;
 /* Register given node index to take input for given gre type. */
 void
 gre_register_input_type (vlib_main_t * vm,
-			 gre_protocol_t protocol,
-			 u32 node_index);
+			 gre_protocol_t protocol, u32 node_index);
 
-extern  clib_error_t * gre_interface_admin_up_down (vnet_main_t * vnm,
-						    u32 hw_if_index,
-						    u32 flags);
+extern clib_error_t *gre_interface_admin_up_down (vnet_main_t * vnm,
+						  u32 hw_if_index, u32 flags);
 
 extern void gre_tunnel_stack (adj_index_t ai);
 extern void gre_update_adj (vnet_main_t * vnm,
-                            u32 sw_if_index,
-                            adj_index_t ai);
+			    u32 sw_if_index, adj_index_t ai);
 
 format_function_t format_gre_protocol;
 format_function_t format_gre_header;
@@ -232,13 +237,13 @@ unformat_function_t unformat_pg_gre_header;
 
 void
 gre_register_input_protocol (vlib_main_t * vm,
-			     gre_protocol_t protocol,
-			     u32 node_index);
+			     gre_protocol_t protocol, u32 node_index);
 
 /* manually added to the interface output node in gre.c */
 #define GRE_OUTPUT_NEXT_LOOKUP	1
 
-typedef struct {
+typedef struct
+{
   u8 is_add;
 
   ip46_address_t src, dst;
@@ -248,6 +253,14 @@ typedef struct {
 } vnet_gre_add_del_tunnel_args_t;
 
 int vnet_gre_add_del_tunnel
-  (vnet_gre_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
+  (vnet_gre_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
 
 #endif /* included_gre_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

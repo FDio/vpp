@@ -26,13 +26,15 @@ _ (0x0806, arp)					\
 _ (0x8847, mpls_unicast)			\
 _ (0x894F, nsh)
 
-typedef enum {
+typedef enum
+{
 #define _(n,f) GRE_PROTOCOL_##f = n,
   foreach_gre_protocol
 #undef _
 } gre_protocol_t;
 
-typedef struct {
+typedef struct
+{
   /* flags and version */
   u16 flags_and_version;
   /* unimplemented at the moment */
@@ -53,3 +55,11 @@ typedef struct {
 } gre_header_t;
 
 #endif /* included_vnet_gre_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
