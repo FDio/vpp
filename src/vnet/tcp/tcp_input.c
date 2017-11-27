@@ -1870,6 +1870,10 @@ tcp_lookup_is_valid (tcp_connection_t * tc, tcp_header_t * hdr)
   if (!tc)
     return 1;
 
+  /* Proxy case */
+  if (tc->c_lcl_port == 0 && tc->state == TCP_STATE_LISTEN)
+    return 1;
+
   u8 is_valid = (tc->c_lcl_port == hdr->dst_port
 		 && (tc->state == TCP_STATE_LISTEN
 		     || tc->c_rmt_port == hdr->src_port));
