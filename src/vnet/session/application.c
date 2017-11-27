@@ -523,7 +523,8 @@ application_first_listener (application_t * app, u8 fib_proto,
   /* *INDENT-OFF* */
    hash_foreach (handle, sm_index, app->listeners_table, ({
      listener = listen_session_get_from_handle (handle);
-     if (listener->session_type == sst)
+     if (listener->session_type == sst
+	 && listener->listener_index != SESSION_PROXY_LISTENER_INDEX)
        return listener;
    }));
   /* *INDENT-ON* */
@@ -550,6 +551,7 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
       sep.transport_proto = transport_proto;
       application_start_listen (app, &sep, &handle);
       s = listen_session_get_from_handle (handle);
+      s->listener_index = SESSION_PROXY_LISTENER_INDEX;
     }
   else
     {
