@@ -101,16 +101,18 @@ static inline int
 vcom_init (void)
 {
   pid_t pid = getpid ();
+  int rv;
 
   if (!is_vcom_init)
     {
-      if (vppcom_app_create (vcom_get_app_name ()) != 0)
+      rv = vppcom_app_create (vcom_get_app_name ());
+      if (rv)
 	{
 	  printf ("\n[%d] vcom_init...failed!\n", pid);
 	  if (VCOM_DEBUG > 0)
 	    fprintf (stderr,
 		     "[%d] vcom_init: vppcom_app_create failed!\n", pid);
-	  return -1;
+	  return rv;
 	}
       if (vcom_socket_main_init () != 0)
 	{
@@ -1921,11 +1923,12 @@ getsockname (int __fd, __SOCKADDR_ARG __addr, socklen_t * __restrict __len)
 int
 vcom_connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
 {
-  int rv = -1;
+  int rv;
 
-  if (vcom_init () != 0)
+  rv = vcom_init ();
+  if (rv)
     {
-      return -1;
+      return rv;
     }
 
   /* validate __len */
@@ -1933,15 +1936,15 @@ vcom_connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
     {
     case AF_INET:
       if (__len != INET_ADDRSTRLEN)
-	return -1;
+	return -EINVAL;
       break;
     case AF_INET6:
       if (__len != INET6_ADDRSTRLEN)
-	return -1;
+	return -EINVAL;
       break;
 
     default:
-      return -1;
+      return -EAFNOSUPPORT;
       break;
     }
 
@@ -1951,16 +1954,10 @@ vcom_connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
     case AF_INET:
     case AF_INET6:
       rv = vcom_socket_connect (__fd, __addr, __len);
-      if (!rv)
-	{
-	  errno = -rv;
-	  return -1;
-
-	}
       break;
 
     default:
-      return -1;
+      return -EPFNOSUPPORT;
       break;
     }
 
@@ -1972,18 +1969,16 @@ connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
 {
   int rv;
   pid_t pid = getpid ();
-  pthread_t tid = pthread_self ();
 
   if (is_vcom_socket_fd (__fd))
     {
       rv = vcom_connect (__fd, __addr, __len);
       if (VCOM_DEBUG > 0)
 	fprintf (stderr,
-		 "[%d][%lu (0x%lx)] connect: "
+		 "[%d] connect: "
 		 "'%04d'='%04d', '%p', '%04d'\n",
-		 pid, (unsigned long) tid, (unsigned long) tid,
-		 rv, __fd, __addr, __len);
-      if (!rv)
+		 pid, rv, __fd, __addr, __len);
+      if (rv)
 	{
 	  errno = -rv;
 	  return -1;
