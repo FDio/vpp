@@ -171,9 +171,9 @@ l3_binding::find(const interface& i)
 
   while (it != m_db.cend()) {
     /*
- * The key in the DB is a pair of the interface's name and prefix.
- * If the keys match, save the L3-config
- */
+     * The key in the DB is a pair of the interface's name and prefix.
+     * If the keys match, save the L3-config
+     */
     auto key = it->first;
 
     if (i.key() == key.first) {
@@ -202,8 +202,8 @@ void
 l3_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
   /**
- * This is done while populating the interfaces
- */
+   * This is done while populating the interfaces
+   */
 }
 
 dependency_t

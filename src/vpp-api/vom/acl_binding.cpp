@@ -23,10 +23,10 @@ void
 l2_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
   /*
-* dump VPP Bridge domains
-*/
-  std::shared_ptr<binding_cmds::l2_dump_cmd> cmd(
-    new binding_cmds::l2_dump_cmd());
+   * dump VPP Bridge domains
+   */
+  std::shared_ptr<binding_cmds::l2_dump_cmd> cmd =
+    std::make_shared<binding_cmds::l2_dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();
@@ -50,8 +50,8 @@ template <>
 void
 l3_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<binding_cmds::l3_dump_cmd> cmd(
-    new binding_cmds::l3_dump_cmd());
+  std::shared_ptr<binding_cmds::l3_dump_cmd> cmd =
+    std::make_shared<binding_cmds::l3_dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();

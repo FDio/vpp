@@ -360,10 +360,10 @@ ip_route::event_handler::handle_replay()
 void
 ip_route::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<ip_route_cmds::dump_v4_cmd> cmd_v4(
-    new ip_route_cmds::dump_v4_cmd());
-  std::shared_ptr<ip_route_cmds::dump_v6_cmd> cmd_v6(
-    new ip_route_cmds::dump_v6_cmd());
+  std::shared_ptr<ip_route_cmds::dump_v4_cmd> cmd_v4 =
+    std::make_shared<ip_route_cmds::dump_v4_cmd>();
+  std::shared_ptr<ip_route_cmds::dump_v6_cmd> cmd_v6 =
+    std::make_shared<ip_route_cmds::dump_v6_cmd>();
 
   HW::enqueue(cmd_v4);
   HW::enqueue(cmd_v6);

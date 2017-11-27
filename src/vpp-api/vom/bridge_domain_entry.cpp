@@ -155,8 +155,8 @@ bridge_domain_entry::event_handler::handle_replay()
 void
 bridge_domain_entry::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<bridge_domain_entry_cmds::dump_cmd> cmd(
-    new bridge_domain_entry_cmds::dump_cmd());
+  std::shared_ptr<bridge_domain_entry_cmds::dump_cmd> cmd =
+    std::make_shared<bridge_domain_entry_cmds::dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();

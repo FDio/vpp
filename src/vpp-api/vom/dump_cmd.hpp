@@ -62,6 +62,8 @@ public:
    */
   virtual ~dump_cmd() {}
 
+  dump_cmd(const dump_cmd& d) = default;
+
   /**
    * Constant iterator to the start of the records retunred during the dump
    */

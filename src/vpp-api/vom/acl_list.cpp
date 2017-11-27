@@ -27,9 +27,10 @@ l2_list::event_handler::handle_populate(const client_db::key_t& key)
   m_evh.order();
 
   /*
-* dump VPP Bridge domains
-*/
-  std::shared_ptr<list_cmds::l2_dump_cmd> cmd(new list_cmds::l2_dump_cmd());
+   * dump VPP Bridge domains
+   */
+  std::shared_ptr<list_cmds::l2_dump_cmd> cmd =
+    std::make_shared<list_cmds::l2_dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();
@@ -52,10 +53,10 @@ l2_list::event_handler::handle_populate(const client_db::key_t& key)
     VOM_LOG(log_level_t::DEBUG) << "dump: " << acl.to_string();
 
     /*
-* Write each of the discovered ACLs into the OM,
-* but disable the HW Command q whilst we do, so that no
-* commands are sent to VPP
-*/
+     * Write each of the discovered ACLs into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
     OM::commit(key, acl);
   }
 }
@@ -68,9 +69,10 @@ l3_list::event_handler::handle_populate(const client_db::key_t& key)
   m_evh.order();
 
   /*
-* dump VPP Bridge domains
-*/
-  std::shared_ptr<list_cmds::l3_dump_cmd> cmd(new list_cmds::l3_dump_cmd());
+   * dump L3 ACLs Bridge domains
+   */
+  std::shared_ptr<list_cmds::l3_dump_cmd> cmd =
+    std::make_shared<list_cmds::l3_dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();
@@ -95,10 +97,10 @@ l3_list::event_handler::handle_populate(const client_db::key_t& key)
     VOM_LOG(log_level_t::DEBUG) << "dump: " << acl.to_string();
 
     /*
-* Write each of the discovered ACLs into the OM,
-* but disable the HW Command q whilst we do, so that no
-* commands are sent to VPP
-*/
+     * Write each of the discovered ACLs into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
     OM::commit(key, acl);
   }
 }
