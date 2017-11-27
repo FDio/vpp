@@ -64,7 +64,11 @@ vnet_dump_trajectory_trace (vlib_main_t * vm, u32 bi)
 void
 init_trajectory_trace (vlib_buffer_t * b)
 {
-  vec_validate (vnet_buffer2 (b)->trajectory_trace, 7);
+  if (!clib_mem_is_vec (vnet_buffer2 (b)->trajectory_trace))
+    {
+      vnet_buffer2 (b)->trajectory_trace = 0;
+      vec_validate (vnet_buffer2 (b)->trajectory_trace, 7);
+    }
   _vec_len (vnet_buffer2 (b)->trajectory_trace) = 0;
 }
 

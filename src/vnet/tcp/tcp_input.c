@@ -2997,6 +2997,9 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      goto done;
 	    }
 
+	  vnet_buffer (b0)->tcp.hdr_offset = (u8 *) tcp0
+	      - (u8 *) vlib_buffer_get_current (b0);
+
 	  /* Session exists */
 	  if (PREDICT_TRUE (0 != tconn))
 	    {
@@ -3010,8 +3013,6 @@ tcp46_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      vnet_buffer (b0)->tcp.ack_number =
 		clib_net_to_host_u32 (tcp0->ack_number);
 
-	      vnet_buffer (b0)->tcp.hdr_offset = (u8 *) tcp0
-		- (u8 *) vlib_buffer_get_current (b0);
 	      vnet_buffer (b0)->tcp.data_offset = n_advance_bytes0;
 	      vnet_buffer (b0)->tcp.data_len = n_data_bytes0;
 
