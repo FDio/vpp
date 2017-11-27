@@ -22,6 +22,7 @@
 #define TCP_DEBUG_SM (0)
 #define TCP_DEBUG_CC (0)
 #define TCP_DEBUG_CC_STAT (1)
+#define TCP_DEBUG_BUFFER_ALLOCATION (0)
 
 #define foreach_tcp_dbg_evt		\
   _(INIT, "")				\
@@ -746,6 +747,39 @@ if (_tc->c_cc_stat_tstamp + STATS_INTERVAL < tcp_time_now())		\
   _tc->c_cc_stat_tstamp = tcp_time_now();				\
 }									\
 }
+
+/*
+ * Buffer allocation
+ */
+#if TCP_DEBUG_BUFFER_ALLOCATION
+
+#define TCP_DBG_BUFFER_ALLOC_MAYBE_FAIL(thread_index)			\
+{									\
+  static u32 *buffer_fail_counters;					\
+  if (PREDICT_FALSE (buffer_fail_counters == 0))				\
+    {									\
+      u32 num_threads;							\
+      vlib_thread_main_t *vtm = vlib_get_thread_main ();			\
+      num_threads = 1 /* main thread */  + vtm->n_threads;		\
+      vec_validate (buffer_fail_counters, num_threads - 1);		\
+    }									\
+  if (PREDICT_FALSE (tcp_main.buffer_fail_fraction != 0.0))		\
+    {									\
+      if (PREDICT_TRUE (buffer_fail_counters[thread_index] > 0))		\
+        {								\
+          if ((1.0 / (f32) (buffer_fail_counters[thread_index]))		\
+              < tcp_main.buffer_fail_fraction)				\
+            {								\
+              buffer_fail_counters[thread_index] = 0.0000001;		\
+              return -1;							\
+            }								\
+        }								\
+      buffer_fail_counters[thread_index] ++;				\
+    }									\
+}
+#else
+#define TCP_DBG_BUFFER_ALLOC_MAYBE_FAIL(thread_index)
+#endif
 
 #else
 #define TCP_EVT_CC_STAT_HANDLER(_tc, ...)
