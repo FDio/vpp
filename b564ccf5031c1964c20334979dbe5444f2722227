@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b2b1ece8_b4adb1e0",
+        "filename": "src/vnet/dhcp/client6.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 504,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-11-27T22:21:36Z",
+      "side": 1,
+      "message": "Should change these calls to vlib_process_signal_event_mt() instead to support being called from worker threads instead of main thread.",
+      "revId": "b564ccf5031c1964c20334979dbe5444f2722227",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a4c4312e_d28489df",
+        "filename": "src/vnet/dhcp/client6.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 572,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-11-27T22:21:36Z",
+      "side": 1,
+      "message": "Same as previous comment about calling vlib_process_signal_event_mt() instead.",
+      "range": {
+        "startLine": 572,
+        "startChar": 6,
+        "endLine": 572,
+        "endChar": 31
+      },
+      "revId": "b564ccf5031c1964c20334979dbe5444f2722227",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
