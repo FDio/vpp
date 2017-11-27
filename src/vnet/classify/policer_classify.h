@@ -20,36 +20,47 @@
 #include <vnet/vnet.h>
 #include <vnet/classify/vnet_classify.h>
 
-typedef enum {
+typedef enum
+{
   POLICER_CLASSIFY_TABLE_IP4,
   POLICER_CLASSIFY_TABLE_IP6,
   POLICER_CLASSIFY_TABLE_L2,
   POLICER_CLASSIFY_N_TABLES,
 } policer_classify_table_id_t;
 
-typedef enum {
+typedef enum
+{
   POLICER_CLASSIFY_NEXT_INDEX_DROP,
   POLICER_CLASSIFY_NEXT_INDEX_N_NEXT,
 } policer_classify_next_index_t;
 
-typedef struct {
+typedef struct
+{
   /* Classifier table vectors */
-  u32 * classify_table_index_by_sw_if_index [POLICER_CLASSIFY_N_TABLES];
+  u32 *classify_table_index_by_sw_if_index[POLICER_CLASSIFY_N_TABLES];
 
   /* L2 next nodes for each feature */
   u32 feat_next_node_index[32];
 
   /* Convenience variables */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
-  vnet_classify_main_t * vnet_classify_main;
-  vnet_config_main_t * vnet_config_main [POLICER_CLASSIFY_N_TABLES];
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
+  vnet_classify_main_t *vnet_classify_main;
+  vnet_config_main_t *vnet_config_main[POLICER_CLASSIFY_N_TABLES];
 } policer_classify_main_t;
 
 extern policer_classify_main_t policer_classify_main;
 
 int vnet_set_policer_classify_intfc (vlib_main_t * vm, u32 sw_if_index,
-                                     u32 ip4_table_index, u32 ip6_table_index,
-                                     u32 l2_table_index, u32 is_add);
+				     u32 ip4_table_index, u32 ip6_table_index,
+				     u32 l2_table_index, u32 is_add);
 
 #endif /* __included_vnet_policer_classify_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
