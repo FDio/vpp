@@ -522,7 +522,7 @@ serialize_vlib_buffer_n_bytes (serialize_main_t * m)
     and you want to know exactly which nodes they've visited...
     See vlib/main.c...
 */
-#define VLIB_BUFFER_TRACE_TRAJECTORY 0
+#define VLIB_BUFFER_TRACE_TRAJECTORY 1
 
 #if VLIB_BUFFER_TRACE_TRAJECTORY > 0
 extern void (*vlib_buffer_trace_trajectory_cb) (vlib_buffer_t * b, u32 index);

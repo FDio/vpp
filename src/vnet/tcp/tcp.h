@@ -410,6 +410,11 @@ typedef struct _tcp_main
 
   u8 punt_unknown4;
   u8 punt_unknown6;
+
+  /** fault-injection */
+  f64 buffer_fail_fraction;
+  u32 *buffer_fail_counters;
+
 } tcp_main_t;
 
 extern tcp_main_t tcp_main;
@@ -430,6 +435,12 @@ tcp_buffer_hdr (vlib_buffer_t * b)
   ASSERT ((signed) b->current_data >= (signed) -VLIB_BUFFER_PRE_DATA_SIZE);
   return (tcp_header_t *) (b->data + b->current_data
 			   + vnet_buffer (b)->tcp.hdr_offset);
+}
+
+#define tcp_trajectory_add_start(b, start)			\
+{								\
+  if (VLIB_BUFFER_TRACE_TRAJECTORY)				\
+    (*vlib_buffer_trace_trajectory_cb) (b, start);		\
 }
 
 clib_error_t *vnet_tcp_enable_disable (vlib_main_t * vm, u8 is_en);
