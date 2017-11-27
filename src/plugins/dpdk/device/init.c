@@ -103,26 +103,8 @@ dpdk_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi, u32 flags)
     }
   else if (ETHERNET_INTERFACE_FLAG_CONFIG_MTU (flags))
     {
-      int rv;
-
       xd->port_conf.rxmode.max_rx_pkt_len = hi->max_packet_bytes;
-
-      if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-	dpdk_device_stop (xd);
-
-      rv = rte_eth_dev_configure
-	(xd->device_index, xd->rx_q_used, xd->tx_q_used, &xd->port_conf);
-
-      if (rv < 0)
-	vlib_cli_output (vlib_get_main (),
-			 "rte_eth_dev_configure[%d]: err %d",
-			 xd->device_index, rv);
-
-      rte_eth_dev_set_mtu (xd->device_index, hi->max_packet_bytes);
-
-      if (xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP)
-	dpdk_device_start (xd);
-
+      dpdk_device_setup (xd);
     }
   return old;
 }
