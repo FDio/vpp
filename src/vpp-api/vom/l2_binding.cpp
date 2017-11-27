@@ -203,8 +203,8 @@ void
 l2_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
   /**
- * This is done while populating the bridge-domain
- */
+   * This is done while populating the bridge-domain
+   */
 }
 
 dependency_t

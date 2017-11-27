@@ -143,10 +143,10 @@ void
 bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
 {
   /*
- * dump VPP Bridge domains
- */
-  std::shared_ptr<bridge_domain_cmds::dump_cmd> cmd(
-    new bridge_domain_cmds::dump_cmd());
+   * dump VPP Bridge domains
+   */
+  std::shared_ptr<bridge_domain_cmds::dump_cmd> cmd =
+    std::make_shared<bridge_domain_cmds::dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();

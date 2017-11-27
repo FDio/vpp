@@ -101,8 +101,8 @@ tap_interface::event_handler::handle_populate(const client_db::key_t& key)
   /*
    * dump VPP current states
    */
-  std::shared_ptr<tap_interface_cmds::dump_cmd> cmd(
-    new tap_interface_cmds::dump_cmd());
+  std::shared_ptr<tap_interface_cmds::dump_cmd> cmd =
+    std::make_shared<tap_interface_cmds::dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();

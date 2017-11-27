@@ -162,7 +162,6 @@ public:
    * Constructor
    */
   dump_cmd() = default;
-  dump_cmd(const dump_cmd& d) = default;
 
   /**
    * Issue the command to VPP/HW

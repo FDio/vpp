@@ -435,7 +435,8 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
   /*
    * dump VPP current states
    */
-  interface_cmds::dump_cmd* cmd = new interface_cmds::dump_cmd();
+  std::shared_ptr<interface_cmds::dump_cmd> cmd =
+    std::make_shared<interface_cmds::dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();

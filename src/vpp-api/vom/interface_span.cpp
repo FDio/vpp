@@ -132,8 +132,8 @@ interface_span::event_handler::handle_replay()
 void
 interface_span::event_handler::handle_populate(const client_db::key_t& key)
 {
-  std::shared_ptr<interface_span_cmds::dump_cmd> cmd(
-    new interface_span_cmds::dump_cmd());
+  std::shared_ptr<interface_span_cmds::dump_cmd> cmd =
+    std::make_shared<interface_span_cmds::dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();

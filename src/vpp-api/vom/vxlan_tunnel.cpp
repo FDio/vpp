@@ -219,8 +219,8 @@ vxlan_tunnel::event_handler::handle_populate(const client_db::key_t& key)
   /*
    * dump VPP current states
    */
-  std::shared_ptr<vxlan_tunnel_cmds::dump_cmd> cmd(
-    new vxlan_tunnel_cmds::dump_cmd());
+  std::shared_ptr<vxlan_tunnel_cmds::dump_cmd> cmd =
+    std::make_shared<vxlan_tunnel_cmds::dump_cmd>();
 
   HW::enqueue(cmd);
   HW::write();
