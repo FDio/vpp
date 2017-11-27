@@ -1063,7 +1063,7 @@ format_ip46_address (u8 * s, va_list * args)
 }
 
 static inline void
-vppcom_send_accept_session_reply (u32 handle, u32 context, int retval)
+vppcom_send_accept_session_reply (u64 handle, u32 context, int retval)
 {
   vl_api_accept_session_reply_t *rmp;
 
@@ -1138,10 +1138,10 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 
   if (VPPCOM_DEBUG > 1)
     clib_warning ("[%d] vpp handle 0x%llx, sid %u: client accept "
-		  "request from %s address %U port %d!", getpid (),
+		  "request from %s address %U port %d queue %p!", getpid (),
 		  mp->handle, session_index, mp->is_ip4 ? "IPv4" : "IPv6",
 		  format_ip46_address, &mp->ip, mp->is_ip4,
-		  clib_net_to_host_u16 (mp->port));
+		  clib_net_to_host_u16 (mp->port), session->vpp_event_queue);
 }
 
 static void
