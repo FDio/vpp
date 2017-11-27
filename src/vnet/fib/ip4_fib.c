@@ -555,6 +555,11 @@ ip4_show_fib (vlib_main_t * vm,
         vec_free(s);
 
 	/* Show summary? */
+	if (mtrie)
+        {
+	    vlib_cli_output (vm, "%U", format_ip4_fib_mtrie, &fib->mtrie, verbose);
+            continue;
+        }
 	if (! verbose)
 	{
 	    vlib_cli_output (vm, "%=20s%=16s", "Prefix length", "Count");
@@ -567,11 +572,6 @@ ip4_show_fib (vlib_main_t * vm,
 	    }
 	    continue;
 	}
-	if (mtrie)
-        {
-	    vlib_cli_output (vm, "%U", format_ip4_fib_mtrie, &fib->mtrie);
-            continue;
-        }
 
 	if (!matching)
 	{

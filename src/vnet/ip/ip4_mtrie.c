@@ -764,6 +764,7 @@ u8 *
 format_ip4_fib_mtrie (u8 * s, va_list * va)
 {
   ip4_fib_mtrie_t *m = va_arg (*va, ip4_fib_mtrie_t *);
+  int verbose = va_arg (*va, int);
   ip4_fib_mtrie_16_ply_t *p;
   u32 base_address = 0;
   int i;
@@ -771,18 +772,22 @@ format_ip4_fib_mtrie (u8 * s, va_list * va)
   s = format (s, "%d plies, memory usage %U\n",
 	      pool_elts (ip4_ply_pool),
 	      format_memory_size, mtrie_memory_usage (m));
-  s = format (s, "root-ply");
-  p = &m->root_ply;
 
-  for (i = 0; i < ARRAY_LEN (p->leaves); i++)
+  if (verbose)
     {
-      u16 slot;
+      s = format (s, "root-ply");
+      p = &m->root_ply;
 
-      slot = clib_host_to_net_u16 (i);
-
-      if (p->dst_address_bits_of_leaves[slot] > 0)
+      for (i = 0; i < ARRAY_LEN (p->leaves); i++)
 	{
-	  FORMAT_PLY (s, p, slot, base_address, 16, 2);
+	  u16 slot;
+
+	  slot = clib_host_to_net_u16 (i);
+
+	  if (p->dst_address_bits_of_leaves[slot] > 0)
+	    {
+	      FORMAT_PLY (s, p, slot, base_address, 16, 2);
+	    }
 	}
     }
 
