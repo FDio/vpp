@@ -396,7 +396,7 @@ vlib_buffer_free_inline (vlib_main_t * vm,
   while (i < n_buffers)
     {
       b0 = vlib_get_buffer (vm, buffers[i]);
-      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
       recycle_or_free (vm, bm, buffers[i], b0);
       i++;
     }
