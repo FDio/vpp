@@ -841,6 +841,7 @@ l2_policer_classify (vlib_main_t * vm,
   return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_L2);
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (l2_policer_classify_node) =
 {
   .function = l2_policer_classify,.name = "l2-policer-classify",.vector_size =
@@ -851,6 +852,7 @@ VLIB_REGISTER_NODE (l2_policer_classify_node) =
   {
   [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",}
 ,};
+/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (l2_policer_classify_node, l2_policer_classify);
 
