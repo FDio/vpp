@@ -233,6 +233,8 @@ tcp_connection_reset (tcp_connection_t * tc)
       tcp_connection_cleanup (tc);
       break;
     case TCP_STATE_ESTABLISHED:
+      stream_session_reset_notify (&tc->connection);
+      /* fall through */
     case TCP_STATE_CLOSE_WAIT:
     case TCP_STATE_FIN_WAIT_1:
     case TCP_STATE_FIN_WAIT_2:
@@ -242,7 +244,6 @@ tcp_connection_reset (tcp_connection_t * tc)
 
       /* Make sure all timers are cleared */
       tcp_connection_timers_reset (tc);
-      stream_session_reset_notify (&tc->connection);
 
       /* Wait for cleanup from session layer but not forever */
       tcp_timer_update (tc, TCP_TIMER_WAITCLOSE, TCP_CLEANUP_TIME);
@@ -1319,7 +1320,9 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 			 &tm->local_endpoints_table_buckets))
 	;
 
-
+      else if (unformat (input, "buffer-fail-fraction %f",
+			 &tm->buffer_fail_fraction))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);

@@ -325,8 +325,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* *INDENT-ON* */
 
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-	  if (VLIB_BUFFER_TRACE_TRAJECTORY)
-	    b0->pre_data[1] = 3;
+	  tcp_trajectory_add_start (b0, 3);
 
 	  if (PREDICT_FALSE (n_trace > 0))
 	    {

@@ -463,6 +463,9 @@ tcp_get_free_buffer_index (tcp_main_t * tm, u32 * bidx)
 {
   u32 *my_tx_buffers;
   u32 thread_index = vlib_get_thread_index ();
+
+  TCP_DBG_BUFFER_ALLOC_MAYBE_FAIL (thread_index);
+
   if (PREDICT_FALSE (vec_len (tm->tx_buffers[thread_index]) == 0))
     {
       if (tcp_alloc_tx_buffers (tm, thread_index, VLIB_FRAME_SIZE))
@@ -504,7 +507,7 @@ tcp_init_buffer (vlib_main_t * vm, vlib_buffer_t * b)
   b->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
   b->total_length_not_including_first_buffer = 0;
   vnet_buffer (b)->tcp.flags = 0;
-
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b);
   /* Leave enough space for headers */
   return vlib_buffer_make_headroom (b, MAX_HDRS_LEN);
 }
@@ -590,9 +593,6 @@ tcp_make_syn (tcp_connection_t * tc, vlib_buffer_t * b)
 			     initial_wnd);
   vnet_buffer (b)->tcp.connection_index = tc->c_c_index;
   tcp_options_write ((u8 *) (th + 1), &snd_opts);
-
-  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
-		    tc->rto * TCP_TO_TIMER_TICK);
 }
 
 /**
@@ -641,15 +641,11 @@ tcp_enqueue_to_ip_lookup_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
   b->error = 0;
 
   /* Default FIB for now */
-  vnet_buffer (b)->sw_if_index[VLIB_TX] = 0;
+  vnet_buffer (b)->sw_if_index[VLIB_TX] = ~0;
 
   /* Send to IP lookup */
   next_index = is_ip4 ? ip4_lookup_node.index : ip6_lookup_node.index;
-  if (VLIB_BUFFER_TRACE_TRAJECTORY > 0)
-    {
-      b->pre_data[0] = 2;
-      b->pre_data[1] = next_index;
-    }
+  tcp_trajectory_add_start (b, 1);
 
   f = tm->ip_lookup_tx_frames[!is_ip4][thread_index];
   if (!f)
@@ -697,11 +693,7 @@ tcp_enqueue_to_output_i (vlib_main_t * vm, vlib_buffer_t * b, u32 bi,
 
   /* Decide where to send the packet */
   next_index = is_ip4 ? tcp4_output_node.index : tcp6_output_node.index;
-  if (VLIB_BUFFER_TRACE_TRAJECTORY > 0)
-    {
-      b->pre_data[0] = 1;
-      b->pre_data[1] = next_index;
-    }
+  tcp_trajectory_add_start (b, 2);
 
   /* Get frame to v4/6 output node */
   f = tm->tx_frames[!is_ip4][thread_index];
@@ -791,6 +783,7 @@ tcp_make_reset_in_place (vlib_main_t * vm, vlib_buffer_t * b0,
     }
 
   tcp_reuse_buffer (vm, b0);
+  tcp_trajectory_add_start (b0, 4);
   th0 = vlib_buffer_push_tcp_net_order (b0, dst_port, src_port, seq, ack,
 					sizeof (tcp_header_t), flags, 0);
 
@@ -977,6 +970,14 @@ tcp_send_syn (tcp_connection_t * tc)
   tcp_main_t *tm = vnet_get_tcp_main ();
   vlib_main_t *vm = vlib_get_main ();
 
+  /*
+   * Setup retransmit and establish timers before requesting buffer
+   * such that we can return if we've ran out.
+   */
+  tcp_timer_set (tc, TCP_TIMER_ESTABLISH, TCP_ESTABLISH_TIME);
+  tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
+		    tc->rto * TCP_TO_TIMER_TICK);
+
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
     return;
 
@@ -988,9 +989,6 @@ tcp_send_syn (tcp_connection_t * tc)
   tc->rtt_ts = tcp_time_now ();
   tc->rtt_seq = tc->snd_nxt;
   tc->rto_boff = 0;
-
-  /* Set the connection establishment timer */
-  tcp_timer_set (tc, TCP_TIMER_ESTABLISH, TCP_ESTABLISH_TIME);
 
   tcp_push_ip_hdr (tm, tc, b);
   tcp_enqueue_to_ip_lookup (vm, b, bi, tc->c_is_ip4);
@@ -1055,6 +1053,7 @@ tcp_send_fin (tcp_connection_t * tc)
   u32 bi;
   u8 fin_snt = 0;
 
+  tcp_retransmit_timer_force_update (tc);
   if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
     return;
   b = vlib_get_buffer (vm, bi);
@@ -1075,7 +1074,6 @@ tcp_send_fin (tcp_connection_t * tc)
     {
       tc->snd_nxt = tc->snd_una_max;
     }
-  tcp_retransmit_timer_force_update (tc);
   TCP_EVT_DBG (TCP_EVT_FIN_SENT, tc);
 }
 
@@ -1378,9 +1376,11 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
       /* Lost FIN, retransmit and return */
-      if (tcp_is_lost_fin (tc))
+      if (tc->state == TCP_STATE_FIN_WAIT_1)
 	{
 	  tcp_send_fin (tc);
+	  tc->rto_boff += 1;
+	  tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 	  return;
 	}
 
@@ -1419,12 +1419,6 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
 
       if (n_bytes == 0)
 	{
-	  ASSERT (!b);
-	  if (tc->snd_una == tc->snd_una_max)
-	    return;
-	  ASSERT (tc->rto_boff > 1 && tc->snd_una == tc->snd_congestion);
-	  clib_warning ("retransmit fail: %U", format_tcp_connection, tc, 2);
-	  /* Try again eventually */
 	  tcp_retransmit_timer_set (tc);
 	  return;
 	}
@@ -1460,6 +1454,9 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       if (tc->rto_boff > TCP_RTO_SYN_RETRIES)
 	tc->rto = clib_min (tc->rto << 1, TCP_RTO_MAX);
 
+      tcp_timer_update (tc, TCP_TIMER_RETRANSMIT_SYN,
+			tc->rto * TCP_TO_TIMER_TICK);
+
       if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
 	return;
 
@@ -1483,7 +1480,10 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
       tc->rtt_ts = 0;
 
       if (PREDICT_FALSE (tcp_get_free_buffer_index (tm, &bi)))
-	return;
+	{
+	  tcp_retransmit_timer_force_update (tc);
+	  return;
+	}
 
       b = vlib_get_buffer (vm, bi);
       tcp_make_synack (tc, b);
@@ -2037,7 +2037,7 @@ tcp46_send_reset_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    }
 
 	  /* Prepare to send to IP lookup */
-	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = 0;
+	  vnet_buffer (b0)->sw_if_index[VLIB_TX] = ~0;
 	  next0 = TCP_RESET_NEXT_IP_LOOKUP;
 
 	done:
