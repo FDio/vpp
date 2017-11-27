@@ -841,19 +841,22 @@ l2_policer_classify (vlib_main_t * vm,
   return policer_classify_inline (vm, node, frame, POLICER_CLASSIFY_TABLE_L2);
 }
 
-VLIB_REGISTER_NODE (l2_policer_classify_node) =
-{
-  .function = l2_policer_classify,.name = "l2-policer-classify",.vector_size =
-    sizeof (u32),.format_trace = format_policer_classify_trace,.n_errors =
-    ARRAY_LEN (policer_classify_error_strings),.error_strings =
-    policer_classify_error_strings,.n_next_nodes =
-    POLICER_CLASSIFY_NEXT_INDEX_N_NEXT,.next_nodes =
-  {
-  [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",}
-,};
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (l2_policer_classify_node) = {
+  .function = l2_policer_classify,
+  .name = "l2-policer-classify",
+  .vector_size = sizeof (u32),
+  .format_trace = format_policer_classify_trace,
+  .n_errors = ARRAY_LEN (policer_classify_error_strings),
+  .error_strings = policer_classify_error_strings,
+  .n_next_nodes = POLICER_CLASSIFY_NEXT_INDEX_N_NEXT,
+  .next_nodes = {
+    [POLICER_CLASSIFY_NEXT_INDEX_DROP] = "error-drop",
+  },
+};
 
 VLIB_NODE_FUNCTION_MULTIARCH (l2_policer_classify_node, l2_policer_classify);
-
+/* *INDENT-ON* */
 
 static clib_error_t *
 policer_classify_init (vlib_main_t * vm)
