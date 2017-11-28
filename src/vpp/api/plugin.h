@@ -1,4 +1,6 @@
 /*
+ * plugin.h: plugin handling
+ *
  * Copyright (c) 2015 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -11,9 +13,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-/*
- * plugin.h: plugin handling
  */
 
 #ifndef __included_plugin_h__
@@ -36,13 +35,18 @@ typedef struct
   plugin_info_t *plugin_info;
   uword *plugin_by_name_hash;
 
-  /* path and name filter */
+  /* paths and name filters */
   u8 *plugin_path;
   u8 *plugin_name_filter;
+  u8 *vat_plugin_path;
+  u8 *vat_plugin_name_filter;
 
-  /* convenience */
-  vat_main_t *vat_main;
+  /* plugin configs and hash by name */
+  plugin_config_t *configs;
+  uword *config_index_by_name;
 
+  /* usual */
+  vlib_main_t *vlib_main;
 } plugin_main_t;
 
 extern plugin_main_t vat_plugin_main;
