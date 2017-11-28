@@ -3,7 +3,7 @@
 import socket
 from util import ip4n_range
 import unittest
-from framework import VppTestCase, VppTestRunner
+from framework import VppTestCase, VppTestRunner, running_extended_tests
 from template_bd import BridgeDomain
 
 from scapy.layers.l2 import Ether
@@ -11,7 +11,7 @@ from scapy.layers.inet import IP, UDP
 from scapy.layers.geneve import GENEVE
 from scapy.utils import atol
 
-
+@unittest.skipUnless(running_extended_tests(), "part of extended tests")
 class TestGeneve(BridgeDomain, VppTestCase):
     """ GENEVE Test Case """
 
