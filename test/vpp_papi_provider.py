@@ -2973,3 +2973,10 @@ class VppPapiProvider(object):
              'is_outbound': is_outbound,
              'sa_id': sa_id,
              'is_ip_any': is_ip_any})
+
+    def want_per_interface_combined_stats(self, sw_ifs, enable_disable=1):
+        return self.api(self.papi.want_per_interface_combined_stats,
+                        {'enable_disable': enable_disable,
+                         'pid': os.getpid(),
+                         'num': len(sw_ifs),
+                         'sw_ifs': sw_ifs, })
