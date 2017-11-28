@@ -132,11 +132,11 @@ af_packet_interface_tx (vlib_main_t * vm,
       tph->tp_status = TP_STATUS_SEND_REQUEST;
       n_sent++;
     next:
+      tx_frame = (tx_frame + 1) % frame_num;
+
       /* check if we've exhausted the ring */
       if (PREDICT_FALSE (frame_not_ready + n_sent == frame_num))
 	break;
-
-      tx_frame = (tx_frame + 1) % frame_num;
     }
 
   CLIB_MEMORY_BARRIER ();
