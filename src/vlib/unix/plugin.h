@@ -92,9 +92,11 @@ typedef struct
   plugin_info_t *plugin_info;
   uword *plugin_by_name_hash;
 
-  /* path and name filter */
+  /* paths and name filters */
   u8 *plugin_path;
   u8 *plugin_name_filter;
+  u8 *vat_plugin_path;
+  u8 *vat_plugin_name_filter;
 
   /* plugin configs and hash by name */
   plugin_config_t *configs;
@@ -110,6 +112,7 @@ clib_error_t *vlib_plugin_config (vlib_main_t * vm, unformat_input_t * input);
 int vlib_plugin_early_init (vlib_main_t * vm);
 int vlib_load_new_plugins (plugin_main_t * pm, int from_early_init);
 void *vlib_get_plugin_symbol (char *plugin_name, char *symbol_name);
+u8 *vlib_get_vat_plugin_path (void);
 
 #define VLIB_PLUGIN_REGISTER() \
   vlib_plugin_registration_t vlib_plugin_registration \

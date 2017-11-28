@@ -180,9 +180,22 @@ int
 vat_plugin_init (vat_main_t * vam)
 {
   plugin_main_t *pm = &vat_plugin_main;
+  u8 *vlib_get_vat_plugin_path (void);
+  u8 *vlib_get_vat_plugin_name_filter (void);
+  u8 *plugin_path;
+  u8 *plugin_name_filter;
 
+  plugin_path = vlib_get_vat_plugin_path ();
+  plugin_name_filter = vlib_get_vat_plugin_name_filter ();
+
+  if (plugin_path)
+    vat_plugin_path = (char *) plugin_path;
+
+  if (plugin_name_filter)
+    vat_plugin_name_filter = (char *) plugin_name_filter;
 
   pm->plugin_path = format (0, "%s%c", vat_plugin_path, 0);
+
   if (vat_plugin_name_filter)
     pm->plugin_name_filter = format (0, "%s%c", vat_plugin_name_filter, 0);
 
