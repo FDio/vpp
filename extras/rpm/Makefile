@@ -44,7 +44,7 @@ RPM:
 	mkdir -p RPMS SOURCES
 	cp $(TARBALL) SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
 	rpmbuild -bb \
-	  --define "_topdir $(PWD)" \
+	  --define "_topdir $(CURDIR)" \
 	  --define "_version $(VERSION)" \
 	  --define "_release $(RELEASE)" \
 	  vpp-suse.spec
