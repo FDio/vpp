@@ -265,7 +265,8 @@ VLIB_REGISTER_NODE (tapcli_tx_node,static) = {
  */
 static uword
 tapcli_rx_iface (vlib_main_t * vm,
-		 vlib_node_runtime_t * node, tapcli_interface_t * ti)
+		 vlib_node_runtime_t * node, tapcli_interface_t * ti,
+		 int collect_detailed_stats)
 {
   tapcli_main_t *tm = &tapcli_main;
   const uword buffer_size = VLIB_BUFFER_DATA_SIZE;
@@ -408,6 +409,16 @@ tapcli_rx_iface (vlib_main_t * vm,
 					   VNET_INTERFACE_COUNTER_RX,
 					   thread_index, ti->sw_if_index, 1,
 					   n_bytes_in_packet);
+	  if (collect_detailed_stats)
+	    {
+	      int b0_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b));
+	      vlib_increment_combined_counter (vnet_main.interface_main.
+					       combined_sw_if_counters +
+					       b0_ctype, thread_index,
+					       ti->sw_if_index, 1,
+					       n_bytes_in_packet);
+	    }
 
 	  if (PREDICT_FALSE (n_trace > 0))
 	    {
@@ -468,7 +479,15 @@ tapcli_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 
       ti =
 	vec_elt_at_index (tm->tapcli_interfaces, ready_interface_indices[i]);
-      total_count += tapcli_rx_iface (vm, node, ti);
+      if (collect_detailed_interface_stats ())
+	{
+	  total_count +=
+	    tapcli_rx_iface (vm, node, ti, COLLECT_DETAILED_STATS);
+	}
+      else
+	{
+	  total_count += tapcli_rx_iface (vm, node, ti, COLLECT_SIMPLE_STATS);
+	}
     }
   return total_count;		//This might return more than 256.
 }

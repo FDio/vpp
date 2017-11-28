@@ -445,15 +445,13 @@ lisp_gpe_create_iface (lisp_gpe_main_t * lgm, u32 vni, u32 dp_table,
       /* clear old stats of freed interface before reuse */
       vnet_interface_main_t *im = &vnm->interface_main;
       vnet_interface_counter_lock (im);
-      vlib_zero_combined_counter (&im->combined_sw_if_counters
-				  [VNET_INTERFACE_COUNTER_TX],
+#define zero_counter(ctype, rx_tx)                                 \
+  vlib_zero_combined_counter (&im->combined_sw_if_counters[ctype], \
+                              hi->sw_if_index);
+      foreach_combined_interface_counter (zero_counter)
+	vlib_zero_simple_counter (&im->sw_if_counters
+				  [VNET_INTERFACE_COUNTER_DROP],
 				  hi->sw_if_index);
-      vlib_zero_combined_counter (&im->combined_sw_if_counters
-				  [VNET_INTERFACE_COUNTER_RX],
-				  hi->sw_if_index);
-      vlib_zero_simple_counter (&im->sw_if_counters
-				[VNET_INTERFACE_COUNTER_DROP],
-				hi->sw_if_index);
       vnet_interface_counter_unlock (im);
     }
   else
