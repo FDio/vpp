@@ -125,7 +125,8 @@ virtio_refill_vring (vlib_main_t * vm, virtio_vring_t * vring)
 
 static_always_inline uword
 virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
-			    vlib_frame_t * frame, virtio_if_t * vif, u16 qid)
+			    vlib_frame_t * frame, virtio_if_t * vif, u16 qid,
+			    int collect_detailed_stats)
 {
   vnet_main_t *vnm = vnet_get_main ();
   u32 thread_index = vlib_get_thread_index ();
@@ -134,8 +135,18 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   const int hdr_sz = sizeof (struct virtio_net_hdr_v1);
   u32 *to_next = 0;
-  u32 n_rx_packets = 0;
-  u32 n_rx_bytes = 0;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if (collect_detailed_stats)
+    {
+      memset (stats_n_packets, 0, sizeof (stats_n_packets));
+      memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+    }
+  else
+    {
+      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+    }
   u16 mask = vring->size - 1;
   u16 last = vring->last_used_idx;
   u16 n_left = vring->used->idx - last;
@@ -158,6 +169,7 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  u16 len = e->len - hdr_sz;
 	  u32 bi0 = vring->buffers[slot];
 	  vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
+	  int b0_ctype;
 	  hdr = vlib_buffer_get_current (b0) - hdr_sz;
 	  num_buffers = hdr->num_buffers;
 
@@ -232,22 +244,39 @@ virtio_device_input_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 					   n_left_to_next, bi0, next0);
 
 	  /* next packet */
-	  n_rx_packets++;
-	  n_rx_bytes += len;
+	  stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len;
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	      stats_n_packets[b0_ctype] += 1;
+	      stats_n_bytes[b0_ctype] += len;
+	    }
 	}
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   vring->last_used_idx = last;
-
-  vlib_increment_combined_counter (vnm->interface_main.combined_sw_if_counters
-				   + VNET_INTERFACE_COUNTER_RX, thread_index,
-				   vif->hw_if_index, n_rx_packets,
-				   n_rx_bytes);
+#define inc_counter(ctype, rx_tx)                                            \
+  if (stats_n_packets[ctype])                                                \
+    {                                                                        \
+      vlib_increment_combined_counter (                                      \
+          vnm->interface_main.combined_sw_if_counters + ctype, thread_index, \
+          vif->hw_if_index, stats_n_packets[ctype], stats_n_bytes[ctype]);   \
+    }
+  if (collect_detailed_stats)
+    {
+      foreach_combined_interface_counter (inc_counter);
+    }
+  else
+    {
+      inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+    }
 
 refill:
   virtio_refill_vring (vm, vring);
 
-  return n_rx_packets;
+  return stats_n_packets[VNET_INTERFACE_COUNTER_RX];
 }
 
 static uword
@@ -259,16 +288,34 @@ virtio_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
-  {
-    virtio_if_t *mif;
-    mif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
-    if (mif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
+  if (collect_detailed_interface_stats ())
+    {
+      foreach_device_and_queue (dq, rt->devices_and_queues)
       {
-	n_rx += virtio_device_input_inline (vm, node, frame, mif,
-					    dq->queue_id);
+	virtio_if_t *mif;
+	mif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
+	if (mif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
+	  {
+	    n_rx += virtio_device_input_inline (vm, node, frame, mif,
+						dq->queue_id,
+						COLLECT_DETAILED_STATS);
+	  }
       }
-  }
+    }
+  else
+    {
+      foreach_device_and_queue (dq, rt->devices_and_queues)
+      {
+	virtio_if_t *mif;
+	mif = vec_elt_at_index (nm->interfaces, dq->dev_instance);
+	if (mif->flags & VIRTIO_IF_FLAG_ADMIN_UP)
+	  {
+	    n_rx += virtio_device_input_inline (vm, node, frame, mif,
+						dq->queue_id,
+						COLLECT_SIMPLE_STATS);
+	  }
+      }
+    }
 
   return n_rx;
 }

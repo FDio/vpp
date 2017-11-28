@@ -76,7 +76,8 @@ always_inline uword
 gtpu_encap_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * from_frame,
-		    u32 is_ip4)
+		    u32 is_ip4,
+		    int collect_detailed_stats)
 {
   u32 n_left_from, next_index, * from, * to_next;
   gtpu_main_t * gtm = &gtpu_main;
@@ -85,7 +86,16 @@ gtpu_encap_inline (vlib_main_t * vm,
   u32 pkts_encapsulated = 0;
   u16 old_l0 = 0, old_l1 = 0, old_l2 = 0, old_l3 = 0;
   u32 thread_index = vlib_get_thread_index();
-  u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
+  u32 stats_sw_if_index;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if(collect_detailed_stats){
+      memset(stats_n_packets,0,sizeof(stats_n_packets));
+      memset(stats_n_bytes,0,sizeof(stats_n_bytes));
+  }else{
+      stats_n_packets[VNET_INTERFACE_COUNTER_TX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_TX] = 0;
+  }
   u32 sw_if_index0 = 0, sw_if_index1 = 0, sw_if_index2 = 0, sw_if_index3 = 0;
   u32 next0 = 0, next1 = 0, next2 = 0, next3 = 0;
   vnet_hw_interface_t * hi0, * hi1, * hi2, * hi3;
@@ -96,7 +106,6 @@ gtpu_encap_inline (vlib_main_t * vm,
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
-  stats_n_packets = stats_n_bytes = 0;
 
   while (n_left_from > 0)
     {
@@ -109,6 +118,7 @@ gtpu_encap_inline (vlib_main_t * vm,
 	{
           u32 bi0, bi1, bi2, bi3;
 	  vlib_buffer_t * b0, * b1, * b2, * b3;
+	  int b0_ctype, b1_ctype, b2_ctype, b3_ctype;
           u32 flow_hash0, flow_hash1, flow_hash2, flow_hash3;
 	  u32 len0, len1, len2, len3;
           ip4_header_t * ip4_0, * ip4_1, * ip4_2, * ip4_3;
@@ -192,6 +202,13 @@ gtpu_encap_inline (vlib_main_t * vm,
           vnet_buffer(b2)->ip.adj_index[VLIB_TX] = t2->next_dpo.dpoi_index;
 	  next3 = t3->next_dpo.dpoi_next_node;
           vnet_buffer(b3)->ip.adj_index[VLIB_TX] = t3->next_dpo.dpoi_index;
+
+	  if (collect_detailed_stats){
+	      b0_ctype = eh_dst_addr_to_tx_ctype(vlib_buffer_get_current(b0));
+	      b1_ctype = eh_dst_addr_to_tx_ctype(vlib_buffer_get_current(b1));
+	      b2_ctype = eh_dst_addr_to_tx_ctype(vlib_buffer_get_current(b2));
+	      b3_ctype = eh_dst_addr_to_tx_ctype(vlib_buffer_get_current(b3));
+	  }
 
           /* Apply the rewrite string. $$$$ vnet_rewrite? */
           vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));
@@ -418,8 +435,18 @@ gtpu_encap_inline (vlib_main_t * vm,
  	  len1 = vlib_buffer_length_in_chain (vm, b1);
  	  len2 = vlib_buffer_length_in_chain (vm, b2);
  	  len3 = vlib_buffer_length_in_chain (vm, b3);
-	  stats_n_packets += 4;
-	  stats_n_bytes += len0 + len1 + len2 + len3;
+	  stats_n_packets[VNET_INTERFACE_COUNTER_TX] += 4;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_TX] += len0 + len1 + len2 + len3;
+	  if(collect_detailed_stats){
+	      stats_n_packets[b0_ctype] +=1;
+	      stats_n_bytes[b0_ctype] += len0;
+	      stats_n_packets[b1_ctype] +=1;
+	      stats_n_bytes[b1_ctype] += len1;
+	      stats_n_packets[b2_ctype] +=1;
+	      stats_n_bytes[b2_ctype] += len2;
+	      stats_n_packets[b3_ctype] +=1;
+	      stats_n_bytes[b3_ctype] += len3;
+	  }
 
 	  /* Batch stats increment on the same gtpu tunnel so counter is not
 	     incremented per packet. Note stats are still incremented for deleted
@@ -430,20 +457,51 @@ gtpu_encap_inline (vlib_main_t * vm,
 			     (sw_if_index2 != stats_sw_if_index) ||
 			     (sw_if_index3 != stats_sw_if_index) ))
 	    {
-	      stats_n_packets -= 4;
-	      stats_n_bytes -= len0 + len1 + len2 + len3;
+	      stats_n_packets[VNET_INTERFACE_COUNTER_TX] -= 4;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_TX] -= len0 + len1 + len2 + len3;
+	      if(collect_detailed_stats){
+	      stats_n_packets[b0_ctype] -=1;
+	      stats_n_bytes[b0_ctype] -= len0;
+	      stats_n_packets[b1_ctype] -=1;
+	      stats_n_bytes[b1_ctype] -= len1;
+	      stats_n_packets[b2_ctype] -=1;
+	      stats_n_bytes[b2_ctype] -= len2;
+	      stats_n_packets[b3_ctype] -=1;
+	      stats_n_bytes[b3_ctype] -= len3;
+	      }
 	      if ( (sw_if_index0 == sw_if_index1 ) &&
 		   (sw_if_index1 == sw_if_index2 ) &&
 		   (sw_if_index2 == sw_if_index3 ) )
 	        {
-		  if (stats_n_packets)
-		    vlib_increment_combined_counter
-		      (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-		       thread_index, stats_sw_if_index,
-		       stats_n_packets, stats_n_bytes);
+#define inc_counter(ctype, rx_tx)                                             \
+    if (stats_n_packets[ctype])                                               \
+      {                                                                       \
+        vlib_increment_combined_counter (                                     \
+            im->combined_sw_if_counters + ctype, thread_index,                \
+            stats_sw_if_index, stats_n_packets[ctype], stats_n_bytes[ctype]); \
+      }
+		  if(stats_n_packets[VNET_INTERFACE_COUNTER_TX]){
+		  if(collect_detailed_stats){
+		      foreach_combined_interface_counter(inc_counter);
+		      memset(stats_n_packets, 0, sizeof(stats_n_packets));
+		      memset(stats_n_bytes, 0, sizeof(stats_n_bytes));
+		  }else{
+		      inc_counter(VNET_INTERFACE_COUNTER_TX, tx);
+		  }
+		  }
 		  stats_sw_if_index = sw_if_index0;
-		  stats_n_packets = 4;
-		  stats_n_bytes = len0 + len1 + len2 + len3;
+		  stats_n_packets[VNET_INTERFACE_COUNTER_TX] = 4;
+		  stats_n_bytes[VNET_INTERFACE_COUNTER_TX] = len0 + len1 + len2 + len3;
+		  if(collect_detailed_stats){
+			  stats_n_packets[b0_ctype] +=1;
+	      		  stats_n_bytes[b0_ctype] += len0;
+	      		  stats_n_packets[b1_ctype] +=1;
+	      		  stats_n_bytes[b1_ctype] += len1;
+	      		  stats_n_packets[b2_ctype] +=1;
+	      		  stats_n_bytes[b2_ctype] += len2;
+	      		  stats_n_packets[b3_ctype] +=1;
+	      		  stats_n_bytes[b3_ctype] += len3;
+		  }
 	        }
 	      else
 	        {
@@ -458,6 +516,18 @@ gtpu_encap_inline (vlib_main_t * vm,
 		       thread_index, sw_if_index2, 1, len2);
 		  vlib_increment_combined_counter
 		      (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+		       thread_index, sw_if_index3, 1, len3);
+		  vlib_increment_combined_counter
+		      (im->combined_sw_if_counters + b0_ctype,
+		       thread_index, sw_if_index0, 1, len0);
+		  vlib_increment_combined_counter
+		      (im->combined_sw_if_counters + b1_ctype,
+		       thread_index, sw_if_index1, 1, len1);
+		  vlib_increment_combined_counter
+		      (im->combined_sw_if_counters + b2_ctype,
+		       thread_index, sw_if_index2, 1, len2);
+		  vlib_increment_combined_counter
+		      (im->combined_sw_if_counters + b3_ctype,
 		       thread_index, sw_if_index3, 1, len3);
 		}
 	    }
@@ -487,6 +557,7 @@ gtpu_encap_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
+	  int b0_ctype;
 	  vlib_buffer_t * b0;
           u32 flow_hash0;
 	  u32 len0;
@@ -517,6 +588,9 @@ gtpu_encap_inline (vlib_main_t * vm,
 	  /* Note: change to always set next0 if it may be set to drop */
 	  next0 = t0->next_dpo.dpoi_next_node;
 	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+
+	  if(collect_detailed_stats){
+	      b0_ctype = eh_dst_addr_to_tx_ctype(vlib_buffer_get_current(b0));}
 
           /* Apply the rewrite string. $$$$ vnet_rewrite? */
           vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));
@@ -598,8 +672,12 @@ gtpu_encap_inline (vlib_main_t * vm,
 
           pkts_encapsulated ++;
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
-	  stats_n_packets += 1;
-	  stats_n_bytes += len0;
+	  stats_n_packets[VNET_INTERFACE_COUNTER_TX] += 1;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_TX] += len0;
+	  if(collect_detailed_stats){
+	    stats_n_packets[b0_ctype] += 1;
+	    stats_n_bytes[b0_ctype] += len0;
+	  }
 
 	  /* Batch stats increment on the same gtpu tunnel so counter is not
 	     incremented per packet. Note stats are still incremented for deleted
@@ -607,15 +685,27 @@ gtpu_encap_inline (vlib_main_t * vm,
 	     to check for this rare case and affect normal path performance. */
 	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
 	    {
-	      stats_n_packets -= 1;
-	      stats_n_bytes -= len0;
-	      if (stats_n_packets)
-		vlib_increment_combined_counter
-		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-		   thread_index, stats_sw_if_index,
-		   stats_n_packets, stats_n_bytes);
-	      stats_n_packets = 1;
-	      stats_n_bytes = len0;
+	      stats_n_packets[VNET_INTERFACE_COUNTER_TX] -= 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_TX] -= len0;
+	  if(collect_detailed_stats){
+	    stats_n_packets[b0_ctype] -= 1;
+	    stats_n_bytes[b0_ctype] -= len0;
+	  }
+	      if (stats_n_packets[VNET_INTERFACE_COUNTER_TX]){
+		  if(collect_detailed_stats){
+		      foreach_combined_interface_counter(inc_counter);
+		      memset(stats_n_packets,0,sizeof(stats_n_packets));
+		      memset(stats_n_bytes, 0, sizeof(stats_n_bytes));
+		  }else{
+		      inc_counter(VNET_INTERFACE_COUNTER_TX, tx);
+		  }
+	      }
+	      stats_n_packets[VNET_INTERFACE_COUNTER_TX] = 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_TX] = len0;
+	      if(collect_detailed_stats){
+		  stats_n_packets[b0_ctype] +=1;
+		  stats_n_bytes[b0_ctype]+= len0;
+	      }
 	      stats_sw_if_index = sw_if_index0;
 	    }
 
@@ -640,11 +730,11 @@ gtpu_encap_inline (vlib_main_t * vm,
                                pkts_encapsulated);
 
   /* Increment any remaining batch stats */
-  if (stats_n_packets)
+  if (stats_n_packets[VNET_INTERFACE_COUNTER_TX])
     {
-      vlib_increment_combined_counter
-	(im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+      if(collect_detailed_stats){
+	  foreach_combined_interface_counter(inc_counter);
+      }else{inc_counter(VNET_INTERFACE_COUNTER_TX, tx);}
       node->runtime_data[0] = stats_sw_if_index;
     }
 
@@ -656,7 +746,9 @@ gtpu4_encap (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
 	      vlib_frame_t * from_frame)
 {
-  return gtpu_encap_inline (vm, node, from_frame, /* is_ip4 */ 1);
+  if (collect_detailed_interface_stats ()){
+  return gtpu_encap_inline (vm, node, from_frame, /* is_ip4 */ 1, COLLECT_DETAILED_STATS);}else{
+  return gtpu_encap_inline (vm, node, from_frame, /* is_ip4 */ 1, COLLECT_SIMPLE_STATS);}
 }
 
 static uword
@@ -664,7 +756,9 @@ gtpu6_encap (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
 	      vlib_frame_t * from_frame)
 {
-  return gtpu_encap_inline (vm, node, from_frame, /* is_ip4 */ 0);
+  if (collect_detailed_interface_stats ()){
+  return gtpu_encap_inline (vm, node, from_frame, /* is_ip4 */ 0, COLLECT_DETAILED_STATS);}else{
+  return gtpu_encap_inline (vm, node, from_frame, /* is_ip4 */ 0, COLLECT_SIMPLE_STATS);}
 }
 
 VLIB_REGISTER_NODE (gtpu4_encap_node) = {
@@ -702,4 +796,3 @@ VLIB_REGISTER_NODE (gtpu6_encap_node) = {
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (gtpu6_encap_node, gtpu6_encap)
-

@@ -5940,6 +5940,18 @@ counter_type_to_str (u8 counter_type, u8 is_combined)
 	  return "rx";
 	case VNET_INTERFACE_COUNTER_TX:
 	  return "tx";
+	case VNET_INTERFACE_COUNTER_RX_UNICAST:
+	  return "rx-unicast";
+	case VNET_INTERFACE_COUNTER_TX_UNICAST:
+	  return "tx-unicast";
+	case VNET_INTERFACE_COUNTER_RX_MULTICAST:
+	  return "rx-multicast";
+	case VNET_INTERFACE_COUNTER_TX_MULTICAST:
+	  return "tx-multicast";
+	case VNET_INTERFACE_COUNTER_RX_BROADCAST:
+	  return "rx-broadcast";
+	case VNET_INTERFACE_COUNTER_TX_BROADCAST:
+	  return "tx-broadcast";
 	default:
 	  return "INVALID-COUNTER-TYPE";
 	}

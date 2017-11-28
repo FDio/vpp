@@ -804,7 +804,7 @@ vnet_register_interface (vnet_main_t * vnm,
       /* The new class may differ from the old one.
        * Functions have to be updated. */
       node = vlib_get_node (vm, hw->output_node_index);
-      node->function = vnet_interface_output_node_multiarch_select ();
+      node->function = vnet_interface_output_node_fn_multiarch_select ();
       node->format_trace = format_vnet_interface_output_trace;
       /* *INDENT-OFF* */
       foreach_vlib_main ({
@@ -854,7 +854,7 @@ vnet_register_interface (vnet_main_t * vnm,
 
       r.flags = 0;
       r.name = output_node_name;
-      r.function = vnet_interface_output_node_multiarch_select ();
+      r.function = vnet_interface_output_node_fn_multiarch_select ();
       r.format_trace = format_vnet_interface_output_trace;
 
       {
@@ -1237,7 +1237,19 @@ vnet_interface_init (vlib_main_t * vm)
   vec_validate (im->combined_sw_if_counters,
 		VNET_N_COMBINED_INTERFACE_COUNTER - 1);
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX].name = "rx";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX_UNICAST].name =
+    "rx-unicast";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX_MULTICAST].name =
+    "rx-multicast";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX_BROADCAST].name =
+    "rx-broadcast";
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX].name = "tx";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX_UNICAST].name =
+    "tx-unicast";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX_MULTICAST].name =
+    "tx-multicast";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX_BROADCAST].name =
+    "tx-broadcast";
 
   im->sw_if_counter_lock[0] = 0;
 
@@ -1491,6 +1503,60 @@ default_update_adjacency (vnet_main_t * vnm, u32 sw_if_index, u32 ai)
       break;
     }
 }
+
+int collect_detailed_interface_stats_flag = 0;
+
+void
+collect_detailed_interface_stats_flag_set ()
+{
+  collect_detailed_interface_stats_flag = 1;
+}
+
+void
+collect_detailed_interface_stats_flag_clear ()
+{
+  collect_detailed_interface_stats_flag = 0;
+}
+
+static clib_error_t *
+collect_detailed_interface_stats_cli (vlib_main_t * vm,
+				      unformat_input_t * input,
+				      vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "expected enable | disable");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "enable") || unformat (line_input, "on"))
+	collect_detailed_interface_stats_flag_set ();
+      else if (unformat (line_input, "disable")
+	       || unformat (line_input, "off"))
+	collect_detailed_interface_stats_flag_clear ();
+      else
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+done:
+  unformat_free (line_input);
+  return error;
+}
+
+/* *INDENT-OFF* */
+VLIB_CLI_COMMAND (collect_detailed_interface_stats_command, static) = {
+  .path = "interface collect detailed-stats",
+  .short_help = "interface collect detailed-stats <enable|disable>",
+  .function = collect_detailed_interface_stats_cli,
+};
+/* *INDENT-ON* */
 
 /*
  * fd.io coding-style-patch-verification: ON
