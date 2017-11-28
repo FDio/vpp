@@ -67,6 +67,7 @@ elif [ "$OS_ID" == "centos" ]; then
     (cd $VPP_DIR/vnet ;$SUDOCMD aclocal;$SUDOCMD automake -a)
     $SUDOCMD make pkg-rpm
 elif [ "$OS_ID" == "opensuse" ]; then
+    $SUDOCMD rm -rf dpdk/dpdk*.tar.xz
     $SUDOCMD make build-release
 fi
 
