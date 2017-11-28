@@ -67,7 +67,8 @@ _(DELETE_SUBIF, delete_subif)                                   \
 _(CREATE_LOOPBACK, create_loopback)				\
 _(CREATE_LOOPBACK_INSTANCE, create_loopback_instance)		\
 _(DELETE_LOOPBACK, delete_loopback)                             \
-_(INTERFACE_NAME_RENUMBER, interface_name_renumber)
+_(INTERFACE_NAME_RENUMBER, interface_name_renumber)             \
+_(COLLECT_DETAILED_INTERFACE_STATS, collect_detailed_interface_stats)
 
 static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
@@ -1175,6 +1176,25 @@ vl_api_delete_loopback_t_handler (vl_api_delete_loopback_t * mp)
   rv = vnet_delete_loopback_interface (sw_if_index);
 
   REPLY_MACRO (VL_API_DELETE_LOOPBACK_REPLY);
+}
+
+static void
+  vl_api_collect_detailed_interface_stats_t_handler
+  (vl_api_collect_detailed_interface_stats_t * mp)
+{
+  vl_api_collect_detailed_interface_stats_reply_t *rmp;
+  int rv = 0;
+
+  if (mp->enable_disable)
+    {
+      collect_detailed_interface_stats_flag_set ();
+    }
+  else
+    {
+      collect_detailed_interface_stats_flag_clear ();
+    }
+
+  REPLY_MACRO (VL_API_COLLECT_DETAILED_INTERFACE_STATS_REPLY);
 }
 
 /*

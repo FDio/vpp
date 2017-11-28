@@ -174,7 +174,8 @@ mark_tcp_udp_cksum_calc (vlib_buffer_t * b)
 
 always_inline uword
 af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			   vlib_frame_t * frame, af_packet_if_t * apif)
+			   vlib_frame_t * frame, af_packet_if_t * apif,
+			   int collect_detailed_stats)
 {
   af_packet_main_t *apm = &af_packet_main;
   struct tpacket2_hdr *tph;
@@ -182,8 +183,18 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 block = 0;
   u32 rx_frame;
   u32 n_free_bufs;
-  u32 n_rx_packets = 0;
-  u32 n_rx_bytes = 0;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if (collect_detailed_stats)
+    {
+      memset (stats_n_packets, 0, sizeof (stats_n_packets));
+      memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+    }
+  else
+    {
+      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+    }
   u32 *to_next = 0;
   u32 block_size = apif->rx_req->tp_block_size;
   u32 frame_size = apif->rx_req->tp_frame_size;
@@ -286,8 +297,15 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      offset += bytes_to_copy;
 	      data_len -= bytes_to_copy;
 	    }
-	  n_rx_packets++;
-	  n_rx_bytes += tph->tp_snaplen;
+	  stats_n_packets[VNET_INTERFACE_COUNTER_RX]++;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += tph->tp_snaplen;
+	  if (collect_detailed_stats)
+	    {
+	      int b0_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	      stats_n_packets[b0_ctype]++;
+	      stats_n_bytes[b0_ctype] += tph->tp_snaplen;
+	    }
 	  to_next[0] = first_bi0;
 	  to_next += 1;
 	  n_left_to_next--;
@@ -324,13 +342,31 @@ af_packet_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   apif->next_rx_frame = rx_frame;
 
-  vlib_increment_combined_counter
-    (vnet_get_main ()->interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX,
-     vlib_get_thread_index (), apif->hw_if_index, n_rx_packets, n_rx_bytes);
+#define inc_counter(ctype, rx_tx)                                           \
+  if (stats_n_packets[ctype])                                               \
+    {                                                                       \
+      vlib_increment_combined_counter (                                     \
+          vnet_get_main ()->interface_main.combined_sw_if_counters + ctype, \
+          vlib_get_thread_index (), apif->hw_if_index,                      \
+          stats_n_packets[ctype], stats_n_bytes[ctype]);                    \
+    }
 
-  vnet_device_increment_rx_packets (thread_index, n_rx_packets);
-  return n_rx_packets;
+  if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
+    {
+      if (collect_detailed_stats)
+	{
+	  foreach_combined_interface_counter (inc_counter);
+	}
+      else
+	{
+	  inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+	}
+    }
+
+  vnet_device_increment_rx_packets (thread_index,
+				    stats_n_packets
+				    [VNET_INTERFACE_COUNTER_RX]);
+  return stats_n_packets[VNET_INTERFACE_COUNTER_RX];
 }
 
 static uword
@@ -342,13 +378,26 @@ af_packet_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
-  foreach_device_and_queue (dq, rt->devices_and_queues)
-  {
-    af_packet_if_t *apif;
-    apif = vec_elt_at_index (apm->interfaces, dq->dev_instance);
-    if (apif->is_admin_up)
-      n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif);
-  }
+  if (collect_detailed_interface_stats ())
+    {
+      foreach_device_and_queue (dq, rt->devices_and_queues)
+      {
+	af_packet_if_t *apif;
+	apif = vec_elt_at_index (apm->interfaces, dq->dev_instance);
+	if (apif->is_admin_up)
+	  n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif,
+						     COLLECT_DETAILED_STATS);
+      }
+
+      foreach_device_and_queue (dq, rt->devices_and_queues)
+      {
+	af_packet_if_t *apif;
+	apif = vec_elt_at_index (apm->interfaces, dq->dev_instance);
+	if (apif->is_admin_up)
+	  n_rx_packets += af_packet_device_input_fn (vm, node, frame, apif,
+						     COLLECT_SIMPLE_STATS);
+      }
+    }
 
   return n_rx_packets;
 }

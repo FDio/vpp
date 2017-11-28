@@ -446,10 +446,11 @@ int vnet_vxlan_add_del_tunnel
 
 	  /* clear old stats of freed tunnel before reuse */
 	  vnet_interface_counter_lock(im);
-	  vlib_zero_combined_counter 
-	    (&im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX], sw_if_index);
-	  vlib_zero_combined_counter 
-	    (&im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX], sw_if_index);
+#define zero_counter(ctype, direction)\
+	  vlib_zero_combined_counter\
+	    (&im->combined_sw_if_counters[ctype],\
+	     sw_if_index);
+	  foreach_combined_interface_counter(zero_counter)
 	  vlib_zero_simple_counter 
 	    (&im->sw_if_counters[VNET_INTERFACE_COUNTER_DROP], sw_if_index);
 	  vnet_interface_counter_unlock(im);

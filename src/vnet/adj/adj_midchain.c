@@ -43,7 +43,8 @@ always_inline uword
 adj_midchain_tx_inline (vlib_main_t * vm,
 			vlib_node_runtime_t * node,
 			vlib_frame_t * frame,
-			int interface_count)
+			int interface_count,
+			int collect_detailed_stats)
 {
     u32 * from, * to_next, n_left_from, n_left_to_next;
     u32 next_index;
@@ -83,6 +84,7 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 	    const ip_adjacency_t * adj3;
 	    const dpo_id_t *dpo3;
 	    vlib_buffer_t * b3;
+	    int b0_ctype, b1_ctype, b2_ctype, b3_ctype;
 
 	    /* Prefetch next iteration. */
 	    {
@@ -171,6 +173,65 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 						 adj3->rewrite_header.sw_if_index,
 						 1,
 						 vlib_buffer_length_in_chain (vm, b3));
+		if(collect_detailed_stats){
+		    switch(adj0->lookup_next_index){
+		      case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+			b0_ctype = VNET_INTERFACE_COUNTER_TX_MULTICAST;
+			break;
+		      default:
+			b0_ctype = VNET_INTERFACE_COUNTER_TX_UNICAST;
+			break;
+		    }
+		    switch(adj1->lookup_next_index){
+		      case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+			b1_ctype = VNET_INTERFACE_COUNTER_TX_MULTICAST;
+			break;
+		      default:
+			b1_ctype = VNET_INTERFACE_COUNTER_TX_UNICAST;
+			break;
+		    }
+		    switch(adj2->lookup_next_index){
+		      case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+			b2_ctype = VNET_INTERFACE_COUNTER_TX_MULTICAST;
+			break;
+		      default:
+			b2_ctype = VNET_INTERFACE_COUNTER_TX_UNICAST;
+			break;
+		    }
+		    switch(adj3->lookup_next_index){
+		      case IP_LOOKUP_NEXT_MCAST_MIDCHAIN:
+			b3_ctype = VNET_INTERFACE_COUNTER_TX_MULTICAST;
+			break;
+		      default:
+			b3_ctype = VNET_INTERFACE_COUNTER_TX_UNICAST;
+			break;
+		    }
+		    vlib_increment_combined_counter (im->combined_sw_if_counters
+		    				 + b0_ctype,
+		    				 thread_index,
+		    				 adj0->rewrite_header.sw_if_index,
+		    				 1,
+		    				 vlib_buffer_length_in_chain (vm, b0));
+		    vlib_increment_combined_counter (im->combined_sw_if_counters
+		    				 + b1_ctype,
+		    				 thread_index,
+		    				 adj1->rewrite_header.sw_if_index,
+		    				 1,
+		    				 vlib_buffer_length_in_chain (vm, b1));
+		    vlib_increment_combined_counter (im->combined_sw_if_counters
+		    				 + b2_ctype,
+		    				 thread_index,
+		    				 adj2->rewrite_header.sw_if_index,
+		    				 1,
+		    				 vlib_buffer_length_in_chain (vm, b2));
+		    vlib_increment_combined_counter (im->combined_sw_if_counters
+		    				 + b3_ctype,
+		    				 thread_index,
+		    				 adj3->rewrite_header.sw_if_index,
+		    				 1,
+		    				 vlib_buffer_length_in_chain (vm, b3));
+		}
+
 	    }
 
 	    if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -209,6 +270,7 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 	    const ip_adjacency_t * adj0;
 	    const dpo_id_t *dpo0;
 	    vlib_buffer_t * b0;
+	    int b0_ctype;
 
 	    bi0 = from[0];
 	    to_next[0] = bi0;
@@ -234,6 +296,15 @@ adj_midchain_tx_inline (vlib_main_t * vm,
 						 adj0->rewrite_header.sw_if_index,
 						 1,
 						 vlib_buffer_length_in_chain (vm, b0));
+		if(collect_detailed_stats){
+		    b0_ctype = eh_dst_addr_to_tx_ctype(vlib_buffer_get_current(b0));
+		    vlib_increment_combined_counter (im->combined_sw_if_counters
+		    				 + b0_ctype,
+		    				 thread_index,
+		    				 adj0->rewrite_header.sw_if_index,
+		    				 1,
+		    				 vlib_buffer_length_in_chain (vm, b0));
+		}
 	    }
 
 	    if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -273,7 +344,11 @@ adj_midchain_tx (vlib_main_t * vm,
 		 vlib_node_runtime_t * node,
 		 vlib_frame_t * frame)
 {
-    return (adj_midchain_tx_inline(vm, node, frame, 1));
+  if(collect_detailed_interface_stats()){
+    return (adj_midchain_tx_inline(vm, node, frame, 1, COLLECT_DETAILED_STATS));
+  }else{
+    return (adj_midchain_tx_inline(vm, node, frame, 1, COLLECT_SIMPLE_STATS));
+  }
 }
 
 VLIB_REGISTER_NODE (adj_midchain_tx_node, static) = {
@@ -294,7 +369,11 @@ adj_midchain_tx_no_count (vlib_main_t * vm,
 			  vlib_node_runtime_t * node,
 			  vlib_frame_t * frame)
 {
-    return (adj_midchain_tx_inline(vm, node, frame, 0));
+  if(collect_detailed_interface_stats()){
+    return (adj_midchain_tx_inline(vm, node, frame, 0, COLLECT_DETAILED_STATS));
+  }else{
+    return (adj_midchain_tx_inline(vm, node, frame, 0, COLLECT_SIMPLE_STATS));
+  }
 }
 
 VLIB_REGISTER_NODE (adj_midchain_tx_no_count_node, static) = {

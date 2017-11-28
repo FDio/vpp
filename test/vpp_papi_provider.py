@@ -3189,3 +3189,14 @@ class VppPapiProvider(object):
     def gbp_contract_dump(self):
         """ GBP contract Dump """
         return self.api(self.papi.gbp_contract_dump, {})
+
+    def want_per_interface_combined_stats(self, sw_ifs, enable_disable=1):
+        return self.api(self.papi.want_per_interface_combined_stats,
+                        {'enable_disable': enable_disable,
+                         'pid': os.getpid(),
+                         'num': len(sw_ifs),
+                         'sw_ifs': sw_ifs, })
+
+    def collect_detailed_interface_stats(self, enable_disable=1):
+        return self.api(self.papi.collect_detailed_interface_stats,
+                        {'enable_disable': enable_disable})
