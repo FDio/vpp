@@ -72,7 +72,8 @@ validate_geneve_fib (vlib_buffer_t * b, geneve_tunnel_t * t, u32 is_ip4)
 always_inline uword
 geneve_input (vlib_main_t * vm,
 	      vlib_node_runtime_t * node,
-	      vlib_frame_t * from_frame, u32 is_ip4)
+	      vlib_frame_t * from_frame, u32 is_ip4,
+	      int collect_detailed_stats)
 {
   u32 n_left_from, next_index, *from, *to_next;
   geneve_main_t *vxm = &geneve_main;
@@ -83,7 +84,19 @@ geneve_input (vlib_main_t * vm,
   geneve6_tunnel_key_t last_key6;
   u32 pkts_decapsulated = 0;
   u32 thread_index = vlib_get_thread_index ();
-  u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
+  u32 stats_sw_if_index;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if (collect_detailed_stats)
+    {
+      memset (stats_n_packets, 0, sizeof (stats_n_packets));
+      memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+    }
+  else
+    {
+      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+    }
 
   if (is_ip4)
     last_key4.as_u64 = ~0;
@@ -95,7 +108,6 @@ geneve_input (vlib_main_t * vm,
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
-  stats_n_packets = stats_n_bytes = 0;
 
   while (n_left_from > 0)
     {
@@ -106,6 +118,7 @@ geneve_input (vlib_main_t * vm,
 	{
 	  u32 bi0, bi1;
 	  vlib_buffer_t *b0, *b1;
+	  int b0_ctype, b1_ctype;
 	  u32 next0, next1;
 	  ip4_header_t *ip4_0, *ip4_1;
 	  ip6_header_t *ip6_0, *ip6_1;
@@ -337,22 +350,57 @@ geneve_input (vlib_main_t * vm,
 	  sw_if_index0 = (mt0) ? mt0->sw_if_index : sw_if_index0;
 
 	  pkts_decapsulated++;
-	  stats_n_packets += 1;
-	  stats_n_bytes += len0;
+	  stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len0;
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	      stats_n_packets[b0_ctype] += 1;
+	      stats_n_bytes[b0_ctype] += len0;
+	    }
 
 	  /* Batch stats increment on the same geneve tunnel so counter
 	     is not incremented per packet */
 	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
 	    {
-	      stats_n_packets -= 1;
-	      stats_n_bytes -= len0;
-	      if (stats_n_packets)
-		vlib_increment_combined_counter
-		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   thread_index, stats_sw_if_index,
-		   stats_n_packets, stats_n_bytes);
-	      stats_n_packets = 1;
-	      stats_n_bytes = len0;
+	      stats_n_packets[VNET_INTERFACE_COUNTER_RX] -= 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] -= len0;
+	      if (collect_detailed_stats)
+		{
+		  stats_n_packets[b0_ctype] -= 1;
+		  stats_n_bytes[b0_ctype] -= len0;
+		}
+	      if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
+		{
+#define inc_counter(ctype, rx_tx)                                           \
+  if (stats_n_packets[ctype])                                               \
+    {                                                                       \
+      vlib_increment_combined_counter (                                     \
+          im->combined_sw_if_counters + ctype, thread_index,                \
+          stats_sw_if_index, stats_n_packets[ctype], stats_n_bytes[ctype]); \
+    }
+		  if (collect_detailed_stats)
+		    {
+		      foreach_combined_interface_counter (inc_counter);
+		    }
+		  else
+		    {
+		      inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+		    }
+		}
+	      if (collect_detailed_stats)
+		{
+		  memset (stats_n_packets, 0, sizeof (stats_n_packets));
+		  memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+		}
+	      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = len0;
+	      if (collect_detailed_stats)
+		{
+		  stats_n_packets[b0_ctype] = 1;
+		  stats_n_bytes[b0_ctype] = len0;
+		}
 	      stats_sw_if_index = sw_if_index0;
 	    }
 
@@ -506,22 +554,50 @@ geneve_input (vlib_main_t * vm,
 	  sw_if_index1 = (mt1) ? mt1->sw_if_index : sw_if_index1;
 
 	  pkts_decapsulated++;
-	  stats_n_packets += 1;
-	  stats_n_bytes += len1;
+	  stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len1;
+	  if (collect_detailed_stats)
+	    {
+	      b1_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b1));
+	      stats_n_packets[b1_ctype] += 1;
+	      stats_n_bytes[b1_ctype] += len1;
+	    }
 
 	  /* Batch stats increment on the same geneve tunnel so counter
 	     is not incremented per packet */
 	  if (PREDICT_FALSE (sw_if_index1 != stats_sw_if_index))
 	    {
-	      stats_n_packets -= 1;
-	      stats_n_bytes -= len1;
-	      if (stats_n_packets)
-		vlib_increment_combined_counter
-		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   thread_index, stats_sw_if_index,
-		   stats_n_packets, stats_n_bytes);
-	      stats_n_packets = 1;
-	      stats_n_bytes = len1;
+	      stats_n_packets[VNET_INTERFACE_COUNTER_RX] -= 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] -= len1;
+	      if (collect_detailed_stats)
+		{
+		  stats_n_packets[b1_ctype] -= 1;
+		  stats_n_bytes[b1_ctype] -= len1;
+		}
+	      if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
+		{
+		  if (collect_detailed_stats)
+		    {
+		      foreach_combined_interface_counter (inc_counter);
+		    }
+		  else
+		    {
+		      inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+		    }
+		}
+	      if (collect_detailed_stats)
+		{
+		  memset (stats_n_packets, 0, sizeof (stats_n_packets));
+		  memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+		}
+	      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = len1;
+	      if (collect_detailed_stats)
+		{
+		  stats_n_packets[b1_ctype] = 1;
+		  stats_n_bytes[b1_ctype] = len1;
+		}
 	      stats_sw_if_index = sw_if_index1;
 	    }
 
@@ -548,6 +624,7 @@ geneve_input (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t *b0;
 	  u32 next0;
+	  int b0_ctype;
 	  ip4_header_t *ip4_0;
 	  ip6_header_t *ip6_0;
 	  geneve_header_t *geneve0;
@@ -741,22 +818,50 @@ geneve_input (vlib_main_t * vm,
 	  sw_if_index0 = (mt0) ? mt0->sw_if_index : sw_if_index0;
 
 	  pkts_decapsulated++;
-	  stats_n_packets += 1;
-	  stats_n_bytes += len0;
+	  stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len0;
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	      stats_n_packets[b0_ctype] += 1;
+	      stats_n_bytes[b0_ctype] += len0;
+	    }
 
 	  /* Batch stats increment on the same geneve tunnel so counter
 	     is not incremented per packet */
 	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
 	    {
-	      stats_n_packets -= 1;
-	      stats_n_bytes -= len0;
-	      if (stats_n_packets)
-		vlib_increment_combined_counter
-		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   thread_index, stats_sw_if_index,
-		   stats_n_packets, stats_n_bytes);
-	      stats_n_packets = 1;
-	      stats_n_bytes = len0;
+	      stats_n_packets[VNET_INTERFACE_COUNTER_RX] -= 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] -= len0;
+	      if (collect_detailed_stats)
+		{
+		  stats_n_packets[b0_ctype] -= 1;
+		  stats_n_bytes[b0_ctype] -= len0;
+		}
+	      if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
+		{
+		  if (collect_detailed_stats)
+		    {
+		      foreach_combined_interface_counter (inc_counter);
+		    }
+		  else
+		    {
+		      inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+		    }
+		}
+	      if (collect_detailed_stats)
+		{
+		  memset (stats_n_packets, 0, sizeof (stats_n_packets));
+		  memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+		}
+	      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = len0;
+	      if (collect_detailed_stats)
+		{
+		  stats_n_packets[b0_ctype] = 1;
+		  stats_n_bytes[b0_ctype] = len0;
+		}
 	      stats_sw_if_index = sw_if_index0;
 	    }
 
@@ -786,11 +891,16 @@ geneve_input (vlib_main_t * vm,
 			       GENEVE_ERROR_DECAPSULATED, pkts_decapsulated);
 
   /* Increment any remaining batch stats */
-  if (stats_n_packets)
+  if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
     {
-      vlib_increment_combined_counter
-	(im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+      if (collect_detailed_stats)
+	{
+	  foreach_combined_interface_counter (inc_counter);
+	}
+      else
+	{
+	  inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+	}
       node->runtime_data[0] = stats_sw_if_index;
     }
 
@@ -801,14 +911,32 @@ static uword
 geneve4_input (vlib_main_t * vm,
 	       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
-  return geneve_input (vm, node, from_frame, /* is_ip4 */ 1);
+  if (collect_detailed_interface_stats ())
+    {
+      return geneve_input (vm, node, from_frame, /* is_ip4 */ 1,
+			   COLLECT_DETAILED_STATS);
+    }
+  else
+    {
+      return geneve_input (vm, node, from_frame, /* is_ip4 */ 1,
+			   COLLECT_SIMPLE_STATS);
+    }
 }
 
 static uword
 geneve6_input (vlib_main_t * vm,
 	       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
-  return geneve_input (vm, node, from_frame, /* is_ip4 */ 0);
+  if (collect_detailed_interface_stats ())
+    {
+      return geneve_input (vm, node, from_frame, /* is_ip4 */ 0,
+			   COLLECT_DETAILED_STATS);
+    }
+  else
+    {
+      return geneve_input (vm, node, from_frame, /* is_ip4 */ 0,
+			   COLLECT_SIMPLE_STATS);
+    }
 }
 
 static char *geneve_error_strings[] = {

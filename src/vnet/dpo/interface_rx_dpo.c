@@ -15,6 +15,7 @@
 
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/fib/fib_node.h>
+#include <vnet/ethernet/packet.h>
 
 /*
  * The 'DB' of interface DPOs.
@@ -234,7 +235,8 @@ typedef enum interface_rx_dpo_next_t_
 always_inline uword
 interface_rx_dpo_inline (vlib_main_t * vm,
                          vlib_node_runtime_t * node,
-                         vlib_frame_t * from_frame)
+                         vlib_frame_t * from_frame,
+			 int collect_detailed_stats)
 {
     u32 n_left_from, next_index, * from, * to_next;
     u32 thread_index = vlib_get_thread_index ();
@@ -257,6 +259,7 @@ interface_rx_dpo_inline (vlib_main_t * vm,
             const interface_rx_dpo_t *ido0, *ido1;
             u32 bi0, idoi0, bi1, idoi1;
             vlib_buffer_t *b0, *b1;
+	    int b0_ctype, b1_ctype;
 
             bi0 = from[0];
             to_next[0] = bi0;
@@ -290,6 +293,23 @@ interface_rx_dpo_inline (vlib_main_t * vm,
                                              ido1->ido_sw_if_index,
                                              1,
                                              vlib_buffer_length_in_chain (vm, b1));
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	      b1_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b1));
+	      vlib_increment_combined_counter (im->combined_sw_if_counters +
+					       b0_ctype, thread_index,
+					       ido0->ido_sw_if_index, 1,
+					       vlib_buffer_length_in_chain
+					       (vm, b0));
+	      vlib_increment_combined_counter (im->combined_sw_if_counters +
+					       b1_ctype, thread_index,
+					       ido1->ido_sw_if_index, 1,
+					       vlib_buffer_length_in_chain
+					       (vm, b1));
+	    }
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -317,6 +337,7 @@ interface_rx_dpo_inline (vlib_main_t * vm,
             const interface_rx_dpo_t * ido0;
             vlib_buffer_t * b0;
             u32 bi0, idoi0;
+	    int b0_ctype;
 
             bi0 = from[0];
             to_next[0] = bi0;
@@ -341,6 +362,16 @@ interface_rx_dpo_inline (vlib_main_t * vm,
                                              ido0->ido_sw_if_index,
                                              1,
                                              vlib_buffer_length_in_chain (vm, b0));
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	      vlib_increment_combined_counter (im->combined_sw_if_counters +
+					       b0_ctype, thread_index,
+					       ido0->ido_sw_if_index, 1,
+					       vlib_buffer_length_in_chain
+					       (vm, b0));
+	    }
 
             if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
             {
@@ -377,7 +408,9 @@ interface_rx_dpo_ip4 (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * from_frame)
 {
-    return (interface_rx_dpo_inline(vm, node, from_frame));
+  if(collect_detailed_interface_stats()){
+    return (interface_rx_dpo_inline(vm, node, from_frame, COLLECT_DETAILED_STATS));
+  }else{ return (interface_rx_dpo_inline(vm, node, from_frame, COLLECT_SIMPLE_STATS));}
 }
 
 static uword
@@ -385,7 +418,9 @@ interface_rx_dpo_ip6 (vlib_main_t * vm,
                       vlib_node_runtime_t * node,
                       vlib_frame_t * from_frame)
 {
-    return (interface_rx_dpo_inline(vm, node, from_frame));
+  if(collect_detailed_interface_stats()){
+    return (interface_rx_dpo_inline(vm, node, from_frame, COLLECT_DETAILED_STATS));
+  }else{ return (interface_rx_dpo_inline(vm, node, from_frame, COLLECT_SIMPLE_STATS));}
 }
 
 static uword
@@ -393,7 +428,9 @@ interface_rx_dpo_l2 (vlib_main_t * vm,
                      vlib_node_runtime_t * node,
                      vlib_frame_t * from_frame)
 {
-    return (interface_rx_dpo_inline(vm, node, from_frame));
+  if(collect_detailed_interface_stats()){
+    return (interface_rx_dpo_inline(vm, node, from_frame, COLLECT_DETAILED_STATS));
+  }else{ return (interface_rx_dpo_inline(vm, node, from_frame, COLLECT_SIMPLE_STATS));}
 }
 
 VLIB_REGISTER_NODE (interface_rx_dpo_ip4_node) = {

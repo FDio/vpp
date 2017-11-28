@@ -233,17 +233,41 @@ typeonly manual_print manual_endian define vlib_counter
     @param sw_if_index - interface indexes for counters
     @param rx_packets - received packet count
     @param rx_bytes - received byte count
+    @param rx_unicast_packets - received unicast packet count
+    @param rx_unicast_bytes - received unicast byte count
+    @param rx_multicast_packets - received multicast packet count
+    @param rx_multicast_bytes - received multicast byte count
+    @param rx_broadcast_packets - received broadcast packet count
+    @param rx_broadcast_bytes - received broadcast byte count
     @param tx_packets - transmitted packet count
     @param tx_bytes - transmitted byte count
+    @param tx_unicast_packets - transmitted unicast packet count
+    @param tx_unicast_bytes - transmitted unicast byte count
+    @param tx_multicast_packets - transmitted multicast packet count
+    @param tx_multicast_bytes - transmitted multicast byte count
+    @param tx_broadcast_packets - transmitted broadcast packet count
+    @param tx_broadcast_bytes - transmitted broadcast byte count
 
 */
 typeonly manual_print manual_endian define vnet_combined_counter
 {
   u32 sw_if_index;
-  u64 rx_packets;			/**< packet counter */
-  u64 rx_bytes;			/**< byte counter  */
-  u64 tx_packets;			/**< packet counter */
-  u64 tx_bytes;			/**< byte counter  */
+  u64 rx_packets;				/**< packet counter */
+  u64 rx_bytes;					/**< byte counter  */
+  u64 rx_unicast_packets;			/**< packet counter */
+  u64 rx_unicast_bytes;				/**< byte counter  */
+  u64 rx_multicast_packets;			/**< packet counter */
+  u64 rx_multicast_bytes;			/**< byte counter  */
+  u64 rx_broadcast_packets;			/**< packet counter */
+  u64 rx_broadcast_bytes;			/**< byte counter  */
+  u64 tx_packets;				/**< packet counter */
+  u64 tx_bytes;					/**< byte counter  */
+  u64 tx_unicast_packets;			/**< packet counter */
+  u64 tx_unicast_bytes;				/**< byte counter  */
+  u64 tx_multicast_packets;			/**< packet counter */
+  u64 tx_multicast_bytes;			/**< byte counter  */
+  u64 tx_broadcast_packets;			/**< packet counter */
+  u64 tx_broadcast_bytes;			/**< byte counter  */
 };
 
 /** \brief Simple interface counter data type for vnet_interface_simple_counters
@@ -546,6 +570,18 @@ autoreply define delete_loopback
   u32 client_index;
   u32 context;
   u32 sw_if_index;
+};
+
+/** \brief Enable or disable detailed interface stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - set to 1 to enable, 0 to disable detailed stats
+*/
+autoreply define collect_detailed_interface_stats
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
 };
 
 /*
