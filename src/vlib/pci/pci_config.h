@@ -162,6 +162,13 @@ pci_device_class_base (pci_device_class_t c)
 }
 
 /*
+ * 0x1000 is the legacy device-id value
+ * 0x1041 is (0x1040 + 1), 1 being the Virtio Device ID
+ */
+#define VIRTIO_PCI_LEGACY_DEVICEID_NET 0x1000
+#define VIRTIO_PCI_MODERN_DEVICEID_NET 0x1041
+
+/*
  * Under PCI, each device has 256 bytes of configuration address space,
  * of which the first 64 bytes are standardized as follows:
  */
