@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "96516d6f_a86ccfe1",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2746,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-11-28T22:20:14Z",
+      "side": 1,
+      "message": "There\u0027s an easier more recognizable way.\n\n(void) unformat(...);",
+      "range": {
+        "startLine": 2742,
+        "startChar": 6,
+        "endLine": 2746,
+        "endChar": 9
+      },
+      "revId": "ed6980cd372c37ba37dee289ccabd52e245266a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
