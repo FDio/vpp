@@ -262,11 +262,11 @@ ipsec_add_del_tunnel_if_internal (vnet_main_t * vnm,
       vec_add1 (im->free_tunnel_if_indices, t->hw_if_index);
 
       vnet_interface_counter_lock (vim);
-      vlib_zero_combined_counter (vim->combined_sw_if_counters +
-				  VNET_INTERFACE_COUNTER_TX, hi->sw_if_index);
-      vlib_zero_combined_counter (vim->combined_sw_if_counters +
-				  VNET_INTERFACE_COUNTER_RX, hi->sw_if_index);
-      vnet_interface_counter_unlock (vim);
+#define zero_counter(ctype, rx_tx)                                  \
+  vlib_zero_combined_counter (vim->combined_sw_if_counters + ctype, \
+                              hi->sw_if_index);
+      foreach_combined_interface_counter (zero_counter)
+	vnet_interface_counter_unlock (vim);
 
       /* delete input and output SA */
       sa = pool_elt_at_index (im->sad, t->input_sa_index);

@@ -312,13 +312,26 @@ static_always_inline uword
 ethernet_input_inline (vlib_main_t * vm,
 		       vlib_node_runtime_t * node,
 		       vlib_frame_t * from_frame,
-		       ethernet_input_variant_t variant)
+		       ethernet_input_variant_t variant,
+		       int collect_detailed_stats)
 {
   vnet_main_t *vnm = vnet_get_main ();
   ethernet_main_t *em = &ethernet_main;
   vlib_node_runtime_t *error_node;
   u32 n_left_from, next_index, *from, *to_next;
-  u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
+  u32 stats_sw_if_index;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if (collect_detailed_stats)
+    {
+      memset (stats_n_packets, 0, sizeof (stats_n_packets));
+      memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+    }
+  else
+    {
+      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+    }
   u32 thread_index = vlib_get_thread_index ();
   u32 cached_sw_if_index = ~0;
   u32 cached_is_l2 = 0;		/* shut up gcc */
@@ -341,7 +354,6 @@ ethernet_input_inline (vlib_main_t * vm,
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
-  stats_n_packets = stats_n_bytes = 0;
 
   while (n_left_from > 0)
     {
@@ -365,6 +377,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  qinq_intf_t *qinq_intf0, *qinq_intf1;
 	  u32 is_l20, is_l21;
 	  ethernet_header_t *e0, *e1;
+	  int b0_ctype, b1_ctype;
 
 	  /* Prefetch next iteration. */
 	  {
@@ -397,6 +410,12 @@ ethernet_input_inline (vlib_main_t * vm,
 	  type0 = clib_net_to_host_u16 (e0->type);
 	  e1 = vlib_buffer_get_current (b1);
 	  type1 = clib_net_to_host_u16 (e1->type);
+
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype = eh_dst_addr_to_rx_ctype (e0);
+	      b1_ctype = eh_dst_addr_to_rx_ctype (e1);
+	    }
 
 	  /* Speed-path for the untagged case */
 	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET
@@ -529,46 +548,79 @@ ethernet_input_inline (vlib_main_t * vm,
 	      len1 = vlib_buffer_length_in_chain (vm, b1) + b1->current_data
 		- vnet_buffer (b1)->l2_hdr_offset;
 
-	      stats_n_packets += 2;
-	      stats_n_bytes += len0 + len1;
+	      stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 2;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len0 + len1;
+
+	      if (collect_detailed_stats)
+		{
+		  stats_n_packets[b0_ctype] += 1;
+		  stats_n_packets[b1_ctype] += 1;
+		  stats_n_bytes[b0_ctype] += len0;
+		  stats_n_bytes[b1_ctype] += len1;
+		}
 
 	      if (PREDICT_FALSE
 		  (!(new_sw_if_index0 == stats_sw_if_index
 		     && new_sw_if_index1 == stats_sw_if_index)))
 		{
-		  stats_n_packets -= 2;
-		  stats_n_bytes -= len0 + len1;
+		  stats_n_packets[VNET_INTERFACE_COUNTER_RX] -= 2;
+		  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] -= len0 + len1;
+		  if (collect_detailed_stats)
+		    {
+		      stats_n_packets[b0_ctype] -= 1;
+		      stats_n_packets[b1_ctype] -= 1;
+		      stats_n_bytes[b0_ctype] -= len0;
+		      stats_n_bytes[b1_ctype] -= len1;
+		    }
 
 		  if (new_sw_if_index0 != old_sw_if_index0
 		      && new_sw_if_index0 != ~0)
-		    vlib_increment_combined_counter (vnm->
-						     interface_main.combined_sw_if_counters
-						     +
-						     VNET_INTERFACE_COUNTER_RX,
-						     thread_index,
-						     new_sw_if_index0, 1,
-						     len0);
+		    {
+#define inc_counter1(ctype, new_sw_if, len)                               \
+  vlib_increment_combined_counter (                                      \
+      vnm->interface_main.combined_sw_if_counters + ctype, thread_index, \
+      new_sw_if, 1, len);
+		      inc_counter1 (VNET_INTERFACE_COUNTER_RX,
+				    new_sw_if_index0, len0);
+		      if (collect_detailed_stats)
+			{
+			  inc_counter1 (b0_ctype, new_sw_if_index0, len0);
+			}
+		    }
 		  if (new_sw_if_index1 != old_sw_if_index1
 		      && new_sw_if_index1 != ~0)
-		    vlib_increment_combined_counter (vnm->
-						     interface_main.combined_sw_if_counters
-						     +
-						     VNET_INTERFACE_COUNTER_RX,
-						     thread_index,
-						     new_sw_if_index1, 1,
-						     len1);
+		    {
+		      inc_counter1 (VNET_INTERFACE_COUNTER_RX,
+				    new_sw_if_index1, len1);
+		      if (collect_detailed_stats)
+			{
+			  inc_counter1 (b1_ctype, new_sw_if_index1, len1);
+			}
+		    }
 
 		  if (new_sw_if_index0 == new_sw_if_index1)
 		    {
-		      if (stats_n_packets > 0)
+		      if (stats_n_packets[VNET_INTERFACE_COUNTER_RX] > 0)
 			{
-			  vlib_increment_combined_counter
-			    (vnm->interface_main.combined_sw_if_counters
-			     + VNET_INTERFACE_COUNTER_RX,
-			     thread_index,
-			     stats_sw_if_index,
-			     stats_n_packets, stats_n_bytes);
-			  stats_n_packets = stats_n_bytes = 0;
+#define inc_counter2(ctype, rx_tx)                                            \
+  if (stats_n_packets[ctype])                                                \
+    {                                                                        \
+      vlib_increment_combined_counter (                                      \
+          vnm->interface_main.combined_sw_if_counters + ctype, thread_index, \
+          stats_sw_if_index, stats_n_packets[ctype], stats_n_bytes[ctype]);  \
+    }
+			  if (collect_detailed_stats)
+			    {
+			      foreach_combined_interface_counter
+				(inc_counter2);
+			    }
+			  else
+			    {
+			      inc_counter2 (VNET_INTERFACE_COUNTER_RX, rx);
+			    }
+
+			  stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 0;
+			  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
 			}
 		      stats_sw_if_index = new_sw_if_index0;
 		    }
@@ -613,6 +665,7 @@ ethernet_input_inline (vlib_main_t * vm,
 	  vlan_intf_t *vlan_intf0;
 	  qinq_intf_t *qinq_intf0;
 	  ethernet_header_t *e0;
+	  int b0_ctype;
 	  u32 is_l20;
 
 	  // Prefetch next iteration
@@ -637,6 +690,11 @@ ethernet_input_inline (vlib_main_t * vm,
 	  error0 = ETHERNET_ERROR_NONE;
 	  e0 = vlib_buffer_get_current (b0);
 	  type0 = clib_net_to_host_u16 (e0->type);
+
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype = eh_dst_addr_to_rx_ctype (e0);
+	    }
 
 	  /* Speed-path for the untagged case */
 	  if (PREDICT_TRUE (variant == ETHERNET_INPUT_VARIANT_ETHERNET
@@ -727,29 +785,48 @@ ethernet_input_inline (vlib_main_t * vm,
 	      len0 = vlib_buffer_length_in_chain (vm, b0) + b0->current_data
 		- vnet_buffer (b0)->l2_hdr_offset;
 
-	      stats_n_packets += 1;
-	      stats_n_bytes += len0;
+	      stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len0;
+	      if (collect_detailed_stats)
+		{
+		  stats_n_packets[b0_ctype] += 1;
+		  stats_n_bytes[b0_ctype] += len0;
+		}
 
 	      // Batch stat increments from the same subinterface so counters
 	      // don't need to be incremented for every packet.
 	      if (PREDICT_FALSE (new_sw_if_index0 != stats_sw_if_index))
 		{
-		  stats_n_packets -= 1;
-		  stats_n_bytes -= len0;
+		  stats_n_packets[VNET_INTERFACE_COUNTER_RX] -= 1;
+		  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] -= len0;
+		  if (collect_detailed_stats)
+		    {
+		      stats_n_packets[b0_ctype] -= 1;
+		      stats_n_bytes[b0_ctype] -= len0;
+		    }
 
 		  if (new_sw_if_index0 != ~0)
-		    vlib_increment_combined_counter
-		      (vnm->interface_main.combined_sw_if_counters
-		       + VNET_INTERFACE_COUNTER_RX,
-		       thread_index, new_sw_if_index0, 1, len0);
-		  if (stats_n_packets > 0)
 		    {
-		      vlib_increment_combined_counter
-			(vnm->interface_main.combined_sw_if_counters
-			 + VNET_INTERFACE_COUNTER_RX,
-			 thread_index,
-			 stats_sw_if_index, stats_n_packets, stats_n_bytes);
-		      stats_n_packets = stats_n_bytes = 0;
+		      inc_counter1 (VNET_INTERFACE_COUNTER_RX,
+				    new_sw_if_index0, len0);
+		      if (collect_detailed_stats)
+			{
+			  inc_counter1 (b0_ctype, new_sw_if_index0, len0);
+			}
+		    }
+		  if (stats_n_packets[VNET_INTERFACE_COUNTER_RX] > 0)
+		    {
+		      if (collect_detailed_stats)
+			{
+			  foreach_combined_interface_counter (inc_counter2);
+			}
+		      else
+			{
+			  inc_counter2 (VNET_INTERFACE_COUNTER_RX, rx);
+			}
+
+		      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 0;
+		      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
 		    }
 		  stats_sw_if_index = new_sw_if_index0;
 		}
@@ -777,12 +854,16 @@ ethernet_input_inline (vlib_main_t * vm,
     }
 
   // Increment any remaining batched stats
-  if (stats_n_packets > 0)
+  if (stats_n_packets[VNET_INTERFACE_COUNTER_RX] > 0)
     {
-      vlib_increment_combined_counter
-	(vnm->interface_main.combined_sw_if_counters
-	 + VNET_INTERFACE_COUNTER_RX,
-	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+      if (collect_detailed_stats)
+	{
+	  foreach_combined_interface_counter (inc_counter2);
+	}
+      else
+	{
+	  inc_counter2 (VNET_INTERFACE_COUNTER_RX, rx);
+	}
       node->runtime_data[0] = stats_sw_if_index;
     }
 
@@ -793,24 +874,54 @@ static uword
 ethernet_input (vlib_main_t * vm,
 		vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
-  return ethernet_input_inline (vm, node, from_frame,
-				ETHERNET_INPUT_VARIANT_ETHERNET);
+  if (collect_detailed_interface_stats ())
+    {
+      return ethernet_input_inline (vm, node, from_frame,
+				    ETHERNET_INPUT_VARIANT_ETHERNET,
+				    COLLECT_DETAILED_STATS);
+    }
+  else
+    {
+      return ethernet_input_inline (vm, node, from_frame,
+				    ETHERNET_INPUT_VARIANT_ETHERNET,
+				    COLLECT_SIMPLE_STATS);
+    }
 }
 
 static uword
 ethernet_input_type (vlib_main_t * vm,
 		     vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
-  return ethernet_input_inline (vm, node, from_frame,
-				ETHERNET_INPUT_VARIANT_ETHERNET_TYPE);
+  if (collect_detailed_interface_stats ())
+    {
+      return ethernet_input_inline (vm, node, from_frame,
+				    ETHERNET_INPUT_VARIANT_ETHERNET_TYPE,
+				    COLLECT_DETAILED_STATS);
+    }
+  else
+    {
+      return ethernet_input_inline (vm, node, from_frame,
+				    ETHERNET_INPUT_VARIANT_ETHERNET_TYPE,
+				    COLLECT_SIMPLE_STATS);
+    }
 }
 
 static uword
 ethernet_input_not_l2 (vlib_main_t * vm,
 		       vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
-  return ethernet_input_inline (vm, node, from_frame,
-				ETHERNET_INPUT_VARIANT_NOT_L2);
+  if (collect_detailed_interface_stats ())
+    {
+      return ethernet_input_inline (vm, node, from_frame,
+				    ETHERNET_INPUT_VARIANT_NOT_L2,
+				    COLLECT_DETAILED_STATS);
+    }
+  else
+    {
+      return ethernet_input_inline (vm, node, from_frame,
+				    ETHERNET_INPUT_VARIANT_NOT_L2,
+				    COLLECT_SIMPLE_STATS);
+    }
 }
 
 

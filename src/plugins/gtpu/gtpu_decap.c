@@ -71,7 +71,8 @@ always_inline uword
 gtpu_input (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame,
-             u32 is_ip4)
+             u32 is_ip4,
+	     int collect_detailed_stats)
 {
   u32 n_left_from, next_index, * from, * to_next;
   gtpu_main_t * gtm = &gtpu_main;
@@ -82,7 +83,16 @@ gtpu_input (vlib_main_t * vm,
   gtpu6_tunnel_key_t last_key6;
   u32 pkts_decapsulated = 0;
   u32 thread_index = vlib_get_thread_index();
-  u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
+  u32 stats_sw_if_index;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if(collect_detailed_stats){
+      memset(stats_n_packets,0,sizeof(stats_n_packets));
+      memset(stats_n_bytes,0,sizeof(stats_n_bytes));
+  }else{
+      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+  }
 
   if (is_ip4)
     last_key4.as_u64 = ~0;
@@ -94,7 +104,6 @@ gtpu_input (vlib_main_t * vm,
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
-  stats_n_packets = stats_n_bytes = 0;
 
   while (n_left_from > 0)
     {
@@ -106,6 +115,7 @@ gtpu_input (vlib_main_t * vm,
 	{
           u32 bi0, bi1;
 	  vlib_buffer_t * b0, * b1;
+	  int b0_ctype, b1_ctype;
 	  u32 next0, next1;
           ip4_header_t * ip4_0, * ip4_1;
           ip6_header_t * ip6_0, * ip6_1;
@@ -325,39 +335,68 @@ gtpu_input (vlib_main_t * vm,
 	  sw_if_index0 = (mt0) ? mt0->sw_if_index : sw_if_index0;
 
           pkts_decapsulated ++;
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
-
-	  /* Batch stats increment on the same gtpu tunnel so counter
-	     is not incremented per packet */
-	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
-	    {
-	      stats_n_packets -= 1;
-	      stats_n_bytes -= len0;
-	      if (stats_n_packets)
-		vlib_increment_combined_counter
-		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   thread_index, stats_sw_if_index,
-		   stats_n_packets, stats_n_bytes);
-	      stats_n_packets = 1;
-	      stats_n_bytes = len0;
-	      stats_sw_if_index = sw_if_index0;
-	    }
-
-        trace0:
-          b0->error = error0 ? node->errors[error0] : 0;
-
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
+          stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+          stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len0;
+          if (collect_detailed_stats)
             {
-              gtpu_rx_trace_t *tr
-                = vlib_add_trace (vm, node, b0, sizeof (*tr));
-              tr->next_index = next0;
-              tr->error = error0;
-              tr->tunnel_index = tunnel_index0;
-              tr->teid = clib_net_to_host_u32(gtpu0->teid);
+              b0_ctype =
+                  eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+              stats_n_packets[b0_ctype] += 1;
+              stats_n_bytes[b0_ctype] += len0;
             }
 
-          if (PREDICT_FALSE ((gtpu1->ver_flags & GTPU_VER_MASK) != GTPU_V1_VER))
+          /* Batch stats increment on the same gtpu tunnel so counter
+             is not incremented per packet */
+          if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
+            {
+              stats_n_packets[VNET_INTERFACE_COUNTER_RX] -= 1;
+              stats_n_bytes[VNET_INTERFACE_COUNTER_RX] -= len0;
+              if (collect_detailed_stats)
+                {
+                  stats_n_packets[b0_ctype] -= 1;
+                  stats_n_bytes[b0_ctype] -= len0;
+                }
+              if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
+                {
+#define inc_counter(ctype, rx_tx)                                           \
+  if (stats_n_packets[ctype])                                               \
+    {                                                                       \
+      vlib_increment_combined_counter (                                     \
+          im->combined_sw_if_counters + ctype, thread_index,                \
+          stats_sw_if_index, stats_n_packets[ctype], stats_n_bytes[ctype]); \
+    }
+                  if (collect_detailed_stats)
+                    {
+                      foreach_combined_interface_counter (inc_counter);
+                    }
+                  else
+                    {
+                      inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+                    }
+                }
+              stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 1;
+              stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = len0;
+              if (collect_detailed_stats)
+                {
+                  stats_n_packets[b0_ctype] = 1;
+                  stats_n_bytes[b0_ctype] = len0;
+                }
+              stats_sw_if_index = sw_if_index0;
+            }
+
+    trace0:
+      b0->error = error0 ? node->errors[error0] : 0;
+
+      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+        {
+          gtpu_rx_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+          tr->next_index = next0;
+          tr->error = error0;
+          tr->tunnel_index = tunnel_index0;
+          tr->teid = clib_net_to_host_u32 (gtpu0->teid);
+        }
+
+      if (PREDICT_FALSE ((gtpu1->ver_flags & GTPU_VER_MASK) != GTPU_V1_VER))
 	    {
 	      error1 = GTPU_ERROR_BAD_VER;
 	      next1 = GTPU_INPUT_NEXT_DROP;
@@ -501,24 +540,47 @@ gtpu_input (vlib_main_t * vm,
 	  sw_if_index1 = (mt1) ? mt1->sw_if_index : sw_if_index1;
 
           pkts_decapsulated ++;
-          stats_n_packets += 1;
-          stats_n_bytes += len1;
+          stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+          stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len1;
+          if (collect_detailed_stats)
+            {
+              b1_ctype =
+                  eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b1));
+              stats_n_packets[b1_ctype] += 1;
+              stats_n_bytes[b1_ctype] += len1;
+            }
 
-	  /* Batch stats increment on the same gtpu tunnel so counter
-	     is not incremented per packet */
-	  if (PREDICT_FALSE (sw_if_index1 != stats_sw_if_index))
-	    {
-	      stats_n_packets -= 1;
-	      stats_n_bytes -= len1;
-	      if (stats_n_packets)
-		vlib_increment_combined_counter
-		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   thread_index, stats_sw_if_index,
-		   stats_n_packets, stats_n_bytes);
-	      stats_n_packets = 1;
-	      stats_n_bytes = len1;
-	      stats_sw_if_index = sw_if_index1;
-	    }
+          /* Batch stats increment on the same gtpu tunnel so counter
+             is not incremented per packet */
+          if (PREDICT_FALSE (sw_if_index1 != stats_sw_if_index))
+            {
+              stats_n_packets[VNET_INTERFACE_COUNTER_RX] -= 1;
+              stats_n_bytes[VNET_INTERFACE_COUNTER_RX] -= len1;
+              if (collect_detailed_stats)
+                {
+                  stats_n_packets[b1_ctype] -= 1;
+                  stats_n_bytes[b1_ctype] -= len1;
+                }
+              if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
+                {
+                  if (collect_detailed_stats)
+                    {
+                      foreach_combined_interface_counter (inc_counter);
+                    }
+                  else
+                    {
+                      inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+                    }
+                }
+              stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 1;
+              stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = len1;
+              if (collect_detailed_stats)
+                {
+                  stats_n_packets[b1_ctype] = 1;
+                  stats_n_bytes[b1_ctype] = len1;
+                }
+              stats_sw_if_index = sw_if_index1;
+            }
 
         trace1:
           b1->error = error1 ? node->errors[error1] : 0;
@@ -542,6 +604,7 @@ gtpu_input (vlib_main_t * vm,
 	{
 	  u32 bi0;
 	  vlib_buffer_t * b0;
+	  int b0_ctype;
 	  u32 next0;
           ip4_header_t * ip4_0;
           ip6_header_t * ip6_0;
@@ -728,24 +791,47 @@ gtpu_input (vlib_main_t * vm,
 	  sw_if_index0 = (mt0) ? mt0->sw_if_index : sw_if_index0;
 
           pkts_decapsulated ++;
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
+          stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+          stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len0;
+          if (collect_detailed_stats)
+            {
+              b0_ctype =
+                  eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+              stats_n_packets[b0_ctype] += 1;
+              stats_n_bytes[b0_ctype] += len0;
+            }
 
-	  /* Batch stats increment on the same gtpu tunnel so counter
-	     is not incremented per packet */
-	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
-	    {
-	      stats_n_packets -= 1;
-	      stats_n_bytes -= len0;
-	      if (stats_n_packets)
-		vlib_increment_combined_counter
-		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   thread_index, stats_sw_if_index,
-		   stats_n_packets, stats_n_bytes);
-	      stats_n_packets = 1;
-	      stats_n_bytes = len0;
-	      stats_sw_if_index = sw_if_index0;
-	    }
+          /* Batch stats increment on the same gtpu tunnel so counter
+             is not incremented per packet */
+          if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
+            {
+              stats_n_packets[VNET_INTERFACE_COUNTER_RX] -= 1;
+              stats_n_bytes[VNET_INTERFACE_COUNTER_RX] -= len0;
+              if (collect_detailed_stats)
+                {
+                  stats_n_packets[b0_ctype] -= 1;
+                  stats_n_bytes[b0_ctype] -= len0;
+                }
+              if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
+                {
+                  if (collect_detailed_stats)
+                    {
+                      foreach_combined_interface_counter (inc_counter);
+                    }
+                  else
+                    {
+                      inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+                    }
+                }
+              stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 1;
+              stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = len0;
+              if (collect_detailed_stats)
+                {
+                  stats_n_packets[b0_ctype] = 1;
+                  stats_n_bytes[b0_ctype] = len0;
+                }
+              stats_sw_if_index = sw_if_index0;
+            }
 
         trace00:
           b0->error = error0 ? node->errors[error0] : 0;
@@ -773,11 +859,16 @@ gtpu_input (vlib_main_t * vm,
                                pkts_decapsulated);
 
   /* Increment any remaining batch stats */
-  if (stats_n_packets)
+  if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
     {
-      vlib_increment_combined_counter
-	(im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+      if (collect_detailed_stats)
+        {
+          foreach_combined_interface_counter (inc_counter);
+        }
+      else
+        {
+          inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+        }
       node->runtime_data[0] = stats_sw_if_index;
     }
 
@@ -789,7 +880,16 @@ gtpu4_input (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
-	return gtpu_input(vm, node, from_frame, /* is_ip4 */ 1);
+  if (collect_detailed_interface_stats ())
+    {
+      return gtpu_input (vm, node, from_frame, /* is_ip4 */ 1,
+                         COLLECT_DETAILED_STATS);
+    }
+  else
+    {
+      return gtpu_input (vm, node, from_frame, /* is_ip4 */ 1,
+                         COLLECT_SIMPLE_STATS);
+    }
 }
 
 static uword
@@ -797,7 +897,16 @@ gtpu6_input (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
-	return gtpu_input(vm, node, from_frame, /* is_ip4 */ 0);
+  if (collect_detailed_interface_stats ())
+    {
+      return gtpu_input (vm, node, from_frame, /* is_ip4 */ 0,
+                         COLLECT_DETAILED_STATS);
+    }
+  else
+    {
+      return gtpu_input (vm, node, from_frame, /* is_ip4 */ 0,
+                         COLLECT_SIMPLE_STATS);
+    }
 }
 
 static char * gtpu_error_strings[] = {

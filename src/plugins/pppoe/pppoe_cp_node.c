@@ -67,9 +67,10 @@ static u8 * format_pppoe_cp_trace (u8 * s, va_list * args)
 }
 
 static uword
-pppoe_cp_dispatch (vlib_main_t * vm,
+pppoe_cp_dispatch_inline (vlib_main_t * vm,
                     vlib_node_runtime_t * node,
-                    vlib_frame_t * from_frame)
+                    vlib_frame_t * from_frame,
+		    int collect_detailed_stats)
 {
   u32 n_left_from, next_index, * from, * to_next;
   pppoe_main_t * pem = &pppoe_main;
@@ -77,7 +78,16 @@ pppoe_cp_dispatch (vlib_main_t * vm,
   vnet_interface_main_t * im = &vnm->interface_main;
   u32 pkts_decapsulated = 0;
   u32 thread_index = vlib_get_thread_index();
-  u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
+  u32 stats_sw_if_index;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if(collect_detailed_stats){
+      memset(stats_n_packets,0,sizeof(stats_n_packets));
+      memset(stats_n_bytes,0,sizeof(stats_n_bytes));
+  }else{
+      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+  }
   pppoe_entry_key_t cached_key;
   pppoe_entry_result_t cached_result;
 
@@ -90,7 +100,6 @@ pppoe_cp_dispatch (vlib_main_t * vm,
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
-  stats_n_packets = stats_n_bytes = 0;
 
   while (n_left_from > 0)
     {
@@ -104,6 +113,7 @@ pppoe_cp_dispatch (vlib_main_t * vm,
 	  u32 bi0;
 	  vlib_buffer_t * b0;
 	  ethernet_header_t *h0;
+	  int b0_ctype;
 	  pppoe_header_t * pppoe0;
 	  pppoe_entry_key_t key0;
 	  pppoe_entry_result_t result0;
@@ -178,39 +188,67 @@ pppoe_cp_dispatch (vlib_main_t * vm,
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
           pkts_decapsulated ++;
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
+          stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+          stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len0;
+	  if(collect_detailed_stats){
+	      b0_ctype = eh_dst_addr_to_rx_ctype(h0);
+	      stats_n_packets[b0_ctype] += 1;
+	      stats_n_bytes[b0_ctype] += len0;
+	  }
 
 	  /* Batch stats increment on the same pppoe session so counter
 	     is not incremented per packet */
 	  if (PREDICT_FALSE (rx_sw_if_index0 != stats_sw_if_index))
 	    {
-	      stats_n_packets -= 1;
-	      stats_n_bytes -= len0;
-	      if (stats_n_packets)
-		vlib_increment_combined_counter
-		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-		   thread_index, stats_sw_if_index,
-		   stats_n_packets, stats_n_bytes);
-	      stats_n_packets = 1;
-	      stats_n_bytes = len0;
-	      stats_sw_if_index = rx_sw_if_index0;
-	    }
-        
-        trace00:  
-          b0->error = error0 ? node->errors[error0] : 0;
+              stats_n_packets[VNET_INTERFACE_COUNTER_RX] -= 1;
+              stats_n_bytes[VNET_INTERFACE_COUNTER_RX] -= len0;
+              if (collect_detailed_stats)
+                {
+                  stats_n_packets[b0_ctype] -= 1;
+                  stats_n_bytes[b0_ctype] -= len0;
+                }
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED))
-            {
-              pppoe_cp_trace_t *tr
-                = vlib_add_trace (vm, node, b0, sizeof (*tr));
-              tr->next_index = next0;
-              tr->error = error0;
-              tr->sw_if_index = tx_sw_if_index0;
-              tr->cp_if_index = pem->cp_if_index;
-              tr->pppoe_code = pppoe0->code;
-              tr->ppp_proto = clib_net_to_host_u16(pppoe0->ppp_proto);
+              if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
+                {
+#define inc_counter(ctype, rx_tx)                                           \
+  if (stats_n_packets[ctype] > 0)                                           \
+    {                                                                       \
+      vlib_increment_combined_counter (                                     \
+          im->combined_sw_if_counters + ctype, thread_index,                \
+          stats_sw_if_index, stats_n_packets[ctype], stats_n_bytes[ctype]); \
+    }
+	          if (collect_detailed_stats)
+                    {
+                      foreach_combined_interface_counter (inc_counter);
+                    }
+                  else
+                    {
+                      inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+                    }
+                }
+              stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 1;
+              stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = len0;
+              if (collect_detailed_stats)
+                {
+                  stats_n_packets[b0_ctype] = 1;
+                  stats_n_bytes[b0_ctype] = len0;
+                }
+              stats_sw_if_index = rx_sw_if_index0;
             }
+
+    trace00:
+      b0->error = error0 ? node->errors[error0] : 0;
+
+      if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+        {
+          pppoe_cp_trace_t *tr = vlib_add_trace (vm, node, b0, sizeof (*tr));
+          tr->next_index = next0;
+          tr->error = error0;
+          tr->sw_if_index = tx_sw_if_index0;
+          tr->cp_if_index = pem->cp_if_index;
+          tr->pppoe_code = pppoe0->code;
+          tr->ppp_proto = clib_net_to_host_u16 (pppoe0->ppp_proto);
+        }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, next0);
@@ -224,15 +262,29 @@ pppoe_cp_dispatch (vlib_main_t * vm,
                                pkts_decapsulated);
 
   /* Increment any remaining batch stats */
-  if (stats_n_packets)
+  if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
     {
-      vlib_increment_combined_counter
-	(im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+      if(collect_detailed_stats){
+	  foreach_combined_interface_counter(inc_counter);
+      }else{
+	  inc_counter(VNET_INTERFACE_COUNTER_RX, rx);
+      }
       node->runtime_data[0] = stats_sw_if_index;
     }
 
   return from_frame->n_vectors;
+}
+
+static uword
+pppoe_cp_dispatch (vlib_main_t * vm,
+                    vlib_node_runtime_t * node,
+                    vlib_frame_t * from_frame)
+{
+  if(collect_detailed_interface_stats()){
+      return pppoe_cp_dispatch_inline(vm, node,from_frame, COLLECT_DETAILED_STATS);
+  }else{
+      return pppoe_cp_dispatch_inline(vm, node,from_frame, COLLECT_SIMPLE_STATS);
+  }
 }
 
 VLIB_REGISTER_NODE (pppoe_cp_dispatch_node) = {
@@ -252,4 +304,3 @@ VLIB_REGISTER_NODE (pppoe_cp_dispatch_node) = {
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (pppoe_cp_dispatch_node, pppoe_cp_dispatch)
-
