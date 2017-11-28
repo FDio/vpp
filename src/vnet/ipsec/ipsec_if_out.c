@@ -67,7 +67,9 @@ ipsec_if_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 *from, *to_next = 0, next_index;
   u32 n_left_from, sw_if_index0, last_sw_if_index = ~0;
   u32 thread_index = vlib_get_thread_index ();
-  u32 n_bytes = 0, n_packets = 0;
+  int collect_detailed_stats = collect_detailed_interface_stats ();
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER] = { 0 };
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER] = { 0 };
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -83,6 +85,7 @@ ipsec_if_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	{
 	  u32 bi0, next0, len0;
 	  vlib_buffer_t *b0;
+	  int b0_ctype;
 	  ipsec_tunnel_if_t *t0;
 	  vnet_hw_interface_t *hi0;
 
@@ -100,20 +103,47 @@ ipsec_if_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 
+	  if (PREDICT_FALSE (collect_detailed_stats))
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_tx_ctype (vlib_buffer_get_current (b0));
+	    }
+
 	  if (PREDICT_TRUE (sw_if_index0 == last_sw_if_index))
 	    {
-	      n_packets++;
-	      n_bytes += len0;
+	      stats_n_packets[VNET_INTERFACE_COUNTER_TX] += 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_TX] += len0;
+	      if (PREDICT_FALSE (collect_detailed_stats))
+		{
+		  stats_n_packets[b0_ctype] += 1;
+		  stats_n_bytes[b0_ctype] += len0;
+		}
 	    }
 	  else
 	    {
-	      vlib_increment_combined_counter (vim->combined_sw_if_counters +
-					       VNET_INTERFACE_COUNTER_TX,
-					       thread_index, sw_if_index0,
-					       n_packets, n_bytes);
 	      last_sw_if_index = sw_if_index0;
-	      n_packets = 1;
-	      n_bytes = len0;
+#define inc_counter(ctype, rx_tx)                                          \
+  if (stats_n_packets[ctype])                                              \
+    {                                                                      \
+      vlib_increment_combined_counter (                                    \
+          vim->combined_sw_if_counters + ctype, thread_index,              \
+          last_sw_if_index, stats_n_packets[ctype], stats_n_bytes[ctype]); \
+    }
+	      if (PREDICT_FALSE (collect_detailed_stats))
+		{
+		  foreach_combined_interface_counter (inc_counter);
+		}
+	      else
+		{
+		  inc_counter (VNET_INTERFACE_COUNTER_TX, tx);
+		}
+	      stats_n_packets[VNET_INTERFACE_COUNTER_TX] = 1;
+	      stats_n_bytes[VNET_INTERFACE_COUNTER_TX] = len0;
+	      if (PREDICT_FALSE (collect_detailed_stats))
+		{
+		  stats_n_packets[b0_ctype] = 1;
+		  stats_n_bytes[b0_ctype] = len0;
+		}
 	    }
 
 	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
@@ -134,10 +164,14 @@ ipsec_if_output_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (last_sw_if_index != ~0)
     {
-      vlib_increment_combined_counter (vim->combined_sw_if_counters +
-				       VNET_INTERFACE_COUNTER_TX,
-				       thread_index,
-				       last_sw_if_index, n_packets, n_bytes);
+      if (PREDICT_FALSE (collect_detailed_stats))
+	{
+	  foreach_combined_interface_counter (inc_counter);
+	}
+      else
+	{
+	  inc_counter (VNET_INTERFACE_COUNTER_TX, tx);
+	}
     }
 
   vlib_node_increment_counter (vm, ipsec_if_output_node.index,

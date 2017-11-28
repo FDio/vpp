@@ -388,13 +388,16 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
   u32 n_left_from, n_left_to_next, n_copy, *from, *to_next;
   u32 next_index = VNET_SIMULATED_ETHERNET_TX_NEXT_ETHERNET_INPUT;
   u32 i, next_node_index, bvi_flag, sw_if_index;
-  u32 n_pkts = 0, n_bytes = 0;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER] = { 0 };
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER] = { 0 };
   u32 thread_index = vm->thread_index;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   vlib_node_main_t *nm = &vm->node_main;
   vlib_node_t *loop_node;
   vlib_buffer_t *b;
+  int collect_detailed_stats = collect_detailed_interface_stats ();
+  int b0_ctype;
 
   // check tx node index, it is ethernet-input on loopback create
   // but can be changed to l2-input if loopback is configured as
@@ -433,8 +436,16 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 	    vnet_buffer (b)->sw_if_index[VLIB_TX] = (u32) ~ 0;
 
 	  i++;
-	  n_pkts++;
-	  n_bytes += vlib_buffer_length_in_chain (vm, b);
+	  stats_n_packets[VNET_INTERFACE_COUNTER_TX]++;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_TX] +=
+	    vlib_buffer_length_in_chain (vm, b);
+	  if (PREDICT_FALSE (collect_detailed_stats))
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_tx_ctype (vlib_buffer_get_current (b));
+	      stats_n_packets[b0_ctype] += 1;
+	      stats_n_bytes[b0_ctype] += vlib_buffer_length_in_chain (vm, b);
+	    }
 
 	  if (i < n_copy)
 	    b = vlib_get_buffer (vm, from[i]);
@@ -445,11 +456,19 @@ simulated_ethernet_interface_tx (vlib_main_t * vm,
 
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
 
+#define inc_counter(ctype, tx_rx)                                     \
+  vlib_increment_combined_counter (                                   \
+      im->combined_sw_if_counters + ctype, thread_index, sw_if_index, \
+      stats_n_packets[ctype], stats_n_bytes[ctype]);
       /* increment TX interface stat */
-      vlib_increment_combined_counter (im->combined_sw_if_counters +
-				       VNET_INTERFACE_COUNTER_TX,
-				       thread_index, sw_if_index, n_pkts,
-				       n_bytes);
+      if (PREDICT_FALSE (collect_detailed_stats))
+	{
+	  foreach_combined_interface_counter (inc_counter);
+	}
+      else
+	{
+	  inc_counter (VNET_INTERFACE_COUNTER_TX, tx);
+	}
     }
 
   return n_left_from;

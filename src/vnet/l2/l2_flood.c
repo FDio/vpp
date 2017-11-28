@@ -140,7 +140,8 @@ l2flood_process (vlib_main_t * vm,
 		 vlib_buffer_t * b0,
 		 u32 * sw_if_index0,
 		 l2fib_entry_key_t * key0,
-		 u32 * bucket0, l2fib_entry_result_t * result0, u32 * next0)
+		 u32 * bucket0, l2fib_entry_result_t * result0, u32 * next0,
+		 int collect_detailed_stats)
 {
   u16 bd_index0;
   l2_bridge_domain_t *bd_config;
@@ -255,7 +256,7 @@ l2flood_process (vlib_main_t * vm,
 		      msm->vnet_main,
 		      b0,
 		      members[current_member].sw_if_index,
-		      &msm->l3_next, next0);
+		      &msm->l3_next, next0, collect_detailed_stats);
 
       if (PREDICT_FALSE (rc))
 	{
@@ -297,6 +298,7 @@ l2flood_node_fn (vlib_main_t * vm,
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;	/* number of packets to process */
   next_index = node->cached_next_index;
+  int collect_detailed_stats = collect_detailed_interface_stats ();
 
   while (n_left_from > 0)
     {
@@ -359,11 +361,13 @@ l2flood_node_fn (vlib_main_t * vm,
 
 	  l2flood_process (vm, node, msm,
 			   &em->counters[node_counter_base_index], b0,
-			   &sw_if_index0, &key0, &bucket0, &result0, &next0);
+			   &sw_if_index0, &key0, &bucket0, &result0, &next0,
+			   collect_detailed_stats);
 
 	  l2flood_process (vm, node, msm,
 			   &em->counters[node_counter_base_index], b1,
-			   &sw_if_index1, &key1, &bucket1, &result1, &next1);
+			   &sw_if_index1, &key1, &bucket1, &result1, &next1,
+			   collect_detailed_stats);
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)))
 	    {
@@ -423,7 +427,8 @@ l2flood_node_fn (vlib_main_t * vm,
 
 	  l2flood_process (vm, node, msm,
 			   &em->counters[node_counter_base_index], b0,
-			   &sw_if_index0, &key0, &bucket0, &result0, &next0);
+			   &sw_if_index0, &key0, &bucket0, &result0, &next0,
+			   collect_detailed_stats);
 
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE) &&
 			     (b0->flags & VLIB_BUFFER_IS_TRACED)))

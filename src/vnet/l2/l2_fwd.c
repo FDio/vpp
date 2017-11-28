@@ -179,7 +179,8 @@ l2fwd_process (vlib_main_t * vm,
 			  msm->vnet_main,
 			  b0,
 			  vnet_buffer (b0)->sw_if_index[VLIB_TX],
-			  &msm->l3_next, next0);
+			  &msm->l3_next, next0,
+			  collect_detailed_interface_stats ());
 
 	  if (PREDICT_FALSE (rc))
 	    {
