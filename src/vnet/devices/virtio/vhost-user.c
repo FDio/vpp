@@ -1539,11 +1539,23 @@ vhost_user_if_input (vlib_main_t * vm,
 		     vhost_user_main_t * vum,
 		     vhost_user_intf_t * vui,
 		     u16 qid, vlib_node_runtime_t * node,
-		     vnet_hw_interface_rx_mode mode)
+		     vnet_hw_interface_rx_mode mode,
+		     int collect_detailed_stats)
 {
   vhost_user_vring_t *txvq = &vui->vrings[VHOST_VRING_IDX_TX (qid)];
-  u16 n_rx_packets = 0;
-  u32 n_rx_bytes = 0;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if (collect_detailed_stats)
+    {
+      memset (stats_n_packets, 0, sizeof (stats_n_packets));
+      memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+    }
+  else
+    {
+      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+    }
+  int b0_ctype;
   u16 n_left;
   u32 n_left_to_next, *to_next;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
@@ -1825,8 +1837,17 @@ vhost_user_if_input (vlib_main_t * vm,
 	out:
 	  CLIB_PREFETCH (&n_left, sizeof (n_left), LOAD);
 
-	  n_rx_bytes += b_head->total_length_not_including_first_buffer;
-	  n_rx_packets++;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] +=
+	    b_head->total_length_not_including_first_buffer;
+	  stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_tx_ctype (vlib_buffer_get_current (b_head));
+	      stats_n_bytes[b0_ctype] +=
+		b_head->total_length_not_including_first_buffer;
+	      stats_n_packets[b0_ctype] += 1;
+	    }
 
 	  b_head->total_length_not_including_first_buffer -=
 	    b_head->current_length;
@@ -1900,21 +1921,32 @@ vhost_user_if_input (vlib_main_t * vm,
   if ((txvq->callfd_idx != ~0) &&
       !(txvq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT))
     {
-      txvq->n_since_last_int += n_rx_packets;
+      txvq->n_since_last_int += stats_n_packets[VNET_INTERFACE_COUNTER_RX];
 
       if (txvq->n_since_last_int > vum->coalesce_frames)
 	vhost_user_send_call (vm, txvq);
     }
 
   /* increase rx counters */
-  vlib_increment_combined_counter
-    (vnet_main.interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX,
-     vlib_get_thread_index (), vui->sw_if_index, n_rx_packets, n_rx_bytes);
+#define inc_counter(ctype, rx_tx)                                         \
+  vlib_increment_combined_counter (                                       \
+      vnet_main.interface_main.combined_sw_if_counters + ctype,           \
+      vlib_get_thread_index (), vui->sw_if_index, stats_n_packets[ctype], \
+      stats_n_bytes[ctype]);
+  if (collect_detailed_stats)
+    {
+      foreach_combined_interface_counter (inc_counter);
+    }
+  else
+    {
+      inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+    }
 
-  vnet_device_increment_rx_packets (thread_index, n_rx_packets);
+  vnet_device_increment_rx_packets (thread_index,
+				    stats_n_packets
+				    [VNET_INTERFACE_COUNTER_RX]);
 
-  return n_rx_packets;
+  return stats_n_packets[VNET_INTERFACE_COUNTER_RX];
 }
 
 static uword
@@ -1928,17 +1960,38 @@ vhost_user_input (vlib_main_t * vm,
     (vnet_device_input_runtime_t *) node->runtime_data;
   vnet_device_and_queue_t *dq;
 
-  vec_foreach (dq, rt->devices_and_queues)
-  {
-    if (clib_smp_swap (&dq->interrupt_pending, 0) ||
-	(node->state == VLIB_NODE_STATE_POLLING))
+  if (collect_detailed_interface_stats ())
+    {
+      vec_foreach (dq, rt->devices_and_queues)
       {
-	vui =
-	  pool_elt_at_index (vum->vhost_user_interfaces, dq->dev_instance);
-	n_rx_packets = vhost_user_if_input (vm, vum, vui, dq->queue_id, node,
-					    dq->mode);
+	if (clib_smp_swap (&dq->interrupt_pending, 0) ||
+	    (node->state == VLIB_NODE_STATE_POLLING))
+	  {
+	    vui =
+	      pool_elt_at_index (vum->vhost_user_interfaces,
+				 dq->dev_instance);
+	    n_rx_packets =
+	      vhost_user_if_input (vm, vum, vui, dq->queue_id, node, dq->mode,
+				   COLLECT_DETAILED_STATS);
+	  }
       }
-  }
+    }
+  else
+    {
+      vec_foreach (dq, rt->devices_and_queues)
+      {
+	if (clib_smp_swap (&dq->interrupt_pending, 0) ||
+	    (node->state == VLIB_NODE_STATE_POLLING))
+	  {
+	    vui =
+	      pool_elt_at_index (vum->vhost_user_interfaces,
+				 dq->dev_instance);
+	    n_rx_packets =
+	      vhost_user_if_input (vm, vum, vui, dq->queue_id, node, dq->mode,
+				   COLLECT_SIMPLE_STATS);
+	  }
+      }
+    }
 
   return n_rx_packets;
 }
