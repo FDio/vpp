@@ -144,15 +144,28 @@ static tuntap_main_t tuntap_main = {
  *
  */
 static uword
-tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+tuntap_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
+		  vlib_frame_t * frame, int collect_detailed_stats)
 {
   u32 *buffers = vlib_frame_args (frame);
   uword n_packets = frame->n_vectors;
   tuntap_main_t *tm = &tuntap_main;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
-  u32 n_bytes = 0;
   int i;
+  int b0_ctype;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if (collect_detailed_stats)
+    {
+      memset (stats_n_packets, 0, sizeof (stats_n_packets));
+      memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+    }
+  else
+    {
+      stats_n_packets[VNET_INTERFACE_COUNTER_TX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_TX] = 0;
+    }
   u16 thread_index = vlib_get_thread_index ();
 
   for (i = 0; i < n_packets; i++)
@@ -197,15 +210,33 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 		  vec_len (tm->threads[thread_index].iovecs)) < l)
 	clib_unix_warning ("writev");
 
-      n_bytes += l;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_TX] += l;
+      if (collect_detailed_stats)
+	{
+	  b0_ctype = eh_dst_addr_to_tx_ctype (vlib_buffer_get_current (b));
+	  stats_n_packets[b0_ctype] += 1;
+	  stats_n_bytes[b0_ctype] += l;
+	}
     }
 
-  /* Update tuntap interface output stats. */
-  vlib_increment_combined_counter (im->combined_sw_if_counters
-				   + VNET_INTERFACE_COUNTER_TX,
-				   vm->thread_index,
-				   tm->sw_if_index, n_packets, n_bytes);
+  stats_n_packets[VNET_INTERFACE_COUNTER_TX] = n_packets;
 
+#define inc_counter(ctype, rx_tx)                                         \
+  if (stats_n_packets[ctype])                                             \
+    {                                                                     \
+      vlib_increment_combined_counter (                                   \
+          im->combined_sw_if_counters + ctype, vm->thread_index,          \
+          tm->sw_if_index, stats_n_packets[ctype], stats_n_bytes[ctype]); \
+    }
+  /* Update tuntap interface output stats. */
+  if (collect_detailed_stats)
+    {
+      foreach_combined_interface_counter (inc_counter);
+    }
+  else
+    {
+      inc_counter (VNET_INTERFACE_COUNTER_TX, tx);
+    }
 
   /** The normal interface path flattens the buffer chain */
   if (tm->have_normal_interface)
@@ -214,6 +245,19 @@ tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     vlib_buffer_free (vm, buffers, n_packets);
 
   return n_packets;
+}
+
+static uword
+tuntap_tx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
+{
+  if (collect_detailed_interface_stats ())
+    {
+      return tuntap_tx_inline (vm, node, frame, COLLECT_DETAILED_STATS);
+    }
+  else
+    {
+      return tuntap_tx_inline (vm, node, frame, COLLECT_SIMPLE_STATS);
+    }
 }
 
 /* *INDENT-OFF* */
@@ -321,6 +365,10 @@ tuntap_rx (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
     vlib_increment_combined_counter
       (vnet_main.interface_main.combined_sw_if_counters
        + VNET_INTERFACE_COUNTER_RX,
+       thread_index, tm->sw_if_index, 1, n_bytes_in_packet);
+    vlib_increment_combined_counter
+      (vnet_main.interface_main.combined_sw_if_counters
+       + eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b)),
        thread_index, tm->sw_if_index, 1, n_bytes_in_packet);
 
     _vec_len (tm->threads[thread_index].rx_buffers) = i_rx;

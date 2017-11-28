@@ -66,7 +66,8 @@ always_inline uword
 vxlan_input (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame,
-             u32 is_ip4)
+             u32 is_ip4,
+	     int collect_detailed_stats)
 {
   vxlan_main_t * vxm = &vxlan_main;
   vnet_main_t * vnm = vxm->vnet_main;
@@ -84,7 +85,10 @@ vxlan_input (vlib_main_t * vm,
 
   u32 next_index = node->cached_next_index;
   u32 stats_sw_if_index = node->runtime_data[0];
-  u32 stats_n_packets = 0, stats_n_bytes = 0;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if(collect_detailed_stats){memset(stats_n_packets, 0, sizeof(stats_n_packets));memset(stats_n_bytes, 0, sizeof(stats_n_bytes));}
+  else{stats_n_packets[VNET_INTERFACE_COUNTER_RX] =0;stats_n_bytes[VNET_INTERFACE_COUNTER_RX]=0;}
 
   u32 * from = vlib_frame_vector_args (from_frame);
   u32 n_left_from = from_frame->n_vectors;
@@ -98,6 +102,7 @@ vxlan_input (vlib_main_t * vm,
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
           u32 bi0, bi1;
+	  int b0_ctype, b1_ctype;
 	  vlib_buffer_t * b0, * b1;
 	  u32 next0, next1;
           vxlan_tunnel_t * t0, * t1, * stats_t0, * stats_t1;
@@ -147,6 +152,13 @@ vxlan_input (vlib_main_t * vm,
           /* pop (ip, udp, vxlan) */
           vlib_buffer_advance (b0, sizeof *vxlan0);
 	  vlib_buffer_advance (b1, sizeof *vxlan1);
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	      b1_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b1));
+	    }
 
           u32 tunnel_index0 = ~0, tunnel_index1 = ~0;
           u32 error0 = 0, error1 = 0;
@@ -272,19 +284,30 @@ vxlan_input (vlib_main_t * vm,
 	  u32 sw_if_index0 = stats_t0->sw_if_index;
 	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index)) 
 	    {
-	      if (stats_n_packets)
-	        {
-	          vlib_increment_combined_counter 
-	            (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	             thread_index, stats_sw_if_index, 
-	             stats_n_packets, stats_n_bytes);
-                  pkts_decapsulated += stats_n_packets;
-	          stats_n_packets = stats_n_bytes = 0;
+	      if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
+		{
+#define inc_counter(ctype, rx_tx)                                           \
+  if (stats_n_packets[ctype])                                               \
+    {                                                                       \
+      vlib_increment_combined_counter (                                     \
+          im->combined_sw_if_counters + ctype, thread_index,                \
+          stats_sw_if_index, stats_n_packets[ctype], stats_n_bytes[ctype]); \
+    }
+              pkts_decapsulated += stats_n_packets[VNET_INTERFACE_COUNTER_RX];
+		  if(collect_detailed_stats){
+		      foreach_combined_interface_counter(inc_counter);
+		      memset (stats_n_packets, 0, sizeof(stats_n_packets));memset(stats_n_bytes, 0, sizeof(stats_n_bytes));
+		  }else{
+		      inc_counter(VNET_INTERFACE_COUNTER_RX, rx);
+	          stats_n_packets[VNET_INTERFACE_COUNTER_RX] = stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+		  }
 	        }
 	      stats_sw_if_index = sw_if_index0;
 	    }
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
+          stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+          stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len0;
+	  if(collect_detailed_stats){
+	      stats_n_packets[b0_ctype] +=1;stats_n_bytes[b0_ctype]+=len0;}
 
         trace0:
           b0->error = error0 ? node->errors[error0] : 0;
@@ -422,19 +445,23 @@ vxlan_input (vlib_main_t * vm,
 	  u32 sw_if_index1 = stats_t1->sw_if_index;
 	  if (PREDICT_FALSE (sw_if_index1 != stats_sw_if_index)) 
 	    {
-	      if (stats_n_packets)
+	      if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
 	        {
-	          vlib_increment_combined_counter 
-	            (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	             thread_index, stats_sw_if_index, 
-	             stats_n_packets, stats_n_bytes);
-                  pkts_decapsulated += stats_n_packets;
-	          stats_n_packets = stats_n_bytes = 0;
+              pkts_decapsulated += stats_n_packets[VNET_INTERFACE_COUNTER_RX];
+		  if(collect_detailed_stats){
+		      foreach_combined_interface_counter(inc_counter);
+		      memset (stats_n_packets, 0, sizeof(stats_n_packets));memset(stats_n_bytes, 0, sizeof(stats_n_bytes));
+		  }else{
+		      inc_counter(VNET_INTERFACE_COUNTER_RX, rx);
+	          stats_n_packets[VNET_INTERFACE_COUNTER_RX] = stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+		  }
 	        }
 	      stats_sw_if_index = sw_if_index1;
 	    }
-          stats_n_packets += 1;
-          stats_n_bytes += len1;
+          stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+          stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len1;
+	  if(collect_detailed_stats){
+	      stats_n_packets[b1_ctype] +=1;stats_n_bytes[b1_ctype]+=len1;}
 
         trace1:
           b1->error = error1 ? node->errors[error1] : 0;
@@ -457,6 +484,7 @@ vxlan_input (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
+	  int b0_ctype;
 	  vlib_buffer_t * b0;
 	  u32 next0;
           ip4_header_t * ip4_0;
@@ -482,6 +510,11 @@ vxlan_input (vlib_main_t * vm,
 
           /* pop (ip, udp, vxlan) */
           vlib_buffer_advance (b0, sizeof(*vxlan0));
+
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype = eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	    }
 
           u32 tunnel_index0 = ~0;
           u32 error0 = 0;
@@ -606,19 +639,23 @@ vxlan_input (vlib_main_t * vm,
 	  u32 sw_if_index0 = stats_t0->sw_if_index;
 	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index)) 
 	    {
-	      if (stats_n_packets)
+	      if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
 	        {
-	          vlib_increment_combined_counter 
-	            (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	             thread_index, stats_sw_if_index, 
-	             stats_n_packets, stats_n_bytes);
-                  pkts_decapsulated += stats_n_packets;
-	          stats_n_packets = stats_n_bytes = 0;
+              pkts_decapsulated += stats_n_packets[VNET_INTERFACE_COUNTER_RX];
+		  if(collect_detailed_stats){
+		      foreach_combined_interface_counter(inc_counter);
+		      memset (stats_n_packets, 0, sizeof(stats_n_packets));memset(stats_n_bytes, 0, sizeof(stats_n_bytes));
+		  }else{
+		      inc_counter(VNET_INTERFACE_COUNTER_RX, rx);
+	          stats_n_packets[VNET_INTERFACE_COUNTER_RX] = stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+		  }
 	        }
 	      stats_sw_if_index = sw_if_index0;
 	    }
-          stats_n_packets += 1;
-          stats_n_bytes += len0;
+          stats_n_packets[VNET_INTERFACE_COUNTER_RX] += 1;
+          stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += len0;
+	  if(collect_detailed_stats){
+	      stats_n_packets[b0_ctype] +=1;stats_n_bytes[b0_ctype]+=len0;}
 
 
         trace00:
@@ -641,12 +678,12 @@ vxlan_input (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
   /* Increment any remaining batch stats */
-  if (stats_n_packets)
+  if (stats_n_packets[VNET_INTERFACE_COUNTER_RX])
     {
-      pkts_decapsulated += stats_n_packets;
-      vlib_increment_combined_counter 
-	(im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX,
-	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
+      pkts_decapsulated += stats_n_packets[VNET_INTERFACE_COUNTER_RX];
+      if(collect_detailed_stats){
+	  foreach_combined_interface_counter(inc_counter);
+      }else{inc_counter(VNET_INTERFACE_COUNTER_RX, rx);}
       node->runtime_data[0] = stats_sw_if_index;
     }
 
@@ -663,7 +700,9 @@ vxlan4_input (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
-	return vxlan_input(vm, node, from_frame, /* is_ip4 */ 1);
+  if(collect_detailed_interface_stats()){
+	return vxlan_input(vm, node, from_frame, /* is_ip4 */ 1, COLLECT_DETAILED_STATS);}else{
+	return vxlan_input(vm, node, from_frame, /* is_ip4 */ 1, COLLECT_SIMPLE_STATS);}
 }
 
 static uword
@@ -671,7 +710,9 @@ vxlan6_input (vlib_main_t * vm,
              vlib_node_runtime_t * node,
              vlib_frame_t * from_frame)
 {
-	return vxlan_input(vm, node, from_frame, /* is_ip4 */ 0);
+  if(collect_detailed_interface_stats()){
+	return vxlan_input(vm, node, from_frame, /* is_ip4 */ 0, COLLECT_DETAILED_STATS);}else{
+	return vxlan_input(vm, node, from_frame, /* is_ip4 */ 0, COLLECT_SIMPLE_STATS);}
 }
 
 static char * vxlan_error_strings[] = {

@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2015 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,18 +62,28 @@ always_inline uword
 vxlan_encap_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
 		    vlib_frame_t * from_frame,
-		    u8 is_ip4, u8 csum_offload)
+		    u8 is_ip4, u8 csum_offload,
+		    int collect_detailed_stats)
 {
   u32 n_left_from, next_index, * from, * to_next;
   vxlan_main_t * vxm = &vxlan_main;
   vnet_main_t * vnm = vxm->vnet_main;
   vnet_interface_main_t * im = &vnm->interface_main;
-  vlib_combined_counter_main_t * tx_counter = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
   u32 pkts_encapsulated = 0;
   u32 thread_index = vlib_get_thread_index();
-  u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
+  u32 stats_sw_if_index;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if(collect_detailed_stats){
+      memset(stats_n_packets,0,sizeof(stats_n_packets));
+      memset(stats_n_bytes,0,sizeof(stats_n_bytes));
+  }else{
+      stats_n_packets[VNET_INTERFACE_COUNTER_TX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_TX] = 0;
+  }
   u32 sw_if_index0 = 0, sw_if_index1 = 0;
   u32 next0 = 0, next1 = 0;
+  int b0_ctype, b1_ctype;
   vnet_hw_interface_t * hi0, * hi1;
   vxlan_tunnel_t * t0 = NULL, * t1 = NULL;
 
@@ -83,7 +92,6 @@ vxlan_encap_inline (vlib_main_t * vm,
 
   next_index = node->cached_next_index;
   stats_sw_if_index = node->runtime_data[0];
-  stats_n_packets = stats_n_bytes = 0;
 
   STATIC_ASSERT_SIZEOF(ip6_vxlan_header_t, 56);
   STATIC_ASSERT_SIZEOF(ip4_vxlan_header_t, 36);
@@ -155,6 +163,16 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      next1 = t1->next_dpo.dpoi_next_node;
 	    }
           vnet_buffer(b1)->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
+
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_tx_ctype ((ethernet_header_t *)
+					     vlib_buffer_get_current (b0));
+	      b1_ctype =
+		eh_dst_addr_to_tx_ctype ((ethernet_header_t *)
+					     vlib_buffer_get_current (b1));
+	    }
 
           ASSERT(vec_len(t0->rewrite) == underlay_hdr_len);
           ASSERT(vec_len(t1->rewrite) == underlay_hdr_len);
@@ -262,29 +280,56 @@ vxlan_encap_inline (vlib_main_t * vm,
 	     to check for this rare case and affect normal path performance. */
           if (sw_if_index0 == sw_if_index1)
             {
-              if (PREDICT_FALSE(sw_if_index0 != stats_sw_if_index))
+              if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
                 {
-                  if (stats_n_packets) 
+                  if (stats_n_packets[VNET_INTERFACE_COUNTER_TX])
                     {
-                      vlib_increment_combined_counter (tx_counter, thread_index,
-                          stats_sw_if_index, stats_n_packets, stats_n_bytes);
-                      stats_n_packets = stats_n_bytes = 0;
+#define inc_stats_if_counter(ctype, rx_tx)                                  \
+  if (stats_n_packets[ctype])                                               \
+    {                                                                       \
+      vlib_increment_combined_counter (                                     \
+          im->combined_sw_if_counters + ctype, thread_index,                \
+          stats_sw_if_index, stats_n_packets[ctype], stats_n_bytes[ctype]); \
+    }
+                      if (collect_detailed_stats)
+                        {
+			  foreach_combined_interface_counter (inc_stats_if_counter);
+			  memset(stats_n_packets, 0, sizeof(stats_n_packets));
+			  memset(stats_n_bytes, 0, sizeof(stats_n_bytes));
+                        }
+                      else
+                        {
+                          inc_stats_if_counter (VNET_INTERFACE_COUNTER_TX, tx);
+			  stats_n_packets[VNET_INTERFACE_COUNTER_TX] = 0;
+			  stats_n_bytes[VNET_INTERFACE_COUNTER_TX] = 0;
+                        }
                     }
                   stats_sw_if_index = sw_if_index0;
                 }
-              stats_n_packets += 2;
-              stats_n_bytes += len0 + len1;
+	      stats_n_packets[VNET_INTERFACE_COUNTER_TX] += 2;
+              stats_n_bytes[VNET_INTERFACE_COUNTER_TX] += len0 + len1;
+	      if (collect_detailed_stats){
+	      stats_n_packets[b0_ctype] += 1;
+	      stats_n_bytes[b0_ctype] += len0;
+	      stats_n_packets[b1_ctype] += 1;
+	      stats_n_bytes[b1_ctype] += len1;
+	      }
             }
           else
             {
-              vlib_increment_combined_counter (tx_counter, thread_index,
-                  sw_if_index0, 1, len0);
-              vlib_increment_combined_counter (tx_counter, thread_index,
-                  sw_if_index1, 1, len1);
+#define inc_counter(ctype, sw_if, len)                                  \
+  vlib_increment_combined_counter (im->combined_sw_if_counters + ctype, \
+                                   thread_index, sw_if, 1, len);
+              inc_counter (VNET_INTERFACE_COUNTER_TX, sw_if_index0, len0);
+              inc_counter (VNET_INTERFACE_COUNTER_TX, sw_if_index1, len1);
+	      if(collect_detailed_stats){
+              inc_counter (b0_ctype, sw_if_index0, len0);
+              inc_counter (b1_ctype, sw_if_index1, len1);
+	      }
             }
           pkts_encapsulated += 2;
 
-	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
+          if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED)) 
             {
               vxlan_encap_trace_t *tr = 
                 vlib_add_trace (vm, node, b0, sizeof (*tr));
@@ -327,6 +372,13 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      next0 = t0->next_dpo.dpoi_next_node;
 	    }
 	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_tx_ctype ((ethernet_header_t *)
+					     vlib_buffer_get_current (b0));
+	    }
 
           ASSERT(vec_len(t0->rewrite) == underlay_hdr_len);
           vlib_buffer_advance (b0, -underlay_hdr_len);
@@ -395,22 +447,42 @@ vxlan_encap_inline (vlib_main_t * vm,
                 udp0->checksum = 0xffff;
             }
 
+	  if (collect_detailed_stats)
+	    {
+	      stats_n_packets[b0_ctype] += 1;
+	      stats_n_bytes[b0_ctype] += len0;
+	    }
+
 	  /* Batch stats increment on the same vxlan tunnel so counter is not
 	     incremented per packet. Note stats are still incremented for deleted
 	     and admin-down tunnel where packets are dropped. It is not worthwhile
 	     to check for this rare case and affect normal path performance. */
-	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index)) 
+	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
 	    {
-	      if (stats_n_packets)
+              if (stats_n_packets[VNET_INTERFACE_COUNTER_TX])
                 {
-                  vlib_increment_combined_counter (tx_counter, thread_index,
-                      stats_sw_if_index, stats_n_packets, stats_n_bytes);
-                  stats_n_bytes = stats_n_packets = 0;
+                  if (collect_detailed_stats)
+                    {
+                      foreach_combined_interface_counter (inc_stats_if_counter);
+                      memset (stats_n_packets, 0, sizeof (stats_n_packets));
+                      memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+                    }
+                  else
+                    {
+                      inc_stats_if_counter (VNET_INTERFACE_COUNTER_TX, tx);
+                      stats_n_packets[VNET_INTERFACE_COUNTER_TX] = 0;
+                      stats_n_bytes[VNET_INTERFACE_COUNTER_TX] = 0;
+                    }
                 }
-	      stats_sw_if_index = sw_if_index0;
+              stats_sw_if_index = sw_if_index0;
+            }
+	  stats_n_packets[VNET_INTERFACE_COUNTER_TX] += 1;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_TX] += len0;
+	  if(collect_detailed_stats)
+	    {
+	      stats_n_packets[b1_ctype] += 1;
+	      stats_n_bytes[b1_ctype] += len0;
 	    }
-	  stats_n_packets += 1;
-	  stats_n_bytes += len0;
           pkts_encapsulated ++;
 
           if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
@@ -434,10 +506,16 @@ vxlan_encap_inline (vlib_main_t * vm,
                                pkts_encapsulated);
 
   /* Increment any remaining batch stats */
-  if (stats_n_packets)
+  if (stats_n_packets[VNET_INTERFACE_COUNTER_TX])
     {
-      vlib_increment_combined_counter (tx_counter, thread_index,
-          stats_sw_if_index, stats_n_packets, stats_n_bytes);
+      if (collect_detailed_stats)
+	{
+	  foreach_combined_interface_counter (inc_stats_if_counter);
+	}
+      else
+	{
+	  inc_stats_if_counter (VNET_INTERFACE_COUNTER_TX, tx);
+	}
       node->runtime_data[0] = stats_sw_if_index;
     }
 
@@ -451,8 +529,18 @@ vxlan4_encap (vlib_main_t * vm,
 {
   /* Disable chksum offload as setup overhead in tx node is not worthwhile
      for ip4 header checksum only, unless udp checksum is also required */
-  return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 1, 
-			     /* csum_offload */ 0);
+  if (collect_detailed_interface_stats ())
+    {
+      return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 1,
+                                 /* csum_offload */ 0,
+                                 COLLECT_DETAILED_STATS);
+    }
+  else
+    {
+      return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 1,
+                                 /* csum_offload */ 0,
+                                 COLLECT_SIMPLE_STATS);
+    }
 }
 
 static uword
@@ -461,8 +549,18 @@ vxlan6_encap (vlib_main_t * vm,
 	      vlib_frame_t * from_frame)
 {
   /* Enable checksum offload for ip6 as udp checksum is mandatory, */
-  return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 0, 
-			     /* csum_offload */ 1);
+  if (collect_detailed_interface_stats ())
+    {
+      return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 0,
+                                 /* csum_offload */ 0,
+                                 COLLECT_DETAILED_STATS);
+    }
+  else
+    {
+      return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 0,
+                                 /* csum_offload */ 0,
+                                 COLLECT_SIMPLE_STATS);
+    }
 }
 
 VLIB_REGISTER_NODE (vxlan4_encap_node) = {
@@ -496,4 +594,3 @@ VLIB_REGISTER_NODE (vxlan6_encap_node) = {
 };
 
 VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_encap_node, vxlan6_encap)
-
