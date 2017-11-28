@@ -337,8 +337,6 @@ acl_del_list (u32 acl_list_index)
 /* Some aids in ASCII graphing the content */
 #define XX "\377"
 #define __ "\000"
-#define DOT1AD "\210\250"
-#define DOT1Q "\201\00"
 #define _(x)
 #define v
 /* *INDENT-OFF* */
@@ -393,15 +391,15 @@ u8 ip4_5tuple_mask[] =
 
  u8 dot1q_5tuple_mask[] =
    _("             dmac               smac          dot1q         etype ")
-   _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v DOT1Q __ __ v XX XX v
+   _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v XX XX __ __ v XX XX v
    _(padpad) __ __ __ __
    _(padpad) __ __ __ __
    _(padpad) __ __ __ __
    _(padeth) __ __;
 
  u8 dot1ad_5tuple_mask[] =
-   _("             dmac               smac          dot1ad                     etype ")
-   _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v DOT1AD __ __ DOT1Q __ __ v XX XX v
+   _("             dmac               smac          dot1ad      dot1q         etype ")
+   _(ether) __ __ __ __ __ __ v __ __ __ __ __ __ v XX XX __ __ XX XX __ __ v XX XX v
    _(padpad) __ __ __ __
    _(padpad) __ __ __ __
    _(padeth) __ __;
@@ -409,8 +407,6 @@ u8 ip4_5tuple_mask[] =
 /* *INDENT-ON* */
 #undef XX
 #undef __
-#undef DOT1AD
-#undef DOT1Q
 #undef _
 #undef v
 
@@ -639,6 +635,21 @@ acl_add_vlan_session (acl_main_t * am, u32 table_index, u8 is_output,
     }
   match = (is_dot1ad) ? dot1ad_5tuple_mask : dot1q_5tuple_mask;
   idx = (is_dot1ad) ? 20 : 16;
+  if (is_dot1ad)
+    {
+      /* 802.1ad ethertype */
+      match[12] = 0x88;
+      match[13] = 0xa8;
+      /* 802.1q ethertype */
+      match[16] = 0x81;
+      match[17] = 0x00;
+    }
+  else
+    {
+      /* 802.1q ethertype */
+      match[12] = 0x81;
+      match[13] = 0x00;
+    }
 
   /* add sessions to vlan tables per ethernet_type */
   if (is_ip6)
@@ -655,7 +666,16 @@ acl_add_vlan_session (acl_main_t * am, u32 table_index, u8 is_output,
     }
   vnet_classify_add_del_session (cm, table_index, match, next_acl,
 				 session_idx, 0, 0, 0, 1);
-  memset (&match[idx], 0x00, 2);
+  /* reset the mask back to being a mask */
+  match[idx] = 0xff;
+  match[idx + 1] = 0xff;
+  match[12] = 0xff;
+  match[13] = 0xff;
+  if (is_dot1ad)
+    {
+      match[16] = 0xff;
+      match[17] = 0xff;
+    }
 }
 
 static int
@@ -2717,7 +2737,7 @@ acl_show_aclplugin_acl_fn (vlib_main_t * vm,
   acl_main_t *am = &acl_main;
 
   u32 acl_index = ~0;
-  unformat (input, "index %u", &acl_index);
+  (void) unformat (input, "index %u", &acl_index);
 
   acl_plugin_show_acl (am, acl_index);
   return error;
@@ -2782,7 +2802,7 @@ acl_show_aclplugin_interface_fn (vlib_main_t * vm,
   acl_main_t *am = &acl_main;
 
   u32 sw_if_index = ~0;
-  unformat (input, "sw_if_index %u", &sw_if_index);
+  (void) unformat (input, "sw_if_index %u", &sw_if_index);
   int show_acl = unformat (input, "acl");
 
   acl_plugin_show_interface (am, sw_if_index, show_acl);
@@ -2964,9 +2984,9 @@ acl_show_aclplugin_sessions_fn (vlib_main_t * vm,
   u32 show_bihash_verbose = 0;
   u32 show_session_thread_id = ~0;
   u32 show_session_session_index = ~0;
-  unformat (input, "thread %u index %u", &show_session_thread_id,
-	    &show_session_session_index);
-  unformat (input, "verbose %u", &show_bihash_verbose);
+  (void) unformat (input, "thread %u index %u", &show_session_thread_id,
+		   &show_session_session_index);
+  (void) unformat (input, "verbose %u", &show_bihash_verbose);
 
   acl_plugin_show_sessions (am, show_session_thread_id,
 			    show_session_session_index);
@@ -2974,8 +2994,7 @@ acl_show_aclplugin_sessions_fn (vlib_main_t * vm,
   return error;
 }
 
-static void
-acl_plugin_show_tables_mask_type (acl_main_t * am)
+static void acl_plugin_show_tables_mask_type (acl_main_t * am)
 {
   vlib_main_t *vm = am->vlib_main;
   ace_mask_type_entry_t *mte;
@@ -2993,7 +3012,7 @@ acl_plugin_show_tables_mask_type (acl_main_t * am)
 }
 
 static void
-acl_plugin_show_tables_acl_hash_info (acl_main_t * am, u32 acl_index)
+  acl_plugin_show_tables_acl_hash_info (acl_main_t * am, u32 acl_index)
 {
   vlib_main_t *vm = am->vlib_main;
   u32 i, j;
@@ -3028,7 +3047,8 @@ acl_plugin_show_tables_acl_hash_info (acl_main_t * am, u32 acl_index)
 }
 
 static void
-acl_plugin_print_pae (vlib_main_t * vm, int j, applied_hash_ace_entry_t * pae)
+  acl_plugin_print_pae (vlib_main_t * vm, int j,
+			applied_hash_ace_entry_t * pae)
 {
   vlib_cli_output (vm,
 		   "    %4d: acl %d rule %d action %d bitmask-ready rule %d next %d prev %d tail %d hitcount %lld",
@@ -3039,7 +3059,7 @@ acl_plugin_print_pae (vlib_main_t * vm, int j, applied_hash_ace_entry_t * pae)
 }
 
 static void
-acl_plugin_show_tables_applied_info (acl_main_t * am, u32 sw_if_index)
+  acl_plugin_show_tables_applied_info (acl_main_t * am, u32 sw_if_index)
 {
   vlib_main_t *vm = am->vlib_main;
   u32 swi, j;
@@ -3103,16 +3123,15 @@ acl_plugin_show_tables_applied_info (acl_main_t * am, u32 sw_if_index)
 }
 
 static void
-acl_plugin_show_tables_bihash (acl_main_t * am, u32 show_bihash_verbose)
+  acl_plugin_show_tables_bihash (acl_main_t * am, u32 show_bihash_verbose)
 {
   vlib_main_t *vm = am->vlib_main;
   show_hash_acl_hash (vm, am, show_bihash_verbose);
 }
 
-static clib_error_t *
-acl_show_aclplugin_tables_fn (vlib_main_t * vm,
-			      unformat_input_t * input,
-			      vlib_cli_command_t * cmd)
+static clib_error_t *acl_show_aclplugin_tables_fn (vlib_main_t * vm,
+						   unformat_input_t * input,
+						   vlib_cli_command_t * cmd)
 {
   clib_error_t *error = 0;
   acl_main_t *am = &acl_main;
@@ -3169,9 +3188,9 @@ acl_show_aclplugin_tables_fn (vlib_main_t * vm,
   return error;
 }
 
-static clib_error_t *
-acl_clear_aclplugin_fn (vlib_main_t * vm,
-			unformat_input_t * input, vlib_cli_command_t * cmd)
+static clib_error_t *acl_clear_aclplugin_fn (vlib_main_t * vm,
+					     unformat_input_t * input,
+					     vlib_cli_command_t * cmd)
 {
   clib_error_t *error = 0;
   acl_main_t *am = &acl_main;
@@ -3236,8 +3255,8 @@ VLIB_CLI_COMMAND (aclplugin_clear_command, static) = {
 };
 /* *INDENT-ON* */
 
-static clib_error_t *
-acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
+static clib_error_t *acl_plugin_config (vlib_main_t * vm,
+					unformat_input_t * input)
 {
   acl_main_t *am = &acl_main;
   u32 conn_table_hash_buckets;
@@ -3278,8 +3297,7 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
 
 VLIB_CONFIG_FUNCTION (acl_plugin_config, "acl-plugin");
 
-static clib_error_t *
-acl_init (vlib_main_t * vm)
+static clib_error_t *acl_init (vlib_main_t * vm)
 {
   acl_main_t *am = &acl_main;
   clib_error_t *error = 0;
