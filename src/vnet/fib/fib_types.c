@@ -417,12 +417,6 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             rpath->frp_proto = *payload_proto;
             rpath->frp_sw_if_index = ~0;
         }
-        else if (unformat (input, "via %U",
-                           unformat_vnet_sw_interface, vnm,
-                           &rpath->frp_sw_if_index))
-        {
-            rpath->frp_proto = *payload_proto;
-        }
         else if (unformat (input, "resolve-via-host"))
         {
             rpath->frp_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_HOST;
@@ -482,6 +476,12 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
             {
                 vec_add1(rpath->frp_label_stack, out_label);
             }
+        }
+        else if (unformat (input, "%U",
+                           unformat_vnet_sw_interface, vnm,
+                           &rpath->frp_sw_if_index))
+        {
+            rpath->frp_proto = *payload_proto;
         }
         else
         {
