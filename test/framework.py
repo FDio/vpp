@@ -266,6 +266,8 @@ class VppTestCase(unittest.TestCase):
                            "punt", "{", "socket", cls.punt_socket_path, "}"]
         if plugin_path is not None:
             cls.vpp_cmdline.extend(["plugin_path", plugin_path])
+        if hasattr(cls, 'extra_vpp_cmdline_config'):
+            cls.vpp_cmdline.extend(cls.extra_vpp_cmdline_config)
         cls.logger.info("vpp_cmdline: %s" % cls.vpp_cmdline)
 
     @classmethod
@@ -721,18 +723,21 @@ class VppTestCase(unittest.TestCase):
             if info.dst == dst_index:
                 return info
 
-    def assert_equal(self, real_value, expected_value, name_or_class=None):
+    def assert_equal(self, real_value, expected_value, name_or_class=None,
+                     extra_debug_data=""):
         if name_or_class is None:
             self.assertEqual(real_value, expected_value)
             return
         try:
-            msg = "Invalid %s: %d('%s') does not match expected value %d('%s')"
+            msg = "Invalid %s: %s('%s') does not match expected value "\
+                  "%s('%s')%s"
             msg = msg % (getdoc(name_or_class).strip(),
                          real_value, str(name_or_class(real_value)),
-                         expected_value, str(name_or_class(expected_value)))
+                         expected_value, str(name_or_class(expected_value)),
+                         extra_debug_data)
         except:
-            msg = "Invalid %s: %s does not match expected value %s" % (
-                name_or_class, real_value, expected_value)
+            msg = "Invalid %s: %s does not match expected value %s%s" % (
+                name_or_class, real_value, expected_value, extra_debug_data)
 
         self.assertEqual(real_value, expected_value, msg)
 

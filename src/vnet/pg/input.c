@@ -42,6 +42,7 @@
 #include <vnet/vnet.h>
 #include <vnet/feature/feature.h>
 #include <vnet/devices/devices.h>
+#include <vnet/ethernet/packet.h>
 
 static int
 validate_buffer_data2 (vlib_buffer_t * b, pg_stream_t * s,
@@ -159,13 +160,16 @@ do_set_fixed (pg_main_t * pg,
 	      u32 * buffers,
 	      u32 n_buffers,
 	      u32 n_bits,
-	      u32 byte_offset, u32 is_net_byte_order, u64 v_min, u64 v_max)
+	      u32 byte_offset, u32 is_net_byte_order,
+	      u32 want_stats, u32 * packets, u64 * bytes,
+	      u32 * sum_packets, u64 * sum_bytes, u64 v_min, u64 v_max)
 {
   vlib_main_t *vm = vlib_get_main ();
 
   while (n_buffers >= 4)
     {
       vlib_buffer_t *b0, *b1, *b2, *b3;
+      int b0_ctype, b1_ctype;
       void *a0, *a1;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
@@ -177,11 +181,30 @@ do_set_fixed (pg_main_t * pg,
 
       a0 = (void *) b0 + byte_offset;
       a1 = (void *) b1 + byte_offset;
+      CLIB_PREFETCH ((void *) b2 +
+		     STRUCT_OFFSET_OF (ethernet_header_t, dst_address),
+		     STRUCT_SIZE_OF (ethernet_header_t, dst_address), READ);
+      CLIB_PREFETCH ((void *) b3 +
+		     STRUCT_OFFSET_OF (ethernet_header_t, dst_address),
+		     STRUCT_SIZE_OF (ethernet_header_t, dst_address), READ);
       CLIB_PREFETCH ((void *) b2 + byte_offset, sizeof (v_min), WRITE);
       CLIB_PREFETCH ((void *) b3 + byte_offset, sizeof (v_min), WRITE);
 
       set_2 (a0, a1, v_min, v_min, v_min, v_max, n_bits, is_net_byte_order,
 	     /* is_increment */ 0);
+
+      if (want_stats)
+	{
+	  b0_ctype = eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	  b1_ctype = eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b1));
+	  packets[b0_ctype] += 1;
+	  packets[b1_ctype] += 1;
+	  *sum_packets += 2;
+	  *sum_bytes += 2 * v_min;
+	  bytes[b0_ctype] += v_min;
+	  bytes[b1_ctype] += v_min;
+	}
+
 
       ASSERT (validate_buffer_data (b0, s));
       ASSERT (validate_buffer_data (b1, s));
@@ -190,6 +213,7 @@ do_set_fixed (pg_main_t * pg,
   while (n_buffers > 0)
     {
       vlib_buffer_t *b0;
+      int b0_ctype;
       void *a0;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
@@ -199,6 +223,16 @@ do_set_fixed (pg_main_t * pg,
       a0 = (void *) b0 + byte_offset;
 
       set_1 (a0, v_min, v_min, v_max, n_bits, is_net_byte_order);
+
+      if (want_stats)
+	{
+	  b0_ctype = eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+
+	  packets[b0_ctype] += 1;
+	  bytes[b0_ctype] += v_min;
+	  *sum_packets += 1;
+	  *sum_bytes += v_min;
+	}
 
       ASSERT (validate_buffer_data (b0, s));
     }
@@ -212,16 +246,18 @@ do_set_increment (pg_main_t * pg,
 		  u32 n_bits,
 		  u32 byte_offset,
 		  u32 is_net_byte_order,
-		  u32 want_sum, u64 * sum_result, u64 v_min, u64 v_max, u64 v)
+		  u32 want_stats,
+		  u32 * packets, u64 * bytes,
+		  u32 * sum_packets, u64 * sum_bytes,
+		  u64 v_min, u64 v_max, u64 v)
 {
   vlib_main_t *vm = vlib_get_main ();
-  u64 sum = 0;
-
   ASSERT (v >= v_min && v <= v_max);
 
   while (n_buffers >= 4)
     {
       vlib_buffer_t *b0, *b1, *b2, *b3;
+      int b0_ctype, b1_ctype;
       void *a0, *a1;
       u64 v_old;
 
@@ -234,6 +270,12 @@ do_set_increment (pg_main_t * pg,
 
       a0 = (void *) b0 + byte_offset;
       a1 = (void *) b1 + byte_offset;
+      CLIB_PREFETCH ((void *) b2 +
+		     STRUCT_OFFSET_OF (ethernet_header_t, dst_address),
+		     STRUCT_SIZE_OF (ethernet_header_t, dst_address), READ);
+      CLIB_PREFETCH ((void *) b3 +
+		     STRUCT_OFFSET_OF (ethernet_header_t, dst_address),
+		     STRUCT_SIZE_OF (ethernet_header_t, dst_address), READ);
       CLIB_PREFETCH ((void *) b2 + byte_offset, sizeof (v_min), WRITE);
       CLIB_PREFETCH ((void *) b3 + byte_offset, sizeof (v_min), WRITE);
 
@@ -244,24 +286,45 @@ do_set_increment (pg_main_t * pg,
 	     v_old + 0, v_old + 1, v_min, v_max, n_bits, is_net_byte_order,
 	     /* is_increment */ 1);
 
-      if (want_sum)
-	sum += 2 * v_old + 1;
+      if (want_stats)
+	{
+	  b0_ctype = eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	  b1_ctype = eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b1));
+
+	  packets[b0_ctype] += 1;
+	  packets[b1_ctype] += 1;
+	  *sum_packets += 2;
+	  *sum_bytes += 2 * v_old + 1;
+	  bytes[b0_ctype] += 2 * v_old + 1;
+	  bytes[b1_ctype] += 2 * v_old + 1;
+	}
+
 
       if (PREDICT_FALSE (v_old + 1 > v_max))
 	{
-	  if (want_sum)
-	    sum -= 2 * v_old + 1;
+	  if (want_stats)
+	    {
+	      *sum_bytes -= 2 * v_old + 1;
+	      bytes[b0_ctype] -= 2 * v_old + 1;
+	      bytes[b1_ctype] -= 2 * v_old + 1;
+	    }
 
 	  v = v_old;
 	  set_1 (a0, v + 0, v_min, v_max, n_bits, is_net_byte_order);
-	  if (want_sum)
-	    sum += v;
+	  if (want_stats)
+	    {
+	      *sum_bytes += v;
+	      bytes[b0_ctype] += v;
+	    }
 	  v += 1;
 
 	  v = v > v_max ? v_min : v;
 	  set_1 (a1, v + 0, v_min, v_max, n_bits, is_net_byte_order);
-	  if (want_sum)
-	    sum += v;
+	  if (want_stats)
+	    {
+	      *sum_bytes += v;
+	      bytes[b1_ctype] += v;
+	    }
 	  v += 1;
 	}
 
@@ -272,6 +335,7 @@ do_set_increment (pg_main_t * pg,
   while (n_buffers > 0)
     {
       vlib_buffer_t *b0;
+      int b0_ctype;
       void *a0;
       u64 v_old;
 
@@ -282,8 +346,14 @@ do_set_increment (pg_main_t * pg,
       a0 = (void *) b0 + byte_offset;
 
       v_old = v;
-      if (want_sum)
-	sum += v_old;
+      if (want_stats)
+	{
+	  b0_ctype = eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	  *sum_bytes += v_old;
+	  *sum_packets += 1;
+	  bytes[b0_ctype] += v_old;
+	  packets[b0_ctype] += 1;
+	}
       v += 1;
       v = v > v_max ? v_min : v;
 
@@ -292,9 +362,6 @@ do_set_increment (pg_main_t * pg,
 
       ASSERT (validate_buffer_data (b0, s));
     }
-
-  if (want_sum)
-    *sum_result = sum;
 
   return v;
 }
@@ -307,13 +374,14 @@ do_set_random (pg_main_t * pg,
 	       u32 n_bits,
 	       u32 byte_offset,
 	       u32 is_net_byte_order,
-	       u32 want_sum, u64 * sum_result, u64 v_min, u64 v_max)
+	       u32 want_stats,
+	       u32 * packets, u64 * bytes,
+	       u32 * sum_packets, u64 * sum_bytes, u64 v_min, u64 v_max)
 {
   vlib_main_t *vm = vlib_get_main ();
   u64 v_diff = v_max - v_min + 1;
   u64 r_mask = max_pow2 (v_diff) - 1;
   u64 v0, v1;
-  u64 sum = 0;
   void *random_data;
 
   random_data = clib_random_buffer_get_data
@@ -326,6 +394,7 @@ do_set_random (pg_main_t * pg,
       vlib_buffer_t *b0, *b1, *b2, *b3;
       void *a0, *a1;
       u64 r0 = 0, r1 = 0;	/* warnings be gone */
+      int b0_ctype, b1_ctype;
 
       b0 = vlib_get_buffer (vm, buffers[0]);
       b1 = vlib_get_buffer (vm, buffers[1]);
@@ -336,6 +405,12 @@ do_set_random (pg_main_t * pg,
 
       a0 = (void *) b0 + byte_offset;
       a1 = (void *) b1 + byte_offset;
+      CLIB_PREFETCH ((void *) b2 +
+		     STRUCT_OFFSET_OF (ethernet_header_t, dst_address),
+		     STRUCT_SIZE_OF (ethernet_header_t, dst_address), READ);
+      CLIB_PREFETCH ((void *) b3 +
+		     STRUCT_OFFSET_OF (ethernet_header_t, dst_address),
+		     STRUCT_SIZE_OF (ethernet_header_t, dst_address), READ);
       CLIB_PREFETCH ((void *) b2 + byte_offset, sizeof (v_min), WRITE);
       CLIB_PREFETCH ((void *) b3 + byte_offset, sizeof (v_min), WRITE);
 
@@ -369,8 +444,18 @@ do_set_random (pg_main_t * pg,
       v0 = v0 > v_max ? v0 - v_diff : v0;
       v1 = v1 > v_max ? v1 - v_diff : v1;
 
-      if (want_sum)
-	sum += v0 + v1;
+      if (want_stats)
+	{
+	  b0_ctype = eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	  b1_ctype = eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b1));
+
+	  *sum_bytes += v0 + v1;
+	  *sum_packets += 2;
+	  bytes[b0_ctype] += v0;
+	  packets[b0_ctype] += 1;
+	  bytes[b1_ctype] += v1;
+	  packets[b1_ctype] += 1;
+	}
 
       set_2 (a0, a1, v0, v1, v_min, v_max, n_bits, is_net_byte_order,
 	     /* is_increment */ 0);
@@ -382,6 +467,7 @@ do_set_random (pg_main_t * pg,
   while (n_buffers > 0)
     {
       vlib_buffer_t *b0;
+      int b0_ctype;
       void *a0;
       u64 r0 = 0;		/* warnings be gone */
 
@@ -417,16 +503,20 @@ do_set_random (pg_main_t * pg,
       v0 = v0 > v_max ? v0 - v_diff : v0;
       v0 = v0 > v_max ? v0 - v_diff : v0;
 
-      if (want_sum)
-	sum += v0;
+      if (want_stats)
+	{
+	  b0_ctype = eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	  *sum_bytes += v0;
+	  *sum_packets += 1;
+	  bytes[b0_ctype] += v0;
+	  packets[b0_ctype] += 1;
+	}
 
       set_1 (a0, v0, v_min, v_max, n_bits, is_net_byte_order);
 
       ASSERT (validate_buffer_data (b0, s));
     }
 
-  if (want_sum)
-    *sum_result = sum;
 }
 
 #define _(i,t)							\
@@ -769,7 +859,7 @@ do_it (pg_main_t * pg,
 			    BITS (u##n),		\
 			    l0,				\
 			    /* is_net_byte_order */ 1,	\
-			    /* want sum */ 0, 0,	\
+			    /* want stats */ 0, 0, 0, 0, 0,\
 			    v_min, v_max,		\
 			    v);				\
     else if (edit_type == PG_EDIT_RANDOM)		\
@@ -777,13 +867,14 @@ do_it (pg_main_t * pg,
 		     BITS (u##n),			\
 		     l0,				\
 		     /* is_net_byte_order */ 1,		\
-		     /* want sum */ 0, 0,		\
+		     /* want stats */ 0, 0, 0, 0, 0,	\
 		     v_min, v_max);			\
     else /* edit_type == PG_EDIT_FIXED */		\
       do_set_fixed (pg, s, buffers, n_buffers,		\
 		    BITS (u##n),			\
 		    l0,					\
 		    /* is_net_byte_order */ 1,		\
+		    /* want stats */ 0, 0, 0, 0, 0,	\
 		    v_min, v_max);			\
   goto done;
 
@@ -851,7 +942,11 @@ static void
 pg_generate_set_lengths (pg_main_t * pg,
 			 pg_stream_t * s, u32 * buffers, u32 n_buffers)
 {
-  u64 v_min, v_max, length_sum;
+  u64 v_min, v_max;
+  u64 bytes[VNET_N_COMBINED_INTERFACE_COUNTER] = { 0 };
+  u32 packets[VNET_N_COMBINED_INTERFACE_COUNTER] = { 0 };
+  u64 sum_bytes = 0;
+  u32 sum_packets = 0;
   pg_edit_type_t edit_type;
 
   v_min = s->min_packet_bytes;
@@ -864,7 +959,8 @@ pg_generate_set_lengths (pg_main_t * pg,
 			  8 * STRUCT_SIZE_OF (vlib_buffer_t, current_length),
 			  STRUCT_OFFSET_OF (vlib_buffer_t, current_length),
 			  /* is_net_byte_order */ 0,
-			  /* want sum */ 1, &length_sum,
+			  /* want stats */ 1, packets, bytes,
+			  &sum_packets, &sum_bytes,
 			  v_min, v_max, s->last_increment_packet_size);
 
   else if (edit_type == PG_EDIT_RANDOM)
@@ -872,8 +968,8 @@ pg_generate_set_lengths (pg_main_t * pg,
 		   8 * STRUCT_SIZE_OF (vlib_buffer_t, current_length),
 		   STRUCT_OFFSET_OF (vlib_buffer_t, current_length),
 		   /* is_net_byte_order */ 0,
-		   /* want sum */ 1, &length_sum,
-		   v_min, v_max);
+		   /* want stats */ 1, packets, bytes,
+		   &sum_packets, &sum_bytes, v_min, v_max);
 
   else				/* edit_type == PG_EDIT_FIXED */
     {
@@ -881,8 +977,8 @@ pg_generate_set_lengths (pg_main_t * pg,
 		    8 * STRUCT_SIZE_OF (vlib_buffer_t, current_length),
 		    STRUCT_OFFSET_OF (vlib_buffer_t, current_length),
 		    /* is_net_byte_order */ 0,
-		    v_min, v_max);
-      length_sum = v_min * n_buffers;
+		    /* want stats */ 1, packets, bytes,
+		    &sum_packets, &sum_bytes, v_min, v_max);
     }
 
   {
@@ -894,7 +990,17 @@ pg_generate_set_lengths (pg_main_t * pg,
     vlib_increment_combined_counter (im->combined_sw_if_counters
 				     + VNET_INTERFACE_COUNTER_RX,
 				     vlib_get_thread_index (),
-				     si->sw_if_index, n_buffers, length_sum);
+				     si->sw_if_index, sum_packets, sum_bytes);
+
+#define inc_counter(ctype) \
+    vlib_increment_combined_counter (im->combined_sw_if_counters + ctype, \
+				     vlib_get_thread_index (),            \
+				     si->sw_if_index, packets[ctype],     \
+				     bytes[ctype]);
+
+    inc_counter (VNET_INTERFACE_COUNTER_RX_UNICAST);
+    inc_counter (VNET_INTERFACE_COUNTER_RX_MULTICAST);
+    inc_counter (VNET_INTERFACE_COUNTER_RX_BROADCAST);
   }
 
 }
@@ -1197,6 +1303,33 @@ pg_buffer_init (vlib_main_t * vm,
 		       /* set_data */ 1);
 }
 
+static void
+bump_temp_counters (vlib_main_t * vm, u32 bi, u32 * unicast_packets,
+		    u32 * unicast_bytes, u32 * multicast_packets,
+		    u32 * multi_bytes, u32 * broadcast_pkts,
+		    u32 * broadcast_bytes)
+{
+  vlib_buffer_t *b = vlib_get_buffer (vm, bi);
+  ethernet_header_t *eh = vlib_buffer_get_current (b);
+  if (ETHERNET_ADDRESS_UNICAST == ethernet_address_cast (eh->dst_address))
+    {
+      ++*unicast_packets;
+      *unicast_bytes += vlib_buffer_length_in_chain (vm, b);
+    }
+  else if (eh->dst_address[0] == 0xff && eh->dst_address[1] == 0xff
+	   && eh->dst_address[2] == 0xff && eh->dst_address[3] == 0xff
+	   && eh->dst_address[4] == 0xff && eh->dst_address[5] == 0xff)
+    {
+      ++*broadcast_pkts;
+      *broadcast_bytes += vlib_buffer_length_in_chain (vm, b);
+    }
+  else
+    {
+      ++*multicast_packets;
+      *multi_bytes += vlib_buffer_length_in_chain (vm, b);
+    }
+}
+
 static u32
 pg_stream_fill_helper (pg_main_t * pg,
 		       pg_stream_t * s,
@@ -1260,14 +1393,39 @@ pg_stream_fill_helper (pg_main_t * pg,
 	  vnet_interface_main_t *im = &vnm->interface_main;
 	  vnet_sw_interface_t *si =
 	    vnet_get_sw_interface (vnm, s->sw_if_index[VLIB_RX]);
-	  u32 l = 0;
+	  u32 l = 0, unicast_packets = 0, unicast_bytes =
+	    0, multicast_packets = 0, multi_bytes = 0, broadcast_pkts =
+	    0, broadcast_bytes = 0;
 	  u32 i;
 	  for (i = 0; i < n_alloc; i++)
-	    l += vlib_buffer_index_length_in_chain (vm, buffers[i]);
+	    {
+	      u32 buf_len =
+		vlib_buffer_index_length_in_chain (vm, buffers[i]);
+	      l += buf_len;
+	      bump_temp_counters (vm, buffers[i], &unicast_packets,
+				  &unicast_bytes, &multicast_packets,
+				  &multi_bytes, &broadcast_pkts,
+				  &broadcast_bytes);
+	    }
 	  vlib_increment_combined_counter (im->combined_sw_if_counters
 					   + VNET_INTERFACE_COUNTER_RX,
 					   vlib_get_thread_index (),
 					   si->sw_if_index, n_alloc, l);
+	  vlib_increment_combined_counter (im->combined_sw_if_counters +
+					   VNET_INTERFACE_COUNTER_RX_UNICAST,
+					   vlib_get_thread_index (),
+					   si->sw_if_index, unicast_packets,
+					   unicast_bytes);
+	  vlib_increment_combined_counter (im->combined_sw_if_counters +
+					   VNET_INTERFACE_COUNTER_RX_MULTICAST,
+					   vlib_get_thread_index (),
+					   si->sw_if_index, multicast_packets,
+					   multi_bytes);
+	  vlib_increment_combined_counter (im->combined_sw_if_counters +
+					   VNET_INTERFACE_COUNTER_RX_BROADCAST,
+					   vlib_get_thread_index (),
+					   si->sw_if_index, broadcast_pkts,
+					   broadcast_bytes);
 	  s->current_replay_packet_index += n_alloc;
 	  s->current_replay_packet_index %=
 	    vec_len (s->replay_packet_templates);
