@@ -1206,7 +1206,19 @@ vnet_interface_init (vlib_main_t * vm)
   vec_validate (im->combined_sw_if_counters,
 		VNET_N_COMBINED_INTERFACE_COUNTER - 1);
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX].name = "rx";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX_UNICAST].name =
+    "rx-unicast";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX_MULTICAST].name =
+    "rx-multicast";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_RX_BROADCAST].name =
+    "rx-broadcast";
   im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX].name = "tx";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX_UNICAST].name =
+    "tx-unicast";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX_MULTICAST].name =
+    "tx-multicast";
+  im->combined_sw_if_counters[VNET_INTERFACE_COUNTER_TX_BROADCAST].name =
+    "tx-broadcast";
 
   im->sw_if_counter_lock[0] = 0;
 

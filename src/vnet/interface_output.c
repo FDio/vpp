@@ -204,7 +204,7 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 				   vlib_node_runtime_t * node,
 				   vlib_frame_t * frame, vnet_main_t * vnm,
 				   vnet_hw_interface_t * hi,
-				   int do_tx_offloads)
+				   int do_tx_offloads, int want_stats)
 {
   vnet_interface_output_runtime_t *rt = (void *) node->runtime_data;
   vnet_sw_interface_t *si;
@@ -216,6 +216,8 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
   u32 next_index = VNET_INTERFACE_OUTPUT_NEXT_TX;
   u32 current_config_index = ~0;
   u8 arc = im->output_feature_arc_index;
+  u32 packets[VNET_N_COMBINED_INTERFACE_COUNTER] = { 0 };
+  u64 bytes[VNET_N_COMBINED_INTERFACE_COUNTER] = { 0 };
 
   n_buffers = frame->n_vectors;
 
@@ -280,6 +282,7 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 	{
 	  u32 bi0, bi1, bi2, bi3;
 	  vlib_buffer_t *b0, *b1, *b2, *b3;
+	  int b0_ct_offset, b1_ct_offset, b2_ct_offset, b3_ct_offset;
 	  u32 tx_swif0, tx_swif1, tx_swif2, tx_swif3;
 	  u32 or_flags;
 
@@ -326,6 +329,26 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 	  n_bytes += n_bytes_b2 + n_bytes_b3;
 	  n_packets += 4;
 
+	  if (want_stats)
+	    {
+	      b0_ct_offset =
+		eh_dst_addr_to_tx_ct_offset (vlib_buffer_get_current (b0));
+	      b1_ct_offset =
+		eh_dst_addr_to_tx_ct_offset (vlib_buffer_get_current (b1));
+	      b2_ct_offset =
+		eh_dst_addr_to_tx_ct_offset (vlib_buffer_get_current (b2));
+	      b3_ct_offset =
+		eh_dst_addr_to_tx_ct_offset (vlib_buffer_get_current (b3));
+	      bytes[b0_ct_offset] += n_bytes_b0;
+	      bytes[b1_ct_offset] += n_bytes_b1;
+	      bytes[b2_ct_offset] += n_bytes_b2;
+	      bytes[b3_ct_offset] += n_bytes_b3;
+	      packets[b0_ct_offset] += 1;
+	      packets[b1_ct_offset] += 1;
+	      packets[b2_ct_offset] += 1;
+	      packets[b3_ct_offset] += 1;
+	    }
+
 	  if (PREDICT_FALSE (current_config_index != ~0))
 	    {
 	      b0->feature_arc_index = arc;
@@ -345,6 +368,13 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 					       VNET_INTERFACE_COUNTER_TX,
 					       thread_index, tx_swif0, 1,
 					       n_bytes_b0);
+	      if (want_stats)
+		{
+		  vlib_increment_combined_counter (im->combined_sw_if_counters
+						   + b0_ct_offset,
+						   thread_index, tx_swif0, 1,
+						   n_bytes_b0);
+		}
 	    }
 
 	  if (PREDICT_FALSE (tx_swif1 != rt->sw_if_index))
@@ -354,6 +384,13 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 					       VNET_INTERFACE_COUNTER_TX,
 					       thread_index, tx_swif1, 1,
 					       n_bytes_b1);
+	      if (want_stats)
+		{
+		  vlib_increment_combined_counter (im->combined_sw_if_counters
+						   + b1_ct_offset,
+						   thread_index, tx_swif1, 1,
+						   n_bytes_b1);
+		}
 	    }
 
 	  if (PREDICT_FALSE (tx_swif2 != rt->sw_if_index))
@@ -363,6 +400,13 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 					       VNET_INTERFACE_COUNTER_TX,
 					       thread_index, tx_swif2, 1,
 					       n_bytes_b2);
+	      if (want_stats)
+		{
+		  vlib_increment_combined_counter (im->combined_sw_if_counters
+						   + b2_ct_offset,
+						   thread_index, tx_swif2, 1,
+						   n_bytes_b2);
+		}
 	    }
 	  if (PREDICT_FALSE (tx_swif3 != rt->sw_if_index))
 	    {
@@ -371,6 +415,13 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 					       VNET_INTERFACE_COUNTER_TX,
 					       thread_index, tx_swif3, 1,
 					       n_bytes_b3);
+	      if (want_stats)
+		{
+		  vlib_increment_combined_counter (im->combined_sw_if_counters
+						   + b3_ct_offset,
+						   thread_index, tx_swif3, 1,
+						   n_bytes_b3);
+		}
 	    }
 
 	  or_flags = b0->flags | b1->flags | b2->flags | b3->flags;
@@ -393,6 +444,7 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
       while (from + 1 <= from_end && n_left_to_tx >= 1)
 	{
 	  u32 bi0;
+	  int b0_ct_offset;
 	  vlib_buffer_t *b0;
 	  u32 tx_swif0;
 
@@ -413,6 +465,14 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 	  n_bytes += n_bytes_b0;
 	  n_packets += 1;
 
+	  if (want_stats)
+	    {
+	      b0_ct_offset =
+		eh_dst_addr_to_tx_ct_offset (vlib_buffer_get_current (b0));
+	      bytes[b0_ct_offset] += n_bytes_b0;
+	      packets[b0_ct_offset] += 1;
+	    }
+
 	  if (PREDICT_FALSE (current_config_index != ~0))
 	    {
 	      b0->feature_arc_index = arc;
@@ -426,6 +486,13 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 					       VNET_INTERFACE_COUNTER_TX,
 					       thread_index, tx_swif0, 1,
 					       n_bytes_b0);
+	      if (want_stats)
+		{
+		  vlib_increment_combined_counter (im->combined_sw_if_counters
+						   + b0_ct_offset,
+						   thread_index, tx_swif0, 1,
+						   n_bytes_b0);
+		}
 	    }
 
 	  if (do_tx_offloads)
@@ -440,6 +507,14 @@ vnet_interface_output_node_inline (vlib_main_t * vm,
 				   + VNET_INTERFACE_COUNTER_TX,
 				   thread_index,
 				   rt->sw_if_index, n_packets, n_bytes);
+#define inc_counter(ctype) \
+  vlib_increment_combined_counter (im->combined_sw_if_counters + ctype,\
+				   thread_index, rt->sw_if_index,      \
+				   packets[ctype], bytes[ctype]);
+
+  inc_counter (VNET_INTERFACE_COUNTER_TX_UNICAST);
+  inc_counter (VNET_INTERFACE_COUNTER_TX_MULTICAST);
+  inc_counter (VNET_INTERFACE_COUNTER_TX_BROADCAST);
   return n_buffers;
 }
 
@@ -454,10 +529,12 @@ vnet_interface_output_node (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (hi->flags & VNET_HW_INTERFACE_FLAG_SUPPORTS_TX_L4_CKSUM_OFFLOAD)
     return vnet_interface_output_node_inline (vm, node, frame, vnm, hi,
-					      /* do_tx_offloads */ 0);
+					      /* do_tx_offloads */ 0,
+					      /* FIXME */ 1);
   else
     return vnet_interface_output_node_inline (vm, node, frame, vnm, hi,
-					      /* do_tx_offloads */ 1);
+					      /* do_tx_offloads */ 1,
+					      /* FIXME */ 1);
 }
 
 VLIB_NODE_FUNCTION_MULTIARCH_CLONE (vnet_interface_output_node);
