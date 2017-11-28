@@ -705,6 +705,25 @@ VLIB_REGISTER_NODE (session_queue_node) =
 };
 /* *INDENT-ON* */
 
+static clib_error_t *
+session_queue_exit (vlib_main_t * vm)
+{
+  if (vec_len (vlib_mains) < 2)
+    return 0;
+
+  /*
+   * Shut off (especially) worker-thread session nodes.
+   * Otherwise, vpp can crash as the main thread unmaps the
+   * API segment.
+   */
+  vlib_worker_thread_barrier_sync (vm);
+  session_node_enable_disable (0 /* is_enable */ );
+  vlib_worker_thread_barrier_release (vm);
+  return 0;
+}
+
+VLIB_MAIN_LOOP_EXIT_FUNCTION (session_queue_exit);
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

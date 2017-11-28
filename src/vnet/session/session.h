@@ -538,6 +538,8 @@ do {									\
       return clib_error_return(0, "session layer is not enabled");	\
 } while (0)
 
+void session_node_enable_disable (u8 is_en);
+
 #endif /* __included_session_h__ */
 
 /*
