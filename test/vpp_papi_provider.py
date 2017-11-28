@@ -1247,6 +1247,35 @@ class VppPapiProvider(object):
              'vrf_id': vrf_id,
              'protocol': protocol})
 
+    def nat44_add_del_identity_mapping(
+            self,
+            ip='0',
+            sw_if_index=0xFFFFFFFF,
+            port=0,
+            addr_only=1,
+            vrf_id=0,
+            protocol=0,
+            is_add=1):
+        """Add/delete NAT44 identity mapping
+
+        :param ip: IP address (Default value = 0)
+        :param sw_if_index: Interface instead of IP address
+        :param port: Port number (Default value = 0)
+        :param addr_only: 1 if address only mapping, 0 if address and port
+        :param vrf_id: VRF ID
+        :param protocol: IP protocol (Default value = 0)
+        :param is_add: 1 if add, 0 if delete (Default value = 1)
+        """
+        return self.api(
+            self.papi.nat44_add_del_identity_mapping,
+            {'is_add': is_add,
+             'addr_only': addr_only,
+             'ip_address': ip,
+             'port': port,
+             'sw_if_index': sw_if_index,
+             'vrf_id': vrf_id,
+             'protocol': protocol})
+
     def nat44_add_del_address_range(
             self,
             first_ip_address,
@@ -1290,6 +1319,12 @@ class VppPapiProvider(object):
         :return: Dictionary of NAT44 static mappings
         """
         return self.api(self.papi.nat44_static_mapping_dump, {})
+
+    def nat44_identity_mapping_dump(self):
+        """Dump NAT44 identity mappings
+        :return: Dictionary of NAT44 identity mappings
+        """
+        return self.api(self.papi.nat44_identity_mapping_dump, {})
 
     def nat_show_config(self):
         """Show NAT plugin config

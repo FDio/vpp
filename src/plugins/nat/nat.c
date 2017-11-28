@@ -733,7 +733,7 @@ delete:
       pool_put (sm->static_mappings, m);
     }
 
-  if (!addr_only)
+  if (!addr_only || (l_addr.as_u32 == e_addr.as_u32))
     return 0;
 
   /* Add/delete external address to FIB */
@@ -1240,7 +1240,7 @@ fib:
 
   pool_foreach (m, sm->static_mappings,
   ({
-    if (!(m->addr_only))
+    if (!(m->addr_only) || (m->local_addr.as_u32 == m->external_addr.as_u32))
       continue;
 
     snat_add_del_addr_to_fib(&m->external_addr, 32, sw_if_index, !is_del);
@@ -1990,7 +1990,7 @@ add_static_mapping_command_fn (vlib_main_t * vm,
   u32 sw_if_index = ~0;
   vnet_main_t * vnm = vnet_get_main();
   int rv;
-  snat_protocol_t proto;
+  snat_protocol_t proto = ~0;
   u8 proto_set = 0;
 
   /* Get a line of input. */
@@ -2087,6 +2087,100 @@ VLIB_CLI_COMMAND (add_static_mapping_command, static) = {
   .function = add_static_mapping_command_fn,
   .short_help =
     "nat44 add static mapping tcp|udp|icmp local <addr> [<port>] external <addr> [<port>] [vrf <table-id>] [del]",
+};
+
+static clib_error_t *
+add_identity_mapping_command_fn (vlib_main_t * vm,
+                                 unformat_input_t * input,
+                                 vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t * error = 0;
+  ip4_address_t addr;
+  u32 port = 0, vrf_id = ~0;
+  int is_add = 1;
+  int addr_only = 1;
+  u32 sw_if_index = ~0;
+  vnet_main_t * vnm = vnet_get_main();
+  int rv;
+  snat_protocol_t proto;
+
+  addr.as_u32 = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_ip4_address, &addr))
+        ;
+      else if (unformat (line_input, "external %U",
+                         unformat_vnet_sw_interface, vnm, &sw_if_index))
+        ;
+      else if (unformat (line_input, "vrf %u", &vrf_id))
+        ;
+      else if (unformat (line_input, "%U %u", unformat_snat_protocol, &proto,
+                         &port))
+        addr_only = 0;
+      else if (unformat (line_input, "del"))
+        is_add = 0;
+      else
+        {
+          error = clib_error_return (0, "unknown input: '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  rv = snat_add_static_mapping(addr, addr, (u16) port, (u16) port,
+                               vrf_id, addr_only, sw_if_index, proto, is_add);
+
+  switch (rv)
+    {
+    case VNET_API_ERROR_INVALID_VALUE:
+      error = clib_error_return (0, "External port already in use.");
+      goto done;
+    case VNET_API_ERROR_NO_SUCH_ENTRY:
+      if (is_add)
+        error = clib_error_return (0, "External addres must be allocated.");
+      else
+        error = clib_error_return (0, "Mapping not exist.");
+      goto done;
+    case VNET_API_ERROR_NO_SUCH_FIB:
+      error = clib_error_return (0, "No such VRF id.");
+      goto done;
+    case VNET_API_ERROR_VALUE_EXIST:
+      error = clib_error_return (0, "Mapping already exist.");
+      goto done;
+    default:
+      break;
+    }
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{snat add identity mapping}
+ * Identity mapping translate an IP address to itself.
+ * To create identity mapping for address 10.0.0.3 port 6303 for TCP protocol
+ * use:
+ *  vpp# nat44 add identity mapping 10.0.0.3 tcp 6303
+ * To create identity mapping for address 10.0.0.3 use:
+ *  vpp# nat44 add identity mapping 10.0.0.3
+ * To create identity mapping for DHCP addressed interface use:
+ *  vpp# nat44 add identity mapping GigabitEthernet0/a/0 tcp 3606
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (add_identity_mapping_command, static) = {
+  .path = "nat44 add identity mapping",
+  .function = add_identity_mapping_command_fn,
+  .short_help = "nat44 add identity mapping <interface>|<ip4-addr> "
+    "[<protocol> <port>] [vrf <table-id>] [del]",
 };
 
 static clib_error_t *
@@ -2999,6 +3093,7 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
   snat_main_t *sm = &snat_main;
   snat_static_map_resolve_t *rp;
   u32 *indices_to_delete = 0;
+  ip4_address_t l_addr;
   int i, j;
   int rv;
 
@@ -3021,8 +3116,13 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
                   /* On this interface? */
                   if (rp->sw_if_index == sw_if_index)
                     {
+                      /* Indetity mapping? */
+                      if (rp->l_addr.as_u32 == 0)
+                        l_addr.as_u32 = address[0].as_u32;
+                      else
+                        l_addr.as_u32 = rp->l_addr.as_u32;
                       /* Add the static mapping */
-                      rv = snat_add_static_mapping (rp->l_addr,
+                      rv = snat_add_static_mapping (l_addr,
                                                     address[0],
                                                     rp->l_port,
                                                     rp->e_port,
@@ -3032,7 +3132,7 @@ snat_ip4_add_del_interface_address_cb (ip4_main_t * im,
                                                     rp->proto,
                                                     rp->is_add);
                       if (rv)
-                        clib_warning ("snat_add_static_mapping returned %d", 
+                        clib_warning ("snat_add_static_mapping returned %d",
                                       rv);
                       vec_add1 (indices_to_delete, j);
                     }

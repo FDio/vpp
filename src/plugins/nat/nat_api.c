@@ -798,7 +798,7 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
-      if (!vec_len(m->locals))
+      if (!vec_len(m->locals) && (m->local_addr.as_u32 != m->external_addr.as_u32))
         send_nat44_static_mapping_details (m, q, mp->context);
   }));
   /* *INDENT-ON* */
@@ -806,7 +806,8 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
   for (j = 0; j < vec_len (sm->to_resolve); j++)
     {
       rp = sm->to_resolve + j;
-      send_nat44_static_map_resolve_details (rp, q, mp->context);
+      if (rp->l_addr.as_u32 != 0)
+	send_nat44_static_map_resolve_details (rp, q, mp->context);
     }
 }
 
@@ -817,6 +818,145 @@ vl_api_nat44_static_mapping_dump_t_print (vl_api_nat44_static_mapping_dump_t *
   u8 *s;
 
   s = format (0, "SCRIPT: nat44_static_mapping_dump ");
+
+  FINISH;
+}
+
+static void
+  vl_api_nat44_add_del_identity_mapping_t_handler
+  (vl_api_nat44_add_del_identity_mapping_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_add_del_identity_mapping_reply_t *rmp;
+  ip4_address_t addr;
+  u16 port = 0;
+  u32 vrf_id, sw_if_index;
+  int rv = 0;
+  snat_protocol_t proto = ~0;
+
+  if (mp->addr_only == 0)
+    {
+      port = clib_net_to_host_u16 (mp->port);
+      proto = ip_proto_to_snat_proto (mp->protocol);
+    }
+  vrf_id = clib_net_to_host_u32 (mp->vrf_id);
+  sw_if_index = clib_net_to_host_u32 (mp->sw_if_index);
+  if (sw_if_index != ~0)
+    addr.as_u32 = 0;
+  else
+    memcpy (&addr.as_u8, mp->ip_address, 4);
+
+
+  rv =
+    snat_add_static_mapping (addr, addr, port, port, vrf_id, mp->addr_only,
+			     sw_if_index, proto, mp->is_add);
+
+  REPLY_MACRO (VL_API_NAT44_ADD_DEL_IDENTITY_MAPPING_REPLY);
+}
+
+static void *vl_api_nat44_add_del_identity_mapping_t_print
+  (vl_api_nat44_add_del_identity_mapping_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_add_del_identity_mapping ");
+  if (mp->sw_if_index != ~0)
+    s = format (s, "sw_if_index %d", clib_net_to_host_u32 (mp->sw_if_index));
+  else
+    s = format (s, "addr %U", format_ip4_address, mp->ip_address);
+
+  if (mp->addr_only == 0)
+    s =
+      format (s, "protocol %d port %d", mp->protocol,
+	      clib_net_to_host_u16 (mp->port));
+
+  if (mp->vrf_id != ~0)
+    s = format (s, "vrf %d", clib_net_to_host_u32 (mp->vrf_id));
+
+  FINISH;
+}
+
+static void
+send_nat44_identity_mapping_details (snat_static_mapping_t * m,
+				     unix_shared_memory_queue_t * q,
+				     u32 context)
+{
+  vl_api_nat44_identity_mapping_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_NAT44_IDENTITY_MAPPING_DETAILS + sm->msg_id_base);
+  rmp->addr_only = m->addr_only;
+  clib_memcpy (rmp->ip_address, &(m->local_addr), 4);
+  rmp->port = htons (m->local_port);
+  rmp->sw_if_index = ~0;
+  rmp->vrf_id = htonl (m->vrf_id);
+  rmp->protocol = snat_proto_to_ip_proto (m->proto);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+send_nat44_identity_map_resolve_details (snat_static_map_resolve_t * m,
+					 unix_shared_memory_queue_t * q,
+					 u32 context)
+{
+  vl_api_nat44_identity_mapping_details_t *rmp;
+  snat_main_t *sm = &snat_main;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_NAT44_IDENTITY_MAPPING_DETAILS + sm->msg_id_base);
+  rmp->addr_only = m->addr_only;
+  rmp->port = htons (m->l_port);
+  rmp->sw_if_index = htonl (m->sw_if_index);
+  rmp->vrf_id = htonl (m->vrf_id);
+  rmp->protocol = snat_proto_to_ip_proto (m->proto);
+  rmp->context = context;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void
+  vl_api_nat44_identity_mapping_dump_t_handler
+  (vl_api_nat44_identity_mapping_dump_t * mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t *sm = &snat_main;
+  snat_static_mapping_t *m;
+  snat_static_map_resolve_t *rp;
+  int j;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  /* *INDENT-OFF* */
+  pool_foreach (m, sm->static_mappings,
+  ({
+      if (!vec_len(m->locals) && (m->local_addr.as_u32 == m->external_addr.as_u32))
+        send_nat44_identity_mapping_details (m, q, mp->context);
+  }));
+  /* *INDENT-ON* */
+
+  for (j = 0; j < vec_len (sm->to_resolve); j++)
+    {
+      rp = sm->to_resolve + j;
+      if (rp->l_addr.as_u32 == 0)
+	send_nat44_identity_map_resolve_details (rp, q, mp->context);
+    }
+}
+
+static void *vl_api_nat44_identity_mapping_dump_t_print
+  (vl_api_nat44_identity_mapping_dump_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_identity_mapping_dump ");
 
   FINISH;
 }
@@ -2320,7 +2460,9 @@ _(NAT_REASS_DUMP, nat_reass_dump)                                       \
 _(NAT44_ADD_DEL_ADDRESS_RANGE, nat44_add_del_address_range)             \
 _(NAT44_INTERFACE_ADD_DEL_FEATURE, nat44_interface_add_del_feature)     \
 _(NAT44_ADD_DEL_STATIC_MAPPING, nat44_add_del_static_mapping)           \
+_(NAT44_ADD_DEL_IDENTITY_MAPPING, nat44_add_del_identity_mapping)       \
 _(NAT44_STATIC_MAPPING_DUMP, nat44_static_mapping_dump)                 \
+_(NAT44_IDENTITY_MAPPING_DUMP, nat44_identity_mapping_dump)             \
 _(NAT44_ADDRESS_DUMP, nat44_address_dump)                               \
 _(NAT44_INTERFACE_DUMP, nat44_interface_dump)                           \
 _(NAT44_ADD_DEL_INTERFACE_ADDR, nat44_add_del_interface_addr)           \

@@ -393,6 +393,58 @@ define nat44_static_mapping_details {
   u32 vrf_id;
 };
 
+/** \brief Add/delete NAT44 identity mapping
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param is_add - 1 if add, 0 if delete
+    @param addr_only - 1 if address only mapping
+    @param ip_address - IPv4 address
+    @param protocol - IP protocol
+    @param port - port number
+    @param sw_if_index - interface (if set ip_address is ignored, ~0 means not
+                                    used)
+    @param vfr_id - VRF ID (if ~0 use default VRF)
+*/
+autoreply define nat44_add_del_identity_mapping {
+  u32 client_index;
+  u32 context;
+  u8 is_add;
+  u8 addr_only;
+  u8 ip_address[4];
+  u8 protocol;
+  u16 port;
+  u32 sw_if_index;
+  u32 vrf_id;
+};
+
+/** \brief Dump NAT44 identity mappings
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_identity_mapping_dump {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief NAT44 identity mapping details response
+    @param context - sender context, to match reply w/ request
+    @param addr_only - 1 if address only mapping
+    @param ip_address - IPv4 address
+    @param protocol - IP protocol
+    @param port - port number
+    @param sw_if_index - interface
+    @param vfr_id - VRF ID
+*/
+define nat44_identity_mapping_details {
+  u32 context;
+  u8 addr_only;
+  u8 ip_address[4];
+  u8 protocol;
+  u16 port;
+  u32 sw_if_index;
+  u32 vrf_id;
+};
+
 /** \brief Add/delete NAT44 pool address from specific interfce
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
