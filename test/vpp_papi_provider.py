@@ -3248,3 +3248,14 @@ class VppPapiProvider(object):
         """ IPIP tunnel Delete """
         return self.api(self.papi.ipip_del_tunnel,
                         {'sw_if_index': sw_if_index})
+
+    def want_per_interface_combined_stats(self, sw_ifs, enable_disable=1):
+        return self.api(self.papi.want_per_interface_combined_stats,
+                        {'enable_disable': enable_disable,
+                         'pid': os.getpid(),
+                         'num': len(sw_ifs),
+                         'sw_ifs': sw_ifs, })
+
+    def collect_detailed_interface_stats(self, enable_disable=1):
+        return self.api(self.papi.collect_detailed_interface_stats,
+                        {'enable_disable': enable_disable})

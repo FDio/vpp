@@ -846,20 +846,17 @@ do_combined_per_interface_counters (stats_main_t * sm)
 	  vp->sw_if_index = htonl (reg->item);
 
 	  im = &vnet_get_main ()->interface_main;
-	  cm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_RX;
-	  vlib_get_combined_counter (cm, reg->item, &v);
-	  clib_mem_unaligned (&vp->rx_packets, u64) =
-	    clib_host_to_net_u64 (v.packets);
-	  clib_mem_unaligned (&vp->rx_bytes, u64) =
-	    clib_host_to_net_u64 (v.bytes);
-	  cm = im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX;
-	  vlib_get_combined_counter (cm, reg->item, &v);
-	  clib_mem_unaligned (&vp->tx_packets, u64) =
-	    clib_host_to_net_u64 (v.packets);
-	  clib_mem_unaligned (&vp->tx_bytes, u64) =
-	    clib_host_to_net_u64 (v.bytes);
 
-	  vl_api_send_msg (vl_reg, (u8 *) mp);
+#define fill_counter(counter, rx_tx)\
+ 	  cm = im->combined_sw_if_counters + counter; \
+ 	  vlib_get_combined_counter (cm, reg->item, &v);\
+ 	  clib_mem_unaligned (&vp->rx_tx##_packets, u64) =\
+ 	    clib_host_to_net_u64 (v.packets);\
+ 	  clib_mem_unaligned (&vp->rx_tx##_bytes, u64) =\
+ 	    clib_host_to_net_u64 (v.bytes);
+
+	  foreach_combined_interface_counter (fill_counter)
+	    vl_api_send_msg (vl_reg, (u8 *) mp);
 	}
     }
 

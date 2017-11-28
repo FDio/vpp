@@ -255,6 +255,8 @@ gre_input (vlib_main_t * vm,
 	      goto drop0;
 	    }
 	  len = vlib_buffer_length_in_chain (vm, b0);
+	  /* FIXME should we update _UNICAST, _MULTICAST, _BROADCAST counters
+	   * here? in which case(s)? */
 	  vlib_increment_combined_counter (im->combined_sw_if_counters
 					   + VNET_INTERFACE_COUNTER_RX,
 					   thread_index,
@@ -328,6 +330,8 @@ gre_input (vlib_main_t * vm,
 	      goto drop1;
 	    }
 	  len = vlib_buffer_length_in_chain (vm, b1);
+	  /* FIXME should we update _UNICAST, _MULTICAST, _BROADCAST counters
+	   * here? in which case(s)? */
 	  vlib_increment_combined_counter (im->combined_sw_if_counters
 					   + VNET_INTERFACE_COUNTER_RX,
 					   thread_index,
@@ -504,6 +508,8 @@ gre_input (vlib_main_t * vm,
 	      goto drop;
 	    }
 	  len = vlib_buffer_length_in_chain (vm, b0);
+	  /* FIXME should we update _UNICAST, _MULTICAST, _BROADCAST counters
+	   * here? in which case(s)? */
 	  vlib_increment_combined_counter (im->combined_sw_if_counters
 					   + VNET_INTERFACE_COUNTER_RX,
 					   thread_index,

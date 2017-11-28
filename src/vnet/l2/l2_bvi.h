@@ -38,7 +38,8 @@ static_always_inline u32
 l2_to_bvi (vlib_main_t * vlib_main,
 	   vnet_main_t * vnet_main,
 	   vlib_buffer_t * b0,
-	   u32 bvi_sw_if_index, next_by_ethertype_t * l3_next, u32 * next0)
+	   u32 bvi_sw_if_index, next_by_ethertype_t * l3_next, u32 * next0,
+	   int collect_detailed_stats)
 {
   u8 l2_len;
   u16 ethertype;
@@ -100,6 +101,28 @@ l2_to_bvi (vlib_main_t * vlib_main,
      vlib_main->thread_index,
      vnet_buffer (b0)->sw_if_index[VLIB_RX],
      1, vlib_buffer_length_in_chain (vlib_main, b0));
+  if (collect_detailed_stats)
+    {
+      int b0_ctype;
+      if (ethernet_address_cast (e0->dst_address) == ETHERNET_ADDRESS_UNICAST)
+	{
+	  b0_ctype = VNET_INTERFACE_COUNTER_RX_UNICAST;
+	}
+      else if (ethernet_address_is_broadcast (e0->dst_address))
+	{
+	  b0_ctype = VNET_INTERFACE_COUNTER_RX_BROADCAST;
+	}
+      else
+	{
+	  b0_ctype = VNET_INTERFACE_COUNTER_RX_MULTICAST;
+	}
+      vlib_increment_combined_counter
+	(vnet_main->interface_main.combined_sw_if_counters + b0_ctype,
+	 vlib_main->thread_index,
+	 vnet_buffer (b0)->sw_if_index[VLIB_RX],
+	 1, vlib_buffer_length_in_chain (vlib_main, b0));
+    }
+
   return TO_BVI_ERR_OK;
 }
 

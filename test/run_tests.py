@@ -124,6 +124,9 @@ def run_forked(suite):
             try:
                 os.symlink(last_test_temp_dir, link_path)
             except:
+                global_logger.error("An exception occured while creating the "
+                                    "link: ")
+                global_logger.error(sys.exc_info()[0])
                 pass
             api_post_mortem_path = "/tmp/api_post_mortem.%d" % vpp_pid
             if os.path.isfile(api_post_mortem_path):
