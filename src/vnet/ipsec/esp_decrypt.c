@@ -81,8 +81,8 @@ format_esp_decrypt_trace (u8 * s, va_list * args)
 }
 
 always_inline void
-esp_decrypt_aes_cbc (ipsec_crypto_alg_t alg,
-		     u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
+esp_decrypt_cbc (ipsec_crypto_alg_t alg,
+		 u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
 {
   ipsec_proto_main_t *em = &ipsec_proto_main;
   u32 thread_index = vlib_get_thread_index ();
@@ -246,11 +246,15 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 	  /* add old buffer to the recycle list */
 	  vec_add1 (recycle, i_bi0);
 
-	  if (sa0->crypto_alg >= IPSEC_CRYPTO_ALG_AES_CBC_128 &&
-	      sa0->crypto_alg <= IPSEC_CRYPTO_ALG_AES_CBC_256)
+	  if ((sa0->crypto_alg >= IPSEC_CRYPTO_ALG_AES_CBC_128 &&
+	       sa0->crypto_alg <= IPSEC_CRYPTO_ALG_AES_CBC_256) ||
+	      (sa0->crypto_alg >= IPSEC_CRYPTO_ALG_DES_CBC &&
+	       sa0->crypto_alg <= IPSEC_CRYPTO_ALG_3DES_CBC))
 	    {
-	      const int BLOCK_SIZE = 16;
-	      const int IV_SIZE = 16;
+	      const int BLOCK_SIZE =
+		em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].block_size;;
+	      const int IV_SIZE =
+		em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].iv_size;
 	      esp_footer_t *f0;
 	      u8 ip_hdr_size = 0;
 
@@ -298,13 +302,13 @@ esp_decrypt_node_fn (vlib_main_t * vm,
 		    }
 		}
 
-	      esp_decrypt_aes_cbc (sa0->crypto_alg,
-				   esp0->data + IV_SIZE,
-				   (u8 *) vlib_buffer_get_current (o_b0) +
-				   ip_hdr_size, BLOCK_SIZE * blocks,
-				   sa0->crypto_key, esp0->data);
+	      esp_decrypt_cbc (sa0->crypto_alg,
+			       esp0->data + IV_SIZE,
+			       (u8 *) vlib_buffer_get_current (o_b0) +
+			       ip_hdr_size, BLOCK_SIZE * blocks,
+			       sa0->crypto_key, esp0->data);
 
-	      o_b0->current_length = (blocks * 16) - 2 + ip_hdr_size;
+	      o_b0->current_length = (blocks * BLOCK_SIZE) - 2 + ip_hdr_size;
 	      o_b0->flags = VLIB_BUFFER_TOTAL_LENGTH_VALID;
 	      f0 =
 		(esp_footer_t *) ((u8 *) vlib_buffer_get_current (o_b0) +

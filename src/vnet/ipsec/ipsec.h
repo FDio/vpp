@@ -73,7 +73,9 @@ typedef enum
   _(6, AES_CTR_256, "aes-ctr-256")  \
   _(7, AES_GCM_128, "aes-gcm-128")  \
   _(8, AES_GCM_192, "aes-gcm-192")  \
-  _(9, AES_GCM_256, "aes-gcm-256")
+  _(9, AES_GCM_256, "aes-gcm-256")  \
+  _(10, DES_CBC, "des-cbc")         \
+  _(11, 3DES_CBC, "3des-cbc")
 
 typedef enum
 {

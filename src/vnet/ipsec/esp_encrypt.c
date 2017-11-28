@@ -85,8 +85,8 @@ format_esp_encrypt_trace (u8 * s, va_list * args)
 }
 
 always_inline void
-esp_encrypt_aes_cbc (ipsec_crypto_alg_t alg,
-		     u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
+esp_encrypt_cbc (ipsec_crypto_alg_t alg,
+		 u8 * in, u8 * out, size_t in_len, u8 * key, u8 * iv)
 {
   ipsec_proto_main_t *em = &ipsec_proto_main;
   u32 thread_index = vlib_get_thread_index ();
@@ -125,6 +125,7 @@ esp_encrypt_node_fn (vlib_main_t * vm,
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
   ipsec_main_t *im = &ipsec_main;
+  ipsec_proto_main_t *em = &ipsec_proto_main;
   u32 *recycle = 0;
   u32 thread_index = vlib_get_thread_index ();
 
@@ -306,8 +307,10 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	  if (PREDICT_TRUE (sa0->crypto_alg != IPSEC_CRYPTO_ALG_NONE))
 	    {
 
-	      const int BLOCK_SIZE = 16;
-	      const int IV_SIZE = 16;
+	      const int BLOCK_SIZE =
+		em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].block_size;
+	      const int IV_SIZE =
+		em->ipsec_proto_main_crypto_algs[sa0->crypto_alg].iv_size;
 	      int blocks = 1 + (i_b0->current_length + 1) / BLOCK_SIZE;
 
 	      /* pad packet in input buffer */
@@ -330,18 +333,21 @@ esp_encrypt_node_fn (vlib_main_t * vm,
 	      vnet_buffer (o_b0)->sw_if_index[VLIB_RX] =
 		vnet_buffer (i_b0)->sw_if_index[VLIB_RX];
 
-	      u8 iv[16];
+	      u8 iv[em->
+		    ipsec_proto_main_crypto_algs[sa0->crypto_alg].iv_size];
 	      RAND_bytes (iv, sizeof (iv));
 
 	      clib_memcpy ((u8 *) vlib_buffer_get_current (o_b0) +
-			   ip_hdr_size + sizeof (esp_header_t), iv, 16);
+			   ip_hdr_size + sizeof (esp_header_t), iv,
+			   em->ipsec_proto_main_crypto_algs[sa0->
+							    crypto_alg].iv_size);
 
-	      esp_encrypt_aes_cbc (sa0->crypto_alg,
-				   (u8 *) vlib_buffer_get_current (i_b0),
-				   (u8 *) vlib_buffer_get_current (o_b0) +
-				   ip_hdr_size + sizeof (esp_header_t) +
-				   IV_SIZE, BLOCK_SIZE * blocks,
-				   sa0->crypto_key, iv);
+	      esp_encrypt_cbc (sa0->crypto_alg,
+			       (u8 *) vlib_buffer_get_current (i_b0),
+			       (u8 *) vlib_buffer_get_current (o_b0) +
+			       ip_hdr_size + sizeof (esp_header_t) +
+			       IV_SIZE, BLOCK_SIZE * blocks,
+			       sa0->crypto_key, iv);
 	    }
 
 	  o_b0->current_length += hmac_calc (sa0->integ_alg, sa0->integ_key,
