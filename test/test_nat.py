@@ -783,6 +783,17 @@ class TestNAT44(MethodHolder):
                 local_num=0,
                 locals=[])
 
+        identity_mappings = self.vapi.nat44_identity_mapping_dump()
+        for id_m in identity_mappings:
+            self.vapi.nat44_add_del_identity_mapping(
+                addr_only=id_m.addr_only,
+                ip=id_m.ip_address,
+                port=id_m.port,
+                sw_if_index=id_m.sw_if_index,
+                vrf_id=id_m.vrf_id,
+                protocol=id_m.protocol,
+                is_add=0)
+
         adresses = self.vapi.nat44_address_dump()
         for addr in adresses:
             self.vapi.nat44_add_del_address_range(addr.ip_address,
@@ -1189,6 +1200,35 @@ class TestNAT44(MethodHolder):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         self.pg3.assert_nothing_captured()
+
+    def test_identity_nat(self):
+        """ Identity NAT """
+
+        self.vapi.nat44_add_del_identity_mapping(ip=self.pg0.remote_ip4n)
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
+                                                  is_inside=0)
+
+        p = (Ether(src=self.pg1.remote_mac, dst=self.pg1.local_mac) /
+             IP(src=self.pg1.remote_ip4, dst=self.pg0.remote_ip4) /
+             TCP(sport=12345, dport=56789))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        p = capture[0]
+        try:
+            ip = p[IP]
+            tcp = p[TCP]
+            self.assertEqual(ip.dst, self.pg0.remote_ip4)
+            self.assertEqual(ip.src, self.pg1.remote_ip4)
+            self.assertEqual(tcp.dport, 56789)
+            self.assertEqual(tcp.sport, 12345)
+            self.check_tcp_checksum(p)
+            self.check_ip_checksum(p)
+        except:
+            self.logger.error(ppp("Unexpected or invalid packet:", p))
+            raise
 
     def test_static_lb(self):
         """ NAT44 local service load balancing """
@@ -1784,6 +1824,38 @@ class TestNAT44(MethodHolder):
         self.pg7.unconfig_ip4()
         static_mappings = self.vapi.nat44_static_mapping_dump()
         self.assertEqual(0, len(static_mappings))
+
+    def test_interface_addr_identity_nat(self):
+        """ Identity NAT with addresses from interface """
+
+        port = 53053
+        self.vapi.nat44_add_interface_addr(self.pg7.sw_if_index)
+        self.vapi.nat44_add_del_identity_mapping(
+            sw_if_index=self.pg7.sw_if_index,
+            port=port,
+            protocol=IP_PROTOS.tcp,
+            addr_only=0)
+
+        # identity mappings with external interface
+        identity_mappings = self.vapi.nat44_identity_mapping_dump()
+        self.assertEqual(1, len(identity_mappings))
+        self.assertEqual(self.pg7.sw_if_index,
+                         identity_mappings[0].sw_if_index)
+
+        # configure interface address and check identity mappings
+        self.pg7.config_ip4()
+        identity_mappings = self.vapi.nat44_identity_mapping_dump()
+        self.assertEqual(1, len(identity_mappings))
+        self.assertEqual(identity_mappings[0].ip_address,
+                         self.pg7.local_ip4n)
+        self.assertEqual(0xFFFFFFFF, identity_mappings[0].sw_if_index)
+        self.assertEqual(port, identity_mappings[0].port)
+        self.assertEqual(IP_PROTOS.tcp, identity_mappings[0].protocol)
+
+        # remove interface address and check identity mappings
+        self.pg7.unconfig_ip4()
+        identity_mappings = self.vapi.nat44_identity_mapping_dump()
+        self.assertEqual(0, len(identity_mappings))
 
     def test_ipfix_nat44_sess(self):
         """ IPFIX logging NAT44 session created/delted """
