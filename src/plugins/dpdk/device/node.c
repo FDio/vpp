@@ -186,14 +186,25 @@ dpdk_prefetch_ethertype (struct rte_mbuf *mb)
 static_always_inline u32
 dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id,
-		   int maybe_multiseg, u32 n_trace)
+		   int maybe_multiseg, u32 n_trace, int collect_detailed_stats)
 {
   u32 n_buffers;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 n_left_to_next, *to_next;
   u32 mb_index;
   vlib_main_t *vm = vlib_get_main ();
-  uword n_rx_bytes = 0;
+  u32 stats_n_packets[VNET_N_COMBINED_INTERFACE_COUNTER];
+  u64 stats_n_bytes[VNET_N_COMBINED_INTERFACE_COUNTER];
+  if (collect_detailed_stats)
+    {
+      memset (stats_n_packets, 0, sizeof (stats_n_packets));
+      memset (stats_n_bytes, 0, sizeof (stats_n_bytes));
+    }
+  else
+    {
+      stats_n_packets[VNET_INTERFACE_COUNTER_RX] = 0;
+      stats_n_bytes[VNET_INTERFACE_COUNTER_RX] = 0;
+    }
   vlib_buffer_free_list_t *fl;
   vlib_buffer_t *bt = vec_elt_at_index (dm->buffer_templates, thread_index);
 
@@ -221,6 +232,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
   while (n_buffers > 0)
     {
       vlib_buffer_t *b0, *b1, *b2, *b3;
+      int b0_ctype, b1_ctype, b2_ctype, b3_ctype;
       u32 bi0, next0;
       u32 bi1, next1;
       u32 bi2, next2;
@@ -323,7 +335,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  vnet_buffer (b0)->l2_hdr_offset =
 	    mb0->data_off - RTE_PKTMBUF_HEADROOM;
 	  b0->current_length = mb0->data_len - offset0;
-	  n_rx_bytes += mb0->pkt_len;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += mb0->pkt_len;
 
 	  offset1 = device_input_next_node_advance[next1];
 	  b1->current_data = mb1->data_off + offset1 - RTE_PKTMBUF_HEADROOM;
@@ -332,7 +344,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  vnet_buffer (b1)->l2_hdr_offset =
 	    mb1->data_off - RTE_PKTMBUF_HEADROOM;
 	  b1->current_length = mb1->data_len - offset1;
-	  n_rx_bytes += mb1->pkt_len;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += mb1->pkt_len;
 
 	  offset2 = device_input_next_node_advance[next2];
 	  b2->current_data = mb2->data_off + offset2 - RTE_PKTMBUF_HEADROOM;
@@ -341,7 +353,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  vnet_buffer (b2)->l2_hdr_offset =
 	    mb2->data_off - RTE_PKTMBUF_HEADROOM;
 	  b2->current_length = mb2->data_len - offset2;
-	  n_rx_bytes += mb2->pkt_len;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += mb2->pkt_len;
 
 	  offset3 = device_input_next_node_advance[next3];
 	  b3->current_data = mb3->data_off + offset3 - RTE_PKTMBUF_HEADROOM;
@@ -350,8 +362,27 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  vnet_buffer (b3)->l2_hdr_offset =
 	    mb3->data_off - RTE_PKTMBUF_HEADROOM;
 	  b3->current_length = mb3->data_len - offset3;
-	  n_rx_bytes += mb3->pkt_len;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += mb3->pkt_len;
 
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	      b1_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b1));
+	      b2_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b2));
+	      b3_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b3));
+	      stats_n_packets[b0_ctype] += 1;
+	      stats_n_packets[b1_ctype] += 1;
+	      stats_n_packets[b2_ctype] += 1;
+	      stats_n_packets[b3_ctype] += 1;
+	      stats_n_bytes[b0_ctype] += mb0->pkt_len;
+	      stats_n_bytes[b1_ctype] += mb1->pkt_len;
+	      stats_n_bytes[b2_ctype] += mb2->pkt_len;
+	      stats_n_bytes[b3_ctype] += mb3->pkt_len;
+	    }
 
 	  /* Process subsequent segments of multi-segment packets */
 	  if (maybe_multiseg)
@@ -448,7 +479,15 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 	  vnet_buffer (b0)->l2_hdr_offset =
 	    mb0->data_off - RTE_PKTMBUF_HEADROOM;
 	  b0->current_length = mb0->data_len - offset0;
-	  n_rx_bytes += mb0->pkt_len;
+	  stats_n_bytes[VNET_INTERFACE_COUNTER_RX] += mb0->pkt_len;
+
+	  if (collect_detailed_stats)
+	    {
+	      b0_ctype =
+		eh_dst_addr_to_rx_ctype (vlib_buffer_get_current (b0));
+	      stats_n_packets[b0_ctype] += 1;
+	      stats_n_bytes[b0_ctype] += mb0->pkt_len;
+	    }
 
 	  /* Process subsequent segments of multi-segment packets */
 	  dpdk_process_subseq_segs (vm, b0, mb0, fl);
@@ -480,10 +519,24 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  vlib_increment_combined_counter
-    (vnet_get_main ()->interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX,
-     thread_index, xd->vlib_sw_if_index, mb_index, n_rx_bytes);
+  stats_n_packets[VNET_INTERFACE_COUNTER_RX] = mb_index;
+
+#define inc_counter(ctype, rx_tx)                                           \
+  if (stats_n_packets[ctype])                                               \
+    {                                                                       \
+      vlib_increment_combined_counter (                                     \
+          vnet_get_main ()->interface_main.combined_sw_if_counters + ctype, \
+          thread_index, xd->vlib_sw_if_index, stats_n_packets[ctype],       \
+          stats_n_bytes[ctype]);                                            \
+    }
+  if (collect_detailed_stats)
+    {
+      foreach_combined_interface_counter (inc_counter);
+    }
+  else
+    {
+      inc_counter (VNET_INTERFACE_COUNTER_RX, rx);
+    }
 
   vnet_device_increment_rx_packets (thread_index, mb_index);
 
@@ -495,12 +548,25 @@ dpdk_device_input_mseg (dpdk_main_t * dm, dpdk_device_t * xd,
 			vlib_node_runtime_t * node, u32 thread_index,
 			u16 queue_id, u32 n_trace)
 {
+  if (collect_detailed_interface_stats()){
   if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
     return dpdk_device_input (dm, xd, node, thread_index, queue_id,
-			      /* maybe_multiseg */ 1, n_trace);
+			      /* maybe_multiseg */ 1, n_trace,
+			      COLLECT_DETAILED_STATS);
   else
     return dpdk_device_input (dm, xd, node, thread_index, queue_id,
-			      /* maybe_multiseg */ 0, n_trace);
+			      /* maybe_multiseg */ 0, n_trace,
+			      COLLECT_DETAILED_STATS);
+  }else{
+  if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
+    return dpdk_device_input (dm, xd, node, thread_index, queue_id,
+			      /* maybe_multiseg */ 1, n_trace,
+			      COLLECT_SIMPLE_STATS);
+  else
+    return dpdk_device_input (dm, xd, node, thread_index, queue_id,
+			      /* maybe_multiseg */ 0, n_trace,
+			      COLLECT_SIMPLE_STATS);
+  }
 }
 
 static inline void
