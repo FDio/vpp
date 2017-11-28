@@ -8,10 +8,9 @@ from scapy.layers.inet6 import in6_mactoifaceid
 
 from scapy.layers.l2 import Ether
 from scapy.packet import Raw
-from scapy.layers.inet import IP, UDP, TCP
-from scapy.layers.inet6 import IPv6, ICMPv6Unknown, ICMPv6EchoRequest
-from scapy.packet import Packet
-from socket import inet_pton, AF_INET, AF_INET6
+from scapy.layers.inet import IP
+from scapy.layers.inet6 import IPv6
+from socket import AF_INET6
 
 
 def ppp(headline, packet):

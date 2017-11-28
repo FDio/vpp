@@ -87,15 +87,17 @@ buffer_add_to_chain (vlib_main_t * vm, u32 bi, u32 first_bi, u32 prev_bi)
 
 always_inline uword
 netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
-			vlib_frame_t * frame, netmap_if_t * nif)
+			vlib_frame_t * frame, netmap_if_t * nif,
+			int collect_detailed_stats)
 {
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   uword n_trace = vlib_get_trace_count (vm, node);
   netmap_main_t *nm = &netmap_main;
-  u32 n_rx_packets = 0;
-  u32 n_rx_bytes = 0;
+  u32 n_rx_packets[VNET_N_COMBINED_INTERFACE_COUNTER] = { 0 };
+  u64 n_rx_bytes[VNET_N_COMBINED_INTERFACE_COUNTER] = { 0 };
   u32 *to_next = 0;
   u32 n_free_bufs;
+  int b0_ctype;
   struct netmap_ring *ring;
   int cur_ring;
   u32 thread_index = vlib_get_thread_index ();
@@ -226,8 +228,16 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 					       next0);
 
 	      /* next packet */
-	      n_rx_packets++;
-	      n_rx_bytes += slot->len;
+	      n_rx_packets[VNET_INTERFACE_COUNTER_RX]++;
+	      n_rx_bytes[VNET_INTERFACE_COUNTER_RX] += slot->len;
+	      if (collect_detailed_stats)
+		{
+		  b0_ctype =
+		    eh_dst_addr_to_rx_ctype (vlib_buffer_get_current
+					     (first_b0));
+		  n_rx_packets[b0_ctype] += 1;
+		  n_rx_bytes[b0_ctype] += slot->len;
+		}
 	      to_next[0] = first_bi0;
 	      to_next += 1;
 	      n_left_to_next--;
@@ -241,17 +251,33 @@ netmap_device_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
       cur_ring++;
     }
 
-  if (n_rx_packets)
+  if (n_rx_packets[VNET_INTERFACE_COUNTER_RX])
     ioctl (nif->fd, NIOCRXSYNC, NULL);
 
-  vlib_increment_combined_counter
-    (vnet_get_main ()->interface_main.combined_sw_if_counters
-     + VNET_INTERFACE_COUNTER_RX,
-     vlib_get_thread_index (), nif->hw_if_index, n_rx_packets, n_rx_bytes);
+#define inc_counter(ctype, rx_tx)                                           \
+  if (n_rx_packets[ctype])                                                  \
+    {                                                                       \
+      vlib_increment_combined_counter (                                     \
+          vnet_get_main ()->interface_main.combined_sw_if_counters + ctype, \
+          vlib_get_thread_index (), nif->hw_if_index, n_rx_packets[ctype],  \
+          n_rx_bytes[ctype]);                                               \
+    }
+  if (n_rx_packets[VNET_INTERFACE_COUNTER_RX])
+    {
+      if (collect_detailed_stats)
+	{
+	  foreach_combined_interface_counter (inc_counter);
+	}
+      else
+	{
+	  inc_counter (VNET_INTERFACE_COUNTER_RX, tx);
+	}
+    }
 
-  vnet_device_increment_rx_packets (thread_index, n_rx_packets);
+  vnet_device_increment_rx_packets (thread_index,
+				    n_rx_packets[VNET_INTERFACE_COUNTER_RX]);
 
-  return n_rx_packets;
+  return n_rx_packets[VNET_INTERFACE_COUNTER_RX];
 }
 
 static uword
@@ -264,13 +290,29 @@ netmap_input_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   netmap_main_t *nm = &netmap_main;
   netmap_if_t *nmi;
 
-  for (i = 0; i < vec_len (nm->interfaces); i++)
+  if (collect_detailed_interface_stats ())
     {
-      nmi = vec_elt_at_index (nm->interfaces, i);
-      if (nmi->is_admin_up &&
-	  (i % nm->input_cpu_count) ==
-	  (thread_index - nm->input_cpu_first_index))
-	n_rx_packets += netmap_device_input_fn (vm, node, frame, nmi);
+      for (i = 0; i < vec_len (nm->interfaces); i++)
+	{
+	  nmi = vec_elt_at_index (nm->interfaces, i);
+	  if (nmi->is_admin_up &&
+	      (i % nm->input_cpu_count) ==
+	      (thread_index - nm->input_cpu_first_index))
+	    n_rx_packets += netmap_device_input_fn (vm, node, frame, nmi,
+						    COLLECT_DETAILED_STATS);
+	}
+    }
+  else
+    {
+      for (i = 0; i < vec_len (nm->interfaces); i++)
+	{
+	  nmi = vec_elt_at_index (nm->interfaces, i);
+	  if (nmi->is_admin_up &&
+	      (i % nm->input_cpu_count) ==
+	      (thread_index - nm->input_cpu_first_index))
+	    n_rx_packets += netmap_device_input_fn (vm, node, frame, nmi,
+						    COLLECT_SIMPLE_STATS);
+	}
     }
 
   return n_rx_packets;
