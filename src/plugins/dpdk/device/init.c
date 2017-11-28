@@ -711,7 +711,9 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       }
 
     /* virtio */
-    if (d->vendor_id == 0x1af4 && d->device_id == 0x1000)
+    if (d->vendor_id == 0x1af4 &&
+            (d->device_id == VIRTIO_PCI_LEGACY_DEVICEID_NET ||
+             d->device_id == VIRTIO_PCI_MODERN_DEVICEID_NET))
       ;
     /* vmxnet3 */
     else if (d->vendor_id == 0x15ad && d->device_id == 0x07b0)
