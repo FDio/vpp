@@ -1297,7 +1297,6 @@ static clib_error_t *
 tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
 {
   tcp_main_t *tm = vnet_get_tcp_main ();
-  u64 tmp;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1308,18 +1307,6 @@ tcp_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "preallocated-half-open-connections %d",
 			 &tm->preallocated_half_open_connections))
 	;
-      else if (unformat (input, "local-endpoints-table-memory %U",
-			 unformat_memory_size, &tmp))
-	{
-	  if (tmp >= 0x100000000)
-	    return clib_error_return (0, "memory size %llx (%lld) too large",
-				      tmp, tmp);
-	  tm->local_endpoints_table_memory = tmp;
-	}
-      else if (unformat (input, "local-endpoints-table-buckets %d",
-			 &tm->local_endpoints_table_buckets))
-	;
-
       else if (unformat (input, "buffer-fail-fraction %f",
 			 &tm->buffer_fail_fraction))
 	;

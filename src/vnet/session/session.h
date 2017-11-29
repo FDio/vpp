@@ -140,7 +140,7 @@ struct _session_manager_main
   stream_session_t *listen_sessions[SESSION_N_TYPES];
 
   /** Per-proto, per-worker enqueue epoch counters */
-  u8 *current_enqueue_epoch[TRANSPORT_N_PROTO];
+  u32 *current_enqueue_epoch[TRANSPORT_N_PROTO];
 
   /** Per-proto, per-worker thread vector of sessions to enqueue */
   u32 **session_to_enqueue[TRANSPORT_N_PROTO];
@@ -160,8 +160,21 @@ struct _session_manager_main
   /** vpp fifo event queue */
   unix_shared_memory_queue_t **vpp_event_queues;
 
+  /** Unique segment name counter */
+  u32 unique_segment_name_counter;
+
+  /** Per transport rx function that can either dequeue or peek */
+  session_fifo_rx_fn *session_tx_fns[SESSION_N_TYPES];
+
+  /** Session manager is enabled */
+  u8 is_enabled;
+
   /** vpp fifo event queue configured length */
   u32 configured_event_queue_length;
+
+  /*
+   * Config parameters
+   */
 
   /** session table size parameters */
   u32 configured_v4_session_table_buckets;
@@ -173,14 +186,9 @@ struct _session_manager_main
   u32 configured_v6_halfopen_table_buckets;
   u32 configured_v6_halfopen_table_memory;
 
-  /** Unique segment name counter */
-  u32 unique_segment_name_counter;
-
-  /** Per transport rx function that can either dequeue or peek */
-  session_fifo_rx_fn *session_tx_fns[SESSION_N_TYPES];
-
-  /** Session manager is enabled */
-  u8 is_enabled;
+  /** Transport table (preallocation) size parameters */
+  u32 local_endpoints_table_memory;
+  u32 local_endpoints_table_buckets;
 
   /** Preallocate session config parameter */
   u32 preallocated_sessions;

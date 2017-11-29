@@ -1239,6 +1239,17 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
 				      tmp, tmp);
 	  smm->configured_v6_halfopen_table_memory = tmp;
 	}
+      else if (unformat (input, "local-endpoints-table-memory %U",
+			 unformat_memory_size, &tmp))
+	{
+	  if (tmp >= 0x100000000)
+	    return clib_error_return (0, "memory size %llx (%lld) too large",
+				      tmp, tmp);
+	  smm->local_endpoints_table_memory = tmp;
+	}
+      else if (unformat (input, "local-endpoints-table-buckets %d",
+			 &smm->local_endpoints_table_buckets))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
