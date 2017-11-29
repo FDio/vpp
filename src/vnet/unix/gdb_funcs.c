@@ -31,7 +31,8 @@
  * @return length - u32
  *
  */
-u32 vl(void *p)
+u32
+vl (void *p)
 {
   return vec_len (p);
 }
@@ -44,9 +45,10 @@ u32 vl(void *p)
  * @return number - uword
  *
  */
-uword pe (void *v)
+uword
+pe (void *v)
 {
-  return (pool_elts(v));
+  return (pool_elts (v));
 }
 
 /**
@@ -58,7 +60,8 @@ uword pe (void *v)
  * @return 0|1 - int
  *
  */
-int pifi (void *p, u32 index)
+int
+pifi (void *p, u32 index)
 {
   return pool_is_free_index (p, index);
 }
@@ -70,7 +73,8 @@ int pifi (void *p, u32 index)
  * @param n - u32 - number of bytes to format
  *
  */
-void debug_hex_bytes (u8 *s, u32 n)
+void
+debug_hex_bytes (u8 * s, u32 n)
 {
   fformat (stderr, "%U\n", format_hex_bytes, s, n);
 }
@@ -79,39 +83,39 @@ void debug_hex_bytes (u8 *s, u32 n)
  * @brief GDB callable function: vlib_dump_frame_ownership
  *
  */
-void vlib_dump_frame_ownership (void)
+void
+vlib_dump_frame_ownership (void)
 {
-  vlib_main_t * vm = vlib_get_main();
-  vlib_node_main_t * nm = &vm->node_main;
-  vlib_node_runtime_t * this_node_runtime;
-  vlib_next_frame_t * nf;
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_main_t *nm = &vm->node_main;
+  vlib_node_runtime_t *this_node_runtime;
+  vlib_next_frame_t *nf;
   u32 first_nf_index;
   u32 index;
 
-  vec_foreach(this_node_runtime, nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
-    {
-      first_nf_index = this_node_runtime->next_frame_index;
+  vec_foreach (this_node_runtime, nm->nodes_by_type[VLIB_NODE_TYPE_INTERNAL])
+  {
+    first_nf_index = this_node_runtime->next_frame_index;
 
-      for (index = first_nf_index; index < first_nf_index + 
-             this_node_runtime->n_next_nodes; index++) 
-        {
-          vlib_node_runtime_t * owned_runtime;
-          nf = vec_elt_at_index (vm->node_main.next_frames, index);
-          if (nf->flags & VLIB_FRAME_OWNER) 
-            {
-              owned_runtime = vec_elt_at_index (nm->nodes_by_type[0],
-                                                nf->node_runtime_index);
-              fformat(stderr, 
-                      "%s next index %d owns enqueue rights to %s\n",
-                      nm->nodes[this_node_runtime->node_index]->name, 
-                      index - first_nf_index, 
-                      nm->nodes[owned_runtime->node_index]->name);
-              fformat (stderr, "  nf index %d nf->frame_index %d\n",
-                       nf - vm->node_main.next_frames, 
-                       nf->frame_index);
-            }
-        }
-    }
+    for (index = first_nf_index; index < first_nf_index +
+	 this_node_runtime->n_next_nodes; index++)
+      {
+	vlib_node_runtime_t *owned_runtime;
+	nf = vec_elt_at_index (vm->node_main.next_frames, index);
+	if (nf->flags & VLIB_FRAME_OWNER)
+	  {
+	    owned_runtime = vec_elt_at_index (nm->nodes_by_type[0],
+					      nf->node_runtime_index);
+	    fformat (stderr,
+		     "%s next index %d owns enqueue rights to %s\n",
+		     nm->nodes[this_node_runtime->node_index]->name,
+		     index - first_nf_index,
+		     nm->nodes[owned_runtime->node_index]->name);
+	    fformat (stderr, "  nf index %d nf->frame_index %d\n",
+		     nf - vm->node_main.next_frames, nf->frame_index);
+	  }
+      }
+  }
 }
 
 /**
@@ -121,45 +125,49 @@ void vlib_dump_frame_ownership (void)
  *
  * @param index - u32
  */
-void vlib_runtime_index_to_node_name (u32 index)
+void
+vlib_runtime_index_to_node_name (u32 index)
 {
-  vlib_main_t * vm = vlib_get_main();
-  vlib_node_main_t * nm = &vm->node_main;
+  vlib_main_t *vm = vlib_get_main ();
+  vlib_node_main_t *nm = &vm->node_main;
 
   if (index > vec_len (nm->nodes))
     {
-      fformat(stderr, "%d out of range, max %d\n", vec_len(nm->nodes));
+      fformat (stderr, "%d out of range, max %d\n", vec_len (nm->nodes));
       return;
     }
 
-  fformat(stderr, "node runtime index %d name %s\n", index, nm->nodes[index]->name);
+  fformat (stderr, "node runtime index %d name %s\n", index,
+	   nm->nodes[index]->name);
 }
 
-void gdb_show_errors (int verbose)
+void
+gdb_show_errors (int verbose)
 {
   extern vlib_cli_command_t vlib_cli_show_errors;
   unformat_input_t input;
-  vlib_main_t * vm = vlib_get_main();
+  vlib_main_t *vm = vlib_get_main ();
 
   if (verbose == 0)
     unformat_init_string (&input, "verbose 0", 9);
   else if (verbose == 1)
     unformat_init_string (&input, "verbose 1", 9);
-  else 
+  else
     {
-      fformat(stderr, "verbose not 0 or 1\n");
+      fformat (stderr, "verbose not 0 or 1\n");
       return;
     }
 
-  vlib_cli_show_errors.function (vm, &input, 0 /* cmd */);
+  vlib_cli_show_errors.function (vm, &input, 0 /* cmd */ );
   unformat_free (&input);
-}  
+}
 
-void gdb_show_session (int verbose)
+void
+gdb_show_session (int verbose)
 {
   extern vlib_cli_command_t vlib_cli_show_session_command;
   unformat_input_t input;
-  vlib_main_t * vm = vlib_get_main();
+  vlib_main_t *vm = vlib_get_main ();
 
   if (verbose == 0)
     unformat_init_string (&input, "verbose 0", 9);
@@ -167,15 +175,15 @@ void gdb_show_session (int verbose)
     unformat_init_string (&input, "verbose 1", 9);
   else if (verbose == 2)
     unformat_init_string (&input, "verbose 2", 9);
-  else 
+  else
     {
-      fformat(stderr, "verbose not 0 - 2\n");
+      fformat (stderr, "verbose not 0 - 2\n");
       return;
     }
 
-  vlib_cli_show_session_command.function (vm, &input, 0 /* cmd */);
+  vlib_cli_show_session_command.function (vm, &input, 0 /* cmd */ );
   unformat_free (&input);
-}  
+}
 
 /**
  * @brief GDB callable function: show_gdb_command_fn - show gdb
@@ -186,8 +194,7 @@ void gdb_show_session (int verbose)
  */
 static clib_error_t *
 show_gdb_command_fn (vlib_main_t * vm,
-                     unformat_input_t * input,
-                     vlib_cli_command_t * cmd)
+		     unformat_input_t * input, vlib_cli_command_t * cmd)
 {
   vlib_cli_output (vm, "vl(p) returns vec_len(p)");
   vlib_cli_output (vm, "vb(b) returns vnet_buffer(b) [opaque]");
@@ -203,35 +210,50 @@ show_gdb_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+/* *INDENT-OFF* */
 VLIB_CLI_COMMAND (show_gdb_funcs_command, static) = {
   .path = "show gdb",
   .short_help = "Describe functions which can be called from gdb",
   .function = show_gdb_command_fn,
 };
+/* *INDENT-ON* */
 
-vnet_buffer_opaque_t *vb (void *vb_arg)
+vnet_buffer_opaque_t *
+vb (void *vb_arg)
 {
-    vlib_buffer_t *b = (vlib_buffer_t *)vb_arg;
-    vnet_buffer_opaque_t *rv;
-    
-    rv = vnet_buffer (b);
+  vlib_buffer_t *b = (vlib_buffer_t *) vb_arg;
+  vnet_buffer_opaque_t *rv;
 
-    return rv;
+  rv = vnet_buffer (b);
+
+  return rv;
 }
 
-vnet_buffer_opaque2_t *vb2 (void *vb_arg)
+vnet_buffer_opaque2_t *
+vb2 (void *vb_arg)
 {
-    vlib_buffer_t *b = (vlib_buffer_t *)vb_arg;
-    vnet_buffer_opaque2_t *rv;
-    
-    rv = vnet_buffer2(b);
+  vlib_buffer_t *b = (vlib_buffer_t *) vb_arg;
+  vnet_buffer_opaque2_t *rv;
 
-    return rv;
+  rv = vnet_buffer2 (b);
+
+  return rv;
 }
 
 
 /* Cafeteria plan, maybe you don't want these functions */
-clib_error_t * 
-gdb_func_init (vlib_main_t * vm) { return 0; } 
+clib_error_t *
+gdb_func_init (vlib_main_t * vm)
+{
+  return 0;
+}
 
 VLIB_INIT_FUNCTION (gdb_func_init);
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

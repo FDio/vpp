@@ -61,7 +61,8 @@
   _ (ip, 12)					\
   _ (hdlc, 104)
 
-typedef enum {
+typedef enum
+{
 #define _(f,n) PCAP_PACKET_TYPE_##f = (n),
   foreach_vnet_pcap_packet_type
 #undef _
@@ -89,7 +90,8 @@ typedef enum {
   _ (u32, packet_type)
 
 /** File header struct */
-typedef struct {
+typedef struct
+{
 #define _(t, f) t f;
   foreach_pcap_file_header
 #undef _
@@ -107,11 +109,11 @@ typedef struct {
   _ (u32, n_bytes_in_packet)
 
 /** Packet header. */
-typedef struct {
+typedef struct
+{
 #define _(t, f) t f;
   foreach_pcap_packet_header
 #undef _
-
   /** Packet data follows. */
   u8 data[0];
 } pcap_packet_header_t;
@@ -119,9 +121,10 @@ typedef struct {
 /**
  * @brief PCAP main state data structure
  */
-typedef struct {
+typedef struct
+{
   /** File name of pcap output. */
-  char * file_name;
+  char *file_name;
 
   /** Number of packets to capture. */
   u32 n_packets_to_capture;
@@ -143,20 +146,20 @@ typedef struct {
   u32 n_pcap_data_written;
 
   /** Vector of pcap data. */
-  u8 * pcap_data;
+  u8 *pcap_data;
 
   /** Packets read from file. */
-  u8 ** packets_read;
+  u8 **packets_read;
 
   /** Min/Max Packet bytes */
   u32 min_packet_bytes, max_packet_bytes;
 } pcap_main_t;
 
 /** Write out data to output file. */
-clib_error_t * pcap_write (pcap_main_t * pm);
+clib_error_t *pcap_write (pcap_main_t * pm);
 
 /** Read data from file. */
-clib_error_t * pcap_read (pcap_main_t * pm);
+clib_error_t *pcap_read (pcap_main_t * pm);
 
 /**
  * @brief Add packet
@@ -171,17 +174,15 @@ clib_error_t * pcap_read (pcap_main_t * pm);
  */
 static inline void *
 pcap_add_packet (pcap_main_t * pm,
-		 f64 time_now,
-		 u32 n_bytes_in_trace,
-		 u32 n_bytes_in_packet)
+		 f64 time_now, u32 n_bytes_in_trace, u32 n_bytes_in_packet)
 {
-  pcap_packet_header_t * h;
-  u8 * d;
+  pcap_packet_header_t *h;
+  u8 *d;
 
   vec_add2 (pm->pcap_data, d, sizeof (h[0]) + n_bytes_in_trace);
   h = (void *) (d);
   h->time_in_sec = time_now;
-  h->time_in_usec = 1e6*(time_now - h->time_in_sec);
+  h->time_in_usec = 1e6 * (time_now - h->time_in_sec);
   h->n_packet_bytes_stored_in_file = n_bytes_in_trace;
   h->n_bytes_in_packet = n_bytes_in_packet;
   pm->n_packets_captured++;
@@ -199,14 +200,13 @@ pcap_add_packet (pcap_main_t * pm,
  */
 static inline void
 pcap_add_buffer (pcap_main_t * pm,
-		 vlib_main_t * vm, u32 buffer_index,
-		 u32 n_bytes_in_trace)
+		 vlib_main_t * vm, u32 buffer_index, u32 n_bytes_in_trace)
 {
-  vlib_buffer_t * b = vlib_get_buffer (vm, buffer_index);
+  vlib_buffer_t *b = vlib_get_buffer (vm, buffer_index);
   u32 n = vlib_buffer_length_in_chain (vm, b);
   i32 n_left = clib_min (n_bytes_in_trace, n);
   f64 time_now = vlib_time_now (vm);
-  void * d;
+  void *d;
 
   d = pcap_add_packet (pm, time_now, n_left, n);
   while (1)
@@ -222,9 +222,17 @@ pcap_add_buffer (pcap_main_t * pm,
     }
 
   /** Flush output vector. */
-  if (vec_len (pm->pcap_data) >= 64*1024
+  if (vec_len (pm->pcap_data) >= 64 * 1024
       || pm->n_packets_captured >= pm->n_packets_to_capture)
     pcap_write (pm);
 }
 
 #endif /* included_vnet_pcap_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

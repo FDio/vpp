@@ -54,16 +54,24 @@ typedef struct
 } vnet_tap_connect_args_t;
 
 /** Connect a tap interface */
-int vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t *args);
+int vnet_tap_connect (vlib_main_t * vm, vnet_tap_connect_args_t * args);
 
 /** Connect / renumber a tap interface */
 int vnet_tap_connect_renumber (vlib_main_t * vm,
-                               vnet_tap_connect_args_t *args);
+			       vnet_tap_connect_args_t * args);
 
 /** Modify a tap interface */
-int vnet_tap_modify (vlib_main_t * vm, vnet_tap_connect_args_t *args);
+int vnet_tap_modify (vlib_main_t * vm, vnet_tap_connect_args_t * args);
 
 /** delete a tap interface */
-int vnet_tap_delete(vlib_main_t *vm, u32 sw_if_index);
+int vnet_tap_delete (vlib_main_t * vm, u32 sw_if_index);
 
 
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
