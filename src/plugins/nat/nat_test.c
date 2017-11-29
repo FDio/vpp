@@ -61,17 +61,17 @@ typedef struct {
 
 snat_test_main_t snat_test_main;
 
-#define foreach_standard_reply_retval_handler   \
-_(snat_add_address_range_reply)                 \
-_(snat_interface_add_del_feature_reply)         \
-_(snat_add_static_mapping_reply)                \
-_(snat_set_workers_reply)                       \
-_(snat_add_del_interface_addr_reply)            \
-_(snat_ipfix_enable_disable_reply)              \
-_(snat_add_det_map_reply)                       \
-_(snat_det_set_timeouts_reply)                  \
-_(snat_det_close_session_out_reply)             \
-_(snat_det_close_session_in_reply)
+#define foreach_standard_reply_retval_handler    \
+_(nat44_add_del_address_range_reply)             \
+_(nat44_interface_add_del_feature_reply)         \
+_(nat44_add_del_static_mapping_reply)            \
+_(nat_set_workers_reply)                         \
+_(nat44_add_del_interface_addr_reply)            \
+_(nat_ipfix_enable_disable_reply)                \
+_(nat_det_add_del_map_reply)                     \
+_(nat_det_set_timeouts_reply)                    \
+_(nat_det_close_session_out_reply)               \
+_(nat_det_close_session_in_reply)
 
 #define _(n)                                            \
     static void vl_api_##n##_t_handler                  \
@@ -89,47 +89,49 @@ _(snat_det_close_session_in_reply)
 foreach_standard_reply_retval_handler;
 #undef _
 
-/* 
+/*
  * Table of message reply handlers, must include boilerplate handlers
  * we just generated
  */
 #define foreach_vpe_api_reply_msg                               \
-_(SNAT_ADD_ADDRESS_RANGE_REPLY, snat_add_address_range_reply)   \
-_(SNAT_INTERFACE_ADD_DEL_FEATURE_REPLY,                         \
-  snat_interface_add_del_feature_reply)                         \
-_(SNAT_ADD_STATIC_MAPPING_REPLY, snat_add_static_mapping_reply) \
-_(SNAT_CONTROL_PING_REPLY, snat_control_ping_reply)             \
-_(SNAT_STATIC_MAPPING_DETAILS, snat_static_mapping_details)     \
-_(SNAT_SHOW_CONFIG_REPLY, snat_show_config_reply)               \
-_(SNAT_ADDRESS_DETAILS, snat_address_details)                   \
-_(SNAT_INTERFACE_DETAILS, snat_interface_details)               \
-_(SNAT_SET_WORKERS_REPLY, snat_set_workers_reply)               \
-_(SNAT_WORKER_DETAILS, snat_worker_details)                     \
-_(SNAT_ADD_DEL_INTERFACE_ADDR_REPLY,                            \
-  snat_add_del_interface_addr_reply)                            \
-_(SNAT_INTERFACE_ADDR_DETAILS, snat_interface_addr_details)     \
-_(SNAT_IPFIX_ENABLE_DISABLE_REPLY,                              \
-  snat_ipfix_enable_disable_reply)                              \
-_(SNAT_USER_DETAILS, snat_user_details)                         \
-_(SNAT_USER_SESSION_DETAILS, snat_user_session_details)         \
-_(SNAT_ADD_DET_MAP_REPLY, snat_add_det_map_reply)               \
-_(SNAT_DET_FORWARD_REPLY, snat_det_forward_reply)               \
-_(SNAT_DET_REVERSE_REPLY, snat_det_reverse_reply)               \
-_(SNAT_DET_MAP_DETAILS, snat_det_map_details)                   \
-_(SNAT_DET_SET_TIMEOUTS_REPLY, snat_det_set_timeouts_reply)     \
-_(SNAT_DET_GET_TIMEOUTS_REPLY, snat_det_get_timeouts_reply)     \
-_(SNAT_DET_CLOSE_SESSION_OUT_REPLY,                             \
-  snat_det_close_session_out_reply)                             \
-_(SNAT_DET_CLOSE_SESSION_IN_REPLY,                              \
-  snat_det_close_session_in_reply)                              \
-_(SNAT_DET_SESSION_DETAILS, snat_det_session_details)
+_(NAT44_ADD_DEL_ADDRESS_RANGE_REPLY,                            \
+  nat44_add_del_address_range_reply)                            \
+_(NAT44_INTERFACE_ADD_DEL_FEATURE_REPLY,                        \
+  nat44_interface_add_del_feature_reply)                        \
+_(NAT44_ADD_DEL_STATIC_MAPPING_REPLY,                           \
+  nat44_add_del_static_mapping_reply)                           \
+_(NAT_CONTROL_PING_REPLY, nat_control_ping_reply)               \
+_(NAT44_STATIC_MAPPING_DETAILS, nat44_static_mapping_details)   \
+_(NAT_SHOW_CONFIG_REPLY, nat_show_config_reply)                 \
+_(NAT44_ADDRESS_DETAILS, nat44_address_details)                 \
+_(NAT44_INTERFACE_DETAILS, nat44_interface_details)             \
+_(NAT_SET_WORKERS_REPLY, nat_set_workers_reply)                 \
+_(NAT_WORKER_DETAILS, nat_worker_details)                       \
+_(NAT44_ADD_DEL_INTERFACE_ADDR_REPLY,                           \
+  nat44_add_del_interface_addr_reply)                           \
+_(NAT44_INTERFACE_ADDR_DETAILS, nat44_interface_addr_details)   \
+_(NAT_IPFIX_ENABLE_DISABLE_REPLY,                               \
+  nat_ipfix_enable_disable_reply)                               \
+_(NAT44_USER_DETAILS, nat44_user_details)                       \
+_(NAT44_USER_SESSION_DETAILS, nat44_user_session_details)       \
+_(NAT_DET_ADD_DEL_MAP_REPLY, nat_det_add_del_map_reply)         \
+_(NAT_DET_FORWARD_REPLY, nat_det_forward_reply)                 \
+_(NAT_DET_REVERSE_REPLY, nat_det_reverse_reply)                 \
+_(NAT_DET_MAP_DETAILS, nat_det_map_details)                     \
+_(NAT_DET_SET_TIMEOUTS_REPLY, nat_det_set_timeouts_reply)       \
+_(NAT_DET_GET_TIMEOUTS_REPLY, nat_det_get_timeouts_reply)       \
+_(NAT_DET_CLOSE_SESSION_OUT_REPLY,                              \
+  nat_det_close_session_out_reply)                              \
+_(NAT_DET_CLOSE_SESSION_IN_REPLY,                               \
+  nat_det_close_session_in_reply)                               \
+_(NAT_DET_SESSION_DETAILS, nat_det_session_details)
 
-static int api_snat_add_address_range (vat_main_t * vam)
+static int api_nat44_add_del_address_range (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
   ip4_address_t start_addr, end_addr;
   u32 start_host_order, end_host_order;
-  vl_api_snat_add_address_range_t * mp;
+  vl_api_nat44_add_del_address_range_t * mp;
   u8 is_add = 1;
   int count;
   int ret;
@@ -153,7 +155,7 @@ static int api_snat_add_address_range (vat_main_t * vam)
 
   start_host_order = clib_host_to_net_u32 (start_addr.as_u32);
   end_host_order = clib_host_to_net_u32 (end_addr.as_u32);
-  
+
   if (end_host_order < start_host_order)
     {
       errmsg ("end address less than start address\n");
@@ -169,12 +171,11 @@ static int api_snat_add_address_range (vat_main_t * vam)
            format_ip4_address, &end_addr,
            count);
     }
-  
-  M(SNAT_ADD_ADDRESS_RANGE, mp);
+
+  M(NAT44_ADD_DEL_ADDRESS_RANGE, mp);
 
   memcpy (mp->first_ip_address, &start_addr, 4);
   memcpy (mp->last_ip_address, &end_addr, 4);
-  mp->is_ip4 = 1;
   mp->is_add = is_add;
 
   S(mp);
@@ -182,13 +183,13 @@ static int api_snat_add_address_range (vat_main_t * vam)
   return ret;
 }
 
-static int api_snat_interface_add_del_feature (vat_main_t * vam)
+static int api_nat44_interface_add_del_feature (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_interface_add_del_feature_t * mp;
+  vl_api_nat44_interface_add_del_feature_t * mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
-  u8 is_inside = 1; 
+  u8 is_inside = 1;
   u8 is_add = 1;
   int ret;
 
@@ -217,20 +218,20 @@ static int api_snat_interface_add_del_feature (vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_INTERFACE_ADD_DEL_FEATURE, mp);
+  M(NAT44_INTERFACE_ADD_DEL_FEATURE, mp);
   mp->sw_if_index = ntohl(sw_if_index);
   mp->is_add = is_add;
   mp->is_inside = is_inside;
-  
+
   S(mp);
   W (ret);
   return ret;
 }
 
-static int api_snat_add_static_mapping(vat_main_t * vam)
+static int api_nat44_add_del_static_mapping(vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_add_static_mapping_t * mp;
+  vl_api_nat44_add_del_static_mapping_t * mp;
   u8 external_addr_set = 0;
   u8 local_addr_set = 0;
   u8 is_add = 1;
@@ -289,9 +290,8 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_ADD_STATIC_MAPPING, mp);
+  M(NAT44_ADD_DEL_STATIC_MAPPING, mp);
   mp->is_add = is_add;
-  mp->is_ip4 = 1;
   mp->addr_only = addr_only;
   mp->local_port = ntohs ((u16) local_port);
   mp->external_port = ntohs ((u16) external_port);
@@ -306,8 +306,8 @@ static int api_snat_add_static_mapping(vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_snat_control_ping_reply_t_handler
-  (vl_api_snat_control_ping_reply_t * mp)
+static void vl_api_nat_control_ping_reply_t_handler
+  (vl_api_nat_control_ping_reply_t * mp)
 {
   vat_main_t *vam = &vat_main;
   i32 retval = ntohl (mp->retval);
@@ -322,8 +322,8 @@ static void vl_api_snat_control_ping_reply_t_handler
     }
 }
 
-static void vl_api_snat_static_mapping_details_t_handler
-  (vl_api_snat_static_mapping_details_t *mp)
+static void vl_api_nat44_static_mapping_details_t_handler
+  (vl_api_nat44_static_mapping_details_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -359,15 +359,15 @@ static void vl_api_snat_static_mapping_details_t_handler
 
 }
 
-static int api_snat_static_mapping_dump(vat_main_t * vam)
+static int api_nat44_static_mapping_dump(vat_main_t * vam)
 {
-  vl_api_snat_static_mapping_dump_t * mp;
-  vl_api_snat_control_ping_t *mp_ping;
+  vl_api_nat44_static_mapping_dump_t * mp;
+  vl_api_nat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_static_mapping_dump");
+      clib_warning ("JSON output not supported for nat44_static_mapping_dump");
       return -99;
     }
 
@@ -375,19 +375,19 @@ static int api_snat_static_mapping_dump(vat_main_t * vam)
   fformat (vam->ofp, "%15s%6s%15s%6s%11s%6s\n", "address", "port",
            "address/if_idx", "port", "vrf", "proto");
 
-  M(SNAT_STATIC_MAPPING_DUMP, mp);
+  M(NAT44_STATIC_MAPPING_DUMP, mp);
   S(mp);
 
   /* Use a control ping for synchronization */
-  M(SNAT_CONTROL_PING, mp_ping);
+  M(NAT_CONTROL_PING, mp_ping);
   S(mp_ping);
 
   W (ret);
   return ret;
 }
 
-static void vl_api_snat_show_config_reply_t_handler
-  (vl_api_snat_show_config_reply_t *mp)
+static void vl_api_nat_show_config_reply_t_handler
+  (vl_api_nat_show_config_reply_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -417,25 +417,25 @@ static void vl_api_snat_show_config_reply_t_handler
   vam->result_ready = 1;
 }
 
-static int api_snat_show_config(vat_main_t * vam)
+static int api_nat_show_config(vat_main_t * vam)
 {
-  vl_api_snat_show_config_t * mp;
+  vl_api_nat_show_config_t * mp;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_show_config");
+      clib_warning ("JSON output not supported for nat_show_config");
       return -99;
     }
 
-  M(SNAT_SHOW_CONFIG, mp);
+  M(NAT_SHOW_CONFIG, mp);
   S(mp);
   W (ret);
   return ret;
 }
 
-static void vl_api_snat_address_details_t_handler
-  (vl_api_snat_address_details_t *mp)
+static void vl_api_nat44_address_details_t_handler
+  (vl_api_nat44_address_details_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -443,31 +443,31 @@ static void vl_api_snat_address_details_t_handler
   fformat (vam->ofp, "%U\n", format_ip4_address, &mp->ip_address);
 }
 
-static int api_snat_address_dump(vat_main_t * vam)
+static int api_nat44_address_dump(vat_main_t * vam)
 {
-  vl_api_snat_address_dump_t * mp;
-  vl_api_snat_control_ping_t *mp_ping;
+  vl_api_nat44_address_dump_t * mp;
+  vl_api_nat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_address_dump");
+      clib_warning ("JSON output not supported for nat44_address_dump");
       return -99;
     }
 
-  M(SNAT_ADDRESS_DUMP, mp);
+  M(NAT44_ADDRESS_DUMP, mp);
   S(mp);
 
   /* Use a control ping for synchronization */
-  M(SNAT_CONTROL_PING, mp_ping);
+  M(NAT_CONTROL_PING, mp_ping);
   S(mp_ping);
 
   W (ret);
   return ret;
 }
 
-static void vl_api_snat_interface_details_t_handler
-  (vl_api_snat_interface_details_t *mp)
+static void vl_api_nat44_interface_details_t_handler
+  (vl_api_nat44_interface_details_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -476,33 +476,33 @@ static void vl_api_snat_interface_details_t_handler
            mp->is_inside ? "in" : "out");
 }
 
-static int api_snat_interface_dump(vat_main_t * vam)
+static int api_nat44_interface_dump(vat_main_t * vam)
 {
-  vl_api_snat_interface_dump_t * mp;
-  vl_api_snat_control_ping_t *mp_ping;
+  vl_api_nat44_interface_dump_t * mp;
+  vl_api_nat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_address_dump");
+      clib_warning ("JSON output not supported for nat44_address_dump");
       return -99;
     }
 
-  M(SNAT_INTERFACE_DUMP, mp);
+  M(NAT44_INTERFACE_DUMP, mp);
   S(mp);
 
   /* Use a control ping for synchronization */
-  M(SNAT_CONTROL_PING, mp_ping);
+  M(NAT_CONTROL_PING, mp_ping);
   S(mp_ping);
 
   W (ret);
   return ret;
 }
 
-static int api_snat_set_workers (vat_main_t * vam)
+static int api_nat_set_workers (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_set_workers_t * mp;
+  vl_api_nat_set_workers_t * mp;
   uword *bitmap;
   int ret;
 
@@ -517,7 +517,7 @@ static int api_snat_set_workers (vat_main_t * vam)
         }
     }
 
-  M(SNAT_SET_WORKERS, mp);
+  M(NAT_SET_WORKERS, mp);
   mp->worker_mask = clib_host_to_net_u64 (bitmap[0]);
 
   S(mp);
@@ -525,8 +525,8 @@ static int api_snat_set_workers (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_snat_worker_details_t_handler
-  (vl_api_snat_worker_details_t *mp)
+static void vl_api_nat_worker_details_t_handler
+  (vl_api_nat_worker_details_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -535,33 +535,33 @@ static void vl_api_snat_worker_details_t_handler
            ntohl (mp->worker_index), mp->name, ntohl (mp->lcore_id));
 }
 
-static int api_snat_worker_dump(vat_main_t * vam)
+static int api_nat_worker_dump(vat_main_t * vam)
 {
-  vl_api_snat_worker_dump_t * mp;
-  vl_api_snat_control_ping_t *mp_ping;
+  vl_api_nat_worker_dump_t * mp;
+  vl_api_nat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_address_dump");
+      clib_warning ("JSON output not supported for nat_address_dump");
       return -99;
     }
 
-  M(SNAT_WORKER_DUMP, mp);
+  M(NAT_WORKER_DUMP, mp);
   S(mp);
 
   /* Use a control ping for synchronization */
-  M(SNAT_CONTROL_PING, mp_ping);
+  M(NAT_CONTROL_PING, mp_ping);
   S(mp_ping);
 
   W (ret);
   return ret;
 }
 
-static int api_snat_add_del_interface_addr (vat_main_t * vam)
+static int api_nat44_add_del_interface_addr (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_add_del_interface_addr_t * mp;
+  vl_api_nat44_add_del_interface_addr_t * mp;
   u32 sw_if_index;
   u8 sw_if_index_set = 0;
   u8 is_add = 1;
@@ -588,17 +588,17 @@ static int api_snat_add_del_interface_addr (vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_ADD_DEL_INTERFACE_ADDR, mp);
+  M(NAT44_ADD_DEL_INTERFACE_ADDR, mp);
   mp->sw_if_index = ntohl(sw_if_index);
   mp->is_add = is_add;
-  
+
   S(mp);
   W (ret);
   return ret;
 }
 
-static void vl_api_snat_interface_addr_details_t_handler
-  (vl_api_snat_interface_addr_details_t *mp)
+static void vl_api_nat44_interface_addr_details_t_handler
+  (vl_api_nat44_interface_addr_details_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -606,33 +606,33 @@ static void vl_api_snat_interface_addr_details_t_handler
   fformat (vam->ofp, "sw_if_index %d\n", ntohl (mp->sw_if_index));
 }
 
-static int api_snat_interface_addr_dump(vat_main_t * vam)
+static int api_nat44_interface_addr_dump(vat_main_t * vam)
 {
-  vl_api_snat_interface_addr_dump_t * mp;
-  vl_api_snat_control_ping_t *mp_ping;
+  vl_api_nat44_interface_addr_dump_t * mp;
+  vl_api_nat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_address_dump");
+      clib_warning ("JSON output not supported for nat44_address_dump");
       return -99;
     }
 
-  M(SNAT_INTERFACE_ADDR_DUMP, mp);
+  M(NAT44_INTERFACE_ADDR_DUMP, mp);
   S(mp);
 
   /* Use a control ping for synchronization */
-  M(SNAT_CONTROL_PING, mp_ping);
+  M(NAT_CONTROL_PING, mp_ping);
   S(mp_ping);
 
   W (ret);
   return ret;
 }
 
-static int api_snat_ipfix_enable_disable (vat_main_t * vam)
+static int api_nat_ipfix_enable_disable (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_ipfix_enable_disable_t * mp;
+  vl_api_nat_ipfix_enable_disable_t * mp;
   u32 domain_id = 0;
   u32 src_port = 0;
   u8 enable = 1;
@@ -653,7 +653,7 @@ static int api_snat_ipfix_enable_disable (vat_main_t * vam)
         }
     }
 
-  M(SNAT_IPFIX_ENABLE_DISABLE, mp);
+  M(NAT_IPFIX_ENABLE_DISABLE, mp);
   mp->domain_id = htonl(domain_id);
   mp->src_port = htons((u16) src_port);
   mp->enable = enable;
@@ -663,8 +663,8 @@ static int api_snat_ipfix_enable_disable (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_snat_user_session_details_t_handler
-  (vl_api_snat_user_session_details_t *mp)
+static void vl_api_nat44_user_session_details_t_handler
+  (vl_api_nat44_user_session_details_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -677,18 +677,18 @@ static void vl_api_snat_user_session_details_t_handler
           ntohl(mp->protocol), ntohl(mp->total_pkts), ntohl(mp->total_bytes));
 }
 
-static int api_snat_user_session_dump(vat_main_t * vam)
+static int api_nat44_user_session_dump(vat_main_t * vam)
 {
   unformat_input_t* i = vam->input;
-  vl_api_snat_user_session_dump_t * mp;
-  vl_api_snat_control_ping_t *mp_ping;
+  vl_api_nat44_user_session_dump_t * mp;
+  vl_api_nat_control_ping_t *mp_ping;
   ip4_address_t addr;
   u32 vrf_id = ~0;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_address_dump");
+      clib_warning ("JSON output not supported for nat44_address_dump");
       return -99;
     }
 
@@ -701,23 +701,22 @@ static int api_snat_user_session_dump(vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_USER_SESSION_DUMP, mp);
+  M(NAT44_USER_SESSION_DUMP, mp);
   S(mp);
 
   /* Use a control ping for synchronization */
-  M(SNAT_CONTROL_PING, mp_ping);
+  M(NAT_CONTROL_PING, mp_ping);
   memset(mp->ip_address, 0, 16);
   clib_memcpy(mp->ip_address, &addr, 4);
   mp->vrf_id = htonl(vrf_id);
-  mp->is_ip4 = 1;
   S(mp_ping);
 
   W (ret);
   return ret;
 }
 
-static void vl_api_snat_user_details_t_handler
-  (vl_api_snat_user_details_t *mp)
+static void vl_api_nat44_user_details_t_handler
+  (vl_api_nat44_user_details_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -728,33 +727,33 @@ static void vl_api_snat_user_details_t_handler
           ntohl(mp->nsessions), ntohl(mp->nstaticsessions));
 }
 
-static int api_snat_user_dump(vat_main_t * vam)
+static int api_nat44_user_dump(vat_main_t * vam)
 {
-  vl_api_snat_user_dump_t * mp;
-  vl_api_snat_control_ping_t *mp_ping;
+  vl_api_nat44_user_dump_t * mp;
+  vl_api_nat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_address_dump");
+      clib_warning ("JSON output not supported for nat44_address_dump");
       return -99;
     }
 
-  M(SNAT_USER_DUMP, mp);
+  M(NAT44_USER_DUMP, mp);
   S(mp);
 
   /* Use a control ping for synchronization */
-  M(SNAT_CONTROL_PING, mp_ping);
+  M(NAT_CONTROL_PING, mp_ping);
   S(mp_ping);
 
   W (ret);
   return ret;
 }
 
-static int api_snat_add_det_map (vat_main_t * vam)
+static int api_nat_det_add_del_map (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_add_det_map_t * mp;
+  vl_api_nat_det_add_del_map_t * mp;
   ip4_address_t in_addr, out_addr;
   u32 in_plen, out_plen;
   u8 is_add = 1;
@@ -772,7 +771,7 @@ static int api_snat_add_det_map (vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_ADD_DET_MAP, mp);
+  M(NAT_DET_ADD_DEL_MAP, mp);
   clib_memcpy(mp->in_addr, &in_addr, 4);
   mp->in_plen = in_plen;
   clib_memcpy(mp->out_addr, &out_addr, 4);
@@ -784,8 +783,8 @@ static int api_snat_add_det_map (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_snat_det_forward_reply_t_handler
-  (vl_api_snat_det_forward_reply_t *mp)
+static void vl_api_nat_det_forward_reply_t_handler
+  (vl_api_nat_det_forward_reply_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -802,10 +801,10 @@ static void vl_api_snat_det_forward_reply_t_handler
   vam->result_ready = 1;
 }
 
-static int api_snat_det_forward (vat_main_t * vam)
+static int api_nat_det_forward (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_det_forward_t * mp;
+  vl_api_nat_det_forward_t * mp;
   ip4_address_t in_addr;
   int ret;
 
@@ -817,7 +816,7 @@ static int api_snat_det_forward (vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_DET_FORWARD, mp);
+  M(NAT_DET_FORWARD, mp);
   clib_memcpy(mp->in_addr, &in_addr, 4);
 
   S(mp);
@@ -825,8 +824,8 @@ static int api_snat_det_forward (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_snat_det_reverse_reply_t_handler
-  (vl_api_snat_det_reverse_reply_t *mp)
+static void vl_api_nat_det_reverse_reply_t_handler
+  (vl_api_nat_det_reverse_reply_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -841,10 +840,10 @@ static void vl_api_snat_det_reverse_reply_t_handler
   vam->result_ready = 1;
 }
 
-static int api_snat_det_reverse (vat_main_t * vam)
+static int api_nat_det_reverse (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_det_reverse_t * mp;
+  vl_api_nat_det_reverse_t * mp;
   ip4_address_t out_addr;
   u32 out_port;
   int ret;
@@ -857,7 +856,7 @@ static int api_snat_det_reverse (vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_DET_REVERSE, mp);
+  M(NAT_DET_REVERSE, mp);
   clib_memcpy(mp->out_addr, &out_addr, 4);
   mp->out_port = htons((u16)out_port);
 
@@ -866,8 +865,8 @@ static int api_snat_det_reverse (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_snat_det_map_details_t_handler
-  (vl_api_snat_det_map_details_t *mp)
+static void vl_api_nat_det_map_details_t_handler
+  (vl_api_nat_det_map_details_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -881,33 +880,33 @@ static void vl_api_snat_det_map_details_t_handler
            ntohl(mp->ses_num));
 }
 
-static int api_snat_det_map_dump(vat_main_t * vam)
+static int api_nat_det_map_dump(vat_main_t * vam)
 {
-  vl_api_snat_det_map_dump_t * mp;
-  vl_api_snat_control_ping_t *mp_ping;
+  vl_api_nat_det_map_dump_t * mp;
+  vl_api_nat_control_ping_t *mp_ping;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_det_map_dump");
+      clib_warning ("JSON output not supported for nat_det_map_dump");
       return -99;
     }
 
-  M(SNAT_DET_MAP_DUMP, mp);
+  M(NAT_DET_MAP_DUMP, mp);
   S(mp);
 
   /* Use a control ping for synchronization */
-  M(SNAT_CONTROL_PING, mp_ping);
+  M(NAT_CONTROL_PING, mp_ping);
   S(mp_ping);
 
   W (ret);
   return ret;
 }
 
-static int api_snat_det_set_timeouts (vat_main_t * vam)
+static int api_nat_det_set_timeouts (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_det_set_timeouts_t * mp;
+  vl_api_nat_det_set_timeouts_t * mp;
   u32 udp = SNAT_UDP_TIMEOUT;
   u32 tcp_established = SNAT_TCP_ESTABLISHED_TIMEOUT;
   u32 tcp_transitory = SNAT_TCP_TRANSITORY_TIMEOUT;
@@ -928,7 +927,7 @@ static int api_snat_det_set_timeouts (vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_DET_SET_TIMEOUTS, mp);
+  M(NAT_DET_SET_TIMEOUTS, mp);
   mp->udp = htonl(udp);
   mp->tcp_established = htonl(tcp_established);
   mp->tcp_transitory = htonl(tcp_transitory);
@@ -939,8 +938,8 @@ static int api_snat_det_set_timeouts (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_snat_det_get_timeouts_reply_t_handler
-  (vl_api_snat_det_get_timeouts_reply_t *mp)
+static void vl_api_nat_det_get_timeouts_reply_t_handler
+  (vl_api_nat_det_get_timeouts_reply_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -959,27 +958,27 @@ static void vl_api_snat_det_get_timeouts_reply_t_handler
   vam->result_ready = 1;
 }
 
-static int api_snat_det_get_timeouts(vat_main_t * vam)
+static int api_nat_det_get_timeouts(vat_main_t * vam)
 {
-  vl_api_snat_det_get_timeouts_t * mp;
+  vl_api_nat_det_get_timeouts_t * mp;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_show_config");
+      clib_warning ("JSON output not supported for nat_show_config");
       return -99;
     }
 
-  M(SNAT_DET_GET_TIMEOUTS, mp);
+  M(NAT_DET_GET_TIMEOUTS, mp);
   S(mp);
   W (ret);
   return ret;
 }
 
-static int api_snat_det_close_session_out (vat_main_t * vam)
+static int api_nat_det_close_session_out (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_det_close_session_out_t * mp;
+  vl_api_nat_det_close_session_out_t * mp;
   ip4_address_t out_addr, ext_addr;
   u32 out_port, ext_port;
   int ret;
@@ -994,7 +993,7 @@ static int api_snat_det_close_session_out (vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_DET_CLOSE_SESSION_OUT, mp);
+  M(NAT_DET_CLOSE_SESSION_OUT, mp);
   clib_memcpy(mp->out_addr, &out_addr, 4);
   mp->out_port = ntohs((u16)out_port);
   clib_memcpy(mp->ext_addr, &ext_addr, 4);
@@ -1005,10 +1004,10 @@ static int api_snat_det_close_session_out (vat_main_t * vam)
   return ret;
 }
 
-static int api_snat_det_close_session_in (vat_main_t * vam)
+static int api_nat_det_close_session_in (vat_main_t * vam)
 {
   unformat_input_t * i = vam->input;
-  vl_api_snat_det_close_session_in_t * mp;
+  vl_api_nat_det_close_session_in_t * mp;
   ip4_address_t in_addr, ext_addr;
   u32 in_port, ext_port;
   int ret;
@@ -1023,7 +1022,7 @@ static int api_snat_det_close_session_in (vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_DET_CLOSE_SESSION_IN, mp);
+  M(NAT_DET_CLOSE_SESSION_IN, mp);
   clib_memcpy(mp->in_addr, &in_addr, 4);
   mp->in_port = ntohs((u16)in_port);
   clib_memcpy(mp->ext_addr, &ext_addr, 4);
@@ -1034,8 +1033,8 @@ static int api_snat_det_close_session_in (vat_main_t * vam)
   return ret;
 }
 
-static void vl_api_snat_det_session_details_t_handler
-  (vl_api_snat_det_session_details_t *mp)
+static void vl_api_nat_det_session_details_t_handler
+  (vl_api_nat_det_session_details_t *mp)
 {
   snat_test_main_t * sm = &snat_test_main;
   vat_main_t *vam = sm->vat_main;
@@ -1046,17 +1045,17 @@ static void vl_api_snat_det_session_details_t_handler
           mp->out_port, mp->in_port);
 }
 
-static int api_snat_det_session_dump(vat_main_t * vam)
+static int api_nat_det_session_dump(vat_main_t * vam)
 {
   unformat_input_t* i = vam->input;
-  vl_api_snat_det_session_dump_t * mp;
-  vl_api_snat_control_ping_t *mp_ping;
+  vl_api_nat_det_session_dump_t * mp;
+  vl_api_nat_control_ping_t *mp_ping;
   ip4_address_t user_addr;
   int ret;
 
   if (vam->json_output)
     {
-      clib_warning ("JSON output not supported for snat_det_session_dump");
+      clib_warning ("JSON output not supported for nat_det_session_dump");
       return -99;
     }
 
@@ -1068,58 +1067,58 @@ static int api_snat_det_session_dump(vat_main_t * vam)
       return -99;
     }
 
-  M(SNAT_DET_SESSION_DUMP, mp);
+  M(NAT_DET_SESSION_DUMP, mp);
   clib_memcpy (&mp->user_addr, &user_addr, 4);
   S(mp);
 
   /* Use a control ping for synchronization */
-  M(SNAT_CONTROL_PING, mp_ping);
+  M(NAT_CONTROL_PING, mp_ping);
   S(mp_ping);
 
   W (ret);
   return ret;
 }
 
-/* 
+/*
  * List of messages that the api test plugin sends,
  * and that the data plane plugin processes
  */
-#define foreach_vpe_api_msg                                      \
-_(snat_add_address_range, "<start-addr> [- <end-addr] [del]")    \
-_(snat_interface_add_del_feature,                                \
-  "<intfc> | sw_if_index <id> [in] [out] [del]")                 \
-_(snat_add_static_mapping, "local_addr <ip> (external_addr <ip>" \
-  " | external_if <intfc> | external_sw_if_ndex <id>) "          \
-  "[local_port <n>] [external_port <n>] [vrf <table-id>] [del] " \
-  "protocol <n>")                                                \
-_(snat_set_workers, "<wokrers_bitmap>")                          \
-_(snat_static_mapping_dump, "")                                  \
-_(snat_show_config, "")                                          \
-_(snat_address_dump, "")                                         \
-_(snat_interface_dump, "")                                       \
-_(snat_worker_dump, "")                                          \
-_(snat_add_del_interface_addr,                                   \
-  "<intfc> | sw_if_index <id> [del]")                            \
-_(snat_interface_addr_dump, "")                                  \
-_(snat_ipfix_enable_disable, "[domain <id>] [src_port <n>] "     \
-  "[disable]")                                                   \
-_(snat_user_dump, "")                                            \
-_(snat_user_session_dump, "ip_address <ip> vrf_id <table-id>")   \
-_(snat_add_det_map, "in <in_addr>/<in_plen> out "                \
-  "<out_addr>/<out_plen> [del]")                                 \
-_(snat_det_forward, "<in_addr>")                                 \
-_(snat_det_reverse, "<out_addr> <out_port>")                     \
-_(snat_det_map_dump, "")                                         \
-_(snat_det_set_timeouts, "[udp <sec> | tcp_established <sec> | " \
-  "tcp_transitory <sec> | icmp <sec>]")                          \
-_(snat_det_get_timeouts, "")                                     \
-_(snat_det_close_session_out, "<out_addr>:<out_port> "           \
-  "<ext_addr>:<ext_port>")                                       \
-_(snat_det_close_session_in, "<in_addr>:<in_port> "              \
-  "<out_addr>:<out_port>")                                       \
-_(snat_det_session_dump, "ip_address <user_addr>")
+#define foreach_vpe_api_msg                                       \
+_(nat44_add_del_address_range, "<start-addr> [- <end-addr] [del]")\
+_(nat44_interface_add_del_feature,                                \
+  "<intfc> | sw_if_index <id> [in] [out] [del]")                  \
+_(nat44_add_del_static_mapping, "local_addr <ip>"                 \
+  " (external_addr <ip> | external_if <intfc> |"                  \
+  " external_sw_if_ndex <id>) [local_port <n>]"                   \
+  " [external_port <n>] [vrf <table-id>] [del] protocol <n>")     \
+_(nat_set_workers, "<wokrers_bitmap>")                            \
+_(nat44_static_mapping_dump, "")                                  \
+_(nat_show_config, "")                                            \
+_(nat44_address_dump, "")                                         \
+_(nat44_interface_dump, "")                                       \
+_(nat_worker_dump, "")                                            \
+_(nat44_add_del_interface_addr,                                   \
+  "<intfc> | sw_if_index <id> [del]")                             \
+_(nat44_interface_addr_dump, "")                                  \
+_(nat_ipfix_enable_disable, "[domain <id>] [src_port <n>] "       \
+  "[disable]")                                                    \
+_(nat44_user_dump, "")                                            \
+_(nat44_user_session_dump, "ip_address <ip> vrf_id <table-id>")   \
+_(nat_det_add_del_map, "in <in_addr>/<in_plen> out "              \
+  "<out_addr>/<out_plen> [del]")                                  \
+_(nat_det_forward, "<in_addr>")                                   \
+_(nat_det_reverse, "<out_addr> <out_port>")                       \
+_(nat_det_map_dump, "")                                           \
+_(nat_det_set_timeouts, "[udp <sec> | tcp_established <sec> | "   \
+  "tcp_transitory <sec> | icmp <sec>]")                           \
+_(nat_det_get_timeouts, "")                                       \
+_(nat_det_close_session_out, "<out_addr>:<out_port> "             \
+  "<ext_addr>:<ext_port>")                                        \
+_(nat_det_close_session_in, "<in_addr>:<in_port> "                \
+  "<out_addr>:<out_port>")                                        \
+_(nat_det_session_dump, "ip_address <user_addr>")
 
-static void 
+static void
 snat_vat_api_hookup (vat_main_t *vam)
 {
   snat_test_main_t * sm __attribute__((unused)) = &snat_test_main;
@@ -1131,7 +1130,7 @@ snat_vat_api_hookup (vat_main_t *vam)
                           vl_noop_handler,                      \
                           vl_api_##n##_t_endian,                \
                           vl_api_##n##_t_print,                 \
-                          sizeof(vl_api_##n##_t), 1); 
+                          sizeof(vl_api_##n##_t), 1);
   foreach_vpe_api_reply_msg;
 #undef _
 
@@ -1139,8 +1138,8 @@ snat_vat_api_hookup (vat_main_t *vam)
 #define _(n,h)                                          \
   hash_set_mem (vam->function_by_name, #n, api_##n);
   foreach_vpe_api_msg;
-#undef _    
-    
+#undef _
+
   /* Help strings */
 #define _(n,h) hash_set_mem (vam->help_by_name, #n, h);
   foreach_vpe_api_msg;
@@ -1155,13 +1154,13 @@ clib_error_t * vat_plugin_register (vat_main_t *vam)
   sm->vat_main = vam;
 
   /* Ask the vpp engine for the first assigned message-id */
-  name = format (0, "snat_%08x%c", api_version, 0);
+  name = format (0, "nat_%08x%c", api_version, 0);
   sm->msg_id_base = vl_client_get_first_plugin_msg_id ((char *) name);
 
   if (sm->msg_id_base != (u16) ~0)
     snat_vat_api_hookup (vam);
-  
+
   vec_free(name);
-  
+
   return 0;
 }

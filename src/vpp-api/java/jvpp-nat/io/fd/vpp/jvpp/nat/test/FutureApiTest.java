@@ -20,8 +20,8 @@ package io.fd.vpp.jvpp.nat.test;
 import io.fd.vpp.jvpp.JVppRegistry;
 import io.fd.vpp.jvpp.JVppRegistryImpl;
 import io.fd.vpp.jvpp.nat.JVppNatImpl;
-import io.fd.vpp.jvpp.nat.dto.SnatAddressDetailsReplyDump;
-import io.fd.vpp.jvpp.nat.dto.SnatAddressDump;
+import io.fd.vpp.jvpp.nat.dto.Nat44AddressDetailsReplyDump;
+import io.fd.vpp.jvpp.nat.dto.Nat44AddressDump;
 import io.fd.vpp.jvpp.nat.future.FutureJVppNatFacade;
 
 import java.util.concurrent.Future;
@@ -36,7 +36,7 @@ public class FutureApiTest {
     }
 
     private static void testCallbackApi(String[] args) throws Exception {
-        LOG.info("Testing Java callback API for snat plugin");
+        LOG.info("Testing Java callback API for nat plugin");
         try (final JVppRegistry registry = new JVppRegistryImpl("FutureApiTest", args[0]);
              final FutureJVppNatFacade jvpp = new FutureJVppNatFacade(registry, new JVppNatImpl())) {
             LOG.info("Successfully connected to VPP");
@@ -48,19 +48,19 @@ public class FutureApiTest {
     }
 
     private static void testAclDump(FutureJVppNatFacade jvpp) throws Exception {
-        LOG.info("Sending SnatAddressDump request...");
-        final SnatAddressDump request = new SnatAddressDump();
+        LOG.info("Sending Nat44AddressDump request...");
+        final Nat44AddressDump request = new Nat44AddressDump();
 
-        final Future<SnatAddressDetailsReplyDump> replyFuture = jvpp.snatAddressDump(request).toCompletableFuture();
-        final SnatAddressDetailsReplyDump reply = replyFuture.get();
+        final Future<Nat44AddressDetailsReplyDump> replyFuture = jvpp.nat44AddressDump(request).toCompletableFuture();
+        final Nat44AddressDetailsReplyDump reply = replyFuture.get();
 
-        if (reply == null || reply.snatAddressDetails == null) {
+        if (reply == null || reply.nat44AddressDetails == null) {
             throw new IllegalStateException("Received null response for empty dump: " + reply);
         } else {
             LOG.info(
                     String.format(
-                            "Received snat address dump reply with list of snat address: %s",
-                            reply.snatAddressDetails));
+                            "Received nat address dump reply with list of nat address: %s",
+                            reply.nat44AddressDetails));
         }
     }
 }
