@@ -1855,7 +1855,7 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
 
               if (ip4_is_fragment (ip1))
                 {
-                  next0 = SNAT_IN2OUT_NEXT_REASS;
+                  next1 = SNAT_IN2OUT_NEXT_REASS;
                   goto trace01;
                 }
             }
