@@ -655,7 +655,7 @@ acl_add_vlan_session (acl_main_t * am, u32 table_index, u8 is_output,
     }
   vnet_classify_add_del_session (cm, table_index, match, next_acl,
 				 session_idx, 0, 0, 0, 1);
-  memset (&match[idx], 0x00, 2);
+  memset (&match[idx], 0xff, 2);
 }
 
 static int
