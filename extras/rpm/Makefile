@@ -26,41 +26,24 @@ PC=%
 all: RPM
 
 ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
-srpm:
-	@echo $(TARBALL)
-	mkdir -p rpmbuild/{RPMS,SRPMS,BUILD,SOURCES,SPECS}
-	cp $(TARBALL) rpmbuild/SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
-	cp vpp.spec rpmbuild/SOURCES
-	sed -i '1s/^/$(PC)define _version $(VERSION)\n/' rpmbuild/SOURCES/vpp-suse.spec
-	sed -i '1s/^/$(PC)define _release $(RELEASE)\n/' rpmbuild/SOURCES/vpp-suse.spec
-	sed -i '/define _topdir/d' rpmbuild/SOURCES/vpp-suse.spec
-	rpmbuild -bs \
-	  --define "_topdir rpmbuild" \
-	  rpmbuild/SOURCES/vpp-suse.spec
-	mv $$(find rpmbuild/SRPMS -name \*.src.rpm -type f) .
-
-RPM:
-	@echo $(TARBALL)
-	mkdir -p RPMS SOURCES
-	cp $(TARBALL) SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
-	rpmbuild -bb \
-	  --define "_topdir $(CURDIR)" \
-	  --define "_version $(VERSION)" \
-	  --define "_release $(RELEASE)" \
-	  vpp-suse.spec
-	mv $$(find RPMS -name \*.rpm -type f) .
+TOPDIR=$(CURDIR)
+SPEC_FILE='vpp-suse.spec'
 else
+TOPDIR=$(PWD)
+SPEC_FILE='vpp.spec'
+endif
+
 srpm:
 	@echo $(TARBALL)
 	mkdir -p rpmbuild/{RPMS,SRPMS,BUILD,SOURCES,SPECS}
 	cp $(TARBALL) rpmbuild/SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
-	cp vpp.spec rpmbuild/SOURCES
-	sed -i '1s/^/$(PC)define _version $(VERSION)\n/' rpmbuild/SOURCES/vpp.spec
-	sed -i '1s/^/$(PC)define _release $(RELEASE)\n/' rpmbuild/SOURCES/vpp.spec
-	sed -i '/define _topdir/d' rpmbuild/SOURCES/vpp.spec
+	cp $(SPEC_FILE) rpmbuild/SOURCES
+	sed -i '1s/^/$(PC)define _version $(VERSION)\n/' rpmbuild/SOURCES/$(SPEC_FILE)
+	sed -i '1s/^/$(PC)define _release $(RELEASE)\n/' rpmbuild/SOURCES/$(SPEC_FILE)
+	sed -i '/define _topdir/d' rpmbuild/SOURCES/$(SPEC_FILE)
 	rpmbuild -bs \
 	  --define "_topdir rpmbuild" \
-	  rpmbuild/SOURCES/vpp.spec
+	  rpmbuild/SOURCES/$(SPEC_FILE)
 	mv $$(find rpmbuild/SRPMS -name \*.src.rpm -type f) .
 
 RPM:
@@ -68,9 +51,8 @@ RPM:
 	mkdir -p RPMS SOURCES
 	cp $(TARBALL) SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
 	rpmbuild -bb \
-	  --define "_topdir $(PWD)" \
+	  --define "_topdir $(TOPDIR)" \
 	  --define "_version $(VERSION)" \
 	  --define "_release $(RELEASE)" \
-	  vpp.spec
+	  $(SPEC_FILE)
 	mv $$(find RPMS -name \*.rpm -type f) .
-endif
