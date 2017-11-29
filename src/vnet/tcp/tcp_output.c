@@ -1376,7 +1376,7 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   if (tc->state >= TCP_STATE_ESTABLISHED)
     {
       /* Lost FIN, retransmit and return */
-      if (tc->state == TCP_STATE_FIN_WAIT_1)
+      if (tcp_is_lost_fin (tc))
 	{
 	  tcp_send_fin (tc);
 	  tc->rto_boff += 1;
@@ -1495,8 +1495,6 @@ tcp_timer_retransmit_handler_i (u32 index, u8 is_syn)
   else
     {
       ASSERT (tc->state == TCP_STATE_CLOSED);
-      if (CLIB_DEBUG)
-	TCP_DBG ("connection state: %U", format_tcp_connection, tc, 2);
       return;
     }
 }

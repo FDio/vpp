@@ -314,16 +314,20 @@ void
 transport_init (void)
 {
   vlib_thread_main_t *vtm = vlib_get_thread_main ();
-  u32 local_endpoints_table_buckets = 250000;
-  u32 local_endpoints_table_memory = 512 << 20;
+  session_manager_main_t *smm = vnet_get_session_manager_main ();
   u32 num_threads;
+
+  if (smm->local_endpoints_table_buckets == 0)
+    smm->local_endpoints_table_buckets = 250000;
+  if (smm->local_endpoints_table_memory == 0)
+    smm->local_endpoints_table_memory = 512 << 20;
 
   /* Initialize [port-allocator] random number seed */
   port_allocator_seed = (u32) clib_cpu_time_now ();
 
   clib_bihash_init_24_8 (&local_endpoints_table, "local endpoints table",
-			 local_endpoints_table_buckets,
-			 local_endpoints_table_memory);
+			 smm->local_endpoints_table_buckets,
+			 smm->local_endpoints_table_memory);
   num_threads = 1 /* main thread */  + vtm->n_threads;
   if (num_threads > 1)
     clib_spinlock_init (&local_endpoints_lock);

@@ -629,7 +629,10 @@ skip_dequeue:
 	  /* Can retransmit for closed sessions but can't do anything if
 	   * session is not ready or closed */
 	  if (PREDICT_FALSE (s0->session_state < SESSION_STATE_READY))
-	    continue;
+	    {
+	      vec_add1 (smm->pending_event_vector[my_thread_index], *e0);
+	      continue;
+	    }
 	  /* Spray packets in per session type frames, since they go to
 	   * different nodes */
 	  rv = (smm->session_tx_fns[s0->session_type]) (vm, node, smm, e0, s0,
