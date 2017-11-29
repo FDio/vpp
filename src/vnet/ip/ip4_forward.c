@@ -1189,6 +1189,12 @@ ip4_lookup_init (vlib_main_t * vm)
 
   if ((error = vlib_call_init_function (vm, vnet_feature_init)))
     return error;
+  if ((error = vlib_call_init_function (vm, ip4_mtrie_module_init)))
+    return (error);
+  if ((error = vlib_call_init_function (vm, fib_module_init)))
+    return error;
+  if ((error = vlib_call_init_function (vm, mfib_module_init)))
+    return error;
 
   for (i = 0; i < ARRAY_LEN (im->fib_masks); i++)
     {
@@ -3165,6 +3171,29 @@ VLIB_CLI_COMMAND (set_ip_classify_command, static) =
     .function = set_ip_classify_command_fn,
 };
 /* *INDENT-ON* */
+
+static clib_error_t *
+ip4_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  ip4_main_t *im = &ip4_main;
+  uword heapsize = 0;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "heap-size %U", unformat_memory_size, &heapsize))
+	;
+      else
+	return clib_error_return (0,
+				  "invalid heap-size parameter `%U'",
+				  format_unformat_error, input);
+    }
+
+  im->mtrie_heap_size = heapsize;
+
+  return 0;
+}
+
+VLIB_EARLY_CONFIG_FUNCTION (ip4_config, "ip");
 
 /*
  * fd.io coding-style-patch-verification: ON

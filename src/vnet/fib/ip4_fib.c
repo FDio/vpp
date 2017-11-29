@@ -106,11 +106,14 @@ ip4_create_fib_with_table_id (u32 table_id,
 {
     fib_table_t *fib_table;
     ip4_fib_t *v4_fib;
+    void *old_heap;
 
     pool_get_aligned(ip4_main.fibs, fib_table, CLIB_CACHE_LINE_BYTES);
     memset(fib_table, 0, sizeof(*fib_table));
 
+    old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);
     pool_get_aligned(ip4_main.v4_fibs, v4_fib, CLIB_CACHE_LINE_BYTES);
+    clib_mem_set_heap (old_heap);
 
     ASSERT((fib_table - ip4_main.fibs) ==
            (v4_fib - ip4_main.v4_fibs));
@@ -326,12 +329,17 @@ ip4_fib_table_entry_insert (ip4_fib_t *fib,
 	/*
 	 * adding a new entry
 	 */
+        uword *old_heap;
+        old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);
+
 	if (NULL == hash) {
 	    hash = hash_create (32 /* elts */, sizeof (uword));
 	    hash_set_flags (hash, HASH_FLAG_NO_AUTO_SHRINK);
+
 	}
 	hash = hash_set(hash, key, fib_entry_index);
 	fib->fib_entry_by_dst_address[len] = hash;
+        clib_mem_set_heap (old_heap);
     }
     else
     {
@@ -359,7 +367,11 @@ ip4_fib_table_entry_remove (ip4_fib_t *fib,
     }
     else 
     {
+        uword *old_heap;
+
+        old_heap = clib_mem_set_heap (ip4_main.mtrie_mheap);
 	hash_unset(hash, key);
+        clib_mem_set_heap (old_heap);
     }
 
     fib->fib_entry_by_dst_address[len] = hash;
@@ -484,36 +496,10 @@ ip4_fib_table_show_one (ip4_fib_t *fib,
 u8 *
 format_ip4_fib_table_memory (u8 * s, va_list * args)
 {
-    fib_table_t *fib_table;
-    u64 total_memory;
-
-    total_memory = 0;
-
-    pool_foreach (fib_table, ip4_main.fibs,
-    ({
-	ip4_fib_t *fib;
-        uword fib_size;
-        int i;
-
-        fib = pool_elt_at_index(ip4_main.v4_fibs, fib_table->ft_index);
-        fib_size = ip4_fib_mtrie_memory_usage(&fib->mtrie);
-
-        for (i = 0; i < ARRAY_LEN (fib->fib_entry_by_dst_address); i++)
-        {
-            uword * hash = fib->fib_entry_by_dst_address[i];
-
-            if (NULL != hash)
-            {
-                fib_size += hash_bytes(hash);
-            }
-        }
-
-        total_memory += fib_size;
-    }));
-
     s = format(s, "%=30s %=6d %=8ld\n",
                "IPv4 unicast",
-               pool_elts(ip4_main.fibs), total_memory);
+               pool_elts(ip4_main.fibs),
+               mheap_bytes(ip4_main.mtrie_mheap));
 
     return (s);
 }

@@ -148,6 +148,12 @@ typedef struct ip4_main_t
 
     u8 pad[2];
   } host_config;
+
+  /** Heapsize for the Mtries */
+  uword mtrie_heap_size;
+
+  /** The memory heap for the mtries */
+  void *mtrie_mheap;
 } ip4_main_t;
 
 /** Global ip4 main structure. */

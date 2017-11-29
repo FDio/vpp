@@ -642,13 +642,13 @@ mfib_module_init (vlib_main_t * vm)
 {
     clib_error_t * error;
 
+    mfib_entry_module_init();
+    mfib_signal_module_init();
+
     if ((error = vlib_call_init_function (vm, fib_module_init)))
         return (error);
     if ((error = vlib_call_init_function (vm, rn_module_init)))
         return (error);
-
-    mfib_entry_module_init();
-    mfib_signal_module_init();
 
     return (error);
 }
