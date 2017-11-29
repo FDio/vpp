@@ -43,16 +43,6 @@ tap_interface::tap_interface(const std::string& name,
 {
 }
 
-tap_interface::tap_interface(const handle_t& hdl,
-                             const std::string& name,
-                             admin_state_t state,
-                             route::prefix_t prefix)
-  : interface(hdl, l2_address_t::ZERO, name, type_t::TAP, state)
-  , m_prefix(prefix)
-  , m_l2_address(l2_address_t::ZERO)
-{
-}
-
 tap_interface::~tap_interface()
 {
   sweep();

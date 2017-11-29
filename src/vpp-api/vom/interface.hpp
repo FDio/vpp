@@ -31,7 +31,7 @@ namespace VOM {
  * Forward declaration of the stats and events command
  */
 namespace interface_cmds {
-class stats_cmd;
+class stats_enable_cmd;
 class events_cmd;
 };
 
@@ -390,7 +390,8 @@ public:
      * Virtual function called on the listener when the command has data
      * ready to process
      */
-    virtual void handle_interface_stat(interface_cmds::stats_cmd* cmd) = 0;
+    virtual void handle_interface_stat(
+      interface_cmds::stats_enable_cmd* cmd) = 0;
 
     /**
      * Return the HW::item representing the status
@@ -426,13 +427,10 @@ public:
 
 protected:
   /**
-   * Construct an interface object with a handle and a HW address
+   * Set the handle of an interface object. Only called by the interface
+   * factory during the populate
    */
-  interface(const handle_t& handle,
-            const l2_address_t& l2_address,
-            const std::string& name,
-            type_t type,
-            admin_state_t state);
+  void set(const handle_t& handle);
   friend class interface_factory;
 
   /**
@@ -560,7 +558,7 @@ private:
   /**
    * shared pointer to the stats object for this interface.
    */
-  std::shared_ptr<interface_cmds::stats_cmd> m_stats;
+  std::shared_ptr<interface_cmds::stats_enable_cmd> m_stats;
 
   /**
    * The state of the interface

@@ -138,14 +138,14 @@ rc_t
 events_cmd::issue(connection& con)
 {
   /*
- * Set the call back to handle DHCP complete envets.
- */
+   * Set the call back to handle DHCP complete envets.
+   */
   m_reg.reset(new reg_t(con.ctx(), std::ref(*this)));
 
   /*
- * return in-progress so the command stays in the pending list.
- */
-  return (rc_t::INPROGRESS);
+   * return in-progress so the command stays in the pending list.
+   */
+  return (rc_t::OK);
 }
 
 void

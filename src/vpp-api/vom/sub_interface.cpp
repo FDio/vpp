@@ -29,20 +29,6 @@ sub_interface::sub_interface(const interface& parent,
 {
 }
 
-sub_interface::sub_interface(const handle_t& handle,
-                             const interface& parent,
-                             admin_state_t state,
-                             vlan_id_t vlan)
-  : interface(handle,
-              l2_address_t::ZERO,
-              mk_name(parent, vlan),
-              parent.type(),
-              state)
-  , m_parent(parent.singular())
-  , m_vlan(vlan)
-{
-}
-
 sub_interface::~sub_interface()
 {
   sweep();

@@ -79,7 +79,7 @@ public:
      * we reset the promise after setting the value to reuse it
      * when we run the retire command from the same cmd object
      */
-    m_promise = std::promise<DATA>();
+    //    m_promise = std::promise<DATA>();
   }
 
   /**

@@ -30,7 +30,7 @@ public:
   /**
    * Factory method to construct a new interface from the VPP record
    */
-  static std::unique_ptr<interface> new_interface(
+  static std::shared_ptr<interface> new_interface(
     const vapi_payload_sw_interface_details& vd);
 };
 };

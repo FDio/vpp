@@ -77,20 +77,6 @@ HW::cmd_q::enqueue(std::queue<cmd*>& cmds)
 }
 
 void
-HW::cmd_q::dequeue(cmd* c)
-{
-  c->retire(m_conn);
-  m_pending.erase(c);
-}
-
-void
-HW::cmd_q::dequeue(std::shared_ptr<cmd> c)
-{
-  c->retire(m_conn);
-  m_pending.erase(c.get());
-}
-
-void
 HW::cmd_q::connect()
 {
   if (m_connected) {
@@ -144,33 +130,18 @@ HW::cmd_q::write()
        * ince a async event can be recieved before the command
        * completes
        */
-      m_pending[c.get()] = c;
-
       rc = c->issue(m_conn);
 
-      if (rc_t::INPROGRESS == rc) {
+      if (rc_t::OK == rc) {
         /*
-         * this command completes asynchronously
-         * leave the command in the pending store
+         * move to the next
          */
       } else {
         /*
-         * the command completed, remove from the pending store
+         * barf out without issuing the rest
          */
-        m_pending.erase(c.get());
-
-        if (rc_t::OK == rc) {
-          /*
-           * move to the next
-           */
-        } else {
-          /*
-           * barf out without issuing the rest
-           */
-          VOM_LOG(log_level_t::ERROR) << "Failed to execute: "
-                                      << c->to_string();
-          break;
-        }
+        VOM_LOG(log_level_t::ERROR) << "Failed to execute: " << c->to_string();
+        break;
       }
     } else {
       /*
@@ -230,18 +201,6 @@ void
 HW::enqueue(std::queue<cmd*>& cmds)
 {
   m_cmdQ->enqueue(cmds);
-}
-
-void
-HW::dequeue(cmd* cmd)
-{
-  m_cmdQ->dequeue(cmd);
-}
-
-void
-HW::dequeue(std::shared_ptr<cmd> cmd)
-{
-  m_cmdQ->dequeue(cmd);
 }
 
 void

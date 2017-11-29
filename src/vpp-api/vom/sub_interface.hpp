@@ -60,20 +60,6 @@ public:
 
 private:
   /**
-   * Construct with handle
-   */
-  sub_interface(const handle_t& handle,
-                const interface& parent,
-                admin_state_t state,
-                vlan_id_t vlan);
-  friend class interface_factory;
-
-  /**
-   * The interface class can construct interfaces with handles
-   */
-  friend class interface;
-
-  /**
    * Return the matching 'instance' of the sub-interface
    *  over-ride from the base class
    */

@@ -159,15 +159,15 @@ bridge_domain::event_handler::handle_populate(const client_db::key_t& key)
     VOM_LOG(log_level_t::DEBUG) << "dump: " << bd.to_string();
 
     /*
- * Write each of the discovered interfaces into the OM,
- * but disable the HW Command q whilst we do, so that no
- * commands are sent to VPP
- */
+     * Write each of the discovered bridge-domains into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
     OM::commit(key, bd);
 
     /**
- * For each interface in the BD construct an l2_binding
- */
+     * For each interface in the BD construct an l2_binding
+     */
     for (unsigned int ii = 0; ii < payload.n_sw_ifs; ii++) {
       std::shared_ptr<interface> itf =
         interface::find(payload.sw_if_details[ii].sw_if_index);

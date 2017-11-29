@@ -18,6 +18,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include "vom/enum_base.hpp"
 
@@ -35,6 +36,11 @@ private:
    * Private constructor taking the value and the string name
    */
   log_level_t(int v, const std::string& s);
+
+  /*
+   * not allowed to construct
+   */
+  log_level_t() = delete;
 };
 
 /**
@@ -45,14 +51,36 @@ class log_t
 {
 public:
   /**
-   * Construct a logger
+   *
    */
-  log_t();
+  class handler
+  {
+  public:
+    /**
+   * Default Constructor
+   */
+    handler() = default;
+
+    /**
+     * Default Destructor
+     */
+    virtual ~handler() = default;
+
+    /**
+     * Handle a log message
+     */
+    virtual void handle_message(const std::string& file,
+                                const int line,
+                                const std::string& function,
+                                const log_level_t& level,
+                                const std::string& message) = 0;
+  };
 
   /**
-   * Return the stream
+   * Construct a logger
    */
-  std::ostream& stream(const char* file, int line, const log_level_t& level);
+  log_t(handler* h);
+  log_t();
 
   /**
    * The configured level
@@ -67,23 +95,82 @@ public:
   /**
    * set a file to receive the logging data
    */
-  void set(const std::string& ofile);
+  void set(handler* h);
+
+  /**
+   * An entry in the log
+   */
+  class entry
+  {
+  public:
+    entry(const char* file,
+          const char* function,
+          int line,
+          const log_level_t& level);
+    ~entry();
+
+    std::stringstream& stream();
+
+  private:
+    const std::string m_file;
+    const std::string m_function;
+    const log_level_t m_level;
+    const int m_line;
+
+    std::stringstream m_stream;
+  };
+  /**
+   * Register a log handler to receive the log output
+   */
+  void register_handler(handler& h);
 
 private:
+  void write(const std::string& file,
+             const int line,
+             const std::string& function,
+             const log_level_t& level,
+             const std::string& message);
+
   /**
    * the configured logging level
    */
   log_level_t m_level;
 
   /**
+   * Pointer to a registered handler. Null if no handler registerd
+   */
+  handler* m_handler;
+};
+
+class file_handler : public log_t::handler
+{
+public:
+  file_handler(const std::string& ofile);
+  ~file_handler();
+
+  virtual void handle_message(const std::string& file,
+                              const int line,
+                              const std::string& function,
+                              const log_level_t& level,
+                              const std::string& message);
+
+private:
+  /**
    * Opened file for debugging
    */
   std::ofstream m_file_stream;
+};
 
-  /**
-   * Pointer to the output stream
-   */
-  std::ostream* m_o_stream;
+class cout_handler : public log_t::handler
+{
+public:
+  cout_handler() = default;
+  ~cout_handler() = default;
+  virtual void handle_message(const std::string& file,
+                              const int line,
+                              const std::string& function,
+                              const log_level_t& level,
+                              const std::string& message);
 };
 
 /**
@@ -93,7 +180,7 @@ log_t& logger();
 
 #define VOM_LOG(lvl)                                                           \
   if (lvl >= logger().level())                                                 \
-  logger().stream(__FILE__, __LINE__, lvl)
+  log_t::entry(__FILE__, __FUNCTION__, __LINE__, lvl).stream()
 };
 
 /*

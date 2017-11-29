@@ -80,7 +80,7 @@ public:
 class MockListener : public interface::event_listener,
                      public interface::stat_listener
 {
-    void handle_interface_stat(interface_cmds::stats_cmd *cmd)
+    void handle_interface_stat(interface_cmds::stats_enable_cmd *cmd)
     {
     }
     void handle_interface_event(interface_cmds::events_cmd *cmd)
@@ -1463,8 +1463,6 @@ BOOST_AUTO_TEST_CASE(test_interface_events) {
 
     HW::enqueue(itf);
     HW::write();
-
-    HW::dequeue(itf);
 }
 
 BOOST_AUTO_TEST_CASE(test_interface_route_domain_change) {

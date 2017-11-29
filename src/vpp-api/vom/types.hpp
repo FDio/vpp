@@ -106,12 +106,6 @@ struct rc_t : public enum_base<rc_t>
   const static rc_t OK;
 
   /**
-   * HW write is in progress. Also used for the 'want' events
-   * that never complete
-   */
-  const static rc_t INPROGRESS;
-
-  /**
    * HW write reported invalid input
    */
   const static rc_t INVALID;

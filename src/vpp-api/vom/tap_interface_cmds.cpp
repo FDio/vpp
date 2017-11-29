@@ -112,7 +112,7 @@ dump_cmd::issue(connection& con)
 
   wait();
 
-  return rc_t::INPROGRESS;
+  return rc_t::OK;
 }
 
 std::string
