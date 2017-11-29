@@ -28,8 +28,6 @@ fib_module_init (vlib_main_t * vm)
 	return (error);
     if ((error = vlib_call_init_function (vm, adj_module_init)))
 	return (error);
-    if ((error = vlib_call_init_function (vm, ip4_mtrie_module_init)))
-	return (error);
 
     fib_entry_module_init();
     fib_entry_src_module_init();
