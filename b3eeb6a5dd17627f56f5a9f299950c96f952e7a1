@@ -22,6 +22,30 @@
       "revId": "b3eeb6a5dd17627f56f5a9f299950c96f952e7a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "59260f03_8c561d47",
+        "filename": "src/plugins/nat/out2in.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1092,
+      "author": {
+        "id": 175
+      },
+      "writtenOn": "2017-11-29T16:28:21Z",
+      "side": 0,
+      "message": "This is so the packets not matching any session or static mapping will be routed instead of dropped. In that case we don\u0027t need special handling for DHCP packets.\n\nThis makes sense in NAT44 with ACL case. Packets sent from inside network can be routed to a NAT output interface even when ACL match and translation didn\u0027t occur, because NAT doesn\u0027t affect destination address. Then it makes sense to expect that in many use cases the response traffic from outside network to packets not matching ACL will arrive at that same interface.",
+      "parentUuid": "1c4833cb_fbe78b85",
+      "range": {
+        "startLine": 1084,
+        "startChar": 0,
+        "endLine": 1092,
+        "endChar": 50
+      },
+      "revId": "b3eeb6a5dd17627f56f5a9f299950c96f952e7a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
