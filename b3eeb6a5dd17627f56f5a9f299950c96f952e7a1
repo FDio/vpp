@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c4833cb_fbe78b85",
+        "filename": "src/plugins/nat/out2in.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1092,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-11-29T13:56:57Z",
+      "side": 0,
+      "message": "Why you remove this?",
+      "range": {
+        "startLine": 1084,
+        "startChar": 0,
+        "endLine": 1092,
+        "endChar": 50
+      },
+      "revId": "b3eeb6a5dd17627f56f5a9f299950c96f952e7a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
