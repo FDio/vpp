@@ -2850,6 +2850,19 @@ vppcom_session_read_ready (session_t * session, u32 session_index)
 	}
     }
   rv = ready;
+
+  if (vcm->app_event_queue->cursize &&
+      !pthread_mutex_trylock (&vcm->app_event_queue->mutex))
+    {
+      u32 i, n_to_dequeue = vcm->app_event_queue->cursize;
+      session_fifo_event_t e;
+
+      for (i = 0; i < n_to_dequeue; i++)
+	unix_shared_memory_queue_sub_raw (vcm->app_event_queue, (u8 *) & e);
+
+      pthread_mutex_unlock (&vcm->app_event_queue->mutex);
+    }
+
 done:
   return rv;
 }
