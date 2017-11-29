@@ -75,16 +75,6 @@ private:
   static event_handler m_evh;
 
   /**
-   * Construct with a handle
-   */
-  tap_interface(const handle_t& hdl,
-                const std::string& name,
-                admin_state_t state,
-                route::prefix_t prefix);
-
-  friend class interface_factory;
-
-  /**
    * Ip Prefix
    */
   route::prefix_t m_prefix;

@@ -215,16 +215,6 @@ public:
     virtual void enqueue(std::queue<cmd*>& c);
 
     /**
-     * dequeue a command from the Q.
-     */
-    virtual void dequeue(cmd* c);
-
-    /**
-     * dequeue a command from the Q.
-     */
-    virtual void dequeue(std::shared_ptr<cmd> c);
-
-    /**
      * Write all the commands to HW
      */
     virtual rc_t write();
@@ -310,16 +300,6 @@ public:
    * Enqueue A set of commands for execution
    */
   static void enqueue(std::queue<cmd*>& c);
-
-  /**
-   * dequeue A command for execution
-   */
-  static void dequeue(cmd* f);
-
-  /**
-   * dequeue A command for execution
-   */
-  static void dequeue(std::shared_ptr<cmd> c);
 
   /**
    * Write/Execute all commands hitherto enqueued.

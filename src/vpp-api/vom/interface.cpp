@@ -49,21 +49,6 @@ interface::interface(const std::string& name,
 {
 }
 
-interface::interface(const handle_t& handle,
-                     const l2_address_t& l2_address,
-                     const std::string& name,
-                     interface::type_t type,
-                     interface::admin_state_t state)
-  : m_hdl(handle, rc_t::OK)
-  , m_name(name)
-  , m_type(type)
-  , m_state(state, rc_t::OK)
-  , m_table_id(route::DEFAULT_TABLE)
-  , m_l2_address(l2_address)
-  , m_oper(oper_state_t::DOWN)
-{
-}
-
 interface::interface(const std::string& name,
                      interface::type_t itf_type,
                      interface::admin_state_t itf_state,
@@ -172,8 +157,10 @@ interface::sweep()
       new interface_cmds::set_table_cmd(m_table_id, l3_proto_t::IPV6, m_hdl));
   }
 
-  if (m_stats)
-    HW::dequeue(m_stats);
+  if (m_stats) {
+    HW::enqueue(new interface_cmds::stats_disable_cmd(m_hdl.data()));
+    m_stats.reset();
+  }
 
   // If the interface is up, bring it down
   if (m_state && interface::admin_state_t::UP == m_state.data()) {
@@ -364,6 +351,12 @@ interface::set(const l2_address_t& addr)
 }
 
 void
+interface::set(const handle_t& hdl)
+{
+  m_hdl = hdl;
+}
+
+void
 interface::set(const oper_state_t& state)
 {
   m_oper = state;
@@ -372,7 +365,7 @@ interface::set(const oper_state_t& state)
 void
 interface::enable_stats_i(interface::stat_listener& el)
 {
-  m_stats.reset(new interface_cmds::stats_cmd(el, handle_i()));
+  m_stats.reset(new interface_cmds::stats_enable_cmd(el, handle_i()));
   HW::enqueue(m_stats);
   HW::write();
 }
@@ -442,7 +435,7 @@ interface::event_handler::handle_populate(const client_db::key_t& key)
   HW::write();
 
   for (auto& itf_record : *cmd) {
-    std::unique_ptr<interface> itf =
+    std::shared_ptr<interface> itf =
       interface_factory::new_interface(itf_record.get_payload());
 
     if (itf && interface::type_t::LOCAL != itf->type()) {

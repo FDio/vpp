@@ -166,11 +166,21 @@ bridge_domain_entry::event_handler::handle_populate(const client_db::key_t& key)
 
     std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
     std::shared_ptr<bridge_domain> bd = bridge_domain::find(payload.bd_id);
+
+    if (!bd || !itf) {
+      VOM_LOG(log_level_t::ERROR) << "bridge-domain-entry dump:"
+                                  << " itf:" << payload.sw_if_index
+                                  << " bd:" << payload.bd_id;
+      continue;
+    }
+
     mac_address_t mac(payload.mac);
     bridge_domain_entry bd_e(*bd, mac, *itf);
 
-    VOM_LOG(log_level_t::DEBUG) << "bd-entry-dump: " << bd->to_string()
-                                << mac.to_string() << itf->to_string();
+    VOM_LOG(log_level_t::DEBUG) << "bridge-domain-entry dump:"
+                                << " " << bd->to_string() << " "
+                                << itf->to_string() << " mac:["
+                                << mac.to_string() << "]";
 
     /*
      * Write each of the discovered interfaces into the OM,
