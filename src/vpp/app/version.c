@@ -16,7 +16,9 @@
 #include <vppinfra/cpu.h>
 #include <vpp/app/version.h>
 
-static char *vpe_version_string =
+/* N.B. Variable is not static to ensure it's visible in core dumps, i.e.,
+ * it doesn't go to rodata segment */
+char *vpe_version_string =
   "vpp v" VPP_BUILD_VER
   " built by " VPP_BUILD_USER " on " VPP_BUILD_HOST " at " VPP_BUILD_DATE;
 
