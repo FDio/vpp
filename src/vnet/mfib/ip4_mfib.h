@@ -98,8 +98,13 @@ extern u32 ip4_mfib_table_get_index_for_sw_if_index(u32 sw_if_index);
  * @param fn The function to invoke on each entry visited
  * @param ctx A context passed in the visit function
  */
-extern void ip4_mfib_table_walk (ip4_mfib_t *mfib,
-                                 mfib_table_walk_fn_t fn,
-                                 void *ctx);
+extern void ip4_mfib_table_walk(ip4_mfib_t *mfib,
+                                mfib_table_walk_fn_t fn,
+                                void *ctx);
+
+/**
+ * @brief format (display) the memory usage for IP4 mfibs
+ */
+extern u8 * format_ip4_mfib_table_memory(u8 * s, va_list * args);
 
 #endif

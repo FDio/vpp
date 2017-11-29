@@ -628,6 +628,15 @@ format_mfib_table_name (u8* s, va_list *ap)
     return (s);
 }
 
+u8 *
+format_mfib_table_memory (u8 *s, va_list *args)
+{
+    s = format(s, "%U", format_ip4_mfib_table_memory);
+    s = format(s, "%U", format_ip6_mfib_table_memory);
+
+    return (s);
+}
+
 static clib_error_t *
 mfib_module_init (vlib_main_t * vm)
 {

@@ -1296,3 +1296,13 @@ fib_table_flush (u32 fib_index,
 
     vec_free(ctx.ftf_entries);
 }
+
+u8 *
+format_fib_table_memory (u8 *s, va_list *args)
+{
+    s = format(s, "%U", format_ip4_fib_table_memory);
+    s = format(s, "%U", format_ip6_fib_table_memory);
+    s = format(s, "%U", format_mpls_fib_table_memory);
+
+    return (s);
+}

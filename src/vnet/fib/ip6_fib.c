@@ -524,6 +524,18 @@ ip6_fib_table_show_one (ip6_fib_t *fib,
                      FIB_ENTRY_FORMAT_DETAIL));
 }
 
+u8 *
+format_ip6_fib_table_memory (u8 * s, va_list * args)
+{
+    s = format(s, "%=30s %=6d %=8ld\n",
+               "IPv6 unicast",
+               pool_elts(ip6_main.fibs),
+               mheap_bytes(ip6_main.ip6_table[IP6_FIB_TABLE_NON_FWDING].ip6_hash.mheap) +
+               mheap_bytes(ip6_main.ip6_table[IP6_FIB_TABLE_FWDING].ip6_hash.mheap));
+
+    return (s);
+}
+
 typedef struct {
   u32 fib_index;
   u64 count_by_prefix_length[129];

@@ -117,5 +117,10 @@ extern void ip6_mfib_table_walk (ip6_mfib_t *mfib,
                                  mfib_table_walk_fn_t fn,
                                  void *ctx);
 
+/**
+ * @brief format (display) ipv6 MFIB mempry usage
+ */
+extern u8 *format_ip6_mfib_table_memory(u8 * s, va_list * args);
+
 #endif
 

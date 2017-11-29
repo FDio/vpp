@@ -131,6 +131,7 @@ extern u32 ip4_fib_table_find_or_create_and_lock(u32 table_id,
                                                  fib_source_t src);
 extern u32 ip4_fib_table_create_and_lock(fib_source_t src);
 
+extern u8 *format_ip4_fib_table_memory(u8 * s, va_list * args);
 
 static inline 
 u32 ip4_fib_index_from_table_id (u32 table_id)

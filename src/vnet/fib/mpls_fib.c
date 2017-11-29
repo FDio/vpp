@@ -359,6 +359,18 @@ mpls_fib_table_walk (mpls_fib_t *mpls_fib,
     }));
 }
 
+u8 *
+format_mpls_fib_table_memory (u8 * s, va_list * args)
+{
+    u64 n_tables, mem;
+
+    n_tables = pool_elts(mpls_main.fibs);
+    mem = n_tables * sizeof(mpls_fib_t);
+    s = format(s, "%=30s %=6ld %=8ld\n", "MPLS", n_tables, mem);
+
+    return (s);
+}
+
 static void
 mpls_fib_table_show_all (const mpls_fib_t *mpls_fib,
 			 vlib_main_t * vm)

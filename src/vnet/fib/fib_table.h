@@ -808,4 +808,9 @@ extern void fib_table_walk(u32 fib_index,
                            fib_table_walk_fn_t fn,
                            void *ctx);
 
+/**
+ * @brief format (display) the memory used by the FIB tables
+ */
+extern u8 *format_fib_table_memory(u8 *s, va_list *args);
+
 #endif

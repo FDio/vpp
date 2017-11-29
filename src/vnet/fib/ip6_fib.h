@@ -148,6 +148,8 @@ extern u32 ip6_fib_table_find_or_create_and_lock(u32 table_id,
                                                  fib_source_t src);
 extern u32 ip6_fib_table_create_and_lock(fib_source_t src);
 
+extern u8 *format_ip6_fib_table_memory(u8 * s, va_list * args);
+
 static inline ip6_fib_t *
 ip6_fib_get (fib_node_index_t index)
 {

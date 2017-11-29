@@ -420,5 +420,9 @@ extern void mfib_table_walk(u32 fib_index,
                             fib_protocol_t proto,
                             mfib_table_walk_fn_t fn,
                             void *ctx);
+/**
+ * @brief format (display) the memory usage for mfibs
+ */
+extern u8 * format_mfib_table_memory(u8 * s, va_list * args);
 
 #endif
