@@ -683,8 +683,8 @@ mtrie_ply_memory_usage (ip4_fib_mtrie_t * m, ip4_fib_mtrie_8_ply_t * p)
 }
 
 /* Returns number of bytes of memory used by mtrie. */
-static uword
-mtrie_memory_usage (ip4_fib_mtrie_t * m)
+uword
+ip4_fib_mtrie_memory_usage (ip4_fib_mtrie_t * m)
 {
   uword bytes, i;
 
@@ -771,7 +771,9 @@ format_ip4_fib_mtrie (u8 * s, va_list * va)
 
   s = format (s, "%d plies, memory usage %U\n",
 	      pool_elts (ip4_ply_pool),
-	      format_memory_size, mtrie_memory_usage (m));
+	      format_memory_size, ip4_fib_mtrie_memory_usage (m));
+  s = format (s, "root-ply");
+  p = &m->root_ply;
 
   if (verbose)
     {

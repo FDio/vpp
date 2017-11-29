@@ -162,6 +162,11 @@ void ip4_fib_mtrie_route_del (ip4_fib_mtrie_t * m,
 			      u32 cover_address_length, u32 cover_adj_index);
 
 /**
+ * @brief return the memory used by the table
+ */
+uword ip4_fib_mtrie_memory_usage (ip4_fib_mtrie_t * m);
+
+/**
  * @brief Format/display the contents of the mtrie
  */
 format_function_t format_ip4_fib_mtrie;

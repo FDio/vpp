@@ -105,6 +105,8 @@ extern void mpls_fib_table_walk(mpls_fib_t *fib,
                                 fib_table_walk_fn_t fn,
                                 void *ctx);
 
+extern u8 *format_mpls_fib_table_memory(u8 * s, va_list * args);
+
 /**
  * @brief
  *  Lookup a label and EOS bit in the MPLS_FIB table to retrieve the

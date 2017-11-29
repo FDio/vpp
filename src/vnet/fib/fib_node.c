@@ -15,6 +15,8 @@
 
 #include <vnet/fib/fib_node.h>
 #include <vnet/fib/fib_node_list.h>
+#include <vnet/fib/fib_table.h>
+#include <vnet/mfib/mfib_table.h>
 
 /*
  * The per-type vector of virtual function tables
@@ -234,6 +236,11 @@ fib_memory_show (vlib_main_t * vm,
     fib_node_vft_t *vft;
 
     vlib_cli_output (vm, "FIB memory");
+    vlib_cli_output (vm, "  Tables:");
+    vlib_cli_output (vm, "%=30s %=6s %=8s", "SAFI", "Number", "Bytes");
+    vlib_cli_output (vm, "%U", format_fib_table_memory);
+    vlib_cli_output (vm, "%U", format_mfib_table_memory);
+    vlib_cli_output (vm, "  Nodes:");
     vlib_cli_output (vm, "%=30s %=5s %=8s/%=9s   totals",
 		     "Name","Size", "in-use", "allocated");
 
@@ -255,15 +262,25 @@ fib_memory_show (vlib_main_t * vm,
  *
  * @cliexpar
  * @cliexstart{show fib memory}
- * FIB memory
- *             Name               Size  in-use /allocated   totals
- *             Entry              120     11   /    11      1320/1320
- *         Entry Source            32     11   /    11      352/352
- *     Entry Path-Extensions       44      0   /    0       0/0
- *           Path-list             40     11   /    11      440/440
- *             Path                88     11   /    11      968/968
- *      Node-list elements         20     11   /    11      220/220
- *        Node-list heads          8      13   /    13      104/104
+ *FIB memory
+ * Tables:
+ *            SAFI              Number   Bytes
+ *        IPv4 unicast             2    673066
+ *        IPv6 unicast             2    1054608
+ *            MPLS                 1    4194312
+ *       IPv4 multicast            2     2322
+ *       IPv6 multicast            2      ???
+ * Nodes:
+ *            Name               Size  in-use /allocated   totals
+ *            Entry               96     20   /    20      1920/1920
+ *        Entry Source            32      0   /    0       0/0
+ *    Entry Path-Extensions       60      0   /    0       0/0
+ *       multicast-Entry         192     12   /    12      2304/2304
+ *          Path-list             40     28   /    28      1120/1120
+ *          uRPF-list             16     20   /    20      320/320
+ *            Path                72     28   /    28      2016/2016
+ *     Node-list elements         20     28   /    28      560/560
+ *       Node-list heads          8      30   /    30      240/240
  * @cliexend
 ?*/
 VLIB_CLI_COMMAND (show_fib_memory, static) = {
