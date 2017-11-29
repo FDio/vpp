@@ -470,11 +470,17 @@ ip4_lookup (vlib_main_t * vm,
 
 static u8 *format_ip4_lookup_trace (u8 * s, va_list * args);
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_lookup_node) =
 {
-.function = ip4_lookup,.name = "ip4-lookup",.vector_size =
-    sizeof (u32),.format_trace = format_ip4_lookup_trace,.n_next_nodes =
-    IP_LOOKUP_N_NEXT,.next_nodes = IP4_LOOKUP_NEXT_NODES,};
+  .function = ip4_lookup,
+  .name = "ip4-lookup",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip4_lookup_trace,
+  .n_next_nodes = IP_LOOKUP_N_NEXT,
+  .next_nodes = IP4_LOOKUP_NEXT_NODES,
+};
+/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_lookup_node, ip4_lookup);
 
@@ -665,11 +671,17 @@ ip4_load_balance (vlib_main_t * vm,
   return frame->n_vectors;
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_load_balance_node) =
 {
-.function = ip4_load_balance,.name = "ip4-load-balance",.vector_size =
-    sizeof (u32),.sibling_of = "ip4-lookup",.format_trace =
-    format_ip4_lookup_trace,};
+  .function = ip4_load_balance,
+  .name = "ip4-load-balance",
+  .vector_size = sizeof (u32),
+  .sibling_of = "ip4-lookup",
+  .format_trace =
+  format_ip4_lookup_trace,
+};
+/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_load_balance_node, ip4_load_balance);
 
@@ -2134,25 +2146,36 @@ static char *ip4_arp_error_strings[] = {
   [IP4_ARP_ERROR_NO_SOURCE_ADDRESS] = "no source address for ARP request",
 };
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (ip4_arp_node) =
 {
-  .function = ip4_arp,.name = "ip4-arp",.vector_size =
-    sizeof (u32),.format_trace = format_ip4_forward_next_trace,.n_errors =
-    ARRAY_LEN (ip4_arp_error_strings),.error_strings =
-    ip4_arp_error_strings,.n_next_nodes = IP4_ARP_N_NEXT,.next_nodes =
+  .function = ip4_arp,
+  .name = "ip4-arp",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip4_forward_next_trace,
+  .n_errors = ARRAY_LEN (ip4_arp_error_strings),
+  .error_strings = ip4_arp_error_strings,
+  .n_next_nodes = IP4_ARP_N_NEXT,
+  .next_nodes =
   {
-  [IP4_ARP_NEXT_DROP] = "error-drop",}
-,};
+    [IP4_ARP_NEXT_DROP] = "error-drop",
+  },
+};
 
 VLIB_REGISTER_NODE (ip4_glean_node) =
 {
-  .function = ip4_glean,.name = "ip4-glean",.vector_size =
-    sizeof (u32),.format_trace = format_ip4_forward_next_trace,.n_errors =
-    ARRAY_LEN (ip4_arp_error_strings),.error_strings =
-    ip4_arp_error_strings,.n_next_nodes = IP4_ARP_N_NEXT,.next_nodes =
-  {
-  [IP4_ARP_NEXT_DROP] = "error-drop",}
-,};
+  .function = ip4_glean,
+  .name = "ip4-glean",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip4_forward_next_trace,
+  .n_errors = ARRAY_LEN (ip4_arp_error_strings),
+  .error_strings = ip4_arp_error_strings,
+  .n_next_nodes = IP4_ARP_N_NEXT,
+  .next_nodes = {
+  [IP4_ARP_NEXT_DROP] = "error-drop",
+  },
+};
+/* *INDENT-ON* */
 
 #define foreach_notrace_ip4_arp_error           \
 _(DROP)                                         \
