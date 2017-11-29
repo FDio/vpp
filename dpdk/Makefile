@@ -26,11 +26,12 @@ B := $(DPDK_BUILD_DIR)
 I := $(DPDK_INSTALL_DIR)
 DPDK_VERSION ?= 17.08
 PKG_SUFFIX ?= vpp2
-DPDK_BASE_URL ?= http://static.dpdk.org/rel
+DPDK_BASE_URL ?= http://fast.dpdk.org/rel
 DPDK_TARBALL := dpdk-$(DPDK_VERSION).tar.xz
 DPDK_TAR_URL := $(DPDK_BASE_URL)/$(DPDK_TARBALL)
-DPDK_17.08_TARBALL_MD5_CKSUM := 537ff038915fefd0f210905fafcadb4b
+DPDK_17.08_TARBALL_MD5_CKSUM := 0641f59ea8ea98afefa7cfa2699f6241
 DPDK_17.11_TARBALL_MD5_CKSUM := 53ee9e054a8797c9e67ffa0eb5d0c701
+DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 MACHINE=$(shell uname -m)
 
 NASM_BASE_URL := http://www.nasm.us/pub/nasm/releasebuilds
@@ -43,10 +44,8 @@ ISA_L_CRYPTO_LIB := n
 
 ifeq ($(DPDK_VERSION),17.08)
 IPSEC_MB_VER ?= 0.46
-DPDK_SOURCE := $(B)/dpdk-stable-$(DPDK_VERSION)
 else
 IPSEC_MB_VER ?= 0.47
-DPDK_SOURCE := $(B)/dpdk-$(DPDK_VERSION)
 endif
 ISA_L_CRYPTO_VER := 2.18.0
 
