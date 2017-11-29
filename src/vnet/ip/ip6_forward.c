@@ -3494,14 +3494,9 @@ ip6_config (vlib_main_t * vm, unformat_input_t * input)
     {
       if (unformat (input, "hash-buckets %d", &tmp))
 	nbuckets = tmp;
-      else if (unformat (input, "heap-size %dm", &tmp))
-	heapsize = ((u64) tmp) << 20;
-      else if (unformat (input, "heap-size %dM", &tmp))
-	heapsize = ((u64) tmp) << 20;
-      else if (unformat (input, "heap-size %dg", &tmp))
-	heapsize = ((u64) tmp) << 30;
-      else if (unformat (input, "heap-size %dG", &tmp))
-	heapsize = ((u64) tmp) << 30;
+      else if (unformat (input, "heap-size %U",
+			 unformat_memory_size, &heapsize))
+	;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
