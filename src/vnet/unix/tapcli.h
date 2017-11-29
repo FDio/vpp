@@ -30,23 +30,33 @@
  _(BUFFER_ALLOC, "buffer allocation error")             \
  _(UNKNOWN, "unknown error")
 
-typedef enum {
+typedef enum
+{
 #define _(sym,str) TAPCLI_ERROR_##sym,
   foreach_tapcli_error
 #undef _
-   TAPCLI_N_ERROR,
- } tapcli_error_t;
+    TAPCLI_N_ERROR,
+} tapcli_error_t;
 
 /** TAP CLI interface details struct */
-typedef struct {
+typedef struct
+{
   u32 sw_if_index;
   u8 dev_name[64];
 } tapcli_interface_details_t;
 
-int vnet_tap_dump_ifs (tapcli_interface_details_t **out_tapids);
+int vnet_tap_dump_ifs (tapcli_interface_details_t ** out_tapids);
 
 #define TAP_MTU_MIN 68
 #define TAP_MTU_MAX 65535
 #define TAP_MTU_DEFAULT 1500
 
 #endif /* __included_tapcli_h__ */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

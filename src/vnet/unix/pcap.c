@@ -88,20 +88,22 @@ pcap_close (pcap_main_t * pm)
 clib_error_t *
 pcap_write (pcap_main_t * pm)
 {
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
 
-  if (! (pm->flags & PCAP_MAIN_INIT_DONE))
+  if (!(pm->flags & PCAP_MAIN_INIT_DONE))
     {
       pcap_file_header_t fh;
       int n;
 
-      if (! pm->file_name)
+      if (!pm->file_name)
 	pm->file_name = "/tmp/vnet.pcap";
 
-      pm->file_descriptor = open (pm->file_name, O_CREAT | O_TRUNC | O_WRONLY, 0664);
+      pm->file_descriptor =
+	open (pm->file_name, O_CREAT | O_TRUNC | O_WRONLY, 0664);
       if (pm->file_descriptor < 0)
 	{
-	  error = clib_error_return_unix (0, "failed to open `%s'", pm->file_name);
+	  error =
+	    clib_error_return_unix (0, "failed to open `%s'", pm->file_name);
 	  goto done;
 	}
 
@@ -121,9 +123,13 @@ pcap_write (pcap_main_t * pm)
       if (n != sizeof (fh))
 	{
 	  if (n < 0)
-	    error = clib_error_return_unix (0, "write file header `%s'", pm->file_name);
+	    error =
+	      clib_error_return_unix (0, "write file header `%s'",
+				      pm->file_name);
 	  else
-	    error = clib_error_return (0, "short write of file header `%s'", pm->file_name);
+	    error =
+	      clib_error_return (0, "short write of file header `%s'",
+				 pm->file_name);
 	  goto done;
 	}
     }
@@ -133,15 +139,16 @@ pcap_write (pcap_main_t * pm)
       int n = vec_len (pm->pcap_data) - pm->n_pcap_data_written;
 
       n = write (pm->file_descriptor,
-		 vec_elt_at_index (pm->pcap_data, pm->n_pcap_data_written), n);
+		 vec_elt_at_index (pm->pcap_data, pm->n_pcap_data_written),
+		 n);
 
       if (n < 0 && unix_error_is_fatal (errno))
 	{
 	  error = clib_error_return_unix (0, "write `%s'", pm->file_name);
 	  goto done;
 	}
-        pm->n_pcap_data_written += n;
-      }
+      pm->n_pcap_data_written += n;
+    }
 
   if (pm->n_pcap_data_written >= vec_len (pm->pcap_data))
     {
@@ -150,9 +157,9 @@ pcap_write (pcap_main_t * pm)
     }
 
   if (pm->n_packets_captured >= pm->n_packets_to_capture)
-    pcap_close(pm);
+    pcap_close (pm);
 
- done:
+done:
   if (error)
     {
       if (pm->file_descriptor >= 0)
@@ -167,9 +174,10 @@ pcap_write (pcap_main_t * pm)
  * @return rc - clib_error_t
  *
  */
-clib_error_t * pcap_read (pcap_main_t * pm)
+clib_error_t *
+pcap_read (pcap_main_t * pm)
 {
-  clib_error_t * error = 0;
+  clib_error_t *error = 0;
   int fd, need_swap, n;
   pcap_file_header_t fh;
   pcap_packet_header_t ph;
@@ -183,7 +191,8 @@ clib_error_t * pcap_read (pcap_main_t * pm)
 
   if (read (fd, &fh, sizeof (fh)) != sizeof (fh))
     {
-      error = clib_error_return_unix (0, "read file header `%s'", pm->file_name);
+      error =
+	clib_error_return_unix (0, "read file header `%s'", pm->file_name);
       goto done;
     }
 
@@ -194,7 +203,7 @@ clib_error_t * pcap_read (pcap_main_t * pm)
 #define _(t,f) fh.f = clib_byte_swap_##t (fh.f);
       foreach_pcap_file_header;
 #undef _
-    }    
+    }
 
   if (fh.magic != 0xa1b2c3d4)
     {
@@ -206,7 +215,7 @@ clib_error_t * pcap_read (pcap_main_t * pm)
   pm->max_packet_bytes = 0;
   while ((n = read (fd, &ph, sizeof (ph))) != 0)
     {
-      u8 * data;
+      u8 *data;
 
       if (need_swap)
 	{
@@ -216,7 +225,8 @@ clib_error_t * pcap_read (pcap_main_t * pm)
 	}
 
       data = vec_new (u8, ph.n_bytes_in_packet);
-      if (read (fd, data, ph.n_packet_bytes_stored_in_file) != ph.n_packet_bytes_stored_in_file)
+      if (read (fd, data, ph.n_packet_bytes_stored_in_file) !=
+	  ph.n_packet_bytes_stored_in_file)
 	{
 	  error = clib_error_return (0, "short read `%s'", pm->file_name);
 	  goto done;
@@ -226,16 +236,26 @@ clib_error_t * pcap_read (pcap_main_t * pm)
 	pm->min_packet_bytes = pm->max_packet_bytes = ph.n_bytes_in_packet;
       else
 	{
-	  pm->min_packet_bytes = clib_min (pm->min_packet_bytes, ph.n_bytes_in_packet);
-	  pm->max_packet_bytes = clib_max (pm->max_packet_bytes, ph.n_bytes_in_packet);
+	  pm->min_packet_bytes =
+	    clib_min (pm->min_packet_bytes, ph.n_bytes_in_packet);
+	  pm->max_packet_bytes =
+	    clib_max (pm->max_packet_bytes, ph.n_bytes_in_packet);
 	}
 
       vec_add1 (pm->packets_read, data);
     }
 
- done:
+done:
   if (fd >= 0)
     close (fd);
   return error;
 
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
