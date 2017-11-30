@@ -60,6 +60,8 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
   nbytes += 4;
 #endif
 
+  ASSERT (pool == 0 || vlib_get_thread_index () == 0);
+
   if (shmem_hdr == 0)
     {
       clib_warning ("shared memory header NULL");
