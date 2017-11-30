@@ -319,6 +319,28 @@ define vnet_get_summary_stats_reply
   f64 vector_rate;
 };
 
+/** \brief Get delay between polling statistics
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define stats_get_poller_delay
+{
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get delay between polling statistics reply
+    @param context - sender context, to match reply w/ request
+    @param retval - return code for request
+    @param delay - poller delay
+*/
+define stats_get_poller_delay_reply
+{
+  u32 context;
+  i32 retval;
+  u32 delay;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")

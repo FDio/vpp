@@ -218,22 +218,6 @@ VLIB_CLI_COMMAND (show_bfd_command, static) = {
 };
 /* *INDENT-ON* */
 
-static u8 *
-format_vnet_api_errno (u8 * s, va_list * args)
-{
-  vnet_api_error_t api_error = va_arg (*args, vnet_api_error_t);
-#define _(a, b, c)           \
-  case b:                    \
-    s = format (s, "%s", c); \
-    break;
-  switch (api_error)
-    {
-      foreach_vnet_api_error default:s = format (s, "UNKNOWN");
-      break;
-    }
-  return s;
-}
-
 static clib_error_t *
 bfd_cli_key_add (vlib_main_t * vm, unformat_input_t * input,
 		 CLIB_UNUSED (vlib_cli_command_t * lmd))
