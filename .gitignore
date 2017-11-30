@@ -13,7 +13,9 @@
 /build-root/deb/.pybuild/
 /build-root/*.deb
 /build-root/*.rpm
+/build-root/*.tar.xz
 /build-root/*.changes
+/build-root/rpmbuild/
 /build-root/test-doc/
 /build-root/test-cov/
 /build-root/python/
