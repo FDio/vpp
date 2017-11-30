@@ -22,6 +22,30 @@
       "revId": "2b8ce7cefddea73df7ea917ddf96d255d7b9b8da",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "87653c27_eaacd221",
+        "filename": "src/scripts/vpptop",
+        "patchSetId": 8
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-11-30T15:29:24Z",
+      "side": 1,
+      "message": "curses is a Python system library so is built in.  Texttable is likely temporary, but yes it otherwise would be a dependency. :)",
+      "parentUuid": "476aa785_73a992da",
+      "range": {
+        "startLine": 20,
+        "startChar": 0,
+        "endLine": 27,
+        "endChar": 31
+      },
+      "revId": "2b8ce7cefddea73df7ea917ddf96d255d7b9b8da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
