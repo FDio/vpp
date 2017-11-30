@@ -69,7 +69,7 @@ send_add_segment_callback (u32 api_client_index, const u8 * segment_name,
   if (!q)
     return -1;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_MAP_ANOTHER_SEGMENT);
   mp->segment_size = segment_size;
@@ -97,7 +97,7 @@ send_session_accept_callback (stream_session_t * s)
   if (!q)
     return -1;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_ACCEPT_SESSION);
@@ -140,7 +140,7 @@ send_session_disconnect_callback (stream_session_t * s)
   if (!q)
     return;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_DISCONNECT_SESSION);
   mp->handle = session_handle (s);
@@ -159,7 +159,7 @@ send_session_reset_callback (stream_session_t * s)
   if (!q)
     return;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_RESET_SESSION);
   mp->handle = session_handle (s);
@@ -182,7 +182,7 @@ send_session_connected_callback (u32 app_index, u32 api_context,
   if (!q)
     return -1;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
+  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_CONNECT_SESSION_REPLY);
   mp->context = api_context;
 
