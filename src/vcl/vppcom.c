@@ -132,6 +132,7 @@ typedef struct
 typedef struct vppcom_cfg_t_
 {
   u64 heapsize;
+  u32 vpp_api_q_length;
   u64 segment_baseva;
   u32 segment_size;
   u32 add_segment_size;
@@ -361,7 +362,8 @@ vppcom_connect_to_vpp (char *app_name)
 
   if (VPPCOM_DEBUG > 0)
     printf ("\nConnecting to VPP api...");
-  if (vl_client_connect_to_vlib ("/vpe-api", app_name, 32) < 0)
+  if (vl_client_connect_to_vlib ("/vpe-api", app_name,
+				 vcm->cfg.vpp_api_q_length) < 0)
     {
       clib_warning ("[%d] connect to vpp (%s) failed!", getpid (), app_name);
       return VPPCOM_ECONNREFUSED;
@@ -1449,6 +1451,7 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
   ASSERT (vcl_cfg);
 
   vcl_cfg->heapsize = (256ULL << 20);
+  vcl_cfg->vpp_api_q_length = 1024;
   vcl_cfg->segment_baseva = 0x200000000ULL;
   vcl_cfg->segment_size = (256 << 20);
   vcl_cfg->add_segment_size = (128 << 20);
@@ -1611,7 +1614,7 @@ vppcom_cfg_read (char *conf_fname)
   u8 vc_cfg_input = 0;
   u8 *chroot_path;
   struct stat s;
-  u32 uid, gid;
+  u32 uid, gid, q_len;
 
   fd = open (conf_fname, O_RDONLY);
   if (fd < 0)
@@ -1669,6 +1672,23 @@ vppcom_cfg_read (char *conf_fname)
 		clib_warning ("[%d] configured api-prefix %s",
 			      getpid (), chroot_path);
 	      chroot_path = 0;	/* Don't vec_free() it! */
+	    }
+	  else if (unformat (line_input, "vpp-api-q-length %d", &q_len))
+	    {
+	      if (q_len < vcl_cfg->vpp_api_q_length)
+		{
+		  clib_warning ("[%d] ERROR: configured vpp-api-q-length "
+				"(%u) is too small! Using default: %u ",
+				getpid (), q_len, vcl_cfg->vpp_api_q_length);
+		}
+	      else
+		{
+		  vcl_cfg->vpp_api_q_length = q_len;
+
+		  if (VPPCOM_DEBUG > 0)
+		    clib_warning ("[%d] configured vpp-api-q-length %u",
+				  getpid (), vcl_cfg->vpp_api_q_length);
+		}
 	    }
 	  else if (unformat (line_input, "uid %d", &uid))
 	    {
