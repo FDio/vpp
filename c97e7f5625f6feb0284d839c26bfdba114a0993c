@@ -19,6 +19,29 @@
     },
     {
       "key": {
+        "uuid": "5ef09eac_749a3e0f",
+        "filename": "src/vnet/util/refcount.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-11-30T10:22:07Z",
+      "side": 1,
+      "message": "I wonder if there is a race condition if a resize happens at the same time.\nMy guess is that in theory, yes, but in practice the vec_free will take much longer than two memory reads.\nI wonder also if there is a way to make is work without lock, or whether this should just not support resize without global lock.",
+      "range": {
+        "startLine": 37,
+        "startChar": 6,
+        "endLine": 37,
+        "endChar": 56
+      },
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4ca66f02_cf58ec10",
         "filename": "src/vnet/util/refcount.h",
         "patchSetId": 13
@@ -53,6 +76,24 @@
     },
     {
       "key": {
+        "uuid": "9a3a6cec_c295658a",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-11-30T10:22:07Z",
+      "side": 1,
+      "message": "I think there are race conditions between reader and writer where it is important that the length is set after memory was properly initialized. IIRC this is why a different location in memory is used.",
+      "parentUuid": "c9fe03ad_cd55f75d",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "8b62985b_41a826ad",
         "filename": "src/vnet/util/refcount.h",
         "patchSetId": 13
@@ -70,6 +111,24 @@
     },
     {
       "key": {
+        "uuid": "9d5bec4b_22be3dfe",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-11-30T10:22:07Z",
+      "side": 1,
+      "message": "Indeed ! I wonder what that was for.",
+      "parentUuid": "8b62985b_41a826ad",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "58c5b37c_421cc4e9",
         "filename": "src/vnet/util/refcount.h",
         "patchSetId": 13
@@ -81,6 +140,24 @@
       "writtenOn": "2017-11-30T09:58:20Z",
       "side": 1,
       "message": "initialise the allocated memory; memset or vec_validate_ini_empty.",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "464fde5f_e42bd5d2",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-11-30T10:22:07Z",
+      "side": 1,
+      "message": "IIRC vec_validate does init memory.",
+      "parentUuid": "58c5b37c_421cc4e9",
       "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
