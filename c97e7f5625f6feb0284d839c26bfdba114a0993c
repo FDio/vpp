@@ -42,6 +42,30 @@
     },
     {
       "key": {
+        "uuid": "d098c2f1_924de48e",
+        "filename": "src/vnet/util/refcount.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-11-30T10:37:36Z",
+      "side": 1,
+      "message": "I didn\u0027t find any way to perform an atomic array access. So i guess the solution would be to have a lock. Good news is that the lock only needs to be used when performing resize, or read, which is ok I think.\nThis way we would probably not need to use this additional \u0027length\u0027 field either.",
+      "parentUuid": "5ef09eac_749a3e0f",
+      "range": {
+        "startLine": 37,
+        "startChar": 6,
+        "endLine": 37,
+        "endChar": 56
+      },
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4ca66f02_cf58ec10",
         "filename": "src/vnet/util/refcount.h",
         "patchSetId": 13
