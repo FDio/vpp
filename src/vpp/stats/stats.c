@@ -62,7 +62,8 @@ _(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)				\
 _(WANT_IP4_NBR_STATS, want_ip4_nbr_stats)            \
 _(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters) \
 _(WANT_IP6_NBR_STATS, want_ip6_nbr_stats) \
-_(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats)
+_(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats) \
+_(STATS_GET_POLLER_DELAY, stats_get_poller_delay)
 
 
 #define vl_msg_name_crc_list
@@ -2068,6 +2069,78 @@ again:
     vl_msg_api_free (mp);
 }
 
+int
+stats_set_poller_delay (u32 poller_delay_sec)
+{
+  stats_main_t *sm = &stats_main;
+  if (!poller_delay_sec)
+    {
+      return VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+  else
+    {
+      sm->stats_poll_interval_in_seconds = poller_delay_sec;
+      return 0;
+    }
+}
+
+static clib_error_t *
+stats_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  u32 sec;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "interval %u", &sec))
+	{
+	  int rv = stats_set_poller_delay (sec);
+	  if (rv)
+	    {
+	      return clib_error_return (0,
+					"`stats_set_poller_delay' API call failed, rv=%d:%U",
+					(int) rv, format_vnet_api_errno, rv);
+	    }
+	  return 0;
+	}
+      else
+	{
+	  return clib_error_return (0, "unknown input '%U'",
+				    format_unformat_error, input);
+	}
+    }
+  return 0;
+}
+
+/* stats { ... } configuration. */
+/*?
+ *
+ * @cfgcmd{interval, &lt;seconds&gt;}
+ * Configure stats poller delay to be @c seconds.
+ *
+?*/
+VLIB_CONFIG_FUNCTION (stats_config, "stats");
+
+static void
+  vl_api_stats_get_poller_delay_t_handler
+  (vl_api_stats_get_poller_delay_t * mp)
+{
+  stats_main_t *sm = &stats_main;
+  vl_api_registration_t *reg;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
+  vl_api_stats_get_poller_delay_reply_t *rmp;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_WANT_PER_INTERFACE_SIMPLE_STATS_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = 0;
+  rmp->delay = clib_host_to_net_u32 (sm->stats_poll_interval_in_seconds);
+
+  vl_api_send_msg (reg, (u8 *) rmp);
+
+}
+
 static void
 stats_thread_fn (void *arg)
 {
@@ -2090,8 +2163,8 @@ stats_thread_fn (void *arg)
 
   while (1)
     {
-      /* 10 second poll interval */
-      ip46_fib_stats_delay (sm, 10 /* secs */ , 0 /* nsec */ );
+      ip46_fib_stats_delay (sm, sm->stats_poll_interval_in_seconds,
+			    0 /* nsec */ );
 
       if (!(sm->enable_poller))
 	{
