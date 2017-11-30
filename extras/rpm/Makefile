@@ -13,7 +13,6 @@
 
 ifneq ($(shell uname),Darwin)
 OS_ID        = $(shell grep '^ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
-OS_VERSION_ID= $(shell grep '^VERSION_ID=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g')
 endif
 
 TARBALL=$(shell realpath ../../build-root/vpp-latest.tar.xz)
@@ -21,38 +20,36 @@ TARBALL=$(shell realpath ../../build-root/vpp-latest.tar.xz)
 BASENAME=$(shell basename $(TARBALL) | sed -e s/.tar.\*//)
 VERSION=$(shell echo $(BASENAME) | cut -f2 -d-)
 RELEASE=$(shell echo $(BASENAME) | cut -f3- -d- | sed -e s/-/_/g)
+BR=$(shell realpath $(CURDIR)/../../build-root)
+RPMBUILD=$(BR)/rpmbuild
 PC=%
 
 all: RPM
 
 ifeq ($(filter opensuse,$(OS_ID)),$(OS_ID))
-TOPDIR=$(CURDIR)
 SPEC_FILE='vpp-suse.spec'
 else
-TOPDIR=$(PWD)
 SPEC_FILE='vpp.spec'
 endif
 
-srpm:
+spec:
 	@echo $(TARBALL)
-	mkdir -p rpmbuild/{RPMS,SRPMS,BUILD,SOURCES,SPECS}
-	cp $(TARBALL) rpmbuild/SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
-	cp $(SPEC_FILE) rpmbuild/SOURCES
-	sed -i '1s/^/$(PC)define _version $(VERSION)\n/' rpmbuild/SOURCES/$(SPEC_FILE)
-	sed -i '1s/^/$(PC)define _release $(RELEASE)\n/' rpmbuild/SOURCES/$(SPEC_FILE)
-	sed -i '/define _topdir/d' rpmbuild/SOURCES/$(SPEC_FILE)
-	rpmbuild -bs \
-	  --define "_topdir rpmbuild" \
-	  rpmbuild/SOURCES/$(SPEC_FILE)
-	mv $$(find rpmbuild/SRPMS -name \*.src.rpm -type f) .
+	mkdir -p $(RPMBUILD)/{RPMS,SRPMS,BUILD,SOURCES,SPECS}
+	cp $(TARBALL) $(RPMBUILD)/SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
+	cp $(SPEC_FILE) $(RPMBUILD)/SPECS
 
-RPM:
-	@echo $(TARBALL)
-	mkdir -p RPMS SOURCES
-	cp $(TARBALL) SOURCES/vpp-$(VERSION)-$(RELEASE).tar.xz
-	rpmbuild -bb \
-	  --define "_topdir $(TOPDIR)" \
+srpm: spec
+	rpmbuild -bs \
+	  --define "_topdir $(RPMBUILD)" \
 	  --define "_version $(VERSION)" \
 	  --define "_release $(RELEASE)" \
-	  $(SPEC_FILE)
-	mv $$(find RPMS -name \*.rpm -type f) .
+	  $(RPMBUILD)/SPECS/$(SPEC_FILE)
+	mv $$(find $(RPMBUILD)/SRPMS -name \*.src.rpm -type f) $(BR)
+
+RPM: spec
+	rpmbuild -bb \
+	  --define "_topdir $(RPMBUILD)" \
+	  --define "_version $(VERSION)" \
+	  --define "_release $(RELEASE)" \
+	  $(RPMBUILD)/SPECS/$(SPEC_FILE)
+	mv $$(find $(RPMBUILD)/RPMS -name \*.rpm -type f) $(BR)

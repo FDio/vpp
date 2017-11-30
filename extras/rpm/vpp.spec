@@ -1,7 +1,7 @@
 %bcond_without aesni
+%{!?_topdir:%define _topdir %(pwd)}
 %define _vpp_build_dir   build-tool-native
 %define _unitdir         /lib/systemd/system
-%define _topdir          %(pwd)
 %define _builddir        %{_topdir}
 %define _tmp_build_dir   %{name}-%{_version}.0
 %define _mu_build_dir    %{_topdir}/%{_tmp_build_dir}/build-root
