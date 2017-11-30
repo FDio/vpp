@@ -34,6 +34,7 @@ libvnet_la_SOURCES +=				\
   vnet/buffer.c					\
   vnet/config.c					\
   vnet/devices/devices.c			\
+  vnet/devices/netlink.c			\
   vnet/handoff.c				\
   vnet/interface.c				\
   vnet/interface_api.c				\
@@ -48,6 +49,7 @@ nobase_include_HEADERS +=			\
   vnet/buffer.h					\
   vnet/config.h					\
   vnet/devices/devices.h			\
+  vnet/devices/netlink.h			\
   vnet/global_funcs.h				\
   vnet/handoff.h				\
   vnet/interface.h				\
