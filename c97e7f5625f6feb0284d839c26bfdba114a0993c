@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c2a5bf43_8d4cc5ac",
+        "filename": "src/plugins/lb/util.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-30T09:58:20Z",
+      "side": 1,
+      "message": "unnecessary white-spaceonly",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4ca66f02_cf58ec10",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-30T09:58:20Z",
+      "side": 1,
+      "message": "some statements about what these structures represent would be useful.",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c9fe03ad_cd55f75d",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-30T09:58:20Z",
+      "side": 1,
+      "message": "isn\u0027t length always equal to vec_len(counters) ?",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8b62985b_41a826ad",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-30T09:58:20Z",
+      "side": 1,
+      "message": "i don\u0027t see this used.",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "58c5b37c_421cc4e9",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-11-30T09:58:20Z",
+      "side": 1,
+      "message": "initialise the allocated memory; memset or vec_validate_ini_empty.",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
