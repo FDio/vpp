@@ -15,6 +15,10 @@
 #ifndef included_vnet_api_errno_h
 #define included_vnet_api_errno_h
 
+#include <stdarg.h>
+#include <vppinfra/types.h>
+#include <vppinfra/format.h>
+
 #define foreach_vnet_api_error						\
 _(UNSPECIFIED, -1, "Unspecified Error")                                 \
 _(INVALID_SW_IF_INDEX, -2, "Invalid sw_if_index")                       \
@@ -146,6 +150,30 @@ typedef enum
 #undef _
     VNET_API_N_ERROR,
 } vnet_api_error_t;
+
+/* *INDENT-OFF* */
+static inline u8 *
+format_vnet_api_errno (u8 * s, va_list * args)
+{
+  vnet_api_error_t api_error = va_arg (*args, vnet_api_error_t);
+#ifdef _
+#undef _
+#endif
+#define _(a, b, c)           \
+  case b:                    \
+    s = format (s, "%s", c); \
+    break;
+  switch (api_error)
+    {
+      foreach_vnet_api_error
+      default:
+       	s = format (s, "UNKNOWN");
+        break;
+    }
+  return s;
+#undef _
+}
+/* *INDENT-ON* */
 
 #endif /* included_vnet_api_errno_h */
 
