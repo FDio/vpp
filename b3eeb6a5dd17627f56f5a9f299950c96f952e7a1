@@ -46,6 +46,30 @@
       "revId": "b3eeb6a5dd17627f56f5a9f299950c96f952e7a1",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c8273237_1fff5ce9",
+        "filename": "src/plugins/nat/out2in.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1092,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-11-30T07:03:17Z",
+      "side": 0,
+      "message": "This is not definitely good solution. You should use ACL rule to decide if packet is dropped or not when not matching session or static mapping. This break NAT filtering behavior.",
+      "parentUuid": "59260f03_8c561d47",
+      "range": {
+        "startLine": 1084,
+        "startChar": 0,
+        "endLine": 1092,
+        "endChar": 50
+      },
+      "revId": "b3eeb6a5dd17627f56f5a9f299950c96f952e7a1",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
