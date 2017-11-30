@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "476aa785_73a992da",
+        "filename": "src/scripts/vpptop",
+        "patchSetId": 8
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2017-11-30T14:46:12Z",
+      "side": 1,
+      "message": "should imports such as curses or texttable be added to the Makefile dep-list ?\nOtherwise you might wand to add a requirement file.",
+      "range": {
+        "startLine": 20,
+        "startChar": 0,
+        "endLine": 27,
+        "endChar": 31
+      },
+      "revId": "2b8ce7cefddea73df7ea917ddf96d255d7b9b8da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
