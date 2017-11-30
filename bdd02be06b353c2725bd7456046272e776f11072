@@ -1,0 +1,67 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "13ba3b5a_ee828184",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 1
+      },
+      "lineNbr": 1369,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-11-30T07:22:51Z",
+      "side": 1,
+      "message": "Use same description as in CLI.",
+      "range": {
+        "startLine": 1369,
+        "startChar": 11,
+        "endLine": 1369,
+        "endChar": 34
+      },
+      "revId": "bdd02be06b353c2725bd7456046272e776f11072",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "07d4f53b_ced9e8ba",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1760,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-11-30T07:22:51Z",
+      "side": 1,
+      "message": "add to nat44_add_del_address_range API too",
+      "revId": "bdd02be06b353c2725bd7456046272e776f11072",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6ab3dbfb_c35c595f",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1831,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-11-30T07:22:51Z",
+      "side": 1,
+      "message": "sm-\u003eoutside_fib_index",
+      "range": {
+        "startLine": 1831,
+        "startChar": 19,
+        "endLine": 1831,
+        "endChar": 20
+      },
+      "revId": "bdd02be06b353c2725bd7456046272e776f11072",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
