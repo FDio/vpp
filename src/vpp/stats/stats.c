@@ -62,7 +62,8 @@ _(VNET_IP4_NBR_COUNTERS, vnet_ip4_nbr_counters)				\
 _(WANT_IP4_NBR_STATS, want_ip4_nbr_stats)            \
 _(VNET_IP6_NBR_COUNTERS, vnet_ip6_nbr_counters) \
 _(WANT_IP6_NBR_STATS, want_ip6_nbr_stats) \
-_(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats)
+_(VNET_GET_SUMMARY_STATS, vnet_get_summary_stats) \
+_(STATS_SET_POLLER_DELAY, stats_set_poller_delay)
 
 
 #define vl_msg_name_crc_list
@@ -2068,6 +2069,71 @@ again:
     vl_msg_api_free (mp);
 }
 
+/* 10 second poll interval unless configured otherwise */
+static u32 poller_delay_sec = 10;
+
+void
+stats_set_poller_delay (u32 _poller_delay_sec)
+{
+  poller_delay_sec = _poller_delay_sec;
+}
+
+static clib_error_t *
+stats_config (vlib_main_t * vm, unformat_input_t * input)
+{
+  u32 sec;
+
+  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (input, "interval %u", &sec))
+	{
+	  if (!sec)
+	    {
+	      return clib_error_return (0,
+					"invalid input - interval cannot be zero",
+					format_unformat_error, input);
+	    }
+	  stats_set_poller_delay (sec);
+	  return 0;
+	}
+      else
+	{
+	  return clib_error_return (0, "unknown input '%U'",
+				    format_unformat_error, input);
+	}
+    }
+  return 0;
+}
+
+/* stats { ... } configuration. */
+/*?
+ *
+ * @cfgcmd{interval, &lt;seconds&gt;}
+ * Configure stats poller delay to be @c seconds.
+ *
+?*/
+VLIB_CONFIG_FUNCTION (stats_config, "stats");
+
+static void
+  vl_api_stats_set_poller_delay_t_handler
+  (vl_api_stats_set_poller_delay_t * mp)
+{
+  int rv = 0;
+  vl_api_stats_set_poller_delay_reply_t *rmp;
+
+  u32 sec = clib_net_to_host_u32 (mp->delay);
+  if (!sec)
+    {
+      rv = VNET_API_ERROR_INVALID_ARGUMENT;
+    }
+  else
+    {
+      stats_set_poller_delay (sec);
+    }
+
+  REPLY_MACRO (VL_API_STATS_SET_POLLER_DELAY_REPLY);
+}
+
 static void
 stats_thread_fn (void *arg)
 {
@@ -2090,8 +2156,8 @@ stats_thread_fn (void *arg)
 
   while (1)
     {
-      /* 10 second poll interval */
-      ip46_fib_stats_delay (sm, 10 /* secs */ , 0 /* nsec */ );
+      ip46_fib_stats_delay (sm, poller_delay_sec /* secs */ ,
+			    0 /* nsec */ );
 
       if (!(sm->enable_poller))
 	{
