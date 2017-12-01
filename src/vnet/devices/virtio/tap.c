@@ -31,6 +31,8 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
 #include <vnet/devices/netlink.h>
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/virtio/tap.h>
@@ -47,23 +49,23 @@ virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
 			u32 flags)
 {
   /* nothing for now */
+  //TODO On MTU change call vnet_netlink_set_if_mtu
   return 0;
 }
 
-int
+void
 tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *vim = &virtio_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
-  int i;
-  clib_error_t *err = 0;
+  int i, fd;
   struct ifreq ifr;
   size_t hdrsz;
   struct vhost_memory *vhost_mem = 0;
   virtio_if_t *vif = 0;
-  int rv = 0;
+  clib_error_t *err = 0;
 
   memset (&ifr, 0, sizeof (ifr));
   pool_get (vim->interfaces, vif);
@@ -72,7 +74,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   if ((vif->fd = open ("/dev/vhost-net", O_RDWR | O_NONBLOCK)) < 0)
     {
-      rv = VNET_API_ERROR_SYSCALL_ERROR_1;
+      args->rv = VNET_API_ERROR_SYSCALL_ERROR_1;
+      args->error = clib_error_return_unix (0, "open '/dev/vhost-net'");
       goto error;
     }
 
@@ -80,19 +83,25 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   if ((vif->remote_features & (1ULL << VIRTIO_NET_F_MRG_RXBUF)) == 0)
     {
-      rv = VNET_API_ERROR_UNSUPPORTED;
+      args->rv = VNET_API_ERROR_UNSUPPORTED;
+      args->error = clib_error_return (0, "vhost-net backend doesn't support "
+				       "VIRTIO_NET_F_MRG_RXBUF feature");
       goto error;
     }
 
   if ((vif->remote_features & (1ULL << VIRTIO_RING_F_INDIRECT_DESC)) == 0)
     {
-      rv = VNET_API_ERROR_UNSUPPORTED;
+      args->rv = VNET_API_ERROR_UNSUPPORTED;
+      args->error = clib_error_return (0, "vhost-net backend doesn't support "
+				       "VIRTIO_RING_F_INDIRECT_DESC feature");
       goto error;
     }
 
   if ((vif->remote_features & (1ULL << VIRTIO_F_VERSION_1)) == 0)
     {
-      rv = VNET_API_ERROR_UNSUPPORTED;
+      args->rv = VNET_API_ERROR_UNSUPPORTED;
+      args->error = clib_error_return (0, "vhost-net backend doesn't support "
+				       "VIRTIO_F_VERSION_1 features");
       goto error;
     }
 
@@ -104,7 +113,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 
   if ((vif->tap_fd = open ("/dev/net/tun", O_RDWR | O_NONBLOCK)) < 0)
     {
-      rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+      args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+      args->error = clib_error_return_unix (0, "open '/dev/net/tun'");
       goto error;
     }
 
@@ -120,13 +130,49 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   _IOCTL (vif->tap_fd, TUNSETVNETHDRSZ, &hdrsz);
   _IOCTL (vif->fd, VHOST_SET_OWNER, 0);
 
-  if (args->net_ns)
+  if (args->host_bridge)
     {
-      err = vnet_netlink_set_if_namespace (vif->ifindex,
-					   (char *) args->net_ns);
-      if (err)
+      int master_ifindex = if_nametoindex ((char *) args->host_bridge);
+      args->error = vnet_netlink_set_if_master (vif->ifindex, master_ifindex);
+      if (args->error)
 	{
-	  rv = VNET_API_ERROR_NAMESPACE_CREATE;
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+    }
+
+  if (args->host_namespace)
+    {
+      args->error = vnet_netlink_set_if_namespace (vif->ifindex,
+						   (char *)
+						   args->host_namespace);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+    }
+
+  if (args->host_ip4_prefix_len)
+    {
+      args->error = vnet_netlink_add_ip4_addr (vif->ifindex,
+					       &args->host_ip4_addr,
+					       args->host_ip4_prefix_len);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+    }
+
+  if (args->host_ip6_prefix_len)
+    {
+      args->error = vnet_netlink_add_ip6_addr (vif->ifindex,
+					       &args->host_ip6_addr,
+					       args->host_ip6_prefix_len);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
 	  goto error;
 	}
     }
@@ -139,16 +185,27 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   vhost_mem->regions[0].memory_size = (1ULL << 47) - 4096;
   _IOCTL (vif->fd, VHOST_SET_MEM_TABLE, vhost_mem);
 
-  if ((err = virtio_vring_init (vm, vif, 0, args->rx_ring_sz)))
+  if ((args->error = virtio_vring_init (vm, vif, 0, args->rx_ring_sz)))
     {
-      rv = VNET_API_ERROR_VIRTIO_INIT;
+      args->rv = VNET_API_ERROR_INIT_FAILED;
       goto error;
     }
 
-  if ((err = virtio_vring_init (vm, vif, 1, args->tx_ring_sz)))
+  if ((args->error = virtio_vring_init (vm, vif, 1, args->tx_ring_sz)))
     {
-      rv = VNET_API_ERROR_VIRTIO_INIT;
+      args->rv = VNET_API_ERROR_INIT_FAILED;
       goto error;
+    }
+
+  /* set host side up */
+  if ((fd = socket (AF_INET, SOCK_STREAM, 0)) > 0)
+    {
+      memset (&ifr, 0, sizeof (struct ifreq));
+      strncpy (ifr.ifr_name, (char *) args->name, sizeof (ifr.ifr_name) - 1);
+      _IOCTL (fd, SIOCGIFFLAGS, (void *) &ifr);
+      ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
+      _IOCTL (fd, SIOCSIFFLAGS, (void *) &ifr);
+      close (fd);
     }
 
   if (!args->hw_addr_set)
@@ -164,14 +221,17 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
   vif->name = args->name;
   args->name = 0;
-  vif->net_ns = args->net_ns;
-  args->net_ns = 0;
-  err = ethernet_register_interface (vnm, virtio_device_class.index,
-				     vif->dev_instance, args->hw_addr,
-				     &vif->hw_if_index,
-				     virtio_eth_flag_change);
-  if (err)
-    rv = VNET_API_ERROR_INVALID_REGISTRATION;
+  vif->net_ns = args->host_namespace;
+  args->host_namespace = 0;
+  args->error = ethernet_register_interface (vnm, virtio_device_class.index,
+					     vif->dev_instance, args->hw_addr,
+					     &vif->hw_if_index,
+					     virtio_eth_flag_change);
+  if (args->error)
+    {
+      args->rv = VNET_API_ERROR_INVALID_REGISTRATION;
+      goto error;
+    }
 
   sw = vnet_get_hw_sw_interface (vnm, vif->hw_if_index);
   vif->sw_if_index = sw->sw_if_index;
@@ -191,6 +251,12 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   goto done;
 
 error:
+  if (err)
+    {
+      ASSERT (args->error == 0);
+      args->error = err;
+      args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+    }
   if (vif->tap_fd != -1)
     close (vif->tap_fd);
   if (vif->fd != -1)
@@ -202,8 +268,6 @@ error:
 done:
   if (vhost_mem)
     clib_mem_free (vhost_mem);
-
-  return rv;
 }
 
 int

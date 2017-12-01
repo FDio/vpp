@@ -27,10 +27,18 @@ vl_api_version 1.0.0
     @param use_random_mac - let the system generate a unique mac address
     @param tap_name - name to associate with the new interface
     @param mac_address - mac addr to assign to the interface if use_radom not set
-    @param net_ns_set - net_ns is entered
-    @param net_ns - netlink name space
     @param tx_ring_sz - the number of entries of TX ring
     @param rx_ring_sz - the number of entries of RX ring
+    @param host_namespace_set - host namespece should be set
+    @param host_namespace - host namespace to attach interface to
+    @param host_bridge_set - host bridge should be set
+    @param host_bridge - host bridge to attach interface to
+    @param host_ip4_addr_set - host IPv4 ip address should be set
+    @param host_ip4_addr - host IPv4 ip address
+    @param host_ip4_prefix_len - host IPv4 ip address prefix length
+    @param host_ip6_addr_set - host IPv6 ip address should be set
+    @param host_ip6_addr - host IPv6 ip address
+    @param host_ip6_prefix_len - host IPv6 ip address prefix length
 */
 define tap_create_v2
 {
@@ -39,10 +47,18 @@ define tap_create_v2
   u8 use_random_mac;
   u8 tap_name[64];
   u8 mac_address[6];
-  u8 net_ns_set;
-  u8 net_ns[64];
   u16 tx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
   u16 rx_ring_sz; /* optional, default is 256 entries, must be power of 2 */
+  u8 host_namespace_set;
+  u8 host_namespace[64];
+  u8 host_bridge_set;
+  u8 host_bridge[64];
+  u8 host_ip4_addr_set;
+  u8 host_ip4_addr[4];
+  u8 host_ip4_prefix_len;
+  u8 host_ip6_addr_set;
+  u8 host_ip6_addr[16];
+  u8 host_ip6_prefix_len;
 };
 
 /** \brief Reply for tap create reply

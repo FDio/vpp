@@ -22,6 +22,9 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
+#include <vnet/ip/format.h>
 #include <linux/virtio_net.h>
 #include <linux/vhost.h>
 #include <vnet/devices/virtio/virtio.h>
@@ -32,8 +35,8 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 		       vlib_cli_command_t * cmd)
 {
   unformat_input_t _line_input, *line_input = &_line_input;
-  int rv;
   tap_create_if_args_t args = { 0 };
+  int ip_addr_set = 0;
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -43,8 +46,18 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     {
       if (unformat (line_input, "name %s", &args.name))
 	;
-      else if (unformat (line_input, "host-ns %s", &args.net_ns))
+      else if (unformat (line_input, "host-ns %s", &args.host_namespace))
 	;
+      else if (unformat (line_input, "host-bridge %s", &args.host_bridge))
+	;
+      else if (unformat (line_input, "host-ip4-addr %U/%d",
+			 unformat_ip4_address, &args.host_ip4_addr,
+			 &args.host_ip4_prefix_len))
+	ip_addr_set = 1;
+      else if (unformat (line_input, "host-ip6-addr %U/%d",
+			 unformat_ip6_address, &args.host_ip6_addr,
+			 &args.host_ip6_prefix_len))
+	ip_addr_set = 1;
       else if (unformat (line_input, "rx-ring-size %d", &args.rx_ring_sz))
 	;
       else if (unformat (line_input, "tx-ring-size %d", &args.tx_ring_sz))
@@ -58,34 +71,27 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
     }
   unformat_free (line_input);
 
-  rv = tap_create_if (vm, &args);
+  if (ip_addr_set && args.host_bridge)
+    return clib_error_return (0, "Please specify either host ip address or "
+			      "host bridge");
+
+  tap_create_if (vm, &args);
 
   vec_free (args.name);
+  vec_free (args.host_namespace);
+  vec_free (args.host_bridge);
 
-  if (rv == VNET_API_ERROR_SYSCALL_ERROR_1)
-    return clib_error_return_unix (0, "open '/dev/vhost-net'");
-  else if (rv == VNET_API_ERROR_SYSCALL_ERROR_2)
-    return clib_error_return_unix (0, "open '/dev/net/tun'");
-  else if (rv == VNET_API_ERROR_UNSUPPORTED)
-    return clib_error_return (0, "vhost-net backend doesn't support needed"
-			      " features");
-  else if (rv == VNET_API_ERROR_NAMESPACE_CREATE)
-    return clib_error_return (0, "failed to create netlink namespace");
-  else if (rv == VNET_API_ERROR_VIRTIO_INIT)
-    return clib_error_return (0, "failed to init virtio ring");
-  else if (rv == VNET_API_ERROR_INVALID_REGISTRATION)
-    return clib_error_return (0, "failed to register interface");
-  else if (rv != 0)
-    return clib_error_return (0, "error on creating tap interface");
+  return args.error;
 
-  return 0;
 }
 
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tap_create_command, static) = {
   .path = "create tap",
-  .short_help = "create tap {name <if-name>} [hw-addr <mac-address>]"
-    "[rx-ring-size <size>] [tx-ring-size <size>] [host-ns <netns>]",
+  .short_help = "create tap {name <if-name>} [hw-addr <mac-address>] "
+    "[rx-ring-size <size>] [tx-ring-size <size>] [host-ns <netns>] "
+    "[host-bridge <bridge-name>] [host-ip4-addr <ip4addr/mask>] "
+    "[host-ip6-addr <ip6-addr]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */
