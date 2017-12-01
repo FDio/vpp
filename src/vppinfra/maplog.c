@@ -86,7 +86,7 @@ clib_maplog_init (clib_maplog_main_t * mm, char *file_basename,
   return rv;
 
 fail:
-  if (fd)
+  if (fd >= 0)
     (void) close (fd);
 
   for (i = 0; i < 2; i++)
