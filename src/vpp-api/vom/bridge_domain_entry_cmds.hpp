@@ -37,7 +37,8 @@ public:
   create_cmd(HW::item<bool>& item,
              const mac_address_t& mac,
              uint32_t id,
-             handle_t tx_intf);
+             handle_t tx_intf,
+             bool is_bvi);
 
   /**
    * Issue the command to VPP/HW
@@ -58,6 +59,7 @@ private:
   mac_address_t m_mac;
   uint32_t m_bd;
   handle_t m_tx_itf;
+  bool m_is_bvi;
 };
 
 /**
@@ -69,7 +71,10 @@ public:
   /**
    * Constructor
    */
-  delete_cmd(HW::item<bool>& item, const mac_address_t& mac, uint32_t id);
+  delete_cmd(HW::item<bool>& item,
+             const mac_address_t& mac,
+             uint32_t id,
+             bool is_bvi);
 
   /**
    * Issue the command to VPP/HW
@@ -89,6 +94,7 @@ public:
 private:
   mac_address_t m_mac;
   uint32_t m_bd;
+  bool m_is_bvi;
 };
 
 /**
