@@ -152,17 +152,28 @@ void
 l2_binding::update(const l2_binding& desired)
 {
   /*
- * the desired state is always that the interface should be created
- */
+   * the desired state is always that the interface should be created
+   */
   if (rc_t::OK != m_binding.rc()) {
+    HW::enqueue(
+      new l2_binding_cmds::bind_cmd(m_binding, m_itf->handle(), m_bd->id(),
+                                    interface::type_t::BVI == m_itf->type()));
+  } else if (!(*m_bd == *desired.m_bd)) {
+    /*
+     * re-binding to a different BD. do unbind, bind.
+     */
+    HW::enqueue(
+      new l2_binding_cmds::unbind_cmd(m_binding, m_itf->handle(), m_bd->id(),
+                                      interface::type_t::BVI == m_itf->type()));
+    m_bd = desired.m_bd;
     HW::enqueue(
       new l2_binding_cmds::bind_cmd(m_binding, m_itf->handle(), m_bd->id(),
                                     interface::type_t::BVI == m_itf->type()));
   }
 
   /*
- * set the VTR operation is request
- */
+   * set the VTR operation if request
+   */
   if (m_vtr_op.update(desired.m_vtr_op)) {
     HW::enqueue(new l2_binding_cmds::set_vtr_op_cmd(m_vtr_op, m_itf->handle(),
                                                     m_vtr_op_tag));
