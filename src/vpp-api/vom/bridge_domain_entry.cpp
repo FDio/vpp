@@ -79,8 +79,8 @@ void
 bridge_domain_entry::sweep()
 {
   if (m_hw) {
-    HW::enqueue(
-      new bridge_domain_entry_cmds::delete_cmd(m_hw, m_mac, m_bd->id()));
+    HW::enqueue(new bridge_domain_entry_cmds::delete_cmd(
+      m_hw, m_mac, m_bd->id(), interface::type_t::BVI == m_tx_itf->type()));
   }
   HW::write();
 }
@@ -90,7 +90,8 @@ bridge_domain_entry::replay()
 {
   if (m_hw) {
     HW::enqueue(new bridge_domain_entry_cmds::create_cmd(
-      m_hw, m_mac, m_bd->id(), m_tx_itf->handle()));
+      m_hw, m_mac, m_bd->id(), m_tx_itf->handle(),
+      interface::type_t::BVI == m_tx_itf->type()));
   }
 }
 std::string
@@ -111,7 +112,8 @@ bridge_domain_entry::update(const bridge_domain_entry& r)
    */
   if (rc_t::OK != m_hw.rc()) {
     HW::enqueue(new bridge_domain_entry_cmds::create_cmd(
-      m_hw, m_mac, m_bd->id(), m_tx_itf->handle()));
+      m_hw, m_mac, m_bd->id(), m_tx_itf->handle(),
+      interface::type_t::BVI == m_tx_itf->type()));
   }
 }
 
