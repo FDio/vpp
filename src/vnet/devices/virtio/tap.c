@@ -109,7 +109,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
 
   ifr.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_ONE_QUEUE | IFF_VNET_HDR;
-  strncpy (ifr.ifr_ifrn.ifrn_name, (char *) args->name, IF_NAMESIZE);
+  strncpy (ifr.ifr_ifrn.ifrn_name, (char *) args->name, IF_NAMESIZE - 1);
   _IOCTL (vif->tap_fd, TUNSETIFF, (void *) &ifr);
 
   vif->ifindex = if_nametoindex ((char *) args->name);
