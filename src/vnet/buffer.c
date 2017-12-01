@@ -33,7 +33,7 @@ format_vnet_buffer (u8 * s, va_list * args)
     a = format (a, "l2-hdr-offset %d ", vnet_buffer (b)->l2_hdr_offset);
 
   if (b->flags & VNET_BUFFER_F_L3_HDR_OFFSET_VALID)
-    a = format (a, "l2-hdr-offset %d ", vnet_buffer (b)->l3_hdr_offset);
+    a = format (a, "l3-hdr-offset %d ", vnet_buffer (b)->l3_hdr_offset);
 
   if (b->flags & VNET_BUFFER_F_L4_HDR_OFFSET_VALID)
     a = format (a, "l4-hdr-offset %d ", vnet_buffer (b)->l4_hdr_offset);
