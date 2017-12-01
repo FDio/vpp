@@ -143,7 +143,6 @@ set_vtr_op_cmd::issue(connection& con)
   VAPI_CALL(req.execute());
 
   wait();
-  m_hw_item.set(rc_t::NOOP);
 
   return (rc_t::OK);
 }

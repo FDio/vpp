@@ -185,12 +185,12 @@ private:
    * interface is bound to. By holding the reference here, we can
    * guarantee that this object will outlive the BD.
    */
-  const std::shared_ptr<bridge_domain> m_bd;
+  std::shared_ptr<bridge_domain> m_bd;
 
   /**
    * HW configuration for the binding. The bool representing the
    * do/don't bind.
- */
+   */
   HW::item<bool> m_binding;
 
   /**
