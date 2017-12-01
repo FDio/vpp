@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "88a585b5_8f13d1e9",
+        "filename": "test/test_nat.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 888,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-12-01T07:09:13Z",
+      "side": 1,
+      "message": "self.pg0.remote_ip4n?",
+      "range": {
+        "startLine": 888,
+        "startChar": 27,
+        "endLine": 888,
+        "endChar": 67
+      },
+      "revId": "24d1e73648825598f81aeb3e9cdec1747c448904",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9ba76fe3_541cd727",
+        "filename": "test/test_nat.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 892,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-12-01T07:09:13Z",
+      "side": 1,
+      "message": "self.pg1.remote_ip4n?",
+      "range": {
+        "startLine": 892,
+        "startChar": 27,
+        "endLine": 892,
+        "endChar": 67
+      },
+      "revId": "24d1e73648825598f81aeb3e9cdec1747c448904",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
