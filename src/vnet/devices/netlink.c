@@ -48,16 +48,16 @@ vnet_netlink_set_if_attr (int ifindex, unsigned short rta_type, void *data,
 
   memset (&req, 0, sizeof (req));
   if ((sock = socket (AF_NETLINK, SOCK_RAW, NETLINK_ROUTE)) == -1)
-    {
-      err = clib_error_return_unix (0, "socket(AF_NETLINK)");
-      goto error;
-    }
+    return clib_error_return_unix (0, "socket(AF_NETLINK)");
 
   ra.nl_family = AF_NETLINK;
   ra.nl_pid = getpid ();
 
   if ((bind (sock, (struct sockaddr *) &ra, sizeof (ra))) == -1)
-    return clib_error_return_unix (0, "bind");
+    {
+      err = clib_error_return_unix (0, "bind");
+      goto error;
+    }
 
   req.nh.nlmsg_len = NLMSG_LENGTH (sizeof (struct ifinfomsg));
   req.nh.nlmsg_flags = NLM_F_REQUEST;
@@ -75,6 +75,7 @@ vnet_netlink_set_if_attr (int ifindex, unsigned short rta_type, void *data,
     err = clib_error_return_unix (0, "send");
 
 error:
+  close (sock);
   return err;
 }
 

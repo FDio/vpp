@@ -7812,7 +7812,7 @@ api_tap_create_v2 (vat_main_t * vam)
   u8 random_mac = 1;
   u8 name_set = 0;
   u8 *tap_name;
-  u8 *net_ns;
+  u8 *net_ns = 0;
   u8 net_ns_set = 0;
   int ret;
   int rx_ring_sz = 0, tx_ring_sz = 0;
@@ -7875,7 +7875,6 @@ api_tap_create_v2 (vat_main_t * vam)
     }
 
   vec_add1 (tap_name, 0);
-  vec_add1 (net_ns, 0);
 
   /* Construct the API message */
   M (TAP_CREATE_V2, mp);
@@ -7890,7 +7889,6 @@ api_tap_create_v2 (vat_main_t * vam)
     clib_memcpy (mp->net_ns, net_ns, vec_len (net_ns));
 
   vec_free (tap_name);
-  vec_free (net_ns);
 
   /* send it... */
   S (mp);
