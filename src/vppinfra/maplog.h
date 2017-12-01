@@ -32,6 +32,29 @@
 
 typedef struct
 {
+  u8 maplog_major_version;
+  u8 maplog_minor_version;
+  u8 maplog_patch_version;
+  u8 pad;
+  u32 application_id;
+  u8 application_major_version;
+  u8 application_minor_version;
+  u8 application_patch_version;
+  u8 pad2;
+  u32 record_size_in_cachelines;
+  u32 cacheline_size;
+  u64 file_size_in_records;
+  u64 number_of_records;
+  u64 number_of_files;
+  u8 file_basename[256];
+} clib_maplog_header_t;
+
+#define MAPLOG_MAJOR_VERSION 1
+#define MAPLOG_MINOR_VERSION 0
+#define MAPLOG_PATCH_VERSION 0
+
+typedef struct
+{
   /* rw: atomic ticket-counter, file index */
   CLIB_CACHE_LINE_ALIGN_MARK (cacheline1);
   volatile u64 next_record_index;
@@ -49,12 +72,27 @@ typedef struct
   u8 *filenames[2];
   /* vector not c-string */
   u8 *file_basename;
+  u8 *header_filename;
 } clib_maplog_main_t;
 
-int clib_maplog_init (clib_maplog_main_t * mm, char *file_basename,
-		      u64 file_size, u32 record_size_in_bytes);
+typedef struct 
+{
+  clib_maplog_main_t *mm;
+  char *file_basename;
+  u64 file_size_in_bytes;
+  u32 record_size_in_bytes;
+  u32 application_id;
+  u8 application_major_version;
+  u8 application_minor_version;
+  u8 application_patch_version;
+} clib_maplog_init_args_t;
+
+int clib_maplog_init (clib_maplog_init_args_t *ap);
 
 void clib_maplog_close (clib_maplog_main_t * mm);
+int clib_maplog_process (char *file_basename, void *fp_arg);
+
+format_function_t format_maplog_header;
 
 #define CLIB_MAPLOG_FLAG_INIT 	(1<<0)
 
