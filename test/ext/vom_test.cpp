@@ -801,7 +801,8 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     HW::item<bool> hw_be1(true, rc_t::OK);
     mac_address_t mac1({0,1,2,3,4,5});
     bridge_domain_entry *be1 = new bridge_domain_entry(bd1, mac1, itf2);
-    ADD_EXPECT(bridge_domain_entry_cmds::create_cmd(hw_be1, mac1, bd1.id(), hw_ifh2.data()));
+    ADD_EXPECT(bridge_domain_entry_cmds::create_cmd(hw_be1, mac1, bd1.id(), hw_ifh2.data(),
+		                                    interface::type_t::BVI == itf2.type()));
     TRY_CHECK_RC(OM::write(dante, *be1));
 
     // Add some entries to the bridge-domain ARP termination table
@@ -827,12 +828,14 @@ BOOST_AUTO_TEST_CASE(test_bridge) {
     delete be1;
     delete bea1;
     STRICT_ORDER_OFF();
+    ADD_EXPECT(bridge_domain_arp_entry_cmds::delete_cmd(hw_be1, bd1.id(), mac1, ip1));
+    ADD_EXPECT(bridge_domain_entry_cmds::delete_cmd(hw_be1, mac1, bd1.id(),
+                                                    interface::type_t::BVI == itf2.type()));
     ADD_EXPECT(l2_binding_cmds::unbind_cmd(hw_l2_bind, hw_ifh2.data(), hw_bd.data(), false));
+
+    ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh2));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh2, itf2_name));
-    ADD_EXPECT(bridge_domain_entry_cmds::delete_cmd(hw_be1, mac1, bd1.id()));
-    ADD_EXPECT(bridge_domain_arp_entry_cmds::delete_cmd(hw_be1, bd1.id(), mac1, ip1));
-    ADD_EXPECT(bridge_domain_cmds::delete_cmd(hw_bd));
     TRY_CHECK(OM::remove(dante));
 }
 
