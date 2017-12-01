@@ -18,6 +18,11 @@
 
 clib_error_t *vnet_netlink_set_if_mtu (int ifindex, int mtu);
 clib_error_t *vnet_netlink_set_if_namespace (int ifindex, char *net_ns);
+clib_error_t *vnet_netlink_set_if_master (int ifindex, int master_ifindex);
+clib_error_t *vnet_netlink_add_ip4_addr (int ifindex, void *addr,
+					 int pfx_len);
+clib_error_t *vnet_netlink_add_ip6_addr (int ifindex, void *addr,
+					 int pfx_len);
 
 #endif /* included_vnet_device_netlink_h */
 
