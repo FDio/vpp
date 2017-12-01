@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "875fa62c_dcf45df3",
+        "filename": "src/tools/vppapigen/vppapigen",
+        "patchSetId": 9
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-12-01T18:16:29Z",
+      "side": 1,
+      "message": "automake and the packaging refer to this \"vppapigen\" file; yet the code is in the .py and this file has only the name of said .py. Assume this will be cleaned up? :)",
+      "range": {
+        "startLine": 1,
+        "startChar": 12,
+        "endLine": 1,
+        "endChar": 12
+      },
+      "revId": "dc3ba02eefc7189317bd93ea92d8150170bad7c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c35f963c_1aed8a4a",
+        "filename": "src/tools/vppapigen/vppapigen.py",
+        "patchSetId": 9
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 278
+      },
+      "writtenOn": "2017-12-01T18:16:29Z",
+      "side": 1,
+      "message": "missing f64",
+      "range": {
+        "startLine": 19,
+        "startChar": 4,
+        "endLine": 19,
+        "endChar": 12
+      },
+      "revId": "dc3ba02eefc7189317bd93ea92d8150170bad7c5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
