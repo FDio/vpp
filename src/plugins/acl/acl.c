@@ -1055,6 +1055,19 @@ acl_is_not_defined (acl_main_t * am, u32 acl_list_index)
   return (pool_is_free_index (am->acls, acl_list_index));
 }
 
+static void
+increment_policy_epoch_input (u32 * p_epoch)
+{
+  *p_epoch =
+    ((1 + *p_epoch) & FA_POLICY_EPOCH_MASK) + FA_POLICY_EPOCH_IS_INPUT;
+}
+
+static void
+increment_policy_epoch_output (u32 * p_epoch)
+{
+  *p_epoch = ((1 + *p_epoch) & FA_POLICY_EPOCH_MASK);
+}
+
 
 static int
 acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
@@ -1092,6 +1105,10 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
       vec_validate (am->input_sw_if_index_vec_by_acl, acl_list_index);
       vec_add (am->input_sw_if_index_vec_by_acl[acl_list_index], &sw_if_index,
 	       1);
+      vec_validate (am->input_policy_epoch_by_sw_if_index, sw_if_index);
+      increment_policy_epoch_input (vec_elt_at_index
+				    (am->input_policy_epoch_by_sw_if_index,
+				     sw_if_index));
     }
   else
     {
@@ -1118,11 +1135,14 @@ acl_interface_add_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
       vec_validate (am->output_sw_if_index_vec_by_acl, acl_list_index);
       vec_add (am->output_sw_if_index_vec_by_acl[acl_list_index],
 	       &sw_if_index, 1);
+      vec_validate (am->output_policy_epoch_by_sw_if_index, sw_if_index);
+      increment_policy_epoch_output (vec_elt_at_index
+				     (am->output_policy_epoch_by_sw_if_index,
+				      sw_if_index));
     }
   clib_mem_set_heap (oldheap);
   return 0;
 }
-
 
 static int
 acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
@@ -1160,6 +1180,11 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
 	    }
 	}
 
+      vec_validate (am->input_policy_epoch_by_sw_if_index, sw_if_index);
+      increment_policy_epoch_input (vec_elt_at_index
+				    (am->input_policy_epoch_by_sw_if_index,
+				     sw_if_index));
+
       /* If there is no more ACLs applied on an interface, disable ACL processing */
       if (0 == vec_len (am->input_acl_vec_by_sw_if_index[sw_if_index]))
 	{
@@ -1194,6 +1219,11 @@ acl_interface_del_inout_acl (u32 sw_if_index, u8 is_input, u32 acl_list_index)
 			index);
 	    }
 	}
+
+      vec_validate (am->output_policy_epoch_by_sw_if_index, sw_if_index);
+      increment_policy_epoch_output (vec_elt_at_index
+				     (am->output_policy_epoch_by_sw_if_index,
+				      sw_if_index));
 
       /* If there is no more ACLs applied on an interface, disable ACL processing */
       if (0 == vec_len (am->output_acl_vec_by_sw_if_index[sw_if_index]))
@@ -2870,6 +2900,11 @@ acl_set_aclplugin_fn (vlib_main_t * vm,
       am->l4_match_nonfirst_fragment = (val != 0);
       goto done;
     }
+  if (unformat (input, "reclassify-sessions %u", &val))
+    {
+      am->stale_epoch_reclassify_sessions = (val != 0);
+      goto done;
+    }
   if (unformat (input, "heap"))
     {
       if (unformat (input, "main"))
@@ -3214,6 +3249,14 @@ acl_plugin_show_interface (acl_main_t * am, u32 sw_if_index, int show_acl)
 	continue;
 
       vlib_cli_output (vm, "sw_if_index %d:\n", swi);
+      if (swi < vec_len (am->input_policy_epoch_by_sw_if_index))
+	vlib_cli_output (vm, "   input policy epoch: %x\n",
+			 vec_elt (am->input_policy_epoch_by_sw_if_index,
+				  swi));
+      if (swi < vec_len (am->output_policy_epoch_by_sw_if_index))
+	vlib_cli_output (vm, "   output policy epoch: %x\n",
+			 vec_elt (am->output_policy_epoch_by_sw_if_index,
+				  swi));
 
       if (intf_has_etype_whitelist (am, swi, 1))
 	{
@@ -3393,13 +3436,21 @@ acl_plugin_show_sessions (acl_main_t * am,
 					       ?
 					       pw->fa_session_dels_by_sw_if_index
 					       [sw_if_index] : 0;
+					       u64 n_epoch_changes =
+					       sw_if_index <
+					       vec_len
+					       (pw->fa_session_epoch_change_by_sw_if_index)
+					       ?
+					       pw->fa_session_epoch_change_by_sw_if_index
+					       [sw_if_index] : 0;
 					       vlib_cli_output (vm,
-								"    sw_if_index %d: add %lu - del %lu = %lu",
+								"    sw_if_index %d: add %lu - del %lu = %lu ; epoch chg: %lu",
 								sw_if_index,
 								n_adds,
 								n_dels,
 								n_adds -
-								n_dels);
+								n_dels,
+								n_epoch_changes);
 					       }
 		    ));
 
@@ -3763,6 +3814,7 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
   u32 hash_heap_size;
   u32 hash_lookup_hash_buckets;
   u32 hash_lookup_hash_memory;
+  u32 stale_epoch_reclassify_sessions;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -3785,6 +3837,9 @@ acl_plugin_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "hash lookup hash memory %d",
 			 &hash_lookup_hash_memory))
 	am->hash_lookup_hash_memory = hash_lookup_hash_memory;
+      else if (unformat (input, "stale epoch reclassify sessions %d",
+			 &stale_epoch_reclassify_sessions))
+	am->stale_epoch_reclassify_sessions = stale_epoch_reclassify_sessions;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
@@ -3836,6 +3891,7 @@ acl_init (vlib_main_t * vm)
   am->fa_conn_table_hash_memory_size =
     ACL_FA_CONN_TABLE_DEFAULT_HASH_MEMORY_SIZE;
   am->fa_conn_table_max_entries = ACL_FA_CONN_TABLE_DEFAULT_MAX_ENTRIES;
+  am->stale_epoch_reclassify_sessions = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vec_validate (am->per_worker_data, tm->n_vlib_mains - 1);
   {
