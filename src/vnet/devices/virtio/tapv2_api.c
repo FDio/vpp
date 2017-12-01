@@ -53,7 +53,6 @@ static void
 vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 {
   vlib_main_t *vm = vlib_get_main ();
-  int rv;
   vl_api_tap_create_v2_reply_t *rmp;
   unix_shared_memory_queue_t *q;
   tap_create_if_args_t _a, *ap = &_a;
@@ -70,9 +69,9 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   ap->tx_ring_sz = mp->tx_ring_sz;
   ap->sw_if_index = (u32) ~ 0;
   if (mp->net_ns_set)
-    ap->net_ns = mp->net_ns;
+    ap->host_namespace = mp->net_ns;
 
-  rv = tap_create_if (vm, ap);
+  tap_create_if (vm, ap);
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (!q)
@@ -81,7 +80,7 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_TAP_CREATE_V2_REPLY);
   rmp->context = mp->context;
-  rmp->retval = ntohl (rv);
+  rmp->retval = ntohl (ap->rv);
   rmp->sw_if_index = ntohl (ap->sw_if_index);
 
   vl_msg_api_send_shmem (q, (u8 *) & rmp);
