@@ -250,6 +250,8 @@ interface::mk_create_cmd(std::queue<cmd*>& q)
     q.push(new interface_cmds::af_packet_create_cmd(m_hdl, m_name));
   } else if (type_t::TAP == m_type) {
     q.push(new interface_cmds::tap_create_cmd(m_hdl, m_name));
+  } else {
+    m_hdl.set(rc_t::OK);
   }
 
   return (q);
@@ -365,9 +367,11 @@ interface::set(const oper_state_t& state)
 void
 interface::enable_stats_i(interface::stat_listener& el)
 {
-  m_stats.reset(new interface_cmds::stats_enable_cmd(el, handle_i()));
-  HW::enqueue(m_stats);
-  HW::write();
+  if (!m_stats) {
+    m_stats.reset(new interface_cmds::stats_enable_cmd(el, handle_i()));
+    HW::enqueue(m_stats);
+    HW::write();
+  }
 }
 
 void
