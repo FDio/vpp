@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "ad744b58_8c6fac10",
+        "filename": "test/ext/vom_test.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 805,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-02T07:57:55Z",
+      "side": 1,
+      "message": "we know the type of itf2, we specified it in the test. so hard code in \u0027false\u0027.\nif we use exactly the same logic to determiner correctness in the tests as we do the production, then we are verifying less.\n\nyou should also add to a test case where we use BVI interfaces and add a bridge-domain-entry, so we see a case where is_bvi is true.",
+      "revId": "32803cf17f40379494b44fc5b50b31b7e0609684",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
