@@ -60,7 +60,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   virtio_main_t *vim = &virtio_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
-  int i, fd;
+  int i, fd = -1;
   struct ifreq ifr;
   size_t hdrsz;
   struct vhost_memory *vhost_mem = 0;
@@ -205,7 +205,6 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       _IOCTL (fd, SIOCGIFFLAGS, (void *) &ifr);
       ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
       _IOCTL (fd, SIOCSIFFLAGS, (void *) &ifr);
-      close (fd);
     }
 
   if (!args->hw_addr_set)
@@ -268,6 +267,8 @@ error:
 done:
   if (vhost_mem)
     clib_mem_free (vhost_mem);
+  if (fd != -1)
+    close (fd);
 }
 
 int
