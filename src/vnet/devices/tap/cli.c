@@ -38,38 +38,47 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   tap_create_if_args_t args = { 0 };
   int ip_addr_set = 0;
 
-  /* Get a line of input. */
-  if (!unformat_user (input, unformat_line_input, line_input))
-    return clib_error_return (0, "Missing name <interface>");
+  args.id = ~0;
 
-  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (unformat_user (input, unformat_line_input, line_input))
     {
-      if (unformat (line_input, "name %s", &args.name))
-	;
-      else if (unformat (line_input, "host-ns %s", &args.host_namespace))
-	;
-      else if (unformat (line_input, "host-bridge %s", &args.host_bridge))
-	;
-      else if (unformat (line_input, "host-ip4-addr %U/%d",
-			 unformat_ip4_address, &args.host_ip4_addr,
-			 &args.host_ip4_prefix_len))
-	ip_addr_set = 1;
-      else if (unformat (line_input, "host-ip6-addr %U/%d",
-			 unformat_ip6_address, &args.host_ip6_addr,
-			 &args.host_ip6_prefix_len))
-	ip_addr_set = 1;
-      else if (unformat (line_input, "rx-ring-size %d", &args.rx_ring_sz))
-	;
-      else if (unformat (line_input, "tx-ring-size %d", &args.tx_ring_sz))
-	;
-      else if (unformat (line_input, "hw-addr %U",
-			 unformat_ethernet_address, args.hw_addr))
-	args.hw_addr_set = 1;
-      else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+
+      while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+	{
+	  if (unformat (line_input, "id %u", &args.id))
+	    ;
+	  else
+	    if (unformat (line_input, "host-if-name %s", &args.host_if_name))
+	    ;
+	  else if (unformat (line_input, "host-ns %s", &args.host_namespace))
+	    ;
+	  else if (unformat (line_input, "host-mac-addr %U",
+			     unformat_ethernet_address, args.host_mac_addr))
+	    ;
+	  else if (unformat (line_input, "host-bridge %s", &args.host_bridge))
+	    ;
+	  else if (unformat (line_input, "host-ip4-addr %U/%d",
+			     unformat_ip4_address, &args.host_ip4_addr,
+			     &args.host_ip4_prefix_len))
+	    ip_addr_set = 1;
+	  else if (unformat (line_input, "host-ip6-addr %U/%d",
+			     unformat_ip6_address, &args.host_ip6_addr,
+			     &args.host_ip6_prefix_len))
+	    ip_addr_set = 1;
+	  else if (unformat (line_input, "rx-ring-size %d", &args.rx_ring_sz))
+	    ;
+	  else if (unformat (line_input, "tx-ring-size %d", &args.tx_ring_sz))
+	    ;
+	  else if (unformat (line_input, "hw-addr %U",
+			     unformat_ethernet_address, args.mac_addr))
+	    args.mac_addr_set = 1;
+	  else
+	    return clib_error_return (0, "unknown input `%U'",
+				      format_unformat_error, input);
+	}
+      unformat_free (line_input);
     }
-  unformat_free (line_input);
 
   if (ip_addr_set && args.host_bridge)
     return clib_error_return (0, "Please specify either host ip address or "
@@ -77,7 +86,7 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   tap_create_if (vm, &args);
 
-  vec_free (args.name);
+  vec_free (args.host_if_name);
   vec_free (args.host_namespace);
   vec_free (args.host_bridge);
 
@@ -88,10 +97,10 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (tap_create_command, static) = {
   .path = "create tap",
-  .short_help = "create tap {name <if-name>} [hw-addr <mac-address>] "
+  .short_help = "create tap {id <if-id>} [hw-addr <mac-address>] "
     "[rx-ring-size <size>] [tx-ring-size <size>] [host-ns <netns>] "
     "[host-bridge <bridge-name>] [host-ip4-addr <ip4addr/mask>] "
-    "[host-ip6-addr <ip6-addr]",
+    "[host-ip6-addr <ip6-addr] [host-if-name <name>]",
   .function = tap_create_command_fn,
 };
 /* *INDENT-ON* */
@@ -209,8 +218,8 @@ tap_show_command_fn (vlib_main_t * vm, unformat_input_t * input,
       vif = pool_elt_at_index (mm->interfaces, hi->dev_instance);
       vlib_cli_output (vm, "interface %U", format_vnet_sw_if_index_name,
 		       vnm, vif->sw_if_index);
-      if (vif->name)
-	vlib_cli_output (vm, "  name \"%s\"", vif->name);
+      if (vif->host_if_name)
+	vlib_cli_output (vm, "  name \"%s\"", vif->host_if_name);
       if (vif->net_ns)
 	vlib_cli_output (vm, "  host-ns \"%s\"", vif->net_ns);
       vlib_cli_output (vm, "  flags 0x%x", vif->flags);
