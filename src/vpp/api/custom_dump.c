@@ -556,9 +556,15 @@ static void *vl_api_tap_create_v2_t_print
   memset (null_mac, 0, sizeof (null_mac));
 
   s = format (0, "SCRIPT: tap_create_v2 ");
-  s = format (s, "name %s ", mp->tap_name);
+  s = format (s, "id %s ", mp->id);
   if (memcmp (mp->mac_address, null_mac, 6))
-    s = format (s, "hw-addr %U ", format_ethernet_address, mp->mac_address);
+    s = format (s, "mac-address %U ",
+		format_ethernet_address, mp->mac_address);
+  if (memcmp (mp->host_mac_addr, null_mac, 6))
+    s = format (s, "host-mac-addr %U ",
+		format_ethernet_address, mp->host_mac_addr);
+  if (mp->host_if_name_set)
+    s = format (s, "host-if-name %s ", mp->host_if_name);
   if (mp->host_namespace_set)
     s = format (s, "host-ns %s ", mp->host_namespace);
   if (mp->host_bridge_set)

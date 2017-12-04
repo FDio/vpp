@@ -15,6 +15,7 @@
  *------------------------------------------------------------------
  */
 
+#define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -24,6 +25,7 @@
 #include <linux/virtio_net.h>
 #include <linux/vhost.h>
 #include <sys/eventfd.h>
+#include <sched.h>
 
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
@@ -36,6 +38,8 @@
 #include <vnet/devices/netlink.h>
 #include <vnet/devices/virtio/virtio.h>
 #include <vnet/devices/tap/tap.h>
+
+tap_main_t tap_main;
 
 #define _IOCTL(fd,a,...) \
   if (ioctl (fd, a, __VA_ARGS__) < 0) \
@@ -53,24 +57,79 @@ virtio_eth_flag_change (vnet_main_t * vnm, vnet_hw_interface_t * hi,
   return 0;
 }
 
+static int
+open_netns_fd (char *netns)
+{
+  u8 *s = 0;
+  int fd;
+
+  if (strncmp (netns, "pid:", 4) == 0)
+    s = format (0, "/proc/%u/ns/net%c", atoi (netns + 4), 0);
+  else if (netns[0] == '/')
+    s = format (0, "%s%c", netns, 0);
+  else
+    s = format (0, "/var/run/netns/%s%c", netns, 0);
+
+  fd = open ((char *) s, O_RDONLY);
+  vec_free (s);
+  return fd;
+}
+
+
 void
 tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *vim = &virtio_main;
+  tap_main_t *tm = &tap_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
   int i, fd = -1;
+  int old_netns_fd = -1;
   struct ifreq ifr;
   size_t hdrsz;
   struct vhost_memory *vhost_mem = 0;
   virtio_if_t *vif = 0;
   clib_error_t *err = 0;
+  uword *p;
+
+  if (args->id != ~0)
+    {
+      p = hash_get (tm->dev_instance_by_interface_id, args->id);
+      if (p)
+	{
+	  args->rv = VNET_API_ERROR_INVALID_INTERFACE;
+	  args->error = clib_error_return (0, "interface already exists");
+	  return;
+	}
+    }
+  else
+    {
+      int tries = 1000;
+      while (--tries)
+	{
+	  args->id = tm->last_used_interface_id++;
+	  p = hash_get (tm->dev_instance_by_interface_id, args->id);
+	  if (!p)
+	    break;
+	}
+
+      if (!tries)
+	{
+	  args->rv = VNET_API_ERROR_UNSPECIFIED;
+	  args->error =
+	    clib_error_return (0, "cannot find free interface id");
+	  return;
+	}
+    }
 
   memset (&ifr, 0, sizeof (ifr));
   pool_get (vim->interfaces, vif);
   vif->dev_instance = vif - vim->interfaces;
   vif->tap_fd = -1;
+  vif->id = args->id;
+
+  hash_set (tm->dev_instance_by_interface_id, vif->id, vif->dev_instance);
 
   if ((vif->fd = open ("/dev/vhost-net", O_RDWR | O_NONBLOCK)) < 0)
     {
@@ -119,10 +178,8 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
     }
 
   ifr.ifr_flags = IFF_TAP | IFF_NO_PI | IFF_ONE_QUEUE | IFF_VNET_HDR;
-  strncpy (ifr.ifr_ifrn.ifrn_name, (char *) args->name, IF_NAMESIZE - 1);
   _IOCTL (vif->tap_fd, TUNSETIFF, (void *) &ifr);
-
-  vif->ifindex = if_nametoindex ((char *) args->name);
+  vif->ifindex = if_nametoindex (ifr.ifr_ifrn.ifrn_name);
 
   unsigned int offload = 0;
   hdrsz = sizeof (struct virtio_net_hdr_v1);
@@ -130,10 +187,61 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   _IOCTL (vif->tap_fd, TUNSETVNETHDRSZ, &hdrsz);
   _IOCTL (vif->fd, VHOST_SET_OWNER, 0);
 
-  if (args->host_bridge)
+  /* if namespace is specified, all further netlink messages should be excuted
+     after we change our net namespace */
+  if (args->host_namespace)
     {
-      int master_ifindex = if_nametoindex ((char *) args->host_bridge);
-      args->error = vnet_netlink_set_if_master (vif->ifindex, master_ifindex);
+      int fd;
+      old_netns_fd = open ("/proc/self/ns/net", O_RDONLY);
+      if ((fd = open_netns_fd ((char *) args->host_namespace)) == -1)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+	  args->error = clib_error_return_unix (0, "open_netns_fd '%s'",
+						args->host_namespace);
+	  goto error;
+	}
+      args->error = vnet_netlink_set_link_netns (vif->ifindex, fd,
+						 (char *) args->host_if_name);
+      if (args->error)
+	{
+	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	  goto error;
+	}
+      if (setns (fd, CLONE_NEWNET) == -1)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error = clib_error_return_unix (0, "setns '%s'",
+						args->host_namespace);
+	  goto error;
+	}
+      close (fd);
+      if ((vif->ifindex = if_nametoindex ((char *) args->host_if_name)) == 0)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_3;
+	  args->error = clib_error_return_unix (0, "if_nametoindex '%s'",
+						args->host_if_name);
+	  goto error;
+	}
+    }
+  else
+    {
+      if (args->host_if_name)
+	{
+	  args->error = vnet_netlink_set_link_name (vif->ifindex,
+						    (char *)
+						    args->host_if_name);
+	  if (args->error)
+	    {
+	      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+	      goto error;
+	    }
+	}
+    }
+
+  if (!ethernet_mac_address_is_zero (args->host_mac_addr))
+    {
+      args->error = vnet_netlink_set_link_addr (vif->ifindex,
+						args->host_mac_addr);
       if (args->error)
 	{
 	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
@@ -141,17 +249,17 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
-  if (args->host_namespace)
+  if (args->host_bridge)
     {
-      args->error = vnet_netlink_set_if_namespace (vif->ifindex,
-						   (char *)
-						   args->host_namespace);
+      args->error = vnet_netlink_set_link_master (vif->ifindex,
+						  (char *) args->host_bridge);
       if (args->error)
 	{
 	  args->rv = VNET_API_ERROR_NETLINK_ERROR;
 	  goto error;
 	}
     }
+
 
   if (args->host_ip4_prefix_len)
     {
@@ -177,6 +285,25 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
 	}
     }
 
+  args->error = vnet_netlink_set_link_state (vif->ifindex, 1 /* UP */ );
+  if (args->error)
+    {
+      args->rv = VNET_API_ERROR_NETLINK_ERROR;
+      goto error;
+    }
+
+  /* switch back to old net namespace */
+  if (args->host_namespace)
+    {
+      if (setns (old_netns_fd, CLONE_NEWNET) == -1)
+	{
+	  args->rv = VNET_API_ERROR_SYSCALL_ERROR_2;
+	  args->error = clib_error_return_unix (0, "setns '%s'",
+						args->host_namespace);
+	  goto error;
+	}
+    }
+
   /* Set vhost memory table */
   i = sizeof (struct vhost_memory) + sizeof (struct vhost_memory_region);
   vhost_mem = clib_mem_alloc (i);
@@ -197,33 +324,24 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       goto error;
     }
 
-  /* set host side up */
-  if ((fd = socket (AF_INET, SOCK_STREAM, 0)) > 0)
-    {
-      memset (&ifr, 0, sizeof (struct ifreq));
-      strncpy (ifr.ifr_name, (char *) args->name, sizeof (ifr.ifr_name) - 1);
-      _IOCTL (fd, SIOCGIFFLAGS, (void *) &ifr);
-      ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-      _IOCTL (fd, SIOCSIFFLAGS, (void *) &ifr);
-    }
-
-  if (!args->hw_addr_set)
+  if (!args->mac_addr_set)
     {
       f64 now = vlib_time_now (vm);
       u32 rnd;
       rnd = (u32) (now * 1e6);
       rnd = random_u32 (&rnd);
 
-      memcpy (args->hw_addr + 2, &rnd, sizeof (rnd));
-      args->hw_addr[0] = 2;
-      args->hw_addr[1] = 0xfe;
+      memcpy (args->mac_addr + 2, &rnd, sizeof (rnd));
+      args->mac_addr[0] = 2;
+      args->mac_addr[1] = 0xfe;
     }
-  vif->name = args->name;
-  args->name = 0;
+  vif->host_if_name = args->host_if_name;
+  args->host_if_name = 0;
   vif->net_ns = args->host_namespace;
   args->host_namespace = 0;
   args->error = ethernet_register_interface (vnm, virtio_device_class.index,
-					     vif->dev_instance, args->hw_addr,
+					     vif->dev_instance,
+					     args->mac_addr,
 					     &vif->hw_if_index,
 					     virtio_eth_flag_change);
   if (args->error)
@@ -276,6 +394,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
 {
   vnet_main_t *vnm = vnet_get_main ();
   virtio_main_t *mm = &virtio_main;
+  tap_main_t *tm = &tap_main;
   int i;
   virtio_if_t *vif;
   vnet_hw_interface_t *hw;
@@ -301,6 +420,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   vec_foreach_index (i, vif->vrings) virtio_vring_free (vif, i);
   vec_free (vif->vrings);
 
+  hash_unset (tm->dev_instance_by_interface_id, vif->id);
   memset (vif, 0, sizeof (*vif));
   pool_put (mm->interfaces, vif);
 
@@ -337,7 +457,8 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
 static clib_error_t *
 tap_init (vlib_main_t * vm)
 {
-
+  tap_main_t *tm = &tap_main;
+  tm->dev_instance_by_interface_id = hash_create (0, sizeof (uword));
   return 0;
 }
 

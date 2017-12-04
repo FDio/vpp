@@ -16,9 +16,12 @@
 #ifndef included_vnet_device_netlink_h
 #define included_vnet_device_netlink_h
 
-clib_error_t *vnet_netlink_set_if_mtu (int ifindex, int mtu);
-clib_error_t *vnet_netlink_set_if_namespace (int ifindex, char *net_ns);
-clib_error_t *vnet_netlink_set_if_master (int ifindex, int master_ifindex);
+clib_error_t *vnet_netlink_set_link_name (int ifindex, char *new_ifname);
+clib_error_t *vnet_netlink_set_link_netns (int ifindex, int netns_fd,
+					   char *new_ifname);
+clib_error_t *vnet_netlink_set_link_master (int ifindex, char *master_ifname);
+clib_error_t *vnet_netlink_set_link_addr (int ifindex, u8 * addr);
+clib_error_t *vnet_netlink_set_link_state (int ifindex, int up);
 clib_error_t *vnet_netlink_add_ip4_addr (int ifindex, void *addr,
 					 int pfx_len);
 clib_error_t *vnet_netlink_add_ip6_addr (int ifindex, void *addr,
