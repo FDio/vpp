@@ -29,10 +29,6 @@
  */
 typedef enum fib_source_t_ {
     /**
-     * An invalid source of value 0
-     */
-    FIB_SOURCE_INVALID,
-    /**
      * Marker. Add new values after this one.
      */
     FIB_SOURCE_FIRST,
@@ -146,7 +142,6 @@ STATIC_ASSERT (sizeof(fib_source_t) == 1,
 #define FIB_SOURCE_MAX (FIB_SOURCE_LAST+1)
 
 #define FIB_SOURCES {					\
-    [FIB_SOURCE_INVALID] = "invalid",			\
     [FIB_SOURCE_SPECIAL] = "special",			\
     [FIB_SOURCE_INTERFACE] = "interface",		\
     [FIB_SOURCE_PROXY] = "proxy",                       \
@@ -382,29 +377,6 @@ typedef struct fib_entry_src_t_ {
 } fib_entry_src_t;
 
 /**
- * FIB entry flags.
- *  these are stored in the pad space within the fib_node_t
- */
-typedef enum fib_entry_node_attribute_t_
-{
-    /**
-     * FIB entry has multiple sources, so the fe_srcs union
-     * uses the vector
-     */
-    FIB_ENTRY_NODE_ATTR_MULTIPLE_SRCS,
-} fib_entry_node_attribute_t;
-
-#define FIB_ENTRY_NODE_FLAG_NAMES {                            \
-    [FIB_ENTRY_NODE_ATTR_MULTIPLE_SRCS] = "multiple-srcs",     \
-}
-
-typedef enum fib_entry_node_flags_t_
-{
-    FIB_ENTRY_NODE_FLAG_MULTIPLE_SRCS = (1 << FIB_ENTRY_NODE_ATTR_MULTIPLE_SRCS),
-} fib_entry_node_flags_t;
-
-
-/**
  * An entry in a FIB table.
  *
  * This entry represents a route added to the FIB that is stored
@@ -437,20 +409,12 @@ typedef struct fib_entry_t_ {
      *     type to derive the EOS bit value.
      */
     dpo_id_t fe_lb;
-
     /**
-     * Source info.
-     * in the majority of cases a FIB entry will have only one source.
-     * so to save the extra memory allocation of the source's vector, we
-     * store space for one source inline. When two sources are present, 
-     * we burn extra memory.
-     * The union is switched based on the FIB_ENTRY_NODE_FLAG_MULTIPLE_SRCS
+     * Vector of source infos.
+     * Most entries will only have 1 source. So we optimise for memory usage,
+     * which is preferable since we have many entries.
      */
-    union {
-        fib_entry_src_t *fe_srcs;
-        fib_entry_src_t fe_src;
-    } fe_u_src;
-
+    fib_entry_src_t *fe_srcs;
     /**
      * the path-list for which this entry is a child. This is also the path-list
      * that is contributing forwarding for this entry.

@@ -105,6 +105,15 @@ typedef fib_entry_src_cover_res_t (*fib_entry_src_cover_update_t)(
     const fib_entry_t *fib_entry);
 
 /**
+ * Forwarding updated. Notification that the forwarding information for the
+ * entry has been updated. This notification is sent to all sources, not just
+ * the active best.
+ */
+typedef void (*fib_entry_src_fwd_update_t)(fib_entry_src_t *src,
+					   const fib_entry_t *fib_entry,
+					   fib_source_t best_source);
+
+/**
  * Installed. Notification that the source is now installed as
  * the entry's forwarding source.
  */
@@ -173,56 +182,22 @@ typedef struct fib_entry_src_vft_t_ {
     fib_entry_src_cover_update_t fesv_cover_update;
     fib_entry_src_format_t fesv_format;
     fib_entry_src_installed_t fesv_installed;
+    fib_entry_src_fwd_update_t fesv_fwd_update;
     fib_entry_src_get_data_t fesv_get_data;
     fib_entry_src_set_data_t fesv_set_data;
 } fib_entry_src_vft_t;
 
-#define FOR_EACH_SRC_ADDED(_entry, _src, _source, action)        \
-{                                                                \
-    if (fib_entry_has_multiple_srcs(_entry))                     \
-    {                                                            \
-        vec_foreach(_src, _entry->fe_u_src.fe_srcs)              \
-        {                                                        \
-            if (_src->fes_flags & FIB_ENTRY_SRC_FLAG_ADDED) {    \
-                _source = _src->fes_src;                         \
-                do {                                             \
-                    action;                                      \
-                } while(0);                                      \
-            }                                                    \
-        }                                                        \
-    }                                                            \
-    else                                                         \
-    {                                                            \
-        _src = &_entry->fe_u_src.fe_src;                         \
-        if (_src->fes_flags & FIB_ENTRY_SRC_FLAG_ADDED) {        \
-            _source = _src->fes_src;                             \
-            do {                                                 \
-                action;                                          \
-            } while(0);                                          \
-        }                                                        \
-    }                                                            \
-}
-
-#define FOR_EACH_SRC(_entry, _src, _source, action)              \
-{                                                                \
-    if (fib_entry_has_multiple_srcs(_entry))                     \
-    {                                                            \
-        vec_foreach(_src, _entry->fe_u_src.fe_srcs)              \
-        {                                                        \
-            _source = _src->fes_src;                             \
-            do {                                                 \
-                action;                                          \
-            } while(0);                                          \
-        }                                                        \
-    }                                                            \
-    else                                                         \
-    {                                                            \
-        _src = &_entry->fe_u_src.fe_src;                         \
-        _source = _src->fes_src;                                 \
-        do {                                                     \
-            action;                                              \
-        } while(0);                                              \
-    }                                                            \
+#define FOR_EACH_SRC_ADDED(_entry, _src, _source, action)	\
+{								\
+    vec_foreach(_src, _entry->fe_srcs)				\
+    {								\
+	if (_src->fes_flags & FIB_ENTRY_SRC_FLAG_ADDED) {	\
+	    _source = _src->fes_src;				\
+	    do {						\
+		action;						\
+	    } while(0);						\
+	}							\
+    }								\
 }
 
 extern u8* fib_entry_src_format(fib_entry_t *entry,
@@ -285,7 +260,7 @@ extern fib_entry_src_flag_t fib_entry_src_action_path_remove(fib_entry_t *fib_en
 							     fib_source_t source,
 							     const fib_route_path_t *path);
 
-extern void fib_entry_src_action_installed(fib_entry_t *fib_entry,
+extern void fib_entry_src_action_installed(const fib_entry_t *fib_entry,
 					   fib_source_t source);
 
 extern fib_forward_chain_type_t fib_entry_get_default_chain_type(
@@ -304,7 +279,6 @@ extern void fib_entry_src_mk_lb (fib_entry_t *fib_entry,
 
 extern fib_protocol_t fib_entry_get_proto(const fib_entry_t * fib_entry);
 extern dpo_proto_t fib_entry_get_dpo_proto(const fib_entry_t * fib_entry);
-extern u32 fib_entry_has_multiple_srcs(const fib_entry_t * fib_entry);
 
 /*
  * Per-source registration. declared here so we save a separate .h file for each
