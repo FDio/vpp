@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "26052531_8a37fd18",
+        "filename": "src/vnet/util/refcount.c",
+        "patchSetId": 15
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-12-04T07:35:11Z",
+      "side": 1,
+      "message": "This needs to be covered by the lock. Since getting the length of the vector is a non-atomic operation.",
+      "range": {
+        "startLine": 37,
+        "startChar": 4,
+        "endLine": 37,
+        "endChar": 59
+      },
+      "revId": "e52474f4596b855200352ac0f3b63818b75772bc",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
