@@ -1558,7 +1558,6 @@ static clib_error_t *
 dpdk_init (vlib_main_t * vm)
 {
   dpdk_main_t *dm = &dpdk_main;
-  vlib_node_t *ei;
   clib_error_t *error = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
@@ -1574,12 +1573,6 @@ dpdk_init (vlib_main_t * vm)
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
   dm->conf = &dpdk_config_main;
-
-  ei = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
-  if (ei == 0)
-    return clib_error_return (0, "ethernet-input node AWOL");
-
-  dm->ethernet_input_node_index = ei->index;
 
   dm->conf->nchannels = 4;
   dm->conf->num_mbufs = dm->conf->num_mbufs ? dm->conf->num_mbufs : NB_MBUF;
