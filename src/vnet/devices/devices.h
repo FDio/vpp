@@ -117,7 +117,7 @@ vnet_device_increment_rx_packets (u32 thread_index, u64 count)
 }
 
 static_always_inline vnet_device_and_queue_t *
-vnet_get_device_and_queue (vlib_main_t * vm, vlib_node_runtime_t * node)
+vnet_get_devices_and_queues (vlib_main_t * vm, vlib_node_runtime_t * node)
 {
   vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
   return rt->devices_and_queues;
