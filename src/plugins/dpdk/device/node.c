@@ -256,7 +256,6 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
   u32 n_buffers;
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 n_left_to_next, *to_next;
-  u32 mb_index;
   vlib_main_t *vm = vlib_get_main ();
   uword n_rx_bytes = 0;
   u32 n_trace, trace_cnt __attribute__ ((unused));
@@ -273,20 +272,19 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
       return 0;
     }
 
-  vec_reset_length (xd->d_trace_buffers[thread_index]);
   trace_cnt = n_trace = vlib_get_trace_count (vm, node);
 
-  if (n_trace > 0)
+  if (PREDICT_FALSE (n_trace > 0))
     {
-      u32 n = clib_min (n_trace, n_buffers);
-      mb_index = 0;
+      u32 **tbufs = &xd->d_trace_buffers[thread_index];
+      vec_reset_length (*tbufs);
 
-      while (n--)
+      u32 mb_index, n = clib_min (n_trace, n_buffers);
+      for (mb_index = 0; mb_index < n; mb_index++)
 	{
-	  struct rte_mbuf *mb = xd->rx_vectors[queue_id][mb_index++];
+	  struct rte_mbuf *mb = xd->rx_vectors[queue_id][mb_index];
 	  vlib_buffer_t *b = vlib_buffer_from_rte_mbuf (mb);
-	  vec_add1 (xd->d_trace_buffers[thread_index],
-		    vlib_get_buffer_index (vm, b));
+	  vec_add1 (*tbufs, vlib_get_buffer_index (vm, b));
 	}
     }
 
@@ -299,7 +297,7 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
      start for each queue, it is safe to store this in the template */
   bt->buffer_pool_index = xd->buffer_pool_for_queue[queue_id];
 
-  mb_index = 0;
+  u32 mb_index = 0;
 
   while (n_buffers > 0)
     {
@@ -534,14 +532,11 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  if (PREDICT_FALSE (vec_len (xd->d_trace_buffers[thread_index]) > 0))
+  if (PREDICT_FALSE (n_trace > 0))
     {
-      dpdk_rx_trace (dm, node, xd, queue_id,
-		     xd->d_trace_buffers[thread_index],
-		     vec_len (xd->d_trace_buffers[thread_index]));
-      vlib_set_trace_count (vm, node,
-			    n_trace -
-			    vec_len (xd->d_trace_buffers[thread_index]));
+      u32 *tbufs = xd->d_trace_buffers[thread_index];
+      dpdk_rx_trace (dm, node, xd, queue_id, tbufs, vec_len (tbufs));
+      vlib_set_trace_count (vm, node, n_trace - vec_len (tbufs));
     }
 
   vlib_increment_combined_counter
