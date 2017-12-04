@@ -377,8 +377,6 @@ typedef struct
    */
   u8 admin_up_down_in_progress;
 
-  u8 use_rss;
-
   /* which cpus are running I/O TX */
   int hqos_cpu_first_index;
   int hqos_cpu_count;
