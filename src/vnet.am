@@ -869,25 +869,35 @@ API_FILES += vnet/pg/pg.api
 # virtio
 ########################################
 
-libvnet_la_SOURCES +=       \
-  vnet/devices/virtio/cli.c		\
-  vnet/devices/virtio/device.c		\
-  vnet/devices/virtio/node.c		\
-  vnet/devices/virtio/tap.c		\
-  vnet/devices/virtio/tapv2_api.c  	\
-  vnet/devices/virtio/vhost-user.c	\
-  vnet/devices/virtio/vhost_user_api.c	\
+libvnet_la_SOURCES +=				\
+  vnet/devices/virtio/device.c			\
+  vnet/devices/virtio/node.c			\
+  vnet/devices/virtio/vhost-user.c		\
+  vnet/devices/virtio/vhost_user_api.c		\
   vnet/devices/virtio/virtio.c
 
 
-nobase_include_HEADERS +=     \
-  vnet/devices/virtio/virtio.h		\
-  vnet/devices/virtio/tapv2.api.h \
-  vnet/devices/virtio/vhost-user.h	\
+nobase_include_HEADERS +=			\
+  vnet/devices/virtio/virtio.h			\
+  vnet/devices/virtio/vhost-user.h		\
   vnet/devices/virtio/vhost_user.api.h
 
-API_FILES += vnet/devices/virtio/tapv2.api
 API_FILES += vnet/devices/virtio/vhost_user.api
+
+########################################
+# tap interface (with virtio backend)
+########################################
+
+libvnet_la_SOURCES += 				\
+  vnet/devices/tap/cli.c			\
+  vnet/devices/tap/tap.c			\
+  vnet/devices/tap/tapv2_api.c
+
+nobase_include_HEADERS += 			\
+  vnet/devices/tap/tap.h			\
+  vnet/devices/tap/tapv2.api.h
+
+API_FILES += vnet/devices/tap/tapv2.api
 
 ########################################
 # ssvm ethernet

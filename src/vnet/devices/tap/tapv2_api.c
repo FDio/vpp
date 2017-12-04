@@ -42,7 +42,7 @@
 #undef vl_printfun
 
 #include <vlibapi/api_helper_macros.h>
-#include <vnet/devices/virtio/tap.h>
+#include <vnet/devices/tap/tap.h>
 
 #define foreach_tapv2_api_msg                     \
 _(TAP_CREATE_V2, tap_create_v2)                   \

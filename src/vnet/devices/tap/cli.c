@@ -28,7 +28,7 @@
 #include <linux/virtio_net.h>
 #include <linux/vhost.h>
 #include <vnet/devices/virtio/virtio.h>
-#include <vnet/devices/virtio/tap.h>
+#include <vnet/devices/tap/tap.h>
 
 static clib_error_t *
 tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
