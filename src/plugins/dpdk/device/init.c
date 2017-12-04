@@ -186,9 +186,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   vlib_main_t *vm = vlib_get_main ();
   vlib_thread_main_t *tm = vlib_get_thread_main ();
   vnet_device_main_t *vdm = &vnet_device_main;
-  vnet_sw_interface_t *sw;
-  vnet_hw_interface_t *hi;
-  dpdk_device_t *xd;
   vlib_pci_addr_t last_pci_addr;
   u32 last_pci_addr_port = 0;
   vlib_thread_registration_t *tr_hqos;
@@ -254,7 +251,6 @@ dpdk_lib_init (dpdk_main_t * dm)
   for (i = 0; i < nports; i++)
     {
       u8 addr[6];
-      u8 vlan_strip = 0;
       int j;
       struct rte_eth_dev_info dev_info;
       struct rte_eth_link l;
@@ -280,10 +276,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	devconf = &dm->conf->default_devconf;
 
       /* Create vnet interface */
+      dpdk_device_t *xd;
       vec_add2_aligned (dm->devices, xd, 1, CLIB_CACHE_LINE_BYTES);
       xd->nb_rx_desc = DPDK_NB_RX_DESC_DEFAULT;
       xd->nb_tx_desc = DPDK_NB_TX_DESC_DEFAULT;
       xd->cpu_socket = (i8) rte_eth_dev_socket_id (i);
+      xd->device_index = xd - dm->devices;
+      ASSERT (i == xd->device_index);
+      xd->per_interface_next_index = ~0;
 
       /* Handle interface naming for devices with multiple ports sharing same PCI ID */
       if (dev_info.pci_dev)
@@ -311,9 +311,7 @@ dpdk_lib_init (dpdk_main_t * dm)
       else
 	last_pci_addr.as_u32 = ~0;
 
-      clib_memcpy (&xd->tx_conf, &dev_info.default_txconf,
-		   sizeof (struct rte_eth_txconf));
-
+      xd->tx_conf = dev_info.default_txconf;
       if (dm->conf->no_tx_checksum_offload == 0)
 	xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOXSUMS;
 
@@ -331,30 +329,21 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  xd->flags |= DPDK_DEVICE_FLAG_MAYBE_MULTISEG;
 	}
 
-      clib_memcpy (&xd->port_conf, &port_conf_template,
-		   sizeof (struct rte_eth_conf));
-
+      xd->port_conf = port_conf_template;
       xd->tx_q_used = clib_min (dev_info.max_tx_queues, tm->n_vlib_mains);
 
-      if (devconf->num_tx_queues > 0
-	  && devconf->num_tx_queues < xd->tx_q_used)
+      if (devconf->num_tx_queues > 0)
 	xd->tx_q_used = clib_min (xd->tx_q_used, devconf->num_tx_queues);
 
-      if (devconf->num_rx_queues > 1 && dm->use_rss == 0)
-	{
-	  dm->use_rss = 1;
-	}
+      dm->use_rss = devconf->num_rx_queues > 1;
 
       if (devconf->num_rx_queues > 1
 	  && dev_info.max_rx_queues >= devconf->num_rx_queues)
 	{
 	  xd->rx_q_used = devconf->num_rx_queues;
 	  xd->port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
-	  if (devconf->rss_fn == 0)
-	    xd->port_conf.rx_adv_conf.rss_conf.rss_hf =
-	      ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP;
-	  else
-	    xd->port_conf.rx_adv_conf.rss_conf.rss_hf = devconf->rss_fn;
+	  xd->port_conf.rx_adv_conf.rss_conf.rss_hf = (devconf->rss_fn == 0) ?
+	    ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP : devconf->rss_fn;
 	}
       else
 	xd->rx_q_used = 1;
@@ -522,39 +511,26 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (xd->tx_q_used < tm->n_vlib_mains)
 	dpdk_device_lock_init (xd);
 
-      xd->device_index = xd - dm->devices;
-      ASSERT (i == xd->device_index);
-      xd->per_interface_next_index = ~0;
-
       /* assign interface to input thread */
-      dpdk_device_and_queue_t *dq;
-      int q;
 
       if (devconf->hqos_enabled)
 	{
 	  xd->flags |= DPDK_DEVICE_FLAG_HQOS;
 
+	  int cpu;
 	  if (devconf->hqos.hqos_thread_valid)
 	    {
-	      int cpu = dm->hqos_cpu_first_index + devconf->hqos.hqos_thread;
-
 	      if (devconf->hqos.hqos_thread >= dm->hqos_cpu_count)
 		return clib_error_return (0, "invalid HQoS thread index");
 
-	      vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
-	      dq->device = xd->device_index;
-	      dq->queue_id = 0;
+	      cpu = dm->hqos_cpu_first_index + devconf->hqos.hqos_thread;
 	    }
 	  else
 	    {
-	      int cpu = dm->hqos_cpu_first_index + next_hqos_cpu;
-
 	      if (dm->hqos_cpu_count == 0)
 		return clib_error_return (0, "no HQoS threads available");
 
-	      vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
-	      dq->device = xd->device_index;
-	      dq->queue_id = 0;
+	      cpu = dm->hqos_cpu_first_index + next_hqos_cpu;
 
 	      next_hqos_cpu++;
 	      if (next_hqos_cpu == dm->hqos_cpu_count)
@@ -563,6 +539,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      devconf->hqos.hqos_thread_valid = 1;
 	      devconf->hqos.hqos_thread = cpu;
 	    }
+
+	  dpdk_device_and_queue_t *dq;
+	  vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
+	  dq->device = xd->device_index;
+	  dq->queue_id = 0;
 	}
 
       vec_validate_aligned (xd->tx_vectors, tm->n_vlib_mains,
@@ -597,30 +578,28 @@ dpdk_lib_init (dpdk_main_t * dm)
       if (error)
 	return error;
 
+      vnet_sw_interface_t *sw;
       sw = vnet_get_hw_sw_interface (dm->vnet_main, xd->hw_if_index);
       xd->vlib_sw_if_index = sw->sw_if_index;
       vnet_hw_interface_set_input_node (dm->vnet_main, xd->hw_if_index,
 					dpdk_input_node.index);
 
-      if (devconf->workers)
+      int q = 0;
+      int w;
+      /* *INDENT-OFF* */
+      clib_bitmap_foreach (w, devconf->workers, ({
+        vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q++,
+                                            vdm->first_worker_thread_index + w);
+      }));
+      /* *INDENT-ON* */
+      ASSERT(!devconf->workers || q == xd->rx_q_used);
+      for (; q < xd->rx_q_used; q++)
 	{
-	  int i;
-	  q = 0;
-	  /* *INDENT-OFF* */
-	  clib_bitmap_foreach (i, devconf->workers, ({
-	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q++,
-					     vdm->first_worker_thread_index + i);
-	  }));
-	  /* *INDENT-ON* */
+	  vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q,/* any */ ~1);
 	}
-      else
-	for (q = 0; q < xd->rx_q_used; q++)
-	  {
-	    vnet_hw_interface_assign_rx_thread (dm->vnet_main, xd->hw_if_index, q,	/* any */
-						~1);
-	  }
 
-      hi = vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
+      vnet_hw_interface_t *hi =
+	vnet_get_hw_interface (dm->vnet_main, xd->hw_if_index);
 
       if (dm->conf->no_tx_checksum_offload == 0)
 	if (xd->flags & DPDK_DEVICE_FLAG_TX_OFFLOAD)
@@ -647,6 +626,7 @@ dpdk_lib_init (dpdk_main_t * dm)
        * For other NICs default to VLAN strip disabled, unless specified
        * otherwis in the startup config.
        */
+      u8 vlan_strip = 0;
       if (xd->pmd == VNET_DPDK_PMD_ENIC)
 	{
 	  if (devconf->vlan_strip_offload != DPDK_DEVICE_VLAN_STRIP_OFF)
@@ -849,16 +829,18 @@ dpdk_device_config (dpdk_config_main_t * conf, vlib_pci_addr_t pci_addr,
   if (error)
     return error;
 
-  if (devconf->workers && devconf->num_rx_queues == 0)
-    devconf->num_rx_queues = clib_bitmap_count_set_bits (devconf->workers);
-  else if (devconf->workers &&
-	   clib_bitmap_count_set_bits (devconf->workers) !=
-	   devconf->num_rx_queues)
-    error =
-      clib_error_return (0,
-			 "%U: number of worker threadds must be "
-			 "equal to number of rx queues", format_vlib_pci_addr,
-			 &pci_addr);
+  if (devconf->workers)
+    {
+      int nw = clib_bitmap_count_set_bits (devconf->workers);
+      if (devconf->num_rx_queues == 0)
+	devconf->num_rx_queues = nw;
+      if (nw != devconf->num_rx_queues)
+	error =
+	  clib_error_return (0,
+			     "%U: number of worker threads must be "
+			     "equal to number of rx queues",
+			     format_vlib_pci_addr, &pci_addr);
+    }
 
   return error;
 }
@@ -1357,6 +1339,9 @@ dpdk_update_link_state (dpdk_device_t * xd, f64 now)
 	case ETH_SPEED_NUM_40G:
 	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_40G;
 	  break;
+	case ETH_SPEED_NUM_100G:
+	  hw_flags |= VNET_HW_INTERFACE_FLAG_SPEED_100G;
+	  break;
 	case 0:
 	  break;
 	default:
@@ -1558,7 +1543,6 @@ static clib_error_t *
 dpdk_init (vlib_main_t * vm)
 {
   dpdk_main_t *dm = &dpdk_main;
-  vlib_node_t *ei;
   clib_error_t *error = 0;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
@@ -1574,12 +1558,6 @@ dpdk_init (vlib_main_t * vm)
   dm->vlib_main = vm;
   dm->vnet_main = vnet_get_main ();
   dm->conf = &dpdk_config_main;
-
-  ei = vlib_get_node_by_name (vm, (u8 *) "ethernet-input");
-  if (ei == 0)
-    return clib_error_return (0, "ethernet-input node AWOL");
-
-  dm->ethernet_input_node_index = ei->index;
 
   dm->conf->nchannels = 4;
   dm->conf->num_mbufs = dm->conf->num_mbufs ? dm->conf->num_mbufs : NB_MBUF;
