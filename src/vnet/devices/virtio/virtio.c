@@ -62,9 +62,9 @@ virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx, u16 sz)
 {
   clib_error_t *err = 0;
   virtio_vring_t *vring;
-  struct vhost_vring_state state;
-  struct vhost_vring_addr addr;
-  struct vhost_vring_file file;
+  struct vhost_vring_state state = { 0 };
+  struct vhost_vring_addr addr = { 0 };
+  struct vhost_vring_file file = { 0 };
   clib_file_t t = { 0 };
   int i;
 
