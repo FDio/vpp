@@ -220,18 +220,28 @@ cj_command_fn (vlib_main_t * vm,
 {
   int is_enable = -1;
   int is_dump = -1;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  clib_error_t *error = NULL;
 
-  while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "expected enable | disable | dump");
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
-      if (unformat (input, "enable") || unformat (input, "on"))
+      if (unformat (line_input, "enable") || unformat (line_input, "on"))
 	is_enable = 1;
-      else if (unformat (input, "disable") || unformat (input, "off"))
+      else if (unformat (line_input, "disable")
+	       || unformat (line_input, "off"))
 	is_enable = 0;
-      else if (unformat (input, "dump"))
+      else if (unformat (line_input, "dump"))
 	is_dump = 1;
       else
-	return clib_error_return (0, "unknown input `%U'",
-				  format_unformat_error, input);
+	{
+	  error = clib_error_return (0, "unknown input `%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
     }
 
   if (is_enable >= 0)
@@ -240,7 +250,9 @@ cj_command_fn (vlib_main_t * vm,
   if (is_dump > 0)
     cj_dump ();
 
-  return 0;
+done:
+  unformat_free (line_input);
+  return error;
 }
 
 /*?

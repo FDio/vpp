@@ -902,7 +902,7 @@ lisp_enable_disable_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, "expected enable | disable");
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -955,7 +955,7 @@ lisp_map_register_enable_disable_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, "expected enable | disable");
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
@@ -1008,7 +1008,7 @@ lisp_rloc_probe_enable_disable_command_fn (vlib_main_t * vm,
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
-    return 0;
+    return clib_error_return (0, "expected enable | disable");
 
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
