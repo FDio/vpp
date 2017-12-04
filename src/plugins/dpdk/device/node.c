@@ -102,39 +102,27 @@ dpdk_rx_error_from_mb (struct rte_mbuf *mb, u32 * next, u8 * error)
 static void
 dpdk_rx_trace (dpdk_main_t * dm,
 	       vlib_node_runtime_t * node,
-	       dpdk_device_t * xd,
-	       u16 queue_id, u32 * buffers, uword n_buffers)
+	       dpdk_device_t * xd, u16 queue_id, u32 * b, uword n_left)
 {
   vlib_main_t *vm = vlib_get_main ();
-  u32 *b, n_left;
-  u32 next0;
 
-  n_left = n_buffers;
-  b = buffers;
-
-  while (n_left >= 1)
+  while (n_left > 0)
     {
-      u32 bi0;
-      vlib_buffer_t *b0;
-      dpdk_rx_dma_trace_t *t0;
-      struct rte_mbuf *mb;
-      u8 error0;
+      u32 bi0 = b[0];
+      vlib_buffer_t *b0 = vlib_get_buffer (vm, bi0);
+      struct rte_mbuf *mb = rte_mbuf_from_vlib_buffer (b0);
 
-      bi0 = b[0];
-      n_left -= 1;
-
-      b0 = vlib_get_buffer (vm, bi0);
-      mb = rte_mbuf_from_vlib_buffer (b0);
-
+      u32 next0;
       if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
 	next0 = xd->per_interface_next_index;
       else
 	next0 = dpdk_rx_next_from_packet_start (mb, b0);
 
+      u8 error0;
       dpdk_rx_error_from_mb (mb, &next0, &error0);
 
       vlib_trace_buffer (vm, node, next0, b0, /* follow_chain */ 0);
-      t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
+      dpdk_rx_dma_trace_t *t0 = vlib_add_trace (vm, node, b0, sizeof (t0[0]));
       t0->queue_index = queue_id;
       t0->device_index = xd->device_index;
       t0->buffer_index = bi0;
@@ -146,6 +134,7 @@ dpdk_rx_trace (dpdk_main_t * dm,
       clib_memcpy (&t0->data, mb->buf_addr + mb->data_off, sizeof (t0->data));
 
       b += 1;
+      n_left -= 1;
     }
 }
 
