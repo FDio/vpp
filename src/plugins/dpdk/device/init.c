@@ -522,34 +522,26 @@ dpdk_lib_init (dpdk_main_t * dm)
       xd->per_interface_next_index = ~0;
 
       /* assign interface to input thread */
-      dpdk_device_and_queue_t *dq;
       int q;
 
       if (devconf->hqos_enabled)
 	{
 	  xd->flags |= DPDK_DEVICE_FLAG_HQOS;
 
+	  int cpu;
 	  if (devconf->hqos.hqos_thread_valid)
 	    {
-	      int cpu = dm->hqos_cpu_first_index + devconf->hqos.hqos_thread;
-
 	      if (devconf->hqos.hqos_thread >= dm->hqos_cpu_count)
 		return clib_error_return (0, "invalid HQoS thread index");
 
-	      vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
-	      dq->device = xd->device_index;
-	      dq->queue_id = 0;
+	      cpu = dm->hqos_cpu_first_index + devconf->hqos.hqos_thread;
 	    }
 	  else
 	    {
-	      int cpu = dm->hqos_cpu_first_index + next_hqos_cpu;
-
 	      if (dm->hqos_cpu_count == 0)
 		return clib_error_return (0, "no HQoS threads available");
 
-	      vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
-	      dq->device = xd->device_index;
-	      dq->queue_id = 0;
+	      cpu = dm->hqos_cpu_first_index + next_hqos_cpu;
 
 	      next_hqos_cpu++;
 	      if (next_hqos_cpu == dm->hqos_cpu_count)
@@ -558,6 +550,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      devconf->hqos.hqos_thread_valid = 1;
 	      devconf->hqos.hqos_thread = cpu;
 	    }
+
+	  dpdk_device_and_queue_t *dq;
+	  vec_add2 (dm->devices_by_hqos_cpu[cpu], dq, 1);
+	  dq->device = xd->device_index;
+	  dq->queue_id = 0;
 	}
 
       vec_validate_aligned (xd->tx_vectors, tm->n_vlib_mains,
