@@ -55,7 +55,7 @@ format_virtio_device_name (u8 * s, va_list * args)
 
   if (vif->type == VIRTIO_IF_TYPE_TAP)
     {
-      s = format (s, "tap-%s", vif->name);
+      s = format (s, "tap%u", vif->id);
     }
   else
     s = format (s, "virtio%lu", vif->dev_instance);
