@@ -156,23 +156,22 @@ static_always_inline void
 dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
 			  struct rte_mbuf *mb, vlib_buffer_free_list_t * fl)
 {
-  u8 nb_seg = 1;
-  struct rte_mbuf *mb_seg = 0;
-  vlib_buffer_t *b_seg, *b_chain = 0;
-  mb_seg = mb->next;
-  b_chain = b;
-
   if (mb->nb_segs < 2)
     return;
+
+  struct rte_mbuf *mb_seg = mb;
+  vlib_buffer_t *b_chain = b;
 
   b->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
   b->total_length_not_including_first_buffer = 0;
 
-  while (nb_seg < mb->nb_segs)
+  u8 nb_seg;
+  for (nb_seg = 1; nb_seg < mb->nb_segs; nb_seg++)
     {
+      mb_seg = mb_seg->next;
       ASSERT (mb_seg != 0);
 
-      b_seg = vlib_buffer_from_rte_mbuf (mb_seg);
+      vlib_buffer_t *b_seg = vlib_buffer_from_rte_mbuf (mb_seg);
       vlib_buffer_init_for_free_list (b_seg, fl);
 
       ASSERT ((b_seg->flags & VLIB_BUFFER_NEXT_PRESENT) == 0);
@@ -192,8 +191,6 @@ dpdk_process_subseq_segs (vlib_main_t * vm, vlib_buffer_t * b,
       b_chain->next_buffer = vlib_get_buffer_index (vm, b_seg);
 
       b_chain = b_seg;
-      mb_seg = mb_seg->next;
-      nb_seg++;
     }
 }
 
