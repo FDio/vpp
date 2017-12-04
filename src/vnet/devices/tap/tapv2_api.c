@@ -59,15 +59,24 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
 
   memset (ap, 0, sizeof (*ap));
 
-  ap->name = mp->tap_name;
+  ap->id = mp->id;
   if (!mp->use_random_mac)
     {
-      clib_memcpy (ap->hw_addr, mp->mac_address, 6);
-      ap->hw_addr_set = 1;
+      clib_memcpy (ap->mac_addr, mp->mac_address, 6);
+      ap->mac_addr_set = 1;
     }
   ap->rx_ring_sz = ntohs (mp->rx_ring_sz);
   ap->tx_ring_sz = ntohs (mp->tx_ring_sz);
   ap->sw_if_index = (u32) ~ 0;
+
+  if (mp->host_if_name_set)
+    ap->host_if_name = mp->host_if_name;
+
+  if (mp->host_mac_addr_set)
+    {
+      clib_memcpy (ap->host_mac_addr, mp->host_mac_addr, 6);
+      ap->mac_addr_set = 1;
+    }
 
   if (mp->host_namespace_set)
     ap->host_namespace = mp->host_namespace;

@@ -7810,8 +7810,11 @@ api_tap_create_v2 (vat_main_t * vam)
   vl_api_tap_create_v2_t *mp;
   u8 mac_address[6];
   u8 random_mac = 1;
-  u8 *tap_name = 0;
-  u8 *host_namespace = 0;
+  u32 id = ~0;
+  u8 *host_if_name = 0;
+  u8 *host_ns = 0;
+  u8 host_mac_addr[6];
+  u8 host_mac_addr_set = 0;
   u8 *host_bridge = 0;
   ip4_address_t host_ip4_addr;
   u32 host_ip4_prefix_len = 0;
@@ -7829,10 +7832,15 @@ api_tap_create_v2 (vat_main_t * vam)
 	{
 	  random_mac = 0;
 	}
-      else if (unformat (i, "name %s", &tap_name))
+      else if (unformat (i, "id %s", &id))
 	;
-      else if (unformat (i, "host-ns %s", &host_namespace))
+      else if (unformat (i, "host-if-name %s", &host_if_name))
 	;
+      else if (unformat (i, "host-ns %s", &host_ns))
+	;
+      else if (unformat (i, "host-mac-addr %U", unformat_ethernet_address,
+			 host_mac_addr))
+	host_mac_addr_set = 1;
       else if (unformat (i, "host-bridge %s", &host_bridge))
 	;
       else if (unformat (i, "host-ip4-addr %U/%d", unformat_ip4_address,
@@ -7849,17 +7857,12 @@ api_tap_create_v2 (vat_main_t * vam)
 	break;
     }
 
-  if (tap_name == 0)
-    {
-      errmsg ("missing tap name. ");
-      return -99;
-    }
-  if (vec_len (tap_name) > 63)
+  if (vec_len (host_if_name) > 63)
     {
       errmsg ("tap name too long. ");
       return -99;
     }
-  if (vec_len (host_namespace) > 63)
+  if (vec_len (host_ns) > 63)
     {
       errmsg ("host name space too long. ");
       return -99;
@@ -7900,23 +7903,27 @@ api_tap_create_v2 (vat_main_t * vam)
       return -99;
     }
 
-  vec_add1 (tap_name, 0);
-
   /* Construct the API message */
   M (TAP_CREATE_V2, mp);
 
   mp->use_random_mac = random_mac;
-  clib_memcpy (mp->mac_address, mac_address, 6);
-  clib_memcpy (mp->tap_name, tap_name, vec_len (tap_name));
-  mp->host_namespace_set = host_namespace != 0;
+
+  mp->id = id;
+  mp->host_namespace_set = host_ns != 0;
   mp->host_bridge_set = host_bridge != 0;
   mp->host_ip4_addr_set = host_ip4_prefix_len != 0;
   mp->host_ip6_addr_set = host_ip6_prefix_len != 0;
   mp->rx_ring_sz = rx_ring_sz;
   mp->tx_ring_sz = tx_ring_sz;
-  if (host_namespace)
-    clib_memcpy (mp->host_namespace, host_namespace,
-		 vec_len (host_namespace));
+
+  if (random_mac)
+    clib_memcpy (mp->mac_address, mac_address, 6);
+  if (host_mac_addr_set)
+    clib_memcpy (mp->host_mac_addr, host_mac_addr, 6);
+  if (host_if_name)
+    clib_memcpy (mp->host_if_name, host_if_name, vec_len (host_if_name));
+  if (host_ns)
+    clib_memcpy (mp->host_namespace, host_ns, vec_len (host_ns));
   if (host_bridge)
     clib_memcpy (mp->host_bridge, host_bridge, vec_len (host_bridge));
   if (host_ip4_prefix_len)
@@ -7925,7 +7932,9 @@ api_tap_create_v2 (vat_main_t * vam)
     clib_memcpy (mp->host_ip6_addr, &host_ip6_addr, 16);
 
 
-  vec_free (tap_name);
+  vec_free (host_ns);
+  vec_free (host_if_name);
+  vec_free (host_bridge);
 
   /* send it... */
   S (mp);

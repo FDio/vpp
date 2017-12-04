@@ -91,6 +91,7 @@ typedef struct
 typedef struct
 {
   u32 flags;
+  u32 id;
   u32 dev_instance;
   u32 hw_if_index;
   u32 sw_if_index;
@@ -102,7 +103,7 @@ typedef struct
   u64 features, remote_features;
 
   virtio_if_type_t type;
-  u8 *name;
+  u8 *host_if_name;
   u8 *net_ns;
   int ifindex;
 } virtio_if_t;
