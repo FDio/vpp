@@ -61,6 +61,12 @@ ethernet_mac_address_is_multicast_u64 (u64 a)
   return (a & (1ULL << (5 * 8))) != 0;
 }
 
+static inline int
+ethernet_mac_address_is_zero (u8 * mac)
+{
+  return ((*((u32 *) mac) == 0) && (*((u16 *) (mac + 4)) == 0));
+}
+
 static_always_inline int
 ethernet_frame_is_tagged (u16 type)
 {
