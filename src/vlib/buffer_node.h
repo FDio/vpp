@@ -181,15 +181,17 @@ do {                                                                    \
           n_left_to_next --;                                            \
         }                                                               \
       else                                                              \
-        vlib_set_next_frame_buffer (vm, node, next3, bi3);              \
-                                                                        \
-      /* Change speculation: last 2 packets went to the same node */    \
-      if (next2 == next3)                                               \
         {                                                               \
-          vlib_put_next_frame (vm, node, next_index, n_left_to_next);   \
-          next_index = next3;                                           \
-          vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next); \
-        }                                                               \
+          vlib_set_next_frame_buffer (vm, node, next3, bi3);            \
+                                                                        \
+          /* Change speculation: last 2 packets went to the same node*/ \
+          if (next2 == next3)                                           \
+            {                                                           \
+              vlib_put_next_frame (vm, node, next_index, n_left_to_next); \
+              next_index = next3;                                       \
+              vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next); \
+            }                                                           \
+	}                                                               \
     }                                                                   \
  } while(0);
 
