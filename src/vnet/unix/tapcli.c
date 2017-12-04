@@ -604,7 +604,7 @@ static u8 * format_tapcli_interface_name (u8 * s, va_list * args)
   if (show_dev_instance != ~0)
     i = show_dev_instance;
 
-  s = format (s, "tap-%d", i);
+  s = format (s, "tapcli-%d", i);
   return s;
 }
 
