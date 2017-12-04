@@ -103,6 +103,7 @@ parse_header (ethernet_input_variant_t variant,
       e0 = (void *) (b0->data + b0->current_data);
 
       vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
+      b0->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID;
 
       vlib_buffer_advance (b0, sizeof (e0[0]));
 
@@ -425,6 +426,14 @@ ethernet_input_inline (vlib_main_t * vm,
 
 	      vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
 	      vnet_buffer (b1)->l2_hdr_offset = b1->current_data;
+	      vnet_buffer (b0)->l3_hdr_offset =
+		vnet_buffer (b0)->l2_hdr_offset + sizeof (ethernet_header_t);
+	      vnet_buffer (b1)->l3_hdr_offset =
+		vnet_buffer (b1)->l2_hdr_offset + sizeof (ethernet_header_t);
+	      b0->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+	      b1->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
 	      if (PREDICT_TRUE (is_l20 != 0))
 		{
@@ -573,6 +582,12 @@ ethernet_input_inline (vlib_main_t * vm,
 			       &next0);
 	  determine_next_node (em, variant, is_l21, type1, b1, &error1,
 			       &next1);
+	  vnet_buffer (b0)->l3_hdr_offset = vnet_buffer (b0)->l2_hdr_offset +
+	    vnet_buffer (b0)->l2.l2_len;
+	  vnet_buffer (b1)->l3_hdr_offset = vnet_buffer (b1)->l2_hdr_offset +
+	    vnet_buffer (b1)->l2.l2_len;
+	  b0->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
+	  b1->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
 	ship_it01:
 	  b0->error = error_node->errors[error0];
@@ -644,6 +659,10 @@ ethernet_input_inline (vlib_main_t * vm,
 		}
 
 	      vnet_buffer (b0)->l2_hdr_offset = b0->current_data;
+	      vnet_buffer (b0)->l3_hdr_offset =
+		vnet_buffer (b0)->l2_hdr_offset + sizeof (ethernet_header_t);
+	      b0->flags |= VNET_BUFFER_F_L2_HDR_OFFSET_VALID |
+		VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
 	      if (PREDICT_TRUE (is_l20 != 0))
 		{
@@ -741,6 +760,9 @@ ethernet_input_inline (vlib_main_t * vm,
 
 	  determine_next_node (em, variant, is_l20, type0, b0, &error0,
 			       &next0);
+	  vnet_buffer (b0)->l3_hdr_offset = vnet_buffer (b0)->l2_hdr_offset +
+	    vnet_buffer (b0)->l2.l2_len;
+	  b0->flags |= VNET_BUFFER_F_L3_HDR_OFFSET_VALID;
 
 	ship_it0:
 	  b0->error = error_node->errors[error0];
