@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a51c8fac_d697c0c3",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 429,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-12-04T11:23:08Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be:\nb0-\u003ecurrent_data + l2_hdr_sz;\nwhere l2_hdr_sz depends on ethertype.",
+      "range": {
+        "startLine": 429,
+        "startChar": 41,
+        "endLine": 429,
+        "endChar": 67
+      },
+      "revId": "610298177bfe183fe0af8682a1403d6df3f297a5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
