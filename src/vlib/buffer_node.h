@@ -138,8 +138,8 @@ do {									\
 #define vlib_validate_buffer_enqueue_x4(vm,node,next_index,to_next,n_left_to_next,bi0,bi1,bi2,bi3,next0,next1,next2,next3) \
 do {                                                                    \
   /* After the fact: check the [speculative] enqueue to "next" */       \
-  u32 fix_speculation = next_index != next0 || next_index != next1      \
-    || next_index != next2 || next_index != next3;                      \
+  u32 fix_speculation = (next_index ^ next0) | (next_index ^ next1)     \
+    | (next_index ^ next2) | (next_index ^ next3);                      \
   if (PREDICT_FALSE(fix_speculation))                                   \
     {                                                                   \
       /* rewind... */                                                   \
@@ -181,15 +181,17 @@ do {                                                                    \
           n_left_to_next --;                                            \
         }                                                               \
       else                                                              \
-        vlib_set_next_frame_buffer (vm, node, next3, bi3);              \
-                                                                        \
-      /* Change speculation: last 2 packets went to the same node */    \
-      if (next2 == next3)                                               \
         {                                                               \
-          vlib_put_next_frame (vm, node, next_index, n_left_to_next);   \
-          next_index = next3;                                           \
-          vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next); \
-        }                                                               \
+          vlib_set_next_frame_buffer (vm, node, next3, bi3);            \
+                                                                        \
+          /* Change speculation: last 2 packets went to the same node*/ \
+          if (next2 == next3)                                           \
+            {                                                           \
+              vlib_put_next_frame (vm, node, next_index, n_left_to_next); \
+              next_index = next3;                                       \
+              vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next); \
+            }                                                           \
+	}                                                               \
     }                                                                   \
  } while(0);
 
