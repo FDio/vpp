@@ -56,37 +56,6 @@ dpdk_rx_next_from_etype (struct rte_mbuf *mb)
     return VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
 }
 
-always_inline u32
-dpdk_rx_next_from_packet_start (struct rte_mbuf * mb, vlib_buffer_t * b0)
-{
-  ethernet_header_t *h = rte_pktmbuf_mtod (mb, ethernet_header_t *);
-  word start_delta;
-  int rv;
-
-  start_delta = b0->current_data -
-    ((mb->buf_addr + mb->data_off) - (void *) b0->data);
-
-  vlib_buffer_advance (b0, -start_delta);
-
-  if (PREDICT_TRUE (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP4)))
-    {
-      if (PREDICT_TRUE ((mb->ol_flags & PKT_RX_IP_CKSUM_GOOD) != 0))
-	rv = VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
-      else
-	rv = VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
-    }
-  else if (PREDICT_TRUE (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP6)))
-    rv = VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
-  else
-    if (PREDICT_TRUE (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS)))
-    rv = VNET_DEVICE_INPUT_NEXT_MPLS_INPUT;
-  else
-    rv = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
-
-  vlib_buffer_advance (b0, start_delta);
-  return rv;
-}
-
 always_inline void
 dpdk_rx_error_from_mb (struct rte_mbuf *mb, u32 * next, u8 * error)
 {
@@ -129,7 +98,7 @@ dpdk_rx_trace (dpdk_main_t * dm,
       if (PREDICT_FALSE (xd->per_interface_next_index != ~0))
 	next0 = xd->per_interface_next_index;
       else
-	next0 = dpdk_rx_next_from_packet_start (mb, b0);
+	next0 = dpdk_rx_next_from_etype (mb);
 
       dpdk_rx_error_from_mb (mb, &next0, &error0);
 
