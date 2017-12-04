@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "3a960a45_e61daa7b",
+        "filename": "src/plugins/lb/util.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-12-04T06:08:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "c2a5bf43_8d4cc5ac",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5ef09eac_749a3e0f",
         "filename": "src/vnet/util/refcount.c",
         "patchSetId": 13
@@ -66,6 +84,30 @@
     },
     {
       "key": {
+        "uuid": "c87447bd_e1f7ed2d",
+        "filename": "src/vnet/util/refcount.c",
+        "patchSetId": 13
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-12-04T06:08:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d098c2f1_924de48e",
+      "range": {
+        "startLine": 37,
+        "startChar": 6,
+        "endLine": 37,
+        "endChar": 56
+      },
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4ca66f02_cf58ec10",
         "filename": "src/vnet/util/refcount.h",
         "patchSetId": 13
@@ -77,6 +119,24 @@
       "writtenOn": "2017-11-30T09:58:20Z",
       "side": 1,
       "message": "some statements about what these structures represent would be useful.",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e980b029_5a583cb3",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 33,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-12-04T06:08:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4ca66f02_cf58ec10",
       "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
@@ -111,6 +171,24 @@
       "writtenOn": "2017-11-30T10:22:07Z",
       "side": 1,
       "message": "I think there are race conditions between reader and writer where it is important that the length is set after memory was properly initialized. IIRC this is why a different location in memory is used.",
+      "parentUuid": "c9fe03ad_cd55f75d",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "18649bb7_32a07988",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-12-04T06:08:50Z",
+      "side": 1,
+      "message": "Done",
       "parentUuid": "c9fe03ad_cd55f75d",
       "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
@@ -153,6 +231,24 @@
     },
     {
       "key": {
+        "uuid": "cc2965d5_7cbb2162",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 37,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-12-04T06:08:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "8b62985b_41a826ad",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "58c5b37c_421cc4e9",
         "filename": "src/vnet/util/refcount.h",
         "patchSetId": 13
@@ -182,6 +278,24 @@
       "side": 1,
       "message": "IIRC vec_validate does init memory.",
       "parentUuid": "58c5b37c_421cc4e9",
+      "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1c5dcc5d_03d1dfe4",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 13
+      },
+      "lineNbr": 64,
+      "author": {
+        "id": 352
+      },
+      "writtenOn": "2017-12-04T06:08:50Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "464fde5f_e42bd5d2",
       "revId": "c97e7f5625f6feb0284d839c26bfdba114a0993c",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
