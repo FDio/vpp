@@ -340,11 +340,6 @@ dpdk_lib_init (dpdk_main_t * dm)
 	  && devconf->num_tx_queues < xd->tx_q_used)
 	xd->tx_q_used = clib_min (xd->tx_q_used, devconf->num_tx_queues);
 
-      if (devconf->num_rx_queues > 1 && dm->use_rss == 0)
-	{
-	  dm->use_rss = 1;
-	}
-
       if (devconf->num_rx_queues > 1
 	  && dev_info.max_rx_queues >= devconf->num_rx_queues)
 	{
