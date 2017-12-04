@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1bfff2da_cc5e8c9a",
+        "filename": "src/vnet/util/refcount.h",
+        "patchSetId": 17
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 109
+      },
+      "writtenOn": "2017-12-04T08:55:44Z",
+      "side": 1,
+      "message": "Dereferencing null pointer ;)\nYou need to allocate the memory too.",
+      "range": {
+        "startLine": 89,
+        "startChar": 6,
+        "endLine": 89,
+        "endChar": 51
+      },
+      "revId": "8082782587b6827943dc7caa71b188dd85796328",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
