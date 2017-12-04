@@ -35,7 +35,7 @@
 #include <vnet/ip/ip6_packet.h>
 #include <vnet/devices/netlink.h>
 #include <vnet/devices/virtio/virtio.h>
-#include <vnet/devices/virtio/tap.h>
+#include <vnet/devices/tap/tap.h>
 
 #define _IOCTL(fd,a,...) \
   if (ioctl (fd, a, __VA_ARGS__) < 0) \
