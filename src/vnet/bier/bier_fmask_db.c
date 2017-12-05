@@ -40,16 +40,6 @@ typedef struct bier_fmask_db_t_ {
 } bier_fmask_db_t;
 
 /**
- * The key used in the fmask DB to compare fmask objects.
- * There is one global DB, so we need to use the table's ID and the fmasks ID
- */
-typedef struct bier_fmask_db_key_t_ {
-    bier_fmask_id_t bfmdbk_fm_id;
-    index_t bfmdbk_tbl_id;
-} bier_fmask_db_key_t;
-// TODO packed?
-
-/**
  * Single fmask DB
  */
 static bier_fmask_db_t bier_fmask_db;
@@ -61,34 +51,77 @@ bier_fmask_get_index (const bier_fmask_t *bfm)
     return (bfm - bier_fmask_db.bfdb_pool);
 }
 
+static void
+bier_fmask_db_mk_key (index_t bti,
+                      const fib_route_path_t *rpath,
+                      bier_fmask_id_t *key)
+{
+    /*
+     * Depending on what the ID is there may be padding.
+     * This key will be memcmp'd in the mhash, so make sure it's all 0
+     */
+    memset(key, 0, sizeof(*key));
+
+    /*
+     * Pick the attributes from the path that make the FMask unique
+     */
+    if (FIB_ROUTE_PATH_UDP_ENCAP & rpath->frp_flags)
+    {
+        key->bfmi_id = rpath->frp_udp_encap_id;
+    }
+    else
+    {
+        key->bfmi_sw_if_index = rpath->frp_sw_if_index;
+        memcpy(&key->bfmi_nh, &rpath->frp_addr, sizeof(rpath->frp_addr));
+    }
+    if (NULL == rpath->frp_label_stack)
+    {
+        key->bfmi_hdr_type = BIER_HDR_O_OTHER;
+    }
+    else
+    {
+        key->bfmi_hdr_type = BIER_HDR_O_MPLS;
+    }
+}
+
+u32
+bier_fmask_db_find (index_t bti,
+                    const fib_route_path_t *rpath)
+{
+    bier_fmask_id_t fmid;
+    uword *p;
+
+    bier_fmask_db_mk_key(bti, rpath, &fmid);
+    p = mhash_get(&bier_fmask_db.bfdb_hash, &fmid);
+
+    if (NULL != p)
+    {
+        return (p[0]);
+    }
+
+    return (INDEX_INVALID);
+}
+
 u32
 bier_fmask_db_find_or_create_and_lock (index_t bti,
-                                       const bier_fmask_id_t *fmid,
                                        const fib_route_path_t *rpath)
 {
-    bier_fmask_db_key_t key;
+    bier_fmask_id_t fmid;
     u32 index;
     uword *p;
 
-    /*
-     * there be padding in that thar key, and it's
-     * used as a memcmp in the mhash.
-     */
-    memset(&key, 0, sizeof(key));
-    key.bfmdbk_tbl_id = bti;
-    key.bfmdbk_fm_id = *fmid;
-
-    index = INDEX_INVALID;
-    p = mhash_get (&bier_fmask_db.bfdb_hash, &key);
+    bier_fmask_db_mk_key(bti, rpath, &fmid);
+    p = mhash_get(&bier_fmask_db.bfdb_hash, &fmid);
 
     if (NULL == p)
     {
+        bier_fmask_t *bfm;
         /*
          * adding a new fmask object
          */
-        index = bier_fmask_create_and_lock(fmid, bti, rpath);
-
-        mhash_set (&bier_fmask_db.bfdb_hash, &key, index, 0 /*old_value*/);
+        index = bier_fmask_create_and_lock(&fmid, rpath);
+        bfm = bier_fmask_get(index);
+        mhash_set(&bier_fmask_db.bfdb_hash, bfm->bfm_id, index, 0);
     }
     else
     {
@@ -99,44 +132,12 @@ bier_fmask_db_find_or_create_and_lock (index_t bti,
     return (index);
 }
 
-u32
-bier_fmask_db_find (index_t bti,
-                    const bier_fmask_id_t *fmid)
-{
-    bier_fmask_db_key_t key;
-    u32 index;
-    uword *p;
-
-    /*
-     * there be padding in that thar key, and it's
-     * used as a memcmp in the mhash.
-     */
-    memset(&key, 0, sizeof(key));
-    key.bfmdbk_tbl_id = bti;
-    key.bfmdbk_fm_id = *fmid;
-
-    index = INDEX_INVALID;
-    p = mhash_get(&bier_fmask_db.bfdb_hash, &key);
-
-    if (NULL != p)
-    {
-        index = p[0];
-    }
-
-    return (index);
-}
-
 void
-bier_fmask_db_remove (index_t bti,
-                      const bier_fmask_id_t *fmid)
+bier_fmask_db_remove (const bier_fmask_id_t *fmid)
 {
-    bier_fmask_db_key_t key = {
-        .bfmdbk_tbl_id = bti,
-        .bfmdbk_fm_id = *fmid,
-    };
     uword *p;
 
-    p = mhash_get (&bier_fmask_db.bfdb_hash, &key);
+    p = mhash_get(&bier_fmask_db.bfdb_hash, fmid);
 
     if (NULL == p) {
         /*
@@ -144,16 +145,16 @@ bier_fmask_db_remove (index_t bti,
          */
         ASSERT (!"remove non-existant fmask");
     } else {
-        mhash_unset (&(bier_fmask_db.bfdb_hash), &key, 0);
+        mhash_unset(&(bier_fmask_db.bfdb_hash), (void*)fmid, 0);
     }
 }
 
 clib_error_t *
 bier_fmask_db_module_init (vlib_main_t *vm)
 {
-    mhash_init (&bier_fmask_db.bfdb_hash,
-                sizeof(uword),
-                sizeof(bier_fmask_db_key_t));
+    mhash_init(&bier_fmask_db.bfdb_hash,
+               sizeof(index_t),
+               sizeof(bier_fmask_id_t));
 
     return (NULL);
 }
