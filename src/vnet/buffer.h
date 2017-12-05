@@ -92,7 +92,6 @@ _(map)						\
 _(map_t)					\
 _(ip_frag)					\
 _(mpls)					        \
-_(bier) 					\
 _(tcp)
 
 /*
@@ -168,17 +167,16 @@ typedef struct
       u8 ttl;
       u8 exp;
       u8 first;
+      /*
+       * BIER - the nubmer of bytes in the header.
+       *  the len field inthe header is not authoritative. It's the
+       * value in the table that counts.
+       */
+      struct
+      {
+	u8 n_bytes;
+      } bier;
     } mpls;
-
-    /*
-     * BIER - the nubmer of bytes in the header.
-     *  the len field inthe header is not authoritative. It's the
-     * value in the table that counts.
-     */
-    struct
-    {
-      u8 n_bytes;
-    } bier;
 
     /* ip4-in-ip6 softwire termination, only valid there */
     struct

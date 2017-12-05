@@ -153,6 +153,8 @@ extern int fib_path_list_is_popular(fib_node_index_t path_list_index);
 extern dpo_proto_t fib_path_list_get_proto(fib_node_index_t path_list_index);
 extern u8 * fib_path_list_format(fib_node_index_t pl_index,
 				 u8 * s);
+extern u8 * format_fib_path_list(u8 * s, va_list *args);
+
 extern index_t fib_path_list_lb_map_add_or_lock(fib_node_index_t pl_index,
                                                 const fib_node_index_t *pis);
 extern u32 fib_path_list_find_rpath (fib_node_index_t path_list_index,

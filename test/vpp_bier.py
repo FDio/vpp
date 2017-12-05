@@ -4,6 +4,7 @@
 
 import socket
 from vpp_object import VppObject
+from vpp_ip_route import MPLS_LABEL_INVALID, VppRoutePath
 
 
 class BIER_HDR_PAYLOAD:
@@ -18,7 +19,7 @@ class BIER_HDR_PAYLOAD:
 
 
 class VppBierTableID():
-    def __init__(self, set_id, sub_domain_id, hdr_len_id):
+    def __init__(self, sub_domain_id, set_id, hdr_len_id):
         self.set_id = set_id
         self.sub_domain_id = sub_domain_id
         self.hdr_len_id = hdr_len_id
@@ -113,22 +114,17 @@ class VppBierRoute(VppObject):
     BIER route
     """
 
-    def __init__(self, test, tbl_id, bp, nh, out_label,
-                 disp_table=0):
+    def __init__(self, test, tbl_id, bp, paths):
         self._test = test
         self.tbl_id = tbl_id
-        self.out_label = out_label
         self.bp = bp
-        self.disp_table = disp_table
-        self.nh = socket.inet_pton(socket.AF_INET, nh)
+        self.paths = paths
 
     def add_vpp_config(self):
         self._test.vapi.bier_route_add_del(
             self.tbl_id,
             self.bp,
-            self.nh,
-            self.out_label,
-            self.disp_table,
+            self.paths,
             is_add=1)
         self._test.registry.register(self, self._test.logger)
 
@@ -136,9 +132,7 @@ class VppBierRoute(VppObject):
         self._test.vapi.bier_route_add_del(
             self.tbl_id,
             self.bp,
-            self.nh,
-            self.out_label,
-            self.disp_table,
+            self.paths,
             is_add=0)
 
     def __str__(self):

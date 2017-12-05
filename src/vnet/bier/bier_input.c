@@ -40,7 +40,7 @@ typedef enum bier_input_next_t_ {
 vlib_node_registration_t bier_input_node;
 
 /**
- * @brief Packet trace recoed for a BIER output
+ * @brief Packet trace record for BIER input
  */
 typedef struct bier_input_trace_t_
 {
