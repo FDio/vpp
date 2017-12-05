@@ -67,9 +67,35 @@ _ (sse42,    1, ecx, 20)  \
 _ (avx,      1, ecx, 28)  \
 _ (avx2,     7, ebx, 5)   \
 _ (avx512f,  7, ebx, 16)  \
-_ (aes,      1, ecx, 25)  \
+_ (x86_aes,  1, ecx, 25)  \
 _ (sha,      7, ebx, 29)  \
 _ (invariant_tsc, 0x80000007, edx, 8)
+
+
+#define foreach_aarch64_flags \
+_ (fp,          0) \
+_ (asimd,       1) \
+_ (evtstrm,     2) \
+_ (aarch64_aes, 3) \
+_ (pmull,       4) \
+_ (sha1,        5) \
+_ (sha2,        6) \
+_ (crc32,       7) \
+_ (atomics,     8) \
+_ (fphp,        9) \
+_ (asimdhp,    10) \
+_ (cpuid,      11) \
+_ (asimdrdm,   12) \
+_ (jscvt,      13) \
+_ (fcma,       14) \
+_ (lrcpc,      15) \
+_ (dcpop,      16) \
+_ (sha3,       17) \
+_ (sm3,        18) \
+_ (sm4,        19) \
+_ (asimddp,    20) \
+_ (sha512,     21) \
+_ (sve,        22)
 
 #if defined(__x86_64__)
 #include "cpuid.h"
@@ -98,15 +124,50 @@ clib_cpu_supports_ ## flag()						\
 }
 foreach_x86_64_flags
 #undef _
-#else
+#else /* __x86_64__ */
 
 #define _(flag, func, reg, bit) \
 static inline int clib_cpu_supports_ ## flag() { return 0; }
 foreach_x86_64_flags
 #undef _
+#endif /* __x86_64__ */
+#if defined(__aarch64__)
+#include <sys/auxv.h>
+#define _(flag, bit) \
+static inline int							\
+clib_cpu_supports_ ## flag()						\
+{									\
+  unsigned long hwcap = getauxval(AT_HWCAP);				\
+  return (hwcap & (1 << bit));						\
+}
+  foreach_aarch64_flags
+#undef _
+#else /* ! __x86_64__ && !__aarch64__ */
+#define _(flag, bit) \
+static inline int clib_cpu_supports_ ## flag() { return 0; }
+  foreach_aarch64_flags
+#undef _
+#endif /* __x86_64__, __aarch64__ */
+/*
+ * aes is the only feature with the same name in both flag lists
+ * handle this by prefixing it with the arch name, and handling it
+ * with the custom function below
+ */
+  static inline int
+clib_cpu_supports_aes ()
+{
+#if defined (__aarch64__)
+  return clib_cpu_supports_x86_aes ();
+#elif defined (__aarch64__)
+  return clib_cpu_supports_aarch64_aes ();
+#else
+  return 0;
 #endif
-#endif
-  format_function_t format_cpu_uarch;
+}
+
+#endif /* included_clib_cpu_h */
+
+format_function_t format_cpu_uarch;
 format_function_t format_cpu_model_name;
 format_function_t format_cpu_flags;
 
