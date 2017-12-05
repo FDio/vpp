@@ -160,6 +160,35 @@ bier_hdr_proto_to_dpo (bier_hdr_proto_id_t bproto)
     return (DPO_PROTO_NUM);
 }
 
+bier_bift_id_t
+bier_bift_id_encode (bier_table_set_id_t set,
+                     bier_table_sub_domain_id_t sd,
+                     bier_hdr_len_id_t bsl)
+{
+    bier_bift_id_t id;
+
+    id = bsl;
+    id = id << 8;
+    id |= sd;
+    id = id << 8;
+    id |= set;
+
+    return (id);
+}
+
+void
+bier_bift_id_decode (bier_bift_id_t id,
+                     bier_table_set_id_t *set,
+                     bier_table_sub_domain_id_t *sd,
+                     bier_hdr_len_id_t *bsl)
+{
+    *set = id & 0xff;
+    id = id >> 8;
+    *sd = id & 0xff;
+    id = id >> 8;
+    *bsl = id;
+}
+
 u8 *
 format_bier_table_id (u8 *s, va_list *ap)
 {
@@ -188,3 +217,17 @@ format_bier_hdr (u8 *s, va_list *ap)
                    format_bier_hdr_proto, bier_hdr_get_proto_id(&copy),
                    bier_hdr_get_src_id(&copy)));
 }
+
+ u8*
+ format_bier_bift_id(u8 *s, va_list *ap)
+ {
+     bier_bift_id_t id = va_arg(*ap, bier_bift_id_t);
+     bier_table_sub_domain_id_t sd;
+     bier_table_set_id_t set;
+     bier_hdr_len_id_t bsl;
+
+     bier_bift_id_decode(id, &set, &sd, &bsl);
+
+     return (format(s, "0x%x -> set:%d sd:%d hdr-len:%U",
+                    id, set, sd, format_bier_hdr_len_id, bsl));
+ }

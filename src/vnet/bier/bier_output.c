@@ -89,9 +89,10 @@ bier_output (vlib_main_t * vm,
             bier_bit_string_t bbs;
             vlib_buffer_t * b0;
             bier_fmask_t *bfm0;
+            mpls_label_t *h0;
             bier_hdr_t *bh0;
-            u32 bi0, *h0;
             u32 bfmi0;
+            u32 bi0;
 
             bi0 = from[0];
             to_next[0] = bi0;
@@ -131,9 +132,16 @@ bier_output (vlib_main_t * vm,
              */
             if (!(bfm0->bfm_flags & BIER_FMASK_FLAG_DISP))
             {
+                /*
+                 * since a BIFT value and a MPLS label are formated the
+                 * same, this painting works OK.
+                 */
                 vlib_buffer_advance(b0, -(word)sizeof(mpls_label_t));
                 h0 = vlib_buffer_get_current(b0);
+                
                 h0[0] = bfm0->bfm_label;
+                vnet_mpls_uc_set_ttl(h0, vnet_buffer(b0)->mpls.ttl - 1);
+                h0[0] = clib_host_to_net_u32(h0[0]);
             }
 
             /*

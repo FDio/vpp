@@ -86,7 +86,7 @@ bier_disp_dispatch_inline (vlib_main_t * vm,
              * the packets flow-hash field
              * DSCP mumble mumble...
              */
-            vlib_buffer_advance(b0, (vnet_buffer(b0)->bier.n_bytes +
+            vlib_buffer_advance(b0, (vnet_buffer(b0)->mpls.bier.n_bytes +
                                      sizeof(*hdr0)));
             vnet_buffer(b0)->ip.flow_hash = entropy0;
 

@@ -8,6 +8,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
     MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, DpoProto
 from vpp_bier import *
+from vpp_udp_encap import *
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -78,6 +79,7 @@ class TestBier(VppTestCase):
         self.pg_enable_capture(self.pg_interfaces)
         self.pg_start()
         rx = output.get_capture(len(pkts))
+        return rx
 
     def test_bier_midpoint(self):
         """BIER midpoint"""
@@ -119,7 +121,9 @@ class TestBier(VppTestCase):
                                                       labels=[2000+i])]))
             nh_routes[-1].add_vpp_config()
 
-            bier_routes.append(VppBierRoute(self, bti, i, nh, 100+i))
+            bier_routes.append(VppBierRoute(self, bti, i,
+                                            [VppRoutePath(nh, 0xffffffff,
+                                                          labels=[100+i])]))
             bier_routes[-1].add_vpp_config()
 
         #
@@ -150,6 +154,7 @@ class TestBier(VppTestCase):
 
             blabel = olabel[MPLS].payload
             self.assertEqual(blabel.label, 100+bp)
+            self.assertEqual(blabel.ttl, 254)
 
             bier_hdr = blabel[MPLS].payload
 
@@ -203,8 +208,12 @@ class TestBier(VppTestCase):
         ip_route_1.add_vpp_config()
         ip_route_2.add_vpp_config()
 
-        bier_route_1 = VppBierRoute(self, bti, 1, nh1, 101)
-        bier_route_2 = VppBierRoute(self, bti, 2, nh2, 102)
+        bier_route_1 = VppBierRoute(self, bti, 1,
+                                    [VppRoutePath(nh1, 0xffffffff,
+                                                  labels=[101])])
+        bier_route_2 = VppBierRoute(self, bti, 2,
+                                    [VppRoutePath(nh2, 0xffffffff,
+                                                  labels=[102])])
         bier_route_1.add_vpp_config()
         bier_route_2.add_vpp_config()
 
@@ -231,7 +240,7 @@ class TestBier(VppTestCase):
         route_ing_232_1_1_1.add_vpp_config()
 
         #
-        # inject a packet an IP. We expect it to be BIER encapped,
+        # inject an IP packet. We expect it to be BIER encapped and
         # replicated.
         #
         p = (Ether(dst=self.pg0.local_mac,
@@ -244,6 +253,29 @@ class TestBier(VppTestCase):
         self.pg_start()
 
         rx = self.pg1.get_capture(2)
+
+        #
+        # Encap Stack is; eth, MPLS, MPLS, BIER
+        #
+        igp_mpls = rx[0][MPLS]
+        self.assertEqual(igp_mpls.label, 2001)
+        self.assertEqual(igp_mpls.ttl, 64)
+        self.assertEqual(igp_mpls.s, 0)
+        bier_mpls = igp_mpls[MPLS].payload
+        self.assertEqual(bier_mpls.label, 101)
+        self.assertEqual(bier_mpls.ttl, 64)
+        self.assertEqual(bier_mpls.s, 1)
+        self.assertEqual(rx[0][BIER].length, 2)
+
+        igp_mpls = rx[1][MPLS]
+        self.assertEqual(igp_mpls.label, 2002)
+        self.assertEqual(igp_mpls.ttl, 64)
+        self.assertEqual(igp_mpls.s, 0)
+        bier_mpls = igp_mpls[MPLS].payload
+        self.assertEqual(bier_mpls.label, 102)
+        self.assertEqual(bier_mpls.ttl, 64)
+        self.assertEqual(bier_mpls.s, 1)
+        self.assertEqual(rx[0][BIER].length, 2)
 
     def test_bier_tail(self):
         """BIER Tail"""
@@ -264,8 +296,10 @@ class TestBier(VppTestCase):
         #
         # BIER route in table that's for-us
         #
-        bier_route_1 = VppBierRoute(self, bti, 1, "0.0.0.0", 0,
-                                    disp_table=8)
+        bier_route_1 = VppBierRoute(self, bti, 1,
+                                    [VppRoutePath("0.0.0.0",
+                                                  0xffffffff,
+                                                  nh_table_id=8)])
         bier_route_1.add_vpp_config()
 
         #
@@ -344,9 +378,10 @@ class TestBier(VppTestCase):
         # BIER route in table that's for-us, resolving through
         # disp table 8.
         #
-        bier_route_1 = VppBierRoute(self, bti, 1, "0.0.0.0",
-                                    MPLS_LABEL_INVALID,
-                                    disp_table=8)
+        bier_route_1 = VppBierRoute(self, bti, 1,
+                                    [VppRoutePath("0.0.0.0",
+                                                  0xffffffff,
+                                                  nh_table_id=8)])
         bier_route_1.add_vpp_config()
 
         #
@@ -383,7 +418,155 @@ class TestBier(VppTestCase):
              IP(src="1.1.1.1", dst="232.1.1.1") /
              UDP(sport=1234, dport=1234))
 
-        self.send_and_expect(self.pg0, p*65, self.pg1)
+        rx = self.send_and_expect(self.pg0, p*65, self.pg1)
+
+        #
+        # should be IP
+        #
+        self.assertEqual(rx[0][IP].src, "1.1.1.1")
+        self.assertEqual(rx[0][IP].dst, "232.1.1.1")
+
+    def test_bier_head_o_udp(self):
+        """BIER head over UDP"""
+
+        #
+        # Add a BIER table for sub-domain 1, set 0, and BSL 256
+        #
+        bti = VppBierTableID(1, 0, BIERLength.BIER_LEN_256)
+        bt = VppBierTable(self, bti, 77)
+        bt.add_vpp_config()
+
+        #
+        # 1 bit positions via 1 next hops
+        #
+        nh1 = "10.0.0.1"
+        ip_route = VppIpRoute(self, nh1, 32,
+                              [VppRoutePath(self.pg1.remote_ip4,
+                                            self.pg1.sw_if_index,
+                                            labels=[2001])])
+        ip_route.add_vpp_config()
+
+        udp_encap = VppUdpEncap(self, 4,
+                                self.pg0.local_ip4,
+                                nh1,
+                                330, 8138)
+        udp_encap.add_vpp_config()
+
+        bier_route = VppBierRoute(self, bti, 1,
+                                  [VppRoutePath("0.0.0.0",
+                                                0xFFFFFFFF,
+                                                is_udp_encap=1,
+                                                next_hop_id=4)])
+        bier_route.add_vpp_config()
+
+        #
+        # An imposition object with all bit-positions set
+        #
+        bi = VppBierImp(self, bti, 333, chr(0xff) * 32)
+        bi.add_vpp_config()
+
+        #
+        # Add a multicast route that will forward into the BIER doamin
+        #
+        route_ing_232_1_1_1 = VppIpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.1", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            paths=[VppMRoutePath(self.pg0.sw_if_index,
+                                 MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                   VppMRoutePath(0xffffffff,
+                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                                 proto=DpoProto.DPO_PROTO_BIER,
+                                 bier_imp=bi.bi_index)])
+        route_ing_232_1_1_1.add_vpp_config()
+
+        #
+        # inject a packet an IP. We expect it to be BIER and UDP encapped,
+        #
+        p = (Ether(dst=self.pg0.local_mac,
+                   src=self.pg0.remote_mac) /
+             IP(src="1.1.1.1", dst="232.1.1.1") /
+             UDP(sport=1234, dport=1234))
+
+        self.pg0.add_stream([p])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture(1)
+
+        #
+        # Encap Stack is, eth, IP, UDP, BIFT, BIER
+        #
+        self.assertEqual(rx[0][IP].src, self.pg0.local_ip4)
+        self.assertEqual(rx[0][IP].dst, nh1)
+        self.assertEqual(rx[0][UDP].sport, 330)
+        self.assertEqual(rx[0][UDP].dport, 8138)
+        self.assertEqual(rx[0][BIFT].bsl, 2)
+        self.assertEqual(rx[0][BIFT].sd, 1)
+        self.assertEqual(rx[0][BIFT].set, 0)
+        self.assertEqual(rx[0][BIFT].ttl, 64)
+        self.assertEqual(rx[0][BIER].length, 2)
+
+    def test_bier_tail_o_udp(self):
+        """BIER Tail over UDP"""
+
+        #
+        # Add a BIER table for sub-domain 0, set 0, and BSL 256
+        #
+        bti = VppBierTableID(1, 0, BIERLength.BIER_LEN_256)
+        bt = VppBierTable(self, bti, MPLS_LABEL_INVALID)
+        bt.add_vpp_config()
+
+        #
+        # disposition table
+        #
+        bdt = VppBierDispTable(self, 8)
+        bdt.add_vpp_config()
+
+        #
+        # BIER route in table that's for-us
+        #
+        bier_route_1 = VppBierRoute(self, bti, 1,
+                                    [VppRoutePath("0.0.0.0",
+                                                  0xffffffff,
+                                                  nh_table_id=8)])
+        bier_route_1.add_vpp_config()
+
+        #
+        # An entry in the disposition table
+        #
+        bier_de_1 = VppBierDispEntry(self, bdt.id, 99,
+                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
+                                     "0.0.0.0", 0, rpf_id=8192)
+        bier_de_1.add_vpp_config()
+
+        #
+        # A multicast route to forward post BIER disposition
+        #
+        route_eg_232_1_1_1 = VppIpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.1", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            paths=[VppMRoutePath(self.pg1.sw_if_index,
+                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+        route_eg_232_1_1_1.add_vpp_config()
+        route_eg_232_1_1_1.update_rpf_id(8192)
+
+        #
+        # A packet with all bits set gets spat out to BP:1
+        #
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(src=self.pg0.remote_ip4, dst=self.pg0.local_ip4) /
+             UDP(sport=333, dport=8138) /
+             BIFT(sd=1, set=0, bsl=2, ttl=255) /
+             BIER(length=BIERLength.BIER_LEN_256, BFRID=99) /
+             IP(src="1.1.1.1", dst="232.1.1.1") /
+             UDP(sport=1234, dport=1234) /
+             Raw())
+
+        rx = self.send_and_expect(self.pg0, [p], self.pg1)
 
 
 if __name__ == '__main__':

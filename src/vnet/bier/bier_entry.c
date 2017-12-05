@@ -121,13 +121,17 @@ bier_entry_table_ecmp_walk_add_fmask (index_t btei,
         /*
          * select the appropriate bucket from the LB
          */
-        ASSERT(dpo.dpoi_type == DPO_LOAD_BALANCE);
-
-        lb = load_balance_get(dpo.dpoi_index);
-
-        choice = load_balance_get_bucket_i(lb,
-                                           btid->bti_ecmp &
-                                           (lb->lb_n_buckets_minus_1));
+        if (dpo.dpoi_type == DPO_LOAD_BALANCE)
+        {
+            lb = load_balance_get(dpo.dpoi_index);
+            choice = load_balance_get_bucket_i(lb,
+                                               btid->bti_ecmp &
+                                               (lb->lb_n_buckets_minus_1));
+        }
+        else
+        {
+            choice = &dpo;
+        }
 
         if (choice->dpoi_type == DPO_BIER_FMASK)
         {

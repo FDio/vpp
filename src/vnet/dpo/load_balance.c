@@ -198,6 +198,16 @@ load_balance_create (u32 n_buckets,
     return (load_balance_get_index(load_balance_create_i(n_buckets, lb_proto, fhc)));
 }
 
+u16
+load_balance_n_buckets (index_t lbi)
+{
+    load_balance_t *lb;
+
+    lb = load_balance_get(lbi);
+
+    return (lb->lb_n_buckets);
+}
+
 static inline void
 load_balance_set_bucket_i (load_balance_t *lb,
                            u32 bucket,

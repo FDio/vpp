@@ -312,7 +312,7 @@ bier_test_mpls_spf (void)
     fib_route_path_t path_1_1_1_1 = {
         .frp_addr = nh_1_1_1_1,
         .frp_bier_fib_index = bti,
-        .frp_flags = FIB_ROUTE_PATH_BIER_FMASK,
+        .frp_sw_if_index = ~0,
     };
     vec_add1(path_1_1_1_1.frp_label_stack, 500);
     vec_add1(paths_1_1_1_1, path_1_1_1_1);
@@ -320,10 +320,6 @@ bier_test_mpls_spf (void)
         .fp_addr = nh_1_1_1_1,
         .fp_len = 32,
         .fp_proto = FIB_PROTOCOL_IP4,
-    };
-    const bier_fmask_id_t bfm_id_1_1_1_1 = {
-        .bfmi_hdr_type = BIER_HDR_O_MPLS,
-        .bfmi_nh = nh_1_1_1_1,
     };
     index_t bei_1;
 
@@ -345,20 +341,12 @@ bier_test_mpls_spf (void)
                                     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
                                     &neos_dpo_1_1_1_1);
 
-    bfmi_1_1_1_1 = bier_fmask_db_find(bti, &bfm_id_1_1_1_1);
+    bfmi_1_1_1_1 = bier_fmask_db_find(bti, &path_1_1_1_1);
     bfm_1_1_1_1 = bier_fmask_get(bfmi_1_1_1_1);
 
-    BIER_TEST(!dpo_cmp(&neos_dpo_1_1_1_1, &bfm_1_1_1_1->bfm_dpo),
-              "Fmask via 1.1.1.1 stacks on neos from 1.1.1.1/32");
-
-    /*
-     * and that n-eos LB at this stage is a drop..
-     */
-    const fib_test_lb_bucket_t bucket_drop = {
-        .type = FT_LB_DROP,
-    };
-    BIER_TEST(fib_test_validate_lb(&neos_dpo_1_1_1_1, 1, &bucket_drop),
-             "1.1.1.1/32 n-eos LB 1 buckets via: DROP");
+    BIER_TEST(!dpo_cmp(drop_dpo_get(DPO_PROTO_MPLS),
+                       &bfm_1_1_1_1->bfm_dpo),
+              "Fmask via 1.1.1.1 stacks on MPLS drop");
 
     /*
      * The BIER entry should stack on the forwarding chain of the fmask
@@ -369,8 +357,11 @@ bier_test_mpls_spf (void)
             .fmask = bfmi_1_1_1_1,
         },
     };
-    BIER_TEST(bier_test_validate_entry(bei_1, 1, &bucket_drop),
-              "BP:1  stacks on bier drop");
+    dpo_id_t dpo_bei = DPO_INVALID;
+    bier_entry_contribute_forwarding(bei_1, &dpo_bei);
+
+    BIER_TEST(!dpo_cmp(&dpo_bei, drop_dpo_get(DPO_PROTO_BIER)),
+              "BP:1 stacks on bier drop");
 
     /*
      * give 1.1.1.1/32 a path and hence a interesting n-eos chain
@@ -418,7 +409,8 @@ bier_test_mpls_spf (void)
     BIER_TEST(!dpo_cmp(&neos_dpo_1_1_1_1,
                        &bfm_1_1_1_1->bfm_dpo),
               "Fmask via 1.1.1.1 stacks on updated non-eos of 1.1.1.1/32");
-    BIER_TEST(bier_test_validate_entry(bei_1, 1, &dpo_o_bfm_1_1_1_1),
+    bier_entry_contribute_forwarding(bei_1, &dpo_bei);
+    BIER_TEST((dpo_bei.dpoi_index == bfmi_1_1_1_1),
               "BP:1  stacks on fmask 1.1.1.1");
 
     /*
@@ -486,8 +478,9 @@ bier_test_mpls_spf (void)
     bier_table_route_add(&bt_0_0_0_256, 2, paths_1_1_1_1);
     bei_2 = bier_table_lookup(bier_table_get(bti), 2);
 
-    BIER_TEST(bier_test_validate_entry(bei_2, 1, &dpo_o_bfm_1_1_1_1),
-              "BP:2 stacks on fmask 1.1.1.1");
+    bier_entry_contribute_forwarding(bei_2, &dpo_bei);
+    BIER_TEST((dpo_bei.dpoi_index == bfmi_1_1_1_1),
+              "BP:2  stacks on fmask 1.1.1.1");
 
     /*
      * now add a bit-position via a different next hop and expect to
@@ -506,14 +499,10 @@ bier_test_mpls_spf (void)
     fib_route_path_t *paths_1_1_1_2 = NULL, path_1_1_1_2 = {
         .frp_addr = nh_1_1_1_2,
         .frp_bier_fib_index = bti,
-        .frp_flags = FIB_ROUTE_PATH_BIER_FMASK,
+        .frp_sw_if_index = ~0,
     };
     vec_add1(path_1_1_1_2.frp_label_stack, 501);
     vec_add1(paths_1_1_1_2, path_1_1_1_2);
-    const bier_fmask_id_t bfm_id_1_1_1_2 = {
-        .bfmi_hdr_type = BIER_HDR_O_MPLS,
-        .bfmi_nh = nh_1_1_1_2,
-    };
     index_t bei_3;
 
     mpls_label_t *out_lbl_101 = NULL;
@@ -547,7 +536,7 @@ bier_test_mpls_spf (void)
                                     FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
                                     &neos_dpo_1_1_1_2);
 
-    bfmi_1_1_1_2 = bier_fmask_db_find(bti, &bfm_id_1_1_1_2);
+    bfmi_1_1_1_2 = bier_fmask_db_find(bti, &path_1_1_1_2);
     bfm_1_1_1_2 = bier_fmask_get(bfmi_1_1_1_2);
 
     BIER_TEST(!dpo_cmp(&neos_dpo_1_1_1_2,
@@ -563,12 +552,14 @@ bier_test_mpls_spf (void)
             .fmask = bfmi_1_1_1_2,
         },
     };
-    BIER_TEST(bier_test_validate_entry(bei_3, 1, &dpo_o_bfm_1_1_1_2),
-              "BP:3 stacks on fmask 1.1.1.2");
+    bier_entry_contribute_forwarding(bei_3, &dpo_bei);
+    BIER_TEST((dpo_bei.dpoi_index == bfmi_1_1_1_2),
+              "BP:2 stacks on fmask 1.1.1.2");
 
     /*
      * Load-balance BP:3 over both next-hops
      */
+    paths_1_1_1_1[0] = path_1_1_1_1;
     bier_table_route_add(&bt_0_0_0_256, 3, paths_1_1_1_1);
 
     BIER_TEST(bier_test_validate_entry(bei_3, 2,
@@ -589,13 +580,13 @@ bier_test_mpls_spf (void)
 
     /*
      * Withdraw one of the via FIB and thus bring down the fmask
-     * expect the bier0entry forwarding to remove this from the set
+     * expect the bier-entry forwarding to remove this from the set
      */
     fib_table_entry_delete(0, &pfx_1_1_1_2_s_32, FIB_SOURCE_API);
 
-    BIER_TEST(bier_test_validate_entry(bei_3, 1,
-                                       &dpo_o_bfm_1_1_1_1),
-              "BP:3 post 1.1.1.2 removal stacks on fmask 1.1.1.1");
+    bier_entry_contribute_forwarding(bei_3, &dpo_bei);
+    BIER_TEST((dpo_bei.dpoi_index == bfmi_1_1_1_1),
+              "BP:3 stacks on fmask 1.1.1.1");
 
     BIER_TEST((bier_table_fwd_lookup(bier_table_get(l_o_bt[0].bier.table), 3) ==
                bfmi_1_1_1_1),
@@ -638,9 +629,10 @@ bier_test_mpls_spf (void)
      * remove the original 1.1.1.2 fmask from BP:3
      */
     bier_table_route_remove(&bt_0_0_0_256, 3, paths_1_1_1_2);
-    BIER_TEST(bier_test_validate_entry(bei_3, 1,
-                                       &dpo_o_bfm_1_1_1_1),
+    bier_entry_contribute_forwarding(bei_3, &dpo_bei);
+    BIER_TEST((dpo_bei.dpoi_index == bfmi_1_1_1_1),
               "BP:3 stacks on fmask 1.1.1.1");
+
     /*
      * test that the ECMP choices for BP:3 have been updated
      */
@@ -659,7 +651,6 @@ bier_test_mpls_spf (void)
     bier_table_route_remove(&bt_0_0_0_256, 3, paths_1_1_1_1);
     bier_table_route_remove(&bt_0_0_0_256, 1, paths_1_1_1_1);
 
-
     /*
      * delete the table
      */
@@ -668,6 +659,7 @@ bier_test_mpls_spf (void)
     /*
      * test resources are freed
      */
+    dpo_reset(&dpo_bei);
     for (ii = 0; ii < N_BIER_ECMP_TABLES; ii++)
     {
         bier_table_ecmp_unlock(l_o_bt[ii].bier.table);
@@ -769,10 +761,6 @@ bier_test_mpls_imp (void)
 static int
 bier_test_mpls_disp (void)
 {
-    /* test_main_t *tm; */
-
-    /* tm = &test_main; */
-
     /*
      * Add the BIER Main table
      */
@@ -801,8 +789,9 @@ bier_test_mpls_disp (void)
      */
     fib_route_path_t *paths_via_disp = NULL, path_via_disp = {
         // .frp_addr = all-zeros
+        .frp_proto = DPO_PROTO_BIER,
         .frp_bier_fib_index = bdti1,
-        .frp_flags = FIB_ROUTE_PATH_BIER_FMASK,
+        .frp_sw_if_index = ~0,
     };
     vec_add1(paths_via_disp, path_via_disp);
 
@@ -811,16 +800,13 @@ bier_test_mpls_disp (void)
     /*
      * the fmask should stack on the BIER disp table
      */
-    const bier_fmask_id_t bfm_id_0_0_0_0 = {
-        .bfmi_hdr_type = BIER_HDR_O_MPLS,
-    };
     bier_fmask_t *bfm_0_0_0_0;
     index_t bfmi_0_0_0_0;
     dpo_id_t dpo_disp_tbl_1 = DPO_INVALID;
 
     bier_disp_table_contribute_forwarding(bdti1, &dpo_disp_tbl_1);
 
-    bfmi_0_0_0_0 = bier_fmask_db_find(bti, &bfm_id_0_0_0_0);
+    bfmi_0_0_0_0 = bier_fmask_db_find(bti, &path_via_disp);
     bfm_0_0_0_0 = bier_fmask_get(bfmi_0_0_0_0);
 
     BIER_TEST(!dpo_cmp(&dpo_disp_tbl_1, &bfm_0_0_0_0->bfm_dpo),
@@ -842,21 +828,13 @@ bier_test_mpls_disp (void)
                                    BIER_HDR_PROTO_IPV4, rpaths);
 
     /* which should stack on a lookup in the mfib table */
-    const dpo_id_t *dpo_disp_entry_lb;
     const dpo_id_t *dpo_disp_entry_v4;
     bier_disp_entry_t *bde_99;
     index_t bdei;
 
     bdei = bier_disp_table_lookup(bdti1, clib_host_to_net_u16(src));
     bde_99 = bier_disp_entry_get(bdei);
-    dpo_disp_entry_lb = &bde_99->bde_fwd[BIER_HDR_PROTO_IPV4].bde_dpo;
-
-    BIER_TEST(dpo_disp_entry_lb->dpoi_type == DPO_LOAD_BALANCE,
-              "BIER Disp entry stacks on LB");
-
-    load_balance_t *lb;
-    lb = load_balance_get(dpo_disp_entry_lb->dpoi_index);
-    dpo_disp_entry_v4 = load_balance_get_bucket_i(lb, 0);
+    dpo_disp_entry_v4 = &bde_99->bde_fwd[BIER_HDR_PROTO_IPV4].bde_dpo;
 
     lookup_dpo_t *lkd = lookup_dpo_get(dpo_disp_entry_v4->dpoi_index);
 
