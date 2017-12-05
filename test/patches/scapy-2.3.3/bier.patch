@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..e173cdb
 --- /dev/null
 +++ b/scapy/contrib/bier.py
-@@ -0,0 +1,39 @@
+@@ -0,0 +1,53 @@
 +# http://trac.secdev.org/scapy/ticket/31
 +
 +# scapy.contrib.description = MPLS
@@ -11,7 +11,7 @@ index 0000000..e173cdb
 +
 +from scapy.packet import *
 +from scapy.fields import *
-+from scapy.layers.inet import IP
++from scapy.layers.inet import IP, UDP
 +from scapy.layers.inet6 import IPv6
 +
 +class BIERLength:
@@ -20,11 +20,24 @@ index 0000000..e173cdb
 +   BIER_LEN_256 = 2
 +
 +
-+
 +BIERnhcls = {  1: "MPLS",
 +               2: "MPLS",
 +               4: "IPv4",
 +               5: "IPv6" }
++
++
++class BIFT(Packet):
++   name = "BIFT"
++   fields_desc =  [ BitField("bsl", 0, 4),
++                    BitField("sd", 0, 8),
++                    BitField("set", 0, 8),
++                    BitField("cos", 0, 3),
++                    BitField("s", 1, 1),
++                    ByteField("ttl", 0)  ]
++
++   def guess_payload_class(self, payload):
++      return BIER
++
 +
 +class BIER(Packet):
 +   name = "BIER"
@@ -43,3 +56,4 @@ index 0000000..e173cdb
 +
 +bind_layers(BIER, IP,   Proto=4)
 +bind_layers(BIER, IPv6, Proto=5)
++bind_layers(UDP, BIFT, dport=8138)
