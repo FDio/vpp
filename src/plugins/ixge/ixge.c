@@ -20,7 +20,7 @@
  *   Please use supported DPDK driver instead.
  */
 
-#if __x86_64__ || __i386__
+#if __x86_64__ || __i386__ || __aarch64__
 #include <vppinfra/vector.h>
 
 #ifndef CLIB_HAVE_VEC128
