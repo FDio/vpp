@@ -8,6 +8,7 @@ from vpp_ip_route import VppIpRoute, VppRoutePath, VppMplsRoute, \
     VppMplsTable, VppIpMRoute, VppMRoutePath, VppIpTable, \
     MRouteEntryFlags, MRouteItfFlags, MPLS_LABEL_INVALID, DpoProto
 from vpp_bier import *
+from vpp_udp_encap import *
 
 from scapy.packet import Raw
 from scapy.layers.l2 import Ether
@@ -233,6 +234,72 @@ class TestBier(VppTestCase):
         #
         # inject a packet an IP. We expect it to be BIER encapped,
         # replicated.
+        #
+        p = (Ether(dst=self.pg0.local_mac,
+                   src=self.pg0.remote_mac) /
+             IP(src="1.1.1.1", dst="232.1.1.1") /
+             UDP(sport=1234, dport=1234))
+
+        self.pg0.add_stream([p])
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg1.get_capture(2)
+
+    def test_bier_head_o_udp(self):
+        """BIER head"""
+
+        #
+        # Add a BIER table for sub-domain 0, set 0, and BSL 256
+        #
+        bti = VppBierTableID(0, 0, BIERLength.BIER_LEN_256)
+        bt = VppBierTable(self, bti, 77)
+        bt.add_vpp_config()
+
+        #
+        # 1 bit positions via 1 next hops
+        #
+        nh1 = "10.0.0.1"
+        ip_route = VppIpRoute(self, nh1, 32,
+                              [VppRoutePath(self.pg1.remote_ip4,
+                                            self.pg1.sw_if_index,
+                                            labels=[2001])])
+        ip_route.add_vpp_config()
+
+        udp_encap = VppUdpEncap(self, 0,
+                                self.pg0.local_ip4,
+                                nh1,
+                                330, 440)
+        udp_encap.add_vpp_config()
+
+
+        bier_route = VppBierRoute(self, bti, 1, nh1)
+        bier_route.add_vpp_config()
+
+        #
+        # An imposition object with all bit-positions set
+        #
+        bi = VppBierImp(self, bti, 333, chr(0xff) * 32)
+        bi.add_vpp_config()
+
+        #
+        # Add a multicast route that will forward into the BIER doamin
+        #
+        route_ing_232_1_1_1 = VppIpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.1", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            paths=[VppMRoutePath(self.pg0.sw_if_index,
+                                 MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+                   VppMRoutePath(0xffffffff,
+                                 MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
+                                 proto=DpoProto.DPO_PROTO_BIER,
+                                 bier_imp=bi.bi_index)])
+        route_ing_232_1_1_1.add_vpp_config()
+
+        #
+        # inject a packet an IP. We expect it to be BIER and UDP encapped,
         #
         p = (Ether(dst=self.pg0.local_mac,
                    src=self.pg0.remote_mac) /

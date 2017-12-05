@@ -138,7 +138,7 @@ bier_lookup (vlib_main_t * vm,
              * number of integer sized buckets
              */
             n_bytes = bier_hdr_len_id_to_num_buckets(bt0->bt_id.bti_hdr_len);
-            vnet_buffer(b0)->bier.n_bytes = n_bytes;
+            vnet_buffer(b0)->mpls.bier.n_bytes = n_bytes;
             vnet_buffer(b0)->sw_if_index[VLIB_TX] = ~0;
             num_buckets = n_bytes / sizeof(int);
             bier_bit_string_init(&bbs,

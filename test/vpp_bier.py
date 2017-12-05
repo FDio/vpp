@@ -4,7 +4,7 @@
 
 import socket
 from vpp_object import VppObject
-
+from vpp_ip_route import MPLS_LABEL_INVALID
 
 class BIER_HDR_PAYLOAD:
     BIER_HDR_PROTO_MPLS_DOWN_STREAM = 1
@@ -113,7 +113,7 @@ class VppBierRoute(VppObject):
     BIER route
     """
 
-    def __init__(self, test, tbl_id, bp, nh, out_label,
+    def __init__(self, test, tbl_id, bp, nh, out_label=MPLS_LABEL_INVALID,
                  disp_table=0):
         self._test = test
         self.tbl_id = tbl_id

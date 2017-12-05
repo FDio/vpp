@@ -134,6 +134,11 @@ bier_imp_dpo_inline (vlib_main_t * vm,
                                       BIER_HDR_ENTROPY_FIELD_MASK) <<
                                      BIER_HDR_ENTROPY_FIELD_SHIFT);
 
+            /*
+             * use TTL 64 for the post enacp MPLS label/BIFT-ID
+             */
+            vnet_buffer(b0)->mpls.ttl = 64;
+
             /* next node */
             next0 = bimp0->bi_dpo[fproto].dpoi_next_node;
             vnet_buffer(b0)->ip.adj_index[VLIB_TX] =

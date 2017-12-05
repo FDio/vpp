@@ -72,6 +72,7 @@ _ (4342, lisp_cp6)                          	\
 _ (4790, VXLAN6_GPE)                            \
 _ (6633, vpath6_3)				\
 _ (6081, geneve6)				\
+_ (8138, BIER)		         		\
 _ (53053, dns_reply6)
 
 typedef enum

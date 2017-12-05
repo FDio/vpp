@@ -443,6 +443,11 @@ typedef struct fib_route_path_t_ {
          * UDP encap ID
          */
         u32 frp_udp_encap_id;
+
+        /**
+         * Resolving via a BIER Fmask
+         */
+        index_t frp_bier_fmask;
     };
     /**
      * [un]equal cost path weight
