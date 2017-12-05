@@ -835,7 +835,7 @@ unix_cli_pager_redraw (unix_cli_file_t * cf, clib_file_t * uf)
 static void
 unix_cli_pager_add_line (unix_cli_file_t * cf, u8 * line, word len_or_index)
 {
-  u8 *p;
+  u8 *p = NULL;
   word i, j, k;
   word line_index, len;
   u32 width = cf->width;
@@ -845,7 +845,8 @@ unix_cli_pager_add_line (unix_cli_file_t * cf, u8 * line, word len_or_index)
     {
       /* Use a line already in the pager buffer */
       line_index = len_or_index;
-      p = cf->pager_vector[line_index];
+      if (cf->pager_vector != NULL)
+	p = cf->pager_vector[line_index];
       len = vec_len (p);
     }
   else
