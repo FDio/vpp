@@ -1321,6 +1321,7 @@ fib_entry_get_dpo_for_source (fib_node_index_t fib_entry_index,
 	    fib_path_list_contribute_forwarding(
 		esrc->fes_pl,
 		fib_entry_get_default_chain_type(fib_entry),
+                FIB_PATH_LIST_FWD_FLAG_NONE,
 		dpo);
 
 	    return (dpo_id_is_valid(dpo));

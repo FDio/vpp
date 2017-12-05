@@ -161,9 +161,9 @@ format_bier_disp_table (u8* s, va_list *ap)
             if (INDEX_INVALID != bdt->bdt_db[ii])
             {
                 u16 src = ii;
-                s = format(s, "\n%Usrc:%d", format_white_space, indent,
+                s = format(s, "\n%Usrc:%d", format_white_space, indent+1,
                            clib_host_to_net_u16(src));
-                s = format(s, "\n%U%U", format_white_space, indent+2,
+                s = format(s, "\n%U",
                            format_bier_disp_entry, bdt->bdt_db[ii],
                            indent+4, BIER_SHOW_BRIEF);
             }
@@ -380,13 +380,12 @@ show_bier_disp_table (vlib_main_t * vm,
         ({
             vlib_cli_output(vm, "%U", format_bier_disp_table,
                             bier_disp_table_get_index(bdt),
-                            1,
-                            BIER_SHOW_BRIEF);
+                            0, BIER_SHOW_BRIEF);
         }));
     }
     else
     {
-        vlib_cli_output(vm, "%U", format_bier_disp_table, bdti, 1,
+        vlib_cli_output(vm, "%U", format_bier_disp_table, bdti, 0,
                         BIER_SHOW_DETAIL);
     }
     return (NULL);

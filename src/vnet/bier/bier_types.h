@@ -504,4 +504,32 @@ extern u32 bier_hdr_len_id_to_prefix_len(bier_hdr_len_id_t id);
 #define BIER_ERR_PANIC 3
 typedef int bier_rc;
 
+/**
+ * The BIER universal 'label'
+ */
+typedef u32 bier_bift_id_t;
+
+/**
+ * An invalid value for the BIFT ID
+ * all ones implies a BSL that's invalid.
+ */
+#define BIER_BIFT_ID_INVALID (~0)
+
+extern u16 bier_bfit_id_get_sub_domain(bier_bift_id_t bift_id);
+extern u16 bier_bfit_id_get_set(bier_bift_id_t bift_id);
+extern bier_hdr_proto_id_t bier_bift_id_get_bit_string_length(bier_bift_id_t bift_id);
+
+/**
+ * Encode a BIFT-ID as per draft-wijnandsxu-bier-non-mpls-bift-encoding-00.txt
+ */
+extern bier_bift_id_t bier_bift_id_encode(bier_table_set_id_t set,
+                                          bier_table_sub_domain_id_t sd,
+                                          bier_hdr_len_id_t bsl);
+extern void bier_bift_id_decode(bier_bift_id_t id,
+                                bier_table_set_id_t *set,
+                                bier_table_sub_domain_id_t *sd,
+                                bier_hdr_len_id_t *bsl);
+
+extern u8* format_bier_bift_id(u8 *s, va_list *ap);
+
 #endif /* __BIER_TYPES_H__ */

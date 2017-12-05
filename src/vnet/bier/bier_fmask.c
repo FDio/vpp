@@ -16,6 +16,7 @@
 #include <vnet/fib/fib_entry.h>
 #include <vnet/fib/fib_table.h>
 #include <vnet/fib/fib_walk.h>
+#include <vnet/fib/fib_path_list.h>
 
 #include <vnet/bier/bier_table.h>
 #include <vnet/bier/bier_fmask.h>
@@ -74,26 +75,27 @@ static void
 bier_fmask_stack (bier_fmask_t *bfm)
 {
     dpo_id_t via_dpo = DPO_INVALID;
+    fib_forward_chain_type_t fct;
 
-    if (bfm->bfm_flags & BIER_FMASK_FLAG_DISP)
+    if (bfm->bfm_flags & BIER_FMASK_FLAG_MPLS)
     {
-        bier_disp_table_contribute_forwarding(bfm->bfm_disp,
-                                              &via_dpo);
+        fct = FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS;
     }
     else
     {
-        fib_entry_contribute_forwarding(bfm->bfm_fei,
-                                        FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS,
-                                        &via_dpo);
+        fct = FIB_FORW_CHAIN_TYPE_BIER;
     }
 
+    fib_path_list_contribute_forwarding(bfm->bfm_pl, fct,
+                                        FIB_PATH_LIST_FWD_FLAG_COLLAPSE,
+                                        &via_dpo);
+
     /*
-     * If the via fib entry provides no forwarding (i.e. a drop)
-     * then niether does this fmask. That way children consider this fmask
+     * If the via PL entry provides no forwarding (i.e. a drop)
+     * then neither does this fmask. That way children consider this fmask
      * unresolved and other ECMP options are used instead.
      */
-    if (dpo_is_drop(&via_dpo) ||
-        load_balance_is_drop(&via_dpo))
+    if (dpo_is_drop(&via_dpo))
     {
         bfm->bfm_flags &= ~BIER_FMASK_FLAG_FORWARDING;
     }
@@ -130,65 +132,6 @@ bier_fmask_contribute_forwarding (index_t bfmi,
     }
 }
 
-static void
-bier_fmask_resolve (bier_fmask_t *bfm)
-{
-    if (bfm->bfm_flags & BIER_FMASK_FLAG_DISP)
-    {
-        bier_disp_table_lock(bfm->bfm_disp);
-    }
-    else
-    {
-        /*
-         * source a recursive route through which we resolve.
-         */
-        fib_prefix_t pfx = {
-            .fp_addr = bfm->bfm_id.bfmi_nh,
-            .fp_proto = (ip46_address_is_ip4(&(bfm->bfm_id.bfmi_nh)) ?
-                         FIB_PROTOCOL_IP4 :
-                         FIB_PROTOCOL_IP6),
-            .fp_len = (ip46_address_is_ip4(&(bfm->bfm_id.bfmi_nh)) ? 32 : 128),
-        };
-
-        bfm->bfm_fei = fib_table_entry_special_add(0, // default table
-                                                   &pfx,
-                                                   FIB_SOURCE_RR,
-                                                   FIB_ENTRY_FLAG_NONE);
-
-        bfm->bfm_sibling = fib_entry_child_add(bfm->bfm_fei,
-                                               FIB_NODE_TYPE_BIER_FMASK,
-                                               bier_fmask_get_index(bfm));
-    }
-
-    bier_fmask_stack(bfm);
-}
-
-static void
-bier_fmask_unresolve (bier_fmask_t *bfm)
-{
-    if (bfm->bfm_flags & BIER_FMASK_FLAG_DISP)
-    {
-        bier_disp_table_unlock(bfm->bfm_disp);
-    }
-    else
-    {
-        /*
-         * un-source the recursive route through which we resolve.
-         */
-        fib_prefix_t pfx = {
-            .fp_addr = bfm->bfm_id.bfmi_nh,
-            .fp_proto = (ip46_address_is_ip4(&(bfm->bfm_id.bfmi_nh)) ?
-                         FIB_PROTOCOL_IP4 :
-                         FIB_PROTOCOL_IP6),
-            .fp_len = (ip46_address_is_ip4(&(bfm->bfm_id.bfmi_nh)) ? 32 : 128),
-        };
-
-        fib_entry_child_remove(bfm->bfm_fei, bfm->bfm_sibling);
-        fib_table_entry_special_remove(0, &pfx, FIB_SOURCE_RR);
-    }
-    dpo_reset(&bfm->bfm_dpo);
-}
-
 u32
 bier_fmask_child_add (fib_node_index_t bfmi,
                      fib_node_type_t child_type,
@@ -204,6 +147,11 @@ void
 bier_fmask_child_remove (fib_node_index_t bfmi,
                          u32 sibling_index)
 {
+    if (INDEX_INVALID == bfmi)
+    {
+        return;
+    }
+
     fib_node_child_remove(FIB_NODE_TYPE_BIER_FMASK,
                           bfmi,
                           sibling_index);
@@ -212,38 +160,64 @@ bier_fmask_child_remove (fib_node_index_t bfmi,
 static void
 bier_fmask_init (bier_fmask_t *bfm,
                  const bier_fmask_id_t *fmid,
-                 index_t bti,
-                 const fib_route_path_t *rpath)
+                 const fib_route_path_t *rpaths)
 {
     const bier_table_id_t *btid;
     mpls_label_t olabel;
 
-    bfm->bfm_id = *fmid;
-    bfm->bfm_fib_index = bti;
+    *bfm->bfm_id = *fmid;
     dpo_reset(&bfm->bfm_dpo);
+    btid = bier_table_get_id(bfm->bfm_id->bfmi_bti);
+    bier_fmask_bits_init(&bfm->bfm_bits, btid->bti_hdr_len);
 
-    if (ip46_address_is_zero(&(bfm->bfm_id.bfmi_nh)))
+    if (ip46_address_is_zero(&(bfm->bfm_id->bfmi_nh)))
     {
         bfm->bfm_flags |= BIER_FMASK_FLAG_DISP;
     }
 
     if (!(bfm->bfm_flags & BIER_FMASK_FLAG_DISP))
     {
-        olabel = rpath->frp_label_stack[0];
-        vnet_mpls_uc_set_label(&bfm->bfm_label, olabel);
-        vnet_mpls_uc_set_exp(&bfm->bfm_label, 0);
-        vnet_mpls_uc_set_s(&bfm->bfm_label, 1);
-        vnet_mpls_uc_set_ttl(&bfm->bfm_label, 0xff);
-        bfm->bfm_label = clib_host_to_net_u32(bfm->bfm_label);
-    }
-    else
-    {
-        bfm->bfm_disp = rpath->frp_bier_fib_index;
+        /*
+         * leave this label in host byte order so we can OR in the TTL
+         */
+        if (NULL != rpaths->frp_label_stack)
+        {
+            olabel = rpaths->frp_label_stack[0];
+            vnet_mpls_uc_set_label(&bfm->bfm_label, olabel);
+            vnet_mpls_uc_set_exp(&bfm->bfm_label, 0);
+            vnet_mpls_uc_set_s(&bfm->bfm_label, 1);
+            vnet_mpls_uc_set_ttl(&bfm->bfm_label, 0);
+            bfm->bfm_flags |= BIER_FMASK_FLAG_MPLS;
+        }
+        else
+        {
+            bier_bift_id_t id;
+
+            /*
+             * not an MPLS label
+             */
+            bfm->bfm_flags &= ~BIER_FMASK_FLAG_MPLS;
+
+            /*
+             * use a label as encoded for BIFT value
+             */
+            id = bier_bift_id_encode(btid->bti_set,
+                                     btid->bti_sub_domain,
+                                     btid->bti_hdr_len);
+            vnet_mpls_uc_set_label(&bfm->bfm_label, id);
+            vnet_mpls_uc_set_s(&bfm->bfm_label, 1);
+            vnet_mpls_uc_set_exp(&bfm->bfm_label, 0);
+        }
     }
 
-    btid = bier_table_get_id(bfm->bfm_fib_index);
-    bier_fmask_bits_init(&bfm->bfm_bits, btid->bti_hdr_len);
-    bier_fmask_resolve(bfm);
+    bfm->bfm_pl = fib_path_list_create((FIB_PATH_LIST_FLAG_SHARED |
+                                        FIB_PATH_LIST_FLAG_NO_URPF),
+                                       rpaths);
+    bfm->bfm_sibling = fib_path_list_child_add(bfm->bfm_pl,
+                                               FIB_NODE_TYPE_BIER_FMASK,
+                                               bier_fmask_get_index(bfm));
+
+    bier_fmask_stack(bfm);
 }
 
 static void
@@ -252,8 +226,11 @@ bier_fmask_destroy (bier_fmask_t *bfm)
     clib_mem_free(bfm->bfm_bits.bfmb_refs);
     clib_mem_free(bfm->bfm_bits.bfmb_input_reset_string.bbs_buckets);
 
-    bier_fmask_db_remove(bfm->bfm_fib_index, &(bfm->bfm_id));
-    bier_fmask_unresolve(bfm);
+    bier_fmask_db_remove(bfm->bfm_id);
+    fib_path_list_child_remove(bfm->bfm_pl,
+                               bfm->bfm_sibling);
+    dpo_reset(&bfm->bfm_dpo);
+    clib_mem_free(bfm->bfm_id);
     pool_put(bier_fmask_pool, bfm);
 }
 
@@ -289,8 +266,7 @@ bier_fmask_lock (index_t bfmi)
 
 index_t
 bier_fmask_create_and_lock (const bier_fmask_id_t *fmid,
-                            index_t bti,
-                            const fib_route_path_t *rpath)
+                            const fib_route_path_t *rpaths)
 {
     bier_fmask_t *bfm;
 
@@ -298,8 +274,11 @@ bier_fmask_create_and_lock (const bier_fmask_id_t *fmid,
 
     memset(bfm, 0, sizeof(*bfm));
 
+    bfm->bfm_id = clib_mem_alloc(sizeof(*bfm->bfm_id));
+
+    ASSERT(1 == vec_len(rpaths));
     fib_node_init(&bfm->bfm_node, FIB_NODE_TYPE_BIER_FMASK);
-    bier_fmask_init(bfm, fmid, bti, rpath);
+    bier_fmask_init(bfm, fmid, rpaths);
 
     bier_fmask_lock(bier_fmask_get_index(bfm));
 
@@ -362,7 +341,7 @@ format_bier_fmask (u8 *s, va_list *ap)
     bfm = bier_fmask_get(bfmi);
 
     s = format(s, "fmask: nh:%U bs:%U locks:%d ",
-               format_ip46_address, &bfm->bfm_id.bfmi_nh, IP46_TYPE_ANY,
+               format_ip46_address, &bfm->bfm_id->bfmi_nh, IP46_TYPE_ANY,
                format_bier_bit_string, &bfm->bfm_bits.bfmb_input_reset_string,
                bfm->bfm_node.fn_locks);
     s = format(s, "flags:");
@@ -371,7 +350,22 @@ format_bier_fmask (u8 *s, va_list *ap)
             s = format (s, "%s,", bier_fmask_attr_names[attr]);
         }
     }
-    s = format(s, "\n%U%U",
+    s = format(s, "\n");
+    s = fib_path_list_format(bfm->bfm_pl, s);
+
+    if (bfm->bfm_flags & BIER_FMASK_FLAG_MPLS)
+    {
+        s = format(s, "  output-label:%U",
+                   format_mpls_unicast_label,
+                   vnet_mpls_uc_get_label(bfm->bfm_label));
+    }
+    else
+    {
+        s = format(s, "  output-bfit:[%U]",
+                   format_bier_bift_id,
+                   vnet_mpls_uc_get_label(bfm->bfm_label));
+    }
+    s = format(s, "\n %U%U",
                format_white_space, indent,
                format_dpo_id, &bfm->bfm_dpo, indent+2);
 
@@ -509,7 +503,8 @@ bier_fmask_show (vlib_main_t * vm,
     {
         pool_foreach(bfm, bier_fmask_pool,
         ({
-            vlib_cli_output (vm, "%U",
+            vlib_cli_output (vm, "[@%d] %U",
+                             bier_fmask_get_index(bfm),
                              format_bier_fmask, bier_fmask_get_index(bfm), 0);
         }));
     }
