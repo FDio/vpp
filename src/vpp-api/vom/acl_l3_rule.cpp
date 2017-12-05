@@ -69,8 +69,8 @@ l3_rule::to_string() const
     << " srcportto: " << m_srcport_or_icmptype_last
     << " dstportfrom:" << m_dstport_or_icmpcode_first
     << " dstportto:" << m_dstport_or_icmpcode_last
-    << " tcpflagmask:" << m_tcp_flags_mask
-    << " tcpflagvalue:" << m_tcp_flags_value << "]";
+    << " tcpflagmask:" << std::to_string(m_tcp_flags_mask)
+    << " tcpflagvalue:" << std::to_string(m_tcp_flags_value) << "]";
 
   return (s.str());
 }
