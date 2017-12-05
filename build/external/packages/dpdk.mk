@@ -196,11 +196,12 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PMD_TAP,$(DPDK_TAP_PMD))
 	$(call set,RTE_LIBRTE_GSO,$(DPDK_TAP_PMD))
 	$(call set,RTE_LIBRTE_PMD_FAILSAFE,$(DPDK_FAILSAFE_PMD))
+	@# required for UPF
+	$(call set,RTE_LIBRTE_ACL,y)
 	@# not needed
 	$(call set,RTE_ETHDEV_RXTX_CALLBACKS,n)
 	$(call set,RTE_LIBRTE_CFGFILE,n)
 	$(call set,RTE_LIBRTE_LPM,n)
-	$(call set,RTE_LIBRTE_ACL,n)
 	$(call set,RTE_LIBRTE_JOBSTATS,n)
 	$(call set,RTE_LIBRTE_EFD,n)
 	$(call set,RTE_LIBRTE_MEMBER,n)
@@ -213,7 +214,6 @@ $(B)/custom-config: $(B)/.patch.ok Makefile
 	$(call set,RTE_LIBRTE_PIPELINE,n)
 	$(call set,RTE_LIBRTE_PMD_SOFTNIC,n)
 	$(call set,RTE_LIBRTE_FLOW_CLASSIFY,n)
-	$(call set,RTE_LIBRTE_ACL,n)
 	$(call set,RTE_LIBRTE_GRO,n)
 	$(call set,RTE_LIBRTE_KNI,n)
 	$(call set,RTE_LIBRTE_BPF,n)
