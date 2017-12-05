@@ -1175,7 +1175,8 @@ libvnet_la_SOURCES +=                           \
   vnet/bier/bier_disp_entry.c			\
   vnet/bier/bier_disp_lookup_node.c		\
   vnet/bier/bier_disp_dispatch_node.c		\
-  vnet/bier/bier_disp_table.c
+  vnet/bier/bier_disp_table.c			\
+  vnet/bier/bier_bift_table.c
 
 nobase_include_HEADERS +=			\
   vnet/bier/bier_types.h                        \

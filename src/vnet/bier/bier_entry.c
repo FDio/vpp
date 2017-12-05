@@ -116,18 +116,23 @@ bier_entry_table_ecmp_walk_add_fmask (index_t btei,
 
         fib_path_list_contribute_forwarding(be->be_path_list,
                                             FIB_FORW_CHAIN_TYPE_BIER,
+                                            FIB_PATH_LIST_FWD_FLAG_COLLAPSE,
                                             &dpo);
 
         /*
          * select the appropriate bucket from the LB
          */
-        ASSERT(dpo.dpoi_type == DPO_LOAD_BALANCE);
-
-        lb = load_balance_get(dpo.dpoi_index);
-
-        choice = load_balance_get_bucket_i(lb,
-                                           btid->bti_ecmp &
-                                           (lb->lb_n_buckets_minus_1));
+        if (dpo.dpoi_type == DPO_LOAD_BALANCE)
+        {
+            lb = load_balance_get(dpo.dpoi_index);
+            choice = load_balance_get_bucket_i(lb,
+                                               btid->bti_ecmp &
+                                               (lb->lb_n_buckets_minus_1));
+        }
+        else
+        {
+            choice = &dpo;
+        }
 
         if (choice->dpoi_type == DPO_BIER_FMASK)
         {
@@ -293,6 +298,7 @@ bier_entry_contribute_forwarding(index_t bei,
 
     fib_path_list_contribute_forwarding(be->be_path_list,
                                         FIB_FORW_CHAIN_TYPE_BIER,
+                                        FIB_PATH_LIST_FWD_FLAG_COLLAPSE,
                                         dpo);
 }
 

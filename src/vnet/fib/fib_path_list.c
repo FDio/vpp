@@ -126,16 +126,21 @@ fib_path_list_get_index (fib_path_list_t *path_list)
     return (path_list - fib_path_list_pool);
 }
 
-static u8 *
+u8 *
 format_fib_path_list (u8 * s, va_list * args)
 {
+    fib_node_index_t *path_index, path_list_index;
     fib_path_list_attribute_t attr;
-    fib_node_index_t *path_index;
     fib_path_list_t *path_list;
+    u32 indent;
 
-    path_list = va_arg (*args, fib_path_list_t *);
-    
-    s = format (s, "    index:%u", fib_path_list_get_index(path_list));
+    path_list_index = va_arg (*args, fib_node_index_t);
+    indent = va_arg (*args, u32);
+    path_list = fib_path_list_get(path_list_index);
+
+    s = format (s, "%Upath-list:[%d]",
+                format_white_space, indent,
+                fib_path_list_get_index(path_list));
     s = format (s, " locks:%u", path_list->fpl_node.fn_locks);
 
     if (FIB_PATH_LIST_FLAG_NONE != path_list->fpl_flags)
@@ -153,7 +158,7 @@ format_fib_path_list (u8 * s, va_list * args)
 
     vec_foreach (path_index, path_list->fpl_paths)
     {
-	s = fib_path_format(*path_index, s);
+	s = format(s, "%U", format_fib_path, *path_index, indent+2);
 	s = format(s, "\n");
     }
 
@@ -164,11 +169,7 @@ u8 *
 fib_path_list_format (fib_node_index_t path_list_index,
 		      u8 * s)
 {
-    fib_path_list_t *path_list;
-
-    path_list = fib_path_list_get(path_list_index);
-
-    return (format(s, "%U", format_fib_path_list, path_list));
+    return (format(s, "%U", format_fib_path_list, path_list_index, 4));
 }
 
 static uword
@@ -353,20 +354,7 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
     load_balance_path_t *nhs;
     fib_node_index_t *path_index;
 
-    nhs  = NULL;
-
-    if (!dpo_id_is_valid(dpo))
-    {
-        /*
-         * first time create
-         */
-        dpo_set(dpo,
-                DPO_LOAD_BALANCE,
-                fib_forw_chain_type_to_dpo_proto(fct),
-                load_balance_create(0,
-				    fib_forw_chain_type_to_dpo_proto(fct),
-				    0 /* FIXME FLOW HASH */));
-    }
+    nhs = NULL;
 
     /*
      * We gather the DPOs from resolved paths.
@@ -382,6 +370,12 @@ fib_path_list_mk_lb (fib_path_list_t *path_list,
      * Path-list load-balances, which if used, would be shared and hence
      * never need a load-balance map.
      */
+    dpo_set(dpo,
+            DPO_LOAD_BALANCE,
+            fib_forw_chain_type_to_dpo_proto(fct),
+            load_balance_create(vec_len(nhs),
+                                fib_forw_chain_type_to_dpo_proto(fct),
+                                0 /* FIXME FLOW HASH */));
     load_balance_multipath_update(dpo, nhs, LOAD_BALANCE_FLAG_NONE);
 
     FIB_PATH_LIST_DBG(path_list, "mk lb: %d", dpo->dpoi_index);
@@ -1146,6 +1140,7 @@ fib_path_list_copy_and_path_remove (fib_node_index_t orig_path_list_index,
 void
 fib_path_list_contribute_forwarding (fib_node_index_t path_list_index,
 				     fib_forward_chain_type_t fct,
+                                     fib_path_list_fwd_flags_t flags,
 				     dpo_id_t *dpo)
 {
     fib_path_list_t *path_list;
@@ -1153,6 +1148,18 @@ fib_path_list_contribute_forwarding (fib_node_index_t path_list_index,
     path_list = fib_path_list_get(path_list_index);
 
     fib_path_list_mk_lb(path_list, fct, dpo);
+
+    ASSERT(DPO_LOAD_BALANCE == dpo->dpoi_type);
+
+    /*
+     * If there's only one bucket in the load-balance then we can
+     * squash it out.
+     */
+    if ((1 == load_balance_n_buckets(dpo->dpoi_index)) &&
+        (FIB_PATH_LIST_FWD_FLAG_COLLAPSE & flags))
+    {
+        dpo_copy(dpo, load_balance_get_bucket(dpo->dpoi_index, 0));
+    }
 }
 
 /*

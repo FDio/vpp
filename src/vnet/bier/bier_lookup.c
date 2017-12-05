@@ -138,7 +138,7 @@ bier_lookup (vlib_main_t * vm,
              * number of integer sized buckets
              */
             n_bytes = bier_hdr_len_id_to_num_buckets(bt0->bt_id.bti_hdr_len);
-            vnet_buffer(b0)->bier.n_bytes = n_bytes;
+            vnet_buffer(b0)->mpls.bier.n_bytes = n_bytes;
             vnet_buffer(b0)->sw_if_index[VLIB_TX] = ~0;
             num_buckets = n_bytes / sizeof(int);
             bier_bit_string_init(&bbs,
@@ -178,7 +178,6 @@ bier_lookup (vlib_main_t * vm,
                     if (PREDICT_TRUE(INDEX_INVALID != bfmi0))
                     {
                         bfm0 = bier_fmask_get(bfmi0);
-                        vnet_buffer (b0)->ip.adj_index[VLIB_TX] = bfmi0;
 
                         /*
                          * use the bit-string on the fmask to reset
@@ -237,6 +236,8 @@ bier_lookup (vlib_main_t * vm,
 
                     ci0 = blm->blm_clones[thread_index][clone];
                     c0 = vlib_get_buffer(vm, ci0);
+                    vnet_buffer(c0)->ip.adj_index[VLIB_TX] =
+                        blm->blm_fmasks[thread_index][clone];
 
                     to_next[0] = ci0;
                     to_next += 1;

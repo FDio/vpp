@@ -65,12 +65,14 @@ typedef enum bier_fmask_attributes_t_
     BIER_FMASK_ATTR_FIRST,
     BIER_FMASK_ATTR_FORWARDING = BIER_FMASK_ATTR_FIRST,
     BIER_FMASK_ATTR_DISP,
+    BIER_FMASK_ATTR_MPLS,
     BIER_FMASK_ATTR_LAST = BIER_FMASK_ATTR_DISP,
 } bier_fmask_attributes_t;
 
 #define BIER_FMASK_ATTR_NAMES {                         \
      [BIER_FMASK_ATTR_FORWARDING] = "forwarding",       \
      [BIER_FMASK_ATTR_DISP] = "disposition",            \
+     [BIER_FMASK_ATTR_MPLS] = "mpls",                   \
 }
 
 #define FOR_EACH_BIER_FMASK_ATTR(_item)          \
@@ -82,6 +84,7 @@ typedef enum bier_fmask_flags_t_
 {
     BIER_FMASK_FLAG_FORWARDING = (1 << BIER_FMASK_ATTR_FORWARDING),
     BIER_FMASK_FLAG_DISP = (1 << BIER_FMASK_ATTR_DISP),
+    BIER_FMASK_FLAG_MPLS = (1 << BIER_FMASK_ATTR_MPLS),
 } bier_fmask_flags_t;
 
 /**
@@ -110,47 +113,20 @@ typedef struct bier_fmask_t_ {
      */
     bier_fmask_bits_t bfm_bits;
 
-    struct
-    {
-        /**
-         * The key to this fmask - used for store/lookup in the DB
-         */
-        bier_fmask_id_t bfm_id;
+    /**
+     * The key to this fmask - used for store/lookup in the DB
+     */
+    bier_fmask_id_t *bfm_id;
 
-        /**
-         * The BIER Table this Fmask is used in
-         */
-        index_t bfm_fib_index;
-    };
+    /**
+     * The MPLS label to paint on the header during forwarding
+     */
+    mpls_label_t bfm_label;
 
-    union
-    {
-        /**
-         * For forwarding via a next-hop
-         */
-        struct
-        {
-            /**
-             * The parent fib entry
-             */
-            fib_node_index_t bfm_fei;
-            /**
-             * The MPLS label to paint on the header during forwarding
-             */
-            mpls_label_t bfm_label;
-        };
-
-        /**
-         * For disposition
-         */
-        struct
-        {
-            /**
-             * The parent disposition table object
-             */
-            index_t bfm_disp;
-        };
-    };
+    /**
+     * The path-list
+     */
+    fib_node_index_t bfm_pl;
 
     /**
      * the index of this fmask in the parent's child list.
@@ -170,7 +146,6 @@ extern void bier_fmask_unlock(index_t bfmi);
 extern void bier_fmask_lock(index_t bfmi);
 
 extern index_t bier_fmask_create_and_lock(const bier_fmask_id_t *fmid,
-                                          index_t bti,
                                           const fib_route_path_t *rpath);
 
 extern u8* format_bier_fmask(u8 *s, va_list *ap);

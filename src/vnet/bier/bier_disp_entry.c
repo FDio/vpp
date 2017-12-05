@@ -145,6 +145,7 @@ bier_disp_entry_restack (bier_disp_entry_t *bde,
         fib_path_list_contribute_forwarding(pli,
                                             fib_forw_chain_type_from_dpo_proto(
                                                 bier_hdr_proto_to_dpo(pproto)),
+                                            FIB_PATH_LIST_FWD_FLAG_COLLAPSE,
                                             &via_dpo);
 
         bier_disp_entry_path_list_walk_ctx_t ctx = {
@@ -254,24 +255,26 @@ format_bier_disp_entry (u8* s, va_list *args)
 
     bde = bier_disp_entry_get(bdei);
 
-    s = format(s, "bier-disp:[%d]", bdei);
+    s = format(s, "%Ubier-disp:[%d]", format_white_space, indent, bdei);
 
     FOR_EACH_BIER_HDR_PROTO(pproto)
     {
         if (INDEX_INVALID != bde->bde_pl[pproto])
         {
-            s = format(s, "\n");
-            s = fib_path_list_format(bde->bde_pl[pproto], s);
+            s = format(s, "\n%U%U\n",
+                       format_white_space, indent+2,
+                       format_bier_hdr_proto, pproto);
+            s = format(s, "%U", format_fib_path_list, bde->bde_pl[pproto], indent+4);
 
             if (flags & BIER_SHOW_DETAIL)
             {
                 s = format(s, "\n%UForwarding:",
-                           format_white_space, indent);
+                           format_white_space, indent+4);
                 s = format(s, "\n%Urpf-id:%d",
-                           format_white_space, indent+1,
+                           format_white_space, indent+6,
                            bde->bde_fwd[pproto].bde_rpf_id);
                 s = format(s, "\n%U%U",
-                           format_white_space, indent+1,
+                           format_white_space, indent+6,
                            format_dpo_id, &bde->bde_fwd[pproto].bde_dpo, indent+2);
             }
         }

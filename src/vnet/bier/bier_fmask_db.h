@@ -21,18 +21,27 @@
 
 #include <vnet/ip/ip.h>
 
-#include <vnet/bier/bier_types.h>
+#include <vnet/fib/fib_types.h>
 
 /**
- * Foward declarations
+ * BIER header encapulsation types
  */
-struct bier_fmask_t_;
-
 typedef enum bier_hdr_type_t_ {
-    BIER_HDR_IN_IP6,
+    /**
+     * BIER Header in MPLS networks
+     */
     BIER_HDR_O_MPLS,
+
+    /**
+     * BIER header in non-MPLS networks
+     */
+    BIER_HDR_O_OTHER,
 } bier_hdr_type_t;
 
+/**
+ * A key/ID for a BIER forwarding Mas (FMask).
+ * This is a simplified version of a fib_route_path_t.
+ */
 typedef struct bier_fmask_id_t_ {
     /**
      * Type of BIER header this fmask supports
@@ -40,22 +49,35 @@ typedef struct bier_fmask_id_t_ {
     bier_hdr_type_t bfmi_hdr_type;
 
     /**
-     * next-hop of the peer
+     * The BIER table this fmask is in
      */
-    ip46_address_t bfmi_nh;
-} bier_fmask_id_t;
+    index_t bfmi_bti;
 
-extern u32
+    union {
+        /**
+         * next-hop of the peer
+         */
+        ip46_address_t bfmi_nh;
+
+        /**
+         * ID of the next-hop object, e.g. a UDP-encap
+         */
+        u32 bfmi_id;
+    };
+
+    /**
+     * Software interface index
+     */
+    u32 bfmi_sw_if_index;
+} __attribute__((packed)) bier_fmask_id_t;
+
+extern index_t
 bier_fmask_db_find_or_create_and_lock(index_t bti,
-                                      const bier_fmask_id_t *fmid,
                                       const fib_route_path_t *rpath);
+extern index_t bier_fmask_db_find (index_t bti,
+                                   const fib_route_path_t *rpath);
 
-extern u32
-bier_fmask_db_find(index_t bti,
-                   const bier_fmask_id_t *fmid);
+extern void bier_fmask_db_remove (const bier_fmask_id_t *fmid);
 
-extern void
-bier_fmask_db_remove(index_t bti,
-                     const bier_fmask_id_t *fmid);
 
 #endif

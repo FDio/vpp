@@ -128,12 +128,7 @@ typedef enum fib_path_cfg_flags_t_ {
 } __attribute__ ((packed)) fib_path_cfg_flags_t;
 
 
-extern u8 *fib_path_format(fib_node_index_t pi, u8 *s);
-extern u8 *fib_path_adj_format(fib_node_index_t pi,
-			       u32 indent,
-			       u8 *s);
-
-extern u8 * format_fib_path(u8 * s, va_list * args);
+extern u8 *format_fib_path(u8 *s, va_list *args);
 
 extern fib_node_index_t fib_path_create(fib_node_index_t pl_index,
 					const fib_route_path_t *path);

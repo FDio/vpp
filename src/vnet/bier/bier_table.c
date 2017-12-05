@@ -20,6 +20,7 @@
 #include <vnet/bier/bier_update.h>
 #include <vnet/bier/bier_fmask_db.h>
 #include <vnet/bier/bier_fmask.h>
+#include <vnet/bier/bier_bift_table.h>
 
 #include <vnet/fib/mpls_fib.h>
 #include <vnet/mpls/mpls.h>
@@ -96,9 +97,6 @@ bier_table_init (bier_table_t *bt,
                                         num_entries,
                                         INDEX_INVALID,
                                         CLIB_CACHE_LINE_BYTES);
-        fib_table_find_or_create_and_lock(FIB_PROTOCOL_MPLS,
-                                          MPLS_FIB_DEFAULT_TABLE_ID,
-                                          FIB_SOURCE_BIER);
     }
     else
     {
@@ -110,12 +108,42 @@ bier_table_init (bier_table_t *bt,
 }
 
 static void
+bier_table_rm_bift (bier_table_t *bt)
+{
+    ASSERT(MPLS_LABEL_INVALID == bt->bt_ll);
+
+    bier_bift_table_entry_remove(bier_bift_id_encode(bt->bt_id.bti_set,
+                                                     bt->bt_id.bti_sub_domain,
+                                                     bt->bt_id.bti_hdr_len));
+}
+
+static void
+bier_table_mk_bift (bier_table_t *bt)
+{
+    dpo_id_t dpo = DPO_INVALID;
+
+    ASSERT(MPLS_LABEL_INVALID == bt->bt_ll);
+
+    bier_table_contribute_forwarding(bier_table_get_index(bt), &dpo);
+
+    bier_bift_table_entry_add(bier_bift_id_encode(bt->bt_id.bti_set,
+                                                  bt->bt_id.bti_sub_domain,
+                                                  bt->bt_id.bti_hdr_len),
+                               &dpo);
+
+    dpo_reset(&dpo);
+}
+
+static void
 bier_table_rm_lfib (bier_table_t *bt)
 {
     if (FIB_NODE_INDEX_INVALID != bt->bt_lfei)
     {
         fib_table_entry_delete_index(bt->bt_lfei,
                                      FIB_SOURCE_BIER);
+        fib_table_unlock(MPLS_FIB_DEFAULT_TABLE_ID,
+                         FIB_PROTOCOL_MPLS,
+                         FIB_SOURCE_BIER);
     }
     bt->bt_lfei = FIB_NODE_INDEX_INVALID;
 }
@@ -126,6 +154,15 @@ bier_table_destroy (bier_table_t *bt)
     if (bier_table_is_main(bt))
     {
         index_t *bei;
+
+        if (MPLS_LABEL_INVALID != bt->bt_ll)
+        {
+            bier_table_rm_lfib(bt);
+        }
+        else
+        {
+            bier_table_rm_bift(bt);
+        }
 
         fib_path_list_unlock(bt->bt_pl);
         bt->bt_pl = FIB_NODE_INDEX_INVALID;
@@ -140,10 +177,6 @@ bier_table_destroy (bier_table_t *bt)
             }
         }
         vec_free (bt->bt_entries);
-        fib_table_unlock(fib_table_find(FIB_PROTOCOL_MPLS,
-                                        MPLS_FIB_DEFAULT_TABLE_ID),
-                         FIB_PROTOCOL_MPLS,
-                         FIB_SOURCE_BIER);
     }
     else
     {
@@ -177,7 +210,6 @@ bier_table_unlock_i (bier_table_t *bt)
 
     if (0 == bt->bt_locks)
     {
-        bier_table_rm_lfib(bt);
         bier_table_destroy(bt);
     }
 }
@@ -214,12 +246,17 @@ bier_table_mk_lfib (bier_table_t *bt)
         u32 mpls_fib_index;
         dpo_id_t dpo = DPO_INVALID;
 
+        fib_table_find_or_create_and_lock(FIB_PROTOCOL_MPLS,
+                                          MPLS_FIB_DEFAULT_TABLE_ID,
+                                          FIB_SOURCE_BIER);
+
         /*
          * stack the entry on the forwarding chain prodcued by the
          * path-list via the ECMP tables.
          */
         fib_path_list_contribute_forwarding(bt->bt_pl,
                                             FIB_FORW_CHAIN_TYPE_BIER,
+                                            FIB_PATH_LIST_FWD_FLAG_COLLAPSE,
                                             &dpo);
 
         mpls_fib_index = fib_table_find(FIB_PROTOCOL_MPLS,
@@ -306,13 +343,37 @@ bier_table_add_or_lock (const bier_table_id_t *btid,
          * modify an existing table.
          * change the lfib entry to the new local label
          */
-        if (bier_table_is_main(bt) &&
-            (local_label != MPLS_LABEL_INVALID))
+        if (bier_table_is_main(bt))
         {
-            bier_table_rm_lfib(bt);
+            /*
+             * remove the mpls-fib or bift entry
+             */
+            if (MPLS_LABEL_INVALID != bt->bt_ll)
+            {
+                bier_table_rm_lfib(bt);
+            }
+            else
+            {
+                bier_table_rm_bift(bt);
+            }
 
-            bt->bt_ll = local_label;
-            bier_table_mk_lfib(bt);
+            /*
+             * reset
+             */
+            bt->bt_ll = MPLS_LABEL_INVALID;
+
+            /*
+             * add whichever mpls-fib or bift we need
+             */
+            if (local_label != MPLS_LABEL_INVALID)
+            {
+                bt->bt_ll = local_label;
+                bier_table_mk_lfib(bt);
+            }
+            else
+            {
+                bier_table_mk_bift(bt);
+            }
         }
         bti = bier_table_get_index(bt);
     }
@@ -334,7 +395,19 @@ bier_table_add_or_lock (const bier_table_id_t *btid,
         if (bier_table_is_main(bt))
         {
             bt = bier_table_mk_ecmp(bti);
-            bier_table_mk_lfib(bt);
+
+            /*
+             * add whichever mpls-fib or bift we need
+             */
+            if (local_label != MPLS_LABEL_INVALID)
+            {
+                bt->bt_ll = local_label;
+                bier_table_mk_lfib(bt);
+            }
+            else
+            {
+                bier_table_mk_bift(bt);
+            }
         }
     }
 
@@ -459,16 +532,19 @@ bier_table_route_add (const bier_table_id_t *btid,
      */
     vec_foreach(brp, brps)
     {
-        bier_fmask_id_t fmid = {
-            .bfmi_nh = brp->frp_addr,
-            .bfmi_hdr_type = BIER_HDR_O_MPLS,
-        };
-        bfmi = bier_fmask_db_find_or_create_and_lock(bier_table_get_index(bt),
-                                                     &fmid,
-                                                     brp);
-
-        brp->frp_bier_fib_index = bti;
+        /*
+         * First use the path to find or construct an FMask object
+         * via the next-hop
+         */
+        bfmi = bier_fmask_db_find_or_create_and_lock(bti, brp);
         vec_add1(bfmis, bfmi);
+
+        /*
+         * then modify the path to resolve via this fmask object
+         * and use it to resolve the BIER entry.
+         */
+        brp->frp_flags = FIB_ROUTE_PATH_BIER_FMASK;
+        brp->frp_bier_fmask = bfmi;
     }
 
     if (INDEX_INVALID == bei)
@@ -536,6 +612,7 @@ bier_table_contribute_forwarding (index_t bti,
          */
         fib_path_list_contribute_forwarding(bt->bt_pl,
                                             FIB_FORW_CHAIN_TYPE_BIER,
+                                            FIB_PATH_LIST_FWD_FLAG_COLLAPSE,
                                             dpo);
     }
     else
@@ -642,12 +719,12 @@ format_bier_table (u8 *s, va_list *ap)
 
     if (pool_is_free_index(bier_table_pool, bti))
     {
-        return (format(s, "No BIER f-mask %d", bti));
+        return (format(s, "No BIER table %d", bti));
     }
 
     bt = bier_table_get(bti);
 
-    s = format(s, "[@%d] bier-table:[%U local-label:%U]",
+    s = format(s, "[@%d] bier-table:[%U local-label:%U",
                bti,
                format_bier_table_id, &bt->bt_id,
                format_mpls_unicast_label, bt->bt_ll);
