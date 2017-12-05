@@ -1398,12 +1398,16 @@ ip_container_cmd (vlib_main_t * vm,
       else if (unformat (line_input, "del"))
 	is_del = 1;
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, line_input));
+	{
+	  unformat_free (line_input);
+	  return (clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input));
+	}
     }
 
   if (~0 == sw_if_index || !addr_set)
     {
+      unformat_free (line_input);
       vlib_cli_output (vm, "interface and address must be set");
       return 0;
     }
@@ -1456,12 +1460,16 @@ show_ip_container_cmd_fn (vlib_main_t * vm, unformat_input_t * main_input,
 			 unformat_vnet_sw_interface, vnm, &sw_if_index))
 	;
       else
-	return (clib_error_return (0, "unknown input '%U'",
-				   format_unformat_error, line_input));
+	{
+	  unformat_free (line_input);
+	  return (clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input));
+	}
     }
 
   if (~0 == sw_if_index)
     {
+      unformat_free (line_input);
       vlib_cli_output (vm, "no interface");
       return (clib_error_return (0, "no interface"));
     }
