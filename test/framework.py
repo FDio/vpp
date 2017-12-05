@@ -297,6 +297,7 @@ class VppTestCase(unittest.TestCase):
                            "main-core", str(cpu_core_number), "}", "statseg",
                            "{", "socket-name", cls.stats_sock, "}", "plugins",
                            "{", "plugin", "dpdk_plugin.so", "{", "disable",
+                           "}", "plugin", "upf_plugin.so", "{", "disable",
                            "}", "plugin", "unittest_plugin.so", "{", "enable",
                            "}", "}", ]
         if plugin_path is not None:
