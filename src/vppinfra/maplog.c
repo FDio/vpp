@@ -224,34 +224,19 @@ _clib_maplog_get_entry_slowpath (clib_maplog_main_t * mm, u64 my_record_index)
 }
 
 /**
- * @brief Close a mapped log, and update the log header file
+ * @brief Update a mapped log header file
  *
- * Unmap the current log segments.
  * Read the log header. Update the number of records, and number of files
- *
  * @param[in/out] mm	mapped log object
  */
 void
-clib_maplog_close (clib_maplog_main_t * mm)
+clib_maplog_update_header (clib_maplog_main_t * mm)
 {
-  int i, rv;
-  u64 file_size_in_bytes;
-  int fd;
+  int fd, rv;
   clib_maplog_header_t _h, *h = &_h;
 
   if (!(mm->flags & CLIB_MAPLOG_FLAG_INIT))
     return;
-
-  file_size_in_bytes =
-    mm->file_size_in_records * mm->record_size_in_cachelines *
-    CLIB_CACHE_LINE_BYTES;
-
-  /* unmap current + next segments */
-  for (i = 0; i < 2; i++)
-    {
-      (void) munmap ((u8 *) mm->file_baseva[i], file_size_in_bytes);
-      vec_free (mm->filenames[i]);
-    }
 
   /* Open the log header */
   fd = open ((char *) mm->header_filename, O_RDWR, 0600);
@@ -286,6 +271,37 @@ clib_maplog_close (clib_maplog_main_t * mm)
 out:
   if (fd >= 0)
     (void) close (fd);
+}
+
+/**
+ * @brief Close a mapped log, and update the log header file
+ *
+ * Unmap the current log segments.
+ * Read the log header. Update the number of records, and number of files
+ *
+ * @param[in/out] mm	mapped log object
+ */
+void
+clib_maplog_close (clib_maplog_main_t * mm)
+{
+  int i;
+  u64 file_size_in_bytes;
+
+  if (!(mm->flags & CLIB_MAPLOG_FLAG_INIT))
+    return;
+
+  clib_maplog_update_header (mm);
+
+  file_size_in_bytes =
+    mm->file_size_in_records * mm->record_size_in_cachelines *
+    CLIB_CACHE_LINE_BYTES;
+
+  /* unmap current + next segments */
+  for (i = 0; i < 2; i++)
+    {
+      (void) munmap ((u8 *) mm->file_baseva[i], file_size_in_bytes);
+      vec_free (mm->filenames[i]);
+    }
 
   vec_free (mm->file_basename);
   vec_free (mm->header_filename);
@@ -335,6 +351,14 @@ brief:
  * Reads the maplog header. Map and process all log segments in order.
  * Calls the callback function once per file with a record count.
  *
+ * Note: if the file header isn't updated by calling
+ * clib_maplog_close(), it will appear to have an infinite
+ * number of records in an infinite number of files.
+ *
+ * So long as the callback function understands that possibility
+ * - by simply ignoring NULL records - the scheme still
+ * works...
+ *
  * @param [in] file_basename Same basename supplied to clib_maplog_init
  * @param [in] fp_arg Callback function pointer
  */
@@ -347,7 +371,7 @@ clib_maplog_process (char *file_basename, void *fp_arg)
   u64 file_size_in_bytes;
   u8 *header_filename, *this_filename = 0;
   u8 *file_baseva;
-  void (*fp) (clib_maplog_header_t *, void *data, u64 count);
+  int (*fp) (clib_maplog_header_t *, void *data, u64 count);
   u64 records_this_file, records_left;
   ASSERT (fp_arg);
 
@@ -384,7 +408,6 @@ clib_maplog_process (char *file_basename, void *fp_arg)
       fd = open ((char *) this_filename, O_RDONLY, 0600);
       if (fd < 0)
 	{
-	  clib_unix_warning ("open maplog file");
 	  rv = -3;
 	  goto out;
 	}

@@ -107,6 +107,7 @@ typedef struct
 /* function prototypes */
 
 int clib_maplog_init (clib_maplog_init_args_t * ap);
+void clib_maplog_update_header (clib_maplog_main_t * mm);
 void clib_maplog_close (clib_maplog_main_t * mm);
 int clib_maplog_process (char *file_basename, void *fp_arg);
 
