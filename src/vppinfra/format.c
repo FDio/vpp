@@ -234,6 +234,15 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 	  c = *++f;
 	}
       break;
+    case 'h':
+      fi.how_long = c;
+      c = *++f;
+      if (c == 'h' && *f == 'h')
+	{
+	  fi.how_long = 'H';
+	  c = *++f;
+	}
+      break;
     }
 
   /* Finally we are ready for format letter. */
@@ -303,6 +312,16 @@ do_percent (u8 ** _s, const u8 * fmt, va_list * va)
 	      case 'w':
 		number = va_arg (*va, word);
 		o.n_bits = BITS (uword);
+		break;
+
+	      case 'H':
+		number = va_arg (*va, int);
+		o.n_bits = BITS (unsigned char);
+		break;
+
+	      case 'h':
+		number = va_arg (*va, int);
+		o.n_bits = BITS (unsigned short int);
 		break;
 
 	      default:
