@@ -38,6 +38,9 @@ process_maplog_records (clib_maplog_header_t * h,
 
   while (records_this_file--)
     {
+      /* Padding at the end of a damaged log? */
+      if (e->serial_number == 0ULL)
+	break;
       fformat (stdout, "%4lld ", e->serial_number);
       if (++i == 8)
 	{
@@ -57,6 +60,10 @@ test_maplog_main (unformat_input_t * input)
   int rv;
   int i;
   test_entry_t *t;
+  int noclose = 0;
+
+  if (unformat (input, "noclose"))
+    noclose = 1;
 
   memset (a, 0, sizeof (*a));
   a->mm = mm;
@@ -79,10 +86,13 @@ test_maplog_main (unformat_input_t * input)
   for (i = 0; i < 64 * 5; i++)
     {
       t = clib_maplog_get_entry (mm);
-      t->serial_number = i;
+      t->serial_number = i + 1;
     }
 
-  clib_maplog_close (mm);
+  if (noclose)
+    memset (mm, 0, sizeof (*mm));
+  else
+    clib_maplog_close (mm);
 
   clib_maplog_process ("/tmp/maplog_test", process_maplog_records);
 
