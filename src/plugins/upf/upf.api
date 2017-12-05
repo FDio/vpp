@@ -1,0 +1,23 @@
+/* Define a simple enable-disable binary API to control the feature */
+
+define upf_enable_disable {
+    /* Client identifier, set from api_main.my_client_index */
+    u32 client_index;
+
+    /* Arbitrary context, so client can match reply to request */
+    u32 context;
+
+    /* Enable / disable the feature */
+    u8 enable_disable;
+
+    /* Interface handle */
+    u32 sw_if_index;
+};
+
+define upf_enable_disable_reply {
+    /* From the request */
+    u32 context;
+
+    /* Return value, zero means all OK */
+    i32 retval;
+};
