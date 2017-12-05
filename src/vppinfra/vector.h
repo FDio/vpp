@@ -46,6 +46,10 @@
 #define CLIB_HAVE_VEC64
 #endif
 
+#if defined(__ARM_NEON)
+#define CLIB_HAVE_VEC128
+#endif
+
 #if defined (__SSE2__) && __GNUC__ >= 4
 #define CLIB_HAVE_VEC128
 #endif
