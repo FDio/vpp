@@ -46,6 +46,10 @@
 #define CLIB_HAVE_VEC64
 #endif
 
+#if defined (__aarch64__) && defined(__ARM_NEON)
+#define CLIB_HAVE_VEC128
+#endif
+
 #if defined (__SSE2__) && __GNUC__ >= 4
 #define CLIB_HAVE_VEC128
 #endif
@@ -68,14 +72,6 @@
 #endif
 
 #define _vector_size(n) __attribute__ ((vector_size (n)))
-
-#if defined (__aarch64__) || defined (__arm__)
-typedef unsigned int u32x4 _vector_size (16);
-typedef u8 u8x16 _vector_size (16);
-typedef u16 u16x8 _vector_size (16);
-typedef u32 u32x4 _vector_size (16);
-typedef u64 u64x2 _vector_size (16);
-#endif
 
 #ifdef CLIB_HAVE_VEC64
 /* Signed 64 bit. */

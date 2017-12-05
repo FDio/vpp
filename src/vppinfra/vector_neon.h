@@ -31,8 +31,68 @@
 #define u16x8_sub_saturate(a,b) vsubq_u16(a,b)
 #define i16x8_sub_saturate(a,b) vsubq_s16(a,b)
 
+
+/* Compare operations. */
+#define u8x16_is_equal(a,b) vceqq_u8(a,b)
+#define i8x16_is_equal(a,b) vceqq_s8(a,b)
 #define u16x8_is_equal(a,b) vceqq_u16(a,b)
 #define i16x8_is_equal(a,b) vceqq_i16(a,b)
+#define u32x4_is_equal(a,b) vceqq_u32(a,b)
+#define i32x4_is_equal(a,b) vceqq_s32(a,b)
+#define i8x16_is_greater(a,b) vcgtq_s8(a,b)
+#define i16x8_is_greater(a,b) vcgtq_u8(a,b)
+#define i32x4_is_greater(a,b) vcgtq_s32(a,b)
+
+always_inline u8x16
+u8x16_is_zero (u8x16 x)
+{
+  u8x16 zero = { 0 };
+  return u8x16_is_equal (x, zero);
+}
+
+always_inline u16x8
+u16x8_is_zero (u16x8 x)
+{
+  u16x8 zero = { 0 };
+  return u16x8_is_equal (x, zero);
+}
+
+always_inline u32x4
+u32x4_is_zero (u32x4 x)
+{
+  u32x4 zero = { 0 };
+  return u32x4_is_equal (x, zero);
+}
+
+/* Converts all ones/zeros compare mask to bitmap. */
+always_inline u32
+u8x16_compare_byte_mask (u8x16 x)
+{
+  static int8_t const __attribute__ ((aligned (16))) xr[8] =
+  {
+  -7, -6, -5, -4, -3, -2, -1, 0};
+  uint8x8_t mask_and = vdup_n_u8 (0x80);
+  int8x8_t mask_shift = vld1_s8 (xr);
+
+  uint8x8_t lo = vget_low_u8 (x);
+  uint8x8_t hi = vget_high_u8 (x);
+
+  lo = vand_u8 (lo, mask_and);
+  lo = vshl_u8 (lo, mask_shift);
+
+  hi = vand_u8 (hi, mask_and);
+  hi = vshl_u8 (hi, mask_shift);
+
+  lo = vpadd_u8 (lo, lo);
+  lo = vpadd_u8 (lo, lo);
+  lo = vpadd_u8 (lo, lo);
+
+  hi = vpadd_u8 (hi, hi);
+  hi = vpadd_u8 (hi, hi);
+  hi = vpadd_u8 (hi, hi);
+
+  return ((hi[0] << 8) | (lo[0] & 0xff));
+}
 
 always_inline u32
 u16x8_zero_byte_mask (u16x8 input)
