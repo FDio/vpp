@@ -126,16 +126,33 @@ format_cpu_model_name (u8 * s, va_list * args)
 #endif
 }
 
+
+static inline char const *
+flag_skip_prefix (char const *flag)
+{
+  if (memcmp (flag, "x86_", sizeof ("x86_") - 1) == 0)
+    return flag + sizeof ("x86_") - 1;
+  if (memcmp (flag, "aarch64_", sizeof ("aarch64_") - 1) == 0)
+    return flag + sizeof ("aarch64_") - 1;
+  return flag;
+}
+
 u8 *
 format_cpu_flags (u8 * s, va_list * args)
 {
 #if defined(__x86_64__)
 #define _(flag, func, reg, bit) \
   if (clib_cpu_supports_ ## flag()) \
-    s = format (s, #flag " ");
+    s = format (s, "%s ", flag_skip_prefix(#flag));
   foreach_x86_64_flags return s;
 #undef _
-#else /* ! __x86_64__ */
+#elif defined(__aarch64__)
+#define _(flag, bit) \
+  if (clib_cpu_supports_ ## flag()) \
+    s = format (s, "%s ", flag_skip_prefix(#flag));
+  foreach_aarch64_flags return s;
+#undef _
+#else /* ! ! __x86_64__ && ! __aarch64__ */
   return format (s, "unknown");
 #endif
 }
