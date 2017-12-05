@@ -3461,8 +3461,6 @@ snat_det_map_command_fn (vlib_main_t * vm,
         }
     }
 
-  unformat_free (line_input);
-
   rv = snat_det_add_map(sm, &in_addr, (u8) in_plen, &out_addr, (u8)out_plen,
                         is_add);
 
@@ -3523,8 +3521,6 @@ snat_det_forward_command_fn (vlib_main_t * vm,
         }
     }
 
-  unformat_free (line_input);
-
   dm = snat_det_map_by_user(sm, &in_addr);
   if (!dm)
     vlib_cli_output (vm, "no match");
@@ -3583,8 +3579,6 @@ snat_det_reverse_command_fn (vlib_main_t * vm,
                                       format_unformat_error, line_input);
         }
     }
-
-  unformat_free (line_input);
 
   if (out_port < 1024 || out_port > 65535)
     {
@@ -3661,8 +3655,6 @@ set_timeout_command_fn (vlib_main_t * vm,
           goto done;
         }
     }
-
-  unformat_free (line_input);
 
 done:
   unformat_free (line_input);

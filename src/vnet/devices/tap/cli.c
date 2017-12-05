@@ -43,7 +43,6 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   /* Get a line of input. */
   if (unformat_user (input, unformat_line_input, line_input))
     {
-
       while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
 	{
 	  if (unformat (line_input, "id %u", &args.id))
@@ -74,8 +73,11 @@ tap_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			     unformat_ethernet_address, args.mac_addr))
 	    args.mac_addr_set = 1;
 	  else
-	    return clib_error_return (0, "unknown input `%U'",
-				      format_unformat_error, input);
+	    {
+	      unformat_free (line_input);
+	      return clib_error_return (0, "unknown input `%U'",
+					format_unformat_error, input);
+	    }
 	}
       unformat_free (line_input);
     }
