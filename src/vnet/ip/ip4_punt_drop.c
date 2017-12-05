@@ -486,6 +486,10 @@ ip4_punt_redirect_show_cmd (vlib_main_t * vm,
 			    unformat_input_t * main_input,
 			    vlib_cli_command_t * cmd)
 {
+  if ((vec_len (ip4_punt_redirect_cfg.redirect_by_rx_sw_if_index) == 0)
+      && (~0 == ip4_punt_redirect_cfg.any_rx_sw_if_index.tx_sw_if_index))
+    return (NULL);
+
   vlib_cli_output (vm, "%U", format_ip_punt_redirect, &ip4_punt_redirect_cfg);
 
   return (NULL);
