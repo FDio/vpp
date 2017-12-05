@@ -65,8 +65,8 @@ vl_api_tap_create_v2_t_handler (vl_api_tap_create_v2_t * mp)
       clib_memcpy (ap->hw_addr, mp->mac_address, 6);
       ap->hw_addr_set = 1;
     }
-  ap->rx_ring_sz = mp->rx_ring_sz;
-  ap->tx_ring_sz = mp->tx_ring_sz;
+  ap->rx_ring_sz = ntohs (mp->rx_ring_sz);
+  ap->tx_ring_sz = ntohs (mp->tx_ring_sz);
   ap->sw_if_index = (u32) ~ 0;
 
   if (mp->host_namespace_set)
