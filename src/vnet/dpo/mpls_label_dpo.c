@@ -16,6 +16,7 @@
 #include <vnet/ip/ip.h>
 #include <vnet/dpo/mpls_label_dpo.h>
 #include <vnet/mpls/mpls.h>
+#include <vnet/dpo/drop_dpo.h>
 
 /*
  * pool of all MPLS Label DPOs
@@ -53,6 +54,17 @@ mpls_label_dpo_create (mpls_label_t *label_stack,
     u32 ii;
 
     mld = mpls_label_dpo_alloc();
+
+    if (MPLS_LABEL_DPO_MAX_N_LABELS < vec_len(label_stack))
+    {
+        clib_warning("Label stack size exceeded");
+        dpo_stack(DPO_MPLS_LABEL,
+                  mld->mld_payload_proto,
+                  &mld->mld_dpo,
+                  drop_dpo_get(DPO_PROTO_MPLS));
+        return (mpls_label_dpo_get_index(mld));
+    }
+
     mld->mld_n_labels = vec_len(label_stack);
     mld->mld_n_hdr_bytes = mld->mld_n_labels * sizeof(mld->mld_hdr[0]);
     mld->mld_payload_proto = payload_proto;
