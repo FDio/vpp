@@ -119,36 +119,25 @@ dpdk_rx_trace (dpdk_main_t * dm,
 }
 
 static inline u32
-dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 queue_id)
+dpdk_rx_burst (dpdk_main_t * dm, dpdk_device_t * xd, u16 q)
 {
-  u32 n_buffers;
-  u32 n_left;
-  u32 n_this_chunk;
+  ASSERT (xd->flags & DPDK_DEVICE_FLAG_PMD);
 
-  n_left = VLIB_FRAME_SIZE;
-  n_buffers = 0;
+  u32 n_left = VLIB_FRAME_SIZE;
+  struct rte_mbuf **rx_vec = xd->rx_vectors[q];
 
-  if (PREDICT_TRUE (xd->flags & DPDK_DEVICE_FLAG_PMD))
+  while (n_left)
     {
-      while (n_left)
-	{
-	  n_this_chunk = rte_eth_rx_burst (xd->device_index, queue_id,
-					   xd->rx_vectors[queue_id] +
-					   n_buffers, n_left);
-	  n_buffers += n_this_chunk;
-	  n_left -= n_this_chunk;
+      u32 n_chunk = rte_eth_rx_burst (xd->device_index, q, rx_vec, n_left);
+      n_left -= n_chunk;
 
-	  /* Empirically, DPDK r1.8 produces vectors w/ 32 or fewer elts */
-	  if (n_this_chunk < 32)
-	    break;
-	}
-    }
-  else
-    {
-      ASSERT (0);
+      /* Empirically, DPDK r1.8 produces vectors w/ 32 or fewer elts */
+      if (n_chunk < 32)
+	return VLIB_FRAME_SIZE - n_left;
+      rx_vec += n_chunk;
     }
 
-  return n_buffers;
+  return VLIB_FRAME_SIZE;
 }
 
 
@@ -222,7 +211,10 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
 		   vlib_node_runtime_t * node, u32 thread_index, u16 queue_id,
 		   int maybe_multiseg)
 {
-  u32 n_buffers;
+  u32 n_buffers = dpdk_rx_burst (dm, xd, queue_id);
+  if (n_buffers == 0)
+    return 0;
+
   u32 next_index = VNET_DEVICE_INPUT_NEXT_ETHERNET_INPUT;
   u32 n_left_to_next, *to_next;
   u32 mb_index;
@@ -231,16 +223,6 @@ dpdk_device_input (dpdk_main_t * dm, dpdk_device_t * xd,
   u32 n_trace, trace_cnt __attribute__ ((unused));
   vlib_buffer_free_list_t *fl;
   vlib_buffer_t *bt = vec_elt_at_index (dm->buffer_templates, thread_index);
-
-  if ((xd->flags & DPDK_DEVICE_FLAG_ADMIN_UP) == 0)
-    return 0;
-
-  n_buffers = dpdk_rx_burst (dm, xd, queue_id);
-
-  if (n_buffers == 0)
-    {
-      return 0;
-    }
 
   vec_reset_length (xd->d_trace_buffers[thread_index]);
   trace_cnt = n_trace = vlib_get_trace_count (vm, node);
@@ -589,23 +571,29 @@ CLIB_MULTIARCH_FN (dpdk_input) (vlib_main_t * vm, vlib_node_runtime_t * node,
   dpdk_main_t *dm = &dpdk_main;
   dpdk_device_t *xd;
   uword n_rx_packets = 0;
-  vnet_device_input_runtime_t *rt = (void *) node->runtime_data;
-  vnet_device_and_queue_t *dq;
   u32 thread_index = node->thread_index;
+  vnet_device_and_queue_t *dq, *node_dqs =
+    vnet_get_devices_and_queues (vm, node);
 
   /*
    * Poll all devices on this cpu for input/interrupts.
    */
   /* *INDENT-OFF* */
-  foreach_device_and_queue (dq, rt->devices_and_queues)
+  foreach_device_and_queue (dq, node_dqs)
     {
       xd = vec_elt_at_index(dm->devices, dq->dev_instance);
+
+      enum { can_poll = DPDK_DEVICE_FLAG_ADMIN_UP | DPDK_DEVICE_FLAG_PMD };
+      if (PREDICT_FALSE ((xd->flags & can_poll) != can_poll))
+        continue;
       if (PREDICT_FALSE (xd->flags & DPDK_DEVICE_FLAG_BOND_SLAVE))
 	continue; 	/* Do not poll slave to a bonded interface */
+
+      enum { maybe_multiseg = 1, not_multiseg = 0 };
       if (xd->flags & DPDK_DEVICE_FLAG_MAYBE_MULTISEG)
-        n_rx_packets += dpdk_device_input (dm, xd, node, thread_index, dq->queue_id, /* maybe_multiseg */ 1);
+        n_rx_packets += dpdk_device_input (dm, xd, node, thread_index, dq->queue_id, maybe_multiseg);
       else
-        n_rx_packets += dpdk_device_input (dm, xd, node, thread_index, dq->queue_id, /* maybe_multiseg */ 0);
+        n_rx_packets += dpdk_device_input (dm, xd, node, thread_index, dq->queue_id, not_multiseg);
     }
   /* *INDENT-ON* */
 
