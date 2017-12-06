@@ -382,7 +382,7 @@ VLIB_CLI_COMMAND (show_ip6_punt_redirect_command, static) =
 {
   .path = "show ip6 punt redirect",
   .function = ip6_punt_redirect_show_cmd,
-  .short_help = "show ip6 punt redirect [add|del] rx [<interface>|all] via [<nh>] <tx_interface>",
+  .short_help = "show ip6 punt redirect",
   .is_mp_safe = 1,
 };
 /* *INDENT-ON* */

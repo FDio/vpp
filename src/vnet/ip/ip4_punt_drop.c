@@ -501,7 +501,7 @@ VLIB_CLI_COMMAND (show_ip4_punt_redirect_command, static) =
 {
   .path = "show ip punt redirect",
   .function = ip4_punt_redirect_show_cmd,
-  .short_help = "show ip punt redirect [add|del] rx [<interface>|all] via [<nh>] <tx_interface>",
+  .short_help = "show ip punt redirect",
   .is_mp_safe = 1,
 };
 /* *INDENT-ON* */
