@@ -20,6 +20,11 @@
 #include <vnet/mpls/packet.h>
 #include <vnet/dpo/dpo.h>
 
+
+/**
+ * Maximum number of labels in one DPO
+ */
+#define MPLS_LABEL_DPO_MAX_N_LABELS 12
 /**
  * A representation of an MPLS label for imposition in the data-path
  */
@@ -27,8 +32,9 @@ typedef struct mpls_label_dpo_t
 {
     /**
      * The MPLS label header to impose. Outer most label first.
+     * Each DPO will occupy one cache line, stuff that many labels in.
      */
-    mpls_unicast_header_t mld_hdr[8];
+    mpls_unicast_header_t mld_hdr[MPLS_LABEL_DPO_MAX_N_LABELS];
 
     /**
      * Next DPO in the graph
