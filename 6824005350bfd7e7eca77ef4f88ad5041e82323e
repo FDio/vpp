@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9cb7cd98_13bca2d8",
+        "filename": "src/vnet/tcp/tcp_input.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-12-06T16:07:44Z",
+      "side": 1,
+      "message": "No need to define these, just use tcp_next_drop, since the index will be the same in all cases (ensured by the foreach macro). Note how tcp_next_output is used the same way.",
+      "range": {
+        "startLine": 79,
+        "startChar": 0,
+        "endLine": 86,
+        "endChar": 69
+      },
+      "revId": "6824005350bfd7e7eca77ef4f88ad5041e82323e",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
