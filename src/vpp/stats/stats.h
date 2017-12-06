@@ -186,9 +186,6 @@ typedef struct
 
 extern stats_main_t stats_main;
 
-void dslock (stats_main_t * sm, int release_hint, int tag);
-void dsunlock (stats_main_t * sm);
-
 #endif /* __included_stats_h__ */
 
 /*

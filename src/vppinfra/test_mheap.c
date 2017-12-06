@@ -110,7 +110,7 @@ test_mheap_main (unformat_input_t * input)
      max_object_size, seed);
 
   vec_resize (objects, n_objects);
-  if (vec_bytes (objects))	/* stupid warning be gone */
+  if (vec_bytes (objects) > 0)	/* stupid warning be gone */
     memset (objects, ~0, vec_bytes (objects));
   objects_used = 0;
 

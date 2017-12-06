@@ -189,7 +189,7 @@ format_vnet_interface_simple_counters (u8 * s, va_list * args)
   return s;
 }
 
-void
+static void
 dslock (stats_main_t * sm, int release_hint, int tag)
 {
   u32 thread_index;
@@ -222,7 +222,7 @@ stats_dslock_with_hint (int hint, int tag)
   dslock (sm, hint, tag);
 }
 
-void
+static void
 dsunlock (stats_main_t * sm)
 {
   u32 thread_index;

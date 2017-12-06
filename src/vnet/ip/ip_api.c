@@ -2600,13 +2600,12 @@ vl_api_proxy_arp_add_del_t_handler (vl_api_proxy_arp_add_del_t * mp)
   u32 fib_index;
   int rv;
   ip4_main_t *im = &ip4_main;
-  stats_main_t *sm = &stats_main;
   int vnet_proxy_arp_add_del (ip4_address_t * lo_addr,
 			      ip4_address_t * hi_addr,
 			      u32 fib_index, int is_del);
   uword *p;
 
-  dslock (sm, 1 /* release hint */ , 6 /* tag */ );
+  stats_dslock_with_hint (1 /* release hint */ , 6 /* tag */ );
 
   p = hash_get (im->fib_index_by_table_id, ntohl (mp->vrf_id));
 
@@ -2623,7 +2622,7 @@ vl_api_proxy_arp_add_del_t_handler (vl_api_proxy_arp_add_del_t * mp)
 			       fib_index, mp->is_add == 0);
 
 out:
-  dsunlock (sm);
+  stats_dsunlock ();
   REPLY_MACRO (VL_API_PROXY_ARP_ADD_DEL_REPLY);
 }
 
@@ -2659,7 +2658,6 @@ ip4_reset_fib_t_handler (vl_api_reset_fib_t * mp)
   vnet_interface_main_t *im = &vnm->interface_main;
   ip4_main_t *im4 = &ip4_main;
   static u32 *sw_if_indices_to_shut;
-  stats_main_t *sm = &stats_main;
   fib_table_t *fib_table;
   ip4_fib_t *fib;
   u32 sw_if_index;
@@ -2667,7 +2665,7 @@ ip4_reset_fib_t_handler (vl_api_reset_fib_t * mp)
   int rv = VNET_API_ERROR_NO_SUCH_FIB;
   u32 target_fib_id = ntohl (mp->vrf_id);
 
-  dslock (sm, 1 /* release hint */ , 8 /* tag */ );
+  stats_dslock_with_hint (1 /* release hint */ , 8 /* tag */ );
 
   /* *INDENT-OFF* */
   pool_foreach (fib_table, im4->fibs,
@@ -2716,7 +2714,7 @@ ip4_reset_fib_t_handler (vl_api_reset_fib_t * mp)
     })); /* pool_foreach (fib) */
     /* *INDENT-ON* */
 
-  dsunlock (sm);
+  stats_dsunlock ();
   return rv;
 }
 
@@ -2726,7 +2724,6 @@ ip6_reset_fib_t_handler (vl_api_reset_fib_t * mp)
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   ip6_main_t *im6 = &ip6_main;
-  stats_main_t *sm = &stats_main;
   static u32 *sw_if_indices_to_shut;
   fib_table_t *fib_table;
   ip6_fib_t *fib;
@@ -2735,7 +2732,7 @@ ip6_reset_fib_t_handler (vl_api_reset_fib_t * mp)
   int rv = VNET_API_ERROR_NO_SUCH_FIB;
   u32 target_fib_id = ntohl (mp->vrf_id);
 
-  dslock (sm, 1 /* release hint */ , 9 /* tag */ );
+  stats_dslock_with_hint (1 /* release hint */ , 9 /* tag */ );
 
   /* *INDENT-OFF* */
   pool_foreach (fib_table, im6->fibs,
@@ -2775,7 +2772,7 @@ ip6_reset_fib_t_handler (vl_api_reset_fib_t * mp)
   })); /* pool_foreach (fib) */
   /* *INDENT-ON* */
 
-  dsunlock (sm);
+  stats_dsunlock ();
   return rv;
 }
 

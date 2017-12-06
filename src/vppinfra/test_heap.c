@@ -86,7 +86,7 @@ main (int argc, char *argv[])
     fformat (stderr, "%U\n", format_clib_mem_usage, /* verbose */ 0);
 
   vec_resize (objects, 1000);
-  if (vec_bytes (objects))	/* stupid warning be gone */
+  if (vec_bytes (objects) > 0)	/* stupid warning be gone */
     memset (objects, ~0, vec_bytes (objects));
   vec_resize (handles, vec_len (objects));
 

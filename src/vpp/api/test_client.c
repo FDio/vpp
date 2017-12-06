@@ -161,10 +161,8 @@ vl_api_sw_interface_details_t_handler (vl_api_sw_interface_details_t * mp)
 static void
 vl_api_sw_interface_set_flags_t_handler (vl_api_sw_interface_set_flags_t * mp)
 {
-  fformat (stdout, "set flags: sw_if_index %d, admin %s link %s\n",
-	   ntohl (mp->sw_if_index),
-	   mp->admin_up_down ? "up" : "down",
-	   mp->link_up_down ? "up" : "down");
+  fformat (stdout, "set flags: sw_if_index %d, admin %s\n",
+	   ntohl (mp->sw_if_index), mp->admin_up_down ? "up" : "down");
 }
 
 static void
@@ -1007,7 +1005,7 @@ dhcpv6_set_vss (test_main_t * tm)
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
   mp->oui = ntohl (6);
-  mp->fib_id = ntohl (60);
+  mp->tbl_id = ntohl (60);
   mp->is_add = 1;
   mp->is_ipv6 = 1;
   vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
@@ -1024,7 +1022,7 @@ dhcpv4_set_vss (test_main_t * tm)
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
   mp->oui = ntohl (4);
-  mp->fib_id = ntohl (40);
+  mp->tbl_id = ntohl (40);
   mp->is_add = 1;
   mp->is_ipv6 = 0;
   vl_msg_api_send_shmem (tm->vl_input_queue, (u8 *) & mp);
