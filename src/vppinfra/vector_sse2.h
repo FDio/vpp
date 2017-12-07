@@ -229,6 +229,13 @@ u8x8_splat (u8 a)
 #define i16x4_splat u16x4_splat
 #define i8x8_splat u8x8_splat
 
+/* vector combine */
+always_inline u16x8
+u16x4_vcombine (u16x4 low, u16x4 high)
+{
+  return (u16x8) _mm_set_epi64 ((__m64) low, (__m64) high);
+}
+
 #ifndef __ICC
 always_inline u64x2
 u64x2_read_lo (u64x2 x, u64 * a)
