@@ -281,32 +281,127 @@ boost::asio::ip::address_v4 operator~(const boost::asio::ip::address_v4& addr1)
   return (addr);
 }
 
-boost::asio::ip::address_v4
-route::prefix_t::mask() const
+boost::asio::ip::address_v6
+operator|(const boost::asio::ip::address_v6& addr1,
+          const boost::asio::ip::address_v6& addr2)
 {
-  uint32_t a;
+  boost::asio::ip::address_v6::bytes_type b1 = addr1.to_bytes();
+  boost::asio::ip::address_v6::bytes_type b2 = addr2.to_bytes();
 
-  a = ~((1 << mask_width()) - 1);
-  boost::asio::ip::address_v4 addr(a);
+  for (boost::asio::ip::address_v6::bytes_type::size_type ii = 0;
+       ii < b1.max_size(); ii++) {
+    b1[ii] |= b2[ii];
+  }
+
+  boost::asio::ip::address_v6 addr(b1);
   return (addr);
 }
 
-boost::asio::ip::address_v4
-route::prefix_t::low() const
+boost::asio::ip::address_v6 operator&(const boost::asio::ip::address_v6& addr1,
+                                      const boost::asio::ip::address_v6& addr2)
 {
-  boost::asio::ip::address_v4 low;
-  low = address().to_v4() & mask();
-  return (low);
+  boost::asio::ip::address_v6::bytes_type b1 = addr1.to_bytes();
+  boost::asio::ip::address_v6::bytes_type b2 = addr2.to_bytes();
+
+  for (boost::asio::ip::address_v6::bytes_type::size_type ii = 0;
+       ii < b1.max_size(); ii++) {
+    b1[ii] &= b2[ii];
+  }
+
+  boost::asio::ip::address_v6 addr(b1);
+  return (addr);
 }
 
-boost::asio::ip::address_v4
+boost::asio::ip::address_v6 operator~(const boost::asio::ip::address_v6& addr1)
+{
+  boost::asio::ip::address_v6::bytes_type b1 = addr1.to_bytes();
+
+  for (boost::asio::ip::address_v6::bytes_type::size_type ii = 0;
+       ii < b1.max_size(); ii++) {
+    b1[ii] = ~b1[ii];
+  }
+
+  boost::asio::ip::address_v6 addr(b1);
+  return (addr);
+}
+boost::asio::ip::address
+operator|(const boost::asio::ip::address& addr1,
+          const boost::asio::ip::address& addr2)
+{
+  if (addr1.is_v6())
+    return (addr1.to_v6() | addr2.to_v6());
+  else
+    return (addr1.to_v4() | addr2.to_v4());
+}
+
+boost::asio::ip::address operator&(const boost::asio::ip::address& addr1,
+                                   const boost::asio::ip::address& addr2)
+{
+  if (addr1.is_v6())
+    return (addr1.to_v6() & addr2.to_v6());
+  else
+    return (addr1.to_v4() & addr2.to_v4());
+}
+
+boost::asio::ip::address operator~(const boost::asio::ip::address& addr1)
+{
+  if (addr1.is_v6())
+    return ~(addr1.to_v6());
+  else
+    return ~(addr1.to_v4());
+}
+
+boost::asio::ip::address
+route::prefix_t::mask() const
+{
+  if (m_addr.is_v6()) {
+    boost::asio::ip::address_v6::bytes_type b =
+      boost::asio::ip::address_v6::any().to_bytes();
+
+    uint8_t n_bits = mask_width();
+
+    for (boost::asio::ip::address_v6::bytes_type::size_type ii = 0;
+         ii < b.max_size(); ii++) {
+      for (int8_t bit = 7; bit >= 0 && n_bits; bit--) {
+        b[ii] |= (1 << bit);
+        n_bits--;
+      }
+      if (!n_bits)
+        break;
+    }
+
+    return (boost::asio::ip::address_v6(b));
+  } else {
+    uint32_t a;
+
+    a = ~((1 << (32 - mask_width())) - 1);
+
+    return (boost::asio::ip::address_v4(a));
+  }
+}
+
+route::prefix_t
+route::prefix_t::low() const
+{
+  prefix_t pfx(*this);
+
+  pfx.m_addr = pfx.m_addr & pfx.mask();
+
+  return (pfx);
+}
+
+route::prefix_t
 route::prefix_t::high() const
 {
-  boost::asio::ip::address_v4 high;
-  high = address().to_v4() | ~mask();
-  return (high);
+  prefix_t pfx(*this);
+
+  pfx.m_addr = pfx.m_addr | ~pfx.mask();
+
+  return (pfx);
 }
-}
+
+}; // namespace VOM
+
 /*
  * fd.io coding-style-patch-verification: ON
  *

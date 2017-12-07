@@ -472,7 +472,7 @@ public:
     }
 };
 
-BOOST_AUTO_TEST_SUITE(VppOM_test)
+BOOST_AUTO_TEST_SUITE(vom)
 
 #define TRY_CHECK_RC(stmt)                    \
 {                                             \
@@ -1592,6 +1592,44 @@ BOOST_AUTO_TEST_CASE(test_interface_route_domain_change) {
     ADD_EXPECT(route_domain_cmds::delete_cmd(hw_rd_delete, l3_proto_t::IPV6, 1));
 
     TRY_CHECK(OM::remove(rene));
+}
+
+BOOST_AUTO_TEST_CASE(test_prefixes) {
+    route::prefix_t p6_s_16(boost::asio::ip::address::from_string("2001::"), 16);
+
+    BOOST_CHECK(p6_s_16.mask() == boost::asio::ip::address::from_string("ffff::"));
+
+    route::prefix_t p6_s_17(boost::asio::ip::address::from_string("2001:ff00::"), 17);
+
+    BOOST_CHECK(p6_s_17.mask() == boost::asio::ip::address::from_string("ffff:8000::"));
+    BOOST_CHECK(p6_s_17.low().address() == boost::asio::ip::address::from_string("2001:8000::"));
+
+    route::prefix_t p6_s_15(boost::asio::ip::address::from_string("2001:ff00::"), 15);
+    BOOST_CHECK(p6_s_15.mask() == boost::asio::ip::address::from_string("fffe::"));
+    BOOST_CHECK(p6_s_15.low().address() == boost::asio::ip::address::from_string("2000::"));
+
+    route::prefix_t p4_s_16(boost::asio::ip::address::from_string("192.168.0.0"), 16);
+
+    BOOST_CHECK(p4_s_16.mask() == boost::asio::ip::address::from_string("255.255.0.0"));
+
+    route::prefix_t p4_s_17(boost::asio::ip::address::from_string("192.168.127.0"), 17);
+
+    BOOST_CHECK(p4_s_17.mask() == boost::asio::ip::address::from_string("255.255.128.0"));
+    BOOST_CHECK(p4_s_17.low().address() == boost::asio::ip::address::from_string("192.168.0.0"));
+    BOOST_CHECK(p4_s_17.high().address() == boost::asio::ip::address::from_string("192.168.127.255"));
+
+    route::prefix_t p4_s_15(boost::asio::ip::address::from_string("192.168.255.255"), 15);
+
+    BOOST_CHECK(p4_s_15.mask() == boost::asio::ip::address::from_string("255.254.0.0"));
+    BOOST_CHECK(p4_s_15.low().address() == boost::asio::ip::address::from_string("192.168.0.0"));
+    BOOST_CHECK(p4_s_15.high().address() == boost::asio::ip::address::from_string("192.169.255.255"));
+
+    route::prefix_t p4_s_32(boost::asio::ip::address::from_string("192.168.1.1"), 32);
+
+    BOOST_CHECK(p4_s_32.mask() == boost::asio::ip::address::from_string("255.255.255.255"));
+    BOOST_CHECK(p4_s_32.low().address() == boost::asio::ip::address::from_string("192.168.1.1"));
+    BOOST_CHECK(p4_s_32.high().address() == boost::asio::ip::address::from_string("192.168.1.1"));
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
