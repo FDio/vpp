@@ -27,9 +27,6 @@ default_dto_field_setter_template = Template("""
     (*env)->Set${jni_setter}(env, ${object_name}, ${field_reference_name}FieldId, mp->${c_name});
 """)
 
-variable_length_array_value_template = Template("""mp->${length_var_name}""")
-variable_length_array_template = Template("""clib_net_to_host_${length_field_type}(${value})""")
-
 u16_dto_field_setter_template = Template("""
     (*env)->Set${jni_setter}(env, ${object_name}, ${field_reference_name}FieldId, clib_net_to_host_u16(mp->${c_name}));
 """)
@@ -184,10 +181,6 @@ i32_struct_setter_template = Template("""
 
 u64_struct_setter_template = Template("""
     mp->${c_name} = clib_host_to_net_u64(${field_reference_name});""")
-
-array_length_enforcement_template = Template("""
-        size_t max_size = ${field_length};
-        if (cnt > max_size) cnt = max_size;""")
 
 u8_array_struct_setter_template = Template("""
     if (${field_reference_name}) {

@@ -169,7 +169,7 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
     for func in func_list:
         camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
 
-        if util.is_ignored(func['name']) or util.is_control_ping(camel_case_name_with_suffix):
+        if util.is_control_ping(camel_case_name_with_suffix):
             continue
 
         if not util.is_reply(camel_case_name_with_suffix) and not util.is_notification(func['name']):
@@ -181,8 +181,7 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
             camel_case_request_method_name = util.remove_reply_suffix(util.underscore_to_camelcase(func['name']))
             request_dto = util.remove_reply_suffix(util.underscore_to_camelcase_upper(func['name']))
             if util.is_details(camel_case_name_with_suffix):
-                camel_case_reply_name = get_standard_dump_reply_name(util.underscore_to_camelcase_upper(func['name']),
-                                                                     func['name'])
+                camel_case_reply_name = util.underscore_to_camelcase_upper(func['name'])
                 callbacks.append(jvpp_facade_details_callback_method_template.substitute(base_package=base_package,
                                                                                          plugin_package=plugin_package,
                                                                                          dto_package=dto_package,
@@ -206,8 +205,7 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
                                                                                      request_name=util.remove_reply_suffix(camel_case_reply_name) +
                                                                                                   util.underscore_to_camelcase_upper(util.dump_suffix)))
             else:
-                request_name = util.underscore_to_camelcase_upper(util.unconventional_naming_rep_req[func['name']]) \
-                    if func['name'] in util.unconventional_naming_rep_req else util.remove_reply_suffix(camel_case_name_with_suffix)
+                request_name = util.remove_reply_suffix(camel_case_name_with_suffix)
 
                 methods.append(future_jvpp_method_template.substitute(plugin_package=plugin_package,
                                                                       dto_package=dto_package,
@@ -339,19 +337,3 @@ future_jvpp_dump_method_impl_template = Template('''
         return send(request, new $plugin_package.$dto_package.$reply_name());
     }
 ''')
-
-
-# Returns request name or special one from unconventional_naming_rep_req map
-def get_standard_dump_reply_name(camel_case_dto_name, func_name):
-    # FIXME this is a hotfix for sub-details callbacks
-    # FIXME also for L2FibTableEntry
-    # It's all because unclear mapping between
-    #  request -> reply,
-    #  dump -> reply, details,
-    #  notification_start -> reply, notifications
-
-    # vpe.api needs to be "standardized" so we can parse the information and create maps before generating java code
-    suffix = func_name.split("_")[-1]
-    return util.underscore_to_camelcase_upper(
-        util.unconventional_naming_rep_req[func_name]) + util.underscore_to_camelcase_upper(suffix) if func_name in util.unconventional_naming_rep_req \
-        else camel_case_dto_name

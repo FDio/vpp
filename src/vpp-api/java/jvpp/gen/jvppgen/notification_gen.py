@@ -178,7 +178,7 @@ def generate_notification_registry(func_list, base_package, plugin_package, plug
     callback_file = open(os.path.join(notification_package, "Global%sEventCallback.java" % plugin_name), 'w')
 
     global_notification_callback_callbacks = ""
-    if (callbacks):
+    if callbacks:
         global_notification_callback_callbacks = " extends " + ", ".join(callbacks)
 
     callback_file.write(global_notification_callback_template.substitute(inputfile=inputfile,

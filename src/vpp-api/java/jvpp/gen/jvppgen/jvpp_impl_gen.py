@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os, util
+import util
 from string import Template
 
 jvpp_ifc_template = Template("""
@@ -173,11 +173,6 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name_underscor
     methods = []
     methods_impl = []
     for func in func_list:
-
-        # Skip structures that are used only as notifications
-        if util.is_ignored(func['name']):
-            continue
-
         camel_case_name = util.underscore_to_camelcase(func['name'])
         camel_case_name_upper = util.underscore_to_camelcase_upper(func['name'])
         if util.is_reply(camel_case_name):

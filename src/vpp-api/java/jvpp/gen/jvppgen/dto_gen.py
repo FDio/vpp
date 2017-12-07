@@ -72,7 +72,7 @@ def generate_dtos(func_list, base_package, plugin_package, plugin_name, dto_pack
         camel_case_method_name = util.underscore_to_camelcase(func['name'])
         dto_path = os.path.join(dto_package, camel_case_dto_name + ".java")
 
-        if util.is_ignored(func['name']) or util.is_control_ping(camel_case_dto_name):
+        if util.is_control_ping(camel_case_dto_name):
             continue
 
         fields = generate_dto_fields(camel_case_dto_name, func)
@@ -83,7 +83,7 @@ def generate_dtos(func_list, base_package, plugin_package, plugin_name, dto_pack
         if not util.is_just_notification(func["name"]):
             if util.is_reply(camel_case_dto_name):
                 description = "reply DTO"
-                request_dto_name = get_request_name(camel_case_dto_name, func['name'])
+                request_dto_name = util.remove_reply_suffix(camel_case_dto_name)
                 if util.is_details(camel_case_dto_name):
                     # FIXME assumption that dump calls end with "Dump" suffix. Not enforced in vpe.api
                     base_type += "JVppReply<%s.%s.%s>" % (plugin_package, dto_package, request_dto_name + "Dump")
@@ -270,13 +270,6 @@ def write_dto_file(base_package, plugin_package, base_type, camel_case_dto_name,
 
 dump_dto_suffix = "ReplyDump"
 dump_reply_artificial_dtos = {}
-
-
-# Returns request name or special one from unconventional_naming_rep_req map
-def get_request_name(camel_case_dto_name, func_name):
-    return util.underscore_to_camelcase_upper(
-        util.unconventional_naming_rep_req[func_name]) if func_name in util.unconventional_naming_rep_req \
-        else util.remove_reply_suffix(camel_case_dto_name)
 
 
 def flush_dump_reply_dtos(inputfile):

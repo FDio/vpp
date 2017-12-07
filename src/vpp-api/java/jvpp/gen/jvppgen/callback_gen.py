@@ -17,8 +17,6 @@ import os
 import util
 from string import Template
 
-from util import remove_suffix
-
 callback_suffix = "Callback"
 
 callback_template = Template("""
@@ -63,7 +61,7 @@ def generate_callbacks(func_list, base_package, plugin_package, plugin_name, cal
 
         camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
 
-        if util.is_ignored(func['name']) or util.is_control_ping(camel_case_name_with_suffix):
+        if util.is_control_ping(camel_case_name_with_suffix):
             continue
         if not util.is_reply(camel_case_name_with_suffix) and not util.is_notification(func['name']):
             continue

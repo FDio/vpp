@@ -17,7 +17,6 @@ import os, util
 from string import Template
 
 import callback_gen
-import dto_gen
 
 jvpp_ifc_template = Template("""
 package $plugin_package.$callback_facade_package;
@@ -112,7 +111,7 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
     methods_impl = []
     for func in func_list:
 
-        if util.is_notification(func['name']) or util.is_ignored(func['name']):
+        if util.is_notification(func['name']):
             continue
 
         camel_case_name = util.underscore_to_camelcase(func['name'])
@@ -121,10 +120,10 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
             continue
 
         # Strip suffix for dump calls
-        callback_type = get_request_name(camel_case_name_upper, func['name'])
-        if (util.is_dump(camel_case_name_upper)):
+        callback_type = get_request_name(camel_case_name_upper)
+        if util.is_dump(camel_case_name_upper):
             callback_type += "Details"
-        elif (not util.is_notification(camel_case_name_upper)):
+        elif not util.is_notification(camel_case_name_upper):
             callback_type += "Reply"
         callback_type += callback_gen.callback_suffix
 
@@ -282,7 +281,7 @@ def generate_callback(func_list, base_package, plugin_package, plugin_name, dto_
 
         camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
 
-        if util.is_ignored(func['name']) or util.is_control_ping(camel_case_name_with_suffix):
+        if util.is_control_ping(camel_case_name_with_suffix):
             continue
 
         if util.is_reply(camel_case_name_with_suffix):
@@ -314,18 +313,9 @@ def generate_callback(func_list, base_package, plugin_package, plugin_name, dto_
     jvpp_file.close()
 
 
-# Returns request name or special one from unconventional_naming_rep_req map
-def get_request_name(camel_case_dto_name, func_name):
-    if func_name in reverse_dict(util.unconventional_naming_rep_req):
-        request_name = util.underscore_to_camelcase_upper(reverse_dict(util.unconventional_naming_rep_req)[func_name])
-    else:
-        request_name = camel_case_dto_name
-    return remove_suffix(request_name)
-
-
-def reverse_dict(map):
-    return dict((v, k) for k, v in map.iteritems())
-
+# Returns request name
+def get_request_name(camel_case_dto_name):
+    return remove_suffix(camel_case_dto_name)
 
 def remove_suffix(name):
     if util.is_reply(name):

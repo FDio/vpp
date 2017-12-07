@@ -14,13 +14,13 @@
 # limitations under the License.
 #
 
-import os, util
+import util
 from string import Template
 
 import jni_gen
 
 
-def is_manually_generated(f_name, plugin_name):
+def is_manually_generated(f_name):
     return f_name in {'control_ping_reply'}
 
 
@@ -67,7 +67,7 @@ def generate_class_cache(func_list, plugin_name):
         class_name = util.underscore_to_camelcase_upper(c_name)
         ref_name = util.underscore_to_camelcase(c_name)
 
-        if util.is_ignored(c_name) or util.is_control_ping(class_name):
+        if util.is_control_ping(class_name):
             continue
 
         class_references.append(class_reference_template.substitute(
@@ -144,8 +144,8 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
     for f in func_list:
         f_name = f['name']
         camel_case_function_name = util.underscore_to_camelcase(f_name)
-        if is_manually_generated(f_name, plugin_name) or util.is_reply(camel_case_function_name) \
-                or util.is_ignored(f_name) or util.is_just_notification(f_name):
+        if is_manually_generated(f_name) or util.is_reply(camel_case_function_name) \
+                or util.is_just_notification(f_name):
             continue
 
         arguments = ''
@@ -254,7 +254,7 @@ def generate_msg_handlers(func_list, plugin_name, inputfile):
         dto_name = util.underscore_to_camelcase_upper(handler_name)
         ref_name = util.underscore_to_camelcase(handler_name)
 
-        if is_manually_generated(handler_name, plugin_name) or util.is_ignored(handler_name):
+        if is_manually_generated(handler_name):
             continue
 
         if not util.is_reply(dto_name) and not util.is_notification(handler_name):
@@ -308,7 +308,7 @@ def generate_handler_registration(func_list):
         name = f['name']
         camelcase_name = util.underscore_to_camelcase(f['name'])
 
-        if (not util.is_reply(camelcase_name) and not util.is_notification(name)) or util.is_ignored(name) \
+        if (not util.is_reply(camelcase_name) and not util.is_notification(name)) \
                 or util.is_control_ping(camelcase_name):
             continue
 
@@ -327,9 +327,6 @@ def generate_api_verification(func_list):
     api_verification = ["#define foreach_supported_api_message \\\n"]
     for f in func_list:
         name = f['name']
-
-        if util.is_ignored(name):
-            continue
 
         api_verification.append(api_verification_template.substitute(
             name=name,
