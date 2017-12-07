@@ -135,13 +135,15 @@ def generate_notification_registry(func_list, base_package, plugin_package, plug
     register_callback_methods_impl = []
     handler_methods = []
     for func in func_list:
-
-        if not util.is_reply(func['name']) and not util.is_notification(func['name']):
-            continue
-
         camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
+
         if util.is_control_ping(camel_case_name_with_suffix):
+            # Skip control ping managed by jvpp registry.
             continue
+        if util.is_dump(func['name']) or util.is_request(func['name'], func_list):
+            continue
+
+        # Generate callbacks for all messages except for dumps and requests (handled by vpp, not client).
         notification_dto = camel_case_name_with_suffix
         callback_ifc = camel_case_name_with_suffix + callback_gen.callback_suffix
         fully_qualified_callback_ifc = "{0}.{1}.{2}".format(plugin_package, callback_package, callback_ifc)
@@ -163,7 +165,6 @@ def generate_notification_registry(func_list, base_package, plugin_package, plug
                                                                 notification=notification_dto,
                                                                 notification_reply=camel_case_name_with_suffix,
                                                                 callback=callback_ifc))
-
 
     callback_file = open(os.path.join(notification_package, "%sEventRegistry.java" % plugin_name), 'w')
     callback_file.write(notification_registry_template.substitute(inputfile=inputfile,
