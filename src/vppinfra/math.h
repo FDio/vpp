@@ -34,12 +34,9 @@
   OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-
 #ifndef included_math_h
 #define included_math_h
-
 #include <vppinfra/clib.h>
-
 always_inline f64
 sqrt (f64 x)
 {

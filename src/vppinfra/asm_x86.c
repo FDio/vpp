@@ -27,26 +27,31 @@
   _  (AX)  _ (CX)  _ (DX)  _ (BX)		\
   _  (SP)  _ (BP)  _ (SI)  _ (DI)
 
-typedef enum {
+typedef enum
+{
 #define _(r) X86_INSN_GP_REG_##r,
   foreach_x86_gp_register
 #undef _
 } x86_insn_gp_register_t;
 
-typedef union {
-  struct {
-    u8 rm : 3;
-    u8 reg : 3;
-    u8 mode : 2;
+typedef union
+{
+  struct
+  {
+    u8 rm:3;
+    u8 reg:3;
+    u8 mode:2;
   };
   u8 byte;
 } x86_insn_modrm_byte_t;
 
-typedef union {
-  struct {
-    u8 base : 3;
-    u8 index : 3;
-    u8 log2_scale : 2;
+typedef union
+{
+  struct
+  {
+    u8 base:3;
+    u8 index:3;
+    u8 log2_scale:2;
   };
   u8 byte;
 } x86_insn_sib_byte_t;
@@ -58,7 +63,10 @@ x86_insn_has_modrm_byte (x86_insn_t * insn)
   for (i = 0; i < ARRAY_LEN (insn->operands); i++)
     switch (insn->operands[i].code)
       {
-      case 'G': case 'E': case 'M': case 'R':
+      case 'G':
+      case 'E':
+      case 'M':
+      case 'R':
 	return 1;
       }
   return 0;
@@ -89,26 +97,27 @@ x86_insn_immediate_type (x86_insn_t * insn)
   _ (10) _ (28) _ (50) _ (58) _ (60) _ (68) _ (70) _ (78)	\
   _ (c0) _ (d0) _ (d8) _ (e0) _ (e8) _ (f0) _ (f8)
 
-enum {
+enum
+{
 #define _(x) X86_INSN_MODRM_REG_GROUP_##x,
   foreach_x86_insn_modrm_reg_group
 #undef _
 #define _(x) X86_INSN_SSE_GROUP_##x,
-  foreach_x86_insn_sse_group
+    foreach_x86_insn_sse_group
 #undef _
 };
 
-enum {
+enum
+{
 #define _(x)								\
   X86_INSN_FLAG_MODRM_REG_GROUP_##x					\
   = X86_INSN_FLAG_SET_MODRM_REG_GROUP (1 + X86_INSN_MODRM_REG_GROUP_##x),
   foreach_x86_insn_modrm_reg_group
 #undef _
-
 #define _(x)							\
   X86_INSN_FLAG_SSE_GROUP_##x					\
   = X86_INSN_FLAG_SET_SSE_GROUP (1 + X86_INSN_SSE_GROUP_##x),
-  foreach_x86_insn_sse_group
+    foreach_x86_insn_sse_group
 #undef _
 };
 
@@ -151,34 +160,34 @@ static x86_insn_t x86_insns_one_byte[256] = {
   _2 (x, AX, Iz)
 
   /* 0x00 */
-  _ (add),
+  _(add),
   _0 (push_es),
   _0 (pop_es),
-  _ (or),
+  _(or),
   _0 (push_cs),
   _0 (escape_two_byte),
 
   /* 0x10 */
-  _ (adc),
+  _(adc),
   _0 (push_ss),
   _0 (pop_ss),
-  _ (sbb),
+  _(sbb),
   _0 (push_ds),
   _0 (pop_ds),
 
   /* 0x20 */
-  _ (and),
+  _(and),
   _0 (segment_es),
   _0 (daa),
-  _ (sub),
+  _(sub),
   _0 (segment_cs),
   _0 (das),
 
   /* 0x30 */
-  _ (xor),
+  _(xor),
   _0 (segment_ss),
   _0 (aaa),
-  _ (cmp),
+  _(cmp),
   _0 (segment_ds),
   _0 (aas),
 
@@ -189,19 +198,17 @@ static x86_insn_t x86_insns_one_byte[256] = {
   foreach_x86_gp_reg
 #undef _
 #define _(r) _1 (dec, r),
-  foreach_x86_gp_reg
+    foreach_x86_gp_reg
 #undef _
-
-  /* 0x50 */
+    /* 0x50 */
 #define _(r) _1f (push, X86_INSN_FLAG_DEFAULT_64_BIT, r),
-  foreach_x86_gp_reg
+    foreach_x86_gp_reg
 #undef _
 #define _(r) _1f (pop, X86_INSN_FLAG_DEFAULT_64_BIT, r),
-  foreach_x86_gp_reg
+    foreach_x86_gp_reg
 #undef _
-
-  /* 0x60 */
-  _0 (pusha),
+    /* 0x60 */
+    _0 (pusha),
   _0 (popa),
   _2 (bound, Gv, Ma),
   _2 (movsxd, Gv, Ed),
@@ -222,9 +229,8 @@ static x86_insn_t x86_insns_one_byte[256] = {
 #define _(x) _1 (j##x, Jb),
   foreach_x86_condition
 #undef _
-
-  /* 0x80 */
-  _2f (modrm_group_1, X86_INSN_FLAG_MODRM_REG_GROUP_1, Eb, Ib),
+    /* 0x80 */
+    _2f (modrm_group_1, X86_INSN_FLAG_MODRM_REG_GROUP_1, Eb, Ib),
   _2f (modrm_group_1, X86_INSN_FLAG_MODRM_REG_GROUP_1, Ev, Iz),
   _2f (modrm_group_1, X86_INSN_FLAG_MODRM_REG_GROUP_1, Eb, Ib),
   _2f (modrm_group_1, X86_INSN_FLAG_MODRM_REG_GROUP_1, Ev, Ib),
@@ -289,9 +295,8 @@ static x86_insn_t x86_insns_one_byte[256] = {
 #define _(r) _2 (mov, r, Iv),
   foreach_x86_gp_reg
 #undef _
-
-  /* 0xc0 */
-  _2f (modrm_group_2, X86_INSN_FLAG_MODRM_REG_GROUP_2, Eb, Ib),
+    /* 0xc0 */
+    _2f (modrm_group_2, X86_INSN_FLAG_MODRM_REG_GROUP_2, Eb, Ib),
   _2f (modrm_group_2, X86_INSN_FLAG_MODRM_REG_GROUP_2, Ev, Ib),
   _1 (ret, Iw),
   _0 (ret),
@@ -309,8 +314,10 @@ static x86_insn_t x86_insns_one_byte[256] = {
   _0 (iret),
 
   /* 0xd0 */
+  /* *INDENT-OFF* */
   _2f (modrm_group_2, X86_INSN_FLAG_MODRM_REG_GROUP_2, Eb, 1b),
   _2f (modrm_group_2, X86_INSN_FLAG_MODRM_REG_GROUP_2, Ev, 1b),
+  /* *INDENT-ON* */
   _2f (modrm_group_2, X86_INSN_FLAG_MODRM_REG_GROUP_2, Eb, CL),
   _2f (modrm_group_2, X86_INSN_FLAG_MODRM_REG_GROUP_2, Ev, CL),
   _0 (aam),
@@ -337,7 +344,7 @@ static x86_insn_t x86_insns_one_byte[256] = {
   _2 (out, Ib, AL),
   _2 (out, Ib, AX),
   _1f (call, X86_INSN_FLAG_DEFAULT_64_BIT, Jz),
-  _1f ( jmp, X86_INSN_FLAG_DEFAULT_64_BIT, Jz),
+  _1f (jmp, X86_INSN_FLAG_DEFAULT_64_BIT, Jz),
   _1 (jmp, Ap),
   _1 (jmp, Jb),
   _2 (in, AL, DX),
@@ -441,9 +448,8 @@ static x86_insn_t x86_insns_two_byte[256] = {
 #define _(x) _2 (cmov##x, Gv, Ev),
   foreach_x86_condition
 #undef _
-
-  /* 0x50 */
-  _2f (movmskps, X86_INSN_FLAG_SSE_GROUP_50, Gd, Rx),
+    /* 0x50 */
+    _2f (movmskps, X86_INSN_FLAG_SSE_GROUP_50, Gd, Rx),
   _2f (sqrtps, X86_INSN_FLAG_SSE_GROUP_50, Gx, Ex),
   _2f (rsqrtps, X86_INSN_FLAG_SSE_GROUP_50, Gx, Ex),
   _2f (rcpps, X86_INSN_FLAG_SSE_GROUP_50, Gx, Ex),
@@ -500,14 +506,12 @@ static x86_insn_t x86_insns_two_byte[256] = {
 #define _(x) _1 (jmp##x, Jz),
   foreach_x86_condition
 #undef _
-
-  /* 0x90 */
+    /* 0x90 */
 #define _(x) _1 (set##x, Eb),
-  foreach_x86_condition
+    foreach_x86_condition
 #undef _
-
-  /* 0xa0 */
-  _0 (push_fs),
+    /* 0xa0 */
+    _0 (push_fs),
   _0 (pop_fs),
   _0 (cpuid),
   _2 (bt, Ev, Gv),
@@ -554,9 +558,8 @@ static x86_insn_t x86_insns_two_byte[256] = {
 #define _(r) _1 (bswap, r),
   foreach_x86_gp_reg
 #undef _
-
-  /* 0xd0 */
-  _0f (bad, X86_INSN_FLAG_SSE_GROUP_d0),
+    /* 0xd0 */
+    _0f (bad, X86_INSN_FLAG_SSE_GROUP_d0),
   _2f (psrlw, X86_INSN_FLAG_SSE_GROUP_d0, Gm, Em),
   _2f (psrld, X86_INSN_FLAG_SSE_GROUP_d0, Gm, Em),
   _2f (psrlq, X86_INSN_FLAG_SSE_GROUP_d0, Gm, Em),
@@ -610,677 +613,700 @@ static x86_insn_t x86_insns_two_byte[256] = {
   _0f (bad, X86_INSN_FLAG_SSE_GROUP_f8),
 };
 
-typedef struct {
+typedef struct
+{
   x86_insn_t insns[8];
 } x86_insn_group8_t;
 
 /* Escape groups are indexed by modrm reg field. */
 static x86_insn_group8_t x86_insn_modrm_reg_groups[] = {
   [X86_INSN_MODRM_REG_GROUP_1].insns = {
-    _0 (add), _0 ( or), _0 (adc), _0 (sbb),
-    _0 (and), _0 (sub), _0 (xor), _0 (cmp),
-  },
+					_0 (add), _0 (or), _0 (adc), _0 (sbb),
+					_0 (and), _0 (sub), _0 (xor),
+					_0 (cmp),
+					},
 
   [X86_INSN_MODRM_REG_GROUP_1a].insns = {
-    _0f (pop, X86_INSN_FLAG_DEFAULT_64_BIT),
-    _0 (bad), _0 (bad), _0 (bad),
-    _0 (bad), _0 (bad), _0 (bad), _0 (bad),
-  },
+					 _0f (pop,
+					      X86_INSN_FLAG_DEFAULT_64_BIT),
+					 _0 (bad), _0 (bad), _0 (bad),
+					 _0 (bad), _0 (bad), _0 (bad),
+					 _0 (bad),
+					 },
 
   [X86_INSN_MODRM_REG_GROUP_2].insns = {
-    _0 (rol), _0 (ror), _0 (rcl), _0 (rcr),
-    _0 (shl), _0 (shr), _0 (sal), _0 (sar),
-  },
+					_0 (rol), _0 (ror), _0 (rcl),
+					_0 (rcr),
+					_0 (shl), _0 (shr), _0 (sal),
+					_0 (sar),
+					},
 
   [X86_INSN_MODRM_REG_GROUP_3].insns = {
-    _0 (test), _0 (test), _0 (not), _0 (neg),
-    _0 (mul), _0 (imul), _0 (div), _0 (idiv),
-  },
+					_0 (test), _0 (test), _0 (not),
+					_0 (neg),
+					_0 (mul), _0 (imul), _0 (div),
+					_0 (idiv),
+					},
 
   [X86_INSN_MODRM_REG_GROUP_4].insns = {
-    _0 (inc), _0 (dec), _0 (bad), _0 (bad),
-    _0 (bad), _0 (bad), _0 (bad), _0 (bad),
-  },
+					_0 (inc), _0 (dec), _0 (bad),
+					_0 (bad),
+					_0 (bad), _0 (bad), _0 (bad),
+					_0 (bad),
+					},
 
   [X86_INSN_MODRM_REG_GROUP_5].insns = {
-    _1 (inc, Ev),
-    _1 (dec, Ev),
-    _1f (call, X86_INSN_FLAG_DEFAULT_64_BIT, Ev),
-    _1 (call, Mp),
-    _1f (jmp, X86_INSN_FLAG_DEFAULT_64_BIT, Ev),
-    _1 (jmp, Mp),
-    _1f (push, X86_INSN_FLAG_DEFAULT_64_BIT, Ev),
-    _0 (bad),
-  },
+					_1 (inc, Ev),
+					_1 (dec, Ev),
+					_1f (call,
+					     X86_INSN_FLAG_DEFAULT_64_BIT,
+					     Ev),
+					_1 (call, Mp),
+					_1f (jmp,
+					     X86_INSN_FLAG_DEFAULT_64_BIT,
+					     Ev),
+					_1 (jmp, Mp),
+					_1f (push,
+					     X86_INSN_FLAG_DEFAULT_64_BIT,
+					     Ev),
+					_0 (bad),
+					},
 
   [X86_INSN_MODRM_REG_GROUP_6].insns = {
-    _1 (sldt, Ev),
-    _1 (str, Ev),
-    _1 (lldt, Ev),
-    _1 (ltr, Ev),
-    _1 (verr, Ev),
-    _1 (verw, Ev),
-    _0 (bad),
-    _0 (bad),
-  },
+					_1 (sldt, Ev),
+					_1 (str, Ev),
+					_1 (lldt, Ev),
+					_1 (ltr, Ev),
+					_1 (verr, Ev),
+					_1 (verw, Ev),
+					_0 (bad),
+					_0 (bad),
+					},
 
   [X86_INSN_MODRM_REG_GROUP_7].insns = {
-    _1 (sgdt, Mv),
-    _1 (sidt, Mv),
-    _1 (lgdt, Mv),
-    _1 (lidt, Mv),
-    _1 (smsw, Ev),
-    _0 (bad),
-    _1 (lmsw, Ew),
-    _1 (invlpg, Mv),
-  },
+					_1 (sgdt, Mv),
+					_1 (sidt, Mv),
+					_1 (lgdt, Mv),
+					_1 (lidt, Mv),
+					_1 (smsw, Ev),
+					_0 (bad),
+					_1 (lmsw, Ew),
+					_1 (invlpg, Mv),
+					},
 
   [X86_INSN_MODRM_REG_GROUP_8].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _2 (bt, Ev, Ib),
-    _2 (bts, Ev, Ib),
-    _2 (btr, Ev, Ib),
-    _2 (btc, Ev, Ib),
-  },
+					_0 (bad),
+					_0 (bad),
+					_0 (bad),
+					_0 (bad),
+					_2 (bt, Ev, Ib),
+					_2 (bts, Ev, Ib),
+					_2 (btr, Ev, Ib),
+					_2 (btc, Ev, Ib),
+					},
 
   [X86_INSN_MODRM_REG_GROUP_9].insns = {
-    _0 (bad),
-    _1 (cmpxchg, Mx),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+					_0 (bad),
+					_1 (cmpxchg, Mx),
+					_0 (bad),
+					_0 (bad),
+					_0 (bad),
+					_0 (bad),
+					_0 (bad),
+					_0 (bad),
+					},
 
   [X86_INSN_MODRM_REG_GROUP_10].insns = {
-    _0 (bad), _0 (bad), _0 (bad), _0 (bad),
-    _0 (bad), _0 (bad), _0 (bad), _0 (bad),
-  },
+					 _0 (bad), _0 (bad), _0 (bad),
+					 _0 (bad),
+					 _0 (bad), _0 (bad), _0 (bad),
+					 _0 (bad),
+					 },
 
   [X86_INSN_MODRM_REG_GROUP_11].insns = {
-    _0 (mov), _0 (bad), _0 (bad), _0 (bad),
-    _0 (bad), _0 (bad), _0 (bad), _0 (bad),
-  },
+					 _0 (mov), _0 (bad), _0 (bad),
+					 _0 (bad),
+					 _0 (bad), _0 (bad), _0 (bad),
+					 _0 (bad),
+					 },
 
   [X86_INSN_MODRM_REG_GROUP_12].insns = {
-    _0 (bad),
-    _0 (bad),
-    _2 (psrlw, Rm, Ib),
-    _0 (bad),
-    _2 (psraw, Rm, Ib),
-    _0 (bad),
-    _2 (psllw, Rm, Ib),
-    _0 (bad),
-  },
+					 _0 (bad),
+					 _0 (bad),
+					 _2 (psrlw, Rm, Ib),
+					 _0 (bad),
+					 _2 (psraw, Rm, Ib),
+					 _0 (bad),
+					 _2 (psllw, Rm, Ib),
+					 _0 (bad),
+					 },
 
   [X86_INSN_MODRM_REG_GROUP_13].insns = {
-    _0 (bad),
-    _0 (bad),
-    _2 (psrld, Rm, Ib),
-    _0 (bad),
-    _2 (psrad, Rm, Ib),
-    _0 (bad),
-    _2 (pslld, Rm, Ib),
-    _0 (bad),
-  },
+					 _0 (bad),
+					 _0 (bad),
+					 _2 (psrld, Rm, Ib),
+					 _0 (bad),
+					 _2 (psrad, Rm, Ib),
+					 _0 (bad),
+					 _2 (pslld, Rm, Ib),
+					 _0 (bad),
+					 },
 
   [X86_INSN_MODRM_REG_GROUP_14].insns = {
-    _0 (bad),
-    _0 (bad),
-    _2 (psrlq, Rm, Ib),
-    _0f (bad, 0),
-    _0 (bad),
-    _0 (bad),
-    _2 (psllq, Rm, Ib),
-    _0f (bad, 0),
-  },
+					 _0 (bad),
+					 _0 (bad),
+					 _2 (psrlq, Rm, Ib),
+					 _0f (bad, 0),
+					 _0 (bad),
+					 _0 (bad),
+					 _2 (psllq, Rm, Ib),
+					 _0f (bad, 0),
+					 },
 
   [X86_INSN_MODRM_REG_GROUP_15].insns = {
-    _1 (fxsave, Mv),
-    _1 (fxrstor, Mv),
-    _1 (ldmxcsr, Mv),
-    _1 (stmxcsr, Mv),
-    _0 (bad),
-    _1 (lfence, Mv),
-    _1 (mfence, Mv),
-    _1 (sfence, Mv),
-  },
+					 _1 (fxsave, Mv),
+					 _1 (fxrstor, Mv),
+					 _1 (ldmxcsr, Mv),
+					 _1 (stmxcsr, Mv),
+					 _0 (bad),
+					 _1 (lfence, Mv),
+					 _1 (mfence, Mv),
+					 _1 (sfence, Mv),
+					 },
 
   [X86_INSN_MODRM_REG_GROUP_16].insns = {
-    _1 (prefetch_nta, Mv),
-    _1 (prefetch_t0, Mv),
-    _1 (prefetch_t1, Mv),
-    _1 (prefetch_t2, Mv),
-    _1 (prefetch_nop, Mv),
-    _1 (prefetch_nop, Mv),
-    _1 (prefetch_nop, Mv),
-    _1 (prefetch_nop, Mv),
-  },
+					 _1 (prefetch_nta, Mv),
+					 _1 (prefetch_t0, Mv),
+					 _1 (prefetch_t1, Mv),
+					 _1 (prefetch_t2, Mv),
+					 _1 (prefetch_nop, Mv),
+					 _1 (prefetch_nop, Mv),
+					 _1 (prefetch_nop, Mv),
+					 _1 (prefetch_nop, Mv),
+					 },
 
   [X86_INSN_MODRM_REG_GROUP_p].insns = {
-    _1 (prefetch_exclusive, Mv),
-    _1 (prefetch_modified, Mv),
-    _1 (prefetch_nop, Mv),
-    _1 (prefetch_modified, Mv),
-    _1 (prefetch_nop, Mv),
-    _1 (prefetch_nop, Mv),
-    _1 (prefetch_nop, Mv),
-    _1 (prefetch_nop, Mv),
-  },
+					_1 (prefetch_exclusive, Mv),
+					_1 (prefetch_modified, Mv),
+					_1 (prefetch_nop, Mv),
+					_1 (prefetch_modified, Mv),
+					_1 (prefetch_nop, Mv),
+					_1 (prefetch_nop, Mv),
+					_1 (prefetch_nop, Mv),
+					_1 (prefetch_nop, Mv),
+					},
 };
 
 static x86_insn_group8_t x86_insn_sse_groups_repz[] = {
   [X86_INSN_SSE_GROUP_10].insns = {
-    _2 (movss, Gx, Ex),
-    _2 (movss, Ex, Gx),
-    _2 (movsldup, Gx, Ex),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _2 (movshdup, Gx, Ex),
-    _0 (bad),
-  },
+				   _2 (movss, Gx, Ex),
+				   _2 (movss, Ex, Gx),
+				   _2 (movsldup, Gx, Ex),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (movshdup, Gx, Ex),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_28].insns = {
-    _0 (bad),
-    _0 (bad),
-    _2 (cvtsi2ss, Gx, Ev),
-    _0 (bad),
-    _2 (cvttss2si, Gv, Ex),
-    _2 (cvtss2si, Gv, Ex),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (cvtsi2ss, Gx, Ev),
+				   _0 (bad),
+				   _2 (cvttss2si, Gv, Ex),
+				   _2 (cvtss2si, Gv, Ex),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_50].insns = {
-    _0 (bad),
-    _2 (sqrtss, Gx, Ex),
-    _2 (rsqrtps, Gx, Ex),
-    _2 (rcpss, Gx, Ex),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _2 (sqrtss, Gx, Ex),
+				   _2 (rsqrtps, Gx, Ex),
+				   _2 (rcpss, Gx, Ex),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_58].insns = {
-    _2 (addss, Gx, Ex),
-    _2 (mulss, Gx, Ex),
-    _2 (cvtss2sd, Gx, Ex),
-    _2 (cvttps2dq, Gx, Ex),
-    _2 (subss, Gx, Ex),
-    _2 (minss, Gx, Ex),
-    _2 (divss, Gx, Ex),
-    _2 (maxss, Gx, Ex),
-  },
+				   _2 (addss, Gx, Ex),
+				   _2 (mulss, Gx, Ex),
+				   _2 (cvtss2sd, Gx, Ex),
+				   _2 (cvttps2dq, Gx, Ex),
+				   _2 (subss, Gx, Ex),
+				   _2 (minss, Gx, Ex),
+				   _2 (divss, Gx, Ex),
+				   _2 (maxss, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_60].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_68].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _2 (movdqu, Gx, Ex),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (movdqu, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_70].insns = {
-    _3 (pshufhw, Gx, Ex, Ib),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _3 (pshufhw, Gx, Ex, Ib),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_78].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _2 (movq, Gx, Ex),
-    _2 (movdqu, Ex, Gx),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (movq, Gx, Ex),
+				   _2 (movdqu, Ex, Gx),
+				   },
 
   [X86_INSN_SSE_GROUP_c0].insns = {
-    _0 (bad),
-    _0 (bad),
-    _3 (cmpss, Gx, Ex, Ib),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _3 (cmpss, Gx, Ex, Ib),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_d0].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _2 (movq2dq, Gx, Em),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (movq2dq, Gx, Em),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_d8].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_e0].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _2 (cvtdq2pd, Gx, Ex),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (cvtdq2pd, Gx, Ex),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_e8].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_f0].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_f8].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 };
 
 static x86_insn_group8_t x86_insn_sse_groups_operand_size[] = {
   [X86_INSN_SSE_GROUP_10].insns = {
-    _2 (movupd, Gx, Ex),
-    _2 (movupd, Ex, Gx),
-    _2 (movlpd, Gx, Ex),
-    _2 (movlpd, Ex, Gx),
-    _2 (unpcklpd, Gx, Ex),
-    _2 (unpckhpd, Gx, Ex),
-    _2 (movhpd, Gx, Mx),
-    _2 (movhpd, Mx, Gx),
-  },
+				   _2 (movupd, Gx, Ex),
+				   _2 (movupd, Ex, Gx),
+				   _2 (movlpd, Gx, Ex),
+				   _2 (movlpd, Ex, Gx),
+				   _2 (unpcklpd, Gx, Ex),
+				   _2 (unpckhpd, Gx, Ex),
+				   _2 (movhpd, Gx, Mx),
+				   _2 (movhpd, Mx, Gx),
+				   },
 
   [X86_INSN_SSE_GROUP_28].insns = {
-    _2 (movapd, Gx, Ex),
-    _2 (movapd, Ex, Gx),
-    _2 (cvtpi2pd, Gx, Ex),
-    _2 (movntpd, Mx, Gx),
-    _2 (cvttpd2pi, Gx, Mx),
-    _2 (cvtpd2pi, Gx, Mx),
-    _2 (ucomisd, Gx, Ex),
-    _2 (comisd, Gx, Ex),
-  },
+				   _2 (movapd, Gx, Ex),
+				   _2 (movapd, Ex, Gx),
+				   _2 (cvtpi2pd, Gx, Ex),
+				   _2 (movntpd, Mx, Gx),
+				   _2 (cvttpd2pi, Gx, Mx),
+				   _2 (cvtpd2pi, Gx, Mx),
+				   _2 (ucomisd, Gx, Ex),
+				   _2 (comisd, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_50].insns = {
-    _2 (movmskpd, Gd, Rx),
-    _2 (sqrtpd, Gx, Ex),
-    _0 (bad),
-    _0 (bad),
-    _2 (andpd, Gx, Ex),
-    _2 (andnpd, Gx, Ex),
-    _2 (orpd, Gx, Ex),
-    _2 (xorpd, Gx, Ex),
-  },
+				   _2 (movmskpd, Gd, Rx),
+				   _2 (sqrtpd, Gx, Ex),
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (andpd, Gx, Ex),
+				   _2 (andnpd, Gx, Ex),
+				   _2 (orpd, Gx, Ex),
+				   _2 (xorpd, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_58].insns = {
-    _2 (addpd, Gx, Ex),
-    _2 (mulpd, Gx, Ex),
-    _2 (cvtpd2ps, Gx, Ex),
-    _2 (cvtps2dq, Gx, Ex),
-    _2 (subpd, Gx, Ex),
-    _2 (minpd, Gx, Ex),
-    _2 (divpd, Gx, Ex),
-    _2 (maxpd, Gx, Ex),
-  },
+				   _2 (addpd, Gx, Ex),
+				   _2 (mulpd, Gx, Ex),
+				   _2 (cvtpd2ps, Gx, Ex),
+				   _2 (cvtps2dq, Gx, Ex),
+				   _2 (subpd, Gx, Ex),
+				   _2 (minpd, Gx, Ex),
+				   _2 (divpd, Gx, Ex),
+				   _2 (maxpd, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_60].insns = {
-    _2 (punpcklbw, Gx, Ex),
-    _2 (punpcklwd, Gx, Ex),
-    _2 (punpckldq, Gx, Ex),
-    _2 (packsswb, Gx, Ex),
-    _2 (pcmpgtb, Gx, Ex),
-    _2 (pcmpgtw, Gx, Ex),
-    _2 (pcmpgtd, Gx, Ex),
-    _2 (packuswb, Gx, Ex),
-  },
+				   _2 (punpcklbw, Gx, Ex),
+				   _2 (punpcklwd, Gx, Ex),
+				   _2 (punpckldq, Gx, Ex),
+				   _2 (packsswb, Gx, Ex),
+				   _2 (pcmpgtb, Gx, Ex),
+				   _2 (pcmpgtw, Gx, Ex),
+				   _2 (pcmpgtd, Gx, Ex),
+				   _2 (packuswb, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_68].insns = {
-    _2 (punpckhbw, Gx, Ex),
-    _2 (punpckhwd, Gx, Ex),
-    _2 (punpckhdq, Gx, Ex),
-    _2 (packssdw, Gx, Ex),
-    _2 (punpcklqdq, Gx, Ex),
-    _2 (punpckhqdq, Gx, Ex),
-    _2 (movd, Gx, Ev),
-    _2 (movdqa, Gx, Ex),
-  },
+				   _2 (punpckhbw, Gx, Ex),
+				   _2 (punpckhwd, Gx, Ex),
+				   _2 (punpckhdq, Gx, Ex),
+				   _2 (packssdw, Gx, Ex),
+				   _2 (punpcklqdq, Gx, Ex),
+				   _2 (punpckhqdq, Gx, Ex),
+				   _2 (movd, Gx, Ev),
+				   _2 (movdqa, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_70].insns = {
-    _3 (pshufd, Gx, Ex, Ib),
-    _0f (modrm_group_12, X86_INSN_FLAG_MODRM_REG_GROUP_12),
-    _0f (modrm_group_13, X86_INSN_FLAG_MODRM_REG_GROUP_13),
-    _0f (modrm_group_14, X86_INSN_FLAG_MODRM_REG_GROUP_14),
-    _2 (pcmpeqb, Gx, Ex),
-    _2 (pcmpeqw, Gx, Ex),
-    _2 (pcmpeqd, Gx, Ex),
-    _0 (bad),
-  },
+				   _3 (pshufd, Gx, Ex, Ib),
+				   _0f (modrm_group_12,
+					X86_INSN_FLAG_MODRM_REG_GROUP_12),
+				   _0f (modrm_group_13,
+					X86_INSN_FLAG_MODRM_REG_GROUP_13),
+				   _0f (modrm_group_14,
+					X86_INSN_FLAG_MODRM_REG_GROUP_14),
+				   _2 (pcmpeqb, Gx, Ex),
+				   _2 (pcmpeqw, Gx, Ex),
+				   _2 (pcmpeqd, Gx, Ex),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_78].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _2 (haddpd, Gx, Ex),
-    _2 (hsubpd, Gx, Ex),
-    _2 (movd, Ev, Gx),
-    _2 (movdqa, Ex, Gx),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (haddpd, Gx, Ex),
+				   _2 (hsubpd, Gx, Ex),
+				   _2 (movd, Ev, Gx),
+				   _2 (movdqa, Ex, Gx),
+				   },
 
   [X86_INSN_SSE_GROUP_c0].insns = {
-    _0 (bad),
-    _0 (bad),
-    _3 (cmppd, Gx, Ex, Ib),
-    _0 (bad),
-    _3 (pinsrw, Gx, Ew, Ib),
-    _3 (pextrw, Gd, Gx, Ib),
-    _3 (shufpd, Gx, Ex, Ib),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _3 (cmppd, Gx, Ex, Ib),
+				   _0 (bad),
+				   _3 (pinsrw, Gx, Ew, Ib),
+				   _3 (pextrw, Gd, Gx, Ib),
+				   _3 (shufpd, Gx, Ex, Ib),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_d0].insns = {
-    _2 (addsubpd, Gx, Ex),
-    _2 (psrlw, Gx, Ex),
-    _2 (psrld, Gx, Ex),
-    _2 (psrlq, Gx, Ex),
-    _2 (paddq, Gx, Ex),
-    _2 (pmullw, Gx, Ex),
-    _2 (movq, Ex, Gx),
-    _2 (pmovmskb, Gd, Rx),
-  },
+				   _2 (addsubpd, Gx, Ex),
+				   _2 (psrlw, Gx, Ex),
+				   _2 (psrld, Gx, Ex),
+				   _2 (psrlq, Gx, Ex),
+				   _2 (paddq, Gx, Ex),
+				   _2 (pmullw, Gx, Ex),
+				   _2 (movq, Ex, Gx),
+				   _2 (pmovmskb, Gd, Rx),
+				   },
 
   [X86_INSN_SSE_GROUP_d8].insns = {
-    _2 (psubusb, Gx, Ex),
-    _2 (psubusw, Gx, Ex),
-    _2 (pminub, Gx, Ex),
-    _2 (pand, Gx, Ex),
-    _2 (paddusb, Gx, Ex),
-    _2 (paddusw, Gx, Ex),
-    _2 (pmaxub, Gx, Ex),
-    _2 (pandn, Gx, Ex),
-  },
+				   _2 (psubusb, Gx, Ex),
+				   _2 (psubusw, Gx, Ex),
+				   _2 (pminub, Gx, Ex),
+				   _2 (pand, Gx, Ex),
+				   _2 (paddusb, Gx, Ex),
+				   _2 (paddusw, Gx, Ex),
+				   _2 (pmaxub, Gx, Ex),
+				   _2 (pandn, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_e0].insns = {
-    _2 (pavgb, Gx, Ex),
-    _2 (psraw, Gx, Ex),
-    _2 (psrad, Gx, Ex),
-    _2 (pavgw, Gx, Ex),
-    _2 (pmulhuw, Gx, Ex),
-    _2 (pmulhw, Gx, Ex),
-    _2 (cvttpd2dq, Gx, Ex),
-    _2 (movntdq, Mx, Gx),
-  },
+				   _2 (pavgb, Gx, Ex),
+				   _2 (psraw, Gx, Ex),
+				   _2 (psrad, Gx, Ex),
+				   _2 (pavgw, Gx, Ex),
+				   _2 (pmulhuw, Gx, Ex),
+				   _2 (pmulhw, Gx, Ex),
+				   _2 (cvttpd2dq, Gx, Ex),
+				   _2 (movntdq, Mx, Gx),
+				   },
 
   [X86_INSN_SSE_GROUP_e8].insns = {
-    _2 (psubsb, Gx, Ex),
-    _2 (psubsw, Gx, Ex),
-    _2 (pminsw, Gx, Ex),
-    _2 (por, Gx, Ex),
-    _2 (paddsb, Gx, Ex),
-    _2 (paddsw, Gx, Ex),
-    _2 (pmaxsw, Gx, Ex),
-    _2 (pxor, Gx, Ex),
-  },
+				   _2 (psubsb, Gx, Ex),
+				   _2 (psubsw, Gx, Ex),
+				   _2 (pminsw, Gx, Ex),
+				   _2 (por, Gx, Ex),
+				   _2 (paddsb, Gx, Ex),
+				   _2 (paddsw, Gx, Ex),
+				   _2 (pmaxsw, Gx, Ex),
+				   _2 (pxor, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_f0].insns = {
-    _0 (bad),
-    _2 (psllw, Gx, Ex),
-    _2 (pslld, Gx, Ex),
-    _2 (psllq, Gx, Ex),
-    _2 (pmuludq, Gx, Ex),
-    _2 (pmaddwd, Gx, Ex),
-    _2 (psadbw, Gx, Ex),
-    _2 (maskmovdqu, Gx, Ex),
-  },
+				   _0 (bad),
+				   _2 (psllw, Gx, Ex),
+				   _2 (pslld, Gx, Ex),
+				   _2 (psllq, Gx, Ex),
+				   _2 (pmuludq, Gx, Ex),
+				   _2 (pmaddwd, Gx, Ex),
+				   _2 (psadbw, Gx, Ex),
+				   _2 (maskmovdqu, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_f8].insns = {
-    _2 (psubb, Gx, Ex),
-    _2 (psubw, Gx, Ex),
-    _2 (psubd, Gx, Ex),
-    _2 (psubq, Gx, Ex),
-    _2 (paddb, Gx, Ex),
-    _2 (paddw, Gx, Ex),
-    _2 (paddd, Gx, Ex),
-    _0 (bad),
-  },
+				   _2 (psubb, Gx, Ex),
+				   _2 (psubw, Gx, Ex),
+				   _2 (psubd, Gx, Ex),
+				   _2 (psubq, Gx, Ex),
+				   _2 (paddb, Gx, Ex),
+				   _2 (paddw, Gx, Ex),
+				   _2 (paddd, Gx, Ex),
+				   _0 (bad),
+				   },
 };
 
 static x86_insn_group8_t x86_insn_sse_groups_repnz[] = {
   [X86_INSN_SSE_GROUP_10].insns = {
-    _2 (movsd, Gx, Ex),
-    _2 (movsd, Ex, Gx),
-    _2 (movddup, Gx, Ex),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _2 (movsd, Gx, Ex),
+				   _2 (movsd, Ex, Gx),
+				   _2 (movddup, Gx, Ex),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_28].insns = {
-    _0 (bad),
-    _0 (bad),
-    _2 (cvtsi2sd, Gx, Ev),
-    _0 (bad),
-    _2 (cvttsd2si, Gv, Ex),
-    _2 (cvtsd2si, Gv, Ex),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (cvtsi2sd, Gx, Ev),
+				   _0 (bad),
+				   _2 (cvttsd2si, Gv, Ex),
+				   _2 (cvtsd2si, Gv, Ex),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_50].insns = {
-    _0 (bad),
-    _2 (sqrtsd, Gx, Ex),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _2 (sqrtsd, Gx, Ex),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_58].insns = {
-    _2 (addsd, Gx, Ex),
-    _2 (mulsd, Gx, Ex),
-    _2 (cvtsd2ss, Gx, Ex),
-    _0 (bad),
-    _2 (subsd, Gx, Ex),
-    _2 (minsd, Gx, Ex),
-    _2 (divsd, Gx, Ex),
-    _2 (maxsd, Gx, Ex),
-  },
+				   _2 (addsd, Gx, Ex),
+				   _2 (mulsd, Gx, Ex),
+				   _2 (cvtsd2ss, Gx, Ex),
+				   _0 (bad),
+				   _2 (subsd, Gx, Ex),
+				   _2 (minsd, Gx, Ex),
+				   _2 (divsd, Gx, Ex),
+				   _2 (maxsd, Gx, Ex),
+				   },
 
   [X86_INSN_SSE_GROUP_60].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_68].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_70].insns = {
-    _3 (pshuflw, Gx, Ex, Ib),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _3 (pshuflw, Gx, Ex, Ib),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_78].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _2 (haddps, Gx, Ex),
-    _2 (hsubps, Gx, Ex),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (haddps, Gx, Ex),
+				   _2 (hsubps, Gx, Ex),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_c0].insns = {
-    _0 (bad),
-    _0 (bad),
-    _3 (cmpsd, Gx, Ex, Ib),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _3 (cmpsd, Gx, Ex, Ib),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_d0].insns = {
-    _2 (addsubps, Gx, Ex),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _2 (movdq2q, Gm, Ex),
-    _0 (bad),
-  },
+				   _2 (addsubps, Gx, Ex),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (movdq2q, Gm, Ex),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_d8].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_e0].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _2 (cvtpd2dq, Gx, Ex),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _2 (cvtpd2dq, Gx, Ex),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_e8].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_f0].insns = {
-    _2 (lddqu, Gx, Mx),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _2 (lddqu, Gx, Mx),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 
   [X86_INSN_SSE_GROUP_f8].insns = {
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-    _0 (bad),
-  },
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   _0 (bad),
+				   },
 };
 
 #undef _
 
 /* Parses memory displacements and immediates. */
-static u8 * x86_insn_parse_number (u32 log2_n_bytes,
-				   u8 * code, u8 * code_end,
-				   i64 * result)
+static u8 *
+x86_insn_parse_number (u32 log2_n_bytes,
+		       u8 * code, u8 * code_end, i64 * result)
 {
   i64 x = 0;
 
@@ -1319,14 +1345,23 @@ x86_insn_log2_immediate_bytes (x86_insn_parse_t * p, x86_insn_t * insn)
   u32 i = ~0;
   switch (x86_insn_immediate_type (insn))
     {
-    case 'b': i = 0; break;
-    case 'w': i = 1; break;
-    case 'd': i = 2; break;
-    case 'q': i = 3; break;
+    case 'b':
+      i = 0;
+      break;
+    case 'w':
+      i = 1;
+      break;
+    case 'd':
+      i = 2;
+      break;
+    case 'q':
+      i = 3;
+      break;
 
     case 'z':
       i = p->log2_effective_operand_bytes;
-      if (i > 2) i = 2;
+      if (i > 2)
+	i = 2;
       break;
 
     case 'v':
@@ -1344,9 +1379,7 @@ x86_insn_log2_immediate_bytes (x86_insn_parse_t * p, x86_insn_t * insn)
 static u8 *
 x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 			   x86_insn_modrm_byte_t modrm,
-			   u32 parse_flags,
-			   u8 * code,
-			   u8 * code_end)
+			   u32 parse_flags, u8 * code, u8 * code_end)
 {
   u8 effective_address_bits;
 
@@ -1397,8 +1430,7 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 	      if (modrm.mode != 0)
 		{
 		  log2_disp_bytes = (modrm.mode == 1
-				     ? 0
-				     : x->log2_effective_address_bytes);
+				     ? 0 : x->log2_effective_address_bytes);
 		  if (log2_disp_bytes > 2)
 		    log2_disp_bytes = 2;
 		}
@@ -1441,32 +1473,32 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 	    case 2:
 	      switch (modrm.rm)
 		{
-		case 0:		/* [bx + si/di] */
+		case 0:	/* [bx + si/di] */
 		case 1:
 		  x->regs[1] = X86_INSN_GP_REG_BX;
 		  x->regs[2] = X86_INSN_GP_REG_SI + (modrm.rm & 1);
 		  x->flags |= X86_INSN_HAS_BASE | X86_INSN_HAS_INDEX;
 		  break;
 
-		case 2:		/* [bp + si/di] */
+		case 2:	/* [bp + si/di] */
 		case 3:
 		  x->regs[1] = X86_INSN_GP_REG_BP;
 		  x->regs[2] = X86_INSN_GP_REG_SI + (modrm.rm & 1);
 		  x->flags |= X86_INSN_HAS_BASE | X86_INSN_HAS_INDEX;
 		  break;
 
-		case 4:		/* [si/di] */
+		case 4:	/* [si/di] */
 		case 5:
 		  x->regs[1] = X86_INSN_GP_REG_SI + (modrm.rm & 1);
 		  x->flags |= X86_INSN_HAS_BASE;
 		  break;
 
-		case 6:		/* [bp + disp] */
+		case 6:	/* [bp + disp] */
 		  x->regs[1] = X86_INSN_GP_REG_BP;
 		  x->flags |= X86_INSN_HAS_BASE;
 		  break;
 
-		case 7:		/* [bx + disp] */
+		case 7:	/* [bx + disp] */
 		  x->regs[1] = X86_INSN_GP_REG_BX;
 		  x->flags |= X86_INSN_HAS_BASE;
 		  break;
@@ -1477,7 +1509,7 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
 	      break;
 	    }
 	}
-      
+
       if (log2_disp_bytes != ~0)
 	{
 	  i64 disp;
@@ -1491,10 +1523,11 @@ x86_insn_parse_modrm_byte (x86_insn_parse_t * x,
   return code;
 }
 
-u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
+u8 *
+x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 {
-  u8 i, * code, * code_end;
-  x86_insn_t * insn, * group_insn;
+  u8 i, *code, *code_end;
+  x86_insn_t *insn, *group_insn;
   u8 default_operand_bits, effective_operand_bits;
   u32 opcode, parse_flags;
 
@@ -1520,7 +1553,8 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
       code++;
       switch (i)
 	{
-	default: goto prefix_done;
+	default:
+	  goto prefix_done;
 
 	  /* Set flags based on prefix. */
 #define _(x,o) case o: p->flags |= X86_INSN_##x; break;
@@ -1528,7 +1562,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 #undef _
 	}
     }
- prefix_done:
+prefix_done:
 
   /* REX prefix. */
   if ((parse_flags & X86_INSN_PARSE_64_BIT) && i >= 0x40 && i <= 0x4f)
@@ -1536,7 +1570,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
       p->regs[0] |= ((i & (1 << 2)) != 0) << 3;	/* r bit */
       p->regs[1] |= ((i & (1 << 0)) != 0) << 3;	/* b bit */
       p->regs[2] |= ((i & (1 << 1)) != 0) << 3;	/* x bit */
-      p->flags |= ((i & (1 << 3))		/* w bit */
+      p->flags |= ((i & (1 << 3))	/* w bit */
 		   ? X86_INSN_OPERAND_SIZE_64 : 0);
       if (code >= code_end)
 	goto insn_too_long;
@@ -1546,7 +1580,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
   opcode = i;
   if (opcode == 0x0f)
     {
-      /* two byte opcode. */;
+      /* two byte opcode. */ ;
       if (code >= code_end)
 	goto insn_too_long;
       i = *code++;
@@ -1561,8 +1595,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 	.operands[1].data = "Gw",
       };
 
-      if (PREDICT_FALSE (i == 0x63
-			 && ! (parse_flags & X86_INSN_PARSE_64_BIT)))
+      if (PREDICT_FALSE (i == 0x63 && !(parse_flags & X86_INSN_PARSE_64_BIT)))
 	insn = &arpl;
       else
 	insn = x86_insns_one_byte + i;
@@ -1570,7 +1603,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 
   if ((i = X86_INSN_FLAG_GET_SSE_GROUP (insn->flags)) != 0)
     {
-      x86_insn_group8_t * g8;
+      x86_insn_group8_t *g8;
 
       if (p->flags & X86_INSN_OPERAND_SIZE)
 	g8 = x86_insn_sse_groups_operand_size;
@@ -1598,8 +1631,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 
       /* Handle special 0x0f01 and 0x0fae encodings. */
       if (PREDICT_FALSE (modrm.mode == 3
-			 && (opcode == 0x0f01
-			     || opcode == 0x0fae)))
+			 && (opcode == 0x0f01 || opcode == 0x0fae)))
 	{
 	  static x86_insn_t x86_insns_0f01_special[] = {
 	    _0 (swapgs), _0 (rdtscp), _0 (bad), _0 (bad),
@@ -1621,7 +1653,7 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
 	{
 	  code = x86_insn_parse_modrm_byte (p, modrm, parse_flags,
 					    code, code_end);
-	  if (! code)
+	  if (!code)
 	    goto insn_too_long;
 	}
     }
@@ -1668,18 +1700,19 @@ u8 * x86_insn_parse (x86_insn_parse_t * p, u8 * code_start)
     if (l <= 3)
       {
 	code = x86_insn_parse_number (l, code, code_end, &p->immediate);
-	if (! code)
+	if (!code)
 	  goto insn_too_long;
       }
   }
 
   return code;
 
- insn_too_long:
+insn_too_long:
   return 0;
 }
 
-static u8 * format_x86_gp_reg_operand (u8 * s, va_list * va)
+static u8 *
+format_x86_gp_reg_operand (u8 * s, va_list * va)
 {
   u32 r = va_arg (*va, u32);
   u32 log2_n_bytes = va_arg (*va, u32);
@@ -1703,21 +1736,21 @@ static u8 * format_x86_gp_reg_operand (u8 * s, va_list * va)
 	  s = format (s, "r%db", r);
       }
       break;
-      
-      case 2:
-      case 3:
-	s = format (s, "%c", log2_n_bytes == 2 ? 'e' : 'r');
-	/* fall through */
-      case 1:
-	if (r < 8)
-	  s = format (s, "%c%c", names8[r], names16[r]);
-	else
-	  {
-	    s = format (s, "%d", r);
-	    if (log2_n_bytes != 3)
-	      s = format (s, "%c", log2_n_bytes == 1 ? 'w' : 'd');
-	  }
-	break;
+
+    case 2:
+    case 3:
+      s = format (s, "%c", log2_n_bytes == 2 ? 'e' : 'r');
+      /* fall through */
+    case 1:
+      if (r < 8)
+	s = format (s, "%c%c", names8[r], names16[r]);
+      else
+	{
+	  s = format (s, "%d", r);
+	  if (log2_n_bytes != 3)
+	    s = format (s, "%c", log2_n_bytes == 1 ? 'w' : 'd');
+	}
+      break;
 
     default:
       ASSERT (0);
@@ -1726,7 +1759,8 @@ static u8 * format_x86_gp_reg_operand (u8 * s, va_list * va)
   return s;
 }
 
-static u8 * format_x86_reg_operand (u8 * s, va_list * va)
+static u8 *
+format_x86_reg_operand (u8 * s, va_list * va)
 {
   u32 reg = va_arg (*va, u32);
   u32 log2_n_bytes = va_arg (*va, u32);
@@ -1747,13 +1781,22 @@ static u8 * format_x86_reg_operand (u8 * s, va_list * va)
       return format (s, "%%mm%d", reg);
 
       /* Explicit byte/word/double-word/quad-word */
-    case 'b': log2_n_bytes = 0; break;
-    case 'w': log2_n_bytes = 1; break;
-    case 'd': log2_n_bytes = 2; break;
-    case 'q': log2_n_bytes = 3; break;
+    case 'b':
+      log2_n_bytes = 0;
+      break;
+    case 'w':
+      log2_n_bytes = 1;
+      break;
+    case 'd':
+      log2_n_bytes = 2;
+      break;
+    case 'q':
+      log2_n_bytes = 3;
+      break;
 
       /* Use effective operand size. */
-    case 'v': break;
+    case 'v':
+      break;
 
       /* word or double-word depending on effective operand size. */
     case 'z':
@@ -1765,9 +1808,10 @@ static u8 * format_x86_reg_operand (u8 * s, va_list * va)
   return s;
 }
 
-static u8 * format_x86_mem_operand (u8 * s, va_list * va)
+static u8 *
+format_x86_mem_operand (u8 * s, va_list * va)
 {
-  x86_insn_parse_t * p = va_arg (*va, x86_insn_parse_t *);
+  x86_insn_parse_t *p = va_arg (*va, x86_insn_parse_t *);
 
   if (p->displacement != 0)
     s = format (s, "0x%x", p->displacement);
@@ -1776,12 +1820,12 @@ static u8 * format_x86_mem_operand (u8 * s, va_list * va)
     {
       s = format (s, "(%U",
 		  format_x86_gp_reg_operand, p->regs[1],
-		    p->log2_effective_address_bytes);
+		  p->log2_effective_address_bytes);
       if (p->flags & X86_INSN_HAS_INDEX)
 	{
 	  s = format (s, ",%U",
 		      format_x86_gp_reg_operand, p->regs[2],
-		        p->log2_effective_address_bytes);
+		      p->log2_effective_address_bytes);
 	  if (p->log2_index_scale != 0)
 	    s = format (s, ",%d", 1 << p->log2_index_scale);
 	}
@@ -1795,10 +1839,11 @@ static u8 * format_x86_mem_operand (u8 * s, va_list * va)
   return s;
 }
 
-static u8 * format_x86_insn_operand (u8 * s, va_list * va)
+static u8 *
+format_x86_insn_operand (u8 * s, va_list * va)
 {
-  x86_insn_parse_t * p = va_arg (*va, x86_insn_parse_t *);
-  x86_insn_t * insn = &p->insn;
+  x86_insn_parse_t *p = va_arg (*va, x86_insn_parse_t *);
+  x86_insn_t *insn = &p->insn;
   u32 o = va_arg (*va, u32);
   u8 c, t;
 
@@ -1814,7 +1859,7 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
 
   switch (c)
     {
-    /* Memory or reg field from modrm byte. */
+      /* Memory or reg field from modrm byte. */
     case 'M':
       ASSERT (p->flags & X86_INSN_IS_ADDRESS);
       /* FALLTHROUGH */
@@ -1827,7 +1872,7 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
 		    p->log2_effective_operand_bytes, t);
       break;
 
-    /* reg field from modrm byte. */
+      /* reg field from modrm byte. */
     case 'R':
     case 'G':
       s = format (s, "%U",
@@ -1903,15 +1948,16 @@ static u8 * format_x86_insn_operand (u8 * s, va_list * va)
   return s;
 }
 
-u8 * format_x86_insn_parse (u8 * s, va_list * va)
+u8 *
+format_x86_insn_parse (u8 * s, va_list * va)
 {
-  x86_insn_parse_t * p = va_arg (*va, x86_insn_parse_t *);
-  x86_insn_t * insn = &p->insn;
+  x86_insn_parse_t *p = va_arg (*va, x86_insn_parse_t *);
+  x86_insn_t *insn = &p->insn;
   u32 o, i, is_src_dst;
 
   s = format (s, "%s", insn->name);
 
-  if (! x86_insn_operand_is_valid (insn, 0))
+  if (!x86_insn_operand_is_valid (insn, 0))
     goto done;
 
   is_src_dst = x86_insn_operand_is_valid (insn, 1);
@@ -1931,17 +1977,23 @@ u8 * format_x86_insn_parse (u8 * s, va_list * va)
   for (i = 0; i < ARRAY_LEN (insn->operands); i++)
     {
       o = is_src_dst + i;
-      if (! x86_insn_operand_is_valid (insn, o))
+      if (!x86_insn_operand_is_valid (insn, o))
 	break;
       s = format (s, "%s%U",
-		  i == 0 ? " " : ", ",
-		  format_x86_insn_operand, p, o);
+		  i == 0 ? " " : ", ", format_x86_insn_operand, p, o);
     }
 
   if (is_src_dst)
-    s = format (s, ", %U",
-		format_x86_insn_operand, p, 0);
+    s = format (s, ", %U", format_x86_insn_operand, p, 0);
 
- done:
+done:
   return s;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

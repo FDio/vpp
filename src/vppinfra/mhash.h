@@ -156,6 +156,7 @@ mhash_free (mhash_t * h)
   hash_free (h->hash);
 }
 
+/* *INDENT-OFF* */
 #define mhash_foreach(k,v,mh,body)				\
 do {								\
   hash_pair_t * _mhash_foreach_p;				\
@@ -165,6 +166,7 @@ do {								\
     body;							\
   }));								\
 } while (0)
+/* *INDENT-ON* */
 
 format_function_t format_mhash_key;
 

@@ -276,6 +276,7 @@ clib_fifo_elt_index (void *v, uword i)
 
 #define clib_fifo_elt_at_index(v,i) ((v) + clib_fifo_elt_index (v, (i)))
 
+/* *INDENT-OFF* */
 #define clib_fifo_foreach(v,f,body)		\
 do {						\
   uword _i, _l, _n;				\
@@ -292,6 +293,7 @@ do {						\
       _i = _i >= _l ? 0 : _i;			\
     }						\
 } while (0)
+/* *INDENT-ON* */
 
 #endif /* included_fifo_h */
 

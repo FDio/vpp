@@ -359,8 +359,10 @@ _pool_free (void *v)
     @param BODY operation to perform
 
     Optimized version which assumes that BODY is smart enough to
+
     process multiple (LOW,HI) chunks. See also pool_foreach().
  */
+ /* *INDENT-OFF* */
 #define pool_foreach_region(LO,HI,POOL,BODY)				\
 do {									\
   uword _pool_var (i), _pool_var (lo), _pool_var (hi), _pool_var (len);	\
@@ -399,6 +401,7 @@ do {									\
 	}								\
     }									\
 } while (0)
+/* *INDENT-ON* */
 
 /** Iterate through pool.
 
@@ -420,7 +423,8 @@ do {									\
     proc_t *procs;   // a pool of processes.
     proc_t *proc;    // pointer to one process; used as the iterator.
 
-    pool_foreach (proc, procs, ({
+
+   pool_foreach (proc, procs, ({
         if (proc->state != PROC_STATE_RUNNING)
             continue;
 
@@ -435,6 +439,7 @@ do {									\
     @c pool_foreach which builds a vector of active indices, and a
     vec_foreach() (or plain for-loop) to walk the active index vector.
  */
+ /* *INDENT-OFF* */
 #define pool_foreach(VAR,POOL,BODY)					\
 do {									\
   uword _pool_foreach_lo, _pool_foreach_hi;				\
@@ -446,6 +451,7 @@ do {									\
 	do { BODY; } while (0);						\
     }));								\
 } while (0)
+/* *INDENT-ON* */
 
 /** Returns pointer to element at given index.
 
@@ -477,12 +483,14 @@ do {									\
 })
 
 /** Iterate pool by index. */
+/* *INDENT-OFF* */
 #define pool_foreach_index(i,v,body)		\
   for ((i) = 0; (i) < vec_len (v); (i)++)	\
     {						\
       if (! pool_is_free_index ((v), (i)))	\
 	do { body; } while (0);			\
     }
+/* *INDENT-ON* */
 
 /**
  * @brief Remove all elemenets from a pool in a safe way
@@ -492,6 +500,7 @@ do {									\
  * @param BODY The actions to perform on each element before it is returned to
  *        the pool. i.e. before it is 'freed'
  */
+ /* *INDENT-OFF* */
 #define pool_flush(VAR, POOL, BODY)                     \
 {                                                       \
   uword *_pool_var(ii), *_pool_var(dv) = NULL;          \
@@ -500,14 +509,19 @@ do {									\
   ({                                                    \
     vec_add1(_pool_var(dv), (VAR) - (POOL));            \
   }));                                                  \
-  vec_foreach(_pool_var(ii), _pool_var(dv))             \
-  {                                                     \
-    (VAR) = pool_elt_at_index((POOL), *_pool_var(ii));  \
-    do { BODY; } while (0);                             \
-    pool_put((POOL), (VAR));                            \
-  }                                                     \
-  vec_free(_pool_var(dv));                              \
-}
+    vec_foreach (_pool_var (ii), _pool_var (dv))         \
+    {                                                    \
+      (VAR) = pool_elt_at_index ((POOL), *_pool_var (ii));    \
+      do                                                  \
+	{                                                     \
+	  BODY;                                               \
+	}                                                     \
+      while (0);                                          \
+      pool_put ((POOL), (VAR));                            \
+    }                                                      \
+    vec_free (_pool_var (dv));                             \
+  }
+/* *INDENT-ON* */
 
 #endif /* included_pool_h */
 

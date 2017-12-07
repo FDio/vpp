@@ -170,12 +170,14 @@ typedef enum
 } tw_ring_index_t;
 #endif /* __defined_tw_timer_wheel_slot__ */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
 		     {
 		     u8 timer_id;
 		     u32 pool_index;
 		     u32 handle;
 		     }) TWT (trace);
+/* *INDENT-ON* */
 
 typedef struct
 {

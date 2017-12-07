@@ -346,6 +346,7 @@ hash_forward (hash_t * h, void *v, uword n)
  * rvalue. If you were confused before you might be marginally less
  * confused after.
  */
+ /* *INDENT-OFF* */
 #define hash_foreach_pair(p,v,body)                                         \
 do {                                                                        \
  __label__ _hash_foreach_done;                                              \
@@ -404,6 +405,7 @@ do {                                                                        \
   /* Be silent Mr. Compiler-Warning. */                                     \
   ;                                                                         \
  } while (0)
+ /* *INDENT-ON* */
 
 /* Iterate over key/value pairs
 
@@ -415,6 +417,7 @@ do {                                                                        \
     calls body with each active hash pair
 */
 /* Iteratate over key/value pairs. */
+/* *INDENT-OFF* */
 #define hash_foreach(key_var,value_var,h,body)			\
 do {								\
   hash_pair_t * _r;						\
@@ -424,6 +427,7 @@ do {								\
     do { body; } while (0);					\
   });								\
 } while (0)
+/* *INDENT-ON* */
 
 /* Iterate over key/value pairs for pointer key hash tables
 
@@ -434,6 +438,7 @@ do {								\
 
     calls body with each active hash pair
 */
+/* *INDENT-OFF* */
 #define hash_foreach_mem(key_var,value_var,h,body)			\
 do {									\
   hash_pair_t * _r;							\
@@ -443,6 +448,7 @@ do {									\
     do { body; } while (0);						\
   });									\
 } while (0)
+/* *INDENT-ON* */
 
 /* Support for iteration through hash table. */
 

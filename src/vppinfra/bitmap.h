@@ -358,6 +358,7 @@ clfib_bitmap_set_region (uword * bitmap, uword i, uword value, uword n_bits)
     @param ai - the bitmap
     @param body - the expression to evaluate for each set bit
 */
+/* *INDENT-OFF* */
 #define clib_bitmap_foreach(i,ai,body)					\
 do {									\
   uword __bitmap_i, __bitmap_ai, __bitmap_len, __bitmap_first_set;	\
@@ -375,6 +376,7 @@ do {									\
 	}								\
     }									\
 } while (0)
+/* *INDENT-ON* */
 
 
 /** Return the lowest numbered set bit in a bitmap

@@ -75,6 +75,7 @@
 #define STRUCT_OFFSET_OF_VAR(v,f) ((uword) (&(v)->f) - (uword) (v))
 
 /* Used to pack structure elements. */
+/* *INDENT-OFF* */
 #define CLIB_PACKED(x)	x __attribute__ ((packed))
 #define CLIB_UNUSED(x)	x __attribute__ ((unused))
 
@@ -149,6 +150,7 @@
 	     : "=r" (_clz) : "rm" ((word) (x)));\
     (count) = _clz ^ 31;			\
   } while (0)
+/* *INDENT-ON* */
 
 #define count_trailing_zeros(count, x)			\
   __asm__ ("bsfl %1,%0" : "=r" (count) : "rm" ((word)(x)))
