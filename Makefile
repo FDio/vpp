@@ -351,7 +351,8 @@ define test
 	$(if $(filter-out $(3),retest),make -C $(BR) PLATFORM=$(1) TAG=$(2) vpp-install,)
 	$(eval libs:=lib lib64)
 	make -C test \
-	  TEST_DIR=$(WS_ROOT)/test \
+	  TEST_DIR1=$(WS_ROOT)/test/test_a-k \
+	  TEST_DIR2=$(WS_ROOT)/test/test_l-z \
 	  VPP_TEST_BUILD_DIR=$(BR)/build-$(2)-native \
 	  VPP_TEST_BIN=$(BR)/install-$(2)-native/vpp/bin/vpp \
 	  VPP_TEST_PLUGIN_PATH=$(call libexpand,$(libs),$(2),vpp_plugins) \
