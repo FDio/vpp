@@ -58,14 +58,15 @@ def generate_callbacks(func_list, base_package, plugin_package, plugin_name, cal
 
     callbacks = []
     for func in func_list:
-
         camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
 
         if util.is_control_ping(camel_case_name_with_suffix):
+            # Skip control_ping managed by jvpp registry.
             continue
-        if not util.is_reply(camel_case_name_with_suffix) and not util.is_notification(func['name']):
+        if util.is_dump(func['name']) or util.is_request(func['name'], func_list):
             continue
 
+        # Generate callbacks for all messages except for dumps and requests (handled by vpp, not client).
         callback_type = "JVppCallback"
         callbacks.append("{0}.{1}.{2}".format(plugin_package, callback_package, camel_case_name_with_suffix + callback_suffix))
         callback_path = os.path.join(callback_package, camel_case_name_with_suffix + callback_suffix + ".java")

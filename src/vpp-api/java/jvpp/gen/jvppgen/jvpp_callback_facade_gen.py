@@ -109,11 +109,9 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
 
     methods = []
     methods_impl = []
+
+    # Generate methods for sending messages.
     for func in func_list:
-
-        if util.is_notification(func['name']):
-            continue
-
         camel_case_name = util.underscore_to_camelcase(func['name'])
         camel_case_name_upper = util.underscore_to_camelcase_upper(func['name'])
         if util.is_reply(camel_case_name) or util.is_control_ping(camel_case_name):
@@ -123,8 +121,11 @@ def generate_jvpp(func_list, base_package, plugin_package, plugin_name, dto_pack
         callback_type = get_request_name(camel_case_name_upper)
         if util.is_dump(camel_case_name_upper):
             callback_type += "Details"
-        elif not util.is_notification(camel_case_name_upper):
+        elif util.is_request(func['name'], func_list):
             callback_type += "Reply"
+        else:
+            # Skip messages that do not not have replies (e.g events/counters).
+            continue
         callback_type += callback_gen.callback_suffix
 
         if len(func['args']) == 0:
@@ -278,12 +279,15 @@ jvpp_facade_callback_notification_method_template = Template("""
 def generate_callback(func_list, base_package, plugin_package, plugin_name, dto_package, callback_package, notification_package, callback_facade_package, inputfile):
     callbacks = []
     for func in func_list:
-
         camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
 
         if util.is_control_ping(camel_case_name_with_suffix):
+            # Skip control ping managed by jvpp registry.
+            continue
+        if util.is_dump(func['name']) or util.is_request(func['name'], func_list):
             continue
 
+        # Generate callbacks for all messages except for dumps and requests (handled by vpp, not client).
         if util.is_reply(camel_case_name_with_suffix):
             request_method = camel_case_name_with_suffix
             callbacks.append(jvpp_facade_callback_method_template.substitute(plugin_package=plugin_package,
@@ -291,13 +295,12 @@ def generate_callback(func_list, base_package, plugin_package, plugin_name, dto_
                                                                              callback_package=callback_package,
                                                                              callback=camel_case_name_with_suffix + callback_gen.callback_suffix,
                                                                              callback_dto=request_method))
-
-        if util.is_notification(func["name"]):
+        else:
             callbacks.append(jvpp_facade_callback_notification_method_template.substitute(plugin_package=plugin_package,
-                                                                             dto_package=dto_package,
-                                                                             callback_package=callback_package,
-                                                                             callback=camel_case_name_with_suffix + callback_gen.callback_suffix,
-                                                                             callback_dto=camel_case_name_with_suffix))
+                                                                                          dto_package=dto_package,
+                                                                                          callback_package=callback_package,
+                                                                                          callback=camel_case_name_with_suffix + callback_gen.callback_suffix,
+                                                                                          callback_dto=camel_case_name_with_suffix))
 
     jvpp_file = open(os.path.join(callback_facade_package, "CallbackJVpp%sFacadeCallback.java" % plugin_name), 'w')
     jvpp_file.write(jvpp_facade_callback_template.substitute(inputfile=inputfile,
@@ -316,6 +319,7 @@ def generate_callback(func_list, base_package, plugin_package, plugin_name, dto_
 # Returns request name
 def get_request_name(camel_case_dto_name):
     return remove_suffix(camel_case_dto_name)
+
 
 def remove_suffix(name):
     if util.is_reply(name):
