@@ -170,17 +170,17 @@ public:
   /**
    * Return a address representation of the mask, e.g. 255.255.0.0
    */
-  boost::asio::ip::address_v4 mask() const;
+  boost::asio::ip::address mask() const;
 
   /**
    * get the lowest address in the prefix
    */
-  boost::asio::ip::address_v4 low() const;
+  prefix_t low() const;
 
   /**
    * Get the highest address in the prefix
    */
-  boost::asio::ip::address_v4 high() const;
+  prefix_t high() const;
 
   /**
    * Get the L3 protocol
@@ -207,6 +207,22 @@ boost::asio::ip::address_v4 operator&(const boost::asio::ip::address_v4& addr1,
                                       const boost::asio::ip::address_v4& addr2);
 
 boost::asio::ip::address_v4 operator~(const boost::asio::ip::address_v4& addr1);
+
+boost::asio::ip::address_v6 operator|(const boost::asio::ip::address_v6& addr1,
+                                      const boost::asio::ip::address_v6& addr2);
+
+boost::asio::ip::address_v6 operator&(const boost::asio::ip::address_v6& addr1,
+                                      const boost::asio::ip::address_v6& addr2);
+
+boost::asio::ip::address_v6 operator~(const boost::asio::ip::address_v6& addr1);
+
+boost::asio::ip::address operator|(const boost::asio::ip::address& addr1,
+                                   const boost::asio::ip::address& addr2);
+
+boost::asio::ip::address operator&(const boost::asio::ip::address& addr1,
+                                   const boost::asio::ip::address& addr2);
+
+boost::asio::ip::address operator~(const boost::asio::ip::address& addr1);
 
 /**
  * Ostream printer for prefix_t
