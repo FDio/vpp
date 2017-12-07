@@ -79,6 +79,15 @@ ethernet_frame_is_tagged (u16 type)
   __m128i r = _mm_set1_epi16 (type);
   r = _mm_cmpeq_epi16 (ethertype_mask, r);
   return !_mm_test_all_zeros (r, r);
+#elif __aarch64__ && __ARM_NEON
+  uint16x4_t const ethertype_mask = { ETHERNET_TYPE_VLAN,
+    ETHERNET_TYPE_DOT1AD,
+    ETHERNET_TYPE_VLAN_9100,
+    ETHERNET_TYPE_VLAN_9200
+  };
+  uint16x4_t r = vdup_n_u16 (type);
+  uint16x4_t rv = vceq_u16 (ethertype_mask, r);
+  return vmaxv_u16 (rv);
 #else
   if ((type == ETHERNET_TYPE_VLAN) ||
       (type == ETHERNET_TYPE_DOT1AD) ||

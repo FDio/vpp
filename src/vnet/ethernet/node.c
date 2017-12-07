@@ -303,6 +303,24 @@ ethernet_frame_is_any_tagged (u16 type0, u16 type1)
     _mm_set_epi16 (type0, type0, type0, type0, type1, type1, type1, type1);
   r = _mm_cmpeq_epi16 (ethertype_mask, r);
   return !_mm_test_all_zeros (r, r);
+#elif __aarch64__ && __ARM_NEON
+  uint16x8_t const ethertype_mask = { ETHERNET_TYPE_VLAN,
+    ETHERNET_TYPE_DOT1AD,
+    ETHERNET_TYPE_VLAN_9100,
+    ETHERNET_TYPE_VLAN_9200,
+    /* duplicate for type1 */
+    ETHERNET_TYPE_VLAN,
+    ETHERNET_TYPE_DOT1AD,
+    ETHERNET_TYPE_VLAN_9100,
+    ETHERNET_TYPE_VLAN_9200
+  };
+
+  uint16x8_t type_vect = { type0, type0, type0, type0,
+    type1, type1, type1, type1
+  };
+  uint16x8_t rv = vceqq_u16 (ethertype_mask, type_vect);
+
+  return vmaxvq_u16 (rv);
 #else
   return ethernet_frame_is_tagged (type0) || ethernet_frame_is_tagged (type1);
 #endif
