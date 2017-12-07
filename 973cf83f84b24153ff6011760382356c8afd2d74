@@ -45,6 +45,29 @@
       "revId": "973cf83f84b24153ff6011760382356c8afd2d74",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d2508f76_ba2ab174",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 320,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2017-12-07T12:55:30Z",
+      "side": 1,
+      "message": "type_vect is also duplicated. This declaration can be used with x86 as well.",
+      "range": {
+        "startLine": 318,
+        "startChar": 0,
+        "endLine": 320,
+        "endChar": 4
+      },
+      "revId": "973cf83f84b24153ff6011760382356c8afd2d74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
