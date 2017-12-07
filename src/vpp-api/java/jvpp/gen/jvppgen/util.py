@@ -148,16 +148,12 @@ jni_field_accessors =  {'u8': 'ByteField',
                         'f64[]': 'ObjectField'
                         }
 
-# FIXME no convention in the naming of events (notifications) in vpe.api
-notifications_message_suffixes = ("event", "counters")
 
 def is_notification(name):
-    """ Returns true if the structure is a notification regardless of its no other use """
-    return is_just_notification(name)
+    """ Returns true if the structure is a notification """
+    # FIXME no convention in the naming of events (notifications) in vpe.api
+    notifications_message_suffixes = ("event", "counters")
 
-
-def is_just_notification(name):
-    """ Returns true if the structure is just a notification and has no other use """
     return name.lower().endswith(notifications_message_suffixes)
 
 
@@ -182,16 +178,5 @@ def api_message_to_javadoc(api_message):
     return " * " + str.replace("\n", "\n * ")
 
 
-notification_dto_suffix = "Notification"
-
-
-def add_notification_suffix(camel_case_dto_name):
-    camel_case_dto_name += notification_dto_suffix
-    return camel_case_dto_name
-
-
 def is_array(java_type_as_string):
     return java_type_as_string.endswith("[]")
-
-def is_want(name):
-    return name.startswith("want_")

@@ -145,7 +145,7 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
         f_name = f['name']
         camel_case_function_name = util.underscore_to_camelcase(f_name)
         if is_manually_generated(f_name) or util.is_reply(camel_case_function_name) \
-                or util.is_just_notification(f_name):
+                or util.is_notification(f_name):
             continue
 
         arguments = ''

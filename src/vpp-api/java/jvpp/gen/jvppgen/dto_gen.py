@@ -80,7 +80,7 @@ def generate_dtos(func_list, base_package, plugin_package, plugin_name, dto_pack
         base_type = ""
 
         # Generate request/reply or dump/dumpReply even if structure can be used as notification
-        if not util.is_just_notification(func["name"]):
+        if not util.is_notification(func["name"]):
             if util.is_reply(camel_case_dto_name):
                 description = "reply DTO"
                 request_dto_name = util.remove_reply_suffix(camel_case_dto_name)
@@ -107,9 +107,8 @@ def generate_dtos(func_list, base_package, plugin_package, plugin_name, dto_pack
 
             write_dto_file(base_package, plugin_package, base_type, camel_case_dto_name, description, dto_package,
                            dto_path, fields, func, inputfile, methods)
-
-        # for structures that are also used as notifications, generate dedicated notification DTO
-        if util.is_notification(func["name"]):
+        else:
+            # for structures that are also used as notifications, generate dedicated notification DTO
             description = "notification DTO"
             dto_path = os.path.join(dto_package, camel_case_dto_name + ".java")
             methods = generate_dto_base_methods(camel_case_dto_name, func)
