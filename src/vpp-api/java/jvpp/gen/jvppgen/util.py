@@ -6,7 +6,7 @@
 # You may obtain a copy of the License at:
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
+#import sys
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,7 +15,8 @@
 
 import os, pprint
 from os import removedirs
-
+import sys
+import logging
 
 def underscore_to_camelcase(name):
     name = name.title().replace("_", "")
@@ -40,6 +41,34 @@ reply_suffixes = ("reply", "details", "l2fibtableentry")
 
 def is_reply(name):
     return name.lower().endswith(reply_suffixes)
+
+
+def has_reply(msg_name_underscore, all_messages):
+    """Checks if reply message for the msg is present in all_messages.
+    Uses reply message suffixes defined in reply_suffixes.
+
+    :param msg: name of vpp API message
+    :param all_messages: sequence of vpp message names
+    :returns: True if all_messages contain reply for the msg message.
+    """
+    logging.basicConfig(stream=sys.stdout, level=10)
+    logger = logging.getLogger("VAPI JVPP GEN")
+    logger.setLevel(10)
+
+    msg_without_suffix = msg_name_underscore
+    if is_dump(msg_name_underscore):
+        msg_without_suffix = remove_suffix(msg_name_underscore, dump_suffix)
+    if not msg_without_suffix.endswith('_'):
+        msg_without_suffix += '_'
+    print "has_reply: %s, msg_without_suffix=%s" % (msg_name_underscore, msg_without_suffix)
+    for suffix in reply_suffixes:
+        reply_msg = msg_without_suffix + suffix
+        if reply_msg in all_messages:
+            logger.error("Message %s DOES have reply %s" % (msg_name_underscore, reply_msg))
+            return True
+
+    logger.error("Message %s does not have reply" % msg_name_underscore)
+    return False
 
 details_suffix = "details"
 
@@ -159,27 +188,15 @@ jni_field_accessors =  {'u8': 'ByteField',
 unconventional_naming_rep_req = {
                                  }
 
-#
-# FIXME no convention in the naming of events (notifications) in vpe.api
-notifications_message_suffixes = ("event", "counters")
-
 # messages that must be ignored. These messages are INSUFFICIENTLY marked as disabled in vpe.api
 # FIXME
 ignored_messages = []
 
-
-def is_notification(name):
-    """ Returns true if the structure is a notification regardless of its no other use """
-    return is_just_notification(name)
-
-
-def is_just_notification(name):
-    """ Returns true if the structure is just a notification and has no other use """
-    return name.lower().endswith(notifications_message_suffixes)
-
-
 def is_ignored(param):
     return param.lower() in ignored_messages
+
+def remove_request_suffix(camel_case_name_with_suffix):
+    return remove_suffix(camel_case_name_with_suffix, get_reply_suffix(camel_case_name_with_suffix))
 
 
 def remove_reply_suffix(camel_case_name_with_suffix):

@@ -144,8 +144,14 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
     for f in func_list:
         f_name = f['name']
         camel_case_function_name = util.underscore_to_camelcase(f_name)
+
         if is_manually_generated(f_name, plugin_name) or util.is_reply(camel_case_function_name) \
-                or util.is_ignored(f_name) or util.is_just_notification(f_name):
+            or util.is_ignored(f_name) \
+            or not util.has_reply(f_name, [ff['name'] for ff in func_list]):
+            # Skip ignored messages, control ping (managed by registry), replies (sent by vpp not client)
+            # Also ignore messages that do not have replies (e.g events/counters)
+            # and messages with unconventional reply<>request mappings.
+            print "Skipping message %s" % f_name
             continue
 
         arguments = ''
@@ -176,7 +182,7 @@ def generate_jni_impl(func_list, plugin_name, inputfile):
                                                                            field_reference_name=field_name,
                                                                            field_length=t[2][0],
                                                                            is_variable_len_array=is_variable_len_array)
-
+        print "Generating jni impl for message %s" % f_name
         jni_impl.append(jni_impl_template.substitute(
                 inputfile=inputfile,
                 api_data=util.api_message_to_javadoc(f),
@@ -257,9 +263,13 @@ def generate_msg_handlers(func_list, plugin_name, inputfile):
         if is_manually_generated(handler_name, plugin_name) or util.is_ignored(handler_name):
             continue
 
-        if not util.is_reply(dto_name) and not util.is_notification(handler_name):
+        print "Message %s jni has reply %s" % (handler_name, util.has_reply(handler_name, [ff['name'] for ff in func_list]))
+
+        if util.has_reply(handler_name, [ff['name'] for ff in func_list]):
+            print "Skipping %s jni" % handler_name
             continue
 
+        # Generate msg handlers only for messages that are replies or might be events (do not have reply message)
         dto_setters = ''
         err_handler = ''
         # dto setters
@@ -308,8 +318,8 @@ def generate_handler_registration(func_list):
         name = f['name']
         camelcase_name = util.underscore_to_camelcase(f['name'])
 
-        if (not util.is_reply(camelcase_name) and not util.is_notification(name)) or util.is_ignored(name) \
-                or util.is_control_ping(camelcase_name):
+        if util.is_ignored(name) or util.is_control_ping(camelcase_name) \
+                or util.has_reply(name, [ff['name'] for ff in func_list]):
             continue
 
         handler_registration.append(handler_registration_template.substitute(
@@ -380,4 +390,6 @@ def generate_jvpp(func_list, plugin_name, inputfile, path):
             handler_registration=handler_registration))
     jvpp_c_file.flush()
     jvpp_c_file.close()
+
+    raise Exception("jni C gen ended")
 

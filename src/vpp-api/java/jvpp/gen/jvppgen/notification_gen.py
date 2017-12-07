@@ -136,12 +136,25 @@ def generate_notification_registry(func_list, base_package, plugin_package, plug
     handler_methods = []
     for func in func_list:
 
-        if not util.is_reply(func['name']) and not util.is_notification(func['name']):
+        camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
+
+        # Do not notification callback methods for ignored messages, control ping (managed by jvpp registry),
+        # nor dump messages (handled by vpp not client).
+        if util.is_ignored(func['name']) or util.is_dump(func['name']) \
+                or util.is_control_ping(camel_case_name_with_suffix):
             continue
 
-        camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
-        if util.is_control_ping(camel_case_name_with_suffix):
+        if (not util.is_reply(func['name'])) and util.has_reply(func['name'], [f['name'] for f in func_list]):
             continue
+
+        # Generate callback for replies.
+        # Also generate callback methods for requests that do not have reply message.
+        # They might be event messages.
+
+
+        print("Generating everything for %s" % func['name'])
+
+
         notification_dto = camel_case_name_with_suffix
         callback_ifc = camel_case_name_with_suffix + callback_gen.callback_suffix
         fully_qualified_callback_ifc = "{0}.{1}.{2}".format(plugin_package, callback_package, callback_ifc)

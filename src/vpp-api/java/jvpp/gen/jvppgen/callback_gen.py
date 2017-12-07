@@ -63,11 +63,16 @@ def generate_callbacks(func_list, base_package, plugin_package, plugin_name, cal
 
         camel_case_name_with_suffix = util.underscore_to_camelcase_upper(func['name'])
 
-        if util.is_ignored(func['name']) or util.is_control_ping(camel_case_name_with_suffix):
-            continue
-        if not util.is_reply(camel_case_name_with_suffix) and not util.is_notification(func['name']):
+        # Do not generate callback methods for ignored messages, control ping (managed by jvpp registry),
+        # nor dump messages (handled by vpp not client).
+        if util.is_ignored(func['name']) or util.is_dump(func['name'])\
+                or util.is_control_ping(camel_case_name_with_suffix):
             continue
 
+        if not (util.is_reply(camel_case_name_with_suffix) or not util.has_reply(func['name'], [f['name'] for f in func_list])):
+            continue
+
+        # Generate callbacks only for messages that are replies or might be events (do not have reply message)
         callback_type = "JVppCallback"
         callbacks.append("{0}.{1}.{2}".format(plugin_package, callback_package, camel_case_name_with_suffix + callback_suffix))
         callback_path = os.path.join(callback_package, camel_case_name_with_suffix + callback_suffix + ".java")
