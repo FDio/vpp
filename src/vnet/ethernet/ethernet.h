@@ -67,25 +67,23 @@ ethernet_mac_address_is_zero (u8 * mac)
   return ((*((u32 *) mac) == 0) && (*((u16 *) (mac + 4)) == 0));
 }
 
+static_always_inline int ethernet_frame_is_any_tagged (u16 type0, u16 type1);
+
 static_always_inline int
 ethernet_frame_is_tagged (u16 type)
 {
 #if __SSE4_2__
-  const __m128i ethertype_mask = _mm_set_epi16 ((u16) ETHERNET_TYPE_VLAN,
-						(u16) ETHERNET_TYPE_DOT1AD,
-						(u16) ETHERNET_TYPE_VLAN_9100,
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						/* duplicate last one to
-						   fill register */
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						(u16) ETHERNET_TYPE_VLAN_9200,
-						(u16)
-						ETHERNET_TYPE_VLAN_9200);
+  return ethernet_frame_is_any_tagged (type, type);
+#elif __aarch64__ && __ARM_NEON
+  u16x4 const ethertype_mask = { ETHERNET_TYPE_VLAN,
+    ETHERNET_TYPE_DOT1AD,
+    ETHERNET_TYPE_VLAN_9100,
+    ETHERNET_TYPE_VLAN_9200
+  };
+  u16x4 r = u16x4_splat (type);
 
-  __m128i r = _mm_set1_epi16 (type);
-  r = _mm_cmpeq_epi16 (ethertype_mask, r);
-  return !_mm_test_all_zeros (r, r);
+  r = vceq_u16 (ethertype_mask, r);
+  return ((uint64_t) r) != 0;
 #else
   if ((type == ETHERNET_TYPE_VLAN) ||
       (type == ETHERNET_TYPE_DOT1AD) ||
@@ -93,6 +91,33 @@ ethernet_frame_is_tagged (u16 type)
     return 1;
 #endif
   return 0;
+}
+
+static_always_inline int
+ethernet_frame_is_any_tagged (u16 type0, u16 type1)
+{
+#if __SSE4_2__ || (__aarch64__ && __ARM_NEON)
+  u16x8 const ethertype_mask = { (u16) ETHERNET_TYPE_VLAN,
+    (u16) ETHERNET_TYPE_DOT1AD,
+    (u16) ETHERNET_TYPE_VLAN_9100,
+    (u16) ETHERNET_TYPE_VLAN_9200,
+    /* duplicate for type1 */
+    (u16) ETHERNET_TYPE_VLAN,
+    (u16) ETHERNET_TYPE_DOT1AD,
+    (u16) ETHERNET_TYPE_VLAN_9100,
+    (u16) ETHERNET_TYPE_VLAN_9200
+  };
+
+  u16x8 r = u16x4_vcombine (u16x4_splat (type0), u16x4_splat (type1));
+  r = u16x8_is_equal (ethertype_mask, r);
+#if __SSE4_2__
+  return (u16x8_zero_byte_mask (r) != 0xffff);
+#else
+  return vaddlvq_u16 (r) != 0;
+#endif
+#else
+  return ethernet_frame_is_tagged (type0) || ethernet_frame_is_tagged (type1);
+#endif
 }
 
 /* Max. sized ethernet/vlan header for parsing. */

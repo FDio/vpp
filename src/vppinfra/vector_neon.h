@@ -18,6 +18,7 @@
 #include <arm_neon.h>
 
 /* Splats. */
+#define u16x4_splat(i) vdup_n_u16(i)
 
 #define u8x16_splat(i) vdupq_n_u8(i)
 #define u16x8_splat(i) vdupq_n_u16(i)
@@ -33,6 +34,13 @@
 
 #define u16x8_is_equal(a,b) vceqq_u16(a,b)
 #define i16x8_is_equal(a,b) vceqq_i16(a,b)
+
+/* vector combine */
+always_inline u16x8
+u16x4_vcombine (u16x4 low, u16x4 high)
+{
+  return vcombine_u16 (low, high);
+}
 
 always_inline u32
 u16x8_zero_byte_mask (u16x8 input)
