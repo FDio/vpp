@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "100ea89c_4754b979",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-12-07T12:46:57Z",
+      "side": 1,
+      "message": "pls use u16x4 type. like in my previos comment, try to avoid duplication by changing x86 to use more neutral type.",
+      "range": {
+        "startLine": 83,
+        "startChar": 2,
+        "endLine": 83,
+        "endChar": 12
+      },
+      "revId": "973cf83f84b24153ff6011760382356c8afd2d74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b7d2f97c_8b4ef855",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 316,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-12-07T12:46:57Z",
+      "side": 1,
+      "message": "It doesn\u0027t make sense that you duplicate this, unless I missed something.\n\nCan you just replace definition aboive to use u16x8 and use it both for x86 and arm64.",
+      "range": {
+        "startLine": 307,
+        "startChar": 0,
+        "endLine": 316,
+        "endChar": 4
+      },
+      "revId": "973cf83f84b24153ff6011760382356c8afd2d74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
