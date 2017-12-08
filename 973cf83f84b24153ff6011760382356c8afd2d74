@@ -25,6 +25,29 @@
     },
     {
       "key": {
+        "uuid": "01c8a497_90691dc3",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2017-12-08T10:28:53Z",
+      "side": 1,
+      "message": "I think we need to use SIMD (may be LD1) to load these macros to vector. Single LD1 will take lesser cycles than multiple loads at every index.",
+      "range": {
+        "startLine": 307,
+        "startChar": 1,
+        "endLine": 307,
+        "endChar": 57
+      },
+      "revId": "973cf83f84b24153ff6011760382356c8afd2d74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b7d2f97c_8b4ef855",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 1
