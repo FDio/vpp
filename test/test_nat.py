@@ -4678,6 +4678,20 @@ class TestDSlite(MethodHolder):
         self.check_ip_checksum(capture)
         self.check_icmp_checksum(capture)
 
+        # ping DS-Lite AFTR tunnel endpoint address
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IPv6(src=self.pg1.remote_hosts[1].ip6, dst=aftr_ip6) /
+             ICMPv6EchoRequest())
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        self.assertEqual(1, len(capture))
+        capture = capture[0]
+        self.assertEqual(capture[IPv6].src, aftr_ip6)
+        self.assertEqual(capture[IPv6].dst, self.pg1.remote_hosts[1].ip6)
+        self.assertTrue(capture.haslayer(ICMPv6EchoReply))
+
     def tearDown(self):
         super(TestDSlite, self).tearDown()
         if not self.vpp_dead:
