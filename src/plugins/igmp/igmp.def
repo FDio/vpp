@@ -1,0 +1,35 @@
+/*
+ *------------------------------------------------------------------
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *------------------------------------------------------------------
+ */
+
+igmp_type (0x11, membership_query)
+igmp_type (0x12, membership_report_v1)
+igmp_type (0x13, dvmrp)
+igmp_type (0x14, pim_v1)
+igmp_type (0x15, cisco_trace)
+igmp_type (0x16, membership_report_v2)
+igmp_type (0x17, leave_group_v2)
+igmp_type (0x1e, traceroute_response)
+igmp_type (0x1f, traceroute_request)
+igmp_type (0x22, membership_report_v3)
+igmp_type (0x30, router_advertisement)
+igmp_type (0x32, router_termination)
+igmp_report_type (1, mode_is_filter_include)
+igmp_report_type (2, mode_is_filter_exclude)
+igmp_report_type (3, change_to_filter_include)
+igmp_report_type (4, change_to_filter_exclude)
+igmp_report_type (5, allow_new_sources)
+igmp_report_type (6, block_old_sources)

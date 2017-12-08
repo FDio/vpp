@@ -1,0 +1,31 @@
+# Copyright (c) 2017 Cisco and/or its affiliates.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+vppplugins_LTLIBRARIES += igmp_plugin.la
+
+igmp_plugin_la_SOURCES =		\
+	igmp/igmp.c			\
+	igmp/cli.c			\
+	igmp/igmp_api.c			\
+	igmp/igmp_plugin.api.h		\
+	igmp/input.c			\
+	igmp/igmp_format.c
+
+nobase_apiinclude_HEADERS += 		\
+	igmp/igmp_all_api_h.h		\
+	igmp/igmp_msg_enum.h		\
+	igmp/igmp.api.h
+
+API_FILES += igmp/igmp.api
+
+# vi:syntax=automake
