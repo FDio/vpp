@@ -83,6 +83,24 @@ typedef struct
   ip4_address_t dst;
 } igmp_message_t;
 
+typedef struct
+{
+  /* type 0x11 (IGMPv3) */
+  igmp_header_t header;
+
+  ip4_address_t dst;
+
+  /* Reserved, Suppress Router-Side Processing flag and
+     Querier's Robustness Variable RRRRSQQQ. */
+  u8 resv_s_qrv;
+
+  /* Querier's Query Interval Code */
+  u8 qqi_code;
+
+  u16 n_src_addresses;
+  ip4_address_t src_addresses[0];
+} igmp_membership_query_v3_t;
+
 #define foreach_igmp_membership_group_v3_type	\
   _ (1, mode_is_filter_include)			\
   _ (2, mode_is_filter_exclude)			\
