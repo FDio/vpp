@@ -51,6 +51,10 @@ if ENABLE_GTPU_PLUGIN
 include gtpu.am
 endif
 
+if ENABLE_IGMP_PLUGIN
+include igmp.am
+endif
+
 if ENABLE_ILA_PLUGIN
 include ila.am
 endif

@@ -3291,3 +3291,39 @@ class VppPapiProvider(object):
                         {'sw_if_index': sw_if_index,
                          'input_source': input_source,
                          'enable': enable})
+
+    def igmp_listen(self, enable, sw_if_index, saddr, gaddr):
+        """ Listen for new (S,G) on specified interface
+
+        :param enable: add/del
+        :param sw_if_index: interface sw index
+        :param saddr: source ip4 addr
+        :param gaddr: group ip4 addr
+        """
+        return self.api(self.papi.igmp_listen,
+                        {'enable': enable,
+                         'sw_if_index': sw_if_index,
+                         'saddr': saddr,
+                         'gaddr': gaddr})
+
+    def igmp_dump(self, sw_if_index=None):
+        """ Dump all (S,G) interface configurations """
+        if sw_if_index is None:
+            dump_all = 1
+            sw_if_index = 0
+        else:
+            dump_all = 0
+        return self.api(self.papi.igmp_dump, {'sw_if_index': sw_if_index,
+                                              'dump_all': dump_all})
+
+    def igmp_clear_interface(self, sw_if_index):
+        """ Remove all (S,G)s from specified interface
+            doesn't send IGMP report!
+        """
+        return self.api(
+            self.papi.igmp_clear_interface, {
+                'sw_if_index': sw_if_index})
+
+    def want_igmp_events(self, enable=1):
+        return self.api(self.papi.want_igmp_events, {'enable': enable,
+                                                     'pid': os.getpid()})
