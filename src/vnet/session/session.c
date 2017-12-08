@@ -147,6 +147,7 @@ session_alloc_for_connection (transport_connection_t * tc)
   s = session_alloc (thread_index);
   s->session_type = session_type_from_proto_and_ip (tc->proto, tc->is_ip4);
   s->session_state = SESSION_STATE_CONNECTING;
+  s->enqueue_epoch = ~0;
 
   /* Attach transport to session and vice versa */
   s->connection_index = tc->c_index;
