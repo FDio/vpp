@@ -72,6 +72,30 @@
     },
     {
       "key": {
+        "uuid": "195e7df5_622d0660",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2017-12-08T12:34:11Z",
+      "side": 1,
+      "message": "Both functions here use a single LDR instruction to load these values into the NEON register. The values are stored in instruction data. This is an interesting trade off compared to loading the values from memory using VLDn. Since this code is using vector initializer lists (gnu only extension?) I would leave it up to the compiler to make the best choice.\n\nThe piece of code that looks like it has room for improvement is creating a register out of type0 and type1 fn args which currently results in 8 MOV instructions. There might be a better way.",
+      "parentUuid": "01c8a497_90691dc3",
+      "range": {
+        "startLine": 307,
+        "startChar": 1,
+        "endLine": 307,
+        "endChar": 57
+      },
+      "revId": "973cf83f84b24153ff6011760382356c8afd2d74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b7d2f97c_8b4ef855",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 1
