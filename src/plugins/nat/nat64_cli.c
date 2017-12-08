@@ -26,7 +26,6 @@ nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
 				    unformat_input_t * input,
 				    vlib_cli_command_t * cmd)
 {
-  nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   ip4_address_t start_addr, end_addr, this_addr;
   u32 start_host_order, end_host_order;
@@ -34,10 +33,6 @@ nat64_add_del_pool_addr_command_fn (vlib_main_t * vm,
   u32 vrf_id = ~0;
   u8 is_add = 1;
   clib_error_t *error = 0;
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -129,12 +124,6 @@ nat64_show_pool_command_fn (vlib_main_t * vm,
 			    unformat_input_t * input,
 			    vlib_cli_command_t * cmd)
 {
-  nat64_main_t *nm = &nat64_main;
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
-
   vlib_cli_output (vm, "NAT64 pool:");
   nat64_pool_addr_walk (nat64_cli_pool_walk, vm);
 
@@ -146,7 +135,6 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
 				    unformat_input_t *
 				    input, vlib_cli_command_t * cmd)
 {
-  nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
@@ -155,10 +143,6 @@ nat64_interface_feature_command_fn (vlib_main_t * vm,
   u32 *outside_sw_if_indices = 0;
   u8 is_add = 1;
   int i, rv;
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
 
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
@@ -279,12 +263,6 @@ nat64_show_interfaces_command_fn (vlib_main_t * vm,
 				  unformat_input_t *
 				  input, vlib_cli_command_t * cmd)
 {
-  nat64_main_t *nm = &nat64_main;
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
-
   vlib_cli_output (vm, "NAT64 interfaces:");
   nat64_interfaces_walk (nat64_cli_interface_walk, vm);
 
@@ -297,7 +275,6 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 				     unformat_input_t
 				     * input, vlib_cli_command_t * cmd)
 {
-  nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u8 is_add = 1;
@@ -309,10 +286,6 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
   snat_protocol_t proto = 0;
   u8 p = 0;
   int rv;
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -383,6 +356,8 @@ nat64_add_del_static_bib_command_fn (vlib_main_t *
 	clib_error_return (0, "Outside addres %U and port %u already in use.",
 			   format_ip4_address, &out_addr, out_port);
       goto done;
+    case VNET_API_ERROR_INVALID_VALUE_2:
+      error = clib_error_return (0, "Invalid outside port.");
     default:
       break;
     }
@@ -436,10 +411,7 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   u32 proto = ~0;
   u8 p = 255;
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
+  nat64_db_t *db;
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -462,7 +434,11 @@ nat64_show_bib_command_fn (vlib_main_t * vm,
   else
     vlib_cli_output (vm, "NAT64 %U BIB entries:", format_snat_protocol,
 		     proto);
-  nat64_db_bib_walk (&nm->db, p, nat64_cli_bib_walk, vm);
+
+  /* *INDENT-OFF* */
+  vec_foreach (db, nm->db)
+    nat64_db_bib_walk (db, p, nat64_cli_bib_walk, vm);
+  /* *INDENT-ON* */
 
 done:
   unformat_free (line_input);
@@ -474,7 +450,6 @@ static clib_error_t *
 nat64_set_timeouts_command_fn (vlib_main_t * vm, unformat_input_t * input,
 			       vlib_cli_command_t * cmd)
 {
-  nat64_main_t *nm = &nat64_main;
   unformat_input_t _line_input, *line_input = &_line_input;
   clib_error_t *error = 0;
   u32 timeout, tcp_trans, tcp_est, tcp_incoming_syn;
@@ -482,10 +457,6 @@ nat64_set_timeouts_command_fn (vlib_main_t * vm, unformat_input_t * input,
   tcp_trans = nat64_get_tcp_trans_timeout ();
   tcp_est = nat64_get_tcp_est_timeout ();
   tcp_incoming_syn = nat64_get_tcp_incoming_syn_timeout ();
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -563,12 +534,6 @@ static clib_error_t *
 nat64_show_timeouts_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				vlib_cli_command_t * cmd)
 {
-  nat64_main_t *nm = &nat64_main;
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
-
   vlib_cli_output (vm, "NAT64 session timeouts:");
   vlib_cli_output (vm, " UDP %usec", nat64_get_udp_timeout ());
   vlib_cli_output (vm, " ICMP %usec", nat64_get_icmp_timeout ());
@@ -582,15 +547,21 @@ nat64_show_timeouts_command_fn (vlib_main_t * vm, unformat_input_t * input,
   return 0;
 }
 
-static int
-nat64_cli_st_walk (nat64_db_st_entry_t * ste, void *ctx)
+typedef struct nat64_cli_st_walk_ctx_t_
 {
-  vlib_main_t *vm = ctx;
-  nat64_main_t *nm = &nat64_main;
+  vlib_main_t *vm;
+  nat64_db_t *db;
+} nat64_cli_st_walk_ctx_t;
+
+static int
+nat64_cli_st_walk (nat64_db_st_entry_t * ste, void *arg)
+{
+  nat64_cli_st_walk_ctx_t *ctx = arg;
+  vlib_main_t *vm = ctx->vm;
   nat64_db_bib_entry_t *bibe;
   fib_table_t *fib;
 
-  bibe = nat64_db_bib_entry_by_index (&nm->db, ste->proto, ste->bibe_index);
+  bibe = nat64_db_bib_entry_by_index (ctx->db, ste->proto, ste->bibe_index);
   if (!bibe)
     return -1;
 
@@ -642,10 +613,10 @@ nat64_show_st_command_fn (vlib_main_t * vm,
   clib_error_t *error = 0;
   u32 proto = ~0;
   u8 p = 255;
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
+  nat64_db_t *db;
+  nat64_cli_st_walk_ctx_t ctx = {
+    .vm = vm,
+  };
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -667,7 +638,13 @@ nat64_show_st_command_fn (vlib_main_t * vm,
     vlib_cli_output (vm, "NAT64 sessions:");
   else
     vlib_cli_output (vm, "NAT64 %U sessions:", format_snat_protocol, proto);
-  nat64_db_st_walk (&nm->db, p, nat64_cli_st_walk, vm);
+  /* *INDENT-OFF* */
+  vec_foreach (db, nm->db)
+    {
+      ctx.db = db;
+      nat64_db_st_walk (db, p, nat64_cli_st_walk, &ctx);
+    }
+  /* *INDENT-ON* */
 
 done:
   unformat_free (line_input);
@@ -679,7 +656,6 @@ static clib_error_t *
 nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
 				 vlib_cli_command_t * cmd)
 {
-  nat64_main_t *nm = &nat64_main;
   vnet_main_t *vnm = vnet_get_main ();
   clib_error_t *error = 0;
   unformat_input_t _line_input, *line_input = &_line_input;
@@ -688,10 +664,6 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
   ip6_address_t prefix;
   u32 plen = 0;
   int rv;
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
 
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -748,26 +720,29 @@ nat64_add_del_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
       fib_prefix_t fibpfx = {
 	.fp_len = plen,
 	.fp_proto = FIB_PROTOCOL_IP6,
-	.fp_addr = {.ip6 = prefix}
+	.fp_addr = {
+		    .ip6 = prefix}
       };
 
       if (is_add)
 	{
-	  fib_index = fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
-							 vrf_id,
-							 FIB_SOURCE_PLUGIN_HI);
+	  fib_index =
+	    fib_table_find_or_create_and_lock (FIB_PROTOCOL_IP6,
+					       vrf_id, FIB_SOURCE_PLUGIN_HI);
 	  fib_table_entry_update_one_path (fib_index, &fibpfx,
 					   FIB_SOURCE_PLUGIN_HI,
-					   FIB_ENTRY_FLAG_NONE, DPO_PROTO_IP6,
-					   NULL, sw_if_index, ~0, 0, NULL,
-					   FIB_ROUTE_PATH_INTF_RX);
+					   FIB_ENTRY_FLAG_NONE,
+					   DPO_PROTO_IP6, NULL,
+					   sw_if_index, ~0, 0,
+					   NULL, FIB_ROUTE_PATH_INTF_RX);
 	}
       else
 	{
 	  fib_index = fib_table_find (FIB_PROTOCOL_IP6, vrf_id);
 	  fib_table_entry_path_remove (fib_index, &fibpfx,
-				       FIB_SOURCE_PLUGIN_HI, DPO_PROTO_IP6,
-				       NULL, sw_if_index, ~0, 1,
+				       FIB_SOURCE_PLUGIN_HI,
+				       DPO_PROTO_IP6, NULL,
+				       sw_if_index, ~0, 1,
 				       FIB_ROUTE_PATH_INTF_RX);
 	  fib_table_unlock (fib_index, FIB_PROTOCOL_IP6,
 			    FIB_SOURCE_PLUGIN_HI);
@@ -792,15 +767,10 @@ nat64_cli_prefix_walk (nat64_prefix_t * p, void *ctx)
 }
 
 static clib_error_t *
-nat64_show_prefix_command_fn (vlib_main_t * vm, unformat_input_t * input,
+nat64_show_prefix_command_fn (vlib_main_t * vm,
+			      unformat_input_t * input,
 			      vlib_cli_command_t * cmd)
 {
-  nat64_main_t *nm = &nat64_main;
-
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
-
   vlib_cli_output (vm, "NAT64 prefix:");
   nat64_prefix_walk (nat64_cli_prefix_walk, vm);
 
@@ -812,7 +782,6 @@ nat64_add_interface_address_command_fn (vlib_main_t * vm,
 					unformat_input_t * input,
 					vlib_cli_command_t * cmd)
 {
-  nat64_main_t *nm = &nat64_main;
   vnet_main_t *vnm = vnet_get_main ();
   unformat_input_t _line_input, *line_input = &_line_input;
   u32 sw_if_index;
@@ -820,9 +789,6 @@ nat64_add_interface_address_command_fn (vlib_main_t * vm,
   int is_add = 1;
   clib_error_t *error = 0;
 
-  if (nm->is_disabled)
-    return clib_error_return (0,
-			      "NAT64 disabled, multi thread not supported");
   /* Get a line of input. */
   if (!unformat_user (input, unformat_line_input, line_input))
     return 0;
@@ -830,8 +796,7 @@ nat64_add_interface_address_command_fn (vlib_main_t * vm,
   while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
     {
       if (unformat
-	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index))
-	;
+	  (line_input, "%U", unformat_vnet_sw_interface, vnm, &sw_if_index));
       else if (unformat (line_input, "del"))
 	is_add = 0;
       else

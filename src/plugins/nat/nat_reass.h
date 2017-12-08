@@ -53,6 +53,7 @@ typedef CLIB_PACKED(struct
   nat_reass_ip4_key_t key;
   u32 lru_list_index;
   u32 sess_index;
+  u32 thread_index;
   f64 last_heard;
   u32 frags_per_reass_list_head_index;
   u8 frag_n;
@@ -185,6 +186,20 @@ u8 nat_reass_is_drop_frag (u8 is_ip6);
 clib_error_t *nat_reass_init (vlib_main_t * vm);
 
 /**
+ * @brief Find reassembly.
+ *
+ * @param src Source IPv4 address.
+ * @param dst Destination IPv4 address.
+ * @param frag_id Fragment ID.
+ * @param proto L4 protocol.
+ *
+ * @returns Reassembly data or 0 if not found.
+ */
+nat_reass_ip4_t *nat_ip4_reass_find (ip4_address_t src,
+				     ip4_address_t dst,
+				     u16 frag_id, u8 proto);
+
+/**
  * @brief Find or create reassembly.
  *
  * @param src Source IPv4 address.
@@ -201,6 +216,7 @@ nat_reass_ip4_t *nat_ip4_reass_find_or_create (ip4_address_t src,
 					       u16 frag_id, u8 proto,
 					       u8 reset_timeout,
 					       u32 ** bi_to_drop);
+
 /**
  * @brief Cache fragment.
  *

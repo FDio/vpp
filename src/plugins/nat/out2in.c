@@ -1701,6 +1701,7 @@ nat44_out2in_reass_node_fn (vlib_main_t * vm,
                       goto trace0;
                     }
                   reass0->sess_index = s0 - per_thread_data->sessions;
+                  reass0->thread_index = thread_index;
                 }
               else
                 {

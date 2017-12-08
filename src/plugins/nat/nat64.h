@@ -49,6 +49,19 @@ typedef struct
 
 typedef struct
 {
+  ip6_address_t in_addr;
+  u16 in_port;
+  ip4_address_t out_addr;
+  u16 out_port;
+  u32 fib_index;
+  u32 thread_index;
+  u8 proto;
+  u8 is_add;
+  u8 done;
+} nat64_static_bib_to_update_t;
+
+typedef struct
+{
   /** Interface pool */
   snat_interface_t *interfaces;
 
@@ -61,17 +74,30 @@ typedef struct
   /** Pref64 vector */
   nat64_prefix_t *pref64;
 
-  /** BIB and session DB */
-  nat64_db_t db;
+  /** BIB and session DB per thread */
+  nat64_db_t *db;
 
-  /* values of various timeouts */
+  /** Worker handoff */
+  u32 fq_in2out_index;
+  u32 fq_out2in_index;
+
+  /** Pool of static BIB entries to be added/deleted in worker threads */
+  nat64_static_bib_to_update_t *static_bibs;
+
+  u32 error_node_index;
+
+  /** config parameters */
+  u32 bib_buckets;
+  u32 bib_memory_size;
+  u32 st_buckets;
+  u32 st_memory_size;
+
+  /** values of various timeouts */
   u32 udp_timeout;
   u32 icmp_timeout;
   u32 tcp_trans_timeout;
   u32 tcp_est_timeout;
   u32 tcp_incoming_syn_timeout;
-
-  u8 is_disabled;
 
   ip4_main_t *ip4_main;
   snat_main_t *sm;
@@ -171,27 +197,30 @@ int nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 /**
  * @brief Alloce IPv4 address and port pair from NAT64 pool.
  *
- * @param fib_index FIB index of tenant.
- * @param proto     L4 protocol.
- * @param addr      Allocated IPv4 address.
- * @param port      Allocated port number.
+ * @param fib_index    FIB index of tenant.
+ * @param proto        L4 protocol.
+ * @param addr         Allocated IPv4 address.
+ * @param port         Allocated port number.
+ * @param thread_index Thread index.
  *
  * @returns 0 on success, non-zero value otherwise.
  */
 int nat64_alloc_out_addr_and_port (u32 fib_index, snat_protocol_t proto,
-				   ip4_address_t * addr, u16 * port);
+				   ip4_address_t * addr, u16 * port,
+				   u32 thread_index);
 
 /**
  * @brief Free IPv4 address and port pair from NAT64 pool.
  *
- * @param addr  IPv4 address to free.
- * @param port  Port number to free.
- * @param proto L4 protocol.
+ * @param addr         IPv4 address to free.
+ * @param port         Port number to free.
+ * @param proto        L4 protocol.
+ * @param thread_index Thread index.
  *
  * @returns 0 on success, non-zero value otherwise.
  */
 void nat64_free_out_addr_and_port (ip4_address_t * addr, u16 port,
-				   snat_protocol_t proto);
+				   snat_protocol_t proto, u32 thread_index);
 
 /**
  * @brief Set UDP session timeout.
@@ -321,6 +350,35 @@ void nat64_compose_ip6 (ip6_address_t * ip6, ip4_address_t * ip4,
  */
 void nat64_extract_ip4 (ip6_address_t * ip6, ip4_address_t * ip4,
 			u32 fib_index);
+
+/**
+ * @brief Set NAT64 hash tables configuration.
+ *
+ * @param bib_buckets Number of BIB hash buckets.
+ * @param bib_memory_size Memory size of BIB hash.
+ * @param st_buckets Number of session table hash buckets.
+ * @param st_memory_size Memory size of session table hash.
+ */
+void nat64_set_hash (u32 bib_buckets, u32 bib_memory_size, u32 st_buckets,
+		     u32 st_memory_size);
+
+/**
+ * @brief Get worker thread index for NAT64 in2out.
+ *
+ * @param addr IPv6 src address.
+ *
+ * @returns worker thread index.
+ */
+u32 nat64_get_worker_in2out (ip6_address_t * addr);
+
+/**
+ * @brief Get worker thread index for NAT64 out2in.
+ *
+ * @param ip IPv4 header.
+ *
+ * @returns worker thread index.
+ */
+u32 nat64_get_worker_out2in (ip4_header_t * ip);
 
 #define u8_ptr_add(ptr, index) (((u8 *)ptr) + index)
 #define u16_net_add(u, val) clib_host_to_net_u16(clib_net_to_host_u16(u) + (val))

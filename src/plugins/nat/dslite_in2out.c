@@ -108,13 +108,13 @@ slow_path (dslite_main_t * dm, dslite_session_key_t * in2out_key,
 
       if (snat_alloc_outside_address_and_port
 	  (dm->addr_pool, 0, thread_index, &out2in_key,
-	   &s->outside_address_index, 0, dm->port_per_thread, thread_index))
+	   &s->outside_address_index, dm->port_per_thread, thread_index))
 	ASSERT (0);
     }
   else
     {
       if (snat_alloc_outside_address_and_port
-	  (dm->addr_pool, 0, thread_index, &out2in_key, &address_index, 0,
+	  (dm->addr_pool, 0, thread_index, &out2in_key, &address_index,
 	   dm->port_per_thread, thread_index))
 	{
 	  *error = DSLITE_ERROR_OUT_OF_PORTS;

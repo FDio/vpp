@@ -195,6 +195,27 @@ nat_ip4_reass_lookup (nat_reass_ip4_key_t * k, f64 now)
 }
 
 nat_reass_ip4_t *
+nat_ip4_reass_find (ip4_address_t src, ip4_address_t dst, u16 frag_id,
+		    u8 proto)
+{
+  nat_reass_main_t *srm = &nat_reass_main;
+  nat_reass_ip4_t *reass = 0;
+  nat_reass_ip4_key_t k;
+  f64 now = vlib_time_now (srm->vlib_main);
+
+  k.src.as_u32 = src.as_u32;
+  k.dst.as_u32 = dst.as_u32;
+  k.frag_id = frag_id;
+  k.proto = proto;
+
+  clib_spinlock_lock_if_init (&srm->ip4_reass_lock);
+  reass = nat_ip4_reass_lookup (&k, now);
+  clib_spinlock_unlock_if_init (&srm->ip4_reass_lock);
+
+  return reass;
+}
+
+nat_reass_ip4_t *
 nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
 			      u16 frag_id, u8 proto, u8 reset_timeout,
 			      u32 ** bi_to_drop)
@@ -282,6 +303,7 @@ nat_ip4_reass_find_or_create (ip4_address_t src, ip4_address_t dst,
   reass->key.as_u64[1] = kv.key[1] = k.as_u64[1];
   kv.value = reass - srm->ip4_reass_pool;
   reass->sess_index = (u32) ~ 0;
+  reass->thread_index = (u32) ~ 0;
   reass->last_heard = now;
 
   if (clib_bihash_add_del_16_8 (&srm->ip4_reass_hash, &kv, 1))

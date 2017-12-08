@@ -21,6 +21,7 @@
 #include <nat/nat_reass.h>
 #include <vnet/ip/ip4_to_ip6.h>
 #include <vnet/fib/ip4_fib.h>
+#include <vnet/udp/udp.h>
 
 typedef struct
 {
@@ -67,6 +68,7 @@ format_nat64_out2in_reass_trace (u8 * s, va_list * args)
 
 vlib_node_registration_t nat64_out2in_node;
 vlib_node_registration_t nat64_out2in_reass_node;
+vlib_node_registration_t nat64_out2in_handoff_node;
 
 #define foreach_nat64_out2in_error                       \
 _(UNSUPPORTED_PROTOCOL, "Unsupported protocol")          \
@@ -94,7 +96,8 @@ static char *nat64_out2in_error_strings[] = {
 
 typedef enum
 {
-  NAT64_OUT2IN_NEXT_LOOKUP,
+  NAT64_OUT2IN_NEXT_IP6_LOOKUP,
+  NAT64_OUT2IN_NEXT_IP4_LOOKUP,
   NAT64_OUT2IN_NEXT_DROP,
   NAT64_OUT2IN_NEXT_REASS,
   NAT64_OUT2IN_N_NEXT,
@@ -104,6 +107,7 @@ typedef struct nat64_out2in_set_ctx_t_
 {
   vlib_buffer_t *b;
   vlib_main_t *vm;
+  u32 thread_index;
 } nat64_out2in_set_ctx_t;
 
 static int
@@ -124,6 +128,7 @@ nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   u32 sw_if_index, fib_index;
   u16 *checksum;
   ip_csum_t csum;
+  nat64_db_t *db = &nm->db[ctx->thread_index];
 
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
@@ -134,26 +139,24 @@ nat64_out2in_tcp_udp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   daddr.ip4.as_u32 = ip4->dst_address.as_u32;
 
   ste =
-    nat64_db_st_entry_find (&nm->db, &daddr, &saddr, dport, sport, proto,
+    nat64_db_st_entry_find (db, &daddr, &saddr, dport, sport, proto,
 			    fib_index, 0);
   if (ste)
     {
-      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      bibe = nat64_db_bib_entry_by_index (db, proto, ste->bibe_index);
       if (!bibe)
 	return -1;
     }
   else
     {
-      bibe =
-	nat64_db_bib_entry_find (&nm->db, &daddr, dport, proto, fib_index, 0);
+      bibe = nat64_db_bib_entry_find (db, &daddr, dport, proto, fib_index, 0);
 
       if (!bibe)
 	return -1;
 
       nat64_compose_ip6 (&ip6_saddr, &ip4->src_address, bibe->fib_index);
       ste =
-	nat64_db_st_entry_create (&nm->db, bibe, &ip6_saddr, &saddr.ip4,
-				  sport);
+	nat64_db_st_entry_create (db, bibe, &ip6_saddr, &saddr.ip4, sport);
     }
 
   nat64_session_reset_timeout (ste, ctx->vm);
@@ -189,6 +192,7 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
   ip6_address_t ip6_saddr;
   u32 sw_if_index, fib_index;
   icmp46_header_t *icmp = ip4_next_header (ip4);
+  nat64_db_t *db = &nm->db[ctx->thread_index];
 
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
@@ -202,13 +206,13 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
     {
       u16 out_id = ((u16 *) (icmp))[2];
       ste =
-	nat64_db_st_entry_find (&nm->db, &daddr, &saddr, out_id, 0,
+	nat64_db_st_entry_find (db, &daddr, &saddr, out_id, 0,
 				IP_PROTOCOL_ICMP, fib_index, 0);
 
       if (ste)
 	{
 	  bibe =
-	    nat64_db_bib_entry_by_index (&nm->db, IP_PROTOCOL_ICMP,
+	    nat64_db_bib_entry_by_index (db, IP_PROTOCOL_ICMP,
 					 ste->bibe_index);
 	  if (!bibe)
 	    return -1;
@@ -216,15 +220,14 @@ nat64_out2in_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
       else
 	{
 	  bibe =
-	    nat64_db_bib_entry_find (&nm->db, &daddr, out_id,
+	    nat64_db_bib_entry_find (db, &daddr, out_id,
 				     IP_PROTOCOL_ICMP, fib_index, 0);
 	  if (!bibe)
 	    return -1;
 
 	  nat64_compose_ip6 (&ip6_saddr, &ip4->src_address, bibe->fib_index);
 	  ste =
-	    nat64_db_st_entry_create (&nm->db, bibe, &ip6_saddr, &saddr.ip4,
-				      0);
+	    nat64_db_st_entry_create (db, bibe, &ip6_saddr, &saddr.ip4, 0);
 	}
 
       nat64_session_reset_timeout (ste, ctx->vm);
@@ -262,6 +265,7 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   ip46_address_t saddr, daddr;
   u32 sw_if_index, fib_index;
   u8 proto = ip4->protocol;
+  nat64_db_t *db = &nm->db[ctx->thread_index];
 
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index =
@@ -284,12 +288,12 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
 	return -1;
 
       ste =
-	nat64_db_st_entry_find (&nm->db, &saddr, &daddr, out_id, 0, proto,
+	nat64_db_st_entry_find (db, &saddr, &daddr, out_id, 0, proto,
 				fib_index, 0);
       if (!ste)
 	return -1;
 
-      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      bibe = nat64_db_bib_entry_by_index (db, proto, ste->bibe_index);
       if (!bibe)
 	return -1;
 
@@ -311,12 +315,12 @@ nat64_out2in_inner_icmp_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
       ip_csum_t csum;
 
       ste =
-	nat64_db_st_entry_find (&nm->db, &saddr, &daddr, sport, dport, proto,
+	nat64_db_st_entry_find (db, &saddr, &daddr, sport, dport, proto,
 				fib_index, 0);
       if (!ste)
 	return -1;
 
-      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      bibe = nat64_db_bib_entry_by_index (db, proto, ste->bibe_index);
       if (!bibe)
 	return -1;
 
@@ -354,6 +358,7 @@ nat64_out2in_unk_proto_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   ip6_address_t ip6_saddr;
   u32 sw_if_index, fib_index;
   u8 proto = ip4->protocol;
+  nat64_db_t *db = &nm->db[ctx->thread_index];
 
   sw_if_index = vnet_buffer (ctx->b)->sw_if_index[VLIB_RX];
   fib_index = ip4_fib_table_get_index_for_sw_if_index (sw_if_index);
@@ -364,25 +369,22 @@ nat64_out2in_unk_proto_set_cb (ip4_header_t * ip4, ip6_header_t * ip6,
   daddr.ip4.as_u32 = ip4->dst_address.as_u32;
 
   ste =
-    nat64_db_st_entry_find (&nm->db, &daddr, &saddr, 0, 0, proto, fib_index,
-			    0);
+    nat64_db_st_entry_find (db, &daddr, &saddr, 0, 0, proto, fib_index, 0);
   if (ste)
     {
-      bibe = nat64_db_bib_entry_by_index (&nm->db, proto, ste->bibe_index);
+      bibe = nat64_db_bib_entry_by_index (db, proto, ste->bibe_index);
       if (!bibe)
 	return -1;
     }
   else
     {
-      bibe =
-	nat64_db_bib_entry_find (&nm->db, &daddr, 0, proto, fib_index, 0);
+      bibe = nat64_db_bib_entry_find (db, &daddr, 0, proto, fib_index, 0);
 
       if (!bibe)
 	return -1;
 
       nat64_compose_ip6 (&ip6_saddr, &ip4->src_address, bibe->fib_index);
-      ste =
-	nat64_db_st_entry_create (&nm->db, bibe, &ip6_saddr, &saddr.ip4, 0);
+      ste = nat64_db_st_entry_create (db, bibe, &ip6_saddr, &saddr.ip4, 0);
     }
 
   nat64_session_reset_timeout (ste, ctx->vm);
@@ -405,6 +407,7 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_left_from, *from, *to_next;
   nat64_out2in_next_t next_index;
   u32 pkts_processed = 0;
+  u32 thread_index = vlib_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -423,6 +426,7 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip4_header_t *ip40;
 	  u32 proto0;
 	  nat64_out2in_set_ctx_t ctx0;
+	  udp_header_t *udp0;
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -437,8 +441,9 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	  ctx0.b = b0;
 	  ctx0.vm = vm;
+	  ctx0.thread_index = thread_index;
 
-	  next0 = NAT64_OUT2IN_NEXT_LOOKUP;
+	  next0 = NAT64_OUT2IN_NEXT_IP6_LOOKUP;
 
 	  proto0 = ip_proto_to_snat_proto (ip40->protocol);
 
@@ -473,6 +478,18 @@ nat64_out2in_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	    {
 	      if (ip4_to_ip6_tcp_udp (b0, nat64_out2in_tcp_udp_set_cb, &ctx0))
 		{
+		  udp0 = ip4_next_header (ip40);
+		  /*
+		   * Send DHCP packets to the ipv4 stack, or we won't
+		   * be able to use dhcp client on the outside interface
+		   */
+		  if ((proto0 == SNAT_PROTOCOL_UDP)
+		      && (udp0->dst_port ==
+			  clib_host_to_net_u16 (UDP_DST_PORT_dhcp_to_client)))
+		    {
+		      next0 = NAT64_OUT2IN_NEXT_IP4_LOOKUP;
+		      goto trace0;
+		    }
 		  next0 = NAT64_OUT2IN_NEXT_DROP;
 		  b0->error = node->errors[NAT64_OUT2IN_ERROR_NO_TRANSLATION];
 		  goto trace0;
@@ -516,7 +533,8 @@ VLIB_REGISTER_NODE (nat64_out2in_node) = {
   /* edit / add dispositions here */
   .next_nodes = {
     [NAT64_OUT2IN_NEXT_DROP] = "error-drop",
-    [NAT64_OUT2IN_NEXT_LOOKUP] = "ip6-lookup",
+    [NAT64_OUT2IN_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [NAT64_OUT2IN_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [NAT64_OUT2IN_NEXT_REASS] = "nat64-out2in-reass",
   },
 };
@@ -529,6 +547,7 @@ typedef struct nat64_out2in_frag_set_ctx_t_
   vlib_main_t *vm;
   vlib_buffer_t *b;
   u32 sess_index;
+  u32 thread_index;
   u8 proto;
   u8 first_frag;
 } nat64_out2in_frag_set_ctx_t;
@@ -543,12 +562,13 @@ nat64_out2in_frag_set_cb (ip4_header_t * ip4, ip6_header_t * ip6, void *arg)
   udp_header_t *udp = ip4_next_header (ip4);
   ip_csum_t csum;
   u16 *checksum;
+  nat64_db_t *db = &nm->db[ctx->thread_index];
 
-  ste = nat64_db_st_entry_by_index (&nm->db, ctx->proto, ctx->sess_index);
+  ste = nat64_db_st_entry_by_index (db, ctx->proto, ctx->sess_index);
   if (!ste)
     return -1;
 
-  bibe = nat64_db_bib_entry_by_index (&nm->db, ctx->proto, ste->bibe_index);
+  bibe = nat64_db_bib_entry_by_index (db, ctx->proto, ste->bibe_index);
   if (!bibe)
     return -1;
 
@@ -629,6 +649,7 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 *fragments_to_drop = 0;
   u32 *fragments_to_loopback = 0;
   nat64_main_t *nm = &nat64_main;
+  u32 thread_index = vlib_get_thread_index ();
 
   from = vlib_frame_vector_args (frame);
   n_left_from = frame->n_vectors;
@@ -655,6 +676,7 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  nat64_db_bib_entry_t *bibe0;
 	  ip6_address_t ip6_saddr0;
 	  nat64_out2in_frag_set_ctx_t ctx0;
+	  nat64_db_t *db = &nm->db[thread_index];
 
 	  /* speculatively enqueue b0 to the current next frame */
 	  bi0 = from[0];
@@ -665,12 +687,14 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-	  next0 = NAT64_OUT2IN_NEXT_LOOKUP;
+	  next0 = NAT64_OUT2IN_NEXT_IP6_LOOKUP;
 
 	  sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  fib_index0 =
 	    fib_table_get_index_for_sw_if_index (FIB_PROTOCOL_IP4,
 						 sw_if_index0);
+
+	  ctx0.thread_index = thread_index;
 
 	  if (PREDICT_FALSE (nat_reass_is_drop_frag (1)))
 	    {
@@ -714,13 +738,13 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      daddr0.ip4.as_u32 = ip40->dst_address.as_u32;
 
 	      ste0 =
-		nat64_db_st_entry_find (&nm->db, &daddr0, &saddr0,
+		nat64_db_st_entry_find (db, &daddr0, &saddr0,
 					udp0->dst_port, udp0->src_port,
 					ip40->protocol, fib_index0, 0);
 	      if (!ste0)
 		{
 		  bibe0 =
-		    nat64_db_bib_entry_find (&nm->db, &daddr0, udp0->dst_port,
+		    nat64_db_bib_entry_find (db, &daddr0, udp0->dst_port,
 					     ip40->protocol, fib_index0, 0);
 		  if (!bibe0)
 		    {
@@ -733,7 +757,7 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		  nat64_compose_ip6 (&ip6_saddr0, &ip40->src_address,
 				     bibe0->fib_index);
 		  ste0 =
-		    nat64_db_st_entry_create (&nm->db, bibe0, &ip6_saddr0,
+		    nat64_db_st_entry_create (db, bibe0, &ip6_saddr0,
 					      &saddr0.ip4, udp0->src_port);
 
 		  if (!ste0)
@@ -744,8 +768,8 @@ nat64_out2in_reass_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 		      goto trace0;
 		    }
 		}
-	      reass0->sess_index =
-		nat64_db_st_entry_get_index (&nm->db, ste0);
+	      reass0->sess_index = nat64_db_st_entry_get_index (db, ste0);
+	      reass0->thread_index = thread_index;
 
 	      nat_ip4_reass_get_frags (reass0, &fragments_to_loopback);
 	    }
@@ -857,7 +881,8 @@ VLIB_REGISTER_NODE (nat64_out2in_reass_node) = {
   /* edit / add dispositions here */
   .next_nodes = {
     [NAT64_OUT2IN_NEXT_DROP] = "error-drop",
-    [NAT64_OUT2IN_NEXT_LOOKUP] = "ip6-lookup",
+    [NAT64_OUT2IN_NEXT_IP6_LOOKUP] = "ip6-lookup",
+    [NAT64_OUT2IN_NEXT_IP4_LOOKUP] = "ip4-lookup",
     [NAT64_OUT2IN_NEXT_REASS] = "nat64-out2in-reass",
   },
 };
@@ -866,6 +891,212 @@ VLIB_REGISTER_NODE (nat64_out2in_reass_node) = {
 VLIB_NODE_FUNCTION_MULTIARCH (nat64_out2in_reass_node,
 			      nat64_out2in_reass_node_fn);
 
+typedef struct
+{
+  u32 next_worker_index;
+  u8 do_handoff;
+} nat64_out2in_handoff_trace_t;
+
+static u8 *
+format_nat64_out2in_handoff_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  nat64_out2in_handoff_trace_t *t =
+    va_arg (*args, nat64_out2in_handoff_trace_t *);
+  char *m;
+
+  m = t->do_handoff ? "next worker" : "same worker";
+  s = format (s, "NAT64-OUT2IN-HANDOFF: %s %d", m, t->next_worker_index);
+
+  return s;
+}
+
+static inline uword
+nat64_out2in_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
+			      vlib_frame_t * frame)
+{
+  nat64_main_t *nm = &nat64_main;
+  vlib_thread_main_t *tm = vlib_get_thread_main ();
+  u32 n_left_from, *from, *to_next = 0, *to_next_drop = 0;
+  static __thread vlib_frame_queue_elt_t **handoff_queue_elt_by_worker_index;
+  static __thread vlib_frame_queue_t **congested_handoff_queue_by_worker_index
+    = 0;
+  vlib_frame_queue_elt_t *hf = 0;
+  vlib_frame_queue_t *fq;
+  vlib_frame_t *f = 0, *d = 0;
+  int i;
+  u32 n_left_to_next_worker = 0, *to_next_worker = 0;
+  u32 next_worker_index = 0;
+  u32 current_worker_index = ~0;
+  u32 thread_index = vlib_get_thread_index ();
+  u32 fq_index;
+  u32 to_node_index;
+
+  fq_index = nm->fq_out2in_index;
+  to_node_index = nat64_out2in_node.index;
+
+  if (PREDICT_FALSE (handoff_queue_elt_by_worker_index == 0))
+    {
+      vec_validate (handoff_queue_elt_by_worker_index, tm->n_vlib_mains - 1);
+
+      vec_validate_init_empty (congested_handoff_queue_by_worker_index,
+			       tm->n_vlib_mains - 1,
+			       (vlib_frame_queue_t *) (~0));
+    }
+
+  from = vlib_frame_vector_args (frame);
+  n_left_from = frame->n_vectors;
+
+  while (n_left_from > 0)
+    {
+      u32 bi0;
+      vlib_buffer_t *b0;
+      ip4_header_t *ip0;
+      u8 do_handoff;
+
+      bi0 = from[0];
+      from += 1;
+      n_left_from -= 1;
+
+      b0 = vlib_get_buffer (vm, bi0);
+
+      ip0 = vlib_buffer_get_current (b0);
+
+      next_worker_index = nat64_get_worker_out2in (ip0);
+
+      if (PREDICT_FALSE (next_worker_index != thread_index))
+	{
+	  do_handoff = 1;
+
+	  if (next_worker_index != current_worker_index)
+	    {
+	      fq =
+		is_vlib_frame_queue_congested (fq_index, next_worker_index,
+					       30,
+					       congested_handoff_queue_by_worker_index);
+
+	      if (fq)
+		{
+		  /* if this is 1st frame */
+		  if (!d)
+		    {
+		      d = vlib_get_frame_to_node (vm, nm->error_node_index);
+		      to_next_drop = vlib_frame_vector_args (d);
+		    }
+
+		  to_next_drop[0] = bi0;
+		  to_next_drop += 1;
+		  d->n_vectors++;
+		  goto trace0;
+		}
+
+	      if (hf)
+		hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
+
+	      hf =
+		vlib_get_worker_handoff_queue_elt (fq_index,
+						   next_worker_index,
+						   handoff_queue_elt_by_worker_index);
+	      n_left_to_next_worker = VLIB_FRAME_SIZE - hf->n_vectors;
+	      to_next_worker = &hf->buffer_index[hf->n_vectors];
+	      current_worker_index = next_worker_index;
+	    }
+
+	  /* enqueue to correct worker thread */
+	  to_next_worker[0] = bi0;
+	  to_next_worker++;
+	  n_left_to_next_worker--;
+
+	  if (n_left_to_next_worker == 0)
+	    {
+	      hf->n_vectors = VLIB_FRAME_SIZE;
+	      vlib_put_frame_queue_elt (hf);
+	      current_worker_index = ~0;
+	      handoff_queue_elt_by_worker_index[next_worker_index] = 0;
+	      hf = 0;
+	    }
+	}
+      else
+	{
+	  do_handoff = 0;
+	  /* if this is 1st frame */
+	  if (!f)
+	    {
+	      f = vlib_get_frame_to_node (vm, to_node_index);
+	      to_next = vlib_frame_vector_args (f);
+	    }
+
+	  to_next[0] = bi0;
+	  to_next += 1;
+	  f->n_vectors++;
+	}
+
+    trace0:
+      if (PREDICT_FALSE
+	  ((node->flags & VLIB_NODE_FLAG_TRACE)
+	   && (b0->flags & VLIB_BUFFER_IS_TRACED)))
+	{
+	  nat64_out2in_handoff_trace_t *t =
+	    vlib_add_trace (vm, node, b0, sizeof (*t));
+	  t->next_worker_index = next_worker_index;
+	  t->do_handoff = do_handoff;
+	}
+    }
+
+  if (f)
+    vlib_put_frame_to_node (vm, to_node_index, f);
+
+  if (d)
+    vlib_put_frame_to_node (vm, nm->error_node_index, d);
+
+  if (hf)
+    hf->n_vectors = VLIB_FRAME_SIZE - n_left_to_next_worker;
+
+  /* Ship frames to the worker nodes */
+  for (i = 0; i < vec_len (handoff_queue_elt_by_worker_index); i++)
+    {
+      if (handoff_queue_elt_by_worker_index[i])
+	{
+	  hf = handoff_queue_elt_by_worker_index[i];
+	  /*
+	   * It works better to let the handoff node
+	   * rate-adapt, always ship the handoff queue element.
+	   */
+	  if (1 || hf->n_vectors == hf->last_n_vectors)
+	    {
+	      vlib_put_frame_queue_elt (hf);
+	      handoff_queue_elt_by_worker_index[i] = 0;
+	    }
+	  else
+	    hf->last_n_vectors = hf->n_vectors;
+	}
+      congested_handoff_queue_by_worker_index[i] =
+	(vlib_frame_queue_t *) (~0);
+    }
+  hf = 0;
+  current_worker_index = ~0;
+  return frame->n_vectors;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (nat64_out2in_handoff_node) = {
+  .function = nat64_out2in_handoff_node_fn,
+  .name = "nat64-out2in-handoff",
+  .vector_size = sizeof (u32),
+  .format_trace = format_nat64_out2in_handoff_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+
+  .n_next_nodes = 1,
+
+  .next_nodes = {
+    [0] = "error-drop",
+  },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (nat64_out2in_handoff_node,
+			      nat64_out2in_handoff_node_fn);
 /*
  * fd.io coding-style-patch-verification: ON
  *

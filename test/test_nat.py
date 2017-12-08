@@ -2056,7 +2056,7 @@ class TestNAT44(MethodHolder):
         nat_ip2 = "10.0.0.11"
 
         self.nat44_add_address(nat_ip1)
-        self.nat44_add_address(nat_ip2)
+        self.nat44_add_address(nat_ip2, vrf_id=99)
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg2.sw_if_index,
@@ -2832,7 +2832,7 @@ class TestNAT44(MethodHolder):
         self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
         self.vapi.nat44_interface_add_del_feature(self.pg1.sw_if_index,
                                                   is_inside=0)
-        self.vapi.cli("nat44 addr-port-assignment-alg map-e psid 10 "
+        self.vapi.cli("nat addr-port-assignment-alg map-e psid 10 "
                       "psid-offset 6 psid-len 6")
 
         p = (Ether(src=self.pg0.remote_mac, dst=self.pg0.local_mac) /
@@ -2862,7 +2862,7 @@ class TestNAT44(MethodHolder):
         if not self.vpp_dead:
             self.logger.info(self.vapi.cli("show nat44 verbose"))
             self.logger.info(self.vapi.cli("show nat virtual-reassembly"))
-            self.vapi.cli("nat44 addr-port-assignment-alg default")
+            self.vapi.cli("nat addr-port-assignment-alg default")
             self.clear_nat44()
 
 
