@@ -28,14 +28,16 @@
 #include <vnet/ip/format.h>
 #include <vnet/udp/udp.h>
 
-typedef enum {
+typedef enum
+{
 #define dhcp_proxy_error(n,s) DHCP_PROXY_ERROR_##n,
 #include <vnet/dhcp/dhcp4_proxy_error.def>
 #undef dhcp_proxy_error
   DHCP_PROXY_N_ERROR,
 } dhcp_proxy_error_t;
 
-typedef enum {
+typedef enum
+{
 #define dhcpv6_proxy_error(n,s) DHCPV6_PROXY_ERROR_##n,
 #include <vnet/dhcp/dhcp6_proxy_error.def>
 #undef dhcpv6_proxy_error
@@ -46,14 +48,15 @@ typedef enum {
 /**
  * @brief The Virtual Sub-net Selection information for a given RX FIB
  */
-typedef struct dhcp_vss_t_ {
+typedef struct dhcp_vss_t_
+{
     /**
      * @brief VSS type as defined in RFC 6607:
      *	 0 for NVT ASCII VPN Identifier
      *   1 for RFC 2685 VPN-ID of 7 octects - 3 bytes OUI & 4 bytes VPN index
      *   255 for global default VPN
      */
-    u8 vss_type;
+  u8 vss_type;
 #define VSS_TYPE_ASCII 0
 #define VSS_TYPE_VPN_ID 1
 #define VSS_TYPE_INVALID 123
@@ -61,11 +64,11 @@ typedef struct dhcp_vss_t_ {
     /**
      * @brief Type 1 VPN-ID
      */
-    u8 vpn_id[7];
+  u8 vpn_id[7];
     /**
      * @brief Type 0 ASCII VPN Identifier
      */
-    u8 *vpn_ascii_id;
+  u8 *vpn_ascii_id;
 } dhcp_vss_t;
 
 /**
@@ -77,19 +80,20 @@ typedef struct dhcp_server_t_
      * @brief The address of the DHCP server to which to relay the client's
      *        messages
      */
-    ip46_address_t dhcp_server;
+  ip46_address_t dhcp_server;
 
     /**
      * @brief The FIB index (not the external Table-ID) in which the server
      *        is reachable.
      */
-    u32 server_fib_index;
+  u32 server_fib_index;
 } dhcp_server_t;
 
 /**
  * @brief A DHCP proxy represenation fpr per-client VRF config
  */
-typedef struct dhcp_proxy_t_ {
+typedef struct dhcp_proxy_t_
+{
     /**
      * @brief The set of DHCP servers to which messages are relayed.
      *  If multiple servers are configured then discover/solict messages
@@ -98,28 +102,28 @@ typedef struct dhcp_proxy_t_ {
      * cookie.
      * The expectation is there are only 1 or 2 servers, hence no fancy DB.
      */
-    dhcp_server_t *dhcp_servers;
+  dhcp_server_t *dhcp_servers;
 
     /**
      * @brief Hash table of pending requets key'd on the clients MAC address
      */
-    uword *dhcp_pending;
+  uword *dhcp_pending;
 
     /**
      * @brief A lock for the pending request DB.
      */
-    int lock;
+  int lock;
 
     /**
      * @brief The source address to use in relayed messaes
      */
-    ip46_address_t dhcp_src_address;
+  ip46_address_t dhcp_src_address;
 
     /**
      * @brief The FIB index (not the external Table-ID) in which the client
      *        is resides.
      */
-    u32 rx_fib_index;
+  u32 rx_fib_index;
 } dhcp_proxy_t;
 
 #define DHCP_N_PROTOS (FIB_PROTOCOL_IP6 + 1)
@@ -127,12 +131,13 @@ typedef struct dhcp_proxy_t_ {
 /**
  * @brief Collection of global DHCP proxy data
  */
-typedef struct {
+typedef struct
+{
   /* Pool of DHCP servers */
   dhcp_proxy_t *dhcp_servers[DHCP_N_PROTOS];
 
   /* Pool of selected DHCP server. Zero is the default server */
-  u32 * dhcp_server_index_by_rx_fib_index[DHCP_N_PROTOS];
+  u32 *dhcp_server_index_by_rx_fib_index[DHCP_N_PROTOS];
 
   /* to drop pkts in server-to-client direction */
   u32 error_drop_node_index;
@@ -149,117 +154,98 @@ extern dhcp_proxy_main_t dhcp_proxy_main;
  * @brief Send the details of a proxy session to the API client during a dump
  */
 void dhcp_send_details (fib_protocol_t proto,
-                        void *opaque,
-                        u32 context,
-                        dhcp_proxy_t *proxy);
+			void *opaque, u32 context, dhcp_proxy_t * proxy);
 
 /**
  * @brief Show (on CLI) a VSS config during a show walk
  */
-int dhcp_vss_show_walk (dhcp_vss_t *vss,
-                        u32 rx_table_id,
-                        void *ctx);
+int dhcp_vss_show_walk (dhcp_vss_t * vss, u32 rx_table_id, void *ctx);
 
 /**
  * @brief Configure/set a new VSS info
  */
 int dhcp_proxy_set_vss (fib_protocol_t proto,
-                        u32 tbl_id,
+			u32 tbl_id,
 			u8 vss_type,
-			u8 *vpn_ascii_id,
-                        u32 oui,
-                        u32 vpn_index,
-			u8 is_del);
+			u8 * vpn_ascii_id, u32 oui, u32 vpn_index, u8 is_del);
 
 /**
  * @brief Dump the proxy configs to the API
  */
-void dhcp_proxy_dump(fib_protocol_t proto,
-                     void *opaque,
-                     u32 context);
+void dhcp_proxy_dump (fib_protocol_t proto, void *opaque, u32 context);
 
 /**
  * @brief Add a new DHCP proxy server configuration.
  * @return 1 is the config is new,
  *         0 otherwise (implying a modify of an existing)
  */
-int dhcp_proxy_server_add(fib_protocol_t proto,
-                          ip46_address_t *addr,
-                          ip46_address_t *src_address,
-                          u32 rx_fib_iindex,
-                          u32 server_table_id);
+int dhcp_proxy_server_add (fib_protocol_t proto,
+			   ip46_address_t * addr,
+			   ip46_address_t * src_address,
+			   u32 rx_fib_iindex, u32 server_table_id);
 
 /**
  * @brief Delete a DHCP proxy config
  * @return 1 if the proxy is deleted, 0 otherwise
  */
-int dhcp_proxy_server_del(fib_protocol_t proto,
-                          u32 rx_fib_index,
-                          ip46_address_t *addr,
-                          u32 server_table_id);
+int dhcp_proxy_server_del (fib_protocol_t proto,
+			   u32 rx_fib_index,
+			   ip46_address_t * addr, u32 server_table_id);
 
-u32
-dhcp_proxy_rx_table_get_table_id (fib_protocol_t proto,
-                                  u32 fib_index);
+u32 dhcp_proxy_rx_table_get_table_id (fib_protocol_t proto, u32 fib_index);
 
 /**
  * @brief Callback function invoked for each DHCP proxy entry
  *  return 0 to break the walk, non-zero otherwise.
  */
-typedef int (*dhcp_proxy_walk_fn_t)(dhcp_proxy_t *server,
-                                    void *ctx);
+typedef int (*dhcp_proxy_walk_fn_t) (dhcp_proxy_t * server, void *ctx);
 
 /**
  * @brief Walk/Visit each DHCP proxy server
  */
-void dhcp_proxy_walk(fib_protocol_t proto,
-                     dhcp_proxy_walk_fn_t fn,
-                     void *ctx);
+void dhcp_proxy_walk (fib_protocol_t proto,
+		      dhcp_proxy_walk_fn_t fn, void *ctx);
 
 /**
  * @brief Callback function invoked for each DHCP VSS entry
  *  return 0 to break the walk, non-zero otherwise.
  */
-typedef int (*dhcp_vss_walk_fn_t)(dhcp_vss_t *server,
-                                  u32 rx_table_id,
-                                  void *ctx);
+typedef int (*dhcp_vss_walk_fn_t) (dhcp_vss_t * server,
+				   u32 rx_table_id, void *ctx);
 
 /**
  * @brief Walk/Visit each DHCP proxy VSS
  */
-void dhcp_vss_walk(fib_protocol_t proto,
-                   dhcp_vss_walk_fn_t fn,
-                   void *ctx);
+void dhcp_vss_walk (fib_protocol_t proto, dhcp_vss_walk_fn_t fn, void *ctx);
 
 /**
  * @brief Lock a proxy object to prevent simultaneous access of its
  *  pending store
  */
-void dhcp_proxy_lock (dhcp_proxy_t *server);
+void dhcp_proxy_lock (dhcp_proxy_t * server);
 
 /**
  * @brief Lock a proxy object to prevent simultaneous access of its
  *  pending store
  */
-void dhcp_proxy_unlock (dhcp_proxy_t *server);
+void dhcp_proxy_unlock (dhcp_proxy_t * server);
 
 /**
  * @brief Get the VSS data for the FIB index
  */
 static inline dhcp_vss_t *
-dhcp_get_vss_info (dhcp_proxy_main_t *dm,
-                   u32 rx_fib_index,
-                   fib_protocol_t proto)
+dhcp_get_vss_info (dhcp_proxy_main_t * dm,
+		   u32 rx_fib_index, fib_protocol_t proto)
 {
   dhcp_vss_t *v = NULL;
 
-  if (vec_len(dm->vss_index_by_rx_fib_index[proto]) > rx_fib_index &&
+  if (vec_len (dm->vss_index_by_rx_fib_index[proto]) > rx_fib_index &&
       dm->vss_index_by_rx_fib_index[proto][rx_fib_index] != ~0)
-  {
-      v = pool_elt_at_index (
-              dm->vss[proto],
-              dm->vss_index_by_rx_fib_index[proto][rx_fib_index]);
-  }
+    {
+      v = pool_elt_at_index (dm->vss[proto],
+			     dm->vss_index_by_rx_fib_index[proto]
+			     [rx_fib_index]);
+    }
 
   return (v);
 }
@@ -268,32 +254,35 @@ dhcp_get_vss_info (dhcp_proxy_main_t *dm,
  * @brief Get the DHCP proxy server data for the FIB index
  */
 static inline dhcp_proxy_t *
-dhcp_get_proxy (dhcp_proxy_main_t *dm,
-                u32 rx_fib_index,
-                fib_protocol_t proto)
+dhcp_get_proxy (dhcp_proxy_main_t * dm,
+		u32 rx_fib_index, fib_protocol_t proto)
 {
   dhcp_proxy_t *s = NULL;
 
-  if (vec_len(dm->dhcp_server_index_by_rx_fib_index[proto]) > rx_fib_index &&
+  if (vec_len (dm->dhcp_server_index_by_rx_fib_index[proto]) > rx_fib_index &&
       dm->dhcp_server_index_by_rx_fib_index[proto][rx_fib_index] != ~0)
-  {
-      s = pool_elt_at_index (
-              dm->dhcp_servers[proto],
-              dm->dhcp_server_index_by_rx_fib_index[proto][rx_fib_index]);
-  }
+    {
+      s = pool_elt_at_index (dm->dhcp_servers[proto],
+			     dm->dhcp_server_index_by_rx_fib_index[proto]
+			     [rx_fib_index]);
+    }
 
   return (s);
 }
 
-int dhcp6_proxy_set_server (ip46_address_t *addr,
-                            ip46_address_t *src_addr,
-                            u32 rx_table_id,
-                            u32 server_table_id,
-                            int is_del);
-int dhcp4_proxy_set_server (ip46_address_t *addr,
-                            ip46_address_t *src_addr,
-                            u32 rx_table_id,
-                            u32 server_table_id,
-                            int is_del);
+int dhcp6_proxy_set_server (ip46_address_t * addr,
+			    ip46_address_t * src_addr,
+			    u32 rx_table_id, u32 server_table_id, int is_del);
+int dhcp4_proxy_set_server (ip46_address_t * addr,
+			    ip46_address_t * src_addr,
+			    u32 rx_table_id, u32 server_table_id, int is_del);
 
 #endif /* included_dhcp_proxy_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

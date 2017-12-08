@@ -19,9 +19,10 @@
  */
 #include <vnet/ip/ip4_packet.h>
 
-typedef struct {
-  u8 opcode;                    /* 1 = request, 2 = reply */
-  u8 hardware_type;             /* 1 = ethernet */
+typedef struct
+{
+  u8 opcode;			/* 1 = request, 2 = reply */
+  u8 hardware_type;		/* 1 = ethernet */
   u8 hardware_address_length;
   u8 hops;
   u32 transaction_identifier;
@@ -29,9 +30,9 @@ typedef struct {
   u16 flags;
 #define DHCP_FLAG_BROADCAST (1<<15)
   ip4_address_t client_ip_address;
-  ip4_address_t your_ip_address; /* use this one */
+  ip4_address_t your_ip_address;	/* use this one */
   ip4_address_t server_ip_address;
-  ip4_address_t gateway_ip_address; /* use option 3, not this one */
+  ip4_address_t gateway_ip_address;	/* use option 3, not this one */
   u8 client_hardware_address[16];
   u8 server_name[64];
   u8 boot_filename[128];
@@ -39,28 +40,39 @@ typedef struct {
   u8 options[0];
 } dhcp_header_t;
 
-typedef struct {
+typedef struct
+{
   u8 option;
   u8 length;
-  union {
+  union
+  {
     u8 data[0];
     u32 data_as_u32[0];
   };
-} __attribute__((packed)) dhcp_option_t;
+} __attribute__ ((packed)) dhcp_option_t;
 
-typedef enum {
-  DHCP_PACKET_DISCOVER=1,
+typedef enum
+{
+  DHCP_PACKET_DISCOVER = 1,
   DHCP_PACKET_OFFER,
   DHCP_PACKET_REQUEST,
-  DHCP_PACKET_ACK=5,
+  DHCP_PACKET_ACK = 5,
 } dhcp_packet_type_t;
 
 typedef enum dhcp_packet_option_t_
 {
-    DHCP_PACKET_OPTION_MSG_TYPE = 53,
+  DHCP_PACKET_OPTION_MSG_TYPE = 53,
 } dhcp_packet_option_t;
 
 /* charming antique: 99.130.83.99 is the dhcp magic cookie */
 #define DHCP_MAGIC (clib_host_to_net_u32(0x63825363))
 
 #endif /* included_vnet_dhcp4_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
