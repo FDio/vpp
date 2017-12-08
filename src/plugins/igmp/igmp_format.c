@@ -1,0 +1,159 @@
+/*
+ *------------------------------------------------------------------
+ * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at:
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *------------------------------------------------------------------
+ */
+
+#include <igmp/igmp.h>
+#include <vnet/ip/ip.h>
+
+u8 *
+format_igmp_type (u8 * s, va_list * args)
+{
+  igmp_type_t type = va_arg (*args, igmp_type_t);
+  igmp_main_t *im = &igmp_main;
+  igmp_type_info_t *ti = igmp_get_type_info (im, type);
+
+  if (ti)
+    return format (s, "%s", ti->name);
+  else
+    return format (s, "unknown %d", type);
+}
+
+u8 *
+format_igmp_report_type (u8 * s, va_list * args)
+{
+  igmp_membership_group_v3_type_t report_type =
+    va_arg (*args, igmp_membership_group_v3_type_t);
+  igmp_main_t *im = &igmp_main;
+  igmp_report_type_info_t *rti = igmp_get_report_type_info (im, report_type);
+
+  if (rti)
+    return format (s, "%s", rti->name);
+  else
+    return format (s, "unknown %d", report_type);
+}
+
+u8 *
+format_igmp_header (u8 * s, va_list * args)
+{
+  igmp_header_t *hdr = va_arg (*args, igmp_header_t *);
+  u32 max_header_bytes = va_arg (*args, u32);
+  u32 indent;
+
+  if (max_header_bytes < sizeof (hdr[0]))
+    return format (s, "IGMP header truncated");
+
+  indent = format_get_indent (s);
+  indent += 2;
+
+  s =
+    format (s, "%U%U: code %u, checksum 0x%04x", format_white_space, indent,
+	    format_igmp_type, hdr->type, hdr->code,
+	    clib_net_to_host_u16 (hdr->checksum));
+  return s;
+}
+
+u8 *
+format_igmp_report_v3 (u8 * s, va_list * args)
+{
+  igmp_membership_report_v3_t *igmp =
+    va_arg (*args, igmp_membership_report_v3_t *);
+  u32 max_header_bytes = va_arg (*args, u32);
+  igmp_membership_group_v3_t *group;
+
+  u32 len = sizeof (igmp_membership_report_v3_t);
+  u32 indent;
+
+  if (max_header_bytes < sizeof (igmp[0]))
+    return format (s, "IGMP report truncated");
+
+  indent = format_get_indent (s);
+  indent += 2;
+
+  s =
+    format (s, "%Un_groups %u", format_white_space, indent,
+	    clib_net_to_host_u16 (igmp->n_groups));
+  indent += 2;
+  int i, j = 0;
+  for (i = 0; i < clib_net_to_host_u16 (igmp->n_groups); i++)
+    {
+      group = group_ptr (igmp, len);
+      s =
+	format (s, "\n%U%U: %U, sources %u", format_white_space, indent,
+		format_igmp_report_type, group->type, format_ip4_address,
+		&group->dst_address,
+		clib_net_to_host_u16 (group->n_src_addresses));
+      indent += 2;
+      for (j = 0; j < clib_net_to_host_u16 (group->n_src_addresses); j++)
+	{
+	  s =
+	    format (s, "\n%U%U", format_white_space, indent,
+		    format_ip4_address, &group->src_addresses[j]);
+	}
+      indent -= 2;
+      len +=
+	sizeof (igmp_membership_group_v3_t) +
+	(sizeof (ip4_address_t) *
+	 clib_net_to_host_u16 (group->n_src_addresses));
+    }
+  return s;
+}
+
+u8 *
+format_igmp_query_v3 (u8 * s, va_list * args)
+{
+  igmp_membership_query_v3_t *igmp =
+    va_arg (*args, igmp_membership_query_v3_t *);
+  u32 max_header_bytes = va_arg (*args, u32);
+  u32 indent;
+  int i;
+
+  if (max_header_bytes < sizeof (igmp[0]))
+    return format (s, "IGMP query truncated");
+
+  indent = format_get_indent (s);
+  indent += 2;
+
+  ip4_address_t tmp;
+  tmp.as_u32 = 0;
+
+  if ((!ip4_address_compare (&igmp->dst, &tmp))
+      && (igmp->n_src_addresses == 0))
+    s = format (s, "%UGeneral Query", format_white_space, indent);
+  else if (igmp->n_src_addresses == 0)
+    s = format (s, "%UGroup-Specific Query: %U", format_white_space, indent,
+		format_ip4_address, &igmp->dst);
+  else
+    {
+      s =
+	format (s, "%UGroup-and-Source-Specific Query: %U",
+		format_white_space, indent, format_ip4_address, &igmp->dst);
+      indent += 2;
+      for (i = 0; i < clib_net_to_host_u16 (igmp->n_src_addresses); i++)
+	{
+	  s = format (s, "\n%U%U", format_white_space, indent,
+		      format_ip4_address, &igmp->src_addresses[i]);
+	}
+    }
+  return s;
+}
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
