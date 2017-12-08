@@ -47,6 +47,8 @@
 
 #if defined (i386) || defined (__x86_64__)
 #define clib_smp_pause() do { asm volatile ("pause"); } while (0)
+#elif defined (__aarch64__) || defined (__arm__)
+#define clib_smp_pause() do { asm volatile ("isb" ::: "memory"); } while (0)
 #endif
 
 #ifndef clib_smp_pause
