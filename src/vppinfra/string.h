@@ -95,46 +95,46 @@ clib_memcpy64_x4 (void *d0, void *d1, void *d2, void *d3, void *s)
   _mm512_storeu_si512 (d3, r0);
 
 #elif defined (__AVX2__)
-  __m256i r0 = _mm256_loadu_si256 ((__m256i *) s + 0 * 32);
-  __m256i r1 = _mm256_loadu_si256 ((__m256i *) s + 1 * 32);
+  __m256i r0 = _mm256_loadu_si256 ((__m256i *) (s + 0 * 32));
+  __m256i r1 = _mm256_loadu_si256 ((__m256i *) (s + 1 * 32));
 
-  _mm256_storeu_si256 ((__m256i *) d0 + 0 * 32, r0);
-  _mm256_storeu_si256 ((__m256i *) d0 + 1 * 32, r1);
+  _mm256_storeu_si256 ((__m256i *) (d0 + 0 * 32), r0);
+  _mm256_storeu_si256 ((__m256i *) (d0 + 1 * 32), r1);
 
-  _mm256_storeu_si256 ((__m256i *) d1 + 0 * 32, r0);
-  _mm256_storeu_si256 ((__m256i *) d1 + 1 * 32, r1);
+  _mm256_storeu_si256 ((__m256i *) (d1 + 0 * 32), r0);
+  _mm256_storeu_si256 ((__m256i *) (d1 + 1 * 32), r1);
 
-  _mm256_storeu_si256 ((__m256i *) d2 + 0 * 32, r0);
-  _mm256_storeu_si256 ((__m256i *) d2 + 1 * 32, r1);
+  _mm256_storeu_si256 ((__m256i *) (d2 + 0 * 32), r0);
+  _mm256_storeu_si256 ((__m256i *) (d2 + 1 * 32), r1);
 
-  _mm256_storeu_si256 ((__m256i *) d3 + 0 * 32, r0);
-  _mm256_storeu_si256 ((__m256i *) d3 + 1 * 32, r1);
+  _mm256_storeu_si256 ((__m256i *) (d3 + 0 * 32), r0);
+  _mm256_storeu_si256 ((__m256i *) (d3 + 1 * 32), r1);
 
 #elif defined (__SSSE3__)
-  __m128i r0 = _mm_loadu_si128 ((__m128i *) s + 0 * 16);
-  __m128i r1 = _mm_loadu_si128 ((__m128i *) s + 1 * 16);
-  __m128i r2 = _mm_loadu_si128 ((__m128i *) s + 2 * 16);
-  __m128i r3 = _mm_loadu_si128 ((__m128i *) s + 3 * 16);
+  __m128i r0 = _mm_loadu_si128 ((__m128i *) (s + 0 * 16));
+  __m128i r1 = _mm_loadu_si128 ((__m128i *) (s + 1 * 16));
+  __m128i r2 = _mm_loadu_si128 ((__m128i *) (s + 2 * 16));
+  __m128i r3 = _mm_loadu_si128 ((__m128i *) (s + 3 * 16));
 
-  _mm_storeu_si128 ((__m128i *) d0 + 0 * 16, r0);
-  _mm_storeu_si128 ((__m128i *) d0 + 1 * 16, r1);
-  _mm_storeu_si128 ((__m128i *) d0 + 2 * 16, r2);
-  _mm_storeu_si128 ((__m128i *) d0 + 3 * 16, r3);
+  _mm_storeu_si128 ((__m128i *) (d0 + 0 * 16), r0);
+  _mm_storeu_si128 ((__m128i *) (d0 + 1 * 16), r1);
+  _mm_storeu_si128 ((__m128i *) (d0 + 2 * 16), r2);
+  _mm_storeu_si128 ((__m128i *) (d0 + 3 * 16), r3);
 
-  _mm_storeu_si128 ((__m128i *) d1 + 0 * 16, r0);
-  _mm_storeu_si128 ((__m128i *) d1 + 1 * 16, r1);
-  _mm_storeu_si128 ((__m128i *) d1 + 2 * 16, r2);
-  _mm_storeu_si128 ((__m128i *) d1 + 3 * 16, r3);
+  _mm_storeu_si128 ((__m128i *) (d1 + 0 * 16), r0);
+  _mm_storeu_si128 ((__m128i *) (d1 + 1 * 16), r1);
+  _mm_storeu_si128 ((__m128i *) (d1 + 2 * 16), r2);
+  _mm_storeu_si128 ((__m128i *) (d1 + 3 * 16), r3);
 
-  _mm_storeu_si128 ((__m128i *) d2 + 0 * 16, r0);
-  _mm_storeu_si128 ((__m128i *) d2 + 1 * 16, r1);
-  _mm_storeu_si128 ((__m128i *) d2 + 2 * 16, r2);
-  _mm_storeu_si128 ((__m128i *) d2 + 3 * 16, r3);
+  _mm_storeu_si128 ((__m128i *) (d2 + 0 * 16), r0);
+  _mm_storeu_si128 ((__m128i *) (d2 + 1 * 16), r1);
+  _mm_storeu_si128 ((__m128i *) (d2 + 2 * 16), r2);
+  _mm_storeu_si128 ((__m128i *) (d2 + 3 * 16), r3);
 
-  _mm_storeu_si128 ((__m128i *) d3 + 0 * 16, r0);
-  _mm_storeu_si128 ((__m128i *) d3 + 1 * 16, r1);
-  _mm_storeu_si128 ((__m128i *) d3 + 2 * 16, r2);
-  _mm_storeu_si128 ((__m128i *) d3 + 3 * 16, r3);
+  _mm_storeu_si128 ((__m128i *) (d3 + 0 * 16), r0);
+  _mm_storeu_si128 ((__m128i *) (d3 + 1 * 16), r1);
+  _mm_storeu_si128 ((__m128i *) (d3 + 2 * 16), r2);
+  _mm_storeu_si128 ((__m128i *) (d3 + 3 * 16), r3);
 
 #else
   clib_memcpy (d0, s, 64);
