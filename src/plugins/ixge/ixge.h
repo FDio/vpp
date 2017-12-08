@@ -23,6 +23,21 @@
 #include <vnet/ip/ip4_packet.h>
 #include <vnet/ip/ip6_packet.h>
 
+#define foreach_ixge_error					\
+  _ (none, "no error")						\
+  _ (tx_full_drops, "tx ring full drops")			\
+  _ (ip4_checksum_error, "ip4 checksum errors")			\
+  _ (rx_alloc_fail, "rx buf alloc from free list failed")	\
+  _ (rx_alloc_no_physmem, "rx buf alloc failed no physmem")
+
+typedef enum
+{
+#define _(f,s) IXGE_ERROR_##f,
+  foreach_ixge_error
+#undef _
+    IXGE_N_ERROR,
+} ixge_error_t;
+
 typedef volatile struct
 {
   /* [31:7] 128 byte aligned. */
@@ -1281,7 +1296,47 @@ typedef enum
   IXGE_RX_N_NEXT,
 } ixge_rx_next_t;
 
-void ixge_set_next_node (ixge_rx_next_t, char *);
+typedef struct
+{
+  ixge_descriptor_t before, after;
+  u32 buffer_index;
+  u16 device_index;
+  u8 queue_index;
+  u8 is_start_of_packet;
+
+  /* Copy of VLIB buffer; packet data stored in pre_data. */
+  vlib_buffer_t buffer;
+} ixge_rx_dma_trace_t;
+
+typedef struct
+{
+  ixge_tx_descriptor_t descriptor;
+  u32 buffer_index;
+  u16 device_index;
+  u8 queue_index;
+  u8 is_start_of_packet;
+
+  /* Copy of VLIB buffer; packet data stored in pre_data. */
+  vlib_buffer_t buffer;
+} ixge_tx_dma_trace_t;
+
+void ixge_update_counters (ixge_device_t * xd);
+
+/* phy.c */
+void ixge_phy_init (ixge_device_t * xd);
+void ixge_sfp_enable_disable_laser (ixge_device_t * xd, uword enable);
+
+format_function_t format_ixge_device;
+format_function_t format_ixge_tx_descriptor;
+format_function_t format_ixge_rx_from_hw_descriptor;
+format_function_t format_ixge_tx_dma_trace;
+format_function_t format_ixge_rx_dma_trace;
+format_function_t format_ixge_device_name;
+
+extern vlib_node_registration_t ixge_input_node;
+extern vlib_node_registration_t ixge_process_node;
+
+#define EVENT_SET_FLAGS 0
 
 #endif /* included_ixge_h */
 

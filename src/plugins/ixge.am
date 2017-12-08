@@ -13,7 +13,12 @@
 
 vppplugins_LTLIBRARIES += ixge_plugin.la
 
-ixge_plugin_la_SOURCES = ixge/ixge.c
+ixge_plugin_la_SOURCES = 				\
+	ixge/device.c					\
+	ixge/format.c					\
+	ixge/ixge.c					\
+	ixge/node.c					\
+	ixge/phy.c
 
 noinst_HEADERS += ixge/ixge.h
 
