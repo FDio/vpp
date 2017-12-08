@@ -29,8 +29,6 @@ from jvppgen import jvpp_impl_gen
 from jvppgen import jvpp_c_gen
 from jvppgen import util
 
-blacklist = [ "memclnt.api", "flowprobe.api" ]
-
 # Invocation:
 # ~/Projects/vpp/vpp-api/jvpp/gen$ mkdir -p java/io/fd/vpp/jvpp && cd java/io/fd/vpp/jvpp
 # ~/Projects/vpp/vpp-api/jvpp/gen/java/io/fd/vpp/jvpp$ ../../../../jvpp_gen.py -idefs_api_vpp_papi.py
@@ -72,9 +70,6 @@ except OSError:
 os.chdir(work_dir)
 
 for inputfile in args.inputfiles:
-    if any(substring in inputfile for substring in blacklist):
-        print "WARNING: Imput file %s blacklisted" % inputfile
-        continue
     _cfg = json.load(open(cwd + "/" + inputfile, 'r'))
     if 'types' in cfg:
         cfg['types'].extend(_cfg['types'])
