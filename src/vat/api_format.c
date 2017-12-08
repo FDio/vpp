@@ -8042,7 +8042,6 @@ api_ip_add_del_route (vat_main_t * vam)
   u8 is_ipv6 = 0;
   u8 is_local = 0, is_drop = 0;
   u8 is_unreach = 0, is_prohibit = 0;
-  u8 create_vrf_if_needed = 0;
   u8 is_add = 1;
   u32 next_hop_weight = 1;
   u8 is_multipath = 0;
@@ -8136,8 +8135,6 @@ api_ip_add_del_route (vat_main_t * vam)
 	is_multipath = 1;
       else if (unformat (i, "vrf %d", &vrf_id))
 	;
-      else if (unformat (i, "create-vrf"))
-	create_vrf_if_needed = 1;
       else if (unformat (i, "count %d", &count))
 	;
       else if (unformat (i, "lookup-in-vrf %d", &next_hop_table_id))
@@ -8224,7 +8221,6 @@ api_ip_add_del_route (vat_main_t * vam)
 
       mp->next_hop_sw_if_index = ntohl (sw_if_index);
       mp->table_id = ntohl (vrf_id);
-      mp->create_vrf_if_needed = create_vrf_if_needed;
 
       mp->is_add = is_add;
       mp->is_drop = is_drop;
@@ -8337,7 +8333,6 @@ api_ip_mroute_add_del (vat_main_t * vam)
   u32 sw_if_index = ~0, vrf_id = 0;
   u8 is_ipv6 = 0;
   u8 is_local = 0;
-  u8 create_vrf_if_needed = 0;
   u8 is_add = 1;
   u8 address_set = 0;
   u32 grp_address_length = 0;
@@ -8394,8 +8389,6 @@ api_ip_mroute_add_del (vat_main_t * vam)
 	is_add = 1;
       else if (unformat (i, "vrf %d", &vrf_id))
 	;
-      else if (unformat (i, "create-vrf"))
-	create_vrf_if_needed = 1;
       else if (unformat (i, "%U", unformat_mfib_itf_flags, &iflags))
 	;
       else if (unformat (i, "%U", unformat_mfib_entry_flags, &eflags))
@@ -8418,7 +8411,6 @@ api_ip_mroute_add_del (vat_main_t * vam)
 
   mp->next_hop_sw_if_index = ntohl (sw_if_index);
   mp->table_id = ntohl (vrf_id);
-  mp->create_vrf_if_needed = create_vrf_if_needed;
 
   mp->is_add = is_add;
   mp->is_ipv6 = is_ipv6;
@@ -8499,7 +8491,6 @@ api_mpls_route_add_del (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_mpls_route_add_del_t *mp;
   u32 sw_if_index = ~0, table_id = 0;
-  u8 create_table_if_needed = 0;
   u8 is_add = 1;
   u32 next_hop_weight = 1;
   u8 is_multipath = 0;
@@ -8549,8 +8540,6 @@ api_mpls_route_add_del (vat_main_t * vam)
 	}
       else if (unformat (i, "weight %d", &next_hop_weight))
 	;
-      else if (unformat (i, "create-table"))
-	create_table_if_needed = 1;
       else if (unformat (i, "classify %d", &classify_table_index))
 	{
 	  is_classify = 1;
@@ -8618,7 +8607,6 @@ api_mpls_route_add_del (vat_main_t * vam)
 
       mp->mr_next_hop_sw_if_index = ntohl (sw_if_index);
       mp->mr_table_id = ntohl (table_id);
-      mp->mr_create_table_if_needed = create_table_if_needed;
 
       mp->mr_is_add = is_add;
       mp->mr_next_hop_proto = next_hop_proto;
@@ -8724,7 +8712,6 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_mpls_ip_bind_unbind_t *mp;
   u32 ip_table_id = 0;
-  u8 create_table_if_needed = 0;
   u8 is_bind = 1;
   u8 is_ip4 = 1;
   ip4_address_t v4_address;
@@ -8751,8 +8738,6 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
 	}
       else if (unformat (i, "%d", &local_label))
 	;
-      else if (unformat (i, "create-table"))
-	create_table_if_needed = 1;
       else if (unformat (i, "table-id %d", &ip_table_id))
 	;
       else if (unformat (i, "unbind"))
@@ -8781,7 +8766,6 @@ api_mpls_ip_bind_unbind (vat_main_t * vam)
   /* Construct the API message */
   M (MPLS_IP_BIND_UNBIND, mp);
 
-  mp->mb_create_table_if_needed = create_table_if_needed;
   mp->mb_is_bind = is_bind;
   mp->mb_is_ip4 = is_ip4;
   mp->mb_ip_table_id = ntohl (ip_table_id);

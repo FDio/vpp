@@ -22,7 +22,6 @@ vl_api_version 1.0.1
     @param mb_mpls_table_id - The MPLS table-id the MPLS entry will be added in
     @param mb_label - The MPLS label value to bind
     @param mb_ip_table_id - The IP table-id of the IP prefix to bind to.
-    @param mb_create_table_if_needed - Create either/both tables if required.
     @param mb_is_bind - Bind or unbind
     @param mb_is_ip4 - The prefix to bind to is IPv4
     @param mb_address_length - Length of IP prefix
@@ -35,7 +34,6 @@ autoreply define mpls_ip_bind_unbind
   u32 mb_mpls_table_id;
   u32 mb_label;
   u32 mb_ip_table_id;
-  u8 mb_create_table_if_needed;
   u8 mb_is_bind;
   u8 mb_is_ip4;
   u8 mb_address_length;
@@ -165,7 +163,6 @@ autoreply define mpls_table_add_del
     @param mr_table_id - The MPLS table-id the route is added in
     @param mr_classify_table_index - If this is a classify route, 
                                      this is the classify table index
-    @param  mr_create_table_if_needed - If the MPLS or IP tables do not exist,
                                         create them
     @param mr_is_add - Is this a route add or delete
     @param mr_is_classify - Is this route result a classify
@@ -194,7 +191,6 @@ autoreply define mpls_route_add_del
   u8 mr_eos;
   u32 mr_table_id;
   u32 mr_classify_table_index;
-  u8 mr_create_table_if_needed;
   u8 mr_is_add;
   u8 mr_is_classify;
   u8 mr_is_multicast;
