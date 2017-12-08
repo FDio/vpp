@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "79912a72_c34445e6",
+        "filename": "src/vnet/ethernet/node.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 307,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2017-12-08T10:43:19Z",
+      "side": 1,
+      "message": "Maybe.\n\nI\u0027m having a harder time than I thought I would modifying this. Especially for both sse and neon at the same time.\n\nYou can have a look at the the snippets I\u0027m using to test and measure here https://github.com/GabrielGanne/neon-perf-tests",
+      "parentUuid": "01c8a497_90691dc3",
+      "range": {
+        "startLine": 307,
+        "startChar": 1,
+        "endLine": 307,
+        "endChar": 57
+      },
+      "revId": "973cf83f84b24153ff6011760382356c8afd2d74",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "b7d2f97c_8b4ef855",
         "filename": "src/vnet/ethernet/node.c",
         "patchSetId": 1
