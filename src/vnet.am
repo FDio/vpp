@@ -772,15 +772,11 @@ API_FILES += vnet/srv6/sr.api
 
 libvnet_la_SOURCES +=				\
  vnet/srmpls/sr_mpls_policy.c		\
- vnet/srmpls/sr_mpls_steering.c   \
- vnet/srmpls/sr_mpls_api.c
+ vnet/srmpls/sr_mpls_steering.c
 
 
 nobase_include_HEADERS +=			\
- vnet/srmpls/sr_mpls.h      \
- vnet/srmpls/sr_mpls.api.h
-
-API_FILES += vnet/srmpls/sr_mpls.api
+ vnet/srmpls/sr.h
 
 ########################################
 # IPFIX / netflow v10
@@ -903,6 +899,16 @@ nobase_include_HEADERS += 			\
   vnet/devices/tap/tapv2.api.h
 
 API_FILES += vnet/devices/tap/tapv2.api
+
+########################################
+# ssvm ethernet
+########################################
+libvnet_la_SOURCES +=				\
+  vnet/devices/ssvm/ssvm_eth.c			\
+  vnet/devices/ssvm/node.c
+
+nobase_include_HEADERS +=			\
+  vnet/devices/ssvm/ssvm_eth.h
 
 ########################################
 # session managmeent
@@ -1104,7 +1110,7 @@ libvnet_la_SOURCES +=				\
   vnet/dpo/mpls_disposition.c   		\
   vnet/dpo/mpls_label_dpo.c			\
   vnet/dpo/l3_proxy_dpo.c			\
-  vnet/dpo/dvr_dpo.c
+  vnet/dpo/l2_bridge_dpo.c
 
 nobase_include_HEADERS +=			\
   vnet/dpo/load_balance.h			\
@@ -1169,8 +1175,7 @@ libvnet_la_SOURCES +=                           \
   vnet/bier/bier_disp_entry.c			\
   vnet/bier/bier_disp_lookup_node.c		\
   vnet/bier/bier_disp_dispatch_node.c		\
-  vnet/bier/bier_disp_table.c			\
-  vnet/bier/bier_bift_table.c
+  vnet/bier/bier_disp_table.c
 
 nobase_include_HEADERS +=			\
   vnet/bier/bier_types.h                        \
@@ -1180,21 +1185,6 @@ nobase_include_HEADERS +=			\
   vnet/bier/bier_table.h
 
 API_FILES += vnet/bier/bier.api
-
-########################################
-# Test apps
-########################################
-
-noinst_PROGRAMS += tcp_echo udp_echo
-
-TEST_APPS_LDADD = libvlibmemoryclient.la libsvm.la libvppinfra.la
-TEST_APPS_LDADD += -lpthread -lm -lrt
-
-tcp_echo_SOURCES = tests/vnet/session/tcp_echo.c
-tcp_echo_LDADD = $(TEST_APPS_LDADD)
-
-udp_echo_SOURCES = tests/vnet/session/udp_echo.c
-udp_echo_LDADD = $(TEST_APPS_LDADD)
 
 ########################################
 # Plugin client library
