@@ -19,13 +19,9 @@
 #include <nat/nat64_db.h>
 
 int
-nat64_db_init (nat64_db_t * db)
+nat64_db_init (nat64_db_t * db, u32 bib_buckets, u32 bib_memory_size,
+	       u32 st_buckets, u32 st_memory_size)
 {
-  u32 bib_buckets = 1024;
-  u32 bib_memory_size = 128 << 20;
-  u32 st_buckets = 2048;
-  u32 st_memory_size = 256 << 20;
-
   clib_bihash_init_24_8 (&db->bib.in2out, "bib-in2out", bib_buckets,
 			 bib_memory_size);
 

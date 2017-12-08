@@ -398,7 +398,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
 
       if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index0,
                                                thread_index, &key1,
-                                               &address_index, sm->vrf_mode,
+                                               &address_index,
                                                sm->port_per_thread,
                                                sm->per_thread_data[thread_index].snat_thread_index))
         {
@@ -420,7 +420,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
           /* Try to create dynamic translation */
           if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index0,
                                                    thread_index, &key1,
-                                                   &address_index, sm->vrf_mode,
+                                                   &address_index,
                                                    sm->port_per_thread,
                                                    sm->per_thread_data[thread_index].snat_thread_index))
             {

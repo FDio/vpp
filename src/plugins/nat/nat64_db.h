@@ -127,10 +127,15 @@ typedef struct
  * @brief Initialize NAT64 DB.
  *
  * @param db NAT64 DB.
+ * @param bib_buckets Number of BIB hash buckets.
+ * @param bib_memory_size Memory size of BIB hash.
+ * @param st_buckets Number of session table hash buckets.
+ * @param st_memory_size Memory size of session table hash.
  *
  * @returns 0 on success, non-zero value otherwise.
  */
-int nat64_db_init (nat64_db_t * db);
+int nat64_db_init (nat64_db_t * db, u32 bib_buckets, u32 bib_memory_size,
+		   u32 st_buckets, u32 st_memory_size);
 
 /**
  * @brief Create new NAT64 BIB entry.

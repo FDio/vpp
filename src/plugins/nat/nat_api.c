@@ -1776,19 +1776,12 @@ static void
 {
   vl_api_nat64_add_del_pool_addr_range_reply_t *rmp;
   snat_main_t *sm = &snat_main;
-  nat64_main_t *nm = &nat64_main;
   int rv = 0;
   ip4_address_t this_addr;
   u32 start_host_order, end_host_order;
   u32 vrf_id;
   int i, count;
   u32 *tmp;
-
-  if (nm->is_disabled)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto send_reply;
-    }
 
   tmp = (u32 *) mp->start_addr;
   start_host_order = clib_host_to_net_u32 (tmp[0]);
@@ -1831,6 +1824,7 @@ typedef struct nat64_api_walk_ctx_t_
 {
   unix_shared_memory_queue_t *q;
   u32 context;
+  nat64_db_t *db;
 } nat64_api_walk_ctx_t;
 
 static int
@@ -1864,10 +1858,6 @@ static void
 vl_api_nat64_pool_addr_dump_t_handler (vl_api_nat64_pool_addr_dump_t * mp)
 {
   unix_shared_memory_queue_t *q;
-  nat64_main_t *nm = &nat64_main;
-
-  if (nm->is_disabled)
-    return;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -1897,15 +1887,8 @@ vl_api_nat64_add_del_interface_t_handler (vl_api_nat64_add_del_interface_t *
 					  mp)
 {
   snat_main_t *sm = &snat_main;
-  nat64_main_t *nm = &nat64_main;
   vl_api_nat64_add_del_interface_reply_t *rmp;
   int rv = 0;
-
-  if (nm->is_disabled)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto send_reply;
-    }
 
   VALIDATE_SW_IF_INDEX (mp);
 
@@ -1915,7 +1898,6 @@ vl_api_nat64_add_del_interface_t_handler (vl_api_nat64_add_del_interface_t *
 
   BAD_SW_IF_INDEX_LABEL;
 
-send_reply:
   REPLY_MACRO (VL_API_NAT64_ADD_DEL_INTERFACE_REPLY);
 }
 
@@ -1958,10 +1940,6 @@ static void
 vl_api_nat64_interface_dump_t_handler (vl_api_nat64_interface_dump_t * mp)
 {
   unix_shared_memory_queue_t *q;
-  nat64_main_t *nm = &nat64_main;
-
-  if (nm->is_disabled)
-    return;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -1991,17 +1969,10 @@ static void
   (vl_api_nat64_add_del_static_bib_t * mp)
 {
   snat_main_t *sm = &snat_main;
-  nat64_main_t *nm = &nat64_main;
   vl_api_nat64_add_del_static_bib_reply_t *rmp;
   ip6_address_t in_addr;
   ip4_address_t out_addr;
   int rv = 0;
-
-  if (nm->is_disabled)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto send_reply;
-    }
 
   memcpy (&in_addr.as_u8, mp->i_addr, 16);
   memcpy (&out_addr.as_u8, mp->o_addr, 4);
@@ -2014,7 +1985,6 @@ static void
 				    clib_net_to_host_u32 (mp->vrf_id),
 				    mp->is_add);
 
-send_reply:
   REPLY_MACRO (VL_API_NAT64_ADD_DEL_STATIC_BIB_REPLY);
 }
 
@@ -2069,9 +2039,7 @@ vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
 {
   unix_shared_memory_queue_t *q;
   nat64_main_t *nm = &nat64_main;
-
-  if (nm->is_disabled)
-    return;
+  nat64_db_t *db;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -2082,7 +2050,10 @@ vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
     .context = mp->context,
   };
 
-  nat64_db_bib_walk (&nm->db, mp->proto, nat64_api_bib_walk, &ctx);
+  /* *INDENT-OFF* */
+  vec_foreach (db, nm->db)
+    nat64_db_bib_walk (db, mp->proto, nat64_api_bib_walk, &ctx);
+  /* *INDENT-ON* */
 }
 
 static void *
@@ -2099,15 +2070,8 @@ static void
 vl_api_nat64_set_timeouts_t_handler (vl_api_nat64_set_timeouts_t * mp)
 {
   snat_main_t *sm = &snat_main;
-  nat64_main_t *nm = &nat64_main;
   vl_api_nat64_set_timeouts_reply_t *rmp;
   int rv = 0;
-
-  if (nm->is_disabled)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto send_reply;
-    }
 
   rv = nat64_set_icmp_timeout (ntohl (mp->icmp));
   if (rv)
@@ -2142,12 +2106,8 @@ static void
 vl_api_nat64_get_timeouts_t_handler (vl_api_nat64_get_timeouts_t * mp)
 {
   snat_main_t *sm = &snat_main;
-  nat64_main_t *nm = &nat64_main;
   vl_api_nat64_get_timeouts_reply_t *rmp;
   int rv = 0;
-
-  if (nm->is_disabled)
-    return;
 
   /* *INDENT-OFF* */
   REPLY_MACRO2 (VL_API_NAT64_GET_TIMEOUTS_REPLY,
@@ -2177,11 +2137,10 @@ nat64_api_st_walk (nat64_db_st_entry_t * ste, void *arg)
   vl_api_nat64_st_details_t *rmp;
   snat_main_t *sm = &snat_main;
   nat64_api_walk_ctx_t *ctx = arg;
-  nat64_main_t *nm = &nat64_main;
   nat64_db_bib_entry_t *bibe;
   fib_table_t *fib;
 
-  bibe = nat64_db_bib_entry_by_index (&nm->db, ste->proto, ste->bibe_index);
+  bibe = nat64_db_bib_entry_by_index (ctx->db, ste->proto, ste->bibe_index);
   if (!bibe)
     return -1;
 
@@ -2213,9 +2172,7 @@ vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
 {
   unix_shared_memory_queue_t *q;
   nat64_main_t *nm = &nat64_main;
-
-  if (nm->is_disabled)
-    return;
+  nat64_db_t *db;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -2226,7 +2183,13 @@ vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
     .context = mp->context,
   };
 
-  nat64_db_st_walk (&nm->db, mp->proto, nat64_api_st_walk, &ctx);
+  /* *INDENT-OFF* */
+  vec_foreach (db, nm->db)
+    {
+      ctx.db = db;
+      nat64_db_st_walk (db, mp->proto, nat64_api_st_walk, &ctx);
+    }
+  /* *INDENT-ON* */
 }
 
 static void *
@@ -2244,22 +2207,14 @@ vl_api_nat64_add_del_prefix_t_handler (vl_api_nat64_add_del_prefix_t * mp)
 {
   vl_api_nat64_add_del_prefix_reply_t *rmp;
   snat_main_t *sm = &snat_main;
-  nat64_main_t *nm = &nat64_main;
   ip6_address_t prefix;
   int rv = 0;
-
-  if (nm->is_disabled)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto send_reply;
-    }
 
   memcpy (&prefix.as_u8, mp->prefix, 16);
 
   rv =
     nat64_add_del_prefix (&prefix, mp->prefix_len,
 			  clib_net_to_host_u32 (mp->vrf_id), mp->is_add);
-send_reply:
   REPLY_MACRO (VL_API_NAT64_ADD_DEL_PREFIX_REPLY);
 }
 
@@ -2300,10 +2255,6 @@ static void
 vl_api_nat64_prefix_dump_t_handler (vl_api_nat64_prefix_dump_t * mp)
 {
   unix_shared_memory_queue_t *q;
-  nat64_main_t *nm = &nat64_main;
-
-  if (nm->is_disabled)
-    return;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -2332,24 +2283,17 @@ static void
   vl_api_nat64_add_del_interface_addr_t_handler
   (vl_api_nat64_add_del_interface_addr_t * mp)
 {
-  nat64_main_t *nm = &nat64_main;
   snat_main_t *sm = &snat_main;
   vl_api_nat64_add_del_interface_addr_reply_t *rmp;
   u32 sw_if_index = ntohl (mp->sw_if_index);
   int rv = 0;
-
-  if (nm->is_disabled)
-    {
-      rv = VNET_API_ERROR_FEATURE_DISABLED;
-      goto send_reply;
-    }
 
   VALIDATE_SW_IF_INDEX (mp);
 
   rv = nat64_add_interface_address (sw_if_index, mp->is_add);
 
   BAD_SW_IF_INDEX_LABEL;
-send_reply:
+
   REPLY_MACRO (VL_API_NAT64_ADD_DEL_INTERFACE_ADDR_REPLY);
 }
 

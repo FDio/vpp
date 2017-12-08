@@ -274,7 +274,6 @@ typedef int nat_alloc_out_addr_and_port_function_t (snat_address_t * addresses,
                                                     u32 thread_index,
                                                     snat_session_key_t * k,
                                                     u32 * address_indexp,
-                                                    u8 vrf_mode,
                                                     u16 port_per_thread,
                                                     u32 snat_thread_index);
 
@@ -355,9 +354,6 @@ typedef struct snat_main_s {
   u32 inside_vrf_id;
   u32 inside_fib_index;
 
-  /* tenant VRF aware address pool activation flag */
-  u8 vrf_mode;
-
   /* values of various timeouts */
   u32 udp_timeout;
   u32 tcp_established_timeout;
@@ -399,7 +395,6 @@ int snat_alloc_outside_address_and_port (snat_address_t * addresses,
                                          u32 thread_index,
                                          snat_session_key_t * k,
                                          u32 * address_indexp,
-                                         u8 vrf_mode,
                                          u16 port_per_thread,
                                          u32 snat_thread_index);
 

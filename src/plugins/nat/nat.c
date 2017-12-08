@@ -332,9 +332,6 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id)
   snat_interface_t *i;
   vlib_thread_main_t *tm = vlib_get_thread_main ();
 
-  if (vrf_id != ~0)
-    sm->vrf_mode = 1;
-
   /* Check if address already exists */
   vec_foreach (ap, sm->addresses)
     {
@@ -1384,7 +1381,6 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
                                  u32 thread_index,
                                  snat_session_key_t * k,
                                  u32 * address_indexp,
-                                 u8 vrf_mode,
                                  u16 port_per_thread,
                                  u32 snat_thread_index);
 
@@ -1604,14 +1600,13 @@ snat_alloc_outside_address_and_port (snat_address_t * addresses,
                                      u32 thread_index,
                                      snat_session_key_t * k,
                                      u32 * address_indexp,
-                                     u8 vrf_mode,
                                      u16 port_per_thread,
                                      u32 snat_thread_index)
 {
   snat_main_t *sm = &snat_main;
 
   return sm->alloc_addr_and_port(addresses, fib_index, thread_index, k,
-                                 address_indexp, vrf_mode, port_per_thread,
+                                 address_indexp, port_per_thread,
                                  snat_thread_index);
 }
 
@@ -1621,39 +1616,44 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
                                  u32 thread_index,
                                  snat_session_key_t * k,
                                  u32 * address_indexp,
-                                 u8 vrf_mode,
                                  u16 port_per_thread,
                                  u32 snat_thread_index)
 {
-  int i;
-  snat_address_t *a;
+  int i, gi = 0;
+  snat_address_t *a, *ga = 0;
   u32 portnum;
 
   for (i = 0; i < vec_len (addresses); i++)
     {
       a = addresses + i;
-      if (vrf_mode && a->fib_index != ~0 && a->fib_index != fib_index)
-        continue;
       switch (k->protocol)
         {
 #define _(N, j, n, s) \
         case SNAT_PROTOCOL_##N: \
           if (a->busy_##n##_ports_per_thread[thread_index] < port_per_thread) \
             { \
-              while (1) \
+              if (a->fib_index == fib_index) \
                 { \
-                  portnum = (port_per_thread * \
-                    snat_thread_index) + \
-                    snat_random_port(1, port_per_thread) + 1024; \
-                  if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
-                    continue; \
-                  clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
-                  a->busy_##n##_ports_per_thread[thread_index]++; \
-                  a->busy_##n##_ports++; \
-                  k->addr = a->addr; \
-                  k->port = clib_host_to_net_u16(portnum); \
-                  *address_indexp = i; \
-                  return 0; \
+                  while (1) \
+                    { \
+                      portnum = (port_per_thread * \
+                        snat_thread_index) + \
+                        snat_random_port(1, port_per_thread) + 1024; \
+                      if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+                        continue; \
+                      clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+                      a->busy_##n##_ports_per_thread[thread_index]++; \
+                      a->busy_##n##_ports++; \
+                      k->addr = a->addr; \
+                      k->port = clib_host_to_net_u16(portnum); \
+                      *address_indexp = i; \
+                      return 0; \
+                    } \
+                } \
+              else if (a->fib_index == ~0) \
+                { \
+                  ga = a; \
+                  gi = i; \
                 } \
             } \
           break;
@@ -1665,6 +1665,38 @@ nat_alloc_addr_and_port_default (snat_address_t * addresses,
         }
 
     }
+
+  if (ga)
+    {
+      a = ga;
+      switch (k->protocol)
+	{
+#define _(N, j, n, s) \
+        case SNAT_PROTOCOL_##N: \
+          while (1) \
+            { \
+              portnum = (port_per_thread * \
+                snat_thread_index) + \
+                snat_random_port(1, port_per_thread) + 1024; \
+              if (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, portnum)) \
+                continue; \
+              clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, portnum, 1); \
+              a->busy_##n##_ports_per_thread[thread_index]++; \
+              a->busy_##n##_ports++; \
+              k->addr = a->addr; \
+              k->port = clib_host_to_net_u16(portnum); \
+              *address_indexp = gi; \
+              return 0; \
+            }
+	  break;
+	  foreach_snat_protocol
+#undef _
+	default:
+	  clib_warning ("unknown protocol");
+	  return 1;
+	}
+    }
+
   /* Totally out of translations to use... */
   snat_ipfix_logging_addresses_exhausted(0);
   return 1;
@@ -1676,7 +1708,6 @@ nat_alloc_addr_and_port_mape (snat_address_t * addresses,
                               u32 thread_index,
                               snat_session_key_t * k,
                               u32 * address_indexp,
-                              u8 vrf_mode,
                               u16 port_per_thread,
                               u32 snat_thread_index)
 {
@@ -2462,6 +2493,25 @@ snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0)
   udp = ip4_next_header (ip0);
   port = udp->dst_port;
 
+  if (PREDICT_FALSE (ip4_is_fragment (ip0)))
+    {
+      if (PREDICT_FALSE (nat_reass_is_drop_frag (0)))
+	return vlib_get_thread_index ();
+
+      if (PREDICT_TRUE (!ip4_is_first_fragment (ip0)))
+	{
+	  nat_reass_ip4_t *reass;
+
+	  reass = nat_ip4_reass_find (ip0->src_address, ip0->dst_address,
+				      ip0->fragment_id, ip0->protocol);
+
+	  if (reass && (reass->thread_index != (u32) ~ 0))
+            return reass->thread_index;
+	  else
+	    return vlib_get_thread_index ();
+	}
+    }
+
   /* unknown protocol */
   if (PREDICT_FALSE (proto == ~0))
     {
@@ -2554,6 +2604,10 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u32 inside_vrf_id = 0;
   u32 static_mapping_buckets = 1024;
   u32 static_mapping_memory_size = 64<<20;
+  u32 nat64_bib_buckets = 1024;
+  u32 nat64_bib_memory_size = 128 << 20;
+  u32 nat64_st_buckets = 2048;
+  u32 nat64_st_memory_size = 256 << 20;
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
   snat_main_per_thread_data_t *tsm;
@@ -2588,6 +2642,17 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
         }
       else if (unformat (input, "deterministic"))
         sm->deterministic = 1;
+      else if (unformat (input, "nat64 bib hash buckets %d",
+                         &nat64_bib_buckets))
+        ;
+      else if (unformat (input, "nat64 bib hash memory %d",
+                         &nat64_bib_memory_size))
+        ;
+      else if (unformat (input, "nat64 st hash buckets %d", &nat64_st_buckets))
+        ;
+      else if (unformat (input, "nat64 st hash memory %d",
+                         &nat64_st_memory_size))
+        ;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);
@@ -2611,6 +2676,9 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
                                                             FIB_SOURCE_PLUGIN_HI);
   sm->static_mapping_only = static_mapping_only;
   sm->static_mapping_connection_tracking = static_mapping_connection_tracking;
+
+  nat64_set_hash(nat64_bib_buckets, nat64_bib_memory_size, nat64_st_buckets,
+                 nat64_st_memory_size);
 
   if (sm->deterministic)
     {
@@ -3424,8 +3492,8 @@ done:
 };
 
 VLIB_CLI_COMMAND (nat44_set_alloc_addr_and_port_alg_command, static) = {
-    .path = "nat44 addr-port-assignment-alg",
-    .short_help = "nat44 addr-port-assignment-alg <alg-name> [<alg-params>]",
+    .path = "nat addr-port-assignment-alg",
+    .short_help = "nat addr-port-assignment-alg <alg-name> [<alg-params>]",
     .function = nat44_set_alloc_addr_and_port_alg_command_fn,
 };
 
