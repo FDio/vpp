@@ -41,6 +41,7 @@
 #include <sys/param.h>
 
 #include <vppinfra/vec.h>
+#include <vppinfra/smp.h>
 #include <vppinfra/time.h>
 #include <vppinfra/timer.h>
 #include <vppinfra/error.h>
@@ -283,7 +284,7 @@ bar_t b = { limit:10 };
     timer_call (bar, (any) & b, random_f64 ());
 
   while (vec_len (timers) > 0)
-    sched_yield ();
+    os_sched_yield ();
 
   if (vec_len (foos) > 0)
     {
