@@ -62,6 +62,20 @@ autoreply define want_interface_events
   u32 pid;
 };
 
+/** \brief Register for foo events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_foo_counters
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
 /** \brief Interface details structure (fix this) 
     @param sw_if_index - index of the interface
     @param sup_sw_if_index - index of parent interface if any, else same as sw_if_index  
