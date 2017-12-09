@@ -123,22 +123,26 @@ transport_endpoint_table_del (transport_endpoint_table_t * ht, u8 proto,
 /**
  * Register transport virtual function table.
  *
- * @param type - session type (not protocol type)
- * @param vft - virtual function table
+ * @param transport_proto - transport protocol type (i.e., TCP, UDP ..)
+ * @param vft - virtual function table for transport proto
+ * @param fib_proto - network layer protocol
+ * @param output_node - output node index that session layer will hand off
+ * 			buffers to, for requested fib proto
  */
 void
-transport_register_protocol (transport_proto_t transport_proto, u8 is_ip4,
-			     const transport_proto_vft_t * vft)
+transport_register_protocol (transport_proto_t transport_proto,
+                             const transport_proto_vft_t * vft,
+                             fib_protocol_t fib_proto, u32 output_node)
 {
-  u8 session_type;
-  session_type = session_type_from_proto_and_ip (transport_proto, is_ip4);
+  session_type_t session_type;
+  session_type = session_type_from_proto_and_ip (transport_proto,
+                                                 fib_proto == FIB_PROTOCOL_IP4);
 
   vec_validate (tp_vfts, session_type);
   tp_vfts[session_type] = *vft;
 
-  /* If an offset function is provided, then peek instead of dequeue */
-  session_manager_set_transport_rx_fn (session_type,
-				       vft->tx_fifo_offset != 0);
+  session_register_transport (session_type, output_node);
+  session_manager_set_transport_rx_fn (session_type, vft->tx_fifo_offset != 0);
 }
 
 /**
@@ -308,6 +312,26 @@ transport_alloc_local_endpoint (u8 proto, transport_endpoint_t * rmt,
     }
   *lcl_port = port;
   return 0;
+}
+
+void
+transport_update_time (f64 time_now, u8 thread_index)
+{
+  transport_proto_vft_t *vft;
+  vec_foreach (vft, tp_vfts) {
+    if (vft->update_time)
+      (vft->update_time) (time_now, thread_index);
+  };
+}
+
+void
+transport_enable_disable (vlib_main_t *vm, u8 is_en)
+{
+  transport_proto_vft_t *vft;
+  vec_foreach (vft, tp_vfts) {
+    if (vft->enable)
+      (vft->enable) (vm, is_en);
+  };
 }
 
 void

@@ -127,10 +127,10 @@ make_v4_proxy_kv (session_kv4_t * kv, ip4_address_t * lcl, u8 proto)
 }
 
 always_inline void
-make_v4_ss_kv_from_tc (session_kv4_t * kv, transport_connection_t * t)
+make_v4_ss_kv_from_tc (session_kv4_t * kv, transport_connection_t * tc)
 {
-  make_v4_ss_kv (kv, &t->lcl_ip.ip4, &t->rmt_ip.ip4, t->lcl_port, t->rmt_port,
-		 session_type_from_proto_and_ip (t->proto, 1));
+  make_v4_ss_kv (kv, &tc->lcl_ip.ip4, &tc->rmt_ip.ip4, tc->lcl_port,
+	         tc->rmt_port, tc->proto);
 }
 
 always_inline void
@@ -187,10 +187,10 @@ make_v6_proxy_kv (session_kv6_t * kv, ip6_address_t * lcl, u8 proto)
 }
 
 always_inline void
-make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * t)
+make_v6_ss_kv_from_tc (session_kv6_t * kv, transport_connection_t * tc)
 {
-  make_v6_ss_kv (kv, &t->lcl_ip.ip6, &t->rmt_ip.ip6, t->lcl_port, t->rmt_port,
-		 session_type_from_proto_and_ip (t->proto, 0));
+  make_v6_ss_kv (kv, &tc->lcl_ip.ip6, &tc->rmt_ip.ip6, tc->lcl_port,
+	         tc->rmt_port, tc->proto);
 }
 
 static session_table_t *
@@ -472,9 +472,7 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
   session_table_t *st;
   u32 ai;
   int rv;
-  u8 sst;
 
-  sst = session_type_from_proto_and_ip (sep->transport_proto, sep->is_ip4);
   st = session_table_get (table_index);
   if (!st)
     return SESSION_INVALID_HANDLE;
@@ -483,7 +481,8 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
       session_kv4_t kv4;
       ip4_address_t lcl4;
 
-      make_v4_listener_kv (&kv4, &sep->ip.ip4, sep->port, sst);
+      make_v4_listener_kv (&kv4, &sep->ip.ip4, sep->port,
+                           sep->transport_proto);
       rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
       if (rv == 0)
 	return kv4.value;
@@ -502,7 +501,8 @@ session_lookup_endpoint_listener (u32 table_index, session_endpoint_t * sep,
       session_kv6_t kv6;
       ip6_address_t lcl6;
 
-      make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port, sst);
+      make_v6_listener_kv (&kv6, &sep->ip.ip6, sep->port,
+                           sep->transport_proto);
       rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
       if (rv == 0)
 	return kv6.value;
@@ -633,14 +633,16 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
 {
   session_kv4_t kv4;
   int rv;
+  session_type_t session_type;
 
   /*
    * First, try a fully formed listener
    */
+  session_type = session_type_from_proto_and_ip (proto, 1);
   make_v4_listener_kv (&kv4, lcl, lcl_port, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
-    return session_manager_get_listener (proto, (u32) kv4.value);
+    return session_manager_get_listener (session_type, (u32) kv4.value);
 
   /*
    * Zero out the lcl ip and check if any 0/0 port binds have been done
@@ -648,7 +650,7 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
   kv4.key[0] = 0;
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
-    return session_manager_get_listener (proto, (u32) kv4.value);
+    return session_manager_get_listener (session_type, (u32) kv4.value);
 
   /*
    * Zero out port and check if we have a proxy set up for our ip
@@ -656,7 +658,7 @@ session_lookup_listener4_i (session_table_t * st, ip4_address_t * lcl,
   make_v4_proxy_kv (&kv4, lcl, proto);
   rv = clib_bihash_search_inline_16_8 (&st->v4_session_hash, &kv4);
   if (rv == 0)
-    return session_manager_get_listener (proto, (u32) kv4.value);
+    return session_manager_get_listener (session_type, (u32) kv4.value);
 
   return 0;
 }
@@ -678,22 +680,24 @@ session_lookup_listener6_i (session_table_t * st, ip6_address_t * lcl,
 {
   session_kv6_t kv6;
   int rv;
+  session_type_t session_type;
 
+  session_type = session_type_from_proto_and_ip (proto, 0);
   make_v6_listener_kv (&kv6, lcl, lcl_port, proto);
   rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
   if (rv == 0)
-    return session_manager_get_listener (proto, (u32) kv6.value);
+    return session_manager_get_listener (session_type, (u32) kv6.value);
 
   /* Zero out the lcl ip */
   kv6.key[0] = kv6.key[1] = 0;
   rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
   if (rv == 0)
-    return session_manager_get_listener (proto, (u32) kv6.value);
+    return session_manager_get_listener (session_type, (u32) kv6.value);
 
   make_v6_proxy_kv (&kv6, lcl, proto);
   rv = clib_bihash_search_inline_48_8 (&st->v6_session_hash, &kv6);
   if (rv == 0)
-    return session_manager_get_listener (proto, (u32) kv6.value);
+    return session_manager_get_listener (session_type, (u32) kv6.value);
   return 0;
 }
 
