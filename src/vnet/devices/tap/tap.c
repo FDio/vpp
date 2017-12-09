@@ -84,7 +84,7 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
   tap_main_t *tm = &tap_main;
   vnet_sw_interface_t *sw;
   vnet_hw_interface_t *hw;
-  int i, fd = -1;
+  int i;
   int old_netns_fd = -1;
   struct ifreq ifr;
   size_t hdrsz;
@@ -385,8 +385,8 @@ error:
 done:
   if (vhost_mem)
     clib_mem_free (vhost_mem);
-  if (fd != -1)
-    close (fd);
+  if (old_netns_fd != -1)
+    close (old_netns_fd);
 }
 
 int
