@@ -665,15 +665,6 @@ tcp_set_time_now (u32 thread_index)
   return tcp_main.time_now[thread_index];
 }
 
-always_inline void
-tcp_update_time (f64 now, u32 thread_index)
-{
-  tcp_set_time_now (thread_index);
-  tw_timer_expire_timers_16t_2w_512sl (&tcp_main.timer_wheels[thread_index],
-				       now);
-  tcp_flush_frames_to_output (thread_index);
-}
-
 u32 tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b);
 
 u32

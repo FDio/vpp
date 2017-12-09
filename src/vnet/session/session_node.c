@@ -16,8 +16,8 @@
 #include <math.h>
 #include <vlib/vlib.h>
 #include <vnet/vnet.h>
-#include <vnet/tcp/tcp.h>
 #include <vppinfra/elog.h>
+#include <vnet/session/transport.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session_debug.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
@@ -62,13 +62,6 @@ static char *session_queue_error_strings[] = {
 #define _(sym,string) string,
   foreach_session_queue_error
 #undef _
-};
-
-static u32 session_type_to_next[] = {
-  SESSION_QUEUE_NEXT_TCP_IP4_OUTPUT,
-  SESSION_QUEUE_NEXT_IP4_LOOKUP,
-  SESSION_QUEUE_NEXT_TCP_IP6_OUTPUT,
-  SESSION_QUEUE_NEXT_IP6_LOOKUP,
 };
 
 always_inline void
@@ -152,7 +145,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_bytes_per_buf, deq_per_buf, deq_per_first_buf;
   u32 buffers_allocated, buffers_allocated_this_call;
 
-  next_index = next0 = session_type_to_next[s0->session_type];
+  next_index = next0 = smm->session_type_to_next[s0->session_type];
 
   transport_vft = transport_protocol_get_vft (s0->session_type);
   tc0 = transport_vft->get_connection (s0->connection_index, thread_index);
@@ -325,7 +318,6 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  /* *INDENT-ON* */
 
 	  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
-	  tcp_trajectory_add_start (b0, 3);
 
 	  if (PREDICT_FALSE (n_trace > 0))
 	    {
@@ -550,9 +542,9 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   SESSION_EVT_DBG (SESSION_EVT_POLL_GAP_TRACK, smm, my_thread_index);
 
   /*
-   *  Update TCP time
+   *  Update transport time
    */
-  tcp_update_time (now, my_thread_index);
+  transport_update_time (now, my_thread_index);
 
   /*
    * Get vpp queue events
@@ -695,16 +687,7 @@ VLIB_REGISTER_NODE (session_queue_node) =
   .type = VLIB_NODE_TYPE_INPUT,
   .n_errors = ARRAY_LEN (session_queue_error_strings),
   .error_strings = session_queue_error_strings,
-  .n_next_nodes = SESSION_QUEUE_N_NEXT,
   .state = VLIB_NODE_STATE_DISABLED,
-  .next_nodes =
-  {
-      [SESSION_QUEUE_NEXT_DROP] = "error-drop",
-      [SESSION_QUEUE_NEXT_IP4_LOOKUP] = "ip4-lookup",
-      [SESSION_QUEUE_NEXT_IP6_LOOKUP] = "ip6-lookup",
-      [SESSION_QUEUE_NEXT_TCP_IP4_OUTPUT] = "tcp4-output",
-      [SESSION_QUEUE_NEXT_TCP_IP6_OUTPUT] = "tcp6-output",
-  },
 };
 /* *INDENT-ON* */
 

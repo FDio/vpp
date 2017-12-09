@@ -40,6 +40,7 @@ typedef struct _transport_proto_vft
     u16 (*send_mss) (transport_connection_t * tc);
     u32 (*send_space) (transport_connection_t * tc);
     u32 (*tx_fifo_offset) (transport_connection_t * tc);
+    void (*update_time) (f64 time_now, u8 thread_index);
 
   /*
    * Connection retrieval
@@ -57,9 +58,10 @@ typedef struct _transport_proto_vft
 } transport_proto_vft_t;
 
 void transport_register_protocol (transport_proto_t transport_proto,
-				  u8 is_ip4,
-				  const transport_proto_vft_t * vft);
+                                  const transport_proto_vft_t * vft,
+                                  fib_protocol_t fib_proto, u32 output_node);
 transport_proto_vft_t *transport_protocol_get_vft (u8 session_type);
+void transport_update_time (f64 time_now, u8 thread_index);
 
 #endif /* SRC_VNET_SESSION_TRANSPORT_INTERFACE_H_ */
 
