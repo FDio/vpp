@@ -1009,8 +1009,18 @@ tcp_session_tx_fifo_offset (transport_connection_t * trans_conn)
   return (tc->snd_nxt - tc->snd_una);
 }
 
+void
+tcp_update_time (f64 now, u8 thread_index)
+{
+  tcp_set_time_now (thread_index);
+  tw_timer_expire_timers_16t_2w_512sl (&tcp_main.timer_wheels[thread_index],
+				       now);
+  tcp_flush_frames_to_output (thread_index);
+}
+
 /* *INDENT-OFF* */
 const static transport_proto_vft_t tcp_proto = {
+  .enable = vnet_tcp_enable_disable,
   .bind = tcp_session_bind,
   .unbind = tcp_session_unbind,
   .push_header = tcp_push_header,
@@ -1022,6 +1032,7 @@ const static transport_proto_vft_t tcp_proto = {
   .cleanup = tcp_session_cleanup,
   .send_mss = tcp_session_send_mss,
   .send_space = tcp_session_send_space,
+  .update_time = tcp_update_time,
   .tx_fifo_offset = tcp_session_tx_fifo_offset,
   .format_connection = format_tcp_session,
   .format_listener = format_tcp_listener_session,
@@ -1173,10 +1184,6 @@ tcp_main_enable (vlib_main_t * vm)
   ip4_register_protocol (IP_PROTOCOL_TCP, tcp4_input_node.index);
   ip6_register_protocol (IP_PROTOCOL_TCP, tcp6_input_node.index);
 
-  /* Register as transport with session layer */
-  transport_register_protocol (TRANSPORT_PROTO_TCP, 1, &tcp_proto);
-  transport_register_protocol (TRANSPORT_PROTO_TCP, 0, &tcp_proto);
-
   /*
    * Initialize data structures
    */
@@ -1286,6 +1293,12 @@ tcp_init (vlib_main_t * vm)
     return clib_error_return (0, "TCP protocol info AWOL");
   pi->format_header = format_tcp_header;
   pi->unformat_pg_edit = unformat_pg_tcp_header;
+
+  /* Register as transport with session layer */
+  transport_register_protocol (TRANSPORT_PROTO_TCP, &tcp_proto,
+			       FIB_PROTOCOL_IP4, tcp4_output_node.index);
+  transport_register_protocol (TRANSPORT_PROTO_TCP, &tcp_proto,
+			       FIB_PROTOCOL_IP6, tcp6_output_node.index);
 
   tcp_api_reference ();
   return 0;
