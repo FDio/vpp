@@ -1503,6 +1503,27 @@ macip_destroy_classify_tables (acl_main_t * am, u32 macip_acl_index)
 }
 
 static int
+macip_maybe_apply_unapply_classifier_tables (acl_main_t * am, u32 acl_index,
+					     int is_apply)
+{
+  int rv = 0;
+  int rv0 = 0;
+  int i;
+  macip_acl_list_t *a = pool_elt_at_index (am->macip_acls, acl_index);
+
+  for (i = 0; i < vec_len (am->macip_acl_by_sw_if_index); i++)
+    if (vec_elt (am->macip_acl_by_sw_if_index, i) == acl_index)
+      {
+	rv0 = vnet_set_input_acl_intfc (am->vlib_main, i, a->ip4_table_index,
+					a->ip6_table_index, a->l2_table_index,
+					is_apply);
+	/* return the first unhappy outcome but make try to plough through. */
+	rv = rv || rv0;
+      }
+  return rv;
+}
+
+static int
 macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
 		    u32 * acl_list_index, u8 * tag)
 {
@@ -1511,6 +1532,7 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
   macip_acl_rule_t *r;
   macip_acl_rule_t *acl_new_rules = 0;
   int i;
+  int rv = 0;
 
   if (*acl_list_index != ~0)
     {
@@ -1531,6 +1553,9 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
 	("acl-plugin-warning: Trying to create empty MACIP ACL (tag %s)",
 	 tag);
     }
+  /* if replacing the ACL, unapply the classifier tables first - they will be gone.. */
+  if (~0 != *acl_list_index)
+    rv = macip_maybe_apply_unapply_classifier_tables (am, *acl_list_index, 0);
   void *oldheap = acl_set_heap (am);
   /* Create and populate the rules */
   if (count > 0)
@@ -1575,7 +1600,10 @@ macip_acl_add_list (u32 count, vl_api_macip_acl_rule_t rules[],
   /* Create and populate the classifer tables */
   macip_create_classify_tables (am, *acl_list_index);
   clib_mem_set_heap (oldheap);
-  return 0;
+  /* If the ACL was already applied somewhere, reapply the newly created tables */
+  rv = rv
+    || macip_maybe_apply_unapply_classifier_tables (am, *acl_list_index, 1);
+  return rv;
 }
 
 
