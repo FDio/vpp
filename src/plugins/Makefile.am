@@ -67,6 +67,10 @@ if ENABLE_MEMIF_PLUGIN
 include memif.am
 endif
 
+if ENABLE_MLX5_PLUGIN
+include mlx5.am
+endif
+
 if ENABLE_PPPOE_PLUGIN
 include pppoe.am
 endif
