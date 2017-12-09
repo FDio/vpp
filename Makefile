@@ -18,6 +18,7 @@ GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
 MACHINE=$(shell uname -m)
+DPDK_CONFIG=no-pci
 
 ,:=,
 define disable_plugins
