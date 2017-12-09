@@ -1973,6 +1973,7 @@ tcp_push_header (transport_connection_t * tconn, vlib_buffer_t * b)
       tc->rtt_ts = tcp_time_now ();
       tc->rtt_seq = tc->snd_nxt;
     }
+  tcp_trajectory_add_start (b0, 3);
   return 0;
 }
 

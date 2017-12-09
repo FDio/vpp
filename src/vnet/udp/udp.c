@@ -354,10 +354,11 @@ udp_init (vlib_main_t * vm)
   pi->format_header = format_udp_header;
   pi->unformat_pg_edit = unformat_pg_udp_header;
 
-
   /* Register as transport with URI */
-  transport_register_protocol (TRANSPORT_PROTO_UDP, 1, &udp_proto);
-  transport_register_protocol (TRANSPORT_PROTO_UDP, 0, &udp_proto);
+  transport_register_protocol (TRANSPORT_PROTO_UDP, &udp_proto,
+			       FIB_PROTOCOL_IP4, ip4_lookup_node.index);
+  transport_register_protocol (TRANSPORT_PROTO_UDP, &udp_proto,
+			       FIB_PROTOCOL_IP6, ip6_lookup_node.index);
 
   /*
    * Initialize data structures
