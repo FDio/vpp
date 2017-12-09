@@ -588,7 +588,8 @@ class MethodHolder(VppTestCase):
 
     def run_traffic(self, mac_type, ip_type, traffic, is_ip6, packets,
                     do_not_expected_capture=False, tags=None,
-                    apply_rules=True, isMACIP=True, permit_tags=PERMIT_TAGS):
+                    apply_rules=True, isMACIP=True, permit_tags=PERMIT_TAGS,
+                    try_replace=False):
         self.reset_packet_infos()
 
         if tags is None:
@@ -650,6 +651,15 @@ class MethodHolder(VppTestCase):
             self.vapi.macip_acl_interface_add_del(
                 sw_if_index=tx_if.sw_if_index,
                 acl_index=0)
+        if try_replace:
+            if isMACIP:
+                reply = self.vapi.macip_acl_add_replace(
+                                                   test_dict['macip_rules'],
+                                                   acl_index)
+            else:
+                reply = self.vapi.acl_add_replace(acl_index=acl_index,
+                                                  r=test_dict['acl_rules'])
+            self.assertEqual(reply.retval, 0)
 
         if not isinstance(src_if, VppSubInterface):
             tx_if.add_stream(test_dict['stream'])
@@ -812,16 +822,9 @@ class TestMACIP_IP4(MethodHolder):
         """ MACIP replace ACL with IP4 traffic
         """
         self.run_traffic(self.OUI_MAC, self.SUBNET_IP,
-                         self.BRIDGED, self.IS_IP4, 9)
-
-        r = self.create_rules()
-        # replace acls #2, #3 with new
-        reply = self.vapi.macip_acl_add_replace(r[0], 0)
-        self.assertEqual(reply.retval, 0)
-        self.assertEqual(reply.acl_index, 0)
-
+                         self.BRIDGED, self.IS_IP4, 9, try_replace=True)
         self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
-                         self.BRIDGED, self.IS_IP4, 9, True)
+                         self.BRIDGED, self.IS_IP4, 9, try_replace=True)
 
 
 class TestMACIP_IP6(MethodHolder):
@@ -957,16 +960,9 @@ class TestMACIP_IP6(MethodHolder):
         """ MACIP replace ACL with IP6 traffic
         """
         self.run_traffic(self.OUI_MAC, self.SUBNET_IP,
-                         self.BRIDGED, self.IS_IP6, 9)
-
-        r = self.create_rules()
-        # replace acls #2, #3 with new
-        reply = self.vapi.macip_acl_add_replace(r[0], 0)
-        self.assertEqual(reply.retval, 0)
-        self.assertEqual(reply.acl_index, 0)
-
+                         self.BRIDGED, self.IS_IP6, 9, try_replace=True)
         self.run_traffic(self.EXACT_MAC, self.EXACT_IP,
-                         self.BRIDGED, self.IS_IP6, 9, True)
+                         self.BRIDGED, self.IS_IP6, 9, try_replace=True)
 
 
 class TestMACIP(MethodHolder):
