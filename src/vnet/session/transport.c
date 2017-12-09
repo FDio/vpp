@@ -127,18 +127,20 @@ transport_endpoint_table_del (transport_endpoint_table_t * ht, u8 proto,
  * @param vft - virtual function table
  */
 void
-transport_register_protocol (transport_proto_t transport_proto, u8 is_ip4,
-			     const transport_proto_vft_t * vft)
+transport_register_protocol (transport_proto_t transport_proto,
+                             const transport_proto_vft_t * vft,
+                             fib_protocol_t fib_proto, u32 output_node)
 {
   u8 session_type;
-  session_type = session_type_from_proto_and_ip (transport_proto, is_ip4);
+  session_type = session_type_from_proto_and_ip (transport_proto,
+                                                 fib_proto == FIB_PROTOCOL_IP4);
 
   vec_validate (tp_vfts, session_type);
   tp_vfts[session_type] = *vft;
+  session_register_transport (session_type, output_node);
 
   /* If an offset function is provided, then peek instead of dequeue */
-  session_manager_set_transport_rx_fn (session_type,
-				       vft->tx_fifo_offset != 0);
+  session_manager_set_transport_rx_fn (session_type, vft->tx_fifo_offset != 0);
 }
 
 /**

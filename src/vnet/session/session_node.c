@@ -64,12 +64,12 @@ static char *session_queue_error_strings[] = {
 #undef _
 };
 
-static u32 session_type_to_next[] = {
-  SESSION_QUEUE_NEXT_TCP_IP4_OUTPUT,
-  SESSION_QUEUE_NEXT_IP4_LOOKUP,
-  SESSION_QUEUE_NEXT_TCP_IP6_OUTPUT,
-  SESSION_QUEUE_NEXT_IP6_LOOKUP,
-};
+//static u32 session_type_to_next[] = {
+//  SESSION_QUEUE_NEXT_TCP_IP4_OUTPUT,
+//  SESSION_QUEUE_NEXT_IP4_LOOKUP,
+//  SESSION_QUEUE_NEXT_TCP_IP6_OUTPUT,
+//  SESSION_QUEUE_NEXT_IP6_LOOKUP,
+//};
 
 always_inline void
 session_tx_fifo_chain_tail (session_manager_main_t * smm, vlib_main_t * vm,
@@ -152,7 +152,7 @@ session_tx_fifo_read_and_snd_i (vlib_main_t * vm, vlib_node_runtime_t * node,
   u32 n_bytes_per_buf, deq_per_buf, deq_per_first_buf;
   u32 buffers_allocated, buffers_allocated_this_call;
 
-  next_index = next0 = session_type_to_next[s0->session_type];
+  next_index = next0 = smm->session_type_to_next[s0->session_type];
 
   transport_vft = transport_protocol_get_vft (s0->session_type);
   tc0 = transport_vft->get_connection (s0->connection_index, thread_index);
@@ -695,16 +695,7 @@ VLIB_REGISTER_NODE (session_queue_node) =
   .type = VLIB_NODE_TYPE_INPUT,
   .n_errors = ARRAY_LEN (session_queue_error_strings),
   .error_strings = session_queue_error_strings,
-  .n_next_nodes = SESSION_QUEUE_N_NEXT,
   .state = VLIB_NODE_STATE_DISABLED,
-  .next_nodes =
-  {
-      [SESSION_QUEUE_NEXT_DROP] = "error-drop",
-      [SESSION_QUEUE_NEXT_IP4_LOOKUP] = "ip4-lookup",
-      [SESSION_QUEUE_NEXT_IP6_LOOKUP] = "ip6-lookup",
-      [SESSION_QUEUE_NEXT_TCP_IP4_OUTPUT] = "tcp4-output",
-      [SESSION_QUEUE_NEXT_TCP_IP6_OUTPUT] = "tcp6-output",
-  },
 };
 /* *INDENT-ON* */
 

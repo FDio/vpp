@@ -1174,8 +1174,10 @@ tcp_main_enable (vlib_main_t * vm)
   ip6_register_protocol (IP_PROTOCOL_TCP, tcp6_input_node.index);
 
   /* Register as transport with session layer */
-  transport_register_protocol (TRANSPORT_PROTO_TCP, 1, &tcp_proto);
-  transport_register_protocol (TRANSPORT_PROTO_TCP, 0, &tcp_proto);
+  transport_register_protocol (TRANSPORT_PROTO_TCP, &tcp_proto,
+	                       FIB_PROTOCOL_IP4, tcp4_output_node.index);
+  transport_register_protocol (TRANSPORT_PROTO_TCP, &tcp_proto,
+	                       FIB_PROTOCOL_IP6, tcp6_output_node.index);
 
   /*
    * Initialize data structures

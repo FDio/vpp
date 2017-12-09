@@ -57,8 +57,8 @@ typedef struct _transport_proto_vft
 } transport_proto_vft_t;
 
 void transport_register_protocol (transport_proto_t transport_proto,
-				  u8 is_ip4,
-				  const transport_proto_vft_t * vft);
+                                  const transport_proto_vft_t * vft,
+                                  fib_protocol_t fib_proto, u32 output_node);
 transport_proto_vft_t *transport_protocol_get_vft (u8 session_type);
 
 #endif /* SRC_VNET_SESSION_TRANSPORT_INTERFACE_H_ */

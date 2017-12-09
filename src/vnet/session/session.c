@@ -987,22 +987,45 @@ session_vpp_event_queue_allocate (session_manager_main_t * smm,
 session_type_t
 session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
 {
-  if (proto == TRANSPORT_PROTO_TCP)
-    {
-      if (is_ip4)
-	return SESSION_TYPE_IP4_TCP;
-      else
-	return SESSION_TYPE_IP6_TCP;
-    }
-  else
-    {
-      if (is_ip4)
-	return SESSION_TYPE_IP4_UDP;
-      else
-	return SESSION_TYPE_IP6_UDP;
-    }
+//  if (proto == TRANSPORT_PROTO_TCP)
+//    {
+//      if (is_ip4)
+//	return SESSION_TYPE_IP4_TCP;
+//      else
+//	return SESSION_TYPE_IP6_TCP;
+//    }
+//  else
+//    {
+//      if (is_ip4)
+//	return SESSION_TYPE_IP4_UDP;
+//      else
+//	return SESSION_TYPE_IP6_UDP;
+//    }
+//
+//  return SESSION_N_TYPES;
 
-  return SESSION_N_TYPES;
+  return (is_ip4 << 4 | proto);
+}
+
+void
+session_register_transport (session_type_t session_type,
+                                        u32 output_node)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  u32 next_index;
+
+  vec_validate (smm->session_type_to_next, session_type);
+  vec_validate (smm->listen_sessions, session_type);
+  vec_validate (smm->session_tx_fns, session_type);
+
+  /* *INDENT-OFF* */
+  foreach_vlib_main (({
+    next_index = vlib_node_add_next (this_vlib_main, session_queue_node.index,
+                                     output_node);
+  }));
+  /* *INDENT-ON* */
+
+  smm->session_type_to_next[session_type] = next_index;
 }
 
 transport_connection_t *
