@@ -20,19 +20,7 @@
 #include <svm/svm_fifo.h>
 #include <vnet/session/transport.h>
 
-#define foreach_session_type                    \
-  _(IP4_TCP, ip4_tcp)                           \
-  _(IP4_UDP, ip4_udp)                           \
-  _(IP6_TCP, ip6_tcp)                           \
-  _(IP6_UDP, ip6_udp)
-
-typedef enum
-{
-#define _(A, a) SESSION_TYPE_##A,
-  foreach_session_type
-#undef _
-    SESSION_N_TYPES,
-} session_type_t;
+typedef u8 session_type_t;
 
 /*
  * Application session state
@@ -55,7 +43,7 @@ typedef struct _stream_session_t
   svm_fifo_t *server_tx_fifo;
 
   /** Type */
-  u8 session_type;
+  session_type_t session_type;
 
   /** State */
   volatile u8 session_state;

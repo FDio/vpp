@@ -80,17 +80,6 @@ typedef enum
     SESSION_N_ERROR,
 } session_error_t;
 
-/* Event queue input node static next indices */
-typedef enum
-{
-  SESSION_QUEUE_NEXT_DROP,
-  SESSION_QUEUE_NEXT_TCP_IP4_OUTPUT,
-  SESSION_QUEUE_NEXT_IP4_LOOKUP,
-  SESSION_QUEUE_NEXT_TCP_IP6_OUTPUT,
-  SESSION_QUEUE_NEXT_IP6_LOOKUP,
-  SESSION_QUEUE_N_NEXT,
-} session_queue_next_t;
-
 typedef struct
 {
   void *fp;
@@ -137,7 +126,7 @@ struct _session_manager_main
   clib_spinlock_t *peekers_write_locks;
 
   /** Pool of listen sessions. Same type as stream sessions to ease lookups */
-  stream_session_t *listen_sessions[SESSION_N_TYPES];
+  stream_session_t **listen_sessions;
 
   /** Per-proto, per-worker enqueue epoch counters */
   u32 *current_enqueue_epoch[TRANSPORT_N_PROTO];
@@ -164,7 +153,12 @@ struct _session_manager_main
   u32 unique_segment_name_counter;
 
   /** Per transport rx function that can either dequeue or peek */
-  session_fifo_rx_fn *session_tx_fns[SESSION_N_TYPES];
+  session_fifo_rx_fn **session_tx_fns;
+
+  /** Per session type output nodes. Could optimize to group nodes by
+   * fib but lookup would then require session type parsing in session node.
+   * Trade memory for speed, for now */
+  u32 *session_type_to_next;
 
   /** Session manager is enabled */
   u8 is_enabled;
@@ -283,6 +277,18 @@ session_get_from_handle (u64 handle)
   return
     pool_elt_at_index (smm->sessions[session_thread_from_handle (handle)],
 		       session_index_from_handle (handle));
+}
+
+always_inline transport_proto_t
+session_get_transport_proto (stream_session_t * s)
+{
+  return (s->session_type >> 1);
+}
+
+always_inline session_type_t
+session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
+{
+  return (proto << 1 | is_ip4);
 }
 
 /**
@@ -443,10 +449,9 @@ uword unformat_stream_session (unformat_input_t * input, va_list * args);
 uword unformat_transport_connection (unformat_input_t * input,
 				     va_list * args);
 
-int
-send_session_connected_callback (u32 app_index, u32 api_context,
-				 stream_session_t * s, u8 is_fail);
-
+void session_register_transport (transport_proto_t transport_proto,
+				 const transport_proto_vft_t * vft, u8 is_ip4,
+				 u32 output_node);
 
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 
@@ -517,22 +522,24 @@ listen_session_get_local_session_endpoint (stream_session_t * listener,
 					   session_endpoint_t * sep);
 
 always_inline stream_session_t *
-session_manager_get_listener (u8 type, u32 index)
+session_manager_get_listener (u8 session_type, u32 index)
 {
-  return pool_elt_at_index (session_manager_main.listen_sessions[type],
-			    index);
+  return
+    pool_elt_at_index (session_manager_main.listen_sessions[session_type],
+		       index);
 }
 
+/**
+ * Set peek or dequeue function for given session type
+ *
+ * Reliable transport protocols will probably want to use a peek function
+ */
 always_inline void
-session_manager_set_transport_rx_fn (u8 type, u8 is_peek)
+session_manager_set_transport_rx_fn (session_type_t type, u8 is_peek)
 {
-  /* If an offset function is provided, then peek instead of dequeue */
   session_manager_main.session_tx_fns[type] = (is_peek) ?
     session_tx_fifo_peek_and_snd : session_tx_fifo_dequeue_and_snd;
 }
-
-session_type_t
-session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4);
 
 always_inline u8
 session_manager_is_enabled ()

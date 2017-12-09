@@ -23,7 +23,6 @@
 #include <vlibmemory/api.h>
 #include <vnet/dpo/load_balance.h>
 #include <vnet/fib/ip4_fib.h>
-#include <vnet/tcp/tcp.h>
 
 session_manager_main_t session_manager_main;
 extern transport_proto_vft_t *tp_vfts;
@@ -623,12 +622,14 @@ static void
 session_switch_pool (void *cb_args)
 {
   session_switch_pool_args_t *args = (session_switch_pool_args_t *) cb_args;
+  transport_proto_t tp;
   stream_session_t *s;
   ASSERT (args->thread_index == vlib_get_thread_index ());
   s = session_get (args->session_index, args->thread_index);
   s->server_tx_fifo->master_session_index = args->new_session_index;
   s->server_tx_fifo->master_thread_index = args->new_thread_index;
-  tp_vfts[s->session_type].cleanup (s->connection_index, s->thread_index);
+  tp = session_get_transport_proto (s);
+  tp_vfts[tp].cleanup (s->connection_index, s->thread_index);
   session_free (s);
   clib_mem_free (cb_args);
 }
@@ -806,22 +807,22 @@ int
 session_open (u32 app_index, session_endpoint_t * rmt, u32 opaque)
 {
   transport_connection_t *tc;
-  session_type_t sst;
+  transport_endpoint_t *tep;
   segment_manager_t *sm;
   stream_session_t *s;
   application_t *app;
   int rv;
   u64 handle;
 
-  sst = session_type_from_proto_and_ip (rmt->transport_proto, rmt->is_ip4);
-  rv = tp_vfts[sst].open (session_endpoint_to_transport (rmt));
+  tep = session_endpoint_to_transport (rmt);
+  rv = tp_vfts[rmt->transport_proto].open (tep);
   if (rv < 0)
     {
       SESSION_DBG ("Transport failed to open connection.");
       return VNET_API_ERROR_SESSION_CONNECT;
     }
 
-  tc = tp_vfts[sst].get_half_open ((u32) rv);
+  tc = tp_vfts[rmt->transport_proto].get_half_open ((u32) rv);
 
   /* If transport offers a stream service, only allocate session once the
    * connection has been established.
@@ -874,15 +875,16 @@ stream_session_listen (stream_session_t * s, session_endpoint_t * sep)
   u32 tci;
 
   /* Transport bind/listen  */
-  tci = tp_vfts[s->session_type].bind (s->session_index,
-				       session_endpoint_to_transport (sep));
+  tci = tp_vfts[sep->transport_proto].bind (s->session_index,
+					    session_endpoint_to_transport
+					    (sep));
 
   if (tci == (u32) ~ 0)
     return -1;
 
   /* Attach transport to session */
   s->connection_index = tci;
-  tc = tp_vfts[s->session_type].get_listener (tci);
+  tc = tp_vfts[sep->transport_proto].get_listener (tci);
 
   /* Weird but handle it ... */
   if (tc == 0)
@@ -901,15 +903,15 @@ stream_session_listen (stream_session_t * s, session_endpoint_t * sep)
 int
 stream_session_stop_listen (stream_session_t * s)
 {
+  transport_proto_t tp = session_get_transport_proto (s);
   transport_connection_t *tc;
-
   if (s->session_state != SESSION_STATE_LISTENING)
     {
       clib_warning ("not a listening session");
       return -1;
     }
 
-  tc = tp_vfts[s->session_type].get_listener (s->connection_index);
+  tc = tp_vfts[tp].get_listener (s->connection_index);
   if (!tc)
     {
       clib_warning ("no transport");
@@ -917,7 +919,7 @@ stream_session_stop_listen (stream_session_t * s)
     }
 
   session_lookup_del_connection (tc);
-  tp_vfts[s->session_type].unbind (s->connection_index);
+  tp_vfts[tp].unbind (s->connection_index);
   return 0;
 }
 
@@ -932,7 +934,8 @@ void
 stream_session_disconnect (stream_session_t * s)
 {
   s->session_state = SESSION_STATE_CLOSED;
-  tp_vfts[s->session_type].close (s->connection_index, s->thread_index);
+  tp_vfts[session_get_transport_proto (s)].close (s->connection_index,
+						  s->thread_index);
 }
 
 /**
@@ -953,7 +956,8 @@ stream_session_cleanup (stream_session_t * s)
   if (rv)
     clib_warning ("hash delete error, rv %d", rv);
 
-  tp_vfts[s->session_type].cleanup (s->connection_index, s->thread_index);
+  tp_vfts[session_get_transport_proto (s)].cleanup (s->connection_index,
+						    s->thread_index);
 }
 
 /**
@@ -985,49 +989,66 @@ session_vpp_event_queue_allocate (session_manager_main_t * smm,
     }
 }
 
-session_type_t
-session_type_from_proto_and_ip (transport_proto_t proto, u8 is_ip4)
+/**
+ * Initialize session layer for given transport proto and ip version
+ *
+ * Allocates per session type (transport proto + ip version) data structures
+ * and adds arc from session queue node to session type output node.
+ */
+void
+session_register_transport (transport_proto_t transport_proto,
+			    const transport_proto_vft_t * vft, u8 is_ip4,
+			    u32 output_node)
 {
-  if (proto == TRANSPORT_PROTO_TCP)
-    {
-      if (is_ip4)
-	return SESSION_TYPE_IP4_TCP;
-      else
-	return SESSION_TYPE_IP6_TCP;
-    }
-  else
-    {
-      if (is_ip4)
-	return SESSION_TYPE_IP4_UDP;
-      else
-	return SESSION_TYPE_IP6_UDP;
-    }
+  session_manager_main_t *smm = &session_manager_main;
+  session_type_t session_type;
+  u32 next_index = ~0;
 
-  return SESSION_N_TYPES;
+  session_type = session_type_from_proto_and_ip (transport_proto, is_ip4);
+
+  vec_validate (smm->session_type_to_next, session_type);
+  vec_validate (smm->listen_sessions, session_type);
+  vec_validate (smm->session_tx_fns, session_type);
+
+  /* *INDENT-OFF* */
+  foreach_vlib_main (({
+    next_index = vlib_node_add_next (this_vlib_main, session_queue_node.index,
+                                     output_node);
+  }));
+  /* *INDENT-ON* */
+
+  smm->session_type_to_next[session_type] = next_index;
+  session_manager_set_transport_rx_fn (session_type,
+				       vft->tx_fifo_offset != 0);
 }
 
 transport_connection_t *
 session_get_transport (stream_session_t * s)
 {
+  transport_proto_t tp;
   if (s->session_state != SESSION_STATE_LISTENING)
-    return tp_vfts[s->session_type].get_connection (s->connection_index,
-						    s->thread_index);
+    {
+      tp = session_get_transport_proto (s);
+      return tp_vfts[tp].get_connection (s->connection_index,
+					 s->thread_index);
+    }
   return 0;
 }
 
 transport_connection_t *
 listen_session_get_transport (stream_session_t * s)
 {
-  return tp_vfts[s->session_type].get_listener (s->connection_index);
+  transport_proto_t tp = session_get_transport_proto (s);
+  return tp_vfts[tp].get_listener (s->connection_index);
 }
 
 int
 listen_session_get_local_session_endpoint (stream_session_t * listener,
 					   session_endpoint_t * sep)
 {
+  transport_proto_t tp = session_get_transport_proto (listener);
   transport_connection_t *tc;
-  tc =
-    tp_vfts[listener->session_type].get_listener (listener->connection_index);
+  tc = tp_vfts[tp].get_listener (listener->connection_index);
   if (!tc)
     {
       clib_warning ("no transport");
@@ -1128,8 +1149,8 @@ session_manager_main_enable (vlib_main_t * vm)
 
   smm->is_enabled = 1;
 
-  /* Enable TCP transport */
-  vnet_tcp_enable_disable (vm, 1);
+  /* Enable transports */
+  transport_enable_disable (vm, 1);
 
   return 0;
 }

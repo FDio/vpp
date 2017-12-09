@@ -55,7 +55,7 @@ format_stream_session (u8 * s, va_list * args)
   int verbose = va_arg (*args, int);
   transport_proto_vft_t *tp_vft;
   u8 *str = 0;
-  tp_vft = transport_protocol_get_vft (ss->session_type);
+  tp_vft = transport_protocol_get_vft (session_get_transport_proto (ss));
 
   if (verbose == 1 && ss->session_state >= SESSION_STATE_ACCEPTING)
     str = format (0, "%-10u%-10u%-10lld",
