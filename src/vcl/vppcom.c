@@ -557,6 +557,8 @@ vppcom_app_send_attach (void)
   bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = vcm->cfg.add_segment_size;
   bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = vcm->cfg.rx_fifo_size;
   bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = vcm->cfg.tx_fifo_size;
+  bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
+    vcm->cfg.preallocated_fifo_pairs;
   if (nsid_len)
     {
       bmp->namespace_id_len = nsid_len;
