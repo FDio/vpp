@@ -573,8 +573,8 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 }
 
 void
-application_start_stop_proxy (application_t * app, u8 transport_proto,
-			      u8 is_start)
+application_start_stop_proxy (application_t * app,
+			      transport_proto_t transport_proto, u8 is_start)
 {
   if (application_has_local_scope (app))
     {
@@ -605,24 +605,34 @@ void
 application_setup_proxy (application_t * app)
 {
   u16 transports = app->proxied_transports;
+  transport_proto_t tp;
+
   ASSERT (application_is_proxy (app));
   if (application_is_builtin (app))
     return;
-  if (transports & (1 << TRANSPORT_PROTO_TCP))
-    application_start_stop_proxy (app, TRANSPORT_PROTO_TCP, 1);
-  if (transports & (1 << TRANSPORT_PROTO_UDP))
-    application_start_stop_proxy (app, TRANSPORT_PROTO_UDP, 1);
+
+  /* *INDENT-OFF* */
+  transport_proto_foreach (tp, ({
+    if (transports & (1 << tp))
+      application_start_stop_proxy (app, tp, 1);
+  }));
+  /* *INDENT-ON* */
 }
 
 void
 application_remove_proxy (application_t * app)
 {
   u16 transports = app->proxied_transports;
+  transport_proto_t tp;
+
   ASSERT (application_is_proxy (app));
-  if (transports & (1 << TRANSPORT_PROTO_TCP))
-    application_start_stop_proxy (app, TRANSPORT_PROTO_TCP, 0);
-  if (transports & (1 << TRANSPORT_PROTO_UDP))
-    application_start_stop_proxy (app, TRANSPORT_PROTO_UDP, 0);
+
+  /* *INDENT-OFF* */
+  transport_proto_foreach (tp, ({
+    if (transports & (1 << tp))
+      application_start_stop_proxy (app, tp, 0);
+  }));
+  /* *INDENT-ON* */
 }
 
 u8 *

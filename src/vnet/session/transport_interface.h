@@ -32,6 +32,7 @@ typedef struct _transport_proto_vft
   int (*open) (transport_endpoint_t * rmt);
   void (*close) (u32 conn_index, u32 thread_index);
   void (*cleanup) (u32 conn_index, u32 thread_index);
+  clib_error_t *(*enable) (vlib_main_t * vm, u8 is_en);
 
   /*
    * Transmission
@@ -40,6 +41,7 @@ typedef struct _transport_proto_vft
     u16 (*send_mss) (transport_connection_t * tc);
     u32 (*send_space) (transport_connection_t * tc);
     u32 (*tx_fifo_offset) (transport_connection_t * tc);
+  void (*update_time) (f64 time_now, u8 thread_index);
 
   /*
    * Connection retrieval
@@ -56,10 +58,21 @@ typedef struct _transport_proto_vft
   u8 *(*format_half_open) (u8 * s, va_list * args);
 } transport_proto_vft_t;
 
+extern transport_proto_vft_t *tp_vfts;
+
+#define transport_proto_foreach(VAR, BODY)				\
+do {								\
+    for (VAR = 0; VAR < vec_len (tp_vfts); VAR++)		\
+      if (tp_vfts[VAR].push_header != 0)				\
+	do { BODY; } while (0);					\
+} while (0)
+
 void transport_register_protocol (transport_proto_t transport_proto,
-				  u8 is_ip4,
-				  const transport_proto_vft_t * vft);
-transport_proto_vft_t *transport_protocol_get_vft (u8 session_type);
+				  const transport_proto_vft_t * vft,
+				  fib_protocol_t fib_proto, u32 output_node);
+transport_proto_vft_t *transport_protocol_get_vft (transport_proto_t tp);
+void transport_update_time (f64 time_now, u8 thread_index);
+void transport_enable_disable (vlib_main_t * vm, u8 is_en);
 
 #endif /* SRC_VNET_SESSION_TRANSPORT_INTERFACE_H_ */
 
