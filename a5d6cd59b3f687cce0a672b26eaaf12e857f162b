@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a65800f7_eb2f33e2",
+        "filename": "src/plugins/acl/acl.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1518,
+      "author": {
+        "id": 765
+      },
+      "writtenOn": "2017-12-09T15:03:05Z",
+      "side": 1,
+      "message": "Unfortunately, this patch does not solve the issue I am seeing.\nThese three values are still 0.  When the MACIP ACL is initially created,\nthese values are 3 and there is a chain of classifier tables from 0 to 3\nand last_table finalizes at 3.\n\nWhen the ACL is reapplied, the classifier table is still there as 0 to 3, but the value of last_table counts _down_ to 0.\n\nI suspect the a-\u003e{ip4,ip6,l2}_table_index values all need to be 0 or else all need to be 3 in both the initial create and later replace cases.\n\nI sent email to the list detailing this a bit more.",
+      "range": {
+        "startLine": 1517,
+        "startChar": 51,
+        "endLine": 1518,
+        "endChar": 43
+      },
+      "revId": "a5d6cd59b3f687cce0a672b26eaaf12e857f162b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
