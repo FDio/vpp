@@ -1,0 +1,2 @@
+set log class mlx5 level debug
+create interface mlx5 0000:d8:00.0
