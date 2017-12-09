@@ -38,6 +38,7 @@ static int
 map_regions (vlib_main_t * vm, int fd)
 {
   vlib_physmem_main_t *vpm = &physmem_main;
+  linux_vfio_main_t *lvm = &vfio_main;
   vlib_physmem_region_t *pr;
   struct vfio_iommu_type1_dma_map dm = { 0 };
   int i;
@@ -54,8 +55,17 @@ map_regions (vlib_main_t * vm, int fd)
 	  dm.vaddr = pointer_to_uword (pr->mem) + (i << pr->log2_page_size);
 	  dm.size = 1 << pr->log2_page_size;
 	  dm.iova = dm.vaddr;
+	  vlib_log_debug (lvm->log_default, "map DMA va:0x%lx iova:%lx "
+			  "size:0x%lx", dm.vaddr, dm.iova, dm.size);
+
 	  if ((rv = ioctl (fd, VFIO_IOMMU_MAP_DMA, &dm)))
-	    return rv;
+	    {
+	      vlib_log_err (lvm->log_default, "map DMA va:0x%lx iova:%lx "
+			    "size:0x%lx failed, error %s (errno %d)",
+			    dm.vaddr, dm.iova, dm.size, strerror (errno),
+			    errno);
+	      return rv;
+	    }
         }
     });
   /* *INDENT-ON* */
@@ -220,6 +230,8 @@ linux_vfio_init (vlib_main_t * vm)
   linux_vfio_main_t *lvm = &vfio_main;
   int fd;
 
+  lvm->log_default = vlib_log_register_class ("vfio", 0);
+
   fd = open ("/dev/vfio/vfio", O_RDWR);
 
   /* check if iommu is available */
@@ -233,9 +245,15 @@ linux_vfio_init (vlib_main_t * vm)
       else
 	{
 	  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU) == 1)
-	    lvm->flags |= LINUX_VFIO_F_HAVE_IOMMU;
+	    {
+	      lvm->flags |= LINUX_VFIO_F_HAVE_IOMMU;
+	      vlib_log_info (lvm->log_default, "type 1 IOMMU mode supported");
+	    }
 	  if (ioctl (fd, VFIO_CHECK_EXTENSION, VFIO_NOIOMMU_IOMMU) == 1)
-	    lvm->flags |= LINUX_VFIO_F_HAVE_NOIOMMU;
+	    {
+	      lvm->flags |= LINUX_VFIO_F_HAVE_NOIOMMU;
+	      vlib_log_info (lvm->log_default, "NOIOMMU mode supported");
+	    }
 	}
     }
 
