@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "42e9626c_bf21c021",
+        "filename": "src/vnet/devices/tap/cli.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-12-10T20:28:32Z",
+      "side": 1,
+      "message": "Could you remove the extra empty lines?",
+      "revId": "ad1ff321a820b73e3d78b78c18ce9583c7dbc986",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
