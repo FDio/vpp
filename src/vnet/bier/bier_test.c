@@ -170,15 +170,17 @@ bier_test_validate_entry (index_t bei,
 
     bier_entry_contribute_forwarding(bei, &dpo);
 
-    BIER_TEST_LB((DPO_LOAD_BALANCE == dpo.dpoi_type),
-                 "Entry links to %U",
-                 format_dpo_type, dpo.dpoi_type);
+    res = BIER_TEST_I((DPO_LOAD_BALANCE == dpo.dpoi_type),
+                      "Entry links to %U",
+                      format_dpo_type, dpo.dpoi_type);
 
-    lb = load_balance_get(dpo.dpoi_index);
-    res = fib_test_validate_lb_v(lb, n_buckets, &ap);
+    if (res)
+    {
+        lb = load_balance_get(dpo.dpoi_index);
+        res = fib_test_validate_lb_v(lb, n_buckets, &ap);
+    }
 
     dpo_reset(&dpo);
-
     va_end(ap);
 
     return (res);
