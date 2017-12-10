@@ -259,6 +259,8 @@ vlib_pci_get_device_info (vlib_pci_addr_t * addr, clib_error_t ** error)
 	}
     }
 
+  close (fd);
+
   vec_reset_length (f);
   f = format (f, "%v/vpd%c", dev_dir_name, 0);
   fd = open ((char *) f, O_RDONLY);
@@ -268,7 +270,7 @@ vlib_pci_get_device_info (vlib_pci_addr_t * addr, clib_error_t ** error)
 	{
 	  u8 tag[3];
 	  u8 *data = 0;
-	  int len;
+	  uword len;
 
 	  if (read (fd, &tag, 3) != 3)
 	    break;
@@ -583,8 +585,10 @@ error:
   free (s);
   if (err)
     {
-      close (p->config_fd);
-      close (p->uio_fd);
+      if (p->config_fd != -1)
+	close (p->config_fd);
+      if (p->uio_fd != -1)
+	close (p->uio_fd);
     }
   return err;
 }
@@ -619,7 +623,7 @@ open_vfio_iommu_group (int group)
   s = format (s, "/dev/vfio/%u%c", group, 0);
   fd = open ((char *) s, O_RDWR);
   if (fd < 0)
-    clib_error_return_unix (0, "open '%s'", s);
+    return clib_error_return_unix (0, "open '%s'", s);
 
   group_status.argsz = sizeof (group_status);
   if (ioctl (fd, VFIO_GROUP_GET_STATUS, &group_status) < 0)
@@ -779,8 +783,10 @@ error:
   vec_free (s);
   if (err)
     {
-      close (dfd);
-      close (p->config_fd);
+      if (dfd != -1)
+	close (dfd);
+      if (p->config_fd != -1)
+	close (p->config_fd);
     }
   return err;
 }
