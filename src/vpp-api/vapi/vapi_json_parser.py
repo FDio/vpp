@@ -50,6 +50,9 @@ class Type(object):
     def __init__(self, name):
         self.name = name
 
+    def __str__(self):
+        return self.name
+
 
 class SimpleType (Type):
 
@@ -84,6 +87,9 @@ class Struct(object):
         self.name = name
         self.fields = fields
         self.field_names = [n.name for n in self.fields]
+
+    def __str__(self):
+        return "[%s]" % "], [".join([str(f) for f in self.fields])
 
 
 class Message(object):
@@ -123,7 +129,14 @@ class Message(object):
                 if field_type in typedict:
                     field_type = typedict[field_type]
                 else:
-                    field_type = typedict[remove_magic(field_type)]
+                    mundane_field_type = remove_magic(field_type)
+                    if mundane_field_type in typedict:
+                        field_type = typedict[mundane_field_type]
+                    else:
+                        raise ParseError(
+                            "While parsing message `%s': could not find "
+                            "type by magic name `%s' nor by mundane name "
+                            "`%s'" % (name, field_type, mundane_field_type))
                 if len(field) == 2:
                     if self.header is not None and\
                             self.header.has_field(field[1]):
@@ -200,6 +213,10 @@ class StructType (Type, Struct):
         Type.__init__(self, name)
         Struct.__init__(self, name, fields)
 
+    def __str__(self):
+        return "StructType(%s, %s)" % (Type.__str__(self),
+                                       Struct.__str__(self))
+
     def has_field(self, name):
         return name in self.field_names
 
@@ -262,6 +279,7 @@ class JsonParser(object):
                     continue
                 self.types[type_.name] = type_
                 self.types_by_json[path][type_.name] = type_
+                self.logger.debug("Parsed type: %s" % type_)
             for m in j['messages']:
                 try:
                     msg = self.message_class(self.logger, m, self.types,
