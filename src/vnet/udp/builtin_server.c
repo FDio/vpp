@@ -125,8 +125,8 @@ attach_builtin_uri_server ()
   a->segment_name_length = segment_name_length;
   a->session_cb_vft = &builtin_server;
 
-  options[SESSION_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
-  options[SESSION_OPTIONS_SEGMENT_SIZE] = (2 << 30);	/*$$$$ config / arg */
+  options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
+  options[APP_OPTIONS_SEGMENT_SIZE] = (2 << 30);	/*$$$$ config / arg */
   options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 1024;
 

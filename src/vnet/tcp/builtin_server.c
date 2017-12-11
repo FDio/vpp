@@ -273,8 +273,9 @@ server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
   builtin_server_main_t *bsm = &builtin_server_main;
   u8 segment_name[128];
-  u64 options[SESSION_OPTIONS_N_OPTIONS];
+  u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
+  u32 segment_size = 512 << 20;
 
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
@@ -285,14 +286,17 @@ server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
   else
     builtin_session_cb_vft.builtin_server_rx_callback =
       builtin_server_rx_callback;
+
+  if (bsm->private_segment_size)
+    segment_size = bsm->private_segment_size;
+
   a->api_client_index = bsm->my_client_index;
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;
-  a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 512 << 20;
-  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = bsm->fifo_size;
-  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = bsm->fifo_size;
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_RX_FIFO_SIZE] = bsm->fifo_size;
+  a->options[APP_OPTIONS_TX_FIFO_SIZE] = bsm->fifo_size;
   a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = bsm->private_segment_count;
-  a->options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE] = bsm->private_segment_size;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     bsm->prealloc_fifos ? bsm->prealloc_fifos : 1;
 

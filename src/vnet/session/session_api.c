@@ -253,8 +253,8 @@ redirect_connect_callback (u32 server_api_client_index, void *mp_arg)
     }
 
   props = segment_manager_properties_get (app->sm_properties);
-  mp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = props->rx_fifo_size;
-  mp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = props->tx_fifo_size;
+  mp->options[APP_OPTIONS_RX_FIFO_SIZE] = props->rx_fifo_size;
+  mp->options[APP_OPTIONS_TX_FIFO_SIZE] = props->tx_fifo_size;
 
   /*
    * Bounce message handlers MUST NOT block the data-plane.
@@ -321,7 +321,7 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
       goto done;
     }
 
-  STATIC_ASSERT (sizeof (u64) * SESSION_OPTIONS_N_OPTIONS <=
+  STATIC_ASSERT (sizeof (u64) * APP_OPTIONS_N_OPTIONS <=
 		 sizeof (mp->options),
 		 "Out of options, fix api message definition");
 

@@ -72,7 +72,6 @@ typedef struct
   u32 tx_fifo_size;
   u32 preallocated_fifo_pairs;
   u32 private_segment_count;
-  u32 private_segment_size;
 } svm_fifo_segment_create_args_t;
 
 static inline svm_fifo_segment_private_t *

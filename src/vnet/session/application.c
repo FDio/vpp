@@ -237,8 +237,8 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   u32 default_rx_fifo_size = 16 << 10, default_tx_fifo_size = 16 << 10;
   int rv;
 
-  app_evt_queue_size = options[APP_EVT_QUEUE_SIZE] > 0 ?
-    options[APP_EVT_QUEUE_SIZE] : default_app_evt_queue_size;
+  app_evt_queue_size = options[APP_OPTIONS_EVT_QUEUE_SIZE] > 0 ?
+    options[APP_OPTIONS_EVT_QUEUE_SIZE] : default_app_evt_queue_size;
 
   /*
    * Setup segment manager
@@ -247,11 +247,11 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   sm->app_index = app->index;
   props = segment_manager_properties_alloc ();
   app->sm_properties = segment_manager_properties_index (props);
-  props->add_segment_size = options[SESSION_OPTIONS_ADD_SEGMENT_SIZE];
-  props->rx_fifo_size = options[SESSION_OPTIONS_RX_FIFO_SIZE];
+  props->add_segment_size = options[APP_OPTIONS_ADD_SEGMENT_SIZE];
+  props->rx_fifo_size = options[APP_OPTIONS_RX_FIFO_SIZE];
   props->rx_fifo_size =
     props->rx_fifo_size ? props->rx_fifo_size : default_rx_fifo_size;
-  props->tx_fifo_size = options[SESSION_OPTIONS_TX_FIFO_SIZE];
+  props->tx_fifo_size = options[APP_OPTIONS_TX_FIFO_SIZE];
   props->tx_fifo_size =
     props->tx_fifo_size ? props->tx_fifo_size : default_tx_fifo_size;
   props->add_segment = props->add_segment_size != 0;
@@ -259,9 +259,8 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   props->use_private_segment = options[APP_OPTIONS_FLAGS]
     & APP_OPTIONS_FLAGS_IS_BUILTIN;
   props->private_segment_count = options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT];
-  props->private_segment_size = options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE];
 
-  first_seg_size = options[SESSION_OPTIONS_SEGMENT_SIZE];
+  first_seg_size = options[APP_OPTIONS_SEGMENT_SIZE];
   if ((rv = segment_manager_init (sm, app->sm_properties, first_seg_size)))
     return rv;
   sm->first_is_protected = 1;

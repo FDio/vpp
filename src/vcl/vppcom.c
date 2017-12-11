@@ -553,12 +553,13 @@ vppcom_app_send_attach (void)
   bmp->options[APP_OPTIONS_PROXY_TRANSPORT] =
     (vcm->cfg.app_proxy_transport_tcp ? 1 << TRANSPORT_PROTO_TCP : 0) |
     (vcm->cfg.app_proxy_transport_udp ? 1 << TRANSPORT_PROTO_UDP : 0);
-  bmp->options[SESSION_OPTIONS_SEGMENT_SIZE] = vcm->cfg.segment_size;
-  bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = vcm->cfg.add_segment_size;
-  bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = vcm->cfg.rx_fifo_size;
-  bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = vcm->cfg.tx_fifo_size;
+  bmp->options[APP_OPTIONS_SEGMENT_SIZE] = vcm->cfg.segment_size;
+  bmp->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = vcm->cfg.add_segment_size;
+  bmp->options[APP_OPTIONS_RX_FIFO_SIZE] = vcm->cfg.rx_fifo_size;
+  bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = vcm->cfg.tx_fifo_size;
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     vcm->cfg.preallocated_fifo_pairs;
+  bmp->options[APP_OPTIONS_EVT_QUEUE_SIZE] = vcm->cfg.event_queue_size;
   if (nsid_len)
     {
       bmp->namespace_id_len = nsid_len;

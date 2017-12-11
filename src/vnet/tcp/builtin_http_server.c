@@ -511,23 +511,26 @@ server_attach ()
 {
   http_server_main_t *hsm = &http_server_main;
   u8 segment_name[128];
-  u64 options[SESSION_OPTIONS_N_OPTIONS];
+  u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
+  u32 segment_size = 128 << 20;
 
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
+  if (hsm->private_segment_size)
+    segment_size = hsm->private_segment_size;
+
   a->api_client_index = hsm->my_client_index;
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;
-  a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 128 << 20;
-  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] =
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_RX_FIFO_SIZE] =
     hsm->fifo_size ? hsm->fifo_size : 8 << 10;
-  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] =
+  a->options[APP_OPTIONS_TX_FIFO_SIZE] =
     hsm->fifo_size ? hsm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hsm->prealloc_fifos;
-  a->options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE] = hsm->private_segment_size;
   a->segment_name = segment_name;
   a->segment_name_length = ARRAY_LEN (segment_name);
 
