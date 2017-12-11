@@ -1,0 +1,119 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "2b245f9b_b1bfb36b",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 748,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-12-11T16:06:06Z",
+      "side": 1,
+      "message": "please restore the original indentation from what\u0027s messed up by indent tool here.",
+      "range": {
+        "startLine": 748,
+        "startChar": 5,
+        "endLine": 748,
+        "endChar": 16
+      },
+      "revId": "96e780af73ef5555f659ef2cb5cd4f3ed74bd3d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a85ccec4_e9444e5f",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1180,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-12-11T16:06:06Z",
+      "side": 1,
+      "message": "please restore the original indentation from what\u0027s messed up by indent tool here.",
+      "range": {
+        "startLine": 1180,
+        "startChar": 0,
+        "endLine": 1180,
+        "endChar": 2
+      },
+      "revId": "96e780af73ef5555f659ef2cb5cd4f3ed74bd3d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "901699f7_73b360e8",
+        "filename": "src/vnet/vxlan/decap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 1208,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-12-11T16:06:06Z",
+      "side": 1,
+      "message": "please restore the original indentation from what\u0027s messed up by indent tool here.",
+      "range": {
+        "startLine": 1208,
+        "startChar": 3,
+        "endLine": 1208,
+        "endChar": 11
+      },
+      "revId": "96e780af73ef5555f659ef2cb5cd4f3ed74bd3d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bb4e9e05_74820b92",
+        "filename": "src/vnet/vxlan/encap.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 620,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-12-11T16:06:06Z",
+      "side": 1,
+      "message": "please restore the original indentation from what\u0027s messed up by indent tool here.",
+      "range": {
+        "startLine": 620,
+        "startChar": 2,
+        "endLine": 620,
+        "endChar": 3
+      },
+      "revId": "96e780af73ef5555f659ef2cb5cd4f3ed74bd3d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d903820d_e5145a9f",
+        "filename": "src/vnet/vxlan/vxlan.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 221,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-12-11T16:06:06Z",
+      "side": 1,
+      "message": "Is there a way to make this indentation better?",
+      "range": {
+        "startLine": 221,
+        "startChar": 7,
+        "endLine": 221,
+        "endChar": 8
+      },
+      "revId": "96e780af73ef5555f659ef2cb5cd4f3ed74bd3d3",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
