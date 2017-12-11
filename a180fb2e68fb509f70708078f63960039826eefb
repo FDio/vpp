@@ -1,0 +1,174 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d72dbfbd_99ce9f60",
+        "filename": "src/plugins/igmp/igmp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 174,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T17:05:30Z",
+      "side": 1,
+      "message": "won\u0027t this always execute in the main thread?",
+      "revId": "a180fb2e68fb509f70708078f63960039826eefb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b67ca449_7c4520b9",
+        "filename": "src/plugins/igmp/igmp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 180,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T17:05:30Z",
+      "side": 1,
+      "message": "i don\u0027t understand this buffer allocation scheme. Why not just allocate a single buffer each time this function is called?",
+      "revId": "a180fb2e68fb509f70708078f63960039826eefb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "24755695_357a3896",
+        "filename": "src/plugins/igmp/igmp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 296,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T17:05:30Z",
+      "side": 1,
+      "message": "for a (*,G) the source address will be all zeros. in that case we can\u0027t tell a v4 address from a v6. for the default route (*,*) same goes for the group address\nI\u0027d suggest using an mfib_prefix_t in your igmp_config_t then you can switch on fp_proto.",
+      "revId": "a180fb2e68fb509f70708078f63960039826eefb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0bc0e913_4ee292ec",
+        "filename": "src/plugins/igmp/igmp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 348,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T17:05:30Z",
+      "side": 1,
+      "message": "use a pool to alloc the objects and save the indices in the hash table?",
+      "revId": "a180fb2e68fb509f70708078f63960039826eefb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "2f581110_7f6b5b53",
+        "filename": "src/plugins/igmp/igmp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 382,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T17:05:30Z",
+      "side": 1,
+      "message": "the signal is called for both true and false.",
+      "revId": "a180fb2e68fb509f70708078f63960039826eefb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ccd60c44_dace65c7",
+        "filename": "src/plugins/igmp/igmp.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T17:05:30Z",
+      "side": 1,
+      "message": "there\u0027s no need to memset data in the program\u0027s BSS segment (i.e. global data).",
+      "revId": "a180fb2e68fb509f70708078f63960039826eefb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "11cb044d_8ada879e",
+        "filename": "src/plugins/igmp/igmp_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 54,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T17:05:30Z",
+      "side": 1,
+      "message": "you can;\n  #include \u003cvlibapi/api_helper_macros.h\u003e\nrather than define this again,",
+      "revId": "a180fb2e68fb509f70708078f63960039826eefb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "56e0c4eb_2f59b2fc",
+        "filename": "src/plugins/igmp/igmp_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T17:05:30Z",
+      "side": 1,
+      "message": "ntohl(mp-\u003esw_if_index)",
+      "revId": "a180fb2e68fb509f70708078f63960039826eefb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b1cd1ff_b3fc798c",
+        "filename": "src/plugins/igmp/igmp_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 89,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T17:05:30Z",
+      "side": 1,
+      "message": "do you care?\nwill you disable the sending should an up interface go down?",
+      "revId": "a180fb2e68fb509f70708078f63960039826eefb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9e899d05_f40ea17b",
+        "filename": "src/plugins/igmp/igmp_api.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 119,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T17:05:30Z",
+      "side": 1,
+      "message": "you can make this an INIT function then it can be static.",
+      "revId": "a180fb2e68fb509f70708078f63960039826eefb",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
