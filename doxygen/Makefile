@@ -54,7 +54,6 @@ DOXY_SRC_DIRECTORIES = \
 	$(DOXY_SRC)/vnet \
 	$(DOXY_SRC)/vpp \
 	$(DOXY_SRC)/vpp-api \
-	$(DOXY_SRC)/uri \
 	$(DOXY_SRC)/examples
 
 # Input directories and files
