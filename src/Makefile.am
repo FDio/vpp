@@ -68,7 +68,6 @@ include vlib-api.am
 include vnet.am
 include vpp.am
 include vpp-api-test.am
-include uri.am
 include vcl.am
 
 SUBDIRS += plugins
@@ -86,6 +85,7 @@ endif
 if ENABLE_VOM
 SUBDIRS += vpp-api/vom
 endif
+
 
 ###############################################################################
 # API
