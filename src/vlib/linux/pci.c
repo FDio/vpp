@@ -56,6 +56,8 @@
 
 static const char *sysfs_pci_dev_path = "/sys/bus/pci/devices";
 static const char *sysfs_pci_drv_path = "/sys/bus/pci/drivers";
+static char *sysfs_mod_vfio_noiommu =
+  "/sys/module/vfio/parameters/enable_unsafe_noiommu_mode";
 
 typedef struct
 {
@@ -314,6 +316,16 @@ done:
   return di;
 }
 
+static int
+directory_exists (char *path)
+{
+  struct stat s = { 0 };
+  if (stat (path, &s) == -1)
+    return 0;
+
+  return S_ISDIR (s.st_mode);
+}
+
 clib_error_t *
 vlib_pci_bind_to_uio (vlib_pci_addr_t * addr, char *uio_drv_name)
 {
@@ -330,6 +342,49 @@ vlib_pci_bind_to_uio (vlib_pci_addr_t * addr, char *uio_drv_name)
 
   if (error)
     return error;
+
+  if (strncmp ("auto", uio_drv_name, 5) == 0)
+    {
+      int vfio_pci_loaded = 0;
+
+      if (directory_exists ("/sys/module/vfio_pci"))
+	vfio_pci_loaded = 1;
+
+      if (di->iommu_group != -1)
+	{
+	  /* device is bound to IOMMU group */
+	  if (!vfio_pci_loaded)
+	    {
+	      error = clib_error_return (0, "Skipping PCI device %U: device "
+					 "is bound to IOMMU group and "
+					 "vfio-pci driver is not loaded",
+					 format_vlib_pci_addr, addr);
+	      goto done;
+	    }
+	  else
+	    uio_drv_name = "vfio-pci";
+	}
+      else
+	{
+	  /* device is not bound to IOMMU group so we have multiple options */
+	  if (vfio_pci_loaded &&
+	      (error = clib_sysfs_write (sysfs_mod_vfio_noiommu, "Y")) == 0)
+	    uio_drv_name = "vfio-pci";
+	  else if (directory_exists ("/sys/module/uio_pci_generic"))
+	    uio_drv_name = "uio_pci_generic";
+	  else if (directory_exists ("/sys/module/igb_uio"))
+	    uio_drv_name = "igb_uio";
+	  else
+	    {
+	      clib_error_free (error);
+	      error = clib_error_return (0, "Skipping PCI device %U: missing "
+					 "kernel VFIO or UIO driver",
+					 format_vlib_pci_addr, addr);
+	      goto done;
+	    }
+	  clib_error_free (error);
+	}
+    }
 
   s = format (s, "%v/driver%c", dev_dir_name, 0);
   driver_name = clib_sysfs_link_to_name ((char *) s);
