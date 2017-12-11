@@ -115,6 +115,7 @@ format_ip_punt_redirect_trace (u8 * s, va_list * args)
 ip_punt_redirect_t ip4_punt_redirect_cfg = {
   .any_rx_sw_if_index = {
     .tx_sw_if_index = ~0,
+	.adj_index = ADJ_INDEX_INVALID,
   },
 };
 /* *INDENT-ON* */
@@ -309,6 +310,7 @@ VLIB_CLI_COMMAND (ip4_punt_policer_command, static) =
  */
 ip_punt_redirect_rx_t uninit_rx_redirect = {
   .tx_sw_if_index = ~0,
+  .adj_index = ADJ_INDEX_INVALID,
 };
 
 void
@@ -350,6 +352,9 @@ ip_punt_redirect_del (ip_punt_redirect_t * cfg, u32 rx_sw_if_index)
     {
       old = &cfg->redirect_by_rx_sw_if_index[rx_sw_if_index];
     }
+
+  if ((old == NULL) || (old->adj_index == ADJ_INDEX_INVALID))
+    return;
 
   adj_unlock (old->adj_index);
   *old = uninit_rx_redirect;

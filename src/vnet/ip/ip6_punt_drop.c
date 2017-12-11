@@ -212,6 +212,7 @@ VLIB_CLI_COMMAND (ip6_punt_policer_command, static) =
 ip_punt_redirect_t ip6_punt_redirect_cfg = {
   .any_rx_sw_if_index = {
 			 .tx_sw_if_index = ~0,
+			 .adj_index = ADJ_INDEX_INVALID,
 			 }
   ,
 };
