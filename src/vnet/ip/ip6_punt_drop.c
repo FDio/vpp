@@ -207,14 +207,15 @@ VLIB_CLI_COMMAND (ip6_punt_policer_command, static) =
   .function = ip6_punt_police_cmd,
   .short_help = "ip6 punt policer [add|del] <index>",
 };
-/* *INDENT-ON* */
+
 
 ip_punt_redirect_t ip6_punt_redirect_cfg = {
   .any_rx_sw_if_index = {
-			 .tx_sw_if_index = ~0,
-			 }
-  ,
+    .tx_sw_if_index = ~0,
+    .adj_index = ADJ_INDEX_INVALID,
+  },
 };
+/* *INDENT-ON* */
 
 #define foreach_ip6_punt_redirect_error         \
 _(DROP, "ip6 punt redirect drop")
