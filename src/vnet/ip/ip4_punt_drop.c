@@ -389,7 +389,7 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
   u32 tx_sw_if_index;
   ip46_address_t nh;
   vnet_main_t *vnm;
-  u8 is_add;
+  u8 is_add, rx_if_recvd = 0, tx_if_recv = 0;
 
   is_add = 1;
   vnm = vnet_get_main ();
@@ -404,18 +404,28 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
       else if (unformat (line_input, "add"))
 	is_add = 1;
       else if (unformat (line_input, "rx all"))
-	rx_sw_if_index = ~0;
+	{
+	  rx_sw_if_index = ~0;
+	  rx_if_recvd = 1;
+	}
       else if (unformat (line_input, "rx %U",
 			 unformat_vnet_sw_interface, vnm, &rx_sw_if_index))
-	;
+	{
+	  rx_if_recvd = 1;
+	}
       else if (unformat (line_input, "via %U %U",
 			 unformat_ip4_address,
 			 &nh.ip4,
 			 unformat_vnet_sw_interface, vnm, &tx_sw_if_index))
-	;
+	{
+	  tx_if_recv = 1;
+	}
       else if (unformat (line_input, "via %U",
 			 unformat_vnet_sw_interface, vnm, &tx_sw_if_index))
-	memset (&nh, 0, sizeof (nh));
+	{
+	  memset (&nh, 0, sizeof (nh));
+	  tx_if_recv = 1;
+	}
       else
 	{
 	  error = unformat_parse_error (line_input);
@@ -424,9 +434,19 @@ ip4_punt_redirect_cmd (vlib_main_t * vm,
     }
 
   if (is_add)
-    ip4_punt_redirect_add (rx_sw_if_index, tx_sw_if_index, &nh);
+    {
+      if (rx_if_recvd && tx_if_recv)
+	{
+	  ip4_punt_redirect_add (rx_sw_if_index, tx_sw_if_index, &nh);
+	}
+    }
   else
-    ip4_punt_redirect_del (rx_sw_if_index);
+    {
+      if (rx_if_recvd)
+	{
+	  ip4_punt_redirect_del (rx_sw_if_index);
+	}
+    }
 
 done:
   unformat_free (line_input);
