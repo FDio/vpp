@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d77ff025_c7598c39",
+        "filename": "src/vnet/ip/ip6_punt_drop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 212,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-12-11T13:30:48Z",
+      "side": 1,
+      "message": "/* *INDENT-OFF* */\n\u003cstuff\u003e\n/* *INDENT-ON* */\nplease",
+      "revId": "bb599ef1a430cab58945890d35aa7a89bab66143",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
