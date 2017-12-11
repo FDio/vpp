@@ -33,3 +33,7 @@ endif
 ifeq ($($(PLATFORM)_enable_tests),yes)
 vpp_configure_args += --enable-tests
 endif
+
+ifeq ($($(PLATFORM)_enable_test_apps),yes)
+vpp_configure_args += --enable-test-apps
+endif
