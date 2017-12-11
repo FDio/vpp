@@ -121,6 +121,7 @@ AC_DEFUN([CC_CHECK_FLAG],
 
 # --enable-X
 ENABLE_ARG(tests,	[Enable unit tests])
+ENABLE_ARG(test_apps,	[Enable test apps])
 ENABLE_ARG(dpdk_shared,	[Enable unit tests])
 ENABLE_ARG(perftool,	[Enable perftool])
 ENABLE_ARG(g2,		[Enable g2])
