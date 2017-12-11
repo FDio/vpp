@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9f0ba265_33cc161e",
+        "filename": "src/vnet/ip/ip4_punt_drop.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 392,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-11T15:03:11Z",
+      "side": 1,
+      "message": "neither the tx nor rx interface is allowed to have the value 0. so if you init the locals variables to 0 you can check for non-0 later",
+      "revId": "281b14871324085dc7b5efeb6a704e9c52058841",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
