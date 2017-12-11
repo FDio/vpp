@@ -25,6 +25,7 @@ vpp_uses_dpdk = yes
 
 # Uncoment to enable building unit tests
 # vpp_enable_tests = yes
+# vpp_enable_test_apps = yes
 
 vpp_root_packages = vpp
 
