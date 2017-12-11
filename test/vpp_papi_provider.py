@@ -2806,3 +2806,8 @@ class VppPapiProvider(object):
         return self.api(self.papi.add_node_next,
                         {'node_name': node_name,
                          'next_name': next_name})
+
+    def session_enable_disable(self, is_enabled):
+        return self.api(
+            self.papi.session_enable_disable,
+            {'is_enable': is_enabled})
