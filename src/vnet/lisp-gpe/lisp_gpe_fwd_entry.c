@@ -1289,6 +1289,9 @@ vnet_lisp_flush_stats (void)
   vlib_combined_counter_main_t *cm = &lgm->counters;
   u32 i;
 
+  if (cm->counters == NULL)
+    return 0;
+
   for (i = 0; i < vlib_combined_counter_n_counters (cm); i++)
     vlib_zero_combined_counter (cm, i);
 
