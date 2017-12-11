@@ -1188,6 +1188,21 @@ nobase_include_HEADERS +=			\
 API_FILES += vnet/bier/bier.api
 
 ########################################
+# Test apps
+########################################
+
+noinst_PROGRAMS += tcp_echo udp_echo
+
+TEST_APPS_LDADD = libvlibmemoryclient.la libsvm.la libvppinfra.la
+TEST_APPS_LDADD += -lpthread -lm -lrt
+
+tcp_echo_SOURCES = tests/vnet/session/tcp_echo.c
+tcp_echo_LDADD = $(TEST_APPS_LDADD)
+
+udp_echo_SOURCES = tests/vnet/session/udp_echo.c
+udp_echo_LDADD = $(TEST_APPS_LDADD)
+
+########################################
 # Plugin client library
 ########################################
 
