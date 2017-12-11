@@ -124,6 +124,7 @@ ENABLE_ARG(tests,	[Enable unit tests])
 ENABLE_ARG(dpdk_shared,	[Enable unit tests])
 ENABLE_ARG(perftool,	[Enable perftool])
 ENABLE_ARG(g2,		[Enable g2])
+ENABLE_ARG(apps,	[Enable apps])
 
 # --disable-X
 DISABLE_ARG(vlib,	[Disable vlib and dependant libs and binaries])
@@ -155,6 +156,8 @@ AC_ARG_WITH(pre-data,
 	       256) ;;
                *) with_pre_data="pre-data-not-set" ;;
 	     esac], [with_pre_data=128])
+
+AM_CONDITIONAL(NOT_IN_TREE, [test "$BUILD_NOT_IN_TREE" = "yes"])
 
 ###############################################################################
 # Target CPU flags
