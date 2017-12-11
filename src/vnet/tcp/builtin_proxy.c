@@ -383,20 +383,22 @@ server_attach ()
 {
   builtin_proxy_main_t *bpm = &builtin_proxy_main;
   u8 segment_name[128];
-  u64 options[SESSION_OPTIONS_N_OPTIONS];
+  u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
+  u32 segment_size = 512 << 20;
 
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
+  if (bpm->private_segment_size)
+    segment_size = bpm->private_segment_size;
   a->api_client_index = bpm->server_client_index;
   a->session_cb_vft = &builtin_session_cb_vft;
   a->options = options;
-  a->options[SESSION_OPTIONS_SEGMENT_SIZE] = 512 << 20;
-  a->options[SESSION_OPTIONS_RX_FIFO_SIZE] = bpm->fifo_size;
-  a->options[SESSION_OPTIONS_TX_FIFO_SIZE] = bpm->fifo_size;
+  a->options[APP_OPTIONS_SEGMENT_SIZE] = segment_size;
+  a->options[APP_OPTIONS_RX_FIFO_SIZE] = bpm->fifo_size;
+  a->options[APP_OPTIONS_TX_FIFO_SIZE] = bpm->fifo_size;
   a->options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = bpm->private_segment_count;
-  a->options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE] = bpm->private_segment_size;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     bpm->prealloc_fifos ? bpm->prealloc_fifos : 1;
 
@@ -434,12 +436,11 @@ active_open_attach (void)
   a->segment_name_length = segment_name_length;
   a->session_cb_vft = &builtin_clients;
 
-  options[SESSION_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
-  options[SESSION_OPTIONS_SEGMENT_SIZE] = 512 << 20;
-  options[SESSION_OPTIONS_RX_FIFO_SIZE] = bpm->fifo_size;
-  options[SESSION_OPTIONS_TX_FIFO_SIZE] = bpm->fifo_size;
+  options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
+  options[APP_OPTIONS_SEGMENT_SIZE] = 512 << 20;
+  options[APP_OPTIONS_RX_FIFO_SIZE] = bpm->fifo_size;
+  options[APP_OPTIONS_TX_FIFO_SIZE] = bpm->fifo_size;
   options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT] = bpm->private_segment_count;
-  options[APP_OPTIONS_PRIVATE_SEGMENT_SIZE] = bpm->private_segment_size;
   options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] =
     bpm->prealloc_fifos ? bpm->prealloc_fifos : 1;
 

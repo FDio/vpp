@@ -102,7 +102,7 @@ static int
 session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 {
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
-  u64 options[SESSION_OPTIONS_N_OPTIONS], bind4_handle, bind6_handle;
+  u64 options[APP_OPTIONS_N_OPTIONS], bind4_handle, bind6_handle;
   u8 segment_name[128];
   clib_error_t *error = 0;
   u32 server_index;
@@ -167,7 +167,7 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 static int
 session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
 {
-  u64 options[SESSION_OPTIONS_N_OPTIONS], dummy_secret = 1234;
+  u64 options[APP_OPTIONS_N_OPTIONS], dummy_secret = 1234;
   u32 server_index, server_st_index, server_local_st_index;
   u32 dummy_port = 1234, local_listener, client_index;
   u32 dummy_api_context = 4321, dummy_client_api_index = 1234;
@@ -774,7 +774,7 @@ static int
 session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 {
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
-  u64 options[SESSION_OPTIONS_N_OPTIONS];
+  u64 options[APP_OPTIONS_N_OPTIONS];
   u16 lcl_port = 1234, rmt_port = 4321;
   u32 server_index, server_index2, app_index;
   u32 dummy_server_api_index = ~0;
@@ -1335,7 +1335,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
 static int
 session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
 {
-  u64 options[SESSION_OPTIONS_N_OPTIONS];
+  u64 options[APP_OPTIONS_N_OPTIONS];
   char *show_listeners = "sh session listeners tcp verbose";
   char *show_local_listeners = "sh app ns table default";
   unformat_input_t tmp_input;

@@ -229,11 +229,11 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
   u32 rnd_size = 0;
   int i;
 
-  if (a->private_segment_count && a->private_segment_size)
+  if (a->private_segment_count)
     {
       u8 *heap;
       u32 pagesize = clib_mem_get_page_size ();
-      rnd_size = (a->private_segment_size + (pagesize - 1)) & ~pagesize;
+      rnd_size = (a->segment_size + (pagesize - 1)) & ~pagesize;
 
       for (i = 0; i < a->private_segment_count; i++)
 	{

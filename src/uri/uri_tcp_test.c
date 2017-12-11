@@ -192,10 +192,10 @@ application_send_attach (uri_tcp_test_main_t * utm)
   bmp->options[APP_OPTIONS_FLAGS] =
     APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT;
   bmp->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = 16;
-  bmp->options[SESSION_OPTIONS_RX_FIFO_SIZE] = fifo_size;
-  bmp->options[SESSION_OPTIONS_TX_FIFO_SIZE] = fifo_size;
-  bmp->options[SESSION_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
-  bmp->options[SESSION_OPTIONS_SEGMENT_SIZE] = 256 << 20;
+  bmp->options[APP_OPTIONS_RX_FIFO_SIZE] = fifo_size;
+  bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
+  bmp->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
+  bmp->options[APP_OPTIONS_SEGMENT_SIZE] = 256 << 20;
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
 }
 
@@ -246,6 +246,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       return;
     }
 
+  memset (a, 0, sizeof (*a));
   a->segment_name = (char *) mp->segment_name;
   a->segment_size = mp->segment_size;
 
