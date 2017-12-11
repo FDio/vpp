@@ -30,20 +30,25 @@
 #include <vnet/dpo/dpo.h>
 #include <vnet/adj/adj_types.h>
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip4_header_t ip4;            /* 20 bytes */
   udp_header_t udp;            /* 8 bytes */
   vxlan_header_t vxlan;        /* 8 bytes */
 }) ip4_vxlan_header_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   ip6_header_t ip6;            /* 40 bytes */
   udp_header_t udp;            /* 8 bytes */
   vxlan_header_t vxlan;        /* 8 bytes */
 }) ip6_vxlan_header_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
-  /* 
+  /*
    * Key fields: ip src and vxlan vni on incoming VXLAN packet
    * all fields in NET byte order
    */
@@ -55,7 +60,9 @@ typedef CLIB_PACKED(struct {
     u64 as_u64;
   };
 }) vxlan4_tunnel_key_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
   /*
    * Key fields: ip src and vxlan vni on incoming VXLAN packet
@@ -64,13 +71,15 @@ typedef CLIB_PACKED(struct {
   ip6_address_t src;
   u32 vni;                 /* shifted left 8 bits */
 }) vxlan6_tunnel_key_t;
+/* *INDENT-ON* */
 
-typedef struct {
+typedef struct
+{
   /* Rewrite string. $$$$ embed vnet_rewrite header */
-  u8 * rewrite;
+  u8 *rewrite;
 
   /* FIB DPO for IP forwarding of VXLAN encap packet */
-  dpo_id_t next_dpo;  
+  dpo_id_t next_dpo;
 
   /* vxlan VNI in HOST byte order */
   u32 vni;
@@ -117,45 +126,48 @@ typedef struct {
 _(DROP, "error-drop")                   \
 _(L2_INPUT, "l2-input")
 
-typedef enum {
+typedef enum
+{
 #define _(s,n) VXLAN_INPUT_NEXT_##s,
   foreach_vxlan_input_next
 #undef _
-  VXLAN_INPUT_N_NEXT,
+    VXLAN_INPUT_N_NEXT,
 } vxlan_input_next_t;
 
-typedef enum {
+typedef enum
+{
 #define vxlan_error(n,s) VXLAN_ERROR_##n,
 #include <vnet/vxlan/vxlan_error.def>
 #undef vxlan_error
   VXLAN_N_ERROR,
 } vxlan_input_error_t;
 
-typedef struct {
+typedef struct
+{
   /* vector of encap tunnel instances */
-  vxlan_tunnel_t * tunnels;
+  vxlan_tunnel_t *tunnels;
 
   /* lookup tunnel by key */
-  uword * vxlan4_tunnel_by_key; /* keyed on ipv4.dst + vni */
-  uword * vxlan6_tunnel_by_key; /* keyed on ipv6.dst + vni */
+  uword *vxlan4_tunnel_by_key;	/* keyed on ipv4.dst + vni */
+  uword *vxlan6_tunnel_by_key;	/* keyed on ipv6.dst + vni */
 
   /* local VTEP IPs ref count used by vxlan-bypass node to check if
      received VXLAN packet DIP matches any local VTEP address */
-  uword * vtep4;  /* local ip4 VTEPs keyed on their ip4 addr */
-  uword * vtep6;  /* local ip6 VTEPs keyed on their ip6 addr */
+  uword *vtep4;			/* local ip4 VTEPs keyed on their ip4 addr */
+  uword *vtep6;			/* local ip6 VTEPs keyed on their ip6 addr */
 
   /* mcast shared info */
-  uword * mcast_shared; /* keyed on mcast ip46 addr */
+  uword *mcast_shared;		/* keyed on mcast ip46 addr */
 
   /* Free vlib hw_if_indices */
-  u32 * free_vxlan_tunnel_hw_if_indices;
+  u32 *free_vxlan_tunnel_hw_if_indices;
 
   /* Mapping from sw_if_index to tunnel index */
-  u32 * tunnel_index_by_sw_if_index;
+  u32 *tunnel_index_by_sw_if_index;
 
   /* convenience */
-  vlib_main_t * vlib_main;
-  vnet_main_t * vnet_main;
+  vlib_main_t *vlib_main;
+  vnet_main_t *vnet_main;
 } vxlan_main_t;
 
 extern vxlan_main_t vxlan_main;
@@ -165,9 +177,10 @@ extern vlib_node_registration_t vxlan6_input_node;
 extern vlib_node_registration_t vxlan4_encap_node;
 extern vlib_node_registration_t vxlan6_encap_node;
 
-u8 * format_vxlan_encap_trace (u8 * s, va_list * args);
+u8 *format_vxlan_encap_trace (u8 * s, va_list * args);
 
-typedef struct {
+typedef struct
+{
   u8 is_add;
 
   /* we normally use is_ip4, but since this adds to the
@@ -180,9 +193,16 @@ typedef struct {
   u32 vni;
 } vnet_vxlan_add_del_tunnel_args_t;
 
-int vnet_vxlan_add_del_tunnel 
-(vnet_vxlan_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
+int vnet_vxlan_add_del_tunnel
+  (vnet_vxlan_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
 
-void vnet_int_vxlan_bypass_mode
-(u32 sw_if_index, u8 is_ip6, u8 is_enable);
+void vnet_int_vxlan_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
 #endif /* included_vnet_vxlan_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
