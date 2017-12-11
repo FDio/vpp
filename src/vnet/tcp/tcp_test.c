@@ -1557,9 +1557,12 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tcp_main_t *tm = &tcp_main;
   transport_connection_t _tc1, *tc1 = &_tc1, _tc2, *tc2 = &_tc2, *tconn;
   tcp_connection_t *tc;
-  stream_session_t *s;
+  stream_session_t *s, *s1;
   u8 cmp = 0, is_filtered = 0;
 
+  /*
+   * Allocate fake session and connection 1
+   */
   pool_get (smm->sessions[0], s);
   memset (s, 0, sizeof (*s));
   s->session_index = s - smm->sessions[0];
@@ -1574,12 +1577,18 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tc->connection.rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x06000103);
   tc->connection.lcl_port = 35051;
   tc->connection.rmt_port = 53764;
-  tc->connection.proto = 0;
+  tc->connection.proto = TRANSPORT_PROTO_TCP;
+  tc->connection.is_ip4 = 1;
   clib_memcpy (tc1, &tc->connection, sizeof (*tc1));
+  s1 = s;
 
+  /*
+   * Allocate fake session and connection 2
+   */
   pool_get (session_manager_main.sessions[0], s);
   memset (s, 0, sizeof (*s));
   s->session_index = s - smm->sessions[0];
+
   pool_get (tm->connections[0], tc);
   memset (tc, 0, sizeof (*tc));
   tc->connection.c_index = tc - tm->connections[0];
@@ -1590,18 +1599,21 @@ tcp_test_lookup (vlib_main_t * vm, unformat_input_t * input)
   tc->connection.rmt_ip.ip4.as_u32 = clib_host_to_net_u32 (0x06000102);
   tc->connection.lcl_port = 38225;
   tc->connection.rmt_port = 53764;
-  tc->connection.proto = 0;
+  tc->connection.proto = TRANSPORT_PROTO_TCP;
+  tc->connection.is_ip4 = 1;
   clib_memcpy (tc2, &tc->connection, sizeof (*tc2));
 
   /*
    * Confirm that connection lookup works
    */
 
-  session_lookup_add_connection (tc1, tc1->s_index);
+  session_lookup_add_connection (tc1, session_handle (s1));
   tconn = session_lookup_connection_wt4 (0, &tc1->lcl_ip.ip4,
 					 &tc1->rmt_ip.ip4,
 					 tc1->lcl_port, tc1->rmt_port,
 					 tc1->proto, 0, &is_filtered);
+
+  TCP_TEST ((tconn != 0), "connection exists");
   cmp = (memcmp (&tconn->rmt_ip, &tc1->rmt_ip, sizeof (tc1->rmt_ip)) == 0);
   TCP_TEST ((cmp), "rmt ip is identical %d", cmp);
   TCP_TEST ((tconn->lcl_port == tc1->lcl_port),
@@ -1730,18 +1742,23 @@ tcp_test (vlib_main_t * vm,
 	{
 	  res = tcp_test_lookup (vm, input);
 	}
+      else if (unformat (input, "all"))
+	{
+	  if ((res = tcp_test_sack (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_fifo (vm, input)))
+	    goto done;
+	  if ((res = tcp_test_lookup (vm, input)))
+	    goto done;
+	}
       else
 	break;
     }
 
+done:
   if (res)
-    {
-      return clib_error_return (0, "TCP unit test failed");
-    }
-  else
-    {
-      return 0;
-    }
+    return clib_error_return (0, "TCP unit test failed");
+  return 0;
 }
 
 /* *INDENT-OFF* */
