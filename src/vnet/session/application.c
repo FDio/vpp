@@ -532,6 +532,30 @@ application_first_listener (application_t * app, u8 fib_proto,
   return 0;
 }
 
+stream_session_t *
+application_proxy_listener (application_t * app, u8 fib_proto,
+			    u8 transport_proto)
+{
+  stream_session_t *listener;
+  u64 handle;
+  u32 sm_index;
+  u8 sst;
+
+  sst = session_type_from_proto_and_ip (transport_proto,
+					fib_proto == FIB_PROTOCOL_IP4);
+
+  /* *INDENT-OFF* */
+   hash_foreach (handle, sm_index, app->listeners_table, ({
+     listener = listen_session_get_from_handle (handle);
+     if (listener->session_type == sst
+	 && listener->listener_index == SESSION_PROXY_LISTENER_INDEX)
+       return listener;
+   }));
+  /* *INDENT-ON* */
+
+  return 0;
+}
+
 static clib_error_t *
 application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 					u8 transport_proto, u8 is_start)
@@ -545,18 +569,24 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
 
   if (is_start)
     {
-      sep.is_ip4 = is_ip4;
-      sep.fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
-      sep.sw_if_index = app_ns->sw_if_index;
-      sep.transport_proto = transport_proto;
-      application_start_listen (app, &sep, &handle);
-      s = listen_session_get_from_handle (handle);
-      s->listener_index = SESSION_PROXY_LISTENER_INDEX;
+      s = application_first_listener (app, fib_proto, transport_proto);
+      if (!s)
+	{
+	  sep.is_ip4 = is_ip4;
+	  sep.fib_index = app_namespace_get_fib_index (app_ns, fib_proto);
+	  sep.sw_if_index = app_ns->sw_if_index;
+	  sep.transport_proto = transport_proto;
+	  application_start_listen (app, &sep, &handle);
+	  s = listen_session_get_from_handle (handle);
+	  s->listener_index = SESSION_PROXY_LISTENER_INDEX;
+	}
     }
   else
     {
-      s = application_first_listener (app, fib_proto, transport_proto);
+      s = application_proxy_listener (app, fib_proto, transport_proto);
+      ASSERT (s);
     }
+
   tc = listen_session_get_transport (s);
 
   if (!ip_is_zero (&tc->lcl_ip, 1))
@@ -567,9 +597,40 @@ application_start_stop_proxy_fib_proto (application_t * app, u8 fib_proto,
       sep.transport_proto = transport_proto;
       sep.port = 0;
       sti = session_lookup_get_index_for_fib (fib_proto, sep.fib_index);
-      session_lookup_add_session_endpoint (sti, &sep, s->session_index);
+      if (is_start)
+	session_lookup_add_session_endpoint (sti, &sep, s->session_index);
+      else
+	session_lookup_del_session_endpoint (sti, &sep);
     }
+
   return 0;
+}
+
+static void
+application_start_stop_proxy_local_scope (application_t * app,
+					  u8 transport_proto, u8 is_start)
+{
+  session_endpoint_t sep = SESSION_ENDPOINT_NULL;
+  app_namespace_t *app_ns;
+  app_ns = app_namespace_get (app->ns_index);
+  sep.is_ip4 = 1;
+  sep.transport_proto = transport_proto;
+  sep.port = 0;
+
+  if (is_start)
+    {
+      session_lookup_add_session_endpoint (app_ns->local_table_index, &sep,
+					   app->index);
+      sep.is_ip4 = 0;
+      session_lookup_add_session_endpoint (app_ns->local_table_index, &sep,
+					   app->index);
+    }
+  else
+    {
+      session_lookup_del_session_endpoint (app_ns->local_table_index, &sep);
+      sep.is_ip4 = 0;
+      session_lookup_del_session_endpoint (app_ns->local_table_index, &sep);
+    }
 }
 
 void
@@ -577,20 +638,7 @@ application_start_stop_proxy (application_t * app,
 			      transport_proto_t transport_proto, u8 is_start)
 {
   if (application_has_local_scope (app))
-    {
-      session_endpoint_t sep = SESSION_ENDPOINT_NULL;
-      app_namespace_t *app_ns;
-      app_ns = app_namespace_get (app->ns_index);
-      sep.is_ip4 = 1;
-      sep.transport_proto = transport_proto;
-      sep.port = 0;
-      session_lookup_add_session_endpoint (app_ns->local_table_index, &sep,
-					   app->index);
-
-      sep.is_ip4 = 0;
-      session_lookup_add_session_endpoint (app_ns->local_table_index, &sep,
-					   app->index);
-    }
+    application_start_stop_proxy_local_scope (app, transport_proto, is_start);
 
   if (application_has_global_scope (app))
     {
