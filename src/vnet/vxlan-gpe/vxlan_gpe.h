@@ -39,6 +39,7 @@
  * @brief VXLAN GPE header struct
  *
  */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /** 20 bytes */
   ip4_header_t ip4;
@@ -47,7 +48,9 @@ typedef CLIB_PACKED (struct {
   /** 8 bytes */
   vxlan_gpe_header_t vxlan;
 }) ip4_vxlan_gpe_header_t;
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct {
   /** 40 bytes */
   ip6_header_t ip6;
@@ -56,6 +59,7 @@ typedef CLIB_PACKED (struct {
   /** 8 bytes */
   vxlan_gpe_header_t vxlan;
 }) ip6_vxlan_gpe_header_t;
+/* *INDENT-ON* */
 
 /**
  * @brief Key struct for IPv4 VXLAN GPE tunnel.
@@ -63,6 +67,7 @@ typedef CLIB_PACKED (struct {
  * all fields in NET byte order
  * VNI shifted 8 bits
  */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
   union {
     struct {
@@ -75,6 +80,7 @@ typedef CLIB_PACKED(struct {
     u64 as_u64[2];
   };
 }) vxlan4_gpe_tunnel_key_t;
+/* *INDENT-ON* */
 
 /**
  * @brief Key struct for IPv6 VXLAN GPE tunnel.
@@ -82,24 +88,27 @@ typedef CLIB_PACKED(struct {
  * all fields in NET byte order
  * VNI shifted 8 bits
  */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED(struct {
   ip6_address_t local;
   ip6_address_t remote;
   u32 vni;
 }) vxlan6_gpe_tunnel_key_t;
+/* *INDENT-ON* */
 
 /**
  * @brief Struct for VXLAN GPE tunnel
  */
-typedef struct {
+typedef struct
+{
   /** Rewrite string. $$$$ embed vnet_rewrite header */
-  u8 * rewrite;
+  u8 *rewrite;
 
   /** encapsulated protocol */
   u8 protocol;
 
   /* FIB DPO for IP forwarding of VXLAN-GPE encap packet */
-  dpo_id_t next_dpo;  
+  dpo_id_t next_dpo;
   /** tunnel local address */
   ip46_address_t local;
   /** tunnel remote address */
@@ -107,7 +116,7 @@ typedef struct {
 
   /* mcast packet output intfc index (used only if dst is mcast) */
   u32 mcast_sw_if_index;
-  
+
   /** FIB indices - tunnel partner lookup here */
   u32 encap_fib_index;
   /** FIB indices - inner IP packet lookup here */
@@ -125,7 +134,7 @@ typedef struct {
   u32 flags;
 
   /** rewrite size for dynamic plugins like iOAM */
-  u8  rewrite_size;
+  u8 rewrite_size;
 
   /** Next node after VxLAN-GPE encap */
   uword encap_next_node;
@@ -163,15 +172,17 @@ _(IP6_INPUT, "ip6-input")                       \
 _(ETHERNET_INPUT, "ethernet-input")
 
 /** struct for next nodes for VXLAN GPE input */
-typedef enum {
+typedef enum
+{
 #define _(s,n) VXLAN_GPE_INPUT_NEXT_##s,
   foreach_vxlan_gpe_input_next
 #undef _
-  VXLAN_GPE_INPUT_N_NEXT,
+    VXLAN_GPE_INPUT_N_NEXT,
 } vxlan_gpe_input_next_t;
 
 /** struct for VXLAN GPE errors */
-typedef enum {
+typedef enum
+{
 #define vxlan_gpe_error(n,s) VXLAN_GPE_ERROR_##n,
 #include <vnet/vxlan-gpe/vxlan_gpe_error.def>
 #undef vxlan_gpe_error
@@ -179,31 +190,32 @@ typedef enum {
 } vxlan_gpe_input_error_t;
 
 /** Struct for VXLAN GPE node state */
-typedef struct {
+typedef struct
+{
   /** vector of encap tunnel instances */
   vxlan_gpe_tunnel_t *tunnels;
 
   /** lookup IPv4 VXLAN GPE tunnel by key */
-  uword * vxlan4_gpe_tunnel_by_key;
+  uword *vxlan4_gpe_tunnel_by_key;
   /** lookup IPv6 VXLAN GPE tunnel by key */
-  uword * vxlan6_gpe_tunnel_by_key;
+  uword *vxlan6_gpe_tunnel_by_key;
 
   /* local VTEP IPs ref count used by vxlan-bypass node to check if
      received VXLAN packet DIP matches any local VTEP address */
-  uword * vtep4;  /* local ip4 VTEPs keyed on their ip4 addr */
-  uword * vtep6;  /* local ip6 VTEPs keyed on their ip6 addr */
+  uword *vtep4;			/* local ip4 VTEPs keyed on their ip4 addr */
+  uword *vtep6;			/* local ip6 VTEPs keyed on their ip6 addr */
   /* mcast shared info */
-  uword * mcast_shared; /* keyed on mcast ip46 addr */
+  uword *mcast_shared;		/* keyed on mcast ip46 addr */
   /** Free vlib hw_if_indices */
-  u32 * free_vxlan_gpe_tunnel_hw_if_indices;
+  u32 *free_vxlan_gpe_tunnel_hw_if_indices;
 
   /** Mapping from sw_if_index to tunnel index */
-  u32 * tunnel_index_by_sw_if_index;
+  u32 *tunnel_index_by_sw_if_index;
 
   /** State convenience vlib_main_t */
-  vlib_main_t * vlib_main;
+  vlib_main_t *vlib_main;
   /** State convenience vnet_main_t */
-  vnet_main_t * vnet_main;
+  vnet_main_t *vnet_main;
 
   /** List of next nodes for the decap indexed on protocol */
   uword decap_next_node_list[VXLAN_GPE_PROTOCOL_MAX];
@@ -215,10 +227,11 @@ extern vlib_node_registration_t vxlan_gpe_encap_node;
 extern vlib_node_registration_t vxlan4_gpe_input_node;
 extern vlib_node_registration_t vxlan6_gpe_input_node;
 
-u8 * format_vxlan_gpe_encap_trace (u8 * s, va_list * args);
+u8 *format_vxlan_gpe_encap_trace (u8 * s, va_list * args);
 
 /** Struct for VXLAN GPE add/del args */
-typedef struct {
+typedef struct
+{
   u8 is_add;
   u8 is_ip6;
   ip46_address_t local, remote;
@@ -231,18 +244,19 @@ typedef struct {
 
 
 int vnet_vxlan_gpe_add_del_tunnel
-(vnet_vxlan_gpe_add_del_tunnel_args_t *a, u32 * sw_if_indexp);
+  (vnet_vxlan_gpe_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
 
 
 int vxlan4_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size,
-                        u8 protocol_override, uword encap_next_node);
+			u8 protocol_override, uword encap_next_node);
 int vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size,
-                       u8 protocol_override, uword encap_next_node);
+			u8 protocol_override, uword encap_next_node);
 
 /**
  * @brief Struct for defining VXLAN GPE next nodes
  */
-typedef enum {
+typedef enum
+{
   VXLAN_GPE_ENCAP_NEXT_IP4_LOOKUP,
   VXLAN_GPE_ENCAP_NEXT_IP6_LOOKUP,
   VXLAN_GPE_ENCAP_NEXT_DROP,
@@ -250,10 +264,21 @@ typedef enum {
 } vxlan_gpe_encap_next_t;
 
 
-void vxlan_gpe_unregister_decap_protocol (u8 protocol_id, uword next_node_index);
+void vxlan_gpe_unregister_decap_protocol (u8 protocol_id,
+					  uword next_node_index);
 
-void vxlan_gpe_register_decap_protocol (u8 protocol_id, uword next_node_index);
+void vxlan_gpe_register_decap_protocol (u8 protocol_id,
+					uword next_node_index);
 
-void vnet_int_vxlan_gpe_bypass_mode (u32 sw_if_index, u8 is_ip6, u8 is_enable);
+void vnet_int_vxlan_gpe_bypass_mode (u32 sw_if_index, u8 is_ip6,
+				     u8 is_enable);
 
 #endif /* included_vnet_vxlan_gpe_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */

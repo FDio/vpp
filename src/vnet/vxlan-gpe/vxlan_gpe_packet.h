@@ -31,13 +31,13 @@
  *   |                VXLAN Network Identifier (VNI) |   Reserved    |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
- *   I Bit: Flag bit 4 indicates that the VNI is valid. 
+ *   I Bit: Flag bit 4 indicates that the VNI is valid.
  *
  *   P Bit:  Flag bit 5 is defined as the Next Protocol bit.  The P bit
  *      MUST be set to 1 to indicate the presence of the 8 bit next
  *      protocol field.
  *
- *   O Bit: Flag bit 7 is defined as the O bit. When the O bit is set to 1, 
+ *   O Bit: Flag bit 7 is defined as the O bit. When the O bit is set to 1,
  *
  *      the packet is an OAM packet and OAM processing MUST occur.  The OAM
  *      protocol details are out of scope for this document.  As with the
@@ -80,17 +80,19 @@ _ (0x05, IOAM)
  * 4 - NSH
  * 5 - IOAM
  */
-typedef enum {
+typedef enum
+{
 #define _(n,f) VXLAN_GPE_PROTOCOL_##f = n,
   foreach_vxlan_gpe_protocol
 #undef _
-  VXLAN_GPE_PROTOCOL_MAX,
+    VXLAN_GPE_PROTOCOL_MAX,
 } vxlan_gpe_protocol_t;
 
 /**
  * @brief VXLAN GPE Header definition
  */
-typedef struct {
+typedef struct
+{
   u8 flags;
   /** Version and Reserved */
   u8 ver_res;
@@ -108,3 +110,11 @@ typedef struct {
 #define VXLAN_GPE_VERSION 0x0
 
 #endif /* included_vxlan_gpe_packet_h */
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
