@@ -23,37 +23,40 @@
 #define foreach_vxlan_encap_error    \
 _(ENCAPSULATED, "good packets encapsulated")
 
-static char * vxlan_encap_error_strings[] = {
+static char *vxlan_encap_error_strings[] = {
 #define _(sym,string) string,
   foreach_vxlan_encap_error
 #undef _
 };
 
-typedef enum {
+typedef enum
+{
 #define _(sym,str) VXLAN_ENCAP_ERROR_##sym,
-    foreach_vxlan_encap_error
+  foreach_vxlan_encap_error
 #undef _
     VXLAN_ENCAP_N_ERROR,
 } vxlan_encap_error_t;
 
-typedef enum {
-    VXLAN_ENCAP_NEXT_DROP,
-    VXLAN_ENCAP_N_NEXT,
+typedef enum
+{
+  VXLAN_ENCAP_NEXT_DROP,
+  VXLAN_ENCAP_N_NEXT,
 } vxlan_encap_next_t;
 
-typedef struct {
+typedef struct
+{
   u32 tunnel_index;
   u32 vni;
 } vxlan_encap_trace_t;
 
-u8 * format_vxlan_encap_trace (u8 * s, va_list * args)
+u8 *
+format_vxlan_encap_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  vxlan_encap_trace_t * t 
-      = va_arg (*args, vxlan_encap_trace_t *);
+  vxlan_encap_trace_t *t = va_arg (*args, vxlan_encap_trace_t *);
 
-  s = format (s, "VXLAN encap to vxlan_tunnel%d vni %d", 
+  s = format (s, "VXLAN encap to vxlan_tunnel%d vni %d",
 	      t->tunnel_index, t->vni);
   return s;
 }
@@ -68,21 +71,20 @@ u8 * format_vxlan_encap_trace (u8 * s, va_list * args)
 always_inline uword
 vxlan_encap_inline (vlib_main_t * vm,
 		    vlib_node_runtime_t * node,
-		    vlib_frame_t * from_frame,
-		    u8 is_ip4, u8 csum_offload)
+		    vlib_frame_t * from_frame, u8 is_ip4, u8 csum_offload)
 {
-  u32 n_left_from, next_index, * from, * to_next;
-  vxlan_main_t * vxm = &vxlan_main;
-  vnet_main_t * vnm = vxm->vnet_main;
-  vnet_interface_main_t * im = &vnm->interface_main;
+  u32 n_left_from, next_index, *from, *to_next;
+  vxlan_main_t *vxm = &vxlan_main;
+  vnet_main_t *vnm = vxm->vnet_main;
+  vnet_interface_main_t *im = &vnm->interface_main;
   u32 pkts_encapsulated = 0;
   u16 old_l0 = 0, old_l1 = 0;
-  u32 thread_index = vlib_get_thread_index();
+  u32 thread_index = vlib_get_thread_index ();
   u32 stats_sw_if_index, stats_n_packets, stats_n_bytes;
   u32 sw_if_index0 = 0, sw_if_index1 = 0;
   u32 next0 = 0, next1 = 0;
-  vnet_hw_interface_t * hi0, * hi1;
-  vxlan_tunnel_t * t0 = NULL, * t1 = NULL;
+  vnet_hw_interface_t *hi0, *hi1;
+  vxlan_tunnel_t *t0 = NULL, *t1 = NULL;
 
   from = vlib_frame_vector_args (from_frame);
   n_left_from = from_frame->n_vectors;
@@ -95,28 +97,27 @@ vxlan_encap_inline (vlib_main_t * vm,
     {
       u32 n_left_to_next;
 
-      vlib_get_next_frame (vm, node, next_index,
-			   to_next, n_left_to_next);
+      vlib_get_next_frame (vm, node, next_index, to_next, n_left_to_next);
 
       while (n_left_from >= 4 && n_left_to_next >= 2)
 	{
-          u32 bi0, bi1;
-	  vlib_buffer_t * b0, * b1;
-          u32 flow_hash0, flow_hash1;
+	  u32 bi0, bi1;
+	  vlib_buffer_t *b0, *b1;
+	  u32 flow_hash0, flow_hash1;
 	  u32 len0, len1;
-          ip4_header_t * ip4_0, * ip4_1;
-          ip6_header_t * ip6_0, * ip6_1;
-          udp_header_t * udp0, * udp1;
-          u64 * copy_src0, * copy_dst0;
-          u64 * copy_src1, * copy_dst1;
-          u32 * copy_src_last0, * copy_dst_last0;
-          u32 * copy_src_last1, * copy_dst_last1;
-          u16 new_l0, new_l1;
-          ip_csum_t sum0, sum1;
+	  ip4_header_t *ip4_0, *ip4_1;
+	  ip6_header_t *ip6_0, *ip6_1;
+	  udp_header_t *udp0, *udp1;
+	  u64 *copy_src0, *copy_dst0;
+	  u64 *copy_src1, *copy_dst1;
+	  u32 *copy_src_last0, *copy_dst_last0;
+	  u32 *copy_src_last1, *copy_dst_last1;
+	  u16 new_l0, new_l1;
+	  ip_csum_t sum0, sum1;
 
 	  /* Prefetch next iteration. */
 	  {
-	    vlib_buffer_t * p2, * p3;
+	    vlib_buffer_t *p2, *p3;
 
 	    p2 = vlib_get_buffer (vm, from[2]);
 	    p3 = vlib_get_buffer (vm, from[3]);
@@ -124,8 +125,8 @@ vxlan_encap_inline (vlib_main_t * vm,
 	    vlib_prefetch_buffer_header (p2, LOAD);
 	    vlib_prefetch_buffer_header (p3, LOAD);
 
-	    CLIB_PREFETCH (p2->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
-	    CLIB_PREFETCH (p3->data, 2*CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p2->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
+	    CLIB_PREFETCH (p3->data, 2 * CLIB_CACHE_LINE_BYTES, LOAD);
 	  }
 
 	  bi0 = from[0];
@@ -140,44 +141,44 @@ vxlan_encap_inline (vlib_main_t * vm,
 	  b0 = vlib_get_buffer (vm, bi0);
 	  b1 = vlib_get_buffer (vm, bi1);
 
-          flow_hash0 = vnet_l2_compute_flow_hash (b0);
-          flow_hash1 = vnet_l2_compute_flow_hash (b1);
+	  flow_hash0 = vnet_l2_compute_flow_hash (b0);
+	  flow_hash1 = vnet_l2_compute_flow_hash (b1);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
-	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
+	  if (sw_if_index0 != vnet_buffer (b0)->sw_if_index[VLIB_TX])
 	    {
-	      sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
+	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	      hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
 	      /* Note: change to always set next0 if it may be set to drop */
 	      next0 = t0->next_dpo.dpoi_next_node;
 	    }
-          vnet_buffer(b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
 
 	  /* Get next node index and adj index from tunnel next_dpo */
-	  if (sw_if_index1 != vnet_buffer(b1)->sw_if_index[VLIB_TX])
+	  if (sw_if_index1 != vnet_buffer (b1)->sw_if_index[VLIB_TX])
 	    {
-	      sw_if_index1 = vnet_buffer(b1)->sw_if_index[VLIB_TX];
-	      hi1 = vnet_get_sup_hw_interface (vnm, sw_if_index1); 
+	      sw_if_index1 = vnet_buffer (b1)->sw_if_index[VLIB_TX];
+	      hi1 = vnet_get_sup_hw_interface (vnm, sw_if_index1);
 	      t1 = &vxm->tunnels[hi1->dev_instance];
 	      /* Note: change to always set next1 if it may be set to drop */
 	      next1 = t1->next_dpo.dpoi_next_node;
 	    }
-          vnet_buffer(b1)->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
+	  vnet_buffer (b1)->ip.adj_index[VLIB_TX] = t1->next_dpo.dpoi_index;
 
-          /* Apply the rewrite string. $$$$ vnet_rewrite? */
-          vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));
-          vlib_buffer_advance (b1, -(word)_vec_len(t1->rewrite));
+	  /* Apply the rewrite string. $$$$ vnet_rewrite? */
+	  vlib_buffer_advance (b0, -(word) _vec_len (t0->rewrite));
+	  vlib_buffer_advance (b1, -(word) _vec_len (t1->rewrite));
 
 	  if (is_ip4)
 	    {
 	      /* IP4 VXLAN header should be 36 octects */
-              ASSERT(sizeof(ip4_vxlan_header_t) == 36);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip4_vxlan_header_t));
-	      ASSERT(vec_len(t1->rewrite) == sizeof(ip4_vxlan_header_t));
+	      ASSERT (sizeof (ip4_vxlan_header_t) == 36);
+	      ASSERT (vec_len (t0->rewrite) == sizeof (ip4_vxlan_header_t));
+	      ASSERT (vec_len (t1->rewrite) == sizeof (ip4_vxlan_header_t));
 
-	      ip4_0 = vlib_buffer_get_current(b0);
-	      ip4_1 = vlib_buffer_get_current(b1);
+	      ip4_0 = vlib_buffer_get_current (b0);
+	      ip4_1 = vlib_buffer_get_current (b1);
 
 	      /* Copy the fixed header */
 	      copy_dst0 = (u64 *) ip4_0;
@@ -192,76 +193,82 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      foreach_fixed_header4_offset;
 #undef _
 	      /* Last 4 octets. Hopefully gcc will be our friend */
-              copy_dst_last0 = (u32 *)(&copy_dst0[4]);
-              copy_src_last0 = (u32 *)(&copy_src0[4]);
-              copy_dst_last0[0] = copy_src_last0[0];
-              copy_dst_last1 = (u32 *)(&copy_dst1[4]);
-              copy_src_last1 = (u32 *)(&copy_src1[4]);
-              copy_dst_last1[0] = copy_src_last1[0];
+	      copy_dst_last0 = (u32 *) (&copy_dst0[4]);
+	      copy_src_last0 = (u32 *) (&copy_src0[4]);
+	      copy_dst_last0[0] = copy_src_last0[0];
+	      copy_dst_last1 = (u32 *) (&copy_dst1[4]);
+	      copy_src_last1 = (u32 *) (&copy_src1[4]);
+	      copy_dst_last1[0] = copy_src_last1[0];
 
 	      /* Fix the IP4 checksum and length */
 	      if (csum_offload)
-	        {
-		  ip4_0->length = clib_host_to_net_u16 
-		      (vlib_buffer_length_in_chain (vm, b0));
-		  b0->flags |= 
+		{
+		  ip4_0->length = clib_host_to_net_u16
+		    (vlib_buffer_length_in_chain (vm, b0));
+		  b0->flags |=
 		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
 		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip4_0 - b0->data;
-		  ip4_1->length = clib_host_to_net_u16 
-		      (vlib_buffer_length_in_chain (vm, b1));
-		  b1->flags |= 
+		  ip4_1->length = clib_host_to_net_u16
+		    (vlib_buffer_length_in_chain (vm, b1));
+		  b1->flags |=
 		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
 		  vnet_buffer (b1)->l3_hdr_offset = (u8 *) ip4_1 - b1->data;
-	        }
+		}
 	      else
-	        {
+		{
 		  sum0 = ip4_0->checksum;
-		  new_l0 = /* old_l0 always 0, see the rewrite setup */ 
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-		  sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-					 length /* changed member */);
+		  new_l0 =	/* old_l0 always 0, see the rewrite setup */
+		    clib_host_to_net_u16 (vlib_buffer_length_in_chain
+					  (vm, b0));
+		  sum0 =
+		    ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
+				    length /* changed member */ );
 		  ip4_0->checksum = ip_csum_fold (sum0);
 		  ip4_0->length = new_l0;
 		  sum1 = ip4_1->checksum;
-		  new_l1 = /* old_l1 always 0, see the rewrite setup */
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1));
-		  sum1 = ip_csum_update (sum1, old_l1, new_l1, ip4_header_t,
-					 length /* changed member */);
+		  new_l1 =	/* old_l1 always 0, see the rewrite setup */
+		    clib_host_to_net_u16 (vlib_buffer_length_in_chain
+					  (vm, b1));
+		  sum1 =
+		    ip_csum_update (sum1, old_l1, new_l1, ip4_header_t,
+				    length /* changed member */ );
 		  ip4_1->checksum = ip_csum_fold (sum1);
 		  ip4_1->length = new_l1;
-	        }
+		}
 
 	      /* Fix UDP length and set source port */
-	      udp0 = (udp_header_t *)(ip4_0+1);
-	      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain(vm, b0)
-					     - sizeof (*ip4_0));
+	      udp0 = (udp_header_t *) (ip4_0 + 1);
+	      new_l0 =
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
+				      sizeof (*ip4_0));
 	      udp0->length = new_l0;
 	      udp0->src_port = flow_hash0;
-	      udp1 = (udp_header_t *)(ip4_1+1);
-	      new_l1 = clib_host_to_net_u16 (vlib_buffer_length_in_chain(vm, b1)
-					     - sizeof (*ip4_1));
+	      udp1 = (udp_header_t *) (ip4_1 + 1);
+	      new_l1 =
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1) -
+				      sizeof (*ip4_1));
 	      udp1->length = new_l1;
 	      udp1->src_port = flow_hash1;
 
 	      /* UDP checksum only if checksum offload is used */
 	      if (csum_offload)
-	        {
+		{
 		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-		  b1->flags |=  VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+		  b1->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 		  vnet_buffer (b1)->l4_hdr_offset = (u8 *) udp1 - b1->data;
 		}
 	    }
-	  else /* ipv6 */
+	  else			/* ipv6 */
 	    {
-              int bogus = 0;
+	      int bogus = 0;
 
 	      /* IP6 VXLAN header should be 56 octects */
-              ASSERT(sizeof(ip6_vxlan_header_t) == 56);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip6_vxlan_header_t));
-	      ASSERT(vec_len(t1->rewrite) == sizeof(ip6_vxlan_header_t));
-	      ip6_0 = vlib_buffer_get_current(b0);
-	      ip6_1 = vlib_buffer_get_current(b1);
+	      ASSERT (sizeof (ip6_vxlan_header_t) == 56);
+	      ASSERT (vec_len (t0->rewrite) == sizeof (ip6_vxlan_header_t));
+	      ASSERT (vec_len (t1->rewrite) == sizeof (ip6_vxlan_header_t));
+	      ip6_0 = vlib_buffer_get_current (b0);
+	      ip6_1 = vlib_buffer_get_current (b1);
 
 	      /* Copy the fixed header */
 	      copy_dst0 = (u64 *) ip6_0;
@@ -277,50 +284,50 @@ vxlan_encap_inline (vlib_main_t * vm,
 #undef _
 	      /* Fix IP6 payload length */
 	      new_l0 =
-                clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
-				      - sizeof(*ip6_0));
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+				      - sizeof (*ip6_0));
 	      ip6_0->payload_length = new_l0;
 	      new_l1 =
-                clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
-				      - sizeof(*ip6_1));
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b1)
+				      - sizeof (*ip6_1));
 	      ip6_1->payload_length = new_l1;
 
 	      /* Fix UDP length  and set source port */
-	      udp0 = (udp_header_t *)(ip6_0+1);
+	      udp0 = (udp_header_t *) (ip6_0 + 1);
 	      udp0->length = new_l0;
 	      udp0->src_port = flow_hash0;
-	      udp1 = (udp_header_t *)(ip6_1+1);
+	      udp1 = (udp_header_t *) (ip6_1 + 1);
 	      udp1->length = new_l1;
 	      udp1->src_port = flow_hash1;
 
 	      /* IPv6 UDP checksum is mandatory */
 	      if (csum_offload)
-	        {
+		{
 		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip6_0 - b0->data;
 		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-		  b1->flags |=  VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
+		  b1->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 		  vnet_buffer (b1)->l3_hdr_offset = (u8 *) ip6_1 - b1->data;
 		  vnet_buffer (b1)->l4_hdr_offset = (u8 *) udp1 - b1->data;
 		}
 	      else
-	        {
+		{
 		  udp0->checksum = ip6_tcp_udp_icmp_compute_checksum
-		      (vm, b0, ip6_0, &bogus);
-		  ASSERT(bogus == 0);
+		    (vm, b0, ip6_0, &bogus);
+		  ASSERT (bogus == 0);
 		  if (udp0->checksum == 0)
-		      udp0->checksum = 0xffff;
+		    udp0->checksum = 0xffff;
 		  udp1->checksum = ip6_tcp_udp_icmp_compute_checksum
-		      (vm, b1, ip6_1, &bogus);
-		  ASSERT(bogus == 0);
+		    (vm, b1, ip6_1, &bogus);
+		  ASSERT (bogus == 0);
 		  if (udp1->checksum == 0)
-		      udp1->checksum = 0xffff;
-	        }
+		    udp1->checksum = 0xffff;
+		}
 	    }
 
-          pkts_encapsulated += 2;
- 	  len0 = vlib_buffer_length_in_chain (vm, b0);
- 	  len1 = vlib_buffer_length_in_chain (vm, b1);
+	  pkts_encapsulated += 2;
+	  len0 = vlib_buffer_length_in_chain (vm, b0);
+	  len1 = vlib_buffer_length_in_chain (vm, b1);
 	  stats_n_packets += 2;
 	  stats_n_bytes += len0 + len1;
 
@@ -329,47 +336,47 @@ vxlan_encap_inline (vlib_main_t * vm,
 	     and admin-down tunnel where packets are dropped. It is not worthwhile
 	     to check for this rare case and affect normal path performance. */
 	  if (PREDICT_FALSE ((sw_if_index0 != stats_sw_if_index) ||
-			     (sw_if_index1 != stats_sw_if_index))) 
+			     (sw_if_index1 != stats_sw_if_index)))
 	    {
 	      stats_n_packets -= 2;
 	      stats_n_bytes -= len0 + len1;
-	      if (sw_if_index0 == sw_if_index1) 
-	        {
-		  if (stats_n_packets) 
-		    vlib_increment_combined_counter 
-		      (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-		       thread_index, stats_sw_if_index, 
-		       stats_n_packets, stats_n_bytes);
+	      if (sw_if_index0 == sw_if_index1)
+		{
+		  if (stats_n_packets)
+		    vlib_increment_combined_counter
+		      (im->combined_sw_if_counters +
+		       VNET_INTERFACE_COUNTER_TX, thread_index,
+		       stats_sw_if_index, stats_n_packets, stats_n_bytes);
 		  stats_sw_if_index = sw_if_index0;
 		  stats_n_packets = 2;
 		  stats_n_bytes = len0 + len1;
-	        }
-	      else 
-	        {
-		  vlib_increment_combined_counter 
-		      (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-		       thread_index, sw_if_index0, 1, len0);
-		  vlib_increment_combined_counter 
-		      (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-		       thread_index, sw_if_index1, 1, len1);
+		}
+	      else
+		{
+		  vlib_increment_combined_counter
+		    (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+		     thread_index, sw_if_index0, 1, len0);
+		  vlib_increment_combined_counter
+		    (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
+		     thread_index, sw_if_index1, 1, len1);
 		}
 	    }
 
-	  if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
-            {
-              vxlan_encap_trace_t *tr = 
-                vlib_add_trace (vm, node, b0, sizeof (*tr));
-              tr->tunnel_index = t0 - vxm->tunnels;
-              tr->vni = t0->vni;
-           }
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      vxlan_encap_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->tunnel_index = t0 - vxm->tunnels;
+	      tr->vni = t0->vni;
+	    }
 
-          if (PREDICT_FALSE(b1->flags & VLIB_BUFFER_IS_TRACED)) 
-            {
-              vxlan_encap_trace_t *tr = 
-                vlib_add_trace (vm, node, b1, sizeof (*tr));
-              tr->tunnel_index = t1 - vxm->tunnels;
-              tr->vni = t1->vni;
-            }
+	  if (PREDICT_FALSE (b1->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      vxlan_encap_trace_t *tr =
+		vlib_add_trace (vm, node, b1, sizeof (*tr));
+	      tr->tunnel_index = t1 - vxm->tunnels;
+	      tr->vni = t1->vni;
+	    }
 
 	  vlib_validate_buffer_enqueue_x2 (vm, node, next_index,
 					   to_next, n_left_to_next,
@@ -379,16 +386,16 @@ vxlan_encap_inline (vlib_main_t * vm,
       while (n_left_from > 0 && n_left_to_next > 0)
 	{
 	  u32 bi0;
-	  vlib_buffer_t * b0;
-          u32 flow_hash0;
+	  vlib_buffer_t *b0;
+	  u32 flow_hash0;
 	  u32 len0;
-          ip4_header_t * ip4_0;
-          ip6_header_t * ip6_0;
-          udp_header_t * udp0;
-          u64 * copy_src0, * copy_dst0;
-          u32 * copy_src_last0, * copy_dst_last0;
-          u16 new_l0;
-          ip_csum_t sum0;
+	  ip4_header_t *ip4_0;
+	  ip6_header_t *ip6_0;
+	  udp_header_t *udp0;
+	  u64 *copy_src0, *copy_dst0;
+	  u32 *copy_src_last0, *copy_dst_last0;
+	  u16 new_l0;
+	  ip_csum_t sum0;
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
@@ -399,28 +406,28 @@ vxlan_encap_inline (vlib_main_t * vm,
 
 	  b0 = vlib_get_buffer (vm, bi0);
 
-          flow_hash0 = vnet_l2_compute_flow_hash(b0);
+	  flow_hash0 = vnet_l2_compute_flow_hash (b0);
 
 	  /* Get next node index and adj index from tunnel next_dpo */
-	  if (sw_if_index0 != vnet_buffer(b0)->sw_if_index[VLIB_TX])
+	  if (sw_if_index0 != vnet_buffer (b0)->sw_if_index[VLIB_TX])
 	    {
-	      sw_if_index0 = vnet_buffer(b0)->sw_if_index[VLIB_TX];
+	      sw_if_index0 = vnet_buffer (b0)->sw_if_index[VLIB_TX];
 	      hi0 = vnet_get_sup_hw_interface (vnm, sw_if_index0);
 	      t0 = &vxm->tunnels[hi0->dev_instance];
 	      /* Note: change to always set next0 if it may be set to drop */
 	      next0 = t0->next_dpo.dpoi_next_node;
 	    }
-	  vnet_buffer(b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
+	  vnet_buffer (b0)->ip.adj_index[VLIB_TX] = t0->next_dpo.dpoi_index;
 
-          /* Apply the rewrite string. $$$$ vnet_rewrite? */
-          vlib_buffer_advance (b0, -(word)_vec_len(t0->rewrite));
+	  /* Apply the rewrite string. $$$$ vnet_rewrite? */
+	  vlib_buffer_advance (b0, -(word) _vec_len (t0->rewrite));
 
 	  if (is_ip4)
 	    {
 	      /* IP4 VXLAN header should be 36 octects */
-              ASSERT(sizeof(ip4_vxlan_header_t) == 36);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip4_vxlan_header_t));
-	      ip4_0 = vlib_buffer_get_current(b0);
+	      ASSERT (sizeof (ip4_vxlan_header_t) == 36);
+	      ASSERT (vec_len (t0->rewrite) == sizeof (ip4_vxlan_header_t));
+	      ip4_0 = vlib_buffer_get_current (b0);
 
 	      /* Copy the fixed header */
 	      copy_dst0 = (u64 *) ip4_0;
@@ -430,53 +437,57 @@ vxlan_encap_inline (vlib_main_t * vm,
 	      foreach_fixed_header4_offset;
 #undef _
 	      /* Last 4 octets. Hopefully gcc will be our friend */
-              copy_dst_last0 = (u32 *)(&copy_dst0[4]);
-              copy_src_last0 = (u32 *)(&copy_src0[4]);
-              copy_dst_last0[0] = copy_src_last0[0];
+	      copy_dst_last0 = (u32 *) (&copy_dst0[4]);
+	      copy_src_last0 = (u32 *) (&copy_src0[4]);
+	      copy_dst_last0[0] = copy_src_last0[0];
 
 	      /* Fix the IP4 checksum and length */
 	      if (csum_offload)
-	        {
+		{
 		  ip4_0->length =
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-		  b0->flags |= 
+		    clib_host_to_net_u16 (vlib_buffer_length_in_chain
+					  (vm, b0));
+		  b0->flags |=
 		    VNET_BUFFER_F_OFFLOAD_IP_CKSUM | VNET_BUFFER_F_IS_IP4;
 		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip4_0 - b0->data;
-	        }
+		}
 	      else
-	        {
+		{
 		  sum0 = ip4_0->checksum;
-		  new_l0 = /* old_l0 always 0, see the rewrite setup */ 
-		    clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0));
-		  sum0 = ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
-					 length /* changed member */);
+		  new_l0 =	/* old_l0 always 0, see the rewrite setup */
+		    clib_host_to_net_u16 (vlib_buffer_length_in_chain
+					  (vm, b0));
+		  sum0 =
+		    ip_csum_update (sum0, old_l0, new_l0, ip4_header_t,
+				    length /* changed member */ );
 		  ip4_0->checksum = ip_csum_fold (sum0);
 		  ip4_0->length = new_l0;
-	        }
+		}
 
 	      /* Fix UDP length and set source port */
-	      udp0 = (udp_header_t *)(ip4_0+1);
-	      new_l0 = clib_host_to_net_u16 (vlib_buffer_length_in_chain(vm, b0)
-					     - sizeof (*ip4_0));
+	      udp0 = (udp_header_t *) (ip4_0 + 1);
+	      new_l0 =
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0) -
+				      sizeof (*ip4_0));
 	      udp0->length = new_l0;
 	      udp0->src_port = flow_hash0;
 
 	      /* UDP checksum only if checksum offload is used */
 	      if (csum_offload)
-	        {
+		{
 		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-	        }
+		}
 	    }
 
-	  else /* ip6 path */
+	  else			/* ip6 path */
 	    {
-              int bogus = 0;
+	      int bogus = 0;
 
 	      /* IP6 VXLAN header should be 56 octects */
-              ASSERT(sizeof(ip6_vxlan_header_t) == 56);
-              ASSERT(vec_len(t0->rewrite) == sizeof(ip6_vxlan_header_t));
-	      ip6_0 = vlib_buffer_get_current(b0);
+	      ASSERT (sizeof (ip6_vxlan_header_t) == 56);
+	      ASSERT (vec_len (t0->rewrite) == sizeof (ip6_vxlan_header_t));
+	      ip6_0 = vlib_buffer_get_current (b0);
 	      /* Copy the fixed header */
 	      copy_dst0 = (u64 *) ip6_0;
 	      copy_src0 = (u64 *) t0->rewrite;
@@ -486,33 +497,33 @@ vxlan_encap_inline (vlib_main_t * vm,
 #undef _
 	      /* Fix IP6 payload length */
 	      new_l0 =
-                clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
-				      - sizeof(*ip6_0));
+		clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
+				      - sizeof (*ip6_0));
 	      ip6_0->payload_length = new_l0;
 
 	      /* Fix UDP length  and set source port */
-	      udp0 = (udp_header_t *)(ip6_0+1);
+	      udp0 = (udp_header_t *) (ip6_0 + 1);
 	      udp0->length = new_l0;
 	      udp0->src_port = flow_hash0;
 
 	      /* IPv6 UDP checksum is mandatory */
 	      if (csum_offload)
-	        {
+		{
 		  b0->flags |= VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 		  vnet_buffer (b0)->l3_hdr_offset = (u8 *) ip6_0 - b0->data;
 		  vnet_buffer (b0)->l4_hdr_offset = (u8 *) udp0 - b0->data;
-	        }
+		}
 	      else
-	        {
+		{
 		  udp0->checksum = ip6_tcp_udp_icmp_compute_checksum
 		    (vm, b0, ip6_0, &bogus);
-		  ASSERT(bogus == 0);
+		  ASSERT (bogus == 0);
 		  if (udp0->checksum == 0)
 		    udp0->checksum = 0xffff;
-	        }
+		}
 	    }
 
-          pkts_encapsulated ++;
+	  pkts_encapsulated++;
 	  len0 = vlib_buffer_length_in_chain (vm, b0);
 	  stats_n_packets += 1;
 	  stats_n_bytes += len0;
@@ -521,27 +532,27 @@ vxlan_encap_inline (vlib_main_t * vm,
 	     incremented per packet. Note stats are still incremented for deleted
 	     and admin-down tunnel where packets are dropped. It is not worthwhile
 	     to check for this rare case and affect normal path performance. */
-	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index)) 
+	  if (PREDICT_FALSE (sw_if_index0 != stats_sw_if_index))
 	    {
 	      stats_n_packets -= 1;
 	      stats_n_bytes -= len0;
 	      if (stats_n_packets)
-		vlib_increment_combined_counter 
+		vlib_increment_combined_counter
 		  (im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
-		   thread_index, stats_sw_if_index, 
+		   thread_index, stats_sw_if_index,
 		   stats_n_packets, stats_n_bytes);
 	      stats_n_packets = 1;
 	      stats_n_bytes = len0;
 	      stats_sw_if_index = sw_if_index0;
 	    }
 
-          if (PREDICT_FALSE(b0->flags & VLIB_BUFFER_IS_TRACED)) 
-            {
-              vxlan_encap_trace_t *tr = 
-                vlib_add_trace (vm, node, b0, sizeof (*tr));
-              tr->tunnel_index = t0 - vxm->tunnels;
-              tr->vni = t0->vni;
-            }
+	  if (PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
+	    {
+	      vxlan_encap_trace_t *tr =
+		vlib_add_trace (vm, node, b0, sizeof (*tr));
+	      tr->tunnel_index = t0 - vxm->tunnels;
+	      tr->vni = t0->vni;
+	    }
 	  vlib_validate_buffer_enqueue_x1 (vm, node, next_index,
 					   to_next, n_left_to_next,
 					   bi0, next0);
@@ -551,14 +562,14 @@ vxlan_encap_inline (vlib_main_t * vm,
     }
 
   /* Do we still need this now that tunnel tx stats is kept? */
-  vlib_node_increment_counter (vm, node->node_index, 
-                               VXLAN_ENCAP_ERROR_ENCAPSULATED, 
-                               pkts_encapsulated);
+  vlib_node_increment_counter (vm, node->node_index,
+			       VXLAN_ENCAP_ERROR_ENCAPSULATED,
+			       pkts_encapsulated);
 
   /* Increment any remaining batch stats */
   if (stats_n_packets)
     {
-      vlib_increment_combined_counter 
+      vlib_increment_combined_counter
 	(im->combined_sw_if_counters + VNET_INTERFACE_COUNTER_TX,
 	 thread_index, stats_sw_if_index, stats_n_packets, stats_n_bytes);
       node->runtime_data[0] = stats_sw_if_index;
@@ -569,25 +580,24 @@ vxlan_encap_inline (vlib_main_t * vm,
 
 static uword
 vxlan4_encap (vlib_main_t * vm,
-	      vlib_node_runtime_t * node,
-	      vlib_frame_t * from_frame)
+	      vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
   /* Disable chksum offload as setup overhead in tx node is not worthwhile
      for ip4 header checksum only, unless udp checksum is also required */
-  return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 1, 
+  return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 1,
 			     /* csum_offload */ 0);
 }
 
 static uword
 vxlan6_encap (vlib_main_t * vm,
-	      vlib_node_runtime_t * node,
-	      vlib_frame_t * from_frame)
+	      vlib_node_runtime_t * node, vlib_frame_t * from_frame)
 {
   /* Enable checksum offload for ip6 as udp checksum is mandatory, */
-  return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 0, 
+  return vxlan_encap_inline (vm, node, from_frame, /* is_ip4 */ 0,
 			     /* csum_offload */ 1);
 }
 
+/* *INDENT-OFF* */
 VLIB_REGISTER_NODE (vxlan4_encap_node) = {
   .function = vxlan4_encap,
   .name = "vxlan4-encap",
@@ -601,22 +611,28 @@ VLIB_REGISTER_NODE (vxlan4_encap_node) = {
         [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
   },
 };
+/* *INDENT-ON* */
 
+/* *INDENT-OFF* */
 VLIB_NODE_FUNCTION_MULTIARCH (vxlan4_encap_node, vxlan4_encap)
+VLIB_REGISTER_NODE (vxlan6_encap_node) =
+{
+  .function = vxlan6_encap,.name = "vxlan6-encap",.vector_size =
+    sizeof (u32),.format_trace = format_vxlan_encap_trace,.type =
+    VLIB_NODE_TYPE_INTERNAL,.n_errors =
+    ARRAY_LEN (vxlan_encap_error_strings),.error_strings =
+    vxlan_encap_error_strings,.n_next_nodes = VXLAN_ENCAP_N_NEXT,.next_nodes =
+  {
+  [VXLAN_ENCAP_NEXT_DROP] = "error-drop",}
+,};
 
-VLIB_REGISTER_NODE (vxlan6_encap_node) = {
-  .function = vxlan6_encap,
-  .name = "vxlan6-encap",
-  .vector_size = sizeof (u32),
-  .format_trace = format_vxlan_encap_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
-  .n_errors = ARRAY_LEN(vxlan_encap_error_strings),
-  .error_strings = vxlan_encap_error_strings,
-  .n_next_nodes = VXLAN_ENCAP_N_NEXT,
-  .next_nodes = {
-        [VXLAN_ENCAP_NEXT_DROP] = "error-drop",
-  },
-};
+/* *INDENT-ON* */
 
 VLIB_NODE_FUNCTION_MULTIARCH (vxlan6_encap_node, vxlan6_encap)
-
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
