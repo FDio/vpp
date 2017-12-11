@@ -124,6 +124,7 @@ ENABLE_ARG(tests,	[Enable unit tests])
 ENABLE_ARG(dpdk_shared,	[Enable unit tests])
 ENABLE_ARG(perftool,	[Enable perftool])
 ENABLE_ARG(g2,		[Enable g2])
+ENABLE_ARG(apps,	[Enable apps])
 
 # --disable-X
 DISABLE_ARG(vlib,	[Disable vlib and dependant libs and binaries])
