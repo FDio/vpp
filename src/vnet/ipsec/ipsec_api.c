@@ -192,13 +192,6 @@ static void vl_api_ipsec_sad_add_del_entry_t_handler
 
   sa.id = ntohl (mp->sad_id);
   sa.spi = ntohl (mp->spi);
-  /* security protocol AH unsupported */
-  if (mp->protocol == IPSEC_PROTOCOL_AH)
-    {
-      clib_warning ("unsupported security protocol 'AH'");
-      rv = VNET_API_ERROR_UNIMPLEMENTED;
-      goto out;
-    }
   sa.protocol = mp->protocol;
   /* check for unsupported crypto-alg */
   if (mp->crypto_algorithm < IPSEC_CRYPTO_ALG_AES_CBC_128 ||
