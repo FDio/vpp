@@ -411,6 +411,10 @@ dpdk_lib_init (dpdk_main_t * dm)
 	      xd->port_conf.rxmode.hw_strip_crc = 1;
 	      break;
 
+	    case VNET_DPDK_PMD_ENA:
+	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_VF;
+	      break;
+
 	    case VNET_DPDK_PMD_DPAA2:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
 	      break;
@@ -735,6 +739,9 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       ;
     /* Chelsio T4/T5 */
     else if (d->vendor_id == 0x1425 && (d->device_id & 0xe000) == 0x4000)
+      ;
+    /* Amazen Elastic Network Adapter */
+    else if (d->vendor_id == 0x1d0f && d->device_id >= 0xec20 && d->device_id <= 0xec21)
       ;
     /* Mellanox  */
     else if (d->vendor_id == 0x15b3 && d->device_id >= 0x1013 && d->device_id <= 0x101a)
