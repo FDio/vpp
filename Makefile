@@ -108,17 +108,23 @@ endif
 RPM_DEPENDS += chrpath libffi-devel rpm-build
 
 SUSE_NAME= $(shell grep '^NAME=' /etc/os-release | cut -f2- -d= | sed -e 's/\"//g' | cut -d' ' -f2)
-RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake bison ccache check-devel chrpath clang indent libtool make
-RPM_SUSE_DEVEL_DEPS = glibc-devel-static java-1_8_0-openjdk-devel libnuma-devel libopenssl-devel openssl-devel 
-RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip python-rpm-macros python3-rpm-macros 
+RPM_SUSE_BUILDTOOLS_DEPS = autoconf automake bison ccache check-devel chrpath
+RPM_SUSE_BUILDTOOLS_DEPS += clang indent libtool make
+
+RPM_SUSE_DEVEL_DEPS = glibc-devel-static java-1_8_0-openjdk-devel libnuma-devel
+RPM_SUSE_DEVEL_DEPS += libopenssl-devel openssl-devel
+
+RPM_SUSE_PYTHON_DEPS = python-devel python3-devel python-pip python3-pip
+RPM_SUSE_PYTHON_DEPS += python-rpm-macros python3-rpm-macros
+
 RPM_SUSE_PLATFORM_DEPS = distribution-release shadow rpm-build
 
 ifeq ($(OS_ID),opensuse)
 ifneq ($(SUSE_NAME),Tumbleweed)
-	RPM_SUSE_DEVEL_DEPS += boost_1_61-devel gcc6 
+	RPM_SUSE_DEVEL_DEPS += boost_1_61-devel gcc6
 	RPM_SUSE_PYTHON_DEPS += python-virtualenv
 else
-	RPM_SUSE_DEVEL_DEPS += boost_1_65-devel gcc
+	RPM_SUSE_DEVEL_DEPS = libboost_headers-devel libboost_thread-devel gcc
 	RPM_SUSE_PYTHON_DEPS += python2-virtualenv
 endif
 endif
