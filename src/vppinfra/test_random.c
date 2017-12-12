@@ -38,6 +38,42 @@
 #include <vppinfra/format.h>
 #include <vppinfra/bitmap.h>
 
+static u32 outcome_frequencies[] = {
+  8, 5, 9, 2, 7, 5,
+};
+
+
+int
+test_chisquare (void)
+{
+  u64 *values = 0;
+  int i;
+  f64 d, delta_d;
+
+  vec_validate (values, 5);
+
+  for (i = 0; i < 6; i++)
+    values[i] = (u64) outcome_frequencies[i];
+
+  d = clib_chisquare (values);
+
+  delta_d = d - 5.333;
+
+  if (delta_d < 0.0)
+    delta_d = -delta_d;
+
+  if (delta_d < 0.001)
+    {
+      fformat (stdout, "chisquare OK...\n");
+      return 0;
+    }
+  else
+    {
+      fformat (stdout, "chisquare BAD, d = %.3f\n", d);
+      return -1;
+    }
+}
+
 static u32 known_random_sequence[] = {
   0x00000000, 0x3c6ef35f, 0x47502932, 0xd1ccf6e9,
   0xaaf95334, 0x6252e503, 0x9f2ec686, 0x57fe6c2d,
@@ -54,6 +90,8 @@ test_random_main (unformat_input_t * input)
   uword print;
   u32 seed;
   u32 *seedp = &seed;
+  u64 *counts = 0;
+  f64 d;
 
   /* first, check known sequence from Numerical Recipes in C, 2nd ed.
      page 284 */
@@ -117,6 +155,28 @@ test_random_main (unformat_input_t * input)
       repeat_count++;
       continue;
     }
+
+  if (test_chisquare ())
+    return (-1);
+
+  /* Simple randomness tests based on X2 stats */
+  vec_validate (counts, 255);
+
+  for (i = 0; i < 1000000; i++)
+    {
+      u32 random_index;
+      u32 r = random_u32 (&seed);
+
+      random_index = r & 0xFF;
+
+      counts[random_index]++;
+    }
+
+  d = clib_chisquare (counts);
+
+  fformat (stdout, "%d random octets, chisquare stat d = %.3f\n", i, d);
+
+  vec_free (counts);
 
   return 0;
 }

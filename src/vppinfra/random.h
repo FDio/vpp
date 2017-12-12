@@ -167,6 +167,8 @@ random_string (u32 * seed, uword len)
   return s;
 }
 
+f64 clib_chisquare (u64 * values);
+
 #endif /* included_random_h */
 
 /*

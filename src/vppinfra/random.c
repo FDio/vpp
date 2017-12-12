@@ -37,10 +37,55 @@
 
 #include <vppinfra/random.h>
 
-/* Default random seed for standalone version of library.
+/** \file Random number support
+ */
+
+/** \brief Default random seed for standalone version of library.
    Value can be overridden by platform code from e.g.
    machine's clock count register. */
 u32 standalone_random_default_seed = 1;
+
+/**
+ * \brief Compute the X2 test statistic for a vector of counts.
+ * Each value element corresponds to a histogram bucket.
+ *
+ * Typical use-case: test the hypothesis that a set of octets
+ * are uniformly distributed (aka random).
+ *
+ * In a 1-dimensional use-case, the result should be compared
+ * with the critical value from chi square tables with
+ * vec_len(values) - 1 degrees of freedom.
+ *
+ * @param[in] values vector of histogram bucket values
+ * @return    d - Pearson's X2 test statistic
+ */
+
+f64
+clib_chisquare (u64 * values)
+{
+  int i;
+  f64 d, delta_d, actual_frequency, expected_frequency;
+  u64 n_observations = 0;
+
+  ASSERT (vec_len (values));
+
+  for (i = 0; i < vec_len (values); i++)
+    n_observations += values[i];
+
+  expected_frequency = (1.0 / (f64) vec_len (values)) * (f64) n_observations;
+
+  d = 0.0;
+
+  for (i = 0; i < vec_len (values); i++)
+    {
+      actual_frequency = ((f64) values[i]);
+      delta_d = ((actual_frequency - expected_frequency)
+		 * (actual_frequency - expected_frequency))
+	/ expected_frequency;
+      d += delta_d;
+    }
+  return d;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
