@@ -415,6 +415,7 @@ clib_maplog_process (char *file_basename, void *fp_arg)
       file_baseva =
 	mmap (0, file_size_in_bytes, PROT_READ, MAP_SHARED, fd, 0);
       (void) close (fd);
+      fd = -1;
       if (file_baseva == (u8 *) MAP_FAILED)
 	{
 	  clib_unix_warning ("mmap");
@@ -439,7 +440,7 @@ clib_maplog_process (char *file_basename, void *fp_arg)
     }
 
 out:
-  if (fd > 0)
+  if (fd >= 0)
     (void) close (fd);
 
   vec_free (this_filename);
