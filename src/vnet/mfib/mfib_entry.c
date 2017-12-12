@@ -1226,6 +1226,16 @@ mfib_entry_get_fib_index (fib_node_index_t mfib_entry_index)
     return (mfib_entry->mfe_fib_index);
 }
 
+const dpo_id_t*
+mfib_entry_contribute_ip_forwarding (fib_node_index_t mfib_entry_index)
+{
+    mfib_entry_t *mfib_entry;
+
+    mfib_entry = mfib_entry_get(mfib_entry_index);
+
+    return (&mfib_entry->mfe_rep);
+}
+
 void
 mfib_entry_contribute_forwarding (fib_node_index_t mfib_entry_index,
                                   fib_forward_chain_type_t type,

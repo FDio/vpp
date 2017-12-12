@@ -133,6 +133,34 @@ autoreply define want_ip6_fib_stats
   u32 pid;
 };
 
+/** \brief Want IP4 muilticast FIB Stats, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_ip4_mfib_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
+/** \brief Want IP6 multicast FIB Stats, register for continuous stats
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 = enable stats, 0 = disable
+    @param pid - pid of process requesting stats updates
+*/
+autoreply define want_ip6_mfib_stats
+{
+  u32 client_index;
+  u32 context;
+  u32 enable_disable;
+  u32 pid;
+};
+
 /** \brief Want IP4 NBR Stats, register for continuous stats
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
@@ -176,6 +204,22 @@ manual_print manual_endian define vnet_ip4_fib_counters
   vl_api_ip4_fib_counter_t c[count];
 };
 
+typeonly manual_print manual_endian define ip4_mfib_counter
+{
+  u8 source[4];
+  u8 group[4];
+  u8 group_length;
+  u64 packets;
+  u64 bytes;
+};
+
+manual_print manual_endian define vnet_ip4_mfib_counters
+{
+  u32 vrf_id;
+  u32 count;
+  vl_api_ip4_mfib_counter_t c[count];
+};
+
 typeonly manual_print manual_endian define ip4_nbr_counter
 {
   u32 address;
@@ -214,6 +258,22 @@ manual_print manual_endian define vnet_ip6_fib_counters
   u32 vrf_id;
   u32 count;
   vl_api_ip6_fib_counter_t c[count];
+};
+
+typeonly manual_print manual_endian define ip6_mfib_counter
+{
+  u8 source[16];
+  u8 group[16];
+  u8 group_length;
+  u64 packets;
+  u64 bytes;
+};
+
+manual_print manual_endian define vnet_ip6_mfib_counters
+{
+  u32 vrf_id;
+  u32 count;
+  vl_api_ip6_mfib_counter_t c[count];
 };
 
 typeonly manual_print manual_endian define ip6_nbr_counter

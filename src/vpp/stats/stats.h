@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <vlib/threads.h>
 #include <vnet/fib/fib_table.h>
+#include <vnet/mfib/mfib_table.h>
 #include <vlib/unix/unix.h>
 #include <vlibmemory/api.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
@@ -41,12 +42,14 @@ typedef struct
  *
  */
 /* from .../vnet/vnet/ip/lookup.c. Yuck */
+/* *INDENT-OFF* */
 typedef CLIB_PACKED (struct
-		     {
-		     ip4_address_t address;
-u32 address_length: 6;
-u32 index:	     26;
-		     }) ip4_route_t;
+{
+  ip4_address_t address;
+  u32 address_length: 6;
+  u32 index:	     26;
+}) ip4_route_t;
+/* *INDENT-ON* */
 
 /* see interface.api */
 typedef struct
@@ -79,12 +82,13 @@ typedef struct
   u32 index;
 } ip6_route_t;
 
-
 typedef struct
 {
   ip4_route_t *ip4routes;
   ip6_route_t *ip6routes;
+  mfib_prefix_t *mroutes;
   fib_table_t **fibs;
+  mfib_table_t **mfibs;
   hash_pair_t **pvec;
   uword *results;
 } do_ip46_fibs_t;
