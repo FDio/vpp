@@ -72,9 +72,10 @@ vnet_get_hw_sw_interface (vnet_main_t * vnm, u32 hw_if_index)
 always_inline vnet_sw_interface_t *
 vnet_get_sup_sw_interface (vnet_main_t * vnm, u32 sw_if_index)
 {
-  vnet_sw_interface_t *sw = vnet_get_sw_interface (vnm, sw_if_index);
-  if (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||
-      sw->type == VNET_SW_INTERFACE_TYPE_P2P)
+  vnet_sw_interface_t *sw = vnet_get_sw_interface_safe (vnm, sw_if_index);
+  if ((sw != NULL)
+      && (sw->type == VNET_SW_INTERFACE_TYPE_SUB ||
+	  sw->type == VNET_SW_INTERFACE_TYPE_P2P))
     sw = vnet_get_sw_interface (vnm, sw->sup_sw_if_index);
   return sw;
 }
@@ -83,6 +84,9 @@ always_inline vnet_hw_interface_t *
 vnet_get_sup_hw_interface (vnet_main_t * vnm, u32 sw_if_index)
 {
   vnet_sw_interface_t *sw = vnet_get_sup_sw_interface (vnm, sw_if_index);
+  if (sw == NULL)
+    return NULL;
+
   ASSERT (sw->type == VNET_SW_INTERFACE_TYPE_HARDWARE);
   return vnet_get_hw_interface (vnm, sw->hw_if_index);
 }
