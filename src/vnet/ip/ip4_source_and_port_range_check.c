@@ -593,7 +593,7 @@ VLIB_REGISTER_NODE (ip4_source_port_and_range_check_rx) = {
 
   .n_next_nodes = IP4_SOURCE_AND_PORT_RANGE_CHECK_N_NEXT,
   .next_nodes = {
-    [IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP] = "error-drop",
+    [IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP] = "ip4-drop",
   },
 
   .format_buffer = format_ip4_header,
@@ -612,7 +612,7 @@ VLIB_REGISTER_NODE (ip4_source_port_and_range_check_tx) = {
 
   .n_next_nodes = IP4_SOURCE_AND_PORT_RANGE_CHECK_N_NEXT,
   .next_nodes = {
-    [IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP] = "error-drop",
+    [IP4_SOURCE_AND_PORT_RANGE_CHECK_NEXT_DROP] = "ip4-drop",
   },
 
   .format_buffer = format_ip4_header,
@@ -777,7 +777,7 @@ set_ip_source_and_port_range_check_fn (vlib_main_t * vm,
  * Example of graph node before range checking is enabled:
  * @cliexstart{show vlib graph ip4-source-and-port-range-check-tx}
  *            Name                      Next                    Previous
- * ip4-source-and-port-range-      error-drop [0]
+ * ip4-source-and-port-range-      ip4-drop [0]
  * @cliexend
  *
  * Example of how to enable range checking on TX:
@@ -786,7 +786,7 @@ set_ip_source_and_port_range_check_fn (vlib_main_t * vm,
  * Example of graph node after range checking is enabled:
  * @cliexstart{show vlib graph ip4-source-and-port-range-check-tx}
  *            Name                      Next                    Previous
- * ip4-source-and-port-range-      error-drop [0]              ip4-rewrite
+ * ip4-source-and-port-range-      ip4-drop [0]                ip4-rewrite
  *                              interface-output [1]
  * @cliexend
  *
