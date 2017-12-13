@@ -99,7 +99,8 @@ std::string
 bridge_domain::to_string() const
 {
   std::ostringstream s;
-  s << "bridge-domain:[" << m_id.to_string() << "]";
+  s << "bridge-domain:[" << m_id.to_string()
+    << " learning-mode:" << m_learning_mode.to_string() << "]";
 
   return (s.str());
 }

@@ -81,7 +81,7 @@ std::string
 neighbour::to_string() const
 {
   std::ostringstream s;
-  s << "arp-entry:[" << m_itf->to_string() << ", " << m_mac.to_string() << ", "
+  s << "neighbour:[" << m_itf->to_string() << ", " << m_mac.to_string() << ", "
     << m_ip_addr.to_string() << "]";
 
   return (s.str());
