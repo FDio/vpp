@@ -189,7 +189,7 @@ ip6_map_t_icmp (vlib_main_t * vm,
 	  d0 =
 	    pool_elt_at_index (map_main.domains,
 			       vnet_buffer (p0)->map_t.map_domain_index);
-	  ctx0.sender_port = ip6_get_port (ip60, 0, len0);
+	  ctx0.sender_port = ip6_get_port (ip60, 0, p0->current_length);
 	  ctx0.d = d0;
 	  if (ctx0.sender_port == 0)
 	    {
