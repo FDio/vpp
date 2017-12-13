@@ -2477,6 +2477,16 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	     rewrite_header.max_l3_packet_bytes ? IP4_ERROR_MTU_EXCEEDED :
 	     error1);
 
+	  if (is_mcast)
+	    {
+	      error0 = ((adj0[0].rewrite_header.sw_if_index ==
+			 vnet_buffer (p0)->sw_if_index[VLIB_RX]) ?
+			IP4_ERROR_SAME_INTERFACE : error0);
+	      error1 = ((adj1[0].rewrite_header.sw_if_index ==
+			 vnet_buffer (p1)->sw_if_index[VLIB_RX]) ?
+			IP4_ERROR_SAME_INTERFACE : error1);
+	    }
+
 	  /* Don't adjust the buffer for ttl issue; icmp-error node wants
 	   * to see the IP headerr */
 	  if (PREDICT_TRUE (error0 == IP4_ERROR_NONE))
@@ -2636,7 +2646,12 @@ ip4_rewrite_inline (vlib_main_t * vm,
 	  error0 = (vlib_buffer_length_in_chain (vm, p0)
 		    > adj0[0].rewrite_header.max_l3_packet_bytes
 		    ? IP4_ERROR_MTU_EXCEEDED : error0);
-
+	  if (is_mcast)
+	    {
+	      error0 = ((adj0[0].rewrite_header.sw_if_index ==
+			 vnet_buffer (p0)->sw_if_index[VLIB_RX]) ?
+			IP4_ERROR_SAME_INTERFACE : error0);
+	    }
 	  p0->error = error_node->errors[error0];
 
 	  /* Don't adjust the buffer for ttl issue; icmp-error node wants

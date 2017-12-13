@@ -14,12 +14,13 @@ from scapy.layers.inet6 import IPv6, getmacbyip6
 from util import ppp
 
 #
-# The number of packets sent is set to 90 so that when we replicate more than 3
+# The number of packets sent is set to 91 so that when we replicate more than 3
 # times, which we do for some entries, we will generate more than 256 packets
 # to the next node in the VLIB graph. Thus we are testing the code's
-# correctness handling this over-flow
+# correctness handling this over-flow.
+# It's also an odd number so we hit any single loops.
 #
-N_PKTS_IN_STREAM = 90
+N_PKTS_IN_STREAM = 91
 
 
 class TestMFIB(VppTestCase):
@@ -756,6 +757,45 @@ class TestIPMcast(VppTestCase):
         # We expect replications on Pg1, 2,
         self.verify_capture_ip6(self.pg1, tx)
         self.verify_capture_ip6(self.pg2, tx)
+
+    def test_bidir(self):
+        """ IP Multicast Bi-directional """
+
+        #
+        # A (*,G). The set of accepting interfaces matching the forwarding
+        #
+        route_232_1_1_1 = VppIpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.1", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT |
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT |
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg2.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT |
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD),
+             VppMRoutePath(self.pg3.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT |
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+        route_232_1_1_1.add_vpp_config()
+
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        # We expect replications on Pg1, 2, 3, but not on pg0
+        self.verify_capture_ip4(self.pg1, tx)
+        self.verify_capture_ip4(self.pg2, tx)
+        self.verify_capture_ip4(self.pg3, tx)
+        self.pg0.assert_nothing_captured(
+            remark="IP multicast packets forwarded on PG0")
+
 
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)
