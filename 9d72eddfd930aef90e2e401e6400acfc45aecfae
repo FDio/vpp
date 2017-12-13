@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "43da60ab_dbc8b988",
+        "filename": "src/plugins/l2e/l2e.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 229,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-12-13T13:26:44Z",
+      "side": 1,
+      "message": "This function looks like it would benefit from quad-looping, let alone dual-looping. Any reason not to do the work now vs. later?",
+      "revId": "9d72eddfd930aef90e2e401e6400acfc45aecfae",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
