@@ -507,6 +507,9 @@ class TestGRE(VppTestCase):
     def test_gre6(self):
         """ GRE IPv6 tunnel Tests """
 
+        self.pg1.config_ip6()
+        self.pg1.resolve_ndp()
+
         #
         # Create an L3 GRE tunnel.
         #  - set it admin up
@@ -571,6 +574,27 @@ class TestGRE(VppTestCase):
                                  self.pg2.local_ip6, "1002::1")
 
         #
+        # Test decap. decapped packets go out pg1
+        #
+        tx = self.create_tunnel_stream_6o6(self.pg2,
+                                           "1002::1",
+                                           self.pg2.local_ip6,
+                                           "2001::1",
+                                           self.pg1.remote_ip6)
+        self.vapi.cli("clear trace")
+        self.pg2.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = self.pg1.get_capture(len(tx))
+
+        #
+        # RX'd packet is UDP over IPv6, test the GRE header is gone.
+        #
+        self.assertFalse(rx[0].haslayer(GRE))
+        self.assertEqual(rx[0][IPv6].dst, self.pg1.remote_ip6)
+
+        #
         # test case cleanup
         #
         route_tun_dst.remove_vpp_config()
@@ -578,6 +602,7 @@ class TestGRE(VppTestCase):
         gre_if.remove_vpp_config()
 
         self.pg2.unconfig_ip6()
+        self.pg1.unconfig_ip6()
 
     def test_gre_vrf(self):
         """ GRE tunnel VRF Tests """
