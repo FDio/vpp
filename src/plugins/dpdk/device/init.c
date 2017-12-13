@@ -424,6 +424,11 @@ dpdk_lib_init (dpdk_main_t * dm)
 		xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
 	      break;
 
+	      /* AWS Elastic Network Adapter (ENA) */
+	    case VNET_DPDK_PMD_ENA:
+	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_10G;
+	      break;
+
 	      /* Intel Red Rock Canyon */
 	    case VNET_DPDK_PMD_FM10K:
 	      xd->port_type = VNET_DPDK_PORT_TYPE_ETH_SWITCH;
@@ -732,6 +737,11 @@ dpdk_bind_devices_to_uio (dpdk_config_main_t * conf)
       ;
     /* Cisco VIC */
     else if (d->vendor_id == 0x1137 && d->device_id == 0x0043)
+      ;
+    /* AWS Elastic Network Adapter (ENA) */
+    else if (d->vendor_id == 0x1d0f &&
+	(d->device_id == 0x0ec2 || d->device_id == 0x1ec2 ||
+	    d->device_id == 0xec20 || d->device_id == 0xec21))
       ;
     /* Chelsio T4/T5 */
     else if (d->vendor_id == 0x1425 && (d->device_id & 0xe000) == 0x4000)
