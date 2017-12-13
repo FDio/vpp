@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3dd35e1c_1ee148c0",
+        "filename": "src/vnet/ip/ip4_error.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 62,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2017-12-13T16:28:02Z",
+      "side": 1,
+      "message": "Cable? :-)\n\nWouldn\u0027t interface be a better name?",
+      "range": {
+        "startLine": 62,
+        "startChar": 5,
+        "endLine": 62,
+        "endChar": 15
+      },
+      "revId": "3da7c26c1b7a83fcd905729bd09f9f193ccb7cba",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
