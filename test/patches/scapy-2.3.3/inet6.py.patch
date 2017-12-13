@@ -183,3 +183,12 @@ diff --git a/scapy/layers/inet6.py b/scapy/layers/inet6.py
  ########################### Fragmentation Header ############################
 
  class IPv6ExtHdrFragment(_IPv6ExtHdr):
+diff --git a/scapy/layers/inet6.py b/scapy/layers/inet6.py
+index 20afedf..ae3c4dd 100644
+--- a/scapy/layers/inet6.py
++++ b/scapy/layers/inet6.py
+@@ -3888,3 +3888,4 @@ bind_layers(IPv6,      UDP,      nh = socket.IPPROTO_UDP )
+ bind_layers(IP,        IPv6,     proto = socket.IPPROTO_IPV6 )
+ bind_layers(IPv6,      IPv6,     nh = socket.IPPROTO_IPV6 )
+ bind_layers(IPv6,      IP,       nh = socket.IPPROTO_IPIP )
++bind_layers(IPv6,      GRE,      nh = socket.IPPROTO_GRE )

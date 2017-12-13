@@ -398,7 +398,7 @@ gre_input (vlib_main_t * vm,
 	  int verr0;
 	  u32 i0, next0;
 	  u32 ip4_tun_src0, ip4_tun_dst0;
-	  u32 ip6_tun_src0[4], ip6_tun_dst0[4];
+	  u64 ip6_tun_src0[2], ip6_tun_dst0[2];
 
 	  bi0 = from[0];
 	  to_next[0] = bi0;
