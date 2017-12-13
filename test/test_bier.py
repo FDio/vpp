@@ -335,6 +335,31 @@ class TestBier(VppTestCase):
 
         self.send_and_expect(self.pg0, [p], self.pg1)
 
+        #
+        # A packet that does not match the Disposition entry gets dropped
+        #
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             MPLS(label=77, ttl=255) /
+             BIER(length=BIERLength.BIER_LEN_256, BFRID=77) /
+             IP(src="1.1.1.1", dst="232.1.1.1") /
+             UDP(sport=1234, dport=1234) /
+             Raw())
+        self.send_and_assert_no_replies(self.pg0, p*2,
+                                        "no matching disposition entry")
+
+        #
+        # Add the default route to the disposition table
+        #
+        bier_de_2 = VppBierDispEntry(self, bdt.id, 0,
+                                     BIER_HDR_PAYLOAD.BIER_HDR_PROTO_IPV4,
+                                     "0.0.0.0", 0, rpf_id=8192)
+        bier_de_2.add_vpp_config()
+
+        #
+        # now the previous packet is forwarded
+        #
+        self.send_and_expect(self.pg0, [p], self.pg1)
+
     def test_bier_e2e(self):
         """ BIER end-to-end """
 

@@ -496,7 +496,10 @@ vl_api_bier_disp_entry_add_del_t_handler (vl_api_bier_disp_entry_add_del_t * mp)
     table_id = ntohl(mp->bde_tbl_id);
     bp = ntohs(mp->bde_bp);
 
-    if (0 == bp || bp > 0xffff)
+    /*
+     * BP=0 is the default route
+     */
+    if (bp > 0xffff)
     {
         rv = -1;
         goto done;
