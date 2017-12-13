@@ -37,7 +37,14 @@ public:
   l3_rule(uint32_t priority,
           const action_t& action,
           const route::prefix_t& src,
-          const route::prefix_t& dst);
+          const route::prefix_t& dst,
+          uint8_t proto = 0,
+          uint16_t srcport_or_icmptype_first = 0,
+          uint16_t srcport_or_icmptype_last = 0,
+          uint16_t dstport_or_icmpcode_first = 0,
+          uint16_t dstport_or_icmpcode_last = 0,
+          uint8_t tcp_flags_mask = 0,
+          uint8_t tcp_flags_value = 0);
 
   /**
    * Copy Constructor

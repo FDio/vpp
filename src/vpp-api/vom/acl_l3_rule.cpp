@@ -22,18 +22,25 @@ namespace ACL {
 l3_rule::l3_rule(uint32_t priority,
                  const action_t& action,
                  const route::prefix_t& src,
-                 const route::prefix_t& dst)
+                 const route::prefix_t& dst,
+                 uint8_t proto,
+                 uint16_t srcport_or_icmptype_first,
+                 uint16_t srcport_or_icmptype_last,
+                 uint16_t dstport_or_icmpcode_first,
+                 uint16_t dstport_or_icmpcode_last,
+                 uint8_t tcp_flags_mask,
+                 uint8_t tcp_flags_value)
   : m_priority(priority)
   , m_action(action)
   , m_src(src)
   , m_dst(dst)
-  , m_proto(0)
-  , m_srcport_or_icmptype_first(0)
-  , m_srcport_or_icmptype_last(0)
-  , m_dstport_or_icmpcode_first(0)
-  , m_dstport_or_icmpcode_last(0)
-  , m_tcp_flags_mask(0)
-  , m_tcp_flags_value(0)
+  , m_proto(proto)
+  , m_srcport_or_icmptype_first(srcport_or_icmptype_first)
+  , m_srcport_or_icmptype_last(srcport_or_icmptype_last)
+  , m_dstport_or_icmpcode_first(dstport_or_icmpcode_first)
+  , m_dstport_or_icmpcode_last(dstport_or_icmpcode_last)
+  , m_tcp_flags_mask(tcp_flags_mask)
+  , m_tcp_flags_value(tcp_flags_value)
 {
 }
 
