@@ -148,6 +148,18 @@ public:
 
   static void remove(const handle_t& handle) { m_hdl_db.erase(handle); }
 
+  const key_t& key() const { return m_key; }
+
+  const rules_t& rules() const { return m_rules; }
+
+  /**
+   * Comparison operator - for UT
+   */
+  bool operator==(const list& l) const
+  {
+    return (key() == l.key() && rules() == l.rules());
+  }
+
 private:
   /**
    * Class definition for listeners to OM events
