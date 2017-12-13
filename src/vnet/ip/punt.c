@@ -750,21 +750,33 @@ punt_cli (vlib_main_t * vm,
 	  /* punt both IPv6 and IPv4 when used in CLI */
 	  error = vnet_punt_add_del (vm, ~0, protocol, ~0, is_add);
 	  if (error)
-	    clib_error_report (error);
+	    {
+	      clib_error_report (error);
+	      goto done;
+	    }
 	}
       else if (unformat (input, "%d", &port))
 	{
 	  /* punt both IPv6 and IPv4 when used in CLI */
 	  error = vnet_punt_add_del (vm, ~0, protocol, port, is_add);
 	  if (error)
-	    clib_error_report (error);
+	    {
+	      clib_error_report (error);
+	      goto done;
+	    }
 	}
       else if (unformat (input, "udp"))
 	protocol = IP_PROTOCOL_UDP;
       else if (unformat (input, "tcp"))
 	protocol = IP_PROTOCOL_TCP;
+      else
+	{
+	  error = clib_error_return (0, "parse error: '%U'",
+				     format_unformat_error, input);
+	  goto done;
+	}
     }
-
+done:
   return 0;
 }
 
