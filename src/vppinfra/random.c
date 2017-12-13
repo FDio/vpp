@@ -63,20 +63,26 @@ u32 standalone_random_default_seed = 1;
 f64
 clib_chisquare (u64 * values)
 {
-  int i;
+  u32 i, len;
   f64 d, delta_d, actual_frequency, expected_frequency;
   u64 n_observations = 0;
 
-  ASSERT (vec_len (values));
+  len = vec_len (values);
+  /*
+   * Shut up coverity. Return a huge number which should always exceed
+   * the X2 critical value.
+   */
+  if (len == 0)
+    return (f64) 1e70;
 
-  for (i = 0; i < vec_len (values); i++)
+  for (i = 0; i < len; i++)
     n_observations += values[i];
 
-  expected_frequency = (1.0 / (f64) vec_len (values)) * (f64) n_observations;
+  expected_frequency = (1.0 / (f64) len) * (f64) n_observations;
 
   d = 0.0;
 
-  for (i = 0; i < vec_len (values); i++)
+  for (i = 0; i < len; i++)
     {
       actual_frequency = ((f64) values[i]);
       delta_d = ((actual_frequency - expected_frequency)

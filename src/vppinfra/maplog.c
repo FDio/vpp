@@ -394,6 +394,7 @@ clib_maplog_process (char *file_basename, void *fp_arg)
       goto out;
     }
   (void) close (fd);
+  fd = -1;
 
   file_size_in_bytes = h->file_size_in_records
     * h->record_size_in_cachelines * CLIB_CACHE_LINE_BYTES;
