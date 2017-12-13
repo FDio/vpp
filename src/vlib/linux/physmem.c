@@ -85,8 +85,8 @@ unix_physmem_alloc_aligned (vlib_main_t * vm, vlib_physmem_region_index_t idx,
       /* Make sure allocation does not span DMA physical chunk boundary. */
       hi_offset = lo_offset + n_bytes - 1;
 
-      if ((lo_offset >> pr->log2_page_size) ==
-	  (hi_offset >> pr->log2_page_size))
+      if (((pointer_to_uword (pr->heap) + lo_offset) >> pr->log2_page_size) ==
+	  ((pointer_to_uword (pr->heap) + hi_offset) >> pr->log2_page_size))
 	break;
 
       /* Allocation would span chunk boundary, queue it to be freed as soon as
