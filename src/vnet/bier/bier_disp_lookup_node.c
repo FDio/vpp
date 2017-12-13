@@ -63,6 +63,7 @@ bier_disp_lookup_inline (vlib_main_t * vm,
         while (n_left_from > 0 && n_left_to_next > 0)
         {
             const bier_hdr_t *hdr0;
+            bier_hdr_src_id_t src0;
             vlib_buffer_t * b0;
             u32 bdei0, bdti0;
             u32 next0, bi0;
@@ -82,15 +83,22 @@ bier_disp_lookup_inline (vlib_main_t * vm,
             /*
              * lookup - source is in network order.
              */
-            bdei0 = bier_disp_table_lookup(bdti0, bier_hdr_get_src_id(hdr0));
+            src0 = bier_hdr_get_src_id(hdr0);
+            next0 = BIER_DISP_LOOKUP_NEXT_DISPATCH;
+
+            bdei0 = bier_disp_table_lookup(bdti0, src0);
 
             if (PREDICT_FALSE(INDEX_INVALID == bdei0))
             {
-                next0 = BIER_DISP_LOOKUP_NEXT_DROP;
-            }
-            else
-            {
-                next0 = BIER_DISP_LOOKUP_NEXT_DISPATCH;
+                /*
+                 * if a specific match misses, try the default
+                 */
+                bdei0 = bier_disp_table_lookup(bdti0, 0);
+
+                if (PREDICT_FALSE(INDEX_INVALID == bdei0))
+                {
+                    next0 = BIER_DISP_LOOKUP_NEXT_DROP;
+                }
             }
 
             vnet_buffer(b0)->ip.adj_index[VLIB_TX] = bdei0;

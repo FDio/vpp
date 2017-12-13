@@ -221,7 +221,8 @@ define bier_disp_table_details
 /** \brief BIER Disposition Entry Add / del
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
-    @param bde_bp - The Bit-position value for the entry
+    @param bde_bp - The Bit-position value for the entry, i.e. the sender's
+                    Use 0 for the default (match any source) entry.
     @param bde_tbl_id - The BIER dispositiontable-id the route is added in
     @param bde_next_hop_sw_if_index - the nextop interface
     @param bde_is_add - Is this a route add or delete
