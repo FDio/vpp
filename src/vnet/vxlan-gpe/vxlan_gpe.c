@@ -1269,6 +1269,7 @@ vxlan_gpe_init (vlib_main_t * vm)
   ngm->mcast_shared = hash_create_mem (0,
 				       sizeof (ip46_address_t),
 				       sizeof (mcast_shared_t));
+  ngm->vtep6 = hash_create_mem (0, sizeof (ip6_address_t), sizeof (uword));
 
   udp_register_dst_port (vm, UDP_DST_PORT_VXLAN_GPE,
 			 vxlan4_gpe_input_node.index, 1 /* is_ip4 */ );
