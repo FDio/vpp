@@ -103,8 +103,17 @@ typedef struct
   u64 features, remote_features;
 
   virtio_if_type_t type;
+  u16 tx_ring_sz;
+  u16 rx_ring_sz;
   u8 *host_if_name;
   u8 *net_ns;
+  u8 *host_bridge;
+  u8 host_mac_addr[6];
+  ip4_address_t host_ip4_addr;
+  u8 host_ip4_prefix_len;
+  ip6_address_t host_ip6_addr;
+  u8 host_ip6_prefix_len;
+
   int ifindex;
 } virtio_if_t;
 

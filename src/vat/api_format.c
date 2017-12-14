@@ -12439,8 +12439,20 @@ static void vl_api_sw_interface_tap_v2_details_t_handler
 {
   vat_main_t *vam = &vat_main;
 
-  print (vam->ofp, "%-16s %d",
-	 mp->dev_name, clib_net_to_host_u32 (mp->sw_if_index));
+  u8 *ip4 = format (0, "%U/%d", format_ip4_address, mp->host_ip4_addr,
+		    mp->host_ip4_prefix_len);
+  u8 *ip6 = format (0, "%U/%d", format_ip6_address, mp->host_ip6_addr,
+		    mp->host_ip6_prefix_len);
+
+  print (vam->ofp,
+	 "\n%-16s %-12d %-5d %-12d %-12d %-14U %-30s %-20s %-20s %-30s",
+	 mp->dev_name, ntohl (mp->sw_if_index), ntohl (mp->id),
+	 ntohs (mp->rx_ring_sz), ntohs (mp->tx_ring_sz),
+	 format_ethernet_address, mp->host_mac_addr, mp->host_namespace,
+	 mp->host_bridge, ip4, ip6);
+
+  vec_free (ip4);
+  vec_free (ip6);
 }
 
 static void vl_api_sw_interface_tap_v2_details_t_handler_json
@@ -12457,8 +12469,26 @@ static void vl_api_sw_interface_tap_v2_details_t_handler_json
   node = vat_json_array_add (&vam->json_tree);
 
   vat_json_init_object (node);
+  vat_json_object_add_uint (node, "id", ntohl (mp->id));
   vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
   vat_json_object_add_string_copy (node, "dev_name", mp->dev_name);
+  vat_json_object_add_uint (node, "rx_ring_sz", ntohs (mp->rx_ring_sz));
+  vat_json_object_add_uint (node, "tx_ring_sz", ntohs (mp->tx_ring_sz));
+  vat_json_object_add_string_copy (node, "host_mac_addr",
+				   format (0, "%U", format_ethernet_address,
+					   &mp->host_mac_addr));
+  vat_json_object_add_string_copy (node, "host_namespace",
+				   mp->host_namespace);
+  vat_json_object_add_string_copy (node, "host_bridge", mp->host_bridge);
+  vat_json_object_add_string_copy (node, "host_ip4_addr",
+				   format (0, "%U/%d", format_ip4_address,
+					   mp->host_ip4_addr,
+					   mp->host_ip4_prefix_len));
+  vat_json_object_add_string_copy (node, "host_ip6_addr",
+				   format (0, "%U/%d", format_ip6_address,
+					   mp->host_ip6_addr,
+					   mp->host_ip6_prefix_len));
+
 }
 
 static int
@@ -12468,7 +12498,12 @@ api_sw_interface_tap_v2_dump (vat_main_t * vam)
   vl_api_control_ping_t *mp_ping;
   int ret;
 
-  print (vam->ofp, "\n%-16s %s", "dev_name", "sw_if_index");
+  print (vam->ofp,
+	 "\n%-16s %-12s %-5s %-12s %-12s %-14s %-30s %-20s %-20s %-30s",
+	 "dev_name", "sw_if_index", "id", "rx_ring_sz", "tx_ring_sz",
+	 "host_mac_addr", "host_namespace", "host_bridge", "host_ip4_addr",
+	 "host_ip6_addr");
+
   /* Get list of tap interfaces */
   M (SW_INTERFACE_TAP_V2_DUMP, mp);
   S (mp);

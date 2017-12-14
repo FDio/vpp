@@ -164,13 +164,32 @@ tap_send_sw_interface_details (vpe_api_main_t * am,
   vl_api_sw_interface_tap_v2_details_t *mp;
   mp = vl_msg_api_alloc (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_SW_INTERFACE_TAP_V2_DETAILS);
-  mp->sw_if_index = ntohl (tap_if->sw_if_index);
+  mp->_vl_msg_id = htons (VL_API_SW_INTERFACE_TAP_V2_DETAILS);
+  mp->id = htonl (tap_if->id);
+  mp->sw_if_index = htonl (tap_if->sw_if_index);
   clib_memcpy (mp->dev_name, tap_if->dev_name,
 	       MIN (ARRAY_LEN (mp->dev_name) - 1,
 		    strlen ((const char *) tap_if->dev_name)));
-  mp->context = context;
+  mp->rx_ring_sz = htons (tap_if->rx_ring_sz);
+  mp->tx_ring_sz = htons (tap_if->tx_ring_sz);
+  clib_memcpy (mp->host_mac_addr, tap_if->host_mac_addr, 6);
+  clib_memcpy (mp->host_if_name, tap_if->host_if_name,
+	       MIN (ARRAY_LEN (mp->host_if_name) - 1,
+		    strlen ((const char *) tap_if->host_if_name)));
+  clib_memcpy (mp->host_namespace, tap_if->host_namespace,
+	       MIN (ARRAY_LEN (mp->host_namespace) - 1,
+		    strlen ((const char *) tap_if->host_namespace)));
+  clib_memcpy (mp->host_bridge, tap_if->host_bridge,
+	       MIN (ARRAY_LEN (mp->host_bridge) - 1,
+		    strlen ((const char *) tap_if->host_bridge)));
+  if (tap_if->host_ip4_prefix_len)
+    clib_memcpy (&mp->host_ip4_addr, &tap_if->host_ip4_addr, 4);
+  mp->host_ip4_prefix_len = tap_if->host_ip4_prefix_len;
+  if (tap_if->host_ip6_prefix_len)
+    clib_memcpy (&mp->host_ip6_addr, &tap_if->host_ip6_addr, 16);
+  mp->host_ip6_prefix_len = tap_if->host_ip6_prefix_len;
 
+  mp->context = context;
   vl_msg_api_send_shmem (q, (u8 *) & mp);
 }
 
