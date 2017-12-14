@@ -91,6 +91,11 @@ typedef struct
     BVT (clib_bihash_value) ** freelists;
   void *mheap;
 
+  /**
+    * A custom format function to print the Key and Value of bihash_key instead of default hexdump
+    */
+  format_function_t *fmt_fn;
+
 } BVT (clib_bihash);
 
 
@@ -239,6 +244,9 @@ static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
 
 void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size);
+
+void BV (clib_bihash_set_kvp_format_fn) (BVT (clib_bihash) * h,
+					 format_function_t * fmt_fn);
 
 void BV (clib_bihash_free) (BVT (clib_bihash) * h);
 
