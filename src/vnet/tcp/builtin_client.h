@@ -97,6 +97,9 @@ typedef struct
   int i_am_master;
   int drop_packets;		/**< drop all packets */
   u8 prealloc_fifos;		/**< Request fifo preallocation */
+  u8 no_output;
+  u8 test_bytes;
+  u8 test_failed;
 
   /*
    * Convenience
