@@ -45,8 +45,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef included_clib_memcpy_avx_h
-#define included_clib_memcpy_avx_h
+#ifndef included_clib_memcpy_avx512_h
+#define included_clib_memcpy_avx512_h
 
 #include <stdint.h>
 #include <x86intrin.h>
@@ -72,77 +72,69 @@ clib_mov32 (u8 * dst, const u8 * src)
 static inline void
 clib_mov64 (u8 * dst, const u8 * src)
 {
-  clib_mov32 ((u8 *) dst + 0 * 32, (const u8 *) src + 0 * 32);
-  clib_mov32 ((u8 *) dst + 1 * 32, (const u8 *) src + 1 * 32);
+  __m512i zmm0;
+
+  zmm0 = _mm512_loadu_si512 ((const void *) src);
+  _mm512_storeu_si512 ((void *) dst, zmm0);
 }
 
 static inline void
 clib_mov128 (u8 * dst, const u8 * src)
 {
-  clib_mov64 ((u8 *) dst + 0 * 64, (const u8 *) src + 0 * 64);
-  clib_mov64 ((u8 *) dst + 1 * 64, (const u8 *) src + 1 * 64);
+  clib_mov64 (dst + 0 * 64, src + 0 * 64);
+  clib_mov64 (dst + 1 * 64, src + 1 * 64);
 }
 
 static inline void
 clib_mov256 (u8 * dst, const u8 * src)
 {
-  clib_mov128 ((u8 *) dst + 0 * 128, (const u8 *) src + 0 * 128);
-  clib_mov128 ((u8 *) dst + 1 * 128, (const u8 *) src + 1 * 128);
+  clib_mov128 (dst + 0 * 128, src + 0 * 128);
+  clib_mov128 (dst + 1 * 128, src + 1 * 128);
 }
 
 static inline void
-clib_mov64blocks (u8 * dst, const u8 * src, size_t n)
+clib_mov128blocks (u8 * dst, const u8 * src, size_t n)
 {
-  __m256i ymm0, ymm1;
+  __m512i zmm0, zmm1;
 
-  while (n >= 64)
+  while (n >= 128)
     {
-      ymm0 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 0 * 32));
-      n -= 64;
-      ymm1 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 1 * 32));
-      src = (const u8 *) src + 64;
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 0 * 32), ymm0);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 1 * 32), ymm1);
-      dst = (u8 *) dst + 64;
+      zmm0 = _mm512_loadu_si512 ((const void *) (src + 0 * 64));
+      n -= 128;
+      zmm1 = _mm512_loadu_si512 ((const void *) (src + 1 * 64));
+      src = src + 128;
+      _mm512_storeu_si512 ((void *) (dst + 0 * 64), zmm0);
+      _mm512_storeu_si512 ((void *) (dst + 1 * 64), zmm1);
+      dst = dst + 128;
     }
 }
 
 static inline void
-clib_mov256blocks (u8 * dst, const u8 * src, size_t n)
+clib_mov512blocks (u8 * dst, const u8 * src, size_t n)
 {
-  __m256i ymm0, ymm1, ymm2, ymm3, ymm4, ymm5, ymm6, ymm7;
+  __m512i zmm0, zmm1, zmm2, zmm3, zmm4, zmm5, zmm6, zmm7;
 
-  while (n >= 256)
+  while (n >= 512)
     {
-      ymm0 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 0 * 32));
-      n -= 256;
-      ymm1 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 1 * 32));
-      ymm2 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 2 * 32));
-      ymm3 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 3 * 32));
-      ymm4 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 4 * 32));
-      ymm5 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 5 * 32));
-      ymm6 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 6 * 32));
-      ymm7 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 7 * 32));
-      src = (const u8 *) src + 256;
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 0 * 32), ymm0);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 1 * 32), ymm1);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 2 * 32), ymm2);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 3 * 32), ymm3);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 4 * 32), ymm4);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 5 * 32), ymm5);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 6 * 32), ymm6);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 7 * 32), ymm7);
-      dst = (u8 *) dst + 256;
+      zmm0 = _mm512_loadu_si512 ((const void *) (src + 0 * 64));
+      n -= 512;
+      zmm1 = _mm512_loadu_si512 ((const void *) (src + 1 * 64));
+      zmm2 = _mm512_loadu_si512 ((const void *) (src + 2 * 64));
+      zmm3 = _mm512_loadu_si512 ((const void *) (src + 3 * 64));
+      zmm4 = _mm512_loadu_si512 ((const void *) (src + 4 * 64));
+      zmm5 = _mm512_loadu_si512 ((const void *) (src + 5 * 64));
+      zmm6 = _mm512_loadu_si512 ((const void *) (src + 6 * 64));
+      zmm7 = _mm512_loadu_si512 ((const void *) (src + 7 * 64));
+      src = src + 512;
+      _mm512_storeu_si512 ((void *) (dst + 0 * 64), zmm0);
+      _mm512_storeu_si512 ((void *) (dst + 1 * 64), zmm1);
+      _mm512_storeu_si512 ((void *) (dst + 2 * 64), zmm2);
+      _mm512_storeu_si512 ((void *) (dst + 3 * 64), zmm3);
+      _mm512_storeu_si512 ((void *) (dst + 4 * 64), zmm4);
+      _mm512_storeu_si512 ((void *) (dst + 5 * 64), zmm5);
+      _mm512_storeu_si512 ((void *) (dst + 6 * 64), zmm6);
+      _mm512_storeu_si512 ((void *) (dst + 7 * 64), zmm7);
+      dst = dst + 512;
     }
 }
 
@@ -168,20 +160,18 @@ clib_memcpy (void *dst, const void *src, size_t n)
 	}
       if (n & 0x02)
 	{
-	  *(uint16_t *) dstu = *(const uint16_t *) srcu;
-	  srcu = (uword) ((const uint16_t *) srcu + 1);
-	  dstu = (uword) ((uint16_t *) dstu + 1);
+	  *(u16 *) dstu = *(const u16 *) srcu;
+	  srcu = (uword) ((const u16 *) srcu + 1);
+	  dstu = (uword) ((u16 *) dstu + 1);
 	}
       if (n & 0x04)
 	{
-	  *(uint32_t *) dstu = *(const uint32_t *) srcu;
-	  srcu = (uword) ((const uint32_t *) srcu + 1);
-	  dstu = (uword) ((uint32_t *) dstu + 1);
+	  *(u32 *) dstu = *(const u32 *) srcu;
+	  srcu = (uword) ((const u32 *) srcu + 1);
+	  dstu = (uword) ((u32 *) dstu + 1);
 	}
       if (n & 0x08)
-	{
-	  *(uint64_t *) dstu = *(const uint64_t *) srcu;
-	}
+	*(u64 *) dstu = *(const u64 *) srcu;
       return ret;
     }
 
@@ -216,62 +206,53 @@ clib_memcpy (void *dst, const void *src, size_t n)
 	  src = (const u8 *) src + 128;
 	  dst = (u8 *) dst + 128;
 	}
-      if (n >= 64)
+    COPY_BLOCK_128_BACK63:
+      if (n > 64)
 	{
-	  n -= 64;
 	  clib_mov64 ((u8 *) dst, (const u8 *) src);
-	  src = (const u8 *) src + 64;
-	  dst = (u8 *) dst + 64;
-	}
-    COPY_BLOCK_64_BACK31:
-      if (n > 32)
-	{
-	  clib_mov32 ((u8 *) dst, (const u8 *) src);
-	  clib_mov32 ((u8 *) dst - 32 + n, (const u8 *) src - 32 + n);
+	  clib_mov64 ((u8 *) dst - 64 + n, (const u8 *) src - 64 + n);
 	  return ret;
 	}
       if (n > 0)
-	{
-	  clib_mov32 ((u8 *) dst - 32 + n, (const u8 *) src - 32 + n);
-	}
+	clib_mov64 ((u8 *) dst - 64 + n, (const u8 *) src - 64 + n);
       return ret;
     }
 
 	/**
          * Make store aligned when copy size exceeds 512 bytes
          */
-  dstofss = (uword) dst & 0x1F;
+  dstofss = (uword) dst & 0x3F;
   if (dstofss > 0)
     {
-      dstofss = 32 - dstofss;
+      dstofss = 64 - dstofss;
       n -= dstofss;
-      clib_mov32 ((u8 *) dst, (const u8 *) src);
+      clib_mov64 ((u8 *) dst, (const u8 *) src);
       src = (const u8 *) src + dstofss;
       dst = (u8 *) dst + dstofss;
     }
 
 	/**
-         * Copy 256-byte blocks.
+         * Copy 512-byte blocks.
          * Use copy block function for better instruction order control,
          * which is important when load is unaligned.
          */
-  clib_mov256blocks ((u8 *) dst, (const u8 *) src, n);
+  clib_mov512blocks ((u8 *) dst, (const u8 *) src, n);
   bits = n;
-  n = n & 255;
+  n = n & 511;
   bits -= n;
   src = (const u8 *) src + bits;
   dst = (u8 *) dst + bits;
 
 	/**
-         * Copy 64-byte blocks.
+         * Copy 128-byte blocks.
          * Use copy block function for better instruction order control,
          * which is important when load is unaligned.
          */
-  if (n >= 64)
+  if (n >= 128)
     {
-      clib_mov64blocks ((u8 *) dst, (const u8 *) src, n);
+      clib_mov128blocks ((u8 *) dst, (const u8 *) src, n);
       bits = n;
-      n = n & 63;
+      n = n & 127;
       bits -= n;
       src = (const u8 *) src + bits;
       dst = (u8 *) dst + bits;
@@ -280,11 +261,11 @@ clib_memcpy (void *dst, const void *src, size_t n)
 	/**
          * Copy whatever left
          */
-  goto COPY_BLOCK_64_BACK31;
+  goto COPY_BLOCK_128_BACK63;
 }
 
 
-#endif /* included_clib_mamcpy_avx_h */
+#endif /* included_clib_mamcpy_avx512_h */
 
 
 /*
