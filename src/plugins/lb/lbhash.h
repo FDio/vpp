@@ -101,16 +101,16 @@ void lb_hash_free(lb_hash_t *h)
   vec_free(mem);
 }
 
-#if __SSE4_2__ && !defined (__i386__)
+#if defined(clib_crc32c_uses_intrinsics) && !defined (__i386__)
 static_always_inline
 u32 lb_hash_hash(u64 k0, u64 k1, u64 k2, u64 k3, u64 k4)
 {
   u64 val = 0;
-  val = _mm_crc32_u64(val, k0);
-  val = _mm_crc32_u64(val, k1);
-  val = _mm_crc32_u64(val, k2);
-  val = _mm_crc32_u64(val, k3);
-  val = _mm_crc32_u64(val, k4);
+  val = crc32_u64(val, k0);
+  val = crc32_u64(val, k1);
+  val = crc32_u64(val, k2);
+  val = crc32_u64(val, k3);
+  val = crc32_u64(val, k4);
   return (u32) val;
 }
 #else

@@ -91,8 +91,8 @@ format_cuckoo_kvp_8_8 (u8 * s, va_list * args)
 always_inline u64
 clib_cuckoo_hash_8_8 (clib_cuckoo_kv_8_8_t * v)
 {
-#if __SSE4_2__ && !defined (__i386__)
-  return _mm_crc32_u64 (0, v->key);
+#if defined(clib_crc32c_uses_intrinsics) && !defined (__i386__)
+  return crc32_u64 (0, v->key);
 #else
   return clib_xxhash (v->key);
 #endif

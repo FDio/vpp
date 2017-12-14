@@ -22,6 +22,8 @@
 #define clib_crc32c_uses_intrinsics
 #include <x86intrin.h>
 
+#define crc32_u64 _mm_crc32_u64
+
 static_always_inline u32
 clib_crc32c (u8 * s, int len)
 {
@@ -51,6 +53,9 @@ clib_crc32c (u8 * s, int len)
 #elif __ARM_FEATURE_CRC32
 #define clib_crc32c_uses_intrinsics
 #include <arm_acle.h>
+
+
+#define crc32_u64 __crc32cd
 
 static_always_inline u32
 clib_crc32c (u8 * s, int len)
