@@ -1003,6 +1003,8 @@ nat64_out2in_handoff_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
 	      current_worker_index = next_worker_index;
 	    }
 
+	  ASSERT (to_next_worker != 0);
+
 	  /* enqueue to correct worker thread */
 	  to_next_worker[0] = bi0;
 	  to_next_worker++;
