@@ -16,4 +16,4 @@
 
 const char *version_string = "G2 (x86_64 GNU/Linux) major version 3.0";
 const char *minor_v_string = 
-    "Built Wed Feb  3 10:58:12 EST 2016";
+    "Changed Thu Dec 14 17:18:36 EST 2017";
