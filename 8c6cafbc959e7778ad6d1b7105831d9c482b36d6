@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f5ff0eed_316a3580",
+        "filename": "src/plugins/l2e/l2e.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-12-14T16:09:15Z",
+      "side": 1,
+      "message": "If next node is ip4/ip6, I guess packet forwarding will not be on L2 feature path any more. Is it right? If so, clearing the L2 emulation bit is not really necessary.",
+      "range": {
+        "startLine": 412,
+        "startChar": 26,
+        "endLine": 412,
+        "endChar": 40
+      },
+      "revId": "8c6cafbc959e7778ad6d1b7105831d9c482b36d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
