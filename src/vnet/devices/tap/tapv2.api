@@ -102,13 +102,35 @@ define sw_interface_tap_v2_dump
 
 /** \brief Reply for tap dump request
     @param sw_if_index - software index of tap interface
+    @param id - interface id
     @param dev_name - Linux tap device name
+    @param tx_ring_sz - the number of entries of TX ring
+    @param rx_ring_sz - the number of entries of RX ring
+    @param host_mac_addr - mac address assigned to the host side of the interface
+    @param host_if_name - host side interface name
+    @param host_namespace - host namespace the interface is attached into
+    @param host_bridge - host bridge the interface is attached into
+    @param host_ip4_addr - host IPv4 ip address
+    @param host_ip4_prefix_len - host IPv4 ip address prefix length; 0 if unset
+    @param host_ip6_addr - host IPv6 ip address
+    @param host_ip6_prefix_len - host IPv6 ip address prefix length; 0 if unset
 */
 define sw_interface_tap_v2_details
 {
   u32 context;
   u32 sw_if_index;
+  u32 id;
   u8 dev_name[64];
+  u16 tx_ring_sz;
+  u16 rx_ring_sz;
+  u8 host_mac_addr[6];
+  u8 host_if_name[64];
+  u8 host_namespace[64];
+  u8 host_bridge[64];
+  u8 host_ip4_addr[4];
+  u8 host_ip4_prefix_len;
+  u8 host_ip6_addr[16];
+  u8 host_ip6_prefix_len;
 };
 
 /*

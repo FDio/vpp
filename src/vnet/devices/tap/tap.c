@@ -335,10 +335,22 @@ tap_create_if (vlib_main_t * vm, tap_create_if_args_t * args)
       args->mac_addr[0] = 2;
       args->mac_addr[1] = 0xfe;
     }
+  vif->rx_ring_sz = args->rx_ring_sz != 0 ? args->rx_ring_sz : 256;
+  vif->tx_ring_sz = args->tx_ring_sz != 0 ? args->tx_ring_sz : 256;
   vif->host_if_name = args->host_if_name;
   args->host_if_name = 0;
   vif->net_ns = args->host_namespace;
   args->host_namespace = 0;
+  vif->host_bridge = args->host_bridge;
+  args->host_bridge = 0;
+  clib_memcpy (vif->host_mac_addr, args->host_mac_addr, 6);
+  vif->host_ip4_prefix_len = args->host_ip4_prefix_len;
+  vif->host_ip6_prefix_len = args->host_ip6_prefix_len;
+  if (args->host_ip4_prefix_len)
+    clib_memcpy (&vif->host_ip4_addr, &args->host_ip4_addr, 4);
+  if (args->host_ip6_prefix_len)
+    clib_memcpy (&vif->host_ip6_addr, &args->host_ip6_addr, 16);
+
   args->error = ethernet_register_interface (vnm, virtio_device_class.index,
 					     vif->dev_instance,
 					     args->mac_addr,
@@ -441,11 +453,39 @@ tap_dump_ifs (tap_interface_details_t ** out_tapids)
   pool_foreach (vif, mm->interfaces,
     vec_add2(r_tapids, tapid, 1);
     memset (tapid, 0, sizeof (*tapid));
+    tapid->id = vif->id;
     tapid->sw_if_index = vif->sw_if_index;
     hi = vnet_get_hw_interface (vnm, vif->hw_if_index);
     clib_memcpy(tapid->dev_name, hi->name,
-		MIN (ARRAY_LEN (tapid->dev_name) - 1,
-		     strlen ((const char *) hi->name)));
+                MIN (ARRAY_LEN (tapid->dev_name) - 1,
+                     strlen ((const char *) hi->name)));
+    tapid->rx_ring_sz = vif->rx_ring_sz;
+    tapid->tx_ring_sz = vif->tx_ring_sz;
+    clib_memcpy(tapid->host_mac_addr, vif->host_mac_addr, 6);
+    if (vif->host_if_name)
+      {
+        clib_memcpy(tapid->host_if_name, vif->host_if_name,
+                    MIN (ARRAY_LEN (tapid->host_if_name) - 1,
+                    strlen ((const char *) vif->host_if_name)));
+      }
+    if (vif->net_ns)
+      {
+        clib_memcpy(tapid->host_namespace, vif->net_ns,
+                    MIN (ARRAY_LEN (tapid->host_namespace) - 1,
+                    strlen ((const char *) vif->net_ns)));
+      }
+    if (vif->host_bridge)
+      {
+        clib_memcpy(tapid->host_bridge, vif->host_bridge,
+                    MIN (ARRAY_LEN (tapid->host_bridge) - 1,
+                    strlen ((const char *) vif->host_bridge)));
+      }
+    if (vif->host_ip4_prefix_len)
+      clib_memcpy(tapid->host_ip4_addr, &vif->host_ip4_addr, 4);
+    tapid->host_ip4_prefix_len = vif->host_ip4_prefix_len;
+    if (vif->host_ip6_prefix_len)
+      clib_memcpy(tapid->host_ip6_addr, &vif->host_ip6_addr, 16);
+    tapid->host_ip6_prefix_len = vif->host_ip6_prefix_len;
   );
   /* *INDENT-ON* */
 
