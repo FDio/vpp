@@ -76,6 +76,61 @@ typedef enum gre_tunnel_tyoe_t_
 #define GRE_TUNNEL_N_TYPES ((gre_tunnel_type_t)GRE_TUNNEL_TYPE_TEB+1)
 
 /**
+ * @brief Key for a IPv4 GRE Tunnel
+ */
+typedef struct gre_tunnel_key4_t_
+{
+  /**
+   * Source and destination IP addresses
+   */
+  union
+  {
+    struct
+    {
+      ip4_address_t gtk_src;
+      ip4_address_t gtk_dst;
+    };
+    u64 gtk_as_u64;
+  };
+
+  /**
+   * The FIB table the src,dst addresses are in.
+   * tunnels with the same IP addresses in different FIBs are not
+   * the same tunnel
+   */
+  u32 gtk_fib_index;
+} __attribute__ ((packed)) gre_tunnel_key4_t;
+
+/**
+ * @brief Key for a IPv6 GRE Tunnel
+ * We use a different type so that the V4 key hash is as small as possible
+ */
+typedef struct gre_tunnel_key6_t_
+{
+  /**
+   * Source and destination IP addresses
+   */
+  ip6_address_t gtk_src;
+  ip6_address_t gtk_dst;
+
+  /**
+   * The FIB table the src,dst addresses are in.
+   * tunnels with the same IP addresses in different FIBs are not
+   * the same tunnel
+   */
+  u32 gtk_fib_index;
+} __attribute__ ((packed)) gre_tunnel_key6_t;
+
+/**
+ * Union of the two possible key types
+ */
+typedef union gre_tunnel_key_t_
+{
+  gre_tunnel_key4_t gtk_v4;
+  gre_tunnel_key6_t gtk_v6;
+} gre_tunnel_key_t;
+
+/**
  * @brief A representation of a GRE tunnel
  */
 typedef struct
@@ -84,6 +139,12 @@ typedef struct
    * Linkage into the FIB object graph
    */
   fib_node_t node;
+
+  /**
+   * The hash table's key stored in separate memory since the tunnel_t
+   * memory can realloc.
+   */
+  gre_tunnel_key_t *key;
 
   /**
    * The tunnel's source/local address
@@ -151,8 +212,8 @@ typedef struct
   uword *tunnel_by_key4;
 
   /**
-     * Hash mapping ipv6 src/dst addr pair to tunnel
-     */
+   * Hash mapping ipv6 src/dst addr pair to tunnel
+   */
   uword *tunnel_by_key6;
 
   /**
@@ -254,6 +315,45 @@ typedef struct
 
 int vnet_gre_add_del_tunnel
   (vnet_gre_add_del_tunnel_args_t * a, u32 * sw_if_indexp);
+
+static inline void
+gre_mk_key4 (const ip4_address_t * src,
+	     const ip4_address_t * dst,
+	     u32 fib_index, gre_tunnel_key4_t * key)
+{
+  key->gtk_src = *src;
+  key->gtk_dst = *dst;
+  key->gtk_fib_index = fib_index;
+}
+
+static inline int
+gre_match_key4 (const gre_tunnel_key4_t * key1,
+		const gre_tunnel_key4_t * key2)
+{
+  return ((key1->gtk_as_u64 == key2->gtk_as_u64) &&
+	  (key1->gtk_fib_index == key2->gtk_fib_index));
+}
+
+static inline void
+gre_mk_key6 (const ip6_address_t * src,
+	     const ip6_address_t * dst,
+	     u32 fib_index, gre_tunnel_key6_t * key)
+{
+  key->gtk_src = *src;
+  key->gtk_dst = *dst;
+  key->gtk_fib_index = fib_index;
+}
+
+static inline int
+gre_match_key6 (const gre_tunnel_key6_t * key1,
+		const gre_tunnel_key6_t * key2)
+{
+  return ((key1->gtk_src.as_u64[0] == key2->gtk_src.as_u64[0]) &&
+	  (key1->gtk_src.as_u64[1] == key2->gtk_src.as_u64[1]) &&
+	  (key1->gtk_dst.as_u64[0] == key2->gtk_dst.as_u64[0]) &&
+	  (key1->gtk_dst.as_u64[1] == key2->gtk_dst.as_u64[1]) &&
+	  (key1->gtk_fib_index == key2->gtk_fib_index));
+}
 
 #endif /* included_gre_h */
 
