@@ -3010,3 +3010,18 @@ class VppPapiProvider(object):
              'is_outbound': is_outbound,
              'sa_id': sa_id,
              'is_ip_any': is_ip_any})
+
+    def app_namespace_add(self,
+                          namespace_id,
+                          ip4_fib_id=0,
+                          ip6_fib_id=0,
+                          sw_if_index=0xFFFFFFFF,
+                          secret=0):
+        return self.api(
+            self.papi.app_namespace_add_del,
+            {'secret': secret,
+             'sw_if_index': sw_if_index,
+             'ip4_fib_id': ip4_fib_id,
+             'ip6_fib_id': ip6_fib_id,
+             'namespace_id': namespace_id,
+             'namespace_id_len': len(namespace_id)})

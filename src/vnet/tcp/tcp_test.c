@@ -1770,7 +1770,6 @@ VLIB_CLI_COMMAND (tcp_test_command, static) =
 };
 /* *INDENT-ON* */
 
-
 /*
  * fd.io coding-style-patch-verification: ON
  *
