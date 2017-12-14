@@ -91,6 +91,11 @@ typedef struct
     BVT (clib_bihash_value) ** freelists;
   void *mheap;
 
+  /**
+    * A format function
+    */
+  format_function_t *fmt_fn;
+
 } BVT (clib_bihash);
 
 
@@ -239,6 +244,10 @@ static inline uword BV (clib_bihash_get_offset) (BVT (clib_bihash) * h,
 
 void BV (clib_bihash_init)
   (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size);
+
+void BV (clib_bihash_init1)
+  (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size,
+   format_function_t * fmt_fn);
 
 void BV (clib_bihash_free) (BVT (clib_bihash) * h);
 
