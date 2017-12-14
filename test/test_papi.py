@@ -19,13 +19,16 @@ class TestPAPI(VppTestCase):
         cls.v = cls.vapi.papi
 
     def test_show_version(self):
+        """ show version """
         rv = self.v.show_version()
         self.assertEqual(rv.retval, 0)
 
     def test_show_version_invalid_param(self):
+        """ show version - invalid parameters"""
         self.assertRaises(ValueError, self.v.show_version, foobar='foo')
 
     def test_u8_array(self):
+        """ u8 array """
         rv = self.v.get_node_index(node_name='ip4-lookup')
         self.assertEqual(rv.retval, 0)
         node_name = 'X' * 100
@@ -62,6 +65,7 @@ class TestPAPIMessageParsing(VppTestCase):
         ]'''
 
     def test_adding_new_message_object(self):
+        """ Add new message object """
         p = json.loads(TestPAPIMessageParsing.show_version_msg)
         msglist = VPP(testmode=json)
         msgdef = msglist.add_message(p[0], p[1:])
@@ -77,6 +81,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertTrue(msglist.ret_tup('show_version'))
 
     def test_adding_new_message_object_with_array(self):
+        """ New message with array """
         p = json.loads(TestPAPIMessageParsing.ip_address_details_msg)
         msglist = VPP(testmode=True)
         msglist.add_message(p[0], p[1:])
@@ -84,6 +89,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertTrue(msglist['ip_address_details'])
 
     def test_message_to_bytes(self):
+        """ Message to byte encoding """
         msglist = VPP(testmode=True)
         p = json.loads(TestPAPIMessageParsing.show_version_msg)
         msgdef = msglist.add_message(p[0], p[1:])
@@ -140,6 +146,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual([1, 2], rv.list)
 
     def test_add_new_types(self):
+        """ Add new types """
         counter_type = '''["ip4_fib_counter",
             ["u32", "address"],
             ["u8", "address_length"],
@@ -171,6 +178,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual(5678, rv.counter.bytes)
 
     def test_add_two_new_types(self):
+        """ Add new types 2 """
         mock_r1 = '''["mock_r1",
             ["u32", "a1"],
             {"crc" : "0xb2739495"}
@@ -204,6 +212,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual(4, rv.r1.a1)
 
     def test_nested_array_type(self):
+        """ Nested array type """
         bier_type = '''["bier_table_id",
             ["u8", "bt_set"],
             ["u8", "bt_sub_domain"],
@@ -250,6 +259,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual(bt_tbl_id['bt_set'], rv.br_tbl_id.bt_set)
 
     def test_add_new_compound_type_with_array(self):
+        """ New compound type with array """
         counter_type = '''["ip4_fib_counter",
             ["u32", "address"],
             ["u8", "address_length"],
@@ -309,6 +319,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual(333, rv.counter[1].packets)
 
     def test_simple_array(self):
+        """ Simple array """
         msglist = VPP(testmode=True)
 
         simple_byte_array = '''["simple_byte_array",
@@ -362,6 +373,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual('foobar', rv.list)
 
     def test_old_vla_array(self):
+        """ Old style VLA array """
         msglist = VPP(testmode=True)
 
         # VLA
@@ -383,6 +395,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual(b'foobar', rv.oldmask)
 
     def test_old_vla_array_not_last_member(self):
+        """ Old VLA array arbitrary placement """
         msglist = VPP(testmode=True)
 
         # VLA
@@ -395,6 +408,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertRaises(ValueError, msglist.add_message, p[0], p[1:])
 
     def test_old_vla_array_u32(self):
+        """ Old VLA u32 """
         msglist = VPP(testmode=True)
 
         # VLA
@@ -412,6 +426,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual([123, 456, 789], rv.oldmask)
 
     def test_old_vla_array_compound(self):
+        """ Old VLA compound type """
         msglist = VPP(testmode=True)
 
         # VLA
@@ -436,6 +451,7 @@ class TestPAPIMessageParsing(VppTestCase):
             msgdef = msglist.add_message(p[0], p[1:])
 
     def test_array_count_not_previous(self):
+        """ VLA with aribtrary length field placement """
         msglist = VPP(testmode=True)
 
         # VLA
@@ -454,6 +470,7 @@ class TestPAPIMessageParsing(VppTestCase):
         self.assertEqual(rv.lst, [1, 2, 3])
 
     def test_argument_name(self):
+        """ Argument name """
         msglist = VPP(testmode=True)
 
         simple_name = '''["simple_name",
