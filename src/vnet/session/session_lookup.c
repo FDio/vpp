@@ -205,6 +205,7 @@ session_table_get_or_alloc (u8 fib_proto, u8 fib_index)
       vec_validate (fib_index_to_table_index[fib_proto], fib_index);
       fib_index_to_table_index[fib_proto][fib_index] = table_index;
       st->active_fib_proto = fib_proto;
+      session_table_init (st, fib_proto);
       return st;
     }
   else

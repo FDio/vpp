@@ -530,6 +530,10 @@ clients_connect (vlib_main_t * vm, u8 * uri, u32 n_clients)
   return 0;
 }
 
+#define CLI_OUTPUT(_fmt, _args...) 			\
+  if (!no_output)  					\
+    vlib_cli_output(vm, _fmt, ##_args)
+
 static clib_error_t *
 test_tcp_clients_command_fn (vlib_main_t * vm,
 			     unformat_input_t * input,
@@ -542,7 +546,7 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   u64 tmp, total_bytes, appns_flags = 0, appns_secret = 0;
   f64 test_timeout = 20.0, syn_timeout = 20.0, delta;
   f64 time_before_connects;
-  u32 n_clients = 1;
+  u32 n_clients = 1, no_output = 0;
   int preallocate_sessions = 0;
   char *transfer_type;
   clib_error_t *error = 0;
@@ -608,6 +612,8 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
 	appns_flags = APP_OPTIONS_FLAGS_USE_GLOBAL_SCOPE;
       else if (unformat (input, "secret %lu", &appns_secret))
 	;
+      else if (unformat (input, "no-output"))
+	no_output = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
@@ -678,26 +684,25 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   switch (event_type)
     {
     case ~0:
-      vlib_cli_output (vm, "Timeout with only %d sessions active...",
-		       tm->ready_connections);
+      CLI_OUTPUT ("Timeout with only %d sessions active...",
+	         tm->ready_connections);
+      error = clib_error_return(0, "Timeout with only %d sessions active",
+	                        tm->ready_connections);
       goto cleanup;
 
     case 1:
       delta = vlib_time_now (vm) - time_before_connects;
-
       if (delta != 0.0)
-	{
-	  vlib_cli_output
-	    (vm, "%d three-way handshakes in %.2f seconds, %.2f/sec",
-	     n_clients, delta, ((f64) n_clients) / delta);
-	}
+	CLI_OUTPUT ("%d three-way handshakes in %.2f seconds %.2f/s",
+	                 n_clients, delta, ((f64) n_clients) / delta);
 
       tm->test_start_time = vlib_time_now (tm->vlib_main);
-      vlib_cli_output (vm, "Test started at %.6f", tm->test_start_time);
+      CLI_OUTPUT ("Test started at %.6f", tm->test_start_time);
       break;
 
     default:
-      vlib_cli_output (vm, "unexpected event(1): %d", event_type);
+      CLI_OUTPUT ("unexpected event(1): %d", event_type);
+      error = clib_error_return (0, "unexpected event(1): %d", event_type);
       goto cleanup;
     }
 
@@ -707,17 +712,20 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
   switch (event_type)
     {
     case ~0:
-      vlib_cli_output (vm, "Timeout with %d sessions still active...",
-		       tm->ready_connections);
+      CLI_OUTPUT ("Timeout with %d sessions still active...",
+	               tm->ready_connections);
+      error = clib_error_return(0, "Timeout with %d sessions active...",
+	                        tm->ready_connections);
       goto cleanup;
 
     case 2:
       tm->test_end_time = vlib_time_now (vm);
-      vlib_cli_output (vm, "Test finished at %.6f", tm->test_end_time);
+      CLI_OUTPUT ("Test finished at %.6f", tm->test_end_time);
       break;
 
     default:
-      vlib_cli_output (vm, "unexpected event(2): %d", event_type);
+      CLI_OUTPUT ("unexpected event(2): %d", event_type);
+      error = clib_error_return (0, "unexpected event(2): %d", event_type);
       goto cleanup;
     }
 
@@ -727,18 +735,16 @@ test_tcp_clients_command_fn (vlib_main_t * vm,
     {
       total_bytes = (tm->no_return ? tm->tx_total : tm->rx_total);
       transfer_type = tm->no_return ? "half-duplex" : "full-duplex";
-      vlib_cli_output (vm,
-		       "%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds",
-		       total_bytes, total_bytes / (1ULL << 20),
-		       total_bytes / (1ULL << 30), delta);
-      vlib_cli_output (vm, "%.2f bytes/second %s",
-		       ((f64) total_bytes) / (delta), transfer_type);
-      vlib_cli_output (vm, "%.4f gbit/second %s",
-		       (((f64) total_bytes * 8.0) / delta / 1e9),
-		       transfer_type);
+      CLI_OUTPUT ("%lld bytes (%lld mbytes, %lld gbytes) in %.2f seconds",
+	          total_bytes, total_bytes / (1ULL << 20),
+	          total_bytes / (1ULL << 30), delta);
+      CLI_OUTPUT ("%.2f bytes/second %s", ((f64 ) total_bytes) / (delta),
+	          transfer_type);
+      CLI_OUTPUT ("%.4f gbit/second %s",
+	          (((f64 ) total_bytes * 8.0) / delta / 1e9), transfer_type);
     }
   else
-    vlib_cli_output (vm, "zero delta-t?");
+    CLI_OUTPUT ("zero delta-t?");
 
 cleanup:
   tm->run_test = 0;
@@ -760,11 +766,14 @@ cleanup:
 
       rv = vnet_application_detach (da);
       if (rv)
-	vlib_cli_output (vm, "WARNING: app detach failed...");
+	{
+	  error = clib_error_return(0, "app detach failed");
+	  CLI_OUTPUT("WARNING: app detach failed...");
+	}
       tm->test_client_attached = 0;
       tm->app_index = ~0;
     }
-  return 0;
+  return error;
 }
 
 /* *INDENT-OFF* */
