@@ -222,9 +222,9 @@ clib_memcpy (void *dst, const void *src, size_t n)
       return ret;
     }
 
-	/**
-	 * Fast way when copy size doesn't exceed 512 bytes
-	 */
+  /**
+   * Fast way when copy size doesn't exceed 512 bytes
+   */
   if (n <= 32)
     {
       clib_mov16 ((u8 *) dst, (const u8 *) src);
@@ -295,27 +295,31 @@ clib_memcpy (void *dst, const void *src, size_t n)
       return ret;
     }
 
-	/**
-	 * Make store aligned when copy size exceeds 512 bytes,
-	 * and make sure the first 15 bytes are copied, because
-	 * unaligned copy functions require up to 15 bytes
-	 * backwards access.
-	 */
-  dstofss = 16 - ((uword) dst & 0x0F) + 16;
-  n -= dstofss;
-  clib_mov32 ((u8 *) dst, (const u8 *) src);
-  src = (const u8 *) src + dstofss;
-  dst = (u8 *) dst + dstofss;
+  /**
+   * Make store aligned when copy size exceeds 512 bytes,
+   * and make sure the first 15 bytes are copied, because
+   * unaligned copy functions require up to 15 bytes
+   * backwards access.
+   */
+  dstofss = (uword) dst & 0x0F;
+  if (dstofss > 0)
+    {
+      dstofss = 16 - dstofss + 16;
+      n -= dstofss;
+      clib_mov32 ((u8 *) dst, (const u8 *) src);
+      src = (const u8 *) src + dstofss;
+      dst = (u8 *) dst + dstofss;
+    }
   srcofs = ((uword) src & 0x0F);
 
-	/**
-	 * For aligned copy
-	 */
+  /**
+   * For aligned copy
+   */
   if (srcofs == 0)
     {
-		/**
-		 * Copy 256-byte blocks
-		 */
+      /**
+       * Copy 256-byte blocks
+       */
       for (; n >= 256; n -= 256)
 	{
 	  clib_mov256 ((u8 *) dst, (const u8 *) src);
@@ -323,20 +327,20 @@ clib_memcpy (void *dst, const void *src, size_t n)
 	  src = (const u8 *) src + 256;
 	}
 
-		/**
-		 * Copy whatever left
-		 */
+      /**
+       * Copy whatever left
+       */
       goto COPY_BLOCK_255_BACK15;
     }
 
-	/**
-	 * For copy with unaligned load
-	 */
+  /**
+   * For copy with unaligned load
+   */
   CLIB_MVUNALIGN_LEFT47 (dst, src, n, srcofs);
 
-	/**
-	 * Copy whatever left
-	 */
+  /**
+   * Copy whatever left
+   */
   goto COPY_BLOCK_64_BACK15;
 }
 

@@ -84,65 +84,27 @@ clib_mov128 (u8 * dst, const u8 * src)
 }
 
 static inline void
-clib_mov256 (u8 * dst, const u8 * src)
+clib_mov128blocks (u8 * dst, const u8 * src, size_t n)
 {
-  clib_mov128 ((u8 *) dst + 0 * 128, (const u8 *) src + 0 * 128);
-  clib_mov128 ((u8 *) dst + 1 * 128, (const u8 *) src + 1 * 128);
-}
+  __m256i ymm0, ymm1, ymm2, ymm3;
 
-static inline void
-clib_mov64blocks (u8 * dst, const u8 * src, size_t n)
-{
-  __m256i ymm0, ymm1;
-
-  while (n >= 64)
+  while (n >= 128)
     {
       ymm0 =
 	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 0 * 32));
-      n -= 64;
-      ymm1 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 1 * 32));
-      src = (const u8 *) src + 64;
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 0 * 32), ymm0);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 1 * 32), ymm1);
-      dst = (u8 *) dst + 64;
-    }
-}
-
-static inline void
-clib_mov256blocks (u8 * dst, const u8 * src, size_t n)
-{
-  __m256i ymm0, ymm1, ymm2, ymm3, ymm4, ymm5, ymm6, ymm7;
-
-  while (n >= 256)
-    {
-      ymm0 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 0 * 32));
-      n -= 256;
+      n -= 128;
       ymm1 =
 	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 1 * 32));
       ymm2 =
 	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 2 * 32));
       ymm3 =
 	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 3 * 32));
-      ymm4 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 4 * 32));
-      ymm5 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 5 * 32));
-      ymm6 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 6 * 32));
-      ymm7 =
-	_mm256_loadu_si256 ((const __m256i *) ((const u8 *) src + 7 * 32));
-      src = (const u8 *) src + 256;
+      src = (const u8 *) src + 128;
       _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 0 * 32), ymm0);
       _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 1 * 32), ymm1);
       _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 2 * 32), ymm2);
       _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 3 * 32), ymm3);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 4 * 32), ymm4);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 5 * 32), ymm5);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 6 * 32), ymm6);
-      _mm256_storeu_si256 ((__m256i *) ((u8 *) dst + 7 * 32), ymm7);
-      dst = (u8 *) dst + 256;
+      dst = (u8 *) dst + 128;
     }
 }
 
@@ -155,9 +117,9 @@ clib_memcpy (void *dst, const void *src, size_t n)
   size_t dstofss;
   size_t bits;
 
-	/**
-         * Copy less than 16 bytes
-         */
+  /**
+   * Copy less than 16 bytes
+   */
   if (n < 16)
     {
       if (n & 0x01)
@@ -168,29 +130,36 @@ clib_memcpy (void *dst, const void *src, size_t n)
 	}
       if (n & 0x02)
 	{
-	  *(uint16_t *) dstu = *(const uint16_t *) srcu;
-	  srcu = (uword) ((const uint16_t *) srcu + 1);
-	  dstu = (uword) ((uint16_t *) dstu + 1);
+	  *(u16 *) dstu = *(const u16 *) srcu;
+	  srcu = (uword) ((const u16 *) srcu + 1);
+	  dstu = (uword) ((u16 *) dstu + 1);
 	}
       if (n & 0x04)
 	{
-	  *(uint32_t *) dstu = *(const uint32_t *) srcu;
-	  srcu = (uword) ((const uint32_t *) srcu + 1);
-	  dstu = (uword) ((uint32_t *) dstu + 1);
+	  *(u32 *) dstu = *(const u32 *) srcu;
+	  srcu = (uword) ((const u32 *) srcu + 1);
+	  dstu = (uword) ((u32 *) dstu + 1);
 	}
       if (n & 0x08)
 	{
-	  *(uint64_t *) dstu = *(const uint64_t *) srcu;
+	  *(u64 *) dstu = *(const u64 *) srcu;
 	}
       return ret;
     }
 
-	/**
-         * Fast way when copy size doesn't exceed 512 bytes
-         */
+  /**
+    * Fast way when copy size doesn't exceed 512 bytes
+    */
   if (n <= 32)
     {
       clib_mov16 ((u8 *) dst, (const u8 *) src);
+      clib_mov16 ((u8 *) dst - 16 + n, (const u8 *) src - 16 + n);
+      return ret;
+    }
+  if (n <= 48)
+    {
+      clib_mov16 ((u8 *) dst, (const u8 *) src);
+      clib_mov16 ((u8 *) dst + 16, (const u8 *) src + 16);
       clib_mov16 ((u8 *) dst - 16 + n, (const u8 *) src - 16 + n);
       return ret;
     }
@@ -200,15 +169,8 @@ clib_memcpy (void *dst, const void *src, size_t n)
       clib_mov32 ((u8 *) dst - 32 + n, (const u8 *) src - 32 + n);
       return ret;
     }
-  if (n <= 512)
+  if (n <= 256)
     {
-      if (n >= 256)
-	{
-	  n -= 256;
-	  clib_mov256 ((u8 *) dst, (const u8 *) src);
-	  src = (const u8 *) src + 256;
-	  dst = (u8 *) dst + 256;
-	}
       if (n >= 128)
 	{
 	  n -= 128;
@@ -216,6 +178,7 @@ clib_memcpy (void *dst, const void *src, size_t n)
 	  src = (const u8 *) src + 128;
 	  dst = (u8 *) dst + 128;
 	}
+    COPY_BLOCK_128_BACK31:
       if (n >= 64)
 	{
 	  n -= 64;
@@ -223,7 +186,6 @@ clib_memcpy (void *dst, const void *src, size_t n)
 	  src = (const u8 *) src + 64;
 	  dst = (u8 *) dst + 64;
 	}
-    COPY_BLOCK_64_BACK31:
       if (n > 32)
 	{
 	  clib_mov32 ((u8 *) dst, (const u8 *) src);
@@ -237,9 +199,9 @@ clib_memcpy (void *dst, const void *src, size_t n)
       return ret;
     }
 
-	/**
-         * Make store aligned when copy size exceeds 512 bytes
-         */
+    /**
+      * Make store aligned when copy size exceeds 256 bytes
+      */
   dstofss = (uword) dst & 0x1F;
   if (dstofss > 0)
     {
@@ -250,37 +212,20 @@ clib_memcpy (void *dst, const void *src, size_t n)
       dst = (u8 *) dst + dstofss;
     }
 
-	/**
-         * Copy 256-byte blocks.
-         * Use copy block function for better instruction order control,
-         * which is important when load is unaligned.
-         */
-  clib_mov256blocks ((u8 *) dst, (const u8 *) src, n);
+  /**
+    * Copy 128-byte blocks.
+    */
+  clib_mov128blocks ((u8 *) dst, (const u8 *) src, n);
   bits = n;
-  n = n & 255;
+  n = n & 127;
   bits -= n;
   src = (const u8 *) src + bits;
   dst = (u8 *) dst + bits;
 
-	/**
-         * Copy 64-byte blocks.
-         * Use copy block function for better instruction order control,
-         * which is important when load is unaligned.
-         */
-  if (n >= 64)
-    {
-      clib_mov64blocks ((u8 *) dst, (const u8 *) src, n);
-      bits = n;
-      n = n & 63;
-      bits -= n;
-      src = (const u8 *) src + bits;
-      dst = (u8 *) dst + bits;
-    }
-
-	/**
-         * Copy whatever left
-         */
-  goto COPY_BLOCK_64_BACK31;
+  /**
+   * Copy whatever left
+   */
+  goto COPY_BLOCK_128_BACK31;
 }
 
 
