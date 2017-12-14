@@ -40,6 +40,16 @@ void BV (clib_bihash_init)
     BV (clib_bihash_reset_cache) (h->buckets + i);
 
   clib_mem_set_heap (oldheap);
+
+  h->fmt_fn = NULL;
+}
+
+void BV (clib_bihash_init1)
+  (BVT (clib_bihash) * h, char *name, u32 nbuckets, uword memory_size,
+   format_function_t * fmt_fn)
+{
+  BV (clib_bihash_init) (h, name, nbuckets, memory_size);
+  h->fmt_fn = fmt_fn;
 }
 
 void BV (clib_bihash_free) (BVT (clib_bihash) * h)
@@ -565,9 +575,18 @@ u8 *BV (format_bihash) (u8 * s, va_list * args)
 		}
 	      if (verbose)
 		{
-		  s = format (s, "    %d: %U\n",
-			      j * BIHASH_KVP_PER_PAGE + k,
-			      BV (format_bihash_kvp), &(v->kvp[k]));
+		  if (h->fmt_fn)
+		    {
+		      s = format (s, "    %d: %U\n",
+				  j * BIHASH_KVP_PER_PAGE + k,
+				  h->fmt_fn, &(v->kvp[k]));
+		    }
+		  else
+		    {
+		      s = format (s, "    %d: %U\n",
+				  j * BIHASH_KVP_PER_PAGE + k,
+				  BV (format_bihash_kvp), &(v->kvp[k]));
+		    }
 		}
 	      active_elements++;
 	    }
