@@ -1055,12 +1055,12 @@ BOOST_AUTO_TEST_CASE(test_arp_proxy) {
     const std::string kurt = "KurtVonnegut";
     rc_t rc = rc_t::OK;
 
-    asio::ip::address_v4 low  = asio::ip::address_v4::from_string("10.0.0.0");
-    asio::ip::address_v4 high = asio::ip::address_v4::from_string("10.0.0.255");
-
+    route::prefix_t low(asio::ip::address::from_string("10.0.0.0"));
+    route::prefix_t high(asio::ip::address::from_string("10.0.0.255"));
     arp_proxy_config ap(low, high);
     HW::item<bool> hw_ap_cfg(true, rc_t::OK);
-    ADD_EXPECT(arp_proxy_config_cmds::config_cmd(hw_ap_cfg, low, high));
+    ADD_EXPECT(arp_proxy_config_cmds::config_cmd(hw_ap_cfg,
+                         low.address().to_v4(), high.address().to_v4()));
     TRY_CHECK_RC(OM::write(kurt, ap));
 
     std::string itf3_name = "host3";
@@ -1086,7 +1086,8 @@ BOOST_AUTO_TEST_CASE(test_arp_proxy) {
     ADD_EXPECT(arp_proxy_binding_cmds::unbind_cmd(hw_binding, hw_ifh.data()));
     ADD_EXPECT(interface_cmds::state_change_cmd(hw_as_down, hw_ifh));
     ADD_EXPECT(interface_cmds::af_packet_delete_cmd(hw_ifh, itf3_name));
-    ADD_EXPECT(arp_proxy_config_cmds::unconfig_cmd(hw_ap_cfg, low, high));
+    ADD_EXPECT(arp_proxy_config_cmds::unconfig_cmd(hw_ap_cfg,
+                         low.address().to_v4(), high.address().to_v4()));
 
     TRY_CHECK(OM::remove(kurt));
 }

@@ -21,8 +21,8 @@ singular_db<arp_proxy_config::key_t, arp_proxy_config> arp_proxy_config::m_db;
 
 arp_proxy_config::event_handler arp_proxy_config::m_evh;
 
-arp_proxy_config::arp_proxy_config(const boost::asio::ip::address_v4& low,
-                                   const boost::asio::ip::address_v4& high)
+arp_proxy_config::arp_proxy_config(const route::prefix_t& low,
+                                   const route::prefix_t& high)
   : m_low(low)
   , m_high(high)
   , m_config(true)
@@ -48,8 +48,8 @@ void
 arp_proxy_config::sweep()
 {
   if (m_config) {
-    HW::enqueue(
-      new arp_proxy_config_cmds::unconfig_cmd(m_config, m_low, m_high));
+    HW::enqueue(new arp_proxy_config_cmds::unconfig_cmd(
+      m_config, m_low.address().to_v4(), m_high.address().to_v4()));
   }
   HW::write();
 }
@@ -64,7 +64,8 @@ void
 arp_proxy_config::replay()
 {
   if (m_config) {
-    HW::enqueue(new arp_proxy_config_cmds::config_cmd(m_config, m_low, m_high));
+    HW::enqueue(new arp_proxy_config_cmds::config_cmd(
+      m_config, m_low.address().to_v4(), m_high.address().to_v4()));
   }
 }
 
@@ -82,7 +83,8 @@ void
 arp_proxy_config::update(const arp_proxy_config& desired)
 {
   if (!m_config) {
-    HW::enqueue(new arp_proxy_config_cmds::config_cmd(m_config, m_low, m_high));
+    HW::enqueue(new arp_proxy_config_cmds::config_cmd(
+      m_config, m_low.address().to_v4(), m_high.address().to_v4()));
   }
 }
 

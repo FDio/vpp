@@ -20,6 +20,7 @@
 #include "vom/inspect.hpp"
 #include "vom/object_base.hpp"
 #include "vom/om.hpp"
+#include "vom/prefix.hpp"
 #include "vom/singular_db.hpp"
 
 namespace VOM {
@@ -32,14 +33,12 @@ public:
   /**
    * Key type
    */
-  typedef std::pair<boost::asio::ip::address_v4, boost::asio::ip::address_v4>
-    key_t;
+  typedef std::pair<route::prefix_t, route::prefix_t> key_t;
 
   /**
    * Construct a new object matching the desried state
    */
-  arp_proxy_config(const boost::asio::ip::address_v4& low,
-                   const boost::asio::ip::address_v4& high);
+  arp_proxy_config(const route::prefix_t& low, const route::prefix_t& high);
 
   /**
    * Copy Constructor
@@ -136,8 +135,8 @@ private:
   /**
    * Address range
    */
-  const boost::asio::ip::address_v4 m_low;
-  const boost::asio::ip::address_v4 m_high;
+  const route::prefix_t m_low;
+  const route::prefix_t m_high;
 
   /**
    * A map of all ArpProxy configs keyed against the interface.
