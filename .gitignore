@@ -100,3 +100,6 @@ GTAGS
 
 # vppctl command list
 /src/scripts/vppctl-cmd-list
+
+# No core files
+**/core
