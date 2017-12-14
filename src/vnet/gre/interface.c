@@ -27,14 +27,6 @@
 
 static const char *gre_tunnel_type_names[] = GRE_TUNNEL_TYPE_NAMES;
 
-static inline u64
-gre4_mk_key (const ip4_address_t * src,
-	     const ip4_address_t * dst, u32 out_fib_index)
-{
-  // FIXME. the fib index should be part of the key
-  return ((u64) src->as_u32 << 32 | (u64) dst->as_u32);
-}
-
 static u8 *
 format_gre_tunnel_type (u8 * s, va_list * args)
 {
@@ -70,24 +62,21 @@ format_gre_tunnel (u8 * s, va_list * args)
 
 static gre_tunnel_t *
 gre_tunnel_db_find (const ip46_address_t * src,
-		    const ip46_address_t * dst, u32 out_fib_index, u8 is_ipv6)
+		    const ip46_address_t * dst,
+		    u32 out_fib_index, u8 is_ipv6, gre_tunnel_key_t * key)
 {
   gre_main_t *gm = &gre_main;
   uword *p;
-  u64 key4, key6[4];
 
   if (!is_ipv6)
     {
-      key4 = gre4_mk_key (&src->ip4, &dst->ip4, out_fib_index);
-      p = hash_get (gm->tunnel_by_key4, key4);
+      gre_mk_key4 (&src->ip4, &dst->ip4, out_fib_index, &key->gtk_v4);
+      p = hash_get_mem (gm->tunnel_by_key4, &key->gtk_v4);
     }
   else
     {
-      key6[0] = src->ip6.as_u64[0];
-      key6[1] = src->ip6.as_u64[1];
-      key6[2] = dst->ip6.as_u64[0];
-      key6[3] = dst->ip6.as_u64[1];
-      p = hash_get_mem (gm->tunnel_by_key6, key6);
+      gre_mk_key6 (&src->ip6, &dst->ip6, out_fib_index, &key->gtk_v6);
+      p = hash_get_mem (gm->tunnel_by_key6, &key->gtk_v6);
     }
 
   if (NULL == p)
@@ -97,52 +86,39 @@ gre_tunnel_db_find (const ip46_address_t * src,
 }
 
 static void
-gre_tunnel_db_add (const gre_tunnel_t * t)
+gre_tunnel_db_add (gre_tunnel_t * t, gre_tunnel_key_t * key)
 {
   gre_main_t *gm = &gre_main;
-  u64 key4, key6[4], *key6_copy;
-  u8 is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
 
-  if (!is_ipv6)
+  t->key = clib_mem_alloc (sizeof (*t->key));
+  clib_memcpy (t->key, key, sizeof (*key));
+
+  if (t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6)
     {
-      key4 = gre4_mk_key (&t->tunnel_src.ip4, &t->tunnel_dst.fp_addr.ip4,
-			  t->outer_fib_index);
-      hash_set (gm->tunnel_by_key4, key4, t - gm->tunnels);
+      hash_set_mem (gm->tunnel_by_key6, &t->key->gtk_v6, t - gm->tunnels);
     }
   else
     {
-      key6[0] = t->tunnel_src.ip6.as_u64[0];
-      key6[1] = t->tunnel_src.ip6.as_u64[1];
-      key6[2] = t->tunnel_dst.fp_addr.ip6.as_u64[0];
-      key6[3] = t->tunnel_dst.fp_addr.ip6.as_u64[1];
-      key6_copy = clib_mem_alloc (sizeof (key6));
-      clib_memcpy (key6_copy, key6, sizeof (key6));
-      hash_set_mem (gm->tunnel_by_key6, key6_copy, t - gm->tunnels);
+      hash_set_mem (gm->tunnel_by_key4, &t->key->gtk_v4, t - gm->tunnels);
     }
 }
 
 static void
-gre_tunnel_db_remove (const gre_tunnel_t * t)
+gre_tunnel_db_remove (gre_tunnel_t * t)
 {
   gre_main_t *gm = &gre_main;
-  u64 key4, key6[4];
-  u8 is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
 
-  if (!is_ipv6)
+  if (t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6)
     {
-      key4 = gre4_mk_key (&t->tunnel_src.ip4, &t->tunnel_dst.fp_addr.ip4,
-			  t->outer_fib_index);
-      hash_unset (gm->tunnel_by_key4, key4);
+      hash_unset_mem (gm->tunnel_by_key6, &t->key->gtk_v6);
     }
   else
     {
-      key6[0] = t->tunnel_src.ip6.as_u64[0];
-      key6[1] = t->tunnel_src.ip6.as_u64[1];
-      key6[2] = t->tunnel_dst.fp_addr.ip6.as_u64[0];
-      key6[3] = t->tunnel_dst.fp_addr.ip6.as_u64[1];
-      hash_unset_mem (gm->tunnel_by_key6, key6);
+      hash_unset_mem (gm->tunnel_by_key4, &t->key->gtk_v4);
     }
 
+  clib_mem_free (t->key);
+  t->key = NULL;
 }
 
 static gre_tunnel_t *
@@ -283,6 +259,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a, u32 * sw_if_indexp)
   u8 address[6];
   clib_error_t *error;
   u8 is_ipv6 = a->is_ipv6;
+  gre_tunnel_key_t key;
 
   if (!is_ipv6)
     outer_fib_index = ip4_fib_index_from_table_id (a->outer_fib_id);
@@ -292,7 +269,8 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a, u32 * sw_if_indexp)
   if (~0 == outer_fib_index)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
-  t = gre_tunnel_db_find (&a->src, &a->dst, a->outer_fib_id, a->is_ipv6);
+  t =
+    gre_tunnel_db_find (&a->src, &a->dst, a->outer_fib_id, a->is_ipv6, &key);
 
   if (NULL != t)
     return VNET_API_ERROR_INVALID_VALUE;
@@ -415,7 +393,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a, u32 * sw_if_indexp)
   t->tunnel_dst.fp_proto = !is_ipv6 ? FIB_PROTOCOL_IP4 : FIB_PROTOCOL_IP6;
   t->tunnel_dst.fp_addr = a->dst;
 
-  gre_tunnel_db_add (t);
+  gre_tunnel_db_add (t, &key);
 
   t->fib_entry_index =
     fib_table_entry_special_add (outer_fib_index,
@@ -446,9 +424,11 @@ vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t * a,
   gre_main_t *gm = &gre_main;
   vnet_main_t *vnm = gm->vnet_main;
   gre_tunnel_t *t;
+  gre_tunnel_key_t key;
   u32 sw_if_index;
 
-  t = gre_tunnel_db_find (&a->src, &a->dst, a->outer_fib_id, a->is_ipv6);
+  t =
+    gre_tunnel_db_find (&a->src, &a->dst, a->outer_fib_id, a->is_ipv6, &key);
 
   if (NULL == t)
     return VNET_API_ERROR_NO_SUCH_ENTRY;

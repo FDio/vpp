@@ -9,7 +9,7 @@ class VppGreInterface(VppInterface):
     """
 
     def __init__(self, test, src_ip, dst_ip, outer_fib_id=0, is_teb=0):
-        """ Create VPP loopback interface """
+        """ Create VPP GRE interface """
         self._sw_if_index = 0
         super(VppGreInterface, self).__init__(test)
         self._test = test
@@ -42,7 +42,7 @@ class VppGre6Interface(VppInterface):
     """
 
     def __init__(self, test, src_ip, dst_ip, outer_fib_id=0, is_teb=0):
-        """ Create VPP loopback interface """
+        """ Create VPP GRE interface """
         self._sw_if_index = 0
         super(VppGre6Interface, self).__init__(test)
         self._test = test

@@ -516,8 +516,10 @@ gre_init (vlib_main_t * vm)
 
   gm->protocol_info_by_name = hash_create_string (0, sizeof (uword));
   gm->protocol_info_by_protocol = hash_create (0, sizeof (uword));
-  gm->tunnel_by_key4 = hash_create (0, sizeof (uword));
-  gm->tunnel_by_key6 = hash_create_mem (0, sizeof (u64[4]), sizeof (uword));
+  gm->tunnel_by_key4 =
+    hash_create_mem (0, sizeof (gre_tunnel_key4_t), sizeof (uword));
+  gm->tunnel_by_key6 =
+    hash_create_mem (0, sizeof (gre_tunnel_key6_t), sizeof (uword));
 
 #define _(n,s) add_protocol (gm, GRE_PROTOCOL_##s, #s);
   foreach_gre_protocol
