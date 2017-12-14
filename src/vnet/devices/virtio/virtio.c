@@ -28,6 +28,8 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vnet/ethernet/ethernet.h>
+#include <vnet/ip/ip4_packet.h>
+#include <vnet/ip/ip6_packet.h>
 #include <vnet/devices/virtio/virtio.h>
 
 virtio_main_t virtio_main;

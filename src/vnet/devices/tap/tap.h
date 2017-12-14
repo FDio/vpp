@@ -34,9 +34,9 @@ typedef struct
   u8 host_mac_addr[6];
   u8 *host_bridge;
   ip4_address_t host_ip4_addr;
-  u32 host_ip4_prefix_len;
+  u8 host_ip4_prefix_len;
   ip6_address_t host_ip6_addr;
-  u32 host_ip6_prefix_len;
+  u8 host_ip6_prefix_len;
   /* return */
   u32 sw_if_index;
   int rv;
@@ -46,8 +46,19 @@ typedef struct
 /** TAP interface details struct */
 typedef struct
 {
+  u32 id;
   u32 sw_if_index;
   u8 dev_name[64];
+  u16 tx_ring_sz;
+  u16 rx_ring_sz;
+  u8 host_mac_addr[6];
+  u8 host_if_name[64];
+  u8 host_namespace[64];
+  u8 host_bridge[64];
+  u8 host_ip4_addr[4];
+  u8 host_ip4_prefix_len;
+  u8 host_ip6_addr[16];
+  u8 host_ip6_prefix_len;
 } tap_interface_details_t;
 
 typedef struct
