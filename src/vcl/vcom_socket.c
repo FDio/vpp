@@ -1298,12 +1298,43 @@ vcom_socket_bind (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
 }
 
 static inline int
-vcom_session_getsockname (int sid, vppcom_endpt_t * ep)
+vcom_socket_copy_ep_to_sockaddr (__SOCKADDR_ARG __addr,
+				 socklen_t * __restrict __len,
+				 vppcom_endpt_t * ep)
 {
-  int rv;
-  uint32_t size = sizeof (*ep);
+  int rv = 0;
+  int sa_len, copy_len;
 
-  rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_LCL_ADDR, ep, &size);
+  __addr->sa_family = (ep->is_ip4 == VPPCOM_IS_IP4) ? AF_INET : AF_INET6;
+  switch (__addr->sa_family)
+    {
+    case AF_INET:
+      ((struct sockaddr_in *) __addr)->sin_port = ep->port;
+      if (*__len > sizeof (struct sockaddr_in))
+	*__len = sizeof (struct sockaddr_in);
+      sa_len = sizeof (struct sockaddr_in) - sizeof (struct in_addr);
+      copy_len = *__len - sa_len;
+      if (copy_len > 0)
+	memcpy (&((struct sockaddr_in *) __addr)->sin_addr, ep->ip, copy_len);
+      break;
+
+    case AF_INET6:
+      ((struct sockaddr_in6 *) __addr)->sin6_port = ep->port;
+      if (*__len > sizeof (struct sockaddr_in6))
+	*__len = sizeof (struct sockaddr_in6);
+      sa_len = sizeof (struct sockaddr_in6) - sizeof (struct in6_addr);
+      copy_len = *__len - sa_len;
+      if (copy_len > 0)
+	memcpy (((struct sockaddr_in6 *) __addr)->sin6_addr.
+		__in6_u.__u6_addr8, ep->ip, copy_len);
+      break;
+
+    default:
+      /* Not possible */
+      rv = -EAFNOSUPPORT;
+      break;
+    }
+
   return rv;
 }
 
@@ -1315,7 +1346,12 @@ vcom_socket_getsockname (int __fd, __SOCKADDR_ARG __addr,
   vcom_socket_main_t *vsm = &vcom_socket_main;
   uword *p;
   vcom_socket_t *vsock;
+  vppcom_endpt_t ep;
+  u8 addr_buf[sizeof (struct in6_addr)];
+  uint32_t size = sizeof (ep);
 
+  if (!__addr || !__len)
+    return -EFAULT;
 
   p = hash_get (vsm->sockidx_by_fd, __fd);
   if (!p)
@@ -1328,34 +1364,10 @@ vcom_socket_getsockname (int __fd, __SOCKADDR_ARG __addr,
   if (vsock->type != SOCKET_TYPE_VPPCOM_BOUND)
     return -EINVAL;
 
-  if (!__addr || !__len)
-    return -EFAULT;
-
-  vppcom_endpt_t ep;
-  ep.ip = (u8 *) & ((const struct sockaddr_in *) __addr)->sin_addr;
-  rv = vcom_session_getsockname (vsock->sid, &ep);
-  if (rv == 0)
-    {
-      if (ep.vrf == VPPCOM_VRF_DEFAULT)
-	{
-	  __addr->sa_family = ep.is_ip4 == VPPCOM_IS_IP4 ? AF_INET : AF_INET6;
-	  switch (__addr->sa_family)
-	    {
-	    case AF_INET:
-	      ((struct sockaddr_in *) __addr)->sin_port = ep.port;
-	      *__len = sizeof (struct sockaddr_in);
-	      break;
-
-	    case AF_INET6:
-	      ((struct sockaddr_in6 *) __addr)->sin6_port = ep.port;
-	      *__len = sizeof (struct sockaddr_in6);
-	      break;
-
-	    default:
-	      break;
-	    }
-	}
-    }
+  ep.ip = addr_buf;
+  rv = vppcom_session_attr (vsock->sid, VPPCOM_ATTR_GET_LCL_ADDR, &ep, &size);
+  if (rv == VPPCOM_OK)
+    rv = vcom_socket_copy_ep_to_sockaddr (__addr, __len, &ep);
 
   return rv;
 }
@@ -1411,47 +1423,6 @@ vcom_session_getpeername (int sid, vppcom_endpt_t * ep)
   uint32_t size = sizeof (*ep);
 
   rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_PEER_ADDR, ep, &size);
-  return rv;
-}
-
-static inline int
-vcom_socket_copy_ep_to_sockaddr (__SOCKADDR_ARG __addr,
-				 socklen_t * __restrict __len,
-				 vppcom_endpt_t * ep)
-{
-  int rv = 0;
-  int sa_len, copy_len;
-
-  __addr->sa_family = (ep->is_ip4 == VPPCOM_IS_IP4) ? AF_INET : AF_INET6;
-  switch (__addr->sa_family)
-    {
-    case AF_INET:
-      ((struct sockaddr_in *) __addr)->sin_port = ep->port;
-      if (*__len > sizeof (struct sockaddr_in))
-	*__len = sizeof (struct sockaddr_in);
-      sa_len = sizeof (struct sockaddr_in) - sizeof (struct in_addr);
-      copy_len = *__len - sa_len;
-      if (copy_len > 0)
-	memcpy (&((struct sockaddr_in *) __addr)->sin_addr, ep->ip, copy_len);
-      break;
-
-    case AF_INET6:
-      ((struct sockaddr_in6 *) __addr)->sin6_port = ep->port;
-      if (*__len > sizeof (struct sockaddr_in6))
-	*__len = sizeof (struct sockaddr_in6);
-      sa_len = sizeof (struct sockaddr_in6) - sizeof (struct in6_addr);
-      copy_len = *__len - sa_len;
-      if (copy_len > 0)
-	memcpy (((struct sockaddr_in6 *) __addr)->sin6_addr.
-		__in6_u.__u6_addr8, ep->ip, copy_len);
-      break;
-
-    default:
-      /* Not possible */
-      rv = -EAFNOSUPPORT;
-      break;
-    }
-
   return rv;
 }
 

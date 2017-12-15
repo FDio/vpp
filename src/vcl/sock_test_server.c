@@ -450,15 +450,6 @@ main (int argc, char **argv)
   if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_FLAGS,
 			   buffer, &buflen) != VPPCOM_OK)
     printf ("\nGET_FLAGS2:Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
-
-  buflen = BUFLEN;
-  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_PEER_ADDR,
-			   buffer, &buflen) != VPPCOM_OK)
-    printf ("\nGET_PEER_ADDR: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
-  buflen = BUFLEN;
-  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_LCL_ADDR,
-			   buffer, &buflen) != VPPCOM_OK)
-    printf ("\nGET_LCL_ADDR: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
 #endif
 #else
   rv =
@@ -612,20 +603,28 @@ main (int argc, char **argv)
 	    {
 #ifdef VCL_TEST
 #if VPPCOM_SESSION_ATTR_UNIT_TEST
-	      buflen = BUFLEN;
-	      if (vppcom_session_attr (client_fd, VPPCOM_ATTR_GET_NREAD,
-				       buffer, &buflen) < VPPCOM_OK)
-		printf ("\nNREAD: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
-	      if (vppcom_session_attr (client_fd,
-				       VPPCOM_ATTR_GET_PEER_ADDR,
-				       buffer, &buflen) != VPPCOM_OK)
-		printf ("\nGET_PEER_ADDR: Oh no, Mr. "
-			"Biiiiiiiiiiiilllllll ! ! ! !\n");
-	      buflen = BUFLEN;
-	      if (vppcom_session_attr (client_fd, VPPCOM_ATTR_GET_LCL_ADDR,
-				       buffer, &buflen) != VPPCOM_OK)
-		printf ("\nGET_LCL_ADDR: Oh no, Mr. "
-			"Biiiiiiiiiiiilllllll ! ! ! !\n");
+	      {
+		vppcom_endpt_t ep;
+		uint8_t addr[16];
+
+		ep.ip = addr;
+		buflen = BUFLEN;
+		if (vppcom_session_attr (client_fd, VPPCOM_ATTR_GET_NREAD,
+					 buffer, &buflen) < VPPCOM_OK)
+		  printf ("\nNREAD: Oh no, Mr. "
+			  "Biiiiiiiiiiiilllllll ! ! ! !\n");
+		buflen = sizeof (ep);
+		if (vppcom_session_attr (client_fd,
+					 VPPCOM_ATTR_GET_PEER_ADDR,
+					 &ep, &buflen) != VPPCOM_OK)
+		  printf ("\nGET_PEER_ADDR: Oh no, Mr. "
+			  "Biiiiiiiiiiiilllllll ! ! ! !\n");
+		buflen = sizeof (ep);
+		if (vppcom_session_attr (client_fd, VPPCOM_ATTR_GET_LCL_ADDR,
+					 &ep, &buflen) != VPPCOM_OK)
+		  printf ("\nGET_LCL_ADDR: Oh no, Mr. "
+			  "Biiiiiiiiiiiilllllll ! ! ! !\n");
+	      }
 #endif
 #endif
 	      rx_bytes = sock_test_read (client_fd, conn->buf,
