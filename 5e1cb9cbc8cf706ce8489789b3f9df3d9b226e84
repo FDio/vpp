@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "823b6f22_c1ecf6f9",
+        "filename": "src/vppinfra/bihash_template.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2017-12-15T10:10:16Z",
+      "side": 1,
+      "message": "what about having optional function \"clib_bihash_set_kvp_format_fn\" which sets \nh-\u003efmt_fn \u003d fmt_fn;\n\ninstead of cloning init?",
+      "range": {
+        "startLine": 48,
+        "startChar": 10,
+        "endLine": 48,
+        "endChar": 26
+      },
+      "revId": "5e1cb9cbc8cf706ce8489789b3f9df3d9b226e84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f2a30ac0_4a7ba1be",
         "filename": "src/vppinfra/bihash_template.h",
         "patchSetId": 2
