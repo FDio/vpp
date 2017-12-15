@@ -210,6 +210,9 @@ typedef struct vlib_main_t
   /* Earliest barrier can be closed again */
   f64 barrier_no_close_before;
 
+  /* Vector of pending RPC requests */
+  uword *pending_rpc_requests;
+
 } vlib_main_t;
 
 /* Global main structure. */

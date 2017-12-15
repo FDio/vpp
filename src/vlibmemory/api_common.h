@@ -132,6 +132,7 @@ u32 vl_api_memclnt_create_internal (char *, unix_shared_memory_queue_t *);
 void vl_init_shmem (svm_region_t * vlib_rp, int is_vlib,
 		    int is_private_region);
 void vl_client_install_client_message_handlers (void);
+void vl_api_send_pending_rpc_requests (vlib_main_t * vm);
 
 /* API messages over sockets */
 

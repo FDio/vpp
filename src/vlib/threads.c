@@ -830,6 +830,9 @@ start_workers (vlib_main_t * vm)
 	      vm_clone->mbuf_alloc_list = 0;
 	      vm_clone->init_functions_called =
 		hash_create (0, /* value bytes */ 0);
+	      vm_clone->pending_rpc_requests = 0;
+	      vec_validate (vm_clone->pending_rpc_requests, 0);
+	      _vec_len (vm_clone->pending_rpc_requests) = 0;
 	      memset (&vm_clone->random_buffer, 0,
 		      sizeof (vm_clone->random_buffer));
 

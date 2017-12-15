@@ -1423,6 +1423,13 @@ dispatch_suspended_process (vlib_main_t * vm,
   return t;
 }
 
+void vl_api_send_pending_rpc_requests (vlib_main_t *) __attribute__ ((weak));
+void
+vl_api_send_pending_rpc_requests (vlib_main_t * vm)
+{
+}
+
+
 static_always_inline void
 vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
 {
@@ -1474,6 +1481,9 @@ vlib_main_or_worker_loop (vlib_main_t * vm, int is_main)
   while (1)
     {
       vlib_node_runtime_t *n;
+
+      if (PREDICT_FALSE (_vec_len (vm->pending_rpc_requests) > 0))
+	vl_api_send_pending_rpc_requests (vm);
 
       if (!is_main)
 	{
@@ -1741,6 +1751,9 @@ vlib_main (vlib_main_t * volatile vm, unformat_input_t * input)
 			    0 /* no callback */ ,
 			    10e-6 /* timer period 10us */ ,
 			    ~0 /* max expirations per call */ );
+
+  vec_validate (vm->pending_rpc_requests, 0);
+  _vec_len (vm->pending_rpc_requests) = 0;
 
   switch (clib_setjmp (&vm->main_loop_exit, VLIB_MAIN_LOOP_EXIT_NONE))
     {
