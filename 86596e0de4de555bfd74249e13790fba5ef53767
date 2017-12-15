@@ -45,6 +45,29 @@
       "revId": "86596e0de4de555bfd74249e13790fba5ef53767",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1451b998_666614be",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2017-12-15T16:06:42Z",
+      "side": 1,
+      "message": "This looks more expensive than just returning the value of a single UMAXV instruction. Why use u16x8_zero_byte_mask() plus a comparison?",
+      "range": {
+        "startLine": 113,
+        "startChar": 10,
+        "endLine": 113,
+        "endChar": 30
+      },
+      "revId": "86596e0de4de555bfd74249e13790fba5ef53767",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
