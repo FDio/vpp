@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "96de8ed2_4d102731",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2017-12-15T15:39:35Z",
+      "side": 1,
+      "message": "We don\u0027t need a UADDLV instruction here, right?",
+      "range": {
+        "startLine": 86,
+        "startChar": 9,
+        "endLine": 86,
+        "endChar": 19
+      },
+      "revId": "86596e0de4de555bfd74249e13790fba5ef53767",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
