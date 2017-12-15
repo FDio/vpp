@@ -2,6 +2,29 @@
   "comments": [
     {
       "key": {
+        "uuid": "7bd19d39_c6ec4421",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 85,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2017-12-15T15:54:40Z",
+      "side": 1,
+      "message": "Add u16x4_is_equal() ?",
+      "range": {
+        "startLine": 85,
+        "startChar": 18,
+        "endLine": 85,
+        "endChar": 26
+      },
+      "revId": "86596e0de4de555bfd74249e13790fba5ef53767",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "96de8ed2_4d102731",
         "filename": "src/vnet/ethernet/ethernet.h",
         "patchSetId": 4
