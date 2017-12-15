@@ -3797,7 +3797,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
       break;
 
     case VPPCOM_ATTR_GET_PEER_ADDR:
-      if (buffer && buflen && (*buflen >= sizeof (*ep)))
+      if (buffer && buflen && (*buflen >= sizeof (*ep)) && ep->ip)
 	{
 	  ep->vrf = session->vrf;
 	  ep->is_ip4 = session->peer_addr.is_ip4;
@@ -3821,7 +3821,7 @@ vppcom_session_attr (uint32_t session_index, uint32_t op,
       break;
 
     case VPPCOM_ATTR_GET_LCL_ADDR:
-      if (buffer && buflen && (*buflen >= sizeof (*ep)))
+      if (buffer && buflen && (*buflen >= sizeof (*ep)) && ep->ip)
 	{
 	  ep->vrf = session->vrf;
 	  ep->is_ip4 = session->lcl_addr.is_ip4;
