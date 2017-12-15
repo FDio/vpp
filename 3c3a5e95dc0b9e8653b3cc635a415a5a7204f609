@@ -22,6 +22,30 @@
       "revId": "3c3a5e95dc0b9e8653b3cc635a415a5a7204f609",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d4cc6aa5_552762f1",
+        "filename": "src/vlibmemory/memory_vlib.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1907,
+      "author": {
+        "id": 7
+      },
+      "writtenOn": "2017-12-15T21:21:38Z",
+      "side": 1,
+      "message": "+1, a typo, fixed in new patch set... Thanks for pointing it out...",
+      "parentUuid": "b691fd7c_b394433d",
+      "range": {
+        "startLine": 1907,
+        "startChar": 39,
+        "endLine": 1907,
+        "endChar": 42
+      },
+      "revId": "3c3a5e95dc0b9e8653b3cc635a415a5a7204f609",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
