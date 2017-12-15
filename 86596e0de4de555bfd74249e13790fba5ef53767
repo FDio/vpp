@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "b7b63961_34afe1d4",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2017-12-15T16:13:27Z",
+      "side": 1,
+      "message": "you mean: replace the vector add by a comparison ?\nI\u0027m not sure this would be different performance-wise.\nAnyway ; sure, I\u0027ll do the test.",
+      "parentUuid": "96de8ed2_4d102731",
+      "range": {
+        "startLine": 86,
+        "startChar": 9,
+        "endLine": 86,
+        "endChar": 19
+      },
+      "revId": "86596e0de4de555bfd74249e13790fba5ef53767",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1451b998_666614be",
         "filename": "src/vnet/ethernet/ethernet.h",
         "patchSetId": 4
@@ -68,6 +92,30 @@
       "revId": "86596e0de4de555bfd74249e13790fba5ef53767",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "64dfdc4a_d4b5d14a",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 113,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2017-12-15T16:13:27Z",
+      "side": 1,
+      "message": "It\u0027s quite possible. I did not test.\nThis is inherited from the sse implementation, so we\u0027d have to test both.",
+      "parentUuid": "1451b998_666614be",
+      "range": {
+        "startLine": 113,
+        "startChar": 10,
+        "endLine": 113,
+        "endChar": 30
+      },
+      "revId": "86596e0de4de555bfd74249e13790fba5ef53767",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
