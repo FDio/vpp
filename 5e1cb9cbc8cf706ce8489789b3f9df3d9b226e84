@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "2ab3937a_08094895",
+        "filename": "src/vppinfra/bihash_template.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2017-12-15T13:22:39Z",
+      "side": 1,
+      "message": "Sure .. i would modify it..",
+      "parentUuid": "823b6f22_c1ecf6f9",
+      "range": {
+        "startLine": 48,
+        "startChar": 10,
+        "endLine": 48,
+        "endChar": 26
+      },
+      "revId": "5e1cb9cbc8cf706ce8489789b3f9df3d9b226e84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f2a30ac0_4a7ba1be",
         "filename": "src/vppinfra/bihash_template.h",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2017-12-15T04:27:07Z",
       "side": 1,
       "message": "This couldn\u0027t be more generic :-)\n\nCould you expand the comment?",
+      "range": {
+        "startLine": 95,
+        "startChar": 6,
+        "endLine": 95,
+        "endChar": 23
+      },
+      "revId": "5e1cb9cbc8cf706ce8489789b3f9df3d9b226e84",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "d2ffee61_49f7df7a",
+        "filename": "src/vppinfra/bihash_template.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 95,
+      "author": {
+        "id": 742
+      },
+      "writtenOn": "2017-12-15T13:22:39Z",
+      "side": 1,
+      "message": "sure will modify",
+      "parentUuid": "f2a30ac0_4a7ba1be",
       "range": {
         "startLine": 95,
         "startChar": 6,
