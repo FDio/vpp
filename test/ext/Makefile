@@ -4,7 +4,7 @@ VAPI_CPPBIN = $(addprefix $(VAPI_BINDIR), vapi_cpp_test)
 VOM_BINDIR = $(BR)/vom_test/
 VOM_BIN = $(addprefix $(VOM_BINDIR), vom_test)
 
-ifeq ($(filter centos,$(OS_ID)),$(OS_ID))
+ifeq ($(filter rhel centos,$(OS_ID)),$(OS_ID))
 VAPI_CPPBIN=
 endif
 
