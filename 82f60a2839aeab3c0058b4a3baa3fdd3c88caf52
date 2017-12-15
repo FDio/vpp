@@ -87,6 +87,24 @@
       "revId": "82f60a2839aeab3c0058b4a3baa3fdd3c88caf52",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f4aec7c1_8f6838ea",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 820,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-12-15T15:50:05Z",
+      "side": 1,
+      "message": "It puts back the unaligned accesses. Though they are required for old arm architecture while newer one can handle it in hardware.",
+      "parentUuid": "3d4818f1_495727a8",
+      "revId": "82f60a2839aeab3c0058b4a3baa3fdd3c88caf52",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
