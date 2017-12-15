@@ -314,9 +314,6 @@ dpdk_lib_init (dpdk_main_t * dm)
       clib_memcpy (&xd->tx_conf, &dev_info.default_txconf,
 		   sizeof (struct rte_eth_txconf));
 
-      if (dm->conf->no_tx_checksum_offload == 0)
-	xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOXSUMS;
-
       if (dm->conf->no_multi_seg)
 	{
 	  xd->tx_conf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
@@ -388,8 +385,14 @@ dpdk_lib_init (dpdk_main_t * dm)
 	    case VNET_DPDK_PMD_IXGBE:
 	    case VNET_DPDK_PMD_I40E:
 	      xd->port_type = port_type_from_speed_capa (&dev_info);
-	      xd->flags |= DPDK_DEVICE_FLAG_TX_OFFLOAD |
-		DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+	      if (dm->conf->no_tx_checksum_offload == 0)
+		{
+		  xd->tx_conf.txq_flags &= ~ETH_TXQ_FLAGS_NOXSUMS;
+		  xd->flags |=
+		    DPDK_DEVICE_FLAG_TX_OFFLOAD |
+		    DPDK_DEVICE_FLAG_INTEL_PHDR_CKSUM;
+		}
+
 
 	      break;
 	    case VNET_DPDK_PMD_CXGBE:
