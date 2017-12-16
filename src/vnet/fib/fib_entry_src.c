@@ -1077,6 +1077,10 @@ fib_entry_flags_update (const fib_entry_t *fib_entry,
 	{
 	    esrc->fes_entry_flags &= ~FIB_ENTRY_FLAG_ATTACHED;
 	}
+	if (rpath->frp_flags & FIB_ROUTE_PATH_DEAG)
+	{
+	    esrc->fes_entry_flags |= FIB_ENTRY_FLAG_LOOSE_URPF_EXEMPT;
+	}
     }
     if (fib_route_attached_cross_table(fib_entry, rpath))
     {

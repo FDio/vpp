@@ -340,6 +340,10 @@ typedef enum fib_route_path_flags_t_
      * A path that resolves via a BIER impostion object
      */
     FIB_ROUTE_PATH_BIER_IMP = (1 << 12),
+    /**
+     * A path that resolves via another table
+     */
+    FIB_ROUTE_PATH_DEAG = (1 << 13),
 } fib_route_path_flags_t;
 
 /**
