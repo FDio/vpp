@@ -416,6 +416,7 @@ unformat_fib_route_path (unformat_input_t * input, va_list * args)
         {
             rpath->frp_proto = *payload_proto;
             rpath->frp_sw_if_index = ~0;
+            rpath->frp_flags |= FIB_ROUTE_PATH_DEAG;
         }
         else if (unformat (input, "resolve-via-host"))
         {
