@@ -911,6 +911,11 @@ add_del_route_t_handler (u8 is_multipath,
       path_flags |= FIB_ROUTE_PATH_UDP_ENCAP;
       path.frp_udp_encap_id = next_hop_id;
     }
+  if (path.frp_sw_if_index == ~0 && ip46_address_is_zero (&path.frp_addr)
+      && path.frp_fib_index != ~0)
+    {
+      path_flags |= FIB_ROUTE_PATH_DEAG;
+    }
 
   path.frp_flags = path_flags;
 
