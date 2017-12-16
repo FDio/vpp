@@ -1294,6 +1294,11 @@ fib_path_create (fib_node_index_t pl_index,
         path->fp_type = FIB_PATH_TYPE_BIER_TABLE;
         path->bier_table.fp_bier_tbl = rpath->frp_bier_tbl;
     }
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_DEAG)
+    {
+	path->fp_type = FIB_PATH_TYPE_DEAG;
+	path->deag.fp_tbl_id = rpath->frp_fib_index;
+    }
     else if (~0 != rpath->frp_sw_if_index)
     {
         if (ip46_address_is_zero(&rpath->frp_addr))
