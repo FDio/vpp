@@ -120,6 +120,30 @@
     },
     {
       "key": {
+        "uuid": "2e337e97_cc9bbc9c",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2017-12-18T14:57:18Z",
+      "side": 1,
+      "message": "You could make the return type handle 64-bits and then let the compiler handle the type conversion from uint16x4_t to a 64-bit type without any loss of information or extra instruction to reduce/fold the uint16x4_t to a smaller value. A smaller value is not necessary to compute whether it is GT or EQ to zero. There is no extra cost for using a 64-bit value since both 32-bit and 64-bit value in this case will occupy a whole register.",
+      "parentUuid": "9d6fb349_f4eb423e",
+      "range": {
+        "startLine": 86,
+        "startChar": 9,
+        "endLine": 86,
+        "endChar": 19
+      },
+      "revId": "86596e0de4de555bfd74249e13790fba5ef53767",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1451b998_666614be",
         "filename": "src/vnet/ethernet/ethernet.h",
         "patchSetId": 4
