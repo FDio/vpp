@@ -1222,6 +1222,7 @@ class VppPapiProvider(object):
             addr_only=1,
             vrf_id=0,
             protocol=0,
+            twice_nat=0,
             is_add=1):
         """Add/delete NAT44 static mapping
 
@@ -1233,6 +1234,7 @@ class VppPapiProvider(object):
         :param addr_only: 1 if address only mapping, 0 if address and port
         :param vrf_id: VRF ID
         :param protocol: IP protocol (Default value = 0)
+        :param twice_nat: 1 if translate external host address and port
         :param is_add: 1 if add, 0 if delete (Default value = 1)
         """
         return self.api(
@@ -1245,7 +1247,8 @@ class VppPapiProvider(object):
              'external_port': external_port,
              'external_sw_if_index': external_sw_if_index,
              'vrf_id': vrf_id,
-             'protocol': protocol})
+             'protocol': protocol,
+             'twice_nat': twice_nat})
 
     def nat44_add_del_identity_mapping(
             self,
@@ -1281,12 +1284,14 @@ class VppPapiProvider(object):
             first_ip_address,
             last_ip_address,
             is_add=1,
-            vrf_id=0xFFFFFFFF):
+            vrf_id=0xFFFFFFFF,
+            twice_nat=0):
         """Add/del NAT44 address range
 
         :param first_ip_address: First IP address
         :param last_ip_address: Last IP address
         :param vrf_id: VRF id for the address range
+        :param twice_nat: twice NAT address for extenal hosts
         :param is_add: 1 if add, 0 if delete (Default value = 1)
         """
         return self.api(
@@ -1294,6 +1299,7 @@ class VppPapiProvider(object):
             {'first_ip_address': first_ip_address,
              'last_ip_address': last_ip_address,
              'vrf_id': vrf_id,
+             'twice_nat': twice_nat,
              'is_add': is_add})
 
     def nat44_address_dump(self):
@@ -1335,14 +1341,19 @@ class VppPapiProvider(object):
     def nat44_add_interface_addr(
             self,
             sw_if_index,
+            twice_nat=0,
             is_add=1):
         """Add/del NAT44 address from interface
 
         :param sw_if_index: Software index of the interface
+        :param twice_nat: twice NAT address for extenal hosts
         :param is_add: 1 if add, 0 if delete (Default value = 1)
         """
-        return self.api(self.papi.nat44_add_del_interface_addr,
-                        {'is_add': is_add, 'sw_if_index': sw_if_index})
+        return self.api(
+            self.papi.nat44_add_del_interface_addr,
+            {'is_add': is_add,
+             'sw_if_index': sw_if_index,
+             'twice_nat': twice_nat})
 
     def nat44_interface_addr_dump(self):
         """Dump NAT44 addresses interfaces
@@ -1396,11 +1407,13 @@ class VppPapiProvider(object):
             external_port,
             protocol,
             vrf_id=0,
+            twice_nat=0,
             local_num=0,
             locals=[],
             is_add=1):
         """Add/delete NAT44 load balancing static mapping
 
+        :param twice_nat: 1 if translate external host address and port
         :param is_add - 1 if add, 0 if delete
         """
         return self.api(
@@ -1410,6 +1423,7 @@ class VppPapiProvider(object):
              'external_port': external_port,
              'protocol': protocol,
              'vrf_id': vrf_id,
+             'twice_nat': twice_nat,
              'local_num': local_num,
              'locals': locals})
 
