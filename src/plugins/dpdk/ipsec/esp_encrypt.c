@@ -404,6 +404,9 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  vnet_buffer (b0)->sw_if_index[VLIB_RX] =
 	    vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	  b0->flags |= VLIB_BUFFER_TOTAL_LENGTH_VALID;
+	  b0->flags &= ~VNET_BUFFER_F_OFFLOAD_IP_CKSUM;
+	  b0->flags &= ~VNET_BUFFER_F_OFFLOAD_TCP_CKSUM;
+	  b0->flags &= ~VNET_BUFFER_F_OFFLOAD_UDP_CKSUM;
 
 	  /* mbuf packet starts at ESP header */
 	  mb0->data_len = vlib_buffer_get_tail (b0) - ((u8 *) esp0);
