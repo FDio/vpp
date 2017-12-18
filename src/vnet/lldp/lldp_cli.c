@@ -95,7 +95,7 @@ lldp_cfg_intf_set (u32 hw_if_index, u8 ** port_desc, u8 ** mgmt_ip4,
       if (mgmt_oid && *mgmt_oid)
 	{
 	  n->mgmt_oid = *mgmt_oid;
-	  *mgmt_ip6 = NULL;
+	  *mgmt_oid = NULL;
 	}
 
       const vnet_sw_interface_t *sw =
