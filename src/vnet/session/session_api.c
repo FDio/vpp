@@ -675,7 +675,7 @@ done:
       {
 	rmp->handle = a->handle;
         rmp->lcl_port = mp->port;
-	if (application_has_global_scope (app))
+	if (app && application_has_global_scope (app))
 	  {
 	    s = listen_session_get_from_handle (a->handle);
 	    tc = listen_session_get_transport (s);
