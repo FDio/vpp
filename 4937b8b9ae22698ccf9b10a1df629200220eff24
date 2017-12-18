@@ -16,6 +16,24 @@
       "revId": "4937b8b9ae22698ccf9b10a1df629200220eff24",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a4edac01_97b083e1",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 806,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-12-18T12:41:05Z",
+      "side": 1,
+      "message": "Thanks Klement. I have incorporated your change in patch set 3.",
+      "parentUuid": "c6dd3add_2afd8bf6",
+      "revId": "4937b8b9ae22698ccf9b10a1df629200220eff24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
