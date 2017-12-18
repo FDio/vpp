@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c6dd3add_2afd8bf6",
+        "filename": "src/vpp/stats/stats.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 806,
+      "author": {
+        "id": 601
+      },
+      "writtenOn": "2017-12-18T12:30:25Z",
+      "side": 1,
+      "message": "I see this assert being hit here\n\n#5  0x00007ffff7ba29dc in vl_msg_api_alloc_internal (nbytes\u003d142, pool\u003d1, may_return_null\u003d0)\n    at /home/ksekera/vpp/build-data/../src/vlibmemory/memory_shared.c:63\n63        ASSERT (pool \u003d\u003d 0 || vlib_get_thread_index () \u003d\u003d 0);\n(gdb) p pool\n$98 \u003d 1\n(gdb) p vlib_get_thread_index()\n$99 \u003d 1\n\nthis patch seems to fix it:\n\n:!git diff src/vpp/stats/stats.c\ndiff --git a/src/vpp/stats/stats.c b/src/vpp/stats/stats.c\nindex 3b0aa2e..3039a89 100644\n--- a/src/vpp/stats/stats.c\n+++ b/src/vpp/stats/stats.c\n@@ -804,7 +804,7 @@ do_combined_per_interface_counters (stats_main_t * sm)\n                                       reg-\u003eitem, client-\u003eclient_index);\n              continue;\n            }\n-         mp \u003d vl_msg_api_alloc (sizeof (*mp) + sizeof (*vp));\n+         mp \u003d vl_msg_api_alloc_as_if_client (sizeof (*mp) + sizeof (*vp));\n          memset (mp, 0, sizeof (*mp));\n\n          mp-\u003e_vl_msg_id \u003d",
+      "revId": "4937b8b9ae22698ccf9b10a1df629200220eff24",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
