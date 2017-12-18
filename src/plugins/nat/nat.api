@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-vl_api_version 2.0.0
+vl_api_version 2.1.0
 
 /**
  * @file nat.api
@@ -230,6 +230,7 @@ define nat_reass_details {
     @param first_ip_address - first IPv4 address
     @param last_ip_address - last IPv4 address
     @param vrf_id - VRF id of tenant, ~0 means independent of VRF
+    @param twice_nat - twice NAT address range for extenal hosts
     @param is_add - 1 if add, 0 if delete
 */
 autoreply define nat44_add_del_address_range {
@@ -238,6 +239,7 @@ autoreply define nat44_add_del_address_range {
   u8 first_ip_address[4];
   u8 last_ip_address[4];
   u32 vrf_id;
+  u8 twice_nat;
   u8 is_add;
 };
 
@@ -253,11 +255,13 @@ define nat44_address_dump {
 /** \brief NAT44 address details response
     @param context - sender context, to match reply w/ request
     @param ip_address - IPv4 address
+    @param twice_nat - twice NAT address range for extenal hosts
     @param vrf_id - VRF id of tenant, ~0 means independent of VRF
 */
 define nat44_address_details {
   u32 context;
   u8 ip_address[4];
+  u8 twice_nat;
   u32 vrf_id;
 };
 
@@ -346,6 +350,8 @@ define nat44_interface_output_feature_details {
                                   external_ip_address is ignored, ~0 means not
                                   used)
     @param vfr_id - VRF ID
+    @param twice_nat - if 1 translate external host address and port, only for
+                       1:1 NAPT (addr_only must be 0)
 */
 autoreply define nat44_add_del_static_mapping {
   u32 client_index;
@@ -359,6 +365,7 @@ autoreply define nat44_add_del_static_mapping {
   u16 external_port;
   u32 external_sw_if_index;
   u32 vrf_id;
+  u8 twice_nat;
 };
 
 /** \brief Dump NAT44 static mappings
@@ -380,6 +387,7 @@ define nat44_static_mapping_dump {
     @param external_port - external port number
     @param external_sw_if_index - external interface
     @param vfr_id - VRF ID
+    @param twice_nat - if 1 translate external host address and port
 */
 define nat44_static_mapping_details {
   u32 context;
@@ -391,6 +399,7 @@ define nat44_static_mapping_details {
   u16 external_port;
   u32 external_sw_if_index;
   u32 vrf_id;
+  u8 twice_nat;
 };
 
 /** \brief Add/delete NAT44 identity mapping
@@ -449,13 +458,14 @@ define nat44_identity_mapping_details {
     @param client_index - opaque cookie to identify the sender
     @param context - sender context, to match reply w/ request
     @param is_add - 1 if add, 0 if delete
+    @param twice_nat - twice NAT address for extenal hosts
     @param sw_if_index - software index of the interface
 */
 autoreply define nat44_add_del_interface_addr {
   u32 client_index;
   u32 context;
   u8 is_add;
-  u8 is_inside;
+  u8 twice_nat;
   u32 sw_if_index;
 };
 
@@ -471,10 +481,12 @@ define nat44_interface_addr_dump {
 /** \brief NAT44 pool addresses interfaces details response
     @param context - sender context, to match reply w/ request
     @param sw_if_index - software index of the interface
+    @param twice_nat - twice NAT address for extenal hosts
 */
 define nat44_interface_addr_details {
   u32 context;
   u32 sw_if_index;
+  u8 twice_nat;
 };
 
 /** \brief Dump NAT44 users
@@ -554,6 +566,7 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u16 external_port;
   u8 protocol;
   u32 vrf_id;
+  u8 twice_nat;
   u8 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
 };
@@ -569,6 +582,7 @@ manual_endian define nat44_lb_static_mapping_details {
   u16 external_port;
   u8 protocol;
   u32 vrf_id;
+  u8 twice_nat;
   u8 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
 };

@@ -236,7 +236,7 @@ snat_not_translate (snat_main_t * sm, vlib_node_runtime_t *node,
                               &value0))
     {
       /* or is static mappings */
-      if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
+      if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
         return 0;
     }
   else
@@ -256,14 +256,8 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
                       u32 thread_index)
 {
   snat_user_t *u;
-  snat_user_key_t user_key;
   snat_session_t *s;
-  clib_bihash_kv_8_8_t kv0, value0;
-  u32 oldest_per_user_translation_list_index;
-  dlist_elt_t * oldest_per_user_translation_list_elt;
-  dlist_elt_t * per_user_translation_list_elt;
-  dlist_elt_t * per_user_list_head_elt;
-  u32 session_index;
+  clib_bihash_kv_8_8_t kv0;
   snat_session_key_t key1;
   u32 address_index = ~0;
   u32 outside_fib_index;
@@ -285,185 +279,44 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   outside_fib_index = p[0];
 
   key1.protocol = key0->protocol;
-  user_key.addr = ip0->src_address;
-  user_key.fib_index = rx_fib_index0;
-  kv0.key = user_key.as_u64;
 
-  /* Ever heard of the "user" = src ip4 address before? */
-  if (clib_bihash_search_8_8 (&sm->per_thread_data[thread_index].user_hash,
-                              &kv0, &value0))
+  u = nat_user_get_or_create (sm, &ip0->src_address, rx_fib_index0,
+                              thread_index);
+  if (!u)
     {
-      /* no, make a new one */
-      pool_get (sm->per_thread_data[thread_index].users, u);
-      memset (u, 0, sizeof (*u));
-      u->addr = ip0->src_address;
-      u->fib_index = rx_fib_index0;
-
-      pool_get (sm->per_thread_data[thread_index].list_pool, per_user_list_head_elt);
-
-      u->sessions_per_user_list_head_index = per_user_list_head_elt -
-        sm->per_thread_data[thread_index].list_pool;
-
-      clib_dlist_init (sm->per_thread_data[thread_index].list_pool,
-                       u->sessions_per_user_list_head_index);
-
-      kv0.value = u - sm->per_thread_data[thread_index].users;
-
-      /* add user */
-      clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].user_hash,
-                               &kv0, 1 /* is_add */);
-    }
-  else
-    {
-      u = pool_elt_at_index (sm->per_thread_data[thread_index].users,
-                             value0.value);
+      clib_warning ("create NAT user failed");
+      return SNAT_IN2OUT_NEXT_DROP;
     }
 
-  /* Over quota? Recycle the least recently used dynamic translation */
-  if (u->nsessions >= sm->max_translations_per_user)
+  s = nat_session_alloc_or_recycle (sm, u, thread_index);
+  if (!s)
     {
-      /* Remove the oldest dynamic translation */
-      do {
-          oldest_per_user_translation_list_index =
-            clib_dlist_remove_head (sm->per_thread_data[thread_index].list_pool,
-                                    u->sessions_per_user_list_head_index);
+      clib_warning ("create NAT session failed");
+      return SNAT_IN2OUT_NEXT_DROP;
+    }
 
-          ASSERT (oldest_per_user_translation_list_index != ~0);
-
-          /* add it back to the end of the LRU list */
-          clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                              u->sessions_per_user_list_head_index,
-                              oldest_per_user_translation_list_index);
-          /* Get the list element */
-          oldest_per_user_translation_list_elt =
-            pool_elt_at_index (sm->per_thread_data[thread_index].list_pool,
-                               oldest_per_user_translation_list_index);
-
-          /* Get the session index from the list element */
-          session_index = oldest_per_user_translation_list_elt->value;
-
-          /* Get the session */
-          s = pool_elt_at_index (sm->per_thread_data[thread_index].sessions,
-                                 session_index);
-      } while (snat_is_session_static (s));
-
-      if (snat_is_unk_proto_session (s))
-        {
-          clib_bihash_kv_16_8_t up_kv;
-          nat_ed_ses_key_t key;
-
-          /* Remove from lookup tables */
-          key.l_addr = s->in2out.addr;
-          key.r_addr = s->ext_host_addr;
-          key.fib_index = s->in2out.fib_index;
-          key.proto = s->in2out.port;
-          key.rsvd = 0;
-          key.l_port = 0;
-          up_kv.key[0] = key.as_u64[0];
-          up_kv.key[1] = key.as_u64[1];
-          if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &up_kv, 0))
-            clib_warning ("in2out key del failed");
-
-          key.l_addr = s->out2in.addr;
-          key.fib_index = s->out2in.fib_index;
-          up_kv.key[0] = key.as_u64[0];
-          up_kv.key[1] = key.as_u64[1];
-          if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &up_kv, 0))
-            clib_warning ("out2in key del failed");
-        }
-      else
-        {
-          /* Remove in2out, out2in keys */
-          kv0.key = s->in2out.as_u64;
-          if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].in2out,
-                                       &kv0, 0 /* is_add */))
-              clib_warning ("in2out key delete failed");
-          kv0.key = s->out2in.as_u64;
-          if (clib_bihash_add_del_8_8 (&sm->per_thread_data[thread_index].out2in,
-                                       &kv0, 0 /* is_add */))
-              clib_warning ("out2in key delete failed");
-
-          /* log NAT event */
-          snat_ipfix_logging_nat44_ses_delete(s->in2out.addr.as_u32,
-                                              s->out2in.addr.as_u32,
-                                              s->in2out.protocol,
-                                              s->in2out.port,
-                                              s->out2in.port,
-                                              s->in2out.fib_index);
-
-          snat_free_outside_address_and_port
-            (sm->addresses, thread_index, &s->out2in, s->outside_address_index);
-        }
-      s->outside_address_index = ~0;
-
+  /* First try to match static mapping by local address and port */
+  if (snat_static_mapping_match (sm, *key0, &key1, 0, 0, 0))
+    {
+      /* Try to create dynamic translation */
       if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index0,
                                                thread_index, &key1,
                                                &address_index,
                                                sm->port_per_thread,
                                                sm->per_thread_data[thread_index].snat_thread_index))
         {
-          ASSERT(0);
-
           b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
           return SNAT_IN2OUT_NEXT_DROP;
         }
-      s->outside_address_index = address_index;
+      u->nsessions++;
     }
   else
     {
-      u8 static_mapping = 1;
+      u->nstaticsessions++;
+      s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
+    }
 
-      /* First try to match static mapping by local address and port */
-      if (snat_static_mapping_match (sm, *key0, &key1, 0, 0))
-        {
-          static_mapping = 0;
-          /* Try to create dynamic translation */
-          if (snat_alloc_outside_address_and_port (sm->addresses, rx_fib_index0,
-                                                   thread_index, &key1,
-                                                   &address_index,
-                                                   sm->port_per_thread,
-                                                   sm->per_thread_data[thread_index].snat_thread_index))
-            {
-              b0->error = node->errors[SNAT_IN2OUT_ERROR_OUT_OF_PORTS];
-              return SNAT_IN2OUT_NEXT_DROP;
-            }
-        }
-
-      /* Create a new session */
-      pool_get (sm->per_thread_data[thread_index].sessions, s);
-      memset (s, 0, sizeof (*s));
-
-      s->outside_address_index = address_index;
-
-      if (static_mapping)
-        {
-          u->nstaticsessions++;
-          s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
-        }
-      else
-        {
-          u->nsessions++;
-        }
-
-      /* Create list elts */
-      pool_get (sm->per_thread_data[thread_index].list_pool,
-                per_user_translation_list_elt);
-      clib_dlist_init (sm->per_thread_data[thread_index].list_pool,
-                       per_user_translation_list_elt -
-                       sm->per_thread_data[thread_index].list_pool);
-
-      per_user_translation_list_elt->value =
-        s - sm->per_thread_data[thread_index].sessions;
-      s->per_user_index = per_user_translation_list_elt -
-                          sm->per_thread_data[thread_index].list_pool;
-      s->per_user_list_head_index = u->sessions_per_user_list_head_index;
-
-      clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                          s->per_user_list_head_index,
-                          per_user_translation_list_elt -
-                          sm->per_thread_data[thread_index].list_pool);
-   }
-
+  s->outside_address_index = address_index;
   s->in2out = *key0;
   s->out2in = key1;
   s->out2in.protocol = key0->protocol;
@@ -677,7 +530,7 @@ u32 icmp_match_in2out_fast(snat_main_t *sm, vlib_node_runtime_t *node,
     }
   key0.fib_index = rx_fib_index0;
 
-  if (snat_static_mapping_match(sm, key0, &sm0, 0, &is_addr_only))
+  if (snat_static_mapping_match(sm, key0, &sm0, 0, &is_addr_only, 0))
     {
       if (PREDICT_FALSE(snat_not_translate_fast(sm, node, sw_if_index0, ip0,
           IP_PROTOCOL_ICMP, rx_fib_index0)))
@@ -873,7 +726,7 @@ snat_hairpinning (snat_main_t *sm,
   kv0.key = key0.as_u64;
 
   /* Check if destination is static mappings */
-  if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
+  if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
     {
       new_dst_addr0 = sm0.addr.as_u32;
       new_dst_port0 = sm0.port;
@@ -974,7 +827,7 @@ snat_icmp_hairpinning (snat_main_t *sm,
                                   &value0))
         {
           /* or static mappings */
-          if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
+          if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
             {
               new_dst_addr0 = sm0.addr.as_u32;
               vnet_buffer(b0)->sw_if_index[VLIB_TX] = sm0.fib_index;
@@ -1032,15 +885,12 @@ static inline u32 icmp_in2out_slow_path (snat_main_t *sm,
       s0->last_heard = now;
       s0->total_pkts++;
       s0->total_bytes += vlib_buffer_length_in_chain (sm->vlib_main, b0);
-      /* Per-user LRU list maintenance for dynamic translations */
-      if (!snat_is_session_static (s0))
-        {
-          clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-                             s0->per_user_index);
-          clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                              s0->per_user_list_head_index,
-                              s0->per_user_index);
-        }
+      /* Per-user LRU list maintenance */
+      clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
+                         s0->per_user_index);
+      clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
+                          s0->per_user_list_head_index,
+                          s0->per_user_index);
     }
   return next0;
 }
@@ -1063,7 +913,7 @@ snat_hairpinning_unknown_proto (snat_main_t *sm,
   key.r_addr.as_u32 = ip->src_address.as_u32;
   key.fib_index = sm->outside_fib_index;
   key.proto = ip->protocol;
-  key.rsvd = 0;
+  key.r_port = 0;
   key.l_port = 0;
   s_kv.key[0] = key.as_u64[0];
   s_kv.key[1] = key.as_u64[1];
@@ -1115,11 +965,10 @@ snat_in2out_unknown_proto (snat_main_t *sm,
   snat_session_key_t m_key;
   u32 old_addr, new_addr = 0;
   ip_csum_t sum;
-  snat_user_key_t u_key;
   snat_user_t *u;
-  dlist_elt_t *head, *elt, *oldest;
+  dlist_elt_t *head, *elt;
   snat_main_per_thread_data_t *tsm = &sm->per_thread_data[thread_index];
-  u32 elt_index, head_index, ses_index, oldest_index;
+  u32 elt_index, head_index, ses_index;
   snat_session_t * s;
   nat_ed_ses_key_t key;
   u32 address_index = ~0;
@@ -1132,7 +981,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
   key.r_addr = ip->dst_address;
   key.fib_index = rx_fib_index;
   key.proto = ip->protocol;
-  key.rsvd = 0;
+  key.l_port = 0;
   key.l_port = 0;
   s_kv.key[0] = key.as_u64[0];
   s_kv.key[1] = key.as_u64[1];
@@ -1150,33 +999,12 @@ snat_in2out_unknown_proto (snat_main_t *sm,
           return 0;
         }
 
-      u_key.addr = ip->src_address;
-      u_key.fib_index = rx_fib_index;
-      kv.key = u_key.as_u64;
-
-      /* Ever heard of the "user" = src ip4 address before? */
-      if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+      u = nat_user_get_or_create (sm, &ip->src_address, rx_fib_index,
+                                  thread_index);
+      if (!u)
         {
-          /* no, make a new one */
-          pool_get (tsm->users, u);
-          memset (u, 0, sizeof (*u));
-          u->addr = ip->src_address;
-          u->fib_index = rx_fib_index;
-
-          pool_get (tsm->list_pool, head);
-          u->sessions_per_user_list_head_index = head - tsm->list_pool;
-
-          clib_dlist_init (tsm->list_pool,
-                           u->sessions_per_user_list_head_index);
-
-          kv.value = u - tsm->users;
-
-          /* add user */
-          clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 1);
-        }
-      else
-        {
-          u = pool_elt_at_index (tsm->users, value.value);
+          clib_warning ("create NAT user failed");
+          return 0;
         }
 
       m_key.addr = ip->src_address;
@@ -1244,88 +1072,11 @@ snat_in2out_unknown_proto (snat_main_t *sm,
         }
 
 create_ses:
-      /* Over quota? Recycle the least recently used dynamic translation */
-      if (u->nsessions >= sm->max_translations_per_user && !is_sm)
+      s = nat_session_alloc_or_recycle (sm, u, thread_index);
+      if (!s)
         {
-          /* Remove the oldest dynamic translation */
-          do {
-              oldest_index = clib_dlist_remove_head (
-                tsm->list_pool, u->sessions_per_user_list_head_index);
-
-              ASSERT (oldest_index != ~0);
-
-              /* add it back to the end of the LRU list */
-              clib_dlist_addtail (tsm->list_pool,
-                                  u->sessions_per_user_list_head_index,
-                                  oldest_index);
-              /* Get the list element */
-              oldest = pool_elt_at_index (tsm->list_pool, oldest_index);
-
-              /* Get the session index from the list element */
-              ses_index = oldest->value;
-
-              /* Get the session */
-              s = pool_elt_at_index (tsm->sessions, ses_index);
-          } while (snat_is_session_static (s));
-
-          if (snat_is_unk_proto_session (s))
-            {
-              /* Remove from lookup tables */
-              key.l_addr = s->in2out.addr;
-              key.r_addr = s->ext_host_addr;
-              key.fib_index = s->in2out.fib_index;
-              key.proto = s->in2out.port;
-              s_kv.key[0] = key.as_u64[0];
-              s_kv.key[1] = key.as_u64[1];
-              if (clib_bihash_add_del_16_8 (&sm->in2out_ed, &s_kv, 0))
-                clib_warning ("in2out key del failed");
-
-              key.l_addr = s->out2in.addr;
-              key.fib_index = s->out2in.fib_index;
-              s_kv.key[0] = key.as_u64[0];
-              s_kv.key[1] = key.as_u64[1];
-              if (clib_bihash_add_del_16_8 (&sm->out2in_ed, &s_kv, 0))
-                clib_warning ("out2in key del failed");
-            }
-          else
-            {
-              /* log NAT event */
-              snat_ipfix_logging_nat44_ses_delete(s->in2out.addr.as_u32,
-                                                  s->out2in.addr.as_u32,
-                                                  s->in2out.protocol,
-                                                  s->in2out.port,
-                                                  s->out2in.port,
-                                                  s->in2out.fib_index);
-
-              snat_free_outside_address_and_port (sm->addresses, thread_index,
-                                                  &s->out2in,
-                                                  s->outside_address_index);
-
-              /* Remove in2out, out2in keys */
-              kv.key = s->in2out.as_u64;
-              if (clib_bihash_add_del_8_8 (
-                    &sm->per_thread_data[thread_index].in2out, &kv, 0))
-                clib_warning ("in2out key del failed");
-              kv.key = s->out2in.as_u64;
-              if (clib_bihash_add_del_8_8 (
-                    &sm->per_thread_data[thread_index].out2in, &kv, 0))
-                clib_warning ("out2in key del failed");
-            }
-        }
-      else
-        {
-          /* Create a new session */
-          pool_get (tsm->sessions, s);
-          memset (s, 0, sizeof (*s));
-
-          /* Create list elts */
-          pool_get (tsm->list_pool, elt);
-          clib_dlist_init (tsm->list_pool, elt - tsm->list_pool);
-          elt->value = s - tsm->sessions;
-          s->per_user_index = elt - tsm->list_pool;
-          s->per_user_list_head_index = u->sessions_per_user_list_head_index;
-          clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
-                              s->per_user_index);
+          clib_warning ("create NAT session failed");
+          return 0;
         }
 
       s->ext_host_addr.as_u32 = ip->dst_address.as_u32;
@@ -1410,10 +1161,7 @@ snat_in2out_lb (snat_main_t *sm,
   ip_csum_t sum;
   u32 proto = ip_proto_to_snat_proto (ip->protocol);
   snat_session_key_t e_key, l_key;
-  clib_bihash_kv_8_8_t kv, value;
-  snat_user_key_t u_key;
   snat_user_t *u;
-  dlist_elt_t *head, *elt;
 
   old_addr = ip->src_address.as_u32;
 
@@ -1421,7 +1169,7 @@ snat_in2out_lb (snat_main_t *sm,
   key.r_addr = ip->dst_address;
   key.fib_index = rx_fib_index;
   key.proto = ip->protocol;
-  key.rsvd = 0;
+  key.r_port = udp->dst_port;
   key.l_port = udp->src_port;
   s_kv.key[0] = key.as_u64[0];
   s_kv.key[1] = key.as_u64[1];
@@ -1442,42 +1190,23 @@ snat_in2out_lb (snat_main_t *sm,
       l_key.port = udp->src_port;
       l_key.protocol = proto;
       l_key.fib_index = rx_fib_index;
-      if (snat_static_mapping_match(sm, l_key, &e_key, 0, 0))
+      if (snat_static_mapping_match(sm, l_key, &e_key, 0, 0, 0))
         return 0;
 
-      u_key.addr = ip->src_address;
-      u_key.fib_index = rx_fib_index;
-      kv.key = u_key.as_u64;
-
-      /* Ever heard of the "user" = src ip4 address before? */
-      if (clib_bihash_search_8_8 (&tsm->user_hash, &kv, &value))
+      u = nat_user_get_or_create (sm, &ip->src_address, rx_fib_index,
+                                  thread_index);
+      if (!u)
         {
-          /* no, make a new one */
-          pool_get (tsm->users, u);
-          memset (u, 0, sizeof (*u));
-          u->addr = ip->src_address;
-          u->fib_index = rx_fib_index;
-
-          pool_get (tsm->list_pool, head);
-          u->sessions_per_user_list_head_index = head - tsm->list_pool;
-
-          clib_dlist_init (tsm->list_pool,
-                           u->sessions_per_user_list_head_index);
-
-          kv.value = u - tsm->users;
-
-          /* add user */
-          if (clib_bihash_add_del_8_8 (&tsm->user_hash, &kv, 1))
-            clib_warning ("user key add failed");
-        }
-      else
-        {
-          u = pool_elt_at_index (tsm->users, value.value);
+          clib_warning ("create NAT user failed");
+          return 0;
         }
 
-      /* Create a new session */
-      pool_get (tsm->sessions, s);
-      memset (s, 0, sizeof (*s));
+      s = nat_session_alloc_or_recycle (sm, u, thread_index);
+      if (!s)
+        {
+          clib_warning ("create NAT session failed");
+          return 0;
+        }
 
       s->ext_host_addr.as_u32 = ip->dst_address.as_u32;
       s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
@@ -1486,15 +1215,6 @@ snat_in2out_lb (snat_main_t *sm,
       s->in2out = l_key;
       s->out2in = e_key;
       u->nstaticsessions++;
-
-      /* Create list elts */
-      pool_get (tsm->list_pool, elt);
-      clib_dlist_init (tsm->list_pool, elt - tsm->list_pool);
-      elt->value = s - tsm->sessions;
-      s->per_user_index = elt - tsm->list_pool;
-      s->per_user_list_head_index = u->sessions_per_user_list_head_index;
-      clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
-                          s->per_user_index);
 
       /* Add to lookup tables */
       s_kv.value = s - tsm->sessions;
@@ -1515,6 +1235,9 @@ snat_in2out_lb (snat_main_t *sm,
   /* Update IP checksum */
   sum = ip->checksum;
   sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, src_address);
+  if (is_twice_nat_session (s))
+    sum = ip_csum_update (sum, ip->dst_address.as_u32,
+                          s->ext_host_addr.as_u32, ip4_header_t, dst_address);
   ip->checksum = ip_csum_fold (sum);
 
   if (PREDICT_TRUE(proto == SNAT_PROTOCOL_TCP))
@@ -1526,11 +1249,26 @@ snat_in2out_lb (snat_main_t *sm,
       sum = tcp->checksum;
       sum = ip_csum_update (sum, old_addr, new_addr, ip4_header_t, src_address);
       sum = ip_csum_update (sum, old_port, new_port, ip4_header_t, length);
+      if (is_twice_nat_session (s))
+        {
+          sum = ip_csum_update (sum, ip->dst_address.as_u32,
+                                s->ext_host_addr.as_u32, ip4_header_t,
+                                dst_address);
+          sum = ip_csum_update (sum, tcp->dst_port, s->ext_host_port,
+                                ip4_header_t, length);
+          tcp->dst_port = s->ext_host_port;
+          ip->dst_address.as_u32 = s->ext_host_addr.as_u32;
+        }
       tcp->checksum = ip_csum_fold(sum);
     }
   else
     {
       udp->src_port = s->out2in.port;
+      if (is_twice_nat_session (s))
+        {
+          udp->dst_port = s->ext_host_port;
+          ip->dst_address.as_u32 = s->ext_host_addr.as_u32;
+        }
       udp->checksum = 0;
     }
 
@@ -1541,6 +1279,10 @@ snat_in2out_lb (snat_main_t *sm,
   s->last_heard = now;
   s->total_pkts++;
   s->total_bytes += vlib_buffer_length_in_chain (vm, b);
+  /* Per-user LRU list maintenance */
+  clib_dlist_remove (tsm->list_pool, s->per_user_index);
+  clib_dlist_addtail (tsm->list_pool, s->per_user_list_head_index,
+                      s->per_user_index);
   return s;
 }
 
@@ -1773,15 +1515,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           s0->last_heard = now;
           s0->total_pkts++;
           s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
-          /* Per-user LRU list maintenance for dynamic translation */
-          if (!snat_is_session_static (s0))
-            {
-              clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-                                 s0->per_user_index);
-              clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                                  s0->per_user_list_head_index,
-                                  s0->per_user_index);
-            }
+          /* Per-user LRU list maintenance */
+          clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
+                             s0->per_user_index);
+          clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
+                              s0->per_user_list_head_index,
+                              s0->per_user_index);
         trace00:
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -1953,15 +1692,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           s1->last_heard = now;
           s1->total_pkts++;
           s1->total_bytes += vlib_buffer_length_in_chain (vm, b1);
-          /* Per-user LRU list maintenance for dynamic translation */
-          if (!snat_is_session_static (s1))
-            {
-              clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-                                 s1->per_user_index);
-              clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                                  s1->per_user_list_head_index,
-                                  s1->per_user_index);
-            }
+          /* Per-user LRU list maintenance */
+          clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
+                             s1->per_user_index);
+          clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
+                              s1->per_user_list_head_index,
+                              s1->per_user_index);
         trace01:
 
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -2170,15 +1906,12 @@ snat_in2out_node_fn_inline (vlib_main_t * vm,
           s0->last_heard = now;
           s0->total_pkts++;
           s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
-          /* Per-user LRU list maintenance for dynamic translation */
-          if (!snat_is_session_static (s0))
-            {
-              clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-                                 s0->per_user_index);
-              clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                                  s0->per_user_list_head_index,
-                                  s0->per_user_index);
-            }
+          /* Per-user LRU list maintenance */
+          clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
+                             s0->per_user_index);
+          clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
+                              s0->per_user_list_head_index,
+                              s0->per_user_index);
 
         trace0:
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -2467,7 +2200,7 @@ nat44_reass_hairpinning (snat_main_t *sm,
   udp0 = ip4_next_header (ip0);
 
   /* Check if destination is static mappings */
-  if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0))
+  if (!snat_static_mapping_match(sm, key0, &sm0, 1, 0, 0))
     {
       new_dst_addr0 = sm0.addr.as_u32;
       new_dst_port0 = sm0.port;
@@ -2710,15 +2443,12 @@ nat44_in2out_reass_node_fn (vlib_main_t * vm,
           s0->last_heard = now;
           s0->total_pkts++;
           s0->total_bytes += vlib_buffer_length_in_chain (vm, b0);
-          /* Per-user LRU list maintenance for dynamic translation */
-          if (!snat_is_session_static (s0))
-            {
-              clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
-                                 s0->per_user_index);
-              clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
-                                  s0->per_user_list_head_index,
-                                  s0->per_user_index);
-            }
+          /* Per-user LRU list maintenance */
+          clib_dlist_remove (sm->per_thread_data[thread_index].list_pool,
+                             s0->per_user_index);
+          clib_dlist_addtail (sm->per_thread_data[thread_index].list_pool,
+                              s0->per_user_list_head_index,
+                              s0->per_user_index);
 
         trace0:
           if (PREDICT_FALSE((node->flags & VLIB_NODE_FLAG_TRACE)
@@ -3862,7 +3592,6 @@ snat_hairpin_dst_fn (vlib_main_t * vm,
                 }
 
               vnet_buffer (b0)->snat.flags = SNAT_FLAG_HAIRPINNING;
-              clib_warning("is hairpinning");
             }
 
           pkts_processed += next0 != SNAT_IN2OUT_NEXT_DROP;
@@ -4080,7 +3809,7 @@ snat_in2out_fast_static_map_fn (vlib_main_t * vm,
           key0.port = udp0->src_port;
           key0.fib_index = rx_fib_index0;
 
-          if (snat_static_mapping_match(sm, key0, &sm0, 0, 0))
+          if (snat_static_mapping_match(sm, key0, &sm0, 0, 0, 0))
             {
               b0->error = node->errors[SNAT_IN2OUT_ERROR_NO_TRANSLATION];
               next0= SNAT_IN2OUT_NEXT_DROP;

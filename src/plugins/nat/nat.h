@@ -61,10 +61,10 @@ typedef struct {
     {
       ip4_address_t l_addr;
       ip4_address_t r_addr;
-      u32 fib_index;
+      u32 proto:8,
+          fib_index:24;
       u16 l_port;
-      u8 proto;
-      u8 rsvd;
+      u16 r_port;
     };
     u64 as_u64[2];
   };
@@ -128,6 +128,7 @@ typedef enum {
 #define SNAT_SESSION_FLAG_STATIC_MAPPING 1
 #define SNAT_SESSION_FLAG_UNKNOWN_PROTO  2
 #define SNAT_SESSION_FLAG_LOAD_BALANCING 4
+#define SNAT_SESSION_FLAG_TWICE_NAT      8
 
 #define NAT_INTERFACE_FLAG_IS_INSIDE 1
 #define NAT_INTERFACE_FLAG_IS_OUTSIDE 2
@@ -157,6 +158,10 @@ typedef CLIB_PACKED(struct {
   /* External host address and port */
   ip4_address_t ext_host_addr;  /* 68-71 */
   u16 ext_host_port;            /* 72-73 */
+
+  /* External hos address and port after translation */
+  ip4_address_t ext_host_nat_addr; /* 74-77 */
+  u16 ext_host_nat_port;           /* 78-79 */
 }) snat_session_t;
 
 
@@ -211,6 +216,7 @@ typedef struct {
   u16 local_port;
   u16 external_port;
   u8 addr_only;
+  u8 twice_nat;
   u32 vrf_id;
   u32 fib_index;
   snat_protocol_t proto;
@@ -231,6 +237,7 @@ typedef struct {
   u32 vrf_id;
   snat_protocol_t proto;
   int addr_only;
+  int twice_nat;
   int is_add;
 } snat_static_map_resolve_t;
 
@@ -317,8 +324,12 @@ typedef struct snat_main_s {
   u8 psid_length;
   u16 psid;
 
+  /* Vector of twice NAT addresses for extenal hosts */
+  snat_address_t * twice_nat_addresses;
+
   /* sw_if_indices whose intfc addresses should be auto-added */
   u32 * auto_add_sw_if_indices;
+  u32 * auto_add_sw_if_indices_twice_nat;
 
   /* vector of interface address static mappings to resolve. */
   snat_static_map_resolve_t *to_resolve;
@@ -402,7 +413,8 @@ int snat_static_mapping_match (snat_main_t * sm,
                                snat_session_key_t match,
                                snat_session_key_t * mapping,
                                u8 by_external,
-                               u8 *is_addr_only);
+                               u8 *is_addr_only,
+                               u8 *twice_nat);
 
 void snat_add_del_addr_to_fib (ip4_address_t * addr,
                                u8 p_len,
@@ -426,7 +438,25 @@ typedef struct {
     @param s SNAT session
     @return 1 if SNAT session for unknown protocol otherwise 0
 */
-#define snat_is_unk_proto_session(s) s->flags & SNAT_SESSION_FLAG_UNKNOWN_PROTO
+#define snat_is_unk_proto_session(s) (s->flags & SNAT_SESSION_FLAG_UNKNOWN_PROTO)
+
+/** \brief Check if NAT session is twice NAT.
+    @param s NAT session
+    @return 1 if NAT session is twice NAT
+*/
+#define is_twice_nat_session(s) (s->flags & SNAT_SESSION_FLAG_TWICE_NAT)
+
+/** \brief Check if NAT session is load-balancing.
+    @param s NAT session
+    @return 1 if NAT session is load-balancing
+*/
+#define is_lb_session(s) (s->flags & SNAT_SESSION_FLAG_LOAD_BALANCING)
+
+/** \brief Check if NAT session is endpoint dependent.
+    @param s NAT session
+    @return 1 if NAT session is endpoint dependent
+*/
+#define is_ed_session(s) (snat_is_unk_proto_session (s) || is_twice_nat_session (s) || is_lb_session (s))
 
 #define nat_interface_is_inside(i) i->flags & NAT_INTERFACE_FLAG_IS_INSIDE
 #define nat_interface_is_outside(i) i->flags & NAT_INTERFACE_FLAG_IS_OUTSIDE
@@ -502,24 +532,35 @@ u32 icmp_match_out2in_det(snat_main_t *sm, vlib_node_runtime_t *node,
                           snat_session_key_t *p_value,
                           u8 *p_dont_translate, void *d, void *e);
 void increment_v4_address(ip4_address_t * a);
-void snat_add_address(snat_main_t *sm, ip4_address_t *addr, u32 vrf_id);
-int snat_del_address(snat_main_t *sm, ip4_address_t addr, u8 delete_sm);
+void snat_add_address(snat_main_t *sm, ip4_address_t *addr, u32 vrf_id,
+                      u8 twice_nat);
+int snat_del_address(snat_main_t *sm, ip4_address_t addr, u8 delete_sm,
+                     u8 twice_nat);
 int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                             u16 l_port, u16 e_port, u32 vrf_id, int addr_only,
-                            u32 sw_if_index, snat_protocol_t proto, int is_add);
+                            u32 sw_if_index, snat_protocol_t proto, int is_add,
+                            u8 twice_nat);
 clib_error_t * snat_api_init(vlib_main_t * vm, snat_main_t * sm);
 int snat_set_workers (uword * bitmap);
 int snat_interface_add_del(u32 sw_if_index, u8 is_inside, int is_del);
 int snat_interface_add_del_output_feature(u32 sw_if_index, u8 is_inside,
                                           int is_del);
-int snat_add_interface_address(snat_main_t *sm, u32 sw_if_index, int is_del);
+int snat_add_interface_address(snat_main_t *sm, u32 sw_if_index, int is_del,
+                               u8 twice_nat);
 uword unformat_snat_protocol(unformat_input_t * input, va_list * args);
 u8 * format_snat_protocol(u8 * s, va_list * args);
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                                      snat_protocol_t proto, u32 vrf_id,
-                                     nat44_lb_addr_port_t *locals, u8 is_add);
+                                     nat44_lb_addr_port_t *locals, u8 is_add,
+                                     u8 twice_nat);
 int nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
                        snat_protocol_t proto, u32 vrf_id, int is_in);
+void nat_free_session_data (snat_main_t * sm, snat_session_t * s,
+                            u32 thread_index);
+snat_user_t * nat_user_get_or_create (snat_main_t *sm, ip4_address_t *addr,
+                                      u32 fib_index, u32 thread_index);
+snat_session_t * nat_session_alloc_or_recycle (snat_main_t *sm, snat_user_t *u,
+                                               u32 thread_index);
 
 static_always_inline u8
 icmp_is_error_message (icmp46_header_t * icmp)
