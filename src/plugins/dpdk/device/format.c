@@ -726,7 +726,7 @@ format_dpdk_rte_mbuf (u8 * s, va_list * va)
   u32 indent = format_get_indent (s) + 2;
 
   s = format (s, "PKT MBUF: port %d, nb_segs %d, pkt_len %d"
-	      "\n%Ubuf_len %d, data_len %d, ol_flags 0x%x, data_off %d, phys_addr 0x%x"
+	      "\n%Ubuf_len %d, data_len %d, ol_flags 0x%lx, data_off %d, phys_addr 0x%x"
 	      "\n%Upacket_type 0x%x l2_len %u l3_len %u outer_l2_len %u outer_l3_len %u",
 	      mb->port, mb->nb_segs, mb->pkt_len,
 	      format_white_space, indent,
