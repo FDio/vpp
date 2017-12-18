@@ -3182,7 +3182,7 @@ static void *vl_api_sw_interface_set_lldp_t_print
   (vl_api_sw_interface_set_lldp_t * mp, void *handle)
 {
   u8 *s;
-  u8 null_data[128];
+  u8 null_data[256];
 
   memset (null_data, 0, sizeof (null_data));
 
