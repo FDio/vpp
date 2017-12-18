@@ -466,7 +466,12 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
           return 0;
         }
         else
+        {
           e_addr.as_u32 = first_int_addr->as_u32;
+          /* Identity mapping? */
+          if (l_addr.as_u32 == 0)
+            l_addr.as_u32 = e_addr.as_u32;
+        }
     }
 
   m_key.addr = e_addr;
