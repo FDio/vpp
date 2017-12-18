@@ -96,6 +96,30 @@
     },
     {
       "key": {
+        "uuid": "9d6fb349_f4eb423e",
+        "filename": "src/vnet/ethernet/ethernet.h",
+        "patchSetId": 4
+      },
+      "lineNbr": 86,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2017-12-18T07:32:26Z",
+      "side": 1,
+      "message": "That is true, but vceq_u16 returns a uint16x4_t, not a boolean.\nThis is the only value added by the vaddlc_u16 instruction here, actually, convert the output to the right value type.",
+      "parentUuid": "a15b2c64_ccffaf2d",
+      "range": {
+        "startLine": 86,
+        "startChar": 9,
+        "endLine": 86,
+        "endChar": 19
+      },
+      "revId": "86596e0de4de555bfd74249e13790fba5ef53767",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "1451b998_666614be",
         "filename": "src/vnet/ethernet/ethernet.h",
         "patchSetId": 4
