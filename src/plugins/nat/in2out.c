@@ -179,6 +179,9 @@ snat_not_translate_fast (snat_main_t * sm, vlib_node_runtime_t *node,
                          u32 sw_if_index0, ip4_header_t * ip0, u32 proto0,
                          u32 rx_fib_index0)
 {
+  if (sm->out2in_dpo)
+    return 0;
+
   fib_node_index_t fei = FIB_NODE_INDEX_INVALID;
   fib_prefix_t pfx = {
     .fp_proto = FIB_PROTOCOL_IP4,
