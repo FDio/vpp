@@ -109,7 +109,7 @@ autoreply define bier_route_add_del
 {
   u32 client_index;
   u32 context;
-  u16 br_bp;
+  u32 br_bp;
   u8 br_is_add;
   u8 br_is_replace;
   vl_api_bier_table_id_t br_tbl_id;
