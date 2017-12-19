@@ -22,13 +22,10 @@
 /* M: construct, but don't yet send a message */
 #define M(T, mp)                                                \
 do {                                                            \
-    socket_client_main_t *scm = &vam->socket_client_main;	\
+    socket_client_main_t *scm = vam->socket_client_main;	\
     vam->result_ready = 0;                                      \
-    if (scm->socket_enable)                                     \
-      {                                                         \
-        mp = (void *)scm->socket_tx_buffer;                     \
-        scm->socket_tx_nbytes = sizeof (*mp);                   \
-      }                                                         \
+    if (scm && scm->socket_enable)                              \
+      mp = vl_socket_client_msg_alloc (sizeof(*mp));		\
     else                                                        \
       mp = vl_msg_api_alloc_as_if_client(sizeof(*mp));          \
     memset (mp, 0, sizeof (*mp));                               \
@@ -39,30 +36,25 @@ do {                                                            \
 /* MPING: construct a control-ping message, don't send it yet */
 #define MPING(T, mp)                                            \
 do {                                                            \
-    socket_client_main_t *scm = &vam->socket_client_main;	\
+    socket_client_main_t *scm = vam->socket_client_main;	\
     vam->result_ready = 0;                                      \
-    if (scm->socket_enable)                                     \
-      {                                                         \
-        mp = (void *)scm->socket_tx_buffer;                     \
-        scm->socket_tx_nbytes = sizeof (*mp);                   \
-      }                                                         \
+    if (scm && scm->socket_enable)                                     \
+      mp = vl_socket_client_msg_alloc (sizeof(*mp));		\
     else                                                        \
       mp = vl_msg_api_alloc_as_if_client(sizeof(*mp));          \
     memset (mp, 0, sizeof (*mp));                               \
     mp->_vl_msg_id = ntohs (VL_API_##T+__plugin_msg_base);      \
     mp->client_index = vam->my_client_index;                    \
-    scm->control_pings_outstanding++;                           \
+    if (scm)							\
+      scm->control_pings_outstanding++;                        	\
 } while(0);
 
 #define M2(T, mp, n)                                            \
 do {                                                            \
-    socket_client_main_t *scm = &vam->socket_client_main;	\
+    socket_client_main_t *scm = vam->socket_client_main;	\
     vam->result_ready = 0;                                      \
-    if (scm->socket_enable)                                     \
-      {                                                         \
-        mp = (void *)scm->socket_tx_buffer;                     \
-        scm->socket_tx_nbytes = sizeof (*mp) + n;               \
-      }                                                         \
+    if (scm && scm->socket_enable)                                     \
+      mp = vl_socket_client_msg_alloc (sizeof(*mp));		\
     else                                                        \
       mp = vl_msg_api_alloc_as_if_client(sizeof(*mp) + n);      \
     memset (mp, 0, sizeof (*mp));                               \
@@ -73,27 +65,9 @@ do {                                                            \
 /* S: send a message */
 #define S(mp)                                                   \
 do {                                                            \
-  int n;                                                        \
-  socket_client_main_t *scm = &vam->socket_client_main;         \
-  if (scm->socket_enable)                                       \
-    {                                                           \
-      msgbuf_t msgbuf =                                         \
-        {                                                       \
-          .q = 0,                                               \
-          .gc_mark_timestamp = 0,                               \
-          .data_len = htonl(scm->socket_tx_nbytes),             \
-        };                                                      \
-                                                                \
-      /* coverity[UNINIT] */                                    \
-      n = write (scm->socket_fd, &msgbuf, sizeof (msgbuf));     \
-      if (n < sizeof (msgbuf))                                  \
-        clib_unix_warning ("socket write (msgbuf)");            \
-                                                                \
-      n = write (scm->socket_fd, scm->socket_tx_buffer,         \
-                   scm->socket_tx_nbytes);                      \
-      if (n < scm->socket_tx_nbytes)                            \
-        clib_unix_warning ("socket write (msg)");               \
-    }                                                           \
+  socket_client_main_t *scm = vam->socket_client_main;         	\
+  if (scm && scm->socket_enable)                                       \
+    vl_socket_client_write ();					\
   else                                                          \
     vl_msg_api_send_shmem (vam->vl_input_queue, (u8 *)&mp);     \
  } while (0);
@@ -102,10 +76,11 @@ do {                                                            \
 #define W(ret)                                                  \
 do {                                                            \
     f64 timeout = vat_time_now (vam) + 1.0;                     \
-    socket_client_main_t *scm = &vam->socket_client_main;	\
+    socket_client_main_t *scm = vam->socket_client_main;	\
     ret = -99;                                                  \
                                                                 \
-    vl_socket_client_read_reply (scm);                          \
+    if (scm && scm->socket_enable)					\
+      vl_socket_client_read (5);                       		\
     while (vat_time_now (vam) < timeout) {                      \
         if (vam->result_ready == 1) {                           \
             ret = vam->retval;                                  \
@@ -119,10 +94,11 @@ do {                                                            \
 #define W2(ret, body)                                           \
 do {                                                            \
     f64 timeout = vat_time_now (vam) + 1.0;                     \
-    socket_client_main_t *scm = &vam->socket_client_main;	\
+    socket_client_main_t *scm = vam->socket_client_main;	\
     ret = -99;                                                  \
                                                                 \
-    vl_socket_client_read_reply (scm);                          \
+    if (scm && scm->socket_enable)					\
+      vl_socket_client_read (5);                       		\
     while (vat_time_now (vam) < timeout) {                      \
         if (vam->result_ready == 1) {                           \
 	  (body);                                               \
