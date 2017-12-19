@@ -1204,6 +1204,8 @@ fib_path_list_recursive_loop_detect (fib_node_index_t path_list_index,
 
 	is_looped  = fib_path_recursive_loop_detect(*path_index, copy_ptr);
 	list_looped += is_looped;
+
+        vec_free(copy);
     }
 
     FIB_PATH_LIST_DBG(path_list, "loop-detect: eval:%d", eval);
