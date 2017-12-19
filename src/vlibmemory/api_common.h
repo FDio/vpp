@@ -197,6 +197,8 @@ typedef struct
   u8 *socket_rx_buffer;
   u32 socket_tx_nbytes;
   int control_pings_outstanding;
+
+  u8 *name;
 } socket_client_main_t;
 
 extern socket_client_main_t socket_client_main;
@@ -226,11 +228,12 @@ vl_api_registration_t *sockclnt_get_registration (u32 index);
 void vl_api_socket_process_msg (clib_file_t * uf, vl_api_registration_t * rp,
 				i8 * input_v);
 
-int
-vl_socket_client_connect (socket_client_main_t * scm, char *socket_path,
-			  char *client_name, u32 socket_buffer_size);
-void vl_socket_client_read_reply (socket_client_main_t * scm);
-void vl_socket_client_enable_disable (socket_client_main_t * scm, int enable);
+int vl_socket_client_connect (char *socket_path, char *client_name,
+                              u32 socket_buffer_size);
+int vl_socket_client_init_shm (void);
+void vl_socket_client_disconnect (void);
+void vl_socket_client_read_sync (void);
+void vl_socket_client_enable_disable (int enable);
 
 #endif /* included_vlibmemory_api_common_h */
 
