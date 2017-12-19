@@ -184,6 +184,23 @@ define memfd_segment_create_reply
 };
 
 /*
+ * Initialize shm api over socket api
+ */
+define sock_init_shm {
+    u32 client_index;
+    u32 context;
+    u32 requested_size;
+    u8 nitems;
+    u64 configs[nitems];
+};
+
+define sock_init_shm_reply {
+    u32 client_index;
+    u32 context;
+    i32 retval;
+};
+
+/*
  * Memory client ping / response
  * Only sent on inactive connections
  */

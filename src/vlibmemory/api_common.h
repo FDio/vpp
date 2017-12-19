@@ -43,6 +43,24 @@ typedef struct ring_alloc_
   u32 misses;
 } ring_alloc_t;
 
+typedef enum
+{
+  VL_API_VLIB_RING,
+  VL_API_CLIENT_RING,
+  VL_API_QUEUE
+} vl_api_shm_config_type_t;
+
+typedef struct vl_api_ring_config_
+{
+  u8 type;
+  u8 _pad;
+  u16 count;
+  u32 size;
+} vl_api_shm_elem_config_t;
+
+STATIC_ASSERT (sizeof (vl_api_shm_elem_config_t) == 8,
+	       "Size must be exactly 8 bytes");
+
 /*
  * Initializers for the (shared-memory) rings
  * _(size, n). Note: each msg has space for a header.
@@ -129,8 +147,8 @@ u16 vl_client_get_first_plugin_msg_id (const char *plugin_name);
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 u32 vl_api_memclnt_create_internal (char *, unix_shared_memory_queue_t *);
-void vl_init_shmem (svm_region_t * vlib_rp, int is_vlib,
-		    int is_private_region);
+void vl_init_shmem (svm_region_t * vlib_rp, vl_api_shm_elem_config_t * config,
+		    int is_vlib, int is_private_region);
 void vl_client_install_client_message_handlers (void);
 void vl_api_send_pending_rpc_requests (vlib_main_t * vm);
 
@@ -197,6 +215,9 @@ typedef struct
   u8 *socket_rx_buffer;
   u32 socket_tx_nbytes;
   int control_pings_outstanding;
+
+  u8 *name;
+  clib_time_t clib_time;
 } socket_client_main_t;
 
 extern socket_client_main_t socket_client_main;
@@ -226,11 +247,14 @@ vl_api_registration_t *sockclnt_get_registration (u32 index);
 void vl_api_socket_process_msg (clib_file_t * uf, vl_api_registration_t * rp,
 				i8 * input_v);
 
-int
-vl_socket_client_connect (socket_client_main_t * scm, char *socket_path,
-			  char *client_name, u32 socket_buffer_size);
-void vl_socket_client_read_reply (socket_client_main_t * scm);
-void vl_socket_client_enable_disable (socket_client_main_t * scm, int enable);
+int vl_socket_client_connect (char *socket_path, char *client_name,
+			      u32 socket_buffer_size);
+int vl_socket_client_init_shm (vl_api_shm_elem_config_t * config);
+void vl_socket_client_disconnect (void);
+int vl_socket_client_read (int wait);
+int vl_socket_client_write (void);
+void vl_socket_client_enable_disable (int enable);
+void *vl_socket_client_msg_alloc (int nbytes);
 
 #endif /* included_vlibmemory_api_common_h */
 
