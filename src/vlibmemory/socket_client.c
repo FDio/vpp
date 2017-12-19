@@ -21,6 +21,8 @@
 #include <stdlib.h>
 #include <setjmp.h>
 #include <sys/types.h>
+#define __USE_GNU
+#include <sys/socket.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <netinet/in.h>
@@ -43,6 +45,7 @@
 
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
+#include <svm/memfd.h>
 #include <vlibmemory/api.h>
 
 #include <vlibmemory/vl_memory_msg_enum.h>
@@ -65,22 +68,26 @@ socket_client_main_t socket_client_main;
 
 /* Debug aid */
 u32 vl (void *p) __attribute__ ((weak));
+
 u32
 vl (void *p)
 {
   return vec_len (p);
 }
 
-void
-vl_socket_client_read_reply (socket_client_main_t * scm)
+int
+vl_socket_client_read (int wait)
 {
+  socket_client_main_t *scm = &socket_client_main;
   int n, current_rx_index;
-  msgbuf_t *mbp;
+  msgbuf_t *mbp = 0;
+  f64 timeout;
 
-  if (scm->socket_fd == 0 || scm->socket_enable == 0)
-    return;
+  if (scm->socket_fd == 0)
+    return -1;
 
-  mbp = 0;
+  if (wait)
+    timeout = clib_time_now (&scm->clib_time) + wait;
 
   while (1)
     {
@@ -96,7 +103,7 @@ vl_socket_client_read_reply (socket_client_main_t * scm)
 	  if (n < 0)
 	    {
 	      clib_unix_warning ("socket_read");
-	      return;
+	      return -1;
 	    }
 	  _vec_len (scm->socket_rx_buffer) += n;
 	}
@@ -127,20 +134,207 @@ vl_socket_client_read_reply (socket_client_main_t * scm)
 	      && scm->control_pings_outstanding == 0)
 	    break;
 	}
+
+      if (wait && clib_time_now (&scm->clib_time) >= timeout)
+	return -1;
     }
+  return 0;
 }
 
 int
-vl_socket_client_connect (socket_client_main_t * scm, char *socket_path,
-			  char *client_name, u32 socket_buffer_size)
+vl_socket_client_write (void)
 {
-  char buffer[256];
-  char *rdptr;
-  int n, total_bytes;
-  vl_api_sockclnt_create_reply_t *rp;
+  socket_client_main_t *scm = &socket_client_main;
+  int n;
+
+  msgbuf_t msgbuf = {
+    .q = 0,
+    .gc_mark_timestamp = 0,
+    .data_len = htonl (scm->socket_tx_nbytes),
+  };
+
+  n = write (scm->socket_fd, &msgbuf, sizeof (msgbuf));
+  if (n < sizeof (msgbuf))
+    {
+      clib_unix_warning ("socket write (msgbuf)");
+      return -1;
+    }
+
+  n = write (scm->socket_fd, scm->socket_tx_buffer, scm->socket_tx_nbytes);
+  if (n < scm->socket_tx_nbytes)
+    {
+      clib_unix_warning ("socket write (msg)");
+      return -1;
+    }
+
+  return n;
+}
+
+void *
+vl_socket_client_msg_alloc (int nbytes)
+{
+  socket_client_main.socket_tx_nbytes = nbytes;
+  return ((void *) socket_client_main.socket_tx_buffer);
+}
+
+void
+vl_socket_client_disconnect (void)
+{
+  socket_client_main_t *scm = &socket_client_main;
+  if (scm->socket_fd && (close (scm->socket_fd) < 0))
+    clib_unix_warning ("close");
+  scm->socket_fd = 0;
+}
+
+void
+vl_socket_client_enable_disable (int enable)
+{
+  socket_client_main_t *scm = &socket_client_main;
+  scm->socket_enable = enable;
+}
+
+static clib_error_t *
+receive_fd_msg (int socket_fd, int *my_fd)
+{
+  char msgbuf[16];
+  char ctl[CMSG_SPACE (sizeof (int)) + CMSG_SPACE (sizeof (struct ucred))];
+  struct msghdr mh = { 0 };
+  struct iovec iov[1];
+  ssize_t size;
+  struct ucred *cr = 0;
+  struct cmsghdr *cmsg;
+  pid_t pid __attribute__ ((unused));
+  uid_t uid __attribute__ ((unused));
+  gid_t gid __attribute__ ((unused));
+
+  iov[0].iov_base = msgbuf;
+  iov[0].iov_len = 5;
+  mh.msg_iov = iov;
+  mh.msg_iovlen = 1;
+  mh.msg_control = ctl;
+  mh.msg_controllen = sizeof (ctl);
+
+  memset (ctl, 0, sizeof (ctl));
+
+  /* receive the incoming message */
+  size = recvmsg (socket_fd, &mh, 0);
+  if (size != 5)
+    {
+      return (size == 0) ? clib_error_return (0, "disconnected") :
+	clib_error_return_unix (0, "recvmsg: malformed message (fd %d)",
+				socket_fd);
+    }
+
+  cmsg = CMSG_FIRSTHDR (&mh);
+  while (cmsg)
+    {
+      if (cmsg->cmsg_level == SOL_SOCKET)
+	{
+	  if (cmsg->cmsg_type == SCM_CREDENTIALS)
+	    {
+	      cr = (struct ucred *) CMSG_DATA (cmsg);
+	      uid = cr->uid;
+	      gid = cr->gid;
+	      pid = cr->pid;
+	    }
+	  else if (cmsg->cmsg_type == SCM_RIGHTS)
+	    {
+	      clib_memcpy (my_fd, CMSG_DATA (cmsg), sizeof (int));
+	    }
+	}
+      cmsg = CMSG_NXTHDR (&mh, cmsg);
+    }
+  return 0;
+}
+
+static void vl_api_sock_init_shm_reply_t_handler
+  (vl_api_sock_init_shm_reply_t * mp)
+{
+  socket_client_main_t *scm = &socket_client_main;
+  int my_fd = -1;
+  clib_error_t *error;
+  i32 retval = ntohl (mp->retval);
+  memfd_private_t memfd;
+  api_main_t *am = &api_main;
+  u8 *new_name;
+
+  if (retval)
+    {
+      clib_warning ("failed to init shmem");
+      return;
+    }
+
+  /*
+   * Check the socket for the magic fd
+   */
+  error = receive_fd_msg (scm->socket_fd, &my_fd);
+  if (error)
+    {
+      retval = -99;
+      return;
+    }
+
+  memset (&memfd, 0, sizeof (memfd));
+  memfd.fd = my_fd;
+
+  /* Note: this closes memfd.fd */
+  retval = memfd_slave_init (&memfd);
+  if (retval)
+    clib_warning ("WARNING: segment map returned %d", retval);
+
+  /*
+   * Pivot to the memory client segment that vpp just created
+   */
+  am->vlib_rp = (void *) (memfd.requested_va + MMAP_PAGESIZE);
+  am->shmem_hdr = (void *) am->vlib_rp->user_ctx;
+
+  new_name = format (0, "%v[shm]%c", scm->name, 0);
+  vl_client_install_client_message_handlers ();
+  vl_client_connect_to_vlib_no_map ("pvt", (char *) new_name,
+				    32 /* input_queue_length */ );
+  vl_socket_client_enable_disable (0);
+  vec_free (new_name);
+}
+
+static void
+vl_api_sockclnt_create_reply_t_handler (vl_api_sockclnt_create_reply_t * mp)
+{
+  socket_client_main_t *scm = &socket_client_main;
+  if (!mp->response)
+    scm->socket_enable = 1;
+}
+
+#define foreach_sock_client_api_msg             		\
+_(SOCKCLNT_CREATE_REPLY, sockclnt_create_reply)			\
+_(SOCK_INIT_SHM_REPLY, sock_init_shm_reply)     		\
+
+static void
+noop_handler (void *notused)
+{
+}
+
+void
+vl_sock_client_install_message_handlers (void)
+{
+
+#define _(N,n)                                                  \
+    vl_msg_api_set_handlers(VL_API_##N, #n,                     \
+                            vl_api_##n##_t_handler,             \
+                            noop_handler,                       \
+                            vl_api_##n##_t_endian,              \
+                            vl_api_##n##_t_print,               \
+                            sizeof(vl_api_##n##_t), 1);
+  foreach_sock_client_api_msg;
+#undef _
+}
+
+int
+vl_socket_client_connect (char *socket_path, char *client_name,
+			  u32 socket_buffer_size)
+{
+  socket_client_main_t *scm = &socket_client_main;
   vl_api_sockclnt_create_t *mp;
-  clib_socket_t *sock = &scm->client_socket;
-  msgbuf_t *mbp;
+  clib_socket_t *sock;
   clib_error_t *error;
 
   /* Already connected? */
@@ -151,84 +345,74 @@ vl_socket_client_connect (socket_client_main_t * scm, char *socket_path,
   if (socket_path == 0 || client_name == 0)
     return (-3);
 
+  sock = &scm->client_socket;
   sock->config = socket_path;
   sock->flags = CLIB_SOCKET_F_IS_CLIENT | CLIB_SOCKET_F_SEQPACKET;
 
-  error = clib_socket_init (sock);
-
-  if (error)
+  if ((error = clib_socket_init (sock)))
     {
       clib_error_report (error);
       return (-1);
     }
 
+  vl_sock_client_install_message_handlers ();
+
   scm->socket_fd = sock->fd;
-
-  mbp = (msgbuf_t *) buffer;
-  mbp->q = 0;
-  mbp->data_len = htonl (sizeof (*mp));
-  mbp->gc_mark_timestamp = 0;
-
-  mp = (vl_api_sockclnt_create_t *) mbp->data;
-  mp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE);
-  strncpy ((char *) mp->name, client_name, sizeof (mp->name) - 1);
-  mp->name[sizeof (mp->name) - 1] = 0;
-  mp->context = 0xfeedface;
-
-  n = write (scm->socket_fd, mbp, sizeof (*mbp) + sizeof (*mp));
-  if (n < 0)
-    {
-      clib_unix_warning ("socket write (msg)");
-      return (-1);
-    }
-
-  memset (buffer, 0, sizeof (buffer));
-
-  total_bytes = 0;
-  rdptr = buffer;
-  do
-    {
-      n = read (scm->socket_fd, rdptr, sizeof (buffer) - (rdptr - buffer));
-      if (n < 0)
-	{
-	  clib_unix_warning ("socket read");
-	}
-      total_bytes += n;
-      rdptr += n;
-    }
-  while (total_bytes < sizeof (vl_api_sockclnt_create_reply_t)
-	 + sizeof (msgbuf_t));
-
-  rp = (vl_api_sockclnt_create_reply_t *) (buffer + sizeof (msgbuf_t));
-  if (ntohs (rp->_vl_msg_id) != VL_API_SOCKCLNT_CREATE_REPLY)
-    {
-      clib_warning ("connect reply got msg id %d\n", ntohs (rp->_vl_msg_id));
-      return (-1);
-    }
-
-  /* allocate tx, rx buffers */
   scm->socket_buffer_size = socket_buffer_size ? socket_buffer_size :
     SOCKET_CLIENT_DEFAULT_BUFFER_SIZE;
   vec_validate (scm->socket_tx_buffer, scm->socket_buffer_size - 1);
   vec_validate (scm->socket_rx_buffer, scm->socket_buffer_size - 1);
   _vec_len (scm->socket_rx_buffer) = 0;
-  scm->socket_enable = 1;
+  _vec_len (scm->socket_tx_buffer) = 0;
+  scm->name = format (0, "%s", client_name);
 
+  mp = vl_socket_client_msg_alloc (sizeof (*mp));
+  mp->_vl_msg_id = htons (VL_API_SOCKCLNT_CREATE);
+  strncpy ((char *) mp->name, client_name, sizeof (mp->name) - 1);
+  mp->name[sizeof (mp->name) - 1] = 0;
+  mp->context = 0xfeedface;
+
+  if (vl_socket_client_write () <= 0)
+    return (-1);
+
+  if (vl_socket_client_read (1))
+    return (-1);
+
+  clib_time_init (&scm->clib_time);
   return (0);
 }
 
-void
-vl_socket_client_disconnect (socket_client_main_t * scm)
+int
+vl_socket_client_init_shm (vl_api_shm_elem_config_t * config)
 {
-  if (scm->socket_fd && (close (scm->socket_fd) < 0))
-    clib_unix_warning ("close");
-  scm->socket_fd = 0;
-}
+  vl_api_sock_init_shm_t *mp;
+  int rv, i;
+  u64 *cfg;
 
-void
-vl_socket_client_enable_disable (socket_client_main_t * scm, int enable)
-{
-  scm->socket_enable = enable;
+  mp = vl_socket_client_msg_alloc (sizeof (*mp) +
+				   vec_len (config) * sizeof (u64));
+  memset (mp, 0, sizeof (*mp));
+  mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_SOCK_INIT_SHM);
+  mp->client_index = ~0;
+  mp->requested_size = 64 << 20;
+
+  if (config)
+    {
+      for (i = 0; i < vec_len (config); i++)
+	{
+	  cfg = (u64 *) & config[i];
+	  mp->configs[i] = *cfg;
+	}
+      mp->nitems = vec_len (config);
+    }
+  rv = vl_socket_client_write ();
+  if (rv <= 0)
+    return rv;
+
+  if (vl_socket_client_read (1))
+    return -1;
+
+  return 0;
 }
 
 /*
