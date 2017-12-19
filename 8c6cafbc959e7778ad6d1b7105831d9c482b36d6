@@ -46,6 +46,30 @@
       "revId": "8c6cafbc959e7778ad6d1b7105831d9c482b36d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4daf2df4_3d721f32",
+        "filename": "src/plugins/l2e/l2e.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 11
+      },
+      "writtenOn": "2017-12-19T14:21:50Z",
+      "side": 1,
+      "message": "The L2 output feature bitmap will be from the output interface and different to that of the L2 input feature bitmap. When l2-output node is run, it calls l2_output_dispatch() in l2_output.c to initialize feature_bitmap of the packet with that of the output interface. Thus it should be transparent to the L2 emulation feature which is a L2 input feature.",
+      "parentUuid": "23b054af_6aa85661",
+      "range": {
+        "startLine": 412,
+        "startChar": 26,
+        "endLine": 412,
+        "endChar": 40
+      },
+      "revId": "8c6cafbc959e7778ad6d1b7105831d9c482b36d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
