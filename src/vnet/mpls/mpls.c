@@ -386,7 +386,7 @@ done:
 VLIB_CLI_COMMAND (mpls_local_label_command, static) = {
   .path = "mpls local-label",
   .function = vnet_mpls_local_label,
-  .short_help = "mpls local-label [add|del] <label-value> [eos|non-eos] via [next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-connected] [rx-ip4 <interface>] [out-labels <value value value>]",
+  .short_help = "mpls local-label [add|del] <label-value> [eos|non-eos] via [next-hop-address] [next-hop-interface] [next-hop-table <value>] [weight <value>] [preference <value>] [udp-encap-id <value>] [ip4-lookup-in-table <value>] [ip6-lookup-in-table <value>] [mpls-lookup-in-table <value>] [resolve-via-host] [resolve-via-attached] [rx-ip4 <interface>] [out-labels <value value value>]",
 };
 
 clib_error_t *
