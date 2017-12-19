@@ -389,7 +389,7 @@ main (int argc, char **argv)
   if (vam->socket_name && vat_socket_connect (vam))
     fformat (stderr, "WARNING: socket connection failed");
 
-  if (vam->socket_client_main.socket_fd == 0
+  if ((!vam->socket_client_main || vam->socket_client_main->socket_fd == 0)
       && connect_to_vpe ("vpp_api_test") < 0)
     {
       svm_region_exit ();
