@@ -22,6 +22,30 @@
       "revId": "8c6cafbc959e7778ad6d1b7105831d9c482b36d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "23b054af_6aa85661",
+        "filename": "src/plugins/l2e/l2e.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-19T07:42:45Z",
+      "side": 1,
+      "message": "it\u0027s removed from the L2 input path yes. But it may re-join the L2 output path, at the l2-output node, after matching a DVR route.\nShould I clear the flag in that case?",
+      "parentUuid": "f5ff0eed_316a3580",
+      "range": {
+        "startLine": 412,
+        "startChar": 26,
+        "endLine": 412,
+        "endChar": 40
+      },
+      "revId": "8c6cafbc959e7778ad6d1b7105831d9c482b36d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
