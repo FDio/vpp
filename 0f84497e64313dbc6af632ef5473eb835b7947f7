@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6c360c78_c0cdc335",
+        "filename": "src/plugins/cbdma/cbdma.h",
+        "patchSetId": 6
+      },
+      "lineNbr": 166,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-12-19T16:01:28Z",
+      "side": 1,
+      "message": "This should be a u16 write.\nFor whatever reason my platform was ignoring this write.\nHW either ignores or truncates the value to u16. \nEither way, with that change I have it working on BDW.",
+      "revId": "0f84497e64313dbc6af632ef5473eb835b7947f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
