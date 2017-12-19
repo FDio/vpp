@@ -1,0 +1,89 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a7af64f8_3aed3892",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 800,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-12-19T11:01:40Z",
+      "side": 1,
+      "message": "add same description as in cli",
+      "revId": "ee90926037e97c7b3c6d2954a30cb64540b3e622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "184492d2_be7c3c81",
+        "filename": "test/test_nat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2869,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-12-19T11:01:40Z",
+      "side": 1,
+      "message": "lot of duplicate code",
+      "revId": "ee90926037e97c7b3c6d2954a30cb64540b3e622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1b8d2099_9a7fd33c",
+        "filename": "test/test_nat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2911,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-12-19T11:01:40Z",
+      "side": 1,
+      "message": "same as compose_ip6?",
+      "revId": "ee90926037e97c7b3c6d2954a30cb64540b3e622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b01a56ef_ceaa62cf",
+        "filename": "test/test_nat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 2919,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-12-19T11:01:40Z",
+      "side": 1,
+      "message": "same as in NAT \"create capture and verify method holder\"",
+      "revId": "ee90926037e97c7b3c6d2954a30cb64540b3e622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cf48a7d9_5c7b9c65",
+        "filename": "test/test_nat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 3027,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-12-19T11:01:40Z",
+      "side": 1,
+      "message": "again copy",
+      "revId": "ee90926037e97c7b3c6d2954a30cb64540b3e622",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
