@@ -747,8 +747,10 @@ int kp_vip_add(ip46_address_t *prefix, u8 plen, kp_vip_type_t type,
 
   if (ip46_prefix_is_ip4(prefix, plen) &&
       (type != KP_VIP_TYPE_IP4_NAT44) &&
-      (type != KP_VIP_TYPE_IP4_NAT46))
+      (type != KP_VIP_TYPE_IP4_NAT46)) {
+    kp_put_writer_lock();
     return VNET_API_ERROR_INVALID_ADDRESS_FAMILY;
+  }
 
 
   //Allocate
@@ -785,8 +787,10 @@ int kp_vip_add(ip46_address_t *prefix, u8 plen, kp_vip_type_t type,
   //Create maping from nodeport to vip_index
   key = clib_host_to_net_u16(node_port);
   entry = hash_get_mem (kpm->nodeport_by_key, &key);
-  if (entry)
+  if (entry) {
+    kp_put_writer_lock();
     return VNET_API_ERROR_VALUE_EXIST;
+  }
 
   key_copy = clib_mem_alloc (sizeof (*key_copy));
   clib_memcpy (key_copy, &key, sizeof (*key_copy));
