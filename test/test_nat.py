@@ -2866,6 +2866,266 @@ class TestNAT44(MethodHolder):
             self.clear_nat44()
 
 
+class TestNAT44Out2InDPO(MethodHolder):
+    """ NAT Test Cases using out2in dpo """
+
+    @classmethod
+    def setUpConstants(cls):
+        super(TestNAT44Out2InDPO, cls).setUpConstants()
+        cls.vpp_cmdline.extend(["nat", "{", "out2in dpo", "}"])
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestNAT44Out2InDPO, cls).setUpClass()
+
+        try:
+            cls.tcp_local_port = 6303
+            cls.tcp_external_port = 6303
+            cls.udp_local_port = 6304
+            cls.udp_external_port = 6304
+            cls.icmp_id_local = 6305
+            cls.icmp_id_external = 6305
+            cls.nat_addr = '10.0.0.3'
+            cls.dst_ip4 = '192.168.70.1'
+
+            cls.create_pg_interfaces(range(2))
+
+            cls.pg0.admin_up()
+            cls.pg0.config_ip4()
+            cls.pg0.resolve_arp()
+
+            cls.pg1.admin_up()
+            cls.pg1.config_ip6()
+            cls.pg1.resolve_ndp()
+
+            cls.vapi.ip_add_del_route(is_ipv6=True,
+                                      dst_address='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+                                      dst_address_length=0,
+                                      next_hop_address=cls.pg1.remote_ip6n,
+                                      next_hop_sw_if_index=cls.pg1.sw_if_index)
+
+        except Exception:
+            super(TestNAT44Out2InDPO, cls).tearDownClass()
+            raise
+
+    def rfc6052_4to6(self, prefix, ip4):
+        return socket.inet_ntop(socket.AF_INET6, prefix[:12] + socket.inet_pton(socket.AF_INET, ip4))
+
+    def rfc6052_6to4(self, prefix, ip6):
+        ip6n = socket.inet_pton(socket.AF_INET6, ip6)
+        self.assertEqual(prefix[:12], ip6n[:12])
+        return socket.inet_ntop(socket.AF_INET, ip6n[12:])
+
+    def create_stream_in(self, in_if, dst_ip, ttl=64):
+        """
+        Create packet stream for inside network
+
+        :param in_if: Inside interface
+        :param dst_ip: Destination address
+        :param ttl: TTL of generated packets
+        """
+        pkts = []
+        # TCP
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=dst_ip, ttl=ttl) /
+             TCP(sport=self.tcp_local_port, dport=20))
+        pkts.append(p)
+
+        # UDP
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=dst_ip, ttl=ttl) /
+             UDP(sport=self.udp_local_port, dport=20))
+        pkts.append(p)
+
+        # ICMP
+        p = (Ether(dst=in_if.local_mac, src=in_if.remote_mac) /
+             IP(src=in_if.remote_ip4, dst=dst_ip, ttl=ttl) /
+             ICMP(id=self.icmp_id_local, type='echo-request'))
+        pkts.append(p)
+
+        return pkts
+
+    def create_stream_out(self, out_if, src_ip4, dst_ip=None, hl=64):
+        """
+        Create packet stream for outside network
+
+        :param out_if: Outside interface
+        :param dst_ip: Destination IP address (Default use global NAT address)
+        :param hl: HL of generated packets
+        """
+        if dst_ip is None:
+            dst_ip = self.rfc6052_4to6(self.src_ip6_pfx, self.nat_addr)
+        src_ip = self.rfc6052_4to6(self.dst_ip6_pfx, src_ip4)
+        pkts = []
+        # TCP
+        p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
+             IPv6(src=src_ip, dst=dst_ip, hlim=hl) /
+             TCP(dport=self.tcp_external_port, sport=20))
+        pkts.append(p)
+
+        # UDP
+        p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
+             IPv6(src=src_ip, dst=dst_ip, hlim=hl) /
+             UDP(dport=self.udp_external_port, sport=20))
+        pkts.append(p)
+
+        # ICMP
+        p = (Ether(dst=out_if.local_mac, src=out_if.remote_mac) /
+             IPv6(src=src_ip, dst=dst_ip, hlim=hl) /
+             ICMPv6EchoReply(id=self.icmp_id_external))
+        pkts.append(p)
+
+        return pkts
+
+    def verify_capture_out(self, capture, nat_ip=None, same_port=False,
+                           packet_num=3, dst_ip=None):
+        """
+        Verify captured packets on outside network
+
+        :param capture: Captured packets
+        :param nat_ip: Translated IP address (Default use global NAT address)
+        :param same_port: Sorce port number is not translated (Default False)
+        :param packet_num: Expected number of packets (Default 3)
+        :param dst_ip: Destination IP address (Default do not verify)
+        """
+        if nat_ip is None:
+            nat_ip = self.nat_addr
+        self.assertEqual(packet_num, len(capture))
+        for packet in capture:
+            try:
+                #self.check_ip_checksum(packet)
+                self.assertEqual(self.rfc6052_6to4(self.src_ip6_pfx, packet[IPv6].src), nat_ip)
+                if dst_ip is not None:
+                    self.assertEqual(self.rfc6052_6to4(self.dst_ip6_pfx, packet[IPv6].dst), dst_ip)
+                if packet.haslayer(TCP):
+                    if same_port:
+                        self.assertEqual(packet[TCP].sport, self.tcp_local_port)
+                    else:
+                        self.assertNotEqual(
+                            packet[TCP].sport, self.tcp_local_port)
+                    self.tcp_external_port = packet[TCP].sport
+                    self.check_tcp_checksum(packet)
+                elif packet.haslayer(UDP):
+                    if same_port:
+                        self.assertEqual(packet[UDP].sport, self.udp_local_port)
+                    else:
+                        self.assertNotEqual(
+                            packet[UDP].sport, self.udp_local_port)
+                    self.udp_external_port = packet[UDP].sport
+                else:
+                    if same_port:
+                        self.assertEqual(packet[ICMPv6EchoRequest].id, self.icmp_id_local)
+                    else:
+                        self.assertNotEqual(packet[ICMPv6EchoRequest].id, self.icmp_id_local)
+                    self.icmp_id_external = packet[ICMPv6EchoRequest].id
+                    #self.check_icmp_checksum(packet)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet "
+                                      "(outside network):", packet))
+                raise
+
+    def verify_capture_in(self, capture, in_if, packet_num=3):
+        """
+        Verify captured packets on inside network
+
+        :param capture: Captured packets
+        :param in_if: Inside interface
+        :param packet_num: Expected number of packets (Default 3)
+        """
+        self.assertEqual(packet_num, len(capture))
+        for packet in capture:
+            try:
+                self.check_ip_checksum(packet)
+                self.assertEqual(packet[IP].dst, in_if.remote_ip4)
+                if packet.haslayer(TCP):
+                    self.assertEqual(packet[TCP].dport, self.tcp_local_port)
+                    self.check_tcp_checksum(packet)
+                elif packet.haslayer(UDP):
+                    self.assertEqual(packet[UDP].dport, self.udp_local_port)
+                else:
+                    self.assertEqual(packet[ICMP].id, self.icmp_id_local)
+                    self.check_icmp_checksum(packet)
+            except:
+                self.logger.error(ppp("Unexpected or invalid packet "
+                                      "(inside network):", packet))
+                raise
+
+
+    def nat44_add_address(self, ip, is_add=1, vrf_id=0xFFFFFFFF):
+        """
+        Add/delete NAT44 address
+
+        :param ip: IP address
+        :param is_add: 1 if add, 0 if delete (Default add)
+        :param vrf_id: VRF id
+        """
+        nat_addr = socket.inet_pton(socket.AF_INET, ip)
+        self.vapi.nat44_add_del_address_range(nat_addr, nat_addr, is_add,
+                                              vrf_id=vrf_id)
+
+    def configure_xlat(self):
+        self.dst_ip6_pfx = '\x00\x01\x00\x02\x00\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        self.dst_ip6_pfx_len = 96
+        self.src_ip6_pfx = '\x00\x05\x00\x05\x00\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        self.src_ip6_pfx_len = 96
+        self.vapi.map_add_domain(self.dst_ip6_pfx,
+                                 self.dst_ip6_pfx_len,
+                                 self.src_ip6_pfx,
+                                 self.src_ip6_pfx_len,
+                                 '\x00\x00\x00\x00',
+                                 0,
+                                 is_translation=1,
+                                 is_rfc6052=1)
+
+    def test_464xlat_ce(self):
+        """ Test 464XLAT CE with NAT44 """
+
+        self.configure_xlat()
+
+        self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index)
+        self.nat44_add_address(self.nat_addr)
+        self.vapi.nat44_set_translate_all()
+
+        try:
+            pkts = self.create_stream_in(self.pg0, self.dst_ip4)
+            self.pg0.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg1.get_capture(len(pkts))
+            self.verify_capture_out(capture, dst_ip=self.dst_ip4)
+
+            pkts = self.create_stream_out(self.pg1, self.dst_ip4)
+            self.pg1.add_stream(pkts)
+            self.pg_enable_capture(self.pg_interfaces)
+            self.pg_start()
+            capture = self.pg0.get_capture(len(pkts))
+            self.verify_capture_in(capture, self.pg0)
+        finally:
+            self.vapi.nat44_interface_add_del_feature(self.pg0.sw_if_index, is_add=0)
+            self.nat44_add_address(self.nat_addr, is_add=0)
+            self.vapi.nat44_set_translate_all(enable=0)
+
+    def test_464xlat_ce_no_nat(self):
+        """ Test 464XLAT CE without NAT44 """
+
+        self.configure_xlat()
+
+        pkts = self.create_stream_in(self.pg0, self.dst_ip4)
+        self.pg0.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(len(pkts))
+        self.verify_capture_out(capture, dst_ip=self.dst_ip4, nat_ip=self.pg0.remote_ip4, same_port=True)
+
+        pkts = self.create_stream_out(self.pg1, self.dst_ip4, dst_ip=self.rfc6052_4to6(self.src_ip6_pfx,
+                                                                                       self.pg0.remote_ip4))
+        self.pg1.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(len(pkts))
+        self.verify_capture_in(capture, self.pg0)
+
+
 class TestDeterministicNAT(MethodHolder):
     """ Deterministic NAT Test Cases """
 

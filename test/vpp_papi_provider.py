@@ -1443,6 +1443,17 @@ class VppPapiProvider(object):
              'vrf_id': vrf_id,
              'is_in': is_in})
 
+    def nat44_set_translate_all(
+            self,
+            enable=1):
+        """Set translate_all flag
+
+        :param enable: 1 for enable, 0 for disable
+        """
+        return self.api(
+            self.papi.nat44_set_translate_all,
+            {'enable': enable})
+
     def nat_set_reass(
             self,
             timeout=2,
@@ -2278,6 +2289,7 @@ class VppPapiProvider(object):
                        psid_offset=0,
                        psid_length=0,
                        is_translation=0,
+                       is_rfc6052=0,
                        mtu=1280):
         return self.api(
             self.papi.map_add_domain,
@@ -2292,6 +2304,7 @@ class VppPapiProvider(object):
                 'psid_offset': psid_offset,
                 'psid_length': psid_length,
                 'is_translation': is_translation,
+                'is_rfc6052': is_rfc6052,
                 'mtu': mtu
             })
 

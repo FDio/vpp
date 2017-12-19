@@ -442,6 +442,9 @@ static void
       if (rv)
 	goto send_reply;
 
+      if (sm->out2in_dpo)
+	nat44_add_del_address_dpo (this_addr, mp->is_add);
+
       increment_v4_address (&this_addr);
     }
 
@@ -1348,6 +1351,65 @@ vl_api_nat44_del_session_t_print (vl_api_nat44_del_session_t * mp,
 	      format_ip4_address, mp->address,
 	      clib_net_to_host_u16 (mp->port),
 	      mp->protocol, clib_net_to_host_u32 (mp->vrf_id), mp->is_in);
+
+  FINISH;
+}
+
+static void
+vl_api_nat44_set_translate_all_t_handler (vl_api_nat44_set_translate_all_t *
+					  mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_set_translate_all_reply_t *rmp;
+  int rv = 0;
+
+  sm->translate_all = (mp->enable != 0);
+
+  REPLY_MACRO (VL_API_NAT44_SET_TRANSLATE_ALL_REPLY);
+}
+
+static void *
+vl_api_nat44_set_translate_all_t_print (vl_api_nat44_set_translate_all_t * mp,
+					void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_set_translate_all ");
+  s = format (s, "enable %u", mp->enable);
+
+  FINISH;
+}
+
+static void
+vl_api_nat44_get_translate_all_t_handler (vl_api_nat44_get_translate_all_t *
+					  mp)
+{
+  unix_shared_memory_queue_t *q;
+  snat_main_t *sm = &snat_main;
+  vl_api_nat44_get_translate_all_reply_t *rmp;
+
+  q = vl_api_client_index_to_input_queue (mp->client_index);
+  if (q == 0)
+    return;
+
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  memset (rmp, 0, sizeof (*rmp));
+  rmp->_vl_msg_id =
+    ntohs (VL_API_NAT44_GET_TRANSLATE_ALL_REPLY + sm->msg_id_base);
+  rmp->context = mp->context;
+
+  rmp->enable = sm->translate_all;
+
+  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+}
+
+static void *
+vl_api_nat44_get_translate_all_t_print (vl_api_nat44_get_translate_all_t * mp,
+					void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: nat44_get_translate_all ");
 
   FINISH;
 }
@@ -2420,6 +2482,8 @@ _(NAT44_INTERFACE_OUTPUT_FEATURE_DUMP,                                  \
 _(NAT44_ADD_DEL_LB_STATIC_MAPPING, nat44_add_del_lb_static_mapping)     \
 _(NAT44_LB_STATIC_MAPPING_DUMP, nat44_lb_static_mapping_dump)           \
 _(NAT44_DEL_SESSION, nat44_del_session)                                 \
+_(NAT44_SET_TRANSLATE_ALL, nat44_set_translate_all)                     \
+_(NAT44_GET_TRANSLATE_ALL, nat44_get_translate_all)                     \
 _(NAT_DET_ADD_DEL_MAP, nat_det_add_del_map)                             \
 _(NAT_DET_FORWARD, nat_det_forward)                                     \
 _(NAT_DET_REVERSE, nat_det_reverse)                                     \

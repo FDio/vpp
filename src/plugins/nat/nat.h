@@ -343,6 +343,8 @@ typedef struct snat_main_s {
   u8 static_mapping_only;
   u8 static_mapping_connection_tracking;
   u8 deterministic;
+  u8 translate_all;
+  u8 out2in_dpo;
   u32 translation_buckets;
   u32 translation_memory_size;
   u32 max_translations;
@@ -503,6 +505,7 @@ u32 icmp_match_out2in_det(snat_main_t *sm, vlib_node_runtime_t *node,
                           u8 *p_dont_translate, void *d, void *e);
 void increment_v4_address(ip4_address_t * a);
 void snat_add_address(snat_main_t *sm, ip4_address_t *addr, u32 vrf_id);
+void nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add);
 int snat_del_address(snat_main_t *sm, ip4_address_t addr, u8 delete_sm);
 int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
                             u16 l_port, u16 e_port, u32 vrf_id, int addr_only,
