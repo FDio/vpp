@@ -389,7 +389,7 @@ main (int argc, char **argv)
   if (vam->socket_name && vat_socket_connect (vam))
     fformat (stderr, "WARNING: socket connection failed");
 
-  if (vam->socket_client_main.socket_fd == 0
+  if (vam->socket_client_main->socket_fd == 0
       && connect_to_vpe ("vpp_api_test") < 0)
     {
       svm_region_exit ();
@@ -405,7 +405,7 @@ main (int argc, char **argv)
   vec_validate (vam->inbuf, 4096);
 
   vam->current_file = (u8 *) "plugin-init";
-  vat_plugin_init (vam);
+//  vat_plugin_init (vam);
 
   for (i = 0; i < vec_len (input_files); i++)
     {

@@ -1426,7 +1426,7 @@ vl_api_client_command (vlib_main_t * vm,
   if (!pool_elts (am->vl_clients))
     goto socket_clients;
   vlib_cli_output (vm, "Shared memory clients");
-  vlib_cli_output (vm, "%16s %8s %14s %18s %s",
+  vlib_cli_output (vm, "%20s %8s %14s %18s %s",
 		   "Name", "PID", "Queue Length", "Queue VA", "Health");
 
   /* *INDENT-OFF* */
@@ -1443,7 +1443,7 @@ vl_api_client_command (vlib_main_t * vm,
 
         q = regp->vl_input_queue;
 
-        vlib_cli_output (vm, "%16s %8d %14d 0x%016llx %s\n",
+        vlib_cli_output (vm, "%20s %8d %14d 0x%016llx %s\n",
                          regp->name, q->consumer_pid, q->cursize,
                          q, health);
       }
