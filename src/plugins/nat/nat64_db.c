@@ -20,7 +20,8 @@
 
 int
 nat64_db_init (nat64_db_t * db, u32 bib_buckets, u32 bib_memory_size,
-	       u32 st_buckets, u32 st_memory_size)
+	       u32 st_buckets, u32 st_memory_size,
+	       nat64_db_free_addr_port_function_t free_addr_port_cb)
 {
   clib_bihash_init_24_8 (&db->bib.in2out, "bib-in2out", bib_buckets,
 			 bib_memory_size);
@@ -34,6 +35,7 @@ nat64_db_init (nat64_db_t * db, u32 bib_buckets, u32 bib_memory_size,
   clib_bihash_init_48_8 (&db->st.out2in, "st-out2in", st_buckets,
 			 st_memory_size);
 
+  db->free_addr_port_cb = free_addr_port_cb;
   return 0;
 }
 
@@ -160,6 +162,7 @@ nat64_db_bib_entry_free (nat64_db_t * db, nat64_db_bib_entry_t * bibe)
   kv.key[2] = bibe_key.as_u64[2];
   clib_bihash_add_del_24_8 (&db->bib.out2in, &kv, 0);
 
+  db->free_addr_port_cb (db, &bibe->out_addr, bibe->out_port, bibe->proto);
   /* delete from pool */
   pool_put (bib, bibe);
 

@@ -241,6 +241,10 @@ nat64_init (vlib_main_t * vm)
   return 0;
 }
 
+static void nat64_free_out_addr_and_port (struct nat64_db_s *db,
+					  ip4_address_t * addr, u16 port,
+					  u8 protocol);
+
 void
 nat64_set_hash (u32 bib_buckets, u32 bib_memory_size, u32 st_buckets,
 		u32 st_memory_size)
@@ -257,7 +261,7 @@ nat64_set_hash (u32 bib_buckets, u32 bib_memory_size, u32 st_buckets,
   vec_foreach (db, nm->db)
     {
       if (nat64_db_init (db, bib_buckets, bib_memory_size, st_buckets,
-                         st_memory_size))
+                         st_memory_size, nat64_free_out_addr_and_port))
         clib_warning ("NAT64 DB init failed");
     }
   /* *INDENT-ON* */
@@ -310,16 +314,16 @@ nat64_add_del_pool_addr (ip4_address_t * addr, u32 vrf_id, u8 is_add)
       if (a->fib_index != ~0)
 	fib_table_unlock (a->fib_index, FIB_PROTOCOL_IP6,
 			  FIB_SOURCE_PLUGIN_HI);
+      /* Delete sessions using address */
+        /* *INDENT-OFF* */
+        vec_foreach (db, nm->db)
+          nat64_db_free_out_addr (db, &a->addr);
 #define _(N, id, n, s) \
       clib_bitmap_free (a->busy_##n##_port_bitmap);
       foreach_snat_protocol
 #undef _
-	/* Delete sessions using address */
-        /* *INDENT-OFF* */
-        vec_foreach (db, nm->db)
-          nat64_db_free_out_addr (db, &a->addr);
         /* *INDENT-ON* */
-	vec_del1 (nm->addr_pool, i);
+      vec_del1 (nm->addr_pool, i);
     }
 
   /* Add/del external address to FIB */
@@ -510,13 +514,16 @@ nat64_alloc_out_addr_and_port (u32 fib_index, snat_protocol_t proto,
   return rv;
 }
 
-void
-nat64_free_out_addr_and_port (ip4_address_t * addr, u16 port,
-			      snat_protocol_t proto, u32 thread_index)
+static void
+nat64_free_out_addr_and_port (struct nat64_db_s *db, ip4_address_t * addr,
+			      u16 port, u8 protocol)
 {
   nat64_main_t *nm = &nat64_main;
   int i;
   snat_address_t *a;
+  u32 thread_index = db - nm->db;
+  snat_protocol_t proto = ip_proto_to_snat_proto (protocol);
+  u16 port_host_byte_order = clib_net_to_host_u16 (port);
 
   for (i = 0; i < vec_len (nm->addr_pool); i++)
     {
@@ -528,7 +535,7 @@ nat64_free_out_addr_and_port (ip4_address_t * addr, u16 port,
 #define _(N, j, n, s) \
         case SNAT_PROTOCOL_##N: \
           ASSERT (clib_bitmap_get_no_check (a->busy_##n##_port_bitmap, \
-                  port) == 1); \
+                  port_host_byte_order) == 1); \
           clib_bitmap_set_no_check (a->busy_##n##_port_bitmap, port, 0); \
           a->busy_##n##_ports--; \
           a->busy_##n##_ports_per_thread[thread_index]--; \
@@ -691,10 +698,7 @@ nat64_add_del_static_bib_entry (ip6_address_t * in_addr,
 	return VNET_API_ERROR_NO_SUCH_ENTRY;
 
       if (!nm->sm->num_workers)
-	{
-	  nat64_free_out_addr_and_port (out_addr, out_port, p, thread_index);
-	  nat64_db_bib_entry_free (db, bibe);
-	}
+	nat64_db_bib_entry_free (db, bibe);
     }
 
   if (nm->sm->num_workers)

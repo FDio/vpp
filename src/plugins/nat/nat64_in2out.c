@@ -190,8 +190,7 @@ nat64_in2out_tcp_udp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4,
 
 	  bibe =
 	    nat64_db_bib_entry_create (db, &ip6->src_address, &out_addr,
-				       sport, clib_host_to_net_u16 (out_port),
-				       fib_index, proto, 0);
+				       sport, out_port, fib_index, proto, 0);
 	  if (!bibe)
 	    return -1;
 	}
@@ -279,8 +278,7 @@ nat64_in2out_icmp_set_cb (ip6_header_t * ip6, ip4_header_t * ip4, void *arg)
 
 	      bibe =
 		nat64_db_bib_entry_create (db, &ip6->src_address,
-					   &out_addr, in_id,
-					   clib_host_to_net_u16 (out_id),
+					   &out_addr, in_id, out_id,
 					   fib_index, IP_PROTOCOL_ICMP, 0);
 	      if (!bibe)
 		return -1;
@@ -604,8 +602,7 @@ nat64_in2out_tcp_udp_hairpinning (vlib_main_t * vm, vlib_buffer_t * b,
 
 	  bibe =
 	    nat64_db_bib_entry_create (db, &ip6->src_address, &out_addr,
-				       sport, clib_host_to_net_u16 (out_port),
-				       fib_index, proto, 0);
+				       sport, out_port, fib_index, proto, 0);
 	  if (!bibe)
 	    return -1;
 	}
@@ -1435,8 +1432,7 @@ nat64_in2out_reass_node_fn (vlib_main_t * vm,
 			nat64_db_bib_entry_create (db,
 						   &ip60->src_address,
 						   &out_addr0, udp0->src_port,
-						   clib_host_to_net_u16
-						   (out_port0), fib_index0,
+						   out_port0, fib_index0,
 						   l4_protocol0, 0);
 		      if (!bibe0)
 			{
