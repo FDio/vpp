@@ -2315,6 +2315,7 @@ class VppPapiProvider(object):
                        psid_offset=0,
                        psid_length=0,
                        is_translation=0,
+                       is_rfc6052=0,
                        mtu=1280):
         return self.api(
             self.papi.map_add_domain,
@@ -2329,6 +2330,7 @@ class VppPapiProvider(object):
                 'psid_offset': psid_offset,
                 'psid_length': psid_length,
                 'is_translation': is_translation,
+                'is_rfc6052': is_rfc6052,
                 'mtu': mtu
             })
 

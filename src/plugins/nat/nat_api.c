@@ -442,6 +442,9 @@ static void
       if (rv)
 	goto send_reply;
 
+      if (sm->out2in_dpo)
+	nat44_add_del_address_dpo (this_addr, mp->is_add);
+
       increment_v4_address (&this_addr);
     }
 
