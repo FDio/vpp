@@ -20,6 +20,7 @@
 #include <vnet/ip/ip4.h>
 #include <vnet/plugin/plugin.h>
 #include <nat/nat.h>
+#include <nat/nat_dpo.h>
 #include <nat/nat_ipfix_logging.h>
 #include <nat/nat_det.h>
 #include <nat/nat64.h>
@@ -567,7 +568,7 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id,
   /* Add external address to FIB */
   pool_foreach (i, sm->interfaces,
   ({
-    if (nat_interface_is_inside(i))
+    if (nat_interface_is_inside(i) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1);
@@ -575,7 +576,7 @@ void snat_add_address (snat_main_t *sm, ip4_address_t *addr, u32 vrf_id,
   }));
   pool_foreach (i, sm->output_feature_interfaces,
   ({
-    if (nat_interface_is_inside(i))
+    if (nat_interface_is_inside(i) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(addr, 32, i->sw_if_index, 1);
@@ -951,7 +952,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   /* Add/delete external address to FIB */
   pool_foreach (interface, sm->interfaces,
   ({
-    if (nat_interface_is_inside(interface))
+    if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
@@ -959,7 +960,7 @@ int snat_add_static_mapping(ip4_address_t l_addr, ip4_address_t e_addr,
   }));
   pool_foreach (interface, sm->output_feature_interfaces,
   ({
-    if (nat_interface_is_inside(interface))
+    if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(&e_addr, 32, interface->sw_if_index, is_add);
@@ -1324,7 +1325,7 @@ snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm,
   /* Delete external address from FIB */
   pool_foreach (interface, sm->interfaces,
   ({
-    if (nat_interface_is_inside(interface))
+    if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
@@ -1332,7 +1333,7 @@ snat_del_address (snat_main_t *sm, ip4_address_t addr, u8 delete_sm,
   }));
   pool_foreach (interface, sm->output_feature_interfaces,
   ({
-    if (nat_interface_is_inside(interface))
+    if (nat_interface_is_inside(interface) || sm->out2in_dpo)
       continue;
 
     snat_add_del_addr_to_fib(&addr, 32, interface->sw_if_index, 0);
@@ -1452,7 +1453,7 @@ set_flags:
 
   /* Add/delete external addresses to FIB */
 fib:
-  if (is_inside)
+  if (is_inside && !sm->out2in_dpo)
     {
       vnet_feature_enable_disable ("ip4-local", "nat44-hairpinning",
                                    sw_if_index, !is_del, 0, 0);
@@ -1678,6 +1679,8 @@ static clib_error_t * snat_init (vlib_main_t * vm)
   cb4.function_opaque = 0;
 
   vec_add1 (im->add_del_interface_address_callbacks, cb4);
+
+  nat_dpo_module_init ();
 
   /* Init IPFIX logging */
   snat_ipfix_logging_init(vm);
@@ -1987,6 +1990,29 @@ exhausted:
   return 1;
 }
 
+void
+nat44_add_del_address_dpo (ip4_address_t addr, u8 is_add)
+{
+  dpo_id_t dpo_v4 = DPO_INVALID;
+  fib_prefix_t pfx = {
+    .fp_proto = FIB_PROTOCOL_IP4,
+    .fp_len = 32,
+    .fp_addr.ip4.as_u32 = addr.as_u32,
+  };
+
+  if (is_add)
+    {
+      nat_dpo_create (DPO_PROTO_IP4, 0, &dpo_v4);
+      fib_table_entry_special_dpo_add (0, &pfx, FIB_SOURCE_PLUGIN_HI,
+                                       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo_v4);
+      dpo_reset (&dpo_v4);
+    }
+  else
+    {
+      fib_table_entry_special_remove (0, &pfx, FIB_SOURCE_PLUGIN_HI);
+    }
+}
+
 static clib_error_t *
 add_address_command_fn (vlib_main_t * vm,
                         unformat_input_t * input,
@@ -2073,6 +2099,9 @@ add_address_command_fn (vlib_main_t * vm,
           break;
         }
 
+      if (sm->out2in_dpo)
+        nat44_add_del_address_dpo (this_addr, is_add);
+
       increment_v4_address (&this_addr);
     }
 
@@ -2087,6 +2116,71 @@ VLIB_CLI_COMMAND (add_address_command, static) = {
   .short_help = "nat44 add address <ip4-range-start> [- <ip4-range-end>] "
                 "[tenant-vrf <vrf-id>] [twice-nat] [del]",
   .function = add_address_command_fn,
+};
+
+static clib_error_t *
+translate_all_command_fn (vlib_main_t * vm,
+                          unformat_input_t * input,
+                          vlib_cli_command_t * cmd)
+{
+  unformat_input_t _line_input, *line_input = &_line_input;
+  snat_main_t * sm = &snat_main;
+  clib_error_t * error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return clib_error_return (0, "expected 'on' or 'off'");
+
+  u8 is_set = 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "on") && !is_set)
+        {
+          sm->translate_all = 1;
+          is_set = 1;
+        }
+      else if (unformat (line_input, "off") && !is_set)
+        {
+          sm->translate_all = 0;
+          is_set = 1;
+        }
+      else
+        {
+          error = clib_error_return (0, "unknown input '%U'",
+            format_unformat_error, line_input);
+          goto done;
+        }
+    }
+
+  if (!is_set)
+    {
+      error = clib_error_return (0, "expected 'on' or 'off'");
+      goto done;
+    }
+
+  done:
+    unformat_free (line_input);
+
+  return error;
+}
+
+/*?
+ * @cliexpar
+ * @cliexstart{nat44 translate-all}
+ * Enable/disable translating all packets coming from NAT44 inside interfaces.
+ * By default only packets routed through NAT44 outside interfaces are
+ * trasnated.
+ * To enable translating all packets use:
+ *  vpp# nat44 translate-all on
+ * To disable translating all packets use:
+ *  vpp# nat44 translate-all off
+ * @cliexend
+?*/
+VLIB_CLI_COMMAND (translate_all_command, static) = {
+  .path = "nat44 translate-all",
+  .short_help = "nat44 translate-all on|off",
+  .function = translate_all_command_fn,
 };
 
 static clib_error_t *
@@ -2865,6 +2959,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   snat_main_per_thread_data_t *tsm;
 
   sm->deterministic = 0;
+  sm->out2in_dpo = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -2905,6 +3000,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "nat64 st hash memory %d",
                          &nat64_st_memory_size))
         ;
+      else if (unformat (input, "out2in dpo"))
+        sm->out2in_dpo = 1;
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);

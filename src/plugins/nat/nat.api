@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-vl_api_version 2.1.0
+vl_api_version 2.2.0
 
 /**
  * @file nat.api
@@ -809,6 +809,42 @@ define nat_det_session_dump {
   u32 context;
   u8 is_nat44;
   u8 user_addr[16];
+};
+
+/** \brief Enable/disable translating all packets
+           coming from NAT44 inside interfaces
+    By default only packets routed through NAT44 outside interfaces are
+    trasnated.
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable - 1 for enabling translation of all packets
+                    coming from NAT inside interface,
+                    0 otherwise
+*/
+autoreply define nat44_set_translate_all {
+  u32 client_index;
+  u32 context;
+  u8 enable;
+};
+
+/** \brief Get translate_all flag
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define nat44_get_translate_all {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Get translate_all flag response
+    @param context - sender context, to match reply w/ request
+    @param enable - 1 if translation of all packets
+                    coming from NAT inside interface is enabled,
+                    0 otherwise
+*/
+define nat44_get_translate_all_reply {
+  u32 context;
+  u8 enable;
 };
 
 /** \brief Deterministic NAT sessions reply
