@@ -345,3 +345,38 @@ VLIB_CLI_COMMAND (kp_set_interface_nat4_command, static) = {
   .short_help = "kube-proxy set interface nat4 in <intfc> [del]",
 };
 
+static clib_error_t *
+kp_flowtable_flush_command_fn(vlib_main_t * vm,
+    unformat_input_t * input, vlib_cli_command_t * cmd)
+{
+  u32 thread_index;
+  vlib_thread_main_t *tm = vlib_get_thread_main();
+  kp_main_t *kpm = &kp_main;
+
+  for(thread_index = 0; thread_index < tm->n_vlib_mains; thread_index++ ) {
+    kp_hash_t *h = kpm->per_cpu[thread_index].sticky_ht;
+    if (h != NULL) {
+        kp_hash_bucket_t *b;
+        u32 i;
+        kp_hash_foreach_entry(h, b, i) {
+          vlib_refcount_add(&kpm->pod_refcount, thread_index, b->value[i], -1);
+          vlib_refcount_add(&kpm->pod_refcount, thread_index, 0, 1);
+        }
+
+        kp_hash_free(h);
+        kpm->per_cpu[thread_index].sticky_ht = NULL;
+    }
+  }
+
+  return NULL;
+}
+
+/*
+ * flush all kube-proxy flowtables
+ * This is indented for debug and unit-tests purposes only
+ */
+VLIB_CLI_COMMAND (kp_flowtable_flush_command, static) = {
+  .path = "test kube-proxy flowtable flush",
+  .short_help = "test kube-proxy flowtable flush",
+  .function = kp_flowtable_flush_command_fn,
+};

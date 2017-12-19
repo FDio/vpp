@@ -146,6 +146,7 @@ class TestKP(VppTestCase):
             for podid in self.pods:
                 self.vapi.cli("ku pod 90.0.0.0/8 10.0.0.%u del" % (podid))
             self.vapi.cli("ku vip 90.0.0.0/8 nat4 del")
+            self.vapi.cli("test kube-proxy flowtable flush")
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_kp_ip6_nat4(self):
@@ -165,6 +166,7 @@ class TestKP(VppTestCase):
             for podid in self.pods:
                 self.vapi.cli("ku pod 2001::/16 10.0.0.%u del" % (podid))
             self.vapi.cli("ku vip 2001::/16 nat4 del")
+            self.vapi.cli("test kube-proxy flowtable flush")
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_kp_ip4_nat6(self):
@@ -181,14 +183,15 @@ class TestKP(VppTestCase):
             self.checkCapture(nat4=False, isv4=True)
         finally:
             for podid in self.pods:
-                self.vapi.cli("ku pod 90.0.0.0/8 2002::%u" % (podid))
+                self.vapi.cli("ku pod 90.0.0.0/8 2002::%u del" % (podid))
             self.vapi.cli("ku vip 90.0.0.0/8 nat6 del")
+            self.vapi.cli("test kube-proxy flowtable flush")
 
     @unittest.skipUnless(running_extended_tests(), "part of extended tests")
     def test_kp_ip6_nat6(self):
         """ Kube-proxy NAT66 """
         try:
-            self.vapi.cli("ku vip 90.0.0.0/8 port 3306 target_port 3307 nat6")
+            self.vapi.cli("ku vip 2001::/16 port 3306 target_port 3307 nat6")
             for podid in self.pods:
                 self.vapi.cli("ku pod 2001::/16 2002::%u" % (podid))
 
@@ -201,3 +204,4 @@ class TestKP(VppTestCase):
             for podid in self.pods:
                 self.vapi.cli("ku pod 2001::/16 2002::%u del" % (podid))
             self.vapi.cli("ku vip 2001::/16 nat6 del")
+            self.vapi.cli("test kube-proxy flowtable flush")
