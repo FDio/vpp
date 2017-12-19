@@ -162,10 +162,10 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
     vnm = vnet_get_main ();
     vnm->api_errno = 0;
 
-    bp = ntohs(mp->br_bp);
+    bp = ntohl(mp->br_bp);
     brpaths = NULL;
 
-    if (0 == bp || bp > 0xffff)
+    if (0 == bp || bp > BIER_BP_MAX)
     {
         rv = -1;
         goto done;
@@ -236,11 +236,11 @@ vl_api_bier_route_add_del_t_handler (vl_api_bier_route_add_del_t * mp)
 
     if (mp->br_is_add)
     {
-        bier_table_route_add(&bti, ntohs(mp->br_bp), brpaths);
+        bier_table_route_add(&bti, bp, brpaths);
     }
     else
     {
-        bier_table_route_remove(&bti, ntohs(mp->br_bp), brpaths);
+        bier_table_route_remove(&bti, bp, brpaths);
     }
 
 done:
