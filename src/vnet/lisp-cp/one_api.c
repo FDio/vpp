@@ -1328,15 +1328,8 @@ vl_api_one_eid_table_vni_dump_t_handler (vl_api_one_eid_table_vni_dump_t * mp)
 static void
 vl_api_show_one_status_t_handler (vl_api_show_one_status_t * mp)
 {
-  unix_shared_memory_queue_t *q = NULL;
   vl_api_show_one_status_reply_t *rmp = NULL;
   int rv = 0;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
 
   /* *INDENT-OFF* */
   REPLY_MACRO2(VL_API_SHOW_ONE_STATUS_REPLY,
@@ -1351,18 +1344,11 @@ static void
   vl_api_one_get_map_request_itr_rlocs_t_handler
   (vl_api_one_get_map_request_itr_rlocs_t * mp)
 {
-  unix_shared_memory_queue_t *q = NULL;
   vl_api_one_get_map_request_itr_rlocs_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *loc_set = 0;
   u8 *tmp_str = 0;
   int rv = 0;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
 
   if (~0 == lcm->mreq_itr_rlocs)
     {
