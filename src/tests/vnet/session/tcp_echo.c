@@ -14,11 +14,19 @@
  */
 
 #include <stdio.h>
+#define __USE_GNU
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <signal.h>
-#include <svm/svm_fifo_segment.h>
-#include <vlibmemory/api.h>
-#include <vpp/api/vpe_msg_enum.h>
+
+#include <vppinfra/socket.h>
 #include <vnet/session/application_interface.h>
+#include <svm/svm_fifo_segment.h>
+#include <svm/memfd.h>
+#include <vlibmemory/api.h>
+
+
+#include <vpp/api/vpe_msg_enum.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
@@ -90,6 +98,8 @@ typedef struct
 
   /* $$$ single thread only for the moment */
   unix_shared_memory_queue_t *vpp_event_queue;
+
+  u8 *socket_name;
 
   pid_t my_pid;
 
@@ -307,19 +317,123 @@ vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
   clib_warning ("BUG");
 }
 
+//static clib_error_t *
+//receive_fd_msg (int socket_fd, int *my_fd)
+//{
+//  char msgbuf[16];
+//  char ctl[CMSG_SPACE (sizeof (int)) + CMSG_SPACE (sizeof (struct ucred))];
+//  struct msghdr mh = { 0 };
+//  struct iovec iov[1];
+//  ssize_t size;
+//  struct ucred *cr = 0;
+//  struct cmsghdr *cmsg;
+//  pid_t pid __attribute__ ((unused));
+//  uid_t uid __attribute__ ((unused));
+//  gid_t gid __attribute__ ((unused));
+//
+//  iov[0].iov_base = msgbuf;
+//  iov[0].iov_len = 5;
+//  mh.msg_iov = iov;
+//  mh.msg_iovlen = 1;
+//  mh.msg_control = ctl;
+//  mh.msg_controllen = sizeof (ctl);
+//
+//  memset (ctl, 0, sizeof (ctl));
+//
+//  /* receive the incoming message */
+//  size = recvmsg (socket_fd, &mh, 0);
+//  if (size != 5)
+//    {
+//      return (size == 0) ? clib_error_return (0, "disconnected") :
+//	clib_error_return_unix (0, "recvmsg: malformed message (fd %d)",
+//				socket_fd);
+//    }
+//
+//  cmsg = CMSG_FIRSTHDR (&mh);
+//  while (cmsg)
+//    {
+//      if (cmsg->cmsg_level == SOL_SOCKET)
+//	{
+//	  if (cmsg->cmsg_type == SCM_CREDENTIALS)
+//	    {
+//	      cr = (struct ucred *) CMSG_DATA (cmsg);
+//	      uid = cr->uid;
+//	      gid = cr->gid;
+//	      pid = cr->pid;
+//	    }
+//	  else if (cmsg->cmsg_type == SCM_RIGHTS)
+//	    {
+//	      clib_memcpy (my_fd, CMSG_DATA (cmsg), sizeof (int));
+//	    }
+//	}
+//      cmsg = CMSG_NXTHDR (&mh, cmsg);
+//    }
+//  return 0;
+//}
+//
+//static void vl_api_memfd_segment_create_reply_t_handler
+//  (vl_api_memfd_segment_create_reply_t * mp)
+//{
+//  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+//  socket_client_main_t *scm = &utm->socket_client_main;
+//  int my_fd = -1;
+//  clib_error_t *error;
+//  i32 retval = ntohl (mp->retval);
+//
+//  if (retval == 0)
+//    {
+//      error = receive_fd_msg (scm->socket_fd, &my_fd);
+//      if (error)
+//	{
+//	  retval = -99;
+//	  goto out;
+//	}
+//
+//      memset (&utm->memfd, 0, sizeof (utm->memfd));
+//      utm->memfd.fd = my_fd;
+//
+//      /* Note: this closes memfd.fd */
+//      retval = memfd_slave_init (&utm->memfd);
+//      if (retval)
+//	clib_warning ("WARNING: segment map returned %d", retval);
+//    }
+//
+//out:
+//      utm->retval = retval;
+//}
+
 int
 connect_to_vpp (char *name)
 {
   uri_tcp_test_main_t *utm = &uri_tcp_test_main;
   api_main_t *am = &api_main;
 
-  if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
-    return -1;
+  if (1)
+    {
+      if (vl_socket_client_connect (&socket_client_main,
+	                            (char *) utm->socket_name, name,
+	                            0 /* default rx, tx buffer */))
+	return -1;
 
-  utm->vl_input_queue = am->shmem_hdr->vl_input_queue;
-  utm->my_client_index = am->my_client_index;
-
+      return vl_socket_client_init_shm (&socket_client_main);
+    }
+  else
+    {
+      if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
+	return -1;
+      utm->vl_input_queue = am->shmem_hdr->vl_input_queue;
+      utm->my_client_index = am->my_client_index;
+    }
   return 0;
+}
+
+void
+disconnect_from_vpp (uri_tcp_test_main_t *utm)
+{
+  if (1)
+    vl_socket_client_disconnect (&socket_client_main);
+  else
+    vl_client_disconnect_from_vlib ();
 }
 
 static void
@@ -733,7 +847,7 @@ client_disconnect (uri_tcp_test_main_t * utm)
 }
 
 static void
-client_test (uri_tcp_test_main_t * utm)
+client_run (uri_tcp_test_main_t * utm)
 {
   int i;
 
@@ -1085,8 +1199,20 @@ server_unbind (uri_tcp_test_main_t * utm)
 }
 
 void
-server_test (uri_tcp_test_main_t * utm)
+server_run (uri_tcp_test_main_t * utm)
 {
+  session_t *session;
+  int i;
+
+  /* $$$$ hack preallocation */
+  for (i = 0; i < 200000; i++)
+    {
+      pool_get (utm->sessions, session);
+      memset (session, 0, sizeof (*session));
+    }
+  for (i = 0; i < 200000; i++)
+    pool_put_index (utm->sessions, i);
+
   if (application_attach (utm))
     return;
 
@@ -1124,17 +1250,17 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
     session_print_stats (utm, session);
 }
 
-#define foreach_uri_msg                                 \
-_(BIND_URI_REPLY, bind_uri_reply)                       \
-_(UNBIND_URI_REPLY, unbind_uri_reply)                   \
-_(ACCEPT_SESSION, accept_session)                       \
-_(CONNECT_SESSION_REPLY, connect_session_reply)         \
-_(DISCONNECT_SESSION, disconnect_session)               \
-_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)   \
-_(RESET_SESSION, reset_session)                         \
-_(APPLICATION_ATTACH_REPLY, application_attach_reply)   \
-_(APPLICATION_DETACH_REPLY, application_detach_reply)	\
-_(MAP_ANOTHER_SEGMENT, map_another_segment)		\
+#define foreach_uri_msg                                 	\
+_(BIND_URI_REPLY, bind_uri_reply)                       	\
+_(UNBIND_URI_REPLY, unbind_uri_reply)                   	\
+_(ACCEPT_SESSION, accept_session)                       	\
+_(CONNECT_SESSION_REPLY, connect_session_reply)         	\
+_(DISCONNECT_SESSION, disconnect_session)               	\
+_(DISCONNECT_SESSION_REPLY, disconnect_session_reply)   	\
+_(RESET_SESSION, reset_session)                         	\
+_(APPLICATION_ATTACH_REPLY, application_attach_reply)   	\
+_(APPLICATION_DETACH_REPLY, application_detach_reply)		\
+_(MAP_ANOTHER_SEGMENT, map_another_segment)			\
 
 void
 uri_api_hookup (uri_tcp_test_main_t * utm)
@@ -1162,8 +1288,6 @@ main (int argc, char **argv)
   u64 bytes_to_send = 64 << 10, mbytes;
   u32 tmp;
   mheap_t *h;
-  session_t *session;
-  int i;
   int i_am_master = 1, drop_packets = 0, test_return_packets = 0;
 
   clib_mem_init (0, 256 << 20);
@@ -1180,6 +1304,7 @@ main (int argc, char **argv)
 
   utm->my_pid = getpid ();
   utm->configured_segment_size = 1 << 20;
+  utm->socket_name = 0;
 
   clib_time_init (&utm->clib_time);
   init_error_string_table (utm);
@@ -1214,12 +1339,17 @@ main (int argc, char **argv)
 	{
 	  bytes_to_send = mbytes << 30;
 	}
+      else if (unformat (a, "socket-name %s", &utm->socket_name))
+	;
       else
 	{
 	  fformat (stderr, "%s: usage [master|slave]\n");
 	  exit (1);
 	}
     }
+
+  if (!utm->socket_name)
+    utm->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
 
   if (uri)
     {
@@ -1242,7 +1372,7 @@ main (int argc, char **argv)
   setup_signal_handlers ();
   uri_api_hookup (utm);
 
-  if (connect_to_vpp (i_am_master ? "uri_tcp_server" : "uri_tcp_client") < 0)
+  if (connect_to_vpp (i_am_master ? "tcp_echo_server" : "tcp_echo_client") < 0)
     {
       svm_region_exit ();
       fformat (stderr, "Couldn't connect to vpe, exiting...\n");
@@ -1250,24 +1380,11 @@ main (int argc, char **argv)
     }
 
   if (i_am_master == 0)
-    {
-      client_test (utm);
-      vl_client_disconnect_from_vlib ();
-      exit (0);
-    }
+    client_run (utm);
+  else
+    server_run (utm);
 
-  /* $$$$ hack preallocation */
-  for (i = 0; i < 200000; i++)
-    {
-      pool_get (utm->sessions, session);
-      memset (session, 0, sizeof (*session));
-    }
-  for (i = 0; i < 200000; i++)
-    pool_put_index (utm->sessions, i);
-
-  server_test (utm);
-
-  vl_client_disconnect_from_vlib ();
+  disconnect_from_vpp (utm);
   exit (0);
 }
 

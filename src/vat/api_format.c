@@ -88,9 +88,10 @@ vl (void *p)
 int
 vat_socket_connect (vat_main_t * vam)
 {
+  vam->socket_client_main = &socket_client_main;
   return vl_socket_client_connect
-    (&vam->socket_client_main, (char *) vam->socket_name,
-     "vpp_api_test(s)", 0 /* default socket rx, tx buffer */ );
+    (vam->socket_client_main, (char *) vam->socket_name,
+     "vpp_api_test", 0 /* default socket rx, tx buffer */ );
 }
 #else /* vpp built-in case, we don't do sockets... */
 int
@@ -1464,7 +1465,7 @@ static void vl_api_control_ping_reply_t_handler
       vam->retval = retval;
       vam->result_ready = 1;
     }
-  vam->socket_client_main.control_pings_outstanding--;
+  vam->socket_client_main->control_pings_outstanding--;
 }
 
 static void vl_api_control_ping_reply_t_handler_json
@@ -2186,7 +2187,7 @@ static void vl_api_memfd_segment_create_reply_t_handler
 #if VPP_API_TEST_BUILTIN == 0
   vat_main_t *vam = &vat_main;
   api_main_t *am = &api_main;
-  socket_client_main_t *scm = &vam->socket_client_main;
+  socket_client_main_t *scm = vam->socket_client_main;
   int my_fd = -1;
   clib_error_t *error;
   memfd_private_t memfd;
@@ -2224,7 +2225,7 @@ static void vl_api_memfd_segment_create_reply_t_handler
 					32 /* input_queue_length */ );
       vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
 
-      vl_socket_client_enable_disable (&vam->socket_client_main,
+      vl_socket_client_enable_disable (vam->socket_client_main,
 				       0 /* disable socket */ );
     }
 
@@ -21866,6 +21867,31 @@ api_memfd_segment_create (vat_main_t * vam)
 }
 
 static int
+api_sock_init_shm (vat_main_t * vam)
+{
+#if VPP_API_TEST_BUILTIN == 0
+  unformat_input_t *i = vam->input;
+  u64 size = 64 << 20;
+  int rv;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "size %U", unformat_memory_size, &size))
+	;
+      else
+	break;
+    }
+
+  rv = vl_socket_client_init_shm (vam->socket_client_main);
+  if (!rv)
+    vam->client_index_invalid = 1;
+  return rv;
+#else
+  return -99;
+#endif
+}
+
+static int
 api_dns_enable_disable (vat_main_t * vam)
 {
   unformat_input_t *line_input = vam->input;
@@ -23093,6 +23119,7 @@ _(sw_interface_set_lldp, "<intfc> | sw_if_index <nn> [port-desc <description>]\n
   " [mgmt-ip4 <ip4>] [mgmt-ip6 <ip6>] [mgmt-oid <object id>] [disable]") \
 _(tcp_configure_src_addresses, "<ip4|6>first-<ip4|6>last [vrf <id>]")	\
 _(memfd_segment_create,"size <nnn>")					\
+_(sock_init_shm, "size <nnn>")						\
 _(app_namespace_add_del, "[add] id <ns-id> secret <nn> sw_if_index <nn>")\
 _(dns_enable_disable, "[enable][disable]")				\
 _(dns_name_server_add_del, "<ip-address> [del]")			\
