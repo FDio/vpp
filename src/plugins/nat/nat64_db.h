@@ -117,10 +117,21 @@ typedef struct
   clib_bihash_48_8_t out2in;
 } nat64_db_st_t;
 
-typedef struct
+struct nat64_db_s;
+
+/**
+ * @brief Call back function to free NAT64 pool address and port when BIB
+ * entry is deleted.
+ */
+typedef void (*nat64_db_free_addr_port_function_t) (struct nat64_db_s * db,
+						    ip4_address_t * addr,
+						    u16 port, u8 proto);
+
+typedef struct nat64_db_s
 {
   nat64_db_bib_t bib;
   nat64_db_st_t st;
+  nat64_db_free_addr_port_function_t free_addr_port_cb;
 } nat64_db_t;
 
 /**
@@ -131,11 +142,13 @@ typedef struct
  * @param bib_memory_size Memory size of BIB hash.
  * @param st_buckets Number of session table hash buckets.
  * @param st_memory_size Memory size of session table hash.
+ * @param free_addr_port_cb Call back function to free address and port.
  *
  * @returns 0 on success, non-zero value otherwise.
  */
 int nat64_db_init (nat64_db_t * db, u32 bib_buckets, u32 bib_memory_size,
-		   u32 st_buckets, u32 st_memory_size);
+		   u32 st_buckets, u32 st_memory_size,
+		   nat64_db_free_addr_port_function_t free_addr_port_cb);
 
 /**
  * @brief Create new NAT64 BIB entry.

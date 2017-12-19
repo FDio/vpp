@@ -210,19 +210,6 @@ int nat64_alloc_out_addr_and_port (u32 fib_index, snat_protocol_t proto,
 				   u32 thread_index);
 
 /**
- * @brief Free IPv4 address and port pair from NAT64 pool.
- *
- * @param addr         IPv4 address to free.
- * @param port         Port number to free.
- * @param proto        L4 protocol.
- * @param thread_index Thread index.
- *
- * @returns 0 on success, non-zero value otherwise.
- */
-void nat64_free_out_addr_and_port (ip4_address_t * addr, u16 port,
-				   snat_protocol_t proto, u32 thread_index);
-
-/**
  * @brief Set UDP session timeout.
  *
  * @param timeout Timeout value in seconds (if 0 reset to default value 300sec).

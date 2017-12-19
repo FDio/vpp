@@ -116,7 +116,11 @@ nat64_cli_pool_walk (snat_address_t * ap, void *ctx)
   else
     vlib_cli_output (vm, " %U", format_ip4_address, &ap->addr);
 
-  return 0;
+#define _(N, i, n, s) \
+  vlib_cli_output (vm, "  %d busy %s ports", ap->busy_##n##_ports, s);
+  foreach_snat_protocol
+#undef _
+    return 0;
 }
 
 static clib_error_t *
