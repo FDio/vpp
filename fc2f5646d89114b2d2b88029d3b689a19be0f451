@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a87fdeec_c6616e04",
+        "filename": "src/plugins/dpdk/ipsec/esp_encrypt.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 407,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-12-20T16:56:50Z",
+      "side": 1,
+      "message": "I thought about using this flag but never got to it.\nMaybe for clarity we can get rid of all the flags in this patch and I can submit another change that will make use of it instead of calculating the checksum here.",
+      "revId": "fc2f5646d89114b2d2b88029d3b689a19be0f451",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
