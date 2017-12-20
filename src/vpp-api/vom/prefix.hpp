@@ -49,6 +49,11 @@ private:
 };
 
 /**
+ * Ostream output for l3_proto_t
+ */
+std::ostream& operator<<(std::ostream& os, const l3_proto_t& l3p);
+
+/**
  * A next-hop protocol describes the protocol of a peer to which packets
  * are sent after matching a route.
  */

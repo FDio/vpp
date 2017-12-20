@@ -101,22 +101,106 @@ unbind_44_input_cmd::to_string() const
   return (s.str());
 }
 
-dump_44_cmd::dump_44_cmd()
-{
-}
-
-dump_44_cmd::dump_44_cmd(const dump_44_cmd& d)
+bind_44_output_cmd::bind_44_output_cmd(HW::item<bool>& item,
+                                       const handle_t& itf,
+                                       const nat_binding::zone_t& zone)
+  : rpc_cmd(item)
+  , m_itf(itf)
+  , m_zone(zone)
 {
 }
 
 bool
-dump_44_cmd::operator==(const dump_44_cmd& other) const
+bind_44_output_cmd::operator==(const bind_44_output_cmd& other) const
+{
+  return ((m_itf == other.m_itf) && (m_zone == other.m_zone));
+}
+
+rc_t
+bind_44_output_cmd::issue(connection& con)
+{
+  msg_t req(con.ctx(), std::ref(*this));
+
+  auto& payload = req.get_request().get_payload();
+  payload.is_add = 1;
+  payload.is_inside = (nat_binding::zone_t::INSIDE == m_zone ? 1 : 0);
+  payload.sw_if_index = m_itf.value();
+
+  VAPI_CALL(req.execute());
+
+  m_hw_item.set(wait());
+
+  return rc_t::OK;
+}
+
+std::string
+bind_44_output_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "nat-44-output-binding-create: " << m_hw_item.to_string()
+    << " itf:" << m_itf << " " << m_zone.to_string();
+
+  return (s.str());
+}
+
+unbind_44_output_cmd::unbind_44_output_cmd(HW::item<bool>& item,
+                                           const handle_t& itf,
+                                           const nat_binding::zone_t& zone)
+  : rpc_cmd(item)
+  , m_itf(itf)
+  , m_zone(zone)
+{
+}
+
+bool
+unbind_44_output_cmd::operator==(const unbind_44_output_cmd& other) const
+{
+  return ((m_itf == other.m_itf) && (m_zone == other.m_zone));
+}
+
+rc_t
+unbind_44_output_cmd::issue(connection& con)
+{
+  msg_t req(con.ctx(), std::ref(*this));
+
+  auto& payload = req.get_request().get_payload();
+  payload.is_add = 0;
+  payload.is_inside = (nat_binding::zone_t::INSIDE == m_zone ? 1 : 0);
+  payload.sw_if_index = m_itf.value();
+
+  VAPI_CALL(req.execute());
+
+  m_hw_item.set(wait());
+
+  return rc_t::OK;
+}
+
+std::string
+unbind_44_output_cmd::to_string() const
+{
+  std::ostringstream s;
+  s << "nat-44-output-binding-create: " << m_hw_item.to_string()
+    << " itf:" << m_itf << " " << m_zone.to_string();
+
+  return (s.str());
+}
+
+dump_input_44_cmd::dump_input_44_cmd()
+{
+}
+
+dump_input_44_cmd::dump_input_44_cmd(const dump_input_44_cmd& d)
+{
+}
+
+bool
+dump_input_44_cmd::operator==(const dump_input_44_cmd& other) const
 {
   return (true);
 }
 
 rc_t
-dump_44_cmd::issue(connection& con)
+dump_input_44_cmd::issue(connection& con)
 {
   m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
 
@@ -128,12 +212,45 @@ dump_44_cmd::issue(connection& con)
 }
 
 std::string
-dump_44_cmd::to_string() const
+dump_input_44_cmd::to_string() const
 {
-  return ("nat-binding-dump");
+  return ("nat-input-binding-dump");
 }
+
+dump_output_44_cmd::dump_output_44_cmd()
+{
 }
+
+dump_output_44_cmd::dump_output_44_cmd(const dump_output_44_cmd& d)
+{
 }
+
+bool
+dump_output_44_cmd::operator==(const dump_output_44_cmd& other) const
+{
+  return (true);
+}
+
+rc_t
+dump_output_44_cmd::issue(connection& con)
+{
+  m_dump.reset(new msg_t(con.ctx(), std::ref(*this)));
+
+  VAPI_CALL(m_dump->execute());
+
+  wait();
+
+  return rc_t::OK;
+}
+
+std::string
+dump_output_44_cmd::to_string() const
+{
+  return ("nat-output-binding-dump");
+}
+
+}; // namespace nat_binding_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

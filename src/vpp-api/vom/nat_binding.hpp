@@ -54,6 +54,8 @@ public:
      * Deny Zone
      */
     const static zone_t OUTSIDE;
+
+    const static zone_t& from_vpp(u8 is_inside);
   };
 
   /**
@@ -86,6 +88,16 @@ public:
   ~nat_binding();
 
   /**
+   * Comparison operator - for UT
+   */
+  bool operator==(const nat_binding& n) const;
+
+  /**
+   * Return the binding's key
+   */
+  const key_t key() const;
+
+  /**
    * Return the 'singular instance' of the L2 config that matches this
    * object
    */
@@ -95,6 +107,11 @@ public:
    * convert to string format for debug purposes
    */
   std::string to_string() const;
+
+  /**
+   * Static function to find the bridge_domain in the model
+   */
+  static std::shared_ptr<nat_binding> find(const key_t& key);
 
   /**
    * Dump all nat_bindings into the stream provided

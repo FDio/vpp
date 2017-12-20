@@ -261,7 +261,14 @@ direction_t::direction_t(int v, const std::string s)
   : enum_base(v, s)
 {
 }
+std::ostream&
+operator<<(std::ostream& os, const direction_t& dir)
+{
+  os << dir.to_string();
+  return os;
 }
+
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

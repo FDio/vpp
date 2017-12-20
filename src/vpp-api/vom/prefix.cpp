@@ -53,6 +53,13 @@ l3_proto_t::from_address(const boost::asio::ip::address& addr)
   return IPV4;
 }
 
+std::ostream&
+operator<<(std::ostream& os, const l3_proto_t& l3p)
+{
+  os << l3p.to_string();
+  return os;
+}
+
 /*
  * Keep this in sync with VPP's dpo_proto_t
  */

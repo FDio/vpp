@@ -105,8 +105,8 @@ public:
   /**
    * Constructor
    */
-  dump_44_cmd();
-  dump_44_cmd(const dump_44_cmd& d);
+  dump_44_cmd() = default;
+  ~dump_44_cmd() = default;
 
   /**
    * Issue the command to VPP/HW
@@ -128,6 +128,7 @@ private:
    */
   HW::item<bool> item;
 };
+
 }; // namespace nat_static_cmds
 }; // namespace vom
 

@@ -52,7 +52,19 @@ nat_static::~nat_static()
   sweep();
 
   // not in the DB anymore.
-  m_db.release(std::make_pair(m_rd->key(), m_outside), this);
+  m_db.release(key(), this);
+}
+
+const nat_static::key_t
+nat_static::key() const
+{
+  return (std::make_pair(m_rd->key(), m_outside));
+}
+
+bool
+nat_static::operator==(const nat_static& n) const
+{
+  return ((key() == n.key()) && (m_inside == n.m_inside));
 }
 
 void
@@ -97,8 +109,8 @@ nat_static::to_string() const
 {
   std::ostringstream s;
   s << "nat-static:["
-    << "table:" << m_rd->to_string() << " inside: " << m_inside.to_string()
-    << " outside " << m_outside.to_string() << "]";
+    << "table:" << m_rd->to_string() << " inside:" << m_inside.to_string()
+    << " outside:" << m_outside.to_string() << "]";
 
   return (s.str());
 }
@@ -106,8 +118,13 @@ nat_static::to_string() const
 std::shared_ptr<nat_static>
 nat_static::find_or_add(const nat_static& temp)
 {
-  return (
-    m_db.find_or_add(std::make_pair(temp.m_rd->key(), temp.m_outside), temp));
+  return (m_db.find_or_add(temp.key(), temp));
+}
+
+std::shared_ptr<nat_static>
+nat_static::find(const key_t& key)
+{
+  return (m_db.find(key));
 }
 
 std::shared_ptr<nat_static>
@@ -142,61 +159,34 @@ nat_static::event_handler::handle_replay()
   m_db.replay();
 }
 
-/* void nat_static::populate_i(const client_db::key_t &key, */
-/*                            std::shared_ptr<interface> itf, */
-/*                            const l3_proto_t &proto) */
-/* { */
-/*     /\* */
-/*      * dump VPP current states */
-/*      *\/ */
-/*     std::shared_ptr<nat_static::dump_cmd> cmd = */
-/*         std::make_shared<nat_static::dump_cmd>(nat_static::dump_cmd(itf->handle(),
- * proto)); */
-
-/*     HW::enqueue(cmd); */
-/*     HW::write(); */
-
-/*     for (auto & record : *cmd) */
-/*     { */
-/*         /\* */
-/*          * construct a nat_static from each recieved record. */
-/*          *\/ */
-/*         auto &payload = record.get_payload(); */
-
-/*      mac_address_t mac(payload.mac_address); */
-/*         boost::asio::ip::address ip_addr = from_bytes(payload.is_ipv6, */
-/*                                                       payload.ip_address);
- */
-/*         nat_static n(*itf, mac, ip_addr); */
-
-/*         VOM_LOG(log_level_t::DEBUG) << "nat_static-dump: " */
-/*                                                << itf->to_string() */
-/*                                                << mac.to_string() */
-/*                                                << ip_addr.to_string(); */
-
-/*         /\* */
-/*          * Write each of the discovered interfaces into the OM, */
-/*          * but disable the HW Command q whilst we do, so that no */
-/*          * commands are sent to VPP */
-/*          *\/ */
-/*         OM::commit(key, n); */
-/*     } */
-/* } */
-
 void
 nat_static::event_handler::handle_populate(const client_db::key_t& key)
 {
-  /* auto it = interface::cbegin(); */
+  /*
+   * dump VPP current states
+   */
+  std::shared_ptr<nat_static_cmds::dump_44_cmd> cmd =
+    std::make_shared<nat_static_cmds::dump_44_cmd>();
 
-  /* while (it != interface::cend()) */
-  /* { */
-  /*     nat_static::populate_i(key, it->second.lock(), l3_proto_t::IPV4);
- */
-  /*     nat_static::populate_i(key, it->second.lock(), l3_proto_t::IPV6);
- */
+  HW::enqueue(cmd);
+  HW::write();
 
-  /*     ++it; */
-  /* } */
+  for (auto& record : *cmd) {
+
+    auto& payload = record.get_payload();
+
+    boost::asio::ip::address inside = from_bytes(0, payload.local_ip_address);
+    boost::asio::ip::address outside =
+      from_bytes(0, payload.external_ip_address);
+    nat_static n(route_domain(payload.vrf_id), inside, outside.to_v4());
+
+    /*
+     * Write each of the discovered mappings into the OM,
+     * but disable the HW Command q whilst we do, so that no
+     * commands are sent to VPP
+     */
+    OM::commit(key, n);
+  }
 }
 
 dependency_t

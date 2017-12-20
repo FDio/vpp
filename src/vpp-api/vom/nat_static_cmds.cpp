@@ -123,14 +123,6 @@ delete_44_cmd::to_string() const
   return (s.str());
 }
 
-dump_44_cmd::dump_44_cmd()
-{
-}
-
-dump_44_cmd::dump_44_cmd(const dump_44_cmd& d)
-{
-}
-
 bool
 dump_44_cmd::operator==(const dump_44_cmd& other) const
 {
@@ -154,8 +146,9 @@ dump_44_cmd::to_string() const
 {
   return ("nat-static-dump");
 }
-} // namespace nat_static_cmds
-} // namespace VOM
+
+}; // namespace nat_static_cmds
+}; // namespace VOM
 
 /*
  * fd.io coding-style-patch-verification: ON

@@ -29,6 +29,13 @@ nat_binding::zone_t::zone_t(int v, const std::string s)
   : enum_base(v, s)
 {
 }
+const nat_binding::zone_t&
+nat_binding::zone_t::from_vpp(u8 is_inside)
+{
+  if (is_inside)
+    return zone_t::INSIDE;
+  return zone_t::OUTSIDE;
+}
 
 /**
  * Construct a new object matching the desried state
@@ -57,7 +64,19 @@ nat_binding::nat_binding(const nat_binding& o)
 nat_binding::~nat_binding()
 {
   sweep();
-  m_db.release(make_tuple(m_itf->key(), m_dir, m_proto), this);
+  m_db.release(key(), this);
+}
+
+const nat_binding::key_t
+nat_binding::key() const
+{
+  return (make_tuple(m_itf->key(), m_dir, m_proto));
+}
+
+bool
+nat_binding::operator==(const nat_binding& n) const
+{
+  return ((key() == n.key()) && (m_zone == n.m_zone));
 }
 
 void
@@ -68,7 +87,8 @@ nat_binding::sweep()
       HW::enqueue(new nat_binding_cmds::unbind_44_input_cmd(
         m_binding, m_itf->handle(), m_zone));
     } else {
-      assert(!"Unimplemented");
+      HW::enqueue(new nat_binding_cmds::unbind_44_output_cmd(
+        m_binding, m_itf->handle(), m_zone));
     }
   }
   HW::write();
@@ -82,7 +102,8 @@ nat_binding::replay()
       HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
         m_binding, m_itf->handle(), m_zone));
     } else {
-      assert(!"Unimplemented");
+      HW::enqueue(new nat_binding_cmds::bind_44_output_cmd(
+        m_binding, m_itf->handle(), m_zone));
     }
   }
 }
@@ -98,7 +119,8 @@ nat_binding::update(const nat_binding& desired)
       HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
         m_binding, m_itf->handle(), m_zone));
     } else {
-      assert(!"Unimplemented");
+      HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
+        m_binding, m_itf->handle(), m_zone));
     }
   }
 }
@@ -107,8 +129,9 @@ std::string
 nat_binding::to_string() const
 {
   std::ostringstream s;
-  s << "nat-binding:[" << m_itf->to_string() << " " << m_dir.to_string() << " "
-    << m_proto.to_string() << " " << m_zone.to_string() << "]";
+  s << "nat-binding:[" << m_itf->to_string()
+    << " direction:" << m_dir.to_string() << " proto:" << m_proto.to_string()
+    << " zone:" << m_zone.to_string() << "]";
 
   return (s.str());
 }
@@ -116,8 +139,13 @@ nat_binding::to_string() const
 std::shared_ptr<nat_binding>
 nat_binding::find_or_add(const nat_binding& temp)
 {
-  return (m_db.find_or_add(
-    make_tuple(temp.m_itf->key(), temp.m_dir, temp.m_proto), temp));
+  return (m_db.find_or_add(temp.key(), temp));
+}
+
+std::shared_ptr<nat_binding>
+nat_binding::find(const key_t& key)
+{
+  return (m_db.find(key));
 }
 
 std::shared_ptr<nat_binding>
@@ -156,9 +184,35 @@ nat_binding::event_handler::handle_replay()
 void
 nat_binding::event_handler::handle_populate(const client_db::key_t& key)
 {
-  /**
- * This is done while populating the interfaces
- */
+  std::shared_ptr<nat_binding_cmds::dump_input_44_cmd> icmd =
+    std::make_shared<nat_binding_cmds::dump_input_44_cmd>();
+
+  HW::enqueue(icmd);
+  HW::write();
+
+  for (auto& record : *icmd) {
+    auto& payload = record.get_payload();
+
+    std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
+    nat_binding nb(*itf, direction_t::INPUT, l3_proto_t::IPV4,
+                   zone_t::from_vpp(payload.is_inside));
+    OM::commit(key, nb);
+  }
+
+  std::shared_ptr<nat_binding_cmds::dump_output_44_cmd> ocmd =
+    std::make_shared<nat_binding_cmds::dump_output_44_cmd>();
+
+  HW::enqueue(ocmd);
+  HW::write();
+
+  for (auto& record : *ocmd) {
+    auto& payload = record.get_payload();
+
+    std::shared_ptr<interface> itf = interface::find(payload.sw_if_index);
+    nat_binding nb(*itf, direction_t::OUTPUT, l3_proto_t::IPV4,
+                   zone_t::from_vpp(payload.is_inside));
+    OM::commit(key, nb);
+  }
 }
 
 dependency_t

@@ -154,6 +154,11 @@ struct direction_t : public enum_base<direction_t>
 };
 
 /**
+ * Output ostream for direction_t
+ */
+std::ostream& operator<<(std::ostream& os, const direction_t& dir);
+
+/**
  * A type declaration of an interface handle in VPP
  */
 struct handle_t
