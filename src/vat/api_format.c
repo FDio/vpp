@@ -50,7 +50,7 @@
 #include <vnet/policer/police.h>
 #include <vnet/mfib/mfib_types.h>
 #include <vnet/dhcp/dhcp_proxy.h>
-
+#include <vnet/bonding/node.h>
 #include "vat/json_format.h"
 
 #include <inttypes.h>
@@ -1773,6 +1773,306 @@ static void vl_api_tap_delete_v2_reply_t_handler_json
 
   vam->retval = ntohl (mp->retval);
   vam->result_ready = 1;
+}
+
+static void
+vl_api_bond_create_reply_t_handler (vl_api_bond_create_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->sw_if_index = ntohl (mp->sw_if_index);
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_bond_create_reply_t_handler_json
+  (vl_api_bond_create_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+  vat_json_object_add_uint (&node, "sw_if_index", ntohl (mp->sw_if_index));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
+vl_api_bond_delete_reply_t_handler (vl_api_bond_delete_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_bond_delete_reply_t_handler_json
+  (vl_api_bond_delete_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
+vl_api_bond_enslave_reply_t_handler (vl_api_bond_enslave_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_bond_enslave_reply_t_handler_json
+  (vl_api_bond_enslave_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void
+vl_api_bond_detach_slave_reply_t_handler (vl_api_bond_detach_slave_reply_t *
+					  mp)
+{
+  vat_main_t *vam = &vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  if (vam->async_mode)
+    {
+      vam->async_errors += (retval < 0);
+    }
+  else
+    {
+      vam->retval = retval;
+      vam->result_ready = 1;
+    }
+}
+
+static void vl_api_bond_detach_slave_reply_t_handler_json
+  (vl_api_bond_detach_slave_reply_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t node;
+
+  vat_json_init_object (&node);
+  vat_json_object_add_int (&node, "retval", ntohl (mp->retval));
+
+  vat_json_print (vam->ofp, &node);
+  vat_json_free (&node);
+
+  vam->retval = ntohl (mp->retval);
+  vam->result_ready = 1;
+}
+
+static void vl_api_sw_interface_bond_details_t_handler
+  (vl_api_sw_interface_bond_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  print (vam->ofp,
+	 "%-16s %-12d %-5d %-12U %-13U %-14u %-14u",
+	 mp->interface_name, ntohl (mp->sw_if_index), ntohl (mp->id),
+	 format_bond_mode, mp->mode, format_bond_load_balance, mp->lb,
+	 ntohl (mp->active_slaves), ntohl (mp->slaves));
+}
+
+static void vl_api_sw_interface_bond_details_t_handler_json
+  (vl_api_sw_interface_bond_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "id", ntohl (mp->id));
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_string_copy (node, "interface_name",
+				   mp->interface_name);
+  vat_json_object_add_uint (node, "mode", mp->mode);
+  vat_json_object_add_uint (node, "load_balance", mp->lb);
+  vat_json_object_add_uint (node, "active_slaves", ntohl (mp->active_slaves));
+  vat_json_object_add_uint (node, "slaves", ntohl (mp->slaves));
+}
+
+static int
+api_sw_interface_bond_dump (vat_main_t * vam)
+{
+  vl_api_sw_interface_bond_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  print (vam->ofp,
+	 "\n%-16s %-12s %-5s %-12s %-13s %-14s %-14s",
+	 "interface name", "sw_if_index", "id", "mode", "load balance",
+	 "active slaves", "slaves");
+
+  /* Get list of bond interfaces */
+  M (SW_INTERFACE_BOND_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+static void vl_api_sw_interface_lacp_details_t_handler
+  (vl_api_sw_interface_lacp_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+
+  print (vam->ofp,
+	 "%-25s %-12d %-16s %3x %3x %3x %3x %3x %3x %3x %3x "
+	 "%4x %3x %3x %3x %3x %3x %3x %3x",
+	 mp->interface_name, ntohl (mp->sw_if_index), mp->bond_interface_name,
+	 lacp_bit_test (mp->actor_state, 0), lacp_bit_test (mp->actor_state,
+							    1),
+	 lacp_bit_test (mp->actor_state, 2), lacp_bit_test (mp->actor_state,
+							    3),
+	 lacp_bit_test (mp->actor_state, 4), lacp_bit_test (mp->actor_state,
+							    5),
+	 lacp_bit_test (mp->actor_state, 6), lacp_bit_test (mp->actor_state,
+							    7),
+	 lacp_bit_test (mp->partner_state, 0),
+	 lacp_bit_test (mp->partner_state, 1),
+	 lacp_bit_test (mp->partner_state, 2),
+	 lacp_bit_test (mp->partner_state, 3),
+	 lacp_bit_test (mp->partner_state, 4),
+	 lacp_bit_test (mp->partner_state, 5),
+	 lacp_bit_test (mp->partner_state, 6),
+	 lacp_bit_test (mp->partner_state, 7));
+  print (vam->ofp,
+	 "  LAD ID: [(%04x,%02x-%02x-%02x-%02x-%02x-%02x,%04x,%04x,%04x),"
+	 "(%04x,%02x-%02x-%02x-%02x-%02x-%02x,%04x,%04x,%04x)]",
+	 mp->actor_system_priority, mp->actor_system[0], mp->actor_system[1],
+	 mp->actor_system[2], mp->actor_system[3], mp->actor_system[4],
+	 mp->actor_system[5], mp->actor_key, mp->actor_port_priority,
+	 mp->actor_port_number, mp->partner_system_priority,
+	 mp->partner_system[0], mp->partner_system[1], mp->partner_system[2],
+	 mp->partner_system[3], mp->partner_system[4], mp->partner_system[5],
+	 mp->partner_key, mp->partner_port_priority, mp->partner_port_number);
+}
+
+static void vl_api_sw_interface_lacp_details_t_handler_json
+  (vl_api_sw_interface_lacp_details_t * mp)
+{
+  vat_main_t *vam = &vat_main;
+  vat_json_node_t *node = NULL;
+
+  if (VAT_JSON_ARRAY != vam->json_tree.type)
+    {
+      ASSERT (VAT_JSON_NONE == vam->json_tree.type);
+      vat_json_init_array (&vam->json_tree);
+    }
+  node = vat_json_array_add (&vam->json_tree);
+
+  vat_json_init_object (node);
+  vat_json_object_add_uint (node, "sw_if_index", ntohl (mp->sw_if_index));
+  vat_json_object_add_string_copy (node, "interface_name",
+				   mp->interface_name);
+  vat_json_object_add_string_copy (node, "bond_interface",
+				   mp->bond_interface_name);
+  vat_json_object_add_uint (node, "actor_system_priority",
+			    ntohs (mp->actor_system_priority));
+  vat_json_object_add_bytes (node, "actor_system", mp->actor_system,
+			     sizeof (mp->actor_system));
+  vat_json_object_add_uint (node, "actor_key", ntohs (mp->actor_key));
+  vat_json_object_add_uint (node, "actor_port_priority",
+			    ntohs (mp->actor_port_priority));
+  vat_json_object_add_uint (node, "actor_port_number",
+			    ntohs (mp->actor_port_number));
+  vat_json_object_add_uint (node, "actor_state", ntohs (mp->actor_state));
+
+  vat_json_object_add_uint (node, "partner_system_priority",
+			    ntohs (mp->partner_system_priority));
+  vat_json_object_add_bytes (node, "partner_system", mp->partner_system,
+			     sizeof (mp->partner_system));
+  vat_json_object_add_uint (node, "partner_key", ntohs (mp->partner_key));
+  vat_json_object_add_uint (node, "partner_port_priority",
+			    ntohs (mp->partner_port_priority));
+  vat_json_object_add_uint (node, "partner_port_number",
+			    ntohs (mp->partner_port_number));
+  vat_json_object_add_uint (node, "partner_state", ntohs (mp->partner_state));
+}
+
+static int
+api_sw_interface_lacp_dump (vat_main_t * vam)
+{
+  vl_api_sw_interface_lacp_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  print (vam->ofp, "%-55s %-32s %-32s", " ", "actor state", "partner state");
+  print (vam->ofp,
+	 "%-25s %-12s %-16s %-31s  %-31s",
+	 "interface name", "sw_if_index", "bond interface",
+	 "act/tim/agg/syn/col/dis/def/exp",
+	 "act/tim/agg/syn/col/dis/def/exp");
+
+  /* Get list of lacp interfaces */
+  M (SW_INTERFACE_LACP_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  MPING (CONTROL_PING, mp_ping);
+  S (mp_ping);
+
+  W (ret);
+  return ret;
 }
 
 static void vl_api_mpls_tunnel_add_del_reply_t_handler
@@ -5466,6 +5766,12 @@ _(SW_INTERFACE_TAP_DETAILS, sw_interface_tap_details)                   \
 _(TAP_CREATE_V2_REPLY, tap_create_v2_reply)				\
 _(TAP_DELETE_V2_REPLY, tap_delete_v2_reply)				\
 _(SW_INTERFACE_TAP_V2_DETAILS, sw_interface_tap_v2_details)             \
+_(BOND_CREATE_REPLY, bond_create_reply)	   			        \
+_(BOND_DELETE_REPLY, bond_delete_reply)			  	        \
+_(BOND_ENSLAVE_REPLY, bond_enslave_reply)				\
+_(BOND_DETACH_SLAVE_REPLY, bond_detach_slave_reply)			\
+_(SW_INTERFACE_BOND_DETAILS, sw_interface_bond_details)                 \
+_(SW_INTERFACE_LACP_DETAILS, sw_interface_lacp_details)                 \
 _(IP_ADD_DEL_ROUTE_REPLY, ip_add_del_route_reply)			\
 _(IP_TABLE_ADD_DEL_REPLY, ip_table_add_del_reply)			\
 _(IP_MROUTE_ADD_DEL_REPLY, ip_mroute_add_del_reply)			\
@@ -7942,6 +8248,205 @@ api_tap_delete_v2 (vat_main_t * vam)
 
   /* Construct the API message */
   M (TAP_DELETE_V2, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_bond_create (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_bond_create_t *mp;
+  u8 mac_address[6];
+  u8 random_mac = 1;
+  u32 id;
+  int ret;
+  u8 mode;
+  u8 lb;
+  u8 id_is_set = 0;
+  u8 mode_is_set = 0;
+
+  memset (mac_address, 0, sizeof (mac_address));
+  lb = BOND_LB_L2;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "id %u", &id))
+	id_is_set = 1;
+      else if (unformat (i, "mode %U", unformat_bond_mode, &mode))
+	mode_is_set = 1;
+      else if (((mode == BOND_MODE_LACP) || (mode == BOND_MODE_XOR))
+	       && unformat (i, "lb %U", unformat_bond_load_balance, &lb))
+	;
+      else if (unformat (i, "hw-addr %U", unformat_ethernet_address,
+			 mac_address))
+	random_mac = 0;
+      else
+	break;
+    }
+
+  if (mode_is_set == 0)
+    {
+      errmsg ("Missing bond mode. ");
+      return -99;
+    }
+
+  if (id_is_set == 0)
+    {
+      errmsg ("Missing bundle id. ");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (BOND_CREATE, mp);
+
+  mp->use_random_mac = random_mac;
+
+  mp->id = ntohl (id);
+  mp->mode = mode;
+  mp->lb = lb;
+
+  if (random_mac == 0)
+    clib_memcpy (mp->mac_address, mac_address, 6);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_bond_delete (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_bond_delete_t *mp;
+  u32 sw_if_index = ~0;
+  u8 sw_if_index_set = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing vpp interface name. ");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (BOND_DELETE, mp);
+
+  mp->sw_if_index = ntohl (sw_if_index);
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_bond_enslave (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_bond_enslave_t *mp;
+  u32 id;
+  int ret;
+  u8 is_passive;
+  u8 is_long_timeout;
+  u8 id_is_set = 0;
+  u32 sw_if_index;
+  u8 sw_if_index_is_set = 0;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "id %u", &id))
+	id_is_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_is_set = 1;
+      else if (unformat (i, "passive %d", &is_passive))
+	;
+      else if (unformat (i, "long-timeout %d", &is_long_timeout))
+	;
+      else
+	break;
+    }
+
+  if (id_is_set == 0)
+    {
+      errmsg ("Missing bundle id. ");
+      return -99;
+    }
+  if (sw_if_index_is_set == 0)
+    {
+      errmsg ("Missing slave sw_if_index. ");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (BOND_ENSLAVE, mp);
+
+  mp->id = ntohl (id);
+  mp->sw_if_index = ntohl (sw_if_index);
+  mp->is_long_timeout = is_long_timeout;
+  mp->is_passive = is_passive;
+
+  /* send it... */
+  S (mp);
+
+  /* Wait for a reply... */
+  W (ret);
+  return ret;
+}
+
+static int
+api_bond_detach_slave (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_bond_detach_slave_t *mp;
+  u32 sw_if_index = ~0;
+  u8 sw_if_index_set = 0;
+  int ret;
+
+  /* Parse args required to build the message */
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "%U", api_unformat_sw_if_index, vam, &sw_if_index))
+	sw_if_index_set = 1;
+      else if (unformat (i, "sw_if_index %d", &sw_if_index))
+	sw_if_index_set = 1;
+      else
+	break;
+    }
+
+  if (sw_if_index_set == 0)
+    {
+      errmsg ("missing vpp interface name. ");
+      return -99;
+    }
+
+  /* Construct the API message */
+  M (BOND_DETACH_SLAVE, mp);
 
   mp->sw_if_index = ntohl (sw_if_index);
 
@@ -22769,6 +23274,17 @@ _(tap_create_v2,                                                        \
 _(tap_delete_v2,                                                        \
   "<vpp-if-name> | sw_if_index <id>")                                   \
 _(sw_interface_tap_v2_dump, "")                                         \
+_(bond_create,                                                          \
+  "id <n> [hw-addr <mac-addr>] {round-robin | active-backup | "         \
+  "broadcast | {lacp | xor} [load-balance { l2 | l23 | l34 }]}")        \
+_(bond_delete,                                                          \
+  "<vpp-if-name> | sw_if_index <id>")                                   \
+_(bond_enslave,                                                         \
+  "id <n> sw_if_index <n> [is_passive] [is_long_timeout]")		\
+_(bond_detach_slave,                                                    \
+  "sw_if_index <n>")							\
+_(sw_interface_bond_dump, "")                                           \
+_(sw_interface_lacp_dump, "")                                           \
 _(ip_table_add_del,                                                     \
   "table-id <n> [ipv6]\n")                                              \
 _(ip_add_del_route,                                                     \
