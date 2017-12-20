@@ -1,0 +1,47 @@
+# Copyright (c) 2017 Cisco Systems, Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at:
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+vppplugins_LTLIBRARIES += lacp_plugin.la
+vppapitestplugins_LTLIBRARIES += lacp_test_plugin.la
+
+lacp_plugin_la_LIBADD =
+lacp_plugin_la_SOURCES = lacp/lacp.c   \
+  lacp/lacp_api.c                  \
+  lacp/selection.c                 \
+  lacp/rx_machine.c                \
+  lacp/tx_machine.c                \
+  lacp/mux_machine.c               \
+  lacp/ptx_machine.c               \
+  lacp/cli.c			   \
+  lacp/input.c			   \
+  lacp/node.c
+
+lacp_test_plugin_la_SOURCES = \
+  lacp/lacp_test.c
+
+noinst_HEADERS += lacp/protocol.h  \
+  lacp/machine.h                   \
+  lacp/rx_machine.h                \
+  lacp/tx_machine.h                \
+  lacp/mux_machine.h               \
+  lacp/ptx_machine.h               \
+  lacp/node.h
+
+nobase_apiinclude_HEADERS +=       \
+  lacp/lacp_all_api_h.h            \
+  lacp/lacp_msg_enum.h             \
+  lacp/lacp.api.h
+
+API_FILES += lacp/lacp.api
+
+# vi:syntax=automake
