@@ -1,0 +1,61 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "024cfa15_fa85cdcb",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 3
+      },
+      "lineNbr": 824,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-12-20T05:50:59Z",
+      "side": 1,
+      "message": "I think this flag should be set automatically when using out2in dpo node because you don\u0027t specify output interface, so no API or CLI is required.",
+      "revId": "b43c7c738e1b9cfa244a05a74c2d968c32565ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6fbdc94f_27bef44f",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 1346,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-12-20T05:50:59Z",
+      "side": 1,
+      "message": "return error when dpo out2in mode and add outside interface",
+      "revId": "b43c7c738e1b9cfa244a05a74c2d968c32565ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "42afc53a_b79af56b",
+        "filename": "test/test_nat.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 3137,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2017-12-20T05:50:59Z",
+      "side": 1,
+      "message": "NAT44 Test Cases using out2in DPO",
+      "range": {
+        "startLine": 3137,
+        "startChar": 8,
+        "endLine": 3137,
+        "endChar": 39
+      },
+      "revId": "b43c7c738e1b9cfa244a05a74c2d968c32565ec7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
