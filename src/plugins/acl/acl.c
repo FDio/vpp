@@ -2821,6 +2821,26 @@ acl_plugin_show_interface (acl_main_t * am, u32 sw_if_index, int show_acl)
 
 }
 
+
+static clib_error_t *
+acl_show_aclplugin_decode_5tuple_fn (vlib_main_t * vm,
+				     unformat_input_t * input,
+				     vlib_cli_command_t * cmd)
+{
+  clib_error_t *error = 0;
+  u64 five_tuple[6] = { 0, 0, 0, 0, 0, 0 };
+
+  if (unformat
+      (input, "%llx %llx %llx %llx %llx %llx", &five_tuple[0], &five_tuple[1],
+       &five_tuple[2], &five_tuple[3], &five_tuple[4], &five_tuple[5]))
+    vlib_cli_output (vm, "5-tuple structure decode: %U\n\n",
+		     format_acl_plugin_5tuple, five_tuple);
+  else
+    error = clib_error_return (0, "expecting 6 hex integers");
+  return error;
+}
+
+
 static clib_error_t *
 acl_show_aclplugin_interface_fn (vlib_main_t * vm,
 				 unformat_input_t * input,
@@ -3239,6 +3259,12 @@ VLIB_CLI_COMMAND (aclplugin_show_acl_command, static) = {
     .path = "show acl-plugin acl",
     .short_help = "show acl-plugin acl [index N]",
     .function = acl_show_aclplugin_acl_fn,
+};
+
+VLIB_CLI_COMMAND (aclplugin_show_decode_5tuple_command, static) = {
+    .path = "show acl-plugin decode 5tuple",
+    .short_help = "show acl-plugin decode 5tuple XXXX XXXX XXXX XXXX XXXX XXXX",
+    .function = acl_show_aclplugin_decode_5tuple_fn,
 };
 
 VLIB_CLI_COMMAND (aclplugin_show_interface_command, static) = {
