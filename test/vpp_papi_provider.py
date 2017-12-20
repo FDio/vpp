@@ -3341,3 +3341,78 @@ class VppPapiProvider(object):
     def want_igmp_events(self, enable=1):
         return self.api(self.papi.want_igmp_events, {'enable': enable,
                                                      'pid': os.getpid()})
+
+    def bond_create(
+            self,
+            mode,
+            lb,
+            use_custom_mac,
+            mac_address=''):
+        """
+        :param mode: mode
+        :param lb: load balance
+        :param use_custom_mac: use custom mac
+        :param mac_address: mac address
+        """
+        return self.api(
+            self.papi.bond_create,
+            {'mode': mode,
+             'lb': lb,
+             'use_custom_mac': use_custom_mac,
+             'mac_address': mac_address
+             })
+
+    def bond_delete(
+            self,
+            sw_if_index):
+        """
+        :param sw_if_index: interface the operation is applied to
+        """
+        return self.api(self.papi.bond_delete,
+                        {'sw_if_index': sw_if_index})
+
+    def bond_enslave(
+            self,
+            sw_if_index,
+            bond_sw_if_index,
+            is_passive,
+            is_long_timeout):
+        """
+        :param sw_if_index: slave sw_if_index
+        :param bond_sw_if_index: bond sw_if_index
+        :param is_passive: is passive lacp speaker
+        :param is_long_time: 90 seconds timeout instead of 3 seconds timeout
+        """
+        return self.api(
+            self.papi.bond_enslave,
+            {'sw_if_index': sw_if_index,
+             'bond_sw_if_index': bond_sw_if_index,
+             'is_passive': is_passive,
+             'is_long_timeout': is_long_timeout
+             })
+
+    def bond_detach_slave(
+            self,
+            sw_if_index):
+        """
+        :param sw_if_index: slave interface the operation is applied to
+        """
+        return self.api(self.papi.bond_detach_slave,
+                        {'sw_if_index': sw_if_index})
+
+    def sw_interface_slave_dump(
+            self,
+            sw_if_index):
+        """
+        :param sw_if_index: bond sw_if_index
+        """
+        return self.api(self.papi.sw_interface_slave_dump,
+                        {'sw_if_index': sw_if_index})
+
+    def sw_interface_bond_dump(
+            self):
+        """
+
+        """
+        return self.api(self.papi.sw_interface_bond_dump,
+                        {})
