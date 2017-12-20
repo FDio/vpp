@@ -3210,3 +3210,40 @@ class VppPapiProvider(object):
     def gbp_contract_dump(self):
         """ GBP contract Dump """
         return self.api(self.papi.gbp_contract_dump, {})
+
+    def bond_create(
+            self,
+            mode,
+            lb,
+            use_custom_mac,
+            mac_address):
+        """
+        :param mode: mode
+        :param lb: load balance
+        :param use_custom_mac: use custom mac
+        :param mac_address: mac address
+        """
+        return self.api(
+            self.papi.bond_create,
+            {'mode': mode,
+             'lb': lb,
+             'use_custom_mac': use_custom_mac,
+             'mac_address': mac_address
+             })
+
+    def bond_delete(
+            self,
+            sw_if_index):
+        """
+        :param sw_if_index: interface the operation is applied to
+        """
+        return self.api(self.papi.bond_delete,
+                        {'sw_if_index': sw_if_index, })
+
+    def sw_interface_bond_dump(
+            self):
+        """
+
+        """
+        return self.api(self.papi.sw_interface_bond_dump,
+                        {})
