@@ -284,6 +284,33 @@ nobase_include_HEADERS +=			\
   vnet/cdp/cdp_protocol.h
 
 ########################################
+# Layer 2 / LACDP
+########################################
+libvnet_la_SOURCES +=				\
+  vnet/bonding/cli.c    			\
+  vnet/bonding/node.c    			\
+  vnet/bonding/device.c    			\
+  vnet/bonding/lacp/selection.c                 \
+  vnet/bonding/lacp/rx_machine.c                \
+  vnet/bonding/lacp/tx_machine.c                \
+  vnet/bonding/lacp/mux_machine.c               \
+  vnet/bonding/lacp/ptx_machine.c               \
+  vnet/bonding/lacp/cli.c			\
+  vnet/bonding/lacp/input.c			\
+  vnet/bonding/lacp/node.c			\
+  vnet/bonding/lacp/lacp.c
+
+nobase_include_HEADERS +=			\
+  vnet/bonding/node.h                           \
+  vnet/bonding/lacp/machine.h                   \
+  vnet/bonding/lacp/rx_machine.h                \
+  vnet/bonding/lacp/tx_machine.h                \
+  vnet/bonding/lacp/mux_machine.h               \
+  vnet/bonding/lacp/ptx_machine.h               \
+  vnet/bonding/lacp/node.h                      \
+  vnet/bonding/lacp/protocol.h
+
+########################################
 # Layer 2 / LLDP
 ########################################
 libvnet_la_SOURCES +=				\
