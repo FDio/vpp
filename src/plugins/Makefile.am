@@ -63,6 +63,10 @@ if ENABLE_KUBEPROXY_PLUGIN
 include kubeproxy.am
 endif
 
+if ENABLE_LACP_PLUGIN
+include lacp.am
+endif
+
 if ENABLE_LB_PLUGIN
 include lb.am
 endif
