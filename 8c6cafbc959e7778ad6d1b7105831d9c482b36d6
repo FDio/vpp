@@ -70,6 +70,30 @@
       "revId": "8c6cafbc959e7778ad6d1b7105831d9c482b36d6",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4c5e76d8_85c3289c",
+        "filename": "src/plugins/l2e/l2e.c",
+        "patchSetId": 6
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-20T14:17:58Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4daf2df4_3d721f32",
+      "range": {
+        "startLine": 412,
+        "startChar": 26,
+        "endLine": 412,
+        "endChar": 40
+      },
+      "revId": "8c6cafbc959e7778ad6d1b7105831d9c482b36d6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
