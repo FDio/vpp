@@ -170,5 +170,6 @@ void acl_fa_enable_disable(u32 sw_if_index, int is_input, int enable_disable);
 
 void show_fa_sessions_hash(vlib_main_t * vm, u32 verbose);
 
+u8 *format_acl_plugin_5tuple (u8 * s, va_list * args);
 
 #endif

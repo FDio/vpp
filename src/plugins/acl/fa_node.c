@@ -58,6 +58,12 @@ format_fa_5tuple (u8 * s, va_list * args)
                 p5t->pkt.flags_reserved);
 }
 
+u8 *
+format_acl_plugin_5tuple (u8 * s, va_list * args)
+{
+  return format_fa_5tuple(s, args);
+}
+
 /* packet trace format function */
 static u8 *
 format_acl_fa_trace (u8 * s, va_list * args)
