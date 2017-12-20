@@ -27,7 +27,6 @@ autoreply define l2_emulation
   u32 client_index;
   u32 context;
   u32 sw_if_index;
-  u32 ip_table_id;
   u8  enable;
 };
 
