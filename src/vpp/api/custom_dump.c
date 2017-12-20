@@ -46,6 +46,8 @@
 
 #include <vpp/api/vpe_msg_enum.h>
 
+#include <vnet/bonding/node.h>
+
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
 #undef vl_typedefs
@@ -604,6 +606,64 @@ static void *vl_api_sw_interface_tap_v2_dump_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: sw_interface_tap_v2_dump ");
+
+  FINISH;
+}
+
+static void *vl_api_bond_create_t_print
+  (vl_api_bond_create_t * mp, void *handle)
+{
+  u8 *s;
+  u8 null_mac[6];
+
+  memset (null_mac, 0, sizeof (null_mac));
+
+  s = format (0, "SCRIPT: bond_create ");
+  s = format (s, "id %u ", mp->id);
+  if (memcmp (mp->mac_address, null_mac, 6))
+    s = format (s, "mac-address %U ",
+		format_ethernet_address, mp->mac_address);
+  if (mp->mode)
+    s = format (s, "mode %U", format_bond_mode, mp->mode);
+  if (mp->lb)
+    s = format (s, "lb %U", format_bond_load_balance, mp->lb);
+  FINISH;
+}
+
+static void *vl_api_bond_delete_t_print
+  (vl_api_bond_delete_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: bond_delete ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
+
+  FINISH;
+}
+
+static void *vl_api_bond_enslave_t_print
+  (vl_api_bond_enslave_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: bond_enslave ");
+  s = format (s, "id %u ", mp->id);
+  s = format (s, "sw_if_index %u ", mp->sw_if_index);
+  if (mp->is_passive)
+    s = format (s, "passive ");
+  if (mp->is_long_timeout)
+    s = format (s, "long-timeout ");
+
+  FINISH;
+}
+
+static void *vl_api_bond_detach_slave_t_print
+  (vl_api_bond_detach_slave_t * mp, void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: bond_detach_slave ");
+  s = format (s, "sw_if_index %d ", ntohl (mp->sw_if_index));
 
   FINISH;
 }
@@ -3345,6 +3405,10 @@ _(TAP_CONNECT, tap_connect)                                             \
 _(TAP_MODIFY, tap_modify)                                               \
 _(TAP_DELETE, tap_delete)                                               \
 _(SW_INTERFACE_TAP_DUMP, sw_interface_tap_dump)                         \
+_(BOND_CREATE, bond_create)                                             \
+_(BOND_DELETE, bond_delete)                                             \
+_(BOND_ENSLAVE, bond_enslave)                                           \
+_(BOND_DETACH_SLAVE, bond_detach_slave)                                 \
 _(TAP_CREATE_V2, tap_create_v2)                                         \
 _(TAP_DELETE_V2, tap_delete_v2)                                         \
 _(SW_INTERFACE_TAP_V2_DUMP, sw_interface_tap_v2_dump)                   \
