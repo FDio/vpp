@@ -308,6 +308,7 @@ libvnet_la_SOURCES +=				\
   vnet/classify/vnet_classify.c			\
   vnet/classify/ip_classify.c			\
   vnet/classify/input_acl.c			\
+  vnet/classify/output_acl.c			\
   vnet/classify/policer_classify.c		\
   vnet/classify/flow_classify.c                 \
   vnet/classify/flow_classify_node.c            \
@@ -356,6 +357,7 @@ libvnet_la_SOURCES +=				\
  vnet/ip/ip.c					\
  vnet/ip/ip_init.c				\
  vnet/ip/ip_input_acl.c				\
+ vnet/ip/ip_output_acl.c				\
  vnet/ip/lookup.c				\
  vnet/ip/ping.c					\
  vnet/ip/punt_api.c				\
