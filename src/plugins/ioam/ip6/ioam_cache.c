@@ -351,6 +351,9 @@ show_ioam_cache_command_fn (vlib_main_t * vm,
     {
       if (unformat (input, "verbose"))
 	verbose = 1;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
     }
   ioam_cache_table_print (vm, verbose);
 

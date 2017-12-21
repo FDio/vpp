@@ -581,6 +581,9 @@ udp_encap_show (vlib_main_t * vm,
     {
       if (unformat (input, "%d", &ue_id))
 	;
+      else
+	return clib_error_return (0, "unknown input `%U'",
+				  format_unformat_error, input);
     }
 
   if (~0 == ue_id)
