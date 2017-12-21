@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5f01a776_40d2bb31",
+        "filename": "src/vnet/fib/fib_path.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 1326,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2017-12-21T18:11:16Z",
+      "side": 1,
+      "message": "you set the DEAG flag for route programming for deag paths on the CLI, but routes from the API will still reach this point.\nSo perhaps this logic (itf\u003d\u003d~0, addr\u003d{0}, fib!\u003d~0) goes in add_del_route_t_handler() to set the new DEAG flag.",
+      "revId": "a2c288d8fb59eedd8f40cb5dcd9547711612ea34",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
