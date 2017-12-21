@@ -1,7 +1,5 @@
 /*
- * l2_output_acl.c : layer 2 output acl processing
- *
- * Copyright (c) 2013 Cisco and/or its affiliates.
+ * Copyright (c) 2015 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at:
@@ -14,36 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include <vlib/vlib.h>
-#include <vnet/vnet.h>
-#include <vnet/pg/pg.h>
-#include <vnet/ethernet/ethernet.h>
-#include <vnet/ethernet/packet.h>
-#include <vnet/ip/ip_packet.h>
-#include <vnet/ip/ip4_packet.h>
-#include <vnet/ip/ip6_packet.h>
-#include <vlib/cli.h>
-#include <vnet/l2/l2_output.h>
-#include <vnet/l2/feat_bitmap.h>
-
-#include <vppinfra/error.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/cache.h>
-
+#include <vnet/ip/ip.h>
 #include <vnet/classify/vnet_classify.h>
 #include <vnet/classify/output_acl.h>
-
-typedef struct
-{
-
-  /* Next nodes for each feature */
-  u32 feat_next_node_index[32];
-
-  /* convenience variables */
-  vlib_main_t *vlib_main;
-  vnet_main_t *vnet_main;
-} l2_outacl_main_t;
 
 typedef struct
 {
@@ -51,68 +22,80 @@ typedef struct
   u32 next_index;
   u32 table_index;
   u32 offset;
-} l2_outacl_trace_t;
+} ip_outacl_trace_t;
 
 /* packet trace format function */
 static u8 *
-format_l2_outacl_trace (u8 * s, va_list * args)
+format_ip_outacl_trace (u8 * s, va_list * args)
 {
   CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
   CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
-  l2_outacl_trace_t *t = va_arg (*args, l2_outacl_trace_t *);
+  ip_outacl_trace_t *t = va_arg (*args, ip_outacl_trace_t *);
 
   s = format (s, "OUTACL: sw_if_index %d, next_index %d, table %d, offset %d",
 	      t->sw_if_index, t->next_index, t->table_index, t->offset);
   return s;
 }
 
-l2_outacl_main_t l2_outacl_main;
+vlib_node_registration_t ip4_outacl_node;
+vlib_node_registration_t ip6_outacl_node;
 
-static vlib_node_registration_t l2_outacl_node;
-
-#define foreach_l2_outacl_error                  \
-_(NONE, "valid output ACL packets")              \
+#define foreach_ip_outacl_error                  \
 _(MISS, "output ACL misses")                     \
 _(HIT, "output ACL hits")                        \
-_(CHAIN_HIT, "output ACL hits after chain walk") \
-_(TABLE_MISS, "output ACL table-miss drops")     \
-_(SESSION_DENY, "output ACL session deny drops")
-
+_(CHAIN_HIT, "output ACL hits after chain walk")
 
 typedef enum
 {
-#define _(sym,str) L2_OUTACL_ERROR_##sym,
-  foreach_l2_outacl_error
+#define _(sym,str) IP_OUTACL_ERROR_##sym,
+  foreach_ip_outacl_error
 #undef _
-    L2_OUTACL_N_ERROR,
-} l2_outacl_error_t;
+    IP_OUTACL_N_ERROR,
+} ip_outacl_error_t;
 
-static char *l2_outacl_error_strings[] = {
+static char *ip_outacl_error_strings[] = {
 #define _(sym,string) string,
-  foreach_l2_outacl_error
+  foreach_ip_outacl_error
 #undef _
 };
 
-static uword
-l2_outacl_node_fn (vlib_main_t * vm,
-		   vlib_node_runtime_t * node, vlib_frame_t * frame)
+static inline uword
+ip_outacl_inline (vlib_main_t * vm,
+		  vlib_node_runtime_t * node, vlib_frame_t * frame,
+		  int is_ip4)
 {
   u32 n_left_from, *from, *to_next;
   acl_next_index_t next_index;
-  l2_outacl_main_t *msm = &l2_outacl_main;
   output_acl_main_t *am = &output_acl_main;
   vnet_classify_main_t *vcm = am->vnet_classify_main;
-  output_acl_table_id_t tid = OUTPUT_ACL_TABLE_L2;
   f64 now = vlib_time_now (vm);
   u32 hits = 0;
   u32 misses = 0;
   u32 chain_hits = 0;
+  output_acl_table_id_t tid;
+  vlib_node_runtime_t *error_node;
+  u32 n_next_nodes;
+
+  n_next_nodes = node->n_next_nodes;
+
+  if (is_ip4)
+    {
+      tid = OUTPUT_ACL_TABLE_IP4;
+      // AYXXX - the 'input' node in below line is wrong. which node should we use ? resolve before committing.
+      error_node = vlib_node_get_runtime (vm, ip4_input_node.index);
+    }
+  else
+    {
+      tid = OUTPUT_ACL_TABLE_IP6;
+      // AYXXX - the 'input' node in below line is wrong. which node should we use ? resolve before committing.
+      error_node = vlib_node_get_runtime (vm, ip6_input_node.index);
+    }
 
   from = vlib_frame_vector_args (frame);
-  n_left_from = frame->n_vectors;	/* number of packets to process */
-  next_index = node->cached_next_index;
+  n_left_from = frame->n_vectors;
 
   /* First pass: compute hashes */
+
   while (n_left_from > 2)
     {
       vlib_buffer_t *b0, *b1;
@@ -264,16 +247,14 @@ l2_outacl_node_fn (vlib_main_t * vm,
 	  n_left_to_next -= 1;
 
 	  b0 = vlib_get_buffer (vm, bi0);
-
 	  table_index0 = vnet_buffer (b0)->l2_classify.table_index;
 	  e0 = 0;
 	  t0 = 0;
+	  vnet_get_config_data (am->vnet_config_main[tid],
+				&b0->current_config_index, &next0,
+				/* # bytes of config data */ 0);
 
 	  vnet_buffer (b0)->l2_classify.opaque_index = ~0;
-
-	  /* Determine the next node */
-	  next0 = vnet_l2_feature_next (b0, msm->feat_next_node_index,
-					L2OUTPUT_FEAT_ACL);
 
 	  if (PREDICT_TRUE (table_index0 != ~0))
 	    {
@@ -294,14 +275,24 @@ l2_outacl_node_fn (vlib_main_t * vm,
 		    = e0->opaque_index;
 		  vlib_buffer_advance (b0, e0->advance);
 
-		  next0 = (e0->next_index < ACL_NEXT_INDEX_N_NEXT) ?
+		  next0 = (e0->next_index < n_next_nodes) ?
 		    e0->next_index : next0;
 
 		  hits++;
 
-		  error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
-		    L2_OUTACL_ERROR_SESSION_DENY : L2_OUTACL_ERROR_NONE;
-		  b0->error = node->errors[error0];
+		  if (is_ip4)
+		    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+		      IP4_ERROR_OUTACL_SESSION_DENY : IP4_ERROR_NONE;
+		  else
+		    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+		      IP6_ERROR_OUTACL_SESSION_DENY : IP6_ERROR_NONE;
+		  b0->error = error_node->errors[error0];
+
+		  if (e0->action == CLASSIFY_ACTION_SET_IP4_FIB_INDEX ||
+		      e0->action == CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
+		    vnet_buffer (b0)->sw_if_index[VLIB_TX] = e0->metadata;
+		  else if (e0->action == CLASSIFY_ACTION_SET_METADATA)
+		    vnet_buffer (b0)->ip.adj_index[VLIB_TX] = e0->metadata;
 		}
 	      else
 		{
@@ -312,16 +303,18 @@ l2_outacl_node_fn (vlib_main_t * vm,
 						t0->next_table_index);
 		      else
 			{
-			  next0 =
-			    (t0->miss_next_index <
-			     ACL_NEXT_INDEX_N_NEXT) ? t0->miss_next_index :
-			    next0;
+			  next0 = (t0->miss_next_index < n_next_nodes) ?
+			    t0->miss_next_index : next0;
 
 			  misses++;
 
-			  error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
-			    L2_OUTACL_ERROR_TABLE_MISS : L2_OUTACL_ERROR_NONE;
-			  b0->error = node->errors[error0];
+			  if (is_ip4)
+			    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+			      IP4_ERROR_OUTACL_TABLE_MISS : IP4_ERROR_NONE;
+			  else
+			    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+			      IP6_ERROR_OUTACL_TABLE_MISS : IP6_ERROR_NONE;
+			  b0->error = error_node->errors[error0];
 			  break;
 			}
 
@@ -338,16 +331,27 @@ l2_outacl_node_fn (vlib_main_t * vm,
 			(t0, (u8 *) h0, hash0, now);
 		      if (e0)
 			{
+			  vnet_buffer (b0)->l2_classify.opaque_index
+			    = e0->opaque_index;
 			  vlib_buffer_advance (b0, e0->advance);
-			  next0 = (e0->next_index < ACL_NEXT_INDEX_N_NEXT) ?
+			  next0 = (e0->next_index < n_next_nodes) ?
 			    e0->next_index : next0;
 			  hits++;
 			  chain_hits++;
 
-			  error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
-			    L2_OUTACL_ERROR_SESSION_DENY :
-			    L2_OUTACL_ERROR_NONE;
-			  b0->error = node->errors[error0];
+			  if (is_ip4)
+			    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+			      IP4_ERROR_OUTACL_SESSION_DENY : IP4_ERROR_NONE;
+			  else
+			    error0 = (next0 == ACL_NEXT_INDEX_DENY) ?
+			      IP6_ERROR_OUTACL_SESSION_DENY : IP6_ERROR_NONE;
+			  b0->error = error_node->errors[error0];
+
+			  if (e0->action == CLASSIFY_ACTION_SET_IP4_FIB_INDEX
+			      || e0->action ==
+			      CLASSIFY_ACTION_SET_IP6_FIB_INDEX)
+			    vnet_buffer (b0)->sw_if_index[VLIB_TX] =
+			      e0->metadata;
 			  break;
 			}
 		    }
@@ -357,12 +361,12 @@ l2_outacl_node_fn (vlib_main_t * vm,
 	  if (PREDICT_FALSE ((node->flags & VLIB_NODE_FLAG_TRACE)
 			     && (b0->flags & VLIB_BUFFER_IS_TRACED)))
 	    {
-	      l2_outacl_trace_t *t =
+	      ip_outacl_trace_t *t =
 		vlib_add_trace (vm, node, b0, sizeof (*t));
 	      t->sw_if_index = vnet_buffer (b0)->sw_if_index[VLIB_RX];
 	      t->next_index = next0;
 	      t->table_index = t0 ? t0 - vcm->tables : ~0;
-	      t->offset = (t0 && e0) ? vnet_classify_get_offset (t0, e0) : ~0;
+	      t->offset = (e0 && t0) ? vnet_classify_get_offset (t0, e0) : ~0;
 	    }
 
 	  /* verify speculative enqueue, maybe switch current next frame */
@@ -375,53 +379,74 @@ l2_outacl_node_fn (vlib_main_t * vm,
     }
 
   vlib_node_increment_counter (vm, node->node_index,
-			       L2_OUTACL_ERROR_MISS, misses);
+			       IP_OUTACL_ERROR_MISS, misses);
   vlib_node_increment_counter (vm, node->node_index,
-			       L2_OUTACL_ERROR_HIT, hits);
+			       IP_OUTACL_ERROR_HIT, hits);
   vlib_node_increment_counter (vm, node->node_index,
-			       L2_OUTACL_ERROR_CHAIN_HIT, chain_hits);
+			       IP_OUTACL_ERROR_CHAIN_HIT, chain_hits);
   return frame->n_vectors;
 }
 
-/* *INDENT-OFF* */
-VLIB_REGISTER_NODE (l2_outacl_node,static) = {
-  .function = l2_outacl_node_fn,
-  .name = "l2-output-acl",
-  .vector_size = sizeof (u32),
-  .format_trace = format_l2_outacl_trace,
-  .type = VLIB_NODE_TYPE_INTERNAL,
+static uword
+ip4_outacl (vlib_main_t * vm, vlib_node_runtime_t * node,
+	    vlib_frame_t * frame)
+{
+  return ip_outacl_inline (vm, node, frame, 1 /* is_ip4 */ );
+}
 
-  .n_errors = ARRAY_LEN(l2_outacl_error_strings),
-  .error_strings = l2_outacl_error_strings,
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip4_outacl_node) = {
+  .function = ip4_outacl,
+  .name = "ip4-outacl",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip_outacl_trace,
+  .n_errors = ARRAY_LEN(ip_outacl_error_strings),
+  .error_strings = ip_outacl_error_strings,
 
   .n_next_nodes = ACL_NEXT_INDEX_N_NEXT,
-
-  /* edit / add dispositions here */
   .next_nodes = {
-       [ACL_NEXT_INDEX_DENY]  = "error-drop",
+    [ACL_NEXT_INDEX_DENY] = "ip4-drop",
   },
 };
 /* *INDENT-ON* */
 
-VLIB_NODE_FUNCTION_MULTIARCH (l2_outacl_node, l2_outacl_node_fn)
-     clib_error_t *l2_outacl_init (vlib_main_t * vm)
+VLIB_NODE_FUNCTION_MULTIARCH (ip4_outacl_node, ip4_outacl);
+
+static uword
+ip6_outacl (vlib_main_t * vm, vlib_node_runtime_t * node,
+	    vlib_frame_t * frame)
 {
-  l2_outacl_main_t *mp = &l2_outacl_main;
+  return ip_outacl_inline (vm, node, frame, 0 /* is_ip4 */ );
+}
 
-  mp->vlib_main = vm;
-  mp->vnet_main = vnet_get_main ();
 
-  /* Initialize the feature next-node indexes */
-  feat_bitmap_init_next_nodes (vm,
-			       l2_outacl_node.index,
-			       L2OUTPUT_N_FEAT,
-			       l2output_get_feat_names (),
-			       mp->feat_next_node_index);
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (ip6_outacl_node) = {
+  .function = ip6_outacl,
+  .name = "ip6-outacl",
+  .vector_size = sizeof (u32),
+  .format_trace = format_ip_outacl_trace,
+  .n_errors = ARRAY_LEN(ip_outacl_error_strings),
+  .error_strings = ip_outacl_error_strings,
 
+  .n_next_nodes = ACL_NEXT_INDEX_N_NEXT,
+  .next_nodes = {
+    [ACL_NEXT_INDEX_DENY] = "ip6-drop",
+  },
+};
+/* *INDENT-ON* */
+
+VLIB_NODE_FUNCTION_MULTIARCH (ip6_outacl_node, ip6_outacl);
+
+static clib_error_t *
+ip_outacl_init (vlib_main_t * vm)
+{
   return 0;
 }
 
-VLIB_INIT_FUNCTION (l2_outacl_init);
+VLIB_INIT_FUNCTION (ip_outacl_init);
+
 
 /*
  * fd.io coding-style-patch-verification: ON
