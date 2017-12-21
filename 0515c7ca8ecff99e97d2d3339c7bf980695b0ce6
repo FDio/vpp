@@ -1,0 +1,188 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "19aa62d0_c0d6fba6",
+        "filename": "src/vnet/ethernet/packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 73,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-12-21T11:02:39Z",
+      "side": 1,
+      "message": "Please use clib_mem_unaligned u16 casted address which will reduce the overall operations to three EQUALITY checks and two AND operations.\n{\n u16 *ab;\n clib_mem_unaligned(ab, u16) \u003d (u16 *)a;\n\nreturn ab[0] \u003d\u003d 0xffff \u0026\u0026 ab[1] \u003d\u003d 0xffff \u0026\u0026 ab[2] \u003d\u003d 0xffff;\n}",
+      "range": {
+        "startLine": 73,
+        "startChar": 0,
+        "endLine": 73,
+        "endChar": 38
+      },
+      "revId": "0515c7ca8ecff99e97d2d3339c7bf980695b0ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "93533e76_1480af61",
+        "filename": "src/vnet/ethernet/packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-12-21T11:02:39Z",
+      "side": 1,
+      "message": "u32 ;)",
+      "range": {
+        "startLine": 91,
+        "startChar": 14,
+        "endLine": 91,
+        "endChar": 17
+      },
+      "revId": "0515c7ca8ecff99e97d2d3339c7bf980695b0ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "44352762_61954552",
+        "filename": "src/vnet/ethernet/packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-12-21T11:02:39Z",
+      "side": 1,
+      "message": "Use PREDICT_TRUE for branch optimization",
+      "range": {
+        "startLine": 94,
+        "startChar": 6,
+        "endLine": 94,
+        "endChar": 27
+      },
+      "revId": "0515c7ca8ecff99e97d2d3339c7bf980695b0ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "184e4d7d_202f265c",
+        "filename": "src/vnet/ethernet/packet.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 111,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-12-21T11:02:39Z",
+      "side": 1,
+      "message": "Use PREDICT_TRUE for branch optimization",
+      "range": {
+        "startLine": 111,
+        "startChar": 6,
+        "endLine": 111,
+        "endChar": 27
+      },
+      "revId": "0515c7ca8ecff99e97d2d3339c7bf980695b0ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "981aef16_2c7a97f6",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 219,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-12-21T11:02:39Z",
+      "side": 1,
+      "message": "Shouldn\u0027t it be u64?",
+      "range": {
+        "startLine": 219,
+        "startChar": 2,
+        "endLine": 219,
+        "endChar": 5
+      },
+      "revId": "0515c7ca8ecff99e97d2d3339c7bf980695b0ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ae0f48f4_1eb7f0fe",
+        "filename": "src/vnet/interface_output.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 285,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-12-21T11:02:39Z",
+      "side": 1,
+      "message": "You have forgot to use VPP data types ;)\n\nUse u32 here :)",
+      "range": {
+        "startLine": 285,
+        "startChar": 3,
+        "endLine": 285,
+        "endChar": 6
+      },
+      "revId": "0515c7ca8ecff99e97d2d3339c7bf980695b0ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ad23d45_c8a9b61d",
+        "filename": "src/vnet/pg/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 164,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-12-21T11:02:39Z",
+      "side": 1,
+      "message": "u64 same here",
+      "range": {
+        "startLine": 164,
+        "startChar": 23,
+        "endLine": 164,
+        "endChar": 26
+      },
+      "revId": "0515c7ca8ecff99e97d2d3339c7bf980695b0ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "245837e8_ff1b03c1",
+        "filename": "src/vnet/pg/input.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 241
+      },
+      "writtenOn": "2017-12-21T11:02:39Z",
+      "side": 1,
+      "message": "u32 :)",
+      "range": {
+        "startLine": 218,
+        "startChar": 5,
+        "endLine": 218,
+        "endChar": 9
+      },
+      "revId": "0515c7ca8ecff99e97d2d3339c7bf980695b0ce6",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
