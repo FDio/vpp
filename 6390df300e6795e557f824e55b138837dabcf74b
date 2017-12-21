@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b117f3e8_a3725a30",
+        "filename": "src/vppinfra/smp.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2017-12-21T21:02:52Z",
+      "side": 1,
+      "message": "ARMv8 code should be using LDXR+WFE when waiting for locks etc.",
+      "revId": "6390df300e6795e557f824e55b138837dabcf74b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
