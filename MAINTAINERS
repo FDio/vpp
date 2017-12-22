@@ -57,7 +57,7 @@ M:	Damjan Marion <damarion@cisco.com>
 F:	src/vnet/devices/
 
 VNET Device Drivers - DPDK Crypto
-M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
+M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@outlook.com>
 M:      Radu Nicolau <radu.nicolau@intel.com>
 F:	src/devices/dpdk/ipsec/
 
@@ -84,7 +84,6 @@ F:	src/vnet/srmpls/
 F:	src/examples/srv6-sample-localsid/
 
 VNET IPSec
-M:	Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 M:	Matus Fabian <matfabia@cisco.com>
 M:	Radu Nicolau <radu.nicolau@intel.com>
 F:	src/vnet/ipsec/
