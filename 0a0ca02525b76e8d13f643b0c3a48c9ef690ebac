@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "43bd999e_7950449b",
+        "filename": "dpdk/dpdk-17.11_patches/0001-ena-pmd-no-tx-flags.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 120
+      },
+      "writtenOn": "2017-12-22T11:00:03Z",
+      "side": 1,
+      "message": "I think this would solve the issue but I believe more work is required to get the PMD into better shape.\nI don\u0027t know the internals of this PMD so not sure if I\u0027m right or not, but it looks like those flags should be used to set the mbuf packet_type (PTYPE), and the l4/l3_csum_err to set either GOOD or BAD cksum.\nBottom line is, you probably should follow up with the DPDK ENA PMD maintainers.",
+      "revId": "0a0ca02525b76e8d13f643b0c3a48c9ef690ebac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
