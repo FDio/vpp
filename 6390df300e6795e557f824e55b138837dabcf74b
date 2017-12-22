@@ -34,6 +34,24 @@
       "revId": "6390df300e6795e557f824e55b138837dabcf74b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "dab4f126_d053889f",
+        "filename": "src/vppinfra/smp.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2017-12-22T08:39:27Z",
+      "side": 1,
+      "message": "Yes but puasing the CPU is normally done when spin waiting for a lock or similar. When else would you want to pause the CPU?",
+      "parentUuid": "ad9f9f17_4ec9189a",
+      "revId": "6390df300e6795e557f824e55b138837dabcf74b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
