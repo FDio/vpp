@@ -40,14 +40,7 @@ always_inline u32
 dpdk_rx_next_from_etype (struct rte_mbuf *mb)
 {
   ethernet_header_t *h = rte_pktmbuf_mtod (mb, ethernet_header_t *);
-  if (PREDICT_TRUE (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP4)))
-    {
-      if (PREDICT_TRUE ((mb->ol_flags & PKT_RX_IP_CKSUM_GOOD) != 0))
-	return VNET_DEVICE_INPUT_NEXT_IP4_NCS_INPUT;
-      else
-	return VNET_DEVICE_INPUT_NEXT_IP4_INPUT;
-    }
-  else if (PREDICT_TRUE (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP6)))
+  if (PREDICT_TRUE (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_IP6)))
     return VNET_DEVICE_INPUT_NEXT_IP6_INPUT;
   else
     if (PREDICT_TRUE (h->type == clib_host_to_net_u16 (ETHERNET_TYPE_MPLS)))
