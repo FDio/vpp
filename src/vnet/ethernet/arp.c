@@ -1123,6 +1123,12 @@ arp_input (vlib_main_t * vm, vlib_node_runtime_t * node, vlib_frame_t * frame)
 				  &arp0->ip4_over_ethernet[0]);
 	      goto drop1;
 	    }
+	  else if (arp0->opcode ==
+		   clib_host_to_net_u16 (ETHERNET_ARP_OPCODE_request) &&
+		   (dst_is_local0 == 0))
+	    {
+	      goto drop1;
+	    }
 
 	send_reply:
 	  /* Send a reply.
