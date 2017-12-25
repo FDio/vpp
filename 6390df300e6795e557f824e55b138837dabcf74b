@@ -70,6 +70,24 @@
       "revId": "6390df300e6795e557f824e55b138837dabcf74b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "385a0514_8a0f0050",
+        "filename": "src/vppinfra/smp.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 453
+      },
+      "writtenOn": "2017-12-25T19:59:23Z",
+      "side": 1,
+      "message": "This is the code pattern I use for both x86 and ARM support:\n//Wait until *loc \u003d\u003d exp\nif (__atomic_load_n(loc, __ATOMIC_RELAXED) !\u003d exp)\n{\n    SEVL();\n    while (WFE() \u0026\u0026 LDXR(loc, __ATOMIC_RELAXED) !\u003d exp)\n    {\n        DOZE();\n    }\n}\nOn ARM:\n#define SEVL() sevl()\n#define WFE() wfe()\n#define LDXR(addr, mo) ldxr((addr), (mo))\n#define DOZE() (void)0 //no-op!\nOn x86 and other architectures without WFE support:\n#define SEVL() (void)0\n#define WFE() 1\n#define LDXR(addr, mo) __atomic_load_n((addr), (mo))\n#define DOZE() cpu_pause()\n\ncpu_pause() should not be used together with ldxr/wfe. Wfe does all the waiting/pausing.\n\nOn ARMv8, there is no need to execute SEV. Cores in WFE are automatically woken up when the monitored line is written. Spurious wake-up is also possible.",
+      "parentUuid": "5f6a3fc7_f139be2e",
+      "revId": "6390df300e6795e557f824e55b138837dabcf74b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
