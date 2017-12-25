@@ -52,6 +52,24 @@
       "revId": "6390df300e6795e557f824e55b138837dabcf74b",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5f6a3fc7_f139be2e",
+        "filename": "src/vppinfra/smp.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1186
+      },
+      "writtenOn": "2017-12-25T05:06:25Z",
+      "side": 1,
+      "message": "Yes, most cases are for spin lock. But is it possible that CPU wants to sleep for a while in a loop? And if uses WFE here, so there should be another API to call SEV. In my understanding, clib_smp_pause() should be similar with odp_cpu_pause() in ODP project. So uses the same instruction here.",
+      "parentUuid": "dab4f126_d053889f",
+      "revId": "6390df300e6795e557f824e55b138837dabcf74b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
