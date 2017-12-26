@@ -1,0 +1,12 @@
+create interface ppv2 name eth1
+create interface ppv2 name eth0
+set int state ppio1/0 up
+set int state ppio0/0 up
+test l2patch rx ppio0/0 tx ppio1/0
+test l2patch rx ppio1/0 tx ppio0/0
+---
+set int l2 xco ppio0/0 ppio1/0
+set int l2 xco ppio1/0 ppio0/0
+set int ip address ppio0/0 172.16.0.1/24
+set int ip address ppio1/0 172.16.1.1/24
+---
