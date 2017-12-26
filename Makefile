@@ -18,6 +18,7 @@ GDB?=gdb
 PLATFORM?=vpp
 SAMPLE_PLUGIN?=no
 MACHINE=$(shell uname -m)
+DPDK_CONFIG="no-pci"
 
 ,:=,
 define disable_plugins
@@ -532,4 +533,7 @@ ifeq ($(OS_ID)-$(OS_VERSION_ID),ubuntu-16.04)
 	@make COMPRESS_FAILED_TEST_LOGS=yes RETRIES=3 test
 endif
 
+
+musdk-build:
+	@make -C build-root PLATFORM=vpp TAG=vpp_debug  musdk-plugin-install
 

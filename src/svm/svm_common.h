@@ -85,7 +85,8 @@ typedef struct svm_map_region_args_
  */
 #define SVM_GLOBAL_REGION_SIZE    (64<<20)
 #define SVM_GLOBAL_REGION_NAME "/global_vm"
-#if defined (__aarch64__)
+//#if defined (__aarch64__)
+#if 0
 #define VA_BITS 48
 #define BASEVA ((1ul << VA_BITS) / 4)
 #define SVM_GLOBAL_REGION_BASEVA (BASEVA - (2 * SVM_GLOBAL_REGION_SIZE))
