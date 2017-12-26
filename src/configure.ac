@@ -217,6 +217,7 @@ PLUGIN_ENABLED(ioam)
 PLUGIN_ENABLED(ixge)
 PLUGIN_ENABLED(kubeproxy)
 PLUGIN_ENABLED(lb)
+PLUGIN_ENABLED(marvell)
 PLUGIN_ENABLED(memif)
 PLUGIN_ENABLED(pppoe)
 PLUGIN_ENABLED(sixrd)
@@ -289,6 +290,17 @@ AM_CONDITIONAL(WITH_IBVERBS_LIB, test "$with_ibverbs_lib" = "yes")
 AM_COND_IF([ENABLE_G2],
 [
   PKG_CHECK_MODULES(g2, gtk+-2.0)
+])
+
+AM_COND_IF([ENABLE_MARVELL_PLUGIN],
+[
+  AC_CHECK_LIB( [musdk], [pp2_init],
+    [],
+    [
+      AC_MSG_WARN([Marvell MUSDK library with PP2 support not found. Plugin disabled.])
+      enable_marvell_plugin=no
+      AM_CONDITIONAL(ENABLE_MARVELL_PLUGIN, false)
+    ])
 ])
 
 # If cross-compiling, we need external vppapigen and we cannot continue without it
