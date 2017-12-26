@@ -67,6 +67,10 @@ if ENABLE_LB_PLUGIN
 include lb.am
 endif
 
+if ENABLE_MARVELL_PLUGIN
+include marvell.am
+endif
+
 if ENABLE_MEMIF_PLUGIN
 include memif.am
 endif
