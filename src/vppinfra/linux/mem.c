@@ -76,7 +76,7 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 
       if (rv == -1)
 	{
-	  if ((a->flags & CLIB_MEM_VM_F_NUMA_FORCE) != 0)
+	  if (a->numa_node != 0 && (a->flags & CLIB_MEM_VM_F_NUMA_FORCE) != 0)
 	    {
 	      err = clib_error_return_unix (0, "get_mempolicy");
 	      goto error;

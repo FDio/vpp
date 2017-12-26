@@ -1,0 +1,6 @@
+create interface ppv2 name eth1
+create interface ppv2 name eth0
+set int ip address ppio0/0 192.168.123.224/24
+set int state ppio1/0 up
+set int state ppio0/0 up
+trace add ppv2-input 5
