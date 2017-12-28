@@ -31,7 +31,7 @@
 do {                                                                    \
     vl_api_registration_t *rp;                                          \
     rv = vl_msg_api_pd_handler (mp, rv);                                \
-    rp = vl_api_client_index_to_registration (mp->client_index);        \
+    rp = vl_api_client_index_to_registration (ntohl(mp->client_index)); \
     if (rp == 0)                                                        \
       return;                                                           \
                                                                         \
@@ -47,7 +47,7 @@ do {                                                                    \
 do {                                                                    \
     vl_api_registration_t *rp;                                          \
     rv = vl_msg_api_pd_handler (mp, rv);                                \
-    rp = vl_api_client_index_to_registration (mp->client_index);        \
+    rp = vl_api_client_index_to_registration (ntohl(mp->client_index)); \
     if (rp == 0)                                                        \
       return;                                                           \
                                                                         \
@@ -63,7 +63,7 @@ do {                                                                    \
 do {                                                                    \
     vl_api_registration_t *rp;                                          \
     rv = vl_msg_api_pd_handler (mp, rv);                                \
-    rp = vl_api_client_index_to_registration (mp->client_index);        \
+    rp = vl_api_client_index_to_registration (ntohl(mp->client_index)); \
     if (rp == 0)                                                        \
       return;                                                           \
                                                                         \
@@ -81,7 +81,7 @@ do {                                                                    \
     u8 is_error = 0;                                                    \
     rv = vl_msg_api_pd_handler (mp, rv);                                \
                                                                         \
-    rp = vl_api_client_index_to_registration (mp->client_index);        \
+    rp = vl_api_client_index_to_registration (ntohl(mp->client_index)); \
     if (rp == 0)                                                        \
       return;                                                           \
                                                                         \
