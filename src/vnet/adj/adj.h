@@ -111,7 +111,7 @@ typedef enum
     [IP_LOOKUP_NEXT_REWRITE] = "ip4-rewrite",    		\
     [IP_LOOKUP_NEXT_MCAST] = "ip4-rewrite-mcast",	        \
     [IP_LOOKUP_NEXT_MIDCHAIN] = "ip4-midchain",		        \
-    [IP_LOOKUP_NEXT_MCAST_MIDCHAIN] = "ip4-mcast-midchain",     \
+    [IP_LOOKUP_NEXT_MCAST_MIDCHAIN] = "ip4-midchain-mcast",     \
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip4-icmp-error",		\
 }
 
@@ -124,7 +124,7 @@ typedef enum
     [IP_LOOKUP_NEXT_REWRITE] = "ip6-rewrite",			\
     [IP_LOOKUP_NEXT_MCAST] = "ip6-rewrite-mcast",		\
     [IP_LOOKUP_NEXT_MIDCHAIN] = "ip6-midchain",			\
-    [IP_LOOKUP_NEXT_MCAST_MIDCHAIN] = "ip6-mcast-midchain",     \
+    [IP_LOOKUP_NEXT_MCAST_MIDCHAIN] = "ip6-midchain-mcast",     \
     [IP_LOOKUP_NEXT_ICMP_ERROR] = "ip6-icmp-error",		\
     [IP6_LOOKUP_NEXT_HOP_BY_HOP] = "ip6-hop-by-hop",		\
     [IP6_LOOKUP_NEXT_ADD_HOP_BY_HOP] = "ip6-add-hop-by-hop",	\

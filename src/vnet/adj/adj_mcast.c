@@ -430,12 +430,12 @@ const static char* const * const adj_mcast_nodes[DPO_PROTO_NUM] =
  */
 const static char* const adj_mcast_midchain_ip4_nodes[] =
 {
-    "ip4-mcast-midchain",
+    "ip4-midchain-mcast",
     NULL,
 };
 const static char* const adj_mcast_midchain_ip6_nodes[] =
 {
-    "ip6-mcast-midchain",
+    "ip6-midchain-mcast",
     NULL,
 };
 
