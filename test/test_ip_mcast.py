@@ -12,6 +12,7 @@ from scapy.layers.l2 import Ether
 from scapy.layers.inet import IP, UDP, getmacbyip, ICMP
 from scapy.layers.inet6 import IPv6, getmacbyip6
 from util import ppp
+from socket import AF_INET, AF_INET6, inet_pton
 
 #
 # The number of packets sent is set to 91 so that when we replicate more than 3
@@ -75,6 +76,16 @@ class TestIPMcast(VppTestCase):
         self.pg8.set_table_ip4(0)
         self.pg8.set_table_ip6(0)
         super(TestIPMcast, self).tearDown()
+
+    def send_and_assert_no_replies(self, intf, pkts, remark):
+        intf.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        timeout = 1
+        for i in self.pg_interfaces:
+            i.get_capture(0, timeout=timeout)
+            i.assert_nothing_captured(remark=remark)
+            timeout = 0.1
 
     def create_stream_ip4(self, src_if, src_ip, dst_ip, payload_size=0):
         pkts = []
@@ -795,6 +806,100 @@ class TestIPMcast(VppTestCase):
         self.verify_capture_ip4(self.pg3, tx)
         self.pg0.assert_nothing_captured(
             remark="IP multicast packets forwarded on PG0")
+
+    def test_ip_mcast_features(self):
+        """ IP Multicast Features """
+
+        #
+        # A (*,G).
+        # one accepting interface, pg0, 1 forwarding interfaces
+        #
+        route_232_1_1_1 = VppIpMRoute(
+            self,
+            "0.0.0.0",
+            "232.1.1.1", 32,
+            MRouteEntryFlags.MFIB_ENTRY_FLAG_NONE,
+            [VppMRoutePath(self.pg0.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_ACCEPT),
+             VppMRoutePath(self.pg1.sw_if_index,
+                           MRouteItfFlags.MFIB_ITF_FLAG_FORWARD)])
+        route_232_1_1_1.add_vpp_config()
+
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.verify_capture_ip4(self.pg1, tx)
+
+        #
+        # An ACL that blocks this stream
+        #
+        rule_1 = ({'is_permit': 0,
+                   'is_ipv6': 0,
+                   'proto': 17,
+                   'srcport_or_icmptype_first': 1234,
+                   'srcport_or_icmptype_last': 1234,
+                   'src_ip_prefix_len': 32,
+                   'src_ip_addr': inet_pton(AF_INET, "1.1.1.1"),
+                   'dstport_or_icmpcode_first': 1234,
+                   'dstport_or_icmpcode_last': 1234,
+                   'dst_ip_prefix_len': 32,
+                   'dst_ip_addr': inet_pton(AF_INET, "232.1.1.1")})
+        acl = self.vapi.acl_add_replace(acl_index=4294967295,
+                                        r=[rule_1])
+
+        #
+        # Apply the ACL on the input interface
+        #
+        self.vapi.acl_interface_set_acl_list(self.pg0.sw_if_index,
+                                             1,
+                                             [acl.acl_index])
+
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.send_and_assert_no_replies(self.pg0, tx, "Ip4 Input ACL")
+
+        #
+        # remove the input ACL. traffic returns.
+        #
+        self.vapi.acl_interface_set_acl_list(self.pg0.sw_if_index,
+                                             0, [])
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.verify_capture_ip4(self.pg1, tx)
+
+        #
+        # Apply the same ACL at ouput
+        #
+        self.vapi.acl_interface_set_acl_list(self.pg1.sw_if_index,
+                                             0,
+                                             [acl.acl_index])
+
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.send_and_assert_no_replies(self.pg0, tx, "Ip4 Input ACL")
+
+        #
+        # remove the output ACL. traffic returns.
+        #
+        self.vapi.acl_interface_set_acl_list(self.pg1.sw_if_index,
+                                             0, [])
+        self.vapi.cli("clear trace")
+        tx = self.create_stream_ip4(self.pg0, "1.1.1.1", "232.1.1.1")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.verify_capture_ip4(self.pg1, tx)
+
+        #
+        # cleanup
+        #
+        self.vapi.acl_del(acl.acl_index)
 
 
 if __name__ == '__main__':

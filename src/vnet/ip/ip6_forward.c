@@ -2457,7 +2457,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (ip6_rewrite_mcast_node, ip6_rewrite_mcast);
 VLIB_REGISTER_NODE (ip6_mcast_midchain_node, static) =
 {
   .function = ip6_mcast_midchain,
-  .name = "ip6-mcast-midchain",
+  .name = "ip6-midchain-mcast",
   .vector_size = sizeof (u32),
   .format_trace = format_ip6_rewrite_trace,
   .sibling_of = "ip6-rewrite",

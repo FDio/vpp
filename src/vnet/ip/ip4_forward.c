@@ -1113,7 +1113,10 @@ VNET_FEATURE_INIT (ip4_lookup_mc, static) =
 VNET_FEATURE_ARC_INIT (ip4_output, static) =
 {
   .arc_name = "ip4-output",
-  .start_nodes = VNET_FEATURES ("ip4-rewrite", "ip4-midchain"),
+  .start_nodes = VNET_FEATURES ("ip4-rewrite",
+                                "ip4-midchain",
+                                "ip4-midchain-mcast",
+                                "ip4-rewrite-mcast"),
   .arc_index_ptr = &ip4_main.lookup_main.output_feature_arc_index,
 };
 
@@ -2797,7 +2800,7 @@ VLIB_NODE_FUNCTION_MULTIARCH (ip4_rewrite_mcast_node, ip4_rewrite_mcast)
 
 VLIB_REGISTER_NODE (ip4_mcast_midchain_node, static) = {
   .function = ip4_mcast_midchain,
-  .name = "ip4-mcast-midchain",
+  .name = "ip4-midchain-mcast",
   .vector_size = sizeof (u32),
 
   .format_trace = format_ip4_rewrite_trace,
@@ -2810,7 +2813,7 @@ VLIB_REGISTER_NODE (ip4_midchain_node) = {
   .name = "ip4-midchain",
   .vector_size = sizeof (u32),
   .format_trace = format_ip4_forward_next_trace,
-  .sibling_of =  "ip4-rewrite",
+  .sibling_of = "ip4-rewrite",
 };
 VLIB_NODE_FUNCTION_MULTIARCH (ip4_midchain_node, ip4_midchain);
 /* *INDENT-ON */

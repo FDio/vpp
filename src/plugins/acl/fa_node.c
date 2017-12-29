@@ -1684,6 +1684,10 @@ acl_fa_enable_disable (u32 sw_if_index, int is_input, int enable_disable)
 				   sw_if_index, enable_disable, 0, 0);
       vnet_feature_enable_disable ("ip6-unicast", "acl-plugin-in-ip6-fa",
 				   sw_if_index, enable_disable, 0, 0);
+      vnet_feature_enable_disable ("ip4-multicast", "acl-plugin-in-ip4-mcast-fa",
+				   sw_if_index, enable_disable, 0, 0);
+      vnet_feature_enable_disable ("ip6-multicast", "acl-plugin-in-ip6-mcast-fa",
+				   sw_if_index, enable_disable, 0, 0);
       clib_mem_set_heap (oldheap);
       am->fa_in_acl_on_sw_if_index =
 	clib_bitmap_set (am->fa_in_acl_on_sw_if_index, sw_if_index,
@@ -1837,10 +1841,33 @@ VNET_FEATURE_INIT (acl_in_ip6_fa_feature, static) =
   .runs_before = VNET_FEATURES ("ip6-flow-classify"),
 };
 
+VNET_FEATURE_INIT (acl_in_ip6_mcast_fa_feature, static) =
+{
+  .arc_name = "ip6-multicast",
+  .node_name = "acl-plugin-in-ip6-mcast-fa",
+  .runs_before = VNET_FEATURES ("ip6-mfib-forward-lookup"),
+};
+
 VLIB_REGISTER_NODE (acl_in_fa_ip4_node) =
 {
   .function = acl_in_ip4_fa_node_fn,
   .name = "acl-plugin-in-ip4-fa",
+  .vector_size = sizeof (u32),
+  .format_trace = format_acl_fa_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (acl_fa_error_strings),
+  .error_strings = acl_fa_error_strings,
+  .n_next_nodes = ACL_FA_N_NEXT,
+  .next_nodes =
+  {
+    [ACL_FA_ERROR_DROP] = "error-drop",
+  }
+};
+
+VLIB_REGISTER_NODE (acl_in_fa_ip4_mcast_node) =
+{
+  .function = acl_in_ip4_fa_node_fn,
+  .name = "acl-plugin-in-ip4-mcast-fa",
   .vector_size = sizeof (u32),
   .format_trace = format_acl_fa_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
@@ -1860,11 +1887,33 @@ VNET_FEATURE_INIT (acl_in_ip4_fa_feature, static) =
   .runs_before = VNET_FEATURES ("ip4-flow-classify"),
 };
 
+VNET_FEATURE_INIT (acl_in_ip4_mcast_fa_feature, static) =
+{
+  .arc_name = "ip4-multicast",
+  .node_name = "acl-plugin-in-ip4-mcast-fa",
+  .runs_before = VNET_FEATURES ("ip4-mfib-forward-lookup"),
+};
 
 VLIB_REGISTER_NODE (acl_out_fa_ip6_node) =
 {
   .function = acl_out_ip6_fa_node_fn,
   .name = "acl-plugin-out-ip6-fa",
+  .vector_size = sizeof (u32),
+  .format_trace = format_acl_fa_trace,
+  .type = VLIB_NODE_TYPE_INTERNAL,
+  .n_errors = ARRAY_LEN (acl_fa_error_strings),
+  .error_strings = acl_fa_error_strings,
+  .n_next_nodes = ACL_FA_N_NEXT,
+  .next_nodes =
+  {
+    [ACL_FA_ERROR_DROP] = "error-drop",
+  }
+};
+
+VLIB_REGISTER_NODE (acl_out_fa_ip6_mcast_node) =
+{
+  .function = acl_out_ip6_fa_node_fn,
+  .name = "acl-plugin-out-ip6-mcast-fa",
   .vector_size = sizeof (u32),
   .format_trace = format_acl_fa_trace,
   .type = VLIB_NODE_TYPE_INTERNAL,
