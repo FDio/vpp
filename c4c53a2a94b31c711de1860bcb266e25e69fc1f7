@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7247cd49_cac1cf98",
+        "filename": "src/vnet/ethernet/arp.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-02T21:01:36Z",
+      "side": 1,
+      "message": "unnecessary whitespace change",
+      "revId": "c4c53a2a94b31c711de1860bcb266e25e69fc1f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
