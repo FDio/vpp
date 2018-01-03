@@ -1114,7 +1114,7 @@ libvnet_la_SOURCES +=				\
   vnet/dpo/mpls_disposition.c   		\
   vnet/dpo/mpls_label_dpo.c			\
   vnet/dpo/l3_proxy_dpo.c			\
-  vnet/dpo/l2_bridge_dpo.c
+  vnet/dpo/dvr_dpo.c
 
 nobase_include_HEADERS +=			\
   vnet/dpo/load_balance.h			\

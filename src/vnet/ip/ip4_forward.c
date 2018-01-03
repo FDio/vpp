@@ -1113,7 +1113,7 @@ VNET_FEATURE_INIT (ip4_lookup_mc, static) =
 VNET_FEATURE_ARC_INIT (ip4_output, static) =
 {
   .arc_name = "ip4-output",
-  .start_nodes = VNET_FEATURES ("ip4-rewrite", "ip4-midchain"),
+  .start_nodes = VNET_FEATURES ("ip4-rewrite", "ip4-midchain", "ip4-dvr-dpo"),
   .arc_index_ptr = &ip4_main.lookup_main.output_feature_arc_index,
 };
 
