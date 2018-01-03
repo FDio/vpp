@@ -40,7 +40,7 @@
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/interface_tx_dpo.h>
 #include <vnet/dpo/mpls_disposition.h>
-#include <vnet/dpo/l2_bridge_dpo.h>
+#include <vnet/dpo/dvr_dpo.h>
 #include <vnet/dpo/l3_proxy_dpo.h>
 
 /**
@@ -537,7 +537,7 @@ dpo_module_init (vlib_main_t * vm)
     interface_rx_dpo_module_init();
     interface_tx_dpo_module_init();
     mpls_disp_dpo_module_init();
-    l2_bridge_dpo_module_init();
+    dvr_dpo_module_init();
     l3_proxy_dpo_module_init();
 
     return (NULL);
