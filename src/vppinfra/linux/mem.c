@@ -71,12 +71,12 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
   if (a->flags & (CLIB_MEM_VM_F_NUMA_PREFER | CLIB_MEM_VM_F_NUMA_FORCE))
     {
       int rv;
-      rv =
-	get_mempolicy (&old_mpol, old_mask, sizeof (old_mask) * 8 + 1, 0, 0);
+      rv = get_mempolicy (&old_mpol, old_mask, sizeof (old_mask) * 8 + 1,
+			  0, 0);
 
       if (rv == -1)
 	{
-	  if ((a->flags & CLIB_MEM_VM_F_NUMA_FORCE) != 0)
+	  if (a->numa_node != 0 && (a->flags & CLIB_MEM_VM_F_NUMA_FORCE) != 0)
 	    {
 	      err = clib_error_return_unix (0, "get_mempolicy");
 	      goto error;
@@ -193,7 +193,7 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
       goto error;
     }
 
-  /* re-apply ole numa memory policy */
+  /* re-apply old numa memory policy */
   if (old_mpol != -1 &&
       set_mempolicy (old_mpol, old_mask, sizeof (old_mask) * 8 + 1) == -1)
     {
