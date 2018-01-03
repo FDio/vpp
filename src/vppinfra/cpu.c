@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <fcntl.h>
 #include <vppinfra/clib.h>
 #include <vppinfra/format.h>
 #include <vppinfra/cpu.h>
@@ -56,6 +57,18 @@
  _(0x06, 0x1a, "Nehalem", "Nehalem EP,Bloomfield)") \
  _(0x06, 0x17, "Penryn", "Yorkfield,Wolfdale,Penryn,Harpertown")
 
+#define foreach_aarch64_cpu_uarch \
+ _(0x41, 0xd03, "ARM", "Cortex-A53") \
+ _(0x41, 0xd07, "ARM", "Cortex-A57") \
+ _(0x41, 0xd08, "ARM", "Cortex-A72") \
+ _(0x41, 0xd09, "ARM", "Cortex-A73") \
+ _(0x43, 0x0a1, "Cavium", "ThunderX CN88XX") \
+ _(0x43, 0x0a2, "Cavium", "Octeon TX CN81XX") \
+ _(0x43, 0x0a3, "Cavium", "Octeon TX CN83XX") \
+ _(0x43, 0x0af, "Cavium", "ThunderX2 CN99XX") \
+ _(0x43, 0x0b1, "Cavium", "Octeon TX2 CN98XX") \
+ _(0x43, 0x0b2, "Cavium", "Octeon TX2 CN93XX") \
+
 u8 *
 format_cpu_uarch (u8 * s, va_list * args)
 {
@@ -73,6 +86,43 @@ format_cpu_uarch (u8 * s, va_list * args)
   foreach_x86_cpu_uarch
 #undef _
     return format (s, "unknown (family 0x%02x model 0x%02x)", family, model);
+
+#elif __aarch64__
+  int fd;
+  unformat_input_t input;
+  u32 implementer, primary_part_number, variant, revision;
+
+  fd = open ("/proc/cpuinfo", 0);
+  if (fd < 0)
+    return format (s, "unknown");
+
+  unformat_init_clib_file (&input, fd);
+  while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (&input, "CPU implementer%_: 0x%x", &implementer))
+	;
+      else if (unformat (&input, "CPU part%_: 0x%x", &primary_part_number))
+	;
+      else if (unformat (&input, "CPU variant%_: 0x%x", &variant))
+	;
+      else if (unformat (&input, "CPU revision%_: %u", &revision))
+	;
+      else
+	unformat_skip_line (&input);
+    }
+  unformat_free (&input);
+  close (fd);
+
+  /* Note: Cavium starts counting variants from 1 instead of 0 */
+  if (implementer == 0x43)
+    variant++;
+
+#define _(i,p,a,c) if ((implementer == i) && (primary_part_number == p)) \
+  return format(s, "%s (%s PASS %u.%u)", a, c, variant, revision);
+  foreach_aarch64_cpu_uarch
+#undef _
+    return format (s, "unknown (implementer 0x%02x part 0x%03x PASS %u.%u)",
+		   implementer, primary_part_number, variant, revision);
 
 #else /* ! __x86_64__ */
   return format (s, "unknown");
