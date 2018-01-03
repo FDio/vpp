@@ -223,8 +223,8 @@ unix_physmem_region_alloc (vlib_main_t * vm, char *name, u32 size,
 	{
 	  void *ptr = pr->mem + (i << pr->log2_page_size);
 	  int node;
-	  move_pages (0, 1, &ptr, 0, &node, 0);
-	  if (numa_node != node)
+	  if ((move_pages (0, 1, &ptr, 0, &node, 0) == 0) &&
+	      (numa_node != node))
 	    {
 	      clib_warning ("physmem page for region \'%s\' allocated on the"
 			    " wrong numa node (requested %u actual %u)",
