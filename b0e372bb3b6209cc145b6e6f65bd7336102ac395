@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "a253c815_f19c537c",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-01-03T19:46:24Z",
+      "side": 1,
+      "message": "This register is not readable from userspace. If there were ARM machines in the CI, the tests would fail due to an \"Illegal instruction\". The good news is that Linux exports it via /proc/cpuinfo. Here\u0027s an example (although not in C): https://gerrit.fd.io/r/#/c/8372/2/dpdk/Makefile",
+      "range": {
+        "startLine": 100,
+        "startChar": 14,
+        "endLine": 100,
+        "endChar": 22
+      },
+      "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
