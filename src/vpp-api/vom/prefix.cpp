@@ -53,6 +53,19 @@ l3_proto_t::from_address(const boost::asio::ip::address& addr)
   return IPV4;
 }
 
+const nh_proto_t&
+l3_proto_t::to_nh_proto() const
+{
+  if (*this == IPV4)
+    return nh_proto_t::IPV4;
+  else if (*this == IPV6)
+    return nh_proto_t::IPV6;
+  else if (*this == MPLS)
+    return nh_proto_t::MPLS;
+
+  return nh_proto_t::IPV4;
+}
+
 std::ostream&
 operator<<(std::ostream& os, const l3_proto_t& l3p)
 {

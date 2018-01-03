@@ -759,7 +759,7 @@ class VppPapiProvider(object):
             is_local=0,
             is_classify=0,
             is_multipath=0,
-            is_l2_bridged=0,
+            is_dvr=0,
             is_udp_encap=0,
             is_source_lookup=0):
         """
@@ -780,7 +780,7 @@ class VppPapiProvider(object):
         :param is_multipath:  (Default value = 0)
         :param is_resolve_host:  (Default value = 0)
         :param is_resolve_attached:  (Default value = 0)
-        :param is_l2_bridged:  (Default value = 0)
+        :param is_dvr:  (Default value = 0)
         :param is_source_lookup:  (Default value = 0)
         :param next_hop_weight:  (Default value = 1)
 
@@ -802,7 +802,7 @@ class VppPapiProvider(object):
              'is_multipath': is_multipath,
              'is_resolve_host': is_resolve_host,
              'is_resolve_attached': is_resolve_attached,
-             'is_l2_bridged': is_l2_bridged,
+             'is_dvr': is_dvr,
              'is_source_lookup': is_source_lookup,
              'is_udp_encap': is_udp_encap,
              'next_hop_weight': next_hop_weight,

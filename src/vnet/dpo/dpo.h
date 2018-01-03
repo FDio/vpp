@@ -116,7 +116,7 @@ typedef enum dpo_type_t_ {
     DPO_MFIB_ENTRY,
     DPO_INTERFACE_RX,
     DPO_INTERFACE_TX,
-    DPO_L2_BRIDGE,
+    DPO_DVR,
     DPO_L3_PROXY,
     DPO_BIER_TABLE,
     DPO_BIER_FMASK,
@@ -147,10 +147,10 @@ typedef enum dpo_type_t_ {
     [DPO_CLASSIFY] = "dpo-classify",	\
     [DPO_MPLS_LABEL] = "dpo-mpls-label", \
     [DPO_MPLS_DISPOSITION] = "dpo-mpls-diposition", \
-    [DPO_MFIB_ENTRY] = "dpo-mfib_entry", \
+    [DPO_MFIB_ENTRY] = "dpo-mfib-entry", \
     [DPO_INTERFACE_RX] = "dpo-interface-rx",	\
     [DPO_INTERFACE_TX] = "dpo-interface-tx",	\
-    [DPO_L2_BRIDGE] = "dpo-l2-bridge",	\
+    [DPO_DVR] = "dpo-dvr",	\
     [DPO_L3_PROXY] = "dpo-l3-proxy",	\
     [DPO_BIER_TABLE] = "bier-table",	\
     [DPO_BIER_FMASK] = "bier-fmask",	\
