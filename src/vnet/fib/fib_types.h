@@ -344,6 +344,10 @@ typedef enum fib_route_path_flags_t_
      * A path that resolves via another table
      */
     FIB_ROUTE_PATH_DEAG = (1 << 13),
+    /**
+     * A path that resolves via a DVR DPO
+     */
+    FIB_ROUTE_PATH_DVR = (1 << 14),
 } fib_route_path_flags_t;
 
 /**

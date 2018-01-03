@@ -26,34 +26,6 @@ namespace VOM {
  */
 
 /**
- * An L3 protocol can be used to construct a prefix that is used
- * to match packets are part of a route.
- */
-class l3_proto_t : public enum_base<l3_proto_t>
-{
-public:
-  const static l3_proto_t IPV4;
-  const static l3_proto_t IPV6;
-  const static l3_proto_t MPLS;
-
-  bool is_ipv4();
-  bool is_ipv6();
-
-  static const l3_proto_t& from_address(const boost::asio::ip::address& addr);
-
-private:
-  /**
-   * Private constructor taking the value and the string name
-   */
-  l3_proto_t(int v, const std::string& s);
-};
-
-/**
- * Ostream output for l3_proto_t
- */
-std::ostream& operator<<(std::ostream& os, const l3_proto_t& l3p);
-
-/**
  * A next-hop protocol describes the protocol of a peer to which packets
  * are sent after matching a route.
  */
@@ -73,6 +45,36 @@ private:
    */
   nh_proto_t(int v, const std::string& s);
 };
+
+/**
+ * An L3 protocol can be used to construct a prefix that is used
+ * to match packets are part of a route.
+ */
+class l3_proto_t : public enum_base<l3_proto_t>
+{
+public:
+  const static l3_proto_t IPV4;
+  const static l3_proto_t IPV6;
+  const static l3_proto_t MPLS;
+
+  bool is_ipv4();
+  bool is_ipv6();
+
+  static const l3_proto_t& from_address(const boost::asio::ip::address& addr);
+
+  const nh_proto_t& to_nh_proto() const;
+
+private:
+  /**
+   * Private constructor taking the value and the string name
+   */
+  l3_proto_t(int v, const std::string& s);
+};
+
+/**
+ * Ostream output for l3_proto_t
+ */
+std::ostream& operator<<(std::ostream& os, const l3_proto_t& l3p);
 
 namespace route {
 /**

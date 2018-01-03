@@ -28,7 +28,7 @@
 #include <vnet/bfd/bfd_main.h>
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/replicate_dpo.h>
-#include <vnet/dpo/l2_bridge_dpo.h>
+#include <vnet/dpo/dvr_dpo.h>
 #include <vnet/dpo/mpls_disposition.h>
 
 #include <vnet/mpls/mpls.h>
@@ -550,7 +550,7 @@ fib_test_validate_lb_v (const load_balance_t *lb,
 			exp->adj.adj);
 	    break;
 	case FT_LB_L2:
-	    FIB_TEST_I((DPO_L2_BRIDGE == dpo->dpoi_type),
+	    FIB_TEST_I((DPO_DVR == dpo->dpoi_type),
 		       "bucket %d stacks on %U",
 		       bucket,
 		       format_dpo_type, dpo->dpoi_type);
@@ -4116,25 +4116,25 @@ fib_test_v4 (void)
              format_ip_flow_hash_config, lb->lb_hash_config);
 
     /*
-     * A route via an L2 Bridge
+     * A route via DVR DPO
      */
     fei = fib_table_entry_path_add(fib_index,
                                    &pfx_10_10_10_3_s_32,
                                    FIB_SOURCE_API,
                                    FIB_ENTRY_FLAG_NONE,
-                                   DPO_PROTO_ETHERNET,
+                                   DPO_PROTO_IP4,
                                    &zero_addr,
                                    tm->hw[0]->sw_if_index,
                                    ~0,
                                    1,
                                    NULL,
-                                   FIB_ROUTE_PATH_FLAG_NONE);
-    dpo_id_t l2_dpo = DPO_INVALID;
-    l2_bridge_dpo_add_or_lock(tm->hw[0]->sw_if_index, &l2_dpo);
+                                   FIB_ROUTE_PATH_DVR);
+    dpo_id_t dvr_dpo = DPO_INVALID;
+    dvr_dpo_add_or_lock(tm->hw[0]->sw_if_index, DPO_PROTO_IP4, &dvr_dpo);
     fib_test_lb_bucket_t ip_o_l2 = {
         .type = FT_LB_L2,
         .adj = {
-            .adj = l2_dpo.dpoi_index,
+            .adj = dvr_dpo.dpoi_index,
         },
     };
 
@@ -4146,13 +4146,13 @@ fib_test_v4 (void)
     fib_table_entry_path_remove(fib_index,
                                 &pfx_10_10_10_3_s_32,
                                 FIB_SOURCE_API,
-                                DPO_PROTO_ETHERNET,
+                                DPO_PROTO_IP4,
                                 &zero_addr,
                                 tm->hw[0]->sw_if_index,
                                 fib_index,
                                 1,
-                                FIB_ROUTE_PATH_FLAG_NONE);
-    dpo_reset(&l2_dpo);
+                                FIB_ROUTE_PATH_DVR);
+    dpo_reset(&dvr_dpo);
 
     /*
      * CLEANUP
@@ -4253,8 +4253,8 @@ fib_test_v4 (void)
     	     pool_elts(load_balance_map_pool));
     FIB_TEST((lb_count == pool_elts(load_balance_pool)), "LB pool size is %d",
              pool_elts(load_balance_pool));
-    FIB_TEST((0 == pool_elts(l2_bridge_dpo_pool)), "L2 DPO pool size is %d",
-             pool_elts(l2_bridge_dpo_pool));
+    FIB_TEST((0 == pool_elts(dvr_dpo_pool)), "L2 DPO pool size is %d",
+             pool_elts(dvr_dpo_pool));
 
     return 0;
 }

@@ -374,6 +374,7 @@ autoreply define sw_interface_ip6_set_link_local_address
     @param is_udp_encap - The path describes a UDP-o-IP encapsulation.
     @param is_classify - 
     @param is_multipath - Set to 1 if this is a multipath route, else 0
+    @param is_dvr - Does the route resolve via a DVR interface.
     @param is_source_lookup - The the path is a deaggregate path (i.e. a lookup
     	   		      in another table) is the lookup on the packet's
 			      source address or destination.
@@ -408,7 +409,7 @@ autoreply define ip_add_del_route
   u8 is_multipath;
   u8 is_resolve_host;
   u8 is_resolve_attached;
-  u8 is_l2_bridged;
+  u8 is_dvr;
   u8 is_source_lookup;
   u8 is_udp_encap;
   u8 next_hop_weight;
