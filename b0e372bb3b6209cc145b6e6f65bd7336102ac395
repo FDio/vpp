@@ -2,6 +2,98 @@
   "comments": [
     {
       "key": {
+        "uuid": "2552b274_1c7ca4cb",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-01-03T19:54:29Z",
+      "side": 1,
+      "message": "Please just add the ARMv8 ones",
+      "range": {
+        "startLine": 60,
+        "startChar": 0,
+        "endLine": 63,
+        "endChar": 36
+      },
+      "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4d47d54c_f6fa8a2a",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-01-03T19:54:29Z",
+      "side": 1,
+      "message": "Cortex-A73",
+      "range": {
+        "startLine": 67,
+        "startChar": 24,
+        "endLine": 67,
+        "endChar": 34
+      },
+      "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "20634a85_d5ee6e9a",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 69,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-01-03T19:54:29Z",
+      "side": 1,
+      "message": "\"ThunderX 81XX\" instead?",
+      "range": {
+        "startLine": 69,
+        "startChar": 27,
+        "endLine": 69,
+        "endChar": 36
+      },
+      "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "39fcf060_de699551",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 70,
+      "author": {
+        "id": 49
+      },
+      "writtenOn": "2018-01-03T19:54:29Z",
+      "side": 1,
+      "message": "\"ThunderX 83XX\" instead?",
+      "range": {
+        "startLine": 70,
+        "startChar": 27,
+        "endLine": 70,
+        "endChar": 36
+      },
+      "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "a253c815_f19c537c",
         "filename": "src/vppinfra/cpu.c",
         "patchSetId": 3
