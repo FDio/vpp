@@ -23,7 +23,7 @@
 #include <vnet/dpo/lookup_dpo.h>
 #include <vnet/dpo/interface_rx_dpo.h>
 #include <vnet/dpo/mpls_disposition.h>
-#include <vnet/dpo/l2_bridge_dpo.h>
+#include <vnet/dpo/dvr_dpo.h>
 #include <vnet/dpo/drop_dpo.h>
 
 #include <vnet/adj/adj.h>
@@ -100,6 +100,10 @@ typedef enum fib_path_type_t_ {
      */
     FIB_PATH_TYPE_BIER_FMASK,
     /**
+     * via a DVR.
+     */
+    FIB_PATH_TYPE_DVR,
+    /**
      * Marker. Add new types before this one, then update it.
      */
     FIB_PATH_TYPE_LAST = FIB_PATH_TYPE_BIER_FMASK,
@@ -123,6 +127,7 @@ typedef enum fib_path_type_t_ {
     [FIB_PATH_TYPE_BIER_IMP]          = "bier-imp",	        \
     [FIB_PATH_TYPE_BIER_TABLE]        = "bier-table",	        \
     [FIB_PATH_TYPE_BIER_FMASK]        = "bier-fmask",	        \
+    [FIB_PATH_TYPE_DVR]               = "dvr",   	        \
 }
 
 #define FOR_EACH_FIB_PATH_TYPE(_item)           \
@@ -345,6 +350,12 @@ typedef struct fib_path_t_ {
 	     */
 	    u32 fp_udp_encap_id;
 	} udp_encap;
+	struct {
+	    /**
+	     * The interface
+	     */
+	    u32 fp_interface;
+	} dvr;
     };
     STRUCT_MARK(path_hash_end);
 
@@ -573,6 +584,14 @@ format_fib_path (u8 * s, va_list * args)
     case FIB_PATH_TYPE_BIER_IMP:
         s = format (s, "via %U", format_bier_imp,
                     path->bier_imp.fp_bier_imp, 0, BIER_SHOW_BRIEF);
+        break;
+    case FIB_PATH_TYPE_DVR:
+        s = format (s, " %U",
+                    format_vnet_sw_interface_name,
+                    vnm,
+                    vnet_get_sw_interface(
+                        vnm,
+                        path->dvr.fp_interface));
         break;
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:
@@ -881,12 +900,9 @@ fib_path_unresolve (fib_path_t *path)
         adj_unlock(path->fp_dpo.dpoi_index);
         break;
     case FIB_PATH_TYPE_ATTACHED:
-        if (DPO_PROTO_ETHERNET != path->fp_nh_proto)
-        {
-            adj_child_remove(path->fp_dpo.dpoi_index,
-                             path->fp_sibling);
-            adj_unlock(path->fp_dpo.dpoi_index);
-        }
+        adj_child_remove(path->fp_dpo.dpoi_index,
+                         path->fp_sibling);
+        adj_unlock(path->fp_dpo.dpoi_index);
         break;
     case FIB_PATH_TYPE_UDP_ENCAP:
 	udp_encap_unlock_w_index(path->fp_dpo.dpoi_index);
@@ -898,6 +914,7 @@ fib_path_unresolve (fib_path_t *path)
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:
     case FIB_PATH_TYPE_DEAG:
+    case FIB_PATH_TYPE_DVR:
         /*
          * these hold only the path's DPO, which is reset below.
          */
@@ -1101,6 +1118,7 @@ FIXME comment
         }
 	break;
     case FIB_PATH_TYPE_ATTACHED:
+    case FIB_PATH_TYPE_DVR:
 	/*
 	 * FIXME; this could schedule a lower priority walk, since attached
 	 * routes are not usually in ECMP configurations so the backwalk to
@@ -1298,6 +1316,11 @@ fib_path_create (fib_node_index_t pl_index,
     {
 	path->fp_type = FIB_PATH_TYPE_DEAG;
 	path->deag.fp_tbl_id = rpath->frp_fib_index;
+    }
+    else if (rpath->frp_flags & FIB_ROUTE_PATH_DVR)
+    {
+	path->fp_type = FIB_PATH_TYPE_DVR;
+	path->dvr.fp_interface = rpath->frp_sw_if_index;
     }
     else if (~0 != rpath->frp_sw_if_index)
     {
@@ -1546,6 +1569,9 @@ fib_path_cmp_i (const fib_path_t *path1,
 	case FIB_PATH_TYPE_UDP_ENCAP:
 	    res = (path1->udp_encap.fp_udp_encap_id - path2->udp_encap.fp_udp_encap_id);
 	    break;
+	case FIB_PATH_TYPE_DVR:
+	    res = (path1->dvr.fp_interface - path2->dvr.fp_interface);
+	    break;
 	case FIB_PATH_TYPE_SPECIAL:
 	case FIB_PATH_TYPE_RECEIVE:
 	case FIB_PATH_TYPE_EXCLUSIVE:
@@ -1680,6 +1706,9 @@ fib_path_cmp_w_route_path (fib_node_index_t path_index,
                 res = (path->deag.fp_rpf_id - rpath->frp_rpf_id);
             }
             break;
+	case FIB_PATH_TYPE_DVR:
+	    res = (path->dvr.fp_interface - rpath->frp_sw_if_index);
+	    break;
 	case FIB_PATH_TYPE_SPECIAL:
 	case FIB_PATH_TYPE_RECEIVE:
 	case FIB_PATH_TYPE_EXCLUSIVE:
@@ -1776,6 +1805,7 @@ fib_path_recursive_loop_detect (fib_node_index_t path_index,
     case FIB_PATH_TYPE_ATTACHED:
     case FIB_PATH_TYPE_SPECIAL:
     case FIB_PATH_TYPE_DEAG:
+    case FIB_PATH_TYPE_DVR:
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:
     case FIB_PATH_TYPE_UDP_ENCAP:
@@ -1821,35 +1851,27 @@ fib_path_resolve (fib_node_index_t path_index)
 	fib_path_attached_next_hop_set(path);
 	break;
     case FIB_PATH_TYPE_ATTACHED:
-        if (DPO_PROTO_ETHERNET == path->fp_nh_proto)
+        /*
+         * path->attached.fp_interface
+         */
+        if (!vnet_sw_interface_is_admin_up(vnet_get_main(),
+                                           path->attached.fp_interface))
         {
-            l2_bridge_dpo_add_or_lock(path->attached.fp_interface,
-                                      &path->fp_dpo);
+            path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
         }
-        else
-        {
-            /*
-             * path->attached.fp_interface
-             */
-            if (!vnet_sw_interface_is_admin_up(vnet_get_main(),
-                                               path->attached.fp_interface))
-            {
-                path->fp_oper_flags &= ~FIB_PATH_OPER_FLAG_RESOLVED;
-            }
-            dpo_set(&path->fp_dpo,
-                    DPO_ADJACENCY,
-                    path->fp_nh_proto,
-                    fib_path_attached_get_adj(path,
-                                              dpo_proto_to_link(path->fp_nh_proto)));
+        dpo_set(&path->fp_dpo,
+                DPO_ADJACENCY,
+                path->fp_nh_proto,
+                fib_path_attached_get_adj(path,
+                                          dpo_proto_to_link(path->fp_nh_proto)));
 
-            /*
-             * become a child of the adjacency so we receive updates
-             * when the interface state changes
-             */
-            path->fp_sibling = adj_child_add(path->fp_dpo.dpoi_index,
-                                             FIB_NODE_TYPE_PATH,
-                                             fib_path_get_index(path));
-        }
+        /*
+         * become a child of the adjacency so we receive updates
+         * when the interface state changes
+         */
+        path->fp_sibling = adj_child_add(path->fp_dpo.dpoi_index,
+                                         FIB_NODE_TYPE_PATH,
+                                         fib_path_get_index(path));
 	break;
     case FIB_PATH_TYPE_RECURSIVE:
     {
@@ -1975,6 +1997,11 @@ fib_path_resolve (fib_node_index_t path_index)
         }
         break;
     }
+    case FIB_PATH_TYPE_DVR:
+        dvr_dpo_add_or_lock(path->attached.fp_interface,
+                            path->fp_nh_proto,
+                            &path->fp_dpo);
+        break;
     case FIB_PATH_TYPE_RECEIVE:
 	/*
 	 * Resolve via a receive DPO.
@@ -2031,6 +2058,8 @@ fib_path_get_resolving_interface (fib_node_index_t path_index)
             return (fib_entry_get_resolving_interface(path->fp_via_fib));
         }
         break;
+    case FIB_PATH_TYPE_DVR:
+	return (path->dvr.fp_interface);
     case FIB_PATH_TYPE_INTF_RX:
     case FIB_PATH_TYPE_UDP_ENCAP:
     case FIB_PATH_TYPE_SPECIAL:
@@ -2059,6 +2088,7 @@ fib_path_get_resolving_index (fib_node_index_t path_index)
     case FIB_PATH_TYPE_INTF_RX:
     case FIB_PATH_TYPE_SPECIAL:
     case FIB_PATH_TYPE_DEAG:
+    case FIB_PATH_TYPE_DVR:
     case FIB_PATH_TYPE_EXCLUSIVE:
         break;
     case FIB_PATH_TYPE_UDP_ENCAP:
@@ -2187,6 +2217,9 @@ fib_path_contribute_urpf (fib_node_index_t path_index,
 	}
 	break;
     }
+    case FIB_PATH_TYPE_DVR:
+	fib_urpf_list_append(urpf, path->dvr.fp_interface);
+	break;
     case FIB_PATH_TYPE_DEAG:
     case FIB_PATH_TYPE_RECEIVE:
     case FIB_PATH_TYPE_INTF_RX:
@@ -2250,6 +2283,7 @@ fib_path_stack_mpls_disp (fib_node_index_t path_index,
     case FIB_PATH_TYPE_BIER_FMASK:
     case FIB_PATH_TYPE_BIER_TABLE:
     case FIB_PATH_TYPE_BIER_IMP:
+    case FIB_PATH_TYPE_DVR:
         break;
     }
 }
@@ -2400,11 +2434,6 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
 	    dpo_copy(dpo, &path->exclusive.fp_ex_dpo);
 	    break;
         case FIB_PATH_TYPE_ATTACHED:
-            if (DPO_PROTO_ETHERNET == path->fp_nh_proto)
-            {
-                dpo_copy(dpo, &path->fp_dpo);
-                break;
-            }
 	    switch (fct)
 	    {
 	    case FIB_FORW_CHAIN_TYPE_MPLS_NON_EOS:
@@ -2462,6 +2491,7 @@ fib_path_contribute_forwarding (fib_node_index_t path_index,
             break;
         case FIB_PATH_TYPE_RECEIVE:
         case FIB_PATH_TYPE_SPECIAL:
+        case FIB_PATH_TYPE_DVR:
             dpo_copy(dpo, &path->fp_dpo);
             break;
 	}

@@ -72,6 +72,29 @@ public:
   };
 
   /**
+   * Path flags
+   */
+  class flags_t : public enum_base<flags_t>
+  {
+  public:
+    /**
+     * No flags
+     */
+    const static flags_t NONE;
+
+    /**
+     * A path that resolves via a DVR next-hop
+     */
+    const static flags_t DVR;
+
+  private:
+    /**
+     * Private constructor taking the value and the string name
+     */
+    flags_t(int v, const std::string& s);
+  };
+
+  /**
    * constructor for special paths
    */
   path(special_t special);
@@ -97,6 +120,7 @@ public:
    */
   path(const interface& interface,
        const nh_proto_t& proto,
+       const flags_t& flags = flags_t::NONE,
        uint8_t weight = 1,
        uint8_t preference = 0);
 
@@ -130,6 +154,7 @@ public:
    */
   special_t type() const;
   nh_proto_t nh_proto() const;
+  flags_t flags() const;
   const boost::asio::ip::address& nh() const;
   std::shared_ptr<route_domain> rd() const;
   std::shared_ptr<interface> itf() const;
@@ -146,6 +171,11 @@ private:
    * The next-hop protocol
    */
   nh_proto_t m_nh_proto;
+
+  /**
+   * Flags for the path
+   */
+  flags_t m_flags;
 
   /**
    * The next-hop

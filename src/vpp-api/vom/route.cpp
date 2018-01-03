@@ -33,9 +33,18 @@ path::special_t::special_t(int v, const std::string& s)
 {
 }
 
+const path::flags_t path::flags_t::NONE(0, "none");
+const path::flags_t path::flags_t::DVR((1 << 0), "dvr");
+
+path::flags_t::flags_t(int v, const std::string& s)
+  : enum_base<path::flags_t>(v, s)
+{
+}
+
 path::path(special_t special)
   : m_type(special)
   , m_nh_proto(nh_proto_t::IPV4)
+  , m_flags(flags_t::NONE)
   , m_nh()
   , m_rd(nullptr)
   , m_interface(nullptr)
@@ -50,6 +59,7 @@ path::path(const boost::asio::ip::address& nh,
            uint8_t preference)
   : m_type(special_t::STANDARD)
   , m_nh_proto(nh_proto_t::from_address(nh))
+  , m_flags(flags_t::NONE)
   , m_nh(nh)
   , m_rd(nullptr)
   , m_interface(interface.singular())
@@ -64,6 +74,7 @@ path::path(const route_domain& rd,
            uint8_t preference)
   : m_type(special_t::STANDARD)
   , m_nh_proto(nh_proto_t::from_address(nh))
+  , m_flags(flags_t::NONE)
   , m_nh(nh)
   , m_rd(rd.singular())
   , m_interface(nullptr)
@@ -74,10 +85,12 @@ path::path(const route_domain& rd,
 
 path::path(const interface& interface,
            const nh_proto_t& proto,
+           const flags_t& flags,
            uint8_t weight,
            uint8_t preference)
   : m_type(special_t::STANDARD)
   , m_nh_proto(proto)
+  , m_flags(flags)
   , m_nh()
   , m_rd(nullptr)
   , m_interface(interface.singular())
@@ -89,6 +102,7 @@ path::path(const interface& interface,
 path::path(const path& p)
   : m_type(p.m_type)
   , m_nh_proto(p.m_nh_proto)
+  , m_flags(p.m_flags)
   , m_nh(p.m_nh)
   , m_rd(p.m_rd)
   , m_interface(p.m_interface)
@@ -100,6 +114,10 @@ path::path(const path& p)
 bool
 path::operator<(const path& p) const
 {
+  if (m_nh_proto < p.m_nh_proto)
+    return true;
+  if (m_flags < p.m_flags)
+    return true;
   if (m_type < p.m_type)
     return true;
   if (m_rd && !p.m_rd)
@@ -140,7 +158,8 @@ path::operator==(const path& p) const
     return false;
   if (m_interface && p.m_interface)
     result &= (*m_interface == *p.m_interface);
-  return (result && (m_type == p.m_type) && (m_nh == p.m_nh));
+  return (result && (m_type == p.m_type) && (m_nh == p.m_nh) &&
+          (m_nh_proto == p.m_nh_proto) && (m_flags == p.m_flags));
 }
 
 std::string
@@ -150,7 +169,7 @@ path::to_string() const
 
   s << "path:["
     << "type:" << m_type.to_string() << " proto:" << m_nh_proto.to_string()
-    << " neighbour:" << m_nh.to_string();
+    << " flags:" << m_flags.to_string() << " neighbour:" << m_nh.to_string();
   if (m_rd) {
     s << " " << m_rd->to_string();
   }
@@ -173,6 +192,12 @@ nh_proto_t
 path::nh_proto() const
 {
   return m_nh_proto;
+}
+
+path::flags_t
+path::flags() const
+{
+  return m_flags;
 }
 
 const boost::asio::ip::address&

@@ -851,7 +851,7 @@ add_del_route_t_handler (u8 is_multipath,
 			 u8 is_resolve_attached,
 			 u8 is_interface_rx,
 			 u8 is_rpf_id,
-			 u8 is_l2_bridged,
+			 u8 is_dvr,
 			 u8 is_source_lookup,
 			 u8 is_udp_encap,
 			 u32 fib_index,
@@ -892,8 +892,8 @@ add_del_route_t_handler (u8 is_multipath,
       path.frp_local_label = next_hop_via_label;
       path.frp_eos = MPLS_NON_EOS;
     }
-  if (is_l2_bridged)
-    path.frp_proto = DPO_PROTO_ETHERNET;
+  if (is_dvr)
+    path_flags |= FIB_ROUTE_PATH_DVR;
   if (is_resolve_host)
     path_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_HOST;
   if (is_resolve_attached)
@@ -1143,7 +1143,7 @@ ip4_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   mp->classify_table_index,
 				   mp->is_resolve_host,
 				   mp->is_resolve_attached, 0, 0,
-				   mp->is_l2_bridged,
+				   mp->is_dvr,
 				   mp->is_source_lookup,
 				   mp->is_udp_encap,
 				   fib_index, &pfx, DPO_PROTO_IP4,
@@ -1206,7 +1206,7 @@ ip6_add_del_route_t_handler (vl_api_ip_add_del_route_t * mp)
 				   mp->classify_table_index,
 				   mp->is_resolve_host,
 				   mp->is_resolve_attached, 0, 0,
-				   mp->is_l2_bridged,
+				   mp->is_dvr,
 				   mp->is_source_lookup,
 				   mp->is_udp_encap,
 				   fib_index, &pfx, DPO_PROTO_IP6,

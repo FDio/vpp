@@ -33,8 +33,8 @@ to_vpp(const route::path& p, vapi_payload_ip_add_del_route& payload)
   payload.is_resolve_host = 0;
   payload.is_resolve_attached = 0;
 
-  if (nh_proto_t::ETHERNET == p.nh_proto()) {
-    payload.is_l2_bridged = 1;
+  if (route::path::flags_t::DVR & p.flags()) {
+    payload.is_dvr = 1;
   }
 
   if (route::path::special_t::STANDARD == p.type()) {
