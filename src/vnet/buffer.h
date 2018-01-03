@@ -42,6 +42,9 @@
 
 #include <vlib/vlib.h>
 
+/**
+ * Flags that are set in the high order bits of ((vlib_buffer*)b)->flags
+ */
 #define foreach_vnet_buffer_field \
   _( 1, L4_CHECKSUM_COMPUTED, "l4-cksum-computed")	\
   _( 2, L4_CHECKSUM_CORRECT, "l4-cksum-correct")	\
@@ -74,6 +77,26 @@ enum
 {
 #define _(bit, name, v) VNET_BUFFER_F_LOG2_##name  = LOG2_VLIB_BUFFER_FLAG_USER(bit),
   foreach_vnet_buffer_field
+#undef _
+};
+
+/**
+ * @brief Flags set in ((vnet_buffer(b)->flags
+ */
+#define foreach_vnet_opaque_flag \
+  _( 1, IS_DVR, "DVR-processed")
+
+enum
+{
+#define _(bit, name, v) VNET_OPAQUE_F_##name  = (1 << bit),
+  foreach_vnet_opaque_flag
+#undef _
+};
+
+enum
+{
+#define _(bit, name, v) VNET_OPAQUE_F_LOG2_##name  = bit,
+  foreach_vnet_opaque_flag
 #undef _
 };
 
@@ -111,6 +134,7 @@ typedef struct
   i16 l2_hdr_offset;
   i16 l3_hdr_offset;
   i16 l4_hdr_offset;
+  u16 flags;
 
   union
   {

@@ -893,7 +893,7 @@ add_del_route_t_handler (u8 is_multipath,
       path.frp_eos = MPLS_NON_EOS;
     }
   if (is_l2_bridged)
-    path.frp_proto = DPO_PROTO_ETHERNET;
+    path_flags |= FIB_ROUTE_PATH_DVR;
   if (is_resolve_host)
     path_flags |= FIB_ROUTE_PATH_RESOLVE_VIA_HOST;
   if (is_resolve_attached)

@@ -666,7 +666,7 @@ VNET_FEATURE_INIT (ip6_mc_lookup, static) = {
 VNET_FEATURE_ARC_INIT (ip6_output, static) =
 {
   .arc_name  = "ip6-output",
-  .start_nodes = VNET_FEATURES ("ip6-rewrite", "ip6-midchain"),
+  .start_nodes = VNET_FEATURES ("ip6-rewrite", "ip6-midchain", "ip6-dvr-dpo"),
   .arc_index_ptr = &ip6_main.lookup_main.output_feature_arc_index,
 };
 
