@@ -56,6 +56,17 @@
  _(0x06, 0x1a, "Nehalem", "Nehalem EP,Bloomfield)") \
  _(0x06, 0x17, "Penryn", "Yorkfield,Wolfdale,Penryn,Harpertown")
 
+#define foreach_aarch64_cpu_uarch \
+ _(0x41, 0xc05, "ARM", "Cortex-A5") \
+ _(0x41, 0xc07, "ARM", "Cortex-A7") \
+ _(0x41, 0xc08, "ARM", "Cortex-A8") \
+ _(0x41, 0xc09, "ARM", "Cortex-A9") \
+ _(0x41, 0xc0f, "ARM", "Cortex-A15") \
+ _(0x41, 0xd03, "ARM", "Cortex-A53") \
+ _(0x41, 0xd07, "ARM", "Cortex-A57") \
+ _(0x41, 0xd08, "ARM", "Cortex-A72") \
+ _(0x43, 0x0a1, "Cavium", "ThunderX") \
+
 u8 *
 format_cpu_uarch (u8 * s, va_list * args)
 {
@@ -73,6 +84,25 @@ format_cpu_uarch (u8 * s, va_list * args)
   foreach_x86_cpu_uarch
 #undef _
     return format (s, "unknown (family 0x%02x model 0x%02x)", family, model);
+
+#elif __aarch64__
+  struct main_id_register
+  {
+    u32 revision:4;
+    u32 primary_part_number:12;
+    u32 architecture:4;
+    u32 variant:4;
+    u32 implementer:8;
+  } id;
+
+asm ("mrs %0, midr_el1":"=r" (id));
+
+#define _(i,p,a,c) if ((id.implementer == i) && (id.primary_part_number == p)) \
+  return format(s, "%s (%s)", a, c);
+  foreach_aarch64_cpu_uarch
+#undef _
+    return format (s, "unknown (implementer 0x%02x part 0x%03x)",
+		   id.implementer, id.primary_part_number);
 
 #else /* ! __x86_64__ */
   return format (s, "unknown");
