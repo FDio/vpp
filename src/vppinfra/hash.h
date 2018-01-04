@@ -273,11 +273,32 @@ uword hash_bytes (void *v);
 /* Public macro to set (key, value) for pointer key */
 #define hash_set_mem(h,key,value) hash_set3 (h, pointer_to_uword (key), (value), 0)
 
+/* Public inline funcion allocate and copy key to use in hash for pointer key */
+always_inline void
+hash_set_mem_alloc (uword ** h, void *key, uword v)
+{
+  size_t ksz = hash_header (*h)->user;
+  void *copy = clib_mem_alloc (ksz);
+  clib_memcpy (copy, key, ksz);
+  hash_set_mem (*h, copy, v);
+}
+
 /* Public macro to set (key, 0) for pointer key */
 #define hash_set1_mem(h,key)     hash_set3 ((h), pointer_to_uword (key), 0, 0)
 
 /* Public macro to unset (key, value) for pointer key */
 #define hash_unset_mem(h,key)    ((h) = _hash_unset ((h), pointer_to_uword (key),0))
+
+/* Public inline funcion to unset pointer key and then free the key memory */
+always_inline void
+hash_unset_mem_free (uword ** h, void *key)
+{
+  hash_pair_t *hp = hash_get_pair_mem (*h, key);
+  ASSERT (hp);
+  key = uword_to_pointer (hp->key, void *);
+  hash_unset_mem (*h, key);
+  clib_mem_free (key);
+}
 
 /* internal routine to free a hash table */
 extern void *_hash_free (void *v);

@@ -294,25 +294,6 @@ gtpu_decap_next_is_valid (gtpu_main_t * gtm, u32 is_ip6, u32 decap_next_index)
   return decap_next_index < r->n_next_nodes;
 }
 
-static void
-hash_set_key_copy (uword ** h, void *key, uword v)
-{
-  size_t ksz = hash_header (*h)->user;
-  void *copy = clib_mem_alloc (ksz);
-  clib_memcpy (copy, key, ksz);
-  hash_set_mem (*h, copy, v);
-}
-
-static void
-hash_unset_key_free (uword ** h, void *key)
-{
-  hash_pair_t *hp = hash_get_pair_mem (*h, key);
-  ASSERT (hp);
-  key = uword_to_pointer (hp->key, void *);
-  hash_unset_mem (*h, key);
-  clib_mem_free (key);
-}
-
 static uword
 vtep_addr_ref (ip46_address_t * ip)
 {
@@ -323,7 +304,7 @@ vtep_addr_ref (ip46_address_t * ip)
     return ++(*vtep);
   ip46_address_is_ip4 (ip) ?
     hash_set (gtpu_main.vtep4, ip->ip4.as_u32, 1) :
-    hash_set_key_copy (&gtpu_main.vtep6, &ip->ip6, 1);
+    hash_set_mem_alloc (&gtpu_main.vtep6, &ip->ip6, 1);
   return 1;
 }
 
@@ -338,7 +319,7 @@ vtep_addr_unref (ip46_address_t * ip)
     return *vtep;
   ip46_address_is_ip4 (ip) ?
     hash_unset (gtpu_main.vtep4, ip->ip4.as_u32) :
-    hash_unset_key_free (&gtpu_main.vtep6, &ip->ip6);
+    hash_unset_mem_free (&gtpu_main.vtep6, &ip->ip6);
   return 0;
 }
 
@@ -370,7 +351,7 @@ mcast_shared_add (ip46_address_t * dst, fib_node_index_t mfei, adj_index_t ai)
     .mfib_entry_index = mfei,
   };
 
-  hash_set_key_copy (&gtpu_main.mcast_shared, dst, new_ep.as_u64);
+  hash_set_mem_alloc (&gtpu_main.mcast_shared, dst, new_ep.as_u64);
 }
 
 static inline void
@@ -381,7 +362,7 @@ mcast_shared_remove (ip46_address_t * dst)
   adj_unlock (ep.mcast_adj_index);
   mfib_table_entry_delete_index (ep.mfib_entry_index, MFIB_SOURCE_GTPU);
 
-  hash_unset_key_free (&gtpu_main.mcast_shared, dst);
+  hash_unset_mem_free (&gtpu_main.mcast_shared, dst);
 }
 
 static inline fib_protocol_t
@@ -442,8 +423,8 @@ int vnet_gtpu_add_del_tunnel
 
       /* copy the key */
       if (is_ip6)
-	hash_set_key_copy (&gtm->gtpu6_tunnel_by_key, &key6,
-			   t - gtm->tunnels);
+	hash_set_mem_alloc (&gtm->gtpu6_tunnel_by_key, &key6,
+			    t - gtm->tunnels);
       else
 	hash_set (gtm->gtpu4_tunnel_by_key, key4.as_u64, t - gtm->tunnels);
 
@@ -621,7 +602,7 @@ int vnet_gtpu_add_del_tunnel
       if (!is_ip6)
 	hash_unset (gtm->gtpu4_tunnel_by_key, key4.as_u64);
       else
-	hash_unset_key_free (&gtm->gtpu6_tunnel_by_key, &key6);
+	hash_unset_mem_free (&gtm->gtpu6_tunnel_by_key, &key6);
 
       if (!ip46_address_is_multicast (&t->dst))
 	{
