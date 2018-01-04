@@ -114,6 +114,30 @@
       "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "981bfd73_c3582d60",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-01-04T07:40:38Z",
+      "side": 1,
+      "message": "How come I don\u0027t have this illegal instruction issue on all the platforms ?\nDoes it depends on the kernel version ?",
+      "parentUuid": "a253c815_f19c537c",
+      "range": {
+        "startLine": 100,
+        "startChar": 14,
+        "endLine": 100,
+        "endChar": 22
+      },
+      "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
