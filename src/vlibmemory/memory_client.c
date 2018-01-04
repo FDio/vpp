@@ -521,19 +521,44 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
   /* Ask the data-plane for the message-ID base of the indicated plugin */
   mm->first_msg_id_reply_ready = 0;
 
-  mp = vl_msg_api_alloc (sizeof (*mp));
-  memset (mp, 0, sizeof (*mp));
-  mp->_vl_msg_id = ntohs (VL_API_GET_FIRST_MSG_ID);
-  mp->client_index = am->my_client_index;
-  strncpy ((char *) mp->name, plugin_name, sizeof (mp->name) - 1);
-
-  vl_msg_api_send_shmem (am->shmem_hdr->vl_input_queue, (u8 *) & mp);
-
-  /* Synchronously wait for the answer */
-  do
+  /* Not using shm client */
+  if (!am->my_registration)
     {
-      timeout = clib_time_now (&clib_time) + 1.0;
+      mp = vl_socket_client_msg_alloc (sizeof (*mp));
+      memset (mp, 0, sizeof (*mp));
+      mp->_vl_msg_id = ntohs (VL_API_GET_FIRST_MSG_ID);
+      mp->client_index = am->my_client_index;
+      strncpy ((char *) mp->name, plugin_name, sizeof (mp->name) - 1);
 
+      if (vl_socket_client_write () <= 0)
+	goto sock_err;
+      if (vl_socket_client_read (1))
+	goto sock_err;
+
+      if (mm->first_msg_id_reply_ready == 1)
+	{
+	  rv = mm->first_msg_id_reply;
+	  goto result;
+	}
+
+    sock_err:
+      /* Restore old handler */
+      am->msg_handlers[VL_API_GET_FIRST_MSG_ID_REPLY] = old_handler;
+
+      return -1;
+    }
+  else
+    {
+      mp = vl_msg_api_alloc (sizeof (*mp));
+      memset (mp, 0, sizeof (*mp));
+      mp->_vl_msg_id = ntohs (VL_API_GET_FIRST_MSG_ID);
+      mp->client_index = am->my_client_index;
+      strncpy ((char *) mp->name, plugin_name, sizeof (mp->name) - 1);
+
+      vl_msg_api_send_shmem (am->shmem_hdr->vl_input_queue, (u8 *) & mp);
+
+      /* Synchronously wait for the answer */
+      timeout = clib_time_now (&clib_time) + 1.0;
       while (clib_time_now (&clib_time) < timeout)
 	{
 	  if (mm->first_msg_id_reply_ready == 1)
@@ -547,7 +572,6 @@ vl_client_get_first_plugin_msg_id (const char *plugin_name)
 
       return rv;
     }
-  while (0);
 
 result:
 
