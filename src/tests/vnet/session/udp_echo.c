@@ -956,7 +956,7 @@ server_handle_event_queue (uri_udp_test_main_t * utm)
 
   while (1)
     {
-      svm_queue_sub (utm->our_event_queue, (u8 *) e, 0 /* nowait */ );
+      svm_queue_sub (utm->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:

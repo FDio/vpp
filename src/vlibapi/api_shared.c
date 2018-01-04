@@ -758,7 +758,7 @@ vl_msg_api_queue_handler (svm_queue_t * q)
 {
   uword msg;
 
-  while (!svm_queue_sub (q, (u8 *) & msg, 0))
+  while (!svm_queue_sub (q, (u8 *) & msg, SVM_Q_WAIT, 0))
     vl_msg_api_handler ((void *) msg);
 }
 

@@ -143,7 +143,7 @@ vac_rx_thread_fn (void *arg)
   q = am->vl_input_queue;
 
   while (1)
-    while (!svm_queue_sub(q, (u8 *)&msg, 0))
+    while (!svm_queue_sub(q, (u8 *)&msg, SVM_Q_WAIT, 0))
       {
 	u16 id = ntohs(*((u16 *)msg));
 	switch (id) {
@@ -404,7 +404,8 @@ vac_read (char **p, int *l, u16 timeout)
   q = am->vl_input_queue;
 
  again:
-  rv = svm_queue_sub(q, (u8 *)&msg, 0);
+  rv = svm_queue_sub(q, (u8 *)&msg, SVM_Q_WAIT, 0);
+
   if (rv == 0) {
     u16 msg_id = ntohs(*((u16 *)msg));
     switch (msg_id) {

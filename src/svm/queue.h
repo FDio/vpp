@@ -36,6 +36,24 @@ typedef struct _svm_queue
   char data[0];
 } svm_queue_t;
 
+typedef enum
+{
+  /**
+   * blocking call
+   */
+  SVM_Q_WAIT = 0,
+
+  /**
+   * non-blocking call
+   */
+  SVM_Q_NOWAIT,
+
+  /**
+   * blocking call, return on signal or time-out
+   */
+  SVM_Q_TIMEDWAIT,
+} svm_q_conditional_wait_t;
+
 svm_queue_t *svm_queue_init (int nels,
 			     int elsize,
 			     int consumer_pid,
@@ -43,7 +61,8 @@ svm_queue_t *svm_queue_init (int nels,
 void svm_queue_free (svm_queue_t * q);
 int svm_queue_add (svm_queue_t * q, u8 * elem, int nowait);
 int svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait);
-int svm_queue_sub (svm_queue_t * q, u8 * elem, int nowait);
+int svm_queue_sub (svm_queue_t * q, u8 * elem, svm_q_conditional_wait_t cond,
+		   u32 time);
 int svm_queue_sub2 (svm_queue_t * q, u8 * elem);
 void svm_queue_lock (svm_queue_t * q);
 void svm_queue_unlock (svm_queue_t * q);

@@ -505,7 +505,7 @@ client_handle_event_queue (uri_tcp_test_main_t * utm)
 {
   session_fifo_event_t _e, *e = &_e;;
 
-  svm_queue_sub (utm->our_event_queue, (u8 *) e, 0 /* nowait */ );
+  svm_queue_sub (utm->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
   switch (e->event_type)
     {
     case FIFO_EVENT_APP_RX:
@@ -530,7 +530,7 @@ client_rx_thread_fn (void *arg)
   utm->client_bytes_received = 0;
   while (1)
     {
-      svm_queue_sub (utm->our_event_queue, (u8 *) e, 0 /* nowait */ );
+      svm_queue_sub (utm->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
@@ -1027,7 +1027,7 @@ server_handle_event_queue (uri_tcp_test_main_t * utm)
 
   while (1)
     {
-      svm_queue_sub (utm->our_event_queue, (u8 *) e, 0 /* nowait */ );
+      svm_queue_sub (utm->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
