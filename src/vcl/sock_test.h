@@ -157,7 +157,8 @@ sock_test_buf_alloc (sock_test_cfg_t *cfg, uint8_t is_rxbuf, uint8_t **buf,
     {
       int errno_val = errno;
       perror ("ERROR in sock_test_buf_alloc()");
-      fprintf (stderr, "ERROR: Buffer allocation failed (errno = %d)!\n"
+      fprintf (stderr, "SOCK_TEST: ERROR: Buffer allocation "
+               "failed (errno = %d)!\n"
                "       Using buffer size %d instead of desired"
                " size (%d)\n", errno_val, *bufsize, alloc_size);
     }
@@ -340,8 +341,8 @@ sock_test_read (int fd, uint8_t *buf, uint32_t nbytes,
     {
       errno_val = errno;
       perror ("ERROR in sock_test_read()");
-      fprintf (stderr, "ERROR: socket read failed (errno = %d)!\n",
-               errno_val);
+      fprintf (stderr, "SOCK_TEST: ERROR: socket read "
+               "failed (errno = %d)!\n", errno_val);
       errno = errno_val;
     }
   else if (stats)
@@ -392,8 +393,8 @@ sock_test_write (int fd, uint8_t *buf, uint32_t nbytes,
             stats->tx_incomp++;
           if (verbose)
             {
-              printf ("WARNING: bytes written (%d) != bytes to write (%d)!\n",
-                      tx_bytes, nbytes);
+              printf ("SOCK_TEST: WARNING: bytes written (%d) "
+                      "!= bytes to write (%d)!\n", tx_bytes, nbytes);
             }
         }
      
@@ -403,8 +404,8 @@ sock_test_write (int fd, uint8_t *buf, uint32_t nbytes,
     {
       errno_val = errno;
       perror ("ERROR in sock_test_write()");
-      fprintf (stderr, "ERROR: socket write failed (errno = %d)!\n",
-               errno_val);
+      fprintf (stderr, "SOCK_TEST: ERROR: socket write failed "
+               "(errno = %d)!\n", errno_val);
     }
   else if (stats)
     stats->tx_bytes += tx_bytes;
