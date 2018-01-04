@@ -36,6 +36,24 @@ typedef struct _unix_shared_memory_queue
   char data[0];
 } unix_shared_memory_queue_t;
 
+typedef enum
+{
+  /**
+   * blocking call
+   */
+  VLIB_MEM_WAIT = 0,
+
+  /**
+   * non-blocking call
+   */
+  VLIB_MEM_NOWAIT,
+
+  /**
+   * blocking call, return on signal or time-out
+   */
+  VLIB_MEM_TIMEDWAIT,
+} wait_cond_t;
+
 unix_shared_memory_queue_t *unix_shared_memory_queue_init (int nels,
 							   int elsize,
 							   int consumer_pid,
@@ -47,7 +65,7 @@ int unix_shared_memory_queue_add (unix_shared_memory_queue_t * q, u8 * elem,
 int unix_shared_memory_queue_add2 (unix_shared_memory_queue_t * q, u8 * elem,
 				   u8 * elem2, int nowait);
 int unix_shared_memory_queue_sub (unix_shared_memory_queue_t * q, u8 * elem,
-				  int nowait);
+				  wait_cond_t cond, u32 time);
 void unix_shared_memory_queue_lock (unix_shared_memory_queue_t * q);
 void unix_shared_memory_queue_unlock (unix_shared_memory_queue_t * q);
 int unix_shared_memory_queue_is_full (unix_shared_memory_queue_t * q);

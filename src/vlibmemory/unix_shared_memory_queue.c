@@ -24,6 +24,7 @@
 #include <vppinfra/mem.h>
 #include <vppinfra/format.h>
 #include <vppinfra/cache.h>
+#include <vppinfra/time.h>
 #include <vlibmemory/unix_shared_memory_queue.h>
 #include <signal.h>
 
@@ -304,12 +305,13 @@ unix_shared_memory_queue_add2 (unix_shared_memory_queue_t * q, u8 * elem,
  */
 int
 unix_shared_memory_queue_sub (unix_shared_memory_queue_t * q,
-			      u8 * elem, int nowait)
+			      u8 * elem, wait_cond_t cond, u32 time)
 {
   i8 *headp;
   int need_broadcast = 0;
+  int rc = 0;
 
-  if (nowait)
+  if (cond == VLIB_MEM_NOWAIT)
     {
       /* zero on success */
       if (pthread_mutex_trylock (&q->mutex))
@@ -322,10 +324,25 @@ unix_shared_memory_queue_sub (unix_shared_memory_queue_t * q,
 
   if (PREDICT_FALSE (q->cursize == 0))
     {
-      if (nowait)
+      if (cond == VLIB_MEM_NOWAIT)
 	{
 	  pthread_mutex_unlock (&q->mutex);
 	  return (-2);
+	}
+      else if (cond == VLIB_MEM_TIMEDWAIT)
+	{
+	  struct timespec ts;
+	  ts.tv_sec = unix_time_now () + time;
+	  ts.tv_nsec = 0;
+	  while (q->cursize == 0 && rc == 0)
+	    {
+	      rc = pthread_cond_timedwait (&q->condvar, &q->mutex, &ts);
+	    }
+	  if (rc == ETIMEDOUT)
+	    {
+	      pthread_mutex_unlock (&q->mutex);
+	      return ETIMEDOUT;
+	    }
 	}
       while (q->cursize == 0)
 	{

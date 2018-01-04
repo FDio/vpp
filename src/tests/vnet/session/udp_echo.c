@@ -962,7 +962,7 @@ server_handle_event_queue (uri_udp_test_main_t * utm)
   while (1)
     {
       unix_shared_memory_queue_sub (utm->our_event_queue, (u8 *) e,
-				    0 /* nowait */ );
+				    VLIB_MEM_WAIT, 0);
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:

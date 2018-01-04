@@ -758,7 +758,7 @@ vl_msg_api_queue_handler (unix_shared_memory_queue_t * q)
 {
   uword msg;
 
-  while (!unix_shared_memory_queue_sub (q, (u8 *) & msg, 0))
+  while (!unix_shared_memory_queue_sub (q, (u8 *) & msg, VLIB_MEM_WAIT, 0))
     vl_msg_api_handler ((void *) msg);
 }
 
