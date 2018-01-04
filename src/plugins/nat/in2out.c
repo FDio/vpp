@@ -270,6 +270,7 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   if (PREDICT_FALSE (maximum_sessions_exceeded(sm, thread_index)))
     {
       b0->error = node->errors[SNAT_IN2OUT_ERROR_MAX_SESSIONS_EXCEEDED];
+      nat_ipfix_logging_max_sesssions(sm->max_translations);
       return SNAT_IN2OUT_NEXT_DROP;
     }
 
@@ -291,13 +292,6 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
       return SNAT_IN2OUT_NEXT_DROP;
     }
 
-  s = nat_session_alloc_or_recycle (sm, u, thread_index);
-  if (!s)
-    {
-      clib_warning ("create NAT session failed");
-      return SNAT_IN2OUT_NEXT_DROP;
-    }
-
   /* First try to match static mapping by local address and port */
   if (snat_static_mapping_match (sm, *key0, &key1, 0, 0, 0))
     {
@@ -316,9 +310,17 @@ static u32 slow_path (snat_main_t *sm, vlib_buffer_t *b0,
   else
     {
       u->nstaticsessions++;
-      s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
     }
 
+  s = nat_session_alloc_or_recycle (sm, u, thread_index);
+  if (!s)
+    {
+      clib_warning ("create NAT session failed");
+      return SNAT_IN2OUT_NEXT_DROP;
+    }
+
+  if (address_index == ~0)
+    s->flags |= SNAT_SESSION_FLAG_STATIC_MAPPING;
   s->outside_address_index = address_index;
   s->in2out = *key0;
   s->out2in = key1;
@@ -999,6 +1001,7 @@ snat_in2out_unknown_proto (snat_main_t *sm,
       if (PREDICT_FALSE (maximum_sessions_exceeded(sm, thread_index)))
         {
           b->error = node->errors[SNAT_IN2OUT_ERROR_MAX_SESSIONS_EXCEEDED];
+          nat_ipfix_logging_max_sesssions(sm->max_translations);
           return 0;
         }
 
@@ -1186,6 +1189,7 @@ snat_in2out_lb (snat_main_t *sm,
       if (PREDICT_FALSE (maximum_sessions_exceeded (sm, thread_index)))
         {
           b->error = node->errors[SNAT_IN2OUT_ERROR_MAX_SESSIONS_EXCEEDED];
+          nat_ipfix_logging_max_sesssions(sm->max_translations);
           return 0;
         }
 

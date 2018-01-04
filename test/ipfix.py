@@ -436,7 +436,12 @@ information_elements = {
     459: "httpRequestMethod",
     460: "httpRequestHost",
     461: "httpRequestTarget",
-    462: "httpMessageVersion"
+    462: "httpMessageVersion",
+    466: "natQuotaExceededEvent",
+    471: "maxSessionEntries",
+    472: "maxBIBEntries",
+    473: "maxEntriesPerUser",
+    475: "maxFragmentsPendingReassembly"
 }
 
 

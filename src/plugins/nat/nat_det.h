@@ -171,7 +171,8 @@ snat_det_ses_create (snat_det_map_t * dm, ip4_address_t * in_addr,
 	}
     }
 
-  snat_ipfix_logging_max_entries_per_user (in_addr->as_u32);
+  snat_ipfix_logging_max_entries_per_user (SNAT_DET_SES_PER_USER,
+					   in_addr->as_u32);
   return 0;
 }
 
