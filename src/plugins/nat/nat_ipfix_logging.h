@@ -17,16 +17,26 @@
 #ifndef __included_nat_ipfix_logging_h__
 #define __included_nat_ipfix_logging_h__
 
+#include <nat/nat.h>
+
 typedef enum {
   NAT_ADDRESSES_EXHAUTED = 3,
   NAT44_SESSION_CREATE = 4,
   NAT44_SESSION_DELETE = 5,
+  NAT64_SESSION_CREATE = 6,
+  NAT64_SESSION_DELETE = 7,
+  NAT64_BIB_CREATE = 10,
+  NAT64_BIB_DELETE = 11,
   NAT_PORTS_EXHAUSTED = 12,
   QUOTA_EXCEEDED = 13,
 } nat_event_t;
 
 typedef enum {
+  MAX_SESSION_ENTRIES = 1,
+  MAX_BIB_ENTRIES = 2,
   MAX_ENTRIES_PER_USER = 3,
+  MAX_FRAGMENTS_PENDING_REASSEMBLY = 5,
+  MAX_FRAGMENTS_PENDING_REASSEMBLY_IP6,
 } quota_exceed_event_t;
 
 typedef struct {
@@ -37,16 +47,34 @@ typedef struct {
   vlib_buffer_t *nat44_session_buffer;
   vlib_buffer_t *addr_exhausted_buffer;
   vlib_buffer_t *max_entries_per_user_buffer;
+  vlib_buffer_t *max_sessions_buffer;
+  vlib_buffer_t *max_bibs_buffer;
+  vlib_buffer_t *max_frags_ip4_buffer;
+  vlib_buffer_t *max_frags_ip6_buffer;
+  vlib_buffer_t *nat64_bib_buffer;
+  vlib_buffer_t *nat64_ses_buffer;
 
   /** frames containing ipfix buffers */
   vlib_frame_t *nat44_session_frame;
   vlib_frame_t *addr_exhausted_frame;
   vlib_frame_t *max_entries_per_user_frame;
+  vlib_frame_t *max_sessions_frame;
+  vlib_frame_t *max_bibs_frame;
+  vlib_frame_t *max_frags_ip4_frame;
+  vlib_frame_t *max_frags_ip6_frame;
+  vlib_frame_t *nat64_bib_frame;
+  vlib_frame_t *nat64_ses_frame;
 
   /** next record offset */
   u32 nat44_session_next_record_offset;
   u32 addr_exhausted_next_record_offset;
   u32 max_entries_per_user_next_record_offset;
+  u32 max_sessions_next_record_offset;
+  u32 max_bibs_next_record_offset;
+  u32 max_frags_ip4_next_record_offset;
+  u32 max_frags_ip6_next_record_offset;
+  u32 nat64_bib_next_record_offset;
+  u32 nat64_ses_next_record_offset;
 
   /** Time reference pair */
   u64 milisecond_time_0;
@@ -56,6 +84,12 @@ typedef struct {
   u16 nat44_session_template_id;
   u16 addr_exhausted_template_id;
   u16 max_entries_per_user_template_id;
+  u16 max_sessions_template_id;
+  u16 max_bibs_template_id;
+  u16 max_frags_ip4_template_id;
+  u16 max_frags_ip6_template_id;
+  u16 nat64_bib_template_id;
+  u16 nat64_ses_template_id;
 
   /** stream index */
   u32 stream_index;
@@ -74,6 +108,21 @@ void snat_ipfix_logging_nat44_ses_delete (u32 src_ip, u32 nat_src_ip,
                                           u16 src_port, u16 nat_src_port,
                                           u32 vrf_id);
 void snat_ipfix_logging_addresses_exhausted(u32 pool_id);
-void snat_ipfix_logging_max_entries_per_user(u32 src_ip);
+void snat_ipfix_logging_max_entries_per_user(u32 limit, u32 src_ip);
+void nat_ipfix_logging_max_sessions(u32 limit);
+void nat_ipfix_logging_max_bibs(u32 limit);
+void nat_ipfix_logging_max_fragments_ip4(u32 limit, ip4_address_t * src);
+void nat_ipfix_logging_max_fragments_ip6(u32 limit, ip6_address_t * src);
+void nat_ipfix_logging_nat64_session(ip6_address_t * src_ip,
+                                     ip4_address_t * nat_src_ip, u8 proto,
+                                     u16 src_port, u16 nat_src_port,
+                                     ip6_address_t * dst_ip,
+                                     ip4_address_t * nat_dst_ip,
+                                     u16 dst_port, u16 nat_dst_port,
+                                     u32 vrf_id, u8 is_create);
+void nat_ipfix_logging_nat64_bib(ip6_address_t * src_ip,
+                                 ip4_address_t * nat_src_ip, u8 proto,
+                                 u16 src_port, u16 nat_src_port,
+                                 u32 vrf_id, u8 is_create);
 
 #endif /* __included_nat_ipfix_logging_h__ */

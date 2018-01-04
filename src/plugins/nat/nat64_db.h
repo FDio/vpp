@@ -68,6 +68,9 @@ typedef struct
   /* BIB lookup */
   clib_bihash_24_8_t in2out;
   clib_bihash_24_8_t out2in;
+
+  u32 limit;
+  u32 bib_entries_num;
 } nat64_db_bib_t;
 
 typedef struct
@@ -115,6 +118,9 @@ typedef struct
   /* session lookup */
   clib_bihash_48_8_t in2out;
   clib_bihash_48_8_t out2in;
+
+  u32 limit;
+  u32 st_entries_num;
 } nat64_db_st_t;
 
 struct nat64_db_s;
@@ -132,6 +138,7 @@ typedef struct nat64_db_s
   nat64_db_bib_t bib;
   nat64_db_st_t st;
   nat64_db_free_addr_port_function_t free_addr_port_cb;
+  u8 addr_free;
 } nat64_db_t;
 
 /**

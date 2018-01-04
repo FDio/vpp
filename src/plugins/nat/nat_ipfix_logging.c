@@ -17,18 +17,28 @@
 
 #include <vnet/flow/flow_report.h>
 #include <vlibmemory/api.h>
-#include <nat/nat.h>
 #include <nat/nat_ipfix_logging.h>
 
 snat_ipfix_logging_main_t snat_ipfix_logging_main;
 
 #define NAT44_SESSION_CREATE_LEN 26
 #define NAT_ADDRESSES_EXHAUTED_LEN 13
-#define MAX_ENTRIES_PER_USER_LEN 17
+#define MAX_ENTRIES_PER_USER_LEN 21
+#define MAX_SESSIONS_LEN 17
+#define MAX_BIBS_LEN 17
+#define MAX_FRAGMENTS_IP4_LEN 21
+#define MAX_FRAGMENTS_IP6_LEN 33
+#define NAT64_BIB_LEN 38
+#define NAT64_SES_LEN 62
 
 #define NAT44_SESSION_CREATE_FIELD_COUNT 8
 #define NAT_ADDRESSES_EXHAUTED_FIELD_COUNT 3
-#define MAX_ENTRIES_PER_USER_FIELD_COUNT 4
+#define MAX_ENTRIES_PER_USER_FIELD_COUNT 5
+#define MAX_SESSIONS_FIELD_COUNT 4
+#define MAX_BIBS_FIELD_COUNT 4
+#define MAX_FRAGMENTS_FIELD_COUNT 5
+#define NAT64_BIB_FIELD_COUNT 8
+#define NAT64_SES_FIELD_COUNT 12
 
 typedef struct
 {
@@ -48,8 +58,57 @@ typedef struct
 
 typedef struct
 {
+  u32 limit;
   u32 src_ip;
 } snat_ipfix_logging_max_entries_per_user_args_t;
+
+typedef struct
+{
+  u32 limit;
+} nat_ipfix_logging_max_sessions_args_t;
+
+typedef struct
+{
+  u32 limit;
+} nat_ipfix_logging_max_bibs_args_t;
+
+typedef struct
+{
+  u32 limit;
+  u32 src;
+} nat_ipfix_logging_max_frags_ip4_args_t;
+
+typedef struct
+{
+  u32 limit;
+  u64 src[2];
+} nat_ipfix_logging_max_frags_ip6_args_t;
+
+typedef struct
+{
+  u8 nat_event;
+  u64 src_ip[2];
+  u32 nat_src_ip;
+  u8 proto;
+  u16 src_port;
+  u16 nat_src_port;
+  u64 dst_ip[2];
+  u32 nat_dst_ip;
+  u32 vrf_id;
+  u16 dst_port;
+  u16 nat_dst_port;
+} nat_ipfix_logging_nat64_ses_args_t;
+
+typedef struct
+{
+  u8 nat_event;
+  u64 src_ip[2];
+  u32 nat_src_ip;
+  u8 proto;
+  u16 src_port;
+  u16 nat_src_port;
+  u32 vrf_id;
+} nat_ipfix_logging_nat64_bib_args_t;
 
 #define skip_if_disabled()                                    \
 do {                                                          \
@@ -105,6 +164,16 @@ snat_template_rewrite (flow_report_main_t * frm,
       field_count = NAT44_SESSION_CREATE_FIELD_COUNT;
       silm->nat44_session_template_id = fr->template_id;
     }
+  else if (event == NAT64_BIB_CREATE)
+    {
+      field_count = NAT64_BIB_FIELD_COUNT;
+      silm->nat64_bib_template_id = fr->template_id;
+    }
+  else if (event == NAT64_SESSION_CREATE)
+    {
+      field_count = NAT64_SES_FIELD_COUNT;
+      silm->nat64_ses_template_id = fr->template_id;
+    }
   else if (event == QUOTA_EXCEEDED)
     {
       if (quota_event == MAX_ENTRIES_PER_USER)
@@ -112,6 +181,26 @@ snat_template_rewrite (flow_report_main_t * frm,
 	  field_count = MAX_ENTRIES_PER_USER_FIELD_COUNT;
 	  silm->max_entries_per_user_template_id = fr->template_id;
 	}
+      else if (quota_event == MAX_SESSION_ENTRIES)
+	{
+	  field_count = MAX_SESSIONS_FIELD_COUNT;
+	  silm->max_sessions_template_id = fr->template_id;
+	}
+      else if (quota_event == MAX_BIB_ENTRIES)
+	{
+	  field_count = MAX_BIBS_FIELD_COUNT;
+	  silm->max_bibs_template_id = fr->template_id;
+	}
+      else if (quota_event == MAX_FRAGMENTS_PENDING_REASSEMBLY)
+	{
+	  field_count = MAX_FRAGMENTS_FIELD_COUNT;
+	  silm->max_frags_ip4_template_id = fr->template_id;
+	}
+      else if (quota_event == MAX_FRAGMENTS_PENDING_REASSEMBLY_IP6)
+        {
+          field_count = MAX_FRAGMENTS_FIELD_COUNT;
+          silm->max_frags_ip6_template_id = fr->template_id;
+        }
     }
 
   /* allocate rewrite space */
@@ -169,6 +258,53 @@ snat_template_rewrite (flow_report_main_t * frm,
       f->e_id_length = ipfix_e_id_length (0, ingressVRFID, 4);
       f++;
     }
+  else if (event == NAT64_BIB_CREATE)
+    {
+      f->e_id_length = ipfix_e_id_length (0, observationTimeMilliseconds, 8);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, natEvent, 1);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, sourceIPv6Address, 16);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, postNATSourceIPv4Address, 4);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, protocolIdentifier, 1);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, sourceTransportPort, 2);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, postNAPTSourceTransportPort, 2);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, ingressVRFID, 4);
+      f++;
+    }
+  else if (event == NAT64_SESSION_CREATE)
+    {
+      f->e_id_length = ipfix_e_id_length (0, observationTimeMilliseconds, 8);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, natEvent, 1);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, sourceIPv6Address, 16);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, postNATSourceIPv4Address, 4);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, protocolIdentifier, 1);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, sourceTransportPort, 2);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, postNAPTSourceTransportPort, 2);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, destinationIPv6Address, 16);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, postNATDestinationIPv4Address, 4);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, destinationTransportPort, 2);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, postNAPTDestinationTransportPort,
+                                          2);
+      f++;
+      f->e_id_length = ipfix_e_id_length (0, ingressVRFID, 4);
+      f++;
+    }
   else if (event == QUOTA_EXCEEDED)
     {
       if (quota_event == MAX_ENTRIES_PER_USER)
@@ -180,9 +316,65 @@ snat_template_rewrite (flow_report_main_t * frm,
 	  f++;
 	  f->e_id_length = ipfix_e_id_length (0, natQuotaExceededEvent, 4);
 	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, maxEntriesPerUser, 4);
+	  f++;
 	  f->e_id_length = ipfix_e_id_length (0, sourceIPv4Address, 4);
 	  f++;
 	}
+      else if (quota_event == MAX_SESSION_ENTRIES)
+        {
+	  f->e_id_length = ipfix_e_id_length (0, observationTimeMilliseconds,
+					      8);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, natEvent, 1);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, natQuotaExceededEvent, 4);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, maxSessionEntries, 4);
+	  f++;
+        }
+      else if (quota_event == MAX_BIB_ENTRIES)
+        {
+	  f->e_id_length = ipfix_e_id_length (0, observationTimeMilliseconds,
+					      8);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, natEvent, 1);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, natQuotaExceededEvent, 4);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, maxBIBEntries, 4);
+	  f++;
+        }
+      else if (quota_event == MAX_FRAGMENTS_PENDING_REASSEMBLY)
+        {
+	  f->e_id_length = ipfix_e_id_length (0, observationTimeMilliseconds,
+					      8);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, natEvent, 1);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, natQuotaExceededEvent, 4);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, maxFragmentsPendingReassembly,
+                                              4);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, sourceIPv4Address, 4);
+	  f++;
+        }
+      else if (quota_event == MAX_FRAGMENTS_PENDING_REASSEMBLY_IP6)
+        {
+	  f->e_id_length = ipfix_e_id_length (0, observationTimeMilliseconds,
+					      8);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, natEvent, 1);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, natQuotaExceededEvent, 4);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, maxFragmentsPendingReassembly,
+                                              4);
+	  f++;
+	  f->e_id_length = ipfix_e_id_length (0, sourceIPv6Address, 16);
+	  f++;
+        }
     }
 
   /* Back to the template packet... */
@@ -238,6 +430,76 @@ snat_template_rewrite_max_entries_per_usr (flow_report_main_t * frm,
   return snat_template_rewrite (frm, fr, collector_address, src_address,
 				collector_port, QUOTA_EXCEEDED,
 				MAX_ENTRIES_PER_USER);
+}
+
+u8 *
+nat_template_rewrite_max_sessions (flow_report_main_t * frm,
+				   flow_report_t * fr,
+				   ip4_address_t * collector_address,
+				   ip4_address_t * src_address,
+				   u16 collector_port)
+{
+  return snat_template_rewrite (frm, fr, collector_address, src_address,
+				collector_port, QUOTA_EXCEEDED,
+				MAX_SESSION_ENTRIES);
+}
+
+u8 *
+nat_template_rewrite_max_bibs (flow_report_main_t * frm,
+			       flow_report_t * fr,
+			       ip4_address_t * collector_address,
+			       ip4_address_t * src_address,
+			       u16 collector_port)
+{
+  return snat_template_rewrite (frm, fr, collector_address, src_address,
+				collector_port, QUOTA_EXCEEDED,
+				MAX_BIB_ENTRIES);
+}
+
+u8 *
+nat_template_rewrite_max_frags_ip4 (flow_report_main_t * frm,
+			            flow_report_t * fr,
+			            ip4_address_t * collector_address,
+			            ip4_address_t * src_address,
+			            u16 collector_port)
+{
+  return snat_template_rewrite (frm, fr, collector_address, src_address,
+				collector_port, QUOTA_EXCEEDED,
+				MAX_FRAGMENTS_PENDING_REASSEMBLY);
+}
+
+u8 *
+nat_template_rewrite_max_frags_ip6 (flow_report_main_t * frm,
+			            flow_report_t * fr,
+			            ip4_address_t * collector_address,
+			            ip4_address_t * src_address,
+			            u16 collector_port)
+{
+  return snat_template_rewrite (frm, fr, collector_address, src_address,
+				collector_port, QUOTA_EXCEEDED,
+				MAX_FRAGMENTS_PENDING_REASSEMBLY_IP6);
+}
+
+u8 *
+nat_template_rewrite_nat64_bib (flow_report_main_t * frm,
+			        flow_report_t * fr,
+			        ip4_address_t * collector_address,
+			        ip4_address_t * src_address,
+			        u16 collector_port)
+{
+  return snat_template_rewrite (frm, fr, collector_address, src_address,
+				collector_port, NAT64_BIB_CREATE, 0);
+}
+
+u8 *
+nat_template_rewrite_nat64_session (flow_report_main_t * frm,
+			            flow_report_t * fr,
+			            ip4_address_t * collector_address,
+			            ip4_address_t * src_address,
+			            u16 collector_port)
+{
+  return snat_template_rewrite (frm, fr, collector_address, src_address,
+				collector_port, NAT64_SESSION_CREATE, 0);
 }
 
 static inline void
@@ -518,7 +780,7 @@ snat_ipfix_logging_addr_exhausted (u32 pool_id, int do_flush)
 }
 
 static void
-snat_ipfix_logging_max_entries_per_usr (u32 src_ip, int do_flush)
+snat_ipfix_logging_max_entries_per_usr (u32 limit, u32 src_ip, int do_flush)
 {
   snat_ipfix_logging_main_t *silm = &snat_ipfix_logging_main;
   flow_report_main_t *frm = &flow_report_main;
@@ -590,6 +852,9 @@ snat_ipfix_logging_max_entries_per_usr (u32 src_ip, int do_flush)
       clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
       offset += sizeof (quota_event);
 
+      clib_memcpy (b0->data + offset, &limit, sizeof (limit));
+      offset += sizeof (limit);
+
       clib_memcpy (b0->data + offset, &src_ip, sizeof (src_ip));
       offset += sizeof (src_ip);
 
@@ -605,6 +870,590 @@ snat_ipfix_logging_max_entries_per_usr (u32 src_ip, int do_flush)
       offset = 0;
     }
   silm->max_entries_per_user_next_record_offset = offset;
+}
+
+static void
+nat_ipfix_logging_max_ses (u32 limit, int do_flush)
+{
+  snat_ipfix_logging_main_t *silm = &snat_ipfix_logging_main;
+  flow_report_main_t *frm = &flow_report_main;
+  vlib_frame_t *f;
+  vlib_buffer_t *b0 = 0;
+  u32 bi0 = ~0;
+  u32 offset;
+  vlib_main_t *vm = frm->vlib_main;
+  u64 now;
+  vlib_buffer_free_list_t *fl;
+  u8 nat_event = QUOTA_EXCEEDED;
+  u32 quota_event = MAX_SESSION_ENTRIES;
+
+  if (!silm->enabled)
+    return;
+
+  now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
+  now += silm->milisecond_time_0;
+
+  b0 = silm->max_sessions_buffer;
+
+  if (PREDICT_FALSE (b0 == 0))
+    {
+      if (do_flush)
+	return;
+
+      if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
+	{
+	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  return;
+	}
+
+      b0 = silm->max_sessions_buffer = vlib_get_buffer (vm, bi0);
+      fl =
+	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+      vlib_buffer_init_for_free_list (b0, fl);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+      offset = 0;
+    }
+  else
+    {
+      bi0 = vlib_get_buffer_index (vm, b0);
+      offset = silm->max_sessions_next_record_offset;
+    }
+
+  f = silm->max_sessions_frame;
+  if (PREDICT_FALSE (f == 0))
+    {
+      u32 *to_next;
+      f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+      silm->max_sessions_frame = f;
+      to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi0;
+      f->n_vectors = 1;
+    }
+
+  if (PREDICT_FALSE (offset == 0))
+    snat_ipfix_header_create (frm, b0, &offset);
+
+  if (PREDICT_TRUE (do_flush == 0))
+    {
+      u64 time_stamp = clib_host_to_net_u64 (now);
+      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      offset += sizeof (time_stamp);
+
+      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      offset += sizeof (nat_event);
+
+      clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
+      offset += sizeof (quota_event);
+
+      clib_memcpy (b0->data + offset, &limit, sizeof (limit));
+      offset += sizeof (limit);
+
+      b0->current_length += MAX_SESSIONS_LEN;
+    }
+
+  if (PREDICT_FALSE
+      (do_flush || (offset + MAX_SESSIONS_LEN) > frm->path_mtu))
+    {
+      snat_ipfix_send (frm, f, b0, silm->max_sessions_template_id);
+      silm->max_sessions_frame = 0;
+      silm->max_sessions_buffer = 0;
+      offset = 0;
+    }
+  silm->max_sessions_next_record_offset = offset;
+}
+
+static void
+nat_ipfix_logging_max_bib (u32 limit, int do_flush)
+{
+  snat_ipfix_logging_main_t *silm = &snat_ipfix_logging_main;
+  flow_report_main_t *frm = &flow_report_main;
+  vlib_frame_t *f;
+  vlib_buffer_t *b0 = 0;
+  u32 bi0 = ~0;
+  u32 offset;
+  vlib_main_t *vm = frm->vlib_main;
+  u64 now;
+  vlib_buffer_free_list_t *fl;
+  u8 nat_event = QUOTA_EXCEEDED;
+  u32 quota_event = MAX_BIB_ENTRIES;
+
+  if (!silm->enabled)
+    return;
+
+  now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
+  now += silm->milisecond_time_0;
+
+  b0 = silm->max_bibs_buffer;
+
+  if (PREDICT_FALSE (b0 == 0))
+    {
+      if (do_flush)
+	return;
+
+      if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
+	{
+	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  return;
+	}
+
+      b0 = silm->max_bibs_buffer = vlib_get_buffer (vm, bi0);
+      fl =
+	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+      vlib_buffer_init_for_free_list (b0, fl);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+      offset = 0;
+    }
+  else
+    {
+      bi0 = vlib_get_buffer_index (vm, b0);
+      offset = silm->max_bibs_next_record_offset;
+    }
+
+  f = silm->max_bibs_frame;
+  if (PREDICT_FALSE (f == 0))
+    {
+      u32 *to_next;
+      f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+      silm->max_bibs_frame = f;
+      to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi0;
+      f->n_vectors = 1;
+    }
+
+  if (PREDICT_FALSE (offset == 0))
+    snat_ipfix_header_create (frm, b0, &offset);
+
+  if (PREDICT_TRUE (do_flush == 0))
+    {
+      u64 time_stamp = clib_host_to_net_u64 (now);
+      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      offset += sizeof (time_stamp);
+
+      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      offset += sizeof (nat_event);
+
+      clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
+      offset += sizeof (quota_event);
+
+      clib_memcpy (b0->data + offset, &limit, sizeof (limit));
+      offset += sizeof (limit);
+
+      b0->current_length += MAX_BIBS_LEN;
+    }
+
+  if (PREDICT_FALSE
+      (do_flush || (offset + MAX_BIBS_LEN) > frm->path_mtu))
+    {
+      snat_ipfix_send (frm, f, b0, silm->max_bibs_template_id);
+      silm->max_bibs_frame = 0;
+      silm->max_bibs_buffer = 0;
+      offset = 0;
+    }
+  silm->max_bibs_next_record_offset = offset;
+}
+
+static void
+nat_ipfix_logging_max_frag_ip4 (u32 limit, u32 src, int do_flush)
+{
+  snat_ipfix_logging_main_t *silm = &snat_ipfix_logging_main;
+  flow_report_main_t *frm = &flow_report_main;
+  vlib_frame_t *f;
+  vlib_buffer_t *b0 = 0;
+  u32 bi0 = ~0;
+  u32 offset;
+  vlib_main_t *vm = frm->vlib_main;
+  u64 now;
+  vlib_buffer_free_list_t *fl;
+  u8 nat_event = QUOTA_EXCEEDED;
+  u32 quota_event = MAX_FRAGMENTS_PENDING_REASSEMBLY;
+
+  if (!silm->enabled)
+    return;
+
+  now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
+  now += silm->milisecond_time_0;
+
+  b0 = silm->max_frags_ip4_buffer;
+
+  if (PREDICT_FALSE (b0 == 0))
+    {
+      if (do_flush)
+	return;
+
+      if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
+	{
+	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  return;
+	}
+
+      b0 = silm->max_frags_ip4_buffer = vlib_get_buffer (vm, bi0);
+      fl =
+	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+      vlib_buffer_init_for_free_list (b0, fl);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+      offset = 0;
+    }
+  else
+    {
+      bi0 = vlib_get_buffer_index (vm, b0);
+      offset = silm->max_frags_ip4_next_record_offset;
+    }
+
+  f = silm->max_frags_ip4_frame;
+  if (PREDICT_FALSE (f == 0))
+    {
+      u32 *to_next;
+      f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+      silm->max_frags_ip4_frame = f;
+      to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi0;
+      f->n_vectors = 1;
+    }
+
+  if (PREDICT_FALSE (offset == 0))
+    snat_ipfix_header_create (frm, b0, &offset);
+
+  if (PREDICT_TRUE (do_flush == 0))
+    {
+      u64 time_stamp = clib_host_to_net_u64 (now);
+      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      offset += sizeof (time_stamp);
+
+      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      offset += sizeof (nat_event);
+
+      clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
+      offset += sizeof (quota_event);
+
+      clib_memcpy (b0->data + offset, &limit, sizeof (limit));
+      offset += sizeof (limit);
+
+      clib_memcpy (b0->data + offset, &src, sizeof (src));
+      offset += sizeof (src);
+
+      b0->current_length += MAX_FRAGMENTS_IP4_LEN;
+    }
+
+  if (PREDICT_FALSE
+      (do_flush || (offset + MAX_BIBS_LEN) > frm->path_mtu))
+    {
+      snat_ipfix_send (frm, f, b0, silm->max_frags_ip4_template_id);
+      silm->max_frags_ip4_frame = 0;
+      silm->max_frags_ip4_buffer = 0;
+      offset = 0;
+    }
+  silm->max_frags_ip4_next_record_offset = offset;
+}
+
+static void
+nat_ipfix_logging_max_frag_ip6 (u32 limit, ip6_address_t * src, int do_flush)
+{
+  snat_ipfix_logging_main_t *silm = &snat_ipfix_logging_main;
+  flow_report_main_t *frm = &flow_report_main;
+  vlib_frame_t *f;
+  vlib_buffer_t *b0 = 0;
+  u32 bi0 = ~0;
+  u32 offset;
+  vlib_main_t *vm = frm->vlib_main;
+  u64 now;
+  vlib_buffer_free_list_t *fl;
+  u8 nat_event = QUOTA_EXCEEDED;
+  u32 quota_event = MAX_FRAGMENTS_PENDING_REASSEMBLY;
+
+  if (!silm->enabled)
+    return;
+
+  now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
+  now += silm->milisecond_time_0;
+
+  b0 = silm->max_frags_ip6_buffer;
+
+  if (PREDICT_FALSE (b0 == 0))
+    {
+      if (do_flush)
+	return;
+
+      if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
+	{
+	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  return;
+	}
+
+      b0 = silm->max_frags_ip6_buffer = vlib_get_buffer (vm, bi0);
+      fl =
+	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+      vlib_buffer_init_for_free_list (b0, fl);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+      offset = 0;
+    }
+  else
+    {
+      bi0 = vlib_get_buffer_index (vm, b0);
+      offset = silm->max_frags_ip6_next_record_offset;
+    }
+
+  f = silm->max_frags_ip6_frame;
+  if (PREDICT_FALSE (f == 0))
+    {
+      u32 *to_next;
+      f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+      silm->max_frags_ip6_frame = f;
+      to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi0;
+      f->n_vectors = 1;
+    }
+
+  if (PREDICT_FALSE (offset == 0))
+    snat_ipfix_header_create (frm, b0, &offset);
+
+  if (PREDICT_TRUE (do_flush == 0))
+    {
+      u64 time_stamp = clib_host_to_net_u64 (now);
+      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      offset += sizeof (time_stamp);
+
+      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      offset += sizeof (nat_event);
+
+      clib_memcpy (b0->data + offset, &quota_event, sizeof (quota_event));
+      offset += sizeof (quota_event);
+
+      clib_memcpy (b0->data + offset, &limit, sizeof (limit));
+      offset += sizeof (limit);
+
+      clib_memcpy (b0->data + offset, src, sizeof (ip6_address_t));
+      offset += sizeof (ip6_address_t);
+
+      b0->current_length += MAX_FRAGMENTS_IP6_LEN;
+    }
+
+  if (PREDICT_FALSE
+      (do_flush || (offset + MAX_BIBS_LEN) > frm->path_mtu))
+    {
+      snat_ipfix_send (frm, f, b0, silm->max_frags_ip6_template_id);
+      silm->max_frags_ip6_frame = 0;
+      silm->max_frags_ip6_buffer = 0;
+      offset = 0;
+    }
+  silm->max_frags_ip6_next_record_offset = offset;
+}
+
+static void
+nat_ipfix_logging_nat64_bibe (u8 nat_event, ip6_address_t * src_ip,
+                              u32 nat_src_ip, u8 proto, u16 src_port,
+                              u16 nat_src_port, u32 vrf_id, int do_flush)
+{
+  snat_ipfix_logging_main_t *silm = &snat_ipfix_logging_main;
+  flow_report_main_t *frm = &flow_report_main;
+  vlib_frame_t *f;
+  vlib_buffer_t *b0 = 0;
+  u32 bi0 = ~0;
+  u32 offset;
+  vlib_main_t *vm = frm->vlib_main;
+  u64 now;
+  vlib_buffer_free_list_t *fl;
+
+  if (!silm->enabled)
+    return;
+
+  now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
+  now += silm->milisecond_time_0;
+
+  b0 = silm->nat64_bib_buffer;
+
+  if (PREDICT_FALSE (b0 == 0))
+    {
+      if (do_flush)
+	return;
+
+      if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
+	{
+	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  return;
+	}
+
+      b0 = silm->nat64_bib_buffer = vlib_get_buffer (vm, bi0);
+      fl =
+	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+      vlib_buffer_init_for_free_list (b0, fl);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+      offset = 0;
+    }
+  else
+    {
+      bi0 = vlib_get_buffer_index (vm, b0);
+      offset = silm->nat64_bib_next_record_offset;
+    }
+
+  f = silm->nat64_bib_frame;
+  if (PREDICT_FALSE (f == 0))
+    {
+      u32 *to_next;
+      f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+      silm->nat64_bib_frame = f;
+      to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi0;
+      f->n_vectors = 1;
+    }
+
+  if (PREDICT_FALSE (offset == 0))
+    snat_ipfix_header_create (frm, b0, &offset);
+
+  if (PREDICT_TRUE (do_flush == 0))
+    {
+      u64 time_stamp = clib_host_to_net_u64 (now);
+      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      offset += sizeof (time_stamp);
+
+      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      offset += sizeof (nat_event);
+
+      clib_memcpy (b0->data + offset, src_ip, sizeof (ip6_address_t));
+      offset += sizeof (ip6_address_t);
+
+      clib_memcpy (b0->data + offset, &nat_src_ip, sizeof (nat_src_ip));
+      offset += sizeof (nat_src_ip);
+
+      clib_memcpy (b0->data + offset, &proto, sizeof (proto));
+      offset += sizeof (proto);
+
+      clib_memcpy (b0->data + offset, &src_port, sizeof (src_port));
+      offset += sizeof (src_port);
+
+      clib_memcpy (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
+      offset += sizeof (nat_src_port);
+
+      clib_memcpy (b0->data + offset, &vrf_id, sizeof (vrf_id));
+      offset += sizeof (vrf_id);
+
+      b0->current_length += NAT64_BIB_LEN;
+    }
+
+  if (PREDICT_FALSE
+      (do_flush || (offset + NAT64_BIB_LEN) > frm->path_mtu))
+    {
+      snat_ipfix_send (frm, f, b0, silm->nat64_bib_template_id);
+      silm->nat64_bib_frame = 0;
+      silm->nat64_bib_buffer = 0;
+      offset = 0;
+    }
+  silm->nat64_bib_next_record_offset = offset;
+}
+
+static void
+nat_ipfix_logging_nat64_ses (u8 nat_event, ip6_address_t * src_ip,
+                             u32 nat_src_ip, u8 proto, u16 src_port,
+                             u16 nat_src_port, ip6_address_t * dst_ip,
+                             u32 nat_dst_ip, u16 dst_port, u16 nat_dst_port,
+                             u32 vrf_id, int do_flush)
+{
+  snat_ipfix_logging_main_t *silm = &snat_ipfix_logging_main;
+  flow_report_main_t *frm = &flow_report_main;
+  vlib_frame_t *f;
+  vlib_buffer_t *b0 = 0;
+  u32 bi0 = ~0;
+  u32 offset;
+  vlib_main_t *vm = frm->vlib_main;
+  u64 now;
+  vlib_buffer_free_list_t *fl;
+
+  if (!silm->enabled)
+    return;
+
+  now = (u64) ((vlib_time_now (vm) - silm->vlib_time_0) * 1e3);
+  now += silm->milisecond_time_0;
+
+  b0 = silm->nat64_ses_buffer;
+
+  if (PREDICT_FALSE (b0 == 0))
+    {
+      if (do_flush)
+	return;
+
+      if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
+	{
+	  clib_warning ("can't allocate buffer for NAT IPFIX event");
+	  return;
+	}
+
+      b0 = silm->nat64_ses_buffer = vlib_get_buffer (vm, bi0);
+      fl =
+	vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+      vlib_buffer_init_for_free_list (b0, fl);
+      VLIB_BUFFER_TRACE_TRAJECTORY_INIT (b0);
+      offset = 0;
+    }
+  else
+    {
+      bi0 = vlib_get_buffer_index (vm, b0);
+      offset = silm->nat64_ses_next_record_offset;
+    }
+
+  f = silm->nat64_ses_frame;
+  if (PREDICT_FALSE (f == 0))
+    {
+      u32 *to_next;
+      f = vlib_get_frame_to_node (vm, ip4_lookup_node.index);
+      silm->nat64_ses_frame = f;
+      to_next = vlib_frame_vector_args (f);
+      to_next[0] = bi0;
+      f->n_vectors = 1;
+    }
+
+  if (PREDICT_FALSE (offset == 0))
+    snat_ipfix_header_create (frm, b0, &offset);
+
+  if (PREDICT_TRUE (do_flush == 0))
+    {
+      u64 time_stamp = clib_host_to_net_u64 (now);
+      clib_memcpy (b0->data + offset, &time_stamp, sizeof (time_stamp));
+      offset += sizeof (time_stamp);
+
+      clib_memcpy (b0->data + offset, &nat_event, sizeof (nat_event));
+      offset += sizeof (nat_event);
+
+      clib_memcpy (b0->data + offset, src_ip, sizeof (ip6_address_t));
+      offset += sizeof (ip6_address_t);
+
+      clib_memcpy (b0->data + offset, &nat_src_ip, sizeof (nat_src_ip));
+      offset += sizeof (nat_src_ip);
+
+      clib_memcpy (b0->data + offset, &proto, sizeof (proto));
+      offset += sizeof (proto);
+
+      clib_memcpy (b0->data + offset, &src_port, sizeof (src_port));
+      offset += sizeof (src_port);
+
+      clib_memcpy (b0->data + offset, &nat_src_port, sizeof (nat_src_port));
+      offset += sizeof (nat_src_port);
+
+      clib_memcpy (b0->data + offset, dst_ip, sizeof (ip6_address_t));
+      offset += sizeof (ip6_address_t);
+
+      clib_memcpy (b0->data + offset, &nat_dst_ip, sizeof (nat_dst_ip));
+      offset += sizeof (nat_dst_ip);
+
+      clib_memcpy (b0->data + offset, &dst_port, sizeof (dst_port));
+      offset += sizeof (dst_port);
+
+      clib_memcpy (b0->data + offset, &nat_dst_port, sizeof (nat_dst_port));
+      offset += sizeof (nat_dst_port);
+
+      clib_memcpy (b0->data + offset, &vrf_id, sizeof (vrf_id));
+      offset += sizeof (vrf_id);
+
+      b0->current_length += NAT64_SES_LEN;
+    }
+
+  if (PREDICT_FALSE
+      (do_flush || (offset + NAT64_SES_LEN) > frm->path_mtu))
+    {
+      snat_ipfix_send (frm, f, b0, silm->nat64_ses_template_id);
+      silm->nat64_ses_frame = 0;
+      silm->nat64_ses_buffer = 0;
+      offset = 0;
+    }
+  silm->nat64_ses_next_record_offset = offset;
 }
 
 static void
@@ -731,22 +1580,24 @@ static void
   snat_ipfix_logging_max_entries_per_usr_rpc_cb
   (snat_ipfix_logging_max_entries_per_user_args_t * a)
 {
-  snat_ipfix_logging_max_entries_per_usr (a->src_ip, 0);
+  snat_ipfix_logging_max_entries_per_usr (a->limit, a->src_ip, 0);
 }
 
 /**
  * @brief Generate maximum entries per user exceeded event
  *
+ * @param limit maximum NAT entries that can be created per user
  * @param src_ip source IPv4 address
  */
 void
-snat_ipfix_logging_max_entries_per_user (u32 src_ip)
+snat_ipfix_logging_max_entries_per_user (u32 limit, u32 src_ip)
 {
   //TODO: This event SHOULD be rate limited
   snat_ipfix_logging_max_entries_per_user_args_t a;
 
   skip_if_disabled ();
 
+  a.limit = limit;
   a.src_ip = src_ip;
 
   vl_api_rpc_call_main_thread (snat_ipfix_logging_max_entries_per_usr_rpc_cb,
@@ -759,7 +1610,279 @@ snat_data_callback_max_entries_per_usr (flow_report_main_t * frm,
 					vlib_frame_t * f,
 					u32 * to_next, u32 node_index)
 {
-  snat_ipfix_logging_max_entries_per_usr (0, 1);
+  snat_ipfix_logging_max_entries_per_usr (0, 0, 1);
+  return f;
+}
+
+static void
+nat_ipfix_logging_max_ses_rpc_cb (nat_ipfix_logging_max_sessions_args_t * a)
+{
+  nat_ipfix_logging_max_ses (a->limit, 0);
+}
+
+/**
+ * @brief Generate maximum session entries exceeded event
+ *
+ * @param limit configured limit
+ */
+void
+nat_ipfix_logging_max_sessions (u32 limit)
+{
+  //TODO: This event SHOULD be rate limited
+  nat_ipfix_logging_max_sessions_args_t a;
+
+  skip_if_disabled ();
+
+  a.limit = limit;
+
+  vl_api_rpc_call_main_thread (nat_ipfix_logging_max_ses_rpc_cb,
+			       (u8 *) & a, sizeof (a));
+}
+
+vlib_frame_t *
+nat_data_callback_max_sessions (flow_report_main_t * frm,
+				flow_report_t * fr,
+				vlib_frame_t * f,
+				u32 * to_next, u32 node_index)
+{
+  nat_ipfix_logging_max_ses (0, 1);
+  return f;
+}
+
+static void
+nat_ipfix_logging_max_bib_rpc_cb (nat_ipfix_logging_max_bibs_args_t * a)
+{
+  nat_ipfix_logging_max_bib (a->limit, 0);
+}
+
+/**
+ * @brief Generate maximum BIB entries exceeded event
+ *
+ * @param limit configured limit
+ */
+void
+nat_ipfix_logging_max_bibs (u32 limit)
+{
+  //TODO: This event SHOULD be rate limited
+  nat_ipfix_logging_max_bibs_args_t a;
+
+  skip_if_disabled ();
+
+  a.limit = limit;
+
+  vl_api_rpc_call_main_thread (nat_ipfix_logging_max_bib_rpc_cb,
+			       (u8 *) & a, sizeof (a));
+}
+
+vlib_frame_t *
+nat_data_callback_max_bibs (flow_report_main_t * frm,
+			    flow_report_t * fr,
+			    vlib_frame_t * f,
+			    u32 * to_next, u32 node_index)
+{
+  nat_ipfix_logging_max_bib (0, 1);
+  return f;
+}
+
+static void
+nat_ipfix_logging_max_frag_ip4_rpc_cb (nat_ipfix_logging_max_frags_ip4_args_t * a)
+{
+  nat_ipfix_logging_max_frag_ip4 (a->limit, a->src, 0);
+}
+
+/**
+ * @brief Generate maximum IPv4 fragments pending reassembly exceeded event
+ *
+ * @param limit configured limit
+ * @param src source IPv4 address
+ */
+void
+nat_ipfix_logging_max_fragments_ip4 (u32 limit, ip4_address_t * src)
+{
+  //TODO: This event SHOULD be rate limited
+  nat_ipfix_logging_max_frags_ip4_args_t a;
+
+  skip_if_disabled ();
+
+  a.limit = limit;
+  a.src = src->as_u32;
+
+  vl_api_rpc_call_main_thread (nat_ipfix_logging_max_frag_ip4_rpc_cb,
+			       (u8 *) & a, sizeof (a));
+}
+
+vlib_frame_t *
+nat_data_callback_max_frags_ip4 (flow_report_main_t * frm,
+			         flow_report_t * fr,
+			         vlib_frame_t * f,
+			         u32 * to_next, u32 node_index)
+{
+  nat_ipfix_logging_max_frag_ip4 (0, 0, 1);
+  return f;
+}
+
+static void
+nat_ipfix_logging_max_frag_ip6_rpc_cb (nat_ipfix_logging_max_frags_ip6_args_t * a)
+{
+  ip6_address_t src;
+  src.as_u64[0] = a->src[0];
+  src.as_u64[1] = a->src[1];
+  nat_ipfix_logging_max_frag_ip6 (a->limit, &src, 0);
+}
+
+/**
+ * @brief Generate maximum IPv6 fragments pending reassembly exceeded event
+ *
+ * @param limit configured limit
+ * @param src source IPv6 address
+ */
+void
+nat_ipfix_logging_max_fragments_ip6 (u32 limit, ip6_address_t * src)
+{
+  //TODO: This event SHOULD be rate limited
+  nat_ipfix_logging_max_frags_ip6_args_t a;
+
+  skip_if_disabled ();
+
+  a.limit = limit;
+  a.src[0] = src->as_u64[0];
+  a.src[1] = src->as_u64[1];
+
+  vl_api_rpc_call_main_thread (nat_ipfix_logging_max_frag_ip6_rpc_cb,
+			       (u8 *) & a, sizeof (a));
+}
+
+vlib_frame_t *
+nat_data_callback_max_frags_ip6 (flow_report_main_t * frm,
+			         flow_report_t * fr,
+			         vlib_frame_t * f,
+			         u32 * to_next, u32 node_index)
+{
+  nat_ipfix_logging_max_frag_ip6 (0, 0, 1);
+  return f;
+}
+
+static void
+nat_ipfix_logging_nat64_bib_rpc_cb (nat_ipfix_logging_nat64_bib_args_t * a)
+{
+  ip6_address_t src_ip;
+  src_ip.as_u64[0] = a->src_ip[0];
+  src_ip.as_u64[1] = a->src_ip[1];
+  nat_ipfix_logging_nat64_bibe (a->nat_event, &src_ip, a->nat_src_ip,
+                                a->proto, a->src_port, a->nat_src_port,
+                                a->vrf_id, 0);
+}
+
+/**
+ * @brief Generate NAT64 BIB create and delete events
+ *
+ * @param src_ip       source IPv6 address
+ * @param nat_src_ip   transaltes source IPv4 address
+ * @param proto        L4 protocol
+ * @param src_port     source port
+ * @param nat_src_port translated source port
+ * @param vrf_id       VRF ID
+ * @param is_create    non-zero value if create event otherwise delete event
+ */
+void
+nat_ipfix_logging_nat64_bib (ip6_address_t * src_ip,
+                             ip4_address_t * nat_src_ip, u8 proto,
+                             u16 src_port, u16 nat_src_port, u32 vrf_id,
+                             u8 is_create)
+{
+  nat_ipfix_logging_nat64_bib_args_t a;
+
+  skip_if_disabled ();
+
+  a.src_ip[0] = src_ip->as_u64[0];
+  a.src_ip[1] = src_ip->as_u64[1];
+  a.nat_src_ip = nat_src_ip->as_u32;
+  a.proto = proto;
+  a.src_port = src_port;
+  a.nat_src_port = nat_src_port;
+  a.vrf_id = vrf_id;
+  a.nat_event = is_create ? NAT64_BIB_CREATE : NAT64_BIB_DELETE;
+
+  vl_api_rpc_call_main_thread (nat_ipfix_logging_nat64_bib_rpc_cb,
+			       (u8 *) & a, sizeof (a));
+}
+
+vlib_frame_t *
+nat_data_callback_nat64_bib (flow_report_main_t * frm,
+			     flow_report_t * fr,
+			     vlib_frame_t * f,
+			     u32 * to_next, u32 node_index)
+{
+  nat_ipfix_logging_nat64_bibe (0, 0, 0, 0, 0, 0, 0, 1);
+  return f;
+}
+
+static void
+nat_ipfix_logging_nat64_ses_rpc_cb (nat_ipfix_logging_nat64_ses_args_t * a)
+{
+  ip6_address_t src_ip, dst_ip;
+  src_ip.as_u64[0] = a->src_ip[0];
+  src_ip.as_u64[1] = a->src_ip[1];
+  dst_ip.as_u64[0] = a->dst_ip[0];
+  dst_ip.as_u64[1] = a->dst_ip[1];
+  nat_ipfix_logging_nat64_ses (a->nat_event, &src_ip, a->nat_src_ip,
+                               a->proto, a->src_port, a->nat_src_port,
+                               &dst_ip, a->nat_dst_ip, a->dst_port,
+                               a->nat_dst_port, a->vrf_id, 0);
+}
+
+/**
+ * @brief Generate NAT64 session create and delete events
+ *
+ * @param src_ip       source IPv6 address
+ * @param nat_src_ip   transaltes source IPv4 address
+ * @param proto        L4 protocol
+ * @param src_port     source port
+ * @param nat_src_port translated source port
+ * @param dst_ip       destination IPv6 address
+ * @param nat_dst_ip   destination IPv4 address
+ * @param dst_port     destination port
+ * @param nat_dst_port translated destination port
+ * @param vrf_id       VRF ID
+ * @param is_create    non-zero value if create event otherwise delete event
+ */
+void
+nat_ipfix_logging_nat64_session (ip6_address_t * src_ip,
+                                 ip4_address_t * nat_src_ip, u8 proto,
+                                 u16 src_port, u16 nat_src_port,
+                                 ip6_address_t * dst_ip,
+                                 ip4_address_t * nat_dst_ip, u16 dst_port,
+                                 u16 nat_dst_port, u32 vrf_id, u8 is_create)
+{
+  nat_ipfix_logging_nat64_ses_args_t a;
+
+  skip_if_disabled ();
+
+  a.src_ip[0] = src_ip->as_u64[0];
+  a.src_ip[1] = src_ip->as_u64[1];
+  a.nat_src_ip = nat_src_ip->as_u32;
+  a.proto = proto;
+  a.src_port = src_port;
+  a.nat_src_port = nat_src_port;
+  a.dst_ip[0] = dst_ip->as_u64[0];
+  a.dst_ip[1] = dst_ip->as_u64[1];
+  a.nat_dst_ip = nat_dst_ip->as_u32;
+  a.dst_port = dst_port;
+  a.nat_dst_port = nat_dst_port;
+  a.vrf_id = vrf_id;
+  a.nat_event = is_create ? NAT64_SESSION_CREATE : NAT64_SESSION_DELETE;
+
+  vl_api_rpc_call_main_thread (nat_ipfix_logging_nat64_ses_rpc_cb,
+			       (u8 *) & a, sizeof (a));
+}
+
+vlib_frame_t *
+nat_data_callback_nat64_session (flow_report_main_t * frm,
+			         flow_report_t * fr,
+			         vlib_frame_t * f,
+			         u32 * to_next, u32 node_index)
+{
+  nat_ipfix_logging_nat64_ses (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
   return f;
 }
 
@@ -818,6 +1941,66 @@ snat_ipfix_logging_enable_disable (int enable, u32 domain_id, u16 src_port)
 
       a.rewrite_callback = snat_template_rewrite_addr_exhausted;
       a.flow_data_callback = snat_data_callback_addr_exhausted;
+
+      rv = vnet_flow_report_add_del (frm, &a, NULL);
+      if (rv)
+	{
+	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  return -1;
+	}
+
+      a.rewrite_callback = nat_template_rewrite_max_sessions;
+      a.flow_data_callback = nat_data_callback_max_sessions;
+
+      rv = vnet_flow_report_add_del (frm, &a, NULL);
+      if (rv)
+	{
+	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  return -1;
+	}
+
+      a.rewrite_callback = nat_template_rewrite_max_bibs;
+      a.flow_data_callback = nat_data_callback_max_bibs;
+
+      rv = vnet_flow_report_add_del (frm, &a, NULL);
+      if (rv)
+	{
+	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  return -1;
+	}
+
+      a.rewrite_callback = nat_template_rewrite_max_frags_ip4;
+      a.flow_data_callback = nat_data_callback_max_frags_ip4;
+
+      rv = vnet_flow_report_add_del (frm, &a, NULL);
+      if (rv)
+	{
+	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  return -1;
+	}
+
+      a.rewrite_callback = nat_template_rewrite_max_frags_ip6;
+      a.flow_data_callback = nat_data_callback_max_frags_ip6;
+
+      rv = vnet_flow_report_add_del (frm, &a, NULL);
+      if (rv)
+	{
+	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  return -1;
+	}
+
+      a.rewrite_callback = nat_template_rewrite_nat64_bib;
+      a.flow_data_callback = nat_data_callback_nat64_bib;
+
+      rv = vnet_flow_report_add_del (frm, &a, NULL);
+      if (rv)
+	{
+	  clib_warning ("vnet_flow_report_add_del returned %d", rv);
+	  return -1;
+	}
+
+      a.rewrite_callback = nat_template_rewrite_nat64_session;
+      a.flow_data_callback = nat_data_callback_nat64_session;
 
       rv = vnet_flow_report_add_del (frm, &a, NULL);
       if (rv)

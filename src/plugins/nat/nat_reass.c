@@ -19,6 +19,7 @@
 
 #include <vnet/vnet.h>
 #include <nat/nat_reass.h>
+#include <nat/nat_ipfix_logging.h>
 
 nat_reass_main_t nat_reass_main;
 
@@ -325,7 +326,11 @@ nat_ip4_reass_add_fragment (nat_reass_ip4_t * reass, u32 bi)
   u32 elt_index;
 
   if (reass->frag_n >= srm->ip4_max_frag)
-    return -1;
+    {
+      nat_ipfix_logging_max_fragments_ip4 (srm->ip4_max_frag,
+					   &reass->key.src);
+      return -1;
+    }
 
   clib_spinlock_lock_if_init (&srm->ip4_reass_lock);
 
@@ -517,7 +522,11 @@ nat_ip6_reass_add_fragment (nat_reass_ip6_t * reass, u32 bi)
   u32 elt_index;
 
   if (reass->frag_n >= srm->ip6_max_frag)
-    return -1;
+    {
+      nat_ipfix_logging_max_fragments_ip6 (srm->ip6_max_frag,
+					   &reass->key.src);
+      return -1;
+    }
 
   clib_spinlock_lock_if_init (&srm->ip6_reass_lock);
 
@@ -718,7 +727,7 @@ show_nat_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   vlib_cli_output (vm, "NAT IPv4 virtual fragmentation reassembly is %s",
 		   nat_reass_is_drop_frag (0) ? "DISABLED" : "ENABLED");
-  vlib_cli_output (vm, " max-reasssemblies %u", nat_reass_get_max_reass (0));
+  vlib_cli_output (vm, " max-reassemblies %u", nat_reass_get_max_reass (0));
   vlib_cli_output (vm, " max-fragments %u", nat_reass_get_max_frag (0));
   vlib_cli_output (vm, " timeout %usec", nat_reass_get_timeout (0));
   vlib_cli_output (vm, " reassemblies:");
@@ -726,7 +735,7 @@ show_nat_reass_command_fn (vlib_main_t * vm, unformat_input_t * input,
 
   vlib_cli_output (vm, "NAT IPv6 virtual fragmentation reassembly is %s",
 		   nat_reass_is_drop_frag (1) ? "DISABLED" : "ENABLED");
-  vlib_cli_output (vm, " max-reasssemblies %u", nat_reass_get_max_reass (1));
+  vlib_cli_output (vm, " max-reassemblies %u", nat_reass_get_max_reass (1));
   vlib_cli_output (vm, " max-fragments %u", nat_reass_get_max_frag (1));
   vlib_cli_output (vm, " timeout %usec", nat_reass_get_timeout (1));
   vlib_cli_output (vm, " reassemblies:");
