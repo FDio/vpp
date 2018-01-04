@@ -138,8 +138,8 @@ conn_pool_expand (size_t expand_size)
     {
       int errno_val = errno;
       perror ("ERROR in conn_pool_expand()");
-      fprintf (stderr, "ERROR: Memory allocation failed (errno = %d)!\n",
-	       errno_val);
+      fprintf (stderr, "SERVER: ERROR: Memory allocation "
+	       "failed (errno = %d)!\n", errno_val);
     }
 }
 
@@ -295,13 +295,12 @@ new_client (void)
   conn = conn_pool_alloc ();
   if (!conn)
     {
-      fprintf (stderr, "\nERROR: No free connections!\n");
+      fprintf (stderr, "\nSERVER: ERROR: No free connections!\n");
       return;
     }
 
 #ifdef VCL_TEST
-  client_fd = vppcom_session_accept (ssm->listen_fd, &conn->endpt, 0,
-				     -1.0 /* wait forever */ );
+  client_fd = vppcom_session_accept (ssm->listen_fd, &conn->endpt, 0);
   if (client_fd < 0)
     errno = -client_fd;
 #elif HAVE_ACCEPT4
@@ -314,7 +313,8 @@ new_client (void)
       int errno_val;
       errno_val = errno;
       perror ("ERROR in new_client()");
-      fprintf (stderr, "ERROR: accept failed (errno = %d)!\n", errno_val);
+      fprintf (stderr, "SERVER: ERROR: accept failed "
+	       "(errno = %d)!\n", errno_val);
       return;
     }
 
@@ -345,7 +345,7 @@ new_client (void)
 	int errno_val;
 	errno_val = errno;
 	perror ("ERROR in new_client()");
-	fprintf (stderr, "ERROR: epoll_ctl failed (errno = %d)!\n",
+	fprintf (stderr, "SERVER: ERROR: epoll_ctl failed (errno = %d)!\n",
 		 errno_val);
       }
     else
@@ -404,7 +404,8 @@ main (int argc, char **argv)
     {
       errno_val = errno;
       perror ("ERROR in main()");
-      fprintf (stderr, "ERROR: socket() failed (errno = %d)!\n", errno_val);
+      fprintf (stderr, "SERVER: ERROR: socket() failed "
+	       "(errno = %d)!\n", errno_val);
       return ssm->listen_fd;
     }
 
@@ -426,31 +427,6 @@ main (int argc, char **argv)
       errno = -rv;
       rv = -1;
     }
-
-#if VPPCOM_SESSION_ATTR_UNIT_TEST
-  buflen = BUFLEN;
-  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_FLAGS,
-			   buffer, &buflen) != VPPCOM_OK)
-    printf ("\nGET_FLAGS0: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
-  buflen = BUFLEN;
-  *flags = O_RDWR | O_NONBLOCK;
-  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_SET_FLAGS,
-			   buffer, &buflen) != VPPCOM_OK)
-    printf ("\nSET_FLAGS1: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
-  buflen = BUFLEN;
-  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_FLAGS,
-			   buffer, &buflen) != VPPCOM_OK)
-    printf ("\nGET_FLAGS1:Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
-  *flags = O_RDWR;
-  buflen = BUFLEN;
-  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_SET_FLAGS,
-			   buffer, &buflen) != VPPCOM_OK)
-    printf ("\nSET_FLAGS2: Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
-  buflen = BUFLEN;
-  if (vppcom_session_attr (ssm->listen_fd, VPPCOM_ATTR_GET_FLAGS,
-			   buffer, &buflen) != VPPCOM_OK)
-    printf ("\nGET_FLAGS2:Oh no, Mr. Biiiiiiiiiiiilllllll ! ! ! !\n");
-#endif
 #else
   rv =
     bind (ssm->listen_fd, (struct sockaddr *) &servaddr, sizeof (servaddr));
@@ -459,7 +435,8 @@ main (int argc, char **argv)
     {
       errno_val = errno;
       perror ("ERROR in main()");
-      fprintf (stderr, "ERROR: bind failed (errno = %d)!\n", errno_val);
+      fprintf (stderr, "SERVER: ERROR: bind failed (errno = %d)!\n",
+	       errno_val);
       return rv;
     }
 
@@ -477,7 +454,8 @@ main (int argc, char **argv)
     {
       errno_val = errno;
       perror ("ERROR in main()");
-      fprintf (stderr, "ERROR: listen failed (errno = %d)!\n", errno_val);
+      fprintf (stderr, "SERVER: ERROR: listen failed "
+	       "(errno = %d)!\n", errno_val);
       return rv;
     }
 
@@ -503,7 +481,7 @@ main (int argc, char **argv)
     {
       errno_val = errno;
       perror ("ERROR in main()");
-      fprintf (stderr, "ERROR: epoll_create failed (errno = %d)!\n",
+      fprintf (stderr, "SERVER: ERROR: epoll_create failed (errno = %d)!\n",
 	       errno_val);
       return ssm->epfd;
     }
@@ -522,7 +500,8 @@ main (int argc, char **argv)
     {
       errno_val = errno;
       perror ("ERROR in main()");
-      fprintf (stderr, "ERROR: epoll_ctl failed (errno = %d)!\n", errno_val);
+      fprintf (stderr, "SERVER: ERROR: epoll_ctl failed "
+	       "(errno = %d)!\n", errno_val);
       return rv;
     }
 #endif
@@ -545,7 +524,7 @@ main (int argc, char **argv)
       if (rv < 0)
 	{
 	  perror ("select()");
-	  fprintf (stderr, "\nERROR: select() failed -- aborting!\n");
+	  fprintf (stderr, "\nSERVER: ERROR: select() failed -- aborting!\n");
 	  main_rv = -1;
 	  goto done;
 	}
@@ -575,13 +554,14 @@ main (int argc, char **argv)
       if (num_ev < 0)
 	{
 	  perror ("epoll_wait()");
-	  fprintf (stderr, "\nERROR: epoll_wait() failed -- aborting!\n");
+	  fprintf (stderr, "\nSERVER: ERROR: epoll_wait() "
+		   "failed -- aborting!\n");
 	  main_rv = -1;
 	  goto done;
 	}
       if (num_ev == 0)
 	{
-	  fprintf (stderr, "\nepoll_wait() timeout!\n");
+	  fprintf (stderr, "\nSERVER: epoll_wait() timeout!\n");
 	  continue;
 	}
       for (i = 0; i < num_ev; i++)
@@ -601,32 +581,6 @@ main (int argc, char **argv)
 	  if (EPOLLIN & ssm->wait_events[i].events)
 #endif
 	    {
-#ifdef VCL_TEST
-#if VPPCOM_SESSION_ATTR_UNIT_TEST
-	      {
-		vppcom_endpt_t ep;
-		uint8_t addr[16];
-
-		ep.ip = addr;
-		buflen = BUFLEN;
-		if (vppcom_session_attr (client_fd, VPPCOM_ATTR_GET_NREAD,
-					 buffer, &buflen) < VPPCOM_OK)
-		  printf ("\nNREAD: Oh no, Mr. "
-			  "Biiiiiiiiiiiilllllll ! ! ! !\n");
-		buflen = sizeof (ep);
-		if (vppcom_session_attr (client_fd,
-					 VPPCOM_ATTR_GET_PEER_ADDR,
-					 &ep, &buflen) != VPPCOM_OK)
-		  printf ("\nGET_PEER_ADDR: Oh no, Mr. "
-			  "Biiiiiiiiiiiilllllll ! ! ! !\n");
-		buflen = sizeof (ep);
-		if (vppcom_session_attr (client_fd, VPPCOM_ATTR_GET_LCL_ADDR,
-					 &ep, &buflen) != VPPCOM_OK)
-		  printf ("\nGET_LCL_ADDR: Oh no, Mr. "
-			  "Biiiiiiiiiiiilllllll ! ! ! !\n");
-	      }
-#endif
-#endif
 	      rx_bytes = sock_test_read (client_fd, conn->buf,
 					 conn->buf_size, &conn->stats);
 	      if (rx_bytes > 0)
@@ -697,7 +651,8 @@ main (int argc, char **argv)
 			  break;
 
 			default:
-			  fprintf (stderr, "ERROR: Unknown test type!\n");
+			  fprintf (stderr,
+				   "SERVER: ERROR: Unknown test type!\n");
 			  sock_test_cfg_dump (rx_cfg, 0 /* is_client */ );
 			  break;
 			}
@@ -735,13 +690,15 @@ main (int argc, char **argv)
 
 	      if (isascii (conn->buf[0]))
 		{
-		  // If it looks vaguely like a string, make sure it's terminated
+		  /* If it looks vaguely like a string,
+		   * make sure it's terminated
+		   */
 		  ((char *) conn->buf)[rx_bytes <
 				       conn->buf_size ? rx_bytes :
 				       conn->buf_size - 1] = 0;
 		  if (xtra)
-		    fprintf (stderr,
-			     "ERROR: FIFO not drained in previous test!\n"
+		    fprintf (stderr, "SERVER: ERROR: "
+			     "FIFO not drained in previous test!\n"
 			     "       extra chunks %u (0x%x)\n"
 			     "        extra bytes %lu (0x%lx)\n",
 			     xtra, xtra, xtra_bytes, xtra_bytes);

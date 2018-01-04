@@ -54,7 +54,8 @@ sock_test_cfg_sync (sock_test_socket_t * socket)
 			      sizeof (ctrl->cfg), NULL, ctrl->cfg.verbose);
   if (tx_bytes < 0)
     {
-      fprintf (stderr, "ERROR: write test cfg failed (%d)!\n", tx_bytes);
+      fprintf (stderr, "CLIENT: ERROR: write test cfg failed (%d)!\n",
+	       tx_bytes);
       return tx_bytes;
     }
 
@@ -65,7 +66,7 @@ sock_test_cfg_sync (sock_test_socket_t * socket)
 
   if (rl_cfg->magic != SOCK_TEST_CFG_CTRL_MAGIC)
     {
-      fprintf (stderr, "ERROR: Bad server reply cfg -- aborting!\n");
+      fprintf (stderr, "CLIENT: ERROR: Bad server reply cfg -- aborting!\n");
       return -1;
     }
   if (socket->cfg.verbose)
@@ -76,8 +77,8 @@ sock_test_cfg_sync (sock_test_socket_t * socket)
   if ((rx_bytes != sizeof (sock_test_cfg_t))
       || !sock_test_cfg_verify (rl_cfg, &ctrl->cfg))
     {
-      fprintf (stderr,
-	       "ERROR: Invalid config received from server -- aborting!\n");
+      fprintf (stderr, "CLIENT: ERROR: Invalid config received "
+	       "from server -- aborting!\n");
       sock_test_cfg_dump (rl_cfg, 1 /* is_client */ );
       return -1;
     }
@@ -141,7 +142,8 @@ echo_test_client ()
       if (rv < 0)
 	{
 	  perror ("select()");
-	  fprintf (stderr, "\nERROR: select() failed -- aborting test!\n");
+	  fprintf (stderr, "\nCLIENT: ERROR: select() failed -- "
+		   "aborting test!\n");
 	  return;
 	}
       else if (rv == 0)
@@ -163,8 +165,8 @@ echo_test_client ()
 				 &tsock->stats, ctrl->cfg.verbose);
 	      if (tx_bytes < 0)
 		{
-		  fprintf (stderr, "\nERROR: sock_test_write(%d) failed "
-			   "-- aborting test!\n", tsock->fd);
+		  fprintf (stderr, "\nCLIENT: ERROR: sock_test_write(%d) "
+			   "failed -- aborting test!\n", tsock->fd);
 		  return;
 		}
 
@@ -184,9 +186,9 @@ echo_test_client ()
 			  tsock->fd, rx_bytes, tsock->rxbuf);
 
 		  if (tsock->stats.rx_bytes != tsock->stats.tx_bytes)
-		    printf
-		      ("WARNING: bytes read (%lu) != bytes written (%lu)!\n",
-		       tsock->stats.rx_bytes, tsock->stats.tx_bytes);
+		    printf ("CLIENT: WARNING: bytes read (%lu) "
+			    "!= bytes written (%lu)!\n",
+			    tsock->stats.rx_bytes, tsock->stats.tx_bytes);
 		}
 	    }
 
@@ -265,7 +267,7 @@ stream_test_client (sock_test_t test)
 
   if (sock_test_cfg_sync (ctrl))
     {
-      fprintf (stderr, "ERROR: test cfg sync failed -- aborting!");
+      fprintf (stderr, "CLIENT: ERROR: test cfg sync failed -- aborting!");
       return;
     }
 
@@ -312,7 +314,8 @@ stream_test_client (sock_test_t test)
       if (rv < 0)
 	{
 	  perror ("select()");
-	  fprintf (stderr, "\nERROR: select() failed -- aborting test!\n");
+	  fprintf (stderr, "\nCLIENT: ERROR: select() failed -- "
+		   "aborting test!\n");
 	  return;
 	}
       else if (rv == 0)
@@ -325,6 +328,15 @@ stream_test_client (sock_test_t test)
 		(tsock->stats.stop.tv_nsec == 0)))
 	    continue;
 
+	  if ((test == SOCK_TEST_TYPE_BI) &&
+	      FD_ISSET (tsock->fd, rfdset) &&
+	      (tsock->stats.rx_bytes < ctrl->cfg.total_bytes))
+	    {
+	      (void) sock_test_read (tsock->fd,
+				     (uint8_t *) tsock->rxbuf,
+				     tsock->rxbuf_size, &tsock->stats);
+	    }
+
 	  if (FD_ISSET (tsock->fd, wfdset) &&
 	      (tsock->stats.tx_bytes < ctrl->cfg.total_bytes))
 	    {
@@ -334,19 +346,10 @@ stream_test_client (sock_test_t test)
 				 ctrl->cfg.verbose);
 	      if (tx_bytes < 0)
 		{
-		  fprintf (stderr, "\nERROR: sock_test_write(%d) failed "
-			   "-- aborting test!\n", tsock->fd);
+		  fprintf (stderr, "\nCLIENT: ERROR: sock_test_write(%d) "
+			   "failed -- aborting test!\n", tsock->fd);
 		  return;
 		}
-	    }
-
-	  if ((test == SOCK_TEST_TYPE_BI) &&
-	      FD_ISSET (tsock->fd, rfdset) &&
-	      (tsock->stats.rx_bytes < ctrl->cfg.total_bytes))
-	    {
-	      (void) sock_test_read (tsock->fd,
-				     (uint8_t *) tsock->rxbuf,
-				     tsock->rxbuf_size, &tsock->stats);
 	    }
 
 	  if (((test == SOCK_TEST_TYPE_UNI) &&
@@ -366,7 +369,7 @@ stream_test_client (sock_test_t test)
 
   if (sock_test_cfg_sync (ctrl))
     {
-      fprintf (stderr, "ERROR: test cfg sync failed -- aborting!");
+      fprintf (stderr, "CLIENT: ERROR: test cfg sync failed -- aborting!");
       return;
     }
 
@@ -409,7 +412,7 @@ stream_test_client (sock_test_t test)
 
   ctrl->cfg.test = SOCK_TEST_TYPE_ECHO;
   if (sock_test_cfg_sync (ctrl))
-    fprintf (stderr, "ERROR: post-test cfg sync failed!");
+    fprintf (stderr, "CLIENT: ERROR: post-test cfg sync failed!");
 
   printf ("CLIENT (fd %d): %s-directional Stream Test Complete!\n"
 	  SOCK_TEST_BANNER_STRING "\n", ctrl->fd,
@@ -491,7 +494,8 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	{
 	  errno_val = errno;
 	  perror ("ERROR in sock_test_connect_test_sockets()");
-	  fprintf (stderr, "ERROR: socket failed (errno = %d)!\n", errno_val);
+	  fprintf (stderr, "CLIENT: ERROR: socket failed (errno = %d)!\n",
+		   errno_val);
 	  return -1;
 	}
 
@@ -518,7 +522,7 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	    {
 	      errno_val = errno;
 	      perror ("ERROR in sock_test_connect_test_sockets()");
-	      fprintf (stderr, "ERROR: socket failed (errno = %d)!\n",
+	      fprintf (stderr, "CLIENT: ERROR: socket failed (errno = %d)!\n",
 		       errno_val);
 	      return tsock->fd;
 	    }
@@ -539,8 +543,8 @@ sock_test_connect_test_sockets (uint32_t num_test_sockets)
 	    {
 	      errno_val = errno;
 	      perror ("ERROR in sock_test_connect_test_sockets()");
-	      fprintf (stderr, "ERROR: connect failed (errno = %d)!\n",
-		       errno_val);
+	      fprintf (stderr, "CLIENT: ERROR: connect failed "
+		       "(errno = %d)!\n", errno_val);
 	      return -1;
 	    }
 	  tsock->cfg = ctrl->cfg;
@@ -562,7 +566,7 @@ dump_help (void)
 {
 #define INDENT "\n  "
 
-  printf ("Test configuration commands:"
+  printf ("CLIENT: Test configuration commands:"
 	  INDENT SOCK_TEST_TOKEN_HELP
 	  "\t\t\tDisplay help."
 	  INDENT SOCK_TEST_TOKEN_EXIT
@@ -600,8 +604,8 @@ cfg_txbuf_size_set (void)
       sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   else
-    fprintf (stderr,
-	     "ERROR: Invalid txbuf size (%lu) < minimum buf size (%u)!\n",
+    fprintf (stderr, "CLIENT: ERROR: Invalid txbuf size (%lu) < "
+	     "minimum buf size (%u)!\n",
 	     txbuf_size, SOCK_TEST_CFG_BUF_SIZE_MIN);
 }
 
@@ -621,7 +625,7 @@ cfg_num_writes_set (void)
     }
   else
     {
-      fprintf (stderr, "ERROR: invalid num writes: %u\n", num_writes);
+      fprintf (stderr, "CLIENT: ERROR: invalid num writes: %u\n", num_writes);
     }
 }
 
@@ -643,7 +647,8 @@ cfg_num_test_sockets_set (void)
     }
   else
     {
-      fprintf (stderr, "ERROR: invalid num test sockets: %u, (%d max)\n",
+      fprintf (stderr, "CLIENT: ERROR: invalid num test sockets: "
+	       "%u, (%d max)\n",
 	       num_test_sockets, SOCK_TEST_CFG_MAX_TEST_SCKTS);
     }
 }
@@ -664,8 +669,8 @@ cfg_rxbuf_size_set (void)
       sock_test_cfg_dump (&ctrl->cfg, 1 /* is_client */ );
     }
   else
-    fprintf (stderr,
-	     "ERROR: Invalid rxbuf size (%lu) < minimum buf size (%u)!\n",
+    fprintf (stderr, "CLIENT: ERROR: Invalid rxbuf size (%lu) < "
+	     "minimum buf size (%u)!\n",
 	     rxbuf_size, SOCK_TEST_CFG_BUF_SIZE_MIN);
 }
 
@@ -772,14 +777,15 @@ main (int argc, char **argv)
 	if (sscanf (optarg, "0x%x", &ctrl->cfg.num_test_sockets) != 1)
 	  if (sscanf (optarg, "%u", &ctrl->cfg.num_test_sockets) != 1)
 	    {
-	      fprintf (stderr, "ERROR: Invalid value for option -%c!\n", c);
+	      fprintf (stderr, "CLIENT: ERROR: Invalid value for "
+		       "option -%c!\n", c);
 	      print_usage_and_exit ();
 	    }
 	if (!ctrl->cfg.num_test_sockets ||
 	    (ctrl->cfg.num_test_sockets > FD_SETSIZE))
 	  {
-	    fprintf (stderr, "ERROR: Invalid number of sockets (%d)"
-		     "specified for option -%c!\n"
+	    fprintf (stderr, "CLIENT: ERROR: Invalid number of "
+		     "sockets (%d) specified for option -%c!\n"
 		     "       Valid range is 1 - %d\n",
 		     ctrl->cfg.num_test_sockets, c, FD_SETSIZE);
 	    print_usage_and_exit ();
@@ -787,7 +793,7 @@ main (int argc, char **argv)
 	break;
 
       case 'w':
-	fprintf (stderr, "Writing test results to files is TBD.\n");
+	fprintf (stderr, "CLIENT: Writing test results to files is TBD.\n");
 	break;
 
       case 'X':
@@ -797,8 +803,8 @@ main (int argc, char **argv)
       case 'E':
 	if (strlen (optarg) > ctrl->txbuf_size)
 	  {
-	    fprintf (stderr,
-		     "ERROR: Option -%c value larger than txbuf size (%d)!\n",
+	    fprintf (stderr, "CLIENT: ERROR: Option -%c value "
+		     "larger than txbuf size (%d)!\n",
 		     optopt, ctrl->txbuf_size);
 	    print_usage_and_exit ();
 	  }
@@ -810,13 +816,15 @@ main (int argc, char **argv)
 	if (sscanf (optarg, "0x%x", &ctrl->cfg.num_test_sockets) != 1)
 	  if (sscanf (optarg, "%d", &ctrl->cfg.num_test_sockets) != 1)
 	    {
-	      fprintf (stderr, "ERROR: Invalid value for option -%c!\n", c);
+	      fprintf (stderr, "CLIENT: ERROR: Invalid value for "
+		       "option -%c!\n", c);
 	      print_usage_and_exit ();
 	    }
 	if (ctrl->cfg.num_test_sockets > SOCK_TEST_CFG_MAX_TEST_SCKTS)
 	  {
-	    fprintf (stderr, "ERROR: value greater than max number test"
-		     " sockets (%d)!", SOCK_TEST_CFG_MAX_TEST_SCKTS);
+	    fprintf (stderr, "CLIENT: ERROR: value greater than max "
+		     "number test sockets (%d)!",
+		     SOCK_TEST_CFG_MAX_TEST_SCKTS);
 	    print_usage_and_exit ();
 	  }
 	break;
@@ -825,7 +833,8 @@ main (int argc, char **argv)
 	if (sscanf (optarg, "0x%lx", &ctrl->cfg.num_writes) != 1)
 	  if (sscanf (optarg, "%ld", &ctrl->cfg.num_writes) != 1)
 	    {
-	      fprintf (stderr, "ERROR: Invalid value for option -%c!\n", c);
+	      fprintf (stderr, "CLIENT: ERROR: Invalid value for "
+		       "option -%c!\n", c);
 	      print_usage_and_exit ();
 	    }
 	ctrl->cfg.total_bytes = ctrl->cfg.num_writes * ctrl->cfg.txbuf_size;
@@ -835,7 +844,8 @@ main (int argc, char **argv)
 	if (sscanf (optarg, "0x%lx", &ctrl->cfg.rxbuf_size) != 1)
 	  if (sscanf (optarg, "%ld", &ctrl->cfg.rxbuf_size) != 1)
 	    {
-	      fprintf (stderr, "ERROR: Invalid value for option -%c!\n", c);
+	      fprintf (stderr, "CLIENT: ERROR: Invalid value for "
+		       "option -%c!\n", c);
 	      print_usage_and_exit ();
 	    }
 	if (ctrl->cfg.rxbuf_size >= SOCK_TEST_CFG_BUF_SIZE_MIN)
@@ -847,8 +857,8 @@ main (int argc, char **argv)
 	  }
 	else
 	  {
-	    fprintf (stderr,
-		     "ERROR: rxbuf size (%lu) less than minumum (%u)\n",
+	    fprintf (stderr, "CLIENT: ERROR: rxbuf size (%lu) "
+		     "less than minumum (%u)\n",
 		     ctrl->cfg.rxbuf_size, SOCK_TEST_CFG_BUF_SIZE_MIN);
 	    print_usage_and_exit ();
 	  }
@@ -859,7 +869,8 @@ main (int argc, char **argv)
 	if (sscanf (optarg, "0x%lx", &ctrl->cfg.txbuf_size) != 1)
 	  if (sscanf (optarg, "%ld", &ctrl->cfg.txbuf_size) != 1)
 	    {
-	      fprintf (stderr, "ERROR: Invalid value for option -%c!\n", c);
+	      fprintf (stderr, "CLIENT: ERROR: Invalid value "
+		       "for option -%c!\n", c);
 	      print_usage_and_exit ();
 	    }
 	if (ctrl->cfg.txbuf_size >= SOCK_TEST_CFG_BUF_SIZE_MIN)
@@ -873,8 +884,8 @@ main (int argc, char **argv)
 	  }
 	else
 	  {
-	    fprintf (stderr,
-		     "ERROR: txbuf size (%lu) less than minumum (%u)!\n",
+	    fprintf (stderr, "CLIENT: ERROR: txbuf size (%lu) "
+		     "less than minumum (%u)!\n",
 		     ctrl->cfg.txbuf_size, SOCK_TEST_CFG_BUF_SIZE_MIN);
 	    print_usage_and_exit ();
 	  }
@@ -901,16 +912,17 @@ main (int argc, char **argv)
 	  case 'R':
 	  case 'T':
 	  case 'w':
-	    fprintf (stderr, "ERROR: Option -%c requires an argument.\n",
-		     optopt);
+	    fprintf (stderr, "CLIENT: ERROR: Option -%c "
+		     "requires an argument.\n", optopt);
 	    break;
 
 	  default:
 	    if (isprint (optopt))
-	      fprintf (stderr, "ERROR: Unknown option `-%c'.\n", optopt);
+	      fprintf (stderr, "CLIENT: ERROR: Unknown "
+		       "option `-%c'.\n", optopt);
 	    else
-	      fprintf (stderr, "ERROR: Unknown option character `\\x%x'.\n",
-		       optopt);
+	      fprintf (stderr, "CLIENT: ERROR: Unknown "
+		       "option character `\\x%x'.\n", optopt);
 	  }
 	/* fall thru */
       case 'h':
@@ -920,7 +932,7 @@ main (int argc, char **argv)
 
   if (argc < (optind + 2))
     {
-      fprintf (stderr, "ERROR: Insufficient number of arguments!\n");
+      fprintf (stderr, "CLIENT: ERROR: Insufficient number of arguments!\n");
       print_usage_and_exit ();
     }
 
@@ -949,7 +961,8 @@ main (int argc, char **argv)
     {
       errno_val = errno;
       perror ("ERROR in main()");
-      fprintf (stderr, "ERROR: socket failed (errno = %d)!\n", errno_val);
+      fprintf (stderr, "CLIENT: ERROR: socket "
+	       "failed (errno = %d)!\n", errno_val);
       return ctrl->fd;
     }
 
@@ -986,7 +999,7 @@ main (int argc, char **argv)
 	{
 	  errno_val = errno;
 	  perror ("ERROR in main()");
-	  fprintf (stderr, "ERROR: connect failed (errno = %d)!\n",
+	  fprintf (stderr, "CLIENT: ERROR: connect failed (errno = %d)!\n",
 		   errno_val);
 	  return -1;
 	}
@@ -1053,7 +1066,7 @@ main (int argc, char **argv)
       memset (ctrl->txbuf, 0, ctrl->txbuf_size);
       memset (ctrl->rxbuf, 0, ctrl->rxbuf_size);
 
-      printf ("\nType some characters and hit <return>\n"
+      printf ("\nCLIENT: Type some characters and hit <return>\n"
 	      "('" SOCK_TEST_TOKEN_HELP "' for help): ");
 
       if (fgets (ctrl->txbuf, ctrl->txbuf_size, stdin) != NULL)
