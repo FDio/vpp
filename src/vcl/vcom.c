@@ -20,21 +20,15 @@
 #include <time.h>
 #include <stdarg.h>
 #include <sys/resource.h>
+#include <netinet/tcp.h>
 
 #include <vcl/vcom_socket_wrapper.h>
 #include <vcl/vcom.h>
 #include <sys/time.h>
 
 #include <vcl/vppcom.h>
-#include <vcl/vcom_socket.h>
-
-/* GCC have printf type attribute check. */
-#ifdef HAVE_FUNCTION_ATTRIBUTE_FORMAT
-#define PRINTF_ATTRIBUTE(a,b)                       \
-    __attribute__ ((__format__ (__printf__, a, b)))
-#else
-#define PRINTF_ATTRIBUTE(a,b)
-#endif /* HAVE_FUNCTION_ATTRIBUTE_FORMAT */
+#include <vppinfra/time.h>
+#include <vppinfra/bitmap.h>
 
 #define HAVE_CONSTRUCTOR_ATTRIBUTE
 #ifdef HAVE_CONSTRUCTOR_ATTRIBUTE
@@ -52,1689 +46,1157 @@
 #define DESTRUCTOR_ATTRIBUTE
 #endif
 
-#define HAVE_ADDRESS_SANITIZER_ATTRIBUTE
-#ifdef HAVE_ADDRESS_SANITIZER_ATTRIBUTE
-#define DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE           \
-    __attribute__((no_sanitize_address))
-#else
-#define DO_NOT_SANITIZE_ADDRESS_ATTRIBUTE
-#endif
+typedef struct
+{
+  int init;
+  char app_name[VCOM_APP_NAME_MAX];
+  u32 sid_bit_val;
+  u32 sid_bit_mask;
+  u32 debug;
+  u8 *io_buffer;
+  clib_time_t clib_time;
+  clib_bitmap_t *rd_bitmap;
+  clib_bitmap_t *wr_bitmap;
+  clib_bitmap_t *ex_bitmap;
+  clib_bitmap_t *sid_rd_bitmap;
+  clib_bitmap_t *sid_wr_bitmap;
+  clib_bitmap_t *sid_ex_bitmap;
+  clib_bitmap_t *libc_rd_bitmap;
+  clib_bitmap_t *libc_wr_bitmap;
+  clib_bitmap_t *libc_ex_bitmap;
+  vcl_poll_t *vcl_poll;
+  u8 select_vcl;
+  u8 epoll_wait_vcl;
+} vcom_main_t;
+#define VCOM_DEBUG vcom->debug
 
-#define VCOM_SOCKET_FD_MAX  0x10000
+static vcom_main_t vcom_main = {
+  .sid_bit_val = (1 << VCOM_SID_BIT_MIN),
+  .sid_bit_mask = (1 << VCOM_SID_BIT_MIN) - 1,
+  .debug = VCOM_DEBUG_INIT,
+};
 
-static char vcom_app_name[MAX_VCOM_APP_NAME];
+static vcom_main_t *vcom = &vcom_main;
 
 /*
  * RETURN:  0 on success or -1 on error.
  * */
-int
-vcom_set_app_name (char *__app_name)
+static inline void
+vcom_set_app_name (char *app_name)
 {
-  return snprintf (vcom_app_name, MAX_VCOM_APP_NAME, "vcom-%s-%d",
-		   __app_name, getpid ()) < 0 ? -1 : 0;
+  int rv = snprintf (vcom->app_name, VCOM_APP_NAME_MAX,
+		     "vcom-%d-%s", getpid (), app_name);
+
+  if (rv >= VCOM_APP_NAME_MAX)
+    app_name[VCOM_APP_NAME_MAX - 1] = 0;
 }
 
-static char *
+static inline char *
 vcom_get_app_name ()
 {
-  if (vcom_app_name[0] == '\0')
-    {
-      snprintf (vcom_app_name, MAX_VCOM_APP_NAME, "vcom-app-%d", getpid ());
-    }
-  return vcom_app_name;
+  if (vcom->app_name[0] == '\0')
+    vcom_set_app_name ("app");
+
+  return vcom->app_name;
 }
 
-/*
- * 1 if init, 0 otherwise
- */
-static int is_vcom_init;
+static inline int
+vcom_fd_from_sid (u32 sid)
+{
+  if (PREDICT_FALSE (sid >= vcom->sid_bit_val))
+    return -EMFILE;
+  else
+    return (sid | vcom->sid_bit_val);
+}
 
-/*
- * TBD: Make it thread safe
- */
+static inline int
+vcom_fd_is_sid (int fd)
+{
+  return ((u32) fd & vcom->sid_bit_val) ? 1 : 0;
+}
 
-/*
- * constructor function called before main is called
- * RETURN: 0 on success -1 on failure
- * */
+static inline u32
+vcom_sid_from_fd (int fd)
+{
+  return (vcom_fd_is_sid (fd) ? ((u32) fd & vcom->sid_bit_mask) :
+	  INVALID_SESSION_ID);
+}
+
 static inline int
 vcom_init (void)
 {
-  pid_t pid = getpid ();
-  int rv;
+  int rv = 0;
 
-  if (!is_vcom_init)
+  if (PREDICT_FALSE (!vcom->init))
     {
+      vcom->init = 1;
       rv = vppcom_app_create (vcom_get_app_name ());
-      if (rv)
+      if (rv == VPPCOM_OK)
 	{
-	  printf ("\n[%d] vcom_init...failed!\n", pid);
-	  if (VCOM_DEBUG > 0)
-	    fprintf (stderr,
-		     "[%d] vcom_init: vppcom_app_create failed!\n", pid);
-	  return rv;
-	}
-      if (vcom_socket_main_init () != 0)
-	{
-	  printf ("\n[%d] vcom_init...failed!\n", pid);
-	  if (VCOM_DEBUG > 0)
-	    fprintf (stderr,
-		     "[%d] vcom_init: vcom_socket_main_init failed!\n", pid);
-	  return -1;
-	}
-
-      is_vcom_init = 1;
-      printf ("\n[%d] vcom_init...done!\n", pid);
-    }
-  return 0;
-}
-
-static inline void
-vcom_destroy (void)
-{
-  pid_t pid = getpid ();
-
-  if (is_vcom_init)
-    {
-      vcom_socket_main_destroy ();
-      vppcom_app_destroy ();
-      is_vcom_init = 0;
-      fprintf (stderr, "\n[%d] vcom_destroy...done!\n", pid);
-    }
-}
-
-static inline int
-is_vcom_socket_fd (int fd)
-{
-  return vcom_socket_is_vcom_fd (fd);
-}
-
-static inline int
-is_vcom_epfd (int epfd)
-{
-  return vcom_socket_is_vcom_epfd (epfd);
-}
-
-
-/*
- *
- * Generic glibc fd api
- *
- */
-
-/* Close the file descriptor FD.
-
-   This function is a cancellation point and therefore
-   not marked with __THROW.  */
-/*
- * PRE:     is_vcom_socket_fd(__fd) == 1
- * RETURN:  0 on success and -1 for errors.
- * */
-int
-vcom_close (int __fd)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  if (vcom_socket_close (__fd) != 0)
-    {
-      return -1;
-    }
-
-  return 0;
-}
-
-/*
- * RETURN:  0 on success, or -1 on error
- */
-int
-close (int __fd)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd) || is_vcom_epfd (__fd))
-    {
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr, "[%d] close: fd %d\n", pid, __fd);
-      rv = vcom_close (__fd);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr, "[%d] close: vcom_close() returned %d\n", pid, rv);
-      if (rv != 0)
-	{
-	  errno = -rv;
-	  return -1;
-	}
-      return 0;
-    }
-  return libc_close (__fd);
-}
-
-/* Read NBYTES into BUF from FD.  Return the
-   number read, -1 for errors or 0 for EOF.
-
-   This function is a cancellation point and therefore
-   not marked with __THROW.  */
-ssize_t
-vcom_read (int __fd, void *__buf, size_t __nbytes)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_read (__fd, __buf, __nbytes);
-}
-
-ssize_t
-read (int __fd, void *__buf, size_t __nbytes)
-{
-  ssize_t size = 0;
-  pid_t pid = getpid ();
-  pthread_t tid = pthread_self ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      if (VCOM_DEBUG > 2)
-	fprintf (stderr,
-		 "[%d][%lu (0x%lx)] read:1 "
-		 "'%04d'='%04d', '%p', '%04d'\n",
-		 pid, (unsigned long) tid, (unsigned long) tid,
-		 (int) size, __fd, __buf, (int) __nbytes);
-      size = vcom_read (__fd, __buf, __nbytes);
-      if (VCOM_DEBUG > 2)
-	fprintf (stderr,
-		 "[%d][%lu (0x%lx)] read:2 "
-		 "'%04d'='%04d', '%p', '%04d'\n",
-		 pid, (unsigned long) tid, (unsigned long) tid,
-		 (int) size, __fd, __buf, (int) __nbytes);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  return libc_read (__fd, __buf, __nbytes);
-}
-
-ssize_t
-vcom_readv (int __fd, const struct iovec * __iov, int __iovcnt)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_readv (__fd, __iov, __iovcnt);
-}
-
-ssize_t
-readv (int __fd, const struct iovec * __iov, int __iovcnt)
-{
-  ssize_t size = 0;
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      size = vcom_readv (__fd, __iov, __iovcnt);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  else
-    return libc_readv (__fd, __iov, __iovcnt);
-}
-
-/* Write N bytes of BUF to FD.  Return the number written, or -1.
-
-   This function is a cancellation point and therefore
-   not marked with __THROW.  */
-ssize_t
-vcom_write (int __fd, const void *__buf, size_t __n)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_write (__fd, (void *) __buf, __n);
-}
-
-ssize_t
-write (int __fd, const void *__buf, size_t __n)
-{
-  ssize_t size = 0;
-  pid_t pid = getpid ();
-  pthread_t tid = pthread_self ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      if (VCOM_DEBUG > 2)
-	fprintf (stderr,
-		 "[%d][%lu (0x%lx)] write:1 "
-		 "'%04d'='%04d', '%p', '%04d'\n",
-		 pid, (unsigned long) tid, (unsigned long) tid,
-		 (int) size, __fd, __buf, (int) __n);
-      size = vcom_write (__fd, __buf, __n);
-      if (VCOM_DEBUG > 2)
-	fprintf (stderr,
-		 "[%d][%lu (0x%lx)] write:2 "
-		 "'%04d'='%04d', '%p', '%04d'\n",
-		 pid, (unsigned long) tid, (unsigned long) tid,
-		 (int) size, __fd, __buf, (int) __n);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  return libc_write (__fd, __buf, __n);
-}
-
-ssize_t
-vcom_writev (int __fd, const struct iovec * __iov, int __iovcnt)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_writev (__fd, __iov, __iovcnt);
-}
-
-ssize_t
-writev (int __fd, const struct iovec * __iov, int __iovcnt)
-{
-  ssize_t size = 0;
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      size = vcom_writev (__fd, __iov, __iovcnt);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  else
-    return libc_writev (__fd, __iov, __iovcnt);
-}
-
-/* Do the file control operation described by CMD on FD.
-   The remaining arguments are interpreted depending on CMD.
-
-   This function is a cancellation point and therefore
-   not marked with __THROW.  */
-int
-vcom_fcntl_va (int __fd, int __cmd, va_list __ap)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_fcntl_va (__fd, __cmd, __ap);
-}
-
-int
-vcom_fcntl (int __fd, int __cmd, ...)
-{
-  int rv = -1;
-  va_list ap;
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      va_start (ap, __cmd);
-      rv = vcom_fcntl_va (__fd, __cmd, ap);
-      va_end (ap);
-    }
-  return rv;
-}
-
-int
-fcntl (int __fd, int __cmd, ...)
-{
-  int rv;
-  va_list ap;
-  pid_t pid = getpid ();
-
-  va_start (ap, __cmd);
-  if (is_vcom_socket_fd (__fd))
-    {
-      rv = vcom_fcntl_va (__fd, __cmd, ap);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] fcntl: "
-		 "'%04d'='%04d', '%04d'\n", pid, rv, __fd, __cmd);
-      if (rv < 0)
-	{
-	  errno = -rv;
-	  rv = -1;
-	}
-      goto out;
-    }
-  rv = libc_vfcntl (__fd, __cmd, ap);
-
-out:
-  va_end (ap);
-  return rv;
-}
-
-int
-vcom_ioctl_va (int __fd, unsigned long int __cmd, va_list __ap)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_ioctl_va (__fd, __cmd, __ap);
-}
-
-int
-vcom_ioctl (int __fd, unsigned long int __cmd, ...)
-{
-  int rv = -1;
-  va_list ap;
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      va_start (ap, __cmd);
-      rv = vcom_ioctl_va (__fd, __cmd, ap);
-      va_end (ap);
-    }
-  return rv;
-}
-
-int
-ioctl (int __fd, unsigned long int __cmd, ...)
-{
-  int rv;
-  va_list ap;
-  pid_t pid = getpid ();
-
-  va_start (ap, __cmd);
-  if (is_vcom_socket_fd (__fd))
-    {
-      rv = vcom_ioctl_va (__fd, __cmd, ap);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] ioctl: "
-		 "'%04d'='%04d', '%04ld'\n", pid, rv, __fd, __cmd);
-      if (rv < 0)
-	{
-	  errno = -rv;
-	  rv = -1;
-	}
-      goto out;
-    }
-  rv = libc_vioctl (__fd, __cmd, ap);
-
-out:
-  va_end (ap);
-  return rv;
-}
-
-/*
- * Check the first NFDS descriptors each in READFDS (if not NULL) for
- *  read readiness, in WRITEFDS (if not NULL) for write readiness,
- *  and in EXCEPTFDS (if not NULL) for exceptional conditions.
- *  If TIMEOUT is not NULL, time out after waiting the interval
- *  specified therein.  Returns the number of ready descriptors,
- *  or -1 for errors.
- *
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-
-/*
- * clear all vcom FDs from fd_sets __readfds, __writefds and
- * __exceptfds and update the new nfds
- *
- * new nfds is the highest-numbered file descriptor
- * in any of the three sets, plus 1
- *
- * Return the number of file descriptors contained in the
- * three descriptor sets. ie. the total number of the bits
- * that are set in  __readfds, __writefds and __exceptfds
- */
-static inline int
-vcom_fd_clear (int __nfds,
-	       int *__new_nfds,
-	       fd_set * __restrict __readfds,
-	       fd_set * __restrict __writefds,
-	       fd_set * __restrict __exceptfds)
-{
-  int fd;
-  /* invalid max_fd is -1 */
-  int max_fd = -1;
-  int nfd = 0;
-
-
-  /* clear all vcom fd from the sets */
-  for (fd = 0; fd < __nfds; fd++)
-    {
-
-      /* clear vcom fd from set */
-      /*
-       * F fd set
-       */
-#define _(F)                                    \
-      if ((F) && FD_ISSET (fd, (F)))            \
-        {                                       \
-          if (is_vcom_socket_fd (fd))           \
-            {                                   \
-              FD_CLR (fd, (F));                 \
-            }                                   \
-        }
-
-
-      _(__readfds);
-      _(__writefds);
-      _(__exceptfds);
-#undef _
-    }
-
-  /*
-   *  compute nfd and __new_nfds
-   */
-  for (fd = 0; fd < __nfds; fd++)
-    {
-
-      /*
-       * F fd set
-       */
-#define _(F)                                    \
-      if ((F) && FD_ISSET (fd, (F)))            \
-        {                                       \
-          if (fd > max_fd)                      \
-            {                                   \
-              max_fd = fd;                      \
-            }                                   \
-          ++nfd;                                \
-        }
-
-
-      _(__readfds);
-      _(__writefds);
-      _(__exceptfds);
-#undef _
-    }
-
-  *__new_nfds = max_fd != -1 ? max_fd + 1 : 0;
-  return nfd;
-}
-
-/*
- * Return the number of file descriptors contained in the
- * three descriptor sets. ie. the total number of the bits
- * that are set in  __readfds, __writefds and __exceptfds
- */
-static inline int
-vcom_fd_set (int __nfds,
-	     /* dest */
-	     int *__new_nfds,
-	     fd_set * __restrict __readfds,
-	     fd_set * __restrict __writefds, fd_set * __restrict __exceptfds,
-	     /* src */
-	     fd_set * __restrict __saved_readfds,
-	     fd_set * __restrict __saved_writefds,
-	     fd_set * __restrict __saved_exceptfds)
-{
-  int fd;
-  /* invalid max_fd is -1 */
-  int max_fd = -1;
-  int nfd = 0;
-
-  for (fd = 0; fd < __nfds; fd++)
-    {
-      /*
-       * F fd set
-       * S saved fd set
-       */
-#define _(S,F)                                  \
-      if ((F) && (S) && FD_ISSET (fd, (S)))     \
-        {                                       \
-          if (is_vcom_socket_fd (fd))           \
-            {                                   \
-              FD_SET (fd, (F));                 \
-            }                                   \
-        }
-
-
-      _(__saved_readfds, __readfds);
-      _(__saved_writefds, __writefds);
-#undef _
-    }
-
-
-  /*
-   *  compute nfd and __new_nfds
-   */
-  for (fd = 0; fd < __nfds; fd++)
-    {
-
-      /*
-       * F fd set
-       */
-#define _(F)                                    \
-      if ((F) && FD_ISSET (fd, (F)))            \
-        {                                       \
-          if (fd > max_fd)                      \
-            {                                   \
-              max_fd = fd;                      \
-            }                                   \
-          ++nfd;                                \
-        }
-
-
-      _(__readfds);
-      _(__writefds);
-      _(__exceptfds);
-#undef _
-    }
-
-  *__new_nfds = max_fd != -1 ? max_fd + 1 : 0;
-  return nfd;
-}
-
-/*
- * split select sets(src) into
- * vcom sets(dest1) and libc sets(dest2)
- */
-static inline void
-vcom_fd_set_split (
-		    /* src, select sets */
-		    int nfds,
-		    fd_set * __restrict readfds,
-		    fd_set * __restrict writefds,
-		    fd_set * __restrict exceptfds,
-		    /* dest1, vcom sets */
-		    int *vcom_nfds,
-		    fd_set * __restrict vcom_readfds,
-		    fd_set * __restrict vcom_writefds,
-		    fd_set * __restrict vcom_exceptfds, int *vcom_nfd,
-		    /* dest2, libc sets */
-		    int *libc_nfds,
-		    fd_set * __restrict libc_readfds,
-		    fd_set * __restrict libc_writefds,
-		    fd_set * __restrict libc_exceptfds, int *libc_nfd)
-{
-  int fd;
-
-  /* vcom */
-  /* invalid max_fd is -1 */
-  int vcom_max_fd = -1;
-  int vcom_nfd2 = 0;
-
-  /* libc */
-  /* invalid max_fd is -1 */
-  int libc_max_fd = -1;
-  int libc_nfd2 = 0;
-
-
-  for (fd = 0; fd < nfds; fd++)
-    {
-      /*
-       * S select fd set
-       * V vcom fd set
-       * L libc fd set
-       */
-#define _(S,V,L)                            \
-      if ((S) && FD_ISSET (fd, (S)))        \
-        {                                   \
-          if (is_vcom_socket_fd (fd))       \
-            {                               \
-              if ((V))                      \
-                {                           \
-                  FD_SET(fd, (V));          \
-                  if (fd > vcom_max_fd)     \
-                    {                       \
-                      vcom_max_fd = fd;     \
-                    }                       \
-                  ++vcom_nfd2;              \
-                }                           \
-            }                               \
-          else                              \
-            {                               \
-              if ((L))                      \
-                {                           \
-                  FD_SET(fd, (L));          \
-                  if (fd > libc_max_fd)     \
-                    {                       \
-                      libc_max_fd = fd;     \
-                    }                       \
-                  ++libc_nfd2;              \
-                }                           \
-            }                               \
-        }
-
-
-      _(readfds, vcom_readfds, libc_readfds);
-      _(writefds, vcom_writefds, libc_writefds);
-      _(exceptfds, vcom_exceptfds, libc_exceptfds);
-#undef _
-    }
-
-  if (vcom_nfds)
-    *vcom_nfds = vcom_max_fd != -1 ? vcom_max_fd + 1 : 0;
-  if (vcom_nfd)
-    *vcom_nfd = vcom_nfd2;
-  if (libc_nfds)
-    *libc_nfds = libc_max_fd != -1 ? libc_max_fd + 1 : 0;
-  if (libc_nfd)
-    *libc_nfd = libc_nfd2;
-}
-
-/*
- * merge vcom sets(src1) and libc sets(src2)
- * into select sets(dest)
- */
-static inline void
-vcom_fd_set_merge (
-		    /* dest, select sets */
-		    int *nfds,
-		    fd_set * __restrict readfds,
-		    fd_set * __restrict writefds,
-		    fd_set * __restrict exceptfds, int *nfd,
-		    /* src1, vcom sets */
-		    int vcom_nfds,
-		    fd_set * __restrict vcom_readfds,
-		    fd_set * __restrict vcom_writefds,
-		    fd_set * __restrict vcom_exceptfds, int vcom_nfd,
-		    /* src2, libc sets */
-		    int libc_nfds,
-		    fd_set * __restrict libc_readfds,
-		    fd_set * __restrict libc_writefds,
-		    fd_set * __restrict libc_exceptfds, int libc_nfd)
-{
-  int fd;
-  /* invalid max_fd is -1 */
-  int max_fd = -1;
-  int nfd2 = 0;
-
-
-  /* FD_BIT_OR
-   *
-   * dest |= src at current bit index
-   * update MAX and NFD of dest fd set
-   *
-   *
-   * FS source fd set
-   * FD dest fd set
-   * BI bit index
-   * MAX current max_fd of dest fd sets
-   * NFD current nfd of dest fd sets
-   * N  nfds of source fd set
-   */
-#define FD_BIT_OR(FD,FS,BI,          \
-                  MAX,NFD)           \
-  if ((FS) && (FD) && FD_ISSET ((BI), (FS)))    \
-    {                                           \
-      FD_SET ((BI), (FD));                      \
-      if ((BI) > (MAX))                         \
-        {                                       \
-          (MAX) = (BI);                         \
-        }                                       \
-      ++(NFD);                                  \
-    }
-
-
-  /* FD_RWE_SET_OR */
-  /*
-   * SR,SW,SE source RWE fd sets
-   * DR,DW,DE dest RWE fd sets
-   * BI bit index
-   * NFDS  nfds of source fd sets
-   * MAX current max_fd of dest fd sets
-   * NFD current nfd of dest fd sets
-   */
-#define FD_RWE_SETS_OR(DR,DW,DE,      \
-                      SR,SW,SE,       \
-                      BI,NFDS,        \
-                      MAX,NFD)        \
-  do                                                      \
-    {                                                     \
-      for ((BI) = 0; (BI) < (NFDS); (BI)++)               \
-        {                                                 \
-          FD_BIT_OR((DR), (SR), (BI), (MAX), (NFD));      \
-          FD_BIT_OR((DW), (SW), (BI), (MAX), (NFD));      \
-          FD_BIT_OR((DE), (SE), (BI), (MAX), (NFD));      \
-        }                                                 \
-      }                                                   \
-    while (0);
-
-
-  /* source(vcom) to dest(select) rwe fd sets */
-  FD_RWE_SETS_OR (readfds, writefds, exceptfds,
-		  vcom_readfds, vcom_writefds, vcom_exceptfds,
-		  fd, vcom_nfds, max_fd, nfd2);
-
-  /* source(libc) to dest(select) rwe fd sets */
-  FD_RWE_SETS_OR (readfds, writefds, exceptfds,
-		  libc_readfds, libc_writefds, libc_exceptfds,
-		  fd, libc_nfds, max_fd, nfd2);
-
-#undef FD_RWE_SETS_OR
-#undef FD_BIT_OR
-
-  if (nfds)
-    *nfds = max_fd != -1 ? max_fd + 1 : 0;
-  if (nfd)
-    *nfd = nfd2;
-}
-
-/*
- * RETURN 1 if fds is NULL or empty. 0 otherwise
- */
-static inline int
-fd_set_iszero (fd_set * __restrict fds)
-{
-  int fd;
-
-  /* NULL fds */
-  if (!fds)
-    return 1;
-
-  for (fd = 0; fd < FD_SETSIZE; fd++)
-    {
-      if (FD_ISSET (fd, fds))
-	{
-	  /* non-empty fds */
-	  return 0;
-	}
-    }
-  /* empty fds */
-  return 1;
-}
-
-
-/*
- * ################
- * kernel time64.h
- * ################
- * */
-typedef long int s64;
-typedef unsigned long int u64;
-
-typedef long long int __s64;
-typedef unsigned long long int __u64;
-
-typedef __s64 time64_t;
-typedef __u64 timeu64_t;
-
-/* Parameters used to convert the timespec values: */
-#define MSEC_PER_SEC    1000L
-#define USEC_PER_MSEC   1000L
-#define NSEC_PER_USEC   1000L
-#define NSEC_PER_MSEC   1000000L
-#define USEC_PER_SEC    1000000L
-#define NSEC_PER_SEC    1000000000L
-#define FSEC_PER_SEC    1000000000000000LL
-
-
-/*
- * ################
- * kernel time.h
- * ################
- * */
-
-
-#define TIME_T_MAX      (time_t)((1UL << ((sizeof(time_t) << 3) - 1)) - 1)
-
-#ifdef VCOM_USE_TIMESPEC_EQUAL
-static inline int
-timespec_equal (const struct timespec *a, const struct timespec *b)
-{
-  return (a->tv_sec == b->tv_sec) && (a->tv_nsec == b->tv_nsec);
-}
-#endif
-
-/*
- * lhs < rhs:  return <0
- * lhs == rhs: return 0
- * lhs > rhs:  return >0
- */
-static inline int
-timespec_compare (const struct timespec *lhs, const struct timespec *rhs)
-{
-  if (lhs->tv_sec < rhs->tv_sec)
-    return -1;
-  if (lhs->tv_sec > rhs->tv_sec)
-    return 1;
-  return lhs->tv_nsec - rhs->tv_nsec;
-}
-
-#ifdef VCOM_USE_TIMEVAL_COMPARE
-static inline int
-timeval_compare (const struct timeval *lhs, const struct timeval *rhs)
-{
-  if (lhs->tv_sec < rhs->tv_sec)
-    return -1;
-  if (lhs->tv_sec > rhs->tv_sec)
-    return 1;
-  return lhs->tv_usec - rhs->tv_usec;
-}
-#endif
-
-extern void set_normalized_timespec (struct timespec *ts, time_t sec,
-				     s64 nsec);
-
-static inline struct timespec
-timespec_add (struct timespec lhs, struct timespec rhs)
-{
-  struct timespec ts_delta;
-  set_normalized_timespec (&ts_delta, lhs.tv_sec + rhs.tv_sec,
-			   lhs.tv_nsec + rhs.tv_nsec);
-  return ts_delta;
-}
-
-/*
- * sub = lhs - rhs, in normalized form
- */
-static inline struct timespec
-timespec_sub (struct timespec lhs, struct timespec rhs)
-{
-  struct timespec ts_delta;
-  set_normalized_timespec (&ts_delta, lhs.tv_sec - rhs.tv_sec,
-			   lhs.tv_nsec - rhs.tv_nsec);
-  return ts_delta;
-}
-
-/*
- * ################
- * kernel time.c
- * ################
- * */
-
-
-/**
- * set_normalized_timespec - set timespec sec and nsec parts and normalize
- *
- * @ts:         pointer to timespec variable to be set
- * @sec:        seconds to set
- * @nsec:       nanoseconds to set
- *
- * Set seconds and nanoseconds field of a timespec variable and
- * normalize to the timespec storage format
- *
- * Note: The tv_nsec part is always in the range of
- *      0 <= tv_nsec < NSEC_PER_SEC
- * For negative values only the tv_sec field is negative !
- */
-void
-set_normalized_timespec (struct timespec *ts, time_t sec, s64 nsec)
-{
-  while (nsec >= NSEC_PER_SEC)
-    {
-      /*
-       * The following asm() prevents the compiler from
-       * optimising this loop into a modulo operation. See
-       * also __iter_div_u64_rem() in include/linux/time.h
-       */
-    asm ("":"+rm" (nsec));
-      nsec -= NSEC_PER_SEC;
-      ++sec;
-    }
-  while (nsec < 0)
-    {
-    asm ("":"+rm" (nsec));
-      nsec += NSEC_PER_SEC;
-      --sec;
-    }
-  ts->tv_sec = sec;
-  ts->tv_nsec = nsec;
-}
-
-#define vcom_timerisvalid(tvp)        (!((tvp)->tv_sec < 0 || (tvp)->tv_usec < 0))
-
-/* Macros for converting between `struct timeval' and `struct timespec'.  */
-#define VCOM_TIMEVAL_TO_TIMESPEC(tv, ts) {                             \
-        (ts)->tv_sec = (tv)->tv_sec;                                    \
-        (ts)->tv_nsec = (tv)->tv_usec * 1000;                           \
-}
-#define VCOM_TIMESPEC_TO_TIMEVAL(tv, ts) {                             \
-        (tv)->tv_sec = (ts)->tv_sec;                                    \
-        (tv)->tv_usec = (ts)->tv_nsec / 1000;                           \
-}
-
-static inline int
-vcom_select_impl (int vcom_nfds, fd_set * __restrict vcom_readfds,
-		  fd_set * __restrict vcom_writefds,
-		  fd_set * __restrict vcom_exceptfds,
-		  struct timeval *__restrict timeout)
-{
-  return vcom_socket_select (vcom_nfds, vcom_readfds,
-			     vcom_writefds, vcom_exceptfds, timeout);
-}
-
-int
-vcom_select (int __nfds, fd_set * __restrict __readfds,
-	     fd_set * __restrict __writefds,
-	     fd_set * __restrict __exceptfds,
-	     struct timeval *__restrict __timeout)
-{
-  int rv;
-  int rv2 = 0;
-  pid_t pid = getpid ();
-
-  int timedout = 0;
-  /* block indefinitely */
-  int no_timeout = 0;
-  int first_clock_gettime_failed = 0;
-  /* timeout value in units of timespec */
-  struct timespec timeout_ts;
-  struct timespec start_time, now, end_time;
-
-  /* select sets attributes - after merge */
-  int new_nfds = 0;
-  int new_nfd = -1;
-
-  /* vcom */
-  int vcom_nfds = 0;
-  fd_set vcom_readfds;
-  fd_set vcom_writefds;
-  fd_set vcom_exceptfds;
-  int vcom_nfd = -1;
-
-  /* libc */
-  int libc_nfds = 0;
-  fd_set libc_readfds;
-  fd_set libc_writefds;
-  fd_set libc_exceptfds;
-  int libc_nfd = -1;
-
-  /* for polling */
-  struct timeval tv = {.tv_sec = 0,.tv_usec = 0 };
-
-  /* validate __timeout */
-  if (__timeout)
-    {
-      /* validate tv_sec */
-      /* bogus */
-      if (!vcom_timerisvalid (__timeout))
-	{
-	  rv = -EINVAL;
-	  goto select_done;
-	}
-
-      /* validate tv_usec */
-      /* TBD: */
-      /* init timeout_ts */
-      VCOM_TIMEVAL_TO_TIMESPEC (__timeout, &timeout_ts);
-      set_normalized_timespec (&timeout_ts,
-			       timeout_ts.tv_sec, timeout_ts.tv_nsec);
-    }
-
-  rv = clock_gettime (CLOCK_MONOTONIC, &start_time);
-  if (rv == -1)
-    {
-      rv = -errno;
-      first_clock_gettime_failed = 1;
-      goto select_done;
-    }
-
-  /* init end_time */
-  if (__timeout)
-    {
-      if (timerisset (__timeout))
-	{
-	  end_time = timespec_add (start_time, timeout_ts);
-	}
-      else
-	{
-	  /*
-	   * if both fields of the timeout structure are zero,
-	   * then select returns immediately
-	   * */
-	  end_time = start_time;
-	}
-    }
-  else
-    {
-      /* block indefinitely */
-      no_timeout = 1;
-    }
-
-
-
-  if (vcom_init () != 0)
-    {
-      rv = -1;
-      goto select_done;
-    }
-
-  /* validate __nfds */
-  if (__nfds < 0 || __nfds > FD_SETSIZE)
-    {
-      rv = -EINVAL;
-      goto select_done;
-    }
-
-
-  /*
-   * usleep(3) emulation
-   * */
-
-  /* call libc_select() with a finite timeout and
-   * no file descriptors or empty fd sets and
-   * zero nfds */
-  if (__nfds == 0 &&
-      (!__readfds || fd_set_iszero (__readfds)) &&
-      (!__writefds || fd_set_iszero (__writefds)) &&
-      (!__exceptfds || fd_set_iszero (__exceptfds)))
-    {
-      if (__timeout)
-	{
-	  rv = libc_select (__nfds,
-			    __readfds, __writefds, __exceptfds, __timeout);
-	  if (rv == -1)
-	    rv = -errno;
-	}
-      else
-	{
-	  /* TBD: block indefinitely or return -EINVAL */
-	  rv = -EINVAL;
-	}
-      goto select_done;
-    }
-
-  /* init once before the polling loop */
-
-  /* zero vcom and libc fd sets */
-  /*
-   * S select fd set
-   * V vcom fd set
-   * L libc fd set
-   */
-#define _(S,V,L)      \
-  if ((S))            \
-    {                 \
-      FD_ZERO ((V));  \
-      FD_ZERO ((L));  \
-    }
-
-
-  _(__readfds, &vcom_readfds, &libc_readfds);
-  _(__writefds, &vcom_writefds, &libc_writefds);
-  _(__exceptfds, &vcom_exceptfds, &libc_exceptfds);
-#undef _
-  new_nfds = 0;
-  new_nfd = -1;
-
-  vcom_nfds = 0;
-  vcom_nfd = -1;
-  libc_nfds = 0;
-  libc_nfd = -1;
-
-  vcom_fd_set_split (
-		      /* src, select sets */
-		      __nfds, __readfds, __writefds, __exceptfds,
-		      /* dest1, vcom sets */
-		      __readfds || __writefds || __exceptfds ?
-		      &vcom_nfds : NULL,
-		      __readfds ? &vcom_readfds : NULL,
-		      __writefds ? &vcom_writefds : NULL,
-		      __exceptfds ? &vcom_exceptfds : NULL,
-		      __readfds || __writefds || __exceptfds ?
-		      &vcom_nfd : NULL,
-		      /* dest2, libc sets */
-		      __readfds || __writefds || __exceptfds ?
-		      &libc_nfds : NULL,
-		      __readfds ? &libc_readfds : NULL,
-		      __writefds ? &libc_writefds : NULL,
-		      __exceptfds ? &libc_exceptfds : NULL,
-		      __readfds || __writefds || __exceptfds ?
-		      &libc_nfd : NULL);
-
-  /*
-   * polling loop
-   * */
-  do
-    {
-      new_nfd = -1;
-      vcom_nfd = -1;
-      libc_nfd = -1;
-
-      /*
-       * if both fields of timeval structure are zero,
-       * vcom_select_impl and libc_select returns immediately.
-       * useful for polling and ensure fairness among
-       * file descriptors watched.
-       */
-
-      /* for polling */
-      tv.tv_sec = 0;
-      tv.tv_usec = 0;
-
-      /* select on vcom fds */
-      if (vcom_nfds)
-	{
-	  vcom_nfd = vcom_select_impl (vcom_nfds,
-				       __readfds ? &vcom_readfds : NULL,
-				       __writefds ? &vcom_writefds : NULL,
-				       __exceptfds ? &vcom_exceptfds : NULL,
-				       &tv);
-	  if (VCOM_DEBUG > 2)
-	    fprintf (stderr,
-		     "[%d] select vcom: "
-		     "'%04d'='%04d'\n", pid, vcom_nfd, vcom_nfds);
-
-	  if (vcom_nfd < 0)
+	  char *env_var_str = getenv (VCOM_ENV_DEBUG);
+	  if (env_var_str)
 	    {
-	      rv = vcom_nfd;
-	      goto select_done;
-	    }
-	}
-      /* select on libc fds */
-      if (libc_nfds)
-	{
-	  libc_nfd = libc_select (libc_nfds,
-				  __readfds ? &libc_readfds : NULL,
-				  __writefds ? &libc_writefds : NULL,
-				  __exceptfds ? &libc_exceptfds : NULL, &tv);
-	  if (VCOM_DEBUG > 2)
-	    fprintf (stderr,
-		     "[%d] select libc: "
-		     "'%04d'='%04d'\n", pid, libc_nfd, libc_nfds);
-
-	  if (libc_nfd < 0)
-	    {
-	      /* tv becomes undefined */
-	      libc_nfd = errno;
-	      rv = libc_nfd;
-	      goto select_done;
-	    }
-	}
-
-      /* check if any file descriptors changed status */
-      if ((vcom_nfds && vcom_nfd > 0) || (libc_nfds && libc_nfd > 0))
-	{
-	  /* zero the sets before merge and exit */
-
-	  /*
-	   * F fd set
-	   */
-#define _(F)                  \
-          if ((F))            \
-            {                 \
-              FD_ZERO ((F));  \
-            }
-
-
-	  _(__readfds);
-	  _(__writefds);
-	  _(__exceptfds);
-#undef _
-	  new_nfds = 0;
-	  new_nfd = -1;
-
-	  /*
-	   * on exit, sets are modified in place to indicate which
-	   * file descriptors actually changed status
-	   * */
-	  vcom_fd_set_merge (
-			      /* dest, select sets */
-			      &new_nfds,
-			      __readfds, __writefds, __exceptfds, &new_nfd,
-			      /* src1, vcom sets */
-			      vcom_nfds,
-			      __readfds ? &vcom_readfds : NULL,
-			      __writefds ? &vcom_writefds : NULL,
-			      __exceptfds ? &vcom_exceptfds : NULL, vcom_nfd,
-			      /* src2, libc sets */
-			      libc_nfds,
-			      __readfds ? &libc_readfds : NULL,
-			      __writefds ? &libc_writefds : NULL,
-			      __exceptfds ? &libc_exceptfds : NULL, libc_nfd);
-	  /*
-	   * return the number of file descriptors contained in the
-	   * three returned sets
-	   * */
-	  rv = 0;
-	  /*
-	   * for documentation
-	   *
-	   * if(vcom_nfd > 0)
-	   *   rv += vcom_nfd;
-	   * if(libc_nfd > 0)
-	   *   rv += libc_nfd;
-	   */
-
-	  rv = new_nfd == -1 ? 0 : new_nfd;
-	  goto select_done;
-	}
-
-      rv = clock_gettime (CLOCK_MONOTONIC, &now);
-      if (rv == -1)
-	{
-	  rv = -errno;
-	  goto select_done;
-	}
-    }
-  while (no_timeout || timespec_compare (&now, &end_time) < 0);
-
-  /* timeout expired before anything interesting happened */
-  timedout = 1;
-  rv = 0;
-
-select_done:
-  if (VCOM_DEBUG > 2)
-    fprintf (stderr, "[%d] vselect1: " "'%04d'='%04d'\n", pid, rv, __nfds);
-  /*
-   * modify timeout parameter to reflect the amount of time not slept
-   * */
-  if (__timeout)
-    {
-      if (vcom_timerisvalid (__timeout))
-	{
-	  /* timeout expired */
-	  if (timedout)
-	    {
-	      timerclear (__timeout);
-	    }
-	  else if (!first_clock_gettime_failed)
-	    {
-	      rv2 = clock_gettime (CLOCK_MONOTONIC, &now);
-	      if (rv2 == -1)
+	      u32 tmp;
+	      if (sscanf (env_var_str, "%u", &tmp) != 1)
+		clib_warning ("LDP<%d>: WARNING: Invalid VCOM debug level "
+			      "specified in the env var " VCOM_ENV_DEBUG
+			      " (%s)!", getpid (), env_var_str);
+	      else
 		{
-		  rv = -errno;
+		  vcom->debug = tmp;
+		  clib_warning ("LDP<%d>: configured VCOM debug level (%u) "
+				"from the env var " VCOM_ENV_DEBUG "!",
+				getpid (), vcom->debug);
+		}
+	    }
+
+	  env_var_str = getenv (VCOM_ENV_APP_NAME);
+	  if (env_var_str)
+	    {
+	      vcom_set_app_name (env_var_str);
+	      clib_warning ("LDP<%d>: configured VCOM app name (%s) "
+			    "from the env var " VCOM_ENV_APP_NAME "!",
+			    getpid (), vcom->app_name);
+	    }
+
+	  env_var_str = getenv (VCOM_ENV_SID_BIT);
+	  if (env_var_str)
+	    {
+	      u32 sb;
+	      if (sscanf (env_var_str, "%u", &sb) != 1)
+		{
+		  clib_warning ("LDP<%d>: WARNING: Invalid VCOM sid bit "
+				"specified in the env var "
+				VCOM_ENV_SID_BIT " (%s)!"
+				"sid bit value %d (0x%x)",
+				getpid (), env_var_str,
+				vcom->sid_bit_val, vcom->sid_bit_val);
+		}
+	      else if (sb < VCOM_SID_BIT_MIN)
+		{
+		  vcom->sid_bit_val = (1 << VCOM_SID_BIT_MIN);
+		  vcom->sid_bit_mask = vcom->sid_bit_val - 1;
+
+		  clib_warning ("LDP<%d>: WARNING: VCOM sid bit (%u) "
+				"specified in the env var "
+				VCOM_ENV_SID_BIT " (%s) is too small. "
+				"Using VCOM_SID_BIT_MIN (%d)! "
+				"sid bit value %d (0x%x)",
+				getpid (), sb, env_var_str, VCOM_SID_BIT_MIN,
+				vcom->sid_bit_val, vcom->sid_bit_val);
+		}
+	      else if (sb > VCOM_SID_BIT_MAX)
+		{
+		  vcom->sid_bit_val = (1 << VCOM_SID_BIT_MAX);
+		  vcom->sid_bit_mask = vcom->sid_bit_val - 1;
+
+		  clib_warning ("LDP<%d>: WARNING: VCOM sid bit (%u) "
+				"specified in the env var "
+				VCOM_ENV_SID_BIT " (%s) is too big. "
+				"Using VCOM_SID_BIT_MAX (%d)! "
+				"sid bit value %d (0x%x)",
+				getpid (), sb, env_var_str, VCOM_SID_BIT_MAX,
+				vcom->sid_bit_val, vcom->sid_bit_val);
 		}
 	      else
 		{
-		  struct timespec ts_delta;
-		  ts_delta = timespec_sub (end_time, now);
-		  VCOM_TIMESPEC_TO_TIMEVAL (__timeout, &ts_delta);
+		  vcom->sid_bit_val = (1 << sb);
+		  vcom->sid_bit_mask = vcom->sid_bit_val - 1;
+
+		  clib_warning ("LDP<%d>: configured VCOM sid bit (%u) "
+				"from " VCOM_ENV_SID_BIT
+				"!  sid bit value %d (0x%x)", getpid (),
+				sb, vcom->sid_bit_val, vcom->sid_bit_val);
+		}
+	    }
+
+	  clib_time_init (&vcom->clib_time);
+	  clib_warning ("LDP<%d>: VCOM initialization: done!", getpid ());
+	}
+      else
+	{
+	  fprintf (stderr, "\nLDP<%d>: ERROR: vcom_init: vppcom_app_create()"
+		   " failed!  rv = %d (%s)\n",
+		   getpid (), rv, vppcom_retval_str (rv));
+	  vcom->init = 0;
+	}
+    }
+  return rv;
+}
+
+int
+close (int fd)
+{
+  int rv;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      int epfd;
+
+      func_str = "vppcom_session_attr[GET_LIBC_EPFD]";
+      epfd = vppcom_session_attr (sid, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
+      if (epfd > 0)
+	{
+	  func_str = "libc_close";
+
+	  if (VCOM_DEBUG > 0)
+	    clib_warning
+	      ("LDP<%d>: fd %d (0x%x): calling %s(): epfd %u (0x%x)",
+	       getpid (), fd, fd, func_str, epfd, epfd);
+
+	  rv = libc_close (epfd);
+	  if (rv < 0)
+	    {
+	      u32 size = sizeof (epfd);
+	      epfd = 0;
+
+	      (void) vppcom_session_attr (sid, VPPCOM_ATTR_SET_LIBC_EPFD,
+					  &epfd, &size);
+	    }
+	}
+      else if (PREDICT_FALSE (epfd < 0))
+	{
+	  errno = -epfd;
+	  rv = -1;
+	  goto done;
+	}
+
+      func_str = "vppcom_session_close";
+
+      if (VCOM_DEBUG > 0)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x)",
+		      getpid (), fd, fd, func_str, sid, sid);
+
+      rv = vppcom_session_close (sid);
+      if (rv != VPPCOM_OK)
+	{
+	  errno = -rv;
+	  rv = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_close";
+
+      if (VCOM_DEBUG > 0)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s()",
+		      getpid (), fd, fd, func_str);
+
+      rv = libc_close (fd);
+    }
+
+done:
+  if (VCOM_DEBUG > 0)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
+  return rv;
+}
+
+ssize_t
+read (int fd, void *buf, size_t nbytes)
+{
+  ssize_t size;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      func_str = "vppcom_session_read";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "sid %u (0x%x), buf %p, nbytes %u", getpid (),
+		      fd, fd, func_str, sid, sid, buf, nbytes);
+
+      size = vppcom_session_read (sid, buf, nbytes);
+      if (size < 0)
+	{
+	  errno = -size;
+	  size = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_read";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "buf %p, nbytes %u", getpid (),
+		      fd, fd, func_str, buf, nbytes);
+
+      size = libc_read (fd, buf, nbytes);
+    }
+
+  if (VCOM_DEBUG > 2)
+    {
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
+
+ssize_t
+readv (int fd, const struct iovec * iov, int iovcnt)
+{
+  const char *func_str;
+  ssize_t size = 0;
+  u32 sid = vcom_sid_from_fd (fd);
+  int rv, i, total = 0;
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      func_str = "vppcom_session_read";
+      do
+	{
+	  for (i = 0; i < iovcnt; ++i)
+	    {
+	      if (VCOM_DEBUG > 2)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s() [%d]: "
+			      "sid %u (0x%x), iov %p, iovcnt %d, total %d",
+			      getpid (), fd, fd, func_str, i, sid, sid,
+			      iov, iovcnt, total);
+
+	      rv = vppcom_session_read (sid, iov[i].iov_base, iov[i].iov_len);
+	      if (rv < 0)
+		break;
+	      else
+		{
+		  total += rv;
+		  if (rv < iov[i].iov_len)
+		    {
+		      if (VCOM_DEBUG > 2)
+			clib_warning ("LDP<%d>: fd %d (0x%x): "
+				      "rv (%d) < iov[%d].iov_len (%d)",
+				      getpid (), fd, fd, rv, i,
+				      iov[i].iov_len);
+		      break;
+		    }
 		}
 	    }
 	}
-    }
-  if (VCOM_DEBUG > 2)
-    fprintf (stderr, "[%d] vselect2: " "'%04d',='%04d'\n", pid, rv, __nfds);
+      while ((rv >= 0) && (total == 0));
 
-  return rv;
-}
-
-int
-vcom_select_internal (int __nfds, fd_set * __restrict __readfds,
-		      fd_set * __restrict __writefds,
-		      fd_set * __restrict __exceptfds,
-		      struct timeval *__restrict __timeout)
-{
-  int rv;
-  int new_nfds = 0;
-  int nfd = 0;
-  pid_t pid = getpid ();
-
-  fd_set saved_readfds;
-  fd_set saved_writefds;
-  fd_set saved_exceptfds;
-
-  /* validate __nfds */
-  if (__nfds < 0)
-    {
-      errno = EINVAL;
-      return -1;
-    }
-
-  /* validate __timeout */
-  if (__timeout)
-    {
-      /* validate tv_sec */
-      /* bogus */
-      if (__timeout->tv_sec < 0 || __timeout->tv_usec < 0)
+      if (rv < 0)
 	{
-	  errno = EINVAL;
-	  return -1;
+	  errno = -rv;
+	  size = -1;
 	}
-
-      /* validate tv_usec */
-      /* TBD: */
-    }
-
-  /* init saved_x fds */
-  if (__readfds)
-    {
-      saved_readfds = *__readfds;
-      /*
-         memcpy (&saved_readfds, __readfds, sizeof (*__readfds));
-       */
+      else
+	size = total;
     }
   else
     {
-      FD_ZERO (&saved_readfds);
+      func_str = "libc_readv";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "iov %p, iovcnt %d", getpid (), fd, fd, iov, iovcnt);
+
+      size = libc_readv (fd, iov, iovcnt);
     }
 
-  if (__writefds)
+  if (VCOM_DEBUG > 2)
     {
-      saved_writefds = *__writefds;
-      /*
-         memcpy (&saved_writefds, __writefds, sizeof (*__writefds));
-       */
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
 
+ssize_t
+write (int fd, const void *buf, size_t nbytes)
+{
+  const char *func_str;
+  ssize_t size = 0;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      func_str = "vppcom_session_write";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "sid %u (0x%x), buf %p, nbytes %u", getpid (),
+		      fd, fd, func_str, sid, sid, buf, nbytes);
+
+      size = vppcom_session_write (sid, (void *) buf, nbytes);
+      if (size < 0)
+	{
+	  errno = -size;
+	  size = -1;
+	}
     }
   else
     {
-      FD_ZERO (&saved_writefds);
+      func_str = "libc_write";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "buf %p, nbytes %u", getpid (),
+		      fd, fd, func_str, buf, nbytes);
+
+      size = libc_write (fd, buf, nbytes);
     }
 
-  if (__exceptfds)
+  if (VCOM_DEBUG > 2)
     {
-      saved_exceptfds = *__exceptfds;
-      /*
-         memcpy (&saved_exceptfds, __exceptfds, sizeof (*__exceptfds));
-       */
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
 
+ssize_t
+writev (int fd, const struct iovec * iov, int iovcnt)
+{
+  const char *func_str;
+  ssize_t size = 0, total = 0;
+  u32 sid = vcom_sid_from_fd (fd);
+  int rv, i;
+
+  /*
+   * Use [f]printf() instead of clib_warning() to prevent recursion SIGSEGV.
+   */
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      func_str = "vppcom_session_write";
+      do
+	{
+	  for (i = 0; i < iovcnt; ++i)
+	    {
+	      if (VCOM_DEBUG > 4)
+		printf ("%s:%d: LDP<%d>: fd %d (0x%x): calling %s() [%d]: "
+			"sid %u (0x%x), buf %p, nbytes %ld, total %ld",
+			__func__, __LINE__, getpid (), fd, fd, func_str,
+			i, sid, sid, iov[i].iov_base, iov[i].iov_len, total);
+
+	      rv = vppcom_session_write (sid, iov[i].iov_base,
+					 iov[i].iov_len);
+	      if (rv < 0)
+		break;
+	      else
+		{
+		  total += rv;
+		  if (rv < iov[i].iov_len)
+		    {
+		      if (VCOM_DEBUG > 4)
+			printf ("%s:%d: LDP<%d>: fd %d (0x%x): "
+				"rv (%d) < iov[%d].iov_len (%ld)",
+				__func__, __LINE__, getpid (), fd, fd,
+				rv, i, iov[i].iov_len);
+		      break;
+		    }
+		}
+	    }
+	}
+      while ((rv >= 0) && (total == 0));
+
+      if (rv < 0)
+	{
+	  errno = -rv;
+	  size = -1;
+	}
+      else
+	size = total;
     }
   else
     {
-      FD_ZERO (&saved_exceptfds);
+      func_str = "libc_writev";
+
+      if (VCOM_DEBUG > 4)
+	printf ("%s:%d: LDP<%d>: fd %d (0x%x): calling %s(): "
+		"iov %p, iovcnt %d\n", __func__, __LINE__, getpid (),
+		fd, fd, func_str, iov, iovcnt);
+
+      size = libc_writev (fd, iov, iovcnt);
     }
 
-  /* clear vcom fds */
-  nfd = vcom_fd_clear (__nfds, &new_nfds, __readfds, __writefds, __exceptfds);
-
-  /* set to an invalid value */
-  rv = -2;
-  /* have kernel fds */
-  if (new_nfds)
-    rv = libc_select (new_nfds, __readfds,
-		      __writefds, __exceptfds, __timeout);
-
-  if (new_nfds && rv == -1)
+  if (VCOM_DEBUG > 4)
     {
-      /* on error, the file descriptor sets are unmodified */
-      if (__readfds)
-	*__readfds = saved_readfds;
-      if (__writefds)
-	*__writefds = saved_writefds;
-      if (__exceptfds)
-	*__exceptfds = saved_exceptfds;
-      return rv;
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  fprintf (stderr,
+		   "%s:%d: LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+		   "rv %ld, errno = %d\n", __func__, __LINE__, getpid (), fd,
+		   fd, func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	printf ("%s:%d: LDP<%d>: fd %d (0x%x): returning %ld\n",
+		__func__, __LINE__, getpid (), fd, fd, size);
     }
-  else if ((new_nfds && rv != -1) || (rv == -2))
-    {
-      /* restore vcom fds */
-      nfd = vcom_fd_set (__nfds,
-			 &new_nfds,
-			 __readfds,
-			 __writefds,
-			 __exceptfds,
-			 &saved_readfds, &saved_writefds, &saved_exceptfds);
-      rv = nfd;
-    }
-
-  if (VCOM_DEBUG > 0)
-    fprintf (stderr, "[%d] select: " "'%04d'='%04d'\n", pid, rv, __nfds);
-  return rv;
+  return size;
 }
 
 int
-select (int __nfds, fd_set * __restrict __readfds,
-	fd_set * __restrict __writefds,
-	fd_set * __restrict __exceptfds, struct timeval *__restrict __timeout)
+fcntl (int fd, int cmd, ...)
 {
+  const char *func_str = __func__;
   int rv = 0;
-  pid_t pid = getpid ();
+  va_list ap;
+  u32 sid = vcom_sid_from_fd (fd);
 
-  if (VCOM_DEBUG > 2)
-    fprintf (stderr, "[%d] select1: " "'%04d'='%04d'\n", pid, rv, __nfds);
-  rv = vcom_select (__nfds, __readfds, __writefds, __exceptfds, __timeout);
-  if (VCOM_DEBUG > 2)
-    fprintf (stderr, "[%d] select2: " "'%04d'='%04d'\n", pid, rv, __nfds);
-  if (rv < 0)
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  va_start (ap, cmd);
+  if (sid != INVALID_SESSION_ID)
     {
-      errno = -rv;
-      return -1;
-    }
-  return rv;
-}
+      int flags = va_arg (ap, int);
+      u32 size;
 
-#ifdef __USE_XOPEN2K
-/*
- * Same as above only that the TIMEOUT value is given with higher
- * resolution and a sigmask which is been set temporarily.  This
- * version should be used.
- *
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-int
-vcom_pselect (int __nfds, fd_set * __restrict __readfds,
-	      fd_set * __restrict __writefds,
-	      fd_set * __restrict __exceptfds,
-	      const struct timespec *__restrict __timeout,
-	      const __sigset_t * __restrict __sigmask)
-{
-  int fd;
-  int vcom_nfds = 0;
-
-  for (fd = 0; fd < __nfds; fd++)
-    {
-      if (__readfds && FD_ISSET (fd, __readfds))
+      size = sizeof (flags);
+      rv = -EOPNOTSUPP;
+      switch (cmd)
 	{
-	  if (is_vcom_socket_fd (fd))
+	case F_SETFL:
+	  func_str = "vppcom_session_attr[SET_FLAGS]";
+	  if (VCOM_DEBUG > 2)
+	    clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			  "sid %u (0x%x) flags %d (0x%x), size %d",
+			  getpid (), fd, fd, func_str, sid, sid,
+			  flags, flags, size);
+
+	  rv =
+	    vppcom_session_attr (sid, VPPCOM_ATTR_SET_FLAGS, &flags, &size);
+	  break;
+
+	case F_GETFL:
+	  func_str = "vppcom_session_attr[GET_FLAGS]";
+	  if (VCOM_DEBUG > 2)
+	    clib_warning
+	      ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), "
+	       "flags %d (0x%x), size %d", getpid (), fd, fd, func_str, sid,
+	       sid, flags, flags, size);
+
+	  rv =
+	    vppcom_session_attr (sid, VPPCOM_ATTR_GET_FLAGS, &flags, &size);
+	  if (rv == VPPCOM_OK)
 	    {
-	      vcom_nfds++;
+	      if (VCOM_DEBUG > 2)
+		clib_warning ("LDP<%d>: fd %d (0x%x), cmd %d (F_GETFL): "
+			      "%s() returned flags %d (0x%x)",
+			      getpid (), fd, fd, cmd, func_str, flags, flags);
+	      rv = flags;
 	    }
-	}
-
-      if (__writefds && FD_ISSET (fd, __writefds))
-	{
-	  if (is_vcom_socket_fd (fd))
-	    {
-	      vcom_nfds++;
-	    }
-	}
-      if (__exceptfds && FD_ISSET (fd, __exceptfds))
-	{
-	  if (is_vcom_socket_fd (fd))
-	    {
-	      FD_CLR (fd, __exceptfds);
-	    }
-	}
-    }
-  return vcom_nfds;
-}
-
-int
-pselect (int __nfds, fd_set * __restrict __readfds,
-	 fd_set * __restrict __writefds,
-	 fd_set * __restrict __exceptfds,
-	 const struct timespec *__restrict __timeout,
-	 const __sigset_t * __restrict __sigmask)
-{
-  int rv;
-  int new_nfds = 0;
-  int nfd = 0;
-  pid_t pid = getpid ();
-
-  fd_set saved_readfds;
-  fd_set saved_writefds;
-  fd_set saved_exceptfds;
-
-  /* validate __nfds */
-  if (__nfds < 0)
-    {
-      errno = EINVAL;
-      return -1;
-    }
-
-  /* validate __timeout */
-  if (__timeout)
-    {
-      /* validate tv_sec */
-      /* bogus */
-      if (__timeout->tv_sec < 0 || __timeout->tv_nsec < 0)
-	{
-	  errno = EINVAL;
-	  return -1;
-	}
-
-      /* validate tv_usec */
-      /* TBD: */
-    }
-
-  /* init saved fds */
-  if (__readfds)
-    {
-      saved_readfds = *__readfds;
-      /*
-         memcpy (&saved_readfds, __readfds, sizeof (*__readfds));
-       */
-    }
-  else
-    {
-      FD_ZERO (&saved_readfds);
-    }
-
-  if (__writefds)
-    {
-      saved_writefds = *__writefds;
-      /*
-         memcpy (&saved_writefds, __writefds, sizeof (*__writefds));
-       */
-
-    }
-  else
-    {
-      FD_ZERO (&saved_writefds);
-    }
-
-  if (__exceptfds)
-    {
-      saved_exceptfds = *__exceptfds;
-      /*
-         memcpy (&saved_exceptfds, __exceptfds, sizeof (*__exceptfds));
-       */
-
-    }
-  else
-    {
-      FD_ZERO (&saved_exceptfds);
-    }
-
-  /* clear vcom fds */
-  nfd = vcom_fd_clear (__nfds, &new_nfds, __readfds, __writefds, __exceptfds);
-
-  /* set to an invalid value */
-  rv = -2;
-  if (new_nfds)
-    rv = libc_pselect (new_nfds,
-		       __readfds,
-		       __writefds, __exceptfds, __timeout, __sigmask);
-
-  if (new_nfds && rv == -1)
-    {
-      /* on error, the file descriptor sets are unmodified */
-      if (__readfds)
-	*__readfds = saved_readfds;
-      if (__writefds)
-	*__writefds = saved_writefds;
-      if (__exceptfds)
-	*__exceptfds = saved_exceptfds;
-      return rv;
-    }
-  else if ((new_nfds && rv != -1) || (rv == -2))
-    {
-      /* restore vcom fds */
-      nfd = vcom_fd_set (__nfds,
-			 &new_nfds,
-			 __readfds,
-			 __writefds,
-			 __exceptfds,
-			 &saved_readfds, &saved_writefds, &saved_exceptfds);
-      rv = nfd;
-    }
-
-  if (VCOM_DEBUG > 2)
-    fprintf (stderr, "[%d] pselect: " "'%04d'='%04d'\n", pid, rv, __nfds);
-  return rv;
-}
-#endif
-
-/*
- *
- * Socket specific glibc api
- *
- */
-
-/* Create a new socket of type TYPE in domain DOMAIN, using
- * protocol PROTOCOL.  If PROTOCOL is zero, one is chosen
- * automatically. Returns a file descriptor for the new socket,
- * or -1 for errors.
- * RETURN:  a valid file descriptor for the new socket,
- * or -1 for errors.
- * */
-
-int
-vcom_socket (int __domain, int __type, int __protocol)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_socket (__domain, __type, __protocol);
-}
-
-int
-socket (int __domain, int __type, int __protocol)
-{
-  int rv;
-  pid_t pid = getpid ();
-  pthread_t tid = pthread_self ();
-
-  /* handle domains implemented by vpp */
-  switch (__domain)
-    {
-    case AF_INET:
-    case AF_INET6:
-      /* handle types implemented by vpp */
-      switch (__type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK))
-	{
-	case SOCK_STREAM:
-	case SOCK_DGRAM:
-	  if (VCOM_DEBUG > 0)
-	    vcom_socket_main_show ();
-	  rv = vcom_socket (__domain, __type, __protocol);
-	  if (VCOM_DEBUG > 0)
-	    fprintf (stderr,
-		     "[%d][%lu (0x%lx)] socket: "
-		     "'%04d'= D='%04d', T='%04d', P='%04d'\n",
-		     pid, (unsigned long) tid, (unsigned long) tid,
-		     rv, __domain, __type, __protocol);
-	  if (VCOM_DEBUG > 0)
-	    vcom_socket_main_show ();
-	  if (rv < 0)
-	    {
-	      errno = -rv;
-	      return -1;
-	    }
-	  return rv;
 	  break;
 
 	default:
-	  goto CALL_GLIBC_SOCKET_API;
+	  rv = -EOPNOTSUPP;
 	  break;
 	}
+      if (rv < 0)
+	{
+	  errno = -rv;
+	  rv = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_vfcntl";
 
-      break;
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): cmd %d",
+		      getpid (), fd, fd, func_str, cmd);
 
-    default:
-      goto CALL_GLIBC_SOCKET_API;
-      break;
+      rv = libc_vfcntl (fd, cmd, ap);
     }
 
-CALL_GLIBC_SOCKET_API:
-  return libc_socket (__domain, __type, __protocol);
+  va_end (ap);
+
+  if (VCOM_DEBUG > 2)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
+  return rv;
+}
+
+int
+ioctl (int fd, unsigned long int cmd, ...)
+{
+  const char *func_str;
+  int rv;
+  va_list ap;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  va_start (ap, cmd);
+  if (sid != INVALID_SESSION_ID)
+    {
+      func_str = "vppcom_session_attr[GET_NREAD]";
+
+      switch (cmd)
+	{
+	case FIONREAD:
+	  if (VCOM_DEBUG > 2)
+	    clib_warning
+	      ("LDP<%d>: fd %d (0x%x): calling  %s(): sid %u (0x%x)",
+	       getpid (), fd, fd, func_str, sid, sid);
+
+	  rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_NREAD, 0, 0);
+	  break;
+
+	case FIONBIO:
+	  {
+	    u32 flags = va_arg (ap, int) ? O_NONBLOCK : 0;
+	    u32 size = sizeof (flags);
+
+	    /* TBD: When VPPCOM_ATTR_[GS]ET_FLAGS supports flags other than
+	     *      non-blocking, the flags should be read here and merged
+	     *      with O_NONBLOCK.
+	     */
+	    if (VCOM_DEBUG > 2)
+	      clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			    "sid %u (0x%x), flags %d (0x%x), size %d",
+			    getpid (), fd, fd, func_str, sid, sid,
+			    flags, flags, size);
+
+	    rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_FLAGS, &flags,
+				      &size);
+	  }
+	  break;
+
+	default:
+	  rv = -EOPNOTSUPP;
+	  break;
+	}
+      if (rv < 0)
+	{
+	  errno = -rv;
+	  rv = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_vioctl";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): cmd %d",
+		      getpid (), fd, fd, func_str, cmd);
+
+      rv = libc_vioctl (fd, cmd, ap);
+    }
+
+  if (VCOM_DEBUG > 2)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
+  va_end (ap);
+  return rv;
+}
+
+int
+vcom_pselect (int nfds, fd_set * __restrict readfds,
+	      fd_set * __restrict writefds,
+	      fd_set * __restrict exceptfds,
+	      const struct timespec *__restrict timeout,
+	      const __sigset_t * __restrict sigmask)
+{
+  int rv;
+  char *func_str = "##";
+  f64 time_out;
+  int fd;
+  uword sid_bits, sid_bits_set, libc_bits, libc_bits_set;
+  u32 minbits = clib_max (nfds, BITS (uword));
+  u32 sid;
+
+  if (nfds < 0)
+    {
+      errno = EINVAL;
+      return -1;
+    }
+
+  if (nfds <= vcom->sid_bit_val)
+    {
+      func_str = "libc_pselect";
+
+      if (VCOM_DEBUG > 3)
+	clib_warning
+	  ("LDP<%d>: calling %s(): nfds %d, readfds %p, writefds %p, "
+	   "exceptfds %p, timeout %p, sigmask %p", getpid (), func_str, nfds,
+	   readfds, writefds, exceptfds, timeout, sigmask);
+
+      rv = libc_pselect (nfds, readfds, writefds, exceptfds,
+			 timeout, sigmask);
+      goto done;
+    }
+
+  if (PREDICT_FALSE (vcom->sid_bit_val > FD_SETSIZE / 2))
+    {
+      clib_warning ("LDP<%d>: ERROR: VCOM sid bit value %d (0x%x) > "
+		    "FD_SETSIZE/2 %d (0x%x)!", getpid (),
+		    vcom->sid_bit_val, vcom->sid_bit_val,
+		    FD_SETSIZE / 2, FD_SETSIZE / 2);
+      errno = EOVERFLOW;
+      return -1;
+    }
+
+  if (timeout)
+    {
+      time_out = (timeout->tv_sec == 0 && timeout->tv_nsec == 0) ?
+	(f64) 0 : (f64) timeout->tv_sec +
+	(f64) timeout->tv_nsec / (f64) 1000000000 +
+	(f64) (timeout->tv_nsec % 1000000000) / (f64) 1000000000;
+
+      /* select as fine grained sleep */
+      if (!nfds)
+	{
+	  if (VCOM_DEBUG > 3)
+	    clib_warning ("LDP<%d>: sleeping for %f seconds",
+			  getpid (), time_out);
+
+	  time_out += clib_time_now (&vcom->clib_time);
+	  while (clib_time_now (&vcom->clib_time) < time_out)
+	    ;
+	  return 0;
+	}
+    }
+  else if (!nfds)
+    {
+      errno = EINVAL;
+      return -1;
+    }
+  else
+    time_out = -1;
+
+  sid_bits = libc_bits = 0;
+  if (readfds)
+    {
+      clib_bitmap_validate (vcom->sid_rd_bitmap, minbits);
+      clib_bitmap_validate (vcom->libc_rd_bitmap, minbits);
+      clib_bitmap_validate (vcom->rd_bitmap, minbits);
+      clib_memcpy (vcom->rd_bitmap, readfds,
+		   vec_len (vcom->rd_bitmap) * sizeof (clib_bitmap_t));
+      FD_ZERO (readfds);
+
+      /* *INDENT-OFF* */
+      clib_bitmap_foreach (fd, vcom->rd_bitmap,
+        ({
+          sid = vcom_sid_from_fd (fd);
+          if (VCOM_DEBUG > 3)
+            clib_warning ("LDP<%d>: readfds: fd %d (0x%x), sid %u (0x%x)",
+                          getpid (), fd, fd, sid, sid);
+          if (sid == INVALID_SESSION_ID)
+            clib_bitmap_set_no_check (vcom->libc_rd_bitmap, fd, 1);
+          else
+            clib_bitmap_set_no_check (vcom->sid_rd_bitmap, sid, 1);
+        }));
+      /* *INDENT-ON* */
+
+      sid_bits_set = clib_bitmap_last_set (vcom->sid_rd_bitmap) + 1;
+      sid_bits = (sid_bits_set > sid_bits) ? sid_bits_set : sid_bits;
+
+      libc_bits_set = clib_bitmap_last_set (vcom->libc_rd_bitmap) + 1;
+      libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
+
+      if (VCOM_DEBUG > 3)
+	clib_warning ("LDP<%d>: readfds: sid_bits_set %d, sid_bits %d, "
+		      "libc_bits_set %d, libc_bits %d", getpid (),
+		      sid_bits_set, sid_bits, libc_bits_set, libc_bits);
+    }
+  if (writefds)
+    {
+      clib_bitmap_validate (vcom->sid_wr_bitmap, minbits);
+      clib_bitmap_validate (vcom->libc_wr_bitmap, minbits);
+      clib_bitmap_validate (vcom->wr_bitmap, minbits);
+      clib_memcpy (vcom->wr_bitmap, writefds,
+		   vec_len (vcom->wr_bitmap) * sizeof (clib_bitmap_t));
+      FD_ZERO (writefds);
+
+      /* *INDENT-OFF* */
+      clib_bitmap_foreach (fd, vcom->wr_bitmap,
+        ({
+          sid = vcom_sid_from_fd (fd);
+          if (VCOM_DEBUG > 3)
+            clib_warning ("LDP<%d>: writefds: fd %d (0x%x), sid %u (0x%x)",
+                          getpid (), fd, fd, sid, sid);
+          if (sid == INVALID_SESSION_ID)
+            clib_bitmap_set_no_check (vcom->libc_wr_bitmap, fd, 1);
+          else
+            clib_bitmap_set_no_check (vcom->sid_wr_bitmap, sid, 1);
+        }));
+      /* *INDENT-ON* */
+
+      sid_bits_set = clib_bitmap_last_set (vcom->sid_wr_bitmap) + 1;
+      sid_bits = (sid_bits_set > sid_bits) ? sid_bits_set : sid_bits;
+
+      libc_bits_set = clib_bitmap_last_set (vcom->libc_wr_bitmap) + 1;
+      libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
+
+      if (VCOM_DEBUG > 3)
+	clib_warning ("LDP<%d>: writefds: sid_bits_set %d, sid_bits %d, "
+		      "libc_bits_set %d, libc_bits %d", getpid (),
+		      sid_bits_set, sid_bits, libc_bits_set, libc_bits);
+    }
+  if (exceptfds)
+    {
+      clib_bitmap_validate (vcom->sid_ex_bitmap, minbits);
+      clib_bitmap_validate (vcom->libc_ex_bitmap, minbits);
+      clib_bitmap_validate (vcom->ex_bitmap, minbits);
+      clib_memcpy (vcom->ex_bitmap, exceptfds,
+		   vec_len (vcom->ex_bitmap) * sizeof (clib_bitmap_t));
+      FD_ZERO (exceptfds);
+
+      /* *INDENT-OFF* */
+      clib_bitmap_foreach (fd, vcom->ex_bitmap,
+        ({
+          sid = vcom_sid_from_fd (fd);
+          if (VCOM_DEBUG > 3)
+            clib_warning ("LDP<%d>: exceptfds: fd %d (0x%x), sid %u (0x%x)",
+                          getpid (), fd, fd, sid, sid);
+          if (sid == INVALID_SESSION_ID)
+            clib_bitmap_set_no_check (vcom->libc_ex_bitmap, fd, 1);
+          else
+            clib_bitmap_set_no_check (vcom->sid_ex_bitmap, sid, 1);
+        }));
+      /* *INDENT-ON* */
+
+      sid_bits_set = clib_bitmap_last_set (vcom->sid_ex_bitmap) + 1;
+      sid_bits = (sid_bits_set > sid_bits) ? sid_bits_set : sid_bits;
+
+      libc_bits_set = clib_bitmap_last_set (vcom->libc_ex_bitmap) + 1;
+      libc_bits = (libc_bits_set > libc_bits) ? libc_bits_set : libc_bits;
+
+      if (VCOM_DEBUG > 3)
+	clib_warning ("LDP<%d>: exceptfds: sid_bits_set %d, sid_bits %d, "
+		      "libc_bits_set %d, libc_bits %d", getpid (),
+		      sid_bits_set, sid_bits, libc_bits_set, libc_bits);
+    }
+
+  if (PREDICT_FALSE (!sid_bits && !libc_bits))
+    {
+      errno = EINVAL;
+      rv = -1;
+      goto done;
+    }
+
+  do
+    {
+      if (sid_bits)
+	{
+	  if (!vcom->select_vcl)
+	    {
+	      func_str = "vppcom_select";
+
+	      if (readfds)
+		clib_memcpy (vcom->rd_bitmap, vcom->sid_rd_bitmap,
+			     vec_len (vcom->rd_bitmap) *
+			     sizeof (clib_bitmap_t));
+	      if (writefds)
+		clib_memcpy (vcom->wr_bitmap, vcom->sid_wr_bitmap,
+			     vec_len (vcom->wr_bitmap) *
+			     sizeof (clib_bitmap_t));
+	      if (exceptfds)
+		clib_memcpy (vcom->ex_bitmap, vcom->sid_ex_bitmap,
+			     vec_len (vcom->ex_bitmap) *
+			     sizeof (clib_bitmap_t));
+
+	      rv = vppcom_select (sid_bits,
+				  readfds ? vcom->rd_bitmap : NULL,
+				  writefds ? vcom->wr_bitmap : NULL,
+				  exceptfds ? vcom->ex_bitmap : NULL, 0);
+	      if (rv < 0)
+		{
+		  errno = -rv;
+		  rv = -1;
+		}
+	      else if (rv > 0)
+		{
+		  if (readfds)
+		    {
+                      /* *INDENT-OFF* */
+                      clib_bitmap_foreach (sid, vcom->rd_bitmap,
+                        ({
+                          fd = vcom_fd_from_sid (sid);
+                          if (PREDICT_FALSE (fd < 0))
+                            {
+                              errno = EBADFD;
+                              rv = -1;
+                              goto done;
+                            }
+                          FD_SET (fd, readfds);
+                        }));
+                      /* *INDENT-ON* */
+		    }
+		  if (writefds)
+		    {
+                      /* *INDENT-OFF* */
+                      clib_bitmap_foreach (sid, vcom->wr_bitmap,
+                        ({
+                          fd = vcom_fd_from_sid (sid);
+                          if (PREDICT_FALSE (fd < 0))
+                            {
+                              errno = EBADFD;
+                              rv = -1;
+                              goto done;
+                            }
+                          FD_SET (fd, writefds);
+                        }));
+                      /* *INDENT-ON* */
+		    }
+		  if (exceptfds)
+		    {
+                      /* *INDENT-OFF* */
+                      clib_bitmap_foreach (sid, vcom->ex_bitmap,
+                        ({
+                          fd = vcom_fd_from_sid (sid);
+                          if (PREDICT_FALSE (fd < 0))
+                            {
+                              errno = EBADFD;
+                              rv = -1;
+                              goto done;
+                            }
+                          FD_SET (fd, exceptfds);
+                        }));
+                      /* *INDENT-ON* */
+		    }
+		  vcom->select_vcl = 1;
+		  goto done;
+		}
+	    }
+	  else
+	    vcom->select_vcl = 0;
+	}
+      if (libc_bits)
+	{
+	  struct timespec tspec;
+
+	  func_str = "libc_pselect";
+
+	  if (readfds)
+	    clib_memcpy (readfds, vcom->libc_rd_bitmap,
+			 vec_len (vcom->rd_bitmap) * sizeof (clib_bitmap_t));
+	  if (writefds)
+	    clib_memcpy (writefds, vcom->libc_wr_bitmap,
+			 vec_len (vcom->wr_bitmap) * sizeof (clib_bitmap_t));
+	  if (exceptfds)
+	    clib_memcpy (exceptfds, vcom->libc_ex_bitmap,
+			 vec_len (vcom->ex_bitmap) * sizeof (clib_bitmap_t));
+	  tspec.tv_sec = tspec.tv_nsec = 0;
+	  rv = libc_pselect (libc_bits,
+			     readfds ? readfds : NULL,
+			     writefds ? writefds : NULL,
+			     exceptfds ? exceptfds : NULL, &tspec, sigmask);
+	  if (rv != 0)
+	    goto done;
+	}
+    }
+  while ((time_out == -1) || (clib_time_now (&vcom->clib_time) < time_out));
+  rv = 0;
+
+done:
+  /* TBD: set timeout to amount of time left */
+  vec_reset_length (vcom->rd_bitmap);
+  vec_reset_length (vcom->sid_rd_bitmap);
+  vec_reset_length (vcom->libc_rd_bitmap);
+  vec_reset_length (vcom->wr_bitmap);
+  vec_reset_length (vcom->sid_wr_bitmap);
+  vec_reset_length (vcom->libc_wr_bitmap);
+  vec_reset_length (vcom->ex_bitmap);
+  vec_reset_length (vcom->sid_ex_bitmap);
+  vec_reset_length (vcom->libc_ex_bitmap);
+
+  if (VCOM_DEBUG > 3)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: %s() failed! "
+			"rv %d, errno = %d", getpid (),
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: returning %d (0x%x)", getpid (), rv, rv);
+    }
+  return rv;
+}
+
+int
+select (int nfds, fd_set * __restrict readfds,
+	fd_set * __restrict writefds,
+	fd_set * __restrict exceptfds, struct timeval *__restrict timeout)
+{
+  struct timespec tspec;
+
+  if (timeout)
+    {
+      tspec.tv_sec = timeout->tv_sec;
+      tspec.tv_nsec = timeout->tv_usec * 1000;
+    }
+  return vcom_pselect (nfds, readfds, writefds, exceptfds,
+		       timeout ? &tspec : NULL, NULL);
+}
+
+#ifdef __USE_XOPEN2K
+int
+pselect (int nfds, fd_set * __restrict readfds,
+	 fd_set * __restrict writefds,
+	 fd_set * __restrict exceptfds,
+	 const struct timespec *__restrict timeout,
+	 const __sigset_t * __restrict sigmask)
+{
+  return vcom_pselect (nfds, readfds, writefds, exceptfds, timeout, 0);
+}
+#endif
+
+int
+socket (int domain, int type, int protocol)
+{
+  const char *func_str;
+  int rv;
+  u8 is_nonblocking = type & SOCK_NONBLOCK ? 1 : 0;
+  int sock_type = type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (((domain == AF_INET) || (domain == AF_INET6)) &&
+      ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
+    {
+      int sid;
+      u32 vrf = VPPCOM_VRF_DEFAULT;
+      u8 proto = ((sock_type == SOCK_DGRAM) ?
+		  VPPCOM_PROTO_UDP : VPPCOM_PROTO_TCP);
+
+      func_str = "vppcom_session_create";
+
+      if (VCOM_DEBUG > 0)
+	clib_warning ("LDP<%d>: : calling %s(): vrf %u, "
+		      "proto %u (%s), is_nonblocking %u",
+		      getpid (), func_str, vrf, proto,
+		      vppcom_proto_str (proto), is_nonblocking);
+
+      sid = vppcom_session_create (vrf, proto, is_nonblocking);
+      if (sid < 0)
+	{
+	  errno = -sid;
+	  rv = -1;
+	}
+      else
+	{
+	  func_str = "vcom_fd_from_sid";
+	  rv = vcom_fd_from_sid (sid);
+	  if (rv < 0)
+	    {
+	      (void) vppcom_session_close (sid);
+	      errno = -rv;
+	      rv = -1;
+	    }
+	}
+    }
+  else
+    {
+      func_str = "libc_socket";
+
+      if (VCOM_DEBUG > 0)
+	clib_warning ("LDP<%d>: : calling %s()", getpid (), func_str);
+
+      rv = libc_socket (domain, type, protocol);
+    }
+
+  if (VCOM_DEBUG > 0)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: %s() failed! "
+			"rv %d, errno = %d",
+			getpid (), func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: : returning fd %d (0x%x)", getpid (), rv, rv);
+    }
+  return rv;
 }
 
 /*
@@ -1745,1537 +1207,2190 @@ CALL_GLIBC_SOCKET_API:
  * Returns 0 on success, -1 for errors.
  * */
 int
-vcom_socketpair (int __domain, int __type, int __protocol, int __fds[2])
+socketpair (int domain, int type, int protocol, int fds[2])
 {
-  if (vcom_init () != 0)
+  const char *func_str;
+  int rv;
+  int sock_type = type & ~(SOCK_CLOEXEC | SOCK_NONBLOCK);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (((domain == AF_INET) || (domain == AF_INET6)) &&
+      ((sock_type == SOCK_STREAM) || (sock_type == SOCK_DGRAM)))
     {
-      return -1;
+      clib_warning ("LDP<%d>: LDP-TBD", getpid ());
+      errno = ENOSYS;
+      rv = -1;
+    }
+  else
+    {
+      func_str = "libc_socket";
+
+      if (VCOM_DEBUG > 1)
+	clib_warning ("LDP<%d>: : calling %s()", getpid (), func_str);
+
+      rv = libc_socket (domain, type, protocol);
     }
 
-  return vcom_socket_socketpair (__domain, __type, __protocol, __fds);
+  if (VCOM_DEBUG > 1)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: %s() failed! "
+			"rv %d, errno = %d",
+			getpid (), func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: : returning fd %d (0x%x)", getpid (), rv, rv);
+    }
+  return rv;
 }
 
 int
-socketpair (int __domain, int __type, int __protocol, int __fds[2])
+bind (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 {
   int rv;
-  pid_t pid = getpid ();
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
 
-  /* handle domains implemented by vpp */
-  switch (__domain)
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
     {
-    case AF_INET:
-    case AF_INET6:
-      /* handle types implemented by vpp */
-      switch (__type)
+      vppcom_endpt_t ep;
+
+      func_str = "vppcom_session_bind";
+
+      ep.vrf = VPPCOM_VRF_DEFAULT;
+      switch (addr->sa_family)
 	{
-	case SOCK_STREAM:
-	case SOCK_DGRAM:
-	  rv = vcom_socketpair (__domain, __type, __protocol, __fds);
-	  if (VCOM_DEBUG > 0)
-	    fprintf (stderr,
-		     "[%d] socketpair: "
-		     "'%04d'= D='%04d', T='%04d', P='%04d'\n",
-		     pid, rv, __domain, __type, __protocol);
-	  if (rv < 0)
+	case AF_INET:
+	  if (len != sizeof (struct sockaddr_in))
 	    {
-	      errno = -rv;
-	      return -1;
+	      clib_warning
+		("LDP<%d>: ERROR: fd %d (0x%x): sid %u (0x%x): Invalid "
+		 "AF_INET addr len %u!", getpid (), fd, fd, sid, sid, len);
+	      errno = EINVAL;
+	      rv = -1;
+	      goto done;
 	    }
-	  return 0;
+	  ep.is_ip4 = VPPCOM_IS_IP4;
+	  ep.ip = (u8 *) & ((const struct sockaddr_in *) addr)->sin_addr;
+	  ep.port = (u16) ((const struct sockaddr_in *) addr)->sin_port;
+	  break;
+
+	case AF_INET6:
+	  if (len != sizeof (struct sockaddr_in6))
+	    {
+	      clib_warning
+		("LDP<%d>: ERROR: fd %d (0x%x): sid %u (0x%x): Invalid "
+		 "AF_INET6 addr len %u!", getpid (), fd, fd, sid, sid, len);
+	      errno = EINVAL;
+	      rv = -1;
+	      goto done;
+	    }
+	  ep.is_ip4 = VPPCOM_IS_IP6;
+	  ep.ip = (u8 *) & ((const struct sockaddr_in6 *) addr)->sin6_addr;
+	  ep.port = (u16) ((const struct sockaddr_in6 *) addr)->sin6_port;
 	  break;
 
 	default:
-	  goto CALL_GLIBC_SOCKET_API;
-	  break;
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): sid %u (0x%x): "
+			"Unsupported address family %u!",
+			getpid (), fd, fd, sid, sid, addr->sa_family);
+	  errno = EAFNOSUPPORT;
+	  rv = -1;
+	  goto done;
 	}
-
-      break;
-
-    default:
-      goto CALL_GLIBC_SOCKET_API;
-      break;
-    }
-
-CALL_GLIBC_SOCKET_API:
-  return libc_socketpair (__domain, __type, __protocol, __fds);
-}
-
-/*
- * Give the socket FD the local address ADDR
- * (which is LEN bytes long).
- * */
-int
-vcom_bind (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
-{
-  int rv;
-
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  /* validate __len */
-  switch (__addr->sa_family)
-    {
-    case AF_INET:
-      if (__len != sizeof (struct sockaddr_in))
-	return -EINVAL;
-      break;
-    case AF_INET6:
-      if (__len != sizeof (struct sockaddr_in6))
-	return -EINVAL;
-      break;
-
-    default:
-      return -1;
-      break;
-    }
-
-  /* handle domains implemented by vpp */
-  switch (__addr->sa_family)
-    {
-    case AF_INET:
-    case AF_INET6:
-      rv = vcom_socket_bind (__fd, __addr, __len);
-      return rv;
-      break;
-
-    default:
-      return -1;
-      break;
-    }
-
-  return -1;
-}
-
-int
-bind (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-
-      rv = vcom_bind (__fd, __addr, __len);
       if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] bind: "
-		 "'%04d'='%04d', '%p', '%04d'\n",
-		 pid, rv, __fd, __addr, __len);
-      if (rv != 0)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), "
+		      "addr %p, len %u",
+		      getpid (), fd, fd, func_str, sid, sid, addr, len);
+
+      rv = vppcom_session_bind (sid, &ep);
+      if (rv != VPPCOM_OK)
 	{
 	  errno = -rv;
-	  return -1;
+	  rv = -1;
 	}
-      return 0;
     }
-  return libc_bind (__fd, __addr, __len);
-}
-
-/*
- * Put the local address of FD into *ADDR and its length in *LEN.
- * */
-int
-vcom_getsockname (int __fd, __SOCKADDR_ARG __addr,
-		  socklen_t * __restrict __len)
-{
-  if (vcom_init () != 0)
+  else
     {
-      return -1;
-    }
+      func_str = "libc_bind";
 
-  return vcom_socket_getsockname (__fd, __addr, __len);
-}
-
-int
-getsockname (int __fd, __SOCKADDR_ARG __addr, socklen_t * __restrict __len)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      rv = vcom_getsockname (__fd, __addr, __len);
       if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] getsockname: "
-		 "'%04d'='%04d', '%p', '%p'\n", pid, rv, __fd, __addr, __len);
-      if (rv != 0)
-	{
-	  errno = -rv;
-	  return -1;
-	}
-      return 0;
-    }
-  return libc_getsockname (__fd, __addr, __len);
-}
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "addr %p, len %u",
+		      getpid (), fd, fd, func_str, addr, len);
 
-/*
- * Open a connection on socket FD to peer at ADDR
- * (which LEN bytes long). For connectionless socket types, just set
- * the default address to send to and the only address from which to
- * accept transmissions. Return 0 on success, -1 for errors.
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-int
-vcom_connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
-{
-  int rv;
-
-  rv = vcom_init ();
-  if (rv)
-    {
-      return rv;
+      rv = libc_bind (fd, addr, len);
     }
 
-  /* validate __len */
-  switch (__addr->sa_family)
+done:
+  if (VCOM_DEBUG > 0)
     {
-    case AF_INET:
-      if (__len != INET_ADDRSTRLEN)
-	return -EINVAL;
-      break;
-    case AF_INET6:
-      if (__len != INET6_ADDRSTRLEN)
-	return -EINVAL;
-      break;
-
-    default:
-      return -EAFNOSUPPORT;
-      break;
-    }
-
-  /* handle domains implemented by vpp */
-  switch (__addr->sa_family)
-    {
-    case AF_INET:
-    case AF_INET6:
-      rv = vcom_socket_connect (__fd, __addr, __len);
-      break;
-
-    default:
-      return -EPFNOSUPPORT;
-      break;
-    }
-
-  return rv;
-}
-
-int
-connect (int __fd, __CONST_SOCKADDR_ARG __addr, socklen_t __len)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      rv = vcom_connect (__fd, __addr, __len);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] connect: "
-		 "'%04d'='%04d', '%p', '%04d'\n",
-		 pid, rv, __fd, __addr, __len);
-      if (rv)
-	{
-	  errno = -rv;
-	  return -1;
-	}
-      return 0;
-    }
-
-  return libc_connect (__fd, __addr, __len);
-}
-
-/*
- * Put the address of the peer connected to socket FD into *ADDR
- * (which is *LEN bytes long), and its actual length into *LEN.
- * */
-int
-vcom_getpeername (int __fd, __SOCKADDR_ARG __addr,
-		  socklen_t * __restrict __len)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_getpeername (__fd, __addr, __len);
-}
-
-int
-getpeername (int __fd, __SOCKADDR_ARG __addr, socklen_t * __restrict __len)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      rv = vcom_getpeername (__fd, __addr, __len);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] getpeername: "
-		 "'%04d'='%04d', '%p', '%p'\n", pid, rv, __fd, __addr, __len);
-      if (rv != 0)
-	{
-	  errno = -rv;
-	  return -1;
-	}
-      return 0;
-    }
-  return libc_getpeername (__fd, __addr, __len);
-}
-
-/*
- * Send N bytes of BUF to socket FD.  Returns the number sent or -1.
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-ssize_t
-vcom_send (int __fd, const void *__buf, size_t __n, int __flags)
-{
-
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_send (__fd, (void *) __buf, (int) __n, __flags);
-}
-
-ssize_t
-send (int __fd, const void *__buf, size_t __n, int __flags)
-{
-  ssize_t size;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      size = vcom_send (__fd, __buf, __n, __flags);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] send: "
-		 "'%04d'='%04d', '%p', '%04d', '%04x'\n",
-		 pid, (int) size, __fd, __buf, (int) __n, __flags);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  return libc_send (__fd, __buf, __n, __flags);
-}
-
-ssize_t
-sendfile (int __out_fd, int __in_fd, off_t * __offset, size_t __len)
-{
-  ssize_t size;
-
-  if (VCOM_DEBUG > 2)
-    clib_warning ("[%d] __out_fd %d, __in_fd %d, __offset %p, __len %ld",
-		  getpid (), __out_fd, __in_fd, __offset, __len);
-
-  if (is_vcom_socket_fd (__out_fd))
-    {
-      /* TBD: refactor this check to be part of is_vcom_socket_fd() */
-      if (vcom_init () != 0)
-	return -1;
-
-      size = vcom_socket_sendfile (__out_fd, __in_fd, __offset, __len);
-      if (VCOM_DEBUG > 2)
-	clib_warning ("[%d] vcom_socket_sendfile (out_fd %d, in_fd %d, "
-		      "offset %p (%ld), len %lu) returned %ld",
-		      getpid (), __out_fd, __in_fd, __offset,
-		      __offset ? *__offset : -1, __len, size);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  if (VCOM_DEBUG > 2)
-    clib_warning ("[%d] calling libc_sendfile!", getpid ());
-  return libc_sendfile (__out_fd, __in_fd, __offset, __len);
-}
-
-ssize_t
-sendfile64 (int __out_fd, int __in_fd, off_t * __offset, size_t __len)
-{
-  return sendfile (__out_fd, __in_fd, __offset, __len);
-}
-
-
-/*
- * Read N bytes into BUF from socket FD.
- * Returns the number read or -1 for errors.
- * This function is a cancellation point and therefore not marked
- *  with __THROW.
- *  */
-ssize_t
-vcom_recv (int __fd, void *__buf, size_t __n, int __flags)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_recv (__fd, __buf, __n, __flags);
-}
-
-ssize_t
-recv (int __fd, void *__buf, size_t __n, int __flags)
-{
-  ssize_t size;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      size = vcom_recv (__fd, __buf, __n, __flags);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] recv: "
-		 "'%04d'='%04d', '%p', '%04d', '%04x'\n",
-		 pid, (int) size, __fd, __buf, (int) __n, __flags);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  return libc_recv (__fd, __buf, __n, __flags);
-}
-
-/*
- * Send N bytes of BUF on socket FD to peer at address ADDR (which is
- * ADDR_LEN bytes long).  Returns the number sent, or -1 for errors.
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-ssize_t
-vcom_sendto (int __fd, const void *__buf, size_t __n, int __flags,
-	     __CONST_SOCKADDR_ARG __addr, socklen_t __addr_len)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_sendto (__fd, __buf, __n, __flags, __addr, __addr_len);
-}
-
-ssize_t
-sendto (int __fd, const void *__buf, size_t __n, int __flags,
-	__CONST_SOCKADDR_ARG __addr, socklen_t __addr_len)
-{
-  ssize_t size;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      size = vcom_sendto (__fd, __buf, __n, __flags, __addr, __addr_len);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] sendto: "
-		 "'%04d'='%04d', '%p', '%04d', '%04x', "
-		 "'%p', '%04d'\n",
-		 pid, (int) size, __fd, __buf, (int) __n, __flags,
-		 __addr, __addr_len);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  return libc_sendto (__fd, __buf, __n, __flags, __addr, __addr_len);
-}
-
-/*
- * Read N bytes into BUF through socket FD.
- * If ADDR is not NULL, fill in *ADDR_LEN bytes of it with the
- * address of the sender, and store the actual size of the address
- * in *ADDR_LEN.
- * Returns the number of bytes read or -1 for errors.
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-ssize_t
-vcom_recvfrom (int __fd, void *__restrict __buf, size_t __n,
-	       int __flags,
-	       __SOCKADDR_ARG __addr, socklen_t * __restrict __addr_len)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_recvfrom (__fd, __buf, __n, __flags, __addr, __addr_len);
-}
-
-ssize_t
-recvfrom (int __fd, void *__restrict __buf, size_t __n,
-	  int __flags,
-	  __SOCKADDR_ARG __addr, socklen_t * __restrict __addr_len)
-{
-  ssize_t size;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      size = vcom_recvfrom (__fd, __buf, __n, __flags, __addr, __addr_len);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] recvfrom: "
-		 "'%04d'='%04d', '%p', '%04d', '%04x', "
-		 "'%p', '%p'\n",
-		 pid, (int) size, __fd, __buf, (int) __n, __flags,
-		 __addr, __addr_len);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  return libc_recvfrom (__fd, __buf, __n, __flags, __addr, __addr_len);
-}
-
-/*
- * Send a message described MESSAGE on socket FD.
- * Returns the number of bytes sent, or -1 for errors.
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-ssize_t
-vcom_sendmsg (int __fd, const struct msghdr * __message, int __flags)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_sendmsg (__fd, __message, __flags);
-}
-
-ssize_t
-sendmsg (int __fd, const struct msghdr * __message, int __flags)
-{
-  ssize_t size;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      size = vcom_sendmsg (__fd, __message, __flags);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] sendmsg: "
-		 "'%04d'='%04d', '%p', '%04x'\n",
-		 pid, (int) size, __fd, __message, __flags);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  return libc_sendmsg (__fd, __message, __flags);
-}
-
-#ifdef __USE_GNU
-/*
- * Send a VLEN messages as described by VMESSAGES to socket FD.
- * Returns the number of datagrams successfully written
- * or -1 for errors.
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-int
-vcom_sendmmsg (int __fd, struct mmsghdr *__vmessages,
-	       unsigned int __vlen, int __flags)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_sendmmsg (__fd, __message, __vlen, __flags);
-}
-
-int
-sendmmsg (int __fd, struct mmsghdr *__vmessages,
-	  unsigned int __vlen, int __flags)
-{
-  ssize_t size;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      size = vcom_sendmmsg (__fd, __message, __vlen, __flags);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] sendmmsg: "
-		 "'%04d'='%04d', '%p', '%04d', '%04x'\n",
-		 pid, (int) size, __fd, __vmessages, __vlen, __flags);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  return libc_sendmmsg (__fd, __message, __vlen, __flags);
-}
-
-#endif
-
-/*
- * Receive a message as described by MESSAGE from socket FD.
- * Returns the number of bytes read or -1 for errors.
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-ssize_t
-vcom_recvmsg (int __fd, struct msghdr * __message, int __flags)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_recvmsg (__fd, __message, __flags);
-}
-
-ssize_t
-recvmsg (int __fd, struct msghdr * __message, int __flags)
-{
-  ssize_t size;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      size = vcom_recvmsg (__fd, __message, __flags);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] recvmsg: "
-		 "'%04d'='%04d', '%p', '%04x'\n",
-		 pid, (int) size, __fd, __message, __flags);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  return libc_recvmsg (__fd, __message, __flags);
-}
-
-#ifdef __USE_GNU
-/*
- * Receive up to VLEN messages as described by VMESSAGES from socket FD.
- * Returns the number of messages received or -1 for errors.
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-int
-vcom_recvmmsg (int __fd, struct mmsghdr *__vmessages,
-	       unsigned int __vlen, int __flags, struct timespec *__tmo)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_recvmmsg (__fd, __message, __vlen, __flags, __tmo);
-}
-
-int
-recvmmsg (int __fd, struct mmsghdr *__vmessages,
-	  unsigned int __vlen, int __flags, struct timespec *__tmo)
-{
-  ssize_t size;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      size = vcom_recvmmsg (__fd, __message, __vlen, __flags, __tmo);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] recvmmsg: "
-		 "'%04d'='%04d', '%p', "
-		 "'%04d', '%04x', '%p'\n",
-		 pid, (int) size, __fd, __vmessages, __vlen, __flags, __tmo);
-      if (size < 0)
-	{
-	  errno = -size;
-	  return -1;
-	}
-      return size;
-    }
-  return libc_recvmmsg (__fd, __message, __vlen, __flags, __tmo);
-}
-
-#endif
-
-/*
- * Put the current value for socket FD's option OPTNAME
- * at protocol level LEVEL into OPTVAL (which is *OPTLEN bytes long),
- * and set *OPTLEN to the value's actual length.
- * Returns 0 on success, -1 for errors.
- * */
-int
-vcom_getsockopt (int __fd, int __level, int __optname,
-		 void *__restrict __optval, socklen_t * __restrict __optlen)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_getsockopt (__fd, __level, __optname,
-				 __optval, __optlen);
-}
-
-int
-getsockopt (int __fd, int __level, int __optname,
-	    void *__restrict __optval, socklen_t * __restrict __optlen)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      rv = vcom_getsockopt (__fd, __level, __optname, __optval, __optlen);
-      if (VCOM_DEBUG > 2)
-	fprintf (stderr,
-		 "[%d] getsockopt: "
-		 "'%04d'='%04d', '%04d', '%04d', "
-		 "'%p', '%p'\n",
-		 pid, rv, __fd, __level, __optname, __optval, __optlen);
-      if (rv != 0)
-	{
-	  errno = -rv;
-	  return -1;
-	}
-      return 0;
-    }
-  return libc_getsockopt (__fd, __level, __optname, __optval, __optlen);
-}
-
-/*
- * Set socket FD's option OPTNAME at protocol level LEVEL
- * to *OPTVAL (which is OPTLEN bytes long).
- * Returns 0 on success, -1 for errors.
- * */
-int
-vcom_setsockopt (int __fd, int __level, int __optname,
-		 const void *__optval, socklen_t __optlen)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_setsockopt (__fd, __level, __optname,
-				 __optval, __optlen);
-}
-
-int
-setsockopt (int __fd, int __level, int __optname,
-	    const void *__optval, socklen_t __optlen)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      rv = vcom_setsockopt (__fd, __level, __optname, __optval, __optlen);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] setsockopt: "
-		 "'%04d'='%04d', '%04d', '%04d', "
-		 "'%p', '%04d'\n",
-		 pid, rv, __fd, __level, __optname, __optval, __optlen);
-      if (rv != 0)
-	{
-	  errno = -rv;
-	  return -1;
-	}
-      return 0;
-    }
-  return libc_setsockopt (__fd, __level, __optname, __optval, __optlen);
-}
-
-/*
- * Prepare to accept connections on socket FD.
- * N connection requests will be queued before further
- * requests are refused.
- * Returns 0 on success, -1 for errors.
- * */
-int
-vcom_listen (int __fd, int __n)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_listen (__fd, __n);
-}
-
-int
-listen (int __fd, int __n)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      rv = vcom_listen (__fd, __n);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] listen: "
-		 "'%04d'='%04d', '%04d'\n", pid, rv, __fd, __n);
-      if (rv != 0)
-	{
-	  errno = -rv;
-	  return -1;
-	}
-      return 0;
-    }
-  return libc_listen (__fd, __n);
-}
-
-/*
- * Await a connection on socket FD.
- * When a connection arrives, open a new socket to communicate
- * with it, set *ADDR (which is *ADDR_LEN bytes long) to the address
- * of the connecting peer and *ADDR_LEN to the address's actual
- * length, and return the new socket's descriptor, or -1 for errors.
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-int
-vcom_accept (int __fd, __SOCKADDR_ARG __addr,
-	     socklen_t * __restrict __addr_len)
-{
-
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-  return vcom_socket_accept (__fd, __addr, __addr_len);
-}
-
-int
-accept (int __fd, __SOCKADDR_ARG __addr, socklen_t * __restrict __addr_len)
-{
-  int rv = -1;
-  pid_t pid = getpid ();
-  pthread_t tid = pthread_self ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      if (VCOM_DEBUG > 0)
-	vcom_socket_main_show ();
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d][%lu (0x%lx)] accept1: "
-		 "'%04d'='%04d', '%p', '%p'\n",
-		 pid, (unsigned long) tid, (unsigned long) tid,
-		 rv, __fd, __addr, __addr_len);
-      rv = vcom_accept (__fd, __addr, __addr_len);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d][%lu (0x%lx)] accept2: "
-		 "'%04d'='%04d', '%p', '%p'\n",
-		 pid, (unsigned long) tid, (unsigned long) tid,
-		 rv, __fd, __addr, __addr_len);
-      if (VCOM_DEBUG > 0)
-	vcom_socket_main_show ();
       if (rv < 0)
 	{
-	  errno = -rv;
-	  return -1;
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
 	}
-      return rv;
-    }
-  return libc_accept (__fd, __addr, __addr_len);
-}
-
-/*
- * Similar to 'accept' but takes an additional parameter to specify
- * flags.
- * This function is a cancellation point and therefore not marked
- * with __THROW.
- * */
-int
-vcom_accept4 (int __fd, __SOCKADDR_ARG __addr,
-	      socklen_t * __restrict __addr_len, int __flags)
-{
-
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  return vcom_socket_accept4 (__fd, __addr, __addr_len, __flags);
-}
-
-int
-accept4 (int __fd, __SOCKADDR_ARG __addr,
-	 socklen_t * __restrict __addr_len, int __flags)
-{
-  int rv = 0;
-  pid_t pid = getpid ();
-
-  fprintf (stderr,
-	   "[%d] accept4: in the beginning... "
-	   "'%04d'='%04d', '%p', '%p', '%04x'\n",
-	   pid, rv, __fd, __addr, __addr_len, __flags);
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      if (VCOM_DEBUG > 0)
-	vcom_socket_main_show ();
-      rv = vcom_accept4 (__fd, __addr, __addr_len, __flags);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] accept4: VCL "
-		 "'%04d'='%04d', '%p', '%p', '%04x'\n",
-		 pid, rv, __fd, __addr, __addr_len, __flags);
-      if (VCOM_DEBUG > 0)
-	vcom_socket_main_show ();
-      if (rv < 0)
-	{
-	  errno = -rv;
-	  return -1;
-	}
-      return rv;
-    }
-  fprintf (stderr,
-	   "[%d] accept4: libc "
-	   "'%04d'='%04d', '%p', '%p', '%04x'\n",
-	   pid, rv, __fd, __addr, __addr_len, __flags);
-
-  return libc_accept4 (__fd, __addr, __addr_len, __flags);
-}
-
-/*
- * Shut down all or part of the connection open on socket FD.
- * HOW determines what to shut down:
- *   SHUT_RD   = No more receptions;
- *   SHUT_WR   = No more transmissions;
- *   SHUT_RDWR = No more receptions or transmissions.
- * Returns 0 on success, -1 for errors.
- * */
-int
-vcom_shutdown (int __fd, int __how)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-  return vcom_socket_shutdown (__fd, __how);
-}
-
-int
-shutdown (int __fd, int __how)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  if (is_vcom_socket_fd (__fd))
-    {
-      rv = vcom_shutdown (__fd, __how);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] shutdown: "
-		 "'%04d'='%04d', '%04d'\n", pid, rv, __fd, __how);
-      if (rv != 0)
-	{
-	  errno = -rv;
-	  return -1;
-	}
-      return 0;
-    }
-  return libc_shutdown (__fd, __how);
-}
-
-int
-vcom_epoll_create (int __size)
-{
-
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  if (__size <= 0)
-    {
-      return -EINVAL;
-    }
-
-  /* __size argument is ignored "thereafter" */
-  return vcom_epoll_create1 (0);
-}
-
-/*
- * __size argument is ignored, but must be greater than zero
- */
-int
-epoll_create (int __size)
-{
-  int rv = 0;
-  pid_t pid = getpid ();
-
-  rv = vcom_epoll_create (__size);
-  if (VCOM_DEBUG > 0)
-    fprintf (stderr,
-	     "[%d] epoll_create: " "'%04d'='%04d'\n", pid, rv, __size);
-  if (rv < 0)
-    {
-      errno = -rv;
-      return -1;
-    }
-  return rv;
-}
-
-int
-vcom_epoll_create1 (int __flags)
-{
-  if (vcom_init () != 0)
-    {
-      return -1;
-    }
-
-  if (__flags < 0)
-    {
-      return -EINVAL;
-    }
-  if (__flags & ~EPOLL_CLOEXEC)
-    {
-      return -EINVAL;
-    }
-  /* __flags can be either zero or EPOLL_CLOEXEC */
-  /* implementation */
-  return vcom_socket_epoll_create1 (__flags);
-}
-
-/*
- * __flags can be either zero or EPOLL_CLOEXEC
- * */
-int
-epoll_create1 (int __flags)
-{
-  int rv = 0;
-  pid_t pid = getpid ();
-
-  rv = vcom_epoll_create1 (__flags);
-  if (VCOM_DEBUG > 0)
-    fprintf (stderr,
-	     "[%d] epoll_create: " "'%04d'='%08x'\n", pid, rv, __flags);
-  if (rv < 0)
-    {
-      errno = -rv;
-      return -1;
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
     }
   return rv;
 }
 
 static inline int
-ep_op_has_event (int op)
+vcom_copy_ep_to_sockaddr (__SOCKADDR_ARG addr, socklen_t * __restrict len,
+			  vppcom_endpt_t * ep)
 {
-  return op != EPOLL_CTL_DEL;
-}
+  int rv = 0;
+  int sa_len, copy_len;
 
-int
-vcom_epoll_ctl (int __epfd, int __op, int __fd, struct epoll_event *__event)
-{
-  if (vcom_init () != 0)
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (addr && len && ep)
     {
-      return -1;
-    }
+      addr->sa_family = (ep->is_ip4 == VPPCOM_IS_IP4) ? AF_INET : AF_INET6;
+      switch (addr->sa_family)
+	{
+	case AF_INET:
+	  ((struct sockaddr_in *) addr)->sin_port = ep->port;
+	  if (*len > sizeof (struct sockaddr_in))
+	    *len = sizeof (struct sockaddr_in);
+	  sa_len = sizeof (struct sockaddr_in) - sizeof (struct in_addr);
+	  copy_len = *len - sa_len;
+	  if (copy_len > 0)
+	    memcpy (&((struct sockaddr_in *) addr)->sin_addr, ep->ip,
+		    copy_len);
+	  break;
 
-  /*
-   * the requested operation __op is not supported
-   * by this interface */
-  if (!((__op == EPOLL_CTL_ADD) ||
-	(__op == EPOLL_CTL_MOD) || (__op == EPOLL_CTL_DEL)))
-    {
-      return -EINVAL;
-    }
+	case AF_INET6:
+	  ((struct sockaddr_in6 *) addr)->sin6_port = ep->port;
+	  if (*len > sizeof (struct sockaddr_in6))
+	    *len = sizeof (struct sockaddr_in6);
+	  sa_len = sizeof (struct sockaddr_in6) - sizeof (struct in6_addr);
+	  copy_len = *len - sa_len;
+	  if (copy_len > 0)
+	    memcpy (((struct sockaddr_in6 *) addr)->sin6_addr.
+		    __in6_u.__u6_addr8, ep->ip, copy_len);
+	  break;
 
-  /* op is ADD or MOD but event parameter is NULL */
-  if ((ep_op_has_event (__op) && !__event))
-    {
-      return -EFAULT;
-    }
-
-  /* fd is same as epfd */
-  /* do not permit adding an epoll file descriptor inside itself */
-  if (__epfd == __fd)
-    {
-      return -EINVAL;
-    }
-
-  /* implementation */
-  return vcom_socket_epoll_ctl (__epfd, __op, __fd, __event);
-}
-
-/*
- * implement the controller interface for epoll
- * that enables the insertion/removal/change of
- * file descriptors inside the interest set.
- */
-int
-epoll_ctl (int __epfd, int __op, int __fd, struct epoll_event *__event)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  rv = vcom_epoll_ctl (__epfd, __op, __fd, __event);
-  if (VCOM_DEBUG > 0)
-    fprintf (stderr,
-	     "[%d] epoll_ctl: "
-	     "'%04d'='%04d', '%04d', '%04d'\n", pid, rv, __epfd, __op, __fd);
-  if (rv != 0)
-    {
-      errno = -rv;
-      return -1;
-    }
-  return 0;
-}
-
-int
-epoll_wait (int __epfd, struct epoll_event *__events,
-	    int __maxevents, int __timeout)
-{
-  int rv;
-  pid_t pid = getpid ();
-
-  if (__maxevents <= 0 || __maxevents > EP_MAX_EVENTS)
-    {
-      fprintf (stderr, "[%d] ERROR: epoll_wait() invalid maxevents %d\n",
-	       pid, __maxevents);
-      errno = EINVAL;
-      return -1;
-    }
-
-  rv =
-    vcom_socket_epoll_pwait (__epfd, __events, __maxevents, __timeout, NULL);
-  if (VCOM_DEBUG > 2)
-    fprintf (stderr,
-	     "[%d] epoll_wait: "
-	     "'%04d'='%04d', '%p', "
-	     "'%04d', '%04d'\n",
-	     pid, rv, __epfd, __events, __maxevents, __timeout);
-  if (rv < 0)
-    {
-      errno = -rv;
-      return -1;
+	default:
+	  /* Not possible */
+	  rv = -EAFNOSUPPORT;
+	  break;
+	}
     }
   return rv;
 }
 
-
 int
-epoll_pwait (int __epfd, struct epoll_event *__events,
-	     int __maxevents, int __timeout, const __sigset_t * __ss)
+getsockname (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
 {
   int rv;
-  pid_t pid = getpid ();
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
 
-  if (__maxevents <= 0 || __maxevents > EP_MAX_EVENTS)
-    {
-      errno = EINVAL;
-      return -1;
-    }
+  if ((errno = -vcom_init ()))
+    return -1;
 
-  if (is_vcom_epfd (__epfd))
+  if (sid != INVALID_SESSION_ID)
     {
-      rv =
-	vcom_socket_epoll_pwait (__epfd, __events, __maxevents, __timeout,
-				 __ss);
-      if (VCOM_DEBUG > 0)
-	fprintf (stderr,
-		 "[%d] epoll_pwait: "
-		 "'%04d'='%04d', '%p', "
-		 "'%04d', '%04d', "
-		 "'%p'\n",
-		 pid, rv, __epfd, __events, __maxevents, __timeout, __ss);
-      if (rv < 0)
+      vppcom_endpt_t ep;
+      u8 addr_buf[sizeof (struct in6_addr)];
+      u32 size = sizeof (ep);
+
+      ep.ip = addr_buf;
+      func_str = "vppcom_session_attr[GET_LCL_ADDR]";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), "
+		      "addr %p, len %u",
+		      getpid (), fd, fd, func_str, sid, sid, addr, len);
+
+      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_LCL_ADDR, &ep, &size);
+      if (rv != VPPCOM_OK)
 	{
 	  errno = -rv;
-	  return -1;
+	  rv = -1;
 	}
-      return rv;
+      else
+	{
+	  rv = vcom_copy_ep_to_sockaddr (addr, len, &ep);
+	  if (rv != VPPCOM_OK)
+	    {
+	      errno = -rv;
+	      rv = -1;
+	    }
+	}
     }
   else
     {
-      errno = EINVAL;
-      return -1;
+      func_str = "libc_getsockname";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "addr %p, len %u",
+		      getpid (), fd, fd, func_str, addr, len);
+
+      rv = libc_getsockname (fd, addr, len);
     }
 
-  return 0;
+  if (VCOM_DEBUG > 2)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
+  return rv;
 }
 
-/* Poll the file descriptors described by the NFDS structures starting at
-   FDS.  If TIMEOUT is nonzero and not -1, allow TIMEOUT milliseconds for
-   an event to occur; if TIMEOUT is -1, block until an event occurs.
-   Returns the number of file descriptors with events, zero if timed out,
-   or -1 for errors.
-
-   This function is a cancellation point and therefore not marked with
-   __THROW.  */
-
 int
-vcom_poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
+connect (int fd, __CONST_SOCKADDR_ARG addr, socklen_t len)
 {
-  int rv = 0;
-  pid_t pid = getpid ();
+  int rv;
+  const char *func_str = __func__;
+  u32 sid = vcom_sid_from_fd (fd);
 
-  struct rlimit nofile_limit;
-  struct pollfd vcom_fds[MAX_POLL_NFDS_DEFAULT];
-  nfds_t fds_idx = 0;
+  if ((errno = -vcom_init ()))
+    return -1;
 
-  /* actual set of file descriptors to be monitored */
-  nfds_t libc_nfds = 0;
-  nfds_t vcom_nfds = 0;
-
-  /* ready file descriptors
-   *
-   * number of structures which have nonzero revents  fields
-   * in other words, descriptors  with events or errors reported.
-   * */
-  /* after call to libc_poll () */
-  int rlibc_nfds = 0;
-  /* after call to vcom_socket_poll () */
-  int rvcom_nfds = 0;
-
-
-  /* timeout value in units of timespec */
-  struct timespec timeout_ts;
-  struct timespec start_time, now, end_time;
-
-
-  /* get start_time */
-  rv = clock_gettime (CLOCK_MONOTONIC, &start_time);
-  if (rv == -1)
+  if (!addr)
     {
-      rv = -errno;
-      goto poll_done;
+      clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): NULL addr, len %u",
+		    getpid (), fd, fd, len);
+      errno = EINVAL;
+      rv = -1;
+      goto done;
     }
 
-  /* set timeout_ts & end_time */
-  if (__timeout >= 0)
+  if (sid != INVALID_SESSION_ID)
     {
-      /* set timeout_ts */
-      timeout_ts.tv_sec = __timeout / MSEC_PER_SEC;
-      timeout_ts.tv_nsec = (__timeout % MSEC_PER_SEC) * NSEC_PER_MSEC;
-      set_normalized_timespec (&timeout_ts,
-			       timeout_ts.tv_sec, timeout_ts.tv_nsec);
-      /* set end_time */
-      if (__timeout)
+      vppcom_endpt_t ep;
+
+      func_str = "vppcom_session_connect";
+
+      ep.vrf = VPPCOM_VRF_DEFAULT;
+      switch (addr->sa_family)
 	{
-	  end_time = timespec_add (start_time, timeout_ts);
+	case AF_INET:
+	  if (len != sizeof (struct sockaddr_in))
+	    {
+	      clib_warning
+		("LDP<%d>: fd %d (0x%x): ERROR sid %u (0x%x): Invalid "
+		 "AF_INET addr len %u!", getpid (), fd, fd, sid, sid, len);
+	      errno = EINVAL;
+	      rv = -1;
+	      goto done;
+	    }
+	  ep.is_ip4 = VPPCOM_IS_IP4;
+	  ep.ip = (u8 *) & ((const struct sockaddr_in *) addr)->sin_addr;
+	  ep.port = (u16) ((const struct sockaddr_in *) addr)->sin_port;
+	  break;
+
+	case AF_INET6:
+	  if (len != sizeof (struct sockaddr_in6))
+	    {
+	      clib_warning
+		("LDP<%d>: fd %d (0x%x): ERROR sid %u (0x%x): Invalid "
+		 "AF_INET6 addr len %u!", getpid (), fd, fd, sid, sid, len);
+	      errno = EINVAL;
+	      rv = -1;
+	      goto done;
+	    }
+	  ep.is_ip4 = VPPCOM_IS_IP6;
+	  ep.ip = (u8 *) & ((const struct sockaddr_in6 *) addr)->sin6_addr;
+	  ep.port = (u16) ((const struct sockaddr_in6 *) addr)->sin6_port;
+	  break;
+
+	default:
+	  clib_warning ("LDP<%d>: fd %d (0x%x): ERROR sid %u (0x%x): "
+			"Unsupported address family %u!",
+			getpid (), fd, fd, sid, sid, addr->sa_family);
+	  errno = EAFNOSUPPORT;
+	  rv = -1;
+	  goto done;
+	}
+      if (VCOM_DEBUG > 0)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x) "
+		      "addr %p len %u",
+		      getpid (), fd, fd, func_str, sid, sid, addr, len);
+
+      rv = vppcom_session_connect (sid, &ep);
+      if (rv != VPPCOM_OK)
+	{
+	  errno = -rv;
+	  rv = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_connect";
+
+      if (VCOM_DEBUG > 0)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "addr %p, len %u",
+		      getpid (), fd, fd, func_str, addr, len);
+
+      rv = libc_connect (fd, addr, len);
+    }
+
+done:
+  if (VCOM_DEBUG > 0)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
+  return rv;
+}
+
+int
+getpeername (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict len)
+{
+  int rv;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  clib_warning ("LDP<%d>: fd %d (0x%x) ", getpid (), fd, fd);
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      vppcom_endpt_t ep;
+      u8 addr_buf[sizeof (struct in6_addr)];
+      u32 size = sizeof (ep);
+
+      ep.ip = addr_buf;
+      func_str = "vppcom_session_attr[GET_PEER_ADDR]";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), "
+		      "addr %p, len %u",
+		      getpid (), fd, fd, func_str, sid, sid, addr, len);
+
+      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_PEER_ADDR, &ep, &size);
+      if (rv != VPPCOM_OK)
+	{
+	  errno = -rv;
+	  rv = -1;
 	}
       else
 	{
-	  end_time = start_time;
+	  rv = vcom_copy_ep_to_sockaddr (addr, len, &ep);
+	  if (rv != VPPCOM_OK)
+	    {
+	      errno = -rv;
+	      rv = -1;
+	    }
 	}
     }
-
-  if (vcom_init () != 0)
+  else
     {
-      rv = -1;
-      goto poll_done;
+      func_str = "libc_getpeername";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "addr %p, len %u",
+		      getpid (), fd, fd, func_str, addr, len);
+
+      rv = libc_getpeername (fd, addr, len);
     }
 
-  /* validate __fds */
-  if (!__fds)
+  if (VCOM_DEBUG > 2)
     {
-      rv = -EFAULT;
-      goto poll_done;
-    }
-
-  /* validate __nfds */
-  /*TBD: call getrlimit once when vcl-ldpreload library is init */
-  rv = getrlimit (RLIMIT_NOFILE, &nofile_limit);
-  if (rv != 0)
-    {
-      rv = -errno;
-      goto poll_done;
-    }
-  if (__nfds >= nofile_limit.rlim_cur)
-    {
-      rv = -EINVAL;
-      goto poll_done;
-    }
-
-  /*
-   * for the POC, it's fair to assume that nfds is less than 1024
-   * */
-  if (__nfds >= MAX_POLL_NFDS_DEFAULT)
-    {
-      rv = -EINVAL;
-      goto poll_done;
-    }
-
-  /* set revents field (output parameter)
-   * to zero
-   * */
-  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
-    {
-      __fds[fds_idx].revents = 0;
-    }
-
-#if 0
-  /* set revents field (output parameter)
-   * to zero for user ignored fds
-   * */
-  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
-    {
-      /*
-       * if negative fd, ignore events field
-       * and set output parameter (revents field) to zero */
-      if (__fds[fds_idx].fd < 0)
+      if (rv < 0)
 	{
-	  __fds[fds_idx].revents = 0;
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
+  return rv;
+}
+
+ssize_t
+send (int fd, const void *buf, size_t n, int flags)
+{
+  ssize_t size;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+
+      func_str = "vppcom_session_sendto";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), "
+		      "buf %p, n %u, flags 0x%x",
+		      getpid (), fd, fd, func_str, sid, sid, buf, n, flags);
+
+      size = vppcom_session_sendto (sid, (void *) buf, n, flags, NULL);
+      if (size != VPPCOM_OK)
+	{
+	  errno = -size;
+	  size = -1;
 	}
     }
+  else
+    {
+      func_str = "libc_send";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "buf %p, n %u, flags 0x%x",
+		      getpid (), fd, fd, func_str, buf, n, flags);
+
+      size = libc_send (fd, buf, n, flags);
+    }
+
+  if (VCOM_DEBUG > 2)
+    {
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
+
+ssize_t
+sendfile (int out_fd, int in_fd, off_t * offset, size_t len)
+{
+  ssize_t size = 0;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (out_fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      int rv;
+      ssize_t results = 0;
+      size_t n_bytes_left = len;
+      size_t bytes_to_read;
+      int nbytes;
+      int errno_val;
+      u8 eagain = 0;
+      u32 flags, flags_len = sizeof (flags);
+
+      func_str = "vppcom_session_attr[GET_FLAGS]";
+      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_FLAGS, &flags,
+				&flags_len);
+      if (PREDICT_FALSE (rv != VPPCOM_OK))
+	{
+	  clib_warning ("LDP<%d>: ERROR: out fd %d (0x%x): %s(): "
+			"sid %u (0x%x), returned %d (%s)!", getpid (),
+			out_fd, out_fd, func_str, sid, sid, rv,
+			vppcom_retval_str (rv));
+
+	  vec_reset_length (vcom->io_buffer);
+	  errno = -rv;
+	  size = -1;
+	  goto done;
+	}
+
+      if (offset)
+	{
+	  off_t off = lseek (in_fd, *offset, SEEK_SET);
+	  if (PREDICT_FALSE (off == -1))
+	    {
+	      func_str = "lseek";
+	      errno_val = errno;
+	      clib_warning ("LDP<%d>: ERROR: out fd %d (0x%x): %s(): "
+			    "SEEK_SET failed: in_fd %d, offset %p, "
+			    "*offset %ld, rv %ld, errno %d", getpid (),
+			    out_fd, out_fd, in_fd, offset, *offset, off,
+			    errno_val);
+	      errno = errno_val;
+	      size = -1;
+	      goto done;
+	    }
+
+	  ASSERT (off == *offset);
+	}
+
+      do
+	{
+	  func_str = "vppcom_session_attr[GET_NWRITE]";
+	  size = vppcom_session_attr (sid, VPPCOM_ATTR_GET_NWRITE, 0, 0);
+	  if (size < 0)
+	    {
+	      clib_warning
+		("LDP<%d>: ERROR: fd %d (0x%x): %s(): sid %u (0x%x), "
+		 "returned %d (%s)!", getpid (), out_fd, out_fd, func_str,
+		 sid, sid, size, vppcom_retval_str (size));
+	      vec_reset_length (vcom->io_buffer);
+	      errno = -size;
+	      size = -1;
+	      goto done;
+	    }
+
+	  bytes_to_read = size;
+	  if (VCOM_DEBUG > 2)
+	    clib_warning
+	      ("LDP<%d>: fd %d (0x%x): called %s(): sid %u (0x%x), "
+	       "results %ld, n_bytes_left %lu, bytes_to_read %lu", getpid (),
+	       out_fd, out_fd, func_str, sid, sid, results, n_bytes_left,
+	       bytes_to_read);
+
+	  if (bytes_to_read == 0)
+	    {
+	      if (flags & O_NONBLOCK)
+		{
+		  if (!results)
+		    {
+		      if (VCOM_DEBUG > 2)
+			clib_warning ("LDP<%d>: fd %d (0x%x): sid %u (0x%x): "
+				      "EAGAIN",
+				      getpid (), out_fd, out_fd, sid, sid);
+		      eagain = 1;
+		    }
+		  goto update_offset;
+		}
+	      else
+		continue;
+	    }
+	  bytes_to_read = clib_min (n_bytes_left, bytes_to_read);
+	  vec_validate (vcom->io_buffer, bytes_to_read);
+	  nbytes = libc_read (in_fd, vcom->io_buffer, bytes_to_read);
+	  if (nbytes < 0)
+	    {
+	      func_str = "libc_read";
+	      errno_val = errno;
+	      clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): in_fd (%d), "
+			    "io_buffer %p, bytes_to_read %lu, rv %d, "
+			    "errno %d", getpid (), out_fd, out_fd, func_str,
+			    in_fd, vcom->io_buffer, bytes_to_read, nbytes,
+			    errno_val);
+	      errno = errno_val;
+
+	      if (results == 0)
+		{
+		  vec_reset_length (vcom->io_buffer);
+		  size = -1;
+		  goto done;
+		}
+	      goto update_offset;
+	    }
+	  func_str = "vppcom_session_write";
+	  if (VCOM_DEBUG > 2)
+	    clib_warning
+	      ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), "
+	       "buf %p, nbytes %u: results %d, n_bytes_left %d", getpid (),
+	       out_fd, out_fd, func_str, sid, sid, vcom->io_buffer, nbytes,
+	       results, n_bytes_left);
+
+	  size = vppcom_session_write (sid, vcom->io_buffer, nbytes);
+	  if (size < 0)
+	    {
+	      if (size == VPPCOM_EAGAIN)
+		{
+		  if (flags & O_NONBLOCK)
+		    {
+		      if (!results)
+			{
+			  if (VCOM_DEBUG > 2)
+			    clib_warning
+			      ("LDP<%d>: fd %d (0x%x): sid %u (0x%x): "
+			       "EAGAIN", getpid (), out_fd, out_fd, sid, sid);
+			  eagain = 1;
+			}
+		      goto update_offset;
+		    }
+		  else
+		    continue;
+		}
+	      else
+		{
+		  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s():"
+				"sid %u, io_buffer %p, nbytes %u "
+				"returned %d (%s)",
+				getpid (), out_fd, out_fd, func_str,
+				sid, vcom->io_buffer, nbytes,
+				size, vppcom_retval_str (size));
+		}
+	      if (results == 0)
+		{
+		  vec_reset_length (vcom->io_buffer);
+		  errno = -size;
+		  size = -1;
+		  goto done;
+		}
+	      goto update_offset;
+	    }
+
+	  results += nbytes;
+	  ASSERT (n_bytes_left >= nbytes);
+	  n_bytes_left = n_bytes_left - nbytes;
+	}
+      while (n_bytes_left > 0);
+
+    update_offset:
+      vec_reset_length (vcom->io_buffer);
+      if (offset)
+	{
+	  off_t off = lseek (in_fd, *offset, SEEK_SET);
+	  if (PREDICT_FALSE (off == -1))
+	    {
+	      func_str = "lseek";
+	      errno_val = errno;
+	      clib_warning ("LDP<%d>: ERROR: %s(): SEEK_SET failed: "
+			    "in_fd %d, offset %p, *offset %ld, "
+			    "rv %ld, errno %d", getpid (), in_fd,
+			    offset, *offset, off, errno_val);
+	      errno = errno_val;
+	      size = -1;
+	      goto done;
+	    }
+
+	  ASSERT (off == *offset);
+	  *offset += results + 1;
+	}
+      if (eagain)
+	{
+	  errno = EAGAIN;
+	  size = -1;
+	}
+      else
+	size = results;
+    }
+  else
+    {
+      func_str = "libc_send";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "in_fd %d, offset %p, len %u",
+		      getpid (), out_fd, out_fd, func_str,
+		      in_fd, offset, len);
+
+      size = libc_sendfile (out_fd, in_fd, offset, len);
+    }
+
+done:
+  if (VCOM_DEBUG > 2)
+    {
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), out_fd, out_fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), out_fd, out_fd, size, size);
+    }
+  return size;
+}
+
+ssize_t
+sendfile64 (int out_fd, int in_fd, off_t * offset, size_t len)
+{
+  return sendfile (out_fd, in_fd, offset, len);
+}
+
+ssize_t
+recv (int fd, void *buf, size_t n, int flags)
+{
+  ssize_t size;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      func_str = "vppcom_session_recvfrom";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "sid %u (0x%x), buf %p, n %u, flags 0x%x", getpid (),
+		      fd, fd, func_str, sid, sid, buf, n, flags);
+
+      size = vppcom_session_recvfrom (sid, buf, n, flags, NULL);
+      if (size < 0)
+	{
+	  errno = -size;
+	  size = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_recv";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "buf %p, n %u, flags 0x%x", getpid (),
+		      fd, fd, func_str, buf, n, flags);
+
+      size = libc_recv (fd, buf, n, flags);
+    }
+
+  if (VCOM_DEBUG > 2)
+    {
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
+
+ssize_t
+sendto (int fd, const void *buf, size_t n, int flags,
+	__CONST_SOCKADDR_ARG addr, socklen_t addr_len)
+{
+  ssize_t size;
+  const char *func_str = __func__;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      vppcom_endpt_t *ep = 0;
+      vppcom_endpt_t _ep;
+
+      if (addr)
+	{
+	  ep = &_ep;
+	  ep->vrf = VPPCOM_VRF_DEFAULT;
+	  switch (addr->sa_family)
+	    {
+	    case AF_INET:
+	      ep->is_ip4 = VPPCOM_IS_IP4;
+	      ep->ip =
+		(uint8_t *) & ((const struct sockaddr_in *) addr)->sin_addr;
+	      ep->port =
+		(uint16_t) ((const struct sockaddr_in *) addr)->sin_port;
+	      break;
+
+	    case AF_INET6:
+	      ep->is_ip4 = VPPCOM_IS_IP6;
+	      ep->ip =
+		(uint8_t *) & ((const struct sockaddr_in6 *) addr)->sin6_addr;
+	      ep->port =
+		(uint16_t) ((const struct sockaddr_in6 *) addr)->sin6_port;
+	      break;
+
+	    default:
+	      errno = EAFNOSUPPORT;
+	      size = -1;
+	      goto done;
+	    }
+	}
+
+      func_str = "vppcom_session_sendto";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "sid %u (0x%x), buf %p, n %u, flags 0x%x, ep %p",
+		      getpid (), fd, fd, func_str, sid, sid, buf, n,
+		      flags, ep);
+
+      size = vppcom_session_sendto (sid, (void *) buf, n, flags, ep);
+      if (size < 0)
+	{
+	  errno = -size;
+	  size = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_sendto";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "buf %p, n %u, flags 0x%x, addr %p, addr_len %d",
+		      getpid (), fd, fd, func_str, buf, n, flags,
+		      addr, addr_len);
+
+      size = libc_sendto (fd, buf, n, flags, addr, addr_len);
+    }
+
+done:
+  if (VCOM_DEBUG > 2)
+    {
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
+
+ssize_t
+recvfrom (int fd, void *__restrict buf, size_t n, int flags,
+	  __SOCKADDR_ARG addr, socklen_t * __restrict addr_len)
+{
+  ssize_t size;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      vppcom_endpt_t ep;
+      u8 src_addr[sizeof (struct sockaddr_in6)];
+
+      func_str = "vppcom_session_recvfrom";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "sid %u (0x%x), buf %p, n %u, flags 0x%x, ep %p",
+		      getpid (), fd, fd, func_str, sid, sid, buf, n,
+		      flags, &ep);
+      if (addr)
+	{
+	  ep.ip = src_addr;
+	  size = vppcom_session_recvfrom (sid, buf, n, flags, &ep);
+
+	  if (size > 0)
+	    size = vcom_copy_ep_to_sockaddr (addr, addr_len, &ep);
+	}
+      else
+	size = vppcom_session_recvfrom (sid, buf, n, flags, NULL);
+
+      if (size < 0)
+	{
+	  errno = -size;
+	  size = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_recvfrom";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "buf %p, n %u, flags 0x%x, addr %p, addr_len %d",
+		      getpid (), fd, fd, func_str, buf, n, flags,
+		      addr, addr_len);
+
+      size = libc_recvfrom (fd, buf, n, flags, addr, addr_len);
+    }
+
+  if (VCOM_DEBUG > 2)
+    {
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
+
+ssize_t
+sendmsg (int fd, const struct msghdr * message, int flags)
+{
+  ssize_t size;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      clib_warning ("LDP<%d>: LDP-TBD", getpid ());
+      errno = ENOSYS;
+      size = -1;
+    }
+  else
+    {
+      func_str = "libc_sendmsg";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "message %p, flags 0x%x",
+		      getpid (), fd, fd, func_str, message, flags);
+
+      size = libc_sendmsg (fd, message, flags);
+    }
+
+  if (VCOM_DEBUG > 2)
+    {
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
+
+#ifdef USE_GNU
+int
+sendmmsg (int fd, struct mmsghdr *vmessages, unsigned int vlen, int flags)
+{
+  ssize_t size;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      clib_warning ("LDP<%d>: LDP-TBD", getpid ());
+      errno = ENOSYS;
+      size = -1;
+    }
+  else
+    {
+      func_str = "libc_sendmmsg";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "vmessages %p, vlen %u, flags 0x%x",
+		      getpid (), fd, fd, func_str, vmessages, vlen, flags);
+
+      size = libc_sendmmsg (fd, vmessages, vlen, flags);
+    }
+
+  if (VCOM_DEBUG > 2)
+    {
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
 #endif
 
-  /*
-   * 00. prepare __fds and vcom_fds for polling
-   *     copy __fds to vcom_fds
-   * 01. negate all except libc fds in __fds,
-   *     ignore user negated fds
-   * 02. negate all except vcom_fds in vocm fds,
-   *     ignore user negated fds
-   *     ignore fd 0 by setting it to negative number
-   * */
-  memcpy (vcom_fds, __fds, sizeof (*__fds) * __nfds);
-  libc_nfds = 0;
-  vcom_nfds = 0;
-  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+ssize_t
+recvmsg (int fd, struct msghdr * message, int flags)
+{
+  ssize_t size;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
     {
-      /* ignore negative fds */
-      if (__fds[fds_idx].fd < 0)
+      clib_warning ("LDP<%d>: LDP-TBD", getpid ());
+      errno = ENOSYS;
+      size = -1;
+    }
+  else
+    {
+      func_str = "libc_recvmsg";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "message %p, flags 0x%x",
+		      getpid (), fd, fd, func_str, message, flags);
+
+      size = libc_recvmsg (fd, message, flags);
+    }
+
+  if (VCOM_DEBUG > 2)
+    {
+      if (size < 0)
 	{
-	  continue;
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
+
+#ifdef USE_GNU
+int
+recvmmsg (int fd, struct mmsghdr *vmessages,
+	  unsigned int vlen, int flags, struct timespec *tmo)
+{
+  ssize_t size;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      clib_warning ("LDP<%d>: LDP-TBD", getpid ());
+      errno = ENOSYS;
+      size = -1;
+    }
+  else
+    {
+      func_str = "libc_recvmmsg";
+
+      if (VCOM_DEBUG > 2)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+		      "vmessages %p, vlen %u, flags 0x%x, tmo %p",
+		      getpid (), fd, fd, func_str, vmessages, vlen,
+		      flags, tmo);
+
+      size = libc_recvmmsg (fd, vmessages, vlen, flags, tmo);
+    }
+
+  if (VCOM_DEBUG > 2)
+    {
+      if (size < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, size, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, size, size);
+    }
+  return size;
+}
+#endif
+
+int
+getsockopt (int fd, int level, int optname,
+	    void *__restrict optval, socklen_t * __restrict optlen)
+{
+  int rv;
+  const char *func_str = __func__;
+  u32 sid = vcom_sid_from_fd (fd);
+  u32 buflen = (u32) * optlen;
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      rv = -EOPNOTSUPP;
+
+      switch (level)
+	{
+	case SOL_TCP:
+	  switch (optname)
+	    {
+	    case TCP_NODELAY:
+	      func_str = "vppcom_session_attr[SOL_TCP,GET_TCP_NODELAY]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_TCP_NODELAY,
+					optval, optlen);
+	      break;
+	    case TCP_MAXSEG:
+	      func_str = "vppcom_session_attr[SOL_TCP,GET_TCP_USER_MSS]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_TCP_USER_MSS,
+					optval, optlen);
+	      break;
+	    case TCP_KEEPIDLE:
+	      func_str = "vppcom_session_attr[SOL_TCP,GET_TCP_KEEPIDLE]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_TCP_KEEPIDLE,
+					optval, optlen);
+	      break;
+	    case TCP_KEEPINTVL:
+	      func_str = "vppcom_session_attr[SOL_TCP,GET_TCP_KEEPINTVL]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x), SOL_TCP",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_TCP_KEEPINTVL,
+					optval, optlen);
+	      break;
+	    case TCP_INFO:
+	      if (optval && optlen && (*optlen == sizeof (struct tcp_info)))
+		{
+		  if (VCOM_DEBUG > 1)
+		    clib_warning ("LDP<%d>: fd %d (0x%x): sid %u (0x%x), "
+				  "SOL_TCP, TCP_INFO, optval %p, "
+				  "optlen %d: #LDP-NOP#",
+				  getpid (), fd, fd, sid, sid,
+				  optval, *optlen);
+		  memset (optval, 0, *optlen);
+		  rv = VPPCOM_OK;
+		}
+	      else
+		rv = -EFAULT;
+	      break;
+	    default:
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): "
+			      "sid %u (0x%x), SOL_TCP, "
+			      "optname %d unsupported!",
+			      getpid (), fd, fd, func_str, sid, sid, optname);
+	      break;
+	    }
+	  break;
+	case SOL_IPV6:
+	  switch (optname)
+	    {
+	    case IPV6_V6ONLY:
+	      func_str = "vppcom_session_attr[SOL_IPV6,GET_V6ONLY]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_V6ONLY,
+					optval, optlen);
+	      break;
+	    default:
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): "
+			      "sid %u (0x%x), SOL_IPV6, "
+			      "optname %d unsupported!",
+			      getpid (), fd, fd, func_str, sid, sid, optname);
+	      break;
+	    }
+	  break;
+	case SOL_SOCKET:
+	  switch (optname)
+	    {
+	    case SO_ACCEPTCONN:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,GET_ACCEPTCONN]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_LISTEN,
+					optval, optlen);
+	      break;
+	    case SO_KEEPALIVE:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,GET_KEEPALIVE]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_KEEPALIVE,
+					optval, optlen);
+	      break;
+	    case SO_PROTOCOL:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,GET_PROTOCOL]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_PROTOCOL,
+					optval, optlen);
+	      *(int *) optval = *(int *) optval ? SOCK_DGRAM : SOCK_STREAM;
+	      break;
+	    case SO_SNDBUF:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,GET_TX_FIFO_LEN]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x), optlen %d",
+			      getpid (), fd, fd, func_str, sid, sid, buflen);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_TX_FIFO_LEN,
+					optval, optlen);
+	      break;
+	    case SO_RCVBUF:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,GET_RX_FIFO_LEN]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x), optlen %d",
+			      getpid (), fd, fd, func_str, sid, sid, *optlen);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_RX_FIFO_LEN,
+					optval, optlen);
+	      break;
+	    case SO_REUSEADDR:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,GET_REUSEADDR]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_REUSEADDR,
+					optval, optlen);
+	      break;
+	    case SO_BROADCAST:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,GET_BROADCAST]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_BROADCAST,
+					optval, optlen);
+	      break;
+	    case SO_ERROR:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,GET_ERROR]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_GET_ERROR,
+					optval, optlen);
+	      break;
+	    default:
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): "
+			      "sid %u (0x%x), SOL_SOCKET, "
+			      "optname %d unsupported!",
+			      getpid (), fd, fd, func_str, sid, sid, optname);
+	      break;
+	    }
+	  break;
+	default:
+	  break;
 	}
 
-      /*
-       * 00. ignore vcom fds in __fds
-       * 01. ignore libc fds in vcom_fds,
-       *     ignore fd 0 by setting it to negative number.
-       *     as fd 0 cannot be ignored.
-       */
-      if (is_vcom_socket_fd (__fds[fds_idx].fd) ||
-	  is_vcom_epfd (__fds[fds_idx].fd))
+      if (rv != VPPCOM_OK)
 	{
-	  __fds[fds_idx].fd = -__fds[fds_idx].fd;
-	  vcom_nfds++;
+	  errno = -rv;
+	  rv = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_getsockopt";
+
+      if (VCOM_DEBUG > 1)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): level %d, "
+		      "optname %d, optval %p, optlen %d",
+		      getpid (), fd, fd, func_str, level, optname,
+		      optval, optlen);
+
+      rv = libc_getsockopt (fd, level, optname, optval, optlen);
+    }
+
+  if (VCOM_DEBUG > 1)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
+  return rv;
+}
+
+int
+setsockopt (int fd, int level, int optname,
+	    const void *optval, socklen_t optlen)
+{
+  int rv;
+  const char *func_str = __func__;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      rv = -EOPNOTSUPP;
+
+      switch (level)
+	{
+	case SOL_TCP:
+	  switch (optname)
+	    {
+	    case TCP_NODELAY:
+	      func_str = "vppcom_session_attr[SOL_TCP,SET_TCP_NODELAY]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_TCP_NODELAY,
+					(void *) optval, &optlen);
+	      break;
+	    case TCP_MAXSEG:
+	      func_str = "vppcom_session_attr[SOL_TCP,SET_TCP_USER_MSS]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_TCP_USER_MSS,
+					(void *) optval, &optlen);
+	      break;
+	    case TCP_KEEPIDLE:
+	      func_str = "vppcom_session_attr[SOL_TCP,SET_TCP_KEEPIDLE]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_TCP_KEEPIDLE,
+					(void *) optval, &optlen);
+	      break;
+	    case TCP_KEEPINTVL:
+	      func_str = "vppcom_session_attr[SOL_TCP,SET_TCP_KEEPINTVL]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x), SOL_TCP",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_TCP_KEEPINTVL,
+					(void *) optval, &optlen);
+	      break;
+	    default:
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): "
+			      "sid %u (0x%x), SOL_TCP, "
+			      "optname %d unsupported!",
+			      getpid (), fd, fd, func_str, sid, sid, optname);
+	      break;
+	    }
+	  break;
+	case SOL_IPV6:
+	  switch (optname)
+	    {
+	    case IPV6_V6ONLY:
+	      func_str = "vppcom_session_attr[SOL_IPV6,SET_V6ONLY]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_V6ONLY,
+					(void *) optval, &optlen);
+	      break;
+	    default:
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): "
+			      "sid %u (0x%x), SOL_IPV6, "
+			      "optname %d unsupported!",
+			      getpid (), fd, fd, func_str, sid, sid, optname);
+	      break;
+	    }
+	  break;
+	case SOL_SOCKET:
+	  switch (optname)
+	    {
+	    case SO_KEEPALIVE:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,SET_KEEPALIVE]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_KEEPALIVE,
+					(void *) optval, &optlen);
+	      break;
+	    case SO_REUSEADDR:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,SET_REUSEADDR]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_REUSEADDR,
+					(void *) optval, &optlen);
+	      break;
+	    case SO_BROADCAST:
+	      func_str = "vppcom_session_attr[SOL_SOCKET,SET_BROADCAST]";
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): "
+			      "sid %u (0x%x)",
+			      getpid (), fd, fd, func_str, sid, sid);
+	      rv = vppcom_session_attr (sid, VPPCOM_ATTR_SET_BROADCAST,
+					(void *) optval, &optlen);
+	      break;
+	    default:
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s(): "
+			      "sid %u (0x%x), SOL_SOCKET, "
+			      "optname %d unsupported!",
+			      getpid (), fd, fd, func_str, sid, sid, optname);
+	      break;
+	    }
+	  break;
+	default:
+	  break;
+	}
+
+      if (rv != VPPCOM_OK)
+	{
+	  errno = -rv;
+	  rv = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_setsockopt";
+
+      if (VCOM_DEBUG > 1)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): level %d, "
+		      "optname %d, optval %p, optlen %d",
+		      getpid (), fd, fd, func_str, level, optname,
+		      optval, optlen);
+
+      rv = libc_setsockopt (fd, level, optname, optval, optlen);
+    }
+
+  if (VCOM_DEBUG > 1)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
+  return rv;
+}
+
+int
+listen (int fd, int n)
+{
+  int rv;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      func_str = "vppcom_session_listen";
+
+      if (VCOM_DEBUG > 0)
+	clib_warning
+	  ("LDP<%d>: fd %d (0x%x): calling %s(): sid %u (0x%x), n %d",
+	   getpid (), fd, fd, func_str, sid, sid, n);
+
+      rv = vppcom_session_listen (sid, n);
+      if (rv != VPPCOM_OK)
+	{
+	  errno = -rv;
+	  rv = -1;
+	}
+    }
+  else
+    {
+      func_str = "libc_listen";
+
+      if (VCOM_DEBUG > 0)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): n %d",
+		      getpid (), fd, fd, func_str, n);
+
+      rv = libc_listen (fd, n);
+    }
+
+  if (VCOM_DEBUG > 0)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
+  return rv;
+}
+
+static inline int
+vcom_accept4 (int listen_fd, __SOCKADDR_ARG addr,
+	      socklen_t * __restrict addr_len, int flags)
+{
+  int rv;
+  const char *func_str;
+  u32 listen_sid = vcom_sid_from_fd (listen_fd);
+  int accept_sid;
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (listen_sid != INVALID_SESSION_ID)
+    {
+      vppcom_endpt_t ep;
+      u8 src_addr[sizeof (struct sockaddr_in6)];
+      ep.ip = src_addr;
+
+      func_str = "vppcom_session_accept";
+
+      if (VCOM_DEBUG > 0)
+	clib_warning ("LDP<%d>: listen fd %d (0x%x): calling %s(): "
+		      "listen sid %u (0x%x), ep %p, flags 0x%x",
+		      getpid (), listen_fd, listen_fd, func_str,
+		      listen_sid, listen_sid, ep, flags);
+
+      accept_sid = vppcom_session_accept (listen_sid, &ep, flags);
+      if (accept_sid < 0)
+	{
+	  errno = -accept_sid;
+	  rv = -1;
 	}
       else
 	{
-	  libc_nfds++;
-	  /* ignore fd 0 by setting it to negative number */
-	  if (!vcom_fds[fds_idx].fd)
+	  rv = vcom_copy_ep_to_sockaddr (addr, addr_len, &ep);
+	  if (rv != VPPCOM_OK)
 	    {
-	      vcom_fds[fds_idx].fd = -1;
+	      (void) vppcom_session_close ((u32) accept_sid);
+	      errno = -rv;
+	      rv = -1;
 	    }
-	  vcom_fds[fds_idx].fd = -vcom_fds[fds_idx].fd;
+	  else
+	    {
+	      func_str = "vcom_fd_from_sid";
+	      if (VCOM_DEBUG > 0)
+		clib_warning ("LDP<%d>: listen fd %d (0x%x): calling %s(): "
+			      "accept sid %u (0x%x), ep %p, flags 0x%x",
+			      getpid (), listen_fd, listen_fd,
+			      func_str, accept_sid, accept_sid, ep, flags);
+	      rv = vcom_fd_from_sid ((u32) accept_sid);
+	      if (rv < 0)
+		{
+		  (void) vppcom_session_close ((u32) accept_sid);
+		  errno = -rv;
+		  rv = -1;
+		}
+	    }
 	}
     }
-
-  /*
-   * polling loop
-   *
-   * poll on libc fds and vcom fds
-   *
-   * specifying a timeout of zero causes libc_poll() and
-   * vcom_socket_poll() to return immediately, even if no
-   * file descriptors are ready
-   * */
-  do
+  else
     {
-      rlibc_nfds = 0;
-      rvcom_nfds = 0;
+      func_str = "libc_accept4";
 
-      /*
-       * timeout parameter for libc_poll () set to zero
-       * to poll on libc fds
-       * */
+      if (VCOM_DEBUG > 0)
+	clib_warning ("LDP<%d>: listen fd %d (0x%x): calling %s(): "
+		      "addr %p, addr_len %p, flags 0x%x",
+		      getpid (), listen_fd, listen_fd, func_str,
+		      addr, addr_len, flags);
 
-      /* poll on libc fds */
-      if (libc_nfds)
-	{
-	  /*
-	   * a timeout of zero causes libc_poll()
-	   * to return immediately
-	   * */
-	  rlibc_nfds = libc_poll (__fds, __nfds, 0);
-	  if (VCOM_DEBUG > 2)
-	    fprintf (stderr,
-		     "[%d] poll libc: "
-		     "'%04d'='%08lu'\n", pid, rlibc_nfds, __nfds);
-
-	  if (rlibc_nfds < 0)
-	    {
-	      rv = -errno;
-	      goto poll_done_update_nfds;
-	    }
-	}
-
-      /*
-       * timeout parameter for vcom_socket_poll () set to zero
-       * to poll on vcom fds
-       * */
-
-      /* poll on vcom fds */
-      if (vcom_nfds)
-	{
-	  /*
-	   * a timeout of zero causes vcom_socket_poll()
-	   * to return immediately
-	   * */
-	  rvcom_nfds = vcom_socket_poll (vcom_fds, __nfds, 0);
-	  if (VCOM_DEBUG > 2)
-	    fprintf (stderr,
-		     "[%d] poll vcom: "
-		     "'%04d'='%08lu'\n", pid, rvcom_nfds, __nfds);
-	  if (rvcom_nfds < 0)
-	    {
-	      rv = rvcom_nfds;
-	      goto poll_done_update_nfds;
-	    }
-	}
-
-      /* check if any file descriptors changed status */
-      if ((libc_nfds && rlibc_nfds > 0) || (vcom_nfds && rvcom_nfds > 0))
-	{
-	  /* something interesting happened */
-	  rv = rlibc_nfds + rvcom_nfds;
-	  goto poll_done_update_nfds;
-	}
-
-      rv = clock_gettime (CLOCK_MONOTONIC, &now);
-      if (rv == -1)
-	{
-	  rv = -errno;
-	  goto poll_done_update_nfds;
-	}
+      rv = libc_accept4 (listen_fd, addr, addr_len, flags);
     }
 
-  /* block indefinitely || timeout elapsed  */
-  while ((__timeout < 0) || timespec_compare (&now, &end_time) < 0);
-
-  /* timeout expired before anything interesting happened */
-  rv = 0;
-
-poll_done_update_nfds:
-  for (fds_idx = 0; fds_idx < __nfds; fds_idx++)
+  if (VCOM_DEBUG > 0)
     {
-      /* ignore negative fds in vcom_fds
-       * 00. user negated fds
-       * 01. libc fds
-       * */
-      if (vcom_fds[fds_idx].fd < 0)
+      if (rv < 0)
 	{
-	  continue;
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: listen fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), listen_fd,
+			listen_fd, func_str, rv, errno_val);
+	  errno = errno_val;
 	}
-
-      /* from here on handle positive vcom fds */
-      /*
-       * restore vcom fds to positive number in __fds
-       * and update revents in __fds with the events
-       * that actually occurred in vcom fds
-       * */
-      __fds[fds_idx].fd = -__fds[fds_idx].fd;
-      if (rvcom_nfds)
-	{
-	  __fds[fds_idx].revents = vcom_fds[fds_idx].revents;
-	}
+      else
+	clib_warning ("LDP<%d>: listen fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), listen_fd, listen_fd, rv, rv);
     }
-
-poll_done:
-  if (VCOM_DEBUG > 2)
-    fprintf (stderr, "[%d] vpoll: " "'%04d'='%08lu'\n", pid, rv, __nfds);
   return rv;
 }
 
-/*
- * 00. The  field  __fds[i].fd contains a file descriptor for an
- *     open file.
- *     If this field is negative, then the corresponding
- *     events field is ignored and the revents field returns zero.
- *     The field __fds[i].events is an input parameter.
- *     The field __fds[i].revents is an output parameter.
- * 01. Specifying a negative value in  timeout
- *     means  an infinite timeout.
- *     Specifying a timeout of zero causes poll() to return
- *     immediately, even if no file descriptors are ready.
- *
- * NOTE: observed __nfds is less than 128 from kubecon strace files
- */
-
+int
+accept4 (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict addr_len,
+	 int flags)
+{
+  return vcom_accept4 (fd, addr, addr_len, flags);
+}
 
 int
-poll (struct pollfd *__fds, nfds_t __nfds, int __timeout)
+accept (int fd, __SOCKADDR_ARG addr, socklen_t * __restrict addr_len)
 {
-  int rv = 0;
-  pid_t pid = getpid ();
+  return vcom_accept4 (fd, addr, addr_len, 0);
+}
 
+int
+shutdown (int fd, int how)
+{
+  int rv;
+  const char *func_str;
+  u32 sid = vcom_sid_from_fd (fd);
 
-  if (VCOM_DEBUG > 2)
-    fprintf (stderr, "[%d] poll1: " "'%04d'='%08lu, %d, 0x%x'\n",
-	     pid, rv, __nfds, __fds[0].fd, __fds[0].events);
-  rv = vcom_poll (__fds, __nfds, __timeout);
-  if (VCOM_DEBUG > 2)
-    fprintf (stderr, "[%d] poll2: " "'%04d'='%08lu, %d, 0x%x'\n",
-	     pid, rv, __nfds, __fds[0].fd, __fds[0].revents);
-  if (rv < 0)
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (sid != INVALID_SESSION_ID)
+    {
+      clib_warning ("LDP<%d>: LDP-TBD", getpid ());
+      errno = ENOSYS;
+      rv = -1;
+    }
+  else
+    {
+      func_str = "libc_shutdown";
+
+      if (VCOM_DEBUG > 1)
+	clib_warning ("LDP<%d>: fd %d (0x%x): calling %s(): how %d",
+		      getpid (), fd, fd, func_str, how);
+
+      rv = libc_shutdown (fd, how);
+    }
+
+  if (VCOM_DEBUG > 1)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
+  return rv;
+}
+
+int
+epoll_create1 (int flags)
+{
+  const char *func_str;
+  int rv;
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  func_str = "vppcom_epoll_create";
+
+  if (VCOM_DEBUG > 1)
+    clib_warning ("LDP<%d>: calling %s()", getpid (), func_str);
+
+  rv = vppcom_epoll_create ();
+
+  if (PREDICT_FALSE (rv < 0))
     {
       errno = -rv;
-      return -1;
+      rv = -1;
     }
-  return rv;
-}
+  else
+    rv = vcom_fd_from_sid ((u32) rv);
 
-#ifdef __USE_GNU
-/* Like poll, but before waiting the threads signal mask is replaced
-   with that specified in the fourth parameter.  For better usability,
-   the timeout value is specified using a TIMESPEC object.
-
-   This function is a cancellation point and therefore not marked with
-   __THROW.  */
-int
-vcom_ppoll (struct pollfd *__fds, nfds_t __nfds,
-	    const struct timespec *__timeout, const __sigset_t * __ss)
-{
-  if (vcom_init () != 0)
+  if (VCOM_DEBUG > 1)
     {
-      return -1;
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: %s() failed! "
+			"rv %d, errno = %d",
+			getpid (), func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: returning epfd %d (0x%x)", getpid (), rv, rv);
     }
-
-  return -EOPNOTSUPP;
+  return rv;
 }
 
 int
-ppoll (struct pollfd *__fds, nfds_t __nfds,
-       const struct timespec *__timeout, const __sigset_t * __ss)
+epoll_create (int size)
 {
-  int rv = 0;
+  return epoll_create1 (0);
+}
 
-  errno = EOPNOTSUPP;
-  rv = -1;
+int
+epoll_ctl (int epfd, int op, int fd, struct epoll_event *event)
+{
+  int rv;
+  const char *func_str;
+  u32 vep_idx = vcom_sid_from_fd (epfd);
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (vep_idx != INVALID_SESSION_ID)
+    {
+      u32 sid = vcom_sid_from_fd (fd);
+
+      if (sid != INVALID_SESSION_ID)
+	{
+	  func_str = "vppcom_epoll_create";
+
+	  if (VCOM_DEBUG > 1)
+	    clib_warning ("LDP<%d>: epfd %d (0x%x): calling %s(): "
+			  "vep_idx %d (0x%x), op %d, sid %u (0x%x), event %p",
+			  getpid (), epfd, epfd, func_str, vep_idx, vep_idx,
+			  sid, sid, event);
+
+	  rv = vppcom_epoll_ctl (vep_idx, op, sid, event);
+	  if (rv != VPPCOM_OK)
+	    {
+	      errno = -rv;
+	      rv = -1;
+	    }
+	}
+      else
+	{
+	  int epfd;
+	  u32 size = sizeof (epfd);
+
+	  func_str = "vppcom_session_attr[GET_LIBC_EPFD]";
+	  epfd = vppcom_session_attr (vep_idx, VPPCOM_ATTR_GET_LIBC_EPFD,
+				      0, 0);
+	  if (!epfd)
+	    {
+	      func_str = "libc_epoll_create1";
+
+	      if (VCOM_DEBUG > 1)
+		clib_warning ("LDP<%d>: calling %s(): EPOLL_CLOEXEC",
+			      getpid (), func_str);
+
+	      epfd = libc_epoll_create1 (EPOLL_CLOEXEC);
+	      if (epfd < 0)
+		{
+		  rv = epfd;
+		  goto done;
+		}
+
+	      func_str = "vppcom_session_attr[SET_LIBC_EPFD]";
+	      rv = vppcom_session_attr (vep_idx, VPPCOM_ATTR_SET_LIBC_EPFD,
+					&epfd, &size);
+	      if (rv < 0)
+		{
+		  errno = -rv;
+		  rv = -1;
+		  goto done;
+		}
+	    }
+	  else if (PREDICT_FALSE (epfd < 0))
+	    {
+	      errno = -epfd;
+	      rv = -1;
+	      goto done;
+	    }
+
+	  rv = libc_epoll_ctl (epfd, op, fd, event);
+	}
+    }
+  else
+    {
+      func_str = "libc_epoll_ctl";
+
+      if (VCOM_DEBUG > 1)
+	clib_warning ("LDP<%d>: epfd %d (0x%x): calling %s(): "
+		      "op %d, fd %d (0x%x), event %p",
+		      getpid (), epfd, epfd, func_str, op, fd, fd, event);
+
+      rv = libc_epoll_ctl (epfd, op, fd, event);
+    }
+
+done:
+  if (VCOM_DEBUG > 1)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: fd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), fd, fd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: fd %d (0x%x): returning %d (0x%x)",
+		      getpid (), fd, fd, rv, rv);
+    }
   return rv;
+}
+
+static inline int
+vcom_epoll_pwait (int epfd, struct epoll_event *events,
+		  int maxevents, int timeout, const sigset_t * sigmask)
+{
+  const char *func_str;
+  int rv;
+  double time_to_wait = (double) 0;
+  double time_out, now = 0;
+  u32 vep_idx = vcom_sid_from_fd (epfd);
+  int libc_epfd;
+
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  if (PREDICT_FALSE (!events || (timeout < -1)))
+    {
+      errno = EFAULT;
+      return -1;
+    }
+
+  if (PREDICT_FALSE (vep_idx == INVALID_SESSION_ID))
+    {
+      clib_warning ("LDP<%d>: ERROR: epfd %d (0x%x): bad vep_idx %d (0x%x)!",
+		    getpid (), epfd, epfd, vep_idx, vep_idx);
+      errno = EBADFD;
+      return -1;
+    }
+
+  time_to_wait = ((timeout >= 0) ? (double) timeout / (double) 1000 : 0);
+  time_out = clib_time_now (&vcom->clib_time) + time_to_wait;
+
+  func_str = "vppcom_session_attr[GET_LIBC_EPFD]";
+  libc_epfd = vppcom_session_attr (vep_idx, VPPCOM_ATTR_GET_LIBC_EPFD, 0, 0);
+  if (PREDICT_FALSE (libc_epfd < 0))
+    {
+      errno = -libc_epfd;
+      rv = -1;
+      goto done;
+    }
+
+  if (VCOM_DEBUG > 2)
+    clib_warning ("LDP<%d>: epfd %d (0x%x): vep_idx %d (0x%x), "
+		  "libc_epfd %d (0x%x), events %p, maxevents %d, "
+		  "timeout %d, sigmask %p", getpid (), epfd, epfd,
+		  vep_idx, vep_idx, libc_epfd, libc_epfd, events,
+		  maxevents, timeout, sigmask);
+  do
+    {
+      if (!vcom->epoll_wait_vcl)
+	{
+	  func_str = "vppcom_epoll_wait";
+
+	  if (VCOM_DEBUG > 3)
+	    clib_warning ("LDP<%d>: epfd %d (0x%x): calling %s(): "
+			  "vep_idx %d (0x%x), events %p, maxevents %d",
+			  getpid (), epfd, epfd, func_str,
+			  vep_idx, vep_idx, events, maxevents);
+
+	  rv = vppcom_epoll_wait (vep_idx, events, maxevents, 0);
+	  if (rv > 0)
+	    {
+	      vcom->epoll_wait_vcl = 1;
+	      goto done;
+	    }
+	  else if (rv < 0)
+	    {
+	      errno = -rv;
+	      rv = -1;
+	      goto done;
+	    }
+	}
+      else
+	vcom->epoll_wait_vcl = 0;
+
+      if (libc_epfd > 0)
+	{
+	  func_str = "libc_epoll_pwait";
+
+	  if (VCOM_DEBUG > 3)
+	    clib_warning ("LDP<%d>: epfd %d (0x%x): calling %s(): "
+			  "libc_epfd %d (0x%x), events %p, "
+			  "maxevents %d, sigmask %p",
+			  getpid (), epfd, epfd, func_str,
+			  libc_epfd, libc_epfd, events, maxevents, sigmask);
+
+	  rv = libc_epoll_pwait (epfd, events, maxevents, 1, sigmask);
+	  if (rv != 0)
+	    goto done;
+	}
+
+      if (timeout != -1)
+	now = clib_time_now (&vcom->clib_time);
+    }
+  while (now < time_out);
+
+done:
+  if (VCOM_DEBUG > 3)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: epfd %d (0x%x): %s() failed! "
+			"rv %d, errno = %d", getpid (), epfd, epfd,
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	clib_warning ("LDP<%d>: epfd %d (0x%x): returning %d (0x%x)",
+		      getpid (), epfd, epfd, rv, rv);
+    }
+  return rv;
+}
+
+int
+epoll_pwait (int epfd, struct epoll_event *events,
+	     int maxevents, int timeout, const sigset_t * sigmask)
+{
+  return vcom_epoll_pwait (epfd, events, maxevents, timeout, sigmask);
+}
+
+int
+epoll_wait (int epfd, struct epoll_event *events, int maxevents, int timeout)
+{
+  return vcom_epoll_pwait (epfd, events, maxevents, timeout, NULL);
+}
+
+int
+poll (struct pollfd *fds, nfds_t nfds, int timeout)
+{
+  const char *func_str = __func__;
+  int rv, i, n_libc_fds, n_revents;
+  u32 sid;
+  vcl_poll_t *vp;
+  double wait_for_time;
+
+  if (VCOM_DEBUG > 3)
+    clib_warning ("LDP<%d>: fds %p, nfds %d, timeout %d",
+		  getpid (), fds, nfds, timeout);
+
+  if (timeout >= 0)
+    wait_for_time = (f64) timeout / 1000;
+  else
+    wait_for_time = -1;
+
+  n_libc_fds = 0;
+  for (i = 0; i < nfds; i++)
+    {
+      if (fds[i].fd >= 0)
+	{
+	  if (VCOM_DEBUG > 3)
+	    clib_warning ("LDP<%d>: fds[%d].fd %d (0x%0x), .events = 0x%x, "
+			  ".revents = 0x%x", getpid (), i, fds[i].fd,
+			  fds[i].fd, fds[i].events, fds[i].revents);
+
+	  sid = vcom_sid_from_fd (fds[i].fd);
+	  if (sid != INVALID_SESSION_ID)
+	    {
+	      fds[i].fd = -fds[i].fd;
+	      vec_add2 (vcom->vcl_poll, vp, 1);
+	      vp->fds_ndx = i;
+	      vp->sid = sid;
+	      vp->events = fds[i].events;
+#ifdef __USE_XOPEN2K
+	      if (fds[i].events & POLLRDNORM)
+		vp->events |= POLLIN;
+	      if (fds[i].events & POLLWRNORM)
+		vp->events |= POLLOUT;
+#endif
+	      vp->revents = &fds[i].revents;
+	    }
+	  else
+	    n_libc_fds++;
+	}
+    }
+
+  n_revents = 0;
+  do
+    {
+      if (vec_len (vcom->vcl_poll))
+	{
+	  func_str = "vppcom_poll";
+
+	  if (VCOM_DEBUG > 3)
+	    clib_warning ("LDP<%d>: calling %s(): "
+			  "vcl_poll %p, n_sids %u (0x%x): "
+			  "n_libc_fds %u",
+			  getpid (), func_str, vcom->vcl_poll,
+			  vec_len (vcom->vcl_poll), vec_len (vcom->vcl_poll),
+			  n_libc_fds);
+
+	  rv = vppcom_poll (vcom->vcl_poll, vec_len (vcom->vcl_poll), 0);
+	  if (rv < 0)
+	    {
+	      errno = -rv;
+	      rv = -1;
+	      goto done;
+	    }
+	  else
+	    n_revents += rv;
+	}
+
+      if (n_libc_fds)
+	{
+	  func_str = "libc_poll";
+
+	  if (VCOM_DEBUG > 3)
+	    clib_warning ("LDP<%d>: calling %s(): fds %p, nfds %u: n_sids %u",
+			  getpid (), fds, nfds, vec_len (vcom->vcl_poll));
+
+	  rv = libc_poll (fds, nfds, 0);
+	  if (rv < 0)
+	    goto done;
+	  else
+	    n_revents += rv;
+	}
+
+      if (n_revents)
+	{
+	  rv = n_revents;
+	  goto done;
+	}
+    }
+  while ((wait_for_time == -1) ||
+	 (clib_time_now (&vcom->clib_time) < wait_for_time));
+  rv = 0;
+
+done:
+  vec_foreach (vp, vcom->vcl_poll)
+  {
+    fds[vp->fds_ndx].fd = -fds[vp->fds_ndx].fd;
+#ifdef __USE_XOPEN2K
+    if ((fds[vp->fds_ndx].revents & POLLIN) &&
+	(fds[vp->fds_ndx].events & POLLRDNORM))
+      fds[vp->fds_ndx].revents |= POLLRDNORM;
+    if ((fds[vp->fds_ndx].revents & POLLOUT) &&
+	(fds[vp->fds_ndx].events & POLLWRNORM))
+      fds[vp->fds_ndx].revents |= POLLWRNORM;
+#endif
+  }
+  vec_reset_length (vcom->vcl_poll);
+
+  if (VCOM_DEBUG > 3)
+    {
+      if (rv < 0)
+	{
+	  int errno_val = errno;
+	  perror (func_str);
+	  clib_warning ("LDP<%d>: ERROR: %s() failed! "
+			"rv %d, errno = %d", getpid (),
+			func_str, rv, errno_val);
+	  errno = errno_val;
+	}
+      else
+	{
+	  clib_warning ("LDP<%d>: returning %d (0x%x): n_sids %u, "
+			"n_libc_fds %d", getpid (), rv, rv,
+			vec_len (vcom->vcl_poll), n_libc_fds);
+
+	  for (i = 0; i < nfds; i++)
+	    {
+	      if (fds[i].fd >= 0)
+		{
+		  if (VCOM_DEBUG > 3)
+		    clib_warning ("LDP<%d>: fds[%d].fd %d (0x%0x), "
+				  ".events = 0x%x, .revents = 0x%x",
+				  getpid (), i, fds[i].fd, fds[i].fd,
+				  fds[i].events, fds[i].revents);
+		}
+	    }
+	}
+    }
+
+  return rv;
+}
+
+#ifdef USE_GNU
+int
+ppoll (struct pollfd *fds, nfds_t nfds,
+       const struct timespec *timeout, const sigset_t * sigmask)
+{
+  if ((errno = -vcom_init ()))
+    return -1;
+
+  clib_warning ("LDP<%d>: LDP-TBD", getpid ());
+  errno = ENOSYS;
+
+
+  return -1;
 }
 #endif
 
@@ -3283,20 +3398,18 @@ void CONSTRUCTOR_ATTRIBUTE vcom_constructor (void);
 
 void DESTRUCTOR_ATTRIBUTE vcom_destructor (void);
 
+/*
+ * This function is called when the library is loaded
+ */
 void
 vcom_constructor (void)
 {
-  pid_t pid = getpid ();
-
   swrap_constructor ();
   if (vcom_init () != 0)
-    {
-      printf ("\n[%d] vcom_constructor...failed!\n", pid);
-    }
+    fprintf (stderr, "\nLDP<%d>: ERROR: vcom_constructor: failed!\n",
+	     getpid ());
   else
-    {
-      printf ("\n[%d] vcom_constructor...done!\n", pid);
-    }
+    clib_warning ("LDP<%d>: VCOM constructor: done!\n", getpid ());
 }
 
 /*
@@ -3305,11 +3418,18 @@ vcom_constructor (void)
 void
 vcom_destructor (void)
 {
-  pid_t pid = getpid ();
-
-  vcom_destroy ();
   swrap_destructor ();
-  printf ("\n[%d] vcom_destructor...done!\n", pid);
+  if (vcom->init)
+    {
+      vppcom_app_destroy ();
+      vcom->init = 0;
+    }
+
+  /* Don't use clib_warning() here because that calls writev()
+   * which will call vcom_init().
+   */
+  printf ("%s:%d: LDP<%d>: VCOM destructor: done!\n",
+	  __func__, __LINE__, getpid ());
 }
 
 
