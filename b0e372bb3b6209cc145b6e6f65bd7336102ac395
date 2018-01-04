@@ -48,6 +48,23 @@
     },
     {
       "key": {
+        "uuid": "fed09f75_1576622f",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-01-04T09:21:48Z",
+      "side": 1,
+      "message": "Here is the complete list of Cavium\u0027s processor Id. Cavium\u0027s Implementer Id is 0x43 for all following processors.\n1) Name: \"ThunderX CN88XX\": PartNum: 0xA1\n2) Name: \"OCTEON TX CN81XX\": PartNum: 0xA2\n3) Name: \"OCTEON TX CN83XX\": PartNum: 0xA3\n4) Name: \"ThunderX2 CN99XX\":PartNum: 0xAF\n5) Name: \"OCTEON TX2 CN98XX\": PartNum: 0xB1\n6) Name: \"OCTEON TX2 CN93XX\": PartNum: 0XB2",
+      "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "20634a85_d5ee6e9a",
         "filename": "src/vppinfra/cpu.c",
         "patchSetId": 3
@@ -138,6 +155,47 @@
       "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "deac0442_f445c866",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 100,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-01-04T09:21:48Z",
+      "side": 1,
+      "message": "That\u0027s may be because in your processor HWCAP_CPUID bit is set of the HWCAP. In some cases HWCAP_CPUID can be disabled hence for them we need to parse /proc/cpuinfo. We can also check /sys/devices/system/cpu/cpu*/regs/identification/midr_el1 file existence but it may present or not. /proc/cpuinfo is sure shot way of parsing.",
+      "parentUuid": "981bfd73_c3582d60",
+      "range": {
+        "startLine": 100,
+        "startChar": 14,
+        "endLine": 100,
+        "endChar": 22
+      },
+      "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "adc3d456_139c8eeb",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 108,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-01-04T09:21:48Z",
+      "side": 1,
+      "message": "I would like to propose to add string for processor revision/pass as well. So for ThunderX \"show cpu\" should show \"ThunderX CN88XX PASS 1.0\". Cavium follows string: PASS X.Y where (X \u003d\u003d main_id_register.variant +1) and (Y \u003d\u003d main_id_register.revision).",
+      "revId": "b0e372bb3b6209cc145b6e6f65bd7336102ac395",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
