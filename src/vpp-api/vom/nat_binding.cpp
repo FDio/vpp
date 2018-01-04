@@ -119,7 +119,7 @@ nat_binding::update(const nat_binding& desired)
       HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
         m_binding, m_itf->handle(), m_zone));
     } else {
-      HW::enqueue(new nat_binding_cmds::bind_44_input_cmd(
+      HW::enqueue(new nat_binding_cmds::bind_44_output_cmd(
         m_binding, m_itf->handle(), m_zone));
     }
   }

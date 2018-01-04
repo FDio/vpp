@@ -168,12 +168,12 @@ private:
   /**
    * The 'inside' IP address, could be v4 or v6
    */
-  const boost::asio::ip::address& m_inside;
+  const boost::asio::ip::address m_inside;
 
   /**
    * The 'outside' IP address - always v4
    */
-  const boost::asio::ip::address_v4& m_outside;
+  const boost::asio::ip::address_v4 m_outside;
 
   /**
    * A map of all NAT statics
