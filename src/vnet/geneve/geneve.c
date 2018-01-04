@@ -288,25 +288,6 @@ geneve_decap_next_is_valid (geneve_main_t * vxm, u32 is_ip6,
   return decap_next_index < r->n_next_nodes;
 }
 
-static void
-hash_set_key_copy (uword ** h, void *key, uword v)
-{
-  size_t ksz = hash_header (*h)->user;
-  void *copy = clib_mem_alloc (ksz);
-  clib_memcpy (copy, key, ksz);
-  hash_set_mem (*h, copy, v);
-}
-
-static void
-hash_unset_key_free (uword ** h, void *key)
-{
-  hash_pair_t *hp = hash_get_pair_mem (*h, key);
-  ASSERT (hp);
-  key = uword_to_pointer (hp->key, void *);
-  hash_unset_mem (*h, key);
-  clib_mem_free (key);
-}
-
 static uword
 vtep_addr_ref (ip46_address_t * ip)
 {
@@ -317,7 +298,7 @@ vtep_addr_ref (ip46_address_t * ip)
     return ++(*vtep);
   ip46_address_is_ip4 (ip) ?
     hash_set (geneve_main.vtep4, ip->ip4.as_u32, 1) :
-    hash_set_key_copy (&geneve_main.vtep6, &ip->ip6, 1);
+    hash_set_mem_alloc (&geneve_main.vtep6, &ip->ip6, 1);
   return 1;
 }
 
@@ -332,7 +313,7 @@ vtep_addr_unref (ip46_address_t * ip)
     return *vtep;
   ip46_address_is_ip4 (ip) ?
     hash_unset (geneve_main.vtep4, ip->ip4.as_u32) :
-    hash_unset_key_free (&geneve_main.vtep6, &ip->ip6);
+    hash_unset_mem_free (&geneve_main.vtep6, &ip->ip6);
   return 0;
 }
 
@@ -365,7 +346,7 @@ mcast_shared_add (ip46_address_t * remote,
     .mfib_entry_index = mfei,
   };
 
-  hash_set_key_copy (&geneve_main.mcast_shared, remote, new_ep.as_u64);
+  hash_set_mem_alloc (&geneve_main.mcast_shared, remote, new_ep.as_u64);
 }
 
 static inline void
@@ -376,7 +357,7 @@ mcast_shared_remove (ip46_address_t * remote)
   adj_unlock (ep.mcast_adj_index);
   mfib_table_entry_delete_index (ep.mfib_entry_index, MFIB_SOURCE_GENEVE);
 
-  hash_unset_key_free (&geneve_main.mcast_shared, remote);
+  hash_unset_mem_free (&geneve_main.mcast_shared, remote);
 }
 
 static inline fib_protocol_t
@@ -445,8 +426,8 @@ int vnet_geneve_add_del_tunnel
 
       /* copy the key */
       if (is_ip6)
-	hash_set_key_copy (&vxm->geneve6_tunnel_by_key, &key6,
-			   t - vxm->tunnels);
+	hash_set_mem_alloc (&vxm->geneve6_tunnel_by_key, &key6,
+			    t - vxm->tunnels);
       else
 	hash_set (vxm->geneve4_tunnel_by_key, key4.as_u64, t - vxm->tunnels);
 
@@ -624,7 +605,7 @@ int vnet_geneve_add_del_tunnel
       if (!is_ip6)
 	hash_unset (vxm->geneve4_tunnel_by_key, key4.as_u64);
       else
-	hash_unset_key_free (&vxm->geneve6_tunnel_by_key, &key6);
+	hash_unset_mem_free (&vxm->geneve6_tunnel_by_key, &key6);
 
       if (!ip46_address_is_multicast (&t->remote))
 	{
