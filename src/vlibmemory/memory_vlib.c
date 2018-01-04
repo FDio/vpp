@@ -390,7 +390,7 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
     }
 }
 
-void
+static void
 vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
 {
   vl_api_get_first_msg_id_reply_t *rmp;

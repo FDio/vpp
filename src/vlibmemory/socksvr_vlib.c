@@ -668,10 +668,46 @@ reply:
   send_fd_msg (cf->file_descriptor, memfd->fd);
 }
 
+static void
+vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
+{
+  vl_api_registration_t *regp = socket_main.current_rp;
+  vl_api_get_first_msg_id_reply_t *rmp;
+  api_main_t *am = &api_main;
+  vl_api_msg_range_t *rp;
+  u16 first_msg_id = ~0;
+  int rv = 0;
+  u8 name[64];
+  uword *p;
+
+  if (am->msg_range_by_name == 0)
+    goto out;
+
+  strncpy ((char *) name, (char *) mp->name, ARRAY_LEN (name) - 1);
+
+  p = hash_get_mem (am->msg_range_by_name, name);
+  if (p == 0)
+    goto out;
+
+  rp = vec_elt_at_index (am->msg_ranges, p[0]);
+  first_msg_id = rp->first_msg_id;
+  rv = 0;
+
+out:
+  rmp = vl_msg_api_alloc (sizeof (*rmp));
+  rmp->_vl_msg_id = ntohs (VL_API_GET_FIRST_MSG_ID_REPLY);
+  rmp->context = mp->context;
+  rmp->retval = ntohl (rv);
+  rmp->first_msg_id = ntohs (first_msg_id);
+
+  vl_msg_api_send (regp, (u8 *) rmp);
+}
+
 #define foreach_vlib_api_msg                    	\
 _(SOCKCLNT_CREATE, sockclnt_create)             	\
 _(SOCKCLNT_DELETE, sockclnt_delete)			\
 _(SOCK_INIT_SHM, sock_init_shm) 			\
+_(GET_FIRST_MSG_ID, get_first_msg_id)                   \
 _(MEMFD_SEGMENT_CREATE, memfd_segment_create)
 
 clib_error_t *
