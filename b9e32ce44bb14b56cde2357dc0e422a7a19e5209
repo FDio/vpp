@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "27b91392_f76dcea9",
+        "filename": "src/vppinfra/cpu.c",
+        "patchSetId": 4
+      },
+      "lineNbr": 117,
+      "author": {
+        "id": 999
+      },
+      "writtenOn": "2018-01-04T11:24:25Z",
+      "side": 1,
+      "message": "For Cavium processor\u0027s, it has to be\nformat(s, \"%s (%s PASS %u.%u)\", a, c, variant+1, revision);",
+      "revId": "b9e32ce44bb14b56cde2357dc0e422a7a19e5209",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
