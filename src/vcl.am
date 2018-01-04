@@ -33,7 +33,6 @@ nobase_include_HEADERS +=			\
 libvcl_ldpreload_la_SOURCES +=			\
   vcl/vcom_socket_wrapper.c			\
   vcl/vcom.c					\
-  vcl/vcom_socket.c				\
   $(libvppcom_la_SOURCES)			\
   $(libvppinfra_la_SOURCES)			\
   $(libvlib_la_SOURCES)				\
@@ -43,8 +42,7 @@ libvcl_ldpreload_la_SOURCES +=			\
 nobase_include_HEADERS +=			\
   vcl/vcom_socket_wrapper.h			\
   vcl/vcom_glibc_socket.h			\
-  vcl/vcom.h					\
-  vcl/vcom_socket.h
+  vcl/vcom.h
 
 noinst_PROGRAMS +=				\
 	vcl_test_server				\
