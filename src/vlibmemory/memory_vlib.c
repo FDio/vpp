@@ -390,9 +390,10 @@ vl_api_memclnt_delete_t_handler (vl_api_memclnt_delete_t * mp)
     }
 }
 
-void
+static void
 vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
 {
+  vl_api_registration_t *regp = socket_main.current_rp;
   vl_api_get_first_msg_id_reply_t *rmp;
   unix_shared_memory_queue_t *q;
   uword *p;
@@ -403,7 +404,7 @@ vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
   int rv = -7;			/* VNET_API_ERROR_INVALID_VALUE */
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
+  if (!q && !regp)
     return;
 
   if (am->msg_range_by_name == 0)
@@ -416,18 +417,19 @@ vl_api_get_first_msg_id_t_handler (vl_api_get_first_msg_id_t * mp)
     goto out;
 
   rp = vec_elt_at_index (am->msg_ranges, p[0]);
-
   first_msg_id = rp->first_msg_id;
   rv = 0;
 
 out:
-
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = ntohs (VL_API_GET_FIRST_MSG_ID_REPLY);
   rmp->context = mp->context;
   rmp->retval = ntohl (rv);
   rmp->first_msg_id = ntohs (first_msg_id);
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  if (regp)
+    vl_msg_api_send (regp, (u8 *) rmp);
+  else
+    vl_msg_api_send_shmem (q, (u8 *) & rmp);
 }
 
 /**
