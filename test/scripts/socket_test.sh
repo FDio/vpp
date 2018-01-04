@@ -523,6 +523,9 @@ write_script_header() {
     if [ -n "$VCL_DEBUG" ] ; then
         echo "export VCL_DEBUG=$VCL_DEBUG" >> $1
     fi
+    if [ -n "$VCOM_DEBUG" ] ; then
+        echo "export VCOM_DEBUG=$VCOM_DEBUG" >> $1
+    fi
     if [ -n "$namespace_id" ] ; then
         echo "export VCL_APP_NAMESPACE_ID=\"$namespace_id\"" >> $1
         echo "export VCL_APP_NAMESPACE_SECRET=\"$namespace_secret\"" >> $1
