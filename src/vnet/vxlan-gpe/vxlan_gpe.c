@@ -381,25 +381,6 @@ vxlan6_gpe_rewrite (vxlan_gpe_tunnel_t * t, u32 extension_size,
   return (0);
 }
 
-static void
-hash_set_key_copy (uword ** h, void *key, uword v)
-{
-  size_t ksz = hash_header (*h)->user;
-  void *copy = clib_mem_alloc (ksz);
-  clib_memcpy (copy, key, ksz);
-  hash_set_mem (*h, copy, v);
-}
-
-static void
-hash_unset_key_free (uword ** h, void *key)
-{
-  hash_pair_t *hp = hash_get_pair_mem (*h, key);
-  ASSERT (hp);
-  key = uword_to_pointer (hp->key, void *);
-  hash_unset_mem (*h, key);
-  clib_mem_free (key);
-}
-
 static uword
 vtep_addr_ref (ip46_address_t * ip)
 {
@@ -410,7 +391,7 @@ vtep_addr_ref (ip46_address_t * ip)
     return ++(*vtep);
   ip46_address_is_ip4 (ip) ?
     hash_set (vxlan_gpe_main.vtep4, ip->ip4.as_u32, 1) :
-    hash_set_key_copy (&vxlan_gpe_main.vtep6, &ip->ip6, 1);
+    hash_set_mem_alloc (&vxlan_gpe_main.vtep6, &ip->ip6, 1);
   return 1;
 }
 
@@ -425,7 +406,7 @@ vtep_addr_unref (ip46_address_t * ip)
     return *vtep;
   ip46_address_is_ip4 (ip) ?
     hash_unset (vxlan_gpe_main.vtep4, ip->ip4.as_u32) :
-    hash_unset_key_free (&vxlan_gpe_main.vtep6, &ip->ip6);
+    hash_unset_mem_free (&vxlan_gpe_main.vtep6, &ip->ip6);
   return 0;
 }
 
@@ -459,7 +440,7 @@ mcast_shared_add (ip46_address_t * remote,
     .mfib_entry_index = mfei,
   };
 
-  hash_set_key_copy (&vxlan_gpe_main.mcast_shared, remote, new_ep.as_u64);
+  hash_set_mem_alloc (&vxlan_gpe_main.mcast_shared, remote, new_ep.as_u64);
 }
 
 static inline void
@@ -470,7 +451,7 @@ mcast_shared_remove (ip46_address_t * remote)
   adj_unlock (ep.mcast_adj_index);
   mfib_table_entry_delete_index (ep.mfib_entry_index, MFIB_SOURCE_VXLAN_GPE);
 
-  hash_unset_key_free (&vxlan_gpe_main.mcast_shared, remote);
+  hash_unset_mem_free (&vxlan_gpe_main.mcast_shared, remote);
 }
 
 static inline fib_protocol_t
@@ -535,15 +516,18 @@ int vnet_vxlan_gpe_add_del_tunnel
       memset (t, 0, sizeof (*t));
 
       /* copy from arg structure */
+/* *INDENT-OFF* */
 #define _(x) t->x = a->x;
       foreach_gpe_copy_field;
       if (!a->is_ip6)
 	foreach_copy_ipv4
-	else
+      else
 	foreach_copy_ipv6
 #undef _
-	  if (!a->is_ip6)
-	  t->flags |= VXLAN_GPE_TUNNEL_IS_IPV4;
+/* *INDENT-ON* */
+
+      if (!a->is_ip6)
+	t->flags |= VXLAN_GPE_TUNNEL_IS_IPV4;
 
       if (!a->is_ip6)
 	{
@@ -743,7 +727,7 @@ int vnet_vxlan_gpe_add_del_tunnel
       if (!is_ip6)
 	hash_unset (ngm->vxlan4_gpe_tunnel_by_key, key4.as_u64);
       else
-	hash_unset_key_free (&ngm->vxlan6_gpe_tunnel_by_key, &key6);
+	hash_unset_mem_free (&ngm->vxlan6_gpe_tunnel_by_key, &key6);
 
       if (!ip46_address_is_multicast (&t->remote))
 	{
@@ -940,14 +924,17 @@ vxlan_gpe_add_del_tunnel_command_fn (vlib_main_t * vm,
   a->is_add = is_add;
   a->is_ip6 = ipv6_set;
 
+/* *INDENT-OFF* */
 #define _(x) a->x = x;
   foreach_gpe_copy_field;
   if (ipv4_set)
     foreach_copy_ipv4
-    else
+  else
     foreach_copy_ipv6
 #undef _
-      rv = vnet_vxlan_gpe_add_del_tunnel (a, &sw_if_index);
+/* *INDENT-ON* */
+
+  rv = vnet_vxlan_gpe_add_del_tunnel (a, &sw_if_index);
 
   switch (rv)
     {
