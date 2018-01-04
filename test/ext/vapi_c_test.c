@@ -66,12 +66,12 @@ START_TEST (test_invalid_values)
   ck_assert_int_eq (VAPI_EINVAL, rv);
   rv = vapi_send (NULL, NULL);
   ck_assert_int_eq (VAPI_EINVAL, rv);
-  rv = vapi_recv (NULL, NULL, NULL);
+  rv = vapi_recv (NULL, NULL, NULL, 0, 0);
   ck_assert_int_eq (VAPI_EINVAL, rv);
-  rv = vapi_recv (ctx, NULL, NULL);
+  rv = vapi_recv (ctx, NULL, NULL, 0, 0);
   ck_assert_int_eq (VAPI_EINVAL, rv);
   vapi_msg_show_version_reply *reply;
-  rv = vapi_recv (ctx, (void **) &reply, NULL);
+  rv = vapi_recv (ctx, (void **) &reply, NULL, 0, 0);
   ck_assert_int_eq (VAPI_EINVAL, rv);
   rv = vapi_disconnect (ctx);
   ck_assert_int_eq (VAPI_OK, rv);
@@ -531,7 +531,7 @@ START_TEST (test_show_version_1)
   ck_assert_int_eq (VAPI_OK, rv);
   vapi_msg_show_version_reply *resp;
   size_t size;
-  rv = vapi_recv (ctx, (void *) &resp, &size);
+  rv = vapi_recv (ctx, (void *) &resp, &size, 0, 0);
   ck_assert_int_eq (VAPI_OK, rv);
   int dummy;
   show_version_cb (NULL, &dummy, VAPI_OK, true, &resp->payload);

@@ -37,6 +37,13 @@ static char *api_prefix = nullptr;
 static const int max_outstanding_requests = 32;
 static const int response_queue_size = 32;
 
+#define WAIT_FOR_RESPONSE(param, ret)      \
+  do                                       \
+    {                                      \
+      ret = con.wait_for_response (param); \
+    }                                      \
+  while (ret == VAPI_EAGAIN)
+
 using namespace vapi;
 
 void verify_show_version_reply (const Show_version_reply &r)
@@ -68,7 +75,7 @@ START_TEST (test_show_version_1)
   Show_version sv (con);
   vapi_error_e rv = sv.execute ();
   ck_assert_int_eq (VAPI_OK, rv);
-  rv = con.wait_for_response (sv);
+  WAIT_FOR_RESPONSE (sv, rv);
   ck_assert_int_eq (VAPI_OK, rv);
   auto &r = sv.get_response ();
   verify_show_version_reply (r);
@@ -122,7 +129,8 @@ START_TEST (test_loopbacks_1)
       memcpy (p.mac_address, mac_addresses[i], sizeof (p.mac_address));
       auto e = cl.execute ();
       ck_assert_int_eq (VAPI_OK, e);
-      vapi_error_e rv = con.wait_for_response (cl);
+      vapi_error_e rv;
+      WAIT_FOR_RESPONSE (cl, rv);
       ck_assert_int_eq (VAPI_OK, rv);
       auto &rp = cl.get_response ().get_payload ();
       ck_assert_int_eq (0, rp.retval);
@@ -145,7 +153,7 @@ START_TEST (test_loopbacks_1)
     memset (p.name_filter, 0, sizeof (p.name_filter));
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
-    rv = con.wait_for_response (d);
+    WAIT_FOR_RESPONSE (d, rv);
     ck_assert_int_eq (VAPI_OK, rv);
     auto &rs = d.get_result_set ();
     for (auto &r : rs)
@@ -172,7 +180,7 @@ START_TEST (test_loopbacks_1)
       dl.get_request ().get_payload ().sw_if_index = sw_if_indexes[i];
       auto rv = dl.execute ();
       ck_assert_int_eq (VAPI_OK, rv);
-      rv = con.wait_for_response (dl);
+      WAIT_FOR_RESPONSE (dl, rv);
       ck_assert_int_eq (VAPI_OK, rv);
       auto &response = dl.get_response ();
       auto rp = response.get_payload ();
@@ -187,7 +195,7 @@ START_TEST (test_loopbacks_1)
     memset (p.name_filter, 0, sizeof (p.name_filter));
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
-    rv = con.wait_for_response (d);
+    WAIT_FOR_RESPONSE (d, rv);
     ck_assert_int_eq (VAPI_OK, rv);
     auto &rs = d.get_result_set ();
     for (auto &r : rs)
@@ -305,7 +313,7 @@ START_TEST (test_loopbacks_2)
   memset (p.name_filter, 0, sizeof (p.name_filter));
   auto rv = d.execute ();
   ck_assert_int_eq (VAPI_OK, rv);
-  rv = con.wait_for_response (d);
+  WAIT_FOR_RESPONSE (d, rv);
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_ne (0, swdcb.called);
   std::array<Delete_loopback_cb, num_ifs> dcbs;
@@ -334,7 +342,7 @@ START_TEST (test_loopbacks_2)
     memset (p.name_filter, 0, sizeof (p.name_filter));
     auto rv = d.execute ();
     ck_assert_int_eq (VAPI_OK, rv);
-    rv = con.wait_for_response (d);
+    WAIT_FOR_RESPONSE (d, rv);
     ck_assert_int_eq (VAPI_OK, rv);
     auto &rs = d.get_result_set ();
     for (auto &r : rs)
@@ -360,7 +368,7 @@ START_TEST (test_stats_1)
   auto rv = ws.execute ();
   ck_assert_int_eq (VAPI_OK, rv);
   Event_registration<Vnet_interface_simple_counters> sc (con);
-  rv = con.wait_for_response (sc);
+  WAIT_FOR_RESPONSE (sc, rv);
   ck_assert_int_eq (VAPI_OK, rv);
   auto &rs = sc.get_result_set ();
   int count = 0;
@@ -407,7 +415,7 @@ START_TEST (test_stats_2)
   ck_assert_int_eq (VAPI_OK, rv);
   Vnet_interface_simple_counters_cb cb;
   Event_registration<Vnet_interface_simple_counters> sc (con, std::ref (cb));
-  rv = con.wait_for_response (sc);
+  WAIT_FOR_RESPONSE (sc, rv);
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_ne (0, cb.called);
 }
@@ -452,7 +460,7 @@ START_TEST (test_stats_3)
   Event_registration<Vnet_interface_simple_counters> sc (con, std::ref (cb));
   for (int i = 0; i < 5; ++i)
     {
-      rv = con.wait_for_response (sc);
+      WAIT_FOR_RESPONSE (sc, rv);
     }
   ck_assert_int_eq (VAPI_OK, rv);
   ck_assert_int_eq (5, cb.called);
@@ -472,9 +480,9 @@ START_TEST (test_stats_4)
   ck_assert_int_eq (VAPI_OK, rv);
   Event_registration<Vnet_interface_simple_counters> sc (con);
   Event_registration<Vnet_interface_combined_counters> cc (con);
-  rv = con.wait_for_response (sc);
+  WAIT_FOR_RESPONSE (sc, rv);
   ck_assert_int_eq (VAPI_OK, rv);
-  rv = con.wait_for_response (cc);
+  WAIT_FOR_RESPONSE (cc, rv);
   ck_assert_int_eq (VAPI_OK, rv);
   int count = 0;
   for (auto &r : sc.get_result_set ())

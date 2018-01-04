@@ -245,7 +245,7 @@ public:
    *
    * @return VAPI_OK on success, other error code on error
    */
-  vapi_error_e dispatch (const Common_req *limit = nullptr)
+  vapi_error_e dispatch (const Common_req *limit = nullptr, u32 time = 5)
   {
     std::lock_guard<std::mutex> lock (dispatch_mutex);
     vapi_error_e rv = VAPI_OK;
@@ -254,7 +254,8 @@ public:
       {
         void *shm_data;
         size_t shm_data_size;
-        rv = vapi_recv (vapi_ctx, &shm_data, &shm_data_size);
+        rv = vapi_recv (vapi_ctx, &shm_data, &shm_data_size, SVM_Q_TIMEDWAIT,
+                        time);
         if (VAPI_OK != rv)
           {
             return rv;

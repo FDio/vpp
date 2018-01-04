@@ -218,7 +218,7 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
       for (i = 0; i < 1000; i++)
 	{
 	  qstatus = svm_queue_sub (vl_input_queue, (u8 *) & rp,
-				   1 /* nowait */ );
+				   SVM_Q_NOWAIT, 0);
 	  if (qstatus == 0)
 	    goto read_one_msg;
 	  ts.tv_sec = 0;
@@ -305,7 +305,7 @@ vl_client_disconnect (void)
 	  am->shmem_hdr = 0;
 	  break;
 	}
-      if (svm_queue_sub (vl_input_queue, (u8 *) & rp, 1) < 0)
+      if (svm_queue_sub (vl_input_queue, (u8 *) & rp, SVM_Q_NOWAIT, 0) < 0)
 	continue;
 
       /* drain the queue */

@@ -502,7 +502,8 @@ out:
 }
 
 vapi_error_e
-vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size)
+vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size,
+	   svm_q_conditional_wait_t cond, u32 time)
 {
   if (!ctx || !ctx->connected || !msg || !msg_size)
     {
@@ -519,7 +520,9 @@ vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size)
 
   svm_queue_t *q = am->vl_input_queue;
   VAPI_DBG ("doing shm queue sub");
-  int tmp = svm_queue_sub (q, (u8 *) & data, 0);
+
+  int tmp = svm_queue_sub (q, (u8 *) & data, cond, time);
+
   if (tmp == 0)
     {
 #if VAPI_DEBUG_ALLOC
@@ -700,7 +703,7 @@ vapi_dispatch_one (vapi_ctx_t ctx)
   VAPI_DBG ("vapi_dispatch_one()");
   void *msg;
   size_t size;
-  vapi_error_e rv = vapi_recv (ctx, &msg, &size);
+  vapi_error_e rv = vapi_recv (ctx, &msg, &size, SVM_Q_WAIT, 0);
   if (VAPI_OK != rv)
     {
       VAPI_DBG ("vapi_recv failed with rv=%d", rv);

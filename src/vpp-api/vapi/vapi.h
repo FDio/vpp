@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <vppinfra/types.h>
 #include <vapi/vapi_common.h>
+#include <svm/queue.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -162,10 +163,13 @@ extern "C"
  * @param ctx opaque vapi context
  * @param[out] msg pointer to result variable containing message
  * @param[out] msg_size pointer to result variable containing message size
+ * @param cond enum type for blocking, non-blocking or timed wait call
+ * @param time in sec for timed wait
  *
  * @return VAPI_OK on success, other error code on error
  */
-  vapi_error_e vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size);
+  vapi_error_e vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size,
+			  svm_q_conditional_wait_t cond, u32 time);
 
 /**
  * @brief wait for connection to become readable or writable

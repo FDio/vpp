@@ -577,7 +577,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
 
 	mutex_ok:
 	  am->vlib_rp = vlib_rp;
-	  while (svm_queue_sub (q, (u8 *) & old_msg, 1 /* nowait */ )
+	  while (svm_queue_sub (q, (u8 *) & old_msg, SVM_Q_NOWAIT, 0)
 		 != -2 /* queue underflow */ )
 	    {
 	      vl_msg_api_free_nolock ((void *) old_msg);
