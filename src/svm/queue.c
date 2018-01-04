@@ -26,6 +26,7 @@
 #include <vppinfra/format.h>
 #include <vppinfra/cache.h>
 #include <svm/queue.h>
+#include <vppinfra/time.h>
 #include <signal.h>
 
 /*
@@ -299,12 +300,14 @@ svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
  * svm_queue_sub
  */
 int
-svm_queue_sub (svm_queue_t * q, u8 * elem, int nowait)
+svm_queue_sub (svm_queue_t * q, u8 * elem, svm_conditional_wait_t cond,
+	       u32 time)
 {
   i8 *headp;
   int need_broadcast = 0;
+  int rc = 0;
 
-  if (nowait)
+  if (cond == SVM_MEM_NOWAIT)
     {
       /* zero on success */
       if (pthread_mutex_trylock (&q->mutex))
@@ -317,10 +320,25 @@ svm_queue_sub (svm_queue_t * q, u8 * elem, int nowait)
 
   if (PREDICT_FALSE (q->cursize == 0))
     {
-      if (nowait)
+      if (cond == SVM_MEM_NOWAIT)
 	{
 	  pthread_mutex_unlock (&q->mutex);
 	  return (-2);
+	}
+      else if (cond == SVM_MEM_TIMEDWAIT)
+	{
+	  struct timespec ts;
+	  ts.tv_sec = unix_time_now () + time;
+	  ts.tv_nsec = 0;
+	  while (q->cursize == 0 && rc == 0)
+	    {
+	      rc = pthread_cond_timedwait (&q->condvar, &q->mutex, &ts);
+	    }
+	  if (rc == ETIMEDOUT)
+	    {
+	      pthread_mutex_unlock (&q->mutex);
+	      return ETIMEDOUT;
+	    }
 	}
       while (q->cursize == 0)
 	{
