@@ -41,6 +41,26 @@ typedef enum
   VPPCOM_PROTO_UDP,
 } vppcom_proto_t;
 
+static inline char *
+vppcom_proto_str (vppcom_proto_t proto)
+{
+  char *proto_str;
+
+  switch (proto)
+    {
+    case VPPCOM_PROTO_TCP:
+      proto_str = "VPPCOM_PROTO_TCP";
+      break;
+    case VPPCOM_PROTO_UDP:
+      proto_str = "VPPCOM_PROTO_UDP";
+      break;
+    default:
+      proto_str = "UNKNOWN";
+      break;
+    }
+  return proto_str;
+}
+
 typedef enum
 {
   VPPCOM_IS_IP6 = 0,
@@ -79,11 +99,19 @@ typedef enum
   VPPCOM_ATTR_SET_FLAGS,
   VPPCOM_ATTR_GET_LCL_ADDR,
   VPPCOM_ATTR_GET_PEER_ADDR,
+  VPPCOM_ATTR_GET_LIBC_EPFD,
+  VPPCOM_ATTR_SET_LIBC_EPFD,
+  VPPCOM_ATTR_GET_REUSEADDR,
   VPPCOM_ATTR_SET_REUSEADDR,
+  VPPCOM_ATTR_GET_BROADCAST,
   VPPCOM_ATTR_SET_BROADCAST,
+  VPPCOM_ATTR_GET_V6ONLY,
   VPPCOM_ATTR_SET_V6ONLY,
+  VPPCOM_ATTR_GET_KEEPALIVE,
   VPPCOM_ATTR_SET_KEEPALIVE,
+  VPPCOM_ATTR_GET_TCP_KEEPIDLE,
   VPPCOM_ATTR_SET_TCP_KEEPIDLE,
+  VPPCOM_ATTR_GET_TCP_KEEPINTVL,
   VPPCOM_ATTR_SET_TCP_KEEPINTVL,
 } vppcom_attr_op_t;
 
@@ -160,13 +188,12 @@ extern int vppcom_session_close (uint32_t session_index);
 extern int vppcom_session_bind (uint32_t session_index, vppcom_endpt_t * ep);
 extern int vppcom_session_listen (uint32_t session_index, uint32_t q_len);
 extern int vppcom_session_accept (uint32_t session_index,
-				  vppcom_endpt_t * client_ep,
-				  uint32_t flags, double wait_for_time);
+				  vppcom_endpt_t * client_ep, uint32_t flags);
 
 extern int vppcom_session_connect (uint32_t session_index,
 				   vppcom_endpt_t * server_ep);
-extern int vppcom_session_read (uint32_t session_index, void *buf, int n);
-extern int vppcom_session_write (uint32_t session_index, void *buf, int n);
+extern int vppcom_session_read (uint32_t session_index, void *buf, size_t n);
+extern int vppcom_session_write (uint32_t session_index, void *buf, size_t n);
 
 extern int vppcom_select (unsigned long n_bits,
 			  unsigned long *read_map,
