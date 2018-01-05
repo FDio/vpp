@@ -31,9 +31,8 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibmemory/api.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
-
 #include <vlibmemory/vl_memory_msg_enum.h>
+#include <svm/queue.h>
 
 #define vl_typedefs
 #include <vlibmemory/vl_memory_api_h.h>
@@ -49,7 +48,7 @@ vl_msg_api_alloc_internal (int nbytes, int pool, int may_return_null)
   int i;
   msgbuf_t *rv;
   ring_alloc_t *ap;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   void *oldheap;
   vl_shmem_hdr_t *shmem_hdr;
   api_main_t *am = &api_main;
@@ -376,13 +375,13 @@ vl_api_default_mem_config (vl_shmem_hdr_t * shmem_hdr)
     vlib_input_queue_length = am->vlib_input_queue_length;
 
   shmem_hdr->vl_input_queue =
-    unix_shared_memory_queue_init (vlib_input_queue_length, sizeof (uword),
-				   getpid (), am->vlib_signal);
+    svm_queue_init (vlib_input_queue_length, sizeof (uword),
+		    getpid (), am->vlib_signal);
 
 #define _(sz,n)                                                 \
     do {                                                        \
         ring_alloc_t _rp;                                       \
-        _rp.rp = unix_shared_memory_queue_init ((n), (sz), 0, 0); \
+        _rp.rp = svm_queue_init ((n), (sz), 0, 0); \
         _rp.size = (sz);                                        \
         _rp.nitems = n;                                         \
         _rp.hits = 0;                                           \
@@ -396,7 +395,7 @@ vl_api_default_mem_config (vl_shmem_hdr_t * shmem_hdr)
 #define _(sz,n)                                                 \
     do {                                                        \
         ring_alloc_t _rp;                                       \
-        _rp.rp = unix_shared_memory_queue_init ((n), (sz), 0, 0); \
+        _rp.rp = svm_queue_init ((n), (sz), 0, 0); \
         _rp.size = (sz);                                        \
         _rp.nitems = n;                                         \
         _rp.hits = 0;                                           \
@@ -427,10 +426,9 @@ vl_api_mem_config (vl_shmem_hdr_t * hdr, vl_api_shm_elem_config_t * config)
     switch (c->type)
       {
       case VL_API_QUEUE:
-	hdr->vl_input_queue = unix_shared_memory_queue_init (c->count,
-							     c->size,
-							     getpid (),
-							     am->vlib_signal);
+	hdr->vl_input_queue = svm_queue_init (c->count,
+					      c->size,
+					      getpid (), am->vlib_signal);
 	continue;
       case VL_API_VLIB_RING:
 	vec_add2 (hdr->vl_rings, rp, 1);
@@ -444,7 +442,7 @@ vl_api_mem_config (vl_shmem_hdr_t * hdr, vl_api_shm_elem_config_t * config)
       }
 
     size = sizeof (ring_alloc_t) + c->size;
-    rp->rp = unix_shared_memory_queue_init (c->count, size, 0, 0);
+    rp->rp = svm_queue_init (c->count, size, 0, 0);
     rp->size = size;
     rp->nitems = c->count;
     rp->hits = 0;
@@ -548,7 +546,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
       am->our_pid = getpid ();
       if (is_vlib)
 	{
-	  unix_shared_memory_queue_t *q;
+	  svm_queue_t *q;
 	  uword old_msg;
 	  /*
 	   * application restart. Reset cached pids, API message
@@ -581,9 +579,7 @@ vl_map_shmem (const char *region_name, int is_vlib)
 
 	mutex_ok:
 	  am->vlib_rp = vlib_rp;
-	  while (unix_shared_memory_queue_sub (q,
-					       (u8 *) & old_msg,
-					       1 /* nowait */ )
+	  while (svm_queue_sub (q, (u8 *) & old_msg, 1 /* nowait */ )
 		 != -2 /* queue underflow */ )
 	    {
 	      vl_msg_api_free_nolock ((void *) old_msg);
@@ -676,7 +672,7 @@ vl_unmap_shmem (void)
 }
 
 void
-vl_msg_api_send_shmem (unix_shared_memory_queue_t * q, u8 * elem)
+vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
 {
   api_main_t *am = &api_main;
   uword *trace = (uword *) elem;
@@ -684,11 +680,11 @@ vl_msg_api_send_shmem (unix_shared_memory_queue_t * q, u8 * elem)
   if (am->tx_trace && am->tx_trace->enabled)
     vl_msg_api_trace (am, am->tx_trace, (void *) trace[0]);
 
-  (void) unix_shared_memory_queue_add (q, elem, 0 /* nowait */ );
+  (void) svm_queue_add (q, elem, 0 /* nowait */ );
 }
 
 void
-vl_msg_api_send_shmem_nolock (unix_shared_memory_queue_t * q, u8 * elem)
+vl_msg_api_send_shmem_nolock (svm_queue_t * q, u8 * elem)
 {
   api_main_t *am = &api_main;
   uword *trace = (uword *) elem;
@@ -696,7 +692,7 @@ vl_msg_api_send_shmem_nolock (unix_shared_memory_queue_t * q, u8 * elem)
   if (am->tx_trace && am->tx_trace->enabled)
     vl_msg_api_trace (am, am->tx_trace, (void *) trace[0]);
 
-  (void) unix_shared_memory_queue_add_nolock (q, elem);
+  (void) svm_queue_add_nolock (q, elem);
 }
 
 u32
@@ -750,7 +746,7 @@ vl_api_client_index_to_registration (u32 index)
   return (vl_api_client_index_to_registration_internal (index));
 }
 
-unix_shared_memory_queue_t *
+svm_queue_t *
 vl_api_client_index_to_input_queue (u32 index)
 {
   vl_api_registration_t *regp;

@@ -119,7 +119,7 @@ typedef struct
 typedef struct
 {
   /* vpe input queue */
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
 
   /* interface name table */
   uword *sw_if_index_by_interface_name;
