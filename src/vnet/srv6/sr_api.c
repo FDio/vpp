@@ -191,7 +191,7 @@ static void vl_api_sr_steering_add_del_t_handler
 }
 
 static void send_sr_localsid_details
-  (ip6_sr_localsid_t * t, unix_shared_memory_queue_t * q, u32 context)
+  (ip6_sr_localsid_t * t, svm_queue_t * q, u32 context)
 {
   vl_api_sr_localsids_details_t *rmp;
 
@@ -212,7 +212,7 @@ static void send_sr_localsid_details
 static void vl_api_sr_localsids_dump_t_handler
   (vl_api_sr_localsids_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_localsid_t *t;
 

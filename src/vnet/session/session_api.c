@@ -62,7 +62,7 @@ send_add_segment_callback (u32 api_client_index, const u8 * segment_name,
 			   u32 segment_size)
 {
   vl_api_map_another_segment_t *mp;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (api_client_index);
 
@@ -85,7 +85,7 @@ static int
 send_session_accept_callback (stream_session_t * s)
 {
   vl_api_accept_session_t *mp;
-  unix_shared_memory_queue_t *q, *vpp_queue;
+  svm_queue_t *q, *vpp_queue;
   application_t *server = application_get (s->app_index);
   transport_connection_t *tc;
   transport_proto_vft_t *tp_vft;
@@ -132,7 +132,7 @@ static void
 send_session_disconnect_callback (stream_session_t * s)
 {
   vl_api_disconnect_session_t *mp;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   application_t *app = application_get (s->app_index);
 
   q = vl_api_client_index_to_input_queue (app->api_client_index);
@@ -151,7 +151,7 @@ static void
 send_session_reset_callback (stream_session_t * s)
 {
   vl_api_reset_session_t *mp;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   application_t *app = application_get (s->app_index);
 
   q = vl_api_client_index_to_input_queue (app->api_client_index);
@@ -171,9 +171,9 @@ send_session_connected_callback (u32 app_index, u32 api_context,
 				 stream_session_t * s, u8 is_fail)
 {
   vl_api_connect_session_reply_t *mp;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   application_t *app;
-  unix_shared_memory_queue_t *vpp_queue;
+  svm_queue_t *vpp_queue;
   transport_connection_t *tc;
 
   app = application_get (app_index);
@@ -221,7 +221,7 @@ static int
 redirect_connect_callback (u32 server_api_client_index, void *mp_arg)
 {
   vl_api_connect_sock_t *mp = mp_arg;
-  unix_shared_memory_queue_t *server_q, *client_q;
+  svm_queue_t *server_q, *client_q;
   segment_manager_properties_t *props;
   vlib_main_t *vm = vlib_get_main ();
   f64 timeout = vlib_time_now (vm) + 0.5;
@@ -263,8 +263,7 @@ redirect_connect_callback (u32 server_api_client_index, void *mp_arg)
 
   while (vlib_time_now (vm) < timeout)
     {
-      rv =
-	unix_shared_memory_queue_add (server_q, (u8 *) & mp, 1 /*nowait */ );
+      rv = svm_queue_add (server_q, (u8 *) & mp, 1 /*nowait */ );
       switch (rv)
 	{
 	  /* correctly enqueued */
@@ -736,7 +735,7 @@ vl_api_connect_sock_t_handler (vl_api_connect_sock_t * mp)
   app = application_lookup (mp->client_index);
   if (app)
     {
-      unix_shared_memory_queue_t *client_q;
+      svm_queue_t *client_q;
       ip46_address_t *ip46 = (ip46_address_t *) mp->ip;
 
       client_q = vl_api_client_index_to_input_queue (mp->client_index);
@@ -871,7 +870,7 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
 static void
 send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
 			    u8 transport_proto, u32 appns_index, u8 * tag,
-			    unix_shared_memory_queue_t * q, u32 context)
+			    svm_queue_t * q, u32 context)
 {
   vl_api_session_rules_details_t *rmp = 0;
   session_mask_or_match_4_t *match =
@@ -908,7 +907,7 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
 static void
 send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
 			    u8 transport_proto, u32 appns_index, u8 * tag,
-			    unix_shared_memory_queue_t * q, u32 context)
+			    svm_queue_t * q, u32 context)
 {
   vl_api_session_rules_details_t *rmp = 0;
   session_mask_or_match_6_t *match =
@@ -945,7 +944,7 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
 static void
 send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
 				  u8 tp, u8 is_local, u32 appns_index,
-				  unix_shared_memory_queue_t * q, u32 context)
+				  svm_queue_t * q, u32 context)
 {
   mma_rule_16_t *rule16;
   mma_rule_40_t *rule40;
@@ -984,7 +983,7 @@ send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
 static void
 vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   session_table_t *st;
   u8 tp;
 

@@ -148,7 +148,7 @@ static void
 vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
 {
   flow_report_main_t *frm = &flow_report_main;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   vl_api_ipfix_exporter_details_t *rmp;
   ip4_main_t *im = &ip4_main;
   u32 vrf_id;
@@ -211,7 +211,7 @@ static void
   (vl_api_ipfix_classify_stream_dump_t * mp)
 {
   flow_report_classify_main_t *fcm = &flow_report_classify_main;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   vl_api_ipfix_classify_stream_details_t *rmp;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
@@ -308,8 +308,7 @@ out:
 
 static void
 send_ipfix_classify_table_details (u32 table_index,
-				   unix_shared_memory_queue_t * q,
-				   u32 context)
+				   svm_queue_t * q, u32 context)
 {
   flow_report_classify_main_t *fcm = &flow_report_classify_main;
   vl_api_ipfix_classify_table_details_t *mp;
@@ -332,7 +331,7 @@ static void
   (vl_api_ipfix_classify_table_dump_t * mp)
 {
   flow_report_classify_main_t *fcm = &flow_report_classify_main;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 i;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
