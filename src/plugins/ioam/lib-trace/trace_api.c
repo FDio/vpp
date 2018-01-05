@@ -62,7 +62,7 @@
 
 #define TRACE_REPLY_MACRO(t)                                          \
 do {                                                            \
-    unix_shared_memory_queue_t * q =                            \
+    svm_queue_t * q =                            \
     vl_api_client_index_to_input_queue (mp->client_index);      \
     if (!q)                                                     \
         return;                                                 \
@@ -78,7 +78,7 @@ do {                                                            \
 /* *INDENT-OFF* */
 #define TRACE_REPLY_MACRO2(t, body)                                   \
 do {                                                            \
-    unix_shared_memory_queue_t * q;                             \
+    svm_queue_t * q;                             \
     rv = vl_msg_api_pd_handler (mp, rv);                        \
     q = vl_api_client_index_to_input_queue (mp->client_index);  \
     if (!q)                                                     \

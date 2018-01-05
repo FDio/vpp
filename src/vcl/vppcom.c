@@ -108,7 +108,7 @@ typedef struct
   u32 sm_seg_index;
   u32 client_context;
   u64 vpp_handle;
-  unix_shared_memory_queue_t *vpp_event_queue;
+  svm_queue_t *vpp_event_queue;
 
   /* Socket configuration state */
   /* TBD: covert 'is_*' vars to bit in u8 flags; */
@@ -164,7 +164,7 @@ typedef struct vppcom_main_t_
   int main_cpu;
 
   /* vpe input queue */
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
 
   /* API client handle */
   u32 my_client_index;
@@ -182,7 +182,7 @@ typedef struct vppcom_main_t_
   clib_bitmap_t *ex_bitmap;
 
   /* Our event queue */
-  unix_shared_memory_queue_t *app_event_queue;
+  svm_queue_t *app_event_queue;
 
   /* unique segment name counter */
   u32 unique_segment_index;
@@ -695,8 +695,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     }
 
   vcm->app_event_queue =
-    uword_to_pointer (mp->app_event_queue_address,
-		      unix_shared_memory_queue_t *);
+    uword_to_pointer (mp->app_event_queue_address, svm_queue_t *);
 
   vcm->app_state = STATE_APP_ATTACHED;
 }
@@ -896,7 +895,7 @@ done:
    */
   session->is_cut_thru = is_cut_thru;
   session->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
-					       unix_shared_memory_queue_t *);
+					       svm_queue_t *);
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
@@ -1180,7 +1179,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->server_rx_fifo = rx_fifo;
   session->server_tx_fifo = tx_fifo;
   session->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
-					       unix_shared_memory_queue_t *);
+					       svm_queue_t *);
   session->state = STATE_ACCEPT;
   session->is_cut_thru = 0;
   session->is_server = 1;
@@ -1213,7 +1212,7 @@ vppcom_send_connect_session_reply (session_t * session, u32 session_index,
 {
   vl_api_connect_session_reply_t *rmp;
   u32 len;
-  unix_shared_memory_queue_t *client_q;
+  svm_queue_t *client_q;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
@@ -1243,8 +1242,7 @@ vppcom_send_connect_session_reply (session_t * session, u32 session_index,
 	       sizeof (rmp->lcl_ip));
   rmp->is_ip4 = session->peer_addr.is_ip4;
   rmp->lcl_port = session->peer_port;
-  client_q = uword_to_pointer (session->client_queue_address,
-			       unix_shared_memory_queue_t *);
+  client_q = uword_to_pointer (session->client_queue_address, svm_queue_t *);
   ASSERT (client_q);
   vl_msg_api_send_shmem (client_q, (u8 *) & rmp);
 }
@@ -2626,9 +2624,9 @@ vppcom_session_accept (uint32_t listen_session_index, vppcom_endpt_t * ep,
 	ssvm_lock_non_recursive (sh, 1);
 	oldheap = ssvm_push_heap (sh);
 	event_q = client_session->vpp_event_queue =
-	  unix_shared_memory_queue_init (vcm->cfg.event_queue_size,
-					 sizeof (session_fifo_event_t),
-					 getpid (), 0 /* signal not sent */ );
+	  svm_queue_init (vcm->cfg.event_queue_size,
+			  sizeof (session_fifo_event_t),
+			  getpid (), 0 /* signal not sent */ );
 	ssvm_pop_heap (oldheap);
 	ssvm_unlock_non_recursive (sh);
       }
@@ -2959,7 +2957,7 @@ vppcom_session_read_ready (session_t * session, u32 session_index)
       session_fifo_event_t e;
 
       for (i = 0; i < n_to_dequeue; i++)
-	unix_shared_memory_queue_sub_raw (vcm->app_event_queue, (u8 *) & e);
+	svm_queue_sub_raw (vcm->app_event_queue, (u8 *) & e);
 
       pthread_mutex_unlock (&vcm->app_event_queue->mutex);
     }
@@ -2973,7 +2971,7 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
 {
   session_t *session = 0;
   svm_fifo_t *tx_fifo;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   session_fifo_event_t evt;
   int rv, n_write;
   char *fifo_str;
@@ -3039,8 +3037,7 @@ vppcom_session_write (uint32_t session_index, void *buf, int n)
       VCL_LOCK_AND_GET_SESSION (session_index, &session);
       q = session->vpp_event_queue;
       ASSERT (q);
-      unix_shared_memory_queue_add (q, (u8 *) & evt,
-				    0 /* do wait for mutex */ );
+      svm_queue_add (q, (u8 *) & evt, 0 /* do wait for mutex */ );
       clib_spinlock_unlock (&vcm->sessions_lockp);
       if (VPPCOM_DEBUG > 1)
 	clib_warning ("[%d] vpp handle 0x%llx, sid %u: "

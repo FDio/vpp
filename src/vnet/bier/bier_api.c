@@ -106,7 +106,7 @@ vl_api_bier_table_add_del_t_handler (vl_api_bier_table_add_del_t * mp)
 }
 
 static void
-send_bier_table_details (unix_shared_memory_queue_t * q,
+send_bier_table_details (svm_queue_t * q,
                          u32 context,
                          const bier_table_t *bt)
 {
@@ -130,7 +130,7 @@ send_bier_table_details (unix_shared_memory_queue_t * q,
 static void
 vl_api_bier_table_dump_t_handler (vl_api_bier_table_dump_t * mp)
 {
-    unix_shared_memory_queue_t *q;
+    svm_queue_t *q;
     bier_table_t *bt;
 
     q = vl_api_client_index_to_input_queue (mp->client_index);
@@ -252,7 +252,7 @@ done:
 
 typedef struct bier_route_details_walk_t_
 {
-    unix_shared_memory_queue_t * q;
+    svm_queue_t * q;
     u32 context;
 } bier_route_details_walk_t;
 
@@ -302,7 +302,7 @@ send_bier_route_details (const bier_table_t *bt,
 static void
 vl_api_bier_route_dump_t_handler (vl_api_bier_route_dump_t * mp)
 {
-    unix_shared_memory_queue_t *q;
+    svm_queue_t *q;
 
     q = vl_api_client_index_to_input_queue (mp->client_index);
     if (q == 0)
@@ -371,7 +371,7 @@ vl_api_bier_imp_del_t_handler (vl_api_bier_imp_del_t * mp)
 }
 
 static void
-send_bier_imp_details (unix_shared_memory_queue_t * q,
+send_bier_imp_details (svm_queue_t * q,
                        u32 context,
                        const bier_imp_t *bi)
 {
@@ -406,7 +406,7 @@ send_bier_imp_details (unix_shared_memory_queue_t * q,
 static void
 vl_api_bier_imp_dump_t_handler (vl_api_bier_imp_dump_t * mp)
 {
-    unix_shared_memory_queue_t *q;
+    svm_queue_t *q;
     bier_imp_t *bi;
 
     q = vl_api_client_index_to_input_queue (mp->client_index);
@@ -446,7 +446,7 @@ vl_api_bier_disp_table_add_del_t_handler (vl_api_bier_disp_table_add_del_t * mp)
 }
 
 static void
-send_bier_disp_table_details (unix_shared_memory_queue_t * q,
+send_bier_disp_table_details (svm_queue_t * q,
                               u32 context,
                               const bier_disp_table_t *bdt)
 {
@@ -467,7 +467,7 @@ send_bier_disp_table_details (unix_shared_memory_queue_t * q,
 static void
 vl_api_bier_disp_table_dump_t_handler (vl_api_bier_disp_table_dump_t * mp)
 {
-    unix_shared_memory_queue_t *q;
+    svm_queue_t *q;
     bier_disp_table_t *bdt;
 
     q = vl_api_client_index_to_input_queue (mp->client_index);
@@ -603,7 +603,7 @@ done:
 
 typedef struct bier_disp_entry_details_walk_t_
 {
-    unix_shared_memory_queue_t * q;
+    svm_queue_t * q;
     u32 context;
 } bier_disp_entry_details_walk_t;
 
@@ -661,7 +661,7 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
 static void
 vl_api_bier_disp_entry_dump_t_handler (vl_api_bier_disp_entry_dump_t * mp)
 {
-    unix_shared_memory_queue_t *q;
+    svm_queue_t *q;
 
     q = vl_api_client_index_to_input_queue (mp->client_index);
     if (q == 0)

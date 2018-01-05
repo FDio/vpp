@@ -94,7 +94,7 @@ out:
 }
 
 static void send_gre_tunnel_details
-  (gre_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
+  (gre_tunnel_t * t, svm_queue_t * q, u32 context)
 {
   vl_api_gre_tunnel_details_t *rmp;
   u8 is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
@@ -128,7 +128,7 @@ static void send_gre_tunnel_details
 static void
 vl_api_gre_tunnel_dump_t_handler (vl_api_gre_tunnel_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   gre_main_t *gm = &gre_main;
   gre_tunnel_t *t;
   u32 sw_if_index;

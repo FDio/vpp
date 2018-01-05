@@ -100,7 +100,7 @@ send_test_chunk (tclient_main_t * tm, session_t * s)
 	  evt.fifo = txf;
 	  evt.event_type = FIFO_EVENT_APP_TX;
 
-	  if (unix_shared_memory_queue_add
+	  if (svm_queue_add
 	      (tm->vpp_event_queue[txf->master_thread_index], (u8 *) & evt,
 	       0 /* do wait for mutex */ ))
 	    clib_warning ("could not enqueue event");
