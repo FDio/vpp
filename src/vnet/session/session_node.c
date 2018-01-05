@@ -20,7 +20,7 @@
 #include <vnet/session/transport.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session_debug.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include <svm/queue.h>
 
 vlib_node_registration_t session_queue_node;
 
@@ -406,7 +406,7 @@ dump_thread_0_event_queue (void)
   int i, index;
   i8 *headp;
 
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   q = smm->vpp_event_queues[my_thread_index];
 
   index = q->head;
@@ -486,7 +486,7 @@ u8
 session_node_lookup_fifo_event (svm_fifo_t * f, session_fifo_event_t * e)
 {
   session_manager_main_t *smm = vnet_get_session_manager_main ();
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   session_fifo_event_t *pending_event_vector, *evt;
   int i, index, found = 0;
   i8 *headp;
@@ -533,7 +533,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   session_fifo_event_t *my_pending_event_vector, *pending_disconnects, *e;
   session_fifo_event_t *my_fifo_events;
   u32 n_to_dequeue, n_events;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   application_t *app;
   int n_tx_packets = 0;
   u32 my_thread_index = vm->thread_index;
@@ -586,7 +586,7 @@ session_queue_node_fn (vlib_main_t * vm, vlib_node_runtime_t * node,
   for (i = 0; i < n_to_dequeue; i++)
     {
       vec_add2 (my_fifo_events, e, 1);
-      unix_shared_memory_queue_sub_raw (q, (u8 *) e);
+      svm_queue_sub_raw (q, (u8 *) e);
     }
 
   /* The other side of the connection is not polling */

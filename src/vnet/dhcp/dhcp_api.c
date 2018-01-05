@@ -110,7 +110,7 @@ static void vl_api_dhcp_proxy_config_t_handler
 static void
 vl_api_dhcp_proxy_dump_t_handler (vl_api_dhcp_proxy_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -125,7 +125,7 @@ dhcp_send_details (fib_protocol_t proto,
 		   void *opaque, u32 context, dhcp_proxy_t * proxy)
 {
   vl_api_dhcp_proxy_details_t *mp;
-  unix_shared_memory_queue_t *q = opaque;
+  svm_queue_t *q = opaque;
   vl_api_dhcp_server_t *v_server;
   dhcp_server_t *server;
   fib_table_t *s_fib;
@@ -208,7 +208,7 @@ dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
 			   u8 mask_width, u8 is_ipv6, u8 * host_address,
 			   u8 * router_address, u8 * host_mac)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   vl_api_dhcp_compl_event_t *mp;
   u32 len;
 

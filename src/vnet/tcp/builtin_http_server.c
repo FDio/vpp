@@ -32,7 +32,7 @@ typedef struct
 typedef struct
 {
   u8 **rx_buf;
-  unix_shared_memory_queue_t **vpp_queue;
+  svm_queue_t **vpp_queue;
   u64 byte_index;
 
   uword *handler_by_get_request;
@@ -40,7 +40,7 @@ typedef struct
   u32 *free_http_cli_process_node_indices;
 
   /* Sever's event queue */
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
 
   /* API client handle */
   u32 my_client_index;
@@ -175,9 +175,8 @@ send_data (stream_session_t * s, u8 * data)
 	      evt.fifo = s->server_tx_fifo;
 	      evt.event_type = FIFO_EVENT_APP_TX;
 
-	      unix_shared_memory_queue_add (hsm->vpp_queue[s->thread_index],
-					    (u8 *) & evt,
-					    0 /* do wait for mutex */ );
+	      svm_queue_add (hsm->vpp_queue[s->thread_index],
+			     (u8 *) & evt, 0 /* do wait for mutex */ );
 	    }
 	  delay = 10e-3;
 	}
@@ -377,7 +376,7 @@ http_server_rx_callback (stream_session_t * s)
       evt.rpc_args.fp = alloc_http_process_callback;
       evt.rpc_args.arg = args;
       evt.event_type = FIFO_EVENT_RPC;
-      unix_shared_memory_queue_add
+      svm_queue_add
 	(session_manager_get_vpp_event_queue (0 /* main thread */ ),
 	 (u8 *) & evt, 0 /* do wait for mutex */ );
     }

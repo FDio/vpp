@@ -43,8 +43,7 @@
 _(UDP_ENCAP_DUMP, udp_encap_dump)
 
 static void
-send_udp_encap_details (const udp_encap_t * ue,
-			unix_shared_memory_queue_t * q, u32 context)
+send_udp_encap_details (const udp_encap_t * ue, svm_queue_t * q, u32 context)
 {
   vl_api_udp_encap_details_t *mp;
   fib_table_t *fib_table;
@@ -82,7 +81,7 @@ static void
 vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t * mp,
 				 vlib_main_t * vm)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   udp_encap_t *ue;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
@@ -94,12 +93,12 @@ vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t * mp,
   ({
     send_udp_encap_details(ue, q, mp->context);
   }));
-  /* *INDENT-OFF* */
+  /* *INDENT-ON* */
 }
 
 static void
 vl_api_udp_encap_add_del_t_handler (vl_api_udp_encap_add_del_t * mp,
-                                    vlib_main_t * vm)
+				    vlib_main_t * vm)
 {
   vl_api_udp_encap_add_del_reply_t *rmp;
   ip46_address_t src_ip, dst_ip;
@@ -107,11 +106,11 @@ vl_api_udp_encap_add_del_t_handler (vl_api_udp_encap_add_del_t * mp,
   fib_protocol_t fproto;
   int rv = 0;
 
-  ue_id = ntohl(mp->id);
-  table_id = ntohl(mp->table_id);
+  ue_id = ntohl (mp->id);
+  table_id = ntohl (mp->table_id);
   fproto = (mp->is_ip6 ? FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4);
 
-  fib_index = fib_table_find(fproto, table_id);
+  fib_index = fib_table_find (fproto, table_id);
 
   if (~0 == fib_index)
     {
@@ -121,29 +120,28 @@ vl_api_udp_encap_add_del_t_handler (vl_api_udp_encap_add_del_t * mp,
 
   if (FIB_PROTOCOL_IP4 == fproto)
     {
-      clib_memcpy(&src_ip.ip4, mp->src_ip, 4);
-      clib_memcpy(&dst_ip.ip4, mp->dst_ip, 4);
+      clib_memcpy (&src_ip.ip4, mp->src_ip, 4);
+      clib_memcpy (&dst_ip.ip4, mp->dst_ip, 4);
     }
   else
     {
-      clib_memcpy(&src_ip.ip6, mp->src_ip, 16);
-      clib_memcpy(&dst_ip.ip6, mp->dst_ip, 16);
+      clib_memcpy (&src_ip.ip6, mp->src_ip, 16);
+      clib_memcpy (&dst_ip.ip6, mp->dst_ip, 16);
     }
 
   if (mp->is_add)
     {
-      udp_encap_add_and_lock(ue_id, fproto, fib_index,
-                             &src_ip, &dst_ip,
-                             ntohs(mp->src_port),
-                             ntohs(mp->dst_port),
-                             UDP_ENCAP_FIXUP_NONE);
+      udp_encap_add_and_lock (ue_id, fproto, fib_index,
+			      &src_ip, &dst_ip,
+			      ntohs (mp->src_port),
+			      ntohs (mp->dst_port), UDP_ENCAP_FIXUP_NONE);
     }
   else
     {
-      udp_encap_unlock(ue_id);
+      udp_encap_unlock (ue_id);
     }
 
- done:
+done:
   REPLY_MACRO (VL_API_UDP_ENCAP_ADD_DEL_REPLY);
 }
 

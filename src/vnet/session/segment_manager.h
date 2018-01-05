@@ -17,8 +17,7 @@
 
 #include <vnet/vnet.h>
 #include <svm/svm_fifo_segment.h>
-
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include <svm/queue.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/lock.h>
 
@@ -113,10 +112,9 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 void
 segment_manager_dealloc_fifos (u32 svm_segment_index, svm_fifo_t * rx_fifo,
 			       svm_fifo_t * tx_fifo);
-unix_shared_memory_queue_t *segment_manager_alloc_queue (segment_manager_t *
-							 sm, u32 queue_size);
-void segment_manager_dealloc_queue (segment_manager_t * sm,
-				    unix_shared_memory_queue_t * q);
+svm_queue_t *segment_manager_alloc_queue (segment_manager_t *
+					  sm, u32 queue_size);
+void segment_manager_dealloc_queue (segment_manager_t * sm, svm_queue_t * q);
 void segment_manager_app_detach (segment_manager_t * sm);
 
 segment_manager_properties_t *segment_manager_properties_alloc (void);
