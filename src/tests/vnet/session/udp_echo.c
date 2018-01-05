@@ -65,7 +65,7 @@ typedef struct
 typedef struct
 {
   /* vpe input queue */
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
 
   /* API client handle */
   u32 my_client_index;
@@ -91,10 +91,10 @@ typedef struct
   int i_am_master;
 
   /* Our event queue */
-  unix_shared_memory_queue_t *our_event_queue;
+  svm_queue_t *our_event_queue;
 
   /* $$$ single thread only for the moment */
-  unix_shared_memory_queue_t *vpp_event_queue;
+  svm_queue_t *vpp_event_queue;
 
   /* $$$$ hack: cut-through session index */
   volatile u32 cut_through_session_index;
@@ -233,8 +233,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
     }
 
   utm->our_event_queue =
-    uword_to_pointer (mp->app_event_queue_address,
-		      unix_shared_memory_queue_t *);
+    uword_to_pointer (mp->app_event_queue_address, svm_queue_t *);
 }
 
 static void
@@ -488,9 +487,8 @@ send_test_chunk (uri_udp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
 	      evt.fifo = tx_fifo;
 	      evt.event_type = FIFO_EVENT_APP_TX;
 
-	      unix_shared_memory_queue_add (utm->vpp_event_queue,
-					    (u8 *) & evt,
-					    0 /* do wait for mutex */ );
+	      svm_queue_add (utm->vpp_event_queue,
+			     (u8 *) & evt, 0 /* do wait for mutex */ );
 	    }
 	}
     }
@@ -636,7 +634,7 @@ vl_api_connect_uri_t_handler (vl_api_connect_uri_t * mp)
   svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
   svm_fifo_segment_create_args_t _a, *a = &_a;
   svm_fifo_segment_private_t *seg;
-  unix_shared_memory_queue_t *client_q;
+  svm_queue_t *client_q;
   vl_api_connect_session_reply_t *rmp;
   session_t *session = 0;
   int rv = 0;
@@ -699,8 +697,7 @@ send_reply:
 
   vec_free (a->segment_name);
 
-  client_q =
-    uword_to_pointer (mp->client_queue_address, unix_shared_memory_queue_t *);
+  client_q = uword_to_pointer (mp->client_queue_address, svm_queue_t *);
   vl_msg_api_send_shmem (client_q, (u8 *) & rmp);
 }
 
@@ -728,8 +725,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
     start_time = clib_time_now (&utm->clib_time);
 
   utm->vpp_event_queue =
-    uword_to_pointer (mp->vpp_event_queue_address,
-		      unix_shared_memory_queue_t *);
+    uword_to_pointer (mp->vpp_event_queue_address, svm_queue_t *);
 
   pool_get (utm->sessions, session);
 
@@ -850,7 +846,7 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
     {
       utm->connected_session = session - utm->sessions;
       utm->vpp_event_queue = uword_to_pointer (mp->vpp_event_queue_address,
-					       unix_shared_memory_queue_t *);
+					       svm_queue_t *);
     }
   utm->state = STATE_READY;
 }
@@ -921,7 +917,7 @@ server_handle_fifo_event_rx (uri_udp_test_main_t * utm,
   svm_fifo_t *rx_fifo, *tx_fifo;
   int nbytes;
   session_fifo_event_t evt;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   int rv;
 
   rx_fifo = e->fifo;
@@ -946,8 +942,7 @@ server_handle_fifo_event_rx (uri_udp_test_main_t * utm,
       evt.fifo = tx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
       q = utm->vpp_event_queue;
-      unix_shared_memory_queue_add (q, (u8 *) & evt,
-				    0 /* do wait for mutex */ );
+      svm_queue_add (q, (u8 *) & evt, 0 /* do wait for mutex */ );
     }
 }
 
@@ -961,8 +956,7 @@ server_handle_event_queue (uri_udp_test_main_t * utm)
 
   while (1)
     {
-      unix_shared_memory_queue_sub (utm->our_event_queue, (u8 *) e,
-				    0 /* nowait */ );
+      svm_queue_sub (utm->our_event_queue, (u8 *) e, 0 /* nowait */ );
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
