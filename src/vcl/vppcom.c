@@ -23,6 +23,7 @@
 #include <vcl/vppcom.h>
 #include <vlib/unix/unix.h>
 #include <vppinfra/vec_bootstrap.h>
+#include <vppinfra/elog.h>
 
 #define vl_typedefs		/* define message structures */
 #include <vpp/api/vpe_all_api_h.h>
@@ -127,6 +128,7 @@ typedef struct
   u8 proto;
   u64 client_queue_address;
   u64 options[16];
+  elog_track_t elog_track;
 } session_t;
 
 typedef struct vppcom_cfg_t_
@@ -150,6 +152,8 @@ typedef struct vppcom_cfg_t_
   f64 app_timeout;
   f64 session_timeout;
   f64 accept_timeout;
+  u32 event_ring_size;
+  char *event_log_path;
 } vppcom_cfg_t;
 
 typedef struct vppcom_main_t_
@@ -190,6 +194,10 @@ typedef struct vppcom_main_t_
   volatile app_state_t app_state;
 
   vppcom_cfg_t cfg;
+
+  /* Event logging */
+  elog_main_t elog_main;
+  elog_track_t elog_track;
 
   /* VNET_API_ERROR_FOO -> "Foo" hash table */
   uword *error_string_by_error_number;
@@ -355,10 +363,31 @@ vppcom_session_table_del_listener (u64 listener_handle)
   hash_unset (vcm->session_index_by_vpp_handles, listener_handle);
 }
 
+static void
+write_elog (void)
+{
+  elog_main_t *em = &vcm->elog_main;
+  char *chroot_file;
+  clib_error_t *error = 0;
+
+  chroot_file =
+    (char *) format (0, "%s/%d-%d-vcl-elog%c", vcm->cfg.event_log_path,
+		     vcm->my_client_index, getpid (), 0);
+  error = elog_write_file (em, chroot_file, 1 /* flush ring */ );
+  if (error)
+    {
+      clib_error_report (error);
+    }
+  if (VPPCOM_DEBUG > 0)
+    clib_warning ("[%d] Event Log:'%s' ", getpid (), chroot_file);
+
+}
+
 static int
 vppcom_connect_to_vpp (char *app_name)
 {
   api_main_t *am = &api_main;
+  int rv = VPPCOM_OK;
 
   if (VPPCOM_DEBUG > 0)
     printf ("\nConnecting to VPP api...");
@@ -366,16 +395,45 @@ vppcom_connect_to_vpp (char *app_name)
 				 vcm->cfg.vpp_api_q_length) < 0)
     {
       clib_warning ("[%d] connect to vpp (%s) failed!", getpid (), app_name);
-      return VPPCOM_ECONNREFUSED;
+      rv = VPPCOM_ECONNREFUSED;
+    }
+  else
+    {
+
+      vcm->vl_input_queue = am->shmem_hdr->vl_input_queue;
+      vcm->my_client_index = am->my_client_index;
+      vcm->app_state = STATE_APP_CONN_VPP;
+
+      if (VPPCOM_DEBUG > 0)
+	printf (" connected!\n");
     }
 
-  vcm->vl_input_queue = am->shmem_hdr->vl_input_queue;
-  vcm->my_client_index = am->my_client_index;
   if (VPPCOM_DEBUG > 0)
-    printf (" connected!\n");
+    {
+      vcm->elog_main.lock =
+	clib_mem_alloc_aligned (CLIB_CACHE_LINE_BYTES, CLIB_CACHE_LINE_BYTES);
+      vcm->elog_main.lock[0] = 0;
+      vcm->elog_main.event_ring_size = vcm->cfg.event_ring_size;
+      elog_init (&vcm->elog_main, vcm->elog_main.event_ring_size);
+      elog_enable_disable (&vcm->elog_main, 1);
 
-  vcm->app_state = STATE_APP_CONN_VPP;
-  return VPPCOM_OK;
+      vcm->elog_track.name =
+	(char *) format (0, "P:%d:C:%d%c", getpid (),
+			 vcm->my_client_index, 0);
+      elog_track_register (&vcm->elog_main, &vcm->elog_track);
+
+      ELOG_TYPE_DECLARE (e) =
+      {
+      .format = "connect_vpp:rv:%d",.format_args = "i4",};
+      struct
+      {
+	u32 data;
+      } *ed;
+      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, vcm->elog_track);
+      ed->data = rv;
+    }
+
+  return rv;
 }
 
 static u8 *
@@ -1466,6 +1524,8 @@ vppcom_cfg_init (vppcom_cfg_t * vcl_cfg)
   vcl_cfg->app_timeout = 10 * 60.0;
   vcl_cfg->session_timeout = 10 * 60.0;
   vcl_cfg->accept_timeout = 60.0;
+  vcl_cfg->event_ring_size = (128 << 10);
+  vcl_cfg->event_log_path = "/dev/shm";
 }
 
 static void
@@ -2104,6 +2164,19 @@ vppcom_app_destroy (void)
     clib_warning ("[%d] detaching from VPP, my_client_index %d (0x%x)",
 		  getpid (), vcm->my_client_index, vcm->my_client_index);
 
+  if (VPPCOM_DEBUG > 0)
+    {
+      ELOG_TYPE_DECLARE (e) =
+      {
+      .format = "app_detach:C:%d",.format_args = "i4",};
+      struct
+      {
+	u32 data;
+      } *ed;
+      ed = ELOG_TRACK_DATA (&vcm->elog_main, e, vcm->elog_track);
+      ed->data = vcm->my_client_index;
+    }
+
   vppcom_app_detach ();
   rv = vppcom_wait_for_app_state_change (STATE_APP_ENABLED);
   if (PREDICT_FALSE (rv))
@@ -2112,6 +2185,11 @@ vppcom_app_destroy (void)
 	clib_warning ("[%d] application detach timed out! returning %d (%s)",
 		      getpid (), rv, vppcom_retval_str (rv));
     }
+
+  /* Finished with logging before client gets reset to ~0 */
+  if (VPPCOM_DEBUG > 0)
+    write_elog ();
+
   vl_client_disconnect_from_vlib ();
   vcm->my_client_index = ~0;
   vcm->app_state = STATE_APP_START;
