@@ -118,7 +118,7 @@ out:
 }
 
 static void send_pppoe_session_details
-  (pppoe_session_t * t, unix_shared_memory_queue_t * q, u32 context)
+  (pppoe_session_t * t, svm_queue_t * q, u32 context)
 {
   vl_api_pppoe_session_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
@@ -152,7 +152,7 @@ static void send_pppoe_session_details
 static void
 vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   pppoe_main_t *pem = &pppoe_main;
   pppoe_session_t *t;
   u32 sw_if_index;

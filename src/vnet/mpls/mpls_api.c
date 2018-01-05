@@ -376,7 +376,7 @@ static void
 
 typedef struct mpls_tunnel_send_walk_ctx_t_
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 index;
   u32 context;
 } mpls_tunnel_send_walk_ctx_t;
@@ -433,7 +433,7 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
 static void
 vl_api_mpls_tunnel_dump_t_handler (vl_api_mpls_tunnel_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -449,7 +449,7 @@ vl_api_mpls_tunnel_dump_t_handler (vl_api_mpls_tunnel_dump_t * mp)
 
 static void
 send_mpls_fib_details (vpe_api_main_t * am,
-		       unix_shared_memory_queue_t * q,
+		       svm_queue_t * q,
 		       const fib_table_t * table,
 		       u32 label, u32 eos,
 		       fib_route_path_encode_t * api_rpaths, u32 context)
@@ -507,7 +507,7 @@ static void
 vl_api_mpls_fib_dump_t_handler (vl_api_mpls_fib_dump_t * mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   mpls_main_t *mm = &mpls_main;
   fib_table_t *fib_table;
   mpls_fib_t *mpls_fib;

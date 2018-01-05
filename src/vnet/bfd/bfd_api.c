@@ -140,7 +140,7 @@ vl_api_bfd_udp_del_t_handler (vl_api_bfd_udp_del_t * mp)
 }
 
 void
-send_bfd_udp_session_details (unix_shared_memory_queue_t * q, u32 context,
+send_bfd_udp_session_details (svm_queue_t * q, u32 context,
 			      bfd_session_t * bs)
 {
   if (bs->transport != BFD_TRANSPORT_UDP4 &&
@@ -199,7 +199,7 @@ bfd_event (bfd_main_t * bm, bfd_session_t * bs)
 {
   vpe_api_main_t *vam = &vpe_api_main;
   vpe_client_registration_t *reg;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   /* *INDENT-OFF* */
   pool_foreach (reg, vam->bfd_events_registrations, ({
                   q = vl_api_client_index_to_input_queue (reg->client_index);
@@ -220,7 +220,7 @@ bfd_event (bfd_main_t * bm, bfd_session_t * bs)
 static void
 vl_api_bfd_udp_session_dump_t_handler (vl_api_bfd_udp_session_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
 
@@ -274,7 +274,7 @@ vl_api_bfd_auth_del_key_t_handler (vl_api_bfd_auth_del_key_t * mp)
 static void
 vl_api_bfd_auth_keys_dump_t_handler (vl_api_bfd_auth_keys_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
 

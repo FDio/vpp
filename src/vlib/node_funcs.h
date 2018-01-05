@@ -1122,6 +1122,12 @@ vlib_node_add_named_next (vlib_main_t * vm, uword node, char *name)
   return vlib_node_add_named_next_with_slot (vm, node, name, ~0);
 }
 
+/**
+ * Get list of nodes
+ */
+vlib_node_t ***vlib_node_get_nodes (vlib_main_t * vm, u32 max_threads,
+				    int include_stats);
+
 /* Query node given name. */
 vlib_node_t *vlib_get_node_by_name (vlib_main_t * vm, u8 * name);
 

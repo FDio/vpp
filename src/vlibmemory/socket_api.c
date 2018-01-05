@@ -21,12 +21,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/ioctl.h>
-#include <vppinfra/byte_order.h>
-#include <svm/memfd.h>
-
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#include <vppinfra/byte_order.h>
+#include <svm/memfd.h>
 #include <vlibmemory/api.h>
 
 #include <vlibmemory/vl_memory_msg_enum.h>
@@ -46,8 +45,10 @@
 #include <vlibmemory/vl_memory_api_h.h>
 #undef vl_endianfun
 
+socket_main_t socket_main;
+
 void
-dump_socket_clients (vlib_main_t * vm, api_main_t * am)
+vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
 {
   vl_api_registration_t *reg;
   socket_main_t *sm = &socket_main;
@@ -117,7 +118,7 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
 }
 
 void
-vl_free_socket_registration_index (u32 pool_index)
+vl_socket_free_registration_index (u32 pool_index)
 {
   int i;
   vl_api_registration_t *rp;
@@ -141,7 +142,7 @@ vl_free_socket_registration_index (u32 pool_index)
 }
 
 void
-vl_api_socket_process_msg (clib_file_t * uf, vl_api_registration_t * rp,
+vl_socket_process_api_msg (clib_file_t * uf, vl_api_registration_t * rp,
 			   i8 * input_v)
 {
   msgbuf_t *mbp = (msgbuf_t *) input_v;
@@ -181,7 +182,7 @@ vl_socket_read_ready (clib_file_t * uf)
       if (!pool_is_free (socket_main.registration_pool, rp))
 	{
 	  u32 index = rp - socket_main.registration_pool;
-	  vl_free_socket_registration_index (index);
+	  vl_socket_free_registration_index (index);
 	}
       else
 	{
@@ -248,7 +249,7 @@ vl_socket_read_ready (clib_file_t * uf)
       a->regp = rp;
       a->data = data_for_process;
 
-      vlib_process_signal_event (vm, memclnt_node.index,
+      vlib_process_signal_event (vm, vl_api_clnt_node.index,
 				 SOCKET_READ_EVENT,
 				 a - socket_main.process_args);
       if (n > (msg_len + sizeof (*mbp)))
@@ -326,7 +327,7 @@ vl_socket_write_ready (clib_file_t * uf)
 #endif
       clib_file_del (fm, uf);
 
-      vl_free_socket_registration_index (rp - socket_main.registration_pool);
+      vl_socket_free_registration_index (rp - socket_main.registration_pool);
       return 0;
     }
 
@@ -344,7 +345,7 @@ vl_socket_error_ready (clib_file_t * uf)
 
   rp = pool_elt_at_index (socket_main.registration_pool, uf->private_data);
   clib_file_del (fm, uf);
-  vl_free_socket_registration_index (rp - socket_main.registration_pool);
+  vl_socket_free_registration_index (rp - socket_main.registration_pool);
 
   return 0;
 }
@@ -417,7 +418,7 @@ vl_api_sockclnt_create_t_handler (vl_api_sockclnt_create_t * mp)
   rp->context = mp->context;
   rp->response = htonl (rv);
 
-  vl_msg_api_send (regp, (u8 *) rp);
+  vl_api_send_msg (regp, (u8 *) rp);
 }
 
 /*
@@ -438,11 +439,11 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
       rp->handle = mp->handle;
       rp->response = htonl (1);
 
-      vl_msg_api_send (regp, (u8 *) rp);
+      vl_api_send_msg (regp, (u8 *) rp);
 
       clib_file_del (&file_main, file_main.file_pool + regp->clib_file_index);
 
-      vl_free_socket_registration_index (mp->index);
+      vl_socket_free_registration_index (mp->index);
     }
   else
     {
@@ -597,7 +598,7 @@ reply:
   rmp->context = mp->context;
   rmp->retval = htonl (rv);
 
-  vl_msg_api_send (regp, (u8 *) rmp);
+  vl_api_send_msg (regp, (u8 *) rmp);
 
   if (rv != 0)
     return;
@@ -652,7 +653,7 @@ reply:
   rmp->context = mp->context;
   rmp->retval = htonl (rv);
 
-  vl_msg_api_send (regp, (u8 *) rmp);
+  vl_api_send_msg (regp, (u8 *) rmp);
 
   if (rv != 0)
     return;
@@ -675,7 +676,7 @@ _(SOCK_INIT_SHM, sock_init_shm) 			\
 _(MEMFD_SEGMENT_CREATE, memfd_segment_create)
 
 clib_error_t *
-socksvr_api_init (vlib_main_t * vm)
+vl_sock_api_init (vlib_main_t * vm)
 {
   clib_file_main_t *fm = &file_main;
   clib_file_t template = { 0 };
@@ -752,7 +753,7 @@ socket_exit (vlib_main_t * vm)
         pool_foreach (rp, sm->registration_pool, ({
             clib_file_del (fm, fm->file_pool + rp->clib_file_index);
             index = rp->vl_api_registration_pool_index;
-            vl_free_socket_registration_index (index);
+            vl_socket_free_registration_index (index);
         }));
 /* *INDENT-ON* */
     }
