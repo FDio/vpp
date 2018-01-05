@@ -20,7 +20,7 @@
 #include <vnet/session/transport.h>
 #include <vnet/session/application.h>
 #include <vnet/session/session_debug.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include <svm/queue.h>
 
 vlib_node_registration_t session_queue_node;
 

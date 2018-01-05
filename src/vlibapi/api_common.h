@@ -26,7 +26,7 @@
 
 #include <vppinfra/clib_error.h>
 #include <svm/svm_common.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include <svm/queue.h>
 
 /** API registration types
  */

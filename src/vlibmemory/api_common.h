@@ -21,7 +21,7 @@
 #include <svm/svm_common.h>
 #include <vppinfra/file.h>
 #include <vlibapi/api_common.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include <svm/queue.h>
 
 /* Allocated in shared memory */
 

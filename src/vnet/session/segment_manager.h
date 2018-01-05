@@ -17,8 +17,7 @@
 
 #include <vnet/vnet.h>
 #include <svm/svm_fifo_segment.h>
-
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include <svm/queue.h>
 #include <vlibmemory/api.h>
 #include <vppinfra/lock.h>
 

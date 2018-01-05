@@ -20,7 +20,8 @@ nobase_include_HEADERS += 			\
   svm/svmdb.h 					\
   svm/svm_fifo.h 				\
   svm/svm_fifo_segment.h			\
-  svm/svm.h 
+  svm/queue.h					\
+  svm/svm.h
 
 lib_LTLIBRARIES += libsvm.la libsvmdb.la
 
@@ -29,6 +30,7 @@ libsvm_la_SOURCES =				\
   svm/ssvm.c 					\
   svm/svm_fifo.c 				\
   svm/svm_fifo_segment.c			\
+  svm/queue.c					\
   svm/memfd.c
 
 libsvm_la_LIBADD = libvppinfra.la -lrt -lpthread

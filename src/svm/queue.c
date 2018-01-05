@@ -17,6 +17,7 @@
  *------------------------------------------------------------------
  */
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +25,7 @@
 #include <vppinfra/mem.h>
 #include <vppinfra/format.h>
 #include <vppinfra/cache.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include <svm/queue.h>
 #include <signal.h>
 
 /*

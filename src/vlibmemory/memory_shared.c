@@ -31,9 +31,8 @@
 #include <vlib/vlib.h>
 #include <vlib/unix/unix.h>
 #include <vlibmemory/api.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
-
 #include <vlibmemory/vl_memory_msg_enum.h>
+#include <svm/queue.h>
 
 #define vl_typedefs
 #include <vlibmemory/vl_memory_api_h.h>
