@@ -202,7 +202,7 @@ nat64_get_worker_out2in (ip4_header_t * ip)
   /* worker by outside port  (TCP/UDP) */
   port = clib_net_to_host_u16 (port);
   if (port > 1024)
-    return (u32) ((port - 1024) / sm->port_per_thread);
+    return nm->sm->first_worker_index + ((port - 1024) / sm->port_per_thread);
 
   return vlib_get_thread_index ();
 }
@@ -497,13 +497,17 @@ nat64_alloc_out_addr_and_port (u32 fib_index, snat_protocol_t proto,
   snat_main_t *sm = nm->sm;
   snat_session_key_t k;
   u32 ai;
+  u32 worker_index = 0;
   int rv;
 
   k.protocol = proto;
 
+  if (sm->num_workers > 1)
+    worker_index = thread_index - sm->first_worker_index;
+
   rv =
     sm->alloc_addr_and_port (nm->addr_pool, fib_index, thread_index, &k, &ai,
-			     sm->port_per_thread, thread_index);
+			     sm->port_per_thread, worker_index);
 
   if (!rv)
     {
