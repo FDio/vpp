@@ -41,6 +41,7 @@
 #define included_clib_file_h
 
 #include <vppinfra/socket.h>
+#include <vppinfra/pool.h>
 #include <termios.h>
 
 

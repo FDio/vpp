@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * unix_shared_memory_queue.c - unidirectional shared-memory queues
+ * svm_queue.c - unidirectional shared-memory queues
  *
  * Copyright (c) 2009 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,6 +17,7 @@
  *------------------------------------------------------------------
  */
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,11 +25,11 @@
 #include <vppinfra/mem.h>
 #include <vppinfra/format.h>
 #include <vppinfra/cache.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include <svm/queue.h>
 #include <signal.h>
 
 /*
- * unix_shared_memory_queue_init
+ * svm_queue_init
  *
  * nels = number of elements on the queue
  * elsize = element size, presumably 4 and cacheline-size will
@@ -45,17 +46,15 @@
  * You probably want to be on an svm data heap before calling this
  * function.
  */
-unix_shared_memory_queue_t *
-unix_shared_memory_queue_init (int nels,
-			       int elsize,
-			       int consumer_pid,
-			       int signal_when_queue_non_empty)
+svm_queue_t *
+svm_queue_init (int nels,
+		int elsize, int consumer_pid, int signal_when_queue_non_empty)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   pthread_mutexattr_t attr;
   pthread_condattr_t cattr;
 
-  q = clib_mem_alloc_aligned (sizeof (unix_shared_memory_queue_t)
+  q = clib_mem_alloc_aligned (sizeof (svm_queue_t)
 			      + nels * elsize, CLIB_CACHE_LINE_BYTES);
   memset (q, 0, sizeof (*q));
 
@@ -89,10 +88,10 @@ unix_shared_memory_queue_init (int nels,
 }
 
 /*
- * unix_shared_memory_queue_free
+ * svm_queue_free
  */
 void
-unix_shared_memory_queue_free (unix_shared_memory_queue_t * q)
+svm_queue_free (svm_queue_t * q)
 {
   (void) pthread_mutex_destroy (&q->mutex);
   (void) pthread_cond_destroy (&q->condvar);
@@ -100,29 +99,28 @@ unix_shared_memory_queue_free (unix_shared_memory_queue_t * q)
 }
 
 void
-unix_shared_memory_queue_lock (unix_shared_memory_queue_t * q)
+svm_queue_lock (svm_queue_t * q)
 {
   pthread_mutex_lock (&q->mutex);
 }
 
 void
-unix_shared_memory_queue_unlock (unix_shared_memory_queue_t * q)
+svm_queue_unlock (svm_queue_t * q)
 {
   pthread_mutex_unlock (&q->mutex);
 }
 
 int
-unix_shared_memory_queue_is_full (unix_shared_memory_queue_t * q)
+svm_queue_is_full (svm_queue_t * q)
 {
   return q->cursize == q->maxsize;
 }
 
 /*
- * unix_shared_memory_queue_add_nolock
+ * svm_queue_add_nolock
  */
 int
-unix_shared_memory_queue_add_nolock (unix_shared_memory_queue_t * q,
-				     u8 * elem)
+svm_queue_add_nolock (svm_queue_t * q, u8 * elem)
 {
   i8 *tailp;
   int need_broadcast = 0;
@@ -156,7 +154,7 @@ unix_shared_memory_queue_add_nolock (unix_shared_memory_queue_t * q,
 }
 
 int
-unix_shared_memory_queue_add_raw (unix_shared_memory_queue_t * q, u8 * elem)
+svm_queue_add_raw (svm_queue_t * q, u8 * elem)
 {
   i8 *tailp;
 
@@ -179,11 +177,10 @@ unix_shared_memory_queue_add_raw (unix_shared_memory_queue_t * q, u8 * elem)
 
 
 /*
- * unix_shared_memory_queue_add
+ * svm_queue_add
  */
 int
-unix_shared_memory_queue_add (unix_shared_memory_queue_t * q,
-			      u8 * elem, int nowait)
+svm_queue_add (svm_queue_t * q, u8 * elem, int nowait)
 {
   i8 *tailp;
   int need_broadcast = 0;
@@ -235,11 +232,10 @@ unix_shared_memory_queue_add (unix_shared_memory_queue_t * q,
 }
 
 /*
- * unix_shared_memory_queue_add2
+ * svm_queue_add2
  */
 int
-unix_shared_memory_queue_add2 (unix_shared_memory_queue_t * q, u8 * elem,
-			       u8 * elem2, int nowait)
+svm_queue_add2 (svm_queue_t * q, u8 * elem, u8 * elem2, int nowait)
 {
   i8 *tailp;
   int need_broadcast = 0;
@@ -300,11 +296,10 @@ unix_shared_memory_queue_add2 (unix_shared_memory_queue_t * q, u8 * elem,
 }
 
 /*
- * unix_shared_memory_queue_sub
+ * svm_queue_sub
  */
 int
-unix_shared_memory_queue_sub (unix_shared_memory_queue_t * q,
-			      u8 * elem, int nowait)
+svm_queue_sub (svm_queue_t * q, u8 * elem, int nowait)
 {
   i8 *headp;
   int need_broadcast = 0;
@@ -355,7 +350,37 @@ unix_shared_memory_queue_sub (unix_shared_memory_queue_t * q,
 }
 
 int
-unix_shared_memory_queue_sub_raw (unix_shared_memory_queue_t * q, u8 * elem)
+svm_queue_sub2 (svm_queue_t * q, u8 * elem)
+{
+  int need_broadcast;
+  i8 *headp;
+
+  pthread_mutex_lock (&q->mutex);
+  if (q->cursize == 0)
+    {
+      pthread_mutex_unlock (&q->mutex);
+      return -1;
+    }
+
+  headp = (i8 *) (&q->data[0] + q->elsize * q->head);
+  clib_memcpy (elem, headp, q->elsize);
+
+  q->head++;
+  need_broadcast = (q->cursize == q->maxsize / 2);
+  q->cursize--;
+
+  if (PREDICT_FALSE (q->head == q->maxsize))
+    q->head = 0;
+  pthread_mutex_unlock (&q->mutex);
+
+  if (need_broadcast)
+    (void) pthread_cond_broadcast (&q->condvar);
+
+  return 0;
+}
+
+int
+svm_queue_sub_raw (svm_queue_t * q, u8 * elem)
 {
   i8 *headp;
 

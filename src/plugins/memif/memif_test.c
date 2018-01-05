@@ -361,7 +361,7 @@ vat_plugin_register (vat_main_t * vam)
   const char *id ## _CRC __attribute__ ((unused)) = #n "_" #crc;
   foreach_vl_msg_name_crc_vpe;
 #undef _
-  mm->ping_id = vl_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
+  mm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
 
   if (mm->msg_id_base != (u16) ~0)
     memif_vat_api_hookup (vam);

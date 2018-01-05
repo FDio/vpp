@@ -70,7 +70,7 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
   clib_error_t *error;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   error = vnet_punt_socket_add (vm, ntohl (mp->header_version),
 				mp->is_ip4, mp->l4_protocol,
@@ -102,7 +102,7 @@ vl_api_punt_socket_deregister_t_handler (vl_api_punt_socket_deregister_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
   clib_error_t *error;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   error = vnet_punt_socket_del (vm, mp->is_ip4, mp->l4_protocol,
 				ntohs (mp->l4_port));

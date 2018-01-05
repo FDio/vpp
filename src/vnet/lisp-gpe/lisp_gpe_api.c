@@ -154,7 +154,7 @@ static void
   lisp_fwd_path_t *path;
   vl_api_gpe_fwd_entry_path_details_t *rmp = NULL;
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   lisp_gpe_fwd_entry_t *lfe;
 
   gpe_fwd_entry_path_dump_t_net_to_host (mp);

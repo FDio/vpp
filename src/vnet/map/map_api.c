@@ -110,7 +110,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
   vl_api_map_domain_details_t *rmp;
   map_main_t *mm = &map_main;
   map_domain_t *d;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   if (pool_elts (mm->domains) == 0)
     return;
@@ -149,7 +149,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
 static void
 vl_api_map_rule_dump_t_handler (vl_api_map_rule_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u16 i;
   ip6_address_t dst;
   vl_api_map_rule_details_t *rmp;
@@ -199,8 +199,7 @@ vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t * mp)
   u64 total_pkts[VLIB_N_RX_TX];
   u64 total_bytes[VLIB_N_RX_TX];
   map_main_t *mm = &map_main;
-  unix_shared_memory_queue_t *q =
-    vl_api_client_index_to_input_queue (mp->client_index);
+  svm_queue_t *q = vl_api_client_index_to_input_queue (mp->client_index);
 
   if (!q)
     return;
