@@ -119,7 +119,15 @@ typedef struct
 
 typedef struct
 {
+  u32 *buffers;
+  u32 *to_free;
+  u32 n_rx_bytes;
+} virtio_per_thread_data_t;
+
+typedef struct
+{
   virtio_if_t *interfaces;
+  virtio_per_thread_data_t *per_thread_data;
 } virtio_main_t;
 
 extern virtio_main_t virtio_main;

@@ -35,8 +35,12 @@ typedef struct
   u8 *host_bridge;
   ip4_address_t host_ip4_addr;
   u8 host_ip4_prefix_len;
+  ip4_address_t host_ip4_gw;
+  u8 host_ip4_gw_set;
   ip6_address_t host_ip6_addr;
   u8 host_ip6_prefix_len;
+  ip6_address_t host_ip6_gw;
+  u8 host_ip6_gw_set;
   /* return */
   u32 sw_if_index;
   int rv;
