@@ -72,7 +72,7 @@ typedef struct _application
   u32 ns_index;
 
   /** Application listens for events on this svm queue */
-  unix_shared_memory_queue_t *event_queue;
+  svm_queue_t *event_queue;
 
   /*
    * Callbacks: shoulder-taps for the server/client

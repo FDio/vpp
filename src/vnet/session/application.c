@@ -76,7 +76,7 @@ application_local_session_table (application_t * app)
 int
 application_api_queue_is_full (application_t * app)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   /* builtin servers are always OK */
   if (app->api_client_index == ~0)

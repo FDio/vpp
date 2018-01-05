@@ -21,7 +21,7 @@
 #include <svm/svm_common.h>
 #include <vppinfra/file.h>
 #include <vlibapi/api_common.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include <svm/queue.h>
 
 /* Allocated in shared memory */
 
@@ -36,7 +36,7 @@
  */
 typedef struct ring_alloc_
 {
-  unix_shared_memory_queue_t *rp;
+  svm_queue_t *rp;
   u16 size;
   u16 nitems;
   u32 hits;
@@ -83,7 +83,7 @@ typedef struct vl_shmem_hdr_
   volatile int vl_pid;
 
   /* Client sends VLIB msgs here. */
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
 
   /* Vector of rings; one for each size. */
 
@@ -116,12 +116,12 @@ void vl_msg_api_free (void *a);
 int vl_map_shmem (const char *region_name, int is_vlib);
 void vl_register_mapped_shmem_region (svm_region_t * rp);
 void vl_unmap_shmem (void);
-void vl_msg_api_send_shmem (unix_shared_memory_queue_t * q, u8 * elem);
-void vl_msg_api_send_shmem_nolock (unix_shared_memory_queue_t * q, u8 * elem);
+void vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem);
+void vl_msg_api_send_shmem_nolock (svm_queue_t * q, u8 * elem);
 void vl_msg_api_send (vl_api_registration_t * rp, u8 * elem);
 int vl_client_connect (const char *name, int ctx_quota, int input_queue_size);
 void vl_client_disconnect (void);
-unix_shared_memory_queue_t *vl_api_client_index_to_input_queue (u32 index);
+svm_queue_t *vl_api_client_index_to_input_queue (u32 index);
 vl_api_registration_t *vl_api_client_index_to_registration (u32 index);
 int vl_client_api_map (const char *region_name);
 void vl_client_api_unmap (void);
@@ -146,7 +146,7 @@ int vl_client_connect_to_vlib_no_map (const char *svm_name,
 u16 vl_client_get_first_plugin_msg_id (const char *plugin_name);
 
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
-u32 vl_api_memclnt_create_internal (char *, unix_shared_memory_queue_t *);
+u32 vl_api_memclnt_create_internal (char *, svm_queue_t *);
 void vl_init_shmem (svm_region_t * vlib_rp, vl_api_shm_elem_config_t * config,
 		    int is_vlib, int is_private_region);
 void vl_client_install_client_message_handlers (void);
