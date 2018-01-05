@@ -1586,7 +1586,7 @@ int snat_set_workers (uword * bitmap)
   clib_bitmap_foreach (i, bitmap,
     ({
       vec_add1(sm->workers, i);
-      sm->per_thread_data[i].snat_thread_index = j;
+      sm->per_thread_data[sm->first_worker_index + i].snat_thread_index = j;
       j++;
     }));
 
@@ -2758,6 +2758,7 @@ snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0)
   snat_session_t *s;
   int i;
   u32 proto;
+  u32 next_worker_index = 0;
 
   /* first try static mappings without port */
   if (PREDICT_FALSE (pool_elts (sm->static_mappings)))
@@ -2873,7 +2874,10 @@ snat_get_worker_out2in_cb (ip4_header_t * ip0, u32 rx_fib_index0)
     }
 
   /* worker by outside port */
-  return (u32) ((clib_net_to_host_u16 (port) - 1024) / sm->port_per_thread);
+  next_worker_index = sm->first_worker_index;
+  next_worker_index +=
+    sm->workers[(clib_net_to_host_u16 (port) - 1024) / sm->port_per_thread];
+  return next_worker_index;
 }
 
 static clib_error_t *
