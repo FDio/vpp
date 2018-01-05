@@ -448,7 +448,7 @@ do_simple_interface_counters (stats_main_t * sm)
   vnet_interface_main_t *im = sm->interface_main;
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
+  svm_queue_t *q = shmem_hdr->vl_input_queue;
   vlib_simple_counter_main_t *cm;
   u32 items_this_message = 0;
   u64 v, *vp = 0;
@@ -544,7 +544,7 @@ static void
   vl_api_want_interface_combined_stats_reply_t *rmp;
   uword *p;
   i32 retval = 0;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 swif;
 
   swif = ~0;			//Using same mechanism as _per_interface_
@@ -579,7 +579,7 @@ static void
 {
   vpe_client_registration_t *clients, client;
   stats_main_t *sm = &stats_main;
-  unix_shared_memory_queue_t *q, *q_prev = NULL;
+  svm_queue_t *q, *q_prev = NULL;
   vl_api_vnet_interface_combined_counters_t *mp_copy = NULL;
   u32 mp_size;
   int i;
@@ -627,7 +627,7 @@ do_combined_interface_counters (stats_main_t * sm)
   vnet_interface_main_t *im = sm->interface_main;
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
+  svm_queue_t *q = shmem_hdr->vl_input_queue;
   vlib_combined_counter_main_t *cm;
   u32 items_this_message = 0;
   vlib_counter_t v, *vp = 0;
@@ -687,7 +687,7 @@ static void
   vlib_combined_counter_main_t *cm;
   uword *p;
   i32 retval = 0;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   int i;
   u32 swif;
 
@@ -748,7 +748,7 @@ do_combined_per_interface_counters (stats_main_t * sm)
   vnet_interface_main_t *im = sm->interface_main;
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   vlib_combined_counter_main_t *cm;
   /*
    * items_this_message will eventually be used to optimise the batching
@@ -882,7 +882,7 @@ static void
   vlib_simple_counter_main_t *cm;
   uword *p;
   i32 retval = 0;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   int i;
   u32 swif;
 
@@ -945,7 +945,7 @@ do_simple_per_interface_counters (stats_main_t * sm)
   vnet_interface_main_t *im = sm->interface_main;
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   vlib_simple_counter_main_t *cm;
   /*
    * items_this_message will eventually be used to optimise the batching
@@ -1164,7 +1164,7 @@ ip4_nbr_ship (stats_main_t * sm, ip4_nbr_stats_ctx_t * ctx)
 {
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
+  svm_queue_t *q = shmem_hdr->vl_input_queue;
   vl_api_vnet_ip4_nbr_counters_t *mp = 0;
   int first = 0;
 
@@ -1204,11 +1204,11 @@ ip4_nbr_ship (stats_main_t * sm, ip4_nbr_stats_ctx_t * ctx)
       /*
        * send to the shm q
        */
-      unix_shared_memory_queue_lock (q);
-      pause = unix_shared_memory_queue_is_full (q);
+      svm_queue_lock (q);
+      pause = svm_queue_is_full (q);
 
       vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-      unix_shared_memory_queue_unlock (q);
+      svm_queue_unlock (q);
       dsunlock (sm);
 
       if (pause)
@@ -1319,7 +1319,7 @@ ip6_nbr_ship (stats_main_t * sm,
 {
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
+  svm_queue_t *q = shmem_hdr->vl_input_queue;
   vl_api_vnet_ip6_nbr_counters_t *mp = 0;
   int first = 0;
 
@@ -1359,11 +1359,11 @@ ip6_nbr_ship (stats_main_t * sm,
       /*
        * send to the shm q
        */
-      unix_shared_memory_queue_lock (q);
-      pause = unix_shared_memory_queue_is_full (q);
+      svm_queue_lock (q);
+      pause = svm_queue_is_full (q);
 
       vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-      unix_shared_memory_queue_unlock (q);
+      svm_queue_unlock (q);
       dsunlock (sm);
 
       if (pause)
@@ -1430,7 +1430,7 @@ do_ip4_fib_counters (stats_main_t * sm)
   ip4_main_t *im4 = &ip4_main;
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
+  svm_queue_t *q = shmem_hdr->vl_input_queue;
   ip4_route_t *r;
   fib_table_t *fib;
   ip4_fib_t *v4_fib;
@@ -1551,19 +1551,19 @@ again:
 		 * drop the data structure lock (which the main thread
 		 * may want), and take a pause.
 		 */
-		unix_shared_memory_queue_lock (q);
-		if (unix_shared_memory_queue_is_full (q))
+		svm_queue_lock (q);
+		if (svm_queue_is_full (q))
 		  {
 		    dsunlock (sm);
 		    vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		    unix_shared_memory_queue_unlock (q);
+		    svm_queue_unlock (q);
 		    mp = 0;
 		    ip46_fib_stats_delay (sm, 0 /* sec */ ,
 					  STATS_RELEASE_DELAY_NS);
 		    goto again;
 		  }
 		vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		unix_shared_memory_queue_unlock (q);
+		svm_queue_unlock (q);
 
 		items_this_message = IP4_FIB_COUNTER_BATCH_SIZE;
 		mp = vl_msg_api_alloc_as_if_client
@@ -1623,7 +1623,7 @@ do_ip4_mfib_counters (stats_main_t * sm)
   ip4_main_t *im4 = &ip4_main;
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
+  svm_queue_t *q = shmem_hdr->vl_input_queue;
   mfib_prefix_t *pfx;
   mfib_table_t *mfib;
   do_ip46_fibs_t *do_fibs;
@@ -1718,17 +1718,17 @@ do_ip4_mfib_counters (stats_main_t * sm)
 		 * drop the data structure lock (which the main thread
 		 * may want), and take a pause.
 		 */
-		unix_shared_memory_queue_lock (q);
+		svm_queue_lock (q);
 
-		while (unix_shared_memory_queue_is_full (q))
+		while (svm_queue_is_full (q))
 		  {
-		    unix_shared_memory_queue_unlock (q);
+		    svm_queue_unlock (q);
 		    ip46_fib_stats_delay (sm, 0 /* sec */ ,
 					  STATS_RELEASE_DELAY_NS);
-		    unix_shared_memory_queue_lock (q);
+		    svm_queue_lock (q);
 		  }
 		vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		unix_shared_memory_queue_unlock (q);
+		svm_queue_unlock (q);
 
 		items_this_message = IP4_MFIB_COUNTER_BATCH_SIZE;
 		mp = vl_msg_api_alloc_as_if_client
@@ -1762,7 +1762,7 @@ do_ip6_mfib_counters (stats_main_t * sm)
   ip6_main_t *im6 = &ip6_main;
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
+  svm_queue_t *q = shmem_hdr->vl_input_queue;
   mfib_prefix_t *pfx;
   mfib_table_t *mfib;
   do_ip46_fibs_t *do_fibs;
@@ -1857,17 +1857,17 @@ do_ip6_mfib_counters (stats_main_t * sm)
 		 * drop the data structure lock (which the main thread
 		 * may want), and take a pause.
 		 */
-		unix_shared_memory_queue_lock (q);
+		svm_queue_lock (q);
 
-		while (unix_shared_memory_queue_is_full (q))
+		while (svm_queue_is_full (q))
 		  {
-		    unix_shared_memory_queue_unlock (q);
+		    svm_queue_unlock (q);
 		    ip46_fib_stats_delay (sm, 0 /* sec */ ,
 					  STATS_RELEASE_DELAY_NS);
-		    unix_shared_memory_queue_lock (q);
+		    svm_queue_lock (q);
 		  }
 		vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		unix_shared_memory_queue_unlock (q);
+		svm_queue_unlock (q);
 
 		items_this_message = IP6_MFIB_COUNTER_BATCH_SIZE;
 		mp = vl_msg_api_alloc_as_if_client
@@ -1929,7 +1929,7 @@ do_ip6_fib_counters (stats_main_t * sm)
   ip6_main_t *im6 = &ip6_main;
   api_main_t *am = sm->api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q = shmem_hdr->vl_input_queue;
+  svm_queue_t *q = shmem_hdr->vl_input_queue;
   ip6_route_t *r;
   fib_table_t *fib;
   do_ip46_fibs_t *do_fibs;
@@ -2022,19 +2022,19 @@ again:
 		 * drop the data structure lock (which the main thread
 		 * may want), and take a pause.
 		 */
-		unix_shared_memory_queue_lock (q);
-		if (unix_shared_memory_queue_is_full (q))
+		svm_queue_lock (q);
+		if (svm_queue_is_full (q))
 		  {
 		    dsunlock (sm);
 		    vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		    unix_shared_memory_queue_unlock (q);
+		    svm_queue_unlock (q);
 		    mp = 0;
 		    ip46_fib_stats_delay (sm, 0 /* sec */ ,
 					  STATS_RELEASE_DELAY_NS);
 		    goto again;
 		  }
 		vl_msg_api_send_shmem_nolock (q, (u8 *) & mp);
-		unix_shared_memory_queue_unlock (q);
+		svm_queue_unlock (q);
 
 		items_this_message = IP6_FIB_COUNTER_BATCH_SIZE;
 		mp = vl_msg_api_alloc_as_if_client
@@ -2137,7 +2137,7 @@ static void
 {
   vpe_client_registration_t *clients, client;
   stats_main_t *sm = &stats_main;
-  unix_shared_memory_queue_t *q, *q_prev = NULL;
+  svm_queue_t *q, *q_prev = NULL;
   vl_api_vnet_interface_simple_counters_t *mp_copy = NULL;
   u32 mp_size;
   int i;
@@ -2190,7 +2190,7 @@ static void
 vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  unix_shared_memory_queue_t *q, *q_prev = NULL;
+  svm_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip4_fib_counters_t *mp_copy = NULL;
   u32 mp_size;
   vpe_client_registration_t *clients, client;
@@ -2239,7 +2239,7 @@ static void
 vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  unix_shared_memory_queue_t *q, *q_prev = NULL;
+  svm_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip4_nbr_counters_t *mp_copy = NULL;
   u32 mp_size;
   vpe_client_registration_t *clients, client;
@@ -2289,7 +2289,7 @@ static void
 vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  unix_shared_memory_queue_t *q, *q_prev = NULL;
+  svm_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip6_fib_counters_t *mp_copy = NULL;
   u32 mp_size;
   vpe_client_registration_t *clients, client;
@@ -2338,7 +2338,7 @@ static void
 vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  unix_shared_memory_queue_t *q, *q_prev = NULL;
+  svm_queue_t *q, *q_prev = NULL;
   vl_api_vnet_ip6_nbr_counters_t *mp_copy = NULL;
   u32 mp_size;
   vpe_client_registration_t *clients, client;
@@ -2392,7 +2392,7 @@ vl_api_want_stats_t_handler (vl_api_want_stats_t * mp)
   uword *p;
   i32 retval = 0;
   u32 item;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   item = ~0;			//"ALL THE THINGS IN THE THINGS
   rp.client_index = mp->client_index;
@@ -2440,7 +2440,7 @@ static void
   uword *p;
   i32 retval = 0;
   u32 swif;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   swif = ~0;			//Using same mechanism as _per_interface_
   rp.client_index = mp->client_index;
@@ -2477,7 +2477,7 @@ vl_api_want_ip4_fib_stats_t_handler (vl_api_want_ip4_fib_stats_t * mp)
   vl_api_want_ip4_fib_stats_reply_t *rmp;
   uword *p;
   i32 retval = 0;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 fib;
 
   fib = ~0;			//Using same mechanism as _per_interface_
@@ -2513,7 +2513,7 @@ vl_api_want_ip4_mfib_stats_t_handler (vl_api_want_ip4_mfib_stats_t * mp)
   vl_api_want_ip4_mfib_stats_reply_t *rmp;
   uword *p;
   i32 retval = 0;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 mfib;
 
   mfib = ~0;			//Using same mechanism as _per_interface_
@@ -2549,7 +2549,7 @@ vl_api_want_ip6_fib_stats_t_handler (vl_api_want_ip6_fib_stats_t * mp)
   vl_api_want_ip4_fib_stats_reply_t *rmp;
   uword *p;
   i32 retval = 0;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 fib;
 
   fib = ~0;			//Using same mechanism as _per_interface_
@@ -2585,7 +2585,7 @@ vl_api_want_ip6_mfib_stats_t_handler (vl_api_want_ip6_mfib_stats_t * mp)
   vl_api_want_ip4_mfib_stats_reply_t *rmp;
   uword *p;
   i32 retval = 0;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 mfib;
 
   mfib = ~0;			//Using same mechanism as _per_interface_
@@ -2636,8 +2636,7 @@ vl_api_vnet_get_summary_stats_t_handler (vl_api_vnet_get_summary_stats_t * mp)
   u64 total_pkts[VLIB_N_RX_TX];
   u64 total_bytes[VLIB_N_RX_TX];
 
-  unix_shared_memory_queue_t *q =
-    vl_api_client_index_to_input_queue (mp->client_index);
+  svm_queue_t *q = vl_api_client_index_to_input_queue (mp->client_index);
 
   if (!q)
     {

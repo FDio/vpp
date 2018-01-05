@@ -38,7 +38,7 @@ ssvm_eth_create (ssvm_eth_main_t * em, u8 * name, int is_master)
   ssvm_private_t *intfc;
   void *oldheap;
   clib_error_t *e;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   ssvm_shared_header_t *sh;
   ssvm_eth_queue_elt_t *elts;
   u32 *elt_indices;
@@ -71,13 +71,13 @@ ssvm_eth_create (ssvm_eth_main_t * em, u8 * name, int is_master)
   sh = intfc->sh;
   oldheap = ssvm_push_heap (sh);
 
-  q = unix_shared_memory_queue_init (em->queue_elts, sizeof (u32),
-				     0 /* consumer pid not interesting */ ,
-				     0 /* signal not sent */ );
+  q = svm_queue_init (em->queue_elts, sizeof (u32),
+		      0 /* consumer pid not interesting */ ,
+		      0 /* signal not sent */ );
   sh->opaque[TO_MASTER_Q_INDEX] = (void *) q;
-  q = unix_shared_memory_queue_init (em->queue_elts, sizeof (u32),
-				     0 /* consumer pid not interesting */ ,
-				     0 /* signal not sent */ );
+  q = svm_queue_init (em->queue_elts, sizeof (u32),
+		      0 /* consumer pid not interesting */ ,
+		      0 /* signal not sent */ );
   sh->opaque[TO_SLAVE_Q_INDEX] = (void *) q;
 
   /*
@@ -246,7 +246,7 @@ ssvm_eth_interface_tx (vlib_main_t * vm,
   vnet_interface_output_runtime_t *rd = (void *) node->runtime_data;
   ssvm_private_t *intfc = vec_elt_at_index (em->intfcs, rd->dev_instance);
   ssvm_shared_header_t *sh = intfc->sh;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 *from;
   u32 n_left;
   ssvm_eth_queue_elt_t *elts, *elt, *prev_elt;
@@ -265,9 +265,9 @@ ssvm_eth_interface_tx (vlib_main_t * vm,
   u32 *elt_indices;
 
   if (i_am_master)
-    q = (unix_shared_memory_queue_t *) sh->opaque[TO_SLAVE_Q_INDEX];
+    q = (svm_queue_t *) sh->opaque[TO_SLAVE_Q_INDEX];
   else
-    q = (unix_shared_memory_queue_t *) sh->opaque[TO_MASTER_Q_INDEX];
+    q = (svm_queue_t *) sh->opaque[TO_MASTER_Q_INDEX];
 
   queue_lock = (u32 *) q;
 
@@ -366,7 +366,7 @@ ssvm_eth_interface_tx (vlib_main_t * vm,
       while (__sync_lock_test_and_set (queue_lock, 1))
 	;
 
-      unix_shared_memory_queue_add_raw (q, (u8 *) & elt_index);
+      svm_queue_add_raw (q, (u8 *) & elt_index);
       CLIB_MEMORY_BARRIER ();
       *queue_lock = 0;
 

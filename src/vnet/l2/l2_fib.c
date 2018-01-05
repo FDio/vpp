@@ -962,7 +962,7 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
   u32 client = lm->client_pid;
   u32 cl_idx = lm->client_index;
   vl_api_l2_macs_event_t *mp = 0;
-  unix_shared_memory_queue_t *q = 0;
+  svm_queue_t *q = 0;
 
   if (client)
     {

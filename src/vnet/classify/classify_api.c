@@ -182,8 +182,7 @@ static void
 
 static void
 send_policer_classify_details (u32 sw_if_index,
-			       u32 table_index,
-			       unix_shared_memory_queue_t * q, u32 context)
+			       u32 table_index, svm_queue_t * q, u32 context)
 {
   vl_api_policer_classify_details_t *mp;
 
@@ -200,7 +199,7 @@ send_policer_classify_details (u32 sw_if_index,
 static void
 vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   policer_classify_main_t *pcm = &policer_classify_main;
   u32 *vec_tbl;
   int i;
@@ -227,7 +226,7 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
 static void
 vl_api_classify_table_ids_t_handler (vl_api_classify_table_ids_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -312,7 +311,7 @@ static void
 static void
 vl_api_classify_table_info_t_handler (vl_api_classify_table_info_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -360,7 +359,7 @@ vl_api_classify_table_info_t_handler (vl_api_classify_table_info_t * mp)
 }
 
 static void
-send_classify_session_details (unix_shared_memory_queue_t * q,
+send_classify_session_details (svm_queue_t * q,
 			       u32 table_id,
 			       u32 match_length,
 			       vnet_classify_entry_t * e, u32 context)
@@ -385,7 +384,7 @@ static void
 vl_api_classify_session_dump_t_handler (vl_api_classify_session_dump_t * mp)
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   u32 table_id = ntohl (mp->table_id);
   vnet_classify_table_t *t;
@@ -456,8 +455,7 @@ static void
 
 static void
 send_flow_classify_details (u32 sw_if_index,
-			    u32 table_index,
-			    unix_shared_memory_queue_t * q, u32 context)
+			    u32 table_index, svm_queue_t * q, u32 context)
 {
   vl_api_flow_classify_details_t *mp;
 
@@ -474,7 +472,7 @@ send_flow_classify_details (u32 sw_if_index,
 static void
 vl_api_flow_classify_dump_t_handler (vl_api_flow_classify_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   flow_classify_main_t *pcm = &flow_classify_main;
   u32 *vec_tbl;
   int i;
