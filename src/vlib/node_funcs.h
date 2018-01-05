@@ -1122,6 +1122,75 @@ vlib_node_add_named_next (vlib_main_t * vm, uword node, char *name)
   return vlib_node_add_named_next_with_slot (vm, node, name, ~0);
 }
 
+/**
+ * Serialize a node list.
+ */
+u8 *vlib_node_serialize (vlib_main_t *vm, vlib_node_t ***node_dups,
+                         u8 * vector, int include_nexts, int include_stats);
+
+/**
+ * Serialize a vlib_node_main_t. Appends the result to vector.
+ * Pass 0 to create a new vector, use vec_reset_length(vector)
+ * to recycle a vector / avoid memory allocation, etc.
+ * Switch heaps before/after to serialize into API client shared memory.
+ */
+always_inline u8 *
+vlib_node_main_serialize (vlib_main_t *vm, u8 * vector, u32 max_threads,
+                          int include_nexts, int include_stats)
+{
+  vlib_node_main_t * nm = &vm->node_main;
+  vlib_node_t *n;
+  static vlib_node_t ***node_dups;
+  vlib_node_t **nodes;
+  static vlib_main_t **stat_vms;
+  vlib_main_t *stat_vm;
+  uword i, j;
+  u32 threads_to_serialize;
+
+  vec_reset_length (node_dups);
+
+  if (vec_len (stat_vms) == 0)
+    {
+      for (i = 0; i < vec_len (vlib_mains); i++)
+	{
+	  stat_vm = vlib_mains[i];
+	  if (stat_vm)
+	    vec_add1 (stat_vms, stat_vm);
+	}
+    }
+
+  threads_to_serialize = clib_min (max_threads, vec_len (stat_vms));
+
+  /*
+   * Barrier sync across stats scraping.
+   * Otherwise, the counts will be grossly inaccurate.
+   */
+  vlib_worker_thread_barrier_sync (vm);
+//  vl_msg_api_barrier_sync ();
+
+  for (j = 0; j < threads_to_serialize; j++)
+    {
+      stat_vm = stat_vms[j];
+      nm = &stat_vm->node_main;
+
+      if (include_stats)
+	{
+	  for (i = 0; i < vec_len (nm->nodes); i++)
+	    {
+	      n = nm->nodes[i];
+	      vlib_node_sync_stats (stat_vm, n);
+	    }
+	}
+
+      nodes = vec_dup (nm->nodes);
+      vec_add1 (node_dups, nodes);
+    }
+  vlib_worker_thread_barrier_release (vm);
+
+  return vlib_node_serialize (vm, node_dups, vector, include_nexts,
+	                      include_stats);
+}
+
 /* Query node given name. */
 vlib_node_t *vlib_get_node_by_name (vlib_main_t * vm, u8 * name);
 

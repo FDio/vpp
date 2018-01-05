@@ -376,10 +376,10 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
   vec_reset_length (vector);
 
   /* $$$$ FIXME */
-  vector = vlib_node_serialize (&vm->node_main, vector,
-				(u32) ~ 0 /* all threads */ ,
-				1 /* include nexts */ ,
-				1 /* include stats */ );
+  vector = vlib_node_main_serialize (vm, vector,
+                                     (u32) ~ 0 /* all threads */,
+                                     1 /* include nexts */ ,
+                                     1 /* include stats */ );
 
   svm_pop_heap (oldheap);
   pthread_mutex_unlock (&am->vlib_rp->mutex);

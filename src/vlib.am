@@ -39,6 +39,7 @@ libvlib_la_SOURCES =				\
   vlib/node.c					\
   vlib/node_cli.c				\
   vlib/node_format.c				\
+  vlib/node_serialize.c                		\
   vlib/pci/pci.c				\
   vlib/threads.c				\
   vlib/threads_cli.c				\

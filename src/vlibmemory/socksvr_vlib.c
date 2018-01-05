@@ -149,7 +149,7 @@ vl_api_socket_process_msg (clib_file_t * uf, vl_api_registration_t * rp,
   u8 *the_msg = (u8 *) (mbp->data);
   socket_main.current_uf = uf;
   socket_main.current_rp = rp;
-  vl_msg_api_socket_handler (the_msg);
+  vl_msg_api_handler (the_msg);
   socket_main.current_uf = 0;
   socket_main.current_rp = 0;
 }

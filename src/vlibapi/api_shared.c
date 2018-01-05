@@ -636,20 +636,6 @@ vl_msg_api_get_msg_length (void *msg_arg)
   return vl_msg_api_get_msg_length_inline (msg_arg);
 }
 
-/*
- * vl_msg_api_socket_handler
- */
-void
-vl_msg_api_socket_handler (void *the_msg)
-{
-  api_main_t *am = &api_main;
-
-  msg_handler_internal (am, the_msg,
-			(am->rx_trace
-			 && am->rx_trace->enabled) /* trace_it */ ,
-			1 /* do_it */ , 0 /* free_it */ );
-}
-
 #define foreach_msg_api_vector                  \
 _(msg_names)                                    \
 _(msg_handlers)                                 \
