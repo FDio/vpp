@@ -174,7 +174,7 @@ vl_api_nat_set_workers_t_print (vl_api_nat_set_workers_t * mp, void *handle)
 }
 
 static void
-send_nat_worker_details (u32 worker_index, unix_shared_memory_queue_t * q,
+send_nat_worker_details (u32 worker_index, svm_queue_t * q,
 			 u32 context)
 {
   vl_api_nat_worker_details_t *rmp;
@@ -196,7 +196,7 @@ send_nat_worker_details (u32 worker_index, unix_shared_memory_queue_t * q,
 static void
 vl_api_nat_worker_dump_t_handler (vl_api_nat_worker_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   u32 *worker_index;
 
@@ -316,7 +316,7 @@ vl_api_nat_get_reass_t_print (vl_api_nat_get_reass_t * mp, void *handle)
 
 typedef struct nat_api_walk_ctx_t_
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 context;
 } nat_api_walk_ctx_t;
 
@@ -369,7 +369,7 @@ nat_ip6_reass_walk_api (nat_reass_ip6_t * reass, void *arg)
 static void
 vl_api_nat_reass_dump_t_handler (vl_api_nat_reass_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -469,7 +469,7 @@ static void *vl_api_nat44_add_del_address_range_t_print
 
 static void
 send_nat44_address_details (snat_address_t * a,
-			    unix_shared_memory_queue_t * q, u32 context,
+			    svm_queue_t * q, u32 context,
 			    u8 twice_nat)
 {
   vl_api_nat44_address_details_t *rmp;
@@ -495,7 +495,7 @@ send_nat44_address_details (snat_address_t * a,
 static void
 vl_api_nat44_address_dump_t_handler (vl_api_nat44_address_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   snat_address_t *a;
 
@@ -556,7 +556,7 @@ static void *vl_api_nat44_interface_add_del_feature_t_print
 
 static void
 send_nat44_interface_details (snat_interface_t * i,
-			      unix_shared_memory_queue_t * q, u32 context)
+			      svm_queue_t * q, u32 context)
 {
   vl_api_nat44_interface_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -576,7 +576,7 @@ send_nat44_interface_details (snat_interface_t * i,
 static void
 vl_api_nat44_interface_dump_t_handler (vl_api_nat44_interface_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
 
@@ -638,7 +638,7 @@ static void *vl_api_nat44_interface_add_del_output_feature_t_print
 
 static void
 send_nat44_interface_output_feature_details (snat_interface_t * i,
-					     unix_shared_memory_queue_t * q,
+					     svm_queue_t * q,
 					     u32 context)
 {
   vl_api_nat44_interface_output_feature_details_t *rmp;
@@ -659,7 +659,7 @@ static void
   vl_api_nat44_interface_output_feature_dump_t_handler
   (vl_api_nat44_interface_output_feature_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
 
@@ -745,7 +745,7 @@ static void *vl_api_nat44_add_del_static_mapping_t_print
 
 static void
 send_nat44_static_mapping_details (snat_static_mapping_t * m,
-				   unix_shared_memory_queue_t * q,
+				   svm_queue_t * q,
 				   u32 context)
 {
   vl_api_nat44_static_mapping_details_t *rmp;
@@ -771,7 +771,7 @@ send_nat44_static_mapping_details (snat_static_mapping_t * m,
 
 static void
 send_nat44_static_map_resolve_details (snat_static_map_resolve_t * m,
-				       unix_shared_memory_queue_t * q,
+				       svm_queue_t * q,
 				       u32 context)
 {
   vl_api_nat44_static_mapping_details_t *rmp;
@@ -798,7 +798,7 @@ static void
 vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
 					    * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
   snat_static_map_resolve_t *rp;
@@ -891,7 +891,7 @@ static void *vl_api_nat44_add_del_identity_mapping_t_print
 
 static void
 send_nat44_identity_mapping_details (snat_static_mapping_t * m,
-				     unix_shared_memory_queue_t * q,
+				     svm_queue_t * q,
 				     u32 context)
 {
   vl_api_nat44_identity_mapping_details_t *rmp;
@@ -914,7 +914,7 @@ send_nat44_identity_mapping_details (snat_static_mapping_t * m,
 
 static void
 send_nat44_identity_map_resolve_details (snat_static_map_resolve_t * m,
-					 unix_shared_memory_queue_t * q,
+					 svm_queue_t * q,
 					 u32 context)
 {
   vl_api_nat44_identity_mapping_details_t *rmp;
@@ -938,7 +938,7 @@ static void
   vl_api_nat44_identity_mapping_dump_t_handler
   (vl_api_nat44_identity_mapping_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
   snat_static_map_resolve_t *rp;
@@ -1008,7 +1008,7 @@ static void *vl_api_nat44_add_del_interface_addr_t_print
 
 static void
 send_nat44_interface_addr_details (u32 sw_if_index,
-				   unix_shared_memory_queue_t * q,
+				   svm_queue_t * q,
 				   u32 context, u8 twice_nat)
 {
   vl_api_nat44_interface_addr_details_t *rmp;
@@ -1029,7 +1029,7 @@ static void
 vl_api_nat44_interface_addr_dump_t_handler (vl_api_nat44_interface_addr_dump_t
 					    * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   u32 *i;
 
@@ -1057,7 +1057,7 @@ vl_api_nat44_interface_addr_dump_t_print (vl_api_nat44_interface_addr_dump_t *
 }
 
 static void
-send_nat44_user_details (snat_user_t * u, unix_shared_memory_queue_t * q,
+send_nat44_user_details (snat_user_t * u, svm_queue_t * q,
 			 u32 context)
 {
   vl_api_nat44_user_details_t *rmp;
@@ -1081,7 +1081,7 @@ send_nat44_user_details (snat_user_t * u, unix_shared_memory_queue_t * q,
 static void
 vl_api_nat44_user_dump_t_handler (vl_api_nat44_user_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
   snat_user_t *u;
@@ -1109,7 +1109,7 @@ vl_api_nat44_user_dump_t_print (vl_api_nat44_user_dump_t * mp, void *handle)
 
 static void
 send_nat44_user_session_details (snat_session_t * s,
-				 unix_shared_memory_queue_t * q, u32 context)
+				 svm_queue_t * q, u32 context)
 {
   vl_api_nat44_user_session_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -1145,7 +1145,7 @@ static void
 vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
 					  mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
   snat_session_t *s;
@@ -1267,7 +1267,7 @@ static void *vl_api_nat44_add_del_lb_static_mapping_t_print
 
 static void
 send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
-				      unix_shared_memory_queue_t * q,
+				      svm_queue_t * q,
 				      u32 context)
 {
   vl_api_nat44_lb_static_mapping_details_t *rmp;
@@ -1306,7 +1306,7 @@ static void
   vl_api_nat44_lb_static_mapping_dump_t_handler
   (vl_api_nat44_lb_static_mapping_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
 
@@ -1397,7 +1397,7 @@ static void
   vl_api_nat44_forwarding_is_enabled_t_handler
   (vl_api_nat44_forwarding_is_enabled_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   vl_api_nat44_forwarding_is_enabled_reply_t *rmp;
 
@@ -1562,7 +1562,7 @@ vl_api_nat_det_reverse_t_print (vl_api_nat_det_reverse_t * mp, void *handle)
 }
 
 static void
-sent_nat_det_map_details (snat_det_map_t * m, unix_shared_memory_queue_t * q,
+sent_nat_det_map_details (snat_det_map_t * m, svm_queue_t * q,
 			  u32 context)
 {
   vl_api_nat_det_map_details_t *rmp;
@@ -1587,7 +1587,7 @@ sent_nat_det_map_details (snat_det_map_t * m, unix_shared_memory_queue_t * q,
 static void
 vl_api_nat_det_map_dump_t_handler (vl_api_nat_det_map_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   snat_det_map_t *m;
 
@@ -1778,7 +1778,7 @@ vl_api_nat_det_close_session_in_t_print (vl_api_nat_det_close_session_in_t *
 
 static void
 send_nat_det_session_details (snat_det_session_t * s,
-			      unix_shared_memory_queue_t * q, u32 context)
+			      svm_queue_t * q, u32 context)
 {
   vl_api_nat_det_session_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -1800,7 +1800,7 @@ send_nat_det_session_details (snat_det_session_t * s,
 static void
 vl_api_nat_det_session_dump_t_handler (vl_api_nat_det_session_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   snat_main_t *sm = &snat_main;
   ip4_address_t user_addr;
   snat_det_map_t *dm;
@@ -1896,7 +1896,7 @@ static void *vl_api_nat64_add_del_pool_addr_range_t_print
 
 typedef struct nat64_api_walk_ctx_t_
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 context;
   nat64_db_t *db;
 } nat64_api_walk_ctx_t;
@@ -1931,7 +1931,7 @@ nat64_api_pool_walk (snat_address_t * a, void *arg)
 static void
 vl_api_nat64_pool_addr_dump_t_handler (vl_api_nat64_pool_addr_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -2013,7 +2013,7 @@ nat64_api_interface_walk (snat_interface_t * i, void *arg)
 static void
 vl_api_nat64_interface_dump_t_handler (vl_api_nat64_interface_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -2111,7 +2111,7 @@ nat64_api_bib_walk (nat64_db_bib_entry_t * bibe, void *arg)
 static void
 vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   nat64_main_t *nm = &nat64_main;
   nat64_db_t *db;
 
@@ -2244,7 +2244,7 @@ nat64_api_st_walk (nat64_db_st_entry_t * ste, void *arg)
 static void
 vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   nat64_main_t *nm = &nat64_main;
   nat64_db_t *db;
 
@@ -2328,7 +2328,7 @@ nat64_api_prefix_walk (nat64_prefix_t * p, void *arg)
 static void
 vl_api_nat64_prefix_dump_t_handler (vl_api_nat64_prefix_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)

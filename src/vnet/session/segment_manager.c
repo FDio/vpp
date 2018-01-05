@@ -530,12 +530,12 @@ segment_manager_dealloc_fifos (u32 svm_segment_index, svm_fifo_t * rx_fifo,
 /**
  * Allocates shm queue in the first segment
  */
-unix_shared_memory_queue_t *
+svm_queue_t *
 segment_manager_alloc_queue (segment_manager_t * sm, u32 queue_size)
 {
   ssvm_shared_header_t *sh;
   svm_fifo_segment_private_t *segment;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   void *oldheap;
 
   ASSERT (sm->segment_indices != 0);
@@ -544,7 +544,7 @@ segment_manager_alloc_queue (segment_manager_t * sm, u32 queue_size)
   sh = segment->ssvm.sh;
 
   oldheap = ssvm_push_heap (sh);
-  q = unix_shared_memory_queue_init (queue_size,
+  q = svm_queue_init (queue_size,
 				     sizeof (session_fifo_event_t),
 				     0 /* consumer pid */ ,
 				     0 /* signal when queue non-empty */ );
@@ -557,7 +557,7 @@ segment_manager_alloc_queue (segment_manager_t * sm, u32 queue_size)
  */
 void
 segment_manager_dealloc_queue (segment_manager_t * sm,
-			       unix_shared_memory_queue_t * q)
+			       svm_queue_t * q)
 {
   ssvm_shared_header_t *sh;
   svm_fifo_segment_private_t *segment;
@@ -569,7 +569,7 @@ segment_manager_dealloc_queue (segment_manager_t * sm,
   sh = segment->ssvm.sh;
 
   oldheap = ssvm_push_heap (sh);
-  unix_shared_memory_queue_free (q);
+  svm_queue_free (q);
   ssvm_pop_heap (oldheap);
 }
 

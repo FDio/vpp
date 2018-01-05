@@ -22,10 +22,10 @@
 
 #include <svm/svm.h>
 #include <vlib/vlib.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api_common.h>
+#include <svm/queue.h>
 
 static inline u32
 vl_msg_api_handle_get_epoch (u32 index)

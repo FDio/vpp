@@ -25,8 +25,8 @@
 #include <vnet/mfib/mfib_table.h>
 #include <vlib/unix/unix.h>
 #include <vlibmemory/api.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
 #include <vlibapi/api_helper_macros.h>
+#include <svm/queue.h>
 
 typedef struct
 {

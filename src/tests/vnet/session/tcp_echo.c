@@ -60,7 +60,7 @@ typedef enum
 typedef struct
 {
   /* vpe input queue */
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
 
   /* API client handle */
   u32 my_client_index;
@@ -88,10 +88,10 @@ typedef struct
   int drop_packets;
 
   /* Our event queue */
-  unix_shared_memory_queue_t *our_event_queue;
+  svm_queue_t *our_event_queue;
 
   /* $$$ single thread only for the moment */
-  unix_shared_memory_queue_t *vpp_event_queue;
+  svm_queue_t *vpp_event_queue;
 
   u8 *socket_name;
 
@@ -272,7 +272,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 
   utm->our_event_queue =
     uword_to_pointer (mp->app_event_queue_address,
-		      unix_shared_memory_queue_t *);
+		      svm_queue_t *);
   utm->state = STATE_ATTACHED;
 }
 
@@ -506,7 +506,7 @@ client_handle_event_queue (uri_tcp_test_main_t * utm)
 {
   session_fifo_event_t _e, *e = &_e;;
 
-  unix_shared_memory_queue_sub (utm->our_event_queue, (u8 *) e,
+  svm_queue_sub (utm->our_event_queue, (u8 *) e,
 				0 /* nowait */ );
   switch (e->event_type)
     {
@@ -532,7 +532,7 @@ client_rx_thread_fn (void *arg)
   utm->client_bytes_received = 0;
   while (1)
     {
-      unix_shared_memory_queue_sub (utm->our_event_queue, (u8 *) e,
+      svm_queue_sub (utm->our_event_queue, (u8 *) e,
 				    0 /* nowait */ );
       switch (e->event_type)
 	{
@@ -579,7 +579,7 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
 
   utm->vpp_event_queue =
     uword_to_pointer (mp->vpp_event_queue_address,
-		      unix_shared_memory_queue_t *);
+		      svm_queue_t *);
 
   /*
    * Setup session
@@ -650,7 +650,7 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
 	      evt.fifo = tx_fifo;
 	      evt.event_type = FIFO_EVENT_APP_TX;
 
-	      unix_shared_memory_queue_add (utm->vpp_event_queue,
+	      svm_queue_add (utm->vpp_event_queue,
 					    (u8 *) & evt,
 					    0 /* do wait for mutex */ );
 	    }
@@ -916,7 +916,7 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 		clib_net_to_host_u16 (mp->port));
   utm->vpp_event_queue =
     uword_to_pointer (mp->vpp_event_queue_address,
-		      unix_shared_memory_queue_t *);
+		      svm_queue_t *);
 
   /* Allocate local session and set it up */
   pool_get (utm->sessions, session);
@@ -965,7 +965,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
   svm_fifo_t *rx_fifo, *tx_fifo;
   int n_read;
   session_fifo_event_t evt;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   session_t *session;
   int rv;
   u32 max_dequeue, offset, max_transfer, rx_buf_len;
@@ -1019,7 +1019,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	      evt.event_type = FIFO_EVENT_APP_TX;
 
 	      q = utm->vpp_event_queue;
-	      unix_shared_memory_queue_add (q, (u8 *) & evt,
+	      svm_queue_add (q, (u8 *) & evt,
 					    1 /* do wait for mutex */ );
 	    }
 	}
@@ -1034,7 +1034,7 @@ server_handle_event_queue (uri_tcp_test_main_t * utm)
 
   while (1)
     {
-      unix_shared_memory_queue_sub (utm->our_event_queue, (u8 *) e,
+      svm_queue_sub (utm->our_event_queue, (u8 *) e,
 				    0 /* nowait */ );
       switch (e->event_type)
 	{

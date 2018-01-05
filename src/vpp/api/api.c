@@ -162,7 +162,7 @@ static void
 vl_api_cli_t_handler (vl_api_cli_t * mp)
 {
   vl_api_cli_reply_t *rp;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   vlib_main_t *vm = vlib_get_main ();
   api_main_t *am = &api_main;
   unformat_input_t input;
@@ -365,6 +365,7 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   void *oldheap;
   vl_api_get_node_graph_reply_t *rmp;
+  vlib_node_t ***node_dups;
 
   pthread_mutex_lock (&am->vlib_rp->mutex);
   oldheap = svm_push_data_heap (am->vlib_rp);
@@ -376,10 +377,11 @@ vl_api_get_node_graph_t_handler (vl_api_get_node_graph_t * mp)
   vec_reset_length (vector);
 
   /* $$$$ FIXME */
-  vector = vlib_node_serialize (&vm->node_main, vector,
-				(u32) ~ 0 /* all threads */ ,
-				1 /* include nexts */ ,
-				1 /* include stats */ );
+  node_dups = vlib_node_get_nodes (vm, (u32) ~0 /* all threads */,
+                                   1 /* include stats */);
+  vector = vlib_node_serialize (vm, node_dups, vector,
+                                1 /* include nexts */,
+	                        1 /* include stats */);
 
   svm_pop_heap (oldheap);
   pthread_mutex_unlock (&am->vlib_rp->mutex);
@@ -398,7 +400,7 @@ static void vl_api_##nn##_t_handler (                                   \
 {                                                                       \
     vpe_client_registration_t *reg;                                     \
     vpe_api_main_t * vam = &vpe_api_main;                               \
-    unix_shared_memory_queue_t * q;                                     \
+    svm_queue_t * q;                                     \
                                                                         \
     /* One registration only... */                                      \
     pool_foreach(reg, vam->nn##_registrations,                          \

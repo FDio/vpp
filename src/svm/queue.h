@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------
- * unix_shared_memory_queue.h - shared-memory queues
+ * svm_queue.h - shared-memory queues
  *
  * Copyright (c) 2009 Cisco and/or its affiliates.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +17,12 @@
  *------------------------------------------------------------------
  */
 
-#ifndef included_unix_shared_memory_queue_h
-#define included_unix_shared_memory_queue_h
+#ifndef included_svm_queue_h
+#define included_svm_queue_h
 
 #include <pthread.h>
 
-typedef struct _unix_shared_memory_queue
+typedef struct _svm_queue
 {
   pthread_mutex_t mutex;	/* 8 bytes */
   pthread_cond_t condvar;	/* 8 bytes */
@@ -34,32 +34,32 @@ typedef struct _unix_shared_memory_queue
   int consumer_pid;
   int signal_when_queue_non_empty;
   char data[0];
-} unix_shared_memory_queue_t;
+} svm_queue_t;
 
-unix_shared_memory_queue_t *unix_shared_memory_queue_init (int nels,
+svm_queue_t *svm_queue_init (int nels,
 							   int elsize,
 							   int consumer_pid,
 							   int
 							   signal_when_queue_non_empty);
-void unix_shared_memory_queue_free (unix_shared_memory_queue_t * q);
-int unix_shared_memory_queue_add (unix_shared_memory_queue_t * q, u8 * elem,
+void svm_queue_free (svm_queue_t * q);
+int svm_queue_add (svm_queue_t * q, u8 * elem,
 				  int nowait);
-int unix_shared_memory_queue_add2 (unix_shared_memory_queue_t * q, u8 * elem,
+int svm_queue_add2 (svm_queue_t * q, u8 * elem,
 				   u8 * elem2, int nowait);
-int unix_shared_memory_queue_sub (unix_shared_memory_queue_t * q, u8 * elem,
+int svm_queue_sub (svm_queue_t * q, u8 * elem,
 				  int nowait);
-void unix_shared_memory_queue_lock (unix_shared_memory_queue_t * q);
-void unix_shared_memory_queue_unlock (unix_shared_memory_queue_t * q);
-int unix_shared_memory_queue_is_full (unix_shared_memory_queue_t * q);
-int unix_shared_memory_queue_add_nolock (unix_shared_memory_queue_t * q,
+void svm_queue_lock (svm_queue_t * q);
+void svm_queue_unlock (svm_queue_t * q);
+int svm_queue_is_full (svm_queue_t * q);
+int svm_queue_add_nolock (svm_queue_t * q,
 					 u8 * elem);
 
-int unix_shared_memory_queue_sub_raw (unix_shared_memory_queue_t * q,
+int svm_queue_sub_raw (svm_queue_t * q,
 				      u8 * elem);
-int unix_shared_memory_queue_add_raw (unix_shared_memory_queue_t * q,
+int svm_queue_add_raw (svm_queue_t * q,
 				      u8 * elem);
 
-#endif /* included_unix_shared_memory_queue_h */
+#endif /* included_svm_queue_h */
 
 /*
  * fd.io coding-style-patch-verification: ON

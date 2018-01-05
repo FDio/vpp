@@ -77,7 +77,7 @@ memory_client_main_t memory_client_main;
 static void *
 rx_thread_fn (void *arg)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   memory_client_main_t *mm = &memory_client_main;
   api_main_t *am = &api_main;
   int i;
@@ -178,7 +178,7 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
   svm_region_t *svm;
   vl_api_memclnt_create_t *mp;
   vl_api_memclnt_create_reply_t *rp;
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
   vl_shmem_hdr_t *shmem_hdr;
   int rv = 0;
   void *oldheap;
@@ -208,7 +208,7 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
   pthread_mutex_lock (&svm->mutex);
   oldheap = svm_push_data_heap (svm);
   vl_input_queue =
-    unix_shared_memory_queue_init (input_queue_size, sizeof (uword),
+    svm_queue_init (input_queue_size, sizeof (uword),
 				   getpid (), 0);
   pthread_mutex_unlock (&svm->mutex);
   svm_pop_heap (oldheap);
@@ -235,7 +235,7 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
       /* Wait up to 10 seconds */
       for (i = 0; i < 1000; i++)
 	{
-	  qstatus = unix_shared_memory_queue_sub (vl_input_queue, (u8 *) & rp,
+	  qstatus = svm_queue_sub (vl_input_queue, (u8 *) & rp,
 						  1 /* nowait */ );
 	  if (qstatus == 0)
 	    goto read_one_msg;
@@ -270,7 +270,7 @@ vl_api_memclnt_delete_reply_t_handler (vl_api_memclnt_delete_reply_t * mp)
 
   pthread_mutex_lock (&am->vlib_rp->mutex);
   oldheap = svm_push_data_heap (am->vlib_rp);
-  unix_shared_memory_queue_free (am->vl_input_queue);
+  svm_queue_free (am->vl_input_queue);
   pthread_mutex_unlock (&am->vlib_rp->mutex);
   svm_pop_heap (oldheap);
 
@@ -284,7 +284,7 @@ vl_client_disconnect (void)
 {
   vl_api_memclnt_delete_t *mp;
   vl_api_memclnt_delete_reply_t *rp;
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
   vl_shmem_hdr_t *shmem_hdr;
   time_t begin;
   api_main_t *am = &api_main;
@@ -323,7 +323,7 @@ vl_client_disconnect (void)
 	  am->shmem_hdr = 0;
 	  break;
 	}
-      if (unix_shared_memory_queue_sub (vl_input_queue, (u8 *) & rp, 1) < 0)
+      if (svm_queue_sub (vl_input_queue, (u8 *) & rp, 1) < 0)
 	continue;
 
       /* drain the queue */

@@ -44,7 +44,7 @@ _(UDP_ENCAP_DUMP, udp_encap_dump)
 
 static void
 send_udp_encap_details (const udp_encap_t * ue,
-			unix_shared_memory_queue_t * q, u32 context)
+			svm_queue_t * q, u32 context)
 {
   vl_api_udp_encap_details_t *mp;
   fib_table_t *fib_table;
@@ -82,7 +82,7 @@ static void
 vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t * mp,
 				 vlib_main_t * vm)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   udp_encap_t *ue;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);

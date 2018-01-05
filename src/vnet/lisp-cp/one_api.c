@@ -70,7 +70,7 @@
 
 #define REPLY_DETAILS(t, body)                                  \
 do {                                                            \
-    unix_shared_memory_queue_t * q;                             \
+    svm_queue_t * q;                             \
     rv = vl_msg_api_pd_handler (mp, rv);                        \
     q = vl_api_client_index_to_input_queue (mp->client_index);  \
     if (!q)                                                     \
@@ -537,7 +537,7 @@ vl_api_one_use_petr_t_handler (vl_api_one_use_petr_t * mp)
 static void
 vl_api_show_one_use_petr_t_handler (vl_api_show_one_use_petr_t * mp)
 {
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   vl_api_show_one_use_petr_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *m;
@@ -699,7 +699,7 @@ send_reply:
 static void
 send_one_locator_details (lisp_cp_main_t * lcm,
 			  locator_t * loc,
-			  unix_shared_memory_queue_t * q, u32 context)
+			  svm_queue_t * q, u32 context)
 {
   vl_api_one_locator_details_t *rmp;
 
@@ -728,7 +728,7 @@ static void
 vl_api_one_locator_dump_t_handler (vl_api_one_locator_dump_t * mp)
 {
   u8 *ls_name = 0;
-  unix_shared_memory_queue_t *q = 0;
+  svm_queue_t *q = 0;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *lsit = 0;
   locator_t *loc = 0;
@@ -772,7 +772,7 @@ out:
 static void
 send_one_locator_set_details (lisp_cp_main_t * lcm,
 			      locator_set_t * lsit,
-			      unix_shared_memory_queue_t * q,
+			      svm_queue_t * q,
 			      u32 context, u32 ls_index)
 {
   vl_api_one_locator_set_details_t *rmp;
@@ -803,7 +803,7 @@ send_one_locator_set_details (lisp_cp_main_t * lcm,
 static void
 vl_api_one_locator_set_dump_t_handler (vl_api_one_locator_set_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *lsit = NULL;
   u8 filter;
@@ -883,7 +883,7 @@ fid_type_to_api_type (fid_address_t * fid)
 
 static void
 send_one_eid_table_details (mapping_t * mapit,
-			    unix_shared_memory_queue_t * q,
+			    svm_queue_t * q,
 			    u32 context, u8 filter)
 {
   fid_address_t *fid;
@@ -985,7 +985,7 @@ static void
 vl_api_one_eid_table_dump_t_handler (vl_api_one_eid_table_dump_t * mp)
 {
   u32 mi;
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *mapit = NULL;
   gid_address_t _eid, *eid = &_eid;
@@ -1025,7 +1025,7 @@ vl_api_one_eid_table_dump_t_handler (vl_api_one_eid_table_dump_t * mp)
 
 static void
 send_one_map_server_details (ip_address_t * ip,
-			     unix_shared_memory_queue_t * q, u32 context)
+			     svm_queue_t * q, u32 context)
 {
   vl_api_one_map_server_details_t *rmp = NULL;
 
@@ -1058,7 +1058,7 @@ send_one_map_server_details (ip_address_t * ip,
 static void
 vl_api_one_map_server_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   lisp_msmr_t *mr;
 
@@ -1076,7 +1076,7 @@ vl_api_one_map_server_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 
 static void
 send_one_map_resolver_details (ip_address_t * ip,
-			       unix_shared_memory_queue_t * q, u32 context)
+			       svm_queue_t * q, u32 context)
 {
   vl_api_one_map_resolver_details_t *rmp = NULL;
 
@@ -1109,7 +1109,7 @@ send_one_map_resolver_details (ip_address_t * ip,
 static void
 vl_api_one_map_resolver_dump_t_handler (vl_api_one_map_resolver_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   lisp_msmr_t *mr;
 
@@ -1127,7 +1127,7 @@ vl_api_one_map_resolver_dump_t_handler (vl_api_one_map_resolver_dump_t * mp)
 
 static void
 send_eid_table_map_pair (hash_pair_t * p,
-			 unix_shared_memory_queue_t * q, u32 context)
+			 svm_queue_t * q, u32 context)
 {
   vl_api_one_eid_table_map_details_t *rmp = NULL;
 
@@ -1144,7 +1144,7 @@ send_eid_table_map_pair (hash_pair_t * p,
 static void
 vl_api_one_eid_table_map_dump_t_handler (vl_api_one_eid_table_map_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   hash_pair_t *p;
   uword *vni_table = 0;
@@ -1173,7 +1173,7 @@ vl_api_one_eid_table_map_dump_t_handler (vl_api_one_eid_table_map_dump_t * mp)
 }
 
 static void
-send_eid_table_vni (u32 vni, unix_shared_memory_queue_t * q, u32 context)
+send_eid_table_vni (u32 vni, svm_queue_t * q, u32 context)
 {
   vl_api_one_eid_table_vni_details_t *rmp = 0;
 
@@ -1296,7 +1296,7 @@ vl_api_one_eid_table_vni_dump_t_handler (vl_api_one_eid_table_vni_dump_t * mp)
 {
   hash_pair_t *p;
   u32 *vnis = 0;
-  unix_shared_memory_queue_t *q = 0;
+  svm_queue_t *q = 0;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
@@ -1375,7 +1375,7 @@ static void
 static void
 vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t * mp)
 {
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   vl_api_show_one_nsh_mapping_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *m;
@@ -1424,7 +1424,7 @@ vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t * mp)
 static void
 vl_api_show_one_pitr_t_handler (vl_api_show_one_pitr_t * mp)
 {
-  unix_shared_memory_queue_t *q = NULL;
+  svm_queue_t *q = NULL;
   vl_api_show_one_pitr_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *m;
