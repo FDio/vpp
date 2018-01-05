@@ -18,9 +18,9 @@
 #include <vnet/session/stream_session.h>
 #include <vnet/session/session_lookup.h>
 #include <vnet/session/transport_interface.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
 #include <vnet/session/session_debug.h>
 #include <vnet/session/segment_manager.h>
+#include <svm/queue.h>
 
 #define HALF_OPEN_LOOKUP_INVALID_VALUE ((u64)~0)
 #define INVALID_INDEX ((u32)~0)
@@ -147,7 +147,7 @@ struct _session_manager_main
   session_fifo_event_t **pending_disconnects;
 
   /** vpp fifo event queue */
-  unix_shared_memory_queue_t **vpp_event_queues;
+  svm_queue_t **vpp_event_queues;
 
   /** Unique segment name counter */
   u32 unique_segment_name_counter;
@@ -455,7 +455,7 @@ void session_register_transport (transport_proto_t transport_proto,
 
 clib_error_t *vnet_session_enable_disable (vlib_main_t * vm, u8 is_en);
 
-always_inline unix_shared_memory_queue_t *
+always_inline svm_queue_t *
 session_manager_get_vpp_event_queue (u32 thread_index)
 {
   return session_manager_main.vpp_event_queues[thread_index];

@@ -65,7 +65,7 @@ vl_api_sockclnt_delete_reply_t_handler (vl_api_sockclnt_delete_reply_t * mp)
   vl_api_registration_t *rp = socket_main.current_rp;
 
   clib_file_del (fm, uf);
-  vl_free_socket_registration_index (rp->vl_api_registration_pool_index);
+  vl_socket_free_registration_index (rp->vl_api_registration_pool_index);
 }
 
 u32
@@ -143,7 +143,7 @@ sockclnt_open_index (char *client_name, char *hostname, int port)
     }
   strncpy ((char *) mp->name, my_hostname, sizeof (mp->name) - 1);
 
-  vl_msg_api_send (rp, (u8 *) mp);
+  vl_api_send_msg (rp, (u8 *) mp);
   return rp - socket_main.registration_pool;
 }
 
@@ -165,7 +165,7 @@ sockclnt_close_index (u32 index)
   mp->_vl_msg_id = ntohs (VL_API_SOCKCLNT_DELETE);
   mp->handle = rp->server_handle;
   mp->index = rp->server_index;
-  vl_msg_api_send (rp, (u8 *) mp);
+  vl_api_send_msg (rp, (u8 *) mp);
 }
 
 vl_api_registration_t *

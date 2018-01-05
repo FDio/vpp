@@ -148,7 +148,7 @@ out:
 }
 
 static void send_gtpu_tunnel_details
-  (gtpu_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
+  (gtpu_tunnel_t * t, svm_queue_t * q, u32 context)
 {
   vl_api_gtpu_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
@@ -183,7 +183,7 @@ static void send_gtpu_tunnel_details
 static void
 vl_api_gtpu_tunnel_dump_t_handler (vl_api_gtpu_tunnel_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   gtpu_main_t *gtm = &gtpu_main;
   gtpu_tunnel_t *t;
   u32 sw_if_index;

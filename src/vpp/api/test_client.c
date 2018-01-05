@@ -78,7 +78,7 @@ typedef struct
   int oam_events_on;
 
   /* convenience */
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
   u32 my_client_index;
 } test_main_t;
 

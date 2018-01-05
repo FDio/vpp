@@ -47,12 +47,12 @@ extern void mfib_signal_remove_itf(const mfib_itf_t *mfi);
 
 extern void mfib_signal_module_init(void);
 
-struct _unix_shared_memory_queue;
+struct _svm_queue;
 
-extern void vl_mfib_signal_send_one(struct _unix_shared_memory_queue *q,
+extern void vl_mfib_signal_send_one(struct _svm_queue *q,
                                     u32 context,
                                     const mfib_signal_t *mfs);
-extern int mfib_signal_send_one(struct _unix_shared_memory_queue *q,
+extern int mfib_signal_send_one(struct _svm_queue *q,
                                 u32 context);
 
 #endif

@@ -91,7 +91,7 @@ mfib_signal_lock_release (void)
 }
 
 int
-mfib_signal_send_one (struct _unix_shared_memory_queue *q,
+mfib_signal_send_one (struct _svm_queue *q,
                       u32 context)
 {
     u32 li, si;

@@ -40,7 +40,7 @@ do {                                                                    \
     rmp->context = mp->context;                                         \
     rmp->retval = ntohl(rv);                                            \
                                                                         \
-    vl_msg_api_send (rp, (u8 *)rmp);                                    \
+    vl_api_send_msg (rp, (u8 *)rmp);                                    \
 } while(0);
 
 #define REPLY_MACRO2(t, body)                                           \
@@ -56,7 +56,7 @@ do {                                                                    \
     rmp->context = mp->context;                                         \
     rmp->retval = ntohl(rv);                                            \
     do {body;} while (0);                                               \
-    vl_msg_api_send (rp, (u8 *)rmp);                                    \
+    vl_api_send_msg (rp, (u8 *)rmp);                                    \
 } while(0);
 
 #define REPLY_MACRO3(t, n, body)                                        \
@@ -72,7 +72,7 @@ do {                                                                    \
     rmp->context = mp->context;                                         \
     rmp->retval = ntohl(rv);                                            \
     do {body;} while (0);                                               \
-    vl_msg_api_send (rp, (u8 *)rmp);                                    \
+    vl_api_send_msg (rp, (u8 *)rmp);                                    \
 } while(0);
 
 #define REPLY_MACRO4(t, n, body)                                        \
@@ -103,7 +103,7 @@ do {                                                                    \
     rmp->retval = ntohl(rv);                                            \
     if (!is_error)                                                      \
       do {body;} while (0);                                             \
-    vl_msg_api_send (rp, (u8 *)rmp);                                    \
+    vl_api_send_msg (rp, (u8 *)rmp);                                    \
 } while(0);
 
 /* "trust, but verify" */
