@@ -72,7 +72,7 @@ _(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)         \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)
 
 static void
-send_l2_xconnect_details (unix_shared_memory_queue_t * q, u32 context,
+send_l2_xconnect_details (svm_queue_t * q, u32 context,
 			  u32 rx_sw_if_index, u32 tx_sw_if_index)
 {
   vl_api_l2_xconnect_details_t *mp;
@@ -90,7 +90,7 @@ send_l2_xconnect_details (unix_shared_memory_queue_t * q, u32 context,
 static void
 vl_api_l2_xconnect_dump_t_handler (vl_api_l2_xconnect_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   l2input_main_t *l2im = &l2input_main;
@@ -126,7 +126,7 @@ vl_api_l2_fib_clear_table_t_handler (vl_api_l2_fib_clear_table_t * mp)
 
 static void
 send_l2fib_table_entry (vpe_api_main_t * am,
-			unix_shared_memory_queue_t * q,
+			svm_queue_t * q,
 			l2fib_entry_key_t * l2fe_key,
 			l2fib_entry_result_t * l2fe_res, u32 context)
 {
@@ -158,7 +158,7 @@ vl_api_l2_fib_table_dump_t_handler (vl_api_l2_fib_table_dump_t * mp)
   l2fib_entry_result_t *l2fe_res = NULL;
   u32 ni, bd_id = ntohl (mp->bd_id);
   u32 bd_index;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   uword *p;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
@@ -439,7 +439,7 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
 
 static void
 send_bridge_domain_details (l2input_main_t * l2im,
-			    unix_shared_memory_queue_t * q,
+			    svm_queue_t * q,
 			    l2_bridge_domain_t * bd_config,
 			    u32 n_sw_ifs, u32 context)
 {
@@ -489,8 +489,7 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
   bd_main_t *bdm = &bd_main;
   l2input_main_t *l2im = &l2input_main;
 
-  unix_shared_memory_queue_t *q =
-    vl_api_client_index_to_input_queue (mp->client_index);
+  svm_queue_t *q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
     return;
 

@@ -60,7 +60,7 @@
  */
 #define REPLY_MACRO(t)                                          \
 do {                                                            \
-    unix_shared_memory_queue_t * q =                            \
+    svm_queue_t * q =                            \
     vl_api_client_index_to_input_queue (mp->client_index);      \
     if (!q)                                                     \
         return;                                                 \
@@ -75,7 +75,7 @@ do {                                                            \
 
 #define REPLY_MACRO2(t, body)                                   \
 do {                                                            \
-    unix_shared_memory_queue_t * q =                            \
+    svm_queue_t * q =                            \
     vl_api_client_index_to_input_queue (mp->client_index);      \
     if (!q)                                                     \
         return;                                                 \
@@ -219,7 +219,7 @@ vl_api_memif_delete_t_handler (vl_api_memif_delete_t * mp)
 }
 
 static void
-send_memif_details (unix_shared_memory_queue_t * q,
+send_memif_details (svm_queue_t * q,
 		    memif_if_t * mif,
 		    vnet_sw_interface_t * swif,
 		    u8 * interface_name, u32 context)
@@ -270,7 +270,7 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
   vnet_sw_interface_t *swif;
   memif_if_t *mif;
   u8 *if_name = 0;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)

@@ -30,7 +30,7 @@
 // TODO: generate jvpp_plugin_name.c files (or at least reuse plugin's main structure)
 typedef struct {
     /* Pointer to shared memory queue */
-    unix_shared_memory_queue_t * vl_input_queue;
+    svm_queue_t * vl_input_queue;
 
     /* VPP api client index */
     u32 my_client_index;
@@ -50,7 +50,7 @@ JNIEXPORT void JNICALL Java_io_fd_vpp_jvpp_core_JVppCoreImpl_init0
 (JNIEnv * env, jclass clazz, jobject callback, jlong queue_address, jint my_client_index) {
     core_main_t * plugin_main = &core_main;
     plugin_main->my_client_index = my_client_index;
-    plugin_main->vl_input_queue = uword_to_pointer (queue_address, unix_shared_memory_queue_t *);
+    plugin_main->vl_input_queue = uword_to_pointer (queue_address, svm_queue_t *);
 
     plugin_main->callbackObject = (*env)->NewGlobalRef(env, callback);
     plugin_main->callbackClass = (jclass)(*env)->NewGlobalRef(env, (*env)->GetObjectClass(env, callback));

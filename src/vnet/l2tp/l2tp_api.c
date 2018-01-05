@@ -51,7 +51,7 @@ _(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)
 
 static void
 send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
-				  unix_shared_memory_queue_t * q,
+				  svm_queue_t * q,
 				  l2t_session_t * s,
 				  l2t_main_t * lm, u32 context)
 {
@@ -91,7 +91,7 @@ vl_api_sw_if_l2tpv3_tunnel_dump_t_handler (vl_api_sw_if_l2tpv3_tunnel_dump_t *
 {
   vpe_api_main_t *am = &vpe_api_main;
   l2t_main_t *lm = &l2t_main;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   l2t_session_t *session;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);

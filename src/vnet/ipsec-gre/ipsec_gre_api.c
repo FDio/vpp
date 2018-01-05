@@ -83,7 +83,7 @@ out:
 }
 
 static void send_ipsec_gre_tunnel_details
-  (ipsec_gre_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
+  (ipsec_gre_tunnel_t * t, svm_queue_t * q, u32 context)
 {
   vl_api_ipsec_gre_tunnel_details_t *rmp;
 
@@ -103,7 +103,7 @@ static void send_ipsec_gre_tunnel_details
 static void vl_api_ipsec_gre_tunnel_dump_t_handler
   (vl_api_ipsec_gre_tunnel_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   ipsec_gre_main_t *igm = &ipsec_gre_main;
   ipsec_gre_tunnel_t *t;
   u32 sw_if_index;
