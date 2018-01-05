@@ -124,7 +124,7 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
 	    if (min_ttl != ~0)
 	      ep->expiration_time = now + min_ttl;
 	    rmp->retval = clib_host_to_net_u32 (rv);
-	    vl_msg_api_send (regp, (u8 *) rmp);
+	    vl_api_send_msg (regp, (u8 *) rmp);
 	  }
 	  break;
 
@@ -145,7 +145,7 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
 	    if (min_ttl != ~0)
 	      ep->expiration_time = now + min_ttl;
 	    rmp->retval = clib_host_to_net_u32 (rv);
-	    vl_msg_api_send (regp, (u8 *) rmp);
+	    vl_api_send_msg (regp, (u8 *) rmp);
 	  }
 	  break;
 

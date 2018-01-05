@@ -24,7 +24,6 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
 #include <svm/svm_fifo_segment.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
@@ -40,10 +39,10 @@ typedef struct
 
 typedef struct
 {
-  unix_shared_memory_queue_t *vl_input_queue;	/**< vpe input queue */
+  svm_queue_t *vl_input_queue;	/**< vpe input queue */
   /** per-thread vectors */
-  unix_shared_memory_queue_t **server_event_queue;
-  unix_shared_memory_queue_t **active_open_event_queue;
+  svm_queue_t **server_event_queue;
+  svm_queue_t **active_open_event_queue;
   u8 **rx_buf;				/**< intermediate rx buffers */
 
   u32 cli_node_index;			/**< cli process node index */

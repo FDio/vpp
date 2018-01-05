@@ -62,7 +62,7 @@ builtin_server_rx_callback (stream_session_t * s)
   int actual_transfer;
   u8 *my_copy_buffer;
   session_fifo_event_t evt;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   my_copy_buffer = copy_buffers[s->thread_index];
   rx_fifo = s->server_rx_fifo;
@@ -90,8 +90,7 @@ builtin_server_rx_callback (stream_session_t * s)
       evt.fifo = tx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
       q = session_manager_get_vpp_event_queue (s->thread_index);
-      unix_shared_memory_queue_add (q, (u8 *) & evt,
-				    0 /* do wait for mutex */ );
+      svm_queue_add (q, (u8 *) & evt, 0 /* do wait for mutex */ );
     }
 
   return 0;
