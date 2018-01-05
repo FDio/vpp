@@ -241,7 +241,7 @@ send_sw_interface_details (vpe_api_main_t * am,
   if (tag)
     strncpy ((char *) mp->tag, (char *) tag, ARRAY_LEN (mp->tag) - 1);
 
-  vl_msg_api_send (rp, (u8 *) mp);
+  vl_api_send_msg (rp, (u8 *) mp);
 }
 
 static void
@@ -529,7 +529,7 @@ ip_table_bind (fib_protocol_t fproto,
 }
 
 static void
-send_sw_interface_get_table_reply (unix_shared_memory_queue_t * q,
+send_sw_interface_get_table_reply (svm_queue_t * q,
 				   u32 context, int retval, u32 vrf_id)
 {
   vl_api_sw_interface_get_table_reply_t *mp;
@@ -547,7 +547,7 @@ send_sw_interface_get_table_reply (unix_shared_memory_queue_t * q,
 static void
 vl_api_sw_interface_get_table_t_handler (vl_api_sw_interface_get_table_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   fib_table_t *fib_table = 0;
   u32 sw_if_index = ~0;
   u32 fib_index = ~0;
@@ -724,8 +724,7 @@ event_data_cmp (void *a1, void *a2)
 static void
 send_sw_interface_event (vpe_api_main_t * am,
 			 vpe_client_registration_t * reg,
-			 unix_shared_memory_queue_t * q,
-			 vnet_sw_interface_t * swif)
+			 svm_queue_t * q, vnet_sw_interface_t * swif)
 {
   vl_api_sw_interface_event_t *mp;
   vnet_main_t *vnm = am->vnet_main;
@@ -755,7 +754,7 @@ link_state_process (vlib_main_t * vm,
   vpe_client_registration_t *reg;
   int i;
   u32 prev_sw_if_index;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   vam->link_state_process_up = 1;
 
@@ -949,7 +948,7 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
   uword *p;
   vnet_interface_main_t *im = &vnm->interface_main;
   u64 sup_and_sub_key;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   clib_error_t *error;
 
   VALIDATE_SW_IF_INDEX (mp);

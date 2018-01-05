@@ -53,8 +53,7 @@ _(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)
  */
 static void
 send_sw_interface_event_deleted (vpe_api_main_t * am,
-				 unix_shared_memory_queue_t * q,
-				 u32 sw_if_index)
+				 svm_queue_t * q, u32 sw_if_index)
 {
   vl_api_sw_interface_event_t *mp;
 
@@ -137,8 +136,7 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
   REPLY_MACRO (VL_API_DELETE_VHOST_USER_IF_REPLY);
   if (!rv)
     {
-      unix_shared_memory_queue_t *q =
-	vl_api_client_index_to_input_queue (mp->client_index);
+      svm_queue_t *q = vl_api_client_index_to_input_queue (mp->client_index);
       if (!q)
 	return;
 
@@ -149,7 +147,7 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
 
 static void
 send_sw_interface_vhost_user_details (vpe_api_main_t * am,
-				      unix_shared_memory_queue_t * q,
+				      svm_queue_t * q,
 				      vhost_user_intf_details_t * vui,
 				      u32 context)
 {
@@ -184,7 +182,7 @@ static void
   vlib_main_t *vm = vlib_get_main ();
   vhost_user_intf_details_t *ifaces = NULL;
   vhost_user_intf_details_t *vuid = NULL;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)

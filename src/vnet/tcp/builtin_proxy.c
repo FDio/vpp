@@ -185,7 +185,7 @@ server_rx_callback (stream_session_t * s)
 	{
 	  evt.fifo = active_open_tx_fifo;
 	  evt.event_type = FIFO_EVENT_APP_TX;
-	  if (unix_shared_memory_queue_add
+	  if (svm_queue_add
 	      (bpm->active_open_event_queue[thread_index], (u8 *) & evt,
 	       0 /* do wait for mutex */ ))
 	    clib_warning ("failed to enqueue tx evt");
@@ -299,7 +299,7 @@ active_open_connected_callback (u32 app_index, u32 opaque,
     {
       evt.fifo = s->server_tx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
-      if (unix_shared_memory_queue_add
+      if (svm_queue_add
 	  (bpm->active_open_event_queue[thread_index], (u8 *) & evt,
 	   0 /* do wait for mutex */ ))
 	clib_warning ("failed to enqueue tx evt");
@@ -343,7 +343,7 @@ active_open_rx_callback (stream_session_t * s)
     {
       evt.fifo = server_rx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
-      if (unix_shared_memory_queue_add
+      if (svm_queue_add
 	  (bpm->server_event_queue[thread_index], (u8 *) & evt,
 	   0 /* do wait for mutex */ ))
 	clib_warning ("failed to enqueue server rx evt");

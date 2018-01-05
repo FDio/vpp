@@ -24,7 +24,6 @@
 
 #include <vppinfra/hash.h>
 #include <vppinfra/error.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
 #include <svm/svm_fifo_segment.h>
 #include <vnet/session/session.h>
 #include <vnet/session/application_interface.h>
@@ -47,8 +46,8 @@ typedef struct
   /*
    * Application setup parameters
    */
-  unix_shared_memory_queue_t *vl_input_queue;	/**< vpe input queue */
-  unix_shared_memory_queue_t **vpp_event_queue;
+  svm_queue_t *vl_input_queue;	/**< vpe input queue */
+  svm_queue_t **vpp_event_queue;
 
   u32 cli_node_index;			/**< cli process node index */
   u32 my_client_index;			/**< loopback API client handle */

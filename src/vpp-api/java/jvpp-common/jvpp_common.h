@@ -35,7 +35,7 @@ typedef struct {
     JavaVM *jvm;
 
     /* Convenience */
-    unix_shared_memory_queue_t * vl_input_queue;
+    svm_queue_t * vl_input_queue;
     u32 my_client_index;
     uword *messages_hash;
 } jvpp_main_t;

@@ -22571,7 +22571,7 @@ get_msg_id (vat_main_t * vam)
 
   if (unformat (vam->input, "%s", &name_and_crc))
     {
-      message_index = vl_api_get_msg_index (name_and_crc);
+      message_index = vl_msg_api_get_msg_index (name_and_crc);
       if (message_index == ~0)
 	{
 	  print (vam->ofp, " '%s' not found", name_and_crc);

@@ -23,16 +23,15 @@
 #include <stddef.h>
 #include <vppinfra/error.h>
 #include <svm/svm.h>
+#include <svm/queue.h>
 #include <vlib/vlib.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
 #include <vlib/unix/unix.h>
 #include <vlibapi/api_common.h>
 
 /* *INDENT-OFF* */
-typedef CLIB_PACKED
-(struct
- {
-   u8 endian; u8 wrapped;
+typedef CLIB_PACKED ( struct {
+   u8 endian;
+   u8 wrapped;
    u32 nitems;
 }) vl_api_trace_file_header_t;
 /* *INDENT-ON* */
@@ -55,7 +54,6 @@ int vl_msg_api_trace_save (api_main_t * am,
       }                                                                 \
     _error;                                                             \
   })
-
 
 #define _VL_MSG_API_FUNCTION_SYMBOL(x, type)	\
   _vl_msg_api_##type##_function_##x
@@ -117,10 +115,10 @@ void vl_msg_api_add_msg_name_crc (api_main_t * am, const char *string,
 void vl_msg_api_add_version (api_main_t * am, const char *string,
 			     u32 major, u32 minor, u32 patch);
 /* node_serialize.c prototypes */
-u8 *vlib_node_serialize (vlib_node_main_t * nm, u8 * vector,
-			 u32 max_threads, int include_nexts,
-			 int include_stats);
+u8 *vlib_node_serialize (vlib_main_t * vm, vlib_node_t *** node_dups,
+			 u8 * vector, int include_nexts, int include_stats);
 vlib_node_t **vlib_node_unserialize (u8 * vector);
+
 u32 vl_msg_api_get_msg_length (void *msg_arg);
 
 #endif /* included_api_h */

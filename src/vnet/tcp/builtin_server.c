@@ -23,8 +23,8 @@ typedef struct
   /*
    * Server app parameters
    */
-  unix_shared_memory_queue_t **vpp_queue;
-  unix_shared_memory_queue_t *vl_input_queue;	/**< Sever's event queue */
+  svm_queue_t **vpp_queue;
+  svm_queue_t *vl_input_queue;	/**< Sever's event queue */
 
   u32 app_index;		/**< Server app index */
   u32 my_client_index;		/**< API client handle */
@@ -186,14 +186,14 @@ builtin_server_rx_callback (stream_session_t * s)
       /* Program self-tap to retry */
       if (svm_fifo_set_event (rx_fifo))
 	{
-	  unix_shared_memory_queue_t *q;
+	  svm_queue_t *q;
 	  evt.fifo = rx_fifo;
 	  evt.event_type = FIFO_EVENT_BUILTIN_RX;
 
 	  q = bsm->vpp_queue[thread_index];
 	  if (PREDICT_FALSE (q->cursize == q->maxsize))
 	    clib_warning ("out of event queue space");
-	  else if (unix_shared_memory_queue_add (q, (u8 *) & evt, 0))
+	  else if (svm_queue_add (q, (u8 *) & evt, 0))
 	    clib_warning ("failed to enqueue self-tap");
 
 	  if (bsm->rx_retries[thread_index][s->session_index] == 500000)
@@ -231,9 +231,8 @@ builtin_server_rx_callback (stream_session_t * s)
       evt.fifo = tx_fifo;
       evt.event_type = FIFO_EVENT_APP_TX;
 
-      if (unix_shared_memory_queue_add (bsm->vpp_queue[s->thread_index],
-					(u8 *) & evt,
-					0 /* do wait for mutex */ ))
+      if (svm_queue_add (bsm->vpp_queue[s->thread_index],
+			 (u8 *) & evt, 0 /* do wait for mutex */ ))
 	clib_warning ("failed to enqueue tx evt");
     }
 
