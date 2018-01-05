@@ -172,7 +172,7 @@ create_packet_v2_sock (int host_if_index, tpacket_req_t * rx_req,
   if ((err =
        setsockopt (*fd, SOL_PACKET, PACKET_TX_RING, tx_req, req_sz)) < 0)
     {
-      DBG_SOCK ("Failed to set packet rx ring options");
+      DBG_SOCK ("Failed to set packet tx ring options");
       ret = VNET_API_ERROR_SYSCALL_ERROR_1;
       goto error;
     }
