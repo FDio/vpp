@@ -33,7 +33,7 @@ session_send_evt_to_thread (u64 session_handle, fifo_event_type_t evt_type,
 {
   u32 tries = 0;
   session_fifo_event_t evt = { {0}, };
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   evt.event_type = evt_type;
   if (evt_type == FIFO_EVENT_RPC)
@@ -45,7 +45,7 @@ session_send_evt_to_thread (u64 session_handle, fifo_event_type_t evt_type,
     evt.session_handle = session_handle;
 
   q = session_manager_get_vpp_event_queue (thread_index);
-  while (unix_shared_memory_queue_add (q, (u8 *) & evt, 1))
+  while (svm_queue_add (q, (u8 *) & evt, 1))
     {
       if (tries++ == 3)
 	{
@@ -443,7 +443,7 @@ session_enqueue_notify (stream_session_t * s, u8 block)
 {
   application_t *app;
   session_fifo_event_t evt;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   if (PREDICT_FALSE (s->session_state == SESSION_STATE_CLOSED))
     {
@@ -479,8 +479,8 @@ session_enqueue_notify (stream_session_t * s, u8 block)
 
       /* Based on request block (or not) for lack of space */
       if (block || PREDICT_TRUE (q->cursize < q->maxsize))
-	unix_shared_memory_queue_add (app->event_queue, (u8 *) & evt,
-				      0 /* do wait for mutex */ );
+	svm_queue_add (app->event_queue, (u8 *) & evt,
+		       0 /* do wait for mutex */ );
       else
 	{
 	  clib_warning ("fifo full");
@@ -980,7 +980,7 @@ session_vpp_event_queue_allocate (session_manager_main_t * smm,
 	event_queue_length = smm->configured_event_queue_length;
 
       smm->vpp_event_queues[thread_index] =
-	unix_shared_memory_queue_init
+	svm_queue_init
 	(event_queue_length,
 	 sizeof (session_fifo_event_t), 0 /* consumer pid */ ,
 	 0 /* (do not) send signal when queue non-empty */ );

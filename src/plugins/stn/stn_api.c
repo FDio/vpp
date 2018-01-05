@@ -108,7 +108,7 @@ vl_api_stn_add_del_rule_t_handler (vl_api_stn_add_del_rule_t * mp)
 }
 
 static void
-send_stn_rule (stn_rule_t *r, unix_shared_memory_queue_t *q, u32 context)
+send_stn_rule (stn_rule_t *r, svm_queue_t *q, u32 context)
 {
   vl_api_stn_rule_details_t *rmp;
 
@@ -137,7 +137,7 @@ send_stn_rule (stn_rule_t *r, unix_shared_memory_queue_t *q, u32 context)
 static void
 vl_api_stn_rules_dump_t_handler (vl_api_stn_rules_dump_t *mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   stn_main_t *stn = &stn_main;
   stn_rule_t *r;
 

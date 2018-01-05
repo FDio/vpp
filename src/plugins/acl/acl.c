@@ -138,7 +138,7 @@ vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
   acl_main_t *am = &acl_main;
   vl_api_acl_plugin_get_version_reply_t *rmp;
   int msg_size = sizeof (*rmp);
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -1871,7 +1871,7 @@ copy_acl_rule_to_api_rule (vl_api_acl_rule_t * api_rule, acl_rule_t * r)
 }
 
 static void
-send_acl_details (acl_main_t * am, unix_shared_memory_queue_t * q,
+send_acl_details (acl_main_t * am, svm_queue_t * q,
 		  acl_list_t * acl, u32 context)
 {
   vl_api_acl_details_t *mp;
@@ -1909,7 +1909,7 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
   acl_list_t *acl;
 
   int rv = -1;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -1946,7 +1946,7 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
 
 static void
 send_acl_interface_list_details (acl_main_t * am,
-				 unix_shared_memory_queue_t * q,
+				 svm_queue_t * q,
 				 u32 sw_if_index, u32 context)
 {
   vl_api_acl_interface_list_details_t *mp;
@@ -1999,7 +1999,7 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
 
   u32 sw_if_index;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -2113,7 +2113,7 @@ static void
 }
 
 static void
-send_macip_acl_details (acl_main_t * am, unix_shared_memory_queue_t * q,
+send_macip_acl_details (acl_main_t * am, svm_queue_t * q,
 			macip_acl_list_t * acl, u32 context)
 {
   vl_api_macip_acl_details_t *mp;
@@ -2168,7 +2168,7 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
   acl_main_t *am = &acl_main;
   macip_acl_list_t *acl;
 
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
   if (q == 0)
@@ -2206,7 +2206,7 @@ vl_api_macip_acl_interface_get_t_handler (vl_api_macip_acl_interface_get_t *
   vl_api_macip_acl_interface_get_reply_t *rmp;
   u32 count = vec_len (am->macip_acl_by_sw_if_index);
   int msg_size = sizeof (*rmp) + sizeof (rmp->acls[0]) * count;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   int i;
 
   q = vl_api_client_index_to_input_queue (mp->client_index);
@@ -2231,7 +2231,7 @@ vl_api_macip_acl_interface_get_t_handler (vl_api_macip_acl_interface_get_t *
 
 static void
 send_macip_acl_interface_list_details (acl_main_t * am,
-				       unix_shared_memory_queue_t * q,
+				       svm_queue_t * q,
 				       u32 sw_if_index,
 				       u32 acl_index, u32 context)
 {
@@ -2257,7 +2257,7 @@ static void
   vl_api_macip_acl_interface_list_dump_t_handler
   (vl_api_macip_acl_interface_list_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   acl_main_t *am = &acl_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 

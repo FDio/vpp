@@ -66,7 +66,7 @@ static void
 vl_api_sw_interface_span_dump_t_handler (vl_api_sw_interface_span_dump_t * mp)
 {
 
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   span_interface_t *si;
   vl_api_sw_interface_span_details_t *rmp;
   span_main_t *sm = &span_main;

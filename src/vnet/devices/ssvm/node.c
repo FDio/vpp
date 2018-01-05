@@ -70,7 +70,7 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
 {
   ssvm_shared_header_t *sh = intfc->sh;
   vlib_main_t *vm = em->vlib_main;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   ssvm_eth_queue_elt_t *elt, *elts;
   u32 elt_index;
   u32 my_pid = intfc->my_pid;
@@ -101,9 +101,9 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
     return 0;
 
   if (intfc->i_am_master)
-    q = (unix_shared_memory_queue_t *) (sh->opaque[TO_MASTER_Q_INDEX]);
+    q = (svm_queue_t *) (sh->opaque[TO_MASTER_Q_INDEX]);
   else
-    q = (unix_shared_memory_queue_t *) (sh->opaque[TO_SLAVE_Q_INDEX]);
+    q = (svm_queue_t *) (sh->opaque[TO_SLAVE_Q_INDEX]);
 
   /* Nothing to do? */
   if (q->cursize == 0)
@@ -118,7 +118,7 @@ ssvm_eth_device_input (ssvm_eth_main_t * em,
     ;
   while (q->cursize > 0)
     {
-      unix_shared_memory_queue_sub_raw (q, (u8 *) & elt_index);
+      svm_queue_sub_raw (q, (u8 *) & elt_index);
       ASSERT (elt_index < 2048);
       vec_add1 (intfc->rx_queue, elt_index);
     }

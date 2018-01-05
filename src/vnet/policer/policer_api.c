@@ -96,7 +96,7 @@ static void
 send_policer_details (u8 * name,
 		      sse2_qos_pol_cfg_params_st * config,
 		      policer_read_response_type_st * templ,
-		      unix_shared_memory_queue_t * q, u32 context)
+		      svm_queue_t * q, u32 context)
 {
   vl_api_policer_details_t *mp;
 
@@ -136,7 +136,7 @@ send_policer_details (u8 * name,
 static void
 vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   vnet_policer_main_t *pm = &vnet_policer_main;
   hash_pair_t *hp;
   uword *p;

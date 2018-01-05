@@ -99,7 +99,7 @@ vl_api_trace_plugin_msg_ids_t_print (vl_api_trace_plugin_msg_ids_t * a,
 extern void vl_socket_api_send (vl_api_registration_t * rp, u8 * elem);
 
 void
-vl_msg_api_send (vl_api_registration_t * rp, u8 * elem)
+vl_api_send_msg (vl_api_registration_t * rp, u8 * elem)
 {
   if (PREDICT_FALSE (rp->registration_type > REGISTRATION_TYPE_SHMEM))
     {
@@ -137,9 +137,8 @@ vl_api_serialize_message_table (api_main_t * am, u8 * vector)
 /*
  * vl_api_memclnt_create_internal
  */
-
 u32
-vl_api_memclnt_create_internal (char *name, unix_shared_memory_queue_t * q)
+vl_api_memclnt_create_internal (char *name, svm_queue_t * q)
 {
   vl_api_registration_t **regpp;
   vl_api_registration_t *regp;
@@ -173,7 +172,6 @@ vl_api_memclnt_create_internal (char *name, unix_shared_memory_queue_t * q)
      am->shmem_hdr->application_restarts);
 }
 
-
 /*
  * vl_api_memclnt_create_t_handler
  */
@@ -184,7 +182,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   vl_api_registration_t *regp;
   vl_api_memclnt_create_reply_t *rp;
   svm_region_t *svm;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   int rv = 0;
   void *oldheap;
   api_main_t *am = &api_main;
@@ -230,8 +228,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   regp->vlib_rp = svm;
   regp->shmem_hdr = am->shmem_hdr;
 
-  q = regp->vl_input_queue = (unix_shared_memory_queue_t *) (uword)
-    mp->input_queue;
+  q = regp->vl_input_queue = (svm_queue_t *) (uword) mp->input_queue;
 
   regp->name = format (0, "%s", mp->name);
   vec_add1 (regp->name, 0);
@@ -425,7 +422,7 @@ out:
   rmp->context = mp->context;
   rmp->retval = ntohl (rv);
   rmp->first_msg_id = ntohs (first_msg_id);
-  vl_msg_api_send (regp, (u8 *) rmp);
+  vl_api_send_msg (regp, (u8 *) rmp);
 }
 
 /**
@@ -475,7 +472,7 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
 {
   api_main_t *am = &api_main;
   vl_api_api_versions_reply_t *rmp;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 nmsg = vec_len (am->api_version_list);
   int msg_size = sizeof (*rmp) + sizeof (rmp->api_versions[0]) * nmsg;
   int i;
@@ -582,7 +579,7 @@ send_one_plugin_msg_ids_msg (u8 * name, u16 first_msg_id, u16 last_msg_id)
   vl_api_trace_plugin_msg_ids_t *mp;
   api_main_t *am = &api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
 
   mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
@@ -602,7 +599,7 @@ static void
 send_memclnt_keepalive (vl_api_registration_t * regp, f64 now)
 {
   vl_api_memclnt_keepalive_t *mp;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   api_main_t *am = &api_main;
   svm_region_t *save_vlib_rp = am->vlib_rp;
   vl_shmem_hdr_t *save_shmem_hdr = am->shmem_hdr;
@@ -643,7 +640,7 @@ send_memclnt_keepalive (vl_api_registration_t * regp, f64 now)
   regp->unanswered_pings++;
 
   /* Failure-to-send due to a stuffed queue is absolutely expected */
-  if (unix_shared_memory_queue_add (q, (u8 *) & mp, 1 /* nowait */ ))
+  if (svm_queue_add (q, (u8 *) & mp, 1 /* nowait */ ))
     vl_msg_api_free (mp);
 
   am->vlib_rp = save_vlib_rp;
@@ -673,7 +670,7 @@ dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
           {
             if (regp->unanswered_pings == 2)
               {
-                unix_shared_memory_queue_t *q;
+                svm_queue_t *q;
                 q = regp->vl_input_queue;
                 if (kill (q->consumer_pid, 0) >=0)
                   {
@@ -801,7 +798,7 @@ memclnt_process (vlib_main_t * vm,
 {
   uword mp;
   vl_shmem_hdr_t *shm;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   clib_error_t *e;
   int rv;
   api_main_t *am = &api_main;
@@ -1000,7 +997,7 @@ skip_save:
        */
       if (PREDICT_FALSE (vec_len (am->vlib_private_rps)))
 	{
-	  unix_shared_memory_queue_t *save_vlib_input_queue = q;
+	  svm_queue_t *save_vlib_input_queue = q;
 	  vl_shmem_hdr_t *save_shmem_hdr = am->shmem_hdr;
 	  svm_region_t *save_vlib_rp = am->vlib_rp;
 
@@ -1055,7 +1052,7 @@ skip_save:
 	  for (i = 0; i < vec_len (event_data); i++)
 	    {
 	      a = pool_elt_at_index (socket_main.process_args, event_data[i]);
-	      vl_api_socket_process_msg (a->clib_file, a->regp,
+	      vl_socket_process_api_msg (a->clib_file, a->regp,
 					 (i8 *) a->data);
 	      vec_free (a->data);
 	      pool_put (socket_main.process_args, a);
@@ -1190,7 +1187,7 @@ memclnt_queue_callback (vlib_main_t * vm)
 		     1 + vec_len (am->vlib_private_rps)))
     {
       vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-      unix_shared_memory_queue_t *q;
+      svm_queue_t *q;
 
       if (shmem_hdr == 0)
 	return;
@@ -1416,7 +1413,7 @@ vl_api_client_command (vlib_main_t * vm,
 		       unformat_input_t * input, vlib_cli_command_t * cli_cmd)
 {
   vl_api_registration_t **regpp, *regp;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   char *health;
   api_main_t *am = &api_main;
   u32 *confused_indices = 0;
@@ -1480,8 +1477,7 @@ vl_api_status_command (vlib_main_t * vm,
 {
   api_main_t *am = &api_main;
 
-  // check if rx_trace and tx_trace are not null pointers
-
+  /* check if rx_trace and tx_trace are not null pointers */
   if (am->rx_trace == 0)
     {
       vlib_cli_output (vm, "RX Trace disabled\n");
@@ -1814,8 +1810,7 @@ vl_api_rpc_call_t_handler (vl_api_rpc_call_t * mp)
 
   if (mp->send_reply)
     {
-      unix_shared_memory_queue_t *q =
-	vl_api_client_index_to_input_queue (mp->client_index);
+      svm_queue_t *q = vl_api_client_index_to_input_queue (mp->client_index);
       if (q)
 	{
 	  rmp = vl_msg_api_alloc_as_if_client (sizeof (*rmp));
@@ -1842,7 +1837,7 @@ vl_api_send_pending_rpc_requests (vlib_main_t * vm)
 {
   api_main_t *am = &api_main;
   vl_shmem_hdr_t *shmem_hdr = am->shmem_hdr;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   int i;
 
   /*
@@ -1857,7 +1852,7 @@ vl_api_send_pending_rpc_requests (vlib_main_t * vm)
       while (pthread_mutex_trylock (&q->mutex))
 	vlib_worker_thread_barrier_check ();
 
-      while (PREDICT_FALSE (unix_shared_memory_queue_is_full (q)))
+      while (PREDICT_FALSE (svm_queue_is_full (q)))
 	{
 	  pthread_mutex_unlock (&q->mutex);
 	  vlib_worker_thread_barrier_check ();
