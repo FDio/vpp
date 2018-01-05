@@ -26,7 +26,7 @@
 
 #include <vppinfra/clib_error.h>
 #include <svm/svm_common.h>
-#include <vlibmemory/unix_shared_memory_queue.h>
+#include <svm/queue.h>
 
 /** API registration types
  */
@@ -56,7 +56,7 @@ typedef struct vl_api_registration_
   int unanswered_pings;
 
   /** shared memory only: pointer to client input queue */
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
   svm_region_t *vlib_rp;
   void *shmem_hdr;
 
@@ -133,7 +133,7 @@ typedef struct
 /** Message header structure */
 typedef struct msgbuf_
 {
-  unix_shared_memory_queue_t *q; /**< message allocated in this shmem ring  */
+  svm_queue_t *q; /**< message allocated in this shmem ring  */
   u32 data_len;			 /**< message length not including header  */
   u32 gc_mark_timestamp;	 /**< message garbage collector mark TS  */
   u8 data[0];			 /**< actual message begins here  */
@@ -155,7 +155,7 @@ void vl_msg_api_set_handlers (int msg_id, char *msg_name,
 void vl_msg_api_clean_handlers (int msg_id);
 void vl_msg_api_config (vl_msg_api_msg_config_t *);
 void vl_msg_api_set_cleanup_handler (int msg_id, void *fp);
-void vl_msg_api_queue_handler (unix_shared_memory_queue_t * q);
+void vl_msg_api_queue_handler (svm_queue_t * q);
 
 void vl_msg_api_barrier_sync (void) __attribute__ ((weak));
 void vl_msg_api_barrier_release (void) __attribute__ ((weak));
@@ -176,7 +176,7 @@ int vl_msg_api_pd_handler (void *mp, int rv);
 
 void vl_msg_api_set_first_available_msg_id (u16 first_avail);
 u16 vl_msg_api_get_msg_ids (const char *name, int n);
-u32 vl_api_get_msg_index (u8 * name_and_crc);
+u32 vl_msg_api_get_msg_index (u8 * name_and_crc);
 
 typedef clib_error_t *(vl_msg_api_init_function_t) (u32 client_index);
 
@@ -297,7 +297,7 @@ typedef struct
   u64 api_pvt_heap_size;
 
   /** Peer input queue pointer */
-  unix_shared_memory_queue_t *vl_input_queue;
+  svm_queue_t *vl_input_queue;
 
   /**
    * All VLIB-side message handlers use my_client_index to identify

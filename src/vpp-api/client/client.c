@@ -132,7 +132,7 @@ vac_api_handler (void *msg)
 static void *
 vac_rx_thread_fn (void *arg)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   vl_api_memclnt_keepalive_t *mp;
   vl_api_memclnt_keepalive_reply_t *rmp;
   vac_main_t *pm = &vac_main;
@@ -143,7 +143,7 @@ vac_rx_thread_fn (void *arg)
   q = am->vl_input_queue;
 
   while (1)
-    while (!unix_shared_memory_queue_sub(q, (u8 *)&msg, 0))
+    while (!svm_queue_sub(q, (u8 *)&msg, 0))
       {
 	u16 id = ntohs(*((u16 *)msg));
 	switch (id) {
@@ -381,7 +381,7 @@ unset_timeout (void)
 int
 vac_read (char **p, int *l, u16 timeout)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   api_main_t *am = &api_main;
   vac_main_t *pm = &vac_main;
   vl_api_memclnt_keepalive_t *mp;
@@ -404,7 +404,7 @@ vac_read (char **p, int *l, u16 timeout)
   q = am->vl_input_queue;
 
  again:
-  rv = unix_shared_memory_queue_sub(q, (u8 *)&msg, 0);
+  rv = svm_queue_sub(q, (u8 *)&msg, 0);
   if (rv == 0) {
     u16 msg_id = ntohs(*((u16 *)msg));
     switch (msg_id) {
@@ -478,7 +478,7 @@ vac_write (char *p, int l)
   int rv = -1;
   api_main_t *am = &api_main;
   vl_api_header_t *mp = vl_msg_api_alloc(l);
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   vac_main_t *pm = &vac_main;
 
   if (!pm->connected_to_vlib) return -1;
@@ -487,7 +487,7 @@ vac_write (char *p, int l)
   memcpy(mp, p, l);
   mp->client_index = vac_client_index();
   q = am->shmem_hdr->vl_input_queue;
-  rv = unix_shared_memory_queue_add(q, (u8 *)&mp, 0);
+  rv = svm_queue_add(q, (u8 *)&mp, 0);
   if (rv != 0) {
     clib_warning("vpe_api_write fails: %d\n", rv);
     /* Clear message */
@@ -499,7 +499,7 @@ vac_write (char *p, int l)
 int
 vac_get_msg_index (unsigned char * name)
 {
-  return vl_api_get_msg_index (name);
+  return vl_msg_api_get_msg_index (name);
 }
 
 int

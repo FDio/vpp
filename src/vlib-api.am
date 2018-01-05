@@ -22,15 +22,16 @@ libvlibmemory_la_SOURCES =			\
 	vlibapi/node_serialize.c		\
 	vlibmemory/api.h			\
 	vlibmemory/memclnt.api			\
+	vlibmemory/memory_api.c			\
 	vlibmemory/memory_shared.c		\
-	vlibmemory/memory_vlib.c		\
-	vlibmemory/socksvr_vlib.c		\
-	vlibmemory/unix_shared_memory_queue.c	\
-	vlibmemory/unix_shared_memory_queue.h	\
+	vlibmemory/socket_api.c			\
+	vlibmemory/vlib_api.c			\
+	vlibmemory/vlib_api_cli.c		\
 	vlibmemory/vl_memory_api_h.h		\
 	vlibmemory/vl_memory_msg_enum.h
 
-nobase_include_HEADERS += vlibapi/api.h		\
+nobase_include_HEADERS += 			\
+	vlibapi/api.h				\
 	vlibapi/api_common.h			\
 	vlibapi/api_helper_macros.h		\
 	vlibapi/vat_helper_macros.h
@@ -40,23 +41,23 @@ libvlibmemoryclient_la_LIBADD = $(libvlibmemoryclient_la_DEPENDENCIES) -lpthread
 libvlibmemoryclient_la_SOURCES = 		\
         vlibapi/api_helper_macros.h		\
 	vlibapi/api_shared.c			\
-	vlibapi/node_unserialize.c		\
-	vlibmemory/api.h			\
+	vlibapi/node_serialize.c		\
 	vlibmemory/memclnt.api			\
 	vlibmemory/memory_client.c		\
 	vlibmemory/memory_shared.c		\
 	vlibmemory/socket_client.c		\
-	vlibmemory/unix_shared_memory_queue.c	\
-	vlibmemory/unix_shared_memory_queue.h	\
 	vlibmemory/vl_memory_api_h.h		\
 	vlibmemory/vl_memory_msg_enum.h
 
 nobase_include_HEADERS +=			\
 	vlibmemory/api.h			\
-	vlibmemory/api_common.h			\
+	vlibmemory/memory_api.h			\
+	vlibmemory/memory_shared.h		\
+	vlibmemory/memory_client.h		\
+	vlibmemory/socket_api.h			\
+	vlibmemory/socket_client.h		\
 	vlibmemory/vl_memory_api_h.h		\
 	vlibmemory/vl_memory_msg_enum.h		\
-	vlibmemory/unix_shared_memory_queue.h 	\
 	vlibmemory/memclnt.api.h
 
 BUILT_SOURCES +=				\

@@ -29,7 +29,7 @@
 #include <vppinfra/pool.h>
 #include <vlib/vlib.h>
 #include <vlibapi/api_common.h>
-#include <vlibmemory/api_common.h>
+#include <vlibmemory/memory_client.h>
 
 /* we need to use control pings for some stuff and because we're forced to put
  * the code in headers, we need a way to be able to grab the ids of these
@@ -336,7 +336,7 @@ vapi_connect (vapi_ctx_t ctx, const char *name,
       vapi_message_desc_t *m = __vapi_metadata.msgs[i];
       u8 scratch[m->name_with_crc_len + 1];
       memcpy (scratch, m->name_with_crc, m->name_with_crc_len + 1);
-      u32 id = vl_api_get_msg_index (scratch);
+      u32 id = vl_msg_api_get_msg_index (scratch);
       if (INVALID_MSG_ID != id)
 	{
 	  if (id > UINT16_MAX)
@@ -425,7 +425,7 @@ vapi_send (vapi_ctx_t ctx, void *msg)
       goto out;
     }
   int tmp;
-  unix_shared_memory_queue_t *q = api_main.shmem_hdr->vl_input_queue;
+  svm_queue_t *q = api_main.shmem_hdr->vl_input_queue;
 #if VAPI_DEBUG
   unsigned msgid = be16toh (*(u16 *) msg);
   if (msgid <= ctx->vl_msg_id_max)
@@ -446,9 +446,8 @@ vapi_send (vapi_ctx_t ctx, void *msg)
       VAPI_DBG ("send msg@%p:%u[UNKNOWN]", msg, msgid);
     }
 #endif
-  tmp = unix_shared_memory_queue_add (q, (u8 *) & msg,
-				      VAPI_MODE_BLOCKING ==
-				      ctx->mode ? 0 : 1);
+  tmp = svm_queue_add (q, (u8 *) & msg,
+		       VAPI_MODE_BLOCKING == ctx->mode ? 0 : 1);
   if (tmp < 0)
     {
       rv = VAPI_EAGAIN;
@@ -467,7 +466,7 @@ vapi_send2 (vapi_ctx_t ctx, void *msg1, void *msg2)
       rv = VAPI_EINVAL;
       goto out;
     }
-  unix_shared_memory_queue_t *q = api_main.shmem_hdr->vl_input_queue;
+  svm_queue_t *q = api_main.shmem_hdr->vl_input_queue;
 #if VAPI_DEBUG
   unsigned msgid1 = be16toh (*(u16 *) msg1);
   unsigned msgid2 = be16toh (*(u16 *) msg2);
@@ -491,9 +490,8 @@ vapi_send2 (vapi_ctx_t ctx, void *msg1, void *msg2)
     }
   VAPI_DBG ("send two: %u[%s], %u[%s]", msgid1, name1, msgid2, name2);
 #endif
-  int tmp = unix_shared_memory_queue_add2 (q, (u8 *) & msg1, (u8 *) & msg2,
-					   VAPI_MODE_BLOCKING ==
-					   ctx->mode ? 0 : 1);
+  int tmp = svm_queue_add2 (q, (u8 *) & msg1, (u8 *) & msg2,
+			    VAPI_MODE_BLOCKING == ctx->mode ? 0 : 1);
   if (tmp < 0)
     {
       rv = VAPI_EAGAIN;
@@ -519,9 +517,9 @@ vapi_recv (vapi_ctx_t ctx, void **msg, size_t * msg_size)
       return VAPI_EINVAL;
     }
 
-  unix_shared_memory_queue_t *q = am->vl_input_queue;
+  svm_queue_t *q = am->vl_input_queue;
   VAPI_DBG ("doing shm queue sub");
-  int tmp = unix_shared_memory_queue_sub (q, (u8 *) & data, 0);
+  int tmp = svm_queue_sub (q, (u8 *) & data, 0);
   if (tmp == 0)
     {
 #if VAPI_DEBUG_ALLOC

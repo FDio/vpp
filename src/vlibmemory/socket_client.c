@@ -18,35 +18,12 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <setjmp.h>
-#include <sys/types.h>
 #define __USE_GNU
 #include <sys/socket.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <netinet/in.h>
-#include <signal.h>
-#include <pthread.h>
-#include <unistd.h>
-#include <time.h>
-#include <fcntl.h>
-#include <string.h>
-#include <vppinfra/clib.h>
-#include <vppinfra/vec.h>
-#include <vppinfra/hash.h>
-#include <vppinfra/bitmap.h>
-#include <vppinfra/fifo.h>
-#include <vppinfra/time.h>
-#include <vppinfra/mheap.h>
-#include <vppinfra/heap.h>
-#include <vppinfra/pool.h>
-#include <vppinfra/format.h>
 
-#include <vlib/vlib.h>
-#include <vlib/unix/unix.h>
 #include <svm/memfd.h>
-#include <vlibmemory/api.h>
+#include <vlibmemory/socket_client.h>
+#include <vlibmemory/memory_client.h>
 
 #include <vlibmemory/vl_memory_msg_enum.h>
 

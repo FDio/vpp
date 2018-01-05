@@ -754,11 +754,11 @@ vl_msg_api_set_cleanup_handler (int msg_id, void *fp)
 }
 
 void
-vl_msg_api_queue_handler (unix_shared_memory_queue_t * q)
+vl_msg_api_queue_handler (svm_queue_t * q)
 {
   uword msg;
 
-  while (!unix_shared_memory_queue_sub (q, (u8 *) & msg, 0))
+  while (!svm_queue_sub (q, (u8 *) & msg, 0))
     vl_msg_api_handler ((void *) msg);
 }
 
@@ -938,6 +938,21 @@ vl_msg_api_add_version (api_main_t * am, const char *string,
   ASSERT (strlen (string) < 64);
   strncpy (version.name, string, 64 - 1);
   vec_add1 (am->api_version_list, version);
+}
+
+u32
+vl_msg_api_get_msg_index (u8 * name_and_crc)
+{
+  api_main_t *am = &api_main;
+  uword *p;
+
+  if (am->msg_index_by_name_and_crc)
+    {
+      p = hash_get_mem (am->msg_index_by_name_and_crc, name_and_crc);
+      if (p)
+	return p[0];
+    }
+  return ~0;
 }
 
 /*
