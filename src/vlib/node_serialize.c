@@ -16,6 +16,9 @@
 
 #include <vppinfra/serialize.h>
 
+//extern void vl_msg_api_barrier_sync (void);
+//extern void vl_msg_api_barrier_release (void);
+
 /* serialized representation of state strings */
 
 #define foreach_state_string_code               \
@@ -40,6 +43,122 @@ static char *state_strings[] = {
   foreach_state_string_code
 #undef _
 };
+
+/*
+ * Serialize a vlib_node_main_t. Appends the result to vector.
+ * Pass 0 to create a new vector, use vec_reset_length(vector)
+ * to recycle a vector / avoid memory allocation, etc.
+ * Switch heaps before/after to serialize into API client shared memory.
+ */
+u8 *
+vlib_node_serialize (vlib_main_t *vm, vlib_node_t ***node_dups, u8 * vector,
+		     int include_nexts, int include_stats)
+{
+  serialize_main_t _sm, *sm = &_sm;
+  vlib_node_t *n;
+  vlib_node_t **nodes;
+  u8 *namep;
+  u32 name_bytes;
+  uword i, j, k;
+  u64 l, v, c, d;
+  state_string_enum_t state_code;
+
+  serialize_open_vector (sm, vector);
+  serialize_likely_small_unsigned_integer (sm, vec_len (node_dups));
+
+  for (j = 0; j < vec_len (node_dups); j++)
+    {
+      nodes = node_dups[j];
+
+      serialize_likely_small_unsigned_integer (sm, vec_len (nodes));
+
+      for (i = 0; i < vec_len (nodes); i++)
+	{
+	  n = nodes[i];
+
+	  l = n->stats_total.clocks - n->stats_last_clear.clocks;
+	  v = n->stats_total.vectors - n->stats_last_clear.vectors;
+	  c = n->stats_total.calls - n->stats_last_clear.calls;
+	  d = n->stats_total.suspends - n->stats_last_clear.suspends;
+
+	  state_code = STATE_INTERNAL;
+
+	  if (n->type == VLIB_NODE_TYPE_PROCESS)
+	    {
+	      vlib_process_t *p = vlib_get_process_from_node (vm, n);
+
+	      switch (p->flags
+		      & (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK
+			 | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT))
+		{
+		default:
+		  if (!(p->flags & VLIB_PROCESS_IS_RUNNING))
+		    state_code = STATE_DONE;
+		  break;
+
+		case VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK:
+		  state_code = STATE_TIME_WAIT;
+		  break;
+
+		case VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT:
+		  state_code = STATE_EVENT_WAIT;
+		  break;
+
+		case (VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_EVENT | VLIB_PROCESS_IS_SUSPENDED_WAITING_FOR_CLOCK):
+		  state_code =
+		    STATE_ANY_WAIT;
+		  break;
+		}
+	    }
+	  else if (n->type != VLIB_NODE_TYPE_INTERNAL)
+	    {
+	      state_code = STATE_POLLING;
+	      if (n->state == VLIB_NODE_STATE_DISABLED)
+		state_code = STATE_DISABLED;
+	      else if (n->state == VLIB_NODE_STATE_INTERRUPT)
+		state_code = STATE_INTERRUPT_WAIT;
+	    }
+
+	  /* See unserialize_cstring */
+	  name_bytes = vec_len (n->name);
+	  serialize_likely_small_unsigned_integer (sm, name_bytes);
+	  namep = serialize_get (sm, name_bytes);
+	  memcpy (namep, n->name, name_bytes);
+
+	  serialize_likely_small_unsigned_integer (sm, (u64) state_code);
+	  serialize_likely_small_unsigned_integer (sm, n->type);
+
+	  if (include_nexts)
+	    {
+	      serialize_likely_small_unsigned_integer
+		(sm, vec_len (n->next_nodes));
+	      for (k = 0; k < vec_len (n->next_nodes); k++)
+		serialize_likely_small_unsigned_integer (sm,
+							 n->next_nodes[k]);
+	    }
+	  else
+	    serialize_likely_small_unsigned_integer (sm, 0);
+
+	  if (include_stats)
+	    {
+	      /* stats present */
+	      serialize_likely_small_unsigned_integer (sm, 1);
+	      /* total clocks */
+	      serialize_integer (sm, l, 8);
+	      /* Total calls */
+	      serialize_integer (sm, c, 8);
+	      /* Total vectors */
+	      serialize_integer (sm, v, 8);
+	      /* Total suspends */
+	      serialize_integer (sm, d, 8);
+	    }
+	  else			/* no stats */
+	    serialize_likely_small_unsigned_integer (sm, 0);
+	}
+      vec_free (nodes);
+    }
+  return (serialize_close_vector (sm));
+}
 
 vlib_node_t ***
 vlib_node_unserialize (u8 * vector)

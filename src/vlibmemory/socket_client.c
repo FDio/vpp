@@ -119,7 +119,7 @@ vl_socket_client_read (int wait)
       if (vec_len (scm->socket_rx_buffer) >= ntohl (mbp->data_len)
 	  + sizeof (*mbp))
 	{
-	  vl_msg_api_socket_handler ((void *) (mbp->data));
+	  vl_msg_api_handler ((void *) (mbp->data));
 
 	  if (vec_len (scm->socket_rx_buffer) == ntohl (mbp->data_len)
 	      + sizeof (*mbp))
