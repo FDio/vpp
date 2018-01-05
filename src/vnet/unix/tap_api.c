@@ -60,8 +60,7 @@ _(SW_INTERFACE_TAP_DUMP, sw_interface_tap_dump)
  */
 static void
 send_sw_interface_event_deleted (vpe_api_main_t * am,
-				 unix_shared_memory_queue_t * q,
-				 u32 sw_if_index)
+				 svm_queue_t * q, u32 sw_if_index)
 {
   vl_api_sw_interface_event_t *mp;
 
@@ -83,7 +82,7 @@ vl_api_tap_connect_t_handler (vl_api_tap_connect_t * mp)
   int rv;
   vl_api_tap_connect_reply_t *rmp;
   vnet_main_t *vnm = vnet_get_main ();
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 sw_if_index = (u32) ~ 0;
   u8 *tag;
   vnet_tap_connect_args_t _a, *ap = &_a;
@@ -137,7 +136,7 @@ vl_api_tap_modify_t_handler (vl_api_tap_modify_t * mp)
 {
   int rv;
   vl_api_tap_modify_reply_t *rmp;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 sw_if_index = (u32) ~ 0;
   vlib_main_t *vm = vlib_get_main ();
   vnet_tap_connect_args_t _a, *ap = &_a;
@@ -174,7 +173,7 @@ vl_api_tap_delete_t_handler (vl_api_tap_delete_t * mp)
   int rv;
   vpe_api_main_t *vam = &vpe_api_main;
   vl_api_tap_delete_reply_t *rmp;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
   rv = vnet_tap_delete (vm, sw_if_index);
@@ -201,7 +200,7 @@ vl_api_tap_delete_t_handler (vl_api_tap_delete_t * mp)
 
 static void
 send_sw_interface_tap_details (vpe_api_main_t * am,
-			       unix_shared_memory_queue_t * q,
+			       svm_queue_t * q,
 			       tapcli_interface_details_t * tap_if,
 			       u32 context)
 {
@@ -222,7 +221,7 @@ vl_api_sw_interface_tap_dump_t_handler (vl_api_sw_interface_tap_dump_t * mp)
 {
   int rv = 0;
   vpe_api_main_t *am = &vpe_api_main;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   tapcli_interface_details_t *tapifs = NULL;
   tapcli_interface_details_t *tap_if = NULL;
 

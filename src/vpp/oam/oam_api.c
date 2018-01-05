@@ -47,7 +47,7 @@ void
 send_oam_event (oam_target_t * t)
 {
   vpe_api_main_t *vam = &vpe_api_main;
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   vpe_client_registration_t *reg;
   vl_api_oam_event_t *mp;
 

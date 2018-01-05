@@ -144,7 +144,7 @@ out:
 }
 
 static void send_vxlan_gpe_tunnel_details
-  (vxlan_gpe_tunnel_t * t, unix_shared_memory_queue_t * q, u32 context)
+  (vxlan_gpe_tunnel_t * t, svm_queue_t * q, u32 context)
 {
   vl_api_vxlan_gpe_tunnel_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
@@ -181,7 +181,7 @@ static void send_vxlan_gpe_tunnel_details
 static void vl_api_vxlan_gpe_tunnel_dump_t_handler
   (vl_api_vxlan_gpe_tunnel_dump_t * mp)
 {
-  unix_shared_memory_queue_t *q;
+  svm_queue_t *q;
   vxlan_gpe_main_t *vgm = &vxlan_gpe_main;
   vxlan_gpe_tunnel_t *t;
   u32 sw_if_index;
