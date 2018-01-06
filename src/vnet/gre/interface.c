@@ -270,7 +270,7 @@ vnet_gre_tunnel_add (vnet_gre_add_del_tunnel_args_t * a, u32 * sw_if_indexp)
     return VNET_API_ERROR_NO_SUCH_FIB;
 
   t =
-    gre_tunnel_db_find (&a->src, &a->dst, a->outer_fib_id, a->is_ipv6, &key);
+    gre_tunnel_db_find (&a->src, &a->dst, outer_fib_index, a->is_ipv6, &key);
 
   if (NULL != t)
     return VNET_API_ERROR_INVALID_VALUE;
@@ -426,9 +426,18 @@ vnet_gre_tunnel_delete (vnet_gre_add_del_tunnel_args_t * a,
   gre_tunnel_t *t;
   gre_tunnel_key_t key;
   u32 sw_if_index;
+  u32 outer_fib_index;
+
+  if (!a->is_ipv6)
+    outer_fib_index = ip4_fib_index_from_table_id (a->outer_fib_id);
+  else
+    outer_fib_index = ip6_fib_index_from_table_id (a->outer_fib_id);
+
+  if (~0 == outer_fib_index)
+    return VNET_API_ERROR_NO_SUCH_FIB;
 
   t =
-    gre_tunnel_db_find (&a->src, &a->dst, a->outer_fib_id, a->is_ipv6, &key);
+    gre_tunnel_db_find (&a->src, &a->dst, outer_fib_index, a->is_ipv6, &key);
 
   if (NULL == t)
     return VNET_API_ERROR_NO_SUCH_ENTRY;
