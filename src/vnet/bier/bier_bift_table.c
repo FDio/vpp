@@ -239,6 +239,7 @@ show_bier_bift_cmd (vlib_main_t * vm,
     if (NULL == bier_bift_table)
     {
         vlib_cli_output(vm, "no BIFT entries");
+        goto done;
     }
 
     if (~0 == set)
