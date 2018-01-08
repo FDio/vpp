@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "52438a87_9c489f11",
+        "filename": "src/vcl/vppcom.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 2305,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-01-08T22:39:15Z",
+      "side": 1,
+      "message": "CLIB_PACKED should not be necessary here.  I\u0027d recommend making it consistent with the other single member structure definitions.",
+      "range": {
+        "startLine": 2305,
+        "startChar": 6,
+        "endLine": 2305,
+        "endChar": 17
+      },
+      "revId": "236ddee214600f1f581a4991042897b9db3ede35",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
