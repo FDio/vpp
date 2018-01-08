@@ -730,7 +730,7 @@ add_del_ip4_route (test_main_t * tm, int enable_disable)
   mp->client_index = tm->my_client_index;
   mp->context = 0xdeadbeef;
   mp->table_id = ntohl (0);
-  mp->create_vrf_if_needed = 1;
+  /* FIXME: why is it complaining ??? I didnt touch this message. mp->create_vrf_if_needed = 1; */
 
   mp->next_hop_sw_if_index = ntohl (5);
   mp->is_add = enable_disable;
