@@ -128,7 +128,7 @@ do {						\
   if ((error = vlib_call_init_function (vm, ip_classify_init)))
     return error;
 
-  if ((error = vlib_call_init_function (vm, input_acl_init)))
+  if ((error = vlib_call_init_function (vm, in_out_acl_init)))
     return error;
 
   if ((error = vlib_call_init_function (vm, policer_classify_init)))

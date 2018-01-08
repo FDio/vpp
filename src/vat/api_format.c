@@ -34,7 +34,7 @@
 #include <vpp/api/vpe_msg_enum.h>
 #include <vnet/l2/l2_classify.h>
 #include <vnet/l2/l2_vtr.h>
-#include <vnet/classify/input_acl.h>
+#include <vnet/classify/in_out_acl.h>
 #include <vnet/classify/policer_classify.h>
 #include <vnet/classify/flow_classify.h>
 #include <vnet/mpls/mpls.h>

@@ -73,9 +73,12 @@
   /* Spoofed packets in ip4-rewrite-local */                            \
   _(SPOOFED_LOCAL_PACKETS, "ip4 spoofed local-address packet drops")    \
                                                                         \
-  /* Errors singalled by ip4-inacl */                                   \
+  /* Errors signalled by ip4-inacl */                                   \
   _ (INACL_TABLE_MISS, "input ACL table-miss drops")                    \
-  _ (INACL_SESSION_DENY, "input ACL session deny drops")
+  _ (INACL_SESSION_DENY, "input ACL session deny drops")                \
+  /* Errors signalled by ip4-outacl */                                  \
+  _ (OUTACL_TABLE_MISS, "output ACL table-miss drops")                  \
+  _ (OUTACL_SESSION_DENY, "output ACL session deny drops")
 
 typedef enum
 {
