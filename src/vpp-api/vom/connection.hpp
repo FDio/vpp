@@ -46,7 +46,7 @@ public:
    * Blocking [re]connect call - always eventually succeeds, or the
    * universe expires. Not much this system can do without one.
    */
-  void connect();
+  int connect();
 
   /**
    * Blocking disconnect

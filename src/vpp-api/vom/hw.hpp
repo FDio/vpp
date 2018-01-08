@@ -222,7 +222,12 @@ public:
     /**
      * Blocking Connect to VPP - call once at bootup
      */
-    virtual void connect();
+    virtual bool connect();
+
+    /**
+     * Disconnect to VPP
+     */
+    virtual void disconnect();
 
     /**
      * Disable the passing of commands to VPP. Whilst disabled all
@@ -309,7 +314,12 @@ public:
   /**
    * Blocking Connect to VPP
    */
-  static void connect();
+  static bool connect();
+
+  /**
+   * Disconnect to VPP
+   */
+  static void disconnect();
 
   /**
    * Blocking pool of the HW connection
