@@ -26,7 +26,6 @@ connection::connection()
 
 connection::~connection()
 {
-  disconnect();
 }
 
 void
@@ -35,16 +34,15 @@ connection::disconnect()
   m_vapi_conn->disconnect();
 }
 
-void
+int
 connection::connect()
 {
   vapi_error_e rv;
 
-  do {
-    rv = m_vapi_conn->connect(m_app_name.c_str(),
-                              NULL, // m_api_prefix.c_str(),
-                              128, 128);
-  } while (VAPI_OK != rv);
+  rv = m_vapi_conn->connect(m_app_name.c_str(),
+                            NULL, // m_api_prefix.c_str(),
+                            128, 128);
+  return rv;
 }
 
 vapi::Connection&

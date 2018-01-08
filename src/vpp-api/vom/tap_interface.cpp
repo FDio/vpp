@@ -125,7 +125,7 @@ tap_interface::event_handler::event_handler()
 void
 tap_interface::event_handler::handle_replay()
 {
-  m_db.replay();
+  // It will be replayed by interface handler
 }
 
 dependency_t

@@ -27,11 +27,6 @@ HW::cmd_q::cmd_q()
 
 HW::cmd_q::~cmd_q()
 {
-  m_connected = false;
-
-  if (m_rx_thread && m_rx_thread->joinable()) {
-    m_rx_thread->join();
-  }
 }
 
 HW::cmd_q&
@@ -76,12 +71,27 @@ HW::cmd_q::enqueue(std::queue<cmd*>& cmds)
   }
 }
 
-void
+bool
 HW::cmd_q::connect()
 {
-  if (m_connected) {
-    m_conn.disconnect();
-  }
+  int rv;
+
+  if (m_connected)
+    return m_connected;
+
+  rv = m_conn.connect();
+
+  m_connected = true;
+  m_rx_thread.reset(new std::thread(&HW::cmd_q::rx_run, this));
+  return (rv == 0);
+}
+
+void
+HW::cmd_q::disconnect()
+{
+
+  if (!m_connected)
+    return;
 
   m_connected = false;
 
@@ -89,10 +99,7 @@ HW::cmd_q::connect()
     m_rx_thread->join();
   }
 
-  m_conn.connect();
-
-  m_connected = true;
-  m_rx_thread.reset(new std::thread(&HW::cmd_q::rx_run, this));
+  m_conn.disconnect();
 }
 
 void
@@ -203,10 +210,16 @@ HW::enqueue(std::queue<cmd*>& cmds)
   m_cmdQ->enqueue(cmds);
 }
 
-void
+bool
 HW::connect()
 {
-  m_cmdQ->connect();
+  return m_cmdQ->connect();
+}
+
+void
+HW::disconnect()
+{
+  m_cmdQ->disconnect();
 }
 
 void
@@ -236,7 +249,6 @@ HW::poll()
   HW::write();
 
   return (m_poll_state);
-  return (true);
 }
 
 template <>
