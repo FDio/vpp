@@ -747,6 +747,25 @@ class VppTestCase(unittest.TestCase):
                 "Finished sleep (%s) - slept %ss (wanted %ss)" % (
                     remark, after - before, timeout))
 
+    def send_and_assert_no_replies(self, intf, pkts, remark=""):
+        self.vapi.cli("clear trace")
+        intf.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        timeout = 1
+        for i in self.pg_interfaces:
+            i.get_capture(0, timeout=timeout)
+            i.assert_nothing_captured(remark=remark)
+            timeout = 0.1
+
+    def send_and_expect(self, input, pkts, output):
+        self.vapi.cli("clear trace")
+        input.add_stream(pkts)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        rx = output.get_capture(len(pkts))
+        return rx
+
 
 class TestCasePrinter(object):
     _shared_state = {}

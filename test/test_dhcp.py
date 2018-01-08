@@ -77,13 +77,6 @@ class TestDHCP(VppTestCase):
             i.admin_down()
         super(TestDHCP, self).tearDown()
 
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.assert_nothing_captured(remark=remark)
-
     def verify_dhcp_has_option(self, pkt, option, value):
         dhcp = pkt[DHCP]
         found = False

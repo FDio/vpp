@@ -36,23 +36,6 @@ class TestDVR(VppTestCase):
 
         super(TestDVR, self).tearDown()
 
-    def send_and_assert_no_replies(self, intf, pkts):
-        self.vapi.cli("clear trace")
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured()
-
-    def send_and_expect(self, input, pkts, output):
-        self.vapi.cli("clear trace")
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = output.get_capture(len(pkts))
-        return rx
-
     def assert_same_mac_addr(self, tx, rx):
         t_eth = tx[Ether]
         for p in rx:

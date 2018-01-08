@@ -314,13 +314,6 @@ class TestMPLS(VppTestCase):
         except:
             raise
 
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.assert_nothing_captured(remark=remark)
-
     def test_swap(self):
         """ MPLS label swap tests """
 
@@ -1218,7 +1211,13 @@ class TestMPLS(VppTestCase):
         #
         tx = self.create_stream_labelled_ip6(self.pg0, [34], 255,
                                              dst_ip="ff01::1", hlim=1)
-        self.send_and_assert_no_replies(self.pg0, tx, "Hop Limt Expired")
+        self.pg0.add_stream(tx)
+
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+
+        rx = self.pg0.get_capture(257)
+        self.verify_capture_ip6_icmp(self.pg0, rx, tx)
 
         #
         # set the RPF-ID of the enrtry to not match the input packet's
@@ -1257,14 +1256,6 @@ class TestMPLSDisabled(VppTestCase):
 
         self.pg0.disable_mpls()
         super(TestMPLSDisabled, self).tearDown()
-
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured(remark=remark)
 
     def test_mpls_disabled(self):
         """ MPLS Disabled """

@@ -38,13 +38,6 @@ class TestMAP(VppTestCase):
             i.unconfig_ip6()
             i.admin_down()
 
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.assert_nothing_captured(remark=remark)
-
     def send_and_assert_encapped(self, tx, ip6_src, ip6_dst, dmac=None):
         if not dmac:
             dmac = self.pg1.remote_mac
