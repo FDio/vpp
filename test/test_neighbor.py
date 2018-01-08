@@ -132,16 +132,6 @@ class ARPTestCase(VppTestCase):
         self.assertEqual(ip.src, sip)
         self.assertEqual(ip.dst, dip)
 
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        timeout = 1
-        for i in self.pg_interfaces:
-            i.get_capture(0, timeout=timeout)
-            i.assert_nothing_captured(remark=remark)
-            timeout = 0.1
-
     def test_arp(self):
         """ ARP """
 

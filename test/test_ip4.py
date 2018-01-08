@@ -572,14 +572,6 @@ class TestIPDisabled(VppTestCase):
             i.unconfig_ip4()
             i.admin_down()
 
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured(remark=remark)
-
     def test_ip_disabled(self):
         """ IP Disabled """
 
@@ -666,14 +658,6 @@ class TestIPSubNets(VppTestCase):
         super(TestIPSubNets, self).tearDown()
         for i in self.pg_interfaces:
             i.admin_down()
-
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured(remark=remark)
 
     def test_ip_sub_nets(self):
         """ IP Sub Nets """
@@ -985,12 +969,6 @@ class TestIPVlan0(VppTestCase):
             i.admin_down()
         super(TestIPVlan0, self).tearDown()
 
-    def send_and_expect(self, input, pkts, output):
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = output.get_capture(len(pkts))
-
     def test_ip_vlan_0(self):
         """ IP VLAN-0 """
 
@@ -1027,23 +1005,6 @@ class TestIPPunt(VppTestCase):
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.admin_down()
-
-    def send_and_expect(self, input, pkts, output):
-        self.vapi.cli("clear trace")
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = output.get_capture(len(pkts))
-        return rx
-
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        self.vapi.cli("clear trace")
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured(remark=remark)
 
     def test_ip_punt(self):
         """ IP punt police and redirect """
@@ -1138,23 +1099,6 @@ class TestIPDeag(VppTestCase):
             i.unconfig_ip4()
             i.admin_down()
 
-    def send_and_expect(self, input, pkts, output):
-        self.vapi.cli("clear trace")
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = output.get_capture(len(pkts))
-        return rx
-
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        self.vapi.cli("clear trace")
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured(remark=remark)
-
     def test_ip_deag(self):
         """ IP Deag Routes """
 
@@ -1245,23 +1189,6 @@ class TestIPInput(VppTestCase):
         for i in self.pg_interfaces:
             i.unconfig_ip4()
             i.admin_down()
-
-    def send_and_expect(self, input, pkts, output):
-        self.vapi.cli("clear trace")
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = output.get_capture(len(pkts))
-        return rx
-
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        self.vapi.cli("clear trace")
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured(remark=remark)
 
     def test_ip_input(self):
         """ IP Input Exceptions """

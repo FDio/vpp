@@ -136,14 +136,6 @@ class TestIPv6ND(VppTestCase):
         rx = rx[0]
         self.validate_ns(rx_intf, rx, tgt_ip)
 
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured(remark=remark)
-
     def verify_ip(self, rx, smac, dmac, sip, dip):
         ether = rx[Ether]
         self.assertEqual(ether.dst, dmac)
@@ -1179,14 +1171,6 @@ class TestIPDisabled(VppTestCase):
             i.unconfig_ip4()
             i.admin_down()
 
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured(remark=remark)
-
     def test_ip_disabled(self):
         """ IP Disabled """
 
@@ -1528,22 +1512,6 @@ class TestIP6Punt(VppTestCase):
             i.unconfig_ip6()
             i.admin_down()
 
-    def send_and_expect(self, input, pkts, output):
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = output.get_capture(len(pkts))
-        return rx
-
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        self.vapi.cli("clear trace")
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured(remark=remark)
-
     def test_ip_punt(self):
         """ IP6 punt police and redirect """
 
@@ -1640,23 +1608,6 @@ class TestIP6Input(VppTestCase):
         for i in self.pg_interfaces:
             i.unconfig_ip6()
             i.admin_down()
-
-    def send_and_expect(self, input, pkts, output):
-        self.vapi.cli("clear trace")
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = output.get_capture(len(pkts))
-        return rx
-
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        self.vapi.cli("clear trace")
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.get_capture(0)
-            i.assert_nothing_captured(remark=remark)
 
     def test_ip_input(self):
         """ IP6 Input Exceptions """
