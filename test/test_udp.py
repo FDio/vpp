@@ -79,14 +79,6 @@ class TestUdpEncap(VppTestCase):
         self.assertEqual(rx.dst, tx[IPv6].dst)
         self.assertEqual(rx.hlim, tx[IPv6].hlim)
 
-    def send_and_expect(self, input, output, pkts):
-        self.vapi.cli("clear trace")
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = output.get_capture(len(pkts))
-        return rx
-
     def test_udp_encap(self):
         """ UDP Encap test
         """
@@ -159,7 +151,7 @@ class TestUdpEncap(VppTestCase):
                  IP(src="2.2.2.2", dst="1.1.0.1") /
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, self.pg0, p_4o4*65)
+        rx = self.send_and_expect(self.pg0, p_4o4*65, self.pg0)
         for p in rx:
             self.validate_outer4(p, udp_encap_0)
             p = IP(p["UDP"].payload.load)
@@ -173,7 +165,7 @@ class TestUdpEncap(VppTestCase):
                  IP(src="2.2.2.2", dst="1.1.2.1") /
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, self.pg2, p_4o6*65)
+        rx = self.send_and_expect(self.pg0, p_4o6*65, self.pg2)
         for p in rx:
             self.validate_outer6(p, udp_encap_2)
             p = IP(p["UDP"].payload.load)
@@ -187,7 +179,7 @@ class TestUdpEncap(VppTestCase):
                  IPv6(src="2001::100", dst="2001::1") /
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, self.pg1, p_6o4*65)
+        rx = self.send_and_expect(self.pg0, p_6o4*65, self.pg1)
         for p in rx:
             self.validate_outer4(p, udp_encap_1)
             p = IPv6(p["UDP"].payload.load)
@@ -201,7 +193,7 @@ class TestUdpEncap(VppTestCase):
                  IPv6(src="2001::100", dst="2001::3") /
                  UDP(sport=1234, dport=1234) /
                  Raw('\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, self.pg3, p_6o6*65)
+        rx = self.send_and_expect(self.pg0, p_6o6*65, self.pg3)
         for p in rx:
             self.validate_outer6(p, udp_encap_3)
             p = IPv6(p["UDP"].payload.load)
@@ -224,7 +216,7 @@ class TestUdpEncap(VppTestCase):
                    IP(src="2.2.2.2", dst="1.1.2.22") /
                    UDP(sport=1234, dport=1234) /
                    Raw('\xa5' * 100))
-        rx = self.send_and_expect(self.pg0, self.pg1, p_4omo4*65)
+        rx = self.send_and_expect(self.pg0, p_4omo4*65, self.pg1)
         for p in rx:
             self.validate_outer4(p, udp_encap_1)
             p = MPLS(p["UDP"].payload.load)

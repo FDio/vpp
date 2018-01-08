@@ -66,21 +66,6 @@ class TestBier(VppTestCase):
             i.admin_down()
         super(TestBier, self).tearDown()
 
-    def send_and_assert_no_replies(self, intf, pkts, remark):
-        intf.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        for i in self.pg_interfaces:
-            i.assert_nothing_captured(remark=remark)
-
-    def send_and_expect(self, input, pkts, output):
-        self.vapi.cli("trace add bier-mpls-lookup 10")
-        input.add_stream(pkts)
-        self.pg_enable_capture(self.pg_interfaces)
-        self.pg_start()
-        rx = output.get_capture(len(pkts))
-        return rx
-
     def test_bier_midpoint(self):
         """BIER midpoint"""
 
