@@ -85,13 +85,7 @@ typedef struct svm_map_region_args_
  */
 #define SVM_GLOBAL_REGION_SIZE    (64<<20)
 #define SVM_GLOBAL_REGION_NAME "/global_vm"
-#if defined (__aarch64__)
-#define VA_BITS 48
-#define BASEVA ((1ul << VA_BITS) / 4)
-#define SVM_GLOBAL_REGION_BASEVA (BASEVA - (2 * SVM_GLOBAL_REGION_SIZE))
-#else
-#define SVM_GLOBAL_REGION_BASEVA  0x30000000
-#endif
+u64 svm_get_global_region_base_va ();
 
 /*
  * Memory shared across individual router instances.

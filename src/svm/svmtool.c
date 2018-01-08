@@ -368,7 +368,7 @@ repair (char *chroot_path, int crash_root_region)
 
   a->root_path = chroot_path;
   a->name = SVM_GLOBAL_REGION_NAME;
-  a->baseva = SVM_GLOBAL_REGION_BASEVA;
+  a->baseva = svm_get_global_region_base_va ();
   a->size = SVM_GLOBAL_REGION_SIZE;
   a->flags = SVM_FLAGS_NODATA;
 
