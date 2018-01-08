@@ -486,7 +486,7 @@ ip_route::event_handler::handle_populate(const client_db::key_t& key)
 dependency_t
 ip_route::event_handler::order() const
 {
-  return (dependency_t::BINDING);
+  return (dependency_t::ENTRY);
 }
 
 void
