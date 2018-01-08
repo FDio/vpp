@@ -176,6 +176,7 @@ memif_interface_tx_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
   if (tx_queues < vec_len (vlib_mains))
     {
+      ASSERT (tx_queues > 0);
       qid = thread_index % tx_queues;
       clib_spinlock_lock_if_init (&mif->lockp);
     }
