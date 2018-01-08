@@ -75,24 +75,24 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
     (weight != (u32) ~ 0 ? weight : SR_SEGMENT_LIST_WEIGHT_DEFAULT);
   segment_list->segments = vec_dup (sl);
 
-  fib_route_path_t path = {
-    .frp_proto = DPO_PROTO_MPLS,
-    .frp_sw_if_index = ~0,
-    .frp_fib_index = 0,
-    .frp_weight = segment_list->weight,
-    .frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
-    .frp_label_stack = NULL,
-    .frp_local_label = sl[0],
-  };
-
-  vec_add (path.frp_label_stack, sl + 1, vec_len (sl) - 1);
-
-  fib_route_path_t *paths = NULL;
-  vec_add1 (paths, path);
-
   mpls_eos_bit_t eos;
   FOR_EACH_MPLS_EOS_BIT (eos)
   {
+    fib_route_path_t path = {
+      .frp_proto = DPO_PROTO_MPLS,
+      .frp_sw_if_index = ~0,
+      .frp_fib_index = 0,
+      .frp_weight = segment_list->weight,
+      .frp_flags = FIB_ROUTE_PATH_FLAG_NONE,
+      .frp_label_stack = NULL,
+      .frp_local_label = sl[0],
+    };
+
+    vec_add (path.frp_label_stack, sl + 1, vec_len (sl) - 1);
+
+    fib_route_path_t *paths = NULL;
+    vec_add1 (paths, path);
+
 		/* *INDENT-OFF* */
 		fib_prefix_t	pfx = {
 			.fp_len = 21,
@@ -109,9 +109,8 @@ create_sl (mpls_sr_policy_t * sr_policy, mpls_label_t * sl, u32 weight)
 			       (sr_policy->type == SR_POLICY_TYPE_DEFAULT ?
 				FIB_ENTRY_FLAG_NONE :
 				FIB_ENTRY_FLAG_MULTICAST), paths);
+    vec_free (paths);
   }
-
-  vec_free (paths);
 
   return segment_list;
 }
