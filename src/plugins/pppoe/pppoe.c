@@ -150,10 +150,11 @@ pppoe_fixup (vlib_main_t * vm, ip_adjacency_t * adj, vlib_buffer_t * b0)
 {
   pppoe_header_t *pppoe0;
 
-  pppoe0 = vlib_buffer_get_current (b0);
+  pppoe0 = vlib_buffer_get_current (b0) + sizeof (ethernet_header_t);
 
   pppoe0->length = clib_host_to_net_u16 (vlib_buffer_length_in_chain (vm, b0)
 					 - sizeof (pppoe_header_t)
+					 + sizeof (pppoe0->ppp_proto)
 					 - sizeof (ethernet_header_t));
 }
 
