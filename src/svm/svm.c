@@ -58,6 +58,43 @@ svm_get_root_rp (void)
 
 #define MUTEX_DEBUG
 
+u64
+svm_get_global_region_base_va ()
+{
+#if __aarch64__
+  /* On AArch64 VA space can have different size, from 36 to 48 bits.
+     Here we are trying to detect VA bits by parsing /proc/self/maps
+     address ranges */
+  int fd;
+  unformat_input_t input;
+  u64 start, end = 0;
+  u8 bits = 0;
+
+  if ((fd = open ("/proc/self/maps", 0)) < 0)
+    clib_unix_error ("open '/proc/self/maps'");
+
+  unformat_init_clib_file (&input, fd);
+  while (unformat_check_input (&input) != UNFORMAT_END_OF_INPUT)
+    {
+      unformat (&input, "%llx-%llx", &start, &end);
+      unformat_skip_line (&input);
+    }
+
+  count_leading_zeros (bits, end);
+  bits = 64 - bits;
+  if (bits >= 36 && bits <= 48)
+    return ((1ul << bits) / 4) - (2 * SVM_GLOBAL_REGION_SIZE);
+  else
+    clib_unix_error ("unexpected va bits '%u'", bits);
+
+  unformat_free (&input);
+  close (fd);
+#endif
+
+  /* default value */
+  return 0x30000000;
+}
+
 static void
 region_lock (svm_region_t * rp, int tag)
 {
@@ -804,7 +841,7 @@ svm_region_init (void)
   memset (a, 0, sizeof (*a));
   a->root_path = 0;
   a->name = SVM_GLOBAL_REGION_NAME;
-  a->baseva = SVM_GLOBAL_REGION_BASEVA;
+  a->baseva = svm_get_global_region_base_va ();
   a->size = SVM_GLOBAL_REGION_SIZE;
   a->flags = SVM_FLAGS_NODATA;
   a->uid = 0;
@@ -821,7 +858,7 @@ svm_region_init_chroot (const char *root_path)
   memset (a, 0, sizeof (*a));
   a->root_path = root_path;
   a->name = SVM_GLOBAL_REGION_NAME;
-  a->baseva = SVM_GLOBAL_REGION_BASEVA;
+  a->baseva = svm_get_global_region_base_va ();
   a->size = SVM_GLOBAL_REGION_SIZE;
   a->flags = SVM_FLAGS_NODATA;
   a->uid = 0;
@@ -838,7 +875,7 @@ svm_region_init_chroot_uid_gid (const char *root_path, int uid, int gid)
   memset (a, 0, sizeof (*a));
   a->root_path = root_path;
   a->name = SVM_GLOBAL_REGION_NAME;
-  a->baseva = SVM_GLOBAL_REGION_BASEVA;
+  a->baseva = svm_get_global_region_base_va ();
   a->size = SVM_GLOBAL_REGION_SIZE;
   a->flags = SVM_FLAGS_NODATA;
   a->uid = uid;

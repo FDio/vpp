@@ -871,7 +871,7 @@ vlibmemory_init (vlib_main_t * vm)
   a->root_path = am->root_path;
   a->name = SVM_GLOBAL_REGION_NAME;
   a->baseva = (am->global_baseva != 0) ?
-    am->global_baseva : SVM_GLOBAL_REGION_BASEVA;
+    am->global_baseva : +svm_get_global_region_base_va ();
   a->size = (am->global_size != 0) ? am->global_size : SVM_GLOBAL_REGION_SIZE;
   a->flags = SVM_FLAGS_NODATA;
   a->uid = am->api_uid;
