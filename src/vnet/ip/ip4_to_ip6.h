@@ -518,7 +518,7 @@ ip4_to_ip6_tcp_udp (vlib_buffer_t * p, ip4_to_ip6_set_fn_t fn, void *ctx)
 
       //UDP checksum is optional over IPv4 but mandatory for IPv6
       //We do not check udp->length sanity but use our safe computed value instead
-      if (PREDICT_FALSE (!checksum))
+      if (PREDICT_FALSE (!*checksum))
 	{
 	  u16 udp_len = clib_host_to_net_u16 (ip4->length) - sizeof (*ip4);
 	  csum = ip_incremental_checksum (0, udp, udp_len);
