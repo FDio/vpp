@@ -177,21 +177,24 @@ compute_rewrite_encaps (ip6_address_t * sl)
   iph->protocol = IP_PROTOCOL_IPV6;
   iph->hop_limit = IPv6_DEFAULT_HOP_LIMIT;
 
-  srh = (ip6_sr_header_t *) (iph + 1);
-  iph->protocol = IP_PROTOCOL_IPV6_ROUTE;
-  srh->protocol = IP_PROTOCOL_IPV6;
-  srh->type = ROUTING_HEADER_TYPE_SR;
-  srh->segments_left = vec_len (sl) - 1;
-  srh->first_segment = vec_len (sl) - 1;
-  srh->length = ((sizeof (ip6_sr_header_t) +
-		  (vec_len (sl) * sizeof (ip6_address_t))) / 8) - 1;
-  srh->flags = 0x00;
-  srh->reserved = 0x00;
-  addrp = srh->segments + vec_len (sl) - 1;
-  vec_foreach (this_address, sl)
+  if(vec_len (sl) > 1)
   {
-    clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
-    addrp--;
+    srh = (ip6_sr_header_t *) (iph + 1);
+    iph->protocol = IP_PROTOCOL_IPV6_ROUTE;
+    srh->protocol = IP_PROTOCOL_IPV6;
+    srh->type = ROUTING_HEADER_TYPE_SR;
+    srh->segments_left = vec_len (sl) - 1;
+    srh->first_segment = vec_len (sl) - 1;
+    srh->length = ((sizeof (ip6_sr_header_t) +
+  		  (vec_len (sl) * sizeof (ip6_address_t))) / 8) - 1;
+    srh->flags = 0x00;
+    srh->reserved = 0x00;
+    addrp = srh->segments + vec_len (sl) - 1;
+    vec_foreach (this_address, sl)
+    {
+      clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
+      addrp--;
+    }
   }
   iph->dst_address.as_u64[0] = sl->as_u64[0];
   iph->dst_address.as_u64[1] = sl->as_u64[1];
