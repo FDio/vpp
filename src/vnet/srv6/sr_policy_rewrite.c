@@ -177,22 +177,26 @@ compute_rewrite_encaps (ip6_address_t * sl)
   iph->protocol = IP_PROTOCOL_IPV6;
   iph->hop_limit = IPv6_DEFAULT_HOP_LIMIT;
 
-  srh = (ip6_sr_header_t *) (iph + 1);
-  iph->protocol = IP_PROTOCOL_IPV6_ROUTE;
-  srh->protocol = IP_PROTOCOL_IPV6;
-  srh->type = ROUTING_HEADER_TYPE_SR;
-  srh->segments_left = vec_len (sl) - 1;
-  srh->first_segment = vec_len (sl) - 1;
-  srh->length = ((sizeof (ip6_sr_header_t) +
-		  (vec_len (sl) * sizeof (ip6_address_t))) / 8) - 1;
-  srh->flags = 0x00;
-  srh->reserved = 0x00;
-  addrp = srh->segments + vec_len (sl) - 1;
-  vec_foreach (this_address, sl)
-  {
-    clib_memcpy (addrp->as_u8, this_address->as_u8, sizeof (ip6_address_t));
-    addrp--;
-  }
+  if (vec_len (sl) > 1)
+    {
+      srh = (ip6_sr_header_t *) (iph + 1);
+      iph->protocol = IP_PROTOCOL_IPV6_ROUTE;
+      srh->protocol = IP_PROTOCOL_IPV6;
+      srh->type = ROUTING_HEADER_TYPE_SR;
+      srh->segments_left = vec_len (sl) - 1;
+      srh->first_segment = vec_len (sl) - 1;
+      srh->length = ((sizeof (ip6_sr_header_t) +
+		      (vec_len (sl) * sizeof (ip6_address_t))) / 8) - 1;
+      srh->flags = 0x00;
+      srh->reserved = 0x00;
+      addrp = srh->segments + vec_len (sl) - 1;
+      vec_foreach (this_address, sl)
+      {
+	clib_memcpy (addrp->as_u8, this_address->as_u8,
+		     sizeof (ip6_address_t));
+	addrp--;
+      }
+    }
   iph->dst_address.as_u64[0] = sl->as_u64[0];
   iph->dst_address.as_u64[1] = sl->as_u64[1];
   return rs;
@@ -1332,8 +1336,13 @@ encaps_processing_v4 (vlib_node_runtime_t * node,
   ip0->ip_version_traffic_class_and_flow_label =
     clib_host_to_net_u32 (0 | ((6 & 0xF) << 28) |
 			  ((ip0_encap->tos & 0xFF) << 20));
-  sr0 = (void *) (ip0 + 1);
-  sr0->protocol = IP_PROTOCOL_IP_IN_IP;
+  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE)
+    {
+      sr0 = (void *) (ip0 + 1);
+      sr0->protocol = IP_PROTOCOL_IP_IN_IP;
+    }
+  else
+    ip0->protocol = IP_PROTOCOL_IP_IN_IP;
 }
 
 /**
@@ -1816,13 +1825,37 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip3->payload_length =
 	    clib_host_to_net_u16 (b3->current_length - sizeof (ip6_header_t));
 
-	  sr0 = (void *) (ip0 + 1);
-	  sr1 = (void *) (ip1 + 1);
-	  sr2 = (void *) (ip2 + 1);
-	  sr3 = (void *) (ip3 + 1);
+	  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE)
+	    {
+	      sr0 = (void *) (ip0 + 1);
+	      sr0->protocol = IP_PROTOCOL_IP6_NONXT;
+	    }
+	  else
+	    ip0->protocol = IP_PROTOCOL_IP6_NONXT;
 
-	  sr0->protocol = sr1->protocol = sr2->protocol = sr3->protocol =
-	    IP_PROTOCOL_IP6_NONXT;
+	  if (ip1->protocol == IP_PROTOCOL_IPV6_ROUTE)
+	    {
+	      sr1 = (void *) (ip1 + 1);
+	      sr1->protocol = IP_PROTOCOL_IP6_NONXT;
+	    }
+	  else
+	    ip1->protocol = IP_PROTOCOL_IP6_NONXT;
+
+	  if (ip2->protocol == IP_PROTOCOL_IPV6_ROUTE)
+	    {
+	      sr2 = (void *) (ip2 + 1);
+	      sr2->protocol = IP_PROTOCOL_IP6_NONXT;
+	    }
+	  else
+	    ip2->protocol = IP_PROTOCOL_IP6_NONXT;
+
+	  if (ip3->protocol == IP_PROTOCOL_IPV6_ROUTE)
+	    {
+	      sr3 = (void *) (ip3 + 1);
+	      sr3->protocol = IP_PROTOCOL_IP6_NONXT;
+	    }
+	  else
+	    ip3->protocol = IP_PROTOCOL_IP6_NONXT;
 
 	  /* Which Traffic class and flow label do I set ? */
 	  //ip0->ip_version_traffic_class_and_flow_label = clib_host_to_net_u32(0|((6&0xF)<<28)|((ip0_encap->tos&0xFF)<<20));
@@ -1930,8 +1963,13 @@ sr_policy_rewrite_encaps_l2 (vlib_main_t * vm, vlib_node_runtime_t * node,
 	  ip0->payload_length =
 	    clib_host_to_net_u16 (b0->current_length - sizeof (ip6_header_t));
 
-	  sr0 = (void *) (ip0 + 1);
-	  sr0->protocol = IP_PROTOCOL_IP6_NONXT;
+	  if (ip0->protocol == IP_PROTOCOL_IPV6_ROUTE)
+	    {
+	      sr0 = (void *) (ip0 + 1);
+	      sr0->protocol = IP_PROTOCOL_IP6_NONXT;
+	    }
+	  else
+	    ip0->protocol = IP_PROTOCOL_IP6_NONXT;
 
 	  if (PREDICT_FALSE (node->flags & VLIB_NODE_FLAG_TRACE) &&
 	      PREDICT_FALSE (b0->flags & VLIB_BUFFER_IS_TRACED))
