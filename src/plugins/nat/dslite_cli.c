@@ -161,6 +161,56 @@ dslite_show_aftr_ip6_addr_command_fn (vlib_main_t * vm,
   return 0;
 }
 
+static clib_error_t *
+dslite_set_b4_tunnel_addr_command_fn (vlib_main_t * vm,
+				      unformat_input_t * input,
+				      vlib_cli_command_t * cmd)
+{
+  dslite_main_t *dm = &dslite_main;
+  unformat_input_t _line_input, *line_input = &_line_input;
+  ip6_address_t ip6_addr;
+  int rv;
+  clib_error_t *error = 0;
+
+  /* Get a line of input. */
+  if (!unformat_user (input, unformat_line_input, line_input))
+    return 0;
+
+  while (unformat_check_input (line_input) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (line_input, "%U", unformat_ip6_address, &ip6_addr))
+	;
+      else
+	{
+	  error = clib_error_return (0, "unknown input '%U'",
+				     format_unformat_error, line_input);
+	  goto done;
+	}
+    }
+
+  rv = dslite_set_b4_ip6_addr (dm, &ip6_addr);
+
+  if (rv)
+    error =
+      clib_error_return (0, "Set DS-Lite B4 tunnel endpoint address failed.");
+
+done:
+  unformat_free (line_input);
+
+  return error;
+}
+
+static clib_error_t *
+dslite_show_b4_ip6_addr_command_fn (vlib_main_t * vm,
+				    unformat_input_t * input,
+				    vlib_cli_command_t * cmd)
+{
+  dslite_main_t *dm = &dslite_main;
+
+  vlib_cli_output (vm, "%U", format_ip6_address, &dm->b4_ip6_addr);
+  return 0;
+}
+
 static u8 *
 format_dslite_session (u8 * s, va_list * args)
 {
@@ -261,6 +311,18 @@ VLIB_CLI_COMMAND (dslite_show_aftr_ip6_addr, static) = {
   .path = "show dslite aftr-tunnel-endpoint-address",
   .short_help = "show dslite aftr-tunnel-endpoint-address",
   .function = dslite_show_aftr_ip6_addr_command_fn,
+};
+
+VLIB_CLI_COMMAND (dslite_set_b4_tunnel_addr, static) = {
+  .path = "dslite set b4-tunnel-endpoint-address",
+  .short_help = "dslite set b4-tunnel-endpoint-address <ip6>",
+  .function = dslite_set_b4_tunnel_addr_command_fn,
+};
+
+VLIB_CLI_COMMAND (dslite_show_b4_ip6_addr, static) = {
+  .path = "show dslite b4-tunnel-endpoint-address",
+  .short_help = "show dslite b4-tunnel-endpoint-address",
+  .function = dslite_show_b4_ip6_addr_command_fn,
 };
 
 VLIB_CLI_COMMAND (dslite_show_sessions, static) = {

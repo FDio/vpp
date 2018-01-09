@@ -33,7 +33,9 @@ nat_plugin_la_SOURCES = nat/nat.c		\
         nat/dslite.c                         	\
         nat/dslite_in2out.c                  	\
         nat/dslite_out2in.c                  	\
-        nat/dslite_cli.c
+        nat/dslite_cli.c                        \
+        nat/dslite_ce_encap.c                   \
+        nat/dslite_ce_decap.c
 
 API_FILES += nat/nat.api
 
