@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "fafb75be_92a4a54b",
+        "filename": "src/svm/svm.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 79,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-09T19:59:26Z",
+      "side": 1,
+      "message": "not really, leftover from previous version of the code",
+      "parentUuid": "735aa411_b4dc1cdd",
+      "range": {
+        "startLine": 79,
+        "startChar": 10,
+        "endLine": 79,
+        "endChar": 54
+      },
+      "revId": "7a4b7ace8a084b33e08aba6bf278e090c25408f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "803cf1fe_17078552",
         "filename": "src/svm/svm.c",
         "patchSetId": 1
@@ -36,6 +60,30 @@
       "writtenOn": "2018-01-09T18:44:19Z",
       "side": 1,
       "message": "I think\n\n  bit \u003d 64 - bit;\n\nis needed after the CLZ.",
+      "range": {
+        "startLine": 84,
+        "startChar": 2,
+        "endLine": 84,
+        "endChar": 34
+      },
+      "revId": "7a4b7ace8a084b33e08aba6bf278e090c25408f7",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "27443d48_593f3b83",
+        "filename": "src/svm/svm.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-09T19:59:26Z",
+      "side": 1,
+      "message": "yes,another victim of code-reshuffling,original version had it :)",
+      "parentUuid": "803cf1fe_17078552",
       "range": {
         "startLine": 84,
         "startChar": 2,
