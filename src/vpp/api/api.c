@@ -164,16 +164,16 @@ static void
 vl_api_cli_t_handler (vl_api_cli_t * mp)
 {
   vl_api_cli_reply_t *rp;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   vlib_main_t *vm = vlib_get_main ();
   api_main_t *am = &api_main;
   unformat_input_t input;
   u8 *shmem_vec = 0;
   void *oldheap;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;;
 
   rp = vl_msg_api_alloc (sizeof (*rp));
   rp->_vl_msg_id = ntohs (VL_API_CLI_REPLY);
@@ -193,7 +193,7 @@ vl_api_cli_t_handler (vl_api_cli_t * mp)
 
   rp->reply_in_shmem = (uword) shmem_vec;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rp);
+  vl_api_send_msg (reg, (u8 *) rp);
 }
 
 static void

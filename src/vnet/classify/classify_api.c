@@ -182,7 +182,8 @@ static void
 
 static void
 send_policer_classify_details (u32 sw_if_index,
-			       u32 table_index, svm_queue_t * q, u32 context)
+			       u32 table_index, vl_api_registration_t * reg,
+			       u32 context)
 {
   vl_api_policer_classify_details_t *mp;
 
@@ -193,19 +194,19 @@ send_policer_classify_details (u32 sw_if_index,
   mp->sw_if_index = htonl (sw_if_index);
   mp->table_index = htonl (table_index);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   policer_classify_main_t *pcm = &policer_classify_main;
   u32 *vec_tbl;
   int i;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
@@ -217,7 +218,7 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
 	  if (vec_elt (vec_tbl, i) == ~0)
 	    continue;
 
-	  send_policer_classify_details (i, vec_elt (vec_tbl, i), q,
+	  send_policer_classify_details (i, vec_elt (vec_tbl, i), reg,
 					 mp->context);
 	}
     }
@@ -226,10 +227,10 @@ vl_api_policer_classify_dump_t_handler (vl_api_policer_classify_dump_t * mp)
 static void
 vl_api_classify_table_ids_t_handler (vl_api_classify_table_ids_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   vnet_classify_main_t *cm = &vnet_classify_main;
@@ -253,7 +254,7 @@ vl_api_classify_table_ids_t_handler (vl_api_classify_table_ids_t * mp)
   clib_memcpy (rmp->ids, table_ids, count * sizeof (u32));
   rmp->retval = 0;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 
   vec_free (table_ids);
 }
@@ -311,10 +312,10 @@ static void
 static void
 vl_api_classify_table_info_t_handler (vl_api_classify_table_info_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   vl_api_classify_table_info_reply_t *rmp = 0;
@@ -355,11 +356,11 @@ vl_api_classify_table_info_t_handler (vl_api_classify_table_info_t * mp)
       rmp->retval = ntohl (VNET_API_ERROR_CLASSIFY_TABLE_NOT_FOUND);
     }
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
-send_classify_session_details (svm_queue_t * q,
+send_classify_session_details (vl_api_registration_t * reg,
 			       u32 table_id,
 			       u32 match_length,
 			       vnet_classify_entry_t * e, u32 context)
@@ -377,20 +378,20 @@ send_classify_session_details (svm_queue_t * q,
   rmp->match_length = ntohl (match_length);
   clib_memcpy (rmp->match, e->key, match_length);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_classify_session_dump_t_handler (vl_api_classify_session_dump_t * mp)
 {
   vnet_classify_main_t *cm = &vnet_classify_main;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
   u32 table_id = ntohl (mp->table_id);
   vnet_classify_table_t *t;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
@@ -419,7 +420,7 @@ vl_api_classify_session_dump_t_handler (vl_api_classify_session_dump_t * mp)
                       continue;
 
                     send_classify_session_details
-                      (q, table_id, t->match_n_vectors * sizeof (u32x4),
+                      (reg, table_id, t->match_n_vectors * sizeof (u32x4),
                        v, mp->context);
                   }
               }
@@ -455,7 +456,8 @@ static void
 
 static void
 send_flow_classify_details (u32 sw_if_index,
-			    u32 table_index, svm_queue_t * q, u32 context)
+			    u32 table_index, vl_api_registration_t * reg,
+			    u32 context)
 {
   vl_api_flow_classify_details_t *mp;
 
@@ -466,19 +468,19 @@ send_flow_classify_details (u32 sw_if_index,
   mp->sw_if_index = htonl (sw_if_index);
   mp->table_index = htonl (table_index);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_flow_classify_dump_t_handler (vl_api_flow_classify_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   flow_classify_main_t *pcm = &flow_classify_main;
   u32 *vec_tbl;
   int i;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   vec_tbl = pcm->classify_table_index_by_sw_if_index[mp->type];
@@ -490,7 +492,7 @@ vl_api_flow_classify_dump_t_handler (vl_api_flow_classify_dump_t * mp)
 	  if (vec_elt (vec_tbl, i) == ~0)
 	    continue;
 
-	  send_flow_classify_details (i, vec_elt (vec_tbl, i), q,
+	  send_flow_classify_details (i, vec_elt (vec_tbl, i), reg,
 				      mp->context);
 	}
     }

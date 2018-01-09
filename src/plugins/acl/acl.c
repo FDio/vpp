@@ -138,13 +138,11 @@ vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
   acl_main_t *am = &acl_main;
   vl_api_acl_plugin_get_version_reply_t *rmp;
   int msg_size = sizeof (*rmp);
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   rmp = vl_msg_api_alloc (msg_size);
   memset (rmp, 0, msg_size);
@@ -154,7 +152,7 @@ vl_api_acl_plugin_get_version_t_handler (vl_api_acl_plugin_get_version_t * mp)
   rmp->major = htonl (ACL_PLUGIN_VERSION_MAJOR);
   rmp->minor = htonl (ACL_PLUGIN_VERSION_MINOR);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
@@ -1871,7 +1869,7 @@ copy_acl_rule_to_api_rule (vl_api_acl_rule_t * api_rule, acl_rule_t * r)
 }
 
 static void
-send_acl_details (acl_main_t * am, svm_queue_t * q,
+send_acl_details (acl_main_t * am, vl_api_registration_t * reg,
 		  acl_list_t * acl, u32 context)
 {
   vl_api_acl_details_t *mp;
@@ -1897,7 +1895,7 @@ send_acl_details (acl_main_t * am, svm_queue_t * q,
     }
 
   clib_mem_set_heap (oldheap);
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 
@@ -1907,15 +1905,12 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
   acl_main_t *am = &acl_main;
   u32 acl_index;
   acl_list_t *acl;
-
   int rv = -1;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   if (mp->acl_index == ~0)
     {
@@ -1923,7 +1918,7 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
     /* Just dump all ACLs */
     pool_foreach (acl, am->acls,
     ({
-      send_acl_details(am, q, acl, mp->context);
+      send_acl_details(am, reg, acl, mp->context);
     }));
     /* *INDENT-ON* */
     }
@@ -1933,7 +1928,7 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
       if (!pool_is_free_index (am->acls, acl_index))
 	{
 	  acl = pool_elt_at_index (am->acls, acl_index);
-	  send_acl_details (am, q, acl, mp->context);
+	  send_acl_details (am, reg, acl, mp->context);
 	}
     }
 
@@ -1946,7 +1941,7 @@ vl_api_acl_dump_t_handler (vl_api_acl_dump_t * mp)
 
 static void
 send_acl_interface_list_details (acl_main_t * am,
-				 svm_queue_t * q,
+				 vl_api_registration_t * reg,
 				 u32 sw_if_index, u32 context)
 {
   vl_api_acl_interface_list_details_t *mp;
@@ -1987,7 +1982,7 @@ send_acl_interface_list_details (acl_main_t * am,
 	htonl (am->output_acl_vec_by_sw_if_index[sw_if_index][i]);
     }
   clib_mem_set_heap (oldheap);
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
@@ -1999,20 +1994,18 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
   vnet_interface_main_t *im = &am->vnet_main->interface_main;
 
   u32 sw_if_index;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   if (mp->sw_if_index == ~0)
     {
     /* *INDENT-OFF* */
     pool_foreach (swif, im->sw_interfaces,
     ({
-      send_acl_interface_list_details(am, q, swif->sw_if_index, mp->context);
+      send_acl_interface_list_details(am, reg, swif->sw_if_index, mp->context);
     }));
     /* *INDENT-ON* */
     }
@@ -2020,7 +2013,7 @@ vl_api_acl_interface_list_dump_t_handler (vl_api_acl_interface_list_dump_t *
     {
       sw_if_index = ntohl (mp->sw_if_index);
       if (!pool_is_free_index (im->sw_interfaces, sw_if_index))
-	send_acl_interface_list_details (am, q, sw_if_index, mp->context);
+	send_acl_interface_list_details (am, reg, sw_if_index, mp->context);
     }
 }
 
@@ -2113,7 +2106,7 @@ static void
 }
 
 static void
-send_macip_acl_details (acl_main_t * am, svm_queue_t * q,
+send_macip_acl_details (acl_main_t * am, vl_api_registration_t * reg,
 			macip_acl_list_t * acl, u32 context)
 {
   vl_api_macip_acl_details_t *mp;
@@ -2158,7 +2151,7 @@ send_macip_acl_details (acl_main_t * am, svm_queue_t * q,
       mp->count = 0;
     }
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 
@@ -2168,22 +2161,21 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
   acl_main_t *am = &acl_main;
   macip_acl_list_t *acl;
 
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   if (mp->acl_index == ~0)
     {
       /* Just dump all ACLs for now, with sw_if_index = ~0 */
       pool_foreach (acl, am->macip_acls, (
 					   {
-					   send_macip_acl_details (am, q, acl,
-								   mp->
-								   context);}
+					   send_macip_acl_details (am, reg,
+								   acl,
+								   mp->context);
+					   }
 		    ));
       /* *INDENT-ON* */
     }
@@ -2193,7 +2185,7 @@ vl_api_macip_acl_dump_t_handler (vl_api_macip_acl_dump_t * mp)
       if (!pool_is_free_index (am->macip_acls, acl_index))
 	{
 	  acl = pool_elt_at_index (am->macip_acls, acl_index);
-	  send_macip_acl_details (am, q, acl, mp->context);
+	  send_macip_acl_details (am, reg, acl, mp->context);
 	}
     }
 }
@@ -2206,14 +2198,12 @@ vl_api_macip_acl_interface_get_t_handler (vl_api_macip_acl_interface_get_t *
   vl_api_macip_acl_interface_get_reply_t *rmp;
   u32 count = vec_len (am->macip_acl_by_sw_if_index);
   int msg_size = sizeof (*rmp) + sizeof (rmp->acls[0]) * count;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   int i;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   rmp = vl_msg_api_alloc (msg_size);
   memset (rmp, 0, msg_size);
@@ -2226,12 +2216,12 @@ vl_api_macip_acl_interface_get_t_handler (vl_api_macip_acl_interface_get_t *
       rmp->acls[i] = htonl (am->macip_acl_by_sw_if_index[i]);
     }
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 send_macip_acl_interface_list_details (acl_main_t * am,
-				       svm_queue_t * q,
+				       vl_api_registration_t * reg,
 				       u32 sw_if_index,
 				       u32 acl_index, u32 context)
 {
@@ -2250,22 +2240,20 @@ send_macip_acl_interface_list_details (acl_main_t * am,
   rmp->sw_if_index = htonl (sw_if_index);
   rmp->acls[0] = htonl (acl_index);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
   vl_api_macip_acl_interface_list_dump_t_handler
   (vl_api_macip_acl_interface_list_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   acl_main_t *am = &acl_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   if (sw_if_index == ~0)
     {
@@ -2273,7 +2261,7 @@ static void
       {
 	if (~0 != am->macip_acl_by_sw_if_index[sw_if_index])
 	  {
-	    send_macip_acl_interface_list_details (am, q, sw_if_index,
+	    send_macip_acl_interface_list_details (am, reg, sw_if_index,
 						   am->macip_acl_by_sw_if_index
 						   [sw_if_index],
 						   mp->context);
@@ -2284,7 +2272,7 @@ static void
     {
       if (vec_len (am->macip_acl_by_sw_if_index) > sw_if_index)
 	{
-	  send_macip_acl_interface_list_details (am, q, sw_if_index,
+	  send_macip_acl_interface_list_details (am, reg, sw_if_index,
 						 am->macip_acl_by_sw_if_index
 						 [sw_if_index], mp->context);
 	}

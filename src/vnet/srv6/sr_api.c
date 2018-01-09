@@ -191,7 +191,7 @@ static void vl_api_sr_steering_add_del_t_handler
 }
 
 static void send_sr_localsid_details
-  (ip6_sr_localsid_t * t, svm_queue_t * q, u32 context)
+  (ip6_sr_localsid_t * t, vl_api_registration_t * reg, u32 context)
 {
   vl_api_sr_localsids_details_t *rmp;
 
@@ -206,26 +206,24 @@ static void send_sr_localsid_details
   rmp->xconnect_iface_or_vrf_table = htonl (t->sw_if_index);
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void vl_api_sr_localsids_dump_t_handler
   (vl_api_sr_localsids_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   ip6_sr_main_t *sm = &sr_main;
   ip6_sr_localsid_t *t;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   /* *INDENT-OFF* */
   pool_foreach (t, sm->localsids,
   ({
-    send_sr_localsid_details(t, q, mp->context);
+    send_sr_localsid_details(t, reg, mp->context);
   }));
   /* *INDENT-ON* */
 }

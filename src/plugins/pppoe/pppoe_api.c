@@ -118,7 +118,7 @@ out:
 }
 
 static void send_pppoe_session_details
-  (pppoe_session_t * t, svm_queue_t * q, u32 context)
+  (pppoe_session_t * t, vl_api_registration_t * reg, u32 context)
 {
   vl_api_pppoe_session_details_t *rmp;
   ip4_main_t *im4 = &ip4_main;
@@ -146,22 +146,20 @@ static void send_pppoe_session_details
   rmp->is_ipv6 = is_ipv6;
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   pppoe_main_t *pem = &pppoe_main;
   pppoe_session_t *t;
   u32 sw_if_index;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   sw_if_index = ntohl (mp->sw_if_index);
 
@@ -170,7 +168,7 @@ vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
       /* *INDENT-OFF* */
       pool_foreach (t, pem->sessions,
       ({
-        send_pppoe_session_details(t, q, mp->context);
+        send_pppoe_session_details(t, reg, mp->context);
       }));
       /* *INDENT-ON* */
     }
@@ -182,7 +180,7 @@ vl_api_pppoe_session_dump_t_handler (vl_api_pppoe_session_dump_t * mp)
 	  return;
 	}
       t = &pem->sessions[pem->session_index_by_sw_if_index[sw_if_index]];
-      send_pppoe_session_details (t, q, mp->context);
+      send_pppoe_session_details (t, reg, mp->context);
     }
 }
 

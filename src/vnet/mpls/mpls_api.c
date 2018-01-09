@@ -376,7 +376,7 @@ static void
 
 typedef struct mpls_tunnel_send_walk_ctx_t_
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   u32 index;
   u32 context;
 } mpls_tunnel_send_walk_ctx_t;
@@ -427,20 +427,20 @@ send_mpls_tunnel_entry (u32 mti, void *arg)
   //   mt->mt_label_stack, nlabels * sizeof (u32));
 
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & mp);
+  vl_api_send_msg (ctx->reg, (u8 *) mp);
 }
 
 static void
 vl_api_mpls_tunnel_dump_t_handler (vl_api_mpls_tunnel_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   mpls_tunnel_send_walk_ctx_t ctx = {
-    .q = q,
+    .reg = reg,
     .index = ntohl (mp->tunnel_index),
     .context = mp->context,
   };
@@ -449,7 +449,7 @@ vl_api_mpls_tunnel_dump_t_handler (vl_api_mpls_tunnel_dump_t * mp)
 
 static void
 send_mpls_fib_details (vpe_api_main_t * am,
-		       svm_queue_t * q,
+		       vl_api_registration_t * reg,
 		       const fib_table_t * table,
 		       u32 label, u32 eos,
 		       fib_route_path_encode_t * api_rpaths, u32 context)
@@ -485,7 +485,7 @@ send_mpls_fib_details (vpe_api_main_t * am,
     fp++;
   }
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 typedef struct vl_api_mpls_fib_dump_table_walk_ctx_t_
@@ -507,7 +507,7 @@ static void
 vl_api_mpls_fib_dump_t_handler (vl_api_mpls_fib_dump_t * mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   mpls_main_t *mm = &mpls_main;
   fib_table_t *fib_table;
   mpls_fib_t *mpls_fib;
@@ -519,8 +519,8 @@ vl_api_mpls_fib_dump_t_handler (vl_api_mpls_fib_dump_t * mp)
     .lfeis = NULL,
   };
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
@@ -540,7 +540,7 @@ vl_api_mpls_fib_dump_t_handler (vl_api_mpls_fib_dump_t * mp)
     fib_table = fib_table_get (fib_index, pfx.fp_proto);
     api_rpaths = NULL;
     fib_entry_encode (*lfeip, &api_rpaths);
-    send_mpls_fib_details (am, q,
+    send_mpls_fib_details (am, reg,
 			   fib_table, pfx.fp_label,
 			   pfx.fp_eos, api_rpaths, mp->context);
     vec_free (api_rpaths);

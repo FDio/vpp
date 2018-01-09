@@ -134,13 +134,13 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
 {
   api_main_t *am = &api_main;
   vl_api_api_versions_reply_t *rmp;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   u32 nmsg = vec_len (am->api_version_list);
   int msg_size = sizeof (*rmp) + sizeof (rmp->api_versions[0]) * nmsg;
   int i;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   rmp = vl_msg_api_alloc (msg_size);
@@ -160,7 +160,7 @@ vl_api_api_versions_t_handler (vl_api_api_versions_t * mp)
       strncpy ((char *) rmp->api_versions[i].name, vl->name, 64 - 1);
     }
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 #define foreach_vlib_api_msg                            \
