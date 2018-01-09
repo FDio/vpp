@@ -46,6 +46,29 @@
       "revId": "2b8ce7cefddea73df7ea917ddf96d255d7b9b8da",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "6e0680ec_8dc62ffb",
+        "filename": "src/scripts/vpptop",
+        "patchSetId": 8
+      },
+      "lineNbr": 321,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-01-09T13:08:53Z",
+      "side": 1,
+      "message": "This raises an exception after I run \"clear run\" in vpp.",
+      "range": {
+        "startLine": 321,
+        "startChar": 0,
+        "endLine": 321,
+        "endChar": 1
+      },
+      "revId": "2b8ce7cefddea73df7ea917ddf96d255d7b9b8da",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
