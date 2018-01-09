@@ -108,7 +108,18 @@ vl_api_lb_add_del_vip_t_handler
   vl_api_lb_conf_reply_t * rmp;
   int rv = 0;
   ip46_address_t prefix;
-  memcpy(&prefix.ip6, mp->ip_prefix, sizeof(prefix.ip6));
+  u8 prefix_length = mp->prefix_length;
+
+  if (mp->is_ipv6 == 0)
+    {
+      prefix_length += 96;
+      memcpy(&prefix.ip4, mp->ip_prefix, sizeof(prefix.ip4));
+      prefix.pad[0] = prefix.pad[1] = prefix.pad[2] = 0;
+    }
+  else
+    {
+      memcpy(&prefix.ip6, mp->ip_prefix, sizeof(prefix.ip6));
+    }
 
   if (mp->is_del) {
     u32 vip_index;
@@ -117,7 +128,7 @@ vl_api_lb_add_del_vip_t_handler
   } else {
     u32 vip_index;
     lb_vip_type_t type;
-    if (ip46_prefix_is_ip4(&prefix, mp->prefix_length)) {
+    if (mp->is_ipv6 == 0) {
       type = mp->is_gre4?LB_VIP_TYPE_IP4_GRE4:LB_VIP_TYPE_IP4_GRE6;
     } else {
       type = mp->is_gre4?LB_VIP_TYPE_IP6_GRE4:LB_VIP_TYPE_IP6_GRE6;
@@ -150,7 +161,38 @@ vl_api_lb_add_del_as_t_handler
   vl_api_lb_conf_reply_t * rmp;
   int rv = 0;
   u32 vip_index;
-  if ((rv = lb_vip_find_index((ip46_address_t *)mp->vip_ip_prefix,
+
+  ip46_address_t vip_ip_prefix;
+  u8 vip_prefix_length = mp->vip_prefix_length;
+
+  if (mp->vip_is_ipv6 == 0)
+    {
+      vip_prefix_length += 96;
+      memcpy(&vip_ip_prefix.ip4, mp->vip_ip_prefix,
+	     sizeof(vip_ip_prefix.ip4));
+      vip_ip_prefix.pad[0] = vip_ip_prefix.pad[1] = vip_ip_prefix.pad[2] = 0;
+    }
+  else
+    {
+      memcpy(&vip_ip_prefix.ip6, mp->vip_ip_prefix,
+	     sizeof(vip_ip_prefix.ip6));
+    }
+
+  ip46_address_t as_address;
+
+  if (mp->as_is_ipv6 == 0)
+    {
+      memcpy(&as_address.ip4, mp->as_address,
+	     sizeof(as_address.ip4));
+      as_address.pad[0] = as_address.pad[1] = as_address.pad[2] = 0;
+    }
+  else
+    {
+      memcpy(&as_address.ip6, mp->as_address,
+	     sizeof(as_address.ip6));
+    }
+
+    if ((rv = lb_vip_find_index((ip46_address_t *)mp->vip_ip_prefix,
                               mp->vip_prefix_length, &vip_index)))
     goto done;
 
