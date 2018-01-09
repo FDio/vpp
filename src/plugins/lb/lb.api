@@ -35,6 +35,7 @@ autoreply define lb_add_del_vip {
   u32 context;
   u8 ip_prefix[16];
   u8 prefix_length;
+  u8 is_ipv6;
   u8 is_gre4;
   u32 new_flows_table_length;
   u8 is_del;
@@ -53,6 +54,8 @@ autoreply define lb_add_del_as {
   u32 context;
   u8 vip_ip_prefix[16];
   u8 vip_prefix_length;
+  u8 vip_is_ipv6;
   u8 as_address[16];
+  u8 as_is_ipv6;
   u8 is_del;
 };
