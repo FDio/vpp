@@ -114,6 +114,16 @@ clib_cpu_time_now (void)
   return (u64) lo + ((u64) hi2 << (u64) 32);
 }
 
+#elif defined (__aarch64__)
+always_inline u64
+clib_cpu_time_now (void)
+{
+  u64 vct;
+  /* User access to cntvct_el0 is enabled in Linux kernel since 3.12. */
+  asm volatile ("mrs %0, cntvct_el0":"=r" (vct));
+  return vct;
+}
+
 #elif defined (__arm__)
 #if defined(__ARM_ARCH_8A__)
 always_inline u64
@@ -162,18 +172,6 @@ clib_cpu_time_now (void)
 		" mvc .s2 TSCH,%1\n" " rint\n":"=b" (l), "=b" (h));
 
   return ((u64) h << 32) | l;
-}
-
-#elif defined (__aarch64__)
-always_inline u64
-clib_cpu_time_now (void)
-{
-  u64 tsc;
-
-  /* Works on Cavium ThunderX. Other platforms: YMMV */
-  asm volatile ("mrs %0, cntvct_el0":"=r" (tsc));
-
-  return tsc;
 }
 
 #else
