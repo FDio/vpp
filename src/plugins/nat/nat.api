@@ -1165,3 +1165,10 @@ autoreply define dslite_set_aftr_addr {
   u8 ip4_addr[4];
   u8 ip6_addr[16];
 };
+
+autoreply define dslite_set_b4_addr {
+  u32 client_index;
+  u32 context;
+  u8 ip4_addr[4];
+  u8 ip6_addr[16];
+};

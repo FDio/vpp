@@ -1818,6 +1818,17 @@ class VppPapiProvider(object):
             {'ip4_addr': ip4,
              'ip6_addr': ip6})
 
+    def dslite_set_b4_addr(self, ip6, ip4):
+        """Set DS-Lite B4 IPv6 address
+
+        :param ip4: IPv4 address
+        :param ip6: IPv6 address
+        """
+        return self.api(
+            self.papi.dslite_set_b4_addr,
+            {'ip4_addr': ip4,
+             'ip6_addr': ip6})
+
     def dslite_add_del_pool_addr_range(
             self,
             start_addr,
