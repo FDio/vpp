@@ -16,6 +16,24 @@
       "revId": "0a0ca02525b76e8d13f643b0c3a48c9ef690ebac",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "77995f1d_a752dcaf",
+        "filename": "dpdk/dpdk-17.11_patches/0001-ena-pmd-no-tx-flags.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 366
+      },
+      "writtenOn": "2018-01-09T03:37:06Z",
+      "side": 1,
+      "message": "I have contacted the ENA PMD maintainers. They asked that I create an issue on github, which I have done. That issue can be found at https://github.com/amzn/amzn-drivers/issues/51. It took a while to get any response and there has been no further communication or action taken on the issue since then.\n\nWould it be ok to use this change as is and it can be discarded or updated later if the maintainers resolve the issue upstream? The issue this addresses is causing me trouble with testing. I keep having to rebase a branch with the patch on it and build from that by hand outside of my company\u0027s normal build process. I believe the patch is low risk.",
+      "parentUuid": "43bd999e_7950449b",
+      "revId": "0a0ca02525b76e8d13f643b0c3a48c9ef690ebac",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
