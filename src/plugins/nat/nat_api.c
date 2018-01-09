@@ -2385,10 +2385,14 @@ vl_api_dslite_set_aftr_addr_t_handler (vl_api_dslite_set_aftr_addr_t * mp)
   dslite_main_t *dm = &dslite_main;
   int rv = 0;
   ip6_address_t ip6_addr;
+  ip4_address_t ip4_addr;
 
   memcpy (&ip6_addr.as_u8, mp->ip6_addr, 16);
+  memcpy (&ip4_addr.as_u8, mp->ip4_addr, 4);
 
   rv = dslite_set_aftr_ip6_addr (dm, &ip6_addr);
+  if (rv == 0)
+    rv = dslite_set_aftr_ip4_addr (dm, &ip4_addr);
 
   REPLY_MACRO (VL_API_DSLITE_SET_AFTR_ADDR_REPLY);
 }
@@ -2403,6 +2407,96 @@ vl_api_dslite_set_aftr_addr_t_print (vl_api_dslite_set_aftr_addr_t * mp,
   s = format (s, "ip6_addr %U ip4_addr %U\n",
 	      format_ip6_address, mp->ip6_addr,
 	      format_ip4_address, mp->ip4_addr);
+
+  FINISH;
+}
+
+static void
+vl_api_dslite_get_aftr_addr_t_handler (vl_api_dslite_get_aftr_addr_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_dslite_get_aftr_addr_reply_t *rmp;
+  dslite_main_t *dm = &dslite_main;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_DSLITE_GET_AFTR_ADDR_REPLY,
+  ({
+    memcpy (rmp->ip4_addr, &dm->aftr_ip4_addr.as_u8, 4);
+    memcpy (rmp->ip6_addr, &dm->aftr_ip6_addr.as_u8, 16);
+  }))
+  /* *INDENT-ON* */
+}
+
+static void *
+vl_api_dslite_get_aftr_addr_t_print (vl_api_dslite_get_aftr_addr_t * mp,
+				     void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dslite_get_aftr_addr");
+
+  FINISH;
+}
+
+static void
+vl_api_dslite_set_b4_addr_t_handler (vl_api_dslite_set_b4_addr_t * mp)
+{
+  vl_api_dslite_set_b4_addr_reply_t *rmp;
+  snat_main_t *sm = &snat_main;
+  dslite_main_t *dm = &dslite_main;
+  int rv = 0;
+  ip6_address_t ip6_addr;
+  ip4_address_t ip4_addr;
+
+  memcpy (&ip6_addr.as_u8, mp->ip6_addr, 16);
+  memcpy (&ip4_addr.as_u8, mp->ip4_addr, 4);
+
+  rv = dslite_set_b4_ip6_addr (dm, &ip6_addr);
+  if (rv == 0)
+    rv = dslite_set_b4_ip4_addr (dm, &ip4_addr);
+
+  REPLY_MACRO (VL_API_DSLITE_SET_B4_ADDR_REPLY);
+}
+
+static void *
+vl_api_dslite_set_b4_addr_t_print (vl_api_dslite_set_b4_addr_t * mp,
+				   void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dslite_set_b4_addr ");
+  s = format (s, "ip6_addr %U ip4_addr %U\n",
+	      format_ip6_address, mp->ip6_addr,
+	      format_ip6_address, mp->ip4_addr);
+
+  FINISH;
+}
+
+static void
+vl_api_dslite_get_b4_addr_t_handler (vl_api_dslite_get_b4_addr_t * mp)
+{
+  snat_main_t *sm = &snat_main;
+  vl_api_dslite_get_b4_addr_reply_t *rmp;
+  dslite_main_t *dm = &dslite_main;
+  int rv = 0;
+
+  /* *INDENT-OFF* */
+  REPLY_MACRO2 (VL_API_DSLITE_GET_AFTR_ADDR_REPLY,
+  ({
+    memcpy (rmp->ip4_addr, &dm->b4_ip4_addr.as_u8, 4);
+    memcpy (rmp->ip6_addr, &dm->b4_ip6_addr.as_u8, 16);
+  }))
+  /* *INDENT-ON* */
+}
+
+static void *
+vl_api_dslite_get_b4_addr_t_print (vl_api_dslite_get_b4_addr_t * mp,
+				   void *handle)
+{
+  u8 *s;
+
+  s = format (0, "SCRIPT: dslite_get_b4_addr");
 
   FINISH;
 }
@@ -2507,7 +2601,10 @@ _(NAT64_ADD_DEL_PREFIX, nat64_add_del_prefix)                           \
 _(NAT64_PREFIX_DUMP, nat64_prefix_dump)                                 \
 _(NAT64_ADD_DEL_INTERFACE_ADDR, nat64_add_del_interface_addr)           \
 _(DSLITE_ADD_DEL_POOL_ADDR_RANGE, dslite_add_del_pool_addr_range)       \
-_(DSLITE_SET_AFTR_ADDR, dslite_set_aftr_addr)
+_(DSLITE_SET_AFTR_ADDR, dslite_set_aftr_addr)                           \
+_(DSLITE_GET_AFTR_ADDR, dslite_get_aftr_addr)                           \
+_(DSLITE_SET_B4_ADDR, dslite_set_b4_addr)                               \
+_(DSLITE_GET_B4_ADDR, dslite_get_b4_addr)
 
 /* Set up the API message handling tables */
 static clib_error_t *

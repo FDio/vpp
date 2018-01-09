@@ -1159,9 +1159,72 @@ autoreply define dslite_add_del_pool_addr_range {
   u8 is_add;
 };
 
+/** \brief Set AFTR IPv6 and IPv4 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip4_addr - IPv4 address
+    @param ip6_addr - IP64 address
+*/
 autoreply define dslite_set_aftr_addr {
   u32 client_index;
   u32 context;
+  u8 ip4_addr[4];
+  u8 ip6_addr[16];
+};
+
+/** \brief Get AFTR IPv6 and IPv4 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define dslite_get_aftr_addr {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Response to get AFTR IPv6 and IPv4 addresses
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip4_addr - IPv4 address
+    @param ip6_addr - IP64 address
+*/
+define dslite_get_aftr_addr_reply {
+  u32 context;
+  i32 retval;
+  u8 ip4_addr[4];
+  u8 ip6_addr[16];
+};
+
+/** \brief Set B4 IPv6 and IPv4 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param ip4_addr - IPv4 address
+    @param ip6_addr - IP64 address
+*/
+autoreply define dslite_set_b4_addr {
+  u32 client_index;
+  u32 context;
+  u8 ip4_addr[4];
+  u8 ip6_addr[16];
+};
+
+/** \brief Get B4 IPv6 and IPv4 addresses
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+*/
+define dslite_get_b4_addr {
+  u32 client_index;
+  u32 context;
+};
+
+/** \brief Response to get B4 IPv6 and IPv4 addresses
+    @param context - sender context, to match reply w/ request
+    @param retval - return code
+    @param ip4_addr - IPv4 address
+    @param ip6_addr - IP64 address
+*/
+define dslite_get_b4_addr_reply {
+  u32 context;
+  i32 retval;
   u8 ip4_addr[4];
   u8 ip6_addr[16];
 };
