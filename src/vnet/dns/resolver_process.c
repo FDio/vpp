@@ -86,12 +86,69 @@ resolve_event (dns_main_t * dm, f64 now, u8 * reply)
     vec_free (ep->dns_response);
 
   /* Handle [sic] recursion AKA CNAME indirection */
-  if (vnet_dns_cname_indirection_nolock (dm, pool_index, reply))
+  rv = vnet_dns_cname_indirection_nolock (dm, pool_index, reply);
+
+  /* CNAME found, further resolution pending, we're done here */
+  if (rv > 0)
     {
       dns_cache_unlock (dm);
       return;
     }
+  /* Server backfire: refused to answer, or sent zero replies */
+  if (rv < 0)
+    {
+      /* Try a different server */
+      if (ep->server_af /* ip6 */ )
+	{
+	  if (0)
+	    clib_warning ("Server %U failed to resolve '%s'",
+			  format_ip6_address,
+			  dm->ip6_name_servers + ep->server_rotor, ep->name);
+	  /* Any more servers to try? */
+	  if (ep->server_fails > 1 || vec_len (dm->ip6_name_servers) <= 1)
+	    {
+	      /* No, tell the client to go away */
+	      goto reply;
+	    }
+	  ep->retry_count = 0;
+	  ep->server_rotor++;
+	  ep->server_fails++;
+	  if (ep->server_rotor >= vec_len (dm->ip6_name_servers))
+	    ep->server_rotor = 0;
+	  if (0)
+	    clib_warning ("Try server %U", format_ip6_address,
+			  dm->ip6_name_servers + ep->server_rotor);
+	  vnet_dns_send_dns6_request
+	    (dm, ep, dm->ip6_name_servers + ep->server_rotor);
+	}
+      else
+	{
+	  if (0)
+	    clib_warning ("Server %U failed to resolve '%s'",
+			  format_ip4_address,
+			  dm->ip4_name_servers + ep->server_rotor, ep->name);
 
+	  if (ep->server_fails > 1 || vec_len (dm->ip4_name_servers) <= 1)
+	    {
+	      /* No, tell the client to go away */
+	      goto reply;
+	    }
+	  ep->retry_count = 0;
+	  ep->server_rotor++;
+	  ep->server_fails++;
+	  if (ep->server_rotor >= vec_len (dm->ip4_name_servers))
+	    ep->server_rotor = 0;
+	  if (0)
+	    clib_warning ("Try server %U", format_ip4_address,
+			  dm->ip4_name_servers + ep->server_rotor);
+	  vnet_dns_send_dns4_request
+	    (dm, ep, dm->ip4_name_servers + ep->server_rotor);
+	}
+      dns_cache_unlock (dm);
+      return;
+    }
+
+reply:
   /* Save the response */
   ep->dns_response = reply;
   /* Pick some sensible default. */

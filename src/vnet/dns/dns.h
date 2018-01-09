@@ -66,6 +66,7 @@ typedef struct
   int retry_count;
   int server_rotor;
   int server_af;
+  int server_fails;
   f64 retry_timer;
 
   /** Cached dns response */
@@ -162,6 +163,13 @@ int vnet_dns_delete_entry_by_index_nolock (dns_main_t * dm, u32 index);
 int
 vnet_dns_resolve_name (dns_main_t * dm, u8 * name, dns_pending_request_t * t,
 		       dns_cache_entry_t ** retp);
+
+void
+vnet_dns_send_dns6_request (dns_main_t * dm,
+			    dns_cache_entry_t * ep, ip6_address_t * server);
+void
+vnet_dns_send_dns4_request (dns_main_t * dm,
+			    dns_cache_entry_t * ep, ip4_address_t * server);
 
 void vnet_send_dns4_reply (dns_main_t * dm, dns_pending_request_t * t,
 			   dns_cache_entry_t * ep, vlib_buffer_t * b0);

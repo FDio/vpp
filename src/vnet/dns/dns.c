@@ -197,9 +197,9 @@ static void vl_api_dns_name_server_add_del_t_handler
   REPLY_MACRO (VL_API_DNS_NAME_SERVER_ADD_DEL_REPLY);
 }
 
-static void
-send_dns4_request (dns_main_t * dm,
-		   dns_cache_entry_t * ep, ip4_address_t * server)
+void
+vnet_dns_send_dns4_request (dns_main_t * dm,
+			    dns_cache_entry_t * ep, ip4_address_t * server)
 {
   vlib_main_t *vm = dm->vlib_main;
   f64 now = vlib_time_now (vm);
@@ -247,7 +247,7 @@ send_dns4_request (dns_main_t * dm,
     {
       clib_warning
 	("route to %U exists, fei %d, get_resolving_interface returned"
-	 " ~0", fei, format_ip4_address, &prefix.fp_addr);
+	 " ~0", format_ip4_address, &prefix.fp_addr, fei);
       return;
     }
 
@@ -313,9 +313,9 @@ found_src_address:
   ep->retry_timer = now + 2.0;
 }
 
-static void
-send_dns6_request (dns_main_t * dm,
-		   dns_cache_entry_t * ep, ip6_address_t * server)
+void
+vnet_dns_send_dns6_request (dns_main_t * dm,
+			    dns_cache_entry_t * ep, ip6_address_t * server)
 {
   vlib_main_t *vm = dm->vlib_main;
   f64 now = vlib_time_now (vm);
@@ -517,11 +517,11 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
   dns_header_t *h;
   dns_query_t *qp;
   u16 tmp;
-  u8 *request;
+  u8 *request, *name_copy;
   u32 qp_offset;
 
   /* This can easily happen if sitting in GDB, etc. */
-  if (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID)
+  if (ep->flags & DNS_CACHE_ENTRY_FLAG_VALID || ep->server_fails > 1)
     return;
 
   /* Construct the dns request, if we haven't been here already */
@@ -533,14 +533,29 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
        * per label is 63, enforce that.
        */
       request = name_to_labels (ep->name);
+      name_copy = vec_dup (request);
       qp_offset = vec_len (request);
 
+      /*
+       * At least when testing against "known good" DNS servers:
+       * it turns out that sending 2x requests - one for an A-record
+       * and another for a AAAA-record - seems to work better than
+       * sending a DNS_TYPE_ALL request.
+       */
+
       /* Add space for the query header */
-      vec_validate (request, qp_offset + sizeof (dns_query_t) - 1);
+      vec_validate (request, 2 * qp_offset + 2 * sizeof (dns_query_t) - 1);
 
       qp = (dns_query_t *) (request + qp_offset);
 
-      qp->type = clib_host_to_net_u16 (DNS_TYPE_ALL);
+      qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+      qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+      qp++;
+      clib_memcpy (qp, name_copy, vec_len (name_copy));
+      qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
+      vec_free (name_copy);
+
+      qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
       qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
       /* Punch in space for the dns_header_t */
@@ -554,7 +569,7 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
       /* Ask for a recursive lookup */
       tmp = DNS_RD | DNS_OPCODE_QUERY;
       h->flags = clib_host_to_net_u16 (tmp);
-      h->qdcount = clib_host_to_net_u16 (1);
+      h->qdcount = clib_host_to_net_u16 (2);
       h->nscount = 0;
       h->arcount = 0;
 
@@ -570,8 +585,8 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
 	{
 	  if (vec_len (dm->ip6_name_servers))
 	    {
-	      send_dns6_request (dm, ep,
-				 dm->ip6_name_servers + ep->server_rotor);
+	      vnet_dns_send_dns6_request
+		(dm, ep, dm->ip6_name_servers + ep->server_rotor);
 	      goto out;
 	    }
 	  else
@@ -579,7 +594,8 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
 	}
       if (vec_len (dm->ip4_name_servers))
 	{
-	  send_dns4_request (dm, ep, dm->ip4_name_servers + ep->server_rotor);
+	  vnet_dns_send_dns4_request
+	    (dm, ep, dm->ip4_name_servers + ep->server_rotor);
 	  goto out;
 	}
     }
@@ -606,9 +622,11 @@ vnet_send_dns_request (dns_main_t * dm, dns_cache_entry_t * ep)
     }
 
   if (ep->server_af == 1 /* ip6 */ )
-    send_dns6_request (dm, ep, dm->ip6_name_servers + ep->server_rotor);
+    vnet_dns_send_dns6_request
+      (dm, ep, dm->ip6_name_servers + ep->server_rotor);
   else
-    send_dns4_request (dm, ep, dm->ip4_name_servers + ep->server_rotor);
+    vnet_dns_send_dns4_request
+      (dm, ep, dm->ip4_name_servers + ep->server_rotor);
 
 out:
 
@@ -947,7 +965,7 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply)
     case DNS_RCODE_SERVER_FAILURE:
     case DNS_RCODE_NOT_IMPLEMENTED:
     case DNS_RCODE_REFUSED:
-      return 0;
+      return -1;
     }
 
   curpos = (u8 *) (h + 1);
@@ -971,12 +989,34 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply)
   else
     return 0;
 
-  rr = (dns_rr_t *) pos;
+  /* Walk the answer(s) to see what to do next */
+  for (i = 0; i < clib_net_to_host_u16 (h->anscount); i++)
+    {
+      rr = (dns_rr_t *) pos;
+      switch (clib_net_to_host_u16 (rr->type))
+	{
+	  /* Real address record? Done.. */
+	case DNS_TYPE_A:
+	case DNS_TYPE_AAAA:
+	  return 0;
+	  /* Chase a CNAME pointer? */
+	case DNS_TYPE_CNAME:
+	  goto chase_chain;
 
-  /* This is a real record, not a CNAME record */
-  if (clib_net_to_host_u16 (rr->type) != DNS_TYPE_CNAME)
-    return 0;
+	  /* Some other junk, e.g. a nameserver... */
+	default:
+	  break;
+	}
+      pos += sizeof (*rr) + clib_net_to_host_u16 (rr->rdlength);
+    }
 
+  /* Neither a CNAME nor a real address. Try another server */
+  flags &= ~DNS_RCODE_MASK;
+  flags |= DNS_RCODE_NAME_ERROR;
+  h->flags = clib_host_to_net_u16 (flags);
+  return -1;
+
+chase_chain:
   /* This is a CNAME record, chase the name chain. */
 
   /* The last request is no longer pending.. */
@@ -999,6 +1039,8 @@ found_last_request:
   ep->cname = cname;
   ep->flags |= (DNS_CACHE_ENTRY_FLAG_CNAME | DNS_CACHE_ENTRY_FLAG_VALID);
   /* Save the response */
+  if (ep->dns_response)
+    vec_free (ep->dns_response);
   ep->dns_response = reply;
   /* Set up expiration time */
   ep->expiration_time = now + clib_net_to_host_u32 (rr->ttl);
@@ -2317,7 +2359,7 @@ VLIB_CLI_COMMAND (dns_cache_add_del_command) =
 };
 /* *INDENT-ON* */
 
-#define DNS_FORMAT_TEST 0
+#define DNS_FORMAT_TEST 1
 
 #if DNS_FORMAT_TEST > 0
 #if 0
@@ -2454,7 +2496,6 @@ static u8 dns_reply_data_initializer[] = {
 };
 
 /* google.com */
-#else
 static u8 dns_reply_data_initializer[] =
   { 0x0, 0x0, 0x81, 0x80, 0x0, 0x1, 0x0, 0xe, 0x0, 0x0, 0x0, 0x0, 0x6,
   0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x3, 0x63, 0x6f, 0x6d, 0x0, 0x0, 0xff,
@@ -2487,6 +2528,21 @@ static u8 dns_reply_data_initializer[] =
   0x57,
   0x0, 0x9, 0x0, 0x14, 0x4, 0x61, 0x6c, 0x74, 0x31, 0xc0, 0x9b
 };
+
+#else
+/* www.weatherlink.com */
+static u8 dns_reply_data_initializer[] = {
+  0x00, 0x00, 0x81, 0x80, 0x00, 0x01, 0x00, 0x01,
+  0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77, 0x0b,
+  0x77, 0x65, 0x61, 0x74, 0x68, 0x65, 0x72, 0x6c, 0x69,
+  0x6e, 0x6b, 0x03, 0x63, 0x6f, 0x6d, 0x00, 0x00, 0xff,
+  0x00, 0x01, 0xc0, 0x0c, 0x00, 0x05, 0x00, 0x01, 0x00,
+  0x00, 0x0c, 0x9e, 0x00, 0x1f, 0x0e, 0x64, 0x33, 0x6b,
+  0x72, 0x30, 0x67, 0x75, 0x62, 0x61, 0x31, 0x64, 0x76,
+  0x77, 0x66, 0x0a, 0x63, 0x6c, 0x6f, 0x75, 0x64, 0x66,
+  0x72, 0x6f, 0x6e, 0x74, 0x03, 0x6e, 0x65, 0x74, 0x00,
+};
+
 #endif
 
 static clib_error_t *
