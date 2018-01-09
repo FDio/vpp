@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "8db83a8c_c7dd280a",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2018-01-09T17:23:46Z",
+      "side": 1,
+      "message": "Please provide a desciprtion of the bug (e.g. Jira ticket title)",
+      "range": {
+        "startLine": 7,
+        "startChar": 9,
+        "endLine": 7,
+        "endChar": 20
+      },
+      "revId": "506c227116d8cf2945375c575bb1bd07b1966ae8",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
