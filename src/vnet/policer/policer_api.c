@@ -96,7 +96,7 @@ static void
 send_policer_details (u8 * name,
 		      sse2_qos_pol_cfg_params_st * config,
 		      policer_read_response_type_st * templ,
-		      svm_queue_t * q, u32 context)
+		      vl_api_registration_t * reg, u32 context)
 {
   vl_api_policer_details_t *mp;
 
@@ -130,13 +130,13 @@ send_policer_details (u8 * name,
 
   strncpy ((char *) mp->name, (char *) name, ARRAY_LEN (mp->name) - 1);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   vnet_policer_main_t *pm = &vnet_policer_main;
   hash_pair_t *hp;
   uword *p;
@@ -146,8 +146,8 @@ vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
   sse2_qos_pol_cfg_params_st *config;
   policer_read_response_type_st *templ;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   if (mp->match_name_valid)
@@ -164,7 +164,7 @@ vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
 	  pool_index = p[0];
 	  config = pool_elt_at_index (pm->configs, pool_index);
 	  templ = pool_elt_at_index (pm->policer_templates, pool_index);
-	  send_policer_details (match_name, config, templ, q, mp->context);
+	  send_policer_details (match_name, config, templ, reg, mp->context);
 	}
     }
   else
@@ -176,7 +176,7 @@ vl_api_policer_dump_t_handler (vl_api_policer_dump_t * mp)
         pool_index = hp->value[0];
         config = pool_elt_at_index (pm->configs, pool_index);
         templ = pool_elt_at_index (pm->policer_templates, pool_index);
-        send_policer_details(name, config, templ, q, mp->context);
+        send_policer_details(name, config, templ, reg, mp->context);
       }));
       /* *INDENT-ON* */
     }

@@ -110,16 +110,14 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
   vl_api_map_domain_details_t *rmp;
   map_main_t *mm = &map_main;
   map_domain_t *d;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
   if (pool_elts (mm->domains) == 0)
     return;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   /* *INDENT-OFF* */
   pool_foreach(d, mm->domains,
@@ -141,7 +139,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
     rmp->is_translation = (d->flags & MAP_DOMAIN_TRANSLATION);
     rmp->context = mp->context;
 
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);
+    vl_api_send_msg (reg, (u8 *)&rmp);
   }));
   /* *INDENT-ON* */
 }
@@ -149,7 +147,7 @@ vl_api_map_domain_dump_t_handler (vl_api_map_domain_dump_t * mp)
 static void
 vl_api_map_rule_dump_t_handler (vl_api_map_rule_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   u16 i;
   ip6_address_t dst;
   vl_api_map_rule_details_t *rmp;
@@ -166,11 +164,9 @@ vl_api_map_rule_dump_t_handler (vl_api_map_rule_dump_t * mp)
       return;
     }
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   for (i = 0; i < (0x1 << d->psid_length); i++)
     {
@@ -185,7 +181,7 @@ vl_api_map_rule_dump_t_handler (vl_api_map_rule_dump_t * mp)
       rmp->psid = htons (i);
       clib_memcpy (rmp->ip6_dst, &dst, sizeof (rmp->ip6_dst));
       rmp->context = mp->context;
-      vl_msg_api_send_shmem (q, (u8 *) & rmp);
+      vl_api_send_msg (reg, (u8 *) rmp);
     }
 }
 
@@ -199,9 +195,10 @@ vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t * mp)
   u64 total_pkts[VLIB_N_RX_TX];
   u64 total_bytes[VLIB_N_RX_TX];
   map_main_t *mm = &map_main;
-  svm_queue_t *q = vl_api_client_index_to_input_queue (mp->client_index);
+  vl_api_registration_t *reg;
 
-  if (!q)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
@@ -252,7 +249,7 @@ vl_api_map_summary_stats_t_handler (vl_api_map_summary_stats_t * mp)
 			  (ip4_map_node.index, MAP_ERROR_DECAP_SEC_CHECK));
 
 out:
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 /*

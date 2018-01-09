@@ -148,14 +148,14 @@ static void
 vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
 {
   flow_report_main_t *frm = &flow_report_main;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   vl_api_ipfix_exporter_details_t *rmp;
   ip4_main_t *im = &ip4_main;
   u32 vrf_id;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
-    return;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
@@ -175,7 +175,7 @@ vl_api_ipfix_exporter_dump_t_handler (vl_api_ipfix_exporter_dump_t * mp)
   rmp->template_interval = htonl (frm->template_interval);
   rmp->udp_checksum = (frm->udp_checksum != 0);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
@@ -211,11 +211,11 @@ static void
   (vl_api_ipfix_classify_stream_dump_t * mp)
 {
   flow_report_classify_main_t *fcm = &flow_report_classify_main;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   vl_api_ipfix_classify_stream_details_t *rmp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
@@ -225,7 +225,7 @@ static void
   rmp->domain_id = htonl (fcm->domain_id);
   rmp->src_port = htons (fcm->src_port);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
@@ -308,7 +308,7 @@ out:
 
 static void
 send_ipfix_classify_table_details (u32 table_index,
-				   svm_queue_t * q, u32 context)
+				   vl_api_registration_t * reg, u32 context)
 {
   flow_report_classify_main_t *fcm = &flow_report_classify_main;
   vl_api_ipfix_classify_table_details_t *mp;
@@ -323,7 +323,7 @@ send_ipfix_classify_table_details (u32 table_index,
   mp->ip_version = table->ip_version;
   mp->transport_protocol = table->transport_protocol;
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
@@ -331,16 +331,16 @@ static void
   (vl_api_ipfix_classify_table_dump_t * mp)
 {
   flow_report_classify_main_t *fcm = &flow_report_classify_main;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   u32 i;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   for (i = 0; i < vec_len (fcm->tables); i++)
     if (ipfix_classify_table_index_valid (i))
-      send_ipfix_classify_table_details (i, q, mp->context);
+      send_ipfix_classify_table_details (i, reg, mp->context);
 }
 
 /*

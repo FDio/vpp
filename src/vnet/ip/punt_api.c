@@ -70,7 +70,7 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
   clib_error_t *error;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
   error = vnet_punt_socket_add (vm, ntohl (mp->header_version),
 				mp->is_ip4, mp->l4_protocol,
@@ -81,8 +81,8 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
       clib_error_report (error);
     }
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
@@ -92,7 +92,7 @@ vl_api_punt_socket_register_t_handler (vl_api_punt_socket_register_t * mp)
   char *p = vnet_punt_get_server_pathname ();
   /* Abstract pathnames start with \0 */
   memcpy ((char *) rmp->pathname, p, sizeof (rmp->pathname));
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
@@ -102,7 +102,7 @@ vl_api_punt_socket_deregister_t_handler (vl_api_punt_socket_deregister_t * mp)
   vlib_main_t *vm = vlib_get_main ();
   int rv = 0;
   clib_error_t *error;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
   error = vnet_punt_socket_del (vm, mp->is_ip4, mp->l4_protocol,
 				ntohs (mp->l4_port));
@@ -112,15 +112,15 @@ vl_api_punt_socket_deregister_t_handler (vl_api_punt_socket_deregister_t * mp)
       clib_error_report (error);
     }
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   rmp->_vl_msg_id = htons (VL_API_PUNT_SOCKET_DEREGISTER_REPLY);
   rmp->context = mp->context;
   rmp->retval = htonl (rv);
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 #define vl_msg_name_crc_list

@@ -53,7 +53,7 @@ _(SW_INTERFACE_VHOST_USER_DUMP, sw_interface_vhost_user_dump)
  */
 static void
 send_sw_interface_event_deleted (vpe_api_main_t * am,
-				 svm_queue_t * q, u32 sw_if_index)
+				 vl_api_registration_t * reg, u32 sw_if_index)
 {
   vl_api_sw_interface_event_t *mp;
 
@@ -65,7 +65,7 @@ send_sw_interface_event_deleted (vpe_api_main_t * am,
   mp->admin_up_down = 0;
   mp->link_up_down = 0;
   mp->deleted = 1;
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
@@ -127,6 +127,7 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
   vl_api_delete_vhost_user_if_reply_t *rmp;
   vpe_api_main_t *vam = &vpe_api_main;
   u32 sw_if_index = ntohl (mp->sw_if_index);
+  vl_api_registration_t *reg;
 
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
@@ -136,18 +137,18 @@ vl_api_delete_vhost_user_if_t_handler (vl_api_delete_vhost_user_if_t * mp)
   REPLY_MACRO (VL_API_DELETE_VHOST_USER_IF_REPLY);
   if (!rv)
     {
-      svm_queue_t *q = vl_api_client_index_to_input_queue (mp->client_index);
-      if (!q)
+      reg = vl_api_client_index_to_registration (mp->client_index);
+      if (!reg)
 	return;
 
       vnet_clear_sw_interface_tag (vnm, sw_if_index);
-      send_sw_interface_event_deleted (vam, q, sw_if_index);
+      send_sw_interface_event_deleted (vam, reg, sw_if_index);
     }
 }
 
 static void
 send_sw_interface_vhost_user_details (vpe_api_main_t * am,
-				      svm_queue_t * q,
+				      vl_api_registration_t * reg,
 				      vhost_user_intf_details_t * vui,
 				      u32 context)
 {
@@ -169,7 +170,7 @@ send_sw_interface_vhost_user_details (vpe_api_main_t * am,
   strncpy ((char *) mp->interface_name,
 	   (char *) vui->if_name, ARRAY_LEN (mp->interface_name) - 1);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
@@ -182,10 +183,10 @@ static void
   vlib_main_t *vm = vlib_get_main ();
   vhost_user_intf_details_t *ifaces = NULL;
   vhost_user_intf_details_t *vuid = NULL;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   rv = vhost_user_dump_ifs (vnm, vm, &ifaces);
@@ -194,7 +195,7 @@ static void
 
   vec_foreach (vuid, ifaces)
   {
-    send_sw_interface_vhost_user_details (am, q, vuid, mp->context);
+    send_sw_interface_vhost_user_details (am, reg, vuid, mp->context);
   }
   vec_free (ifaces);
 }
