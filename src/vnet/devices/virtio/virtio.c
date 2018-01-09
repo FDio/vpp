@@ -135,16 +135,19 @@ error:
 }
 
 clib_error_t *
-virtio_vring_free (virtio_if_t * vif, u32 idx)
+virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
 {
-  //TODO free buffers and indirect descriptor allocs
   virtio_vring_t *vring = vec_elt_at_index (vif->vrings, idx);
+
+  if (vring->used)
+    {
+      virtio_free_used_desc (vm, vring);
+      clib_mem_free (vring->used);
+    }
   if (vring->desc)
     clib_mem_free (vring->desc);
   if (vring->avail)
     clib_mem_free (vring->avail);
-  if (vring->used)
-    clib_mem_free (vring->used);
   clib_file_del_by_index (&file_main, vring->call_file_index);
   close (vring->kick_fd);
   close (vring->call_fd);
