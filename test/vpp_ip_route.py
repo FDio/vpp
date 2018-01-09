@@ -308,6 +308,7 @@ class VppIpMRoute(VppObject):
                                               path.nh_itf,
                                               path.nh_i_flags,
                                               table_id=self.table_id,
+                                              bier_imp=path.bier_imp,
                                               is_add=0,
                                               is_ipv6=self.is_ip6)
 

@@ -350,7 +350,7 @@ vl_api_bier_imp_add_t_handler (vl_api_bier_imp_add_t * mp)
     /* *INDENT-OFF* */
     REPLY_MACRO2 (VL_API_BIER_IMP_ADD_REPLY,
     ({
-        rmp->bi_index = bii;
+        rmp->bi_index = ntohl (bii);
     }));
     /* *INDENT-OM* */
 }
