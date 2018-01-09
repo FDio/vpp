@@ -470,10 +470,14 @@ class TestBier(VppTestCase):
         bier_route.add_vpp_config()
 
         #
-        # An imposition object with all bit-positions set
+        # An 2 imposition objects with all bit-positions set
+        # only use the second, but creating 2 tests with a non-zero
+        # value index in the route add
         #
         bi = VppBierImp(self, bti, 333, chr(0xff) * 32)
         bi.add_vpp_config()
+        bi2 = VppBierImp(self, bti, 334, chr(0xff) * 32)
+        bi2.add_vpp_config()
 
         #
         # Add a multicast route that will forward into the BIER doamin
@@ -488,7 +492,7 @@ class TestBier(VppTestCase):
                    VppMRoutePath(0xffffffff,
                                  MRouteItfFlags.MFIB_ITF_FLAG_FORWARD,
                                  proto=DpoProto.DPO_PROTO_BIER,
-                                 bier_imp=bi.bi_index)])
+                                 bier_imp=bi2.bi_index)])
         route_ing_232_1_1_1.add_vpp_config()
 
         #
