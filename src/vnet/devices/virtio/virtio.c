@@ -134,20 +134,41 @@ error:
   return err;
 }
 
-clib_error_t *
-virtio_vring_free (virtio_if_t * vif, u32 idx)
+static_always_inline void
+virtio_free_rx_buffers (vlib_main_t * vm, virtio_vring_t * vring)
 {
-  //TODO free buffers and indirect descriptor allocs
+  u16 used = vring->desc_in_use;
+  u16 next = vring->desc_next;
+  u16 mask = vring->size - 1;
+
+  while (used)
+    {
+      vlib_buffer_free (vm, &vring->buffers[next], 1);
+      next = (next + 1) & mask;
+      used--;
+    }
+}
+
+clib_error_t *
+virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif, u32 idx)
+{
   virtio_vring_t *vring = vec_elt_at_index (vif->vrings, idx);
+
+  clib_file_del_by_index (&file_main, vring->call_file_index);
+  close (vring->kick_fd);
+  close (vring->call_fd);
+  if (vring->used)
+    {
+      if ((idx & 1) == 1)
+	virtio_free_used_desc (vm, vring);
+      else
+	virtio_free_rx_buffers (vm, vring);
+      clib_mem_free (vring->used);
+    }
   if (vring->desc)
     clib_mem_free (vring->desc);
   if (vring->avail)
     clib_mem_free (vring->avail);
-  if (vring->used)
-    clib_mem_free (vring->used);
-  clib_file_del_by_index (&file_main, vring->call_file_index);
-  close (vring->kick_fd);
-  close (vring->call_fd);
   vec_free (vring->buffers);
   return 0;
 }
