@@ -63,7 +63,7 @@ else
 endif
 
 AESNIMB_LIB_TARBALL := v$(IPSEC_MB_VER).tar.gz
-AESNIMB_LIB_TARBALL_URL := http://github.com/01org/intel-ipsec-mb/archive/$(AESNIMB_LIB_TARBALL)
+AESNIMB_LIB_TARBALL_URL := https://github.com/intel/intel-ipsec-mb/archive/$(AESNIMB_LIB_TARBALL)
 AESNIMB_LIB_SOURCE := $(B)/intel-ipsec-mb-$(IPSEC_MB_VER)
 
 ISA_L_CRYPTO_LIB_TARBALL := v$(ISA_L_CRYPTO_VER).tar.gz
