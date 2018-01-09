@@ -219,7 +219,7 @@ vl_api_memif_delete_t_handler (vl_api_memif_delete_t * mp)
 }
 
 static void
-send_memif_details (svm_queue_t * q,
+send_memif_details (vl_api_registration_t * reg,
 		    memif_if_t * mif,
 		    vnet_sw_interface_t * swif,
 		    u8 * interface_name, u32 context)
@@ -255,7 +255,7 @@ send_memif_details (svm_queue_t * q,
   mp->admin_up_down = (swif->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? 1 : 0;
   mp->link_up_down = (hwif->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ? 1 : 0;
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 /**
@@ -270,10 +270,10 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
   vnet_sw_interface_t *swif;
   memif_if_t *mif;
   u8 *if_name = 0;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
@@ -285,7 +285,7 @@ vl_api_memif_dump_t_handler (vl_api_memif_dump_t * mp)
 			format_vnet_sw_interface_name,
 			vnm, swif, 0);
 
-      send_memif_details (q, mif, swif, if_name, mp->context);
+      send_memif_details (reg, mif, swif, if_name, mp->context);
       _vec_len (if_name) = 0;
     }));
   /* *INDENT-ON* */

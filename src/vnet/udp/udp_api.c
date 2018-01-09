@@ -43,7 +43,8 @@
 _(UDP_ENCAP_DUMP, udp_encap_dump)
 
 static void
-send_udp_encap_details (const udp_encap_t * ue, svm_queue_t * q, u32 context)
+send_udp_encap_details (const udp_encap_t * ue, vl_api_registration_t * reg,
+			u32 context)
 {
   vl_api_udp_encap_details_t *mp;
   fib_table_t *fib_table;
@@ -74,24 +75,24 @@ send_udp_encap_details (const udp_encap_t * ue, svm_queue_t * q, u32 context)
   mp->table_id = htonl (fib_table->ft_table_id);
   mp->id = htonl (ue->ue_id);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_udp_encap_dump_t_handler (vl_api_udp_encap_dump_t * mp,
 				 vlib_main_t * vm)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   udp_encap_t *ue;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   pool_foreach(ue, udp_encap_pool,
   ({
-    send_udp_encap_details(ue, q, mp->context);
+    send_udp_encap_details(ue, reg, mp->context);
   }));
   /* *INDENT-ON* */
 }

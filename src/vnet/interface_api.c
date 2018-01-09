@@ -529,7 +529,7 @@ ip_table_bind (fib_protocol_t fproto,
 }
 
 static void
-send_sw_interface_get_table_reply (svm_queue_t * q,
+send_sw_interface_get_table_reply (vl_api_registration_t * reg,
 				   u32 context, int retval, u32 vrf_id)
 {
   vl_api_sw_interface_get_table_reply_t *mp;
@@ -541,13 +541,13 @@ send_sw_interface_get_table_reply (svm_queue_t * q,
   mp->retval = htonl (retval);
   mp->vrf_id = htonl (vrf_id);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_sw_interface_get_table_t_handler (vl_api_sw_interface_get_table_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   fib_table_t *fib_table = 0;
   u32 sw_if_index = ~0;
   u32 fib_index = ~0;
@@ -555,8 +555,8 @@ vl_api_sw_interface_get_table_t_handler (vl_api_sw_interface_get_table_t * mp)
   fib_protocol_t fib_proto = FIB_PROTOCOL_IP4;
   int rv = 0;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   VALIDATE_SW_IF_INDEX (mp);
@@ -575,7 +575,7 @@ vl_api_sw_interface_get_table_t_handler (vl_api_sw_interface_get_table_t * mp)
 
   BAD_SW_IF_INDEX_LABEL;
 
-  send_sw_interface_get_table_reply (q, mp->context, rv, table_id);
+  send_sw_interface_get_table_reply (reg, mp->context, rv, table_id);
 }
 
 static void vl_api_sw_interface_set_unnumbered_t_handler
@@ -724,7 +724,8 @@ event_data_cmp (void *a1, void *a2)
 static void
 send_sw_interface_event (vpe_api_main_t * am,
 			 vpe_client_registration_t * reg,
-			 svm_queue_t * q, vnet_sw_interface_t * swif)
+			 vl_api_registration_t * vl_reg,
+			 vnet_sw_interface_t * swif)
 {
   vl_api_sw_interface_event_t *mp;
   vnet_main_t *vnm = am->vnet_main;
@@ -740,7 +741,7 @@ send_sw_interface_event (vpe_api_main_t * am,
 
   mp->admin_up_down = (swif->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? 1 : 0;
   mp->link_up_down = (hi->flags & VNET_HW_INTERFACE_FLAG_LINK_UP) ? 1 : 0;
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (vl_reg, (u8 *) mp);
 }
 
 static uword
@@ -754,7 +755,7 @@ link_state_process (vlib_main_t * vm,
   vpe_client_registration_t *reg;
   int i;
   u32 prev_sw_if_index;
-  svm_queue_t *q;
+  vl_api_registration_t *vl_reg;
 
   vam->link_state_process_up = 1;
 
@@ -783,15 +784,15 @@ link_state_process (vlib_main_t * vm,
           /* *INDENT-OFF* */
           pool_foreach(reg, vam->interface_events_registrations,
           ({
-            q = vl_api_client_index_to_input_queue (reg->client_index);
-            if (q)
+            vl_reg = vl_api_client_index_to_registration (reg->client_index);
+            if (vl_reg)
               {
                 /* sw_interface may be deleted already */
                 if (!pool_is_free_index (vnm->interface_main.sw_interfaces,
                                          event_data[i]))
                   {
                     swif = vnet_get_sw_interface (vnm, event_data[i]);
-                    send_sw_interface_event (vam, reg, q, swif);
+                    send_sw_interface_event (vam, reg, vl_reg, swif);
                   }
               }
           }));
@@ -948,7 +949,7 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
   uword *p;
   vnet_interface_main_t *im = &vnm->interface_main;
   u64 sup_and_sub_key;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   clib_error_t *error;
 
   VALIDATE_SW_IF_INDEX (mp);
@@ -1003,8 +1004,8 @@ vl_api_create_vlan_subif_t_handler (vl_api_create_vlan_subif_t * mp)
   BAD_SW_IF_INDEX_LABEL;
 
 out:
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (!q)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
@@ -1012,7 +1013,7 @@ out:
   rmp->context = mp->context;
   rmp->retval = htonl (rv);
   rmp->sw_if_index = htonl (sw_if_index);
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void

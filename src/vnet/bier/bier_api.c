@@ -106,7 +106,7 @@ vl_api_bier_table_add_del_t_handler (vl_api_bier_table_add_del_t * mp)
 }
 
 static void
-send_bier_table_details (svm_queue_t * q,
+send_bier_table_details (vl_api_registration_t * reg,
                          u32 context,
                          const bier_table_t *bt)
 {
@@ -124,18 +124,18 @@ send_bier_table_details (svm_queue_t * q,
     mp->bt_tbl_id.bt_sub_domain = bt->bt_id.bti_sub_domain;
     mp->bt_tbl_id.bt_hdr_len_id = bt->bt_id.bti_hdr_len;
 
-    vl_msg_api_send_shmem (q, (u8 *) & mp);
+    vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_bier_table_dump_t_handler (vl_api_bier_table_dump_t * mp)
 {
-    svm_queue_t *q;
+    vl_api_registration_t *reg;
     bier_table_t *bt;
 
-    q = vl_api_client_index_to_input_queue (mp->client_index);
-    if (q == 0)
-        return;
+    reg = vl_api_client_index_to_registration (mp->client_index);
+    if (!reg)
+      return;
 
     pool_foreach(bt, bier_table_pool,
     ({
@@ -144,7 +144,7 @@ vl_api_bier_table_dump_t_handler (vl_api_bier_table_dump_t * mp)
          */
         if (bier_table_is_main(bt))
         {
-            send_bier_table_details(q, mp->context, bt);
+            send_bier_table_details(reg, mp->context, bt);
         }
     }));
 }
@@ -252,7 +252,7 @@ done:
 
 typedef struct bier_route_details_walk_t_
 {
-    svm_queue_t * q;
+    vl_api_registration_t * reg;
     u32 context;
 } bier_route_details_walk_t;
 
@@ -296,17 +296,17 @@ send_bier_route_details (const bier_table_t *bt,
         fp++;
     }
 
-    vl_msg_api_send_shmem (ctx->q, (u8 *) & mp);
+    vl_api_send_msg (ctx->reg, (u8 *) mp);
 }
 
 static void
 vl_api_bier_route_dump_t_handler (vl_api_bier_route_dump_t * mp)
 {
-    svm_queue_t *q;
+    vl_api_registration_t *reg;
 
-    q = vl_api_client_index_to_input_queue (mp->client_index);
-    if (q == 0)
-        return;
+    reg = vl_api_client_index_to_registration (mp->client_index);
+    if (!reg)
+      return;
 
     bier_table_id_t bti = {
         .bti_set = mp->br_tbl_id.bt_set,
@@ -316,7 +316,7 @@ vl_api_bier_route_dump_t_handler (vl_api_bier_route_dump_t * mp)
         .bti_ecmp = BIER_ECMP_TABLE_ID_MAIN,
     };
     bier_route_details_walk_t ctx = {
-        .q = q,
+        .reg = reg,
         .context = mp->context,
     };
     bier_table_walk(&bti, send_bier_route_details, &ctx);
@@ -371,7 +371,7 @@ vl_api_bier_imp_del_t_handler (vl_api_bier_imp_del_t * mp)
 }
 
 static void
-send_bier_imp_details (svm_queue_t * q,
+send_bier_imp_details (vl_api_registration_t * reg,
                        u32 context,
                        const bier_imp_t *bi)
 {
@@ -400,22 +400,22 @@ send_bier_imp_details (svm_queue_t * q,
     mp->bi_n_bytes = n_bytes;
     memcpy(mp->bi_bytes, bi->bi_bits.bits, n_bytes);
 
-    vl_msg_api_send_shmem (q, (u8 *) & mp);
+    vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_bier_imp_dump_t_handler (vl_api_bier_imp_dump_t * mp)
 {
-    svm_queue_t *q;
+    vl_api_registration_t *reg;
     bier_imp_t *bi;
 
-    q = vl_api_client_index_to_input_queue (mp->client_index);
-    if (q == 0)
-        return;
+    reg = vl_api_client_index_to_registration (mp->client_index);
+    if (!reg)
+      return;
 
     pool_foreach(bi, bier_imp_pool,
     ({
-        send_bier_imp_details(q, mp->context, bi);
+        send_bier_imp_details(reg, mp->context, bi);
     }));
 }
 
@@ -446,7 +446,7 @@ vl_api_bier_disp_table_add_del_t_handler (vl_api_bier_disp_table_add_del_t * mp)
 }
 
 static void
-send_bier_disp_table_details (svm_queue_t * q,
+send_bier_disp_table_details (vl_api_registration_t * reg,
                               u32 context,
                               const bier_disp_table_t *bdt)
 {
@@ -461,22 +461,22 @@ send_bier_disp_table_details (svm_queue_t * q,
 
     mp->bdt_tbl_id = htonl(bdt->bdt_table_id);
 
-    vl_msg_api_send_shmem (q, (u8 *) & mp);
+    vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_bier_disp_table_dump_t_handler (vl_api_bier_disp_table_dump_t * mp)
 {
-    svm_queue_t *q;
+    vl_api_registration_t *reg;
     bier_disp_table_t *bdt;
 
-    q = vl_api_client_index_to_input_queue (mp->client_index);
-    if (q == 0)
-        return;
+    reg = vl_api_client_index_to_registration (mp->client_index);
+    if (!reg)
+      return;
 
     pool_foreach(bdt, bier_disp_table_pool,
     ({
-        send_bier_disp_table_details(q, mp->context, bdt);
+        send_bier_disp_table_details(reg, mp->context, bdt);
     }));
 }
 
@@ -603,7 +603,7 @@ done:
 
 typedef struct bier_disp_entry_details_walk_t_
 {
-    svm_queue_t * q;
+    vl_api_registration_t * reg;
     u32 context;
 } bier_disp_entry_details_walk_t;
 
@@ -653,7 +653,7 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
                 fp++;
             }
 
-            vl_msg_api_send_shmem (ctx->q, (u8 *) & mp);
+            vl_api_send_msg (ctx->reg, (u8 *) mp);
         }
     }
 }
@@ -661,14 +661,14 @@ send_bier_disp_entry_details (const bier_disp_table_t *bdt,
 static void
 vl_api_bier_disp_entry_dump_t_handler (vl_api_bier_disp_entry_dump_t * mp)
 {
-    svm_queue_t *q;
+    vl_api_registration_t *reg;
 
-    q = vl_api_client_index_to_input_queue (mp->client_index);
-    if (q == 0)
-        return;
+    reg = vl_api_client_index_to_registration (mp->client_index);
+    if (!reg)
+      return;
 
     bier_disp_entry_details_walk_t ctx = {
-        .q = q,
+        .reg = reg,
         .context = mp->context,
     };
     bier_disp_table_walk(ntohl(mp->bde_tbl_id),

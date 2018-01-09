@@ -174,7 +174,8 @@ vl_api_nat_set_workers_t_print (vl_api_nat_set_workers_t * mp, void *handle)
 }
 
 static void
-send_nat_worker_details (u32 worker_index, svm_queue_t * q, u32 context)
+send_nat_worker_details (u32 worker_index, vl_api_registration_t * reg,
+			 u32 context)
 {
   vl_api_nat_worker_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -189,23 +190,23 @@ send_nat_worker_details (u32 worker_index, svm_queue_t * q, u32 context)
   rmp->lcore_id = htonl (w->lcore_id);
   strncpy ((char *) rmp->name, (char *) w->name, ARRAY_LEN (rmp->name) - 1);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_nat_worker_dump_t_handler (vl_api_nat_worker_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   u32 *worker_index;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   vec_foreach (worker_index, sm->workers)
-    send_nat_worker_details(*worker_index, q, mp->context);
+    send_nat_worker_details(*worker_index, reg, mp->context);
   /* *INDENT-ON* */
 }
 
@@ -315,7 +316,7 @@ vl_api_nat_get_reass_t_print (vl_api_nat_get_reass_t * mp, void *handle)
 
 typedef struct nat_api_walk_ctx_t_
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   u32 context;
 } nat_api_walk_ctx_t;
 
@@ -337,7 +338,7 @@ nat_ip4_reass_walk_api (nat_reass_ip4_t * reass, void *arg)
   rmp->frag_n = reass->frag_n;
   rmp->is_ip4 = 1;
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+  vl_api_send_msg (ctx->reg, (u8 *) rmp);
 
   return 0;
 }
@@ -360,7 +361,7 @@ nat_ip6_reass_walk_api (nat_reass_ip6_t * reass, void *arg)
   rmp->frag_n = reass->frag_n;
   rmp->is_ip4 = 0;
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+  vl_api_send_msg (ctx->reg, (u8 *) rmp);
 
   return 0;
 }
@@ -368,14 +369,14 @@ nat_ip6_reass_walk_api (nat_reass_ip6_t * reass, void *arg)
 static void
 vl_api_nat_reass_dump_t_handler (vl_api_nat_reass_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   nat_api_walk_ctx_t ctx = {
-    .q = q,
+    .reg = reg,
     .context = mp->context,
   };
 
@@ -468,7 +469,8 @@ static void *vl_api_nat44_add_del_address_range_t_print
 
 static void
 send_nat44_address_details (snat_address_t * a,
-			    svm_queue_t * q, u32 context, u8 twice_nat)
+			    vl_api_registration_t * reg, u32 context,
+			    u8 twice_nat)
 {
   vl_api_nat44_address_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -487,25 +489,25 @@ send_nat44_address_details (snat_address_t * a,
   rmp->twice_nat = twice_nat;
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_nat44_address_dump_t_handler (vl_api_nat44_address_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_address_t *a;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   vec_foreach (a, sm->addresses)
-    send_nat44_address_details (a, q, mp->context, 0);
+    send_nat44_address_details (a, reg, mp->context, 0);
   vec_foreach (a, sm->twice_nat_addresses)
-    send_nat44_address_details (a, q, mp->context, 1);
+    send_nat44_address_details (a, reg, mp->context, 1);
   /* *INDENT-ON* */
 }
 
@@ -554,7 +556,7 @@ static void *vl_api_nat44_interface_add_del_feature_t_print
 
 static void
 send_nat44_interface_details (snat_interface_t * i,
-			      svm_queue_t * q, u32 context)
+			      vl_api_registration_t * reg, u32 context)
 {
   vl_api_nat44_interface_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -568,24 +570,24 @@ send_nat44_interface_details (snat_interface_t * i,
     nat_interface_is_inside (i);
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_nat44_interface_dump_t_handler (vl_api_nat44_interface_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   pool_foreach (i, sm->interfaces,
   ({
-    send_nat44_interface_details(i, q, mp->context);
+    send_nat44_interface_details(i, reg, mp->context);
   }));
   /* *INDENT-ON* */
 }
@@ -636,7 +638,8 @@ static void *vl_api_nat44_interface_add_del_output_feature_t_print
 
 static void
 send_nat44_interface_output_feature_details (snat_interface_t * i,
-					     svm_queue_t * q, u32 context)
+					     vl_api_registration_t * reg,
+					     u32 context)
 {
   vl_api_nat44_interface_output_feature_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -649,25 +652,25 @@ send_nat44_interface_output_feature_details (snat_interface_t * i,
   rmp->context = context;
   rmp->is_inside = nat_interface_is_inside (i);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
   vl_api_nat44_interface_output_feature_dump_t_handler
   (vl_api_nat44_interface_output_feature_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_interface_t *i;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   pool_foreach (i, sm->output_feature_interfaces,
   ({
-    send_nat44_interface_output_feature_details(i, q, mp->context);
+    send_nat44_interface_output_feature_details(i, reg, mp->context);
   }));
   /* *INDENT-ON* */
 }
@@ -742,7 +745,7 @@ static void *vl_api_nat44_add_del_static_mapping_t_print
 
 static void
 send_nat44_static_mapping_details (snat_static_mapping_t * m,
-				   svm_queue_t * q, u32 context)
+				   vl_api_registration_t * reg, u32 context)
 {
   vl_api_nat44_static_mapping_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -762,12 +765,13 @@ send_nat44_static_mapping_details (snat_static_mapping_t * m,
   rmp->context = context;
   rmp->twice_nat = m->twice_nat;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 send_nat44_static_map_resolve_details (snat_static_map_resolve_t * m,
-				       svm_queue_t * q, u32 context)
+				       vl_api_registration_t * reg,
+				       u32 context)
 {
   vl_api_nat44_static_mapping_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -786,28 +790,28 @@ send_nat44_static_map_resolve_details (snat_static_map_resolve_t * m,
   rmp->context = context;
   rmp->twice_nat = m->twice_nat;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
 					    * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
   snat_static_map_resolve_t *rp;
   int j;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
       if (!vec_len(m->locals) && (m->local_addr.as_u32 != m->external_addr.as_u32))
-        send_nat44_static_mapping_details (m, q, mp->context);
+        send_nat44_static_mapping_details (m, reg, mp->context);
   }));
   /* *INDENT-ON* */
 
@@ -815,7 +819,7 @@ vl_api_nat44_static_mapping_dump_t_handler (vl_api_nat44_static_mapping_dump_t
     {
       rp = sm->to_resolve + j;
       if (rp->l_addr.as_u32 != 0)
-	send_nat44_static_map_resolve_details (rp, q, mp->context);
+	send_nat44_static_map_resolve_details (rp, reg, mp->context);
     }
 }
 
@@ -886,7 +890,7 @@ static void *vl_api_nat44_add_del_identity_mapping_t_print
 
 static void
 send_nat44_identity_mapping_details (snat_static_mapping_t * m,
-				     svm_queue_t * q, u32 context)
+				     vl_api_registration_t * reg, u32 context)
 {
   vl_api_nat44_identity_mapping_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -903,12 +907,13 @@ send_nat44_identity_mapping_details (snat_static_mapping_t * m,
   rmp->protocol = snat_proto_to_ip_proto (m->proto);
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 send_nat44_identity_map_resolve_details (snat_static_map_resolve_t * m,
-					 svm_queue_t * q, u32 context)
+					 vl_api_registration_t * reg,
+					 u32 context)
 {
   vl_api_nat44_identity_mapping_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -924,28 +929,28 @@ send_nat44_identity_map_resolve_details (snat_static_map_resolve_t * m,
   rmp->protocol = snat_proto_to_ip_proto (m->proto);
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
   vl_api_nat44_identity_mapping_dump_t_handler
   (vl_api_nat44_identity_mapping_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
   snat_static_map_resolve_t *rp;
   int j;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
       if (!vec_len(m->locals) && (m->local_addr.as_u32 == m->external_addr.as_u32))
-        send_nat44_identity_mapping_details (m, q, mp->context);
+        send_nat44_identity_mapping_details (m, reg, mp->context);
   }));
   /* *INDENT-ON* */
 
@@ -953,7 +958,7 @@ static void
     {
       rp = sm->to_resolve + j;
       if (rp->l_addr.as_u32 == 0)
-	send_nat44_identity_map_resolve_details (rp, q, mp->context);
+	send_nat44_identity_map_resolve_details (rp, reg, mp->context);
     }
 }
 
@@ -1001,7 +1006,8 @@ static void *vl_api_nat44_add_del_interface_addr_t_print
 
 static void
 send_nat44_interface_addr_details (u32 sw_if_index,
-				   svm_queue_t * q, u32 context, u8 twice_nat)
+				   vl_api_registration_t * reg, u32 context,
+				   u8 twice_nat)
 {
   vl_api_nat44_interface_addr_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -1014,26 +1020,26 @@ send_nat44_interface_addr_details (u32 sw_if_index,
   rmp->twice_nat = twice_nat;
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_nat44_interface_addr_dump_t_handler (vl_api_nat44_interface_addr_dump_t
 					    * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   u32 *i;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   vec_foreach (i, sm->auto_add_sw_if_indices)
-    send_nat44_interface_addr_details(*i, q, mp->context, 0);
+    send_nat44_interface_addr_details(*i, reg, mp->context, 0);
   vec_foreach (i, sm->auto_add_sw_if_indices_twice_nat)
-    send_nat44_interface_addr_details(*i, q, mp->context, 1);
+    send_nat44_interface_addr_details(*i, reg, mp->context, 1);
   /* *INDENT-ON* */
 }
 
@@ -1049,7 +1055,8 @@ vl_api_nat44_interface_addr_dump_t_print (vl_api_nat44_interface_addr_dump_t *
 }
 
 static void
-send_nat44_user_details (snat_user_t * u, svm_queue_t * q, u32 context)
+send_nat44_user_details (snat_user_t * u, vl_api_registration_t * reg,
+			 u32 context)
 {
   vl_api_nat44_user_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -1066,25 +1073,25 @@ send_nat44_user_details (snat_user_t * u, svm_queue_t * q, u32 context)
   rmp->nstaticsessions = ntohl (u->nstaticsessions);
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_nat44_user_dump_t_handler (vl_api_nat44_user_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
   snat_user_t *u;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   vec_foreach (tsm, sm->per_thread_data)
     vec_foreach (u, tsm->users)
-      send_nat44_user_details (u, q, mp->context);
+      send_nat44_user_details (u, reg, mp->context);
   /* *INDENT-ON* */
 }
 
@@ -1100,7 +1107,7 @@ vl_api_nat44_user_dump_t_print (vl_api_nat44_user_dump_t * mp, void *handle)
 
 static void
 send_nat44_user_session_details (snat_session_t * s,
-				 svm_queue_t * q, u32 context)
+				 vl_api_registration_t * reg, u32 context)
 {
   vl_api_nat44_user_session_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -1129,14 +1136,14 @@ send_nat44_user_session_details (snat_session_t * s,
       rmp->protocol = ntohs (snat_proto_to_ip_proto (s->in2out.protocol));
     }
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
 					  mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_main_per_thread_data_t *tsm;
   snat_session_t *s;
@@ -1147,8 +1154,8 @@ vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
   dlist_elt_t *head, *elt;
   ip4_header_t ip;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   clib_memcpy (&ukey.addr, mp->ip_address, 4);
@@ -1176,7 +1183,7 @@ vl_api_nat44_user_session_dump_t_handler (vl_api_nat44_user_session_dump_t *
     {
       s = pool_elt_at_index (tsm->sessions, session_index);
 
-      send_nat44_user_session_details (s, q, mp->context);
+      send_nat44_user_session_details (s, reg, mp->context);
 
       elt_index = elt->next;
       elt = pool_elt_at_index (tsm->list_pool, elt_index);
@@ -1260,7 +1267,8 @@ static void *vl_api_nat44_add_del_lb_static_mapping_t_print
 
 static void
 send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
-				      svm_queue_t * q, u32 context)
+				      vl_api_registration_t * reg,
+				      u32 context)
 {
   vl_api_nat44_lb_static_mapping_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -1292,26 +1300,26 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
     rmp->local_num++;
   }
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
   vl_api_nat44_lb_static_mapping_dump_t_handler
   (vl_api_nat44_lb_static_mapping_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_static_mapping_t *m;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   pool_foreach (m, sm->static_mappings,
   ({
       if (vec_len(m->locals))
-        send_nat44_lb_static_mapping_details (m, q, mp->context);
+        send_nat44_lb_static_mapping_details (m, reg, mp->context);
   }));
   /* *INDENT-ON* */
 }
@@ -1390,12 +1398,12 @@ static void
   vl_api_nat44_forwarding_is_enabled_t_handler
   (vl_api_nat44_forwarding_is_enabled_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   vl_api_nat44_forwarding_is_enabled_reply_t *rmp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
@@ -1406,7 +1414,7 @@ static void
 
   rmp->enabled = sm->forwarding_enabled;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void *vl_api_nat44_forwarding_is_enabled_t_print
@@ -1555,7 +1563,8 @@ vl_api_nat_det_reverse_t_print (vl_api_nat_det_reverse_t * mp, void *handle)
 }
 
 static void
-sent_nat_det_map_details (snat_det_map_t * m, svm_queue_t * q, u32 context)
+sent_nat_det_map_details (snat_det_map_t * m, vl_api_registration_t * reg,
+			  u32 context)
 {
   vl_api_nat_det_map_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -1573,23 +1582,23 @@ sent_nat_det_map_details (snat_det_map_t * m, svm_queue_t * q, u32 context)
   rmp->ses_num = htonl (m->ses_num);
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_nat_det_map_dump_t_handler (vl_api_nat_det_map_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   snat_det_map_t *m;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   vec_foreach(m, sm->det_maps)
-    sent_nat_det_map_details(m, q, mp->context);
+    sent_nat_det_map_details(m, reg, mp->context);
   /* *INDENT-ON* */
 }
 
@@ -1770,7 +1779,7 @@ vl_api_nat_det_close_session_in_t_print (vl_api_nat_det_close_session_in_t *
 
 static void
 send_nat_det_session_details (snat_det_session_t * s,
-			      svm_queue_t * q, u32 context)
+			      vl_api_registration_t * reg, u32 context)
 {
   vl_api_nat_det_session_details_t *rmp;
   snat_main_t *sm = &snat_main;
@@ -1786,21 +1795,21 @@ send_nat_det_session_details (snat_det_session_t * s,
   rmp->expire = ntohl (s->expire);
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_nat_det_session_dump_t_handler (vl_api_nat_det_session_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   snat_main_t *sm = &snat_main;
   ip4_address_t user_addr;
   snat_det_map_t *dm;
   snat_det_session_t *s, empty_ses;
   u16 i;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
   if (!mp->is_nat44)
     return;
@@ -1815,7 +1824,7 @@ vl_api_nat_det_session_dump_t_handler (vl_api_nat_det_session_dump_t * mp)
   for (i = 0; i < SNAT_DET_SES_PER_USER; i++)
     {
       if (s->out.as_u64)
-	send_nat_det_session_details (s, q, mp->context);
+	send_nat_det_session_details (s, reg, mp->context);
       s++;
     }
 }
@@ -1888,7 +1897,7 @@ static void *vl_api_nat64_add_del_pool_addr_range_t_print
 
 typedef struct nat64_api_walk_ctx_t_
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   u32 context;
   nat64_db_t *db;
 } nat64_api_walk_ctx_t;
@@ -1915,7 +1924,7 @@ nat64_api_pool_walk (snat_address_t * a, void *arg)
     rmp->vrf_id = ~0;
   rmp->context = ctx->context;
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+  vl_api_send_msg (ctx->reg, (u8 *) rmp);
 
   return 0;
 }
@@ -1923,14 +1932,14 @@ nat64_api_pool_walk (snat_address_t * a, void *arg)
 static void
 vl_api_nat64_pool_addr_dump_t_handler (vl_api_nat64_pool_addr_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   nat64_api_walk_ctx_t ctx = {
-    .q = q,
+    .reg = reg,
     .context = mp->context,
   };
 
@@ -1997,7 +2006,7 @@ nat64_api_interface_walk (snat_interface_t * i, void *arg)
     nat_interface_is_inside (i);
   rmp->context = ctx->context;
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+  vl_api_send_msg (ctx->reg, (u8 *) rmp);
 
   return 0;
 }
@@ -2005,14 +2014,14 @@ nat64_api_interface_walk (snat_interface_t * i, void *arg)
 static void
 vl_api_nat64_interface_dump_t_handler (vl_api_nat64_interface_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   nat64_api_walk_ctx_t ctx = {
-    .q = q,
+    .reg = reg,
     .context = mp->context,
   };
 
@@ -2095,7 +2104,7 @@ nat64_api_bib_walk (nat64_db_bib_entry_t * bibe, void *arg)
   rmp->is_static = bibe->is_static;
   rmp->ses_num = ntohl (bibe->ses_num);
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+  vl_api_send_msg (ctx->reg, (u8 *) rmp);
 
   return 0;
 }
@@ -2103,16 +2112,16 @@ nat64_api_bib_walk (nat64_db_bib_entry_t * bibe, void *arg)
 static void
 vl_api_nat64_bib_dump_t_handler (vl_api_nat64_bib_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   nat64_main_t *nm = &nat64_main;
   nat64_db_t *db;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   nat64_api_walk_ctx_t ctx = {
-    .q = q,
+    .reg = reg,
     .context = mp->context,
   };
 
@@ -2228,7 +2237,7 @@ nat64_api_st_walk (nat64_db_st_entry_t * ste, void *arg)
   rmp->vrf_id = ntohl (fib->ft_table_id);
   rmp->proto = ste->proto;
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+  vl_api_send_msg (ctx->reg, (u8 *) rmp);
 
   return 0;
 }
@@ -2236,16 +2245,16 @@ nat64_api_st_walk (nat64_db_st_entry_t * ste, void *arg)
 static void
 vl_api_nat64_st_dump_t_handler (vl_api_nat64_st_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   nat64_main_t *nm = &nat64_main;
   nat64_db_t *db;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   nat64_api_walk_ctx_t ctx = {
-    .q = q,
+    .reg = reg,
     .context = mp->context,
   };
 
@@ -2312,7 +2321,7 @@ nat64_api_prefix_walk (nat64_prefix_t * p, void *arg)
   rmp->vrf_id = ntohl (p->vrf_id);
   rmp->context = ctx->context;
 
-  vl_msg_api_send_shmem (ctx->q, (u8 *) & rmp);
+  vl_api_send_msg (ctx->reg, (u8 *) rmp);
 
   return 0;
 }
@@ -2320,14 +2329,14 @@ nat64_api_prefix_walk (nat64_prefix_t * p, void *arg)
 static void
 vl_api_nat64_prefix_dump_t_handler (vl_api_nat64_prefix_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   nat64_api_walk_ctx_t ctx = {
-    .q = q,
+    .reg = reg,
     .context = mp->context,
   };
 

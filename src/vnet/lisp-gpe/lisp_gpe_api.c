@@ -154,13 +154,13 @@ static void
   lisp_fwd_path_t *path;
   vl_api_gpe_fwd_entry_path_details_t *rmp = NULL;
   lisp_gpe_main_t *lgm = &lisp_gpe_main;
-  svm_queue_t *q = NULL;
+  vl_api_registration_t *reg;
   lisp_gpe_fwd_entry_t *lfe;
 
   gpe_fwd_entry_path_dump_t_net_to_host (mp);
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   if (pool_is_free_index (lgm->lisp_fwd_entry_pool, mp->fwd_entry_index))
@@ -187,7 +187,7 @@ static void
     lisp_api_set_locator (&rmp->lcl_loc, &lgt->key->lcl, path->weight);
 
     rmp->context = mp->context;
-    vl_msg_api_send_shmem (q, (u8 *) & rmp);
+    vl_api_send_msg (reg, (u8 *) rmp);
   }
 }
 

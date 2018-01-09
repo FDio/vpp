@@ -51,7 +51,7 @@ _(SW_IF_L2TPV3_TUNNEL_DUMP, sw_if_l2tpv3_tunnel_dump)
 
 static void
 send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
-				  svm_queue_t * q,
+				  vl_api_registration_t * reg,
 				  l2t_session_t * s,
 				  l2t_main_t * lm, u32 context)
 {
@@ -81,7 +81,7 @@ send_sw_if_l2tpv3_tunnel_details (vpe_api_main_t * am,
   mp->l2_sublayer_present = s->l2_sublayer_present;
   mp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 
@@ -91,17 +91,17 @@ vl_api_sw_if_l2tpv3_tunnel_dump_t_handler (vl_api_sw_if_l2tpv3_tunnel_dump_t *
 {
   vpe_api_main_t *am = &vpe_api_main;
   l2t_main_t *lm = &l2t_main;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   l2t_session_t *session;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   pool_foreach (session, lm->sessions,
   ({
-    send_sw_if_l2tpv3_tunnel_details (am, q, session, lm, mp->context);
+    send_sw_if_l2tpv3_tunnel_details (am, reg, session, lm, mp->context);
   }));
   /* *INDENT-ON* */
 }

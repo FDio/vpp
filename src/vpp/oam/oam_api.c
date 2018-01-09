@@ -47,22 +47,22 @@ void
 send_oam_event (oam_target_t * t)
 {
   vpe_api_main_t *vam = &vpe_api_main;
-  svm_queue_t *q;
+  vl_api_registration_t *vl_reg;
   vpe_client_registration_t *reg;
   vl_api_oam_event_t *mp;
 
   /* *INDENT-OFF* */
   pool_foreach(reg, vam->oam_events_registrations,
   ({
-    q = vl_api_client_index_to_input_queue (reg->client_index);
-    if (q)
+    vl_reg = vl_api_client_index_to_registration (reg->client_index);
+    if (vl_reg)
       {
         mp = vl_msg_api_alloc (sizeof (*mp));
         mp->_vl_msg_id = ntohs (VL_API_OAM_EVENT);
         clib_memcpy (mp->dst_address, &t->dst_address,
                      sizeof (mp->dst_address));
         mp->state = t->state;
-        vl_msg_api_send_shmem (q, (u8 *)&mp);
+        vl_api_send_msg (vl_reg, (u8 *)mp);
       }
   }));
   /* *INDENT-ON* */

@@ -72,7 +72,7 @@ _(BRIDGE_DOMAIN_SET_MAC_AGE, bridge_domain_set_mac_age)         \
 _(SW_INTERFACE_SET_VPATH, sw_interface_set_vpath)
 
 static void
-send_l2_xconnect_details (svm_queue_t * q, u32 context,
+send_l2_xconnect_details (vl_api_registration_t * reg, u32 context,
 			  u32 rx_sw_if_index, u32 tx_sw_if_index)
 {
   vl_api_l2_xconnect_details_t *mp;
@@ -84,21 +84,21 @@ send_l2_xconnect_details (svm_queue_t * q, u32 context,
   mp->rx_sw_if_index = htonl (rx_sw_if_index);
   mp->tx_sw_if_index = htonl (tx_sw_if_index);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_l2_xconnect_dump_t_handler (vl_api_l2_xconnect_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   vnet_main_t *vnm = vnet_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
   l2input_main_t *l2im = &l2input_main;
   vnet_sw_interface_t *swif;
   l2_input_config_t *config;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
@@ -106,7 +106,7 @@ vl_api_l2_xconnect_dump_t_handler (vl_api_l2_xconnect_dump_t * mp)
   ({
     config = vec_elt_at_index (l2im->configs, swif->sw_if_index);
     if (config->xconnect)
-      send_l2_xconnect_details (q, mp->context, swif->sw_if_index,
+      send_l2_xconnect_details (reg, mp->context, swif->sw_if_index,
                                 config->output_sw_if_index);
   }));
   /* *INDENT-ON* */
@@ -126,7 +126,7 @@ vl_api_l2_fib_clear_table_t_handler (vl_api_l2_fib_clear_table_t * mp)
 
 static void
 send_l2fib_table_entry (vpe_api_main_t * am,
-			svm_queue_t * q,
+			vl_api_registration_t * reg,
 			l2fib_entry_key_t * l2fe_key,
 			l2fib_entry_result_t * l2fe_res, u32 context)
 {
@@ -146,7 +146,7 @@ send_l2fib_table_entry (vpe_api_main_t * am,
   mp->bvi_mac = l2fe_res->fields.bvi;
   mp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
@@ -158,11 +158,11 @@ vl_api_l2_fib_table_dump_t_handler (vl_api_l2_fib_table_dump_t * mp)
   l2fib_entry_result_t *l2fe_res = NULL;
   u32 ni, bd_id = ntohl (mp->bd_id);
   u32 bd_index;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   uword *p;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* see l2fib_table_dump: ~0 means "any" */
@@ -181,7 +181,7 @@ vl_api_l2_fib_table_dump_t_handler (vl_api_l2_fib_table_dump_t * mp)
 
   vec_foreach_index (ni, l2fe_key)
   {
-    send_l2fib_table_entry (am, q, vec_elt_at_index (l2fe_key, ni),
+    send_l2fib_table_entry (am, reg, vec_elt_at_index (l2fe_key, ni),
 			    vec_elt_at_index (l2fe_res, ni), mp->context);
   }
   vec_free (l2fe_key);
@@ -439,7 +439,7 @@ vl_api_bridge_domain_add_del_t_handler (vl_api_bridge_domain_add_del_t * mp)
 
 static void
 send_bridge_domain_details (l2input_main_t * l2im,
-			    svm_queue_t * q,
+			    vl_api_registration_t * reg,
 			    l2_bridge_domain_t * bd_config,
 			    u32 n_sw_ifs, u32 context)
 {
@@ -480,7 +480,7 @@ send_bridge_domain_details (l2input_main_t * l2im,
   }
   mp->n_sw_ifs = htonl (mp->n_sw_ifs);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
@@ -488,16 +488,17 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
 {
   bd_main_t *bdm = &bd_main;
   l2input_main_t *l2im = &l2input_main;
+  vl_api_registration_t *reg;
+  u32 bd_id, bd_index, end;
 
-  svm_queue_t *q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
-  u32 bd_id = ntohl (mp->bd_id);
+  bd_id = ntohl (mp->bd_id);
   if (bd_id == 0)
     return;
 
-  u32 bd_index, end;
   if (bd_id == ~0)
     bd_index = 0, end = vec_len (l2im->bd_configs);
   else
@@ -515,7 +516,7 @@ vl_api_bridge_domain_dump_t_handler (vl_api_bridge_domain_dump_t * mp)
 	l2input_bd_config_from_index (l2im, bd_index);
       /* skip dummy bd_id 0 */
       if (bd_config && (bd_config->bd_id > 0))
-	send_bridge_domain_details (l2im, q, bd_config,
+	send_bridge_domain_details (l2im, reg, bd_config,
 				    vec_len (bd_config->members),
 				    mp->context);
     }

@@ -68,22 +68,22 @@
 
 #include <vlibapi/api_helper_macros.h>
 
-#define REPLY_DETAILS(t, body)                                  \
-do {                                                            \
-    svm_queue_t * q;                             \
-    rv = vl_msg_api_pd_handler (mp, rv);                        \
-    q = vl_api_client_index_to_input_queue (mp->client_index);  \
-    if (!q)                                                     \
-        return;                                                 \
-                                                                \
-    rmp = vl_msg_api_alloc (sizeof (*rmp));                     \
-    rmp->_vl_msg_id = ntohs((t));                               \
-    rmp->context = mp->context;                                 \
-    do {body;} while (0);                                       \
-    vl_msg_api_send_shmem (q, (u8 *)&rmp);                      \
+#define REPLY_DETAILS(t, body)                                  	\
+do {                                                            	\
+    vl_api_registration_t * reg;                             		\
+    rv = vl_msg_api_pd_handler (mp, rv);                        	\
+    reg = vl_api_client_index_to_registration (mp->client_index);	\
+    if (!reg)								\
+      return;								\
+								  \
+    rmp = vl_msg_api_alloc (sizeof (*rmp));                     	\
+    rmp->_vl_msg_id = ntohs((t));                               	\
+    rmp->context = mp->context;                                 	\
+    do {body;} while (0);                                       	\
+    vl_api_send_msg (reg, (u8 *)&rmp);                      		\
 } while(0);
 
-#define foreach_vpe_api_msg                             \
+#define foreach_vpe_api_msg                             			\
 _(ONE_ADD_DEL_LOCATOR_SET, one_add_del_locator_set)                     \
 _(ONE_ADD_DEL_LOCATOR, one_add_del_locator)                             \
 _(ONE_ADD_DEL_LOCAL_EID, one_add_del_local_eid)                         \
@@ -537,7 +537,6 @@ vl_api_one_use_petr_t_handler (vl_api_one_use_petr_t * mp)
 static void
 vl_api_show_one_use_petr_t_handler (vl_api_show_one_use_petr_t * mp)
 {
-  svm_queue_t *q = NULL;
   vl_api_show_one_use_petr_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *m;
@@ -546,12 +545,6 @@ vl_api_show_one_use_petr_t_handler (vl_api_show_one_use_petr_t * mp)
   locator_t *loc = 0;
   u8 status = 0;
   gid_address_t addr;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
 
   memset (&addr, 0, sizeof (addr));
   status = lcm->flags & LISP_FLAG_USE_PETR;
@@ -698,7 +691,8 @@ send_reply:
 
 static void
 send_one_locator_details (lisp_cp_main_t * lcm,
-			  locator_t * loc, svm_queue_t * q, u32 context)
+			  locator_t * loc, vl_api_registration_t * reg,
+			  u32 context)
 {
   vl_api_one_locator_details_t *rmp;
 
@@ -720,25 +714,23 @@ send_one_locator_details (lisp_cp_main_t * lcm,
   rmp->priority = loc->priority;
   rmp->weight = loc->weight;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_one_locator_dump_t_handler (vl_api_one_locator_dump_t * mp)
 {
   u8 *ls_name = 0;
-  svm_queue_t *q = 0;
+  vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *lsit = 0;
   locator_t *loc = 0;
   u32 ls_index = ~0, *locit = 0;
   uword *p = 0;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   if (mp->is_index_set)
     ls_index = htonl (mp->ls_index);
@@ -762,7 +754,7 @@ vl_api_one_locator_dump_t_handler (vl_api_one_locator_dump_t * mp)
   vec_foreach (locit, lsit->locator_indices)
   {
     loc = pool_elt_at_index (lcm->locator_pool, locit[0]);
-    send_one_locator_details (lcm, loc, q, mp->context);
+    send_one_locator_details (lcm, loc, reg, mp->context);
   };
 out:
   vec_free (ls_name);
@@ -771,7 +763,8 @@ out:
 static void
 send_one_locator_set_details (lisp_cp_main_t * lcm,
 			      locator_set_t * lsit,
-			      svm_queue_t * q, u32 context, u32 ls_index)
+			      vl_api_registration_t * reg, u32 context,
+			      u32 ls_index)
 {
   vl_api_one_locator_set_details_t *rmp;
   u8 *str = 0;
@@ -795,22 +788,20 @@ send_one_locator_set_details (lisp_cp_main_t * lcm,
       vec_free (str);
     }
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_one_locator_set_dump_t_handler (vl_api_one_locator_set_dump_t * mp)
 {
-  svm_queue_t *q = NULL;
+  vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   locator_set_t *lsit = NULL;
   u8 filter;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   filter = mp->filter;
   /* *INDENT-OFF* */
@@ -821,7 +812,7 @@ vl_api_one_locator_set_dump_t_handler (vl_api_one_locator_set_dump_t * mp)
       {
         continue;
       }
-    send_one_locator_set_details (lcm, lsit, q, mp->context,
+    send_one_locator_set_details (lcm, lsit, reg, mp->context,
                                    lsit - lcm->locator_set_pool);
   }));
   /* *INDENT-ON* */
@@ -881,7 +872,8 @@ fid_type_to_api_type (fid_address_t * fid)
 
 static void
 send_one_eid_table_details (mapping_t * mapit,
-			    svm_queue_t * q, u32 context, u8 filter)
+			    vl_api_registration_t * reg, u32 context,
+			    u8 filter)
 {
   fid_address_t *fid;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
@@ -975,23 +967,21 @@ send_one_eid_table_details (mapping_t * mapit,
   rmp->vni = clib_host_to_net_u32 (gid_address_vni (gid));
   rmp->key_id = clib_host_to_net_u16 (mapit->key_id);
   memcpy (rmp->key, mapit->key, vec_len (mapit->key));
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_one_eid_table_dump_t_handler (vl_api_one_eid_table_dump_t * mp)
 {
   u32 mi;
-  svm_queue_t *q = NULL;
+  vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *mapit = NULL;
   gid_address_t _eid, *eid = &_eid;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   if (mp->eid_set)
     {
@@ -1005,7 +995,7 @@ vl_api_one_eid_table_dump_t_handler (vl_api_one_eid_table_dump_t * mp)
 	return;
 
       mapit = pool_elt_at_index (lcm->mapping_pool, mi);
-      send_one_eid_table_details (mapit, q, mp->context,
+      send_one_eid_table_details (mapit, reg, mp->context,
 				  0 /* ignore filter */ );
     }
   else
@@ -1013,7 +1003,7 @@ vl_api_one_eid_table_dump_t_handler (vl_api_one_eid_table_dump_t * mp)
       /* *INDENT-OFF* */
       pool_foreach (mapit, lcm->mapping_pool,
       ({
-        send_one_eid_table_details(mapit, q, mp->context,
+        send_one_eid_table_details(mapit, reg, mp->context,
                                     mp->filter);
       }));
       /* *INDENT-ON* */
@@ -1021,7 +1011,8 @@ vl_api_one_eid_table_dump_t_handler (vl_api_one_eid_table_dump_t * mp)
 }
 
 static void
-send_one_map_server_details (ip_address_t * ip, svm_queue_t * q, u32 context)
+send_one_map_server_details (ip_address_t * ip, vl_api_registration_t * reg,
+			     u32 context)
 {
   vl_api_one_map_server_details_t *rmp = NULL;
 
@@ -1048,31 +1039,29 @@ send_one_map_server_details (ip_address_t * ip, svm_queue_t * q, u32 context)
     }
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_one_map_server_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 {
-  svm_queue_t *q = NULL;
+  vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   lisp_msmr_t *mr;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   vec_foreach (mr, lcm->map_servers)
   {
-    send_one_map_server_details (&mr->address, q, mp->context);
+    send_one_map_server_details (&mr->address, reg, mp->context);
   }
 }
 
 static void
 send_one_map_resolver_details (ip_address_t * ip,
-			       svm_queue_t * q, u32 context)
+			       vl_api_registration_t * reg, u32 context)
 {
   vl_api_one_map_resolver_details_t *rmp = NULL;
 
@@ -1099,30 +1088,29 @@ send_one_map_resolver_details (ip_address_t * ip,
     }
   rmp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_one_map_resolver_dump_t_handler (vl_api_one_map_resolver_dump_t * mp)
 {
-  svm_queue_t *q = NULL;
+  vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   lisp_msmr_t *mr;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   vec_foreach (mr, lcm->map_resolvers)
   {
-    send_one_map_resolver_details (&mr->address, q, mp->context);
+    send_one_map_resolver_details (&mr->address, reg, mp->context);
   }
 }
 
 static void
-send_eid_table_map_pair (hash_pair_t * p, svm_queue_t * q, u32 context)
+send_eid_table_map_pair (hash_pair_t * p, vl_api_registration_t * reg,
+			 u32 context)
 {
   vl_api_one_eid_table_map_details_t *rmp = NULL;
 
@@ -1133,22 +1121,20 @@ send_eid_table_map_pair (hash_pair_t * p, svm_queue_t * q, u32 context)
   rmp->vni = clib_host_to_net_u32 (p->key);
   rmp->dp_table = clib_host_to_net_u32 (p->value[0]);
   rmp->context = context;
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_one_eid_table_map_dump_t_handler (vl_api_one_eid_table_map_dump_t * mp)
 {
-  svm_queue_t *q = NULL;
+  vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   hash_pair_t *p;
   uword *vni_table = 0;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   if (mp->is_l2)
     {
@@ -1162,13 +1148,13 @@ vl_api_one_eid_table_map_dump_t_handler (vl_api_one_eid_table_map_dump_t * mp)
   /* *INDENT-OFF* */
   hash_foreach_pair (p, vni_table,
   ({
-    send_eid_table_map_pair (p, q, mp->context);
+    send_eid_table_map_pair (p, reg, mp->context);
   }));
   /* *INDENT-ON* */
 }
 
 static void
-send_eid_table_vni (u32 vni, svm_queue_t * q, u32 context)
+send_eid_table_vni (u32 vni, vl_api_registration_t * reg, u32 context)
 {
   vl_api_one_eid_table_vni_details_t *rmp = 0;
 
@@ -1177,7 +1163,7 @@ send_eid_table_vni (u32 vni, svm_queue_t * q, u32 context)
   rmp->_vl_msg_id = ntohs (VL_API_ONE_EID_TABLE_VNI_DETAILS);
   rmp->context = context;
   rmp->vni = clib_host_to_net_u32 (vni);
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
@@ -1291,14 +1277,12 @@ vl_api_one_eid_table_vni_dump_t_handler (vl_api_one_eid_table_vni_dump_t * mp)
 {
   hash_pair_t *p;
   u32 *vnis = 0;
-  svm_queue_t *q = 0;
+  vl_api_registration_t *reg;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   /* *INDENT-OFF* */
   hash_foreach_pair (p, lcm->table_id_by_vni,
@@ -1313,7 +1297,7 @@ vl_api_one_eid_table_vni_dump_t_handler (vl_api_one_eid_table_vni_dump_t * mp)
 
   hash_foreach_pair (p, vnis,
   ({
-    send_eid_table_vni (p->key, q, mp->context);
+    send_eid_table_vni (p->key, reg, mp->context);
   }));
   /* *INDENT-ON* */
 
@@ -1370,7 +1354,6 @@ static void
 static void
 vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t * mp)
 {
-  svm_queue_t *q = NULL;
   vl_api_show_one_nsh_mapping_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *m;
@@ -1378,12 +1361,6 @@ vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t * mp)
   u8 *tmp_str = 0;
   u8 is_set = 0;
   int rv = 0;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
 
   if (lcm->nsh_map_index == (u32) ~ 0)
     {
@@ -1419,19 +1396,12 @@ vl_api_show_one_nsh_mapping_t_handler (vl_api_show_one_nsh_mapping_t * mp)
 static void
 vl_api_show_one_pitr_t_handler (vl_api_show_one_pitr_t * mp)
 {
-  svm_queue_t *q = NULL;
   vl_api_show_one_pitr_reply_t *rmp = NULL;
   lisp_cp_main_t *lcm = vnet_lisp_cp_get_main ();
   mapping_t *m;
   locator_set_t *ls = 0;
   u8 *tmp_str = 0;
   int rv = 0;
-
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
 
   u8 is_enabled = (lcm->flags & LISP_FLAG_PITR_MODE)
     && lcm->pitr_map_index != ~0;

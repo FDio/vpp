@@ -870,7 +870,7 @@ vl_api_session_rule_add_del_t_handler (vl_api_session_rule_add_del_t * mp)
 static void
 send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
 			    u8 transport_proto, u32 appns_index, u8 * tag,
-			    svm_queue_t * q, u32 context)
+			    vl_api_registration_t * reg, u32 context)
 {
   vl_api_session_rules_details_t *rmp = 0;
   session_mask_or_match_4_t *match =
@@ -901,13 +901,13 @@ send_session_rule_details4 (mma_rule_16_t * rule, u8 is_local,
       rmp->tag[vec_len (tag)] = 0;
     }
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
 			    u8 transport_proto, u32 appns_index, u8 * tag,
-			    svm_queue_t * q, u32 context)
+			    vl_api_registration_t * reg, u32 context)
 {
   vl_api_session_rules_details_t *rmp = 0;
   session_mask_or_match_6_t *match =
@@ -938,13 +938,13 @@ send_session_rule_details6 (mma_rule_40_t * rule, u8 is_local,
       rmp->tag[vec_len (tag)] = 0;
     }
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
 				  u8 tp, u8 is_local, u32 appns_index,
-				  svm_queue_t * q, u32 context)
+				  vl_api_registration_t * reg, u32 context)
 {
   mma_rule_16_t *rule16;
   mma_rule_40_t *rule40;
@@ -961,7 +961,7 @@ send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
 	ri = mma_rules_table_rule_index_16 (srt16, rule16);
 	tag = session_rules_table_rule_tag (srt, ri, 1);
         send_session_rule_details4 (rule16, is_local, tp, appns_index, tag,
-                                    q, context);
+                                    reg, context);
       }));
       /* *INDENT-ON* */
     }
@@ -974,7 +974,7 @@ send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
 	ri = mma_rules_table_rule_index_40 (srt40, rule40);
 	tag = session_rules_table_rule_tag (srt, ri, 1);
         send_session_rule_details6 (rule40, is_local, tp, appns_index, tag,
-                                    q, context);
+                                    reg, context);
       }));
       /* *INDENT-ON* */
     }
@@ -983,12 +983,12 @@ send_session_rules_table_details (session_rules_table_t * srt, u8 fib_proto,
 static void
 vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
 {
-  svm_queue_t *q = NULL;
+  vl_api_registration_t *reg;
   session_table_t *st;
   u8 tp;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
@@ -997,7 +997,7 @@ vl_api_session_rules_dump_t_handler (vl_api_one_map_server_dump_t * mp)
       {
         send_session_rules_table_details (&st->session_rules[tp],
                                           st->active_fib_proto, tp,
-                                          st->is_local, st->appns_index, q,
+                                          st->is_local, st->appns_index, reg,
                                           mp->context);
       }
   }));

@@ -110,14 +110,14 @@ static void vl_api_dhcp_proxy_config_t_handler
 static void
 vl_api_dhcp_proxy_dump_t_handler (vl_api_dhcp_proxy_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    return;
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;;
 
   dhcp_proxy_dump ((mp->is_ip6 == 1 ?
-		    FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4), q, mp->context);
+		    FIB_PROTOCOL_IP6 : FIB_PROTOCOL_IP4), reg, mp->context);
 }
 
 void
@@ -125,7 +125,7 @@ dhcp_send_details (fib_protocol_t proto,
 		   void *opaque, u32 context, dhcp_proxy_t * proxy)
 {
   vl_api_dhcp_proxy_details_t *mp;
-  svm_queue_t *q = opaque;
+  vl_api_registration_t *reg = opaque;
   vl_api_dhcp_server_t *v_server;
   dhcp_server_t *server;
   fib_table_t *s_fib;
@@ -200,7 +200,7 @@ dhcp_send_details (fib_protocol_t proto,
       /* put the address in the first bytes */
       memcpy (mp->dhcp_src_address, &proxy->dhcp_src_address.ip4, 4);
     }
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 void
@@ -208,12 +208,12 @@ dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
 			   u8 mask_width, u8 is_ipv6, u8 * host_address,
 			   u8 * router_address, u8 * host_mac)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   vl_api_dhcp_compl_event_t *mp;
   u32 len;
 
-  q = vl_api_client_index_to_input_queue (client_index);
-  if (!q)
+  reg = vl_api_client_index_to_registration (client_index);
+  if (!reg)
     return;
 
   mp = vl_msg_api_alloc (sizeof (*mp));
@@ -232,7 +232,7 @@ dhcp_compl_event_callback (u32 client_index, u32 pid, u8 * hostname,
 
   mp->_vl_msg_id = ntohs (VL_API_DHCP_COMPL_EVENT);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void vl_api_dhcp_client_config_t_handler

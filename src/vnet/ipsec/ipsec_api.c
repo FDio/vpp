@@ -252,7 +252,8 @@ out:
 }
 
 static void
-send_ipsec_spd_details (ipsec_policy_t * p, svm_queue_t * q, u32 context)
+send_ipsec_spd_details (ipsec_policy_t * p, vl_api_registration_t * reg,
+			u32 context)
 {
   vl_api_ipsec_spd_details_t *mp;
 
@@ -289,21 +290,21 @@ send_ipsec_spd_details (ipsec_policy_t * p, svm_queue_t * q, u32 context)
   mp->bytes = clib_host_to_net_u64 (p->counter.bytes);
   mp->packets = clib_host_to_net_u64 (p->counter.packets);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   ipsec_main_t *im = &ipsec_main;
   ipsec_policy_t *policy;
   ipsec_spd_t *spd;
   uword *p;
   u32 spd_index;
 #if WITH_LIBSSL > 0
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   p = hash_get (im->spd_index_by_spd_id, ntohl (mp->spd_id));
@@ -317,7 +318,7 @@ vl_api_ipsec_spd_dump_t_handler (vl_api_ipsec_spd_dump_t * mp)
   pool_foreach (policy, spd->policies,
   ({
     if (mp->sa_id == ~(0) || ntohl (mp->sa_id) == policy->sa_id)
-      send_ipsec_spd_details (policy, q,
+      send_ipsec_spd_details (policy, reg,
                               mp->context);}
     ));
   /* *INDENT-ON* */
@@ -399,7 +400,7 @@ vl_api_ipsec_tunnel_if_add_del_t_handler (vl_api_ipsec_tunnel_if_add_del_t *
 }
 
 static void
-send_ipsec_sa_details (ipsec_sa_t * sa, svm_queue_t * q,
+send_ipsec_sa_details (ipsec_sa_t * sa, vl_api_registration_t * reg,
 		       u32 context, u32 sw_if_index)
 {
   vl_api_ipsec_sa_details_t *mp;
@@ -455,14 +456,14 @@ send_ipsec_sa_details (ipsec_sa_t * sa, svm_queue_t * q,
     mp->replay_window = clib_host_to_net_u64 (sa->replay_window);
   mp->total_data_size = clib_host_to_net_u64 (sa->total_data_size);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 
 static void
 vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   ipsec_main_t *im = &ipsec_main;
   vnet_main_t *vnm = im->vnet_main;
   ipsec_sa_t *sa;
@@ -470,8 +471,8 @@ vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
   u32 *sa_index_to_tun_if_index = 0;
 
 #if WITH_LIBSSL > 0
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0 || pool_elts (im->sad) == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg || pool_elts (im->sad) == 0)
     return;
 
   vec_validate_init_empty (sa_index_to_tun_if_index, vec_len (im->sad) - 1,
@@ -492,7 +493,7 @@ vl_api_ipsec_sa_dump_t_handler (vl_api_ipsec_sa_dump_t * mp)
   pool_foreach (sa, im->sad,
   ({
     if (mp->sa_id == ~(0) || ntohl (mp->sa_id) == sa->id)
-      send_ipsec_sa_details (sa, q, mp->context,
+      send_ipsec_sa_details (sa, reg, mp->context,
 			     sa_index_to_tun_if_index[sa - im->sad]);
   }));
   /* *INDENT-ON* */

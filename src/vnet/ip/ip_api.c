@@ -107,7 +107,8 @@ send_ip_neighbor_details (u32 sw_if_index,
 			  u8 is_ipv6,
 			  u8 is_static,
 			  u8 * mac_address,
-			  u8 * ip_address, svm_queue_t * q, u32 context)
+			  u8 * ip_address, vl_api_registration_t * reg,
+			  u32 context)
 {
   vl_api_ip_neighbor_details_t *mp;
 
@@ -121,16 +122,16 @@ send_ip_neighbor_details (u32 sw_if_index,
   memcpy (mp->mac_address, mac_address, 6);
   memcpy (mp->ip_address, ip_address, (is_ipv6) ? 16 : 4);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   u32 sw_if_index = ntohl (mp->sw_if_index);
@@ -148,7 +149,7 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
 	   ((n->flags & IP6_NEIGHBOR_FLAG_STATIC) ? 1 : 0),
            (u8 *) n->link_layer_address,
            (u8 *) & (n->key.ip6_address.as_u8),
-           q, mp->context);
+           reg, mp->context);
       }
       /* *INDENT-ON* */
       vec_free (ns);
@@ -165,7 +166,7 @@ vl_api_ip_neighbor_dump_t_handler (vl_api_ip_neighbor_dump_t * mp)
           ((n->flags & ETHERNET_ARP_IP4_ENTRY_FLAG_STATIC) ? 1 : 0),
           (u8*) n->ethernet_address,
           (u8*) & (n->ip4_address.as_u8),
-          q, mp->context);
+          reg, mp->context);
       }
       /* *INDENT-ON* */
       vec_free (ns);
@@ -201,7 +202,7 @@ copy_fib_next_hop (fib_route_path_encode_t * api_rpath, void *fp_arg)
 
 static void
 send_ip_fib_details (vpe_api_main_t * am,
-		     svm_queue_t * q,
+		     vl_api_registration_t * reg,
 		     const fib_table_t * table,
 		     const fib_prefix_t * pfx,
 		     fib_route_path_encode_t * api_rpaths, u32 context)
@@ -264,7 +265,7 @@ send_ip_fib_details (vpe_api_main_t * am,
     fp++;
   }
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 typedef struct vl_api_ip_fib_dump_walk_ctx_t_
@@ -286,7 +287,7 @@ static void
 vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   ip4_main_t *im = &ip4_main;
   fib_table_t *fib_table;
   fib_node_index_t *lfeip;
@@ -297,8 +298,8 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
     .feis = NULL,
   };
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
@@ -320,7 +321,7 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
     fib_table = fib_table_get (fib_index, pfx.fp_proto);
     api_rpaths = NULL;
     fib_entry_encode (*lfeip, &api_rpaths);
-    send_ip_fib_details (am, q, fib_table, &pfx, api_rpaths, mp->context);
+    send_ip_fib_details (am, reg, fib_table, &pfx, api_rpaths, mp->context);
     vec_free (api_rpaths);
   }
 
@@ -329,7 +330,7 @@ vl_api_ip_fib_dump_t_handler (vl_api_ip_fib_dump_t * mp)
 
 static void
 send_ip6_fib_details (vpe_api_main_t * am,
-		      svm_queue_t * q,
+		      vl_api_registration_t * reg,
 		      const fib_table_t * table,
 		      const fib_prefix_t * pfx,
 		      fib_route_path_encode_t * api_rpaths, u32 context)
@@ -392,7 +393,7 @@ send_ip6_fib_details (vpe_api_main_t * am,
     fp++;
   }
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 typedef struct apt_ip6_fib_show_ctx_t_
@@ -413,7 +414,7 @@ api_ip6_fib_table_put_entries (clib_bihash_kv_24_8_t * kvp, void *arg)
 }
 
 static void
-api_ip6_fib_table_get_all (svm_queue_t * q,
+api_ip6_fib_table_get_all (vl_api_registration_t * reg,
 			   vl_api_ip6_fib_dump_t * mp,
 			   fib_table_t * fib_table)
 {
@@ -438,7 +439,7 @@ api_ip6_fib_table_get_all (svm_queue_t * q,
     fib_entry_get_prefix (*fib_entry_index, &pfx);
     api_rpaths = NULL;
     fib_entry_encode (*fib_entry_index, &api_rpaths);
-    send_ip6_fib_details (am, q, fib_table, &pfx, api_rpaths, mp->context);
+    send_ip6_fib_details (am, reg, fib_table, &pfx, api_rpaths, mp->context);
     vec_free (api_rpaths);
   }
 
@@ -448,24 +449,24 @@ api_ip6_fib_table_get_all (svm_queue_t * q,
 static void
 vl_api_ip6_fib_dump_t_handler (vl_api_ip6_fib_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   ip6_main_t *im6 = &ip6_main;
   fib_table_t *fib_table;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   /* *INDENT-OFF* */
   pool_foreach (fib_table, im6->fibs,
   ({
-    api_ip6_fib_table_get_all(q, mp, fib_table);
+    api_ip6_fib_table_get_all(reg, mp, fib_table);
   }));
   /* *INDENT-ON* */
 }
 
 static void
-send_ip_mfib_details (svm_queue_t * q,
+send_ip_mfib_details (vl_api_registration_t * reg,
 		      u32 context, u32 table_id, fib_node_index_t mfei)
 {
   fib_route_path_encode_t *api_rpath, *api_rpaths = NULL;
@@ -509,7 +510,7 @@ send_ip_mfib_details (svm_queue_t * q,
   }
   vec_free (api_rpaths);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 typedef struct vl_api_ip_mfib_dump_ctc_t_
@@ -530,7 +531,7 @@ vl_api_ip_mfib_table_dump_walk (fib_node_index_t fei, void *arg)
 static void
 vl_api_ip_mfib_dump_t_handler (vl_api_ip_mfib_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   ip4_main_t *im = &ip4_main;
   mfib_table_t *mfib_table;
   fib_node_index_t *mfeip;
@@ -538,10 +539,9 @@ vl_api_ip_mfib_dump_t_handler (vl_api_ip_mfib_dump_t * mp)
     .entries = NULL,
   };
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
-
 
   /* *INDENT-OFF* */
   pool_foreach (mfib_table, im->mfibs,
@@ -554,7 +554,7 @@ vl_api_ip_mfib_dump_t_handler (vl_api_ip_mfib_dump_t * mp)
 
     vec_foreach (mfeip, ctx.entries)
     {
-      send_ip_mfib_details (q, mp->context,
+      send_ip_mfib_details (reg, mp->context,
                             mfib_table->mft_table_id,
                             *mfeip);
     }
@@ -568,7 +568,7 @@ vl_api_ip_mfib_dump_t_handler (vl_api_ip_mfib_dump_t * mp)
 
 static void
 send_ip6_mfib_details (vpe_api_main_t * am,
-		       svm_queue_t * q,
+		       vl_api_registration_t * reg,
 		       u32 table_id,
 		       mfib_prefix_t * pfx,
 		       fib_route_path_encode_t * api_rpaths, u32 context)
@@ -605,7 +605,7 @@ send_ip6_mfib_details (vpe_api_main_t * am,
     fp++;
   }
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 typedef struct vl_api_ip6_mfib_dump_ctc_t_
@@ -627,7 +627,7 @@ static void
 vl_api_ip6_mfib_dump_t_handler (vl_api_ip6_mfib_dump_t * mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   ip6_main_t *im = &ip6_main;
   mfib_table_t *mfib_table;
   fib_node_index_t *mfeip;
@@ -637,8 +637,8 @@ vl_api_ip6_mfib_dump_t_handler (vl_api_ip6_mfib_dump_t * mp)
     .entries = NULL,
   };
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
 
@@ -655,7 +655,7 @@ vl_api_ip6_mfib_dump_t_handler (vl_api_ip6_mfib_dump_t * mp)
     {
       mfib_entry_get_prefix (*mfeip, &pfx);
       mfib_entry_encode (*mfeip, &api_rpaths);
-      send_ip6_mfib_details (am, q,
+      send_ip6_mfib_details (am, reg,
                              mfib_table->mft_table_id,
                              &pfx, api_rpaths,
                              mp->context);
@@ -1418,7 +1418,8 @@ vl_api_ip_mroute_add_del_t_handler (vl_api_ip_mroute_add_del_t * mp)
 
 static void
 send_ip_details (vpe_api_main_t * am,
-		 svm_queue_t * q, u32 sw_if_index, u8 is_ipv6, u32 context)
+		 vl_api_registration_t * reg, u32 sw_if_index, u8 is_ipv6,
+		 u32 context)
 {
   vl_api_ip_details_t *mp;
 
@@ -1430,12 +1431,12 @@ send_ip_details (vpe_api_main_t * am,
   mp->is_ipv6 = is_ipv6;
   mp->context = context;
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 send_ip_address_details (vpe_api_main_t * am,
-			 svm_queue_t * q,
+			 vl_api_registration_t * reg,
 			 u8 * ip, u16 prefix_length,
 			 u32 sw_if_index, u8 is_ipv6, u32 context)
 {
@@ -1459,14 +1460,14 @@ send_ip_address_details (vpe_api_main_t * am,
   mp->sw_if_index = htonl (sw_if_index);
   mp->is_ipv6 = is_ipv6;
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
 {
   vpe_api_main_t *am = &vpe_api_main;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   ip6_address_t *r6;
   ip4_address_t *r4;
   ip6_main_t *im6 = &ip6_main;
@@ -1481,8 +1482,8 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
 
   sw_if_index = ntohl (mp->sw_if_index);
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
     return;
 
   if (mp->is_ipv6)
@@ -1493,7 +1494,7 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
       ({
         r6 = ip_interface_address_get_address (lm6, ia);
         u16 prefix_length = ia->address_length;
-        send_ip_address_details(am, q, (u8*)r6, prefix_length,
+        send_ip_address_details(am, reg, (u8*)r6, prefix_length,
 				sw_if_index, 1, mp->context);
       }));
       /* *INDENT-ON* */
@@ -1506,7 +1507,7 @@ vl_api_ip_address_dump_t_handler (vl_api_ip_address_dump_t * mp)
       ({
         r4 = ip_interface_address_get_address (lm4, ia);
         u16 prefix_length = ia->address_length;
-        send_ip_address_details(am, q, (u8*)r4, prefix_length,
+        send_ip_address_details(am, reg, (u8*)r4, prefix_length,
 				sw_if_index, 0, mp->context);
       }));
       /* *INDENT-ON* */
@@ -1521,15 +1522,13 @@ vl_api_ip_dump_t_handler (vl_api_ip_dump_t * mp)
   vnet_main_t *vnm = vnet_get_main ();
   vlib_main_t *vm = vlib_get_main ();
   vnet_interface_main_t *im = &vnm->interface_main;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   vnet_sw_interface_t *si, *sorted_sis;
   u32 sw_if_index = ~0;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   /* Gather interfaces. */
   sorted_sis = vec_new (vnet_sw_interface_t, pool_elts (im->sw_interfaces));
@@ -1550,7 +1549,7 @@ vl_api_ip_dump_t_handler (vl_api_ip_dump_t * mp)
 	    continue;
 	  }
 	sw_if_index = si->sw_if_index;
-	send_ip_details (am, q, sw_if_index, mp->is_ipv6, mp->context);
+	send_ip_details (am, reg, sw_if_index, mp->is_ipv6, mp->context);
       }
   }
 }
@@ -1668,7 +1667,7 @@ static void
 }
 
 static void
-send_ip6nd_proxy_details (svm_queue_t * q,
+send_ip6nd_proxy_details (vl_api_registration_t * reg,
 			  u32 context,
 			  const ip46_address_t * addr, u32 sw_if_index)
 {
@@ -1681,7 +1680,7 @@ send_ip6nd_proxy_details (svm_queue_t * q,
   mp->sw_if_index = htonl (sw_if_index);
   memcpy (mp->address, addr, 16);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 typedef struct api_ip6nd_proxy_fib_table_walk_ctx_t_
@@ -1712,13 +1711,11 @@ vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t * mp)
   };
   fib_node_index_t *feip;
   fib_prefix_t pfx;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
   /* *INDENT-OFF* */
   pool_foreach (fib_table, im6->fibs,
@@ -1736,7 +1733,7 @@ vl_api_ip6nd_proxy_dump_t_handler (vl_api_ip6nd_proxy_dump_t * mp)
   {
     fib_entry_get_prefix (*feip, &pfx);
 
-    send_ip6nd_proxy_details (q,
+    send_ip6nd_proxy_details (reg,
 			      mp->context,
 			      &pfx.fp_addr,
 			      fib_entry_get_resolving_interface (*feip));
