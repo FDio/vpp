@@ -65,27 +65,102 @@ dslite_init (vlib_main_t * vm)
     }
   /* *INDENT-ON* */
 
+  dm->is_ce = 0;
+
   dslite_dpo_module_init ();
+}
+
+void
+dslite_set_ce (dslite_main_t * dm, u8 set)
+{
+  dm->is_ce = (set != 0);
 }
 
 int
 dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
 {
-  dpo_id_t dpo_v6 = DPO_INVALID;
+  dpo_id_t dpo = DPO_INVALID;
 
-  dslite_dpo_create (DPO_PROTO_IP6, 0, &dpo_v6);
-  fib_prefix_t pfx = {
-    .fp_proto = FIB_PROTOCOL_IP6,
-    .fp_len = 128,
-    .fp_addr.ip6.as_u64[0] = addr->as_u64[0],
-    .fp_addr.ip6.as_u64[1] = addr->as_u64[1],
-  };
-  fib_table_entry_special_dpo_add (0, &pfx, FIB_SOURCE_PLUGIN_HI,
-				   FIB_ENTRY_FLAG_EXCLUSIVE, &dpo_v6);
-  dpo_reset (&dpo_v6);
+  if (dm->is_ce)
+    {
+      dslite_ce_dpo_create (DPO_PROTO_IP4, 0, &dpo);
+      fib_prefix_t pfx = {
+	.fp_proto = FIB_PROTOCOL_IP4,
+	.fp_len = 0,
+	.fp_addr.ip4.as_u32 = 0,
+      };
+      fib_table_entry_special_dpo_add (0, &pfx, FIB_SOURCE_PLUGIN_HI,
+				       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
+    }
+  else
+    {
+      dslite_dpo_create (DPO_PROTO_IP6, 0, &dpo);
+      fib_prefix_t pfx = {
+	.fp_proto = FIB_PROTOCOL_IP6,
+	.fp_len = 128,
+	.fp_addr.ip6.as_u64[0] = addr->as_u64[0],
+	.fp_addr.ip6.as_u64[1] = addr->as_u64[1],
+      };
+      fib_table_entry_special_dpo_add (0, &pfx, FIB_SOURCE_PLUGIN_HI,
+				       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
+    }
+
+  dpo_reset (&dpo);
 
   dm->aftr_ip6_addr.as_u64[0] = addr->as_u64[0];
   dm->aftr_ip6_addr.as_u64[1] = addr->as_u64[1];
+  return 0;
+}
+
+int
+dslite_set_aftr_ip4_addr (dslite_main_t * dm, ip4_address_t * addr)
+{
+  dm->aftr_ip4_addr.as_u32 = addr->as_u32;
+  return 0;
+}
+
+int
+dslite_set_b4_ip6_addr (dslite_main_t * dm, ip6_address_t * addr)
+{
+  if (dm->is_ce)
+    {
+      dpo_id_t dpo = DPO_INVALID;
+
+      dslite_ce_dpo_create (DPO_PROTO_IP6, 0, &dpo);
+      fib_prefix_t pfx = {
+	.fp_proto = FIB_PROTOCOL_IP6,
+	.fp_len = 128,
+	.fp_addr.ip6.as_u64[0] = addr->as_u64[0],
+	.fp_addr.ip6.as_u64[1] = addr->as_u64[1],
+      };
+      fib_table_entry_special_dpo_add (0, &pfx, FIB_SOURCE_PLUGIN_HI,
+				       FIB_ENTRY_FLAG_EXCLUSIVE, &dpo);
+
+      dpo_reset (&dpo);
+
+      dm->b4_ip6_addr.as_u64[0] = addr->as_u64[0];
+      dm->b4_ip6_addr.as_u64[1] = addr->as_u64[1];
+    }
+  else
+    {
+      return VNET_API_ERROR_FEATURE_DISABLED;
+    }
+
+  return 0;
+}
+
+int
+dslite_set_b4_ip4_addr (dslite_main_t * dm, ip4_address_t * addr)
+{
+  if (dm->is_ce)
+    {
+      dm->b4_ip4_addr.as_u32 = addr->as_u32;
+    }
+  else
+    {
+      return VNET_API_ERROR_FEATURE_DISABLED;
+    }
+
   return 0;
 }
 
@@ -151,6 +226,18 @@ format_dslite_trace (u8 * s, va_list * args)
 
   s =
     format (s, "next index %d, session %d", t->next_index, t->session_index);
+
+  return s;
+}
+
+u8 *
+format_dslite_ce_trace (u8 * s, va_list * args)
+{
+  CLIB_UNUSED (vlib_main_t * vm) = va_arg (*args, vlib_main_t *);
+  CLIB_UNUSED (vlib_node_t * node) = va_arg (*args, vlib_node_t *);
+  dslite_ce_trace_t *t = va_arg (*args, dslite_ce_trace_t *);
+
+  s = format (s, "next index %d", t->next_index);
 
   return s;
 }

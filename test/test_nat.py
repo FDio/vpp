@@ -5608,5 +5608,109 @@ class TestDSlite(MethodHolder):
                 self.vapi.cli("show dslite aftr-tunnel-endpoint-address"))
             self.logger.info(self.vapi.cli("show dslite sessions"))
 
+
+class TestDSliteCE(MethodHolder):
+    """ DS-Lite CE Test Cases """
+
+    @classmethod
+    def setUpConstants(cls):
+        super(TestDSliteCE, cls).setUpConstants()
+        cls.vpp_cmdline.extend(["nat", "{", "dslite ce", "}"])
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestDSliteCE, cls).setUpClass()
+
+        try:
+            cls.create_pg_interfaces(range(2))
+            cls.pg0.admin_up()
+            cls.pg0.config_ip4()
+            cls.pg0.resolve_arp()
+            cls.pg1.admin_up()
+            cls.pg1.config_ip6()
+            cls.pg1.generate_remote_hosts(1)
+            cls.pg1.configure_ipv6_neighbors()
+
+        except Exception:
+            super(TestDSliteCE, cls).tearDownClass()
+            raise
+
+    def test_dslite_ce(self):
+        """ Test DS-Lite CE """
+
+        b4_ip4 = '192.0.0.2'
+        b4_ip4_n = socket.inet_pton(socket.AF_INET, b4_ip4)
+        b4_ip6 = '2001:db8:62aa::375e:f4c1:1'
+        b4_ip6_n = socket.inet_pton(socket.AF_INET6, b4_ip6)
+        self.vapi.dslite_set_b4_addr(b4_ip6_n, b4_ip4_n)
+
+        aftr_ip4 = '192.0.0.1'
+        aftr_ip4_n = socket.inet_pton(socket.AF_INET, aftr_ip4)
+        aftr_ip6 = '2001:db8:85a3::8a2e:370:1'
+        aftr_ip6_n = socket.inet_pton(socket.AF_INET6, aftr_ip6)
+        self.vapi.dslite_set_aftr_addr(aftr_ip6_n, aftr_ip4_n)
+
+        self.vapi.ip_add_del_route(dst_address=aftr_ip6_n,
+                                   dst_address_length=128,
+                                   next_hop_address=self.pg1.remote_ip6n,
+                                   next_hop_sw_if_index=self.pg1.sw_if_index,
+                                   is_ipv6=1)
+
+        # UDP encapsulation
+        p = (Ether(dst=self.pg0.local_mac, src=self.pg0.remote_mac) /
+             IP(dst=self.pg1.remote_ip4, src=self.pg0.remote_ip4) /
+             UDP(sport=10000, dport=20000))
+        self.pg0.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        capture = capture[0]
+        self.assertEqual(capture[IPv6].src, b4_ip6)
+        self.assertEqual(capture[IPv6].dst, aftr_ip6)
+        self.assertEqual(capture[IP].src, self.pg0.remote_ip4)
+        self.assertEqual(capture[IP].dst, self.pg1.remote_ip4)
+        self.assertEqual(capture[UDP].sport, 10000)
+        self.assertEqual(capture[UDP].dport, 20000)
+        self.check_ip_checksum(capture)
+
+        # UDP decapsulation
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IPv6(dst=b4_ip6, src=aftr_ip6) /
+             IP(dst=self.pg0.remote_ip4, src=self.pg1.remote_ip4) /
+             UDP(sport=20000, dport=10000))
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg0.get_capture(1)
+        capture = capture[0]
+        self.assertFalse(capture.haslayer(IPv6))
+        self.assertEqual(capture[IP].src, self.pg1.remote_ip4)
+        self.assertEqual(capture[IP].dst, self.pg0.remote_ip4)
+        self.assertEqual(capture[UDP].sport, 20000)
+        self.assertEqual(capture[UDP].dport, 10000)
+        self.check_ip_checksum(capture)
+
+        # ping DS-Lite B4 tunnel endpoint address
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IPv6(src=self.pg1.remote_hosts[0].ip6, dst=b4_ip6) /
+             ICMPv6EchoRequest())
+        self.pg1.add_stream(p)
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        capture = self.pg1.get_capture(1)
+        self.assertEqual(1, len(capture))
+        capture = capture[0]
+        self.assertEqual(capture[IPv6].src, b4_ip6)
+        self.assertEqual(capture[IPv6].dst, self.pg1.remote_hosts[0].ip6)
+        self.assertTrue(capture.haslayer(ICMPv6EchoReply))
+
+    def tearDown(self):
+        super(TestDSliteCE, self).tearDown()
+        if not self.vpp_dead:
+            self.logger.info(
+                self.vapi.cli("show dslite aftr-tunnel-endpoint-address"))
+            self.logger.info(
+                self.vapi.cli("show dslite b4-tunnel-endpoint-address"))
+
 if __name__ == '__main__':
     unittest.main(testRunner=VppTestRunner)

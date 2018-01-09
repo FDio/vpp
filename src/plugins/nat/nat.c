@@ -2900,6 +2900,7 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
   u8 static_mapping_only = 0;
   u8 static_mapping_connection_tracking = 0;
   snat_main_per_thread_data_t *tsm;
+  dslite_main_t * dm = &dslite_main;
 
   sm->deterministic = 0;
   sm->out2in_dpo = 0;
@@ -2945,6 +2946,8 @@ snat_config (vlib_main_t * vm, unformat_input_t * input)
         ;
       else if (unformat (input, "out2in dpo"))
         sm->out2in_dpo = 1;
+      else if (unformat (input, "dslite ce"))
+        dslite_set_ce(dm, 1);
       else
 	return clib_error_return (0, "unknown input '%U'",
 				  format_unformat_error, input);

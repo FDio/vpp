@@ -80,11 +80,17 @@ typedef struct
 {
   ip6_address_t aftr_ip6_addr;
   ip4_address_t aftr_ip4_addr;
+  ip6_address_t b4_ip6_addr;
+  ip4_address_t b4_ip4_addr;
   dslite_per_thread_data_t *per_thread_data;
   snat_address_t *addr_pool;
   u32 num_workers;
   u32 first_worker_index;
   u16 port_per_thread;
+
+  /* If set then the DSLite component behaves as CPE/B4
+   * otherwise it behaves as AFTR */
+  u8 is_ce;
 } dslite_main_t;
 
 typedef struct
@@ -93,9 +99,16 @@ typedef struct
   u32 session_index;
 } dslite_trace_t;
 
+typedef struct
+{
+  u32 next_index;
+} dslite_ce_trace_t;
+
 #define foreach_dslite_error                    \
 _(IN2OUT, "valid in2out DS-Lite packets")       \
 _(OUT2IN, "valid out2in DS-Lite packets")       \
+_(CE_ENCAP, "valid CE encap DS-Lite packets")   \
+_(CE_DECAP, "valid CE decap DS-Lite packets")   \
 _(NO_TRANSLATION, "no translation")             \
 _(BAD_IP6_PROTOCOL, "bad ip6 protocol")         \
 _(OUT_OF_PORTS, "out of ports")                 \
@@ -115,12 +128,19 @@ extern dslite_main_t dslite_main;
 extern vlib_node_registration_t dslite_in2out_node;
 extern vlib_node_registration_t dslite_in2out_slowpath_node;
 extern vlib_node_registration_t dslite_out2in_node;
+extern vlib_node_registration_t dslite_ce_encap_node;
+extern vlib_node_registration_t dslite_ce_decap_node;
 
 void dslite_init (vlib_main_t * vm);
+void dslite_set_ce (dslite_main_t * dm, u8 set);
 int dslite_set_aftr_ip6_addr (dslite_main_t * dm, ip6_address_t * addr);
+int dslite_set_b4_ip6_addr (dslite_main_t * dm, ip6_address_t * addr);
+int dslite_set_aftr_ip4_addr (dslite_main_t * dm, ip4_address_t * addr);
+int dslite_set_b4_ip4_addr (dslite_main_t * dm, ip4_address_t * addr);
 int dslite_add_del_pool_addr (dslite_main_t * dm, ip4_address_t * addr,
 			      u8 is_add);
 u8 *format_dslite_trace (u8 * s, va_list * args);
+u8 *format_dslite_ce_trace (u8 * s, va_list * args);
 
 #endif /* __included_dslite_h__ */
 
