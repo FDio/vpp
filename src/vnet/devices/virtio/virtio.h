@@ -128,7 +128,9 @@ extern vlib_node_registration_t virtio_input_node;
 
 clib_error_t *virtio_vring_init (vlib_main_t * vm, virtio_if_t * vif, u16 idx,
 				 u16 sz);
-clib_error_t *virtio_vring_free (virtio_if_t * vif, u32 idx);
+clib_error_t *virtio_vring_free (vlib_main_t * vm, virtio_if_t * vif,
+				 u32 idx);
+extern void virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring);
 
 #endif /* _VNET_DEVICES_VIRTIO_VIRTIO_H_ */
 

@@ -390,7 +390,7 @@ error:
     close (vif->tap_fd);
   if (vif->fd != -1)
     close (vif->fd);
-  vec_foreach_index (i, vif->vrings) virtio_vring_free (vif, i);
+  vec_foreach_index (i, vif->vrings) virtio_vring_free (vm, vif, i);
   memset (vif, 0, sizeof (virtio_if_t));
   pool_put (vim->interfaces, vif);
 
@@ -429,7 +429,7 @@ tap_delete_if (vlib_main_t * vm, u32 sw_if_index)
   if (vif->fd != -1)
     close (vif->fd);
 
-  vec_foreach_index (i, vif->vrings) virtio_vring_free (vif, i);
+  vec_foreach_index (i, vif->vrings) virtio_vring_free (vm, vif, i);
   vec_free (vif->vrings);
 
   hash_unset (tm->dev_instance_by_interface_id, vif->id);

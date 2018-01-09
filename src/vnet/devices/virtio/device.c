@@ -88,7 +88,7 @@ format_virtio_tx_trace (u8 * s, va_list * args)
   return s;
 }
 
-static_always_inline void
+inline void
 virtio_free_used_desc (vlib_main_t * vm, virtio_vring_t * vring)
 {
   u16 used = vring->desc_in_use;
