@@ -941,9 +941,11 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply)
   dns_rr_t *rr;
   u8 *curpos;
   u8 *pos, *pos2;
+  u8 *cname_pos = 0;
   int len, i;
   u8 *cname = 0;
   u8 *request = 0;
+  u8 *name_copy;
   u32 qp_offset;
   u16 flags;
   u16 rcode;
@@ -999,25 +1001,36 @@ vnet_dns_cname_indirection_nolock (dns_main_t * dm, u32 ep_index, u8 * reply)
 	case DNS_TYPE_A:
 	case DNS_TYPE_AAAA:
 	  return 0;
-	  /* Chase a CNAME pointer? */
+	  /*
+	   * Maybe chase a CNAME pointer?
+	   * It's not unheard-of for name-servers to return
+	   * both CNAME and A/AAAA records...
+	   */
 	case DNS_TYPE_CNAME:
-	  goto chase_chain;
+	  cname_pos = pos;
+	  break;
 
 	  /* Some other junk, e.g. a nameserver... */
 	default:
 	  break;
 	}
       pos += sizeof (*rr) + clib_net_to_host_u16 (rr->rdlength);
+      /* Skip name... */
+      if ((pos2[0] & 0xc0) == 0xc0)
+	pos += 2;
     }
 
   /* Neither a CNAME nor a real address. Try another server */
-  flags &= ~DNS_RCODE_MASK;
-  flags |= DNS_RCODE_NAME_ERROR;
-  h->flags = clib_host_to_net_u16 (flags);
-  return -1;
+  if (cname_pos == 0)
+    {
+      flags &= ~DNS_RCODE_MASK;
+      flags |= DNS_RCODE_NAME_ERROR;
+      h->flags = clib_host_to_net_u16 (flags);
+      return -1;
+    }
 
-chase_chain:
   /* This is a CNAME record, chase the name chain. */
+  pos = cname_pos;
 
   /* The last request is no longer pending.. */
   for (i = 0; i < vec_len (dm->unresolved_entries); i++)
@@ -1068,15 +1081,22 @@ found_last_request:
 #undef _
 
   request = name_to_labels (cname);
+  name_copy = vec_dup (request);
 
   qp_offset = vec_len (request);
 
   /* Add space for the query header */
-  vec_validate (request, qp_offset + sizeof (dns_query_t) - 1);
+  vec_validate (request, 2 * qp_offset + 2 * sizeof (dns_query_t) - 1);
 
   qp = (dns_query_t *) (request + qp_offset);
 
-  qp->type = clib_host_to_net_u16 (DNS_TYPE_ALL);
+  qp->type = clib_host_to_net_u16 (DNS_TYPE_A);
+  qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
+  clib_memcpy (qp, name_copy, vec_len (name_copy));
+  qp = (dns_query_t *) (((u8 *) qp) + vec_len (name_copy));
+  vec_free (name_copy);
+
+  qp->type = clib_host_to_net_u16 (DNS_TYPE_AAAA);
   qp->class = clib_host_to_net_u16 (DNS_CLASS_IN);
 
   /* Punch in space for the dns_header_t */
@@ -1089,7 +1109,7 @@ found_last_request:
 
   /* Ask for a recursive lookup */
   h->flags = clib_host_to_net_u16 (DNS_RD | DNS_OPCODE_QUERY);
-  h->qdcount = clib_host_to_net_u16 (1);
+  h->qdcount = clib_host_to_net_u16 (2);
   h->nscount = 0;
   h->arcount = 0;
 
