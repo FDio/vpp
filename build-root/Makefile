@@ -245,6 +245,8 @@ tag_var_with_added_space_fn = $(if $($(TAG)_TAG_$(1)),$($(TAG)_TAG_$(1)) )
 # TAG=debug for debugging
 debug_TAG_CFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
 		   -fstack-protector-all -fPIC
+debug_TAG_CXXFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
+		   -fstack-protector-all -fPIC
 debug_TAG_LDFLAGS = -g -O0 -DCLIB_DEBUG -DFORTIFY_SOURCE=2 -march=$(MARCH) \
 		   -fstack-protector-all -fPIC
 
@@ -537,6 +539,8 @@ configure_ldflags_fn = \
 CONFIGURE_ENV =								\
     $(if $(call configure_var_fn,CPPFLAGS),				\
 	 CPPFLAGS="$(CPPFLAGS) $(call configure_var_fn,CPPFLAGS)")	\
+    $(if $(call configure_var_fn,CXXFLAGS),				\
+	 CXXFLAGS="$(CXXFLAGS) $(call configure_var_fn,CXXFLAGS)")	\
     $(if $(call configure_var_fn,CFLAGS),				\
 	 CFLAGS="$(CFLAGS) $(call configure_var_fn,CFLAGS)")		\
     $(if $(call configure_var_fn,CCASFLAGS),				\
