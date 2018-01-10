@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d91ce21b_36a461b7",
+        "filename": "src/vnet/map/ip4_map_t.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 618,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-01-10T12:27:34Z",
+      "side": 1,
+      "message": "create separate node for CE?",
+      "revId": "48abcee62d5eca71170e8171be0ff8161cd6442f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "cfb4e6b1_d8e92bd3",
+        "filename": "src/vnet/map/ip6_map_t.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 678,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-01-10T12:27:34Z",
+      "side": 1,
+      "message": "create separate node for CE?",
+      "revId": "48abcee62d5eca71170e8171be0ff8161cd6442f",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
