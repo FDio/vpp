@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "412112a4_8c97714a",
+        "filename": "src/svm/svm.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 84,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-01-10T10:29:22Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be bits \u003d 64 - (bits + 1) ?\n\nI mean if bits\u003d14, we have 14x0 + 50x1, then 1 \u003c\u003c 50 is on 51 bits, which is one more than we want.\nRight ?",
+      "range": {
+        "startLine": 84,
+        "startChar": 2,
+        "endLine": 84,
+        "endChar": 19
+      },
+      "revId": "aec8f8984771cabc79a8ed64f56afcf61465d00a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
