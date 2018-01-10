@@ -962,12 +962,12 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
   u32 client = lm->client_pid;
   u32 cl_idx = lm->client_index;
   vl_api_l2_macs_event_t *mp = 0;
-  svm_queue_t *q = 0;
+  vl_api_registration_t *reg = 0;
 
   if (client)
     {
       mp = allocate_mac_evt_buf (client, cl_idx);
-      q = vl_api_client_index_to_input_queue (lm->client_index);
+      reg = vl_api_client_index_to_registration (lm->client_index);
     }
 
   for (i = 0; i < h->nbuckets; i++)
@@ -1016,15 +1016,15 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
 		  if (PREDICT_FALSE (evt_idx >= fm->max_macs_in_event))
 		    {
 		      /* event message full, send it and start a new one */
-		      if (q && (q->cursize < q->maxsize))
+		      if (reg && vl_api_can_send_msg (reg))
 			{
 			  mp->n_macs = htonl (evt_idx);
-			  vl_msg_api_send_shmem (q, (u8 *) & mp);
+			  vl_api_send_msg (reg, (u8 *) mp);
 			  mp = allocate_mac_evt_buf (client, cl_idx);
 			}
 		      else
 			{
-			  if (q)
+			  if (reg)
 			    clib_warning ("MAC event to pid %d queue stuffed!"
 					  " %d MAC entries lost", client,
 					  evt_idx);
@@ -1101,14 +1101,14 @@ l2fib_scan (vlib_main_t * vm, f64 start_time, u8 event_only)
       /*  send any outstanding mac event message else free message buffer */
       if (evt_idx)
 	{
-	  if (q && (q->cursize < q->maxsize))
+	  if (reg && vl_api_can_send_msg (reg))
 	    {
 	      mp->n_macs = htonl (evt_idx);
-	      vl_msg_api_send_shmem (q, (u8 *) & mp);
+	      vl_api_send_msg (reg, (u8 *) mp);
 	    }
 	  else
 	    {
-	      if (q)
+	      if (reg)
 		clib_warning ("MAC event to pid %d queue stuffed!"
 			      " %d MAC entries lost", client, evt_idx);
 	      vl_msg_api_free (mp);

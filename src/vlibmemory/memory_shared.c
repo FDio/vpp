@@ -681,6 +681,12 @@ vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem)
   (void) svm_queue_add (q, elem, 0 /* nowait */ );
 }
 
+int
+vl_mem_api_can_send (svm_queue_t * q)
+{
+  return (q->cursize < q->maxsize);
+}
+
 void
 vl_msg_api_send_shmem_nolock (svm_queue_t * q, u8 * elem)
 {

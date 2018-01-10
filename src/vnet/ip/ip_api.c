@@ -1824,7 +1824,7 @@ static void
 }
 
 void
-vl_mfib_signal_send_one (svm_queue_t * q,
+vl_mfib_signal_send_one (vl_api_registration_t * reg,
 			 u32 context, const mfib_signal_t * mfs)
 {
   vl_api_mfib_signal_details_t *mp;
@@ -1873,21 +1873,19 @@ vl_mfib_signal_send_one (svm_queue_t * q,
       mp->ip_packet_len = 0;
     }
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_api_send_msg (reg, (u8 *) mp);
 }
 
 static void
 vl_api_mfib_signal_dump_t_handler (vl_api_mfib_signal_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
-    {
-      return;
-    }
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (!reg)
+    return;
 
-  while (q->cursize < q->maxsize && mfib_signal_send_one (q, mp->context))
+  while (vl_api_can_send_msg (reg) && mfib_signal_send_one (reg, mp->context))
     ;
 }
 
@@ -2107,7 +2105,7 @@ handle_ip4_arp_event (u32 pool_index)
   vlib_main_t *vm = vam->vlib_main;
   vl_api_ip4_arp_event_t *event;
   vl_api_ip4_arp_event_t *mp;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
   /* Client can cancel, die, etc. */
   if (pool_is_free_index (vam->arp_events, pool_index))
@@ -2115,8 +2113,8 @@ handle_ip4_arp_event (u32 pool_index)
 
   event = pool_elt_at_index (vam->arp_events, pool_index);
 
-  q = vl_api_client_index_to_input_queue (event->client_index);
-  if (!q)
+  reg = vl_api_client_index_to_registration (event->client_index);
+  if (!reg)
     {
       (void) vnet_add_del_ip4_arp_change_event
 	(vnm, arp_change_delete_callback,
@@ -2126,11 +2124,11 @@ handle_ip4_arp_event (u32 pool_index)
       return;
     }
 
-  if (q->cursize < q->maxsize)
+  if (vl_api_can_send_msg (reg))
     {
       mp = vl_msg_api_alloc (sizeof (*mp));
       clib_memcpy (mp, event, sizeof (*mp));
-      vl_msg_api_send_shmem (q, (u8 *) & mp);
+      vl_api_send_msg (reg, (u8 *) mp);
     }
   else
     {
@@ -2156,7 +2154,7 @@ handle_ip6_nd_event (u32 pool_index)
   vlib_main_t *vm = vam->vlib_main;
   vl_api_ip6_nd_event_t *event;
   vl_api_ip6_nd_event_t *mp;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
   /* Client can cancel, die, etc. */
   if (pool_is_free_index (vam->nd_events, pool_index))
@@ -2164,8 +2162,8 @@ handle_ip6_nd_event (u32 pool_index)
 
   event = pool_elt_at_index (vam->nd_events, pool_index);
 
-  q = vl_api_client_index_to_input_queue (event->client_index);
-  if (!q)
+  reg = vl_api_client_index_to_registration (event->client_index);
+  if (!reg)
     {
       (void) vnet_add_del_ip6_nd_change_event
 	(vnm, nd_change_delete_callback,
@@ -2175,11 +2173,11 @@ handle_ip6_nd_event (u32 pool_index)
       return;
     }
 
-  if (q->cursize < q->maxsize)
+  if (vl_api_can_send_msg (reg))
     {
       mp = vl_msg_api_alloc (sizeof (*mp));
       clib_memcpy (mp, event, sizeof (*mp));
-      vl_msg_api_send_shmem (q, (u8 *) & mp);
+      vl_api_send_msg (reg, (u8 *) mp);
     }
   else
     {
@@ -2331,9 +2329,9 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
             /* *INDENT-OFF* */
             pool_foreach(reg, vpe_api_main.wc_ip4_arp_events_registrations,
             ({
-	      svm_queue_t *q;
-              q = vl_api_client_index_to_input_queue (reg->client_index);
-	      if (q && q->cursize < q->maxsize)
+	      vl_api_registration_t *vl_reg;
+              vl_reg = vl_api_client_index_to_registration (reg->client_index);
+	      if (reg && vl_api_can_send_msg (vl_reg))
 	        {
 	          vl_api_ip4_arp_event_t * event = vl_msg_api_alloc (sizeof *event);
 	          memset (event, 0, sizeof *event);
@@ -2344,7 +2342,7 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	          event->address = arp_events[i].ip4;
 	          event->sw_if_index = htonl(arp_events[i].sw_if_index);
 	          memcpy(event->new_mac, arp_events[i].mac, sizeof event->new_mac);
-	          vl_msg_api_send_shmem (q, (u8 *) &event);
+	          vl_api_send_msg (vl_reg, (u8 *) event);
 	        }
             }));
             /* *INDENT-ON* */
@@ -2370,9 +2368,9 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
               /* *INDENT-OFF* */
               pool_foreach(reg, vpe_api_main.wc_ip6_nd_events_registrations,
               ({
-	        svm_queue_t *q;
-                q = vl_api_client_index_to_input_queue (reg->client_index);
-	        if (q && q->cursize < q->maxsize)
+	        vl_api_registration_t *vl_reg;
+                vl_reg = vl_api_client_index_to_registration (reg->client_index);
+	        if (vl_reg && vl_api_can_send_msg (vl_reg))
 	          {
 	            vl_api_ip6_nd_event_t * event = vl_msg_api_alloc (sizeof *event);
 	            memset (event, 0, sizeof *event);
@@ -2383,7 +2381,7 @@ wc_arp_process (vlib_main_t * vm, vlib_node_runtime_t * rt, vlib_frame_t * f)
 	            memcpy(event->address, nd_events[i].ip6.as_u8, sizeof event->address);
 	            event->sw_if_index = htonl(nd_events[i].sw_if_index);
 	            memcpy(event->new_mac, nd_events[i].mac, sizeof event->new_mac);
-	            vl_msg_api_send_shmem (q, (u8 *) &event);
+	            vl_api_send_msg (vl_reg, (u8 *) event);
 	          }
               }));
             /* *INDENT-ON* */
