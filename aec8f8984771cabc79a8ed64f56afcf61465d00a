@@ -22,6 +22,29 @@
       "revId": "aec8f8984771cabc79a8ed64f56afcf61465d00a",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "96de61ae_aed2f7d4",
+        "filename": "src/svm/svm.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 91,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-01-10T10:38:36Z",
+      "side": 1,
+      "message": "This should be moved before the test on line 85: if we return, we leak.",
+      "range": {
+        "startLine": 90,
+        "startChar": 0,
+        "endLine": 91,
+        "endChar": 13
+      },
+      "revId": "aec8f8984771cabc79a8ed64f56afcf61465d00a",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
     }
   ]
 }
