@@ -1,0 +1,113 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1c30278f_3718962e",
+        "filename": "src/plugins/nat/dslite.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 130,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-01-10T12:22:52Z",
+      "side": 1,
+      "message": "aftr doesn\u0027t need this, return VNET_API_ERROR_FEATURE_DISABLED if not CE",
+      "range": {
+        "startLine": 129,
+        "startChar": 0,
+        "endLine": 130,
+        "endChar": 46
+      },
+      "revId": "4771f348f2d9e56ce0126334988d7a16a88ea59b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c47dc1b4_745975a3",
+        "filename": "src/plugins/nat/nat.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 1169,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-01-10T12:22:52Z",
+      "side": 1,
+      "message": "add doc string and get API call",
+      "revId": "4771f348f2d9e56ce0126334988d7a16a88ea59b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "ff687744_97193c8c",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2949,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-01-10T12:22:52Z",
+      "side": 1,
+      "message": "dslite ce",
+      "range": {
+        "startLine": 2949,
+        "startChar": 33,
+        "endLine": 2949,
+        "endChar": 46
+      },
+      "revId": "4771f348f2d9e56ce0126334988d7a16a88ea59b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "785b8819_874dab79",
+        "filename": "src/plugins/nat/nat.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 2950,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-01-10T12:22:52Z",
+      "side": 1,
+      "message": "set by function",
+      "range": {
+        "startLine": 2950,
+        "startChar": 8,
+        "endLine": 2950,
+        "endChar": 22
+      },
+      "revId": "4771f348f2d9e56ce0126334988d7a16a88ea59b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "31636356_274b2b84",
+        "filename": "test/test_nat.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 5613,
+      "author": {
+        "id": 123
+      },
+      "writtenOn": "2018-01-10T12:22:52Z",
+      "side": 1,
+      "message": "DS-Lite CE Test Cases",
+      "range": {
+        "startLine": 5613,
+        "startChar": 8,
+        "endLine": 5613,
+        "endChar": 26
+      },
+      "revId": "4771f348f2d9e56ce0126334988d7a16a88ea59b",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
