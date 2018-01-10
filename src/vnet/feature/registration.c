@@ -201,12 +201,18 @@ vnet_feature_arc_init (vlib_main_t * vm,
        * Nonexistent graph nodes are tolerated.
        */
       if (p == 0)
-	return clib_error_return (0, "feature node '%s' not found", a_name);
+	{
+	  clib_warning ("feature node '%s' not found", a_name);
+	  continue;
+	}
       a_index = p[0];
 
       p = hash_get_mem (index_by_name, b_name);
       if (p == 0)
-	return clib_error_return (0, "feature node '%s' not found", b_name);
+	{
+	  clib_warning ("feature node '%s' not found", b_name);
+	  continue;
+	}
       b_index = p[0];
 
       /* add a before b to the original set of constraints */
