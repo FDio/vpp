@@ -136,12 +136,12 @@ l2_emulation_cli (vlib_main_t * vm,
 }
 
 /*?
- * Configure l2 emualtion.
+ * Configure l2 emulation.
  *  When the interface is in L2 mode, configure the extraction of L3
  *  packets out of the L2 path and into the L3 path.
  *
  * @cliexpar
- * @cliexstart{set interface l2 input l2-emulation <interface-name> [disable]
+ * @cliexstart{set interface l2 input l2-emulation <interface-name> [disable]}
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
@@ -179,7 +179,7 @@ l2_emulation_show (vlib_main_t * vm,
  *  packets out of the L2 path and into the L3 path.
  *
  * @cliexpar
- * @cliexstart{show interface l2 l2-emulation
+ * @cliexstart{show interface l2 l2-emulation}
  * @cliexend
  ?*/
 /* *INDENT-OFF* */
