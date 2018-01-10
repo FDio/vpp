@@ -115,6 +115,7 @@ void vl_unmap_shmem (void);
 void vl_register_mapped_shmem_region (svm_region_t * rp);
 void vl_msg_api_send_shmem (svm_queue_t * q, u8 * elem);
 void vl_msg_api_send_shmem_nolock (svm_queue_t * q, u8 * elem);
+int vl_mem_api_can_send (svm_queue_t * q);
 void vl_set_memory_region_name (const char *name);
 void vl_set_memory_root_path (const char *root_path);
 void vl_set_memory_uid (int uid);

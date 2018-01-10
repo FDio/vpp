@@ -91,7 +91,7 @@ mfib_signal_lock_release (void)
 }
 
 int
-mfib_signal_send_one (struct _svm_queue *q,
+mfib_signal_send_one (struct vl_api_registration_ *reg,
                       u32 context)
 {
     u32 li, si;
@@ -121,7 +121,7 @@ mfib_signal_send_one (struct _svm_queue *q,
                              ~MFIB_ITF_FLAG_SIGNAL_PRESENT);
 
 
-        vl_mfib_signal_send_one(q, context, mfs);
+        vl_mfib_signal_send_one(reg, context, mfs);
 
         /*
          * with the lock held, return the resoruces of the signals posted

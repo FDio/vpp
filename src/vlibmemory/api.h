@@ -43,6 +43,15 @@ vl_api_send_msg (vl_api_registration_t * rp, u8 * elem)
     }
 }
 
+always_inline int
+vl_api_can_send_msg (vl_api_registration_t * rp)
+{
+  if (PREDICT_FALSE (rp->registration_type > REGISTRATION_TYPE_SHMEM))
+    return 1;
+  else
+    return vl_mem_api_can_send (rp->vl_input_queue);
+}
+
 always_inline vl_api_registration_t *
 vl_api_client_index_to_registration (u32 index)
 {

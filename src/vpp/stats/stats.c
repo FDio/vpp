@@ -578,7 +578,7 @@ static void
 {
   vpe_client_registration_t *clients, client;
   stats_main_t *sm = &stats_main;
-  svm_queue_t *q, *q_prev = NULL;
+  vl_api_registration_t *reg, *reg_prev = NULL;
   vl_api_vnet_interface_combined_counters_t *mp_copy = NULL;
   u32 mp_size;
   int i;
@@ -592,26 +592,26 @@ static void
   for (i = 0; i < vec_len (clients); i++)
     {
       client = clients[i];
-      q = vl_api_client_index_to_input_queue (client.client_index);
-      if (q)
+      reg = vl_api_client_index_to_registration (client.client_index);
+      if (reg)
 	{
-	  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+	  if (reg_prev && vl_api_can_send_msg (reg_prev))
 	    {
 	      mp_copy = vl_msg_api_alloc_as_if_client (mp_size);
 	      clib_memcpy (mp_copy, mp, mp_size);
-	      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+	      vl_api_send_msg (reg_prev, (u8 *) mp);
 	      mp = mp_copy;
 	    }
-	  q_prev = q;
+	  reg_prev = reg;
 	}
     }
 #if STATS_DEBUG > 0
   fformat (stdout, "%U\n", format_vnet_combined_counters, mp);
 #endif
 
-  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+  if (reg_prev && vl_api_can_send_msg (reg_prev))
     {
-      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+      vl_api_send_msg (reg_prev, (u8 *) mp);
     }
   else
     {
@@ -2142,7 +2142,7 @@ static void
 {
   vpe_client_registration_t *clients, client;
   stats_main_t *sm = &stats_main;
-  svm_queue_t *q, *q_prev = NULL;
+  vl_api_registration_t *reg, *reg_prev = NULL;
   vl_api_vnet_interface_simple_counters_t *mp_copy = NULL;
   u32 mp_size;
   int i;
@@ -2156,17 +2156,17 @@ static void
   for (i = 0; i < vec_len (clients); i++)
     {
       client = clients[i];
-      q = vl_api_client_index_to_input_queue (client.client_index);
-      if (q)
+      reg = vl_api_client_index_to_registration (client.client_index);
+      if (reg)
 	{
-	  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+	  if (reg_prev && vl_api_can_send_msg (reg_prev))
 	    {
 	      mp_copy = vl_msg_api_alloc_as_if_client (mp_size);
 	      clib_memcpy (mp_copy, mp, mp_size);
-	      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+	      vl_api_send_msg (reg_prev, (u8 *) mp);
 	      mp = mp_copy;
 	    }
-	  q_prev = q;
+	  reg_prev = reg;
 	}
       else
 	{
@@ -2181,9 +2181,9 @@ static void
   fformat (stdout, "%U\n", format_vnet_simple_counters, mp);
 #endif
 
-  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+  if (reg_prev && vl_api_can_send_msg (reg_prev))
     {
-      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+      vl_api_send_msg (reg_prev, (u8 *) mp);
     }
   else
     {
@@ -2195,7 +2195,7 @@ static void
 vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  svm_queue_t *q, *q_prev = NULL;
+  vl_api_registration_t *reg, *reg_prev = NULL;
   vl_api_vnet_ip4_fib_counters_t *mp_copy = NULL;
   u32 mp_size;
   vpe_client_registration_t *clients, client;
@@ -2210,17 +2210,17 @@ vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
   for (i = 0; i < vec_len (clients); i++)
     {
       client = clients[i];
-      q = vl_api_client_index_to_input_queue (client.client_index);
-      if (q)
+      reg = vl_api_client_index_to_registration (client.client_index);
+      if (reg)
 	{
-	  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+	  if (reg_prev && vl_api_can_send_msg (reg_prev))
 	    {
 	      mp_copy = vl_msg_api_alloc_as_if_client (mp_size);
 	      clib_memcpy (mp_copy, mp, mp_size);
-	      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+	      vl_api_send_msg (reg_prev, (u8 *) mp);
 	      mp = mp_copy;
 	    }
-	  q_prev = q;
+	  reg_prev = reg;
 	}
       else
 	{
@@ -2230,9 +2230,9 @@ vl_api_vnet_ip4_fib_counters_t_handler (vl_api_vnet_ip4_fib_counters_t * mp)
 	}
     }
 
-  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+  if (reg_prev && vl_api_can_send_msg (reg_prev))
     {
-      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+      vl_api_send_msg (reg_prev, (u8 *) mp);
     }
   else
     {
@@ -2244,7 +2244,7 @@ static void
 vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  svm_queue_t *q, *q_prev = NULL;
+  vl_api_registration_t *reg, *reg_prev = NULL;
   vl_api_vnet_ip4_nbr_counters_t *mp_copy = NULL;
   u32 mp_size;
   vpe_client_registration_t *clients, client;
@@ -2259,17 +2259,17 @@ vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
   for (i = 0; i < vec_len (clients); i++)
     {
       client = clients[i];
-      q = vl_api_client_index_to_input_queue (client.client_index);
-      if (q)
+      reg = vl_api_client_index_to_registration (client.client_index);
+      if (reg)
 	{
-	  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+	  if (reg_prev && vl_api_can_send_msg (reg_prev))
 	    {
 	      mp_copy = vl_msg_api_alloc_as_if_client (mp_size);
 	      clib_memcpy (mp_copy, mp, mp_size);
-	      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+	      vl_api_send_msg (reg_prev, (u8 *) mp);
 	      mp = mp_copy;
 	    }
-	  q_prev = q;
+	  reg_prev = reg;
 	}
       else
 	{
@@ -2280,9 +2280,9 @@ vl_api_vnet_ip4_nbr_counters_t_handler (vl_api_vnet_ip4_nbr_counters_t * mp)
     }
 
   /* *INDENT-ON* */
-  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+  if (reg_prev && vl_api_can_send_msg (reg_prev))
     {
-      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+      vl_api_send_msg (reg_prev, (u8 *) mp);
     }
   else
     {
@@ -2294,7 +2294,7 @@ static void
 vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  svm_queue_t *q, *q_prev = NULL;
+  vl_api_registration_t *reg, *reg_prev = NULL;
   vl_api_vnet_ip6_fib_counters_t *mp_copy = NULL;
   u32 mp_size;
   vpe_client_registration_t *clients, client;
@@ -2309,17 +2309,17 @@ vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
   for (i = 0; i < vec_len (clients); i++)
     {
       client = clients[i];
-      q = vl_api_client_index_to_input_queue (client.client_index);
-      if (q)
+      reg = vl_api_client_index_to_registration (client.client_index);
+      if (reg)
 	{
-	  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+	  if (reg_prev && vl_api_can_send_msg (reg_prev))
 	    {
 	      mp_copy = vl_msg_api_alloc_as_if_client (mp_size);
 	      clib_memcpy (mp_copy, mp, mp_size);
-	      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+	      vl_api_send_msg (reg_prev, (u8 *) mp);
 	      mp = mp_copy;
 	    }
-	  q_prev = q;
+	  reg_prev = reg;
 	}
       else
 	{
@@ -2329,9 +2329,9 @@ vl_api_vnet_ip6_fib_counters_t_handler (vl_api_vnet_ip6_fib_counters_t * mp)
 	}
     }
   /* *INDENT-ON* */
-  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+  if (reg_prev && vl_api_can_send_msg (reg_prev))
     {
-      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+      vl_api_send_msg (reg_prev, (u8 *) mp);
     }
   else
     {
@@ -2343,7 +2343,7 @@ static void
 vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
 {
   stats_main_t *sm = &stats_main;
-  svm_queue_t *q, *q_prev = NULL;
+  vl_api_registration_t *reg, *reg_prev = NULL;
   vl_api_vnet_ip6_nbr_counters_t *mp_copy = NULL;
   u32 mp_size;
   vpe_client_registration_t *clients, client;
@@ -2358,17 +2358,17 @@ vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
   for (i = 0; i < vec_len (clients); i++)
     {
       client = clients[i];
-      q = vl_api_client_index_to_input_queue (client.client_index);
-      if (q)
+      reg = vl_api_client_index_to_registration (client.client_index);
+      if (reg)
 	{
-	  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+	  if (reg_prev && vl_api_can_send_msg (reg_prev))
 	    {
 	      mp_copy = vl_msg_api_alloc_as_if_client (mp_size);
 	      clib_memcpy (mp_copy, mp, mp_size);
-	      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+	      vl_api_send_msg (reg_prev, (u8 *) mp);
 	      mp = mp_copy;
 	    }
-	  q_prev = q;
+	  reg_prev = reg;
 	}
       else
 	{
@@ -2378,9 +2378,9 @@ vl_api_vnet_ip6_nbr_counters_t_handler (vl_api_vnet_ip6_nbr_counters_t * mp)
 	}
     }
   /* *INDENT-ON* */
-  if (q_prev && (q_prev->cursize < q_prev->maxsize))
+  if (reg_prev && vl_api_can_send_msg (reg_prev))
     {
-      vl_msg_api_send_shmem (q_prev, (u8 *) & mp);
+      vl_api_send_msg (reg_prev, (u8 *) mp);
     }
   else
     {
