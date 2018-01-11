@@ -226,7 +226,7 @@ server_rx_callback (stream_session_t * s)
 
       clib_spinlock_unlock_if_init (&bpm->sessions_lock);
 
-      a->uri = "tcp://6.0.2.2/23";
+      a->uri = (char *) bpm->client_uri;
       a->api_context = proxy_index;
       a->app_index = bpm->active_open_app_index;
       a->mp = 0;
@@ -464,7 +464,7 @@ server_listen ()
   vnet_bind_args_t _a, *a = &_a;
   memset (a, 0, sizeof (*a));
   a->app_index = bpm->server_app_index;
-  a->uri = "tcp://0.0.0.0/23";
+  a->uri = (char *) bpm->server_uri;
   return vnet_bind_uri (a);
 }
 
@@ -529,6 +529,7 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
   bpm->prealloc_fifos = 0;
   bpm->private_segment_count = 0;
   bpm->private_segment_size = 0;
+  bpm->server_uri = 0;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -549,10 +550,19 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 	      (0, "private segment size %lld (%llu) too large", tmp, tmp);
 	  bpm->private_segment_size = tmp;
 	}
+      else if (unformat (input, "server-uri %s", &bpm->server_uri))
+	;
+      else if (unformat (input, "client-uri %s", &bpm->client_uri))
+	;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
     }
+
+  if (!bpm->server_uri)
+    bpm->server_uri = format (0, "%s%c", "tcp://0.0.0.0/23", 0);
+  if (!bpm->server_uri)
+    bpm->client_uri = format (0, "%s%c", "tcp://6.0.2.2/23", 0);
 
   vnet_session_enable_disable (vm, 1 /* turn on TCP, etc. */ );
 
@@ -572,7 +582,10 @@ proxy_server_create_command_fn (vlib_main_t * vm, unformat_input_t * input,
 VLIB_CLI_COMMAND (server_create_command, static) =
 {
   .path = "test proxy server",
-  .short_help = "test proxy server",
+  .short_help = "test proxy server [server-uri <tcp://ip/port>]"
+      "[client-uri <tcp://ip/port>][fifo-size <nn>][rcv-buf-size <nn>]"
+      "[prealloc-fifos <nn>][private-segment-size <mem>]"
+      "[private-segment-count <nn>]",
   .function = proxy_server_create_command_fn,
 };
 /* *INDENT-ON* */
