@@ -63,6 +63,7 @@ typedef struct
   u32 private_segment_count;		/**< Number of private fifo segs */
   u32 private_segment_size;		/**< size of private fifo segs */
   int rcv_buffer_size;
+  u8 *server_uri;
 
   /*
    * Test state variables
