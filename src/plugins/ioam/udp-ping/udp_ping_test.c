@@ -117,11 +117,11 @@ do {                                            \
 } while(0);
 
 static int
-api_udp_ping_add_del_req (vat_main_t * vam)
+api_udp_ping_add_del (vat_main_t * vam)
 {
   udp_ping_test_main_t *sm = &udp_ping_test_main;
   unformat_input_t *input = vam->input;
-  vl_api_udp_ping_add_del_req_t *mp;
+  vl_api_udp_ping_add_del_t *mp;
   int rv = 0;
   ip6_address_t dst, src;
   u32 start_src_port, end_src_port;
@@ -152,7 +152,7 @@ api_udp_ping_add_del_req (vat_main_t * vam)
 	break;
     }
 
-  M (UDP_PING_ADD_DEL_REQ, udp_ping_add);
+  M (UDP_PING_ADD_DEL, udp_ping_add);
 
   clib_memcpy (mp->src_ip_address, &src, 16);
   clib_memcpy (mp->dst_ip_address, &dst, 16);
@@ -171,11 +171,11 @@ api_udp_ping_add_del_req (vat_main_t * vam)
 }
 
 static int
-api_udp_ping_export_req (vat_main_t * vam)
+api_udp_ping_export (vat_main_t * vam)
 {
   udp_ping_test_main_t *sm = &udp_ping_test_main;
   unformat_input_t *input = vam->input;
-  vl_api_udp_ping_export_req_t *mp;
+  vl_api_udp_ping_export_t *mp;
   int rv = 0;
   int is_add = 1;
   f64 timeout;
@@ -190,7 +190,7 @@ api_udp_ping_export_req (vat_main_t * vam)
 	break;
     }
 
-  M (UDP_PING_EXPORT_REQ, udp_ping_export);
+  M (UDP_PING_EXPORT, udp_ping_export);
 
   mp->enable = is_add;
 
@@ -205,13 +205,13 @@ api_udp_ping_export_req (vat_main_t * vam)
  * and that the data plane plugin processes
  */
 #define foreach_vpe_api_msg \
-_(udp_ping_add_del_req, "src <local IPv6 address>  start-src-port <first local port> "\
+_(udp_ping_add_del, "src <local IPv6 address>  start-src-port <first local port> "\
   "end-src-port <last local port> " \
   "dst <remote IPv6 address> start-dst-port <first destination port> "\
   "end-dst-port <last destination port> "\
   "interval <time interval in sec for which ping packet will be sent> "\
   "[disable]")                         \
-_(udp_ping_export_req, "export [disable]")                                         \
+_(udp_ping_export, "export [disable]")                                         \
 
 
 static void
