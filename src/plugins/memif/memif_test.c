@@ -218,6 +218,7 @@ static void vl_api_memif_create_reply_t_handler
 
   vam->retval = retval;
   vam->result_ready = 1;
+  vam->regenerate_interface_table = 1;
 }
 
 /* memif-delete API */

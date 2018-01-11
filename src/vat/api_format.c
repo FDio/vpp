@@ -1984,6 +1984,7 @@ static void vl_api_vxlan_add_del_tunnel_reply_t_handler
       vam->sw_if_index = ntohl (mp->sw_if_index);
       vam->result_ready = 1;
     }
+  vam->regenerate_interface_table = 1;
 }
 
 static void vl_api_vxlan_add_del_tunnel_reply_t_handler_json
@@ -2052,6 +2053,7 @@ static void vl_api_vxlan_gpe_add_del_tunnel_reply_t_handler
       vam->sw_if_index = ntohl (mp->sw_if_index);
       vam->result_ready = 1;
     }
+  vam->regenerate_interface_table = 1;
 }
 
 static void vl_api_vxlan_gpe_add_del_tunnel_reply_t_handler_json
@@ -2120,6 +2122,7 @@ static void vl_api_create_vhost_user_if_reply_t_handler
       vam->sw_if_index = ntohl (mp->sw_if_index);
       vam->result_ready = 1;
     }
+  vam->regenerate_interface_table = 1;
 }
 
 static void vl_api_create_vhost_user_if_reply_t_handler_json
@@ -5162,6 +5165,7 @@ static void vl_api_ipsec_gre_add_del_tunnel_reply_t_handler
       vam->sw_if_index = ntohl (mp->sw_if_index);
       vam->result_ready = 1;
     }
+  vam->regenerate_interface_table = 1;
 }
 
 static void vl_api_ipsec_gre_add_del_tunnel_reply_t_handler_json
@@ -6329,73 +6333,12 @@ api_sw_interface_dump (vat_main_t * vam)
   /* recreate the interface name hash table */
   vam->sw_if_index_by_interface_name = hash_create_string (0, sizeof (uword));
 
-  /* Get list of ethernets */
+  /*
+   * Ask for all interface names. Otherwise, the epic catalog of
+   * name filters becomes ridiculously long, and vat ends up needing
+   * to be taught about new interface types.
+   */
   M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "Ether", sizeof (mp->name_filter) - 1);
-  S (mp);
-
-  /* and local / loopback interfaces */
-  M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "lo", sizeof (mp->name_filter) - 1);
-  S (mp);
-
-  /* and packet-generator interfaces */
-  M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "pg", sizeof (mp->name_filter) - 1);
-  S (mp);
-
-  /* and vxlan-gpe tunnel interfaces */
-  M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "vxlan_gpe",
-	   sizeof (mp->name_filter) - 1);
-  S (mp);
-
-  /* and vxlan tunnel interfaces */
-  M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "vxlan", sizeof (mp->name_filter) - 1);
-  S (mp);
-
-  /* and geneve tunnel interfaces */
-  M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "geneve", sizeof (mp->name_filter) - 1);
-  S (mp);
-
-  /* and host (af_packet) interfaces */
-  M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "host", sizeof (mp->name_filter) - 1);
-  S (mp);
-
-  /* and l2tpv3 tunnel interfaces */
-  M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "l2tpv3_tunnel",
-	   sizeof (mp->name_filter) - 1);
-  S (mp);
-
-  /* and GRE tunnel interfaces */
-  M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "gre", sizeof (mp->name_filter) - 1);
-  S (mp);
-
-  /* and LISP-GPE interfaces */
-  M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "lisp_gpe",
-	   sizeof (mp->name_filter) - 1);
-  S (mp);
-
-  /* and IPSEC tunnel interfaces */
-  M (SW_INTERFACE_DUMP, mp);
-  mp->name_filter_valid = 1;
-  strncpy ((char *) mp->name_filter, "ipsec", sizeof (mp->name_filter) - 1);
   S (mp);
 
   /* Use a control ping for synchronization */
