@@ -561,46 +561,56 @@ vlib_buffer_copy (vlib_main_t * vm, vlib_buffer_t * b)
     @param vm - (vlib_main_t *) vlib main data structure pointer
     @param src_buffer - (u32) source buffer index
     @param buffers - (u32 * ) buffer index array
-    @param n_buffers - (u8) number of buffer clones requested
+    @param n_clones - (u8) number of buffer clones requested.
+                      This value is limited to 255 due to the u8 size
+                      in the vlib_buffer_t for tracking references.
+                      N.B. this is the number of clones, when this call can
+                      provide the number of desired clones, then the size of
+                      the array returned will be n_clones+1 as it includes the
+                      original.
     @param head_end_offset - (u16) offset relative to current position
            where packet head ends
-    @return - (u8) number of buffers actually cloned, may be
-    less than the number requested or zero
+    @return - (u16) number of buffers present in the 'buffers' array. may be
+    less than the number requested or zero.
 */
 
-always_inline u8
+always_inline u16
 vlib_buffer_clone (vlib_main_t * vm, u32 src_buffer, u32 * buffers,
-		   u8 n_buffers, u16 head_end_offset)
+		   u8 n_clones, u16 head_end_offset)
 {
-  u8 i;
+  u16 n_buffers, i;
   vlib_buffer_t *s = vlib_get_buffer (vm, src_buffer);
 
   ASSERT (s->n_add_refs == 0);
-  ASSERT (n_buffers);
 
+  /*
+   * small packet copy - the original packet is the first entry in the returned
+   * array.
+   */
   if (s->current_length <= head_end_offset + CLIB_CACHE_LINE_BYTES * 2)
     {
       buffers[0] = src_buffer;
-      for (i = 1; i < n_buffers; i++)
+      for (i = 0; i < n_clones; i++)
 	{
 	  vlib_buffer_t *d;
 	  d = vlib_buffer_copy (vm, s);
 	  if (d == 0)
-	    return i;
-	  buffers[i] = vlib_get_buffer_index (vm, d);
+	    break;
+	  buffers[i + 1] = vlib_get_buffer_index (vm, d);
 
 	}
-      return n_buffers;
+      return i + 1;
     }
 
-  n_buffers = vlib_buffer_alloc_from_free_list (vm, buffers, n_buffers,
-						vlib_buffer_get_free_list_index
-						(s));
-  if (PREDICT_FALSE (n_buffers == 0))
+  if (PREDICT_FALSE (n_clones == 0))
     {
       buffers[0] = src_buffer;
       return 1;
     }
+
+  n_buffers = vlib_buffer_alloc_from_free_list (vm, buffers, n_clones + 1,
+						vlib_buffer_get_free_list_index
+						(s));
 
   for (i = 0; i < n_buffers; i++)
     {

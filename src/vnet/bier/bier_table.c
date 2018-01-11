@@ -562,20 +562,21 @@ bier_table_route_add (const bier_table_id_t *btid,
 }
 
 void
-bier_table_route_remove (const bier_table_id_t *bti,
+bier_table_route_remove (const bier_table_id_t *btid,
                          bier_bp_t bp,
                          fib_route_path_t *brps)
 {
+    index_t bfmi, bti, bei, *bfmip, *bfmis = NULL;
     fib_route_path_t *brp = NULL;
     bier_table_t *bt;
-    index_t bei;
 
-    bt = bier_table_find(bti);
+    bt = bier_table_find(btid);
 
     if (NULL == bt) {
         return;
     }
 
+    bti = bier_table_get_index(bt);
     bei = bier_table_lookup(bt, bp);
 
     if (INDEX_INVALID == bei)
@@ -584,9 +585,24 @@ bier_table_route_remove (const bier_table_id_t *bti,
         return;
     }
 
+    /*
+     * set the FIB index in the path to the BIER table index
+     */
     vec_foreach(brp, brps)
     {
-        brp->frp_bier_fib_index = bier_table_get_index(bt);
+        /*
+         * First use the path to find or construct an FMask object
+         * via the next-hop
+         */
+        bfmi = bier_fmask_db_find_or_create_and_lock(bti, brp);
+        vec_add1(bfmis, bfmi);
+
+        /*
+         * then modify the path to resolve via this fmask object
+         * and use it to resolve the BIER entry.
+         */
+        brp->frp_flags = FIB_ROUTE_PATH_BIER_FMASK;
+        brp->frp_bier_fmask = bfmi;
     }
 
     if (0 == bier_entry_path_remove(bei, brps))
@@ -595,6 +611,11 @@ bier_table_route_remove (const bier_table_id_t *bti,
         bier_table_remove(bt, bp);
         bier_entry_delete(bei);
     }
+    vec_foreach(bfmip, bfmis)
+    {
+        bier_fmask_unlock(*bfmip);
+    }
+    vec_free(bfmis);
 }
 
 void
