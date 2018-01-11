@@ -110,6 +110,9 @@ maybe_register_api_client (vat_main_t * vam)
   vam->my_client_index = vl_msg_api_handle_from_index_and_epoch
     (regp->vl_api_registration_pool_index,
      am->shmem_hdr->application_restarts);
+
+  vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
+  api_sw_interface_dump (vam);
 }
 
 static clib_error_t *
@@ -127,8 +130,6 @@ api_command_fn (vlib_main_t * vm,
   api_main_t *am = &api_main;
 
   maybe_register_api_client (vam);
-
-  vam->vl_input_queue = am->shmem_hdr->vl_input_queue;
 
   /* vec_validated in the init routine */
   _vec_len (vam->inbuf) = 0;
