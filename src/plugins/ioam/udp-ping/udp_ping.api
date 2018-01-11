@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-vl_api_version 1.0.0
+vl_api_version 2.0.0
 
 /** \brief UDP-Probe Add/Delete request 
     @param src_ip_address - Source ipv4/v6 address for the udp-ping flow
@@ -27,7 +27,7 @@ vl_api_version 1.0.0
     @param is_ipv4 - To determine whether IPv4 or IPv6 address is used
     @param dis - TRUE is delete, FALSE if Add
 */
-define udp_ping_add_del_req {
+autoreply define udp_ping_add_del {
   u32 client_index;
   u32 context;
   u8 src_ip_address[16];
@@ -43,32 +43,14 @@ define udp_ping_add_del_req {
   u8 reserve[3];
 };
 
-/** \brief Udp-probe add/del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define udp_ping_add_del_reply {
-    u32 context;
-    i32 retval;
-};
-
 /** \brief Udp-probe export add/del request
     @param context - sender context, to match reply w/ request
     @param retval - return value for request
     @param enable - If TRUE then enable export else disable
 */
-define udp_ping_export_req {
+autoreply define udp_ping_export {
    u32 client_index;
    u32 context;
    u32 enable;
-};
-
-/** \brief Udp-probe export add/del response
-    @param context - sender context, to match reply w/ request
-    @param retval - return value for request
-*/
-define udp_ping_export_reply {
-    u32 context;
-    i32 retval;
 };
 
