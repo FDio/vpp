@@ -33,16 +33,6 @@
  */
 typedef struct bier_imp_t_ {
     /**
-     * The BIER table into which to forward the post imposed packet
-     */
-    bier_table_id_t bi_tbl;
-
-    /**
-     * number of locks
-     */
-    u32 bi_locks;
-
-    /**
      * The DPO contirubted from the resolving BIER table.
      * One per-IP protocol. This allows us to share a BIER imposition
      * object for a IPv4 and IPv6 mfib path.
@@ -60,7 +50,18 @@ typedef struct bier_imp_t_ {
      *  largest header type so as the bitstring is on the same
      *  cacheline as the header.
      */
-    bier_bit_mask_4096_t bi_bits;
+    u8 bi_bits[BIER_HDR_BUCKETS_1024];
+
+    /**
+     * The BIER table into which to forward the post imposed packet
+     */
+    bier_table_id_t bi_tbl;
+
+    /**
+     * number of locks
+     */
+    u32 bi_locks;
+
 } bier_imp_t;
 
 extern index_t bier_imp_add_or_lock(const bier_table_id_t *bt,
