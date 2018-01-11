@@ -1238,7 +1238,8 @@ static void
     nat44_add_del_lb_static_mapping (e_addr,
 				     clib_net_to_host_u16 (mp->external_port),
 				     proto, clib_net_to_host_u32 (mp->vrf_id),
-				     locals, mp->is_add, mp->twice_nat);
+				     locals, mp->is_add, mp->twice_nat,
+				     mp->out2in_only);
 
   vec_free (locals);
 
@@ -1251,7 +1252,8 @@ static void *vl_api_nat44_add_del_lb_static_mapping_t_print
   u8 *s;
 
   s = format (0, "SCRIPT: nat44_add_del_lb_static_mapping ");
-  s = format (s, "is_add %d twice_nat %d", mp->is_add, mp->twice_nat);
+  s = format (s, "is_add %d twice_nat %d out2in_only ",
+	      mp->is_add, mp->twice_nat, mp->out2in_only);
 
   FINISH;
 }
@@ -1278,6 +1280,7 @@ send_nat44_lb_static_mapping_details (snat_static_mapping_t * m,
   rmp->vrf_id = ntohl (m->vrf_id);
   rmp->context = context;
   rmp->twice_nat = m->twice_nat;
+  rmp->out2in_only = m->out2in_only;
 
   locals = (vl_api_nat44_lb_addr_port_t *) rmp->locals;
   vec_foreach (ap, m->locals)

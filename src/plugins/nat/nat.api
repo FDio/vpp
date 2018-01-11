@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-vl_api_version 2.1.0
+vl_api_version 2.2.0
 
 /**
  * @file nat.api
@@ -567,6 +567,7 @@ autoreply manual_endian define nat44_add_del_lb_static_mapping {
   u8 protocol;
   u32 vrf_id;
   u8 twice_nat;
+  u8 out2in_only;
   u8 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
 };
@@ -583,6 +584,7 @@ manual_endian define nat44_lb_static_mapping_details {
   u8 protocol;
   u32 vrf_id;
   u8 twice_nat;
+  u8 out2in_only;
   u8 local_num;
   vl_api_nat44_lb_addr_port_t locals[local_num];
 };

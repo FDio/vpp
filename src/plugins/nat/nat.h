@@ -217,6 +217,7 @@ typedef struct {
   u16 external_port;
   u8 addr_only;
   u8 twice_nat;
+  u8 out2in_only;
   u32 vrf_id;
   u32 fib_index;
   snat_protocol_t proto;
@@ -557,7 +558,7 @@ u8 * format_snat_protocol(u8 * s, va_list * args);
 int nat44_add_del_lb_static_mapping (ip4_address_t e_addr, u16 e_port,
                                      snat_protocol_t proto, u32 vrf_id,
                                      nat44_lb_addr_port_t *locals, u8 is_add,
-                                     u8 twice_nat);
+                                     u8 twice_nat, u8 out2in_only);
 int nat44_del_session (snat_main_t *sm, ip4_address_t *addr, u16 port,
                        snat_protocol_t proto, u32 vrf_id, int is_in);
 void nat_free_session_data (snat_main_t * sm, snat_session_t * s,

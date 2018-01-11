@@ -1420,6 +1420,7 @@ class VppPapiProvider(object):
             protocol,
             vrf_id=0,
             twice_nat=0,
+            out2in_only=0,
             local_num=0,
             locals=[],
             is_add=1):
@@ -1436,6 +1437,7 @@ class VppPapiProvider(object):
              'protocol': protocol,
              'vrf_id': vrf_id,
              'twice_nat': twice_nat,
+             'out2in_only': out2in_only,
              'local_num': local_num,
              'locals': locals})
 
