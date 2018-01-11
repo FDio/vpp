@@ -148,7 +148,7 @@ define bier_imp_add
   u32 context;
   vl_api_bier_table_id_t bi_tbl_id;
   u16 bi_src;
-  u8 bi_n_bytes;
+  u16 bi_n_bytes;
   u8 bi_bytes[bi_n_bytes];
 };
 

@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000..e173cdb
 --- /dev/null
 +++ b/scapy/contrib/bier.py
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,57 @@
 +# http://trac.secdev.org/scapy/ticket/31
 +
 +# scapy.contrib.description = MPLS
@@ -18,6 +18,8 @@ index 0000000..e173cdb
 +   BIER_LEN_64 = 0
 +   BIER_LEN_128 = 1
 +   BIER_LEN_256 = 2
++   BIER_LEN_512 = 3
++   BIER_LEN_1024 = 4
 +
 +
 +BIERnhcls = {  1: "MPLS",
@@ -43,15 +45,17 @@ index 0000000..e173cdb
 +   name = "BIER"
 +   fields_desc =  [ BitField("id", 5, 4),
 +                    BitField("version", 0, 4),
-+                    BitField("length", 0, 4),
++                    BitFieldLenField("length", BIERLength.BIER_LEN_256, 4,
++                                     length_of=lambda x:(x.BitString >> 8)),
 +                    BitField("entropy", 0, 20),
 +                    BitField("OAM", 0, 2),
 +                    BitField("RSV", 0, 2),
 +                    BitField("DSCP", 0, 6),
 +                    BitEnumField("Proto", 2, 6, BIERnhcls),
 +                    ShortField("BFRID", 0),
-+                    StrFixedLenField("BitString",
-+                                     chr(255)*32, 32) ]
++                    StrLenField("BitString",
++                                "",
++                                length_from=lambda x:(8 << x.length)) ]
 +
 +
 +bind_layers(BIER, IP,   Proto=4)
