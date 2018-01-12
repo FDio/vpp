@@ -24,6 +24,7 @@ TESTS  +=  test_bihash_template \
 	   test_elf \
 	   test_elog \
 	   test_fifo \
+	   test_flowhash_template \
 	   test_format \
 	   test_fpool \
 	   test_hash \
@@ -59,6 +60,7 @@ test_dlist_SOURCES = vppinfra/test_dlist.c
 test_elf_SOURCES = vppinfra/test_elf.c
 test_elog_SOURCES = vppinfra/test_elog.c
 test_fifo_SOURCES = vppinfra/test_fifo.c
+test_flowhash_template_SOURCES = vppinfra/test_flowhash_template.c
 test_format_SOURCES = vppinfra/test_format.c
 test_fpool_SOURCES = vppinfra/test_fpool.c
 test_hash_SOURCES = vppinfra/test_hash.c
@@ -92,6 +94,7 @@ test_dlist_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_elf_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_elog_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_fifo_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
+test_flowhash_template_CPPFLAGS = $(AM_CPPFLAGS) -DCLIB_DEBUG
 test_format_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_fpool_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
 test_hash_CPPFLAGS =	$(AM_CPPFLAGS) -DCLIB_DEBUG
@@ -123,6 +126,7 @@ test_dlist_LDADD =	libvppinfra.la
 test_elf_LDADD =	libvppinfra.la
 test_elog_LDADD =	libvppinfra.la
 test_fifo_LDADD =	libvppinfra.la
+test_flowhash_template_LDADD =  libvppinfra.la
 test_format_LDADD =	libvppinfra.la
 test_fpool_LDADD =	libvppinfra.la
 test_hash_LDADD =	libvppinfra.la
@@ -154,6 +158,7 @@ test_dlist_LDFLAGS = -static
 test_elf_LDFLAGS = -static
 test_elog_LDFLAGS = -static
 test_fifo_LDFLAGS = -static
+test_flowhash_template_LDFLAGS = -static
 test_format_LDFLAGS = -static
 test_fpool_LDFLAGS = -static
 test_hash_LDFLAGS = -static
@@ -210,6 +215,9 @@ nobase_include_HEADERS = \
   vppinfra/error_bootstrap.h \
   vppinfra/fifo.h \
   vppinfra/file.h \
+  vppinfra/flowhash_template.h \
+  vppinfra/flowhash_8_8.h \
+  vppinfra/flowhash_24_16.h \
   vppinfra/format.h \
   vppinfra/graph.h \
   vppinfra/hash.h \
@@ -281,6 +289,9 @@ CLIB_CORE = \
   vppinfra/error.c \
   vppinfra/fifo.c \
   vppinfra/fheap.c \
+  vppinfra/flowhash_8_8.h \
+  vppinfra/flowhash_24_16.h \
+  vppinfra/flowhash_template.h \
   vppinfra/format.c \
   vppinfra/pool.c \
   vppinfra/graph.c \
