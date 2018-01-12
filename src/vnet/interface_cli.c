@@ -365,11 +365,7 @@ show_sw_interfaces (vlib_main_t * vm,
 	ip_lookup_main_t *lm4 = &im4->lookup_main;
 	ip_lookup_main_t *lm6 = &im6->lookup_main;
 	ip_interface_address_t *ia = 0;
-	ip4_address_t *r4;
-	ip6_address_t *r6;
 	u32 fib_index4 = 0, fib_index6 = 0;
-	ip4_fib_t *fib4;
-	ip6_fib_t *fib6;
 
 	if (vec_len (im4->fib_index_by_sw_if_index) > si->sw_if_index)
 	  fib_index4 = vec_elt (im4->fib_index_by_sw_if_index,
@@ -379,85 +375,69 @@ show_sw_interfaces (vlib_main_t * vm,
 	  fib_index6 = vec_elt (im6->fib_index_by_sw_if_index,
 				si->sw_if_index);
 
-	fib4 = ip4_fib_get (fib_index4);
-	fib6 = ip6_fib_get (fib_index6);
+	ip4_fib_t *fib4 = ip4_fib_get (fib_index4);
+	ip6_fib_t *fib6 = ip6_fib_get (fib_index6);
 
 	if (si->flags & VNET_SW_INTERFACE_FLAG_UNNUMBERED)
 	  vlib_cli_output
 	    (vm, "%U (%s): \n  unnumbered, use %U",
-	     format_vnet_sw_if_index_name,
-	     vnm, si->sw_if_index,
+	     format_vnet_sw_if_index_name, vnm, si->sw_if_index,
 	     (si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? "up" : "dn",
 	     format_vnet_sw_if_index_name, vnm, si->unnumbered_sw_if_index);
-
 	else
-	  {
-	    vlib_cli_output (vm, "%U (%s):",
-			     format_vnet_sw_if_index_name,
-			     vnm, si->sw_if_index,
-			     (si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP)
-			     ? "up" : "dn");
-	  }
+	  vlib_cli_output
+	    (vm, "%U (%s):",
+	     format_vnet_sw_if_index_name, vnm, si->sw_if_index,
+	     (si->flags & VNET_SW_INTERFACE_FLAG_ADMIN_UP) ? "up" : "dn");
 
 	/* Display any L2 info */
 	l2_input_config_t *l2_input = l2input_intf_config (si->sw_if_index);
 	if (l2_input->bridge)
 	  {
+	    bd_main_t *bdm = &bd_main;
 	    u32 bd_id = l2input_main.bd_configs[l2_input->bd_index].bd_id;
-	    vlib_cli_output (vm, "  l2 bridge bd_id %d%s%d", bd_id,
-			     l2_input->bvi ? " bvi shg " : " shg ",
-			     l2_input->shg);
+	    vlib_cli_output (vm, "  L2 bridge bd-id %d idx %d shg %d %s",
+			     bd_id, bd_find_index (bdm, bd_id), l2_input->shg,
+			     l2_input->bvi ? "bvi" : " ");
 	  }
 	else if (l2_input->xconnect)
-	  {
-	    vlib_cli_output (vm, "  l2 xconnect %U",
-			     format_vnet_sw_if_index_name,
-			     vnm, l2_input->output_sw_if_index);
-	  }
+	  vlib_cli_output (vm, "  L2 xconnect %U",
+			   format_vnet_sw_if_index_name, vnm,
+			   l2_input->output_sw_if_index);
 
+	/* *INDENT-OFF* */
 	/* Display any IP4 addressing info */
-          /* *INDENT-OFF* */
-	  foreach_ip_interface_address (lm4, ia, si->sw_if_index,
-					1 /* honor unnumbered */,
-	  ({
-            r4 = ip_interface_address_get_address (lm4, ia);
-            if (fib4->table_id)
-              {
-                vlib_cli_output (vm, "  %U/%d table %d",
-                                 format_ip4_address, r4,
-                                 ia->address_length,
-                                 fib4->table_id);
-              }
-            else
-              {
-                vlib_cli_output (vm, "  %U/%d",
-                                 format_ip4_address, r4,
-                                 ia->address_length);
-              }
-          }));
-          /* *INDENT-ON* */
+	foreach_ip_interface_address (lm4, ia, si->sw_if_index,
+				      1 /* honor unnumbered */,
+	({
+	  ip4_address_t *r4 = ip_interface_address_get_address (lm4, ia);
+	  if (fib4->table_id)
+	    vlib_cli_output (vm, "  L3 %U/%d ip4 table-id %d fib-idx %d",
+			     format_ip4_address, r4, ia->address_length,
+			     fib4->table_id,
+			     ip4_fib_index_from_table_id (fib4->table_id));
+	  else
+	    vlib_cli_output (vm, "  L3 %U/%d",
+			     format_ip4_address, r4, ia->address_length);
+        }));
+	/* *INDENT-ON* */
 
+	/* *INDENT-OFF* */
 	/* Display any IP6 addressing info */
-          /* *INDENT-OFF* */
-          foreach_ip_interface_address (lm6, ia, si->sw_if_index,
-                                        1 /* honor unnumbered */,
-          ({
-            r6 = ip_interface_address_get_address (lm6, ia);
-            if (fib6->table_id)
-              {
-                vlib_cli_output (vm, "  %U/%d table %d",
-                                 format_ip6_address, r6,
-                                 ia->address_length,
-                                 fib6->table_id);
-              }
-            else
-              {
-                vlib_cli_output (vm, "  %U/%d",
-                                 format_ip6_address, r6,
-                                 ia->address_length);
-              }
-          }));
-          /* *INDENT-ON* */
+	foreach_ip_interface_address (lm6, ia, si->sw_if_index,
+				      1 /* honor unnumbered */,
+        ({
+	  ip6_address_t *r6 = ip_interface_address_get_address (lm6, ia);
+	  if (fib6->table_id)
+	    vlib_cli_output (vm, "  L3 %U/%d ip6 table-id %d fib-idx %d",
+			     format_ip6_address, r6, ia->address_length,
+			     fib6->table_id,
+			     ip6_fib_index_from_table_id (fib6->table_id));
+	  else
+	    vlib_cli_output (vm, "  L3 %U/%d",
+			     format_ip6_address, r6, ia->address_length);
+        }));
+	/* *INDENT-ON* */
       }
     }
   else

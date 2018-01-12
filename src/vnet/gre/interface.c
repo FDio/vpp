@@ -28,34 +28,18 @@
 static const char *gre_tunnel_type_names[] = GRE_TUNNEL_TYPE_NAMES;
 
 static u8 *
-format_gre_tunnel_type (u8 * s, va_list * args)
-{
-  gre_tunnel_type_t type = va_arg (*args, gre_tunnel_type_t);
-
-  return (format (s, "%s", gre_tunnel_type_names[type]));
-}
-
-static u8 *
 format_gre_tunnel (u8 * s, va_list * args)
 {
   gre_tunnel_t *t = va_arg (*args, gre_tunnel_t *);
   gre_main_t *gm = &gre_main;
-  u8 is_ipv6 = t->tunnel_dst.fp_proto == FIB_PROTOCOL_IP6 ? 1 : 0;
 
-  if (!is_ipv6)
-    s = format (s,
-		"[%d] %U (src) %U (dst) payload %U outer_fib_index %d",
-		t - gm->tunnels,
-		format_ip4_address, &t->tunnel_src.ip4,
-		format_ip4_address, &t->tunnel_dst.fp_addr.ip4,
-		format_gre_tunnel_type, t->type, t->outer_fib_index);
-  else
-    s = format (s,
-		"[%d] %U (src) %U (dst) payload %U outer_fib_index %d",
-		t - gm->tunnels,
-		format_ip6_address, &t->tunnel_src.ip6,
-		format_ip6_address, &t->tunnel_dst.fp_addr.ip6,
-		format_gre_tunnel_type, t->type, t->outer_fib_index);
+  s = format (s, "[%d] src %U dst %U fib-idx %d sw-if-idx %d ",
+	      t - gm->tunnels,
+	      format_ip46_address, &t->tunnel_src, IP46_TYPE_ANY,
+	      format_ip46_address, &t->tunnel_dst.fp_addr, IP46_TYPE_ANY,
+	      t->outer_fib_index, t->sw_if_index);
+
+  s = format (s, "payload %s", gre_tunnel_type_names[t->type]);
 
   return s;
 }
