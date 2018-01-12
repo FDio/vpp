@@ -424,10 +424,15 @@ ip_route::event_handler::handle_populate(const client_db::key_t& key)
         path path_v4(path::special_t::PROHIBIT);
         ip_r.add(path_v4);
       } else {
-        std::shared_ptr<interface> itf = interface::find(p.sw_if_index);
         boost::asio::ip::address address = from_bytes(0, p.next_hop);
-        path path_v4(address, *itf, p.weight, p.preference);
-        ip_r.add(path_v4);
+        std::shared_ptr<interface> itf = interface::find(p.sw_if_index);
+        if (itf) {
+          path path_v4(address, *itf, p.weight, p.preference);
+          ip_r.add(path_v4);
+        } else {
+          path path_v4(rd_temp, address, p.weight, p.preference);
+          ip_r.add(path_v4);
+        }
       }
     }
     VOM_LOG(log_level_t::DEBUG) << "ip-route-dump: " << ip_r.to_string();
@@ -468,8 +473,13 @@ ip_route::event_handler::handle_populate(const client_db::key_t& key)
       } else {
         std::shared_ptr<interface> itf = interface::find(p.sw_if_index);
         boost::asio::ip::address address = from_bytes(1, p.next_hop);
-        path path_v6(address, *itf, p.weight, p.preference);
-        ip_r.add(path_v6);
+        if (itf) {
+          path path_v6(address, *itf, p.weight, p.preference);
+          ip_r.add(path_v6);
+        } else {
+          path path_v6(rd_temp, address, p.weight, p.preference);
+          ip_r.add(path_v6);
+        }
       }
     }
     VOM_LOG(log_level_t::DEBUG) << "ip-route-dump: " << ip_r.to_string();
