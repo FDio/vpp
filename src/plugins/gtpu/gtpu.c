@@ -75,18 +75,18 @@ format_gtpu_tunnel (u8 * s, va_list * args)
   gtpu_tunnel_t *t = va_arg (*args, gtpu_tunnel_t *);
   gtpu_main_t *ngm = &gtpu_main;
 
-  s = format (s, "[%d] src %U dst %U teid %d sw_if_index %d ",
+  s = format (s, "[%d] src %U dst %U teid %d fib-idx %d sw-if-idx %d ",
 	      t - ngm->tunnels,
 	      format_ip46_address, &t->src, IP46_TYPE_ANY,
 	      format_ip46_address, &t->dst, IP46_TYPE_ANY,
-	      t->teid, t->sw_if_index);
+	      t->teid,  t->encap_fib_index, t->sw_if_index);
 
-  if (ip46_address_is_multicast (&t->dst))
-    s = format (s, "mcast_sw_if_index %d ", t->mcast_sw_if_index);
+  s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
+  s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
 
-  s = format (s, "encap_fib_index %d fib_entry_index %d decap_next %U\n",
-	      t->encap_fib_index, t->fib_entry_index,
-	      format_decap_next, t->decap_next_index);
+  if (PREDICT_FALSE (ip46_address_is_multicast (&t->dst)))
+    s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
+
   return s;
 }
 

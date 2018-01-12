@@ -44,15 +44,10 @@ static u8 * format_decap_next (u8 * s, va_list * args)
 {
   u32 next_index = va_arg (*args, u32);
 
-  switch (next_index)
-    {
-    case VXLAN_INPUT_NEXT_DROP:
-      return format (s, "drop");
-    case VXLAN_INPUT_NEXT_L2_INPUT:
-      return format (s, "l2");
-    default:
-      return format (s, "index %d", next_index);
-    }
+  if (next_index == VXLAN_INPUT_NEXT_DROP)
+    return format (s, "drop");
+  else
+    return format (s, "index %d", next_index);
   return s;
 }
 
@@ -61,18 +56,20 @@ u8 * format_vxlan_tunnel (u8 * s, va_list * args)
   vxlan_tunnel_t * t = va_arg (*args, vxlan_tunnel_t *);
   vxlan_main_t * ngm = &vxlan_main;
 
-  s = format (s, "[%d] src %U dst %U vni %d sw_if_index %d ",
+  s = format (s, "[%d] src %U dst %U vni %d fib-idx %d sw-if-idx %d ",
               t - ngm->tunnels,
               format_ip46_address, &t->src, IP46_TYPE_ANY,
               format_ip46_address, &t->dst, IP46_TYPE_ANY,
-              t->vni, t->sw_if_index);
+              t->vni, t->encap_fib_index, t->sw_if_index);
 
-  if (ip46_address_is_multicast (&t->dst))
-    s = format (s, "mcast_sw_if_index %d ", t->mcast_sw_if_index);
+  s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
 
-  s = format (s, "encap_fib_index %d fib_entry_index %d decap_next %U\n", 
-	      t->encap_fib_index, t->fib_entry_index,
-	      format_decap_next, t->decap_next_index);
+  if (PREDICT_FALSE (t->decap_next_index != VXLAN_INPUT_NEXT_L2_INPUT))
+    s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
+
+  if (PREDICT_FALSE (ip46_address_is_multicast (&t->dst)))
+    s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
+
   return s;
 }
 
