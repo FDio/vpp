@@ -44,8 +44,34 @@
 
 vxlan_gpe_main_t vxlan_gpe_main;
 
+static u8 *
+format_decap_next (u8 * s, va_list * args)
+{
+  vxlan_gpe_tunnel_t *t = va_arg (*args, vxlan_gpe_tunnel_t *);
+
+  switch (t->protocol)
+    {
+    case VXLAN_GPE_PROTOCOL_IP4:
+      s = format (s, "protocol ip4 fib-idx %d", t->decap_fib_index);
+      break;
+    case VXLAN_GPE_PROTOCOL_IP6:
+      s = format (s, "protocol ip6 fib-idx %d", t->decap_fib_index);
+      break;
+    case VXLAN_GPE_PROTOCOL_ETHERNET:
+      s = format (s, "protocol ethernet");
+      break;
+    case VXLAN_GPE_PROTOCOL_NSH:
+      s = format (s, "protocol nsh");
+      break;
+    default:
+      s = format (s, "protocol unknown %d", t->protocol);
+    }
+
+  return s;
+}
+
 /**
- * @brief Tracing function for VXLAN GPE tunnel packets
+ * @brief Format function for VXLAN GPE tunnel
  *
  * @param *s formatting string
  * @param *args
@@ -59,36 +85,21 @@ format_vxlan_gpe_tunnel (u8 * s, va_list * args)
   vxlan_gpe_tunnel_t *t = va_arg (*args, vxlan_gpe_tunnel_t *);
   vxlan_gpe_main_t *ngm = &vxlan_gpe_main;
 
-  s = format (s, "[%d] local: %U remote: %U ",
+  s = format (s, "[%d] lcl %U rmt %U vni %d fib-idx %d sw-if-idx %d ",
 	      t - ngm->tunnels,
 	      format_ip46_address, &t->local, IP46_TYPE_ANY,
-	      format_ip46_address, &t->remote, IP46_TYPE_ANY);
+	      format_ip46_address, &t->remote, IP46_TYPE_ANY,
+	      t->vni, t->encap_fib_index, t->sw_if_index);
 
-  s = format (s, "  vxlan VNI %d ", t->vni);
+#if 0
+  /* next_dpo not yet used by vxlan-gpe-encap node */
+  s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
+  */
+#endif
+    s = format (s, "decap-next-%U ", format_decap_next, t);
 
-  switch (t->protocol)
-    {
-    case VXLAN_GPE_PROTOCOL_IP4:
-      s = format (s, "next-protocol ip4");
-      break;
-    case VXLAN_GPE_PROTOCOL_IP6:
-      s = format (s, "next-protocol ip6");
-      break;
-    case VXLAN_GPE_PROTOCOL_ETHERNET:
-      s = format (s, "next-protocol ethernet");
-      break;
-    case VXLAN_GPE_PROTOCOL_NSH:
-      s = format (s, "next-protocol nsh");
-      break;
-    default:
-      s = format (s, "next-protocol unknown %d", t->protocol);
-    }
-
-  if (ip46_address_is_multicast (&t->remote))
-    s = format (s, "mcast_sw_if_index %d ", t->mcast_sw_if_index);
-
-  s = format (s, " fibs: (encap %d, decap %d)",
-	      t->encap_fib_index, t->decap_fib_index);
+  if (PREDICT_FALSE (ip46_address_is_multicast (&t->remote)))
+    s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
 
   return s;
 }

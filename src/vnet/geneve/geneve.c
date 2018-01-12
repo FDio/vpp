@@ -60,18 +60,18 @@ format_geneve_tunnel (u8 * s, va_list * args)
   geneve_tunnel_t *t = va_arg (*args, geneve_tunnel_t *);
   geneve_main_t *ngm = &geneve_main;
 
-  s = format (s, "[%d] local %U remote %U vni %d sw_if_index %d ",
+  s = format (s, "[%d] lcl %U rmt %U vni %d fib-idx %d sw-if-idx %d ",
 	      t - ngm->tunnels,
 	      format_ip46_address, &t->local, IP46_TYPE_ANY,
 	      format_ip46_address, &t->remote, IP46_TYPE_ANY,
-	      t->vni, t->sw_if_index);
+	      t->vni, t->encap_fib_index, t->sw_if_index);
 
-  if (ip46_address_is_multicast (&t->remote))
-    s = format (s, "mcast_sw_if_index %d ", t->mcast_sw_if_index);
+  s = format (s, "encap-dpo-idx %d ", t->next_dpo.dpoi_index);
+  s = format (s, "decap-next-%U ", format_decap_next, t->decap_next_index);
 
-  s = format (s, "encap_fib_index %d fib_entry_index %d decap_next %U\n",
-	      t->encap_fib_index, t->fib_entry_index,
-	      format_decap_next, t->decap_next_index);
+  if (PREDICT_FALSE (ip46_address_is_multicast (&t->remote)))
+    s = format (s, "mcast-sw-if-idx %d ", t->mcast_sw_if_index);
+
   return s;
 }
 
