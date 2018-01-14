@@ -19,7 +19,6 @@
 
 #include <vat/vat.h>
 #include <vppinfra/socket.h>
-#include <svm/memfd.h>
 #include <vlibapi/api.h>
 #include <vlibmemory/api.h>
 #include <vnet/ip/ip.h>
@@ -2206,7 +2205,7 @@ static void vl_api_memfd_segment_create_reply_t_handler
   socket_client_main_t *scm = vam->socket_client_main;
   int my_fd = -1;
   clib_error_t *error;
-  memfd_private_t memfd;
+  ssvm_private_t memfd;
   i32 retval = ntohl (mp->retval);
 
   if (retval == 0)
@@ -2224,7 +2223,7 @@ static void vl_api_memfd_segment_create_reply_t_handler
       vam->client_index_invalid = 1;
 
       /* Note: this closes memfd.fd */
-      retval = memfd_slave_init (&memfd);
+      retval = ssvm_slave_init_memfd (&memfd);
       if (retval)
 	clib_warning ("WARNING: segment map returned %d", retval);
 

@@ -19,6 +19,7 @@
 #define SRC_VLIBMEMORY_SOCKET_API_H_
 
 #include <vlibapi/api_common.h>
+#include <svm/ssvm.h>
 #include <vppinfra/file.h>
 
 #define API_SOCKET_FILE "/run/vpp-api.sock"

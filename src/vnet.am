@@ -905,16 +905,6 @@ nobase_include_HEADERS += 			\
 API_FILES += vnet/devices/tap/tapv2.api
 
 ########################################
-# ssvm ethernet
-########################################
-libvnet_la_SOURCES +=				\
-  vnet/devices/ssvm/ssvm_eth.c			\
-  vnet/devices/ssvm/node.c
-
-nobase_include_HEADERS +=			\
-  vnet/devices/ssvm/ssvm_eth.h
-
-########################################
 # session managmeent
 ########################################
 

@@ -37,6 +37,7 @@
 #include <vppinfra/heap.h>
 #include <vppinfra/pool.h>
 #include <vppinfra/format.h>
+#include <vppinfra/linux/syscall.h>
 
 #ifndef MMAP_PAGESIZE
 #define MMAP_PAGESIZE (clib_mem_get_page_size())
@@ -76,12 +77,12 @@ typedef struct
   ssvm_shared_header_t *sh;
   u64 ssvm_size;
   u32 my_pid;
-  u32 vlib_hw_if_index;
   u8 *name;
   uword requested_va;
   int i_am_master;
-  u32 per_interface_next_index;
-  u32 *rx_queue;
+
+  /* Needed by memfd segments */
+  int fd;
 } ssvm_private_t;
 
 always_inline void
@@ -164,6 +165,24 @@ typedef enum
 int ssvm_master_init (ssvm_private_t * ssvm, u32 master_index);
 int ssvm_slave_init (ssvm_private_t * ssvm, int timeout_in_seconds);
 void ssvm_delete (ssvm_private_t * ssvm);
+
+int ssvm_master_init_memfd (ssvm_private_t * memfd, u32 master_index);
+int ssvm_slave_init_memfd (ssvm_private_t * memfd);
+void memfd_delete (ssvm_private_t * memfd);
+
+/* These do not belong here, but the original keeps running around... */
+/* $$$$ work w/ Damjan to fix properly */
+#ifndef F_LINUX_SPECIFIC_BASE
+#define F_LINUX_SPECIFIC_BASE 1024
+#endif
+#define MFD_ALLOW_SEALING       0x0002U
+#define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
+#define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
+
+#define F_SEAL_SEAL     0x0001	/* prevent further seals from being set */
+#define F_SEAL_SHRINK   0x0002	/* prevent file from shrinking */
+#define F_SEAL_GROW     0x0004	/* prevent file from growing */
+#define F_SEAL_WRITE    0x0008	/* prevent writes */
 
 #endif /* __included_ssvm_h__ */
 
