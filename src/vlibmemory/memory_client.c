@@ -20,6 +20,7 @@
 #include <setjmp.h>
 
 #include <svm/svm.h>
+#include <svm/ssvm.h>
 #include <vppinfra/serialize.h>
 #include <vppinfra/hash.h>
 #include <vlibmemory/memory_client.h>

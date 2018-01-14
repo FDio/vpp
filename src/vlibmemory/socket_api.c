@@ -25,7 +25,7 @@
 #include <sys/stat.h>
 
 #include <vppinfra/byte_order.h>
-#include <svm/memfd.h>
+#include <svm/ssvm.h>
 #include <vlibmemory/api.h>
 
 #include <vlibmemory/vl_memory_msg_enum.h>
@@ -528,7 +528,7 @@ void
 vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
 {
   vl_api_sock_init_shm_reply_t *rmp;
-  memfd_private_t _memfd_private, *memfd = &_memfd_private;
+  ssvm_private_t _memfd_private, *memfd = &_memfd_private;
   svm_map_region_args_t _args, *a = &_args;
   vl_api_registration_t *regp;
   api_main_t *am = &api_main;
@@ -554,12 +554,12 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
    * shmem data structures will be initialized
    */
   memset (memfd, 0, sizeof (*memfd));
-  memfd->memfd_size = mp->requested_size;
+  memfd->ssvm_size = mp->requested_size;
   memfd->requested_va = 0ULL;
   memfd->i_am_master = 1;
   memfd->name = format (0, "%s%c", regp->name, 0);
 
-  if ((rv = memfd_master_init (memfd, mp->client_index)))
+  if ((rv = ssvm_master_init_memfd (memfd, mp->client_index)))
     goto reply;
 
   /* Remember to close this fd when the socket connection goes away */
@@ -569,8 +569,8 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
    * Create a plausible svm_region in the memfd backed segment
    */
   memset (a, 0, sizeof (*a));
-  a->baseva = memfd->sh->memfd_va + MMAP_PAGESIZE;
-  a->size = memfd->memfd_size - MMAP_PAGESIZE;
+  a->baseva = memfd->sh->ssvm_va + MMAP_PAGESIZE;
+  a->size = memfd->ssvm_size - MMAP_PAGESIZE;
   /* $$$$ might want a different config parameter */
   a->pvt_heap_size = am->api_pvt_heap_size;
   a->flags = SVM_FLAGS_MHEAP;
@@ -622,7 +622,7 @@ vl_api_memfd_segment_create_t_handler (vl_api_memfd_segment_create_t * mp)
 {
   vl_api_memfd_segment_create_reply_t *rmp;
   clib_file_t *cf;
-  memfd_private_t _memfd_private, *memfd = &_memfd_private;
+  ssvm_private_t _memfd_private, *memfd = &_memfd_private;
   vl_api_registration_t *regp;
   int rv;
 
@@ -634,13 +634,13 @@ vl_api_memfd_segment_create_t_handler (vl_api_memfd_segment_create_t * mp)
     }
 
   memset (memfd, 0, sizeof (*memfd));
-  memfd->memfd_size = mp->requested_size;
+  memfd->ssvm_size = mp->requested_size;
   memfd->requested_va = 0ULL;
   memfd->i_am_master = 1;
   memfd->name = format (0, "%s%c", regp->name, 0);
 
   /* Set up a memfd segment of the requested size */
-  if ((rv = memfd_master_init (memfd, mp->client_index)))
+  if ((rv = ssvm_master_init_memfd (memfd, mp->client_index)))
     goto reply;
 
   /* Remember to close this fd when the socket connection goes away */

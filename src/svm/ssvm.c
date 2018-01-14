@@ -12,8 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ssvm.h"
-#include "svm_common.h"
+#include <svm/ssvm.h>
+#include <svm/svm_common.h>
 
 int
 ssvm_master_init (ssvm_private_t * ssvm, u32 master_index)
@@ -202,6 +202,119 @@ ssvm_delete (ssvm_private_t * ssvm)
   munmap ((void *) ssvm->requested_va, ssvm->ssvm_size);
 }
 
+int
+ssvm_master_init_memfd (ssvm_private_t * memfd, u32 master_index)
+{
+  int flags;
+  ssvm_shared_header_t *sh;
+  u64 ticks = clib_cpu_time_now ();
+  u64 randomize_baseva;
+  void *oldheap;
+
+  if (memfd->ssvm_size == 0)
+    return SSVM_API_ERROR_NO_SIZE;
+
+  ASSERT (vec_c_string_is_terminated (memfd->name));
+  memfd->name = format (0, "memfd svm region %d", master_index);
+
+  memfd->fd = memfd_create ((char *) memfd->name, MFD_ALLOW_SEALING);
+  if (memfd->fd < 0)
+    {
+      clib_unix_warning ("create segment '%s'", memfd->name);
+      return SSVM_API_ERROR_CREATE_FAILURE;
+    }
+
+  if ((ftruncate (memfd->fd, memfd->ssvm_size)) == -1)
+    {
+      clib_unix_warning ("set memfd size");
+      return SSVM_API_ERROR_SET_SIZE;
+    }
+
+  if ((fcntl (memfd->fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1)
+    clib_unix_warning ("fcntl (F_ADD_SEALS, F_SEAL_SHRINK)");
+
+  flags = MAP_SHARED;
+  if (memfd->requested_va)
+    flags |= MAP_FIXED;
+
+  randomize_baseva = (ticks & 15) * MMAP_PAGESIZE;
+
+  if (memfd->requested_va)
+    memfd->requested_va += randomize_baseva;
+
+  sh = memfd->sh =
+    (ssvm_shared_header_t *) mmap ((void *) memfd->requested_va,
+				   memfd->ssvm_size, PROT_READ | PROT_WRITE,
+				   flags, memfd->fd, 0);
+
+  if (memfd->sh == MAP_FAILED)
+    {
+      clib_unix_warning ("mmap");
+      close (memfd->fd);
+      return SSVM_API_ERROR_MMAP;
+    }
+
+  memfd->my_pid = getpid ();
+  sh->master_pid = memfd->my_pid;
+  sh->ssvm_size = memfd->ssvm_size;
+  sh->heap = mheap_alloc_with_flags
+    (((u8 *) sh) + MMAP_PAGESIZE, memfd->ssvm_size - MMAP_PAGESIZE,
+     MHEAP_FLAG_DISABLE_VM | MHEAP_FLAG_THREAD_SAFE);
+
+  sh->ssvm_va = pointer_to_uword (sh);
+  sh->master_index = master_index;
+
+  oldheap = ssvm_push_heap (sh);
+  sh->name = format (0, "%s%c", memfd->name, 0);
+  ssvm_pop_heap (oldheap);
+
+  memfd->i_am_master = 1;
+
+  /* The application has to set set sh->ready... */
+  return 0;
+}
+
+/*
+ * Subtly different than svm_slave_init. The caller
+ * needs to acquire a usable file descriptor for the memfd segment
+ * e.g. via vppinfra/socket.c:default_socket_recvmsg
+ */
+
+int
+ssvm_slave_init_memfd (ssvm_private_t * memfd)
+{
+  ssvm_shared_header_t *sh;
+
+  memfd->i_am_master = 0;
+
+  /* Map the segment once, to look at the shared header */
+  sh = (void *) mmap (0, MMAP_PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED,
+		      memfd->fd, 0);
+  if (sh == MAP_FAILED)
+    {
+      clib_unix_warning ("slave research mmap");
+      close (memfd->fd);
+      return SSVM_API_ERROR_MMAP;
+    }
+
+  memfd->requested_va = (u64) sh->ssvm_va;
+  memfd->ssvm_size = sh->ssvm_size;
+  munmap (sh, MMAP_PAGESIZE);
+
+  sh = (void *) mmap ((void *) memfd->requested_va, memfd->ssvm_size,
+		      PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED,
+		      memfd->fd, 0);
+
+  if (sh == MAP_FAILED)
+    {
+      clib_unix_warning ("slave final mmap");
+      close (memfd->fd);
+      return SSVM_API_ERROR_MMAP;
+    }
+  sh->slave_pid = getpid ();
+  memfd->sh = sh;
+  return 0;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
