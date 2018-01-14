@@ -19,6 +19,7 @@
 #define SRC_VLIBMEMORY_MEMORY_API_H_
 
 #include <svm/svm.h>
+#include <svm/ssvm.h>
 #include <svm/queue.h>
 #include <vlib/vlib.h>
 #include <vlibapi/api.h>

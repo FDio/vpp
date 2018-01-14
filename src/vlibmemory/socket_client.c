@@ -21,7 +21,7 @@
 #define __USE_GNU
 #include <sys/socket.h>
 
-#include <svm/memfd.h>
+#include <svm/ssvm.h>
 #include <vlibmemory/socket_client.h>
 #include <vlibmemory/memory_client.h>
 
@@ -231,7 +231,7 @@ static void vl_api_sock_init_shm_reply_t_handler
   int my_fd = -1;
   clib_error_t *error;
   i32 retval = ntohl (mp->retval);
-  memfd_private_t memfd;
+  ssvm_private_t memfd;
   api_main_t *am = &api_main;
   u8 *new_name;
 
@@ -255,7 +255,7 @@ static void vl_api_sock_init_shm_reply_t_handler
   memfd.fd = my_fd;
 
   /* Note: this closes memfd.fd */
-  retval = memfd_slave_init (&memfd);
+  retval = ssvm_slave_init_memfd (&memfd);
   if (retval)
     clib_warning ("WARNING: segment map returned %d", retval);
 
