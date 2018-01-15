@@ -38,7 +38,6 @@ typedef enum
 typedef struct
 {
   svm_fifo_t *fifos;		/**< Linked list of active RX fifos */
-  u8 *segment_name;		/**< Segment name */
   svm_fifo_t **free_fifos;	/**< Freelists, by fifo size  */
   u32 n_active_fifos;		/**< Number of active fifos */
   u8 flags;			/**< Segment flags */
@@ -65,6 +64,7 @@ extern svm_fifo_segment_main_t svm_fifo_segment_main;
 
 typedef struct
 {
+  ssvm_segment_type_t segment_type;
   char *segment_name;
   u32 segment_size;
   u32 *new_segment_indices;
@@ -72,6 +72,8 @@ typedef struct
   u32 tx_fifo_size;
   u32 preallocated_fifo_pairs;
   u32 private_segment_count;
+  u32 seg_protected_space;
+  int memfd_fd;
 } svm_fifo_segment_create_args_t;
 
 static inline svm_fifo_segment_private_t *
@@ -120,9 +122,12 @@ u32 svm_fifo_segment_index (svm_fifo_segment_private_t * s);
 u32 svm_fifo_segment_num_fifos (svm_fifo_segment_private_t * fifo_segment);
 u32 svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t *
 				     fifo_segment, u32 fifo_size_in_bytes);
+void svm_fifo_segment_info (svm_fifo_segment_private_t * seg, uword * address,
+			    u64 * size);
 
 svm_fifo_segment_private_t *svm_fifo_segment_segments_pool (void);
 format_function_t format_svm_fifo_segment;
+format_function_t format_svm_fifo_segment_type;
 
 #endif /* __included_ssvm_fifo_segment_h__ */
 

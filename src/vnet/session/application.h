@@ -30,8 +30,8 @@ typedef enum
 typedef struct _stream_session_cb_vft
 {
   /** Notify server of new segment */
-  int (*add_segment_callback) (u32 api_client_index, const u8 * seg_name,
-			       u32 seg_size);
+  int (*add_segment_callback) (u32 api_client_index,
+			       const ssvm_private_t * ssvm_seg);
 
   /** Notify server of newly accepted session */
   int (*session_accept_callback) (stream_session_t * new_session);

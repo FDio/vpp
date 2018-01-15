@@ -233,13 +233,62 @@ application_detach (uri_tcp_test_main_t * utm)
   vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
 }
 
+static int
+memfd_segment_attach (void)
+{
+  ssvm_private_t _ssvm = { 0 }, *ssvm = &_ssvm;
+  clib_error_t *error;
+  int rv;
+
+  if ((error = vl_socket_client_recv_fd_msg (&ssvm->fd, 5)))
+    {
+      clib_error_report(error);
+      return -1;
+    }
+
+  if ((rv = ssvm_slave_init_memfd (ssvm)))
+    return rv;
+
+  return 0;
+}
+
+static int
+fifo_segment_attach (char *name, u32 size, ssvm_segment_type_t type)
+{
+  svm_fifo_segment_create_args_t _a, *a = &_a;
+  clib_error_t *error;
+  int rv;
+
+  memset (a, 0, sizeof (*a));
+  a->segment_name = (char *) name;
+  a->segment_size = size;
+  a->segment_type = type;
+
+  if (type == SSVM_SEGMENT_MEMFD)
+    {
+      if ((error = vl_socket_client_recv_fd_msg (&a->memfd_fd, 5)))
+	{
+	  clib_error_report (error);
+	  return -1;
+	}
+    }
+
+  if ((rv = svm_fifo_segment_attach (a)))
+    {
+      clib_warning ("svm_fifo_segment_attach ('%s') failed",
+		    name);
+      return rv;
+    }
+
+  return 0;
+}
+
 static void
 vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 					   mp)
 {
   uri_tcp_test_main_t *utm = &uri_tcp_test_main;
-  svm_fifo_segment_create_args_t _a, *a = &_a;
-  int rv;
+  ssvm_segment_type_t seg_type;
 
   if (mp->retval)
     {
@@ -255,23 +304,30 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       return;
     }
 
-  memset (a, 0, sizeof (*a));
-  a->segment_name = (char *) mp->segment_name;
-  a->segment_size = mp->segment_size;
+  seg_type = utm->use_sock_api ? SSVM_SEGMENT_MEMFD : SSVM_SEGMENT_SHM;
 
-  ASSERT (mp->app_event_queue_address);
-
-  /* Attach to the segment vpp created */
-  rv = svm_fifo_segment_attach (a);
-  if (rv)
+  /* Attach to fifo segment */
+  if (fifo_segment_attach ((char *) mp->segment_name, mp->segment_size,
+                           seg_type))
     {
-      clib_warning ("svm_fifo_segment_attach ('%s') failed",
-		    mp->segment_name);
+      utm->state = STATE_FAILED;
       return;
     }
 
-  utm->our_event_queue =
-    uword_to_pointer (mp->app_event_queue_address, svm_queue_t *);
+  /* If we're using memfd segments, read and attach to event qs segment */
+  if (seg_type == SSVM_SEGMENT_MEMFD)
+    {
+      if (memfd_segment_attach ())
+	{
+	  clib_warning ("failed to attach to evt q segment");
+	  utm->state = STATE_FAILED;
+	  return;
+	}
+    }
+
+  ASSERT (mp->app_event_queue_address);
+  utm->our_event_queue = uword_to_pointer (mp->app_event_queue_address,
+	                                   svm_queue_t *);
   utm->state = STATE_ATTACHED;
 }
 
@@ -327,15 +383,15 @@ connect_to_vpp (char *name)
 				    0 /* default rx, tx buffer */ ))
 	return -1;
 
-      return vl_socket_client_init_shm (0);
+      vl_socket_client_init_shm (0);
     }
   else
     {
       if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
 	return -1;
-      utm->vl_input_queue = am->shmem_hdr->vl_input_queue;
-      utm->my_client_index = am->my_client_index;
     }
+  utm->vl_input_queue = am->shmem_hdr->vl_input_queue;
+  utm->my_client_index = am->my_client_index;
   return 0;
 }
 
