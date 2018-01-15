@@ -25,6 +25,7 @@ void vl_client_disconnect (void);
 int vl_client_api_map (const char *region_name);
 void vl_client_api_unmap (void);
 void vl_client_disconnect_from_vlib (void);
+void vl_client_disconnect_from_vlib_no_unmap (void);
 int vl_client_connect_to_vlib (const char *svm_name, const char *client_name,
 			       int rx_queue_size);
 int vl_client_connect_to_vlib_no_rx_pthread (const char *svm_name,
@@ -34,6 +35,7 @@ int vl_client_connect_to_vlib_no_map (const char *svm_name,
 				      const char *client_name,
 				      int rx_queue_size);
 void vl_client_install_client_message_handlers (void);
+u8 vl_mem_client_is_connected (void);
 
 #endif /* SRC_VLIBMEMORY_MEMORY_CLIENT_H_ */
 

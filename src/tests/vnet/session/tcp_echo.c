@@ -125,9 +125,9 @@ typedef struct
 
   /* convenience */
   svm_fifo_segment_main_t *segment_main;
-} uri_tcp_test_main_t;
+} echo_main_t;
 
-uri_tcp_test_main_t uri_tcp_test_main;
+echo_main_t echo_main;
 
 #if CLIB_DEBUG > 0
 #define NITER 10000
@@ -138,11 +138,11 @@ uri_tcp_test_main_t uri_tcp_test_main;
 static u8 *
 format_api_error (u8 * s, va_list * args)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  echo_main_t *em = &echo_main;
   i32 error = va_arg (*args, u32);
   uword *p;
 
-  p = hash_get (utm->error_string_by_error_number, -error);
+  p = hash_get (em->error_string_by_error_number, -error);
 
   if (p)
     s = format (s, "%s", p[0]);
@@ -152,19 +152,19 @@ format_api_error (u8 * s, va_list * args)
 }
 
 static void
-init_error_string_table (uri_tcp_test_main_t * utm)
+init_error_string_table (echo_main_t * em)
 {
-  utm->error_string_by_error_number = hash_create (0, sizeof (uword));
+  em->error_string_by_error_number = hash_create (0, sizeof (uword));
 
-#define _(n,v,s) hash_set (utm->error_string_by_error_number, -v, s);
+#define _(n,v,s) hash_set (em->error_string_by_error_number, -v, s);
   foreach_vnet_api_error;
 #undef _
 
-  hash_set (utm->error_string_by_error_number, 99, "Misc");
+  hash_set (em->error_string_by_error_number, 99, "Misc");
 }
 
 int
-wait_for_state_change (uri_tcp_test_main_t * utm, connection_state_t state)
+wait_for_state_change (echo_main_t * em, connection_state_t state)
 {
 #if CLIB_DEBUG > 0
 #define TIMEOUT 600.0
@@ -172,15 +172,15 @@ wait_for_state_change (uri_tcp_test_main_t * utm, connection_state_t state)
 #define TIMEOUT 600.0
 #endif
 
-  f64 timeout = clib_time_now (&utm->clib_time) + TIMEOUT;
+  f64 timeout = clib_time_now (&em->clib_time) + TIMEOUT;
 
-  while (clib_time_now (&utm->clib_time) < timeout)
+  while (clib_time_now (&em->clib_time) < timeout)
     {
-      if (utm->state == state)
+      if (em->state == state)
 	return 0;
-      if (utm->state == STATE_FAILED)
+      if (em->state == STATE_FAILED)
 	return -1;
-      if (utm->time_to_stop == 1)
+      if (em->time_to_stop == 1)
 	return 0;
     }
   clib_warning ("timeout waiting for STATE_READY");
@@ -188,7 +188,7 @@ wait_for_state_change (uri_tcp_test_main_t * utm, connection_state_t state)
 }
 
 void
-application_send_attach (uri_tcp_test_main_t * utm)
+application_send_attach (echo_main_t * em)
 {
   vl_api_application_attach_t *bmp;
   u32 fifo_size = 4 << 20;
@@ -196,7 +196,7 @@ application_send_attach (uri_tcp_test_main_t * utm)
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_ATTACH);
-  bmp->client_index = utm->my_client_index;
+  bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
   bmp->options[APP_OPTIONS_FLAGS] =
     APP_OPTIONS_FLAGS_ACCEPT_REDIRECT | APP_OPTIONS_FLAGS_ADD_SEGMENT;
@@ -205,14 +205,14 @@ application_send_attach (uri_tcp_test_main_t * utm)
   bmp->options[APP_OPTIONS_TX_FIFO_SIZE] = fifo_size;
   bmp->options[APP_OPTIONS_ADD_SEGMENT_SIZE] = 128 << 20;
   bmp->options[APP_OPTIONS_SEGMENT_SIZE] = 256 << 20;
-  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 }
 
 int
-application_attach (uri_tcp_test_main_t * utm)
+application_attach (echo_main_t * em)
 {
-  application_send_attach (utm);
-  if (wait_for_state_change (utm, STATE_ATTACHED))
+  application_send_attach (em);
+  if (wait_for_state_change (em, STATE_ATTACHED))
     {
       clib_warning ("timeout waiting for STATE_ATTACHED");
       return -1;
@@ -221,31 +221,81 @@ application_attach (uri_tcp_test_main_t * utm)
 }
 
 void
-application_detach (uri_tcp_test_main_t * utm)
+application_detach (echo_main_t * em)
 {
   vl_api_application_detach_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_APPLICATION_DETACH);
-  bmp->client_index = utm->my_client_index;
+  bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
-  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
+
+  clib_warning ("Sent detach");
+}
+
+static int
+memfd_segment_attach (void)
+{
+  ssvm_private_t _ssvm = { 0 }, *ssvm = &_ssvm;
+  clib_error_t *error;
+  int rv;
+
+  if ((error = vl_socket_client_recv_fd_msg (&ssvm->fd, 5)))
+    {
+      clib_error_report (error);
+      return -1;
+    }
+
+  if ((rv = ssvm_slave_init_memfd (ssvm)))
+    return rv;
+
+  return 0;
+}
+
+static int
+fifo_segment_attach (char *name, u32 size, ssvm_segment_type_t type)
+{
+  svm_fifo_segment_create_args_t _a, *a = &_a;
+  clib_error_t *error;
+  int rv;
+
+  memset (a, 0, sizeof (*a));
+  a->segment_name = (char *) name;
+  a->segment_size = size;
+  a->segment_type = type;
+
+  if (type == SSVM_SEGMENT_MEMFD)
+    {
+      if ((error = vl_socket_client_recv_fd_msg (&a->memfd_fd, 5)))
+	{
+	  clib_error_report (error);
+	  return -1;
+	}
+    }
+
+  if ((rv = svm_fifo_segment_attach (a)))
+    {
+      clib_warning ("svm_fifo_segment_attach ('%s') failed", name);
+      return rv;
+    }
+
+  return 0;
 }
 
 static void
 vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
 					   mp)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
-  svm_fifo_segment_create_args_t _a, *a = &_a;
-  int rv;
+  echo_main_t *em = &echo_main;
+  ssvm_segment_type_t seg_type;
 
   if (mp->retval)
     {
       clib_warning ("attach failed: %U", format_api_error,
 		    clib_net_to_host_u32 (mp->retval));
-      utm->state = STATE_FAILED;
+      em->state = STATE_FAILED;
       return;
     }
 
@@ -255,24 +305,31 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
       return;
     }
 
-  memset (a, 0, sizeof (*a));
-  a->segment_name = (char *) mp->segment_name;
-  a->segment_size = mp->segment_size;
+  seg_type = em->use_sock_api ? SSVM_SEGMENT_MEMFD : SSVM_SEGMENT_SHM;
 
-  ASSERT (mp->app_event_queue_address);
-
-  /* Attach to the segment vpp created */
-  rv = svm_fifo_segment_attach (a);
-  if (rv)
+  /* Attach to fifo segment */
+  if (fifo_segment_attach ((char *) mp->segment_name, mp->segment_size,
+			   seg_type))
     {
-      clib_warning ("svm_fifo_segment_attach ('%s') failed",
-		    mp->segment_name);
+      em->state = STATE_FAILED;
       return;
     }
 
-  utm->our_event_queue =
-    uword_to_pointer (mp->app_event_queue_address, svm_queue_t *);
-  utm->state = STATE_ATTACHED;
+  /* If we're using memfd segments, read and attach to event qs segment */
+  if (seg_type == SSVM_SEGMENT_MEMFD)
+    {
+      if (memfd_segment_attach ())
+	{
+	  clib_warning ("failed to attach to evt q segment");
+	  em->state = STATE_FAILED;
+	  return;
+	}
+    }
+
+  ASSERT (mp->app_event_queue_address);
+  em->our_event_queue = uword_to_pointer (mp->app_event_queue_address,
+					  svm_queue_t *);
+  em->state = STATE_ATTACHED;
 }
 
 static void
@@ -286,7 +343,7 @@ vl_api_application_detach_reply_t_handler (vl_api_application_detach_reply_t *
 static void
 stop_signal (int signum)
 {
-  uri_tcp_test_main_t *um = &uri_tcp_test_main;
+  echo_main_t *um = &echo_main;
 
   um->time_to_stop = 1;
 }
@@ -294,7 +351,7 @@ stop_signal (int signum)
 static void
 stats_signal (int signum)
 {
-  uri_tcp_test_main_t *um = &uri_tcp_test_main;
+  echo_main_t *um = &echo_main;
 
   um->time_to_print_stats = 1;
 }
@@ -318,31 +375,41 @@ vlib_cli_output (struct vlib_main_t *vm, char *fmt, ...)
 int
 connect_to_vpp (char *name)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  echo_main_t *em = &echo_main;
   api_main_t *am = &api_main;
 
-  if (utm->use_sock_api)
+  if (em->use_sock_api)
     {
-      if (vl_socket_client_connect ((char *) utm->socket_name, name,
+      if (vl_socket_client_connect ((char *) em->socket_name, name,
 				    0 /* default rx, tx buffer */ ))
-	return -1;
+	{
+	  clib_warning ("socket connect failed");
+	  return -1;
+	}
 
-      return vl_socket_client_init_shm (0);
+      if (vl_socket_client_init_shm (0))
+	{
+	  clib_warning ("init shm api failed");
+	  return -1;
+	}
     }
   else
     {
       if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
-	return -1;
-      utm->vl_input_queue = am->shmem_hdr->vl_input_queue;
-      utm->my_client_index = am->my_client_index;
+	{
+	  clib_warning ("shmem connect failed");
+	  return -1;
+	}
     }
+  em->vl_input_queue = am->shmem_hdr->vl_input_queue;
+  em->my_client_index = am->my_client_index;
   return 0;
 }
 
 void
-disconnect_from_vpp (uri_tcp_test_main_t * utm)
+disconnect_from_vpp (echo_main_t * em)
 {
-  if (utm->use_sock_api)
+  if (em->use_sock_api)
     vl_socket_client_disconnect ();
   else
     vl_client_disconnect_from_vlib ();
@@ -370,13 +437,13 @@ vl_api_map_another_segment_t_handler (vl_api_map_another_segment_t * mp)
 }
 
 static void
-session_print_stats (uri_tcp_test_main_t * utm, session_t * session)
+session_print_stats (echo_main_t * em, session_t * session)
 {
   f64 deltat;
   u64 bytes;
 
-  deltat = clib_time_now (&utm->clib_time) - session->start;
-  bytes = utm->i_am_master ? session->bytes_received : utm->bytes_to_send;
+  deltat = clib_time_now (&em->clib_time) - session->start;
+  bytes = em->i_am_master ? session->bytes_received : em->bytes_to_send;
   fformat (stdout, "Finished in %.6f\n", deltat);
   fformat (stdout, "%.4f Gbit/second\n", (bytes * 8.0) / deltat / 1e9);
 }
@@ -384,19 +451,19 @@ session_print_stats (uri_tcp_test_main_t * utm, session_t * session)
 static void
 vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  echo_main_t *em = &echo_main;
   session_t *session = 0;
   vl_api_disconnect_session_reply_t *rmp;
   uword *p;
   int rv = 0;
 
-  p = hash_get (utm->session_index_by_vpp_handles, mp->handle);
+  p = hash_get (em->session_index_by_vpp_handles, mp->handle);
 
   if (p)
     {
-      session = pool_elt_at_index (utm->sessions, p[0]);
-      hash_unset (utm->session_index_by_vpp_handles, mp->handle);
-      pool_put (utm->sessions, session);
+      session = pool_elt_at_index (em->sessions, p[0]);
+      hash_unset (em->session_index_by_vpp_handles, mp->handle);
+      pool_put (em->sessions, session);
     }
   else
     {
@@ -404,7 +471,7 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
       rv = -11;
     }
 
-//  utm->time_to_stop = 1;
+//  em->time_to_stop = 1;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
@@ -412,27 +479,27 @@ vl_api_disconnect_session_t_handler (vl_api_disconnect_session_t * mp)
   rmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION_REPLY);
   rmp->retval = rv;
   rmp->handle = mp->handle;
-  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & rmp);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & rmp);
 
   if (session)
-    session_print_stats (utm, session);
+    session_print_stats (em, session);
 }
 
 static void
 vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  echo_main_t *em = &echo_main;
   vl_api_reset_session_reply_t *rmp;
   uword *p;
   int rv = 0;
 
-  p = hash_get (utm->session_index_by_vpp_handles, mp->handle);
+  p = hash_get (em->session_index_by_vpp_handles, mp->handle);
 
   if (p)
     {
       clib_warning ("got reset");
       /* Cleanup later */
-      utm->time_to_stop = 1;
+      em->time_to_stop = 1;
     }
   else
     {
@@ -445,12 +512,11 @@ vl_api_reset_session_t_handler (vl_api_reset_session_t * mp)
   rmp->_vl_msg_id = ntohs (VL_API_RESET_SESSION_REPLY);
   rmp->retval = rv;
   rmp->handle = mp->handle;
-  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & rmp);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & rmp);
 }
 
 void
-client_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
-			     session_fifo_event_t * e)
+client_handle_fifo_event_rx (echo_main_t * em, session_fifo_event_t * e)
 {
   svm_fifo_t *rx_fifo;
   int n_read, bytes, i;
@@ -465,27 +531,26 @@ client_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
   do
     {
       n_read = svm_fifo_dequeue_nowait (rx_fifo,
-					clib_min (vec_len (utm->rx_buf),
-						  bytes), utm->rx_buf);
+					clib_min (vec_len (em->rx_buf),
+						  bytes), em->rx_buf);
       if (n_read > 0)
 	{
 	  bytes -= n_read;
-	  if (utm->test_return_packets)
+	  if (em->test_return_packets)
 	    {
 	      for (i = 0; i < n_read; i++)
 		{
-		  if (utm->rx_buf[i]
-		      != ((utm->client_bytes_received + i) & 0xff))
+		  if (em->rx_buf[i]
+		      != ((em->client_bytes_received + i) & 0xff))
 		    {
 		      clib_warning ("error at byte %lld, 0x%x not 0x%x",
-				    utm->client_bytes_received + i,
-				    utm->rx_buf[i],
-				    ((utm->client_bytes_received +
-				      i) & 0xff));
+				    em->client_bytes_received + i,
+				    em->rx_buf[i],
+				    ((em->client_bytes_received + i) & 0xff));
 		    }
 		}
 	    }
-	  utm->client_bytes_received += n_read;
+	  em->client_bytes_received += n_read;
 	}
       else
 	{
@@ -501,15 +566,15 @@ client_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 }
 
 void
-client_handle_event_queue (uri_tcp_test_main_t * utm)
+client_handle_event_queue (echo_main_t * em)
 {
   session_fifo_event_t _e, *e = &_e;;
 
-  svm_queue_sub (utm->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
+  svm_queue_sub (em->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
   switch (e->event_type)
     {
     case FIFO_EVENT_APP_RX:
-      client_handle_fifo_event_rx (utm, e);
+      client_handle_fifo_event_rx (em, e);
       break;
 
     case FIFO_EVENT_DISCONNECT:
@@ -525,16 +590,16 @@ static void *
 client_rx_thread_fn (void *arg)
 {
   session_fifo_event_t _e, *e = &_e;
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  echo_main_t *em = &echo_main;
 
-  utm->client_bytes_received = 0;
+  em->client_bytes_received = 0;
   while (1)
     {
-      svm_queue_sub (utm->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
+      svm_queue_sub (em->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
-	  client_handle_fifo_event_rx (utm, e);
+	  client_handle_fifo_event_rx (em, e);
 	  break;
 
 	case FIFO_EVENT_DISCONNECT:
@@ -544,7 +609,7 @@ client_rx_thread_fn (void *arg)
 	  break;
 	}
 
-      if (PREDICT_FALSE (utm->time_to_stop == 1))
+      if (PREDICT_FALSE (em->time_to_stop == 1))
 	break;
     }
   pthread_exit (0);
@@ -554,7 +619,7 @@ client_rx_thread_fn (void *arg)
 static void
 vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  echo_main_t *em = &echo_main;
   session_t *session;
   u32 session_index;
   svm_fifo_t *rx_fifo, *tx_fifo;
@@ -564,7 +629,7 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
     {
       clib_warning ("connection failed with code: %U", format_api_error,
 		    clib_net_to_host_u32 (mp->retval));
-      utm->state = STATE_FAILED;
+      em->state = STATE_FAILED;
       return;
     }
   else
@@ -574,15 +639,15 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
 		    clib_net_to_host_u16 (mp->lcl_port));
     }
 
-  utm->vpp_event_queue =
+  em->vpp_event_queue =
     uword_to_pointer (mp->vpp_event_queue_address, svm_queue_t *);
 
   /*
    * Setup session
    */
 
-  pool_get (utm->sessions, session);
-  session_index = session - utm->sessions;
+  pool_get (em->sessions, session);
+  session_index = session - em->sessions;
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
@@ -592,17 +657,17 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
   session->server_rx_fifo = rx_fifo;
   session->server_tx_fifo = tx_fifo;
   session->vpp_session_handle = mp->handle;
-  session->start = clib_time_now (&utm->clib_time);
+  session->start = clib_time_now (&em->clib_time);
 
   /* Save handle */
-  utm->connected_session_index = session_index;
-  utm->state = STATE_READY;
+  em->connected_session_index = session_index;
+  em->state = STATE_READY;
 
   /* Add it to lookup table */
-  hash_set (utm->session_index_by_vpp_handles, mp->handle, session_index);
+  hash_set (em->session_index_by_vpp_handles, mp->handle, session_index);
 
   /* Start RX thread */
-  rv = pthread_create (&utm->client_rx_thread_handle,
+  rv = pthread_create (&em->client_rx_thread_handle,
 		       NULL /*attr */ , client_rx_thread_fn, 0);
   if (rv)
     {
@@ -612,10 +677,9 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
 }
 
 static void
-send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
-		 u32 bytes)
+send_test_chunk (echo_main_t * em, svm_fifo_t * tx_fifo, int mypid, u32 bytes)
 {
-  u8 *test_data = utm->connect_test_data;
+  u8 *test_data = em->connect_test_data;
   u64 bytes_sent = 0;
   int test_buf_offset = 0;
   u32 bytes_to_snd;
@@ -627,7 +691,7 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
   if (bytes_to_snd > vec_len (test_data))
     bytes_to_snd = vec_len (test_data);
 
-  while (bytes_to_snd > 0 && !utm->time_to_stop)
+  while (bytes_to_snd > 0 && !em->time_to_stop)
     {
       actual_write = (bytes_to_snd > queue_max_chunk) ?
 	queue_max_chunk : bytes_to_snd;
@@ -646,7 +710,7 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
 	      evt.fifo = tx_fifo;
 	      evt.event_type = FIFO_EVENT_APP_TX;
 
-	      svm_queue_add (utm->vpp_event_queue,
+	      svm_queue_add (em->vpp_event_queue,
 			     (u8 *) & evt, 0 /* do wait for mutex */ );
 	    }
 	}
@@ -654,71 +718,71 @@ send_test_chunk (uri_tcp_test_main_t * utm, svm_fifo_t * tx_fifo, int mypid,
 }
 
 void
-client_send_data (uri_tcp_test_main_t * utm)
+client_send_data (echo_main_t * em)
 {
-  u8 *test_data = utm->connect_test_data;
+  u8 *test_data = em->connect_test_data;
   int mypid = getpid ();
   session_t *session;
   svm_fifo_t *tx_fifo;
   u32 n_iterations, leftover;
   int i;
 
-  session = pool_elt_at_index (utm->sessions, utm->connected_session_index);
+  session = pool_elt_at_index (em->sessions, em->connected_session_index);
   tx_fifo = session->server_tx_fifo;
 
   ASSERT (vec_len (test_data) > 0);
 
-  vec_validate (utm->rx_buf, vec_len (test_data) - 1);
-  n_iterations = utm->bytes_to_send / vec_len (test_data);
+  vec_validate (em->rx_buf, vec_len (test_data) - 1);
+  n_iterations = em->bytes_to_send / vec_len (test_data);
 
   for (i = 0; i < n_iterations; i++)
     {
-      send_test_chunk (utm, tx_fifo, mypid, 0);
-      if (utm->time_to_stop)
+      send_test_chunk (em, tx_fifo, mypid, 0);
+      if (em->time_to_stop)
 	break;
     }
 
-  leftover = utm->bytes_to_send % vec_len (test_data);
+  leftover = em->bytes_to_send % vec_len (test_data);
   if (leftover)
-    send_test_chunk (utm, tx_fifo, mypid, leftover);
+    send_test_chunk (em, tx_fifo, mypid, leftover);
 
-  if (!utm->drop_packets)
+  if (!em->drop_packets)
     {
-      f64 timeout = clib_time_now (&utm->clib_time) + 10;
+      f64 timeout = clib_time_now (&em->clib_time) + 10;
 
       /* Wait for the outstanding packets */
-      while (utm->client_bytes_received <
+      while (em->client_bytes_received <
 	     vec_len (test_data) * n_iterations + leftover)
 	{
-	  if (clib_time_now (&utm->clib_time) > timeout)
+	  if (clib_time_now (&em->clib_time) > timeout)
 	    {
 	      clib_warning ("timed out waiting for the missing packets");
 	      break;
 	    }
 	}
     }
-  utm->time_to_stop = 1;
+  em->time_to_stop = 1;
 }
 
 void
-client_send_connect (uri_tcp_test_main_t * utm)
+client_send_connect (echo_main_t * em)
 {
   vl_api_connect_uri_t *cmp;
   cmp = vl_msg_api_alloc (sizeof (*cmp));
   memset (cmp, 0, sizeof (*cmp));
 
   cmp->_vl_msg_id = ntohs (VL_API_CONNECT_URI);
-  cmp->client_index = utm->my_client_index;
+  cmp->client_index = em->my_client_index;
   cmp->context = ntohl (0xfeedface);
-  memcpy (cmp->uri, utm->connect_uri, vec_len (utm->connect_uri));
-  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & cmp);
+  memcpy (cmp->uri, em->connect_uri, vec_len (em->connect_uri));
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & cmp);
 }
 
 int
-client_connect (uri_tcp_test_main_t * utm)
+client_connect (echo_main_t * em)
 {
-  client_send_connect (utm);
-  if (wait_for_state_change (utm, STATE_READY))
+  client_send_connect (em);
+  if (wait_for_state_change (em, STATE_READY))
     {
       clib_warning ("Connect failed");
       return -1;
@@ -727,26 +791,26 @@ client_connect (uri_tcp_test_main_t * utm)
 }
 
 void
-client_send_disconnect (uri_tcp_test_main_t * utm)
+client_send_disconnect (echo_main_t * em)
 {
   session_t *connected_session;
   vl_api_disconnect_session_t *dmp;
-  connected_session = pool_elt_at_index (utm->sessions,
-					 utm->connected_session_index);
+  connected_session = pool_elt_at_index (em->sessions,
+					 em->connected_session_index);
   dmp = vl_msg_api_alloc (sizeof (*dmp));
   memset (dmp, 0, sizeof (*dmp));
   dmp->_vl_msg_id = ntohs (VL_API_DISCONNECT_SESSION);
-  dmp->client_index = utm->my_client_index;
+  dmp->client_index = em->my_client_index;
   dmp->handle = connected_session->vpp_session_handle;
-  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & dmp);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & dmp);
 }
 
 int
-client_disconnect (uri_tcp_test_main_t * utm)
+client_disconnect (echo_main_t * em)
 {
-  client_send_disconnect (utm);
+  client_send_disconnect (em);
   clib_warning ("Sent disconnect");
-  if (wait_for_state_change (utm, STATE_START))
+  if (wait_for_state_change (em, STATE_START))
     {
       clib_warning ("Disconnect failed");
       return -1;
@@ -755,58 +819,57 @@ client_disconnect (uri_tcp_test_main_t * utm)
 }
 
 static void
-client_run (uri_tcp_test_main_t * utm)
+client_run (echo_main_t * em)
 {
   int i;
 
-  if (application_attach (utm))
+  if (application_attach (em))
     return;
 
-  if (client_connect (utm))
+  if (client_connect (em))
     {
-      application_detach (utm);
+      application_detach (em);
       return;
     }
 
   /* Init test data */
-  vec_validate (utm->connect_test_data, 128 * 1024 - 1);
-  for (i = 0; i < vec_len (utm->connect_test_data); i++)
-    utm->connect_test_data[i] = i & 0xff;
+  vec_validate (em->connect_test_data, 128 * 1024 - 1);
+  for (i = 0; i < vec_len (em->connect_test_data); i++)
+    em->connect_test_data[i] = i & 0xff;
 
   /* Start send */
-  client_send_data (utm);
+  client_send_data (em);
 
-  /* Disconnect */
-  client_disconnect (utm);
-
-  application_detach (utm);
+  /* Disconnect and detach */
+  client_disconnect (em);
+  application_detach (em);
 }
 
 static void
 vl_api_bind_uri_reply_t_handler (vl_api_bind_uri_reply_t * mp)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  echo_main_t *em = &echo_main;
 
   if (mp->retval)
     {
       clib_warning ("bind failed: %U", format_api_error,
 		    clib_net_to_host_u32 (mp->retval));
-      utm->state = STATE_FAILED;
+      em->state = STATE_FAILED;
       return;
     }
 
-  utm->state = STATE_READY;
+  em->state = STATE_READY;
 }
 
 static void
 vl_api_unbind_uri_reply_t_handler (vl_api_unbind_uri_reply_t * mp)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  echo_main_t *em = &echo_main;
 
   if (mp->retval != 0)
     clib_warning ("returned %d", ntohl (mp->retval));
 
-  utm->state = STATE_START;
+  em->state = STATE_START;
 }
 
 u8 *
@@ -895,7 +958,7 @@ format_ip46_address (u8 * s, va_list * args)
 static void
 vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  echo_main_t *em = &echo_main;
   vl_api_accept_session_reply_t *rmp;
   svm_fifo_t *rx_fifo, *tx_fifo;
   session_t *session;
@@ -904,17 +967,17 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   u8 *ip_str;
 
   if (start_time == 0.0)
-    start_time = clib_time_now (&utm->clib_time);
+    start_time = clib_time_now (&em->clib_time);
 
   ip_str = format (0, "%U", format_ip46_address, &mp->ip, mp->is_ip4);
   clib_warning ("Accepted session from: %s:%d", ip_str,
 		clib_net_to_host_u16 (mp->port));
-  utm->vpp_event_queue =
+  em->vpp_event_queue =
     uword_to_pointer (mp->vpp_event_queue_address, svm_queue_t *);
 
   /* Allocate local session and set it up */
-  pool_get (utm->sessions, session);
-  session_index = session - utm->sessions;
+  pool_get (em->sessions, session);
+  session_index = session - em->sessions;
 
   rx_fifo = uword_to_pointer (mp->server_rx_fifo, svm_fifo_t *);
   rx_fifo->client_session_index = session_index;
@@ -925,17 +988,17 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   session->server_tx_fifo = tx_fifo;
 
   /* Add it to lookup table */
-  hash_set (utm->session_index_by_vpp_handles, mp->handle, session_index);
+  hash_set (em->session_index_by_vpp_handles, mp->handle, session_index);
 
-  utm->state = STATE_READY;
+  em->state = STATE_READY;
 
   /* Stats printing */
-  if (pool_elts (utm->sessions) && (pool_elts (utm->sessions) % 20000) == 0)
+  if (pool_elts (em->sessions) && (pool_elts (em->sessions) % 20000) == 0)
     {
-      f64 now = clib_time_now (&utm->clib_time);
+      f64 now = clib_time_now (&em->clib_time);
       fformat (stdout, "%d active sessions in %.2f seconds, %.2f/sec...\n",
-	       pool_elts (utm->sessions), now - start_time,
-	       (f64) pool_elts (utm->sessions) / (now - start_time));
+	       pool_elts (em->sessions), now - start_time,
+	       (f64) pool_elts (em->sessions) / (now - start_time));
     }
 
   /*
@@ -946,15 +1009,14 @@ vl_api_accept_session_t_handler (vl_api_accept_session_t * mp)
   rmp->_vl_msg_id = ntohs (VL_API_ACCEPT_SESSION_REPLY);
   rmp->handle = mp->handle;
   rmp->context = mp->context;
-  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & rmp);
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & rmp);
 
   session->bytes_received = 0;
-  session->start = clib_time_now (&utm->clib_time);
+  session->start = clib_time_now (&em->clib_time);
 }
 
 void
-server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
-			     session_fifo_event_t * e)
+server_handle_fifo_event_rx (echo_main_t * em, session_fifo_event_t * e)
 {
   svm_fifo_t *rx_fifo, *tx_fifo;
   int n_read;
@@ -964,9 +1026,9 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
   int rv;
   u32 max_dequeue, offset, max_transfer, rx_buf_len;
 
-  rx_buf_len = vec_len (utm->rx_buf);
+  rx_buf_len = vec_len (em->rx_buf);
   rx_fifo = e->fifo;
-  session = &utm->sessions[rx_fifo->client_session_index];
+  session = &em->sessions[rx_fifo->client_session_index];
   tx_fifo = session->server_tx_fifo;
 
   max_dequeue = svm_fifo_max_dequeue (rx_fifo);
@@ -982,7 +1044,7 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
   do
     {
       max_transfer = clib_min (rx_buf_len, max_dequeue);
-      n_read = svm_fifo_dequeue_nowait (rx_fifo, max_transfer, utm->rx_buf);
+      n_read = svm_fifo_dequeue_nowait (rx_fifo, max_transfer, em->rx_buf);
       if (n_read > 0)
 	{
 	  max_dequeue -= n_read;
@@ -990,20 +1052,20 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	}
 
       /* Reflect if a non-drop session */
-      if (!utm->drop_packets && n_read > 0)
+      if (!em->drop_packets && n_read > 0)
 	{
 	  offset = 0;
 	  do
 	    {
 	      rv = svm_fifo_enqueue_nowait (tx_fifo, n_read,
-					    &utm->rx_buf[offset]);
+					    &em->rx_buf[offset]);
 	      if (rv > 0)
 		{
 		  n_read -= rv;
 		  offset += rv;
 		}
 	    }
-	  while ((rv <= 0 || n_read > 0) && !utm->time_to_stop);
+	  while ((rv <= 0 || n_read > 0) && !em->time_to_stop);
 
 	  /* If event wasn't set, add one */
 	  if (svm_fifo_set_event (tx_fifo))
@@ -1012,26 +1074,26 @@ server_handle_fifo_event_rx (uri_tcp_test_main_t * utm,
 	      evt.fifo = tx_fifo;
 	      evt.event_type = FIFO_EVENT_APP_TX;
 
-	      q = utm->vpp_event_queue;
+	      q = em->vpp_event_queue;
 	      svm_queue_add (q, (u8 *) & evt, 1 /* do wait for mutex */ );
 	    }
 	}
     }
-  while ((n_read < 0 || max_dequeue > 0) && !utm->time_to_stop);
+  while ((n_read < 0 || max_dequeue > 0) && !em->time_to_stop);
 }
 
 void
-server_handle_event_queue (uri_tcp_test_main_t * utm)
+server_handle_event_queue (echo_main_t * em)
 {
   session_fifo_event_t _e, *e = &_e;
 
   while (1)
     {
-      svm_queue_sub (utm->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
+      svm_queue_sub (em->our_event_queue, (u8 *) e, SVM_Q_WAIT, 0);
       switch (e->event_type)
 	{
 	case FIFO_EVENT_APP_RX:
-	  server_handle_fifo_event_rx (utm, e);
+	  server_handle_fifo_event_rx (em, e);
 	  break;
 
 	case FIFO_EVENT_DISCONNECT:
@@ -1041,35 +1103,35 @@ server_handle_event_queue (uri_tcp_test_main_t * utm)
 	  clib_warning ("unknown event type %d", e->event_type);
 	  break;
 	}
-      if (PREDICT_FALSE (utm->time_to_stop == 1))
+      if (PREDICT_FALSE (em->time_to_stop == 1))
 	break;
-      if (PREDICT_FALSE (utm->time_to_print_stats == 1))
+      if (PREDICT_FALSE (em->time_to_print_stats == 1))
 	{
-	  utm->time_to_print_stats = 0;
-	  fformat (stdout, "%d connections\n", pool_elts (utm->sessions));
+	  em->time_to_print_stats = 0;
+	  fformat (stdout, "%d connections\n", pool_elts (em->sessions));
 	}
     }
 }
 
 void
-server_send_listen (uri_tcp_test_main_t * utm)
+server_send_listen (echo_main_t * em)
 {
   vl_api_bind_uri_t *bmp;
   bmp = vl_msg_api_alloc (sizeof (*bmp));
   memset (bmp, 0, sizeof (*bmp));
 
   bmp->_vl_msg_id = ntohs (VL_API_BIND_URI);
-  bmp->client_index = utm->my_client_index;
+  bmp->client_index = em->my_client_index;
   bmp->context = ntohl (0xfeedface);
-  memcpy (bmp->uri, utm->uri, vec_len (utm->uri));
-  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & bmp);
+  memcpy (bmp->uri, em->uri, vec_len (em->uri));
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & bmp);
 }
 
 int
-server_listen (uri_tcp_test_main_t * utm)
+server_listen (echo_main_t * em)
 {
-  server_send_listen (utm);
-  if (wait_for_state_change (utm, STATE_READY))
+  server_send_listen (em);
+  if (wait_for_state_change (em, STATE_READY))
     {
       clib_warning ("timeout waiting for STATE_READY");
       return -1;
@@ -1078,7 +1140,7 @@ server_listen (uri_tcp_test_main_t * utm)
 }
 
 void
-server_send_unbind (uri_tcp_test_main_t * utm)
+server_send_unbind (echo_main_t * em)
 {
   vl_api_unbind_uri_t *ump;
 
@@ -1086,16 +1148,16 @@ server_send_unbind (uri_tcp_test_main_t * utm)
   memset (ump, 0, sizeof (*ump));
 
   ump->_vl_msg_id = ntohs (VL_API_UNBIND_URI);
-  ump->client_index = utm->my_client_index;
-  memcpy (ump->uri, utm->uri, vec_len (utm->uri));
-  vl_msg_api_send_shmem (utm->vl_input_queue, (u8 *) & ump);
+  ump->client_index = em->my_client_index;
+  memcpy (ump->uri, em->uri, vec_len (em->uri));
+  vl_msg_api_send_shmem (em->vl_input_queue, (u8 *) & ump);
 }
 
 int
-server_unbind (uri_tcp_test_main_t * utm)
+server_unbind (echo_main_t * em)
 {
-  server_send_unbind (utm);
-  if (wait_for_state_change (utm, STATE_START))
+  server_send_unbind (em);
+  if (wait_for_state_change (em, STATE_START))
     {
       clib_warning ("timeout waiting for STATE_START");
       return -1;
@@ -1104,7 +1166,7 @@ server_unbind (uri_tcp_test_main_t * utm)
 }
 
 void
-server_run (uri_tcp_test_main_t * utm)
+server_run (echo_main_t * em)
 {
   session_t *session;
   int i;
@@ -1112,26 +1174,26 @@ server_run (uri_tcp_test_main_t * utm)
   /* $$$$ hack preallocation */
   for (i = 0; i < 200000; i++)
     {
-      pool_get (utm->sessions, session);
+      pool_get (em->sessions, session);
       memset (session, 0, sizeof (*session));
     }
   for (i = 0; i < 200000; i++)
-    pool_put_index (utm->sessions, i);
+    pool_put_index (em->sessions, i);
 
-  if (application_attach (utm))
+  if (application_attach (em))
     return;
 
   /* Bind to uri */
-  if (server_listen (utm))
+  if (server_listen (em))
     return;
 
   /* Enter handle event loop */
-  server_handle_event_queue (utm);
+  server_handle_event_queue (em);
 
   /* Cleanup */
-  server_send_unbind (utm);
+  server_send_unbind (em);
 
-  application_detach (utm);
+  application_detach (em);
 
   fformat (stdout, "Test complete...\n");
 }
@@ -1140,7 +1202,7 @@ static void
 vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 					   mp)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  echo_main_t *em = &echo_main;
   session_t *session;
 
   if (mp->retval)
@@ -1149,13 +1211,13 @@ vl_api_disconnect_session_reply_t_handler (vl_api_disconnect_session_reply_t *
 		    ntohl (mp->retval));
     }
 
-  utm->state = STATE_START;
-  session = pool_elt_at_index (utm->sessions, utm->connected_session_index);
+  em->state = STATE_START;
+  session = pool_elt_at_index (em->sessions, em->connected_session_index);
   if (session)
-    session_print_stats (utm, session);
+    session_print_stats (em, session);
 }
 
-#define foreach_uri_msg                                 	\
+#define foreach_tcp_echo_msg                            	\
 _(BIND_URI_REPLY, bind_uri_reply)                       	\
 _(UNBIND_URI_REPLY, unbind_uri_reply)                   	\
 _(ACCEPT_SESSION, accept_session)                       	\
@@ -1168,7 +1230,7 @@ _(APPLICATION_DETACH_REPLY, application_detach_reply)		\
 _(MAP_ANOTHER_SEGMENT, map_another_segment)			\
 
 void
-uri_api_hookup (uri_tcp_test_main_t * utm)
+tcp_echo_api_hookup (echo_main_t * em)
 {
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
@@ -1177,23 +1239,24 @@ uri_api_hookup (uri_tcp_test_main_t * utm)
                            vl_api_##n##_t_endian,               \
                            vl_api_##n##_t_print,                \
                            sizeof(vl_api_##n##_t), 1);
-  foreach_uri_msg;
+  foreach_tcp_echo_msg;
 #undef _
 }
 
 int
 main (int argc, char **argv)
 {
-  uri_tcp_test_main_t *utm = &uri_tcp_test_main;
+  int i_am_master = 1, drop_packets = 0, test_return_packets = 0;
+  echo_main_t *em = &echo_main;
   unformat_input_t _argv, *a = &_argv;
   u8 *chroot_prefix;
   u8 *heap, *uri = 0;
   u8 *bind_uri = (u8 *) "tcp://0.0.0.0/1234";
   u8 *connect_uri = (u8 *) "tcp://6.0.1.2/1234";
   u64 bytes_to_send = 64 << 10, mbytes;
+  char *app_name;
   u32 tmp;
   mheap_t *h;
-  int i_am_master = 1, drop_packets = 0, test_return_packets = 0;
 
   clib_mem_init (0, 256 << 20);
 
@@ -1203,17 +1266,17 @@ main (int argc, char **argv)
   /* make the main heap thread-safe */
   h->flags |= MHEAP_FLAG_THREAD_SAFE;
 
-  vec_validate (utm->rx_buf, 128 << 10);
+  vec_validate (em->rx_buf, 128 << 10);
 
-  utm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
+  em->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
 
-  utm->my_pid = getpid ();
-  utm->configured_segment_size = 1 << 20;
-  utm->socket_name = 0;
-  utm->use_sock_api = 1;
+  em->my_pid = getpid ();
+  em->configured_segment_size = 1 << 20;
+  em->socket_name = 0;
+  em->use_sock_api = 1;
 
-  clib_time_init (&utm->clib_time);
-  init_error_string_table (utm);
+  clib_time_init (&em->clib_time);
+  init_error_string_table (em);
   svm_fifo_segment_init (0x200000000ULL, 20);
   unformat_init_command_line (a, argv);
 
@@ -1226,9 +1289,9 @@ main (int argc, char **argv)
       else if (unformat (a, "uri %s", &uri))
 	;
       else if (unformat (a, "segment-size %dM", &tmp))
-	utm->configured_segment_size = tmp << 20;
+	em->configured_segment_size = tmp << 20;
       else if (unformat (a, "segment-size %dG", &tmp))
-	utm->configured_segment_size = tmp << 30;
+	em->configured_segment_size = tmp << 30;
       else if (unformat (a, "master"))
 	i_am_master = 1;
       else if (unformat (a, "slave"))
@@ -1245,10 +1308,10 @@ main (int argc, char **argv)
 	{
 	  bytes_to_send = mbytes << 30;
 	}
-      else if (unformat (a, "socket-name %s", &utm->socket_name))
+      else if (unformat (a, "socket-name %s", &em->socket_name))
 	;
       else if (unformat (a, "use-svm-api"))
-	utm->use_sock_api = 0;
+	em->use_sock_api = 0;
       else
 	{
 	  fformat (stderr, "%s: usage [master|slave]\n");
@@ -1256,32 +1319,32 @@ main (int argc, char **argv)
 	}
     }
 
-  if (!utm->socket_name)
-    utm->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
+  if (!em->socket_name)
+    em->socket_name = format (0, "%s%c", API_SOCKET_FILE, 0);
 
   if (uri)
     {
-      utm->uri = format (0, "%s%c", uri, 0);
-      utm->connect_uri = format (0, "%s%c", uri, 0);
+      em->uri = format (0, "%s%c", uri, 0);
+      em->connect_uri = format (0, "%s%c", uri, 0);
     }
   else
     {
-      utm->uri = format (0, "%s%c", bind_uri, 0);
-      utm->connect_uri = format (0, "%s%c", connect_uri, 0);
+      em->uri = format (0, "%s%c", bind_uri, 0);
+      em->connect_uri = format (0, "%s%c", connect_uri, 0);
     }
 
-  utm->i_am_master = i_am_master;
-  utm->segment_main = &svm_fifo_segment_main;
-  utm->drop_packets = drop_packets;
-  utm->test_return_packets = test_return_packets;
-  utm->bytes_to_send = bytes_to_send;
-  utm->time_to_stop = 0;
+  em->i_am_master = i_am_master;
+  em->segment_main = &svm_fifo_segment_main;
+  em->drop_packets = drop_packets;
+  em->test_return_packets = test_return_packets;
+  em->bytes_to_send = bytes_to_send;
+  em->time_to_stop = 0;
 
   setup_signal_handlers ();
-  uri_api_hookup (utm);
+  tcp_echo_api_hookup (em);
 
-  if (connect_to_vpp (i_am_master ? "tcp_echo_server" : "tcp_echo_client") <
-      0)
+  app_name = i_am_master ? "tcp_echo_server" : "tcp_echo_client";
+  if (connect_to_vpp (app_name) < 0)
     {
       svm_region_exit ();
       fformat (stderr, "Couldn't connect to vpe, exiting...\n");
@@ -1289,11 +1352,11 @@ main (int argc, char **argv)
     }
 
   if (i_am_master == 0)
-    client_run (utm);
+    client_run (em);
   else
-    server_run (utm);
+    server_run (em);
 
-  disconnect_from_vpp (utm);
+  disconnect_from_vpp (em);
   exit (0);
 }
 

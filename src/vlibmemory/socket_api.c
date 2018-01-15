@@ -52,7 +52,6 @@ vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
 {
   vl_api_registration_t *reg;
   socket_main_t *sm = &socket_main;
-  clib_file_main_t *fm = &file_main;
   clib_file_t *f;
 
   /*
@@ -68,9 +67,8 @@ vl_sock_api_dump_clients (vlib_main_t * vm, api_main_t * am)
     pool_foreach (reg, sm->registration_pool,
     ({
         if (reg->registration_type == REGISTRATION_TYPE_SOCKET_SERVER) {
-            f = pool_elt_at_index (fm->file_pool, reg->clib_file_index);
-            vlib_cli_output (vm, "%20s %8d",
-                             reg->name, f->file_descriptor);
+            f = vl_api_registration_file (reg);
+            vlib_cli_output (vm, "%20s %8d", reg->name, f->file_descriptor);
         }
     }));
 /* *INDENT-ON* */
@@ -86,9 +84,10 @@ vl_socket_api_send (vl_api_registration_t * rp, u8 * elem)
   u16 msg_id = ntohs (*(u16 *) elem);
   api_main_t *am = &api_main;
   msgbuf_t *mb = (msgbuf_t *) (elem - offsetof (msgbuf_t, data));
-  clib_file_t *cf = clib_file_get (&file_main, rp->clib_file_index);
   vl_api_registration_t *sock_rp;
+  clib_file_t *cf;
 
+  cf = vl_api_registration_file (rp);
   ASSERT (rp->registration_type > REGISTRATION_TYPE_SHMEM);
 
   if (msg_id >= vec_len (am->api_trace_cfg))
@@ -380,7 +379,6 @@ socksvr_accept_ready (clib_file_t * uf)
   clib_error_t *error;
 
   error = clib_socket_accept (sock, &client);
-
   if (error)
     return error;
 
@@ -441,8 +439,7 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
 
       vl_api_send_msg (regp, (u8 *) rp);
 
-      clib_file_del (&file_main, file_main.file_pool + regp->clib_file_index);
-
+      vl_api_registration_del_file (regp);
       vl_socket_free_registration_index (mp->index);
     }
   else
@@ -451,8 +448,8 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
     }
 }
 
-static clib_error_t *
-send_fd_msg (int socket_fd, int fd_to_share)
+clib_error_t *
+vl_sock_api_send_fd_msg (int socket_fd, int fd_to_share)
 {
   struct msghdr mh = { 0 };
   struct iovec iov[1];
@@ -535,6 +532,7 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   svm_region_t *vlib_rp;
   clib_file_t *cf;
   vl_api_shm_elem_config_t *config = 0;
+  vl_shmem_hdr_t *shmem_hdr;
   int rv;
 
   regp = vl_api_client_index_to_registration (mp->client_index);
@@ -559,7 +557,7 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   memfd->i_am_master = 1;
   memfd->name = format (0, "%s%c", regp->name, 0);
 
-  if ((rv = ssvm_master_init_memfd (memfd, mp->client_index)))
+  if ((rv = ssvm_master_init_memfd (memfd)))
     goto reply;
 
   /* Remember to close this fd when the socket connection goes away */
@@ -584,6 +582,11 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   vlib_rp = (svm_region_t *) a->baseva;
   vl_init_shmem (vlib_rp, config, 1 /* is_vlib (dont-care) */ ,
 		 1 /* is_private */ );
+
+  /* Remember who created this. Needs to be post vl_init_shmem */
+  shmem_hdr = (vl_shmem_hdr_t *) vlib_rp->user_ctx;
+  shmem_hdr->clib_file_index = vl_api_registration_file_index (regp);
+
   vec_add1 (am->vlib_private_rps, vlib_rp);
   memfd->sh->ready = 1;
   vec_free (config);
@@ -607,11 +610,11 @@ reply:
    * We need the reply message to make it out the back door
    * before we send the magic fd message so force a flush
    */
-  cf = clib_file_get (&file_main, regp->clib_file_index);
+  cf = vl_api_registration_file (regp);
   cf->write_function (cf);
 
   /* Send the magic "here's your sign (aka fd)" socket message */
-  send_fd_msg (cf->file_descriptor, memfd->fd);
+  vl_sock_api_send_fd_msg (cf->file_descriptor, memfd->fd);
 }
 
 /*
@@ -640,7 +643,7 @@ vl_api_memfd_segment_create_t_handler (vl_api_memfd_segment_create_t * mp)
   memfd->name = format (0, "%s%c", regp->name, 0);
 
   /* Set up a memfd segment of the requested size */
-  if ((rv = ssvm_master_init_memfd (memfd, mp->client_index)))
+  if ((rv = ssvm_master_init_memfd (memfd)))
     goto reply;
 
   /* Remember to close this fd when the socket connection goes away */
@@ -662,11 +665,11 @@ reply:
    * We need the reply message to make it out the back door
    * before we send the magic fd message.
    */
-  cf = file_main.file_pool + regp->clib_file_index;
+  cf = vl_api_registration_file (regp);
   cf->write_function (cf);
 
   /* send the magic "here's your sign (aka fd)" socket message */
-  send_fd_msg (cf->file_descriptor, memfd->fd);
+  vl_sock_api_send_fd_msg (cf->file_descriptor, memfd->fd);
 }
 
 #define foreach_vlib_api_msg                    	\
@@ -741,7 +744,6 @@ vl_sock_api_init (vlib_main_t * vm)
 static clib_error_t *
 socket_exit (vlib_main_t * vm)
 {
-  clib_file_main_t *fm = &file_main;
   socket_main_t *sm = &socket_main;
   vl_api_registration_t *rp;
 
@@ -751,9 +753,9 @@ socket_exit (vlib_main_t * vm)
       u32 index;
         /* *INDENT-OFF* */
         pool_foreach (rp, sm->registration_pool, ({
-            clib_file_del (fm, fm->file_pool + rp->clib_file_index);
-            index = rp->vl_api_registration_pool_index;
-            vl_socket_free_registration_index (index);
+          vl_api_registration_del_file (rp);
+          index = rp->vl_api_registration_pool_index;
+          vl_socket_free_registration_index (index);
         }));
 /* *INDENT-ON* */
     }

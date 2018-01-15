@@ -190,8 +190,8 @@ vl_client_connect (const char *name, int ctx_quota, int input_queue_size)
 
   pthread_mutex_lock (&svm->mutex);
   oldheap = svm_push_data_heap (svm);
-  vl_input_queue =
-    svm_queue_init (input_queue_size, sizeof (uword), getpid (), 0);
+  vl_input_queue = svm_queue_init (input_queue_size, sizeof (uword),
+				   getpid (), 0);
   pthread_mutex_unlock (&svm->mutex);
   svm_pop_heap (oldheap);
 
@@ -289,7 +289,6 @@ vl_client_disconnect (void)
    * Have to be careful here, in case the client is disconnecting
    * because e.g. the vlib process died, or is unresponsive.
    */
-
   begin = time (0);
   while (1)
     {
@@ -362,7 +361,6 @@ vl_client_install_client_message_handlers (void)
 #undef _
 }
 
-
 int
 vl_client_api_map (const char *region_name)
 {
@@ -379,6 +377,12 @@ void
 vl_client_api_unmap (void)
 {
   vl_unmap_shmem ();
+}
+
+u8
+vl_mem_client_is_connected (void)
+{
+  return (memory_client_main.connected_to_vlib != 0);
 }
 
 static int
@@ -444,8 +448,8 @@ vl_client_connect_to_vlib_no_map (const char *svm_name,
 				   0 /* dont map */ );
 }
 
-void
-vl_client_disconnect_from_vlib (void)
+static void
+disconnect_from_vlib_internal (u8 do_unmap)
 {
   memory_client_main_t *mm = &memory_client_main;
   api_main_t *am = &api_main;
@@ -462,9 +466,22 @@ vl_client_disconnect_from_vlib (void)
   if (mm->connected_to_vlib)
     {
       vl_client_disconnect ();
-      vl_client_api_unmap ();
+      if (do_unmap)
+	vl_client_api_unmap ();
     }
   memset (mm, 0, sizeof (*mm));
+}
+
+void
+vl_client_disconnect_from_vlib (void)
+{
+  disconnect_from_vlib_internal (1);
+}
+
+void
+vl_client_disconnect_from_vlib_no_unmap (void)
+{
+  disconnect_from_vlib_internal (0);
 }
 
 static void vl_api_get_first_msg_id_reply_t_handler

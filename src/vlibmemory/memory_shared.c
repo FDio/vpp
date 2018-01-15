@@ -230,6 +230,25 @@ vl_msg_api_alloc_as_if_client_or_null (int nbytes)
   return vl_msg_api_alloc_internal (nbytes, 0, 1 /* may_return_null */ );
 }
 
+void *
+vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t * reg, int nbytes)
+{
+  api_main_t *am = &api_main;
+  vl_shmem_hdr_t *save_shmem_hdr = am->shmem_hdr;
+  svm_region_t *vlib_rp, *save_vlib_rp = am->vlib_rp;
+  void *msg;
+
+  vlib_rp = am->vlib_rp = reg->vlib_rp;
+  am->shmem_hdr = (void *) vlib_rp->user_ctx;
+
+  msg = vl_msg_api_alloc_internal (nbytes, 0, 0 /* may_return_null */ );
+
+  am->shmem_hdr = save_shmem_hdr;
+  am->vlib_rp = save_vlib_rp;
+
+  return msg;
+}
+
 void
 vl_msg_api_free (void *a)
 {
@@ -464,6 +483,7 @@ vl_init_shmem (svm_region_t * vlib_rp, vl_api_shm_elem_config_t * config,
 
   vec_validate (shmem_hdr, 0);
   shmem_hdr->version = VL_SHM_VERSION;
+  shmem_hdr->clib_file_index = VL_API_INVALID_FI;
 
   /* Set up the queue and msg ring allocator */
   vl_api_mem_config (shmem_hdr, config);
