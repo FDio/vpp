@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "78d32eb2_adb06593",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 573,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-15T15:11:33Z",
+      "side": 1,
+      "message": "I know that there are out-of-tree plugins which use this API, and this change will hurt them if they are not aware of it. Is this change really necessary....",
+      "range": {
+        "startLine": 573,
+        "startChar": 38,
+        "endLine": 573,
+        "endChar": 69
+      },
+      "revId": "5b00e9f0b6a7dff60d9fed1cb19c68fc96cfe605",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
