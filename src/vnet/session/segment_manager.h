@@ -21,6 +21,13 @@
 #include <vlibmemory/api.h>
 #include <vppinfra/lock.h>
 
+typedef enum
+{
+  SEGMENT_MANAGER_PRIVATE_SEGMENT,
+  SEGMENT_MANAGER_SVM_SEGMENT,
+  SEGMENT_MANAGER_MEMFD_SEGMENT
+} segment_manager_segment_type_t;
+
 typedef struct _segment_manager_properties
 {
   /** Session fifo sizes.  */
@@ -37,7 +44,7 @@ typedef struct _segment_manager_properties
   u8 add_segment;
 
   /** Use private memory segment instead of shared memory */
-  u8 use_private_segment;
+  segment_manager_segment_type_t segment_type;
 
   /** Use one or more private mheaps, instead of the global heap */
   u32 private_segment_count;
@@ -65,6 +72,8 @@ typedef struct _segment_manager
    * allocated for the app.
    */
   u8 first_is_protected;
+
+  svm_queue_t *evt_queue;
 } segment_manager_t;
 
 #define SEGMENT_MANAGER_INVALID_APP_INDEX ((u32) ~0)
@@ -93,13 +102,13 @@ segment_manager_index (segment_manager_t * sm)
 }
 
 segment_manager_t *segment_manager_new ();
-int
-segment_manager_init (segment_manager_t * sm, u32 props_index, u32 seg_size);
+int segment_manager_init (segment_manager_t * sm, u32 props_index,
+                          u32 seg_size, u32 evt_queue_size);
 
 void segment_manager_get_segment_info (u32 index, u8 ** name, u32 * size);
 int
-session_manager_add_first_segment (segment_manager_t * sm, u32 segment_size);
-int session_manager_add_segment (segment_manager_t * sm);
+segment_manager_add_first_segment (segment_manager_t * sm, u32 segment_size);
+int segment_manager_add_segment (segment_manager_t * sm);
 void segment_manager_del_sessions (segment_manager_t * sm);
 void segment_manager_del (segment_manager_t * sm);
 void segment_manager_init_del (segment_manager_t * sm);
