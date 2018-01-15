@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "732c87ad_6cf2c637",
+        "filename": "src/svm/ssvm.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 9
+      },
+      "writtenOn": "2018-01-15T15:13:46Z",
+      "side": 1,
+      "message": "Why not use clib_mem_vm_ext_alloc(), i wrote that one so you guys can use it :)",
+      "range": {
+        "startLine": 173,
+        "startChar": 0,
+        "endLine": 185,
+        "endChar": 51
+      },
+      "revId": "7016ecbe169b2c5bb7a8d10b6f80b5ebbda40b54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
