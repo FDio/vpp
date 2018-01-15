@@ -13,6 +13,7 @@ Several modules provide operational, dataplane-user focused documentation.
 - @subpage dpdk_crypto_ipsec_doc
 - @subpage flowprobe_plugin_doc
 - @subpage qos_doc
+- @subpage selinux_doc
 - @subpage span_doc
 - @subpage srv6_doc
 - @subpage srmpls_doc
