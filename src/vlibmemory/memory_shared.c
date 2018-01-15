@@ -464,6 +464,7 @@ vl_init_shmem (svm_region_t * vlib_rp, vl_api_shm_elem_config_t * config,
 
   vec_validate (shmem_hdr, 0);
   shmem_hdr->version = VL_SHM_VERSION;
+  shmem_hdr->clib_file_index = ~0;
 
   /* Set up the queue and msg ring allocator */
   vl_api_mem_config (shmem_hdr, config);

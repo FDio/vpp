@@ -58,25 +58,34 @@ _(SESSION_RULE_ADD_DEL, session_rule_add_del)				\
 _(SESSION_RULES_DUMP, session_rules_dump)				\
 
 static int
-send_add_segment_callback (u32 api_client_index, const u8 * segment_name,
-			   u32 segment_size)
+send_add_segment_callback (u32 api_client_index,
+                           const ssvm_private_t *sp)
 {
   vl_api_map_another_segment_t *mp;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (api_client_index);
-
-  if (!q)
+  reg = vl_mem_api_client_index_to_registration (api_client_index);
+  if (!reg)
     return -1;
 
   mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_MAP_ANOTHER_SEGMENT);
-  mp->segment_size = segment_size;
-  strncpy ((char *) mp->segment_name, (char *) segment_name,
+  mp->segment_size = sp->ssvm_size;
+  strncpy ((char *) mp->segment_name, (char *) sp->name,
 	   sizeof (mp->segment_name) - 1);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
+
+  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD)
+    {
+      if (vl_api_registration_socket_fd (reg) == ~0)
+	{
+	  clib_warning ("can't send memfd fd");
+	  return -1;
+	}
+      vl_api_send_fd_msg (reg, sp->fd);
+    }
 
   return 0;
 }
@@ -312,6 +321,7 @@ vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
   vl_api_application_attach_reply_t *rmp;
   vnet_app_attach_args_t _a, *a = &_a;
   clib_error_t *error = 0;
+  ssvm_private_t *segp;
   int rv = 0;
 
   if (session_manager_is_enabled () == 0)
@@ -354,13 +364,13 @@ done:
   REPLY_MACRO2 (VL_API_APPLICATION_ATTACH_REPLY, ({
     if (!rv)
       {
+	segp = a->segment;
 	rmp->segment_name_length = 0;
-	rmp->segment_size = a->segment_size;
-	if (a->segment_name_length)
+	rmp->segment_size = segp->ssvm_size;
+	if (vec_len (segp->name))
 	  {
-	    memcpy (rmp->segment_name, a->segment_name,
-		    a->segment_name_length);
-	    rmp->segment_name_length = a->segment_name_length;
+	    memcpy (rmp->segment_name, segp->name, vec_len (segp->name));
+	    rmp->segment_name_length = vec_len (segp->name);
 	  }
 	rmp->app_event_queue_address = a->app_event_queue_address;
       }

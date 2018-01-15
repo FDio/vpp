@@ -258,6 +258,7 @@ vl_api_application_attach_reply_t_handler (vl_api_application_attach_reply_t *
   memset (a, 0, sizeof (*a));
   a->segment_name = (char *) mp->segment_name;
   a->segment_size = mp->segment_size;
+  a->segment_type = utm->use_sock_api ? SSVM_SEGMENT_MEMFD : SSVM_SEGMENT_SHM;
 
   ASSERT (mp->app_event_queue_address);
 
@@ -327,15 +328,15 @@ connect_to_vpp (char *name)
 				    0 /* default rx, tx buffer */ ))
 	return -1;
 
-      return vl_socket_client_init_shm (0);
+      vl_socket_client_init_shm (0);
     }
   else
     {
       if (vl_client_connect_to_vlib ("/vpe-api", name, 32) < 0)
 	return -1;
-      utm->vl_input_queue = am->shmem_hdr->vl_input_queue;
-      utm->my_client_index = am->my_client_index;
     }
+  utm->vl_input_queue = am->shmem_hdr->vl_input_queue;
+  utm->my_client_index = am->my_client_index;
   return 0;
 }
 

@@ -170,8 +170,8 @@ vl_socket_client_enable_disable (int enable)
   scm->socket_enable = enable;
 }
 
-static clib_error_t *
-receive_fd_msg (int socket_fd, int *my_fd)
+clib_error_t *
+vl_sock_api_receive_fd_msg (int socket_fd, int *my_fd)
 {
   char msgbuf[16];
   char ctl[CMSG_SPACE (sizeof (int)) + CMSG_SPACE (sizeof (struct ucred))];
@@ -244,7 +244,7 @@ static void vl_api_sock_init_shm_reply_t_handler
   /*
    * Check the socket for the magic fd
    */
-  error = receive_fd_msg (scm->socket_fd, &my_fd);
+  error = vl_sock_api_receive_fd_msg (scm->socket_fd, &my_fd);
   if (error)
     {
       retval = -99;
