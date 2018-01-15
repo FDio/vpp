@@ -92,6 +92,14 @@ l3_list::event_handler::handle_populate(const client_db::key_t& key)
                                 payload.r[ii].dst_ip_prefix_len);
       l3_rule rule(ii, action_t::from_int(payload.r[ii].is_permit), src, dst);
 
+      rule.set_proto(payload.r[ii].proto);
+      rule.set_src_from_port(payload.r[ii].srcport_or_icmptype_first);
+      rule.set_src_to_port(payload.r[ii].srcport_or_icmptype_last);
+      rule.set_dst_from_port(payload.r[ii].dstport_or_icmpcode_first);
+      rule.set_dst_to_port(payload.r[ii].dstport_or_icmpcode_last);
+      rule.set_tcp_flags_mask(payload.r[ii].tcp_flags_mask);
+      rule.set_tcp_flags_value(payload.r[ii].tcp_flags_value);
+
       acl.insert(rule);
     }
     VOM_LOG(log_level_t::DEBUG) << "dump: " << acl.to_string();
@@ -169,6 +177,7 @@ void
 l3_list::replay(void)
 {
   if (m_hdl) {
+    m_hdl.data().reset();
     HW::enqueue(new list_cmds::l3_update_cmd(m_hdl, m_key, m_rules));
   }
 }
@@ -177,6 +186,7 @@ void
 l2_list::replay(void)
 {
   if (m_hdl) {
+    m_hdl.data().reset();
     HW::enqueue(new list_cmds::l2_update_cmd(m_hdl, m_key, m_rules));
   }
 }

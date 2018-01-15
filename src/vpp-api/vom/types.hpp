@@ -203,6 +203,11 @@ struct handle_t
    */
   uint32_t value() const;
 
+  /**
+   * reset the value of the handle to ~0
+   */
+  void reset();
+
 private:
   /**
    * VPP's handle value

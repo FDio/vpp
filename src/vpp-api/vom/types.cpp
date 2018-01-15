@@ -94,6 +94,12 @@ handle_t::value() const
   return (m_value);
 }
 
+void
+handle_t::reset()
+{
+  m_value = ~0;
+}
+
 std::ostream&
 operator<<(std::ostream& os, const handle_t& h)
 {
