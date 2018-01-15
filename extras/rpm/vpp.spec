@@ -24,12 +24,30 @@
 
 %{?systemd_requires}
 
+
+# SELinux Related definitions
+%global selinuxtype targeted
+%global moduletype  services
+%global modulenames vpp-custom
+
+# Usage: _format var format
+#   Expand 'modulenames' into various formats as needed
+#   Format must contain '$x' somewhere to do anything useful
+%global _format() export %1=""; for x in %{modulenames}; do %1+=%2; %1+=" "; done;
+
+# Relabel files
+%global relabel_files() \ # ADD files in *.fc file
+
+# Version of distribution SELinux policy package
+%global selinux_policyver 3.13.1-128.6.fc22
+
+
 Name: vpp
 Summary: Vector Packet Processing
 License: ASL 2.0
 Version: %{_version}
 Release: %{_release}
-Requires: vpp-lib = %{_version}-%{_release}, net-tools, pciutils, python
+Requires: vpp-lib = %{_version}-%{_release}, vpp-selinux-policy = %{_version}-%{_release}, net-tools, pciutils, python
 BuildRequires: systemd, chrpath
 BuildRequires: check, check-devel
 BuildRequires: subunit, subunit-devel
@@ -51,6 +69,7 @@ BuildRequires: apr-devel
 BuildRequires: numactl-devel
 BuildRequires: autoconf automake libtool byacc bison flex
 BuildRequires: boost boost-devel
+BuildRequires: selinux-policy selinux-policy-devel
 
 Source: %{name}-%{_version}-%{_release}.tar.xz
 # Source: vpp-latest.tar.xz
@@ -64,6 +83,7 @@ vpp_json_test - vector packet engine JSON test tool
 %package lib
 Summary: VPP libraries
 Group: System Environment/Libraries
+Requires: vpp-selinux-policy = %{_version}-%{_release}
 
 %description lib
 This package contains the VPP shared libraries, including:
@@ -119,6 +139,14 @@ Requires: vpp = %{_version}-%{_release}, vpp-lib = %{_version}-%{_release}, pyth
 %description api-python
 This package contains the python bindings for the vpp api
 
+%package selinux-policy
+Summary: VPP Security-Enhanced Linux (SELinux) policy
+Group: System Environment/Base
+Requires(post): selinux-policy-base >= %{selinux_policyver}, selinux-policy-targeted >= %{selinux_policyver}, policycoreutils, policycoreutils-python libselinux-utils
+
+%description selinux-policy
+This package contains a tailored VPP SELinux policy
+
 %prep
 # Unpack into dir with longer name as work around of debugedit bug in in rpm-build 4.13
 rm -rf %{name}-%{_version}
@@ -142,6 +170,7 @@ cd '%{_tmp_build_dir}'
     make -C build-root PLATFORM=vpp AESNI=n TAG=%{_vpp_tag} install-packages
 %endif
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_build
+cd %{_mu_build_dir}/../extras/selinux && make -f %{_datadir}/selinux/devel/Makefile
 
 %install
 #
@@ -207,6 +236,19 @@ done
 # Python bindings
 cd %{_mu_build_dir}/../src/vpp-api/python && %py2_install
 
+# SELinux Policy
+# Install SELinux interfaces
+%_format INTERFACES %{_mu_build_dir}/../extras/selinux/$x.if
+install -d %{buildroot}%{_datadir}/selinux/devel/include/%{moduletype}
+install -p -m 644 $INTERFACES \
+    %{buildroot}%{_datadir}/selinux/devel/include/%{moduletype}
+
+# Install policy modules
+%_format MODULES %{_mu_build_dir}/../extras/selinux/$x.pp
+install -d %{buildroot}%{_datadir}/selinux/packages
+install -m 0644 $MODULES \
+    %{buildroot}%{_datadir}/selinux/packages
+
 #
 # devel
 #
@@ -237,6 +279,10 @@ do
 	   %{buildroot}/usr/share/doc/vpp/examples/sample-plugin/$file )
 done
 
+# vppctl sockfile directory
+mkdir -p -m755 %{buildroot}%{_localstatedir}/run/vpp
+# vpp.log directory
+mkdir -p -m755 %{buildroot}%{_localstatedir}/log/vpp
 
 #
 # vpp-plugins
@@ -274,6 +320,15 @@ fi
 %preun
 %systemd_preun vpp.service
 
+%post selinux-policy
+%_format MODULES %{_datadir}/selinux/packages/$x.pp
+%{_sbindir}/semodule -n -X 400 -s %{selinuxtype} -i $MODULES
+if %{_sbindir}/selinuxenabled ; then
+    %{_sbindir}/load_policy
+    %relabel_files
+fi
+
+
 %postun
 %systemd_postun
 if [ $1 -eq 0 ] ; then
@@ -299,6 +354,15 @@ else
     echo "Upgrading package, dont' unbind interfaces"
 fi
 
+%postun selinux-policy
+if [ $1 -eq 0 ]; then
+    %{_sbindir}/semodule -n -r %{modulenames}
+    if %{_sbindir}/selinuxenabled ; then
+        %{_sbindir}/load_policy
+        %relabel_files
+    fi
+fi
+
 %files
 %defattr(-,bin,bin)
 %{_unitdir}/vpp.service
@@ -308,6 +372,12 @@ fi
 %config(noreplace) /etc/sysctl.d/80-vpp.conf
 %config(noreplace) /etc/vpp/startup.conf
 /usr/share/vpp/api/*
+
+%defattr(-,root,vpp)
+%{_localstatedir}/run/vpp*
+
+%defattr(-,root,root)
+%{_localstatedir}/log/vpp*
 
 %files lib
 %defattr(-,bin,bin)
@@ -329,6 +399,11 @@ fi
 %files api-python
 %defattr(644,root,root)
 %{python2_sitelib}/vpp_papi*
+
+%files selinux-policy
+%defattr(-,root,root,0755)
+%attr(0644,root,root) %{_datadir}/selinux/packages/*.pp
+%attr(0644,root,root) %{_datadir}/selinux/devel/include/%{moduletype}/*.if
 
 %files devel
 %defattr(-,bin,bin)
