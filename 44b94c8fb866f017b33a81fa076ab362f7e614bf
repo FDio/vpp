@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "fa7ff734_c1d766a3",
+        "filename": "src/vppinfra/flowhash_24_16.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 61,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-01-15T08:13:21Z",
+      "side": 1,
+      "message": "You can test on defined(clib_crc32c_uses_intrinsics) instead, and then use crc32_u64 instead of _mm_crc32_u64 which will also work on ARM platforms which support it.",
+      "range": {
+        "startLine": 45,
+        "startChar": 0,
+        "endLine": 61,
+        "endChar": 1
+      },
+      "revId": "44b94c8fb866f017b33a81fa076ab362f7e614bf",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
