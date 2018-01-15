@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c7c1c1a4_2a54544b",
+        "filename": "src/svm/queue.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-15T18:11:50Z",
+      "side": 1,
+      "message": "I\u0027d rename these to SVM_Q or SVM_QUEUE_*. Since this is a personal preference, I\u0027d like Dave to comment as well :-)",
+      "range": {
+        "startLine": 44,
+        "startChar": 2,
+        "endLine": 44,
+        "endChar": 14
+      },
+      "revId": "87c2e372d065d0090386d0d60005e8d6e9429122",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f16c77ea_f79eef31",
+        "filename": "src/vlibmemory/memory_shared.c",
+        "patchSetId": 3
+      },
+      "lineNbr": 580,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-15T18:11:50Z",
+      "side": 1,
+      "message": "Re-add the queue underflow condition",
+      "revId": "87c2e372d065d0090386d0d60005e8d6e9429122",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
