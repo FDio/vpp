@@ -12,14 +12,23 @@
 # limitations under the License.
 
 vppplugins_LTLIBRARIES += stn_plugin.la
+vppapitestplugins_LTLIBRARIES += stn_test_plugin.la
 
-stn_plugin_la_SOURCES = stn/stn.c stn/stn_api.c
+stn_plugin_la_SOURCES =				\
+	stn/stn.c				\
+	stn/stn_api.c				\
+	stn/stn_plugin.api.h
 
-BUILT_SOURCES +=				\
-	stn/stn.api.h		\
-	stn/stn.api.json
+stn_test_plugin_la_SOURCES =			\
+	stn/stn_test.c				\
+	stn/stn_plugin.api.h
 
 noinst_HEADERS += stn/stn.h
+
+nobase_apiinclude_HEADERS +=			\
+	stn/stn_all_api_h.h			\
+	stn/stn_msg_enum.h			\
+	stn/stn.api.h
 
 API_FILES += stn/stn.api
 
