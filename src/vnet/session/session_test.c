@@ -103,7 +103,6 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
 {
   session_endpoint_t server_sep = SESSION_ENDPOINT_NULL;
   u64 options[APP_OPTIONS_N_OPTIONS], bind4_handle, bind6_handle;
-  u8 segment_name[128];
   clib_error_t *error = 0;
   u32 server_index;
 
@@ -117,7 +116,6 @@ session_test_basic (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
-    .segment_name = segment_name,
   };
 
   error = vnet_application_attach (&attach_args);
@@ -178,7 +176,6 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
   clib_error_t *error = 0;
   u8 *ns_id = format (0, "appns1"), intf_mac[6];
   app_namespace_t *app_ns;
-  u8 segment_name[128];
   application_t *server;
   stream_session_t *s;
   int code;
@@ -197,7 +194,6 @@ session_test_namespace (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
-    .segment_name = segment_name,
   };
 
   vnet_bind_args_t bind_args = {
@@ -781,7 +777,7 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
   transport_connection_t *tc;
   u32 dummy_port = 1111;
   clib_error_t *error = 0;
-  u8 segment_name[128], is_filtered = 0, *ns_id = format (0, "appns1");
+  u8 is_filtered = 0, *ns_id = format (0, "appns1");
   stream_session_t *listener, *s;
   app_namespace_t *default_ns = app_namespace_get_default ();
   u32 local_ns_index = default_ns->local_table_index;
@@ -809,7 +805,6 @@ session_test_rules (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
-    .segment_name = segment_name,
   };
 
   vnet_bind_args_t bind_args = {
@@ -1342,7 +1337,7 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
   u32 server_index, app_index;
   u32 dummy_server_api_index = ~0, sw_if_index = 0;
   clib_error_t *error = 0;
-  u8 segment_name[128], intf_mac[6], sst, is_filtered = 0;
+  u8 intf_mac[6], sst, is_filtered = 0;
   stream_session_t *s;
   transport_connection_t *tc;
   u16 lcl_port = 1234, rmt_port = 4321;
@@ -1407,7 +1402,6 @@ session_test_proxy (vlib_main_t * vm, unformat_input_t * input)
     .options = options,
     .namespace_id = 0,
     .session_cb_vft = &dummy_session_cbs,
-    .segment_name = segment_name,
   };
 
   attach_args.api_client_index = dummy_server_api_index;

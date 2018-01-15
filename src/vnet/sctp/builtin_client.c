@@ -438,21 +438,16 @@ static clib_error_t *
 attach_builtin_test_clients_app (u8 * appns_id, u64 appns_flags,
 				 u64 appns_secret)
 {
-  u32 segment_name_length, prealloc_fifos, segment_size = 2 << 20;
+  u32 prealloc_fifos, segment_size = 2 << 20;
   tclient_main_t *tm = &tclient_main;
   vnet_app_attach_args_t _a, *a = &_a;
-  u8 segment_name[128];
   u64 options[16];
   clib_error_t *error = 0;
-
-  segment_name_length = ARRAY_LEN (segment_name);
 
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
   a->api_client_index = tm->my_client_index;
-  a->segment_name = segment_name;
-  a->segment_name_length = segment_name_length;
   a->session_cb_vft = &builtin_clients;
 
   prealloc_fifos = tm->prealloc_fifos ? tm->expected_connections : 1;

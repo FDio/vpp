@@ -413,11 +413,11 @@ session_validate_namespace (u8 * namespace_id, u64 secret, u32 * app_ns_index)
 clib_error_t *
 vnet_application_attach (vnet_app_attach_args_t * a)
 {
+  svm_fifo_segment_private_t *fs;
   application_t *app = 0;
   segment_manager_t *sm;
-  u8 *seg_name;
-  u64 secret;
   u32 app_ns_index = 0;
+  u64 secret;
   int rv;
 
   app = application_lookup (a->api_client_index);
@@ -437,16 +437,15 @@ vnet_application_attach (vnet_app_attach_args_t * a)
 
   a->app_event_queue_address = pointer_to_uword (app->event_queue);
   sm = segment_manager_get (app->first_segment_manager);
-  segment_manager_get_segment_info (sm->segment_indices[0],
-				    &seg_name, &a->segment_size);
+  fs = segment_manager_get_segment (sm->segment_indices[0]);
 
   if (application_is_proxy (app))
     application_setup_proxy (app);
 
-  a->segment_name_length = vec_len (seg_name);
-  a->segment_name = seg_name;
-  ASSERT (vec_len (a->segment_name) <= 128);
+  ASSERT (vec_len (fs->ssvm.name) <= 128);
+  a->segment = &fs->ssvm;
   a->app_index = app->index;
+
   return 0;
 }
 

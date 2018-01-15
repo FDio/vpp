@@ -72,6 +72,7 @@ typedef struct vl_api_registration_
   u32 server_index;		/**< Socket client only: server index */
 } vl_api_registration_t;
 
+#define VL_API_INVALID_FI ((u32)~0)
 
 /** Trace configuration for a single message */
 typedef struct

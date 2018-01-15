@@ -95,7 +95,7 @@ builtin_sctp_session_connected_callback (u32 app_index, u32 api_context,
 
 int
 builtin_sctp_add_segment_callback (u32 client_index,
-				   const u8 * seg_name, u32 seg_size)
+				   const ssvm_private_t * fs)
 {
   clib_warning ("called...");
   return -1;
@@ -270,7 +270,6 @@ static int
 server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
 {
   builtin_server_main_t *bsm = &builtin_server_main;
-  u8 segment_name[128];
   u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
   u32 segment_size = 512 << 20;
@@ -305,8 +304,6 @@ server_attach (u8 * appns_id, u64 appns_flags, u64 appns_secret)
       a->options[APP_OPTIONS_FLAGS] |= appns_flags;
       a->options[APP_OPTIONS_NAMESPACE_SECRET] = appns_secret;
     }
-  a->segment_name = segment_name;
-  a->segment_name_length = ARRAY_LEN (segment_name);
 
   if (vnet_application_attach (a))
     {

@@ -110,18 +110,12 @@ static int
 attach_builtin_uri_server ()
 {
   vnet_app_attach_args_t _a, *a = &_a;
-  u8 segment_name[128];
-  u32 segment_name_length;
   u64 options[16];
-
-  segment_name_length = ARRAY_LEN (segment_name);
 
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
   a->api_client_index = ~0;
-  a->segment_name = segment_name;
-  a->segment_name_length = segment_name_length;
   a->session_cb_vft = &builtin_server;
 
   options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;

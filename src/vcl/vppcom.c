@@ -1633,7 +1633,6 @@ vppcom_session_disconnect (u32 session_index)
     {
       if (is_server)
 	{
-	  svm_fifo_segment_main_t *sm = &svm_fifo_segment_main;
 	  svm_fifo_segment_private_t *seg;
 
 	  VCL_LOCK_AND_GET_SESSION (session_index, &session);
@@ -1649,7 +1648,7 @@ vppcom_session_disconnect (u32 session_index)
 			  session->server_tx_fifo,
 			  session->server_tx_fifo->refcnt);
 
-	  seg = vec_elt_at_index (sm->segments, session->sm_seg_index);
+	  seg = svm_fifo_segment_get_segment (session->sm_seg_index);
 	  svm_fifo_segment_free_fifo (seg, session->server_rx_fifo,
 				      FIFO_SEGMENT_RX_FREELIST);
 	  svm_fifo_segment_free_fifo (seg, session->server_tx_fifo,

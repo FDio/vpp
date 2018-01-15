@@ -58,6 +58,13 @@ vl_msg_api_handle_from_index_and_epoch (u32 index, u32 epoch)
   return handle;
 }
 
+static inline u8
+vl_msg_api_handle_is_valid (u32 handle, u32 restarts)
+{
+  u32 epoch = vl_msg_api_handle_get_epoch (handle);
+  return ((restarts & VL_API_EPOCH_MASK) == epoch);
+}
+
 #define VL_MEM_API_LOG_Q_LEN(fmt,qlen)			\
 if (TRACE_VLIB_MEMORY_QUEUE)				\
   do {							\
