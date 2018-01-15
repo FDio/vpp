@@ -139,8 +139,7 @@ server_connected_callback (u32 app_index, u32 api_context,
 }
 
 static int
-server_add_segment_callback (u32 client_index,
-			     const u8 * seg_name, u32 seg_size)
+server_add_segment_callback (u32 client_index, const ssvm_private_t * sp)
 {
   clib_warning ("called...");
   return -1;
@@ -382,7 +381,6 @@ static int
 server_attach ()
 {
   builtin_proxy_main_t *bpm = &builtin_proxy_main;
-  u8 segment_name[128];
   u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
   u32 segment_size = 512 << 20;
@@ -404,9 +402,6 @@ server_attach ()
 
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
 
-  a->segment_name = segment_name;
-  a->segment_name_length = ARRAY_LEN (segment_name);
-
   if (vnet_application_attach (a))
     {
       clib_warning ("failed to attach server");
@@ -422,18 +417,12 @@ active_open_attach (void)
 {
   builtin_proxy_main_t *bpm = &builtin_proxy_main;
   vnet_app_attach_args_t _a, *a = &_a;
-  u8 segment_name[128];
-  u32 segment_name_length;
   u64 options[16];
-
-  segment_name_length = ARRAY_LEN (segment_name);
 
   memset (a, 0, sizeof (*a));
   memset (options, 0, sizeof (options));
 
   a->api_client_index = bpm->active_open_client_index;
-  a->segment_name = segment_name;
-  a->segment_name_length = segment_name_length;
   a->session_cb_vft = &builtin_clients;
 
   options[APP_OPTIONS_ACCEPT_COOKIE] = 0x12345678;
