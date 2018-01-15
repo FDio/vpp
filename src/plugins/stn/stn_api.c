@@ -22,34 +22,27 @@
 #include <vppinfra/byte_order.h>
 
 /* define message IDs */
-#define vl_msg_id(n,h) n,
-typedef enum
-{
-#include <stn/stn.api.h>
-  /* We'll want to know how many messages IDs we need... */
-  VL_MSG_FIRST_AVAILABLE,
-} vl_msg_id_t;
-#undef vl_msg_id
+#include <stn/stn_msg_enum.h>
 
 /* define message structures */
 #define vl_typedefs
-#include <stn/stn.api.h>
+#include <stn/stn_all_api_h.h>
 #undef vl_typedefs
 
 /* define generated endian-swappers */
 #define vl_endianfun
-#include <stn/stn.api.h>
+#include <stn/stn_all_api_h.h>
 #undef vl_endianfun
 
 /* instantiate all the print functions we know about */
 #define vl_print(handle, ...) vlib_cli_output (handle, __VA_ARGS__)
 #define vl_printfun
-#include <stn/stn.api.h>
+#include <stn/stn_all_api_h.h>
 #undef vl_printfun
 
 /* Get the API version number */
 #define vl_api_version(n,v) static u32 api_version=(v);
-#include <nat/nat_all_api_h.h>
+#include <stn/stn_all_api_h.h>
 #undef vl_api_version
 
 #define REPLY_MSG_ID_BASE stn_main.msg_id_base
@@ -108,14 +101,15 @@ vl_api_stn_add_del_rule_t_handler (vl_api_stn_add_del_rule_t * mp)
 }
 
 static void
-send_stn_rule_details (stn_rule_t * r, svm_queue_t * q, u32 context)
+send_stn_rule_details (stn_rule_t * r, vl_api_registration_t * reg,
+		       u32 context)
 {
   vl_api_stn_rule_details_t *rmp;
 
   rmp = vl_msg_api_alloc (sizeof (*rmp));
   memset (rmp, 0, sizeof (*rmp));
   rmp->_vl_msg_id =
-    clib_host_to_net_u32 (VL_API_STN_RULE_DETAILS + stn_main.msg_id_base);
+    clib_host_to_net_u16 (VL_API_STN_RULE_DETAILS + stn_main.msg_id_base);
 
   if (ip46_address_is_ip4 (&r->address))
     {
@@ -130,23 +124,23 @@ send_stn_rule_details (stn_rule_t * r, svm_queue_t * q, u32 context)
   rmp->context = context;
   rmp->sw_if_index = clib_host_to_net_u32 (r->sw_if_index);
 
-  vl_msg_api_send_shmem (q, (u8 *) & rmp);
+  vl_api_send_msg (reg, (u8 *) rmp);
 }
 
 static void
 vl_api_stn_rules_dump_t_handler (vl_api_stn_rules_dump_t * mp)
 {
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
   stn_main_t *stn = &stn_main;
   stn_rule_t *r;
 
-  q = vl_api_client_index_to_input_queue (mp->client_index);
-  if (q == 0)
+  reg = vl_api_client_index_to_registration (mp->client_index);
+  if (reg == 0)
     return;
 
   /* *INDENT-OFF* */
   pool_foreach (r, stn->rules,({
-    send_stn_rule_details (r, q, mp->context);
+    send_stn_rule_details (r, reg, mp->context);
   }));
   /* *INDENT-ON* */
 }
