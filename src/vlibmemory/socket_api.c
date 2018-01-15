@@ -559,7 +559,7 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   memfd->i_am_master = 1;
   memfd->name = format (0, "%s%c", regp->name, 0);
 
-  if ((rv = ssvm_master_init_memfd (memfd, mp->client_index)))
+  if ((rv = ssvm_master_init_memfd (memfd)))
     goto reply;
 
   /* Remember to close this fd when the socket connection goes away */
@@ -640,7 +640,7 @@ vl_api_memfd_segment_create_t_handler (vl_api_memfd_segment_create_t * mp)
   memfd->name = format (0, "%s%c", regp->name, 0);
 
   /* Set up a memfd segment of the requested size */
-  if ((rv = ssvm_master_init_memfd (memfd, mp->client_index)))
+  if ((rv = ssvm_master_init_memfd (memfd)))
     goto reply;
 
   /* Remember to close this fd when the socket connection goes away */
