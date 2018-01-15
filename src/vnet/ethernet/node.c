@@ -229,6 +229,8 @@ determine_next_node (ethernet_main_t * em,
 		     u32 is_l20,
 		     u32 type0, vlib_buffer_t * b0, u8 * error0, u8 * next0)
 {
+  u32 eth_start = vnet_buffer (b0)->l2_hdr_offset;
+  vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
   if (PREDICT_FALSE (*error0 != ETHERNET_ERROR_NONE))
     {
       // some error occurred
@@ -238,8 +240,6 @@ determine_next_node (ethernet_main_t * em,
     {
       *next0 = em->l2_next;
       // record the L2 len and reset the buffer so the L2 header is preserved
-      u32 eth_start = vnet_buffer (b0)->l2_hdr_offset;
-      vnet_buffer (b0)->l2.l2_len = b0->current_data - eth_start;
       ASSERT (vnet_buffer (b0)->l2.l2_len ==
 	      ethernet_buffer_header_size (b0));
       vlib_buffer_advance (b0, -ethernet_buffer_header_size (b0));
