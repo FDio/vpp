@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 import unittest
-from socket import AF_INET6
+import socket
 
 from framework import VppTestCase, VppTestRunner
+from util import ppp, ip6_normalize
 from vpp_sub_interface import VppSubInterface, VppDot1QSubint
 from vpp_pg_interface import is_ipv6_misc
 from vpp_ip_route import VppIpRoute, VppRoutePath, find_route, VppIpMRoute, \
@@ -18,12 +19,13 @@ from scapy.layers.inet6 import IPv6, UDP, TCP, ICMPv6ND_NS, ICMPv6ND_RS, \
     ICMPv6NDOptMTU, ICMPv6NDOptSrcLLAddr, ICMPv6NDOptPrefixInfo, \
     ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, ICMPv6DestUnreach, icmp6types, \
     ICMPv6TimeExceeded
-
-from util import ppp
 from scapy.utils6 import in6_getnsma, in6_getnsmac, in6_ptop, in6_islladdr, \
     in6_mactoifaceid, in6_ismaddr
 from scapy.utils import inet_pton, inet_ntop
 from scapy.contrib.mpls import MPLS
+
+
+AF_INET6 = socket.AF_INET6
 
 
 def mk_ll_addr(mac):
@@ -893,6 +895,114 @@ class TestIPv6(TestIPv6ND):
         # Reset the periodic advertisements back to default values
         #
         self.pg0.ip6_ra_config(no=1, suppress=1, send_unicast=0)
+
+
+class TestIPv6RD(TestIPv6ND):
+    """ IPv6 Router Discovery Test Case """
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestIPv6RD, cls).setUpClass()
+
+    def setUp(self):
+        super(TestIPv6RD, self).setUp()
+
+        # create 2 pg interfaces
+        self.create_pg_interfaces(range(2))
+
+        self.interfaces = list(self.pg_interfaces)
+
+        # setup all interfaces
+        for i in self.interfaces:
+            i.admin_up()
+            i.config_ip6()
+
+    def tearDown(self):
+        super(TestIPv6RD, self).tearDown()
+
+    def test_rd_send_router_solicitation(self):
+        """ Verify router solicitation packets """
+
+        count = 2
+        self.pg_enable_capture(self.pg_interfaces)
+        self.pg_start()
+        self.vapi.ip6nd_send_router_solicitation(self.pg1.sw_if_index,
+                                                 mrc=count)
+        rx_list = self.pg1.get_capture(count, timeout=3)
+        self.assertEqual(len(rx_list), count)
+        for packet in rx_list:
+            self.assertTrue(packet.haslayer(IPv6))
+            self.assertTrue(packet[IPv6].haslayer(ICMPv6ND_RS))
+            dst = ip6_normalize(packet[IPv6].dst)
+            dst2 = ip6_normalize("ff02::2")
+            self.assert_equal(dst, dst2)
+            src = ip6_normalize(packet[IPv6].src)
+            src2 = ip6_normalize(self.pg1.local_ip6_ll)
+            self.assert_equal(src, src2)
+            self.assertTrue(packet[ICMPv6ND_RS].haslayer(ICMPv6NDOptSrcLLAddr))
+            self.assert_equal(packet[ICMPv6NDOptSrcLLAddr].lladdr,
+                              self.pg1.local_mac)
+
+    def verify_prefix_info(self, reported_prefix, prefix_option):
+        prefix = socket.inet_pton(socket.AF_INET6,
+                                  prefix_option.getfieldval("prefix"))
+        self.assert_equal(reported_prefix.dst_address, prefix)
+        self.assert_equal(reported_prefix.dst_address_length,
+                          prefix_option.getfieldval("prefixlen"))
+        L = prefix_option.getfieldval("L")
+        A = prefix_option.getfieldval("A")
+        option_flags = (L << 7) | (A << 6)
+        self.assert_equal(reported_prefix.flags, option_flags)
+        self.assert_equal(reported_prefix.valid_time,
+                          prefix_option.getfieldval("validlifetime"))
+        self.assert_equal(reported_prefix.preferred_time,
+                          prefix_option.getfieldval("preferredlifetime"))
+
+    def test_rd_receive_router_advertisement(self):
+        """ Verify events triggered by received RA packets """
+
+        self.vapi.want_ip6_ra_events()
+
+        prefix_info_1 = ICMPv6NDOptPrefixInfo(
+            prefix="1::2",
+            prefixlen=50,
+            validlifetime=200,
+            preferredlifetime=500,
+            L=1,
+            A=1,
+        )
+
+        prefix_info_2 = ICMPv6NDOptPrefixInfo(
+            prefix="7::4",
+            prefixlen=20,
+            validlifetime=70,
+            preferredlifetime=1000,
+            L=1,
+            A=0,
+        )
+
+        p = (Ether(dst=self.pg1.local_mac, src=self.pg1.remote_mac) /
+             IPv6(dst=self.pg1.local_ip6_ll,
+                  src=mk_ll_addr(self.pg1.remote_mac)) /
+             ICMPv6ND_RA() /
+             prefix_info_1 /
+             prefix_info_2)
+        self.pg1.add_stream([p])
+        self.pg_start()
+
+        ev = self.vapi.wait_for_event(10, "ip6_ra_event")
+
+        self.assert_equal(ev.current_hop_limit, 0)
+        self.assert_equal(ev.flags, 8)
+        self.assert_equal(ev.router_lifetime_in_sec, 1800)
+        self.assert_equal(ev.neighbor_reachable_time_in_msec, 0)
+        self.assert_equal(
+            ev.time_in_msec_between_retransmitted_neighbor_solicitations, 0)
+
+        self.assert_equal(ev.n_prefixes, 2)
+
+        self.verify_prefix_info(ev.prefixes[0], prefix_info_1)
+        self.verify_prefix_info(ev.prefixes[1], prefix_info_2)
 
 
 class IPv6NDProxyTest(TestIPv6ND):

@@ -19,7 +19,7 @@
     called through a shared memory interface. 
 */
 
-option version = "1.1.0";
+option version = "1.2.0";
 import "vnet/fib/fib_types.api";
 
 /** \brief Add / del table request
@@ -302,6 +302,30 @@ define ip6nd_proxy_dump
 {
   u32 client_index;
   u32 context;
+};
+
+/** \brief Start / stop sending router solicitation
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param irt - initial retransmission time
+    @param mrt - maximum retransmission time
+    @param mrc - maximum retransmission count
+    @param mrd - maximum retransmission duration
+    @param sw_if_index - software interface index of interface
+                         for sending router solicitation
+    @param stop - if non-zero then stop sending router solicitation,
+                  otherwise start sending router solicitation
+*/
+autoreply define ip6nd_send_router_solicitation
+{
+  u32 client_index;
+  u32 context;
+  u32 irt;
+  u32 mrt;
+  u32 mrc;
+  u32 mrd;
+  u32 sw_if_index;
+  u8 stop;
 };
 
 /** \brief IPv6 interface enable / disable request
@@ -697,6 +721,68 @@ define ip6_nd_event
   u8 address[16];
   u8 new_mac[6];
   u8 mac_ip;
+};
+
+service {
+  rpc want_ip6_ra_events returns want_ip6_ra_events_reply
+    events ip6_ra_event;
+};
+
+/** \brief Register for ip6 router advertisement events
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param enable_disable - 1 => register for events, 0 => cancel registration
+    @param pid - sender's pid
+*/
+autoreply define want_ip6_ra_events
+{
+  u32 client_index;
+  u32 context;
+  u8 enable_disable;
+  u32 pid;
+};
+
+/** \brief Struct representing RA prefix info
+    @param dst_address - RA prefix info destination address
+    @param dst_address_length - RA prefix info destination address length
+    @param flags - RA prefix info flags
+    @param valid_time - RA prefix info valid time
+    @param preferred_time - RA prefix info preferred time
+*/
+typeonly define ip6_ra_prefix_info
+{
+  u8 dst_address[16];
+  u8 dst_address_length;
+  u8 flags;
+  u32 valid_time;
+  u32 preferred_time;
+};
+
+/** \brief Tell client about a router advertisement event
+    @param client_index - opaque cookie to identify the sender
+    @param pid - client pid registered to receive notification
+    @param current_hop_limit - RA current hop limit
+    @param flags - RA flags
+    @param router_lifetime_in_sec - RA lifetime in seconds
+    @param neighbor_reachable_time_in_msec - RA neighbor reachable time in msec
+    @param time_in_msec_between_retransmitted_neighbor_solicitations -
+               time in msec between retransmitted neighbor solicitations
+    @param n_prefixes -
+    @param prefixes -
+*/
+define ip6_ra_event
+{
+  u32 client_index;
+  u32 pid;
+  u32 sw_if_index;
+  u8 router_address[16];
+  u8 current_hop_limit;
+  u8 flags;
+  u16 router_lifetime_in_sec;
+  u32 neighbor_reachable_time_in_msec;
+  u32 time_in_msec_between_retransmitted_neighbor_solicitations;
+  u32 n_prefixes;
+  vl_api_ip6_ra_prefix_info_t prefixes[n_prefixes];
 };
 
 service {

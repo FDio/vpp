@@ -466,6 +466,20 @@ class VppPapiProvider(object):
                          'address': address,
                          'pid': os.getpid(), })
 
+    def want_ip6_ra_events(self, enable_disable=1):
+        return self.api(self.papi.want_ip6_ra_events,
+                        {'enable_disable': enable_disable,
+                         'pid': os.getpid(), })
+
+    def ip6nd_send_router_solicitation(self, sw_if_index, irt=1, mrt=120,
+                                       mrc=0, mrd=0):
+        return self.api(self.papi.ip6nd_send_router_solicitation,
+                        {'irt': irt,
+                         'mrt': mrt,
+                         'mrc': mrc,
+                         'mrd': mrd,
+                         'sw_if_index': sw_if_index})
+
     def want_macs_learn_events(self, enable_disable=1, scan_delay=0,
                                max_macs_in_event=0, learn_limit=0):
         return self.api(self.papi.want_l2_macs_events,

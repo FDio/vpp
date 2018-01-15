@@ -65,6 +65,11 @@ def mk_ll_addr(mac):
     return addr
 
 
+def ip6_normalize(ip6):
+    return socket.inet_ntop(socket.AF_INET6,
+                            socket.inet_pton(socket.AF_INET6, ip6))
+
+
 class NumericConstant(object):
     __metaclass__ = ABCMeta
 
