@@ -39,9 +39,7 @@ typedef struct _vnet_app_attach_args_t
   /*
    * Results
    */
-  u8 *segment_name;
-  u32 segment_name_length;
-  u32 segment_size;
+  ssvm_private_t *segment;
   u64 app_event_queue_address;
   u32 app_index;
 } vnet_app_attach_args_t;

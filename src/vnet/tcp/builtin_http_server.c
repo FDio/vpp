@@ -466,8 +466,7 @@ builtin_session_connected_callback (u32 app_index, u32 api_context,
 }
 
 static int
-builtin_add_segment_callback (u32 client_index,
-			      const u8 * seg_name, u32 seg_size)
+builtin_add_segment_callback (u32 client_index, const ssvm_private_t * sp)
 {
   clib_warning ("called...");
   return -1;
@@ -509,7 +508,6 @@ static int
 server_attach ()
 {
   http_server_main_t *hsm = &http_server_main;
-  u8 segment_name[128];
   u64 options[APP_OPTIONS_N_OPTIONS];
   vnet_app_attach_args_t _a, *a = &_a;
   u32 segment_size = 128 << 20;
@@ -530,8 +528,6 @@ server_attach ()
     hsm->fifo_size ? hsm->fifo_size : 32 << 10;
   a->options[APP_OPTIONS_FLAGS] = APP_OPTIONS_FLAGS_IS_BUILTIN;
   a->options[APP_OPTIONS_PREALLOC_FIFO_PAIRS] = hsm->prealloc_fifos;
-  a->segment_name = segment_name;
-  a->segment_name_length = ARRAY_LEN (segment_name);
 
   if (vnet_application_attach (a))
     {
