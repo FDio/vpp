@@ -198,6 +198,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   regp->vl_api_registration_pool_index = regpp - am->vl_clients;
   regp->vlib_rp = svm;
   regp->shmem_hdr = am->shmem_hdr;
+  regp->clib_file_index = am->shmem_hdr->clib_file_index;
 
   q = regp->vl_input_queue = (svm_queue_t *) (uword) mp->input_queue;
 
@@ -509,11 +510,53 @@ send_memclnt_keepalive (vl_api_registration_t * regp, f64 now)
   am->shmem_hdr = save_shmem_hdr;
 }
 
+static void
+vl_mem_send_client_keepalive_w_reg (api_main_t *am, f64 now,
+                                    vl_api_registration_t **regpp,
+                                    u32 **dead_indices,
+                                    u32 **confused_indices)
+{
+  vl_api_registration_t *regp = *regpp;
+  if (regp)
+    {
+      /* If we haven't heard from this client recently... */
+      if (regp->last_heard < (now - 10.0))
+	{
+	  if (regp->unanswered_pings == 2)
+	    {
+	      svm_queue_t *q;
+	      q = regp->vl_input_queue;
+	      if (kill (q->consumer_pid, 0) >= 0)
+		{
+		  clib_warning("REAPER: lazy binary API client '%s'",
+			       regp->name);
+		  regp->unanswered_pings = 0;
+		  regp->last_heard = now;
+		}
+	      else
+		{
+		  clib_warning("REAPER: binary API client '%s' died",
+			       regp->name);
+		  vec_add1(*dead_indices, regpp - am->vl_clients);
+		}
+	    }
+	  else
+	    send_memclnt_keepalive (regp, now);
+	}
+      else
+	regp->unanswered_pings = 0;
+    }
+  else
+    {
+      clib_warning("NULL client registration index %d", regpp - am->vl_clients);
+      vec_add1(*confused_indices, regpp - am->vl_clients);
+    }
+}
+
 void
 vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
 {
   vl_api_registration_t **regpp;
-  vl_api_registration_t *regp;
   static u32 *dead_indices;
   static u32 *confused_indices;
 
@@ -521,46 +564,12 @@ vl_mem_api_dead_client_scan (api_main_t * am, vl_shmem_hdr_t * shm, f64 now)
   vec_reset_length (confused_indices);
 
   /* *INDENT-OFF* */
-  pool_foreach (regpp, am->vl_clients,
-  ({
-    regp = *regpp;
-    if (regp)
-      {
-        /* If we haven't heard from this client recently... */
-        if (regp->last_heard < (now - 10.0))
-          {
-            if (regp->unanswered_pings == 2)
-              {
-                svm_queue_t *q;
-                q = regp->vl_input_queue;
-                if (kill (q->consumer_pid, 0) >=0)
-                  {
-                    clib_warning ("REAPER: lazy binary API client '%s'",
-                                  regp->name);
-                    regp->unanswered_pings = 0;
-                    regp->last_heard = now;
-                  }
-                else
-                  {
-                    clib_warning ("REAPER: binary API client '%s' died",
-                                  regp->name);
-                    vec_add1(dead_indices, regpp - am->vl_clients);
-                  }
-              }
-            else
-              send_memclnt_keepalive (regp, now);
-          }
-        else
-          regp->unanswered_pings = 0;
-      }
-    else
-      {
-        clib_warning ("NULL client registration index %d",
-                      regpp - am->vl_clients);
-        vec_add1 (confused_indices, regpp - am->vl_clients);
-      }
+  pool_foreach (regpp, am->vl_clients, ({
+      vl_mem_send_client_keepalive_w_reg (am, now, regpp, &dead_indices,
+                                          &confused_indices);
   }));
   /* *INDENT-ON* */
+
   /* This should "never happen," but if it does, fix it... */
   if (PREDICT_FALSE (vec_len (confused_indices) > 0))
     {
