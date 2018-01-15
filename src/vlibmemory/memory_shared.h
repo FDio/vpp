@@ -99,6 +99,9 @@ typedef struct vl_shmem_hdr_
 
   /* Number of garbage-collected messages */
   u32 garbage_collects;
+
+  /* Socket file index used to bootstrap shmem region */
+  u32 clib_file_index;
 } vl_shmem_hdr_t;
 
 #define VL_SHM_VERSION 2
@@ -109,6 +112,8 @@ void *vl_msg_api_alloc (int nbytes);
 void *vl_msg_api_alloc_or_null (int nbytes);
 void *vl_msg_api_alloc_as_if_client (int nbytes);
 void *vl_msg_api_alloc_as_if_client_or_null (int nbytes);
+void *vl_mem_api_alloc_as_if_client_w_reg (vl_api_registration_t * reg,
+					   int nbytes);
 void vl_msg_api_free (void *a);
 int vl_map_shmem (const char *region_name, int is_vlib);
 void vl_unmap_shmem (void);

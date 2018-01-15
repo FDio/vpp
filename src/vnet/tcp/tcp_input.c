@@ -2382,6 +2382,7 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 
 	      /* Switch state to ESTABLISHED */
 	      tc0->state = TCP_STATE_ESTABLISHED;
+	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
 
 	      /* Initialize session variables */
 	      tc0->snd_una = vnet_buffer (b0)->tcp.ack_number;
@@ -2389,12 +2390,12 @@ tcp46_rcv_process_inline (vlib_main_t * vm, vlib_node_runtime_t * node,
 		<< tc0->rcv_opts.wscale;
 	      tc0->snd_wl1 = vnet_buffer (b0)->tcp.seq_number;
 	      tc0->snd_wl2 = vnet_buffer (b0)->tcp.ack_number;
-	      stream_session_accept_notify (&tc0->connection);
 
 	      /* Reset SYN-ACK retransmit and SYN_RCV establish timers */
 	      tcp_retransmit_timer_reset (tc0);
 	      tcp_timer_reset (tc0, TCP_TIMER_ESTABLISH);
-	      TCP_EVT_DBG (TCP_EVT_STATE_CHANGE, tc0);
+
+	      stream_session_accept_notify (&tc0->connection);
 	      break;
 	    case TCP_STATE_ESTABLISHED:
 	      /* We can get packets in established state here because they
