@@ -590,6 +590,51 @@ svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t * fifo_segment,
   return count;
 }
 
+void
+svm_fifo_segment_info (svm_fifo_segment_private_t *seg, uword *address,
+                       u64 *size)
+{
+  if (seg->h->flags & FIFO_SEGMENT_F_IS_PRIVATE)
+    {
+      mheap_t *heap_header;
+
+      *address = pointer_to_uword (seg->ssvm.sh->heap);
+      heap_header = mheap_header (seg->ssvm.sh->heap);
+      *size = heap_header->max_size;
+    }
+  else if (seg->h->flags & FIFO_SEGMENT_F_IS_SSVM)
+    {
+      *address = seg->ssvm.sh->ssvm_va;
+      *size = seg->ssvm.ssvm_size;
+    }
+  else
+    {
+      *address = seg->memfd.sh->memfd_va;
+      *size = seg->memfd.memfd_size;
+    }
+}
+
+u8 *
+format_svm_fifo_segment_name (u8 * s, va_list * args)
+{
+  svm_fifo_segment_private_t *sp;
+  sp = va_arg (*args, svm_fifo_segment_private_t *);
+
+  if (sp->h->flags & FIFO_SEGMENT_F_IS_MEMFD)
+    s = format (s, "[memfd] %v", sp->h->segment_name);
+  else if (sp->h->flags & FIFO_SEGMENT_F_IS_SSVM)
+    s = format (s, "[ssvm] %s", sp->h->segment_name);
+  else if ((sp->h->flags & FIFO_SEGMENT_F_IS_PRIVATE)
+	   && !(sp->h->flags & FIFO_SEGMENT_F_IS_MAIN_HEAP))
+    s = format (s, "%s", "private-heap");
+  else if ((sp->h->flags & FIFO_SEGMENT_F_IS_PRIVATE)
+	   && (sp->h->flags & FIFO_SEGMENT_F_IS_MAIN_HEAP))
+    s = format (s, "%s", "main-heap");
+  else
+    s = format (s, "%s", "unknown");
+  return s;
+}
+
 /**
  * Segment format function
  */
@@ -599,18 +644,14 @@ format_svm_fifo_segment (u8 * s, va_list * args)
   svm_fifo_segment_private_t *sp
     = va_arg (*args, svm_fifo_segment_private_t *);
   int verbose = va_arg (*args, int);
-  ssvm_shared_header_t *sh;
-  svm_fifo_segment_header_t *fsh;
+  svm_fifo_segment_header_t *fsh = sp->h;
+  u32 count, indent;
   svm_fifo_t *f;
   int i;
-  u32 count;
-  u32 indent = format_get_indent (s) + 2;
 
-  sh = sp->ssvm.sh;
-  fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
-
-  s = format (s, "%USegment Heap: %U\n", format_white_space, indent,
-	      format_mheap, sh->heap, verbose);
+  indent = format_get_indent (s) + 2;
+  s = format (s, "%U segment heap: %U\n", format_white_space, indent,
+	      format_mheap, svm_fifo_segment_heap (sp), verbose);
   s = format (s, "%U segment has %u active fifos\n",
 	      format_white_space, indent, svm_fifo_segment_num_fifos (sp));
 

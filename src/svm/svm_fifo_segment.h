@@ -34,6 +34,8 @@ typedef enum
 #define FIFO_SEGMENT_F_IS_PRIVATE 	1 << 0	/* Private segment */
 #define FIFO_SEGMENT_F_IS_MAIN_HEAP	1 << 1	/* Segment is main heap */
 #define FIFO_SEGMENT_F_IS_PREALLOCATED	1 << 2	/* Segment is preallocated */
+#define FIFO_SEGMENT_F_IS_SSVM		1 << 3	/* Segment is ssvm */
+#define FIFO_SEGMENT_F_IS_MEMFD		1 << 4	/* Segment is memfd */
 
 typedef struct
 {
@@ -72,6 +74,7 @@ typedef struct
   u32 tx_fifo_size;
   u32 preallocated_fifo_pairs;
   u32 private_segment_count;
+  u32 seg_protected_space;
 } svm_fifo_segment_create_args_t;
 
 static inline svm_fifo_segment_private_t *
@@ -104,6 +107,7 @@ typedef enum
 } ssvm_fifo_segment_api_error_enum_t;
 
 int svm_fifo_segment_create (svm_fifo_segment_create_args_t * a);
+int svm_fifo_segment_create_memfd (svm_fifo_segment_create_args_t * a);
 int svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t
 					     * a);
 int svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a);
@@ -120,9 +124,12 @@ u32 svm_fifo_segment_index (svm_fifo_segment_private_t * s);
 u32 svm_fifo_segment_num_fifos (svm_fifo_segment_private_t * fifo_segment);
 u32 svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t *
 				     fifo_segment, u32 fifo_size_in_bytes);
+void svm_fifo_segment_info (svm_fifo_segment_private_t *seg, uword *address,
+                            u64 *size);
 
 svm_fifo_segment_private_t *svm_fifo_segment_segments_pool (void);
 format_function_t format_svm_fifo_segment;
+format_function_t format_svm_fifo_segment_name;
 
 #endif /* __included_ssvm_fifo_segment_h__ */
 
