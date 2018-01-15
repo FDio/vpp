@@ -360,8 +360,9 @@ typedef struct
   uword requested_va;	/**< Request fixed position mapping */
   void *addr;		/**< Pointer to mapped memory, if successful */
 } clib_mem_vm_map_t;
-clib_error_t *clib_mem_vm_ext_map (clib_mem_vm_map_t * a);
 
+clib_error_t *clib_mem_vm_ext_map (clib_mem_vm_map_t * a);
+void clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size);
 
 #include <vppinfra/error.h>	/* clib_panic */
 

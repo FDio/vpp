@@ -97,7 +97,7 @@ _(BFD_NOTSUPP, -104, "BFD feature not supported")                       \
 _(ADDRESS_IN_USE, -105, "Address in use")				\
 _(ADDRESS_NOT_IN_USE, -106, "Address not in use")			\
 _(QUEUE_FULL, -107, "Queue full")                                       \
-_(UNKNOWN_URI_TYPE, -108, "Unknown URI type")				\
+_(APP_UNSUPPORTED_CFG, -108, "Unsupported application config")		\
 _(URI_FIFO_CREATE_FAILED, -109, "URI FIFO segment create failed")       \
 _(LISP_RLOC_LOCAL, -110, "RLOC address is local")                       \
 _(BFD_EAGAIN, -111, "BFD object cannot be manipulated at this time")	\

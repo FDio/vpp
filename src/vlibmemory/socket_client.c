@@ -158,6 +158,12 @@ void
 vl_socket_client_disconnect (void)
 {
   socket_client_main_t *scm = &socket_client_main;
+
+  if (vl_mem_client_is_connected ())
+    {
+      vl_client_disconnect_from_vlib_no_unmap ();
+      ssvm_delete_memfd (&scm->memfd_segment);
+    }
   if (scm->socket_fd && (close (scm->socket_fd) < 0))
     clib_unix_warning ("close");
   scm->socket_fd = 0;
@@ -170,19 +176,21 @@ vl_socket_client_enable_disable (int enable)
   scm->socket_enable = enable;
 }
 
-static clib_error_t *
-receive_fd_msg (int socket_fd, int *my_fd)
+clib_error_t *
+vl_sock_api_recv_fd_msg (int socket_fd, int *my_fd, u32 wait)
 {
+  socket_client_main_t *scm = &socket_client_main;
   char msgbuf[16];
   char ctl[CMSG_SPACE (sizeof (int)) + CMSG_SPACE (sizeof (struct ucred))];
   struct msghdr mh = { 0 };
   struct iovec iov[1];
-  ssize_t size;
+  ssize_t size = 0;
   struct ucred *cr = 0;
   struct cmsghdr *cmsg;
   pid_t pid __attribute__ ((unused));
   uid_t uid __attribute__ ((unused));
   gid_t gid __attribute__ ((unused));
+  f64 timeout;
 
   iov[0].iov_base = msgbuf;
   iov[0].iov_len = 5;
@@ -193,8 +201,15 @@ receive_fd_msg (int socket_fd, int *my_fd)
 
   memset (ctl, 0, sizeof (ctl));
 
-  /* receive the incoming message */
-  size = recvmsg (socket_fd, &mh, 0);
+  if (wait != ~0)
+    {
+      timeout = clib_time_now (&scm->clib_time) + wait;
+      while (size != 5 && clib_time_now (&scm->clib_time) < timeout)
+	size = recvmsg (socket_fd, &mh, MSG_DONTWAIT);
+    }
+  else
+    size = recvmsg (socket_fd, &mh, 0);
+
   if (size != 5)
     {
       return (size == 0) ? clib_error_return (0, "disconnected") :
@@ -228,11 +243,11 @@ static void vl_api_sock_init_shm_reply_t_handler
   (vl_api_sock_init_shm_reply_t * mp)
 {
   socket_client_main_t *scm = &socket_client_main;
-  int my_fd = -1;
-  clib_error_t *error;
+  ssvm_private_t *memfd = &scm->memfd_segment;
   i32 retval = ntohl (mp->retval);
-  ssvm_private_t memfd;
   api_main_t *am = &api_main;
+  clib_error_t *error;
+  int my_fd = -1;
   u8 *new_name;
 
   if (retval)
@@ -244,25 +259,26 @@ static void vl_api_sock_init_shm_reply_t_handler
   /*
    * Check the socket for the magic fd
    */
-  error = receive_fd_msg (scm->socket_fd, &my_fd);
+  error = vl_sock_api_recv_fd_msg (scm->socket_fd, &my_fd, 5);
   if (error)
     {
+      clib_error_report (error);
       retval = -99;
       return;
     }
 
-  memset (&memfd, 0, sizeof (memfd));
-  memfd.fd = my_fd;
+  memset (memfd, 0, sizeof (*memfd));
+  memfd->fd = my_fd;
 
   /* Note: this closes memfd.fd */
-  retval = ssvm_slave_init_memfd (&memfd);
+  retval = ssvm_slave_init_memfd (memfd);
   if (retval)
     clib_warning ("WARNING: segment map returned %d", retval);
 
   /*
    * Pivot to the memory client segment that vpp just created
    */
-  am->vlib_rp = (void *) (memfd.requested_va + MMAP_PAGESIZE);
+  am->vlib_rp = (void *) (memfd->requested_va + MMAP_PAGESIZE);
   am->shmem_hdr = (void *) am->vlib_rp->user_ctx;
 
   new_name = format (0, "%v[shm]%c", scm->name, 0);
@@ -390,6 +406,15 @@ vl_socket_client_init_shm (vl_api_shm_elem_config_t * config)
     return -1;
 
   return 0;
+}
+
+clib_error_t *
+vl_socket_client_recv_fd_msg (int *fd_to_recv, u32 wait)
+{
+  socket_client_main_t *scm = &socket_client_main;
+  if (!scm->socket_fd)
+    return clib_error_return (0, "no socket");
+  return vl_sock_api_recv_fd_msg (scm->client_socket.fd, fd_to_recv, wait);
 }
 
 /*

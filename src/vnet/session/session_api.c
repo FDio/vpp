@@ -58,25 +58,54 @@ _(SESSION_RULE_ADD_DEL, session_rule_add_del)				\
 _(SESSION_RULES_DUMP, session_rules_dump)				\
 
 static int
-send_add_segment_callback (u32 api_client_index, const u8 * segment_name,
-			   u32 segment_size)
+session_send_memfd_fd (vl_api_registration_t * reg, const ssvm_private_t * sp)
+{
+  clib_error_t *error;
+  if (vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
+    {
+      clib_warning ("can't send memfd fd");
+      return -1;
+    }
+  error = vl_api_send_fd_msg (reg, sp->fd);
+  if (error)
+    {
+      clib_error_report (error);
+      return -1;
+    }
+  return 0;
+}
+
+static int
+send_add_segment_callback (u32 api_client_index, const ssvm_private_t * sp)
 {
   vl_api_map_another_segment_t *mp;
-  svm_queue_t *q;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (api_client_index);
+  reg = vl_mem_api_client_index_to_registration (api_client_index);
+  if (!reg)
+    {
+      clib_warning ("no registration: %u", api_client_index);
+      return -1;
+    }
 
-  if (!q)
-    return -1;
+  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD
+      && vl_api_registration_file_index (reg) == VL_API_INVALID_FI)
+    {
+      clib_warning ("can't send memfd fd");
+      return -1;
+    }
 
   mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_MAP_ANOTHER_SEGMENT);
-  mp->segment_size = segment_size;
-  strncpy ((char *) mp->segment_name, (char *) segment_name,
+  mp->segment_size = sp->ssvm_size;
+  strncpy ((char *) mp->segment_name, (char *) sp->name,
 	   sizeof (mp->segment_name) - 1);
 
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
+
+  if (ssvm_type (sp) == SSVM_SEGMENT_MEMFD)
+    return session_send_memfd_fd (reg, sp);
 
   return 0;
 }
@@ -84,20 +113,23 @@ send_add_segment_callback (u32 api_client_index, const u8 * segment_name,
 static int
 send_session_accept_callback (stream_session_t * s)
 {
-  vl_api_accept_session_t *mp;
-  svm_queue_t *q, *vpp_queue;
   application_t *server = application_get (s->app_index);
-  transport_connection_t *tc;
   transport_proto_vft_t *tp_vft;
+  vl_api_accept_session_t *mp;
+  vl_api_registration_t *reg;
+  transport_connection_t *tc;
   stream_session_t *listener;
+  svm_queue_t *vpp_queue;
 
-  q = vl_api_client_index_to_input_queue (server->api_client_index);
   vpp_queue = session_manager_get_vpp_event_queue (s->thread_index);
+  reg = vl_mem_api_client_index_to_registration (server->api_client_index);
+  if (!reg)
+    {
+      clib_warning ("no registration: %u", server->api_client_index);
+      return -1;
+    }
 
-  if (!q)
-    return -1;
-
-  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
+  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
 
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_ACCEPT_SESSION);
@@ -123,7 +155,7 @@ send_session_accept_callback (stream_session_t * s)
   mp->port = tc->rmt_port;
   mp->is_ip4 = tc->is_ip4;
   clib_memcpy (&mp->ip, &tc->rmt_ip, sizeof (tc->rmt_ip));
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 
   return 0;
 }
@@ -131,39 +163,43 @@ send_session_accept_callback (stream_session_t * s)
 static void
 send_session_disconnect_callback (stream_session_t * s)
 {
-  vl_api_disconnect_session_t *mp;
-  svm_queue_t *q;
   application_t *app = application_get (s->app_index);
+  vl_api_disconnect_session_t *mp;
+  vl_api_registration_t *reg;
 
-  q = vl_api_client_index_to_input_queue (app->api_client_index);
+  reg = vl_mem_api_client_index_to_registration (app->api_client_index);
+  if (!reg)
+    {
+      clib_warning ("no registration: %u", app->api_client_index);
+      return;
+    }
 
-  if (!q)
-    return;
-
-  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
+  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_DISCONNECT_SESSION);
   mp->handle = session_handle (s);
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 }
 
 static void
 send_session_reset_callback (stream_session_t * s)
 {
-  vl_api_reset_session_t *mp;
-  svm_queue_t *q;
   application_t *app = application_get (s->app_index);
+  vl_api_registration_t *reg;
+  vl_api_reset_session_t *mp;
 
-  q = vl_api_client_index_to_input_queue (app->api_client_index);
+  reg = vl_mem_api_client_index_to_registration (app->api_client_index);
+  if (!reg)
+    {
+      clib_warning ("no registration: %u", app->api_client_index);
+      return;
+    }
 
-  if (!q)
-    return;
-
-  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
+  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
   memset (mp, 0, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_RESET_SESSION);
   mp->handle = session_handle (s);
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
 }
 
 int
@@ -171,18 +207,20 @@ send_session_connected_callback (u32 app_index, u32 api_context,
 				 stream_session_t * s, u8 is_fail)
 {
   vl_api_connect_session_reply_t *mp;
-  svm_queue_t *q;
-  application_t *app;
-  svm_queue_t *vpp_queue;
   transport_connection_t *tc;
+  vl_api_registration_t *reg;
+  svm_queue_t *vpp_queue;
+  application_t *app;
 
   app = application_get (app_index);
-  q = vl_api_client_index_to_input_queue (app->api_client_index);
+  reg = vl_mem_api_client_index_to_registration (app->api_client_index);
+  if (!reg)
+    {
+      clib_warning ("no registration: %u", app->api_client_index);
+      return -1;
+    }
 
-  if (!q)
-    return -1;
-
-  mp = vl_msg_api_alloc_as_if_client (sizeof (*mp));
+  mp = vl_mem_api_alloc_as_if_client_w_reg (reg, sizeof (*mp));
   mp->_vl_msg_id = clib_host_to_net_u16 (VL_API_CONNECT_SESSION_REPLY);
   mp->context = api_context;
 
@@ -208,7 +246,7 @@ send_session_connected_callback (u32 app_index, u32 api_context,
 done:
   mp->retval = is_fail ?
     clib_host_to_net_u32 (VNET_API_ERROR_SESSION_CONNECT) : 0;
-  vl_msg_api_send_shmem (q, (u8 *) & mp);
+  vl_msg_api_send_shmem (reg->vl_input_queue, (u8 *) & mp);
   return 0;
 }
 
@@ -310,7 +348,9 @@ static void
 vl_api_application_attach_t_handler (vl_api_application_attach_t * mp)
 {
   vl_api_application_attach_reply_t *rmp;
+  ssvm_private_t *segp, *evt_q_segment;
   vnet_app_attach_args_t _a, *a = &_a;
+  vl_api_registration_t *reg;
   clib_error_t *error = 0;
   int rv = 0;
 
@@ -354,18 +394,30 @@ done:
   REPLY_MACRO2 (VL_API_APPLICATION_ATTACH_REPLY, ({
     if (!rv)
       {
+	segp = a->segment;
 	rmp->segment_name_length = 0;
-	rmp->segment_size = a->segment_size;
-	if (a->segment_name_length)
+	rmp->segment_size = segp->ssvm_size;
+	if (vec_len (segp->name))
 	  {
-	    memcpy (rmp->segment_name, a->segment_name,
-		    a->segment_name_length);
-	    rmp->segment_name_length = a->segment_name_length;
+	    memcpy (rmp->segment_name, segp->name, vec_len (segp->name));
+	    rmp->segment_name_length = vec_len (segp->name);
 	  }
 	rmp->app_event_queue_address = a->app_event_queue_address;
       }
   }));
   /* *INDENT-ON* */
+
+  if (rv)
+    return;
+
+  reg = vl_api_client_index_to_registration (mp->client_index);
+
+  /* Send fifo segment fd if needed */
+  if (ssvm_type (a->segment) == SSVM_SEGMENT_MEMFD)
+    session_send_memfd_fd (reg, a->segment);
+  /* Send event queues segment */
+  if ((evt_q_segment = session_manager_get_evt_q_segment ()))
+    session_send_memfd_fd (reg, evt_q_segment);
 }
 
 static void

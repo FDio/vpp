@@ -227,18 +227,56 @@ application_verify_cb_fns (session_cb_vft_t * cb_fns)
     clib_warning ("No session reset callback function provided");
 }
 
+/**
+ * Check app config for given segment type
+ *
+ * Returns 1 on success and 0 otherwise
+ */
+static u8
+application_verify_cfg (ssvm_segment_type_t st)
+{
+  u8 is_valid;
+  if (st == SSVM_SEGMENT_MEMFD)
+    {
+      is_valid = (session_manager_get_evt_q_segment () != 0);
+      if (!is_valid)
+	clib_warning ("memfd seg: vpp's event qs IN binary api svm region");
+      return is_valid;
+    }
+  else if (st == SSVM_SEGMENT_SHM)
+    {
+      is_valid = (session_manager_get_evt_q_segment () == 0);
+      if (!is_valid)
+	clib_warning ("shm seg: vpp's event qs NOT IN binary api svm region");
+      return is_valid;
+    }
+  else
+    return 1;
+}
+
 int
 application_init (application_t * app, u32 api_client_index, u64 * options,
 		  session_cb_vft_t * cb_fns)
 {
-  segment_manager_t *sm;
-  segment_manager_properties_t *props;
+  ssvm_segment_type_t st = SSVM_SEGMENT_MEMFD;
   u32 app_evt_queue_size, first_seg_size;
-  u32 default_rx_fifo_size = 16 << 10, default_tx_fifo_size = 16 << 10;
+  segment_manager_properties_t *props;
+  vl_api_registration_t *reg;
+  segment_manager_t *sm;
   int rv;
 
-  app_evt_queue_size = options[APP_OPTIONS_EVT_QUEUE_SIZE] > 0 ?
-    options[APP_OPTIONS_EVT_QUEUE_SIZE] : default_app_evt_queue_size;
+  /*
+   * Make sure we support the requested configuration
+   */
+  reg = vl_api_client_index_to_registration (api_client_index);
+  if (!reg)
+    return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
+
+  if (vl_api_registration_file_index (reg) == ~0)
+    st = SSVM_SEGMENT_SHM;
+
+  if (!application_verify_cfg (st))
+    return VNET_API_ERROR_APP_UNSUPPORTED_CFG;
 
   /*
    * Setup segment manager
@@ -247,21 +285,27 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   sm->app_index = app->index;
   props = segment_manager_properties_alloc ();
   app->sm_properties = segment_manager_properties_index (props);
-  props->add_segment_size = options[APP_OPTIONS_ADD_SEGMENT_SIZE];
-  props->rx_fifo_size = options[APP_OPTIONS_RX_FIFO_SIZE];
-  props->rx_fifo_size =
-    props->rx_fifo_size ? props->rx_fifo_size : default_rx_fifo_size;
-  props->tx_fifo_size = options[APP_OPTIONS_TX_FIFO_SIZE];
-  props->tx_fifo_size =
-    props->tx_fifo_size ? props->tx_fifo_size : default_tx_fifo_size;
-  props->add_segment = props->add_segment_size != 0;
+  if (options[APP_OPTIONS_ADD_SEGMENT_SIZE])
+    {
+      props->add_segment_size = options[APP_OPTIONS_ADD_SEGMENT_SIZE];
+      props->add_segment = 1;
+    }
+  if (options[APP_OPTIONS_RX_FIFO_SIZE])
+    props->rx_fifo_size = options[APP_OPTIONS_RX_FIFO_SIZE];
+  if (options[APP_OPTIONS_TX_FIFO_SIZE])
+    props->tx_fifo_size = options[APP_OPTIONS_TX_FIFO_SIZE];
   props->preallocated_fifo_pairs = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
-  props->use_private_segment = options[APP_OPTIONS_FLAGS]
-    & APP_OPTIONS_FLAGS_IS_BUILTIN;
   props->private_segment_count = options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT];
+  if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_IS_BUILTIN)
+    props->segment_type = SSVM_N_SEGMENT_TYPES;
+  else
+    props->segment_type = st;
 
+  app_evt_queue_size = options[APP_OPTIONS_EVT_QUEUE_SIZE] > 0 ?
+    options[APP_OPTIONS_EVT_QUEUE_SIZE] : default_app_evt_queue_size;
   first_seg_size = options[APP_OPTIONS_SEGMENT_SIZE];
-  if ((rv = segment_manager_init (sm, app->sm_properties, first_seg_size)))
+  if ((rv = segment_manager_init (sm, app->sm_properties, first_seg_size,
+				  app_evt_queue_size)))
     return rv;
   sm->first_is_protected = 1;
 
@@ -478,15 +522,13 @@ int
 application_add_segment_notify (u32 app_index, u32 fifo_segment_index)
 {
   application_t *app = application_get (app_index);
-  u32 seg_size = 0;
-  u8 *seg_name;
+  svm_fifo_segment_private_t *fs;
 
   /* Send an API message to the external app, to map new segment */
   ASSERT (app->cb_fns.add_segment_callback);
 
-  segment_manager_get_segment_info (fifo_segment_index, &seg_name, &seg_size);
-  return app->cb_fns.add_segment_callback (app->api_client_index, seg_name,
-					   seg_size);
+  fs = segment_manager_get_segment (fifo_segment_index);
+  return app->cb_fns.add_segment_callback (app->api_client_index, &fs->ssvm);
 }
 
 u8
