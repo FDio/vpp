@@ -25,6 +25,8 @@
 #include <vlibmemory/socket_api.h>
 #include <vlibmemory/socket_client.h>
 
+#define VL_API_INVALID_FI (~0)
+
 void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
 u16 vl_client_get_first_plugin_msg_id (const char *plugin_name);
 void vl_api_send_pending_rpc_requests (vlib_main_t * vm);
@@ -59,6 +61,44 @@ vl_api_client_index_to_registration (u32 index)
     return socket_main.current_rp;
 
   return (vl_mem_api_client_index_to_registration (index));
+}
+
+always_inline u32
+vl_api_registration_file_index (vl_api_registration_t * reg)
+{
+  return reg->clib_file_index;
+}
+
+always_inline clib_file_t *
+vl_api_registration_file (vl_api_registration_t * reg)
+{
+  return clib_file_get (&file_main, vl_api_registration_file_index (reg));
+}
+
+always_inline void
+vl_api_registration_del_file (vl_api_registration_t * reg)
+{
+  clib_file_t *cf = vl_api_registration_file (reg);
+  if (cf)
+    clib_file_del (&file_main, cf);
+}
+
+always_inline clib_error_t *
+vl_api_send_fd_msg (vl_api_registration_t * reg, int fd_to_send)
+{
+  clib_file_t *cf = vl_api_registration_file (reg);
+  if (cf)
+    return vl_sock_api_send_fd_msg (cf->file_descriptor, fd_to_send);
+  return 0;
+}
+
+always_inline clib_error_t *
+vl_api_recv_fd_msg (vl_api_registration_t * reg, int *fd_to_recv, u32 wait)
+{
+  clib_file_t *cf = vl_api_registration_file (reg);
+  if (cf)
+    return vl_sock_api_recv_fd_msg (cf->file_descriptor, fd_to_recv, wait);
+  return 0;
 }
 
 /*

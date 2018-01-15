@@ -36,8 +36,8 @@ typedef struct _segment_manager_properties
   /** Flag that indicates if additional segments should be created */
   u8 add_segment;
 
-  /** Use private memory segment instead of shared memory */
-  u8 use_private_segment;
+  /** Segment type: if set to SSVM_N_TYPES, private segments are used */
+  ssvm_segment_type_t segment_type;
 
   /** Use one or more private mheaps, instead of the global heap */
   u32 private_segment_count;
@@ -93,13 +93,13 @@ segment_manager_index (segment_manager_t * sm)
 }
 
 segment_manager_t *segment_manager_new ();
-int
-segment_manager_init (segment_manager_t * sm, u32 props_index, u32 seg_size);
+int segment_manager_init (segment_manager_t * sm, u32 props_index,
+			  u32 seg_size, u32 evt_queue_size);
 
-void segment_manager_get_segment_info (u32 index, u8 ** name, u32 * size);
-int
-session_manager_add_first_segment (segment_manager_t * sm, u32 segment_size);
-int session_manager_add_segment (segment_manager_t * sm);
+svm_fifo_segment_private_t *segment_manager_get_segment (u32 segment_index);
+int segment_manager_add_first_segment (segment_manager_t * sm,
+				       u32 segment_size);
+int segment_manager_add_segment (segment_manager_t * sm);
 void segment_manager_del_sessions (segment_manager_t * sm);
 void segment_manager_del (segment_manager_t * sm);
 void segment_manager_init_del (segment_manager_t * sm);
@@ -112,8 +112,8 @@ segment_manager_alloc_session_fifos (segment_manager_t * sm,
 void
 segment_manager_dealloc_fifos (u32 svm_segment_index, svm_fifo_t * rx_fifo,
 			       svm_fifo_t * tx_fifo);
-svm_queue_t *segment_manager_alloc_queue (segment_manager_t *
-					  sm, u32 queue_size);
+svm_queue_t *segment_manager_alloc_queue (segment_manager_t * sm,
+					  u32 queue_size);
 void segment_manager_dealloc_queue (segment_manager_t * sm, svm_queue_t * q);
 void segment_manager_app_detach (segment_manager_t * sm);
 

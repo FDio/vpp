@@ -851,7 +851,7 @@ vl_api_connect_session_reply_t_handler (vl_api_connect_session_reply_t * mp)
   utm->state = STATE_READY;
 }
 
-#define foreach_uri_msg                         	\
+#define foreach_tcp_echo_msg                         	\
 _(BIND_URI_REPLY, bind_uri_reply)               	\
 _(CONNECT_URI, connect_uri)                     	\
 _(CONNECT_SESSION_REPLY, connect_session_reply)       	\
@@ -863,7 +863,7 @@ _(APPLICATION_ATTACH_REPLY, application_attach_reply)	\
 _(APPLICATION_DETACH_REPLY, application_detach_reply)	\
 
 void
-uri_api_hookup (uri_udp_test_main_t * utm)
+tcp_echo_api_hookup (uri_udp_test_main_t * utm)
 {
 #define _(N,n)                                                  \
     vl_msg_api_set_handlers(VL_API_##N, #n,                     \
@@ -872,7 +872,7 @@ uri_api_hookup (uri_udp_test_main_t * utm)
                            vl_api_##n##_t_endian,               \
                            vl_api_##n##_t_print,                \
                            sizeof(vl_api_##n##_t), 1);
-  foreach_uri_msg;
+  foreach_tcp_echo_msg;
 #undef _
 
 }
@@ -1044,15 +1044,16 @@ int
 main (int argc, char **argv)
 {
   uri_udp_test_main_t *utm = &uri_udp_test_main;
-  unformat_input_t _argv, *a = &_argv;
-  u8 *chroot_prefix;
-  u8 *heap;
   u8 *bind_name = (u8 *) "udp://0.0.0.0/1234";
-  u32 tmp;
-  mheap_t *h;
-  session_t *session;
-  int i;
+  unformat_input_t _argv, *a = &_argv;
   int i_am_master = 1;
+  session_t *session;
+  u8 *chroot_prefix;
+  char *app_name;
+  mheap_t *h;
+  u8 *heap;
+  u32 tmp;
+  int i;
 
   clib_mem_init (0, 256 << 20);
 
@@ -1065,7 +1066,6 @@ main (int argc, char **argv)
   vec_validate (utm->rx_buf, 8192);
 
   utm->session_index_by_vpp_handles = hash_create (0, sizeof (uword));
-
   utm->my_pid = getpid ();
   utm->configured_segment_size = 1 << 20;
 
@@ -1101,14 +1101,13 @@ main (int argc, char **argv)
   utm->uri = format (0, "%s%c", bind_name, 0);
   utm->i_am_master = i_am_master;
   utm->segment_main = &svm_fifo_segment_main;
-
   utm->connect_uri = format (0, "udp://6.0.1.2/1234%c", 0);
 
   setup_signal_handlers ();
+  tcp_echo_api_hookup (utm);
 
-  uri_api_hookup (utm);
-
-  if (connect_to_vpp (i_am_master ? "uri_udp_master" : "uri_udp_slave") < 0)
+  app_name = i_am_master ? "udp_echo_master" : "udp_echo_slave";
+  if (connect_to_vpp (app_name) < 0)
     {
       svm_region_exit ();
       fformat (stderr, "Couldn't connect to vpe, exiting...\n");

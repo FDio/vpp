@@ -961,32 +961,66 @@ stream_session_cleanup (stream_session_t * s)
 }
 
 /**
- * Allocate vpp event queue (once) per worker thread
+ * Allocate event queues in the shared-memory segment
+ *
+ * That can either be a newly created memfd segment, that will need to be
+ * mapped by all stack users, or the binary api's svm region. The latter is
+ * assumed to be already mapped. NOTE that this assumption DOES NOT hold if
+ * api clients bootstrap shm api over sockets (i.e. use memfd segments) and
+ * vpp uses api svm region for event queues.
  */
 void
-session_vpp_event_queue_allocate (session_manager_main_t * smm,
-				  u32 thread_index)
+session_vpp_event_queues_allocate (session_manager_main_t * smm)
 {
+  u32 evt_q_length = 2048, evt_size = sizeof (session_fifo_event_t);
+  ssvm_private_t *eqs = &smm->evt_qs_segment;
   api_main_t *am = &api_main;
+  u64 eqs_size = 64 << 20;
+  pid_t vpp_pid = getpid ();
   void *oldheap;
-  u32 event_queue_length = 2048;
+  int i;
 
-  if (smm->vpp_event_queues[thread_index] == 0)
+  if (smm->configured_event_queue_length)
+    evt_q_length = smm->configured_event_queue_length;
+
+  if (smm->evt_qs_use_memfd_seg)
     {
-      /* Allocate event fifo in the /vpe-api shared-memory segment */
-      oldheap = svm_push_data_heap (am->vlib_rp);
+      if (smm->evt_qs_segment_size)
+	eqs_size = smm->evt_qs_segment_size;
 
-      if (smm->configured_event_queue_length)
-	event_queue_length = smm->configured_event_queue_length;
+      eqs->ssvm_size = eqs_size;
+      eqs->i_am_master = 1;
+      eqs->my_pid = vpp_pid;
+      eqs->name = format (0, "%s%c", "evt-qs-segment", 0);
+      eqs->requested_va = smm->session_baseva;
 
-      smm->vpp_event_queues[thread_index] =
-	svm_queue_init
-	(event_queue_length,
-	 sizeof (session_fifo_event_t), 0 /* consumer pid */ ,
-	 0 /* (do not) send signal when queue non-empty */ );
-
-      svm_pop_heap (oldheap);
+      ssvm_master_init (eqs, SSVM_SEGMENT_MEMFD);
     }
+
+  if (smm->evt_qs_use_memfd_seg)
+    oldheap = ssvm_push_heap (eqs->sh);
+  else
+    oldheap = svm_push_data_heap (am->vlib_rp);
+
+  for (i = 0; i < vec_len (smm->vpp_event_queues); i++)
+    {
+      smm->vpp_event_queues[i] = svm_queue_init (evt_q_length, evt_size,
+						 vpp_pid, 0);
+    }
+
+  if (smm->evt_qs_use_memfd_seg)
+    ssvm_pop_heap (oldheap);
+  else
+    svm_pop_heap (oldheap);
+}
+
+ssvm_private_t *
+session_manager_get_evt_q_segment (void)
+{
+  session_manager_main_t *smm = &session_manager_main;
+  if (smm->evt_qs_use_memfd_seg)
+    return &smm->evt_qs_segment;
+  return 0;
 }
 
 /**
@@ -1076,10 +1110,6 @@ session_manager_main_enable (vlib_main_t * vm)
   if (num_threads < 1)
     return clib_error_return (0, "n_thread_stacks not set");
 
-  /* $$$ config parameters */
-  svm_fifo_segment_init (0x200000000ULL /* first segment base VA */ ,
-			 20 /* timeout in seconds */ );
-
   /* configure per-thread ** vectors */
   vec_validate (smm->sessions, num_threads - 1);
   vec_validate (smm->tx_buffers, num_threads - 1);
@@ -1117,9 +1147,12 @@ session_manager_main_enable (vlib_main_t * vm)
   vec_validate (smm->last_event_poll_by_thread, num_threads - 1);
 #endif
 
-  /* Allocate vpp event queues */
-  for (i = 0; i < vec_len (smm->vpp_event_queues); i++)
-    session_vpp_event_queue_allocate (smm, i);
+  /* Allocate vpp event queues segment and queue */
+  session_vpp_event_queues_allocate (smm);
+
+  /* Initialize fifo segment main baseva and timeout */
+  svm_fifo_segment_init (smm->session_baseva + smm->evt_qs_segment_size,
+			 smm->segment_timeout);
 
   /* Preallocate sessions */
   if (smm->preallocated_sessions)
@@ -1192,6 +1225,9 @@ clib_error_t *
 session_manager_main_init (vlib_main_t * vm)
 {
   session_manager_main_t *smm = &session_manager_main;
+  smm->session_baseva = 0x200000000ULL;
+  smm->segment_timeout = 20;
+  smm->evt_qs_segment_size = 64 << 20;
   smm->is_enabled = 0;
   return 0;
 }
@@ -1272,6 +1308,8 @@ session_config_fn (vlib_main_t * vm, unformat_input_t * input)
       else if (unformat (input, "local-endpoints-table-buckets %d",
 			 &smm->local_endpoints_table_buckets))
 	;
+      else if (unformat (input, "evt_qs_memfd_seg"))
+	smm->evt_qs_use_memfd_seg = 1;
       else
 	return clib_error_return (0, "unknown input `%U'",
 				  format_unformat_error, input);
