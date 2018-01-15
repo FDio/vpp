@@ -22,6 +22,30 @@
       "revId": "7016ecbe169b2c5bb7a8d10b6f80b5ebbda40b54",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0a834efc_f61944a8",
+        "filename": "src/svm/ssvm.h",
+        "patchSetId": 2
+      },
+      "lineNbr": 185,
+      "author": {
+        "id": 193
+      },
+      "writtenOn": "2018-01-15T17:31:59Z",
+      "side": 1,
+      "message": "I just moved the code around, and tried not to affect functionality. Will take a look, thanks! :-)",
+      "parentUuid": "732c87ad_6cf2c637",
+      "range": {
+        "startLine": 173,
+        "startChar": 0,
+        "endLine": 185,
+        "endChar": 51
+      },
+      "revId": "7016ecbe169b2c5bb7a8d10b6f80b5ebbda40b54",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
