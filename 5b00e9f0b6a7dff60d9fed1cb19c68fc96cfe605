@@ -22,6 +22,30 @@
       "revId": "5b00e9f0b6a7dff60d9fed1cb19c68fc96cfe605",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "09e0100f_036f2dcc",
+        "filename": "src/vlib/buffer_funcs.h",
+        "patchSetId": 3
+      },
+      "lineNbr": 573,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-15T17:41:59Z",
+      "side": 1,
+      "message": "the current implementation does not allow the caller to have returned a vector of 256 buffers - the max is 255. But it is possible (based on; s-\u003en_add_refs \u003d n_buffers - 1) to return 256.\nOne option was to modify n_buckets argument to be a u16 to allow the caller to specify 256, but that would tend to imply to the caller that \u003e256 are available. So instead I chose to rename the argument n_clones, and have the caller specify the number of clones, but I\u0027m open to either approach.\nThe reason 256 packets is desirable is because BIER scales in multiples of 2, so being able to produce 255 clones means once less trip around the \u0027deep copy\u0027 loop.\n\nSo this is not strictly necessary, but a highly desirable enhancement.",
+      "parentUuid": "78d32eb2_adb06593",
+      "range": {
+        "startLine": 573,
+        "startChar": 38,
+        "endLine": 573,
+        "endChar": 69
+      },
+      "revId": "5b00e9f0b6a7dff60d9fed1cb19c68fc96cfe605",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
