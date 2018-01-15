@@ -1,0 +1,96 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d032a0d1_8d1162d4",
+        "filename": "src/vnet/bier/bier.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-01-15T11:19:03Z",
+      "side": 1,
+      "message": "Does\u0027n this mean you should update  the file api version ?",
+      "range": {
+        "startLine": 151,
+        "startChar": 0,
+        "endLine": 151,
+        "endChar": 17
+      },
+      "revId": "d8ef83795e51fb5b7312396ce22e982f7f03fdc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d06e23db_69e40c33",
+        "filename": "src/vnet/bier/bier_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-01-15T11:19:03Z",
+      "side": 1,
+      "message": "brpaths may be used uninitialized if you goto done.",
+      "range": {
+        "startLine": 172,
+        "startChar": 0,
+        "endLine": 179,
+        "endChar": 19
+      },
+      "revId": "d8ef83795e51fb5b7312396ce22e982f7f03fdc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "71d8a981_665afbb3",
+        "filename": "test/patches/scapy-2.3.3/bier.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-01-15T11:19:03Z",
+      "side": 1,
+      "message": "This does not exist anymore, does it ?\nI cannot find any PR for bier in scapy. Is there one ? If not, should\u0027t there be ?",
+      "range": {
+        "startLine": 7,
+        "startChar": 3,
+        "endLine": 7,
+        "endChar": 41
+      },
+      "revId": "d8ef83795e51fb5b7312396ce22e982f7f03fdc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "6f3ff401_693befd9",
+        "filename": "test/test_bier.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 618
+      },
+      "writtenOn": "2018-01-15T11:19:03Z",
+      "side": 1,
+      "message": "As far as I know, the extended are not part of any continuous testing. Not in vpp, nor in csit.\nSo you risk those tests to never be run.",
+      "range": {
+        "startLine": 6,
+        "startChar": 50,
+        "endLine": 6,
+        "endChar": 72
+      },
+      "revId": "d8ef83795e51fb5b7312396ce22e982f7f03fdc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    }
+  ]
+}
