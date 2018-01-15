@@ -218,7 +218,8 @@ _(from_netconf_client)                          \
 _(oam_events)                                   \
 _(bfd_events)                                   \
 _(wc_ip6_nd_events)                             \
-_(wc_ip4_arp_events)
+_(wc_ip4_arp_events)                            \
+_(ip6_ra_events)
 
 typedef struct
 {
