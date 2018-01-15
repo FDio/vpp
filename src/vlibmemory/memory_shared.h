@@ -99,6 +99,9 @@ typedef struct vl_shmem_hdr_
 
   /* Number of garbage-collected messages */
   u32 garbage_collects;
+
+  /* Socket file index used to bootstrap shmem region */
+  u32 clib_file_index;
 } vl_shmem_hdr_t;
 
 #define VL_SHM_VERSION 2

@@ -61,6 +61,30 @@ vl_api_client_index_to_registration (u32 index)
   return (vl_mem_api_client_index_to_registration (index));
 }
 
+always_inline int
+vl_api_registration_socket_fd (vl_api_registration_t *reg)
+{
+  return reg->clib_file_index;
+}
+
+always_inline clib_error_t *
+vl_api_send_fd_msg (vl_api_registration_t *reg, int fd_to_send)
+{
+  clib_file_t *cf = clib_file_get (&file_main, reg->clib_file_index);
+  if (cf)
+    return vl_sock_api_send_fd_msg (cf->file_descriptor, fd_to_send);
+  return 0;
+}
+
+always_inline clib_error_t *
+vl_api_recv_fd_msg (vl_api_registration_t *reg, int *fd_to_recv)
+{
+  clib_file_t *cf = clib_file_get (&file_main, reg->clib_file_index);
+  if (cf)
+    return vl_sock_api_recv_fd_msg (cf->file_descriptor, fd_to_recv);
+  return 0;
+}
+
 /*
  * vl_api_clnt process data used by transports (socket api in particular)
  */

@@ -198,6 +198,7 @@ vl_api_memclnt_create_t_handler (vl_api_memclnt_create_t * mp)
   regp->vl_api_registration_pool_index = regpp - am->vl_clients;
   regp->vlib_rp = svm;
   regp->shmem_hdr = am->shmem_hdr;
+  regp->clib_file_index = am->shmem_hdr->clib_file_index;
 
   q = regp->vl_input_queue = (svm_queue_t *) (uword) mp->input_queue;
 

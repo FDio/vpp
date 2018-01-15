@@ -380,7 +380,6 @@ socksvr_accept_ready (clib_file_t * uf)
   clib_error_t *error;
 
   error = clib_socket_accept (sock, &client);
-
   if (error)
     return error;
 
@@ -451,8 +450,8 @@ vl_api_sockclnt_delete_t_handler (vl_api_sockclnt_delete_t * mp)
     }
 }
 
-static clib_error_t *
-send_fd_msg (int socket_fd, int fd_to_share)
+clib_error_t *
+vl_sock_api_send_fd_msg (int socket_fd, int fd_to_share)
 {
   struct msghdr mh = { 0 };
   struct iovec iov[1];
@@ -535,6 +534,7 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   svm_region_t *vlib_rp;
   clib_file_t *cf;
   vl_api_shm_elem_config_t *config = 0;
+  vl_shmem_hdr_t *shmem_hdr;
   int rv;
 
   regp = vl_api_client_index_to_registration (mp->client_index);
@@ -559,7 +559,7 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   memfd->i_am_master = 1;
   memfd->name = format (0, "%s%c", regp->name, 0);
 
-  if ((rv = ssvm_master_init_memfd (memfd, mp->client_index)))
+  if ((rv = ssvm_master_init_memfd (memfd)))
     goto reply;
 
   /* Remember to close this fd when the socket connection goes away */
@@ -584,6 +584,11 @@ vl_api_sock_init_shm_t_handler (vl_api_sock_init_shm_t * mp)
   vlib_rp = (svm_region_t *) a->baseva;
   vl_init_shmem (vlib_rp, config, 1 /* is_vlib (dont-care) */ ,
 		 1 /* is_private */ );
+
+  /* Remember who created this. Needs to be post vl_init_shmem */
+  shmem_hdr = (vl_shmem_hdr_t *) vlib_rp->user_ctx;
+  shmem_hdr->clib_file_index = regp->clib_file_index;
+
   vec_add1 (am->vlib_private_rps, vlib_rp);
   memfd->sh->ready = 1;
   vec_free (config);
@@ -611,7 +616,7 @@ reply:
   cf->write_function (cf);
 
   /* Send the magic "here's your sign (aka fd)" socket message */
-  send_fd_msg (cf->file_descriptor, memfd->fd);
+  vl_sock_api_send_fd_msg (cf->file_descriptor, memfd->fd);
 }
 
 /*
@@ -640,7 +645,7 @@ vl_api_memfd_segment_create_t_handler (vl_api_memfd_segment_create_t * mp)
   memfd->name = format (0, "%s%c", regp->name, 0);
 
   /* Set up a memfd segment of the requested size */
-  if ((rv = ssvm_master_init_memfd (memfd, mp->client_index)))
+  if ((rv = ssvm_master_init_memfd (memfd)))
     goto reply;
 
   /* Remember to close this fd when the socket connection goes away */
@@ -666,7 +671,7 @@ reply:
   cf->write_function (cf);
 
   /* send the magic "here's your sign (aka fd)" socket message */
-  send_fd_msg (cf->file_descriptor, memfd->fd);
+  vl_sock_api_send_fd_msg (cf->file_descriptor, memfd->fd);
 }
 
 #define foreach_vlib_api_msg                    	\
