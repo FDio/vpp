@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "3d42cb57_6f2dc62f",
+        "filename": "src/vnet/bier/bier.api",
+        "patchSetId": 2
+      },
+      "lineNbr": 151,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-15T13:43:32Z",
+      "side": 1,
+      "message": "I shouldn\u0027t have changed this.\nI started with the expectation that VPP would support bit-strings lengtns of over 256 bytes, but settled on only 128. So I will revert this.",
+      "parentUuid": "d032a0d1_8d1162d4",
+      "range": {
+        "startLine": 151,
+        "startChar": 0,
+        "endLine": 151,
+        "endChar": 17
+      },
+      "revId": "d8ef83795e51fb5b7312396ce22e982f7f03fdc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "d06e23db_69e40c33",
         "filename": "src/vnet/bier/bier_api.c",
         "patchSetId": 2
@@ -36,6 +60,30 @@
       "writtenOn": "2018-01-15T11:19:03Z",
       "side": 1,
       "message": "brpaths may be used uninitialized if you goto done.",
+      "range": {
+        "startLine": 172,
+        "startChar": 0,
+        "endLine": 179,
+        "endChar": 19
+      },
+      "revId": "d8ef83795e51fb5b7312396ce22e982f7f03fdc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "afc1e349_6ec193a0",
+        "filename": "src/vnet/bier/bier_api.c",
+        "patchSetId": 2
+      },
+      "lineNbr": 179,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-15T13:43:32Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "d06e23db_69e40c33",
       "range": {
         "startLine": 172,
         "startChar": 0,
@@ -71,6 +119,30 @@
     },
     {
       "key": {
+        "uuid": "065d6dfb_7166b35a",
+        "filename": "test/patches/scapy-2.3.3/bier.patch",
+        "patchSetId": 2
+      },
+      "lineNbr": 7,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-15T13:43:32Z",
+      "side": 1,
+      "message": "scapy pull request submitted:\n https://github.com/secdev/scapy/pull/1051",
+      "parentUuid": "71d8a981_665afbb3",
+      "range": {
+        "startLine": 7,
+        "startChar": 3,
+        "endLine": 7,
+        "endChar": 41
+      },
+      "revId": "d8ef83795e51fb5b7312396ce22e982f7f03fdc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "6f3ff401_693befd9",
         "filename": "test/test_bier.py",
         "patchSetId": 2
@@ -82,6 +154,30 @@
       "writtenOn": "2018-01-15T11:19:03Z",
       "side": 1,
       "message": "As far as I know, the extended are not part of any continuous testing. Not in vpp, nor in csit.\nSo you risk those tests to never be run.",
+      "range": {
+        "startLine": 6,
+        "startChar": 50,
+        "endLine": 6,
+        "endChar": 72
+      },
+      "revId": "d8ef83795e51fb5b7312396ce22e982f7f03fdc5",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "508bc884_cf658dde",
+        "filename": "test/test_bier.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 267
+      },
+      "writtenOn": "2018-01-15T13:43:32Z",
+      "side": 1,
+      "message": "I know, but the long BSL tests take a long time to execute...",
+      "parentUuid": "6f3ff401_693befd9",
       "range": {
         "startLine": 6,
         "startChar": 50,
