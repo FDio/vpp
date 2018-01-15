@@ -234,7 +234,7 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   segment_manager_t *sm;
   segment_manager_properties_t *props;
   u32 app_evt_queue_size, first_seg_size;
-  u32 default_rx_fifo_size = 16 << 10, default_tx_fifo_size = 16 << 10;
+  vl_api_registration_t *reg;
   int rv;
 
   app_evt_queue_size = options[APP_OPTIONS_EVT_QUEUE_SIZE] > 0 ?
@@ -247,21 +247,31 @@ application_init (application_t * app, u32 api_client_index, u64 * options,
   sm->app_index = app->index;
   props = segment_manager_properties_alloc ();
   app->sm_properties = segment_manager_properties_index (props);
-  props->add_segment_size = options[APP_OPTIONS_ADD_SEGMENT_SIZE];
-  props->rx_fifo_size = options[APP_OPTIONS_RX_FIFO_SIZE];
-  props->rx_fifo_size =
-    props->rx_fifo_size ? props->rx_fifo_size : default_rx_fifo_size;
-  props->tx_fifo_size = options[APP_OPTIONS_TX_FIFO_SIZE];
-  props->tx_fifo_size =
-    props->tx_fifo_size ? props->tx_fifo_size : default_tx_fifo_size;
-  props->add_segment = props->add_segment_size != 0;
+  if (options[APP_OPTIONS_ADD_SEGMENT_SIZE])
+    {
+      props->add_segment_size = options[APP_OPTIONS_ADD_SEGMENT_SIZE];
+      props->add_segment = 1;
+    }
+  if (options[APP_OPTIONS_RX_FIFO_SIZE])
+    props->rx_fifo_size = options[APP_OPTIONS_RX_FIFO_SIZE];
+  if (options[APP_OPTIONS_TX_FIFO_SIZE])
+    props->tx_fifo_size = options[APP_OPTIONS_TX_FIFO_SIZE];
   props->preallocated_fifo_pairs = options[APP_OPTIONS_PREALLOC_FIFO_PAIRS];
-  props->use_private_segment = options[APP_OPTIONS_FLAGS]
-    & APP_OPTIONS_FLAGS_IS_BUILTIN;
   props->private_segment_count = options[APP_OPTIONS_PRIVATE_SEGMENT_COUNT];
+  if (options[APP_OPTIONS_FLAGS] & APP_OPTIONS_FLAGS_IS_BUILTIN)
+    props->segment_type = SEGMENT_MANAGER_PRIVATE_SEGMENT;
+  else
+    {
+      reg = vl_api_client_index_to_registration (api_client_index);
+      if (reg && reg->registration_type == REGISTRATION_TYPE_SOCKET_CLIENT)
+	props->segment_type = SEGMENT_MANAGER_MEMFD_SEGMENT;
+      else
+	props->segment_type = SEGMENT_MANAGER_SVM_SEGMENT;
+    }
 
   first_seg_size = options[APP_OPTIONS_SEGMENT_SIZE];
-  if ((rv = segment_manager_init (sm, app->sm_properties, first_seg_size)))
+  if ((rv = segment_manager_init (sm, app->sm_properties, first_seg_size,
+	                          app_evt_queue_size)))
     return rv;
   sm->first_is_protected = 1;
 

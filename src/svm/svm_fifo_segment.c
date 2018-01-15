@@ -58,7 +58,8 @@ allocate_new_fifo_chunk (svm_fifo_segment_header_t * fsh,
 
 static void
 preallocate_fifo_pairs (svm_fifo_segment_private_t * s,
-			svm_fifo_segment_create_args_t * a)
+			svm_fifo_segment_create_args_t * a,
+			u32 protected)
 {
   svm_fifo_segment_header_t *fsh = s->h;
   u32 rx_fifo_size, tx_fifo_size, pairs_to_allocate;
@@ -99,8 +100,10 @@ preallocate_fifo_pairs (svm_fifo_segment_private_t * s,
 
   /* Calculate space requirements */
   pair_size = 2 * sizeof (*f) + rx_rounded_data_size + tx_rounded_data_size;
-  pairs_to_allocate = clib_min (s->ssvm.ssvm_size / pair_size,
-				a->preallocated_fifo_pairs);
+  if (protected)
+    protected += mheap_bytes (s->ssvm.sh->heap);
+  pairs_to_allocate = clib_min((s->ssvm.ssvm_size - protected) / pair_size,
+	                       a->preallocated_fifo_pairs);
   rx_fifo_size = (sizeof (*f) + rx_rounded_data_size) * pairs_to_allocate;
   tx_fifo_size = (sizeof (*f) + tx_rounded_data_size) * pairs_to_allocate;
 
@@ -164,7 +167,9 @@ preallocate_fifo_pairs (svm_fifo_segment_private_t * s,
   a->preallocated_fifo_pairs -= pairs_to_allocate;
 }
 
-/** (master) create an svm fifo segment */
+/**
+ * Create an svm fifo segment and initialize as master
+ */
 int
 svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
 {
@@ -202,10 +207,9 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
   /* Set up svm_fifo_segment shared header */
   fsh = clib_mem_alloc (sizeof (*fsh));
   memset (fsh, 0, sizeof (*fsh));
-  sh->opaque[0] = fsh;
-  s->h = fsh;
   fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
-  preallocate_fifo_pairs (s, a);
+  s->h = sh->opaque[0] = fsh;
+  preallocate_fifo_pairs (s, a, a->seg_protected_space);
 
   ssvm_pop_heap (oldheap);
 
@@ -214,7 +218,9 @@ svm_fifo_segment_create (svm_fifo_segment_create_args_t * a)
   return (0);
 }
 
-/** Create an svm fifo segment in process-private memory */
+/**
+ * Create an svm fifo segment in process-private memory
+ */
 int
 svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
 {
@@ -272,12 +278,11 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
       /* Set up svm_fifo_segment shared header */
       fsh = clib_mem_alloc (sizeof (*fsh));
       memset (fsh, 0, sizeof (*fsh));
-      sh->opaque[0] = fsh;
-      s->h = fsh;
       fsh->flags = FIFO_SEGMENT_F_IS_PRIVATE;
+      fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
+      s->h = sh->opaque[0] = fsh;
       if (!a->private_segment_count)
 	fsh->flags |= FIFO_SEGMENT_F_IS_MAIN_HEAP;
-      fsh->segment_name = format (0, "%s%c", a->segment_name, 0);
 
       if (a->private_segment_count)
 	{
@@ -285,17 +290,20 @@ svm_fifo_segment_create_process_private (svm_fifo_segment_create_args_t * a)
 	    fsh->flags |= FIFO_SEGMENT_F_IS_PREALLOCATED;
 	  oldheap = clib_mem_get_heap ();
 	  clib_mem_set_heap (sh->heap);
-	  preallocate_fifo_pairs (s, a);
+	  preallocate_fifo_pairs (s, a, i == 0 ? a->seg_protected_space : 0);
 	  clib_mem_set_heap (oldheap);
 	}
       sh->ready = 1;
+      clib_warning ("heap: %U", format_mheap, sh->heap, 1);
       vec_add1 (a->new_segment_indices, s - sm->segments);
     }
   vec_free (heaps);
   return (0);
 }
 
-/** (slave) attach to an svm fifo segment */
+/**
+ * Attach as slave to an svm fifo segment
+ */
 int
 svm_fifo_segment_attach (svm_fifo_segment_create_args_t * a)
 {
@@ -351,6 +359,9 @@ svm_fifo_segment_delete (svm_fifo_segment_private_t * s)
     }
 }
 
+/**
+ * Allocate fifo in svm segment
+ */
 svm_fifo_t *
 svm_fifo_segment_alloc_fifo (svm_fifo_segment_private_t * s,
 			     u32 data_size_in_bytes,
@@ -590,6 +601,52 @@ svm_fifo_segment_num_free_fifos (svm_fifo_segment_private_t * fifo_segment,
   return count;
 }
 
+void
+svm_fifo_segment_info (svm_fifo_segment_private_t *seg, uword *address,
+                       u64 *size)
+{
+  if (seg->h->flags & FIFO_SEGMENT_F_IS_PRIVATE)
+    {
+      mheap_t *heap_header;
+
+      *address = pointer_to_uword (seg->ssvm.sh->heap);
+      heap_header = mheap_header (seg->ssvm.sh->heap);
+      *size = heap_header->max_size;
+    }
+  else
+    {
+      *address = seg->ssvm.sh->ssvm_va;
+      *size = seg->ssvm.ssvm_size;
+    }
+}
+
+mheap_t *
+svm_fifo_segment_heap (svm_fifo_segment_private_t *seg)
+{
+  return seg->ssvm.sh->heap;
+}
+
+u8 *
+format_svm_fifo_segment_name (u8 * s, va_list * args)
+{
+  svm_fifo_segment_private_t *sp;
+  sp = va_arg (*args, svm_fifo_segment_private_t *);
+
+  if (sp->h->flags & FIFO_SEGMENT_F_IS_MEMFD)
+    s = format (s, "[memfd] %v", sp->h->segment_name);
+  else if (sp->h->flags & FIFO_SEGMENT_F_IS_SSVM)
+    s = format (s, "[ssvm] %s", sp->h->segment_name);
+  else if ((sp->h->flags & FIFO_SEGMENT_F_IS_PRIVATE)
+	   && !(sp->h->flags & FIFO_SEGMENT_F_IS_MAIN_HEAP))
+    s = format (s, "%s", "private-heap");
+  else if ((sp->h->flags & FIFO_SEGMENT_F_IS_PRIVATE)
+	   && (sp->h->flags & FIFO_SEGMENT_F_IS_MAIN_HEAP))
+    s = format (s, "%s", "main-heap");
+  else
+    s = format (s, "%s", "unknown");
+  return s;
+}
+
 /**
  * Segment format function
  */
@@ -599,18 +656,14 @@ format_svm_fifo_segment (u8 * s, va_list * args)
   svm_fifo_segment_private_t *sp
     = va_arg (*args, svm_fifo_segment_private_t *);
   int verbose = va_arg (*args, int);
-  ssvm_shared_header_t *sh;
-  svm_fifo_segment_header_t *fsh;
+  svm_fifo_segment_header_t *fsh = sp->h;
+  u32 count, indent;
   svm_fifo_t *f;
   int i;
-  u32 count;
-  u32 indent = format_get_indent (s) + 2;
 
-  sh = sp->ssvm.sh;
-  fsh = (svm_fifo_segment_header_t *) sh->opaque[0];
-
-  s = format (s, "%USegment Heap: %U\n", format_white_space, indent,
-	      format_mheap, sh->heap, verbose);
+  indent = format_get_indent (s) + 2;
+  s = format (s, "%U segment heap: %U\n", format_white_space, indent,
+	      format_mheap, svm_fifo_segment_heap (sp), verbose);
   s = format (s, "%U segment has %u active fifos\n",
 	      format_white_space, indent, svm_fifo_segment_num_fifos (sp));
 

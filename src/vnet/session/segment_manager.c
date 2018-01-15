@@ -49,6 +49,9 @@ segment_manager_properties_alloc (void)
   segment_manager_properties_t *props;
   pool_get (segment_manager_properties_pool, props);
   memset (props, 0, sizeof (*props));
+  props->add_segment_size = default_segment_size;
+  props->rx_fifo_size = default_fifo_size;
+  props->tx_fifo_size = default_fifo_size;
   return props;
 }
 
@@ -83,43 +86,59 @@ segment_manager_get_segment_info (u32 index, u8 ** name, u32 * size)
 }
 
 always_inline int
-session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
-			       u8 * segment_name)
+segment_manager_add_segment_i (segment_manager_t * sm, u32 segment_size, u32 protected_space)
 {
   svm_fifo_segment_create_args_t _ca, *ca = &_ca;
   segment_manager_properties_t *props;
-  int rv;
+
+  props = segment_manager_properties_get (sm->properties_index);
+
+  /* Not configured for addition of new segments and not first */
+  if (!props->add_segment && !segment_size)
+    {
+      clib_warning ("cannot allocate new segment");
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
 
   memset (ca, 0, sizeof (*ca));
-  props = segment_manager_properties_get (sm->properties_index);
-  if (!props->use_private_segment)
-    {
-      ca->segment_name = (char *) segment_name;
-      ca->segment_size = segment_size;
-      ca->rx_fifo_size = props->rx_fifo_size;
-      ca->tx_fifo_size = props->tx_fifo_size;
-      ca->preallocated_fifo_pairs = props->preallocated_fifo_pairs;
+  ca->segment_size = segment_size ? segment_size : props->add_segment_size;
+  ca->rx_fifo_size = props->rx_fifo_size;
+  ca->tx_fifo_size = props->tx_fifo_size;
+  ca->preallocated_fifo_pairs = props->preallocated_fifo_pairs;
+  ca->seg_protected_space = protected_space ? protected_space : 0;
 
-      rv = svm_fifo_segment_create (ca);
-      if (rv)
+  if (props->segment_type == SEGMENT_MANAGER_MEMFD_SEGMENT)
+    {
+      ca->segment_name = (char *) format (0, "%d-%d%c", getpid (),
+	                                  segment_name_counter++, 0);
+      if (svm_fifo_segment_create (ca))
 	{
-	  clib_warning ("svm_fifo_segment_create ('%s', %d) failed",
-			ca->segment_name, ca->segment_size);
+	  clib_warning ("memfd_fifo_segment_create ('%s', %d) failed",
+		        ca->segment_name, ca->segment_size);
 	  return VNET_API_ERROR_SVM_SEGMENT_CREATE_FAIL;
 	}
+      vec_free (ca->segment_name);
     }
-  else
+  else if (props->segment_type == SEGMENT_MANAGER_SVM_SEGMENT)
     {
-      u32 rx_fifo_size, tx_fifo_size, rx_rounded_data_size,
-	tx_rounded_data_size;
+      ca->segment_name = (char *) format (0, "%d-%d%c", getpid (),
+	                                  segment_name_counter++, 0);
+      if (svm_fifo_segment_create (ca))
+	{
+	  clib_warning ("svm_fifo_segment_create ('%s', %d) failed",
+		        ca->segment_name, ca->segment_size);
+	  return VNET_API_ERROR_SVM_SEGMENT_CREATE_FAIL;
+	}
+      vec_free (ca->segment_name);
+    }
+  else if (props->segment_type == SEGMENT_MANAGER_PRIVATE_SEGMENT)
+    {
+      u32 rx_fifo_size, tx_fifo_size;
+      u32 rx_rounded_data_size,	tx_rounded_data_size;
       u32 approx_segment_count;
       u64 approx_total_size;
 
       ca->segment_name = "process-private-segment";
-      ca->segment_size = segment_size;
-      ca->rx_fifo_size = props->rx_fifo_size;
-      ca->tx_fifo_size = props->tx_fifo_size;
-      ca->preallocated_fifo_pairs = props->preallocated_fifo_pairs;
       ca->private_segment_count = props->private_segment_count;
 
       /* Calculate space requirements */
@@ -131,19 +150,26 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
 
       approx_total_size = (u64) ca->preallocated_fifo_pairs
 	* (rx_fifo_size + tx_fifo_size);
-      approx_segment_count = (approx_total_size + (ca->segment_size - 1))
-	/ (u64) ca->segment_size;
+      approx_segment_count = (approx_total_size + protected_space
+	  + (ca->segment_size - 1)) / (u64) ca->segment_size;
 
       /* The user asked us to figure it out... */
-      if (ca->private_segment_count == 0)
+      if (ca->private_segment_count == 0
+	  || approx_segment_count < ca->private_segment_count)
 	{
 	  ca->private_segment_count = approx_segment_count;
 	}
       /* Follow directions, but issue a warning */
-      else if (approx_segment_count != ca->private_segment_count)
+      else if (approx_segment_count < ca->private_segment_count)
 	{
 	  clib_warning ("Honoring segment count %u, calculated count was %u",
 			ca->private_segment_count, approx_segment_count);
+	}
+      else if (approx_segment_count > ca->private_segment_count)
+	{
+	  clib_warning ("Segment count too low %u, calculated %u.",
+			ca->private_segment_count, approx_segment_count);
+	  return VNET_API_ERROR_INVALID_VALUE;
 	}
 
       if (svm_fifo_segment_create_process_private (ca))
@@ -151,41 +177,21 @@ session_manager_add_segment_i (segment_manager_t * sm, u32 segment_size,
 
       ASSERT (vec_len (ca->new_segment_indices));
     }
+  else
+    {
+      clib_warning("unsupported segment type: %d", props->segment_type);
+      return VNET_API_ERROR_INVALID_VALUE;
+    }
+
   vec_append (sm->segment_indices, ca->new_segment_indices);
   vec_free (ca->new_segment_indices);
   return 0;
 }
 
 int
-session_manager_add_segment (segment_manager_t * sm)
+segment_manager_add_segment (segment_manager_t * sm)
 {
-  svm_fifo_segment_create_args_t _ca, *ca = &_ca;
-  segment_manager_properties_t *props;
-  u32 add_segment_size;
-  u8 *segment_name;
-  int rv;
-
-  memset (ca, 0, sizeof (*ca));
-  props = segment_manager_properties_get (sm->properties_index);
-  segment_name = format (0, "%d-%d%c", getpid (), segment_name_counter++, 0);
-  add_segment_size = props->add_segment_size ?
-    props->add_segment_size : default_segment_size;
-
-  rv = session_manager_add_segment_i (sm, add_segment_size, segment_name);
-  vec_free (segment_name);
-  return rv;
-}
-
-int
-session_manager_add_first_segment (segment_manager_t * sm, u32 segment_size)
-{
-  u8 *segment_name;
-  int rv;
-
-  segment_name = format (0, "%d-%d%c", getpid (), segment_name_counter++, 0);
-  rv = session_manager_add_segment_i (sm, segment_size, segment_name);
-  vec_free (segment_name);
-  return rv;
+  return segment_manager_add_segment_i (sm, 0, 0);
 }
 
 segment_manager_t *
@@ -203,14 +209,18 @@ segment_manager_new ()
  */
 int
 segment_manager_init (segment_manager_t * sm, u32 props_index,
-		      u32 first_seg_size)
+		      u32 first_seg_size, u32 evt_q_size)
 {
+  u32 protected_space;
   int rv;
 
-  /* app allocates these */
   sm->properties_index = props_index;
+
+  protected_space = max_pow2 (sizeof (svm_queue_t)
+                              + evt_q_size * sizeof (session_fifo_event_t));
+  protected_space = round_pow2_u64 (protected_space, CLIB_CACHE_LINE_BYTES);
   first_seg_size = first_seg_size > 0 ? first_seg_size : default_segment_size;
-  rv = session_manager_add_first_segment (sm, first_seg_size);
+  rv = segment_manager_add_segment_i (sm, first_seg_size, protected_space);
   if (rv)
     {
       clib_warning ("Failed to allocate segment");
@@ -307,10 +317,9 @@ segment_manager_del_sessions (segment_manager_t * sm)
 	  if (session->session_state != SESSION_STATE_CLOSED)
 	    {
 	      session->session_state = SESSION_STATE_CLOSED;
-	      session_send_session_evt_to_thread (session_handle
-						  (session),
-						  FIFO_EVENT_DISCONNECT,
-						  thread_index);
+	      session_send_session_evt_to_thread (session_handle (session),
+		                                  FIFO_EVENT_DISCONNECT,
+		                                  thread_index);
 	    }
 	  fifo = fifo->next;
 	}
@@ -434,7 +443,7 @@ again:
   /* See if we're supposed to create another segment */
   if (*server_rx_fifo == 0)
     {
-      if (props->add_segment && !props->use_private_segment)
+      if (props->add_segment && !props->segment_type)
 	{
 	  if (added_a_segment)
 	    {
@@ -443,7 +452,7 @@ again:
 	      return SESSION_ERROR_NEW_SEG_NO_SPACE;
 	    }
 
-	  if (session_manager_add_segment (sm))
+	  if (segment_manager_add_segment (sm))
 	    {
 	      clib_spinlock_unlock (&sm->lockp);
 	      return VNET_API_ERROR_URI_FIFO_CREATE_FAILED;
@@ -577,13 +586,11 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 {
   svm_fifo_segment_private_t *segments, *seg;
   segment_manager_t *sm;
-  u8 show_segments = 0, verbose = 0, *name;
+  u8 show_segments = 0, verbose = 0;
   uword address;
   u64 size;
   u32 active_fifos;
   u32 free_fifos;
-
-  mheap_t *heap_header;
 
   while (unformat_check_input (input) != UNFORMAT_END_OF_INPUT)
     {
@@ -620,32 +627,14 @@ segment_manager_show_fn (vlib_main_t * vm, unformat_input_t * input,
 
       /* *INDENT-OFF* */
       pool_foreach (seg, segments, ({
-	if (seg->h->flags & FIFO_SEGMENT_F_IS_PRIVATE)
-	  {
-	    address = pointer_to_uword (seg->ssvm.sh->heap);
-	    if (seg->h->flags & FIFO_SEGMENT_F_IS_MAIN_HEAP)
-	      name = format (0, "main heap");
-	    else
-	      name = format (0, "private heap");
-	    heap_header = mheap_header (seg->ssvm.sh->heap);
-	    size = heap_header->max_size;
-	  }
-	else
-	  {
-	    address =  seg->ssvm.sh->ssvm_va;
-	    size = seg->ssvm.ssvm_size;
-	    name = seg->ssvm.sh->name;
-	  }
+	svm_fifo_segment_info (seg, &address, &size);
 	active_fifos = svm_fifo_segment_num_fifos (seg);
         free_fifos = svm_fifo_segment_num_free_fifos (seg, ~0 /* size */);
-	vlib_cli_output (vm, "%-25v%15llu%16u%16u%16llx",
-                         name, size >> 20ULL, active_fifos, free_fifos,
-			 address);
+	vlib_cli_output (vm, "%-25U%15llu%16u%16u%16llx",
+	                 format_svm_fifo_segment_name, seg, size >> 20ULL,
+	                 active_fifos, free_fifos, address);
         if (verbose)
-          vlib_cli_output (vm, "%U",
-                           format_svm_fifo_segment, seg, verbose);
-	if (seg->h->flags & FIFO_SEGMENT_F_IS_PRIVATE)
-	  vec_free (name);
+          vlib_cli_output (vm, "%U", format_svm_fifo_segment, seg, verbose);
       }));
       /* *INDENT-ON* */
 
