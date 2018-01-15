@@ -61,7 +61,7 @@ clib_mem_vm_get_log2_page_size (int fd)
   return min_log2 (clib_mem_vm_get_page_size (fd));
 }
 
-static void
+void
 clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size)
 {
   u8 bit_mask = 15;

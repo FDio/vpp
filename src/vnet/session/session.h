@@ -149,6 +149,9 @@ struct _session_manager_main
   /** vpp fifo event queue */
   svm_queue_t **vpp_event_queues;
 
+  /** Event queues memfd segment initialized only if so configured */
+  ssvm_private_t evt_qs_segment;
+
   /** Unique segment name counter */
   u32 unique_segment_name_counter;
 
@@ -170,7 +173,13 @@ struct _session_manager_main
    * Config parameters
    */
 
-  /** session table size parameters */
+  /** Session ssvm segment configs*/
+  uword session_baseva;
+  u32 segment_timeout;
+  u32 evt_qs_segment_size;
+  u8 evt_qs_use_memfd_seg;
+
+  /** Session table size parameters */
   u32 configured_v4_session_table_buckets;
   u32 configured_v4_session_table_memory;
   u32 configured_v4_halfopen_table_buckets;
@@ -443,6 +452,7 @@ void stream_session_cleanup (stream_session_t * s);
 void session_send_session_evt_to_thread (u64 session_handle,
 					 fifo_event_type_t evt_type,
 					 u32 thread_index);
+ssvm_private_t *session_manager_get_evt_q_segment (void);
 
 u8 *format_stream_session (u8 * s, va_list * args);
 uword unformat_stream_session (unformat_input_t * input, va_list * args);

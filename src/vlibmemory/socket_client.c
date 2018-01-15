@@ -170,9 +170,10 @@ vl_socket_client_enable_disable (int enable)
   scm->socket_enable = enable;
 }
 
-static clib_error_t *
-receive_fd_msg (int socket_fd, int *my_fd)
+clib_error_t *
+vl_sock_api_recv_fd_msg (int socket_fd, int *my_fd, u32 wait)
 {
+  socket_client_main_t *scm = &socket_client_main;
   char msgbuf[16];
   char ctl[CMSG_SPACE (sizeof (int)) + CMSG_SPACE (sizeof (struct ucred))];
   struct msghdr mh = { 0 };
@@ -183,6 +184,7 @@ receive_fd_msg (int socket_fd, int *my_fd)
   pid_t pid __attribute__ ((unused));
   uid_t uid __attribute__ ((unused));
   gid_t gid __attribute__ ((unused));
+  f64 timeout;
 
   iov[0].iov_base = msgbuf;
   iov[0].iov_len = 5;
@@ -193,8 +195,15 @@ receive_fd_msg (int socket_fd, int *my_fd)
 
   memset (ctl, 0, sizeof (ctl));
 
-  /* receive the incoming message */
-  size = recvmsg (socket_fd, &mh, 0);
+  if (wait != ~0)
+    {
+      timeout = clib_time_now (&scm->clib_time) + wait;
+      while (size != 5 && clib_time_now (&scm->clib_time) < timeout)
+	size = recvmsg (socket_fd, &mh, MSG_DONTWAIT);
+    }
+  else
+    size = recvmsg (socket_fd, &mh, 0);
+
   if (size != 5)
     {
       return (size == 0) ? clib_error_return (0, "disconnected") :
@@ -244,9 +253,10 @@ static void vl_api_sock_init_shm_reply_t_handler
   /*
    * Check the socket for the magic fd
    */
-  error = receive_fd_msg (scm->socket_fd, &my_fd);
+  error = vl_sock_api_recv_fd_msg (scm->socket_fd, &my_fd, 5);
   if (error)
     {
+      clib_error_report (error);
       retval = -99;
       return;
     }
@@ -390,6 +400,15 @@ vl_socket_client_init_shm (vl_api_shm_elem_config_t * config)
     return -1;
 
   return 0;
+}
+
+clib_error_t *
+vl_socket_client_recv_fd_msg (int *fd_to_recv, u32 wait)
+{
+  socket_client_main_t *scm = &socket_client_main;
+  if (!scm->socket_fd)
+    return clib_error_return (0, "no socket");
+  return vl_sock_api_recv_fd_msg (scm->client_socket.fd, fd_to_recv, wait);
 }
 
 /*
