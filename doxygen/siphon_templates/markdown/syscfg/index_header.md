@@ -87,7 +87,7 @@ to make the content easier to read. For example:
 ```
 unix {
   nodaemon
-  log /tmp/vpp.log
+  log /var/log/vpp/vpp.log
   full-coredump
   cli-listen localhost:5002
 }

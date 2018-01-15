@@ -85,6 +85,7 @@ RPM_DEPENDS += numactl-devel
 RPM_DEPENDS += check check-devel
 RPM_DEPENDS += boost boost-devel
 RPM_DEPENDS += subunit subunit-devel
+RPM_DEPENDS += selinux-policy selinux-policy-devel
 
 ifeq ($(OS_ID)-$(OS_VERSION_ID),fedora-25)
 	RPM_DEPENDS += openssl-devel

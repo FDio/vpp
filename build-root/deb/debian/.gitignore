@@ -3,6 +3,7 @@ files
 *debhelper*
 *.substvars
 *.install
+*.dirs
 vpp/
 vpp-dev/
 vpp-lib/
