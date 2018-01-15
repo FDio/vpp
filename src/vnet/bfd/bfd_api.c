@@ -291,7 +291,7 @@ vl_api_bfd_auth_keys_dump_t_handler (vl_api_bfd_auth_keys_dump_t * mp)
     rmp->conf_key_id = clib_host_to_net_u32 (key->conf_key_id);
     rmp->auth_type = key->auth_type;
     rmp->use_count = clib_host_to_net_u32 (key->use_count);
-    vl_api_send_msg (reg, (u8 *)&rmp);
+    vl_api_send_msg (reg, (u8 *)rmp);
   }));
   /* *INDENT-ON* */
 }
