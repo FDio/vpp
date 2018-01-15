@@ -1637,7 +1637,7 @@ class AutoConfig(object):
             question = "Would you like connect this interface {} to the VM [Y/n]? ".format(name)
             answer = self._ask_user_yn(question, 'y')
             if answer == 'y':
-                sockfilename = '/tmp/sock{}.sock'.format(inum)
+                sockfilename = '/var/run/vpp/sock{}.sock'.format(inum)
                 if os.path.exists(sockfilename):
                     os.remove(sockfilename)
                 cmd = 'vppctl create vhost-user socket {} server'.format(sockfilename)
@@ -1679,7 +1679,7 @@ class AutoConfig(object):
             for intf in ints_with_vints:
                 vhoststr = 'comment { The following command creates the socket }\n'
                 vhoststr += 'comment { and returns a virtual interface }\n'
-                vhoststr += 'comment {{ create vhost-user socket /tmp/sock{}.sock server }}\n'. \
+                vhoststr += 'comment {{ create vhost-user socket /var/run/vpp/sock{}.sock server }}\n'. \
                     format(intf['bridge'])
 
                 setintdnstr = 'set interface state {} down\n'.format(intf['name'])

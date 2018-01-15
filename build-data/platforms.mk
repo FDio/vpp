@@ -75,6 +75,10 @@ install-deb: $(patsubst %,%-find-source,$(ROOT_PACKAGES))
 	echo ../../src/scripts/vppctl-cmd-list /usr/share/vpp		\
 	   >> deb/debian/vpp.install ;					\
 									\
+	: add log directory ;						\
+	echo /var/log/vpp/						\
+	   >> deb/debian/vpp.dirs ;					\
+									\
 	: dev package needs a couple of additions ;			\
 	echo ../$(INSTALL_PREFIX)$(ARCH)/vpp/bin/vppapigen /usr/bin	\
 	   >> deb/debian/vpp-dev.install ;				\

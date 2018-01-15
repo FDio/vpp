@@ -1,0 +1,22 @@
+/etc/vpp(/.*)?					gen_context(system_u:object_r:vpp_config_rw_t,s0)
+
+/usr/bin/elftool			--	gen_context(system_u:object_r:vpp_exec_t,s0)
+/usr/bin/jvpp_gen.py			--	gen_context(system_u:object_r:vpp_exec_t,s0)
+/usr/bin/svmdbtool			--	gen_context(system_u:object_r:vpp_exec_t,s0)
+/usr/bin/svmtool			--	gen_context(system_u:object_r:vpp_exec_t,s0)
+/usr/bin/vpp				--	gen_context(system_u:object_r:vpp_exec_t,s0)
+/usr/bin/vppapigen			-- 	gen_context(system_u:object_r:vpp_exec_t,s0)
+/usr/bin/vpp_api_test			-- 	gen_context(system_u:object_r:vpp_exec_t,s0)
+/usr/bin/vppctl				--	gen_context(system_u:object_r:vpp_exec_t,s0)
+/usr/bin/vpp_get_metrics		--	gen_context(system_u:object_r:vpp_exec_t,s0)
+/usr/bin/vpp_json_test			--	gen_context(system_u:object_r:vpp_exec_t,s0)
+/usr/bin/vpp_restart			--	gen_context(system_u:object_r:vpp_exec_t,s0)
+
+/usr/lib/systemd/system/vpp.*		--	gen_context(system_u:object_r:vpp_unit_file_t,s0)
+
+/usr/lib/vpp_plugins(/.*)?			gen_context(system_u:object_r:vpp_lib_t,s0)
+/usr/lib/vpp_api_test_plugins(/.*)?		gen_context(system_u:object_r:vpp_lib_t,s0)
+
+/var/log/vpp(/.*)?				gen_context(system_u:object_r:vpp_log_t,s0)
+
+/var/run/vpp(/.*)?				gen_context(system_u:object_r:vpp_var_run_t,s0)

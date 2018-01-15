@@ -1,7 +1,7 @@
 
 unix {{
 {unix}
-  log /tmp/vpp.log
+  log /var/log/vpp/vpp.log
   full-coredump
   cli-listen /run/vpp/cli.sock
 }}

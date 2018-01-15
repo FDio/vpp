@@ -1,0 +1,139 @@
+policy_module(vpp-custom,1.0)
+
+########################################
+#
+# Declarations
+#
+
+gen_require(`
+    type hugetlbfs_t;
+    type svirt_t;
+    type svirt_image_t;
+    type systemd_sysctl_t;
+    class capability sys_admin;
+')
+
+type vpp_t;
+type vpp_exec_t;
+init_daemon_domain(vpp_t, vpp_exec_t)
+
+type vpp_config_rw_t;
+files_config_file(vpp_config_rw_t)
+
+type vpp_lib_t; # if there is vpp_var_lib_t, we don't need vpp_lib_t
+files_type(vpp_lib_t)
+
+type vpp_log_t;
+logging_log_file(vpp_log_t)
+
+type vpp_var_run_t;
+files_type(vpp_var_run_t)
+
+type vpp_unit_file_t;
+systemd_unit_file(vpp_unit_file_t)
+
+type vpp_tmpfs_t;
+files_tmpfs_file(vpp_tmpfs_t)
+
+type vpp_tmp_t;
+files_tmp_file(vpp_tmp_t)
+
+########################################
+#
+# vpp local policy
+#
+
+allow vpp_t self:capability { dac_override ipc_lock setgid sys_rawio net_raw sys_admin }; # too benefolent
+dontaudit vpp_t self:capability2 block_suspend;
+allow vpp_t self:process { execmem execstack setsched signal }; # too benefolent
+allow vpp_t self:packet_socket { bind create setopt ioctl };
+allow vpp_t self:tun_socket { create relabelto relabelfrom };
+allow vpp_t self:udp_socket { create ioctl };
+allow vpp_t self:unix_dgram_socket { connect create ioctl };
+allow vpp_t self:unix_stream_socket { create_stream_socket_perms connectto };
+
+manage_dirs_pattern(vpp_t, vpp_lib_t, vpp_lib_t)
+manage_files_pattern(vpp_t, vpp_lib_t, vpp_lib_t)
+allow vpp_t vpp_lib_t:file execute;
+files_var_lib_filetrans(vpp_t, vpp_lib_t, {file dir})
+
+manage_dirs_pattern(vpp_t, vpp_log_t, vpp_log_t)
+manage_files_pattern(vpp_t, vpp_log_t, vpp_log_t)
+logging_log_filetrans(vpp_t, vpp_log_t, {file dir})
+
+manage_dirs_pattern(vpp_t, vpp_var_run_t, vpp_var_run_t)
+manage_files_pattern(vpp_t, vpp_var_run_t, vpp_var_run_t)
+manage_sock_files_pattern(vpp_t, vpp_var_run_t, vpp_var_run_t)
+allow vpp_t vpp_var_run_t:dir mounton;
+files_pid_filetrans(vpp_t, vpp_var_run_t, { dir sock_file file })
+
+manage_dirs_pattern(vpp_t, vpp_tmp_t, vpp_tmp_t)
+manage_files_pattern(vpp_t, vpp_tmp_t, vpp_tmp_t)
+manage_sock_files_pattern(vpp_t, vpp_tmp_t, vpp_tmp_t)
+allow vpp_t vpp_tmp_t:dir mounton;
+files_tmp_filetrans(vpp_t, vpp_tmp_t, { dir sock_file file })
+
+manage_dirs_pattern(vpp_t, vpp_tmpfs_t, vpp_tmpfs_t)
+manage_files_pattern(vpp_t, vpp_tmpfs_t, vpp_tmpfs_t)
+fs_tmpfs_filetrans(vpp_t, vpp_tmpfs_t, { dir file })
+
+read_files_pattern(vpp_t, vpp_config_rw_t, vpp_config_rw_t)
+
+kernel_read_system_state(vpp_t)
+kernel_read_network_state(vpp_t)
+kernel_dgram_send(vpp_t)
+kernel_request_load_module(vpp_t)
+
+auth_read_passwd(vpp_t)
+
+corenet_rw_tun_tap_dev(vpp_t)
+
+dev_rw_userio_dev(vpp_t)
+dev_rw_sysfs(vpp_t)
+dev_read_cpuid(vpp_t)
+dev_rw_vfio_dev(vpp_t)
+
+domain_obj_id_change_exemption(vpp_t)
+
+fs_manage_hugetlbfs_dirs(vpp_t)
+fs_manage_hugetlbfs_files(vpp_t)
+allow vpp_t hugetlbfs_t:filesystem { getattr mount unmount };
+fs_getattr_tmpfs(vpp_t)
+
+logging_send_syslog_msg(vpp_t)
+
+miscfiles_read_generic_certs(vpp_t)
+
+userdom_list_user_home_content(vpp_t)
+
+optional_policy(`
+    virt_stream_connect_svirt(vpp_t)
+')
+
+optional_policy(`
+    unconfined_attach_tun_iface(vpp_t)
+')
+
+
+########################################
+#
+# svirt local policy for vpp
+#
+
+allow svirt_t vpp_t:unix_stream_socket connectto;
+
+manage_dirs_pattern(svirt_t, vpp_var_run_t, vpp_var_run_t)
+manage_files_pattern(svirt_t, vpp_var_run_t, vpp_var_run_t)
+manage_sock_files_pattern(svirt_t, vpp_var_run_t, vpp_var_run_t)
+
+allow vpp_t svirt_image_t:file { read write };
+
+
+########################################
+#
+# systemd_sysctl_t local policy for vpp
+#
+
+read_files_pattern(systemd_sysctl_t, vpp_config_rw_t, vpp_config_rw_t)
+
+

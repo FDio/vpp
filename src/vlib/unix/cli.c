@@ -3011,16 +3011,32 @@ done:
 }
 
 /*?
- * Executes a sequence of CLI commands which are read from a file.
- *
- * If a command is unrecognised or otherwise invalid then the usual CLI
+ * Executes a sequence of CLI commands which are read from a file. If
+ * a command is unrecognised or otherwise invalid then the usual CLI
  * feedback will be generated, however execution of subsequent commands
  * from the file will continue.
+ *
+ * The VPP code is indifferent to the file location. However, if SELinux
+ * is enabled, then the file needs to have an SELinux label the VPP
+ * process is allowed to access. For example, if a file is created in
+ * '<em>/usr/share/vpp/</em>', it will be allowed. However, files manually
+ * created in '/tmp/' or '/home/<user>/' will not be accessible by the VPP
+ * process when SELinux is enabled.
+ *
+ * @cliexpar
+ * Sample file:
+ * @clistart
+ * <b><em>$ cat /usr/share/vpp/scripts/gigup.txt</em></b>
+ * set interface state GigabitEthernet0/8/0 up
+ * set interface state GigabitEthernet0/9/0 up
+ * @cliend
+ * Example of how to execute a set of CLI commands from a file:
+ * @cliexcmd{exec /usr/share/vpp/scripts/gigup.txt}
 ?*/
 /* *INDENT-OFF* */
 VLIB_CLI_COMMAND (cli_exec, static) = {
   .path = "exec",
-  .short_help = "Execute commands from file",
+  .short_help = "exec <filename>",
   .function = unix_cli_exec,
   .is_mp_safe = 1,
 };

@@ -3355,16 +3355,23 @@ done:
  *
  * There are several parameters associated with a vHost interface:
  *
- * - <b>socket <socket-filename></b> - Name of the linux socket used by QEMU/VM and
- * VPP to manage the vHost interface. If socket does not already exist, VPP will
- * create the socket.
+ * - <b>socket <socket-filename></b> - Name of the linux socket used by hypervisor
+ * and VPP to manage the vHost interface. If in '<em>server</em>' mode, VPP will
+ * create the socket if it does not already exist. If in '<em>client</em>' mode,
+ * hypervisor will create the socket if it does not already exist. The VPP code
+ * is indifferent to the file location. However, if SELinux is enabled, then the
+ * socket needs to be created in '<em>/var/run/vpp/</em>'.
  *
- * - <b>server</b> - Optional flag to indicate that VPP should be the server for the
- * linux socket. If not provided, VPP will be the client.
+ * - <b>server</b> - Optional flag to indicate that VPP should be the server for
+ * the linux socket. If not provided, VPP will be the client. In '<em>server</em>'
+ *  mode, the VM can be reset without tearing down the vHost Interface. In
+ * '<em>client</em>' mode, VPP can be reset without bringing down the VM and
+ * tearing down the vHost Interface.
  *
  * - <b>feature-mask <hex></b> - Optional virtio/vhost feature set negotiated at
- * startup. By default, all supported features will be advertised. Otherwise,
- * provide the set of features desired.
+ * startup. <b>This is intended for degugging only.</b> It is recommended that this
+ * parameter not be used except by experienced users. By default, all supported
+ * features will be advertised. Otherwise, provide the set of features desired.
  *   - 0x000008000 (15) - VIRTIO_NET_F_MRG_RXBUF
  *   - 0x000020000 (17) - VIRTIO_NET_F_CTRL_VQ
  *   - 0x000200000 (21) - VIRTIO_NET_F_GUEST_ANNOUNCE
@@ -3382,17 +3389,14 @@ done:
  * in the name to be specified. If instance already exists, name will be used
  * anyway and multiple instances will have the same name. Use with caution.
  *
- * - <b>mode [interrupt | polling]</b> - Optional parameter specifying
- * the input thread polling policy.
- *
  * @cliexpar
  * Example of how to create a vhost interface with VPP as the client and all features enabled:
- * @cliexstart{create vhost-user socket /tmp/vhost1.sock}
+ * @cliexstart{create vhost-user socket /var/run/vpp/vhost1.sock}
  * VirtualEthernet0/0/0
  * @cliexend
  * Example of how to create a vhost interface with VPP as the server and with just
  * multiple queues enabled:
- * @cliexstart{create vhost-user socket /tmp/vhost2.sock server feature-mask 0x40400000}
+ * @cliexstart{create vhost-user socket /var/run/vpp/vhost2.sock server feature-mask 0x40400000}
  * VirtualEthernet0/0/1
  * @cliexend
  * Once the vHost interface is created, enable the interface using:
@@ -3451,7 +3455,7 @@ VLIB_CLI_COMMAND (vhost_user_delete_command, static) = {
  *    VHOST_USER_PROTOCOL_F_MQ (0)
  *    VHOST_USER_PROTOCOL_F_LOG_SHMFD (1)
  *
- *  socket filename /tmp/vhost1.sock type client errno "Success"
+ *  socket filename /var/run/vpp/vhost1.sock type client errno "Success"
  *
  * rx placement:
  *    thread 1 on vring 1
