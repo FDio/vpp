@@ -98,6 +98,44 @@ typedef struct
 
 void wc_nd_set_publisher_node (uword node_index, uword event_type);
 
+typedef struct
+{
+  u32 irt;
+  u32 mrt;
+  u32 mrc;
+  u32 mrd;
+} icmp6_send_router_solicitation_params_t;
+
+void icmp6_send_router_solicitation (vlib_main_t * vm, u32 sw_if_index,
+				     u8 stop,
+				     icmp6_send_router_solicitation_params_t *
+				     params);
+
+typedef struct
+{
+  ip6_address_t dst_address;
+  u8 dst_address_length;
+  u8 flags;
+  u32 valid_time;
+  u32 preferred_time;
+} ra_report_prefix_info_t;
+
+typedef struct
+{
+  u32 sw_if_index;
+  u8 router_address[16];
+  u8 current_hop_limit;
+  u8 flags;
+  u16 router_lifetime_in_sec;
+  u32 neighbor_reachable_time_in_msec;
+  u32 time_in_msec_between_retransmitted_neighbor_solicitations;
+  u8 slla[6];
+  u32 mtu;
+  ra_report_prefix_info_t *prefixes;
+} ra_report_t;
+
+void ra_set_publisher_node (uword node_index, uword event_type);
+
 #endif /* included_ip6_neighbor_h */
 
 /*

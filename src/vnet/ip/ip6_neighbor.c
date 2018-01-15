@@ -154,6 +154,15 @@ typedef struct
 
   /* Link local address to use (defaults to underlying physical for logical interfaces */
   ip6_address_t link_local_address;
+
+  /* router solicitations sending state */
+  u8 keep_sending_rs;		/* when true then next fields are valid */
+  icmp6_send_router_solicitation_params_t params;
+  f64 sleep_interval;
+  f64 due_time;
+  u32 n_left;
+  f64 start_time;
+  vlib_buffer_t *buffer;
 } ip6_radv_t;
 
 typedef struct
@@ -198,6 +207,10 @@ typedef struct
   /* Wildcard nd report publisher */
   uword wc_ip6_nd_publisher_node;
   uword wc_ip6_nd_publisher_et;
+
+  /* Router advertisement report publisher */
+  uword ip6_ra_publisher_node;
+  uword ip6_ra_publisher_et;
 } ip6_neighbor_main_t;
 
 /* ipv6 neighbor discovery - timer/event types */
@@ -220,6 +233,7 @@ static ip6_neighbor_main_t ip6_neighbor_main;
 static ip6_address_t ip6a_zero;	/* ip6 address 0 */
 
 static void wc_nd_signal_report (wc_nd_report_t * r);
+static void ra_signal_report (ra_report_t * r);
 
 /**
  * @brief publish wildcard arp event
@@ -261,6 +275,37 @@ wc_nd_set_publisher_node (uword node_index, uword event_type)
   ip6_neighbor_main_t *nm = &ip6_neighbor_main;
   nm->wc_ip6_nd_publisher_node = node_index;
   nm->wc_ip6_nd_publisher_et = event_type;
+}
+
+static int
+ra_publish (ra_report_t * r)
+{
+  void vl_api_rpc_call_main_thread (void *fp, u8 * data, u32 data_length);
+  vl_api_rpc_call_main_thread (ra_signal_report, (u8 *) r, sizeof *r);
+  return 0;
+}
+
+static void
+ra_signal_report (ra_report_t * r)
+{
+  vlib_main_t *vm = vlib_get_main ();
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  uword ni = nm->ip6_ra_publisher_node;
+  uword et = nm->ip6_ra_publisher_et;
+
+  if (ni == (uword) ~ 0)
+    return;
+  ra_report_t *q = vlib_process_signal_event_data (vm, ni, et, 1, sizeof *q);
+
+  *q = *r;
+}
+
+void
+ra_set_publisher_node (uword node_index, uword event_type)
+{
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  nm->ip6_ra_publisher_node = node_index;
+  nm->ip6_ra_publisher_et = event_type;
 }
 
 static u8 *
@@ -1877,6 +1922,22 @@ icmp6_router_advertisement (vlib_main_t * vm,
 
 		  if (error0 == ICMP6_ERROR_NONE)
 		    {
+		      radv_info->keep_sending_rs = 0;
+
+		      ra_report_t r;
+
+		      r.sw_if_index = sw_if_index0;
+		      memcpy (r.router_address, &ip0->src_address, 16);
+		      r.current_hop_limit = h0->current_hop_limit;
+		      r.flags = h0->flags;
+		      r.router_lifetime_in_sec =
+			clib_net_to_host_u16 (h0->router_lifetime_in_sec);
+		      r.neighbor_reachable_time_in_msec =
+			clib_net_to_host_u32
+			(h0->neighbor_reachable_time_in_msec);
+		      r.time_in_msec_between_retransmitted_neighbor_solicitations = clib_net_to_host_u32 (h0->time_in_msec_between_retransmitted_neighbor_solicitations);
+		      r.prefixes = 0;
+
 		      /* validate advertised information */
 		      if ((h0->current_hop_limit && radv_info->curr_hop_limit)
 			  && (h0->current_hop_limit !=
@@ -1994,6 +2055,20 @@ icmp6_router_advertisement (vlib_main_t * vm,
 
 			  switch (option_type)
 			    {
+			    case ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address:
+			      {
+				icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
+				  * h =
+				  (icmp6_neighbor_discovery_ethernet_link_layer_address_option_t
+				   *) (o0);
+
+				if (opt_len < sizeof (*h))
+				  break;
+
+				memcpy (r.slla, h->ethernet_address, 6);
+			      }
+			      break;
+
 			    case ICMP6_NEIGHBOR_DISCOVERY_OPTION_mtu:
 			      {
 				icmp6_neighbor_discovery_mtu_option_t *h =
@@ -2002,6 +2077,8 @@ icmp6_router_advertisement (vlib_main_t * vm,
 
 				if (opt_len < sizeof (*h))
 				  break;
+
+				r.mtu = clib_net_to_host_u32 (h->mtu);
 
 				if ((h->mtu && radv_info->adv_link_mtu) &&
 				    (h->mtu !=
@@ -2032,9 +2109,22 @@ icmp6_router_advertisement (vlib_main_t * vm,
 				if (opt_len < sizeof (*h))
 				  break;
 
+				vec_validate (r.prefixes,
+					      vec_len (r.prefixes));
+				ra_report_prefix_info_t *prefix =
+				  vec_elt_at_index (r.prefixes,
+						    vec_len (r.prefixes) - 1);
+
 				preferred =
 				  clib_net_to_host_u32 (h->preferred_time);
 				valid = clib_net_to_host_u32 (h->valid_time);
+
+				prefix->preferred_time = preferred;
+				prefix->valid_time = valid;
+				prefix->flags = h->flags & 0xc0;
+				prefix->dst_address_length =
+				  h->dst_address_length;
+				prefix->dst_address = h->dst_address;
 
 				/* look for matching prefix - if we our advertising it, it better be consistant */
 				/* *INDENT-OFF* */
@@ -2076,6 +2166,7 @@ icmp6_router_advertisement (vlib_main_t * vm,
 			      break;
 			    }
 			}
+		      ra_publish (&r);
 		    }
 		}
 	    }
@@ -2093,12 +2184,258 @@ icmp6_router_advertisement (vlib_main_t * vm,
       vlib_put_next_frame (vm, node, next_index, n_left_to_next);
     }
 
-  /* Account for router advertisements sent. */
+  /* Account for router advertisements received. */
   vlib_error_count (vm, error_node->node_index,
 		    ICMP6_ERROR_ROUTER_ADVERTISEMENTS_RX,
 		    n_advertisements_rcvd);
 
   return frame->n_vectors;
+}
+
+static inline f64
+random_f64_from_to (f64 from, f64 to)
+{
+  static u32 seed = 0;
+  static u8 seed_set = 0;
+  if (!seed_set)
+    {
+      seed = random_default_seed ();
+      seed_set = 1;
+    }
+  return random_f64 (&seed) * (to - from) + from;
+}
+
+static inline u8
+get_mac_address (u32 sw_if_index, u8 * address)
+{
+  vnet_main_t *vnm = vnet_get_main ();
+  vnet_hw_interface_t *hw_if = vnet_get_sup_hw_interface (vnm, sw_if_index);
+  if (!hw_if->hw_address)
+    return 1;
+  clib_memcpy (address, hw_if->hw_address, 6);
+  return 0;
+}
+
+static inline vlib_buffer_t *
+create_buffer_for_rs (vlib_main_t * vm, ip6_radv_t * radv_info)
+{
+  u32 bi0;
+  vlib_buffer_t *p0;
+  vlib_buffer_free_list_t *fl;
+  icmp6_router_solicitation_header_t *rh;
+  u16 payload_length;
+  int bogus_length;
+  u32 sw_if_index;
+
+  sw_if_index = radv_info->sw_if_index;
+
+  if (vlib_buffer_alloc (vm, &bi0, 1) != 1)
+    {
+      clib_warning ("buffer allocation failure");
+      return 0;
+    }
+
+  p0 = vlib_get_buffer (vm, bi0);
+  fl = vlib_buffer_get_free_list (vm, VLIB_BUFFER_DEFAULT_FREE_LIST_INDEX);
+  vlib_buffer_init_for_free_list (p0, fl);
+  VLIB_BUFFER_TRACE_TRAJECTORY_INIT (p0);
+  p0->flags |= VNET_BUFFER_F_LOCALLY_ORIGINATED;
+
+  vnet_buffer (p0)->sw_if_index[VLIB_RX] = sw_if_index;
+  vnet_buffer (p0)->sw_if_index[VLIB_TX] = sw_if_index;
+
+  vnet_buffer (p0)->ip.adj_index[VLIB_TX] = radv_info->mcast_adj_index;
+
+  rh = vlib_buffer_get_current (p0);
+  p0->current_length = sizeof (*rh);
+
+  rh->neighbor.icmp.type = ICMP6_router_solicitation;
+  rh->neighbor.icmp.code = 0;
+  rh->neighbor.icmp.checksum = 0;
+  rh->neighbor.reserved_must_be_zero = 0;
+
+  rh->link_layer_option.header.type =
+    ICMP6_NEIGHBOR_DISCOVERY_OPTION_source_link_layer_address;
+  if (0 != get_mac_address (sw_if_index,
+			    rh->link_layer_option.ethernet_address))
+    {
+      clib_warning ("interface with sw_if_index %u has no mac address",
+		    sw_if_index);
+      vlib_buffer_free (vm, &bi0, 1);
+      return 0;
+    }
+  rh->link_layer_option.header.n_data_u64s = 1;
+
+  payload_length = sizeof (rh->neighbor) + sizeof (u64);
+
+  rh->ip.ip_version_traffic_class_and_flow_label =
+    clib_host_to_net_u32 (0x6 << 28);
+  rh->ip.payload_length = clib_host_to_net_u16 (payload_length);
+  rh->ip.protocol = IP_PROTOCOL_ICMP6;
+  rh->ip.hop_limit = 255;
+  rh->ip.src_address = radv_info->link_local_address;
+  /* set address ff02::2 */
+  rh->ip.dst_address.as_u64[0] = clib_host_to_net_u64 (0xff02L << 48);
+  rh->ip.dst_address.as_u64[1] = clib_host_to_net_u64 (2);
+
+  rh->neighbor.icmp.checksum = ip6_tcp_udp_icmp_compute_checksum (vm, p0,
+								  &rh->ip,
+								  &bogus_length);
+
+  return p0;
+}
+
+static inline void
+stop_sending_rs (vlib_main_t * vm, ip6_radv_t * ra)
+{
+  u32 bi0;
+
+  ra->keep_sending_rs = 0;
+  if (ra->buffer)
+    {
+      bi0 = vlib_get_buffer_index (vm, ra->buffer);
+      vlib_buffer_free (vm, &bi0, 1);
+      ra->buffer = 0;
+    }
+}
+
+static inline bool
+check_send_rs (vlib_main_t * vm, ip6_radv_t * radv_info, f64 current_time,
+	       f64 * due_time)
+{
+  vlib_buffer_t *p0;
+  vlib_frame_t *f;
+  u32 *to_next;
+  u32 next_index;
+  vlib_buffer_t *c0;
+  u32 ci0;
+
+  icmp6_send_router_solicitation_params_t *params;
+
+  if (!radv_info->keep_sending_rs)
+    return false;
+
+  params = &radv_info->params;
+
+  if (radv_info->due_time > current_time)
+    {
+      *due_time = radv_info->due_time;
+      return true;
+    }
+
+  p0 = radv_info->buffer;
+
+  next_index = ip6_rewrite_mcast_node.index;
+
+  c0 = vlib_buffer_copy (vm, p0);
+  ci0 = vlib_get_buffer_index (vm, c0);
+
+  f = vlib_get_frame_to_node (vm, next_index);
+  to_next = vlib_frame_vector_args (f);
+  to_next[0] = ci0;
+  f->n_vectors = 1;
+  vlib_put_frame_to_node (vm, next_index, f);
+
+  if (params->mrc != 0 && --radv_info->n_left == 0)
+    stop_sending_rs (vm, radv_info);
+  else
+    {
+      radv_info->sleep_interval =
+	(2 + random_f64_from_to (-0.1, 0.1)) * radv_info->sleep_interval;
+      if (radv_info->sleep_interval > params->mrt)
+	radv_info->sleep_interval =
+	  (1 + random_f64_from_to (-0.1, 0.1)) * params->mrt;
+
+      radv_info->due_time = current_time + radv_info->sleep_interval;
+
+      if (params->mrd != 0
+	  && current_time > radv_info->start_time + params->mrd)
+	stop_sending_rs (vm, radv_info);
+      else
+	*due_time = radv_info->due_time;
+    }
+
+  return radv_info->keep_sending_rs;
+}
+
+static uword
+send_rs_process (vlib_main_t * vm, vlib_node_runtime_t * rt,
+		 vlib_frame_t * f0)
+{
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  ip6_radv_t *radv_info;
+  uword *event_data = 0;
+  f64 sleep_time = 1e9;
+  f64 current_time;
+  f64 due_time;
+  f64 dt = 0;
+
+  while (true)
+    {
+      vlib_process_wait_for_event_or_clock (vm, sleep_time);
+      vlib_process_get_events (vm, &event_data);
+      vec_reset_length (event_data);
+
+      current_time = vlib_time_now (vm);
+      do
+	{
+	  due_time = current_time + 1e9;
+        /* *INDENT-OFF* */
+        pool_foreach (radv_info, nm->if_radv_pool,
+        ({
+	    if (check_send_rs (vm, radv_info, current_time, &dt)
+		&& (dt < due_time))
+	      due_time = dt;
+        }));
+        /* *INDENT-ON* */
+	  current_time = vlib_time_now (vm);
+	}
+      while (due_time < current_time);
+
+      sleep_time = due_time - current_time;
+    }
+
+  return 0;
+}
+
+/* *INDENT-OFF* */
+VLIB_REGISTER_NODE (send_rs_process_node) = {
+    .function = send_rs_process,
+    .type = VLIB_NODE_TYPE_PROCESS,
+    .name = "send-rs-process",
+};
+/* *INDENT-ON* */
+
+void
+icmp6_send_router_solicitation (vlib_main_t * vm, u32 sw_if_index, u8 stop,
+				icmp6_send_router_solicitation_params_t *
+				params)
+{
+  ip6_neighbor_main_t *nm = &ip6_neighbor_main;
+  u32 rai;
+  ip6_radv_t *ra = 0;
+
+  ASSERT (~0 != sw_if_index);
+
+  rai = nm->if_radv_pool_index_by_sw_if_index[sw_if_index];
+  ra = pool_elt_at_index (nm->if_radv_pool, rai);
+
+  if (stop)
+    stop_sending_rs (vm, ra);
+  else
+    {
+      ra->keep_sending_rs = 1;
+      ra->params = *params;
+      ra->n_left = params->mrc;
+      ra->start_time = vlib_time_now (vm);
+      ra->sleep_interval = (1 + random_f64_from_to (-0.1, 0.1)) * params->irt;
+      ra->due_time = 0;		/* send first packet ASAP */
+      ra->buffer = create_buffer_for_rs (vm, ra);
+      if (!ra->buffer)
+	ra->keep_sending_rs = 0;
+      else
+	vlib_process_signal_event (vm, send_rs_process_node.index, 1, 0);
+    }
 }
 
 /**
@@ -2226,6 +2563,9 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  mhash_free (&a->address_to_prefix_index);
 	  mhash_free (&a->address_to_mldp_index);
 
+	  if (a->keep_sending_rs)
+	    a->keep_sending_rs = 0;
+
 	  pool_put (nm->if_radv_pool, a);
 	  nm->if_radv_pool_index_by_sw_if_index[sw_if_index] = ~0;
 	  ri = ~0;
@@ -2288,6 +2628,8 @@ ip6_neighbor_sw_interface_add_del (vnet_main_t * vnm,
 	  a->mcast_adj_index = adj_mcast_add_or_lock (FIB_PROTOCOL_IP6,
 						      VNET_LINK_IP6,
 						      sw_if_index);
+
+	  a->keep_sending_rs = 0;
 
 	  /* add multicast groups we will always be reporting  */
 	  ip6_neighbor_add_mld_grp (a,
@@ -4029,6 +4371,8 @@ ip6_neighbor_init (vlib_main_t * vm)
   nm->limit_neighbor_cache_size = 50000;
 
   nm->wc_ip6_nd_publisher_node = (uword) ~ 0;
+
+  nm->ip6_ra_publisher_node = (uword) ~ 0;
 
 #if 0
   /* $$$$ Hack fix for today */
