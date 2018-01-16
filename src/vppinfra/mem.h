@@ -330,7 +330,7 @@ typedef struct
 #define CLIB_MEM_VM_F_HUGETLB_PREALLOC (1 << 4)
   u32 flags; /**< vm allocation flags:
                 <br> CLIB_MEM_VM_F_SHARED: request shared memory, file
-		destiptor will be provided on successful allocation.
+		descriptor will be provided on successful allocation.
                 <br> CLIB_MEM_VM_F_HUGETLB: request hugepages.
 		<br> CLIB_MEM_VM_F_NUMA_PREFER: numa_node field contains valid
 		numa node preference.
@@ -342,14 +342,25 @@ typedef struct
   uword size; /**< Allocation size, set by caller. */
   int numa_node; /**< numa node preference. Valid if CLIB_MEM_VM_F_NUMA_PREFER set. */
   void *addr; /**< Pointer to allocated memory, set on successful allocation. */
-  int fd; /**< File desriptor, set on successful allocation if CLIB_MEM_VM_F_SHARED is set. */
+  int fd; /**< File descriptor, set on successful allocation if CLIB_MEM_VM_F_SHARED is set. */
   int log2_page_size;		/* Page size in log2 format, set on successful allocation. */
   int n_pages;			/* Number of pages. */
+  uword requested_va;		/**< Request fixed position mapping */
 } clib_mem_vm_alloc_t;
 
 clib_error_t *clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a);
+u64 clib_mem_vm_get_page_size (int fd);
 int clib_mem_vm_get_log2_page_size (int fd);
 u64 *clib_mem_vm_get_paddr (void *mem, int log2_page_size, int n_pages);
+
+typedef struct
+{
+  uword size;		/**< Map size */
+  int fd;		/**< File descriptor to be mapped */
+  uword requested_va;	/**< Request fixed position mapping */
+  void *addr;		/**< Pointer to mapped memory, if successful */
+} clib_mem_vm_map_t;
+clib_error_t *clib_mem_vm_ext_map (clib_mem_vm_map_t * a);
 
 
 #include <vppinfra/error.h>	/* clib_panic */

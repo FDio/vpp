@@ -168,21 +168,7 @@ void ssvm_delete (ssvm_private_t * ssvm);
 
 int ssvm_master_init_memfd (ssvm_private_t * memfd, u32 master_index);
 int ssvm_slave_init_memfd (ssvm_private_t * memfd);
-void memfd_delete (ssvm_private_t * memfd);
-
-/* These do not belong here, but the original keeps running around... */
-/* $$$$ work w/ Damjan to fix properly */
-#ifndef F_LINUX_SPECIFIC_BASE
-#define F_LINUX_SPECIFIC_BASE 1024
-#endif
-#define MFD_ALLOW_SEALING       0x0002U
-#define F_ADD_SEALS (F_LINUX_SPECIFIC_BASE + 9)
-#define F_GET_SEALS (F_LINUX_SPECIFIC_BASE + 10)
-
-#define F_SEAL_SEAL     0x0001	/* prevent further seals from being set */
-#define F_SEAL_SHRINK   0x0002	/* prevent file from shrinking */
-#define F_SEAL_GROW     0x0004	/* prevent file from growing */
-#define F_SEAL_WRITE    0x0008	/* prevent writes */
+void ssvm_delete_memfd (ssvm_private_t * memfd);
 
 #endif /* __included_ssvm_h__ */
 

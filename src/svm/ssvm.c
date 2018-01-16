@@ -205,70 +205,44 @@ ssvm_delete (ssvm_private_t * ssvm)
 int
 ssvm_master_init_memfd (ssvm_private_t * memfd, u32 master_index)
 {
-  int flags;
+  uword page_size, flags = MHEAP_FLAG_DISABLE_VM | MHEAP_FLAG_THREAD_SAFE;
   ssvm_shared_header_t *sh;
-  u64 ticks = clib_cpu_time_now ();
-  u64 randomize_baseva;
   void *oldheap;
+  clib_mem_vm_alloc_t alloc = { 0 };
+  clib_error_t *err;
 
   if (memfd->ssvm_size == 0)
     return SSVM_API_ERROR_NO_SIZE;
 
   ASSERT (vec_c_string_is_terminated (memfd->name));
-  memfd->name = format (0, "memfd svm region %d", master_index);
+  memfd->name = format (0, "memfd svm region %d%c", master_index, 0);
 
-  memfd->fd = memfd_create ((char *) memfd->name, MFD_ALLOW_SEALING);
-  if (memfd->fd < 0)
+  alloc.name = (char *) memfd->name;
+  alloc.size = memfd->ssvm_size;
+  alloc.flags = CLIB_MEM_VM_F_SHARED;
+  if ((err = clib_mem_vm_ext_alloc (&alloc)))
     {
-      clib_unix_warning ("create segment '%s'", memfd->name);
+      clib_error_report (err);
       return SSVM_API_ERROR_CREATE_FAILURE;
     }
 
-  if ((ftruncate (memfd->fd, memfd->ssvm_size)) == -1)
-    {
-      clib_unix_warning ("set memfd size");
-      return SSVM_API_ERROR_SET_SIZE;
-    }
-
-  if ((fcntl (memfd->fd, F_ADD_SEALS, F_SEAL_SHRINK)) == -1)
-    clib_unix_warning ("fcntl (F_ADD_SEALS, F_SEAL_SHRINK)");
-
-  flags = MAP_SHARED;
-  if (memfd->requested_va)
-    flags |= MAP_FIXED;
-
-  randomize_baseva = (ticks & 15) * MMAP_PAGESIZE;
-
-  if (memfd->requested_va)
-    memfd->requested_va += randomize_baseva;
-
-  sh = memfd->sh =
-    (ssvm_shared_header_t *) mmap ((void *) memfd->requested_va,
-				   memfd->ssvm_size, PROT_READ | PROT_WRITE,
-				   flags, memfd->fd, 0);
-
-  if (memfd->sh == MAP_FAILED)
-    {
-      clib_unix_warning ("mmap");
-      close (memfd->fd);
-      return SSVM_API_ERROR_MMAP;
-    }
-
+  memfd->fd = alloc.fd;
+  memfd->sh = alloc.addr;
   memfd->my_pid = getpid ();
+  memfd->i_am_master = 1;
+
+  page_size = 1 << alloc.log2_page_size;
+  sh = (ssvm_shared_header_t *) memfd->sh;
   sh->master_pid = memfd->my_pid;
   sh->ssvm_size = memfd->ssvm_size;
-  sh->heap = mheap_alloc_with_flags
-    (((u8 *) sh) + MMAP_PAGESIZE, memfd->ssvm_size - MMAP_PAGESIZE,
-     MHEAP_FLAG_DISABLE_VM | MHEAP_FLAG_THREAD_SAFE);
-
+  sh->heap = mheap_alloc_with_flags (((u8 *) sh) + page_size,
+				     memfd->ssvm_size - page_size, flags);
   sh->ssvm_va = pointer_to_uword (sh);
   sh->master_index = master_index;
 
   oldheap = ssvm_push_heap (sh);
   sh->name = format (0, "%s%c", memfd->name, 0);
   ssvm_pop_heap (oldheap);
-
-  memfd->i_am_master = 1;
 
   /* The application has to set set sh->ready... */
   return 0;
@@ -283,37 +257,61 @@ ssvm_master_init_memfd (ssvm_private_t * memfd, u32 master_index)
 int
 ssvm_slave_init_memfd (ssvm_private_t * memfd)
 {
+  clib_mem_vm_map_t mapa = { 0 };
   ssvm_shared_header_t *sh;
+  uword page_size;
 
   memfd->i_am_master = 0;
 
-  /* Map the segment once, to look at the shared header */
-  sh = (void *) mmap (0, MMAP_PAGESIZE, PROT_READ | PROT_WRITE, MAP_SHARED,
-		      memfd->fd, 0);
-  if (sh == MAP_FAILED)
+  page_size = clib_mem_vm_get_page_size (memfd->fd);
+  if (!page_size)
+    {
+      clib_unix_warning ("page size unknown");
+      return SSVM_API_ERROR_MMAP;
+    }
+
+  /*
+   * Map the segment once, to look at the shared header
+   */
+  mapa.fd = memfd->fd;
+  mapa.size = page_size;
+
+  if (clib_mem_vm_ext_map (&mapa))
     {
       clib_unix_warning ("slave research mmap");
       close (memfd->fd);
       return SSVM_API_ERROR_MMAP;
     }
 
-  memfd->requested_va = (u64) sh->ssvm_va;
+  sh = mapa.addr;
+  memfd->requested_va = sh->ssvm_va;
   memfd->ssvm_size = sh->ssvm_size;
-  munmap (sh, MMAP_PAGESIZE);
+  munmap (sh, page_size);
 
-  sh = (void *) mmap ((void *) memfd->requested_va, memfd->ssvm_size,
-		      PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED,
-		      memfd->fd, 0);
-
-  if (sh == MAP_FAILED)
+  /*
+   * Remap the segment at the 'right' address
+   */
+  mapa.requested_va = memfd->requested_va;
+  mapa.size = memfd->ssvm_size;
+  if (clib_mem_vm_ext_map (&mapa))
     {
       clib_unix_warning ("slave final mmap");
       close (memfd->fd);
       return SSVM_API_ERROR_MMAP;
     }
+
+  sh = mapa.addr;
   sh->slave_pid = getpid ();
   memfd->sh = sh;
   return 0;
+}
+
+void
+ssvm_delete_memfd (ssvm_private_t * memfd)
+{
+  vec_free (memfd->name);
+  clib_mem_vm_free (memfd->sh, memfd->ssvm_size);
+  close (memfd->fd);
 }
 
 /*
