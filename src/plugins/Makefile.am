@@ -83,6 +83,10 @@ if ENABLE_SIXRD_PLUGIN
 include sixrd.am
 endif
 
+if ENABLE_SRV6AS_PLUGIN
+include srv6_as.am
+endif
+
 if ENABLE_NAT_PLUGIN
 include nat.am
 endif
