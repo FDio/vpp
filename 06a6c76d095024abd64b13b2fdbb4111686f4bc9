@@ -22,6 +22,30 @@
       "revId": "06a6c76d095024abd64b13b2fdbb4111686f4bc9",
       "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3639d471_1f15090c",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 588
+      },
+      "writtenOn": "2018-01-16T13:32:28Z",
+      "side": 1,
+      "message": "I looked at a few .md files in VPP and they were 50/50, 80 characters and each sentence on a new line. DPDK was pretty strict on this and required sentence on each line. I like the 80 characters better, so be glad to reformat on next patch.",
+      "parentUuid": "b91d587d_9bf11f6a",
+      "range": {
+        "startLine": 1,
+        "startChar": 6,
+        "endLine": 1,
+        "endChar": 12
+      },
+      "revId": "06a6c76d095024abd64b13b2fdbb4111686f4bc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
     }
   ]
 }
