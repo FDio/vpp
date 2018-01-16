@@ -26,6 +26,7 @@
 
 #include <vppinfra/clib.h>
 #include <vppinfra/mem.h>
+#include <vppinfra/time.h>
 #include <vppinfra/format.h>
 #include <vppinfra/clib_error.h>
 #include <vppinfra/linux/syscall.h>
@@ -45,13 +46,34 @@
 #define F_SEAL_WRITE    0x0008	/* prevent writes */
 #endif
 
-int
-clib_mem_vm_get_log2_page_size (int fd)
+uword
+clib_mem_vm_get_page_size (int fd)
 {
   struct stat st = { 0 };
   if (fstat (fd, &st) == -1)
     return 0;
-  return min_log2 (st.st_blksize);
+  return st.st_blksize;
+}
+
+int
+clib_mem_vm_get_log2_page_size (int fd)
+{
+  return min_log2 (clib_mem_vm_get_page_size (fd));
+}
+
+static void
+clib_mem_vm_randomize_va (uword * requested_va, u32 log2_page_size)
+{
+  u8 bit_mask = 15;
+
+  if (log2_page_size <= 12)
+    bit_mask = 15;
+  else if (log2_page_size > 12 && log2_page_size <= 16)
+    bit_mask = 3;
+  else
+    bit_mask = 0;
+
+  *requested_va += (clib_cpu_time_now () & bit_mask) * (1 << log2_page_size);
 }
 
 clib_error_t *
@@ -131,12 +153,18 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 	      goto error;
 	    }
 	}
-      log2_page_size = clib_mem_vm_get_log2_page_size (fd);
 
+      log2_page_size = clib_mem_vm_get_log2_page_size (fd);
       if (log2_page_size == 0)
 	{
 	  err = clib_error_return_unix (0, "cannot determine page size");
 	  goto error;
+	}
+
+      if (a->requested_va)
+	{
+	  clib_mem_vm_randomize_va (&a->requested_va, log2_page_size);
+	  mmap_flags |= MAP_FIXED;
 	}
     }
   else				/* not CLIB_MEM_VM_F_SHARED */
@@ -154,7 +182,6 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
     }
 
   n_pages = ((a->size - 1) >> log2_page_size) + 1;
-
 
   if (a->flags & CLIB_MEM_VM_F_HUGETLB_PREALLOC)
     {
@@ -186,7 +213,8 @@ clib_mem_vm_ext_alloc (clib_mem_vm_alloc_t * a)
 	}
     }
 
-  addr = mmap (0, a->size, (PROT_READ | PROT_WRITE), mmap_flags, fd, 0);
+  addr = mmap (uword_to_pointer (a->requested_va, void *), a->size,
+	       (PROT_READ | PROT_WRITE), mmap_flags, fd, 0);
   if (addr == MAP_FAILED)
     {
       err = clib_error_return_unix (0, "mmap");
@@ -255,7 +283,24 @@ done:
   return r;
 }
 
+clib_error_t *
+clib_mem_vm_ext_map (clib_mem_vm_map_t * a)
+{
+  int mmap_flags = MAP_SHARED;
+  void *addr;
 
+  if (a->requested_va)
+    mmap_flags |= MAP_FIXED;
+
+  addr = (void *) mmap (uword_to_pointer (a->requested_va, void *), a->size,
+			PROT_READ | PROT_WRITE, mmap_flags, a->fd, 0);
+
+  if (addr == MAP_FAILED)
+    return clib_error_return_unix (0, "mmap");
+
+  a->addr = addr;
+  return 0;
+}
 
 /*
  * fd.io coding-style-patch-verification: ON
