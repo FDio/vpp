@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "b91d587d_9bf11f6a",
+        "filename": "extras/selinux/selinux_doc.md",
+        "patchSetId": 1
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 750
+      },
+      "writtenOn": "2018-01-16T07:43:01Z",
+      "side": 1,
+      "message": "A comment for the whole file:\nIt would be nice to shorten the content of each line so to match the usual 80 characters per line and make readability somehow easier.",
+      "range": {
+        "startLine": 1,
+        "startChar": 6,
+        "endLine": 1,
+        "endChar": 12
+      },
+      "revId": "06a6c76d095024abd64b13b2fdbb4111686f4bc9",
+      "serverId": "6d2eb258-4fe2-443e-8a38-ca81da23d4c2",
+      "unresolved": false
+    }
+  ]
+}
