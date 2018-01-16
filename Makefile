@@ -267,6 +267,15 @@ endif
 bootstrap: $(BR)/.bootstrap.ok
 
 install-dep:
+ifeq ($(DOCKER_TEST),True)
+	@sudo -E mount -o remount /dev/shm -o size=512M
+	@bash -c "mkdir -p /tmp/dumps"
+	@bash -c "sysctl -w debug.exception-trace=1"
+	@bash -c "sysctl -w kernel.core_pattern='/tmp/dumps/%e-%t'"
+	@bash -c "ulimit -c unlimited"
+	@bash -c "echo 2 > /proc/sys/fs/suid_dumpable"
+endif
+
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 ifeq ($(OS_VERSION_ID),14.04)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install software-properties-common
