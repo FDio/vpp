@@ -97,7 +97,9 @@ foreach_standard_reply_retval_handler;
 #define foreach_vpe_api_reply_msg                       \
 _(MEMIF_CREATE_REPLY, memif_create_reply)               \
 _(MEMIF_DELETE_REPLY, memif_delete_reply)               \
-_(MEMIF_DETAILS, memif_details)
+_(MEMIF_DETAILS, memif_details)				\
+_(MEMIF_SOCKET_FILENAME_DETAILS, memif_socket_filename_details) \
+_(MEMIF_SOCKET_FILENAME_ADD_DEL_REPLY, memif_socket_filename_add_del_reply)
 
 static uword
 unformat_memif_queues (unformat_input_t * input, va_list * args)
@@ -113,6 +115,81 @@ unformat_memif_queues (unformat_input_t * input, va_list * args)
   return 1;
 }
 
+/* memif_socket_filename_add_del API */
+static int
+api_memif_socket_filename_add_del (vat_main_t * vam)
+{
+  unformat_input_t *i = vam->input;
+  vl_api_memif_socket_filename_add_del_t *mp;
+  u8 is_add;
+  u32 socket_id;
+  u8 *socket_filename;
+  int ret;
+
+  is_add = 1;
+  socket_id = ~0;
+  socket_filename = 0;
+
+  while (unformat_check_input (i) != UNFORMAT_END_OF_INPUT)
+    {
+      if (unformat (i, "id %u", &socket_id))
+	;
+      else if (unformat (i, "filename %s", &socket_filename))
+	;
+      else if (unformat (i, "del"))
+	is_add = 0;
+      else if (unformat (i, "add"))
+	is_add = 1;
+      else
+	{
+	  vec_free (socket_filename);
+	  clib_warning ("unknown input `%U'", format_unformat_error, i);
+	  return -99;
+	}
+    }
+
+  if (socket_id == 0 || socket_id == ~0)
+    {
+      vec_free (socket_filename);
+      errmsg ("Invalid socket id");
+      return -99;
+    }
+
+  if (is_add && (!socket_filename || *socket_filename == 0))
+    {
+      vec_free (socket_filename);
+      errmsg ("Invalid socket filename");
+      return -99;
+    }
+
+  M (MEMIF_SOCKET_FILENAME_ADD_DEL, mp);
+
+  memset (mp, 0, sizeof (*mp));
+  mp->is_add = is_add;
+  mp->socket_id = htonl (socket_id);
+  memcpy (mp->socket_filename,
+	  socket_filename, sizeof (mp->socket_filename) - 1);
+
+  vec_free (socket_filename);
+
+  S (mp);
+  W (ret);
+
+  return ret;
+}
+
+/* memif_socket_filename_add_del reply handler */
+static void vl_api_memif_socket_filename_add_del_reply_t_handler
+  (vl_api_memif_socket_filename_add_del_reply_t * mp)
+{
+  vat_main_t *vam = memif_test_main.vat_main;
+  i32 retval = ntohl (mp->retval);
+
+  vam->retval = retval;
+  vam->result_ready = 1;
+  vam->regenerate_interface_table = 1;
+}
+
 /* memif-create API */
 static int
 api_memif_create (vat_main_t * vam)
@@ -120,7 +197,7 @@ api_memif_create (vat_main_t * vam)
   unformat_input_t *i = vam->input;
   vl_api_memif_create_t *mp;
   u32 id = 0;
-  u8 *socket_filename = 0;
+  u32 socket_id = 0;
   u8 *secret = 0;
   u8 role = 1;
   u32 ring_size = 0;
@@ -135,7 +212,7 @@ api_memif_create (vat_main_t * vam)
     {
       if (unformat (i, "id %u", &id))
 	;
-      else if (unformat (i, "socket %s", &socket_filename))
+      else if (unformat (i, "socket-id %u", &socket_id))
 	;
       else if (unformat (i, "secret %s", &secret))
 	;
@@ -157,6 +234,12 @@ api_memif_create (vat_main_t * vam)
 	  clib_warning ("unknown input '%U'", format_unformat_error, i);
 	  return -99;
 	}
+    }
+
+  if (socket_id == ~0)
+    {
+      errmsg ("invalid socket-id\n");
+      return -99;
     }
 
   if (!is_pow2 (ring_size))
@@ -184,11 +267,7 @@ api_memif_create (vat_main_t * vam)
   mp->role = role;
   mp->ring_size = clib_host_to_net_u32 (ring_size);
   mp->buffer_size = clib_host_to_net_u16 (buffer_size & 0xffff);
-  if (socket_filename != 0)
-    {
-      strncpy ((char *) mp->socket_filename, (char *) socket_filename, 127);
-      vec_free (socket_filename);
-    }
+  mp->socket_id = clib_host_to_net_u32 (socket_id);
   if (secret != 0)
     {
       strncpy ((char *) mp->secret, (char *) secret, 16);
@@ -290,20 +369,66 @@ api_memif_dump (vat_main_t * vam)
 }
 
 /* memif-details message handler */
-static void vl_api_memif_details_t_handler (vl_api_memif_details_t * mp)
+static void
+vl_api_memif_details_t_handler (vl_api_memif_details_t * mp)
 {
   vat_main_t *vam = memif_test_main.vat_main;
 
   fformat (vam->ofp, "%s: sw_if_index %u mac %U\n"
-	   "   id %u socket %s role %s\n"
+	   "   id %u socket-id %u role %s\n"
 	   "   ring_size %u buffer_size %u\n"
 	   "   state %s link %s\n",
 	   mp->if_name, ntohl (mp->sw_if_index), format_ethernet_address,
-	   mp->hw_addr, clib_net_to_host_u32 (mp->id), mp->socket_filename,
+	   mp->hw_addr, clib_net_to_host_u32 (mp->id),
+	   clib_net_to_host_u32 (mp->socket_id),
 	   mp->role ? "slave" : "master",
 	   ntohl (mp->ring_size), ntohs (mp->buffer_size),
 	   mp->admin_up_down ? "up" : "down",
 	   mp->link_up_down ? "up" : "down");
+}
+
+/* memif_socket_filename_dump API */
+static int
+api_memif_socket_filename_dump (vat_main_t * vam)
+{
+  memif_test_main_t *mm = &memif_test_main;
+  vl_api_memif_socket_filename_dump_t *mp;
+  vl_api_control_ping_t *mp_ping;
+  int ret;
+
+  if (vam->json_output)
+    {
+      clib_warning
+	("JSON output not supported for memif_socket_filename_dump");
+      return -99;
+    }
+
+  M (MEMIF_SOCKET_FILENAME_DUMP, mp);
+  S (mp);
+
+  /* Use a control ping for synchronization */
+  mp_ping = vl_msg_api_alloc_as_if_client (sizeof (*mp_ping));
+  mp_ping->_vl_msg_id = htons (mm->ping_id);
+  mp_ping->client_index = vam->my_client_index;
+
+  fformat (vam->ofp, "Sending ping id=%d\n", mm->ping_id);
+
+  vam->result_ready = 0;
+  S (mp_ping);
+
+  W (ret);
+  return ret;
+}
+
+/* memif_socket_format_details message handler */
+static void vl_api_memif_socket_filename_details_t_handler
+  (vl_api_memif_socket_filename_details_t * mp)
+{
+  vat_main_t *vam = memif_test_main.vat_main;
+
+  fformat (vam->ofp,
+	   "id %u : filename %s\n",
+	   ntohl (mp->socket_id), mp->socket_filename);
 }
 
 /*
@@ -311,11 +436,13 @@ static void vl_api_memif_details_t_handler (vl_api_memif_details_t * mp)
  * and that the data plane plugin processes
  */
 #define foreach_vpe_api_msg					  \
-_(memif_create, "[id <id>] [socket <path>] [ring_size <size>] " \
+_(memif_create, "[id <id>] [socket-id <id>] [ring_size <size>] " \
 		"[buffer_size <size>] [hw_addr <mac_address>] "   \
 		"[secret <string>] [mode ip] <master|slave>")	  \
 _(memif_delete, "<sw_if_index>")                                  \
-_(memif_dump, "")
+_(memif_dump, "")						  \
+_(memif_socket_filename_dump, "")				\
+_(memif_socket_filename_add_del, "[add|del] id <id> filename <file>")
 
 static void
 memif_vat_api_hookup (vat_main_t * vam)
@@ -364,10 +491,18 @@ vat_plugin_register (vat_main_t * vam)
 #undef _
   mm->ping_id = vl_msg_api_get_msg_index ((u8 *) (VL_API_CONTROL_PING_CRC));
 
-  if (mm->msg_id_base != (u16) ~0)
+  if (mm->msg_id_base != (u16) ~ 0)
     memif_vat_api_hookup (vam);
 
   vec_free (name);
 
   return 0;
 }
+
+/*
+ * fd.io coding-style-patch-verification: ON
+ *
+ * Local Variables:
+ * eval: (c-set-style "gnu")
+ * End:
+ */
