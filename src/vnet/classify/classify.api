@@ -384,6 +384,28 @@ autoreply define input_acl_set_interface
   u8 is_add;
 };
 
+/** \brief Set/unset output ACL interface
+    @param client_index - opaque cookie to identify the sender
+    @param context - sender context, to match reply w/ request
+    @param sw_if_index - interface to set/unset output ACL
+    @param ip4_table_index - ip4 classify table index (~0 for skip)
+    @param ip6_table_index - ip6 classify table index (~0 for skip)
+    @param l2_table_index  -  l2 classify table index (~0 for skip)
+    @param is_add - Set output ACL if non-zero, else unset
+    Note: User is recommeneded to use just one valid table_index per call.
+          (ip4_table_index, ip6_table_index, or l2_table_index)
+*/
+autoreply define output_acl_set_interface
+{
+  u32 client_index;
+  u32 context;
+  u32 sw_if_index;
+  u32 ip4_table_index;
+  u32 ip6_table_index;
+  u32 l2_table_index;
+  u8 is_add;
+};
+
 /*
  * Local Variables:
  * eval: (c-set-style "gnu")
