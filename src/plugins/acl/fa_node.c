@@ -644,7 +644,13 @@ acl_fa_verify_init_sessions (acl_main_t * am)
     /* Allocate the per-worker sessions pools */
     for (wk = 0; wk < vec_len (am->per_worker_data); wk++) {
       acl_fa_per_worker_data_t *pw = &am->per_worker_data[wk];
-      pool_alloc_aligned(pw->fa_sessions_pool, am->fa_conn_table_max_entries, CLIB_CACHE_LINE_BYTES);
+
+      /*
+      * // In lieu of trying to preallocate the pool and its free bitmap, rather use pool_init_fixed
+      * pool_alloc_aligned(pw->fa_sessions_pool, am->fa_conn_table_max_entries, CLIB_CACHE_LINE_BYTES);
+      * clib_bitmap_validate(pool_header(pw->fa_sessions_pool)->free_bitmap, am->fa_conn_table_max_entries);
+      */
+      pool_init_fixed(pw->fa_sessions_pool, am->fa_conn_table_max_entries);
     }
 
     /* ... and the interface session hash table */
