@@ -267,6 +267,11 @@ endif
 bootstrap: $(BR)/.bootstrap.ok
 
 install-dep:
+ifeq ($(DOCKER_TEST),True)
+	@bash -c "mount -o remount /dev/shm -o size=512M | grep -q  permission && \
+		{ echo 'Failed, but ok' ; exit 0; } || { echo 'remount'; exit 0; }"
+endif
+
 ifeq ($(filter ubuntu debian,$(OS_ID)),$(OS_ID))
 ifeq ($(OS_VERSION_ID),14.04)
 	@sudo -E apt-get $(CONFIRM) $(FORCE) install software-properties-common

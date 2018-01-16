@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# FD.io VPP Docker Ubuntu debug script
+#
+# This script sets variables to assist debugging container
+# based builds.
+#
+
+set -xe -o pipefail
+
+mkdir -p /tmp/dumps
+sysctl -w debug.exception-trace=1
+sysctl -w kernel.core_pattern='/tmp/dumps/%e-%t'
+ulimit -c unlimited
+echo 2 > /proc/sys/fs/suid_dumpable
