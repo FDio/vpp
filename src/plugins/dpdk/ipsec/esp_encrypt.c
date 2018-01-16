@@ -158,6 +158,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  u32 iv_size;
 	  u16 orig_sz;
 	  u8 trunc_size;
+	  u16 rewrite_len;
 	  struct rte_mbuf *mb0 = 0;
 	  struct rte_crypto_op *op;
 	  u16 res_idx;
@@ -267,6 +268,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 
 	  if (sa0->is_tunnel)
 	    {
+	      rewrite_len = 0;
 	      if (!is_ipv6 && !sa0->is_tunnel_ip6)	/* ip4inip4 */
 		{
 		  /* in tunnel mode send it back to FIB */
@@ -344,7 +346,7 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  else			/* transport mode */
 	    {
 	      priv->next = DPDK_CRYPTO_INPUT_NEXT_INTERFACE_OUTPUT;
-	      u16 rewrite_len = vnet_buffer (b0)->ip.save_rewrite_length;
+	      rewrite_len = vnet_buffer (b0)->ip.save_rewrite_length;
 	      u16 adv = sizeof (esp_header_t) + iv_size;
 	      vlib_buffer_advance (b0, -adv - rewrite_len);
 	      u8 *src = ((u8 *) ih0) - rewrite_len;
@@ -393,11 +395,13 @@ dpdk_esp_encrypt_node_fn (vlib_main_t * vm,
 	  if (is_ipv6)
 	    {
 	      u16 len = b0->current_length - sizeof (ip6_header_t);
-	      oh6_0->ip6.payload_length = clib_host_to_net_u16 (len);
+	      oh6_0->ip6.payload_length =
+		clib_host_to_net_u16 (len - rewrite_len);
 	    }
 	  else
 	    {
-	      oh0->ip4.length = clib_host_to_net_u16 (b0->current_length);
+	      oh0->ip4.length =
+		clib_host_to_net_u16 (b0->current_length - rewrite_len);
 	      oh0->ip4.checksum = ip4_header_checksum (&oh0->ip4);
 	    }
 
