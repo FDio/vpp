@@ -95,6 +95,10 @@ if ENABLE_L2E_PLUGIN
 include l2e.am
 endif
 
+if ENABLE_SRV6AS_PLUGIN
+include srv6_as.am
+endif
+
 include ../suffix-rules.mk
 
 # Remove *.la files
